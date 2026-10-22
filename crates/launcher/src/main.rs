@@ -39,7 +39,9 @@ fn main() {
 /// Returns Some(tag) if a new build was installed.
 fn update(base: &Path, installed: Option<&str>) -> Result<Option<String>, Box<dyn Error>> {
     let agent = ureq::AgentBuilder::new().user_agent("DokuQuest-Launcher").timeout(Duration::from_secs(60)).build();
-    let rel: serde_json::Value = agent.get(&format!("https://api.github.com/repos/{REPO}/releases/latest")).call()?.into_json()?;
+    // Newest release first, pre-releases included (alpha builds are often marked pre-release).
+    let list: serde_json::Value = agent.get(&format!("https://api.github.com/repos/{REPO}/releases?per_page=10")).call()?.into_json()?;
+    let rel = list.as_array().and_then(|v| v.iter().find(|r| r["draft"] != true)).cloned().ok_or("no releases published yet")?;
     let tag = rel["tag_name"].as_str().ok_or("release has no tag")?.to_string();
     if installed == Some(tag.as_str()) && base.join(&tag).join(exe("dokuquest")).exists() { return Ok(None); }
     let want = format!("dokuquest-{}.tar.gz", target());
