@@ -1,0 +1,9 @@
+[package]
+name = "common_server"
+version.workspace = true
+edition = "2021"
+description = "DokuQuest shared core (blocks, dimensions, worldgen, micro-voxel style + mesher, saves) and the headless server. Zero external dependencies."
+
+[[bin]]
+name = "dq-server"
+path = "src/bin/dq-server.rs"

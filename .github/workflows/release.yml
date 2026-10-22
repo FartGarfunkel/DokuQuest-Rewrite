@@ -1,0 +1,38 @@
+# Push a tag like v0.1.0 → builds Linux + Windows and publishes the assets the launcher downloads.
+name: Release
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: linux-x86_64, ext: '' }
+          - { os: windows-latest, target: windows-x86_64, ext: '.exe' }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release --workspace
+      - name: Package
+        shell: bash
+        run: |
+          mkdir pkg
+          cp target/release/dokuquest${{ matrix.ext }} target/release/dq-server${{ matrix.ext }} pkg/
+          tar -czf dokuquest-${{ matrix.target }}.tar.gz -C pkg .
+          sha256sum dokuquest-${{ matrix.target }}.tar.gz > dokuquest-${{ matrix.target }}.tar.gz.sha256
+          cp target/release/dokuquest-launcher${{ matrix.ext }} dokuquest-launcher-${{ matrix.target }}${{ matrix.ext }}
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dokuquest-${{ matrix.target }}.tar.gz
+            dokuquest-${{ matrix.target }}.tar.gz.sha256
+            dokuquest-launcher-${{ matrix.target }}${{ matrix.ext }}

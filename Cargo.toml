@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = ["crates/common_server", "crates/game_engine", "crates/launcher"]
+
+[workspace.package]
+version = "0.1.0"
+
+# Fast-ish debug builds: our code lightly optimised, dependencies (Bevy) fully optimised.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3

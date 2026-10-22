@@ -1,0 +1,13 @@
+[package]
+name = "game_engine"
+version.workspace = true
+edition = "2021"
+description = "DokuQuest game client (Bevy)"
+
+[[bin]]
+name = "dokuquest"
+path = "src/main.rs"
+
+[dependencies]
+bevy = "0.16"
+common_server = { path = "../common_server" }
