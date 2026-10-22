@@ -23,5 +23,5 @@ RMB place, 1–9 / wheel hotbar, Esc save & return to title.
 See [CLAUDE.md](CLAUDE.md) for the file map, design facts and port status.
 
 ## Release
-`git tag v0.1.0 && git push --tags` → GitHub Actions builds Linux + Windows and publishes the assets
-the launcher looks for.
+Publish a GitHub release with a new tag (e.g. `v0.1.1`) → GitHub Actions builds Linux + Windows and
+attaches the assets the launcher looks for.

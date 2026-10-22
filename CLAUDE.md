@@ -33,7 +33,7 @@ Read THIS file, then only the file(s) your task names below. Do not scan the rep
 | Held items (Cube-World voxel sprites) | `game_engine/src/items.rs` |
 | Falling leaves / ambient effects | `game_engine/src/fx.rs` |
 | Update check / download / launch | `launcher/src/main.rs` |
-| CI / releases (tag `vX.Y.Z`) | `.github/workflows/` |
+| CI / releases (publish a release, tag `vX.Y.Z`, e.g. `gh api repos/FartGarfunkel/DokuQuest-Rewrite/releases -f tag_name=vX.Y.Z`) | `.github/workflows/` |
 
 ## Key design facts
 - One world, stacked dimensions: Nether y −256..0, Overworld 0..256, Skylands 256..512, End 512..768. Chunks are 16³ cubes; only ±3 layers around the player load.

@@ -1,8 +1,8 @@
-# Push a tag like v0.1.0 → builds Linux + Windows and publishes the assets the launcher downloads.
+# Publish a GitHub release (new tag like v0.1.0) → builds Linux + Windows and attaches the assets the launcher downloads.
 name: Release
 on:
-  push:
-    tags: ['v*']
+  release:
+    types: [published]
 
 permissions:
   contents: write
