@@ -1,6 +1,6 @@
 //! Camera, sun, day/night cycle, fog and per-dimension skies (the sky follows whichever stacked
 //! dimension the camera is in). Gradient-sky shader (TanTan's bevy_sky_gradient idea) comes later.
-use crate::world::{VoxelWorld, RENDER_DIST};
+use crate::world::{render_dist, VoxelWorld};
 use bevy::pbr::{CascadeShadowConfigBuilder, DistanceFog, FogFalloff};
 use bevy::prelude::*;
 use common_server::dims;
@@ -66,7 +66,7 @@ fn cycle(
     let band = dims::band_at(cam.translation().y.floor() as i32).map(|b| b.key).unwrap_or("overworld");
     let (night, noon) = (Vec3::new(0.015, 0.02, 0.05), Vec3::new(0.48, 0.70, 0.95));
     let dusk = Vec3::new(0.95, 0.5, 0.25) * (1.0 - (elev.abs() * 4.0).min(1.0)) * 0.6;
-    let far = (RENDER_DIST * 16) as f32;
+    let far = (render_dist() * 16) as f32;
     let (sky, lux, ambient, fs, fe) = match band {
         "nether" => (Vec3::new(0.22, 0.05, 0.03), 0.0, 700.0, 8.0, 90.0),
         "end" => (Vec3::new(0.06, 0.03, 0.08), 0.0, 350.0, 30.0, 170.0),

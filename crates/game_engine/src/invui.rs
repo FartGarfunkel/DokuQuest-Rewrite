@@ -150,10 +150,12 @@ fn rebuild(ui: Res<Ui>, mut commands: Commands, roots: Query<Entity, With<InvRoo
     });
 }
 
-fn clicks(mouse: Res<ButtonInput<MouseButton>>, slots: Query<(&Interaction, &SlotRef)>, ui: Res<Ui>, mut st: ResMut<InvState>, mut p: ResMut<Player>) {
-    let (l, r) = (mouse.just_pressed(MouseButton::Left), mouse.just_pressed(MouseButton::Right));
+fn clicks(mouse: Res<ButtonInput<MouseButton>>, slots: Query<(&Interaction, &SlotRef)>, ui: Res<Ui>, mut st: ResMut<InvState>, mut p: ResMut<Player>, pad: Res<crate::theme::PadClick>) {
+    let (mut l, mut r) = (mouse.just_pressed(MouseButton::Left), mouse.just_pressed(MouseButton::Right));
+    let padded = pad.target.and_then(|e| slots.get(e).ok()).map(|(_, s)| *s);
+    if padded.is_some() { l = !pad.right; r = pad.right; }
     if !l && !r { return; }
-    let Some(sr) = slots.iter().find(|(i, _)| **i != Interaction::None).map(|(_, s)| *s) else { return };
+    let Some(sr) = padded.or_else(|| slots.iter().find(|(i, _)| **i != Interaction::None).map(|(_, s)| *s)) else { return };
     let st = &mut *st;
     let w = grid_w(*ui);
     let n = w * w;

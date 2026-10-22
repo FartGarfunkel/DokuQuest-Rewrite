@@ -36,6 +36,8 @@ pub struct BlockDef {
     pub tint: u8,
     /// Falls when unsupported (sand, gravel, concrete powder).
     pub falls: bool,
+    /// Sound material (game/sfxlib.js SND_MAT key): "stone", "wood", "grass", …
+    pub sound: &'static str,
     /// Tile per face: +X −X +Y −Y +Z −Z.
     pub faces: [u16; 6],
 }

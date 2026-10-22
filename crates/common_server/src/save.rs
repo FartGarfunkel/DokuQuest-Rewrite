@@ -17,6 +17,7 @@ pub struct WorldMeta {
     pub yaw: f32,
     pub pitch: f32,
     pub flying: bool,
+    pub creative: bool,
     pub last_played: u64,
     /// Inventory (items::Inventory::to_text), health and hunger.
     pub inv: String,
@@ -29,8 +30,8 @@ pub struct WorldMeta {
 impl WorldMeta {
     pub fn to_text(&self) -> String {
         format!(
-            "name={}\nseed={}\ngen_version={}\npos={} {} {}\nyaw={}\npitch={}\nflying={}\nlast_played={}\nhealth={}\nhunger={}\nspawn={} {} {}\ninv={}\n",
-            self.name, self.seed, self.gen_version, self.pos[0], self.pos[1], self.pos[2], self.yaw, self.pitch, self.flying, self.last_played, self.health, self.hunger, self.spawn[0], self.spawn[1], self.spawn[2], self.inv
+            "name={}\nseed={}\ngen_version={}\npos={} {} {}\nyaw={}\npitch={}\nflying={}\ncreative={}\nlast_played={}\nhealth={}\nhunger={}\nspawn={} {} {}\ninv={}\n",
+            self.name, self.seed, self.gen_version, self.pos[0], self.pos[1], self.pos[2], self.yaw, self.pitch, self.flying, self.creative, self.last_played, self.health, self.hunger, self.spawn[0], self.spawn[1], self.spawn[2], self.inv
         )
     }
     pub fn from_text(s: &str) -> Option<Self> {
@@ -48,6 +49,7 @@ impl WorldMeta {
                 "yaw" => m.yaw = v.trim().parse().unwrap_or(0.0),
                 "pitch" => m.pitch = v.trim().parse().unwrap_or(0.0),
                 "flying" => m.flying = v.trim() == "true",
+                "creative" => m.creative = v.trim() == "true",
                 "last_played" => m.last_played = v.trim().parse().unwrap_or(0),
                 "health" => m.health = v.trim().parse().unwrap_or(20.0),
                 "hunger" => m.hunger = v.trim().parse().unwrap_or(20.0),
@@ -111,7 +113,7 @@ mod tests {
     use super::*;
     #[test]
     fn meta_roundtrip() {
-        let m = WorldMeta { name: "My World 2".into(), seed: 99, gen_version: 1, pos: [1.5, 70.0, -3.25], yaw: 1.2, pitch: -0.3, flying: true, last_played: 5, inv: "-,-".into(), health: 17.5, hunger: 12.0, spawn: [1.0, 2.0, 3.0] };
+        let m = WorldMeta { name: "My World 2".into(), seed: 99, gen_version: 1, pos: [1.5, 70.0, -3.25], yaw: 1.2, pitch: -0.3, flying: true, creative: true, last_played: 5, inv: "-,-".into(), health: 17.5, hunger: 12.0, spawn: [1.0, 2.0, 3.0] };
         assert_eq!(WorldMeta::from_text(&m.to_text()), Some(m));
     }
 }

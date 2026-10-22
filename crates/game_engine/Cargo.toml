@@ -9,7 +9,8 @@ name = "dokuquest"
 path = "src/main.rs"
 
 [dependencies]
-bevy = "0.16"
+bevy = { version = "0.16", features = ["wav"] }
+rfd = "0.15"
 common_server = { path = "../common_server" }
 zip = { version = "2", default-features = false, features = ["deflate"] }
 image = { version = "0.25", default-features = false, features = ["png"] }

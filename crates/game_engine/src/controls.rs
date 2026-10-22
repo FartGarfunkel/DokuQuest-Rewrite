@@ -38,7 +38,7 @@ const DIGITS: [KeyCode; 9] = [
 ];
 
 #[allow(clippy::too_many_arguments)]
-fn gather(
+pub fn gather(
     keys: Res<ButtonInput<KeyCode>>,
     mouse: Res<ButtonInput<MouseButton>>,
     mm: Res<AccumulatedMouseMotion>,

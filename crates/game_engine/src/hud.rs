@@ -90,7 +90,6 @@ fn spawn(mut commands: Commands) {
         .with_children(|p| {
             p.spawn(Node { column_gap: Val::Px(40.0), ..default() }).with_children(|b| {
                 b.spawn(bar(HealthFill, HEART));
-                b.spawn(bar(FoodFill, FOOD));
             });
             p.spawn(Node { column_gap: Val::Px(2.0), ..default() }).with_children(|row| {
                 for i in 0..9 {

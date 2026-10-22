@@ -2,6 +2,8 @@
 //! shaped-block collision, fall damage, mining with break times, placing, eating, attacking mobs,
 //! opening crafting tables and furnaces. Reads `Controls`, never raw input.
 use crate::controls::Controls;
+use crate::skin::View;
+use crate::sounds::Sfx;
 use crate::fell::{is_log, settle, Chopped};
 use crate::sky::DayTime;
 use crate::hud::Toast;
@@ -95,6 +97,7 @@ pub fn sync_meta(p: &Player, w: &mut VoxelWorld, full: bool) {
     w.focus = p.pos;
     if full {
         w.meta.inv = p.inv.to_text();
+        w.meta.creative = p.creative;
         w.meta.health = p.health.max(0.5);
         w.meta.hunger = p.hunger.max(0.5);
     }
@@ -107,6 +110,8 @@ fn enter(mut p: ResMut<Player>, w: Res<VoxelWorld>, mut ui: ResMut<Ui>) {
         yaw: m.yaw,
         pitch: m.pitch,
         inv: Inventory::from_text(&m.inv),
+        creative: m.creative,
+        flying: m.flying && m.creative,
         health: if m.health > 0.0 { m.health } else { 20.0 },
         hunger: if m.hunger > 0.0 { m.hunger } else { 20.0 },
         band: dims::band_index(m.pos[1].floor() as i32),
@@ -180,7 +185,7 @@ fn movement(time: Res<Time>, c: Res<Controls>, mut p: ResMut<Player>, mut w: Res
     let fwd = Vec3::new(-p.yaw.sin(), 0.0, -p.yaw.cos());
     let right = Vec3::new(p.yaw.cos(), 0.0, -p.yaw.sin());
     let wish = (fwd * c.mv.y + right * c.mv.x).clamp_length_max(1.0);
-    p.sprinting = c.sprint && c.mv.y > 0.5 && (p.hunger > 6.0 || p.creative);
+    p.sprinting = c.sprint && c.mv.y > 0.5 && true;
     let in_liquid = blocks::kind(w.get(feet)) == Kind::Liquid || blocks::kind(w.get(feet + IVec3::Y)) == Kind::Liquid;
     if p.flying {
         let sp = if p.sprinting { 30.0 } else { 12.0 };
@@ -279,9 +284,8 @@ fn ray_box(o: Vec3, d: Vec3, mn: Vec3, mx: Vec3) -> Option<f32> {
 fn eat(p: &mut Player) -> bool {
     let Some(st) = p.held() else { return false };
     let d = reg().item(st.item);
-    if d.food <= 0.0 || p.hunger >= 20.0 { return false; }
-    p.hunger = (p.hunger + d.food * 1.2).min(20.0);
-    p.health = (p.health + d.food * 0.3).min(20.0);
+    if d.food <= 0.0 || p.health >= 20.0 { return false; }
+    p.health = (p.health + d.food).min(20.0);
     let s = p.slot;
     p.inv.take_one(s);
     p.swing = 1.0;
@@ -302,6 +306,8 @@ fn interact(
     mut chopped: EventWriter<Chopped>,
     mut day: ResMut<DayTime>,
     mut toast: ResMut<Toast>,
+    mut sfx: EventWriter<Sfx>,
+    mut tick: Local<f32>,
 ) {
     let Ok(cam) = cam.single() else { return };
     let (o, dir) = (cam.translation(), cam.forward().as_vec3());
@@ -322,6 +328,7 @@ fn interact(
                 m.hp -= p.tool().map(|t| t.damage.max(1.0)).unwrap_or(1.0);
                 m.hurt = 0.35;
                 m.angry = true;
+                sfx.write(Sfx::fx("hit"));
                 m.vel += Vec3::new(dir.x, 0.0, dir.z).normalize_or_zero() * 6.0 + Vec3::Y * 4.0;
             }
             return;
@@ -329,7 +336,7 @@ fn interact(
     }
     let Some((hit, prev)) = hit else {
         p.breaking = None;
-        if c.use_pressed { eat(&mut p); }
+        if c.use_pressed && eat(&mut p) { sfx.write(Sfx::fx("eat")); }
         return;
     };
     gizmos.cuboid(Transform::from_translation(hit.as_vec3() + Vec3::splat(0.5)).with_scale(Vec3::splat(1.004)), Color::srgba(0.05, 0.05, 0.05, 0.8));
@@ -351,8 +358,11 @@ fn interact(
                 p.breaking = Some((hit, prog));
             }
             if p.swing <= 0.0 { p.swing = 1.0; }
+            *tick -= time.delta_secs();
+            if *tick <= 0.0 { *tick = 0.25; sfx.write(Sfx::block(b, "dig")); }
         }
         if broke {
+            sfx.write(Sfx::block(b, "break"));
             w.set(hit, id::AIR);
             if is_log(b) { chopped.write(Chopped { at: hit, dir }); }
             settle(&mut w, hit);
@@ -363,11 +373,15 @@ fn interact(
     if c.use_pressed {
         let b = w.get(hit);
         if b == id::CHEST {
+            sfx.write(Sfx::fx("chest"));
             *ui = Ui::Chest(hit);
             return;
         }
         if let Some(t) = blocks::toggled(b) {
             w.set(hit, t);
+            let k = blocks::def(t).key;
+            let kind = if k.contains("trapdoor") { "trapdoor" } else if k.contains("gate") { "gate" } else { "door" };
+            sfx.write(Sfx::fx(&format!("{kind}_{}", if k.ends_with("_open") { "open" } else { "close" })));
             p.swing = 1.0;
             return;
         }
@@ -390,7 +404,7 @@ fn interact(
             *ui = Ui::Furnace(hit);
             return;
         }
-        if eat(&mut p) { return; }
+        if eat(&mut p) { sfx.write(Sfx::fx("eat")); return; }
         let Some(st) = p.held() else { return };
         let Some(pb) = reg().item(st.item).block else { return };
         let there = w.get(prev);
@@ -401,6 +415,7 @@ fn interact(
         if !overlap || !blocks::is_solid(pb) {
             w.set(prev, pb);
             settle(&mut w, prev);
+            sfx.write(Sfx::block(pb, "place"));
             p.swing = 1.0;
             if !p.creative {
                 let s = p.slot;
@@ -421,10 +436,11 @@ fn hotbar(c: Res<Controls>, mut p: ResMut<Player>) {
     if c.slot_delta != 0 { p.slot = (p.slot as i32 + c.slot_delta).rem_euclid(9) as usize; }
 }
 
-fn follow_cam(p: Res<Player>, mut cam: Query<&mut Transform, With<MainCamera>>) {
+fn follow_cam(p: Res<Player>, view: Res<View>, mut cam: Query<&mut Transform, With<MainCamera>>) {
     if let Ok(mut t) = cam.single_mut() {
-        t.translation = p.pos + Vec3::Y * EYE;
         t.rotation = Quat::from_euler(EulerRot::YXZ, p.yaw, p.pitch, 0.0);
+        let back = if view.third { t.rotation * Vec3::Z * 4.0 } else { Vec3::ZERO };
+        t.translation = p.pos + Vec3::Y * EYE + back;
     }
 }
 

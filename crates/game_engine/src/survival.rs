@@ -1,8 +1,9 @@
-//! Survival rules: damage (reduced by armour), hunger, regeneration, death, and dropped items that
+//! Survival rules (game/player.js, local.js — no hunger): damage (reduced by armour), regeneration, death, and dropped items that
 //! pop out, fall, and fly into your inventory.
 use crate::hud::Toast;
 use crate::items::ItemMeshes;
 use crate::player::{Player, Ui};
+use crate::sounds::Sfx;
 use crate::world::{ChunkMats, VoxelWorld};
 use crate::AppState;
 use bevy::prelude::*;
@@ -47,7 +48,7 @@ fn spawn_drops(mut ev: EventReader<DropItem>, mut commands: Commands, mut cache:
     }
 }
 
-fn drops(mut commands: Commands, time: Res<Time>, w: Res<VoxelWorld>, mut p: ResMut<Player>, mut q: Query<(Entity, &mut Dropped, &mut Transform)>) {
+fn drops(mut commands: Commands, time: Res<Time>, w: Res<VoxelWorld>, mut p: ResMut<Player>, mut q: Query<(Entity, &mut Dropped, &mut Transform)>, mut sfx: EventWriter<Sfx>) {
     let dt = time.delta_secs().min(0.05);
     let centre = p.pos + Vec3::Y * 0.8;
     for (e, mut d, mut t) in &mut q {
@@ -71,7 +72,7 @@ fn drops(mut commands: Commands, time: Res<Time>, w: Res<VoxelWorld>, mut p: Res
         t.rotate_y(dt * 1.5);
         if d.age > 0.6 && dist < 0.7 {
             match p.inv.add(d.stack) {
-                None => { commands.entity(e).despawn(); }
+                None => { commands.entity(e).despawn(); sfx.write(Sfx::fx("pop")); }
                 Some(rest) => d.stack = rest,
             }
         } else if d.age > 300.0 {
@@ -80,12 +81,12 @@ fn drops(mut commands: Commands, time: Res<Time>, w: Res<VoxelWorld>, mut p: Res
     }
 }
 
-fn vitals(time: Res<Time>, mut p: ResMut<Player>, mut hurt: EventReader<Hurt>, mut ui: ResMut<Ui>, mut toast: ResMut<Toast>, mut cd: Local<f32>) {
+fn vitals(time: Res<Time>, mut p: ResMut<Player>, mut hurt: EventReader<Hurt>, mut ui: ResMut<Ui>, mut toast: ResMut<Toast>, mut cd: Local<f32>, mut sfx: EventWriter<Sfx>, mut regen: Local<f32>) {
     let dt = time.delta_secs();
     *cd -= dt;
     if p.creative || *ui == Ui::Dead {
         hurt.clear();
-        if p.creative { p.health = 20.0; p.hunger = 20.0; }
+        if p.creative { p.health = 20.0; }
         return;
     }
     for h in hurt.read() {
@@ -93,15 +94,15 @@ fn vitals(time: Res<Time>, mut p: ResMut<Player>, mut hurt: EventReader<Hurt>, m
             let armour: f32 = p.inv.slots[36..40].iter().flatten().map(|s| reg().item(s.item).armor).sum();
             p.health -= h.0 * (1.0 - (armour * 0.04).min(0.8));
             *cd = 0.45;
+            sfx.write(Sfx::fx("hurt"));
         }
     }
-    let drain = if p.sprinting { 0.05 } else { 0.012 };
-    p.hunger = (p.hunger - drain * dt).max(0.0);
-    if p.hunger >= 17.0 && p.health < 20.0 {
-        p.health = (p.health + 0.5 * dt).min(20.0);
-        p.hunger -= 0.08 * dt;
+    // like game/local.js: no hunger; 1 health back every 4 seconds
+    *regen += dt;
+    if *regen > 4.0 {
+        *regen = 0.0;
+        if p.health > 0.0 { p.health = (p.health + 1.0).min(20.0); }
     }
-    if p.hunger <= 0.0 && p.health > 1.0 { p.health -= 0.25 * dt; }
     if p.health <= 0.0 {
         p.health = 0.0;
         *ui = Ui::Dead;

@@ -2,6 +2,7 @@
 //! leaves, topples over away from you and breaks into drops (logs; saplings and apples from leaves).
 //! Also: sand/gravel fall when unsupported, and saplings grow into trees.
 use crate::player::Player;
+use crate::sounds::Sfx;
 use crate::survival::DropItem;
 use crate::world::{to_mesh, ChunkMats, VoxelWorld};
 use crate::AppState;
@@ -70,6 +71,7 @@ fn fell(
     mut meshes: ResMut<Assets<Mesh>>,
     mats: Res<ChunkMats>,
     mut cache: Local<HashMap<u16, Handle<Mesh>>>,
+    mut sfx: EventWriter<Sfx>,
 ) {
     for c in ev.read() {
         let (mut logs, mut seen, mut stack) = (Vec::new(), HashSet::new(), vec![c.at + IVec3::Y]);
@@ -80,6 +82,7 @@ fn fell(
             for dy in 0..=1 { for dz in -1..=1 { for dx in -1..=1 { stack.push(p + IVec3::new(dx, dy, dz)); } } }
         }
         if logs.is_empty() { continue; }
+        sfx.write(Sfx::fx("tree_creak"));
         let mut leaves = Vec::new();
         for &l in &logs {
             for dy in -2..=2 { for dz in -2..=2 { for dx in -2..=2 {
@@ -103,12 +106,13 @@ fn fell(
     }
 }
 
-fn topple(time: Res<Time>, mut commands: Commands, mut q: Query<(Entity, &mut Falling, &mut Transform)>, mut drops: EventWriter<DropItem>, mut seed: Local<u32>) {
+fn topple(time: Res<Time>, mut commands: Commands, mut q: Query<(Entity, &mut Falling, &mut Transform)>, mut drops: EventWriter<DropItem>, mut seed: Local<u32>, mut sfx: EventWriter<Sfx>) {
     for (e, mut f, mut t) in &mut q {
         f.t += time.delta_secs();
         let a = (f.t * f.t * 1.2).min(std::f32::consts::FRAC_PI_2);
         t.rotation = Quat::from_axis_angle(f.axis, a);
         if a < std::f32::consts::FRAC_PI_2 { continue; }
+        sfx.write(Sfx::fx("fell"));
         for &(o, b) in &f.blocks {
             let at = t.translation + t.rotation * (o.as_vec3() + Vec3::Y * 0.5);
             let item = if is_log(b) {

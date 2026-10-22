@@ -1,7 +1,7 @@
 name: CI
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
 
 jobs:
@@ -14,3 +14,19 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test -p common_server
       - run: cargo check --workspace
+
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev mesa-vulkan-drivers xvfb
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release -p game_engine
+      - name: Play a scripted session on software Vulkan
+        env:
+          DQ_SMOKE: '1'
+          RUST_BACKTRACE: '1'
+        run: xvfb-run -a -s "-screen 0 1280x720x24" timeout 900 ./target/release/dokuquest 2>&1 | tee smoke.log | grep -E "SMOKE|panicked|ERROR" ; grep -q "SMOKE OK" smoke.log
+      - if: always()
+        run: grep -B2 -A25 "panicked" smoke.log | head -60 || true

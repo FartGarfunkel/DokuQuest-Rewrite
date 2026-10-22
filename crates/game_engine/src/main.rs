@@ -11,6 +11,9 @@ mod mobs;
 mod packs;
 mod player;
 mod sky;
+mod skin;
+mod smoke;
+mod sounds;
 mod survival;
 mod theme;
 mod world;
@@ -29,6 +32,7 @@ pub enum AppState {
 
 fn main() {
     let settings = menu::Settings::load();
+    world::set_render_dist(settings.rd);
     let found = packs::available();
     let pack = match settings.pack.as_str() { "none" => None, p if found.iter().any(|f| f == p) => Some(p.to_string()), _ => found.first().cloned() };
     if let Some(p) = pack {
@@ -41,6 +45,6 @@ fn main() {
         }))
         .init_state::<AppState>()
         .add_plugins((world::WorldPlugin, sky::SkyPlugin, controls::ControlsPlugin, player::PlayerPlugin, survival::SurvivalPlugin, mobs::MobsPlugin))
-        .add_plugins((invui::InvUiPlugin, menu::MenuPlugin, hud::HudPlugin, items::ItemsPlugin, fx::FxPlugin, theme::ThemePlugin, fell::FellPlugin))
+        .add_plugins((invui::InvUiPlugin, menu::MenuPlugin, hud::HudPlugin, items::ItemsPlugin, fx::FxPlugin, theme::ThemePlugin, fell::FellPlugin, sounds::SoundsPlugin, skin::SkinPlugin, smoke::SmokePlugin))
         .run();
 }

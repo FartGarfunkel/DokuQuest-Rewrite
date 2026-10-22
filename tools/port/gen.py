@@ -27,7 +27,7 @@ for b in B:
     f = [tile(x) for x in (FACES[b['id']] or [0]*6)]
     tint = {'grass': 1, 'foliage': 2}.get(b.get('tint'), 0)
     drop = '-' if b.get('drop') == '' else (b.get('drop') or '')
-    row = lambda key, name, shp, solid, drp: f'    BlockDef {{ key: {s(key)}, name: {s(name)}, kind: {kind}, opaque: {str(opaque).lower()}, solid: {str(solid).lower()}, hardness: {float(b.get("hardness") or 0)}, tool: {TOOL.get(b.get("tool"), 0)}, tier: {int(b.get("tier") or 0)}, drop: {s(drp)}, light: {int(b.get("light") or 0)}, shape: {shp}, tint: {tint}, falls: {str(bool(b.get("falls"))).lower()}, faces: {f} }},'
+    row = lambda key, name, shp, solid, drp: f'    BlockDef {{ key: {s(key)}, name: {s(name)}, kind: {kind}, opaque: {str(opaque).lower()}, solid: {str(solid).lower()}, hardness: {float(b.get("hardness") or 0)}, tool: {TOOL.get(b.get("tool"), 0)}, tier: {int(b.get("tier") or 0)}, drop: {s(drp)}, light: {int(b.get("light") or 0)}, shape: {shp}, tint: {tint}, falls: {str(bool(b.get("falls"))).lower()}, sound: {s(b.get("sound") or "stone")}, faces: {f} }},'
     rows.append(row(k, b['name'], shape, bool(b['solid']), drop))
     ids.append(f'    pub const {const(k)}: u16 = {b["id"]};')
     if r == 7 and shape in (4, 7, 8): extra.append((row(k + '_open', b['name'], {4: 41, 7: 39, 8: 40}[shape], False, drop or k), k + '_open'))

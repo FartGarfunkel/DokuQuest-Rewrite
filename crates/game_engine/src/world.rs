@@ -14,7 +14,9 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{mpsc, Arc, Mutex};
 
 /// Horizontal view distance in chunks (16 blocks each).
-pub const RENDER_DIST: i32 = 6;
+static RD: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::new(6);
+pub fn render_dist() -> i32 { RD.load(std::sync::atomic::Ordering::Relaxed) }
+pub fn set_render_dist(v: i32) { RD.store(v.clamp(2, 16), std::sync::atomic::Ordering::Relaxed); }
 /// Vertical chunk layers kept above/below the player (stacked dimensions are only loaded nearby).
 pub const VERT_DIST: i32 = 3;
 const MAX_GEN: usize = 16;
@@ -239,7 +241,7 @@ fn receive(mut w: ResMut<VoxelWorld>, mut commands: Commands, mut meshes: ResMut
 fn stream(mut w: ResMut<VoxelWorld>, mut commands: Commands) {
     let w = &mut *w;
     let c = centre(w);
-    let far: Vec<IVec3> = w.chunks.keys().filter(|k| hdist(**k, c) > RENDER_DIST + 2 || (k.y - c.y).abs() > VERT_DIST + 2).copied().collect();
+    let far: Vec<IVec3> = w.chunks.keys().filter(|k| hdist(**k, c) > render_dist() + 2 || (k.y - c.y).abs() > VERT_DIST + 2).copied().collect();
     for k in far {
         if w.edited.remove(&k) && w.persistent {
             if let Some(ch) = w.chunks.get(&k) { let _ = save::save_chunk(&w.meta.name, [k.x, k.y, k.z], ch); }
@@ -251,7 +253,7 @@ fn stream(mut w: ResMut<VoxelWorld>, mut commands: Commands) {
         }
     }
     if w.pending.len() >= MAX_GEN { return; }
-    let r = RENDER_DIST + 1;
+    let r = render_dist() + 1;
     let mut want: Vec<(i32, IVec3)> = Vec::new();
     for cy in (c.y - VERT_DIST - 1).max(CY_MIN)..=(c.y + VERT_DIST + 1).min(CY_MAX) {
         for cz in c.z - r..=c.z + r {
@@ -294,7 +296,7 @@ fn schedule_mesh(mut w: ResMut<VoxelWorld>, mut last: Local<Option<IVec3>>) {
         if w.meshing.len() >= MAX_MESH { break; }
         let hd = hdist(k, c);
         let air_no_view = w.chunks.get(&k).is_some_and(|ch| ch.is_air()) && !w.views.contains_key(&k);
-        if !w.chunks.contains_key(&k) || hd > RENDER_DIST || (k.y - c.y).abs() > VERT_DIST || air_no_view {
+        if !w.chunks.contains_key(&k) || hd > render_dist() || (k.y - c.y).abs() > VERT_DIST || air_no_view {
             w.dirty.remove(&k);
             continue;
         }
