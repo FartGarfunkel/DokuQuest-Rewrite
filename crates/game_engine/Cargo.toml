@@ -11,3 +11,5 @@ path = "src/main.rs"
 [dependencies]
 bevy = "0.16"
 common_server = { path = "../common_server" }
+zip = { version = "2", default-features = false, features = ["deflate"] }
+image = { version = "0.25", default-features = false, features = ["png"] }

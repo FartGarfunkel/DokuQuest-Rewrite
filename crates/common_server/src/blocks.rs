@@ -34,6 +34,8 @@ pub struct BlockDef {
     pub shape: u8,
     /// 0 none, 1 grass, 2 foliage (tints grey pixels).
     pub tint: u8,
+    /// Falls when unsupported (sand, gravel, concrete powder).
+    pub falls: bool,
     /// Tile per face: +X −X +Y −Y +Z −Z.
     pub faces: [u16; 6],
 }
@@ -50,6 +52,11 @@ pub fn is_opaque(b: u16) -> bool { def(b).opaque }
 #[inline]
 pub fn is_solid(b: u16) -> bool { let d = def(b); d.solid && matches!(d.kind, Kind::Solid | Kind::Shape) }
 pub fn by_key(k: &str) -> Option<u16> { BLOCKS.iter().position(|d| d.key == k).map(|i| i as u16) }
+/// Door / trapdoor / gate ⇄ its open variant (generated as `<key>_open`).
+pub fn toggled(b: u16) -> Option<u16> {
+    let k = def(b).key;
+    match k.strip_suffix("_open") { Some(base) => by_key(base), None => by_key(&format!("{k}_open")) }
+}
 /// Block-local box [x0,y0,z0,x1,y1,z1] in block units.
 pub fn shape_box(b: u16) -> [f32; 6] {
     let d = def(b);

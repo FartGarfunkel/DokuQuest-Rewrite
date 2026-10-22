@@ -19,9 +19,13 @@ game. Or build: `cargo run --release -p game_engine`.
 Controls: WASD, mouse look, Space jump, F fly, Ctrl sprint, Shift descend (flying), LMB break,
 RMB place, 1–9 / wheel hotbar, Esc save & return to title.
 
+## Resource packs (GeruDoku etc.)
+Put a Minecraft Java resource pack `.zip` in `~/.local/share/DokuQuest/resourcepacks/`
+(Windows: `%APPDATA%\DokuQuest\resourcepacks\`), or use Options → Open resource packs folder,
+then restart. Every block and item is rebuilt from the pack's pixels.
+
 ## Layout
 See [CLAUDE.md](CLAUDE.md) for the file map, design facts and port status.
 
 ## Release
-Publish a GitHub release with a new tag (e.g. `v0.1.1`) → GitHub Actions builds Linux + Windows and
-attaches the assets the launcher looks for.
+Every push to `main` publishes a new release (`v0.2.<n>`) automatically; the launcher updates to it.

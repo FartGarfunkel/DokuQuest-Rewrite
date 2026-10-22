@@ -40,13 +40,17 @@ Read THIS file, then only the file(s) your task names below. Do not scan the rep
 | Sky, sun, fog, day/night, dimension skies | `game_engine/src/sky.rs` |
 | HUD (hotbar icons, bars), toasts, tile→icon cache | `game_engine/src/hud.rs` |
 | Item voxel models (cache), held item | `game_engine/src/items.rs` |
+| Tree felling, falling sand/gravel, sapling growth | `game_engine/src/fell.rs` |
+| Resource packs (GeruDoku etc., loaded from `<data>/resourcepacks`) | `game_engine/src/packs.rs` + `data/packmap.tsv` |
+| Chests / furnaces (+ saving) | `game_engine/src/invui.rs` |
 | Falling leaves / ambient effects | `game_engine/src/fx.rs` |
 | Launcher bridge (`window.emberLauncher`) / updater | `launcher/src/main.rs`, `update.rs` |
-| CI / releases (publish a release, tag `vX.Y.Z`, e.g. `gh api repos/FartGarfunkel/DokuQuest-Rewrite/releases -f tag_name=vX.Y.Z`) | `.github/workflows/` |
+| CI; releases: EVERY push to main publishes `v0.2.<run>` automatically | `.github/workflows/` |
 
 ## Key design facts
 - One world, stacked dimensions: Nether y −256..0, Overworld 0..256, Skylands 256..512, End 512..768. Chunks are 16³ cubes; only ±3 layers around the player load.
 - Visual style: every block face is 16×16 micro-voxels (colour + relief) from `style.rs`; no texture files. LOD by chunk distance: 16 → 8 → 4 → 1 (far = one colour per face, ores look like stone).
+- Resource packs are never committed (licences): players drop zips in `<data>/resourcepacks/`; Options picks one.
 - Saves: `<data>/saves/<World>/world.txt` + edited chunks only. `<data>` = `~/.local/share/DokuQuest` (Linux) / `%APPDATA%\DokuQuest`.
 
 ## Port status (JS 0.9.0.90 → Rust)
@@ -57,14 +61,16 @@ Read THIS file, then only the file(s) your task names below. Do not scan the rep
 | render/rigs*.js, game/entities.js MOB_TYPES | mobs.rs (both crates) | 125 mob types + rigs; AI is an alpha subset |
 | world/* | chunk/worldgen/villages/world.rs | terrain, 4 stacked dims, caves, ores, trees, villages; JS structures/towns TODO |
 | game/player.js, physics.js, input/* | player.rs, controls.rs | movement, step-up, survival, gamepad |
-| game/inventory.js, ui/invui.js | items.rs, invui.rs | inventory, 2×2/3×3 crafting, furnace (not saved yet) |
+| game/inventory.js, ui/invui.js | items.rs, invui.rs | inventory, 2×2/3×3 crafting, furnace + chests (saved) |
+| render/packs.js | packs.rs | Minecraft packs mapped like the JS |
+| entities.js felled trees | fell.rs | trees topple; sand/gravel fall; saplings grow |
 | ui/title.js, ui.js, hud.js | menu.rs, hud.rs, theme.rs | title/worlds/options/pause/death, HUD; skin editor/creator TODO |
 | launcher/desktop | launcher (Tauri) | same page; LAN + app self-update TODO |
 | everything else in game/ (ships, magic, redstone, enchanting, farming growth, net, mods…) | — | not started |
 
 ## Next chunks (suggested order)
 1. Shaders: wind sway for plants/leaves, wave water + shoreline foam, sky-gradient (port idea of TanTan's `bevy_sky_gradient`).
-2. Save furnaces/chests; crop growth; tool durability; ranged mobs.
+2. Crop growth stages; tool durability; ranged mobs; light propagation (torches, dark caves).
 3. Port JS structures (towns, dungeons, ruins) into worldgen.
 4. Networking in `dq-server`; mod API (DQ) via scripting.
 5. Resource packs mapped onto micro-voxels; settings menu (render distance, detail, potato preset).

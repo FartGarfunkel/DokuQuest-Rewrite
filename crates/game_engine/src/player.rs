@@ -2,6 +2,8 @@
 //! shaped-block collision, fall damage, mining with break times, placing, eating, attacking mobs,
 //! opening crafting tables and furnaces. Reads `Controls`, never raw input.
 use crate::controls::Controls;
+use crate::fell::{is_log, settle, Chopped};
+use crate::sky::DayTime;
 use crate::hud::Toast;
 use crate::mobs::Mob;
 use crate::sky::MainCamera;
@@ -25,6 +27,7 @@ pub enum Ui {
     Inventory,
     Crafting,
     Furnace(IVec3),
+    Chest(IVec3),
     Pause,
     Dead,
 }
@@ -123,7 +126,7 @@ fn toggle_ui(c: Res<Controls>, mut ui: ResMut<Ui>) {
     let next = if c.pause {
         match *ui { Ui::None => Ui::Pause, Ui::Dead => Ui::Dead, _ => Ui::None }
     } else if c.inventory {
-        match *ui { Ui::None => Ui::Inventory, Ui::Inventory | Ui::Crafting | Ui::Furnace(_) => Ui::None, u => u }
+        match *ui { Ui::None => Ui::Inventory, Ui::Inventory | Ui::Crafting | Ui::Furnace(_) | Ui::Chest(_) => Ui::None, u => u }
     } else {
         *ui
     };
@@ -296,6 +299,9 @@ fn interact(
     mut mobs: Query<(Entity, &Transform, &mut Mob)>,
     mut drops: EventWriter<DropItem>,
     mut ui: ResMut<Ui>,
+    mut chopped: EventWriter<Chopped>,
+    mut day: ResMut<DayTime>,
+    mut toast: ResMut<Toast>,
 ) {
     let Ok(cam) = cam.single() else { return };
     let (o, dir) = (cam.translation(), cam.forward().as_vec3());
@@ -329,13 +335,14 @@ fn interact(
     gizmos.cuboid(Transform::from_translation(hit.as_vec3() + Vec3::splat(0.5)).with_scale(Vec3::splat(1.004)), Color::srgba(0.05, 0.05, 0.05, 0.8));
     if c.attack {
         let b = w.get(hit);
+        let mut broke = false;
         if p.creative {
-            if c.attack_pressed { w.set(hit, id::AIR); }
+            broke = c.attack_pressed;
         } else {
             let need = reg().break_time(b, p.tool()).max(0.05);
             let prog = match p.breaking { Some((h, v)) if h == hit => v, _ => 0.0 } + time.delta_secs() / need;
             if prog >= 1.0 {
-                w.set(hit, id::AIR);
+                broke = true;
                 if let Some(item) = reg().drop_of(b, p.tool()) {
                     drops.write(DropItem { pos: hit.as_vec3() + Vec3::splat(0.5), stack: Stack { item, count: 1 } });
                 }
@@ -345,11 +352,36 @@ fn interact(
             }
             if p.swing <= 0.0 { p.swing = 1.0; }
         }
+        if broke {
+            w.set(hit, id::AIR);
+            if is_log(b) { chopped.write(Chopped { at: hit, dir }); }
+            settle(&mut w, hit);
+        }
     } else {
         p.breaking = None;
     }
     if c.use_pressed {
         let b = w.get(hit);
+        if b == id::CHEST {
+            *ui = Ui::Chest(hit);
+            return;
+        }
+        if let Some(t) = blocks::toggled(b) {
+            w.set(hit, t);
+            p.swing = 1.0;
+            return;
+        }
+        let bk = blocks::def(b).key;
+        if bk == "bed" || bk.ends_with("_bed") {
+            w.meta.spawn = [hit.x as f32 + 0.5, hit.y as f32 + 1.0, hit.z as f32 + 0.5];
+            if day.0 > 0.5 {
+                day.0 = 0.0;
+                toast.show("Good morning! Spawn point set.".into());
+            } else {
+                toast.show("Spawn point set. You can only sleep at night.".into());
+            }
+            return;
+        }
         if b == id::CRAFTING_TABLE {
             *ui = Ui::Crafting;
             return;
@@ -368,6 +400,7 @@ fn interact(
         let overlap = pmin.cmplt(bmax).all() && pmax.cmpgt(bmin).all();
         if !overlap || !blocks::is_solid(pb) {
             w.set(prev, pb);
+            settle(&mut w, prev);
             p.swing = 1.0;
             if !p.creative {
                 let s = p.slot;

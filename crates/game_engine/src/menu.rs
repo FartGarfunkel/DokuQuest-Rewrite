@@ -17,16 +17,19 @@ pub struct Settings {
     pub sens: f32,
     pub fov: f32,
     pub occlusion: bool,
+    /// Resource pack zip in <data>/resourcepacks ("" = first found, "none" = built-in Doku tiles).
+    pub pack: String,
 }
 impl Settings {
     fn path() -> std::path::PathBuf { save::data_dir().join("settings.txt") }
-    fn load() -> Self {
-        let mut s = Settings { sens: 1.0, fov: 70.0, occlusion: true };
+    pub fn load() -> Self {
+        let mut s = Settings { sens: 1.0, fov: 70.0, occlusion: true, pack: String::new() };
         for l in std::fs::read_to_string(Self::path()).unwrap_or_default().lines() {
             match l.split_once('=') {
                 Some(("sens", v)) => s.sens = v.parse().unwrap_or(1.0),
                 Some(("fov", v)) => s.fov = v.parse().unwrap_or(70.0),
                 Some(("occlusion", v)) => s.occlusion = v == "true",
+                Some(("pack", v)) => s.pack = v.trim().into(),
                 _ => {}
             }
         }
@@ -34,7 +37,7 @@ impl Settings {
     }
     fn save(&self) {
         let _ = std::fs::create_dir_all(save::data_dir());
-        let _ = std::fs::write(Self::path(), format!("sens={}\nfov={}\nocclusion={}\n", self.sens, self.fov, self.occlusion));
+        let _ = std::fs::write(Self::path(), format!("sens={}\nfov={}\nocclusion={}\npack={}\n", self.sens, self.fov, self.occlusion, self.pack));
     }
 }
 
@@ -62,6 +65,8 @@ enum Btn {
     Sens(f32),
     Fov(f32),
     Occl,
+    Pack,
+    Folder,
     Resume,
     SaveQuit,
     Respawn,
@@ -110,7 +115,7 @@ fn build_menu(mut commands: Commands, screen: Res<Screen>, roots: Query<Entity, 
     let s = settings.clone();
     commands.spawn((MenuRoot, full)).with_children(|ui| {
         ui.spawn(text("DOKUQUEST", 76.0, EMBER));
-        ui.spawn(text(format!("DokuQuest Alpha v{} · Rust", env!("CARGO_PKG_VERSION")), 16.0, MUTED));
+        ui.spawn(text(format!("DokuQuest Alpha {} · Rust", crate::VERSION), 16.0, MUTED));
         ui.spawn(Node { height: Val::Px(14.0), ..default() });
         match scr {
             Screen::Title => {
@@ -145,6 +150,10 @@ fn build_menu(mut commands: Commands, screen: Res<Screen>, roots: Query<Entity, 
                         });
                     }
                     pn.spawn(button(Btn::Occl, &format!("Occlusion culling: {}", if s.occlusion { "On" } else { "Off" }), 360.0, false));
+                    let pk = match s.pack.as_str() { "" => "Auto (first in folder)".to_string(), "none" => "None (built-in Doku)".to_string(), p => p.to_string() };
+                    pn.spawn(button(Btn::Pack, &format!("Resource pack: {pk}"), 460.0, false));
+                    pn.spawn(button(Btn::Folder, "Open resource packs folder", 360.0, false));
+                    pn.spawn(text("Resource packs apply the next time the game starts.", 14.0, MUTED));
                 });
                 ui.spawn(button(Btn::Back, "Done", 340.0, true));
             }
@@ -225,10 +234,23 @@ fn buttons(
             Btn::Sens(d) => { settings.sens = (settings.sens + d).clamp(0.2, 3.0); settings.save(); }
             Btn::Fov(d) => { settings.fov = (settings.fov + d).clamp(50.0, 110.0); settings.save(); }
             Btn::Occl => { settings.occlusion = !settings.occlusion; settings.save(); }
+            Btn::Pack => {
+                let mut opts = vec![String::new()];
+                opts.extend(crate::packs::available());
+                opts.push("none".into());
+                let i = opts.iter().position(|o| *o == settings.pack).map(|i| (i + 1) % opts.len()).unwrap_or(0);
+                settings.pack = opts[i].clone();
+                settings.save();
+            }
+            Btn::Folder => {
+                let d = crate::packs::dir();
+                let _ = std::fs::create_dir_all(&d);
+                let _ = std::process::Command::new(if cfg!(windows) { "explorer" } else { "xdg-open" }).arg(d).spawn();
+            }
             Btn::Resume => *ui = Ui::None,
             Btn::SaveQuit => { *ui = Ui::None; next.set(AppState::Menu); }
             Btn::Respawn => {
-                p.pos = Vec3::from(w.generator().spawn_point());
+                p.pos = if w.meta.spawn != [0.0; 3] { Vec3::from(w.meta.spawn) } else { Vec3::from(w.generator().spawn_point()) };
                 p.vel = Vec3::ZERO;
                 p.health = 20.0;
                 p.hunger = 20.0;

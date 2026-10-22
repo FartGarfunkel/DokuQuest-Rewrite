@@ -3,6 +3,15 @@
 use std::sync::OnceLock;
 
 static DATA: &[u8] = include_bytes!("../data/tiles.bin");
+static OVERRIDE: OnceLock<Vec<u8>> = OnceLock::new();
+/// Tile → resource-pack texture names (block candidates, item candidates), from the JS packCandidates().
+pub static PACKMAP: &str = include_str!("../data/packmap.tsv");
+
+/// Built-in Doku tiles (what a resource pack starts from).
+pub fn base_data() -> &'static [u8] { DATA }
+/// Replaces the tiles with a resource pack's (call once, before anything is meshed).
+pub fn install(v: Vec<u8>) -> bool { v.len() == DATA.len() && OVERRIDE.set(v).is_ok() }
+fn data() -> &'static [u8] { OVERRIDE.get().map(Vec::as_slice).unwrap_or(DATA) }
 pub const NONE: u16 = u16::MAX;
 
 pub fn count() -> usize { DATA.len() / 1024 }
@@ -12,7 +21,8 @@ pub fn count() -> usize { DATA.len() / 1024 }
 pub fn px(t: u16, x: i32, y: i32) -> [u8; 4] {
     if t as usize >= count() { return [255, 0, 255, 255]; }
     let i = t as usize * 1024 + (((y & 15) * 16 + (x & 15)) as usize) * 4;
-    [DATA[i], DATA[i + 1], DATA[i + 2], DATA[i + 3]]
+    let d = data();
+    [d[i], d[i + 1], d[i + 2], d[i + 3]]
 }
 
 fn lut() -> &'static [f32; 256] {

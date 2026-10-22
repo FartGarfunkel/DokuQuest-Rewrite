@@ -6,7 +6,11 @@ use crate::theme::*;
 use crate::AppState;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
-use common_server::items::{click, consume, craft, reg, Slot, Stack};
+use crate::survival::DropItem;
+use crate::world::VoxelWorld;
+use common_server::blocks::id;
+use common_server::items::{click, consume, craft, reg, slots_from_text, slots_to_text, Slot, Stack};
+use common_server::save;
 use std::collections::HashMap;
 
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
@@ -17,6 +21,7 @@ pub enum SlotRef {
     FIn,
     FFuel,
     FOut,
+    Chest(usize),
 }
 
 #[derive(Component)]
@@ -44,6 +49,7 @@ pub struct InvState {
     pub cursor: Slot,
     pub craft: [Slot; 9],
     pub furnaces: HashMap<IVec3, Furnace>,
+    pub chests: HashMap<IVec3, Vec<Slot>>,
 }
 
 pub struct InvUiPlugin;
@@ -51,7 +57,9 @@ impl Plugin for InvUiPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<InvState>()
             .add_systems(Update, (rebuild, clicks, refresh, follow_cursor, smelt).chain().run_if(in_state(AppState::Playing)))
-            .add_systems(OnExit(AppState::Playing), close_all);
+            .add_systems(Update, (orphans, autosave).run_if(in_state(AppState::Playing)))
+            .add_systems(OnEnter(AppState::Playing), load_containers)
+            .add_systems(OnExit(AppState::Playing), (close_all, save_containers));
     }
 }
 
@@ -90,17 +98,22 @@ fn rebuild(ui: Res<Ui>, mut commands: Commands, roots: Query<Entity, With<InvRoo
     if !ui.is_changed() { return; }
     for e in &roots { commands.entity(e).despawn(); }
     let mode = *ui;
-    if !matches!(mode, Ui::Inventory | Ui::Crafting | Ui::Furnace(_)) {
+    if !matches!(mode, Ui::Inventory | Ui::Crafting | Ui::Furnace(_) | Ui::Chest(_)) {
         put_back(&mut st, &mut p);
         return;
     }
-    let title = match mode { Ui::Crafting => "Crafting Table", Ui::Furnace(_) => "Furnace", _ => "Inventory" };
+    let title = match mode { Ui::Crafting => "Crafting Table", Ui::Furnace(_) => "Furnace", Ui::Chest(_) => "Chest", _ => "Inventory" };
     let full = Node { position_type: PositionType::Absolute, width: Val::Percent(100.0), height: Val::Percent(100.0), align_items: AlignItems::Center, justify_content: JustifyContent::Center, ..default() };
     commands.spawn((InvRoot, full, BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.45)))).with_children(|root| {
         root.spawn(panel_node(8.0)).with_children(|pn| {
             pn.spawn(text(title, 20.0, TEXT));
             pn.spawn(Node { column_gap: Val::Px(18.0), align_items: AlignItems::Center, ..default() }).with_children(|top| {
                 match mode {
+                    Ui::Chest(_) => {
+                        top.spawn(Node { flex_direction: FlexDirection::Column, row_gap: Val::Px(2.0), ..default() }).with_children(|g| {
+                            for y in 0..3 { g.spawn(row()).with_children(|r| { for x in 0..9 { r.spawn(slot(SlotRef::Chest(y * 9 + x))); } }); }
+                        });
+                    }
                     Ui::Furnace(_) => {
                         top.spawn(Node { flex_direction: FlexDirection::Column, row_gap: Val::Px(6.0), ..default() }).with_children(|c| {
                             c.spawn(slot(SlotRef::FIn));
@@ -162,6 +175,11 @@ fn clicks(mouse: Res<ButtonInput<MouseButton>>, slots: Query<(&Interaction, &Slo
                 }
             }
         }
+        SlotRef::Chest(i) => {
+            let Ui::Chest(pos) = *ui else { return };
+            let c = st.chests.entry(pos).or_insert_with(|| vec![None; 27]);
+            click(&mut c[i], &mut st.cursor, r);
+        }
         SlotRef::FIn | SlotRef::FFuel | SlotRef::FOut => {
             let Ui::Furnace(pos) = *ui else { return };
             let f = st.furnaces.entry(pos).or_default();
@@ -196,7 +214,8 @@ fn refresh(
     mut q_cnt: Query<(&SlotCount, &mut Text), Without<FurnaceText>>,
     mut ft: Query<&mut Text, (With<FurnaceText>, Without<SlotCount>)>,
 ) {
-    if !matches!(*ui, Ui::Inventory | Ui::Crafting | Ui::Furnace(_)) { return; }
+    if !matches!(*ui, Ui::Inventory | Ui::Crafting | Ui::Furnace(_) | Ui::Chest(_)) { return; }
+    let chest = if let Ui::Chest(pos) = *ui { st.chests.get(&pos).cloned().unwrap_or_default() } else { Vec::new() };
     let w = grid_w(*ui);
     let fur = if let Ui::Furnace(pos) = *ui { st.furnaces.get(&pos).cloned().unwrap_or_default() } else { Furnace::default() };
     let result = craft(&st.craft[..w * w], w).map(|x| x.1);
@@ -208,6 +227,7 @@ fn refresh(
             SlotRef::FIn => fur.input,
             SlotRef::FFuel => fur.fuel,
             SlotRef::FOut => fur.out,
+            SlotRef::Chest(i) => chest.get(i).copied().flatten(),
         }
     };
     for (s, mut img, mut vis) in &mut q_icon {
@@ -279,6 +299,59 @@ fn smelt(time: Res<Time>, mut st: ResMut<InvState>) {
             }
         } else {
             f.prog = (f.prog - dt).max(0.0);
+        }
+    }
+}
+
+fn load_containers(w: Res<VoxelWorld>, mut st: ResMut<InvState>) {
+    st.chests.clear();
+    st.furnaces.clear();
+    for l in std::fs::read_to_string(save::containers_file(&w.meta.name)).unwrap_or_default().lines() {
+        let c: Vec<&str> = l.split('\t').collect();
+        let v: Vec<i32> = c.first().map(|s| s.split_whitespace().filter_map(|x| x.parse().ok()).collect()).unwrap_or_default();
+        if c.len() < 3 || v.len() != 3 { continue; }
+        let pos = IVec3::new(v[0], v[1], v[2]);
+        match c[1] {
+            "chest" => { st.chests.insert(pos, slots_from_text(c[2], 27)); }
+            "furnace" => {
+                let s = slots_from_text(c[2], 3);
+                st.furnaces.insert(pos, Furnace { input: s[0], fuel: s[1], out: s[2], burn: c.get(3).and_then(|x| x.parse().ok()).unwrap_or(0.0), prog: 0.0 });
+            }
+            _ => {}
+        }
+    }
+}
+
+fn save_containers(w: Res<VoxelWorld>, st: Res<InvState>) {
+    if !w.persistent { return; }
+    let mut s = String::new();
+    for (p, c) in &st.chests { s += &format!("{} {} {}\tchest\t{}\n", p.x, p.y, p.z, slots_to_text(c)); }
+    for (p, f) in &st.furnaces { s += &format!("{} {} {}\tfurnace\t{}\t{}\n", p.x, p.y, p.z, slots_to_text(&[f.input, f.fuel, f.out]), f.burn); }
+    let _ = std::fs::write(save::containers_file(&w.meta.name), s);
+}
+
+fn autosave(time: Res<Time>, mut t: Local<f32>, w: Res<VoxelWorld>, st: Res<InvState>) {
+    *t += time.delta_secs();
+    if *t > 60.0 {
+        *t = 0.0;
+        save_containers(w, st);
+    }
+}
+
+/// A broken chest or furnace spills its contents.
+fn orphans(time: Res<Time>, mut t: Local<f32>, w: Res<VoxelWorld>, mut st: ResMut<InvState>, mut drops: EventWriter<DropItem>) {
+    *t += time.delta_secs();
+    if *t < 0.5 { return; }
+    *t = 0.0;
+    let st = &mut *st;
+    let gone: Vec<IVec3> = st.chests.keys().filter(|p| w.is_loaded(**p) && w.get(**p) != id::CHEST).copied().collect();
+    for p in gone {
+        for s in st.chests.remove(&p).unwrap_or_default().into_iter().flatten() { drops.write(DropItem { pos: p.as_vec3() + Vec3::splat(0.5), stack: s }); }
+    }
+    let gone: Vec<IVec3> = st.furnaces.keys().filter(|p| w.is_loaded(**p) && w.get(**p) != id::FURNACE).copied().collect();
+    for p in gone {
+        if let Some(f) = st.furnaces.remove(&p) {
+            for s in [f.input, f.fuel, f.out].into_iter().flatten() { drops.write(DropItem { pos: p.as_vec3() + Vec3::splat(0.5), stack: s }); }
         }
     }
 }

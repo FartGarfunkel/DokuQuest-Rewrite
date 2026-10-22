@@ -12,7 +12,7 @@ for f in order:
 parts.append("""try{buildAtlas()}catch(e){(window.__E=window.__E||[]).push('atlas '+e)}
 try{finishAtlas()}catch(e){(window.__E=window.__E||[]).push('finish '+e)}
 try{resolveBlockTextures()}catch(e){(window.__E=window.__E||[]).push('faces '+e)}
-Object.assign(window.__DQ,{ATLAS,BLOCK_FACES,SHAPE_KIND,MODEL_DEFS,TILE,ATLAS_TILES});""")
+Object.assign(window.__DQ,{ATLAS,BLOCK_FACES,SHAPE_KIND,MODEL_DEFS,TILE,ATLAS_TILES});try{window.__DQ.PACKC=Object.keys(ATLAS.tile).map(n=>[n,packCandidates(n,false),packCandidates(n,true)])}catch(e){(window.__E=window.__E||[]).push('packc '+e)}""")
 bundle = "(function(){'use strict';\n" + "\n".join(parts) + "\n})();"
 dump = r"""() => { const seen = new WeakSet();
   const clean = (v, d) => { if (typeof v === 'function') return undefined; if (v && typeof v === 'object') {
@@ -21,7 +21,7 @@ dump = r"""() => { const seen = new WeakSet();
       const o = {}; for (const k of Object.keys(v)) { const c = clean(v[k], d + 1); if (c !== undefined) o[k] = c; } return o; }
     return v; };
   const D = window.__DQ || {}; return JSON.stringify({blocks: clean(D.BLOCKS, 0), items: clean(D.ITEMS, 0), recipes: clean(D.RECIPES, 0), smelting: clean(D.SMELTING, 0), tags: clean(D.TAGS, 0), mobs: clean(D.MOB_TYPES, 0), faces: clean(D.BLOCK_FACES, 0), shapes: D.SHAPE_KIND, models: clean(D.MODEL_DEFS, 0),
-  tiles: D.ATLAS && D.ATLAS.tile, res: D.ATLAS && D.ATLAS.res, jsErr: window.__E || null,
+  tiles: D.ATLAS && D.ATLAS.tile, packc: D.PACKC, res: D.ATLAS && D.ATLAS.res, jsErr: window.__E || null,
   pix: (() => { const A = D.ATLAS, T = D.TILE, N = D.ATLAS_TILES, n = A.count, px = A.pixels.data, W = T * N, out = new Uint8Array(n * 1024);
     for (let t = 0; t < n; t++) { const tx = (t % N) * T, ty = Math.floor(t / N) * T, r = A.res[t] || 16, st = T / 16;
       for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const si = ((ty + Math.floor(y * st)) * W + tx + Math.floor(x * st)) * 4, di = t * 1024 + (y * 16 + x) * 4;

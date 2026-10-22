@@ -185,18 +185,22 @@ impl Inventory {
         if s.count == 0 { self.slots[i] = None; }
         Some(it)
     }
-    pub fn to_text(&self) -> String {
-        self.slots.iter().map(|s| match s { Some(s) => format!("{}*{}", reg().item(s.item).key, s.count), None => "-".into() }).collect::<Vec<_>>().join(",")
-    }
-    pub fn from_text(t: &str) -> Inventory {
-        let mut inv = Inventory::default();
-        for (i, p) in t.split(',').enumerate().take(Self::SIZE) {
-            if let Some((k, n)) = p.split_once('*') {
-                if let Some(item) = reg().by_key(k) { inv.slots[i] = Some(Stack { item, count: n.parse().unwrap_or(1) }); }
-            }
+    pub fn to_text(&self) -> String { slots_to_text(&self.slots) }
+    pub fn from_text(t: &str) -> Inventory { Inventory { slots: slots_from_text(t, Self::SIZE) } }
+}
+
+/// "key*count,-,…" (saves: inventories, chests, furnaces).
+pub fn slots_to_text(s: &[Slot]) -> String {
+    s.iter().map(|s| match s { Some(s) => format!("{}*{}", reg().item(s.item).key, s.count), None => "-".into() }).collect::<Vec<_>>().join(",")
+}
+pub fn slots_from_text(t: &str, n: usize) -> Vec<Slot> {
+    let mut v = vec![None; n];
+    for (i, p) in t.split(',').enumerate().take(n) {
+        if let Some((k, c)) = p.split_once('*') {
+            if let Some(item) = reg().by_key(k) { v[i] = Some(Stack { item, count: c.parse().unwrap_or(1) }); }
         }
-        inv
     }
+    v
 }
 
 /// Inventory click rules. Left: pick up / put down / merge / swap. Right: half / one.
