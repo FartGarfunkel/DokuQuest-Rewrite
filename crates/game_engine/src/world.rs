@@ -47,6 +47,8 @@ pub struct VoxelWorld {
     dirty: HashSet<IVec3>,
     edited: HashSet<IVec3>,
     views: HashMap<IVec3, (u32, Vec<Entity>)>,
+    /// Chunk entities to despawn; only `receive` despawns, so spawn/despawn never race.
+    trash: Vec<Entity>,
     tx: mpsc::Sender<Job>,
     rx: Mutex<mpsc::Receiver<Job>>,
 }
@@ -70,6 +72,7 @@ impl VoxelWorld {
             dirty: default(),
             edited: default(),
             views: default(),
+            trash: Vec::new(),
             tx,
             rx: Mutex::new(rx),
         }
@@ -110,10 +113,9 @@ impl VoxelWorld {
     }
 
     /// Switches to another world (old chunk meshes are despawned, in-flight jobs ignored).
-    pub fn open(&mut self, commands: &mut Commands, meta: WorldMeta, persistent: bool) {
-        for (_, (_, es)) in self.views.drain() {
-            for e in es { commands.entity(e).despawn(); }
-        }
+    pub fn open(&mut self, meta: WorldMeta, persistent: bool) {
+        let old: Vec<Entity> = self.views.drain().flat_map(|(_, (_, es))| es).collect();
+        self.trash.extend(old);
         self.chunks.clear();
         self.pending.clear();
         self.meshing.clear();
@@ -201,6 +203,7 @@ fn hdist(a: IVec3, b: IVec3) -> i32 { (a.x - b.x).abs().max((a.z - b.z).abs()) }
 
 fn receive(mut w: ResMut<VoxelWorld>, mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mats: Res<ChunkMats>) {
     let w = &mut *w;
+    for e in w.trash.drain(..) { commands.entity(e).despawn(); }
     let jobs: Vec<Job> = w.rx.lock().map(|rx| rx.try_iter().collect()).unwrap_or_default();
     for job in jobs {
         match job {

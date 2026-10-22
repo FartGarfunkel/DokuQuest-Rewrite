@@ -97,7 +97,6 @@ fn buttons(
     mut next: ResMut<NextState<AppState>>,
     mut exit: EventWriter<AppExit>,
     mut w: ResMut<VoxelWorld>,
-    mut commands: Commands,
 ) {
     for (i, b, mut bg) in &mut q {
         match *i {
@@ -109,7 +108,7 @@ fn buttons(
                     let meta = new_world_meta();
                     let _ = save::save_meta(&meta);
                     save::set_last_played(&meta.name);
-                    w.open(&mut commands, meta, true);
+                    w.open(meta, true);
                     next.set(AppState::Playing);
                 }
                 Btn::Quit => {
