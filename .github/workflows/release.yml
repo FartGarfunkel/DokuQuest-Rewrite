@@ -1,11 +1,20 @@
-# Publish a GitHub release (new tag like v0.1.0) → builds Linux + Windows and attaches the assets the launcher downloads.
+# Every push to main publishes its own release (v0.2.<run number>), like the HTML version:
+# Linux + Windows builds, the launcher AppImage, SHA-256 files. The launcher installs the newest one.
 name: Release
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+env:
+  DQ_VERSION: v0.2.${{ github.run_number }}
 
 jobs:
   build:
@@ -25,11 +34,11 @@ jobs:
       - name: Package
         shell: bash
         run: |
-          mkdir pkg
+          mkdir -p pkg dist
           cp target/release/dokuquest${{ matrix.ext }} target/release/dq-server${{ matrix.ext }} pkg/
-          tar -czf dokuquest-${{ matrix.target }}.tar.gz -C pkg .
-          sha256sum dokuquest-${{ matrix.target }}.tar.gz > dokuquest-${{ matrix.target }}.tar.gz.sha256
-          cp target/release/dokuquest-launcher${{ matrix.ext }} dokuquest-launcher-${{ matrix.target }}${{ matrix.ext }}
+          tar -czf dist/dokuquest-${{ matrix.target }}.tar.gz -C pkg .
+          (cd dist && sha256sum dokuquest-${{ matrix.target }}.tar.gz > dokuquest-${{ matrix.target }}.tar.gz.sha256)
+          cp target/release/dokuquest-launcher${{ matrix.ext }} dist/dokuquest-launcher-${{ matrix.target }}${{ matrix.ext }}
       - name: Launcher AppImage
         if: runner.os == 'Linux'
         continue-on-error: true
@@ -38,11 +47,28 @@ jobs:
           NO_STRIP: 'true'
         run: |
           cd crates/launcher && npx --yes @tauri-apps/cli@2 build --bundles appimage
-          cp ../../target/release/bundle/appimage/*.AppImage ../../DokuQuest-Launcher-x86_64.AppImage
+          cp ../../target/release/bundle/appimage/*.AppImage ../../dist/DokuQuest-Launcher-x86_64.AppImage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.target }}
+          path: dist/*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
-          files: |
-            dokuquest-${{ matrix.target }}.tar.gz
-            dokuquest-${{ matrix.target }}.tar.gz.sha256
-            dokuquest-launcher-${{ matrix.target }}${{ matrix.ext }}
-            DokuQuest-Launcher-x86_64.AppImage
+          tag_name: ${{ env.DQ_VERSION }}
+          name: DokuQuest ${{ env.DQ_VERSION }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          body: |
+            ${{ github.event.head_commit.message }}
+
+            Removed Herobrine.
+          files: dist/*
