@@ -14,7 +14,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{mpsc, Arc, Mutex};
 
 /// Horizontal view distance in chunks (16 blocks each).
-pub const RENDER_DIST: i32 = 8;
+pub const RENDER_DIST: i32 = 6;
 /// Vertical chunk layers kept above/below the player (stacked dimensions are only loaded nearby).
 pub const VERT_DIST: i32 = 3;
 const MAX_GEN: usize = 16;
@@ -24,7 +24,7 @@ const CY_MAX: i32 = dims::WORLD_MAX_Y / CS - 1;
 
 /// Micro-voxels per block edge by chunk distance: 16³ detail where you stand, single colour far away.
 pub fn lod_res(d: i32) -> u32 {
-    match d { 0 => 16, 1 => 8, 2 => 4, _ => 1 }
+    match d { 0 => 16, 1 => 4, 2 => 2, _ => 1 }
 }
 
 enum Job {
@@ -87,6 +87,8 @@ impl VoxelWorld {
             None => 0,
         }
     }
+
+    pub fn generator(&self) -> &Gen { &self.generator }
 
     pub fn is_loaded(&self, p: IVec3) -> bool { self.chunks.contains_key(&p.div_euclid(IVec3::splat(CS))) }
 

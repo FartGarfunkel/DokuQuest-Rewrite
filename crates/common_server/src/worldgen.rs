@@ -19,7 +19,7 @@ pub struct Gen {
 impl Gen {
     pub fn new(seed: u64) -> Self { Gen { seed } }
     #[inline]
-    fn s(&self, n: u64) -> u64 { mix64(self.seed ^ n.wrapping_mul(0x9E3779B97F4A7C15)) }
+    pub(crate) fn s(&self, n: u64) -> u64 { mix64(self.seed ^ n.wrapping_mul(0x9E3779B97F4A7C15)) }
 
     /// Overworld surface height at a column.
     pub fn height(&self, x: i32, z: i32) -> i32 {
@@ -116,6 +116,7 @@ impl Gen {
                 if let Some((h, th)) = self.tree_at(x, z) { tree(c, x0, y0, z0, x, h, z, th); }
             }
         }
+        self.villages(c, x0, y0, z0);
     }
 
     fn ore(&self, x: i32, y: i32, z: i32) -> u16 {

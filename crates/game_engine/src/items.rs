@@ -1,59 +1,45 @@
-//! Cube-World-style held items: every item is built from tiny voxels. Blocks reuse the chunk mesher;
-//! tools/weapons are 16×16 ASCII sprites extruded into 1/16 cubes (add one = add a sprite + palette).
-use crate::player::{Player, HOTBAR};
+//! Item models, Cube-World style: blocks reuse the chunk mesher, everything else is its own JS sprite
+//! extruded into 1/16 voxels. Cached per item. Also the first-person held item and swing.
+use crate::player::Player;
 use crate::sky::MainCamera;
 use crate::world::{to_mesh, ChunkMats};
 use crate::AppState;
 use bevy::pbr::NotShadowCaster;
 use bevy::prelude::*;
-use common_server::blocks::id;
-use common_server::mesh::{mesh_block, MeshBuf};
-use common_server::style::lin;
+use common_server::blocks::{self, Kind};
+use common_server::items::reg;
+use common_server::mesh::{mesh_block, mesh_sprite, MeshBuf};
+use std::collections::HashMap;
 
-const SWORD: [&str; 16] = [
-    "..............dw",
-    ".............dwb",
-    "............dwb.",
-    "...........dwb..",
-    "..........dwb...",
-    ".........dwb....",
-    "........dwb.....",
-    ".......dwb......",
-    "......dwb.......",
-    "..g..dwb........",
-    "...gdwb.........",
-    "....gb..........",
-    "...hgg..........",
-    "..hh..g.........",
-    ".hh.............",
-    "rh..............",
-];
+#[derive(Resource, Default)]
+pub struct ItemMeshes(HashMap<u16, Handle<Mesh>>);
 
-fn palette(ch: char) -> Option<u32> {
-    match ch {
-        'w' => Some(0xe8eef2), // edge
-        'b' => Some(0xa9b4bd), // blade
-        'd' => Some(0x6c7780), // blade shadow
-        'g' => Some(0xd9a83a), // gold guard
-        'h' => Some(0x6b4423), // leather grip
-        'r' => Some(0x9b2c2c), // ruby pommel
-        _ => None,
+impl ItemMeshes {
+    pub fn get(&mut self, item: u16, meshes: &mut Assets<Mesh>) -> Handle<Mesh> {
+        self.0
+            .entry(item)
+            .or_insert_with(|| {
+                let mut m = model(item);
+                if m.is_empty() { m.cuboid([-0.2; 3], [0.2; 3], [0.6, 0.5, 0.4]); }
+                meshes.add(to_mesh(m))
+            })
+            .clone()
     }
 }
 
-/// Extrudes an ASCII sprite: each pixel → a 1/16 voxel, 2 voxels deep.
-pub fn sprite_mesh(art: &[&str]) -> MeshBuf {
-    let mut m = MeshBuf::default();
-    let s = 1.0 / 16.0;
-    for (row, line) in art.iter().enumerate() {
-        for (x, ch) in line.chars().enumerate() {
-            if let Some(hex) = palette(ch) {
-                let (x, y) = (x as f32, (15 - row) as f32);
-                m.cuboid([x * s, y * s, 0.0], [(x + 1.0) * s, (y + 1.0) * s, 2.0 * s], lin(hex));
-            }
-        }
-    }
+fn shift(mut m: MeshBuf, o: [f32; 3]) -> MeshBuf {
+    for p in &mut m.pos { for k in 0..3 { p[k] -= o[k]; } }
     m
+}
+
+/// Item model centred on the origin, about one unit big.
+pub fn model(item: u16) -> MeshBuf {
+    let d = reg().item(item);
+    match d.block.map(|b| (b, blocks::kind(b))) {
+        Some((b, Kind::Solid | Kind::Shape | Kind::Liquid)) => shift(mesh_block(b, 16), [0.5; 3]),
+        Some((b, Kind::Plant)) => shift(mesh_sprite(blocks::def(b).faces[0], 1.0), [0.5, 0.5, 0.03]),
+        _ => shift(mesh_sprite(d.icon, 1.0), [0.5, 0.5, 0.03]),
+    }
 }
 
 #[derive(Component)]
@@ -62,7 +48,8 @@ struct Held;
 pub struct ItemsPlugin;
 impl Plugin for ItemsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (refresh, animate).chain().run_if(in_state(AppState::Playing)))
+        app.init_resource::<ItemMeshes>()
+            .add_systems(Update, (refresh, animate).chain().run_if(in_state(AppState::Playing)))
             .add_systems(OnExit(AppState::Playing), clear);
     }
 }
@@ -71,19 +58,21 @@ impl Plugin for ItemsPlugin {
 fn refresh(
     mut commands: Commands,
     p: Res<Player>,
-    mut shown: Local<Option<usize>>,
+    mut shown: Local<Option<Option<u16>>>,
     held: Query<Entity, With<Held>>,
     cam: Query<Entity, With<MainCamera>>,
+    mut cache: ResMut<ItemMeshes>,
     mut meshes: ResMut<Assets<Mesh>>,
     mats: Res<ChunkMats>,
 ) {
-    if *shown == Some(p.slot) && !held.is_empty() { return; }
-    *shown = Some(p.slot);
+    let item = p.held().map(|s| s.item);
+    if *shown == Some(item) && (item.is_none() || !held.is_empty()) { return; }
+    *shown = Some(item);
     for e in &held { commands.entity(e).despawn(); }
-    let Ok(cam) = cam.single() else { return };
-    let (buf, scale) = if HOTBAR[p.slot] == id::AIR { (sprite_mesh(&SWORD), 0.55) } else { (mesh_block(HOTBAR[p.slot], 16), 0.26) };
+    let (Ok(cam), Some(item)) = (cam.single(), item) else { return };
+    let block = reg().item(item).block.is_some_and(|b| matches!(blocks::kind(b), Kind::Solid | Kind::Shape));
     let child = commands
-        .spawn((Held, NotShadowCaster, Mesh3d(meshes.add(to_mesh(buf))), MeshMaterial3d(mats.opaque.clone()), Transform::from_scale(Vec3::splat(scale))))
+        .spawn((Held, NotShadowCaster, Mesh3d(cache.get(item, &mut meshes)), MeshMaterial3d(mats.opaque.clone()), Transform::from_scale(Vec3::splat(if block { 0.32 } else { 0.55 }))))
         .id();
     commands.entity(cam).add_child(child);
 }
@@ -92,8 +81,8 @@ fn animate(time: Res<Time>, mut p: ResMut<Player>, mut q: Query<&mut Transform, 
     p.swing = (p.swing - time.delta_secs() * 4.0).max(0.0);
     let s = (p.swing * std::f32::consts::PI).sin();
     for mut t in &mut q {
-        t.rotation = Quat::from_euler(EulerRot::YXZ, -0.5, -s * 1.1, 0.0);
-        t.translation = Vec3::new(0.3, -0.52 - s * 0.1, -0.85);
+        t.rotation = Quat::from_euler(EulerRot::YXZ, -0.6, -s * 1.1 + 0.15, 0.0);
+        t.translation = Vec3::new(0.42, -0.42 - s * 0.1, -0.8);
     }
 }
 

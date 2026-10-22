@@ -1,11 +1,16 @@
 //! DokuQuest client (Bevy 0.16). One feature = one plugin file; see CLAUDE.md for the map.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod controls;
 mod fx;
 mod hud;
+mod invui;
 mod items;
 mod menu;
+mod mobs;
 mod player;
 mod sky;
+mod survival;
+mod theme;
 mod world;
 
 use bevy::prelude::*;
@@ -24,6 +29,7 @@ fn main() {
             ..default()
         }))
         .init_state::<AppState>()
-        .add_plugins((world::WorldPlugin, sky::SkyPlugin, player::PlayerPlugin, menu::MenuPlugin, hud::HudPlugin, items::ItemsPlugin, fx::FxPlugin))
+        .add_plugins((world::WorldPlugin, sky::SkyPlugin, controls::ControlsPlugin, player::PlayerPlugin, survival::SurvivalPlugin, mobs::MobsPlugin))
+        .add_plugins((invui::InvUiPlugin, menu::MenuPlugin, hud::HudPlugin, items::ItemsPlugin, fx::FxPlugin, theme::ThemePlugin))
         .run();
 }

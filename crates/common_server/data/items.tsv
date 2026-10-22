@@ -1,0 +1,1632 @@
+stone	Stone	64	1	1		0	1	1	0	0	-1	0
+grass	Grass Block	64	2	2		0	1	1	0	0	-1	0
+dirt	Dirt	64	4	3		0	1	1	0	0	-1	0
+cobblestone	Cobblestone	64	5	4		0	1	1	0	0	-1	0
+planks	Oak Planks	64	6	5		0	1	1	0	0	-1	0
+log	Oak Log	64	7	6		0	1	1	0	0	-1	0
+leaves	Oak Leaves	64	9	7		0	1	1	0	0	-1	0
+sand	Sand	64	10	8		0	1	1	0	0	-1	0
+gravel	Gravel	64	11	9		0	1	1	0	0	-1	0
+coal_ore	Coal Ore	64	15	13		0	1	1	0	0	-1	0
+iron_ore	Iron Ore	64	16	14		0	1	1	0	0	-1	0
+gold_ore	Gold Ore	64	17	15		0	1	1	0	0	-1	0
+diamond_ore	Diamond Ore	64	18	16		0	1	1	0	0	-1	0
+glass	Glass	64	19	17		0	1	1	0	0	-1	0
+crafting_table	Crafting Table	64	20	18		0	1	1	0	0	-1	0
+furnace	Furnace	64	22	19		0	1	1	0	0	-1	0
+chest	Chest	1	26	21		0	1	1	0	0	-1	0
+torch	Torch	64	29	22		0	1	1	0	0	-1	0
+obsidian	Obsidian	64	30	23		0	1	1	0	0	-1	0
+snowy_grass	Snowy Grass	64	31	24		0	1	1	0	0	-1	0
+tall_grass	Tall Grass	64	33	25		0	1	1	0	0	-1	0
+flower_red	Poppy	64	34	26		0	1	1	0	0	-1	0
+flower_yellow	Dandelion	64	35	27		0	1	1	0	0	-1	0
+sapling	Oak Sapling	64	36	28		0	1	1	0	0	-1	0
+berry_bush	Berry Bush	64	37	29		0	1	1	0	0	-1	0
+birch_log	Birch Log	64	39	31		0	1	1	0	0	-1	0
+birch_leaves	Birch Leaves	64	41	32		0	1	1	0	0	-1	0
+spruce_log	Spruce Log	64	42	33		0	1	1	0	0	-1	0
+spruce_leaves	Spruce Leaves	64	44	34		0	1	1	0	0	-1	0
+sandstone	Sandstone	64	45	35		0	1	1	0	0	-1	0
+cactus	Cactus	64	47	36		0	1	1	0	0	-1	0
+snow_block	Snow	64	32	37		0	1	1	0	0	-1	0
+stone_bricks	Stone Bricks	64	49	38		0	1	1	0	0	-1	0
+bricks	Bricks	64	50	39		0	1	1	0	0	-1	0
+glowstone	Glow Lantern	64	51	40		0	1	1	0	0	-1	0
+mossy_cobblestone	Mossy Cobblestone	64	52	41		0	1	1	0	0	-1	0
+clay	Clay	64	53	42		0	1	1	0	0	-1	0
+ice	Ice	64	54	43		0	1	1	0	0	-1	0
+wool	White Wool	64	55	44		0	1	1	0	0	-1	0
+emberstone	Emberstone	64	56	45		0	1	1	0	0	-1	0
+ash	Ash	64	57	46		0	1	1	0	0	-1	0
+cinderite_ore	Cinderite Ore	64	58	47		0	1	1	0	0	-1	0
+skystone	Skystone	64	59	48		0	1	1	0	0	-1	0
+sky_grass	Sky Grass	64	60	49		0	1	1	0	0	-1	0
+aether_crystal_ore	Aether Crystal Ore	64	62	50		0	1	1	0	0	-1	0
+cloud_leaves	Cloud Leaves	64	63	51		0	1	1	0	0	-1	0
+lantern	Lantern	64	779	58		0	1	1	0	0	-1	0
+oak_wood	Oak Wood	64	7	59		0	1	1	0	0	-1	0
+stripped_log	Stripped Oak Log	64	69	60		0	1	1	0	0	-1	0
+stripped_oak_wood	Stripped Oak Wood	64	69	61		0	1	1	0	0	-1	0
+oak_sign	Oak Sign	16	780	62		0	1	1	0	0	-1	0
+oak_stairs	Oak Stairs	64	6	63		0	1	1	0	0	-1	0
+oak_slab	Oak Slab	64	6	64		0	1	1	0	0	-1	0
+oak_fence	Oak Fence	64	6	65		0	1	1	0	0	-1	0
+oak_fence_gate	Oak Fence Gate	64	6	66		0	1	1	0	0	-1	0
+oak_door	Oak Door	1	781	67		0	1	1	0	0	-1	0
+oak_trapdoor	Oak Trapdoor	64	72	68		0	1	1	0	0	-1	0
+birch_wood	Birch Wood	64	39	69		0	1	1	0	0	-1	0
+stripped_birch_log	Stripped Birch Log	64	73	70		0	1	1	0	0	-1	0
+stripped_birch_wood	Stripped Birch Wood	64	73	71		0	1	1	0	0	-1	0
+birch_planks	Birch Planks	64	75	72		0	1	1	0	0	-1	0
+birch_sapling	Birch Sapling	64	76	73		0	1	1	0	0	-1	0
+birch_sign	Birch Sign	16	782	74		0	1	1	0	0	-1	0
+birch_stairs	Birch Stairs	64	75	75		0	1	1	0	0	-1	0
+birch_slab	Birch Slab	64	75	76		0	1	1	0	0	-1	0
+birch_fence	Birch Fence	64	75	77		0	1	1	0	0	-1	0
+birch_fence_gate	Birch Fence Gate	64	75	78		0	1	1	0	0	-1	0
+birch_door	Birch Door	1	783	79		0	1	1	0	0	-1	0
+birch_trapdoor	Birch Trapdoor	64	78	80		0	1	1	0	0	-1	0
+spruce_wood	Spruce Wood	64	42	81		0	1	1	0	0	-1	0
+stripped_spruce_log	Stripped Spruce Log	64	79	82		0	1	1	0	0	-1	0
+stripped_spruce_wood	Stripped Spruce Wood	64	79	83		0	1	1	0	0	-1	0
+spruce_planks	Spruce Planks	64	81	84		0	1	1	0	0	-1	0
+spruce_sapling	Spruce Sapling	64	82	85		0	1	1	0	0	-1	0
+spruce_sign	Spruce Sign	16	784	86		0	1	1	0	0	-1	0
+spruce_stairs	Spruce Stairs	64	81	87		0	1	1	0	0	-1	0
+spruce_slab	Spruce Slab	64	81	88		0	1	1	0	0	-1	0
+spruce_fence	Spruce Fence	64	81	89		0	1	1	0	0	-1	0
+spruce_fence_gate	Spruce Fence Gate	64	81	90		0	1	1	0	0	-1	0
+spruce_door	Spruce Door	1	785	91		0	1	1	0	0	-1	0
+spruce_trapdoor	Spruce Trapdoor	64	84	92		0	1	1	0	0	-1	0
+jungle_log	Jungle Log	64	85	93		0	1	1	0	0	-1	0
+jungle_wood	Jungle Wood	64	85	94		0	1	1	0	0	-1	0
+stripped_jungle_log	Stripped Jungle Log	64	87	95		0	1	1	0	0	-1	0
+stripped_jungle_wood	Stripped Jungle Wood	64	87	96		0	1	1	0	0	-1	0
+jungle_planks	Jungle Planks	64	89	97		0	1	1	0	0	-1	0
+jungle_leaves	Jungle Leaves	64	90	98		0	1	1	0	0	-1	0
+jungle_sapling	Jungle Sapling	64	91	99		0	1	1	0	0	-1	0
+jungle_sign	Jungle Sign	16	786	100		0	1	1	0	0	-1	0
+jungle_stairs	Jungle Stairs	64	89	101		0	1	1	0	0	-1	0
+jungle_slab	Jungle Slab	64	89	102		0	1	1	0	0	-1	0
+jungle_fence	Jungle Fence	64	89	103		0	1	1	0	0	-1	0
+jungle_fence_gate	Jungle Fence Gate	64	89	104		0	1	1	0	0	-1	0
+jungle_door	Jungle Door	1	787	105		0	1	1	0	0	-1	0
+jungle_trapdoor	Jungle Trapdoor	64	93	106		0	1	1	0	0	-1	0
+acacia_log	Acacia Log	64	94	107		0	1	1	0	0	-1	0
+acacia_wood	Acacia Wood	64	94	108		0	1	1	0	0	-1	0
+stripped_acacia_log	Stripped Acacia Log	64	96	109		0	1	1	0	0	-1	0
+stripped_acacia_wood	Stripped Acacia Wood	64	96	110		0	1	1	0	0	-1	0
+acacia_planks	Acacia Planks	64	98	111		0	1	1	0	0	-1	0
+acacia_leaves	Acacia Leaves	64	99	112		0	1	1	0	0	-1	0
+acacia_sapling	Acacia Sapling	64	100	113		0	1	1	0	0	-1	0
+acacia_sign	Acacia Sign	16	788	114		0	1	1	0	0	-1	0
+acacia_stairs	Acacia Stairs	64	98	115		0	1	1	0	0	-1	0
+acacia_slab	Acacia Slab	64	98	116		0	1	1	0	0	-1	0
+acacia_fence	Acacia Fence	64	98	117		0	1	1	0	0	-1	0
+acacia_fence_gate	Acacia Fence Gate	64	98	118		0	1	1	0	0	-1	0
+acacia_door	Acacia Door	1	789	119		0	1	1	0	0	-1	0
+acacia_trapdoor	Acacia Trapdoor	64	102	120		0	1	1	0	0	-1	0
+dark_oak_log	Dark Oak Log	64	103	121		0	1	1	0	0	-1	0
+dark_oak_wood	Dark Oak Wood	64	103	122		0	1	1	0	0	-1	0
+stripped_dark_oak_log	Stripped Dark Oak Log	64	105	123		0	1	1	0	0	-1	0
+stripped_dark_oak_wood	Stripped Dark Oak Wood	64	105	124		0	1	1	0	0	-1	0
+dark_oak_planks	Dark Oak Planks	64	107	125		0	1	1	0	0	-1	0
+dark_oak_leaves	Dark Oak Leaves	64	108	126		0	1	1	0	0	-1	0
+dark_oak_sapling	Dark Oak Sapling	64	109	127		0	1	1	0	0	-1	0
+dark_oak_sign	Dark Oak Sign	16	790	128		0	1	1	0	0	-1	0
+dark_oak_stairs	Dark Oak Stairs	64	107	129		0	1	1	0	0	-1	0
+dark_oak_slab	Dark Oak Slab	64	107	130		0	1	1	0	0	-1	0
+dark_oak_fence	Dark Oak Fence	64	107	131		0	1	1	0	0	-1	0
+dark_oak_fence_gate	Dark Oak Fence Gate	64	107	132		0	1	1	0	0	-1	0
+dark_oak_door	Dark Oak Door	1	791	133		0	1	1	0	0	-1	0
+dark_oak_trapdoor	Dark Oak Trapdoor	64	111	134		0	1	1	0	0	-1	0
+cherry_log	Cherry Log	64	112	135		0	1	1	0	0	-1	0
+cherry_wood	Cherry Wood	64	112	136		0	1	1	0	0	-1	0
+stripped_cherry_log	Stripped Cherry Log	64	114	137		0	1	1	0	0	-1	0
+stripped_cherry_wood	Stripped Cherry Wood	64	114	138		0	1	1	0	0	-1	0
+cherry_planks	Cherry Planks	64	116	139		0	1	1	0	0	-1	0
+cherry_leaves	Cherry Leaves	64	117	140		0	1	1	0	0	-1	0
+cherry_sapling	Cherry Sapling	64	118	141		0	1	1	0	0	-1	0
+cherry_sign	Cherry Sign	16	792	142		0	1	1	0	0	-1	0
+cherry_stairs	Cherry Stairs	64	116	143		0	1	1	0	0	-1	0
+cherry_slab	Cherry Slab	64	116	144		0	1	1	0	0	-1	0
+cherry_fence	Cherry Fence	64	116	145		0	1	1	0	0	-1	0
+cherry_fence_gate	Cherry Fence Gate	64	116	146		0	1	1	0	0	-1	0
+cherry_door	Cherry Door	1	793	147		0	1	1	0	0	-1	0
+cherry_trapdoor	Cherry Trapdoor	64	120	148		0	1	1	0	0	-1	0
+mangrove_log	Mangrove Log	64	121	149		0	1	1	0	0	-1	0
+mangrove_wood	Mangrove Wood	64	121	150		0	1	1	0	0	-1	0
+stripped_mangrove_log	Stripped Mangrove Log	64	123	151		0	1	1	0	0	-1	0
+stripped_mangrove_wood	Stripped Mangrove Wood	64	123	152		0	1	1	0	0	-1	0
+mangrove_planks	Mangrove Planks	64	125	153		0	1	1	0	0	-1	0
+mangrove_leaves	Mangrove Leaves	64	126	154		0	1	1	0	0	-1	0
+mangrove_propagule	Mangrove Propagule	64	127	155		0	1	1	0	0	-1	0
+mangrove_sign	Mangrove Sign	16	794	156		0	1	1	0	0	-1	0
+mangrove_stairs	Mangrove Stairs	64	125	157		0	1	1	0	0	-1	0
+mangrove_slab	Mangrove Slab	64	125	158		0	1	1	0	0	-1	0
+mangrove_fence	Mangrove Fence	64	125	159		0	1	1	0	0	-1	0
+mangrove_fence_gate	Mangrove Fence Gate	64	125	160		0	1	1	0	0	-1	0
+mangrove_door	Mangrove Door	1	795	161		0	1	1	0	0	-1	0
+mangrove_trapdoor	Mangrove Trapdoor	64	129	162		0	1	1	0	0	-1	0
+crimson_stem	Crimson Stem	64	130	163		0	1	1	0	0	-1	0
+crimson_hyphae	Crimson Hyphae	64	130	164		0	1	1	0	0	-1	0
+stripped_crimson_stem	Stripped Crimson Stem	64	132	165		0	1	1	0	0	-1	0
+stripped_crimson_hyphae	Stripped Crimson Hyphae	64	132	166		0	1	1	0	0	-1	0
+crimson_planks	Crimson Planks	64	134	167		0	1	1	0	0	-1	0
+nether_wart_block	Nether Wart Block	64	135	168		0	1	1	0	0	-1	0
+crimson_fungus	Crimson Fungus	64	136	169		0	1	1	0	0	-1	0
+crimson_sign	Crimson Sign	16	796	170		0	1	1	0	0	-1	0
+crimson_stairs	Crimson Stairs	64	134	171		0	1	1	0	0	-1	0
+crimson_slab	Crimson Slab	64	134	172		0	1	1	0	0	-1	0
+crimson_fence	Crimson Fence	64	134	173		0	1	1	0	0	-1	0
+crimson_fence_gate	Crimson Fence Gate	64	134	174		0	1	1	0	0	-1	0
+crimson_door	Crimson Door	1	797	175		0	1	1	0	0	-1	0
+crimson_trapdoor	Crimson Trapdoor	64	138	176		0	1	1	0	0	-1	0
+warped_stem	Warped Stem	64	139	177		0	1	1	0	0	-1	0
+warped_hyphae	Warped Hyphae	64	139	178		0	1	1	0	0	-1	0
+stripped_warped_stem	Stripped Warped Stem	64	141	179		0	1	1	0	0	-1	0
+stripped_warped_hyphae	Stripped Warped Hyphae	64	141	180		0	1	1	0	0	-1	0
+warped_planks	Warped Planks	64	143	181		0	1	1	0	0	-1	0
+warped_wart_block	Warped Wart Block	64	144	182		0	1	1	0	0	-1	0
+warped_fungus	Warped Fungus	64	145	183		0	1	1	0	0	-1	0
+warped_sign	Warped Sign	16	798	184		0	1	1	0	0	-1	0
+warped_stairs	Warped Stairs	64	143	185		0	1	1	0	0	-1	0
+warped_slab	Warped Slab	64	143	186		0	1	1	0	0	-1	0
+warped_fence	Warped Fence	64	143	187		0	1	1	0	0	-1	0
+warped_fence_gate	Warped Fence Gate	64	143	188		0	1	1	0	0	-1	0
+warped_door	Warped Door	1	799	189		0	1	1	0	0	-1	0
+warped_trapdoor	Warped Trapdoor	64	147	190		0	1	1	0	0	-1	0
+pine_log	Pine Log	64	148	191		0	1	1	0	0	-1	0
+pine_wood	Pine Wood	64	148	192		0	1	1	0	0	-1	0
+stripped_pine_log	Stripped Pine Log	64	150	193		0	1	1	0	0	-1	0
+stripped_pine_wood	Stripped Pine Wood	64	150	194		0	1	1	0	0	-1	0
+pine_planks	Pine Planks	64	152	195		0	1	1	0	0	-1	0
+pine_needles	Pine Needles	64	153	196		0	1	1	0	0	-1	0
+pine_sapling	Pine Sapling	64	154	197		0	1	1	0	0	-1	0
+pine_sign	Pine Sign	16	800	198		0	1	1	0	0	-1	0
+pine_stairs	Pine Stairs	64	152	199		0	1	1	0	0	-1	0
+pine_slab	Pine Slab	64	152	200		0	1	1	0	0	-1	0
+pine_fence	Pine Fence	64	152	201		0	1	1	0	0	-1	0
+pine_fence_gate	Pine Fence Gate	64	152	202		0	1	1	0	0	-1	0
+pine_door	Pine Door	1	801	203		0	1	1	0	0	-1	0
+pine_trapdoor	Pine Trapdoor	64	156	204		0	1	1	0	0	-1	0
+aspen_log	Aspen Log	64	157	205		0	1	1	0	0	-1	0
+aspen_wood	Aspen Wood	64	157	206		0	1	1	0	0	-1	0
+stripped_aspen_log	Stripped Aspen Log	64	159	207		0	1	1	0	0	-1	0
+stripped_aspen_wood	Stripped Aspen Wood	64	159	208		0	1	1	0	0	-1	0
+aspen_planks	Aspen Planks	64	161	209		0	1	1	0	0	-1	0
+aspen_leaves	Aspen Leaves	64	162	210		0	1	1	0	0	-1	0
+aspen_sapling	Aspen Sapling	64	163	211		0	1	1	0	0	-1	0
+aspen_sign	Aspen Sign	16	802	212		0	1	1	0	0	-1	0
+aspen_stairs	Aspen Stairs	64	161	213		0	1	1	0	0	-1	0
+aspen_slab	Aspen Slab	64	161	214		0	1	1	0	0	-1	0
+aspen_fence	Aspen Fence	64	161	215		0	1	1	0	0	-1	0
+aspen_fence_gate	Aspen Fence Gate	64	161	216		0	1	1	0	0	-1	0
+aspen_door	Aspen Door	1	803	217		0	1	1	0	0	-1	0
+aspen_trapdoor	Aspen Trapdoor	64	165	218		0	1	1	0	0	-1	0
+stone_stairs	Stone Stairs	64	1	219		0	1	1	0	0	-1	0
+stone_slab	Stone Slab	64	1	220		0	1	1	0	0	-1	0
+cobblestone_stairs	Cobblestone Stairs	64	5	221		0	1	1	0	0	-1	0
+cobblestone_slab	Cobblestone Slab	64	5	222		0	1	1	0	0	-1	0
+cobblestone_wall	Cobblestone Wall	64	5	223		0	1	1	0	0	-1	0
+mossy_cobblestone_stairs	Mossy Cobblestone Stairs	64	52	224		0	1	1	0	0	-1	0
+mossy_cobblestone_slab	Mossy Cobblestone Slab	64	52	225		0	1	1	0	0	-1	0
+mossy_cobblestone_wall	Mossy Cobblestone Wall	64	52	226		0	1	1	0	0	-1	0
+smooth_stone	Smooth Stone	64	166	227		0	1	1	0	0	-1	0
+smooth_stone_slab	Smooth Stone Slab	64	166	228		0	1	1	0	0	-1	0
+stone_brick_stairs	Stone Brick Stairs	64	49	229		0	1	1	0	0	-1	0
+stone_brick_slab	Stone Brick Slab	64	49	230		0	1	1	0	0	-1	0
+stone_brick_wall	Stone Brick Wall	64	49	231		0	1	1	0	0	-1	0
+mossy_stone_bricks	Mossy Stone Bricks	64	167	232		0	1	1	0	0	-1	0
+mossy_stone_brick_stairs	Mossy Stone Brick Stairs	64	167	233		0	1	1	0	0	-1	0
+mossy_stone_brick_slab	Mossy Stone Brick Slab	64	167	234		0	1	1	0	0	-1	0
+mossy_stone_brick_wall	Mossy Stone Brick Wall	64	167	235		0	1	1	0	0	-1	0
+cracked_stone_bricks	Cracked Stone Bricks	64	168	236		0	1	1	0	0	-1	0
+chiseled_stone_bricks	Chiseled Stone Bricks	64	169	237		0	1	1	0	0	-1	0
+granite	Granite	64	170	238		0	1	1	0	0	-1	0
+granite_stairs	Granite Stairs	64	170	239		0	1	1	0	0	-1	0
+granite_slab	Granite Slab	64	170	240		0	1	1	0	0	-1	0
+granite_wall	Granite Wall	64	170	241		0	1	1	0	0	-1	0
+polished_granite	Polished Granite	64	171	242		0	1	1	0	0	-1	0
+polished_granite_stairs	Polished Granite Stairs	64	171	243		0	1	1	0	0	-1	0
+polished_granite_slab	Polished Granite Slab	64	171	244		0	1	1	0	0	-1	0
+diorite	Diorite	64	172	245		0	1	1	0	0	-1	0
+diorite_stairs	Diorite Stairs	64	172	246		0	1	1	0	0	-1	0
+diorite_slab	Diorite Slab	64	172	247		0	1	1	0	0	-1	0
+diorite_wall	Diorite Wall	64	172	248		0	1	1	0	0	-1	0
+polished_diorite	Polished Diorite	64	173	249		0	1	1	0	0	-1	0
+polished_diorite_stairs	Polished Diorite Stairs	64	173	250		0	1	1	0	0	-1	0
+polished_diorite_slab	Polished Diorite Slab	64	173	251		0	1	1	0	0	-1	0
+andesite	Andesite	64	174	252		0	1	1	0	0	-1	0
+andesite_stairs	Andesite Stairs	64	174	253		0	1	1	0	0	-1	0
+andesite_slab	Andesite Slab	64	174	254		0	1	1	0	0	-1	0
+andesite_wall	Andesite Wall	64	174	255		0	1	1	0	0	-1	0
+polished_andesite	Polished Andesite	64	175	256		0	1	1	0	0	-1	0
+polished_andesite_stairs	Polished Andesite Stairs	64	175	257		0	1	1	0	0	-1	0
+polished_andesite_slab	Polished Andesite Slab	64	175	258		0	1	1	0	0	-1	0
+slate	Slate	64	176	259		0	1	1	0	0	-1	0
+cobbled_slate	Cobbled Slate	64	177	260		0	1	1	0	0	-1	0
+cobbled_slate_stairs	Cobbled Slate Stairs	64	177	261		0	1	1	0	0	-1	0
+cobbled_slate_slab	Cobbled Slate Slab	64	177	262		0	1	1	0	0	-1	0
+cobbled_slate_wall	Cobbled Slate Wall	64	177	263		0	1	1	0	0	-1	0
+polished_slate	Polished Slate	64	178	264		0	1	1	0	0	-1	0
+polished_slate_stairs	Polished Slate Stairs	64	178	265		0	1	1	0	0	-1	0
+polished_slate_slab	Polished Slate Slab	64	178	266		0	1	1	0	0	-1	0
+polished_slate_wall	Polished Slate Wall	64	178	267		0	1	1	0	0	-1	0
+slate_bricks	Slate Bricks	64	179	268		0	1	1	0	0	-1	0
+slate_brick_stairs	Slate Brick Stairs	64	179	269		0	1	1	0	0	-1	0
+slate_brick_slab	Slate Brick Slab	64	179	270		0	1	1	0	0	-1	0
+slate_brick_wall	Slate Brick Wall	64	179	271		0	1	1	0	0	-1	0
+slate_tiles	Slate Tiles	64	180	272		0	1	1	0	0	-1	0
+slate_tile_stairs	Slate Tile Stairs	64	180	273		0	1	1	0	0	-1	0
+slate_tile_slab	Slate Tile Slab	64	180	274		0	1	1	0	0	-1	0
+slate_tile_wall	Slate Tile Wall	64	180	275		0	1	1	0	0	-1	0
+basalt	Basalt	64	181	276		0	1	1	0	0	-1	0
+polished_basalt	Polished Basalt	64	183	277		0	1	1	0	0	-1	0
+polished_basalt_stairs	Polished Basalt Stairs	64	183	278		0	1	1	0	0	-1	0
+polished_basalt_slab	Polished Basalt Slab	64	183	279		0	1	1	0	0	-1	0
+marble	Marble	64	184	280		0	1	1	0	0	-1	0
+marble_stairs	Marble Stairs	64	184	281		0	1	1	0	0	-1	0
+marble_slab	Marble Slab	64	184	282		0	1	1	0	0	-1	0
+marble_bricks	Marble Bricks	64	185	283		0	1	1	0	0	-1	0
+marble_brick_stairs	Marble Brick Stairs	64	185	284		0	1	1	0	0	-1	0
+marble_brick_slab	Marble Brick Slab	64	185	285		0	1	1	0	0	-1	0
+marble_brick_wall	Marble Brick Wall	64	185	286		0	1	1	0	0	-1	0
+marble_pillar	Marble Pillar	64	186	287		0	1	1	0	0	-1	0
+limestone	Limestone	64	188	288		0	1	1	0	0	-1	0
+limestone_stairs	Limestone Stairs	64	188	289		0	1	1	0	0	-1	0
+limestone_slab	Limestone Slab	64	188	290		0	1	1	0	0	-1	0
+limestone_bricks	Limestone Bricks	64	189	291		0	1	1	0	0	-1	0
+limestone_brick_stairs	Limestone Brick Stairs	64	189	292		0	1	1	0	0	-1	0
+limestone_brick_slab	Limestone Brick Slab	64	189	293		0	1	1	0	0	-1	0
+limestone_brick_wall	Limestone Brick Wall	64	189	294		0	1	1	0	0	-1	0
+sandstone_stairs	Sandstone Stairs	64	45	295		0	1	1	0	0	-1	0
+sandstone_slab	Sandstone Slab	64	45	296		0	1	1	0	0	-1	0
+sandstone_wall	Sandstone Wall	64	45	297		0	1	1	0	0	-1	0
+smooth_sandstone	Smooth Sandstone	64	46	298		0	1	1	0	0	-1	0
+smooth_sandstone_stairs	Smooth Sandstone Stairs	64	46	299		0	1	1	0	0	-1	0
+smooth_sandstone_slab	Smooth Sandstone Slab	64	46	300		0	1	1	0	0	-1	0
+cut_sandstone	Cut Sandstone	64	190	301		0	1	1	0	0	-1	0
+cut_sandstone_slab	Cut Sandstone Slab	64	190	302		0	1	1	0	0	-1	0
+chiseled_sandstone	Chiseled Sandstone	64	191	303		0	1	1	0	0	-1	0
+red_sandstone	Red Sandstone	64	192	304		0	1	1	0	0	-1	0
+red_sandstone_stairs	Red Sandstone Stairs	64	192	305		0	1	1	0	0	-1	0
+red_sandstone_slab	Red Sandstone Slab	64	192	306		0	1	1	0	0	-1	0
+red_sandstone_wall	Red Sandstone Wall	64	192	307		0	1	1	0	0	-1	0
+brick_stairs	Brick Stairs	64	50	308		0	1	1	0	0	-1	0
+brick_slab	Brick Slab	64	50	309		0	1	1	0	0	-1	0
+brick_wall	Brick Wall	64	50	310		0	1	1	0	0	-1	0
+mud_bricks	Mud Bricks	64	194	311		0	1	1	0	0	-1	0
+mud_brick_stairs	Mud Brick Stairs	64	194	312		0	1	1	0	0	-1	0
+mud_brick_slab	Mud Brick Slab	64	194	313		0	1	1	0	0	-1	0
+mud_brick_wall	Mud Brick Wall	64	194	314		0	1	1	0	0	-1	0
+packed_mud	Packed Mud	64	195	315		0	1	1	0	0	-1	0
+quartz_block	Quartz	64	196	316		0	1	1	0	0	-1	0
+quartz_stairs	Quartz Stairs	64	196	317		0	1	1	0	0	-1	0
+quartz_slab	Quartz Slab	64	196	318		0	1	1	0	0	-1	0
+quartz_bricks	Quartz Bricks	64	197	319		0	1	1	0	0	-1	0
+quartz_pillar	Quartz Pillar	64	198	320		0	1	1	0	0	-1	0
+blackstone	Blackstone	64	200	321		0	1	1	0	0	-1	0
+blackstone_stairs	Blackstone Stairs	64	200	322		0	1	1	0	0	-1	0
+blackstone_slab	Blackstone Slab	64	200	323		0	1	1	0	0	-1	0
+blackstone_wall	Blackstone Wall	64	200	324		0	1	1	0	0	-1	0
+blackstone_bricks	Blackstone Bricks	64	201	325		0	1	1	0	0	-1	0
+blackstone_brick_stairs	Blackstone Brick Stairs	64	201	326		0	1	1	0	0	-1	0
+blackstone_brick_slab	Blackstone Brick Slab	64	201	327		0	1	1	0	0	-1	0
+blackstone_brick_wall	Blackstone Brick Wall	64	201	328		0	1	1	0	0	-1	0
+emberstone_bricks	Emberstone Bricks	64	202	329		0	1	1	0	0	-1	0
+emberstone_brick_stairs	Emberstone Brick Stairs	64	202	330		0	1	1	0	0	-1	0
+emberstone_brick_slab	Emberstone Brick Slab	64	202	331		0	1	1	0	0	-1	0
+emberstone_brick_wall	Emberstone Brick Wall	64	202	332		0	1	1	0	0	-1	0
+skystone_bricks	Skystone Bricks	64	203	333		0	1	1	0	0	-1	0
+skystone_brick_stairs	Skystone Brick Stairs	64	203	334		0	1	1	0	0	-1	0
+skystone_brick_slab	Skystone Brick Slab	64	203	335		0	1	1	0	0	-1	0
+skystone_brick_wall	Skystone Brick Wall	64	203	336		0	1	1	0	0	-1	0
+roof_tiles	Clay Roof	64	204	337		0	1	1	0	0	-1	0
+roof_tile_stairs	Clay Roof Stairs	64	204	338		0	1	1	0	0	-1	0
+roof_tile_slab	Clay Roof Slab	64	204	339		0	1	1	0	0	-1	0
+tuff	Tuff	64	205	340		0	1	1	0	0	-1	0
+tuff_stairs	Tuff Stairs	64	205	341		0	1	1	0	0	-1	0
+tuff_slab	Tuff Slab	64	205	342		0	1	1	0	0	-1	0
+tuff_wall	Tuff Wall	64	205	343		0	1	1	0	0	-1	0
+calcite	Calcite	64	206	344		0	1	1	0	0	-1	0
+dripstone_block	Dripstone Block	64	207	345		0	1	1	0	0	-1	0
+desert_stone	Desert Stone	64	208	346		0	1	1	0	0	-1	0
+desert_stone_stairs	Desert Stone Stairs	64	208	347		0	1	1	0	0	-1	0
+desert_stone_slab	Desert Stone Slab	64	208	348		0	1	1	0	0	-1	0
+desert_stone_wall	Desert Stone Wall	64	208	349		0	1	1	0	0	-1	0
+desert_stone_bricks	Desert Stone Bricks	64	209	350		0	1	1	0	0	-1	0
+desert_stone_brick_stairs	Desert Stone Brick Stairs	64	209	351		0	1	1	0	0	-1	0
+desert_stone_brick_slab	Desert Stone Brick Slab	64	209	352		0	1	1	0	0	-1	0
+desert_stone_brick_wall	Desert Stone Brick Wall	64	209	353		0	1	1	0	0	-1	0
+nether_bricks	Nether Bricks	64	210	354		0	1	1	0	0	-1	0
+nether_brick_stairs	Nether Brick Stairs	64	210	355		0	1	1	0	0	-1	0
+nether_brick_slab	Nether Brick Slab	64	210	356		0	1	1	0	0	-1	0
+nether_brick_wall	Nether Brick Wall	64	210	357		0	1	1	0	0	-1	0
+nether_brick_fence	Nether Brick Fence	64	210	358		0	1	1	0	0	-1	0
+red_nether_bricks	Red Nether Bricks	64	211	359		0	1	1	0	0	-1	0
+red_nether_brick_stairs	Red Nether Brick Stairs	64	211	360		0	1	1	0	0	-1	0
+red_nether_brick_slab	Red Nether Brick Slab	64	211	361		0	1	1	0	0	-1	0
+red_nether_brick_wall	Red Nether Brick Wall	64	211	362		0	1	1	0	0	-1	0
+prismarine	Prismarine	64	212	363		0	1	1	0	0	-1	0
+prismarine_stairs	Prismarine Stairs	64	212	364		0	1	1	0	0	-1	0
+prismarine_slab	Prismarine Slab	64	212	365		0	1	1	0	0	-1	0
+prismarine_wall	Prismarine Wall	64	212	366		0	1	1	0	0	-1	0
+prismarine_bricks	Prismarine Bricks	64	213	367		0	1	1	0	0	-1	0
+prismarine_brick_stairs	Prismarine Brick Stairs	64	213	368		0	1	1	0	0	-1	0
+prismarine_brick_slab	Prismarine Brick Slab	64	213	369		0	1	1	0	0	-1	0
+dark_prismarine	Dark Prismarine	64	214	370		0	1	1	0	0	-1	0
+dark_prismarine_stairs	Dark Prismarine Stairs	64	214	371		0	1	1	0	0	-1	0
+dark_prismarine_slab	Dark Prismarine Slab	64	214	372		0	1	1	0	0	-1	0
+end_stone	End Stone	64	215	373		0	1	1	0	0	-1	0
+end_stone_bricks	End Stone Bricks	64	216	374		0	1	1	0	0	-1	0
+end_stone_brick_stairs	End Stone Brick Stairs	64	216	375		0	1	1	0	0	-1	0
+end_stone_brick_slab	End Stone Brick Slab	64	216	376		0	1	1	0	0	-1	0
+end_stone_brick_wall	End Stone Brick Wall	64	216	377		0	1	1	0	0	-1	0
+purpur_block	Purpur	64	217	378		0	1	1	0	0	-1	0
+purpur_stairs	Purpur Stairs	64	217	379		0	1	1	0	0	-1	0
+purpur_slab	Purpur Slab	64	217	380		0	1	1	0	0	-1	0
+cut_copper	Cut Copper	64	218	381		0	1	1	0	0	-1	0
+cut_copper_stairs	Cut Copper Stairs	64	218	382		0	1	1	0	0	-1	0
+cut_copper_slab	Cut Copper Slab	64	218	383		0	1	1	0	0	-1	0
+exposed_cut_copper	Exposed Cut Copper	64	219	384		0	1	1	0	0	-1	0
+exposed_cut_copper_stairs	Exposed Cut Copper Stairs	64	219	385		0	1	1	0	0	-1	0
+exposed_cut_copper_slab	Exposed Cut Copper Slab	64	219	386		0	1	1	0	0	-1	0
+weathered_cut_copper	Weathered Cut Copper	64	220	387		0	1	1	0	0	-1	0
+weathered_cut_copper_stairs	Weathered Cut Copper Stairs	64	220	388		0	1	1	0	0	-1	0
+weathered_cut_copper_slab	Weathered Cut Copper Slab	64	220	389		0	1	1	0	0	-1	0
+oxidized_cut_copper	Oxidized Cut Copper	64	221	390		0	1	1	0	0	-1	0
+oxidized_cut_copper_stairs	Oxidized Cut Copper Stairs	64	221	391		0	1	1	0	0	-1	0
+oxidized_cut_copper_slab	Oxidized Cut Copper Slab	64	221	392		0	1	1	0	0	-1	0
+dark_roof_tiles	Slate Roof	64	222	393		0	1	1	0	0	-1	0
+dark_roof_tile_stairs	Slate Roof Stairs	64	222	394		0	1	1	0	0	-1	0
+dark_roof_tile_slab	Slate Roof Slab	64	222	395		0	1	1	0	0	-1	0
+coarse_dirt	Coarse Dirt	64	223	396		0	1	1	0	0	-1	0
+podzol	Podzol	64	224	397		0	1	1	0	0	-1	0
+moss_block	Moss Block	64	226	398		0	1	1	0	0	-1	0
+mud	Mud	64	227	399		0	1	1	0	0	-1	0
+red_sand	Red Sand	64	228	400		0	1	1	0	0	-1	0
+packed_ice	Packed Ice	64	229	401		0	1	1	0	0	-1	0
+terracotta	Terracotta	64	230	402		0	1	1	0	0	-1	0
+copper_ore	Copper Ore	64	231	403		0	1	1	0	0	-1	0
+lapis_ore	Lapis Ore	64	232	404		0	1	1	0	0	-1	0
+emerald_ore	Emerald Ore	64	233	405		0	1	1	0	0	-1	0
+quartz_ore	Ember Quartz Ore	64	234	406		0	1	1	0	0	-1	0
+coal_block	Block of Coal	64	235	407		0	1	1	0	0	-1	0
+iron_block	Block of Iron	64	236	408		0	1	1	0	0	-1	0
+gold_block	Block of Gold	64	237	409		0	1	1	0	0	-1	0
+diamond_block	Block of Diamond	64	238	410		0	1	1	0	0	-1	0
+copper_block	Block of Copper	64	239	411		0	1	1	0	0	-1	0
+lapis_block	Block of Lapis	64	240	412		0	1	1	0	0	-1	0
+emerald_block	Block of Emerald	64	241	413		0	1	1	0	0	-1	0
+bookshelf	Bookshelf	64	242	414		0	1	1	0	0	-1	0
+pumpkin	Pumpkin	64	243	415		0	1	1	0	0	-1	0
+carved_pumpkin	Carved Pumpkin	64	243	416		0	1	1	0	0	-1	0
+jack_o_lantern	Jack o'Lantern	64	243	417		0	1	1	0	0	-1	0
+melon	Melon	64	247	418		0	1	1	0	0	-1	0
+hay_bale	Hay Bale	64	249	419		0	1	1	0	0	-1	0
+thatch	Thatch	64	251	420		0	1	1	0	0	-1	0
+cob	Cob	64	252	421		0	1	1	0	0	-1	0
+daub	Wattle and Daub	64	253	422		0	1	1	0	0	-1	0
+plaster	Plaster	64	254	423		0	1	1	0	0	-1	0
+timber_frame	Timber Frame	64	255	424		0	1	1	0	0	-1	0
+timber_frame_cross	Timber Frame (Cross)	64	256	425		0	1	1	0	0	-1	0
+timber_frame_diagonal	Timber Frame (Diagonal)	64	257	426		0	1	1	0	0	-1	0
+sea_lantern	Sea Lantern	64	258	427		0	1	1	0	0	-1	0
+sponge	Sponge	64	259	428		0	1	1	0	0	-1	0
+barrel	Barrel	1	260	429		0	1	1	0	0	-1	0
+mycelium	Mycelium	64	263	430		0	1	1	0	0	-1	0
+rooted_dirt	Rooted Dirt	64	265	431		0	1	1	0	0	-1	0
+silver_sand	Silver Sand	64	266	432		0	1	1	0	0	-1	0
+permafrost	Permafrost	64	267	433		0	1	1	0	0	-1	0
+blue_ice	Blue Ice	64	268	434		0	1	1	0	0	-1	0
+magma_block	Magma Block	64	269	435		0	1	1	0	0	-1	0
+soul_soil	Soul Soil	64	270	436		0	1	1	0	0	-1	0
+crying_obsidian	Crying Obsidian	64	271	437		0	1	1	0	0	-1	0
+amethyst_block	Block of Amethyst	64	272	438		0	1	1	0	0	-1	0
+tinted_glass	Tinted Glass	64	273	439		0	1	1	0	0	-1	0
+brown_mushroom_block	Brown Mushroom Block	64	274	440		0	1	1	0	0	-1	0
+red_mushroom_block	Red Mushroom Block	64	275	441		0	1	1	0	0	-1	0
+mushroom_stem	Mushroom Stem	64	276	442		0	1	1	0	0	-1	0
+exposed_copper	Exposed Copper	64	277	443		0	1	1	0	0	-1	0
+weathered_copper	Weathered Copper	64	278	444		0	1	1	0	0	-1	0
+oxidized_copper	Oxidized Copper	64	279	445		0	1	1	0	0	-1	0
+tin_ore	Tin Ore	64	280	446		0	1	1	0	0	-1	0
+tin_block	Block of Tin	64	281	447		0	1	1	0	0	-1	0
+bronze_block	Block of Bronze	64	282	448		0	1	1	0	0	-1	0
+mese_ore	Mese Ore	64	283	449		0	1	1	0	0	-1	0
+mese_lamp	Mese Lamp	64	284	450		0	1	1	0	0	-1	0
+obsidian_glass	Obsidian Glass	64	285	451		0	1	1	0	0	-1	0
+smoker	Smoker	64	287	453		0	1	1	0	0	-1	0
+blast_furnace	Blast Furnace	64	291	455		0	1	1	0	0	-1	0
+stonecutter	Stonecutter	64	295	457		0	1	1	0	0	-1	0
+note_block	Note Block	64	297	458		0	1	1	0	0	-1	0
+tnt	TNT	64	298	459		0	1	1	0	0	-1	0
+dried_kelp_block	Dried Kelp Block	64	301	460		0	1	1	0	0	-1	0
+thatch_stairs	Thatch Stairs	64	251	461		0	1	1	0	0	-1	0
+thatch_slab	Thatch Slab	64	251	462		0	1	1	0	0	-1	0
+plaster_stairs	Plaster Stairs	64	254	463		0	1	1	0	0	-1	0
+plaster_slab	Plaster Slab	64	254	464		0	1	1	0	0	-1	0
+plaster_wall	Plaster Wall	64	254	465		0	1	1	0	0	-1	0
+cob_stairs	Cob Stairs	64	252	466		0	1	1	0	0	-1	0
+cob_slab	Cob Slab	64	252	467		0	1	1	0	0	-1	0
+cob_wall	Cob Wall	64	252	468		0	1	1	0	0	-1	0
+tube_coral_block	Tube Coral Block	64	303	469		0	1	1	0	0	-1	0
+tube_coral	Tube Coral	64	304	470		0	1	1	0	0	-1	0
+brain_coral_block	Brain Coral Block	64	305	471		0	1	1	0	0	-1	0
+brain_coral	Brain Coral	64	306	472		0	1	1	0	0	-1	0
+bubble_coral_block	Bubble Coral Block	64	307	473		0	1	1	0	0	-1	0
+bubble_coral	Bubble Coral	64	308	474		0	1	1	0	0	-1	0
+fire_coral_block	Fire Coral Block	64	309	475		0	1	1	0	0	-1	0
+fire_coral	Fire Coral	64	310	476		0	1	1	0	0	-1	0
+horn_coral_block	Horn Coral Block	64	311	477		0	1	1	0	0	-1	0
+horn_coral	Horn Coral	64	312	478		0	1	1	0	0	-1	0
+dead_coral_block	Dead Coral Block	64	313	479		0	1	1	0	0	-1	0
+seagrass	Seagrass	64	314	480		0	1	1	0	0	-1	0
+kelp	Kelp	64	315	481		0	1	1	0	0	-1	0
+amethyst_cluster	Amethyst Cluster	64	316	482		0	1	1	0	0	-1	0
+moss_carpet	Moss Carpet	64	226	483		0	1	1	0	0	-1	0
+vine	Vines	64	317	484		0	1	1	0	0	-1	0
+sunflower	Sunflower	64	804	485		0	1	1	0	0	-1	0
+lilac	Lilac	64	805	486		0	1	1	0	0	-1	0
+rose_bush	Rose Bush	64	806	487		0	1	1	0	0	-1	0
+peony	Peony	64	807	488		0	1	1	0	0	-1	0
+large_fern	Large Fern	64	808	489		0	1	1	0	0	-1	0
+tall_grass_double	Tall Grass	64	809	490		0	1	1	0	0	-1	0
+flower_pot	Flower Pot	64	337	504		0	1	1	0	0	-1	0
+cauldron	Cauldron	64	338	505		0	1	1	0	0	-1	0
+bell	Bell	64	339	506		0	1	1	0	0	-1	0
+soul_torch	Soul Torch	64	340	507		0	1	1	0	0	-1	0
+soul_lantern	Soul Lantern	64	810	508		0	1	1	0	0	-1	0
+soul_campfire	Soul Campfire	64	342	509		0	1	1	0	0	-1	0
+iron_door	Iron Door	1	811	510		0	1	1	0	0	-1	0
+iron_trapdoor	Iron Trapdoor	64	344	511		0	1	1	0	0	-1	0
+white_carpet	White Carpet	64	55	512		0	1	1	0	0	-1	0
+white_terracotta	White Terracotta	64	345	513		0	1	1	0	0	-1	0
+white_concrete	White Concrete	64	346	514		0	1	1	0	0	-1	0
+white_glazed_terracotta	White Glazed Terracotta	64	347	515		0	1	1	0	0	-1	0
+white_concrete_powder	White Concrete Powder	64	348	516		0	1	1	0	0	-1	0
+white_stained_glass	White Stained Glass	64	349	517		0	1	1	0	0	-1	0
+white_stained_glass_pane	White Stained Glass Pane	64	349	518		0	1	1	0	0	-1	0
+orange_wool	Orange Wool	64	350	519		0	1	1	0	0	-1	0
+orange_carpet	Orange Carpet	64	350	520		0	1	1	0	0	-1	0
+orange_terracotta	Orange Terracotta	64	351	521		0	1	1	0	0	-1	0
+orange_concrete	Orange Concrete	64	352	522		0	1	1	0	0	-1	0
+orange_glazed_terracotta	Orange Glazed Terracotta	64	353	523		0	1	1	0	0	-1	0
+orange_concrete_powder	Orange Concrete Powder	64	354	524		0	1	1	0	0	-1	0
+orange_stained_glass	Orange Stained Glass	64	355	525		0	1	1	0	0	-1	0
+orange_stained_glass_pane	Orange Stained Glass Pane	64	355	526		0	1	1	0	0	-1	0
+magenta_wool	Magenta Wool	64	356	527		0	1	1	0	0	-1	0
+magenta_carpet	Magenta Carpet	64	356	528		0	1	1	0	0	-1	0
+magenta_terracotta	Magenta Terracotta	64	357	529		0	1	1	0	0	-1	0
+magenta_concrete	Magenta Concrete	64	358	530		0	1	1	0	0	-1	0
+magenta_glazed_terracotta	Magenta Glazed Terracotta	64	359	531		0	1	1	0	0	-1	0
+magenta_concrete_powder	Magenta Concrete Powder	64	360	532		0	1	1	0	0	-1	0
+magenta_stained_glass	Magenta Stained Glass	64	361	533		0	1	1	0	0	-1	0
+magenta_stained_glass_pane	Magenta Stained Glass Pane	64	361	534		0	1	1	0	0	-1	0
+light_blue_wool	Light Blue Wool	64	362	535		0	1	1	0	0	-1	0
+light_blue_carpet	Light Blue Carpet	64	362	536		0	1	1	0	0	-1	0
+light_blue_terracotta	Light Blue Terracotta	64	363	537		0	1	1	0	0	-1	0
+light_blue_concrete	Light Blue Concrete	64	364	538		0	1	1	0	0	-1	0
+light_blue_glazed_terracotta	Light Blue Glazed Terracotta	64	365	539		0	1	1	0	0	-1	0
+light_blue_concrete_powder	Light Blue Concrete Powder	64	366	540		0	1	1	0	0	-1	0
+light_blue_stained_glass	Light Blue Stained Glass	64	367	541		0	1	1	0	0	-1	0
+light_blue_stained_glass_pane	Light Blue Stained Glass Pane	64	367	542		0	1	1	0	0	-1	0
+yellow_wool	Yellow Wool	64	368	543		0	1	1	0	0	-1	0
+yellow_carpet	Yellow Carpet	64	368	544		0	1	1	0	0	-1	0
+yellow_terracotta	Yellow Terracotta	64	369	545		0	1	1	0	0	-1	0
+yellow_concrete	Yellow Concrete	64	370	546		0	1	1	0	0	-1	0
+yellow_glazed_terracotta	Yellow Glazed Terracotta	64	371	547		0	1	1	0	0	-1	0
+yellow_concrete_powder	Yellow Concrete Powder	64	372	548		0	1	1	0	0	-1	0
+yellow_stained_glass	Yellow Stained Glass	64	373	549		0	1	1	0	0	-1	0
+yellow_stained_glass_pane	Yellow Stained Glass Pane	64	373	550		0	1	1	0	0	-1	0
+lime_wool	Lime Wool	64	374	551		0	1	1	0	0	-1	0
+lime_carpet	Lime Carpet	64	374	552		0	1	1	0	0	-1	0
+lime_terracotta	Lime Terracotta	64	375	553		0	1	1	0	0	-1	0
+lime_concrete	Lime Concrete	64	376	554		0	1	1	0	0	-1	0
+lime_glazed_terracotta	Lime Glazed Terracotta	64	377	555		0	1	1	0	0	-1	0
+lime_concrete_powder	Lime Concrete Powder	64	378	556		0	1	1	0	0	-1	0
+lime_stained_glass	Lime Stained Glass	64	379	557		0	1	1	0	0	-1	0
+lime_stained_glass_pane	Lime Stained Glass Pane	64	379	558		0	1	1	0	0	-1	0
+pink_wool	Pink Wool	64	380	559		0	1	1	0	0	-1	0
+pink_carpet	Pink Carpet	64	380	560		0	1	1	0	0	-1	0
+pink_terracotta	Pink Terracotta	64	381	561		0	1	1	0	0	-1	0
+pink_concrete	Pink Concrete	64	382	562		0	1	1	0	0	-1	0
+pink_glazed_terracotta	Pink Glazed Terracotta	64	383	563		0	1	1	0	0	-1	0
+pink_concrete_powder	Pink Concrete Powder	64	384	564		0	1	1	0	0	-1	0
+pink_stained_glass	Pink Stained Glass	64	385	565		0	1	1	0	0	-1	0
+pink_stained_glass_pane	Pink Stained Glass Pane	64	385	566		0	1	1	0	0	-1	0
+gray_wool	Gray Wool	64	386	567		0	1	1	0	0	-1	0
+gray_carpet	Gray Carpet	64	386	568		0	1	1	0	0	-1	0
+gray_terracotta	Gray Terracotta	64	387	569		0	1	1	0	0	-1	0
+gray_concrete	Gray Concrete	64	388	570		0	1	1	0	0	-1	0
+gray_glazed_terracotta	Gray Glazed Terracotta	64	389	571		0	1	1	0	0	-1	0
+gray_concrete_powder	Gray Concrete Powder	64	390	572		0	1	1	0	0	-1	0
+gray_stained_glass	Gray Stained Glass	64	391	573		0	1	1	0	0	-1	0
+gray_stained_glass_pane	Gray Stained Glass Pane	64	391	574		0	1	1	0	0	-1	0
+light_gray_wool	Light Gray Wool	64	392	575		0	1	1	0	0	-1	0
+light_gray_carpet	Light Gray Carpet	64	392	576		0	1	1	0	0	-1	0
+light_gray_terracotta	Light Gray Terracotta	64	393	577		0	1	1	0	0	-1	0
+light_gray_concrete	Light Gray Concrete	64	394	578		0	1	1	0	0	-1	0
+light_gray_glazed_terracotta	Light Gray Glazed Terracotta	64	395	579		0	1	1	0	0	-1	0
+light_gray_concrete_powder	Light Gray Concrete Powder	64	396	580		0	1	1	0	0	-1	0
+light_gray_stained_glass	Light Gray Stained Glass	64	397	581		0	1	1	0	0	-1	0
+light_gray_stained_glass_pane	Light Gray Stained Glass Pane	64	397	582		0	1	1	0	0	-1	0
+cyan_wool	Cyan Wool	64	398	583		0	1	1	0	0	-1	0
+cyan_carpet	Cyan Carpet	64	398	584		0	1	1	0	0	-1	0
+cyan_terracotta	Cyan Terracotta	64	399	585		0	1	1	0	0	-1	0
+cyan_concrete	Cyan Concrete	64	400	586		0	1	1	0	0	-1	0
+cyan_glazed_terracotta	Cyan Glazed Terracotta	64	401	587		0	1	1	0	0	-1	0
+cyan_concrete_powder	Cyan Concrete Powder	64	402	588		0	1	1	0	0	-1	0
+cyan_stained_glass	Cyan Stained Glass	64	403	589		0	1	1	0	0	-1	0
+cyan_stained_glass_pane	Cyan Stained Glass Pane	64	403	590		0	1	1	0	0	-1	0
+purple_wool	Purple Wool	64	404	591		0	1	1	0	0	-1	0
+purple_carpet	Purple Carpet	64	404	592		0	1	1	0	0	-1	0
+purple_terracotta	Purple Terracotta	64	405	593		0	1	1	0	0	-1	0
+purple_concrete	Purple Concrete	64	406	594		0	1	1	0	0	-1	0
+purple_glazed_terracotta	Purple Glazed Terracotta	64	407	595		0	1	1	0	0	-1	0
+purple_concrete_powder	Purple Concrete Powder	64	408	596		0	1	1	0	0	-1	0
+purple_stained_glass	Purple Stained Glass	64	409	597		0	1	1	0	0	-1	0
+purple_stained_glass_pane	Purple Stained Glass Pane	64	409	598		0	1	1	0	0	-1	0
+blue_wool	Blue Wool	64	410	599		0	1	1	0	0	-1	0
+blue_carpet	Blue Carpet	64	410	600		0	1	1	0	0	-1	0
+blue_terracotta	Blue Terracotta	64	411	601		0	1	1	0	0	-1	0
+blue_concrete	Blue Concrete	64	412	602		0	1	1	0	0	-1	0
+blue_glazed_terracotta	Blue Glazed Terracotta	64	413	603		0	1	1	0	0	-1	0
+blue_concrete_powder	Blue Concrete Powder	64	414	604		0	1	1	0	0	-1	0
+blue_stained_glass	Blue Stained Glass	64	415	605		0	1	1	0	0	-1	0
+blue_stained_glass_pane	Blue Stained Glass Pane	64	415	606		0	1	1	0	0	-1	0
+brown_wool	Brown Wool	64	416	607		0	1	1	0	0	-1	0
+brown_carpet	Brown Carpet	64	416	608		0	1	1	0	0	-1	0
+brown_terracotta	Brown Terracotta	64	417	609		0	1	1	0	0	-1	0
+brown_concrete	Brown Concrete	64	418	610		0	1	1	0	0	-1	0
+brown_glazed_terracotta	Brown Glazed Terracotta	64	419	611		0	1	1	0	0	-1	0
+brown_concrete_powder	Brown Concrete Powder	64	420	612		0	1	1	0	0	-1	0
+brown_stained_glass	Brown Stained Glass	64	421	613		0	1	1	0	0	-1	0
+brown_stained_glass_pane	Brown Stained Glass Pane	64	421	614		0	1	1	0	0	-1	0
+green_wool	Green Wool	64	422	615		0	1	1	0	0	-1	0
+green_carpet	Green Carpet	64	422	616		0	1	1	0	0	-1	0
+green_terracotta	Green Terracotta	64	423	617		0	1	1	0	0	-1	0
+green_concrete	Green Concrete	64	424	618		0	1	1	0	0	-1	0
+green_glazed_terracotta	Green Glazed Terracotta	64	425	619		0	1	1	0	0	-1	0
+green_concrete_powder	Green Concrete Powder	64	426	620		0	1	1	0	0	-1	0
+green_stained_glass	Green Stained Glass	64	427	621		0	1	1	0	0	-1	0
+green_stained_glass_pane	Green Stained Glass Pane	64	427	622		0	1	1	0	0	-1	0
+red_wool	Red Wool	64	428	623		0	1	1	0	0	-1	0
+red_carpet	Red Carpet	64	428	624		0	1	1	0	0	-1	0
+red_terracotta	Red Terracotta	64	429	625		0	1	1	0	0	-1	0
+red_concrete	Red Concrete	64	430	626		0	1	1	0	0	-1	0
+red_glazed_terracotta	Red Glazed Terracotta	64	431	627		0	1	1	0	0	-1	0
+red_concrete_powder	Red Concrete Powder	64	432	628		0	1	1	0	0	-1	0
+red_stained_glass	Red Stained Glass	64	433	629		0	1	1	0	0	-1	0
+red_stained_glass_pane	Red Stained Glass Pane	64	433	630		0	1	1	0	0	-1	0
+black_wool	Black Wool	64	434	631		0	1	1	0	0	-1	0
+black_carpet	Black Carpet	64	434	632		0	1	1	0	0	-1	0
+black_terracotta	Black Terracotta	64	435	633		0	1	1	0	0	-1	0
+black_concrete	Black Concrete	64	436	634		0	1	1	0	0	-1	0
+black_glazed_terracotta	Black Glazed Terracotta	64	437	635		0	1	1	0	0	-1	0
+black_concrete_powder	Black Concrete Powder	64	438	636		0	1	1	0	0	-1	0
+black_stained_glass	Black Stained Glass	64	439	637		0	1	1	0	0	-1	0
+black_stained_glass_pane	Black Stained Glass Pane	64	439	638		0	1	1	0	0	-1	0
+glass_pane	Glass Pane	64	19	639		0	1	1	0	0	-1	0
+iron_bars	Iron Bars	64	440	640		0	1	1	0	0	-1	0
+paper_wall	Paper Wall	64	441	641		0	1	1	0	0	-1	0
+ladder	Ladder	64	442	642		0	1	1	0	0	-1	0
+bed	Red Bed	1	812	643		0	1	1	0	0	-1	0
+white_bed	White Bed	1	813	644		0	1	1	0	0	-1	0
+orange_bed	Orange Bed	1	814	645		0	1	1	0	0	-1	0
+magenta_bed	Magenta Bed	1	815	646		0	1	1	0	0	-1	0
+light_blue_bed	Light Blue Bed	1	816	647		0	1	1	0	0	-1	0
+yellow_bed	Yellow Bed	1	817	648		0	1	1	0	0	-1	0
+lime_bed	Lime Bed	1	818	649		0	1	1	0	0	-1	0
+pink_bed	Pink Bed	1	819	650		0	1	1	0	0	-1	0
+gray_bed	Gray Bed	1	820	651		0	1	1	0	0	-1	0
+light_gray_bed	Light Gray Bed	1	821	652		0	1	1	0	0	-1	0
+cyan_bed	Cyan Bed	1	822	653		0	1	1	0	0	-1	0
+purple_bed	Purple Bed	1	823	654		0	1	1	0	0	-1	0
+blue_bed	Blue Bed	1	824	655		0	1	1	0	0	-1	0
+brown_bed	Brown Bed	1	825	656		0	1	1	0	0	-1	0
+green_bed	Green Bed	1	826	657		0	1	1	0	0	-1	0
+black_bed	Black Bed	1	827	658		0	1	1	0	0	-1	0
+snow_layer	Snow Layer	64	32	660		0	1	1	0	0	-1	0
+blue_orchid	Blue Orchid	64	476	661		0	1	1	0	0	-1	0
+allium	Allium	64	477	662		0	1	1	0	0	-1	0
+azure_bluet	Azure Bluet	64	478	663		0	1	1	0	0	-1	0
+red_tulip	Red Tulip	64	479	664		0	1	1	0	0	-1	0
+orange_tulip	Orange Tulip	64	480	665		0	1	1	0	0	-1	0
+white_tulip	White Tulip	64	481	666		0	1	1	0	0	-1	0
+pink_tulip	Pink Tulip	64	482	667		0	1	1	0	0	-1	0
+oxeye_daisy	Oxeye Daisy	64	483	668		0	1	1	0	0	-1	0
+cornflower	Cornflower	64	484	669		0	1	1	0	0	-1	0
+lily_of_the_valley	Lily of the Valley	64	485	670		0	1	1	0	0	-1	0
+lavender	Lavender	64	486	671		0	1	1	0	0	-1	0
+heather	Heather	64	487	672		0	1	1	0	0	-1	0
+fern	Fern	64	488	673		0	1	1	0	0	-1	0
+dead_bush	Dead Bush	64	489	674		0	1	1	0	0	-1	0
+brown_mushroom	Brown Mushroom	64	490	675		0	1	1	0	0	-1	0
+red_mushroom	Red Mushroom	64	491	676		0	1	1	0	0	-1	0
+sugar_cane	Sugar Cane	64	492	677		0	1	1	0	0	-1	0
+cobweb	Cobweb	64	493	678		0	1	1	0	0	-1	0
+lily_pad	Lily Pad	64	494	679		0	1	1	0	0	-1	0
+campfire	Campfire	64	342	680		0	1	1	0	0	-1	0
+chain	Chain	64	495	681		0	1	1	0	0	-1	0
+axle	Wooden Axle	64	496	682		0	1	1	0	0	-1	0
+windmill	Windmill Sails	64	496	683		0	1	1	0	0	-1	0
+waterwheel	Waterwheel	64	496	684		0	1	1	0	0	-1	0
+millstone	Millstone	64	497	685		0	1	1	0	0	-1	0
+sawmill	Sawmill	64	499	686		0	1	1	0	0	-1	0
+conveyor	Conveyor Belt	64	501	687		0	1	1	0	0	-1	0
+crusher	Crusher	64	503	688		0	1	1	0	0	-1	0
+waystone	Waystone	64	505	689		0	1	1	0	0	-1	0
+dungeon_gate	Dungeon Gate	64	507	690		0	1	1	0	0	-1	0
+ward_stone	Ward Stone	64	508	691		0	1	1	0	0	-1	0
+harvester	Harvester	64	509	692		0	1	1	0	0	-1	0
+bamboo	Bamboo	64	828	693		0	1	1	0	0	-1	0
+bamboo_block	Block of Bamboo	64	512	694		0	1	1	0	0	-1	0
+stripped_bamboo_block	Block of Stripped Bamboo	64	514	695		0	1	1	0	0	-1	0
+bamboo_planks	Bamboo Planks	64	516	696		0	1	1	0	0	-1	0
+bamboo_mosaic	Bamboo Mosaic	64	517	697		0	1	1	0	0	-1	0
+bamboo_stairs	Bamboo Stairs	64	516	698		0	1	1	0	0	-1	0
+bamboo_slab	Bamboo Slab	64	516	699		0	1	1	0	0	-1	0
+bamboo_fence	Bamboo Fence	64	516	700		0	1	1	0	0	-1	0
+bamboo_fence_gate	Bamboo Fence Gate	64	516	701		0	1	1	0	0	-1	0
+bamboo_mosaic_stairs	Bamboo Mosaic Stairs	64	517	702		0	1	1	0	0	-1	0
+bamboo_mosaic_slab	Bamboo Mosaic Slab	64	517	703		0	1	1	0	0	-1	0
+bamboo_sign	Bamboo Sign	16	829	704		0	1	1	0	0	-1	0
+bamboo_door	Bamboo Door	1	830	705		0	1	1	0	0	-1	0
+bamboo_trapdoor	Bamboo Trapdoor	64	519	706		0	1	1	0	0	-1	0
+scaffolding	Scaffolding	64	520	707		0	1	1	0	0	-1	0
+polished_tuff	Polished Tuff	64	523	708		0	1	1	0	0	-1	0
+polished_tuff_stairs	Polished Tuff Stairs	64	523	709		0	1	1	0	0	-1	0
+polished_tuff_slab	Polished Tuff Slab	64	523	710		0	1	1	0	0	-1	0
+polished_tuff_wall	Polished Tuff Wall	64	523	711		0	1	1	0	0	-1	0
+tuff_bricks	Tuff Bricks	64	524	712		0	1	1	0	0	-1	0
+tuff_brick_stairs	Tuff Brick Stairs	64	524	713		0	1	1	0	0	-1	0
+tuff_brick_slab	Tuff Brick Slab	64	524	714		0	1	1	0	0	-1	0
+tuff_brick_wall	Tuff Brick Wall	64	524	715		0	1	1	0	0	-1	0
+chiseled_tuff	Chiseled Tuff	64	525	716		0	1	1	0	0	-1	0
+chiseled_tuff_bricks	Chiseled Tuff Bricks	64	526	717		0	1	1	0	0	-1	0
+smooth_basalt	Smooth Basalt	64	527	718		0	1	1	0	0	-1	0
+polished_blackstone	Polished Blackstone	64	528	719		0	1	1	0	0	-1	0
+polished_blackstone_stairs	Polished Blackstone Stairs	64	528	720		0	1	1	0	0	-1	0
+polished_blackstone_slab	Polished Blackstone Slab	64	528	721		0	1	1	0	0	-1	0
+polished_blackstone_wall	Polished Blackstone Wall	64	528	722		0	1	1	0	0	-1	0
+cracked_blackstone_bricks	Cracked Blackstone Bricks	64	529	723		0	1	1	0	0	-1	0
+chiseled_polished_blackstone	Chiseled Polished Blackstone	64	530	724		0	1	1	0	0	-1	0
+gilded_blackstone	Gilded Blackstone	64	531	725		0	1	1	0	0	-1	0
+cracked_nether_bricks	Cracked Nether Bricks	64	532	726		0	1	1	0	0	-1	0
+chiseled_nether_bricks	Chiseled Nether Bricks	64	533	727		0	1	1	0	0	-1	0
+smooth_quartz	Smooth Quartz	64	534	728		0	1	1	0	0	-1	0
+smooth_quartz_stairs	Smooth Quartz Stairs	64	534	729		0	1	1	0	0	-1	0
+smooth_quartz_slab	Smooth Quartz Slab	64	534	730		0	1	1	0	0	-1	0
+chiseled_quartz_block	Chiseled Quartz Block	64	535	731		0	1	1	0	0	-1	0
+smooth_red_sandstone	Smooth Red Sandstone	64	193	732		0	1	1	0	0	-1	0
+smooth_red_sandstone_stairs	Smooth Red Sandstone Stairs	64	193	733		0	1	1	0	0	-1	0
+smooth_red_sandstone_slab	Smooth Red Sandstone Slab	64	193	734		0	1	1	0	0	-1	0
+cut_red_sandstone	Cut Red Sandstone	64	536	735		0	1	1	0	0	-1	0
+cut_red_sandstone_slab	Cut Red Sandstone Slab	64	536	736		0	1	1	0	0	-1	0
+chiseled_red_sandstone	Chiseled Red Sandstone	64	537	737		0	1	1	0	0	-1	0
+purpur_pillar	Purpur Pillar	64	538	738		0	1	1	0	0	-1	0
+cracked_slate_bricks	Cracked Slate Bricks	64	540	739		0	1	1	0	0	-1	0
+cracked_slate_tiles	Cracked Slate Tiles	64	541	740		0	1	1	0	0	-1	0
+chiseled_slate	Chiseled Slate	64	542	741		0	1	1	0	0	-1	0
+desert_cobble	Desert Cobblestone	64	543	742		0	1	1	0	0	-1	0
+desert_cobble_stairs	Desert Cobblestone Stairs	64	543	743		0	1	1	0	0	-1	0
+desert_cobble_slab	Desert Cobblestone Slab	64	543	744		0	1	1	0	0	-1	0
+desert_cobble_wall	Desert Cobblestone Wall	64	543	745		0	1	1	0	0	-1	0
+desert_stone_block	Desert Stone Block	64	544	746		0	1	1	0	0	-1	0
+desert_sandstone	Desert Sandstone	64	545	747		0	1	1	0	0	-1	0
+desert_sandstone_stairs	Desert Sandstone Stairs	64	545	748		0	1	1	0	0	-1	0
+desert_sandstone_slab	Desert Sandstone Slab	64	545	749		0	1	1	0	0	-1	0
+desert_sandstone_wall	Desert Sandstone Wall	64	545	750		0	1	1	0	0	-1	0
+desert_sandstone_bricks	Desert Sandstone Bricks	64	547	751		0	1	1	0	0	-1	0
+desert_sandstone_brick_stairs	Desert Sandstone Brick Stairs	64	547	752		0	1	1	0	0	-1	0
+desert_sandstone_brick_slab	Desert Sandstone Brick Slab	64	547	753		0	1	1	0	0	-1	0
+desert_sandstone_brick_wall	Desert Sandstone Brick Wall	64	547	754		0	1	1	0	0	-1	0
+desert_sandstone_block	Desert Sandstone Block	64	548	755		0	1	1	0	0	-1	0
+silver_sandstone	Silver Sandstone	64	549	756		0	1	1	0	0	-1	0
+silver_sandstone_stairs	Silver Sandstone Stairs	64	549	757		0	1	1	0	0	-1	0
+silver_sandstone_slab	Silver Sandstone Slab	64	549	758		0	1	1	0	0	-1	0
+silver_sandstone_wall	Silver Sandstone Wall	64	549	759		0	1	1	0	0	-1	0
+silver_sandstone_bricks	Silver Sandstone Bricks	64	551	760		0	1	1	0	0	-1	0
+silver_sandstone_brick_stairs	Silver Sandstone Brick Stairs	64	551	761		0	1	1	0	0	-1	0
+silver_sandstone_brick_slab	Silver Sandstone Brick Slab	64	551	762		0	1	1	0	0	-1	0
+silver_sandstone_brick_wall	Silver Sandstone Brick Wall	64	551	763		0	1	1	0	0	-1	0
+silver_sandstone_block	Silver Sandstone Block	64	552	764		0	1	1	0	0	-1	0
+stone_block	Stone Block	64	553	765		0	1	1	0	0	-1	0
+obsidian_bricks	Obsidian Bricks	64	554	766		0	1	1	0	0	-1	0
+obsidian_brick_stairs	Obsidian Brick Stairs	64	554	767		0	1	1	0	0	-1	0
+obsidian_brick_slab	Obsidian Brick Slab	64	554	768		0	1	1	0	0	-1	0
+obsidian_brick_wall	Obsidian Brick Wall	64	554	769		0	1	1	0	0	-1	0
+obsidian_block	Obsidian Block	64	555	770		0	1	1	0	0	-1	0
+netherrack	Netherrack	64	556	771		0	1	1	0	0	-1	0
+soul_sand	Soul Sand	64	557	772		0	1	1	0	0	-1	0
+crimson_nylium	Crimson Nylium	64	558	773		0	1	1	0	0	-1	0
+warped_nylium	Warped Nylium	64	560	774		0	1	1	0	0	-1	0
+shroomlight	Shroomlight	64	562	775		0	1	1	0	0	-1	0
+nether_gold_ore	Nether Gold Ore	64	563	776		0	1	1	0	0	-1	0
+ancient_debris	Ancient Debris	64	564	777		0	1	1	0	0	-1	0
+redstone_ore	Redstone Ore	64	566	778		0	1	1	0	0	-1	0
+redstone_block	Block of Redstone	64	567	779		0	1	1	0	0	-1	0
+bone_block	Bone Block	64	568	780		0	1	1	0	0	-1	0
+slime_block	Slime Block	64	570	781		0	1	1	0	0	-1	0
+honey_block	Honey Block	64	571	782		0	1	1	0	0	-1	0
+honeycomb_block	Honeycomb Block	64	573	783		0	1	1	0	0	-1	0
+bee_nest	Bee Nest	64	574	784		0	1	1	0	0	-1	0
+beehive	Beehive	64	578	785		0	1	1	0	0	-1	0
+dry_dirt	Dry Dirt	64	581	786		0	1	1	0	0	-1	0
+dirt_with_dry_grass	Dry Grass Block	64	582	787		0	1	1	0	0	-1	0
+dry_dirt_with_dry_grass	Dry Grass on Dry Dirt	64	584	788		0	1	1	0	0	-1	0
+dirt_with_coniferous_litter	Coniferous Litter	64	585	789		0	1	1	0	0	-1	0
+dirt_with_rainforest_litter	Rainforest Litter	64	587	790		0	1	1	0	0	-1	0
+desert_sand	Desert Sand	64	589	791		0	1	1	0	0	-1	0
+peat	Peat	64	590	792		0	1	1	0	0	-1	0
+budding_amethyst	Budding Amethyst	64	591	793		0	1	1	0	0	-1	0
+copper_grate	Copper Grate	64	592	794		0	1	1	0	0	-1	0
+chiseled_copper	Chiseled Copper	64	593	795		0	1	1	0	0	-1	0
+ochre_froglight	Ochre Froglight	64	594	796		0	1	1	0	0	-1	0
+verdant_froglight	Verdant Froglight	64	596	797		0	1	1	0	0	-1	0
+pearlescent_froglight	Pearlescent Froglight	64	598	798		0	1	1	0	0	-1	0
+jukebox	Jukebox	64	600	799		0	1	1	0	0	-1	0
+ender_chest	Ender Chest	64	602	800		0	1	1	0	0	-1	0
+party_chest	Party Chest	64	605	801		0	1	1	0	0	-1	0
+smithing_table	Smithing Table	64	608	802		0	1	1	0	0	-1	0
+loom	Loom	64	612	803		0	1	1	0	0	-1	0
+cartography_table	Cartography Table	64	616	804		0	1	1	0	0	-1	0
+fletching_table	Fletching Table	64	619	805		0	1	1	0	0	-1	0
+composter	Composter	64	624	807		0	1	1	0	0	-1	0
+lectern	Lectern	64	627	808		0	1	1	0	0	-1	0
+anvil	Anvil	64	628	809		0	1	1	0	0	-1	0
+chipped_anvil	Chipped Anvil	64	629	810		0	1	1	0	0	-1	0
+damaged_anvil	Damaged Anvil	64	630	811		0	1	1	0	0	-1	0
+grindstone	Grindstone	64	631	812		0	1	1	0	0	-1	0
+decorated_pot	Decorated Pot	64	632	813		0	1	1	0	0	-1	0
+end_rod	End Rod	64	633	814		0	1	1	0	0	-1	0
+lightning_rod	Lightning Rod	64	634	815		0	1	1	0	0	-1	0
+item_frame	Item Frame	64	831	816		0	1	1	0	0	-1	0
+glow_item_frame	Glow Item Frame	64	832	817		0	1	1	0	0	-1	0
+weapon_rack	Weapon Rack	64	833	818		0	1	1	0	0	-1	0
+cake	Cake	1	834	820		0	1	1	0	0	-1	0
+candle	Candle	64	835	821		0	1	1	0	0	-1	0
+white_candle	White Candle	64	836	822		0	1	1	0	0	-1	0
+orange_candle	Orange Candle	64	837	823		0	1	1	0	0	-1	0
+magenta_candle	Magenta Candle	64	838	824		0	1	1	0	0	-1	0
+light_blue_candle	Light Blue Candle	64	839	825		0	1	1	0	0	-1	0
+yellow_candle	Yellow Candle	64	840	826		0	1	1	0	0	-1	0
+lime_candle	Lime Candle	64	841	827		0	1	1	0	0	-1	0
+pink_candle	Pink Candle	64	842	828		0	1	1	0	0	-1	0
+gray_candle	Gray Candle	64	843	829		0	1	1	0	0	-1	0
+light_gray_candle	Light Gray Candle	64	844	830		0	1	1	0	0	-1	0
+cyan_candle	Cyan Candle	64	845	831		0	1	1	0	0	-1	0
+purple_candle	Purple Candle	64	846	832		0	1	1	0	0	-1	0
+blue_candle	Blue Candle	64	847	833		0	1	1	0	0	-1	0
+brown_candle	Brown Candle	64	848	834		0	1	1	0	0	-1	0
+green_candle	Green Candle	64	849	835		0	1	1	0	0	-1	0
+red_candle	Red Candle	64	850	836		0	1	1	0	0	-1	0
+black_candle	Black Candle	64	851	837		0	1	1	0	0	-1	0
+sea_pickle	Sea Pickle	64	852	838		0	1	1	0	0	-1	0
+pink_petals	Pink Petals	64	659	840		0	1	1	0	0	-1	0
+loose_stones	Loose Stones	64	5	841		0	1	1	0	0	-1	0
+glow_lichen	Glow Lichen	64	660	842		0	1	1	0	0	-1	0
+crimson_roots	Crimson Roots	64	661	843		0	1	1	0	0	-1	0
+warped_roots	Warped Roots	64	662	844		0	1	1	0	0	-1	0
+nether_sprouts	Nether Sprouts	64	663	845		0	1	1	0	0	-1	0
+weeping_vines	Weeping Vines	64	664	846		0	1	1	0	0	-1	0
+twisting_vines	Twisting Vines	64	665	847		0	1	1	0	0	-1	0
+hanging_roots	Hanging Roots	64	666	848		0	1	1	0	0	-1	0
+spore_blossom	Spore Blossom	64	667	849		0	1	1	0	0	-1	0
+torchflower	Torchflower	64	670	852		0	1	1	0	0	-1	0
+dry_grass	Dry Grass	64	671	853		0	1	1	0	0	-1	0
+marram_grass	Marram Grass	64	672	854		0	1	1	0	0	-1	0
+jungle_grass	Jungle Grass	64	673	855		0	1	1	0	0	-1	0
+azalea	Azalea	64	674	856		0	1	1	0	0	-1	0
+flowering_azalea	Flowering Azalea	64	675	857		0	1	1	0	0	-1	0
+small_amethyst_bud	Small Amethyst Bud	64	676	858		0	1	1	0	0	-1	0
+medium_amethyst_bud	Medium Amethyst Bud	64	677	859		0	1	1	0	0	-1	0
+large_amethyst_bud	Large Amethyst Bud	64	678	860		0	1	1	0	0	-1	0
+pointed_dripstone	Pointed Dripstone	64	679	861		0	1	1	0	0	-1	0
+tube_coral_fan	Tube Coral Fan	64	680	862		0	1	1	0	0	-1	0
+brain_coral_fan	Brain Coral Fan	64	681	863		0	1	1	0	0	-1	0
+bubble_coral_fan	Bubble Coral Fan	64	682	864		0	1	1	0	0	-1	0
+fire_coral_fan	Fire Coral Fan	64	683	865		0	1	1	0	0	-1	0
+horn_coral_fan	Horn Coral Fan	64	684	866		0	1	1	0	0	-1	0
+azalea_leaves	Azalea Leaves	64	685	867		0	1	1	0	0	-1	0
+flowering_azalea_leaves	Flowering Azalea Leaves	64	686	868		0	1	1	0	0	-1	0
+cattail	Cattail	64	853	869		0	1	1	0	0	-1	0
+pitcher_plant	Pitcher Plant	64	854	870		0	1	1	0	0	-1	0
+redstone_torch	Redstone Torch	64	693	875		0	1	1	0	0	-1	0
+lever	Lever	64	855	877		0	1	1	0	0	-1	0
+stone_button	Stone Button	64	1	878		0	1	1	0	0	-1	0
+polished_blackstone_button	Polished Blackstone Button	64	528	879		0	1	1	0	0	-1	0
+stone_pressure_plate	Stone Pressure Plate	64	1	880		0	1	1	0	0	-1	0
+polished_blackstone_pressure_plate	Polished Blackstone Pressure Plate	64	528	881		0	1	1	0	0	-1	0
+light_weighted_pressure_plate	Light Weighted Pressure Plate	64	237	882		0	1	1	0	0	-1	0
+heavy_weighted_pressure_plate	Heavy Weighted Pressure Plate	64	236	883		0	1	1	0	0	-1	0
+oak_button	Oak Button	64	6	884		0	1	1	0	0	-1	0
+oak_pressure_plate	Oak Pressure Plate	64	6	885		0	1	1	0	0	-1	0
+birch_button	Birch Button	64	75	886		0	1	1	0	0	-1	0
+birch_pressure_plate	Birch Pressure Plate	64	75	887		0	1	1	0	0	-1	0
+spruce_button	Spruce Button	64	81	888		0	1	1	0	0	-1	0
+spruce_pressure_plate	Spruce Pressure Plate	64	81	889		0	1	1	0	0	-1	0
+jungle_button	Jungle Button	64	89	890		0	1	1	0	0	-1	0
+jungle_pressure_plate	Jungle Pressure Plate	64	89	891		0	1	1	0	0	-1	0
+acacia_button	Acacia Button	64	98	892		0	1	1	0	0	-1	0
+acacia_pressure_plate	Acacia Pressure Plate	64	98	893		0	1	1	0	0	-1	0
+dark_oak_button	Dark Oak Button	64	107	894		0	1	1	0	0	-1	0
+dark_oak_pressure_plate	Dark Oak Pressure Plate	64	107	895		0	1	1	0	0	-1	0
+cherry_button	Cherry Button	64	116	896		0	1	1	0	0	-1	0
+cherry_pressure_plate	Cherry Pressure Plate	64	116	897		0	1	1	0	0	-1	0
+mangrove_button	Mangrove Button	64	125	898		0	1	1	0	0	-1	0
+mangrove_pressure_plate	Mangrove Pressure Plate	64	125	899		0	1	1	0	0	-1	0
+crimson_button	Crimson Button	64	134	900		0	1	1	0	0	-1	0
+crimson_pressure_plate	Crimson Pressure Plate	64	134	901		0	1	1	0	0	-1	0
+warped_button	Warped Button	64	143	902		0	1	1	0	0	-1	0
+warped_pressure_plate	Warped Pressure Plate	64	143	903		0	1	1	0	0	-1	0
+pine_button	Pine Button	64	152	904		0	1	1	0	0	-1	0
+pine_pressure_plate	Pine Pressure Plate	64	152	905		0	1	1	0	0	-1	0
+aspen_button	Aspen Button	64	161	906		0	1	1	0	0	-1	0
+aspen_pressure_plate	Aspen Pressure Plate	64	161	907		0	1	1	0	0	-1	0
+bamboo_button	Bamboo Button	64	516	908		0	1	1	0	0	-1	0
+bamboo_pressure_plate	Bamboo Pressure Plate	64	516	909		0	1	1	0	0	-1	0
+redstone_lamp	Redstone Lamp	64	695	910		0	1	1	0	0	-1	0
+repeater	Redstone Repeater	64	856	912		0	1	1	0	0	-1	0
+comparator	Redstone Comparator	64	857	913		0	1	1	0	0	-1	0
+observer	Observer	64	697	914		0	1	1	0	0	-1	0
+piston	Piston	64	700	915		0	1	1	0	0	-1	0
+sticky_piston	Sticky Piston	64	700	916		0	1	1	0	0	-1	0
+dispenser	Dispenser	64	22	921		0	1	1	0	0	-1	0
+dropper	Dropper	64	22	922		0	1	1	0	0	-1	0
+hopper	Hopper	64	858	923		0	1	1	0	0	-1	0
+daylight_detector	Daylight Detector	64	708	924		0	1	1	0	0	-1	0
+rain_detector	Rain Detector	64	708	925		0	1	1	0	0	-1	0
+command_block	Command Block	64	711	926		0	1	1	0	0	-1	0
+target	Target	64	713	927		0	1	1	0	0	-1	0
+copper_bulb	Copper Bulb	64	715	928		0	1	1	0	0	-1	0
+tripwire_hook	Tripwire Hook	64	859	931		0	1	1	0	0	-1	0
+rail	Rail	64	719	933		0	1	1	0	0	-1	0
+powered_rail	Powered Rail	64	720	934		0	1	1	0	0	-1	0
+detector_rail	Detector Rail	64	721	935		0	1	1	0	0	-1	0
+activator_rail	Activator Rail	64	722	936		0	1	1	0	0	-1	0
+oak_chair	Oak Chair	64	860	938		0	1	1	0	0	-1	0
+oak_stool	Oak Stool	64	861	939		0	1	1	0	0	-1	0
+oak_bench	Oak Bench	64	862	940		0	1	1	0	0	-1	0
+oak_table	Oak Table	64	863	941		0	1	1	0	0	-1	0
+oak_shelf	Oak Wall Shelf	64	864	942		0	1	1	0	0	-1	0
+oak_standing_shelf	Oak Standing Shelf	64	865	943		0	1	1	0	0	-1	0
+oak_bookcase	Oak Bookcase	64	866	944		0	1	1	0	0	-1	0
+oak_cabinet	Oak Cabinet	64	867	945		0	1	1	0	0	-1	0
+birch_chair	Birch Chair	64	868	946		0	1	1	0	0	-1	0
+birch_stool	Birch Stool	64	869	947		0	1	1	0	0	-1	0
+birch_bench	Birch Bench	64	870	948		0	1	1	0	0	-1	0
+birch_table	Birch Table	64	871	949		0	1	1	0	0	-1	0
+birch_shelf	Birch Wall Shelf	64	872	950		0	1	1	0	0	-1	0
+birch_standing_shelf	Birch Standing Shelf	64	873	951		0	1	1	0	0	-1	0
+birch_bookcase	Birch Bookcase	64	874	952		0	1	1	0	0	-1	0
+birch_cabinet	Birch Cabinet	64	875	953		0	1	1	0	0	-1	0
+spruce_chair	Spruce Chair	64	876	954		0	1	1	0	0	-1	0
+spruce_stool	Spruce Stool	64	877	955		0	1	1	0	0	-1	0
+spruce_bench	Spruce Bench	64	878	956		0	1	1	0	0	-1	0
+spruce_table	Spruce Table	64	879	957		0	1	1	0	0	-1	0
+spruce_shelf	Spruce Wall Shelf	64	880	958		0	1	1	0	0	-1	0
+spruce_standing_shelf	Spruce Standing Shelf	64	881	959		0	1	1	0	0	-1	0
+spruce_bookcase	Spruce Bookcase	64	882	960		0	1	1	0	0	-1	0
+spruce_cabinet	Spruce Cabinet	64	883	961		0	1	1	0	0	-1	0
+jungle_chair	Jungle Chair	64	884	962		0	1	1	0	0	-1	0
+jungle_stool	Jungle Stool	64	885	963		0	1	1	0	0	-1	0
+jungle_bench	Jungle Bench	64	886	964		0	1	1	0	0	-1	0
+jungle_table	Jungle Table	64	887	965		0	1	1	0	0	-1	0
+jungle_shelf	Jungle Wall Shelf	64	888	966		0	1	1	0	0	-1	0
+jungle_standing_shelf	Jungle Standing Shelf	64	889	967		0	1	1	0	0	-1	0
+jungle_bookcase	Jungle Bookcase	64	890	968		0	1	1	0	0	-1	0
+jungle_cabinet	Jungle Cabinet	64	891	969		0	1	1	0	0	-1	0
+acacia_chair	Acacia Chair	64	892	970		0	1	1	0	0	-1	0
+acacia_stool	Acacia Stool	64	893	971		0	1	1	0	0	-1	0
+acacia_bench	Acacia Bench	64	894	972		0	1	1	0	0	-1	0
+acacia_table	Acacia Table	64	895	973		0	1	1	0	0	-1	0
+acacia_shelf	Acacia Wall Shelf	64	896	974		0	1	1	0	0	-1	0
+acacia_standing_shelf	Acacia Standing Shelf	64	897	975		0	1	1	0	0	-1	0
+acacia_bookcase	Acacia Bookcase	64	898	976		0	1	1	0	0	-1	0
+acacia_cabinet	Acacia Cabinet	64	899	977		0	1	1	0	0	-1	0
+dark_oak_chair	Dark Oak Chair	64	900	978		0	1	1	0	0	-1	0
+dark_oak_stool	Dark Oak Stool	64	901	979		0	1	1	0	0	-1	0
+dark_oak_bench	Dark Oak Bench	64	902	980		0	1	1	0	0	-1	0
+dark_oak_table	Dark Oak Table	64	903	981		0	1	1	0	0	-1	0
+dark_oak_shelf	Dark Oak Wall Shelf	64	904	982		0	1	1	0	0	-1	0
+dark_oak_standing_shelf	Dark Oak Standing Shelf	64	905	983		0	1	1	0	0	-1	0
+dark_oak_bookcase	Dark Oak Bookcase	64	906	984		0	1	1	0	0	-1	0
+dark_oak_cabinet	Dark Oak Cabinet	64	907	985		0	1	1	0	0	-1	0
+cherry_chair	Cherry Chair	64	908	986		0	1	1	0	0	-1	0
+cherry_stool	Cherry Stool	64	909	987		0	1	1	0	0	-1	0
+cherry_bench	Cherry Bench	64	910	988		0	1	1	0	0	-1	0
+cherry_table	Cherry Table	64	911	989		0	1	1	0	0	-1	0
+cherry_shelf	Cherry Wall Shelf	64	912	990		0	1	1	0	0	-1	0
+cherry_standing_shelf	Cherry Standing Shelf	64	913	991		0	1	1	0	0	-1	0
+cherry_bookcase	Cherry Bookcase	64	914	992		0	1	1	0	0	-1	0
+cherry_cabinet	Cherry Cabinet	64	915	993		0	1	1	0	0	-1	0
+mangrove_chair	Mangrove Chair	64	916	994		0	1	1	0	0	-1	0
+mangrove_stool	Mangrove Stool	64	917	995		0	1	1	0	0	-1	0
+mangrove_bench	Mangrove Bench	64	918	996		0	1	1	0	0	-1	0
+mangrove_table	Mangrove Table	64	919	997		0	1	1	0	0	-1	0
+mangrove_shelf	Mangrove Wall Shelf	64	920	998		0	1	1	0	0	-1	0
+mangrove_standing_shelf	Mangrove Standing Shelf	64	921	999		0	1	1	0	0	-1	0
+mangrove_bookcase	Mangrove Bookcase	64	922	1000		0	1	1	0	0	-1	0
+mangrove_cabinet	Mangrove Cabinet	64	923	1001		0	1	1	0	0	-1	0
+crimson_chair	Crimson Chair	64	924	1002		0	1	1	0	0	-1	0
+crimson_stool	Crimson Stool	64	925	1003		0	1	1	0	0	-1	0
+crimson_bench	Crimson Bench	64	926	1004		0	1	1	0	0	-1	0
+crimson_table	Crimson Table	64	927	1005		0	1	1	0	0	-1	0
+crimson_shelf	Crimson Wall Shelf	64	928	1006		0	1	1	0	0	-1	0
+crimson_standing_shelf	Crimson Standing Shelf	64	929	1007		0	1	1	0	0	-1	0
+crimson_bookcase	Crimson Bookcase	64	930	1008		0	1	1	0	0	-1	0
+crimson_cabinet	Crimson Cabinet	64	931	1009		0	1	1	0	0	-1	0
+warped_chair	Warped Chair	64	932	1010		0	1	1	0	0	-1	0
+warped_stool	Warped Stool	64	933	1011		0	1	1	0	0	-1	0
+warped_bench	Warped Bench	64	934	1012		0	1	1	0	0	-1	0
+warped_table	Warped Table	64	935	1013		0	1	1	0	0	-1	0
+warped_shelf	Warped Wall Shelf	64	936	1014		0	1	1	0	0	-1	0
+warped_standing_shelf	Warped Standing Shelf	64	937	1015		0	1	1	0	0	-1	0
+warped_bookcase	Warped Bookcase	64	938	1016		0	1	1	0	0	-1	0
+warped_cabinet	Warped Cabinet	64	939	1017		0	1	1	0	0	-1	0
+pine_chair	Pine Chair	64	940	1018		0	1	1	0	0	-1	0
+pine_stool	Pine Stool	64	941	1019		0	1	1	0	0	-1	0
+pine_bench	Pine Bench	64	942	1020		0	1	1	0	0	-1	0
+pine_table	Pine Table	64	943	1021		0	1	1	0	0	-1	0
+pine_shelf	Pine Wall Shelf	64	944	1022		0	1	1	0	0	-1	0
+pine_standing_shelf	Pine Standing Shelf	64	945	1023		0	1	1	0	0	-1	0
+pine_bookcase	Pine Bookcase	64	946	1024		0	1	1	0	0	-1	0
+pine_cabinet	Pine Cabinet	64	947	1025		0	1	1	0	0	-1	0
+aspen_chair	Aspen Chair	64	948	1026		0	1	1	0	0	-1	0
+aspen_stool	Aspen Stool	64	949	1027		0	1	1	0	0	-1	0
+aspen_bench	Aspen Bench	64	950	1028		0	1	1	0	0	-1	0
+aspen_table	Aspen Table	64	951	1029		0	1	1	0	0	-1	0
+aspen_shelf	Aspen Wall Shelf	64	952	1030		0	1	1	0	0	-1	0
+aspen_standing_shelf	Aspen Standing Shelf	64	953	1031		0	1	1	0	0	-1	0
+aspen_bookcase	Aspen Bookcase	64	954	1032		0	1	1	0	0	-1	0
+aspen_cabinet	Aspen Cabinet	64	955	1033		0	1	1	0	0	-1	0
+silver_ore	Silver Ore	64	724	1034		0	1	1	0	0	-1	0
+mithril_ore	Mithril Ore	64	725	1035		0	1	1	0	0	-1	0
+adamantite_ore	Adamantite Ore	64	726	1036		0	1	1	0	0	-1	0
+ruby_ore	Ruby Ore	64	727	1037		0	1	1	0	0	-1	0
+sapphire_ore	Sapphire Ore	64	728	1038		0	1	1	0	0	-1	0
+silver_block	Block of Silver	64	729	1039		0	1	1	0	0	-1	0
+steel_block	Block of Steel	64	730	1040		0	1	1	0	0	-1	0
+mithril_block	Block of Mithril	64	731	1041		0	1	1	0	0	-1	0
+adamantite_block	Block of Adamantite	64	732	1042		0	1	1	0	0	-1	0
+ruby_block	Block of Ruby	64	733	1043		0	1	1	0	0	-1	0
+sapphire_block	Block of Sapphire	64	734	1044		0	1	1	0	0	-1	0
+monster_spawner	Monster Cage	64	735	1045		0	1	1	0	0	-1	0
+rift_wall	Rift Stone	64	736	1046		0	1	1	0	0	-1	0
+rift_glass	Rift Glass	64	737	1047		0	1	1	0	0	-1	0
+rift_crystal	Rift Crystal	64	738	1048		0	1	1	0	0	-1	0
+ember_crust	Ember Crust	64	739	1049		0	1	1	0	0	-1	0
+dragon_egg_verdant	Verdant Dragon Egg	64	740	1050		0	1	1	0	0	-1	0
+dragon_egg_sand	Sand Dragon Egg	64	741	1051		0	1	1	0	0	-1	0
+dragon_egg_frost	Frost Dragon Egg	64	742	1052		0	1	1	0	0	-1	0
+dragon_egg_bog	Bog Dragon Egg	64	743	1053		0	1	1	0	0	-1	0
+dragon_egg_ember	Ember Dragon Egg	64	744	1054		0	1	1	0	0	-1	0
+dragon_egg_storm	Storm Dragon Egg	64	745	1055		0	1	1	0	0	-1	0
+dragon_egg_tide	Tide Dragon Egg	64	746	1056		0	1	1	0	0	-1	0
+dragon_egg_ender	Ender Dragon Egg	64	747	1057		0	1	1	0	0	-1	0
+quest_board	Quest Board	64	748	1058		0	1	1	0	0	-1	0
+end_portal_frame	End Portal Frame	64	751	1060		0	1	1	0	0	-1	0
+chorus_plant	Chorus Plant	64	754	1064		0	1	1	0	0	-1	0
+chorus_flower	Chorus Flower	64	755	1065		0	1	1	0	0	-1	0
+sculk	Sculk	64	756	1066		0	1	1	0	0	-1	0
+sculk_vein	Sculk Vein	64	757	1067		0	1	1	0	0	-1	0
+sculk_sensor	Sculk Sensor	64	758	1068		0	1	1	0	0	-1	0
+sculk_shrieker	Sculk Shrieker	64	761	1069		0	1	1	0	0	-1	0
+sculk_catalyst	Sculk Catalyst	64	764	1070		0	1	1	0	0	-1	0
+enchanting_table	Enchanting Table	64	770	1072		0	1	1	0	0	-1	0
+rope	Rope	64	956	1073		0	1	1	0	0	-1	0
+sleeping_bag	Sleeping Bag	64	957	1075		0	1	1	0	0	-1	0
+brewing_stand	Brewing Stand	64	958	1076		0	1	1	0	0	-1	0
+charred_log	Charred Log	64	777	1077		0	1	1	0	0	-1	0
+white_flag	White Flag	64	55	1078		0	1	1	0	0	-1	0
+white_banner	White Banner	64	55	1079		0	1	1	0	0	-1	0
+orange_flag	Orange Flag	64	350	1080		0	1	1	0	0	-1	0
+orange_banner	Orange Banner	64	350	1081		0	1	1	0	0	-1	0
+magenta_flag	Magenta Flag	64	356	1082		0	1	1	0	0	-1	0
+magenta_banner	Magenta Banner	64	356	1083		0	1	1	0	0	-1	0
+light_blue_flag	Light Blue Flag	64	362	1084		0	1	1	0	0	-1	0
+light_blue_banner	Light Blue Banner	64	362	1085		0	1	1	0	0	-1	0
+yellow_flag	Yellow Flag	64	368	1086		0	1	1	0	0	-1	0
+yellow_banner	Yellow Banner	64	368	1087		0	1	1	0	0	-1	0
+lime_flag	Lime Flag	64	374	1088		0	1	1	0	0	-1	0
+lime_banner	Lime Banner	64	374	1089		0	1	1	0	0	-1	0
+pink_flag	Pink Flag	64	380	1090		0	1	1	0	0	-1	0
+pink_banner	Pink Banner	64	380	1091		0	1	1	0	0	-1	0
+gray_flag	Gray Flag	64	386	1092		0	1	1	0	0	-1	0
+gray_banner	Gray Banner	64	386	1093		0	1	1	0	0	-1	0
+light_gray_flag	Light Gray Flag	64	392	1094		0	1	1	0	0	-1	0
+light_gray_banner	Light Gray Banner	64	392	1095		0	1	1	0	0	-1	0
+cyan_flag	Cyan Flag	64	398	1096		0	1	1	0	0	-1	0
+cyan_banner	Cyan Banner	64	398	1097		0	1	1	0	0	-1	0
+purple_flag	Purple Flag	64	404	1098		0	1	1	0	0	-1	0
+purple_banner	Purple Banner	64	404	1099		0	1	1	0	0	-1	0
+blue_flag	Blue Flag	64	410	1100		0	1	1	0	0	-1	0
+blue_banner	Blue Banner	64	410	1101		0	1	1	0	0	-1	0
+brown_flag	Brown Flag	64	416	1102		0	1	1	0	0	-1	0
+brown_banner	Brown Banner	64	416	1103		0	1	1	0	0	-1	0
+green_flag	Green Flag	64	422	1104		0	1	1	0	0	-1	0
+green_banner	Green Banner	64	422	1105		0	1	1	0	0	-1	0
+red_flag	Red Flag	64	428	1106		0	1	1	0	0	-1	0
+red_banner	Red Banner	64	428	1107		0	1	1	0	0	-1	0
+black_flag	Black Flag	64	434	1108		0	1	1	0	0	-1	0
+black_banner	Black Banner	64	434	1109		0	1	1	0	0	-1	0
+bunting	Bunting	64	428	1110		0	1	1	0	0	-1	0
+washing_line	Washing Line	64	55	1111		0	1	1	0	0	-1	0
+hanging_shop_sign	Hanging Shop Sign	16	81	1112		0	1	1	0	0	-1	0
+gate_barrier	Town Gate	64	81	1113		0	1	1	0	0	-1	0
+stick	Stick	64	959	-1		0	1	1	0	0	-1	0
+coal	Coal	64	960	-1		0	1	1	0	0	-1	0
+charcoal	Charcoal	64	961	-1		0	1	1	0	0	-1	0
+iron_ingot	Iron Ingot	64	962	-1		0	1	1	0	0	-1	0
+gold_ingot	Gold Ingot	64	963	-1		0	1	1	0	0	-1	0
+copper_ingot	Copper Ingot	64	964	-1		0	1	1	0	0	-1	0
+tin_ingot	Tin Ingot	64	965	-1		0	1	1	0	0	-1	0
+bronze_ingot	Bronze Ingot	64	966	-1		0	1	1	0	0	-1	0
+diamond	Diamond	64	967	-1		0	1	1	0	0	-1	0
+emerald	Emerald	64	968	-1		0	1	1	0	0	-1	0
+lapis_lazuli	Lapis Lazuli	64	969	-1		0	1	1	0	0	-1	0
+quartz	Ember Quartz	64	970	-1		0	1	1	0	0	-1	0
+amethyst_shard	Amethyst Shard	64	971	-1		0	1	1	0	0	-1	0
+mese_crystal	Mese Crystal	64	972	-1		0	1	1	0	0	-1	0
+leather	Leather	64	973	-1		0	1	1	0	0	-1	0
+string	String	64	974	932		0	1	1	0	0	-1	0
+flint	Flint	64	975	-1		0	1	1	0	0	-1	0
+clay_ball	Clay Ball	64	976	-1		0	1	1	0	0	-1	0
+brick	Brick	64	977	-1		0	1	1	0	0	-1	0
+paper	Paper	64	978	-1		0	1	1	0	0	-1	0
+book	Book	64	979	-1		0	1	1	0	0	-1	0
+sugar	Sugar	64	980	-1		0	1	1	0	0	-1	0
+straw	Straw	64	981	-1		0	1	1	0	0	-1	0
+snowball	Snowball	16	982	-1		0	1	1	0	0	-1	0
+bowl	Bowl	64	983	-1		0	1	1	0	0	-1	0
+flour	Flour	64	984	-1		0	1	1	0	0	-1	0
+crushed_iron	Crushed Iron Ore	64	985	-1		0	1	1	0	0	-1	0
+crushed_gold	Crushed Gold Ore	64	986	-1		0	1	1	0	0	-1	0
+crushed_copper	Crushed Copper Ore	64	987	-1		0	1	1	0	0	-1	0
+crushed_tin	Crushed Tin Ore	64	988	-1		0	1	1	0	0	-1	0
+cinder_core	Cinder Core	64	989	-1		0	1	1	0	0	-1	0
+white_dye	White Dye	64	990	-1		0	1	1	0	0	-1	0
+orange_dye	Orange Dye	64	991	-1		0	1	1	0	0	-1	0
+magenta_dye	Magenta Dye	64	992	-1		0	1	1	0	0	-1	0
+light_blue_dye	Light Blue Dye	64	993	-1		0	1	1	0	0	-1	0
+yellow_dye	Yellow Dye	64	994	-1		0	1	1	0	0	-1	0
+lime_dye	Lime Dye	64	995	-1		0	1	1	0	0	-1	0
+pink_dye	Pink Dye	64	996	-1		0	1	1	0	0	-1	0
+gray_dye	Gray Dye	64	997	-1		0	1	1	0	0	-1	0
+light_gray_dye	Light Gray Dye	64	998	-1		0	1	1	0	0	-1	0
+cyan_dye	Cyan Dye	64	999	-1		0	1	1	0	0	-1	0
+purple_dye	Purple Dye	64	1000	-1		0	1	1	0	0	-1	0
+blue_dye	Blue Dye	64	1001	-1		0	1	1	0	0	-1	0
+brown_dye	Brown Dye	64	1002	-1		0	1	1	0	0	-1	0
+green_dye	Green Dye	64	1003	-1		0	1	1	0	0	-1	0
+red_dye	Red Dye	64	1004	-1		0	1	1	0	0	-1	0
+black_dye	Black Dye	64	1005	-1		0	1	1	0	0	-1	0
+apple	Apple	64	1006	-1		0	1	1	0	4	-1	0
+golden_apple	Golden Apple	64	1007	-1		0	1	1	0	8	-1	0
+berries	Wild Berries	64	1008	-1		0	1	1	0	2	-1	0
+raw_meat	Raw Boar Meat	64	1009	-1		0	1	1	0	3	-1	0
+cooked_meat	Roast Boar	64	1010	-1		0	1	1	0	8	-1	0
+bread	Bread	64	1011	-1		0	1	1	0	5	-1	0
+venison	Raw Venison	64	1012	-1		0	1	1	0	3	-1	0
+cooked_venison	Venison Steak	64	1013	-1		0	1	1	0	8	-1	0
+rabbit	Raw Rabbit	64	1014	-1		0	1	1	0	2	-1	0
+cooked_rabbit	Roast Rabbit	64	1015	-1		0	1	1	0	5	-1	0
+wheat	Wheat	64	1016	-1		0	1	1	0	0	-1	0
+wheat_seeds	Wheat Seeds	64	1017	491		0	1	1	0	0	-1	0
+carrot	Carrot	64	1018	-1		0	1	1	0	3	-1	0
+potato	Potato	64	1019	-1		0	1	1	0	1	-1	0
+baked_potato	Baked Potato	64	1020	-1		0	1	1	0	5	-1	0
+beetroot	Beetroot	64	1021	-1		0	1	1	0	1	-1	0
+beetroot_seeds	Beetroot Seeds	64	1022	494		0	1	1	0	0	-1	0
+beetroot_soup	Beetroot Soup	1	1023	-1		0	1	1	0	6	-1	0
+mushroom_stew	Mushroom Stew	1	1024	-1		0	1	1	0	6	-1	0
+melon_slice	Melon Slice	64	1025	-1		0	1	1	0	2	-1	0
+pumpkin_seeds	Pumpkin Seeds	64	1026	-1		0	1	1	0	0	-1	0
+pumpkin_pie	Pumpkin Pie	64	1027	-1		0	1	1	0	8	-1	0
+dried_kelp	Dried Kelp	64	1028	-1		0	1	1	0	1	-1	0
+beef	Raw Beef	64	1029	-1		0	1	1	0	3	-1	0
+cooked_beef	Steak	64	1030	-1		0	1	1	0	8	-1	0
+porkchop	Raw Porkchop	64	1031	-1		0	1	1	0	3	-1	0
+cooked_porkchop	Cooked Porkchop	64	1032	-1		0	1	1	0	8	-1	0
+chicken	Raw Chicken	64	1033	-1		0	1	1	0	2	-1	0
+cooked_chicken	Cooked Chicken	64	1034	-1		0	1	1	0	6	-1	0
+mutton	Raw Mutton	64	1035	-1		0	1	1	0	2	-1	0
+cooked_mutton	Cooked Mutton	64	1036	-1		0	1	1	0	6	-1	0
+cookie	Cookie	64	1037	-1		0	1	1	0	2	-1	0
+glow_berries	Glow Berries	64	1038	-1		0	1	1	0	2	-1	0
+honey_bottle	Honey Bottle	16	1039	-1		0	1	1	0	6	-1	0
+milk_bucket	Milk Bucket	1	1040	-1		0	1	1	0	0	-1	0
+cocoa_beans	Cocoa Beans	64	1041	-1		0	1	1	0	0	-1	0
+nether_wart_item	Nether Wart	64	1042	-1		0	1	1	0	0	-1	0
+melon_seeds	Melon Seeds	64	1043	-1		0	1	1	0	0	-1	0
+bone	Bone	64	1044	-1		0	1	1	0	0	-1	0
+bone_meal	Bone Meal	64	1045	-1		0	1	1	0	0	-1	0
+feather	Feather	64	1046	-1		0	1	1	0	0	-1	0
+egg	Egg	16	1047	-1		0	1	1	0	0	-1	0
+gunpowder	Gunpowder	64	1048	-1		0	1	1	0	0	-1	0
+slime_ball	Slimeball	64	1049	-1		0	1	1	0	0	-1	0
+honeycomb	Honeycomb	64	1050	-1		0	1	1	0	0	-1	0
+glass_bottle	Glass Bottle	16	1051	-1		0	1	1	0	0	-1	0
+iron_nugget	Iron Nugget	64	1052	-1		0	1	1	0	0	-1	0
+gold_nugget	Gold Nugget	64	1053	-1		0	1	1	0	0	-1	0
+nether_brick	Nether Brick	64	1054	-1		0	1	1	0	0	-1	0
+redstone	Redstone Dust	64	1055	874		0	1	1	0	0	-1	0
+we_wand	WorldEdit Wand	1	1056	-1		0	1	1	0	0	-1	0
+death_compass	Death Compass	1	1057	-1		0	1	1	0	0	-1	0
+heart_crystal	Heart Crystal	16	1058	-1		0	1	1	0	0	-1	0
+vigor_charm	Charm of Vigor	1	1059	-1		0	1	1	0	0	-1	0
+ember_charm	Ember Charm	1	1060	-1		0	1	1	0	0	-1	0
+tide_charm	Tide Charm	1	1061	-1		0	1	1	0	0	-1	0
+feather_charm	Feather Charm	1	1062	-1		0	1	1	0	0	-1	0
+minecart	Minecart	1	1063	-1		0	1	1	0	0	-1	0
+chest_minecart	Minecart with Chest	1	1064	-1		0	1	1	0	0	-1	0
+hopper_minecart	Minecart with Hopper	1	1065	-1		0	1	1	0	0	-1	0
+furnace_minecart	Minecart with Furnace	1	1066	-1		0	1	1	0	0	-1	0
+armor_stand	Armor Stand	16	1067	-1		0	1	1	0	0	-1	0
+tnt_minecart	Minecart with TNT	1	1068	-1		0	1	1	0	0	-1	0
+arrow	Arrow	64	1069	-1		0	1	1	0	0	-1	0
+bow	Bow	1	1070	-1	bow	0	1	1	384	0	-1	0
+compass	Compass	1	1071	-1		0	1	1	0	0	-1	0
+clock	Clock	1	1072	-1		0	1	1	0	0	-1	0
+spyglass	Spyglass	1	1073	-1		0	1	1	0	0	-1	0
+music_disc_ember	Music Disc — Ember	1	1074	-1		0	1	1	0	0	-1	0
+music_disc_tide	Music Disc — Tide	1	1075	-1		0	1	1	0	0	-1	0
+music_disc_grove	Music Disc — Grove	1	1076	-1		0	1	1	0	0	-1	0
+music_disc_sun	Music Disc — Sunrise	1	1077	-1		0	1	1	0	0	-1	0
+wood_pickaxe	Wooden Pickaxe	1	1078	-1	pickaxe	1	2	2	60	0	-1	0
+wood_axe	Wooden Axe	1	1079	-1	axe	1	2	3	60	0	-1	0
+wood_shovel	Wooden Shovel	1	1080	-1	shovel	1	2	1	60	0	-1	0
+wood_sword	Wooden Sword	1	1081	-1	sword	1	2	4	60	0	-1	0
+wood_hoe	Wooden Hoe	1	1082	-1	hoe	1	2	1	60	0	-1	0
+stone_pickaxe	Stone Pickaxe	1	1083	-1	pickaxe	2	4	3	132	0	-1	0
+stone_axe	Stone Axe	1	1084	-1	axe	2	4	4	132	0	-1	0
+stone_shovel	Stone Shovel	1	1085	-1	shovel	2	4	2	132	0	-1	0
+stone_sword	Stone Sword	1	1086	-1	sword	2	4	5	132	0	-1	0
+stone_hoe	Stone Hoe	1	1087	-1	hoe	2	4	2	132	0	-1	0
+copper_pickaxe	Copper Pickaxe	1	1088	-1	pickaxe	2	4.5	3	180	0	-1	0
+copper_axe	Copper Axe	1	1089	-1	axe	2	4.5	4	180	0	-1	0
+copper_shovel	Copper Shovel	1	1090	-1	shovel	2	4.5	2	180	0	-1	0
+copper_sword	Copper Sword	1	1091	-1	sword	2	4.5	5	180	0	-1	0
+copper_hoe	Copper Hoe	1	1092	-1	hoe	2	4.5	2	180	0	-1	0
+bronze_pickaxe	Bronze Pickaxe	1	1093	-1	pickaxe	3	5.5	4	220	0	-1	0
+bronze_axe	Bronze Axe	1	1094	-1	axe	3	5.5	5	220	0	-1	0
+bronze_shovel	Bronze Shovel	1	1095	-1	shovel	3	5.5	3	220	0	-1	0
+bronze_sword	Bronze Sword	1	1096	-1	sword	3	5.5	6	220	0	-1	0
+bronze_hoe	Bronze Hoe	1	1097	-1	hoe	3	5.5	3	220	0	-1	0
+iron_pickaxe	Iron Pickaxe	1	1098	-1	pickaxe	3	6	4	251	0	-1	0
+iron_axe	Iron Axe	1	1099	-1	axe	3	6	5	251	0	-1	0
+iron_shovel	Iron Shovel	1	1100	-1	shovel	3	6	3	251	0	-1	0
+iron_sword	Iron Sword	1	1101	-1	sword	3	6	6	251	0	-1	0
+iron_hoe	Iron Hoe	1	1102	-1	hoe	3	6	3	251	0	-1	0
+gold_pickaxe	Golden Pickaxe	1	1103	-1	pickaxe	1	12	2	33	0	-1	0
+gold_axe	Golden Axe	1	1104	-1	axe	1	12	3	33	0	-1	0
+gold_shovel	Golden Shovel	1	1105	-1	shovel	1	12	1	33	0	-1	0
+gold_sword	Golden Sword	1	1106	-1	sword	1	12	4	33	0	-1	0
+gold_hoe	Golden Hoe	1	1107	-1	hoe	1	12	1	33	0	-1	0
+diamond_pickaxe	Diamond Pickaxe	1	1108	-1	pickaxe	4	8	5	1562	0	-1	0
+diamond_axe	Diamond Axe	1	1109	-1	axe	4	8	6	1562	0	-1	0
+diamond_shovel	Diamond Shovel	1	1110	-1	shovel	4	8	4	1562	0	-1	0
+diamond_sword	Diamond Sword	1	1111	-1	sword	4	8	7	1562	0	-1	0
+diamond_hoe	Diamond Hoe	1	1112	-1	hoe	4	8	4	1562	0	-1	0
+cinderite_pickaxe	Cinderite Pickaxe	1	1113	-1	pickaxe	5	10	6	2031	0	-1	0
+cinderite_axe	Cinderite Axe	1	1114	-1	axe	5	10	7	2031	0	-1	0
+cinderite_shovel	Cinderite Shovel	1	1115	-1	shovel	5	10	5	2031	0	-1	0
+cinderite_sword	Cinderite Sword	1	1116	-1	sword	5	10	8	2031	0	-1	0
+cinderite_hoe	Cinderite Hoe	1	1117	-1	hoe	5	10	5	2031	0	-1	0
+leather_helmet	Leather Helmet	1	1118	-1		0	1	1	0	0	0	1
+leather_chestplate	Leather Chestplate	1	1119	-1		0	1	1	0	0	1	3
+leather_leggings	Leather Leggings	1	1120	-1		0	1	1	0	0	2	2
+leather_boots	Leather Boots	1	1121	-1		0	1	1	0	0	3	1
+copper_helmet	Copper Helmet	1	1122	-1		0	1	1	0	0	0	2
+copper_chestplate	Copper Chestplate	1	1123	-1		0	1	1	0	0	1	4
+copper_leggings	Copper Leggings	1	1124	-1		0	1	1	0	0	2	3
+copper_boots	Copper Boots	1	1125	-1		0	1	1	0	0	3	1
+bronze_helmet	Bronze Helmet	1	1126	-1		0	1	1	0	0	0	2
+bronze_chestplate	Bronze Chestplate	1	1127	-1		0	1	1	0	0	1	5
+bronze_leggings	Bronze Leggings	1	1128	-1		0	1	1	0	0	2	4
+bronze_boots	Bronze Boots	1	1129	-1		0	1	1	0	0	3	2
+iron_helmet	Iron Helmet	1	1130	-1		0	1	1	0	0	0	2
+iron_chestplate	Iron Chestplate	1	1131	-1		0	1	1	0	0	1	6
+iron_leggings	Iron Leggings	1	1132	-1		0	1	1	0	0	2	5
+iron_boots	Iron Boots	1	1133	-1		0	1	1	0	0	3	2
+gold_helmet	Golden Helmet	1	1134	-1		0	1	1	0	0	0	2
+gold_chestplate	Golden Chestplate	1	1135	-1		0	1	1	0	0	1	5
+gold_leggings	Golden Leggings	1	1136	-1		0	1	1	0	0	2	3
+gold_boots	Golden Boots	1	1137	-1		0	1	1	0	0	3	1
+diamond_helmet	Diamond Helmet	1	1138	-1		0	1	1	0	0	0	3
+diamond_chestplate	Diamond Chestplate	1	1139	-1		0	1	1	0	0	1	8
+diamond_leggings	Diamond Leggings	1	1140	-1		0	1	1	0	0	2	6
+diamond_boots	Diamond Boots	1	1141	-1		0	1	1	0	0	3	3
+cinderite_helmet	Cinderite Helmet	1	1142	-1		0	1	1	0	0	0	3
+cinderite_chestplate	Cinderite Chestplate	1	1143	-1		0	1	1	0	0	1	9
+cinderite_leggings	Cinderite Leggings	1	1144	-1		0	1	1	0	0	2	7
+cinderite_boots	Cinderite Boots	1	1145	-1		0	1	1	0	0	3	3
+bucket	Bucket	16	1146	-1		0	1	1	0	0	-1	0
+water_bucket	Water Bucket	1	1147	-1		0	1	1	0	0	-1	0
+lava_bucket	Lava Bucket	1	1148	-1		0	1	1	0	0	-1	0
+flint_and_steel	Flint and Steel	1	1149	-1	igniter	0	1	1	64	0	-1	0
+shears	Shears	1	1150	-1	shears	0	5	1	238	0	-1	0
+rowboat	Rowboat	1	1151	-1		0	1	1	0	0	-1	0
+sailboat	Sailboat	1	1152	-1		0	1	1	0	0	-1	0
+leather_backpack	Leather Backpack	1	1153	-1		0	1	1	0	0	-1	0
+reinforced_backpack	Reinforced Backpack	1	1154	-1		0	1	1	0	0	-1	0
+ember_effigy	Ember Effigy	4	1155	-1		0	1	1	0	0	-1	0
+ember_blade	Ember Blade	1	1156	-1	sword	3	1.5	7	900	0	-1	0
+cinderite_shard	Cinderite Shard	64	1157	-1		0	1	1	0	0	-1	0
+aether_crystal	Aether Crystal	64	1158	-1		0	1	1	0	0	-1	0
+ember_igniter	Ember Igniter	1	1159	-1		0	1	1	0	0	-1	0
+pocket_key	Pocket Key	1	1160	-1		0	1	1	0	0	-1	0
+frost_shard	Frost Shard	64	1161	-1		0	1	1	0	0	-1	0
+frostbite_dagger	Frostbite Dagger	1	1162	-1	sword	3	1.5	7	700	0	-1	0
+cod	Raw Cod	64	1163	-1		0	1	1	0	1	-1	0
+cooked_cod	Cooked Cod	64	1164	-1		0	1	1	0	5	-1	0
+salmon	Raw Salmon	64	1165	-1		0	1	1	0	2	-1	0
+cooked_salmon	Cooked Salmon	64	1166	-1		0	1	1	0	6	-1	0
+tropical_fish	Tropical Fish	64	1167	-1		0	1	1	0	1	-1	0
+pufferfish	Pufferfish	64	1168	-1		0	1	1	0	1	-1	0
+ink_sac	Ink Sac	64	1169	-1		0	1	1	0	0	-1	0
+glow_ink_sac	Glow Ink Sac	64	1170	-1		0	1	1	0	0	-1	0
+turtle_scute	Turtle Scute	64	1171	-1		0	1	1	0	0	-1	0
+goat_horn	Goat Horn	1	1172	-1		0	1	1	0	0	-1	0
+spider_eye	Spider Eye	64	1173	-1		0	1	1	0	1	-1	0
+rotten_flesh	Rotten Flesh	64	1174	-1		0	1	1	0	1	-1	0
+rabbit_foot	Rabbit's Foot	64	1175	-1		0	1	1	0	0	-1	0
+venom_sac	Venom Sac	64	1176	-1		0	1	1	0	0	-1	0
+shark_tooth	Shark Tooth	64	1177	-1		0	1	1	0	0	-1	0
+ectoplasm	Ectoplasm	64	1178	-1		0	1	1	0	0	-1	0
+cinder_rod	Cinder Rod	64	1179	-1		0	1	1	0	0	-1	0
+magma_cream	Magma Cream	64	1180	-1		0	1	1	0	0	-1	0
+ogre_club	Ogre Club	1	1181	-1	sword	2	0.8	6.5	420	0	-1	0
+hex_flask	Hex Flask	16	1182	-1		0	1	1	0	0	-1	0
+croc_scale	Crocodile Scale	64	1183	-1		0	1	1	0	0	-1	0
+pelt	Pelt	64	1184	-1		0	1	1	0	0	-1	0
+saddle	Saddle	1	1185	-1		0	1	1	0	0	-1	0
+bow_pulling_0	Bow	1	1186	-1	bow	0	1	1	384	0	-1	0
+bow_pulling_1	Bow	1	1187	-1	bow	0	1	1	384	0	-1	0
+bow_pulling_2	Bow	1	1188	-1	bow	0	1	1	384	0	-1	0
+sailing_ship	Sailing Ship	1	1189	-1		0	1	1	0	0	-1	0
+fishing_rod	Fishing Rod	1	1190	-1	rod	0	1	1	64	0	-1	0
+fishing_rod_cast	Fishing Rod	1	1191	-1	rod	0	1	1	64	0	-1	0
+fishing_rod_tp	Fishing Rod	1	1190	-1	rod	0	1	1	64	0	-1	0
+white_cape	White Cape	1	1192	-1		0	1	1	0	0	-1	0
+orange_cape	Orange Cape	1	1193	-1		0	1	1	0	0	-1	0
+magenta_cape	Magenta Cape	1	1194	-1		0	1	1	0	0	-1	0
+light_blue_cape	Light Blue Cape	1	1195	-1		0	1	1	0	0	-1	0
+yellow_cape	Yellow Cape	1	1196	-1		0	1	1	0	0	-1	0
+lime_cape	Lime Cape	1	1197	-1		0	1	1	0	0	-1	0
+pink_cape	Pink Cape	1	1198	-1		0	1	1	0	0	-1	0
+gray_cape	Gray Cape	1	1199	-1		0	1	1	0	0	-1	0
+light_gray_cape	Light Gray Cape	1	1200	-1		0	1	1	0	0	-1	0
+cyan_cape	Cyan Cape	1	1201	-1		0	1	1	0	0	-1	0
+purple_cape	Purple Cape	1	1202	-1		0	1	1	0	0	-1	0
+blue_cape	Blue Cape	1	1203	-1		0	1	1	0	0	-1	0
+brown_cape	Brown Cape	1	1204	-1		0	1	1	0	0	-1	0
+green_cape	Green Cape	1	1205	-1		0	1	1	0	0	-1	0
+red_cape	Red Cape	1	1206	-1		0	1	1	0	0	-1	0
+black_cape	Black Cape	1	1207	-1		0	1	1	0	0	-1	0
+ember_cape	Ember Cape	1	1208	-1		0	1	1	0	0	-1	0
+frost_cape	Frost Cape	1	1209	-1		0	1	1	0	0	-1	0
+royal_cape	Royal Cape	1	1210	-1		0	1	1	0	0	-1	0
+silver_pickaxe	Silver Pickaxe	1	1211	-1	pickaxe	3	7	4	280	0	-1	0
+silver_axe	Silver Axe	1	1212	-1	axe	3	7	5	280	0	-1	0
+silver_shovel	Silver Shovel	1	1213	-1	shovel	3	7	3	280	0	-1	0
+silver_sword	Silver Sword	1	1214	-1	sword	3	7	6	280	0	-1	0
+silver_hoe	Silver Hoe	1	1215	-1	hoe	3	7	3	280	0	-1	0
+steel_pickaxe	Steel Pickaxe	1	1216	-1	pickaxe	4	7.5	5	1100	0	-1	0
+steel_axe	Steel Axe	1	1217	-1	axe	4	7.5	6	1100	0	-1	0
+steel_shovel	Steel Shovel	1	1218	-1	shovel	4	7.5	4	1100	0	-1	0
+steel_sword	Steel Sword	1	1219	-1	sword	4	7.5	7	1100	0	-1	0
+steel_hoe	Steel Hoe	1	1220	-1	hoe	4	7.5	4	1100	0	-1	0
+mithril_pickaxe	Mithril Pickaxe	1	1221	-1	pickaxe	5	11	6	2600	0	-1	0
+mithril_axe	Mithril Axe	1	1222	-1	axe	5	11	7	2600	0	-1	0
+mithril_shovel	Mithril Shovel	1	1223	-1	shovel	5	11	5	2600	0	-1	0
+mithril_sword	Mithril Sword	1	1224	-1	sword	5	11	8	2600	0	-1	0
+mithril_hoe	Mithril Hoe	1	1225	-1	hoe	5	11	5	2600	0	-1	0
+adamantite_pickaxe	Adamantite Pickaxe	1	1226	-1	pickaxe	6	12	7	3800	0	-1	0
+adamantite_axe	Adamantite Axe	1	1227	-1	axe	6	12	8	3800	0	-1	0
+adamantite_shovel	Adamantite Shovel	1	1228	-1	shovel	6	12	6	3800	0	-1	0
+adamantite_sword	Adamantite Sword	1	1229	-1	sword	6	12	9	3800	0	-1	0
+adamantite_hoe	Adamantite Hoe	1	1230	-1	hoe	6	12	6	3800	0	-1	0
+silver_helmet	Silver Helmet	1	1231	-1		0	1	1	0	0	0	2
+silver_chestplate	Silver Chestplate	1	1232	-1		0	1	1	0	0	1	6
+silver_leggings	Silver Leggings	1	1233	-1		0	1	1	0	0	2	5
+silver_boots	Silver Boots	1	1234	-1		0	1	1	0	0	3	3
+steel_helmet	Steel Helmet	1	1235	-1		0	1	1	0	0	0	3
+steel_chestplate	Steel Chestplate	1	1236	-1		0	1	1	0	0	1	7
+steel_leggings	Steel Leggings	1	1237	-1		0	1	1	0	0	2	6
+steel_boots	Steel Boots	1	1238	-1		0	1	1	0	0	3	3
+mithril_helmet	Mithril Helmet	1	1239	-1		0	1	1	0	0	0	3
+mithril_chestplate	Mithril Chestplate	1	1240	-1		0	1	1	0	0	1	9
+mithril_leggings	Mithril Leggings	1	1241	-1		0	1	1	0	0	2	7
+mithril_boots	Mithril Boots	1	1242	-1		0	1	1	0	0	3	3
+adamantite_helmet	Adamantite Helmet	1	1243	-1		0	1	1	0	0	0	4
+adamantite_chestplate	Adamantite Chestplate	1	1244	-1		0	1	1	0	0	1	10
+adamantite_leggings	Adamantite Leggings	1	1245	-1		0	1	1	0	0	2	8
+adamantite_boots	Adamantite Boots	1	1246	-1		0	1	1	0	0	3	3
+silver_ingot	Silver Ingot	64	1247	-1		0	1	1	0	0	-1	0
+steel_blend	Steel Blend	64	1248	-1		0	1	1	0	0	-1	0
+steel_ingot	Steel Ingot	64	1249	-1		0	1	1	0	0	-1	0
+mithril_ingot	Mithril Ingot	64	1250	-1		0	1	1	0	0	-1	0
+adamantite_ingot	Adamantite Ingot	64	1251	-1		0	1	1	0	0	-1	0
+ruby	Ruby	64	1252	-1		0	1	1	0	0	-1	0
+sapphire	Sapphire	64	1253	-1		0	1	1	0	0	-1	0
+emerald_pickaxe	Emerald Pickaxe	1	1254	-1	pickaxe	4	9	5	1800	0	-1	0
+emerald_axe	Emerald Axe	1	1255	-1	axe	4	9	6	1800	0	-1	0
+emerald_shovel	Emerald Shovel	1	1256	-1	shovel	4	9	4	1800	0	-1	0
+emerald_sword	Emerald Sword	1	1257	-1	sword	4	9	7	1800	0	-1	0
+emerald_hoe	Emerald Hoe	1	1258	-1	hoe	4	9	4	1800	0	-1	0
+emerald_helmet	Emerald Helmet	1	1259	-1		0	1	1	0	0	0	3
+emerald_chestplate	Emerald Chestplate	1	1260	-1		0	1	1	0	0	1	8
+emerald_leggings	Emerald Leggings	1	1261	-1		0	1	1	0	0	2	7
+emerald_boots	Emerald Boots	1	1262	-1		0	1	1	0	0	3	3
+empty_map	Empty Map	64	1263	-1		0	1	1	0	0	-1	0
+filled_map	Map	64	1264	-1		0	1	1	0	0	-1	0
+ale_mug	Mug of Ale	16	1265	-1		0	1	1	0	3	-1	0
+tome_firebolt	Tome: Firebolt	1	1266	-1		0	1	1	0	0	-1	0
+tome_frost	Tome: Frost Shard	1	1267	-1		0	1	1	0	0	-1	0
+tome_light	Tome: Witchlight	1	1268	-1		0	1	1	0	0	-1	0
+tome_heal	Tome: Mend	1	1269	-1		0	1	1	0	0	-1	0
+tome_levitate	Tome: Levitate	1	1270	-1		0	1	1	0	0	-1	0
+tome_stoneskin	Tome: Stoneskin	1	1271	-1		0	1	1	0	0	-1	0
+tome_blink	Tome: Blink	1	1272	-1		0	1	1	0	0	-1	0
+tome_familiar	Tome: Spirit Wolf	1	1273	-1		0	1	1	0	0	-1	0
+tome_ward	Tome: Ward	1	1274	-1		0	1	1	0	0	-1	0
+tome_lightning	Tome: Call Lightning	1	1275	-1		0	1	1	0	0	-1	0
+apprentice_staff	Apprentice Staff	1	1276	-1	staff	0	1	3	240	0	-1	0
+ruby_staff	Ruby Staff	1	1277	-1	staff	0	1	3	406	0	-1	0
+sapphire_staff	Sapphire Staff	1	1278	-1	staff	0	1	3	406	0	-1	0
+mithril_staff	Mithril Staff	1	1279	-1	staff	0	1	3	735	0	-1	0
+mage_helmet	Apprentice Hood	1	1280	-1		0	1	1	0	0	0	1
+mage_chestplate	Apprentice Robe	1	1281	-1		0	1	1	0	0	1	3
+mage_leggings	Apprentice Skirts	1	1282	-1		0	1	1	0	0	2	2
+mage_boots	Apprentice Shoes	1	1283	-1		0	1	1	0	0	3	1
+archmage_helmet	Archmage Hat	1	1284	-1		0	1	1	0	0	0	2
+archmage_chestplate	Archmage Robe	1	1285	-1		0	1	1	0	0	1	4
+archmage_leggings	Archmage Skirts	1	1286	-1		0	1	1	0	0	2	3
+archmage_boots	Archmage Shoes	1	1287	-1		0	1	1	0	0	3	1
+realm_fragment	Realm Fragment	16	1288	-1		0	1	1	0	0	-1	0
+watcher_blade	Watcher's Blade	1	1289	-1	sword	6	1	11	5200	0	-1	0
+rift_staff	Rift Staff	1	1290	-1	staff	0	1	4	4800	0	-1	0
+dragon_scale	Dragon Scale	64	1291	-1		0	1	1	0	0	-1	0
+dragonscale_helmet	Dragonscale Helmet	1	1292	-1		0	1	1	0	0	0	3
+dragonscale_chestplate	Dragonscale Chestplate	1	1293	-1		0	1	1	0	0	1	9
+dragonscale_leggings	Dragonscale Leggings	1	1294	-1		0	1	1	0	0	2	7
+dragonscale_boots	Dragonscale Boots	1	1295	-1		0	1	1	0	0	3	4
+whistle	Whistle	1	1296	-1		0	1	1	0	0	-1	0
+minotaur_horn	Minotaur Horn	64	1297	-1		0	1	1	0	0	-1	0
+lore_first_fire	Old Book: The First Fire	1	1298	-1		0	1	1	0	0	-1	0
+lore_sky_islands	Old Book: Of Islands in the Sky	1	1298	-1		0	1	1	0	0	-1	0
+lore_watcher	Old Book: A Mage's Warning	1	1298	-1		0	1	1	0	0	-1	0
+lore_six_wyrms	Old Book: The Seven Wyrms	1	1298	-1		0	1	1	0	0	-1	0
+lore_labyrinth	Old Book: Labyrinth Journal	1	1298	-1		0	1	1	0	0	-1	0
+lore_schools	Old Book: On the Schools of Magic	1	1298	-1		0	1	1	0	0	-1	0
+lore_drowned_temple	Old Book: The Drowned Temple	1	1298	-1		0	1	1	0	0	-1	0
+lore_miner	Old Book: A Miner's Last Entry	1	1298	-1		0	1	1	0	0	-1	0
+lore_desert	Old Book: The Sands Keep Secrets	1	1298	-1		0	1	1	0	0	-1	0
+lore_villages	Old Book: On the Villages	1	1298	-1		0	1	1	0	0	-1	0
+lore_keepers	Old Book: The Keepers Below	1	1298	-1		0	1	1	0	0	-1	0
+lore_sailor	Old Book: A Sailor's Log	1	1298	-1		0	1	1	0	0	-1	0
+lore_archmage	Old Book: The Hollow Archmage	1	1298	-1		0	1	1	0	0	-1	0
+lore_crust	Old Book: Of the Stacked Worlds	1	1298	-1		0	1	1	0	0	-1	0
+lore_end	Old Book: The End of All Roads	1	1298	-1		0	1	1	0	0	-1	0
+lore_rhyme	Old Book: A Children's Rhyme	1	1298	-1		0	1	1	0	0	-1	0
+enchanted_book	Enchanted Book	1	1299	-1		0	1	1	0	0	-1	0
+experience_bottle	Bottle o' Enchanting	64	1300	-1		0	1	1	0	0	-1	0
+glowstone_dust	Glowstone Dust	64	1301	-1		0	1	1	0	0	-1	0
+cinder_powder	Cinder Powder	64	1302	-1		0	1	1	0	0	-1	0
+fermented_spider_eye	Fermented Spider Eye	64	1303	-1		0	1	1	0	0	-1	0
+glistering_melon_slice	Glistering Melon Slice	64	1304	-1		0	1	1	0	0	-1	0
+golden_carrot	Golden Carrot	64	1305	-1		0	1	1	0	6	-1	0
+potion_water	Water Bottle	1	1306	-1		0	1	1	0	0	-1	0
+splash_potion_water	Splash Water Bottle	1	1307	-1		0	1	1	0	0	-1	0
+potion_awkward	Awkward Potion	1	1308	-1		0	1	1	0	0	-1	0
+splash_potion_awkward	Splash Awkward Potion	1	1309	-1		0	1	1	0	0	-1	0
+potion_swift	Potion of Swiftness	1	1310	-1		0	1	1	0	0	-1	0
+potion_swift_long	Potion of Swiftness	1	1310	-1		0	1	1	0	0	-1	0
+potion_swift_strong	Potion of Swiftness II	1	1310	-1		0	1	1	0	0	-1	0
+splash_potion_swift	Splash Potion of Swiftness	1	1311	-1		0	1	1	0	0	-1	0
+splash_potion_swift_long	Splash Potion of Swiftness	1	1311	-1		0	1	1	0	0	-1	0
+splash_potion_swift_strong	Splash Potion of Swiftness II	1	1311	-1		0	1	1	0	0	-1	0
+potion_leap	Potion of Leaping	1	1312	-1		0	1	1	0	0	-1	0
+potion_leap_long	Potion of Leaping	1	1312	-1		0	1	1	0	0	-1	0
+potion_leap_strong	Potion of Leaping II	1	1312	-1		0	1	1	0	0	-1	0
+splash_potion_leap	Splash Potion of Leaping	1	1313	-1		0	1	1	0	0	-1	0
+splash_potion_leap_long	Splash Potion of Leaping	1	1313	-1		0	1	1	0	0	-1	0
+splash_potion_leap_strong	Splash Potion of Leaping II	1	1313	-1		0	1	1	0	0	-1	0
+potion_strength	Potion of Strength	1	1314	-1		0	1	1	0	0	-1	0
+potion_strength_long	Potion of Strength	1	1314	-1		0	1	1	0	0	-1	0
+potion_strength_strong	Potion of Strength II	1	1314	-1		0	1	1	0	0	-1	0
+splash_potion_strength	Splash Potion of Strength	1	1315	-1		0	1	1	0	0	-1	0
+splash_potion_strength_long	Splash Potion of Strength	1	1315	-1		0	1	1	0	0	-1	0
+splash_potion_strength_strong	Splash Potion of Strength II	1	1315	-1		0	1	1	0	0	-1	0
+potion_regen	Potion of Regeneration	1	1316	-1		0	1	1	0	0	-1	0
+potion_regen_long	Potion of Regeneration	1	1316	-1		0	1	1	0	0	-1	0
+potion_regen_strong	Potion of Regeneration II	1	1316	-1		0	1	1	0	0	-1	0
+splash_potion_regen	Splash Potion of Regeneration	1	1317	-1		0	1	1	0	0	-1	0
+splash_potion_regen_long	Splash Potion of Regeneration	1	1317	-1		0	1	1	0	0	-1	0
+splash_potion_regen_strong	Splash Potion of Regeneration II	1	1317	-1		0	1	1	0	0	-1	0
+potion_poison	Potion of Poison	1	1318	-1		0	1	1	0	0	-1	0
+potion_poison_long	Potion of Poison	1	1318	-1		0	1	1	0	0	-1	0
+potion_poison_strong	Potion of Poison II	1	1318	-1		0	1	1	0	0	-1	0
+splash_potion_poison	Splash Potion of Poison	1	1319	-1		0	1	1	0	0	-1	0
+splash_potion_poison_long	Splash Potion of Poison	1	1319	-1		0	1	1	0	0	-1	0
+splash_potion_poison_strong	Splash Potion of Poison II	1	1319	-1		0	1	1	0	0	-1	0
+potion_fireres	Potion of Fire Resistance	1	1320	-1		0	1	1	0	0	-1	0
+potion_fireres_long	Potion of Fire Resistance	1	1320	-1		0	1	1	0	0	-1	0
+splash_potion_fireres	Splash Potion of Fire Resistance	1	1321	-1		0	1	1	0	0	-1	0
+splash_potion_fireres_long	Splash Potion of Fire Resistance	1	1321	-1		0	1	1	0	0	-1	0
+potion_breath	Potion of Water Breathing	1	1322	-1		0	1	1	0	0	-1	0
+potion_breath_long	Potion of Water Breathing	1	1322	-1		0	1	1	0	0	-1	0
+splash_potion_breath	Splash Potion of Water Breathing	1	1323	-1		0	1	1	0	0	-1	0
+splash_potion_breath_long	Splash Potion of Water Breathing	1	1323	-1		0	1	1	0	0	-1	0
+potion_night	Potion of Night Vision	1	1324	-1		0	1	1	0	0	-1	0
+potion_night_long	Potion of Night Vision	1	1324	-1		0	1	1	0	0	-1	0
+splash_potion_night	Splash Potion of Night Vision	1	1325	-1		0	1	1	0	0	-1	0
+splash_potion_night_long	Splash Potion of Night Vision	1	1325	-1		0	1	1	0	0	-1	0
+potion_slowfall	Potion of Slow Falling	1	1326	-1		0	1	1	0	0	-1	0
+potion_slowfall_long	Potion of Slow Falling	1	1326	-1		0	1	1	0	0	-1	0
+splash_potion_slowfall	Splash Potion of Slow Falling	1	1327	-1		0	1	1	0	0	-1	0
+splash_potion_slowfall_long	Splash Potion of Slow Falling	1	1327	-1		0	1	1	0	0	-1	0
+potion_turtle	Potion of the Turtle Master	1	1328	-1		0	1	1	0	0	-1	0
+potion_turtle_long	Potion of the Turtle Master	1	1328	-1		0	1	1	0	0	-1	0
+potion_turtle_strong	Potion of the Turtle Master II	1	1328	-1		0	1	1	0	0	-1	0
+splash_potion_turtle	Splash Potion of the Turtle Master	1	1329	-1		0	1	1	0	0	-1	0
+splash_potion_turtle_long	Splash Potion of the Turtle Master	1	1329	-1		0	1	1	0	0	-1	0
+splash_potion_turtle_strong	Splash Potion of the Turtle Master II	1	1329	-1		0	1	1	0	0	-1	0
+potion_heal	Potion of Healing	1	1330	-1		0	1	1	0	0	-1	0
+potion_heal_strong	Potion of Healing II	1	1330	-1		0	1	1	0	0	-1	0
+splash_potion_heal	Splash Potion of Healing	1	1331	-1		0	1	1	0	0	-1	0
+splash_potion_heal_strong	Splash Potion of Healing II	1	1331	-1		0	1	1	0	0	-1	0
+potion_mana	Potion of Mana	1	1332	-1		0	1	1	0	0	-1	0
+potion_mana_strong	Potion of Mana II	1	1332	-1		0	1	1	0	0	-1	0
+splash_potion_mana	Splash Potion of Mana	1	1333	-1		0	1	1	0	0	-1	0
+splash_potion_mana_strong	Splash Potion of Mana II	1	1333	-1		0	1	1	0	0	-1	0
+potion_slow	Potion of Slowness	1	1334	-1		0	1	1	0	0	-1	0
+potion_slow_long	Potion of Slowness	1	1334	-1		0	1	1	0	0	-1	0
+potion_slow_strong	Potion of Slowness II	1	1334	-1		0	1	1	0	0	-1	0
+splash_potion_slow	Splash Potion of Slowness	1	1335	-1		0	1	1	0	0	-1	0
+splash_potion_slow_long	Splash Potion of Slowness	1	1335	-1		0	1	1	0	0	-1	0
+splash_potion_slow_strong	Splash Potion of Slowness II	1	1335	-1		0	1	1	0	0	-1	0
+potion_weak	Potion of Weakness	1	1336	-1		0	1	1	0	0	-1	0
+potion_weak_long	Potion of Weakness	1	1336	-1		0	1	1	0	0	-1	0
+splash_potion_weak	Splash Potion of Weakness	1	1337	-1		0	1	1	0	0	-1	0
+splash_potion_weak_long	Splash Potion of Weakness	1	1337	-1		0	1	1	0	0	-1	0
+potion_harm	Potion of Harming	1	1338	-1		0	1	1	0	0	-1	0
+potion_harm_strong	Potion of Harming II	1	1338	-1		0	1	1	0	0	-1	0
+splash_potion_harm	Splash Potion of Harming	1	1339	-1		0	1	1	0	0	-1	0
+splash_potion_harm_strong	Splash Potion of Harming II	1	1339	-1		0	1	1	0	0	-1	0
+potion_invis	Potion of Invisibility	1	1340	-1		0	1	1	0	0	-1	0
+potion_invis_long	Potion of Invisibility	1	1340	-1		0	1	1	0	0	-1	0
+splash_potion_invis	Splash Potion of Invisibility	1	1341	-1		0	1	1	0	0	-1	0
+splash_potion_invis_long	Splash Potion of Invisibility	1	1341	-1		0	1	1	0	0	-1	0
+swet_ball	Swet Ball	64	1342	-1		0	1	1	0	0	-1	0
+aechor_petal	Aechor Petal	64	1343	-1		0	1	1	0	3	-1	0
+gust_puff	Gust Puff	64	1344	-1		0	1	1	0	0	-1	0
+grappling_hook	Grappling Hook	1	1345	-1	hook	0	1	2	240	0	-1	0
+campfire_kit	Campfire Kit	8	1346	-1		0	1	1	0	0	-1	0
+explorer_backpack	Explorer's Backpack	1	1347	-1		0	1	1	0	0	-1	0
+ender_pearl	Ender Pearl	16	1348	-1		0	1	1	0	0	-1	0
+ender_eye	Eye of Ender	64	1349	-1		0	1	1	0	0	-1	0
+chorus_fruit	Chorus Fruit	64	1350	-1		0	1	1	0	0	-1	0
+popped_chorus_fruit	Popped Chorus Fruit	64	1351	-1		0	1	1	0	0	-1	0
+elytra	Elytra	1	1352	-1		0	1	1	0	0	-1	0
+lore_deepdark	Old Book: The Silent City	1	1298	-1		0	1	1	0	0	-1	0
+echo_shard	Echo Shard	64	1353	-1		0	1	1	0	0	-1	0
+echo_charm	Echo Charm	1	1354	-1		0	1	1	0	0	-1	0
+tome_missiles	Tome: Arcane Missiles	1	1355	-1		0	1	1	0	0	-1	0
+tome_regrowth	Tome: Regrowth	1	1356	-1		0	1	1	0	0	-1	0
+tome_haste	Tome: Haste	1	1357	-1		0	1	1	0	0	-1	0
+tome_fireball	Tome: Fireball	1	1358	-1		0	1	1	0	0	-1	0
+tome_icenova	Tome: Ice Nova	1	1359	-1		0	1	1	0	0	-1	0
+tome_guardian	Tome: Stone Guardian	1	1360	-1		0	1	1	0	0	-1	0
+pyromancer_helmet	Pyromancer Hat	1	1361	-1		0	1	1	0	0	0	2
+pyromancer_chestplate	Pyromancer Robe	1	1362	-1		0	1	1	0	0	1	4
+pyromancer_leggings	Pyromancer Skirts	1	1363	-1		0	1	1	0	0	2	3
+pyromancer_boots	Pyromancer Shoes	1	1364	-1		0	1	1	0	0	3	1
+frostweaver_helmet	Frostweaver Hat	1	1365	-1		0	1	1	0	0	0	2
+frostweaver_chestplate	Frostweaver Robe	1	1366	-1		0	1	1	0	0	1	4
+frostweaver_leggings	Frostweaver Skirts	1	1367	-1		0	1	1	0	0	2	3
+frostweaver_boots	Frostweaver Shoes	1	1368	-1		0	1	1	0	0	3	1
+druid_helmet	Druid Hat	1	1369	-1		0	1	1	0	0	0	2
+druid_chestplate	Druid Robe	1	1370	-1		0	1	1	0	0	1	4
+druid_leggings	Druid Skirts	1	1371	-1		0	1	1	0	0	2	3
+druid_boots	Druid Shoes	1	1372	-1		0	1	1	0	0	3	1
+stormcaller_helmet	Stormcaller Hat	1	1373	-1		0	1	1	0	0	0	2
+stormcaller_chestplate	Stormcaller Robe	1	1374	-1		0	1	1	0	0	1	4
+stormcaller_leggings	Stormcaller Skirts	1	1375	-1		0	1	1	0	0	2	3
+stormcaller_boots	Stormcaller Shoes	1	1376	-1		0	1	1	0	0	3	1
+potion_clarity	Potion of Clarity	1	1377	-1		0	1	1	0	0	-1	0
+potion_clarity_long	Potion of Clarity	1	1377	-1		0	1	1	0	0	-1	0
+potion_clarity_strong	Potion of Clarity II	1	1377	-1		0	1	1	0	0	-1	0
+splash_potion_clarity	Splash Potion of Clarity	1	1378	-1		0	1	1	0	0	-1	0
+splash_potion_clarity_long	Splash Potion of Clarity	1	1378	-1		0	1	1	0	0	-1	0
+splash_potion_clarity_strong	Splash Potion of Clarity II	1	1378	-1		0	1	1	0	0	-1	0
+potion_fortune	Potion of Fortune	1	1379	-1		0	1	1	0	0	-1	0
+potion_fortune_long	Potion of Fortune	1	1379	-1		0	1	1	0	0	-1	0
+potion_fortune_strong	Potion of Fortune II	1	1379	-1		0	1	1	0	0	-1	0
+splash_potion_fortune	Splash Potion of Fortune	1	1380	-1		0	1	1	0	0	-1	0
+splash_potion_fortune_long	Splash Potion of Fortune	1	1380	-1		0	1	1	0	0	-1	0
+splash_potion_fortune_strong	Splash Potion of Fortune II	1	1380	-1		0	1	1	0	0	-1	0
+potion_haste	Potion of Haste	1	1381	-1		0	1	1	0	0	-1	0
+potion_haste_long	Potion of Haste	1	1381	-1		0	1	1	0	0	-1	0
+potion_haste_strong	Potion of Haste II	1	1381	-1		0	1	1	0	0	-1	0
+splash_potion_haste	Splash Potion of Haste	1	1382	-1		0	1	1	0	0	-1	0
+splash_potion_haste_long	Splash Potion of Haste	1	1382	-1		0	1	1	0	0	-1	0
+splash_potion_haste_strong	Splash Potion of Haste II	1	1382	-1		0	1	1	0	0	-1	0
+potion_warding	Potion of Warding	1	1383	-1		0	1	1	0	0	-1	0
+potion_warding_long	Potion of Warding	1	1383	-1		0	1	1	0	0	-1	0
+potion_warding_strong	Potion of Warding II	1	1383	-1		0	1	1	0	0	-1	0
+splash_potion_warding	Splash Potion of Warding	1	1384	-1		0	1	1	0	0	-1	0
+splash_potion_warding_long	Splash Potion of Warding	1	1384	-1		0	1	1	0	0	-1	0
+splash_potion_warding_strong	Splash Potion of Warding II	1	1384	-1		0	1	1	0	0	-1	0
+tomato	Tomato	64	1385	-1		0	1	1	0	2	-1	0
+tomato_seeds	Tomato Seeds	64	1386	495		0	1	1	0	0	-1	0
+onion	Onion	64	1387	-1		0	1	1	0	1	-1	0
+cabbage	Cabbage	64	1388	-1		0	1	1	0	2	-1	0
+cabbage_seeds	Cabbage Seeds	64	1389	497		0	1	1	0	0	-1	0
+corn	Ear of Corn	64	1390	-1		0	1	1	0	2	-1	0
+corn_seeds	Corn Seeds	64	1391	498		0	1	1	0	0	-1	0
+pepper	Pepper	64	1392	-1		0	1	1	0	1	-1	0
+pepper_seeds	Pepper Seeds	64	1393	499		0	1	1	0	0	-1	0
+strawberry	Strawberry	64	1394	-1		0	1	1	0	2	-1	0
+rice	Rice	64	1395	-1		0	1	1	0	0	-1	0
+cooked_rice	Cooked Rice	64	1396	-1		0	1	1	0	4	-1	0
+roasted_corn	Roasted Corn	64	1397	-1		0	1	1	0	6	-1	0
+tomato_soup	Tomato Soup	1	1398	-1		0	1	1	0	7	-1	0
+garden_salad	Garden Salad	1	1399	-1		0	1	1	0	8	-1	0
+vegetable_stew	Vegetable Stew	1	1400	-1		0	1	1	0	10	-1	0
+sushi	Sushi	64	1401	-1		0	1	1	0	5	-1	0
+stuffed_pepper	Stuffed Pepper	64	1402	-1		0	1	1	0	10	-1	0
+strawberry_tart	Strawberry Tart	64	1403	-1		0	1	1	0	8	-1	0
+pizza	Pizza	64	1404	-1		0	1	1	0	12	-1	0
+watering_can	Watering Can	1	1405	-1		0	1	1	0	0	-1	0
+lore_skylands_temple	Old Book: The Queen of the Air	1	1298	-1		0	1	1	0	0	-1	0
+lore_ember_lord	Old Book: The Ember Lord	1	1298	-1		0	1	1	0	0	-1	0
+golden_feather	Golden Feather	64	1406	-1		0	1	1	0	0	-1	0
+valkyrie_lance	Valkyrie Lance	1	1407	-1	sword	5	1.2	8.5	1600	0	-1	0
+ember_crown	Ember Crown	1	1408	-1		0	1	1	0	0	0	3
+end_crystal	End Crystal	64	65535	-1		0	1	1	0	0	-1	0
+crushed_silver	Crushed Silver Ore	64	1409	-1		0	1	1	0	0	-1	0
+crushed_mithril	Crushed Mithril Ore	64	1410	-1		0	1	1	0	0	-1	0
+crushed_adamantite	Crushed Adamantite Ore	64	1411	-1		0	1	1	0	0	-1	0
+carriage	Carriage	1	1412	-1		0	1	1	0	0	-1	0
+tome_flames	Tome: Flames	1	1413	-1		0	1	1	0	0	-1	0
+tome_chainlight	Tome: Chain Lightning	1	1414	-1		0	1	1	0	0	-1	0
+tome_healother	Tome: Healing Hands	1	1415	-1		0	1	1	0	0	-1	0
+tome_telekinesis	Tome: Telekinesis	1	1416	-1		0	1	1	0	0	-1	0
+tome_featherfall	Tome: Feather Fall	1	1417	-1		0	1	1	0	0	-1	0
+tome_waterbreath	Tome: Water Breathing	1	1418	-1		0	1	1	0	0	-1	0
+tome_homeport	Tome: Home Teleport	1	1419	-1		0	1	1	0	0	-1	0
+tome_lowalch	Tome: Low Alchemy	1	1420	-1		0	1	1	0	0	-1	0
+tome_nightsight	Tome: Night Eye	1	1421	-1		0	1	1	0	0	-1	0
+tome_invisibility	Tome: Invisibility	1	1422	-1		0	1	1	0	0	-1	0
+tome_drainlife	Tome: Drain Life	1	1423	-1		0	1	1	0	0	-1	0
+tome_raiseskel	Tome: Raise Skeleton	1	1424	-1		0	1	1	0	0	-1	0
+tome_entangle	Tome: Entangle	1	1425	-1		0	1	1	0	0	-1	0
+key_bronze	Bronze Key	1	1426	-1		0	1	1	0	0	-1	0
+key_silver	Silver Key	1	1427	-1		0	1	1	0	0	-1	0
+key_gold	Gold Key	1	1428	-1		0	1	1	0	0	-1	0
+lore_deep_halls	Old Book: The Keeper's Mural	1	1298	-1		0	1	1	0	0	-1	0
+treasure_map	Treasure Map	1	1429	-1		0	1	1	0	0	-1	0
+ghast_tear	Ghast Tear	64	1430	-1		0	1	1	0	0	-1	0
+firework_rocket	Firework Rocket	64	1431	-1		0	1	1	0	0	-1	0
+white_firework_rocket	White Firework Rocket	64	1432	-1		0	1	1	0	0	-1	0
+orange_firework_rocket	Orange Firework Rocket	64	1433	-1		0	1	1	0	0	-1	0
+magenta_firework_rocket	Magenta Firework Rocket	64	1434	-1		0	1	1	0	0	-1	0
+light_blue_firework_rocket	Light Blue Firework Rocket	64	1435	-1		0	1	1	0	0	-1	0
+yellow_firework_rocket	Yellow Firework Rocket	64	1436	-1		0	1	1	0	0	-1	0
+lime_firework_rocket	Lime Firework Rocket	64	1437	-1		0	1	1	0	0	-1	0
+pink_firework_rocket	Pink Firework Rocket	64	1438	-1		0	1	1	0	0	-1	0
+gray_firework_rocket	Gray Firework Rocket	64	1439	-1		0	1	1	0	0	-1	0
+light_gray_firework_rocket	Light Gray Firework Rocket	64	1440	-1		0	1	1	0	0	-1	0
+cyan_firework_rocket	Cyan Firework Rocket	64	1441	-1		0	1	1	0	0	-1	0
+purple_firework_rocket	Purple Firework Rocket	64	1442	-1		0	1	1	0	0	-1	0
+blue_firework_rocket	Blue Firework Rocket	64	1443	-1		0	1	1	0	0	-1	0
+brown_firework_rocket	Brown Firework Rocket	64	1444	-1		0	1	1	0	0	-1	0
+green_firework_rocket	Green Firework Rocket	64	1445	-1		0	1	1	0	0	-1	0
+red_firework_rocket	Red Firework Rocket	64	1446	-1		0	1	1	0	0	-1	0
+black_firework_rocket	Black Firework Rocket	64	1447	-1		0	1	1	0	0	-1	0

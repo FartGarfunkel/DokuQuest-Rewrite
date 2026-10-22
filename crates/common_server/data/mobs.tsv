@@ -1,0 +1,125 @@
+boar	Boar	boar	10	0.42	0.95	1.6	0	0	grazer	raw_meat:1:3:1;leather:0:2:1	3
+deer	Deer	deer	12	0.36	1.6	1.7	0	0	skittish,grazer,herd	venison:1:3:1;leather:1:2:1	4
+rabbit	Rabbit	rabbit	4	0.2	0.45	1.4	0	0	skittish,grazer,hopper	rabbit:1:1:0.9;leather:1:1:0.25;rabbit_foot:1:1:0.1	1
+cow	Cow	cow	10	0.45	1.4	1.3	0	0	grazer,herd	beef:1:3:1;leather:0:2:1	2
+pig	Pig	pig	10	0.45	0.9	1.4	0	0		porkchop:1:3:1	2
+sheep	Sheep	sheep	8	0.42	1.3	1.3	0	0	grazer,herd	mutton:1:2:1	2
+chicken	Chicken	chicken	4	0.2	0.7	1.2	0	0	floaty	chicken:1:1:1;feather:0:2:1	1
+ghoul	Ghoul	ghoul	20	0.3	1.95	2.7	3	1		leather:0:1:0.5;iron_ingot:1:1:0.04;coal:1:2:0.25;bone:0:2:0.6;gunpowder:1:1:0.12;rotten_flesh:0:2:1	6
+charred_ghoul	Charred Ghoul	ghoul	26	0.3	1.95	2.9	4	1	fireImmune	cinderite_shard:1:1:0.08;coal:1:3:0.5;gold_ingot:1:1:0.1;gunpowder:1:2:0.3;bone:0:2:0.4	9
+cinder_golem	Cinder Golem	cinder_golem	240	0.95	3.1	2.3	6	1	fireImmune,boss	cinder_core:1:1:1;iron_ingot:3:6:1;gold_ingot:1:3:1;cinderite_shard:1:2:0.5	150
+skeleton	a skeleton	skeleton	20	0.3	1.95	2.5	2	1	fleesSun,undead,ranged	bone:0:2:1;arrow:0:2:1	6
+spider	a spider	spider	16	0.62	0.9	3.6	2	1	climber	string:0:2:1;spider_eye:1:1:0.34	6
+fuseling	a fuseling	fuseling	20	0.32	1.45	2.4	0	1		gunpowder:0:2:1	6
+slime	a slime	slime	12	0.5	1	2	2	1	hopper	slime_ball:0:2:1	4
+horse	a horse	horse_chestnut	22	0.6	1.6	1.6	0	0	grazer,herd	leather:0:2:1	3
+donkey	a donkey	donkey	20	0.5	1.4	1.4	0	0	grazer,herd	leather:0:2:1	3
+llama	a llama	llama_cream	22	0.45	1.8	1.4	0	0	grazer,herd	leather:0:2:1	3
+camel	a camel	camel	32	0.8	2.3	1.2	0	0	grazer		4
+wolf	a wolf	wolf	8	0.3	0.85	2.2	2	0	prey		3
+fox	a fox	fox	10	0.3	0.7	2	2	0	nocturnal,skittish,prey		2
+snow_fox	a snow fox	snow_fox	10	0.3	0.7	2	2	0	nocturnal,skittish,prey		2
+raccoon	a raccoon	raccoon	8	0.28	0.55	1.9	0	0	nocturnal,skittish	leather:0:1:0.5	2
+cat	a cat	cat_tabby	10	0.3	0.7	1.8	1	0	skittish,prey	string:0:2:1	2
+ocelot	an ocelot	ocelot	10	0.3	0.7	2	2	0	skittish,prey		3
+polar_bear	a polar bear	polar_bear	30	0.7	1.4	1.8	6	0		cod:0:2:0.75;salmon:0:2:0.25	5
+brown_bear	a brown bear	brown_bear	30	0.7	1.45	1.8	6	0		raw_meat:1:3:1;leather:0:2:1	5
+panda	a panda	panda	20	0.65	1.25	1.2	4	0	angersWhenHurt	bamboo:0:2:1	3
+goat	a goat	goat	10	0.45	1.3	1.6	2	0	grazer	goat_horn:1:1:0.08	2
+armadillo	an armadillo	armadillo	12	0.35	0.45	1.2	0	0			2
+mouse	a mouse	mouse	2	0.15	0.22	1.8	0	0	skittish		1
+turkey	a turkey	turkey	8	0.3	0.95	1.3	0	0		chicken:1:2:1;feather:1:3:1	2
+duck	a duck	duck	4	0.25	0.6	1.2	0	0	floaty	chicken:1:1:1;feather:0:2:1	1
+parrot	a parrot	parrot_red	6	0.25	0.6	1.4	0	0	fly	feather:1:2:1	2
+bat	a bat	bat	6	0.25	0.5	2	0	0	fly,ambient		0
+bee	a bee	bee	3	0.12	0.14	1.6	1	0	fly		0
+squid	a squid	squid	10	0.45	0.9	1.2	0	0	swims,water	ink_sac:1:3:1	1
+glow_squid	a glow squid	glow_squid	10	0.45	0.9	1.2	0	0	swims,water	glow_ink_sac:1:3:1	1
+cod	a cod	cod	3	0.25	0.3	1.6	0	0	swims,water	cod:1:1:1;bone_meal:1:1:0.05	1
+salmon	a salmon	salmon	3	0.3	0.35	1.8	0	0	swims,water	salmon:1:1:1;bone_meal:1:1:0.05	1
+tropical_fish	a tropical fish	tropical_orange	3	0.25	0.35	1.6	0	0	swims,water	tropical_fish:1:1:1	1
+pufferfish	a pufferfish	pufferfish	3	0.3	0.3	1	0	0	swims,water	pufferfish:1:1:1	1
+dolphin	a dolphin	dolphin	10	0.45	0.6	4	3	0	swims,water,needsAir	cod:0:1:1	3
+turtle	a turtle	turtle	30	0.6	0.4	0.7	0	0	swims	seagrass:0:2:1	2
+axolotl	an axolotl	axolotl_pink	14	0.35	0.3	0.9	2	0	swims,prey		2
+frog	a frog	frog	10	0.25	0.45	1	0	0	swims,hopper		2
+aerbunny	an aerbunny	aerbunny	4	0.25	0.5	1.4	0	0	floaty,skittish,hopper	string:0:2:1	1
+moa	a moa	moa	20	0.5	1.9	1.8	0	0		feather:1:3:1;chicken:1:2:1	3
+husk	a husk	husk	20	0.3	1.95	2.4	3	1		leather:0:1:0.5;sand:0:2:0.5;bone:0:2:0.5	5
+drowned	a drowned	drowned	20	0.3	1.95	2.3	3	1	swims,undead	bone:0:2:0.6;gold_ingot:1:1:0.08;kelp:0:2:0.4	5
+stray	a stray	stray	20	0.3	1.95	2.5	2	1	fleesSun,undead,ranged	bone:0:2:1;arrow:0:2:1	6
+cave_spider	a cave spider	cave_spider	12	0.42	0.5	4	2	1	climber	string:0:2:1;venom_sac:0:1:0.25	5
+witch	a bog witch	witch	26	0.3	1.95	2.2	2	1		glass_bottle:0:2:0.8;sugar:0:2:0.4;redstone:0:2:0.4;stick:0:2:0.4;hex_flask:1:1:0.12;glass_bottle:0:2:0.6;glowstone_dust:0:2:0.4;sugar:0:2:0.4;redstone:0:2:0.4;spider_eye:0:1:0.3;gunpowder:0:2:0.3;potion_heal:1:1:0.08;potion_fireres:1:1:0.05	8
+stone_mite	a stone mite	stone_mite	8	0.25	0.3	3.6	1	1			4
+wraith	a wraith	wraith	24	0.35	1.8	3	4	1	flyer	ectoplasm:1:2:1	10
+cinder_wisp	a cinder wisp	cinder_wisp	20	0.35	1.1	2.4	3	1	flyer,fireImmune	cinder_rod:0:1:0.6;coal:0:2:0.4	10
+magma_slime	a magma slime	magma_slime	16	0.5	1	2.1	3	1	fireImmune,hopper	magma_cream:0:1:0.5	5
+raider	a marauder	raider	24	0.3	1.95	2.9	3	1		emerald:0:1:0.5;leather:0:1:0.5;bread:0:1:0.3	8
+werewolf	a werewolf	werewolf	40	0.4	2.15	4.4	6	1		pelt:1:2:1;raw_meat:0:2:0.6	20
+ogre	an ogre	ogre	80	0.62	2.7	1.9	8	1		ogre_club:1:1:0.35;leather:1:3:1;raw_meat:1:3:1	30
+crocodile	a crocodile	crocodile	30	0.55	0.6	1.6	6	0	swims,retaliates	croc_scale:0:2:0.8;leather:0:2:0.6	8
+shark	a shark	shark	30	0.6	0.7	3.2	5	0	swims,water,retaliates	shark_tooth:1:3:0.8;cod:0:2:0.5	8
+rattlesnake	a rattlesnake	rattlesnake	8	0.25	0.25	1.8	2	0	retaliates	venom_sac:0:1:0.35	3
+green_snake	a green snake	green_snake	8	0.25	0.25	2	2	0	retaliates	venom_sac:0:1:0.3	3
+adder	an adder	adder	8	0.25	0.25	1.8	2	0	retaliates	venom_sac:0:1:0.3	3
+scorpion	a scorpion	scorpion	14	0.45	0.45	3	2	1	dayNeutral	venom_sac:0:1:0.4;string:0:1:0.3	5
+lion	a lion	lion	30	0.5	1.3	1.8	6	0	prey	pelt:1:1:1;raw_meat:1:2:1	8
+lioness	a lioness	lioness	26	0.45	1.2	1.9	5	0	prey	pelt:0:1:1;raw_meat:1:2:1	7
+tiger	a tiger	tiger	30	0.5	1.3	1.8	7	0	prey,angersWhenHurt	pelt:1:1:1;raw_meat:1:2:1	9
+panther	a panther	panther	24	0.45	1.15	2	5	0	nocturnal,prey,angersWhenHurt	pelt:1:1:1	8
+snow_leopard	a snow leopard	snow_leopard	20	0.4	1	2	4	0	skittish,prey,angersWhenHurt	pelt:1:1:1	6
+phyg	a phyg	phyg	10	0.45	0.9	1.4	0	0	floaty		2
+flying_cow	a flying cow	flying_cow	10	0.45	1.4	1.3	0	0	floaty,grazer,herd		2
+sheepuff	a sheepuff	sheep	10	0.42	1.3	1.3	0	0	floaty,grazer,herd		2
+cockatrice	a cockatrice	moa	20	0.45	1.8	3.2	4	1		feather:0:2:1;chicken:0:1:0.5	7
+villager	a villager	raider	20	0.3	1.8	2.4	0	0	npc		0
+village_guard	a guard	raider	34	0.3	1.8	4	6	0	npc,guard		0
+iron_golem	an iron golem	iron_golem	100	0.7	2.85	2.6	10	0	golem	iron_ingot:3:5:1;flower_red:0:2:0.6	0
+grave_warden	the Grave Warden	grave_warden	110	0.45	2.8	2.4	6	1	fleesSun,undead,boss,ranged	bone:4:8:1;arrow:8:16:1	120
+rot_king	the Rot King	rot_king	140	0.5	2.8	2.7	7	1	boss	rotten_flesh:4:8:1;iron_ingot:2:5:1	120
+broodmother	the Broodmother	broodmother	100	1.3	1.6	3.6	5	1	boss,climber	string:6:12:1;spider_eye:2:4:1	120
+hex_matron	the Hex Matron	hex_matron	120	0.4	2.5	2.4	4	1	boss	redstone:4:8:1	120
+mimic	a mimic	mimic	36	0.45	0.9	3.2	5	1		emerald:2:6:1;gold_ingot:1:3:0.6;tome_firebolt:1:1:0.1;diamond:1:1:0.15	20
+rift_ghoul	a rift ghoul	ghoul	32	0.3	1.95	3.2	5	1			6
+rift_skeleton	a rift skeleton	skeleton	28	0.3	1.95	2.5	2	1	fleesSun,undead,ranged		6
+rift_spider	a rift spider	spider	26	0.62	0.9	3.6	4	1	climber		6
+herobrine	Herobrine	herobrine	360	0.3	1.8	4.4	7	1	fireImmune,boss		600
+verdant_dragon	the Verdant Dragon	verdant_dragon	260	1.4	3	4	8	1	boss	dragon_scale:8:14:1;emerald:10:20:1;heart_crystal:1:1:0.5	300
+verdant_drake	a verdant drake	verdant_drake	70	0.8	1.5	4.2	6	0	retaliates	dragon_scale:1:3:1	0
+sand_dragon	the Sand Dragon	sand_dragon	280	1.4	3	4	8	1	fireImmune,boss	dragon_scale:8:14:1;emerald:10:20:1;heart_crystal:1:1:0.5	300
+sand_drake	a sand drake	sand_drake	70	0.8	1.5	4.2	6	0	fireImmune,retaliates	dragon_scale:1:3:1	0
+frost_dragon	the Frost Dragon	frost_dragon	300	1.4	3	4	8	1	boss	dragon_scale:8:14:1;emerald:10:20:1;heart_crystal:1:1:0.5	300
+frost_drake	a frost drake	frost_drake	70	0.8	1.5	4.2	6	0	retaliates	dragon_scale:1:3:1	0
+bog_dragon	the Bog Dragon	bog_dragon	260	1.4	3	4	8	1	boss	dragon_scale:8:14:1;emerald:10:20:1;heart_crystal:1:1:0.5	300
+bog_drake	a bog drake	bog_drake	70	0.8	1.5	4.2	6	0	retaliates	dragon_scale:1:3:1	0
+ember_dragon	the Ember Dragon	ember_dragon	340	1.4	3	4	8	1	fireImmune,boss	dragon_scale:8:14:1;emerald:10:20:1;heart_crystal:1:1:0.5	300
+ember_drake	a ember drake	ember_drake	70	0.8	1.5	4.2	6	0	fireImmune,retaliates	dragon_scale:1:3:1	0
+storm_dragon	the Storm Dragon	storm_dragon	360	1.4	3	4	8	1	boss	dragon_scale:8:14:1;emerald:10:20:1;heart_crystal:1:1:0.5	300
+storm_drake	a storm drake	storm_drake	70	0.8	1.5	4.2	6	0	retaliates	dragon_scale:1:3:1	0
+tide_dragon	the Tide Dragon	tide_dragon	320	1.4	3	4	8	1	boss	dragon_scale:8:14:1;emerald:10:20:1;heart_crystal:1:1:0.5	300
+tide_drake	a tide drake	tide_drake	70	0.8	1.5	4.2	6	0	retaliates	dragon_scale:1:3:1	0
+spirit_wolf	a spirit wolf	wolf	26	0.3	0.85	4.5	5	0			0
+warlock	a warlock	warlock	26	0.3	1.9	2.6	3	1		lapis_lazuli:1:4:0.6;book:0:1:0.4;emerald:0:2:0.4;tome_light:1:1:0.05	14
+hollow_archmage	the Hollow Archmage	hollow_archmage	160	0.4	2.4	2.4	5	1	boss	emerald:6:12:1;sapphire:1:3:0.8;heart_crystal:1:1:0.4;tome_blink:1:1:0.3;tome_lightning:1:1:0.2;mithril_staff:1:1:0.12	160
+minotaur	the Minotaur	minotaur	220	0.6	3.2	3.2	9	1	boss	minotaur_horn:1:2:1;emerald:8:16:1;gold_ingot:3:8:1;heart_crystal:1:1:0.6;steel_ingot:2:5:0.6	220
+aerwhale	an aerwhale	aerwhale	60	1.4	2.3	2.2	0	0	flyer	leather:1:4:1	8
+zephyr	a zephyr	zephyr	20	0.8	1.7	2.6	0	1	flyer	gust_puff:1:2:1	9
+swet	a swet	swet	10	0.5	1	2.2	2	1	hopper	swet_ball:1:2:1	4
+golden_swet	a golden swet	golden_swet	14	0.5	1	2.4	3	1	hopper	swet_ball:1:3:1;gold_nugget:2:5:1	6
+aechor_plant	an aechor plant	aechor_plant	16	0.5	1.3	0	0	1		aechor_petal:1:2:1	6
+enderman	an enderman	enderman	40	0.34	2.9	3.4	7	1		ender_pearl:1:1:0.5	18
+end_crystal	an end crystal	end_crystal	1	0.7	2	0	0	0	fireImmune		0
+ender_dragon	the Ender Dragon	ender_dragon	600	1.9	3.6	5	11	1	fireImmune,boss	dragon_scale:14:22:1;emerald:20:36:1;heart_crystal:2:3:1;diamond:4:8:1	1500
+ender_drake	an ender drake	ender_drake	80	0.8	1.5	4.4	7	0	fireImmune,retaliates	dragon_scale:1:3:1	0
+warden	the Warden	warden	420	0.85	2.9	2.4	16	1	fireImmune,boss	sculk_catalyst:1:1:1;echo_shard:2:4:1	400
+valkyrie_queen	the Valkyrie Queen	hollow_archmage	280	0.4	2.4	3	7	1	boss	valkyrie_lance:1:1:1;aether_crystal:4:10:1;golden_feather:1:2:1;emerald:8:16:1;heart_crystal:1:1:0.5;lore_skylands_temple:1:1:0.5	260
+ember_lord	the Ember Lord	cinder_golem	380	0.95	3.1	2.3	8	1	fireImmune,boss	ember_crown:1:1:1;cinderite_shard:3:7:1;gold_ingot:4:10:1;emerald:8:16:1;heart_crystal:1:1:0.5;lore_ember_lord:1:1:0.5	320
+gaoler	the Gaoler	ogre	170	0.62	2.7	1.9	9	1	boss	emerald:4:10:1;iron_ingot:3:8:1;ogre_club:1:1:0.5	160
+lich_king	the Lich King	hollow_archmage	460	0.4	2.4	2.6	8	1	boss	emerald:10:20:1;diamond:2:5:1;heart_crystal:1:1:0.6;mithril_ingot:2:4:1	420
+warden_sun	the Sun Warden	cinder_golem	300	0.95	3.1	2.3	8	1	fireImmune,boss	gold_ingot:6:12:1;emerald:6:12:1;heart_crystal:1:1:0.3	300
+warden_moon	the Moon Warden	cinder_golem	300	0.95	3.1	2.3	8	1	fireImmune,boss	diamond:1:3:1;emerald:6:12:1;heart_crystal:1:1:0.3	300
+pirate	a pirate	raider	26	0.3	1.95	2.9	3	1		gold_nugget:1:4:0.6;emerald:0:2:0.5;bread:0:1:0.3	9
+pirate_captain	the Pirate Captain	raider	150	0.3	1.95	3.1	6	1	boss	treasure_map:1:1:1;gold_ingot:3:8:1;emerald:4:10:1;diamond:0:2:0.5	140
+wither_skeleton	a wither skeleton	wither_skeleton	30	0.36	2.4	3	5	1	undead,fireImmune	coal:0:1:0.6;bone:0:2:1	12
+zombie_pigman	a zombie pigman	zombie_pigman	20	0.3	1.95	2.6	5	0	undead,fireImmune	rotten_flesh:0:1:1;gold_nugget:0:1:1;gold_ingot:1:1:0.03	5
+ghast	a ghast	ghast	10	1.2	4.4	1.6	0	1	flyer,fireImmune	ghast_tear:0:1:0.8;gunpowder:0:2:1	5
