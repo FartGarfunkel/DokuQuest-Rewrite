@@ -14,25 +14,34 @@ Read THIS file, then only the file(s) your task names below. Do not scan the rep
 |---|---|---|
 | `crates/common_server` | Engine-agnostic core + `dq-server` bin. **Zero deps.** | yes — `cargo test -p common_server` |
 | `crates/game_engine` | Bevy **0.16** client, bin `dokuquest` | needs crates.io (CI) |
-| `crates/launcher` | Auto-updater, bin `dokuquest-launcher` | needs crates.io (CI) |
+| `crates/launcher` | Tauri launcher: original 0.9 `web/launcher.html` + Rust updater, bin `dokuquest-launcher` | needs crates.io (CI) |
 
 ## Where things live
 | Task | File |
 |---|---|
-| Add/edit a block (colours, look) | `common_server/src/blocks.rs` (one line) |
-| Change a block's micro-voxel pattern | `common_server/src/style.rs` (`cell`, `far`) |
+| Blocks / items / recipes / mobs / textures data | GENERATED from the JS game: `tools/port/extract.py` + `gen.py` → `common_server/data/*.tsv`, `tiles.bin`, `src/gen_blocks.rs` (never hand-edit) |
+| Block flags, shape boxes, mining rules | `common_server/src/blocks.rs`, `items.rs` (`drop_of`, `break_time`) |
+| Inventory, crafting, smelting logic | `common_server/src/items.rs` |
+| Mob data + rig parsing | `common_server/src/mobs.rs` |
+| Villages | `common_server/src/villages.rs` |
+| Micro-voxel colouring from tiles | `common_server/src/style.rs`, `tiles.rs` |
 | Terrain, caves, ores, trees, plants | `common_server/src/worldgen.rs` |
 | Add/move a dimension (stacked Y bands) | `common_server/src/dims.rs` + generator in `worldgen.rs` |
 | Meshing, LOD detail, plant/item voxel models | `common_server/src/mesh.rs` |
 | Save format, data folder | `common_server/src/save.rs` |
 | Chunk streaming, LOD rings, edits, autosave | `game_engine/src/world.rs` |
-| Movement, collision, break/place, hotbar | `game_engine/src/player.rs` |
-| Title screen + rotating panorama | `game_engine/src/menu.rs` |
+| Input (keyboard/mouse/gamepad) → `Controls` | `game_engine/src/controls.rs` |
+| Movement, collision, mining, placing, eating, attacking, `Ui` screen state | `game_engine/src/player.rs` |
+| Health, hunger, death, dropped items | `game_engine/src/survival.rs` |
+| Mob spawning, AI, bodies, animation, loot | `game_engine/src/mobs.rs` |
+| Inventory / crafting / furnace screens | `game_engine/src/invui.rs` |
+| UI palette + button helpers (0.9 look) | `game_engine/src/theme.rs` |
+| Title, world list, options, pause, death, settings | `game_engine/src/menu.rs` |
 | Sky, sun, fog, day/night, dimension skies | `game_engine/src/sky.rs` |
-| HUD, toasts | `game_engine/src/hud.rs` |
-| Held items (Cube-World voxel sprites) | `game_engine/src/items.rs` |
+| HUD (hotbar icons, bars), toasts, tile→icon cache | `game_engine/src/hud.rs` |
+| Item voxel models (cache), held item | `game_engine/src/items.rs` |
 | Falling leaves / ambient effects | `game_engine/src/fx.rs` |
-| Update check / download / launch | `launcher/src/main.rs` |
+| Launcher bridge (`window.emberLauncher`) / updater | `launcher/src/main.rs`, `update.rs` |
 | CI / releases (publish a release, tag `vX.Y.Z`, e.g. `gh api repos/FartGarfunkel/DokuQuest-Rewrite/releases -f tag_name=vX.Y.Z`) | `.github/workflows/` |
 
 ## Key design facts
@@ -41,21 +50,21 @@ Read THIS file, then only the file(s) your task names below. Do not scan the rep
 - Saves: `<data>/saves/<World>/world.txt` + edited chunks only. `<data>` = `~/.local/share/DokuQuest` (Linux) / `%APPDATA%\DokuQuest`.
 
 ## Port status (JS 0.9.0.90 → Rust)
-| JS module | Rust | Status |
+| JS area | Rust | Status |
 |---|---|---|
-| core/blocks.js | blocks.rs | 26 core blocks; rest to port |
-| world/worldgen*.js | worldgen.rs | new terrain + 4 bands; villages/structures TODO |
-| world/mesher.js | mesh.rs | rewritten for micro-voxels |
-| world/chunk.js, world.js | chunk.rs, world.rs | done (cubic chunks) |
-| game/player.js, physics.js | player.rs | basic; survival rules TODO |
-| ui/title.js | menu.rs | panorama + continue/new; world list/options TODO |
-| render/items3d.js | items.rs | sword + block items; port the rest as sprites |
-| save/storage.js | save.rs | new format; JS world import TODO |
-| everything else (mobs, inventory, crafting, villages, magic, redstone, net, mods…) | — | not started |
+| core/blocks.js, items.js (+TAGS, SMELTING) | generated data + blocks.rs, items.rs | all 1114 blocks, 1632 items, 1082 recipes, 127 smelts |
+| render/textures.js, doku*.js atlas | tiles.bin + style.rs | all tiles; each pixel = a micro-voxel |
+| render/rigs*.js, game/entities.js MOB_TYPES | mobs.rs (both crates) | 125 mob types + rigs; AI is an alpha subset |
+| world/* | chunk/worldgen/villages/world.rs | terrain, 4 stacked dims, caves, ores, trees, villages; JS structures/towns TODO |
+| game/player.js, physics.js, input/* | player.rs, controls.rs | movement, step-up, survival, gamepad |
+| game/inventory.js, ui/invui.js | items.rs, invui.rs | inventory, 2×2/3×3 crafting, furnace (not saved yet) |
+| ui/title.js, ui.js, hud.js | menu.rs, hud.rs, theme.rs | title/worlds/options/pause/death, HUD; skin editor/creator TODO |
+| launcher/desktop | launcher (Tauri) | same page; LAN + app self-update TODO |
+| everything else in game/ (ships, magic, redstone, enchanting, farming growth, net, mods…) | — | not started |
 
 ## Next chunks (suggested order)
 1. Shaders: wind sway for plants/leaves, wave water + shoreline foam, sky-gradient (port idea of TanTan's `bevy_sky_gradient`).
-2. Inventory + crafting + survival break times; port `core/items.js`.
-3. Mobs + AI; then villages/structures in worldgen.
+2. Save furnaces/chests; crop growth; tool durability; ranged mobs.
+3. Port JS structures (towns, dungeons, ruins) into worldgen.
 4. Networking in `dq-server`; mod API (DQ) via scripting.
 5. Resource packs mapped onto micro-voxels; settings menu (render distance, detail, potato preset).

@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DokuQuest Launcher</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ink: #f2ede4; --dim: #b9b0a2; --gold: #ffd75a; --ember: #ff8a3d;
+    --font: 'Pixelify Sans', ui-rounded, system-ui, 'Segoe UI', sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #2a1e15; color: var(--ink); font-family: var(--font); font-size: 15px; -webkit-user-select: none; user-select: none; overflow: hidden; }
+  /* dirt, like the old launcher */
+  .dirt { background-color: #3a2a1d; background-image: var(--dirt); background-size: 64px 64px; image-rendering: pixelated; }
+  .shell { display: grid; grid-template-rows: 1fr auto; height: 100%; }
+  .top { position: relative; min-height: 0; padding: 18px 18px 14px; display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; }
+  .top::before { content: ''; position: absolute; inset: 0; background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.55)); pointer-events: none; }
+  .news, .side { position: relative; min-height: 0; background: rgba(10, 8, 6, 0.78); border: 2px solid #000; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.07), 0 8px 24px rgba(0, 0, 0, 0.4); border-radius: 4px; }
+  .news { display: flex; flex-direction: column; overflow: hidden; }
+  .news header { padding: 10px 16px; border-bottom: 2px solid #000; background: rgba(255, 255, 255, 0.04); display: flex; align-items: baseline; gap: 10px; }
+  .news header h1 { margin: 0; font-size: 20px; font-weight: 600; color: #fff; text-shadow: 2px 2px 0 #3f3f3f; }
+  .news header span { color: var(--dim); font-size: 13px; }
+  .news .body { overflow-y: auto; padding: 4px 18px 18px; -webkit-user-select: text; user-select: text; }
+  .news article { padding: 14px 0; border-bottom: 1px dashed rgba(255, 255, 255, 0.12); }
+  .news article:last-child { border-bottom: 0; }
+  .news h2 { margin: 0 0 6px; font-size: 19px; font-weight: 600; color: var(--gold); text-shadow: 2px 2px 0 #3f2f00; }
+  .news h2 .date { margin-left: 8px; font-size: 12px; font-weight: 400; color: var(--dim); text-shadow: none; }
+  .news p { margin: 0 0 8px; color: var(--ink); line-height: 1.45; }
+  .news ul { margin: 0; padding-left: 20px; line-height: 1.5; color: #e4ddd2; }
+  .news li { margin: 3px 0; }
+  .news b { color: #fff; }
+  .side { padding: 14px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+  .side h3 { margin: 0; font-size: 14px; font-weight: 600; color: var(--dim); letter-spacing: 0.06em; text-transform: uppercase; }
+  .side p { margin: 0; color: #d8d0c4; font-size: 13px; line-height: 1.45; }
+  .side .worlds { display: flex; flex-direction: column; gap: 6px; }
+  .side .w { padding: 7px 9px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 3px; }
+  .side .w b { display: block; color: #fff; font-weight: 500; }
+  .side .w small { color: var(--dim); }
+  /* the bottom bar: logo and version on the left, your name and Play on the right */
+  .bar { position: relative; display: flex; align-items: center; gap: 16px; padding: 12px 18px; border-top: 2px solid #000; box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.08); }
+  .bar::before { content: ''; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); pointer-events: none; }
+  .bar > * { position: relative; }
+  .brand { display: flex; align-items: center; gap: 12px; margin-right: auto; min-width: 0; }
+  .brand img { width: 56px; height: 56px; image-rendering: pixelated; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6)); }
+  .brand .name { font-size: 26px; font-weight: 600; color: #fff; text-shadow: 3px 3px 0 #3f3f3f; line-height: 1; }
+  .brand .ver { color: var(--dim); font-size: 13px; margin-top: 4px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 12px; color: var(--dim); letter-spacing: 0.04em; }
+  .field input { width: 200px; height: 36px; padding: 0 10px; font: inherit; color: #fff; background: #000; border: 2px solid #a0a0a0; outline: none; }
+  .field input:focus { border-color: #fff; }
+  .mcbtn { height: 40px; padding: 0 18px; border: 2px solid #000; cursor: pointer; font: 500 17px var(--font); color: #e0e0e0; text-shadow: 2px 2px 0 #383838; background: #6e6e6e var(--btn) center / 100% 100%; image-rendering: pixelated; box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.32), inset -2px -4px 0 rgba(0, 0, 0, 0.32); white-space: nowrap; }
+  .mcbtn:hover, .mcbtn:focus-visible { background-color: #7d87c4; background-image: var(--btn-hi); color: #ffffa0; border-color: #fff; outline: none; }
+  .mcbtn:active { transform: translateY(1px); }
+  .mcbtn.play { height: 52px; min-width: 170px; font-size: 22px; background-color: #4f8a2f; background-image: var(--btn-go); }
+  .mcbtn.play:hover, .mcbtn.play:focus-visible { background-image: var(--btn-go-hi); }
+  .mcbtn.small { height: 34px; font-size: 14px; padding: 0 12px; }
+  .stackbtn { display: flex; flex-direction: column; gap: 6px; }
+  .playstack { align-items: stretch; } .mcbtn.small.server { font-size: 14px; height: 28px; opacity: 0.92; }
+  /* options */
+  dialog { color: var(--ink); background: rgba(14, 11, 8, 0.97); border: 2px solid #000; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.08), 0 20px 50px rgba(0, 0, 0, 0.6); padding: 18px 20px; width: min(440px, 92vw); max-height: 92vh; overflow-y: auto; font-family: var(--font); }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+  dialog h2 { margin: 0 0 12px; font-size: 20px; font-weight: 600; color: #fff; text-shadow: 2px 2px 0 #3f3f3f; }
+  .opt { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
+  .opt span { color: #e8e1d6; }
+  .opt small { display: block; color: var(--dim); font-size: 12px; }
+  .opt select, .opt input[type=range] { font: inherit; }
+  .opt select { background: #000; color: #fff; border: 2px solid #a0a0a0; padding: 3px 6px; }
+  .opt input[type=checkbox] { width: 18px; height: 18px; accent-color: #7d87c4; }
+  .dlg-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  .upd-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+  .upd-row .txt { flex: 1; min-width: 0; height: 34px; padding: 0 8px; font: inherit; color: #fff; background: #000; border: 2px solid #a0a0a0; outline: none; -webkit-user-select: text; user-select: text; }
+  .upd-row .txt:focus { border-color: #fff; }
+  .updmsg { margin: 4px 0 0; color: var(--dim); font-size: 13px; line-height: 1.4; min-height: 1em; }
+  .tok summary { cursor: pointer; color: var(--dim); font-size: 13px; padding: 4px 0; }
+  .notice { position: relative; padding: 6px 10px; background: rgba(79, 138, 47, 0.85); border: 2px solid #000; color: #fff; font-size: 14px; border-radius: 3px; cursor: pointer; max-width: 300px; }
+  [hidden] { display: none !important; }
+  @media (max-width: 760px) { .top { grid-template-columns: 1fr; } .side { display: none; } .brand .name { font-size: 20px; } .field input { width: 150px; } }
+  @media (max-width: 560px) { .bar { flex-wrap: wrap; } .brand { width: 100%; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="top dirt">
+    <section class="news" aria-label="News">
+      <header><h1>DokuQuest News</h1><span>What's new in each version</span></header>
+      <div class="body"><!--NEWS--></div>
+    </section>
+    <aside class="side">
+      <h3>Your worlds</h3>
+      <div class="worlds" id="worlds"><p>Worlds you play appear here.</p></div>
+      <h3>Tips</h3>
+      <p>F11 or Alt+Enter: full screen.<br>F2: screenshot. F5: change view.<br>T or /: chat and commands.</p>
+      <p>Worlds are kept in this app's game folder, so newer versions of the launcher find them.</p>
+    </aside>
+  </div>
+  <div class="bar dirt">
+    <div class="brand"><img src="icon.png" alt=""><div><div class="name">DokuQuest</div><div class="ver" id="ver"></div></div></div>
+    <div class="notice" id="notice" hidden></div>
+    <div class="field"><label for="pname">Player name</label><input id="pname" maxlength="16" spellcheck="false" autocomplete="off"></div>
+    <div class="stackbtn"><button class="mcbtn small" id="opts">Options...</button><button class="mcbtn small" id="folder">Game folder</button></div>
+    <div class="stackbtn playstack"><button class="mcbtn play" id="play">Play</button><button class="mcbtn small server" id="server" title="Run one of your worlds as a server for others to join">Dedicated Server</button></div>
+  </div>
+</div>
+
+<dialog id="dlg">
+  <h2>Launcher options</h2>
+  <label class="opt"><span>Start in full screen<small>F11 switches at any time</small></span><input type="checkbox" id="o-full"></label>
+  <label class="opt"><span>Render distance<small id="o-rd-v"></small></span><input type="range" id="o-rd" min="2" max="16" step="1"></label>
+  <label class="opt"><span>Particles</span><select id="o-part"><option value="2">All</option><option value="1">Decreased</option><option value="0">Minimal</option></select></label>
+  <label class="opt"><span>Frame rate limit</span><select id="o-fps"><option value="0">Match display (VSync)</option><option value="30">30 fps</option><option value="60">60 fps</option><option value="120">120 fps</option><option value="144">144 fps</option><option value="240">240 fps</option><option value="-1">Unlimited (VSync off, after restart)</option></select></label>
+  <label class="opt"><span>Keep the launcher open<small>Come back here when you quit the game</small></span><input type="checkbox" id="o-back"></label>
+  <div class="opt"><span>Game version <b id="o-ver"></b><small id="o-upmsg">Got a newer dokuquest.html? Install it here; your worlds stay as they are.</small></span><button class="mcbtn small" id="o-up">Install update…</button></div>
+  <div class="upd" id="o-upd" hidden>
+    <div class="opt"><span>Updates from GitHub<small>The repository with DokuQuest releases (owner/name)</small></span></div>
+    <div class="upd-row"><input id="o-src" class="txt" placeholder="owner/name" spellcheck="false" autocomplete="off"><button class="mcbtn small" id="o-chk">Check now</button></div>
+    <label class="opt"><span>Check when the launcher starts<small>New game versions install by themselves</small></span><input type="checkbox" id="o-auto"></label>
+    <details class="tok"><summary>Private repository?</summary><div class="upd-row"><input id="o-tok" class="txt" type="password" placeholder="read-only access token" spellcheck="false" autocomplete="off"><button class="mcbtn small" id="o-toksave">Save</button></div></details>
+    <p class="updmsg" id="o-chkmsg"></p>
+    <div class="upd-row" id="o-approw" hidden><button class="mcbtn small" id="o-app">Update the app</button><span class="updmsg" id="o-appmsg"></span></div>
+  </div>
+  <div class="dlg-btns"><button class="mcbtn small" id="dlg-ok">Done</button></div>
+</dialog>
+
+<script>
+(() => {
+  const L = window.emberLauncher || { version: '0.1.0', play() { location.href = 'index.html'; }, openFolder() {}, };
+  const $ = (s) => document.querySelector(s);
+  const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
+  const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* full */ } };
+
+  // dirt and button pictures, drawn here so the launcher needs no files
+  const rnd = (() => { let a = 1234567; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; })();
+  const tex = (w, h, f) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { x.fillStyle = f(i, j); x.fillRect(i, j, 1, 1); } return `url(${c.toDataURL()})`; };
+  const dirt = ['#7a5636', '#6b4a2e', '#86603d', '#5c3f27', '#937051', '#4e3420'];
+  const root = document.documentElement.style;
+  root.setProperty('--dirt', tex(16, 16, () => { const r = rnd(); return dirt[r < 0.3 ? 0 : r < 0.55 ? 1 : r < 0.72 ? 2 : r < 0.86 ? 3 : r < 0.93 ? 4 : 5]; }));
+  const grey = (b) => () => { const n = (rnd() - 0.5) * 22; return `rgb(${b[0] + n | 0},${b[1] + n | 0},${b[2] + n | 0})`; };
+  root.setProperty('--btn', tex(100, 10, grey([111, 111, 111])));
+  root.setProperty('--btn-hi', tex(100, 10, grey([124, 133, 190])));
+  root.setProperty('--btn-go', tex(100, 10, grey([78, 136, 46])));
+  root.setProperty('--btn-go-hi', tex(100, 10, grey([100, 160, 64])));
+
+  // the version as players see it: 0.9.0-alpha.8 is 0.9.0.8
+  const niceVer = (v) => String(v).replace(/-alpha\.(\d+)$/, '.$1').replace(/-alpha$/, '');
+  const showVer = (v) => { $('#ver').textContent = 'Alpha ' + niceVer(v) + ' · Launcher'; $('#o-ver').textContent = niceVer(v); };
+  showVer(L.version);
+  if (L.gameVersion) L.gameVersion().then(showVer).catch(() => {});
+  // news from the installed game file (an update brings its own notes); the built-in notes stay if there are none
+  const loadNews = () => { if (L.news) L.news().then(h => { if (h && h.trim()) $('.news .body').innerHTML = h; }).catch(() => {}); };
+  loadNews();
+  $('#o-up').onclick = async () => {
+    if (!L.installUpdate) { $('#o-upmsg').textContent = 'Updates install in the desktop app.'; return; }
+    const r = await L.installUpdate();
+    if (r.ok) { showVer(r.version); loadNews(); $('#o-upmsg').textContent = 'Installed ' + niceVer(r.version) + '. Press Play.'; }
+    else if (r.msg) $('#o-upmsg').textContent = r.msg;
+  };
+  // the name is player 1's name in the game
+  const profiles = read('emberwild.profiles', []);
+  $('#pname').value = (profiles[0] && profiles[0].name) || 'Wanderer';
+  const saveName = () => { const p = read('emberwild.profiles', []); p[0] = Object.assign({ skin: null }, p[0] || {}, { name: $('#pname').value.trim() || 'Wanderer' }); write('emberwild.profiles', p); };
+  $('#pname').addEventListener('change', saveName);
+  $('#pname').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#play').click(); });
+
+  // options are the game's own settings, plus two for the launcher
+  const lo = read('emberwild.launcher', { fullscreen: false, back: true });
+  const gs = () => read('emberwild.settings', {});
+  const setG = (k, v) => { const s = gs(); s[k] = v; write('emberwild.settings', s); };
+  const sync = () => {
+    const s = gs();
+    $('#o-full').checked = !!lo.fullscreen; $('#o-back').checked = lo.back !== false;
+    $('#o-rd').value = s.renderDist || 8; $('#o-rd-v').textContent = ($('#o-rd').value) + ' chunks';
+    $('#o-part').value = String(s.particles ?? 2); $('#o-fps').value = String(s.fpsLimit || 0);
+  };
+  $('#o-full').onchange = () => { lo.fullscreen = $('#o-full').checked; write('emberwild.launcher', lo); };
+  $('#o-back').onchange = () => { lo.back = $('#o-back').checked; write('emberwild.launcher', lo); };
+  $('#o-rd').oninput = () => { setG('renderDist', Number($('#o-rd').value)); $('#o-rd-v').textContent = $('#o-rd').value + ' chunks'; };
+  $('#o-part').onchange = () => setG('particles', Number($('#o-part').value));
+  $('#o-fps').onchange = () => { const v = Number($('#o-fps').value); setG('fpsLimit', v); try { window.emberLauncher && window.emberLauncher.gfx && window.emberLauncher.gfx({ unlockFps: v === -1 }); } catch (e) { /* (0.9.0.61) */ } };
+  $('#opts').onclick = () => { sync(); $('#dlg').showModal(); };
+  $('#dlg-ok').onclick = () => $('#dlg').close();
+  $('#folder').onclick = () => L.openFolder();
+  $('#play').onclick = () => { saveName(); L.play({ fullscreen: !!lo.fullscreen, back: lo.back !== false }); };
+  // 0.9.0.29: the same game, opened on its server screen
+  $('#server').onclick = () => { saveName(); if (L.server) L.server(); else L.play({ server: true, back: true }); };
+
+  // 0.9.0.40: updates from GitHub Releases. A newer game installs by itself; a newer app is offered.
+  const U = L.updates;
+  const openOpts = () => { sync(); $('#dlg').showModal(); };
+  const notice = (t, onClick) => { const n = $('#notice'); n.textContent = t || ''; n.hidden = !t; n.onclick = onClick || null; };
+  const mb = (b) => b ? ' (' + Math.max(1, Math.round(b / 1048576)) + ' MB)' : '';
+  let appReady = null, downloading = false;
+  const showCheck = (r, quiet) => {
+    if (!r || !r.ok) { if (!quiet) $('#o-chkmsg').textContent = (r && r.msg) || 'Could not check for updates.'; return; }
+    if (r.installed) { showVer(r.installed); loadNews(); $('#o-chkmsg').textContent = 'Installed ' + niceVer(r.installed) + '. Press Play.'; notice('Updated to ' + niceVer(r.installed) + ' · press Play'); }
+    else $('#o-chkmsg').textContent = 'You have the newest game (' + niceVer(r.current) + ').';
+    if (appReady) return;
+    $('#o-approw').hidden = !r.app;
+    if (r.app) {
+      $('#o-app').textContent = 'Update the app' + mb(r.app.size);
+      $('#o-appmsg').textContent = 'A new version of the app is out.';
+      if (!r.installed) notice('A new version of the app is out · Options', openOpts);
+    }
+  };
+  if (U) {
+    $('#o-upd').hidden = false;
+    const fill = (c) => { $('#o-src').value = c.source || ''; $('#o-src').placeholder = c.using && !c.source ? c.using : 'owner/name'; $('#o-auto').checked = c.auto !== false; $('#o-tok').placeholder = c.hasToken ? 'token saved (type a new one to replace it)' : 'read-only access token'; };
+    U.config().then(r => {
+      fill(r.config);
+      if (r.config.auto && r.config.using) U.check().then(r2 => showCheck(r2, true)).catch(() => {});
+    }).catch(() => {});
+    const saveSrc = async () => { const r = await U.config({ source: $('#o-src').value.trim() }); fill(r.config); if (!r.ok) { $('#o-chkmsg').textContent = r.msg; return false; } return true; };
+    $('#o-src').addEventListener('change', saveSrc);
+    $('#o-src').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#o-chk').click(); } });
+    $('#o-auto').onchange = () => U.config({ auto: $('#o-auto').checked });
+    $('#o-toksave').onclick = async () => { const r = await U.config({ token: $('#o-tok').value }); $('#o-tok').value = ''; fill(r.config); $('#o-chkmsg').textContent = r.config.hasToken ? 'Token saved.' : 'Token removed.'; };
+    $('#o-chk').onclick = async () => {
+      if (!(await saveSrc())) return;
+      $('#o-chk').disabled = true; $('#o-chkmsg').textContent = 'Checking…';
+      try { showCheck(await U.check()); } catch (e) { $('#o-chkmsg').textContent = 'Could not check for updates.'; }
+      $('#o-chk').disabled = false;
+    };
+    U.onProgress((f) => { if (downloading) $('#o-appmsg').textContent = 'Downloading… ' + Math.round(f * 100) + '%'; });
+    $('#o-app').onclick = async () => {
+      if (appReady) { $('#o-app').disabled = true; $('#o-appmsg').textContent = 'Restarting…'; U.restart(appReady); return; }
+      $('#o-app').disabled = true; $('#play').disabled = true; $('#o-appmsg').textContent = 'Downloading…';
+      let r;
+      downloading = true;
+      try { r = await U.updateApp(); } catch (e) { r = { ok: false, msg: 'The app update failed.' }; }
+      downloading = false;
+      $('#o-app').disabled = false; $('#play').disabled = false;
+      if (!r.ok) { $('#o-appmsg').textContent = r.msg; return; }
+      if (r.restart) {
+        appReady = r; $('#o-app').textContent = 'Restart now';
+        $('#o-appmsg').textContent = r.restart === 'linux' ? 'The new app is in place. Restart to use it.' : 'Downloaded. It installs while the app restarts.';
+        notice('App update ready · Options → Restart now', openOpts);
+      } else { $('#o-approw').hidden = false; $('#o-app').hidden = true; $('#o-appmsg').textContent = r.msg; }
+    };
+  }
+
+  // the worlds this copy has played (the game keeps a small list for us)
+  const list = read('emberwild.recent', []);
+  if (list.length) {
+    $('#worlds').innerHTML = '';
+    for (const w of list.slice(0, 6)) {
+      const el = document.createElement('div'); el.className = 'w';
+      const b = document.createElement('b'); b.textContent = w.name; const s = document.createElement('small');
+      s.textContent = (w.mode === 'creative' ? 'Creative' : 'Survival') + ' · ' + new Date(w.at).toLocaleDateString();
+      el.append(b, s); $('#worlds').append(el);
+    }
+  }
+  $('#play').focus();
+})();
+</script>
+</body>
+</html>
