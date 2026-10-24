@@ -223,25 +223,9 @@ void GameSession::render() {
 }
 
 void GameSession::drawHud() {
-  if (hudHidden) return;
-  ImDrawList* dl = ImGui::GetForegroundDrawList();
-  ImVec2 c(app.width * 0.5f, app.height * 0.5f);
-  if (!app.topScreen()) {
-    dl->AddLine(ImVec2(c.x - 9, c.y), ImVec2(c.x + 10, c.y), IM_COL32(255, 255, 255, 200), 2);
-    dl->AddLine(ImVec2(c.x, c.y - 9), ImVec2(c.x, c.y + 10), IM_COL32(255, 255, 255, 200), 2);
-  }
+  // the HUD itself (crosshair, hotbar, hearts, toasts, chat, F3 debug) is the UI's render layer (ui/hud.cpp);
+  // layers check hudHidden themselves (F1 hides everything but the chat and toasts, like the original)
   for (auto& l : layers) l->drawHud(*this);
-  if (debugOverlay || app.settings.showFps) {
-    std::string s = strFormat("DokuQuest %s  %.0f fps  (%s GL %d.%d)\n", DQ_VERSION, 1.0 / std::max(1e-3, app.dt), gfx.modern ? "Modern" : "Legacy", gfx.major, gfx.minor);
-    if (debugOverlay) {
-      vec3 p = player->pos; int d = dimOfY((int)p.y);
-      s += strFormat("XYZ %.2f / %.2f / %.2f  (%s, y %d in band)\n", p.x, p.y, p.z, dimName(d), (int)p.y - dimBase(d));
-      s += strFormat("chunks %zu  gen %d  sections %d/%d  mesh jobs %d\n", world().chunks().size(), world().pendingGeneration(), worldRenderer.drawnSections, worldRenderer.totalSections, worldRenderer.pendingJobs);
-      s += strFormat("day %lld  time %.0f  %s\n", (long long)level->info.day, level->info.time, target.hit ? reg().block(target.id).key.c_str() : "");
-      s += gfx.renderer;
-    }
-    dl->AddText(ImVec2(8, 8), IM_COL32(255, 255, 255, 230), s.c_str());
-  }
 }
 
 } // namespace dq

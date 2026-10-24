@@ -1,5 +1,11 @@
-// input/input.h — keyboard, mouse and controllers mapped to game actions (input/controls.js,
-// gamepad.js). Bindings are rebindable and saved in settings (keyBinds / padBinds).
+// input/input.h — keyboard, mouse and controllers mapped to game actions (input/input.js, controls.js,
+// gamepad.js, padsetup.js). Bindings are rebindable and saved in settings in the original's format:
+//   keyBinds { actionId: ["KeyW", "ArrowUp", "Mouse0", ...] }   (browser key codes)
+//   padBinds { actionId: [0, 14] }                               (standard pad layout numbers 0..15)
+//   padMaps  { "<pad name>": { b: [...16], ax: [...4] } }        (per-pad button map from the setup wizard)
+// Every controller is read into the standard layout first (0 A/bottom 1 B/right 2 X/left 3 Y/top 4 LB 5 RB
+// 6 LT 7 RT 8 Back 9 Start 10 L3 11 R3 12-15 d-pad up/down/left/right 16 Guide), so a pad SDL doesn't know
+// works once it has been set up, and the Nintendo layout option swaps A/B and X/Y like the original.
 #pragma once
 #include "common/settings.h"
 #include <SDL.h>
@@ -11,20 +17,42 @@ enum class Act : int {
   Forward, Back, Left, Right, Jump, Sneak, Sprint, Attack, Use, PickBlock, Inventory, Drop, Chat, Command, Pause,
   HideHud, Screenshot, Debug, View, SwapHands, PlaceMode, Hot1, Hot2, Hot3, Hot4, Hot5, Hot6, Hot7, Hot8, Hot9,
   HotNext, HotPrev, Map, PlayerList, Zoom,
-  // menu navigation (controllers / keys in menus)
+  // menu navigation (controllers / keys in menus; fixed, not rebindable)
   MenuUp, MenuDown, MenuLeft, MenuRight, MenuOk, MenuBack, MenuTabLeft, MenuTabRight,
+  // added with the full controls port (ids follow the original's KEY_ACTIONS)
+  Crawl, Shoulder, Skills, Spell, Stable, Journal, Spellbook, CastQuick,
+  MenuX, MenuY, MenuStart,
   Count
 };
-const char* actName(Act a);
+const char* actName(Act a);         // the original action id ("forward", "pick", "slot1", ...)
+const char* actLabel(Act a);        // "Walk forward", "Pick block", ...
+
+// The rebindable actions, in the order Settings → Controls lists them (KEY_ACTIONS then the pad-only ones).
+struct ActInfo { Act act; const char* id; const char* label; std::vector<std::string> keys; std::vector<int> pad; bool keyRow, padRow; };
+const std::vector<ActInfo>& actionTable();
+std::string keyName(const std::string& code);              // "KeyW" -> "W", "Mouse0" -> "Left click"
+extern const char* const PAD_BUTTON_NAMES[17];               // "A", "B", ... "D-pad →", "Guide"
+std::string padButtonName(int standardIndex, const std::string& layout);   // layout-aware (✕ / B jumps...)
+std::string scancodeToCode(SDL_Scancode sc);                 // SDL -> browser code ("KeyW")
+SDL_Scancode codeToScancode(const std::string& code);
 
 struct PadState {
-  SDL_GameController* ctl = nullptr;
+  SDL_GameController* ctl = nullptr;   // known to SDL's controller database
+  SDL_Joystick* joy = nullptr;         // always set (the controller's joystick, or a raw joystick)
   SDL_JoystickID id = -1;
   std::string name;
+  bool mapped = false;                 // read through a saved padMaps entry
+  std::array<bool, 17> b{}, prevB{};   // standard layout
+  std::array<float, 4> ax{};           // LX LY RX RY (dead zone applied, -1..1)
   vec2 lstick{0}, rstick{0};
   float lt = 0, rt = 0;
-  std::array<bool, SDL_CONTROLLER_BUTTON_MAX> btn{}, prevBtn{};
+  float navT = 0; ivec2 navDir{0};     // stick repeat for menus
+  float viewHold = 0; double sneakTap = -1; bool sprintLatch = false;
+  bool edge(int k) const { return b[k] && !prevB[k]; }
 };
+
+// raw joystick state, for the controller setup wizard
+struct RawPad { std::vector<u8> buttons; std::vector<float> axes; std::vector<u8> hats; std::string name; };
 
 class Input {
 public:
@@ -33,7 +61,7 @@ public:
   void handle(const SDL_Event& e);   // feed every SDL event
   void endFrame();
   bool down(Act a) const { return cur[(int)a]; }
-  bool pressed(Act a) const { return cur[(int)a] && !prev[(int)a]; }
+  bool pressed(Act a) const { return (cur[(int)a] && !prev[(int)a]) || pulse[(int)a]; }
   bool released(Act a) const { return !cur[(int)a] && prev[(int)a]; }
   vec2 moveAxis() const;             // x = strafe right, y = forward
   vec2 lookDelta() const;            // radians this frame (mouse + right stick * dt)
@@ -43,25 +71,46 @@ public:
   bool usingPad() const { return lastWasPad; }
   int padCount() const;
   std::vector<PadState>& pads() { return padList; }
-  SDL_Scancode keyFor(Act a) const { return keyBind[(int)a]; }
+  SDL_Scancode keyFor(Act a) const;  // first key bound (for hints)
   void bindKey(Act a, SDL_Scancode sc);
-  void saveBinds();
+  void saveBinds();                  // (binds already live in settings; kept for compatibility)
+  void reloadBinds();                // after Settings → Controls changed settings.keyBinds / padBinds / padMaps
   double dt = 0.016;
-  // raw text typed this frame (chat)
-  std::string typed;
+  std::string typed;                 // raw text typed this frame (chat)
+
+  // ---- extras used by menus ----
+  bool dropAll() const { return dropAllFlag; }          // Ctrl + drop
+  bool shiftHeld() const { return keys[SDL_SCANCODE_LSHIFT] || keys[SDL_SCANCODE_RSHIFT]; }
+  bool ctrlHeld() const { return keys[SDL_SCANCODE_LCTRL] || keys[SDL_SCANCODE_RCTRL]; }
+  bool keyDown(SDL_Scancode sc) const { return sc > 0 && sc < SDL_NUM_SCANCODES && keys[sc]; }
+  bool keyPressed(SDL_Scancode sc) const { return sc > 0 && sc < SDL_NUM_SCANCODES && keys[sc] && !prevKeys[sc]; }
+  ivec2 navStep() const { return nav; }                  // d-pad / stick (with repeat) / arrow keys this frame
+  float padScroll() const { return scrollPx; }           // right stick: pixels to scroll a menu this frame
+  bool padButtonDown(int k) const;                       // any pad, standard layout
+  bool padButtonPressed(int k) const;
+  // Settings → Controls: the next key / mouse button / pad button pressed (consumed by the reader)
+  std::string lastCode;              // browser code of a key or mouse button that went down this frame
+  int lastPadButton = -1;            // standard index pressed this frame
+  bool setupActive = false;          // controller setup wizard running: pads drive nothing
+  bool rawSnapshot(int padIndex, RawPad& out) const;
+  bool textActive = false;           // a text box has focus: keys don't trigger actions
 private:
   Settings* settings = nullptr;
-  std::array<bool, (int)Act::Count> cur{}, prev{};
-  std::array<SDL_Scancode, (int)Act::Count> keyBind{};
-  std::array<int, (int)Act::Count> mouseBind{};          // SDL_BUTTON_* or 0
-  std::array<int, (int)Act::Count> padBind{};            // SDL_GameControllerButton + 1, or negative for axes
-  bool keys[SDL_NUM_SCANCODES]{};
+  std::array<bool, (int)Act::Count> cur{}, prev{}, pulse{};
+  std::array<std::vector<std::string>, (int)Act::Count> keyCodes;
+  std::array<std::vector<int>, (int)Act::Count> padCodes;
+  bool keys[SDL_NUM_SCANCODES]{}, prevKeys[SDL_NUM_SCANCODES]{};
   bool mouseBtn[8]{};
   vec2 mouseDelta{0};
-  float wheelY = 0;
-  bool capture = false, lastWasPad = false;
+  float wheelY = 0, scrollPx = 0;
+  ivec2 nav{0};
+  bool capture = false, lastWasPad = false, dropAllFlag = false;
+  double lastW = -1; bool doubleW = false, sneakLatch = false, sprintLatch = false;
   std::vector<PadState> padList;
   void defaults();
+  bool codeDown(const std::string& c) const;
+  void readPad(PadState& p);
+  void openDevice(int index);
 };
 
 } // namespace dq

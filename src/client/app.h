@@ -31,6 +31,7 @@ struct LaunchArgs {
   int smokeFrames = 0;       // smoke test: frames to run before exiting
   json smokeScript;          // smoke test: scripted actions
   bool fromLauncher = false;
+  std::string screen;        // --screen <name>: open that menu at start (tests, screenshots)
 };
 
 class App {
