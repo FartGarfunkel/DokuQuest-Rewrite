@@ -84,3 +84,6 @@ target_compile_definitions(test_net PRIVATE DQ_SAMPLE_PLUGIN="$<TARGET_FILE:dq_s
 add_dependencies(test_net dq_sample_plugin)
 add_custom_command(TARGET test_net POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_net>/data)
+# dq-sfx: offline sound renderer for checking the audio (tools/sfx_render.cpp)
+add_executable(dq-sfx tools/sfx_render.cpp)
+target_link_libraries(dq-sfx PRIVATE dqclient)

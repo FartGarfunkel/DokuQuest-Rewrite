@@ -41,6 +41,7 @@ public:
   std::unique_ptr<SkyRenderer> sky;
   FrameCtx frame;
   std::vector<std::shared_ptr<RenderLayer>> layers;
+  std::unique_ptr<LevelFx> fx;        // the level's sounds/particles/messages on this device (client/client_fx.h)
   template <class T> T* layer() { for (auto& l : layers) if (auto p = dynamic_cast<T*>(l.get())) return p; return nullptr; }
 
   World& world() { return level->world(player ? player->realm : REALM_MAIN); }
