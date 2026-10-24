@@ -23,7 +23,7 @@
 namespace dq {
 
 constexpr int PORTAL_MAX = 21;          // largest opening, like Minecraft
-constexpr int NETHER_SCALE = 8;         // Ember Depths distances (rule "portalScale" overrides)
+constexpr int NETHER_SCALE = 1;         // Ember Depths distances: 1:1 like the original 0.9.0.90 (rule "portalScale" overrides)
 // the obsidian platform a stronghold portal lets you down onto (theend.js END_PLAT [100, 48, 0] in a
 // 128-tall End; band-local y doubled for the 256-tall band). End generators should build it here.
 constexpr int END_PLAT_X = 100, END_PLAT_LY = 96, END_PLAT_Z = 0;
