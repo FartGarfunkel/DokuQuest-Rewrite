@@ -1,0 +1,9 @@
+build*/
+.cache/
+third_party/*
+!third_party/CMakeLists.txt
+!third_party/glad/
+!third_party/VERSIONS.md
+*.tmp
+__pycache__/
+/dist/
