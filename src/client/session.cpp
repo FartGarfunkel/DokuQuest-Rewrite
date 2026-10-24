@@ -3,6 +3,7 @@
 #include "render/sky.h"
 #include "ui/screen.h"
 #include "audio/audio.h"
+#include "client/client_fx.h"
 #include "mod/modloader.h"
 #include <imgui.h>
 
@@ -13,6 +14,7 @@ void registerRenderLayer(RenderLayerFactory f) { layerFactories().push_back(std:
 
 GameSession::GameSession(App& a, std::unique_ptr<Level> lv) : app(a), level(std::move(lv)) {
   frame.settings = &app.settings;
+  fx = std::make_unique<ClientFx>(*this); level->fx = fx.get();
   worldRenderer.init(app.settings, app.tileTex);
   sky = std::make_unique<SkyRenderer>();
   sky->init();
@@ -27,6 +29,7 @@ GameSession::GameSession(App& a, std::unique_ptr<Level> lv) : app(a), level(std:
 
 GameSession::~GameSession() {
   if (app.mods) app.mods->onWorldClose();
+  level->fx = &level->nullFx;
   layers.clear();
   worldRenderer.setWorld(nullptr);
 }

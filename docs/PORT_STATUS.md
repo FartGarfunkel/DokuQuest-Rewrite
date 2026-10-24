@@ -8,7 +8,7 @@ Each workstream keeps its own notes in `docs/port/<area>.md` (what was ported, w
 | Terrain generation | world/worldgen.js, nether2/aether/theend generation | gen/ | wave 1 |
 | Meshing, light, shapes, water, foliage | world/mesher.js, shapes.js, plants3d.js | render/ | wave 1 |
 | Resource packs, voxel items, held/dropped items | render/packs.js, items3d.js, gear3d.js, models3d.js, sculpt.js, packarmor.js | assets/, render/ | wave 1 |
-| Sound | game/audio.js, sfxlib, sounds2, sound3, voices3, blocksounds, ambience, music, music2 | audio/ | wave 1 |
+| Sound | game/audio.js, sfxlib, sounds2, sound3, voices3, blocksounds, ambience, music, music2 (+ every module's SND_FX/VOX recipes) | audio/, client/client_fx | done: pack sounds resynthesised from profiles, original synth ported, music/ambience/sound3 (docs/port/audio.md) |
 | Player & block gameplay | game/player.js, physics, local, movement, build, blockfx, blocks2 (part), rules, commands, obtain, itemfix | sim/ | wave 1 |
 | Menus, HUD, inventory, controls | ui/*.js, input/*.js, styles.css, game/menutabs.js, sheet.js | ui/, input/, sim/crafting | wave 1 |
 | Launcher, updater, Mod Studio, packaging | launcher/desktop/*, dokuquest-mod-studio.html, tools/package.sh | launcher/, .github/ | wave 1 |

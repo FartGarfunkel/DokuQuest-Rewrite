@@ -3,6 +3,7 @@
 #include "core/init.h"
 #include "ui/screen.h"
 #include "audio/audio.h"
+#include "client/client_fx.h"
 #include "mod/modloader.h"
 #include "assets/icons.h"
 #include <imgui.h>
@@ -182,6 +183,7 @@ int App::run(int argc, char** argv) {
   input.init(&settings);
   audio = std::make_unique<AudioEngine>();
   audio->init(settings);
+  registerAudioLayers();
   reloadTiles();
   // start: straight into a world (launcher "Play world", smoke tests) or the title screen
   if (!args.world.empty()) { if (!openWorld(savesDir() / args.world)) setScreen(makeTitleScreen()); }

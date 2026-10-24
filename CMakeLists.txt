@@ -56,3 +56,7 @@ foreach(t dokuquest dokuquest-launcher dokuquest-server)
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:${t}>/data
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:${t}>/assets)
 endforeach()
+
+# dq-sfx: offline sound renderer for checking the audio (tools/sfx_render.cpp)
+add_executable(dq-sfx tools/sfx_render.cpp)
+target_link_libraries(dq-sfx PRIVATE dqclient)
