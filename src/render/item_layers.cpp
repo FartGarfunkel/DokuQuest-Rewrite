@@ -1,5 +1,6 @@
 // render/item_layers.cpp — the first-person hand with the held item, and dropped items (voxel models).
 #include "render/item_layers.h"
+#include "render/char_layer.h"
 #include "client/app.h"
 #include "assets/tileset.h"
 #include "assets/voxel_paint.h"
@@ -19,6 +20,7 @@ void registerItemLayers() {
 
 // ------------------------------------------------------------------ the arm
 const VoxelModel& firstPersonArm() {
+  if (const VoxelModel* skinArm = localPlayerArm()) return *skinArm;   // the skin's own arm and sleeve (render/char_layer)
   static VoxelModel& arm = *new VoxelModel();   // kept past exit (no GL calls after the context is gone)
   static std::string builtFor;
   const TileSet& ts = app().tiles;

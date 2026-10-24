@@ -25,5 +25,8 @@ public:
 // Built-in screen factories (implemented in ui/*.cpp)
 std::unique_ptr<Screen> makeTitleScreen();
 std::unique_ptr<Screen> makePauseScreen();
+// the voxel character creator and the skin editor (ui/creator_screen.cpp, ui/skineditor_screen.cpp)
+std::unique_ptr<Screen> makeCreatorScreen();
+std::unique_ptr<Screen> makeSkinEditorScreen();
 
 } // namespace dq

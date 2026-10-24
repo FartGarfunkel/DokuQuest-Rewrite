@@ -13,7 +13,7 @@ Each workstream keeps its own notes in `docs/port/<area>.md` (what was ported, w
 | Menus, HUD, inventory, controls | ui/*.js, input/*.js, styles.css, game/menutabs.js, sheet.js | ui/, input/, sim/crafting | wave 1 |
 | Launcher, updater, Mod Studio, packaging | launcher/desktop/*, dokuquest-mod-studio.html, tools/package.sh | launcher/, .github/ | done (docs/port/launcher.md) |
 | Creatures (sim + voxel bodies) | game/entities.js, mobai, monsters, nightmobs, bestiary, fauna, aquatic, quarrels, husbandry, pets, render/rigs*, models, mobtex, monstex, anim | sim/, render/ | wave 2 |
-| Characters & creator | render/skins.js, ui/creator.js, skineditor.js, game/charparts.js, capes, carried | assets/, render/, ui/ | wave 2 |
+| Characters & creator | render/skins.js, ui/creator.js, skineditor.js, game/charparts.js, capes, carried, anim.js (players), gear3d.js (drawing) | assets/skin, char_*, render/char_*, ui/creator_screen, skineditor_screen | done (wave 2) — see docs/port/chars.md |
 | Distant terrain, skies, clouds, weather | game/distant.js, skies.js, render/clouds.js, game/weather.js, particles2, ambientfx | render/ | wave 2 |
 | Portals & seamless dimensions | game/portals.js, portallinks, portalview, seamless.js, worlds.js (+ theend.js portal/void parts, riftarc.js tears as virtual portals) | sim/portals, sim/seamless, render/portal_view | ported (see docs/port/portals.md) |
 | Structures, villages, towns | game/structures.js, villages, villageflat, towns, towns3, dungeons, stronghold, deepdark, deephalls, seas, places | gen/ | wave 2 |
