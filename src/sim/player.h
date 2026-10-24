@@ -23,6 +23,7 @@ public:
   float air = 10, maxAir = 10;
   int xp = 0, level = 0;
   float regenTimer = 0;
+  float swingT = 0, eatT = 0, bowPull = 0;   // arm timers the body shows (swing 0..1 progress, 0 = none); render/char_layer
   vec3 spawnPoint{0, -1, 0};        // bed/respawn anchor (y < 0 = world spawn)
   int spawnRealm = 0;
   bool dead = false;
