@@ -9,6 +9,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 option(DQ_WERROR "Treat warnings as errors" OFF)
+option(DQ_PORTABLE "Release packages: link libstdc++/libgcc statically on Linux (runs on older and newer distros)" OFF)
 
 find_package(Threads REQUIRED)
 add_subdirectory(third_party)
@@ -48,6 +49,14 @@ target_link_libraries(dokuquest-server PRIVATE dqcore)
 if(WIN32)
   set_target_properties(dokuquest dokuquest-launcher PROPERTIES WIN32_EXECUTABLE ON)
   target_link_libraries(dqclient PUBLIC SDL2::SDL2main)
+  # app icon (assets/icon.ico) for the game and the launcher
+  target_sources(dokuquest PRIVATE src/launcher/dokuquest.rc)
+  target_sources(dokuquest-launcher PRIVATE src/launcher/dokuquest.rc)
+endif()
+if(DQ_PORTABLE AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  foreach(t dokuquest dokuquest-launcher dokuquest-server)
+    target_link_options(${t} PRIVATE -static-libstdc++ -static-libgcc)
+  endforeach()
 endif()
 
 # Runtime data next to the executables (data/, assets/)
@@ -56,3 +65,8 @@ foreach(t dokuquest dokuquest-launcher dokuquest-server)
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:${t}>/data
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:${t}>/assets)
 endforeach()
+
+# Install = one folder with the three programs, data/ and assets/ (tools/package.sh packs it):
+#   cmake --install build --prefix dist/DokuQuest
+install(TARGETS dokuquest dokuquest-launcher dokuquest-server RUNTIME DESTINATION .)
+install(DIRECTORY data assets DESTINATION .)
