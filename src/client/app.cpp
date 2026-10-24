@@ -1,6 +1,7 @@
 #include "client/app.h"
 #include "client/session.h"
 #include "core/init.h"
+#include "render/env_layers.h"
 #include "ui/screen.h"
 #include "audio/audio.h"
 #include "mod/modloader.h"
@@ -183,6 +184,7 @@ int App::run(int argc, char** argv) {
   audio = std::make_unique<AudioEngine>();
   audio->init(settings);
   reloadTiles();
+  registerEnvironmentLayers();   // distant terrain, clouds, weather, particles (render/env_layers.cpp)
   // start: straight into a world (launcher "Play world", smoke tests) or the title screen
   if (!args.world.empty()) { if (!openWorld(savesDir() / args.world)) setScreen(makeTitleScreen()); }
   else if (!args.createWorld.empty()) { LevelInfo li; li.name = args.createWorld; li.seedText = args.seed; createWorld(li); }

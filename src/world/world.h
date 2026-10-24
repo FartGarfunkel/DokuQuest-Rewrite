@@ -86,6 +86,7 @@ public:
   // ---- saving ----
   void saveDirty(bool all = false);        // writes modified chunks (background unless all)
   void flush();                            // wait for pending writes
+  std::shared_ptr<RegionStore> regionStore() const { return store; }   // saved chunks (distant terrain reads them)
 
   MainQueue mainQueue;   // results from workers (call pumpMain each frame)
   void pumpMain(double budgetMs);

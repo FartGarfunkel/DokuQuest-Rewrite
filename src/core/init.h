@@ -18,5 +18,6 @@ void shutdownCore();
 void registerWorldTypes();       // gen/worldgen*.cpp
 void registerCommands();         // sim/commands*.cpp
 void registerModApi();           // mod/*.cpp
+void registerWeatherSystem();    // sim/weather.cpp
 
 } // namespace dq
