@@ -1,5 +1,6 @@
 #include "sim/level.h"
 #include "common/noise.h"
+#include "sim/rules.h"
 #include <map>
 
 namespace dq {
@@ -112,8 +113,7 @@ void Level::savePlayer(const std::string& name, const json& j) { writeJson(folde
 bool Level::isNight() const { double f = dayFraction(); return f > 0.5 && f < 0.95; }
 
 void Level::tick(double dt) {
-  info.time += dt;
-  if (info.time >= DAY_LEN) { info.time -= DAY_LEN; info.day++; }
+  advanceDayTime(*this, dt);   // sim/rules: day and night lengths from the world's rules
   for (auto& [r, w] : realms) w->tickSystems(dt);
   for (auto& s : systems) s->tick(*this, dt);
   for (size_t i = 0; i < ents.size(); i++) {   // entities may spawn others while ticking
