@@ -1,0 +1,95 @@
+# CI: build DokuQuest on Linux and Windows for every push and pull request, and smoke-test it on Linux
+# (Xvfb + Mesa software GL): create a world and play 300 frames, open every launcher tab, run the server.
+# Nothing is published here — releases come only from release.yml (a pushed v* tag or a manual run).
+name: CI
+on:
+  push:
+  pull_request:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    # 22.04: an older glibc, so the builds run on older distros too
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Packages (SDL backends, GL/EGL, audio; Xvfb + Mesa for the smoke test)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxinerama-dev libxxf86vm-dev libxss-dev libxfixes-dev libxkbcommon-dev \
+            libwayland-dev wayland-protocols libdecor-0-dev libegl1-mesa-dev libgl1-mesa-dev libgles2-mesa-dev libdrm-dev libgbm-dev \
+            libasound2-dev libpulse-dev libudev-dev libdbus-1-dev \
+            xvfb xauth mesa-utils libgl1-mesa-dri
+      - uses: actions/cache@v4
+        with:
+          path: |
+            third_party/SDL2
+            third_party/imgui
+            third_party/miniaudio
+            third_party/enet
+            third_party/quickjs
+            third_party/stb
+            third_party/glm
+            third_party/miniz
+            third_party/json
+          key: deps-${{ runner.os }}-${{ hashFiles('tools/fetch_deps.sh') }}
+      - name: Fetch dependencies
+        run: bash tools/fetch_deps.sh
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel
+      - name: Smoke test
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -o pipefail
+          ud="$RUNNER_TEMP/ud"; mkdir -p shots
+          run() { echo "::group::$*"; timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" "$@" 2>&1 | tee -a smoke.log; local c=${PIPESTATUS[0]}; echo "::endgroup::"; return $c; }
+          run ./build/dokuquest --userdir "$ud" --create Test --seed hello --smoke-frames 300 --smoke-shot shots/game.png
+          for t in news server studio:editor studio:engine options; do run ./build/dokuquest-launcher --userdir "$ud" --tab "$t" --smoke-frames 30 --smoke-shot "shots/launcher-${t/:/-}.png"; done
+          (sleep 10; echo save; echo stop) | timeout 120 ./build/dokuquest-server --userdir "$ud" --world CI 2>&1 | tee -a smoke.log
+          if grep -n '^\[error\]' smoke.log; then echo "::error::the smoke test logged errors"; exit 1; fi
+          test -s shots/game.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-linux
+          path: |
+            shots/
+            smoke.log
+          if-no-files-found: ignore
+
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            third_party/SDL2
+            third_party/imgui
+            third_party/miniaudio
+            third_party/enet
+            third_party/quickjs
+            third_party/stb
+            third_party/glm
+            third_party/miniz
+            third_party/json
+          key: deps-${{ runner.os }}-${{ hashFiles('tools/fetch_deps.sh') }}
+      - name: Fetch dependencies
+        shell: bash
+        run: bash tools/fetch_deps.sh
+      - name: Build (MSVC)
+        shell: bash
+        run: |
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          cmake --build build --config Release --parallel
+      - name: Check the programs are there
+        shell: bash
+        run: ls -l build/Release/dokuquest.exe build/Release/dokuquest-launcher.exe build/Release/dokuquest-server.exe

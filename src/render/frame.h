@@ -20,6 +20,7 @@ struct FrameCtx {
   int width = 1280, height = 720;
   const Settings* settings = nullptr;
   int dim = 2;               // band the camera is in
+  int portalDepth = 0;       // > 0 while drawing the view through a portal (render/portal_view.cpp)
   // set common.glsl uniforms on a bound shader
   void apply(Shader& s) const;
 };

@@ -20,7 +20,13 @@ struct ColumnSample {
   u32 tint = 0xFFFFFFFF;   // grass/foliage tint (0xAABBGGRR) from climate, 0xFFFFFFFF = none
   // floating layers (Skylands islands, End islands): bottom of the upper mass (or -1)
   i16 floatBottom = -1;
+  u8 temp = 128, humid = 128;  // the column's climate bytes (Chunk::climate): tint = climateTint(kind, temp, humid)
+  u8 biome = 255;              // Biome (gen/gendefs.h) for the Overworld, 255 elsewhere
 };
+
+// A generated tree, column by column (for distant terrain near the player: game/distant.js distTreeCols).
+struct TreeColumn { i8 dx, dz; i16 top, leafBottom; BlockId leaves, log; };   // top = highest part + 1; leafBottom 999 = no leaves
+struct TreeSample { int x, y, z; u8 kind; bool bare; std::vector<TreeColumn> cols; };
 
 class DimGenerator {
 public:
@@ -31,6 +37,10 @@ public:
   // decorations that need neighbours (trees crossing chunk edges, structures): called once all
   // 8 neighbours of a chunk exist; default none.
   virtual void populate(class World& w, Chunk& c) {}
+  // the trees the generator plants in chunk (cx, cz) (whole trees, also parts reaching into neighbours)
+  virtual void trees(int cx, int cz, std::vector<TreeSample>& out) const {}
+  // raw terrain queries for structures and gameplay (gen/structures.h); null for void generators
+  virtual const class TerrainQuery* terrain() const { return nullptr; }
 };
 
 struct WorldGenOptions {

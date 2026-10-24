@@ -1,0 +1,969 @@
+# DokuQuest patch notes from the HTML/JS alphas (converted from launcher/news.html by tools/port/news2dqn.py).
+# Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
+
+## Alpha 0.9.0.90 — Windows Back | October 2026
+- The seamless window portals are back when you stand inside a portal. 0.9.0.89 swapped them for the plain portal texture, and that change has been undone.
+- Removed Herobrine.
+
+## Alpha 0.9.0.89 — Clean Portals | October 2026
+- Standing inside a portal, or looking across it from very close, no longer shows a see-through glitch with the ground cut open underneath. Inside the portal you now see only its own glow.
+- Removed Herobrine.
+
+## Alpha 0.9.0.88 — Through the Looking Portal | October 2026
+- Arrows, mob shots, snowballs, spells, fireworks and tossed items now fly through a portal you're looking into and carry on in the world beyond. They hit and land over there, and you can watch them go through the portal.
+- Fixed chest lids glitching: looking at a portal while a chest was open kept snapping the lid shut and lifting it again. The inside of an open chest no longer flickers either.
+- The scroll wheel no longer goes quiet without a reason while you're carrying a block or a creature. You now get a reminder that your hands are full.
+- Removed Herobrine.
+
+## Alpha 0.9.0.87 — Coloured Fireworks | October 2026
+- Firework rockets now come in all 16 colours: craft **paper + gunpowder + any dye** for 3 rockets that burst in that colour.
+- Each colour has its own rocket icon, so you can tell them apart in your hotbar.
+- Plain rockets (paper + gunpowder) still burst in random colour pairs.
+- Coloured rockets work everywhere plain ones do: launch them from the ground or the off-hand, or use them for an elytra boost.
+- Removed Herobrine.
+
+## Alpha 0.9.0.86 — Floating Sanctums | October 2026
+- New Skylands place: **Floating Sanctums** — little grassy islets hanging alone in open sky, just off the edge of the Skylands islands, each crowned with a quartz shrine and glowstone canopy.
+- The sanctum chest holds Aether crystals, gust puffs, gold, emeralds, firework rockets, and sometimes diamonds, mithril, golden feathers or a Tome of Levitation.
+- They always sit within sight of an island — bridge over, glide over with your elytra, or rocket across.
+- Existing worlds keep everything they had; sanctums appear in sky that hasn't been explored yet.
+- Removed Herobrine.
+
+## Alpha 0.9.0.85 — Fireworks | October 2026
+- New: Firework Rockets. Craft 1 paper and 1 gunpowder into 3 rockets.
+- Use a rocket on the ground and it shoots up trailing sparks, then bursts into two colours with a boom. Some bursts are big, some make a ring, and some crackle afterwards.
+- Use a rocket while gliding on elytra for a long boost forward, just like Minecraft.
+- Rockets work from the off hand too.
+- Removed Herobrine.
+
+## Alpha 0.9.0.84 — Portals Carry Things Across | October 2026
+- Items you throw into an Ember or Sky portal now come out of the linked portal on the other side.
+- Wild mobs that wander into a portal and stay for a couple of seconds get pulled through too.
+- A portal has to have been used by a player once before it links to the other side. Anything sent through before then waits until it does.
+- Pets, tamed, named, saddled, leashed and ridden mobs, and bosses, are never pulled through.
+- Things that arrive through a portal won't bounce straight back.
+- Removed Herobrine.
+
+## Alpha 0.9.0.83 — Chests That Open | October 2026
+- Chests now swing their lids open when you look inside and ease them shut when you close the menu.
+- Double chests open both halves together, like one big lid.
+- The lid shows the chest's own textures, including texture-pack chests, and you can see the dark inside while it's open.
+- Removed Herobrine.
+
+## Alpha 0.9.0.82 — Weapon Racks | October 2026
+- New block: Weapon Rack. Craft it from 5 sticks and 3 planks.
+- Stand it on the floor or hang it on a wall. Wall racks pop off if the wall behind them is broken.
+- Each rack holds 3 weapons, tools, bows or shields. Items go into the slot you're pointing at.
+- Use the rack with an empty hand to take an item back. Breaking the rack drops everything on it.
+- Removed Herobrine.
+
+## Alpha 0.9.0.81 — Armor Stands & Smoother Rails | October 2026
+- **Armor Stands!** Craft from 6 sticks + a wooden slab. Place on any block, then dress them with armor, weapons or tools. Sneak to put an item in the off hand (shields!).
+- Use with an empty hand to take items back off. Sneak + empty hand cycles 9 poses: Standing, Waving, Arms Folded, Victory, On Guard, Marching, Zombie, Reading and Pointing.
+- Hit a stand twice to knock it over; it drops everything it was wearing. Stands save with your world.
+- Minecarts now keep their speed through corner tracks instead of stalling and getting stuck.
+- Tip: link carts into a train by using a Chain on one cart, then on another.
+- Removed Herobrine.
+
+## Alpha 0.9.0.80 — Bubbles, Rain & Commands | October 2026
+- **Bubble columns!** Put soul sand under a column of water and it shoots you upward, so you can build water elevators just like Minecraft. Magma blocks do the opposite and pull you down. You can see the bubbles rising along the column.
+- Items and mobs ride bubble columns too.
+- **Rain Detector** — a new redstone sensor that outputs power while it's raining on it. Craft it from glass, lapis lazuli and wooden slabs. Right-click it to invert the signal.
+- **Command Blocks** (creative only) — right-click one to set its command (it opens chat with `/cmdset`). Give it a redstone signal and it runs the command. `~` coordinates count from the block itself.
+- Removed Herobrine.
+
+## Alpha 0.9.0.79 — The Nether Wakes Up | October 2026
+- **Nether Fortresses** now generate in the Nether: dark brick halls and bridges, with loot chests and blaze/wither skeleton cages.
+- **Wither Skeletons** stalk the fortresses with stone swords. Their hits inflict **Wither**, which drains health and turns your hearts black.
+- **Zombie Pigmen** roam in groups. They leave you alone until you hit one, then the whole pack comes for you.
+- **Ghasts** float over the lava seas and shoot exploding fireballs. They drop **Ghast Tears**, which brew Regeneration.
+- Fixed: gliding with the **Elytra** (and the Warden's roar) could permanently cut out ALL game sound. A bad sound effect was poisoning the audio engine. Sound now stays on.
+- **Dragon Eggs** now show a countdown above them: "Hatching in m:ss" while warm, or a hint telling you they need fire, lava or a campfire within 2 blocks (water for tide eggs). Eggs placed in older saves are now picked up too.
+- **Monster spawners** now show a small spinning copy of the mob that lives inside, like Minecraft.
+- **F3 debug** now draws the hitboxes of nearby mobs and entities.
+- **Endermen** now pick up grass, dirt, sand, flowers, pumpkins and more, carry them around and set them down elsewhere. Kill one to get its block back. Turn off the Mob Griefing rule to stop it.
+- Reminder: Pufferfish brews Water Breathing, and Cinderite is our Netherite-tier gear.
+- Removed Herobrine.
+
+## Alpha 0.9.0.78 — Mineable Bedrock | October 2026
+- Bedrock can now be mined with a diamond-tier pickaxe or better.
+- Hands and lower-tier picks still can't break it, and it stays blast-proof and piston-proof.
+- Bedrock in the End stays unbreakable to protect the portal.
+- Removed Herobrine.
+
+## Alpha 0.9.0.77 — Throwable Snowballs | October 2026
+- Snowballs can be thrown again. Right-click (or use) to throw; they knock back whatever they hit and burst into snow where they land.
+- Removed Herobrine.
+
+## Alpha 0.9.0.76 — Dragon Hitbox Fix | October 2026
+- The Ender Dragon and the other boss dragons now take hits along their whole body, neck and head, not just a small box in the middle. Arrows use the same body-shaped hit area, so head and neck shots count.
+- Removed Herobrine.
+
+## Alpha 0.9.0.75 — Spider Jockeys | October 2026
+- Like Minecraft, there's now a small chance a spider spawns at night with a skeleton riding on its back. The skeleton still shoots while the spider climbs and chases. Kill the spider and the skeleton drops off. Summon one with `/summon spider_jockey`.
+- Removed Herobrine.
+
+## Alpha 0.9.0.74 — Creative Trash & Mob Volume | October 2026
+- Creative inventory now has a delete slot beside the hotbar. Drop a held item on it to get rid of it (works with a controller too).
+- Esc in the inventory now closes the recipe/creative item book first, then the inventory on the next press.
+- New "Mob sounds" slider in Settings to turn animal and monster voices and footsteps up, down or off.
+- Removed Herobrine.
+
+## Alpha 0.9.0.73 — Clickable Menu Tabs | October 2026
+- The menu tabs at the top of the inventory (Map, Journal, Skills, Spellbook, Stable) can now really be clicked with the mouse. A screen style was letting clicks fall through to the inventory underneath.
+- Removed Herobrine.
+
+## Alpha 0.9.0.72 — Mouse, Menus & Slimes | October 2026
+- Fixed the camera sometimes jerking or spinning on its own. The game now ignores the sudden bogus mouse jumps some browsers and PCs report, such as right after the mouse is captured.
+- You can now click the menu tabs at the top of the inventory (Map, Journal, Stable and the rest) with the mouse, not just switch them with the controller bumpers.
+- Slimes and magma slimes now bounce along and can jump up onto blocks instead of getting stuck against them.
+- Removed Herobrine.
+
+## Alpha 0.9.0.71 — Chests & Pack Sounds | October 2026
+- Fixed a bug where two chests side by side (or other containers next to each other) could fail to open. If a menu ever errors while opening, the game now recovers instead of leaving every container stuck shut.
+- A chest placed beside another chest now turns to face the same way, so the two reliably join into a Large Chest.
+- Chests now use your resource pack's open and close sounds (old and new pack layouts), and play a closing sound when you shut them.
+- Zombies, skeletons, spiders and other mobs use your resource pack's sounds more reliably. If a pack's sounds.json points at files it doesn't include, the standard file names are tried instead.
+- Added resource pack sounds for more creatures: magma slimes, werewolves, wraiths, ogres, cats, foxes, rabbits, bats, goats, llamas, pandas, parrots, turtles, dolphins, squid, frogs, axolotls and camels.
+- Zombie, skeleton and spider footsteps now use your resource pack's step sounds.
+- Removed Herobrine.
+
+## Alpha 0.9.0.70 — Everything Shows | October 2026
+- Shoes, belts, gloves, neckwear and eyewear from the character creator now show up when you use your own (imported) skin as the base, too. Your skin stays exactly as you painted it until you pick one.
+- Gloves on 3D characters are no longer hidden under the forearm cuffs, and leather gloves sit a little higher up the arm so they show under sleeves.
+- Fancy belts (studded, sash, rope, gold, pouch, bandolier) now replace the plain 3D belt instead of being covered by it.
+- Fur outfits now wear whichever belt you pick.
+- Note: worn armour boots, leggings and gauntlets still cover the matching creator clothing while equipped.
+- Removed Herobrine.
+
+## Alpha 0.9.0.69 — Dressed for Adventure | October 2026
+- The character creator has far more choices: 8 new hairstyles (pixie cut, big curls, locs, undercut, pigtails, spiky, slicked back, twin buns) and 8 new outfits (tunic, smith’s apron, sailor stripes, pirate shirt & sash, hunter’s vest, knight’s tabard, merchant’s coat, jester motley).
+- New Shoes row: boots, tall boots, buckled shoes, sandals, fur boots or barefoot.
+- New Belt row: leather, studded, sash, rope, gilded, belt & pouch, bandolier or none (it also changes a robe’s sash).
+- New Gloves row: leather gloves, gauntlets, fingerless, bracers or silk gloves.
+- Six new hats: straw hat, cap, bucket hat, chef’s hat, bandana and flower crown. Straw, cap, bucket and chef’s hats are real 3D hats on 3D characters.
+- New Details section: neckwear (scarf, fur mantle, ruby amulet, sapphire pendant, gold torc) and eyewear (spectacles, monocle, eyepatch, face scarf).
+- 3D characters show all of it, with a 3D apron for the smith and a 3D tabard for the knight. Random now mixes in the new clothes, and old saved characters look exactly as before.
+- Removed Herobrine.
+
+## Alpha 0.9.0.68 — Your Skin, Your People | October 2026
+- 3D characters can wear your own skin: importing a PNG in the character creator keeps your elf an elf (or dwarf, or halfling…) with your skin underneath.
+- New **Skin** choice for 3D characters: **Creator’s look** or **Your own skin**. Changing hair, beards, hats and other 3D features keeps your skin.
+- The editor’s 3D view now shows each people at its true height, so dwarves, halflings and gnomes look short and goliaths tall, the same as in game.
+- The Random button keeps your 3D character and people instead of turning you back into a classic skin.
+- Removed Herobrine.
+
+## Alpha 0.9.0.67 — Heroes in the Round | October 2026
+- Character creator: a new **Model** choice at the top — **Classic skin** (as before) or **3D character**, the full Shadowbloom figures.
+- 3D characters get real hair, beards (wizard and forked beards hang down), ears, horns, tusks, tails, hats and hoods, cloaks, and robes and dress skirts that swing as you walk.
+- Pick your people: human, elf, dwarf, halfling, gnome, orc, goliath, tiefling or dragonborn, each standing at their own height, with first-person eye height to match.
+- Armour on a 3D character grows extra pieces like pauldrons and gorgets.
+- The skin editor's 3D view shows your 3D character live while you make it.
+- The look travels inside your skin, so other players see your 3D character too.
+- Classic skins look and behave exactly as they did.
+- Removed Herobrine.
+
+## Alpha 0.9.0.66 — The Character Creator | October 2026
+- **Character creator.** The Shadowbloom creator has come home. On the Players screen, press **Character creator…** (or the **Creator** button / **C** inside the skin editor) and build your look from hair, beards, eyes, mouths, markings, ears, horns, outfits, headwear, cloaks and features, with colour swatches for skin, hair, eyes, horns and all four outfit colours.
+- **Live 3D preview.** Every choice shows on the 3D model straight away. Random buttons roll a fresh face. Your look is remembered when you save, and you can still paint over it by hand, undo, or export it as a PNG.
+- **Female characters.** Choose Male or Female. Female characters get slim arms, lashes, tinted lips, softer shaping and longer hair styles. There's a new Bob cut plus a Dress and a Fine gown.
+- **Slender or broad builds** for anyone, matching slim or classic arms.
+- **Controller friendly.** The editor cursor snaps through every creator button with the D-pad, and the list scrolls to follow it.
+- Removed Herobrine.
+
+## Alpha 0.9.0.65 — The Quick Fixes | October 2026
+- **Emerald gear.** A full emerald tier of tools, weapons and armour, a step past diamond (faster and tougher) but short of mithril. Craft it from emeralds like any other set.
+- **Maps know which way is north.** Every map now shows N, E, S and W, and the big map has a compass rose in the corner.
+- **Climb out of water.** Swim up to a ledge and you can grab it and pull yourself out, no more bobbing against the bank.
+- **Small pets use doors.** Cats, small dogs and other little pets now follow you through open doors and gates instead of getting stuck behind them.
+- **Vertical slabs hold things.** Torches and item frames can go on vertical slabs and sit flush against them instead of floating in the air.
+- **Lecterns show their page.** A lore book on a lectern now lies open with its words showing. Turn to any page and the lectern stays on that page for everyone who walks past.
+- **Double chests.** Put two chests side by side, facing the same way, and they open together as one 54-slot Large Chest. (Animated lids are coming in a later update.)
+- **Horse and bear sounds.** With a Minecraft resource pack loaded, horses and donkeys use its horse sounds and bears use its polar bear sounds, growls included.
+- Removed Herobrine.
+
+## Alpha 0.9.0.64 — Tabs, Wheels and Lap Dogs | October 2026
+- **The scroll wheel no longer stops working at random.** When the game took hold of the mouse while the hidden pointer was resting over the chat, a panel or a menu that was still fading out, the browser sent every wheel turn to that spot instead of the game, and the game threw them away until you paused. While the game holds the mouse, the wheel now always picks your hotbar slot.
+- **Menu tabs.** From the inventory, press LB / RB on a controller to move straight between Inventory, Map, Journal, Skills, Spellbook and Stable. A tab strip across the top shows where you are, and you can click it with the mouse too. The Map tab opens when you are carrying a map. On the map, X / Y now zoom, and at the crafting table LB / RB still open the recipe book.
+- **Pick up your pets.** Sneak and use an empty hand on your own dog, cat, fox, parrot or other small pet to pick it up. Use it on a boat, minecart or sailing ship to put it aboard (sneak + empty hand lifts it out again), or on the ground to set it down. Its name and owner stay with it. Before, sneaking on a pet only told it to sit.
+- **Controller sneak + use** no longer always opens the spellbook. It now only does that with an empty hand and nothing to pick up, so sneak-placing blocks and carrying things work on a pad.
+- Removed Herobrine.
+
+## Alpha 0.9.0.63 — The Real Party Popper | October 2026
+- **The popping sound, really fixed this time:** it wasn't the fireplaces after all. Two sounds shared the same name, so the wind charge's sharp "fwump-pop" took the place of the soft whoosh that plays when a gust of wind picks up. Every time the wind gusted while you were outdoors, you heard a party popper from nowhere, wherever you stood. Each gust now gives the soft rush of wind it was meant to, and wind charges keep their own sound.
+- **Fire and lava sound like they used to:** the 0.9.0.61 change that made campfire pops, crackles and lava bubbles rarer and quieter has been undone, since they were never the problem.
+- Removed Herobrine.
+
+## Alpha 0.9.0.62 — Dress How You Like | October 2026
+- **Show or hide what you wear:** in your inventory, under your character, six small buttons show or hide your helmet, chestplate, leggings, boots, backpack and cape one at a time. Hidden gear still protects you and still works. It just doesn't show, on your character, in first person, on the doll or to friends in multiplayer. Each player's choice is saved with their profile. Controllers can reach the buttons too: move down to them and press A.
+- **Faces in the pause menu:** the coloured boxes in "On this screen" are now little 3D heads of each player's skin, with their hat layer. They keep a stripe of the player's colour underneath.
+- Removed Herobrine.
+
+## Alpha 0.9.0.61 — Towns, Gates and Spellbooks | October 2026
+- **The mouse wheel, fixed properly:** the hotbar now moves by exactly what your wheel reports, the same way The Shadowbloom of Eldenwood does it. The old code tried to learn how big one wheel click was and saved its guess, and a bad guess made the wheel skip clicks or seem to stop working. That saved guess is wiped when you start the game.
+- **No more blocks placing themselves:** mouse buttons and keys are let go whenever the game loses focus: when you alt-tab, minimise, open a menu or pause, or the game loses the mouse. Holding the place button to place over and over now needs a fresh click in the game, so a click held through a menu can't keep placing. The click that grabs the mouse back no longer mines or places anything, and closing chat no longer leaves you walking on your own.
+- **Controllers:** a trigger that's resting or a little worn no longer mines or places; a trigger has to be pressed almost halfway before it counts.
+- **Frame rate limit:** a new setting with Match display (VSync), 30, 60, 120, 144, 240 and Unlimited. The 30 and 60 caps now hold steady (a 60 cap used to give about 48 fps on a 144 Hz screen). In the desktop app, Unlimited turns VSync off after you restart the app, so you're no longer stuck at your screen's refresh rate. In a browser the game can't go faster than your screen, and the setting says so. The desktop app also now asks for the fast graphics chip and sends textures to it faster.
+- **That firework pop, found:** the odd popping noise came from the fires in house fireplaces, which each popped every few seconds and could be heard through walls. Fire pops are now rare and soft, crackles are quieter, and lava lakes pop much less often.
+- **Towns and cities:** new worlds have bigger settlements from The Shadowbloom of Eldenwood alongside the villages: towns and cities with market squares, fountains, inns, temples and smithies, inside palisades or stone walls with towers and gatehouses. Flags, banners, bunting, washing lines and shop signs move in the wind. Townsfolk are capped so towns stay smooth, and anyone who gets stuck is moved free.
+- **Working gates:** pull the lever just inside a town gate to open or close it (this works for friends in your multiplayer game too). Gates shut at night, and the guards open them when you come near. Your existing worlds are left exactly as they are; you'll find towns in new worlds.
+- **Magic, grown up:** five new schools of magic (Alteration, Illusion, Divination, Necromancy and Nature) join the old ones. Each school levels up on its own and also raises your Magic skill, and new spells unlock as your Magic level climbs, RuneScape-style.
+- **13 new spells,** each learnt from a tome the librarian sells: Flames, Chain Lightning, Healing Hands (heals your friends), Telekinesis, Feather Fall, Water Breathing, Home Teleport (back home, once every 10 minutes), Low Alchemy (turns the item in your off hand into emeralds), Night Eye, Invisibility, Drain Life, Raise Skeleton and Entangle (holds a monster in place).
+- **The spellbook:** press B to see every spell by school, with its level, mana cost and what it does (on a controller, hold sneak and press up on the d-pad). Press Z to cast your chosen spell without a staff, a little weaker than with one. Both keys can be changed in Controls. Your old spells, staffs and magic progress are all kept.
+- **Skin editor:** make or touch up your own skin without leaving the game. In Players & Skins, choose "Skin editor…" for any player. Paint on a big 64×64 pixel grid or straight onto the 3D character (drag to turn it), with pencil, eraser, fill, colour picker, palette, brush sizes, mirror painting for arms and legs, outer-layer and grid toggles, showing just one body part, and undo/redo. Start from your current skin, the default skin or a blank one, with classic or slim arms. Save puts it on your character and shows it to friends in your multiplayer game straight away; Export saves it as a PNG and Import loads one. Shortcuts: P, E, F and I pick tools, Ctrl+Z/Ctrl+Y undo and redo, Ctrl+S saves. On a controller, the left stick moves a cursor, A paints, the bumpers switch tools, the triggers zoom and the right stick turns the model.
+- **Horses can be tamed again:** feed a wild horse, donkey, llama or camel its food and it tames, then the saddle goes on. Feeding a wild one used to just breed it, so it never tamed and the saddle did nothing. Using a saddle on a wild mount now tells you to tame it first.
+- **Lily pads:** boats and the sailing ship push straight through lily pads instead of getting stuck on them.
+- **Crouch to place on things:** crouch with a block in your hand and you'll place it on top of a chest, furnace, crafting table, lectern, anvil, barrel, bed and other blocks you'd normally open, just like Minecraft. Works with mouse and controller.
+- **Smelting:** silver, mithril and adamantite ores and steel blend now smelt in the blast furnace, and rice and corn cook in the smoker.
+- **Clocks now turn clockwise,** with the sun on the dial following along.
+- **Eating and drinking:** every food, drink and potion was tested in both hands, and the ones that wouldn't work are fixed. Foods and drinks with an effect (golden apples, salads, stews, sushi, stuffed peppers, tarts, pizza and honey) can be eaten at full health. Honey cures poison. Food or a block in your main hand no longer stops you drinking the potion in your off hand. Hex Flasks can now be thrown, poisoning and slowing whatever they hit.
+- Removed Herobrine.
+
+## Alpha 0.9.0.60 — Every Click Counts | October 2026
+- **Scrolling the hotbar, fixed at the root:** on an ordinary mouse wheel (one that clicks), every click now moves exactly one slot, at any speed. The game used to try to learn how big one click was, and a few quick flicks could teach it the wrong size: from then on steady scrolling skipped every other click, which felt like the wheel getting stuck and coming back. Nothing is learnt for these wheels any more, and anything learnt before is thrown away.
+- Several clicks that arrive together (a fast spin) each count, and a click some mouse drivers report twice still counts once.
+- Smooth-scrolling wheels and touchpads, which send many small pieces per notch, still add those up into one slot per notch.
+- Removed Herobrine.
+
+## Alpha 0.9.0.59 — Size It Up | October 2026
+- **Interface size slider:** Options -> Interface size now goes from 50% to 200% in steps of 5%. It sizes everything together: the hotbar, hearts and chat, the inventory and every station, the journal and maps, the title screen and every menu. Labels over people's heads, damage numbers, item tooltips and the item you're dragging all stay right where they belong at any size.
+- **Auto** (all the way to the left, and the default) keeps the usual size on screens up to 1080p and grows on bigger ones: a third bigger at 1440p and twice the size at 4K, so nothing comes out tiny on a big monitor.
+- However big you make it, the hotbar and inventory still fit a small window or a split-screen corner, and long menus scroll.
+- Your old Small / Normal / Large choice carries over (as 80%, 100% and 125%).
+- Removed Herobrine.
+
+## Alpha 0.9.0.58 — Stay Put | October 2026
+- **The mouse's side buttons no longer throw you out of the game:** pressing the back (or forward) button on your mouse used to leave the game for the launcher, like going back a page in a browser. It now does nothing of the kind, in the game or in the launcher, and the side buttons can be used as controls of their own in Settings -> Controls (they show as Mouse 4 and Mouse 5).
+- If a "back" ever does get through (some mouse software sends it as a command), you stay in your world and the game pauses instead.
+- Removed Herobrine.
+
+## Alpha 0.9.0.57 — Safe Together | October 2026
+- **Nothing lost or doubled when someone leaves:** what a joined player carries now reaches the host within a second of changing (it used to be up to eight), and when the host quits, stops sharing or removes someone, everyone's game sends its latest first. Things put in a chest just before the host quit no longer come back to you as well.
+- **The party chest with two of you in it:** each change is now sent as just the slots that changed, so taking from one slot while someone else puts something in another no longer puts your stack back in the chest as well as in your hand.
+- **Changes made at the same moment end the same for everyone:** a block or chest changed by two people at once (water flowing into a hole just as it's plugged, taking a furnace's output just as it finishes) can no longer leave each of you seeing something different, or let the same ingots be taken twice.
+- **Dropped connections:** if a laptop goes to sleep or the Wi-Fi drops, the host lets that player go after half a minute, and the player's own game notices it has lost the host. Joining again from the same computer works straight away instead of saying you're "already playing here".
+- Losing the connection on a loading screen (joining, or going through a portal) now takes you back to the title, instead of into a copy of the host's world that you could keep playing and saving on your own.
+- Two people can no longer join with the same name at the same moment and end up sharing one save.
+- When a split-screen player on the host's computer leaves, the players who joined over LAN see them go, and the others keep their own skins.
+- When the host's split-screen players are in different lands, players who join see each of them in the right place, and blocks and creatures from one land no longer turn up in another.
+- Creatures and boats near a portal no longer turn invisible for joined players after travelling through it together.
+- Removed Herobrine.
+
+## Alpha 0.9.0.56 — Morning Notch | October 2026
+- **Scroll wheel, once more:** a mouse whose notches are small (or one set to a low scroll speed) now learns how big its notch is from a few single clicks, so turning it steadily moves one slot a notch instead of skipping. Ordinary wheels work as before.
+- Updates are now checked for mistakes that would stop the game from starting before they're sent out.
+- Removed Herobrine.
+
+## Alpha 0.9.0.55 — First Light | October 2026
+- **Lightning that stays in the sky:** bolts striking far off over the distant terrain in a thunderstorm never went away, leaving white columns standing on the horizon (and players who'd joined over LAN saw them flash again every couple of seconds). They now flicker out like any other.
+- **Scroll wheel:** one notch is one slot on every kind of mouse. A high-resolution wheel at a low frame rate no longer jumps two slots for one notch, a mouse with small notches (or a low scroll speed) no longer ignores a single notch, and turning a smooth wheel slowly through a notch counts it once.
+- **Smoother distant terrain:** it's worked out in steps timed to the frame instead of fixed amounts of work, so it no longer causes small hitches as it fills in, and building its meshes is quicker.
+- **Split screen:** with one player in the Overworld and the other down in the Depths or up in the Skylands, the rain, snow and storms keep going for the one in the Overworld (they used to stop), and rain no longer shows up in the other player's view.
+- Rain and snow left over from the Overworld no longer keep falling for a few seconds after you arrive somewhere else, and in split screen a sandstorm's dust no longer blows through the other player's view in another land.
+- Fixed note block notes and bone meal sparkles showing up black.
+- Looking through a portal, each land keeps its own haze: the Depths' ash no longer turns into white mist over the Overworld, and Overworld fog no longer fills the Depths.
+- Clouds no longer show tiny gaps of sky along their edges.
+- Snow from a storm now builds up a little where it settles, as it was meant to.
+- The camera's tilt when you're hurt or turning while riding a minecart, a seat or a mount no longer disappears.
+- Graphics memory used by effects in a world you've left is now freed when you travel between lands, and distant terrain gives its memory back when a LAN game you joined ends.
+- Joining a LAN game while your computer is busy gets a few more seconds before it gives up.
+- A few rare errors when quitting a world at just the wrong moment are fixed.
+- Removed Herobrine.
+
+## Alpha 0.9.0.54 — Night Shift | October 2026
+- **Smoother skies:** clouds are now built from their outer shell only, so they cost a fraction of what they did to draw, and a stormy sky full of them no longer weighs on the frame rate. Rain and snow work out where they fall far less often, and the game makes much less garbage for the browser to clear up while you play.
+- **Distant terrain, steadier:** on a slower computer it now pulls in a little closer by itself when the frame rate drops, and reaches back out when it recovers. It no longer stutters while you travel through a world with lots of your own building in it, it gives its memory back when you go to the title screen, and it picks up a new resource pack's colours.
+- **Split screen:** when one player is in the Overworld and the other is somewhere else, the Overworld player's distant terrain now fills in properly instead of piling up work that never got done. Each player also gets their own mist, sandstorm and northern lights, where they're standing, instead of sharing player 1's.
+- Fixed a crash when a villager or guard died.
+- Quitting a world in the rain no longer carries a fog and a rainbow into the next world you open.
+- Lightning close by no longer shakes the screen when screen shake is turned off.
+- Felled trees and lightning bolts now free their graphics memory when they're gone, so long sessions don't slowly fill it up.
+- The title screen's world can no longer leak its land into your world's distant terrain.
+- Skins: see-through sleeves and trouser legs no longer show a darker band at the elbows and knees. Old-style 64×32 skins with a solid-painted hat area no longer get a box over the head, matching Minecraft. Treading water in first person with a chestplate no longer leaves an armour piece floating where your arm would be.
+- Joining or hosting over LAN no longer gives up with "No answer from that address" when the connection opened during a busy moment.
+- Removed Herobrine.
+
+## Alpha 0.9.0.53 — Second Skin | October 2026
+- **Skins, sorted:** the outer layer of a skin (sleeves, jacket, hat, trousers) now keeps its see-through pixels the way Minecraft does, softly blended, instead of dropping any that weren't at least half solid. Sleeves with soft shading or glassy edges show all of themselves.
+- **No more gaps at the elbows and knees:** bending an arm or leg could open a gap at the joint where you could see into the limb and through its sleeve. The two halves now overlap, so it stays whole however it bends.
+- The inner layer of a skin is always solid, as in Minecraft, so a transparent pixel there can no longer punch a hole into an arm.
+- **Slim (Alex) arms:** they're recognised far more reliably, from all four unused strips on both arms, and a classic skin with plain-coloured sleeves is no longer mistaken for slim. When someone joins your world, the arms they chose now come with their skin, so everyone sees them right.
+- Distant terrain uses much less memory on long journeys, and the *Click to play* reminder no longer shows while you're playing on a controller.
+- Removed Herobrine.
+
+## Alpha 0.9.0.52 — True Horizons | October 2026
+- **Distant terrain from your world's own seed:** the far-off land is now worked out the way your world is actually made, like Distant Horizons and Voxy. It has the same hills and valleys and the same ground underfoot: sand, gravel, mud, snow, podzol, dry savanna grass and needle-strewn taiga. Every tree stands where it really grows, with its real height and crown, and near you you can see the trunks under the canopies. Villages stand where they are, and the sea lightens in the shallows and darkens as it deepens.
+- **Your builds, seen from afar:** what you've built and changed shows in the distant land every time you play, straight from your save, not only after you've been near it.
+- **Smoother:** the distant land is worked out in small steps between frames, so it fills in without a stutter.
+- Removed Herobrine.
+
+## Alpha 0.9.0.51 — Far Horizons | October 2026
+- **Distant terrain:** the land now goes on past your render distance, like the Distant Horizons mod: mountains, forests, rivers, seas, beaches and snowy peaks, out to 512, 1,024 or 2,048 blocks. It's drawn simply (blocky columns, finer close to you and coarser further off) so it costs little. Choose how far in **Options -> Distant terrain**. It's on at 1,024 blocks on computers, off on phones, and Off is fastest.
+- It works at any render distance and always reaches at least 256 blocks beyond it, even at 16 chunks. The **render distance** slider now goes up to 16. While chunks are still loading, the distant land fills in until the real ones arrive.
+- Places you've been near show from afar as they really are, builds and all, for as long as the game is open. Further off, the land is drawn the way it was made.
+- **The weather out there too:** a storm darkens the distant land beneath it and its rain hazes the view, lightning strikes far across the land with the thunder arriving after, and clouds sit properly in front of distant mountains.
+- Removed Herobrine.
+
+## Alpha 0.9.0.50 — The Sky Update | October 2026
+- **Storms you can see coming:** weather now rolls in on the wind. Thin wisps of cloud run ahead of it, then a dark bank of cloud rises over the horizon on one side of the sky and climbs higher as it nears. The wind picks up, thunder rumbles far off, and a few minutes later the rain reaches you. Thunderclouds tower tall and nearly black, and lightning lights them up from inside. When the storm moves on, the clear sky comes in after it from the same side.
+- **Fog:** mist hangs about after rain and burns off as the sun climbs. Fog settles in the valleys and over rivers in the early morning, swamps are always a little misty, and now and then a bank of sea fog drifts in along the coast.
+- **Every land has its own weather:** sandstorms in the desert that turn the air brown, blizzards in the cold that blow the snow sideways and white everything out, heavy downpours and passing showers in the jungle, drizzle in the swamp, dry thunderstorms over the savanna whose lightning sets the grass alight, and squalls at sea. From the Skylands you can watch storms flashing in the clouds below you, and ash drifts down in the Ember Depths, sometimes thick as a storm.
+- **Waves:** the open sea swells, and in a storm it heaves and chops. Lakes move less, and ponds hardly stir.
+- **Lightning:** it goes for the high places: tall trees, towers, someone standing on a hilltop. A **Lightning Rod** (three copper ingots in a column) takes any strike nearby, so nothing burns, and gives a pulse of redstone. Struck sand fuses into glass, and a struck tree is left as **Charred Logs** (good for charcoal) with its crown on fire. A strike close by shakes you.
+- **Snow and ice melt:** the snow a storm piles up and the ice it freezes melt away once the weather clears, in a couple of minutes in the sun and slower in the shade. The snow that cold lands have always had stays.
+- **The northern lights** ripple across the northern sky over cold lands on clear nights, brighter on some nights than others. And after the rain, with the sun behind you, look for a **rainbow**.
+- **The mouse wheel, fixed for good:** it could stop answering for a second or two and then come back by itself. That's gone. It also counts one slot per notch on high-resolution wheels, however slowly you turn them. The F3 screen now shows what the wheel is sending, in case anything still seems off.
+- `/weather front rain` or `/weather front thunder` sends a storm on its way, a few minutes off.
+- Removed Herobrine.
+
+## Alpha 0.9.0.49 — Down in the Dark | October 2026
+- **Underground, the world keeps you company too:** some of what the world has in store couldn't find its footing in tunnels and caves, so it only ever happened up on the surface. Now it happens in mines and caves just as well.
+- Removed Herobrine.
+
+## Alpha 0.9.0.48 — Steady Hands | October 2026
+- **The mouse wheel, properly this time:** one slot per notch on every kind of mouse, even while the game is busy drawing a big scene, and it now works while you're sneaking too (holding Shift used to turn the wheel sideways and the hotbar didn't move). A quick spin still runs along the hotbar as fast as you turn it.
+- **One press of Esc:** Esc opens the pause menu, and Esc again closes it. It used to open and close it in the same press, so it took two. If the game can't take the mouse back straight away after you return, it says *Click to play* instead of leaving the pointer loose.
+- **Gentler view bobbing:** walking sways you softly from side to side with one easy dip each step, a touch of roll and a slight nod, all smooth curves with no jolt as your foot lands. Stepping up onto a block, a slab or a path raises the view smoothly instead of snapping, and crouching, standing and swimming lower and lift your eyes gently. The item in your hand bobs to match.
+- Removed Herobrine.
+
+## Alpha 0.9.0.47 — Not So Quiet | October 2026
+- **Worlds that went too quiet:** a world could hold back what it has in store for hours on end while a tamed dragon was about, or a dungeon keeper or bounty foe you'd left alive was somewhere in the loaded land. It now waits only during a real boss fight close by. Single player and together alike.
+- Something glimpsed just as you used a waystone or a portal can no longer leave things stuck until you reload.
+- Removed Herobrine.
+
+## Alpha 0.9.0.46 — Heard, Not Seen | October 2026
+- **Playing together, all of it:** players who join a world, from another computer or on a dedicated server, now get everything the world has in store for them, just like whoever is hosting. Some things used to happen only to the host. The story also moves along when a guest is the one who finds the way.
+- **The Warden hunts by sound:** it's blind, so it goes where it last heard you, and only roughly: the farther off you are and the more rock between you, the rougher its guess. Sneak and you can slip away; sprint and it may lose you, but it hears every step. Its sonic boom aims where it thinks you are, so it can go wide at a distance or through rock, and it hits softer through stone. It hears players who joined over the network too.
+- Removed Herobrine.
+
+## Alpha 0.9.0.45 — Over Your Shoulder | October 2026
+- **Maps you can share a look at:** someone holding a map holds it up in both hands (or one, if the other is full), and it's the real map on the sheet. Look over their shoulder and you can read it, in split screen and over the network alike. From in front you see the back of the paper.
+- **Smoother hotbar scrolling:** the mouse wheel moves one slot per notch on any mouse, and touchpads scroll at a sensible pace instead of racing along the hotbar. Spinning the wheel fast can no longer leave nothing selected.
+- Removed Herobrine.
+
+## Alpha 0.9.0.44 — Riverbanks and Reading Rooms | October 2026
+- **Rivers you can climb out of:** rivers are shaped like the sea's shores now. They're deepest in the middle, shallow enough to stand in near the edge, and the sandy bank starts level with the water and rises gently. No more two-block walls of sand. (Riverbanks in land you've already changed stay as they were; everywhere else has the new banks.)
+- **Lore books on the shelf:** bookcases take the old books you find on your travels, and spell tomes too, alongside ordinary and enchanted books. A plain bookshelf is full already, and it now tells you a Bookcase is where books go.
+- Removed Herobrine.
+
+## Alpha 0.9.0.43 — First Through the Door | October 2026
+- **The first version from our releases page:** if this installed by itself when you opened the launcher, updates are working. From now on new versions arrive the same way.
+- Each release is put together on GitHub straight from the game file, apps included, so what you download is always the version described here.
+- **Your worlds' folder is called DokuQuest now:** `~/.config/DokuQuest` on Linux, `%APPDATA%\DokuQuest` on Windows. The desktop app moves the old Emberwild folder across by itself the first time it starts, worlds, settings and all.
+- Removed Herobrine.
+
+## Alpha 0.9.0.42 — Our Own Releases | October 2026
+- **Updates from our GitHub:** the desktop app now checks the DokuQuest releases page by itself each time the launcher opens, and installs a newer game straight away. Nothing to type; the repository can still be changed in Options.
+- The desktop apps for Linux and Windows can be downloaded straight from the releases page, in one piece.
+- Removed Herobrine.
+
+## Alpha 0.9.0.41 — Sure Footing | October 2026
+- **Snowy paths:** walking along a path with patches of snow no longer makes you grab at the snow as if it were a ledge and drop into the ground. You walk on as you would anywhere else, without catching on the edge of each patch.
+- **Ledges by their real height:** you hang from and climb onto the true top of what you've caught. A snow layer, a carpet or the lower half of a slab is never mistaken for a ledge, and you never hang anywhere your body doesn't fit. A wall with snow or a carpet on top can be climbed now; before, it couldn't be caught at all.
+- Removed Herobrine.
+
+## Alpha 0.9.0.40 — Updates by Themselves | October 2026
+The desktop app can now keep itself up to date from a GitHub Releases page. No more files to pick or parts to join.
+- **Updates from GitHub:** in the launcher's Options, type the repository that holds DokuQuest releases (owner/name) and press *Check now*. A newer game installs at once, the same as Install update… does. Your worlds stay as they are.
+- **Check when the launcher starts:** leave it on and new game versions arrive whenever you open the app. A small note by the Play button tells you when one has.
+- **New app versions too:** when the app itself changes, Options shows *Update the app*. On Linux the AppImage is swapped in place (same file, so shortcuts keep working); on Windows the new version unpacks over the old folder while the app restarts. Each download is checked against its checksum before it is used.
+- **Private repositories:** add a read-only access token under *Private repository?*. It stays on this computer.
+- Removed Herobrine.
+
+## Alpha 0.9.0.39 — The Seas | October 2026
+The coast gets dangerous, and the sea gives up its secrets.
+- **Pirate raids:** villages by the sea are mostly raided by pirates now: a crew and their captain come ashore, sometimes with their ship drawn up on the beach.
+- **Pirate coves:** camps along the shore with tents, a campfire, a jetty, barrels and chests of plunder, guarded by pirates and their captain.
+- **Treasure maps:** found in shipwrecks, sunken temples, ruins and mazes, sold by cartographers, and carried by pirate captains. Use one and it becomes a map with an X on a beach some way off. Dig there and a chest of treasure is buried under the sand.
+- Removed Herobrine.
+
+## Alpha 0.9.0.38 — The Deep Halls | October 2026
+Two great dungeons deep under the ground, for when you're well geared.
+- **The Deep Halls:** three floors of halls, locked behind bronze, silver and gold gates. Watch for dart traps, solve the lever puzzle by the mural to open a hidden way, take the silver key from the Gaoler, and face the Lich King at the bottom. His vault opens when he falls.
+- **The Twin Vault:** built for two. Both pressure plates must be held at once to open the door, and the Sun and Moon Wardens must fall within fifteen seconds of each other, or the fallen one rises again.
+- The boss bar names every boss correctly.
+- Removed Herobrine.
+
+## Alpha 0.9.0.37 — Paths and Schools | October 2026
+At combat level 20, choose who you are.
+- **Paths:** Knight, Ranger or Mage, taught by village guards, fletchers, librarians and elders. Each has six talents in three tiers, on top of your perks.
+- **Schools of magic:** fire, frost, life, storm and arcane each level up as you cast their spells and make them stronger. A seasoned school gives back some of the mana you spend.
+- Removed Herobrine.
+
+## Alpha 0.9.0.36 — Roads and Reins | October 2026
+- **Waystones:** every village has one, and you can craft your own. Touch one to attune, then travel to any attuned stone for a few experience levels (more the farther it is, five at most).
+- **Better horses:** every mount has its own speed, jump and toughness, and foals take after both parents. Breed for the best.
+- **The carriage:** hitch it to a tamed horse. Two seats and a chest; whoever sits in front drives.
+- Removed Herobrine.
+
+## Alpha 0.9.0.35 — Gears and Belts | October 2026
+- **Conveyor belts:** carry items, creatures and players along, and drop items into chests, hoppers, furnaces and machines at the end.
+- **The Crusher:** turns one ore into two crushed ores (sometimes three, the better its builder's Smithing), silver, mithril and adamantite included, and trains Smithing as it works.
+- **The Harvester:** reaps ripe crops and berry bushes around it, replants them and puts the harvest in a chest next to it.
+- Hoppers feed machines and take from them, and machines push their output onto belts.
+- Removed Herobrine.
+
+## Alpha 0.9.0.34 — Together | October 2026
+Playing as two (or more) gets better.
+- **Party bar:** your partners' health and where they are, at the side of the screen.
+- **Downed, not dead:** while a partner is still standing, a killing blow knocks you down instead. Your partner holds Use on you for three seconds to help you up. Hold Sneak to give up.
+- **Shared jobs:** a job one of you takes from the board is the party's, and bounty kills count for everyone.
+- **The party chest:** one chest everyone in the party shares. The Hero's house becomes the party's house, with a bed for two and the party chest inside.
+- Guests can raise the Stone Guardian and set End Crystals too.
+- Removed Herobrine.
+
+## Alpha 0.9.0.33 — Safe Keeping | October 2026
+- The villager you're rescuing no longer mistakes a wounded creature for itself (which could freeze the game).
+- The Hero's house never builds over your builds, chests or other places, and comes once per village.
+- Players joining a server arrive on the ground. Cake bites don't give food effects. Only one dragon egg.
+- Removed Herobrine.
+
+## Alpha 0.9.0.32 — Hearth and Home | October 2026
+- **Armour sets:** wear all four pieces of a set for its bonus (twelve sets, shown on the pieces and the character sheet).
+- **Rescue jobs:** a villager has gone missing. Find them and walk them home.
+- **A house of your own:** at Hero standing, a village builds you a house, with a bed and a gift or two, marked on your map.
+- **End Crystals:** set four by the exit portal to call the Ender Dragon back.
+- Removed Herobrine.
+
+## Alpha 0.9.0.31 — Loose Ends | October 2026
+- Raids arrive on solid ground and must really be fought. Bounties work for every kind of foe and for LAN guests.
+- Smelting Touch smelts only the block you break. Placed blocks stay marked when they fall, are pushed or change state.
+- Many perk fixes, guest potions and wards, and the last foe of the story keeps his wounds between fights.
+- Removed Herobrine.
+
+## Alpha 0.9.0.30 — A Living World | October 2026
+The villages have more to fear, and more to thank you for.
+- **Raids:** some nights there are drums, and a band of marauders comes for the village you're in or near. As the rift thins, things from the rift come with them. Beat them all and the village thanks you with emeralds, experience and standing. Each village is left alone for a few days after a raid. Once the rift is sealed, its creatures stop coming and raids are rarer.
+- **Named foes:** now and then the quest board posts a bounty on one creature with a name and a reputation, like *Grimclaw of the Barrows*. It waits out in the wild at the place the board gives. It's far tougher than its kind (and tougher as the days go on), shows its name in the bar over the screen when you meet it, and carries good things. Bring it down and go back to the board for the bounty.
+- **Your maps mark your jobs:** the dungeon to clear, the place to scout, the village to carry word to, and the named foe's haunt.
+- Removed Herobrine.
+
+## Alpha 0.9.0.29 — Open Doors | October 2026
+Dedicated servers, play over the internet, and mods and plugins.
+- **Dedicated Server:** a new button under Multiplayer on the title screen (and under Play in the launcher) runs one of your worlds as a server. Nobody plays on that screen. The world just runs, and everyone joins it from Multiplayer. Pick the world (or make one), name the server, and set a welcome message, how many can play at once and the port.
+- *Players*: who's on, where and how they are. Message them, send them to spawn, or kick them.
+- *World map*: a live map of everything loaded, with everyone on it.
+- *Isometric*: a live 3D view of the land round any player.
+- *Chat & console*: talk to everyone, or run commands (/list, /kick, /say, /save, /stop and every game command).
+- *Settings*: time of day, weather, game rules, the welcome message and the player limit.
+- *Plugins*: manage the server's plugins.
+- **Over the internet:** with the new desktop app, the server can ask your router to open its port (UPnP) and shows your address on the internet. If the router won't, forward the TCP port (25580 unless you change it) to the server's computer. Friends type that address in Multiplayer.
+- A mod can add commands, items and recipes, and run code when things happen: blocks broken or placed, creatures slain, every tick, players joining or chatting.
+- Plugins are mods for servers: they run while you host.
+- "Save an example" gives you a working one to start from.
+- Mods run with the game's full trust, so only add ones you trust.
+- **The desktop app** (a new download): the Dedicated Server button under Play, a player limit and UPnP for servers, and `--server` on the command line to start straight on the server screen.
+- Removed Herobrine.
+
+## Alpha 0.9.0.28 — Far Places | October 2026
+The Skylands and the Ember Depths get places worth finding.
+- **The Sky Temple:** a hall of quartz and gold on its own floating island, high above the others. The Valkyrie Queen keeps it. Beat her for her lance, golden feathers and the treasure behind her altar. The first time, she also gives a Realm Fragment.
+- **Cloud shrines** on the islands: a ring of glowing pillars round an old book and a chest.
+- **Skyships:** drifting wrecks under great wool balloons, with chests in their holds. Some hold a rare treasure.
+- **Moa nests** with the moas still about.
+- **Ember Bastions:** great keeps of nether brick standing out of the lava sea, with bridges into the caverns and cages breathing out charred ghouls. The Ember Lord holds the hall. Beat him for his crown, which keeps fire off whoever wears it, and, the first time, a Realm Fragment.
+- **Obsidian spires** to climb to a treasure room at the top, **ruined forges** with their anvils, furnaces and cinderite still there, and **bone pits** where something still raises the dead.
+- **New things:** the *Golden Feather* (carry one and falls can't hurt you), the *Valkyrie Lance* and the *Ember Crown*, plus two new lore books.
+- Places in the Skylands and the Depths count for Exploring and the journal like any other. They only appear in land you haven't been to yet.
+- Removed Herobrine.
+
+## Alpha 0.9.0.27 — The Kitchen Garden | October 2026
+Farming and cooking grow up.
+- **Seven new crops:** tomatoes, onions, cabbages, corn, peppers, strawberries and rice. Cutting long grass now and then turns up their seeds, and farmers sell them and buy the harvest. Rice needs water right beside its farmland. Seed crops give seeds back when picked, and you can turn produce back into seeds at the crafting table.
+- **The watering can:** iron and a bowl. Fill it at water, then pour it on your crops to bring the ones around it on a stage.
+- Garden salad, which keeps healing.
+- Vegetable stew, which keeps healing longer.
+- Tomato soup.
+- Roasted corn and cooked rice (from the furnace).
+- Sushi, which lets you breathe a while under water.
+- Stuffed peppers, so hot that fire hardly touches you.
+- Strawberry tarts, for a spring in your step.
+- Pizza, which makes you strong for a while.
+- Removed Herobrine.
+
+## Alpha 0.9.0.26 — Arcana | October 2026
+More magic, more potions, more enchantments, and proper wizard's hats.
+- *Pyromancer* (fire): red wool and rubies.
+- *Frostweaver* (frost): light blue wool and sapphires.
+- *Druid* (life: healing and the creatures you call): green wool and emeralds.
+- *Stormcaller* (storm, lightning and the swift arts): grey wool and lapis.
+- *Arcane Missiles* (Magic 8): three seeking bolts.
+- *Regrowth* (22): you and everyone near you heal over time.
+- *Haste* (25): speed and a light step.
+- *Fireball* (28): bursts where it lands.
+- *Ice Nova* (35): a ring of frost that hurts and slows everything around you.
+- *Stone Guardian* (40): raises a guardian of stone to fight beside you for a minute.
+- *Clarity* (lapis): mana comes back nearly twice as fast.
+- *Fortune* (an emerald): extra ore.
+- *Haste* (an iron nugget): you dig faster.
+- *Warding* (a gold ingot): a shield that soaks up harm.
+- *Vampirism* (blades heal you).
+- *Frost Aspect* (slows what you hit).
+- *Smelting Touch* (what you dig comes out smelted).
+- *Volley* (bows loose three arrows).
+- *Swiftness* (boots).
+- *Insight* (helmets: more experience).
+- Removed Herobrine.
+
+## Alpha 0.9.0.25 — The Long Road | October 2026
+The second part of the full-game pass: the RPG side grows.
+- **The Journal (J):** the story as chapters, from the first village to the seal and beyond (the End, the Deep Dark, the seven dragons). It shows what to do next, where to look, your progress, and your records: places found, lands seen, worlds visited, distance walked, creatures beaten, quests done and play time. Before the rift opens, the quest tracker shows your next chapter.
+- Keen Edge and Cleave for melee, Prospector and Motherlode for mining.
+- Green Thumb (crops near you grow faster) and Replanter for farming.
+- Retrieval and Eagle Eye for archery, Second Wind and Unbreakable for defence.
+- Fine Work and Legendary Smith for smithing (your gear starts with levels), and Thrift and Archmage for magic.
+- **Two new skills:** *Exploring* grows from finding villages, dungeons and ruins, seeing new lands and other worlds, and simply covering ground. *Alchemy* grows from brewing and enchanting.
+- **Realm Fragments from the great foes:** besides dungeon keepers, the first of each great foe you beat gives a fragment. That means the Cinder Golem, the Hollow Archmage, the Minotaur, each dragon, the Warden and the Ender Dragon, so the road to his realm can run through the whole world. The elder tells of them.
+- **New work on the boards:** *Scout* asks you to go and see a ruin, tower or temple nearby, and *Word to…* asks you to carry news to a neighbouring village and speak to their elder or a guard. Both train Exploring.
+- **Armour past diamond:** every tier is now better than the last. Mithril and cinderite beat diamond, dragonscale beats those, and adamantite tops them all. Points over twenty show as glowing shields.
+- Removed Herobrine.
+
+## Alpha 0.9.0.24 — Fair Play | October 2026
+The first part of the full-game pass: loopholes closed, numbers evened out, the story's loose ends tied.
+- **What you place, you just get back:** breaking a block you put down yourself gives no skill experience and no lucky extra ore or log. Placing and re-mining an ore is no longer a mine of its own.
+- **Eating:** food heals half at once and the rest over the next few seconds, with a moment between bites. A stack of steak is no longer a second health bar. Golden apples heal less at once but give Regeneration.
+- Arrows now train Archery (they never did).
+- Spells train Magic only and no longer get the melee bonuses.
+- Only blows that actually hurt you train Defence, so no more cactus or lava farming.
+- Turning ingots into blocks and back no longer trains Smithing, though alloys still do.
+- Overkill doesn't count.
+- Fishing now brings bites sooner as it levels, and Taming makes taming easier and gives experience when you tame.
+- **Defence:** armour gives 3.5% a point, so mithril and adamantite finally beat diamond. Protection counts for less. Armour, enchantments and skill together never stop more than four fifths of a blow.
+- **Fire weapons:** the cinderite sword, the Ember Blade and Fire Aspect now hurt fire-proof foes like any blade. They just can't set them alight. They used to do nothing at all to the Depths' creatures and most bosses.
+- Strength is now a share of your blow, not a flat bonus.
+- Magic skill scales less steeply, and a well-used staff counts too.
+- Call Lightning costs more and recharges slower.
+- The Warden's sonic boom is softened by armour.
+- The Ember Blade drops from 9 damage to 7, and the Ogre Club from 8 to 6.5.
+- The Cinder Golem gives a heart crystal the first time only (rarely after), and the effigy only works at night, as it says.
+- No more emerald-block profit at the jeweller.
+- The rift opens even with "He is here" turned off. That setting now only sends his scares away.
+- The rift opens from a village anyone has found.
+- One fragment is enough to start him stirring.
+- His scares go to any player, not just player one.
+- Fragments don't burn or fade.
+- The elder always offers the main quest.
+- After the seal, the gateway stays, so you can go back into his realm quietly.
+- On one screen, only whoever walks out of his realm leaves it.
+- Over LAN, everyone has to gather at the way out first.
+- LAN guests now get the day, the cleared dungeons and the story from the host, so their shops and quests match.
+- **The End:** its portals work with "See through portals" off and for LAN guests. The first dragon opens four gateways round the island, not one.
+- **Quests:** board bounties lapse after a week instead of filling your list forever. Shops, errands and loot no longer list things that don't exist.
+- Removed Herobrine.
+
+## Alpha 0.9.0.23 — Loosen Up | October 2026
+Players and creatures move like they mean it.
+- **Any-direction movement:** your body turns toward the way you're going, forward, diagonally or sideways, while your head keeps looking where you aim. Your hips swing round further than your shoulders. Backing off, you walk backwards facing forward, the way you would.
+- **Less stiff:** a looser walk with hips that swing and shoulders that counter-twist, wider arm swings with bent elbows, a roll from foot to foot and a nod with each step. You lean into a sprint, into turns, forward as you set off and back as you pull up. Standing still, your body catches up with where you're looking after a moment, and your head glances about.
+- **Flying (creative):** you tip forward into the flight with your legs together and trailing and your arms swept back, and you bank into turns. Hovering, your legs dangle and drift. Going up, your knees tuck; dropping, your arms rise.
+- **Creatures too:** two-legged mobs get the hip swing, shoulder twist and head nod, and lean into turns. Four-legged animals rock as they walk, lean into turns, breathe, and look slowly around when they stand. Birds waddle and now and then shuffle their wings.
+- First person: looking down as you strafe, your legs point the way you're going.
+- Removed Herobrine.
+
+## Alpha 0.9.0.22 — Lighter Load | October 2026
+An optimisation pass: the same world, built and drawn with less work.
+- **Plant detail by distance:** the solid 3D grass clumps, flowers and crops are built only in the land near you. Further out the same plants are drawn the classic flat way, which takes a tenth of the triangles. As you walk, the land coming close is rebuilt with full detail, nearest first, so you never see the change up close. Options -> *3D plants* lets you choose near you (the default), everywhere, or flat everywhere for the fastest play.
+- **Fewer rebuilds:** a crop growing, grass spreading or a leaf decaying used to rebuild nine pieces of the world around it. Now only its own piece is rebuilt, unless the change touches the light.
+- **Caves out of sight:** standing on the surface, the caves under distant land aren't drawn, since you can't see them. That's roughly a third of all the triangles. Go underground, or near a cliff, and they're all there again.
+- **Nearest first:** the land is drawn from near to far, so the graphics card can skip whatever is hidden behind what's close.
+- **Less churn:** particles and the world builder no longer make throwaway objects every frame, so there's less clean-up pausing.
+- **Smaller meshes:** world pieces use half-size index buffers where they fit, which means less memory and faster uploads.
+- Removed Herobrine.
+
+## Alpha 0.9.0.21 — Light on Your Feet | October 2026
+Movement that feels better under your hands.
+- **Shimmy along ledges:** hanging from a ledge, move left or right and you go hand over hand along it, as far as it runs and there's room for you. Jump to climb up wherever you've got to, or sneak to drop.
+- **Forgiving jumps:** a jump pressed a moment after you've walked off an edge still counts, and one pressed just before you land happens as soon as you touch down.
+- **Third person:** when a wall comes between you and the camera it still pulls in at once, but now it eases back out instead of snapping.
+- Removed Herobrine.
+
+## Alpha 0.9.0.20 — The Deep Dark | October 2026
+Far below some parts of the Overworld, something is listening.
+- **The Deep Dark:** under some stretches of the Overworld, just above the lava, the caves open into wide, pitch-dark halls of deepslate grown over with **sculk**, a living crust. Bring light.
+- **Sculk sensors** twitch and click at every footstep, every block broken or set down and every hard landing nearby. **Sculk shriekers** scream when you're heard close to them, and each scream brings the dark down over your eyes. Sneak and your footsteps make no sound.
+- **The Warden:** on the fourth scream, it digs its way up out of the ground. It's blind, but it follows every sound and smells anyone standing close. Hit it, or let it hear you enough, and it comes for you. Up close it hits hard; whatever it can't reach it strikes with a blast of sound that goes through stone and armour alike. Its chest beats faster as it closes in. Left in peace for a minute, it sinks back down. The warning fades after about ten minutes of quiet.
+- **Ancient Cities:** rare, in the deepest parts of the Deep Dark. Under a great dark dome, a ring of deepslate houses stands round a huge gate of reinforced deepslate that nothing can break. Shriekers guard it. The chests hold echo shards, enchanted books (one always **Swift Sneak**), golden apples, diamonds and an old book about the place.
+- **Sculk catalysts** spread the sculk wherever something dies close by.
+- **New things:** **Swift Sneak** (leggings: move faster while sneaking or crawling) and the **Echo Charm** (eight echo shards round a gold ingot; worn on the belt, your steps make no sound the sculk can hear).
+- Removed Herobrine.
+
+## Alpha 0.9.0.19 — The End | October 2026
+Under the Ember Depths lies the last place of all.
+- **The End, under the Depths:** it's part of the one stacked world. Break through the **void crust** at the very bottom of the Ember Depths (it takes a cinderite pick) and you fall out into the End's black sky, where the void winds carry you down onto the nearest island. Fly up out of the End's sky and you come out on the Depths' floor. The void below the islands is still deadly.
+- **The main island:** a great dome of pale end stone ringed with ten obsidian pillars, an end crystal burning on each (the two tallest caged in iron bars), and the exit portal's bedrock bowl in the middle.
+- **The Ender Dragon:** it circles the island, healed by a beam from the nearest crystal. Break the crystals (an arrow does it; they burst when struck), then bring it down: it sweeps over to breathe void-fire, charges, and now and then settles on the exit portal's pillar, where it's easiest to reach. Beaten, the exit portal opens, its egg rests on the pillar, and a gateway opens.
+- **Its egg** hatches, kept warm like the other dragons' eggs, into an **ender drake** you can raise and ride.
+- **The outer islands:** past a wide gulf of void, scattered islands with chorus groves and **End cities**: purpur towers with their treasure on the roof, some with a ship moored alongside. Each ship's hold has a pair of **elytra**. The gateways that open after the dragon throw you out to the far islands and back.
+- **Strongholds:** three, deep under the Overworld, seven hundred to a thousand blocks from the middle of the world. Inside are stone-brick halls, a library (with a book about the End), a storeroom and the portal room. Set an **Eye of Ender** in each of the twelve frames and the portal opens. Like every portal it's a window: look down into it and you see the End far below. Step in and you drop through, gently, onto the obsidian platform.
+- **Eyes of Ender** (an ender pearl and cinder powder): throw one and follow it. It flies towards the nearest stronghold, then hangs in the air. Mostly it drops back down for you to pick up.
+- **Endermen:** tall, black, long-limbed. Leave them be and they keep to themselves. Look one in the eyes (or hit it) and it comes for you, blinking from place to place. Arrows never touch them, water burns them, and they drop **ender pearls**. Throw a pearl and you're where it lands. Mostly they live in the End, but one sometimes walks the Overworld at night, or the Ember Depths.
+- **Elytra:** wear them in the cape slot, then jump while falling to spread them. You glide where you look: dive to pick up speed, pull up to climb. Use a gust puff in flight for a boost. Hitting a wall fast hurts.
+- **Chorus fruit** heals a little and moves you somewhere nearby. Smelt it into popped chorus fruit to make purpur blocks and end rods. Chorus plants are connected 3D stems.
+- **Fishing rods** are held the right way round: in your hand the line hangs from the tip out in front of you, and other players and fishers hold the rod up at an angle with the line dangling down.
+- **Fix:** thin coloured lines no longer show along the edges of blocks seen at a low angle.
+- Removed Herobrine.
+
+## Alpha 0.9.0.18 — Each Our Own Way | October 2026
+One big world, and in split screen each of you is wherever you've gone in it.
+- **Travel alone, like Minecraft:** in split screen, whoever walks through a portal goes alone. The other player stays where they are. Each of you can be in a different layer of the world at once: one in the Skylands while the other digs in the Ember Depths. Falling off an island, climbing up into the Skylands, breaking through the crust and opening your pocket dimension work the same way, one player at a time.
+- **Portals show who's there, live:** look through a portal and whatever is on the other side is really there and moving: animals, monsters, dropped items, and the other player if they went through. Wave at each other through the window.
+- **The far side keeps living:** while someone is looking into a place, its creatures keep moving, even if nobody is standing in it.
+- **The final realm takes everyone:** the final fight is for all of you. When the first player steps through the gate, everyone playing (on this screen or over LAN) gets a 10-second count and is then drawn in together, side by side.
+- **Dying elsewhere:** if you die in another layer while the others play on, you go home alone, to your bed or the world's spawn.
+- **Saving:** each player is saved in the layer they're in. Reopen the world, press join, and the second player is back where they left off, even in their pocket dimension.
+- **Fixes:** stepping out of the rift no longer leaves you stuck in the floor of his realm (or yours), and the tear in his realm is a window back to the village again. When only one of you is in the cloud bank between the Skylands and the Overworld, that player now gets the cloud bank's slow fall and sky.
+- Removed Herobrine.
+
+## Alpha 0.9.0.17 — Clear Windows | October 2026
+Fixes for portals, armour and skins.
+- **Portal windows hold still:** the view through a portal no longer swims as you turn your head; it's drawn from exactly where you're looking this moment.
+- **Always windows:** far away, a portal no longer flips back to its own swirling picture, and every portal in sight is a window at once (an Ember portal and a Skylands portal side by side both show their far side).
+- **Your outfit under armour:** with a resource pack's armour, your skin's outer layer shows through wherever the armour leaves it bare (the insides of your arms too), and when a pack's chestplate only covers the shoulders, your forearms get a cuff in the chestplate's own look, so armour shows on both arms in first person, off-hand item or not.
+- **Alex skins:** a new *Arms* choice in your profile: Classic (Steve, 4 pixels) or Slim (Alex, 3 pixels), or let the game work it out (it now also spots slim skins whose spare columns were filled in).
+- Removed Herobrine.
+
+## Alpha 0.9.0.16 — Character Sheet | October 2026
+Your inventory shows who you've become.
+- **You, in 3D:** the doll in your inventory is your character in full 3D: your skin's layers, your armour (in your resource pack's armour pictures), what you hold and carry. It shifts its weight and turns a little; drag it to turn it round.
+- **Your skills beside it:** all twelve skills with their levels and a bar to the next (hover one for the experience), your total level and your combat level, how hard you hit with what you're holding, how much of a blow your armour and Defence turn aside, and your mana.
+- **Item stats:** hovering a tool or weapon shows what it does in your hands (your Melee and the weapon's level included), with a green ^ or red v against what you're holding; tools show their tier and how fast they dig; armour shows how it compares with what you're wearing.
+- Removed Herobrine.
+
+## Alpha 0.9.0.15 — Through the Looking Glass | October 2026
+Portals that are always windows, your resource pack everywhere, and the water feels right.
+- **Portals are windows from the start:** light a new Ember Depths or Skylands portal and it shows the other side straight away (its far end is found or built for you in the background). They stay windows however far back you walk, as long as you can see them, and in split screen too, each player seeing through the portal nearest them.
+- **Really walk through:** you're across the moment you pass the middle of the portal: no waiting in it, no purple haze, no stutter. Stand in it and look back, and you see the world you came from. Both of you go across together in split screen.
+- **Portals set into the ground** (frame flush with the floor, so you walk straight in) line up floor to floor with the far side, and portals built for you on the far side are made that way too.
+- **Your resource pack's armour:** armour is drawn with the pack's own armour pictures (helmet, chestplate with its sleeves, leggings, boots, dyed leather), on you, in first person and on the doll.
+- **3D items in your pack's art:** the 3D models of tools, weapons, food, potions and the rest wear the item's picture from your pack all over, sides included, so they look like your pack's items made solid.
+- **Swimming:** in water over your head you swim: treading water with your arms sculling and legs turning, a breaststroke as you swim along, and a proper front crawl (arms going round, legs fluttering) for the fast swim, at an easier pace. In shallow water you still walk.
+- **Rivers** show which way they flow: the surface ripples run downstream. The current is gentler on a swimmer: it carries you along, but you can swim across it.
+- **Sugar cane and kelp in 3D:** sugar cane is real stalks with their bands and leaves, and kelp a single stem from the sea floor up with leaves off it; tall ones are one piece, all lined up.
+- **The Skylands:** look down and you see the clouds over the Overworld drifting by below.
+- Removed Herobrine.
+
+## Alpha 0.9.0.14 — Windows to Other Worlds | October 2026
+Portals are doorways now, not loading screens.
+- **See through portals:** walk up to a Skylands or Ember Depths portal that's been used once and it shows the other side, live, like a window: the far world moves as you move, with the light and weather over there. A soft glow of the portal's colour stays round the edge.
+- **Walk straight through:** step into the portal and you're simply on the other side, still walking, with no loading in between. Turn round and the portal looks back into the world you left.
+- **The rift in town** is a tear you can see into: his bruised purple realm, live, through a ragged edge, with the big haze round it gone. Once the gateway is open you walk straight in, and the tear in his realm looks back out over the village.
+- **New options:** Clouds and See through portals can be turned off under Options if your computer needs the speed.
+- **First person:** your arm shows your skin's sleeve layer again, and a chestplate's sleeves show on both arms, down to the wrist (in third person too).
+- Playing together over LAN still uses the old way through a portal for now (the view through still works).
+- Removed Herobrine.
+
+## Alpha 0.9.0.13 — Finishing Touches | October 2026
+Fixes and polish for the 3D update.
+- **Your resource pack on the 3D items:** the front and back of every 3D item now show the item's own picture from your pack (its shading and detail, not just its colours), wherever the part lies over it.
+- **Flowers in 3D, properly:** every flower is a little plant of its own: a stalk with two leaves and a real head. Daisies, bluets, cornflowers, orchids and poppies open a fan of petals round their centre; tulips and dandelions are cups; alliums a round ball of florets; lilies of the valley hang little bells off an arching stalk. All in the colours of your pack's pictures, and they sway in the wind.
+- **Grass in 3D:** short grass and ferns are a clump of separate blades at all angles, each leaning its own way.
+- **Skins:** the 3D outer layer no longer flickers at the corners of the head, body and limbs, and it tucks under your armour, so armour shows properly on skins with a second layer.
+- **The doll in your inventory** wears your armour (dyed leather too).
+- Removed Herobrine.
+
+## Alpha 0.9.0.12 — Solid Things | October 2026
+Everything you hold, drop, wear and grow is a real 3D thing now, the sky gets clouds, and people come alive a little more.
+- **Every item in 3D:** tools and weapons are built from parts like the bow and fishing rod: pickaxes with a round wrapped handle, a collar and a curved head; axes with a fanned blade; swords with a pommel, a bound grip, a crossguard and a fuller down the blade; staffs with a claw holding their stone. Food is food: a round apple with a stem and a leaf, a carrot with its tops, a loaf with slashes in the crust, cookies with chips in. Gems are cut, coal is lumpy, dust lies in a little heap, dyes come in tied pouches, potions are corked flasks, buckets have handles and whatever's in them, stew sits in a bowl, books have covers and pages, and every piece of armour is the piece itself. Everything else is carved from its picture with real thickness.
+- **Your resource pack, in 3D:** every part takes its colours from the item's own picture, so a pack's items come through in the pack's colours. Things are the right size next to each other, too: an apple is apple-sized next to a sword.
+- **Plants and crops in 3D:** flowers, saplings, mushrooms, bushes and every stage of every crop have real depth now (thin square stems, chunky blooms, fat ears of wheat), cut from their own pictures. Short grass and ferns stay light so big meadows stay quick.
+- **Clouds:** big soft heaps of cloud in the Cube World way, flat underneath and piled up on top, bright above and grey-blue below, warmed at sunset. They drift with the wind and hurry along when it gusts. When rain comes in, the sky fills up and they turn grey.
+- **Your gear shows on you:** what's in your hotbar but not in your hand is on you where you'd keep it: a sword, staff or club slung across your back (a bow over it), a pickaxe or shovel at your right hip and an axe or hoe at your left, and your potions hanging off the side of your backpack (or from your belt). Everyone sees it.
+- **The explorer's backpack** has straps now: three slots of their own for your sleeping bag, a campfire and your grappling hook, and they show on the pack (the bedroll on top, a bundle of firewood and the pot underneath, the hook at the side), like a lantern on its hook.
+- **Skins in 3D:** the outer layer of every skin (hair, hats, hoods, collars, cuffs, jacket and trousers) stands out from the body pixel by pixel. Everyone blinks now and then (and keeps their eyes shut asleep), stands with a slow shift of weight, and villagers' mouths move while they talk.
+- **Smoke from far away:** a campfire's smoke (and a chimney's) can be seen all the way out to the edge of what you can see, so you can find a camp or a village from the hills.
+- **Fixes:** no more long stall the first time you see your own skin (switching to third person could freeze the game for a few seconds).
+- Removed Herobrine.
+
+## Alpha 0.9.0.11 — Out in the Wild | October 2026
+Gear for going far from home, and campfires worth sitting by.
+- **Campfires, reworked:** a thick column of smoke climbs high into the sky (higher still from a campfire on a hay bale, a signal fire you can see from far away). The flames crackle and pop, and sparks and embers drift up. A **shovel** or a bucket of water puts one out, leaving smouldering logs and ash. **Flint and steel** lights it again. Don't stand in one.
+- **Hearths and chimneys:** village houses have a fireplace now, with the fire set into the back wall and a stone chimney going up past the roof. The smoke comes out of the top of the chimney and up into the sky. Build your own: a fire with a block over it and a stone stack beside it at least three blocks taller sends its smoke out of the top too.
+- **Cooking on the fire:** set up to four pieces of raw food on a lit campfire. They lie on the logs, sizzle, and jump off cooked half a minute later.
+- **Campfire kit:** a campfire you carry (a campfire, leather and string). Set it down anywhere, and sneak + use it with an empty hand to pack it up again.
+- **Rope:** three string make four (straw makes some too). Use it on the edge of a ledge, a ceiling or the end of another rope and it hangs straight down to the ground, as many blocks as you carry. Climb it like a ladder; sneak to hold on. Cut it and everything below comes down with it.
+- **Grappling hook:** three iron ingots and a rope. Throw it at a ledge, a cliff or a ceiling up to 30 blocks away: it catches on the edge and a rope drops straight down to the ground. Climb up, then use the hook (or its rope) to take it back, rope and all.
+- **Sleeping bag:** three wool over three leather. Lay it down anywhere in the Overworld and sleep the night through. It's your spawn for that night only: in the morning you roll it up and your bed is home again.
+- **Explorer's backpack:** 27 pockets, made from a reinforced backpack with rope, gold and leather. What you carry shows on it: a coil of rope at the side, the grappling hook, a cooking pot, and your sleeping bag rolled on top. The merchant sells rope, kits, sleeping bags and hooks.
+- **Villagers walk instead of hopping:** they no longer jump along the paths or at every fence and wall, and step round each other instead of jumping into each other. Other creatures jump less for no reason too.
+- **Level villages:** villages are built on flattened ground now, the plaza, the roads and every house at one height, blending back into the hills around them, so the paths run flat and every doorway opens straight onto the path. In a world from before this update, use **Upgrade terrain** on the world screen: villages you haven't changed yet come out level (ones you've already built in or used stay as they are, so nothing gets cut in half).
+- **Walking in:** stepping from a path (or anything a little lower) through a doorway no longer needs a jump. Tilled **farmland** sits a sixteenth lower, like a path, with the crops down in it.
+- **Villagers sitting down:** villagers walk up to the plaza bench and sit on it properly, still, instead of twitching about inside it. Sleeping villagers keep still too, and nobody can be shoved off a seat.
+- **Stonecutter:** it's a low bench now, nine pixels high, with its saw blade standing up through the middle, and it takes your resource pack's stonecutter pictures the way they're meant to sit.
+- **Ground storage on slabs:** things you set down on a half slab can be picked up again (you were hitting the slab under them instead).
+- **Resource packs:** the iron golem now wears your pack's golem texture.
+- Removed Herobrine.
+
+## Alpha 0.9.0.10 — Spellbound | October 2026
+Enchanting and brewing arrive, the Skylands fill with stranger creatures, and the world gets a whole new soundtrack.
+- **Enchanting:** build an **Enchanting Table** (a book, two diamonds, four obsidian). Put in a tool, weapon, piece of armour, bow, fishing rod, staff or a plain book, add lapis, and choose one of three offers, paid for with your levels. Bookshelves two blocks around the table (with nothing in between) make the offers stronger, up to level 30 with fifteen of them. The book floats over the table, turns to face you and leafs through its pages, and little glyphs drift in from the shelves.
+- **Twenty-eight enchantments:** Sharpness, Smite, Bane of Arthropods, Knockback, Fire Aspect, Looting; Efficiency, Silk Touch, Fortune, Unbreaking, Mending; Protection (and Fire, Blast and Projectile Protection), Thorns, Respiration, Aqua Affinity, Feather Falling, Depth Strider; Power, Punch, Flame, Infinity; Lure and Luck of the Sea; and for staffs, **Arcane Might** (stronger spells) and **Mana Flow** (faster mana). Enchanted things shimmer, in your bag and in your hand.
+- **Books and the anvil:** an enchanted book puts its enchantment onto gear at an anvil, for a few levels. Joining two of the same tool keeps both sets of enchantments. The grindstone takes enchantments off again and gives some of the experience back. Mending is only found in dungeons and towers, from fishing, or from the librarian. The cleric sells **Bottles o' Enchanting**, full of experience.
+- **Brewing:** build a **Brewing Stand** (a cinder rod over three cobblestone) and burn **cinder powder** in it (from cinder rods, or the cleric). Fill glass bottles at water or a cauldron, add **nether wart** for an awkward potion, then: sugar for **Swiftness**, a rabbit's foot for **Leaping**, cinder powder for **Strength**, honeycomb for **Regeneration**, a spider eye for **Poison**, magma cream for **Fire Resistance**, a pufferfish for **Water Breathing**, a golden carrot for **Night Vision**, a feather for **Slow Falling**, a turtle scute for **the Turtle Master**, a glistering melon for **Healing**, and an amethyst shard for **Mana**.
+- **Changing potions:** redstone makes a potion last longer, glowstone dust makes it stronger, a fermented spider eye turns it into its opposite (Swiftness into Slowness, Healing into Harming, Night Vision into Invisibility, water into Weakness), and gunpowder makes it a **splash potion** to throw at friends or foes. Milk washes every effect away. What you're under shows at the top right.
+- **New in the Skylands:** **aerwhales**, great gentle whales that drift between the islands and sing; **zephyrs**, living clouds that puff up and blow you back with a gust (they drop **gust puffs**: use one for a great leap with a gentle way down); **swets**, jelly that hops after you and slows you, and golden ones that leave you alone unless you start it; and **aechor plants** that turn to watch you and spit poison thorns (moas love their petals).
+- **Music:** a whole band now: harp, flute, strings, choir, horn, marimba, kalimba, music box, oud, clarinet and drums. Every part of the world has its own music (plains, forests, jungles, deserts, savanna, the frozen north, the mountains, swamps, the sea, villages, under water, caves, the Depths, the Skylands), with darker versions at night, and music plays more often than before. **Battle music** starts when a boss or a dragon turns on you, grows fiercer as the fight goes on and ends in a fanfare when you win.
+- **The rift, as the villagers see it:** they talk about it now, and what they say changes as the story goes on. Ask anyone what they make of the rift, and they might let slip something you haven't heard yet, or point you to someone who knows more. Even before it opens, if you've been seeing things, ask whether they have too.
+- **Fixes:** a cape now lies on your back under a backpack, with the straps over it, and only its hem swings below the pack. A staff's sparkles come from its tip, in your hand, instead of off to the left. The whistle has its picture.
+- Removed Herobrine.
+
+## Alpha 0.9.0.9 — Places Worth Finding | October 2026
+The world fills up with places to find. In worlds you've played already, they appear in land you haven't changed yet. Each one goes on your maps once you've found it.
+- **Ruins:** the broken walls of old houses and keeps, mossy and fallen in, with a chest, often an old book on a lectern, and sometimes a trapdoor down to a cellar.
+- **Mage towers:** tall round stone towers in the woods and hills, with a library, a study and a ladder up through every floor. Warlocks in purple robes live there and throw fire and frost, then step away through space when you get close. At the top waits the **Hollow Archmage**, the tower's master gone wrong, who calls his apprentices when he weakens. His hoard has the best tomes and staffs.
+- **Desert temples:** sandstone halls with two towers and a coloured star on the floor. Treasure lies under the blue stone at its heart, and so does the old trap. Don't drop straight down.
+- **Sunken temples:** prismarine halls on the floor of the deep sea, lit by sea lanterns, with a heart of gold, sponges, and the drowned on guard.
+- **Shipwrecks:** old ships broken on the sea floor or run aground on a beach, with the stores in the bow and the captain's chest in the cabin at the stern.
+- **Mineshafts:** timbered tunnels under the land with rails, cobwebs and a cave spider cage, found by a little wooden frame over a ladder going down.
+- **The Labyrinth:** a stone maze deep under the land, entered down a long stair under a ruined gate. Its dead ends hold chests and worse. At its heart is the **Minotaur**. He charges when you're out of reach; dodge, and if he hits a wall he's stunned for a moment.
+- **Old books:** sixteen pages of the world's lore lie on lecterns and in chests. Use a book to read it; sneak + use a lectern to take its book. You're told how many you've found.
+- **Falling for real:** the cloud bank between the Skylands and the Overworld slows you only while you're in it. Below the clouds you fall, and from that height the fall kills, so bring water, Levitate or a flying mount. Breaking through the crust into the Depths is a real fall too.
+- **Flying mounts:** in the air, sneak flies your mount down; you get off once it has landed.
+- **Creatures keep away from edges:** they stop at the brink of a long drop instead of walking off it, always at the edges of the Skylands.
+- **The death compass** works like a real compass now: its needle swings round to your grave, in your hand, the hotbar and everywhere else.
+- **The iron golem** stands taller, on longer legs, with a heavier brow and shoulders.
+- **The sailing ship**'s bow is built solid, with no slits to see into the hull, and walking on its deck is walking: your legs move and the boards knock underfoot instead of you sliding about.
+- Removed Herobrine.
+
+## Alpha 0.9.0.8 — Companions | October 2026
+- **Your stable:** every creature you tame, hatch or raise joins your stable. Press **H** (or use a **whistle**: a bone and a string, or two emeralds from a shepherd) to see them all, each with its face, name, health and where it is. **Summon** any of them to your side wherever you are, in any world, and **Dismiss** them home when you're done. Rename them by clicking their name. Pets you already have join it the first time you see them.
+- **They don't die:** a companion that falls in a fight goes home to the stable to rest for five minutes, then comes when called again.
+- **Your favourite mount:** mark one with the star and **sneak + H** calls it to you, or sends it home if it's beside you.
+- **The Tide Dragon** sleeps on the floor of the open sea. Sail over its lair and it bursts out of the water. Its breath is a crushing wave that throws you back and puts out fires. Its egg hatches in water, not by a fire.
+- **New spells:** **Witchlight** (Magic 3), a light that floats over your shoulder for two minutes. **Levitate** (10): float on the air, jump to rise and sneak to sink. **Stoneskin** (12): a third less harm, and you hardly get knocked back, for a minute. **Spirit Wolf** (18): a ghostly wolf hunts whatever threatens you for a while (two at a time for a master). The librarian sells the first three; the wolf is found in dungeons.
+- Removed Herobrine.
+
+## Alpha 0.9.0.7 — Here Be Dragons | October 2026
+- **Dragons:** six of them, each in its own kind of land. The **Verdant Dragon** lives in the forests and green meadows (poison breath), the **Sand Dragon** in the deserts (fire), the **Frost Dragon** on cold mountains and in the taiga (frost), the **Bog Dragon** in the swamps (acid), the **Ember Dragon** in a great cavern of the Ember Depths (fire) and the **Storm Dragon** on a high island of the Skylands (lightning). Each sleeps curled up in its lair, a ring of boulders around a nest of bones, gold and plunder, with a chest of treasure and its egg.
+- **The fight:** come close and it wakes (sneak and you can get nearer). It takes to the air and circles, hovers to breathe on you, dives to bite, and when it's hurt it lands to fight on the ground. Bring a bow or spells for when it's high. Beaten, it leaves its scales, emeralds and sometimes a heart crystal. Dragon scales make **Dragonscale armour**, as tough as diamond, longer-lasting and fire-resistant.
+- **Eggs and drakes:** take the egg from the nest and set it down near warmth (a fire, a campfire, lava, magma or a lit furnace). After about five minutes it hatches into a drake that is yours. Feed it meat to help it grow (about twenty minutes otherwise). Grown up, it takes a saddle.
+- **Flying:** in the saddle, jump to take off and to climb. Forward flies where you're looking, so look up to climb and down to dive. Sprint to race, and sneak to get off; in mid-air the wind takes you gently down. Fly up past the top of the Overworld and you come out in the Skylands, still riding. Your mount now also comes with you through portals.
+- **No loading screens between stacked worlds:** the world above or below is got ready in the background as you near the edge, so falling out of the Skylands, flying up into them or breaking through the crust is one continuous fall or flight. Between the Skylands and the Overworld you pass through a bank of cloud where the two skies blend. Climb out of the top of the Overworld on foot and the winds carry you up and set you down on the nearest island.
+- Removed Herobrine.
+
+## Alpha 0.9.0.6 — Accidents Happen | October 2026
+- **Guards talk first:** hit a villager (or a guard, or the golem) by mistake and the nearest guard walks over to have a word instead of drawing their sword. Say sorry and that's the end of it. Do it again while they still remember (a couple of minutes), hit the guard who's talking to you, or kill someone, and the guards and the golem fight you. A single accident no longer makes the village distrust you.
+- **Places on your maps:** villages you've found are marked with a village icon and their name, dungeons with a stone arch (green once cleared), and the rift where it opened.
+- Removed Herobrine.
+
+## Alpha 0.9.0.5 — The World, part 1 | October 2026
+The first steps of the world update. New worlds get all of it; for an existing world, use **Upgrade terrain** on its world screen to get rivers and the crust in land you haven't changed (your builds stay exactly as they are; there may be seams at the edges).
+- **Rivers** wind across the land in their own valleys, cutting gorges through hills and mountains, with sand and gravel banks; in the cold they freeze over. They **flow**: the current carries you, your boat and anything you drop downstream.
+- **Stacked worlds:** the Skylands hang over the Overworld and the Ember Depths lie under it, at the same place. Step off a sky island and you fall all the way down into the Overworld; the winds slow you so you land safely. Fly (or build) up past the top of the Overworld and you come out on the nearest island above. At the very bottom of the Overworld lies the **Ember Crust**; break through it with a mithril pick or better and you drop into the Ember Depths below. (For now this works when playing alone; with friends, use the portals.)
+- **Portals** take you as soon as you walk through them; no more standing and waiting.
+- Removed Herobrine.
+
+## Alpha 0.9.0.4 — The Rift | October 2026
+The fourth part of the Adventure update: the story of the one who watches.
+- **The catalyst:** some while after you find your first village, a rift tears open in its square, a window onto a bruised purple realm. Ask the village elder about it: the keepers of the deep places (the dungeon mini-bosses) hold the keys of time. Every keeper now drops a **Realm Fragment**.
+- **The gauntlet:** every fragment found thins the boundary, and he grows bolder. He stands in village doorways and vanishes with a whisper of static when you come near. He opens doors and leaves new signs. He steps out of little rifts to stare at you while the Dread closes in, and lets corrupted creatures through. Near the end he freezes time to look at you, makes noises where nothing happened, the villagers' words break into his, and the sky goes wrong. He never hurts you, and leaves when you hit him, come close or stare back too long.
+- **The threshold:** bring four fragments to the rift and use it. It steadies into a gateway you can walk through, into **his realm**: a vast, corrupted copy of his own pocket dimension. Hall after hall of cracked, glowing rift stone, crystals hanging from the dark, broken pieces of the overworld floating in the air, corrupted ghouls, skeletons and spiders, and at the end of the last hall, him.
+- **The fight:** he steps through space around you, throws bolts of his realm, calls his creatures through and, when he's hurt, freezes you with a look. Beat him and the rift is sealed for good: no more haunting, the villages honour you, and his blade, his staff, heart crystals and his realm's stone and crystal are yours. A way home opens in the arena (and there's always one at the first hall's entrance).
+- Your current step in the story is at the top of your quest list. (Cheat for testing: `/rift open | frag | gate | go | seal | reset`.)
+- Removed Herobrine.
+
+## Alpha 0.9.0.3 — Dungeons and Magic | October 2026
+The third part of the Adventure update.
+- **Dungeons** lie under the land, marked by a crumbled shrine with a ladder going down: rooms and corridors of mossy, cracked brick lit by guttering torches, cobwebs and bones in the corners. Cages keep spawning their monsters while you're near (break them!), libraries hold old books and better loot, and some chests have teeth: **mimics**. Three kinds: crypts, spider nests and deep slate hollows.
+- **Mini-bosses:** at the far end of each dungeon waits its keeper, with its name across the top of the screen: the Grave Warden, the Rot King, the Broodmother or the Hex Matron. They call for help as they weaken. Beat one and the dungeon is cleared for good, and the hoard behind it is yours: rare tomes, mithril, gems, staffs, sometimes a heart crystal. The quest board in the nearest village posts a big bounty for clearing it, with directions.
+- **Magic:** learn spells from tomes (the librarian sells the simpler ones; the rest are in dungeons) and cast them with a staff: **use** to cast, **G** (or sneak and use) to change spell. Firebolt, Frost Shard, Mend, Blink, Ward and Call Lightning, each needing a higher Magic level to learn, each stronger as your Magic grows. Every spell is a show: casting circles under your feet, bolts with twisting trails, bursts and rings of light where they land, spirals of healing motes, a vortex when you blink, a sparkling ward around you.
+- **Mana** is the blue bar under your experience. It comes back by itself, faster in robes. Staffs: apprentice (emerald), ruby (hotter fire), sapphire (colder frost, faster mana) and mithril (strongest). Apprentice robes are blue wool; archmage robes are purple wool and sapphires. Every piece adds mana.
+- **Fixes:** villagers (and you) sleep on their backs, not face down.
+- Removed Herobrine.
+
+## Alpha 0.9.0.2 — Villages | October 2026
+The second part of the Adventure update. New worlds start at the edge of a village.
+- **Villages** grow out of the plains, savanna, forests, taiga, snow and desert, each in its own wood and stone. A plaza with a well, benches, market stalls under striped awnings, a bell and the quest board; roads with lamp posts, hay and barrels; timber houses with shutters, porch lanterns and smoking chimneys; workshops, a smithy, a library, a tavern, farms and an animal pen. (In worlds you've already played, villages appear in land you haven't changed yet.)
+- **Villagers are people:** the same body as you, each with their own face, hair and work clothes, and a name. They keep a day: to work at dawn (hammering at the anvil, reading at the lectern, tending the stall), out and about in the afternoon chatting with each other, on the benches in the evening and asleep in their own beds at night, opening and shutting doors as they go. They look at you and wave as you pass, and talk in a babble of little sounds like Animal Crossing.
+- **Talk to anyone** (use them) for a conversation. Shopkeepers buy and sell for emeralds: farmers, fishers, shepherds, fletchers, librarians, cartographers, healers, armourers, weaponsmiths, toolsmiths, butchers, masons, jewellers, the merchant, the baker and the innkeeper. Their best goods are for friends of the village, and they restock each morning.
+- **Quests:** a **!** over someone's head means they have an errand for you (a **?** when you can hand it in). The quest board has the village's bounties (slay so many ghouls, skeletons, spiders…) and supply runs, new every morning. Your jobs are listed at the top right.
+- **Standing:** each village remembers you, from Stranger to Friend, Trusted, Honoured and Hero, through quests, trade and defending it. Hurt a villager and they won't forget.
+- **Guards and iron golems:** armed guards in iron walk the roads and the plaza day and night, and every village of any size has an iron golem. Both go after monsters (and anyone who attacks the villagers). Monsters don't appear inside a village, though they can still walk in.
+- Removed Herobrine.
+
+## Alpha 0.9.0.1 — Skills and Steel | October 2026
+The first part of the Adventure update.
+- **Skills to 99:** Mining, Woodcutting, Excavation, Farming, Fishing, Melee, Archery, Defence, Smithing, Cooking, Taming and Magic, each levelled by doing it, on the classic RuneScape curve (level 99 is a long road). Higher levels dig and chop faster, hit harder, take less damage, find extra drops and wear tools less. Press **K** to see them all.
+- **Gear levels with you:** every tool, weapon and armour piece has its own level (up to 50) that grows as you use it and makes it a little better. Mending it at an anvil or joining two keeps the level, so a favourite pickaxe can last a whole world.
+- **New ores:** silver (iron pick, fairly common), mithril (steel or diamond pick, deep and rare), adamantite (mithril pick, the very bottom, very rare), and rubies and sapphires.
+- **New tiers:** silver tools and armour sit just above iron and hit the undead half again as hard. Steel: an iron ingot and two coal make a steel blend, smelt it, and you have the tier beside diamond without the diamonds. Mithril is light, fast and hard-wearing; adamantite is the strongest there is. Each has a full set of tools, armour and a storage block.
+- Removed Herobrine.
+
+## Alpha 0.8.6.4 — Animals and Bees | October 2026
+- **Animals follow food again:** hold wheat, carrots or seeds and they come after you (the game was checking the wrong place for what you held). Feed two and they find each other, hearts and all, and a baby follows its parents about until it grows up.
+- **Farms stay farms:** like the classic game, land animals never vanish, so a pen keeps what you put in it, and tamed pets stay too. Herds come with the land: each stretch of new ground gets its share the first time anyone sees it (your existing world fills in as you walk about), and new ones only wander in now and then.
+- **Bees** are tiny now, a swarm to a nest. They fly out by day, work the flowers until they're dusted yellow, carry the pollen home (helping crops along the way) and fill the nest with honey. Night and rain send them home. A beehive you build gets its own swarm once there are flowers near it.
+- **The Skylands have their own animals:** phygs and flying cows with little wings and sheepuffs, all of whom drift gently down when they fall and can be fed and bred, and at night the purple cockatrice hunts the islands.
+- **Drips and details:** water and lava drip through the block under them, rain drips through leaves, full hives drip honey, slimes leave a splat where they land, creatures go up in a poof, and critical hits throw out stars.
+- **Boats:** the sailboat is half again bigger, so the sail isn't in your face at the helm. Water no longer shows inside boats. The sailing ship's hull is closed up at the bow and you can't walk through its side.
+- **Dyeing:** a bed, wool, carpet, glass or terracotta with a dye in the crafting grid takes that colour. Leather armour takes any dye and dyes mix (red and yellow make orange), and you see the colour when it's worn. Tools and armour mend at an anvil with their material, or join two worn ones.
+- **Fixes:** an open fence gate can always be walked through (opening one from a step away made it solid). Spiders drop an eye one time in three. Stone mites are gone.
+- Removed Herobrine.
+
+## Alpha 0.8.6.2 — Maps and Polish | October 2026
+Paper maps, and a big polish pass over the whole game before the next big update.
+**0.8.6.3:** the crafting table sounds like wood (it was being mistaken for metal and rang like an anvil), and doors, trapdoors, gates and chests sound like wood that moves: a dry creak on the hinge and a dead knock against the frame, with the latch clicking. Iron doors clang.
+- **Paper maps:** eight paper round a compass make an empty map. Use it and it becomes a map of the 128 × 128 blocks where you stand, and it fills in as you walk about holding it (in either hand), in the colours of whatever texture pack is on. Look down and it comes up into view, with arrows for you and the other players, a house for home, your grave and your pins.
+- **Reading a map:** right-click with it (or press **M**) to look closely: every map of that place laid out together, to drag about and zoom, with pins you set with a click.
+- **Making more:** at a map table (or any crafting table) a map ringed with 8 paper zooms out to twice the area, up to 1:16. A map with empty maps makes copies that stay the same map. Over LAN the host keeps the maps and everyone sees what everyone explores.
+- **Maps on walls:** in an item frame a map fills the whole frame, and maps are lined up on a grid, so a wall of them joins into one big picture.
+- **Sound you can place:** sounds come from where they are, in front, behind and to the side, and they travel like sound. Something round the corner of your cave is heard; something beyond the rock isn't. No more cows from the surface while you mine, and a zombie through a wall comes muffled. Rooms ring a little and big caves a lot.
+- **Monsters give themselves away:** zombies moan as they wander, skeletons rattle and spiders hiss, and they all have footsteps: a zombie's shuffle, clacking bones, skittering legs. Only the fuseling still creeps up quietly. Animals walk on whatever they stand on, and dogs, cats, horses, ducks, goats, frogs, bears, foxes, turkeys and donkeys have new voices.
+- **The dark:** stay long enough where it's pitch black and the caves start making their noises. Getting hurt is the old "oof", and a felled tree creaks over and crashes down.
+- **Torches burn:** a steady flickering flame on every torch, with sparks and smoke.
+- **Wind and more:** gusts sweep visibly past on open ground and lift sand and snow, and the wind's roar swells with them. Fireflies come out over the grass on warm nights, ash and embers drift in the Ember Depths, and silt hangs in the water.
+- **Weather across biomes:** from a dry desert you see the storm over the hills next to it, and you hear it faintly.
+- **Swimming** feels like the classic game: you sink slowly, kick up with jump, dive with sneak, and the water drags at every move.
+- **Saplings** from a felled tree are its own kind, so every tree can be grown back.
+- Cactus is built like the classic one, sides a pixel in with spines at the corners.
+- Spiders' faces show behind their glowing eyes with texture packs.
+- Picking up a crafting table (or anything wooden) sounds like wood.
+- Removed Herobrine.
+
+## Alpha 0.8.6 — Play Together | October 2026
+Open your world to your home network and play in it together: from another computer with DokuQuest, or from any phone, tablet or browser. This update comes as a new desktop app, because the app is what lets your computer host.
+- **Open to LAN:** pause and choose **Open to LAN**. Your world keeps running for everyone, and the screen shows your address (like `http://192.168.1.23:25580`). Your computer runs the world: creatures, time, weather, furnaces and saving.
+- **Joining:** on another computer with DokuQuest, choose **Multiplayer** on the title screen. Worlds open on your network show up there, or type the address. On a phone, tablet or any computer's browser, just open the address: the game loads from the host's computer and offers to join, with nothing to install.
+- **Your things are yours:** everyone keeps their own inventory, health and spot, and the host's world remembers them by name, so you pick up where you left off next time. Name tags float over other players, and chat reaches everyone.
+- **Together:** you see each other's skins, building and digging, chests (take from the same chest), creatures, dropped items, arrows, boats and carts. Climb into a boat or onto a horse and you drive it. Step through a portal and everyone goes together. Split screen still works on top of all this.
+- **If they can't connect:** openSUSE's firewall blocks people joining until you allow it once. The Open to LAN screen shows the exact command and a Copy button. Being on the same Wi-Fi matters too.
+- **Crafting fixed:** the recipes added in 0.8.3–0.8.5 (furniture, the saddle, the fishing rod, the sailing ship) couldn't be crafted. They can now, and every recipe in the game was tested.
+- **Everything can be got:** birch and spruce leaves drop their own saplings. Carrots and potatoes turn up now and then in tall grass. Nether wart grows among the Depths' roots and soul sand. Spiders drop eyes, ghouls rotten flesh, rabbits the odd lucky foot. Bamboo gets doors, trapdoors, fences, gates and signs. Clay, cobwebs, mushroom blocks, red sand, crying obsidian, prismarine, end stone, sponges, amethyst clusters and buds, and weathered copper (age it with bone meal) all have recipes. A sapling in the furnace dries into a dead bush, and coral blocks into dead coral.
+- **The rowboat** is built like a real little boat: a keel, a pointed bow on a stem post, a square stern, plank sides, ribs, seats, a rail and oars in their oarlocks.
+- **Boats are solid:** get out and you're standing on it, and it carries you as it drifts. Walk into one and you bump it, and one on the water drifts off a little.
+- **Fishing with real fish:** a real fish swims up to your float with bubbles trailing off it, noses at it and bites. That fish is your catch, and if you miss it, it swims away. On the host, a fish already swimming nearby may be the one that comes. Junk and treasure still just send bubbles.
+- **A better rod:** a cork grip in rings, a reel with a crank, red thread wraps and line guides, the line running through them. When it isn't cast, the float and hook hang from the tip.
+- **In the water, not on it:** land animals swim low with just their backs and heads out, paddling. Chickens sit in the water, and ghouls and the like tread water up to the shoulders.
+- **No more mobs through doors:** a crowd of creatures pressing on a closed door or a wall could shove one through. Now nothing gets pushed into a door, fence, pane or wall.
+- **Torches in your hand** in first person look like the ones on the wall: the same little stick with its flame on top, and the flame and smoke come off it again.
+- **Chests** take a resource pack's chest picture (normal, trapped and ender).
+- **0.8.6.1:** the Back button (and Escape) on the Multiplayer screen work again, and the scroll wheel and number keys pick hotbar slots again even after typing in a box on a menu. The wheel works with the pointer over the hotbar too.
+- Removed Herobrine.
+
+## Alpha 0.8.5 — Solid Things | October 2026
+The things you hold, wear and grow are solid now, the way they are in Hytale and Vintage Story. Go fishing, draw the bow with both arms, and watch the squid. Wood sounds like wood, and portals take you home.
+- **The bow** is a real bow now, a curved stave with a string. Hold it out in your left hand and draw the string back to your cheek with your right; the stave bends and the arrow sits on the string. It trembles at full draw, and the string snaps and hums when you let go. It creaks as you draw. Skeletons hold and draw theirs the same way. Packs with bow_pulling pictures are used.
+- **Fishing:** a fishing rod (three sticks and two string in a diagonal). Cast it and you swing it back and throw. The bobber flies out on its line and floats. Watch for bubbles trailing toward it, then a hard dip and a splash: use the rod again right then to reel it in. Miss it and it gets away. What you catch depends on the water: cod and salmon in cold water, tropical fish in warm, pufferfish at sea, plus the odd stick, bone or bowl, and now and then treasure. You're told how big your fish is.
+- **Solid items:** everything you hold or drop has real depth. A sword is thick in the middle and thin at the edge, a pickaxe head is a solid chunk, an apple is round. Lanterns, chains and pots are their placed models, even in your hand, and torches are little torches. Ingots and bricks are bars that lie in criss-crossed layers when you set them down, piling higher the more you have, like Vintage Story.
+- **Lantern on your belt:** a lantern or torch in the belt hook hangs at the front of your belt (or from the side of your backpack) as the real thing, swinging as you walk.
+- **Backpacks** are proper packs when worn: a leather bag with a buckled flap, a front pouch, side pockets and a bedroll on top, with straps over your shoulders and a strap round your waist. The reinforced one is a bit bigger and bound with iron. A backpack set on the ground stands up the same way.
+- **Solid plants:** crops, flowers, saplings, mushrooms and bushes are built of little cubes now, with real stalks and leaves you can see round, Hytale style. Resource pack pictures work too.
+- **Squid swim any way up:** they point their bodies the way they're going, arms trailing, and roll as they turn, instead of bobbing about upright.
+- **Stranded:** squid, fish, dolphins and sharks out of water lie on their sides and flop about, hopping toward water if there's any close by. Each flop is weaker than the last, and if they don't make it back they suffocate.
+- **Wood sounds like wood:** chopping is a dry thock with the fibres tearing, not a xylophone note. Logs are deeper and duller than planks, breaking a log ends in a splintering crack, and boards knock hollow underfoot. Furniture, pumpkins and melons sound wooden, glowstone and sea lanterns like glass, cactus soft. Stone is untouched.
+- **Beds** look right: the blanket on top, the pillow at the head, the frame below, all facing the way the bed does.
+- **Portals remember where they lead.** Going back through takes you home to the portal you came from, not somewhere new. The Skylands portal is easier to light: pour the water bucket anywhere inside the Glow Lantern frame, even with water already standing in it.
+- No more four arms when you hang from a ledge in first person.
+- Removed Herobrine.
+
+## Alpha 0.8.4 — Pets, Carts and Furniture | October 2026
+Tame your own animals and ride them, link minecarts and load them up, sail a ship, furnish your house, and a new bow. Every creature moves with more life.
+- **Taming:** almost anything can be tamed with the food it likes: a bone for a wolf, fish for a cat, seeds for birds, apples or sugar for horses, meat for the big cats, a slimeball for a little slime. Sneak + use to offer farm animals their food (plain use still sets them breeding). It may take a few tries; hearts mean it's yours.
+- **Pets** follow you and catch up if they fall far behind. They go for whatever hurts you or whatever you attack, if they have any bite. Use one with an empty hand to tell it to stay or follow (sneak for the ones you can carry). Feed it to heal it. You can't hurt your own pet by accident (sneak if you mean it).
+- **Riding:** put a **saddle** (three leather and an iron ingot) on a tamed horse, donkey, llama, camel, deer, goat, moa, bear or big cat, then use it to climb on. WASD goes where you look, jump to jump, sprint to gallop, sneak to get off.
+- **Linked minecarts:** use a chain on one cart, then on the next, to join them. Joined carts keep their distance and pull and push each other along the track. Use the chain on the pair again to part them.
+- **The furnace cart** is a double cart now: the furnace up front and a seat behind it. Feed it coal (you can do that from the seat), climb in and drive it: W forward, S to slow down and back up. It pulls whatever carts are joined to it. Left alone with coal, it still pushes itself along the old way.
+- **Loading carts:** carry a chest or barrel (sneak + use with an empty hand, contents and all) and set it in a minecart to make a chest cart. A hopper, furnace or TNT works the same, and any other block you can carry rides along as cargo. Pets too: carry one and set it in a cart or a boat. Sneak + use with an empty hand lifts it back out.
+- **Furniture** in every wood: chairs, stools, benches, tables, wall shelves, standing shelves, bookcases and cabinets. They face you when you set them down.
+- **Sitting:** use a chair, stool or bench to sit down; stairs and bottom slabs work too with an empty hand. Sneak to stand up.
+- **Shelves** hold whatever you put on them, one stack to a spot, and show it. **Bookcases** hold books, one to a spot, and show their spines. **Cabinets** are small cupboards with nine slots.
+- **Boats load up too:** set a carried chest or barrel in a boat for a chest boat (open it from your seat with an empty hand), any other carried block as cargo, or a pet. Sneak + use with an empty hand takes it out.
+- **The sailing ship** (three wool and a stick over three rowboats) is big, with a deck to walk around on, rails, a tall mast with a square sail, a bowsprit and a wheel. Use it to climb aboard. At the wheel, use with an empty hand to take it: W/S set the sail, A/D steer, and the wind does the rest. Sneak to let go and you stay on deck; everyone on deck moves with the ship. Jump the rail to go over the side. Sneak and hit it to break it up, so a stray swing won't.
+- **The bow** bends in three stages as you draw, with the arrow on the string. It creaks as you draw, and skeletons draw theirs too. Packs with bow_pulling pictures are used.
+- **Livelier creatures:** tails swing out on turns and settle, pets wag when you're near, and ears twitch. Bodies lean into turns. Cows, sheep, pigs, horses and big cats lie down after standing a while. Land animals paddle with their heads up, and wolves, cats and others shake themselves dry. Creatures flinch when hit, ghouls shamble and drag a foot, and skeletons rattle loose now and then. Birds glance about in quick jerks. A dying creature's knees buckle before it topples onto its side.
+- Resource packs: the saddle, the ogre's club (as a mace), cinder rods (as blaze rods), crocodile scales, pelts and ectoplasm now take a pack's matching pictures; furniture takes the pack's planks.
+- Removed Herobrine.
+
+## Alpha 0.8.3 — Monsters | October 2026
+The night gets crowded, the wild gets teeth, and monsters behave more like the ones you remember.
+- **Night creatures by place:** **husks** in the desert (the sun doesn't burn them, and a hit leaves you sluggish), **strays** on the snow (frost arrows), **bog witches** in the swamps (they throw hex flasks and drink to heal), and the **drowned**, who swim after you and walk out of deep water at night.
+- **Underground:** venomous **cave spiders** deep down, and **stone mites** that now and then burst out of stone you mine below the surface. Hit one and it wakes its friends.
+- **Rare and dangerous:** **marauders** roam in bands with axes (knock an axe loose and they go back for it), **werewolves** leap at you in the forest and are gone by morning, **ogres** wind up a club slam that throws you across the field, and **wraiths** drift in out of the dark and fade at dawn.
+- **The Ember Depths:** **cinder wisps** hover and loose fireballs in threes; **magma slimes** are fireproof and split when killed.
+- **The wild:** **crocodiles** lie still in swamp water, then lunge; **sharks** hunt swimmers in the open sea; **rattlesnakes**, **green snakes** and **adders** warn you, then strike (sneak past them); **scorpions** hunt the desert at night. **Lions** and lionesses hunt on the savanna, **tigers** and **panthers** stalk you through the jungle at night, and **snow leopards** keep to the peaks.
+- **Venom and frost:** poison wears you down to half a heart (your hearts turn green); frost slows you (blue hearts).
+- **Monsters behave more like Minecraft's:** a skeleton's stray arrow starts a fight, and the two go at each other until one is dead. Hit a ghoul and the ghouls nearby come too. The night crowd has to see you before it hunts you, then remembers you a while. Skeletons look for shade when the sun burns them and keep away from wolves; fuselings keep away from cats.
+- **Resource packs dress the creatures too:** a pack's zombie, husk, drowned, skeleton, stray, creeper, spider, cave spider, slime, blaze, silverfish, witch, vindicator, cow, pig, sheep (wool too), chicken and wolf skins go on our matching creatures. A pack with only creature skins or only sounds works now as well, and its creature sounds are used when it has them.
+- **Voices:** rebuilt. Creatures now have a throat and a mouth: ghoul groans, skeleton rattles, spider hisses, witch cackles, lion roars and the rest. Every call has several takes and a little room around it. Your own hurt sound is new too, and cows, pigs, sheep and chickens are redone.
+- New things to collect: venom sacs, shark teeth, ectoplasm, cinder rods (a long-burning fuel), magma cream, crocodile scales, pelts, and the ogre's club, which hits very hard.
+- Removed Herobrine.
+
+## Alpha 0.8.2 — Look and Sound | October 2026
+New textures, new sounds, resource packs, controls you can change, and a lot of fixes from your list.
+- **Textures:** the world is repainted at 32×32 in the old Doku style: chunky stones with dark mortar, bark in plates, boards with nail-heads, ore nuggets, crafting stations with tools hung on them. The menus wear the same textures.
+- **Resource packs:** **Settings -> Resource pack** loads a Minecraft Java pack (.zip). 1.13 to 1.21 work best, 1.6 to 1.12 for most blocks; 16x, 32x and 64x all work. Its blocks, items, animated water and lava, menu buttons and sounds are used, and the game's own fill the gaps. Try Gerudoku Faithful.
+- **Sound:** rebuilt from scratch. Every material has its own footsteps, mining, breaking and placing (grass, dirt, gravel, sand, snow, stone, wood, wool, glass, metal, leaves, mud), with several takes of each so no two steps sound the same. Doors and chests creak, glass shatters, bows twang, explosions rumble. A pack's sounds replace them.
+- **Controls:** **Settings -> Controls** changes every key, mouse button and controller button. **Settings -> Controller -> Set up buttons…** makes an unusual pad (like the 8BitDo Ultimate Mobile) work like any other. The right stick scrolls menus.
+- **Camera:** F5 or V (Back on a controller) cycles first person, over the shoulder, behind and in front. Over the shoulder aims where the crosshair is; X (or hold Back) swaps shoulders.
+- **Moving:** crawl with C (tap sneak twice on a controller), or sneak into a one-block gap. Jump at a wall and you grab a ledge up to three blocks up: jump again to climb over, sneak to drop.
+- **Hands:** Minecraft's chop for tools and a punch for an empty hand. Your empty left arm shows when you look down.
+- **Setting things down** (sneak + use with an item): it goes in the quarter you point at, turned the way you face. Ingots and bricks stack in criss-crossed layers, tools lie flat.
+- **Animals** only appear where the land looks like their home. Ducks, frogs and turtles need water close by; bees come from their nests.
+- **Slimes** are see-through jelly with a core inside. Creatures and players push each other apart instead of sharing space, but you can still squeeze past in a doorway.
+- **Portals** can be any size from 2×3 up to 21×21, and flint and steel lights them.
+- **Plants** stand a little off-centre and turned their own way, so fields look grown.
+- **Fixes:** water from a bucket no longer spreads forever or refuses to drain (old stuck water settles when you load the world); the turkey's tail folds back where it belongs.
+- He is rarer again.
+- Removed Herobrine.
+
+## Coming next | the plan
+- **0.8.7 — Play together online:** join a world from outside the home with an invite code, no router setup. And everyone can go through portals on their own.
+- **0.9 — Adventure, still to come:** strongholds and the End, which lies under the Ember Depths (0.9.0.17); the Deep Dark (0.9.0.18); smoother movement (0.9.0.19). Then a big round of fixing, balancing and polish, and more RPG.
+- **The world, part 2:** each player able to be in a different world when playing together, machines like the Create mod (windmills and water wheels on the new rivers, shafts and gears).
+- **Later:** banners, shulker boxes, sculk, dripleaf, chorus plants, the pale garden, the crafter, shields and leads.
+- Removed Herobrine.
+
+## Alpha 0.8.1 — The Wild | October 2026
+Emberwild is now **DokuQuest** (your worlds and settings carry straight over). And the world fills up: about forty new animals, weather, music, and a lot of sound.
+- **Animals** live where they belong: horses, donkeys and llamas on the plains and savanna; wolves, foxes, raccoons and brown bears in the woods; polar bears and snow foxes in the snow; goats on the mountains; camels and armadillos in the desert; parrots, ocelots and pandas in the jungle; frogs and ducks in swamps; turtles on beaches; cod, salmon, tropical fish, pufferfish, squid, glow squid and dolphins in the water; axolotls in dark cave pools; bats in caves; bees, turkeys, mice and cats about the place. The Skylands get aerbunnies and moas.
+- **They behave:** herds stay together, wolves hunt in packs and fight back together, foxes and cats hunt small animals, bears guard their cubs, llamas spit, goats ram, armadillos curl up, bats roost upside down, bees sting once, fish swim in schools, dolphins leap and come to play, axolotls play dead, frogs eat small slimes. Many can be fed and bred.
+- **Weather:** rain and thunderstorms with lightning, snow in cold places. Rain leaves puddles that dry in the sun; snow settles and water freezes; rain melts snow at the edges of snowy lands. **/weather** and a game rule to stop it.
+- **Music:** quiet piano pieces now and then, a new one every time, matching the time of day, caves, the Skylands and the Depths. Set the volume in Options.
+- **Sounds:** every creature has a real voice, with hurt and death calls. Caves have their own sounds (far-off digging, footsteps, scrapes, whispers). Sounds come from the side they're on.
+- **He is here.** He shows himself more often now, at the edge of what you can see, and he leaves things behind: tunnels lit with redstone torches, signs, bare trees. A game rule sends him away.
+- **Compass and clock** work like the originals: the needle points home and the dial turns, in your hand, your hotbar and item frames.
+- **Hands:** in first person you hold things in your hands, gripped the same way as in third person. Items are now the original sizes in your hand and on the ground.
+- **Capes:** sixteen colours (six wool and two string) plus ember, frost and royal capes. They swing out behind you and hang over a backpack. New Cape slot in the inventory.
+- **Fire and smoke:** torch flames like the classic game, smoke that rises and gathers under ceilings, smoke trails from a torch you carry, more leaves drifting from trees and blowing in the wind.
+- **Growing:** crops, saplings, sugar cane, bamboo and more grow at the original's speed.
+- **Spiders'** eyes glow red in the dark. The **fuseling** has a new look: a thorny pod with burning eyes and a jaw that drops open as it hisses.
+- **Fixes:** your chest shows when you look down in first person; something you carry is no longer drawn twice; the launcher's news now comes from the game version you installed.
+- Removed Herobrine.
+
+## Alpha 0.8.0 — Creatures | October 2026
+- **Mo' Bends-style animation** for every creature and player: knees and elbows bend, bodies twist and lean, heads turn to look, legs tuck when jumping.
+- **Smarter monsters:** they find their way round walls and up steps. Spiders climb walls, cross ceilings upside down, and drop on you.
+- **Dismemberment:** a good blade can take a limb off. A ghoul without a leg crawls, a spider short of legs can't leap, a skeleton that loses its bow arm drops the bow and may pick it up with the other hand.
+- Some ghouls carry a sword, shovel or axe.
+- **Armour shows** on players. In first person you can see your body when you look down.
+- Removed Herobrine.
+
+## Alpha 0.7 — Survival Feel | October 2026
+Back to classic survival: ten hearts, air bubbles under water, and water that flows on its own.
+- **Hearts:** ten hearts like Alpha and Beta. Levelling up no longer adds hearts. Get more from Heart Crystals (dropped by bosses) and charms worn on the new charm slot.
+- **Swimming and air:** sprint under water to swim. Air bubbles run out, then you drown.
+- **Water and lava** flow by themselves, with smooth slopes and flowing textures.
+- **Graves:** when you die, your things go into a grave and you get a compass that points to it. You can switch this off in the game rules.
+- **Block damage:** stop mining part way and the cracks stay for a while, then slowly mend.
+- **Living world:** grass creeps onto dirt, saplings left on the ground plant themselves, leaves drift down from trees, and drips fall under water and lava.
+- **World settings:** rename a world, change its game mode, and set day and night length separately. Toggle game rules such as keep inventory, mob griefing and fire spread.
+- **Commands and WorldEdit:** press T or / to chat. Commands include /gamemode, /time, /tp, /give and /fill, plus //wand, //set, //replace, //copy, //paste, //undo and more.
+- **Lanterns** hang from their chain and sway in the wind. Torches only fix to full faces. Rails, dust and torches sit on bottom slabs.
+- **Held items:** axes face the right way. In third person, tools sit in the fist and point forward. A torch you carry gives off a moving flame.
+- **Mobs:** ghoul arms reach forward again, and golem slams come down in front.
+- **Options:** particles, GUI scale, FPS limit, toggle sneak and sprint, screen shake, hurt tilt, controller layouts. F1 hides the HUD, F2 takes a screenshot, F5 changes the view.
+- **Controllers** with unusual button layouts are recognised. Hold right mouse in the inventory to spread items one by one, as in the original.
+- **New launcher** for Linux (AppImage), Windows, and phones (installable web app).
+- Removed Herobrine.
+
+## Alpha 0.6 — Redstone | October 2026
+- Redstone dust, torches, repeaters, comparators, levers, buttons, pressure plates, observers, lamps, targets and daylight detectors.
+- Pistons and sticky pistons that move slime and honey contraptions.
+- Hoppers, droppers and dispensers.
+- Rails, powered rails, detector rails and activator rails, with minecarts, chest carts, hopper carts, furnace carts and TNT carts.
+- Removed Herobrine.
+
+## Alpha 0.5 — Every Block | September 2026
+- Hundreds of new blocks from Minecraft, Mineclonia and VoxeLibre: doors, trapdoors, gates, beds, signs, banners and more.
+- Windmills, waterwheels, millstones and sawmills. Sailboats and rowboats.
+- Dokucraft-style textures, a darker interface, and lots of fixes.
+- Removed Herobrine.

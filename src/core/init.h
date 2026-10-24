@@ -18,5 +18,6 @@ void shutdownCore();
 void registerWorldTypes();       // gen/worldgen*.cpp
 void registerCommands();         // sim/commands*.cpp
 void registerModApi();           // mod/*.cpp
+void registerPortals();          // sim/portals.cpp (+ the stacked worlds, sim/seamless.cpp)
 
 } // namespace dq
