@@ -23,6 +23,9 @@ public:
   void remeshAll();
   // clip plane for portal views (render only what lies beyond the portal plane), w = 0 => off
   vec4 clipPlane{0};
+  // portal views draw the same sections from another camera in between the main passes: keep the main list
+  void pushView() { viewStack.push_back({drawnSections, std::move(visible)}); visible.clear(); }
+  void popView() { if (viewStack.empty()) return; drawnSections = viewStack.back().first; visible = std::move(viewStack.back().second); viewStack.pop_back(); }
   // stats
   int drawnSections = 0, totalSections = 0, pendingJobs = 0;
   MesherOptions mopt;
@@ -43,6 +46,7 @@ private:
   Shader shader;
   TileTextures tex;
   std::vector<std::pair<float, SecMesh*>> visible;
+  std::vector<std::pair<int, std::vector<std::pair<float, SecMesh*>>>> viewStack;
 };
 
 } // namespace dq

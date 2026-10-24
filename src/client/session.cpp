@@ -177,6 +177,7 @@ void GameSession::update(double dt) {
   bool pz = paused() && !level->allRealms().empty();
   if (!pz) {
     tickLocalPlayer(dt);
+    for (auto& l : layers) l->afterPlayerMove(*this, dt);
     tickAcc += dt;
     int n = 0;
     while (tickAcc >= TICK_DT && n < 4) { level->tick(TICK_DT); tickAcc -= TICK_DT; n++; }
@@ -185,6 +186,7 @@ void GameSession::update(double dt) {
   World& w = world();
   if (worldRenderer.world() != &w) worldRenderer.setWorld(&w);
   std::vector<StreamAnchor> anchors = {{player->pos, app.settings.renderDist, true}};
+  for (auto& l : layers) l->streamAnchors(*this, anchors);
   w.stream(anchors, 3.0);
   // camera
   Camera& cam = frame.cam;
