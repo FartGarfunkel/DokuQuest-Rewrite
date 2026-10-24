@@ -1,6 +1,6 @@
-// server/server.h — the dedicated server: runs a Level on its own thread at a fixed tick and
-// serves players over the network (net/). Used by the launcher's Server tab (in-process, with a
-// console view) and by the headless dokuquest-server.
+// server/server.h — the dedicated server (game/server.js): runs a Level on its own thread at a fixed tick and
+// serves players over the network (net/ServerHost), with plugins (mod/), a console and a log. Used by the
+// launcher's Server tab (in-process, with a console view) and by the headless dokuquest-server.
 #pragma once
 #include "sim/level.h"
 #include <thread>
@@ -10,46 +10,64 @@
 
 namespace dq {
 
+namespace net { class ServerHost; }
+class ModLoader;
+
 struct ServerConfig {
   std::string world = "Server World";   // folder under userDir()/servers/ (created if missing)
   std::string seed;
   std::string mode = "survival", difficulty = "normal";
-  int port = 25580;
+  std::string name = "DokuQuest Server"; // shown in LAN lists (the original's "Server name")
+  int port = 25580;                      // UDP; the next 9 are tried when it's taken
   int maxPlayers = 8;
-  std::string motd = "A DokuQuest server";
-  bool pvp = true, lan = true;          // lan: answer LAN discovery broadcasts
+  std::string motd = "Welcome! Be kind, build big.";
+  bool pvp = true, lan = true;           // lan: announce on the home network (UDP 25581)
+  bool plugins = true;                   // run mods & plugins from userDir()/mods
   std::string password;
   int viewDistance = 8;
   json toJson() const;
   void fromJson(const json& j);
 };
 
-struct ServerStatus { bool running = false; int players = 0; double tps = 0; double mspt = 0; std::vector<std::string> playerNames; std::string world; int port = 0; };
+struct ServerPlayer { std::string name, address; int realm = 0; vec3 pos{0}; float hp = 20; bool op = false; u32 ping = 0; };
+struct ServerStatus {
+  bool running = false; int players = 0, maxPlayers = 0; double tps = 0; double mspt = 0;
+  std::vector<std::string> playerNames; std::vector<ServerPlayer> playerList;
+  std::string world, name; int port = 0; i64 day = 0; double uptime = 0;
+};
+struct ServerLogLine { u64 seq = 0; i64 at = 0; std::string text, kind; };   // kind: "", good, warn, chat
 
 class DedicatedServer {
 public:
   explicit DedicatedServer(ServerConfig cfg);
   ~DedicatedServer();
-  bool start();
+  bool start(std::string* err = nullptr);
   void stop();
   bool running() const { return runFlag; }
-  void command(const std::string& line);     // console input (thread-safe)
+  void command(const std::string& line);     // console input (thread-safe): stop, save, say, list, kick, ban, op, tp, give... or any /command
   ServerStatus status() const;
+  std::vector<ServerLogLine> logSince(u64 seq) const;   // the console view (thread-safe), last 400 lines
   const ServerConfig& config() const { return cfg; }
-  // hook for net/: the network layer attaches here (created in start())
-  std::function<void(Level&)> onTick;
+  ModLoader* modLoader() const { return mods.get(); }   // the Plugins tab (read it while the server runs only from callbacks)
+  std::function<void(Level&)> onTick;        // extra per-tick work on the server thread (tests, launcher previews)
 private:
   void loop();
+  void console(const std::string& line);
+  void log(const std::string& text, const std::string& kind = "");
   ServerConfig cfg;
   std::unique_ptr<ThreadPool> pool;
   std::unique_ptr<EventBus> events;
+  std::unique_ptr<ModLoader> mods;
   std::unique_ptr<Level> level;
+  std::shared_ptr<net::ServerHost> host;
   std::thread th;
   std::atomic<bool> runFlag{false};
   mutable std::mutex mx;
   std::deque<std::string> cmds;
+  std::deque<ServerLogLine> logLines;
+  u64 logSeq = 0;
   ServerStatus st;
-  std::shared_ptr<void> net;   // net::ServerHost (type-erased to keep this header light)
+  double startedAt = 0;
 };
 
 } // namespace dq

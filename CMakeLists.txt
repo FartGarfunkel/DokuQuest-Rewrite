@@ -56,3 +56,14 @@ foreach(t dokuquest dokuquest-launcher dokuquest-server)
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:${t}>/data
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:${t}>/assets)
 endforeach()
+
+# Multiplayer + mods test (headless): a dedicated server and two scripted clients. Run: build/test_net
+add_library(dq_sample_plugin MODULE tools/sample_plugin.c)
+target_include_directories(dq_sample_plugin PRIVATE src)
+set_target_properties(dq_sample_plugin PROPERTIES PREFIX "" C_VISIBILITY_PRESET hidden)
+add_executable(test_net tools/test_net.cpp)
+target_link_libraries(test_net PRIVATE dqcore)
+target_compile_definitions(test_net PRIVATE DQ_SAMPLE_PLUGIN="$<TARGET_FILE:dq_sample_plugin>")
+add_dependencies(test_net dq_sample_plugin)
+add_custom_command(TARGET test_net POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_net>/data)

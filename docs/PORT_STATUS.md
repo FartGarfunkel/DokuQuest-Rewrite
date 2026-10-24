@@ -17,5 +17,5 @@ Each workstream keeps its own notes in `docs/port/<area>.md` (what was ported, w
 | Distant terrain, skies, clouds, weather | game/distant.js, skies.js, render/clouds.js, game/weather.js, particles2, ambientfx | render/ | wave 2 |
 | Portals & seamless dimensions | game/portals.js, portallinks, portalview, seamless.js, worlds.js | render/, sim/ | wave 2 |
 | Structures, villages, towns | game/structures.js, villages, villageflat, towns, towns3, dungeons, stronghold, deepdark, deephalls, seas, places | gen/ | wave 2 |
-| Network, server, mods | net/*.js, game/server.js, mods.js, together.js, launcher/desktop/lan.js | net/, server/, mod/ | wave 2 |
+| Network, server, mods | net/*.js, game/server.js, mods.js, together.js, launcher/desktop/lan.js | net/, server/, mod/ | done: protocol, server, LAN, JS/native mods (docs/port/net.md; together.js party UI left) |
 | Everything else (magic, enchanting, brewing, villagers, redstone, minecarts, ships, maps, rpg...) | game/*.js | sim/, ui/ | wave 3 |

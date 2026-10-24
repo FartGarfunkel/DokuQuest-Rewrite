@@ -172,7 +172,8 @@ void GameSession::tickLocalPlayer(double dt) {
 
 void GameSession::update(double dt) {
   if (!player) return;
-  bool pz = paused() && !level->allRealms().empty();
+  if (level->net) level->net->update(*level, dt);   // multiplayer (net/): a joined world, or one open to LAN
+  bool pz = paused() && !level->allRealms().empty() && !level->net;   // a shared world never pauses
   if (!pz) {
     tickLocalPlayer(dt);
     tickAcc += dt;
@@ -183,6 +184,7 @@ void GameSession::update(double dt) {
   World& w = world();
   if (worldRenderer.world() != &w) worldRenderer.setWorld(&w);
   std::vector<StreamAnchor> anchors = {{player->pos, app.settings.renderDist, true}};
+  if (level->net) level->net->streamAnchors(player->realm, anchors);   // the host keeps remote players' surroundings loaded
   w.stream(anchors, 3.0);
   // camera
   Camera& cam = frame.cam;
