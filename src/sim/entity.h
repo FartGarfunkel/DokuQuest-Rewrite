@@ -22,6 +22,15 @@ public:
   float age = 0, hurtTime = 0, fallDist = 0;
   u32 riding = 0;            // id of the entity this one rides
   json data = json::object();   // per-type state (AI, colour, contents, owner...) saved with the entity
+  // network (net/): a ghost is a replica of another machine's entity — it is not simulated here; on a client it
+  // glides to netPos/netYaw (the server's last snapshot). netLocal entities exist on this device only (never sent).
+  bool ghost = false, netLocal = false;
+  vec3 netPos{0}; float netYaw = 0;
+  void glide(double dt) {
+    float k = std::min(1.f, (float)dt * 14.f);
+    if (glm::distance(netPos, pos) > 8) pos = netPos; else pos += (netPos - pos) * k;
+    yaw += std::remainder(netYaw - yaw, 2 * PI) * k;
+  }
 
   virtual void tick(Level& lv, double dt) {}
   virtual json save() const;

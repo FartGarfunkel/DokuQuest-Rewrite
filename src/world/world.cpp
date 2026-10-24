@@ -62,7 +62,7 @@ bool World::setBlock(int x, int y, int z, BlockId id, u8 meta, u32 flags) {
   if (old != id) { auto it = c->blockEntities.find(colIdx(lx, ly, lz)); if (it != c->blockEntities.end() && !(flags & SetFlags::NoNotify)) c->blockEntities.erase(it); }
   if (!(flags & SetFlags::NoModify)) { c->modified = true; c->dirty = true; }
   if (!(flags & SetFlags::NoRemesh)) markBlockDirty(x, y, z, flags & SetFlags::Urgent);
-  if (!(flags & SetFlags::NoNotify)) for (auto& s : systems) s->onBlockChanged(*this, x, y, z, old, id);
+  if (!(flags & SetFlags::NoNotify)) { u32 pf = changeFlags; changeFlags = flags; for (auto& s : systems) s->onBlockChanged(*this, x, y, z, old, id); changeFlags = pf; }
   return true;
 }
 bool World::setMeta(int x, int y, int z, u8 meta, u32 flags) {
@@ -84,6 +84,11 @@ void World::setBlockEntity(int x, int y, int z, json e) {
   int i = colIdx(x & 15, y & 255, z & 15);
   if (e.is_null()) c->blockEntities.erase(i); else c->blockEntities[i] = std::move(e);
   c->modified = c->dirty = true;
+  for (auto& s : systems) s->onBlockEntityChanged(*this, x, y, z);
+}
+void World::blockEntityChanged(int x, int y, int z) {
+  markModified(x, y, z);
+  for (auto& s : systems) s->onBlockEntityChanged(*this, x, y, z);
 }
 void World::markModified(int x, int y, int z) { if (Chunk* c = chunkAtBlock(x, y, z)) c->modified = c->dirty = true; }
 
