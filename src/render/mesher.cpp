@@ -1,4 +1,5 @@
 #include "render/mesher.h"
+#include "assets/tileset.h"
 #include <cstring>
 
 namespace dq {
@@ -48,6 +49,7 @@ bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in) {
 
 // ---------------------------------------------------------------- tints
 u32 climateTint(const char* kind, u8 temp, u8 humid) {
+  { bool ok = false; u32 c = packTint(kind, temp, humid, ok); if (ok) return c; }   // the resource pack's colormap
   float t = temp / 255.f, h = humid / 255.f * t;
   // corners of the classic colour triangle (warm-wet / warm-dry / cold)
   vec3 grassWarmWet(0.28f, 0.70f, 0.17f), grassDry(0.75f, 0.71f, 0.33f), grassCold(0.50f, 0.71f, 0.58f);

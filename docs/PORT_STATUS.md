@@ -7,7 +7,7 @@ Each workstream keeps its own notes in `docs/port/<area>.md` (what was ported, w
 | Data | core/blocks.js, items.js, recipes, tags, MOB_TYPES, MODEL_DEFS, atlas tiles | data/*.json via tools/port/extract_all.py | done |
 | Terrain generation | world/worldgen.js, nether2/aether/theend generation | gen/ | wave 1 |
 | Meshing, light, shapes, water, foliage | world/mesher.js, shapes.js, plants3d.js | render/ | wave 1 |
-| Resource packs, voxel items, held/dropped items | render/packs.js, items3d.js, gear3d.js, models3d.js, sculpt.js, packarmor.js | assets/, render/ | wave 1 |
+| Resource packs, voxel items, held/dropped items | render/packs.js, items3d.js, gear3d.js (shapes), models3d.js, sculpt.js, packarmor.js, models.js itemMesh/icons, local.js hand() | assets/, render/item_layers | done (wave 1) — see docs/port/assets.md |
 | Sound | game/audio.js, sfxlib, sounds2, sound3, voices3, blocksounds, ambience, music, music2 | audio/ | wave 1 |
 | Player & block gameplay | game/player.js, physics, local, movement, build, blockfx, blocks2 (part), rules, commands, obtain, itemfix | sim/ | wave 1 |
 | Menus, HUD, inventory, controls | ui/*.js, input/*.js, styles.css, game/menutabs.js, sheet.js | ui/, input/, sim/crafting | wave 1 |
