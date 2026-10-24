@@ -11,7 +11,7 @@ Each workstream keeps its own notes in `docs/port/<area>.md` (what was ported, w
 | Sound | game/audio.js, sfxlib, sounds2, sound3, voices3, blocksounds, ambience, music, music2 | audio/ | wave 1 |
 | Player & block gameplay | game/player.js, physics, local, movement, build, blockfx, blocks2 (part), rules, commands, obtain, itemfix | sim/ | wave 1 |
 | Menus, HUD, inventory, controls | ui/*.js, input/*.js, styles.css, game/menutabs.js, sheet.js | ui/, input/, sim/crafting | wave 1 |
-| Launcher, updater, Mod Studio, packaging | launcher/desktop/*, dokuquest-mod-studio.html, tools/package.sh | launcher/, .github/ | wave 1 |
+| Launcher, updater, Mod Studio, packaging | launcher/desktop/*, dokuquest-mod-studio.html, tools/package.sh | launcher/, .github/ | done (docs/port/launcher.md) |
 | Creatures (sim + voxel bodies) | game/entities.js, mobai, monsters, nightmobs, bestiary, fauna, aquatic, quarrels, husbandry, pets, render/rigs*, models, mobtex, monstex, anim | sim/, render/ | wave 2 |
 | Characters & creator | render/skins.js, ui/creator.js, skineditor.js, game/charparts.js, capes, carried | assets/, render/, ui/ | wave 2 |
 | Distant terrain, skies, clouds, weather | game/distant.js, skies.js, render/clouds.js, game/weather.js, particles2, ambientfx | render/ | wave 2 |

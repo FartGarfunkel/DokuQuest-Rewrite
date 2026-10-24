@@ -1,0 +1,137 @@
+# Release: builds and publishes a DokuQuest release ONLY when you push a version tag yourself
+# (git tag v1.0.0-alpha.2 && git push origin v1.0.0-alpha.2) or start it by hand (Actions → Release → Run workflow).
+# Plain pushes never publish anything. Each release has:
+#   DokuQuest-<ver>-x86_64.AppImage, DokuQuest-<ver>-linux-x64.tar.gz, DokuQuest-<ver>-windows-x64.zip, SHA256SUMS.txt
+# and its notes are the "## <ver> …" section of docs/CHANGELOG.md. The launcher's updater installs the newest one
+# (GitHub's "latest" release), so releases are published as full releases, not pre-releases.
+name: Release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, without the v (e.g. 1.0.0-alpha.2). The tag v<version> is created.'
+        required: true
+      draft:
+        description: 'Create it as a draft (publish it yourself after checking the files)'
+        type: boolean
+        default: true
+permissions:
+  contents: write
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        name: Version and release notes
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = tag ]; then v="${GITHUB_REF_NAME#v}"; else v="${INPUT_VERSION#v}"; fi
+          if ! echo "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then echo "::error::'$v' is not a version like 1.0.0-alpha.2"; exit 1; fi
+          # the notes: the section of docs/CHANGELOG.md whose heading starts with "## <version>"
+          awk -v v="$v" 'index($0, "## " v " ") == 1 || $0 == "## " v {on=1; next} /^## / {if (on) exit} on' docs/CHANGELOG.md | sed -e '/./,$!d' > notes.md
+          if [ ! -s notes.md ]; then echo "::error::docs/CHANGELOG.md has no '## $v' section"; exit 1; fi
+          # patch notes never mention Herobrine, and always end with "Removed Herobrine."
+          if grep -i herobrine notes.md | grep -vqx -- '- Removed Herobrine\.'; then echo "::error::the notes mention Herobrine"; exit 1; fi
+          sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' notes.md
+          if [ "$(tail -n 1 notes.md)" != "- Removed Herobrine." ]; then grep -vx -- '- Removed Herobrine\.' notes.md > n2.md || true; printf '%s\n' '- Removed Herobrine.' >> n2.md; mv n2.md notes.md; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          cat notes.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notes
+          path: notes.md
+
+  linux:
+    needs: version
+    runs-on: ubuntu-22.04
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build file desktop-file-utils \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxinerama-dev libxxf86vm-dev libxss-dev libxfixes-dev libxkbcommon-dev \
+            libwayland-dev wayland-protocols libdecor-0-dev libegl1-mesa-dev libgl1-mesa-dev libgles2-mesa-dev libdrm-dev libgbm-dev \
+            libasound2-dev libpulse-dev libudev-dev libdbus-1-dev \
+            xvfb xauth mesa-utils libgl1-mesa-dri
+      - name: Fetch dependencies
+        run: bash tools/fetch_deps.sh
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DDQ_VERSION="$VERSION" -DDQ_PORTABLE=ON
+          cmake --build build --parallel
+      - name: Smoke test (the release is only made from a build that runs)
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -o pipefail
+          ud="$RUNNER_TEMP/ud"
+          timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" ./build/dokuquest --userdir "$ud" --create Test --seed hello --smoke-frames 300 --smoke-shot game.png 2>&1 | tee smoke.log
+          timeout 300 xvfb-run -a -s "-screen 0 1280x720x24" ./build/dokuquest-launcher --userdir "$ud" --smoke-frames 30 --smoke-shot launcher.png 2>&1 | tee -a smoke.log
+          if grep -n '^\[error\]' smoke.log; then echo "::error::the smoke test logged errors"; exit 1; fi
+      - name: Package (AppImage + tar.gz)
+        run: bash tools/package.sh build "$VERSION" linux
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-linux
+          path: dist/DokuQuest-*
+
+  windows:
+    needs: version
+    runs-on: windows-2022
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch dependencies
+        shell: bash
+        run: bash tools/fetch_deps.sh
+      - name: Build (MSVC)
+        shell: bash
+        run: |
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DDQ_VERSION="$VERSION"
+          cmake --build build --config Release --parallel
+      - name: Package (zip)
+        shell: bash
+        run: bash tools/package.sh build "$VERSION" windows
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-windows
+          path: dist/DokuQuest-*
+
+  publish:
+    needs: [version, linux, windows]
+    runs-on: ubuntu-22.04
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: dist-*
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: notes
+      - name: Checksums
+        run: cd dist && sha256sum DokuQuest-* > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - name: Publish the GitHub release
+        env:
+          DRAFT: ${{ github.event_name == 'workflow_dispatch' && inputs.draft }}
+        run: |
+          flags=(--repo "$GITHUB_REPOSITORY" --title "DokuQuest $VERSION" --notes-file notes.md --target "$GITHUB_SHA" --latest)
+          if [ "$DRAFT" = true ]; then flags+=(--draft); fi
+          gh release create "v$VERSION" "${flags[@]}" dist/*
