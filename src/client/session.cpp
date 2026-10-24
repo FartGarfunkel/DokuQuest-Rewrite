@@ -145,7 +145,7 @@ void GameSession::tickLocalPlayer(double dt) {
       if (app.events.emit("blockBreak", args)) {
         w.setBlock(bp.x, bp.y, bp.z, AIR, 0, SetFlags::Urgent);
         if (!creative && !b.drop.empty()) p.give(ItemStack(b.drop, 1));
-        if (app.audio) app.audio->play("dig." + b.sound, {1, 1, true, vec3(bp) + vec3(0.5f)});
+        if (app.audio) app.audio->materialAt(b.sound, "dig", vec3(bp) + vec3(0.5f));
       }
       breaking = false; breakProgress = 0;
     }
@@ -163,7 +163,7 @@ void GameSession::tickLocalPlayer(double dt) {
         if (app.events.emit("blockPlace", json::array({p.name, np.x, np.y, np.z, it->block}))) {
           w.setBlock(np.x, np.y, np.z, id, 0, SetFlags::Urgent);
           if (!creative && --h.n <= 0) h.clear();
-          if (app.audio) app.audio->play("place." + reg().block(id).sound, {1, 1, true, vec3(np) + vec3(0.5f)});
+          if (app.audio) app.audio->materialAt(reg().block(id).sound, "place", vec3(np) + vec3(0.5f));
         }
       }
     }

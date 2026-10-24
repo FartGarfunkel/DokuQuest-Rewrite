@@ -36,7 +36,13 @@ bool AudioEngine::init(const Settings& s) {
 void AudioEngine::shutdown() { if (impl && impl->ok) { ma_device_uninit(&impl->device); impl->ok = false; } }
 void AudioEngine::setListener(vec3, vec3, vec3) {}
 void AudioEngine::setVolumes(const Settings& s) { impl->master = s.volume; }
-int AudioEngine::play(const std::string&, const SoundParams&) { return 0; }
+int AudioEngine::play(const std::string&, float, float) { return 0; }
+int AudioEngine::playAt(const std::string&, vec3, float, float, float) { return 0; }
+void AudioEngine::material(const std::string&, const std::string&) {}
+void AudioEngine::materialAt(const std::string&, const std::string&, vec3) {}
+void AudioEngine::note(const std::string&, int, vec3) {}
+void AudioEngine::voice(const std::string&, const std::string&, vec3, float) {}
+void AudioEngine::setCategoryVolume(const std::string&, float) {}
 void AudioEngine::stop(int) {}
 void AudioEngine::update(double) {}
 bool AudioEngine::ok() const { return impl && impl->ok; }

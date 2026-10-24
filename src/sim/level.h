@@ -31,6 +31,20 @@ struct LevelInfo {
   void fromJson(const json& j);
 };
 
+// Sounds, particles and messages raised by the simulation. The client plugs in audio/particles/HUD,
+// the server forwards them to players. Names follow the original game's sfx calls (game/audio.js).
+class LevelFx {
+public:
+  virtual ~LevelFx() = default;
+  virtual void sound(const std::string& name, vec3 pos, float range = 28, float volume = 1, float pitch = 1) {}   // sfx.playAt
+  virtual void soundUi(u32 playerId, const std::string& name) {}                                                  // sfx.play (that player only)
+  virtual void material(const std::string& mat, const std::string& kind, vec3 pos) {}                            // sfx.materialAt
+  virtual void voice(const std::string& creature, const std::string& kind, vec3 pos, float pitch = 1) {}
+  virtual void particles(const std::string& kind, vec3 pos, int count = 8, const json& extra = nullptr) {}       // burst / smoke / block crumbs...
+  virtual void message(u32 playerId, const std::string& text, const std::string& kind = "") {}                   // toast / chat line (0 = everyone)
+  virtual void shake(u32 playerId, float strength) {}
+};
+
 class Level {
 public:
   Level(LevelInfo info, const fs::path& folder, ThreadPool* pool, EventBus* events);
@@ -42,6 +56,8 @@ public:
   fs::path folder;
   ThreadPool* pool;
   EventBus* events;
+  LevelFx* fx = &nullFx;            // never null
+  LevelFx nullFx;
   std::shared_ptr<WorldGen> gen;
 
   World& world(int realm = REALM_MAIN);
