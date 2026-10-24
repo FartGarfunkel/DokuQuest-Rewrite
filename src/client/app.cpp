@@ -4,6 +4,7 @@
 #include "ui/screen.h"
 #include "audio/audio.h"
 #include "mod/modloader.h"
+#include "assets/icons.h"
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
@@ -109,6 +110,7 @@ void App::reloadTiles() {
     tileTex.color[p] = makeTextureArray(tiles.size, tiles.size, n, tiles.rgba.data() + first * tsz * 4, true);
     tileTex.height[p] = makeTextureArray(tiles.size, tiles.size, n, h4.data() + first * tsz * 4, false);
   }
+  itemIcons().build(tiles);
   DQ_LOG("tiles: %d micro-voxel tiles (%s)", tiles.count, tiles.packName.empty() ? "built-in Doku" : tiles.packName.c_str());
 }
 
