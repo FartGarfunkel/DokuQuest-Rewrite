@@ -21,8 +21,10 @@ public:
     auto& r = reg();
     stone = r.blockId("stone"); dirt = r.blockId("dirt"); grass = r.blockId("grass"); water = r.blockId("water");
     sand = r.blockId("sand"); bedrock = r.blockId("bedrock"); netherrack = r.blockId("netherrack");
-    endstone = r.blockId("end_stone"); skygrass = r.blockId("sky_grass"); if (!skygrass) skygrass = grass;
-    if (!netherrack) netherrack = stone; if (!endstone) endstone = sand;
+    endstone = r.blockId("end_stone"); skygrass = r.blockId("sky_grass");
+    if (!skygrass) skygrass = grass;
+    if (!netherrack) netherrack = stone;
+    if (!endstone) endstone = sand;
     lava = r.blockId("lava");
   }
   int height(int x, int z) const {

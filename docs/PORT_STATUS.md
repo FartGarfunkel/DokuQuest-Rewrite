@@ -5,7 +5,7 @@ Each workstream keeps its own notes in `docs/port/<area>.md` (what was ported, w
 |---|---|---|---|
 | Foundation | core/util.js, world/chunk.js (codec idea), core/blocks.js tables | common/, core/, world/, client/ | done (engine runs) |
 | Data | core/blocks.js, items.js, recipes, tags, MOB_TYPES, MODEL_DEFS, atlas tiles | data/*.json via tools/port/extract_all.py | done |
-| Terrain generation | world/worldgen.js, nether2/aether/theend generation | gen/ | wave 1 |
+| Terrain generation | world/worldgen.js, worldupdate.js (rivers, crust), metals.js (ores), deepdark.js (terrain), theend.js (End terrain, void crust), riftarc.js/worldgen.js (realm, pocket), distant.js (sampling); nether2/aether/seamless have no terrain | gen/ (docs/port/gen.md) | done (structure hook in gen/structures.h; structures themselves wave 2) |
 | Meshing, light, shapes, water, foliage | world/mesher.js, shapes.js, plants3d.js | render/ | wave 1 |
 | Resource packs, voxel items, held/dropped items | render/packs.js, items3d.js, gear3d.js (shapes), models3d.js, sculpt.js, packarmor.js, models.js itemMesh/icons, local.js hand() | assets/, render/item_layers | done (wave 1) — see docs/port/assets.md |
 | Sound | game/audio.js, sfxlib, sounds2, sound3, voices3, blocksounds, ambience, music, music2 | audio/ | wave 1 |

@@ -46,6 +46,10 @@ target_link_libraries(dokuquest-launcher PRIVATE dqclient)
 add_executable(dokuquest-server tools/server_main.cpp)
 target_link_libraries(dokuquest-server PRIVATE dqcore)
 
+# terrain generator checks (tools/port/gen_compare.py, timing); not shipped
+add_executable(dq-gentool tools/port/gentool.cpp)
+target_link_libraries(dq-gentool PRIVATE dqcore)
+
 if(WIN32)
   set_target_properties(dokuquest dokuquest-launcher PROPERTIES WIN32_EXECUTABLE ON)
   target_link_libraries(dqclient PUBLIC SDL2::SDL2main)
@@ -60,7 +64,7 @@ if(DQ_PORTABLE AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 # Runtime data next to the executables (data/, assets/)
-foreach(t dokuquest dokuquest-launcher dokuquest-server)
+foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool)
   add_custom_command(TARGET ${t} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:${t}>/data
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:${t}>/assets)
