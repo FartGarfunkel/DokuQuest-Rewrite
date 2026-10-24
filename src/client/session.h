@@ -24,6 +24,8 @@ public:
   virtual void drawTranslucent(class GameSession& s, const FrameCtx& f) {}
   virtual void drawOverlay(class GameSession& s, const FrameCtx& f) {}   // after the world (hand, screen effects)
   virtual void drawHud(class GameSession& s) {}                          // ImGui HUD
+  virtual void afterPlayerMove(class GameSession& s, double dt) {}       // right after the local player moved, before the camera
+  virtual void streamAnchors(class GameSession& s, std::vector<StreamAnchor>& a) {}   // more places to keep loaded in the player's realm
 };
 using RenderLayerFactory = std::function<std::shared_ptr<RenderLayer>(class GameSession&)>;
 void registerRenderLayer(RenderLayerFactory f);

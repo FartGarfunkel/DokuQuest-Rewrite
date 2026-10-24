@@ -1,4 +1,5 @@
 #include "client/app.h"
+#include "render/portal_view.h"
 #include "client/session.h"
 #include "core/init.h"
 #include "ui/screen.h"
@@ -171,6 +172,7 @@ int App::run(int argc, char** argv) {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "DokuQuest", "The game's data folder is missing or damaged. Reinstall DokuQuest from the launcher.", nullptr);
     return 1;
   }
+  registerPortalView();   // render/portal_view.cpp
   settings = Settings::load();
   if (!settings.shaderPack.empty()) setShaderPack(settings.shaderPack);
   mods = std::make_unique<ModLoader>();
