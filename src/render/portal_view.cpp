@@ -42,7 +42,7 @@ public:
   }
   ~PortalViewLayer() override { glDeleteBuffers(1, &vbo); glDeleteVertexArrays(1, &vao); }
   const char* name() const override { return "portalView"; }
-  int order() const override { return 50; }
+  int order() const override { return 15; }   // before particles (20): rain in front of a window must draw over it
 
   void afterPlayerMove(GameSession& s, double dt) override {
     if (test.on) testStep(s, dt);
@@ -239,7 +239,7 @@ private:
       Camera& vc = vf.cam;
       vc.pos = x.point(f.cam.pos); vc.yaw = f.cam.yaw + x.yaw; vc.realm = L.d.realm;
       vc.update();
-      s.sky->computeFrame(*s.level, vf, s.app.settings.renderDist);
+      s.sky->computeFrame(*s.level, vf, s.app.settings.renderDist, false);
       s.sky->draw(vf);
       vec3 n = L.d.n;
       if (glm::dot(glm::dvec3(n), vc.pos - L.d.c) > 0) n = -n;

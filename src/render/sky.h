@@ -33,7 +33,7 @@ class SkyRenderer {
 public:
   bool init();
   // fills f.skyColor/fogColor/daylight/sunDir/fog/wind/weather values from the level and camera band
-  void computeFrame(const Level& lv, FrameCtx& f, int renderDistChunks);
+  void computeFrame(const Level& lv, FrameCtx& f, int renderDistChunks, bool primary = true);   // primary=false: a portal view (leaves the shared sky state alone)
   void draw(const FrameCtx& f);
   SkyEnv env;               // this frame's sky (clouds, distant terrain and weather read it)
 private:
