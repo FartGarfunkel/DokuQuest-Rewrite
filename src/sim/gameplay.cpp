@@ -1,6 +1,7 @@
 // sim/gameplay.cpp — feedback, items on the ground (DroppedItem), block drops (game.js + obtain.js),
 // falling trees, XP, and the per-level gameplay system (clock, item merging, crowding, world systems).
 #include "sim/gameplay.h"
+#include "sim/creature_entities.h"
 #include "sim/rules.h"
 #include "sim/worldsys.h"
 #include "sim/blockfx.h"
@@ -268,43 +269,11 @@ void spillEntity(Level& lv, World& w, const json& ent, int x, int y, int z) {
 }
 
 // ---- a felled tree topples, then its logs and leaves land as drops -------------------------------
-class FallingTree : public Entity {
-public:
-  FallingTree() { type = "falling_tree"; w = 0.5f; h = 1; noGravity = true; }
-  float t = 0;
-  void tick(Level& lv, double dt) override {
-    t += (float)dt;
-    if (t < 1.1f || removed) return;
-    World& w = lv.world(realm);
-    float dirYaw = data.value("dirYaw", 0.0f), height = data.value("height", 1.0f);
-    sfxAt(lv, "fell", pos);
-    for (Player* p : playersIn(lv, realm)) if (glm::distance(p->pos, pos) < 24) lv.fx->shake(p->id, 0.25f);
-    float fx = -std::sin(dirYaw), fz = -std::cos(dirYaw);
-    auto landingY = [&](float x, float z) {
-      int bx = ifloor(x), bz = ifloor(z);
-      for (int y = std::min(WORLD_H - 2, ifloor(pos.y + height + 3)); y > 0; y--) { BlockId id = w.getBlock(bx, y, bz); if (reg().tSolid[id] || reg().tLiquid[id]) return y + 1.05f; }
-      return pos.y + 1;
-    };
-    if (data.contains("drops")) for (auto& s : data["drops"]) {
-      ItemStack st = ItemStack::fromJson(s);
-      float d = 1 + (float)rnd() * std::max(1.f, height - 1);
-      float x = pos.x + 0.5f + fx * d + (float)(rnd() - 0.5), z = pos.z + 0.5f + fz * d + (float)(rnd() - 0.5);
-      dropItem(lv, realm, st, vec3(x, landingY(x, z), z), false);
-    }
-    std::string tile = "oak_log";
-    if (data.contains("blocks") && data["blocks"].is_array() && !data["blocks"].empty()) tile = data["blocks"][0].value("key", tile);
-    for (int i = 0; i < 6; i++) { float d = (float)rnd() * height; float x = pos.x + 0.5f + fx * d, z = pos.z + 0.5f + fz * d; burst(lv, vec3(x, landingY(x, z) + 0.2f, z), tile, 4, 0.8f); }
-    removed = true;
-  }
-};
+// One entity kind for it: sim/creature_entities.cpp's "falling_tree" (the renderer reads its data layout).
 Entity* spawnFallingTree(Level& lv, int realm, const std::vector<std::array<int, 4>>& blocks, ivec3 pivot, float dirYaw, const std::vector<ItemStack>& drops) {
-  auto e = std::make_unique<FallingTree>();
-  e->realm = realm; e->pos = vec3(pivot);
-  json bl = json::array(); int top = pivot.y;
-  for (auto& b : blocks) { bl.push_back({{"x", b[0]}, {"y", b[1]}, {"z", b[2]}, {"key", reg().block((BlockId)b[3]).key}}); top = std::max(top, b[1]); }
-  json dr = json::array(); for (auto& s : drops) dr.push_back(s.toJson());
-  e->data = {{"blocks", bl}, {"pivot", {pivot.x, pivot.y, pivot.z}}, {"dirYaw", dirYaw}, {"drops", dr}, {"height", top - pivot.y + 1}};
-  return lv.spawn(std::move(e));
+  std::vector<FelledBlock> fb; fb.reserve(blocks.size());
+  for (auto& b : blocks) fb.push_back({ivec3(b[0], b[1], b[2]), (BlockId)b[3]});
+  return spawnFallingTree(lv, realm, fb, pivot, dirYaw, drops);
 }
 
 // ---- the per-level gameplay system --------------------------------------------------------------
@@ -362,7 +331,6 @@ std::shared_ptr<void>& levelSlotRaw(Level& lv, const std::string& key) {
 void registerGameplay() {
   registerLevelSystem([](Level& lv) { return std::make_shared<GameplaySystem>(lv); });
   registerEntityFactory("item", [](const std::string&) { return std::unique_ptr<Entity>(new ItemEntity()); });
-  registerEntityFactory("falling_tree", [](const std::string&) { return std::unique_ptr<Entity>(new FallingTree()); });
   registerBlockFxEntities();
   registerBuildEntities();
   registerArrowEntity();

@@ -45,6 +45,11 @@ target_link_libraries(dokuquest-launcher PRIVATE dqclient)
 
 add_executable(dokuquest-server tools/server_main.cpp)
 target_link_libraries(dokuquest-server PRIVATE dqcore)
+if(UNIX AND NOT APPLE)   # names in crash backtraces (common.cpp installCrashHandler)
+  foreach(t dokuquest dokuquest-launcher dokuquest-server)
+    target_link_options(${t} PRIVATE -rdynamic)
+  endforeach()
+endif()
 
 # terrain generator checks (tools/port/gen_compare.py, timing); not shipped
 add_executable(dq-gentool tools/port/gentool.cpp)

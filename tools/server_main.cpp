@@ -11,6 +11,7 @@
 
 static std::atomic<bool> g_quit{false};
 int main(int argc, char** argv) {
+  dq::installCrashHandler();
   dq::CoreOptions co; co.server = true;
   dq::ServerConfig cfg;
   dq::json cli = dq::json::object();

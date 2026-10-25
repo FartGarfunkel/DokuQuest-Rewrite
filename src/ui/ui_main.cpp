@@ -16,11 +16,33 @@ static bool g_startupDone = false;
 static std::vector<std::function<void(App&)>> g_deferred;
 void uiDefer(std::function<void(App&)> f) { g_deferred.push_back(std::move(f)); }
 
+// The simulation asks for a screen with EventBus "screenOpen" [player, kind, opts] (sim/gameplay openScreen):
+// chests, barrels, shulker boxes, the ender chest, backpacks -> container; crafting table -> table; furnaces.
+static void onScreenOpen(App& a, const json& args) {
+  if (!args.is_array() || args.size() < 2 || !args[1].is_string() || !a.session || !a.session->player) return;
+  if (args[0].is_string() && args[0].get<std::string>() != a.session->player->name) return;
+  std::string kind = args[1];
+  json o = args.size() > 2 && args[2].is_object() ? args[2] : json::object();
+  InvOpen io;
+  if (o.contains("pos") && o["pos"].is_array() && o["pos"].size() == 3) { io.hasPos = true; io.pos = ivec3(o["pos"][0].get<int>(), o["pos"][1].get<int>(), o["pos"][2].get<int>()); }
+  if (kind == "container") { io.mode = "container"; io.ender = o.value("ender", false); io.heldPack = o.value("held", false); }
+  else if (kind == "table") io.mode = "table";
+  else if (kind == "furnace") io.mode = "furnace";
+  else { hudToast("That screen isn't in this build yet", "warn"); return; }
+  if (io.mode == "container" && !io.hasPos && !io.ender && !io.heldPack) { hudToast("That screen isn't in this build yet", "warn"); return; }
+  uiDefer([io](App& a2) {
+    if (!a2.session || !a2.session->player) return;
+    while (a2.topScreen() && a2.topScreen()->id() == std::string("inventory")) a2.popScreen();
+    a2.pushScreen(makeInventoryScreen(io));
+  });
+}
+
 void registerUi(App& a) {
   ui::init(a);
   registerHudLayer();
   hudInitEvents(a);
   registerInventoryTab();
+  a.events.on("screenOpen", [&a](const json& args) { onScreenOpen(a, args); return true; });
 }
 
 std::unique_ptr<Screen> makeScreenByName(App& a, const std::string& n) {

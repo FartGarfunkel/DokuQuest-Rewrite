@@ -4,6 +4,14 @@
 #include <chrono>
 #include <mutex>
 #include <map>
+#include <csignal>
+#include <exception>
+#include <cstring>
+#if defined(__linux__) || defined(__APPLE__)
+#include <execinfo.h>
+#include <unistd.h>
+#define DQ_HAVE_BT 1
+#endif
 
 namespace dq {
 
@@ -32,6 +40,49 @@ void logMsg(LogLevel lv, const char* fmt, ...) {
   if (g_logFile) { fprintf(g_logFile, "[%s] %s\n", tags[(int)lv], buf); fflush(g_logFile); }
   std::string s(buf);
   for (auto& [id, sink] : g_sinks) sink(lv, s);
+}
+
+// ---- crashes: say why in the log (signal or uncaught exception + a backtrace) before dying ----
+static void crashWrite(const char* msg) {
+  size_t n = std::strlen(msg);
+#ifdef DQ_HAVE_BT
+  if (::write(2, msg, n) < 0) {}
+  if (g_logFile && ::write(fileno(g_logFile), msg, n) < 0) {}
+#else
+  fputs(msg, stderr); if (g_logFile) { fputs(msg, g_logFile); fflush(g_logFile); }
+#endif
+}
+static void crashTrace() {
+#ifdef DQ_HAVE_BT
+  void* fr[64]; int n = backtrace(fr, 64);
+  backtrace_symbols_fd(fr, n, 2);
+  if (g_logFile) { fflush(g_logFile); backtrace_symbols_fd(fr, n, fileno(g_logFile)); }
+#endif
+}
+static void onCrashSignal(int sig) {
+  char buf[128];
+  snprintf(buf, sizeof buf, "[error] DokuQuest crashed (signal %d: %s). Backtrace:\n", sig,
+           sig == SIGSEGV ? "segmentation fault" : sig == SIGABRT ? "abort" : sig == SIGFPE ? "arithmetic" : sig == SIGILL ? "illegal instruction" : "fatal");
+  crashWrite(buf);
+  crashTrace();
+  std::signal(sig, SIG_DFL);
+  std::raise(sig);
+}
+void installCrashHandler() {
+  for (int s : {SIGSEGV, SIGABRT, SIGFPE, SIGILL
+#ifdef SIGBUS
+                , SIGBUS
+#endif
+       }) std::signal(s, onCrashSignal);
+  std::set_terminate([] {
+    std::string what = "unknown";
+    if (auto ep = std::current_exception()) {
+      try { std::rethrow_exception(ep); } catch (const std::exception& e) { what = e.what(); } catch (...) {}
+    }
+    std::string m = "[error] DokuQuest stopped on an uncaught exception: " + what + "\n";
+    crashWrite(m.c_str());
+    std::abort();
+  });
 }
 
 double nowSeconds() {

@@ -28,91 +28,7 @@ static Creature* creatureHit(Level& lv, int realm, vec3 p, u32 skip, float pad) 
 }
 
 // ------------------------------------------------------------------ dropped items
-static bool keepDrop(const std::string& id) {
-  static const std::set<std::string> K = {"realm_fragment", "heart_crystal", "watcher_blade", "rift_staff", "ember_blade", "cinder_core", "elytra", "dragon_egg_ender", "pocket_key"};
-  return K.count(id) > 0;
-}
-static bool fireproof(const std::string& id) {
-  return id.rfind("cinderite", 0) == 0 || id == "ember_blade" || id == "cinder_core" || id == "realm_fragment" || id == "heart_crystal" || id == "watcher_blade" || id == "rift_staff";
-}
-class DroppedItem : public Entity {
-public:
-  DroppedItem() { type = "item"; w = 0.15f; h = 0.3f; }
-  void tick(Level& lv, double dtd) override {
-    float dt = (float)dtd;
-    World& wd = lv.world(realm);
-    if (!wd.isLoaded(ifloor(pos.x), clampv(ifloor(pos.y), 0, WORLD_H - 1), ifloor(pos.z))) return;
-    ItemStack st = ItemStack::fromJson(data.value("stack", json()));
-    if (st.empty()) { removed = true; return; }
-    float delay = data.value("pickupDelay", 0.f);
-    if (delay > 0) data["pickupDelay"] = delay - dt;
-    if (!boxFree(wd, pos, w, h)) unstick(wd);   // never stay buried
-    const Registry& R = reg();
-    BlockId here = wd.getBlock(ifloor(pos.x), ifloor(pos.y + 0.1f), ifloor(pos.z));
-    if (R.tLiquid[here] == 2 && !fireproof(st.id)) { removed = true; lv.fx->sound("fizz", pos); return; }
-    bool floating = false;
-    if (R.tLiquid[here] == 1) {
-      int by = ifloor(pos.y + 0.15f);
-      float top = by + (R.tLiquid[wd.getBlock(ifloor(pos.x), by + 1, ifloor(pos.z))] ? 1.f : 0.88f);
-      bool under = pos.y + 0.12f < top;
-      vel.y += (under ? 14 : -6) * dt;
-      vel.y *= std::max(0.f, 1 - dt * 3);
-      vel.x *= std::max(0.f, 1 - dt * 1.5f); vel.z *= std::max(0.f, 1 - dt * 1.5f);
-      floating = true;
-    } else vel.y -= 18 * dt;
-    inWater = floating; data["floating"] = floating;
-    float k = onGround ? std::min(1.f, dt * 6) : std::min(1.f, dt * 0.5f);
-    vel.x -= vel.x * k; vel.z -= vel.z * k;
-    if (data.value("pickupDelay", 0.f) <= 0) {   // any player nearby pulls the item in
-      Player* p = nullptr; float best = 2.4f;
-      for (auto& e : lv.entities()) if (auto* q = dynamic_cast<Player*>(e.get())) {
-        if (q->removed || q->dead || q->realm != realm || q->mode == "spectator") continue;
-        float d = glm::distance(q->pos + vec3(0, 0.8f, 0), pos);
-        if (d < best) { best = d; p = q; }
-      }
-      if (p) {
-        vec3 dv = p->pos + vec3(0, 0.8f, 0) - pos; float d = std::max(best, 0.01f);
-        float s = (2.4f - d) * 10 * dt; vel += dv / d * s * 8.f;
-        if (d < 0.9f) {
-          int left = p->give(st);
-          if (left < st.n) lv.fx->soundUi(p->id, "pop");
-          if (left <= 0) { removed = true; return; }
-          st.n = left; data["stack"] = st.toJson(); data["pickupDelay"] = 1;
-        }
-      }
-    }
-    MoveResult r = moveBox(wd, pos, w, h, vel * dt, 0);
-    if (r.hitX) vel.x = 0; if (r.hitZ) vel.z = 0; if (r.hitY) vel.y = 0;
-    onGround = r.onGround;
-    // a sapling left lying on soil takes root
-    if (onGround && !floating) {
-      if (!data.contains("plantT")) data["plantT"] = 10 + frand() * 25;
-      if (age > data["plantT"].get<float>()) { data["plantT"] = age + 15 + frand() * 30; takeRoot(lv, wd, st); if (removed) return; }
-    }
-    if ((age > 300 && !keepDrop(st.id)) || pos.y < -30) removed = true;
-  }
-  void unstick(const World& wd) {
-    for (int up = 1; up <= 12; up++) { vec3 p(pos.x, std::floor(pos.y) + up + 0.01f, pos.z); if (boxFree(wd, p, w, h)) { pos = p; vel.y = 0; return; } }
-    for (vec3 d : {vec3(1, 0, 0), vec3(-1, 0, 0), vec3(0, 0, 1), vec3(0, 0, -1)}) if (boxFree(wd, pos + d, w, h)) { pos += d; return; }
-  }
-  void takeRoot(Level& lv, World& wd, ItemStack st) {
-    const ItemDef* d = st.def();
-    if (!d || d->block.empty() || lv.info.rules.value("saplingsPlant", true) == false) return;
-    BlockId bid = reg().blockId(d->block); const BlockDef& b = reg().block(bid);
-    auto ends = [&](const char* s) { size_t n = strlen(s); return b.key.size() >= n && b.key.compare(b.key.size() - n, n, s) == 0; };
-    if (!bid || !(b.has("tree") || ends("_propagule") || ends("_fungus"))) return;
-    int x = ifloor(pos.x), y = ifloor(pos.y + 0.1f), z = ifloor(pos.z);
-    BlockId cur = wd.getBlock(x, y, z);
-    if (cur != AIR && !(reg().tReplaceable[cur] && !reg().tLiquid[cur])) return;
-    const std::string& below = reg().block(wd.getBlock(x, y - 1, z)).key;
-    static const std::set<std::string> SOIL = {"grass", "dirt", "podzol", "coarse_dirt", "rooted_dirt", "mud", "moss_block", "mycelium", "sky_grass", "snowy_grass", "dirt_with_dry_grass", "dirt_with_coniferous_litter", "dirt_with_rainforest_litter"};
-    bool ok = ends("_fungus") ? (below == "crimson_nylium" || below == "warped_nylium" || below == "soul_soil") : SOIL.count(below) > 0;
-    if (!ok) return;
-    for (ivec2 dd : {ivec2(1, 0), ivec2(-1, 0), ivec2(0, 1), ivec2(0, -1)}) { const BlockDef& n = reg().block(wd.getBlock(x + dd.x, y, z + dd.y)); if (n.has("tree") || n.has("isLog") || reg().tWlog[n.id]) return; }
-    wd.setBlock(x, y, z, bid, 0);
-    st.n--; if (st.n <= 0) removed = true; else data["stack"] = st.toJson();
-  }
-};
+// (dropped items are sim/gameplay.cpp's ItemEntity: one "item" entity kind)
 
 // ------------------------------------------------------------------ arrows (blocks2.js)
 static bool arrowHitsPawn(Level& lv, Entity& arrow, vec3 n, Entity* owner) {
@@ -354,7 +270,6 @@ Entity* spawnGib(Level& lv, Creature& from, const std::string& part, const mat4&
 }
 
 void registerCreatureEntities() {
-  registerEntityFactory("item", [](const std::string&) { return std::make_unique<DroppedItem>(); });
   registerEntityFactory("arrow", [](const std::string&) { return std::make_unique<Arrow>(); });
   registerEntityFactory("projectile", [](const std::string&) { return std::make_unique<Projectile>(); });
   registerEntityFactory("hex_flask", [](const std::string&) { return std::make_unique<HexFlask>(); });

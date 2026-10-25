@@ -39,6 +39,7 @@ void logMsg(LogLevel lv, const char* fmt, ...)
 #endif
   ;
 void logSetFile(const std::string& path);
+void installCrashHandler();   // log the signal / uncaught exception and a backtrace when the process dies
 using LogSink = std::function<void(LogLevel, const std::string&)>;
 int logAddSink(LogSink sink);   // returns id (e.g. the launcher's server console)
 void logRemoveSink(int id);

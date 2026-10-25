@@ -3,6 +3,7 @@
 #include <SDL_main.h>
 
 int main(int argc, char** argv) {
+  dq::installCrashHandler();
   dq::App app;
   return app.run(argc, argv);
 }

@@ -1,4 +1,5 @@
 #include "client/app.h"
+#include "client/test_script.h"
 #include "render/portal_view.h"
 #include "client/netplay.h"
 #include "render/tile_anim.h"
@@ -220,6 +221,7 @@ void App::frameLoop() {
     dt = std::min(0.1, now - last); last = now; time += dt;
     input.dt = dt;
     input.beginFrame();
+    testScriptFrame(*this);   // --smoke-script: scripted keys/pad/commands (client/test_script.cpp)
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
       ImGui_ImplSDL2_ProcessEvent(&e);

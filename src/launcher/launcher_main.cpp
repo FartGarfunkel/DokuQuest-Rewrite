@@ -193,6 +193,7 @@ void drawFrame(Launcher& L) {
 
 int main(int argc, char** argv) {
   using namespace dq;
+  installCrashHandler();
   Args a = parseArgs(argc, argv);
   CoreOptions co; co.userDirOverride = a.userDir;
   if (!initCore(co)) {
