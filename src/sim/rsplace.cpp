@@ -86,7 +86,7 @@ static bool useRedstone(Level& lv, Player& p, World& w, ivec3 hp, const ItemDef*
       screenOpen(lv, p, json{{"pos", {hp.x, hp.y, hp.z}}});
       return true;
   }
-  if ((b.key == "iron_door" || b.key == "iron_trapdoor") && !p.creative()) { toast(lv, p, "Iron doors open with redstone \xE2\x80\x94 try a button or lever beside it"); return true; }
+  if ((b.key == "iron_door" || b.key == "iron_trapdoor") && !p.creative()) { vehToast(lv, p, "Iron doors open with redstone \xE2\x80\x94 try a button or lever beside it"); return true; }
   return false;
 }
 
@@ -104,7 +104,7 @@ static int placeRedstone(Level& lv, Player& p, World& w, ivec3 hit, int face, Bl
   int x = pt.x, y = pt.y, z = pt.z;
   if (!inWorldY(y)) return 0;
   int look = lookDir(p);
-  auto floor = [&] { if (rsFloorOK(w, x, y - 1, z, R.tSink[bid])) return true; toast(lv, p, "This needs solid ground under it"); return false; };
+  auto floor = [&] { if (rsFloorOK(w, x, y - 1, z, R.tSink[bid])) return true; vehToast(lv, p, "This needs solid ground under it"); return false; };
   int meta = -1;
   if (isRail) { if (!floor()) return 0; meta = railShapeFor(w, x, y, z, bid, look); }
   else if (isTrip) { if (!floor()) return 0; meta = 0; }
@@ -116,12 +116,12 @@ static int placeRedstone(Level& lv, Player& p, World& w, ivec3 hit, int face, Bl
       meta = n.y == 1 ? 0 : n.y == -1 ? 1 : 2 + dirOf((float)-n.x, (float)-n.z);
       int s = leverSup(meta);
       BlockId sid = w.getBlock(x + D6X[s], y + D6Y[s], z + D6Z[s]);
-      if (!R.tSolid[sid] || (R.tShape[sid] && R.tShape[sid] != ShapeKind::Slab && R.tShape[sid] != ShapeKind::Stairs)) { toast(lv, p, "Fix it to a solid block"); return 0; }
+      if (!R.tSolid[sid] || (R.tShape[sid] && R.tShape[sid] != ShapeKind::Slab && R.tShape[sid] != ShapeKind::Stairs)) { vehToast(lv, p, "Fix it to a solid block"); return 0; }
       if (meta < 2 && (look & 1)) meta |= 16;
       break;
     }
     case HOOK: {
-      if (n.y != 0) { toast(lv, p, "Tripwire hooks go on the side of a block"); return 0; }
+      if (n.y != 0) { vehToast(lv, p, "Tripwire hooks go on the side of a block"); return 0; }
       int f = dirOf((float)-n.x, (float)-n.z);
       if (!R.tSolid[w.getBlock(x + DIRX[f], y, z + DIRZ[f])]) return 0;
       meta = f; break;
@@ -176,11 +176,11 @@ bool rsItemUse(Level& lv, const json& a) {
     if (Vehicle* v = ridingOf(lv, p)) {
       if (auto* c = dynamic_cast<Minecart*>(v); c && c->kind == "furnace" && coal) {
         float add = key == "coal_block" ? 1620.f : 180.f;
-        if (c->fuel >= 3600 - 1) { toast(lv, p, "The furnace is full"); return false; }
+        if (c->fuel >= 3600 - 1) { vehToast(lv, p, "The furnace is full"); return false; }
         c->fuel = std::min(3600.f, c->fuel + add);
         consume(p, held);
         lv.fx->sound("ignite", c->pos);
-        toast(lv, p, "Coal for " + std::to_string((int)std::round(c->fuel / 60)) + " minutes of driving", "good");
+        vehToast(lv, p, "Coal for " + std::to_string((int)std::round(c->fuel / 60)) + " minutes of driving", "good");
         return false;
       }
       // from your seat in a boat with a chest: open it (ships.js)
@@ -208,7 +208,7 @@ bool rsItemUse(Level& lv, const json& a) {
   if (!def || !held) return true;
   // boats on water, carts on rails
   if (def->has("boat")) { if (!remote) placeBoatItem(lv, p, *held); return false; }
-  if (def->has("cart")) { if (!remote) { if (hasBlock) placeCartItem(lv, p, *held, hit); else toast(lv, p, "Set a minecart on a rail"); } return false; }
+  if (def->has("cart")) { if (!remote) { if (hasBlock) placeCartItem(lv, p, *held, hit); else vehToast(lv, p, "Set a minecart on a rail"); } return false; }
   // placing redstone parts, rails and mech blocks
   if (hasBlock && !def->block.empty()) {
     BlockId bid = reg().blockId(def->block);

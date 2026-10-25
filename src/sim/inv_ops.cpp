@@ -81,7 +81,11 @@ void InvSession::refresh() {
       if (!n) { ok = false; cont.clear(); }
       else { cont = loadArr(h.tag.is_object() && h.tag.contains("c") ? h.tag["c"] : json(), n); title = h.def()->name; contIsPack = true; }
     } else if (o.ender) { cont = ender; title = "Ender Chest"; }
-    else if (o.hasPos && w) {
+    else if (o.entItems) {
+      json* it = o.entItems();
+      if (!it || !it->is_array()) { ok = false; cont.clear(); }
+      else { contN = (int)it->size(); cont = loadArr(*it, it->size()); title = o.entTitle; }
+    } else if (o.hasPos && w) {
       const BlockDef& b = reg().block(w->getBlock(o.pos.x, o.pos.y, o.pos.z));
       if (b.has("container")) {
         int n = (int)b.num("container", 27); contN = n;
@@ -133,6 +137,7 @@ void InvSession::store(Grp g) {
       if (o.mode != "container" || !ok) break;
       if (o.heldPack) { ItemStack& h = p.held(); if (packSize(h)) { if (!h.tag.is_object()) h.tag = json::object(); h.tag["c"] = saveArr(cont); } }
       else if (o.ender) { ender = cont; p.data["ender"] = saveArr(ender); }
+      else if (o.entItems) { if (json* it = o.entItems()) *it = saveArr(cont); }
       else if (o.hasPos && w) {
         const BlockDef& b = reg().block(w->getBlock(o.pos.x, o.pos.y, o.pos.z));
         if (b.key == "backpack_block") {

@@ -26,7 +26,7 @@ const BoatType& boatType(const std::string& k) { for (auto& b : BOATS) if (k == 
 float shipHalfAt(float lz) { return lz < SHIP.bow + 2.4f ? SHIP.halfW * clampv((lz - SHIP.bow) / 2.4f, 0.15f, 1.f) : SHIP.halfW; }
 bool onShipDeck(float lx, float lz, float inset) { return lz > SHIP.bow + 0.2f + inset && lz < SHIP.stern - inset && std::fabs(lx) < shipHalfAt(lz) - inset; }
 
-void toast(Level& lv, const Player& p, const std::string& text, const std::string& kind) { lv.fx->message(p.id, text, kind); }
+void vehToast(Level& lv, const Player& p, const std::string& text, const std::string& kind) { lv.fx->message(p.id, text, kind); }
 bool waterAt(const World& w, int x, int y, int z) {
   BlockId id = w.getBlock(x, y, z);
   if (reg().tLiquid[id] == 1) return true;
@@ -105,23 +105,23 @@ bool Boat::mount(Level& lv, Player& p) {
       vec2 wp = toWorld(lx, lz);
       p.pos = vec3(wp.x, pos.y + SHIP.deck, wp.y); p.vel = vec3(0); p.fallDist = 0; p.onGround = true;
       st.aboard = id; st.shipPose = vec4(pos, yaw);
-      toast(lv, p, "Aboard. Use the wheel at the back to sail");
+      vehToast(lv, p, "Aboard. Use the wheel at the back to sail");
       lv.fx->material("wood", "step", p.pos);
       return true;
     }
-    if (riders[0]) { toast(lv, p, "Someone has the wheel"); return false; }
+    if (riders[0]) { vehToast(lv, p, "Someone has the wheel"); return false; }
     riders[0] = p.id; p.riding = id; p.yaw = yaw; st.yawRef = yaw; st.yawSet = true;
-    toast(lv, p, "W/S set the sail \xC2\xB7 A/D steer \xC2\xB7 sneak to let go of the wheel");
+    vehToast(lv, p, "W/S set the sail \xC2\xB7 A/D steer \xC2\xB7 sneak to let go of the wheel");
     lv.fx->soundUi(p.id, "door_close");
     return true;
   }
   bool loaded = pet || !cargo.is_null() || items.is_array();
-  if (loaded && riders[0]) { toast(lv, p, "The boat is full"); return false; }
+  if (loaded && riders[0]) { vehToast(lv, p, "The boat is full"); return false; }
   int i = riders[0] ? (riders[1] || loaded ? -1 : 1) : 0;
-  if (i < 0) { toast(lv, p, "The boat is full"); return false; }
+  if (i < 0) { vehToast(lv, p, "The boat is full"); return false; }
   riders[i] = p.id; p.riding = id; p.vel = vec3(0);
   st.yawSet = false; st.onBoat = 0;
-  toast(lv, p, kind == "sailboat" && i == 0 ? "W/S set the sail \xC2\xB7 A/D steer \xC2\xB7 sneak to get out" : i == 0 ? "W/S row \xC2\xB7 A/D steer \xC2\xB7 sneak to get out" : "Sneak to get out");
+  vehToast(lv, p, kind == "sailboat" && i == 0 ? "W/S set the sail \xC2\xB7 A/D steer \xC2\xB7 sneak to get out" : i == 0 ? "W/S row \xC2\xB7 A/D steer \xC2\xB7 sneak to get out" : "Sneak to get out");
   lv.fx->soundUi(p.id, "door_close");
   return true;
 }
@@ -152,7 +152,7 @@ bool Boat::use(Level& lv, Player& p, ItemStack* held) {
 void Boat::hurt(Level& lv, Player* by, bool blast) {
   if (ship() && !blast) {
     if (!by) return;
-    if (!by->sneaking) { toast(lv, *by, "Sneak and hit it to break up the ship"); return; }
+    if (!by->sneaking) { vehToast(lv, *by, "Sneak and hit it to break up the ship"); return; }
   }
   if (hitT > 0 && !blast) return;
   hitT = 0.3f; health -= blast ? 3 : 1; shakeT = 0.3f;
@@ -340,7 +340,7 @@ bool placeBoatItem(Level& lv, Player& p, ItemStack& held) {
   RayHit hit = raycastBlocks(w, eye, dir, 5.f, true);
   if (!hit.hit) return false;
   bool water = reg().tLiquid[hit.id] == 1;
-  if (!water && !(hit.normal.y == 1 && reg().tSolid[hit.id])) { toast(lv, p, "Set a boat on water or on the shore"); return false; }
+  if (!water && !(hit.normal.y == 1 && reg().tSolid[hit.id])) { vehToast(lv, p, "Set a boat on water or on the shore"); return false; }
   float t = hit.dist;
   vec3 at((float)eye.x + dir.x * t, water ? hit.block.y + 0.6f : hit.block.y + 1.05f, (float)eye.z + dir.z * t);
   spawnBoat(lv, p.realm, def->str("boat"), at, p.yaw);

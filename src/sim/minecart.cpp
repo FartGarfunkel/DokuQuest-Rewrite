@@ -25,11 +25,11 @@ void Minecart::prime(Level& lv) { if (fuse < 0) { fuse = 4; lv.fx->sound("fuse",
 
 // ---------------------------------------------------------------------------------------- getting in and out
 bool Minecart::mount(Level& lv, Player& p) {
-  if (pet || !cargo.is_null()) { toast(lv, p, pet ? "There's a pet in this cart" : "This cart is loaded"); return false; }
+  if (pet || !cargo.is_null()) { vehToast(lv, p, pet ? "There's a pet in this cart" : "This cart is loaded"); return false; }
   if (!T().seat) return false;
-  if (riders[0]) { toast(lv, p, "Someone is already riding"); return false; }
+  if (riders[0]) { vehToast(lv, p, "Someone is already riding"); return false; }
   riders[0] = p.id; p.riding = id; p.vel = vec3(0);
-  toast(lv, p, "W to push off \xC2\xB7 sneak to get out");
+  vehToast(lv, p, "W to push off \xC2\xB7 sneak to get out");
   lv.fx->soundUi(p.id, "door_close");
   return true;
 }
@@ -59,26 +59,26 @@ bool Minecart::use(Level& lv, Player& p, ItemStack* held) {
     auto* vs = vehicleSystem(lv);
     auto& st = vs->ps(p.id);
     Minecart* a = dynamic_cast<Minecart*>(lv.entity(st.linkFrom));
-    if (!a || a->removed || a == this) { st.linkFrom = id; toast(lv, p, "Now use the chain on the cart to join it to"); lv.fx->sound("chain_link", c, 12); return true; }
+    if (!a || a->removed || a == this) { st.linkFrom = id; vehToast(lv, p, "Now use the chain on the cart to join it to"); lv.fx->sound("chain_link", c, 12); return true; }
     st.linkFrom = 0;
     a->ensureUid(); ensureUid();
-    if (std::hypot(a->pos.x - pos.x, a->pos.z - pos.z) > 3.5f || std::fabs(a->pos.y - pos.y) > 1.5f) { toast(lv, p, "Those carts are too far apart"); return true; }
+    if (std::hypot(a->pos.x - pos.x, a->pos.z - pos.z) > 3.5f || std::fabs(a->pos.y - pos.y) > 1.5f) { vehToast(lv, p, "Those carts are too far apart"); return true; }
     auto has = [](const std::vector<std::string>& v, const std::string& u) { return std::find(v.begin(), v.end(), u) != v.end(); };
     if (has(a->links, uid)) {
       a->links.erase(std::find(a->links.begin(), a->links.end(), uid));
       if (has(links, a->uid)) links.erase(std::find(links.begin(), links.end(), a->uid));
-      p.give(ItemStack("chain", 1)); toast(lv, p, "Carts parted"); lv.fx->sound("chain_link", c, 12);
+      p.give(ItemStack("chain", 1)); vehToast(lv, p, "Carts parted"); lv.fx->sound("chain_link", c, 12);
       return true;
     }
-    if (a->links.size() >= 2 || links.size() >= 2) { toast(lv, p, "A cart can only be joined at its two ends"); return true; }
+    if (a->links.size() >= 2 || links.size() >= 2) { vehToast(lv, p, "A cart can only be joined at its two ends"); return true; }
     a->links.push_back(uid); links.push_back(a->uid);
     consume(p, held);
     size_t n = trainOf(lv, this).size();
-    toast(lv, p, n > 2 ? std::to_string(n) + " carts joined" : "Carts joined", "good");
+    vehToast(lv, p, n > 2 ? std::to_string(n) + " carts joined" : "Carts joined", "good");
     lv.fx->sound("chain_link", c, 12);
     return true;
   }
-  if (kind == "minecart" && pet) { Entity* m = lv.entity(pet); std::string n = m ? m->type : "pet"; std::replace(n.begin(), n.end(), '_', ' '); toast(lv, p, "There's a " + n + " in this cart (sneak + use to lift it out)"); return true; }
+  if (kind == "minecart" && pet) { Entity* m = lv.entity(pet); std::string n = m ? m->type : "pet"; std::replace(n.begin(), n.end(), '_', ' '); vehToast(lv, p, "There's a " + n + " in this cart (sneak + use to lift it out)"); return true; }
   if (kind == "furnace" && held && isCoal(held->id)) {
     bool block = held->id == "coal_block";
     consume(p, held);
@@ -88,14 +88,14 @@ bool Minecart::use(Level& lv, Player& p, ItemStack* held) {
     lv.fx->sound("ignite", c);
     return true;
   }
-  if (kind == "furnace" && !p.riding) { if (!riders[0]) mount(lv, p); else toast(lv, p, "Someone is driving it"); return true; }
+  if (kind == "furnace" && !p.riding) { if (!riders[0]) mount(lv, p); else vehToast(lv, p, "Someone is driving it"); return true; }
   if (kind == "minecart") { if (!p.riding) mount(lv, p); return true; }
   if (items()) {
     lv.fx->soundUi(p.id, "chest");
     if (lv.events) lv.events->emit("screenOpen", json::array({p.name, "container", json{{"entity", id}, {"name", T().key == std::string("chest") ? "Minecart with Chest" : "Minecart with Hopper"}}}));
     return true;
   }
-  if (kind == "furnace") { toast(lv, p, "Feed it coal and it pushes itself along"); return true; }
+  if (kind == "furnace") { vehToast(lv, p, "Feed it coal and it pushes itself along"); return true; }
   if (kind == "tnt" && held && held->def() && held->def()->str("igniter") == "flint") {
     prime(lv);
     if (!p.creative()) { held->d++; const ItemDef* d = held->def(); if (d->hasTool && d->tool.durability > 0 && held->d >= d->tool.durability) held->clear(); }
@@ -206,7 +206,7 @@ void Minecart::tick(Level& lv, double dtd) {
   int drive = inp.mz < -0.3f ? 1 : inp.mz > 0.3f ? -1 : 0;
   if (drive && fuel <= 0 && !seated->creative()) {
     auto& st = vehicleSystem(lv)->ps(seated->id);
-    if (vehicleSystem(lv)->time - st.noFuelT > 4) { st.noFuelT = (float)vehicleSystem(lv)->time; toast(lv, *seated, "The furnace needs coal (use coal while you sit here)", "warn"); }
+    if (vehicleSystem(lv)->time - st.noFuelT > 4) { st.noFuelT = (float)vehicleSystem(lv)->time; vehToast(lv, *seated, "The furnace needs coal (use coal while you sit here)", "warn"); }
     drive = 0;
   }
   if (drive) {
@@ -430,7 +430,7 @@ Minecart* placeCart(Level& lv, int realm, const std::string& kind, int x, int y,
 bool placeCartItem(Level& lv, Player& p, ItemStack& held, ivec3 hit) {
   World& w = lv.world(p.realm);
   const ItemDef* def = held.def();
-  if (!def || !rs::T().rail[w.getBlock(hit.x, hit.y, hit.z)]) { toast(lv, p, "Set a minecart on a rail"); return false; }
+  if (!def || !rs::T().rail[w.getBlock(hit.x, hit.y, hit.z)]) { vehToast(lv, p, "Set a minecart on a rail"); return false; }
   if (cartAt(lv, p.realm, hit.x, hit.y, hit.z)) return false;
   Minecart* c = placeCart(lv, p.realm, def->str("cart"), hit.x, hit.y, hit.z, 0);
   if (!c) return false;

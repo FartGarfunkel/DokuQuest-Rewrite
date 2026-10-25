@@ -130,7 +130,7 @@ void hurtVehicle(Level& lv, Entity& v, Player* attacker, bool blast = false);
 bool loadVehicle(Level& lv, Vehicle& v, const json& carried);
 json unloadVehicle(Level& lv, Vehicle& v);
 bool placeBoatItem(Level& lv, Player& p, ItemStack& held);   // vehicles.js placeBoat: on water or the shore
-void toast(Level& lv, const Player& p, const std::string& text, const std::string& kind = "");
+void vehToast(Level& lv, const Player& p, const std::string& text, const std::string& kind = "");   // a message for that player
 bool waterAt(const World& w, int x, int y, int z);
 void moveVehicle(Level& lv, Entity& e, double dt, bool* hitWall = nullptr);   // moveEntity: collide with blocks
 
