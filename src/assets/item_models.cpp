@@ -275,6 +275,12 @@ bool shapedBlockBoxes(const ItemDef& def, std::vector<PxBox>& out) {
   int side = bd.faces[0], top = bd.faces[2], bot = bd.faces[3];
   if (T.door) top = bot = side;
   if (!gather(0, 0, side, top, bot) || out.empty()) { out.clear(); return false; }
+  if (!T.door && out.size() == 1) {   // a single thin sheet (ladders, plates, signs): its flat picture shows it better than an edge-on slab
+    const PxBox& b = out[0];
+    float d[3] = {b.b[3] - b.b[0], b.b[4] - b.b[1], b.b[5] - b.b[2]};
+    int thin = 0, wide = 0; for (float v : d) { if (v <= 2.5f) thin++; if (v >= 12) wide++; }
+    if (thin == 1 && wide == 2) { out.clear(); return false; }
+  }
   if (T.door && T.upperTile >= 0) gather(16, 16, T.upperTile, T.upperTile, T.upperTile);   // a door is two blocks tall
   return true;
 }

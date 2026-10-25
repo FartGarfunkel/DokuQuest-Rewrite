@@ -102,7 +102,7 @@ public:
       CharWear wear; CharPose ps; ps.time = t; ps.capeA = 0.12f; ps.capeSway = std::sin(t * 2.3f) * 0.03f;
       Player* pl = a.session ? a.session->player : nullptr;
       if (pl) { wear = charWearOf(*pl, *spec, false); wear.held.clear(); wear.off.clear(); }
-      else wear.cape = spec->cape;
+      else { wear.cape = spec->cape; std::string pc = wornCapeName(a.settings); if (!pc.empty()) wear.cape = customCapeKey(pc); }
       o.wear = &wear; o.pose = &ps;
       GLuint tex = view.render(*spec, (int)(vw * io.DisplayFramebufferScale.x), (int)(vh * io.DisplayFramebufferScale.y), o);
       if (tex) dl->AddImage((ImTextureID)(intptr_t)tex, v0, v0 + ImVec2(vw, vh), ImVec2(0, 1), ImVec2(1, 0));

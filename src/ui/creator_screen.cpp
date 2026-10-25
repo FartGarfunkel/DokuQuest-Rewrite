@@ -7,6 +7,7 @@
 #include "ui/char_preview.h"
 #include "ui/file_pick.h"
 #include "ui/layout_flow.h"
+#include "assets/cape_tex.h"
 #include "core/registry.h"
 #include "client/app.h"
 #include "client/session.h"
@@ -63,6 +64,7 @@ public:
       std::string k = wornItem(*a.session->player, "cape");
       if (const ItemDef* d = k.empty() ? nullptr : reg().item(k)) { wornCape = d->str("cape").empty() ? k : d->str("cape"); wornCapeName = d->name; }
     }
+    if (wornCape.empty()) { std::string pc = ::dq::wornCapeName(a.settings); if (!pc.empty()) { wornCape = customCapeKey(pc); wornCapeName = "painted " + pc; } }   // the cape editor's
     t += (float)dt;
     if (spin && !dragging) yaw += (float)dt * 0.5f;
   }

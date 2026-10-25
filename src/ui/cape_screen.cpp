@@ -37,7 +37,8 @@ public:
     if (!worn.empty() && loadCapeNamed(worn, px)) name = worn; else { px = base; name = "cape"; }
     spec = resolveCharacter(a.settings.skin);
     watchDroppedFiles();
-    texDirty = true; liveDirty = true; dirty = false;
+    texDirty = true; dirty = false;
+    setLiveCape(LIVE, px); liveDirty = false;   // the preview has its cape from the first frame
   }
   void onClose(App&) override { if (padMode) setPad(false); dropLiveCape(LIVE); }
   bool onBack(App&) override {
