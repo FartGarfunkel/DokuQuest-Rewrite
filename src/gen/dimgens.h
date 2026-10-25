@@ -44,6 +44,8 @@ public:
   i32 seed() const override { return seed_; }
   TerrainColumn terrainColumn(int x, int z) const override;
   int islandTop(int x, int z) const;                 // band y of the island's grass here, -1 = open sky
+  double islandMask(int x, int z) const;             // the islands' mask (nCont) — places.js skyTop / dragon lairs test it
+  int hillTop(int x, int z) const;                   // band y an island's top has here wherever the mask allows one
   StructureIndex structures;
 private:
   i32 seed_;

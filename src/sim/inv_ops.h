@@ -11,6 +11,7 @@
 // are block entities in the original's format ({type:'chest', items:[...]}, {type:'furnace', items:[in,
 // fuel,out], burn, burnMax, cook}, backpack_block {stack}).
 #pragma once
+#include "sim/inventory.h"   // maxStackOf, addToSlots (shared with the gameplay code)
 #include "sim/player.h"
 #include "sim/crafting.h"
 
@@ -21,9 +22,9 @@ class World;
 enum class Grp : u8 { Main, Armor, Off, Back, Hook, Charm, Cape, Bp, Grid, Cont, Furn, Out, Count };
 const char* grpName(Grp g);
 bool stacksMerge(const ItemStack& a, const ItemStack& b);   // the original's canMerge
-int maxStackOf(const std::string& key);
+
 // Container.add: as much as fits (merging first, then empty slots); returns what's left (s.n is updated)
-int addToSlots(std::vector<ItemStack>& slots, ItemStack& s, const std::vector<int>* order = nullptr);
+
 
 struct InvOpen {
   std::string mode = "inventory";   // inventory | table | furnace | container

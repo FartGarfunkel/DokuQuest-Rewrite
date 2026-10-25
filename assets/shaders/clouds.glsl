@@ -29,7 +29,7 @@ void main() {
 }
 #endif
 #ifdef FRAGMENT
-uniform float uDay, uMinLight, uAlpha;
+uniform float uDay, uAlpha;   // uMinLight: common.glsl
 uniform vec2 uCloudFog;
 uniform vec3 uFogCol, uStormCol;
 in vec3 vCol;

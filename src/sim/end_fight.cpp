@@ -52,7 +52,7 @@ static OptMove endermanAI(Level& lv, Creature& m, Entity* p, float dist, float d
   auto* P = dynamic_cast<Player*>(p);
   if (P && !(m.angryT > 0) && dist < 48) {
     bool masked = !P->armor.empty() && P->armor[0].id == "carved_pumpkin";
-    vec3 lk = lookDir(*P), eye = P->pos + vec3(0, EYE, 0);
+    vec3 lk = lookVec(*P), eye = P->pos + vec3(0, EYE, 0);
     vec3 dd = vec3(m.pos.x, m.pos.y + m.h - 0.3f, m.pos.z) - eye; float d = std::max(1e-3f, glm::length(dd));
     float dot = glm::dot(lk, dd) / d, lim = std::cos(std::atan(0.4f / d) + 0.025f);
     if (!masked && dot > lim && m.lineOfSight(lv, *P)) {
@@ -481,7 +481,7 @@ bool endItemUse(Level& lv, EndStory& S, Player& p, const std::string& item, ivec
   ItemStack* held = heldOf(p, item);
   if (!held) return false;
   PlayerMem& P = S.pm(p);
-  vec3 lk = lookDir(p), eyeP = p.pos + vec3(0, EYE, 0);
+  vec3 lk = lookVec(p), eyeP = p.pos + vec3(0, EYE, 0);
   if (pearl) {
     if (P.pearlCd > S.now) return true;
     P.pearlCd = S.now + 0.9;

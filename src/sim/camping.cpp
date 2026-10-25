@@ -241,7 +241,7 @@ static void grappleThrow(Level& lv, Player& p) {
   p.held().clear();
   const ItemDef* def = st.def();
   if (def && def->hasTool && def->tool.durability > 0 && st.d >= def->tool.durability) { toast(lv, p, "Your grappling hook broke", "warn"); sfxUi(lv, p, "hit"); return; }
-  vec3 l = lookDir(p);
+  vec3 l = lookVec(p);
   auto h = std::make_unique<GrappleHook>();
   h->owner = p.id; h->realm = p.realm; h->stack = st.toJson();
   h->pos = p.pos + vec3(0, EYE - 0.1f, 0) + l * 0.6f;

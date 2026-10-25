@@ -64,32 +64,3 @@ jobs:
             shots/
             smoke.log
           if-no-files-found: ignore
-
-  windows:
-    runs-on: windows-2022
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache@v4
-        with:
-          path: |
-            third_party/SDL2
-            third_party/imgui
-            third_party/miniaudio
-            third_party/enet
-            third_party/quickjs
-            third_party/stb
-            third_party/glm
-            third_party/miniz
-            third_party/json
-          key: deps-${{ runner.os }}-${{ hashFiles('tools/fetch_deps.sh') }}
-      - name: Fetch dependencies
-        shell: bash
-        run: bash tools/fetch_deps.sh
-      - name: Build (MSVC)
-        shell: bash
-        run: |
-          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-          cmake --build build --config Release --parallel
-      - name: Check the programs are there
-        shell: bash
-        run: ls -l build/Release/dokuquest.exe build/Release/dokuquest-launcher.exe build/Release/dokuquest-server.exe

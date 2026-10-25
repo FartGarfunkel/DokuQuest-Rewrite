@@ -87,7 +87,7 @@ public:
     // in a doorway (or stepped out of a rift) he lets you come close, the way the tale has it
     if (d < (mode == "behind" ? 5 : mode == "peek" ? 2.5f : 11)) { watcherVanish(lv, *this); return; }
     // is the player looking at him?
-    vec3 lk = lookDir(*p);
+    vec3 lk = lookVec(*p);
     float dot = glm::dot(lk, dd) / std::max(d, 1e-3f), straight = std::cos(mode == "behind" ? 0.45f : 0.12f);
     bool seen = lineOfSight(lv, realm, eye, pos + vec3(0, 1.6f, 0), d);
     EndStory* S = endStory(lv);
@@ -432,15 +432,8 @@ static bool forceSighting(Level& lv, Player& p) {
 
 void registerHaunt() {
   registerEntityFactory("watcher", [](const std::string&) { return std::make_unique<Watcher>(); });
-  // for testing the story's pace: always the same answer
-  registerChatCommand("herobrine", "\xE2\x80\xA6", [](CommandSource& src, const std::vector<std::string>& a) -> std::string {
-    if (!src.level || !src.player) return "Removed Herobrine.";
-    Level& lv = *src.level; Player& p = *src.player;
-    if (!hauntDimOk(lv, p)) return "Removed Herobrine.";
-    if (!a.empty() && a[0] == "trace") { leaveTrace(lv, p); return "Removed Herobrine."; }
-    forceSighting(lv, p);
-    return "Removed Herobrine.";
-  }, false, "[trace]");
+  // /herobrine is the gameplay command list's (sim/gamecommands.cpp): it emits "herobrine" [name, "trace"|""], answered
+  // in sim/endstory.cpp; here it is only kept out of every list
   hideChatCommand("herobrine");
 }
 

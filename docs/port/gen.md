@@ -124,8 +124,6 @@ original `sPut` (`in/put/get/fill/h/pick/ground/blockEntity`), band-local y. Sur
 (`SF_SURFACE`) keep trees 3 blocks off; `SF_NO_CARVE` keeps the Deep Dark out (ancient cities).
 
 ## Left for later
-- All structures (villages/towns/roads/POIs, dungeons, lairs, strongholds, fortresses, ancient cities, End
-  cities, Skylands places, deep halls, seas) — register through the hook; loot/chest contents; the original's
-  "land that's been played on keeps what it has" book (structBook) belongs to Level.
+- Structures: done, see docs/port/structures.md (the played-land books, structBook etc., are not kept).
 - genVersion < 3 worlds (worldgen_v1.js) are not ported; every C++ world uses the 0.9 (v5) terrain.
 - Spawn search could use `OverworldGen::goodSpawn` (client/session.cpp uses `sample()` water < 0).

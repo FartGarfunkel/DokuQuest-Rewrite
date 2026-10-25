@@ -195,7 +195,7 @@ Entity* nearestPawn(Level& lv, int realm, vec3 p, float maxD);
 std::vector<Entity*> pawnsOf(Level& lv, int realm);
 Entity* dropItem(Level& lv, int realm, const ItemStack& st, vec3 p, bool scatter, const vec3* vel = nullptr, float delay = 0);
 Creature* spawnCreature(Level& lv, int realm, const std::string& type, vec3 p);
-void burst(Level& lv, vec3 p, const std::string& kind, int n, float spread = 0.6f);   // fx->particles
+void mobBurst(Level& lv, vec3 p, const std::string& kind, int n, float spread = 0.6f);   // fx->particles
 void flame(Level& lv, vec3 p);
 void hearts(Level& lv, vec3 p, int n = 5);
 void floatText(Level& lv, u32 playerId, vec3 p, const std::string& text, const std::string& color);

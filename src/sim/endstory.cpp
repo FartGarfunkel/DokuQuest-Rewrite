@@ -141,6 +141,14 @@ EndStory::EndStory(Level& l) : lv(l) {
     riftOnDeath(lv, *this, *c, killer);
     return true;
   }));
+  handlers.push_back(lv.events->on("herobrine", [this](const json& a) {
+    if (lv.isRemote() || !a.is_array() || a.empty() || !a[0].is_string()) return true;
+    if (Player* p = findPlayer(lv, a[0].get<std::string>())) {
+      if (!hauntDimOk(lv, *p)) return true;
+      if (a.size() > 1 && a[1] == "trace") hauntLeaveTrace(lv, *p); else hauntForceSighting(lv, *p);
+    }
+    return true;
+  }));
   handlers.push_back(lv.events->on("villageEnter", [this](const json& a) {
     if (!a.is_array() || a.size() < 2) return true;
     if (Player* p = findPlayer(lv, a[0].get<std::string>())) riftVillageEnter(lv, *p, a[1].is_string() ? a[1].get<std::string>() : "", a.size() > 2 && a[2].is_string() ? a[2].get<std::string>() : "");

@@ -17,6 +17,7 @@ bool initCore(const CoreOptions& o) {
   registerMagic();
   registerContent();
   registerEndStory();
+  registerRedstone();
   return true;
 }
 void shutdownCore() {}
