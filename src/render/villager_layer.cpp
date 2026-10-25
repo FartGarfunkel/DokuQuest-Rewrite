@@ -2,6 +2,7 @@
 // screens the villages open (see villager_layer.h).
 #include "render/villager_layer.h"
 #include "render/char_anim.h"
+#include "render/char_layer.h"
 #include "assets/char_model.h"
 #include "assets/skin.h"
 #include "client/app.h"
@@ -143,6 +144,7 @@ public:
         mat4 m = R.part[i] * R.scale[i];
         if (M.base[i].ready()) VR.draw(M.base[i].gl, m * M.base[i].local(), light, tint);
         if (!hid[i] && M.ovl[i].ready()) VR.draw(M.ovl[i].gl, m * M.ovl[i].local(), light, tint);
+        if (i == CP_HEAD) drawCharFace(M, ps, m, light, tint);   // the blink, and the mouth while they talk
       }
       static const std::map<std::string, int> PART = {{"head", CP_HEAD}, {"body", CP_BODY}, {"armR_u", CP_ARMR_U}, {"armR_d", CP_ARMR_D}, {"armL_u", CP_ARML_U},
                                                       {"armL_d", CP_ARML_D}, {"legR_u", CP_LEGR_U}, {"legR_d", CP_LEGR_D}, {"legL_u", CP_LEGL_U}, {"legL_d", CP_LEGL_D}};
