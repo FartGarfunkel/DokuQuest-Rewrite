@@ -5,12 +5,6 @@
 
 namespace dq {
 
-static bool tagMatch(const std::string& want, const std::string& id) {
-  if (want.empty() || want[0] != '#') return want == id;
-  auto it = reg().tags.find(want);
-  return it != reg().tags.end() && std::find(it->second.begin(), it->second.end(), id) != it->second.end();
-}
-
 int maxDurabilityOf(const ItemDef* d) {
   if (!d) return 0;
   if (d->hasTool && d->tool.durability > 0) return d->tool.durability;
@@ -29,24 +23,6 @@ std::string repairMaterial(const std::string& key) {
   for (auto& [t, m] : TIERS) for (auto* k : KINDS) if (key == std::string(t) + "_" + k) return m;
   for (auto& [t, m] : ARMOR) for (auto* k : PIECES) if (key == std::string(t) + "_" + k) return m;
   return "";
-}
-
-std::string recolorKey(const std::string& key, const std::string& c) {
-  BlockId id = reg().blockId(key);
-  if (!id) return "";
-  const BlockDef& d = reg().block(id);
-  std::string base = key, col = d.str("color");
-  if (key == "wool") { base = "white_wool"; col = "white"; }
-  if (key == "bed") { base = "red_bed"; col = "red"; }
-  static const std::unordered_map<std::string, std::string> plain = {{"candle", "candle"}, {"terracotta", "terracotta"}, {"glass", "stained_glass"}, {"glass_pane", "stained_glass_pane"}};
-  std::string suffix;
-  if (!col.empty()) { if (base.size() > col.size() + 1) suffix = base.substr(col.size() + 1); }
-  else if (auto it = plain.find(key); it != plain.end()) suffix = it->second;
-  if (suffix.empty()) return "";
-  std::string out = c + "_" + suffix;
-  if (out == "white_wool") out = "wool";
-  if (out == "red_bed") out = "bed";
-  return out != key && reg().item(out) ? out : "";
 }
 
 // game/blocks2.js stationResult

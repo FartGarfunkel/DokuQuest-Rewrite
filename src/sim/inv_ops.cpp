@@ -115,6 +115,7 @@ void InvSession::refresh() {
     const BlockDef* b = o.hasPos && w ? &reg().block(w->getBlock(o.pos.x, o.pos.y, o.pos.z)) : nullptr;
     if (o.hasPos && b && !b->has("station")) ok = false;   // the anvil broke, or someone took the table
     title = b && b->has("station") ? b->name : "Work Station";
+    enchOf(sta[0]); enchOf(sta[1]);   // a treasure book settles what it holds once, not every frame
     staRes = stationResult(o.kind, sta[0], sta[1]);
   } else if (o.mode == "table") title = "Crafting";
   match = matchGrid(grid, W);

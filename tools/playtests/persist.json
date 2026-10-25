@@ -1,0 +1,30 @@
+{
+"steps": [
+{
+"wait": 5,
+"do": "anchor"
+},
+{
+"wait": 200,
+"do": "expect",
+"container": [
+0,
+0,
+-2
+],
+"rel": true,
+"slot": 0,
+"item": "cobblestone",
+"n": 1
+},
+{
+"do": "expect",
+"count": "cobblestone",
+"n": 63,
+"atLeast": true
+},
+{
+"do": "report"
+}
+]
+}

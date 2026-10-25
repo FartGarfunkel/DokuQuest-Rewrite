@@ -1,0 +1,871 @@
+{
+"steps": [
+{
+"wait": 200,
+"do": "padaxis",
+"axis": "rightx",
+"value": 0
+},
+{
+"do": "anchor"
+},
+{
+"wait": 5,
+"do": "give",
+"item": "cobblestone",
+"n": 64
+},
+{
+"do": "give",
+"item": "iron_ore",
+"n": 3
+},
+{
+"do": "give",
+"item": "coal",
+"n": 2
+},
+{
+"do": "give",
+"item": "log",
+"n": 4
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -1,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 1,
+"z": -1,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 1,
+"z": -2,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -2,
+"key": "chest"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 1,
+"y": 0,
+"z": -2,
+"key": "chest"
+},
+{
+"do": "lookAt",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -2
+},
+{
+"wait": 5,
+"do": "mouse",
+"button": "right"
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "inventory"
+},
+{
+"do": "shot",
+"path": "/tmp/menus_chest.png"
+},
+{
+"wait": 3,
+"do": "pad",
+"button": "y"
+},
+{
+"wait": 5,
+"do": "expect",
+"container": [
+0,
+0,
+-2
+],
+"rel": true,
+"slot": 0,
+"item": "cobblestone",
+"n": 64
+},
+{
+"do": "expect",
+"inv": 0,
+"item": ""
+},
+{
+"wait": 3,
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 10,
+"do": "expect",
+"screen": null
+},
+{
+"wait": 5,
+"do": "pad",
+"button": "lt",
+"hold": 4
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "inventory"
+},
+{
+"wait": 1,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "shot",
+"path": "/tmp/menus_chest_nav.png"
+},
+{
+"wait": 3,
+"do": "pad",
+"button": "a"
+},
+{
+"wait": 4,
+"do": "expect",
+"cursor": "cobblestone"
+},
+{
+"do": "pad",
+"button": "x"
+},
+{
+"wait": 4,
+"do": "expect",
+"container": [
+0,
+0,
+-2
+],
+"rel": true,
+"slot": 0,
+"item": "cobblestone",
+"n": 1
+},
+{
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 10,
+"do": "expect",
+"screen": null
+},
+{
+"do": "expect",
+"count": "cobblestone",
+"n": 63
+},
+{
+"do": "save"
+},
+{
+"wait": 10,
+"do": "expect",
+"container": [
+0,
+0,
+-2
+],
+"rel": true,
+"slot": 0,
+"item": "cobblestone",
+"n": 1
+},
+{
+"do": "expect",
+"count": "cobblestone",
+"n": 63
+},
+{
+"do": "report"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": -1,
+"y": 0,
+"z": -1,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": -1,
+"y": 1,
+"z": -1,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": -1,
+"y": 1,
+"z": -2,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": -1,
+"y": 0,
+"z": -2,
+"key": "ender_chest"
+},
+{
+"do": "lookAt",
+"rel": true,
+"x": -1,
+"y": 0,
+"z": -2
+},
+{
+"wait": 3,
+"do": "mouse",
+"button": "right"
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "inventory"
+},
+{
+"do": "shot",
+"path": "/tmp/menus_ender.png"
+},
+{
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 10,
+"do": "give",
+"item": "leather_backpack",
+"n": 1
+},
+{
+"do": "select",
+"slot": 4
+},
+{
+"do": "look",
+"yaw": 0,
+"pitch": 85
+},
+{
+"wait": 3,
+"do": "mouse",
+"button": "right"
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "inventory"
+},
+{
+"do": "shot",
+"path": "/tmp/menus_pack.png"
+},
+{
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 10,
+"do": "report"
+},
+{
+"wait": 10,
+"do": "pad",
+"button": "y"
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "inventory"
+},
+{
+"do": "shot",
+"path": "/tmp/menus_tabs_inv.png"
+},
+{
+"do": "pad",
+"button": "rb"
+},
+{
+"wait": 10,
+"do": "expect",
+"screen": "journal"
+},
+{
+"do": "shot",
+"path": "/tmp/menus_tabs_journal.png"
+},
+{
+"do": "pad",
+"button": "rb"
+},
+{
+"wait": 10,
+"do": "expect",
+"screen": "skills"
+},
+{
+"do": "pad",
+"button": "rb"
+},
+{
+"wait": 10,
+"do": "expect",
+"screen": "spellbook"
+},
+{
+"do": "shot",
+"path": "/tmp/menus_tabs_spells.png"
+},
+{
+"do": "pad",
+"button": "rb"
+},
+{
+"wait": 10,
+"do": "expect",
+"screen": "stable"
+},
+{
+"do": "pad",
+"button": "rb"
+},
+{
+"wait": 10,
+"do": "expect",
+"screen": "inventory"
+},
+{
+"do": "pad",
+"button": "lb"
+},
+{
+"wait": 10,
+"do": "expect",
+"screen": "stable"
+},
+{
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 10,
+"do": "expect",
+"screen": null
+},
+{
+"do": "give",
+"item": "filled_map",
+"n": 1
+},
+{
+"wait": 3,
+"do": "pad",
+"button": "y"
+},
+{
+"wait": 10,
+"do": "pad",
+"button": "rb"
+},
+{
+"wait": 10,
+"do": "report"
+},
+{
+"do": "shot",
+"path": "/tmp/menus_tabs_map.png"
+},
+{
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 10,
+"do": "report"
+},
+{
+"wait": 10,
+"do": "give",
+"item": "iron_pickaxe",
+"n": 1,
+"d": 120
+},
+{
+"do": "give",
+"item": "iron_ingot",
+"n": 3
+},
+{
+"do": "give",
+"item": "cobblestone",
+"n": 8
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -1,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 1,
+"z": -1,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 1,
+"z": -2,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -2,
+"key": "anvil"
+},
+{
+"do": "lookAt",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -2
+},
+{
+"wait": 5,
+"do": "mouse",
+"button": "right"
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "inventory"
+},
+{
+"do": "pad",
+"button": "y"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "right"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "y"
+},
+{
+"wait": 4,
+"do": "shot",
+"path": "/tmp/menus_anvil.png"
+},
+{
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "right"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "right"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "right"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "right"
+},
+{
+"wait": 4,
+"do": "shot",
+"path": "/tmp/menus_anvil2.png"
+},
+{
+"do": "pad",
+"button": "a"
+},
+{
+"wait": 4,
+"do": "expect",
+"cursor": "iron_pickaxe"
+},
+{
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 10,
+"do": "expect",
+"screen": null
+},
+{
+"do": "report"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -2,
+"key": "stonecutter"
+},
+{
+"wait": 3,
+"do": "mouse",
+"button": "right"
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "inventory"
+},
+{
+"do": "pad",
+"button": "left"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "left"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "left"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "left"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "left"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "left"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "left"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "left"
+},
+{
+"wait": 4,
+"do": "report"
+},
+{
+"do": "shot",
+"path": "/tmp/menus_cutter0.png"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -2,
+"key": "loom"
+},
+{
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 10,
+"do": "mouse",
+"button": "right"
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "inventory"
+},
+{
+"do": "shot",
+"path": "/tmp/menus_loom.png"
+},
+{
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 10,
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -2,
+"key": "oak_sign"
+},
+{
+"do": "mouse",
+"button": "right"
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "sign"
+},
+{
+"do": "type",
+"text": "Hello"
+},
+{
+"wait": 3,
+"do": "shot",
+"path": "/tmp/menus_sign.png"
+},
+{
+"do": "key",
+"key": "Escape"
+},
+{
+"wait": 10,
+"do": "expect",
+"screen": null
+},
+{
+"do": "expect",
+"blockEntity": [
+0,
+0,
+-2
+],
+"rel": true,
+"has": "Hello"
+},
+{
+"do": "report"
+},
+{
+"do": "leave",
+"toTitle": true
+},
+{
+"wait": 40,
+"do": "expect",
+"screen": "title"
+},
+{
+"do": "pad",
+"button": "down"
+},
+{
+"wait": 6,
+"do": "pad",
+"button": "down"
+},
+{
+"wait": 6,
+"do": "pad",
+"button": "down"
+},
+{
+"wait": 6,
+"do": "pad",
+"button": "down"
+},
+{
+"wait": 6,
+"do": "shot",
+"path": "/tmp/menus_title.png"
+},
+{
+"do": "pad",
+"button": "a"
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "settings"
+},
+{
+"do": "pad",
+"button": "down"
+},
+{
+"wait": 6,
+"do": "pad",
+"button": "down"
+},
+{
+"wait": 6,
+"do": "pad",
+"button": "down"
+},
+{
+"wait": 6,
+"do": "shot",
+"path": "/tmp/menus_settings.png"
+},
+{
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "title"
+},
+{
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 6,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 6,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 6,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 6,
+"do": "pad",
+"button": "a"
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "worlds"
+},
+{
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "title"
+}
+]
+}
