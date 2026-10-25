@@ -39,6 +39,7 @@ static std::vector<ivec4> sculkNear(EndStory& S, World& w, vec3 p, float r) {
 
 static bool silentCharm(const Entity* e) {
   if (!e || !e->isPlayer()) return false;
+  if (auto* pl = dynamic_cast<const Player*>(e); pl && !pl->charm.empty() && pl->charm[0].id == "echo_charm") return true;
   const json& c = e->data.contains("charm") ? e->data["charm"] : json();
   if (c.is_array()) for (auto& s : c) if (s.is_object() && s.value("id", "") == "echo_charm") return true;
   if (c.is_object() && c.value("id", "") == "echo_charm") return true;
