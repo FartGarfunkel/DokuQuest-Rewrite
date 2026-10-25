@@ -29,6 +29,8 @@ GameSession::GameSession(App& a, std::unique_ptr<Level> lv) : app(a), level(std:
   sky = std::make_unique<SkyRenderer>();
   sky->init();
   spawnPlayer();
+  locals.emplace_back();   // the first person: keyboard + mouse (+ any controller until someone else joins)
+  locals[0].player = player; locals[0].frame.settings = &app.settings; locals[0].src.kb = true;
   worldRenderer.setWorld(&world());
   registerItemLayers();   // held item + first-person arm, dropped items (render/item_layers)
   registerCharacterLayers();   // players as voxel characters (render/char_layer)
@@ -48,6 +50,7 @@ GameSession::GameSession(App& a, std::unique_ptr<Level> lv) : app(a), level(std:
 GameSession::~GameSession() {
   if (app.mods) app.mods->onWorldClose();
   level->fx = &level->nullFx;
+  for (auto& l : locals) freeLocalUi(l);
   layers.clear();
   worldRenderer.setWorld(nullptr);
 }
@@ -82,12 +85,20 @@ void GameSession::spawnPlayer() {
 }
 
 bool GameSession::paused() const {
-  Screen* s = app.topScreen();
-  return s && s->pausesGame();
+  if (!split()) { Screen* s = app.topScreen(); return s && s->pausesGame(); }
+  // split screen: a shared menu (pause) stops the world; otherwise only when everybody is in a menu that does
+  auto top = [](const std::vector<std::unique_ptr<Screen>>& v) { return v.empty() ? nullptr : v.back().get(); };
+  const auto& shared = entered ? locals[cur].screens : app.screens;
+  if (Screen* g = top(shared); g && g->pausesGame()) return true;
+  for (int i = 0; i < (int)locals.size(); i++) {
+    Screen* t = top(entered && i == cur ? app.screens : locals[i].screens);
+    if (!t || !t->pausesGame()) return false;
+  }
+  return true;
 }
 
 void GameSession::save() {
-  if (player) level->savePlayer(player->name, player->save());
+  for (auto& l : locals) { Player* p = (&l == &locals[cur]) ? player : l.player; if (p) level->savePlayer(p->name, p->save()); }
   level->save(true);
 }
 
@@ -95,40 +106,76 @@ void GameSession::tickLocalPlayer(double dt) {
   clientTickLocalPlayer(*this, dt);   // client/play.cpp -> sim/controller (the rules live in sim/)
 }
 
+// layers that belong to one viewer (menu keys, deaths, the mana bar) run for every person; the rest of the world only once
+static bool perViewerLayer(const char* n) { return !std::strcmp(n, "hud") || !std::strcmp(n, "magic-fx"); }
+
 void GameSession::update(double dt) {
   if (!player) return;
+  selectLocal(0);
   if (level->net) level->net->update(*level, dt);   // multiplayer (net/): a joined world, or one open to LAN
+  checkJoin();                                      // Start on a free controller joins split screen
+  struct RdGuard {   // more people, shorter view: lend the capped render distance to everything below
+    GameSession& s; bool on;
+    explicit RdGuard(GameSession& g) : s(g), on(g.split()) { s.lendRenderDist(on); }
+    ~RdGuard() { s.lendRenderDist(false); }
+  } rdGuard(*this);
+  const int n = (int)locals.size();
+  if (split()) {
+    layoutLocals();
+    for (int i = 0; i < n; i++) { enterLocal(i); if (Screen* sc = app.topScreen()) sc->update(app, dt); leaveLocal(); }   // each person's own menu
+  }
   bool pz = paused() && !level->allRealms().empty() && !level->net;   // a shared world never pauses
   if (!pz) {
-    tickLocalPlayer(dt);
-    for (auto& l : layers) l->afterPlayerMove(*this, dt);
+    if (!split()) {
+      tickLocalPlayer(dt);
+      for (auto& l : layers) l->afterPlayerMove(*this, dt);
+    } else for (int i = 0; i < n; i++) {
+      enterLocal(i);
+      tickLocalPlayer(dt);
+      for (auto& l : layers) l->afterPlayerMove(*this, dt);
+      leaveLocal();
+    }
     tickAcc += dt;
-    int n = 0;
-    while (tickAcc >= TICK_DT && n < 4) { level->tick(TICK_DT); tickAcc -= TICK_DT; n++; }
-    if (n == 4) tickAcc = 0;
+    int ticks = 0;
+    while (tickAcc >= TICK_DT && ticks < 4) { level->tick(TICK_DT); tickAcc -= TICK_DT; ticks++; }
+    if (ticks == 4) tickAcc = 0;
   }
   World& w = world();
   if (worldRenderer.world() != &w) { worldRenderer.setWorld(&w); worldRenderer.remeshAll(); }   // a new realm: mesh what is already loaded there
   std::vector<StreamAnchor> anchors = {{player->pos, app.settings.renderDist, true}};
+  for (int i = 1; i < n; i++) if (locals[i].player && locals[i].player->realm == player->realm) anchors.push_back({locals[i].player->pos, app.settings.renderDist, true});
   for (auto& l : layers) l->streamAnchors(*this, anchors);
   if (level->net) level->net->streamAnchors(player->realm, anchors);   // the host keeps remote players' surroundings loaded
   w.stream(anchors, 3.0);
-  // camera
-  Camera& cam = frame.cam;
-  clientPlayerCamera(*this, cam, dt);   // client/play.cpp: eye height, view bob, shoulder/behind/front views
+  // cameras: one per person, each in its own viewport
   int dw, dh; SDL_GL_GetDrawableSize(app.window, &dw, &dh);
-  cam.aspect = dh > 0 ? (float)dw / dh : 1.f;
-  cam.farZ = std::max(1024.f, (float)app.settings.farTerrain + 512.f);
-  cam.update();
-  frame.time = app.time; frame.width = dw; frame.height = dh;
-  sky->computeFrame(*level, frame, app.settings.renderDist);
-  cam.update();
-  worldRenderer.update(cam, *app.pool, 4.0);
-  for (auto& l : layers) l->update(*this, dt);
-  if (app.audio) app.audio->setListener(vec3(cam.pos), cam.forward(), vec3(0, 1, 0));
+  float sx = (float)dw / std::max(1, app.width), sy = (float)dh / std::max(1, app.height);
+  for (int i = 0; i < n; i++) {
+    selectLocal(i);
+    Camera& cam = frame.cam;
+    clientPlayerCamera(*this, cam, dt);   // client/play.cpp: eye height, view bob, shoulder/behind/front views
+    int vw = dw, vh = dh;
+    if (split()) { const LocalView& v = locals[i].view; vw = std::max(1, (int)std::lround(v.w * sx)); vh = std::max(1, (int)std::lround(v.h * sy)); }
+    cam.aspect = vh > 0 ? (float)vw / vh : 1.f;
+    cam.farZ = std::max(1024.f, (float)app.settings.farTerrain + 512.f);
+    cam.update();
+    frame.time = app.time; frame.width = vw; frame.height = vh;
+    sky->computeFrame(*level, frame, app.settings.renderDist);
+    cam.update();
+    worldRenderer.update(cam, *app.pool, 4.0 / n);
+  }
+  selectLocal(0);
+  if (!split()) for (auto& l : layers) l->update(*this, dt);
+  else for (int i = 0; i < n; i++) {
+    enterLocal(i);
+    for (auto& l : layers) if (i == 0) l->update(*this, dt); else if (perViewerLayer(l->name())) l->update(*this, 0.0);
+    leaveLocal();
+  }
+  if (app.audio) app.audio->setListener(vec3(frame.cam.pos), frame.cam.forward(), vec3(0, 1, 0));
 }
 
 void GameSession::render() {
+  if (split()) { splitRender(); return; }
   glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL);
   glEnable(GL_CULL_FACE); glCullFace(GL_BACK); glFrontFace(GL_CCW);
   sky->draw(frame);

@@ -1,6 +1,7 @@
 // ui/theme.cpp — styles.css in ImGui (see theme.h).
 #include "ui/theme.h"
 #include "client/app.h"
+#include "client/session.h"
 #include "assets/icons.h"
 #include "assets/gui_textures.h"
 #include "audio/audio.h"
@@ -175,21 +176,37 @@ void init(App& a) {
   ImGui_ImplSDL2_SetGamepadMode(ImGui_ImplSDL2_GamepadMode_Manual, nullptr, 0);
 }
 
-void beginFrame(App& a) {
-  float z = std::round(computeZoom(a) * 20.f) / 20.f;
-  if (z != g_zoom || !g_fonts.f[0]) { g_zoom = z; buildFonts(a, z); }
+void feedNav(App& a) {
   ImGuiIO& io = ImGui::GetIO();
   Input& in = a.input;
-  in.textActive = io.WantTextInput;
   if (in.padCount() == 0 || in.setupActive) { if (in.padCount() == 0) io.BackendFlags &= ~ImGuiBackendFlags_HasGamepad; return; }
   io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
   auto key = [&](ImGuiKey k, int b) { io.AddKeyEvent(k, in.padButtonDown(b)); };
   key(ImGuiKey_GamepadFaceDown, 0); key(ImGuiKey_GamepadFaceRight, 1);
   key(ImGuiKey_GamepadDpadUp, 12); key(ImGuiKey_GamepadDpadDown, 13); key(ImGuiKey_GamepadDpadLeft, 14); key(ImGuiKey_GamepadDpadRight, 15);
   vec2 l(0);
-  for (auto& p : in.pads()) if (glm::length(p.lstick) > glm::length(l)) l = p.lstick;
+  for (auto& p : in.pads()) {
+    if (in.selected() >= 0) { auto& ids = in.sourceList()[in.selected()].pads; if (std::find(ids.begin(), ids.end(), p.id) == ids.end()) continue; }
+    if (glm::length(p.lstick) > glm::length(l)) l = p.lstick;
+  }
   auto ana = [&](ImGuiKey k, float v) { io.AddKeyAnalogEvent(k, v > 0.3f, std::max(0.f, v)); };
   ana(ImGuiKey_GamepadLStickLeft, -l.x); ana(ImGuiKey_GamepadLStickRight, l.x); ana(ImGuiKey_GamepadLStickUp, -l.y); ana(ImGuiKey_GamepadLStickDown, l.y);
+}
+
+static float g_baseZoom = 1;
+float baseZoom() { return g_baseZoom; }
+void localZoom(float k) {
+  g_zoom = g_baseZoom * k;
+  ImGui::GetIO().FontGlobalScale = k / std::max(1.f, g_fonts.dpi);
+}
+
+void beginFrame(App& a) {
+  float z = std::round(computeZoom(a) * 20.f) / 20.f;
+  if (z != g_zoom || !g_fonts.f[0]) { g_zoom = z; buildFonts(a, z); }
+  g_baseZoom = g_zoom;
+  ImGuiIO& io = ImGui::GetIO();
+  a.input.textActive = io.WantTextInput || (a.session && a.session->uiWantsText);
+  feedNav(a);
 }
 
 // ---- text ---------------------------------------------------------------------------------------------

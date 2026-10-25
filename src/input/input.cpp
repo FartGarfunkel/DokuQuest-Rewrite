@@ -122,7 +122,8 @@ void Input::bindKey(Act a, SDL_Scancode sc) {
 void Input::saveBinds() {}
 
 void Input::beginFrame() {
-  prev = cur; kprev = kcur; pulse.fill(false); mouseDelta = vec2(0); wheelY = 0; typed.clear(); lastCode.clear(); lastPadButton = -1; dropAllFlag = false;
+  for (auto& x : fr) { x.prev = x.cur; x.kprev = x.kcur; x.pulse.fill(false); }
+  mouseDelta = vec2(0); wheelY = 0; typed.clear(); lastCode.clear(); lastPadButton = -1; dropAllFlag = false;
   std::memcpy(prevKeys, keys, sizeof keys);
   for (auto& p : padList) p.prevB = p.b;
 }
@@ -268,12 +269,15 @@ bool Input::codeDown(const std::string& c) const {
 }
 
 void Input::endFrame() {
-  nav = ivec2(0); scrollPx = 0;
+  // 1) each controller on its own: read it, its menu navigation (stick repeat), its latches (sprint, crawl, view)
   for (auto& p : padList) {
     readPad(p);
     for (int k = 0; k < 17; k++) if (p.edge(k)) { lastWasPad = true; if (lastPadButton < 0 && k < 16) lastPadButton = k; }
     if (glm::length(p.lstick) > 0.3f || glm::length(p.rstick) > 0.3f) lastWasPad = true;
+    p.navOut = ivec2(0); p.scrollOut = 0; p.pCrawl = p.pView = p.pShoulder = p.viewOn = false;
     if (setupActive) continue;
+    for (int k = 0; k < 17; k++) if (k != 9 && p.edge(k)) p.used = true;
+    if (glm::length(p.lstick) > 0.5f || glm::length(p.rstick) > 0.5f) p.used = true;
     // navigation: d-pad edges, or the left stick with key-repeat (0.38 s, then every 0.11 s)
     int nx = (p.edge(15) ? 1 : 0) - (p.edge(14) ? 1 : 0), ny = (p.edge(13) ? 1 : 0) - (p.edge(12) ? 1 : 0);
     int sx = std::fabs(p.lstick.x) > 0.6f ? (p.lstick.x > 0 ? 1 : -1) : 0, sy = std::fabs(p.lstick.y) > 0.6f ? (p.lstick.y > 0 ? 1 : -1) : 0;
@@ -281,60 +285,80 @@ void Input::endFrame() {
       if (ivec2(sx, sy) != p.navDir) { p.navDir = ivec2(sx, sy); p.navT = 0.38f; nx = sx; ny = sx ? 0 : sy; }
       else { p.navT -= (float)dt; if (p.navT <= 0) { p.navT = 0.11f; nx = sx; ny = sx ? 0 : sy; } }
     } else if (!sx && !sy) p.navDir = ivec2(0);
-    if (nx || ny) nav = ivec2(nx, ny);
-    if (std::fabs(p.rstick.y) > 0.25f) scrollPx += (p.rstick.y > 0 ? 1.f : -1.f) * (std::fabs(p.rstick.y) - 0.25f) / 0.75f * 900.f * (float)dt;
+    if (nx || ny) p.navOut = ivec2(nx, ny);
+    if (std::fabs(p.rstick.y) > 0.25f) p.scrollOut = (p.rstick.y > 0 ? 1.f : -1.f) * (std::fabs(p.rstick.y) - 0.25f) / 0.75f * 900.f * (float)dt;
+    // controllers: the stick click latches sprint until the stick comes back to the middle; sneak tapped twice
+    // crawls; the camera button taps to change view, held to swap shoulders (gamepad.js)
+    for (int k : padCodes[(int)Act::Sprint]) if (k < 17 && p.edge(k)) p.sprintLatch = !p.sprintLatch;
+    if (glm::length(p.lstick) < 0.3f) p.sprintLatch = false;
+    for (int k : padCodes[(int)Act::Sneak]) if (k < 17 && p.edge(k)) { double now = nowSeconds(); if (p.sneakTap >= 0 && now - p.sneakTap < 0.32) p.pCrawl = true; p.sneakTap = now; }
+    bool on = false; for (int k : padCodes[(int)Act::View]) on |= k < 17 && p.b[k];
+    if (on) { if (p.viewHold < 0.45f && p.viewHold + dt >= 0.45f) p.pShoulder = true; p.viewHold += (float)dt; p.viewOn = true; }
+    else { if (p.viewHold > 0 && p.viewHold < 0.45f) p.pView = true; p.viewHold = 0; }
   }
+  // 2) keyboard toggles and double-tap W (input.js updateMoveFromKeys)
+  bool kSprint = false, kFwd = false;
+  if (!textActive) {
+    for (auto& c : keyCodes[(int)Act::Sprint]) kSprint |= codeDown(c);
+    for (auto& c : keyCodes[(int)Act::Forward]) kFwd |= codeDown(c);
+  }
+  if (settings && settings->toggleSprint && kSprint) sprintLatch = true;
+  if (!kFwd) { doubleW = false; sprintLatch = false; }
+  // 3) the merged view of everything (one player), and one per local player in split screen
+  computeFrame(fr[0], true, nullptr);
+  for (size_t i = 0; i < sources.size() && i < 4; i++) computeFrame(fr[1 + i], sources[i].kb, &sources[i].pads);
+}
+
+void Input::computeFrame(Frame& F, bool kb, const std::vector<SDL_JoystickID>* ids) {
+  auto mine = [&](const PadState& p) { return !ids || std::find(ids->begin(), ids->end(), p.id) != ids->end(); };
+  F.nav = ivec2(0); F.scrollPx = 0; F.pulse.fill(false);
+  for (auto& p : padList) if (mine(p)) { if (p.navOut != ivec2(0)) F.nav = p.navOut; F.scrollPx += p.scrollOut; }
   // arrow keys step through grids too
-  if (!textActive) {
-    if (keyPressed(SDL_SCANCODE_LEFT)) nav = ivec2(-1, 0); if (keyPressed(SDL_SCANCODE_RIGHT)) nav = ivec2(1, 0);
-    if (keyPressed(SDL_SCANCODE_UP)) nav = ivec2(0, -1); if (keyPressed(SDL_SCANCODE_DOWN)) nav = ivec2(0, 1);
+  if (kb && !textActive) {
+    auto kp = [&](SDL_Scancode sc) { return keys[sc] && !prevKeys[sc]; };
+    if (kp(SDL_SCANCODE_LEFT)) F.nav = ivec2(-1, 0); if (kp(SDL_SCANCODE_RIGHT)) F.nav = ivec2(1, 0);
+    if (kp(SDL_SCANCODE_UP)) F.nav = ivec2(0, -1); if (kp(SDL_SCANCODE_DOWN)) F.nav = ivec2(0, 1);
   }
-  for (int a = 0; a < (int)Act::Count; a++) {
-    bool v = false;
-    bool menuAct = (a >= (int)Act::MenuUp && a <= (int)Act::MenuTabRight) || a >= (int)Act::MenuX || a == (int)Act::Pause;
-    bool tabKey = a == (int)Act::MenuTabLeft || a == (int)Act::MenuTabRight;   // Q / E are letters: typing must not switch tabs
-    bool kv = false;
-    if (!textActive || (menuAct && !tabKey)) for (auto& c : keyCodes[a]) if (codeDown(c)) { kv = true; break; }
-    kcur[a] = kv; v = kv;
-    if (!setupActive) for (auto& p : padList) for (int k : padCodes[a]) if (k >= 0 && k < 17 && p.b[k]) v = true;
-    cur[a] = v;
-  }
-  // keyboard toggles and double-tap W (input.js updateMoveFromKeys)
   bool kSneak = false, kSprint = false, kFwd = false;
-  if (!textActive) {
+  if (kb && !textActive) {
     for (auto& c : keyCodes[(int)Act::Sneak]) kSneak |= codeDown(c);
     for (auto& c : keyCodes[(int)Act::Sprint]) kSprint |= codeDown(c);
     for (auto& c : keyCodes[(int)Act::Forward]) kFwd |= codeDown(c);
   }
-  bool padSneak = false;
-  if (!setupActive) for (auto& p : padList) for (int k : padCodes[(int)Act::Sneak]) padSneak |= k < 17 && p.b[k];
-  if (settings && settings->toggleSneak) cur[(int)Act::Sneak] = sneakLatch || padSneak;
-  if (settings && settings->toggleSprint && kSprint) sprintLatch = true;
-  if (!kFwd) { doubleW = false; sprintLatch = false; }
-  bool sprint = kSprint || doubleW || (settings && settings->toggleSprint && sprintLatch && kFwd);
-  // controllers: the stick click latches sprint until the stick comes back to the middle; sneak tapped twice
-  // crawls; the camera button taps to change view, held to swap shoulders (gamepad.js)
-  bool padView = false;
-  if (!setupActive) for (auto& p : padList) {
-    for (int k : padCodes[(int)Act::Sprint]) if (k < 17 && p.edge(k)) p.sprintLatch = !p.sprintLatch;
-    if (glm::length(p.lstick) < 0.3f) p.sprintLatch = false;
-    sprint |= p.sprintLatch;
-    for (int k : padCodes[(int)Act::Sneak]) if (k < 17 && p.edge(k)) { double now = nowSeconds(); if (p.sneakTap >= 0 && now - p.sneakTap < 0.32) pulse[(int)Act::Crawl] = true; p.sneakTap = now; }
-    bool on = false; for (int k : padCodes[(int)Act::View]) on |= k < 17 && p.b[k];
-    if (on) { if (p.viewHold < 0.45f && p.viewHold + dt >= 0.45f) pulse[(int)Act::Shoulder] = true; p.viewHold += (float)dt; padView = true; }
-    else { if (p.viewHold > 0 && p.viewHold < 0.45f) pulse[(int)Act::View] = true; p.viewHold = 0; }
+  for (int a = 0; a < (int)Act::Count; a++) {
+    bool menuAct = (a >= (int)Act::MenuUp && a <= (int)Act::MenuTabRight) || a >= (int)Act::MenuX || a == (int)Act::Pause;
+    bool tabKey = a == (int)Act::MenuTabLeft || a == (int)Act::MenuTabRight;   // Q / E are letters: typing must not switch tabs
+    bool kv = false;
+    if (kb && (!textActive || (menuAct && !tabKey))) for (auto& c : keyCodes[a]) if (codeDown(c)) { kv = true; break; }
+    F.kcur[a] = kv;
+    bool v = kv;
+    if (!setupActive) for (auto& p : padList) if (mine(p)) for (int k : padCodes[a]) if (k >= 0 && k < 17 && p.b[k]) v = true;
+    F.cur[a] = v;
   }
-  cur[(int)Act::Sprint] = sprint;
+  bool padSneak = false;
+  if (!setupActive) for (auto& p : padList) if (mine(p)) for (int k : padCodes[(int)Act::Sneak]) padSneak |= k < 17 && p.b[k];
+  if (settings && settings->toggleSneak) F.cur[(int)Act::Sneak] = (kb && sneakLatch) || padSneak;
+  bool sprint = kSprint || (kb && doubleW) || (settings && settings->toggleSprint && kb && sprintLatch && kFwd);
+  bool padView = false;
+  if (!setupActive) for (auto& p : padList) if (mine(p)) {
+    sprint |= p.sprintLatch;
+    if (p.pCrawl) F.pulse[(int)Act::Crawl] = true;
+    if (p.pShoulder) F.pulse[(int)Act::Shoulder] = true;
+    if (p.pView) F.pulse[(int)Act::View] = true;
+    padView |= p.viewOn;
+  }
+  F.cur[(int)Act::Sprint] = sprint;
   // the pad's view button acts on release (tap) — only keys make View a plain press
-  if (padView) { bool k = false; if (!textActive) for (auto& c : keyCodes[(int)Act::View]) k |= codeDown(c); cur[(int)Act::View] = k; }
+  if (padView) { bool k = false; if (kb && !textActive) for (auto& c : keyCodes[(int)Act::View]) k |= codeDown(c); F.cur[(int)Act::View] = k; }
+  (void)kSneak;
 }
 
 bool Input::sharesKey(Act a, Act b) const {
   for (auto& x : keyCodes[(int)a]) for (auto& y : keyCodes[(int)b]) if (x == y) return true;
   return false;
 }
-bool Input::padButtonDown(int k) const { for (auto& p : padList) if (k >= 0 && k < 17 && p.b[k]) return true; return false; }
-bool Input::padButtonPressed(int k) const { for (auto& p : padList) if (k >= 0 && k < 17 && p.edge(k)) return true; return false; }
+bool Input::padButtonDown(int k) const { for (auto& p : padList) if (padSel(p) && k >= 0 && k < 17 && p.b[k]) return true; return false; }
+bool Input::padButtonPressed(int k) const { for (auto& p : padList) if (padSel(p) && k >= 0 && k < 17 && p.edge(k)) return true; return false; }
 
 bool Input::rawSnapshot(int i, RawPad& out) const {
   if (i < 0 || i >= (int)padList.size() || !padList[i].joy) return false;
@@ -350,16 +374,16 @@ vec2 Input::moveAxis() const {
   vec2 m(0);
   if (down(Act::Forward)) m.y += 1; if (down(Act::Back)) m.y -= 1;
   if (down(Act::Right)) m.x += 1; if (down(Act::Left)) m.x -= 1;
-  if (!setupActive) for (auto& p : padList) { m.x += p.lstick.x; m.y -= p.lstick.y; }
+  if (!setupActive) for (auto& p : padList) if (padSel(p)) { m.x += p.lstick.x; m.y -= p.lstick.y; }
   if (glm::length(m) > 1) m = glm::normalize(m);
   return m;
 }
 vec2 Input::lookDelta() const {
   float sens = settings ? settings->sens : 1, ps = settings ? settings->padSens : 1;
-  vec2 d = mouseDelta * 0.0022f * sens;
+  vec2 d = kbSel() ? mouseDelta * 0.0022f * sens : vec2(0);
   if (settings && settings->invertY) d.y = -d.y;
   // gamepad.js: rx·|rx|·padSens·2.8·dt (×1.15 sideways)
-  if (!setupActive) for (auto& p : padList) {
+  if (!setupActive) for (auto& p : padList) if (padSel(p)) {
     float k = ps * 2.8f * (float)dt;
     d += vec2(p.rstick.x * std::fabs(p.rstick.x) * k * 1.15f, p.rstick.y * std::fabs(p.rstick.y) * k * (settings && settings->invertY ? -1.f : 1.f));
   }
