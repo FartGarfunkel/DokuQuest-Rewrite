@@ -530,6 +530,18 @@ void Creature::update(Level& lv, float dt) {
     if (!onGround || want < 0.1f) { tx *= onGround ? 0 : 1; tz *= onGround ? 0 : 1; }
     if (onGround && want > 0.1f && hopT <= 0) { vel.y = 5.2f; hopT = 0.25f; }
   }
+  // don't walk off a drop you'd not survive (Minecraft's path finder keeps mobs off ledges deeper than 3; in the
+  // Skylands that is the edge of an island): a calm walker stops at the edge instead of stepping into the air
+  if (onGround && !noGravity && want > 0.05f && !T->swims && !T->flyer && !T->floaty && !(angryT > 0 && foe)) {
+    World& wd = lv.world(realm);
+    float ax = pos.x - std::sin(yaw) * (w + 0.45f), az = pos.z - std::cos(yaw) * (w + 0.45f);
+    int bx = ifloor(ax), bz = ifloor(az), by = ifloor(pos.y);
+    if (wd.isLoaded(bx, std::max(by, 0), bz) && !reg().tSolid[wd.getBlock(bx, by, bz)]) {
+      int drop = 0;
+      while (drop < 5 && by - 1 - drop > 0 && !reg().tSolid[wd.getBlock(bx, by - 1 - drop, bz)] && !reg().tLiquid[wd.getBlock(bx, by - 1 - drop, bz)]) drop++;
+      if (drop >= 4) { tx = 0; tz = 0; dir = yaw + PI; }
+    }
+  }
   float k = std::min(1.f, dt * (onGround ? 10 : 2));
   if (!lockMove) { vel.x += (tx - vel.x) * k; vel.z += (tz - vel.z) * k; }
   if (noGravity && hasFlyVy) vel.y += (flyVy - vel.y) * std::min(1.f, dt * 4);

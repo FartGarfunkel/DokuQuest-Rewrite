@@ -113,6 +113,7 @@ void Ambience::update(double dtIn, const AudioScene& s) {
   auto wind = [&](float g, float fr) { AudioCmd c; c.t = AudioCmd::Wind; c.a = g; c.b = fr; e.send(c); };
   if (!s.inWorld || !s.world || s.paused) {
     if (windG > 0) { windG = 0; wind(0, 420); }
+    { AudioCmd c; c.t = AudioCmd::Rain; c.a = 0; e.send(c); }
     if (f.valid) { f.valid = false; AudioCmd c; c.t = AudioCmd::Verb; c.a = 0; c.b = 0; e.send(c); }
     return;
   }
@@ -138,6 +139,7 @@ void Ambience::update(double dtIn, const AudioScene& s) {
     windG += (want - windG) * std::min(1.f, dt * 1.5f);
     wind(windG, 300 + high * 400 + (float)std::sin(s.time * 0.21) * 80);
   } else if (windG > 0) { windG = 0; wind(0, 420); }
+  { AudioCmd c; c.t = AudioCmd::Rain; c.a = level * s.rain * 1.6f; e.send(c); }   // weather.js: ambience volume × rain × (0.08 + 0.22 open)
   tBird -= dt; tCricket -= dt; tDrip -= dt; tRumble -= dt;
   float vol = level;
   if (vol > 0.05f) {
