@@ -77,6 +77,7 @@ struct SlotLook { bool sel = false, focus = false, hover = false, out = false, r
 void drawSlot(ImDrawList* dl, ImVec2 p, float size, const SlotLook& lk);
 void drawItem(ImDrawList* dl, const ItemStack& s, ImVec2 p, float size, float alpha = 1, bool count = true);
 void drawIcon(ImDrawList* dl, const std::string& key, ImVec2 p, float size, float alpha = 1);
+void drawGlint(ImDrawList* dl, const std::string& key, ImVec2 p, float size, float alpha = 1);   // the enchantment shimmer (ui/icon_glint.cpp)
 
 // HUD sprites (hud.js installHudSprites): 9×9 pixel art
 enum Sprite { SP_HEART, SP_HEART_HALF, SP_HEART_EMPTY, SP_SHIELD = 12, SP_SHIELD_GLOW, SP_BUBBLE, SP_BUBBLE_POP, SP_COUNT };

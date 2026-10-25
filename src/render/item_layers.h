@@ -48,5 +48,7 @@ const VoxelModel& firstPersonArm();
 void registerItemLayers();   // idempotent
 void registerPileLayer();    // render/pile_layer.cpp (called from registerItemLayers)
 void registerLecternLayer(); // render/lectern_layer.cpp (called from registerItemLayers)
+void registerFpBow();        // render/fp_bow.cpp (called from registerItemLayers)
+void registerSpawnerLayer(); // render/spawner_layer.cpp (called from registerItemLayers)
 
 } // namespace dq

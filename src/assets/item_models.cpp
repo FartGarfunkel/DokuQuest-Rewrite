@@ -295,7 +295,7 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
   const TileSet& ts = *tsp;
   out.key = key; out.built = true;
   std::string base = key;
-  if (startsWith(key, "bow_pulling_")) base = "bow";
+  if (startsWith(key, "bow_pulling_") || startsWith(key, "bow_pq")) base = "bow";   // bow_pqN: drawn N/8 of the way (first person)
   if (key == "fishing_rod_cast" || key == "fishing_rod_tp") base = "fishing_rod";
   const ItemDef* def = reg().item(base);
   auto tileOf = [&](const std::string& n) { auto it = ts.index.find(n); return it == ts.index.end() ? -1 : it->second; };

@@ -10,6 +10,8 @@
 #include "sim/effects.h"
 #include "sim/skills.h"
 #include "sim/rpg.h"
+#include "core/item_glint.h"
+#include "ui/theme.h"
 #include "world/world.h"
 #include "common/noise.h"
 #include <imgui.h>
@@ -77,12 +79,12 @@ static bool slotButton(const char* id, const ItemStack& s, float size, const cha
     else if (!s.empty()) dl->AddText(ImVec2(p.x + 4, p.y + 4), IM_COL32_WHITE, key.substr(0, 4).c_str());
   }
   if (!s.empty() && s.n > 1) { std::string n = std::to_string(s.n); ImVec2 ts = ImGui::CalcTextSize(n.c_str()); dl->AddText(ImVec2(p.x + size - ts.x - 3, p.y + size - ts.y - 1), IM_COL32_WHITE, n.c_str()); }
-  if (!s.empty() && s.tag.is_object() && s.tag.contains("en")) dl->AddRect(p, ImVec2(p.x + size, p.y + size), IM_COL32(200, 140, 255, 200), 3, 0, 2);
+  if (itemGlints(s)) ui::drawGlint(dl, s.id, ImVec2(p.x + 3, p.y + 3), size - 6);
   if (!s.empty() && ImGui::IsItemHovered()) {
     const ItemDef* d = s.def();
     std::string tip = magicItemTooltip(s);
     ImGui::BeginTooltip();
-    ImGui::TextColored(s.tag.is_object() && s.tag.contains("en") ? ImVec4(0.8f, 0.6f, 1, 1) : ImVec4(1, 1, 1, 1), "%s", d ? d->name.c_str() : s.id.c_str());
+    ImGui::TextColored(itemGlints(s) ? ImVec4(0.56f, 0.91f, 1, 1) : ImVec4(1, 1, 1, 1), "%s", d ? d->name.c_str() : s.id.c_str());
     if (!tip.empty()) ImGui::TextDisabled("%s", tip.c_str());
     ImGui::EndTooltip();
   }
