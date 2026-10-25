@@ -17,4 +17,6 @@ DokuQuest is being rebuilt as a native C++ game, as close as possible to Alpha 0
 - **Mods, like Fabric, Forge and OptiFine together:** JS mods with the original `DQ` API, data packs, native plugins, shader packs and resource packs.
 - **Updates from GitHub Releases:** the launcher checks for new versions, downloads and checks them, and keeps the previous version in case the new one won't start.
 - Linux AppImage (and a tar.gz). A Windows build comes later. Your worlds are kept in the game folder.
+- **In this build:** the original's terrain for all four worlds, villages, towns, dungeons, strongholds, fortresses, ancient cities and End cities; 125 creatures with their AI; survival and creative with every block rule; crafting, furnaces, chests and the creative catalogue; magic, enchanting, brewing, skills; maps, farming, fishing, camping, elytra and the stable; redstone, minecarts, boats and ships; multiplayer over LAN or the internet; the original menus with full controller support.
+- **Still to come:** villagers living in the villages and towns, the End's dragon fight and the story, split-screen co-op, and the 3D models for carts, boats and machines.
 - Removed Herobrine.
