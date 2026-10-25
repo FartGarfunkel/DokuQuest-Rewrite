@@ -55,5 +55,7 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
 
 - Better than Adventure inspiration (user, 2026-10-25): biomes, blocks, a Nether more like BTA's, mobs we lack, music in the same mood. BTA ships as jars only (the GitHub "Source code" zip is the download repo, not the mod) and its code, art and music are theirs: build OUR versions from its public feature lists (wiki, the user's video) in DokuQuest style — Doku tiles/micro-voxels, our own synth music. Never copy or resample their files.
 
+- More music, everywhere (user, 2026-10-25): OUR OWN procedural pieces in the mood of ShignBright's "Over / Under" (the BTA soundtrack: soft C418-style piano, warm pads, lots of space). An "over" set (bright, nostalgic, per biome: plains, forest, snow, desert, ocean, village) and an "under" set (caves, deep mines, moss/lush caves, karst, torch-lit tunnels, foggy depths), plus Nether, Skylands and End sets. Seeded variation so each world sounds different. Never copy or resample their tracks or melodies.
+
 ## Roadmap (after the bugs)
 Start in the wild, potions stack to 16, test-build small fixes, coins/economy, roads and bridges, travellers, saddle bags, bigger ship, poses, torches on fences, chains/lanterns, rift to 10 fragments + slow pacing + lore, graphics presets, built-in shader levels, Skylands content, Shadowbloom ports, Iris/OptiFine shader packs.
