@@ -15,6 +15,8 @@ struct WeatherFront { bool on = false; std::string kind = "rain"; float ux = 0, 
 struct WeatherColumn {
   float temp = 0, humid = 0;   // -1..1 like the original's climate
   int h = SEA_LEVEL;           // band-local ground height
+  double jsH = 48;             // the original game's height of the column (its rules are written in it)
+  int biome = -1;              // Biome (gen/gendefs.h), -1 unknown
   bool desert = false, ocean = false, beach = false, river = false;
 };
 

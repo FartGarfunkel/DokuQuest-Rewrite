@@ -33,9 +33,10 @@ public:
   virtual void onBlockChanged(class World& w, int x, int y, int z, BlockId oldId, BlockId newId) {}
   virtual void onChunkLoaded(class World& w, Chunk& c) {}
   virtual void onChunkUnloading(class World& w, Chunk& c) {}
+  virtual void onBlockEntityChanged(class World& w, int x, int y, int z) {}   // setBlockEntity / blockEntityChanged
 };
 
-namespace SetFlags { enum : u32 { None = 0, NoNotify = 1, NoRemesh = 2, NoModify = 4, Urgent = 8, NoLight = 16 }; }
+namespace SetFlags { enum : u32 { None = 0, NoNotify = 1, NoRemesh = 2, NoModify = 4, Urgent = 8, NoLight = 16, FromNet = 32 }; }   // FromNet: applied from the server/a client (net/)
 
 class World {
 public:
@@ -60,6 +61,7 @@ public:
   BlockId getBlockPhys(int x, int y, int z) const;   // unloaded chunks read as stone (no falling out of the world)
   json* blockEntity(int x, int y, int z, bool create = false);
   void setBlockEntity(int x, int y, int z, json e);   // null erases
+  void blockEntityChanged(int x, int y, int z);       // call after editing a blockEntity() in place (chest contents...): saves + syncs it
   void markModified(int x, int y, int z);
   int surfaceY(int x, int z, int dim) const;          // global y of the highest non-air block in that band (-1 none)
 
@@ -86,7 +88,10 @@ public:
   // ---- saving ----
   void saveDirty(bool all = false);        // writes modified chunks (background unless all)
   void flush();                            // wait for pending writes
-  std::shared_ptr<RegionStore> regionStore() const { return store; }   // saved chunks (distant terrain reads them)
+  std::shared_ptr<RegionStore> regionStoreShared() const { return store; }   // saved chunks (distant terrain reads them on workers)
+
+  u32 changeFlags = 0;     // SetFlags of the setBlock being reported to systems (net/ skips NoModify/FromNet changes)
+  RegionStore* regionStore() const { return store.get(); }   // net/: a client keeps the server's chunk records here
 
   MainQueue mainQueue;   // results from workers (call pumpMain each frame)
   void pumpMain(double budgetMs);

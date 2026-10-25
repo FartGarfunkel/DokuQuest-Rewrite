@@ -12,7 +12,7 @@ namespace dq {
 class Level;
 struct SkyEnv;
 
-constexpr int CLOUD_BASE_Y = 512 + 200;   // global y of the cloud layer (Overworld band-local 200)
+constexpr int CLOUD_BASE_Y = 512 + 212;   // global y of the cloud layer (Overworld band-local 212, above the highest peaks, under the cloud bank)
 
 class CloudRenderer {
 public:

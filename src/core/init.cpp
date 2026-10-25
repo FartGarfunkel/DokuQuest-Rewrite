@@ -12,6 +12,7 @@ bool initCore(const CoreOptions& o) {
   registerCommands();
   registerModApi();
   registerWeatherSystem();
+  registerPortals();
   return true;
 }
 void shutdownCore() {}

@@ -41,6 +41,7 @@ private:
   GLuint vao = 0;
   double skyT = 0;
 };
-const SkyEnv& currentSkyEnv();   // the last computed frame's sky
+const SkyEnv& currentSkyEnv();   // the last computed sky (prefer skyOf(frame))
+inline const SkyEnv& skyOf(const FrameCtx& f) { return f.sky ? *f.sky : currentSkyEnv(); }
 
 } // namespace dq

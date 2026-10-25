@@ -41,7 +41,7 @@ public:
     lod.update(*s.level, s.world(), s.frame, *s.app.pool, dt, s.app.tiles);
   }
   bool testWeather = false;
-  void drawOpaque(GameSession& s, const FrameCtx& f) override { lod.draw(f, currentSkyEnv()); }
+  void drawOpaque(GameSession& s, const FrameCtx& f) override { lod.draw(f, skyOf(f)); }
   void drawHud(GameSession& s) override {
     if (!s.debugOverlay) return;
     WeatherSystem* W = weatherOf(*s.level);
@@ -58,9 +58,9 @@ public:
   CloudRenderer clouds;
   const char* name() const override { return "clouds"; }
   int order() const override { return -10; }
-  void update(GameSession& s, double) override { clouds.update(*s.level, s.frame, currentSkyEnv()); }
-  void drawOpaque(GameSession&, const FrameCtx& f) override { clouds.drawOpaque(f, currentSkyEnv()); }
-  void drawTranslucent(GameSession&, const FrameCtx& f) override { clouds.drawWisps(f, currentSkyEnv()); }
+  void update(GameSession& s, double) override { clouds.update(*s.level, s.frame, skyOf(s.frame)); }
+  void drawOpaque(GameSession&, const FrameCtx& f) override { clouds.drawOpaque(f, skyOf(f)); }
+  void drawTranslucent(GameSession&, const FrameCtx& f) override { clouds.drawWisps(f, skyOf(f)); }
 };
 
 // ---- weather and ambient effects (spawn particles; the particle layer moves and draws them) ----------------

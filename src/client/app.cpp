@@ -1,4 +1,6 @@
 #include "client/app.h"
+#include "render/portal_view.h"
+#include "client/netplay.h"
 #include "client/session.h"
 #include "core/init.h"
 #include "render/env_layers.h"
@@ -135,8 +137,9 @@ bool App::createWorld(LevelInfo info) {
   setScreen(nullptr);
   return true;
 }
-bool App::joinServer(const std::string& address) { toast("Joining servers comes with the network update", "bad"); return false; }
+bool App::joinServer(const std::string& address) { return netJoin(*this, address); }   // client/netplay.cpp
 void App::leaveWorld(bool toTitle) {
+  netBeforeLeave(*this);   // goodbye to the host / stop serving (client/netplay.cpp)
   if (session) { session->save(); session.reset(); }
   if (toTitle) setScreen(makeTitleScreen());
 }
@@ -172,6 +175,7 @@ int App::run(int argc, char** argv) {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "DokuQuest", "The game's data folder is missing or damaged. Reinstall DokuQuest from the launcher.", nullptr);
     return 1;
   }
+  registerPortalView();   // render/portal_view.cpp
   settings = Settings::load();
   if (!settings.shaderPack.empty()) setShaderPack(settings.shaderPack);
   mods = std::make_unique<ModLoader>();
@@ -188,6 +192,7 @@ int App::run(int argc, char** argv) {
   // start: straight into a world (launcher "Play world", smoke tests) or the title screen
   if (!args.world.empty()) { if (!openWorld(savesDir() / args.world)) setScreen(makeTitleScreen()); }
   else if (!args.createWorld.empty()) { LevelInfo li; li.name = args.createWorld; li.seedText = args.seed; createWorld(li); }
+  else if (!args.server.empty()) { if (!joinServer(args.server)) setScreen(makeTitleScreen()); }
   else setScreen(makeTitleScreen());
   frameLoop();
   leaveWorld(false);
@@ -222,6 +227,7 @@ void App::frameLoop() {
     ImGui::PushFont(fontUi);
     if (Screen* s = topScreen()) { s->update(*this, dt); }
     if (session) session->update(dt);
+    netAfterFrame(*this);   // a joined world whose host went away is left (client/netplay.cpp)
     int dw, dh; SDL_GL_GetDrawableSize(window, &dw, &dh);
     glViewport(0, 0, dw, dh);
     glClearColor(0.05f, 0.04f, 0.035f, 1); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);

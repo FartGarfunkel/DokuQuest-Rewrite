@@ -36,7 +36,7 @@ sun/moon billboards and buildParticles, `entities.js` Particles, `vehicles.js` W
   ground from L2 (a tree cell with ≥2 tree neighbours), water lighter in shallows / deep blue far out, lava glows,
   per-cell colour variety, the storm's shadow and rain haze over the far land, fog at the far edge.
   Colours = `TileSet::avgColor` of the block's top/side tile (resource-pack aware: rebuilt when the pack changes)
-  × climate tint (same tint the chunk mesher uses).
+  × climate tint (`climateTint(kind, temp, humid)` with the column's climate bytes, as the chunk mesher tints).
 - Cut: an R8 mask of chunks drawn for real (loaded > 0.6 s) round the camera discards LOD fragments there; tiles
   fully covered by real chunks are skipped; LOD is dropped 0.6 blocks so real chunks win at the seam.
 - Stacked world: one quadtree per band. Overworld camera → Overworld + Skylands LOD (islands' undersides overhead);
@@ -44,9 +44,11 @@ sun/moon billboards and buildParticles, `entities.js` Particles, `vehicles.js` W
 - Vertex 12 bytes (u16 x,z in tile/32768, i16 y in 1/8 block, rgb+shade, flags), shared quad index buffer, one draw per tile.
 - Memory budget: `24 MB + farTerrain/16384 × 200 MB` of tile meshes (LRU of tiles not drawn for 2 frames).
 
-### Measured (this machine: 2 shared cores, Mesa llvmpipe, debug terrain generator)
+### Measured (this machine: 2 shared cores, Mesa llvmpipe; first rows with the real generator, the rest with the debug one)
 | Setting | Tiles built | Avg / max build | Tiles held | GPU mesh memory |
 |---|---|---|---|---|
+| real generator: farTerrain 2048, rd 8, at spawn (incl. trees() for near tiles) | 174 | 3.1 ms / 88 ms | 164 | 16.3 MB |
+| real generator: farTerrain 2048, camera y 690 (both bands) | 245 | 1.7 ms / 40 ms | 238 | 23.9 MB |
 | farTerrain 2048, rd 8, camera at sea level | 171–174 | 0.7–1.5 ms / 21–36 ms | ~160 | 10.6–11.8 MB |
 | farTerrain 2048 + Skylands band (camera y 640) | 232–234 | 1.6 ms / 61–67 ms | 222 | 16.4 MB |
 | End islands, farTerrain 2048 | 125 | 2.7 ms / 72 ms | 112 | 4.7 MB |
@@ -65,15 +67,14 @@ Nether/Overworld/End edges blend over 16 blocks. Fog range: `viewFar·fogStart .
 distance, LOD range) — the far fog sits at the LOD's edge when LOD is on.
 
 `FrameCtx` additions (render/frame.h): `horizonColor, minLight, rain, thunder, flash, mist, sea, cloudBank, windDir,
-underwater`; `wind` is now `0.45 + windStrength·0.9` (plants sway more in storms).
+underwater, sky` (`std::shared_ptr<const SkyEnv>`: each view's full sky, so portal views get their own; `skyOf(f)`); `wind` is now `0.45 + windStrength·0.9` (plants sway more in storms).
 
 ## Weather (sim)
 State machine and timings exactly as weather.js + skies.js: clear 900–2100 s → a front arrives from upwind (edge
 1650 blocks, 7 blocks/s; 30 % thunder), rain/thunder 300–660 s, the trailing edge clears over the last 80 s. Rule
 `weatherCycle`. Precipitation per 8x8 patch (4 s cache): none in deserts / dry warm land, snow when cold or high,
-showers only in jungle/swamp. Climate comes from the chunk's `climate` bytes (0,0 = unset → temperate) or the
-generator sample; biome tests are approximations (sand top + warm = desert, deep water = ocean...) because
-`ColumnSample` carries no biome. Heights from the original are measured from the sea × 1.6 (`kHS`).
+showers only in jungle/swamp. Biome, climate and the original height come from the generator (`sample()`,
+`terrain()`), the current ground height from the loaded chunk.
 Sounds via `Level::fx`: `thunder`, `thunder_far` (delayed by distance), `gust`, `fire_crackle`, `lava_pop`.
 `rainLevel`/`rainOpen` are exposed for the audio engine's rain hiss. Events: `lightning [x,y,z,rod]`,
 `lightningRod [x,y,z]` (for redstone's pulse).
@@ -98,10 +99,14 @@ Caps: 1800 particles + rain at setting 2 (700 at 1), off at 0. One CPU-built qua
 - Tiles are built on worker threads instead of a few ms a frame on the main thread; levels go to 512-block columns
   (16384-block range) instead of 16; tops merged in 2D and walls merged along edges (fewer quads).
 - LOD per stacked band (Skylands overhead / Overworld below); floating undersides.
-- Trees: `ColumnSample.tree/treeTop/leaves` replace treesForChunk + treeParts (crown bottom assumed 4 below the top).
-  Villages from `villageAt` are not drawn (the C++ village generator isn't there yet).
-- Biome zones are approximated from climate + surface (no biome in ColumnSample). River mist needs a river flag.
-- Clouds: one layer at global y 712 (Overworld band-local 200); reach grows to 1400 blocks with far LOD on the Modern
+- Trees: near tiles (L0/L1) take the generator's real trees (`DimGenerator::trees()`, the port of treesForChunk +
+  treeParts) with their crowns and trunks; far tiles blend the forest cover the generator gives in
+  `ColumnSample.tree/treeTop/leaves` (distant.js). Villages from `villageAt` are not drawn yet (no C++ villages).
+- Weather zones use the generator's biome, climate bytes, river flag and the original's height
+  (`TerrainQuery::terrainColumn().jsY`), so the original's rules (snow above y 110, cold above 104, swamp below
+  51...) apply unchanged; heights are mapped with `vmap::owSurface`. Other world types fall back to a guess from
+  the surface.
+- Clouds: one layer at global y 724 (Overworld band-local 212: above the highest peaks, under the cloud bank); reach grows to 1400 blocks with far LOD on the Modern
   renderer; drawn in the opaque layer pass (the camera's far plane already reaches past them) instead of a separate
   far pass.
 - Moon phases are new (the original had one moon picture).

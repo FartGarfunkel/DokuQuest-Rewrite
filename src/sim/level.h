@@ -27,6 +27,8 @@ struct LevelInfo {
   vec3 spawn{0, -1, 0};        // y < 0 = not chosen yet
   json rules = json::object(); // game rules (rules.js): keepInventory, mobGriefing, ...
   json data = json::object();  // global state for systems: portal links, maps, quests, towns, weather...
+  bool remote = false;         // not saved: this level is a client's replica of a server's world (net/NetClient).
+                               // The server simulates it: spawning, fluids, random ticks, AI etc. must skip remote levels.
   json toJson() const;
   void fromJson(const json& j);
 };
@@ -43,6 +45,23 @@ public:
   virtual void particles(const std::string& kind, vec3 pos, int count = 8, const json& extra = nullptr) {}       // burst / smoke / block crumbs...
   virtual void message(u32 playerId, const std::string& text, const std::string& kind = "") {}                   // toast / chat line (0 = everyone)
   virtual void shake(u32 playerId, float strength) {}
+};
+
+class Player;
+
+// The network role of an open level (net/): a ServerHost (dedicated server, "Open to LAN") or a NetClient
+// (joined someone's world). Gameplay code calls these where a client must ask the server instead of acting.
+class LevelNet {
+public:
+  virtual ~LevelNet() = default;
+  virtual bool isClient() const = 0;
+  virtual void update(class Level& lv, double dt) {}                                  // every frame (game) / tick (server)
+  virtual void streamAnchors(int realm, std::vector<StreamAnchor>& out) {}            // host: keep remote players' chunks loaded
+  virtual bool chat(Player& from, const std::string& text) { return false; }          // client: true = sent to the server
+  virtual void hitEntity(Player& by, u32 entityId, float amount, const json& src) {}   // client: hurt a server entity (ghost)
+  virtual void action(Player& by, const std::string& name, const json& args) {}       // client: anything else the server must do
+  virtual void portal(Player& who, int realm, vec3 to) {}                              // a player used a portal (others may follow)
+  virtual std::vector<std::string> playerNames() const { return {}; }
 };
 
 class Level {
@@ -86,6 +105,8 @@ public:
   void save(bool all = true);
   void close();
   double autosaveTimer = 0;
+  std::shared_ptr<LevelNet> net;    // set while this level is served or joined over the network (net/)
+  bool isRemote() const { return info.remote; }
 
 private:
   std::map<int, std::unique_ptr<World>> realms;

@@ -146,8 +146,6 @@ void buildTile(const TileInput& in, TileOutput& out) {
   Grid g(W);
   DimGenerator* gen = in.gen ? in.gen->forDim(in.dim) : nullptr;
   bool floaty = in.dim == DIM_AETHER || in.dim == DIM_END;
-  std::vector<float> treeTop(W * W, 0);
-  std::vector<vec3> leafCol(L >= 2 ? W * W : 0);
   // 1. the ground, cell by cell: a real chunk's surface where there is one, otherwise the generator's
   for (int j = 0; j < W; j++) for (int i = 0; i < W; i++) {
     int k = j * W + i;
@@ -166,7 +164,7 @@ void buildTile(const TileInput& in, TileOutput& out) {
     if (!gen) continue;
     ColumnSample s; gen->sample(fx, fz, s);
     if (s.height < 0 && s.water < 0) continue;   // nothing here (the void between islands)
-    u8 tb = 0, hb = 0;   // (without a tint from the generator: the chunk mesher's default climate)
+    u8 tb = s.temp, hb = s.humid;   // the column's climate: tinted as the chunk mesher tints it
     if (s.water >= 0 && s.water >= s.height && s.fluid) {
       bool lava = R.tLiquid[s.fluid] == 2;
       g.G[k] = base + s.water + 0.875f; g.FL[k] = lava ? 32 : 1;
@@ -181,24 +179,41 @@ void buildTile(const TileInput& in, TileOutput& out) {
       g.setC(g.SC, k, blockColor(ct, sideId, tb, hb, true, s.tint));
     }
     if (s.floatBottom >= 0 && s.floatBottom <= s.height) g.B[k] = base + (float)s.floatBottom;
-    if (s.tree && s.treeTop > s.height && s.leaves) {
+    // far off, single trees can't be told apart: the forest is blended into the ground, as tall as its trees
+    // (the generator gives the forest cover as treeTop; near tiles get the real trees below)
+    if (L >= 2 && s.tree && s.leaves && s.treeTop >= s.height && !(g.FL[k] & 33)) {
       vec3 lc = blockColor(ct, s.leaves, tb, hb, false, s.tint);
-      if (L <= 1) {   // trees with their crowns (near)
-        g.CT[k] = base + s.treeTop + 1.f; g.CB[k] = std::max(g.G[k], g.CT[k] - 4); g.setC(g.CC, k, lc); g.FL[k] |= 2;
-      } else { treeTop[k] = base + s.treeTop + 1.f; leafCol[k] = lc; }
+      float lift = (float)(s.treeTop - s.height), cover = clampv(lift / 6 + 0.1f, 0.1f, 1.f);
+      g.setC(g.GC, k, glm::mix(g.col(g.GC, k), lc * 0.85f, std::min(1.f, cover * 1.2f)));
+      g.setC(g.SC, k, lc * 0.7f);
+      g.G[k] += lift;
     }
   }
-  // far off, single trees can't be told apart: forests are blended into the ground, as tall as their trees
-  if (L >= 2) {
-    std::vector<float> G0 = g.G;
-    for (int j = 1; j < W - 1; j++) for (int i = 1; i < W - 1; i++) {
-      int k = j * W + i; if (treeTop[k] <= 0) continue;
-      int nb = (treeTop[k - 1] > 0) + (treeTop[k + 1] > 0) + (treeTop[k - W] > 0) + (treeTop[k + W] > 0);
-      if (nb < 2) continue;
-      float cover = 0.55f + 0.1f * nb;
-      g.setC(g.GC, k, glm::mix(g.col(g.GC, k), leafCol[k] * 0.85f, std::min(1.f, cover * 1.2f)));
-      g.setC(g.SC, k, leafCol[k] * 0.7f);
-      g.G[k] = G0[k] + std::round((treeTop[k] - G0[k]) * 0.7f * cover);
+  // trees, where the generator plants them, with their real crowns (near tiles; distBuild step 3)
+  if (L <= 1 && gen) {
+    int x0 = ox - cs, z0 = oz - cs, x1 = ox + size + cs, z1 = oz + size + cs;
+    std::vector<TreeSample> list;
+    for (int cz = floordiv(z0 - 8, 16); cz <= floordiv(z1 + 8, 16); cz++) for (int cx = floordiv(x0 - 8, 16); cx <= floordiv(x1 + 8, 16); cx++) {
+      list.clear(); gen->trees(cx, cz, list);
+      for (const TreeSample& t : list) {
+        u8 tb = 128, hb = 128;
+        bool colOk = false;
+        for (const TreeColumn& c : t.cols) {
+          int wx = t.x + c.dx, wz = t.z + c.dz;
+          if (wx < x0 || wz < z0 || wx >= x1 || wz >= z1) continue;
+          int i = floordiv(wx - ox, cs) + 1, j = floordiv(wz - oz, cs) + 1, k = j * W + i;
+          if (g.FL[k] & 64) continue;                   // a real chunk: its trees are in its surface already
+          float top = base + (float)c.top;
+          if (top <= g.G[k] + 0.5f) continue;
+          if (top > g.CT[k]) g.CT[k] = top;
+          if (c.leafBottom < 999 && base + c.leafBottom < g.CB[k]) g.CB[k] = base + (float)c.leafBottom;
+          if (c.leaves && !(g.FL[k] & 8)) {
+            if (!colOk) { ColumnSample cs2; gen->sample(t.x, t.z, cs2); tb = cs2.temp; hb = cs2.humid; colOk = true; }
+            g.setC(g.CC, k, blockColor(ct, c.leaves, tb, hb, false)); g.FL[k] |= 8;
+          }
+          if (c.log) g.FL[k] |= 2;
+        }
+      }
     }
   }
   // 2. the mesh: a column per cell, walls down to lower neighbours, crowns over the ground, a skirt round the edge

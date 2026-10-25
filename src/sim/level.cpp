@@ -121,6 +121,7 @@ void Level::tick(double dt) {
     if (e->removed) continue;
     e->prevPos = e->pos; e->prevYaw = e->yaw;
     e->age += (float)dt;
+    if (e->ghost) { if (info.remote) e->glide(dt); continue; }   // net replica: simulated elsewhere
     e->tick(*this, dt);
   }
   ents.erase(std::remove_if(ents.begin(), ents.end(), [&](const std::unique_ptr<Entity>& e) {

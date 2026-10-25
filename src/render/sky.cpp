@@ -4,6 +4,7 @@
 #include "sim/level.h"
 #include "sim/weather.h"
 #include "core/registry.h"
+#include "gen/gendefs.h"
 
 namespace dq {
 
@@ -15,7 +16,6 @@ inline float smooth01(float v) { v = sat(v); return v * v * (3 - 2 * v); }
 vec3 rgb(u32 hex) { return vec3(((hex >> 16) & 255) / 255.f, ((hex >> 8) & 255) / 255.f, (hex & 255) / 255.f); }
 vec3 mixc(vec3 a, vec3 b, float t) { return a + (b - a) * t; }
 vec3 grey(vec3 c, float k) { float l = (c.x + c.y + c.z) / 3; return mixc(c, vec3(l), k); }
-constexpr float kHS = 1.6f;   // see sim/weather.cpp
 
 // game.js computeEnv (+ theend.js, riftarc.js): the land's own sky
 SkyEnv baseEnv(Level& lv, int dim, int realm, const Settings* st) {
@@ -96,7 +96,7 @@ void weatherEnv(Level& lv, int dim, int realm, SkyEnv& e) {
     e.sea = sat(0.1f + W->windStrength * 0.3f + W->thunderK * 0.55f + W->rain * 0.2f + W->approach * 0.2f + (W->zone == "ocean" ? 0.15f : 0.f));
     // the northern lights: cold lands, clear nights (some nights more than others)
     WeatherColumn c = W->column(lv, ifloor(W->leadPos.x), ifloor(W->leadPos.z));
-    float cold = sat((-c.temp - 0.12f) / 0.3f) + (W->leadPos.y - dimBase(DIM_OVERWORLD) > SEA_LEVEL + 52 * kHS ? 0.3f : 0.f);
+    float cold = sat((-c.temp - 0.12f) / 0.3f) + (W->leadPos.y - dimBase(DIM_OVERWORLD) > vmap::owSurface(100) ? 0.3f : 0.f);
     float night = sat((0.55f - e.day) / 0.3f), clearSky = 1 - std::min(1.f, W->rain * 2 + W->over);
     i32 nightNo = (i32)std::floor(lv.info.time / DAY_LEN + (double)lv.info.day);
     float strong = 0.45f + 0.55f * ((hash32(nightNo, 7, 3, lv.info.seed) & 255) / 255.f);
@@ -185,6 +185,7 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd) {
   if (e.mist > 0.01f && !e.underwater) { float end = 24 + (fr.y - 24) * std::pow(1 - std::min(1.f, e.mist), 2.f); fr = vec2(std::min(fr.x, end * 0.12f), std::min(fr.y, end)); }
   e.fogRange = fr;
   env = e; g_env = e;
+  f.sky = std::make_shared<const SkyEnv>(e);
   WeatherSystem* W = weatherOf(lv);
   f.dim = d;
   f.skyColor = e.zenith; f.horizonColor = e.horizon; f.fogColor = e.fog;
@@ -201,7 +202,7 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd) {
 }
 
 void SkyRenderer::draw(const FrameCtx& f) {
-  const SkyEnv& e = env;
+  const SkyEnv& e = f.sky ? *f.sky : env;
   glDisable(GL_DEPTH_TEST); glDepthMask(GL_FALSE); glDisable(GL_BLEND);
   shader.use();
   f.apply(shader);

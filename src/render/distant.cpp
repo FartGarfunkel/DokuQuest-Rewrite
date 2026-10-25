@@ -229,7 +229,7 @@ void DistantTerrain::update(Level& lv, World& w, const FrameCtx& f, ThreadPool& 
     return;
   }
   lvl = &lv;
-  if (&w != worldFor || lv.gen != gen) { reset(); worldFor = &w; gen = lv.gen; store = w.regionStore(); }
+  if (&w != worldFor || lv.gen != gen) { reset(); worldFor = &w; gen = lv.gen; store = w.regionStoreShared(); }
   std::string ck = tiles.packName + ":" + std::to_string(tiles.count);
   if (!colors || colorsFor != ck) {   // a new resource pack: the far land takes its colours
     colors = makeColorTable(tiles); colorsFor = ck;
@@ -345,7 +345,8 @@ void DistantTerrain::update(Level& lv, World& w, const FrameCtx& f, ThreadPool& 
 }
 
 void DistantTerrain::draw(const FrameCtx& f, const SkyEnv& env) {
-  drawn = 0;
+  if (f.portalDepth > 0 && (f.cam.realm != REALM_MAIN || f.dim < 0 || f.dim >= DIM_COUNT || !bands[f.dim]->active)) return;   // a portal's view: only into a land drawn here
+  if (f.portalDepth == 0) drawn = 0;
   bool any = false;
   for (auto& b : bands) if (b->active && !b->draw.empty()) any = true;
   if (!any) return;

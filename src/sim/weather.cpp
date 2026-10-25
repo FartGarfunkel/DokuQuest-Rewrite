@@ -3,15 +3,17 @@
 #include "sim/weather.h"
 #include "sim/player.h"
 #include "core/init.h"
+#include "gen/gendefs.h"
+#include "gen/structures.h"
 
 namespace dq {
 
 namespace {
-// The original world was 128 tall with the sea at 48; heights above the sea are stretched in the
-// taller band. Heights in the original's rules (snow above y 110, cold above 104...) are measured
-// from the sea and scaled by this.
-constexpr float kHS = 1.6f;
-inline int aboveSea(float jsBlocks) { return SEA_LEVEL + (int)(jsBlocks * kHS); }
+// The original world was 128 tall with the sea at 48; the Overworld band stretches the land above the
+// sea (gen/gendefs.h vmap). Heights in the original's rules (snow above y 110, cold above 104...) are
+// mapped with the generator's own curve.
+inline int bandY(double jsY) { return (int)std::floor(vmap::owSurface(jsY)); }
+inline double jsYOf(int bandLocalY) { return vmap::owSurfaceInv(bandLocalY); }
 inline float sat(float v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 inline float smooth01(float v) { v = sat(v); return v * v * (3 - 2 * v); }
 u32 g_rng = 0x9E3779B9u;
@@ -47,7 +49,7 @@ float sunY(double time) {
   float ang = (float)(time / DAY_LEN * TAU), c = std::cos(ang), s = std::sin(ang);
   return s / std::sqrt(c * c + s * s + 0.0625f);
 }
-const int DIRX[4] = {1, -1, 0, 0}, DIRZ[4] = {0, 0, 1, -1};
+const int WDX[4] = {1, -1, 0, 0}, WDZ[4] = {0, 0, 1, -1};
 json frontJson(const WeatherFront& f) { if (!f.on) return nullptr; return json{{"kind", f.kind}, {"ux", f.ux}, {"uz", f.uz}, {"edge", f.edge}}; }
 WeatherFront frontFrom(const json& j) {
   WeatherFront f; if (!j.is_object()) return f;
@@ -114,39 +116,45 @@ float WeatherSystem::stormAt(float x, float z) const {
 // ---- what the land is like ------------------------------------------------------------------------
 WeatherColumn WeatherSystem::column(Level& lv, int x, int z) const {
   WeatherColumn c;
-  World* w = lv.worldIfOpen(REALM_MAIN);
-  Chunk* ch = w ? w->chunk(DIM_OVERWORLD, x >> 4, z >> 4) : nullptr;
-  BlockId top = AIR; bool water = false; int ground = 0;
-  if (ch) {
-    int lx = x & 15, lz = z & 15, ci = (lz * 16 + lx) * 2;
-    if (ch->climate[ci] || ch->climate[ci + 1]) { c.temp = (ch->climate[ci] - 128) / 127.f; c.humid = (ch->climate[ci + 1] - 128) / 127.f; }
-    c.h = ch->heightMap[lz * 16 + lx];
-    top = ch->get(lx, c.h, lz);
-    ground = c.h;
-    if (reg().tLiquid[top] == 1) { water = true; while (ground > 0 && reg().tLiquid[ch->get(lx, ground, lz)]) ground--; }
-    else while (ground > 0 && !reg().tSolid[ch->get(lx, ground, lz)] && !reg().tLiquid[ch->get(lx, ground, lz)]) ground--;
-  } else if (DimGenerator* g = lv.gen ? lv.gen->forDim(DIM_OVERWORLD) : nullptr) {
+  DimGenerator* g = lv.gen ? lv.gen->forDim(DIM_OVERWORLD) : nullptr;
+  BlockId top = AIR; bool water = false; int ground = SEA_LEVEL;
+  if (g) {
+    // the land as generated: biome, climate, the original's height, rivers
     ColumnSample s; g->sample(x, z, s);
+    c.biome = s.biome == 255 ? -1 : s.biome;
+    if (s.temp || s.humid) { c.temp = (s.temp - 128) / 127.f; c.humid = (s.humid - 128) / 127.f; }
     c.h = s.height; ground = s.height; top = s.top;
     if (s.water >= 0 && s.water > s.height) { water = true; c.h = s.water; }
+    c.jsH = jsYOf(s.height);
+    if (const TerrainQuery* q = g->terrain()) { TerrainColumn tc = q->terrainColumn(x, z); c.river = tc.river; if (tc.jsY >= 0) c.jsH = tc.jsY; }
   }
-  c.ocean = water && ground < SEA_LEVEL - 3;
-  c.beach = ids().sandy(top) && std::abs(ground - SEA_LEVEL) <= 3;
-  c.desert = ids().sandy(top) && ground > SEA_LEVEL + 2 && c.temp > 0.2f;
-  if (!water) c.h = ground;
+  World* w = lv.worldIfOpen(REALM_MAIN);
+  if (Chunk* ch = w ? w->chunk(DIM_OVERWORLD, x >> 4, z >> 4) : nullptr) {   // what is really there now (builds, digging)
+    int lx = x & 15, lz = z & 15, ci = (lz * 16 + lx) * 2;
+    if (!g && (ch->climate[ci] || ch->climate[ci + 1])) { c.temp = (ch->climate[ci] - 128) / 127.f; c.humid = (ch->climate[ci + 1] - 128) / 127.f; }
+    c.h = ch->heightMap[lz * 16 + lx];
+  }
+  if (c.biome >= 0) {
+    c.desert = c.biome == BIOME_DESERT; c.ocean = c.biome == BIOME_OCEAN; c.beach = c.biome == BIOME_BEACH;
+  } else {   // no biome known (another world type): guess from the surface
+    c.ocean = water && ground < SEA_LEVEL - 3;
+    c.beach = ids().sandy(top) && std::abs(ground - SEA_LEVEL) <= 3;
+    c.desert = ids().sandy(top) && ground > SEA_LEVEL + 2 && c.temp > 0.2f;
+  }
   return c;
 }
 std::string WeatherSystem::skyZone(Level& lv, float x, float z) const {
   if (leadDim != DIM_OVERWORLD || leadRealm != REALM_MAIN) return "none";
   WeatherColumn c = column(lv, ifloor(x), ifloor(z));
   float t = c.temp, hm = c.humid;
+  bool plains = c.biome == BIOME_PLAINS || c.biome < 0, forest = c.biome == BIOME_FOREST || c.biome < 0;
   if (c.desert) return "desert";
-  if (c.ocean) return "ocean";
-  if (t > 0.28f && hm < 0.02f) return "savanna";
+  if (c.ocean && c.jsH < vmap::JS_SEA - 3) return "ocean";
+  if (plains && t > 0.28f && hm < 0.02f) return "savanna";
   if (t > 0.25f && hm > 0.3f) return "jungle";
-  if (c.h <= SEA_LEVEL + 3 && hm > 0.38f && t > -0.1f) return "swamp";
-  if (t < -0.3f || c.h > aboveSea(56)) return "cold";
-  if (c.beach) return "coast";
+  if ((plains || forest || c.beach) && c.jsH <= vmap::JS_SEA + 3 && hm > 0.38f && t > -0.1f) return "swamp";
+  if (t < -0.3f || c.jsH > 104) return "cold";
+  if (c.beach || c.ocean) return "coast";
   return "temperate";
 }
 
@@ -156,7 +164,7 @@ int WeatherSystem::precipAt(World& w, float x, float y, float z) {
   std::string stamp = kind + (shower ? ":1" : ":0");
   if (pcache.stamp != stamp || clock - pcache.t > 4 || pcache.map.size() > 4000) { pcache.stamp = stamp; pcache.t = clock; pcache.map.clear(); }
   int ly = ifloor(y) - dimBase(DIM_OVERWORLD);
-  bool high = ly > aboveSea(62);
+  bool high = ly > bandY(110);
   i64 key = (((i64)(ifloor(x) >> 3) * 65536 + (ifloor(z) >> 3)) * 2) + (high ? 1 : 0);
   auto it = pcache.map.find(key);
   if (it != pcache.map.end()) return it->second;
@@ -330,8 +338,8 @@ float WeatherSystem::mistTarget(Level& lv, World& w, const std::string& zn, cons
   float ang = (float)(lv.info.time / DAY_LEN * TAU), sh = std::sin(ang);
   float morning = std::cos(ang) > -0.2f ? smooth01((sh + 0.15f) / 0.15f) * (1 - smooth01((sh - 0.05f) / 0.3f)) : 0.f;
   float low = 0;
-  if (c) low = (c->river ? 0.8f : 0.f) + (c->h < SEA_LEVEL + 10 && c->humid > 0.05f ? 0.5f : 0.f) + (zn == "swamp" ? 0.8f : 0.f);
-  if (leadPos.y - dimBase(DIM_OVERWORLD) > aboveSea(26)) low *= 0.3f;
+  if (c) low = (c->river ? 0.8f : 0.f) + (c->jsH < vmap::JS_SEA + 10 && c->humid > 0.05f ? 0.5f : 0.f) + (zn == "swamp" ? 0.8f : 0.f);
+  if (leadPos.y - dimBase(DIM_OVERWORLD) > bandY(vmap::JS_SEA + 26)) low *= 0.3f;
   m = std::max(m, morning * std::min(1.f, low) * 0.62f);
   if (zn == "swamp") m = std::max(m, 0.28f + 0.2f * (1 - envDay(lv.info.time)));
   if (seaFog > 0 && (zn == "ocean" || zn == "coast" || zn == "swamp")) m = std::max(m, 0.62f * sat(seaFog / 30) * sat((420 - seaFog) / 30 + 1));
@@ -369,7 +377,7 @@ void WeatherSystem::groundTick(Level& lv, World& w) {
     if ((hash32(x, 7, z, lv.info.seed) & 7) > 2) continue;   // puddles gather in patches, not everywhere
     int low = 0;
     for (int d = 0; d < 4; d++) {
-      int nx = x + DIRX[d], nz = z + DIRZ[d];
+      int nx = x + WDX[d], nz = z + WDZ[d];
       if (r.tSolid[w.getBlock(nx, top, nz)] || topAt(w, nx, nz) > top) low++; else if (topAt(w, nx, nz) < top) low -= 2;
     }
     if (low >= 0) w.setBlock(x, top, z, I.puddle, 0);
@@ -441,7 +449,7 @@ void WeatherSystem::strikeNear(Level& lv, World& w) {
   bool have = false; ivec3 best{0}; float bestScore = 0;
   for (int i = 0; i < 7; i++) {
     int x, z;
-    if (i == 0 && rnd() < 0.2f && p->pos.y - dimBase(DIM_OVERWORLD) > aboveSea(30) && (w.getLight(ifloor(p->pos.x), ifloor(p->pos.y + 1.6f), ifloor(p->pos.z)) >> 4) == 15) {
+    if (i == 0 && rnd() < 0.2f && p->pos.y - dimBase(DIM_OVERWORLD) > bandY(vmap::JS_SEA + 30) && (w.getLight(ifloor(p->pos.x), ifloor(p->pos.y + 1.6f), ifloor(p->pos.z)) >> 4) == 15) {
       x = ifloor(p->pos.x + (rnd() - 0.5f) * 6); z = ifloor(p->pos.z + (rnd() - 0.5f) * 6);   // out on a high top
     } else { float a = rnd() * TAU, d = 12 + rnd() * 60; x = ifloor(p->pos.x + std::cos(a) * d); z = ifloor(p->pos.z + std::sin(a) * d); }
     if (!w.chunk(DIM_OVERWORLD, x >> 4, z >> 4) || stormAt((float)x, (float)z) < 0.6f) continue;

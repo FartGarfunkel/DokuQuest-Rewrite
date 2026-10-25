@@ -8,6 +8,8 @@ namespace dq {
 // Tile arrays are split in pages (GL guarantees 2048 layers on the hardware we target).
 struct TileTextures { GLuint color[2] = {0, 0}, height[2] = {0, 0}; int page = 2048; void bind(Shader& s, int firstUnit = 0) const; };
 
+struct SkyEnv;   // render/sky.h
+
 struct FrameCtx {
   Camera cam;
   double time = 0;           // seconds since start (animation)
@@ -29,6 +31,8 @@ struct FrameCtx {
   float cloudBank = 0;       // inside the cloud bank between the Overworld and the Skylands
   vec2 windDir{1, 0};        // the way the wind blows (x, z); strength is `wind`
   bool underwater = false;
+  std::shared_ptr<const SkyEnv> sky;   // this view's full sky (render/sky.h; portal views get their own)
+  int portalDepth = 0;       // > 0 while drawing the view through a portal (render/portal_view.cpp)
   // set common.glsl uniforms on a bound shader
   void apply(Shader& s) const;
 };
