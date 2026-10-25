@@ -8,6 +8,7 @@
 #include "sim/machines.h"
 #include "sim/player.h"
 #include "core/init.h"
+#include "gen/structures_api.h"
 #include "sim/physics.h"
 
 namespace dq {
@@ -50,6 +51,79 @@ bool rsFloorOK(const World& w, int x, int y, int z, bool sink) {
   return R.block(id).key == "hopper" || k == ShapeKind::Scaffold;
 }
 
+// ---- town gates (game/towns3.js gateLeverAt / gateToggle / gateSet): the lever just inside a walled town's
+// gateway lets the gate down or draws it up. The gates are the village plan's data["gates"] (band-local y);
+// a shut gate's opening is filled with gate_barrier blocks.
+namespace {
+constexpr int GATE_H = 5;
+const json* gateLeverAt(World& w, int x, int y, int z) {
+  if (w.realm != REALM_MAIN || dimOfY(y) != DIM_OVERWORLD || !w.gen) return nullptr;
+  const StructureIndex* idx = structureIndexOf(w.gen->forDim(DIM_OVERWORLD));
+  int type = structureTypeIndex("village");
+  if (!idx || type < 0) return nullptr;
+  std::vector<const StructurePlan*> plans;
+  idx->near(x, z, 4, plans, type);
+  int ly = y & 255;
+  for (auto* S : plans) {
+    if (!S->data.contains("gates") || !S->data["gates"].is_array()) continue;
+    for (auto& G : S->data["gates"]) {
+      const json& L = G["lever"];
+      if (L.is_array() && L.size() == 3 && L[0].get<int>() == x && L[2].get<int>() == z && std::abs(L[1].get<int>() - ly) <= 1) return &G;
+    }
+  }
+  return nullptr;
+}
+bool gateIsShut(const World& w, const json& G, int base) {
+  const json& c = G["cells"];
+  if (!c.is_array() || c.empty()) return false;
+  size_t i = std::min(c.size() - 1, (c.size() / GATE_H / 2) * GATE_H);
+  return w.getBlock(c[i][0].get<int>(), base + c[i][1].get<int>(), c[i][2].get<int>()) == reg().blockId("gate_barrier");
+}
+bool gateBlocked(Level& lv, int realm, const json& G, int base) {
+  float x0 = 1e9f, x1 = -1e9f, z0 = 1e9f, z1 = -1e9f;
+  for (auto& c : G["cells"]) { x0 = std::min(x0, c[0].get<float>()); x1 = std::max(x1, c[0].get<float>()); z0 = std::min(z0, c[2].get<float>()); z1 = std::max(z1, c[2].get<float>()); }
+  x0 -= 0.4f; x1 += 1.4f; z0 -= 0.4f; z1 += 1.4f;
+  float y0 = base + G.value("h0", 0) + 0.5f, y1 = y0 + GATE_H + 0.5f;
+  const Registry& R = reg();
+  for (auto& e : lv.entities()) {
+    if (e->removed || e->realm != realm) continue;
+    bool body = e->isPlayer() ? !static_cast<Player&>(*e).dead : (R.mobs.is_object() && R.mobs.contains(e->type) && e->hp > 0);
+    if (body && e->pos.x > x0 && e->pos.x < x1 && e->pos.z > z0 && e->pos.z < z1 && e->pos.y > y0 - 1 && e->pos.y < y1) return true;
+  }
+  return false;
+}
+bool gateSet(Level& lv, World& w, const json& G, bool open, int base) {
+  const Registry& R = reg();
+  BlockId bar = R.blockId("gate_barrier");
+  if (!bar) return false;
+  if (!open && gateBlocked(lv, w.realm, G, base)) return false;
+  bool any = false;
+  for (auto& c : G["cells"]) {
+    int x = c[0], y = base + c[1].get<int>(), z = c[2];
+    if (!w.isLoaded(x, y, z)) continue;
+    BlockId id = w.getBlock(x, y, z);
+    if (open && id == bar) { w.setBlock(x, y, z, AIR, 0, SetFlags::Urgent); any = true; }
+    else if (!open && (!id || R.tReplaceable[id])) { w.setBlock(x, y, z, bar, 0, SetFlags::Urgent); any = true; }
+  }
+  if (any && G["center"].is_array()) {
+    BlockId door = G.value("stone", false) ? R.blockId("iron_door") : R.blockId("oak_door");
+    vec3 c(G["center"][0].get<float>(), base + G["center"][1].get<float>() + 2, G["center"][2].get<float>());
+    lv.fx->sound(doorSound(R.block(door ? door : R.blockId("oak_door")), open), c, 32);
+  }
+  return any;
+}
+} // namespace
+// pulling the lever: open it if it's shut, shut it if it's open. True when the lever works a gate.
+bool gateLever(Level& lv, Player* p, World& w, int x, int y, int z) {
+  const json* G = gateLeverAt(w, x, y, z);
+  if (!G) return false;
+  if (lv.isRemote()) { if (lv.net && p) lv.net->action(*p, "gateLever", json::array({x, y, z})); return true; }
+  int base = dimBase(DIM_OVERWORLD);
+  bool shut = gateIsShut(w, *G, base);
+  if (!gateSet(lv, w, *G, shut, base) && !(!shut && gateIsShut(w, *G, base)) && p) vehToast(lv, *p, "Something is in the way of the gate");
+  return true;
+}
+
 // Right click on a redstone part. True when it did something (rsplace.js useRedstone).
 static bool useRedstone(Level& lv, Player& p, World& w, ivec3 hp, const ItemDef* def) {
   const Tables& t = T();
@@ -63,6 +137,7 @@ static bool useRedstone(Level& lv, Player& p, World& w, ivec3 hp, const ItemDef*
   Redstone* rsys = redstoneOf(lv, w.realm);
   switch (t.role[id]) {
     case LEVER:
+      gateLever(lv, &p, w, hp.x, hp.y, hp.z);   // a town gate's lever works the gate too
       w.setBlock(hp.x, hp.y, hp.z, id, m ^ 8);
       lv.fx->sound(m & 8 ? "click_off" : "click", c, 16);
       return true;
@@ -86,7 +161,7 @@ static bool useRedstone(Level& lv, Player& p, World& w, ivec3 hp, const ItemDef*
       screenOpen(lv, p, json{{"pos", {hp.x, hp.y, hp.z}}});
       return true;
   }
-  if ((b.key == "iron_door" || b.key == "iron_trapdoor") && !p.creative()) { toast(lv, p, "Iron doors open with redstone \xE2\x80\x94 try a button or lever beside it"); return true; }
+  if ((b.key == "iron_door" || b.key == "iron_trapdoor") && !p.creative()) { vehToast(lv, p, "Iron doors open with redstone \xE2\x80\x94 try a button or lever beside it"); return true; }
   return false;
 }
 
@@ -104,7 +179,7 @@ static int placeRedstone(Level& lv, Player& p, World& w, ivec3 hit, int face, Bl
   int x = pt.x, y = pt.y, z = pt.z;
   if (!inWorldY(y)) return 0;
   int look = lookDir(p);
-  auto floor = [&] { if (rsFloorOK(w, x, y - 1, z, R.tSink[bid])) return true; toast(lv, p, "This needs solid ground under it"); return false; };
+  auto floor = [&] { if (rsFloorOK(w, x, y - 1, z, R.tSink[bid])) return true; vehToast(lv, p, "This needs solid ground under it"); return false; };
   int meta = -1;
   if (isRail) { if (!floor()) return 0; meta = railShapeFor(w, x, y, z, bid, look); }
   else if (isTrip) { if (!floor()) return 0; meta = 0; }
@@ -116,12 +191,12 @@ static int placeRedstone(Level& lv, Player& p, World& w, ivec3 hit, int face, Bl
       meta = n.y == 1 ? 0 : n.y == -1 ? 1 : 2 + dirOf((float)-n.x, (float)-n.z);
       int s = leverSup(meta);
       BlockId sid = w.getBlock(x + D6X[s], y + D6Y[s], z + D6Z[s]);
-      if (!R.tSolid[sid] || (R.tShape[sid] && R.tShape[sid] != ShapeKind::Slab && R.tShape[sid] != ShapeKind::Stairs)) { toast(lv, p, "Fix it to a solid block"); return 0; }
+      if (!R.tSolid[sid] || (R.tShape[sid] && R.tShape[sid] != ShapeKind::Slab && R.tShape[sid] != ShapeKind::Stairs)) { vehToast(lv, p, "Fix it to a solid block"); return 0; }
       if (meta < 2 && (look & 1)) meta |= 16;
       break;
     }
     case HOOK: {
-      if (n.y != 0) { toast(lv, p, "Tripwire hooks go on the side of a block"); return 0; }
+      if (n.y != 0) { vehToast(lv, p, "Tripwire hooks go on the side of a block"); return 0; }
       int f = dirOf((float)-n.x, (float)-n.z);
       if (!R.tSolid[w.getBlock(x + DIRX[f], y, z + DIRZ[f])]) return 0;
       meta = f; break;
@@ -176,11 +251,11 @@ bool rsItemUse(Level& lv, const json& a) {
     if (Vehicle* v = ridingOf(lv, p)) {
       if (auto* c = dynamic_cast<Minecart*>(v); c && c->kind == "furnace" && coal) {
         float add = key == "coal_block" ? 1620.f : 180.f;
-        if (c->fuel >= 3600 - 1) { toast(lv, p, "The furnace is full"); return false; }
+        if (c->fuel >= 3600 - 1) { vehToast(lv, p, "The furnace is full"); return false; }
         c->fuel = std::min(3600.f, c->fuel + add);
         consume(p, held);
         lv.fx->sound("ignite", c->pos);
-        toast(lv, p, "Coal for " + std::to_string((int)std::round(c->fuel / 60)) + " minutes of driving", "good");
+        vehToast(lv, p, "Coal for " + std::to_string((int)std::round(c->fuel / 60)) + " minutes of driving", "good");
         return false;
       }
       // from your seat in a boat with a chest: open it (ships.js)
@@ -208,7 +283,7 @@ bool rsItemUse(Level& lv, const json& a) {
   if (!def || !held) return true;
   // boats on water, carts on rails
   if (def->has("boat")) { if (!remote) placeBoatItem(lv, p, *held); return false; }
-  if (def->has("cart")) { if (!remote) { if (hasBlock) placeCartItem(lv, p, *held, hit); else toast(lv, p, "Set a minecart on a rail"); } return false; }
+  if (def->has("cart")) { if (!remote) { if (hasBlock) placeCartItem(lv, p, *held, hit); else vehToast(lv, p, "Set a minecart on a rail"); } return false; }
   // placing redstone parts, rails and mech blocks
   if (hasBlock && !def->block.empty()) {
     BlockId bid = reg().blockId(def->block);

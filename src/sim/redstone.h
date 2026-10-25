@@ -174,7 +174,7 @@ public:
   Level& lv;
 private:
   std::map<int, std::shared_ptr<Redstone>> per;
-  int useHandler = 0;
+  int useHandler = 0, actHandler = 0;
 };
 Redstone* redstoneOf(Level& lv, int realm);   // nullptr on a joined client
 
@@ -185,6 +185,8 @@ Redstone* redstoneOf(Level& lv, int realm);   // nullptr on a joined client
 // placing minecarts on rails and boats on water; using vehicles (ride, feed coal, chain carts, open chests).
 bool rsItemUse(Level& lv, const json& args);   // false = consumed
 bool rsFloorOK(const World& w, int x, int y, int z, bool sink);
+// a walled town's gate lever (towns3.js): toggles the gate; on a joined client asks the host (netAction "gateLever")
+bool gateLever(Level& lv, Player* p, World& w, int x, int y, int z);
 
 void registerRedstone();   // level systems + entity factories (called from initCore)
 

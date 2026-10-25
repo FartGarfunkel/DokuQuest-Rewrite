@@ -975,8 +975,15 @@ void Redstone::dispense(int x, int y, int z) {
 // ------------------------------------------------------------------------------------------ the level side
 RedstoneLevel::RedstoneLevel(Level& l) : lv(l) {
   if (lv.events) useHandler = lv.events->on("itemUse", [this](const json& a) { return rsItemUse(lv, a); });
+  // netAction [player, "gateLever", [x, y, z]]: a guest pulled a town gate's lever
+  if (lv.events) actHandler = lv.events->on("netAction", [this](const json& a) {
+    if (!a.is_array() || a.size() < 3 || a[1] != "gateLever" || !a[2].is_array() || a[2].size() < 3) return true;
+    Player* p = a[0].is_string() ? playerNamed(lv, a[0].get<std::string>()) : nullptr;
+    gateLever(lv, p, lv.world(p ? p->realm : REALM_MAIN), a[2][0].get<int>(), a[2][1].get<int>(), a[2][2].get<int>());
+    return false;
+  });
 }
-RedstoneLevel::~RedstoneLevel() { if (lv.events && useHandler) lv.events->off(useHandler); }
+RedstoneLevel::~RedstoneLevel() { if (lv.events && useHandler) lv.events->off(useHandler); if (lv.events && actHandler) lv.events->off(actHandler); }
 Redstone* RedstoneLevel::of(int realm) {
   if (lv.isRemote()) return nullptr;
   auto it = per.find(realm);

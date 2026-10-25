@@ -1,6 +1,7 @@
 // sim/build.cpp — building rules (port of game/build.js, the player side of game/blocks2.js,
 // blockfx.js flint and steel, furniture.js sitting and shelves, local.js Carry On / ground storage).
 #include "sim/controller.h"
+#include "sim/vehicles.h"
 #include "sim/rules.h"
 #include "sim/blockfx.h"
 #include "sim/worldsys.h"
@@ -726,6 +727,7 @@ bool PlayerController::sitOn(int x, int y, int z) {
 void PlayerController::dismount() {
   Entity* e = p.riding ? lv.entity(p.riding) : nullptr;
   if (auto* s = dynamic_cast<SeatEntity*>(e)) s->standUp(lv, p);
+  if (auto* v = asVehicle(e)) { v->dismount(lv, p); return; }   // carts, boats, the ship (sim/vehicles)
   p.riding = 0;
 }
 

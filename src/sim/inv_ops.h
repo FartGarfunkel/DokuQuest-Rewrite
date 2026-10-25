@@ -32,6 +32,8 @@ struct InvOpen {
   bool ender = false;               // the ender chest (player's own 27 slots)
   bool heldPack = false;            // the backpack in your hand
   bool single = false;              // a chest that must not join its neighbour
+  std::function<json*()> entItems;  // a container on an entity (chest/hopper carts, boat chests): its items array, null when gone
+  std::string entTitle;
 };
 
 class InvSession {

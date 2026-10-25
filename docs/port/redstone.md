@@ -1,7 +1,7 @@
 # Port notes: redstone, rails & minecarts, boats & ships, machines
 
 Workstream files: `src/sim/redstone*.{h,cpp}`, `sim/rsplace.cpp`, `sim/minecart.{h,cpp}`, `sim/vehicles.{h,cpp}`,
-`sim/machines.{h,cpp}`, `data/machines.json`, `tools/test_redstone.cpp`. Test: `build/test_redstone` (78 checks; the
+`sim/machines.{h,cpp}`, `data/machines.json`, `tools/test_redstone.cpp`. Test: `build/test_redstone` (81 checks; the
 expected values are what the original's probes `redstone06.js` / `rsplace06.js` print on 0.9.0.90, plus ship084.js,
 trains, machines, TNT and save/load).
 
@@ -40,12 +40,31 @@ trains, machines, TNT and save/load).
 - Pressed buttons and lit ore are scheduled from `onBlockChanged`, so presses arriving over the network work too.
 - Pistons don't push across a dimension band edge.
 
+## Client side (render/vehicle_layer.cpp, registered by `registerVehicleLayers()` in client/session.cpp)
+- Voxel models built from the original's box lists (minecart.js, trains.js seat/couplings, boats2.js hull and oars,
+  vehicles.js mast/boom/sail/pennant, ships.js hull/mast/yard/sail/flag/helm, mech.js + machines.js parts), coloured
+  per face from the tiles (pack-aware, rebuilt when the pack changes); 1/32 voxels (the ship and windmill sails 1/16).
+- Animated like the original: cart wheels roll, TNT carts and lit TNT flash, the furnace glows while burning, sails
+  fill and swing with the boom/yard, pennants stream downwind, oars row, axles/windmills/waterwheels/millstone/saw/
+  rollers/harvester arms turn with their group's angle, belt slats run, piston heads and pushed blocks slide.
+- Riding glue: the controller (sim/controller.cpp) emits `itemUse` (mounting, levers...) and its sneak-dismount calls the
+  vehicle's own dismount (one line in sim/build.cpp `PlayerController::dismount`); `afterPlayerMove` calls `vehicleInput`
+  from the app's input when the controller didn't, then
+  `vehiclesAfterPlayerMove`. Container screens: "screenOpen" -> `openInventory` (block pos, or `InvOpen::entItems`
+  for chest/hopper carts and boat chests — two fields added to sim/inv_ops InvOpen, read/written in InvSession).
+- Dev aid: `DQ_DEV_RS=1` sets carts, boats, the ship and a windmill in front of you.
+
+## Town gates (game/towns3.js gateLeverAt / gateToggle / gateSet)
+- `gateLever()` in sim/rsplace.cpp: using the lever just inside a walled town's gateway opens a shut gate (removes its
+  `gate_barrier` cells) or lets it down again (not on anyone standing in it; "Something is in the way of the gate"),
+  with the door/iron-door sound. Gates come from the village plan's `data["gates"]` (gen/structures_villages.cpp).
+  A joined client asks the host (`netAction` "gateLever"). Tested on a generated walled village (Glenton).
+- Not ported (towns workstream): `gatesTick` — the town opening its gates by day, shutting them at dusk, the watch
+  opening for you at night, using the barrier itself to open it. Until then gates stay as generated (shut) or as the
+  lever left them.
+
 ## Left to do
-- **render/vehicle_layer** (not written yet): voxel models + animation for carts (incl. the furnace double cart and
-  couplings), rowboat/sailboat/ship (sails, boom, pennant, oars), windmills/waterwheels/axles/millstone/sawmill/belts/
-  crusher/harvester, PistonAnim pieces and primed TNT. Meshes per the original's box lists (vehicles.js, boats2.js,
-  ships.js, mech.js, machines.js). That layer should also call `vehicleInput` (fallback from `app.input` when the
-  controller didn't this frame) and `vehiclesAfterPlayerMove` in `afterPlayerMove`.
+- The ship/boat water mask (hide water inside hulls, a depth-only lid in boats2.js).
 - Riding on joined clients (vehicles are ghosts there: forward input with `lv.net->action`), net `ride/own/unown`.
-- Container screens (UI) for `screenOpen`; Carry On wiring (gameplay); torch placement stays with gameplay rules.
+- Carry On wiring (gameplay); torch placement stays with gameplay rules.
 - trains.js pets: creatures must honour `riding`/`data.mountedOn`; travel.js carriage; seas.js.

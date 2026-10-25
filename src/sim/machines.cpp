@@ -405,7 +405,7 @@ void mechPlaced(Level& lv, Player* p, World& w, int x, int y, int z, BlockId id,
     Mechanics* m = mechanicsOf(lv, w.realm);
     MechNode n; n.p = {x, y, z}; n.id = id; n.kind = k; n.axis = std::min(2, w.getMeta(x, y, z) & 3);
     Mechanics::Source s = m ? m->sourcePower(n) : Mechanics::Source{0, false};
-    toast(lv, *p, s.blocked ? "The sails need open air all around \xE2\x80\x94 4 blocks every way" : (y & 255) < SEA_LEVEL + 14 ? "A windmill turns best high up" : "The sails catch the wind", s.blocked ? "warn" : "good");
+    vehToast(lv, *p, s.blocked ? "The sails need open air all around \xE2\x80\x94 4 blocks every way" : (y & 255) < SEA_LEVEL + 14 ? "A windmill turns best high up" : "The sails catch the wind", s.blocked ? "warn" : "good");
   }
 }
 
