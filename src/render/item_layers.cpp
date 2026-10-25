@@ -7,6 +7,9 @@
 #include "assets/voxel_paint.h"
 #include "assets/gui_textures.h"
 #include "core/registry.h"
+#include "core/item_glint.h"
+#include "render/rod_tip.h"
+#include "sim/fishing.h"
 #include <cstdlib>
 #include <cstdio>
 
@@ -21,6 +24,8 @@ void registerItemLayers() {
   registerPileLayer();   // piles and placed backpacks (render/pile_layer.cpp)
   registerLecternLayer();   // books on lecterns (render/lectern_layer.cpp)
   registerChestLayer();     // chest lids that open with the chest's screen (render/chest_layer.cpp)
+  registerFpBow();          // the bow drawn in first person (render/fp_bow.cpp)
+  registerSpawnerLayer();   // the spinning monster inside a monster cage (render/spawner_layer.cpp)
 }
 
 // ------------------------------------------------------------------ the arm
@@ -122,6 +127,7 @@ void HeldItemLayer::update(GameSession& s, double dt) {
     Input& in = s.app.input;
     if (in.pressed(Act::Attack) && !s.target.hit) swingArm();
     if (in.pressed(Act::Use) && s.target.hit) swingArm();
+    else if (in.pressed(Act::Use) && p->held().id == "fishing_rod") swingArm();   // cast / reel in
     if (s.breaking) { swinging = true; if (swing == 0) swing = 0.0001f; }
   }
   if (swinging || swing > 0) { swing += fdt * 3.6f; if (swing >= 1) swing = 0; }
@@ -171,7 +177,10 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   auto drawArm = [&](const mat4& m) { VR.draw(arm.gl, m * arm.matrix(), L); drawFirstPersonSleeve(m, L); };
 
   auto holdIn = [&](float side, const ItemStack& stack, float lift) {
-    const VoxelModel& im = itemModel(stack.id);
+    // a fishing rod with its float out has no line hanging from the tip (fishing.js: fishing_rod_cast)
+    bool rod = stack.id == "fishing_rod";
+    float wind = rod ? castWindOf(*p) : 0.f;
+    const VoxelModel& im = itemModel(rod ? std::string("fishing_rod_cast") : stack.id);   // (the hanging float is drawn live from the tip)
     bool tool = im.kind != VoxelModel::Block && isHandheld(stack.id);
     float e = side > 0 ? eat : 0, pitch = 1.62f + e * 0.35f, yaw = side * 0.32f;
     mat4 am = glm::translate(mat4(1), vec3(side * (FP_HAND.x + (side > 0 ? bx - e * 0.32f : -bx * 0.6f)),
@@ -179,6 +188,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     am = glm::rotate(am, yaw, vec3(0, 1, 0));
     am = glm::rotate(am, pitch, vec3(1, 0, 0));
     if (side > 0 && swing > 0) am = mcSwing(am, 1, swing, false);
+    if (side > 0 && wind > 0) { am = glm::translate(am, vec3(0, 0.1f * wind, 0.05f * wind)); am = glm::rotate(am, -0.75f * std::sin(wind * PI / 2), vec3(1, 0, 0)); }   // the rod comes back over the shoulder before the cast
     drawArm(am);
     // the fist, turned back to face the way you look
     mat4 m = glm::translate(am, vec3(0, 0.3f - 0.6f, -0.02f));
@@ -198,15 +208,40 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       m = glm::rotate(m, side * (-1.5f + 0.35f + T[4] + (tool ? 0.22f : 0.f)), vec3(0, 1, 0));   // tools turn a little more face-on
       m = glm::rotate(m, side * (0.42f + T[5]), vec3(0, 0, 1));
       m = glm::scale(m, vec3(0.68f + T[3] + (tool ? 0.26f : 0.f)));   // swords and tools are drawn big, like Minecraft's first person
+      if (rod) {   // a rod points out ahead with its tip (and the float hanging from it) in view, not up out of the picture
+        static float RT[4] = {0.35f, -0.6f, 0.f, -0.08f}; static bool rl = false;
+        if (!rl) { rl = true; if (const char* v = std::getenv("DQ_DEV_ROD")) std::sscanf(v, "%f,%f,%f,%f", &RT[0], &RT[1], &RT[2], &RT[3]); }
+        m = glm::rotate(m, side * RT[2], vec3(0, 1, 0)); m = glm::rotate(m, side * RT[0], vec3(0, 0, 1)); m = glm::rotate(m, RT[1], vec3(1, 0, 0));
+        m = glm::scale(m, vec3(1 + RT[3]));
+      }
       // the grip goes in the fist: the handle end of a tool, the bottom of anything else
       m = glm::translate(m, tool ? vec3(0.3f * side, 0.28f, 0) : vec3(0, 0.3f, 0));
       if (side < 0) m = glm::scale(m, vec3(-1, 1, 1));
     }
-    bool glint = stack.id == "enchanted_book" || stack.id == "experience_bottle" || (stack.tag.is_object() && (stack.tag.contains("en") || stack.tag.contains("ench")));
+    bool glint = itemGlints(stack);
     if (im.ready()) VR.draw(im.gl, m * im.matrix(), L, vec4(0), glint ? 1.f : 0.f);
     if (itemHook && im.ready()) over.push_back({stack, m});
+    if (rod && im.ready() && side > 0) {   // the line leaves the tip of the rod: view space -> world
+      vec3 v = vec3(m * vec4(0.47f, 0.47f, 0, 1));
+      vec3 R = f.cam.right(), Fw = f.cam.forward(), Up = glm::cross(R, Fw);
+      setRodTip(p->id, f.cam.pos + glm::dvec3(R * v.x + Up * v.y - Fw * v.z), f.time);
+    }
   };
 
+  if (p->hang || p->climb) {
+    // local.js handState: hanging from a ledge (or hauling yourself up): both hands up on the edge just above your
+    // eyes, coming up from the lower corners; hand over hand while you shimmy along it
+    float k = p->climb ? std::min(1.f, p->climb->t / 0.55f) : 0.f;
+    float sh = p->hang && p->hang->shimT > 0 ? 1.f : 0.f, ss = std::sin(p->hang ? p->hang->shimPh : 0.f), sc = std::cos(p->hang ? p->hang->shimPh : 0.f);
+    for (float side : {-1.f, 1.f}) {
+      float reach = sh * (side * ss * 0.06f + std::max(0.f, side * sc) * 0.05f);
+      mat4 a = glm::translate(mat4(1), vec3(side * 0.42f, -0.2f - k * 0.35f + std::sin((float)f.time * 2 + side) * 0.008f + reach, -0.38f));
+      a = glm::rotate(a, -side * (0.35f - k * 0.2f), vec3(0, 0, 1)); a = glm::rotate(a, PI - 0.15f - k * 0.9f, vec3(1, 0, 0));
+      drawArm(a);
+    }
+    VR.end();
+    return;
+  }
   if (p->carrying.is_object()) {   // Carry On (local.js handState): whatever you hold sits in both arms in front of you
     drawCarriedThing(p->carrying, glm::translate(mat4(1), vec3(bx, -0.62f + by - eq * 0.5f, -0.95f)), true, L, vec4(0));
     for (float side : {-1.f, 1.f}) {
@@ -260,13 +295,14 @@ void DroppedItemLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
     // the original's sizes: a quarter-block cube, a half-block picture
     float sc = im.kind == VoxelModel::Block ? 0.25f : 0.5f;
     m = glm::scale(m, vec3(sc));
-    VR.draw(im.gl, m * im.matrix(), L);
+    float gl = itemGlints(st) ? 1.f : 0.f;   // enchanted things shimmer on the ground too
+    VR.draw(im.gl, m * im.matrix(), L, vec4(0), gl);
     // bigger stacks show more copies (2, 3, 4 or 5), a little scattered
     int n = st.n, copies = n > 48 ? 5 : n > 32 ? 4 : n > 16 ? 3 : n > 1 ? 2 : 1;
     for (int c = 1; c < copies; c++) {
       mat4 m2 = im.kind == VoxelModel::Block ? glm::translate(m, vec3(std::sin(c * 2.4f) * 0.45f, c * 0.35f, std::cos(c * 2.4f) * 0.45f))
                                              : glm::translate(m, vec3(std::sin(c * 2.4f) * 0.12f, std::cos(c * 1.7f) * 0.1f, -c * 0.12f));
-      VR.draw(im.gl, m2 * im.matrix(), L);
+      VR.draw(im.gl, m2 * im.matrix(), L, vec4(0), gl);
     }
   }
   if (begun) VR.end();

@@ -1,6 +1,8 @@
 // render/char_layer.cpp — players drawn as voxel characters (render/skins.js avatarDraws, game/anim.js,
 // game/capes.js, game/carried.js, game/charparts.js, render/gear3d.js gearDraws).
 #include "render/char_layer.h"
+#include "core/item_glint.h"
+#include "render/rod_tip.h"
 #include "assets/cape_tex.h"
 #include "render/item_layers.h"
 #include "client/app.h"
@@ -55,7 +57,7 @@ float st0yaw(const CharPose& ps) { return ps.hasBodyYaw && !ps.fp ? ps.bodyYaw :
 struct Dial { std::string id; mat4 m; vec2 light; };
 std::vector<Dial>* g_dials = nullptr;
 // skins.js held(): an item in a fist (fore = the forearm's frame, model pixels about the elbow; side -1 = the left hand)
-void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint) {
+void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0)) {
   if (id == "fishing_rod") id = "fishing_rod_tp";
   const VoxelModel& im = itemModel(id);
   if (!im.ready()) return;
@@ -71,8 +73,9 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
     hm = glm::scale(hm, vec3((1 + T[2]) / CHAR_PX)) * heldMat(id);
   }
   (void)side;
+  if (rodOwner && (id == "fishing_rod_tp" || id == "fishing_rod_cast")) setRodTip(rodOwner, camPos + glm::dvec3(hm * vec4(0.47f, 0.47f, 0, 1)), now);
   if (g_dials && isInstrument(id) && im.kind != VoxelModel::Block) g_dials->push_back({id, hm, vec2(light.sky, light.block)});
-  voxelRenderer().draw(im.gl, hm * im.matrix(), light, tint);
+  voxelRenderer().draw(im.gl, hm * im.matrix(), light, tint, glint ? 1.f : 0.f);
 }
 std::string toolType(const std::string& id) { const ItemDef* d = reg().item(id); return d && d->hasTool ? d->tool.type : std::string(); }
 bool rx(const std::string& s, std::initializer_list<const char*> parts) { for (auto p : parts) if (s.find(p) != std::string::npos) return true; return false; }
@@ -281,8 +284,8 @@ CharWear charWearOf(const Player& p, const CharacterSpec& spec, bool withCarried
       else w.cape = spec.cape;
     }
   }
-  if (!p.inv.empty() && p.selected >= 0 && p.selected < (int)p.inv.size() && !p.inv[p.selected].empty()) w.held = p.inv[p.selected].id;
-  if (!p.offhand.empty() && !p.offhand[0].empty()) w.off = p.offhand[0].id;
+  if (!p.inv.empty() && p.selected >= 0 && p.selected < (int)p.inv.size() && !p.inv[p.selected].empty()) { w.held = p.inv[p.selected].id; w.heldGlint = itemGlints(p.inv[p.selected]); if (w.held == "fishing_rod") { w.rodOwner = p.id; if (p.data.value("rodOut", false)) w.held = "fishing_rod_cast"; } }
+  if (!p.offhand.empty() && !p.offhand[0].empty()) { w.off = p.offhand[0].id; w.offGlint = itemGlints(p.offhand[0]); }
   if (withCarried) for (int i = 0; i < 9 && i < (int)p.inv.size(); i++) if (i != p.selected && !p.inv[i].empty()) w.carried.push_back(p.inv[i].id);
   return w;
 }
@@ -325,7 +328,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   }
   ps.capeA = st.capeA; ps.capeSway = st.capeSway;
   ps.fp = fp;
-  ps.fpLeftArm = fp && wear.off.empty() && !ps.hang && !(p.bowPull > 0);
+  ps.fpLeftArm = fp && wear.off.empty() && !ps.hang && !(ps.climb > 0) && !(p.bowPull > 0);
   if (wear.held == "bow" && p.bowPull > 0) wear.held = p.bowPull < 0.45f ? "bow_pulling_0" : p.bowPull < 0.85f ? "bow_pulling_1" : "bow_pulling_2";
   // game/elytra.js: gliding on the wings (they open, you lie flat, arms swept back)
   ps.wingOpen = st.wing;
@@ -364,7 +367,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   CharDrawOpts o;
   o.light = VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f};
   o.tint = p.hurtTime > 0 ? vec4(1, 0.15f, 0.1f, 0.4f) : vec4(0);
-  o.fp = fp;
+  o.fp = fp; o.time = f.time; o.camPos = f.cam.origin;
   o.detail = fp || glm::dot(rel, rel) < 56.f * 56.f;   // far off, the detail is lost anyway: past 56 blocks only the skin
   drawCharacter(*spec, ps, wear, base, o);
   if (carrying && !fp && !ps.sleep && ps.deathT <= 0) {   // skins.js: it sits against the chest, in front of the arms
@@ -489,8 +492,8 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   // ---- what's in their hands (third person): Minecraft's thirdperson_righthand / lefthand ----
   if (!fp) {
     bool bowDraw = ps.bow > 0 && wear.held.rfind("bow", 0) == 0;
-    if (!wear.held.empty()) heldInHand(bowDraw ? R.part[CP_ARML_D] : R.part[CP_ARMR_D], wear.held, bowDraw ? -1.f : 1.f, light, tint);
-    if (!wear.off.empty() && !bowDraw) heldInHand(R.part[CP_ARML_D], wear.off, -1.f, light, tint);
+    if (!wear.held.empty()) heldInHand(bowDraw ? R.part[CP_ARML_D] : R.part[CP_ARMR_D], wear.held, bowDraw ? -1.f : 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos);
+    if (!wear.off.empty() && !bowDraw) heldInHand(R.part[CP_ARML_D], wear.off, -1.f, light, tint, wear.offGlint);
   }
   // ---- a backpack: the pack itself, straps over the shoulders (in first person, just the straps down your chest) ----
   const mat4& B = R.body;

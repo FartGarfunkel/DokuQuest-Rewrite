@@ -169,16 +169,17 @@ int main(int argc, char** argv) {
   }
   if (doInv) {
     printf("== sneak + use with a block in hand on stations places the block (furnish.js)\n");
-    for (const char* st : {"chest", "furnace", "crafting_table", "barrel"}) {
+    for (int fly = 0; fly < 2; fly++) for (const char* st : {"furnace", "chest", "crafting_table", "barrel"}) {   // fly 1: creative flight clears p.sneaking
       if (!reg().blockId(st)) continue;
-      r.reset(); screens.clear();
+      r.reset(); screens.clear(); r.p->flying = fly == 1;
       r.w().setBlock(0, r.Y, -2, reg().blockId(st), 0); r.lv->tick(TICK_DT);
       r.p->inv[0] = ItemStack("cobblestone", 8); r.p->selected = 0;
       r.look(vec3(0.5f, r.Y + 1.0f, -1.5f));   // the station's top face
-      PlayerInput in; in.sneak = true; in.use = true; in.usePressed = true;
+      PlayerInput in; in.sneak = true; r.step(0.15, in); r.look(vec3(0.5f, r.Y + 1.0f, -1.5f));   // (the first frames settle the eye height; aim after them)
+      in.use = true; in.usePressed = true;
       r.step(0.05, in); in.usePressed = false; r.step(0.3, in);
       bool placed = r.w().getBlock(0, r.Y + 1, -2) == reg().blockId("cobblestone");
-      if (!placed || !screens.empty()) issue("SNEAK PLACE", st, std::string(placed ? "placed" : "not placed") + (screens.empty() ? "" : ", opened '" + screens[0] + "'"));
+      if (!placed || !screens.empty()) issue("SNEAK PLACE", std::string(st) + (fly ? " (flying)" : ""), std::string(placed ? "placed" : "not placed") + (screens.empty() ? "" : ", opened '" + screens[0] + "'"));
     }
     printf("== inventory: clicks, drags, equip and unequip never make items\n");
     auto total = [&](Player& p) {

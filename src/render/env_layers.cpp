@@ -509,6 +509,7 @@ void registerEnvironmentLayers() {
   registerRenderLayer([](GameSession&) { return std::make_shared<CloudLayer>(); });
   registerRenderLayer([](GameSession&) { return std::make_shared<WeatherFxLayer>(); });
   registerRenderLayer([](GameSession&) { return std::make_shared<ParticleLayer>(); });
+  registerDynLights();
 }
 
 } // namespace dq

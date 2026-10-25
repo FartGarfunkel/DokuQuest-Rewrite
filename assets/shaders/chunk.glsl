@@ -84,23 +84,12 @@ const float MAXD = 4.0;        // deepest relief, in micro-voxels
 float cellDepth(vec2 cell, float layer) {
   return floor(tileHeightAt(fract((cell + 0.5) / VOX), layer).r * MAXD + 0.5);
 }
-float cellDepthF(vec2 cell, float layer) { return tileHeightAt(fract((cell + 0.5) / VOX), layer).r * MAXD; }
-// each micro-voxel's tilt from its neighbours' depths (a normal map made from the height field, for any
-// pack): in the face's tangent frame, x along T, y along B, z out of the face
-vec3 bumpNormal(vec2 cell, float layer, float k) {
-#if MICRO_VOXELS >= 2
-  // Sobel over the 3x3 neighbourhood: one odd micro-voxel no longer tilts its neighbours' lighting
-  float h00 = cellDepthF(cell + vec2(-1.0, -1.0), layer), h10 = cellDepthF(cell + vec2(0.0, -1.0), layer), h20 = cellDepthF(cell + vec2(1.0, -1.0), layer);
-  float h01 = cellDepthF(cell + vec2(-1.0, 0.0), layer), h21 = cellDepthF(cell + vec2(1.0, 0.0), layer);
-  float h02 = cellDepthF(cell + vec2(-1.0, 1.0), layer), h12 = cellDepthF(cell + vec2(0.0, 1.0), layer), h22 = cellDepthF(cell + vec2(1.0, 1.0), layer);
-  float gx = (h20 + 2.0 * h21 + h22) - (h00 + 2.0 * h01 + h02);
-  float gy = (h02 + 2.0 * h12 + h22) - (h00 + 2.0 * h10 + h20);
-  return normalize(vec3(gx * 0.125 * k * 0.85, gy * 0.125 * k * 0.85, 1.0));
-#else
-  float hl = cellDepthF(cell - vec2(1.0, 0.0), layer), hr = cellDepthF(cell + vec2(1.0, 0.0), layer);
-  float hd = cellDepthF(cell - vec2(0.0, 1.0), layer), hu = cellDepthF(cell + vec2(0.0, 1.0), layer);
-  return normalize(vec3((hr - hl) * 0.5 * k * 0.85, (hu - hd) * 0.5 * k * 0.85, 1.0));
-#endif
+// the smooth sub-voxel normal of the surface at a point of the tile (baked once per tile set from the exact,
+// blurred heights, tile_relief.cpp): in the face's tangent frame, x along T, y along B, z out of the face.
+// `k` fades the tilt (distance, grazing angles).
+vec3 smoothNormal(vec4 nm, float k) {
+  vec2 xy = (nm.xy * 2.0 - 1.0) * k;
+  return normalize(vec3(xy, sqrt(max(1.0 - dot(xy, xy), 0.01))));
 }
 // light on a tilted micro-voxel: the sun where the sky reaches, and a key light from above for everything
 // (so the bumps read in a torch-lit cave too). Returns a multiplier for the face's colour.
@@ -164,13 +153,17 @@ void main() {
       uv = (cell + 0.5) / VOX;
       vec3 nW = T * nt.x + B * nt.y + N * nt.z;
       shade *= axisShade(nW) / axisShade(N);                   // the side walls of micro-voxels shade like block faces
-      shade *= 1.0 - 0.07 * hitDepth;                         // deeper is darker
+      shade *= 1.0 - 0.05 * hitDepth;                         // deeper is darker
       float skyLit = smoothstep(0.45, 1.0, vLight.x) * uDaylight;
       float sunN = max(dot(N, uSunDir), 0.0);
       sunMod = 1.0 + 0.22 * skyLit * (max(dot(nW, uSunDir), 0.0) - sunN);
+      // the smooth surface where the ray lands: crevice darkening everywhere, and on a column's top the sub-voxel
+      // normal (round stones, bevelled gems, soft mortar lips)
+      vec2 hpT = clamp(p + dir * hitDepth, cell, cell + 1.0);
+      vec4 sm = tileNormalAt(hpT / VOX, layer);
+      shade *= mix(1.0, sm.z, scale);
       if (nt.z > 0.5) {
-        // a column's top: tilted the way the height field slopes there (round stones, bevelled gems)
-        vec3 bt = bumpNormal(cell, layer, scale);
+        vec3 bt = smoothNormal(sm, scale);
         sunMod *= mix(1.0, bumpLight(normalize(T * bt.x + B * bt.y + N * bt.z), N, skyLit), scale);
       }
 #if RELIEF_SHADOW
@@ -196,14 +189,13 @@ void main() {
 #endif
     }
 #else
-    // shaded micro-voxels (the Legacy-friendly look): recessed ones darker, each one lit as if tilted the
-    // way the height field slopes there (bump mapping from the tile's own colours: stones bulge, mortar sinks)
-    vec2 cell = floor(uv * VOX);
-    float h = cellDepthF(cell, layer);
-    vec3 bt = bumpNormal(cell, layer, 1.3);
+    // shaded micro-voxels (the Legacy-friendly look): no geometry, one smooth baked normal per pixel for the
+    // lighting (stones bulge, mortar sinks) and the crevice darkening
+    vec4 sm = tileNormalAt(uv, layer);
+    vec3 bt = smoothNormal(sm, 1.0);
     float skyLit = smoothstep(0.45, 1.0, vLight.x) * uDaylight;
     float bl = bumpLight(normalize(T * bt.x + B * bt.y + N * bt.z), N, skyLit);
-    shade *= mix(1.0, (1.0 - h * 0.065) * bl, fade);
+    shade *= mix(1.0, (1.0 - sm.w * 0.22) * sm.z * bl, fade);
 #endif
   }
 #endif
@@ -218,7 +210,7 @@ void main() {
   }
   if (uPass != 2) col.a = 1.0;
 
-  vec3 lc = lighting(vLight.x, vLight.y, (vMat & 1u) != 0u);
+  vec3 lc = lighting(vLight.x, uDynN > 0 ? max(vLight.y, dynLight(vRel, N)) : vLight.y, (vMat & 1u) != 0u);
   float emis = tileHeightAt(fract(uv), layer).g;
   lc = max(lc, vec3(emis));
   if (lava) lc = vec3(1.0) * (0.92 + 0.16 * vnoise(vWorld.xz * 1.3 + vec2(uTime * 0.25, -uTime * 0.17)));

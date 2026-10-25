@@ -169,7 +169,7 @@ bool SkyRenderer::init() {
   return shader.load("sky.glsl", "sky.glsl");
 }
 
-void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd) {
+void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd, bool primary) {
   Level& lv = const_cast<Level&>(clv);
   g_settings = f.settings;
   int realm = f.cam.realm;
@@ -180,8 +180,10 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd) {
   if (realm == REALM_MAIN && (e.mist > 0.01f || e.raining > 0.01f)) {
     if (World* w = lv.worldIfOpen(realm)) {
       int sky = w->getLight(ifloor(f.cam.pos.x), ifloor(f.cam.pos.y), ifloor(f.cam.pos.z)) >> 4;
-      static float open = 1; float want = std::clamp((sky - 3) / 9.f, 0.f, 1.f);
-      open += (want - open) * 0.05f;
+      static float openMain = 1; float want = std::clamp((sky - 3) / 9.f, 0.f, 1.f);
+      float viewOpen = want;   // a portal view takes its far side as it is; the eased value is the player's own
+      float& open = primary ? openMain : viewOpen;
+      if (primary) open += (want - open) * 0.05f;
       if (open < 0.999f) {
         SkyEnv c = baseEnv(lv, d, realm, g_settings);
         auto mixv = [&](vec3 a, vec3 b) { return b + (a - b) * open; };
@@ -206,7 +208,7 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd) {
   if (e.cloud > 0 && !e.underwater) { float s = smoothstepf(0.f, 0.75f, e.cloud); fr = vec2(fr.x * (1 - s), lerpf(fr.y, 14, s)); }
   if (e.mist > 0.01f && !e.underwater) { float end = 24 + (fr.y - 24) * std::pow(1 - std::min(1.f, e.mist), 2.f); fr = vec2(std::min(fr.x, end * 0.12f), std::min(fr.y, end)); }
   e.fogRange = fr;
-  env = e; g_env = e;
+  if (primary) { env = e; g_env = e; }
   f.sky = std::make_shared<const SkyEnv>(e);
   WeatherSystem* W = weatherOf(lv);
   f.dim = d;
@@ -219,8 +221,8 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd) {
   f.rain = e.raining; f.thunder = W && d == DIM_OVERWORLD ? W->thunderK : 0.f;
   f.flash = W && W->flashT > 0 ? std::min(1.f, W->flashT / 0.2f) : 0.f;
   f.mist = e.mist; f.sea = e.sea; f.cloudBank = e.cloud; f.underwater = e.underwater;
-  if (W && f.settings) W->farRange = (float)std::max(f.settings->farTerrain, rd * 16);
-  skyT = f.time;
+  if (primary && W && f.settings) W->farRange = (float)std::max(f.settings->farTerrain, rd * 16);
+  if (primary) skyT = f.time;
 }
 
 void SkyRenderer::draw(const FrameCtx& f) {

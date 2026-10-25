@@ -236,6 +236,8 @@ void fishingTick(Level& lv, double dt) {
       else if (it->second <= 0) { it->second = 0; castLine(lv, *p); }
     }
     if (p->dead && fishingOf(lv, *p)) endFishing(lv, *p, false);
+    bool out = fishingOf(lv, *p) != nullptr;   // (the third-person hand draws the rod without its hanging line while the float is out)
+    if (p->data.value("rodOut", false) != out) p->data["rodOut"] = out;
   }
 }
 

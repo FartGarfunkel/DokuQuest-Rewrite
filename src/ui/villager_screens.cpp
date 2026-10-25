@@ -123,7 +123,7 @@ public:
     float textH = std::max(44 * z, textSize(F_BODY, t.text.c_str(), mw0).y);
     std::vector<float> oh;
     float optsH = 0;
-    if (t.mode != "shop") for (auto& o : t.opts) { float h = std::max(30 * z, textSize(F_MID, o.label.c_str(), labW).y + 10 * z); oh.push_back(h); optsH += h + 4 * z; }
+    if (t.mode != "shop") for (auto& o : t.opts) { float h = std::max(30 * z, textSize(F_MID, o.label.c_str(), labW - 6 * z).y + 10 * z); oh.push_back(h); optsH += h + 4 * z; }
     float ch = pad * 2 + std::max(80 * z, 30 * z + textH + 14 * z + optsH);
     ch = std::min(ch, H - 16 * z);
     // sits above the hotbar (92 px up) like .npc-talk; on a short window it moves down rather than off the top
@@ -131,7 +131,7 @@ public:
     ImVec2 c0((W - cw) / 2, std::max(8 * z, bottom - ch));
     if (c0.y + ch > H - 8 * z) c0.y = H - 8 * z - ch;
     ImGui::SetNextWindowPos(c0); ImGui::SetNextWindowSize(ImVec2(cw, ch));
-    ImGui::Begin("##npc-talk", nullptr, CARD);
+    ImGui::Begin("##npc-talk", nullptr, CARD | ImGuiWindowFlags_NoNavInputs);
     ImDrawList* dl = ImGui::GetWindowDrawList();
     woodCard(dl, c0, c0 + ImVec2(cw, ch), 0x3e2e1e, 0x2e2216, 0x7a5a38, 0x1a0f06);
     ImVec2 fp = c0 + ImVec2(pad, pad);
@@ -149,21 +149,32 @@ public:
     std::string typed = t.text.substr(0, (size_t)shown);
     text(dl, F_BODY, ImVec2(mx, fp.y + 30 * z), col::text, typed.c_str(), mw);
     if (t.mode != "shop") {
-      ImGui::SetCursorScreenPos(ImVec2(mx, fp.y + 30 * z + textH + 10 * z));
+      // the options sit in their own scrolling list (mouse wheel, right stick, d-pad), so a long list never runs off the card
+      float top = fp.y + 30 * z + textH + 10 * z, availH = std::max(40 * z, c0.y + ch - pad - top);
+      ImGui::SetCursorScreenPos(ImVec2(mx, top));
+      // NoNavInputs: these screens move their own highlight (padStep in update); ImGui's pad nav would move a second one
+      ImGui::BeginChild("##opts", ImVec2(mw, availH), false, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs);
+      padScrollHere();
+      ImDrawList* od = ImGui::GetWindowDrawList();
+      float rw = ImGui::GetContentRegionAvail().x;
       for (int i = 0; i < (int)t.opts.size() && i < (int)oh.size(); i++) {
         const TalkOpt o = t.opts[i];   // a copy: choosing changes the options
         float optH = oh[i];
         ImGui::PushID(i);
         ImVec2 p0 = ImGui::GetCursorScreenPos();
-        if (rowButton("##o", ImVec2(mw, optH), sel == i, false)) choose(lv, p, i);
+        bool click = rowButton("##o", ImVec2(rw, optH), sel == i, false);
+        // the highlight follows the mouse and the pad's/keyboard's focus, so what's lit is what A / Enter picks
+        if (ImGui::IsItemHovered() && (ImGui::GetIO().MouseDelta.x != 0 || ImGui::GetIO().MouseDelta.y != 0)) sel = i;
+        if (sel == i && scrolledTo != sel) { ImGui::SetScrollHereY(); scrolledTo = sel; }
         std::string icon = o.icon.empty() ? std::to_string(i + 1) : o.icon;
-        text(dl, F_BIG, p0 + ImVec2(8 * z, (optH - textSize(F_BIG, "1").y) / 2), col::gold, icon.c_str());
-        float lh = textSize(F_MID, o.label.c_str(), labW).y;
-        text(dl, F_MID, p0 + ImVec2(30 * z, (optH - lh) / 2), col::text, o.label.c_str(), labW);
+        text(od, F_BIG, p0 + ImVec2(8 * z, (optH - textSize(F_BIG, "1").y) / 2), col::gold, icon.c_str());
+        float lw = rw - 38 * z, lh = textSize(F_MID, o.label.c_str(), lw).y;
+        text(od, F_MID, p0 + ImVec2(30 * z, (optH - lh) / 2), col::text, o.label.c_str(), lw);
         ImGui::Dummy(ImVec2(1, 4 * z));
         ImGui::PopID();
-        if (i >= (int)t.opts.size()) break;
+        if (click) { choose(lv, p, i); break; }
       }
+      ImGui::EndChild();
     }
     ImGui::End();
     if (t.mode == "shop") drawShop(a, lv, p, c0, cw);
@@ -171,8 +182,8 @@ public:
 
 private:
   u32 npc; bool confront; std::string victim; bool startShop;
-  Talk t; bool failed = false; int sel = 0, lines = -1; float shown = 0; GLuint face = 0;
-  void choose(Level& lv, Player& p, int i) { talkChoose(lv, p, t, i); sel = 0; }
+  Talk t; bool failed = false; int sel = 0, lines = -1, scrolledTo = -1; float shown = 0; GLuint face = 0;
+  void choose(Level& lv, Player& p, int i) { talkChoose(lv, p, t, i); sel = 0; scrolledTo = -1; }
   std::vector<ShopLine> rows(Level& lv, Player& p) { VillageRef v = villageById(lv, t.vid); return v ? shopLines(lv, p, *v, t.idx, t.job, t.tab) : std::vector<ShopLine>{}; }
   void drawShop(App& a, Level& lv, Player& p, ImVec2 card, float cw) {
     const float z = Z(), pad = 8 * z, rowH = 34 * z;
@@ -184,7 +195,7 @@ private:
     float sh = pad * 2 + 34 * z + listH + 24 * z;
     ImVec2 s0(card.x, std::max(4 * z, card.y - 6 * z - sh));
     ImGui::SetNextWindowPos(s0); ImGui::SetNextWindowSize(ImVec2(cw, sh));
-    ImGui::Begin("##npc-shop", nullptr, CARD);
+    ImGui::Begin("##npc-shop", nullptr, CARD | ImGuiWindowFlags_NoNavInputs);
     ImDrawList* dl = ImGui::GetWindowDrawList();
     woodCard(dl, s0, s0 + ImVec2(cw, sh), 0x3e2e1e, 0x2e2216, 0x7a5a38, 0x1a0f06);
     ImGui::SetCursorScreenPos(s0 + ImVec2(pad, pad));
@@ -201,7 +212,8 @@ private:
     ImGui::SameLine(cw - pad - bw);
     if (button("Back##shop", BTN_NORMAL, true, bw)) { talkShopBack(lv, p, t); sel = 0; ImGui::End(); return; }
     ImGui::SetCursorScreenPos(s0 + ImVec2(pad, pad + 36 * z));
-    ImGui::BeginChild("##rows", ImVec2(cw - pad * 2, listH), false, ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoBackground);
+    ImGui::BeginChild("##rows", ImVec2(cw - pad * 2, listH), false, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs);
+    padScrollHere();
     if (L.empty()) label(F_MID, col::muted, "Nothing today.");
     const json& TN = VD()["tierName"];
     for (int k = 0; k < (int)L.size(); k++) {
@@ -209,7 +221,8 @@ private:
       ImGui::PushID(k);
       ImVec2 p0 = ImGui::GetCursorScreenPos(); float rw = ImGui::GetContentRegionAvail().x;
       bool click = rowButton("##r", ImVec2(rw, rowH), sel == k, false);
-      if (sel == k) ImGui::SetScrollHereY();
+      if (ImGui::IsItemHovered() && (ImGui::GetIO().MouseDelta.x != 0 || ImGui::GetIO().MouseDelta.y != 0)) sel = k;
+      if (sel == k && scrolledTo != sel) { ImGui::SetScrollHereY(); scrolledTo = sel; }
       ImDrawList* d2 = ImGui::GetWindowDrawList();
       float al = l.locked ? 0.4f : l.can ? 1.f : 0.55f, ic = 22 * z, ty = p0.y + (rowH - textSize(F_BIG, "1").y) / 2, my = p0.y + (rowH - textSize(F_MID, "A").y) / 2;
       bool buy = t.tab == "buy";
@@ -265,7 +278,7 @@ public:
     const float cw = std::min(720 * z, W - 16 * z), chMax = H - 16 * z;
     ImGui::SetNextWindowPos(ImVec2(W / 2, H / 2), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(cw, std::min(chMax, lastH > 0 ? lastH : 520 * z)));
-    ImGui::Begin("##quest-board", nullptr, CARD);
+    ImGui::Begin("##quest-board", nullptr, CARD | ImGuiWindowFlags_NoNavInputs);   // its own pad highlight (padStep)
     padScrollHere();   // the right stick scrolls a tall board
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 w0 = ImGui::GetWindowPos(), ws = ImGui::GetWindowSize();
@@ -364,7 +377,7 @@ public:
     const float cw = std::min(760 * z, W * 0.94f);
     ImGui::SetNextWindowPos(ImVec2(W / 2, H / 2), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(cw, std::min(H * 0.88f, lastH > 0 ? lastH : 560 * z)));
-    ImGui::Begin("##path-view", nullptr, CARD);
+    ImGui::Begin("##path-view", nullptr, CARD | ImGuiWindowFlags_NoNavInputs);
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 w0 = ImGui::GetWindowPos(), ws = ImGui::GetWindowSize();
     dl->AddRectFilled(w0, w0 + ws, IM_COL32(16, 14, 12, 242)); dl->AddRect(w0, w0 + ws, IM_COL32(232, 192, 96, 89), 0, 0, 1 * z);

@@ -21,12 +21,17 @@ void FrameCtx::apply(Shader& s) const {
   s.set("uMinLight", minLight);
   s.set("uEyeFluid", eyeFluid);
   s.set("uBlockLightColor", blockLightColor);
+  // dynamic point lights (common.glsl dynLight): xyz relative to the camera's block, w = level
+  vec4 d[8]; int n = 0;
+  if (portalDepth == 0) for (const DynLight& l : dyn) { if (n >= 8) break; d[n++] = vec4(cam.rel(l.pos), l.level); }
+  s.set("uDynN", n);
+  if (n) glUniform4fv(s.loc("uDyn"), n, &d[0].x);
 }
 
 void TileTextures::bind(Shader& s, int u) const {
-  const char* names[4] = {"uTiles", "uTiles2", "uHeights", "uHeights2"};
-  GLuint ids[4] = {color[0], color[1], height[0], height[1]};
-  for (int i = 0; i < 4; i++) { glActiveTexture(GL_TEXTURE0 + u + i); glBindTexture(GL_TEXTURE_2D_ARRAY, ids[i] ? ids[i] : ids[i & 2]); s.set(names[i], u + i); }
+  const char* names[6] = {"uTiles", "uTiles2", "uHeights", "uHeights2", "uNormals", "uNormals2"};
+  GLuint ids[6] = {color[0], color[1], height[0], height[1], normal[0], normal[1]};
+  for (int i = 0; i < 6; i++) { glActiveTexture(GL_TEXTURE0 + u + i); glBindTexture(GL_TEXTURE_2D_ARRAY, ids[i] ? ids[i] : ids[i & ~1]); s.set(names[i], u + i); }
   s.set("uPageSize", (float)page);
   glActiveTexture(GL_TEXTURE0);
 }
@@ -265,6 +270,19 @@ void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
     }
     std::sort(visible.begin(), visible.end(), [](auto& a, auto& b) { return a.first < b.first; });   // nearest first: what's hidden costs little
     drawnSections = (int)visible.size();
+    static const bool dbgBands = std::getenv("DQ_DEBUG_BANDS") != nullptr;
+    if (dbgBands && f.portalDepth == 0) {
+      static double lastT = 0; double now = nowSeconds();
+      if (now - lastT > 1.0) {
+        lastT = now;
+        int per[DIM_COUNT] = {0}, vis[DIM_COUNT] = {0}, chunks[DIM_COUNT] = {0};
+        for (auto& [k, m] : meshes) if (k.dim >= 0 && k.dim < DIM_COUNT) per[k.dim]++;
+        for (auto& v : visible) { int d = dimOfY((int)v.second->origin.y); if (d >= 0 && d < DIM_COUNT) vis[d]++; }
+        for (auto& [k, c] : w->chunks()) if (k.dim >= 0 && k.dim < DIM_COUNT) chunks[k.dim]++;
+        DQ_LOG("bands: cam %.0f %.0f %.0f dim %d | chunks %d/%d/%d/%d meshes %d/%d/%d/%d visible %d/%d/%d/%d inFlight %d again %d", f.cam.pos.x, f.cam.pos.y, f.cam.pos.z, f.dim,
+               chunks[0], chunks[1], chunks[2], chunks[3], per[0], per[1], per[2], per[3], vis[0], vis[1], vis[2], vis[3], (int)inFlight.size(), (int)again.size());
+      }
+    }
   }
   glBindVertexArray(vao);
   auto passBase = [&](SecMesh* m) -> i32 { u32 o = m->base; for (int i = 0; i < pass; i++) o += m->nq[i] * 4; return (i32)o; };

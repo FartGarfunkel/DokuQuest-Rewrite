@@ -31,7 +31,14 @@ void ClientFx::soundUi(u32 playerId, const std::string& name) {
   if (!s.app.audio || (playerId && s.player && playerId != s.player->id)) return;
   s.app.audio->play(name);
 }
-void ClientFx::material(const std::string& mat, const std::string& kind, vec3 pos) { if (s.app.audio) s.app.audio->materialAt(mat, kind, pos); }
+// The original plays your own steps, digging, placing and breaking flat and at full loudness (sfx.material);
+// only sounds out in the world are placed (materialAt: half loudness, fading with distance, muffled by walls).
+// Anything within arm's reach of the player is yours.
+void ClientFx::material(const std::string& mat, const std::string& kind, vec3 pos) {
+  if (!s.app.audio) return;
+  if (s.player && glm::distance(s.player->pos + vec3(0, 0.9f, 0), pos) < 6.5f) { s.app.audio->material(mat, kind); return; }
+  s.app.audio->materialAt(mat, kind, pos);
+}
 void ClientFx::voice(const std::string& creature, const std::string& kind, vec3 pos, float pitch) { if (s.app.audio) s.app.audio->voice(creature, kind, pos, pitch); }
 
 // The music of the place (music2.js biomeMood), read from the overworld generator's column under the player.

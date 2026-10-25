@@ -7,6 +7,7 @@
 #include "audio/audio.h"
 #include "render/gl.h"
 #include "render/instruments.h"
+#include "core/item_glint.h"
 #include <imgui_internal.h>
 #include <imgui_stdlib.h>
 #include <imgui_impl_opengl3.h>
@@ -538,6 +539,7 @@ void drawItem(ImDrawList* dl, const ItemStack& st, ImVec2 p, float s, float alph
   if (st.empty()) return;
   float in = s * 0.12f;
   drawIcon(dl, st.id, p + ImVec2(in, in), s - in * 2, alpha);
+  if (itemGlints(st)) drawGlint(dl, st.id, p + ImVec2(in, in), s - in * 2, alpha);
   const ItemDef* d = st.def();
   int dur = 0;
   if (d && d->hasTool) dur = d->tool.durability;

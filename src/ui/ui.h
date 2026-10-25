@@ -67,6 +67,10 @@ bool inventoryClosePressed(App& a, bool tabScreen);
 
 // ---- shared pieces ----
 std::string itemInfoText(const ItemStack& s, const Player* p, std::vector<std::pair<std::string, u32>>* lines);   // tooltip lines
+// ui/item_tooltip_extra.cpp: enchantment lines (true = the thing shimmers), potion effects, gear level + "\x02<fraction>" bar line
+bool tooltipEnchantLines(const ItemStack& s, std::vector<std::pair<std::string, u32>>& out);
+void tooltipEffectLines(const ItemStack& s, std::vector<std::pair<std::string, u32>>& out);
+void tooltipGearLines(const ItemStack& s, std::vector<std::pair<std::string, u32>>& out);
 json ruleDefaults(bool creative);                 // game/rules.js RULE_DEFAULTS (+ commands in creative)
 bool backConsumedByText();                        // Esc / B while typing only leaves the text box
 

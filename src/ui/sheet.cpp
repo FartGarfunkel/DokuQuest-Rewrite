@@ -72,6 +72,8 @@ std::string itemInfoText(const ItemStack& s, const Player* p, std::vector<std::p
   if (!d) { L.push_back({s.id, TN}); if (out) *out = L; return s.id; }
   std::string rar = d->str("rarity");
   L.push_back({d->name + (s.n > 1 ? " \xC3\x97" + std::to_string(s.n) : ""), rar == "rare" ? 0x8fe3ff : rar == "epic" ? 0xc88cff : TN});
+  { std::vector<std::pair<std::string, u32>> en; if (tooltipEnchantLines(s, en)) { L[0].second = 0x8fe8ff; L.insert(L.end(), en.begin(), en.end()); } }   // .tn.enchanted
+  tooltipEffectLines(s, L);
   if (d->has("food") && d->props["food"].is_object()) { double h = d->props["food"].value("heal", 0.0); L.push_back({"Heals " + num(h / 2) + (h == 2 ? " heart" : " hearts") + " instantly", TS}); }
   if (d->hasTool) {
     const ToolInfo& t = d->tool;
@@ -117,6 +119,7 @@ std::string itemInfoText(const ItemStack& s, const Player* p, std::vector<std::p
       }
     }
   }
+  tooltipGearLines(s, L);   // skills.js: Level N and its progress bar
   if (out) *out = L;
   return L[0].first;
 }

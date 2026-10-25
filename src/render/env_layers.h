@@ -5,4 +5,5 @@
 
 namespace dq {
 void registerEnvironmentLayers();
+void registerDynLights();   // dyn_light.cpp: carried torches, glowing drops, lit TNT, fireballs light the world (called by registerEnvironmentLayers)
 } // namespace dq

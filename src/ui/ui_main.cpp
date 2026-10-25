@@ -7,6 +7,7 @@
 #include "ui/magic_screens.h"
 #include "ui/content_screens.h"
 #include <imgui.h>
+#include <cmath>
 
 namespace dq {
 
@@ -121,7 +122,32 @@ static void startupScreen(App& a) {
   if (auto s = makeScreenByName(a, n)) a.pushScreen(std::move(s));
 }
 
+// Every pad the game understands (SDL game controllers and pads mapped in the setup wizard, in the standard
+// layout with the Nintendo swap applied) drives ImGui's menu navigation: d-pad / left stick move the highlight,
+// A presses, B backs out, LB/RB and the triggers page. ImGui's SDL backend only sees pads SDL knows by name.
+static void feedPadsToImGui(App& a) {
+  ImGuiIO& io = ImGui::GetIO();
+  if (!(io.ConfigFlags & ImGuiConfigFlags_NavEnableGamepad) || a.input.setupActive) return;
+  bool b[17] = {}; float lx = 0, ly = 0; bool any = false;
+  for (auto& p : a.input.pads()) {
+    any = true;
+    for (int k = 0; k < 17; k++) b[k] = b[k] || p.b[k];
+    if (std::fabs(p.lstick.x) > std::fabs(lx)) lx = p.lstick.x;
+    if (std::fabs(p.lstick.y) > std::fabs(ly)) ly = p.lstick.y;
+  }
+  if (!any) return;
+  io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
+  static const ImGuiKey MAP[16] = {ImGuiKey_GamepadFaceDown, ImGuiKey_GamepadFaceRight, ImGuiKey_GamepadFaceLeft, ImGuiKey_GamepadFaceUp,
+    ImGuiKey_GamepadL1, ImGuiKey_GamepadR1, ImGuiKey_GamepadL2, ImGuiKey_GamepadR2, ImGuiKey_GamepadBack, ImGuiKey_GamepadStart,
+    ImGuiKey_GamepadL3, ImGuiKey_GamepadR3, ImGuiKey_GamepadDpadUp, ImGuiKey_GamepadDpadDown, ImGuiKey_GamepadDpadLeft, ImGuiKey_GamepadDpadRight};
+  for (int k = 0; k < 16; k++) io.AddKeyEvent(MAP[k], b[k]);
+  auto axis = [&](ImGuiKey neg, ImGuiKey pos, float v) { io.AddKeyAnalogEvent(neg, v < -0.35f, std::max(0.f, -v)); io.AddKeyAnalogEvent(pos, v > 0.35f, std::max(0.f, v)); };
+  axis(ImGuiKey_GamepadLStickLeft, ImGuiKey_GamepadLStickRight, lx);
+  axis(ImGuiKey_GamepadLStickUp, ImGuiKey_GamepadLStickDown, ly);
+}
+
 void uiBeginFrame(App& a) {
+  feedPadsToImGui(a);
   ui::beginFrame(a);
   auto run = std::move(g_deferred); g_deferred.clear();
   for (auto& f : run) f(a);
