@@ -74,7 +74,7 @@ private:
   u64 logSeq = 0;
   ServerStatus st;
   double startedAt = 0;
-  ServerViewReq viewReq; ServerView viewWork; std::shared_ptr<const ServerView> viewPub; double viewAt = -100;
+  ServerViewReq viewReq; double viewReqAt = -100; ServerView viewWork; std::shared_ptr<const ServerView> viewPub; double viewAt = -100;
   void updateView(double now);
 };
 

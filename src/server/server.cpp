@@ -97,13 +97,13 @@ void DedicatedServer::command(const std::string& line) { std::lock_guard<std::mu
 
 ServerStatus DedicatedServer::status() const { std::lock_guard<std::mutex> lk(mx); return st; }
 
-void DedicatedServer::setView(const ServerViewReq& r) { std::lock_guard<std::mutex> lk(mx); viewReq = r; }
+void DedicatedServer::setView(const ServerViewReq& r) { std::lock_guard<std::mutex> lk(mx); viewReq = r; viewReqAt = nowSeconds(); }
 std::shared_ptr<const ServerView> DedicatedServer::view() const { std::lock_guard<std::mutex> lk(mx); return viewPub; }
 
 // On the server thread: the players (10 times a second) and the map / isometric columns (when due) for the dashboard.
 void DedicatedServer::updateView(double now) {
   ServerViewReq req;
-  { std::lock_guard<std::mutex> lk(mx); req = viewReq; }
+  { std::lock_guard<std::mutex> lk(mx); req = viewReq; if (now - viewReqAt > 1) req.map = req.iso = false; }   // the dashboard isn't being drawn
   if (!req.map && !req.iso && now - viewAt < 1) return;
   if (now - viewAt < 0.1) return;
   viewAt = now;
