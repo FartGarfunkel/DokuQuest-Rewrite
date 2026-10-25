@@ -45,7 +45,7 @@ jobs:
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
           # -k 0: report every broken file; errors also become annotations (readable through the API)
           set +e; cmake --build build --parallel -- -k 0 2>&1 | tee build.log; rc=${PIPESTATUS[0]}; set -e
-          grep -E "error:|undefined reference" build.log | sort -u | head -40 | while IFS= read -r l; do echo "::error::$l"; done
+          grep -E "error:|undefined reference|multiple definition" build.log | sort -u | head -40 | while IFS= read -r l; do echo "::error::$l"; done
           exit $rc
       - name: Smoke test
         env:
