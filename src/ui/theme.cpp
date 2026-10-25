@@ -5,6 +5,7 @@
 #include "assets/gui_textures.h"
 #include "audio/audio.h"
 #include "render/gl.h"
+#include "render/instruments.h"
 #include <imgui_internal.h>
 #include <imgui_stdlib.h>
 #include <imgui_impl_opengl3.h>
@@ -508,6 +509,9 @@ void drawSlot(ImDrawList* dl, ImVec2 p, float s, const SlotLook& lk) {
 }
 
 void drawIcon(ImDrawList* dl, const std::string& key, ImVec2 p, float s, float alpha) {
+  // the compass, death compass and clock show their live face (game/instruments.js .ico.dyn-*)
+  GLuint itex = 0; vec4 iuv;
+  if (instrumentIcon(key, itex, iuv)) { dl->AddImage((ImTextureID)(intptr_t)itex, p, p + ImVec2(s, s), ImVec2(iuv.x, iuv.y), ImVec2(iuv.z, iuv.w), IM_COL32(255, 255, 255, (int)(255 * alpha))); return; }
   IconRef r = itemIcons().get(key);
   if (!r.valid()) return;
   dl->AddImage((ImTextureID)(intptr_t)r.tex, p, p + ImVec2(s, s), ImVec2(r.uv0.x, r.uv0.y), ImVec2(r.uv1.x, r.uv1.y), IM_COL32(255, 255, 255, (int)(255 * alpha)));

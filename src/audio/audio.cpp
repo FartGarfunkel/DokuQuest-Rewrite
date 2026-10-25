@@ -8,6 +8,8 @@
 #include "audio/music.h"
 #include "audio/ambience.h"
 #include "common/fs.h"
+#include "world/world.h"
+#include "core/registry.h"
 #include <chrono>
 
 namespace dq {
@@ -299,9 +301,33 @@ void AudioEngine::note(const std::string& instrument, int pitch, vec3 pos) {
   m.start(r, c, 1);
 }
 
+// A creature's call. The resource pack's recording (resynthesised) wins, else the original's synthesis. Where
+// neither has that call, it borrows one so every creature is heard: hurt = its own call pitched up, death =
+// its hurt (or call) pitched down, angry/howl/purr = its call; a step it has no sound for = the block underfoot.
 void AudioEngine::voice(const std::string& creature, const std::string& kind, vec3 pos, float pitch) {
-  std::string n = kind.empty() || kind == "say" ? creature : kind == "step" ? "mstep_" + creature : creature + "_" + kind;
-  playAt(n, pos, kind == "step" ? 16.f : 28.f, 1, pitch);
+  Impl& m = *impl;
+  if (!m.ok || !m.libReady || creature.empty()) return;
+  auto has = [&](const std::string& n) { return (bool)m.lib.resolve(n); };
+  if (kind == "step") {
+    if (has("mstep_" + creature)) { playAt("mstep_" + creature, pos, 16.f, 1, pitch); return; }
+    if (m.scene.world) {
+      BlockId id = m.scene.world->getBlock((int)std::floor(pos.x), (int)std::floor(pos.y - 0.2f), (int)std::floor(pos.z));
+      if (id) materialAt(reg().block(id).sound, "step", pos, 14, 0.35f);
+    }
+    return;
+  }
+  if (creature == "golem") {   // an iron golem: no voice, a clang of iron when struck
+    if (kind == "hurt" || kind == "death") playAt("anvil_land", pos, 28.f, kind == "death" ? 0.9f : 0.6f, pitch * (kind == "death" ? 0.7f : 1.3f));
+    return;
+  }
+  std::string n = kind.empty() || kind == "say" ? creature : creature + "_" + kind;
+  float pm = 1;
+  if (!has(n)) {
+    if (kind == "hurt") { n = creature; pm = 1.2f; }
+    else if (kind == "death") { if (has(creature + "_hurt")) { n = creature + "_hurt"; pm = 0.8f; } else { n = creature; pm = 0.72f; } }
+    else n = creature;
+  }
+  playAt(n, pos, 28.f, 1, pitch * pm);
 }
 
 void AudioEngine::stop(int handle) { AudioCmd c; c.t = AudioCmd::Stop; c.handle = handle; impl->send(c); }

@@ -7,6 +7,7 @@
 #include "sim/player.h"
 #include "core/registry.h"
 #include <random>
+#include <cstring>
 
 namespace dq {
 
@@ -37,6 +38,19 @@ static CreatureType parseType(const std::string& key, const json& j) {
   if (j.contains("drops") && j["drops"].is_array())
     for (auto& d : j["drops"]) if (d.is_array() && d.size() >= 4 && d[0].is_string() && reg().item(d[0].get<std::string>()))
       t.drops.push_back({d[0].get<std::string>(), d[1].get<int>(), d[2].get<int>(), d[3].get<float>()});
+  // The original left a few creatures without a voice (their AI made its own noises, or none): give them a
+  // fitting one so every creature is heard when it calls, is hit and dies. ("slime" was never a sound name.)
+  if (t.sound == "slime") t.sound = "squish";
+  if (t.voice.empty() && t.sound.empty()) {
+    auto ends = [&](const char* s) { size_t n = strlen(s); return key.size() >= n && key.compare(key.size() - n, n, s) == 0; };
+    if (ends("_dragon") || ends("_drake")) t.voice = "dragon_roar";
+    else if (key == "aerwhale" || key == "zephyr") t.voice = key;
+    else if (key == "swet" || key == "golden_swet") t.voice = "squish";
+    else if (key == "shark") t.voice = "fish";
+    else if (key == "warden_moon" || key == "warden_sun") t.voice = "warden";
+    else if (key == "ember_lord" || key == "cinder_golem") t.voice = "ogre";
+    else if (key == "iron_golem") t.voice = "golem";
+  }
   if (j.contains("onHit") && j["onHit"].is_object()) {
     auto& o = j["onHit"]; t.onHit.any = true;
     t.onHit.slow = o.value("slow", 0.f); t.onHit.chill = o.value("chill", 0.f); t.onHit.poison = o.value("poison", 0.f); t.onHit.fire = o.value("fire", 0.f);
@@ -54,6 +68,7 @@ const CreatureType* creatureType(const std::string& key) {
   return it == typeMap().end() ? nullptr : &it->second;
 }
 bool isCreatureType(const std::string& key) { return creatureType(key) != nullptr; }
+const std::string& creatureVoice(const CreatureType& T) { return !T.voice.empty() ? T.voice : T.sound; }
 static const CreatureType& stubType() { static CreatureType t = [] { CreatureType s; s.key = s.model = "?"; return s; }(); return t; }
 
 // ------------------------------------------------------------------ helpers
@@ -194,6 +209,9 @@ static MobContacts contacts(World& w, const Entity& e) {
 }
 
 // ------------------------------------------------------------------ hurt
+bool realmPreHurt(Level& lv, Creature& m, DamageSrc& src);                 // creature_monsters.cpp (endermen, swets, aechor plants)
+void realmAfterHurt(Level& lv, Creature& m, const DamageSrc& src, float dealt);   // (endermen blink, pigmen gang up)
+
 static std::unordered_map<std::string, CreatureHooks>& hookMap() { static std::unordered_map<std::string, CreatureHooks> m; return m; }
 void setCreatureHooks(const std::string& type, CreatureHooks h) { hookMap()[type] = std::move(h); }
 const CreatureHooks* creatureHooks(const std::string& type) { auto& m = hookMap(); if (m.empty()) return nullptr; auto it = m.find(type); return it == m.end() ? nullptr : &it->second; }
@@ -205,7 +223,9 @@ float Creature::hurt(Level& lv, float amount, const DamageSrc& src) {
   if (HK && HK->afterHurt) HK->afterHurt(lv, *this, dealt, src);
   return dealt;
 }
-float Creature::hurtBase(Level& lv, float amount, const DamageSrc& src) {
+float Creature::hurtBase(Level& lv, float amount, const DamageSrc& srcIn) {
+  DamageSrc src = srcIn;
+  if (alive() && !ghost && realmPreHurt(lv, *this, src)) return 0;
   Entity* a = ent(lv, src.attacker);
   auto* ac = dynamic_cast<Creature*>(a);
   // pets.js: pets don't take your blows by accident
@@ -245,10 +265,9 @@ float Creature::hurtBase(Level& lv, float amount, const DamageSrc& src) {
       if (!(t.skittish > 0 && hp < maxHp * 0.4f)) provoke(lv, who);
     if (t.roosts) roosting = false;
     sitting = sleeping = perched = false;
-    if (!t.sound.empty()) lv.fx->voice(t.sound, "hurt", pos + vec3(0, h * 0.7f, 0));
   }
-  // sounds2.js: hurt calls for the creatures with a voice
-  if (dealt > 0 && T->ai.empty() && !T->voice.empty() && alive()) lv.fx->voice(T->voice, "hurt", pos + vec3(0, h * 0.7f, 0));
+  // bestiary.js / sounds2.js: a hurt call (every creature has one; the death cry is in die())
+  if (dealt > 0 && alive() && !creatureVoice(*T).empty()) lv.fx->voice(creatureVoice(*T), "hurt", pos + vec3(0, h * 0.7f, 0));
   // monsters.js: a hard blow can knock a marauder's axe loose; snakes and crocodiles answer; venom and frost
   if (dealt >= 4 && type == "raider" && alive() && !heldItem.empty() && frand() < 0.35f) dropWeapon(lv, true);
   if (dealt > 0 && T->retaliates && alive() && a && a != this) { angryT = 15; foe = a->id; }
@@ -269,6 +288,7 @@ float Creature::hurtBase(Level& lv, float amount, const DamageSrc& src) {
   }
   // pets.js: they answer anyone who hurts them
   if (dealt > 0 && !owner.empty() && a && alive() && !isPetOf(a)) { petFoe = a->id; panicT = 0; angryT = 0; quarrel = 0; }
+  if (dealt > 0) realmAfterHurt(lv, *this, src, dealt);
   return dealt;
 }
 
@@ -303,8 +323,7 @@ void Creature::die(Level& lv, const DamageSrc& src) {
     p->stats["mobsKilled"] = p->stats.value("mobsKilled", 0) + 1;
   }
   // death cries (bestiary.js / sounds2.js)
-  if (!T->ai.empty() && !T->sound.empty()) lv.fx->voice(T->sound, "death", pos + vec3(0, h * 0.6f, 0));
-  if (T->ai.empty() && !T->voice.empty()) lv.fx->voice(T->voice, "death", pos + vec3(0, h * 0.6f, 0));
+  if (!creatureVoice(*T).empty()) lv.fx->voice(creatureVoice(*T), "death", pos + vec3(0, h * 0.6f, 0));
   // nightmobs.js / monsters.js: big slimes split
   if ((type == "slime" || type == "magma_slime") && size > 1) {
     int n = type == "slime" ? 2 + (int)(frand() * 3) : 2 + (int)(frand() * 2);
@@ -368,7 +387,9 @@ void Creature::tick(Level& lv, double dtd) {
   Creature* mnt = jockeyOf ? dynamic_cast<Creature*>(ent(lv, jockeyOf)) : nullptr;
   if (jockeyOf && (!mnt || !mnt->alive() || !alive())) { if (mnt && mnt->jockeyRider == id) mnt->jockeyRider = 0; jockeyOf = 0; mnt = nullptr; }
   if (jockeyRider) { auto* r = dynamic_cast<Creature*>(ent(lv, jockeyRider)); if (!r || r->jockeyOf != id) jockeyRider = 0; }
+  vec3 from = pos; float st0 = soundT;
   update(lv, dt);
+  if (!removed && alive()) creatureSounds(lv, *this, from, st0, dt);
   if (mnt) { pos = mnt->pos + vec3(0, mnt->h * 0.8f, 0); vel = vec3(mnt->vel.x, 0, mnt->vel.z); onGround = true; }
   // monsters.js: night creatures nobody is near wander off
   if (!removed && T->hostile && !T->boss && !kept && owner.empty() && !persistent) {
@@ -399,7 +420,22 @@ void Creature::update(Level& lv, float dt) {
   const Registry& R = reg();
   if (deathTime > 0) {
     deathTime += dt;
-    if (deathTime > 0.95f) { removed = true; mobBurst(lv, pos + vec3(0, h / 2, 0), "white", 14, 0.6f); }
+    // the topple (creatureBase) is over by 0.64 s; it lies there a moment, then goes in a puff (the original
+    // left after 0.95 s — a little longer here so the fall can be seen)
+    if (deathTime > DEATH_LINGER) {
+      removed = true;
+      mobBurst(lv, pos + vec3(0, h / 2, 0), "white", 14, 0.6f);
+      lv.fx->particles("poof", pos, 18, json{{"w", std::max(w, h * 0.5f)}, {"h", std::min(h, 0.8f)}});   // lying on its side by now
+      return;
+    }
+    // still falls and slides to a stop (a body killed in mid-air doesn't hang there)
+    vel.x *= std::max(0.f, 1 - dt * 6); vel.z *= std::max(0.f, 1 - dt * 6);
+    if (!noGravity) vel.y -= 28 * dt;
+    MoveResult r = moveBox(wd, pos, w, h, vel * dt, 0);
+    if (r.hitY) vel.y = 0;
+    if (r.hitX) vel.x = 0;
+    if (r.hitZ) vel.z = 0;
+    onGround = r.onGround;
     return;
   }
   if (hurtTime > 0) hurtTime -= dt;
@@ -616,5 +652,67 @@ void Creature::applySnap(const json& o) {
   lost.clear(); if (o.contains("ls")) for (auto& n : o["ls"]) lost.insert(n.get<std::string>());
   hasTilt = o.contains("sf"); if (hasTilt) surfaceTilt = vec2(o["sf"][0], o["sf"][1]);
 }
+
+// ------------------------------------------------------------------ sound3.js: footsteps for everything with feet, and
+// the hostile ones calling now and then as they wander, not only when they've seen you
+// SND3_FAMILY: which footsteps
+static const char* family(const Creature& m) {
+  const CreatureType& T = *m.T;
+  const std::string& v = T.voice;
+  if (m.type == "fuseling") return "creeper";
+  if (v == "ghoul" || v == "husk" || v == "drowned" || T.family == "ghoul") return "zombie";
+  if (v == "rattle" || v == "stray") return "bone";
+  if (v == "spider" || v == "mite" || v == "scorpion" || m.type == "cave_spider") return "spider";
+  return "";
+}
+// farm animals whose own step a resource pack may carry (mob.mstep_<name>; the sound engine falls back to
+// the block underfoot when it has none)
+static const char* ownStep(const Creature& m) {
+  const std::string& v = creatureVoice(*m.T);
+  if (v == "moo") return "cow";
+  if (v == "cluck") return "chicken";
+  if (v == "oink") return "pig";
+  if (v == "baa") return "sheep";
+  if (v == "wolf") return "wolf";
+  if (m.type == "iron_golem") return "golem";
+  return "";
+}
+
+void creatureSounds(Level& lv, Creature& m, vec3 from, float soundT0, float dt) {
+  if (m.ghost || !m.T) return;
+  const CreatureType& T = *m.T;
+  std::string fam = family(m);
+  // footsteps
+  float moved = std::hypot(m.pos.x - from.x, m.pos.z - from.z);
+  if (moved > 0.001f && moved < 2 && (m.onGround || m.surf == 1) && !m.inWater && !T.flyer && !m.calm) {
+    float stride = fam == "spider" ? 0.55f : fam == "bone" ? 1.0f : fam == "zombie" ? 1.2f : m.w > 0.55f ? 1.6f : m.w < 0.3f ? 0.7f : 1.1f;
+    m.stepAcc += moved;
+    if (m.stepAcc >= stride) {
+      m.stepAcc = 0;
+      const char* own = ownStep(m);
+      if (fam == "zombie" || fam == "bone" || fam == "spider") lv.fx->voice(fam, "step", m.pos);
+      else if (*own) lv.fx->voice(own, "step", m.pos);
+      else if (m.w >= 0.25f) {
+        World& w = lv.world(m.realm);
+        BlockId id = w.getBlock(ifloor(m.pos.x), ifloor(m.pos.y - 0.2f), ifloor(m.pos.z));
+        if (id) lv.fx->material(reg().block(id).sound, "step", m.pos);
+      }
+    }
+  }
+  // hostile ones make their noises as they wander (the classic game's way)
+  if (T.hostile && fam != "creeper" && !T.voice.empty()) {
+    if (m.soundT > soundT0 + 0.5f) m.ambT = 5 + frand() * 8;   // it just spoke
+    else {
+      if (m.ambT < 0) m.ambT = 2 + frand() * 8;
+      if ((m.ambT -= dt) <= 0) {
+        m.ambT = 5 + frand() * 8;
+        float near = 1e9f;
+        for (Entity* q : pawnsOf(lv, m.realm)) near = std::min(near, std::hypot(q->pos.x - m.pos.x, q->pos.z - m.pos.z));
+        if (near < 20) lv.fx->voice(T.voice, "say", m.pos + vec3(0, m.h * 0.8f, 0));
+      }
+    }
+  }
+}
+
 
 } // namespace dq

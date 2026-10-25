@@ -10,6 +10,7 @@
 #include "sim/player.h"
 #include "core/registry.h"
 #include "core/init.h"
+#include "gen/structures_api.h"
 
 namespace dq {
 
@@ -188,7 +189,8 @@ public:
       if (c->T->hostile && !c->T->boss && dimAt(*c) == DIM_NETHER) depthsHostile++;
       if (c->type == "cinder_wisp" || c->type == "magma_slime") wisps++;
       if (c->type == "cockatrice" && c->alive()) cockatrices++;
-      if (std::fabs(c->pos.x - p->pos.x) >= 72 || std::fabs(c->pos.z - p->pos.z) >= 72) continue;
+      // (the stacked world: creatures in the bands above and below don't fill this band's caps)
+      if (std::fabs(c->pos.x - p->pos.x) >= 72 || std::fabs(c->pos.z - p->pos.z) >= 72 || dimAt(*c) != dim) continue;
       const CreatureType& T = *c->T;
       if (T.hostile) { if (!T.boss) hostiles++; }
       else if (T.water) water++;
@@ -201,7 +203,7 @@ public:
     auto ring = [&](float a, float b) { float ang = frand() * TAU, d = a + frand() * (b - a); return ivec2(ifloor(p->pos.x + std::cos(ang) * d), ifloor(p->pos.z + std::sin(ang) * d)); };
     auto crowded = [&](int x, int z, float rad, int max) {
       int k = 0;
-      for (auto& e : lv.entities()) if (auto* c = dynamic_cast<Creature*>(e.get())) if (!c->T->hostile && c->realm == realm && std::fabs(c->pos.x - x) < rad && std::fabs(c->pos.z - z) < rad && ++k >= max) return true;
+      for (auto& e : lv.entities()) if (auto* c = dynamic_cast<Creature*>(e.get())) if (!c->T->hostile && c->realm == realm && dimAt(*c) == dim && std::fabs(c->pos.x - x) < rad && std::fabs(c->pos.z - z) < rad && ++k >= max) return true;
       return false;
     };
     const Registry& R = reg();
@@ -258,6 +260,7 @@ public:
         }
       }
     }
+    spawnRealms(lv, realm, *p, dim, day, peaceful);
     if (peaceful) return;
     // the night crowd (monsters.js)
     if (OVER && hostiles < capH) spawnMonsters(lv, realm, *p, ring, day, werewolf, ogre);
@@ -270,6 +273,99 @@ public:
         if (!id) continue;
         if (R.tSolid[id] && !w.getBlock(x, y + 1, z) && !w.getBlock(x, y + 2, z) && (w.getLight(x, y + 1, z) & 15) < 8) spawnCreature(lv, realm, "cockatrice", vec3(x + 0.5f, y + 1, z + 0.5f));
         break;
+      }
+    }
+  }
+
+  // nether2.js (zombie pigmen, ghasts, the fortress garrison of wither skeletons), aether.js (aerwhales,
+  // zephyrs, swets, aechor plants) and endmobs.js (endermen: thick in the End, now and then in the Depths and
+  // on the Overworld at night). Counted near this player, in this band.
+  bool hasFort = false; ivec3 fort{0}; float fortT = 0; ivec2 fortAt{1 << 30};   // the nearest fortress (cx, band-local y, cz)
+  void spawnRealms(Level& lv, int realm, Entity& p, int dim, float day, bool peaceful) {
+    World& w = lv.world(realm);
+    const Registry& R = reg();
+    int base = dimBase(dim), py = ifloor(p.pos.y);
+    auto count = [&](const char* t, float rad) {
+      int n = 0;
+      for (auto& e : lv.entities()) if (auto* c = dynamic_cast<Creature*>(e.get())) if (c->type == t && c->alive() && !c->removed && c->realm == realm && dimAt(*c) == dim && std::hypot(c->pos.x - p.pos.x, c->pos.z - p.pos.z) < rad) n++;
+      return n;
+    };
+    auto ring = [&](float a, float b) { float ang = frand() * TAU, d = a + frand() * (b - a); return ivec2(ifloor(p.pos.x + std::cos(ang) * d), ifloor(p.pos.z + std::sin(ang) * d)); };
+    auto floorAt = [&](int x, int z, int y0, int span) {
+      for (int y = y0; y > y0 - span && y > base + 2; y--) if (R.tSolid[w.getBlock(x, y - 1, z)] && !w.getBlock(x, y, z) && !w.getBlock(x, y + 1, z) && !w.getBlock(x, y + 2, z)) return y;
+      return -1;
+    };
+    // (wanderers of their realm, not kept animals: they go when nobody is near, like the night crowd)
+    auto add = [&](const char* t, float x, float y, float z) { Creature* m = spawnCreature(lv, realm, t, vec3(x, y, z)); if (m) m->kept = false; return m; };
+    if (dim == DIM_NETHER) {
+      // the fortress keeps its own garrison
+      if ((fortT -= 1) <= 0 || std::abs(fortAt.x - ifloor(p.pos.x)) > 48 || std::abs(fortAt.y - ifloor(p.pos.z)) > 48) {
+        fortT = 10; fortAt = ivec2(ifloor(p.pos.x), ifloor(p.pos.z)); hasFort = false;
+        if (lv.gen) if (const StructurePlan* s = locateStructure(*lv.gen, DIM_NETHER, "nether_fortress", fortAt.x, fortAt.y, 1))
+          if (std::abs(s->cx - fortAt.x) < 24 + 60 && std::abs(s->cz - fortAt.y) < 24 + 60) { hasFort = true; fort = ivec3(s->cx, s->y, s->cz); }
+      }
+      if (hasFort && !peaceful && count("wither_skeleton", 96) < 5 && frand() < 0.5f) {
+        int x = fort.x + (int)std::floor((frand() - 0.5f) * 60), z = fort.z + (int)std::floor((frand() - 0.5f) * 60);
+        if (std::hypot(x - p.pos.x, z - p.pos.z) > 12 && w.isLoaded(x, base + fort.y, z)) { int y = floorAt(x, z, base + fort.y + 3, 4); if (y > 0) add("wither_skeleton", x + 0.5f, y, z + 0.5f); }
+      }
+      if (count("zombie_pigman", 96) < 8 && frand() < 0.22f) {
+        ivec2 xz = ring(18, 36);
+        if (w.isLoaded(xz.x, py, xz.y)) {
+          int y = floorAt(xz.x, xz.y, py + (int)(frand() * 20) - 10, 12);
+          if (y > 0) for (int i = 0, k = 2 + (int)(frand() * 3); i < k; i++) {
+            int sx = xz.x + (int)std::floor((frand() - 0.5f) * 4), sz = xz.y + (int)std::floor((frand() - 0.5f) * 4), sy = floorAt(sx, sz, y + 2, 5);
+            if (sy > 0) add("zombie_pigman", sx + 0.5f, sy, sz + 0.5f);
+          }
+        }
+      }
+      if (!peaceful && count("ghast", 96) < 2 && frand() < 0.06f) {
+        ivec2 xz = ring(24, 40);
+        if (w.isLoaded(xz.x, py, xz.y)) for (int y = py + 12; y > py - 2; y--) {
+          bool open = true;
+          for (int dy = -1; dy <= 4 && open; dy++) for (ivec2 o : {ivec2(0, 0), ivec2(-2, -2), ivec2(2, -2), ivec2(-2, 2), ivec2(2, 2)}) if (w.getBlock(xz.x + o.x, y + dy, xz.y + o.y)) { open = false; break; }
+          if (open) { add("ghast", xz.x + 0.5f, y, xz.y + 0.5f); break; }
+        }
+      }
+    }
+    if (dim == DIM_AETHER) {
+      auto skyAir = [&](int x, int y, int z, int r) { for (int dy = -r; dy <= r; dy++) for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) if (w.getBlock(x + dx, y + dy, z + dz)) return false; return true; };
+      if (frand() < 0.025f && count("aerwhale", 96) < 2) {   // whales in the open sky, well away from you
+        ivec2 xz = ring(40, 64); int y = ifloor(clampv(p.pos.y + 6 + frand() * 22, (float)base + 52, (float)base + DIM_H - 14));
+        if (w.isLoaded(xz.x, y, xz.y) && skyAir(xz.x, y + 1, xz.y, 3)) if (Creature* m = add("aerwhale", xz.x + 0.5f, y, xz.y + 0.5f)) m->yaw = frand() * TAU;
+      }
+      if (!peaceful && frand() < 0.018f && count("zephyr", 96) < 2) {
+        ivec2 xz = ring(22, 40); int y = ifloor(clampv(p.pos.y + 4 + frand() * 8, (float)base + 48, (float)base + DIM_H - 8));
+        if (w.isLoaded(xz.x, y, xz.y) && skyAir(xz.x, y + 1, xz.y, 1)) add("zephyr", xz.x + 0.5f, y, xz.y + 0.5f);
+      }
+      static BlockId skyGrass = R.blockId("sky_grass");
+      auto ground = [&](const char* t, float lo, float hi) {
+        ivec2 xz = ring(lo, hi);
+        if (!w.isLoaded(xz.x, py, xz.y)) return;
+        for (int y = std::min(base + DIM_H - 3, py + 14); y > std::max(base + 30, py - 20); y--) {
+          BlockId id = w.getBlock(xz.x, y, xz.y); if (!id) continue;
+          if (id == skyGrass && !w.getBlock(xz.x, y + 1, xz.y) && !w.getBlock(xz.x, y + 2, xz.y)) add(t, xz.x + 0.5f, y + 1, xz.y + 0.5f);
+          return;
+        }
+      };
+      if (!peaceful && frand() < 0.035f && count("swet", 96) + count("golden_swet", 96) < 4) ground(frand() < 0.2f ? "golden_swet" : "swet", 16, 34);
+      if (!peaceful && frand() < 0.02f && count("aechor_plant", 96) < 3) ground("aechor_plant", 18, 40);
+    }
+    // endermen
+    if (!peaceful) {
+      int cap = dim == DIM_END ? 12 : 2;
+      float chance = dim == DIM_END ? 0.7f : dim == DIM_NETHER ? 0.04f : dim == DIM_OVERWORLD && day < 0.42f ? 0.05f : 0;
+      if (chance > 0 && frand() <= chance && count("enderman", 72) < cap) {
+        ivec2 xz = ring(18, 44);
+        if (w.isLoaded(xz.x, py, xz.y)) {
+          int from = std::min(base + DIM_H - 4, py + (dim == DIM_END ? 30 : 12)), to = std::max(base + 2, py - (dim == DIM_END ? 40 : 16));
+          for (int y = from; y >= to; y--) {
+            int x = xz.x, z = xz.y;
+            if (!R.tSolid[w.getBlock(x, y - 1, z)] || R.tSolid[w.getBlock(x, y, z)] || R.tSolid[w.getBlock(x, y + 1, z)] || R.tSolid[w.getBlock(x, y + 2, z)] || R.tLiquid[w.getBlock(x, y, z)]) continue;
+            if (dim == DIM_OVERWORLD && (w.getLight(x, y, z) & 15) > 0) break;
+            add("enderman", x + 0.5f, y, z + 0.5f);
+            break;
+          }
+        }
       }
     }
   }

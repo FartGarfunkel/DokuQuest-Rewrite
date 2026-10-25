@@ -3,9 +3,12 @@
 #include "sim/combat.h"
 #include "sim/gameplay.h"
 #include "sim/rules.h"
+#include "sim/physics.h"
 #include <random>
 
 namespace dq {
+
+bool creatureTakesHit(Level& lv, Entity& e, float amount, const DamageSource& src, float& dealt);   // sim/mob_combat.cpp
 
 static double rnd() { static thread_local std::mt19937 g{std::random_device{}()}; return std::uniform_real_distribution<double>(0, 1)(g); }
 
@@ -146,6 +149,9 @@ static float mobHurtDefault(Level& lv, Entity& e, float amount, const DamageSour
 
 float damageEntity(Level& lv, Entity& e, float amount, const DamageSource& src) {
   if (e.isPlayer()) return damagePlayer(lv, static_cast<Player&>(e), amount, src);
+  // creatures have their own hurt (entities.js Mob.hurt with dismember.js, sounds, the death topple and drops)
+  float dealt = 0;
+  if (creatureTakesHit(lv, e, amount, src, dealt)) return dealt;
   if (auto* h = handlerFor(e.type)) return (*h)(lv, e, amount, src);
   if (e.type == "item" || e.type == "falling_block" || e.type == "falling_tree" || e.type == "seat" || e.type == "tnt") return 0;
   return mobHurtDefault(lv, e, amount, src);
@@ -161,6 +167,7 @@ float attackEntity(Level& lv, Player& p, Entity& e) {
   DamageSource src; src.attacker = p.id; src.element = heldToolElement(p); src.knock = 5;
   if (tool) src.tool = tool->type;
   if (!p.inv[p.selected].empty()) src.weapon = p.inv[p.selected].id;
+  src.hasRay = true; src.rayO = p.pos + vec3(0, p.eye, 0); src.rayD = lookVector(p.yaw, p.pitch);   // dismember.js: the ray from your eyes
   float dealt;
   if (e.ghost && lv.net && lv.net->isClient()) {   // a joined world: the server's creature; it takes the hit there
     lv.net->hitEntity(p, e.id, dmg, {{"element", src.element}, {"knock", src.knock}, {"tool", src.tool}, {"weapon", src.weapon}, {"crit", crit}});

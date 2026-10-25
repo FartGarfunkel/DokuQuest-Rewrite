@@ -3,6 +3,7 @@
 // game/bestiary.js llama spit, game/dismember.js Gib, game/theend.js snowballs' landing puff).
 #include "sim/creature_entities.h"
 #include "sim/mob_combat.h"
+#include "sim/explosion.h"
 #include "sim/physics.h"
 #include "sim/player.h"
 #include "core/registry.h"
@@ -125,6 +126,22 @@ public:
       if (kind == "spit" && frand() < dt * 20) mobBurst(lv, pos, "white", 1, 0.1f);
       return;
     }
+    if (kind == "gust") {   // aether.js: a zephyr's gust — a little hurt and a big shove
+      if (age > 4) { gustPop(lv); return; }
+      if (frand() < dt * 30) mobBurst(lv, pos, "gust_ball", 1, 0.15f);
+      for (int s = 0; s < 3; s++) {
+        pos += vel * (dt / 3);
+        for (Entity* p : pawnsOf(lv, realm)) if (std::fabs(p->pos.x - pos.x) < 0.7f && std::fabs(p->pos.z - pos.z) < 0.7f && pos.y > p->pos.y - 0.3f && pos.y < p->pos.y + 2) {
+          float l = std::max(1e-3f, std::hypot(vel.x, vel.z));
+          DamageSrc d; d.knock = 0; damageEntity(lv, *p, 1, owner, "projectile", d);
+          knockback(*p, vec3(vel.x / l * 13, 6.5f, vel.z / l * 13));
+          gustPop(lv); return;
+        }
+        if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.4f)) if (!c->T->flyer) { c->vel.x += vel.x * 0.9f; c->vel.z += vel.z * 0.9f; c->vel.y = std::max(c->vel.y, 5.f); gustPop(lv); return; }
+        if (solidAt(wd, pos)) { gustPop(lv); return; }
+      }
+      return;
+    }
     if (age > 5) { removed = true; return; }
     for (int s = 0; s < 3; s++) {
       pos += vel * (dt / 3);
@@ -138,7 +155,11 @@ public:
     }
     if (frand() < dt * 40) flame(lv, pos);
   }
-  void explodeFx(Level& lv) { removed = true; mobBurst(lv, pos, "fireball", 10, 0.8f); lv.fx->sound("burn", pos); }
+  void explodeFx(Level& lv) {
+    removed = true; mobBurst(lv, pos, "fireball", 10, 0.8f); lv.fx->sound("burn", pos);
+    if (data.value("kind", "") == "ghast") { ExplodeOpts o; o.source = data.value("owner", 0u); explode(lv, realm, pos, 1, o); }   // nether2.js: a ghast's fireball bursts open what it hits
+  }
+  void gustPop(Level& lv) { removed = true; mobBurst(lv, pos, "gust_ball", 16, 2.5f); lv.fx->sound("gust_pop", pos, 20); }
   void splat(Level& lv, const std::string& kind) { removed = true; if (kind == "snow") mobBurst(lv, pos, "snow", 8, 2); else mobBurst(lv, pos, "white", 10, 0.8f); }
 };
 

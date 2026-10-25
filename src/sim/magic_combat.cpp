@@ -4,6 +4,7 @@
 #include "sim/magic.h"
 #include "sim/enchanting.h"
 #include "sim/skills.h"
+#include "sim/creature.h"
 #include <regex>
 
 namespace dq {
@@ -60,6 +61,15 @@ float combatHurt(Level& lv, Entity& t, float amount, const json& src0, Player* b
     return took;
   }
   if (by) amount = magicOutgoingDamage(lv, *by, amount, src);
+  // creatures: their own hurt (death topple, drops, XP, sounds, severing), not a second copy here
+  if (auto* c = dynamic_cast<Creature*>(&t)) {
+    DamageSrc s;
+    s.type = src.value("type", std::string("magic")); s.element = src.value("element", std::string());
+    s.knock = src.contains("knock") && src["knock"].is_number() ? src["knock"].get<float>() : -1.f;
+    s.attacker = by ? by->id : (src.contains("attacker") && src["attacker"].is_number_unsigned() ? src["attacker"].get<u32>() : 0);
+    s.bypassArmor = src.value("bypassArmor", false);
+    return c->hurt(lv, amount, s);
+  }
   float hp0 = std::max(0.f, t.hp);
   t.hp -= amount; t.hurtTime = 0.5f;
   if (src.contains("knock") && src["knock"].is_number() && by) combatKnock(lv, t, by->pos, src["knock"].get<float>());

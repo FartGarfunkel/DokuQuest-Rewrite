@@ -295,6 +295,9 @@ static OptMove monsterAI(Level& lv, Creature& m, Entity* p, float dist, float dy
     auto s = m.senses(lv, p, dist, dyp, dt, 26);
     m.voiceTick(lv, dt, dist, 3, 4);
     if (frand() < dt * 8) flame(lv, m.pos + vec3((frand() - 0.5f) * 0.6f, 0.4f + frand() * 0.6f, (frand() - 0.5f) * 0.6f));
+    // a blaze's smoke: it trails off the spinning rods and the burning heart
+    if (frand() < dt * 6) { float a = frand() * TAU; lv.fx->particles(frand() < 0.5f ? "smoke" : "smoke_dark", m.pos + vec3(std::cos(a) * 0.45f, 0.3f + frand() * 0.6f, std::sin(a) * 0.45f), 1); }
+    if (frand() < dt * 4) { float a = frand() * TAU; flame(lv, m.pos + vec3(std::cos(a) * 0.4f, 0.25f + frand() * 0.55f, std::sin(a) * 0.4f)); }
     if (!s.hunting) { m.flyVy = floor < 2 ? 0.8f : floor > 4 ? -0.6f : std::sin(m.age) * 0.3f; m.wander(dt); return m.wanderMove(); }
     float wantY = std::max(p->pos.y + 2, m.pos.y - floor + 2.5f);
     m.flyVy = clampv((wantY - m.pos.y) * 1.5f, -2.f, 2.f);
@@ -470,6 +473,230 @@ static OptMove monsterAI(Level& lv, Creature& m, Entity* p, float dist, float dy
 
 // The outer layer of every special creature's thinking (quarrels.js), then the 0.8.3 brains
 // (monsters.js), then the four night creatures (nightmobs.js).
+// ------------------------------------------------------------------ the other realms' creatures
+// game/nether2.js (wither skeletons, zombie pigmen, ghasts), game/endmobs.js (endermen), game/aether.js
+// (aerwhales, zephyrs, swets, aechor plants). Their extra state lives in data (the original's ad-hoc fields).
+static float dget(const Creature& m, const char* k, float d) { auto it = m.data.find(k); return it != m.data.end() && it->is_number() ? it->get<float>() : d; }
+static void dset(Creature& m, const char* k, float v) { m.data[k] = v; }
+
+// endmobs.js enderBlink: somewhere around (cx, cz), within r, on solid ground with room to stand
+static bool enderBlink(Level& lv, Creature& e, float cx, float cz, float r, bool near) {
+  World& w = lv.world(e.realm);
+  const Registry& R = reg();
+  for (int t = 0; t < 16; t++) {
+    float a = frand() * TAU, d = near ? 2 + frand() * std::max(0.f, r - 2) : frand() * r;
+    int x = ifloor(cx + std::cos(a) * d), z = ifloor(cz + std::sin(a) * d), ey = ifloor(e.pos.y);
+    if (!w.isLoaded(x, ey, z)) continue;
+    for (int y = ey + 6; y >= ey - 8; y--) {
+      if (R.tSolid[w.getBlock(x, y - 1, z)] && !R.tSolid[w.getBlock(x, y, z)] && !R.tSolid[w.getBlock(x, y + 1, z)] && !R.tSolid[w.getBlock(x, y + 2, z)] &&
+          !R.tLiquid[w.getBlock(x, y, z)] && !R.tLiquid[w.getBlock(x, y - 1, z)]) {
+        mobBurst(lv, e.pos + vec3(0, 1.4f, 0), "end_mote", 14, 0.8f);
+        lv.fx->sound("ender_tp", e.pos + vec3(0, 1.5f, 0), 24);
+        e.pos = vec3(x + 0.5f, (float)y, z + 0.5f); e.prevPos = e.pos; e.vel = vec3(0);
+        mobBurst(lv, e.pos + vec3(0, 1.4f, 0), "end_mote", 14, 0.8f);
+        lv.fx->sound("ender_tp", e.pos + vec3(0, 1.5f, 0), 24);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+static OptMove realmAI(Level& lv, Creature& m, Entity* p, float dist, float dyp, float toPlayer, float dt) {
+  const std::string& t = m.type;
+  const CreatureType& T = *m.T;
+  World& w = lv.world(m.realm);
+  const Registry& R = reg();
+  if (t == "wither_skeleton") {
+    auto s = m.senses(lv, p, dist, dyp, dt, 20);
+    m.voiceTick(lv, dt, dist);
+    if (!s.hunting) { m.wander(dt); return m.wanderMove(); }
+    m.meleeAt(lv, *p, dist, dyp);
+    return m.chase(lv, *p, dist, toPlayer, dt, 1.1f);
+  }
+  if (t == "zombie_pigman") {   // they leave you be until one of them is struck
+    m.voiceTick(lv, dt, dist, 6, 9);
+    if (m.angryT > 0) {
+      m.angryT -= dt;
+      Entity* f = m.ent(lv, m.foe);
+      if (auto* fc = dynamic_cast<Creature*>(f)) {
+        if (fc->alive()) {
+          float dx = fc->pos.x - m.pos.x, dz = fc->pos.z - m.pos.z, d = std::hypot(dx, dz);
+          m.meleeAt(lv, *fc, d, fc->pos.y - m.pos.y);
+          return Move{d < 0.9f ? 0 : T.speed * 1.3f, std::atan2(-dx, -dz)};
+        }
+      } else if (p && dist < 48) {
+        if (frand() < dt * 0.3f) lv.fx->voice("pigman", "angry", m.pos + vec3(0, 1.6f, 0));
+        m.meleeAt(lv, *p, dist, dyp);
+        return m.chase(lv, *p, dist, toPlayer, dt, 1.3f);
+      }
+      m.angryT = 0;
+    }
+    m.wander(dt); return m.wanderMove();
+  }
+  if (t == "ghast") {
+    m.noGravity = true; m.hasFlyVy = true;
+    if (m.inWater && m.attackCd <= 0) { m.attackCd = 1; DamageSrc s; s.type = "drown"; s.knock = 0; m.hurt(lv, 1, s); }
+    int fx = ifloor(m.pos.x), fz = ifloor(m.pos.z), fy = ifloor(m.pos.y);
+    int floor = 0; for (int k = 1; k <= 10; k++) { if (R.tSolid[w.getBlock(fx, fy - k, fz)]) break; floor = k; }
+    int roof = 0; for (int k = 0; k <= 3; k++) { if (R.tSolid[w.getBlock(fx, fy + (int)std::ceil(m.h) + k, fz)]) break; roof = k + 1; }
+    auto s = m.senses(lv, p, dist, dyp, dt, 44);
+    m.voiceTick(lv, dt, dist + 6, 4, 6);
+    float chargeT = dget(m, "chargeT", 0);
+    if (chargeT > 0) {
+      chargeT -= dt; dset(m, "chargeT", chargeT);
+      if (chargeT <= 0 && p) {
+        vec3 e = m.pos + vec3(0, m.h * 0.45f, 0), tv = p->pos + vec3(0, 1, 0) - e;
+        float l = glm::length(tv); if (l < 1e-3f) l = 1;
+        vec3 dir = tv / l;
+        spawnProjectile(lv, m.realm, e + vec3(dir.x, 0, dir.z) * (m.w + 0.4f), dir * 11.f, "ghast", &m);
+        lv.fx->sound("ghast_shoot", e);
+      }
+    }
+    if (!s.hunting) {
+      m.flyVy = roof < 2 ? -0.8f : floor < 4 ? 0.7f : floor > 9 ? -0.5f : std::sin(m.age * 0.4f + m.id) * 0.4f;
+      m.wander(dt); return Move{T.speed * 0.6f, m.wanderMove().dir};
+    }
+    float wantY = std::max(p->pos.y + 4 + std::sin(m.age * 0.5f) * 2, m.pos.y - floor + 3);
+    m.flyVy = roof < 2 ? -1 : clampv((wantY - m.pos.y) * 0.8f, -1.5f, 1.5f);
+    float shootT = dget(m, "shootT", 2 + frand() * 2) - dt;
+    if (shootT <= 0 && s.sees && dist < 40 && chargeT <= 0) { shootT = 3 + frand() * 1.5f; dset(m, "chargeT", 0.6f); lv.fx->sound("ghast_warn", m.pos + vec3(0, 2, 0)); }
+    dset(m, "shootT", shootT);
+    if (dist < 10) return Move{T.speed, toPlayer + PI};
+    if (dist > 24 || !s.sees) return Move{T.speed, toPlayer};
+    return Move{T.speed * 0.4f, toPlayer + PI / 2};
+  }
+  if (t == "enderman" && !creatureHooks("enderman")) {   // the End workstream's enderman (end_fight.cpp) wins when registered
+    m.voiceTick(lv, dt, dist, 7, 10);
+    if (m.inWater) { float cd = dget(m, "wetCd", 0) - dt; if (cd <= 0) { cd = 0.7f; DamageSrc s; s.type = "drown"; s.knock = 0; m.hurt(lv, 1, s); enderBlink(lv, m, m.pos.x, m.pos.z, 18, false); } dset(m, "wetCd", cd); }
+    auto* P = dynamic_cast<Player*>(p);
+    // looked in the eye (a carved pumpkin on your head hides it)
+    if (P && m.angryT <= 0 && dist < 48) {
+      bool masked = !P->armor[0].empty() && P->armor[0].id == "carved_pumpkin";
+      vec3 L = lookVector(P->yaw, P->pitch), d = vec3(m.pos.x, m.pos.y + m.h - 0.3f, m.pos.z) - (P->pos + vec3(0, P->eye, 0));
+      float len = std::max(1e-3f, glm::length(d)), dot = glm::dot(L, d) / len, lim = std::cos(std::atan(0.4f / len) + 0.025f);
+      if (!masked && dot > lim && m.lineOfSight(lv, *P)) {
+        float st = dget(m, "stareT", 0) + dt;
+        if (st > 0.3f) { m.angryT = 30; m.foe = P->id; st = 0; lv.fx->sound("enderman_stare", m.pos + vec3(0, 2.5f, 0), 40); dset(m, "lookT", 1.2f); }
+        dset(m, "stareT", st);
+      } else dset(m, "stareT", 0);
+    }
+    if (m.angryT > 0) {
+      m.angryT -= dt;
+      if (!p) return Move{0, m.yaw};
+      m.senses(lv, p, dist, dyp, dt, 40);
+      float lookT = dget(m, "lookT", 0);
+      if (lookT > 0) { dset(m, "lookT", lookT - dt); return Move{0, toPlayer}; }   // it stares back a moment
+      float tpT = dget(m, "tpT", 2) - dt;
+      if (tpT <= 0) { tpT = 2.5f + frand() * 4; if (dist > 9 || frand() < 0.3f) enderBlink(lv, m, p->pos.x, p->pos.z, dist > 9 ? 4 : 7, true); }
+      dset(m, "tpT", tpT);
+      m.meleeAt(lv, *p, dist, dyp);
+      return m.chase(lv, *p, dist, toPlayer, dt, 1.7f);
+    }
+    // an aimless amble, now and then a blink
+    m.wanderT -= dt;
+    if (m.wanderT <= 0) { m.wanderT = 3 + frand() * 6; m.wanderDir = frand() * TAU; m.wanderOn = frand() < 0.55f; if (frand() < 0.05f) enderBlink(lv, m, m.pos.x, m.pos.z, 14, false); }
+    return Move{m.wanderOn ? T.speed * 0.3f : 0, m.wanderDir};
+  }
+  if (t == "aerwhale") {   // cruises the open sky, banks away from islands, sings
+    m.noGravity = true; m.hasFlyVy = true;
+    int base = dimBase(dimAt(m));
+    if (!m.data.contains("head")) { dset(m, "head", m.yaw); dset(m, "cruiseY", m.pos.y); dset(m, "turnRate", 0); dset(m, "songT", 4 + frand() * 10); }
+    float head = dget(m, "head", m.yaw), cruiseY = dget(m, "cruiseY", m.pos.y), turnRate = dget(m, "turnRate", 0), turnT = dget(m, "turnT", 0) - dt;
+    if (turnT <= 0) { turnT = 6 + frand() * 10; turnRate = (frand() - 0.5f) * 0.22f; cruiseY = clampv(cruiseY + (frand() - 0.5f) * 16, (float)base + 48, (float)base + DIM_H - 12); }
+    float scanT = dget(m, "scanT", 0) - dt;
+    if (scanT <= 0) {
+      scanT = 0.5f;
+      float fx = -std::sin(head), fz = -std::cos(head);
+      for (int d : {5, 9, 14}) {
+        int x = ifloor(m.pos.x + fx * d), z = ifloor(m.pos.z + fz * d), y = ifloor(m.pos.y);
+        if (w.getBlock(x, y, z) || w.getBlock(x, y + 2, z) || w.getBlock(x, y - 1, z) || w.getBlock(x, y + 4, z)) {
+          turnRate = (turnRate >= 0 ? 1 : -1) * 0.55f; turnT = 2.5f; cruiseY = std::min((float)base + DIM_H - 8, std::max(cruiseY, m.pos.y + 6)); break;
+        }
+      }
+    }
+    head += turnRate * dt;
+    if (m.pos.y < base + 46) cruiseY = std::max(cruiseY, (float)base + 60);
+    m.flyVy = clampv((cruiseY - m.pos.y) * 0.4f, -1.4f, 1.4f);
+    float songT = dget(m, "songT", 10) - dt;
+    if (songT <= 0) { songT = 16 + frand() * 22; if (dist < 90) lv.fx->sound("aerwhale", m.pos + vec3(0, 1.5f, 0), 80); }
+    dset(m, "head", head); dset(m, "cruiseY", cruiseY); dset(m, "turnRate", turnRate); dset(m, "turnT", turnT); dset(m, "scanT", scanT); dset(m, "songT", songT);
+    return Move{T.speed * (m.hurtTime > 0 || m.panicT > 0 ? 2 : 1), head};
+  }
+  if (t == "zephyr") {   // hangs above you and a little off, then puffs up and blows you away
+    m.noGravity = true; m.hasFlyVy = true;
+    auto s = m.senses(lv, p, dist, dyp, dt, 34);
+    if (frand() < dt * 1.5f) mobBurst(lv, m.pos + vec3((frand() - 0.5f) * 1.6f, 0.4f + frand() * 1.2f, (frand() - 0.5f) * 1.6f), "gust_ball", 1, 0.2f);
+    float chargeT = dget(m, "chargeT", 0);
+    if (chargeT > 0) {
+      chargeT -= dt; dset(m, "chargeT", chargeT); m.flyVy = 0; m.puffed = true;
+      if (chargeT <= 0 && p) {
+        m.puffed = false; dset(m, "shootT", 3 + frand() * 1.8f);
+        vec3 e = m.pos + vec3(-std::sin(m.yaw) * 0.9f, 0.9f, -std::cos(m.yaw) * 0.9f), tv = p->pos + vec3(0, 1, 0) - e;
+        float l = glm::length(tv); if (l < 1e-3f) l = 1;
+        spawnProjectile(lv, m.realm, e, tv / l * 11.f, "gust", &m);
+        lv.fx->sound("wind_charge", e, 30);
+      }
+      return Move{0, toPlayer};
+    }
+    m.puffed = false;
+    if (!s.hunting) { m.flyVy = std::sin(m.age * 0.7f + m.id) * 0.5f; m.wander(dt); return m.wanderMove(); }
+    float wantY = p->pos.y + 3.5f + std::sin(m.age * 0.5f) * 1.5f;
+    m.flyVy = clampv((wantY - m.pos.y) * 1.2f, -2.2f, 2.2f);
+    float shootT = dget(m, "shootT", 2.5f) - dt; dset(m, "shootT", shootT);
+    if (shootT <= 0 && s.sees && dist < 22) { dset(m, "chargeT", 0.9f); lv.fx->sound("zephyr", m.pos + vec3(0, 1, 0), 30); return Move{0, toPlayer}; }
+    if (dist < 7) return Move{T.speed * 0.7f, toPlayer + PI};
+    if (dist > 14) return Move{T.speed, toPlayer};
+    return Move{T.speed * 0.45f, toPlayer + PI / 2 * (std::sin(m.age * 0.3f + m.id) > 0 ? 1 : -1)};
+  }
+  if (t == "swet" || t == "golden_swet") {
+    if (t == "golden_swet") {   // minds its own business until you start it
+      if (m.angryT <= 0) { if (m.onGround && frand() < dt * 0.4f) m.wantJump = true; m.wander(dt); return m.wanderMove(); }
+      m.angryT -= dt;
+    }
+    if (m.onGround && m.lastWant > 0.1f && frand() < dt * 0.5f) m.wantJump = true;
+    return nightBase(lv, m, "slime", p, dist, dyp, toPlayer, dt);
+  }
+  if (t == "aechor_plant") {   // rooted: spits thorns at whoever comes near
+    m.vel.x = m.vel.z = 0;
+    auto s = m.senses(lv, p, dist, dyp, dt, 14);
+    float shootT = dget(m, "shootT", 1.5f) - dt;
+    if (s.hunting && s.sees && dist < 12 && shootT <= 0) {
+      shootT = 1.8f + frand() * 1.2f; m.swingT = 0.3f;
+      vec3 e = m.pos + vec3(0, 1.05f, 0);
+      float tx = p->pos.x - e.x, tz = p->pos.z - e.z, hd = std::max(1e-3f, std::hypot(tx, tz)), sp = 15, tt = hd / sp;
+      float vy = ((p->pos.y + 1.1f) - e.y) / tt + 0.5f * 20 * tt;
+      spawnArrow(lv, m.realm, e + vec3(tx / hd * 0.4f, 0, tz / hd * 0.4f), vec3(tx / hd * sp, vy, tz / hd * sp), &m, 4, false);
+      lv.fx->sound("bow", e, 16);
+    }
+    dset(m, "shootT", shootT);
+    return Move{0, s.hunting ? toPlayer : m.yaw};
+  }
+  return std::nullopt;
+}
+
+// nether2.js / endmobs.js / aether.js hurt hooks: true = the blow is turned aside entirely
+bool realmPreHurt(Level& lv, Creature& m, DamageSrc& src) {
+  if (m.type == "enderman" && !creatureHooks("enderman") && !m.ghost && (src.tool == "arrow" || src.type == "arrow" || src.type == "projectile")) { enderBlink(lv, m, m.pos.x, m.pos.z, 12, false); return true; }   // nothing you shoot ever reaches it
+  if (m.type == "golden_swet" && src.attacker) m.angryT = 30;
+  if (m.type == "aechor_plant") src.knock = 0;
+  return false;
+}
+void realmAfterHurt(Level& lv, Creature& m, const DamageSrc& src, float dealt) {
+  Entity* a = m.ent(lv, src.attacker);
+  if (m.type == "enderman" && !creatureHooks("enderman") && !m.ghost) {
+    if (a && a != &m) { m.angryT = 30; m.foe = a->id; m.data["lookT"] = 0; }
+    if (dealt > 0 && m.alive() && frand() < 0.3f) enderBlink(lv, m, m.pos.x, m.pos.z, 8, true);
+  }
+  if (m.type == "zombie_pigman" && a && a != &m) {   // strike one and the whole band comes for you
+    auto* ac = dynamic_cast<Creature*>(a);
+    Entity* who = a; if (ac && !ac->owner.empty()) if (Player* o = ac->ownerPawn(lv)) who = o;
+    if (!(ac && ac->type == "zombie_pigman"))
+      for (auto& e : lv.entities()) if (auto* c = dynamic_cast<Creature*>(e.get()))
+        if (c->type == "zombie_pigman" && c->alive() && c->realm == m.realm && glm::distance(c->pos, m.pos) < 24) { c->angryT = 30 + frand() * 15; c->foe = who->id; }
+  }
+}
+
 Move Creature::specialAI(Level& lv, Entity* p, float dist, float dyp, float toPlayer, float dt) {
   int dim = dimAt(*this);
   // skeletons and strays caught in the sun look for shade
@@ -495,6 +722,7 @@ Move Creature::specialAI(Level& lv, Entity* p, float dist, float dyp, float toPl
     auto* f = dynamic_cast<Creature*>(ent(lv, wary));
     if (f && f->alive() && !quarrel) { fuse = 0; return {T->speed * 1.3f, std::atan2(-(pos.x - f->pos.x), -(pos.z - f->pos.z)) + std::sin(age * 2) * 0.3f}; }
   }
+  if (OptMove m = realmAI(lv, *this, p, dist, dyp, toPlayer, dt)) { if (dist > 96 && !kept && owner.empty() && !persistent) removed = true; return *m; }
   if (OptMove m = monsterAI(lv, *this, p, dist, dyp, toPlayer, dt)) { if (dist > 80 && !kept) removed = true; return *m; }
   return nightBase(lv, *this, type, p, dist, dyp, toPlayer, dt);
 }

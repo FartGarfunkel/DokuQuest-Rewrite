@@ -25,6 +25,8 @@ Workstream: creatures (`src/sim/creature*`, `sim/mobai*`, `sim/mob_combat*`, `si
 | render/rigs.js, rigdefs*.js (data), rigs2.js, anim.js (creature part), monstex.js posts | sim/creature_rig.cpp | biped/quad/spider/bird/pod/fish/squid/bat/bee/turtle/frog + sit/ram/bear/swimTuck/fan/perch/slither/sting/drift/orbit/fuse + rigLife (tail spring, ears, turn lean, lying down, floating/paddling, shaking dry, flinch, shamble, death crumple) |
 | render/models.js tilesOf, mobtex.js/monstex.js (tiles already in data/tiles.png), packmobs.js | render/creature_models.cpp | voxel bodies, pack skins box-UV mapped |
 | game/blockfx.js explode | sim/explosion.cpp | gameplay's TNT did not exist in this tree |
+| game/nether2.js (mobs), aether.js (mobs), endmobs.js (endermen) | creature_monsters.cpp `realmAI`, creature_spawn.cpp `spawnRealms` | wither skeletons (fortress garrison), zombie pigmen (band anger), ghasts (exploding fireballs), endermen (stare, blink, arrow-proof), aerwhales, zephyrs (gusts), swets, aechor plants; spawns per band |
+| game/sound3.js (footsteps, wandering calls) | end of creature.cpp `creatureSounds` | families zombie/bone/spider, farm animals' pack steps, else the block underfoot |
 
 ## Agreed changes / differences
 
@@ -81,8 +83,10 @@ Workstream: creatures (`src/sim/creature*`, `sim/mobai*`, `sim/mob_combat*`, `si
 
 ## Merge notes
 
-- When combat.h lands: re-point `damageEntity`/`knockback`/`igniteEntity`; remove the `hurtTime` countdown from
-  `tickPlayerEffects` if combat counts it down too; player death handling (`player.dead`, `playerDeath`) belongs there.
+- combat.h has landed: combat.cpp's `damageEntity` (the player's blows, explosions) and magic's `combatHurt`
+  hand creatures to `Creature::hurt` (`creatureTakesHit`); mob_combat's player side is `damagePlayer` (armour,
+  `playerDie`: grave + death compass). combat.cpp's `mobHurtDefault`/`mobDeath` only serve non-creature entities.
+- Death: the body topples, lies until `DEATH_LINGER` (1.6 s; the original 0.95 s), then a poof.
 - If gameplay adds its own `item` entity (DroppedItem), drop `registerEntityFactory("item", …)` here (last registration wins).
 - Gameplay should call `useOnCreature` on use-on-entity, `rideControl` while riding, `petsDefend` when the player attacks.
 
@@ -90,7 +94,7 @@ Workstream: creatures (`src/sim/creature*`, `sim/mobai*`, `sim/mob_combat*`, `si
 
 - Weather (bees/rain read `level.info.data.rain`), jukeboxes (`level.info.data.jukeboxes`) — hooks only.
 - Riding in boats/carts (`mountedOn`), Carry On pick-up, pet naming; network snapshots are written but not wired.
-- Fireball explosions from nether2.js, dragons/endmobs/haunt/villagers (later passes).
+- dragons.js, endmobs.js dragon fight + end crystals, haunt, villagers AIs (later passes); wither effect of wither skeletons.
 - Fauna sounds play through `level.fx` (no-op until audio wires LevelFx).
 - Pack skins only for the packmobs.js list; other creatures keep the Doku tiles under a pack.
 - Model builds are synchronous on first sight (a few ms per model); move to the thread pool if it hitches.

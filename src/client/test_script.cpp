@@ -8,6 +8,7 @@
 //     anchor (remember the player's block; x/y/z, from/to and block in steps with "rel":true are relative to it)
 //     fill{from:[x,y,z],to:[x,y,z],key}
 //     expect{screen | block:[x,y,z],is | entity,near} report shot{path} save leave open{world} quit
+//     hurt{entity,amount,tool,type,at} (strike the nearest creature of that type as the player, e.g. tool "axe")
 // The log gets "TEST PASS/FAIL ..." lines and a final "TEST DONE passes=N fails=M".
 #include "client/test_script.h"
 #include "client/app.h"
@@ -15,6 +16,8 @@
 #include "ui/screen.h"
 #include "sim/commands.h"
 #include "sim/player.h"
+#include "sim/combat.h"
+#include "render/instruments.h"
 #include "core/registry.h"
 #include <SDL.h>
 #include <map>
@@ -123,6 +126,7 @@ void runStep(App& a, const json& st) {
     R.later.push_back({f + hold, [ax] { if (R.vjoy) SDL_JoystickSetVirtualAxis(R.vjoy, ax, 0); }});
   } else if (op == "cmd") {
     if (!s) return;
+    if (s->level->info.rules.is_object()) s->level->info.rules["commands"] = true;   // tests may always use commands
     std::string out = runCommand(*s->level, p, st.value("text", ""));
     DQ_LOG("test: %s -> %s", st.value("text", "").c_str(), out.c_str());
   } else if (op == "look" && p) {
@@ -169,6 +173,14 @@ void runStep(App& a, const json& st) {
       result(ok, "entity " + t + " within " + std::to_string((int)r) + " count " + std::to_string(n));
     }
     if (st.contains("held") && p) result(p->held().id == st["held"].get<std::string>(), "held " + st["held"].get<std::string>() + " (got " + p->held().id + ")");
+  } else if (op == "hurt" && s && p) {   // strike the nearest creature of a type as the player would (tool kind, the ray from the eyes)
+    std::string t = st.value("entity", ""); Entity* best = nullptr; float bd = st.value("near", 24.f);
+    for (auto& e : s->level->entities()) if (e && !e->removed && e.get() != p && e->type == t && e->hp > 0 && glm::distance(e->pos, p->pos) < bd) { bd = glm::distance(e->pos, p->pos); best = e.get(); }
+    if (!best) { result(false, "hurt: no " + t + " near"); return; }
+    DamageSource ds; ds.attacker = p->id; ds.tool = st.value("tool", ""); ds.type = st.value("type", ""); ds.knock = st.value("knock", -1.f);
+    ds.hasRay = true; ds.rayO = p->pos + vec3(0, p->eye, 0); ds.rayD = glm::normalize(best->pos + vec3(0, best->h * st.value("at", 0.5f), 0) - ds.rayO);
+    float dealt = damageEntity(*s->level, *best, st.value("amount", 4.f), ds);
+    DQ_LOG("test: hurt %s #%u by %.1f -> dealt %.1f, hp %.1f", t.c_str(), best->id, st.value("amount", 4.f), dealt, best->hp);
   } else if (op == "report") {
     std::string msg = "screens: " + screenStack(a);
     if (p) {
@@ -180,6 +192,7 @@ void runStep(App& a, const json& st) {
       msg += " | inv:"; for (auto& [k, n] : inv) msg += " " + k + "=" + std::to_string(n);
       std::map<std::string, int> near;
       for (auto& e : s->level->entities()) if (e && !e->removed && e.get() != p && e->realm == p->realm && glm::distance(e->pos, p->pos) < st.value("near", 48.f)) near[e->type]++;
+      { const InstrumentState& I = instruments(); char ib[96]; std::snprintf(ib, sizeof ib, " | compass %d death %d clock %d grave %s", I.compassF, I.deathF, I.clockF, p->grave.is_object() ? "yes" : "no"); msg += ib; }
       msg += " | near:";
       for (auto& [k, n] : near) msg += " " + k + "=" + std::to_string(n);
     }

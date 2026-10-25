@@ -17,6 +17,7 @@
 #include <cstdio>
 
 namespace dq {
+using namespace ui;   // text, textSize, Z, F_MID, col:: (ui/theme.h)
 
 namespace {
 // a radial gradient over the screen (CSS radial-gradient(ellipse at center, ...)): stops (fraction, rgba)
