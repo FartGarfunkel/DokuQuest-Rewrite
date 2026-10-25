@@ -73,6 +73,16 @@ namespace {
 inline float lumOf(const u8* p) { return (0.299f * p[0] + 0.587f * p[1] + 0.114f * p[2]) / 255.f; }
 inline float satOf(const u8* p) { int mx = std::max({p[0], p[1], p[2]}), mn = std::min({p[0], p[1], p[2]}); return mx ? (mx - mn) / (float)mx : 0.f; }
 
+// 3x3 binomial blur (wrapping, so tiles stay seamless): single-pixel specks lose most of their height, edges soften
+void blur3(const std::vector<float>& a, int S, std::vector<float>& out) {
+  std::vector<float> t(S * S);
+  out.resize(S * S);
+  for (int y = 0; y < S; y++) for (int x = 0; x < S; x++)
+    t[y * S + x] = 0.25f * a[y * S + (x + S - 1) % S] + 0.5f * a[y * S + x] + 0.25f * a[y * S + (x + 1) % S];
+  for (int y = 0; y < S; y++) for (int x = 0; x < S; x++)
+    out[y * S + x] = 0.25f * t[((y + S - 1) % S) * S + x] + 0.5f * t[y * S + x] + 0.25f * t[((y + 1) % S) * S + x];
+}
+
 void lumRelief(const u8* p, int S, const std::vector<float>& lum, float avg, std::vector<float>& d) {
   for (int y = 0; y < S; y++) for (int x = 0; x < S; x++) {
     // local average (5x5, wrapping) so large dark areas don't all sink
@@ -107,7 +117,8 @@ bool isOreName(const std::string& n) {
   return n.find("_ore") != std::string::npos || n == "ancient_debris_side" || n == "ancient_debris_top" || n == "gilded_blackstone";
 }
 
-void oreRelief(const u8* p, int S, const std::vector<float>& lum, std::vector<float>& d) {
+void oreRelief(const u8* p, int S, const std::vector<float>& lumRaw, const std::vector<float>& lum, std::vector<float>& d) {
+  (void)lumRaw;
   // the rock: the colour of the greyest 60% of the picture
   std::vector<std::pair<float, int>> bySat;
   for (int i = 0; i < S * S; i++) if (p[i * 4 + 3] > 127) bySat.push_back({satOf(p + i * 4), i});
@@ -132,12 +143,77 @@ void oreRelief(const u8* p, int S, const std::vector<float>& lum, std::vector<fl
     if (gem[i]) { d[i] = std::max(0.f, (rl - lum[i]) * 0.6f); continue; }            // flush: the gem stands out
     float la = 0; for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) la += lum[((y + dy + S) % S) * S + (x + dx + S) % S];
     la /= 9.f;
-    d[i] = 0.42f + 0.14f * (1 - dist[i] / 3.f) + std::clamp((la - lum[i]) * 1.5f, -0.1f, 0.2f);   // the rock sits lower, deepest at the gem's foot
+    d[i] = 0.42f + 0.14f * (1 - dist[i] / 3.f) + std::clamp((la - lum[i]) * 1.2f, -0.06f, 0.12f);   // the rock sits lower, deepest at the gem's foot
   }
+  // the rock's grain evens out (its slopes toward the gem stay); the gems keep their own edge
+  std::vector<float> bl; blur3(d, S, bl);
+  for (int i = 0; i < S * S; i++) if (!gem[i]) d[i] = 0.4f * d[i] + 0.6f * bl[i];
+}
+
+// features: small things of a clearly different colour from the surface round them (a chest's iron latch and
+// corners, the tools hung on a crafting table, a furnace's mouth, book spines) stand proud of it; the surface
+// sits lower. Found by hue/saturation distance from the tile's base colour, kept only as connected patches
+// (so noise and speckle never count). false = nothing like that in this picture.
+bool featureRelief(const u8* p, int S, const std::vector<float>& lumS, std::vector<float>& d) {
+  // the base: hue and saturation of the saturated pixels (the surface), mean luminance of the rest
+  double hx = 0, hy = 0, sat = 0; int ns = 0;
+  for (int i = 0; i < S * S; i++) {
+    const u8* q = p + i * 4; if (q[3] < 128) return false;   // see-through tiles are plants and glass
+    float sa = satOf(q); if (sa < 0.25f) continue;
+    int mx = std::max({q[0], q[1], q[2]}), mn = std::min({q[0], q[1], q[2]});
+    float hue = mx == q[0] ? std::fmod((q[1] - q[2]) / (float)(mx - mn) + 6.f, 6.f) : mx == q[1] ? (q[2] - q[0]) / (float)(mx - mn) + 2.f : (q[0] - q[1]) / (float)(mx - mn) + 4.f;
+    hx += std::cos(hue * PI / 3); hy += std::sin(hue * PI / 3); sat += sa; ns++;
+  }
+  if (ns < S * S / 3) return false;   // no coloured surface to stand out from
+  float bh = std::atan2((float)hy, (float)hx), bsat = (float)(sat / ns);
+  std::vector<u8> feat(S * S, 0);
+  int nf = 0;
+  for (int i = 0; i < S * S; i++) {
+    const u8* q = p + i * 4;
+    float sa = satOf(q), far = 0;
+    if (sa < 0.18f) far = std::min(1.f, (bsat - sa) * 2.5f);                       // iron, stone, black: no colour where the surface has some
+    else {
+      int mx = std::max({q[0], q[1], q[2]}), mn = std::min({q[0], q[1], q[2]});
+      float hue = mx == q[0] ? std::fmod((q[1] - q[2]) / (float)(mx - mn) + 6.f, 6.f) : mx == q[1] ? (q[2] - q[0]) / (float)(mx - mn) + 2.f : (q[0] - q[1]) / (float)(mx - mn) + 4.f;
+      float dh = std::abs(std::remainder(hue * PI / 3 - bh, TAU));
+      far = std::min(1.f, std::max(0.f, dh - 0.35f) * 2.5f);                        // another hue (gold, red, green)
+    }
+    if (far > 0.5f) { feat[i] = 1; nf++; }
+  }
+  if (nf < S * S * 3 / 100 || nf > S * S * 40 / 100) return false;
+  // keep only patches of 3+ voxels
+  std::vector<u8> keep(S * S, 0); std::vector<int> stack;
+  int kept = 0;
+  std::vector<u8> seen(S * S, 0);
+  for (int s0 = 0; s0 < S * S; s0++) {
+    if (!feat[s0] || seen[s0]) continue;
+    std::vector<int> comp; stack.assign(1, s0); seen[s0] = 1;
+    while (!stack.empty()) {
+      int i = stack.back(); stack.pop_back(); comp.push_back(i);
+      int x = i % S, y = i / S;
+      for (auto [dx, dy] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+        int xx = x + dx, yy = y + dy; if ((unsigned)xx >= (unsigned)S || (unsigned)yy >= (unsigned)S) continue;
+        int j = yy * S + xx; if (feat[j] && !seen[j]) { seen[j] = 1; stack.push_back(j); }
+      }
+    }
+    if (comp.size() >= 3) { for (int i : comp) keep[i] = 1; kept += (int)comp.size(); }
+  }
+  if (kept < S * S * 2 / 100) return false;
+  std::vector<float> dist; distanceTo(keep, S, 3, dist);
+  for (int y = 0; y < S; y++) for (int x = 0; x < S; x++) {
+    int i = y * S + x;
+    if (keep[i]) { d[i] = 0.f; continue; }                                            // the feature: flush with the top
+    float la = 0; for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) la += lumS[((y + dy + S) % S) * S + (x + dx + S) % S];
+    la /= 9.f;
+    d[i] = 0.3f + 0.12f * (1 - dist[i] / 3.f) + std::clamp((la - lumS[i]) * 0.8f, -0.05f, 0.08f);   // the surface sits lower, deepest at the feature's foot
+  }
+  std::vector<float> bl; blur3(d, S, bl);                                              // slopes, not steps
+  for (int i = 0; i < S * S; i++) d[i] = keep[i] ? std::min(d[i], 0.5f * bl[i]) : 0.4f * d[i] + 0.6f * bl[i];
+  return true;
 }
 
 // grooves: split into two tones (Otsu); the tone that runs in thin lines is the groove. false = no grooves.
-bool grooveRelief(const u8* p, int S, const std::vector<float>& lum, std::vector<float>& d) {
+bool grooveRelief(const u8* p, int S, const std::vector<float>& lum, const std::vector<float>& lumS, std::vector<float>& d) {
   int hist[64] = {0}, n = 0;
   for (int i = 0; i < S * S; i++) if (p[i * 4 + 3] > 127) { hist[std::min(63, (int)(lum[i] * 64))]++; n++; }
   if (n < S * S * 9 / 10) return false;
@@ -181,6 +257,9 @@ bool grooveRelief(const u8* p, int S, const std::vector<float>& lum, std::vector
     float k = 1 - dist[i] / R;
     d[i] = 0.5f * k * k + std::max(0.f, detail);   // bulging: deepest where it meets the groove, flush in the middle
   }
+  // softer gradients: the stones slope into the mortar instead of stepping (the mortar stays deep)
+  std::vector<float> bl; blur3(d, S, bl);
+  for (int i = 0; i < S * S; i++) d[i] = groove[i] ? std::max(0.5f * (d[i] + bl[i]), 0.62f) : 0.35f * d[i] + 0.65f * bl[i];
   return true;
 }
 } // namespace
@@ -191,8 +270,8 @@ void deriveMicroVoxelHeights(TileSet& ts) {
   std::vector<std::string> names(ts.count);
   for (auto& [k, v] : ts.index) if (v >= 0 && v < ts.count) names[v] = k;
   static const bool old = [] { const char* e = std::getenv("DQ_RELIEF"); return e && std::string(e) == "old"; }();
-  std::vector<float> lum(S * S), d(S * S);
-  int ores = 0, grooved = 0;
+  std::vector<float> lum(S * S), lumS(S * S), d(S * S);
+  int ores = 0, grooved = 0, features = 0;
   for (int t = 0; t < ts.count; t++) {
     const u8* p = ts.tile(t);
     float avg = 0; int n = 0;
@@ -200,14 +279,23 @@ void deriveMicroVoxelHeights(TileSet& ts) {
     if (!n) continue;
     avg /= n;
     std::fill(d.begin(), d.end(), 0.f);
+    if (!old) blur3(lum, S, lumS);
     if (old || n < S * S * 9 / 10) lumRelief(p, S, lum, avg, d);
-    else if (isOreName(names[t])) { oreRelief(p, S, lum, d); ores++; }
-    else if (grooveRelief(p, S, lum, d)) grooved++;
-    else lumRelief(p, S, lum, avg, d);
+    else if (isOreName(names[t])) { oreRelief(p, S, lum, lumS, d); ores++; }
+    else if (featureRelief(p, S, lumS, d)) features++;
+    else if (grooveRelief(p, S, lum, lumS, d)) grooved++;
+    else { lumRelief(p, S, lumS, avg, d); std::vector<float> bl; blur3(d, S, bl); d.swap(bl); }   // plain surfaces: smoothed luminance, then blurred again (no single-pixel spikes)
+    if (!old && n >= S * S * 9 / 10) {
+      // a slight bevel round every face: the outer ring of micro-voxels sits a little lower
+      for (int y = 0; y < S; y++) for (int x = 0; x < S; x++) {
+        int e = std::min({x, y, S - 1 - x, S - 1 - y});
+        if (e < 2) d[y * S + x] = std::max(d[y * S + x], e == 0 ? 0.16f : 0.07f);
+      }
+    }
     u8* hgt = ts.height.data() + (size_t)t * S * S;
     for (int i = 0; i < S * S; i++) hgt[i] = (u8)clampv(d[i] * 255.f, 0.f, 255.f);
   }
-  DQ_LOG("relief: %d tiles (%d ores, %d grooved)%s", ts.count, ores, grooved, old ? " [old relief]" : "");
+  DQ_LOG("relief: %d tiles (%d ores, %d grooved, %d with raised features)%s", ts.count, ores, grooved, features, old ? " [old relief]" : "");
 }
 
 } // namespace dq

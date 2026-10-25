@@ -88,9 +88,19 @@ float cellDepthF(vec2 cell, float layer) { return tileHeightAt(fract((cell + 0.5
 // each micro-voxel's tilt from its neighbours' depths (a normal map made from the height field, for any
 // pack): in the face's tangent frame, x along T, y along B, z out of the face
 vec3 bumpNormal(vec2 cell, float layer, float k) {
+#if MICRO_VOXELS >= 2
+  // Sobel over the 3x3 neighbourhood: one odd micro-voxel no longer tilts its neighbours' lighting
+  float h00 = cellDepthF(cell + vec2(-1.0, -1.0), layer), h10 = cellDepthF(cell + vec2(0.0, -1.0), layer), h20 = cellDepthF(cell + vec2(1.0, -1.0), layer);
+  float h01 = cellDepthF(cell + vec2(-1.0, 0.0), layer), h21 = cellDepthF(cell + vec2(1.0, 0.0), layer);
+  float h02 = cellDepthF(cell + vec2(-1.0, 1.0), layer), h12 = cellDepthF(cell + vec2(0.0, 1.0), layer), h22 = cellDepthF(cell + vec2(1.0, 1.0), layer);
+  float gx = (h20 + 2.0 * h21 + h22) - (h00 + 2.0 * h01 + h02);
+  float gy = (h02 + 2.0 * h12 + h22) - (h00 + 2.0 * h10 + h20);
+  return normalize(vec3(gx * 0.125 * k * 0.85, gy * 0.125 * k * 0.85, 1.0));
+#else
   float hl = cellDepthF(cell - vec2(1.0, 0.0), layer), hr = cellDepthF(cell + vec2(1.0, 0.0), layer);
   float hd = cellDepthF(cell - vec2(0.0, 1.0), layer), hu = cellDepthF(cell + vec2(0.0, 1.0), layer);
-  return normalize(vec3((hr - hl) * 0.5 * k, (hu - hd) * 0.5 * k, 1.0));
+  return normalize(vec3((hr - hl) * 0.5 * k * 0.85, (hu - hd) * 0.5 * k * 0.85, 1.0));
+#endif
 }
 // light on a tilted micro-voxel: the sun where the sky reaches, and a key light from above for everything
 // (so the bumps read in a torch-lit cave too). Returns a multiplier for the face's colour.
@@ -221,10 +231,13 @@ void main() {
     vec3 v = -viewVec / max(dist, 1e-4);
     float fres = pow(1.0 - clamp(dot(v, wn), 0.0, 1.0), 3.0);
     float skyLit = lightCurve(vLight.x) * uDaylight;
-    c = mix(c, mix(uSkyColor, uFogColor, 0.35) * max(skyLit, uMinLight), fres * 0.45 * step(0.5, N.y));
+    // a rain puddle is water without the climate tint: darker, glossier, a stronger sky reflection
+    float pud = (vMat & 128u) == 0u ? 1.0 : 0.0;
+    c *= 1.0 - 0.2 * pud;
+    c = mix(c, mix(uSkyColor, uFogColor, 0.35) * max(skyLit, uMinLight), (fres * 0.45 + pud * 0.25) * step(0.5, N.y));
     vec3 hv = normalize(v + uSunDir);
     c += pow(max(dot(hv, wn), 0.0), 140.0) * 0.55 * skyLit * step(0.5, N.y);
-    if (n == 2) {
+    if (n == 2 && pud < 0.5) {
       // shoreline foam: broken lines lapping where the water meets the land
       float sh = vLight.z;
       float nz = vnoise(vWorld.xz * 5.0 + vec2(uTime * 0.35, uTime * 0.2)) * 0.6 + vnoise(vWorld.xz * 11.0 - uTime * 0.5) * 0.4;

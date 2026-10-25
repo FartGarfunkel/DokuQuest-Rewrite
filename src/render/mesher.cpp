@@ -1,6 +1,7 @@
 // render/mesher.cpp — the section mesher: gathering, climate tints, cubes (with greedy merging of
 // flat, evenly lit faces), liquids, torches and the per-section loop. Port of world/mesher.js.
 #include "render/mesh_ctx.h"
+#include "render/chest_layer.h"
 #include "assets/tileset.h"
 #include "common/noise.h"
 #include <cstring>
@@ -494,6 +495,7 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
     const BlockTraits& T = traits(id);
     switch (rt) {
       case Render::Cube: case Render::Cutout: {
+        if (chestHiddenAt(wp.x, wp.y, wp.z)) break;   // the open chest is drawn by render/chest_layer.cpp
         if (c.opaque(x + 1, y, z) && c.opaque(x - 1, y, z) && c.opaque(x, y, z + 1) && c.opaque(x, y, z - 1) && c.opaque(x, y + 1, z) && c.opaque(x, y - 1, z)) break;
         int pass = R.tTrans[id] ? 2 : rt == Render::Cutout ? 1 : 0;
         emitCube(c, gm, pass, pass == 2 ? out.trans : pass == 1 ? out.cutout : out.opaque, id, x, y, z, meta);
@@ -512,7 +514,7 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
       }
       case Render::Torch: emitTorch(c, out.cutout, id, x, y, z, meta); break;
       case Render::Model: emitModel(c, out.cutout, id, x, y, z, meta); break;
-      case Render::Shape: emitShapeBlock(c, R.tTrans[id] ? out.trans : out.cutout, id, x, y, z, meta); break;
+      case Render::Shape: emitShapeBlock(c, R.tTrans[id] || isPuddle(R, id) ? out.trans : out.cutout, id, x, y, z, meta); break;
       default: break;
     }
     if ((meta & WLOG) && R.tWlog[id] && waterId) emitLiquid(c, out.trans, waterId, x, y, z, 0);

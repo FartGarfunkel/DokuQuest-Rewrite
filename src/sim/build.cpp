@@ -540,6 +540,14 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   if (b.has("lectern")) {
     json* e = w.blockEntity(x, y, z);
     if (!e && hasHeld && held->id == "book") { w.setBlockEntity(x, y, z, {{"type", "lectern"}, {"book", true}}); if (--held->n <= 0) held->clear(); swingArm(); return true; }
+    // (0.9.0.65) an old book (a "lore_" item) lies open on the lectern at its page: use it to read and pick the page,
+    // sneak with an empty hand to take it
+    std::string loreHeld = hasHeld && held->def() ? held->def()->str("lore") : "";
+    if (!e && !loreHeld.empty()) { w.setBlockEntity(x, y, z, {{"type", "lectern"}, {"book", true}, {"lore", loreHeld}}); if (--held->n <= 0) held->clear(); swingArm(); return true; }
+    if (e && e->value("book", false) && e->contains("lore") && (*e)["lore"].is_string()) {
+      if (p.sneaking && !hasHeld) { giveItem(lv, p, ItemStack("lore_" + (*e)["lore"].get<std::string>(), 1)); w.setBlockEntity(x, y, z, nullptr); swingArm(); return true; }
+      swingArm(); openScreen(lv, p, "lectern", {{"pos", {x, y, z}}}); return true;
+    }
     if (e && e->value("book", false) && !hasHeld) { giveItem(lv, p, ItemStack("book", 1)); w.setBlockEntity(x, y, z, nullptr); swingArm(); return true; }
     return false;
   }

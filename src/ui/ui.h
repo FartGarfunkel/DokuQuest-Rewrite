@@ -34,6 +34,7 @@ std::unique_ptr<Screen> makeDeathScreen(const std::string& cause, int level);
 std::unique_ptr<Screen> makeChatScreen(const std::string& prefill);
 std::unique_ptr<Screen> makeInventoryScreen(const InvOpen& o);   // also stations, the stonecutter, machines (InvOpen::mode)
 std::unique_ptr<Screen> makeSignScreen(ivec3 signPos);            // writing on a sign (ui/sign_screen.cpp)
+std::unique_ptr<Screen> makeLecternScreen(ivec3 at);              // an old book on a lectern: choose the page (ui/lectern_screen.cpp)
 std::unique_ptr<Screen> makeMultiplayerScreen();                    // title → Multiplayer (LAN list + address)
 std::unique_ptr<Screen> makeLanHostScreen();                        // pause → Open to LAN
 std::unique_ptr<Screen> makeJoiningScreen(const std::string& address, const std::string& label = "", const std::string& password = "");

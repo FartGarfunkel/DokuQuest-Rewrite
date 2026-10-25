@@ -15,6 +15,9 @@ extern const FaceDef FACES[6];
 extern const int FACE_UV[4][2];
 extern const float AO_CURVE[4];
 
+// the rain puddle (a flat carpet of water): drawn flat, glossy and see-through like water, never as relief
+inline bool isPuddle(const Registry& R, BlockId id) { static const BlockId pid = R.blockId("puddle"); return id && id == pid; }
+
 // One vertex before packing
 struct MV { vec3 p; vec2 uv; float sky, blk; float shade; u8 sway; };
 
