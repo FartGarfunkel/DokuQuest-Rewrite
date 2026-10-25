@@ -8,6 +8,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 ## 1.0.0-alpha.3.2 — Hotfix (October 2026)
 
 - **No more duplicating:** equipping or taking off a backpack, cape, belt item or charm no longer copies it (and everything in the backpack). The inventory and the rest of the game now share one set of gear slots.
+- **Caves aren't filled with weather:** mist, rain fog and sandstorms fade out below ground and indoors, so caves and dungeons show again instead of disappearing into storm fog.
 - **Elytra work from the cape slot:** they used to be saved in the inventory's own copy, which the glide never looked at. Jump while falling to glide.
 - Removed Herobrine.
 
