@@ -1,7 +1,7 @@
 // sim/gameplay.cpp — feedback, items on the ground (DroppedItem), block drops (game.js + obtain.js),
 // falling trees, XP, and the per-level gameplay system (clock, item merging, crowding, world systems).
 #include "sim/gameplay.h"
-#include "sim/creature_entities.h"
+#include "sim/felled.h"
 #include "sim/rules.h"
 #include "sim/worldsys.h"
 #include "sim/blockfx.h"
