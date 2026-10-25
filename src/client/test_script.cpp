@@ -10,7 +10,7 @@
 //     fill{from:[x,y,z],to:[x,y,z],key}
 //     expect{screen | block:[x,y,z],is | entity,near} report shot{path} save leave open{world} unjoin{local} quit
 //     hurt{entity,amount,tool,type,at} (strike the nearest creature of that type as the player, e.g. tool "axe")
-//     drop{path} (a file dropped on the window) screen{name} (open a screen; "close" pops) data{key,value} wear{item,slot?}
+//     kill (the player / "local" dies)  drop{path} (a file dropped on the window) screen{name} (open a screen; "close" pops) data{key,value} wear{item,slot?}
 //     expect{screen | block:[x,y,z],is | entity,near | held | inv:slot,item,n | count:item,n | cursor:item |
 //            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text} report shot{path} save leave open{world} quit
 // give takes "d" (wear). pad buttons: a b x y back guide start ls rs lb rb up down left right, lt / rt (triggers).
@@ -182,7 +182,12 @@ void runStep(App& a, const json& st) {
     if (st.contains("screen")) {
       std::string want = st["screen"].is_null() ? "(none)" : st["screen"].get<std::string>();
       std::string top = a.topScreen() ? a.topScreen()->id() : "(none)";
-      result(top == want, "screen " + want + " (open: " + screenStack(a) + ")");
+      std::string open = screenStack(a);
+      int li = st.value("local", -1);   // split screen: that person's own menu ("local": 0 is the first person)
+      if (li >= 0 && s && s->split() && li < (int)s->locals.size() && !s->entered) {
+        auto& v = s->locals[li].screens; top = v.empty() ? "(none)" : v.back()->id(); open = "local " + std::to_string(li) + ": " + top;
+      }
+      result(top == want, "screen " + want + " (open: " + open + ")");
     }
     if (st.contains("block") && s) {
       ivec3 b = at(st, "block");
@@ -236,6 +241,7 @@ void runStep(App& a, const json& st) {
     DQ_LOG("test: hurt %s #%u by %.1f -> dealt %.1f, hp %.1f", t.c_str(), best->id, st.value("amount", 4.f), dealt, best->hp);
   } else if (op == "report") {
     std::string msg = "screens: " + screenStack(a);
+    if (s && s->split()) for (int i = 0; i < (int)s->locals.size(); i++) if (!s->locals[i].screens.empty() && !s->entered) msg += " | local " + std::to_string(i) + " menu " + s->locals[i].screens.back()->id();
     if (p) {
       char b[256]; std::snprintf(b, sizeof b, " | pos %.1f %.1f %.1f yaw %.0f pitch %.0f hp %.1f realm %d held %s x%d", p->pos.x, p->pos.y, p->pos.z,
                                  p->yaw * 180 / PI, p->pitch * 180 / PI, p->hp, p->realm, p->held().id.c_str(), p->held().n);
@@ -275,6 +281,8 @@ void runStep(App& a, const json& st) {
     a.leaveWorld(st.value("toTitle", true));
   } else if (op == "open") {
     a.openWorld(a.savesDir() / st.value("world", "Test"));
+  } else if (op == "kill" && s && p) {   // the player (or split-screen "local") dies: the death screen opens in their viewport
+    DamageSource ds; p->hp = 0; playerDie(*s->level, *p, ds);
   } else if (op == "unjoin") {   // split screen: the partner "local" (1..3) leaves (the pause screen's Leave button)
     if (s) s->removeLocal(st.value("local", 1));
   } else if (op == "quit") {
