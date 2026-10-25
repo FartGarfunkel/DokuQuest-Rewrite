@@ -654,8 +654,11 @@ void PortalSystem::tick(Level& l, double dt) {
   for (auto& [r, w] : l.allRealms()) attach(*w);
   // portals nobody has been through yet, near a player: find (or build) their far end now
   std::set<std::string> want;
-  for (auto& e : l.entities()) {
-    if (e->removed || !e->isPlayer()) continue;
+  // (a snapshot: building the far end spawns drops, which can reallocate the entity list under a range-for)
+  std::vector<Entity*> players;
+  for (auto& pe : l.entities()) if (pe && !pe->removed && pe->isPlayer()) players.push_back(pe.get());
+  for (Entity* e : players) {
+    if (e->removed) continue;
     std::vector<PortalWindow> wins = windows(e->realm);
     for (auto& w : wins) {
       if (w.kind != PortalKind::Ember && w.kind != PortalKind::Sky) continue;
@@ -673,7 +676,7 @@ void PortalSystem::tick(Level& l, double dt) {
   }
   for (auto it = pending.begin(); it != pending.end();) it = want.count(it->first) ? std::next(it) : pending.erase(it);
   // crossings for everything that moves
-  for (size_t i = 0; i < l.entities().size(); i++) { Entity* e = l.entities()[i].get(); if (!e->removed && !clientTracked.count(e->id)) track(*e, dt); }
+  for (size_t i = 0; i < l.entities().size(); i++) { Entity* e = l.entities()[i].get(); if (e && !e->removed && !clientTracked.count(e->id)) track(*e, dt); }
   if (tracks.size() > l.entities().size() + 64) {
     for (auto it = tracks.begin(); it != tracks.end();) it = l.entity(it->first) ? std::next(it) : tracks.erase(it);
   }

@@ -270,6 +270,19 @@ void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
     }
     std::sort(visible.begin(), visible.end(), [](auto& a, auto& b) { return a.first < b.first; });   // nearest first: what's hidden costs little
     drawnSections = (int)visible.size();
+    static const bool dbgBands = std::getenv("DQ_DEBUG_BANDS") != nullptr;
+    if (dbgBands && f.portalDepth == 0) {
+      static double lastT = 0; double now = nowSeconds();
+      if (now - lastT > 1.0) {
+        lastT = now;
+        int per[DIM_COUNT] = {0}, vis[DIM_COUNT] = {0}, chunks[DIM_COUNT] = {0};
+        for (auto& [k, m] : meshes) if (k.dim >= 0 && k.dim < DIM_COUNT) per[k.dim]++;
+        for (auto& v : visible) { int d = dimOfY((int)v.second->origin.y); if (d >= 0 && d < DIM_COUNT) vis[d]++; }
+        for (auto& [k, c] : w->chunks()) if (k.dim >= 0 && k.dim < DIM_COUNT) chunks[k.dim]++;
+        DQ_LOG("bands: cam %.0f %.0f %.0f dim %d | chunks %d/%d/%d/%d meshes %d/%d/%d/%d visible %d/%d/%d/%d inFlight %d again %d", f.cam.pos.x, f.cam.pos.y, f.cam.pos.z, f.dim,
+               chunks[0], chunks[1], chunks[2], chunks[3], per[0], per[1], per[2], per[3], vis[0], vis[1], vis[2], vis[3], (int)inFlight.size(), (int)again.size());
+      }
+    }
   }
   glBindVertexArray(vao);
   auto passBase = [&](SecMesh* m) -> i32 { u32 o = m->base; for (int i = 0; i < pass; i++) o += m->nq[i] * 4; return (i32)o; };

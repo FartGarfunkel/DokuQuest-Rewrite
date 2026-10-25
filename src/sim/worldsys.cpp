@@ -3,6 +3,7 @@
 #include "sim/gameplay.h"
 #include "sim/blockfx.h"
 #include "sim/rules.h"
+#include "sim/weather.h"
 #include "common/noise.h"
 #include <random>
 #include <regex>
@@ -354,7 +355,9 @@ static void growExtra(Level& lv, World& w, int x, int y, int z, BlockId id, u8 m
     BlockId next = nid == AIR ? B.small_amethyst_bud : nid == B.small_amethyst_bud ? B.medium_amethyst_bud : nid == B.medium_amethyst_bud ? B.large_amethyst_bud : nid == B.large_amethyst_bud ? B.amethyst_cluster : (BlockId)0;
     if (next) w.setBlock(x, y + 1, z, next, 0);
   }
-  // redstone ore fading, puddles and snow: their own systems (redstone, weather) tick them via hooks
+  // puddles dry up once the rain stops and a storm's snow melts away: the weather's own block tick (game/blocks2.js growExtra2)
+  static const BlockId puddleId = R.blockId("puddle"), snowLayerId = R.blockId("snow_layer");
+  if (id == puddleId || id == snowLayerId) { if (WeatherSystem* ws = weatherOf(lv)) ws->blockTick(lv, w, x, y, z, id, meta); return; }
 }
 
 void randomTicks(Level& lv, World& w, float px, float pz) {
