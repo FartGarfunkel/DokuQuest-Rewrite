@@ -18,6 +18,8 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
 - Chimneys working like the original (smoke).
 - Particles: verify torches, campfires, splash potions now that sim particles reach the client (ClientFx::particles was a stub until alpha.3).
 
+- Shader packs: the user reports they don't appear to work. Today only DokuQuest-format packs (docs/shader-packs.md: files that override assets/shaders/*.glsl) load; Minecraft Iris/OptiFine packs (shaders/*.fsh/.vsh, gbuffers_*, composite) are not supported yet — that's the roadmap's shader-pack pipeline. First check a DokuQuest-format pack end to end in Options, then plan the Iris/OptiFine loader.
+
 ## Items and animation
 - Bow draw animation (first and third person).
 - Fishing rod: better 3D model, cast/reel animation, line and bobber.
