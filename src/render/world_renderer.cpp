@@ -59,6 +59,7 @@ void WorldRenderer::reloadShaders() {
 void WorldRenderer::setWorld(World* nw) {
   if (nw == w) return;
   w = nw;
+  ++generation;   // meshes still being built for the old world are dropped when they come back
   for (auto& [k, m] : meshes) release(m->base, m->cap);
   meshes.clear(); inFlight.clear(); again.clear();
   std::lock_guard<std::mutex> lk(shared->mx); shared->done.clear();
@@ -157,9 +158,9 @@ void WorldRenderer::submit(const SectionKey& k, ThreadPool& pool, float pri, boo
   if (!gatherMeshInput(*w, k, *in)) return;
   if (in->empty) { auto it = meshes.find(k); if (it != meshes.end()) { release(it->second->base, it->second->cap); meshes.erase(it); } return; }
   inFlight.insert(k);
-  auto sh = shared; MesherOptions mo = mopt; mo.detail = detail;
-  pool.submit([sh, in, k, mo] {
-    Result r; r.k = k;
+  auto sh = shared; MesherOptions mo = mopt; mo.detail = detail; u32 gen = generation;
+  pool.submit([sh, in, k, mo, gen] {
+    Result r; r.k = k; r.gen = gen;
     buildSectionMesh(*in, r.out, mo);
     std::lock_guard<std::mutex> lk(sh->mx);
     sh->done.push_back(std::move(r));
@@ -167,6 +168,7 @@ void WorldRenderer::submit(const SectionKey& k, ThreadPool& pool, float pri, boo
 }
 
 void WorldRenderer::upload(Result& r) {
+  if (r.gen != generation) return;   // built for the world shown before a realm change
   inFlight.erase(r.k);
   auto it = meshes.find(r.k);
   if (!w || !w->chunk(r.k.dim, r.k.cx, r.k.cz) || r.out.empty()) {

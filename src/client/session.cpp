@@ -108,7 +108,7 @@ void GameSession::update(double dt) {
     if (n == 4) tickAcc = 0;
   }
   World& w = world();
-  if (worldRenderer.world() != &w) worldRenderer.setWorld(&w);
+  if (worldRenderer.world() != &w) { worldRenderer.setWorld(&w); worldRenderer.remeshAll(); }   // a new realm: mesh what is already loaded there
   std::vector<StreamAnchor> anchors = {{player->pos, app.settings.renderDist, true}};
   for (auto& l : layers) l->streamAnchors(*this, anchors);
   if (level->net) level->net->streamAnchors(player->realm, anchors);   // the host keeps remote players' surroundings loaded

@@ -52,7 +52,8 @@ public:
 
 private:
   struct SecMesh { u32 base = 0, cap = 0; u32 nq[3] = {0, 0, 0}; vec3 origin{0}; MeshFx fx; bool detail = true; };
-  struct Result { SectionKey k; MeshOutput out; };
+  struct Result { SectionKey k; MeshOutput out; u32 gen = 0; };
+  u32 generation = 0;   // bumped by setWorld: results from the world before are dropped
   struct Shared { std::mutex mx; std::vector<Result> done; };
   void submit(const SectionKey& k, ThreadPool& pool, float pri, bool detail);
   void upload(Result& r);
