@@ -4,6 +4,8 @@
 #include "ui/theme.h"
 #include "client/app.h"
 #include "client/session.h"
+#include "ui/magic_screens.h"
+#include "ui/content_screens.h"
 #include <imgui.h>
 
 namespace dq {
@@ -17,7 +19,9 @@ static std::vector<std::function<void(App&)>> g_deferred;
 void uiDefer(std::function<void(App&)> f) { g_deferred.push_back(std::move(f)); }
 
 // The simulation asks for a screen with EventBus "screenOpen" [player, kind, opts] (sim/gameplay openScreen):
-// chests, barrels, shulker boxes, the ender chest, backpacks -> container; crafting table -> table; furnaces.
+// chests, barrels, shulker boxes, hoppers, the ender chest, backpacks -> container; crafting table -> table;
+// furnaces; anvil / grindstone / smithing table / loom / fletching table -> station {kind}; the stonecutter;
+// millstone / sawmill / crusher -> machine; signs. (Cart and boat chests, opts.entity, are the vehicles' own.)
 static void onScreenOpen(App& a, const json& args) {
   if (!args.is_array() || args.size() < 2 || !args[1].is_string() || !a.session || !a.session->player) return;
   if (args[0].is_string() && args[0].get<std::string>() != a.session->player->name) return;
@@ -25,23 +29,44 @@ static void onScreenOpen(App& a, const json& args) {
   json o = args.size() > 2 && args[2].is_object() ? args[2] : json::object();
   InvOpen io;
   if (o.contains("pos") && o["pos"].is_array() && o["pos"].size() == 3) { io.hasPos = true; io.pos = ivec3(o["pos"][0].get<int>(), o["pos"][1].get<int>(), o["pos"][2].get<int>()); }
+  std::function<std::unique_ptr<Screen>()> make;
   if (kind == "container") { io.mode = "container"; io.ender = o.value("ender", false); io.heldPack = o.value("held", false); }
   else if (kind == "table") io.mode = "table";
   else if (kind == "furnace") io.mode = "furnace";
+  else if (kind == "station") {
+    io.mode = "station"; io.kind = o.value("kind", "");
+    // the enchanting table and the brewing stand have their own panels (ui/magic_screens)
+    if (io.kind == "enchant" && io.hasPos) { ivec3 p = io.pos; make = [p] { return makeEnchantScreen(p); }; }
+    else if (io.kind == "brew" && io.hasPos) { ivec3 p = io.pos; make = [p] { return makeBrewScreen(p); }; }
+  }
+  else if (kind == "stonecutter") io.mode = "stonecutter";
+  else if (kind == "machine") { io.mode = "machine"; if (!io.hasPos) return; }
+  else if (kind == "sign") { if (!io.hasPos) return; ivec3 p = io.pos; make = [p] { return makeSignScreen(p); }; }
   else { hudToast("That screen isn't in this build yet", "warn"); return; }
-  if (io.mode == "container" && !io.hasPos && !io.ender && !io.heldPack) { hudToast("That screen isn't in this build yet", "warn"); return; }
-  uiDefer([io](App& a2) {
+  if (io.mode == "container" && !io.hasPos && !io.ender && !io.heldPack) { if (!o.contains("entity")) hudToast("That screen isn't in this build yet", "warn"); return; }
+  if (!make) make = [io] { return makeInventoryScreen(io); };
+  uiDefer([make](App& a2) {
     if (!a2.session || !a2.session->player) return;
     while (a2.topScreen() && a2.topScreen()->id() == std::string("inventory")) a2.popScreen();
-    a2.pushScreen(makeInventoryScreen(io));
+    a2.pushScreen(make());
   });
+}
+
+// menutabs.js MENU_TABS: Inventory, Map (greyed out without a map), Journal, Skills, Spellbook, Stable
+static void registerMenuTabs() {
+  registerInventoryTab();
+  registerMenuTab({"map", "Map", [](App& a) { a.pushScreen(makeMapScreen(-1)); }, [](App& a) { return canOpenMapScreen(a); }});
+  registerMenuTab({"journal", "Journal", [](App& a) { a.pushScreen(makeJournalScreen()); }, nullptr});
+  registerMenuTab({"skills", "Skills", [](App& a) { a.pushScreen(makeSkillsScreen()); }, nullptr});
+  registerMenuTab({"spells", "Spellbook", [](App& a) { a.pushScreen(makeSpellbookScreen()); }, nullptr});
+  registerMenuTab({"stable", "Stable", [](App& a) { a.pushScreen(makeStableScreen()); }, nullptr});
 }
 
 void registerUi(App& a) {
   ui::init(a);
   registerHudLayer();
   hudInitEvents(a);
-  registerInventoryTab();
+  registerMenuTabs();
   a.events.on("screenOpen", [&a](const json& args) { onScreenOpen(a, args); return true; });
 }
 
@@ -63,6 +88,8 @@ std::unique_ptr<Screen> makeScreenByName(App& a, const std::string& n) {
   InvOpen o;
   if (n == "inventory" || n == "creative") return makeInventoryScreen(o);
   if (n == "table") { o.mode = "table"; return makeInventoryScreen(o); }
+  if (n == "stonecutter") { o.mode = "stonecutter"; return makeInventoryScreen(o); }
+  if (n == "anvil" || n == "loom" || n == "smithing" || n == "grindstone" || n == "fletching") { o.mode = "station"; o.kind = n; return makeInventoryScreen(o); }
   return nullptr;
 }
 
@@ -136,6 +163,8 @@ const std::vector<MenuTab>& menuTabs() { return tabs(); }
 
 static int g_tabClick = -1;
 static void tabGo(App& a, int cur, int to, int dir) {
+  // (the switch happens between frames, outside any screen's draw)
+  if (!a.session || !a.session->player || a.session->player->dead) return;
   auto& v = tabs(); int n = (int)v.size();
   a.popScreen();
   for (int k = 0; k < n; k++, to = ((to + dir) % n + n) % n) {
@@ -146,15 +175,48 @@ static void tabGo(App& a, int cur, int to, int dir) {
   }
   v[cur].open(a);   // nothing else opened: stay
 }
-bool menuTabsUpdate(App& a, const std::string& current) {
-  auto& v = tabs(); int n = (int)v.size(), cur = -1;
+// a click on the strip or LB / RB: where to go (menutabs.js update)
+static bool tabsWant(App& a, const std::string& current, int& cur, int& to, int& dir) {
+  auto& v = tabs(); int n = (int)v.size(); cur = -1;
   for (int i = 0; i < n; i++) if (v[i].key == current) cur = i;
-  if (cur < 0 || n < 2) { g_tabClick = -1; return false; }
-  if (g_tabClick >= 0 && g_tabClick != cur) { int to = g_tabClick; g_tabClick = -1; tabGo(a, cur, to, 1); return true; }
+  if (cur < 0 || n < 2 || (a.session && a.session->player && a.session->player->dead)) { g_tabClick = -1; return false; }
+  if (g_tabClick >= 0 && g_tabClick != cur) { to = g_tabClick; g_tabClick = -1; dir = 1; return true; }
   g_tabClick = -1;
+  if (a.input.textActive) return false;
   bool lb = a.input.pressed(Act::MenuTabLeft), rb = a.input.pressed(Act::MenuTabRight);
-  if (lb || rb) { int d = rb ? 1 : -1; tabGo(a, cur, ((cur + d) % n + n) % n, d); return true; }
+  if (lb || rb) { dir = rb ? 1 : -1; to = ((cur + dir) % n + n) % n; return true; }
   return false;
+}
+bool menuTabsUpdate(App& a, const std::string& current) {
+  int cur, to, dir;
+  if (!tabsWant(a, current, cur, to, dir)) return false;
+  tabGo(a, cur, to, dir);
+  return true;
+}
+// The other tabbed screens (map, journal, skills, spellbook, stable) get the strip and LB / RB from here,
+// after the screens have drawn (the inventory does its own: its LB / RB also drive the recipe book).
+static const char* tabKeyOfScreen(const std::string& id) {
+  if (id == "map") return "map";
+  if (id == "journal") return "journal";
+  if (id == "skills") return "skills";
+  if (id == "spellbook") return "spells";
+  if (id == "stable") return "stable";
+  return nullptr;
+}
+void uiAfterScreens(App& a) {
+  Screen* s = a.topScreen();
+  if (!s || !a.session || !a.session->player) return;
+  const char* key = tabKeyOfScreen(s->id());
+  if (!key) return;
+  menuTabsDraw(a, key);
+  // one LB/RB press = one tab: the screen a switch opens must not see the same press again
+  static u64 lastSwitch = 0;
+  if (a.frame <= lastSwitch + 2) return;
+  int cur, to, dir;
+  if (tabsWant(a, key, cur, to, dir)) {
+    lastSwitch = a.frame;
+    uiDefer([s, cur, to, dir](App& a2) { if (a2.topScreen() == s) { tabGo(a2, cur, to, dir); lastSwitch = a2.frame; } });
+  }
 }
 void menuTabsDraw(App& a, const std::string& current) {
   auto& v = tabs(); if (v.size() < 2) return;

@@ -55,6 +55,10 @@ jobs:
           ud="$RUNNER_TEMP/ud"; mkdir -p shots
           run() { echo "::group::$*"; timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" "$@" 2>&1 | tee -a smoke.log; local c=${PIPESTATUS[0]}; echo "::endgroup::"; return $c; }
           run ./build/dokuquest --userdir "$ud" --create Test --seed hello --smoke-frames 300 --smoke-shot shots/game.png
+          # scripted playtests: leave and reopen the world twice; fell a tree, save, reopen (tools/playtests, client/test_script)
+          for t in reopen tree; do run ./build/dokuquest --userdir "$ud" --world Test --smoke-frames 4000 --smoke-script tools/playtests/$t.json || echo "::error::playtest $t exited with an error"; done
+          grep -E "TEST (PASS|FAIL|DONE)" smoke.log | while IFS= read -r l; do echo "::notice::$l"; done
+          grep -E -A24 "crashed|uncaught exception" smoke.log | head -50 | while IFS= read -r l; do echo "::error::$l"; done
           for t in news server studio:editor studio:engine options; do run ./build/dokuquest-launcher --userdir "$ud" --tab "$t" --smoke-frames 30 --smoke-shot "shots/launcher-${t/:/-}.png"; done
           (sleep 10; echo save; echo stop) | timeout 120 ./build/dokuquest-server --userdir "$ud" --world CI 2>&1 | tee -a smoke.log
           if grep -n '^\[error\]' smoke.log; then echo "::error::the smoke test logged errors"; exit 1; fi

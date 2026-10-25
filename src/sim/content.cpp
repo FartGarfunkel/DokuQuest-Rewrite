@@ -161,6 +161,7 @@ private:
 }
 
 void registerFishingEntities();
+void registerPlacesNearHook();   // sim/places.cpp
 void registerCampingEntities();
 
 void registerContent() {
@@ -171,6 +172,7 @@ void registerContent() {
   registerCampingEntities();
   registerLevelSystem([](Level& lv) { return std::make_shared<MapStore>(lv); });
   registerLevelSystem([](Level& lv) { return std::make_shared<ContentSystem>(lv); });
+  registerPlacesNearHook();   // sim/places.cpp: finding places needs the structure plans
 }
 
 } // namespace dq

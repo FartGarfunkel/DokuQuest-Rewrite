@@ -48,6 +48,14 @@ struct PadState {
   float lt = 0, rt = 0;
   float navT = 0; ivec2 navDir{0};     // stick repeat for menus
   float viewHold = 0; double sneakTap = -1; bool sprintLatch = false;
+  // A device only drives the game once someone uses it (like the browser, which shows a pad only after a
+  // button press): a button, or a stick pushed well past its resting point. Wheels, flight sticks, motion
+  // sensors and other joysticks that rest off-centre would otherwise walk the player on their own.
+  bool active = false;
+  std::array<float, 4> rest{}; bool hasRest = false;   // raw LX LY RX RY when it was connected (unknown pads)
+  // a worn stick that doesn't spring back to the middle: where it has sat still (off-centre) for 2 s counts as
+  // "let go" too, so it can't creep the player along on its own
+  std::array<vec2, 2> driftAt{}, driftLast{}; std::array<float, 2> driftT{}; std::array<bool, 2> drifted{};
   bool edge(int k) const { return b[k] && !prevB[k]; }
 };
 
@@ -94,6 +102,7 @@ public:
   bool setupActive = false;          // controller setup wizard running: pads drive nothing
   bool rawSnapshot(int padIndex, RawPad& out) const;
   bool textActive = false;           // a text box has focus: keys don't trigger actions
+  void releaseAll();                 // every key, button and latch let go (window lost focus, a menu took over)
 private:
   Settings* settings = nullptr;
   std::array<bool, (int)Act::Count> cur{}, prev{}, pulse{};

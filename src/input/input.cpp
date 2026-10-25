@@ -161,6 +161,10 @@ void Input::handle(const SDL_Event& e) {
     case SDL_MOUSEWHEEL: wheelY += e.wheel.preciseY != 0 ? e.wheel.preciseY : (float)e.wheel.y; break;
     case SDL_TEXTINPUT: typed += e.text.text; break;
     case SDL_JOYDEVICEADDED: openDevice(e.jdevice.which); break;
+    // alt-tab, a notification stealing focus...: nothing stays held down (stuck keys walked the player on)
+    case SDL_WINDOWEVENT:
+      if (e.window.event == SDL_WINDOWEVENT_FOCUS_LOST || e.window.event == SDL_WINDOWEVENT_HIDDEN || e.window.event == SDL_WINDOWEVENT_MINIMIZED) releaseAll();
+      break;
     case SDL_JOYDEVICEREMOVED:
       padList.erase(std::remove_if(padList.begin(), padList.end(), [&](PadState& p) {
         if (p.id != e.jdevice.which) return false;
@@ -220,15 +224,39 @@ void Input::readPad(PadState& p) {
       b[6] = b[6] || hyst(6, axisVal(j, 2), 0.3f, 0.1f); b[7] = b[7] || hyst(7, axisVal(j, 5), 0.3f, 0.1f);
       ax = {axisVal(j, 0), axisVal(j, 1), axisVal(j, 3), axisVal(j, 4)};
     } else for (int i = 0; i < std::min(na, 4); i++) ax[i] = axisVal(j, i);
+    // an axis that rests far from the middle (a throttle, a pedal, a trigger) counts from where it rests
+    if (!p.hasRest) { p.rest = ax; p.hasRest = true; }
+    for (int i = 0; i < 4; i++) if (std::fabs(p.rest[i]) > 0.3f) ax[i] = clampv(ax[i] - p.rest[i], -1.f, 1.f);
     if (SDL_JoystickNumHats(j) > 0) { Uint8 h = SDL_JoystickGetHat(j, 0); b[12] = h & SDL_HAT_UP; b[13] = h & SDL_HAT_DOWN; b[14] = h & SDL_HAT_LEFT; b[15] = h & SDL_HAT_RIGHT; }
   }
   if (settings && settings->padLayout == "nintendo") { std::swap(b[0], b[1]); std::swap(b[2], b[3]); }
   // radial dead zone, rescaled (gamepad.js stick)
   auto stick = [](float x, float y) { float m = std::hypot(x, y); if (m < PAD_DEAD) return vec2(0); float k = std::min(1.f, (m - PAD_DEAD) / (1 - PAD_DEAD)) / m; return vec2(x * k, y * k); };
-  p.lstick = stick(ax[0], ax[1]); p.rstick = stick(ax[2], ax[3]);
+  auto drift = [&](int k, vec2 raw) {
+    float m = glm::length(raw);
+    if (m >= PAD_DEAD && m < 0.32f && glm::length(raw - p.driftLast[k]) < 0.015f) { if ((p.driftT[k] += (float)dt) > 2.f) { p.driftAt[k] = raw; p.drifted[k] = true; } }
+    else p.driftT[k] = 0;
+    if (m < PAD_DEAD) p.drifted[k] = false;   // it came back to the middle after all
+    p.driftLast[k] = raw;
+    vec2 v = stick(raw.x, raw.y);
+    return p.drifted[k] && glm::length(raw - p.driftAt[k]) < PAD_DEAD ? vec2(0) : v;
+  };
+  p.lstick = drift(0, vec2(ax[0], ax[1])); p.rstick = drift(1, vec2(ax[2], ax[3]));
   p.ax = {p.lstick.x, p.lstick.y, p.rstick.x, p.rstick.y};
   if (!p.ctl) { p.lt = b[6] ? 1.f : 0.f; p.rt = b[7] ? 1.f : 0.f; }
+  if (!p.active) {
+    for (int k = 0; k < 17; k++) if (b[k] && !p.prevB[k]) p.active = true;
+    if ((p.ctl || p.mapped) && (glm::length(p.lstick) > 0.6f || glm::length(p.rstick) > 0.6f)) p.active = true;
+    if (p.active) DQ_LOG("controller in use: %s", p.name.c_str());
+  }
+  if (!p.active) { b.fill(false); p.lstick = p.rstick = vec2(0); p.ax = {}; p.lt = p.rt = 0; }
   p.b = b;
+}
+
+void Input::releaseAll() {
+  std::memset(keys, 0, sizeof keys); std::memset(mouseBtn, 0, sizeof mouseBtn);
+  sneakLatch = false; sprintLatch = false; doubleW = false; lastW = -1;
+  for (auto& p : padList) { p.sprintLatch = false; p.navDir = ivec2(0); p.viewHold = 0; }
 }
 
 bool Input::codeDown(const std::string& c) const {

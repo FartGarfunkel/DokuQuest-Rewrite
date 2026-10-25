@@ -13,6 +13,7 @@ class GameSession;
 
 void registerUi(App& a);         // once at start-up, after App::initImGui and the tiles: theme, HUD layer, events
 void uiBeginFrame(App& a);       // every frame between ImGui_ImplSDL2_NewFrame and ImGui::NewFrame
+void uiAfterScreens(App& a);     // every frame after the screens drew: the menu tab strip over map/journal/skills/...
 // run something at the start of the next frame, outside any screen's draw (opening/leaving worlds, replacing the stack)
 void uiDefer(std::function<void(App&)> f);
 
@@ -31,7 +32,8 @@ std::unique_ptr<Screen> makeSkinEditorScreen();
 std::unique_ptr<Screen> makeWorldSettingsScreen(const fs::path& folder);   // empty = the world being played
 std::unique_ptr<Screen> makeDeathScreen(const std::string& cause, int level);
 std::unique_ptr<Screen> makeChatScreen(const std::string& prefill);
-std::unique_ptr<Screen> makeInventoryScreen(const InvOpen& o);
+std::unique_ptr<Screen> makeInventoryScreen(const InvOpen& o);   // also stations, the stonecutter, machines (InvOpen::mode)
+std::unique_ptr<Screen> makeSignScreen(ivec3 signPos);            // writing on a sign (ui/sign_screen.cpp)
 std::unique_ptr<Screen> makeMultiplayerScreen();                    // title → Multiplayer (LAN list + address)
 std::unique_ptr<Screen> makeLanHostScreen();                        // pause → Open to LAN
 std::unique_ptr<Screen> makeJoiningScreen(const std::string& address, const std::string& label = "", const std::string& password = "");

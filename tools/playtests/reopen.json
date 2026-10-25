@@ -1,0 +1,11 @@
+{"steps":[
+ {"wait":240,"do":"report"},
+ {"do":"save"},
+ {"do":"leave","toTitle":true},
+ {"wait":30,"do":"open","world":"Test"},
+ {"wait":300,"do":"report"},
+ {"do":"leave","toTitle":true},
+ {"wait":30,"do":"open","world":"Test"},
+ {"wait":200,"do":"report"},
+ {"wait":5,"do":"quit"}
+]}

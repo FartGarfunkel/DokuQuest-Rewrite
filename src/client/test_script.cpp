@@ -10,6 +10,9 @@
 //     expect{screen | block:[x,y,z],is | entity,near} report shot{path} save leave open{world} quit
 //     hurt{entity,amount,tool,type,at} (strike the nearest creature of that type as the player, e.g. tool "axe")
 //     drop{path} (a file dropped on the window) screen{name} (open a screen; "close" pops) data{key,value} wear{item,slot?}
+//     expect{screen | block:[x,y,z],is | entity,near | held | inv:slot,item,n | count:item,n | cursor:item |
+//            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text} report shot{path} save leave open{world} quit
+// give takes "d" (wear). pad buttons: a b x y back guide start ls rs lb rb up down left right, lt / rt (triggers).
 // The log gets "TEST PASS/FAIL ..." lines and a final "TEST DONE passes=N fails=M".
 #include "client/test_script.h"
 #include "client/app.h"
@@ -21,6 +24,7 @@
 #include "sim/combat.h"
 #include "render/instruments.h"
 #include "core/registry.h"
+#include "world/world.h"
 #include <SDL.h>
 #include <map>
 
@@ -116,6 +120,11 @@ void runStep(App& a, const json& st) {
     R.later.push_back({f + 1 + hold, [btn, x, y] { pushMouseButton(btn, false, x, y); }});
   } else if (op == "move") {
     pushMotion(a.width / 2, a.height / 2, st.value("dx", 0), st.value("dy", 0));
+  } else if (op == "pad" && (st.value("button", "") == "lt" || st.value("button", "") == "rt")) {
+    int ax = st.value("button", "") == "lt" ? SDL_CONTROLLER_AXIS_TRIGGERLEFT : SDL_CONTROLLER_AXIS_TRIGGERRIGHT;
+    if (!ensurePad()) return;
+    SDL_JoystickSetVirtualAxis(R.vjoy, ax, 32767);
+    R.later.push_back({f + hold, [ax] { if (R.vjoy) SDL_JoystickSetVirtualAxis(R.vjoy, ax, 0); }});
   } else if (op == "pad") {
     int b = padButton(st.value("button", "a"));
     if (b < 0 || !ensurePad()) return;
@@ -150,7 +159,7 @@ void runStep(App& a, const json& st) {
     else p->pos = vec3(st.value("x", p->pos.x), st.value("y", p->pos.y), st.value("z", p->pos.z));
     p->vel = vec3(0);
   } else if (op == "give" && p) {
-    int left = p->give(ItemStack(st.value("item", "stone"), st.value("n", 1)));
+    int left = p->give(ItemStack(st.value("item", "stone"), st.value("n", 1), st.value("d", 0)));
     if (left) DQ_WARN("test: give %s left %d", st.value("item", "").c_str(), left);
   } else if (op == "select" && p) {
     p->selected = std::clamp(st.value("slot", 0), 0, 8);
@@ -173,6 +182,36 @@ void runStep(App& a, const json& st) {
       for (auto& e : s->level->entities()) if (e && !e->removed && e->type == t && glm::distance(e->pos, p->pos) < r) n++;
       bool ok = st.value("none", false) ? n == 0 : n >= st.value("count", 1);
       result(ok, "entity " + t + " within " + std::to_string((int)r) + " count " + std::to_string(n));
+    }
+    auto stackOk = [&](const ItemStack& got, const std::string& what) {
+      std::string want = st.value("item", "");
+      bool ok = want.empty() ? got.empty() : got.id == want && (!st.contains("n") || got.n == st.value("n", 1));
+      result(ok, what + " has " + (want.empty() ? std::string("nothing") : want + (st.contains("n") ? " x" + std::to_string(st.value("n", 1)) : "")) +
+                     " (got " + (got.empty() ? std::string("nothing") : got.id + " x" + std::to_string(got.n)) + ")");
+    };
+    if (st.contains("inv") && p) { int i = st["inv"]; stackOk(i >= 0 && i < (int)p->inv.size() ? p->inv[i] : ItemStack(), "inv slot " + std::to_string(i)); }
+    if (st.contains("cursor") && p) {
+      std::string w = st["cursor"].is_string() ? st["cursor"].get<std::string>() : "";
+      bool ok = w.empty() ? p->cursor.empty() : p->cursor.id == w;
+      result(ok, "cursor " + (w.empty() ? std::string("empty") : w) + " (got " + (p->cursor.empty() ? std::string("empty") : p->cursor.id + " x" + std::to_string(p->cursor.n)) + ")");
+    }
+    if (st.contains("count") && p) {
+      std::string id = st["count"]; int n = 0;
+      for (auto& x : p->inv) if (x.id == id) n += x.n;
+      int want = st.value("n", 1);
+      result(st.value("atLeast", false) ? n >= want : n == want, "player carries " + std::to_string(want) + " " + id + " (got " + std::to_string(n) + ")");
+    }
+    if (st.contains("container") && s) {
+      ivec3 b = at(st, "container"); int i = st.value("slot", 0);
+      json* e = s->world().blockEntity(b.x, b.y, b.z);
+      ItemStack got = e && e->contains("items") && (*e)["items"].is_array() && i < (int)(*e)["items"].size() ? ItemStack::fromJson((*e)["items"][i]) : ItemStack();
+      stackOk(got, "container " + st["container"].dump() + " slot " + std::to_string(i));
+    }
+    if (st.contains("blockEntity") && s) {
+      ivec3 b = at(st, "blockEntity");
+      json* e = s->world().blockEntity(b.x, b.y, b.z);
+      std::string dump = e ? e->dump() : "null", want = st.value("has", "");
+      result(dump.find(want) != std::string::npos, "block entity " + st["blockEntity"].dump() + " has '" + want + "' (got " + dump.substr(0, 200) + ")");
     }
     if (st.contains("held") && p) result(p->held().id == st["held"].get<std::string>(), "held " + st["held"].get<std::string>() + " (got " + p->held().id + ")");
   } else if (op == "hurt" && s && p) {   // strike the nearest creature of a type as the player would (tool kind, the ray from the eyes)
