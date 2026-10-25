@@ -20,6 +20,18 @@ bool netJoin(App& app, const std::string& address, const std::string& password) 
   net::JoinOptions o;
   o.address = address; o.name = app.settings.playerName; o.skin = app.settings.skin; o.password = password; o.viewDistance = app.settings.renderDist;
   if (!nc->connect(o)) { app.toast(nc->error(), "bad"); return false; }
+  return netJoinFinish(app, nc, address);
+}
+
+std::shared_ptr<net::NetClient> netJoinBegin(App& app, const std::string& address, const std::string& password) {
+  auto nc = std::make_shared<net::NetClient>();
+  net::JoinOptions o;
+  o.address = address; o.name = app.settings.playerName; o.skin = app.settings.skin; o.password = password; o.viewDistance = app.settings.renderDist;
+  if (!nc->begin(o)) return nc;   // nc->error() says why; state() is Failed
+  return nc;
+}
+
+bool netJoinFinish(App& app, std::shared_ptr<net::NetClient> nc, const std::string& address) {
   // a copy of the host's world on this computer: made from the seed, plus the chunks they changed
   std::string tag;
   for (char c : address) tag += isalnum((unsigned char)c) ? c : '_';
@@ -28,7 +40,7 @@ bool netJoin(App& app, const std::string& address, const std::string& password) 
   fs::remove_all(dir, ec);
   fs::create_directories(dir / "players", ec);
   json pl = nc->playerRecord();
-  if (pl.is_object()) writeJson(dir / "players" / (o.name + ".json"), pl);
+  if (pl.is_object()) writeJson(dir / "players" / (app.settings.playerName + ".json"), pl);
   auto lv = std::make_unique<Level>(nc->levelInfo(), dir, app.pool.get(), &app.events);
   nc->attach(*lv);
   lv->net = nc;

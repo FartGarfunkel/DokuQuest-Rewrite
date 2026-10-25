@@ -217,7 +217,7 @@ public:
     row(by);
     if (mcButton("Singleplayer", ImVec2(btnW, btnH))) a.pushScreen(makeWorldsScreen());
     row(by += btnH + bgap);
-    if (mcButton("Multiplayer", ImVec2(btnW, btnH))) a.pushScreen(makeComingSoonScreen("Multiplayer", "Joining worlds on your network and servers comes with the network update. Split screen still works: plug in a controller and press Start."));
+    if (mcButton("Multiplayer", ImVec2(btnW, btnH))) a.pushScreen(makeMultiplayerScreen());
     row(by += btnH + bgap);
     if (mcButton("Players & Skins", ImVec2(btnW, btnH))) a.pushScreen(makePlayersScreen());
     row(by += btnH + bgap);

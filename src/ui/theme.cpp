@@ -2,6 +2,7 @@
 #include "ui/theme.h"
 #include "client/app.h"
 #include "assets/icons.h"
+#include "assets/gui_textures.h"
 #include "audio/audio.h"
 #include "render/gl.h"
 #include <imgui_internal.h>
@@ -41,8 +42,9 @@ void buildFonts(App& a, float zoom) {
   std::string uiF = (assetsDir() / "fonts" / "PixelifySans.ttf").string(), tF = (assetsDir() / "fonts" / "Jersey15.ttf").string();
   bool haveUi = fs::exists(uiF), haveT = fs::exists(tF);
   for (int i = 0; i < F_COUNT; i++) {
-    float size = std::round(FONT_PX[i] * zoom * dpi);
     bool display = i == F_H3 || i == F_DISP || i == F_TITLE || i == F_HUGE;
+    // ImGui sizes a font by its ascent+descent, CSS by its em: Pixelify Sans is 1.2 em tall, Jersey 15 1.0 em
+    float size = std::round(FONT_PX[i] * zoom * dpi * (display ? 1.f : 1.2f));
     if (i == F_MONO) { ImFontConfig c2; c2.SizePixels = std::max(13.f, std::round(13 * zoom * dpi)); g_fonts.f[i] = io.Fonts->AddFontDefault(&c2); continue; }
     const std::string& file = display ? tF : uiF;
     bool have = display ? haveT : haveUi;
@@ -70,9 +72,9 @@ void buildFonts(App& a, float zoom) {
   for (int i = 0; i < F_COUNT; i++) {
     bool display = i == F_H3 || i == F_DISP || i == F_TITLE || i == F_HUGE;
     if (display || i == F_MONO || !haveUi) continue;
-    float size = std::round(FONT_PX[i] * zoom * dpi);
-    int px = std::max(5, (int)std::round(size * 0.6f));
-    for (auto& sy : SYMS) pend.push_back({io.Fonts->AddCustomRectFontGlyph(g_fonts.f[i], sy.cp, px, px, px + std::round(size * 0.12f), ImVec2(std::round(size * 0.06f), std::round(size * 0.78f) - px)), &sy, px});
+    float size = std::round(FONT_PX[i] * zoom * dpi * 1.2f);
+    int px = std::max(5, (int)std::round(size * 0.52f));
+    for (auto& sy : SYMS) pend.push_back({io.Fonts->AddCustomRectFontGlyph(g_fonts.f[i], sy.cp, px, px, px + std::round(size * 0.1f), ImVec2(std::round(size * 0.05f), std::round(size * 0.77f) - px)), &sy, px});
   }
   io.Fonts->Build();
   {
@@ -264,7 +266,10 @@ bool mcButton(const char* lbl, ImVec2 size, bool disabled) {
   ImDrawList* dl = ImGui::GetWindowDrawList();
   float z = Z(), oy = held ? 1 : 0;
   ImVec2 a(p.x, p.y + oy), b(p.x + size.x, p.y + size.y + oy);
+  // a resource pack's own button pictures, stretched like .pack-buttons .mcbtn
+  GuiSprite ps = disabled ? GuiSprite() : guiSprite(hot ? "widget/button_highlighted" : "widget/button");
   if (disabled) dl->AddRectFilled(a, b, col::rgb(0x2c2c2c));
+  else if (ps.valid()) dl->AddImage((ImTextureID)ps.id(), a, b, ImVec2(ps.uv0.x, ps.uv0.y), ImVec2(ps.uv1.x, ps.uv1.y));
   else {
     dl->AddRectFilled(a, b, hot ? col::rgb(0x7d87c4) : col::rgb(0x6e6e6e));
     drawTiled(dl, "gui_button", a, b, 64 * z, hot ? IM_COL32(227, 247, 255, 255) : IM_COL32(217, 217, 217, 255));
@@ -275,7 +280,7 @@ bool mcButton(const char* lbl, ImVec2 size, bool disabled) {
     ImU32 dk = hot ? IM_COL32(10, 10, 60, 89) : IM_COL32(0, 0, 0, 82);
     dl->AddRectFilled(ImVec2(a.x, b.y - 4 * z), b, dk); dl->AddRectFilled(ImVec2(b.x - 2 * z, a.y), b, dk);
   }
-  dl->AddRect(a, b, hot ? IM_COL32_WHITE : IM_COL32_BLACK, 0, 0, 2 * z);
+  dl->AddRect(a, b, hot && !ps.valid() ? IM_COL32_WHITE : IM_COL32_BLACK, 0, 0, 2 * z);
   // label without the ##id part
   std::string t = lbl; size_t h = t.find("##"); if (h != std::string::npos) t.resize(h);
   t = ellipsize(F_BTN, t, size.x - 16 * z);

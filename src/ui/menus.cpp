@@ -4,6 +4,7 @@
 #include "ui/theme.h"
 #include "client/app.h"
 #include "client/session.h"
+#include "client/netplay.h"
 #include <imgui.h>
 
 namespace dq {
@@ -40,22 +41,29 @@ public:
     if (mcButton("Back to Game", ImVec2(bw, bh))) { a.popScreen(); ImGui::End(); ImGui::PopStyleVar(); return; }
     if (mcButton("Options...", ImVec2(half, bh))) a.pushScreen(makeOptionsScreen());
     ImGui::SameLine(); if (mcButton("Players & Skins", ImVec2(half, bh))) a.pushScreen(makePlayersScreen());
-    if (mcButton("How to Play", ImVec2(half, bh))) a.pushScreen(makeHowToScreen());
-    ImGui::SameLine(); if (mcButton("World Settings", ImVec2(half, bh))) a.pushScreen(makeWorldSettingsScreen({}));
-    if (mcButton(creative ? "Switch to Survival##mode" : "Switch to Creative##mode", ImVec2(half, bh)) && lv && p) {
-      lv->info.mode = p->mode = creative ? "survival" : "creative";
-      if (!p->creative()) p->flying = false;
-      a.toast(p->creative() ? "Creative mode: every block in the inventory, double-tap jump to fly" : "Survival mode", "good");
+    bool guest = netIsGuest(a);
+    // (netui.js) a guest has no world settings, backups, mode switch or LAN of its own
+    if (mcButton("How to Play", ImVec2(guest ? bw : half, bh))) a.pushScreen(makeHowToScreen());
+    if (!guest) { ImGui::SameLine(); if (mcButton("World Settings", ImVec2(half, bh))) a.pushScreen(makeWorldSettingsScreen({})); }
+    if (!guest) {
+      if (mcButton(creative ? "Switch to Survival##mode" : "Switch to Creative##mode", ImVec2(half, bh)) && lv && p) {
+        lv->info.mode = p->mode = creative ? "survival" : "creative";
+        if (!p->creative()) p->flying = false;
+        a.toast(p->creative() ? "Creative mode: every block in the inventory, double-tap jump to fly" : "Survival mode", "good");
+      }
+      ImGui::SameLine();
+      if (mcButton("Back Up World", ImVec2(half, bh)) && lv) {
+        a.session->save();
+        fs::path out; std::string err;
+        if (backupWorldFolder(lv->folder, lv->info.name, out, err)) { info = "Backup saved: " + out.filename().string(); a.toast("Backup saved", "good"); }
+        else { info = "Backup failed: " + err; a.toast(info, "warn"); }
+      }
+      LanStatus ls = lanStatus(a);
+      std::string lanLabel = ls.open ? "LAN: " + (ls.players.empty() ? std::string("open, nobody yet") : std::to_string(ls.players.size()) + " joined") + " \xC2\xB7 " + ls.address + "##lan" : "Open to LAN##lan";
+      if (mcButton(lanLabel.c_str(), ImVec2(bw, bh))) a.pushScreen(makeLanHostScreen());
     }
-    ImGui::SameLine();
-    if (mcButton("Back Up World", ImVec2(half, bh)) && lv) {
-      a.session->save();
-      fs::path out; std::string err;
-      if (backupWorldFolder(lv->folder, lv->info.name, out, err)) { info = "Backup saved: " + out.filename().string(); a.toast("Backup saved", "good"); }
-      else { info = "Backup failed: " + err; a.toast(info, "warn"); }
-    }
-    if (mcButton("Open to LAN", ImVec2(bw, bh))) a.pushScreen(makeComingSoonScreen("Open to LAN", "Sharing this world with players on your network comes with the network update."));
-    if (mcButton("Save and Quit to Title", ImVec2(bw, bh))) uiDefer([](App& app) { app.leaveWorld(true); });
+    std::string quit = guest ? "Leave " + (lv ? lv->info.name : std::string("the world")) + "##quit" : "Save and Quit to Title##quit";
+    if (mcButton(quit.c_str(), ImVec2(bw, bh))) uiDefer([](App& app) { app.leaveWorld(true); });
     // .pause-party: who is playing on this screen
     ImGui::Dummy(ImVec2(1, 6 * z));
     {
@@ -81,8 +89,9 @@ public:
     }
     // .mc-hint: name · dimension · mode · last saved
     if (lv && p) {
-      std::string s = lv->info.name + " \xC2\xB7 " + dimName(dimOfY(ifloor(p->pos.y))) + " \xC2\xB7 " + (p->creative() ? "Creative" : "Survival");
-      if (lv->info.lastPlayed) s += " \xC2\xB7 Last saved " + agoText(lv->info.lastPlayed) + ".";
+      bool guest = netIsGuest(a);
+      std::string s = lv->info.name + (guest ? " \xC2\xB7 hosted by someone" : "") + " \xC2\xB7 " + dimName(dimOfY(ifloor(p->pos.y))) + " \xC2\xB7 " + (p->creative() ? "Creative" : "Survival");
+      if (lv->info.lastPlayed && !guest) s += " \xC2\xB7 Last saved " + agoText(lv->info.lastPlayed) + ".";
       if (!info.empty()) s = info;
       ImVec2 ts = textSize(F_MID, s.c_str(), bw); ImVec2 q = ImGui::GetCursorScreenPos();
       textShadow(dl, F_MID, ImVec2(q.x + std::max(0.f, (bw - ts.x) * 0.5f), q.y + 4 * z), col::rgb(0xd8d8d8), s.c_str(), ImVec2(1, 1) * z, col::black, bw);

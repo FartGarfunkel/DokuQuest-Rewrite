@@ -32,6 +32,9 @@ std::unique_ptr<Screen> makeWorldSettingsScreen(const fs::path& folder);   // em
 std::unique_ptr<Screen> makeDeathScreen(const std::string& cause, int level);
 std::unique_ptr<Screen> makeChatScreen(const std::string& prefill);
 std::unique_ptr<Screen> makeInventoryScreen(const InvOpen& o);
+std::unique_ptr<Screen> makeMultiplayerScreen();                    // title → Multiplayer (LAN list + address)
+std::unique_ptr<Screen> makeLanHostScreen();                        // pause → Open to LAN
+std::unique_ptr<Screen> makeJoiningScreen(const std::string& address, const std::string& label = "", const std::string& password = "");
 std::unique_ptr<Screen> makeScreenByName(App& a, const std::string& name);   // --screen <name> (tests, screenshots)
 
 // ---- in-game entry points for other areas ----

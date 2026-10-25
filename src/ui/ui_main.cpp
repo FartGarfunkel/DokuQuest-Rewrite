@@ -31,6 +31,8 @@ std::unique_ptr<Screen> makeScreenByName(App& a, const std::string& n) {
   if (n == "howto") return makeHowToScreen();
   if (n == "news") return makeNewsScreen();
   if (n == "players") return makePlayersScreen();
+  if (n == "multiplayer") return makeMultiplayerScreen();
+  if (n == "lanhost") return makeLanHostScreen();
   if (n == "wsettings") return makeWorldSettingsScreen({});
   if (n == "pause") return makePauseScreen();
   if (n == "chat") return makeChatScreen("/");

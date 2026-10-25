@@ -7,11 +7,16 @@
 namespace dq {
 
 class App;
+namespace net { class NetClient; }
 
 // Join someone's world ("host[:port]"). Waits up to ~12 s while connecting and fetching the changed chunks
 // (TODO for the UI: a "Joining…" screen can drive net::NetClient::begin()/poll() instead). On failure the
 // reason is toasted and false returned. App::joinServer() calls this.
 bool netJoin(App& app, const std::string& address, const std::string& password = "");
+// The same in two halves, for the "Joining…" screen: begin (doesn't wait), poll() the client every frame until
+// Ready (then netJoinFinish enters the world; leave the old world first) or Failed (its error() says why).
+std::shared_ptr<net::NetClient> netJoinBegin(App& app, const std::string& address, const std::string& password = "");
+bool netJoinFinish(App& app, std::shared_ptr<net::NetClient> nc, const std::string& address);
 
 // Pause menu → Open to LAN: serve the open single-player world (the world keeps running while the menu is up).
 struct LanOpenOptions { int port = 25580; int maxPlayers = 8; std::string motd, password; bool announce = true, pvp = true; int viewDistance = 12; };

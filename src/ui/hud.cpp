@@ -89,12 +89,28 @@ public:
   void submit(App& a, const std::string& t) {
     auto& h = H().history; h.push_back(t); if (h.size() > 40) h.erase(h.begin());
     if (!a.session || !a.session->player) return;
-    Player& p = *a.session->player;
-    if (startsWith(t, "/")) {
-      std::string reply;
-      bool ok = runCommand(*a.session->level, p, t, reply);
-      if (!reply.empty()) chatLine(reply, ok ? "ok" : "err");
-    } else if (a.events.emit("chat", json::array({p.name, t}))) chatLine("<" + p.name + "> " + t);
+    // a /command runs (its reply comes back through Level::fx->message) or the line is said to everyone
+    submitChat(*a.session->level, a.session->player, t);
+  }
+  // Tab: complete a command name, or an item name in its arguments (commands.js completeChat)
+  static std::string complete(const std::string& v) {
+    if (!startsWith(v, "/")) return v;
+    auto parts = splitStr(v, ' ');
+    if (parts.size() <= 1) {
+      std::string slash = startsWith(v, "//") ? "//" : "/", want = toLower(v.substr(slash.size()));
+      std::vector<std::string> names;
+      for (auto& c : allChatCommands()) if (startsWith(c.name, want)) names.push_back(c.name);
+      if (names.size() == 1) return slash + names[0] + " ";
+      if (names.size() > 1) { std::string l; for (auto& n : names) l += (l.empty() ? "" : "  ") + slash + n; chatLine(l, "dim"); }
+      return v;
+    }
+    std::string last = toLower(parts.back());
+    if (last.empty()) return v;
+    std::vector<std::string> keys;
+    for (auto& d : reg().items) if (startsWith(d.key, last)) { keys.push_back(d.key); if (keys.size() >= 12) break; }
+    if (keys.size() == 1) { parts.back() = keys[0]; std::string o; for (auto& x : parts) o += (o.empty() ? "" : " ") + x; return o + " "; }
+    if (!keys.empty()) { std::string l; for (auto& k : keys) l += (l.empty() ? "" : "  ") + k; chatLine(l, "dim"); }
+    return v;
   }
   void draw(App& a) override {
     float z = Z(), W = (float)a.width, H0 = (float)a.height;
@@ -119,11 +135,15 @@ public:
         self->hist = i;
         d->DeleteChars(0, d->BufTextLen); if (i < (int)h.size()) d->InsertChars(0, h[i].c_str());
       }
+      if (d->EventFlag == ImGuiInputTextFlags_CallbackCompletion) {
+        std::string v(d->Buf, d->BufTextLen), c = complete(v);
+        if (c != v) { d->DeleteChars(0, d->BufTextLen); d->InsertChars(0, c.c_str()); }
+      }
       if (d->EventFlag == ImGuiInputTextFlags_CallbackAlways && self->first) { d->CursorPos = d->SelectionStart = d->SelectionEnd = d->BufTextLen; self->first = false; }
       return 0;
     };
     bool enter = ImGui::InputTextWithHint("##line", "Chat, or /command \xE2\x80\x94 /help for the list", &buf,
-      ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CallbackAlways, cb, this);
+      ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackAlways, cb, this);
     if (buf.size() > 256) buf.resize(256);
     ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), col::line, 2 * z, 0, 2 * z);
     ImGui::PopStyleVar(2); ImGui::PopStyleColor(2); ImGui::PopFont();
@@ -193,8 +213,33 @@ namespace {
 int armorPoints(const Player& p) { int n = 0; for (auto& s : p.armor) if (const ItemDef* d = s.empty() ? nullptr : s.def()) if (d->has("armor")) n += d->props["armor"].value("points", 0); return n; }
 int xpForLevel(int level) { return 12 + level * 6; }
 
+// Level::fx messages (command replies, chat lines, server notices) reach this player's chat and toasts; every
+// other effect goes on to whatever sink was there before (sounds, particles).
+class HudFx : public LevelFx {
+public:
+  LevelFx* next = nullptr; u32 me = 0;
+  void sound(const std::string& n, vec3 p, float r, float v, float pi) override { next->sound(n, p, r, v, pi); }
+  void soundUi(u32 id, const std::string& n) override { next->soundUi(id, n); }
+  void material(const std::string& m, const std::string& k, vec3 p) override { next->material(m, k, p); }
+  void voice(const std::string& c, const std::string& k, vec3 p, float pi) override { next->voice(c, k, p, pi); }
+  void particles(const std::string& k, vec3 p, int n, const json& e) override { next->particles(k, p, n, e); }
+  void shake(u32 id, float s) override { next->shake(id, s); }
+  void message(u32 id, const std::string& text, const std::string& kind) override {
+    next->message(id, text, kind);
+    if (id && id != me) return;
+    if (kind.empty() || kind == "chat" || kind == "cmd" || kind == "ok" || kind == "err" || kind == "dim") chatLine(text, kind == "chat" || kind == "cmd" ? "" : kind);
+    else hudToast(text, kind);
+  }
+};
+
 class HudLayer : public RenderLayer {
 public:
+  explicit HudLayer(GameSession& s) : session(&s) {
+    fx.next = s.level->fx; fx.me = s.player ? s.player->id : 0;
+    s.level->fx = &fx;
+  }
+  ~HudLayer() override { if (session && session->level && session->level->fx == &fx) session->level->fx = fx.next; }
+  GameSession* session; HudFx fx;
   const char* name() const override { return "hud"; }
   int order() const override { return 1000; }
 
@@ -499,6 +544,6 @@ public:
 };
 }
 
-void registerHudLayer() { registerRenderLayer([](GameSession&) { return std::make_shared<HudLayer>(); }); }
+void registerHudLayer() { registerRenderLayer([](GameSession& s) { return std::make_shared<HudLayer>(s); }); }
 
 } // namespace dq

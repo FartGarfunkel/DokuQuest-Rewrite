@@ -195,7 +195,6 @@ std::vector<WorldEntry> listWorlds() {
 class WorldsScreen : public Screen {
 public:
   const char* id() const override { return "worlds"; }
-  bool showsWorld() const override { return false; }
   std::vector<WorldEntry> worlds;
   std::string name = "New World", seed, msg, confirm;
   int mode = 0; bool moreOpen = false, importOpen = false;
@@ -302,11 +301,19 @@ public:
     inputText("##nwseed", &seed, "Random", 40, fw);
     label(F_MID, col::muted, "Game mode");
     if (combo("##nwmode", &mode, {"Survival \xE2\x80\x94 gather, craft, stay alive", "Creative \xE2\x80\x94 every block, flight, no damage"}, fw)) form.rules["commands"] = mode == 1;
-    // <details class="more-opts">
-    ImGui::PushStyleColor(ImGuiCol_Text, col::gold); ImGui::PushStyleColor(ImGuiCol_Header, 0); ImGui::PushStyleColor(ImGuiCol_HeaderHovered, withAlpha(col::gold, 0.1f));
-    ImGui::SetNextItemOpen(moreOpen);
-    moreOpen = ImGui::CollapsingHeader("More world options: day and night, game rules, commands");
-    ImGui::PopStyleColor(3);
+    // <details class="more-opts"><summary> in gold, wrapping
+    {
+      const char* sum = "More world options: day and night, game rules, commands";
+      float tri = 10 * z; ImVec2 ts = textSize(F_BODY, sum, fw - tri - 6 * z);
+      ImVec2 p = ImGui::GetCursorScreenPos();
+      if (ImGui::InvisibleButton("##more", ImVec2(fw, ts.y + 4 * z))) { moreOpen = !moreOpen; playClick(); }
+      bool hot = ImGui::IsItemHovered() || (ImGui::IsItemFocused() && navVisible());
+      ImDrawList* dl = ImGui::GetWindowDrawList();
+      ImVec2 c(p.x + tri * 0.5f, p.y + textSize(F_BODY, "A").y * 0.5f + 1 * z);
+      if (moreOpen) dl->AddTriangleFilled(ImVec2(c.x - 5 * z, c.y - 3 * z), ImVec2(c.x + 5 * z, c.y - 3 * z), ImVec2(c.x, c.y + 4 * z), col::gold);
+      else dl->AddTriangleFilled(ImVec2(c.x - 3 * z, c.y - 5 * z), ImVec2(c.x + 4 * z, c.y), ImVec2(c.x - 3 * z, c.y + 5 * z), col::gold);
+      text(dl, F_BODY, ImVec2(p.x + tri + 6 * z, p.y), hot ? col::rgb(0xffd877) : col::gold, sum, fw - tri - 6 * z);
+    }
     if (moreOpen) form.draw(fw, true);
     ImGui::Dummy(ImVec2(1, 2 * z));
     if (button("Create world", BTN_PRIMARY, false, fw)) {
