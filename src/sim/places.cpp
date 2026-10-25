@@ -1,5 +1,6 @@
 // sim/places.cpp — finding places; your houses; the list for the journal of places.
 #include "sim/places.h"
+#include "gen/structures_api.h"
 #include <regex>
 
 namespace dq {
@@ -35,6 +36,29 @@ void placesTick(Level& lv, double dt) {
       if (lv.events) lv.events->emit("placeFound", json::array({p->name, S.id, S.name}));
     }
   }
+}
+
+void registerPlacesNearHook() {
+  ContentHooks& C = contentHooks();
+  if (C.placesNear) return;
+  C.placesNear = [](Level& lv, int realm, vec3 pos, float pad) {
+    std::vector<PlaceInfo> out;
+    if (realm != REALM_MAIN || !lv.gen) return out;
+    const int dim = dimOfY(ifloor(pos.y));
+    const StructureIndex* idx = structureIndexOf(lv.gen->forDim(dim));
+    if (!idx || !idx->active()) return out;
+    std::vector<const StructurePlan*> plans;
+    idx->near(ifloor(pos.x), ifloor(pos.z), (int)pad, plans);
+    const auto& T = structureTypes();
+    for (auto* P : plans) {
+      if (!P || P->id.empty()) continue;
+      bool village = (P->type >= 0 && P->type < (int)T.size() && T[P->type].key == "village") || (P->data.is_object() && P->data.value("kind", std::string()) == "village");
+      if (village) continue;
+      PlaceInfo o; o.id = P->id; o.name = P->name; o.realm = realm; o.x0 = P->x0; o.z0 = P->z0; o.x1 = P->x1; o.z1 = P->z1; o.y = P->y + dimBase(dim);
+      out.push_back(o);
+    }
+    return out;
+  };
 }
 
 void homeSettle(Level& lv, Player& p, const std::string& vid, ivec3 bed, ivec3 door, const std::string& name) {

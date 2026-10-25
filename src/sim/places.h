@@ -17,4 +17,8 @@ void homeSettle(Level& lv, Player& p, const std::string& vid, ivec3 bed, ivec3 d
 struct FoundPlace { std::string id, name, kind; float x = 0, z = 0; int dim = 0; bool cleared = false; };   // kind: place, village, dungeon, waystone, home
 std::vector<FoundPlace> foundPlaces(Level& lv, const Player& p);
 
+// contentHooks().placesNear from the world generator's structure plans (gen/structures_api.h), unless another
+// area set one already. Villages are left out: they are found by villages.js's own rule (stats.vseen).
+void registerPlacesNearHook();
+
 } // namespace dq
