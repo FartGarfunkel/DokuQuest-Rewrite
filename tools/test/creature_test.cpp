@@ -10,6 +10,8 @@
 #include "sim/mob_combat.h"
 #include "sim/mobai.h"
 #include "sim/player.h"
+#include "sim/combat.h"
+#include "gen/structures_api.h"
 #include <thread>
 #include <cstdio>
 
@@ -19,7 +21,8 @@ static int fails = 0;
 
 static int countType(Level& lv, const std::string& t) { int n = 0; for (auto& e : lv.entities()) if (!e->removed && e->type == t) n++; return n; }
 static void run(Level& lv, Player& p, float secs, bool keepAlive = true) {
-  for (int i = 0; i < (int)(secs / TICK_DT); i++) { lv.tick(TICK_DT); if (keepAlive) { p.hp = p.maxHp; p.dead = false; } }
+  // (the PlayerController counts the invulnerable moment down in the game; there is none here)
+  for (int i = 0; i < (int)(secs / TICK_DT); i++) { lv.tick(TICK_DT); p.invuln = std::max(0.f, p.invuln - (float)TICK_DT); if (keepAlive) { p.hp = p.maxHp; p.dead = false; } }
 }
 static void clearCreatures(Level& lv) { for (auto& e : lv.entities()) if (!e->isPlayer()) e->removed = true; lv.tick(TICK_DT); }
 
@@ -88,7 +91,7 @@ int main(int argc, char** argv) {
   printf("arrows\n");
   Creature* sk = spawnCreature(*lv, 0, "skeleton", vec3(4.5f, Y, 16.5f));
   int arrows = 0; hurt = 0;
-  for (int i = 0; i < 300 && sk && !sk->removed; i++) { float before = p.hp; lv->tick(TICK_DT); hurt += std::max(0.f, before - p.hp); p.hp = p.maxHp; p.dead = false; p.hurtTime = 0; arrows = std::max(arrows, countType(*lv, "arrow")); }
+  for (int i = 0; i < 300 && sk && !sk->removed; i++) { float before = p.hp; lv->tick(TICK_DT); hurt += std::max(0.f, before - p.hp); p.hp = p.maxHp; p.dead = false; p.hurtTime = 0; p.invuln = 0; arrows = std::max(arrows, countType(*lv, "arrow")); }
   CHECK(arrows > 0, "a skeleton shot arrows");
   CHECK(hurt > 0, "and they hit (%.1f damage)", hurt);
   clearCreatures(*lv);
@@ -163,6 +166,61 @@ int main(int argc, char** argv) {
   for (auto& e : lv->entities()) if (auto* c = dynamic_cast<Creature*>(e.get())) { if (!c->removed && c->T->hostile) hostile++; if (c->type == "phantom") phantom = true; }
   CHECK(hostile > 0, "the night crowd came out (%d monsters)", hostile);
   CHECK(!phantom, "still no phantoms");
+
+  printf("death topple, severing\n");
+  {
+    clearCreatures(*lv);
+    lv->info.time = DAY_LEN * 0.25;
+    Creature* cow = spawnCreature(*lv, 0, "cow", p.pos + vec3(3, 0.2f, 0));
+    DamageSource ds; ds.attacker = p.id; ds.tool = "axe";
+    damageEntity(*lv, *cow, 50, ds);
+    CHECK(!cow->alive() && !cow->removed, "a cow struck down by the player is dying, not gone");
+    run(*lv, p, 1.0f);
+    CHECK(countType(*lv, "cow") == 1, "it still lies there after 1 s");
+    run(*lv, p, 0.8f);
+    CHECK(countType(*lv, "cow") == 0, "then goes in a puff (%.1f s)", DEATH_LINGER);
+    int gibs = 0;
+    for (int k = 0; k < 20 && !gibs; k++) {
+      Creature* gh = spawnCreature(*lv, 0, "ghoul", p.pos + vec3(2.5f, 0.2f, 0)); gh->calm = true;
+      lv->tick(TICK_DT);
+      for (int h = 0; h < 6 && gh->alive(); h++) {
+        DamageSource d2; d2.attacker = p.id; d2.tool = "axe"; d2.hasRay = true; d2.rayO = p.pos + vec3(0, 1.62f, 0); d2.rayD = glm::normalize(gh->pos + vec3(0, 0.3f + h * 0.3f, 0) - d2.rayO);
+        damageEntity(*lv, *gh, 3, d2);
+      }
+      gibs = countType(*lv, "gib");
+    }
+    CHECK(gibs > 0, "an axe takes limbs off (%d gibs)", gibs);
+    clearCreatures(*lv);
+  }
+
+  // the other bands: Nether (pigmen, ghasts, wither skeletons, charred ghouls, wisps), Skylands, End (endermen)
+  auto realm = [&](const char* name, const char* spawnAt, std::vector<std::string> types, float secs) {
+    clearCreatures(*lv);
+    vec3 at; float yaw;
+    if (!debugSpawnPoint(*lv->gen, spawnAt, at, yaw)) { CHECK(false, "%s: no spawn point %s", name, spawnAt); return; }
+    p.pos = at; anchors = {{p.pos, 6, false}};
+    for (int i = 0; i < 800 && !(w.isLoaded(ifloor(at.x), ifloor(at.y), ifloor(at.z)) && w.pendingGeneration() == 0); i++) { w.stream(anchors, 50); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
+    for (int i = 0; i < 200; i++) w.stream(anchors, 20);
+    if (std::string(name) == "End") { int sy = w.surfaceY(ifloor(at.x), ifloor(at.z), DIM_END); if (sy >= 0) p.pos.y = sy + 1; }
+    lv->info.time = DAY_LEN * 0.75;
+    run(*lv, p, secs);
+    std::string got; int n = 0;
+    for (auto& t : types) { int k = countType(*lv, t); n += k; if (k) got += " " + t + "=" + std::to_string(k); }
+    CHECK(n > 0, "%s (y %.0f): creatures turned up:%s", name, p.pos.y, got.c_str());
+  };
+  realm("Nether", "nether_fortress!", {"zombie_pigman", "ghast", "wither_skeleton", "charred_ghoul", "cinder_wisp", "magma_slime", "enderman"}, 60);
+  realm("Skylands", "sky_shrine!", {"aerwhale", "zephyr", "swet", "golden_swet", "aechor_plant", "aerbunny", "moa", "phyg", "flying_cow", "sheepuff", "cockatrice"}, 60);
+  realm("End", "8,140,8", {"enderman"}, 30);
+
+  printf("killed by a creature\n");
+  {
+    p.give(ItemStack("stone", 5));
+    p.hp = 2; p.invuln = 0; p.mode = "survival";
+    Creature* g = spawnCreature(*lv, 0, "ghoul", p.pos + vec3(1, 0, 0));
+    damageEntity(*lv, p, 20, g, "mob");
+    CHECK(p.dead, "a ghoul's blow kills");
+    CHECK(p.grave.is_object() && p.inv[0].id == "death_compass", "grave made, death compass given (as when anything else kills)");
+  }
 
   lv->close();
   printf(fails ? "\n%d check(s) FAILED\n" : "\nall passed\n", fails);

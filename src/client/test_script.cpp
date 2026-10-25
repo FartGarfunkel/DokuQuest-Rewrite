@@ -126,6 +126,7 @@ void runStep(App& a, const json& st) {
     R.later.push_back({f + hold, [ax] { if (R.vjoy) SDL_JoystickSetVirtualAxis(R.vjoy, ax, 0); }});
   } else if (op == "cmd") {
     if (!s) return;
+    if (s->level->info.rules.is_object()) s->level->info.rules["commands"] = true;   // tests may always use commands
     std::string out = runCommand(*s->level, p, st.value("text", ""));
     DQ_LOG("test: %s -> %s", st.value("text", "").c_str(), out.c_str());
   } else if (op == "look" && p) {
