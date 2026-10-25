@@ -5,6 +5,8 @@
 //             {"do":"pad","button":"a"}, {"do":"expect","screen":"inventory"}, {"do":"shot","path":"/tmp/a.png"}]}
 // do: key{key,hold} type{text} mouse{button,hold,x?,y?} move{dx,dy} pad{button,hold} padaxis{axis,value,hold}
 //     cmd{text} look{yaw,pitch (degrees)} lookAt{x,y,z} tp{x,y,z} give{item,n} select{slot} setBlock{x,y,z,key}
+//     anchor (remember the player's block; x/y/z, from/to and block in steps with "rel":true are relative to it)
+//     fill{from:[x,y,z],to:[x,y,z],key}
 //     expect{screen | block:[x,y,z],is | entity,near} report shot{path} save leave open{world} quit
 //     hurt{entity,amount,tool,type,at} (strike the nearest creature of that type as the player, e.g. tool "axe")
 // The log gets "TEST PASS/FAIL ..." lines and a final "TEST DONE passes=N fails=M".
@@ -29,6 +31,7 @@ struct Runner {
   std::vector<Later> later;
   SDL_Joystick* vjoy = nullptr;
   int passes = 0, fails = 0;
+  ivec3 anchor{0};           // "anchor": the player's block; steps with "rel": true are relative to it
 };
 Runner R;
 
@@ -82,6 +85,10 @@ void result(bool ok, const std::string& what) {
   DQ_LOG("TEST %s %s", ok ? "PASS" : "FAIL", what.c_str());
 }
 float deg(const json& j, const char* k, float d) { return j.value(k, d) * (float)PI / 180.f; }
+ivec3 at(const json& st, const char* k = nullptr) {
+  ivec3 v = k ? ivec3(st[k][0].get<int>(), st[k][1].get<int>(), st[k][2].get<int>()) : ivec3(st.value("x", 0), st.value("y", 0), st.value("z", 0));
+  return st.value("rel", false) ? v + R.anchor : v;
+}
 
 void runStep(App& a, const json& st) {
   std::string op = st.value("do", "wait");
@@ -123,20 +130,30 @@ void runStep(App& a, const json& st) {
     DQ_LOG("test: %s -> %s", st.value("text", "").c_str(), out.c_str());
   } else if (op == "look" && p) {
     p->yaw = deg(st, "yaw", p->yaw * 180.f / (float)PI); p->pitch = deg(st, "pitch", 0);
+  } else if (op == "anchor" && p) {
+    R.anchor = ivec3(glm::floor(p->pos));
+    DQ_LOG("test: anchor %d %d %d", R.anchor.x, R.anchor.y, R.anchor.z);
+  } else if (op == "fill" && s) {
+    ivec3 a0 = at(st, "from"), a1 = at(st, "to"); BlockId id = reg().blockId(st.value("key", "air"));
+    for (int x = std::min(a0.x, a1.x); x <= std::max(a0.x, a1.x); x++) for (int y = std::min(a0.y, a1.y); y <= std::max(a0.y, a1.y); y++)
+      for (int z = std::min(a0.z, a1.z); z <= std::max(a0.z, a1.z); z++) s->world().setBlock(x, y, z, id, (u8)st.value("meta", 0));
   } else if (op == "lookAt" && p) {
-    vec3 t(st.value("x", 0.f) + 0.5f, st.value("y", 0.f) + 0.5f, st.value("z", 0.f) + 0.5f);
+    ivec3 b = at(st);
+    vec3 t(b.x + 0.5f, b.y + 0.5f, b.z + 0.5f);
     vec3 d = glm::normalize(t - (p->pos + vec3(0, p->eye, 0)));
     p->pitch = std::asin(std::clamp(d.y, -1.f, 1.f)); p->yaw = std::atan2(-d.x, -d.z);
   } else if (op == "tp" && p) {
-    p->pos = vec3(st.value("x", p->pos.x), st.value("y", p->pos.y), st.value("z", p->pos.z)); p->vel = vec3(0);
+    if (st.value("rel", false)) { ivec3 b = at(st); p->pos = vec3(b) + vec3(0.5f, 0, 0.5f); }
+    else p->pos = vec3(st.value("x", p->pos.x), st.value("y", p->pos.y), st.value("z", p->pos.z));
+    p->vel = vec3(0);
   } else if (op == "give" && p) {
     int left = p->give(ItemStack(st.value("item", "stone"), st.value("n", 1)));
     if (left) DQ_WARN("test: give %s left %d", st.value("item", "").c_str(), left);
   } else if (op == "select" && p) {
     p->selected = std::clamp(st.value("slot", 0), 0, 8);
   } else if (op == "setBlock" && s) {
-    BlockId id = reg().blockId(st.value("key", "air"));
-    s->world().setBlock(st.value("x", 0), st.value("y", 0), st.value("z", 0), id, (u8)st.value("meta", 0));
+    BlockId id = reg().blockId(st.value("key", "air")); ivec3 b = at(st);
+    s->world().setBlock(b.x, b.y, b.z, id, (u8)st.value("meta", 0));
   } else if (op == "expect") {
     if (st.contains("screen")) {
       std::string want = st["screen"].is_null() ? "(none)" : st["screen"].get<std::string>();
@@ -144,9 +161,9 @@ void runStep(App& a, const json& st) {
       result(top == want, "screen " + want + " (open: " + screenStack(a) + ")");
     }
     if (st.contains("block") && s) {
-      auto b = st["block"];
-      std::string got = reg().block(s->world().getBlock(b[0], b[1], b[2])).key;
-      result(got == st.value("is", "air"), "block " + b.dump() + " is " + st.value("is", "air") + " (got " + got + ")");
+      ivec3 b = at(st, "block");
+      std::string got = reg().block(s->world().getBlock(b.x, b.y, b.z)).key;
+      result(got == st.value("is", "air"), "block " + st["block"].dump() + " is " + st.value("is", "air") + " (got " + got + ")");
     }
     if (st.contains("entity") && s && p) {
       std::string t = st["entity"]; float r = st.value("near", 16.f); int n = 0;
