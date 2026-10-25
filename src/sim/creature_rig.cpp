@@ -292,6 +292,38 @@ static void animFrog(Creature& m, const RigModel& d, Pose& P) {
 }
 
 // ------------------------------------------------------------------ RIG_POST
+// nether2.js / aether.js RIG_ANIM: a ghast's tentacles, an aerwhale's tail and fins, a zephyr's puffs, an aechor plant's strike
+static void animRealm(Creature& m, const RigModel& d, Pose& P) {
+  const std::string& k = d.rig;
+  float t = m.age;
+  if (k == "ghast") {
+    float shoot = m.data.value("chargeT", 0.f) > 0 ? 1.f : 0.f;
+    for (int i = 0; i < 9; i++) P.set("tent" + std::to_string(i), {std::sin(t * 1.9f + i * 1.3f) * 0.28f - shoot * 0.2f, 0, std::cos(t * 1.4f + i * 0.9f) * 0.18f});
+    P.lift = std::sin(t * 1.1f) * 0.06f;
+  } else if (k == "aerwhale") {
+    t += m.id * 1.3f;
+    float sw = t * 1.1f * (m.hurtTime > 0 ? 2.2f : 1.f);
+    P.set("tail1", {std::sin(sw) * 0.16f, 0, 0}); P.set("tail2", {std::sin(sw - 0.8f) * 0.28f, 0, 0}); P.set("fluke", {std::sin(sw - 1.6f) * 0.35f, 0, 0});
+    P.set("finR", {0, 0.1f, 0.2f + std::sin(t * 0.8f) * 0.22f}); P.set("finL", {0, -0.1f, -0.2f - std::sin(t * 0.8f) * 0.22f});
+    P.set("head", {std::sin(sw + 0.5f) * 0.03f, 0, 0});
+  } else if (k == "zephyr") {
+    t += m.id * 0.9f;
+    float c = m.puffed ? 1.f : 0.f;
+    P.set("pTop", {std::sin(t * 1.3f) * 0.08f, 0, std::sin(t * 1.1f) * 0.06f}); P.set("pTop2", {0, t * 0.4f, std::sin(t * 1.7f) * 0.1f});
+    P.set("pR", {0, 0, std::sin(t * 1.5f) * 0.12f + c * 0.25f}); P.set("pL", {0, 0, -std::sin(t * 1.5f + 1) * 0.12f - c * 0.25f});
+    P.set("pBack", {std::sin(t * 1.2f) * 0.1f, 0, 0}); P.set("pLow", {0, std::sin(t * 0.7f) * 0.2f, 0});
+    P.set("core", {-m.headPitch * 0.3f - c * 0.12f, 0, 0});
+    P.lift = std::sin(t * 1.6f) * 0.08f + c * 0.05f;
+  } else if (k == "aechor") {
+    t += m.id;
+    for (int i = 0; i < 5; i++) P.set("leaf" + std::to_string(i), {0, 0, std::sin(t * 1.2f + i) * 0.05f});
+    float strike = m.swingT > 0 ? std::sin(std::min(1.f, m.swingT / 0.3f) * PI) : 0;
+    P.set("stem", {std::sin(t * 0.9f) * 0.05f - strike * 0.25f, 0, std::sin(t * 0.7f) * 0.04f});
+    P.set("head", {-m.headPitch * 0.7f - strike * 0.3f, m.headYawRel, 0});
+    for (int i = 0; i < 4; i++) P.set("pet" + std::to_string(i), {std::sin(t * 2 + i) * 0.08f, 0, 0});
+  }
+}
+
 static void postSit(Creature& m, const RigModel& d, Pose& P) {
   if (m.sleeping) {
     P.lift -= d.legH * RPX * 0.85f;
@@ -517,6 +549,7 @@ void rigPose(Creature& m, const RigModel& M, const mat4& base) {
   else if (k == "bee") animBee(m, M, P);
   else if (k == "turtle") animTurtle(m, M, P);
   else if (k == "frog") animFrog(m, M, P);
+  else if (k == "ghast" || k == "aerwhale" || k == "zephyr" || k == "aechor") animRealm(m, M, P);
   if (M.pitch0) P.pitch += M.pitch0;
   if (!M.post.empty()) applyPost(m, M, P);
   if (!k.empty()) rigLife(m, M, P);
@@ -568,6 +601,7 @@ bool rigPartShown(const Creature& m, const RigPart& p) {
     if (f == "saddled") return m.saddled; if (f == "puffed") return m.puffed; if (f == "curled") return m.curled; if (f == "roosting") return m.roosting;
     if (f == "tongueOut") return m.tongueOut; if (f == "sleeping") return m.sleeping; if (f == "sitting") return m.sitting; if (f == "playDead") return m.playDead;
     if (f == "hasSting") return m.hasSting; if (f == "pollen") return m.pollen; if (f == "angry") return m.angryT > 0; if (f == "baby") return m.baby;
+    if (f == "charging") return m.puffed;   // a zephyr's puffed cheeks
     if (f == "stag") return m.stag; if (f == "sheared") return m.sheared; if (f == "rattling") return m.rattling; if (f == "coiled") return m.coiled;
     return false;
   };

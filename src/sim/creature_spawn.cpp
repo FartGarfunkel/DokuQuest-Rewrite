@@ -295,7 +295,8 @@ public:
       for (int y = y0; y > y0 - span && y > base + 2; y--) if (R.tSolid[w.getBlock(x, y - 1, z)] && !w.getBlock(x, y, z) && !w.getBlock(x, y + 1, z) && !w.getBlock(x, y + 2, z)) return y;
       return -1;
     };
-    auto add = [&](const char* t, float x, float y, float z) { return spawnCreature(lv, realm, t, vec3(x, y, z)); };
+    // (wanderers of their realm, not kept animals: they go when nobody is near, like the night crowd)
+    auto add = [&](const char* t, float x, float y, float z) { Creature* m = spawnCreature(lv, realm, t, vec3(x, y, z)); if (m) m->kept = false; return m; };
     if (dim == DIM_NETHER) {
       // the fortress keeps its own garrison
       if ((fortT -= 1) <= 0 || std::abs(fortAt.x - ifloor(p.pos.x)) > 48 || std::abs(fortAt.y - ifloor(p.pos.z)) > 48) {

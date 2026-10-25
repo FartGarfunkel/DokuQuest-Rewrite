@@ -722,7 +722,7 @@ Move Creature::specialAI(Level& lv, Entity* p, float dist, float dyp, float toPl
     auto* f = dynamic_cast<Creature*>(ent(lv, wary));
     if (f && f->alive() && !quarrel) { fuse = 0; return {T->speed * 1.3f, std::atan2(-(pos.x - f->pos.x), -(pos.z - f->pos.z)) + std::sin(age * 2) * 0.3f}; }
   }
-  if (OptMove m = realmAI(lv, *this, p, dist, dyp, toPlayer, dt)) { if (T->hostile && dist > 96 && !kept) removed = true; return *m; }
+  if (OptMove m = realmAI(lv, *this, p, dist, dyp, toPlayer, dt)) { if (dist > 96 && !kept && owner.empty() && !persistent) removed = true; return *m; }
   if (OptMove m = monsterAI(lv, *this, p, dist, dyp, toPlayer, dt)) { if (dist > 80 && !kept) removed = true; return *m; }
   return nightBase(lv, *this, type, p, dist, dyp, toPlayer, dt);
 }
