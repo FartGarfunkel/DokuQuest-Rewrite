@@ -7,6 +7,7 @@
 #include "gen/generator.h"
 #include "gen/structures.h"
 #include "gen/trees.h"
+#include "gen/carvers.h"
 
 namespace dq {
 
@@ -14,7 +15,10 @@ class DepthsGen : public DimGenerator, public TerrainQuery {
 public:
   explicit DepthsGen(const WorldGenOptions& o);
   static constexpr int LAYERS = 104;                 // original rows 0..103 sampled (the band reaches 102.0)
-  static constexpr int LAVA_SEA = 28;                // original units (band 70)
+  static constexpr int LAVA_SEA = 28;                // the original's lava sea row (structures' random picks)
+  // Minecraft-like layout in band rows: a low lava sea, open caverns over it up to the roof, bedrock at both ends
+  static constexpr int LAVA_Y = 50, FLOOR_Y = 44, ROOF_Y = 206;
+  static double bias(int y) { return (y < FLOOR_Y ? (FLOOR_Y - y) / 22.0 : 0) + (y > ROOF_Y ? (y - ROOF_Y) / 20.0 : 0); }
   void generate(Chunk& c) override;
   void sample(int wx, int wz, ColumnSample& out) const override;
   const TerrainQuery* terrain() const override { return this; }
@@ -28,8 +32,11 @@ public:
   StructureIndex structures;
 private:
   void fungusTrees(int cx, int cz, std::vector<TreeSpec>& out) const;
+  void glowstone(GenBuf& b, int cx, int cz) const;     // clusters hanging from the roofs (WorldGenGlowStone)
+  void ores(GenBuf& b, int cx, int cz) const;          // quartz, gold, cinderite, debris veins
   i32 seed_;
   GenBlocks B;
+  CarveRules hell_;
   SimplexNoise nCave1, nCave2, nFloor, nHill, nMount, nDetail;
 };
 

@@ -12,6 +12,7 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
     nTemp(o.seed ^ 0x6789), nHumid(o.seed ^ 0x789a), nCave1(o.seed ^ 0x89ab), nCave2(o.seed ^ 0x9abc), nCave3(o.seed ^ 0xabcd),
     nFloor(o.seed ^ 0xbcde), nRiver(o.seed ^ 0x5eed11), nDeep(o.seed ^ 0xDEE9), nDeepC(o.seed ^ 0xDEEC) {
   B.resolve();
+  initUnderground();
 }
 
 // ---- columns ---------------------------------------------------------------------------------------------
@@ -149,53 +150,6 @@ SurfaceMat OverworldGen::surface(const OwColumn& c, int wx, int wz) const {
   return {top, filler, under, fillDepth};
 }
 
-// ---- caves: noise on a 4x4x4 grid of original units, trilinear (stored as float32 like the JS) ---------------
-void OverworldGen::buildCaves(CaveField& f, int bx, int bz) const {
-  const int NX = 5, NY = 33, NZ = 5;
-  for (int iz = 0; iz < NZ; iz++) for (int iy = 0; iy < NY; iy++) for (int ix = 0; ix < NX; ix++) {
-    int x = bx + ix * 4, y = iy * 4, z = bz + iz * 4, i = (iz * NY + iy) * NX + ix;
-    f.a[i] = (float)nCave1.noise3(x / 42.0, y / 22.0, z / 42.0);
-    f.b[i] = (float)nCave2.noise3(x / 42.0, y / 22.0, z / 42.0);
-    f.c[i] = y < 56 ? (float)nCave3.noise3(x / 64.0, y / 34.0, z / 64.0) : -1.f;
-  }
-}
-static inline double trilerp(const float* arr, int ix, int iy, int iz, double tx, double ty, double tz) {
-  const int NX = 5, NY = 33;
-  int i000 = (iz * NY + iy) * NX + ix, i100 = i000 + 1, i010 = i000 + NX, i110 = i010 + 1;
-  int i001 = i000 + NY * NX, i101 = i001 + 1, i011 = i001 + NX, i111 = i011 + 1;
-  double x00 = jsLerp(arr[i000], arr[i100], tx), x10 = jsLerp(arr[i010], arr[i110], tx);
-  double x01 = jsLerp(arr[i001], arr[i101], tx), x11 = jsLerp(arr[i011], arr[i111], tx);
-  return jsLerp(jsLerp(x00, x10, ty), jsLerp(x01, x11, ty), tz);
-}
-bool OverworldGen::isCave(const CaveField& f, int x, double yo, int z) {
-  double fx = x / 4.0, fy = yo / 4, fz = z / 4.0;
-  int ix = jsFloor(fx), iy = jsFloor(fy), iz = jsFloor(fz);
-  double tx = fx - ix, ty = fy - iy, tz = fz - iz;
-  double w = 0.075 * (yo > 70 ? 0.6 : 1);
-  if (std::fabs(trilerp(f.a, ix, iy, iz, tx, ty, tz)) < w && std::fabs(trilerp(f.b, ix, iy, iz, tx, ty, tz)) < w * 1.4) return true;
-  if (yo < 52 && trilerp(f.c, ix, iy, iz, tx, ty, tz) > 0.58) return true;
-  return false;
-}
-bool OverworldGen::caveAt(int wx, double yo, int wz) const {
-  // a 2x2x2 field around the point, sampled exactly where the chunk's own field would be
-  int gx = floordiv(wx, 4) * 4, gz = floordiv(wz, 4) * 4, gy = jsFloor(yo / 4) * 4;
-  float A[8], Bv[8], C[8];
-  for (int k = 0; k < 8; k++) {
-    int x = gx + (k & 1) * 4, y = gy + ((k >> 1) & 1) * 4, z = gz + (k >> 2) * 4;
-    A[k] = (float)nCave1.noise3(x / 42.0, y / 22.0, z / 42.0);
-    Bv[k] = (float)nCave2.noise3(x / 42.0, y / 22.0, z / 42.0);
-    C[k] = y < 56 ? (float)nCave3.noise3(x / 64.0, y / 34.0, z / 64.0) : -1.f;
-  }
-  double tx = (wx - gx) / 4.0, ty = yo / 4 - gy / 4, tz = (wz - gz) / 4.0;
-  auto tri = [&](const float* v) {
-    double x00 = jsLerp(v[0], v[1], tx), x10 = jsLerp(v[2], v[3], tx), x01 = jsLerp(v[4], v[5], tx), x11 = jsLerp(v[6], v[7], tx);
-    return jsLerp(jsLerp(x00, x10, ty), jsLerp(x01, x11, ty), tz);
-  };
-  double w = 0.075 * (yo > 70 ? 0.6 : 1);
-  if (std::fabs(tri(A)) < w && std::fabs(tri(Bv)) < w * 1.4) return true;
-  return yo < 52 && tri(C) > 0.58;
-}
-
 // ---- generate ---------------------------------------------------------------------------------------------
 void OverworldGen::generate(Chunk& ch) {
   GenBuf& b = GenBuf::local();
@@ -206,7 +160,6 @@ void OverworldGen::generate(Chunk& ch) {
     ch.climate[i * 2] = (u8)jsClamp(jsRound(cols[i].temp * 127 + 128), 0, 255);
     ch.climate[i * 2 + 1] = (u8)jsClamp(jsRound(cols[i].humid * 127 + 128), 0, 255);
   }
-  CaveField caves; buildCaves(caves, bx, bz);
   Mulberry32 rnd(hash32(seed_, ch.cx, ch.cz, 1));
 
   for (int z = 0; z < CS; z++) for (int x = 0; x < CS; x++) {
@@ -215,90 +168,36 @@ void OverworldGen::generate(Chunk& ch) {
     double fr = hashFloat(wx, wz, seed_, 2);
     SurfaceMat m = surface(c, wx, wz);
     const int fd = m.fillDepth, slateTop = 10 + jsFloor(fr * 4);
-    const bool underwater = c.h < JS_SEA;
-    const int allowTop = underwater || c.biome == BIOME_BEACH ? H - 8 : H;
     for (int y = 0; y <= H; y++) {
       BlockId id;
       double yo = owCaveO(y, H, c.h);
-      if (y == 0 || (y < 4 && hashFloat(wx, y, wz, seed_) < 0.5)) id = B.bedrock;
+      // a jagged bedrock floor (Minecraft: y 0 always, then 4/5, 3/5, 2/5, 1/5); row 0 becomes the Ember Crust
+      if (y == 0 || (y < 5 && hashFloat(wx, y, wz, seed_) < (5 - y) / 5.0)) id = B.bedrock;
       else if (y == H) id = m.top;
       else if (y > H - fd) id = m.filler;
       else if (y > H - fd - 3 && m.under == B.sandstone) id = B.sandstone;
       else if (y > H - fd - 6 && m.under == B.desert_stone) id = y > H - fd - 2 ? B.desert_sandstone : B.desert_stone;
       else if (y > H - fd - 2 && m.under == B.peat) id = B.peat;
       else id = yo < slateTop ? B.slate : B.stone;
-      if (id != B.bedrock && yo < 120 && y <= allowTop && isCave(caves, x, yo, z)) id = yo < 11 ? B.lava : AIR;
       b.blocks[colIdx(x, y, z)] = id;
     }
     const bool cold = c.temp < -0.38;
     for (int y = H + 1; y <= SEA_LEVEL; y++) b.blocks[colIdx(x, y, z)] = (y == SEA_LEVEL && cold) ? B.ice : B.water;
   }
 
+  carve(b, cols, ch.cx, ch.cz);
   placeOres(b, ch.cx, ch.cz, rnd);
+  placeLakes(b, cols, ch.cx, ch.cz);
+  placeSprings(b, cols, ch.cx, ch.cz);
   placeTrees(b, ch.cx, ch.cz);
   decorate(b, cols, ch.cx, ch.cz);
   placeOddities(b, ch.cx, ch.cz);
+  placeDungeons(b, ch, cols);
   // the Ember Crust at the bottom of the Overworld (worldupdate.js), then the structures, then the Deep Dark
   if (B.ember_crust) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) b.blocks[colIdx(x, 0, z)] = B.ember_crust;
   structures.build(b, ch);
   carveDeep(b, ch.cx, ch.cz);
   b.store(ch);
-}
-
-// ---- ores (worldgen.js placeOres + metals.js): walked in original units, each original row stretched onto
-// the 1-2 band rows it covers, so the random stream (and every vein) matches the original ------------------------
-void OverworldGen::placeOres(GenBuf& b, int cx, int cz, Mulberry32& rnd) const {
-  auto putAt = [&](int ix, int iy, int iz, BlockId id, bool slateOk) {
-    if (ix < 0 || ix >= 16 || iz < 0 || iz >= 16 || iy <= 0 || iy >= 128) return;
-    for (int y = owStretchLo(iy); y < owStretchHi(iy); y++) {
-      BlockId& cur = b.blocks[colIdx(ix, y, iz)];
-      if (cur == B.stone || (cur == B.slate && slateOk)) cur = id;
-    }
-  };
-  struct Vein { BlockId id; double count; int size, ymin, ymax; };
-  auto veins = [&](const Vein* list, int n, bool metals) {
-    for (int k = 0; k < n; k++) {
-      const Vein& v = list[k];
-      int cnt = jsFloor(v.count) + (rnd() < std::fmod(v.count, 1.0) ? 1 : 0);
-      for (int j = 0; j < cnt; j++) {
-        double x = rnd() * 16, y = v.ymin + rnd() * (v.ymax - v.ymin), z = rnd() * 16;
-        for (int s = 0; s < v.size; s++) {
-          putAt(jsFloor(x), jsFloor(y), jsFloor(z), v.id, metals || (v.id != B.dirt && v.id != B.gravel));
-          x += rnd() * 2 - 1; y += rnd() * 2 - 1; z += rnd() * 2 - 1;
-        }
-      }
-    }
-  };
-  const Vein V[] = {{B.coal_ore, 18, 8, 5, 100}, {B.iron_ore, 12, 6, 5, 64}, {B.copper_ore, 9, 7, 24, 80}, {B.tin_ore, 5, 6, 20, 64},
-    {B.gold_ore, 3, 6, 5, 32}, {B.lapis_ore, 1.6, 5, 4, 30}, {B.diamond_ore, 1.4, 5, 4, 16}, {B.mese_ore, 0.5, 4, 3, 12},
-    {B.redstone_ore, 2.5, 6, 3, 16}, {B.gravel, 6, 10, 5, 70}, {B.dirt, 6, 10, 5, 90}};
-  veins(V, 11, false);
-  // big soft blobs of other rock
-  struct Blob { BlockId id; double count; int ymin, ymax; };
-  const Blob BL[] = {{B.granite, 1.4, 0, 90}, {B.diorite, 1.4, 0, 90}, {B.andesite, 1.4, 0, 90}, {B.tuff, 0.8, 0, 24}, {B.marble, 0.35, 20, 100},
-    {B.limestone, 0.5, 30, 90}, {B.calcite, 0.2, 10, 60}, {B.dripstone_block, 0.25, 6, 40}};
-  for (const Blob& bl : BL) {
-    int n = jsFloor(bl.count) + (rnd() < std::fmod(bl.count, 1.0) ? 1 : 0);
-    for (int v = 0; v < n; v++) {
-      double cxp = rnd() * 16, cy = bl.ymin + rnd() * (bl.ymax - bl.ymin), czp = rnd() * 16, r = 2.2 + rnd() * 2.6;
-      for (int y = jsFloor(cy - r); y <= cy + r; y++) for (int z = std::max(0, jsFloor(czp - r)); z <= std::min(15.0, czp + r); z++)
-        for (int x = std::max(0, jsFloor(cxp - r)); x <= std::min(15.0, cxp + r); x++) {
-          if (y < 1 || y >= 128) continue;
-          double d = ((x - cxp) * (x - cxp) + ((y - cy) * 1.3) * ((y - cy) * 1.3) + (z - czp) * (z - czp)) / (r * r);
-          if (d > 1 - rnd() * 0.25) continue;
-          for (int yy = owStretchLo(y); yy < owStretchHi(y); yy++) { BlockId& cur = b.blocks[colIdx(x, yy, z)]; if (cur == B.stone) cur = bl.id; }
-        }
-    }
-  }
-  // emeralds only in the mountains, one block at a time
-  if (column(cx * 16 + 8, cz * 16 + 8).biome == BIOME_MOUNTAINS) for (int k = 0; k < 3; k++) {
-    int x = jsFloor(rnd() * 16), y = 30 + jsFloor(rnd() * 50), z = jsFloor(rnd() * 16);
-    BlockId& cur = b.blocks[colIdx(x, owUnder(y), z)];
-    if (cur == B.stone) cur = B.emerald_ore;
-  }
-  // metals.js
-  const Vein M[] = {{B.silver_ore, 3, 5, 5, 40}, {B.mithril_ore, 0.7, 4, 3, 18}, {B.adamantite_ore, 0.25, 3, 2, 10}, {B.ruby_ore, 0.6, 3, 4, 26}, {B.sapphire_ore, 0.6, 3, 4, 26}};
-  veins(M, 5, true);
 }
 
 // ---- signs of the watcher: straight tunnels, sand pyramids in the sea, lone old torches --------------------

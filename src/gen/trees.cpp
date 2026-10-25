@@ -243,12 +243,7 @@ bool OverworldGen::treeGroundOk(const TreeSpec& t) const {
   OwColumn c = column(t.x, t.z);
   if (t.y - 1 != c.H) return false;
   SurfaceMat m = surface(c, t.x, t.z);
-  BlockId g = m.top;
-  {
-    int allowTop = (c.h < vmap::JS_SEA || c.biome == BIOME_BEACH) ? c.H - 8 : c.H;
-    double yo = vmap::owCaveO(c.H, c.H, c.h);
-    if (c.H <= allowTop && yo < 120 && caveAt(t.x, yo, t.z)) g = yo < 11 ? B.lava : AIR;
-  }
+  BlockId g = m.top;   // the carvers leave a planted tree's trunk column alone (gen/underground.cpp)
   bool soil = g == B.grass || g == B.snowy_grass || g == B.dirt || g == B.podzol || g == B.coarse_dirt || g == B.mud ||
               g == B.dirt_with_dry_grass || g == B.dirt_with_coniferous_litter || g == B.dirt_with_rainforest_litter;
   return soil || (t.kind == TREE_MANGROVE && (g == B.sand || g == B.clay || g == B.gravel || g == B.mud));

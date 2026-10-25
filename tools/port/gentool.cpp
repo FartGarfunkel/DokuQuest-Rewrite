@@ -3,6 +3,8 @@
 //   dq-gentool bench <seed> [chunks]            time generate() per band and sample() per column
 //   dq-gentool map <seed> <dim> <x0> <z0> <step> <n>   ASCII map of heights/biomes (quick look)
 //   dq-gentool structs <request.json> <out.json>        structure plans and blocks for tools/port/struct_compare.py
+//   dq-gentool stats <seed> <dim> <cx0> <cz0> <n>       block counts per 8-row band of y over n x n chunks (ores, caves...)
+//   dq-gentool slice <seed> <dim> <x0> <z> <w> [y0 y1]  ASCII cutaway along x at z (one char per block)
 #include "core/init.h"
 #include "gen/overworld.h"
 #include "gen/dimgens.h"
@@ -200,11 +202,59 @@ static int spawns(const std::string& prefix, int n) {
   return 0;
 }
 
+static int stats(const std::string& seedText, int dim, int cx0, int cz0, int n) {
+  WorldGenOptions o; o.seed = seedFromString(seedText);
+  WorldGen wg(o); DimGenerator* g = wg.forDim(dim);
+  std::map<std::string, std::vector<long>> per;   // key -> count per 8-row band
+  std::map<std::string, long> be;
+  double ms = 0;
+  for (int cz = cz0; cz < cz0 + n; cz++) for (int cx = cx0; cx < cx0 + n; cx++) {
+    Chunk ch(dim, cx, cz);
+    auto t0 = Clock::now(); g->generate(ch); ms += Clock::now() - t0;
+    for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+      auto& v = per[key(ch.get(x, y, z))]; if (v.empty()) v.assign(DIM_H / 8, 0); v[y / 8]++;
+    }
+    for (auto& [i, e] : ch.blockEntities) { std::string t = e.value("type", "?"); if (e.contains("mob")) t += ":" + e["mob"].get<std::string>(); be[t]++; }
+  }
+  printf("%d chunks, generate %.2f ms/chunk (thread cpu)\n", n * n, ms / (n * n));
+  for (auto& [k, v] : per) {
+    long tot = 0; for (long c : v) tot += c;
+    printf("%-22s %9ld |", k.c_str(), tot);
+    for (int b = 0; b < DIM_H / 8; b++) printf(v[b] ? " %ld" : " .", v[b]);
+    printf("\n");
+  }
+  for (auto& [k, c] : be) printf("entity %-20s %ld\n", k.c_str(), c);
+  return 0;
+}
+
+static int slice(const std::string& seedText, int dim, int x0, int z, int w, int y0, int y1) {
+  WorldGenOptions o; o.seed = seedFromString(seedText);
+  WorldGen wg(o); DimGenerator* g = wg.forDim(dim);
+  std::map<int, std::unique_ptr<Chunk>> cache;
+  auto at = [&](int x) -> Chunk& { int cx = floordiv(x, 16); auto& c = cache[cx]; if (!c) { c = std::make_unique<Chunk>(dim, cx, floordiv(z, 16)); g->generate(*c); } return *c; };
+  std::map<std::string, char> sym = {{"air", ' '}, {"stone", '#'}, {"slate", '%'}, {"bedrock", '='}, {"water", '~'}, {"lava", 'L'}, {"dirt", 'd'},
+    {"grass", '"'}, {"gravel", 'g'}, {"coal_ore", 'c'}, {"iron_ore", 'i'}, {"gold_ore", 'G'}, {"diamond_ore", 'D'}, {"redstone_ore", 'r'},
+    {"lapis_ore", 'l'}, {"copper_ore", 'o'}, {"netherrack", '#'}, {"glowstone", '*'}, {"soul_sand", 's'}, {"nether_bricks", 'N'},
+    {"cobblestone", 'C'}, {"mossy_cobblestone", 'M'}, {"monster_spawner", '!'}, {"chest", '$'}, {"granite", 'a'}, {"diorite", 'a'}, {"andesite", 'a'},
+    {"ember_crust", '_'}, {"basalt", 'B'}, {"blackstone", 'K'}, {"weeping_vines", 'v'}, {"twisting_vines", 'v'}};
+  for (int y = y1; y >= y0; y--) {
+    printf("%3d ", y);
+    for (int x = x0; x < x0 + w; x++) {
+      Chunk& c = at(x); std::string k = key(c.get(floormod(x, 16), y, floormod(z, 16)));
+      auto it = sym.find(k); putchar(it != sym.end() ? it->second : '?');
+    }
+    putchar('\n');
+  }
+  return 0;
+}
+
 int main(int argc, char** argv) {
   CoreOptions co; co.server = true; co.userDirOverride = "/tmp/dq-gentool";
   if (!initCore(co)) { fprintf(stderr, "initCore failed (run from the build dir: data/ next to the exe)\n"); return 1; }
   std::string m = argc > 1 ? argv[1] : "";
   if (m == "dump" && argc >= 4) return dump(argv[2], argv[3]);
+  if (m == "stats" && argc >= 7) return stats(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]));
+  if (m == "slice" && argc >= 7) return slice(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argc > 7 ? atoi(argv[7]) : 0, argc > 8 ? atoi(argv[8]) : 120);
   if (m == "bench" && argc >= 3) return bench(argv[2], argc > 3 ? atoi(argv[3]) : 64);
   if (m == "spawns" && argc >= 4) return spawns(argv[2], atoi(argv[3]));
   if (m == "structs" && argc >= 4) return structs(argv[2], argv[3]);

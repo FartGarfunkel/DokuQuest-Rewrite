@@ -122,7 +122,10 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
     if (below >= 0 && B.solid[below] && below != B.water && (c.biome == BIOME_MOUNTAINS || c.biome == BIOME_BEACH || (c.h > JS_SEA + 14 && c.biome != BIOME_DESERT)) && r > 0.988) { set(x, y, z, B.loose_stones); continue; }
     if (below == B.dirt_with_dry_grass) { if (r < 0.2) set(x, y, z, B.dry_grass); else if (r < 0.205) set(x, y, z, B.dead_bush); continue; }
     if (below == B.dirt_with_rainforest_litter || (jungle && below == B.grass)) {
-      if (patch > 0.42 && r < 0.55) { int h = 4 + jsFloor(r2 * 9); for (int k = 0; k < h && at(x, y + k, z) == 0; k++) set(x, y + k, z, B.bamboo); }
+      // bamboo groves stay out of villages and off other buildings (they'd poke through roofs, roads and walls)
+      if (patch > 0.42 && r < 0.55) {
+        if (!(structures.active() && structures.flagged(wx, wz, 0, SF_SURFACE))) { int h = 4 + jsFloor(r2 * 9); for (int k = 0; k < h && at(x, y + k, z) == 0; k++) set(x, y + k, z, B.bamboo); }
+      }
       else if (r < 0.22) set(x, y, z, B.jungle_grass);
       else if (r < 0.225) set(x, y, z, B.melon);
       continue;

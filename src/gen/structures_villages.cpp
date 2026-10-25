@@ -264,8 +264,9 @@ static bool townPlace(const StructureIndex&, const TerrainQuery& t, int rx, int 
     static const std::set<std::string> SHOPS = {"smithy", "store", "tavern", "hall", "library", "sage", "stable", "market", "workshop", "chapel"};
     for (const Bld& b : v.blds) {
       if (!SHOPS.count(b.type) || b.H < 4) continue;
-      Bld raw = b; raw.y = b.yRaw;
-      auto p = vWorld(raw, (b.W - 1) / 2 - 2, 3, -1);
+      // over the door of the building as built (the original used the lot's height before the levelling, so signs
+      // floated over levelled lots or sank into the ground)
+      auto p = vWorld(b, (b.W - 1) / 2 - 2, 3, -1);
       v.signs.push_back({p[0], p[1], p[2], (2 + b.r) & 3});
     }
     if (v.banners.size() >= 4) for (int zz : {v.z + v.hw + 3, v.z - v.hw - 3}) v.bunting.push_back({v.x - (v.P - 2), v.x + (v.P - 2), zz, v.y + 7});
@@ -678,9 +679,13 @@ static void townLife(SP& P, const Town& v, const VStyle& st) {
   }
   const std::string lfence = !st.fence.empty() ? st.fence : "oak_fence";
   for (const WashLine& ln : v.lines) for (int j = -2; j <= 2; j++) {
-    const int x = ln.x + ln.ax * j, z = ln.z + ln.az * j, y = ln.y;
+    // the ground as levelled (the plan only knows the raw terrain: lines floated over levelled streets)
+    const int x = ln.x + ln.ax * j, z = ln.z + ln.az * j, y = P.ground(ln.x, ln.z);
     if (!P.in(x, z)) continue;
-    if (std::abs(j) == 2) { for (int k = 1; k <= 3; k++) if (air(x, y + k, z) || cross(P.get(x, y + k, z))) P.put(x, y + k, z, lfence); }
+    if (std::abs(j) == 2) {
+      const int g = std::min(y, P.ground(x, z));   // the post stands on its own ground, up to the line
+      for (int k = g + 1; k <= y + 3; k++) if (air(x, k, z) || cross(P.get(x, k, z))) P.put(x, k, z, lfence);
+    }
     else {
       for (int k = 1; k <= 2; k++) if (cross(P.get(x, y + k, z))) P.put(x, y + k, z, "air");
       if (air(x, y + 3, z)) P.put(x, y + 3, z, "washing_line", (u8)((ln.ax ? 0 : 1) | ((std::abs(j) == 1 ? 2 : 3) << 2) | (((ln.v + j + 4) & 3) << 6)));

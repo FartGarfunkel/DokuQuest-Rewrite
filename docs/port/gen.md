@@ -55,6 +55,33 @@ platform 48 → 112 (`EndGen::PLAT_Y`, `spawnPoint()`), exit portal bowl `founta
 
 **Side realms** keep the original y (pocket rooms 63..100, his realm 40..83) in the Overworld band.
 
+## Minecraft-style underground and Nether (alpha.2, after playtesting)
+The user asked for Minecraft Beta / Better than Adventure depths. The surface is unchanged; below it:
+- **Overworld** (`gen/underground.cpp`, `gen/carvers.cpp`): heights count from the band floor = Minecraft's y 0
+  (Ember Crust row 0, jagged bedrock 1–4 at 4/5..1/5, sea 64, so 60+ rows of stone under the plains). The
+  original's noise caves are gone; Beta's carvers (`MapGenCaves` worm tunnels with rooms and forks, 1 system per
+  ~15 source chunks within 8; `MapGenRavine` 1 in 50) carve with java.util.Random exactly as Minecraft seeds them,
+  lava below y 10, never under water; tree trunk columns keep their top 4 rows so both chunks of a crown agree.
+  Ores and rock blobs are `WorldGenMinable` veins seeded per source chunk and written from the 3x3 neighbourhood:
+  dirt 16x33 / gravel 8x33 (1–128), granite/diorite/andesite 6x33 (1–80), coal 20x17 (1–128), iron 20x9 (1–64),
+  copper 10x10 (16–96), gold 2x9 (1–32), redstone 8x8 (1–16), diamond 1x8 (1–16), lapis 1x7 (triangle round 16),
+  emerald 3–8 single blocks inside mountains; the original's tin 16–72, silver 1–44, ruby/sapphire 1–30, mithril
+  1–22, mese 1–15, adamantite 1–12; tuff/marble/limestone/calcite/dripstone blobs. Lava lakes (`WorldGenLakes`, 1 in
+  6 chunks, mostly y 4–30), water/lava springs (`WorldGenLiquids`, 50/20 tries), classic monster rooms
+  (`gen/dungeons_classic.cpp`: cobble + mossy floor, a cage {type:'spawner', mob: skeleton|ghoul|spider,
+  dungeon:true}, 1–2 chests with Beta loot + a few of the original's things). `DQ_SPAWN_AT=classic_dungeon`.
+- **Nether** (`gen/depths.cpp`): the original's noise and biomes, re-biased in band rows (`DepthsGen::bias`):
+  solid floor under y 44, a low lava sea at y 50, open caverns up to the roof bias at 206, jagged bedrock at both
+  ends (row 0 stays the void crust). Netherrack is the main rock (emberstone regions kept), glowstone grows in
+  clusters from roofs (`WorldGenGlowStone1`), soul sand/gravel shores at the lava sea and patches elsewhere, basalt
+  deltas (basalt/blackstone/magma floors, basalt columns), crimson/warped forests with whole vine strands (tip +
+  body, some long), Minecraft's Nether tunnels (`MapGenCavesHell`), quartz/gold/cinderite veins, ancient debris
+  deep. Fortresses (`gen/structures_fortress.cpp`) are a grid web of 5-wide bridges on arched pillars down to the
+  ground/lava, crossings, bridge stairs, a castle side of roofed corridors with fence windows, blaze (cinder wisp)
+  platforms, a soul-sand nether wart court, chest rooms; deck at y 96–125.
+- Data fixes (`tools/port/data_patches.py`, run after `extract_all.py`): the town gate barrier is drawn; vines get
+  `*_plant` body tiles (the mesher picks them where a strand continues).
+
 ## Fidelity (`tools/port/gen_compare.py`, `dq-gentool dump`)
 `python3 tools/port/gen_compare.py <js-root> build <work-dir> hello dokuquest` runs the original headless,
 picks one chunk per biome from a coarse biome map, and compares. Result for both seeds:
