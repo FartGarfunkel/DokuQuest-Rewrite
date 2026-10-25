@@ -336,6 +336,7 @@ void InvSession::dragEnd() {
   if (!d.right && d.slots.size() == 1) {
     auto [g0, i0] = d.slots[0];
     (*arr(g0))[i0] = d.base[0]; p.cursor = d.orig;
+    changed(g0);   // write the undo back first: slotClick reloads the gear slots from the player (the old dupe)
     slotClick(g0, i0, false, false);
   }
 }
