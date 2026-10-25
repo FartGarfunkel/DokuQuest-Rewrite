@@ -5,6 +5,24 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.4 — Split-screen (October 2026)
+
+- **Split-screen:** up to four players on one screen. Press Start on a free controller to join.
+- **Controllers in every menu:** the title screen, pause menu, options and every other menu now move with the D-pad or left stick, A to choose and B to go back. Keyboard and mouse work alongside.
+- **Villager talk windows:** the highlighted answer lines up with the one you'll pick, and long lists of answers, shop rows and quests scroll with the mouse wheel, the keyboard and the controller.
+- **Sounds like the original:** your own footsteps, digging, placing and breaking play at full loudness again. Mining had become a faint, muffled thud.
+- **Weather and portals:** rain, snow and mist no longer fade away while a portal is in view.
+- **Ledges:** in first person your hands grip the edge while you hang, move hand over hand as you shimmy and pull you up over the top.
+- **Shelves** show what's on them.
+- **Sneak-placing** blocks against crafting tables, furnaces, chests and other stations works again, flying in creative too.
+- **First person:** the bow draws back as you pull it, and the fishing rod's float hangs from the tip until you cast it.
+- **Monster cages** show the creature spinning inside.
+- **Enchanted things** shimmer, and their tooltips list their enchantments.
+- **Puddles dry up** after the rain, and storm snow melts.
+- **Smoother blocks:** big shapes step a whole voxel at a time, fine detail is shaded smoothly, and cracks and corners get a little shadow.
+- **Fixed** a crash right after a portal links.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.3.2 — Hotfix (October 2026)
 
 - **No more duplicating:** equipping or taking off a backpack, cape, belt item or charm no longer copies it (and everything in the backpack). The inventory and the rest of the game now share one set of gear slots.
