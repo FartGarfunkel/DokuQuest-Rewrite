@@ -24,7 +24,7 @@ struct AudioBuffer {
 enum AudioCat : u8 { CAT_SFX = 0, CAT_MOBS = 1, CAT_AMB = 2 };
 
 struct AudioCmd {
-  enum T : u8 { Play, Stop, Note, Bus, Wind, Verb, MusicClear } t = Play;
+  enum T : u8 { Play, Stop, Note, Bus, Wind, Verb, MusicClear, Rain } t = Play;
   u8 cat = 0, bus = 0, ins = 0;
   int handle = 0;
   const AudioBuffer* buf = nullptr;
@@ -64,6 +64,7 @@ struct AudioEngine::Impl {
   snd::Reverb room, cave;
   float roomG = 0, caveG = 0, roomT = 0, caveT = 0;
   struct Wind { float g = 0, target = 0, f = 420, ft = 420; snd::Biquad bp; snd::Rng r{77}; } wind;
+  struct Rain { float g = 0, target = 0; bool init = false; snd::Biquad lp, hp; snd::Rng r{91}; } rain;   // weather.js rain hiss (looping noise)
   std::unique_ptr<snd::MusicSynth> music;
   void mix(float* out, int frames);
   void startVoice(const AudioCmd& c);

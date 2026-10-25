@@ -213,9 +213,11 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
   // sneaking keeps you from walking off edges
   if (sneaking && wasGround && vel.y <= 0) {
     auto supported = [&](float x, float z) { return collides(wd, x - w + 0.05, pos.y - 0.6, z - w + 0.05, x + w - 0.05, pos.y - 0.01, z + w - 0.05); };
+    // the half-reverted spot is checked against walls too (it was never swept): never end up inside a block
+    auto clear = [&](float x, float z) { return !collides(wd, x - w, pos.y + 0.01, z - w, x + w, pos.y + h, z + w); };
     if (!supported(pos.x, pos.z)) {
-      if (supported(ox, pos.z)) pos.x = ox;
-      else if (supported(pos.x, oz)) pos.z = oz;
+      if (supported(ox, pos.z) && clear(ox, pos.z)) pos.x = ox;
+      else if (supported(pos.x, oz) && clear(pos.x, oz)) pos.z = oz;
       else { pos.x = ox; pos.z = oz; }
       onGround = true; vel.y = 0;
     }

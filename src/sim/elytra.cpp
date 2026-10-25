@@ -5,7 +5,9 @@
 namespace dq {
 
 bool hasElytra(const Player& p) {
-  if (auto& cs = contentHooks().capeSlot) { const ItemStack* c = cs(p); return c && !c->empty() && c->id == "elytra"; }
+  // worn in the cape slot (the original's place for them) or the chest slot
+  if (auto& cs = contentHooks().capeSlot) { const ItemStack* c = cs(p); if (c && !c->empty() && c->id == "elytra") return true; }
+  if (!p.cape.empty() && !p.cape[0].empty() && p.cape[0].id == "elytra") return true;
   return p.armor.size() > 1 && !p.armor[1].empty() && p.armor[1].id == "elytra";
 }
 

@@ -2,6 +2,7 @@
 // additions in game/particles2.js (fireflies blink, drips land and splash, splats dry up); the
 // quads: render/renderer.js buildParticles.
 #include "render/particles.h"
+#include "core/registry.h"
 #include "world/world.h"
 
 namespace dq {
@@ -104,7 +105,18 @@ void ParticleSystem::spawn(const std::string& kind, vec3 pos, int count, const j
   bool flag = extra.is_object() && extra.value("big", false);
   float few = level == 1 ? 0.5f : 1.f;
   if (kind == "block" || kind == "break" || kind == "crumbs") { burst(pos, str("block", str("tile", "stone")), count, num("speed", 1.2f), num("grav", 14)); return; }
-  if (kind == "dust") { burst(pos, str("block", "dirt"), count, num("speed", 0.18f), num("grav", 9)); return; }
+  if (kind == "dust") {   // ambientfx.js footDust: extra.speed is how fast the walker moves, not the dust's speed
+    std::string key = str("block", "");
+    if (key.empty() && world) {
+      BlockId id = world->getBlock(ifloor(pos.x), ifloor(pos.y - 0.2f), ifloor(pos.z));
+      if (!id || !reg().tSolid[id]) return;
+      key = reg().block(id).key;
+    }
+    float mv = num("speed", 0);
+    int n = mv > 4.3f + 0.5f ? (level == 1 ? 1 : 2) : (rnd() < 0.25f ? 1 : 0);
+    if (n) burst(pos + vec3(0, 0.08f, 0), key.empty() ? "dirt" : key, n, 0.18f, 9);
+    return;
+  }
   if (kind == "burst") { burst(pos, str("tile", "white"), count, num("speed", 1), num("grav", 14)); return; }
   if (kind == "flame") { for (int i = 0; i < count; i++) flame(pos + vec3(rs(), rs(), rs()) * num("spread", 0.f)); return; }
   if (kind == "splash") { splash(pos, flag); return; }

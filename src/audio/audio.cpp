@@ -46,6 +46,7 @@ void AudioEngine::Impl::mix(float* out, int n) {
       case AudioCmd::Play: startVoice(c); break;
       case AudioCmd::Stop: for (auto& v : voices) if (v.on && v.handle == c.handle) v.fadeStep = 1.f / (0.01f * SR); break;
       case AudioCmd::Wind: wind.target = c.a; wind.ft = c.b; break;
+      case AudioCmd::Rain: rain.target = c.a; break;
       case AudioCmd::Verb: roomT = c.a; caveT = c.b; break;
       default: if (music) music->command(c); break;
     }
@@ -77,6 +78,15 @@ void AudioEngine::Impl::mix(float* out, int n) {
       wind.g += (wind.target - wind.g) * 0.002f;
       float s = wind.bp.run(wind.r.pm()) * wind.g * master;
       bus[2 * i] += s; bus[2 * i + 1] += s;
+    }
+  }
+  // the rain: low-passed noise with a little high patter on top (weather.js rain loop; louder in the open)
+  if (rain.g > 1e-5f || rain.target > 1e-5f) {
+    if (!rain.init) { rain.lp.setWA("lowpass", 1400, 0.5); rain.hp.setWA("highpass", 5200, 0.6); rain.init = true; }
+    for (int i = 0; i < n; i++) {
+      rain.g += (rain.target - rain.g) * 0.0004f;
+      float nz = rain.r.pm(), s = (rain.lp.run(nz) * 0.9f + rain.hp.run(rain.r.pm()) * 0.25f) * rain.g * master;
+      bus[2 * i] += s; bus[2 * i + 1] += s * 0.97f;
     }
   }
   // sound3.js: everything through one bus, with a small room and a cave on sends

@@ -295,11 +295,7 @@ void deriveMicroVoxelHeights(TileSet& ts) {
     else if (grooveRelief(p, S, lum, lumS, d)) grooved++;
     else { lumRelief(p, S, lumS, avg, d); std::vector<float> bl; blur3(d, S, bl); d.swap(bl); }   // plain surfaces: smoothed luminance, then blurred again (no single-pixel spikes)
     if (!old && n >= S * S * 9 / 10) {
-      // a slight bevel round every face: the outer ring of micro-voxels sits a little lower
-      for (int y = 0; y < S; y++) for (int x = 0; x < S; x++) {
-        int e = std::min({x, y, S - 1 - x, S - 1 - y});
-        if (e < 2) d[y * S + x] = std::max(d[y * S + x], e == 0 ? 0.16f : 0.07f);
-      }
+      // (no bevel round the faces: it drew a grid over every surface)
     }
     u8* hgt = ts.height.data() + (size_t)t * S * S;
     for (int i = 0; i < S * S; i++) hgt[i] = (u8)clampv(d[i] * 255.f, 0.f, 255.f);
