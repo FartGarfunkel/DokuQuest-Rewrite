@@ -1,29 +1,183 @@
-{"steps":[
-{"wait":120,"do":"report"},
-{"do":"pad","button":"start","id":1,"hold":3},
-{"wait":30,"do":"pad","button":"start","id":2,"hold":3},
-{"wait":30,"do":"give","item":"stone","n":8,"local":1},
-{"do":"anchor","local":1},
-{"do":"setBlock","key":"dirt","x":3,"y":0,"z":0,"rel":true},
-{"do":"lookAt","x":3,"y":0,"z":0,"rel":true,"local":1},
-{"do":"pad","button":"rt","id":1,"hold":150},
-{"wait":160,"do":"expect","block":[3,0,0],"is":"air","rel":true},
-{"do":"setBlock","key":"dirt","x":3,"y":0,"z":0,"rel":true},
-{"do":"pad","button":"lt","id":1,"hold":3},
-{"wait":10,"do":"expect","count":"stone","n":5,"local":1},
-{"do":"pad","button":"y","id":2,"hold":3},
-{"wait":20,"do":"expect","screen":"inventory","local":2},
-{"do":"expect","screen":"(none)","local":1},
-{"do":"expect","screen":"(none)","local":0},
-{"do":"shot","path":"/tmp/ud-split/u_inv.png"},
-{"do":"pad","button":"b","id":2,"hold":3},
-{"wait":20,"do":"expect","screen":"(none)","local":2},
-{"do":"kill","local":1},
-{"wait":20,"do":"expect","screen":"death","local":1},
-{"do":"expect","screen":"(none)","local":2},
-{"do":"shot","path":"/tmp/ud-split/u_death.png"},
-{"do":"key","key":"Escape","hold":3},
-{"wait":20,"do":"expect","screen":"pause"},
-{"do":"shot","path":"/tmp/ud-split/u_pause.png"},
-{"wait":2,"do":"quit"}
-]}
+{
+ "steps": [
+  {
+   "wait": 120,
+   "do": "report"
+  },
+  {
+   "wait": 60,
+   "do": "pad",
+   "button": "a",
+   "id": 0,
+   "hold": 2
+  },
+  {
+   "wait": 10,
+   "do": "padaxis",
+   "axis": "leftx",
+   "value": 0.9,
+   "id": 1,
+   "hold": 5
+  },
+  {
+   "wait": 10,
+   "do": "padaxis",
+   "axis": "leftx",
+   "value": 0,
+   "id": 1
+  },
+  {
+   "do": "pad",
+   "button": "start",
+   "id": 1,
+   "hold": 3
+  },
+  {
+   "wait": 30,
+   "do": "pad",
+   "button": "start",
+   "id": 2,
+   "hold": 3
+  },
+  {
+   "wait": 30,
+   "do": "give",
+   "item": "stone",
+   "n": 8,
+   "local": 1
+  },
+  {
+   "do": "anchor",
+   "local": 1
+  },
+  {
+   "do": "setBlock",
+   "key": "dirt",
+   "x": 3,
+   "y": 0,
+   "z": 0,
+   "rel": true
+  },
+  {
+   "do": "lookAt",
+   "x": 3,
+   "y": 0,
+   "z": 0,
+   "rel": true,
+   "local": 1
+  },
+  {
+   "do": "pad",
+   "button": "rt",
+   "id": 1,
+   "hold": 150
+  },
+  {
+   "wait": 160,
+   "do": "expect",
+   "block": [
+    3,
+    0,
+    0
+   ],
+   "is": "air",
+   "rel": true
+  },
+  {
+   "do": "setBlock",
+   "key": "dirt",
+   "x": 3,
+   "y": 0,
+   "z": 0,
+   "rel": true
+  },
+  {
+   "do": "pad",
+   "button": "lt",
+   "id": 1,
+   "hold": 3
+  },
+  {
+   "wait": 10,
+   "do": "expect",
+   "count": "stone",
+   "n": 5,
+   "local": 1
+  },
+  {
+   "do": "pad",
+   "button": "y",
+   "id": 2,
+   "hold": 3
+  },
+  {
+   "wait": 20,
+   "do": "expect",
+   "screen": "inventory",
+   "local": 2
+  },
+  {
+   "do": "expect",
+   "screen": "(none)",
+   "local": 1
+  },
+  {
+   "do": "expect",
+   "screen": "(none)",
+   "local": 0
+  },
+  {
+   "do": "shot",
+   "path": "/tmp/ud-split/u_inv.png"
+  },
+  {
+   "do": "pad",
+   "button": "b",
+   "id": 2,
+   "hold": 3
+  },
+  {
+   "wait": 20,
+   "do": "expect",
+   "screen": "(none)",
+   "local": 2
+  },
+  {
+   "do": "kill",
+   "local": 1
+  },
+  {
+   "wait": 20,
+   "do": "expect",
+   "screen": "death",
+   "local": 1
+  },
+  {
+   "do": "expect",
+   "screen": "(none)",
+   "local": 2
+  },
+  {
+   "do": "shot",
+   "path": "/tmp/ud-split/u_death.png"
+  },
+  {
+   "do": "key",
+   "key": "Escape",
+   "hold": 3
+  },
+  {
+   "wait": 20,
+   "do": "expect",
+   "screen": "pause"
+  },
+  {
+   "do": "shot",
+   "path": "/tmp/ud-split/u_pause.png"
+  },
+  {
+   "wait": 2,
+   "do": "quit"
+  }
+ ]
+}

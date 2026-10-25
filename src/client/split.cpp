@@ -13,6 +13,7 @@
 #include "ui/theme.h"
 #include "ui/ui.h"
 #include <imgui.h>
+#include <algorithm>
 #include <imgui_impl_opengl3.h>
 
 namespace dq {
@@ -68,10 +69,16 @@ void GameSession::layoutLocals() {
   }
 }
 
+// The controller the first person plays the world with (gamepad.js: a pad is someone's once it moves them). Only that
+// pad pauses with Start and moves the first person; any other controller's Start joins, even one that was used to click through the menus.
+static SDL_JoystickID g_p1Pad = -1;
+
 void GameSession::routeInput() {
   std::vector<InputSource> v;
   if (split()) for (auto& l : locals) v.push_back(l.src);
+  else if (g_p1Pad >= 0) v.push_back(InputSource{true, {g_p1Pad}});   // alone: the keyboard and your own controller
   app.input.setSources(v);
+  if (!split()) app.input.select(v.empty() ? -1 : 0);
 }
 
 // A controller nobody plays with pressed Start: that person joins (gamepad.js claim). A controller the first person already
@@ -79,9 +86,18 @@ void GameSession::routeInput() {
 void GameSession::checkJoin() {
   Input& in = app.input;
   if (level->net || locals.size() >= 4 || !app.screens.empty() || entered || in.setupActive) return;
+  if (g_p1Pad >= 0 && std::none_of(in.pads().begin(), in.pads().end(), [](const PadState& p) { return p.active && p.id == g_p1Pad; })) {
+    g_p1Pad = -1; routeInput();   // their controller went away: the next one used is theirs
+  }
+  if (!split() && g_p1Pad < 0) for (auto& p : in.pads()) {
+    if (!p.active) continue;
+    bool play = glm::length(p.lstick) > 0.5f || glm::length(p.rstick) > 0.5f;
+    for (int k = 0; k < 17 && !play; k++) if (k != 9 && p.edge(k)) play = true;
+    if (play) { g_p1Pad = p.id; routeInput(); break; }
+  }
   for (auto& p : in.pads()) {
     if (!p.active || !p.edge(9)) continue;
-    bool owned = !split() && p.used;
+    bool owned = !split() && p.id == g_p1Pad;   // gamepad.js claim: a pad nobody owns joins with Start
     for (auto& l : locals) if (std::find(l.src.pads.begin(), l.src.pads.end(), p.id) != l.src.pads.end()) owned = true;
     if (owned) continue;
     if (addLocal(p.id) >= 0) break;
@@ -94,7 +110,8 @@ int GameSession::addLocal(SDL_JoystickID pad) {
   int i = (int)locals.size();
   if (i == 1) {   // the first person keeps the keyboard and the controllers they have been playing with
     locals[0].src.kb = true;
-    for (auto& p : app.input.pads()) if (p.used && p.id != pad) locals[0].src.pads.push_back(p.id);
+    if (g_p1Pad >= 0 && g_p1Pad != pad) locals[0].src.pads.push_back(g_p1Pad);
+    else if (g_p1Pad < 0) for (auto& p : app.input.pads()) if (p.used && p.id != pad) locals[0].src.pads.push_back(p.id);
   }
   auto np = std::make_unique<Player>();
   np->name = "Player " + std::to_string(i + 1);

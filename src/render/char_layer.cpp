@@ -311,7 +311,11 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   ps.held = !wear.held.empty(); ps.off = !wear.off.empty(); ps.deathT = p.dead ? std::max(st.deathT, 0.01f) : 0;
   ps.air = !p.onGround && !p.flying && !p.inWater && !p.riding && !ps.ladder && !ps.hang && ps.climb <= 0; ps.vy = st.vel.y; ps.sprint = p.sprinting; ps.land = std::max(0.f, st.landT);
   ps.bow = p.bowPull; ps.eat = p.eatT;
-  ps.paddle = p.inWater && !p.onGround && !p.swimming && !p.flying && !p.riding && !ps.hang && ps.climb <= 0;
+  {   // local.js paddling(): treading water or swimming along upright in water deeper than about a block
+    auto liquidAt = [&](float dy) { return reg().tLiquid[w.getBlock(ifloor(p.pos.x), ifloor(p.pos.y + dy), ifloor(p.pos.z))] == 1; };
+    bool deep = p.contacts.eyeWater || liquidAt(1.1f) || (!p.onGround && liquidAt(0.5f));
+    ps.paddle = (p.contacts.water || p.inWater) && deep && !p.swimming && !p.flying && !p.riding && !p.dead && !ps.hang && ps.climb <= 0;
+  }
   ps.swimPh = st.swimPh; ps.swimMv = std::min(1.f, std::hypot(st.vel.x, st.vel.z) / 2.2f);
   ps.hasBodyYaw = true; ps.bodyYaw = st.bodyYaw; ps.headTurn = wrapAngle(p.yaw - st.bodyYaw); ps.legTurn = st.legTurn;
   ps.accLean = p.onGround ? st.accLean : 0; ps.turnLean = st.turnLean;
