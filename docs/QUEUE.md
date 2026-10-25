@@ -53,5 +53,7 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
 - Late stage (close to 10 fragments): he opens portals like the rift in town — anywhere: mines, caves, any land — walks through from his realm with corrupted hostile mobs AND corrupted ordinary animals (cows etc. that attack for him), then walks back through and the portal closes.
 - Patch notes never hint at him; they still end with "Removed Herobrine."
 
+- Better than Adventure inspiration (user, 2026-10-25): biomes, blocks, a Nether more like BTA's, mobs we lack, music in the same mood. BTA ships as jars only (the GitHub "Source code" zip is the download repo, not the mod) and its code, art and music are theirs: build OUR versions from its public feature lists (wiki, the user's video) in DokuQuest style — Doku tiles/micro-voxels, our own synth music. Never copy or resample their files.
+
 ## Roadmap (after the bugs)
 Start in the wild, potions stack to 16, test-build small fixes, coins/economy, roads and bridges, travellers, saddle bags, bigger ship, poses, torches on fences, chains/lanterns, rift to 10 fragments + slow pacing + lore, graphics presets, built-in shader levels, Skylands content, Shadowbloom ports, Iris/OptiFine shader packs.

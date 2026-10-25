@@ -2,6 +2,7 @@
 // (sneak + use with an item: blocks stack up, ingots lie in criss-crossed layers, tools lie flat, bottles stand,
 // the rest in a little heap) and placed backpacks. The blocks themselves are invisible (render NONE); their
 // block entities carry the stacks. Item frames show their item the same way.
+#include "sim/weapon_rack.h"
 #include "render/item_layers.h"
 #include "render/be_scan.h"
 #include "client/app.h"
@@ -57,7 +58,7 @@ public:
     auto begin = [&] { if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; } };
     forBlockEntities(w, f, 48.f, [&](const Chunk&, json& e, int x, int y, int z) {
       const std::string type = e.value("type", "");
-      if (type != "pile" && type != "backpack" && type != "frame" && type != "shelf" && type != "bookcase") return;
+      if (type != "pile" && type != "backpack" && type != "frame" && type != "shelf" && type != "bookcase" && type != "rack") return;
       vec3 rel = f.cam.rel(glm::dvec3(x, y, z));
       if (glm::dot(rel - vec3(0.5f), rel - vec3(0.5f)) > 48.f * 48.f || !f.cam.frustum.sphere(rel + vec3(0.5f), 1.2f)) return;
       u8 l = w.getLight(x, y, z);
@@ -69,6 +70,24 @@ public:
         if (bl && reg().tShape[bl] == ShapeKind::Slab && !(w.getMeta(x, y - 1, z) & 7)) yOff = -0.5f;
       }
       mat4 base = glm::translate(mat4(1), rel + vec3(0, yOff, 0));
+      if (type == "rack") {
+        // batche.js blockEntityDraws: up to three weapons, tools or shields resting on a weapon rack (floor or wall)
+        if (!e.contains("rack") || !e["rack"].is_array()) return;
+        int rk = (int)reg().block(w.getBlock(x, y, z)).num("rack");
+        if (rk <= 0) return;
+        int f = w.getMeta(x, y, z) & 3;
+        const json& R = e["rack"];
+        for (size_t k = 0; k < R.size() && k < 3; k++) {
+          ItemStack st = ItemStack::fromJson(R[k]);
+          if (st.empty() || !st.def()) continue;
+          const VoxelModel& im = itemModel(st.id);
+          if (!im.ready()) continue;
+          begin();
+          mat4 m = glm::translate(mat4(1), rel) * rackSlotMat(f, rk == 2, (int)k);
+          VR.draw(im.gl, m * im.matrix(), L, vec4(0), itemGlints(st) ? 1.f : 0.f);
+        }
+        return;
+      }
       if (type == "frame") {
         // an item frame: the item sits flat against the wall behind it, turned in eighths (glow frames light it fully)
         if (!e.contains("item") || !e["item"].is_object()) return;
