@@ -46,6 +46,12 @@ target_link_libraries(dokuquest-launcher PRIVATE dqclient)
 add_executable(dokuquest-server tools/server_main.cpp)
 target_link_libraries(dokuquest-server PRIVATE dqcore)
 
+# headless creature checks (AI, spawning, path finding): ctest or ./build/dq-creature-test
+enable_testing()
+add_executable(dq-creature-test tools/test/creature_test.cpp)
+target_link_libraries(dq-creature-test PRIVATE dqcore)
+add_test(NAME creatures COMMAND dq-creature-test)
+
 if(WIN32)
   set_target_properties(dokuquest dokuquest-launcher PROPERTIES WIN32_EXECUTABLE ON)
   target_link_libraries(dqclient PUBLIC SDL2::SDL2main)
