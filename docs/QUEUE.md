@@ -38,5 +38,11 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
 - Portal: confirm worlds no longer vanish after crossing (fix in alpha.3: remesh after realm change). If it still happens through Nether portals, look at band switching in render/world_renderer.cpp drawPass and portal_view.cpp.
 - Block sweep extensions: use every block with every tool, check drops against the original's drop tables.
 
+## Next after alpha.4 (user, 2026-10-25)
+- A start-to-finish playthrough check (scripted where possible): new world → village → tools/armour → Nether → fortress → End → dragon → the rift story to the end; note everything that breaks.
+- The rift story: 4 → 10 Realm Fragments, each fed to the rift by hand, the rift growing each time. Slow-burn creepypasta pacing like the "I saw him in my world" stories: early signs rare and small (torches you didn't place or dimmed, a figure at the edge of fog that's gone when you look, footsteps with no source, doors left open, wrong signs, 2x2 tunnels, leafless trees), never announced. He is mostly harmless to the player directly but interacts with the world.
+- Late stage (close to 10 fragments): he opens portals like the rift in town — anywhere: mines, caves, any land — walks through from his realm with corrupted hostile mobs AND corrupted ordinary animals (cows etc. that attack for him), then walks back through and the portal closes.
+- Patch notes never hint at him; they still end with "Removed Herobrine."
+
 ## Roadmap (after the bugs)
 Start in the wild, potions stack to 16, test-build small fixes, coins/economy, roads and bridges, travellers, saddle bags, bigger ship, poses, torches on fences, chains/lanterns, rift to 10 fragments + slow pacing + lore, graphics presets, built-in shader levels, Skylands content, Shadowbloom ports, Iris/OptiFine shader packs.
