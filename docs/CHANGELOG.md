@@ -11,6 +11,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Cracks stay:** a block you stop mining keeps its cracks and slowly mends, like the original.
 - **Rain is heard again:** the rain's hiss, louder out in the open, quieter under a roof.
 - **Creatures stay on their islands:** calm creatures stop at a deep drop instead of walking off (Skylands creatures no longer fall to the Overworld).
+- **Sneaking:** the edge guard no longer pushes you into walls while you sneak along them.
 - **Running dust:** a puff or two of the ground you run on, like the original, instead of a spray of particles.
 - **Elytra:** they work from the cape slot as well as the chest slot (jump while falling to glide).
 - Removed Herobrine.
