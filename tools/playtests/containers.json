@@ -7,6 +7,9 @@
 "value": 0
 },
 {
+"do": "anchor"
+},
+{
 "wait": 5,
 "do": "give",
 "item": "cobblestone",

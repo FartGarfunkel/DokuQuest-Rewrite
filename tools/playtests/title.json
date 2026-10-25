@@ -1,21 +1,91 @@
-{"steps":[
- {"wait":30,"do":"padaxis","axis":"rightx","value":0},
- {"wait":10,"do":"pad","button":"down"},
- {"wait":8,"do":"shot","path":"/tmp/menus_t1.png"},
- {"do":"pad","button":"down"},
- {"wait":8,"do":"pad","button":"down"},
- {"wait":8,"do":"shot","path":"/tmp/menus_t2.png"},
- {"do":"report"},
- {"do":"pad","button":"a"},
- {"wait":15,"do":"report"},
- {"do":"shot","path":"/tmp/menus_t3.png"},
- {"do":"pad","button":"down"},
- {"wait":8,"do":"pad","button":"down"},
- {"wait":8,"do":"pad","button":"down"},
- {"wait":8,"do":"shot","path":"/tmp/menus_t4.png"},
- {"do":"padaxis","axis":"righty","value":1,"hold":20},
- {"wait":25,"do":"shot","path":"/tmp/menus_t5.png"},
- {"do":"pad","button":"b"},
- {"wait":15,"do":"report"},
- {"do":"shot","path":"/tmp/menus_t6.png"}
-]}
+{
+"steps": [
+{
+"wait": 30,
+"do": "padaxis",
+"axis": "rightx",
+"value": 0
+},
+{
+"wait": 10,
+"do": "pad",
+"button": "down"
+},
+{
+"wait": 8,
+"do": "shot",
+"path": "/tmp/menus_t1.png"
+},
+{
+"do": "pad",
+"button": "down"
+},
+{
+"wait": 8,
+"do": "pad",
+"button": "down"
+},
+{
+"wait": 8,
+"do": "shot",
+"path": "/tmp/menus_t2.png"
+},
+{
+"do": "report"
+},
+{
+"do": "pad",
+"button": "a"
+},
+{
+"wait": 15,
+"do": "report"
+},
+{
+"do": "shot",
+"path": "/tmp/menus_t3.png"
+},
+{
+"do": "pad",
+"button": "down"
+},
+{
+"wait": 8,
+"do": "pad",
+"button": "down"
+},
+{
+"wait": 8,
+"do": "pad",
+"button": "down"
+},
+{
+"wait": 8,
+"do": "shot",
+"path": "/tmp/menus_t4.png"
+},
+{
+"do": "padaxis",
+"axis": "righty",
+"value": 1,
+"hold": 20
+},
+{
+"wait": 25,
+"do": "shot",
+"path": "/tmp/menus_t5.png"
+},
+{
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 15,
+"do": "report"
+},
+{
+"do": "shot",
+"path": "/tmp/menus_t6.png"
+}
+]
+}

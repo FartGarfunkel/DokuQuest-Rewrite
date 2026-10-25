@@ -1,40 +1,265 @@
-{"steps":[
- {"wait":200,"do":"padaxis","axis":"rightx","value":0},
- {"wait":5,"do":"give","item":"iron_ore","n":3},
- {"do":"give","item":"coal","n":2},
- {"do":"give","item":"log","n":4},
- {"do":"setBlock","rel":true,"x":0,"y":0,"z":-1,"key":"air"},
- {"do":"setBlock","rel":true,"x":0,"y":1,"z":-1,"key":"air"},
- {"do":"setBlock","rel":true,"x":0,"y":1,"z":-2,"key":"air"},
- {"do":"setBlock","rel":true,"x":0,"y":0,"z":-2,"key":"furnace"},
- {"do":"lookAt","rel":true,"x":0,"y":0,"z":-2},
- {"wait":5,"do":"pad","button":"lt","hold":4},
- {"wait":15,"do":"expect","screen":"inventory"},
- {"do":"pad","button":"y"},
- {"wait":4,"do":"pad","button":"right"},
- {"wait":4,"do":"pad","button":"y"},
- {"wait":4,"do":"shot","path":"/tmp/menus_furnace.png"},
- {"do":"expect","container":[0,0,-2],"rel":true,"slot":0,"item":"iron_ore"},
- {"do":"expect","container":[0,0,-2],"rel":true,"slot":1,"item":"coal"},
- {"do":"pad","button":"b"},
- {"wait":900,"do":"expect","container":[0,0,-2],"rel":true,"slot":2,"item":"iron_ingot"},
- {"do":"report"},
- {"do":"setBlock","rel":true,"x":1,"y":0,"z":-2,"key":"crafting_table"},
- {"do":"setBlock","rel":true,"x":1,"y":1,"z":-2,"key":"air"},
- {"do":"setBlock","rel":true,"x":1,"y":0,"z":-1,"key":"air"},
- {"do":"lookAt","rel":true,"x":1,"y":0,"z":-2},
- {"wait":3,"do":"mouse","button":"right"},
- {"wait":15,"do":"expect","screen":"inventory"},
- {"do":"shot","path":"/tmp/menus_table.png"},
- {"do":"pad","button":"right"},{"wait":4,"do":"pad","button":"right"},
- {"wait":4,"do":"pad","button":"a"},
- {"wait":4,"do":"pad","button":"up"},{"wait":4,"do":"pad","button":"up"},{"wait":4,"do":"pad","button":"up"},{"wait":4,"do":"pad","button":"up"},
- {"wait":4,"do":"pad","button":"a"},
- {"wait":4,"do":"shot","path":"/tmp/menus_table2.png"},
- {"do":"pad","button":"right"},{"wait":4,"do":"pad","button":"right"},{"wait":4,"do":"pad","button":"right"},
- {"wait":4,"do":"shot","path":"/tmp/menus_table3.png"},
- {"do":"pad","button":"y"},
- {"wait":5,"do":"expect","count":"planks","n":16},
- {"do":"pad","button":"b"},
- {"wait":5,"do":"report"}
-]}
+{
+"steps": [
+{
+"wait": 200,
+"do": "padaxis",
+"axis": "rightx",
+"value": 0
+},
+{
+"do": "anchor"
+},
+{
+"wait": 5,
+"do": "give",
+"item": "iron_ore",
+"n": 3
+},
+{
+"do": "give",
+"item": "coal",
+"n": 2
+},
+{
+"do": "give",
+"item": "log",
+"n": 4
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -1,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 1,
+"z": -1,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 1,
+"z": -2,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -2,
+"key": "furnace"
+},
+{
+"do": "lookAt",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -2
+},
+{
+"wait": 5,
+"do": "pad",
+"button": "lt",
+"hold": 4
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "inventory"
+},
+{
+"do": "pad",
+"button": "y"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "right"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "y"
+},
+{
+"wait": 4,
+"do": "shot",
+"path": "/tmp/menus_furnace.png"
+},
+{
+"do": "expect",
+"container": [
+0,
+0,
+-2
+],
+"rel": true,
+"slot": 0,
+"item": "iron_ore"
+},
+{
+"do": "expect",
+"container": [
+0,
+0,
+-2
+],
+"rel": true,
+"slot": 1,
+"item": "coal"
+},
+{
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 900,
+"do": "expect",
+"container": [
+0,
+0,
+-2
+],
+"rel": true,
+"slot": 2,
+"item": "iron_ingot"
+},
+{
+"do": "report"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 1,
+"y": 0,
+"z": -2,
+"key": "crafting_table"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 1,
+"y": 1,
+"z": -2,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 1,
+"y": 0,
+"z": -1,
+"key": "air"
+},
+{
+"do": "lookAt",
+"rel": true,
+"x": 1,
+"y": 0,
+"z": -2
+},
+{
+"wait": 3,
+"do": "mouse",
+"button": "right"
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "inventory"
+},
+{
+"do": "shot",
+"path": "/tmp/menus_table.png"
+},
+{
+"do": "pad",
+"button": "right"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "right"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "a"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "a"
+},
+{
+"wait": 4,
+"do": "shot",
+"path": "/tmp/menus_table2.png"
+},
+{
+"do": "pad",
+"button": "right"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "right"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "right"
+},
+{
+"wait": 4,
+"do": "shot",
+"path": "/tmp/menus_table3.png"
+},
+{
+"do": "pad",
+"button": "y"
+},
+{
+"wait": 5,
+"do": "expect",
+"count": "planks",
+"n": 16
+},
+{
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 5,
+"do": "report"
+}
+]
+}
