@@ -11,6 +11,7 @@ enum class Act : int {
   Forward, Back, Left, Right, Jump, Sneak, Sprint, Attack, Use, PickBlock, Inventory, Drop, Chat, Command, Pause,
   HideHud, Screenshot, Debug, View, SwapHands, PlaceMode, Hot1, Hot2, Hot3, Hot4, Hot5, Hot6, Hot7, Hot8, Hot9,
   HotNext, HotPrev, Map, PlayerList, Zoom,
+  Spell, Spellbook, CastQuick, Skills, Journal,   // magic.js G, spellcraft.js B / Z, skills.js K, rpg.js J
   // menu navigation (controllers / keys in menus)
   MenuUp, MenuDown, MenuLeft, MenuRight, MenuOk, MenuBack, MenuTabLeft, MenuTabRight,
   Count

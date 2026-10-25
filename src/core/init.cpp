@@ -12,6 +12,7 @@ bool initCore(const CoreOptions& o) {
   registerCommands();
   registerModApi();
   registerPortals();
+  registerMagic();
   return true;
 }
 void shutdownCore() {}

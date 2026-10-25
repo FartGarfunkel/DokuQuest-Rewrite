@@ -19,5 +19,6 @@ void registerWorldTypes();       // gen/worldgen*.cpp
 void registerCommands();         // sim/commands*.cpp
 void registerModApi();           // mod/*.cpp
 void registerPortals();          // sim/portals.cpp (+ the stacked worlds, sim/seamless.cpp)
+void registerMagic();            // sim/magic.cpp (magic, enchanting, brewing, skills, rpg)
 
 } // namespace dq
