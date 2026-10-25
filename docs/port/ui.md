@@ -1,0 +1,38 @@
+# Menus, HUD, inventory, controls (ui/, input/, sim/crafting, sim/inv_ops)
+
+## Ported
+| JS | C++ | Notes |
+|---|---|---|
+| styles.css | `ui/theme.*` | palette, Pixelify Sans / Jersey 15 at the interface zoom (`settings.guiScale`: "auto" or a percentage, like hud.js uiZoomFor), `.mcbtn` (gui_button tile, or the pack's `widget/button` sprites), `.btn` (normal/primary/ghost/danger/tiny), `.panel` (dirt body, planks header), inventory slots, item icons with counts and durability, range sliders, HUD sprites (hearts incl. poison/chill/wither filters, glowing shields, bubbles). Symbols the pixel font lacks (♥ ▲ ▼ arrows ✕ ⚔ ✦ ◯ ▢ △) are painted into the font atlas. |
+| ui/title.js + game.js panorama | `ui/title.cpp` | stone logo built from the tile set, bouncing splash, classic buttons, version line + "New" tag + What's new on first run of a version, turning demo world (its own Level + WorldRenderer + sky, cache folder removed afterwards). The "Dedicated Server" button is not here: the server lives in the launcher. |
+| ui.js worlds + rules.js | `ui/worlds.cpp` | list (play, settings, backup file, delete with confirm), New world (name, seed, game mode, More world options = every rule + day/night lengths), import, World settings (rename, mode, rules, terrain version upgrade). Backups are .zip files in `userDir()/backups` (miniz); import lists that folder. |
+| ui.js settings, controls.js, padsetup.js | `ui/options.cpp` | every original option, renderer shown read-only (chosen in the launcher), resource pack choice (applies at next start), plus this version's block detail / water / shadows / full screen. Controls: rebind keys, mouse buttons and pad buttons, clashes in red, reset. Pad setup wizard: press each button / move each stick, saved per pad name in `settings.padMaps`. |
+| ui.js pause, hud.js death, howto/news/players | `ui/menus.cpp` | Game Menu (guest/host aware: LAN label, Leave world), How to play, What's new (`data/news.json` when present), Players & skins (name; skin editor / creator open the characters workstream's screens). |
+| net/netui.js | `ui/multiplayer.cpp` | Multiplayer (LAN list via `lanScan()` + address + optional password), Joining… with the loading bar (`netJoinBegin`/`poll`/`netJoinFinish`), Open to LAN (address, players with Remove, firewall help, stop sharing). |
+| ui/hud.js, commands.js chat line | `ui/hud.cpp` | HUD render layer: crosshair, hotbar + off hand, hearts (rows of ten, shake at low health), armour, air bubbles, XP bar + level, held-item name, toasts and merged pick-ups, boss bar (named like dungeons.js), dimension name, F3 debug / FPS / showCoords rule, water/lava/fire/hurt/portal overlays, damage floaters, name tags, saving badge, chat log (fades after 9 s) and the chat line (history, Tab completion of commands and item keys). Opens inventory / chat / command / map-journal-skills-spellbook-stable tabs from the keys; pushes the death screen. |
+| ui/invui.js, sheet.js, menutabs.js | `ui/inventory.cpp`, `ui/sheet.cpp`, `ui/ui_main.cpp` | inventory (armour, off hand, hook, pack, charm, cape, doll, character sheet, 2×2), crafting table, furnace/smoker/blast furnace (flame + progress), chests (double chests), barrels, dispensers, hoppers, backpacks, ender chest; recipe book (tabs, search, Craftable, ghosts, fill / shift fill) and the creative catalogue (tabs, search, trash); tooltips with the sheet's "in your hands" comparisons; LB/RB menu tabs. |
+| game/inventory.js, core/items.js matchGrid, dyeing.js, maps.js | `sim/crafting.*` | shaped (mirrored), shapeless, #tags, keep/return items, tool repair, dyeing (blocks + leather mixing), map copies/zoom (hook), recipe book helpers, smelting classes (smoker/blast), `tickFurnace`. |
+| invui.js slot rules | `sim/inv_ops.*` | `InvSession`: click/right-click/shift/drag-spread/number-swap/Q-drop/output/book fill/creative pick on a Player + block entity (original JSON format). |
+| input.js, gamepad.js, padsetup.js | `input/input.*`, `input/keynames.cpp` | keyBinds/padBinds in the original's format, every pad read into the standard layout (SDL controller, saved pad map, or raw joystick fallback), Nintendo A/B swap, trigger hysteresis, stick dead zone, sprint latch, double-tap crawl, tap/hold view button, toggle sneak/sprint, double-tap W, menu nav repeat, right-stick scroll, ImGui fed from it. |
+
+## APIs for other areas
+- Open screens: `openInventory(app, InvOpen{mode:"table"|"furnace"|"container", hasPos, pos, ender, heldPack})`, `openChat(app, prefill)`, `makeXxxScreen()` in `ui/ui.h`. Never open/leave worlds from inside a screen's draw: `uiDefer([](App&){...})`.
+- HUD feeds: `hudToast`, `hudPickup(id, n)`, `hudDimName`, `hudFloatText`, `hudSaving`, `chatLine`, or EventBus `toast` [text, kind], `pickup` [id, n], `chatLine` [text, kind], `dimName` [text], `saving` [bool], `floatText` [x,y,z,text,"#rrggbb"]. `Level::fx->message(playerId, text, kind)` reaches the chat ("chat", "cmd", "", ok/err/dim) or a toast (other kinds): the HUD wraps the existing LevelFx and forwards everything.
+- Menu tabs: `registerMenuTab({key, name, open, can})` with keys map / journal / skills / spells / stable (the Map/Skills/Journal/Spellbook/Stable keys open them too).
+- Player state the HUD reads: `Player::data` "wither"/"poison"/"chill"/"burn"/"portalTime" (> 0), "deathCause" (death screen text), "carrying" {name}; `p.dead` opens the death screen; Respawn emits `respawn` [name] — return false from the handler when the gameplay side respawned the player (otherwise a plain respawn at the spawn point happens).
+- Inventory storage: hook/charm/cape/back slots and the ender chest are stack arrays in `Player::data` ("hook", "charm", "cape", "back", "ender"); backpack contents in the stack's tag "c". Throwing: EventBus `throwStack` [name, stack, x,y,z, vx,vy,vz] (return false when handled), else an "item" entity with `data.stack` is spawned. Crafting emits `craft` [name, id, n] (cancellable).
+- Crafting / furnaces for the server or gameplay: `matchGrid`, `smeltResult(kind, id)`, `fuelValue`, `tickFurnace(json&, dt, kind)`, `craftHooks().mapZoom`.
+
+## Differences
+- The doll is a flat figure in armour colours until the characters workstream's 3D doll; the gear-visibility toggles under it aren't there yet.
+- Multiplayer shows LAN worlds and an address; split-screen (several local players) isn't in this version.
+- Resource pack changes apply at the next start (the original reloaded the page).
+- Backups are zip folders instead of the original's JSON export; import reads them from `userDir()/backups`.
+- Touch controls are not ported (desktop only).
+
+## Left / notes for merge
+- `ui/menus.cpp` has weak `makeSkinEditorScreen` / `makeCreatorScreen` stand-ins: delete them when the characters workstream's strong definitions land (a weak definition in the same static library can win if their object isn't otherwise linked).
+- Item tooltips show the enchantment/potion lines only once those systems exist; the compass/clock HUD dial (tool-hud) and spyglass mask belong to the tools/maps work.
+- At merge: register the magic workstream's Spellbook / Skills / Journal screens (`ui/magic_screens.h`) with `registerMenuTab` (keys spells / skills / journal); main's extra `Act` values (Spell, Spellbook, CastQuick, Skills, Journal) duplicate the ones added here — keep one set.
+- Not checked against screenshots yet: crafting table, furnace, chests, creative catalogue, controls, pad setup, chat, death, LAN screens (they build and run; layout follows the CSS).
+- Test hook: `--screen <name>` (worlds, options, controls, padsetup, howto, news, players, multiplayer, lanhost, wsettings, pause, chat, death, inventory, creative, table, furnace, chest; in-world ones need `--create`).

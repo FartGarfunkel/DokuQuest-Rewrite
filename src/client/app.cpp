@@ -6,6 +6,7 @@
 #include "core/init.h"
 #include "render/env_layers.h"
 #include "ui/screen.h"
+#include "ui/ui.h"
 #include "audio/audio.h"
 #include "client/client_fx.h"
 #include "mod/modloader.h"
@@ -37,6 +38,7 @@ void App::parseArgs(int argc, char** argv) {
     else if (a == "--smoke-shot") args.smokeShot = next();
     else if (a == "--smoke-script") { auto j = readJson(next()); if (j) args.smokeScript = *j; }
     else if (a == "--launcher") args.fromLauncher = true;
+    else if (a == "--screen") args.screen = next();
   }
 }
 
@@ -195,6 +197,7 @@ int App::run(int argc, char** argv) {
   registerAudioLayers();
   reloadTiles();
   registerEnvironmentLayers();   // distant terrain, clouds, weather, particles (render/env_layers.cpp)
+  registerUi(*this);
   // start: straight into a world (launcher "Play world", smoke tests) or the title screen
   if (!args.world.empty()) { if (!openWorld(savesDir() / args.world)) setScreen(makeTitleScreen()); }
   else if (!args.server.empty()) { if (!joinServer(args.server)) setScreen(makeTitleScreen()); }
@@ -229,7 +232,7 @@ void App::frameLoop() {
     bool wantCapture = session && (!topScreen() || !topScreen()->wantsMouse());
     if (wantCapture != input.captured()) input.setCapture(window, wantCapture);
 
-    ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplSDL2_NewFrame(); ImGui::NewFrame();
+    ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplSDL2_NewFrame(); uiBeginFrame(*this); ImGui::NewFrame();
     ImGui::PushFont(fontUi);
     if (Screen* s = topScreen()) { s->update(*this, dt); }
     if (session) session->update(dt);
