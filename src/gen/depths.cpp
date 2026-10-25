@@ -108,7 +108,7 @@ void DepthsGen::generate(Chunk& ch) {
           if (N[i + 1] > 1.5f) N[i + 1] = (float)nFloor.noise3(wx / 12.0, (i + 1) / 12.0, wz / 12.0);
           double n = jsLerp(N[i], N[i + 1], t), rg = jsLerp(grid(GR, x, z, i), grid(GR, x, z, i + 1), t);
           if (delta) id = n < -0.75 ? B.obsidian : n > 0.1 ? B.basalt : B.blackstone;
-          else id = n < -0.75 ? B.obsidian : rg > 0.42 ? B.blackstone : rg < -0.52 ? B.basalt : reg > -0.2 ? B.netherrack : B.emberstone;
+          else id = n < -0.75 ? B.obsidian : rg > 0.55 ? B.blackstone : rg < -0.62 ? B.basalt : reg > -0.35 ? B.netherrack : B.emberstone;
           if ((id == B.emberstone || id == B.netherrack || id == B.blackstone) && y >= LAVA_Y - 4 && y <= LAVA_Y + 3 && hashFloat(wx, y, wz, 81) < 0.35) id = B.magma_block;
           if (id == B.blackstone && hashFloat(wx, y, wz, 82) < 0.012) id = B.gilded_blackstone;
         } else if (y <= LAVA_Y) id = B.lava;
@@ -194,7 +194,7 @@ void DepthsGen::generate(Chunk& ch) {
 // WorldGenGlowStone1: clusters grown down from the roof, each block touching exactly one other
 void DepthsGen::glowstone(GenBuf& b, int cx, int cz) const {
   JRandom rnd(chunkSeed(seed_, cx, cz, 0x6105));
-  const int n = 3 + rnd.nextInt(5);
+  const int n = 5 + rnd.nextInt(6);
   for (int k = 0; k < n; k++) {
     const int x = 3 + rnd.nextInt(10), z = 3 + rnd.nextInt(10);
     int y = FLOOR_Y + rnd.nextInt(ROOF_Y + 30 - FLOOR_Y);
@@ -270,7 +270,7 @@ void DepthsGen::sample(int wx, int wz, ColumnSample& s) const {
   while (R < 100 && dens(R) <= 0.18) R += 3;
   s.height = (i16)floorY; s.floatBottom = (i16)std::min(DIM_H - 1, netherY(R));
   const double wood = nDetail.noise2(wx / 40.0, wz / 40.0), vale = nMount.noise2(wx / 90.0 + 31, wz / 90.0 - 17), reg = nMount.noise2(wx / 90.0, wz / 90.0);
-  BlockId rock = reg > -0.2 ? B.netherrack : B.emberstone;
+  BlockId rock = reg > -0.35 ? B.netherrack : B.emberstone;
   s.top = vale < -0.4 && std::fabs(wood) < 0.35 ? B.soul_sand : wood > 0.35 ? B.crimson_nylium : wood < -0.35 ? B.warped_nylium : rock;
   s.under = rock;
   if (netherY(L) <= LAVA_Y) { s.water = (i16)LAVA_Y; s.fluid = B.lava; }

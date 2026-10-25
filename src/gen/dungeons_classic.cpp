@@ -38,31 +38,35 @@ void OverworldGen::placeDungeons(GenBuf& b, Chunk& ch, const OwColumn* cols) con
   auto solid = [&](int x, int y, int z) { return B.solid[b.blocks[colIdx(x, y, z)]] && !B.liquid[b.blocks[colIdx(x, y, z)]]; };
   auto air = [&](int x, int y, int z) { return b.blocks[colIdx(x, y, z)] == AIR; };
   int built = 0;
-  for (int attempt = 0; attempt < 8 && built < 2; attempt++) {
+  for (int attempt = 0; attempt < 16 && built < 2; attempt++) {   // Beta tries 8 times over a 2x2 area; a room here fits one chunk
     const int rx = rnd.nextInt(2) + 2, rz = rnd.nextInt(2) + 2, H = 3;
     const int x = rx + 1 + rnd.nextInt(16 - 2 * (rx + 1)), z = rz + 1 + rnd.nextInt(16 - 2 * (rz + 1));
-    const int y = 6 + rnd.nextInt(std::max(1, std::min(minH - 10, 120) - 6));
-    if (y + H + 1 >= minH - 3) continue;
+    // Beta tries random heights and keeps the few that touch a cave; here a cave floor in this column is looked for
+    // (from a random height down), so a room is found by most caves instead of one try in many
+    int y = 6 + rnd.nextInt(std::max(1, std::min(minH - 10, 120) - 6));
+    while (y > 6 && !(air(x, y, z) && solid(x, y - 1, z))) y--;
+    if (y <= 6 || y + H + 1 >= minH - 3) continue;
     // the Beta test: solid floor and roof all over, 1-5 openings (two-high gaps) in the walls at the floor
-    bool ok = true; int openings = 0;
-    for (int xx = x - rx - 1; xx <= x + rx + 1 && ok; xx++) for (int zz = z - rz - 1; zz <= z + rz + 1 && ok; zz++) {
-      if (!solid(xx, y - 1, zz) || !solid(xx, y + H + 1, zz)) ok = false;
+    // (relaxed a little: three quarters of the floor and roof solid, 1-8 openings; the rest is bricked over)
+    int openings = 0, floorS = 0, roofS = 0, cells = 0;
+    for (int xx = x - rx - 1; xx <= x + rx + 1; xx++) for (int zz = z - rz - 1; zz <= z + rz + 1; zz++) {
+      cells++; floorS += solid(xx, y - 1, zz); roofS += solid(xx, y + H + 1, zz);
       const bool wall = xx == x - rx - 1 || xx == x + rx + 1 || zz == z - rz - 1 || zz == z + rz + 1;
       if (wall && air(xx, y, zz) && air(xx, y + 1, zz)) openings++;
     }
-    if (!ok || openings < 1 || openings > 5) continue;
+    if (floorS * 4 < cells * 3 || roofS * 4 < cells * 3 || openings < 1 || openings > 8) continue;
     for (int xx = x - rx - 1; xx <= x + rx + 1; xx++) for (int zz = z - rz - 1; zz <= z + rz + 1; zz++)
       for (int yy = y + H; yy >= y - 1; yy--) {
         const int i = colIdx(xx, yy, zz);
         const bool inside = xx != x - rx - 1 && xx != x + rx + 1 && zz != z - rz - 1 && zz != z + rz + 1 && yy != y - 1 && yy != y + H + 1;
         if (inside) { b.blocks[i] = AIR; b.meta[i] = 0; ch.blockEntities.erase(i); }
-        else if (yy >= 1 && !B.solid[b.blocks[colIdx(xx, yy - 1, zz)]]) { if (b.blocks[i] != B.bedrock) { b.blocks[i] = AIR; b.meta[i] = 0; } }
-        else if (B.solid[b.blocks[i]] && b.blocks[i] != B.bedrock) { b.blocks[i] = yy == y - 1 && rnd.nextInt(4) != 0 ? MOSSY : COBBLE; b.meta[i] = 0; }
+        else if (yy == y - 1) { if (b.blocks[i] != B.bedrock) { b.blocks[i] = rnd.nextInt(4) != 0 ? MOSSY : COBBLE; b.meta[i] = 0; } }
+        else if (B.solid[b.blocks[i]] && b.blocks[i] != B.bedrock) { b.blocks[i] = COBBLE; b.meta[i] = 0; }
       }
     // the roof (Beta leaves whatever rock was there; cobble it so the room reads as built)
     for (int xx = x - rx - 1; xx <= x + rx + 1; xx++) for (int zz = z - rz - 1; zz <= z + rz + 1; zz++) {
       const int i = colIdx(xx, y + H + 1, zz);
-      if (B.solid[b.blocks[i]] && !B.liquid[b.blocks[i]]) b.blocks[i] = COBBLE;
+      if (b.blocks[i] != B.bedrock) { b.blocks[i] = COBBLE; b.meta[i] = 0; }
     }
     // chests: up to two, each against exactly one wall
     for (int k = 0; k < 2; k++) for (int tries = 0; tries < 3; tries++) {
