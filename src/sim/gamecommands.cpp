@@ -7,6 +7,7 @@
 #include "sim/worldsys.h"
 #include <random>
 #include <regex>
+#include <set>
 
 namespace dq {
 
@@ -18,8 +19,12 @@ using GameCmd = std::function<std::string(CommandCtx&, std::vector<std::string>&
 // A game command in the registry: a player runs it; usage lines and errors come back as text.
 static void addCommand(const std::string& name, const std::string& usage, const std::string& desc, bool cheat, GameCmd f) {
   registerChatCommand(name, desc, [name, usage, f](CommandSource& src, const std::vector<std::string>& args) -> std::string {
-    if (!src.level || !src.player) return "Only a player in the world can use /" + name;
-    CommandCtx ctx{*src.level, *src.player};
+    // the server console has no player (the original parked a pawn for it): commands that only change the world
+    // (time, weather, rules) run with a stand-in that isn't in the world
+    static const std::set<std::string> worldOnly = {"time", "weather", "gamerule", "daylength"};
+    if (!src.level || (!src.player && !worldOnly.count(name))) return "Only a player in the world can use /" + name;
+    static thread_local Player console;
+    CommandCtx ctx{*src.level, src.player ? *src.player : console};
     std::vector<std::string> a = args;
     try { return f(ctx, a); }
     catch (CommandUsage&) { return "Usage: /" + name + " " + usage; }

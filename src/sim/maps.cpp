@@ -156,8 +156,7 @@ void mapWorldOf(int jsDim, int& realm, int& dim) {
   realm = jsDim == JS_POCKET ? REALM_POCKET : jsDim == JS_REALM ? REALM_HIS : REALM_MAIN;
   dim = realm != REALM_MAIN ? DIM_OVERWORLD : dimFromJs(jsDim);
 }
-namespace {
-const std::vector<u8>& skipTable() {   // mapSkipTable: 1 = see through, 2 = water
+const std::vector<u8>& mapSkipTable() {   // 1 = see through, 2 = water
   static std::vector<u8> t; static size_t n = 0;
   const Registry& R = reg();
   if (n == R.blocks.size()) return t;
@@ -171,6 +170,8 @@ const std::vector<u8>& skipTable() {   // mapSkipTable: 1 = see through, 2 = wat
   }
   return t;
 }
+namespace {
+const std::vector<u8>& skipTable() { return mapSkipTable(); }
 void mapSample(PaperMap& m, int i, const Chunk& ch, int lx, int lz, int top) {
   const auto& skip = skipTable();
   int y = std::min(top, ch.maxY - 1);
