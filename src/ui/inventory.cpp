@@ -10,6 +10,7 @@
 #include "client/app.h"
 #include "client/session.h"
 #include "audio/audio.h"
+#include "render/chest_layer.h"
 #include "sim/machines.h"
 #include <imgui.h>
 #include <imgui_stdlib.h>
@@ -59,6 +60,7 @@ public:
   Player* player(App& a) { return a.session ? a.session->player : nullptr; }
 
   void onOpen(App& a) override {
+    if (o.mode == "container" && o.hasPos) chestScreenOpened(o.pos, true);   // the chest's lid lifts (render/chest_layer.cpp)
     Player* p = player(a);
     if (!p) { uiDefer([](App& app) { app.popScreen(); }); return; }
     creative = p->creative() && o.mode == "inventory";
@@ -81,6 +83,7 @@ public:
     if (a.input.usingPad() || a.input.padCount()) { hasFocus = true; focus = Hit{H_SLOT, Grp::Main, p->selected}; }
   }
   void onClose(App& a) override {
+    if (o.mode == "container" && o.hasPos) chestScreenOpened(o.pos, false);
     if (!sess) return;
     sess->close();
     if (o.mode == "container" && o.hasPos && a.audio) {

@@ -231,6 +231,7 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   Own own{(float)c.skyAt(x, y, z), std::max<float>(c.blAt(x, y, z), L0), L0};
   if (T.tint) c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0);
   u8 mat = Mat::Cutout | (R.tTrans[id] ? Mat::Translucent : 0);
+  if (isPuddle(R, id)) mat = Mat::Liquid | Mat::Translucent | Mat::NoRelief;   // water: flat, glossy, sky-tinted highlight
   for (auto& b : boxes) {
     int st = b.side >= 0 ? b.side : side;
     int tt = b.end >= 0 ? b.end : top, bt = b.end >= 0 ? b.end : bot;

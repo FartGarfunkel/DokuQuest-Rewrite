@@ -1,6 +1,7 @@
 // render/item_layers.cpp — the first-person hand with the held item, and dropped items (voxel models).
 #include "render/item_layers.h"
 #include "render/char_layer.h"
+#include "render/chest_layer.h"
 #include "client/app.h"
 #include "assets/tileset.h"
 #include "assets/voxel_paint.h"
@@ -17,6 +18,9 @@ void registerItemLayers() {
   done = true;
   registerRenderLayer([](GameSession&) { return std::make_shared<HeldItemLayer>(); });
   registerRenderLayer([](GameSession&) { return std::make_shared<DroppedItemLayer>(); });
+  registerPileLayer();   // piles and placed backpacks (render/pile_layer.cpp)
+  registerLecternLayer();   // books on lecterns (render/lectern_layer.cpp)
+  registerChestLayer();     // chest lids that open with the chest's screen (render/chest_layer.cpp)
 }
 
 // ------------------------------------------------------------------ the arm
@@ -191,9 +195,9 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       static float T[6] = {0, 0, 0, 0, 0, 0}; static bool tl = false;
       if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_FPHELD")) std::sscanf(v, "%f,%f,%f,%f,%f,%f", &T[0], &T[1], &T[2], &T[3], &T[4], &T[5]); }
       m = glm::translate(m, vec3(side * T[0], T[1], T[2]));
-      m = glm::rotate(m, side * (-1.5f + 0.35f + T[4]), vec3(0, 1, 0));
+      m = glm::rotate(m, side * (-1.5f + 0.35f + T[4] + (tool ? 0.22f : 0.f)), vec3(0, 1, 0));   // tools turn a little more face-on
       m = glm::rotate(m, side * (0.42f + T[5]), vec3(0, 0, 1));
-      m = glm::scale(m, vec3(0.68f + T[3]));
+      m = glm::scale(m, vec3(0.68f + T[3] + (tool ? 0.26f : 0.f)));   // swords and tools are drawn big, like Minecraft's first person
       // the grip goes in the fist: the handle end of a tool, the bottom of anything else
       m = glm::translate(m, tool ? vec3(0.3f * side, 0.28f, 0) : vec3(0, 0.3f, 0));
       if (side < 0) m = glm::scale(m, vec3(-1, 1, 1));

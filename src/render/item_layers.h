@@ -46,5 +46,7 @@ public:
 const VoxelModel& firstPersonArm();
 
 void registerItemLayers();   // idempotent
+void registerPileLayer();    // render/pile_layer.cpp (called from registerItemLayers)
+void registerLecternLayer(); // render/lectern_layer.cpp (called from registerItemLayers)
 
 } // namespace dq

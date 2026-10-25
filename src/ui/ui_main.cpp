@@ -42,6 +42,7 @@ static void onScreenOpen(App& a, const json& args) {
   else if (kind == "stonecutter") io.mode = "stonecutter";
   else if (kind == "machine") { io.mode = "machine"; if (!io.hasPos) return; }
   else if (kind == "sign") { if (!io.hasPos) return; ivec3 p = io.pos; make = [p] { return makeSignScreen(p); }; }
+  else if (kind == "lectern") { if (!io.hasPos) return; ivec3 p = io.pos; make = [p] { return makeLecternScreen(p); }; }
   else { hudToast("That screen isn't in this build yet", "warn"); return; }
   if (io.mode == "container" && !io.hasPos && !io.ender && !io.heldPack) { if (!o.contains("entity")) hudToast("That screen isn't in this build yet", "warn"); return; }
   if (!make) make = [io] { return makeInventoryScreen(io); };
