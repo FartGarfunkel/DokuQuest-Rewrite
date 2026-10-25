@@ -430,7 +430,7 @@ static bool hookUse(Level& lv, Player& p, Creature& e, bool sneaking) {
     if (!said.empty()) toast(lv, p, said, "good");
     return true;
   }
-  if (N && !golem && !sneaking && p.data.value("carrying", json()).is_null()) {
+  if (N && !golem && !sneaking && p.carrying.is_null()) {
     if (N->value("p", 0) & NP_SLEEP) { toast(lv, p, N->value("n", std::string("They")) + " is fast asleep"); return true; }
     p.swingT = 0.001f;
     openVillagerScreen(lv, p, "talk", {{"npc", e.id}});
@@ -503,6 +503,7 @@ static std::string cmdRaid(CommandSource& src, const std::vector<std::string>&) 
   return raidStart(*src.level, *v, 60, false) ? "Drums in the dark\xE2\x80\xA6" : "The raiders found nowhere to gather";
 }
 
+void registerVillagerUseHook();
 void registerVillagers() {
   static bool done = false;
   if (done) return;
@@ -524,6 +525,7 @@ void registerVillagers() {
   H.use = [oldUse](Level& lv, Player& p, Creature& e, bool sn) { return hookUse(lv, p, e, sn) || (oldUse && oldUse(lv, p, e, sn)); };
   auto oldSpawn = H.naturalSpawn;
   H.naturalSpawn = [oldSpawn](Level& lv, int r, const std::string& t, vec3 at) { return hookNaturalSpawn(lv, r, t, at) && (!oldSpawn || oldSpawn(lv, r, t, at)); };
+  registerVillagerUseHook();   // sim/villager_hooks.cpp
   registerChatCommand("villagers", "Bring villagers out in front of you (jobs: farmer,librarian,guard,elder,...)", cmdVillagers, true, "[jobs]");
   registerChatCommand("vrep", "Add standing with the village you're in", cmdRep, true, "[amount]");
   registerChatCommand("raid", "Start a raid on the village you're in", cmdRaid, true);

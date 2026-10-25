@@ -11,7 +11,7 @@ Workstream: villagers (`src/sim/villagers*.{h,cpp}`, `sim/villager_ai.cpp`, `sim
 | villagers.js — bringing a village to life (npcTick, npcSpawn, pens, "nothing spawns in a village") | villagers.cpp `npcTickVillages`, creature hook `naturalSpawn` | folk / guards (100+) / golems (200+), deaths remembered per village (someone new after 2 days, guards 1, golems 3), pens filled once, everyone goes when nobody is within r + 110 |
 | villagers.js — npcPath, npcGo, doors, npcBrain, guards & golems, npcConfront/npcOffend/npcForgive, mutters | sim/villager_ai.cpp | their own A* (doors and gates, crops cost 4, water 3), opening and shutting doors behind them, the day (sleep at night in their bed, work in the morning — shopkeepers until 0.46 —, benches from 0.43, the square and the roads otherwise), greetings and waves, chats, working (hammer/hoe swings, reading, folded arms), panic, guards' watch and fights, the golem's slam |
 | villagers.js — quests, the board, the shops, NpcTalk/NpcShop/QuestBoard, name tags, quest HUD | sim/villager_quests.cpp, ui/villager_screens.cpp, render/villager_layer.cpp | errands per villager per day, the board's two bounties + supplies, rewards (emeralds, xp, standing, skill), five jobs at most, 120 done kept; shops with standing tiers, Honoured/Hero discounts, 12 of each a day, restock each morning |
-| towns3.js — npcStuckCheck, the gates (open/shut with the evening bell, the watch opens at night, levers, using the gateway), the watch at the gates | villager_ai.cpp `npcStuckCheck`, villager_life.cpp gates, villager_ai.cpp guard posts | gates come from the structures' plan data (`gates`: cells, posts, lever...) |
+| towns3.js — npcStuckCheck, the gates (+ drawn shut: villager_layer) (open/shut with the evening bell, the watch opens at night, levers, using the gateway), the watch at the gates | villager_ai.cpp `npcStuckCheck`, villager_life.cpp gates, villager_ai.cpp guard posts | gates come from the structures' plan data (`gates`: cells, posts, lever...) |
 | townlife.js | — | all world gen and cloth meshing (done by structures and render); nothing for the people |
 | livingworld.js — raids, named foes, map marks | villager_life.cpp | raids at night (rift-scaled, rift creatures once it thins), won only when all are slain; named foes with their own numbers (a per-foe CreatureType copy), spawned near their haunt when the bounty holder comes close |
 | hearth.js — the missing, a Hero's house | villager_life.cpp, villager_ai.cpp `lostAI` | the missing villager waits, waves, follows you home (teleports when left behind), is home within 14 of the square; the elder's house offer, homeSite search (the original's rings), builders retry 6 times. Armour sets / End crystals are not villager parts (not here) |
@@ -41,7 +41,7 @@ Workstream: villagers (`src/sim/villagers*.{h,cpp}`, `sim/villager_ai.cpp`, `sim
   `pathCheatDeath(lv, p)` (before a killing blow: true = stood on half a heart). Cleave, Warlord and Beast Friend run from the creature hooks.
   If gameplay recomputes `maxHp` from scratch it must add `pathMaxHealthBonus(p)` and drop the `stats.pathHp` delta logic in villager_life.cpp.
 - **itemUse** (priority 5): the quest board block (not sneaking) opens the board; a town gate's lever toggles the gate (and the lever flips);
-  using a `gate_barrier` opens the gate. Villagers are used through `useOnCreature` → `creatureHooks().use`.
+  using a `gate_barrier` opens the gate. Villagers are used through the controller's `useEntity` hook → `useOnCreature` → `creatureHooks().use`.
 - **Content hooks wired**: `contentHooks().villageNear`, `villageById`, `placesNear` (every structure plan near, from the band's index),
   `dungeonById` (ids `d<rx>_<rz>`).
 - Events: `villagerScreen` [player, "talk"|"board"|"path"|"close", args] (the client opens screens), `questHud` [player].
@@ -78,10 +78,14 @@ Visual: `DQ_VILLAGERS=farmer,librarian,guard,elder,baker DQ_DAYTIME=0.2 ./build/
 - `sim/creature.h/.cpp`, `creature_beasts.cpp`, `creature_spawn.cpp`: `CreatureHooks` + 6 call sites (brain, beforeHurt, afterHurt, died, use, naturalSpawn).
 - `render/creature_layer.cpp`: villagers (`T->npc`) are skipped (drawn as people); golems stay creatures.
 - `render/char_anim.h/.cpp`: CharPose `headYaw, wave, talk, fold, read, hoe` + villagers.js's avatarAnim additions.
+- `sim/gameplay.h` hooks: one `useEntity` hook that calls `useOnCreature` (nothing called it yet, so feeding/taming/shearing/riding
+  from creatures now work too); `ui/sheet.cpp`: its `combatLevel` removed (the one in sim/villagers.h is used — one definition).
 - `core/init.h/.cpp`: `registerVillagers()`; `client/session.cpp`: `registerVillagerClient()`; `CMakeLists.txt`: `test_villagers`.
 - New data: `data/villagers.json` (`python3 tools/port/jsdump.py <src> data/villagers.json "$(cat tools/port/villagers_expr.js)"`).
 
 ## Left to do
-- Babble synth; gate meshes (the portcullis and the timber doors moving, towns3.js gateMeshes) — the barrier blocks work, nothing draws the gate moving.
+- Babble synth; the gates' movement (towns3.js gateMeshes slid the portcullis up / swung the doors): render/villager_layer draws a
+  static portcullis (iron bars) or timber doors (planks, iron bands, log posts) in every cell that holds a `gate_barrier`, so a shut
+  gate shows and an open one is gone — no animation in between.
 - Quest map marks (livingworld.js / hearth.js mapMarkers: jobs' `at` and your houses) — maps.cpp can read `stats.quests[].at` / `stats.homes`.
 - The rpg.js story line at the top of the quest list; a guest's actions over the network.

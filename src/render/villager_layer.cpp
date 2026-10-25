@@ -161,6 +161,38 @@ public:
         }
       }
     }
+    // towns3.js: the town gates (shut = the barrier blocks are there): a portcullis of iron bars in a stone wall, timber
+    // doors banded with iron in a palisade. (The original slid/swung them; here they show while shut.)
+    static const BlockId bar = reg().blockId("gate_barrier");
+    if (bar && s.player->realm == REALM_MAIN) {
+      const VoxelModel& iron = itemModel("iron_block"); const VoxelModel& wood = itemModel("spruce_planks"); const VoxelModel& log = itemModel("spruce_log");
+      for (auto& v : villagesNear(*s.level, (float)f.cam.pos.x, (float)f.cam.pos.z, 96)) for (const VGate& G : v->gates) {
+        vec3 rc = f.cam.rel(glm::dvec3(G.center));
+        if (glm::dot(rc, rc) > 160.f * 160.f || !f.cam.frustum.sphere(rc + vec3(0, 2.5f, 0), G.span + 3.f)) continue;
+        const bool along = G.d == 0 || G.d == 2;   // the wall runs east-west here: the gate is thin in z
+        for (const ivec3& c : G.cells) {
+          if (w.getBlock(c.x, c.y, c.z) != bar) continue;
+          if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+          u8 l = w.getLight(c.x + G.inX, c.y, c.z + G.inZ);
+          VoxelLight light{(l >> 4) / 15.f, (l & 15) / 15.f};
+          vec3 cc = f.cam.rel(glm::dvec3(c) + glm::dvec3(0.5));
+          auto box = [&](const VoxelModel& m, vec3 off, vec3 size) {   // a unit block model scaled to a box (across, up, through)
+            if (!m.ready()) return;
+            vec3 o = along ? off : vec3(off.z, off.y, off.x), sz = along ? size : vec3(size.z, size.y, size.x);
+            VR.draw(m.gl, glm::scale(glm::translate(mat4(1), cc + o), sz) * m.matrix(), light);
+          };
+          if (G.stone) {
+            for (float x : {-0.25f, 0.25f}) box(iron, vec3(x, 0, 0), vec3(0.14f, 1, 0.14f));
+            if ((c.y - G.h0) % 2 == 0) box(iron, vec3(0, 0.1f, 0), vec3(1, 0.12f, 0.18f));
+          } else {
+            box(wood, vec3(0), vec3(1, 1, 0.24f));
+            if (c.y - G.h0 == 1 || c.y - G.h0 == 3 || c.y - G.h0 == 5) box(iron, vec3(0, -0.1f, 0), vec3(1, 0.18f, 0.34f));
+            int s2 = along ? c.x - G.cx : c.z - G.cz;
+            if (std::abs(s2) == G.hw + 1 || s2 == 0) box(log, vec3(0), vec3(0.3f, 1, 0.32f));
+          }
+        }
+      }
+    }
     if (begun) VR.end();
   }
 
