@@ -401,6 +401,10 @@ static bool interactable(BlockId id) {
 }
 
 void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
+  // a held sneak key/button always counts when using: flying (creative) and gliding clear p.sneaking (there sneak
+  // means "down"), so a block in hand would open the chest instead of going against it (furnish.js)
+  struct SneakScope { bool& r; bool old; ~SneakScope() { r = old; } } sneakScope{p.sneaking, p.sneaking};
+  if (in.sneak && !p.riding) p.sneaking = true;
   World& w = world();
   const Registry& R = reg();
   const RayHit* hit = target.hit ? &target : nullptr;
