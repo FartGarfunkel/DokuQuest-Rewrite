@@ -363,6 +363,7 @@ std::string modelKind(const std::string& key, const ItemDef* def) {
     if (slot >= 0 && slot <= 3) return "armor";
   }
   if (key == "arrow") return "arrow";
+  if (key == "ale_mug") return "mug";   // towns.js: a tankard
   return "";
 }
 
@@ -449,6 +450,28 @@ bool buildModelM3d(const std::string& k, ItemBuild& b) {
       }
       b.depth = 0.31f;
     }
+  } else if (k == "mug") {
+    // towns.js M3D.mug: a banded wooden tankard, a handle, foam on top; each part takes one colour picked from the picture
+    const SpritePx* woodP = I.common([](const SpritePx& p) { return p.r > p.b + 10 && p.lum > 40 && p.lum < 170; });
+    if (!woodP) woodP = I.common();
+    const SpritePx* bandP = I.best([](const SpritePx& p) { return -std::abs((float)(p.r - p.b)) - p.lum * 0.2f; }, [](const SpritePx& p) { return p.lum > 30 && p.lum < 110; });
+    if (!bandP) bandP = woodP;
+    const SpritePx* foamP = I.best([](const SpritePx& p) { return p.lum; }, [](const SpritePx& p) { return p.lum > 190; });
+    if (!foamP) foamP = woodP;
+    auto col = [](const SpritePx* px) { return px ? voxRGBA(px->r, px->g, px->b) : voxRGBA(138, 90, 50); };
+    auto pring = [&](float y0, float y1, float r, const SpritePx* px) {
+      u32 c = col(px);
+      m.P.box(vec3(-r, y0, -r), vec3(r, y1, r), [=](const PaintPt& p) { float rr = std::max(r, m.P.frame.voxel * 0.75f); return p.p.x * p.p.x + p.p.z * p.p.z > rr * rr ? 0u : c; });
+    };
+    auto pbox = [&](float x0, float y0, float z0, float x1, float y1, float z1, const SpritePx* px) { u32 c = col(px); m.P.box(vec3(x0, y0, z0), vec3(x1, y1, z1), [c](const PaintPt&) { return c; }); };
+    pring(-0.5f, -0.44f, 0.25f, bandP);
+    pring(-0.44f, -0.3f, 0.24f, woodP);
+    pring(-0.3f, -0.25f, 0.255f, bandP);
+    pring(-0.25f, -0.06f, 0.24f, woodP);
+    pring(-0.06f, -0.01f, 0.255f, bandP);
+    pring(-0.01f, 0.06f, 0.21f, foamP);
+    pbox(0.24f, -0.36f, -0.035f, 0.36f, -0.31f, 0.035f, woodP); pbox(0.31f, -0.36f, -0.035f, 0.36f, -0.06f, 0.035f, woodP); pbox(0.24f, -0.11f, -0.035f, 0.36f, -0.06f, 0.035f, woodP);
+    b.stand = true; b.depth = 0.3f;
   } else if (k == "arrow") {
     auto at = [](float u) { return vec3(-0.48f + RT2 * u * 1.36f, -0.48f + RT2 * u * 1.36f, 0); };
     m.seg(at(0.02f), at(0.8f), 0.045f, 0.045f);                                          // the shaft
@@ -583,7 +606,7 @@ bool buildItems3d(ItemBuild& b) {
   }
   if (key == "fishing_rod" || key == "fishing_rod_cast" || key == "fishing_rod_tp") {
     // in first person the line hangs one way from the tip; held by someone you look at, another
-    buildRod(P, key != "fishing_rod_cast", key == "fishing_rod_tp" ? vec3(-1, 0.04f, 0) : vec3(0, -0.76f, 0.65f));
+    buildRod(P, key == "fishing_rod", vec3(0, -0.76f, 0.65f));   // the picture / dropped rod has its float hanging; in a hand the game hangs it live (render/content_layers.cpp)
     b.depth = 0.05f;
     return true;
   }

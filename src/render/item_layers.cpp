@@ -178,9 +178,9 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
 
   auto holdIn = [&](float side, const ItemStack& stack, float lift) {
     // a fishing rod with its float out has no line hanging from the tip (fishing.js: fishing_rod_cast)
-    bool rod = stack.id == "fishing_rod", rodOut = rod && fishingOf(*s.level, *p);
+    bool rod = stack.id == "fishing_rod";
     float wind = rod ? castWindOf(*p) : 0.f;
-    const VoxelModel& im = itemModel(rodOut ? std::string("fishing_rod_cast") : stack.id);
+    const VoxelModel& im = itemModel(rod ? std::string("fishing_rod_cast") : stack.id);   // (the hanging float is drawn live from the tip)
     bool tool = im.kind != VoxelModel::Block && isHandheld(stack.id);
     float e = side > 0 ? eat : 0, pitch = 1.62f + e * 0.35f, yaw = side * 0.32f;
     mat4 am = glm::translate(mat4(1), vec3(side * (FP_HAND.x + (side > 0 ? bx - e * 0.32f : -bx * 0.6f)),
@@ -208,6 +208,12 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       m = glm::rotate(m, side * (-1.5f + 0.35f + T[4] + (tool ? 0.22f : 0.f)), vec3(0, 1, 0));   // tools turn a little more face-on
       m = glm::rotate(m, side * (0.42f + T[5]), vec3(0, 0, 1));
       m = glm::scale(m, vec3(0.68f + T[3] + (tool ? 0.26f : 0.f)));   // swords and tools are drawn big, like Minecraft's first person
+      if (rod) {   // a rod points out ahead with its tip (and the float hanging from it) in view, not up out of the picture
+        static float RT[4] = {0.35f, -0.6f, 0.f, -0.08f}; static bool rl = false;
+        if (!rl) { rl = true; if (const char* v = std::getenv("DQ_DEV_ROD")) std::sscanf(v, "%f,%f,%f,%f", &RT[0], &RT[1], &RT[2], &RT[3]); }
+        m = glm::rotate(m, side * RT[2], vec3(0, 1, 0)); m = glm::rotate(m, side * RT[0], vec3(0, 0, 1)); m = glm::rotate(m, RT[1], vec3(1, 0, 0));
+        m = glm::scale(m, vec3(1 + RT[3]));
+      }
       // the grip goes in the fist: the handle end of a tool, the bottom of anything else
       m = glm::translate(m, tool ? vec3(0.3f * side, 0.28f, 0) : vec3(0, 0.3f, 0));
       if (side < 0) m = glm::scale(m, vec3(-1, 1, 1));

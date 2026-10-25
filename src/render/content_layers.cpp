@@ -183,6 +183,22 @@ public:
         lines.push_back({sagLine(tip, h->pos, 0.05f + D * 0.04f, 10, f.cam), {vec4(0.72f, 0.58f, 0.35f, 1), L}});
       }
     }
+    // a rod in hand with its float not out: the float hangs from the tip on a short line, swaying as you move
+    for (auto& e : lv.entities()) {
+      auto* hp = dynamic_cast<Player*>(e.get());
+      if (!hp || hp->removed || hp->dead || hp->realm != s.player->realm || hp->held().empty() || hp->held().id != "fishing_rod" || fishingOf(lv, *hp)) continue;
+      vec3 tip;
+      if (!getRodTip(hp->id, f.time, tip)) continue;
+      float ph = (float)f.time * 1.8f + hp->id * 1.3f;
+      vec3 end = tip + vec3(std::sin(ph) * 0.02f - hp->vel.x * 0.025f, -0.2f, std::cos(ph * 0.8f) * 0.015f - hp->vel.z * 0.025f);
+      SmallModel& M = bobberModel();
+      if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+      vec2 L = lightAt(w, tip);
+      mat4 m = glm::translate(mat4(1), f.cam.rel(glm::dvec3(end - vec3(0, 0.24f, 0))));
+      m = glm::scale(m, vec3(M.voxel)); m = glm::translate(m, -vec3(M.origin));
+      VR.draw(M.gl, m, VoxelLight{L.x, L.y});
+      lines.push_back({sagLine(tip, end, 0.f, 4, f.cam), {vec4(0.92f, 0.92f, 0.92f, 1), L}});
+    }
     if (begun) VR.end();
     if (!lines.empty() && contentDraw().begin(f, f.cam.viewProj)) {
       for (auto& [pts, cl] : lines) contentDraw().lines(pts, cl.first, cl.second);

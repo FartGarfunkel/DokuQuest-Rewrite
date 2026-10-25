@@ -546,7 +546,20 @@ void Creature::update(Level& lv, float dt) {
   if (!lockMove) { vel.x += (tx - vel.x) * k; vel.z += (tz - vel.z) * k; }
   if (noGravity && hasFlyVy) vel.y += (flyVy - vel.y) * std::min(1.f, dt * 4);
   else if (c.water && T->swims) vel.y += (swimVy - vel.y) * std::min(1.f, dt * 3);
-  else if (c.water) { vel.y += 18 * dt; if (vel.y > 2) vel.y = 2; vel.y -= 6 * dt; }
+  else if (c.water) {
+    // Minecraft: a land animal floats at the surface and paddles on, steadily — a spring toward the height where
+    // a bit over half its body is under (no kick up and fall back), and a hop out when it swims into a bank
+    float surf = -1e9f;
+    int bx = ifloor(pos.x), bz = ifloor(pos.z);
+    for (int y = ifloor(pos.y + h) + 1; y >= ifloor(pos.y) - 1; y--)
+      if (R.tLiquid[wd.getBlock(bx, y, bz)] == 1 && R.tLiquid[wd.getBlock(bx, y + 1, bz)] != 1) { surf = y + 0.9f; break; }
+    if (surf < -1e8f) { vel.y += 18 * dt; if (vel.y > 2) vel.y = 2; vel.y -= 6 * dt; }
+    else {
+      float feet = surf - h * 0.55f, vy = clampv((feet - pos.y) * 3.5f, -1.4f, 1.6f);
+      if (hitWall && want > 0.1f) vy = std::max(vy, 4.2f);   // against the shore: climb out
+      vel.y += (vy - vel.y) * std::min(1.f, dt * 7);
+    }
+  }
   else if (!noGravity) vel.y -= 28 * dt;
   if (T->floaty && !noFloaty && vel.y < -2.2f) vel.y = -2.2f;
   if (T->farm) farmTick(lv, dt);
