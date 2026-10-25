@@ -3,9 +3,11 @@
 // copy of the tiles current, and test hooks (DQ_RENDER_CAM / DQ_RENDER_TIME / DQ_RENDER_STATS).
 #include "client/session.h"
 #include "client/app.h"
+namespace dq { class PlayerController; PlayerController* localController(GameSession& s); }   // client/play.h
 #include "render/tile_anim.h"
 #include "world/shapes.h"
 #include "world/light.h"
+#include "sim/controller.h"
 #include <cstdlib>
 
 namespace dq {
@@ -99,36 +101,43 @@ public:
   }
 
   void drawOpaque(GameSession& s, const FrameCtx& f) override {
-    // the crack on the block being broken
-    if (!s.breaking || !s.target.hit || s.target.block != s.breakBlock || !s.player || s.player->creative()) return;
-    const BlockDef& b = reg().block(s.target.id);
-    float t = std::max(0.05f, (b.hardness < 0 ? 1e9f : b.hardness) * 1.5f);
-    int stage = clampv((int)(s.breakProgress / t * 10), 0, 9);
-    int layer = reg().tile(strFormat("crack_%d", stage));
-    if (layer < 0) return;
-    std::vector<BoxF> boxes; targetBoxes(s, boxes);
-    std::vector<FxVert> v;
+    // cracks: the block being broken, and blocks you gave up on, which keep their cracks and slowly mend
+    // (local.js damage map; sim/controller damageCracks)
+    if (!s.player || s.player->creative()) return;
+    PlayerController* pc = localController(s);
+    std::vector<Crack> cracks = damageCracks(*s.level, s.world(), vec3(f.cam.pos), pc ? &pc->mining : nullptr);
+    if (cracks.empty()) return;
+    World& w = s.world();
     vec3 o = vec3(glm::dvec3(0) - f.cam.origin);
-    for (auto& bx : boxes) {
-      vec3 lo = bx.lo - vec3(0.002f), hi = bx.hi + vec3(0.002f), base = vec3(s.target.block);
-      for (int fi = 0; fi < 6; fi++) {
-        static const int C[6][4][3] = {{{1, 0, 1}, {1, 0, 0}, {1, 1, 0}, {1, 1, 1}}, {{0, 0, 0}, {0, 0, 1}, {0, 1, 1}, {0, 1, 0}}, {{0, 1, 1}, {1, 1, 1}, {1, 1, 0}, {0, 1, 0}},
-                                       {{1, 0, 1}, {0, 0, 1}, {0, 0, 0}, {1, 0, 0}}, {{0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1}}, {{1, 0, 0}, {0, 0, 0}, {0, 1, 0}, {1, 1, 0}}};
-        FxVert q[4];
-        for (int k = 0; k < 4; k++) {
-          vec3 p(C[fi][k][0] ? hi.x : lo.x, C[fi][k][1] ? hi.y : lo.y, C[fi][k][2] ? hi.z : lo.z);
-          vec3 l = p - base; vec2 uv;
-          switch (fi) { case 0: uv = {1 - l.z, 1 - l.y}; break; case 1: uv = {l.z, 1 - l.y}; break; case 2: uv = {l.x, l.z}; break; case 3: uv = {1 - l.x, l.z}; break; case 4: uv = {l.x, 1 - l.y}; break; default: uv = {1 - l.x, 1 - l.y}; }
-          q[k] = {p + o, uv};
-        }
-        v.push_back(q[0]); v.push_back(q[1]); v.push_back(q[2]); v.push_back(q[0]); v.push_back(q[2]); v.push_back(q[3]);
-      }
-    }
     sh.use(); f.apply(sh); s.app.tileTex.bind(sh);
-    sh.set("uViewProj", f.cam.viewProj); sh.set("uMode", 1); sh.set("uLayer", (float)layer);
+    sh.set("uViewProj", f.cam.viewProj); sh.set("uMode", 1);
     glEnable(GL_BLEND); glBlendFunc(GL_DST_COLOR, GL_SRC_COLOR);
     glEnable(GL_POLYGON_OFFSET_FILL); glPolygonOffset(-1, -1); glDepthMask(GL_FALSE);
-    drawVerts(v, GL_TRIANGLES);
+    for (const Crack& c : cracks) {
+      int layer = reg().tile(strFormat("crack_%d", clampv(c.stage, 0, 9)));
+      if (layer < 0) continue;
+      std::vector<BoxF> boxes;
+      if (!blockShapeBoxes(w, c.x, c.y, c.z, ShapePurpose::Select, boxes) || boxes.empty()) { boxes.clear(); boxes.push_back({vec3(c.x, c.y, c.z), vec3(c.x, c.y, c.z) + vec3(1)}); }
+      std::vector<FxVert> v;
+      vec3 base(c.x, c.y, c.z);
+      for (auto& bx : boxes) {
+        vec3 lo = bx.lo - vec3(0.002f), hi = bx.hi + vec3(0.002f);
+        for (int fi = 0; fi < 6; fi++) {
+          static const int C[6][4][3] = {{{1, 0, 1}, {1, 0, 0}, {1, 1, 0}, {1, 1, 1}}, {{0, 0, 0}, {0, 0, 1}, {0, 1, 1}, {0, 1, 0}}, {{0, 1, 1}, {1, 1, 1}, {1, 1, 0}, {0, 1, 0}},
+                                         {{1, 0, 1}, {0, 0, 1}, {0, 0, 0}, {1, 0, 0}}, {{0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1}}, {{1, 0, 0}, {0, 0, 0}, {0, 1, 0}, {1, 1, 0}}};
+          FxVert q[4];
+          for (int k = 0; k < 4; k++) {
+            vec3 p(C[fi][k][0] ? hi.x : lo.x, C[fi][k][1] ? hi.y : lo.y, C[fi][k][2] ? hi.z : lo.z);
+            vec3 l = p - base; vec2 uv;
+            switch (fi) { case 0: uv = {1 - l.z, 1 - l.y}; break; case 1: uv = {l.z, 1 - l.y}; break; case 2: uv = {l.x, l.z}; break; case 3: uv = {1 - l.x, l.z}; break; case 4: uv = {l.x, 1 - l.y}; break; default: uv = {1 - l.x, 1 - l.y}; }
+            q[k] = {p + o, uv};
+          }
+          v.push_back(q[0]); v.push_back(q[1]); v.push_back(q[2]); v.push_back(q[0]); v.push_back(q[2]); v.push_back(q[3]);
+        }
+      }
+      sh.set("uLayer", (float)layer);
+      drawVerts(v, GL_TRIANGLES);
+    }
     glDepthMask(GL_TRUE); glDisable(GL_POLYGON_OFFSET_FILL); glDisable(GL_BLEND);
   }
 

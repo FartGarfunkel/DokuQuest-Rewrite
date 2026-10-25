@@ -8,6 +8,7 @@
 #include "core/registry.h"
 #include "render/particles.h"
 #include "ui/ui.h"
+#include "sim/weather.h"
 
 namespace dq {
 
@@ -88,6 +89,7 @@ public:
     sc.time = s.level->info.time;
     if ((placeT -= dt) <= 0) { placeT = 2; place = placeMood(*s.level, p.pos); }
     sc.place = place;
+    if (WeatherSystem* W = weatherOf(*s.level); W && p.realm == REALM_MAIN && sc.dim == DIM_OVERWORLD) sc.rain = W->rainLevel;
     // the nearest boss within 40 blocks (music2.js bossNear); (sleeping dragons and tamed ones don't count)
     float bd = 40;
     for (auto& e : s.level->entities()) {
