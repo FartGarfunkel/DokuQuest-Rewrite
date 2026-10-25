@@ -213,7 +213,7 @@ public:
     float bx = (W - btnW) * 0.5f, by = y0 + logoH + gap;
     auto row = [&](float y) { ImGui::SetCursorScreenPos(ImVec2(bx, y)); };
     if (focusPending && a.input.padCount() > 0) { ImGui::SetKeyboardFocusHere(); ImGui::SetNavCursorVisible(true); }
-    focusPending = false;
+    if (a.input.padCount() > 0) focusPending = false;   // a pad picked up later still gets its highlight
     row(by);
     if (mcButton("Singleplayer", ImVec2(btnW, btnH))) a.pushScreen(makeWorldsScreen());
     row(by += btnH + bgap);

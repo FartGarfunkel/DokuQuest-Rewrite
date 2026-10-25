@@ -1,5 +1,7 @@
 // ui/ui_main.cpp — start-up of the UI: theme, the HUD render layer, EventBus listeners, menu tabs,
 // the --screen test hook, and small shared helpers.
+#include "ui/screen.h"
+#include <imgui_internal.h>
 #include "ui/ui.h"
 #include "ui/theme.h"
 #include "client/app.h"
@@ -144,6 +146,20 @@ static void feedPadsToImGui(App& a) {
   auto axis = [&](ImGuiKey neg, ImGuiKey pos, float v) { io.AddKeyAnalogEvent(neg, v < -0.35f, std::max(0.f, -v)); io.AddKeyAnalogEvent(pos, v > 0.35f, std::max(0.f, v)); };
   axis(ImGuiKey_GamepadLStickLeft, ImGuiKey_GamepadLStickRight, lx);
   axis(ImGuiKey_GamepadLStickUp, ImGuiKey_GamepadLStickDown, ly);
+  // a pad used while a menu is up but no menu window has the focus (the mouse was used last, or the pad was
+  // picked up after the screen opened): give the focus to the topmost menu window so the d-pad has a highlight
+  bool active = lx * lx + ly * ly > 0.12f;
+  for (bool v : b) active = active || v;
+  Screen* top = a.topScreen();
+  ImGuiContext& g = *GImGui;
+  if (active && top && top->wantsMouse() && !g.NavWindow) {
+    for (int i = g.Windows.Size - 1; i >= 0; i--) {
+      ImGuiWindow* w = g.Windows[i];
+      if (!w->WasActive || w->Hidden || (w->Flags & (ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_Tooltip | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoInputs))) continue;
+      ImGui::FocusWindow(w); ImGui::SetNavCursorVisible(true);
+      break;
+    }
+  }
 }
 
 void uiBeginFrame(App& a) {

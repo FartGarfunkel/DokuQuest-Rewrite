@@ -36,7 +36,7 @@ public:
     { ImVec2 ts = textSize(F_BIG, "Game Menu"); ImVec2 p = ImGui::GetCursorScreenPos();
       textShadow(dl, F_BIG, ImVec2(p.x + (bw - ts.x) * 0.5f, p.y), col::white, "Game Menu", ImVec2(2, 2) * z, col::rgb(0x3f3f3f)); ImGui::Dummy(ImVec2(bw, ts.y + 14 * z)); }
     if (focusPending && a.input.padCount()) { ImGui::SetKeyboardFocusHere(); ImGui::SetNavCursorVisible(true); }
-    focusPending = false;
+    if (a.input.padCount() > 0) focusPending = false;   // a pad picked up later still gets its highlight
     Level* lv = a.session ? a.session->level.get() : nullptr;
     Player* p = a.session ? a.session->player : nullptr;
     bool creative = p && p->creative();
