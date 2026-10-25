@@ -5,6 +5,12 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.3.1 — Hotfix (October 2026)
+
+- **No more grid:** the thin dark frame drawn round every block face in 1.0.0-alpha.3 is gone.
+- **Elytra:** they work from the cape slot as well as the chest slot (jump while falling to glide).
+- Removed Herobrine.
+
 ## 1.0.0-alpha.3 — Your second playtest (October 2026)
 
 - **Menus:** Q and E switch the menu tabs (with LB/RB still on a pad), clicking a tab works every time, and the inventory key closes the inventory again. The character creator and skin editor fit any screen, ultrawide included. NPC talk, shop and quest-board windows wrap and fit properly.
