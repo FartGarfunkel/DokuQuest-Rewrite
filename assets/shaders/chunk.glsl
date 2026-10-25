@@ -20,6 +20,7 @@ uniform vec3 uOrigin;                   // section origin relative to the camera
 #endif
 uniform mat4 uViewProj;
 uniform vec3 uWorldOrigin;              // camera's integer block, wrapped (for wind/wave phase)
+uniform vec2 uGrassFade;                // 3D grass: fully grown nearer than x, sunk into the ground past y
 
 out vec3 vUV;
 out vec4 vLight;                        // sky, block, shade (liquid tops: shore foam), unused
@@ -38,7 +39,15 @@ void main() {
   vec3 p = aPos / 256.0;
   vec3 rel = origin + p;
   vec3 world = rel + uWorldOrigin;
-  rel += waveOffset(float(aLight.x), world);
+  float sw = float(aLight.x);
+  vec3 wo = waveOffset(sw, world);
+  if (sw > 79.5) {
+    // a grass blade's tip: sinks into the ground as you go away from it (gone well before the detail ring)
+    float fade = smoothstep(uGrassFade.x, uGrassFade.y, length(rel));
+    wo *= 1.0 - fade;
+    rel.y -= (fract(world.y) + 0.04) * fade;
+  }
+  rel += wo;
   vRel = rel;
   vWorld = world;
   vUV = vec3(aUV / 256.0 - 64.0, float(aTile & 4095u));
@@ -74,6 +83,22 @@ const float MAXD = 4.0;        // deepest relief, in micro-voxels
 
 float cellDepth(vec2 cell, float layer) {
   return floor(tileHeightAt(fract((cell + 0.5) / VOX), layer).r * MAXD + 0.5);
+}
+float cellDepthF(vec2 cell, float layer) { return tileHeightAt(fract((cell + 0.5) / VOX), layer).r * MAXD; }
+// each micro-voxel's tilt from its neighbours' depths (a normal map made from the height field, for any
+// pack): in the face's tangent frame, x along T, y along B, z out of the face
+vec3 bumpNormal(vec2 cell, float layer, float k) {
+  float hl = cellDepthF(cell - vec2(1.0, 0.0), layer), hr = cellDepthF(cell + vec2(1.0, 0.0), layer);
+  float hd = cellDepthF(cell - vec2(0.0, 1.0), layer), hu = cellDepthF(cell + vec2(0.0, 1.0), layer);
+  return normalize(vec3((hr - hl) * 0.5 * k, (hu - hd) * 0.5 * k, 1.0));
+}
+// light on a tilted micro-voxel: the sun where the sky reaches, and a key light from above for everything
+// (so the bumps read in a torch-lit cave too). Returns a multiplier for the face's colour.
+float bumpLight(vec3 nB, vec3 N, float skyLit) {
+  const vec3 K = vec3(0.4423, 0.7372, 0.5108);   // normalize(0.6, 1.0, 0.7)
+  float key = 1.0 + 0.55 * (dot(nB, K) - dot(N, K));
+  float sun = 1.0 + 0.6 * skyLit * (max(dot(nB, uSunDir), 0.0) - max(dot(N, uSunDir), 0.0));
+  return max(key * sun, 0.35);
 }
 vec3 snapAxis(vec3 v) {
   vec3 a = abs(v);
@@ -133,6 +158,11 @@ void main() {
       float skyLit = smoothstep(0.45, 1.0, vLight.x) * uDaylight;
       float sunN = max(dot(N, uSunDir), 0.0);
       sunMod = 1.0 + 0.22 * skyLit * (max(dot(nW, uSunDir), 0.0) - sunN);
+      if (nt.z > 0.5) {
+        // a column's top: tilted the way the height field slopes there (round stones, bevelled gems)
+        vec3 bt = bumpNormal(cell, layer, scale);
+        sunMod *= mix(1.0, bumpLight(normalize(T * bt.x + B * bt.y + N * bt.z), N, skyLit), scale);
+      }
 #if RELIEF_SHADOW
       vec3 Lt = vec3(dot(uSunDir, T), dot(uSunDir, B), dot(uSunDir, N));
       if (Lt.z > 0.08 && skyLit > 0.01) {
@@ -156,11 +186,14 @@ void main() {
 #endif
     }
 #else
-    // shaded micro-voxels: recessed ones darker, a lit rim where a voxel stands above its neighbour
+    // shaded micro-voxels (the Legacy-friendly look): recessed ones darker, each one lit as if tilted the
+    // way the height field slopes there (bump mapping from the tile's own colours: stones bulge, mortar sinks)
     vec2 cell = floor(uv * VOX);
-    float h = cellDepth(cell, layer), hl = cellDepth(cell - vec2(1.0, 0.0), layer), hu = cellDepth(cell - vec2(0.0, 1.0), layer);
-    float e = clamp((hl - h) * 0.12 + (hu - h) * 0.16, -0.3, 0.3);
-    shade *= mix(1.0, (1.0 - h * 0.06) * (1.0 + e), fade);
+    float h = cellDepthF(cell, layer);
+    vec3 bt = bumpNormal(cell, layer, 1.3);
+    float skyLit = smoothstep(0.45, 1.0, vLight.x) * uDaylight;
+    float bl = bumpLight(normalize(T * bt.x + B * bt.y + N * bt.z), N, skyLit);
+    shade *= mix(1.0, (1.0 - h * 0.065) * bl, fade);
 #endif
   }
 #endif
@@ -209,6 +242,6 @@ void main() {
     }
   }
   c = applyFog(c, dist, viewVec);
-  fragColor = vec4(c, col.a);
+  fragColor = vec4(DQ_GRADE(c), col.a);
 }
 #endif

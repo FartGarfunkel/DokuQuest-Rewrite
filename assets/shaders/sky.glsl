@@ -106,6 +106,6 @@ void main() {
       c += mc * (lit ? 1.0 : 0.07) * uSunFade;
     }
   }
-  fragColor = vec4(c, 1.0);
+  fragColor = vec4(DQ_GRADE(c), 1.0);
 }
 #endif

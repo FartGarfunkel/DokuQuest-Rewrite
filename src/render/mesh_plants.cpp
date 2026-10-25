@@ -9,6 +9,7 @@
 #include "render/mesh_ctx.h"
 #include "common/noise.h"
 #include <mutex>
+#include <atomic>
 #include <unordered_map>
 
 namespace dq {
@@ -446,6 +447,44 @@ void emitCrossFlat(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, i
   c.tint = 0xFFFFFF;
 }
 } // namespace
+
+// ---- 3D grass on grass blocks -------------------------------------------------------------------------
+namespace { std::atomic<int> g_tufts{0}; }
+int meshGrassTufts() { return g_tufts.load(std::memory_order_relaxed); }
+void setMeshGrassTufts(int n) { g_tufts.store(std::max(0, n), std::memory_order_relaxed); }
+
+// Blades scattered over the block's top, each a thin tapering strip coloured from the grass top right
+// under it (so it matches the ground, any pack, tinted by the climate like the top), darker at its foot,
+// leaning its own way and swaying at the tip. The tip's sway code (80 + how much it sways) also tells
+// chunk.glsl to sink the blade into the ground with distance, so they fade out long before the detail ring.
+void emitGrassTufts(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z) {
+  const BlockDef& B = c.R.block(id);
+  int tile = B.faces[2];
+  float sk = c.skyAt(x, y + 1, z), bl = c.blAt(x, y + 1, z);
+  c.tint = c.cornerTint((float)x + 0.5f, (float)z + 0.5f, 0);
+  int n = meshGrassTufts();
+  u32 h = hashLocal(c.wx0 + x, c.wy0 + y, c.wz0 + z, 31);
+  auto rnd = [&]() { h = (u32)((h ^ (h >> 15)) * 0x2c1b3c6du) ^ 0x297a2d39u; h ^= h >> 12; return (h % 10000) / 10000.f; };
+  // patchy: some blocks thick with grass, some sparse
+  float lush = 0.55f + 0.45f * ((hashLocal((c.wx0 + x) >> 2, 0, (c.wz0 + z) >> 2, 37) & 255) / 255.f);
+  int count = std::max(2, (int)std::lround(n * lush));
+  float top = (float)y + 1;
+  for (int k = 0; k < count; k++) {
+    float px = x + 0.06f + rnd() * 0.88f, pz = z + 0.06f + rnd() * 0.88f;
+    float a = rnd() * PI, w = 0.045f + rnd() * 0.04f, hh = (0.12f + rnd() * 0.2f) * (0.7f + 0.3f * lush);
+    float ca = std::cos(a) * w * 0.5f, sa = std::sin(a) * w * 0.5f;
+    float la = rnd() * TAU, lean = 0.02f + rnd() * 0.07f, lx = std::cos(la) * lean, lz = std::sin(la) * lean;
+    float tw = 0.18f;   // the tip is a fifth as wide as the foot
+    vec2 uv(px - x, pz - z), uvT = uv + vec2(lx, lz) * 0.5f;
+    u8 tip = (u8)(80 + std::lround(4 + 7 * hh / 0.32f));
+    float sh0 = 0.62f + rnd() * 0.08f, sh1 = 0.95f + rnd() * 0.05f;
+    MV v[4] = {{vec3(px - ca, top, pz - sa), uv, sk, bl, sh0, 0}, {vec3(px + ca, top, pz + sa), uv, sk, bl, sh0, 0},
+               {vec3(px + ca * tw + lx, top + hh, pz + sa * tw + lz), uvT, sk, bl, sh1, tip}, {vec3(px - ca * tw + lx, top + hh, pz - sa * tw + lz), uvT, sk, bl, sh1, tip}};
+    c.quad2(d, v, tile, NORMAL_NONE, Mat::Cutout | Mat::NoRelief);
+  }
+  c.tint = 0xFFFFFF;
+}
+
 
 void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta) {
   const BlockDef& self = c.R.block(id);

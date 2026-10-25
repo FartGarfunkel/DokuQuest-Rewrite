@@ -185,7 +185,9 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd) {
   float far = std::max(48.f, rd * 16.f);
   float viewFar = g_farRange > 0 ? std::max(far, g_farRange) : far;
   vec2 fr = e.underwater ? vec2(0, 22) : vec2(viewFar * e.fogStart, viewFar - 6);
-  if (e.cloud > 0 && !e.underwater) fr = vec2(fr.x * (1 - e.cloud), lerpf(fr.y, 14, e.cloud));   // inside a bank of cloud the world closes in
+  // inside a bank of cloud the world closes in: white all round well before the edge between the lands,
+  // so crossing it is a walk through cloud (only the camera's own land is drawn; see world_renderer.cpp)
+  if (e.cloud > 0 && !e.underwater) { float s = smoothstepf(0.f, 0.75f, e.cloud); fr = vec2(fr.x * (1 - s), lerpf(fr.y, 14, s)); }
   if (e.mist > 0.01f && !e.underwater) { float end = 24 + (fr.y - 24) * std::pow(1 - std::min(1.f, e.mist), 2.f); fr = vec2(std::min(fr.x, end * 0.12f), std::min(fr.y, end)); }
   e.fogRange = fr;
   env = e; g_env = e;

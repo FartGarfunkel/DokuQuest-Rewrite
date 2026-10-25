@@ -36,6 +36,6 @@ void main() {
   if (c.a < 0.35) discard;
   if (uLit > 0.5) c.rgb *= lighting(uLight.x, uLight.y, false);
   vec3 v = vRel - uCamFrac;
-  fragColor = vec4(applyFog(c.rgb, length(v), v), 1.0);
+  fragColor = vec4(DQ_GRADE(applyFog(c.rgb, length(v), v)), 1.0);
 }
 #endif

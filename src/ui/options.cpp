@@ -11,6 +11,8 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+namespace dq { std::vector<std::string> listShaderPacks(); int reloadAllShaders(); }   // render/gl.cpp
+
 namespace dq {
 using namespace ui;
 
@@ -65,6 +67,20 @@ public:
       std::string now = a.tiles.packName.empty() ? "Built-in DokuQuest textures" : a.tiles.packName;
       label(F_SMALL, col::text, now.c_str(), w);
       desc("Minecraft Java Edition packs for 1.13 to 1.21 work best; 1.6 to 1.12 packs work for most blocks. 16x, 32x and 64x are all fine (32x matches the game). Put .zip packs in the resourcepacks folder. A new pack loads the next time the game starts.", w);
+      gap();
+    }
+    // Shader pack (render/gl.cpp): folders in shaderpacks/, switched at once
+    {
+      settingHead("Shader pack", "", w);
+      std::vector<std::string> sps = listShaderPacks();
+      std::vector<std::string> items = {"None (the game's own shaders)"};
+      int cur = 0;
+      for (size_t i = 0; i < sps.size(); i++) { items.push_back(sps[i]); if (sps[i] == s.shaderPack) cur = (int)i + 1; }
+      if (combo("##shaderpack", &cur, items, w)) {
+        s.shaderPack = cur == 0 ? "" : sps[cur - 1]; s.save();
+        setShaderPack(s.shaderPack); reloadAllShaders();
+      }
+      desc("A shader pack is a folder in shaderpacks/ holding any of the game's shader files (chunk.glsl, sky.glsl, clouds.glsl, common.glsl ...) to use instead of its own. It switches at once; a file that doesn't compile falls back to the game's.", w);
       gap();
     }
     // Controls / Controller
@@ -139,6 +155,9 @@ public:
       s.plantDetail = v[select("plantDetail", "3D plants", cur, {"Near you", "Everywhere (slowest)", "Flat (fastest)"}, "Solid 3D grass, flowers and crops. Near you they are 3D and further out flat, which looks the same at a distance.")]; }
     check("wavingPlants", "Waving grass, leaves & water", &s.wavingPlants);
     check("clouds", "Clouds", &s.clouds, "Big soft clouds drifting with the wind.");
+    { bool g = s.extra.value("grass3d", s.preset != "potato"); bool g0 = g;
+      check("grass3d", "3D grass", &g, "Short blades of grass on grass blocks near you, waving in the wind (fades out with distance). Turn off for more speed.");
+      if (g != g0) s.extra["grass3d"] = g; }
     check("portalViews", "See through portals", &s.portalViews, "Portals show the other side as you walk up to them, and you step straight through. Costs some speed near a portal.");
     check("autoJump", "Auto-jump (touch)", &s.autoJump);
     check("viewBob", "View bobbing", &s.viewBob);

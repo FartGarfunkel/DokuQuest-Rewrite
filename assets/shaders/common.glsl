@@ -7,6 +7,11 @@
 #ifndef MICRO_VOXELS
 #define MICRO_VOXELS 1
 #endif
+// Shader packs: the colour grade every world shader puts on its final colour. A pack's common.glsl can
+// define it and then include builtin:common.glsl (the game's own file) to change the whole look in two lines.
+#ifndef DQ_GRADE
+#define DQ_GRADE(c) (c)
+#endif
 
 uniform float uTime;
 uniform float uDaylight;      // sky light multiplier (original env.day)
@@ -65,13 +70,21 @@ vec3 applyFog(vec3 c, float dist, vec3 dir) {
 
 // Wind sway and waves — the original sway codes (render/gl.js terrainVS):
 //   1 plant tip, 2 leaves, 3 water, 4..15 hanging (swing grows), 16..31 partway up a solid plant,
-//   32..47 water surface + how open it is, 48..63 / 64..79 cloth flapping across z / x
+//   32..47 water surface + how open it is, 48..63 / 64..79 cloth flapping across z / x,
+//   80..95 the tip of a 3D grass blade (fades into the ground with distance: chunk.glsl)
 vec3 waveOffset(float sway, vec3 world) {
   if (sway < 0.5) return vec3(0.0);
   vec3 o = vec3(0.0);
   float t = uTime;
   vec2 w = world.xz;
   float gust = 0.6 + 0.4 * sin(t * 0.35 + w.x * 0.02 + w.y * 0.015);
+  if (sway > 79.5) {
+    // the tip of a 3D grass blade (render/mesh_plants.cpp emitGrassTufts): a quick flutter on the gusts
+    float k = (sway - 80.0) / 15.0;
+    o.x += (sin(t * 2.3 + w.x * 0.9 + w.y * 0.4) + 0.5 * sin(t * 4.1 + w.x * 2.3 - w.y * 1.7)) * 0.05 * uWind * gust * k;
+    o.z += cos(t * 1.9 + w.y * 0.8 + w.x * 0.3) * 0.04 * uWind * gust * k;
+    return o;
+  }
   if (sway > 47.5) {
     bool acrossX = sway > 63.5;
     float k = (sway - (acrossX ? 64.0 : 48.0)) / 15.0;

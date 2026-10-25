@@ -59,6 +59,13 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
 bool emitVoxelLeafPlate(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);   // vines, lily pads
 void emitPlanes(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, float y, float z, float inset, float scale, float sk, float bl, bool cross);
 
+// 3D grass (Lay of the Land style): short blades over the top of a grass block, swaying, faded out with
+// distance in chunk.glsl (sway codes 80..95 mark a tuft's tip). blades per block, 0 = off (settings grass3d).
+void emitGrassTufts(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z);
+int meshGrassTufts();
+void setMeshGrassTufts(int bladesPerBlock);
+void applyGrassSetting(const struct Settings& s);   // world_renderer.cpp: settings "grass3d" -> setMeshGrassTufts
+
 // smooth light + AO at the four corners of a full face (same rules as cubes); light 0..15 floats
 struct FaceCorners { float sky[4], bl[4], ao[4]; int aoi[4]; };
 void faceCorners(const MeshCtx& c, int x, int y, int z, int f, FaceCorners& fc);
