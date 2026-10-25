@@ -6,7 +6,7 @@ Each workstream keeps its own notes in `docs/port/<area>.md` (what was ported, w
 | Foundation | core/util.js, world/chunk.js (codec idea), core/blocks.js tables | common/, core/, world/, client/ | done (engine runs) |
 | Data | core/blocks.js, items.js, recipes, tags, MOB_TYPES, MODEL_DEFS, atlas tiles | data/*.json via tools/port/extract_all.py | done |
 | Terrain generation | world/worldgen.js, nether2/aether/theend generation | gen/ | wave 1 |
-| Meshing, light, shapes, water, foliage | world/mesher.js, shapes.js, plants3d.js | render/ | wave 1 |
+| Meshing, light, shapes, water, foliage | world/mesher.js, shapes.js, plants3d.js, game/perf.js (plant detail), townlife.js (cloth), theend.js (chorus), render/gl.js + renderer.js (terrain shading, outline, cracks), doku.js ANIMS | render/mesher*, mesh_*, world_renderer, terrain_fx, tile_anim; world/shapes, light, showcase | done (see docs/port/render.md) |
 | Resource packs, voxel items, held/dropped items | render/packs.js, items3d.js, gear3d.js, models3d.js, sculpt.js, packarmor.js | assets/, render/ | wave 1 |
 | Sound | game/audio.js, sfxlib, sounds2, sound3, voices3, blocksounds, ambience, music, music2 | audio/ | wave 1 |
 | Player & block gameplay | game/player.js, physics, local, movement, build, blockfx, blocks2 (part), rules, commands, obtain, itemfix | sim/ | wave 1 |

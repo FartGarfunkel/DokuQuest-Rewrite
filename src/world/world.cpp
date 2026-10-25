@@ -1,6 +1,7 @@
 #include "world/world.h"
 #include "world/region.h"
 #include "world/light.h"
+#include "world/shapes.h"
 
 namespace dq {
 
@@ -9,6 +10,8 @@ World::World(int realm, std::shared_ptr<WorldGen> gen, const fs::path& saveDir, 
   store = std::make_shared<RegionStore>(saveDir);
   shared = std::make_shared<Shared>();
   shared->store = store; shared->gen = this->gen;
+  initBlockTraits();
+  addSystem(std::make_shared<LightEngine>());   // sky + block light across chunk/band borders, incremental (world/light.h)
 }
 World::~World() { flush(); }
 

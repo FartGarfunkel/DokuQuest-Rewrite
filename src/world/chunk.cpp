@@ -38,7 +38,12 @@ void Chunk::compact() {
   for (int sy = 0; sy < SECS; sy++) if (secs[sy]) {
     u16 n = 0; for (int i = 0; i < 4096; i++) if (secs[sy]->blocks[i]) n++;
     secs[sy]->solidCount = n;
-    if (!n) { airLight[sy] = secs[sy]->light[4095]; secs[sy].reset(); }
+    if (!n) {
+      // an all-air section may only go if its light is uniform too (shade under an overhang, a lit cave)
+      const u8* L = secs[sy]->light; bool uniform = true;
+      for (int i = 1; i < 4096 && uniform; i++) uniform = L[i] == L[0];
+      if (uniform) { airLight[sy] = L[0]; secs[sy].reset(); }
+    }
   }
 }
 

@@ -1,4 +1,5 @@
 #include "client/app.h"
+#include "render/tile_anim.h"
 #include "client/session.h"
 #include "core/init.h"
 #include "ui/screen.h"
@@ -25,6 +26,7 @@ void App::parseArgs(int argc, char** argv) {
     else if (a == "--world") args.world = next();
     else if (a == "--create") args.createWorld = next();
     else if (a == "--seed") args.seed = next();
+    else if (a == "--world-type") args.worldType = next();
     else if (a == "--userdir") args.userDir = next();
     else if (a == "--connect") args.server = next();
     else if (a == "--smoke-frames") args.smokeFrames = std::stoi(next());
@@ -96,6 +98,7 @@ void App::initImGui() {
 void App::reloadTiles() {
   tiles = TileSet();
   loadBuiltinTiles(tiles);
+  addBuiltinTileAnims(tiles);   // render/tile_anim.h (before a pack replaces tiles)
   tiles.packName = applyResourcePack(tiles, settings.resourcePack);
   for (int p = 0; p < 2; p++) { if (tileTex.color[p]) glDeleteTextures(1, &tileTex.color[p]); if (tileTex.height[p]) glDeleteTextures(1, &tileTex.height[p]); tileTex.color[p] = tileTex.height[p] = 0; }
   int page = std::min(2048, gfx.maxArrayLayers);
@@ -177,6 +180,7 @@ int App::run(int argc, char** argv) {
   mods->scan();
   mods->loadData();
   pool = std::make_unique<ThreadPool>(settings.workerThreads);
+  registerTerrainLayers();     // render/terrain_fx.cpp: outline, cracks, tile animation, underwater fog
   if (!initWindow()) return 2;
   initImGui();
   input.init(&settings);
@@ -185,7 +189,7 @@ int App::run(int argc, char** argv) {
   reloadTiles();
   // start: straight into a world (launcher "Play world", smoke tests) or the title screen
   if (!args.world.empty()) { if (!openWorld(savesDir() / args.world)) setScreen(makeTitleScreen()); }
-  else if (!args.createWorld.empty()) { LevelInfo li; li.name = args.createWorld; li.seedText = args.seed; createWorld(li); }
+  else if (!args.createWorld.empty()) { LevelInfo li; li.name = args.createWorld; li.seedText = args.seed; if (!args.worldType.empty()) li.worldType = args.worldType; createWorld(li); }
   else setScreen(makeTitleScreen());
   frameLoop();
   leaveWorld(false);

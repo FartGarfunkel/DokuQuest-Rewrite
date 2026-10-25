@@ -11,8 +11,8 @@ bool SkyRenderer::init() {
 struct DimSky { vec3 zenith, horizon, fog; float minLight; bool sun; };
 static DimSky dimSky(int dim, float day) {
   switch (dim) {
-    case DIM_NETHER: return {vec3(0.25f, 0.06f, 0.03f), vec3(0.45f, 0.14f, 0.06f), vec3(0.42f, 0.12f, 0.05f), 0.35f, false};
-    case DIM_END: return {vec3(0.06f, 0.03f, 0.10f), vec3(0.16f, 0.12f, 0.22f), vec3(0.12f, 0.09f, 0.17f), 0.3f, false};
+    case DIM_NETHER: return {vec3(0.25f, 0.06f, 0.03f), vec3(0.45f, 0.14f, 0.06f), vec3(0.42f, 0.12f, 0.05f), 0.22f, false};   // original env.day of the Depths
+    case DIM_END: return {vec3(0.06f, 0.03f, 0.10f), vec3(0.16f, 0.12f, 0.22f), vec3(0.12f, 0.09f, 0.17f), 0.78f, false};   // the End is lit by its sky at 0.78 (game/theend.js)
     case DIM_AETHER: {
       vec3 z = glm::mix(vec3(0.02f, 0.03f, 0.08f), vec3(0.36f, 0.62f, 1.0f), day);
       vec3 h = glm::mix(vec3(0.05f, 0.06f, 0.12f), vec3(0.80f, 0.90f, 1.0f), day);

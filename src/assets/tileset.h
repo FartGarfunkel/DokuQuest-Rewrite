@@ -8,6 +8,12 @@
 
 namespace dq {
 
+// An animated tile: the frames (tile layers in this set) are copied into `layer` as time passes.
+// frameTime is in milliseconds (a resource pack's .mcmeta "frametime" is in ticks: x 50). The built-in Doku
+// animations come from data/tile_anims.* (render/tile_anim.cpp); a pack that replaces a tile drops or
+// replaces its animation (dropTileAnim) and adds its own from the .mcmeta.
+struct TileAnim { int layer = 0; std::vector<int> frames; int frameTime = 50; };
+
 struct TileSet {
   int size = 32;                 // micro-voxels per block edge
   int count = 0;
@@ -19,7 +25,9 @@ struct TileSet {
   u8* tile(int i) { return rgba.data() + (size_t)i * size * size * 4; }
   const u8* tile(int i) const { return rgba.data() + (size_t)i * size * size * 4; }
   u32 avgColor(int i) const;     // 0xAABBGGRR, for LOD and particles
+  std::vector<TileAnim> anims;   // animated tiles (water, lava, fire, portals...)
 };
+inline void dropTileAnim(TileSet& ts, int layer) { for (size_t i = ts.anims.size(); i-- > 0;) if (ts.anims[i].layer == layer) ts.anims.erase(ts.anims.begin() + i); }
 
 bool loadBuiltinTiles(TileSet& ts);          // data/tiles.png + data/tiles.json
 void deriveMicroVoxelHeights(TileSet& ts);   // relief from colour (mortar/cracks recess, bevels raise)
