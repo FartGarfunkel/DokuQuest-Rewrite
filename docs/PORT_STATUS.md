@@ -22,3 +22,5 @@ Each workstream keeps its own notes in `docs/port/<area>.md` (what was ported, w
 | Everything else (villagers, redstone, minecarts, ships, maps...) | game/*.js | sim/, ui/ | wave 3 |
 | Maps, instruments, farming, fishing, camping, travel, elytra, stable, places | game/maps.js, instruments.js, farming.js, fishing.js, camping.js, travel.js, elytra.js, stable.js, places.js (finding), hearth.js (homes), obtain.js (drops) | sim/maps, farming, fishing, camping, travel, elytra, stable, places; render/map_render, instruments, content_layers; ui/map_screen, content_screens | ported (see docs/port/content.md; carriage, map net sync, item frames left) |
 | Everything else (magic, enchanting, brewing, villagers, redstone, minecarts, ships, maps, rpg...) | game/*.js | sim/, ui/ | wave 3 |
+| Redstone, rails & minecarts, boats & ships, machines | game/redstone.js, rsplace, minecart, trains, vehicles, boats2, ships, lilypads, mech, machines | sim/redstone*, minecart, vehicles, machines | sim ported + tested (docs/port/redstone.md); render layer left |
+| Everything else (magic, enchanting, brewing, villagers, maps, rpg...) | game/*.js | sim/, ui/ | wave 3 |

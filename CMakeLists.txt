@@ -103,3 +103,8 @@ add_executable(test_content tools/test_content.cpp)
 target_link_libraries(test_content PRIVATE dqcore)
 add_custom_command(TARGET test_content POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_content>/data)
+# Redstone, rails/carts, boats/ships and machines test (headless). Run: build/test_redstone
+add_executable(test_redstone tools/test_redstone.cpp)
+target_link_libraries(test_redstone PRIVATE dqcore)
+add_custom_command(TARGET test_redstone POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_redstone>/data)
