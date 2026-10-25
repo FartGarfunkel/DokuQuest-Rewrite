@@ -1,5 +1,6 @@
 // render/sky.cpp — see sky.h. Ports the computeEnv chain of the original (game.js base, then
 // weather.js, skies.js, seamless.js, theend.js and riftarc.js) and the sky pass (renderer.js + gl.js skyFS).
+#include "sim/endstory.h"
 #include "render/sky.h"
 #include "sim/level.h"
 #include "sim/weather.h"
@@ -44,6 +45,9 @@ SkyEnv baseEnv(Level& lv, int dim, int realm, const Settings* st) {
       e.stars = 1 - dayF; e.showSun = true;
       e.sunDir = glm::normalize(vec3(std::cos(ang), sh, 0.25f));
       e.sunGlow = vec3(sunset * 0.9f, sunset * 0.45f, sunset * 0.15f);
+      if (realm == REALM_MAIN && riftStability(lv) < 15) {   // riftarc.js: the Overworld's sky going wrong near the end
+        e.zenith = mixc(e.zenith, rgb(0x3a0a5a), 0.35f); e.horizon = mixc(e.horizon, rgb(0x8a2aa0), 0.35f); e.fog = mixc(e.fog, rgb(0x4a1a5a), 0.35f);
+      }
       break;
     }
     case DIM_NETHER:

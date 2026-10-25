@@ -503,10 +503,15 @@ mat4 creatureBase(const Creature& m, bool full) {
   return b;
 }
 
+static std::unordered_map<std::string, RigAnimFn>& rigAnims() { static std::unordered_map<std::string, RigAnimFn> m; return m; }
+void registerRigAnim(const std::string& rig, RigAnimFn f) { rigAnims()[rig] = f; }
+
 void rigPose(Creature& m, const RigModel& M, const mat4& base) {
   Pose P(M);
   const std::string& k = M.rig;
-  if (k == "biped") animBiped(m, M, P);
+  auto custom = rigAnims().empty() ? rigAnims().end() : rigAnims().find(k);
+  if (custom != rigAnims().end()) { RigAnimOut o{P.P, P.has, P.lift, P.pitch, P.roll}; custom->second(m, M, o); }
+  else if (k == "biped") animBiped(m, M, P);
   else if (k == "quad") animQuad(m, M, P);
   else if (k == "spider") animSpider(m, M, P);
   else if (k == "bird") animBird(m, M, P);

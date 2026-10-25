@@ -30,9 +30,13 @@ const ChatCommand* findChatCommand(const std::string& name) {
   auto it = cmds().find(toLower(name));
   return it == cmds().end() ? nullptr : &it->second;
 }
+void hideChatCommand(const std::string& name) {
+  std::lock_guard<std::mutex> lk(cmdMx());
+  auto it = cmds().find(toLower(name)); if (it != cmds().end()) it->second.hidden = true;
+}
 std::vector<ChatCommand> allChatCommands() {
   std::lock_guard<std::mutex> lk(cmdMx());
-  std::vector<ChatCommand> v; for (auto& [k, c] : cmds()) v.push_back(c);
+  std::vector<ChatCommand> v; for (auto& [k, c] : cmds()) if (!c.hidden) v.push_back(c);
   return v;
 }
 

@@ -122,8 +122,9 @@ void onEnchanted(Level& lv, Player& p, int spent) {
 // ---- Realm Fragments from the great foes --------------------------------------------------------------------------
 void onGreatFoeDied(Level& lv, Entity& mob) {
   const json& F = magicData().fragFoes;
-  bool lair = mob.data.value("lair", false) && endsWith(mob.type, "_dragon");
-  if (lv.isRemote() || mob.data.value("dungeon", false) || !(F.contains(mob.type) || lair)) return;
+  auto flag = [&](const char* k) { auto it = mob.data.find(k); return it != mob.data.end() && !it->is_null() && *it != false && *it != ""; };   // ids or true
+  bool lair = flag("lair") && endsWith(mob.type, "_dragon");
+  if (lv.isRemote() || flag("dungeon") || !(F.contains(mob.type) || lair)) return;
   json& R = lv.info.data["rift"];
   if (!R.is_object()) R = json{{"stage", 0}, {"frags", 0}};
   json& flags = lv.info.data["flags"];

@@ -10,6 +10,7 @@
 #include "ui/magic_screens.h"
 #include "render/content_layers.h"
 #include "render/creature_layer.h"
+#include "render/endstory_layer.h"
 #include <imgui.h>
 
 namespace dq {
@@ -30,6 +31,7 @@ GameSession::GameSession(App& a, std::unique_ptr<Level> lv) : app(a), level(std:
   registerMagicClient();  // spell effects, mana bar, magic keys and screens (render/magic_fx, ui/magic_screens)
   registerContentLayers();   // maps, instruments, fishing, camping, elytra, stable keys (render/content_layers)
   registerCreatureLayers();   // creatures, projectiles, gibs, felled trees, fauna (render/creature_layer)
+  registerEndStoryLayers();   // the watcher, pearls, darkness/dread, the story's quest line, egg tags (render/endstory_layer)
   for (auto& f : layerFactories()) if (auto l = f(*this)) layers.push_back(l);
   std::sort(layers.begin(), layers.end(), [](auto& x, auto& y) { return x->order() < y->order(); });
   if (app.mods) app.mods->onWorldOpen(*level, app.events, false);

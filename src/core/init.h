@@ -22,6 +22,7 @@ void registerWeatherSystem();    // sim/weather.cpp
 void registerPortals();          // sim/portals.cpp (+ the stacked worlds, sim/seamless.cpp)
 void registerMagic();            // sim/magic.cpp (magic, enchanting, brewing, skills, rpg)
 void registerContent();          // sim/content.cpp (maps, farming, fishing, camping, travel, elytra, stable, places)
+void registerEndStory();      // sim/endstory.cpp: the End, dragons, the Deep Dark, the watcher and the rift
 void registerCreatures();        // sim/creature_spawn.cpp (creature/projectile entities + the spawning system)
 
 } // namespace dq

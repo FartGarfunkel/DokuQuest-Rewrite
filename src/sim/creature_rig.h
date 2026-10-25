@@ -41,4 +41,10 @@ bool rigPartShown(const Creature& m, const RigPart& p);
 // Ray (world space) against the posed parts: index of the first part hit, -1 for none.
 int rigHitPart(const Creature& m, const RigModel& M, vec3 o, vec3 d);
 
+// Rig kinds animated outside this file (dragons, end crystals: sim/dragons.cpp). The function fills part turns
+// (radians x/y/z, added to each part's rest; `has` marks the ones it set) and the root lift / pitch / roll.
+struct RigAnimOut { std::vector<vec3>& rot; std::vector<u8>& has; float& lift; float& pitch; float& roll; };
+using RigAnimFn = void (*)(Creature& m, const RigModel& M, RigAnimOut& out);
+void registerRigAnim(const std::string& rig, RigAnimFn f);
+
 } // namespace dq
