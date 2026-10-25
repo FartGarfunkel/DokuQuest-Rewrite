@@ -25,6 +25,7 @@ struct LaunchArgs {
   std::string world;         // open this world folder directly
   std::string createWorld;   // create a world with this name
   std::string seed;
+  std::string worldType;     // --world-type (e.g. "showcase" for render tests)
   std::string userDir;
   std::string server;        // host:port to join
   std::string smokeShot;     // smoke test: screenshot path

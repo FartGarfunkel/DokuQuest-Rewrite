@@ -268,7 +268,7 @@ std::string applyResourcePack(TileSet& ts, const std::string& choice) {
         if (an.contains("frames") && an["frames"].is_array()) {
           for (auto& f : an["frames"]) { int fi = f.is_number() ? f.get<int>() : f.is_object() ? f.value("index", 0) : -1; if (fi >= 0 && fi < nFrames) order.push_back(fi); }
         } else for (int f = 0; f < nFrames; f++) order.push_back(f);
-        TileAnim A{idx, {}, std::max(1, an.value("frametime", 1))};
+        TileAnim A{idx, {}, std::max(1, an.value("frametime", 1)) * 50};   // .mcmeta ticks -> ms
         std::unordered_map<int, int> layerOf;
         std::vector<u8> full((size_t)T * T * 4);
         for (int f : order) {
