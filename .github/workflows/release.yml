@@ -1,5 +1,6 @@
 # Release: builds and publishes a DokuQuest release ONLY when you push a version tag yourself
-# (git tag v1.0.0-alpha.2 && git push origin v1.0.0-alpha.2) or start it by hand (Actions → Release → Run workflow).
+# (git tag v1.0.0-alpha.2 && git push origin v1.0.0-alpha.2), push the `release` branch (publishes DQ_VERSION from
+# CMakeLists.txt), or start it by hand (Actions → Release → Run workflow).
 # Plain pushes never publish anything. Each release has:
 #   DokuQuest-<ver>-x86_64.AppImage, DokuQuest-<ver>-linux-x64.tar.gz, SHA256SUMS.txt (Linux only for now)
 # and its notes are the "## <ver> …" section of docs/CHANGELOG.md. The launcher's updater installs the newest one
@@ -8,6 +9,7 @@ name: Release
 on:
   push:
     tags: ['v*']
+    branches: ['release']   # pushing the `release` branch publishes the version in CMakeLists.txt (DQ_VERSION)
   workflow_dispatch:
     inputs:
       version:
@@ -35,7 +37,9 @@ jobs:
         env:
           INPUT_VERSION: ${{ inputs.version }}
         run: |
-          if [ "${GITHUB_REF_TYPE}" = tag ]; then v="${GITHUB_REF_NAME#v}"; else v="${INPUT_VERSION#v}"; fi
+          if [ "${GITHUB_REF_TYPE}" = tag ]; then v="${GITHUB_REF_NAME#v}";
+          elif [ "${GITHUB_REF_NAME}" = release ]; then v="$(sed -n 's/^set(DQ_VERSION "\([^"]*\)".*/\1/p' CMakeLists.txt)";
+          else v="${INPUT_VERSION#v}"; fi
           if ! echo "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then echo "::error::'$v' is not a version like 1.0.0-alpha.2"; exit 1; fi
           # the notes: the section of docs/CHANGELOG.md whose heading starts with "## <version>"
           awk -v v="$v" 'index($0, "## " v " ") == 1 || $0 == "## " v {on=1; next} /^## / {if (on) exit} on' docs/CHANGELOG.md | sed -e '/./,$!d' > notes.md
