@@ -1,0 +1,339 @@
+{
+"steps": [
+{
+"wait": 200,
+"do": "padaxis",
+"axis": "rightx",
+"value": 0
+},
+{
+"wait": 5,
+"do": "give",
+"item": "cobblestone",
+"n": 64
+},
+{
+"do": "give",
+"item": "iron_ore",
+"n": 3
+},
+{
+"do": "give",
+"item": "coal",
+"n": 2
+},
+{
+"do": "give",
+"item": "log",
+"n": 4
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -1,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 1,
+"z": -1,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 1,
+"z": -2,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -2,
+"key": "chest"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 1,
+"y": 0,
+"z": -2,
+"key": "chest"
+},
+{
+"do": "lookAt",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -2
+},
+{
+"wait": 5,
+"do": "mouse",
+"button": "right"
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "inventory"
+},
+{
+"do": "shot",
+"path": "/tmp/menus_chest.png"
+},
+{
+"wait": 3,
+"do": "pad",
+"button": "y"
+},
+{
+"wait": 5,
+"do": "expect",
+"container": [
+0,
+0,
+-2
+],
+"rel": true,
+"slot": 0,
+"item": "cobblestone",
+"n": 64
+},
+{
+"do": "expect",
+"inv": 0,
+"item": ""
+},
+{
+"wait": 3,
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 10,
+"do": "expect",
+"screen": null
+},
+{
+"wait": 5,
+"do": "pad",
+"button": "lt",
+"hold": 4
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "inventory"
+},
+{
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "pad",
+"button": "up"
+},
+{
+"wait": 4,
+"do": "shot",
+"path": "/tmp/menus_chest_nav.png"
+},
+{
+"wait": 3,
+"do": "pad",
+"button": "a"
+},
+{
+"wait": 4,
+"do": "expect",
+"cursor": "cobblestone"
+},
+{
+"do": "pad",
+"button": "x"
+},
+{
+"wait": 4,
+"do": "expect",
+"container": [
+0,
+0,
+-2
+],
+"rel": true,
+"slot": 0,
+"item": "cobblestone",
+"n": 1
+},
+{
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 10,
+"do": "expect",
+"screen": null
+},
+{
+"do": "expect",
+"count": "cobblestone",
+"n": 63
+},
+{
+"do": "save"
+},
+{
+"wait": 5,
+"do": "leave",
+"toTitle": true
+},
+{
+"wait": 30,
+"do": "open",
+"world": "T1"
+},
+{
+"wait": 200,
+"do": "expect",
+"container": [
+0,
+0,
+-2
+],
+"rel": true,
+"slot": 0,
+"item": "cobblestone",
+"n": 1
+},
+{
+"do": "expect",
+"count": "cobblestone",
+"n": 63
+},
+{
+"do": "report"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": -1,
+"y": 0,
+"z": -1,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": -1,
+"y": 1,
+"z": -1,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": -1,
+"y": 1,
+"z": -2,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": -1,
+"y": 0,
+"z": -2,
+"key": "ender_chest"
+},
+{
+"do": "lookAt",
+"rel": true,
+"x": -1,
+"y": 0,
+"z": -2
+},
+{
+"wait": 3,
+"do": "mouse",
+"button": "right"
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "inventory"
+},
+{
+"do": "shot",
+"path": "/tmp/menus_ender.png"
+},
+{
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 10,
+"do": "give",
+"item": "leather_backpack",
+"n": 1
+},
+{
+"do": "select",
+"slot": 4
+},
+{
+"do": "look",
+"yaw": 0,
+"pitch": 85
+},
+{
+"wait": 3,
+"do": "mouse",
+"button": "right"
+},
+{
+"wait": 15,
+"do": "expect",
+"screen": "inventory"
+},
+{
+"do": "shot",
+"path": "/tmp/menus_pack.png"
+},
+{
+"do": "pad",
+"button": "b"
+},
+{
+"wait": 10,
+"do": "report"
+}
+]
+}
