@@ -5,6 +5,22 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.3 — Your second playtest (October 2026)
+
+- **Menus:** Q and E switch the menu tabs (with LB/RB still on a pad), clicking a tab works every time, and the inventory key closes the inventory again. The character creator and skin editor fit any screen, ultrawide included. NPC talk, shop and quest-board windows wrap and fit properly.
+- **Capes:** a cape editor — paint your cape like your skin, wear it, export it as a PNG or import one (file chooser or drag and drop).
+- **3D icons:** furniture, doors, levers, hoppers and other shaped blocks show as their real 3D shape in the inventory, the creative catalogue and the recipe book.
+- **Placed items show:** items put down with sneak + use lie on the ground again; item frames show their item.
+- **In your hands:** swords and tools are held bigger and angled like Minecraft in first person; held compasses and clocks show their faces in third person.
+- **Blocks:** ice is see-through; chest lids open while you look inside; lecterns hold a book you can open to the page you choose; rain puddles are flat, glossy water.
+- **Smoother relief:** bump mapping is smoothed — latches, tools and book spines stand out instead of sinking in, mortar stays a groove, and block edges get a slight bevel.
+- **Characters and villagers:** guards' faces show under their helmets; villagers' mouths move when they talk; everyone blinks; a picked-up animal or block is shown in your arms; the elytra are wings that spread when you glide.
+- **Effects:** sparks, smoke, flames and other particles from the world (fires, potions, breaking blocks) now appear; messages and screen shake from the world reach you.
+- **Items:** fireworks no longer turn into a bucket and launch from the ground in a burst of colour; the gust puff and the Ember Effigy work; the Pocket Key takes you to your pocket dimension and back; stuck arrows are easier to pick up.
+- **Fixes:** worlds no longer vanish after going through a portal into another realm; in creative a sword doesn't break blocks, and finishing off a creature doesn't dig into the ground behind it.
+- **Testing:** every item is now used automatically on every build to catch items that do the wrong thing.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.2 — Fixes from the first playtest (October 2026)
 
 - **Crashes fixed:** felling a tree no longer crashes the game, and a world with a falling tree in it opens again. Leaving a world and opening one again in the same session no longer crashes. If the game ever does crash, the reason and a trace go into `latest.log`.
