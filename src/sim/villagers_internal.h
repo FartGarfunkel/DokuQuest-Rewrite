@@ -68,7 +68,7 @@ Player* playerByName(Level& lv, const std::string& name);
 Player* playerById(Level& lv, u32 id);
 std::string dirWord(double ang);                                 // 'east' ... 'north-east' (Math.atan2(dz, dx))
 int roundTo(double v, int step);
-double riftStability(Level& lv);
+int riftStability(Level& lv);      // sim/endstory.cpp
 int riftTier(Level& lv);
 json& villageRec(Level& lv, const std::string& vid);
 void later(Level& lv, double secs, const Player& p, const std::string& text);

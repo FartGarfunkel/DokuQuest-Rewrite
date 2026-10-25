@@ -216,21 +216,7 @@ void npcRep(Level& lv, Player& p, const std::string& vid, double n, const std::s
 }
 
 // ------------------------------------------------------------------ the rift's state (riftarc.js riftStability, riftlore.js riftTier)
-double riftStability(Level& lv) {
-  const json R = lv.info.data.value("rift", json::object());
-  if (!R.is_object() || R.value("sealed", 0) || !R.value("stage", 0)) return 100;
-  if (R.value("stage", 0) >= 3) return 5;
-  return std::max(8, 100 - 26 * std::min(4, R.value("frags", 0)));
-}
-int riftTier(Level& lv) {
-  const json R = lv.info.data.value("rift", json::object());
-  if (R.is_object() && R.value("sealed", 0)) return 5;
-  int st = R.is_object() ? R.value("stage", 0) : 0;
-  if (st >= 3) return 4;
-  if (st >= 1) { int f = R.value("frags", 0); return f >= 3 ? 3 : f >= 1 ? 2 : 1; }
-  const json F = lv.info.data.value("flags", json::object());
-  return F.is_object() && F.value("watcherSeen", 0) ? 0 : -1;
-}
+// (riftStability / riftTier live in sim/endstory.cpp)
 
 // ------------------------------------------------------------------ people
 Player* playerByName(Level& lv, const std::string& name) { return findPlayer(lv, name); }
