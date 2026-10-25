@@ -101,7 +101,7 @@ public:
     // ---- the four people of this screen (ui.js: one .profile card each; here a tab per person) ----
     for (int i = 0; i < 4; i++) {
       if (i) ImGui::SameLine();
-      std::string tl = std::string(i == who ? "\xE2\x96\xB8 " : "") + profileLook(a.settings, i).name + "##who" + std::to_string(i);
+      std::string tl = profileLook(a.settings, i).name + "##who" + std::to_string(i);   // (the chosen one is the lit button)
       if (button(tl.c_str(), i == who ? BTN_PRIMARY : BTN_NORMAL, true)) choose(a, i);
     }
     ImGui::Dummy(ImVec2(1, 6 * z));

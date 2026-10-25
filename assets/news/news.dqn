@@ -2,6 +2,10 @@
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
 
+## Alpha 1.0.0.4.2 — Hotfix | October 2026
+- **Every player has their own look:** Players & Skins has a tab for each of the four players, each with their own name, skin (or creator character), arms and painted cape, like the original. The skin editor, character creator and cape editor work on whichever player is chosen. Opened from a split-screen player's own pause menu, it opens on them, and players who join come in as themselves.
+- Removed Herobrine.
+
 ## Alpha 1.0.0.4.1 — Hotfix | October 2026
 - **Split-screen joins properly:** the first controller that moves you is yours; any other controller now joins with Start (it used to act as a second controller for player 1 and pause the game). Like the original, a spare controller no longer moves player 1.
 - **Treading water:** chest-deep or standing on the bottom with your head under, you tread water with your arms out, like the original (sprint forward under water for the front crawl).
