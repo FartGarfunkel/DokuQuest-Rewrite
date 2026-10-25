@@ -6,6 +6,7 @@
 #include "ui/ui.h"
 #include "ui/theme.h"
 #include "ui/char_screens.h"
+#include "ui/profiles.h"
 #include "assets/cape_tex.h"
 #include "ui/char_preview.h"
 #include "ui/file_pick.h"
@@ -44,10 +45,24 @@ public:
   float yaw = PI + 0.45f, t = 0; bool drag = false; float dragX = 0, dragYaw = 0;
   std::vector<std::string> skins, chars; float listT = 0;
 
-  void onOpen(App& a) override { name = a.settings.playerName; watchDroppedFiles(); refresh(); }
+  int who = 0;   // whose profile is open (Player 1..4)
+
+  void onOpen(App& a) override {
+    // from a split-screen player's own pause menu: their profile; anywhere else: Player 1's
+    who = a.session && a.session->split() ? std::max(0, std::min(3, a.session->cur)) : 0;
+    editProfile(a.settings, who);
+    name = a.settings.playerName; watchDroppedFiles(); refresh();
+  }
   bool onBack(App&) override { return backConsumedByText(); }
-  void onClose(App& a) override { save(a); }
+  void onClose(App& a) override { save(a); editProfile(a.settings, 0); a.settings.save(); applyProfiles(a); }
+  Player* whoPlayer(App& a) {   // the chosen person, if they're playing on this screen now
+    if (!a.session) return nullptr;
+    for (auto& L : a.session->locals) if (L.index == who) return L.player;
+    return nullptr;
+  }
+  void choose(App& a, int i) { if (i == who) return; save(a); who = i; editProfile(a.settings, who); a.settings.save(); name = a.settings.playerName; msg.clear(); }
   void update(App& a, double dt) override {
+    applyProfiles(a);   // everyone on this screen wears their own (the skin and cape editors change the one being edited)
     t += (float)dt;
     if (!drag) yaw += (float)dt * 0.35f;
     if ((listT -= (float)dt) <= 0) refresh();
@@ -61,9 +76,9 @@ public:
   void refresh() { skins = listSkins(); chars = listCharacters(); listT = 2; }
   void save(App& a) {
     std::string tt = name; while (!tt.empty() && tt.back() == ' ') tt.pop_back(); while (!tt.empty() && tt[0] == ' ') tt.erase(0, 1);
-    a.settings.playerName = tt.empty() ? "Player 1" : tt;
+    a.settings.playerName = tt.empty() ? "Player " + std::to_string(who + 1) : tt;
     a.settings.save();
-    if (a.session && a.session->player) a.session->player->name = a.settings.playerName;
+    applyProfiles(a);
   }
   std::string skinLabel(const std::string& ref) {
     if (ref.empty()) return "The Emberwild wanderer (default)";
@@ -83,7 +98,14 @@ public:
     label(F_MID, col::muted, "Up to four people can play on one screen. Player 1 uses the keyboard, mouse or touch (or a controller); everyone else plugs in a controller and presses Start to join. Any Minecraft or Mineclonia skin works \xE2\x80\x94 a 64\xC3\x97" "64 or 64\xC3\x97" "32 skin.png. Drop one on the window, or choose it.", pn.width - 32 * z);
     ImGui::Dummy(ImVec2(1, 6 * z));
     padScrollHere();
-    // ---- .profile card for player one ----
+    // ---- the four people of this screen (ui.js: one .profile card each; here a tab per person) ----
+    for (int i = 0; i < 4; i++) {
+      if (i) ImGui::SameLine();
+      std::string tl = std::string(i == who ? "\xE2\x96\xB8 " : "") + profileLook(a.settings, i).name + "##who" + std::to_string(i);
+      if (button(tl.c_str(), i == who ? BTN_PRIMARY : BTN_NORMAL, true)) choose(a, i);
+    }
+    ImGui::Dummy(ImVec2(1, 6 * z));
+    // ---- .profile card for the chosen player ----
     ImDrawList* dl = ImGui::GetWindowDrawList();
     float cw = std::min(560 * z, pn.width - 32 * z), ch = 330 * z;
     ImVec2 p0 = ImGui::GetCursorScreenPos();
@@ -94,13 +116,13 @@ public:
     {
       ImVec2 hp = p0 + ImVec2(12, 9) * z;
       dl->AddCircleFilled(hp + ImVec2(5, 8) * z, 5 * z, col::rgb(0xffb07a));
-      text(dl, F_BODY, hp + ImVec2(16 * z, 0), col::text, "Player 1");
+      text(dl, F_BODY, hp + ImVec2(16 * z, 0), col::text, ("Player " + std::to_string(who + 1) + (who ? "  (controller)" : "")).c_str());
       dl->AddRectFilledMultiColor(v0, v0 + ImVec2(vw, vh), col::rgb(0x0a0806), col::rgb(0x0a0806), col::rgb(0x2c241c), col::rgb(0x2c241c));
       bevel(dl, v0, v0 + ImVec2(vw, vh), col::slLo, col::slHi, 2 * z);
       auto spec = resolveCharacter(a.settings.skin);
       CharPreviewOpts o; o.yaw = yaw; o.elev = 0.12f; o.dist = 62; o.time = t; o.target = 15.5f;
       CharWear wear; CharPose ps; ps.time = t; ps.capeA = 0.12f; ps.capeSway = std::sin(t * 2.3f) * 0.03f;
-      Player* pl = a.session ? a.session->player : nullptr;
+      Player* pl = whoPlayer(a);
       if (pl) { wear = charWearOf(*pl, *spec, false); wear.held.clear(); wear.off.clear(); }
       else { wear.cape = spec->cape; std::string pc = wornCapeName(a.settings); if (!pc.empty()) wear.cape = customCapeKey(pc); }
       o.wear = &wear; o.pose = &ps;
@@ -148,7 +170,7 @@ public:
     if (button("Cape editor\xE2\x80\xA6", BTN_NORMAL, true)) a.pushScreen(makeCapeEditorScreen());
     ImGui::Dummy(ImVec2(1, 4 * z));
     {   // the cape you wear (the Cape slot of your inventory); a character can wear a cape of its own (the creator)
-      Player* pl = a.session ? a.session->player : nullptr;
+      Player* pl = whoPlayer(a);
       std::string worn = pl ? wornItem(*pl, "cape") : "";
       const ItemDef* d = worn.empty() ? nullptr : reg().item(worn);
       auto spec = resolveCharacter(ref);

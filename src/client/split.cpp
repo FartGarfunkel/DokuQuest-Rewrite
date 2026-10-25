@@ -12,6 +12,7 @@
 #include "render/sky.h"
 #include "ui/theme.h"
 #include "ui/ui.h"
+#include "ui/profiles.h"
 #include <imgui.h>
 #include <algorithm>
 #include <imgui_impl_opengl3.h>
@@ -114,8 +115,10 @@ int GameSession::addLocal(SDL_JoystickID pad) {
     else if (g_p1Pad < 0) for (auto& p : app.input.pads()) if (p.used && p.id != pad) locals[0].src.pads.push_back(p.id);
   }
   auto np = std::make_unique<Player>();
-  np->name = "Player " + std::to_string(i + 1);
-  np->skin = app.settings.skin;
+  ProfileLook look = profileLook(app.settings, i);   // their own name, skin and painted cape (Players & skins)
+  np->name = look.name.empty() ? "Player " + std::to_string(i + 1) : look.name;
+  np->skin = look.skin;
+  if (!look.cape.empty()) np->data["customCape"] = look.cape;
   Player* p0 = locals[0].player;
   json saved = level->loadPlayer(np->name);   // their inventory from last time, by name
   bool placed = false;

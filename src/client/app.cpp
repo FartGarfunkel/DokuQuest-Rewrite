@@ -1,4 +1,5 @@
 #include "client/app.h"
+#include "ui/profiles.h"
 #include "client/test_script.h"
 #include "render/portal_view.h"
 #include "client/netplay.h"
@@ -192,6 +193,7 @@ int App::run(int argc, char** argv) {
   }
   registerPortalView();   // render/portal_view.cpp
   settings = Settings::load();
+  profileLook(settings, 0);   // ui/profiles.cpp: undo a profile edit the last run left half done
   if (!settings.shaderPack.empty()) setShaderPack(settings.shaderPack);
   mods = std::make_unique<ModLoader>();
   mods->scan();
