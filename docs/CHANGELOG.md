@@ -5,6 +5,12 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.3.2 — Hotfix (October 2026)
+
+- **No more duplicating:** equipping or taking off a backpack, cape, belt item or charm no longer copies it (and everything in the backpack). The inventory and the rest of the game now share one set of gear slots.
+- **Elytra work from the cape slot:** they used to be saved in the inventory's own copy, which the glide never looked at. Jump while falling to glide.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.3.1 — Hotfix (October 2026)
 
 - **No more grid:** the thin dark frame drawn round every block face in 1.0.0-alpha.3 is gone.
