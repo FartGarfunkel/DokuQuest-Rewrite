@@ -215,13 +215,13 @@ GLuint makeTexture2D(int w, int h, const void* rgba, bool nearest, bool mips, bo
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, repeat ? GL_REPEAT : GL_CLAMP_TO_EDGE);
   return t;
 }
-GLuint makeTextureArray(int w, int h, int layers, const void* rgba, bool mips) {
+GLuint makeTextureArray(int w, int h, int layers, const void* rgba, bool mips, bool linear) {
   GLuint t; glGenTextures(1, &t);
   glBindTexture(GL_TEXTURE_2D_ARRAY, t);
   glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, w, h, layers, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
   if (mips) glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, mips ? GL_NEAREST_MIPMAP_LINEAR : GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, linear ? GL_LINEAR : GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, mips ? GL_NEAREST_MIPMAP_LINEAR : linear ? GL_LINEAR : GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
   if (mips) glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, 4);

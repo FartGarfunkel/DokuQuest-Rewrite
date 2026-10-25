@@ -33,12 +33,18 @@ uniform sampler2DArray uTiles;
 uniform sampler2DArray uTiles2;
 uniform sampler2DArray uHeights;
 uniform sampler2DArray uHeights2;
+uniform sampler2DArray uNormals;      // baked smooth normal maps: xy = tangent-space normal, z = crevice darkening, w = blurred depth
+uniform sampler2DArray uNormals2;
 uniform float uPageSize;
 vec4 tileColorGrad(vec2 uv, float layer, vec2 dx, vec2 dy) {
   return layer < uPageSize ? textureGrad(uTiles, vec3(uv, layer), dx, dy) : textureGrad(uTiles2, vec3(uv, layer - uPageSize), dx, dy);
 }
 vec4 tileHeightAt(vec2 uv, float layer) {
   return layer < uPageSize ? textureLod(uHeights, vec3(uv, layer), 0.0) : textureLod(uHeights2, vec3(uv, layer - uPageSize), 0.0);
+}
+
+vec4 tileNormalAt(vec2 uv, float layer) {
+  return layer < uPageSize ? textureLod(uNormals, vec3(uv, layer), 0.0) : textureLod(uNormals2, vec3(uv, layer - uPageSize), 0.0);
 }
 
 vec3 faceNormal(int n) {
@@ -58,6 +64,24 @@ float axisShade(vec3 n) {
 }
 float faceShade(int n) { return n == 6 ? 1.0 : axisShade(faceNormal(n)); }
 float lightCurve(float l) { return l / (3.2 - 2.2 * l); }
+// Dynamic point lights (render/dyn_light.cpp, port of the original dynLight): carried torches, glowing drops, lit TNT,
+// fireballs. Position relative to the camera's block, w = level 0..15. Light falls off one level per block and
+// only lights faces turned toward it. Returns a block light 0..1 to max with the baked one.
+uniform vec4 uDyn[8];
+uniform int uDynN;
+float dynLight(vec3 pos, vec3 n) {
+  float best = 0.0;
+  for (int i = 0; i < 8; i++) {
+    if (i >= uDynN) break;
+    vec3 d = uDyn[i].xyz - pos;
+    float l = length(d);
+    float lv = (uDyn[i].w - l) / 15.0;
+    if (lv <= best) continue;
+    float face = clamp(dot(n, d / max(l, 0.001)) * 2.0 + 0.6, 0.0, 1.0);
+    best = max(best, lv * face);
+  }
+  return clamp(best, 0.0, 1.0);
+}
 vec3 lighting(float sky, float block, bool emissive) {
   if (emissive) return vec3(1.0);
   vec3 lc = max(vec3(lightCurve(sky) * uDaylight), vec3(lightCurve(block)) * uBlockLightColor);

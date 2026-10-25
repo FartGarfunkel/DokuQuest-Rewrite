@@ -18,7 +18,10 @@ struct TileSet {
   int size = 32;                 // micro-voxels per block edge
   int count = 0;
   std::vector<u8> rgba;          // count * size*size * 4
-  std::vector<u8> height;        // count * size*size
+  std::vector<u8> height;        // count * size*size: the exact (continuous) depth of every micro-voxel
+  static constexpr int RELIEF_STEPS = 4;   // deepest geometry, in micro-voxels
+  std::vector<u8> relief;        // count * size*size: baked GEOMETRY, whole micro-voxel steps 0..RELIEF_STEPS (bakeTileRelief)
+  std::vector<u8> normal;        // count * size*size * 4: baked smooth normal map (r,g = x,y; b = crevice darkening; a = blurred height)
   std::vector<u8> emissive;      // count * size*size (glowing micro-voxels: lava, ores, torch flames), 0..255
   std::vector<u8> res;           // count: pixels across the source picture (16 = code-painted at 16 and doubled, 32 = full)
   std::unordered_map<std::string, int> index;   // tile name -> layer
@@ -32,6 +35,7 @@ inline void dropTileAnim(TileSet& ts, int layer) { for (size_t i = ts.anims.size
 
 bool loadBuiltinTiles(TileSet& ts);          // data/tiles.png + data/tiles.json
 void deriveMicroVoxelHeights(TileSet& ts);   // relief from colour (mortar/cracks recess, bevels raise)
+void bakeTileRelief(TileSet& ts);            // once per finished tile set: whole-voxel geometry + smooth normals (assets/tile_relief.cpp)
 // resolves settings.resourcePack ("auto" = GeruDoku if present) and applies it (assets/packs.cpp)
 std::string applyResourcePack(TileSet& ts, const std::string& choice);
 std::vector<std::string> listResourcePacks();
