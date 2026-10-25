@@ -11,6 +11,7 @@
 #include "assets/voxel.h"
 #include "sim/maps.h"
 #include "sim/fishing.h"
+#include "render/rod_tip.h"
 #include "sim/camping.h"
 #include "sim/elytra.h"
 #include "sim/stable.h"
@@ -160,6 +161,8 @@ public:
         // the line, from the rod's tip, sagging unless something's pulling
         bool fp = p == s.player && s.viewMode == 0;
         vec3 tip = fp ? tipOf(s, *p, 0.95f, 0.42f, 0.18f) : p->pos + vec3(0, 1.9f, 0) + lookVec(*p) * vec3(1.1f, 0.6f, 1.1f) + vec3(std::cos(p->yaw), 0, -std::sin(p->yaw)) * 0.5f;
+        vec3 real;
+        if (getRodTip(p->id, f.time, real)) tip = real;   // where the rod's tip was drawn
         vec3 end = b->pos + vec3(0, 0.24f, 0);
         float d = std::hypot(end.x - tip.x, end.z - tip.z);
         float sag = b->biteT > 0 ? 0.02f : b->state == Bobber::Float ? 0.12f + d * 0.025f : 0.06f;

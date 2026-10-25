@@ -7,6 +7,7 @@
 #include "client/app.h"
 #include "assets/voxel_paint.h"
 #include "world/shapes.h"
+#include "core/item_glint.h"
 #include <regex>
 
 namespace dq {
@@ -52,7 +53,7 @@ public:
         m = glm::translate(m, vec3(0, 0, -0.5f + std::max(0.09f, im.depth * 0.55f + 0.07f)));   // thick things stand out from the frame
         m = glm::rotate(m, -(float)e.value("rot", 0) * PI / 4, vec3(0, 0, 1));
         m = glm::scale(m, vec3(im.kind == VoxelModel::Block ? 0.36f : 0.55f));
-        VR.draw(im.gl, m * im.matrix(), glow ? VoxelLight{1, 1} : L);
+        VR.draw(im.gl, m * im.matrix(), glow ? VoxelLight{1, 1} : L, vec4(0), itemGlints(st) ? 1.f : 0.f);
         return;
       }
       if (type == "backpack") {
@@ -66,7 +67,7 @@ public:
         mat4 m = glm::translate(base, vec3(0.5f, 0.36f, 0.5f));
         m = glm::rotate(m, yaw + PI, vec3(0, 1, 0));   // standing up, its pouch toward you
         m = glm::scale(m, vec3(0.64f));
-        VR.draw(im.gl, m * im.matrix(), L);
+        VR.draw(im.gl, m * im.matrix(), L, vec4(0), itemGlints(st) ? 1.f : 0.f);
         return;
       }
       if (!e.contains("items") || !e["items"].is_array()) return;
@@ -105,7 +106,7 @@ public:
             m = glm::translate(m, vec3(ox + j * 0.05f, dz + 0.005f + c * dz * 1.8f, oz - j * 0.05f)); m = glm::rotate(m, r0 + c * 0.5f + j, vec3(0, 1, 0));
             m = glm::rotate(m, -PI / 2, vec3(1, 0, 0)); m = glm::scale(m, vec3(0.45f));
           }
-          VR.draw(im.gl, m * im.matrix(), L);
+          VR.draw(im.gl, m * im.matrix(), L, vec4(0), itemGlints(st) ? 1.f : 0.f);
         }
       }
     });

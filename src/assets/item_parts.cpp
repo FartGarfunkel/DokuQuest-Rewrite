@@ -557,8 +557,8 @@ bool buildItems3d(ItemBuild& b) {
     b.depth = 0.135f;
     return true;
   }
-  if (key == "bow" || startsWith(key, "bow_pulling_")) {
-    float pull = key == "bow" ? 0.f : std::array<float, 3>{0.35f, 0.65f, 1.f}[clampv(key.back() - '0', 0, 2)];
+  if (key == "bow" || startsWith(key, "bow_pulling_") || startsWith(key, "bow_pq")) {
+    float pull = key == "bow" ? 0.f : startsWith(key, "bow_pq") ? clampv(key.back() - '0', 0, 8) / 8.f : std::array<float, 3>{0.35f, 0.65f, 1.f}[clampv(key.back() - '0', 0, 2)];
     const int N = 10;
     for (int i = 0; i < N; i++) {
       float u0 = (float)i / N, u1 = (float)(i + 1) / N, mid = std::abs((u0 + u1) / 2 - 0.5f);

@@ -12,7 +12,7 @@
 //     drop{path} (a file dropped on the window) screen{name} (open a screen; "close" pops) data{key,value} wear{item,slot?}
 //     expect{screen | block:[x,y,z],is | entity,near | held | inv:slot,item,n | count:item,n | cursor:item |
 //            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text} report shot{path} save leave open{world} quit
-// give takes "d" (wear). pad buttons: a b x y back guide start ls rs lb rb up down left right, lt / rt (triggers).
+// give takes "d" (wear) and "tag" (enchantments, gear xp). pad buttons: a b x y back guide start ls rs lb rb up down left right, lt / rt (triggers).
 // The log gets "TEST PASS/FAIL ..." lines and a final "TEST DONE passes=N fails=M".
 #include "client/test_script.h"
 #include "client/app.h"
@@ -116,6 +116,7 @@ void runStep(App& a, const json& st) {
     int btn = b == "right" ? SDL_BUTTON_RIGHT : b == "middle" ? SDL_BUTTON_MIDDLE : SDL_BUTTON_LEFT;
     int x = st.value("x", a.width / 2), y = st.value("y", a.height / 2);
     if (st.contains("x")) pushMotion(x, y, 0, 0);
+    if (st.value("hover", false)) return;   // just move the pointer (tooltips)
     R.later.push_back({f + 1, [btn, x, y] { pushMouseButton(btn, true, x, y); }});
     R.later.push_back({f + 1 + hold, [btn, x, y] { pushMouseButton(btn, false, x, y); }});
   } else if (op == "move") {
@@ -160,8 +161,13 @@ void runStep(App& a, const json& st) {
     else p->pos = vec3(st.value("x", p->pos.x), st.value("y", p->pos.y), st.value("z", p->pos.z));
     p->vel = vec3(0);
   } else if (op == "give" && p) {
-    int left = p->give(ItemStack(st.value("item", "stone"), st.value("n", 1), st.value("d", 0)));
+    ItemStack gs(st.value("item", "stone"), st.value("n", 1), st.value("d", 0));
+    if (st.contains("tag") && st["tag"].is_object()) gs.tag = st["tag"];   // e.g. {"en":{"sharp":3},"gx":900}
+    int left = p->give(gs);
     if (left) DQ_WARN("test: give %s left %d", st.value("item", "").c_str(), left);
+  } else if (op == "be" && s) {   // set a block entity (a monster cage: {"type":"spawner","mob":"zombie"})
+    ivec3 b = at(st);
+    if (json* e = s->world().blockEntity(b.x, b.y, b.z, true)) *e = st.value("data", json::object());
   } else if (op == "select" && p) {
     p->selected = std::clamp(st.value("slot", 0), 0, 8);
   } else if (op == "setBlock" && s) {

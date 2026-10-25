@@ -54,6 +54,8 @@ struct CharWear {
   std::string armor[4], dye[4];     // item keys (helmet .. boots), leather dye "rrggbb"
   std::string back, hook, cape;     // backpack item, belt item, cape TILE key ("" = none)
   std::string held, off;            // in the hands
+  u32 rodOwner = 0;                 // the player whose rod tip is recorded for the fishing line (0 = nobody)
+  bool heldGlint = false, offGlint = false;   // enchanted: the shimmer on it
   std::vector<std::string> carried; // carried.js: hotbar things not in the hand (third person)
   bool hatItem = false;             // the helmet slot holds a hat (no 3D-look hiding under it)
 };
@@ -63,7 +65,7 @@ bool gearHidden(const Player& p, int k);      // charparts.js hideGear[k]: 0 hel
 CharWear charWearOf(const Player& p, const CharacterSpec& spec, bool carried = true);
 // Draw a whole voxel character with the voxel renderer already begun (the world, a menu preview, the doll).
 // base: render space at the feet (translation only). fp = the first-person body; detail = the look's shapes.
-struct CharDrawOpts { VoxelLight light{1, 0}; vec4 tint{0}; bool fp = false, detail = true, headOnly = false; };
+struct CharDrawOpts { VoxelLight light{1, 0}; vec4 tint{0}; bool fp = false, detail = true, headOnly = false; double time = 0; glm::dvec3 camPos{0}; };   // time / camPos: for the rod tip record
 void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear& w, const mat4& base, const CharDrawOpts& o);
 // skins.js skinFace: the lid down over the eyes now and then (always in sleep) and, while ps.talk, the mouth opening and closing.
 // head = the head's matrix (part * scale); VoxelRenderer already begun.

@@ -583,6 +583,13 @@ void PlayerController::throwStack(ItemStack s) {
 
 void PlayerController::respawn() { respawnPlayer(lv, p); mining.active = false; }
 
+// (enchanting.h and mob_combat.h redeclare things gameplay.h has; these are all the bow needs)
+float enchArrowDamageFactor(const ItemStack& bow);
+int enchArrowPunch(const ItemStack& bow);
+bool enchArrowFlame(const ItemStack& bow);
+bool enchInfinity(const ItemStack& bow);
+void igniteEntity(Entity& e, float t);
+
 // ---- bow and arrows (blocks2.js) ----------------------------------------------------------------
 class ArrowEntity : public Entity {
 public:
@@ -617,8 +624,9 @@ public:
         if (player && static_cast<Player*>(e.get())->dead) continue;
         if (n.x > e->pos.x - e->w - 0.1f && n.x < e->pos.x + e->w + 0.1f && n.z > e->pos.z - e->w - 0.1f && n.z < e->pos.z + e->w + 0.1f && n.y > e->pos.y && n.y < e->pos.y + e->h) {
           float speed = glm::length(vel);
-          DamageSource src; src.attacker = owner; src.knock = 3; src.tool = "arrow"; src.type = "arrow";
+          DamageSource src; src.attacker = owner; src.knock = 3 * (1 + 1.2f * data.value("punch", 0)); src.tool = "arrow"; src.type = "arrow";   // Punch (enchanting.js)
           float dealt = damageEntity(lv, *e, std::max(1.f, std::round(data.value("damage", 3.0f) * speed / 30)), src);
+          if (data.value("flame", false) && !e->isPlayer()) igniteEntity(*e, 5);
           Entity* o = owner ? lv.entity(owner) : nullptr;
           if (dealt > 0 && o && o->isPlayer()) { char buf[16]; snprintf(buf, sizeof buf, "%g", std::round(dealt * 10) / 10); floatText(lv, *static_cast<Player*>(o), e->pos + vec3(0, e->h + 0.2f, 0), buf, "#ffffff"); }
           sfxAt(lv, "hit", e->pos);
@@ -654,7 +662,7 @@ void PlayerController::updateHeldTools(float dt, const PlayerInput& in) {
     bool hasArrow = (!p.offhand[0].empty() && p.offhand[0].id == "arrow") || playerCount(p, "arrow") > 0;
     if (in.use) {
       if (!hasArrow && !p.creative()) { if (in.usePressed) toastMsg("You need arrows"); bowPull = 0; }
-      else bowPull = std::min(1.25f, bowPull + dt);
+      else { if (bowPull <= 0) sfxUi(lv, p, "bow_draw"); bowPull = std::min(1.25f, bowPull + dt); }   // a creak as you draw (bows.js)
     } else if (bowPull > 0) {
       if (bowPull > 0.12f) {
         float power = std::min(1.f, bowPull);
@@ -662,9 +670,12 @@ void PlayerController::updateHeldTools(float dt, const PlayerInput& in) {
         vec3 L = lookVector(p.yaw, p.pitch); float sp = 8 + power * 30;
         auto a = std::make_unique<ArrowEntity>();
         a->realm = p.realm; a->pos = p.pos + vec3(L.x * 0.4f, p.eye - 0.1f + L.y * 0.4f, L.z * 0.4f); a->vel = L * sp;
-        a->data = {{"owner", p.id}, {"damage", 3 + power * 6}, {"pickup", !p.creative()}};
+        a->data = {{"owner", p.id}, {"damage", (3 + power * 6) * enchArrowDamageFactor(held)}, {"pickup", !p.creative() && !enchInfinity(held)}};
+        if (int pu = enchArrowPunch(held)) a->data["punch"] = pu;
+        if (enchArrowFlame(held)) a->data["flame"] = true;
         a->aim();
         lv.spawn(std::move(a));
+        if (enchInfinity(held) && !p.creative()) p.give(ItemStack("arrow", 1));   // Infinity: the arrow isn't used up
         sfxUi(lv, p, "bow");
         wearHeld(lv, p, 1);
       }

@@ -12,6 +12,7 @@
 #include "audio/audio.h"
 #include "render/chest_layer.h"
 #include "sim/machines.h"
+#include "sim/enchanting.h"
 #include <imgui.h>
 #include <imgui_stdlib.h>
 
@@ -525,7 +526,7 @@ public:
     else if (f && f->k == H_CUT && f->i < (int)sess->cutOpts.size()) { itemInfoText(ItemStack(sess->cutOpts[f->i].first, sess->cutOpts[f->i].second), &sess->p, &lines); lines.push_back({"  A one \xC2\xB7 Y all", 0xa8987e}); }
     float x = p.x;
     for (auto& [txt, c] : lines) {
-      std::string s = txt; if (!s.empty() && s[0] == '\x01') s = s.substr(9);
+      std::string s = txt; if (!s.empty() && s[0] == '\x02') continue; if (!s.empty() && s[0] == '\x01') s = s.substr(9);
       ImVec2 ts = textSize(F_BODY, (s + "  ").c_str(), 0, sc);
       if (x + ts.x > p.x + w) break;
       text(dl, F_BODY, ImVec2(x, p.y), col::rgb(c), s.c_str(), 0, sc); x += ts.x;
@@ -538,7 +539,7 @@ public:
     for (auto& x : hits) if (x.contains(m)) h = &x;
     if (!h) return;
     ItemStack s;
-    if (h->k == H_SLOT) { const ItemStack* st = sess->at(h->g, h->i); if (st) s = *st; }
+    if (h->k == H_SLOT) { const ItemStack* st = sess->at(h->g, h->i); if (st) { if (st->id == "enchanted_book") enchOf(*const_cast<ItemStack*>(st)); s = *st; } }   // a treasure book settles what it holds the first time it is looked at
     else if (h->k == H_BOOKR) { const Recipe& r = reg().recipes[h->i]; s = ItemStack(r.out, r.n); }
     else if (h->k == H_CI) s = ItemStack(h->s, 1);
     else if (h->k == H_CUT && h->i < (int)sess->cutOpts.size()) s = ItemStack(sess->cutOpts[h->i].first, sess->cutOpts[h->i].second);
@@ -547,7 +548,7 @@ public:
     itemInfoText(s, &sess->p, &lines);
     float z = Z(), maxW = 260 * z - 16 * z, k = 13.f / 15.f;
     float w = 0, hgt = 0;
-    for (auto& [t, c] : lines) { ImVec2 ts = textSize(F_BODY, t.c_str(), maxW, k); w = std::max(w, ts.x); hgt += ts.y; }
+    for (auto& [t, c] : lines) { if (!t.empty() && t[0] == '\x02') { w = std::max(w, 120 * z); hgt += 8 * z; continue; } ImVec2 ts = textSize(F_BODY, t.c_str(), maxW, k); w = std::max(w, ts.x); hgt += ts.y; }
     ImDrawList* dl = ImGui::GetForegroundDrawList();
     ImVec2 p(m.x + 14 * z, m.y + 10 * z), size(w + 16 * z, hgt + 10 * z);
     p.x = std::max(4 * z, std::min(p.x, (float)a.width - size.x - 6 * z)); p.y = std::max(4 * z, std::min(p.y, (float)a.height - size.y - 6 * z));
@@ -557,6 +558,12 @@ public:
     float y = p.y + 5 * z;
     for (auto& [t, c] : lines) {
       std::string s = t; float x = p.x + 8 * z;
+      if (!s.empty() && s[0] == '\x02') {   // .gearbar: 120 x 5, the level's progress
+        float fr = (float)std::atof(s.c_str() + 1);
+        dl->AddRectFilled(ImVec2(x, y + z), ImVec2(x + 120 * z, y + 6 * z), col::rgb(0x1a120a)); dl->AddRect(ImVec2(x, y + z), ImVec2(x + 120 * z, y + 6 * z), col::black);
+        dl->AddRectFilled(ImVec2(x + z, y + 2 * z), ImVec2(x + z + 118 * z * clampv(fr, 0.f, 1.f), y + 5 * z), col::rgb(0x9bd34a));
+        y += 8 * z; continue;
+      }
       if (!s.empty() && s[0] == '\x01') { u32 dc = (u32)std::strtoul(s.c_str() + 2, nullptr, 16); float b = 10 * z; dl->AddRectFilled(ImVec2(x, y + 3 * z), ImVec2(x + b, y + 3 * z + b), col::rgb(dc)); dl->AddRect(ImVec2(x, y + 3 * z), ImVec2(x + b, y + 3 * z + b), col::black); x += b + 4 * z; s = s.substr(9); }
       text(dl, F_BODY, ImVec2(x, y), col::rgb(c), s.c_str(), maxW, k);
       y += textSize(F_BODY, s.c_str(), maxW, k).y;
