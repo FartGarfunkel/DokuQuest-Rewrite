@@ -53,6 +53,20 @@ const StructurePlan* locateStructure(const WorldGen& wg, int dim, const std::str
 bool debugSpawnPoint(const WorldGen& wg, const std::string& spec, vec3& pos, float& yaw) {
   int x, y, z;
   if (sscanf(spec.c_str(), "%d,%d,%d", &x, &y, &z) == 3) { pos = vec3(x + 0.5f, y, z + 0.5f); return true; }
+  if (spec == "classic_dungeon" || spec == "monster_room") {
+    // the nearest Alpha/Beta monster room (gen/dungeons_classic.cpp): generate chunks outward until one has a cage
+    DimGenerator* g = wg.forDim(DIM_OVERWORLD);
+    for (int r = 0; r < 24 && g; r++) for (int cz = -r; cz <= r; cz++) for (int cx = -r; cx <= r; cx++) {
+      if (std::max(std::abs(cx), std::abs(cz)) != r) continue;
+      Chunk ch(DIM_OVERWORLD, cx, cz); g->generate(ch);
+      for (auto& [i, e] : ch.blockEntities) if (e.value("dungeon", false)) {
+        const int lx = i & 15, lz = (i >> 4) & 15, ly = i >> 8;
+        pos = vec3(cx * 16 + lx + 1.5f, dimBase(DIM_OVERWORLD) + ly, cz * 16 + lz + 1.5f); yaw = 0;
+        return true;
+      }
+    }
+    return false;
+  }
   std::string kind = spec; const bool inside = !kind.empty() && kind.back() == '!';
   if (inside) kind.pop_back();
   const int k = findKind(kind);

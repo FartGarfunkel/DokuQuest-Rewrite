@@ -5,6 +5,7 @@
 #include "gen/generator.h"
 #include "gen/structures.h"
 #include "gen/trees.h"
+#include "gen/carvers.h"
 
 namespace dq {
 
@@ -45,13 +46,16 @@ public:
 
 private:
   struct BaseCol { int h; double hc; u8 biome; double temp, humid; };
-  struct CaveField { float a[5 * 33 * 5], b[5 * 33 * 5], c[5 * 33 * 5]; };
   BaseCol baseColumn(int x, int z) const;
   double riverNoise(int x, int z) const;
-  void buildCaves(CaveField& f, int bx, int bz) const;
-  static bool isCave(const CaveField& f, int x, double yo, int z);
-  bool caveAt(int wx, double yo, int wz) const;     // the same test without a field (tree ground checks)
+  // gen/underground.cpp: Minecraft Beta style underground (carvers, ore veins, lava lakes, springs)
+  void initUnderground();
+  void carve(GenBuf& b, const OwColumn* cols, int cx, int cz) const;
   void placeOres(GenBuf& b, int cx, int cz, Mulberry32& rnd) const;
+  void placeLakes(GenBuf& b, const OwColumn* cols, int cx, int cz) const;
+  void placeSprings(GenBuf& b, const OwColumn* cols, int cx, int cz) const;
+  // gen/dungeons_classic.cpp: Minecraft Alpha/Beta monster rooms (cobblestone, a cage, a chest or two)
+  void placeDungeons(GenBuf& b, Chunk& ch, const OwColumn* cols) const;
   void placeTrees(GenBuf& b, int cx, int cz) const;
   void writeTree(GenBuf& b, int cx, int cz, const TreeSpec& t, std::vector<TreePart>& parts) const;
   void decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) const;
@@ -62,6 +66,8 @@ private:
 
   i32 seed_;
   GenBlocks B;
+  CarveRules carve_;
+  std::vector<u8> rockRep_, oreRep_;   // what rock blobs / ores may replace
   SimplexNoise nCont, nHill, nDetail, nMount, nRidge, nTemp, nHumid, nCave1, nCave2, nCave3, nFloor, nRiver, nDeep, nDeepC;
 };
 
