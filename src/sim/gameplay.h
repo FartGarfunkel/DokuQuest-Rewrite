@@ -51,7 +51,10 @@ Entity* dropItem(Level& lv, int realm, ItemStack s, vec3 pos, bool scatter, floa
 std::vector<ItemStack> blockDrops(Level& lv, World& w, int x, int y, int z, BlockId id, u8 meta, const ToolInfo* tool, bool washed);
 void dropBlockItems(Level& lv, World& w, int x, int y, int z, BlockId id, bool washed, u8 meta = 0, const ToolInfo* tool = nullptr);
 void spillEntity(Level& lv, World& w, const json& ent, int x, int y, int z);   // container contents scatter
+#ifndef DQ_GRANTXP_DECLARED
+#define DQ_GRANTXP_DECLARED
 void grantXP(Level& lv, Player& p, int n, const vec3* at = nullptr);
+#endif
 // A felled tree toppling away from the chopper (blocks: x,y,z,id); drops land along its fall.
 Entity* spawnFallingTree(Level& lv, int realm, const std::vector<std::array<int, 4>>& blocks, ivec3 pivot, float dirYaw, const std::vector<ItemStack>& drops);
 std::vector<Player*> playersIn(Level& lv, int realm);   // live players in a realm (the original's pawns())

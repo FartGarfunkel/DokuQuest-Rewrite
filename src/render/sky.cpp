@@ -175,6 +175,22 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd) {
   int realm = f.cam.realm;
   int d = realm == REALM_MAIN ? dimOfY(clampv((int)std::floor(f.cam.pos.y), 0, WORLD_H - 1)) : DIM_OVERWORLD;
   SkyEnv e = computeSkyEnv(lv, d, realm, f.cam.pos, true);
+  // weather.js: rain, mist and sandstorms are out under the sky. Below ground or indoors (no sky light at the
+  // head) the weather's fog and grey give way to the clear land's sky, smoothly, so a cave isn't filled with a storm.
+  if (realm == REALM_MAIN && (e.mist > 0.01f || e.raining > 0.01f)) {
+    if (World* w = lv.worldIfOpen(realm)) {
+      int sky = w->getLight(ifloor(f.cam.pos.x), ifloor(f.cam.pos.y), ifloor(f.cam.pos.z)) >> 4;
+      static float open = 1; float want = std::clamp((sky - 3) / 9.f, 0.f, 1.f);
+      open += (want - open) * 0.05f;
+      if (open < 0.999f) {
+        SkyEnv c = baseEnv(lv, d, realm, g_settings);
+        auto mixv = [&](vec3 a, vec3 b) { return b + (a - b) * open; };
+        e.fog = mixv(e.fog, c.fog); e.horizon = mixv(e.horizon, c.horizon); e.zenith = mixv(e.zenith, c.zenith);
+        e.day = c.day + (e.day - c.day) * open; e.fogStart = c.fogStart + (e.fogStart - c.fogStart) * open;
+        e.mist *= open; e.raining *= open;
+      }
+    }
+  }
   // looking out from under water or lava (game.js viewEnv)
   if (World* w = lv.worldIfOpen(realm)) {
     BlockId eye = w->getBlock(ifloor(f.cam.pos.x), ifloor(f.cam.pos.y), ifloor(f.cam.pos.z));

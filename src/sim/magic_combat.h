@@ -34,7 +34,10 @@ float mobStatus(const Entity& e, const char* key);
 
 // ---- experience (game/player.js) ----
 int addXP(Player& p, int n);                                     // returns levels gained
+#ifndef DQ_GRANTXP_DECLARED
+#define DQ_GRANTXP_DECLARED
 void grantXP(Level& lv, Player& p, int n, const vec3* at = nullptr);   // with Insight and Mending (enchanting.js)
+#endif
 void spendLevels(Player& p, int n);
 
 // ---- other things the spells ask of the world ----
