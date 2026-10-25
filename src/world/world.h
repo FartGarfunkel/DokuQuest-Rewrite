@@ -88,6 +88,7 @@ public:
   // ---- saving ----
   void saveDirty(bool all = false);        // writes modified chunks (background unless all)
   void flush();                            // wait for pending writes
+  std::shared_ptr<RegionStore> regionStoreShared() const { return store; }   // saved chunks (distant terrain reads them on workers)
 
   u32 changeFlags = 0;     // SetFlags of the setBlock being reported to systems (net/ skips NoModify/FromNet changes)
   RegionStore* regionStore() const { return store.get(); }   // net/: a client keeps the server's chunk records here

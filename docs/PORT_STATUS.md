@@ -14,7 +14,7 @@ Each workstream keeps its own notes in `docs/port/<area>.md` (what was ported, w
 | Launcher, updater, Mod Studio, packaging | launcher/desktop/*, dokuquest-mod-studio.html, tools/package.sh | launcher/, .github/ | done (docs/port/launcher.md) |
 | Creatures (sim + voxel bodies) | game/entities.js, mobai, monsters, nightmobs, bestiary, fauna, aquatic, quarrels, husbandry, pets, render/rigs*, models, mobtex, monstex, anim | sim/, render/ | wave 2 |
 | Characters & creator | render/skins.js, ui/creator.js, skineditor.js, game/charparts.js, capes, carried, anim.js (players), gear3d.js (drawing) | assets/skin, char_*, render/char_*, ui/creator_screen, skineditor_screen | done (wave 2) — see docs/port/chars.md |
-| Distant terrain, skies, clouds, weather | game/distant.js, skies.js, render/clouds.js, game/weather.js, particles2, ambientfx | render/ | wave 2 |
+| Distant terrain, skies, clouds, weather | game/distant.js, skies.js, render/clouds.js, game/weather.js, particles2, ambientfx (+ blockfx emitters, seamless/theend/riftarc skies) | render/distant*, sky, clouds, particles, env_layers; sim/weather | done (see docs/port/lod.md) |
 | Portals & seamless dimensions | game/portals.js, portallinks, portalview, seamless.js, worlds.js (+ theend.js portal/void parts, riftarc.js tears as virtual portals) | sim/portals, sim/seamless, render/portal_view | ported (see docs/port/portals.md) |
 | Structures, villages, towns | game/structures.js, villages, villageflat, towns, towns3, dungeons, stronghold, deepdark, deephalls, seas, places | gen/ | wave 2 |
 | Network, server, mods | net/*.js, game/server.js, mods.js, together.js, launcher/desktop/lan.js | net/, server/, mod/ | done: protocol, server, LAN, JS/native mods (docs/port/net.md; together.js party UI left) |

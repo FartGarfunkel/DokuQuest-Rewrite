@@ -11,6 +11,7 @@ bool initCore(const CoreOptions& o) {
   registerWorldTypes();
   registerCommands();
   registerModApi();
+  registerWeatherSystem();
   registerPortals();
   return true;
 }
