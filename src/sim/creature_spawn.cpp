@@ -4,6 +4,7 @@
 // lives here), item merging (game.js updateEntities), players' status effects; plus registerCreatures().
 // No phantoms, ever.
 #include "sim/weapon_rack.h"
+#include "sim/slime_goo.h"
 #include "sim/creature.h"
 #include "sim/creature_entities.h"
 #include "sim/mob_combat.h"
@@ -670,6 +671,7 @@ void registerCreatures() {
   registerPocket();
   registerUsables();
   registerWeaponRack();
+  registerSlimeGoo();
   // every MOB_TYPES key is a creature (the "" fallback catches types added later by data packs and mods)
   registerEntityFactory("", [](const std::string& t) -> std::unique_ptr<Entity> { if (!isCreatureType(t)) return nullptr; return std::make_unique<Creature>(t); });
   registerLevelSystem([](Level& lv) { return std::make_shared<CreatureSystem>(lv); });

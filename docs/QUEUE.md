@@ -59,5 +59,7 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
 
 - In-game Options laid out like the launcher's options (user, 2026-10-25): after the weekly reset.
 
+- Holiday events from the PC clock (user, 2026-10-25): October = Halloween (zombies and skeletons in pumpkin / jack-o'-lantern heads, a hostile pumpkin creature that stands up on a vine body, pumpkins sprouting, spooky decorations), December = Christmas, and so on for each holiday; villagers decorate their towns for the current event. Our own designs.
+
 ## Roadmap (after the bugs)
 Start in the wild, potions stack to 16, test-build small fixes, coins/economy, roads and bridges, travellers, saddle bags, bigger ship, poses, torches on fences, chains/lanterns, rift to 10 fragments + slow pacing + lore, graphics presets, built-in shader levels, Skylands content, Shadowbloom ports, Iris/OptiFine shader packs.

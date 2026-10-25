@@ -2,6 +2,7 @@
 // (game/entities.js DroppedItem / Projectile / FallingTree, game/blocks2.js Arrow, game/monsters.js HexFlask,
 // game/bestiary.js llama spit, game/dismember.js Gib, game/theend.js snowballs' landing puff).
 #include "sim/creature_entities.h"
+#include "sim/slime_goo.h"
 #include "sim/mob_combat.h"
 #include "sim/explosion.h"
 #include "sim/physics.h"
@@ -109,7 +110,8 @@ public:
     World& wd = lv.world(realm);
     std::string kind = data.value("kind", "fireball");
     Entity* owner = lv.entity(data.value("owner", 0u));
-    if (kind == "spit" || kind == "snow") {
+    bool thrown = kind == "snow" || kind == "egg" || kind == "slime";   // snowballs, eggs and slimeballs thrown by hand
+    if (kind == "spit" || thrown) {
       if (age > (kind == "spit" ? 3 : 8)) { removed = true; return; }
       vel.y -= (kind == "spit" ? 12 : 20) * dt;
       for (int s = 0; s < 3; s++) {
@@ -117,10 +119,10 @@ public:
         for (Entity* p : pawnsOf(lv, realm)) if (p != owner && std::fabs(p->pos.x - pos.x) < 0.5f && std::fabs(p->pos.z - pos.z) < 0.5f && pos.y > p->pos.y - 0.2f && pos.y < p->pos.y + 1.9f) {
           DamageSrc d; d.knock = 2;
           damageEntity(lv, *p, kind == "spit" ? 1 : 0.001f, owner, "projectile", d);
-          if (kind == "snow") knockback(*p, glm::normalize(vec3(vel.x, 0, vel.z) + vec3(1e-4f)) * 2.f);
+          if (thrown) knockback(*p, glm::normalize(vec3(vel.x, 0, vel.z) + vec3(1e-4f)) * 2.f);
           splat(lv, kind); return;
         }
-        if (kind == "snow") if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.1f)) { DamageSrc d; d.knock = 2; damageEntity(lv, *c, c->type == "cinder_golem" ? 1 : 0.001f, owner, "projectile", d); splat(lv, kind); return; }
+        if (thrown) if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.1f)) { DamageSrc d; d.knock = 2; damageEntity(lv, *c, c->type == "cinder_golem" ? 1 : 0.001f, owner, "projectile", d); splat(lv, kind); return; }
         if (solidAt(wd, pos)) { splat(lv, kind); return; }
       }
       if (kind == "spit" && frand() < dt * 20) mobBurst(lv, pos, "white", 1, 0.1f);
@@ -160,7 +162,16 @@ public:
     if (data.value("kind", "") == "ghast") { ExplodeOpts o; o.source = data.value("owner", 0u); explode(lv, realm, pos, 1, o); }   // nether2.js: a ghast's fireball bursts open what it hits
   }
   void gustPop(Level& lv) { removed = true; mobBurst(lv, pos, "gust_ball", 16, 2.5f); lv.fx->sound("gust_pop", pos, 20); }
-  void splat(Level& lv, const std::string& kind) { removed = true; if (kind == "snow") mobBurst(lv, pos, "snow", 8, 2); else mobBurst(lv, pos, "white", 10, 0.8f); }
+  void splat(Level& lv, const std::string& kind) {
+    removed = true;
+    if (kind == "snow") mobBurst(lv, pos, "snow", 8, 2);
+    else if (kind == "egg") {   // Minecraft: an egg breaks, and one in eight hatches a chick (one in 32 of those, four)
+      mobBurst(lv, pos, "white", 8, 1.2f); lv.fx->sound("pop", pos, 16);
+      if (frand() < 0.125f) for (int i = 0, n = frand() < 1.f / 32 ? 4 : 1; i < n; i++)
+        if (Creature* c = spawnCreature(lv, realm, "chicken", pos - vec3(vel.x, 0, vel.z) * 0.02f + vec3(0, 0.1f, 0))) { c->baby = true; c->growT = 0; }
+    } else if (kind == "slime") slimeGooAt(lv, realm, pos - glm::normalize(vel + vec3(1e-4f)) * 0.15f, 0.5f);   // a splat and a sticky puddle
+    else mobBurst(lv, pos, "white", 10, 0.8f);
+  }
 };
 
 // ------------------------------------------------------------------ hex flasks (monsters.js)

@@ -5,6 +5,10 @@
 #include "sim/player.h"
 #include "sim/effects.h"
 #include "core/registry.h"
+#include "sim/creature_entities.h"
+#include <unordered_map>
+#include <chrono>
+#include "sim/content.h"
 
 namespace dq {
 
@@ -63,6 +67,18 @@ void registerUsables() {
         lv.fx->sound("firework_launch", e->pos, 40);
         lv.spawn(std::move(e));
         if (!p->creative()) useUp(*p);
+        return false;
+      }
+      if (d->key == "egg" || d->key == "slime_ball") {   // thrown by hand like snowballs (theend.js; the End story throws those)
+        static std::unordered_map<u32, double> cd;
+        double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        if (cd[p->id] > now) return false;
+        cd[p->id] = now + 0.25;
+        vec3 lk = lookVec(*p);
+        vec3 eye = p->pos + vec3(0, 1.62f, 0);
+        spawnProjectile(lv, p->realm, eye - vec3(0, 0.1f, 0) + lk * 0.5f, lk * 18.f + vec3(0, 2, 0), d->key == "egg" ? "egg" : d->key == "slime_ball" ? "slime" : "snow", p);
+        if (!p->creative()) useUp(*p);
+        p->swingT = 0.01f; lv.fx->soundUi(p->id, "bow");
         return false;
       }
       if (d->has("gustPuff")) {

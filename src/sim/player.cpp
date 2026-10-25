@@ -128,6 +128,11 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
   else if (inWater) speed *= 0.46f;
   if (inLava) speed *= 0.4f;
   if (c.web) speed *= 0.2f;
+  if (data.is_object() && data.contains("goo")) {   // sim/slime_goo.cpp: a slime's puddle sticks to your feet
+    float g = data.value("goo", 0.f) - dt;
+    if (g <= 0) data.erase("goo"); else data["goo"] = g;
+    if (!flying) speed *= 0.35f;
+  }
   if (slow > 0) speed *= 0.55f;
   speed *= opts.slow;
   BlockId under = wd.getBlock(ifloor(pos.x), ifloor(pos.y - 0.1f), ifloor(pos.z));

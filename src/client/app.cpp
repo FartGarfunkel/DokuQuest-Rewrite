@@ -110,6 +110,13 @@ void App::reloadTiles() {
   loadBuiltinTiles(tiles);
   addBuiltinTileAnims(tiles);   // render/tile_anim.h (before a pack replaces tiles)
   tiles.packName = applyResourcePack(tiles, settings.resourcePack);
+  // ice you can see through like Minecraft's (about 60 % cover), whichever pack painted it
+  for (const char* k : {"ice", "frosted_ice"}) {
+    auto it = tiles.index.find(k);
+    if (it == tiles.index.end() || it->second < 0 || it->second >= tiles.count) continue;
+    u8* px = tiles.rgba.data() + (size_t)it->second * tiles.size * tiles.size * 4;
+    for (int i = 0; i < tiles.size * tiles.size; i++) if (px[i * 4 + 3] > 8 && px[i * 4 + 3] != 253) px[i * 4 + 3] = (u8)std::min(155, px[i * 4 + 3] * 3 / 4);
+  }
   bakeTileRelief(tiles);   // once per tile set: whole-voxel geometry + smooth normal maps (assets/tile_relief.cpp)
   for (int p = 0; p < 2; p++) {
     for (GLuint* t : {&tileTex.color[p], &tileTex.height[p], &tileTex.normal[p]}) { if (*t) glDeleteTextures(1, t); *t = 0; }
