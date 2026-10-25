@@ -1,4 +1,5 @@
 // client/client_fx.cpp — see client_fx.h.
+#include "sim/creature.h"
 #include "client/client_fx.h"
 #include "client/session.h"
 #include "client/app.h"
@@ -71,12 +72,13 @@ public:
     sc.time = s.level->info.time;
     if ((placeT -= dt) <= 0) { placeT = 2; place = placeMood(*s.level, p.pos); }
     sc.place = place;
-    // the nearest boss within 40 blocks (music2.js bossNear); TODO(mobs): sleeping dragons don't count
+    // the nearest boss within 40 blocks (music2.js bossNear); (sleeping dragons and tamed ones don't count)
     float bd = 40;
     for (auto& e : s.level->entities()) {
       if (e->removed || e->realm != p.realm || e->isPlayer()) continue;
       auto it = reg().mobs.find(e->type);
       if (it == reg().mobs.end() || !it->value("boss", false)) continue;
+      if (auto* c = dynamic_cast<Creature*>(e.get()); c && (c->state == "sleep" || !c->alive() || c->tamed)) continue;   // sleeping dragons don't count
       float d = glm::distance(e->pos, p.pos);
       if (d < bd) { bd = d; sc.boss = true; sc.bossId = e->id; sc.bossHp = e->maxHp > 0 ? e->hp / e->maxHp : 1;
         sc.bossDragon = e->type.find("dragon") != std::string::npos; sc.bossEerie = e->type == "herobrine"; }

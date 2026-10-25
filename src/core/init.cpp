@@ -16,6 +16,7 @@ bool initCore(const CoreOptions& o) {
   registerPortals();
   registerMagic();
   registerContent();
+  registerEndStory();
   registerRedstone();
   return true;
 }

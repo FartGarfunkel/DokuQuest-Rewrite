@@ -75,6 +75,7 @@ public:
   float walk = 0, walkAmt = 0, speedNow = 0, lastWant = 0, landT = 0, fallV = 0, swingT = 0;
   bool hitWall = false, hitCeiling = false, wantJump = false, lockMove = false;
   float flyVy = 0, swimVy = 0, swimPitch = 0; bool hasFlyVy = false;
+  float breathT = 0, hoverT = 0;       // dragons (sim/dragons.cpp): breathing / hovering, for the wing beat
   float headYawRel = 0, headPitch = 0;
   u32 lookAt = 0;
   RigLife life;
@@ -115,7 +116,7 @@ public:
   // pets and riding
   std::string owner, petName; bool tamed = false, saddled = false, stay = false;
   u32 petFoe = 0, riddenBy = 0, jockeyOf = 0, jockeyRider = 0;
-  struct RideInput { float fwd = 0, strafe = 0; bool jump = false, sprint = false; } rideIn;
+  struct RideInput { float fwd = 0, strafe = 0; bool jump = false, sprint = false, descend = false; } rideIn;   // descend: sneak on a flying mount in the air
   // bees
   bool hasHive = false, hasFlower = false, pollen = false; ivec3 hive{0}, flower{0}; int beeState = 0, visits = 0, wantVisits = -1; float beeSeekT = 0, workT = 0, beeWanderT = 0;   // 0 seek 1 work 2 home
   // path finding (mobai.cpp)
@@ -175,6 +176,8 @@ public:
 
 private:
   void update(Level& lv, float dt);
+  float hurtBase(Level& lv, float amount, const DamageSrc& src);
+  OptMove brainHook(Level& lv, Entity* p, float dist, float dyp, float toPlayer, float dt);
   void idleHabits(Level& lv, float dt, float want);
   void ghostStep(Level& lv, float dt);
 };
@@ -216,6 +219,20 @@ using HabitatFn = std::function<std::string(World& w, int x, int z, BlockId grou
 void setHabitatProvider(HabitatFn f);
 std::string habitatAt(World& w, int x, int z, BlockId ground);
 void summonGolem(Level& lv, int realm, vec3 at, Entity* near);   // game.js summonGolem (boss arenas / commands)
+
+// Per-type hooks other areas plug in (the End, dragons, the Deep Dark, the story: sim/endstory*). All optional.
+//   brain       replaces the built-in AI while it returns a move (nullopt = the built-in chain runs: riding, pets, ...)
+//   beforeHurt  may change the amount; false = the blow does nothing (Creature::hurt returns 0)
+//   afterHurt   after the damage went in (dealt > 0 or not)
+//   onUse       a player used something on it (before useOnCreature's own rules); true = handled
+struct CreatureHooks {
+  std::function<OptMove(Level&, Creature&, Entity* p, float dist, float dyp, float toPlayer, float dt)> brain;
+  std::function<bool(Level&, Creature&, float& amount, const DamageSrc&)> beforeHurt;
+  std::function<void(Level&, Creature&, float dealt, const DamageSrc&)> afterHurt;
+  std::function<bool(Level&, Player&, Creature&, bool sneaking)> onUse;
+};
+void setCreatureHooks(const std::string& type, CreatureHooks h);
+const CreatureHooks* creatureHooks(const std::string& type);   // nullptr = none
 
 void registerCreatures();     // entity factories + the creature LevelSystem (called from initCore)
 

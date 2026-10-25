@@ -194,7 +194,18 @@ static MobContacts contacts(World& w, const Entity& e) {
 }
 
 // ------------------------------------------------------------------ hurt
+static std::unordered_map<std::string, CreatureHooks>& hookMap() { static std::unordered_map<std::string, CreatureHooks> m; return m; }
+void setCreatureHooks(const std::string& type, CreatureHooks h) { hookMap()[type] = std::move(h); }
+const CreatureHooks* creatureHooks(const std::string& type) { auto& m = hookMap(); if (m.empty()) return nullptr; auto it = m.find(type); return it == m.end() ? nullptr : &it->second; }
+
 float Creature::hurt(Level& lv, float amount, const DamageSrc& src) {
+  const CreatureHooks* HK = creatureHooks(type);
+  if (HK && HK->beforeHurt && !HK->beforeHurt(lv, *this, amount, src)) return 0;
+  float dealt = hurtBase(lv, amount, src);
+  if (HK && HK->afterHurt) HK->afterHurt(lv, *this, dealt, src);
+  return dealt;
+}
+float Creature::hurtBase(Level& lv, float amount, const DamageSrc& src) {
   Entity* a = ent(lv, src.attacker);
   auto* ac = dynamic_cast<Creature*>(a);
   // pets.js: pets don't take your blows by accident
@@ -274,7 +285,8 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   deathTime = 0.0001f;
   auto roll = [](int a, int b) { return a + (int)std::floor(frand() * (b - a + 1)); };
   vec3 at = pos + vec3(0, 0.5f, 0);
-  if (!baby) for (auto& d : T->drops) if (frand() < d.chance) { int n = roll(d.lo, d.hi); if (n > 0) dropItem(lv, realm, ItemStack(d.id, n), at, true); }
+  bool noDrops = data.contains("noDrops") && data["noDrops"] == true;   // summons, a called-back dragon (its own table)
+  if (!baby && !noDrops) for (auto& d : T->drops) if (frand() < d.chance) { int n = roll(d.lo, d.hi); if (n > 0) dropItem(lv, realm, ItemStack(d.id, n), at, true); }
   if (T->woolly && !sheared && !baby) dropItem(lv, realm, ItemStack(color == "white" || color.empty() ? "wool" : color + "_wool", 1), at, true);
   if (type == "cinder_golem") {
     json& flags = lv.info.data["flags"]; if (!flags.is_object()) flags = json::object();
@@ -378,6 +390,10 @@ void Creature::tick(Level& lv, double dtd) {
   }
 }
 
+OptMove Creature::brainHook(Level& lv, Entity* p, float dist, float dyp, float toPlayer, float dt) {
+  const CreatureHooks* H = creatureHooks(type);
+  return H && H->brain ? H->brain(lv, *this, p, dist, dyp, toPlayer, dt) : std::nullopt;
+}
 void Creature::update(Level& lv, float dt) {
   World& wd = lv.world(realm);
   const Registry& R = reg();
@@ -415,6 +431,7 @@ void Creature::update(Level& lv, float dt) {
   float toPlayer = std::atan2(-dx, -dz);
   lookAt = p ? p->id : 0;
   if (calm) { want = 0; dir = yaw; }
+  else if (OptMove hk = brainHook(lv, p, dist, dyp, toPlayer, dt)) { want = hk->want; dir = hk->dir; }
   else if (OptMove ctl = controlAI(lv, dt)) { want = ctl->want; dir = ctl->dir; }
   else if (type == "cinder_golem") { Move m = bossAI(lv, p, dist, toPlayer, dt); want = m.want; dir = m.dir; }
   else if (T->special) { Move m = specialAI(lv, p, dist, dyp, toPlayer, dt); want = m.want; dir = m.dir; }

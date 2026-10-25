@@ -112,6 +112,12 @@ add_executable(test_content tools/test_content.cpp)
 target_link_libraries(test_content PRIVATE dqcore)
 add_custom_command(TARGET test_content POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_content>/data)
+# The End, dragons, the Deep Dark's guardian, the watcher and the story (headless). Run: build/test_endstory
+add_executable(test_endstory tools/test_endstory.cpp)
+target_link_libraries(test_endstory PRIVATE dqcore)
+add_custom_command(TARGET test_endstory POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_endstory>/data)
+add_test(NAME endstory COMMAND test_endstory)
 # Redstone, rails/carts, boats/ships and machines test (headless). Run: build/test_redstone
 add_executable(test_redstone tools/test_redstone.cpp)
 target_link_libraries(test_redstone PRIVATE dqcore)

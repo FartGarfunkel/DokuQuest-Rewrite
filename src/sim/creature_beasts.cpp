@@ -625,8 +625,10 @@ void dismount(Level& lv, Creature& m, Player& p) {
 Creature* rideControl(Level& lv, Player& p, float fwd, float strafe, bool jump, bool sprint, bool sneak) {
   auto* m = p.riding ? dynamic_cast<Creature*>(lv.entity(p.riding)) : nullptr;
   if (!m || m->removed || !m->alive() || m->riddenBy != p.id) { p.riding = 0; return nullptr; }
-  if (sneak) { dismount(lv, *m, p); return nullptr; }
-  m->rideIn = {fwd, strafe, jump, sprint};
+  // dragons.js: on a flying mount in the air, sneak flies it down instead (off once it has landed)
+  bool descend = sneak && m->T->j.value("flyingMount", false) && m->noGravity && !m->onGround;
+  if (sneak && !descend) { dismount(lv, *m, p); return nullptr; }
+  m->rideIn = {fwd, strafe, jump, sprint, descend};
   return m;
 }
 void petsDefend(Level& lv, Player& owner, Entity& foe) {
@@ -646,6 +648,7 @@ static std::string petLabel(const Creature& e) {
 }
 bool useOnCreature(Level& lv, Player& p, Creature& e, bool sneaking) {
   if (!e.alive() || e.removed) return false;
+  if (const CreatureHooks* H = creatureHooks(e.type); H && H->onUse && H->onUse(lv, p, e, sneaking)) return true;
   ItemStack& held = p.held();
   const ItemDef* def = held.def();
   bool mine = e.isPetOf(&p);
