@@ -5,7 +5,6 @@
 //             {"do":"pad","button":"a"}, {"do":"expect","screen":"inventory"}, {"do":"shot","path":"/tmp/a.png"}]}
 // do: key{key,hold} type{text} mouse{button,hold,x?,y?} move{dx,dy} pad{button,hold} padaxis{axis,value,hold}
 //     cmd{text} look{yaw,pitch (degrees)} lookAt{x,y,z} tp{x,y,z} give{item,n} select{slot} setBlock{x,y,z,key}
-//     setEntity{x,y,z,value} (a block's block entity)
 //     anchor (remember the player's block; x/y/z, from/to and block in steps with "rel":true are relative to it)
 //     fill{from:[x,y,z],to:[x,y,z],key}
 //     expect{screen | block:[x,y,z],is | entity,near} report shot{path} save leave open{world} quit
@@ -174,8 +173,6 @@ void runStep(App& a, const json& st) {
   } else if (op == "setBlock" && s) {
     BlockId id = reg().blockId(st.value("key", "air")); ivec3 b = at(st);
     s->world().setBlock(b.x, b.y, b.z, id, (u8)st.value("meta", 0));
-  } else if (op == "setEntity" && s) {   // setEntity{x,y,z,value:{...}} gives a block its block entity (shelf items, spawner mob...)
-    ivec3 b = at(st); s->world().setBlockEntity(b.x, b.y, b.z, st.value("value", json::object()));
   } else if (op == "expect") {
     if (st.contains("screen")) {
       std::string want = st["screen"].is_null() ? "(none)" : st["screen"].get<std::string>();
