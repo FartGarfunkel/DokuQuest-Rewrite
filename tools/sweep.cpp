@@ -11,6 +11,7 @@
 #include "sim/level.h"
 #include "sim/player.h"
 #include "sim/rules.h"
+#include "sim/inv_ops.h"
 #include <cstdio>
 #include <csignal>
 #include <set>
@@ -79,8 +80,8 @@ bool related(const std::string& a, const std::string& b) {
 } // namespace
 
 int main(int argc, char** argv) {
-  bool doItems = true, doBlocks = true; std::string only;
-  for (int i = 1; i < argc; i++) { std::string a = argv[i]; if (a == "--items") doBlocks = false; else if (a == "--blocks") doItems = false; else if (a == "--only" && i + 1 < argc) only = argv[++i]; }
+  bool doItems = true, doBlocks = true, doInv = true; std::string only;
+  for (int i = 1; i < argc; i++) { std::string a = argv[i]; if (a == "--inv") doItems = doBlocks = false; else if (a == "--items") doBlocks = doInv = false; else if (a == "--blocks") doItems = doInv = false; else if (a == "--only" && i + 1 < argc) only = argv[++i]; }
   for (int s : {SIGSEGV, SIGABRT, SIGFPE}) std::signal(s, onCrash);
   std::string ud = "/tmp/dq-sweep"; std::error_code ec; fs::remove_all(ud, ec); fs::create_directories(ud);
   CoreOptions co; co.server = true; co.userDirOverride = ud;
@@ -165,6 +166,50 @@ int main(int argc, char** argv) {
         if (now) { r.c->breakBlock(x, y, z); r.step(1.0, PlayerInput{}); }
       } catch (const std::exception& e) { issue("EXCEPTION", key, e.what()); }
     }
+  }
+  if (doInv) {
+    printf("== sneak + use with a block in hand on stations places the block (furnish.js)\n");
+    for (const char* st : {"chest", "furnace", "crafting_table", "barrel"}) {
+      if (!reg().blockId(st)) continue;
+      r.reset(); screens.clear();
+      r.w().setBlock(0, r.Y, -2, reg().blockId(st), 0); r.lv->tick(TICK_DT);
+      r.p->inv[0] = ItemStack("cobblestone", 8); r.p->selected = 0;
+      r.look(vec3(0.5f, r.Y + 1.0f, -1.5f));   // the station's top face
+      PlayerInput in; in.sneak = true; in.use = true; in.usePressed = true;
+      r.step(0.05, in); in.usePressed = false; r.step(0.3, in);
+      bool placed = r.w().getBlock(0, r.Y + 1, -2) == reg().blockId("cobblestone");
+      if (!placed || !screens.empty()) issue("SNEAK PLACE", st, std::string(placed ? "placed" : "not placed") + (screens.empty() ? "" : ", opened '" + screens[0] + "'"));
+    }
+    printf("== inventory: clicks, drags, equip and unequip never make items\n");
+    auto total = [&](Player& p) {
+      std::map<std::string, int> m;
+      auto add = [&](const std::vector<ItemStack>& v) { for (auto& x : v) if (!x.empty()) { m[x.id] += x.n; if (x.tag.is_object() && x.tag.contains("c") && x.tag["c"].is_array()) for (auto& c : x.tag["c"]) { ItemStack y = ItemStack::fromJson(c); if (!y.empty()) m[y.id] += y.n; } } };
+      add(p.inv); add(p.armor); add(p.offhand); add(p.back); add(p.hook); add(p.charm); add(p.cape);
+      if (!p.cursor.empty()) m[p.cursor.id] += p.cursor.n;
+      return m;
+    };
+    auto check = [&](const char* what, std::map<std::string, int>& before) { auto after = total(*r.p); if (after != before) { std::string d; for (auto& [k, v] : after) if (before[k] != v) d += k + " " + std::to_string(before[k]) + "->" + std::to_string(v) + " "; issue("INV DUPE", what, d); } };
+    r.reset();
+    Player& p = *r.p;
+    p.inv[0] = ItemStack("iron_chestplate", 1); p.inv[1] = ItemStack("cobblestone", 40); p.inv[2] = ItemStack("iron_helmet", 1);
+    if (reg().item("leather_backpack")) { ItemStack bpk("leather_backpack", 1); bpk.tag = json::object(); bpk.tag["c"] = json::array({ItemStack("diamond", 5).toJson(), ItemStack("gold_ingot", 7).toJson()}); p.inv[3] = bpk; }
+    InvOpen o; InvSession S(p, &r.w(), o, false);
+    auto before = total(p);
+    // equip by click (press = dragBegin + release = dragEnd, like the UI) and by plain clicks; unequip; put back
+    for (int round = 0; round < 3; round++) {
+      S.slotClick(Grp::Main, 0, false, false); S.dragBegin(Grp::Armor, 1, false); S.dragEnd(); check("equip chest (drag)", before);
+      S.slotClick(Grp::Armor, 1, false, false); S.dragBegin(Grp::Main, 0, false); S.dragEnd(); check("unequip chest (drag)", before);
+      S.slotClick(Grp::Main, 2, false, false); S.slotClick(Grp::Armor, 0, false, false); check("equip helmet (click)", before);
+      S.slotClick(Grp::Armor, 0, false, false); S.slotClick(Grp::Main, 2, false, false); check("unequip helmet (click)", before);
+      S.slotClick(Grp::Main, 3, false, false); S.dragBegin(Grp::Back, 0, false); S.dragEnd(); check("equip backpack", before);
+      S.slotClick(Grp::Back, 0, false, false); S.dragBegin(Grp::Main, 3, false); S.dragEnd(); check("unequip backpack", before);
+      S.slotClick(Grp::Main, 1, false, false); S.dragBegin(Grp::Main, 5, true); S.dragEnd(); check("pick up then right-click", before);
+      S.dragBegin(Grp::Main, 6, true); S.dragAdd(Grp::Main, 7); S.dragEnd(); check("right-drag", before);
+      S.dragBegin(Grp::Main, 1, false); S.dragEnd(); check("put the rest back", before);
+      S.slotClick(Grp::Main, 0, false, true); check("shift-click armour", before);
+      S.slotClick(Grp::Armor, 1, false, true); check("shift-click off", before);
+    }
+    S.close(); check("close", before);
   }
   printf("SWEEP DONE: %d issues\n", nIssues);
   return nIssues ? 1 : 0;

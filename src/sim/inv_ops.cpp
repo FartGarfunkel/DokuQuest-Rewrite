@@ -52,8 +52,19 @@ json* InvSession::entity(ivec3 pos, bool create, const json& init) {
 
 void InvSession::refresh() {
   ok = true;
-  auto pd = [&](const char* k, size_t n) { return loadArr(p.data.contains(k) ? p.data[k] : json(), n); };
-  back = pd("back", 1); hook = pd("hook", 1); charm = pd("charm", 1); cape = pd("cape", 1); ender = pd("ender", 27);
+  // the gear slots live on the Player (its save record and every gameplay rule use them). Builds up to alpha.3 also
+  // kept a second copy in p.data, and the two drifting apart duplicated backpacks and gear: adopt that copy once
+  // (into empty slots only) and drop it.
+  auto adopt = [&](const char* k, std::vector<ItemStack>& v, size_t n) {
+    if (v.size() < n) v.resize(n);
+    if (p.data.is_object() && p.data.contains(k) && p.data[k].is_array()) {
+      auto old = loadArr(p.data[k], n);
+      for (size_t i = 0; i < n && i < old.size(); i++) if (v[i].empty() && !old[i].empty()) v[i] = old[i];
+      p.data.erase(k);
+    }
+  };
+  adopt("back", p.back, 1); adopt("hook", p.hook, 1); adopt("charm", p.charm, 1); adopt("cape", p.cape, 1); adopt("ender", p.ender, 27);
+  back = p.back; hook = p.hook; charm = p.charm; cape = p.cape; ender = p.ender;
   bp.clear();
   if (int n = packSize(back[0])) bp = loadArr(back[0].tag.is_object() && back[0].tag.contains("c") ? back[0].tag["c"] : json(), n);
   dbl = false; contIsPack = false; furnaceKind.clear();
@@ -127,17 +138,17 @@ void InvSession::refresh() {
 
 void InvSession::store(Grp g) {
   switch (g) {
-    case Grp::Back: p.data["back"] = saveArr(back); break;
-    case Grp::Hook: p.data["hook"] = saveArr(hook); break;
-    case Grp::Charm: p.data["charm"] = saveArr(charm); break;
-    case Grp::Cape: p.data["cape"] = saveArr(cape); break;
+    case Grp::Back: p.back = back; break;
+    case Grp::Hook: p.hook = hook; break;
+    case Grp::Charm: p.charm = charm; break;
+    case Grp::Cape: p.cape = cape; break;
     case Grp::Bp:
-      if (packSize(back[0])) { if (!back[0].tag.is_object()) back[0].tag = json::object(); back[0].tag["c"] = saveArr(bp); p.data["back"] = saveArr(back); }
+      if (packSize(back[0])) { if (!back[0].tag.is_object()) back[0].tag = json::object(); back[0].tag["c"] = saveArr(bp); p.back = back; }
       break;
     case Grp::Cont:
       if (o.mode != "container" || !ok) break;
       if (o.heldPack) { ItemStack& h = p.held(); if (packSize(h)) { if (!h.tag.is_object()) h.tag = json::object(); h.tag["c"] = saveArr(cont); } }
-      else if (o.ender) { ender = cont; p.data["ender"] = saveArr(ender); }
+      else if (o.ender) { ender = cont; p.ender = ender; }
       else if (o.entItems) { if (json* it = o.entItems()) *it = saveArr(cont); }
       else if (o.hasPos && w) {
         const BlockDef& b = reg().block(w->getBlock(o.pos.x, o.pos.y, o.pos.z));
@@ -169,7 +180,7 @@ void InvSession::changed(Grp g) {
   if (o.mode == "container") store(Grp::Cont);
   if (o.mode == "furnace") store(Grp::Furn);
   if (o.mode == "machine") store(Grp::Mach);
-  if (!o.ender) p.data["ender"] = saveArr(ender);
+  if (!o.ender) p.ender = ender;
   if (onChanged) onChanged(g);
   refresh();
 }
@@ -325,6 +336,7 @@ void InvSession::dragEnd() {
   if (!d.right && d.slots.size() == 1) {
     auto [g0, i0] = d.slots[0];
     (*arr(g0))[i0] = d.base[0]; p.cursor = d.orig;
+    changed(g0);   // write the undo back first: slotClick reloads the gear slots from the player (the old dupe)
     slotClick(g0, i0, false, false);
   }
 }
