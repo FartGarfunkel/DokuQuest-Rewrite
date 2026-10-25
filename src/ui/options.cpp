@@ -294,7 +294,7 @@ public:
   template <class F> void cell(const std::string& t, float w, bool clash, bool listening, const char* id, F onClick) {
     float z = Z();
     ImVec2 p = ImGui::GetCursorScreenPos();
-    if (ImGui::InvisibleButton(id, ImVec2(w, 30 * z))) { playClick(); onClick(); }
+    if (ImGui::InvisibleButton(id, ImVec2(w, 30 * z), ImGuiButtonFlags_EnableNav)) { playClick(); onClick(); }
     bool hot = ImGui::IsItemHovered() || (ImGui::IsItemFocused() && navVisible());
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImU32 border = listening ? col::ember : clash ? col::rgb(0xa8402e) : hot ? col::line : 0;

@@ -306,7 +306,7 @@ public:
       const char* sum = "More world options: day and night, game rules, commands";
       float tri = 10 * z; ImVec2 ts = textSize(F_BODY, sum, fw - tri - 6 * z);
       ImVec2 p = ImGui::GetCursorScreenPos();
-      if (ImGui::InvisibleButton("##more", ImVec2(fw, ts.y + 4 * z))) { moreOpen = !moreOpen; playClick(); }
+      if (ImGui::InvisibleButton("##more", ImVec2(fw, ts.y + 4 * z), ImGuiButtonFlags_EnableNav)) { moreOpen = !moreOpen; playClick(); }
       bool hot = ImGui::IsItemHovered() || (ImGui::IsItemFocused() && navVisible());
       ImDrawList* dl = ImGui::GetWindowDrawList();
       ImVec2 c(p.x + tri * 0.5f, p.y + textSize(F_BODY, "A").y * 0.5f + 1 * z);

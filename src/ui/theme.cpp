@@ -262,7 +262,7 @@ static bool itemHot() { return ImGui::IsItemHovered() || (ImGui::IsItemFocused()
 bool mcButton(const char* lbl, ImVec2 size, bool disabled) {
   ImVec2 p = ImGui::GetCursorScreenPos();
   ImGui::BeginDisabled(disabled);
-  bool clicked = ImGui::InvisibleButton(lbl, size);
+  bool clicked = ImGui::InvisibleButton(lbl, size, ImGuiButtonFlags_EnableNav);
   ImGui::EndDisabled();
   bool hot = !disabled && itemHot(), held = !disabled && ImGui::IsItemActive();
   ImDrawList* dl = ImGui::GetWindowDrawList();
@@ -301,7 +301,7 @@ bool button(const char* lbl, BtnStyle st, bool tiny, float width, bool disabled)
   float w = width > 0 ? width : width < 0 ? ImGui::GetContentRegionAvail().x : ts.x + padX * 2 + 4 * z;
   ImVec2 p = ImGui::GetCursorScreenPos();
   ImGui::BeginDisabled(disabled);
-  bool clicked = ImGui::InvisibleButton(lbl, ImVec2(w, h));
+  bool clicked = ImGui::InvisibleButton(lbl, ImVec2(w, h), ImGuiButtonFlags_EnableNav);
   ImGui::EndDisabled();
   bool hot = !disabled && itemHot(), held = !disabled && ImGui::IsItemActive(), focus = ImGui::IsItemFocused() && navVisible();
   ImDrawList* dl = ImGui::GetWindowDrawList();
@@ -346,7 +346,7 @@ bool slider(const char* id, float* v, float mn, float mx, float step, const char
   // input[type=range] with accent-color ember: a thin light track, ember to the left of the round knob
   float z = Z(), w = ImGui::GetContentRegionAvail().x, h = 20 * z;
   ImVec2 p = ImGui::GetCursorScreenPos();
-  ImGui::InvisibleButton(id, ImVec2(w, h));
+  ImGui::InvisibleButton(id, ImVec2(w, h), ImGuiButtonFlags_EnableNav);
   bool ch = false;
   float r = 7 * z, x0 = p.x + r, x1 = p.x + w - r;
   if (ImGui::IsItemActive()) {
