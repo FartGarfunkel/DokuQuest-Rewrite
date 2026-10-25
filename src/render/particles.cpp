@@ -109,6 +109,23 @@ void ParticleSystem::spawn(const std::string& kind, vec3 pos, int count, const j
   if (kind == "flame") { for (int i = 0; i < count; i++) flame(pos + vec3(rs(), rs(), rs()) * num("spread", 0.f)); return; }
   if (kind == "splash") { splash(pos, flag); return; }
   if (kind == "rain_splash") { rainSplash(pos, lightAt(pos), count); return; }
+  if (kind == "firework") {   // batche.js fireworkSparks: a sphere (or a ring) of glowing two-colour sparks
+    static const char* COLS[] = {"white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "cyan", "purple", "blue", "green", "red"};
+    std::string c0 = str("color", COLS[(int)(rnd() * 12) % 12]), c1 = str("color", COLS[(int)(rnd() * 12) % 12]);
+    int t0 = tile(c0 + "_wool"), t1 = tile(c1 + "_wool");
+    bool big = rnd() < 0.35f, ring = !big && rnd() < 0.3f;
+    int n = (int)((big ? 90 : 60) * few); float sp = big ? 6.5f : 4.5f;
+    for (int i = 0; i < n; i++) {
+      vec3 d;
+      if (ring) { float a = (float)i / n * TAU; d = vec3(std::cos(a), rs() * 0.15f, std::sin(a)); }
+      else { float u = rnd() * 2 - 1, a = rnd() * TAU, sq = std::sqrt(1 - u * u); d = vec3(sq * std::cos(a), u, sq * std::sin(a)); }
+      Particle q; q.tile = (u16)((i & 1) ? t1 : t0); q.p = pos; q.v = d * (sp * (0.85f + rnd() * 0.3f));
+      q.life = q.max = 1.1f + rnd() * 0.7f; q.size = q.size0 = 0.14f; q.shrink = true; q.light = 0xFF; q.grav = 2.5f;
+      q.uv[0] = 38; q.uv[1] = 38; q.uv[2] = 70; q.uv[3] = 70;
+      add(q);
+    }
+    return;
+  }
   vec2 wd = windDrift * num("wind", 1);
   if (kind == "smoke" || kind == "smoke_dark" || kind == "fire_smoke" || kind == "torch_smoke" || kind == "campfire_smoke") {
     bool dark = kind == "smoke_dark" || kind == "fire_smoke", wisp = kind == "torch_smoke", camp = kind == "campfire_smoke";

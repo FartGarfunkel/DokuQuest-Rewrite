@@ -60,6 +60,12 @@ add_executable(dq-creature-test tools/test/creature_test.cpp)
 target_link_libraries(dq-creature-test PRIVATE dqcore)
 add_test(NAME creatures COMMAND dq-creature-test)
 
+# every item used and every block placed/used/broken through the player controller; prints anything odd (tools/sweep.cpp)
+add_executable(dq-sweep tools/sweep.cpp)
+target_link_libraries(dq-sweep PRIVATE dqcore)
+add_custom_command(TARGET dq-sweep POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:dq-sweep>/data)
+
 # headless gameplay checks (sim/ only, no graphics): ./build/dq-test-gameplay
 add_executable(dq-test-gameplay tools/test_gameplay.cpp)
 target_link_libraries(dq-test-gameplay PRIVATE dqcore)

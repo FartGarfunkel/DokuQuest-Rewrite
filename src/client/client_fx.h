@@ -15,9 +15,9 @@ public:
   void soundUi(u32 playerId, const std::string& name) override;
   void material(const std::string& mat, const std::string& kind, vec3 pos) override;
   void voice(const std::string& creature, const std::string& kind, vec3 pos, float pitch) override;
-  void particles(const std::string& kind, vec3 pos, int count, const json& extra) override {}   // TODO(particles): hand to the particle renderer
-  void message(u32 playerId, const std::string& text, const std::string& kind) override {}     // TODO(hud): toast / chat line
-  void shake(u32 playerId, float strength) override {}                                       // TODO(camera): screen shake
+  void particles(const std::string& kind, vec3 pos, int count, const json& extra) override;   // the particle renderer
+  void message(u32 playerId, const std::string& text, const std::string& kind) override;     // a HUD toast (this device's player, or 0 = all)
+  void shake(u32 playerId, float strength) override;                                       // the local camera
 private:
   GameSession& s;
 };

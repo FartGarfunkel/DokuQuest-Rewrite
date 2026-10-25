@@ -235,9 +235,13 @@ void PlayerController::interact(float dt, const PlayerInput& in) {
   const ItemStack& h = p.held();
   if (!h.empty() && h.id == "we_wand") { if (in.attackPressed) weClick(1); if (in.usePressed) weClick(2); mining.active = false; return; }
   Entity* te = targetEnt ? lv.entity(targetEnt) : nullptr;
-  if (in.attackPressed && te) { swingArm(); attackEntity(lv, p, *te); mining.active = false; return; }
+  if (in.attackPressed && te) { swingArm(); attackEntity(lv, p, *te); mining.active = false; fightHold = true; return; }
+  if (!in.attack) fightHold = false;
   if (in.attackPressed && !target.hit) swingArm();
-  if (in.attack && target.hit && !te) {
+  // a held swing that hit a creature never digs into the ground behind it; in creative a sword never breaks blocks (Minecraft)
+  const ToolInfo* ti = heldTool(p);
+  bool noDig = fightHold || (p.creative() && ti && ti->type == "sword");
+  if (in.attack && target.hit && !te && !noDig) {
     const RayHit& tg = target;
     if (!mining.active || mining.x != tg.block.x || mining.y != tg.block.y || mining.z != tg.block.z || mining.id != tg.id) {
       if (mining.active) rememberDamage(lv, mining);   // a block you gave up on keeps its cracks for a while
@@ -477,7 +481,9 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     }
     if (putDown(*hit, held)) return;
   }
-  if (def->str("drink") == "milk") { p.burn = 0; p.slow = 0; heldBecomes(ItemStack("bucket", 1)); p.eatAnim = 0.45f; sfxUi(lv, p, "eat"); toastMsg("Refreshing", "good"); return; }
+  // "drink: milk" was the original's hook for many usable items (fireworks, pearls, potions, snowballs...): their own
+  // systems take them through "itemUse" first; only real milk refreshes you and leaves the bucket
+  if (def->str("drink") == "milk" && held.id.find("milk") != std::string::npos) { p.burn = 0; p.slow = 0; heldBecomes(ItemStack("bucket", 1)); p.eatAnim = 0.45f; sfxUi(lv, p, "eat"); toastMsg("Refreshing", "good"); return; }
   if (def->has("heartCrystal")) {
     if (repeat) return;
     if (p.heartCrystals >= 10) { toastMsg("You can't hold any more hearts"); return; }

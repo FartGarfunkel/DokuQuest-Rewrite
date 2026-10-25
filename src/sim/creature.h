@@ -257,7 +257,9 @@ struct CreatureHooks {
 void setCreatureHooks(const std::string& type, CreatureHooks h);
 const CreatureHooks* creatureHooks(const std::string& type);   // nullptr = none
 
-void registerSpawners();      // sim/spawners.cpp: monster cages in dungeons and fortresses
+void registerSpawners();      // (see below)
+void registerPocket();
+void registerUsables();       // sim/usables.cpp: fireworks from the ground, the gust puff, the Ember Effigy        // sim/pocket.cpp: the Pocket Key takes you to your pocket dimension and back      // sim/spawners.cpp: monster cages in dungeons and fortresses
 void registerCreatures();     // entity factories + the creature LevelSystem (called from initCore)
 
 } // namespace dq

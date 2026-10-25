@@ -35,7 +35,7 @@ public:
   Mining mining;
   int placeMode = 0;             // 0 normal, 1 vertical slabs / upside-down stairs and trapdoors (R)
   float breakCd = 0, useRepeat = 0, bowPull = 0, landT = 0, shakeAmt = 0;
-  bool useArmed = false, jumpWas = false, sneakWas = false;
+  bool useArmed = false, jumpWas = false, sneakWas = false, fightHold = false;
   double t = 0;                  // this controller's clock (the original's g.time)
   double lastJump = -10, interactAt = -10, carryHint = -10;
   bool ledgeTip = false, chewTip = false;

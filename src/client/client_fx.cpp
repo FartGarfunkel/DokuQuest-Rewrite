@@ -6,9 +6,25 @@
 #include "audio/audio.h"
 #include "gen/generator.h"
 #include "core/registry.h"
+#include "render/particles.h"
+#include "ui/ui.h"
 
 namespace dq {
 
+void ClientFx::particles(const std::string& kind, vec3 pos, int count, const json& extra) {
+  if (s.app.settings.particles <= 0) return;
+  dq::particles().spawn(kind, pos, s.app.settings.particles == 1 ? std::max(1, count / 3) : count, extra);
+}
+void ClientFx::message(u32 playerId, const std::string& text, const std::string& kind) {
+  if (playerId && (!s.player || playerId != s.player->id)) return;
+  hudToast(text, kind);
+}
+class PlayerController; PlayerController* localController(GameSession& s);   // client/play.h
+float& controllerShake(PlayerController& c);   // client/play.cpp
+void ClientFx::shake(u32 playerId, float strength) {
+  if (!s.player || (playerId && playerId != s.player->id)) return;
+  if (PlayerController* c = localController(s)) { float& k = controllerShake(*c); k = std::max(k, strength); }
+}
 void ClientFx::sound(const std::string& name, vec3 pos, float range, float volume, float pitch) { if (s.app.audio) s.app.audio->playAt(name, pos, range, volume, pitch); }
 void ClientFx::soundUi(u32 playerId, const std::string& name) {
   if (!s.app.audio || (playerId && s.player && playerId != s.player->id)) return;

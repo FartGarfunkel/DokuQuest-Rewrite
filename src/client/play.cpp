@@ -27,6 +27,7 @@ static LocalState& stateOf(GameSession& s) {
   }
   return st;
 }
+float& controllerShake(PlayerController& c) { return c.shakeAmt; }
 PlayerController* localController(GameSession& s) { return s.player ? stateOf(s).ctl.get() : nullptr; }
 
 void clientTickLocalPlayer(GameSession& s, double dt) {
