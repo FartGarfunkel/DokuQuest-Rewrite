@@ -56,6 +56,7 @@ public:
   float fuel = 0;
   float invuln = 0, hurtFlash = 0, hurtTilt = 0, burn = 0, slow = 0;
   float foodCd = 0, foodPool = 0, eatAnim = 0, attackCd = 0;
+  float swingT = 0, eatT = 0, bowPull = 0;
   bool sleeping = false;            // in bed (until morning or getting up)
   float regenTimer = 0, drownT = 0, burnT = 0, hotT = 0, cactusT = 0;
   double lastHurtT = -100;          // level clock (Level::info.time is wrapped; we use a running clock, see sim/gameplay)

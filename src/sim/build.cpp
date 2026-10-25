@@ -465,10 +465,10 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
       int take = bookcase ? 1 : held->n;
       ItemStack put = *held; put.n = take; items[k] = put.toJson();
       held->n -= take; if (held->n <= 0) held->clear();
-      w.markModified(x, y, z); sfxMaterial(lv, "wood", "place", c); swingArm(); return true;
+      w.blockEntityChanged(x, y, z); sfxMaterial(lv, "wood", "place", c); swingArm(); return true;
     }
     if (hasHeld && bookcase) { toastMsg("Bookcases hold books"); return true; }
-    if (!here.empty()) { items[k] = nullptr; w.markModified(x, y, z); giveItem(lv, p, here); sfxUi(lv, p, "pop"); swingArm(); return true; }
+    if (!here.empty()) { items[k] = nullptr; w.blockEntityChanged(x, y, z); giveItem(lv, p, here); sfxUi(lv, p, "pop"); swingArm(); return true; }
     return true;
   }
   // ---- hooks (redstone...) and the 0.5 blocks (blocks2.js useBlockNew) ----
@@ -544,7 +544,7 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   }
   if (b.has("frame")) {
     json* e = w.blockEntity(x, y, z);
-    if (e && e->contains("item")) { (*e)["rot"] = (e->value("rot", 0) + 1) & 7; w.markModified(x, y, z); sfxAt(lv, "click", c); swingArm(); return true; }
+    if (e && e->contains("item")) { (*e)["rot"] = (e->value("rot", 0) + 1) & 7; w.blockEntityChanged(x, y, z); sfxAt(lv, "click", c); swingArm(); return true; }
     if (hasHeld) { ItemStack one = *held; one.n = 1; w.setBlockEntity(x, y, z, {{"type", "frame"}, {"item", one.toJson()}, {"rot", 0}}); if (--held->n <= 0) held->clear(); sfxAt(lv, "click", c); swingArm(); return true; }
     return false;
   }
@@ -608,7 +608,7 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
     if (!hasPlant && pottable) { (*e)["plant"] = def->block; if (--held->n <= 0) held->clear(); }
     else if (hasPlant && !hasHeld) { giveItem(lv, p, ItemStack((*e)["plant"].get<std::string>(), 1)); (*e)["plant"] = nullptr; }
     else return false;
-    w.markModified(x, y, z); w.markBlockDirty(x, y, z, true); swingArm(); return true;
+    w.blockEntityChanged(x, y, z); w.markBlockDirty(x, y, z, true); swingArm(); return true;
   }
   if (bhas(id, BF::Tnt) && def && def->str("igniter") == "flint") { w.setBlock(x, y, z, AIR); primeTNT(lv, w, x, y, z, 4); wearHeld(lv, p, 1); return true; }
   // tools on blocks
@@ -646,7 +646,7 @@ void PlayerController::afterBreak(int x, int y, int z, BlockId id, u8 meta) {
 void PlayerController::editSign(int x, int y, int z) {
   World& w = world();
   json* e = w.blockEntity(x, y, z, true);
-  if (!e->contains("lines")) *e = {{"type", "sign"}, {"lines", {"", "", "", ""}}};
+  if (!e->contains("lines")) { *e = {{"type", "sign"}, {"lines", {"", "", "", ""}}}; w.blockEntityChanged(x, y, z); }
   openScreen(lv, p, "sign", {{"pos", {x, y, z}}});
 }
 
@@ -760,13 +760,13 @@ void PlayerController::usePile(const RayHit& hit, ItemStack* held) {
     int q = targetQuarter();
     ItemStack here = q >= 0 ? ItemStack::fromJson(items[q]) : ItemStack();
     int mx = maxStackOf(held->id);
-    if (q >= 0 && !here.empty() && canMergeStacks(here, *held) && here.n < mx) { int k = std::min(mx - here.n, held->n); here.n += k; held->n -= k; if (!held->n) held->clear(); items[q] = here.toJson(); w.markModified(x, y, z); swingArm(); sfxMaterial(lv, "wood", "place", c); return; }
-    if (q >= 0 && here.empty()) { items[q] = held->toJson(); (*e)["rot"][q] = std::round(-p.yaw / (PI / 8)) * (PI / 8); held->clear(); w.markModified(x, y, z); swingArm(); sfxMaterial(lv, "wood", "place", c); return; }
+    if (q >= 0 && !here.empty() && canMergeStacks(here, *held) && here.n < mx) { int k = std::min(mx - here.n, held->n); here.n += k; held->n -= k; if (!held->n) held->clear(); items[q] = here.toJson(); w.blockEntityChanged(x, y, z); swingArm(); sfxMaterial(lv, "wood", "place", c); return; }
+    if (q >= 0 && here.empty()) { items[q] = held->toJson(); (*e)["rot"][q] = std::round(-p.yaw / (PI / 8)) * (PI / 8); held->clear(); w.blockEntityChanged(x, y, z); swingArm(); sfxMaterial(lv, "wood", "place", c); return; }
     for (int i = 0; i < 4; i++) {
       ItemStack s = ItemStack::fromJson(items[i]);
-      if (!s.empty() && canMergeStacks(s, *held) && s.n < mx) { int k = std::min(mx - s.n, held->n); s.n += k; held->n -= k; if (!held->n) held->clear(); items[i] = s.toJson(); w.markModified(x, y, z); swingArm(); return; }
+      if (!s.empty() && canMergeStacks(s, *held) && s.n < mx) { int k = std::min(mx - s.n, held->n); s.n += k; held->n -= k; if (!held->n) held->clear(); items[i] = s.toJson(); w.blockEntityChanged(x, y, z); swingArm(); return; }
     }
-    for (int i = 0; i < 4; i++) if (items[i].is_null()) { items[i] = held->toJson(); held->clear(); w.markModified(x, y, z); swingArm(); sfxMaterial(lv, "wood", "place", c); return; }
+    for (int i = 0; i < 4; i++) if (items[i].is_null()) { items[i] = held->toJson(); held->clear(); w.blockEntityChanged(x, y, z); swingArm(); sfxMaterial(lv, "wood", "place", c); return; }
     toastMsg("This pile is full");
     return;
   }
@@ -781,7 +781,7 @@ void PlayerController::usePile(const RayHit& hit, ItemStack* held) {
     break;
   }
   bool any = false; for (auto& s : items) if (!s.is_null()) any = true;
-  w.markModified(x, y, z);
+  w.blockEntityChanged(x, y, z);
   if (!any) w.setBlock(x, y, z, AIR);
   swingArm();
 }

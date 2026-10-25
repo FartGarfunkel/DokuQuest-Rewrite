@@ -9,6 +9,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 option(DQ_WERROR "Treat warnings as errors" OFF)
+option(DQ_PORTABLE "Release packages: link libstdc++/libgcc statically on Linux (runs on older and newer distros)" OFF)
 
 find_package(Threads REQUIRED)
 add_subdirectory(third_party)
@@ -45,6 +46,10 @@ target_link_libraries(dokuquest-launcher PRIVATE dqclient)
 add_executable(dokuquest-server tools/server_main.cpp)
 target_link_libraries(dokuquest-server PRIVATE dqcore)
 
+# terrain generator checks (tools/port/gen_compare.py, timing); not shipped
+add_executable(dq-gentool tools/port/gentool.cpp)
+target_link_libraries(dq-gentool PRIVATE dqcore)
+
 # headless gameplay checks (sim/ only, no graphics): ./build/dq-test-gameplay
 add_executable(dq-test-gameplay tools/test_gameplay.cpp)
 target_link_libraries(dq-test-gameplay PRIVATE dqcore)
@@ -52,11 +57,34 @@ target_link_libraries(dq-test-gameplay PRIVATE dqcore)
 if(WIN32)
   set_target_properties(dokuquest dokuquest-launcher PROPERTIES WIN32_EXECUTABLE ON)
   target_link_libraries(dqclient PUBLIC SDL2::SDL2main)
+  # app icon (assets/icon.ico) for the game and the launcher
+  target_sources(dokuquest PRIVATE src/launcher/dokuquest.rc)
+  target_sources(dokuquest-launcher PRIVATE src/launcher/dokuquest.rc)
+endif()
+if(DQ_PORTABLE AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  foreach(t dokuquest dokuquest-launcher dokuquest-server)
+    target_link_options(${t} PRIVATE -static-libstdc++ -static-libgcc)
+  endforeach()
 endif()
 
 # Runtime data next to the executables (data/, assets/)
-foreach(t dokuquest dokuquest-launcher dokuquest-server dq-test-gameplay)
+foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-test-gameplay)
   add_custom_command(TARGET ${t} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:${t}>/data
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:${t}>/assets)
 endforeach()
+
+# Install = one folder with the three programs, data/ and assets/ (tools/package.sh packs it):
+#   cmake --install build --prefix dist/DokuQuest
+install(TARGETS dokuquest dokuquest-launcher dokuquest-server RUNTIME DESTINATION .)
+install(DIRECTORY data assets DESTINATION .)
+# Multiplayer + mods test (headless): a dedicated server and two scripted clients. Run: build/test_net
+add_library(dq_sample_plugin MODULE tools/sample_plugin.c)
+target_include_directories(dq_sample_plugin PRIVATE src)
+set_target_properties(dq_sample_plugin PROPERTIES PREFIX "" C_VISIBILITY_PRESET hidden)
+add_executable(test_net tools/test_net.cpp)
+target_link_libraries(test_net PRIVATE dqcore)
+target_compile_definitions(test_net PRIVATE DQ_SAMPLE_PLUGIN="$<TARGET_FILE:dq_sample_plugin>")
+add_dependencies(test_net dq_sample_plugin)
+add_custom_command(TARGET test_net POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_net>/data)

@@ -4,6 +4,7 @@
 #include "ui/screen.h"
 #include "audio/audio.h"
 #include "mod/modloader.h"
+#include "render/item_layers.h"
 #include "client/play.h"
 #include <imgui.h>
 
@@ -19,6 +20,7 @@ GameSession::GameSession(App& a, std::unique_ptr<Level> lv) : app(a), level(std:
   sky->init();
   spawnPlayer();
   worldRenderer.setWorld(&world());
+  registerItemLayers();   // held item + first-person arm, dropped items (render/item_layers)
   for (auto& f : layerFactories()) if (auto l = f(*this)) layers.push_back(l);
   std::sort(layers.begin(), layers.end(), [](auto& x, auto& y) { return x->order() < y->order(); });
   if (app.mods) app.mods->onWorldOpen(*level, app.events, false);
@@ -73,9 +75,11 @@ void GameSession::tickLocalPlayer(double dt) {
 
 void GameSession::update(double dt) {
   if (!player) return;
-  bool pz = paused() && !level->allRealms().empty();
+  if (level->net) level->net->update(*level, dt);   // multiplayer (net/): a joined world, or one open to LAN
+  bool pz = paused() && !level->allRealms().empty() && !level->net;   // a shared world never pauses
   if (!pz) {
     tickLocalPlayer(dt);
+    for (auto& l : layers) l->afterPlayerMove(*this, dt);
     tickAcc += dt;
     int n = 0;
     while (tickAcc >= TICK_DT && n < 4) { level->tick(TICK_DT); tickAcc -= TICK_DT; n++; }
@@ -84,6 +88,8 @@ void GameSession::update(double dt) {
   World& w = world();
   if (worldRenderer.world() != &w) worldRenderer.setWorld(&w);
   std::vector<StreamAnchor> anchors = {{player->pos, app.settings.renderDist, true}};
+  for (auto& l : layers) l->streamAnchors(*this, anchors);
+  if (level->net) level->net->streamAnchors(player->realm, anchors);   // the host keeps remote players' surroundings loaded
   w.stream(anchors, 3.0);
   // camera
   Camera& cam = frame.cam;

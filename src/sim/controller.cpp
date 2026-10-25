@@ -95,6 +95,8 @@ void PlayerController::update(float dt, const PlayerInput& in) {
   updateHeldTools(dt, in);
   if (in.drop && p.carrying.is_null()) dropHeld(false);
   if (in.dropAll && p.carrying.is_null()) dropHeld(true);
+  // arm timers for the third-person body (characters): swing 0..1, eating 0..1, bow draw
+  p.swingT = p.swing; p.eatT = p.eatAnim > 0 ? std::min(1.f, p.eatAnim / 0.45f) : 0.f; p.bowPull = bowPull;
   // fairplay.js: food heals half at once and the rest over a few seconds
   if (p.foodCd > 0) p.foodCd -= dt;
   if (p.foodPool > 0) {

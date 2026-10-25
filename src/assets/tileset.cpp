@@ -43,8 +43,19 @@ bool loadBuiltinTiles(TileSet& ts) {
     for (int y = 0; y < S; y++) std::memcpy(ts.tile(t) + (size_t)y * S * 4, img.data() + ((size_t)(ty + y) * w + tx) * 4, (size_t)S * 4);
   }
   ts.emissive.assign((size_t)ts.count * S * S, 0);
+  ts.res.assign(ts.count, (u8)S);
+  if (tj->contains("res") && (*tj)["res"].is_array()) for (int t = 0; t < ts.count && t < (int)(*tj)["res"].size(); t++) ts.res[t] = (u8)(*tj)["res"][t].get<int>();
   deriveMicroVoxelHeights(ts);
   return true;
+}
+
+int appendTile(TileSet& ts, const u8* px) {
+  size_t S2 = (size_t)ts.size * ts.size;
+  ts.rgba.insert(ts.rgba.end(), px, px + S2 * 4);
+  ts.height.resize(ts.height.size() + S2, 0);
+  ts.emissive.resize(ts.emissive.size() + S2, 0);
+  ts.res.push_back((u8)ts.size);
+  return ts.count++;
 }
 
 // Relief from colour: darker-than-local-average micro-voxels (mortar, cracks, bark grooves) sink,

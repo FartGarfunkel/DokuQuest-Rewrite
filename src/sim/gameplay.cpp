@@ -12,7 +12,6 @@
 namespace dq {
 
 static double rnd() { static thread_local std::mt19937 g{std::random_device{}()}; return std::uniform_real_distribution<double>(0, 1)(g); }
-static json v3(vec3 v) { return json::array({v.x, v.y, v.z}); }
 
 GameplayHooks& hooks() { static GameplayHooks h; return h; }
 
@@ -84,13 +83,18 @@ public:
   ItemStack stack;
   float pickupDelay = 0.6f, plantT = -1;
   bool floating = false;
-  void sync() { data["stack"] = stack.toJson(); }
+  void sync() { data["stack"] = stack.toJson(); data["pickupDelay"] = pickupDelay; }
   bool fireproof() const {
     const std::string& id = stack.id;
     return startsWith(id, "cinderite") || id == "ember_blade" || id == "cinder_core" || id == "realm_fragment" || id == "heart_crystal" || id == "watcher_blade" || id == "rift_staff";
   }
-  void load(const json& j) override { Entity::load(j); type = "item"; stack = ItemStack::fromJson(data.value("stack", json())); pickupDelay = data.value("pickupDelay", 0.0f); }
-  json save() const override { json j = Entity::save(); j["data"]["stack"] = stack.toJson(); return j; }
+  void load(const json& j) override { Entity::load(j); type = "item"; readStack(); pickupDelay = data.value("pickupDelay", 0.6f); }
+  // the stack lives in data.stack (older/other makers: data.item)
+  void readStack() {
+    stack = ItemStack::fromJson(data.contains("stack") && data["stack"].is_object() ? data["stack"] : data.value("item", json()));
+    if (!stack.empty()) sync();
+  }
+  json save() const override { json j = Entity::save(); if (!stack.empty()) j["data"]["stack"] = stack.toJson(); return j; }
   void unstick(const World& w) {
     auto freeAt = [&](float x, float y, float z) { return !collides(w, x - this->w, y, z - this->w, x + this->w, y + h, z + this->w); };
     for (int up = 1; up <= 12; up++) { float y = std::floor(pos.y) + up + 0.01f; if (freeAt(pos.x, y, pos.z)) { pos.y = y; vel.y = 0; return; } }
@@ -120,7 +124,9 @@ public:
   }
   void tick(Level& lv, double dtd) override {
     float dt = (float)dtd;
+    if (lv.isRemote()) return;   // a joined world: the server moves it and hands it out
     World& w = lv.world(realm);
+    if (stack.empty()) readStack();
     if (stack.empty()) { removed = true; return; }
     if (!w.isLoaded(ifloor(pos.x), ifloor(pos.y), ifloor(pos.z))) return;
     if (pickupDelay > 0) pickupDelay -= dt;
@@ -309,18 +315,33 @@ Entity* spawnFallingTree(Level& lv, int realm, const std::vector<std::array<int,
 // ---- the per-level gameplay system --------------------------------------------------------------
 class GameplaySystem : public LevelSystem {
 public:
-  explicit GameplaySystem(Level& lv) { rules(lv); }
+  explicit GameplaySystem(Level& lv) : lvp(&lv) {
+    rules(lv);
+    if (lv.events) hitHandler = lv.events->on("netHit", [this](const json& a) {   // [player, entityId, amount, src]
+      if (!a.is_array() || a.size() < 4 || lvp->isRemote()) return true;
+      Entity* e = lvp->entity(a[1].get<u32>());
+      if (!e || e->removed) return true;
+      const json& s = a[3];
+      DamageSource src; src.attacker = s.value("attacker", 0u); src.element = s.value("element", std::string());
+      src.knock = s.value("knock", 5.0f); src.tool = s.value("tool", std::string()); src.weapon = s.value("weapon", std::string());
+      damageEntity(*lvp, *e, a[2].get<float>(), src);
+      return false;
+    });
+  }
+  ~GameplaySystem() override { if (lvp->events && hitHandler) lvp->events->off(hitHandler); }
+  Level* lvp; int hitHandler = 0;
   const char* name() const override { return "gameplay"; }
   double clock = 0, mergeT = 0, randT = 0;
   std::unordered_map<std::string, std::shared_ptr<void>> slots;
   void tick(Level& lv, double dt) override {
     clock += dt;
+    if (lv.isRemote()) return;   // a joined world: the server simulates it (fluids, growth, furnaces, drops...)
     for (auto& [r, w] : lv.allRealms()) attachWorldSystems(lv, *w);
     // merge dropped items lying together
     if ((mergeT += dt) > 1) {
       mergeT = 0;
       std::vector<ItemEntity*> items;
-      for (auto& e : lv.entities()) if (!e->removed && e->type == "item") if (auto* it = dynamic_cast<ItemEntity*>(e.get())) items.push_back(it);
+      for (auto& e : lv.entities()) if (!e->removed && !e->ghost && e->type == "item") if (auto* it = dynamic_cast<ItemEntity*>(e.get())) items.push_back(it);
       for (size_t i = 0; i < items.size(); i++) for (size_t j = i + 1; j < items.size(); j++) {
         ItemEntity* a = items[i]; ItemEntity* b = items[j];
         if (a->removed || b->removed || a->realm != b->realm || !canMergeStacks(a->stack, b->stack)) continue;

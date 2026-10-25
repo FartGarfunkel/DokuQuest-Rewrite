@@ -160,7 +160,11 @@ float attackEntity(Level& lv, Player& p, Entity& e) {
   DamageSource src; src.attacker = p.id; src.element = heldToolElement(p); src.knock = 5;
   if (tool) src.tool = tool->type;
   if (!p.inv[p.selected].empty()) src.weapon = p.inv[p.selected].id;
-  float dealt = damageEntity(lv, e, dmg, src);
+  float dealt;
+  if (e.ghost && lv.net && lv.net->isClient()) {   // a joined world: the server's creature; it takes the hit there
+    lv.net->hitEntity(p, e.id, dmg, {{"element", src.element}, {"knock", src.knock}, {"tool", src.tool}, {"weapon", src.weapon}, {"crit", crit}});
+    dealt = dmg;
+  } else dealt = damageEntity(lv, e, dmg, src);
   p.attackCd = tool && tool->type == "sword" ? 0.45f : 0.6f;
   if (dealt > 0) {
     sfxUi(lv, p, crit ? "crit" : "hit");

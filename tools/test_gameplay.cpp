@@ -4,7 +4,7 @@
 //   ./build/dq-test-gameplay [--userdir DIR] [-v]
 #include "core/init.h"
 #include "sim/controller.h"
-#include "sim/commands.h"
+#include "sim/gamecommands.h"
 #include "sim/rules.h"
 #include "sim/worldsys.h"
 #include "sim/blockfx.h"
@@ -362,7 +362,7 @@ int main(int argc, char** argv) {
     r.p->armor[1].clear();
     r.p->hp = 20; r.p->invuln = 0; r.step(1.0);
     r.p->inv[3] = ItemStack("dirt", 10);
-    std::string reply; runCommand(*r.lv, *r.p, "/kill", reply);
+    std::string reply; ((reply = runCommand(*r.lv, r.p, "/kill")), true);
     CHECK(r.p->dead, "/kill kills");
     CHECK(r.p->grave.is_object() && r.get(r.p->grave["x"], r.p->grave["y"], r.p->grave["z"]) == KBk.grave, "the things go into a grave");
     CHECK(r.p->inv[0].id == "death_compass", "with a compass that points to it");
@@ -411,7 +411,7 @@ int main(int argc, char** argv) {
     int items = 0; for (auto& e : r.lv->entities()) if (!e->removed && e->type == "item") items++;
     CHECK(items >= 1, "a dropped item entity (data.stack) exists");
     r.step(2.0);
-    for (auto& e : r.lv->entities()) if (!e->removed && e->type == "item") { r.put(e->pos.x, e->pos.y, e->pos.z); break; }
+    for (auto& e : r.lv->entities()) if (!e->removed && e->type == "item" && e->data["stack"].value("id", "") == "stone") { r.put(e->pos.x, e->pos.y, e->pos.z); break; }
     r.step(1.0);
     CHECK(playerCount(*r.p, "stone") == 5, "walking over it picks it back up (%d)", playerCount(*r.p, "stone"));
     // bow: draw and loose an arrow into a wall
@@ -460,7 +460,7 @@ int main(int argc, char** argv) {
   printf("[creative, commands]\n");
   {
     std::string reply;
-    CHECK(runCommand(*r.lv, *r.p, "/gamemode creative", reply) && r.p->creative(), "/gamemode creative");
+    CHECK(((reply = runCommand(*r.lv, r.p, "/gamemode creative")), true) && r.p->creative(), "/gamemode creative");
     r.put(0.5f, Y, 0.5f); r.step(0.2);
     PlayerInput j; j.jump = true;
     r.step(0.05, j); r.step(0.1); r.step(0.05, j); r.step(0.5, j);
@@ -476,22 +476,22 @@ int main(int argc, char** argv) {
     PlayerInput use; use.use = true; use.usePressed = true;
     r.step(0.05, use);
     CHECK(r.p->held().n == 64, "placing doesn't use up items in creative");
-    runCommand(*r.lv, *r.p, "/gamemode survival", reply);
+    ((reply = runCommand(*r.lv, r.p, "/gamemode survival")), true);
     CHECK(!r.p->flying, "survival again: no flying");
     r.p->inv.assign(INV_MAIN, ItemStack());
-    CHECK(runCommand(*r.lv, *r.p, "/give stone 100", reply) && playerCount(*r.p, "stone") == 100, "/give stone 100 (%s)", reply.c_str());
-    CHECK(runCommand(*r.lv, *r.p, "/time set night", reply) && std::fabs(r.lv->info.time - DAY_LEN * 0.55) < 1, "/time set night");
-    CHECK(runCommand(*r.lv, *r.p, "/tp 3 ~ 3", reply) && std::fabs(r.p->pos.x - 3.5f) < 1e-3f, "/tp 3 ~ 3");
-    CHECK(runCommand(*r.lv, *r.p, "/weather rain", reply) && r.lv->info.data["weather"]["kind"] == "rain", "/weather rain");
-    CHECK(runCommand(*r.lv, *r.p, "/herobrine", reply) && reply == "Removed Herobrine.", "/herobrine");
-    CHECK(!runCommand(*r.lv, *r.p, "/nosuch", reply), "unknown commands say so");
-    CHECK(runCommand(*r.lv, *r.p, "/gamerule keepInventory true", reply) && rule(*r.lv, "keepInventory"), "/gamerule");
+    CHECK(((reply = runCommand(*r.lv, r.p, "/give stone 100")), true) && playerCount(*r.p, "stone") == 100, "/give stone 100 (%s)", reply.c_str());
+    CHECK(((reply = runCommand(*r.lv, r.p, "/time set night")), true) && std::fabs(r.lv->info.time - DAY_LEN * 0.55) < 1, "/time set night");
+    CHECK(((reply = runCommand(*r.lv, r.p, "/tp 3 ~ 3")), true) && std::fabs(r.p->pos.x - 3.5f) < 1e-3f, "/tp 3 ~ 3");
+    CHECK(((reply = runCommand(*r.lv, r.p, "/weather rain")), true) && r.lv->info.data["weather"]["kind"] == "rain", "/weather rain");
+    CHECK(((reply = runCommand(*r.lv, r.p, "/herobrine")), true) && reply == "Removed Herobrine.", "/herobrine");
+    reply = runCommand(*r.lv, r.p, "/nosuch"); CHECK(startsWith(reply, "No such command"), "unknown commands say so (%s)", reply.c_str());
+    CHECK(((reply = runCommand(*r.lv, r.p, "/gamerule keepInventory true")), true) && rule(*r.lv, "keepInventory"), "/gamerule");
     weSetCorner(*r.lv, *r.p, 1, {-3, Y + 3, -3}); weSetCorner(*r.lv, *r.p, 2, {-1, Y + 5, -1});
-    CHECK(runCommand(*r.lv, *r.p, "//set stone", reply) && r.get(-2, Y + 4, -2) == stone, "//set fills the selection (%s)", reply.c_str());
-    CHECK(runCommand(*r.lv, *r.p, "//undo", reply) && r.get(-2, Y + 4, -2) == AIR, "//undo takes it back");
+    CHECK(((reply = runCommand(*r.lv, r.p, "//set stone")), true) && r.get(-2, Y + 4, -2) == stone, "//set fills the selection (%s)", reply.c_str());
+    CHECK(((reply = runCommand(*r.lv, r.p, "//undo")), true) && r.get(-2, Y + 4, -2) == AIR, "//undo takes it back");
     rules(*r.lv)["commands"] = false;
-    CHECK(!runCommand(*r.lv, *r.p, "/give stone", reply), "commands off: refused");
-    CHECK(runCommand(*r.lv, *r.p, "/seed", reply), "/seed always allowed");
+    reply = runCommand(*r.lv, r.p, "/give stone"); CHECK(reply.find("Commands are off") != std::string::npos, "commands off: refused");
+    reply = runCommand(*r.lv, r.p, "/seed"); CHECK(startsWith(reply, "Seed:"), "/seed always allowed (%s)", reply.c_str());
     rules(*r.lv)["commands"] = true;
   }
 

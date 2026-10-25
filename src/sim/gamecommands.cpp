@@ -4,6 +4,7 @@
 #include "sim/gameplay.h"
 #include "sim/combat.h"
 #include "sim/rules.h"
+#include "sim/worldsys.h"
 #include <random>
 #include <regex>
 
@@ -296,14 +297,14 @@ std::string weSizeText(Level& lv, const Player& p) { WeState& s = weState(lv, p)
 // Write many blocks quickly (no physics), remembering what was there for //undo.
 static long long weWrite(Level& lv, Player& p, const std::vector<std::array<int, 5>>& list, const std::string& label) {
   World& w = lv.world(p.realm);
+  QuietEdits quiet;   // no physics (the original wrote the chunks directly), but saved and synced
   WeEdit undo{label, {}};
   for (auto& [x, y, z, id, meta] : list) {
     if (!inWorldY(y) || !w.isLoaded(x, y, z)) continue;
     BlockId oid = w.getBlock(x, y, z); u8 om = w.getMeta(x, y, z);
     if (oid == id && om == meta) continue;
     undo.data.push_back({x, y, z, oid, om});
-    w.setBlock(x, y, z, (BlockId)id, (u8)meta, SetFlags::NoNotify);
-    if (oid != id && w.blockEntity(x, y, z)) w.setBlockEntity(x, y, z, nullptr);
+    w.setBlock(x, y, z, (BlockId)id, (u8)meta);
   }
   WeState& s = weState(lv, p);
   long long n = (long long)undo.data.size();
@@ -346,12 +347,12 @@ static u8 rotMeta(BlockId id, u8 m, int q) {
 }
 static WeEdit weReplay(Level& lv, Player& p, const WeEdit& e) {
   World& w = lv.world(p.realm);
+  QuietEdits quiet;
   WeEdit rev{e.label, {}};
   for (auto& [x, y, z, id, meta] : e.data) {
     if (!w.isLoaded(x, y, z)) continue;
     rev.data.push_back({x, y, z, w.getBlock(x, y, z), w.getMeta(x, y, z)});
-    w.setBlock(x, y, z, (BlockId)id, (u8)meta, SetFlags::NoNotify);
-    if (w.blockEntity(x, y, z)) w.setBlockEntity(x, y, z, nullptr);
+    w.setBlock(x, y, z, (BlockId)id, (u8)meta);
   }
   return rev;
 }

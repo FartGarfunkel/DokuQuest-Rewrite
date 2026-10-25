@@ -15,6 +15,11 @@ static double rnd() { static thread_local std::mt19937 g{std::random_device{}()}
 struct PosKey { int x, y, z; bool operator==(const PosKey& o) const { return x == o.x && y == o.y && z == o.z; } };
 struct PosKeyHash { size_t operator()(const PosKey& k) const { return ((size_t)(u32)k.x * 73856093u) ^ ((size_t)(u32)k.y * 19349663u) ^ ((size_t)(u32)k.z * 83492791u); } };
 
+static thread_local int t_quiet = 0;
+QuietEdits::QuietEdits() { t_quiet++; }
+QuietEdits::~QuietEdits() { t_quiet--; }
+bool quietEdits() { return t_quiet > 0; }
+
 // ---- fluids ---------------------------------------------------------------------------------
 class FluidSystem : public WorldSystem {
 public:
@@ -41,7 +46,7 @@ public:
     schedule(w, x, y, z); schedule(w, x + 1, y, z); schedule(w, x - 1, y, z);
     schedule(w, x, y + 1, z); schedule(w, x, y - 1, z); schedule(w, x, y, z + 1); schedule(w, x, y, z - 1);
   }
-  void onBlockChanged(World& w, int x, int y, int z, BlockId, BlockId) override { scheduleAround(w, x, y, z); }
+  void onBlockChanged(World& w, int x, int y, int z, BlockId, BlockId) override { if (!t_quiet) scheduleAround(w, x, y, z); }
   void onChunkLoaded(World& w, Chunk& c) override { wake(w, c); }
 
   // A newly loaded chunk: liquid with somewhere to run starts flowing (and the edges of its neighbours).
@@ -204,7 +209,7 @@ public:
   int depth = 0;
   const char* name() const override { return "blockRules"; }
   void onBlockChanged(World& w, int x, int y, int z, BlockId o, BlockId n) override {
-    if (o == n || depth > 64) return;   // (cascades are bounded; a falling column of sand is a chain of these)
+    if (o == n || depth > 64 || t_quiet) return;   // (cascades are bounded; a falling column of sand is a chain of these)
     depth++;
     onBlockChangedRules(*lv, w, x, y, z, o, n);
     depth--;
@@ -470,6 +475,7 @@ void tickFurnaces(Level& lv, double dt) {
   for (auto& [r, wp] : lv.allRealms()) {
     World& w = *wp;
     std::vector<std::tuple<int, int, int, BlockId, BlockId, u8>> swaps;
+    std::vector<ivec3> changed;
     for (auto& [k, c] : w.chunks()) {
       if (c->blockEntities.empty()) continue;
       for (auto& [i, e] : c->blockEntities) {
@@ -478,19 +484,25 @@ void tickFurnaces(Level& lv, double dt) {
         BlockId id = c->get(lx, ly, lz);
         const BlockInfo& bi = binfo(id);
         if (bi.furnace.empty()) continue;
-        if (tickFurnace(e, step, bi.furnace)) { c->modified = c->dirty = true; }
+        int x = c->worldX() + lx, y = c->baseY() + ly, z = c->worldZ() + lz;
+        if (tickFurnace(e, step, bi.furnace)) changed.push_back({x, y, z});
         bool lit = e.value("burn", 0.0) > 0;
         const BlockDef& d = R.block(id);
         std::string unlitKey = d.str("unlit", d.key == "lit_furnace" ? "furnace" : d.key);
         std::string litKey = unlitKey == "furnace" ? "lit_furnace" : "lit_" + unlitKey;
         BlockId unlit = R.blockId(unlitKey), litId = R.blockId(litKey);
-        int x = c->worldX() + lx, y = c->baseY() + ly, z = c->worldZ() + lz;
         if (lit && id == unlit && litId) swaps.push_back({x, y, z, id, litId, c->getMeta(lx, ly, lz)});
         else if (!lit && id == litId && unlit) swaps.push_back({x, y, z, id, unlit, c->getMeta(lx, ly, lz)});
       }
     }
     // keep the block entity: NoNotify keeps it (and skips the fluid/support reactions, like noFluid)
-    for (auto& [x, y, z, from, to, m] : swaps) w.setBlock(x, y, z, to, m, SetFlags::NoNotify);
+    for (auto& [x, y, z, from, to, m] : swaps) {   // the block entity goes along (setBlock drops it when the id changes)
+      json* be = w.blockEntity(x, y, z); json keep = be ? *be : json();
+      QuietEdits q;
+      w.setBlock(x, y, z, to, m);
+      if (!keep.is_null()) w.setBlockEntity(x, y, z, std::move(keep));
+    }
+    for (auto& c : changed) w.blockEntityChanged(c.x, c.y, c.z);   // saved, and synced to players (net/)
   }
 }
 
@@ -501,7 +513,7 @@ void crowdPush(Level& lv, float dt) {
   std::vector<Body> bodies;
   for (auto& ep : lv.entities()) {
     Entity* e = ep.get();
-    if (e->removed) continue;
+    if (e->removed || e->ghost) continue;
     if (e->isPlayer()) {
       Player* p = static_cast<Player*>(e);
       if (p->dead || p->riding || p->sleeping || (p->flying && p->creative())) continue;
