@@ -41,6 +41,9 @@ struct CharRig {
 // base: render space at the entity's feet (translation only; block units). Stature and the body shape apply here.
 void charRig(const CharModel& m, CharPose pose, const mat4& base, CharRig& out, bool cloak, bool underPack);
 
+#ifndef DQ_WRAP_ANGLE
+#define DQ_WRAP_ANGLE
 inline float wrapAngle(float a) { return std::fmod(std::fmod(a + PI * 3, TAU) + TAU, TAU) - PI; }
+#endif
 
 } // namespace dq

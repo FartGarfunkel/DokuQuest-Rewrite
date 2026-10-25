@@ -64,7 +64,7 @@ Workstream: villagers (`src/sim/villagers*.{h,cpp}`, `sim/villager_ai.cpp`, `sim
 - Rendering: guards' armour uses the game's armour pieces (no 3D gear look for villagers); villagers have no capes or carried tools.
 
 ## Tests
-`build/test_villagers` (≈ 70 checks, headless): data and the original's numbers (npcSeedOf, npcName, standingOf, npcVoice, the skin
+`build/test_villagers` (66 checks, headless, all pass): data and the original's numbers (npcSeedOf, npcName, standingOf, npcVoice, the skin
 painter's hash), a village from plan JSON, villageNear hook, villagers coming out (folk + guard, armour, names), work in the morning,
 sleeping in bed at night, using a sleeping villager, the talk screen event, talk options (wares, Mage training, goodbye), the shop
 (price, can't afford, buy, Friend-only lines, sell, 12 a day, restock), standing (trade cap, Friend toast, tier wares open), errands
@@ -76,6 +76,7 @@ Visual: `DQ_VILLAGERS=farmer,librarian,guard,elder,baker DQ_DAYTIME=0.2 ./build/
 
 ## Changes outside this area
 - `sim/creature.h/.cpp`, `creature_beasts.cpp`, `creature_spawn.cpp`: `CreatureHooks` + 6 call sites (brain, beforeHurt, afterHurt, died, use, naturalSpawn).
+- `sim/creature.h`, `render/char_anim.h`: their identical inline `wrapAngle` wrapped in `#ifndef DQ_WRAP_ANGLE` (both are included together).
 - `render/creature_layer.cpp`: villagers (`T->npc`) are skipped (drawn as people); golems stay creatures.
 - `render/char_anim.h/.cpp`: CharPose `headYaw, wave, talk, fold, read, hoe` + villagers.js's avatarAnim additions.
 - `sim/gameplay.h` hooks: one `useEntity` hook that calls `useOnCreature` (nothing called it yet, so feeding/taming/shearing/riding

@@ -181,7 +181,10 @@ private:
 
 // ---- helpers shared by the creature files ----
 float frand();                                                   // 0..1
+#ifndef DQ_WRAP_ANGLE
+#define DQ_WRAP_ANGLE
 inline float wrapAngle(float a) { return std::fmod(std::fmod(a + PI * 3, TAU) + TAU, TAU) - PI; }
+#endif
 inline float heading(float fx, float fz, float tx, float tz) { return std::atan2(-(tx - fx), -(tz - fz)); }
 float envDay(const Level& lv, int dim);                          // the original's env.day (0.2 night .. 1 noon)
 int dimAt(const Entity& e);

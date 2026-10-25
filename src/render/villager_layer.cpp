@@ -13,6 +13,7 @@
 #include <unordered_map>
 
 namespace dq {
+using ui::operator*; using ui::operator+; using ui::operator-;
 
 namespace {
 float clampf(float v, float a, float b) { return v < a ? a : v > b ? b : v; }
