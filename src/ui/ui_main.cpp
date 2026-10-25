@@ -161,6 +161,13 @@ void registerMenuTab(MenuTab t) {
 }
 const std::vector<MenuTab>& menuTabs() { return tabs(); }
 
+bool inventoryClosePressed(App& a, bool tabScreen) {
+  Input& in = a.input;
+  if (!in.pressed(Act::Inventory)) return false;
+  if (!tabScreen || !in.keyOnlyPressed(Act::Inventory)) return true;
+  return in.sharesKey(Act::Inventory, Act::MenuTabRight) || in.sharesKey(Act::Inventory, Act::MenuTabLeft) ? in.padButtonPressed(3) : true;
+}
+
 static int g_tabClick = -1;
 static void tabGo(App& a, int cur, int to, int dir) {
   // (the switch happens between frames, outside any screen's draw)
@@ -226,25 +233,32 @@ void menuTabsDraw(App& a, const std::string& current) {
   // .menu-tabs: top centre, LB · tabs · RB, 600 13px
   std::vector<float> w; float total = 0, gap = 4 * z;
   auto pill = [&](const char* t, float padX) { return textSize(F_MID, t).x + padX * 2; };
-  float lbw = pill("LB", 7 * z), rbw = pill("RB", 7 * z);
+  // Q / E on a keyboard (the inventory's E shuts it instead, so only Q shows there), LB / RB on a pad
+  bool kb = !a.input.usingPad();
+  bool eShuts = current == "inventory" && a.input.sharesKey(Act::Inventory, Act::MenuTabRight);
+  const char* lbT = kb ? "Q" : "LB"; const char* rbT = kb ? (eShuts ? "" : "E") : "RB";
+  float lbw = pill(lbT, 7 * z), rbw = *rbT ? pill(rbT, 7 * z) : 0;
   for (auto& t : v) { w.push_back(pill(t.name.c_str(), 10 * z)); total += w.back() + gap; }
-  total += lbw + rbw + gap;
+  total += lbw + rbw + gap * (*rbT ? 1 : 0);
   float x = std::round(a.width * 0.5f - total * 0.5f), y = 6 * z, h = textSize(F_MID, "Ag").y + 10 * z;
   auto drawPill = [&](const char* t, float wpx, ImU32 bg, ImU32 border, ImU32 fg, float hh, float r) {
     ImVec2 p0(x, y + (h - hh) * 0.5f), p1(x + wpx, y + (h + hh) * 0.5f);
     dl->AddRectFilled(p0, p1, bg, r); if (border) dl->AddRect(p0, p1, border, r);
     ImVec2 ts = textSize(F_MID, t); text(dl, F_MID, ImVec2(p0.x + (wpx - ts.x) * 0.5f, p0.y + (p1.y - p0.y - ts.y) * 0.5f), fg, t);
-    bool hit = ImGui::IsMouseHoveringRect(p0, p1) && ImGui::IsMouseClicked(0);
+    // (not IsMouseHoveringRect: after the screens' windows have ended, the current window is ImGui's little "Debug"
+    // window and that call clips to it, so a click on the strip never counted on the map / journal / skills / ... tabs)
+    ImVec2 m = ImGui::GetIO().MousePos;
+    bool hit = ImGui::IsMouseClicked(0) && m.x >= p0.x && m.x < p1.x && m.y >= p0.y && m.y < p1.y;
     x += wpx + gap; return hit;
   };
-  drawPill("LB", lbw, col::rgb(0x333333), 0, col::white, h - 4 * z, 5 * z);
+  drawPill(lbT, lbw, col::rgb(0x333333), 0, col::white, h - 4 * z, 5 * z);
   for (size_t i = 0; i < v.size(); i++) {
     bool on = v[i].key == current, off = v[i].can && !v[i].can(a);
     ImU32 bg = on ? col::rgb(0xc9a24a) : col::rgb(0x140e08, 217), br = on ? col::rgb(0xf0d58a) : col::rgb(0x6b5a3a), fg = on ? col::rgb(0x1a1208) : col::rgb(0xd8c9a8);
     if (off) { bg = withAlpha(bg, 0.45f); br = withAlpha(br, 0.45f); fg = withAlpha(fg, 0.45f); }
     if (drawPill(v[i].name.c_str(), w[i], bg, br, fg, h, 6 * z)) g_tabClick = (int)i;
   }
-  drawPill("RB", rbw, col::rgb(0x333333), 0, col::white, h - 4 * z, 5 * z);
+  if (*rbT) drawPill(rbT, rbw, col::rgb(0x333333), 0, col::white, h - 4 * z, 5 * z);
 }
 
 } // namespace dq

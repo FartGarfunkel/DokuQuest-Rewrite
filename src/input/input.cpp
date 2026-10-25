@@ -77,6 +77,8 @@ void Input::defaults() {
   keyCodes[(int)Act::MenuLeft] = {"ArrowLeft"}; keyCodes[(int)Act::MenuRight] = {"ArrowRight"};
   keyCodes[(int)Act::MenuOk] = {"Enter", "NumpadEnter"}; keyCodes[(int)Act::MenuBack] = {"Escape"};
   keyCodes[(int)Act::Pause] = {"Escape"};
+  // LB / RB on a keyboard: Q and E move between the menu tabs (inventory, map, journal, skills, spells, stable)
+  keyCodes[(int)Act::MenuTabLeft] = {"KeyQ"}; keyCodes[(int)Act::MenuTabRight] = {"KeyE"};
   padCodes[(int)Act::MenuUp] = {12}; padCodes[(int)Act::MenuDown] = {13}; padCodes[(int)Act::MenuLeft] = {14}; padCodes[(int)Act::MenuRight] = {15};
   padCodes[(int)Act::MenuOk] = {0}; padCodes[(int)Act::MenuBack] = {1}; padCodes[(int)Act::MenuTabLeft] = {4}; padCodes[(int)Act::MenuTabRight] = {5};
   padCodes[(int)Act::MenuX] = {2}; padCodes[(int)Act::MenuY] = {3}; padCodes[(int)Act::MenuStart] = {9};
@@ -120,7 +122,7 @@ void Input::bindKey(Act a, SDL_Scancode sc) {
 void Input::saveBinds() {}
 
 void Input::beginFrame() {
-  prev = cur; pulse.fill(false); mouseDelta = vec2(0); wheelY = 0; typed.clear(); lastCode.clear(); lastPadButton = -1; dropAllFlag = false;
+  prev = cur; kprev = kcur; pulse.fill(false); mouseDelta = vec2(0); wheelY = 0; typed.clear(); lastCode.clear(); lastPadButton = -1; dropAllFlag = false;
   std::memcpy(prevKeys, keys, sizeof keys);
   for (auto& p : padList) p.prevB = p.b;
 }
@@ -290,7 +292,10 @@ void Input::endFrame() {
   for (int a = 0; a < (int)Act::Count; a++) {
     bool v = false;
     bool menuAct = (a >= (int)Act::MenuUp && a <= (int)Act::MenuTabRight) || a >= (int)Act::MenuX || a == (int)Act::Pause;
-    if (!textActive || menuAct) for (auto& c : keyCodes[a]) if (codeDown(c)) { v = true; break; }
+    bool tabKey = a == (int)Act::MenuTabLeft || a == (int)Act::MenuTabRight;   // Q / E are letters: typing must not switch tabs
+    bool kv = false;
+    if (!textActive || (menuAct && !tabKey)) for (auto& c : keyCodes[a]) if (codeDown(c)) { kv = true; break; }
+    kcur[a] = kv; v = kv;
     if (!setupActive) for (auto& p : padList) for (int k : padCodes[a]) if (k >= 0 && k < 17 && p.b[k]) v = true;
     cur[a] = v;
   }
@@ -324,6 +329,10 @@ void Input::endFrame() {
   if (padView) { bool k = false; if (!textActive) for (auto& c : keyCodes[(int)Act::View]) k |= codeDown(c); cur[(int)Act::View] = k; }
 }
 
+bool Input::sharesKey(Act a, Act b) const {
+  for (auto& x : keyCodes[(int)a]) for (auto& y : keyCodes[(int)b]) if (x == y) return true;
+  return false;
+}
 bool Input::padButtonDown(int k) const { for (auto& p : padList) if (k >= 0 && k < 17 && p.b[k]) return true; return false; }
 bool Input::padButtonPressed(int k) const { for (auto& p : padList) if (k >= 0 && k < 17 && p.edge(k)) return true; return false; }
 

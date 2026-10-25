@@ -63,6 +63,8 @@ const ArmorSet& armorMeshes(const std::string& itemKey, const std::string& dye, 
 // a worn cape (game/capes.js): seg 0 = the whole cape (10 x 16 x 1 px, hung from its top edge at the origin,
 // toward +z behind the body), 1 = its top 11 rows lying under a backpack, 2 = the 5-row hem below it
 const CharMesh* capeMesh(const std::string& capeKey, int seg, const TileSet& ts);
+// a painted cape ("cape@<name>", assets/cape_tex.h) changed: forget its 3D cape so the next draw builds it again
+void capeMeshInvalidate(const std::string& capeKey);
 
 // how a backpack sits over what's worn under it (gear3d.js gearPackOver): po further out, lift higher straps,
 // fz where the straps lie down the chest, capeZ where a cape's top lies under it

@@ -106,7 +106,7 @@ public:
       else { hasFocus = true; focus = Hit{H_BOOKBTN}; }
     }
   }
-  bool pendingBookFocus = false;
+  bool pendingBookFocus = false, padActed = false;
 
   // ---- per frame: controller, keys, closing ---------------------------------------------------------
   void update(App& a, double) override {
@@ -119,22 +119,29 @@ public:
     if (in.pressed(Act::Inventory) && !in.padButtonPressed(3) && !in.textActive) { a.popScreen(); return; }
     if (o.mode == "inventory" && !creative && menuTabsUpdate(a, "inventory")) return;
     if (o.mode == "inventory" && creative && menuTabsUpdate(a, "inventory")) return;
-    if (o.mode == "table" && (in.pressed(Act::MenuTabLeft) || in.pressed(Act::MenuTabRight))) toggleBook(a);
+    if (o.mode == "table" && (in.padButtonPressed(4) || in.padButtonPressed(5))) toggleBook(a);   // (Q drops here, E closes)
     // spatial navigation between everything focusable
     ivec2 nav = in.textActive ? ivec2(0) : in.navStep();
+    if (nav != ivec2(0) && in.usingPad()) padActed = true;
     if (nav != ivec2(0) && in.usingPad()) {
       if (!hasFocus || !findHit(focus)) { hasFocus = true; focus = Hit{H_SLOT, Grp::Main, 9}; }
       else moveFocus(nav.x, nav.y);
     } else if (nav != ivec2(0) && !in.usingPad() && hasFocus) moveFocus(nav.x, nav.y);
     const Hit* f = hasFocus ? findHit(focus) : nullptr;
     bool A = in.padButtonPressed(0), X = in.padButtonPressed(2), Y = in.padButtonPressed(3);
+    if (A || X) padActed = true;
+    // the pad's inventory button toggles: Y right after opening (nothing moved, nothing on the cursor) shuts it again;
+    // once you have moved around, Y is the quick-move button it is in the original
+    if (Y && !in.textActive && !padActed && p->cursor.empty()) { a.popScreen(); return; }
     if (f && (A || X || Y)) activate(a, *f, X, Y, true);
     // keyboard over the hovered slot: 1-9 swaps with the hotbar, Q drops one (Ctrl: the stack)
     if (!in.textActive) {
       const Hit* h = hovered();
       if (h && h->k == H_SLOT) {
         for (int k = 0; k < 9; k++) if (in.keyPressed((SDL_Scancode)(SDL_SCANCODE_1 + k))) sess->hotbarSwap(h->g, h->i, k);
-        if (in.keyPressed(in.keyFor(Act::Drop)) && h->g != Grp::Out) sess->dropFromSlot(h->g, h->i, in.ctrlHeld());
+        // Q drops the hovered stack (Ctrl: all of it) -- except in the tabbed inventory, where Q is "previous tab" (Delete drops there)
+        bool qIsTab = o.mode == "inventory" && in.sharesKey(Act::Drop, Act::MenuTabLeft);
+        if ((in.keyPressed(SDL_SCANCODE_DELETE) || (!qIsTab && in.keyPressed(in.keyFor(Act::Drop)))) && h->g != Grp::Out) sess->dropFromSlot(h->g, h->i, in.ctrlHeld());
       }
     }
   }

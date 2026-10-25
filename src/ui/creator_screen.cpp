@@ -6,6 +6,8 @@
 #include "ui/char_screens.h"
 #include "ui/char_preview.h"
 #include "ui/file_pick.h"
+#include "ui/layout_flow.h"
+#include "assets/cape_tex.h"
 #include "core/registry.h"
 #include "client/app.h"
 #include "client/session.h"
@@ -62,6 +64,7 @@ public:
       std::string k = wornItem(*a.session->player, "cape");
       if (const ItemDef* d = k.empty() ? nullptr : reg().item(k)) { wornCape = d->str("cape").empty() ? k : d->str("cape"); wornCapeName = d->name; }
     }
+    if (wornCape.empty()) { std::string pc = ::dq::wornCapeName(a.settings); if (!pc.empty()) { wornCape = customCapeKey(pc); wornCapeName = "painted " + pc; } }   // the cape editor's
     t += (float)dt;
     if (spin && !dragging) yaw += (float)dt * 0.5f;
   }
@@ -74,26 +77,24 @@ public:
 
   void draw(App& a) override {
     ImGuiIO& io = ImGui::GetIO();
-    float W = std::min((float)a.width - 20, 1180.f), H = std::min((float)a.height - 20, 760.f);
+    ImVec2 WS = flow::windowSize((float)a.width, (float)a.height, 1180, 760, 10);
+    float W = WS.x, H = WS.y;
     ImGui::SetNextWindowPos(ImVec2(a.width * 0.5f, a.height * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(W, H), ImGuiCond_Always);
     ImGui::Begin("Character creator##cc", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings);
-    // ---- top bar ----
-    ImGui::SetNextItemWidth(200); ImGui::InputText("Name", &name);
-    ImGui::SameLine();
-    if (ImGui::Button("Random")) { CharLook o = look; push(); look = ccDefaultLook(std::nullopt); keep3d(o); apply(); status = "A new face"; }
-    ImGui::SameLine();
-    if (ImGui::Button("Random (same sex)")) { CharLook o = look; push(); look = ccDefaultLook(std::nullopt, o.sex); keep3d(o); apply(); status = "A new face"; }
-    ImGui::SameLine(); ImGui::BeginDisabled(undo.empty());
-    if (ImGui::Button("Undo")) { redo.push_back(look); look = undo.back(); undo.pop_back(); apply(); }
-    ImGui::EndDisabled(); ImGui::SameLine(); ImGui::BeginDisabled(redo.empty());
-    if (ImGui::Button("Redo")) { undo.push_back(look); look = redo.back(); redo.pop_back(); apply(); }
+    // ---- top bar (wraps when the window is narrow) ----
+    ImGui::SetNextItemWidth(std::min(200.f * ui::Z(), W * 0.3f)); ImGui::InputText("Name", &name);
+    flow::Row top; top.first = false;
+    if (top.button("Random")) { CharLook o = look; push(); look = ccDefaultLook(std::nullopt); keep3d(o); apply(); status = "A new face"; }
+    if (top.button("Random (same sex)")) { CharLook o = look; push(); look = ccDefaultLook(std::nullopt, o.sex); keep3d(o); apply(); status = "A new face"; }
+    ImGui::BeginDisabled(undo.empty());
+    if (top.button("Undo")) { redo.push_back(look); look = undo.back(); undo.pop_back(); apply(); }
+    ImGui::EndDisabled(); ImGui::BeginDisabled(redo.empty());
+    if (top.button("Redo")) { undo.push_back(look); look = redo.back(); redo.pop_back(); apply(); }
     ImGui::EndDisabled();
-    ImGui::SameLine();
-    if (ImGui::Button(picker.busy() ? "Choosing..." : "Import skin PNG...")) picker.open("Your own skin under the character (64x64 or 64x32 PNG)", "png");
+    if (top.button(picker.busy() ? "Choosing..." : "Import skin PNG...")) picker.open("Your own skin under the character (64x32 or 64x64 PNG)", "png");
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("Wear your own skin under a 3D character (or drop a skin .png on the window)");
-    ImGui::SameLine();
-    if (ImGui::Button("Load...")) ImGui::OpenPopup("load##cc");
+    if (top.button("Load...")) ImGui::OpenPopup("load##cc");
     if (ImGui::BeginPopup("load##cc")) {
       auto list = listCharacters();
       if (list.empty()) ImGui::TextDisabled("No saved characters yet");
@@ -103,13 +104,18 @@ public:
     ImGui::Separator();
     // ---- options (left) and the model (right) ----
     float left = W * 0.48f;
-    ImGui::BeginChild("opts##cc", ImVec2(left, H - 130), ImGuiChildFlags_Borders);
+    // what the bottom bar needs (status line + its rows of buttons) is kept free below the two panels
+    ImGuiStyle& sty = ImGui::GetStyle();
+    int botRows = flow::rowsNeeded({{"Save & wear", 150}, {"Save", 100}, {"Export skin PNG", 150}, {"Paint by hand...", 150}, {"Cape editor...", 150}, {"Back", 100}}, ImGui::GetContentRegionAvail().x);
+    float botH = ImGui::GetTextLineHeightWithSpacing() + botRows * (ImGui::GetFrameHeight() + sty.ItemSpacing.y) + sty.WindowPadding.y;
+    float bodyH = std::max(120.f, ImGui::GetContentRegionAvail().y - botH);
+    ImGui::BeginChild("opts##cc", ImVec2(left, bodyH), ImGuiChildFlags_Borders);
     options();
     ImGui::EndChild();
     ImGui::SameLine();
-    ImGui::BeginChild("view##cc", ImVec2(0, H - 130), ImGuiChildFlags_Borders, ImGuiWindowFlags_NoScrollbar);
+    ImGui::BeginChild("view##cc", ImVec2(0, bodyH), ImGuiChildFlags_Borders, ImGuiWindowFlags_NoScrollbar);
     ImVec2 avail = ImGui::GetContentRegionAvail();
-    float ph = avail.y - 34;
+    float ph = std::max(40.f, avail.y - ImGui::GetFrameHeightWithSpacing() - 4);
     CharPreviewOpts o; o.yaw = yaw; o.elev = elev; o.dist = dist; o.time = t; o.walk = walk;
     if (showArmor) o.armor = {"iron_helmet", "iron_chestplate", "iron_leggings", "iron_boots"};
     if (look.cape == "none" && !wornCape.empty()) o.cape = wornCape;
@@ -129,22 +135,23 @@ public:
     ImGui::EndChild();
     // ---- bottom bar ----
     ImGui::TextDisabled("%s", status.c_str());
-    if (ImGui::Button("Save & wear", ImVec2(150, 0))) save(a, true);
-    ImGui::SameLine();
-    if (ImGui::Button("Save", ImVec2(100, 0))) save(a, false);
-    ImGui::SameLine();
-    if (ImGui::Button("Export skin PNG", ImVec2(150, 0))) {
+    flow::Row bot;
+    if (bot.button("Save & wear", 150)) save(a, true);
+    if (bot.button("Save", 100)) save(a, false);
+    if (bot.button("Export skin PNG", 150)) {
       fs::path p = skinsDir() / (sanitizeName(name) + ".png");
       status = saveSkinPng(p, skin) ? "Exported " + p.filename().string() + " to your skins folder" : "Could not export the skin";
     }
-    ImGui::SameLine();
-    if (ImGui::Button("Paint by hand...", ImVec2(150, 0))) {
+    if (bot.button("Paint by hand...", 150)) {
       save(a, false);
       a.pushScreen(makeSkinEditorScreen(skin, sanitizeName(name), sanitizeName(name)));
       ImGui::End(); return;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("Back", ImVec2(100, 0))) { if (dirty) confirmLeave = true; else { ImGui::End(); a.popScreen(); return; } }
+    if (bot.button("Cape editor...", 150)) {   // paint the cape you wear (cape_screen.cpp)
+      a.pushScreen(makeCapeEditorScreen());
+      ImGui::End(); return;
+    }
+    if (bot.button("Back", 100)) { if (dirty) confirmLeave = true; else { ImGui::End(); a.popScreen(); return; } }
     if (confirmLeave) ImGui::OpenPopup("Unsaved changes##cc");
     if (ImGui::BeginPopupModal("Unsaved changes##cc", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
       ImGui::Text("Save this character before leaving?");

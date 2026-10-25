@@ -42,9 +42,17 @@ void outlineLast(bool on, ImU32 c = col::gold) { if (on) ImGui::GetWindowDrawLis
 int padStep(App& a, int sel, int n, bool horizontalToo) {
   if (n <= 0) return 0;
   Input& in = a.input;
-  if (in.pressed(Act::MenuDown) || (horizontalToo && in.pressed(Act::MenuRight))) sel = (sel + 1) % n;
-  if (in.pressed(Act::MenuUp) || (horizontalToo && in.pressed(Act::MenuLeft))) sel = (sel + n - 1) % n;
+  ivec2 nv = in.navStep();   // d-pad, left stick (with key repeat) and the arrow keys
+  if (nv.y > 0 || (horizontalToo && nv.x > 0)) sel = (sel + 1) % n;
+  else if (nv.y < 0 || (horizontalToo && nv.x < 0)) sel = (sel + n - 1) % n;
   return clampv(sel, 0, n - 1);
+}
+// text cut to a width, with an ellipsis (nothing is ever drawn past its box)
+std::string fitText(FontId f, const std::string& str, float maxW) {
+  if (textSize(f, str.c_str()).x <= maxW) return str;
+  std::string r = str;
+  while (!r.empty() && textSize(f, (r + "\xE2\x80\xA6").c_str()).x > maxW) { r.pop_back(); while (!r.empty() && ((unsigned char)r.back() & 0xC0) == 0x80) r.pop_back(); }
+  return r + "\xE2\x80\xA6";
 }
 int digitPressed() { for (int i = 0; i < 9; i++) if (ImGui::IsKeyPressed((ImGuiKey)(ImGuiKey_1 + i), false)) return i; return -1; }
 }
@@ -109,12 +117,19 @@ public:
     const float z = Z(), W = (float)a.width, H = (float)a.height;
     ImDrawList* bg = ImGui::GetBackgroundDrawList();
     bg->AddRectFilledMultiColor(ImVec2(0, H * 0.45f), ImVec2(W, H), 0, 0, IM_COL32(6, 4, 2, 115), IM_COL32(6, 4, 2, 115));
-    const float cw = std::min(640 * z, W - 24 * z), pad = 12 * z;
-    // ---- the card: face, name, words, options ----
-    float optH = 30 * z, textH = std::max(44 * z, textSize(F_BODY, t.text.c_str(), cw - 76 * z - pad * 3).y);
-    int nOpts = t.mode == "shop" ? 0 : (int)t.opts.size();
-    float ch = pad * 2 + std::max(80 * z, 30 * z + textH + 14 * z + nOpts * (optH + 4 * z));
-    ImVec2 c0((W - cw) / 2, H - 92 * z - ch);
+    const float cw = std::min(640 * z, W - 16 * z), pad = 12 * z;
+    // ---- the card: face, name, words, options (an option is as tall as its wrapped label) ----
+    const float mw0 = cw - 76 * z - pad * 3, labW = mw0 - 38 * z;
+    float textH = std::max(44 * z, textSize(F_BODY, t.text.c_str(), mw0).y);
+    std::vector<float> oh;
+    float optsH = 0;
+    if (t.mode != "shop") for (auto& o : t.opts) { float h = std::max(30 * z, textSize(F_MID, o.label.c_str(), labW).y + 10 * z); oh.push_back(h); optsH += h + 4 * z; }
+    float ch = pad * 2 + std::max(80 * z, 30 * z + textH + 14 * z + optsH);
+    ch = std::min(ch, H - 16 * z);
+    // sits above the hotbar (92 px up) like .npc-talk; on a short window it moves down rather than off the top
+    float bottom = std::min(H - 92 * z, H - 8 * z);
+    ImVec2 c0((W - cw) / 2, std::max(8 * z, bottom - ch));
+    if (c0.y + ch > H - 8 * z) c0.y = H - 8 * z - ch;
     ImGui::SetNextWindowPos(c0); ImGui::SetNextWindowSize(ImVec2(cw, ch));
     ImGui::Begin("##npc-talk", nullptr, CARD);
     ImDrawList* dl = ImGui::GetWindowDrawList();
@@ -126,20 +141,25 @@ public:
     float mx = fp.x + 76 * z + pad, mw = c0.x + cw - pad - mx;
     ImVec2 nm = textSize(F_H3, t.name.c_str());
     textShadow(dl, F_H3, ImVec2(mx, fp.y - 4 * z), col::rgb(0xfff3d6), t.name.c_str(), ImVec2(2, 2) * z, col::rgb(0x1a0f06));
-    text(dl, F_MID, ImVec2(mx + nm.x + 8 * z, fp.y + nm.y - textSize(F_MID, "A").y - 6 * z), col::gold, t.title.c_str());
-    if (!t.vid.empty()) { std::string st = standingOf(repOf(p, t.vid)).name; ImVec2 sz = textSize(F_SMALL, st.c_str()); text(dl, F_SMALL, ImVec2(mx + mw - sz.x, fp.y + 4 * z), col::muted, st.c_str()); }
+    float standW = 0; std::string st;
+    if (!t.vid.empty()) { st = standingOf(repOf(p, t.vid)).name; standW = textSize(F_SMALL, st.c_str()).x + 8 * z; }
+    float titleRoom = mw - nm.x - 8 * z - standW;
+    if (titleRoom > 24 * z) text(dl, F_MID, ImVec2(mx + nm.x + 8 * z, fp.y + nm.y - textSize(F_MID, "A").y - 6 * z), col::gold, fitText(F_MID, t.title, titleRoom).c_str());
+    if (standW > 0 && nm.x + standW + 8 * z < mw) text(dl, F_SMALL, ImVec2(mx + mw - standW + 8 * z, fp.y + 4 * z), col::muted, st.c_str());
     std::string typed = t.text.substr(0, (size_t)shown);
     text(dl, F_BODY, ImVec2(mx, fp.y + 30 * z), col::text, typed.c_str(), mw);
     if (t.mode != "shop") {
       ImGui::SetCursorScreenPos(ImVec2(mx, fp.y + 30 * z + textH + 10 * z));
-      for (int i = 0; i < (int)t.opts.size(); i++) {
+      for (int i = 0; i < (int)t.opts.size() && i < (int)oh.size(); i++) {
         const TalkOpt o = t.opts[i];   // a copy: choosing changes the options
+        float optH = oh[i];
         ImGui::PushID(i);
         ImVec2 p0 = ImGui::GetCursorScreenPos();
         if (rowButton("##o", ImVec2(mw, optH), sel == i, false)) choose(lv, p, i);
         std::string icon = o.icon.empty() ? std::to_string(i + 1) : o.icon;
         text(dl, F_BIG, p0 + ImVec2(8 * z, (optH - textSize(F_BIG, "1").y) / 2), col::gold, icon.c_str());
-        text(dl, F_MID, p0 + ImVec2(30 * z, (optH - textSize(F_MID, "A").y) / 2), col::text, o.label.c_str());
+        float lh = textSize(F_MID, o.label.c_str(), labW).y;
+        text(dl, F_MID, p0 + ImVec2(30 * z, (optH - lh) / 2), col::text, o.label.c_str(), labW);
         ImGui::Dummy(ImVec2(1, 4 * z));
         ImGui::PopID();
         if (i >= (int)t.opts.size()) break;
@@ -158,9 +178,11 @@ private:
     const float z = Z(), pad = 8 * z, rowH = 34 * z;
     auto L = rows(lv, p);
     float listH = std::min((float)L.size() * (rowH + 3 * z) + 4 * z, std::min(380 * z, a.height * 0.52f) - 80 * z);
+    listH = std::min(listH, card.y - 6 * z - 8 * z - (pad * 2 + 34 * z + 24 * z));   // never above the top of the window
+    listH = std::max(listH, 40 * z);
     if (L.empty()) listH = 30 * z;
     float sh = pad * 2 + 34 * z + listH + 24 * z;
-    ImVec2 s0(card.x, card.y - 6 * z - sh);
+    ImVec2 s0(card.x, std::max(4 * z, card.y - 6 * z - sh));
     ImGui::SetNextWindowPos(s0); ImGui::SetNextWindowSize(ImVec2(cw, sh));
     ImGui::Begin("##npc-shop", nullptr, CARD);
     ImDrawList* dl = ImGui::GetWindowDrawList();
@@ -199,9 +221,9 @@ private:
       drawIcon(d2, buy ? l.id : "emerald", ImVec2(x, p0.y + (rowH - ic) / 2), ic, al); x += ic + 4 * z;
       text(d2, F_BIG, ImVec2(x, ty), withAlpha(col::rgb(0xfff3d6), al), getN.c_str()); x += textSize(F_BIG, getN.c_str()).x + 6 * z;
       std::string nm = buy ? itemNameOf(l.id) : "for " + itemNameOf(l.id);
-      text(d2, F_MID, ImVec2(x, my), withAlpha(col::text, al), nm.c_str());
       std::string right = l.locked ? TN[l.tier].get<std::string>() + " only" : l.left > 0 ? std::to_string(l.left) + " left" : "sold out";
       ImVec2 rs = textSize(F_SMALL, right.c_str());
+      text(d2, F_MID, ImVec2(x, my), withAlpha(col::text, al), fitText(F_MID, nm, p0.x + rw - rs.x - 16 * z - x).c_str());
       text(d2, F_SMALL, ImVec2(p0.x + rw - rs.x - 8 * z, p0.y + (rowH - rs.y) / 2), withAlpha(col::muted, al), right.c_str());
       if (click) { sel = k; talkShopTrade(lv, p, t, k); }
       ImGui::Dummy(ImVec2(1, 3 * z));
@@ -229,7 +251,9 @@ public:
     if (!s || !v) { a.popScreen(); return; }
     if (a.input.pressed(Act::Inventory) || a.input.pressed(Act::MenuY)) { a.popScreen(); return; }
     if ((refreshT -= (float)dt) <= 0) { refreshT = 1; posted = boardQuests(*s->level, *v); }
+    int was = sel;
     sel = padStep(a, sel, nButtons, true);
+    selMoved = sel != was;
     pressA = a.input.pressed(Act::MenuOk);
   }
   void draw(App& a) override {
@@ -242,6 +266,7 @@ public:
     ImGui::SetNextWindowPos(ImVec2(W / 2, H / 2), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(cw, std::min(chMax, lastH > 0 ? lastH : 520 * z)));
     ImGui::Begin("##quest-board", nullptr, CARD);
+    padScrollHere();   // the right stick scrolls a tall board
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 w0 = ImGui::GetWindowPos(), ws = ImGui::GetWindowSize();
     woodCard(dl, w0, w0 + ws, 0x5a4028, 0x46321e, 0x8a6a44, 0x2a1a0a);
@@ -287,9 +312,9 @@ public:
         ImGui::SetCursorScreenPos(ImVec2(n0.x + nw - 10 * z - 90 * z, ry + 26 * z));
         ImGui::PushID(q.value("id", std::string()).c_str());
         if (done) text(dl, F_BIG, ImVec2(n0.x + nw - 10 * z - textSize(F_BIG, "Done").x, ry + 30 * z), col::rgb(0x6a3a1a), "Done");
-        else if (ready) { bool sl = sel == btn; if (button("Hand in", BTN_PRIMARY, true, 90 * z) || (sl && pressA)) fin = q.value("id", ""); outlineLast(sl, col::rgb(0xc83a2a)); btn++; }
+        else if (ready) { bool sl = sel == btn; if (button("Hand in", BTN_PRIMARY, true, 90 * z) || (sl && pressA)) fin = q.value("id", ""); outlineLast(sl, col::rgb(0xc83a2a)); if (sl && selMoved) ImGui::SetScrollHereY(0.5f); btn++; }
         else if (mine) { std::string hv = std::to_string(have) + "/" + std::to_string(need); text(dl, F_BIG, ImVec2(n0.x + nw - 10 * z - textSize(F_BIG, hv.c_str()).x, ry + 30 * z), col::rgb(0x6a3a1a), hv.c_str()); }
-        else { bool sl = sel == btn; if (button("Take it", BTN_NORMAL, true, 90 * z) || (sl && pressA)) take = q.value("id", ""); outlineLast(sl, col::rgb(0xc83a2a)); btn++; }
+        else { bool sl = sel == btn; if (button("Take it", BTN_NORMAL, true, 90 * z) || (sl && pressA)) take = q.value("id", ""); outlineLast(sl, col::rgb(0xc83a2a)); if (sl && selMoved) ImGui::SetScrollHereY(0.5f); btn++; }
         ImGui::PopID();
         rowH = std::max(rowH, nh); k++;
       }
@@ -314,7 +339,7 @@ public:
     }
   }
 private:
-  ivec3 at; VillageRef v; json posted; float refreshT = 0, lastH = 0; int sel = 0, nButtons = 0; bool pressA = false;
+  ivec3 at; VillageRef v; json posted; float refreshT = 0, lastH = 0; int sel = 0, nButtons = 0; bool pressA = false, selMoved = false;
 };
 std::unique_ptr<Screen> makeQuestBoardScreen(ivec3 at) { return std::make_unique<BoardScreen>(at); }
 
