@@ -3,6 +3,8 @@
 Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bottom; check each in the running game (scripted playtests, `dq-sweep`).
 
 ## Rendering
+- Shelves (standing and wall) don't show their items like the original (furnish.js / furniture shelves) — probably the same missing block-entity item drawing that item piles and frames had (render/pile_layer.cpp can draw them).
+- Rain puddles never dry up after the rain stops (user, alpha.3). Check the original weather.js wet/puddle timers; also check snow cover melting and ice thawing over time.
 - Voxel displacement like blog.danielschroeder.me/blog/voxel-displacement-modernizing-retro-3d (the target look the user chose): continuous heights per tile → geometry displaced only in WHOLE micro-voxel steps where the height change is large (mortar, gems, bricks, chest latch), while all finer detail goes only into a smooth normal map computed from the exact heights (sub-voxel normals light the surface). Bake heights + normal maps once per tile set (resource pack) at load. Sharp block edges kept crisp. No AO/shadows needed for that look; add later.
 - References the user picked (read before starting): Daniel Schroeder's three posts — voxel-displacement-modernizing-retro-3d, voxel-displacement-where-this-goes, voxel-renderer-objects-and-animation (blog.danielschroeder.me/blog/) — and John Lin's voxel sandbox (shacknews.com/cortex/article/249/john-lins-voxel-experiments). Take from them:
   * per-voxel shading attributes (normals) with a spread of normals on thin features to fake curvature, and bent-normal-style self-shadowing in crevices (cheap stand-in for AO);
@@ -39,6 +41,8 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
 - Knight/Ranger talents hooked into combat.
 
 ## Systems
+- Sneak + use with a block in hand on chests, furnaces, crafting tables etc. opens them instead of placing the block (user, alpha.3). sim/controller.cpp use() has the furnish.js rule (line ~420) — check whether an earlier "itemUse" handler consumes the use, or p.sneaking isn't set at that moment.
+- DUPE (high): taking armour off and putting it back in the inventory duplicates items (user, alpha.3). Not reproduced yet. Suspects: two InvSessions alive at once (the screen opened twice) writing stale back/cape/hook copies through InvSession::changed/store; the 3D doll's equip/hide buttons (ui/sheet.cpp, ui/inventory.cpp H_VIS); cape stored both in Player::cape and p.data["cape"]. Write a headless InvSession test (equip → click armour slot → click main slot → count items) and fix.
 - Portal: confirm worlds no longer vanish after crossing (fix in alpha.3: remesh after realm change). If it still happens through Nether portals, look at band switching in render/world_renderer.cpp drawPass and portal_view.cpp.
 - Block sweep extensions: use every block with every tool, check drops against the original's drop tables.
 
