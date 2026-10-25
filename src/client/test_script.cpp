@@ -175,6 +175,9 @@ void runStep(App& a, const json& st) {
       char b[256]; std::snprintf(b, sizeof b, " | pos %.1f %.1f %.1f yaw %.0f pitch %.0f hp %.1f realm %d held %s x%d", p->pos.x, p->pos.y, p->pos.z,
                                  p->yaw * 180 / PI, p->pitch * 180 / PI, p->hp, p->realm, p->held().id.c_str(), p->held().n);
       msg += b;
+      std::map<std::string, int> inv;
+      for (auto& st : p->inv) if (!st.empty()) inv[st.id] += st.n;
+      msg += " | inv:"; for (auto& [k, n] : inv) msg += " " + k + "=" + std::to_string(n);
       std::map<std::string, int> near;
       for (auto& e : s->level->entities()) if (e && !e->removed && e.get() != p && e->realm == p->realm && glm::distance(e->pos, p->pos) < st.value("near", 48.f)) near[e->type]++;
       msg += " | near:";
