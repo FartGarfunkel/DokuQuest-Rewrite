@@ -180,25 +180,34 @@ bool featureRelief(const u8* p, int S, const std::vector<float>& lumS, std::vect
     }
     if (far > 0.5f) { feat[i] = 1; nf++; }
   }
-  if (nf < S * S * 3 / 100 || nf > S * S * 40 / 100) return false;
-  // keep only patches of 3+ voxels
-  std::vector<u8> keep(S * S, 0); std::vector<int> stack;
-  int kept = 0;
-  std::vector<u8> seen(S * S, 0);
-  for (int s0 = 0; s0 < S * S; s0++) {
-    if (!feat[s0] || seen[s0]) continue;
-    std::vector<int> comp; stack.assign(1, s0); seen[s0] = 1;
-    while (!stack.empty()) {
-      int i = stack.back(); stack.pop_back(); comp.push_back(i);
-      int x = i % S, y = i / S;
-      for (auto [dx, dy] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-        int xx = x + dx, yy = y + dy; if ((unsigned)xx >= (unsigned)S || (unsigned)yy >= (unsigned)S) continue;
-        int j = yy * S + xx; if (feat[j] && !seen[j]) { seen[j] = 1; stack.push_back(j); }
+  if (nf < S * S * 2 / 100 || nf > S * S * 40 / 100) return false;
+  // a feature is a patch at least 2 voxels across (an opening with a 2x2 square: one-voxel lines are mortar or
+  // cracks, not features) ...
+  std::vector<u8> keep(S * S, 0);
+  auto F = [&](int x, int y) { return x < S && y < S && feat[y * S + x]; };
+  for (int y = 0; y < S; y++) for (int x = 0; x < S; x++)
+    if (F(x, y) && F(x + 1, y) && F(x, y + 1) && F(x + 1, y + 1)) keep[y * S + x] = keep[y * S + x + 1] = keep[(y + 1) * S + x] = keep[(y + 1) * S + x + 1] = 1;
+  int kept = 0; for (int i = 0; i < S * S; i++) kept += keep[i];
+  // ... and it leaves the surface in one piece or two: a network that cuts the picture into cells (brick mortar,
+  // cobble outlines) is a groove pattern, handled below
+  {
+    std::vector<u8> seen(S * S, 0); std::vector<int> stack; int regions = 0;
+    for (int s0 = 0; s0 < S * S; s0++) {
+      if (feat[s0] || seen[s0]) continue;
+      int n = 0; stack.assign(1, s0); seen[s0] = 1;
+      while (!stack.empty()) {
+        int i = stack.back(); stack.pop_back(); n++;
+        int x = i % S, y = i / S;
+        for (auto [dx, dy] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+          int xx = x + dx, yy = y + dy; if ((unsigned)xx >= (unsigned)S || (unsigned)yy >= (unsigned)S) continue;
+          int j = yy * S + xx; if (!feat[j] && !seen[j]) { seen[j] = 1; stack.push_back(j); }
+        }
       }
+      if (n >= S * S / 40) regions++;
     }
-    if (comp.size() >= 3) { for (int i : comp) keep[i] = 1; kept += (int)comp.size(); }
+    if (regions > 2) return false;
   }
-  if (kept < S * S * 2 / 100) return false;
+  if (kept < S * S * 1 / 100) return false;
   std::vector<float> dist; distanceTo(keep, S, 3, dist);
   for (int y = 0; y < S; y++) for (int x = 0; x < S; x++) {
     int i = y * S + x;
