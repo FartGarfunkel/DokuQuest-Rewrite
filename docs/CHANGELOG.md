@@ -5,6 +5,12 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.4.1 — Hotfix (October 2026)
+
+- **Split-screen joins properly:** the first controller that moves you is yours; any other controller now joins with Start (it used to act as a second controller for player 1 and pause the game). Like the original, a spare controller no longer moves player 1.
+- **Treading water:** chest-deep or standing on the bottom with your head under, you tread water with your arms out, like the original (sprint forward under water for the front crawl).
+- Removed Herobrine.
+
 ## 1.0.0-alpha.4 — Split-screen (October 2026)
 
 - **Split-screen:** up to four players on one screen. Press Start on a free controller to join.
