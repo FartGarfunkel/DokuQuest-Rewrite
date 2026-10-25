@@ -21,6 +21,7 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
 - Shader packs: the user reports they don't appear to work. Today only DokuQuest-format packs (docs/shader-packs.md: files that override assets/shaders/*.glsl) load; Minecraft Iris/OptiFine packs (shaders/*.fsh/.vsh, gbuffers_*, composite) are not supported yet — that's the roadmap's shader-pack pipeline. First check a DokuQuest-format pack end to end in Options, then plan the Iris/OptiFine loader.
 
 ## Items and animation
+- Mug of ale no longer looks like a mug (likely the alpha.3 "3D icons from block shape boxes" change in assets/item_models.cpp/icons.cpp overriding special item models — items with their own 3D model must keep it).
 - Fishing rod (user): the lure hangs down in front of the rod when not cast; when cast, the line runs out to the bobber in the water until reeled back in.
 - Creatures swim like Minecraft (float at the surface and paddle steadily) instead of bobbing and thrashing.
 - Nether portal: the Nether (and the Overworld on the way back) stays invisible after walking through until save + reload. Not the realm-change bug fixed in alpha.3 (that was the pocket/rift). Reproduce with tools/playtests/portal.json (the scripted portal didn't light — fix the script first: flint and steel on the frame's inside bottom block).
