@@ -59,6 +59,6 @@ void main() {
     c *= 1.0 - st * uStorm.y * 0.4;                                        // in the storm's shadow
     c = mix(c, uRainCol, st * uStorm.w * smoothstep(40.0, 420.0, dist));   // rain falling between you and it
   }
-  fragColor = vec4(applyFog(c, dist, vec3(0.0)), 1.0);
+  fragColor = vec4(DQ_GRADE(applyFog(c, dist, vec3(0.0))), 1.0);
 }
 #endif

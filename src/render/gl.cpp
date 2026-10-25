@@ -1,12 +1,49 @@
 #include "render/gl.h"
 #include <SDL.h>
 #include <regex>
+#include <set>
+#include <algorithm>
 
 namespace dq {
 
 GfxCaps gfx;
 static std::string g_shaderPack;
-void setShaderPack(const std::string& name) { g_shaderPack = name; }
+static std::set<Shader*>& liveShaders() { static std::set<Shader*>* s = new std::set<Shader*>(); return *s; }   // kept past exit
+static bool g_noPack = false;   // compiling a pack's shader failed: this one falls back to the game's own
+
+// Shader packs (OptiFine style): a folder userDir()/shaderpacks/<name>/ whose files replace the game's
+// shaders of the same name (chunk.glsl, sky.glsl, clouds.glsl, common.glsl, ...); everything else stays.
+// A pack file that doesn't compile falls back to the built-in one (the log says which).
+void setShaderPack(const std::string& name) {
+  g_shaderPack = name;
+  if (name.empty()) { DQ_LOG("shader pack: none"); return; }
+  fs::path dir = userDir() / "shaderpacks" / name;
+  std::error_code ec;
+  if (!fs::is_directory(dir, ec)) { DQ_WARN("shader pack '%s' not found in %s", name.c_str(), (userDir() / "shaderpacks").string().c_str()); return; }
+  std::string files;
+  for (auto& e : fs::directory_iterator(dir, ec)) if (e.path().extension() == ".glsl") files += (files.empty() ? "" : ", ") + e.path().filename().string();
+  DQ_LOG("shader pack '%s': replaces %s", name.c_str(), files.empty() ? "nothing (no .glsl files)" : files.c_str());
+}
+const std::string& shaderPack() { return g_shaderPack; }
+std::vector<std::string> listShaderPacks() {
+  std::vector<std::string> out;
+  std::error_code ec;
+  fs::path dir = userDir() / "shaderpacks";
+  if (fs::is_directory(dir, ec)) for (auto& e : fs::directory_iterator(dir, ec)) if (e.is_directory(ec)) out.push_back(e.path().filename().string());
+  std::sort(out.begin(), out.end());
+  return out;
+}
+// every shader again (a shader pack was switched): the game's renderers keep their Shader objects
+int reloadAllShaders() {
+  int ok = 0;
+  for (Shader* s : std::vector<Shader*>(liveShaders().begin(), liveShaders().end())) {
+    if (s->reload()) { ok++; continue; }
+    if (g_shaderPack.empty()) continue;
+    g_noPack = true; if (s->reload()) ok++; g_noPack = false;   // the pack's version doesn't build: the game's own
+  }
+  DQ_LOG("shaders reloaded: %d of %zu", ok, liveShaders().size());
+  return ok;
+}
 
 static void GLAD_API_PTR glDebugCb(GLenum, GLenum type, GLuint, GLenum severity, GLsizei, const GLchar* msg, const void*) {
   if (severity == GL_DEBUG_SEVERITY_HIGH || type == GL_DEBUG_TYPE_ERROR) DQ_WARN("GL: %s", msg);
@@ -41,8 +78,11 @@ void glCheck(const char* where) {
 
 std::string shaderSource(const std::string& file) {
   std::optional<std::string> src;
-  if (!g_shaderPack.empty()) src = readFile(userDir() / "shaderpacks" / g_shaderPack / file);
-  if (!src) src = readFile(assetsDir() / "shaders" / file);
+  // "builtin:name.glsl" is always the game's own file (a pack's file can include the one it replaces)
+  bool builtin = file.rfind("builtin:", 0) == 0;
+  std::string name = builtin ? file.substr(8) : file;
+  if (!builtin && !g_shaderPack.empty() && !g_noPack) src = readFile(userDir() / "shaderpacks" / g_shaderPack / name);
+  if (!src) src = readFile(assetsDir() / "shaders" / name);
   if (!src) { DQ_ERR("missing shader %s", file.c_str()); return ""; }
   // #include "file"
   std::string out; size_t pos = 0;
@@ -71,10 +111,16 @@ static GLuint compile(GLenum type, const std::string& src, const std::string& na
   return s;
 }
 
-Shader::~Shader() { if (prog) glDeleteProgram(prog); }
+Shader::~Shader() { liveShaders().erase(this); if (prog) glDeleteProgram(prog); }
 bool Shader::load(const std::string& vs, const std::string& fs, const std::vector<std::string>& defines) {
   vsf = vs; fsf = fs; defs = defines;
-  return reload();
+  liveShaders().insert(this);
+  if (reload()) return true;
+  if (g_shaderPack.empty()) return false;
+  // the pack's version doesn't build: the game's own instead
+  DQ_WARN("shader pack '%s': %s did not compile, using the built-in shader", g_shaderPack.c_str(), vs.c_str());
+  g_noPack = true; bool ok = reload(); g_noPack = false;
+  return ok;
 }
 bool Shader::reload() {
   std::string head = gfx.modern ? "#version 450 core\n#define DQ_MODERN 1\n" : "#version 330 core\n";

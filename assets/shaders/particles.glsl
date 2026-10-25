@@ -40,6 +40,6 @@ void main() {
   if (t.a < 0.5) discard;
   vec3 lc = (vFlags & 1u) != 0u ? vec3(1.0) : lighting(vLight.x, vLight.y, false);
   vec3 c = t.rgb * vTint * lc * 0.9;
-  fragColor = vec4(applyFog(c, vDist, vec3(0.0)), 1.0);
+  fragColor = vec4(DQ_GRADE(applyFog(c, vDist, vec3(0.0))), 1.0);
 }
 #endif

@@ -1,4 +1,5 @@
 #include "render/world_renderer.h"
+#include "render/mesh_ctx.h"
 #include "world/light.h"
 #include "assets/tileset.h"
 #include <cstring>
@@ -42,8 +43,14 @@ bool WorldRenderer::init(const Settings& s, const TileTextures& t) {
   microVoxels = s.microVoxels; microDist = (float)s.microVoxelDist;
   mopt.fancyLeaves = s.fancyLeaves; mopt.wavingPlants = s.wavingPlants;
   plantDetail = s.plantDetail == "off" || s.plantDetail == "flat" ? 0 : s.plantDetail == "all" ? 2 : 1;
+  applyGrassSetting(s);
   reloadShaders();
   return shader.ok();
+}
+// settings "grass3d" (kept in Settings::extra; default on, off on the potato preset): blades per grass block
+void applyGrassSetting(const Settings& s) {
+  bool on = s.extra.value("grass3d", s.preset != "potato");
+  setMeshGrassTufts(on ? (gfx.modern ? 11 : 7) : 0);
 }
 void WorldRenderer::reloadShaders() {
   std::vector<std::string> defs = {"MICRO_VOXELS " + std::to_string(microVoxels)};
@@ -238,12 +245,17 @@ void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
   shader.set("uWorldOrigin", vec3(wo));
   shader.set("uCamFrac", vec3(f.cam.pos - f.cam.origin));
   shader.set("uPass", pass);
+  shader.set("uGrassFade", gfx.modern ? vec2(20, 34) : vec2(13, 22));
   tex.bind(shader);
   if (pass == 0) {
     visible.clear(); totalSections = (int)meshes.size();
     bool clip = clipPlane.x != 0 || clipPlane.y != 0 || clipPlane.z != 0 || clipPlane.w != 0;
     vec3 cf = vec3(f.cam.pos - f.cam.origin);
+    // one land at a time (game/seamless.js): the band next door is made ready and meshed near its edge,
+    // but only the camera's own band is drawn (other lands show through portal windows only)
+    int band = f.dim;
     for (auto& [k, m] : meshes) {
+      if (k.dim != band && band >= 0 && band < DIM_COUNT) continue;
       vec3 rel = vec3(glm::dvec3(m->origin) - f.cam.origin);
       if (!f.cam.frustum.box(rel, rel + vec3(16))) continue;
       if (clip && glm::dot(vec3(clipPlane), rel + vec3(8)) + clipPlane.w < -14) continue;   // entirely behind the portal plane

@@ -17,6 +17,8 @@
 #include <imgui_impl_opengl3.h>
 #include <ctime>
 
+namespace dq { void applyGrassSetting(const Settings& s); }   // render/world_renderer.cpp
+
 namespace dq {
 
 static App* g_app = nullptr;
@@ -171,6 +173,7 @@ void App::applySettings() {
   if (audio) audio->setVolumes(settings);
   if (session) { session->worldRenderer.mopt.fancyLeaves = settings.fancyLeaves; session->worldRenderer.mopt.wavingPlants = settings.wavingPlants;
     if (session->worldRenderer.microVoxels != settings.microVoxels) { session->worldRenderer.microVoxels = settings.microVoxels; session->worldRenderer.reloadShaders(); }
+    applyGrassSetting(settings);   // render/world_renderer.cpp: 3D grass on or off
     session->worldRenderer.remeshAll(); }
 }
 

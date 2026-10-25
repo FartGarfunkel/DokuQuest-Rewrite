@@ -298,15 +298,16 @@ void DistantTerrain::update(Level& lv, World& w, const FrameCtx& f, ThreadPool& 
       }, 950);
     }
   }
-  // which lands: the one you're in, and the one beyond the cloud bank (Overworld <-> Skylands)
+  // which lands: the one you're in (the only one drawn: game/seamless.js), and the one beyond the cloud bank
+  // (Overworld <-> Skylands) made ready while you're in the bank, so it's there when you come out of it
   for (auto& b : bands) b->active = false;
   int d = f.dim;
   if (d == DIM_NETHER) { setSkyFarRange(0); for (auto& b : bands) b->draw.clear(); drawn = 0; return; }   // a roofed land: the fog hides the far end
   setSkyFarRange(range);
   int maskR = std::min(40, R + 3);
   std::vector<int> list = {d};
-  if (d == DIM_OVERWORLD) list.push_back(DIM_AETHER);
-  if (d == DIM_AETHER) list.push_back(DIM_OVERWORLD);
+  if (d == DIM_OVERWORLD && f.cloudBank > 0.01f) list.push_back(DIM_AETHER);
+  if (d == DIM_AETHER && f.cloudBank > 0.01f) list.push_back(DIM_OVERWORLD);
   std::vector<std::tuple<float, int, Band::Want>> wants;
   for (size_t n = 0; n < list.size(); n++) {
     Band& b = *bands[list[n]];
@@ -378,7 +379,7 @@ void DistantTerrain::draw(const FrameCtx& f, const SkyEnv& env) {
   GLint locO = shader.loc("uTileOrigin"), locS = shader.loc("uTileScale"), locC = shader.loc("uCell"), locW = shader.loc("uTileWorld");
   for (auto& bp : bands) {
     Band& b = *bp;
-    if (!b.active || b.draw.empty()) continue;
+    if (!b.active || b.draw.empty() || b.dim != f.dim) continue;   // only the camera's own land
     glBindTexture(GL_TEXTURE_2D, b.maskTex);
     glm::dvec3 o = f.cam.origin;
     shader.set("uMaskO", vec3((float)(b.maskCx0 * 16.0 - o.x), (float)(b.maskCz0 * 16.0 - o.z), (float)(b.maskN * 16)));

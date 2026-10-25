@@ -68,6 +68,6 @@ void main() {
     vec3 v = vRel - uCamFrac;
     c = applyFog(c, length(v), v);
   }
-  fragColor = vec4(c, 1.0);
+  fragColor = vec4(DQ_GRADE(c), 1.0);
 }
 #endif

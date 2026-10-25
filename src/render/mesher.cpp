@@ -117,7 +117,7 @@ void MeshCtx::put(std::vector<ChunkVertex>& d, const MV& v, int tile, int normal
   cv.x = (i16)std::lround(v.p.x * 256); cv.y = (i16)std::lround(v.p.y * 256); cv.z = (i16)std::lround(v.p.z * 256);
   cv.tile = (u16)((tile & 0xFFF) | (normal << 12));
   cv.u = (u16)clampv((int)std::lround((v.uv.x + 64) * 256), 0, 65535); cv.v = (u16)clampv((int)std::lround((v.uv.y + 64) * 256), 0, 65535);
-  cv.sway = opt.wavingPlants ? v.sway : (v.sway >= 32 && v.sway < 48 ? v.sway : 0);
+  cv.sway = opt.wavingPlants ? v.sway : ((v.sway >= 32 && v.sway < 48) || v.sway >= 80 ? v.sway : 0);   // water and the grass tufts' fade mark stay
   cv.sky = (u8)clampv((int)std::lround(v.sky * 17), 0, 255); cv.blk = (u8)clampv((int)std::lround(v.blk * 17), 0, 255);
   cv.shade = (u8)clampv((int)std::lround(v.shade * 255), 0, 255);
   cv.r = tint & 255; cv.g = (tint >> 8) & 255; cv.b = (tint >> 16) & 255;
@@ -479,10 +479,15 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
   thread_local std::unique_ptr<GreedyMasks> tlMasks;
   GreedyMasks* gm = nullptr;
   if (opt.greedy) { if (!tlMasks) tlMasks = std::make_unique<GreedyMasks>(); gm = tlMasks.get(); for (bool& a : gm->any) a = false; }
-  BlockId waterId = R.blockId("water");
+  BlockId waterId = R.blockId("water"), endPool = R.blockId("end_portal"), grassBlock = R.blockId("grass_block");
+  bool tufts = opt.detail && meshGrassTufts() > 0 && grassBlock;
   for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
     BlockId id = c.at(x, y, z);
     if (!id) continue;
+    // portal blocks (Ember, Skylands, the End's pool) are drawn by the portal layer (render/portal_view.cpp):
+    // a live window to the far side, or the portal's own picture while it isn't one. Meshing their tile
+    // here would lay the pack's swirl over the window (game/portalview.js draws the window instead of it).
+    if (R.tPortal[id] || (id == endPool && endPool)) { if (traits(id).emitsParticles) out.fx.emitters.push_back({ivec3(c.wx0 + x, c.wy0 + y, c.wz0 + z), id}); continue; }
     u8 meta = c.metaAt(x, y, z);
     ivec3 wp(c.wx0 + x, c.wy0 + y, c.wz0 + z);
     Render rt = (Render)R.tRender[id];
@@ -492,6 +497,7 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
         if (c.opaque(x + 1, y, z) && c.opaque(x - 1, y, z) && c.opaque(x, y, z + 1) && c.opaque(x, y, z - 1) && c.opaque(x, y + 1, z) && c.opaque(x, y - 1, z)) break;
         int pass = R.tTrans[id] ? 2 : rt == Render::Cutout ? 1 : 0;
         emitCube(c, gm, pass, pass == 2 ? out.trans : pass == 1 ? out.cutout : out.opaque, id, x, y, z, meta);
+        if (tufts && id == grassBlock && c.at(x, y + 1, z) == AIR) emitGrassTufts(c, out.cutout, id, x, y, z);
         break;
       }
       case Render::Cross: emitCross(c, out.cutout, id, x, y, z, meta); break;
