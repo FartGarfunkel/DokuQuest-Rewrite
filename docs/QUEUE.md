@@ -39,6 +39,7 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
 - Knight/Ranger talents hooked into combat.
 
 ## Systems
+- DUPE (high): taking armour off and putting it back in the inventory duplicates items (user, alpha.3). Not reproduced yet. Suspects: two InvSessions alive at once (the screen opened twice) writing stale back/cape/hook copies through InvSession::changed/store; the 3D doll's equip/hide buttons (ui/sheet.cpp, ui/inventory.cpp H_VIS); cape stored both in Player::cape and p.data["cape"]. Write a headless InvSession test (equip → click armour slot → click main slot → count items) and fix.
 - Portal: confirm worlds no longer vanish after crossing (fix in alpha.3: remesh after realm change). If it still happens through Nether portals, look at band switching in render/world_renderer.cpp drawPass and portal_view.cpp.
 - Block sweep extensions: use every block with every tool, check drops against the original's drop tables.
 
