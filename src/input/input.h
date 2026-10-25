@@ -57,7 +57,14 @@ struct PadState {
   // "let go" too, so it can't creep the player along on its own
   std::array<vec2, 2> driftAt{}, driftLast{}; std::array<float, 2> driftT{}; std::array<bool, 2> drifted{};
   bool edge(int k) const { return b[k] && !prevB[k]; }
+  // split screen: what this pad did this frame, worked out once and shared by whichever local player owns it
+  bool used = false;                   // did something besides Start: it already plays for the first player
+  ivec2 navOut{0}; float scrollOut = 0;
+  bool pCrawl = false, pView = false, pShoulder = false, viewOn = false;
 };
+
+// Who drives one local player in split screen: the keyboard + mouse and/or some controllers (by joystick instance id).
+struct InputSource { bool kb = false; std::vector<SDL_JoystickID> pads; };
 
 // raw joystick state, for the controller setup wizard
 struct RawPad { std::vector<u8> buttons; std::vector<float> axes; std::vector<u8> hats; std::string name; };
@@ -68,15 +75,20 @@ public:
   void beginFrame();                 // call before polling events
   void handle(const SDL_Event& e);   // feed every SDL event
   void endFrame();
-  bool down(Act a) const { return cur[(int)a]; }
-  bool pressed(Act a) const { return (cur[(int)a] && !prev[(int)a]) || pulse[(int)a]; }
-  bool released(Act a) const { return !cur[(int)a] && prev[(int)a]; }
+  bool down(Act a) const { return f->cur[(int)a]; }
+  bool pressed(Act a) const { return (f->cur[(int)a] && !f->prev[(int)a]) || f->pulse[(int)a]; }
+  bool released(Act a) const { return !f->cur[(int)a] && f->prev[(int)a]; }
   // keyboard / mouse only (a pad button doesn't count): the Inventory key and the Q / E tab keys can share a key
-  bool keyOnlyPressed(Act a) const { return kcur[(int)a] && !kprev[(int)a]; }
+  bool keyOnlyPressed(Act a) const { return f->kcur[(int)a] && !f->kprev[(int)a]; }
+  // ---- split screen: read the game through one local player's devices (select(i)), or everything merged (select(-1)) ----
+  void setSources(const std::vector<InputSource>& s) { sources = s; if (sel >= (int)sources.size()) select(-1); }
+  void select(int i) { sel = (i >= 0 && i < (int)sources.size()) ? i : -1; f = &fr[sel + 1]; }
+  int selected() const { return sel; }
+  const std::vector<InputSource>& sourceList() const { return sources; }
   bool sharesKey(Act a, Act b) const;   // some key code is bound to both actions
   vec2 moveAxis() const;             // x = strafe right, y = forward
   vec2 lookDelta() const;            // radians this frame (mouse + right stick * dt)
-  float wheel() const { return wheelY; }
+  float wheel() const { return kbSel() ? wheelY : 0.f; }
   void setCapture(SDL_Window* w, bool on);
   bool captured() const { return capture; }
   bool usingPad() const { return lastWasPad; }
@@ -91,12 +103,12 @@ public:
 
   // ---- extras used by menus ----
   bool dropAll() const { return dropAllFlag; }          // Ctrl + drop
-  bool shiftHeld() const { return keys[SDL_SCANCODE_LSHIFT] || keys[SDL_SCANCODE_RSHIFT]; }
-  bool ctrlHeld() const { return keys[SDL_SCANCODE_LCTRL] || keys[SDL_SCANCODE_RCTRL]; }
-  bool keyDown(SDL_Scancode sc) const { return sc > 0 && sc < SDL_NUM_SCANCODES && keys[sc]; }
-  bool keyPressed(SDL_Scancode sc) const { return sc > 0 && sc < SDL_NUM_SCANCODES && keys[sc] && !prevKeys[sc]; }
-  ivec2 navStep() const { return nav; }                  // d-pad / stick (with repeat) / arrow keys this frame
-  float padScroll() const { return scrollPx; }           // right stick: pixels to scroll a menu this frame
+  bool shiftHeld() const { return kbSel() && (keys[SDL_SCANCODE_LSHIFT] || keys[SDL_SCANCODE_RSHIFT]); }
+  bool ctrlHeld() const { return kbSel() && (keys[SDL_SCANCODE_LCTRL] || keys[SDL_SCANCODE_RCTRL]); }
+  bool keyDown(SDL_Scancode sc) const { return kbSel() && sc > 0 && sc < SDL_NUM_SCANCODES && keys[sc]; }
+  bool keyPressed(SDL_Scancode sc) const { return kbSel() && sc > 0 && sc < SDL_NUM_SCANCODES && keys[sc] && !prevKeys[sc]; }
+  ivec2 navStep() const { return f->nav; }               // d-pad / stick (with repeat) / arrow keys this frame
+  float padScroll() const { return f->scrollPx; }        // right stick: pixels to scroll a menu this frame
   bool padButtonDown(int k) const;                       // any pad, standard layout
   bool padButtonPressed(int k) const;
   // Settings → Controls: the next key / mouse button / pad button pressed (consumed by the reader)
@@ -108,14 +120,20 @@ public:
   void releaseAll();                 // every key, button and latch let go (window lost focus, a menu took over)
 private:
   Settings* settings = nullptr;
-  std::array<bool, (int)Act::Count> cur{}, prev{}, pulse{}, kcur{}, kprev{};
+  struct Frame { std::array<bool, (int)Act::Count> cur{}, prev{}, pulse{}, kcur{}, kprev{}; ivec2 nav{0}; float scrollPx = 0; };
+  Frame fr[5];                       // [0] everything merged, [1 + i] local player i's own devices
+  Frame* f = &fr[0];
+  int sel = -1;
+  std::vector<InputSource> sources;
+  bool kbSel() const { return sel < 0 || sources[sel].kb; }
+  bool padSel(const PadState& p) const { return sel < 0 || std::find(sources[sel].pads.begin(), sources[sel].pads.end(), p.id) != sources[sel].pads.end(); }
+  void computeFrame(Frame& F, bool kb, const std::vector<SDL_JoystickID>* ids);
   std::array<std::vector<std::string>, (int)Act::Count> keyCodes;
   std::array<std::vector<int>, (int)Act::Count> padCodes;
   bool keys[SDL_NUM_SCANCODES]{}, prevKeys[SDL_NUM_SCANCODES]{};
   bool mouseBtn[8]{};
   vec2 mouseDelta{0};
-  float wheelY = 0, scrollPx = 0;
-  ivec2 nav{0};
+  float wheelY = 0;
   bool capture = false, lastWasPad = false, dropAllFlag = false;
   double lastW = -1; bool doubleW = false, sneakLatch = false, sprintLatch = false;
   std::vector<PadState> padList;

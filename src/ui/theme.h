@@ -29,6 +29,9 @@ float Z();                         // interface zoom (hud.js uiZoomFor)
 inline float px(float cssPx) { return cssPx * Z(); }
 
 void beginFrame(App& a);           // fonts at the current zoom (rebuilds the atlas when it changes), pad → ImGui nav
+void feedNav(App& a);              // the active input source's controller(s) -> ImGui nav keys (current ImGui context)
+float baseZoom();                  // interface zoom of the whole window (Z() while a split-screen viewport shrinks it)
+void localZoom(float k);           // split screen: scale the interface for a smaller viewport (1 = normal); call before NewFrame, undo with localZoom(1)
 void init(App& a);                 // style, sprites; after App::initImGui
 bool navVisible();                 // keyboard / controller focus is being shown
 

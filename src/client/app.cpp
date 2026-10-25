@@ -240,6 +240,10 @@ void App::frameLoop() {
     input.endFrame();
     // mouse capture: in-world with no menu open
     bool wantCapture = session && (!topScreen() || !topScreen()->wantsMouse());
+    if (session && session->split()) {   // the mouse belongs to the first person: their own menu frees it, or a shared one
+      auto& mine = session->locals[0].screens;
+      wantCapture = !(topScreen() && topScreen()->wantsMouse()) && !(!mine.empty() && mine.back()->wantsMouse());
+    }
     if (wantCapture != input.captured()) input.setCapture(window, wantCapture);
 
     ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplSDL2_NewFrame(); uiBeginFrame(*this); ImGui::NewFrame();
@@ -250,11 +254,27 @@ void App::frameLoop() {
     int dw, dh; SDL_GL_GetDrawableSize(window, &dw, &dh);
     glViewport(0, 0, dw, dh);
     glClearColor(0.05f, 0.04f, 0.035f, 1); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-    if (session && (!topScreen() || topScreen()->showsWorld())) { session->render(); session->drawHud(); }
+    if (session && (!topScreen() || topScreen()->showsWorld())) { session->render(); if (session->split()) session->splitUi(); else session->drawHud(); }
     // screens draw back to front (an overlay may sit over another menu)
     for (size_t i = 0; i < screens.size(); i++) if (i + 1 == screens.size() || screens[i + 1]->showsWorld()) screens[i]->draw(*this);
     uiAfterScreens(*this);   // the menu tab strip (ui/ui_main.cpp)
-    if (input.pressed(Act::Pause) || input.pressed(Act::MenuBack)) {
+    if (session && session->split()) {
+      // split screen: a shared menu (pause...) answers to everybody; otherwise each person's Back / Pause closes their own menu, or pauses
+      if (session->joinedFrame + 1 < frame) {   // (the joiner's own Start press is still an edge in their new input frame the frame after they joined)
+        if (Screen* s = topScreen()) {
+          if (input.pressed(Act::Pause) || input.pressed(Act::MenuBack)) { if (!s->onBack(*this) && s->id() != std::string("title")) popScreen(); }
+        } else {
+          bool pause = false;
+          for (int i = 0; i < (int)session->locals.size() && !pause; i++) {
+            session->enterLocal(i);
+            if (Screen* s = topScreen()) { if (input.pressed(Act::Pause) || input.pressed(Act::MenuBack)) { if (!s->onBack(*this)) popScreen(); } }
+            else if (input.pressed(Act::Pause)) pause = true;
+            session->leaveLocal();
+          }
+          if (pause) pushScreen(makePauseScreen());
+        }
+      }
+    } else if (input.pressed(Act::Pause) || input.pressed(Act::MenuBack)) {
       if (Screen* s = topScreen()) { if (!s->onBack(*this) && s->id() != std::string("title")) popScreen(); }
       else if (session && input.pressed(Act::Pause)) pushScreen(makePauseScreen());
     }

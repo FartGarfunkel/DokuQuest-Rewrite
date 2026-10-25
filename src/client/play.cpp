@@ -20,9 +20,9 @@ struct LocalState {
   int shoulderSide = 1;
   u64 menuFrame = 0;   // the last frame a menu was open (a key that just closed / switched one must not act in the world)
 };
-static std::unordered_map<GameSession*, LocalState>& states() { static std::unordered_map<GameSession*, LocalState> m; return m; }
+static std::unordered_map<GameSession*, std::array<LocalState, 4>>& states() { static std::unordered_map<GameSession*, std::array<LocalState, 4>> m; return m; }
 static LocalState& stateOf(GameSession& s) {
-  LocalState& st = states()[&s];
+  LocalState& st = states()[&s][clampv(s.cur, 0, 3)];
   if (s.player && (!st.ctl || st.player != s.player || st.level != s.level.get())) {
     st = LocalState{};
     st.ctl = std::make_unique<PlayerController>(*s.level, *s.player); st.player = s.player; st.level = s.level.get();

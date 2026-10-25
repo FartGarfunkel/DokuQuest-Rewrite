@@ -20,19 +20,20 @@ namespace {
 struct Toast { std::string text, kind; double t; double life; std::string pickId; int pickN = 0; };
 struct ChatLine { std::string text, kind; double t; };
 struct Floater { vec3 pos; std::string text; u32 rgb; float life; };
+static int who() { return app().session ? clampv(app().session->cur, 0, 3) : 0; }   // which split-screen person is selected (0 when playing alone)
 struct HudState {
   std::deque<Toast> toasts;
   std::deque<ChatLine> chat;
   std::vector<std::string> history;
   std::vector<Floater> floaters;
   double chatClosedAt = -100, chatShowUntil = -100;
-  u64 menuFrame = 0;   // the last frame a menu was on screen: the key that shut it must not open one again in the same frame
+  u64 menuFrame_[4] = {0, 0, 0, 0};   // per split-screen person; the last frame a menu was on screen: the key that shut it must not open one again in the same frame
   bool chatOpen = false;
   std::string dimName; double dimAt = -100;
   bool saving = false; double savingOff = -100;
   std::string heldId; double heldAt = -100; int lastSel = -1;
   double dbgT = 0; std::string dbgText;
-  bool deathShown = false;
+  bool deathShown_[4] = {false, false, false, false};   // per split-screen person
 };
 HudState& H() { static HudState h; return h; }
 double now() { return app().time; }
@@ -174,11 +175,11 @@ public:
       p.dead = false; p.hp = p.maxHp; p.vel = vec3(0); p.fallDist = 0;
       p.pos = p.spawnPoint.y >= 0 ? p.spawnPoint : a.session->level->info.spawn;
     }
-    H().deathShown = false;
+    H().deathShown_[who()] = false;
     a.popScreen();
   }
   void update(App& a, double) override {
-    if (a.session && a.session->player && !a.session->player->dead) { H().deathShown = false; a.popScreen(); return; }
+    if (a.session && a.session->player && !a.session->player->dead) { H().deathShown_[who()] = false; a.popScreen(); return; }
     // controller players respawn with A after a short pause
     if (a.time - openedAt > 1.2 && a.input.usingPad() && a.input.pressed(Act::MenuOk)) respawn(a);
   }
@@ -257,17 +258,17 @@ public:
     std::string hid = held.empty() ? "" : held.id;
     if (hid != h.heldId) { if (!hid.empty()) h.heldAt = now(); h.heldId = hid; }
     // death
-    if (p.dead && !h.deathShown) {
-      h.deathShown = true;
+    if (p.dead && !h.deathShown_[who()]) {
+      h.deathShown_[who()] = true;
       while (a.topScreen()) a.popScreen();
       a.pushScreen(makeDeathScreen(p.data.value("deathCause", std::string("You died")), p.level));
       return;
     }
-    if (a.topScreen()) { h.menuFrame = a.frame; return; }
+    if (a.topScreen()) { h.menuFrame_[who()] = a.frame; return; }
     if (p.dead) return;
     // keys that open menus (local.js update). The screen's own update runs first, so E / M / the pad's Y that just closed
     // a menu is still "pressed" here: skip a frame, or the menu would open again at once (it looked like it never closed)
-    if (a.frame <= h.menuFrame + 1) return;
+    if (a.frame <= h.menuFrame_[who()] + 1) return;
     Input& in = a.input;
     if (in.pressed(Act::Inventory)) { openInventory(a); return; }
     if (in.pressed(Act::Command)) { openChat(a, "/"); return; }
@@ -314,6 +315,7 @@ public:
         textShadow(dl, F_H3, sp - ts * 0.5f, withAlpha(col::rgb(f.rgb), al), f.text.c_str(), ImVec2(2, 2) * z, withAlpha(col::black, al));
       }
       for (auto& e : s.level->entities()) {
+        if (s.split()) break;   // split screen: GameSession::drawNameTags draws everybody's (coloured per person)
         if (e.get() == &p || !e->isPlayer() || e->removed || e->realm != p.realm) continue;
         if (std::hypot(e->pos.x - (float)cam.pos.x, e->pos.z - (float)cam.pos.z) > 64) continue;
         ImVec2 sp; if (!project(e->pos + vec3(0, 2.1f, 0), sp)) continue;

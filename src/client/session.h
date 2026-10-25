@@ -6,6 +6,8 @@
 #include "sim/physics.h"
 #include "render/frame.h"
 #include "render/world_renderer.h"
+#include "input/input.h"
+#include "ui/screen.h"
 
 namespace dq {
 
@@ -29,6 +31,22 @@ public:
 };
 using RenderLayerFactory = std::function<std::shared_ptr<RenderLayer>(class GameSession&)>;
 void registerRenderLayer(RenderLayerFactory f);
+
+// ---- split screen (client/split.cpp): up to four people on one device, each with their own player, view, devices and menus.
+// The session mirrors the SELECTED local's per-person fields (player, frame, target, viewMode...) so the code written for one
+// player keeps working: selectLocal(i) swaps them, enterLocal(i)/leaveLocal() also route input and menus to that person.
+struct LocalView { int x = 0, y = 0, w = 1, h = 1; };   // window units (App::width / height), top-left origin
+struct LocalPlayer {
+  int index = 0;
+  Player* player = nullptr;
+  FrameCtx frame;
+  RayHit target; int viewMode = 0; bool hudHidden = false, debugOverlay = false;
+  bool breaking = false; ivec3 breakBlock{0}; float breakProgress = 0;
+  LocalView view;
+  InputSource src;                                  // keyboard + mouse (the first player) and/or controllers
+  std::vector<std::unique_ptr<Screen>> screens;     // this person's own menus (inventory, death...) while the screen is split
+  void* ui = nullptr;                               // this viewport's ImGui context
+};
 
 class GameSession {
 public:
@@ -58,7 +76,31 @@ public:
   float breakProgress = 0; ivec3 breakBlock{0}; bool breaking = false;
   bool paused() const;
 
+  // split screen
+  std::vector<LocalPlayer> locals;    // locals[0] is the first player (keyboard + mouse); `player` etc. mirror locals[cur]
+  int cur = 0;
+  bool split() const { return locals.size() > 1; }
+  void selectLocal(int i);
+  void enterLocal(int i);             // select + route input and menus to that person
+  void leaveLocal();                  // back to person 0, everything merged
+  int addLocal(SDL_JoystickID pad);   // Start on a free controller: -1 when full or not possible
+  void removeLocal(int i);
+  void layoutLocals();                // viewport rectangles for 1..4 people
+  void routeInput();                  // tell Input who owns which controller
+  int renderDist() const;             // the user's render distance, capped with more people (game.js renderDist)
+  void checkJoin();                   // a free controller pressed Start
+  void splitUi();                     // each person's HUD and menus in their own viewport (own ImGui context)
+  int userRenderDist = -1;            // settings.renderDist while the capped value is lent to the layers
+  bool entered = false;               // enterLocal() swapped that person's menus into App::screens (the shared ones wait in locals[cur].screens)
+  bool uiWantsText = false;           // a split-screen viewport has a text box focused (keys must not act in the world)
+  u64 joinedFrame = ~0ull;            // the frame a controller joined on (its Start press must not also pause)
+  void lendRenderDist(bool on);       // with 2+ people: settings.renderDist is the capped value while the world updates / draws
+  void freeLocalUi(LocalPlayer& lp);
+  void drawNameTags();                // the other people's names over their heads, in the current ImGui context
+
 private:
+  void updateLocals(double dt);
+  void splitRender();
   void tickLocalPlayer(double dt);
   void spawnPlayer();
 };

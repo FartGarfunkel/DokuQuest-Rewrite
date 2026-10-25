@@ -20,7 +20,7 @@ public:
   const char* id() const override { return "pause"; }
   std::string info;
   bool focusPending = true;
-  CharPreview headView;
+  CharPreview headView, headViews[3];
   void draw(App& a) override {
     if (a.topScreen() != this) return;
     float z = Z(), W = (float)a.width, H = (float)a.height;
@@ -66,38 +66,58 @@ public:
     }
     std::string quit = guest ? "Leave " + (lv ? lv->info.name : std::string("the world")) + "##quit" : "Save and Quit to Title##quit";
     if (mcButton(quit.c_str(), ImVec2(bw, bh))) uiDefer([](App& app) { app.leaveWorld(true); });
-    // .pause-party: who is playing on this screen
+    // .pause-party: who is playing on this screen (ui.js ~305: one row per local player, Leave for the partners, how to join)
     ImGui::Dummy(ImVec2(1, 6 * z));
+    int leaveIdx = -1;
     {
       ImVec2 p0 = ImGui::GetCursorScreenPos();
       float rowH = 30 * z;
-      std::string dev = std::string("Keyboard & mouse") + (a.input.padCount() ? " + Controller" : "");
-      const char* hint = "Split-screen: plug in another controller and press Start on it to join.";
+      GameSession* gs = a.session.get();
+      int rows = gs ? (int)gs->locals.size() : 1;
+      const char* hint = rows >= 4 ? "Four players is the most that fit on one screen."
+                       : a.input.padCount() > (rows > 1 ? rows - 1 : 0) ? "A free controller is connected \xE2\x80\x94 press Start on it to join."
+                       : "Split-screen: plug in another controller and press Start on it to join.";
       float hintH = textSize(F_MID, hint, bw - 20 * z).y;
-      float boxH = 8 * z + textSize(F_MID, "On this screen").y + 6 * z + rowH + 6 * z + hintH + 8 * z;
+      float boxH = 8 * z + textSize(F_MID, "On this screen").y + 6 * z + rows * (rowH + 6 * z) + hintH + 8 * z;
       dl->AddRectFilled(p0, p0 + ImVec2(bw, boxH), IM_COL32(0, 0, 0, 115));
       dl->AddRect(p0, p0 + ImVec2(bw, boxH), col::black, 0, 0, 2 * z);
       float y = p0.y + 8 * z;
       text(dl, F_MID, ImVec2(p0.x + 10 * z, y), col::muted, "On this screen"); y += textSize(F_MID, "On").y + 6 * z;
-      ImVec2 head(p0.x + 10 * z, y);
-      // charparts.js drawSkinHead: your head as a little 3D cube seen from above and to one side (here the real
-      // voxel head: a 3D character's hair, ears, horns and hat too)
-      if (p) {
-        auto spec = resolveCharacter(p->skin);
-        CharPreviewOpts ho; ho.headOnly = true; ho.yaw = PI - 0.62f; ho.elev = 0.48f; ho.dist = 30; ho.time = (float)a.time;
-        CharPose hp; hp.still = true; ho.pose = &hp;
-        float fb = ImGui::GetIO().DisplayFramebufferScale.x, hs = rowH * 1.25f;
-        GLuint tex = headView.render(*spec, (int)(hs * fb), (int)(hs * fb), ho);
-        if (tex) dl->AddImage((ImTextureID)(intptr_t)tex, head + ImVec2(-rowH * 0.12f, -rowH * 0.14f), head + ImVec2(-rowH * 0.12f, -rowH * 0.14f) + ImVec2(hs, hs), ImVec2(0, 1), ImVec2(1, 0));
+      static const u32 PCOL[4] = {0xffb07a, 0x8fe3ff, 0xb6f06a, 0xe7a6ff};   // .phead.p1 .. p4
+      for (int r = 0; r < rows; r++) {
+        Player* rp = gs ? gs->locals[r].player : p;
+        ImVec2 head(p0.x + 10 * z, y);
+        // charparts.js drawSkinHead: your head as a little 3D cube seen from above and to one side (here the real
+        // voxel head: a 3D character's hair, ears, horns and hat too)
+        if (rp) {
+          auto spec = resolveCharacter(rp->skin);
+          CharPreviewOpts ho; ho.headOnly = true; ho.yaw = PI - 0.62f; ho.elev = 0.48f; ho.dist = 30; ho.time = (float)a.time;
+          CharPose hp; hp.still = true; ho.pose = &hp;
+          float fb = ImGui::GetIO().DisplayFramebufferScale.x, hs = rowH * 1.25f;
+          GLuint tex = (r == 0 ? headView : headViews[std::min(r, 3) - 1]).render(*spec, (int)(hs * fb), (int)(hs * fb), ho);
+          if (tex) dl->AddImage((ImTextureID)(intptr_t)tex, head + ImVec2(-rowH * 0.12f, -rowH * 0.14f), head + ImVec2(-rowH * 0.12f, -rowH * 0.14f) + ImVec2(hs, hs), ImVec2(0, 1), ImVec2(1, 0));
+        }
+        dl->AddRectFilled(head + ImVec2(0, rowH - 2 * z), head + ImVec2(rowH, rowH), col::rgb(PCOL[r & 3]), 2 * z);
+        text(dl, F_BODY, ImVec2(head.x + rowH + 10 * z, y + (rowH - textSize(F_BODY, "A").y) * 0.5f), col::rgb(PCOL[r & 3]), rp ? rp->name.c_str() : "");
+        std::string dev;
+        if (!gs || !gs->split()) dev = std::string("Keyboard & mouse") + (a.input.padCount() ? " + Controller" : "");
+        else { const InputSource& src = gs->locals[r].src; dev = src.kb ? "Keyboard & mouse" : ""; if (!src.pads.empty()) dev += std::string(src.kb ? " + " : "") + "Controller"; }
+        ImVec2 ds = textSize(F_SMALL, dev.c_str());
+        float right = p0.x + bw - 10 * z;
+        if (r > 0) {   // a partner can leave
+          float lw = textSize(F_SMALL, "Leave").x + 22 * z;
+          ImGui::SetCursorScreenPos(ImVec2(right - lw, y + (rowH - 24 * z) * 0.5f));
+          if (button(("Leave##party" + std::to_string(r)).c_str(), BTN_NORMAL, true, lw)) leaveIdx = r;
+          right -= lw + 10 * z;
+        }
+        text(dl, F_SMALL, ImVec2(right - ds.x, y + (rowH - ds.y) * 0.5f), col::muted, dev.c_str());
+        y += rowH + 6 * z;
       }
-      dl->AddRectFilled(head + ImVec2(0, rowH - 2 * z), head + ImVec2(rowH, rowH), col::rgb(0xffb07a), 2 * z);   // .phead.p1
-      text(dl, F_BODY, ImVec2(head.x + rowH + 10 * z, y + (rowH - textSize(F_BODY, "A").y) * 0.5f), col::rgb(0xffb07a), p ? p->name.c_str() : "");
-      ImVec2 ds = textSize(F_SMALL, dev.c_str());
-      text(dl, F_SMALL, ImVec2(p0.x + bw - 10 * z - ds.x, y + (rowH - ds.y) * 0.5f), col::muted, dev.c_str());
-      y += rowH + 6 * z;
       text(dl, F_MID, ImVec2(p0.x + 10 * z, y), col::rgb(0xd8d8d8), hint, bw - 20 * z);
+      ImGui::SetCursorScreenPos(p0);
       ImGui::Dummy(ImVec2(bw, boxH));
     }
+    if (leaveIdx > 0 && a.session) a.session->removeLocal(leaveIdx);
     // .mc-hint: name · dimension · mode · last saved
     if (lv && p) {
       bool guest = netIsGuest(a);

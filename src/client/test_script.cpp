@@ -3,13 +3,14 @@
 // so bugs can be reproduced headless. Each step waits `wait` frames (default 1) after the previous one.
 //   {"steps":[{"wait":120,"do":"give","item":"chest"}, {"do":"key","key":"E","hold":3},
 //             {"do":"pad","button":"a"}, {"do":"expect","screen":"inventory"}, {"do":"shot","path":"/tmp/a.png"}]}
-// do: key{key,hold} type{text} mouse{button,hold,x?,y?} move{dx,dy} pad{button,hold} padaxis{axis,value,hold}
+// do: key{key,hold} type{text} mouse{button,hold,x?,y?} move{dx,dy} pad{button,hold,id?} padaxis{axis,value,hold,id?}
+// (local = which split-screen player the look/tp/give/... steps act on; id = which virtual controller, 0..3: they attach on first use; Start on a free one joins split screen)
 //     cmd{text} look{yaw,pitch (degrees)} lookAt{x,y,z} tp{x,y,z} give{item,n} select{slot} setBlock{x,y,z,key}
 //     anchor (remember the player's block; x/y/z, from/to and block in steps with "rel":true are relative to it)
 //     fill{from:[x,y,z],to:[x,y,z],key}
-//     expect{screen | block:[x,y,z],is | entity,near} report shot{path} save leave open{world} quit
+//     expect{screen | block:[x,y,z],is | entity,near} report shot{path} save leave open{world} unjoin{local} quit
 //     hurt{entity,amount,tool,type,at} (strike the nearest creature of that type as the player, e.g. tool "axe")
-//     drop{path} (a file dropped on the window) screen{name} (open a screen; "close" pops) data{key,value} wear{item,slot?}
+//     kill (the player / "local" dies)  drop{path} (a file dropped on the window) screen{name} (open a screen; "close" pops) data{key,value} wear{item,slot?}
 //     expect{screen | block:[x,y,z],is | entity,near | held | inv:slot,item,n | count:item,n | cursor:item |
 //            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text} report shot{path} save leave open{world} quit
 // give takes "d" (wear) and "tag" (enchantments, gear xp). pad buttons: a b x y back guide start ls rs lb rb up down left right, lt / rt (triggers).
@@ -35,7 +36,8 @@ struct Later { u64 frame; std::function<void()> fn; };
 struct Runner {
   std::vector<json> steps; size_t next = 0; u64 due = 0; bool on = false, done = false;
   std::vector<Later> later;
-  SDL_Joystick* vjoy = nullptr;
+  SDL_Joystick* vjoy = nullptr;               // virtual pad 0 (the one every step used before)
+  std::vector<SDL_Joystick*> vjoys;           // virtual pads 0..3 (split screen: a step's "id" picks one)
   int passes = 0, fails = 0;
   ivec3 anchor{0};           // "anchor": the player's block; steps with "rel": true are relative to it
 };
@@ -72,14 +74,18 @@ int padAxis(const std::string& n) {
       {"rightx", SDL_CONTROLLER_AXIS_RIGHTX}, {"righty", SDL_CONTROLLER_AXIS_RIGHTY}, {"lt", SDL_CONTROLLER_AXIS_TRIGGERLEFT}, {"rt", SDL_CONTROLLER_AXIS_TRIGGERRIGHT}};
   auto it = M.find(n); return it == M.end() ? -1 : it->second;
 }
-bool ensurePad() {
-  if (R.vjoy) return true;
+bool ensurePad(int id = 0) {
   SDL_InitSubSystem(SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER);
-  int idx = SDL_JoystickAttachVirtual(SDL_JOYSTICK_TYPE_GAMECONTROLLER, SDL_CONTROLLER_AXIS_MAX, SDL_CONTROLLER_BUTTON_MAX, 0);
-  if (idx < 0) { DQ_WARN("test: no virtual controller (%s)", SDL_GetError()); return false; }
-  R.vjoy = SDL_JoystickOpen(idx);
-  DQ_LOG("test: virtual controller attached (%s)", R.vjoy ? "open" : SDL_GetError());
-  return R.vjoy != nullptr;
+  while ((int)R.vjoys.size() <= id) {
+    int idx = SDL_JoystickAttachVirtual(SDL_JOYSTICK_TYPE_GAMECONTROLLER, SDL_CONTROLLER_AXIS_MAX, SDL_CONTROLLER_BUTTON_MAX, 0);
+    if (idx < 0) { DQ_WARN("test: no virtual controller (%s)", SDL_GetError()); return false; }
+    SDL_Joystick* j = SDL_JoystickOpen(idx);
+    DQ_LOG("test: virtual controller %d attached (%s)", (int)R.vjoys.size(), j ? "open" : SDL_GetError());
+    if (!j) return false;
+    R.vjoys.push_back(j);
+    if (R.vjoys.size() == 1) R.vjoy = j;
+  }
+  return true;
 }
 std::string screenStack(App& a) {
   std::string s;
@@ -101,6 +107,7 @@ void runStep(App& a, const json& st) {
   u64 f = a.frame;
   GameSession* s = a.session.get();
   Player* p = s ? s->player : nullptr;
+  { int li = st.value("local", 0); if (s && li > 0 && li < (int)s->locals.size()) p = s->locals[li].player; }   // "local": 1..3 aims look/tp/give/... at a split-screen partner
   int hold = std::max(1, st.value("hold", 2));
   if (op == "wait") return;
   if (op == "key") {
@@ -123,19 +130,23 @@ void runStep(App& a, const json& st) {
     pushMotion(a.width / 2, a.height / 2, st.value("dx", 0), st.value("dy", 0));
   } else if (op == "pad" && (st.value("button", "") == "lt" || st.value("button", "") == "rt")) {
     int ax = st.value("button", "") == "lt" ? SDL_CONTROLLER_AXIS_TRIGGERLEFT : SDL_CONTROLLER_AXIS_TRIGGERRIGHT;
-    if (!ensurePad()) return;
-    SDL_JoystickSetVirtualAxis(R.vjoy, ax, 32767);
-    R.later.push_back({f + hold, [ax] { if (R.vjoy) SDL_JoystickSetVirtualAxis(R.vjoy, ax, 0); }});
+    int pid = st.value("id", 0);
+    if (!ensurePad(pid)) return;
+    SDL_Joystick* vj = R.vjoys[pid];
+    SDL_JoystickSetVirtualAxis(vj, ax, 32767);
+    R.later.push_back({f + hold, [ax, vj] { SDL_JoystickSetVirtualAxis(vj, ax, 0); }});
   } else if (op == "pad") {
-    int b = padButton(st.value("button", "a"));
-    if (b < 0 || !ensurePad()) return;
-    SDL_JoystickSetVirtualButton(R.vjoy, b, SDL_PRESSED);
-    R.later.push_back({f + hold, [b] { if (R.vjoy) SDL_JoystickSetVirtualButton(R.vjoy, b, SDL_RELEASED); }});
+    int b = padButton(st.value("button", "a")), pid = st.value("id", 0);
+    if (b < 0 || !ensurePad(pid)) return;
+    SDL_Joystick* vj = R.vjoys[pid];
+    SDL_JoystickSetVirtualButton(vj, b, SDL_PRESSED);
+    R.later.push_back({f + hold, [b, vj] { SDL_JoystickSetVirtualButton(vj, b, SDL_RELEASED); }});
   } else if (op == "padaxis") {
-    int ax = padAxis(st.value("axis", "leftx"));
-    if (ax < 0 || !ensurePad()) return;
-    SDL_JoystickSetVirtualAxis(R.vjoy, ax, (Sint16)std::clamp(st.value("value", 0.f) * 32767.f, -32768.f, 32767.f));
-    R.later.push_back({f + hold, [ax] { if (R.vjoy) SDL_JoystickSetVirtualAxis(R.vjoy, ax, 0); }});
+    int ax = padAxis(st.value("axis", "leftx")), pid = st.value("id", 0);
+    if (ax < 0 || !ensurePad(pid)) return;
+    SDL_Joystick* vj = R.vjoys[pid];
+    SDL_JoystickSetVirtualAxis(vj, ax, (Sint16)std::clamp(st.value("value", 0.f) * 32767.f, -32768.f, 32767.f));
+    R.later.push_back({f + hold, [ax, vj] { SDL_JoystickSetVirtualAxis(vj, ax, 0); }});
   } else if (op == "cmd") {
     if (!s) return;
     if (s->level->info.rules.is_object()) s->level->info.rules["commands"] = true;   // tests may always use commands
@@ -177,7 +188,12 @@ void runStep(App& a, const json& st) {
     if (st.contains("screen")) {
       std::string want = st["screen"].is_null() ? "(none)" : st["screen"].get<std::string>();
       std::string top = a.topScreen() ? a.topScreen()->id() : "(none)";
-      result(top == want, "screen " + want + " (open: " + screenStack(a) + ")");
+      std::string open = screenStack(a);
+      int li = st.value("local", -1);   // split screen: that person's own menu ("local": 0 is the first person)
+      if (li >= 0 && s && s->split() && li < (int)s->locals.size() && !s->entered) {
+        auto& v = s->locals[li].screens; top = v.empty() ? "(none)" : v.back()->id(); open = "local " + std::to_string(li) + ": " + top;
+      }
+      result(top == want, "screen " + want + " (open: " + open + ")");
     }
     if (st.contains("block") && s) {
       ivec3 b = at(st, "block");
@@ -231,6 +247,7 @@ void runStep(App& a, const json& st) {
     DQ_LOG("test: hurt %s #%u by %.1f -> dealt %.1f, hp %.1f", t.c_str(), best->id, st.value("amount", 4.f), dealt, best->hp);
   } else if (op == "report") {
     std::string msg = "screens: " + screenStack(a);
+    if (s && s->split()) for (int i = 0; i < (int)s->locals.size(); i++) if (!s->locals[i].screens.empty() && !s->entered) msg += " | local " + std::to_string(i) + " menu " + s->locals[i].screens.back()->id();
     if (p) {
       char b[256]; std::snprintf(b, sizeof b, " | pos %.1f %.1f %.1f yaw %.0f pitch %.0f hp %.1f realm %d held %s x%d", p->pos.x, p->pos.y, p->pos.z,
                                  p->yaw * 180 / PI, p->pitch * 180 / PI, p->hp, p->realm, p->held().id.c_str(), p->held().n);
@@ -270,6 +287,10 @@ void runStep(App& a, const json& st) {
     a.leaveWorld(st.value("toTitle", true));
   } else if (op == "open") {
     a.openWorld(a.savesDir() / st.value("world", "Test"));
+  } else if (op == "kill" && s && p) {   // the player (or split-screen "local") dies: the death screen opens in their viewport
+    DamageSource ds; p->hp = 0; playerDie(*s->level, *p, ds);
+  } else if (op == "unjoin") {   // split screen: the partner "local" (1..3) leaves (the pause screen's Leave button)
+    if (s) s->removeLocal(st.value("local", 1));
   } else if (op == "quit") {
     a.quit = true;
   } else DQ_WARN("test: unknown step '%s'", op.c_str());
