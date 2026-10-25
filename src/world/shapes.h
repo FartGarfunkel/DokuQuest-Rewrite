@@ -108,3 +108,14 @@ void clothBoxes(BlockId id, u8 meta, std::vector<ShapeBox>& out);   // flags, ba
 inline bool isWaterlogged(BlockId id, u8 meta) { return reg().tWlog[id] && (meta & WLOG); }
 
 } // namespace dq
+
+// ---- gameplay compatibility (sim/physics, player, build...): the same shapes as pixel boxes ----------------
+namespace dq {
+struct PixBox { float x0, y0, z0, x1, y1, z1; };   // block-local, 1/16-block pixels
+enum : int { SHAPE_DRAW = ShapePurpose::Draw, SHAPE_COLLIDE = ShapePurpose::Collide, SHAPE_SELECT = ShapePurpose::Select };
+// boxes of block `id` at (x,y,z) (sinking onto bottom slabs and wall torches set back included); false = a plain full cube
+bool worldBoxes(const World& w, int x, int y, int z, BlockId id, int purpose, std::vector<PixBox>& out);
+bool hasShapeBoxes(BlockId id);                              // shaped or modelled (not a plain cube)
+float liquidHeight(BlockId id, u8 meta, BlockId above);      // surface height of a liquid cell (mesher.js)
+bool waterAt(const World& w, int x, int y, int z);           // water, counting waterlogged blocks as still sources
+} // namespace dq
