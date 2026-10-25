@@ -2,12 +2,15 @@
 //   dq-gentool dump <request.json> <out.json>   per-column dumps for tools/port/gen_compare.py
 //   dq-gentool bench <seed> [chunks]            time generate() per band and sample() per column
 //   dq-gentool map <seed> <dim> <x0> <z0> <step> <n>   ASCII map of heights/biomes (quick look)
+//   dq-gentool structs <request.json> <out.json>        structure plans and blocks for tools/port/struct_compare.py
 #include "core/init.h"
 #include "gen/overworld.h"
 #include "gen/dimgens.h"
+#include "gen/structures_api.h"
 #include <chrono>
 #include <cstdio>
 #include <fstream>
+#include <set>
 
 using namespace dq;
 #include <ctime>
@@ -111,6 +114,77 @@ static int map(const std::string& seedText, int dim, int x0, int z0, int step, i
   return 0;
 }
 
+// Structure plans in a box per band, and for some of them the blocks the structure put down: every position
+// whose block differs from the same chunk generated without structures, where the new block is not one the
+// structure-less terrain has anywhere in those chunks; y relative to the plan's base (S.y).
+static std::unique_ptr<DimGenerator> makeGen(int dim, const WorldGenOptions& o) {
+  switch (dim) {
+    case DIM_OVERWORLD: return std::make_unique<OverworldGen>(o);
+    case DIM_NETHER: return std::make_unique<DepthsGen>(o);
+    case DIM_AETHER: return std::make_unique<SkylandsGen>(o);
+    default: return std::make_unique<EndGen>(o);
+  }
+}
+static int structs(const char* reqPath, const char* outPath) {
+  json req = json::parse(std::ifstream(reqPath));
+  WorldGenOptions o; o.seed = seedFromString(req["seed"].get<std::string>());
+  const int R = req["R"];
+  std::unique_ptr<DimGenerator> on[DIM_COUNT], off[DIM_COUNT];
+  for (int d = 0; d < DIM_COUNT; d++) on[d] = makeGen(d, o);
+  setStructuresEnabled(false);
+  for (int d = 0; d < DIM_COUNT; d++) off[d] = makeGen(d, o);
+  setStructuresEnabled(true);
+  json out; out["seed"] = o.seed;
+  std::map<std::string, const StructurePlan*> byId;
+  for (int d = 0; d < DIM_COUNT; d++) {
+    const StructureIndex* idx = structureIndexOf(on[d].get());
+    json L = json::array();
+    for (int k : idx->typeList()) {
+      const StructureType& T = structureTypes()[k];
+      auto add = [&](const StructurePlan* S) {
+        if (!S) return;
+        L.push_back({T.key, S->id, S->x0, S->z0, S->x1, S->z1, S->y + S->hashDy, S->name, S->y});
+        byId[std::to_string(d) + ":" + S->id] = S;
+      };
+      if (T.global) { std::vector<const StructurePlan*> v; idx->near(0, 0, 1 << 20, v, k); for (auto* S : v) add(S); continue; }
+      const int n = (R + T.region - 1) / T.region;
+      for (int rz = -n; rz < n; rz++) for (int rx = -n; rx < n; rx++) add(idx->at(k, rx, rz));
+    }
+    out["list"][std::to_string(d)] = L;
+  }
+  for (auto& pk : req["picks"]) {
+    const int d = pk["dim"]; const std::string id = pk["id"];
+    auto it = byId.find(std::to_string(d) + ":" + id);
+    json res{{"dim", d}, {"id", id}};
+    if (it == byId.end()) { res["missing"] = true; out["picks"].push_back(res); continue; }
+    const StructurePlan* S = it->second;
+    const int cx0 = pk["c"][0], cz0 = pk["c"][1], cx1 = pk["c"][2], cz1 = pk["c"][3];
+    std::vector<std::unique_ptr<Chunk>> A, Bc;
+    std::set<std::string> natural;
+    for (int cz = cz0; cz <= cz1; cz++) for (int cx = cx0; cx <= cx1; cx++) {
+      A.push_back(std::make_unique<Chunk>(d, cx, cz)); on[d]->generate(*A.back());
+      Bc.push_back(std::make_unique<Chunk>(d, cx, cz)); off[d]->generate(*Bc.back());
+      for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) natural.insert(key(Bc.back()->get(x, y, z)));
+    }
+    json blocks = json::array(); int ents = 0;
+    for (size_t i = 0; i < A.size(); i++) {
+      Chunk &a = *A[i], &b = *Bc[i];
+      for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+        BlockId ia = a.get(x, y, z);
+        if (ia == b.get(x, y, z) || ia == AIR) continue;
+        const std::string& k = key(ia);
+        if (natural.count(k)) continue;
+        blocks.push_back({a.cx * 16 + x, y - S->y, a.cz * 16 + z, k});
+      }
+      ents += (int)a.blockEntities.size();
+    }
+    res["base"] = S->y + S->hashDy; res["blocks"] = blocks; res["entities"] = ents; res["data"] = S->data;
+    out["picks"].push_back(res);
+  }
+  std::ofstream(outPath) << out.dump();
+  return 0;
+}
+
 // where a new world's player starts (client/session.cpp: first dry column along (r, r/2)), and its biome
 static int spawns(const std::string& prefix, int n) {
   for (int k = 0; k < n; k++) {
@@ -133,6 +207,7 @@ int main(int argc, char** argv) {
   if (m == "dump" && argc >= 4) return dump(argv[2], argv[3]);
   if (m == "bench" && argc >= 3) return bench(argv[2], argc > 3 ? atoi(argv[3]) : 64);
   if (m == "spawns" && argc >= 4) return spawns(argv[2], atoi(argv[3]));
+  if (m == "structs" && argc >= 4) return structs(argv[2], argv[3]);
   if (m == "map" && argc >= 8) return map(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]));
   fprintf(stderr, "dq-gentool dump <req.json> <out.json> | bench <seed> [chunks] | map <seed> <dim> <x0> <z0> <step> <n>\n");
   return 2;
