@@ -154,6 +154,8 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   glEnable(GL_CULL_FACE); glCullFace(GL_BACK); glDisable(GL_BLEND);
   float aspect = f.height > 0 ? (float)f.width / f.height : 1.f;
   mat4 proj = glm::perspective(70 * PI / 180, aspect, 0.01f, 10.f);
+  int taken = handsHook ? handsHook(*this, s, f, proj) : 0;
+  std::vector<std::pair<ItemStack, mat4>> over;
   VoxelRenderer& VR = voxelRenderer();
   VR.begin(f, proj, false);
   VoxelLight L{light.x, light.y};
@@ -190,10 +192,12 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     }
     bool glint = stack.id == "enchanted_book" || stack.id == "experience_bottle" || (stack.tag.is_object() && (stack.tag.contains("en") || stack.tag.contains("ench")));
     if (im.ready()) VR.draw(im.gl, m * im.matrix(), L, vec4(0), glint ? 1.f : 0.f);
+    if (itemHook && im.ready()) over.push_back({stack, m});
   };
 
   const ItemStack& held = p->held();
-  if (!held.empty() && held.def()) holdIn(1, held, 0);
+  if (taken & 1) {}
+  else if (!held.empty() && held.def()) holdIn(1, held, 0);
   else {
     // empty hand: the forearm reaches in from the lower right, like the classic game
     mat4 m = glm::translate(mat4(1), vec3(0.5f + bx, -0.39f + by - eq * 0.55f - eat * 0.1f, -0.5f));
@@ -203,8 +207,9 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     drawArm(m);
   }
   // the off hand, mirrored on the left
-  if (!p->offhand.empty() && !p->offhand[0].empty() && p->offhand[0].def()) holdIn(-1, p->offhand[0], -0.02f);
+  if (!(taken & 2) && !p->offhand.empty() && !p->offhand[0].empty() && p->offhand[0].def()) holdIn(-1, p->offhand[0], -0.02f);
   VR.end();
+  for (auto& [st2, m2] : over) itemHook(s, f, proj, st2, m2, itemModel(st2.id));
 }
 
 // ------------------------------------------------------------------ dropped items (entities.js ItemEntity.draws)

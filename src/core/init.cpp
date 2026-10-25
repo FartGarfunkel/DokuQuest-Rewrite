@@ -12,6 +12,7 @@ bool initCore(const CoreOptions& o) {
   registerCommands();
   registerModApi();
   registerPortals();
+  registerContent();
   return true;
 }
 void shutdownCore() {}

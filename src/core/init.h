@@ -19,5 +19,6 @@ void registerWorldTypes();       // gen/worldgen*.cpp
 void registerCommands();         // sim/commands*.cpp
 void registerModApi();           // mod/*.cpp
 void registerPortals();          // sim/portals.cpp (+ the stacked worlds, sim/seamless.cpp)
+void registerContent();          // sim/content.cpp (maps, farming, fishing, camping, travel, elytra, stable, places)
 
 } // namespace dq

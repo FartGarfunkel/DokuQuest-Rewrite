@@ -5,6 +5,7 @@
 #include "audio/audio.h"
 #include "mod/modloader.h"
 #include "render/item_layers.h"
+#include "render/content_layers.h"
 #include <imgui.h>
 
 namespace dq {
@@ -20,6 +21,7 @@ GameSession::GameSession(App& a, std::unique_ptr<Level> lv) : app(a), level(std:
   spawnPlayer();
   worldRenderer.setWorld(&world());
   registerItemLayers();   // held item + first-person arm, dropped items (render/item_layers)
+  registerContentLayers();   // maps, instruments, fishing, camping, elytra, stable keys (render/content_layers)
   for (auto& f : layerFactories()) if (auto l = f(*this)) layers.push_back(l);
   std::sort(layers.begin(), layers.end(), [](auto& x, auto& y) { return x->order() < y->order(); });
   if (app.mods) app.mods->onWorldOpen(*level, app.events, false);

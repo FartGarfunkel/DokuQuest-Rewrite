@@ -80,3 +80,8 @@ target_compile_definitions(test_net PRIVATE DQ_SAMPLE_PLUGIN="$<TARGET_FILE:dq_s
 add_dependencies(test_net dq_sample_plugin)
 add_custom_command(TARGET test_net POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_net>/data)
+# Content features test (headless): maps, fishing, camping, travel, elytra, the stable, places, farming. Run: build/test_content
+add_executable(test_content tools/test_content.cpp)
+target_link_libraries(test_content PRIVATE dqcore)
+add_custom_command(TARGET test_content POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_content>/data)
