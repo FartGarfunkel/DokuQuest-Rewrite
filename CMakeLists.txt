@@ -93,3 +93,8 @@ add_custom_command(TARGET test_net POST_BUILD
 # dq-sfx: offline sound renderer for checking the audio (tools/sfx_render.cpp)
 add_executable(dq-sfx tools/sfx_render.cpp)
 target_link_libraries(dq-sfx PRIVATE dqclient)
+# Content features test (headless): maps, fishing, camping, travel, elytra, the stable, places, farming. Run: build/test_content
+add_executable(test_content tools/test_content.cpp)
+target_link_libraries(test_content PRIVATE dqcore)
+add_custom_command(TARGET test_content POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_content>/data)

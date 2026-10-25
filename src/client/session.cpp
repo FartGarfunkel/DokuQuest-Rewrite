@@ -8,6 +8,7 @@
 #include "render/item_layers.h"
 #include "render/char_layer.h"
 #include "ui/magic_screens.h"
+#include "render/content_layers.h"
 #include <imgui.h>
 
 namespace dq {
@@ -26,6 +27,7 @@ GameSession::GameSession(App& a, std::unique_ptr<Level> lv) : app(a), level(std:
   registerItemLayers();   // held item + first-person arm, dropped items (render/item_layers)
   registerCharacterLayers();   // players as voxel characters (render/char_layer)
   registerMagicClient();  // spell effects, mana bar, magic keys and screens (render/magic_fx, ui/magic_screens)
+  registerContentLayers();   // maps, instruments, fishing, camping, elytra, stable keys (render/content_layers)
   for (auto& f : layerFactories()) if (auto l = f(*this)) layers.push_back(l);
   std::sort(layers.begin(), layers.end(), [](auto& x, auto& y) { return x->order() < y->order(); });
   if (app.mods) app.mods->onWorldOpen(*level, app.events, false);

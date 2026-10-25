@@ -14,6 +14,7 @@ bool initCore(const CoreOptions& o) {
   registerWeatherSystem();
   registerPortals();
   registerMagic();
+  registerContent();
   return true;
 }
 void shutdownCore() {}

@@ -21,5 +21,6 @@ void registerModApi();           // mod/*.cpp
 void registerWeatherSystem();    // sim/weather.cpp
 void registerPortals();          // sim/portals.cpp (+ the stacked worlds, sim/seamless.cpp)
 void registerMagic();            // sim/magic.cpp (magic, enchanting, brewing, skills, rpg)
+void registerContent();          // sim/content.cpp (maps, farming, fishing, camping, travel, elytra, stable, places)
 
 } // namespace dq

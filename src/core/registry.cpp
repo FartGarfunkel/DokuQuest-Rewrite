@@ -172,6 +172,7 @@ u8 Registry::metaLight(BlockId id, u8 meta) const {
   std::string lm = b.str("lightMeta");
   if (lm == "candle") return (meta & 4) ? 3 * n : 0;
   if (lm == "pickle") return (meta & 0x80) ? 3 + 3 * n : 0;
+  if (lm == "campfire") return (meta & 8) ? 0 : b.light;   // camping.js: a fire that's out gives no light
   return b.light;
 }
 

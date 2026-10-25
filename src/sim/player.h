@@ -20,6 +20,7 @@ public:
   ItemStack cursor;                 // stack held by the mouse in inventory screens
   int selected = 0;                 // hotbar slot
   bool flying = false, sneaking = false, sprinting = false, swimming = false, crawling = false;
+  bool gliding = false; float glideBoost = 0;   // elytra (sim/elytra.h): the glide pose flag, a rocket's boost left
   float air = 10, maxAir = 10;
   int xp = 0, level = 0;
   float regenTimer = 0;

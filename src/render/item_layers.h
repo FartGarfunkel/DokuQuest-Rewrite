@@ -22,6 +22,11 @@ public:
   void eat() { eatAnim = 0.45f; }
   void setSwinging(bool on) { swinging = on; }   // held swing while mining (set every frame)
   float swing = 0, equip = 1, eatAnim = 0, bob = 0, bobAmt = 0;
+  // other areas may take over a hand (a map held up, render/map_render.cpp): the hook draws it and returns the
+  // hands it took (1 = main, 2 = off); or draw over the item in a hand (the live compass and clock dials,
+  // render/instruments.cpp): m maps the item model's space (before VoxelModel::matrix()) to view space
+  inline static std::function<int(HeldItemLayer&, GameSession&, const FrameCtx&, const mat4& proj)> handsHook;
+  inline static std::function<void(GameSession&, const FrameCtx&, const mat4& proj, const ItemStack&, const mat4& m, const VoxelModel&)> itemHook;
 private:
   bool swinging = false;
   std::string lastHeld = "\x01";
