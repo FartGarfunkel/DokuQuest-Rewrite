@@ -261,7 +261,6 @@ std::map<std::string, int> recipeMissing(const Bags& b, const Recipe& r, const s
 bool canCraft(const Bags& b, const Recipe& r, const std::vector<ItemStack>* grid) { return recipeMissing(b, r, grid).empty(); }
 
 // ---- furnaces ---------------------------------------------------------------------------------------------
-int fuelValue(const std::string& key) { const ItemDef* d = reg().item(key); return d ? (int)d->num("fuel", 0) : 0; }
 
 namespace {
 struct SmeltClasses { std::unordered_set<std::string> food, ore; size_t seen = 0; };
@@ -285,46 +284,6 @@ SmeltClasses& smeltClasses() {
 }
 }
 
-std::string smeltResult(const std::string& kind, const std::string& input) {
-  auto it = reg().smelting.find(input);
-  if (it == reg().smelting.end()) return "";
-  if (kind == "smoker" && !smeltClasses().food.count(input)) return "";
-  if (kind == "blast" && !smeltClasses().ore.count(input)) return "";
-  return it->second;
-}
 
-bool tickFurnace(json& e, double dt, const std::string& kind) {
-  if (!e.is_object()) return false;
-  if (!e.contains("items") || !e["items"].is_array()) e["items"] = json::array({nullptr, nullptr, nullptr});
-  json& it = e["items"];
-  while (it.size() < 3) it.push_back(nullptr);
-  ItemStack inp = ItemStack::fromJson(it[0]), fuel = ItemStack::fromJson(it[1]), out = ItemStack::fromJson(it[2]);
-  std::string result = inp.empty() ? "" : smeltResult(kind, inp.id);
-  if (kind == "smoker" || kind == "blast") dt *= 2;
-  bool canOut = !result.empty() && (out.empty() || (out.id == result && out.n < out.maxStack()));
-  bool changed = false;
-  double burn = e.value("burn", 0.0), cook = e.value("cook", 0.0), burnMax = e.value("burnMax", 0.0);
-  if (burn <= 0 && canOut && !fuel.empty() && fuelValue(fuel.id) > 0) {
-    burnMax = burn = fuelValue(fuel.id) * SMELT_TIME;
-    if (fuel.id == "lava_bucket") fuel = ItemStack("bucket", 1);
-    else if (--fuel.n <= 0) fuel.clear();
-    changed = true;
-  }
-  if (burn > 0) {
-    burn = std::max(0.0, burn - dt);
-    if (canOut) {
-      cook += dt;
-      if (cook >= SMELT_TIME) {
-        cook = 0; if (--inp.n <= 0) inp.clear();
-        if (!out.empty()) out.n++; else out = ItemStack(result, 1);
-        changed = true;
-      }
-    } else cook = 0;
-    if (burn <= 0) changed = true;
-  } else if (cook > 0) cook = std::max(0.0, cook - dt * 2);
-  it[0] = inp.toJson(); it[1] = fuel.toJson(); it[2] = out.toJson();
-  e["burn"] = burn; e["cook"] = cook; e["burnMax"] = burnMax;
-  return changed;
-}
 
 } // namespace dq

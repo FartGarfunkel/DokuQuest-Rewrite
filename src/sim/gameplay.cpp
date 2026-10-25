@@ -69,11 +69,6 @@ int giveItem(Level& lv, Player& p, ItemStack s) {
   return left;
 }
 
-void grantXP(Level& lv, Player& p, int n, const vec3* at) {
-  int ups = p.addXP(n);
-  if (at) floatText(lv, p, *at, "+" + std::to_string(n) + " XP", "#b6f06a");
-  if (ups) { sfxUi(lv, p, "levelup"); toast(lv, p, "Level " + std::to_string(p.level) + "!", "good"); }
-}
 
 // A dropped item: floats, gets pulled in by players near it, merges, takes root, fades after 5 minutes.
 static const std::unordered_set<std::string> KEEP_DROPS = {"realm_fragment", "heart_crystal", "watcher_blade", "rift_staff", "ember_blade", "cinder_core", "elytra", "dragon_egg_ender", "pocket_key"};

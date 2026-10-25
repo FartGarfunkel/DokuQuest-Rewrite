@@ -1,6 +1,7 @@
 // gen/gendefs.h — shared bits of the terrain generators: JS-exact math helpers, the vertical mapping
 // from the original 128-tall world into the 256-tall bands, biomes, and the block ids the generators use.
 #pragma once
+#include "world/dirs.h"
 #include "world/chunk.h"
 #include "common/noise.h"
 #include <cstring>
@@ -20,8 +21,11 @@ inline u32 lairSeed(i32 seed, i32 rx, i32 rz, i32 k) {
   h = (h ^ (h >> 16)) * 0x7FEB352Du; h = (h ^ (h >> 15)) * 0x846CA68Bu;
   return h ^ (h >> 16);
 }
-constexpr int DIRX[4] = {0, 1, 0, -1}, DIRZ[4] = {-1, 0, 1, 0};   // N E S W (world/shapes.js)
-constexpr u8 WLOG = 0x80;                                          // waterlogged meta bit
+// DIRX / DIRZ: world/dirs.h
+#ifndef DQ_WLOG_DEFINED
+#define DQ_WLOG_DEFINED
+constexpr u8 WLOG = 0x80;   // waterlogged meta bit
+#endif
 
 // ---- the vertical mapping (see docs/port/gen.md) ----
 // Every band is 256 tall; the original world was 128 tall (sea 48). "o" = original-world y, "y" = band-local y.

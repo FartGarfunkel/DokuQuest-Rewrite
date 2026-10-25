@@ -38,14 +38,15 @@ std::string heldToolElement(const Player& p) {
   if (!d || !d->props.contains("tool") || !d->props["tool"].is_object()) return "";
   return d->props["tool"].value("element", std::string());
 }
-void wearHeld(Level& lv, Player& p, int n) {
-  if (!n || p.creative()) return;
+bool wearHeld(Level& lv, Player& p, int n) {
+  if (!n || p.creative()) return false;
   ItemStack& s = p.inv[p.selected];
-  if (s.empty()) return;
+  if (s.empty()) return false;
   auto* d = reg().item(s.id);
-  if (!d || !d->hasTool || d->tool.durability <= 0) return;
+  if (!d || !d->hasTool || d->tool.durability <= 0) return false;
   s.d += n;
-  if (s.d >= d->tool.durability) { s.clear(); toast(lv, p, "Your " + d->name + " broke", "warn"); sfxUi(lv, p, "hit"); }
+  if (s.d >= d->tool.durability) { toast(lv, p, "Your " + toLower(d->name) + " broke", "warn"); sfxUi(lv, p, "break_tool"); s.clear(); return true; }
+  return false;
 }
 void wearArmor(Player& p) {
   for (int i = 0; i < 4; i++) {

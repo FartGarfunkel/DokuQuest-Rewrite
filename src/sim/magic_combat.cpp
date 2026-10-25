@@ -16,7 +16,6 @@ const json& mobTemplate(const Entity& e) {
   auto it = m.find(e.type);
   return it == m.end() ? NULLJ : *it;
 }
-bool isMob(const Entity& e) { return !e.isPlayer() && !mobTemplate(e).is_null(); }
 bool isAlive(const Entity& e) { return !e.removed && e.hp > 0; }
 static bool tflag(const json& t, const char* k) { return t.is_object() && t.contains(k) && t[k].is_boolean() ? t[k].get<bool>() : t.is_object() && t.contains(k) && t[k].is_number() && t[k].get<double>() != 0; }
 bool isSpellTarget(const Entity& e) {

@@ -10,6 +10,7 @@
 #pragma once
 #include "sim/level.h"
 #include "sim/player.h"
+#include "sim/combat.h"   // wearHeld
 
 namespace dq {
 
@@ -41,7 +42,7 @@ Player* findPlayer(Level& lv, const std::string& name);
 std::vector<Player*> levelPlayers(Level& lv, bool withGhosts = false);
 float frand();                                     // Math.random()
 inline float frand2() { return frand() - 0.5f; }   // Math.random() - 0.5
-vec3 lookDir(const Player& p);                     // player.look()
+vec3 lookVec(const Player& p);                     // player.look()
 constexpr float REACH = 5;   // EYE, PLAYER_H, SWIM_H come from sim/player.h
 inline bool creativeOf(const Player& p) { return p.mode == "creative"; }
 void toast(Level& lv, const Player& p, const std::string& text, const std::string& kind = "");
@@ -52,7 +53,6 @@ void grantXp(Level& lv, Player& p, int xp, vec3 at);
 Entity* dropItem(Level& lv, int realm, const ItemStack& s, vec3 pos, vec3 vel = vec3(0));
 void giveOrDrop(Level& lv, Player& p, const ItemStack& s);                          // lp.give()
 void useUpHeld(Player& p, int n = 1);                                               // held.n -= n (not in creative)
-bool wearHeld(Level& lv, Player& p, int n = 1);                                     // tool wear; true = it broke
 int countItem(const Player& p, const std::string& id);
 int findSafeY(World& w, int x, int z, int dim, int top = -1);                      // global y to stand at (-1 none)
 inline bool isAirOrSoft(BlockId id) { return id == AIR || (reg().tReplaceable[id] && !reg().tLiquid[id]); }

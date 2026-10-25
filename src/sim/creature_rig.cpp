@@ -598,7 +598,7 @@ static void sever(Level& lv, Creature& m, const RigModel& M, int pi, const Damag
   }
   static const std::unordered_map<std::string, std::string> GIB = {{"skeleton", "skel_bone"}, {"slime", "slime_skin"}, {"cinder_golem", "golem_rock"}, {"fuseling", "fuse_moss"}};
   auto g = GIB.find(m.type);
-  burst(lv, m.pos + vec3(0, m.h * 0.55f, 0), g == GIB.end() ? "blood_particle" : g->second, 10, 0.8f);
+  mobBurst(lv, m.pos + vec3(0, m.h * 0.55f, 0), g == GIB.end() ? "blood_particle" : g->second, 10, 0.8f);
   if (m.type == "skeleton") lv.fx->voice("rattle", "say", m.pos); else lv.fx->sound("hit", m.pos);
   if (Entity* a = m.ent(lv, src.attacker)) if (a->isPlayer()) floatText(lv, a->id, m.pos + vec3(0, m.h + 0.5f, 0), "Severed!", "#ff9a7a");
   const std::string& L = M.parts[pi].limb;

@@ -9,6 +9,7 @@
 // Meta bits are exactly the original's (see the table at the top of shapes.cpp).
 // No GL here: this is dqcore, the dedicated server uses it too.
 #pragma once
+#include "world/dirs.h"
 #include "world/world.h"
 
 namespace dq {
@@ -82,9 +83,12 @@ struct BoxF { vec3 lo, hi; };
 bool blockShapeBoxes(const World& w, int x, int y, int z, int purpose, std::vector<BoxF>& out);
 
 // ---- helpers shared with the mesher and gameplay ----
-extern const int DIRX[4], DIRZ[4];                     // N E S W
+// DIRX / DIRZ: world/dirs.h
 extern const int D6X[6], D6Y[6], D6Z[6], OPP6[6], H2D6[4], D62H[6], D6_FACE[6], FACE_D6[6];
-constexpr u8 WLOG = 0x80;
+#ifndef DQ_WLOG_DEFINED
+#define DQ_WLOG_DEFINED
+constexpr u8 WLOG = 0x80;   // waterlogged meta bit
+#endif
 inline bool isWaterlogged(BlockId id, u8 meta);
 void rotBox(ShapeBox& b, int f);                       // north-facing box turned to face f (0 N, 1 E, 2 S, 3 W)
 void flipBox(ShapeBox& b);                             // upside down

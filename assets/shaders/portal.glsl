@@ -39,7 +39,7 @@ in vec3 vRel;
 out vec4 fragColor;
 
 float phash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-float vnoise(vec2 p) {
+float pvnoise(vec2 p) {
   vec2 i = floor(p), f = fract(p);
   f = f * f * (3.0 - 2.0 * f);
   return mix(mix(phash(i), phash(i + vec2(1.0, 0.0)), f.x), mix(phash(i + vec2(0.0, 1.0)), phash(i + vec2(1.0, 1.0)), f.x), f.y);
@@ -53,7 +53,7 @@ void main() {
     // a torn hole in the air with a ragged, shifting edge
     vec2 c = vUV * 2.0 - 1.0;
     float a = atan(c.y, c.x), r = length(c);
-    float lim = 0.8 + (vnoise(vec2(a * 2.5 + 3.0, uTime * 0.5)) - 0.5) * 0.3 + (vnoise(vec2(a * 9.0, uTime * 1.4)) - 0.5) * 0.12;
+    float lim = 0.8 + (pvnoise(vec2(a * 2.5 + 3.0, uTime * 0.5)) - 0.5) * 0.3 + (pvnoise(vec2(a * 9.0, uTime * 1.4)) - 0.5) * 0.12;
     if (r > lim) discard;
     edge = (lim - r) * 10.0;
   }

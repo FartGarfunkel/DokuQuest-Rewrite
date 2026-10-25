@@ -57,7 +57,7 @@ bool isCreatureType(const std::string& key) { return creatureType(key) != nullpt
 static const CreatureType& stubType() { static CreatureType t = [] { CreatureType s; s.key = s.model = "?"; return s; }(); return t; }
 
 // ------------------------------------------------------------------ helpers
-float frand() { static thread_local std::mt19937 rng{std::random_device{}()}; return std::uniform_real_distribution<float>(0.f, 1.f)(rng); }
+// frand(): defined once in sim/content.cpp
 
 float envDay(const Level& lv, int dim) {
   if (dim == DIM_NETHER) return 0.22f;
@@ -108,7 +108,7 @@ Creature* spawnCreature(Level& lv, int realm, const std::string& type, vec3 p) {
   lv.spawn(std::move(e));
   return c;
 }
-void burst(Level& lv, vec3 p, const std::string& kind, int n, float spread) { lv.fx->particles("burst", p, n, json{{"tex", kind}, {"spread", spread}}); }
+void mobBurst(Level& lv, vec3 p, const std::string& kind, int n, float spread) { lv.fx->particles("burst", p, n, json{{"tex", kind}, {"spread", spread}}); }
 void flame(Level& lv, vec3 p) { lv.fx->particles("flame", p, 1); }
 void hearts(Level& lv, vec3 p, int n) { lv.fx->particles("heart", p, n); }
 void floatText(Level& lv, u32 playerId, vec3 p, const std::string& text, const std::string& color) {
@@ -383,7 +383,7 @@ void Creature::update(Level& lv, float dt) {
   const Registry& R = reg();
   if (deathTime > 0) {
     deathTime += dt;
-    if (deathTime > 0.95f) { removed = true; burst(lv, pos + vec3(0, h / 2, 0), "white", 14, 0.6f); }
+    if (deathTime > 0.95f) { removed = true; mobBurst(lv, pos + vec3(0, h / 2, 0), "white", 14, 0.6f); }
     return;
   }
   if (hurtTime > 0) hurtTime -= dt;

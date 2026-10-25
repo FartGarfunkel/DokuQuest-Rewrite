@@ -39,7 +39,7 @@ void knockback(Entity& e, vec3 from, float k, float up);
 // player helpers
 const ToolInfo* heldTool(const Player& p);           // the main-hand tool (null for a bare hand)
 std::string heldToolElement(const Player& p);          // tool.element ("fire", "frost") or ""
-void wearHeld(Level& lv, Player& p, int n);            // tool durability
+bool wearHeld(Level& lv, Player& p, int n = 1);            // tool durability
 void wearArmor(Player& p);                             // each worn piece takes one wear
 float attackEntity(Level& lv, Player& p, Entity& target);   // a melee blow (crits when falling); returns damage dealt
 void playerDie(Level& lv, Player& p, const DamageSource& src);
