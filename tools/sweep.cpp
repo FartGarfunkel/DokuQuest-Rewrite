@@ -168,6 +168,18 @@ int main(int argc, char** argv) {
     }
   }
   if (doInv) {
+    printf("== sneak + use with a block in hand on stations places the block (furnish.js)\n");
+    for (const char* st : {"chest", "furnace", "crafting_table", "barrel"}) {
+      if (!reg().blockId(st)) continue;
+      r.reset(); screens.clear();
+      r.w().setBlock(0, r.Y, -2, reg().blockId(st), 0); r.lv->tick(TICK_DT);
+      r.p->inv[0] = ItemStack("cobblestone", 8); r.p->selected = 0;
+      r.look(vec3(0.5f, r.Y + 1.0f, -1.5f));   // the station's top face
+      PlayerInput in; in.sneak = true; in.use = true; in.usePressed = true;
+      r.step(0.05, in); in.usePressed = false; r.step(0.3, in);
+      bool placed = r.w().getBlock(0, r.Y + 1, -2) == reg().blockId("cobblestone");
+      if (!placed || !screens.empty()) issue("SNEAK PLACE", st, std::string(placed ? "placed" : "not placed") + (screens.empty() ? "" : ", opened '" + screens[0] + "'"));
+    }
     printf("== inventory: clicks, drags, equip and unequip never make items\n");
     auto total = [&](Player& p) {
       std::map<std::string, int> m;
