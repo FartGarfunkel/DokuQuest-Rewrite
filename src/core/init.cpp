@@ -16,6 +16,7 @@ bool initCore(const CoreOptions& o) {
   registerPortals();
   registerMagic();
   registerContent();
+  registerVillagers();
   return true;
 }
 void shutdownCore() {}

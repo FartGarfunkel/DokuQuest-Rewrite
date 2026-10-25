@@ -174,6 +174,7 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
     vec3 rel = f.cam.rel(glm::dvec3(ip.pos));
     if (glm::dot(rel, rel) > maxD * maxD) continue;
     if (auto* m = dynamic_cast<Creature*>(&e)) {
+      if (m->T->npc) continue;   // villagers are voxel people (render/villager_layer)
       if (!f.cam.frustum.sphere(rel + vec3(0, m->h * 0.5f, 0), std::max(m->h, m->w * 2) + 1)) continue;
       const RigModel* RM = rigModel(m->modelKey());
       const CreatureModelGL* CM = creatureModel(m->modelKey());

@@ -103,3 +103,10 @@ add_executable(test_content tools/test_content.cpp)
 target_link_libraries(test_content PRIVATE dqcore)
 add_custom_command(TARGET test_content POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_content>/data)
+
+# Villagers test (headless): villages, schedules, trading, quests, standing, guards, paths, skins. Run: build/test_villagers
+add_executable(test_villagers tools/test_villagers.cpp)
+target_link_libraries(test_villagers PRIVATE dqcore)
+add_custom_command(TARGET test_villagers POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_villagers>/data)
+add_test(NAME villagers COMMAND test_villagers)

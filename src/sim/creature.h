@@ -201,6 +201,17 @@ void floatText(Level& lv, u32 playerId, vec3 p, const std::string& text, const s
 // shearing, dyeing, saddling, riding, stay/follow. Returns true when something happened (the held stack is
 // changed in place). Gameplay calls this from the player's "use" on an entity.
 bool useOnCreature(Level& lv, Player& p, Creature& e, bool sneaking);
+// Other areas' say in a creature's life (the villagers: their brain, who may hurt them, using them). All optional;
+// a second user wraps the first (keep the old function and call it).
+struct CreatureHooks {
+  std::function<OptMove(Level&, Creature&, Entity* p, float dist, float dt)> brain;   // a move = it replaces the AI
+  std::function<bool(Level&, Creature&, float& amount, const DamageSrc&)> beforeHurt;  // false = no harm (amount may change)
+  std::function<void(Level&, Creature&, float dealt, const DamageSrc&)> afterHurt;    // after a blow that did harm (dead or not)
+  std::function<void(Level&, Creature&, const DamageSrc&)> died;                      // as it dies, before drops
+  std::function<bool(Level&, Player&, Creature&, bool sneaking)> use;                // true = handled (checked first by useOnCreature)
+  std::function<bool(Level&, int realm, const std::string& type, vec3 at)> naturalSpawn;  // false = the night spawner leaves it out
+};
+CreatureHooks& creatureHooks();
 // Riding: the client feeds the rider's input; sneak gets off. Returns the mount the player is on (or null).
 Creature* rideControl(Level& lv, Player& p, float fwd, float strafe, bool jump, bool sprint, bool sneak);
 void dismount(Level& lv, Creature& mount, Player& p);

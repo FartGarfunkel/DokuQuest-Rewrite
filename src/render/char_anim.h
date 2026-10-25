@@ -20,6 +20,8 @@ struct CharPose {
   // capes.js
   float capeA = 0.1f, capeSway = 0;
   bool still = false;       // the rest pose (the skin editor's model)
+  // game/villagers.js: the villagers' moves on the shared body (waving, talking, arms folded, reading, the head turning)
+  float headYaw = 0, wave = 0, hoe = 0; bool talk = false, fold = false, read = false;
 };
 
 // part angles (x, y, z; applied as rotY, rotX, rotZ) and the lift of the whole body (blocks)

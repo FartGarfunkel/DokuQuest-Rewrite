@@ -194,6 +194,8 @@ static Contacts contacts(World& w, const Entity& e) {
 }
 
 // ------------------------------------------------------------------ hurt
+CreatureHooks& creatureHooks() { static CreatureHooks h; return h; }
+
 float Creature::hurt(Level& lv, float amount, const DamageSrc& src) {
   Entity* a = ent(lv, src.attacker);
   auto* ac = dynamic_cast<Creature*>(a);
@@ -203,6 +205,7 @@ float Creature::hurt(Level& lv, float amount, const DamageSrc& src) {
     if (ac && ac->owner == owner) return 0;
   }
   if (riddenBy && a && a->id == riddenBy) return 0;
+  if (creatureHooks().beforeHurt && !creatureHooks().beforeHurt(lv, *this, amount, src)) return 0;
   // entities.js base
   if (!alive() || invulnT > 0) return 0;
   float dmg = amount;
@@ -258,6 +261,7 @@ float Creature::hurt(Level& lv, float amount, const DamageSrc& src) {
   }
   // pets.js: they answer anyone who hurts them
   if (dealt > 0 && !owner.empty() && a && alive() && !isPetOf(a)) { petFoe = a->id; panicT = 0; angryT = 0; quarrel = 0; }
+  if (dealt > 0 && creatureHooks().afterHurt) creatureHooks().afterHurt(lv, *this, dealt, src);
   return dealt;
 }
 
@@ -272,6 +276,7 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   // pets.js: the rider gets off first
   if (riddenBy) if (auto* r = dynamic_cast<Player*>(ent(lv, riddenBy))) dismount(lv, *this, *r);
   deathTime = 0.0001f;
+  if (creatureHooks().died) creatureHooks().died(lv, *this, src);
   auto roll = [](int a, int b) { return a + (int)std::floor(frand() * (b - a + 1)); };
   vec3 at = pos + vec3(0, 0.5f, 0);
   if (!baby) for (auto& d : T->drops) if (frand() < d.chance) { int n = roll(d.lo, d.hi); if (n > 0) dropItem(lv, realm, ItemStack(d.id, n), at, true); }
@@ -414,7 +419,9 @@ void Creature::update(Level& lv, float dt) {
   float dx = p ? p->pos.x - pos.x : 0, dz = p ? p->pos.z - pos.z : 0, dist = p ? std::hypot(dx, dz) : 999, dyp = p ? p->pos.y - pos.y : 0;
   float toPlayer = std::atan2(-dx, -dz);
   lookAt = p ? p->id : 0;
+  OptMove hooked; if (!calm && creatureHooks().brain) hooked = creatureHooks().brain(lv, *this, p, dist, dt);
   if (calm) { want = 0; dir = yaw; }
+  else if (hooked) { want = hooked->want; dir = hooked->dir; }
   else if (OptMove ctl = controlAI(lv, dt)) { want = ctl->want; dir = ctl->dir; }
   else if (type == "cinder_golem") { Move m = bossAI(lv, p, dist, toPlayer, dt); want = m.want; dir = m.dir; }
   else if (T->special) { Move m = specialAI(lv, p, dist, dyp, toPlayer, dt); want = m.want; dir = m.dir; }
