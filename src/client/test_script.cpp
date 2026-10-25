@@ -9,11 +9,13 @@
 //     fill{from:[x,y,z],to:[x,y,z],key}
 //     expect{screen | block:[x,y,z],is | entity,near} report shot{path} save leave open{world} quit
 //     hurt{entity,amount,tool,type,at} (strike the nearest creature of that type as the player, e.g. tool "axe")
+//     drop{path} (a file dropped on the window) screen{name} (open a screen; "close" pops) data{key,value} wear{item,slot?}
 // The log gets "TEST PASS/FAIL ..." lines and a final "TEST DONE passes=N fails=M".
 #include "client/test_script.h"
 #include "client/app.h"
 #include "client/session.h"
 #include "ui/screen.h"
+#include "ui/ui.h"
 #include "sim/commands.h"
 #include "sim/player.h"
 #include "sim/combat.h"
@@ -199,6 +201,23 @@ void runStep(App& a, const json& st) {
     DQ_LOG("test report: %s", msg.c_str());
   } else if (op == "shot") {
     a.takeScreenshot(st.value("path", "/tmp/dq_test.png"));
+  } else if (op == "drop") {   // a file dragged onto the window
+    std::string f = st.value("path", "");
+    SDL_Event e{}; e.type = SDL_DROPFILE; e.drop.file = SDL_strdup(f.c_str()); e.drop.windowID = SDL_GetWindowID(a.window);
+    SDL_PushEvent(&e);
+  } else if (op == "screen") {   // open a screen: players creator skineditor inventory pause ...
+    std::string n = st.value("name", "");
+    if (n == "creator") a.pushScreen(makeCreatorScreen());
+    else if (n == "skineditor") a.pushScreen(makeSkinEditorScreen());
+    else if (n == "close") { if (a.topScreen()) a.popScreen(); }
+    else if (auto sc = makeScreenByName(a, n)) a.pushScreen(std::move(sc));
+  } else if (op == "data" && p) {   // set Player::data[key] = value (hideGear, cape ...)
+    p->data[st.value("key", "")] = st.contains("value") ? st["value"] : json();
+  } else if (op == "wear" && p) {   // put an item on: armour slot, or cape/back/hook
+    std::string k = st.value("item", ""); const ItemDef* d = reg().item(k);
+    if (d && d->props.contains("armor") && d->props["armor"].is_object()) { int sl = d->props["armor"].value("slot", 0); if (sl >= 0 && sl < (int)p->armor.size()) p->armor[sl] = ItemStack(k, 1); }
+    else if (d) { std::string g = d->has("cape") ? "cape" : d->has("backpack") ? "back" : st.value("slot", "off");
+      if (g == "off") { if (!p->offhand.empty()) p->offhand[0] = ItemStack(k, 1); } else p->data[g] = json::array({ItemStack(k, 1).toJson()}); }
   } else if (op == "save" && s) {
     s->save();
   } else if (op == "leave") {

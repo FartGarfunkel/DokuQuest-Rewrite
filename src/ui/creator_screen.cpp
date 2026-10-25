@@ -5,6 +5,8 @@
 // Plain ImGui, self-contained, so the UI theme can restyle it.
 #include "ui/char_screens.h"
 #include "ui/char_preview.h"
+#include "ui/file_pick.h"
+#include "core/registry.h"
 #include "client/app.h"
 #include "client/session.h"
 #include <imgui.h>
@@ -45,11 +47,21 @@ public:
       status = "A starting look";
     }
     own = resolveCharacter(startsWith(ref, "creator:") ? "" : ref)->skin;   // your own skin, for "wear it under"
+    watchDroppedFiles();
     apply(false);
     dirty = false;
   }
 
-  void update(App&, double dt) override {
+  void update(App& a, double dt) override {
+    std::string path;   // creator.js importFile: an imported skin becomes the skin your 3D character wears
+    if (picker.take(path)) { if (!path.empty()) importOwn(path); else if (!picker.error().empty()) status = picker.error(); }
+    if (takeDroppedFile(path, "png")) importOwn(path);
+    // the cape you wear in the world (the Cape slot) shows on the model when the character has none of its own
+    wornCape.clear(); wornCapeName.clear();
+    if (a.session && a.session->player && !gearHidden(*a.session->player, 5)) {
+      std::string k = wornItem(*a.session->player, "cape");
+      if (const ItemDef* d = k.empty() ? nullptr : reg().item(k)) { wornCape = d->str("cape").empty() ? k : d->str("cape"); wornCapeName = d->name; }
+    }
     t += (float)dt;
     if (spin && !dragging) yaw += (float)dt * 0.5f;
   }
@@ -78,6 +90,9 @@ public:
     if (ImGui::Button("Redo")) { undo.push_back(look); look = redo.back(); redo.pop_back(); apply(); }
     ImGui::EndDisabled();
     ImGui::SameLine();
+    if (ImGui::Button(picker.busy() ? "Choosing..." : "Import skin PNG...")) picker.open("Your own skin under the character (64x64 or 64x32 PNG)", "png");
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Wear your own skin under a 3D character (or drop a skin .png on the window)");
+    ImGui::SameLine();
     if (ImGui::Button("Load...")) ImGui::OpenPopup("load##cc");
     if (ImGui::BeginPopup("load##cc")) {
       auto list = listCharacters();
@@ -97,6 +112,7 @@ public:
     float ph = avail.y - 34;
     CharPreviewOpts o; o.yaw = yaw; o.elev = elev; o.dist = dist; o.time = t; o.walk = walk;
     if (showArmor) o.armor = {"iron_helmet", "iron_chestplate", "iron_leggings", "iron_boots"};
+    if (look.cape == "none" && !wornCape.empty()) o.cape = wornCape;
     ImVec2 at = ImGui::GetCursorScreenPos();
     GLuint tex = preview.render(*spec, (int)(avail.x * io.DisplayFramebufferScale.x), (int)(ph * io.DisplayFramebufferScale.y), o);
     previewImage(tex, avail.x, ph);
@@ -152,6 +168,17 @@ private:
   float yaw = PI + 0.45f, elev = 0.15f, dist = 70, t = 0;
   bool spin = true, walk = false, showArmor = false, dragging = false, dirty = false, confirmLeave = false;
 
+  FilePicker picker;
+  std::string wornCape, wornCapeName;
+  void importOwn(const std::string& path) {
+    SkinImage s; std::string err;
+    if (!loadSkinFile(path, s, &err)) { status = err.empty() ? "That file is not a skin" : err; return; }
+    push();
+    own = s;
+    look.model3d = true; look.own = true;
+    apply();
+    status = "Imported " + fs::path(path).filename().string() + " as your character's skin";
+  }
   void push() { undo.push_back(look); if (undo.size() > 100) undo.erase(undo.begin()); redo.clear(); }
   void keep3d(const CharLook& o) {   // a new face, still the same 3D people
     if (!o.model3d) { look.model3d = false; return; }
@@ -267,6 +294,7 @@ private:
     listRow("Headwear", "hat", L.hat);
     row("Cloak", L.cloak ? "Yes" : "No", "cloak");
     listRow("Cape", "cape", L.cape);
+    if (L.cape == "none" && !wornCapeName.empty()) { ImGui::SameLine(); ImGui::TextDisabled("(showing your %s)", wornCapeName.c_str()); }
     sep("Details");
     listRow("Neck", "neck", L.neck);
     listRow("Eyewear", "eyewear", L.eyewear);

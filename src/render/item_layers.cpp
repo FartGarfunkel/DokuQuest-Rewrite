@@ -7,6 +7,7 @@
 #include "assets/gui_textures.h"
 #include "core/registry.h"
 #include <cstdlib>
+#include <cstdio>
 
 namespace dq {
 
@@ -162,7 +163,8 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   VR.begin(f, proj, false);
   VoxelLight L{light.x, light.y};
   const VoxelModel& arm = firstPersonArm();
-  auto drawArm = [&](const mat4& m) { VR.draw(arm.gl, m * arm.matrix(), L); };
+  // the arm, and the sleeve of a worn chestplate over it (the rest of your armour shows on the first-person body)
+  auto drawArm = [&](const mat4& m) { VR.draw(arm.gl, m * arm.matrix(), L); drawFirstPersonSleeve(m, L); };
 
   auto holdIn = [&](float side, const ItemStack& stack, float lift) {
     const VoxelModel& im = itemModel(stack.id);
@@ -185,9 +187,13 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       m = glm::translate(m, vec3(-side * 0.03f, 0.1f, -0.06f));
       m = glm::rotate(m, side * 0.78f, vec3(0, 1, 0)); m = glm::scale(m, vec3(0.4f));
     } else {
-      m = glm::rotate(m, side * (-1.5f + 0.35f), vec3(0, 1, 0));
-      m = glm::rotate(m, side * 0.42f, vec3(0, 0, 1));
-      m = glm::scale(m, vec3(0.68f));
+      // tuning aid: DQ_DEV_FPHELD="dx,dy,dz,scale,yaw,roll" (the fist frame's offsets) for screenshots
+      static float T[6] = {0, 0, 0, 0, 0, 0}; static bool tl = false;
+      if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_FPHELD")) std::sscanf(v, "%f,%f,%f,%f,%f,%f", &T[0], &T[1], &T[2], &T[3], &T[4], &T[5]); }
+      m = glm::translate(m, vec3(side * T[0], T[1], T[2]));
+      m = glm::rotate(m, side * (-1.5f + 0.35f + T[4]), vec3(0, 1, 0));
+      m = glm::rotate(m, side * (0.42f + T[5]), vec3(0, 0, 1));
+      m = glm::scale(m, vec3(0.68f + T[3]));
       // the grip goes in the fist: the handle end of a tool, the bottom of anything else
       m = glm::translate(m, tool ? vec3(0.3f * side, 0.28f, 0) : vec3(0, 0.3f, 0));
       if (side < 0) m = glm::scale(m, vec3(-1, 1, 1));

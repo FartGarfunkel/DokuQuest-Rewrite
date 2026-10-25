@@ -2,6 +2,7 @@
 // the skin editor's 3D view): the same meshes and animation as in the world, lit evenly.
 #pragma once
 #include "render/char_anim.h"
+#include "render/char_layer.h"
 #include "render/gl.h"
 
 namespace dq {
@@ -16,6 +17,11 @@ struct CharPreviewOpts {
   int isolate = -1;                                  // only this skin part (0..5) bright, the rest faint
   std::vector<std::string> armor;                    // worn armour item keys (4, "" = none)
   std::string cape;                                  // a cape tile key ("" = the character's own)
+  // a whole player as the world draws them (the inventory doll): what they wear and hold, and their pose
+  const CharWear* wear = nullptr;
+  const CharPose* pose = nullptr;
+  bool headOnly = false;                             // just the head (the pause menu's "On this screen" list)
+  float target = -1;                                 // the height looked at (model pixels; < 0 = the middle of the figure)
 };
 
 class CharPreview {

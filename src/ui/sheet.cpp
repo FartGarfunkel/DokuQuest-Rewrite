@@ -1,10 +1,12 @@
 // ui/sheet.cpp — item tooltips (invui.js itemInfoHTML with the dyeing.js and sheet.js additions: what a tool
 // or armour piece does in your hands and against what you have now) and the character sheet beside the doll
-// (sheet.js: skills, combat level, blow, protection, mana). The 3D doll comes with the character workstream;
-// until then the doll is a flat figure wearing your armour's colours.
+// (sheet.js: skills, combat level, blow, protection, mana), the 3D doll (sheet.js drawDoll: the real voxel
+// character, turned by dragging or the right stick) and the show/hide buttons for what you wear (charparts.js).
 #include "ui/ui.h"
 #include "ui/theme.h"
 #include "sim/crafting.h"
+#include "ui/char_preview.h"
+#include "render/char_layer.h"
 #include <imgui.h>
 
 namespace dq {
@@ -165,33 +167,66 @@ float drawSheet(ImDrawList* dl, ImVec2 p, float w, float is, const Player& pl) {
   return y - p.y;
 }
 
-// the doll: a figure in the default look, wearing the colours of its armour (the 3D doll arrives with skins)
+// ---- the doll (sheet.js): you, in 3D — your skin, your armour, what's in your hands and on your back, standing
+// there breathing. It turns slowly this way and that; drag it (or push the right stick) to turn it round.
+namespace {
+struct DollState { CharPreview* view = nullptr; float spin = 0.35f, base = 0.35f; bool drag = false; float dragX = 0, dragS = 0; };
+DollState& doll() { static DollState d; if (!d.view) d.view = new CharPreview(); return d; }   // kept past exit (GL objects)
+}
 void drawDoll(ImDrawList* dl, ImVec2 a, ImVec2 b, const Player& pl, double t) {
   // canvas: radial-gradient(ellipse at 50% 80%, #2c241c, #0a0806) with a sunk border
   dl->AddRectFilledMultiColor(a, b, col::rgb(0x0a0806), col::rgb(0x0a0806), col::rgb(0x2c241c), col::rgb(0x2c241c));
   bevel(dl, a, b, col::slLo, col::slHi, 2 * Z());
-  auto matCol = [&](int slot, u32 fallback) -> u32 {
-    const ItemStack& s = pl.armor[slot]; if (s.empty()) return fallback;
-    if (s.tag.is_object() && s.tag.contains("col") && s.tag["col"].is_string()) return hexCol(s.tag["col"].get<std::string>().c_str());
-    const std::string& k = s.id;
-    static const std::pair<const char*, u32> M[] = {{"leather", 0x8a5a32}, {"iron", 0xc8ccd0}, {"chain", 0xc8ccd0}, {"gold", 0xf0d040}, {"diamond", 0x5ae0e0},
-      {"cinderite", 0x4a3a40}, {"netherite", 0x4a3a40}, {"copper", 0xd08050}, {"bronze", 0xb08040}};
-    for (auto& [pre, c] : M) if (startsWith(k, pre)) return c;
-    return 0x9a9a9a;
-  };
-  float W = b.x - a.x, H = b.y - a.y, u = std::min(W / 16.f, H / 34.f);
-  float cx = (a.x + b.x) * 0.5f, top = a.y + (H - 32 * u) * 0.5f + std::sin((float)t * 2.4f) * 0.3f * u;
-  auto box = [&](float x, float y, float w, float h, u32 c) { dl->AddRectFilled(ImVec2(cx + x * u, top + y * u), ImVec2(cx + (x + w) * u, top + (y + h) * u), col::rgb(c)); };
-  u32 skin = 0xc69c6d, hair = 0x3b2a1a, shirt = 0x2a9a9a, pants = 0x3a3ab0, shoes = 0x4a4a4a;
-  box(-4, 0, 8, 8, skin); box(-4, 0, 8, 2.5f, hair);
-  if (!pl.armor[0].empty()) { u32 c = matCol(0, 0); box(-4.5f, -0.5f, 9, 3.5f, c); box(-4.5f, -0.5f, 1, 7, c); box(3.5f, -0.5f, 1, 7, c); }
-  box(-4, 8, 8, 12, pl.armor[1].empty() ? shirt : matCol(1, shirt));
-  box(-8, 8, 4, 12, skin); box(4, 8, 4, 12, skin);
-  if (!pl.armor[1].empty()) { box(-8, 8, 4, 4, matCol(1, shirt)); box(4, 8, 4, 4, matCol(1, shirt)); } else { box(-8, 8, 4, 4, shirt); box(4, 8, 4, 4, shirt); }
-  box(-4, 20, 4, 12, pl.armor[2].empty() ? pants : matCol(2, pants)); box(0, 20, 4, 12, pl.armor[2].empty() ? pants : matCol(2, pants));
-  box(-4, 29, 4, 3, pl.armor[3].empty() ? shoes : matCol(3, shoes)); box(0, 29, 4, 3, pl.armor[3].empty() ? shoes : matCol(3, shoes));
-  // eyes
-  box(-2.5f, 4, 1.2f, 1, 0xffffff); box(1.3f, 4, 1.2f, 1, 0xffffff); box(-2, 4, 0.7f, 1, 0x3050a0); box(1.8f, 4, 0.7f, 1, 0x3050a0);
+  DollState& D = doll();
+  ImGuiIO& io = ImGui::GetIO();
+  // dragging turns it; let go and it carries on turning a little this way and that from there
+  bool over = io.MousePos.x >= a.x && io.MousePos.y >= a.y && io.MousePos.x < b.x && io.MousePos.y < b.y;
+  if (over && ImGui::IsMouseClicked(0) && pl.cursor.empty()) { D.drag = true; D.dragX = io.MousePos.x; D.dragS = D.spin; }
+  if (D.drag && !ImGui::IsMouseDown(0)) { D.drag = false; D.base = D.spin - std::sin((float)t / 2.6f) * 0.45f; }
+  float stick = padAxis(ImGuiKey_GamepadRStickRight) - padAxis(ImGuiKey_GamepadRStickLeft);
+  if (std::fabs(stick) > 0.15f) D.base += stick * io.DeltaTime * 2.6f;
+  if (D.drag) D.spin = D.dragS + (io.MousePos.x - D.dragX) * 0.02f / Z();
+  else D.spin = D.base + std::sin((float)t / 2.6f) * 0.45f;
+  if (over) ImGui::SetTooltip("Drag to turn");
+  // you as the doll: standing still, facing out, what you wear and hold
+  auto spec = resolveCharacter(pl.skin);
+  CharWear wear = charWearOf(pl, *spec, true);
+  CharPose ps;
+  ps.time = (float)t; ps.headPitch = std::sin((float)t / 2.6f) * 0.08f;
+  ps.held = !wear.held.empty(); ps.off = !wear.off.empty(); ps.capeA = 0.1f; ps.capeSway = std::sin((float)t * 3.1f) * 0.02f;
+  CharPreviewOpts o;
+  o.wear = &wear; o.pose = &ps; o.yaw = PI + D.spin; o.elev = 0.035f; o.dist = 66; o.target = 15.5f; o.time = (float)t;
+  float fb = io.DisplayFramebufferScale.x;
+  ImVec2 in(2 * Z(), 2 * Z());
+  ImVec2 sz = (b - in) - (a + in);
+  GLuint tex = D.view->render(*spec, (int)(sz.x * fb), (int)(sz.y * fb), o);
+  if (tex) dl->AddImage((ImTextureID)(intptr_t)tex, a + in, b - in, ImVec2(0, 1), ImVec2(1, 0));
+}
+
+// charparts.js GEAR_VIS: show or hide each thing you wear (hidden gear still protects you and still works)
+static const char* GEAR_VIS[6][2] = {{"Helmet", "iron_helmet"}, {"Chestplate", "iron_chestplate"}, {"Leggings", "iron_leggings"}, {"Boots", "iron_boots"}, {"Backpack", "leather_backpack"}, {"Cape", "ember_cape"}};
+void toggleGearVis(Player& p, int k) {
+  if (k < 0 || k >= 6) return;
+  json h = p.data.contains("hideGear") && p.data["hideGear"].is_array() ? p.data["hideGear"] : json::array();
+  while (h.size() < 6) h.push_back(0);
+  h[k] = (h[k].is_number() && h[k].get<int>() != 0) ? 0 : 1;
+  p.data["hideGear"] = h;
+  playClick();
+}
+void drawGearVis(ImDrawList* dl, ImVec2 a, ImVec2 b, const Player& p, int k, bool focus, bool hover) {
+  if (k < 0 || k >= 6) return;
+  bool off = gearHidden(p, k);
+  float z = Z(), w = b.x - a.x, h = b.y - a.y;
+  // .eqvis: rgba(0,0,0,.35) with a --sl-lo border; .off: the icon greyed, a red stroke across
+  dl->AddRectFilled(a, b, IM_COL32(0, 0, 0, hover || focus ? 150 : 90));
+  dl->AddRect(a, b, focus ? col::gold : col::slLo, 0, 0, (focus ? 2.f : 1.f) * z);
+  float ic = std::min(w, h) * 0.8f;
+  drawIcon(dl, GEAR_VIS[k][1], ImVec2(a.x + (w - ic) * 0.5f, a.y + (h - ic) * 0.5f), ic, off ? 0.3f : 1.f);
+  if (off) {
+    ImVec2 c((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f); float r = w * 0.38f, dx = std::cos(0.61f) * r, dy = std::sin(0.61f) * r;
+    dl->AddLine(ImVec2(c.x - dx, c.y + dy), ImVec2(c.x + dx, c.y - dy), col::rgb(0xe0584a), 2 * z);
+  }
+  if (hover) ImGui::SetTooltip("%s %s", off ? "Show" : "Hide", toLower(GEAR_VIS[k][0]).c_str());
 }
 
 } // namespace dq

@@ -1,6 +1,7 @@
 // render/map_render.cpp — map pictures, paper, markers, and the map in your hands (game/maps.js).
 #include "render/map_render.h"
 #include "render/map_colors.h"
+#include "render/char_layer.h"
 #include "render/item_layers.h"
 #include "client/app.h"
 #include "client/session.h"
@@ -218,6 +219,7 @@ int heldMaps(HeldItemLayer& L, GameSession& s, const FrameCtx& f, const mat4& pr
     am = glm::rotate(am, a.yaw, vec3(0, 1, 0)); am = glm::rotate(am, a.pitch, vec3(1, 0, 0));
     am = glm::translate(am, vec3(0, 0.3f, 0.02f));
     if (arm.ready()) VR.draw(arm.gl, am * arm.matrix(), VoxelLight{light.x, light.y});
+    drawFirstPersonSleeve(am, VoxelLight{light.x, light.y});
   }
   VR.end();
   return taken;
