@@ -328,7 +328,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   }
   ps.capeA = st.capeA; ps.capeSway = st.capeSway;
   ps.fp = fp;
-  ps.fpLeftArm = fp && wear.off.empty() && !ps.hang && !(p.bowPull > 0);
+  ps.fpLeftArm = fp && wear.off.empty() && !ps.hang && !(ps.climb > 0) && !(p.bowPull > 0);
   if (wear.held == "bow" && p.bowPull > 0) wear.held = p.bowPull < 0.45f ? "bow_pulling_0" : p.bowPull < 0.85f ? "bow_pulling_1" : "bow_pulling_2";
   // game/elytra.js: gliding on the wings (they open, you lie flat, arms swept back)
   ps.wingOpen = st.wing;

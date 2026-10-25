@@ -228,6 +228,20 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     }
   };
 
+  if (p->hang || p->climb) {
+    // local.js handState: hanging from a ledge (or hauling yourself up): both hands up on the edge just above your
+    // eyes, coming up from the lower corners; hand over hand while you shimmy along it
+    float k = p->climb ? std::min(1.f, p->climb->t / 0.55f) : 0.f;
+    float sh = p->hang && p->hang->shimT > 0 ? 1.f : 0.f, ss = std::sin(p->hang ? p->hang->shimPh : 0.f), sc = std::cos(p->hang ? p->hang->shimPh : 0.f);
+    for (float side : {-1.f, 1.f}) {
+      float reach = sh * (side * ss * 0.06f + std::max(0.f, side * sc) * 0.05f);
+      mat4 a = glm::translate(mat4(1), vec3(side * 0.42f, -0.2f - k * 0.35f + std::sin((float)f.time * 2 + side) * 0.008f + reach, -0.38f));
+      a = glm::rotate(a, -side * (0.35f - k * 0.2f), vec3(0, 0, 1)); a = glm::rotate(a, PI - 0.15f - k * 0.9f, vec3(1, 0, 0));
+      drawArm(a);
+    }
+    VR.end();
+    return;
+  }
   if (p->carrying.is_object()) {   // Carry On (local.js handState): whatever you hold sits in both arms in front of you
     drawCarriedThing(p->carrying, glm::translate(mat4(1), vec3(bx, -0.62f + by - eq * 0.5f, -0.95f)), true, L, vec4(0));
     for (float side : {-1.f, 1.f}) {
