@@ -665,6 +665,7 @@ void registerCreatures() {
   if (done) return;
   done = true;
   registerCreatureEntities();
+  registerSpawners();
   // every MOB_TYPES key is a creature (the "" fallback catches types added later by data packs and mods)
   registerEntityFactory("", [](const std::string& t) -> std::unique_ptr<Entity> { if (!isCreatureType(t)) return nullptr; return std::make_unique<Creature>(t); });
   registerLevelSystem([](Level& lv) { return std::make_shared<CreatureSystem>(lv); });

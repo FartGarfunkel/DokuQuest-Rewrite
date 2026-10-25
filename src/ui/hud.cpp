@@ -477,13 +477,13 @@ public:
         static const char* fac[] = {"north", "west", "south", "east"};
         float yw = std::fmod(std::fmod(p.yaw, TAU) + TAU, TAU);
         h.dbgText = (a.settings.showFps ? std::to_string(fps) + " fps\n" : "") +
-          strFormat("XYZ %d %d %d \xC2\xB7 facing %s", ifloor(p.pos.x), ifloor(p.pos.y), ifloor(p.pos.z), fac[(int)std::lround(yw / (PI / 2)) & 3]);
+          strFormat("XYZ %d %d %d \xC2\xB7 facing %s", ifloor(p.pos.x), ifloor(p.pos.y) - dimBase(dimOfY(ifloor(p.pos.y))), ifloor(p.pos.z), fac[(int)std::lround(yw / (PI / 2)) & 3]);
       } else if (s.debugOverlay) {
         World& w = s.world();
         int d = dimOfY(ifloor(p.pos.y));
         u8 l = w.getLight(ifloor(p.pos.x), ifloor(p.pos.y + 0.5f), ifloor(p.pos.z));
-        h.dbgText = strFormat("%d fps\nXYZ %.1f %.1f %.1f\n%s \xC2\xB7 y %d in band\nlight sky %d block %d\nchunks %zu \xC2\xB7 sections %d/%d \xC2\xB7 mesh jobs %d\nentities %zu\nstorage game folder\n%s GL %d.%d \xC2\xB7 %s",
-          fps, p.pos.x, p.pos.y, p.pos.z, dimName(d), ifloor(p.pos.y) - dimBase(d), l >> 4, l & 15, w.chunks().size(), s.worldRenderer.drawnSections,
+        h.dbgText = strFormat("%d fps\nXYZ %.1f %.1f %.1f\n%s \xC2\xB7 world y %d\nlight sky %d block %d\nchunks %zu \xC2\xB7 sections %d/%d \xC2\xB7 mesh jobs %d\nentities %zu\nstorage game folder\n%s GL %d.%d \xC2\xB7 %s",
+          fps, p.pos.x, p.pos.y - dimBase(d), p.pos.z, dimName(d), ifloor(p.pos.y), l >> 4, l & 15, w.chunks().size(), s.worldRenderer.drawnSections,
           s.worldRenderer.totalSections, s.worldRenderer.pendingJobs, s.level->entities().size(), gfx.modern ? "Modern" : "Legacy", gfx.major, gfx.minor, gfx.renderer.c_str());
         h.dbgText += strFormat("\nmouse %s", a.input.captured() ? "held" : "loose");
       } else h.dbgText = std::to_string(fps) + " fps";

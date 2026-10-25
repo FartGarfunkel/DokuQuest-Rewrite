@@ -257,6 +257,7 @@ struct CreatureHooks {
 void setCreatureHooks(const std::string& type, CreatureHooks h);
 const CreatureHooks* creatureHooks(const std::string& type);   // nullptr = none
 
+void registerSpawners();      // sim/spawners.cpp: monster cages in dungeons and fortresses
 void registerCreatures();     // entity factories + the creature LevelSystem (called from initCore)
 
 } // namespace dq
