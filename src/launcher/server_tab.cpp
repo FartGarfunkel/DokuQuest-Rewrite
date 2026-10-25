@@ -1,10 +1,10 @@
 // launcher/server_tab.cpp — the dedicated server lives in the launcher (it was the game's server screen in
 // the HTML version, game/server.js): choose or create a server world (userDir()/servers/), port, players,
 // MOTD, mode, difficulty, password, LAN visibility; start/stop; live console (every log line of this process)
-// with command input; players; TPS/mspt. It runs server/server.h's DedicatedServer in-process — the same code
-// as the headless dokuquest-server.
-#include "launcher/launcher.h"
-#include "server/server.h"
+// with command input. While it runs, the right side is the original's dashboard (server_dash.cpp: Players, World
+// map, Isometric, Chat & console, Settings, Plugins). It runs server/server.h's DedicatedServer in-process — the
+// same code as the headless dokuquest-server.
+#include "launcher/server_ui.h"
 #include <imgui_stdlib.h>
 #include <mutex>
 #include <deque>
@@ -94,7 +94,13 @@ void drawServer(Launcher& L) {
   // the server stopped itself ("stop" typed in the console): join its thread and save
   if (S.srv && !S.srv->running()) { S.srv->stop(); S.srv.reset(); }
   bool running = S.srv != nullptr;
-  ServerStatus status = running ? S.srv->status() : ServerStatus();
+  if (running) {   // the original's running view: the dashboard takes the whole tab
+    ServerStatus status = S.srv->status();
+    bool stop = false;
+    drawServerDashboard(L, *S.srv, status, L.time - S.startedAt, stop);
+    if (stop) { S.srv->stop(); S.srv.reset(); }
+    return;
+  }
   ServerConfig& c = S.cfg;
   bool cfgChanged = false;
 
@@ -170,23 +176,26 @@ void drawServer(Launcher& L) {
   ImGui::SameLine(0, 16);
   float rightW = ImGui::GetContentRegionAvail().x;
   beginDokuPanel("##srvrun", ImVec2(rightW, h), false, ImGuiWindowFlags_NavFlattened);
-  // status line
   {
     ImDrawList* dl = ImGui::GetWindowDrawList(); ImVec2 p = ImGui::GetCursorScreenPos();
-    dl->AddCircleFilled(ImVec2(p.x + 7, p.y + L.fUi->FontSize * 0.5f + 1), 5, running ? C_OK : IM_COL32(120, 110, 100, 255));
+    dl->AddCircleFilled(ImVec2(p.x + 7, p.y + L.fUi->FontSize * 0.5f + 1), 5, IM_COL32(120, 110, 100, 255));
     ImGui::Dummy(ImVec2(16, 0)); ImGui::SameLine();
-    if (running) {
-      int up = (int)(L.time - S.startedAt);
-      ImGui::Text("Running \"%s\" on port %d  ·  %.1f TPS  ·  %.2f mspt  ·  %d/%d players  ·  up %d:%02d:%02d", c.world.c_str(), c.port, status.tps, status.mspt,
-                  (int)status.playerNames.size(), c.maxPlayers, up / 3600, up / 60 % 60, up % 60);
-    } else ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "Stopped");
+    ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "Stopped");
   }
-  ImGui::PushFont(L.fSmall); dimText("Joining over the network comes with the network update; the server already runs and saves its world."); ImGui::PopFont();
-  float playersW = 180, consH = ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeight() - 10;
-  // console
+  ImGui::PushFont(L.fSmall); dimText("Once it runs, this side shows who's on, a live map of the world with everyone on it, a live isometric view round any player, the chat and console, the settings and the plugins."); ImGui::PopFont();
+  drawServerConsole(L, nullptr, ImGui::GetContentRegionAvail(), false);
+  endDokuPanel();
+}
+
+// the log (every line of this process) and the command line under it
+void drawServerConsole(Launcher& L, DedicatedServer* srv, ImVec2 size, bool withPlayers) {
+  ServerTab& S = st();
+  bool running = srv != nullptr;
+  ServerStatus status = running ? srv->status() : ServerStatus();
+  float playersW = withPlayers ? 180 : 0, gap = withPlayers ? 10 : 0, consH = size.y - ImGui::GetFrameHeight() - 10;
   ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(0, 0, 0, 200));
   ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(77, 63, 51, 255));
-  ImGui::BeginChild("##console", ImVec2(ImGui::GetContentRegionAvail().x - playersW - 10, consH), ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar);
+  ImGui::BeginChild("##console", ImVec2(size.x - playersW - gap, consH), ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar);
   ImGui::PushFont(L.fMono);
   {
     std::lock_guard<std::mutex> lk(S.mx);
@@ -203,25 +212,30 @@ void drawServer(Launcher& L) {
   }
   ImGui::PopFont();
   ImGui::EndChild();
-  ImGui::SameLine(0, 10);
-  ImGui::BeginChild("##players", ImVec2(playersW, consH), ImGuiChildFlags_Borders);
-  sideHeading(L, "Players");
-  if (status.playerNames.empty()) { ImGui::PushFont(L.fSmall); dimText(running ? "Nobody is on yet." : "The server is stopped."); ImGui::PopFont(); }
-  for (auto& n : status.playerNames) ImGui::TextUnformatted(n.c_str());
-  ImGui::EndChild();
+  if (withPlayers) {
+    ImGui::SameLine(0, gap);
+    ImGui::BeginChild("##players", ImVec2(playersW, consH), ImGuiChildFlags_Borders);
+    sideHeading(L, "Players");
+    if (status.playerNames.empty()) { ImGui::PushFont(L.fSmall); dimText(running ? "Nobody is on yet." : "The server is stopped."); ImGui::PopFont(); }
+    for (auto& n : status.playerNames) ImGui::TextUnformatted(n.c_str());
+    ImGui::EndChild();
+  }
   ImGui::PopStyleColor(2);
   // command input
-  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 110);
-  bool send = ImGui::InputTextWithHint("##cmd", running ? "Command (stop, save, say <text>…)" : "Start the server to type commands", &S.cmd,
+  ImGui::SetNextItemWidth(size.x - 110);
+  bool send = ImGui::InputTextWithHint("##cmd", running ? "Say something to everyone, or type a command (stop, save, say, list, kick, /time…)" : "Start the server to type commands", &S.cmd,
                                        ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory, histCallback);
   ImGui::SameLine();
   if (mcButton(L, "Send", ImVec2(-1, ImGui::GetFrameHeight()), BtnKind::Grey, running && !S.cmd.empty(), L.fUi)) send = true;
   if (send && running && !S.cmd.empty()) {
-    std::string c2 = S.cmd; if (!c2.empty() && c2[0] == '/') c2.erase(0, 1);
-    S.srv->command(c2); S.history.push_back(S.cmd); S.histPos = -1; S.cmd.clear();
+    srv->command(S.cmd); S.history.push_back(S.cmd); S.histPos = -1; S.cmd.clear();
     ImGui::SetKeyboardFocusHere(-1);
   }
-  endDokuPanel();
+}
+
+void serverOpenPage(const std::string& page, const std::string& follow) {
+  for (int i = 0; i < (int)SvTab::Count; i++) if (page == svTabId((SvTab)i)) serverDash().tab = (SvTab)i;
+  if (!follow.empty()) serverDash().follow = follow;
 }
 
 } // namespace dq

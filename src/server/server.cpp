@@ -4,6 +4,7 @@
 #include "net/server_host.h"
 #include "mod/modloader.h"
 #include "sim/commands.h"
+#include "net/lan.h"
 
 namespace dq {
 
@@ -64,6 +65,7 @@ bool DedicatedServer::start(std::string* err) {
     return false;
   }
   level->net = host;
+  { std::string addr = net::localAddress(); std::lock_guard<std::mutex> lk(mx); st = ServerStatus(); st.address = addr; viewPub.reset(); viewWork = ServerView(); }
   startedAt = nowSeconds();
   runFlag = true;
   events->emit("worldOpen", json::array({level->info.name}));
@@ -94,6 +96,28 @@ void DedicatedServer::stop() {
 void DedicatedServer::command(const std::string& line) { std::lock_guard<std::mutex> lk(mx); cmds.push_back(line); }
 
 ServerStatus DedicatedServer::status() const { std::lock_guard<std::mutex> lk(mx); return st; }
+
+void DedicatedServer::setView(const ServerViewReq& r) { std::lock_guard<std::mutex> lk(mx); viewReq = r; viewReqAt = nowSeconds(); }
+std::shared_ptr<const ServerView> DedicatedServer::view() const { std::lock_guard<std::mutex> lk(mx); return viewPub; }
+
+// On the server thread: the players (10 times a second) and the map / isometric columns (when due) for the dashboard.
+void DedicatedServer::updateView(double now) {
+  ServerViewReq req;
+  { std::lock_guard<std::mutex> lk(mx); req = viewReq; if (now - viewReqAt > 1) req.map = req.iso = false; }   // the dashboard isn't being drawn
+  if (!req.map && !req.iso && now - viewAt < 1) return;
+  if (now - viewAt < 0.1) return;
+  viewAt = now;
+  std::vector<ViewPlayer> ps;
+  for (auto& i : host->players()) {
+    ViewPlayer v; v.name = i.name; v.address = i.address; v.realm = i.realm; v.pos = i.pos; v.hp = i.hp; v.op = i.op; v.ping = i.rttMs;
+    if (Player* p = host->player(i.name)) { v.yaw = p->yaw; v.maxHp = p->maxHp; v.dead = p->dead; v.realm = p->realm; v.pos = p->pos; v.hp = p->hp; }
+    v.dim = v.realm == REALM_MAIN ? dimOfY(ifloor(v.pos.y)) : DIM_OVERWORLD;
+    ps.push_back(std::move(v));
+  }
+  sampleServerView(*level, ps, req, viewWork, now);
+  auto pub = std::make_shared<const ServerView>(viewWork);
+  std::lock_guard<std::mutex> lk(mx); viewPub = std::move(pub);
+}
 
 static std::vector<std::string> words(const std::string& s) {
   std::vector<std::string> v; std::string c;
@@ -172,6 +196,7 @@ void DedicatedServer::loop() {
       double t0 = nowSeconds();
       host->update(*level, TICK_DT);
       if (onTick) onTick(*level);
+      updateView(nowSeconds());
       // keep spawn loaded so the world is ready for joining players, and everyone's surroundings
       vec3 sp = level->info.spawn.y >= 0 ? level->info.spawn : vec3(0, dimBase(DIM_OVERWORLD) + 80, 0);
       std::map<int, std::vector<StreamAnchor>> anchors;
@@ -189,6 +214,9 @@ void DedicatedServer::loop() {
       std::lock_guard<std::mutex> lk(mx);
       st.running = true; st.tps = ticks / (now - tpsT); st.mspt = ticks ? busy * 1000 / ticks : 0; st.world = cfg.world; st.name = cfg.name;
       st.port = host->port(); st.maxPlayers = host->opts.maxPlayers; st.day = level->info.day; st.uptime = now - startedAt;
+      st.motd = host->opts.motd; st.pluginsOn = mods != nullptr;
+      st.plugins.clear();
+      if (mods) for (auto& m : mods->list()) st.plugins.push_back({m.id, m.name, m.kind, m.version, m.error, m.plugin, m.enabled, m.loaded});
       st.players = (int)ps.size(); st.playerNames.clear(); st.playerList.clear();
       for (auto& p : ps) { st.playerNames.push_back(p.name); st.playerList.push_back({p.name, p.address, p.realm, p.pos, p.hp, p.op, p.rttMs}); }
       ticks = 0; busy = 0; tpsT = now;

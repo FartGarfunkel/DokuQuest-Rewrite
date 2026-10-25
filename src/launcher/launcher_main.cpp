@@ -3,6 +3,7 @@
 // above launcher.html's bottom bar, and the hand-off to a newer launcher the updater installed.
 // Smoke options like the game: --userdir DIR --smoke-frames N --smoke-shot FILE --tab news|server|studio[:page]|options
 // Test options: --update-api URL (a saved GitHub response, e.g. file:///…/latest.json) --check-updates --start-server --play --no-handoff
+//   --smoke-after SECONDS (the screenshot waits that long too, e.g. for a server world to load) --server-follow NAME (map/iso centre)
 #include "launcher/launcher.h"
 #include "core/init.h"
 #include "mod/modloader.h"
@@ -18,8 +19,8 @@ namespace dq {
 namespace {
 
 struct Args {
-  std::string userDir, smokeShot, tab, updateApi;
-  int smokeFrames = 0;
+  std::string userDir, smokeShot, tab, updateApi, serverFollow;
+  int smokeFrames = 0; double smokeAfter = 0;
   bool checkUpdates = false, startServer = false, noHandoff = false, play = false;
 };
 
@@ -31,6 +32,8 @@ Args parseArgs(int argc, char** argv) {
     if (s == "--userdir") a.userDir = next();
     else if (s == "--smoke-frames") a.smokeFrames = std::atoi(next().c_str());
     else if (s == "--smoke-shot") a.smokeShot = next();
+    else if (s == "--smoke-after") a.smokeAfter = std::atof(next().c_str());
+    else if (s == "--server-follow") a.serverFollow = next();
     else if (s == "--tab") a.tab = next();
     else if (s == "--update-api") a.updateApi = next();
     else if (s == "--check-updates") a.checkUpdates = true;
@@ -221,8 +224,9 @@ int main(int argc, char** argv) {
   if (!a.tab.empty()) {
     std::string t = a.tab, page; size_t c = t.find(':'); if (c != std::string::npos) { page = t.substr(c + 1); t = t.substr(0, c); }
     for (int i = 0; i < (int)LTab::Count; i++) if (t == tabId((LTab)i)) L.tab = (LTab)i;
-    if (!page.empty()) studioOpenPage(page);
+    if (!page.empty()) { if (t == "server") serverOpenPage(page); else studioOpenPage(page); }
   }
+  if (!a.serverFollow.empty()) serverOpenPage("", a.serverFollow);
   if (a.checkUpdates || (L.settings.autoUpdate && a.smokeFrames == 0)) L.updater.check(!a.checkUpdates);
   bool serverAutostarted = false;
   int frame = 0; double last = nowSeconds();
@@ -255,7 +259,8 @@ int main(int argc, char** argv) {
     glViewport(0, 0, dw, dh);
     glClearColor(0.165f, 0.118f, 0.082f, 1); glClear(GL_COLOR_BUFFER_BIT);   // body background #2a1e15
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    frame++;
+    if (a.smokeFrames > 0 && L.time >= a.smokeAfter) frame++;
+    else if (a.smokeFrames == 0) frame++;
     if (a.smokeFrames > 0 && frame == a.smokeFrames && !a.smokeShot.empty()) screenshot(L, a.smokeShot);
     SDL_GL_SwapWindow(L.window);
     if (a.smokeFrames > 0 && frame >= a.smokeFrames) L.quit = true;
