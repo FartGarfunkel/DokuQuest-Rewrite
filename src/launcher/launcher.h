@@ -97,6 +97,7 @@ bool serverRunning();
 bool serverStartFromConfig(Launcher& L);   // --start-server (tests)
 void serverShutdown();
 void serverInitConsole();
+void serverOpenPage(const std::string& page, const std::string& follow = {});   // --tab server:map|iso|players|chat|settings|plugins, --server-follow
 
 // ---- modstudio.cpp (+ modstudio_docs.cpp)
 void drawStudio(Launcher& L);
