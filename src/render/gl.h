@@ -74,7 +74,7 @@ private:
 GLuint quadIndexBuffer(size_t quads);   // shared 0,1,2, 0,2,3 pattern for quad lists
 
 GLuint makeTexture2D(int w, int h, const void* rgba, bool nearest = true, bool mips = false, bool repeat = true);
-GLuint makeTextureArray(int w, int h, int layers, const void* rgba, bool mips = true);
+GLuint makeTextureArray(int w, int h, int layers, const void* rgba, bool mips = true, bool linear = false);   // linear: smooth (bilinear) sampling, no mips
 void glCheck(const char* where);
 
 } // namespace dq

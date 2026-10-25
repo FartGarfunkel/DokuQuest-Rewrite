@@ -6,9 +6,10 @@
 namespace dq {
 
 // Tile arrays are split in pages (GL guarantees 2048 layers on the hardware we target).
-struct TileTextures { GLuint color[2] = {0, 0}, height[2] = {0, 0}; int page = 2048; void bind(Shader& s, int firstUnit = 0) const; };
+struct TileTextures { GLuint color[2] = {0, 0}, height[2] = {0, 0}, normal[2] = {0, 0}; int page = 2048; void bind(Shader& s, int firstUnit = 0) const; };
 
 struct SkyEnv;   // render/sky.h
+struct DynLight { glm::dvec3 pos; float level; };   // a point light: world position, level 0..15 (render/dyn_light.cpp)
 
 struct FrameCtx {
   Camera cam;
@@ -32,6 +33,8 @@ struct FrameCtx {
   float cloudBank = 0;       // inside the cloud bank between the Overworld and the Skylands
   vec2 windDir{1, 0};        // the way the wind blows (x, z); strength is `wind`
   bool underwater = false;
+  std::vector<DynLight> dyn;   // up to 8 carried/dropped/burning lights of the camera's realm (set by DynLightLayer)
+  int dynRealm = -1;
   std::shared_ptr<const SkyEnv> sky;   // this view's full sky (render/sky.h; portal views get their own)
   int portalDepth = 0;       // > 0 while drawing the view through a portal (render/portal_view.cpp)
   // set common.glsl uniforms on a bound shader

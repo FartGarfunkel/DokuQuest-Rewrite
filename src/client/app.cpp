@@ -109,18 +109,23 @@ void App::reloadTiles() {
   loadBuiltinTiles(tiles);
   addBuiltinTileAnims(tiles);   // render/tile_anim.h (before a pack replaces tiles)
   tiles.packName = applyResourcePack(tiles, settings.resourcePack);
-  for (int p = 0; p < 2; p++) { if (tileTex.color[p]) glDeleteTextures(1, &tileTex.color[p]); if (tileTex.height[p]) glDeleteTextures(1, &tileTex.height[p]); tileTex.color[p] = tileTex.height[p] = 0; }
+  bakeTileRelief(tiles);   // once per tile set: whole-voxel geometry + smooth normal maps (assets/tile_relief.cpp)
+  for (int p = 0; p < 2; p++) {
+    for (GLuint* t : {&tileTex.color[p], &tileTex.height[p], &tileTex.normal[p]}) { if (*t) glDeleteTextures(1, t); *t = 0; }
+  }
   int page = std::min(2048, gfx.maxArrayLayers);
   if (tiles.count > page * 2) DQ_WARN("tiles: %d tiles but this GPU holds %d; some blocks will look wrong", tiles.count, page * 2);
   tileTex.page = page;
   size_t tsz = (size_t)tiles.size * tiles.size;
   std::vector<u8> h4((size_t)tiles.count * tsz * 4);
-  for (size_t i = 0; i < tiles.height.size(); i++) { h4[i * 4] = tiles.height[i]; h4[i * 4 + 1] = tiles.emissive.empty() ? 0 : tiles.emissive[i]; h4[i * 4 + 3] = 255; }
+  // r = geometry (whole micro-voxel steps, scaled to 0..255), g = glow; the smooth normals/crevices are their own array
+  for (size_t i = 0; i < tiles.relief.size(); i++) { h4[i * 4] = (u8)((tiles.relief[i] * 255 + TileSet::RELIEF_STEPS / 2) / TileSet::RELIEF_STEPS); h4[i * 4 + 1] = tiles.emissive.empty() ? 0 : tiles.emissive[i]; h4[i * 4 + 3] = 255; }
   for (int p = 0; p < 2; p++) {
     int first = p * page, n = std::min(page, tiles.count - first);
     if (n <= 0) { n = 1; first = 0; }   // keep a valid (unused) second page
     tileTex.color[p] = makeTextureArray(tiles.size, tiles.size, n, tiles.rgba.data() + first * tsz * 4, true);
     tileTex.height[p] = makeTextureArray(tiles.size, tiles.size, n, h4.data() + first * tsz * 4, false);
+    tileTex.normal[p] = makeTextureArray(tiles.size, tiles.size, n, tiles.normal.data() + first * tsz * 4, false, true);
   }
   itemIcons().build(tiles);
   DQ_LOG("tiles: %d micro-voxel tiles (%s)", tiles.count, tiles.packName.empty() ? "built-in Doku" : tiles.packName.c_str());

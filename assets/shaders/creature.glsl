@@ -58,7 +58,7 @@ void main() {
     float d = max(0.0, dot(n, uSunDir));
     lit = vec3(0.62 + 0.38 * d) * shade / max(shade, 0.65);
   } else {
-    lit = lighting(uLight.x, uLight.y, glow) * shade;
+    lit = lighting(uLight.x, uDynN > 0 ? max(uLight.y, dynLight(vRel, n)) : uLight.y, glow) * shade;
   }
   c *= glow ? vec3(1.0) : lit * ao;
   if (uGlint.x > 0.0) {

@@ -21,12 +21,17 @@ void FrameCtx::apply(Shader& s) const {
   s.set("uMinLight", minLight);
   s.set("uEyeFluid", eyeFluid);
   s.set("uBlockLightColor", blockLightColor);
+  // dynamic point lights (common.glsl dynLight): xyz relative to the camera's block, w = level
+  vec4 d[8]; int n = 0;
+  if (portalDepth == 0) for (const DynLight& l : dyn) { if (n >= 8) break; d[n++] = vec4(cam.rel(l.pos), l.level); }
+  s.set("uDynN", n);
+  if (n) glUniform4fv(s.loc("uDyn"), n, &d[0].x);
 }
 
 void TileTextures::bind(Shader& s, int u) const {
-  const char* names[4] = {"uTiles", "uTiles2", "uHeights", "uHeights2"};
-  GLuint ids[4] = {color[0], color[1], height[0], height[1]};
-  for (int i = 0; i < 4; i++) { glActiveTexture(GL_TEXTURE0 + u + i); glBindTexture(GL_TEXTURE_2D_ARRAY, ids[i] ? ids[i] : ids[i & 2]); s.set(names[i], u + i); }
+  const char* names[6] = {"uTiles", "uTiles2", "uHeights", "uHeights2", "uNormals", "uNormals2"};
+  GLuint ids[6] = {color[0], color[1], height[0], height[1], normal[0], normal[1]};
+  for (int i = 0; i < 6; i++) { glActiveTexture(GL_TEXTURE0 + u + i); glBindTexture(GL_TEXTURE_2D_ARRAY, ids[i] ? ids[i] : ids[i & ~1]); s.set(names[i], u + i); }
   s.set("uPageSize", (float)page);
   glActiveTexture(GL_TEXTURE0);
 }
