@@ -10,6 +10,7 @@
 #include "ui/content_screens.h"
 #include <imgui.h>
 #include <cmath>
+#include <cstdlib>
 
 namespace dq {
 
@@ -137,7 +138,7 @@ static void feedPadsToImGui(App& a) {
     if (std::fabs(p.lstick.x) > std::fabs(lx)) lx = p.lstick.x;
     if (std::fabs(p.lstick.y) > std::fabs(ly)) ly = p.lstick.y;
   }
-  if (!any) return;
+  if (!any) { static int n = 0; if (std::getenv("DQ_NAV_DEBUG") && n++ % 120 == 0) DQ_LOG("nav: no pads"); return; }
   io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
   static const ImGuiKey MAP[16] = {ImGuiKey_GamepadFaceDown, ImGuiKey_GamepadFaceRight, ImGuiKey_GamepadFaceLeft, ImGuiKey_GamepadFaceUp,
     ImGuiKey_GamepadL1, ImGuiKey_GamepadR1, ImGuiKey_GamepadL2, ImGuiKey_GamepadR2, ImGuiKey_GamepadBack, ImGuiKey_GamepadStart,
@@ -150,6 +151,7 @@ static void feedPadsToImGui(App& a) {
   // picked up after the screen opened): give the focus to the topmost menu window so the d-pad has a highlight
   bool active = lx * lx + ly * ly > 0.12f;
   for (bool v : b) active = active || v;
+  static const bool dbg = std::getenv("DQ_NAV_DEBUG") != nullptr;
   Screen* top = a.topScreen();
   ImGuiContext& g = *GImGui;
   if (active && top && top->wantsMouse() && !g.NavWindow) {
@@ -160,6 +162,7 @@ static void feedPadsToImGui(App& a) {
       break;
     }
   }
+  if (dbg && active) DQ_LOG("nav: pads %zu, window %s, id %08x, cursor %d, top %s", a.input.pads().size(), g.NavWindow ? g.NavWindow->Name : "-", g.NavId, (int)g.NavCursorVisible, top ? top->id() : "-");
 }
 
 void uiBeginFrame(App& a) {
