@@ -12,6 +12,7 @@
 #include "render/content_layers.h"
 #include "render/creature_layer.h"
 #include "render/endstory_layer.h"
+#include "render/villager_layer.h"
 #include "client/play.h"
 #include "gen/structures_api.h"
 #include <imgui.h>
@@ -36,6 +37,7 @@ GameSession::GameSession(App& a, std::unique_ptr<Level> lv) : app(a), level(std:
   registerCreatureLayers();   // creatures, projectiles, gibs, felled trees, fauna (render/creature_layer)
   registerEndStoryLayers();   // the watcher, pearls, darkness/dread, the story's quest line, egg tags (render/endstory_layer)
   registerVehicleLayers();    // minecarts, boats, the ship, machines, pistons, TNT (render/vehicle_layer)
+  registerVillagerClient();   // villagers as voxel people, their tags, your jobs, the talk/board/path screens (render/villager_layer)
   for (auto& f : layerFactories()) if (auto l = f(*this)) layers.push_back(l);
   std::sort(layers.begin(), layers.end(), [](auto& x, auto& y) { return x->order() < y->order(); });
   if (app.mods) app.mods->onWorldOpen(*level, app.events, false);

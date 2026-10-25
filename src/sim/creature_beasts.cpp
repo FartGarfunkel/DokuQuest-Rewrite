@@ -649,6 +649,7 @@ static std::string petLabel(const Creature& e) {
 bool useOnCreature(Level& lv, Player& p, Creature& e, bool sneaking) {
   if (!e.alive() || e.removed) return false;
   if (const CreatureHooks* H = creatureHooks(e.type); H && H->onUse && H->onUse(lv, p, e, sneaking)) return true;
+  if (globalCreatureHooks().use && globalCreatureHooks().use(lv, p, e, sneaking)) return true;
   ItemStack& held = p.held();
   const ItemDef* def = held.def();
   bool mine = e.isPetOf(&p);

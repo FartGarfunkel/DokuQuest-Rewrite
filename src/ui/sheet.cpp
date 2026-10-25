@@ -2,6 +2,7 @@
 // or armour piece does in your hands and against what you have now) and the character sheet beside the doll
 // (sheet.js: skills, combat level, blow, protection, mana), the 3D doll (sheet.js drawDoll: the real voxel
 // character, turned by dragging or the right stick) and the show/hide buttons for what you wear (charparts.js).
+#include "sim/villagers.h"
 #include "ui/ui.h"
 #include "ui/theme.h"
 #include "sim/crafting.h"
@@ -35,10 +36,7 @@ double gearBonus(const ItemStack& s, double max) {
   return (lv - 1) / 49.0 * max;
 }
 int armorPts(const Player& p) { int n = 0; for (auto& s : p.armor) if (!s.empty()) if (const ItemDef* d = s.def()) if (d->has("armor")) n += d->props["armor"].value("points", 0); return n; }
-int combatLevel(const Player& p) {
-  int me = skillLv(p, "melee"), de = skillLv(p, "defence"), ar = skillLv(p, "archery"), ma = skillLv(p, "magic");
-  return (int)std::floor((me + de + std::max(ar, ma)) / 3.0 + (me + de) / 12.0);
-}
+// combatLevel (sheet.js): sim/villagers.h (one definition; the paths use it too)
 // how much of a blow your armour, your Defence and its wear turn aside (0..1)
 double protection(const Player& p) {
   int worn = 0; double gb = 0;

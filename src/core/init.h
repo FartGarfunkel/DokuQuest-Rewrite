@@ -23,6 +23,7 @@ void registerPortals();          // sim/portals.cpp (+ the stacked worlds, sim/s
 void registerMagic();            // sim/magic.cpp (magic, enchanting, brewing, skills, rpg)
 void registerContent();          // sim/content.cpp (maps, farming, fishing, camping, travel, elytra, stable, places)
 void registerEndStory();      // sim/endstory.cpp: the End, dragons, the Deep Dark, the watcher and the rift
+void registerVillagers();        // sim/villagers.cpp (villages, villagers, quests, shops, paths, gates, raids)
 void registerCreatures();        // sim/creature_spawn.cpp (creature/projectile entities + the spawning system)
 void registerRedstone();         // sim/rsplace.cpp: redstone, minecarts, boats/ships, machines
 

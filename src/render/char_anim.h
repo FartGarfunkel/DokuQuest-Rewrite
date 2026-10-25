@@ -25,6 +25,8 @@ struct CharPose {
   bool ladder = false; float ladderPh = 0, ladderMv = 0;
   // maps.js: a paper map held up in front of the chest (both hands, or one)
   bool mapMain = false, mapOff = false;
+  // game/villagers.js: the villagers' moves on the shared body (waving, talking, arms folded, reading, the head turning)
+  float headYaw = 0, wave = 0, hoe = 0; bool talk = false, fold = false, read = false;
 };
 
 // part angles (x, y, z; applied as rotY, rotX, rotZ) and the lift of the whole body (blocks)
@@ -44,6 +46,9 @@ struct CharRig {
 // base: render space at the entity's feet (translation only; block units). Stature and the body shape apply here.
 void charRig(const CharModel& m, CharPose pose, const mat4& base, CharRig& out, bool cloak, bool underPack);
 
+#ifndef DQ_WRAP_ANGLE
+#define DQ_WRAP_ANGLE
 inline float wrapAngle(float a) { return std::fmod(std::fmod(a + PI * 3, TAU) + TAU, TAU) - PI; }
+#endif
 
 } // namespace dq

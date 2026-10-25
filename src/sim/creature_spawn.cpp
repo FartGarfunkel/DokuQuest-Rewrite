@@ -393,6 +393,7 @@ public:
     };
     auto pickW = [](const std::vector<NE>& list) { float t = 0; for (auto& e : list) t += e.w; float q = frand() * t; for (auto& e : list) { q -= e.w; if (q <= 0) return std::string(e.t); } return std::string(list[0].t); };
     auto spawnOne = [&](const std::string& t, int x, int y, int z) {
+      if (globalCreatureHooks().naturalSpawn && !globalCreatureHooks().naturalSpawn(lv, realm, t, vec3(x + 0.5f, y, z + 0.5f))) return;   // villagers.js: not inside a village
       Creature* m = spawnCreature(lv, realm, t, vec3(x + 0.5f, y, z + 0.5f));
       if (!m) return;
       if (t == "slime" || t == "magma_slime") m->setSize(frand() < 0.6f ? 2 : 1);

@@ -159,6 +159,13 @@ CharAngles charAnimate(const CharPose& pose) {
     A.head = vec3(pose.headPitch + pose.lean * 0.9f, pose.turned ? clampf(pose.headTurn, -1.25f, 1.25f) : 0, 0);
     A.lift = std::sin(k) * 0.04f * hover;
   }
+  // game/villagers.js avatarAnim: new moves for the shared body
+  if (pose.headYaw != 0) A.head.y += pose.headYaw;
+  if (pose.wave > 0) { float k = std::min(1.f, pose.wave * 3); A.armR = vec3(2.7f * k, 0, 0.35f * k + std::sin(t * 14) * 0.35f * k); A.foreR = vec3(0.2f, 0, 0); }
+  else if (pose.talk) { A.armR.x += 0.5f + std::sin(t * 3.1f) * 0.25f; A.foreR.x += 0.6f + std::sin(t * 2.3f) * 0.3f; A.armL.x += 0.35f + std::sin(t * 2.7f + 1) * 0.2f; A.foreL.x += 0.5f; A.head.x += std::sin(t * 4.3f) * 0.06f; }
+  else if (pose.fold && pose.walkAmt < 1e-3f) { A.armR = vec3(0.95f, 0.35f, -0.55f); A.foreR = vec3(1.25f, 0, 0); A.armL = vec3(0.95f, -0.35f, 0.55f); A.foreL = vec3(1.25f, 0, 0); }
+  if (pose.read) { A.armR = vec3(0.85f, -0.25f, 0); A.foreR = vec3(0.7f, 0, 0); A.armL = vec3(0.85f, 0.25f, 0); A.foreL = vec3(0.7f, 0, 0); A.head.x += 0.35f; }
+  if (pose.hoe > 0) { float k = std::sin(pose.hoe * PI); A.armR = vec3(0.6f + k * 1.2f, 0, 0); A.armL = vec3(0.6f + k * 1.1f, 0, 0); A.body.x -= k * 0.25f; }
   return A;
 }
 

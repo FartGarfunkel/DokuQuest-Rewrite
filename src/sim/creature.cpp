@@ -215,6 +215,7 @@ void realmAfterHurt(Level& lv, Creature& m, const DamageSrc& src, float dealt); 
 static std::unordered_map<std::string, CreatureHooks>& hookMap() { static std::unordered_map<std::string, CreatureHooks> m; return m; }
 void setCreatureHooks(const std::string& type, CreatureHooks h) { hookMap()[type] = std::move(h); }
 const CreatureHooks* creatureHooks(const std::string& type) { auto& m = hookMap(); if (m.empty()) return nullptr; auto it = m.find(type); return it == m.end() ? nullptr : &it->second; }
+CreatureGlobalHooks& globalCreatureHooks() { static CreatureGlobalHooks h; return h; }
 
 float Creature::hurt(Level& lv, float amount, const DamageSrc& src) {
   const CreatureHooks* HK = creatureHooks(type);
@@ -234,6 +235,7 @@ float Creature::hurtBase(Level& lv, float amount, const DamageSrc& srcIn) {
     if (ac && ac->owner == owner) return 0;
   }
   if (riddenBy && a && a->id == riddenBy) return 0;
+  if (globalCreatureHooks().beforeHurt && !globalCreatureHooks().beforeHurt(lv, *this, amount, src)) return 0;
   // entities.js base
   if (!alive() || invulnT > 0) return 0;
   float dmg = amount;
@@ -289,6 +291,7 @@ float Creature::hurtBase(Level& lv, float amount, const DamageSrc& srcIn) {
   // pets.js: they answer anyone who hurts them
   if (dealt > 0 && !owner.empty() && a && alive() && !isPetOf(a)) { petFoe = a->id; panicT = 0; angryT = 0; quarrel = 0; }
   if (dealt > 0) realmAfterHurt(lv, *this, src, dealt);
+  if (dealt > 0 && globalCreatureHooks().afterHurt) globalCreatureHooks().afterHurt(lv, *this, dealt, src);
   return dealt;
 }
 
@@ -303,6 +306,7 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   // pets.js: the rider gets off first
   if (riddenBy) if (auto* r = dynamic_cast<Player*>(ent(lv, riddenBy))) dismount(lv, *this, *r);
   deathTime = 0.0001f;
+  if (globalCreatureHooks().died) globalCreatureHooks().died(lv, *this, src);
   auto roll = [](int a, int b) { return a + (int)std::floor(frand() * (b - a + 1)); };
   vec3 at = pos + vec3(0, 0.5f, 0);
   bool noDrops = data.contains("noDrops") && data["noDrops"] == true;   // summons, a called-back dragon (its own table)
@@ -466,8 +470,10 @@ void Creature::update(Level& lv, float dt) {
   float dx = p ? p->pos.x - pos.x : 0, dz = p ? p->pos.z - pos.z : 0, dist = p ? std::hypot(dx, dz) : 999, dyp = p ? p->pos.y - pos.y : 0;
   float toPlayer = std::atan2(-dx, -dz);
   lookAt = p ? p->id : 0;
+  OptMove hooked; if (!calm && globalCreatureHooks().brain) hooked = globalCreatureHooks().brain(lv, *this, p, dist, dt);
   if (calm) { want = 0; dir = yaw; }
   else if (OptMove hk = brainHook(lv, p, dist, dyp, toPlayer, dt)) { want = hk->want; dir = hk->dir; }
+  else if (hooked) { want = hooked->want; dir = hooked->dir; }
   else if (OptMove ctl = controlAI(lv, dt)) { want = ctl->want; dir = ctl->dir; }
   else if (type == "cinder_golem") { Move m = bossAI(lv, p, dist, toPlayer, dt); want = m.want; dir = m.dir; }
   else if (T->special) { Move m = specialAI(lv, p, dist, dyp, toPlayer, dt); want = m.want; dir = m.dir; }
