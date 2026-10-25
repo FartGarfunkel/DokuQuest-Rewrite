@@ -10,6 +10,7 @@ bool initCore(const CoreOptions& o) {
   if (!reg().loadBase(dataDir())) return false;
   registerWorldTypes();
   registerCommands();
+  registerCreatures();
   registerModApi();
   registerWeatherSystem();
   registerPortals();
