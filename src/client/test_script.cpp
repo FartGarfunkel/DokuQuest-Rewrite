@@ -8,7 +8,7 @@
 //     cmd{text} look{yaw,pitch (degrees)} lookAt{x,y,z} tp{x,y,z} give{item,n} select{slot} setBlock{x,y,z,key}
 //     anchor (remember the player's block; x/y/z, from/to and block in steps with "rel":true are relative to it)
 //     fill{from:[x,y,z],to:[x,y,z],key}
-//     expect{screen | block:[x,y,z],is | entity,near} report shot{path} save leave open{world} quit
+//     expect{screen | block:[x,y,z],is | entity,near} report shot{path} save leave open{world} unjoin{local} quit
 //     hurt{entity,amount,tool,type,at} (strike the nearest creature of that type as the player, e.g. tool "axe")
 //     drop{path} (a file dropped on the window) screen{name} (open a screen; "close" pops) data{key,value} wear{item,slot?}
 //     expect{screen | block:[x,y,z],is | entity,near | held | inv:slot,item,n | count:item,n | cursor:item |
@@ -275,6 +275,8 @@ void runStep(App& a, const json& st) {
     a.leaveWorld(st.value("toTitle", true));
   } else if (op == "open") {
     a.openWorld(a.savesDir() / st.value("world", "Test"));
+  } else if (op == "unjoin") {   // split screen: the partner "local" (1..3) leaves (the pause screen's Leave button)
+    if (s) s->removeLocal(st.value("local", 1));
   } else if (op == "quit") {
     a.quit = true;
   } else DQ_WARN("test: unknown step '%s'", op.c_str());

@@ -315,6 +315,7 @@ public:
         textShadow(dl, F_H3, sp - ts * 0.5f, withAlpha(col::rgb(f.rgb), al), f.text.c_str(), ImVec2(2, 2) * z, withAlpha(col::black, al));
       }
       for (auto& e : s.level->entities()) {
+        if (s.split()) break;   // split screen: GameSession::drawNameTags draws everybody's (coloured per person)
         if (e.get() == &p || !e->isPlayer() || e->removed || e->realm != p.realm) continue;
         if (std::hypot(e->pos.x - (float)cam.pos.x, e->pos.z - (float)cam.pos.z) > 64) continue;
         ImVec2 sp; if (!project(e->pos + vec3(0, 2.1f, 0), sp)) continue;
