@@ -31,7 +31,7 @@ public:
     vec3 lastPos{0}, vel{0};
     float bob = 0, bobAmt = 0, swimPh = 0, landT = 0, fallStart = 0; bool falling = false;
     float bodyYaw = 0, legTurn = 0, stillT = 0, lastFwd = 0, accLean = 0, lastBody = 0, turnLean = 0;
-    float capeA = 0.1f, capeSway = 0, deathT = 0, ladderPh = 0;
+    float capeA = 0.1f, capeSway = 0, deathT = 0, ladderPh = 0, wing = 0;
     u64 seen = 0;
   };
 private:
@@ -65,6 +65,12 @@ CharWear charWearOf(const Player& p, const CharacterSpec& spec, bool carried = t
 // base: render space at the feet (translation only). fp = the first-person body; detail = the look's shapes.
 struct CharDrawOpts { VoxelLight light{1, 0}; vec4 tint{0}; bool fp = false, detail = true, headOnly = false; };
 void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear& w, const mat4& base, const CharDrawOpts& o);
+// skins.js skinFace: the lid down over the eyes now and then (always in sleep) and, while ps.talk, the mouth opening and closing.
+// head = the head's matrix (part * scale); VoxelRenderer already begun.
+void drawCharFace(const CharModel& M, const CharPose& ps, const mat4& head, VoxelLight light, vec4 tint);
+// Carry On (render/carry_draw.cpp): what Player::carrying {kind:'block'|'mob'} holds in the arms. at = the chest frame in blocks
+// (x right, y up, z back, the thing sits at its origin); fp = the hand view's size. VoxelRenderer already begun.
+void drawCarriedThing(const json& carrying, const mat4& at, bool fp, VoxelLight light, vec4 tint);
 // the local player's chestplate sleeve over the first-person arm (arm = the arm model's placement, before matrix())
 void drawFirstPersonSleeve(const mat4& arm, VoxelLight light);
 

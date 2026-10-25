@@ -34,6 +34,10 @@ struct CharMesh {
   bool ready() const { return gl.ready(); }
 };
 
+// skins.js skinFace: the face that moves. The lid is the cheek row drawn up over the eye row (a blink, and shut in sleep);
+// villagers (and anyone whose skin has one) also get a mouth that opens while they talk. Thin voxel slabs just off the face.
+struct CharFace { CharMesh lid, mouth; float seed = 0, period = 4; bool has = false; };
+
 struct CharModel {
   u64 hash = 0;
   bool slim = false;
@@ -46,6 +50,7 @@ struct CharModel {
   std::map<std::string, vec3> gearPivot;       // gear3d parts: head neck body skirtF skirtB armR foreR ... cape capeLo tail
   // the look's own shapes for (helmet worn, chestplate worn), built when first asked
   const std::map<std::string, CharMesh>& gear(bool helm, bool chest, const TileSet* ts) const;
+  CharFace face;
   u32 skinColor = 0, sleeveColor = 0;          // the right arm's hand and shoulder colours
   mutable std::map<std::string, CharMesh> gearSets[4];
   mutable bool gearBuilt[4] = {false, false, false, false};
@@ -63,6 +68,10 @@ const ArmorSet& armorMeshes(const std::string& itemKey, const std::string& dye, 
 // a worn cape (game/capes.js): seg 0 = the whole cape (10 x 16 x 1 px, hung from its top edge at the origin,
 // toward +z behind the body), 1 = its top 11 rows lying under a backpack, 2 = the 5-row hem below it
 const CharMesh* capeMesh(const std::string& capeKey, int seg, const TileSet& ts);
+
+// game/elytra.js: one folded wing (side 0 = right, 1 = left) as a voxel panel 9 x 21 x ~1.2 px, hung from its top inner corner at the
+// origin (x outward, y up, z back); the caller turns it about that corner (sim/elytra.h elytraWings) and scales z by 0.8
+const CharMesh* elytraWingMesh(int side, const TileSet& ts);
 
 // how a backpack sits over what's worn under it (gear3d.js gearPackOver): po further out, lift higher straps,
 // fz where the straps lie down the chest, capeZ where a cape's top lies under it

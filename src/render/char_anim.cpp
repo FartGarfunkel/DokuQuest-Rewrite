@@ -159,6 +159,11 @@ CharAngles charAnimate(const CharPose& pose) {
     A.head = vec3(pose.headPitch + pose.lean * 0.9f, pose.turned ? clampf(pose.headTurn, -1.25f, 1.25f) : 0, 0);
     A.lift = std::sin(k) * 0.04f * hover;
   }
+  // game/elytra.js: arms swept back along the sides, legs together
+  if (pose.glide) {
+    A.armR = vec3(0.15f, 0, 0.32f); A.armL = vec3(0.15f, 0, -0.32f); A.foreR = A.foreL = vec3(0.05f, 0, 0);
+    A.legR = vec3(0, 0, 0.04f); A.legL = vec3(0, 0, -0.04f); A.shinR = A.shinL = vec3(0); A.body = vec3(0); A.lift = 0;
+  }
   // game/villagers.js avatarAnim: new moves for the shared body
   if (pose.headYaw != 0) A.head.y += pose.headYaw;
   if (pose.wave > 0) { float k = std::min(1.f, pose.wave * 3); A.armR = vec3(2.7f * k, 0, 0.35f * k + std::sin(t * 14) * 0.35f * k); A.foreR = vec3(0.2f, 0, 0); }

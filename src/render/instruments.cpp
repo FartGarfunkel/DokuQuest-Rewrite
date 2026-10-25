@@ -132,6 +132,23 @@ void updateInstruments(GameSession& s, double dtd) {
   else I.clockF = (int)std::floor(time * 20) % CLOCK_FRAMES;
 }
 
+// the live dial on both faces of the item (the picture spans the model's -0.5..0.5, scaled by its size)
+// (the dial model's own static picture plate sits at 0.068..0.078 x size, i.e. just in front of `depth`: the live
+// face goes clearly in front of it, the same 0.9 wide, or the plate hides it and the needle never moves)
+void drawInstrumentFace(const FrameCtx& f, const mat4& proj, bool fog, const std::string& id, const VoxelModel& im, const mat4& m, vec2 light) {
+  GLuint tex; vec4 uv;
+  if (!instrumentIcon(id, tex, uv) || im.kind == VoxelModel::Block) return;
+  float sz = itemSize(id) * 0.9f, z = im.depth + 0.012f;
+  ContentDraw& cd = contentDraw();
+  if (!cd.begin(f, proj, fog)) return;
+  glEnable(GL_POLYGON_OFFSET_FILL); glPolygonOffset(-1, -1);
+  cd.picture(tex, glm::scale(glm::translate(m, vec3(0, 0, z)), vec3(sz, sz, 1)), uv, vec4(1), light);
+  mat4 back = glm::rotate(glm::translate(m, vec3(0, 0, -z)), PI, vec3(0, 1, 0));
+  cd.picture(tex, glm::scale(back, vec3(sz, sz, 1)), vec4(uv.z, uv.y, uv.x, uv.w), vec4(1), light);
+  glDisable(GL_POLYGON_OFFSET_FILL);
+  cd.end();
+}
+
 void registerInstruments() {
   static bool done = false;
   if (done) return;
@@ -139,23 +156,9 @@ void registerInstruments() {
   auto prev = HeldItemLayer::itemHook;
   HeldItemLayer::itemHook = [prev](GameSession& s, const FrameCtx& f, const mat4& proj, const ItemStack& st, const mat4& m, const VoxelModel& im) {
     if (prev) prev(s, f, proj, st, m, im);
-    GLuint tex; vec4 uv;
-    if (!instrumentIcon(st.id, tex, uv) || im.kind == VoxelModel::Block) return;
-    // the live dial on both faces of the item (the picture spans the model's -0.5..0.5, scaled by its size)
-    // (the dial model's own static picture plate sits at 0.068..0.078 x size, i.e. just in front of `depth`: the live
-    // face goes clearly in front of it, the same 0.9 wide, or the plate hides it and the needle never moves)
-    float sz = itemSize(st.id) * 0.9f, z = im.depth + 0.012f;
     Player* p = s.player;
     u8 l = p ? s.world().getLight(ifloor(p->pos.x), ifloor(p->pos.y + 1.62f), ifloor(p->pos.z)) : 0xF0;
-    vec2 light((l >> 4) / 15.f, (l & 15) / 15.f);
-    ContentDraw& cd = contentDraw();
-    if (!cd.begin(f, proj, false)) return;
-    glEnable(GL_POLYGON_OFFSET_FILL); glPolygonOffset(-1, -1);
-    cd.picture(tex, glm::scale(glm::translate(m, vec3(0, 0, z)), vec3(sz, sz, 1)), uv, vec4(1), light);
-    mat4 back = glm::rotate(glm::translate(m, vec3(0, 0, -z)), PI, vec3(0, 1, 0));
-    cd.picture(tex, glm::scale(back, vec3(sz, sz, 1)), vec4(uv.z, uv.y, uv.x, uv.w), vec4(1), light);
-    glDisable(GL_POLYGON_OFFSET_FILL);
-    cd.end();
+    drawInstrumentFace(f, proj, false, st.id, im, m, vec2((l >> 4) / 15.f, (l & 15) / 15.f));
   };
 }
 

@@ -5,6 +5,7 @@
 // live: over the item in your hand (HeldItemLayer::itemHook), and for the UI through instrumentIcon().
 #pragma once
 #include "render/content_draw.h"
+#include "assets/item_models.h"
 
 namespace dq {
 
@@ -19,6 +20,9 @@ bool isInstrument(const std::string& key);               // compass, clock, deat
 bool instrumentIcon(const std::string& key, GLuint& tex, vec4& uv);
 // pure: one frame's 16 x 16 RGBA (the painting), for tests and atlases
 std::vector<u8> paintInstrumentFrame(const std::string& key, int frame);
+// the live dial over a held compass / clock model: m = the model's frame (before im.matrix()), proj = the pass' view-projection
+// (the hand view's, or the world's with fog = true for a character's hand); does nothing for other items
+void drawInstrumentFace(const FrameCtx& f, const mat4& proj, bool fog, const std::string& id, const VoxelModel& im, const mat4& m, vec2 light);
 void registerInstruments();                              // installs the held-item hook (once)
 
 } // namespace dq

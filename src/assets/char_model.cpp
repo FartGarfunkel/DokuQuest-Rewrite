@@ -5,6 +5,7 @@
 #include "assets/voxel_paint.h"
 #include "assets/pack_armor.h"
 #include "assets/tileset.h"
+#include "assets/pack_fs.h"
 #include <list>
 
 namespace dq {
@@ -89,6 +90,54 @@ bool buildShapes(const std::vector<const GearShape*>& S, const std::function<u32
   return out.ready();
 }
 
+// skins.js skinFace: the eye row (a villager's is known; anyone else's is the row of the face that stands out most from the
+// skin), the lid over it and the mouth. Columns the hat layer covers are left out (the lid sits behind that layer).
+void buildFace(const SkinImage& s, const std::string& ref, CharModel& m) {
+  int eye = 4, mouth = -1, mxa = 2, mxb = 6;
+  auto col = [&](int i, int j) { return s.at(8 + i, 8 + j); };
+  if (ref.rfind("npc:", 0) == 0) { eye = 3; mouth = 5; }
+  else {
+    const u8* sk = col(0, 6); int bs = -1;
+    for (int j : {3, 4, 5}) {
+      int n = 0;
+      for (int i = 0; i < 8; i++) { const u8* c = col(i, j); n += std::abs(c[0] - sk[0]) + std::abs(c[1] - sk[1]) + std::abs(c[2] - sk[2]) > 90 ? 1 : 0; }
+      if (n > bs) { bs = n; eye = j; }
+    }
+  }
+  auto covered = [&](int c, int row) { return s.at(40 + c, 8 + row)[3] >= 100; };
+  const vec3 pivot(0, 24, 0);
+  VoxelGrid g(ivec3(16, 2, 1));
+  for (int gi = 0; gi < 16; gi++) {
+    int c = 7 - gi / 2;   // the face's column, counted from the viewer's left (the character's right is +x)
+    if (covered(c, eye)) continue;
+    const u8* q = col(c, std::min(eye + 1, 7));
+    for (int gj = 0; gj < 2; gj++) g.set(gi, gj, 0, voxRGBA(q[0], q[1], q[2]));
+  }
+  if (g.count()) {
+    VoxelMeshData md; buildVoxelMesh(g, md);
+    upload(m.face.lid, md, vec3(-4, 32 - eye - 1, -4.5f) - pivot);
+  }
+  if (mouth >= 0) {
+    int w = (mxb - mxa) * 2;
+    VoxelGrid mg(ivec3(w, 3, 1));
+    const u8* q = col(3, mouth);
+    u32 mc = voxShade(voxRGBA(q[0], q[1], q[2]), 0.5f);
+    for (int gi = 0; gi < w; gi++) {
+      int c = 7 - (gi + 2 * (8 - mxb)) / 2;
+      if (covered(c, mouth)) continue;
+      for (int gj = 0; gj < 3; gj++) mg.set(gi, gj, 0, mc);
+    }
+    if (mg.count()) {
+      VoxelMeshData md; buildVoxelMesh(mg, md);
+      upload(m.face.mouth, md, vec3(4 - mxb, 32 - 8 + 6 - mouth, -4.5f) - pivot + vec3(0, 0, 0));
+    }
+  }
+  std::string key = ref.empty() ? "default" : ref;
+  m.face.seed = std::fmod((float)key.size() * 1.7f, 5.f);
+  m.face.period = 3.4f + (float)((key.size() > 5 ? (unsigned char)key[5] : 0) % 5) * 0.4f;
+  m.face.has = m.face.lid.ready();
+}
+
 struct Cache {
   std::map<u64, std::unique_ptr<CharModel>> models;
   std::list<u64> lru;
@@ -140,6 +189,7 @@ const CharModel& charModel(const CharacterSpec& spec) {
     buildOverlay(s, d, l.mid, d.mx.y, true, false, 1, false, m->ovl[l.up], P[l.up]);
     buildOverlay(s, d, d.mn.y, l.mid, false, true, 1, false, m->ovl[l.dn], P[l.dn]);
   }
+  buildFace(s, spec.ref, *m);
   m->skinColor = skinAverage(s, 44, 29, (int)aw, 3);
   m->sleeveColor = skinAverage(s, 44, 20, (int)aw, 3);
   c.lru.push_back(spec.hash);
@@ -167,7 +217,7 @@ const std::map<std::string, CharMesh>& CharModel::gear(bool helm, bool chest, co
 // ------------------------------------------------------------------ armour
 namespace {
 // a box shell coloured with a tile across each face (models.js addBox with tilesOf)
-void tileShell(VoxelGrid& g, ivec3 n, const TileSet& ts, const std::array<int, 6>& tiles, vec3 dye) {
+void tileShell(VoxelGrid& g, ivec3 n, const TileSet& ts, const std::array<int, 6>& tiles, vec3 dye, int holeTile = -2) {
   for (int z = 0; z < n.z; z++) for (int y = 0; y < n.y; y++) for (int x = 0; x < n.x; x++) {
     if (!(x == 0 || y == 0 || z == 0 || x == n.x - 1 || y == n.y - 1 || z == n.z - 1)) continue;
     vec3 c((x + 0.5f) / n.x, (y + 0.5f) / n.y, (z + 0.5f) / n.z);
@@ -177,6 +227,7 @@ void tileShell(VoxelGrid& g, ivec3 n, const TileSet& ts, const std::array<int, 6
     switch (f) { case 0: s = 1 - c.z; t = 1 - c.y; break; case 1: s = c.z; t = 1 - c.y; break; case 2: s = c.x; t = c.z; break;
                  case 3: s = 1 - c.x; t = c.z; break; case 4: s = c.x; t = 1 - c.y; break; default: s = 1 - c.x; t = 1 - c.y; }
     u32 col = tiles[f] >= 0 ? tileVoxel(ts, tiles[f], clampv((int)(s * ts.size), 0, ts.size - 1), clampv((int)(t * ts.size), 0, ts.size - 1)) : voxRGBA(168, 172, 180);
+    if (!col && tiles[f] == holeTile) continue;   // the helmet's face opening (armor_<mat>_face is clear there): the face shows through
     if (!col) col = voxRGBA(150, 150, 156);
     if (dye.x >= 0) {
       float l = ((col & 255) * 0.3f + ((col >> 8) & 255) * 0.59f + ((col >> 16) & 255) * 0.11f) / 160.f;
@@ -222,7 +273,7 @@ const ArmorSet& armorMeshes(const std::string& itemKey, const std::string& dye, 
       if (A) paintSkinBox(g, ivec3(0), p, A->rgba.data(), A->w, A->h, 64, 32, CHAR_VPP);
     } else {
       std::array<int, 6> tl{tMain, tMain, tMain, tMain, tMain, p.name == "helmet" && tFace >= 0 ? tFace : tMain};
-      tileShell(g, n, ts, tl, dyeC);
+      tileShell(g, n, ts, tl, dyeC, p.name == "helmet" && tFace >= 0 ? tFace : -2);
     }
     if (!g.count()) continue;
     auto cm = std::make_unique<CharMesh>();
@@ -293,6 +344,51 @@ const CharMesh* capeMesh(const std::string& capeKey, int seg, const TileSet& ts)
   VoxelMeshData md; buildVoxelMesh(g, md, &fc);
   auto cm = std::make_unique<CharMesh>();
   upload(*cm, md, vec3(-5, -(float)(bot - top), 0));
+  const CharMesh* r = cm->ready() ? cm.get() : nullptr;
+  c.misc[key] = std::move(cm);
+  return r;
+}
+
+// ------------------------------------------------------------------ elytra
+const CharMesh* elytraWingMesh(int side, const TileSet& ts) {
+  std::string key = "elytra:" + std::to_string(side);
+  Cache& c = C();
+  auto it = c.misc.find(key);
+  if (it != c.misc.end()) return it->second && it->second->ready() ? it->second.get() : nullptr;
+  // a resource pack's elytra picture (textures/entity/elytra.png, the vanilla 10 x 20 x 2 wing at u 22): cut up like a skin box
+  if (PackFS* P = activePack()) if (P->hasTextures()) if (auto b = P->read(P->texRoot + "entity/elytra.png")) {
+    int w = 0, h = 0; std::vector<u8> rgba;
+    if (loadPngMem(b->data(), b->size(), w, h, rgba) && w >= 64 && w == h * 2) {
+      ArmorPiece ap{"elytra", 0, vec3(0), vec3(10, 20, 2), 22, 0, 10, 20, 2, side == 0};
+      VoxelGrid pg(ivec3(10 * CHAR_VPP, 20 * CHAR_VPP, 2 * CHAR_VPP));
+      paintSkinBox(pg, ivec3(0), ap, rgba.data(), w, h, 64, 32, CHAR_VPP);
+      if (pg.count()) {
+        VoxelMeshData md; buildVoxelMesh(pg, md);
+        auto cm = std::make_unique<CharMesh>();
+        upload(*cm, md, vec3(side == 0 ? 0.f : -10.f, -20.f, 0.f));
+        const CharMesh* r = cm->ready() ? cm.get() : nullptr;
+        c.misc[key] = std::move(cm);
+        return r;
+      }
+    }
+  }
+  int tOut = tileOf(ts, "elytra"), tIn = tileOf(ts, "elytra_in");
+  if (tOut < 0) { c.misc[key] = nullptr; return nullptr; }
+  if (tIn < 0) tIn = tOut;
+  const int V = CHAR_VPP, W = 9 * V, L = 21 * V, T = 3;   // 3 voxels deep; the caller scales z by 0.8 (1.2 px)
+  VoxelGrid g(ivec3(W, L, T));
+  for (int z = 0; z < T; z++) for (int y = 0; y < L; y++) for (int x = 0; x < W; x++) g.set(x, y, z, VOXEL_SOLID << 24 | 1);
+  VoxelFaceColor fc = [&](int x, int y, int z, int face, u32) -> u32 {
+    float u = (x + 0.5f) / W; if (side) u = 1 - u;   // how far out from the shoulder, either wing the same picture mirrored
+    float row = 1 - (y + 0.5f) / L;
+    float s = face == 5 ? 1 - u : face == 4 ? u : 0.5f;
+    float t = face == 2 ? 0.02f : face == 3 ? 0.98f : row;
+    u32 col = tileVoxel(ts, face == 5 ? tIn : tOut, clampv((int)(s * ts.size), 0, ts.size - 1), clampv((int)(t * ts.size), 0, ts.size - 1));
+    return col ? col | 0xFF000000u : voxRGBA(150, 150, 170);
+  };
+  VoxelMeshData md; buildVoxelMesh(g, md, &fc);
+  auto cm = std::make_unique<CharMesh>();
+  upload(*cm, md, vec3(side == 0 ? 0.f : -9.f, -21.f, 0.f));
   const CharMesh* r = cm->ready() ? cm.get() : nullptr;
   c.misc[key] = std::move(cm);
   return r;

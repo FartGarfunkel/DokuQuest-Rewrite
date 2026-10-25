@@ -7,6 +7,7 @@
 #include "core/registry.h"
 #include "assets/pack_armor.h"
 #include "render/map_render.h"
+#include "render/instruments.h"
 #include "sim/maps.h"
 #include <cstdlib>
 #include <cstdio>
@@ -49,6 +50,9 @@ const mat4& heldMat(const std::string& id) {
   return id == "fishing_rod" || id == "fishing_rod_cast" || id == "fishing_rod_tp" ? ROD : isHandheld(id) ? TOOL : ITEM;
 }
 float st0yaw(const CharPose& ps) { return ps.hasBodyYaw && !ps.fp ? ps.bodyYaw : ps.yaw; }
+// held compasses and clocks in the bodies being drawn: their live dial goes on after the voxel pass (null = nobody is collecting)
+struct Dial { std::string id; mat4 m; vec2 light; };
+std::vector<Dial>* g_dials = nullptr;
 // skins.js held(): an item in a fist (fore = the forearm's frame, model pixels about the elbow; side -1 = the left hand)
 void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint) {
   if (id == "fishing_rod") id = "fishing_rod_tp";
@@ -66,6 +70,7 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
     hm = glm::scale(hm, vec3((1 + T[2]) / CHAR_PX)) * heldMat(id);
   }
   (void)side;
+  if (g_dials && isInstrument(id) && im.kind != VoxelModel::Block) g_dials->push_back({id, hm, vec2(light.sky, light.block)});
   voxelRenderer().draw(im.gl, hm * im.matrix(), light, tint);
 }
 std::string toolType(const std::string& id) { const ItemDef* d = reg().item(id); return d && d->hasTool ? d->tool.type : std::string(); }
@@ -89,7 +94,12 @@ void CharacterLayer::devSwitches(GameSession& s) {
       }
       p->skin = ref; s.app.settings.skin = ref;
     }
-    if (const char* v = std::getenv("DQ_DEV_POSE")) devPose = v;
+    if (const char* v = std::getenv("DQ_DEV_POSE")) devPose = v;   // walk run sneak swim fly swing bow sit sleep hang shimmy climb ladder paddle eat glide
+    if (const char* v = std::getenv("DQ_DEV_CARRY")) {   // "mob:cow" / "block:chest": picked up (Carry On)
+      std::string w = v;
+      if (w.rfind("mob:", 0) == 0) p->carrying = {{"kind", "mob"}, {"type", w.substr(4)}, {"hp", 10}};
+      else if (w.rfind("block:", 0) == 0) p->carrying = {{"kind", "block"}, {"key", w.substr(6)}, {"meta", 0}};
+    }
     if (const char* v = std::getenv("DQ_DEV_YAW")) p->yaw = (float)std::atof(v);
     if (const char* v = std::getenv("DQ_DEV_PITCH")) p->pitch = (float)std::atof(v);
     if (const char* v = std::getenv("DQ_DEV_WEAR")) {   // "iron_helmet,leather_chestplate#a03030,red_cape,leather_backpack,lantern"
@@ -161,6 +171,7 @@ void CharacterLayer::update(GameSession& s, double dt) {
     if (e->inWater || p->flying) st.falling = false;
     if (e->onGround && st.falling) { if (st.fallStart - e->pos.y > 1.2f) st.landT = 0.2f; st.falling = false; }
     st.deathT = p->dead ? st.deathT + fdt : 0;
+    st.wing += (((p->gliding || devPose == "glide") ? 1.f : 0.f) - st.wing) * std::min(1.f, fdt * 9);   // the elytra's wings opening and folding
     // ---- anim.js: which way the body faces, and the leans ----
     float aim = p->yaw, body = st.bodyYaw, legTurn = 0;
     bool busy = p->swimming || p->crawling || e->riding || p->sleeping || p->data.value("sleeping", false) || (bool)p->hang || (bool)p->climb || p->gliding;
@@ -201,6 +212,7 @@ void CharacterLayer::update(GameSession& s, double dt) {
 void CharacterLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
   if (!s.player) return;
   bool begun = false;
+  std::vector<Dial> dials; g_dials = &dials;
   for (auto& up : s.level->entities()) {
     Entity* e = up.get();
     if (!e || e->removed || e->type != "player" || e->realm != s.player->realm) continue;
@@ -219,6 +231,8 @@ void CharacterLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
     drawPlayer(s, f, *p, it->second, fp);
   }
   if (begun) voxelRenderer().end();
+  g_dials = nullptr;
+  for (const Dial& d : dials) drawInstrumentFace(f, f.cam.viewProj, true, d.id, itemModel(d.id), d.m, d.light);   // the needle / dial turning in their hands
   // maps.js: the maps held up in third person, the real map on the side facing the holder
   if (!sheets.empty()) {
     ContentDraw& cd = contentDraw();
@@ -251,6 +265,7 @@ CharWear charWearOf(const Player& p, const CharacterSpec& spec, bool withCarried
     w.armor[i] = p.armor[i].id;
     if (p.armor[i].tag.is_object() && p.armor[i].tag.contains("col") && p.armor[i].tag["col"].is_string()) { std::string c = p.armor[i].tag["col"]; w.dye[i] = c.size() == 7 ? c.substr(1) : ""; }
   }
+  if (w.armor[1] == "elytra") w.armor[1].clear();   // worn in the chest slot (until the cape slot has them): wings, not a breastplate
   const ItemDef* hd = w.armor[0].empty() ? nullptr : reg().item(w.armor[0]);
   w.hatItem = hd && hd->has("hat");
   w.back = hidden(p, 4) ? "" : wornItem(p, "back");
@@ -258,6 +273,7 @@ CharWear charWearOf(const Player& p, const CharacterSpec& spec, bool withCarried
   if (!hidden(p, 5)) {
     std::string c = wornItem(p, "cape");
     if (!c.empty()) { const ItemDef* cd = reg().item(c); w.cape = cd ? cd->str("cape") : ""; if (w.cape.empty() && cd) w.cape = c; }
+    if (w.cape.empty() && p.armor.size() > 1 && !p.armor[1].empty() && p.armor[1].id == "elytra") w.cape = "elytra";
     if (w.cape.empty()) w.cape = spec.cape;   // the creator's cosmetic cape when no cape item is worn
   }
   if (!p.inv.empty() && p.selected >= 0 && p.selected < (int)p.inv.size() && !p.inv[p.selected].empty()) w.held = p.inv[p.selected].id;
@@ -306,11 +322,17 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   ps.fp = fp;
   ps.fpLeftArm = fp && wear.off.empty() && !ps.hang && !(p.bowPull > 0);
   if (wear.held == "bow" && p.bowPull > 0) wear.held = p.bowPull < 0.45f ? "bow_pulling_0" : p.bowPull < 0.85f ? "bow_pulling_1" : "bow_pulling_2";
+  // game/elytra.js: gliding on the wings (they open, you lie flat, arms swept back)
+  ps.wingOpen = st.wing;
+  if ((p.gliding || (devPose == "glide" && &p == s.player)) && wear.cape == "elytra") { ps.swim = true; ps.glide = true; ps.swimPitch = p.pitch; ps.air = false; ps.capeA = 0.05f; wear.back.clear(); }
+  // Carry On: both arms out around it, nothing else in the hands
+  const bool carrying = p.carrying.is_object();
+  if (carrying) { ps.carry = true; ps.held = ps.off = false; wear.held.clear(); wear.off.clear(); wear.carried.clear(); ps.fpLeftArm = false; }
   if (p.data.value("invisible", false)) return;
   vec3 rel = f.cam.rel(glm::dvec3(p.pos));
   // maps.js: a map in the hand is held up in front of the chest (both hands when the other is free)
   vec2 lt((l >> 4) / 15.f, (l & 15) / 15.f);
-  if (!fp && !ps.sleep && !ps.swim && !ps.hang && ps.climb <= 0 && ps.deathT <= 0 && !ps.ladder) {
+  if (!fp && !ps.sleep && !ps.swim && !ps.hang && ps.climb <= 0 && ps.deathT <= 0 && !ps.ladder && !carrying) {
     ItemStack* off = p.offhand.empty() ? nullptr : &p.offhand[0];
     bool mainMap = isMapStack(p.held()), offMap = off && isMapStack(*off);
     if (mainMap || offMap) {
@@ -340,6 +362,20 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   o.fp = fp;
   o.detail = fp || glm::dot(rel, rel) < 56.f * 56.f;   // far off, the detail is lost anyway: past 56 blocks only the skin
   drawCharacter(*spec, ps, wear, base, o);
+  if (carrying && !fp && !ps.sleep && ps.deathT <= 0) {   // skins.js: it sits against the chest, in front of the arms
+    mat4 m = glm::rotate(base, ps.hasBodyYaw && !ps.swim ? ps.bodyYaw : ps.yaw, vec3(0, 1, 0));
+    m = glm::translate(m, vec3(0, 15 * CHAR_PX - (ps.sneak ? 0.12f : 0.f), -9 * CHAR_PX));
+    drawCarriedThing(p.carrying, m, false, o.light, o.tint);
+  }
+}
+
+void drawCharFace(const CharModel& M, const CharPose& ps, const mat4& head, VoxelLight light, vec4 tint) {
+  const CharFace& F = M.face;
+  if (!F.has || ps.deathT > 0) return;
+  VoxelRenderer& VR = voxelRenderer();
+  float t = ps.time, ph = std::fmod(t + F.seed, F.period);
+  if (ps.sleep || ph < 0.13f || (ph > 1.6f && ph < 1.7f && F.period > 4.5f)) VR.draw(F.lid.gl, head * F.lid.local(), light, tint);   // a blink (now and then a double one)
+  if (ps.talk && F.mouth.ready() && std::sin(t * 13 + F.seed * 3) + std::sin(t * 7.7f) * 0.7f > 0.25f) VR.draw(F.mouth.gl, head * F.mouth.local(), light, tint);
 }
 
 void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear& wear, const mat4& base, const CharDrawOpts& o) {
@@ -396,6 +432,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     mat4 m = R.part[i] * R.scale[i];
     if (M.base[i].ready()) VR.draw(M.base[i].gl, m * M.base[i].local(), light, tint);
     if (!hid[i] && M.ovl[i].ready()) VR.draw(M.ovl[i].gl, m * M.ovl[i].local(), light, tint);
+    if (i == CP_HEAD && !fp) drawCharFace(M, ps, m, light, tint);
   }
   // ---- the look's shapes ----
   if (L && o.detail) {
@@ -413,7 +450,21 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   }
   if (o.headOnly) return;
   // ---- a cape over the shoulders (under a backpack the hem below it swings) ----
-  if (!cape.empty() && !fp && !ps.sleep) {
+  // ---- game/elytra.js: two folded wings on the back, spreading open as you glide (they are worn in the cape's place) ----
+  if (cape == "elytra" && !fp && !ps.sleep) {
+    for (int side = 0; side < 2; side++) {
+      const CharMesh* wm = elytraWingMesh(side, ts);
+      if (!wm) continue;
+      float sd = side == 0 ? 1.f : -1.f, open = clampf(ps.wingOpen, 0, 1);
+      mat4 m = glm::translate(R.body, vec3(0, 12, !back.empty() && ov.capeZ > 0 ? ov.capeZ : 2.1f));
+      m = glm::translate(m, vec3(sd * 0.5f, 0, 0.6f));
+      m = glm::rotate(m, open * 1.15f * 0.35f, vec3(1, 0, 0));            // tipped back by spread * 0.35
+      m = glm::rotate(m, sd * (0.16f + open * 1.15f), vec3(0, 0, 1));     // turned out about the top inner corner
+      m = glm::scale(m, vec3(1, 1, 0.8f));
+      VR.draw(wm->gl, m * wm->local(), light, tint);
+    }
+  }
+  if (!cape.empty() && cape != "elytra" && !fp && !ps.sleep) {
     const mat4& B = R.body;
     if (!back.empty()) {
       const CharMesh* upM = capeMesh(cape, 1, ts); const CharMesh* loM = capeMesh(cape, 2, ts);

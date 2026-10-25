@@ -109,7 +109,7 @@ void HeldItemLayer::update(GameSession& s, double dt) {
   bobAmt += ((p->onGround && !p->flying ? std::min(1.f, hs / 4.3f) : 0.f) - bobAmt) * std::min(1.f, fdt * 8);
   bob += hs * fdt * 1.6f;
   // what's in hand: a new thing comes up from below
-  std::string key = p->held().empty() ? "" : p->held().id;
+  std::string key = p->carrying.is_object() ? std::string("carry") : p->held().empty() ? std::string() : p->held().id;   // picking something up: the arms rise
   if (key != lastHeld) { equip = 0; lastHeld = key; }
   if (equip < 1) equip = std::min(1.f, equip + fdt * 5);
   if (eatAnim > 0) eatAnim -= fdt;
@@ -203,6 +203,16 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     if (itemHook && im.ready()) over.push_back({stack, m});
   };
 
+  if (p->carrying.is_object()) {   // Carry On (local.js handState): whatever you hold sits in both arms in front of you
+    drawCarriedThing(p->carrying, glm::translate(mat4(1), vec3(bx, -0.62f + by - eq * 0.5f, -0.95f)), true, L, vec4(0));
+    for (float side : {-1.f, 1.f}) {
+      mat4 a = glm::translate(mat4(1), vec3(side * 0.5f + bx, -0.5f + by - eq * 0.5f, -0.62f));
+      a = glm::rotate(a, side * 0.28f, vec3(0, 1, 0)); a = glm::rotate(a, 1.72f, vec3(1, 0, 0));
+      drawArm(a);
+    }
+    VR.end();
+    return;
+  }
   const ItemStack& held = p->held();
   if (taken & 1) {}
   else if (!held.empty() && held.def()) holdIn(1, held, 0);
