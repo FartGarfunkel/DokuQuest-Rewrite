@@ -236,7 +236,15 @@ int AudioEngine::Impl::start(const SoundRef& r, AudioCmd c, float pitchMul) {
 
 // sound3.js placeNode: how far it travels, what's in the way, where it comes from
 bool AudioEngine::Impl::place(vec3 p, float range, float vol, AudioCmd& c) {
-  vec3 L = lpos; float best = glm::distance(L, p);
+  vec3 L = lpos;
+  // a sound made in a solid block (the one being mined, the one just placed) comes from its face toward you,
+  // not from inside the stone (else the block itself counted as a wall: mining was a faint muffled thud)
+  if (scene.world) {
+    BlockId id = scene.world->getBlock((int)std::floor(p.x), (int)std::floor(p.y), (int)std::floor(p.z));
+    vec3 dv = L - p; float n = glm::length(dv);
+    if (id && reg().tSolid[id] && n > 1.f) p += dv / n * 0.9f;
+  }
+  float best = glm::distance(L, p);
   if (best > range + 2) return false;
   float d = best, wall = 0;
   if (ambience && scene.inWorld && scene.world) ambience->reach(L, p, d, wall);
