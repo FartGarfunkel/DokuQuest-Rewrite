@@ -42,7 +42,7 @@ std::vector<Player*> levelPlayers(Level& lv, bool withGhosts = false);
 float frand();                                     // Math.random()
 inline float frand2() { return frand() - 0.5f; }   // Math.random() - 0.5
 vec3 lookDir(const Player& p);                     // player.look()
-constexpr float EYE = 1.62f, PLAYER_H = 1.8f, SWIM_H = 0.6f, REACH = 5;
+constexpr float REACH = 5;   // EYE, PLAYER_H, SWIM_H come from sim/player.h
 inline bool creativeOf(const Player& p) { return p.mode == "creative"; }
 void toast(Level& lv, const Player& p, const std::string& text, const std::string& kind = "");
 void sfxUi(Level& lv, const Player& p, const std::string& name);                  // sfx.play (that player)

@@ -11,6 +11,7 @@
 #include "render/content_layers.h"
 #include "render/creature_layer.h"
 #include "client/play.h"
+#include "gen/structures_api.h"
 #include <imgui.h>
 
 namespace dq {
@@ -54,6 +55,10 @@ void GameSession::spawnPlayer() {
   else {
     p->mode = level->info.mode;
     vec3 sp = level->info.spawn;
+    float yaw = 0;
+    const char* at = std::getenv("DQ_SPAWN_AT");   // tests: "x,y,z" or a structure kind (gen/structures_api.h)
+    if (at && level->gen && debugSpawnPoint(*level->gen, at, sp, yaw)) p->yaw = yaw;
+    else if (sp.y < 0 && level->gen && villageStartPoint(*level->gen, sp, yaw)) { level->info.spawn = sp; p->yaw = yaw; }   // villages.js: a new world starts at a village's edge
     if (sp.y < 0) {
       DimGenerator* g = level->gen->forDim(DIM_OVERWORLD);
       int sx = 0, sz = 0, h = g ? g->spawnHeight(0, 0) : 100;

@@ -177,9 +177,9 @@ Player* Creature::ownerPawn(Level& lv) const {
 bool Creature::isPetOf(const Entity* who) const { auto* p = dynamic_cast<const Player*>(who); return p && !owner.empty() && owner == p->name; }
 
 // ------------------------------------------------------------------ contacts (physics.js sampleContacts)
-struct Contacts { bool water = false, lava = false, cactus = false; };
-static Contacts contacts(World& w, const Entity& e) {
-  Contacts c;
+struct MobContacts { bool water = false, lava = false, cactus = false; };
+static MobContacts contacts(World& w, const Entity& e) {
+  MobContacts c;
   static BlockId cactus = reg().blockId("cactus");
   int x0 = ifloor(e.pos.x - e.w), x1 = ifloor(e.pos.x + e.w), y0 = ifloor(e.pos.y), y1 = ifloor(e.pos.y + e.h * 0.9f), z0 = ifloor(e.pos.z - e.w), z1 = ifloor(e.pos.z + e.w);
   for (int y = y0; y <= y1; y++) for (int z = z0; z <= z1; z++) for (int x = x0; x <= x1; x++) {
@@ -390,7 +390,7 @@ void Creature::update(Level& lv, float dt) {
   if (invulnT > 0) invulnT -= dt;
   if (attackCd > 0) attackCd -= dt;
   if (slowT > 0) slowT -= dt;
-  Contacts c = contacts(wd, *this);
+  MobContacts c = contacts(wd, *this);
   if (calm) burn = 0;   // the dev zoo: on show, not on fire
   inLava = c.lava;
   if (c.lava && !T->fireImmune) { DamageSrc s; s.type = "lava"; hurt(lv, 2, s); burn = 4; if (!alive()) return; }
