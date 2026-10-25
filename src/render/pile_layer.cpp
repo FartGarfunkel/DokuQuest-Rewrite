@@ -9,9 +9,41 @@
 #include "world/shapes.h"
 #include "core/item_glint.h"
 #include <regex>
+#include <map>
 
 namespace dq {
 namespace {
+
+// furniture.js bookMesh: a small book standing on a bookcase shelf, 0.22 x 0.38 x 0.4 blocks; cover colour per index
+// (0-3 the shop's colours, 4 purple for an enchanted book), gold bands across the spine (front, +z), page edges
+// top, bottom and back. Origin at the middle of its foot.
+const VoxelModel& shelfBook(int i) {
+  static auto& cache = *new std::map<int, std::unique_ptr<VoxelModel>>();
+  auto it = cache.find(i);
+  if (it != cache.end()) return *it->second;
+  static const u8 COL[5][3] = {{0x8a, 0x2a, 0x22}, {0x24, 0x45, 0x6e}, {0x2e, 0x5a, 0x2a}, {0x6a, 0x44, 0x22}, {0x5a, 0x2a, 0x6a}};
+  const int W = 7, H = 12, D = 13;
+  VoxelGrid g(ivec3(W, H, D));
+  auto c = [&](int k, float sh) { return voxShade(voxRGBA(COL[k][0], COL[k][1], COL[k][2]), sh); };
+  u32 pg = voxRGBA(232, 224, 200), pg2 = voxRGBA(208, 200, 176), gold = voxRGBA(216, 176, 64);
+  for (int y = 0; y < H; y++) for (int z = 0; z < D; z++) for (int x = 0; x < W; x++) {
+    bool cover = x == 0 || x == W - 1 || z == D - 1;   // the two covers and the spine
+    u32 col;
+    if (z == D - 1) {   // the spine: its colour, two gold bands, a few lighter dots
+      col = c(i % 5, (y == 0 || y == H - 1) ? 0.6f : 1.f);
+      if (y == 3 || y == H - 4) col = gold;
+      else if (y > 4 && y < H - 5 && x > 1 && x < W - 2 && (x + y) % 3 == 0) col = c(i % 5, 1.25f);
+    } else if (cover) col = c((i + 1) % 5, (x + y + z) & 1 ? 1.f : 0.92f);
+    else col = (z + y) & 1 ? pg : pg2;
+    g.set(x, y, z, col);
+  }
+  auto m = std::make_unique<VoxelModel>();
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  m->gl.upload(md);
+  m->frame.voxel = 1.f / 32; m->frame.origin = vec3(-W * 0.5f, 0, -D * 0.5f) / 32.f;
+  m->size = g.size; m->kind = VoxelModel::Flat; m->built = true; m->key = "shelf_book";
+  return *(cache[i] = std::move(m));
+}
 
 class PileLayer : public RenderLayer {
 public:
@@ -25,7 +57,7 @@ public:
     auto begin = [&] { if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; } };
     forBlockEntities(w, f, 48.f, [&](const Chunk&, json& e, int x, int y, int z) {
       const std::string type = e.value("type", "");
-      if (type != "pile" && type != "backpack" && type != "frame") return;
+      if (type != "pile" && type != "backpack" && type != "frame" && type != "shelf" && type != "bookcase") return;
       vec3 rel = f.cam.rel(glm::dvec3(x, y, z));
       if (glm::dot(rel - vec3(0.5f), rel - vec3(0.5f)) > 48.f * 48.f || !f.cam.frustum.sphere(rel + vec3(0.5f), 1.2f)) return;
       u8 l = w.getLight(x, y, z);
@@ -54,6 +86,47 @@ public:
         m = glm::rotate(m, -(float)e.value("rot", 0) * PI / 4, vec3(0, 0, 1));
         m = glm::scale(m, vec3(im.kind == VoxelModel::Block ? 0.36f : 0.55f));
         VR.draw(im.gl, m * im.matrix(), glow ? VoxelLight{1, 1} : L, vec4(0), itemGlints(st) ? 1.f : 0.f);
+        return;
+      }
+      if (type == "shelf" || type == "bookcase") {
+        // furniture.js blockEntityDraws: what stands on a wall shelf (3 spots), a standing shelf (6) or a bookcase (6 books)
+        if (!e.contains("items") || !e["items"].is_array()) return;
+        const BlockDef& bd = reg().block(w.getBlock(x, y, z));
+        if (!bd.has("shelf") && !bd.has("bookcase")) return;
+        bool wall = bd.str("furniture") == "shelf", cased = type == "bookcase";
+        static const float FACE[4] = {0, -PI / 2, PI, PI / 2};
+        mat4 pm = glm::translate(mat4(1), rel + vec3(0.5f, 0, 0.5f));
+        pm = glm::rotate(pm, FACE[w.getMeta(x, y, z) & 3], vec3(0, 1, 0));
+        pm = glm::translate(pm, vec3(-0.5f, 0, -0.5f));
+        u8 sl = w.getLight(x, y, z);
+        VoxelLight SL{(sl >> 4) / 15.f, (sl & 15) / 15.f};
+        const json& its = e["items"];
+        for (size_t k = 0; k < its.size() && k < 6; k++) {
+          if (!its[k].is_object()) continue;
+          ItemStack st = ItemStack::fromJson(its[k]);
+          if (st.empty() || !st.def()) continue;
+          int col = (int)k % 3, row = (int)k / 3;
+          float cx = (col + 0.5f) / 3 * 0.86f + 0.07f;
+          if (cased) {
+            int hh = ((unsigned char)st.id[0] + (int)k * 7) % 5;
+            const VoxelModel& bm = shelfBook(st.id.find("enchant") != std::string::npos ? 4 : ((int)k + hh) % 4);
+            if (!bm.ready()) continue;
+            begin();
+            mat4 m = glm::translate(pm, vec3(cx, row ? 8.5f / 16 : 1.f / 16, 0.5f));
+            m = glm::rotate(m, (((int)k * 37) % 5 - 2) * 0.03f, vec3(0, 0, 1));
+            m = glm::scale(m, vec3(1, 0.9f + hh * 0.04f, 1));
+            VR.draw(bm.gl, m * bm.matrix(), SL, vec4(0), itemGlints(st) ? 1.f : 0.f);
+            continue;
+          }
+          const VoxelModel& im = itemModel(st.id);
+          if (!im.ready()) continue;
+          begin();
+          float top = wall ? 8.f / 16 : row ? 8.f / 16 : 1.f / 16, depth = wall ? 4.f / 16 : 5.5f / 16;
+          mat4 m = pm;
+          if (im.kind == VoxelModel::Block) { m = glm::translate(m, vec3(cx, top + 0.11f, depth)); m = glm::rotate(m, 0.3f * (col - 1), vec3(0, 1, 0)); m = glm::scale(m, vec3(0.22f)); }
+          else { m = glm::translate(m, vec3(cx, top + 0.17f, depth)); m = glm::scale(m, vec3(0.36f)); }
+          VR.draw(im.gl, m * im.matrix(), SL, vec4(0), itemGlints(st) ? 1.f : 0.f);
+        }
         return;
       }
       if (type == "backpack") {
