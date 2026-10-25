@@ -12,6 +12,9 @@ std::unique_ptr<Screen> makeCreatorScreen(const std::string& character);
 // character's file (its look and body shape kept, the painted skin replaced)
 std::unique_ptr<Screen> makeSkinEditorScreen(const SkinImage& start, const std::string& name, const std::string& character);
 
+// the cape editor (ui/cape_screen.cpp): paint a 64x32 cape, preview it on you, save / wear / export / import it
+std::unique_ptr<Screen> makeCapeEditorScreen();
+
 // wear a skin reference: Settings::skin (saved) and the local player's look
 void wearSkin(App& a, const std::string& ref);
 

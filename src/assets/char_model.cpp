@@ -2,6 +2,7 @@
 // gear look's shapes (render/gear3d.js gearMeshes), worn armour (skins.js armorMeshes, render/packarmor.js),
 // capes (skins.js capeMesh / capeSegMesh) and the worn backpack (render/items3d.js buildPack3D).
 #include "assets/char_model.h"
+#include "assets/cape_tex.h"
 #include "assets/voxel_paint.h"
 #include "assets/pack_armor.h"
 #include "assets/tileset.h"
@@ -269,23 +270,36 @@ const ArmorSet& armorMeshes(const std::string& itemKey, const std::string& dye, 
 }
 
 // ------------------------------------------------------------------ capes
+void capeMeshInvalidate(const std::string& capeKey) {
+  Cache& c = C();
+  for (int seg = 0; seg < 3; seg++) c.misc.erase("cape:" + capeKey + ":" + std::to_string(seg));
+}
+
 const CharMesh* capeMesh(const std::string& capeKey, int seg, const TileSet& ts) {
   std::string key = "cape:" + capeKey + ":" + std::to_string(seg);
   Cache& c = C();
   auto it = c.misc.find(key);
   if (it != c.misc.end()) return it->second && it->second->ready() ? it->second.get() : nullptr;
-  int tOut = tileOf(ts, capeKey), tIn = tileOf(ts, capeKey + "_in");
-  if (tOut < 0) { c.misc[key] = nullptr; return nullptr; }
+  // a cape you painted: the Minecraft layout in a 64x32 picture (cape_tex.h); else the game's cape tiles (+ "_in" for the inside)
+  CapePixels paint; bool custom = isCustomCape(capeKey) && loadCustomCape(capeKey, paint);
+  int tOut = custom ? -1 : tileOf(ts, capeKey), tIn = custom ? -1 : tileOf(ts, capeKey + "_in");
+  if (!custom && tOut < 0) { c.misc[key] = nullptr; return nullptr; }
   if (tIn < 0) tIn = tOut;
   int top = seg == 2 ? 11 : 0, bot = seg == 1 ? 11 : 16, thick = seg == 0 ? 2 : 1;   // rows; voxels
   const int V = CHAR_VPP;
   VoxelGrid g(ivec3(10 * V, (bot - top) * V, thick));
   for (int z = 0; z < thick; z++) for (int y = 0; y < g.size.y; y++) for (int x = 0; x < g.size.x; x++) g.set(x, y, z, VOXEL_SOLID << 24 | 1);
   float rows = (float)(bot - top) * V;
+  int pk = custom ? std::max(1, paint.w / 64) : 1;
   VoxelFaceColor fc = [&](int x, int y, int z, int face, u32) -> u32 {
     float cx = (x + 0.5f) / g.size.x, row = (top + (rows - 1 - y + 0.5f) / V) / 16.f;   // 0 at the top of the cape
     float s = face == 5 ? 1 - cx : face == 4 ? cx : face == 0 ? 0.95f : face == 1 ? 0.05f : cx;
     float t = face == 2 ? 0.02f : face == 3 ? 0.98f : row;
+    if (custom) {   // outside = (1,1) 10x16, inside = (12,1) 10x16 (in 64x32 units)
+      int px = ((face == 5 ? 12 : 1) * pk) + clampv((int)(s * 10 * pk), 0, 10 * pk - 1), py = pk + clampv((int)(t * 16 * pk), 0, 16 * pk - 1);
+      const u8* q = paint.at(px, py);
+      return q[3] ? voxRGBA(q[0], q[1], q[2]) : voxRGBA(120, 30, 30);
+    }
     int tile = face == 5 ? tIn : tOut;
     u32 col = tileVoxel(ts, tile, clampv((int)(s * ts.size), 0, ts.size - 1), clampv((int)(t * ts.size), 0, ts.size - 1));
     return col ? col | 0xFF000000u : voxRGBA(120, 30, 30);

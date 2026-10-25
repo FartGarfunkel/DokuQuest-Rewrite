@@ -60,6 +60,9 @@ void registerMenuTab(MenuTab t);                  // other areas add map/journal
 const std::vector<MenuTab>& menuTabs();
 bool menuTabsUpdate(App& a, const std::string& current);   // LB/RB or a click: switched (current screen closed)
 void menuTabsDraw(App& a, const std::string& current);
+// Inventory key (or the pad's inventory button) pressed to shut a screen. On the tabbed screens (map, journal, ...) the
+// keyboard's E is also "next tab", so there only the pad button closes (the screens have their own keys and Esc).
+bool inventoryClosePressed(App& a, bool tabScreen);
 
 // ---- shared pieces ----
 std::string itemInfoText(const ItemStack& s, const Player* p, std::vector<std::pair<std::string, u32>>* lines);   // tooltip lines

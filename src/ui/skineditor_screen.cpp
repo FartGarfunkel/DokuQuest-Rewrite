@@ -6,6 +6,7 @@
 #include "ui/char_screens.h"
 #include "ui/char_preview.h"
 #include "ui/file_pick.h"
+#include "ui/layout_flow.h"
 #include "client/app.h"
 #include <imgui.h>
 #include <imgui_stdlib.h>
@@ -53,15 +54,22 @@ public:
 
   void draw(App& a) override {
     ImGuiIO& io = ImGui::GetIO();
-    float W = std::min((float)a.width - 16, 1260.f), H = std::min((float)a.height - 16, 780.f);
+    ImVec2 WS = flow::windowSize((float)a.width, (float)a.height, 1260, 780, 8);
+    float W = WS.x, H = WS.y;
     ImGui::SetNextWindowPos(ImVec2(a.width * 0.5f, a.height * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(W, H), ImGuiCond_Always);
     ImGui::Begin(character.empty() ? "Skin editor##ske" : "Skin editor - character##ske", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings);
     keys(a);
     hoverInfo.clear();
-    float side = 230, body = H - 110;
+    // sizes follow the interface zoom and the window's shape; what the foot needs (status, name, button rows) stays free below
+    const float zz = ui::Z();
+    float side = 230 * zz, toolsW = 150 * zz;
+    ImGuiStyle& sty = ImGui::GetStyle();
+    int footRows = flow::rowsNeeded({{"Save character", 150}, {"Character creator...", 170}, {"Back", 100}}, ImGui::GetContentRegionAvail().x);
+    float footH = ImGui::GetTextLineHeightWithSpacing() + ImGui::GetFrameHeightWithSpacing() * (footRows + 1) + sty.WindowPadding.y;
+    float body = std::max(160.f, ImGui::GetContentRegionAvail().y - footH);
     // ---- tools ----
-    ImGui::BeginChild("tools##ske", ImVec2(150, body), ImGuiChildFlags_Borders);
+    ImGui::BeginChild("tools##ske", ImVec2(toolsW, body), ImGuiChildFlags_Borders);
     for (int i = 0; i < 4; i++) if (ImGui::Selectable(TOOLS[i], tool == i)) setTool(i);
     ImGui::SeparatorText("Brush");
     for (int s = 1; s <= 3; s++) { if (s > 1) ImGui::SameLine(); if (ImGui::RadioButton(std::to_string(s).c_str(), size == s)) size = s; }
@@ -79,7 +87,7 @@ public:
     ImGui::EndChild();
     ImGui::SameLine();
     // ---- the two views ----
-    float vw = (W - 150 - side - 40) * 0.5f;
+    float vw = std::max(120.f, (W - toolsW - side - 6 * sty.ItemSpacing.x - 2 * sty.WindowPadding.x) * 0.5f);
     ImGui::BeginChild("flat##ske", ImVec2(vw, body), ImGuiChildFlags_Borders, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
     drawFlat(io);
     ImGui::EndChild();
@@ -95,11 +103,10 @@ public:
     // ---- foot ----
     std::string st = msgT > 0 ? msg : !hoverInfo.empty() ? hoverInfo : dirty ? "Unsaved changes" : "";
     ImGui::TextDisabled("%s", st.c_str());
-    ImGui::SetNextItemWidth(220); ImGui::InputText("Name##ske", &name);
-    ImGui::SameLine();
-    if (ImGui::Button(character.empty() ? "Save skin" : "Save character", ImVec2(150, 0))) save(a);
-    ImGui::SameLine();
-    if (ImGui::Button("Character creator...", ImVec2(170, 0))) {
+    ImGui::SetNextItemWidth(std::min(220.f * zz, W * 0.4f)); ImGui::InputText("Name##ske", &name);
+    flow::Row foot; foot.first = false;
+    if (foot.button(character.empty() ? "Save skin" : "Save character", 150)) save(a);
+    if (foot.button("Character creator...", 170)) {
       if (dirty) save(a);
       std::string c = character;
       ImGui::End();
@@ -107,8 +114,7 @@ public:
       a.pushScreen(makeCreatorScreen(c));
       return;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("Back", ImVec2(100, 0))) { if (dirty) confirm = true; else { ImGui::End(); a.popScreen(); return; } }
+    if (foot.button("Back", 100)) { if (dirty) confirm = true; else { ImGui::End(); a.popScreen(); return; } }
     if (confirm) ImGui::OpenPopup("Unsaved changes##ske");
     if (ImGui::BeginPopupModal("Unsaved changes##ske", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
       ImGui::Text("Save this skin before leaving?");

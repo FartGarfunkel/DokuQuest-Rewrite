@@ -1,6 +1,7 @@
 // render/char_layer.cpp — players drawn as voxel characters (render/skins.js avatarDraws, game/anim.js,
 // game/capes.js, game/carried.js, game/charparts.js, render/gear3d.js gearDraws).
 #include "render/char_layer.h"
+#include "assets/cape_tex.h"
 #include "render/item_layers.h"
 #include "client/app.h"
 #include "ui/screen.h"
@@ -258,7 +259,11 @@ CharWear charWearOf(const Player& p, const CharacterSpec& spec, bool withCarried
   if (!hidden(p, 5)) {
     std::string c = wornItem(p, "cape");
     if (!c.empty()) { const ItemDef* cd = reg().item(c); w.cape = cd ? cd->str("cape") : ""; if (w.cape.empty() && cd) w.cape = c; }
-    if (w.cape.empty()) w.cape = spec.cape;   // the creator's cosmetic cape when no cape item is worn
+    if (w.cape.empty()) {   // no cape item worn: the cape painted in the cape editor, else the creator's cosmetic cape
+      auto cc = p.data.is_object() ? p.data.find("customCape") : p.data.end();
+      if (p.data.is_object() && cc != p.data.end() && cc->is_string() && !cc->get<std::string>().empty()) w.cape = customCapeKey(cc->get<std::string>());
+      else w.cape = spec.cape;
+    }
   }
   if (!p.inv.empty() && p.selected >= 0 && p.selected < (int)p.inv.size() && !p.inv[p.selected].empty()) w.held = p.inv[p.selected].id;
   if (!p.offhand.empty() && !p.offhand[0].empty()) w.off = p.offhand[0].id;

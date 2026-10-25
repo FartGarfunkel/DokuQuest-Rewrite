@@ -26,6 +26,7 @@ struct HudState {
   std::vector<std::string> history;
   std::vector<Floater> floaters;
   double chatClosedAt = -100, chatShowUntil = -100;
+  u64 menuFrame = 0;   // the last frame a menu was on screen: the key that shut it must not open one again in the same frame
   bool chatOpen = false;
   std::string dimName; double dimAt = -100;
   bool saving = false; double savingOff = -100;
@@ -262,8 +263,11 @@ public:
       a.pushScreen(makeDeathScreen(p.data.value("deathCause", std::string("You died")), p.level));
       return;
     }
-    if (a.topScreen() || p.dead) return;
-    // keys that open menus (local.js update)
+    if (a.topScreen()) { h.menuFrame = a.frame; return; }
+    if (p.dead) return;
+    // keys that open menus (local.js update). The screen's own update runs first, so E / M / the pad's Y that just closed
+    // a menu is still "pressed" here: skip a frame, or the menu would open again at once (it looked like it never closed)
+    if (a.frame <= h.menuFrame + 1) return;
     Input& in = a.input;
     if (in.pressed(Act::Inventory)) { openInventory(a); return; }
     if (in.pressed(Act::Command)) { openChat(a, "/"); return; }

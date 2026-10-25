@@ -71,6 +71,9 @@ public:
   bool down(Act a) const { return cur[(int)a]; }
   bool pressed(Act a) const { return (cur[(int)a] && !prev[(int)a]) || pulse[(int)a]; }
   bool released(Act a) const { return !cur[(int)a] && prev[(int)a]; }
+  // keyboard / mouse only (a pad button doesn't count): the Inventory key and the Q / E tab keys can share a key
+  bool keyOnlyPressed(Act a) const { return kcur[(int)a] && !kprev[(int)a]; }
+  bool sharesKey(Act a, Act b) const;   // some key code is bound to both actions
   vec2 moveAxis() const;             // x = strafe right, y = forward
   vec2 lookDelta() const;            // radians this frame (mouse + right stick * dt)
   float wheel() const { return wheelY; }
@@ -105,7 +108,7 @@ public:
   void releaseAll();                 // every key, button and latch let go (window lost focus, a menu took over)
 private:
   Settings* settings = nullptr;
-  std::array<bool, (int)Act::Count> cur{}, prev{}, pulse{};
+  std::array<bool, (int)Act::Count> cur{}, prev{}, pulse{}, kcur{}, kprev{};
   std::array<std::vector<std::string>, (int)Act::Count> keyCodes;
   std::array<std::vector<int>, (int)Act::Count> padCodes;
   bool keys[SDL_NUM_SCANCODES]{}, prevKeys[SDL_NUM_SCANCODES]{};

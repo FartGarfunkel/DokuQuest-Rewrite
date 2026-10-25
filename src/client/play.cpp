@@ -1,5 +1,6 @@
 // client/play.cpp — local player glue (input -> PlayerController, camera). The rules are in sim/.
 #include "client/play.h"
+#include "assets/cape_tex.h"
 #include "client/app.h"
 #include "ui/screen.h"
 #include <random>
@@ -17,6 +18,7 @@ struct LocalState {
   float ey = 0, camY = 0, fov = 70, tpDist = 4;
   glm::dvec3 shoulder{0};
   int shoulderSide = 1;
+  u64 menuFrame = 0;   // the last frame a menu was open (a key that just closed / switched one must not act in the world)
 };
 static std::unordered_map<GameSession*, LocalState>& states() { static std::unordered_map<GameSession*, LocalState> m; return m; }
 static LocalState& stateOf(GameSession& s) {
@@ -37,6 +39,13 @@ void clientTickLocalPlayer(GameSession& s, double dt) {
   PlayerController& c = *st.ctl;
   Player& p = *s.player;
   bool menu = app.topScreen() != nullptr;
+  if (menu) st.menuFrame = app.frame;
+  bool justMenu = app.frame <= st.menuFrame + 1;
+  {   // the cape painted in the cape editor (Settings::cape) is worn by the local player; the character layer draws it
+    std::string cur = p.data.is_object() && p.data.contains("customCape") && p.data["customCape"].is_string() ? p.data["customCape"].get<std::string>() : "";
+    std::string want = wornCapeName(app.settings);
+    if (cur != want) { if (want.empty()) p.data.erase("customCape"); else p.data["customCape"] = want; }
+  }
   PlayerInput pi;
   if (!menu) {
     vec2 mv = in.moveAxis(), look = in.lookDelta();
@@ -44,7 +53,7 @@ void clientTickLocalPlayer(GameSession& s, double dt) {
     pi.jump = in.down(Act::Jump); pi.sneak = in.down(Act::Sneak); pi.sprint = in.down(Act::Sprint);
     pi.attack = in.down(Act::Attack); pi.attackPressed = in.pressed(Act::Attack);
     pi.use = in.down(Act::Use); pi.usePressed = in.pressed(Act::Use);
-    pi.drop = in.pressed(Act::Drop) && !in.down(Act::Sprint); pi.dropAll = in.pressed(Act::Drop) && in.down(Act::Sprint);
+    pi.drop = in.pressed(Act::Drop) && !justMenu && !in.down(Act::Sprint); pi.dropAll = in.pressed(Act::Drop) && !justMenu && in.down(Act::Sprint);
     pi.pick = in.pressed(Act::PickBlock); pi.swap = in.pressed(Act::SwapHands); pi.place = in.pressed(Act::PlaceMode);
     // crawl: sneak tapped twice (keyboard and pads alike)
     if (in.pressed(Act::Sneak)) { if (app.time - st.sneakTapT < 0.3) { pi.crawl = true; st.sneakTapT = -10; } else st.sneakTapT = app.time; }

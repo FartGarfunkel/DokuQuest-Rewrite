@@ -1,6 +1,7 @@
 // ui/map_screen.cpp — looking at a map closely (game/maps.js MapView): every map of the same place and scale
 // laid out together on the table, to scroll and zoom about and pin. Plain ImGui (the UI theme restyles it).
 #include "ui/content_screens.h"
+#include "ui/ui.h"
 #include "client/app.h"
 #include "client/session.h"
 #include "render/map_render.h"
@@ -50,7 +51,7 @@ public:
     GameSession* s = a.session.get();
     if (!s || !s->player || !m || s->player->dead) { a.popScreen(); return; }
     Input& in = a.input;
-    if (in.pressed(Act::Map) || (in.pressed(Act::Inventory) && !in.padButtonPressed(3))) { a.popScreen(); return; }   // pad Y zooms here
+    if (in.pressed(Act::Map) || (inventoryClosePressed(a, true) && !in.padButtonPressed(3))) { a.popScreen(); return; }   // pad Y zooms here; E is "next tab"
     // a controller (or WASD): look around; X / Y zoom
     vec2 mv = in.moveAxis();
     if (in.down(Act::MenuLeft)) mv.x -= 1;

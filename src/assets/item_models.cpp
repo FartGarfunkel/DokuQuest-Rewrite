@@ -2,6 +2,7 @@
 // (the original's itemMesh chain: models3d.js -> sculpt.js -> items3d.js -> models.js).
 #include "assets/item_build.h"
 #include "common/threadpool.h"
+#include "world/shapes.h"
 #include <regex>
 #include <mutex>
 #include <unordered_set>
@@ -240,6 +241,45 @@ static void finishGrid(VoxelModel& out, VoxelGrid& g, const VoxelFrame& fr, cons
   buildVoxelMesh(g, out.data, fc);
 }
 
+
+// A block item whose block isn't a plain cube (furniture, beds, hoppers, levers, lanterns, doors...) and has no entry of its own in
+// itemshapes.json: its real shape, the boxes the mesher draws it with (world/shapes.h), tiles picked the way the mesher picks them.
+// false = leave it flat (plants, panes, rails, dust, crops).
+namespace {
+struct AloneNb : ShapeNb {
+  BlockId id(int, int, int) const override { return 0; }
+  u8 meta(int, int, int) const override { return 0; }
+};
+bool shapedBlockBoxes(const ItemDef& def, std::vector<PxBox>& out) {
+  static std::once_flag once; std::call_once(once, [] { initBlockTraits(); });
+  const Registry& R = reg();
+  BlockId id = R.blockId(def.block);
+  if (!id) return false;
+  const BlockDef& bd = R.block(id);
+  if (bd.render == Render::Cross || bd.render == Render::Torch || bd.render == Render::Liquid || bd.render == Render::None) return false;
+  const BlockTraits& T = traits(id);
+  if (T.crop || T.flower || T.stackPlant || T.tripwire || T.chorus || T.rail || T.rs == RsRole::Wire || T.rs == RsRole::Hook || joinsPane(id)) return false;
+  AloneNb nb;
+  auto gather = [&](u8 meta, float dy, int side, int top, int bot) -> bool {
+    std::vector<ShapeBox> sb;
+    if (!shapeBoxes(id, meta, nb, ShapePurpose::Draw, sb)) return false;
+    for (auto& b : sb) {
+      PxBox p{}; for (int i = 0; i < 6; i++) p.b[i] = b.b[i];
+      p.b[1] += dy; p.b[4] += dy;
+      int st = b.side >= 0 ? b.side : side, tt = b.end >= 0 ? b.end : top, bt = b.end >= 0 ? b.end : bot;
+      for (int f = 0; f < 6; f++) p.tile[f] = b.hasFaces && b.faces[f] >= 0 ? b.faces[f] : f == 2 ? tt : f == 3 ? bt : st;
+      out.push_back(p);
+    }
+    return true;
+  };
+  int side = bd.faces[0], top = bd.faces[2], bot = bd.faces[3];
+  if (T.door) top = bot = side;
+  if (!gather(0, 0, side, top, bot) || out.empty()) { out.clear(); return false; }
+  if (T.door && T.upperTile >= 0) gather(16, 16, T.upperTile, T.upperTile, T.upperTile);   // a door is two blocks tall
+  return true;
+}
+}
+
 namespace { std::shared_ptr<const TileSet>& tilesSnap() { static std::shared_ptr<const TileSet> t; return t; } std::mutex g_snapMx; }
 
 bool buildItemModel(const std::string& key, VoxelModel& out) {
@@ -260,6 +300,18 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
     auto it = bi.find(key);
     std::string k = it != bi.end() ? (*it)["k"].get<std::string>() : "sprite";
     VoxelGrid g; VoxelFaceColor fc;
+    {   // furniture and other shaped blocks that only had a flat picture: build them from their real shape
+      std::vector<PxBox> sbx;
+      if (k == "sprite" && shapedBlockBoxes(*def, sbx)) {
+        buildBoxes(ts, sbx, g, fc);
+        ivec3 lo(0);
+        for (auto& b : sbx) lo = glm::min(lo, ivec3(glm::floor(vec3(b.b[0], b.b[1], b.b[2]) * 2.f)));
+        VoxelFrame fr; fr.voxel = 1.f / 32; fr.origin = vec3(-0.5f) + vec3(lo) / 32.f;
+        out.kind = VoxelModel::Block; out.depth = 0.5f;
+        finishGrid(out, g, fr, &fc);
+        return true;
+      }
+    }
     if (k == "cube" || k == "shape" || k == "model") {
       std::vector<PxBox> boxes;
       if (k == "cube") {

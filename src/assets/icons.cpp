@@ -86,7 +86,7 @@ void ItemIcons::build(const TileSet& ts) {
   // (keyed by the tiles' pixels, the items and the builders' version)
   u64 h = 1469598103934665603ull;
   auto mix = [&](const void* p, size_t k) { const u8* b = (const u8*)p; for (size_t q = 0; q < k; q++) { h ^= b[q]; h *= 1099511628211ull; } };
-  const char* VERSION = "dq-item-icons-6";
+  const char* VERSION = "dq-item-icons-7";
   mix(VERSION, std::strlen(VERSION)); mix(&size, sizeof size); mix(ts.rgba.data(), ts.rgba.size()); mix(ts.res.data(), ts.res.size());
   for (auto& it : R.items) { mix(it.key.data(), it.key.size()); mix(it.icon.data(), it.icon.size()); mix(it.block.data(), it.block.size()); h ^= 0xFF; }
   fs::path cacheDir = userSub("cache"), cacheFile = cacheDir / strFormat("icons-%016llx.png", (unsigned long long)h);
@@ -170,8 +170,12 @@ void ItemIcons::render3D(const TileSet& ts, std::vector<u8>& px) {
           lo = glm::min(lo, p); hi = glm::max(hi, p);
         }
         mat4 view(1);
-        if (block) view = glm::translate(mat4(1), vec3(0, -0.02f, 0)) * glm::scale(mat4(1), vec3(1 / 0.84f));
-        else {
+        if (block) {
+          // a unit cube projects 1.41 wide and 1.57 tall; shaped blocks taller or wider than a cube (doors) shrink to fit
+          float k = std::max(1.f, std::max((hi.x - lo.x) / 1.45f, (hi.y - lo.y) / 1.62f));
+          if (k > 1.001f) { vec3 c = (lo + hi) * 0.5f; view = glm::scale(mat4(1), vec3(1 / (0.84f * k))) * glm::translate(mat4(1), vec3(-c.x, -c.y, 0)); }
+          else view = glm::translate(mat4(1), vec3(0, -0.02f, 0)) * glm::scale(mat4(1), vec3(1 / 0.84f));
+        } else {
           float ext = std::max(hi.x - lo.x, hi.y - lo.y) * 0.5f / 0.9f;
           vec3 c = (lo + hi) * 0.5f;
           view = glm::scale(mat4(1), vec3(1 / std::max(ext, 1e-3f))) * glm::translate(mat4(1), vec3(-c.x, -c.y, 0));

@@ -6,6 +6,7 @@
 #include "ui/ui.h"
 #include "ui/theme.h"
 #include "ui/char_screens.h"
+#include "assets/cape_tex.h"
 #include "ui/char_preview.h"
 #include "ui/file_pick.h"
 #include "client/app.h"
@@ -143,13 +144,16 @@ public:
     if (button("Character creator\xE2\x80\xA6", BTN_PRIMARY, true)) a.pushScreen(makeCreatorScreen());
     ImGui::SameLine();
     if (button("Skin editor\xE2\x80\xA6", BTN_NORMAL, true)) a.pushScreen(makeSkinEditorScreen());
+    ImGui::SameLine();
+    if (button("Cape editor\xE2\x80\xA6", BTN_NORMAL, true)) a.pushScreen(makeCapeEditorScreen());
     ImGui::Dummy(ImVec2(1, 4 * z));
     {   // the cape you wear (the Cape slot of your inventory); a character can wear a cape of its own (the creator)
       Player* pl = a.session ? a.session->player : nullptr;
       std::string worn = pl ? wornItem(*pl, "cape") : "";
       const ItemDef* d = worn.empty() ? nullptr : reg().item(worn);
       auto spec = resolveCharacter(ref);
-      std::string c = d ? d->name + (pl && gearHidden(*pl, 5) ? " (hidden)" : "") : !spec->cape.empty() ? "the character's own" : a.session ? "none \xE2\x80\x94 put one in the Cape slot" : "none";
+      std::string painted = wornCapeName(a.settings);
+      std::string c = d ? d->name + (pl && gearHidden(*pl, 5) ? " (hidden)" : "") : !painted.empty() ? "painted \"" + painted + "\"" : !spec->cape.empty() ? "the character's own" : a.session ? "none \xE2\x80\x94 put one in the Cape slot" : "none";
       label(F_MID, col::muted, ("Cape: " + c).c_str(), rw);
     }
     if (!msg.empty()) label(F_MID, col::gold, msg.c_str(), rw);

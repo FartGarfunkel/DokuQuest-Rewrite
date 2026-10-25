@@ -1,6 +1,7 @@
 // ui/content_screens.cpp — waystones (travel.js WayMenu), the stable (stable.js StableUI) and the journal of
 // places. Plain ImGui; controllers: d-pad / stick moves the selection, A presses it, B closes.
 #include "ui/content_screens.h"
+#include "ui/ui.h"
 #include "client/app.h"
 #include "client/session.h"
 #include "render/content_draw.h"
@@ -121,7 +122,7 @@ public:
   bool pausesGame() const override { return false; }
   void onOpen(App& a) override { refresh(a); }
   void update(App& a, double dt) override {
-    if (a.input.pressed(Act::Inventory)) { a.popScreen(); return; }
+    if (inventoryClosePressed(a, true)) { a.popScreen(); return; }   // (E is "next tab" here)
     if (!editing && (t -= dt) <= 0) { t = 1; refresh(a); }
   }
   void draw(App& a) override {
