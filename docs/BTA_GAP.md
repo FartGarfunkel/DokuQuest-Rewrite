@@ -8,6 +8,11 @@ Matching rule used: by meaning, not name. A close equivalent in our game means "
 
 ---
 
+## Decisions (user, 2026-10-25)
+- Everything on this list is wanted, with these changes:
+- **Seasons:** optional. Either a world setting (off by default) or kept mainly to the Seasonal Forest biome, whose cherry groves change through the year.
+- **Leading animals:** no fishing rod for it. Make a real lead item like Minecraft's: tie it to an animal, it follows you, and you can tie it to a fence.
+
 ## 1. Biomes (Overworld)
 
 Our generator has 7 base biomes (Ocean, Beach, Plains, Forest, Desert, Taiga, Mountains) with climate-driven variants (jungle, savanna, cherry, mangrove).
@@ -87,7 +92,7 @@ Already covered: Basalt, Granite, Limestone, Marble, Slate (with bricks/cobbled/
 - **Held Trommel**: hand-held sifter. DQ: "Hand Sieve".
 - **Butterfly / Firefly Cluster**: catchable critters kept in jars or lanterns, can be labelled. DQ: "Firefly Lantern" (the hosting summary also mentions firefly lanterns).
 - **Basket** *(unverified)*: a mob-farm basket that holds a fill amount. DQ: "Wicker Basket" for carrying small animals or produce.
-- **Lead behaviour**: lead animals by holding a fishing rod. We have no lead. DQ: lead item or rod-lead.
+- **Lead behaviour**: BTA leads animals with a fishing rod. We have no lead. DQ: a real lead item like Minecraft (user decision), not the rod.
 - **Cloth**: zombie drop (replaces feathers); beds need cloth plus wool. DQ: "Rotten Cloth" if we want zombie-dependent beds.
 - **Fire Striker**: renamed flint and steel. Covered by our Flint and Steel.
 
