@@ -58,7 +58,9 @@ static CreatureType parseType(const std::string& key, const json& j) {
   return t;
 }
 void reloadCreatureTypes() {
-  auto& m = typeMap(); m.clear();
+  // update in place, never clear: creatures hold CreatureType pointers (a world reopened in the same session
+  // loads its creatures before its CreatureSystem reloads the table — clearing it left them dangling)
+  auto& m = typeMap();
   if (reg().mobs.is_object()) for (auto& [k, v] : reg().mobs.items()) m[k] = parseType(k, v);
   typesLoaded = true;
 }

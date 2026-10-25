@@ -61,7 +61,7 @@ jobs:
           grep -E -A24 "crashed|uncaught exception" smoke.log | head -50 | while IFS= read -r l; do echo "::error::$l"; done
           for t in news server studio:editor studio:engine options; do run ./build/dokuquest-launcher --userdir "$ud" --tab "$t" --smoke-frames 30 --smoke-shot "shots/launcher-${t/:/-}.png"; done
           (sleep 10; echo save; echo stop) | timeout 120 ./build/dokuquest-server --userdir "$ud" --world CI 2>&1 | tee -a smoke.log
-          if grep -n '^\[error\]' smoke.log; then echo "::error::the smoke test logged errors"; exit 1; fi
+          if grep -n '^\[error\]' smoke.log; then grep '^\[error\]' smoke.log | sort -u | head -20 | while IFS= read -r l; do echo "::error::$l"; done; exit 1; fi
           test -s shots/game.png
       - uses: actions/upload-artifact@v4
         if: always()

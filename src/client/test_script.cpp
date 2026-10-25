@@ -147,6 +147,7 @@ void runStep(App& a, const json& st) {
     DQ_LOG("test: anchor %d %d %d", R.anchor.x, R.anchor.y, R.anchor.z);
   } else if (op == "fill" && s) {
     ivec3 a0 = at(st, "from"), a1 = at(st, "to"); BlockId id = reg().blockId(st.value("key", "air"));
+    if (!id && st.value("key", "air") != "air") { result(false, "fill: no block called " + st.value("key", "")); return; }
     for (int x = std::min(a0.x, a1.x); x <= std::max(a0.x, a1.x); x++) for (int y = std::min(a0.y, a1.y); y <= std::max(a0.y, a1.y); y++)
       for (int z = std::min(a0.z, a1.z); z <= std::max(a0.z, a1.z); z++) s->world().setBlock(x, y, z, id, (u8)st.value("meta", 0));
   } else if (op == "lookAt" && p) {
