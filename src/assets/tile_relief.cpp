@@ -11,6 +11,7 @@
 #include "assets/tileset.h"
 #include <cmath>
 #include <algorithm>
+#include <chrono>
 
 namespace dq {
 
@@ -72,6 +73,7 @@ void dropSpecks(std::vector<u8>& g, int S, int minSize) {
 } // namespace
 
 void bakeTileRelief(TileSet& ts) {
+  auto t0 = std::chrono::steady_clock::now();
   const int S = ts.size, N = S * S;
   ts.relief.assign((size_t)ts.count * N, 0);
   ts.normal.assign((size_t)ts.count * N * 4, 0);
@@ -127,7 +129,8 @@ void bakeTileRelief(TileSet& ts) {
       nm[i * 4 + 3] = (u8)std::lround(std::clamp(hS[i], 0.f, 1.f) * 255.f);
     }
   }
-  DQ_LOG("relief baked: %d tiles, %d with whole-voxel geometry, smooth normal maps for all", ts.count, withGeometry);
+  DQ_LOG("relief baked: %d tiles, %d with whole-voxel geometry, smooth normal maps for all (%.0f ms)", ts.count, withGeometry,
+         std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count());
 }
 
 } // namespace dq
