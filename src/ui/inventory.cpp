@@ -17,14 +17,16 @@ namespace dq {
 using namespace ui;
 
 float drawSheet(ImDrawList* dl, ImVec2 p, float w, float is, const Player& pl);
-void drawDoll(ImDrawList* dl, ImVec2 a, ImVec2 b, const Player& pl, double t);
+void drawDoll(ImDrawList* dl, ImVec2 a, ImVec2 b, const Player& pl, double t);                              // sheet.cpp: the 3D doll
+void drawGearVis(ImDrawList* dl, ImVec2 a, ImVec2 b, const Player& p, int k, bool focus, bool hover);   // show/hide what you wear
+void toggleGearVis(Player& p, int k);
 
 namespace {
 const std::pair<const char*, const char*> BOOK_CATS[] = {{"all", "All"}, {"blocks", "Blocks"}, {"redstone", "Redstone"}, {"tools", "Tools"}, {"armor", "Armor"}, {"food", "Food"}, {"misc", "Other"}};
 struct BookState { bool open = false; std::string cat = "all"; bool only = false; std::string query; std::string creativeWorld; };
 BookState& book() { static BookState b; return b; }
 
-enum HK { H_SLOT, H_BOOKR, H_CI, H_CAT, H_BOOKBTN, H_BOOKCLOSE, H_TRASH };
+enum HK { H_SLOT, H_BOOKR, H_CI, H_CAT, H_BOOKBTN, H_BOOKCLOSE, H_TRASH, H_VIS };
 struct Hit { HK k; Grp g = Grp::Main; int i = 0; std::string s; ImVec2 a, b; bool contains(ImVec2 p) const { return p.x >= a.x && p.y >= a.y && p.x < b.x && p.y < b.y; } };
 bool sameKey(const Hit& x, const Hit& y) { return x.k == y.k && x.g == y.g && x.i == y.i && x.s == y.s; }
 std::string lower(std::string s) { for (auto& c : s) c = (char)tolower((unsigned char)c); return s; }
@@ -159,6 +161,7 @@ public:
       case H_CAT: book().cat = h.s; playClick(); break;
       case H_BOOKBTN: case H_BOOKCLOSE: toggleBook(a); break;
       case H_TRASH: sess->trashCursor(); break;
+      case H_VIS: toggleGearVis(sess->p, h.i); break;
     }
   }
 
@@ -343,6 +346,14 @@ public:
     std::string st = "Lv " + std::to_string(pl.level) + " \xC2\xB7 " + strFormat("%g", pl.hp / 2) + "/" + strFormat("%g", pl.maxHp / 2) + " \xE2\x99\xA5";
     float sc = is * 0.26f / z / fontPx(F_BODY); ImVec2 ss = textSize(F_BODY, st.c_str(), 0, sc);
     text(dl, F_BODY, ImVec2(x + is - ss.x * 0.5f, d1.y + 2 * z), col::dim, st.c_str(), 0, sc);
+    {   // .eqvis-row: show or hide your helmet, chestplate, leggings, boots, backpack and cape (they still protect you)
+      float ew = is * 1.9f, bw = ew / 3, bh = is * 0.56f, ex = x + is - ew * 0.5f, ey = d1.y + 4 * z + ss.y;
+      for (int k = 0; k < 6; k++) {
+        ImVec2 b0(ex + (k % 3) * bw, ey + (k / 3) * (bh + 2 * z)), b1 = b0 + ImVec2(bw - 2 * z, bh);
+        drawGearVis(dl, b0, b1, pl, k, isFocus(H_VIS, Grp::Main, k), isHover(b0, b1));
+        addHit(H_VIS, Grp::Main, k, "", b0, b1);
+      }
+    }
     x += is * 2 + is * 0.18f;
     // gear: off hand, hook, pack, charm, cape with captions under them
     struct G { Grp g; const char* ph; const char* cap; };

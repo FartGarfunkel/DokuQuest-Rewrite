@@ -15,6 +15,8 @@
 #include "render/char_anim.h"
 #include <unordered_map>
 
+namespace dq { struct PaperMap; }
+
 namespace dq {
 
 class CharacterLayer : public RenderLayer {
@@ -29,11 +31,13 @@ public:
     vec3 lastPos{0}, vel{0};
     float bob = 0, bobAmt = 0, swimPh = 0, landT = 0, fallStart = 0; bool falling = false;
     float bodyYaw = 0, legTurn = 0, stillT = 0, lastFwd = 0, accLean = 0, lastBody = 0, turnLean = 0;
-    float capeA = 0.1f, capeSway = 0, deathT = 0;
+    float capeA = 0.1f, capeSway = 0, deathT = 0, ladderPh = 0;
     u64 seen = 0;
   };
 private:
   std::unordered_map<u32, Anim> anims;
+  struct Sheet { const PaperMap* map; const Player* holder; mat4 M; float S; vec2 light; };   // maps held up (drawn after the bodies)
+  std::vector<Sheet> sheets;
   u64 frameNo = 0;
   double time = 0;
   int devFrames = 0;
@@ -44,5 +48,24 @@ private:
 
 void registerCharacterLayers();               // idempotent; called from GameSession's constructor
 const VoxelModel* localPlayerArm();           // the local player's skin arm for the first-person hand (or null)
+
+// What a player wears and holds, as others see it (charparts.js: hidden gear still protects, nobody sees it).
+struct CharWear {
+  std::string armor[4], dye[4];     // item keys (helmet .. boots), leather dye "rrggbb"
+  std::string back, hook, cape;     // backpack item, belt item, cape TILE key ("" = none)
+  std::string held, off;            // in the hands
+  std::vector<std::string> carried; // carried.js: hotbar things not in the hand (third person)
+  bool hatItem = false;             // the helmet slot holds a hat (no 3D-look hiding under it)
+};
+// p's equipment slots (Player::cape/back/hook or the inventory's Player::data copies, whichever holds the stack)
+std::string wornItem(const Player& p, const char* slot);
+bool gearHidden(const Player& p, int k);      // charparts.js hideGear[k]: 0 helmet .. 3 boots, 4 backpack, 5 cape
+CharWear charWearOf(const Player& p, const CharacterSpec& spec, bool carried = true);
+// Draw a whole voxel character with the voxel renderer already begun (the world, a menu preview, the doll).
+// base: render space at the feet (translation only). fp = the first-person body; detail = the look's shapes.
+struct CharDrawOpts { VoxelLight light{1, 0}; vec4 tint{0}; bool fp = false, detail = true, headOnly = false; };
+void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear& w, const mat4& base, const CharDrawOpts& o);
+// the local player's chestplate sleeve over the first-person arm (arm = the arm model's placement, before matrix())
+void drawFirstPersonSleeve(const mat4& arm, VoxelLight light);
 
 } // namespace dq

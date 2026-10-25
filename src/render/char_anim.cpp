@@ -69,6 +69,21 @@ CharAngles charAnimate(const CharPose& pose) {
     A.legR = vec3(0.15f + k * 1.2f, 0, 0.04f); A.legL = vec3(-0.05f + k * 0.4f, 0, -0.04f); A.shinR = vec3(-0.2f - k * 1.2f, 0, 0); A.shinL = vec3(-0.1f, 0, 0);
     A.body = vec3(-0.1f - k * 0.4f, 0, 0);
   }
+  if (pose.hang && pose.shimMv > 0) {   // movement.js: shimmying along the ledge, hand over hand
+    float s = std::sin(pose.shimPh), c = std::cos(pose.shimPh);
+    A.armR = vec3(2.9f + s * 0.22f, 0, 0.18f + std::max(0.f, c) * 0.25f); A.armL = vec3(2.9f - s * 0.22f, 0, -0.18f - std::max(0.f, -c) * 0.25f);
+    A.legR = vec3(0.15f + s * 0.15f, 0, 0.04f + std::max(0.f, c) * 0.12f); A.legL = vec3(-0.05f - s * 0.15f, 0, -0.04f - std::max(0.f, -c) * 0.12f);
+    A.body = vec3(-0.1f, 0, s * 0.06f);
+  }
+  if (pose.ladder && !pose.hang && pose.climb <= 0) {
+    // on a ladder or vines: the hands reach up the rungs in turn and the knees lift, faster the faster you climb
+    float s = std::sin(pose.ladderPh), k = 0.35f + 0.65f * clampf(pose.ladderMv, 0, 1);
+    A.armR = vec3(2.35f + s * 0.45f * k, 0, 0.1f); A.armL = vec3(2.35f - s * 0.45f * k, 0, -0.1f);
+    A.foreR = vec3(0.45f - s * 0.3f * k, 0, 0); A.foreL = vec3(0.45f + s * 0.3f * k, 0, 0);
+    A.legR = vec3(0.35f + std::max(0.f, s) * 0.75f * k, 0, 0.04f); A.legL = vec3(0.35f + std::max(0.f, -s) * 0.75f * k, 0, -0.04f);
+    A.shinR = vec3(-0.45f - std::max(0.f, s) * 0.9f * k, 0, 0); A.shinL = vec3(-0.45f - std::max(0.f, -s) * 0.9f * k, 0, 0);
+    A.body = vec3(-0.06f, 0, 0); A.lift = 0;
+  }
   if (pose.sit) { A.legR = vec3(1.4f, 0, 0.1f); A.legL = vec3(1.4f, 0, -0.1f); A.shinR = A.shinL = vec3(-1.4f, 0, 0); }
   if (pose.swim) {
     // the fast swim, lying flat: a front crawl, each arm going round in turn, the body rolling, legs fluttering
@@ -102,7 +117,7 @@ CharAngles charAnimate(const CharPose& pose) {
 
   // ---- game/anim.js: livelier bodies ----
   float b0 = A.body.x, b1 = A.body.y;
-  bool special = pose.swim || pose.sleep || pose.hang || pose.climb > 0 || pose.sit || pose.deathT > 0 || pose.carry || pose.bow > 0 || pose.paddle || pose.fly;
+  bool special = pose.swim || pose.sleep || pose.hang || pose.climb > 0 || pose.ladder || pose.sit || pose.deathT > 0 || pose.carry || pose.bow > 0 || pose.paddle || pose.fly;
   if (!special) {
     bool busyR = pose.held || pose.swing > 0 || pose.eat > 0 || pose.castWind > 0;
     if (!pose.air) {
@@ -127,6 +142,11 @@ CharAngles charAnimate(const CharPose& pose) {
   A.head.x -= A.body.x - b0; A.head.y -= A.body.y - b1;
   if (!special && !pose.air) { A.head.x += std::fabs(std::cos(ph)) * 0.04f * a + std::sin(t * 0.53f) * 0.02f * idle; A.head.y += std::sin(t * 0.37f) * 0.04f * idle; }
   if (pose.turned && pose.headTurn) A.head.y += clampf(pose.headTurn, -1.25f, 1.25f);
+  // maps.js: a map held up in front of the chest, in both hands (or one, when the other holds something)
+  if (!(pose.fp || pose.carry || pose.sleep || pose.swim || pose.hang || pose.climb > 0 || pose.deathT > 0 || pose.swing > 0) && (pose.mapMain || pose.mapOff)) {
+    if (pose.mapMain && !pose.off) { A.armR = vec3(0.95f, 0, -0.3f); A.armL = vec3(0.95f, 0, 0.3f); A.foreR = A.foreL = vec3(0.2f, 0, 0); }
+    else { if (pose.mapMain) A.armR = vec3(0.9f, 0, -0.1f); if (pose.mapOff) A.armL = vec3(0.9f, 0, 0.1f); }
+  }
   if (pose.fly) {
     float s = pose.flySpeed, vy = pose.flyVy, hover = 1 - s, k = t * 1.6f;
     float up = clampf((vy - 1) / 4, 0, 1), down = clampf((-vy - 1) / 4, 0, 1);

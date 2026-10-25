@@ -1,10 +1,11 @@
-// ui/menus.cpp — the pause menu ("Game Menu", ui.js pauseInfo), How to play, What's new, Players & skins
+// ui/menus.cpp — the pause menu ("Game Menu", ui.js pauseInfo), How to play, What's new
 // and the "coming soon" panel used by entries whose workstream hasn't landed (skin editor, creator, LAN).
 #include "ui/ui.h"
 #include "ui/theme.h"
 #include "client/app.h"
 #include "client/session.h"
 #include "client/netplay.h"
+#include "ui/char_preview.h"
 #include <imgui.h>
 
 namespace dq {
@@ -19,6 +20,7 @@ public:
   const char* id() const override { return "pause"; }
   std::string info;
   bool focusPending = true;
+  CharPreview headView;
   void draw(App& a) override {
     if (a.topScreen() != this) return;
     float z = Z(), W = (float)a.width, H = (float)a.height;
@@ -78,8 +80,17 @@ public:
       float y = p0.y + 8 * z;
       text(dl, F_MID, ImVec2(p0.x + 10 * z, y), col::muted, "On this screen"); y += textSize(F_MID, "On").y + 6 * z;
       ImVec2 head(p0.x + 10 * z, y);
-      dl->AddRectFilled(head, head + ImVec2(rowH, rowH), col::rgb(0x6a4a30)); dl->AddRectFilled(head + ImVec2(0, 0), head + ImVec2(rowH, rowH * 0.3f), col::rgb(0x3a2410));
-      dl->AddRect(head, head + ImVec2(rowH, rowH), col::rgb(0xffb07a), 0, 0, 2 * z);
+      // charparts.js drawSkinHead: your head as a little 3D cube seen from above and to one side (here the real
+      // voxel head: a 3D character's hair, ears, horns and hat too)
+      if (p) {
+        auto spec = resolveCharacter(p->skin);
+        CharPreviewOpts ho; ho.headOnly = true; ho.yaw = PI - 0.62f; ho.elev = 0.48f; ho.dist = 30; ho.time = (float)a.time;
+        CharPose hp; hp.still = true; ho.pose = &hp;
+        float fb = ImGui::GetIO().DisplayFramebufferScale.x, hs = rowH * 1.25f;
+        GLuint tex = headView.render(*spec, (int)(hs * fb), (int)(hs * fb), ho);
+        if (tex) dl->AddImage((ImTextureID)(intptr_t)tex, head + ImVec2(-rowH * 0.12f, -rowH * 0.14f), head + ImVec2(-rowH * 0.12f, -rowH * 0.14f) + ImVec2(hs, hs), ImVec2(0, 1), ImVec2(1, 0));
+      }
+      dl->AddRectFilled(head + ImVec2(0, rowH - 2 * z), head + ImVec2(rowH, rowH), col::rgb(0xffb07a), 2 * z);   // .phead.p1
       text(dl, F_BODY, ImVec2(head.x + rowH + 10 * z, y + (rowH - textSize(F_BODY, "A").y) * 0.5f), col::rgb(0xffb07a), p ? p->name.c_str() : "");
       ImVec2 ds = textSize(F_SMALL, dev.c_str());
       text(dl, F_SMALL, ImVec2(p0.x + bw - 10 * z - ds.x, y + (rowH - ds.y) * 0.5f), col::muted, dev.c_str());
@@ -226,56 +237,7 @@ std::unique_ptr<Screen> makeComingSoonScreen(const std::string& title, const std
   return std::make_unique<TextPanel>("comingsoon", title, "Back", 460, std::vector<std::vector<Block>>{{{0, "Coming soon", ""}, {1, txt, ""}}});
 }
 
-// ---- players & skins --------------------------------------------------------------------------------------
-class PlayersScreen : public Screen {
-public:
-  const char* id() const override { return "players"; }
-  std::string name;
-  void onOpen(App& a) override { name = a.settings.playerName; }
-  bool onBack(App& a) override { return backConsumedByText(); }
-  void onClose(App& a) override { save(a); }
-  void save(App& a) {
-    std::string t = name; while (!t.empty() && t.back() == ' ') t.pop_back(); while (!t.empty() && t[0] == ' ') t.erase(0, 1);
-    a.settings.playerName = t.empty() ? "Player 1" : t;
-    a.settings.save();
-  }
-  void draw(App& a) override {
-    if (a.topScreen() != this) return;
-    float z = Z();
-    Panel pn;
-    pn.begin("##players", "Players & skins", 860, "Done");
-    pn.beginBody();
-    ImGui::SetCursorPos(ImVec2(16 * z, 14 * z));
-    ImGui::BeginGroup();
-    label(F_MID, col::muted, "Up to four people can play on one screen. Player 1 uses the keyboard, mouse or touch (or a controller); everyone else plugs in a controller and presses Start to join. Any Minecraft or Mineclonia skin works \xE2\x80\x94 a 64\xC3\x97" "64 or 64\xC3\x97" "32 skin.png.", pn.width - 32 * z);
-    ImGui::Dummy(ImVec2(1, 6 * z));
-    // .profile card for player one
-    ImVec2 p0 = ImGui::GetCursorScreenPos(); float cw = std::min(260 * z, pn.width - 32 * z);
-    ImDrawList* dl = ImGui::GetWindowDrawList();
-    dl->AddRectFilled(p0, p0 + ImVec2(cw, 300 * z), col::slot, 4 * z); dl->AddRect(p0, p0 + ImVec2(cw, 300 * z), col::line, 4 * z, 0, 2 * z);
-    ImGui::SetCursorScreenPos(p0 + ImVec2(12, 10) * z);
-    ImGui::BeginGroup();
-    dl->AddCircleFilled(ImGui::GetCursorScreenPos() + ImVec2(5, 9) * z, 5 * z, col::rgb(0xffb07a));
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 16 * z); label(F_BODY, col::text, "Player 1");
-    ImGui::Dummy(ImVec2(1, 4 * z));
-    label(F_MID, col::muted, "Name");
-    inputText("##pname", &name, nullptr, 16, cw - 24 * z);
-    if (ImGui::IsItemDeactivatedAfterEdit()) save(a);
-    ImGui::Dummy(ImVec2(1, 4 * z));
-    label(F_MID, col::muted, a.settings.skin.empty() ? "Skin: default" : ("Skin: " + a.settings.skin).c_str());
-    if (button("Skin editor\xE2\x80\xA6", BTN_NORMAL, true)) a.pushScreen(makeSkinEditorScreen());
-    ImGui::SameLine();
-    if (button("Character creator\xE2\x80\xA6", BTN_NORMAL, true)) a.pushScreen(makeCreatorScreen());
-    if (button("Default##skin", BTN_GHOST, true, 0, a.settings.skin.empty())) { a.settings.skin.clear(); a.settings.save(); }
-    ImGui::EndGroup();
-    ImGui::SetCursorScreenPos(p0 + ImVec2(0, 300 * z));
-    ImGui::Dummy(ImVec2(cw, 14 * z));
-    ImGui::EndGroup();
-    pn.endBody();
-    pn.end();
-    if (pn.closed) a.popScreen();
-  }
-};
-std::unique_ptr<Screen> makePlayersScreen() { return std::make_unique<PlayersScreen>(); }
+// ---- players & skins: ui/players_screen.cpp
+
 
 } // namespace dq

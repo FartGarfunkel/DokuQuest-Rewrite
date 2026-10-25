@@ -20,6 +20,11 @@ struct CharPose {
   // capes.js
   float capeA = 0.1f, capeSway = 0;
   bool still = false;       // the rest pose (the skin editor's model)
+  // movement.js: shimmying along a ledge, hand over hand; on a ladder or vines (climbing up or down)
+  float shimPh = 0, shimMv = 0;
+  bool ladder = false; float ladderPh = 0, ladderMv = 0;
+  // maps.js: a paper map held up in front of the chest (both hands, or one)
+  bool mapMain = false, mapOff = false;
 };
 
 // part angles (x, y, z; applied as rotY, rotX, rotZ) and the lift of the whole body (blocks)

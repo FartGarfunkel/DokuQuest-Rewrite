@@ -54,9 +54,27 @@ GLuint CharPreview::render(const CharacterSpec& spec, int w, int h, const CharPr
   mat4 V = glm::translate(mat4(1), vec3(0, 0, -o.dist * CHAR_PX));
   V = glm::rotate(V, o.elev, vec3(1, 0, 0));
   V = glm::rotate(V, o.yaw, vec3(0, 1, 0));
-  V = glm::translate(V, vec3(0, -16 * CHAR_PX * sy, 0));
+  float ty = o.target >= 0 ? o.target : o.headOnly ? 12.f * M.body.legs + 16.5f : 16.f;
+  V = glm::translate(V, vec3(0, -ty * CHAR_PX * sy, 0));
   mat4 VP = P * V;
   viewProj = VP * glm::scale(mat4(1), vec3(sx, sy, sx)) * glm::scale(mat4(1), vec3(CHAR_PX));
+  if (o.wear || o.headOnly) {
+    // the character as the world draws it: armour, capes, packs, what's in the hands
+    CharPose ps;
+    if (o.pose) ps = *o.pose;
+    else { ps.time = o.time; ps.capeA = 0.12f; ps.capeSway = std::sin(o.time * 2.3f) * 0.03f; }
+    CharWear none;
+    if (!o.wear) { none.cape = o.cape.empty() ? spec.cape : o.cape; for (int i = 0; i < 4 && i < (int)o.armor.size(); i++) none.armor[i] = o.armor[i]; }
+    VoxelRenderer& VR = voxelRenderer();
+    VR.beginNeutral(VP, vec3(0.35f, 0.9f, 0.75f));
+    CharDrawOpts dopt; dopt.light = VoxelLight{1, 0}; dopt.headOnly = o.headOnly; dopt.detail = o.gear;
+    drawCharacter(spec, ps, o.wear ? *o.wear : none, mat4(1), dopt);
+    VR.end();
+    glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prevFbo);
+    glViewport(vp[0], vp[1], vp[2], vp[3]);
+    glDisable(GL_DEPTH_TEST); glDisable(GL_CULL_FACE);
+    return tex;
+  }
   // the pose: standing about (or walking on the spot), arms easy
   CharPose ps;
   ps.time = o.time; ps.still = o.still;
@@ -91,7 +109,7 @@ GLuint CharPreview::render(const CharacterSpec& spec, int w, int h, const CharPr
   for (int slot = 0; slot < 4; slot++) {
     if (AR[slot].empty() || !reg().item(AR[slot])) continue;
     const ArmorSet& A = armorMeshes(AR[slot], "", slot, M.slim, L != nullptr, ts);
-    for (auto& [pn, list] : A.byPart) { int pi = PART.at(pn); for (const CharMesh* cm : list) VR.draw(cm->gl, R.part[pi] * R.scale[pi] * cm->local(), light); }
+    for (auto& [pn, list] : A.byPart) { auto pit = PART.find(pn); if (pit == PART.end()) continue; int pi = pit->second; for (const CharMesh* cm : list) VR.draw(cm->gl, R.part[pi] * R.scale[pi] * cm->local(), light); }
   }
   if (!cape.empty() && o.isolate < 0) if (const CharMesh* cm = capeMesh(cape, 0, ts)) {
     mat4 m = glm::translate(R.body, vec3(0, 12, 2.1f));

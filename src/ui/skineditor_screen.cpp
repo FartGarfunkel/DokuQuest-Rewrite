@@ -5,6 +5,7 @@
 // (View button: paint with the stick). Plain ImGui, self-contained, so the UI theme can restyle it.
 #include "ui/char_screens.h"
 #include "ui/char_preview.h"
+#include "ui/file_pick.h"
 #include "client/app.h"
 #include <imgui.h>
 #include <imgui_stdlib.h>
@@ -34,6 +35,7 @@ public:
       if (startsWith(ref, "creator:")) character = ref.substr(8);
     }
     if (name.empty()) name = "skin";
+    watchDroppedFiles();
     changed(); rebuild(); dirty = false;
   }
   void onClose(App&) override { if (padMode) setPad(false); }
@@ -43,7 +45,11 @@ public:
     if (dirty) { confirm = true; return true; }
     return false;
   }
-  void update(App&, double dt) override { rebuildT += (float)dt; if (specDirty && (!stroking || rebuildT > 0.12f)) rebuild(); if (msgT > 0) msgT -= (float)dt; }
+  void update(App&, double dt) override {
+    std::string path;   // the system file chooser, or a skin dropped on the window
+    if (picker.take(path)) { if (!path.empty()) importFile(path); else if (!picker.error().empty()) status(picker.error()); }
+    if (takeDroppedFile(path, "png")) importFile(path);
+    rebuildT += (float)dt; if (specDirty && (!stroking || rebuildT > 0.12f)) rebuild(); if (msgT > 0) msgT -= (float)dt; }
 
   void draw(App& a) override {
     ImGuiIO& io = ImGui::GetIO();
@@ -120,6 +126,7 @@ private:
   SkinImage img;
   bool haveStart = false;
   std::string name, character, msg, hoverInfo, importPath;
+  FilePicker picker;
   float msgT = 0;
   int tool = 0, size = 1, layer = 0, iso = -1;   // layer: 0 auto, 1 base, 2 outer
   bool mirror = false, outer = true, grid = true, dirty = false, confirm = false, stroking = false, padMode = false;
@@ -246,7 +253,7 @@ private:
   }
   bool importFile(const fs::path& p) {
     SkinImage s; std::string err;
-    fs::path q = p.is_absolute() ? p : skinsDir() / p;
+    fs::path q = p.is_absolute() || fs::exists(p) ? p : skinsDir() / p;
     if (!loadSkinFile(q, s, &err)) { status("That PNG is not a skin (64x64 or 64x32)"); return false; }
     pushUndo(); img = s; changed(); status("Imported " + q.filename().string());
     return true;
@@ -443,6 +450,9 @@ private:
       status(saveSkinPng(p, img) ? "Exported " + p.string() : "Could not export");
     }
     if (ImGui::BeginPopup("import##ske")) {
+      if (ImGui::Button(picker.busy() ? "Choosing..." : "Choose a PNG file...")) { picker.open("Import a skin (64x64 or 64x32 PNG)", "png"); ImGui::CloseCurrentPopup(); }
+      ImGui::TextDisabled("or drop a skin .png on the window");
+      ImGui::Separator();
       ImGui::TextDisabled("Your skins folder:");
       auto list = listSkins();
       if (list.empty()) ImGui::TextDisabled("(empty) %s", skinsDir().string().c_str());
