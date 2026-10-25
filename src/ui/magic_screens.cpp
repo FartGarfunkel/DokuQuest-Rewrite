@@ -15,6 +15,7 @@
 #include <imgui.h>
 
 namespace dq {
+namespace ui { void padScrollHere(); }   // ui/theme.cpp: the right stick scrolls
 
 static ImVec4 col4(const std::string& hex, float a = 1) { vec3 c = hexRGBf(hex); return ImVec4(c.r, c.g, c.b, a); }
 static ImU32 col32(const std::string& hex, int a = 255) { u32 c = hexColor(hex); return IM_COL32((c >> 16) & 255, (c >> 8) & 255, c & 255, a); }
@@ -133,7 +134,7 @@ public:
     ImGui::PushFont(a.fontUiBig);
     ImGui::TextColored(ImVec4(0.85f, 0.75f, 1, 1), "Spellbook \xC2\xB7 Magic %d \xC2\xB7 %d/%d mana", lvl, (int)std::floor(m.mana < 0 ? manaMax(*p) : m.mana), (int)manaMax(*p));
     ImGui::PopFont();
-    ImGui::BeginChild("##sbl", ImVec2(0, -ImGui::GetFrameHeightWithSpacing() - 4));
+    ImGui::BeginChild("##sbl", ImVec2(0, -ImGui::GetFrameHeightWithSpacing() - 4), ImGuiChildFlags_NavFlattened); ui::padScrollHere();
     std::string active = activeSpell(*p);
     for (auto& sc : md.schools) {
       std::vector<std::string> ks;
@@ -206,7 +207,7 @@ public:
     std::stable_sort(next.begin(), next.end(), [&](const P& x, const P& y) { return x.lv - skillLv(*p, x.k) < y.lv - skillLv(*p, y.k); });
     ImGui::Separator();
     if (have.empty()) ImGui::Text("Perks"); else ImGui::Text("Perks \xC2\xB7 %d of %d", (int)have.size(), (int)(have.size() + next.size()));
-    ImGui::BeginChild("##pk", ImVec2(0, -ImGui::GetFrameHeightWithSpacing() - 4));
+    ImGui::BeginChild("##pk", ImVec2(0, -ImGui::GetFrameHeightWithSpacing() - 4), ImGuiChildFlags_NavFlattened); ui::padScrollHere();
     auto row = [&](const P& o, bool got) {
       ImGui::TextColored(col4(o.col, got ? 1.f : 0.55f), "%s", o.pn.c_str()); ImGui::SameLine(); ImGui::TextDisabled("%s %d", o.name.c_str(), o.lv);
       ImGui::TextColored(ImVec4(0.75f, 0.75f, 0.75f, got ? 1.f : 0.55f), "  %s", o.desc.c_str());
@@ -240,7 +241,7 @@ public:
     if (ImGui::BeginTable("##jn", 2, ImGuiTableFlags_SizingStretchProp, ImVec2(0, -ImGui::GetFrameHeightWithSpacing() - 4))) {
       ImGui::TableSetupColumn("story", 0, 2.f); ImGui::TableSetupColumn("records", 0, 1.f);
       ImGui::TableNextColumn();
-      ImGui::BeginChild("##story");
+      ImGui::BeginChild("##story"); ui::padScrollHere();
       for (int i = 0; i < (int)s.ch.size(); i++) {
         auto& c = s.ch[i];
         bool cur = i == s.cur;

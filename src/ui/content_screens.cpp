@@ -11,6 +11,7 @@
 #include <imgui_stdlib.h>
 
 namespace dq {
+namespace ui { void padScrollHere(); }   // ui/theme.cpp: the right stick scrolls
 
 namespace {
 GameSession* sess(App& a) { return a.session && a.session->player ? a.session.get() : nullptr; }
@@ -143,7 +144,7 @@ public:
     // the buttons, in order, for the controller
     nButtons = 0;
     bool pressed = pad.step(a, lastButtons);
-    ImGui::BeginChild("##list", ImVec2(0, -ImGui::GetTextLineHeightWithSpacing() * 2.6f));
+    ImGui::BeginChild("##list", ImVec2(0, -ImGui::GetTextLineHeightWithSpacing() * 2.6f), ImGuiChildFlags_NavFlattened); ui::padScrollHere();   // a pad reaches the buttons below too
     for (auto* group : {&mounts, &pets}) {
       if (group->empty()) continue;
       ImGui::SeparatorText(group == &mounts ? "Mounts" : "Pets");
@@ -247,7 +248,7 @@ public:
     ImGui::Separator();
     if (all.empty()) ImGui::TextWrapped("Nothing yet. Walk into a village, find a dungeon or one of the far places of the Skylands and the Depths, and it goes in here (and on your maps).");
     static const char* KINDS[5][2] = {{"village", "Villages"}, {"place", "Places"}, {"dungeon", "Dungeons"}, {"waystone", "Waystones"}, {"home", "Your houses"}};
-    ImGui::BeginChild("##pl", ImVec2(0, -ImGui::GetTextLineHeightWithSpacing() * 1.6f));
+    ImGui::BeginChild("##pl", ImVec2(0, -ImGui::GetTextLineHeightWithSpacing() * 1.6f), ImGuiChildFlags_NavFlattened); ui::padScrollHere();
     for (auto& K : KINDS) {
       std::vector<FoundPlace> g;
       for (auto& f : all) if (f.kind == K[0]) g.push_back(f);

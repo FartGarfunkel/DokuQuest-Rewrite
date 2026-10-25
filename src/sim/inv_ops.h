@@ -5,7 +5,8 @@
 // Slot groups follow the original's data-g names: main (0-8 hotbar, 9-35 bag), armor, off, back (backpack
 // slot), hook (belt hook), charm, cape, bp (the worn backpack's contents), grid (crafting), cont (chest,
 // barrel, backpack, ender chest...), furn (furnace / smoker / blast furnace: 0 input, 1 fuel, 2 output),
-// out (the crafting result).
+// out (the crafting result); mach (a millstone / sawmill / crusher: 0 input, 1 output), sta (a work station's
+// two inputs), sout (its result), cut (the stonecutter's input).
 // Storage: main/armor/off live on Player; back/hook/charm/cape/ender are stack arrays in Player::data
 // (keys "back", "hook", "charm", "cape", "ender"); a backpack's contents are its stack's tag "c"; containers
 // are block entities in the original's format ({type:'chest', items:[...]}, {type:'furnace', items:[in,
@@ -14,12 +15,13 @@
 #include "sim/inventory.h"   // maxStackOf, addToSlots (shared with the gameplay code)
 #include "sim/player.h"
 #include "sim/crafting.h"
+#include "sim/stations.h"
 
 namespace dq {
 
 class World;
 
-enum class Grp : u8 { Main, Armor, Off, Back, Hook, Charm, Cape, Bp, Grid, Cont, Furn, Out, Count };
+enum class Grp : u8 { Main, Armor, Off, Back, Hook, Charm, Cape, Bp, Grid, Cont, Furn, Out, Mach, Sta, SOut, Cut, Count };
 const char* grpName(Grp g);
 bool stacksMerge(const ItemStack& a, const ItemStack& b);   // the original's canMerge
 
@@ -27,7 +29,8 @@ bool stacksMerge(const ItemStack& a, const ItemStack& b);   // the original's ca
 
 
 struct InvOpen {
-  std::string mode = "inventory";   // inventory | table | furnace | container
+  std::string mode = "inventory";   // inventory | table | furnace | container | station | stonecutter | machine
+  std::string kind;                 // station: anvil | grindstone | smithing | loom | fletching
   bool hasPos = false; ivec3 pos{0};
   bool ender = false;               // the ender chest (player's own 27 slots)
   bool heldPack = false;            // the backpack in your hand
@@ -49,6 +52,10 @@ public:
   std::string title;
   bool contIsPack = false;          // backpack contents: no backpacks inside
   std::string furnaceKind;          // furnace | smoker | blast
+  StationResult staRes;             // station: what the two inputs make now
+  std::vector<std::pair<std::string, int>> cutOpts;   // stonecutter: what the input cuts into
+  std::string machKind;             // machine: millstone | sawmill | crusher
+  float machProgress = 0;
   bool valid() const { return ok; }
 
   void refresh();                   // re-read every stored group (block entities, Player::data); recompute match
@@ -67,6 +74,9 @@ public:
   void quickMove(Grp g, int i);
   int takeOutput(bool shift);
   void creativePick(const std::string& key, bool all);
+  // work stations: take the result (false = nothing taken; anvilBroke set when the anvil wore away)
+  bool takeStation(bool shift, bool* anvilBroke = nullptr);
+  void cutPick(int option, bool all);   // the stonecutter's list
   void trashCursor();
   void bookPick(int recipeIdx, bool all, bool instant);   // instant: controller / touch (fill on first pick)
   void dropFromSlot(Grp g, int i, bool all);              // Q over a slot
@@ -85,7 +95,7 @@ public:
 
 private:
   bool ok = true;
-  std::vector<ItemStack> cont, furn, back, hook, charm, cape, bp, ender;
+  std::vector<ItemStack> cont, furn, back, hook, charm, cape, bp, ender, mach, sta, cut;
   int contN = 0; bool dbl = false; ivec3 posA{0}, posB{0}; int nA = 0;
   struct Drag { bool active = false, right = false; ItemStack orig; std::vector<std::pair<Grp, int>> slots; std::vector<ItemStack> base; } drag;
   void store(Grp g);

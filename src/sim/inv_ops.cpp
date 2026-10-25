@@ -2,10 +2,11 @@
 // Container / PlayerInventory helpers in game/inventory.js.
 #include "sim/inv_ops.h"
 #include "world/world.h"
+#include "sim/machines.h"
 
 namespace dq {
 
-static const char* GRP_NAMES[] = {"main", "armor", "off", "back", "hook", "charm", "cape", "bp", "grid", "cont", "furn", "out"};
+static const char* GRP_NAMES[] = {"main", "armor", "off", "back", "hook", "charm", "cape", "bp", "grid", "cont", "furn", "out", "mach", "sta", "sout", "cut"};
 const char* grpName(Grp g) { return (int)g < (int)Grp::Count ? GRP_NAMES[(int)g] : "?"; }
 
 static bool hasContents(const ItemStack& s) { return s.tag.is_object() && s.tag.contains("c"); }
@@ -38,6 +39,7 @@ static bool chestPartner(World& w, int x, int y, int z, ivec3& out) {
 InvSession::InvSession(Player& pl, World* wo, InvOpen op, bool cr) : p(pl), w(wo), o(std::move(op)), creative(cr) {
   W = o.mode == "table" ? 3 : 2;
   grid.assign(W * W, ItemStack());
+  sta.assign(2, ItemStack()); cut.assign(1, ItemStack());
   refresh();
 }
 
@@ -96,6 +98,24 @@ void InvSession::refresh() {
         title = b.name;
       } else ok = false;
     } else ok = false;
+  } else if (o.mode == "machine") {
+    // invui.js machine(): {type:'machine', items:[in, out], progress}
+    const BlockDef* b = o.hasPos && w ? &reg().block(w->getBlock(o.pos.x, o.pos.y, o.pos.z)) : nullptr;
+    if (b && b->has("machine")) {
+      machKind = b->str("mech");
+      json* e = entity(o.pos, true, {{"type", "machine"}, {"items", {nullptr, nullptr}}, {"progress", 0}});
+      mach = loadArr(e ? (*e)["items"] : json(), 2);
+      machProgress = e ? (float)e->value("progress", 0.0) : 0.f;
+      title = b->name;
+    } else ok = false;
+  } else if (o.mode == "stonecutter") {
+    title = "Stonecutter";
+    cutOpts = stonecutterOptions(cut[0].empty() ? std::string() : cut[0].id);
+  } else if (o.mode == "station") {
+    const BlockDef* b = o.hasPos && w ? &reg().block(w->getBlock(o.pos.x, o.pos.y, o.pos.z)) : nullptr;
+    if (o.hasPos && b && !b->has("station")) ok = false;   // the anvil broke, or someone took the table
+    title = b && b->has("station") ? b->name : "Work Station";
+    staRes = stationResult(o.kind, sta[0], sta[1]);
   } else if (o.mode == "table") title = "Crafting";
   match = matchGrid(grid, W);
 }
@@ -130,6 +150,9 @@ void InvSession::store(Grp g) {
     case Grp::Furn:
       if (o.mode == "furnace" && ok && w) { if (json* e = entity(o.pos, false, nullptr)) (*e)["items"] = saveArr(furn); w->markModified(o.pos.x, o.pos.y, o.pos.z); }
       break;
+    case Grp::Mach:
+      if (o.mode == "machine" && ok && w) { if (json* e = entity(o.pos, false, nullptr)) (*e)["items"] = saveArr(mach); w->markModified(o.pos.x, o.pos.y, o.pos.z); }
+      break;
     default: break;
   }
 }
@@ -139,6 +162,7 @@ void InvSession::changed(Grp g) {
   for (Grp s : {Grp::Back, Grp::Hook, Grp::Charm, Grp::Cape}) store(s);
   if (o.mode == "container") store(Grp::Cont);
   if (o.mode == "furnace") store(Grp::Furn);
+  if (o.mode == "machine") store(Grp::Mach);
   if (!o.ender) p.data["ender"] = saveArr(ender);
   if (onChanged) onChanged(g);
   refresh();
@@ -157,13 +181,17 @@ std::vector<ItemStack>* InvSession::arr(Grp g) {
     case Grp::Grid: return &grid;
     case Grp::Cont: return &cont;
     case Grp::Furn: return &furn;
+    case Grp::Mach: return &mach;
+    case Grp::Sta: return &sta;
+    case Grp::Cut: return &cut;
     default: return nullptr;
   }
 }
-int InvSession::groupSize(Grp g) { if (g == Grp::Out) return 1; auto* a = arr(g); return a ? (int)a->size() : 0; }
+int InvSession::groupSize(Grp g) { if (g == Grp::Out || g == Grp::SOut) return 1; auto* a = arr(g); return a ? (int)a->size() : 0; }
 const ItemStack* InvSession::at(Grp g, int i) {
   static ItemStack out;
   if (g == Grp::Out) { out = match ? match.result() : ItemStack(); return &out; }
+  if (g == Grp::SOut) { out = staRes.ok ? staRes.out : ItemStack(); return &out; }
   auto* a = arr(g); return a && i >= 0 && i < (int)a->size() ? &(*a)[i] : nullptr;
 }
 
@@ -179,7 +207,9 @@ bool InvSession::accepts(Grp g, int i, const ItemStack& s) const {
     case Grp::Bp: return !d->has("backpack");
     case Grp::Cont: return !(contIsPack && d->has("backpack"));
     case Grp::Furn: return i == 0 ? true : i == 1 ? fuelValue(s.id) > 0 : false;
-    case Grp::Out: return false;
+    case Grp::Out: case Grp::SOut: return false;
+    case Grp::Mach: { const json* t = machineTable(machKind); return i == 0 && t && t->contains(s.id); }
+    case Grp::Cut: return !stonecutterOptions(s.id).empty();
     default: return true;
   }
 }
@@ -201,12 +231,13 @@ void InvSession::giveBack(const ItemStack& s0) {
 void InvSession::slotClick(Grp g, int i, bool right, bool shift) {
   refresh();
   if (g == Grp::Out) { takeOutput(shift); return; }
+  if (g == Grp::SOut) { takeStation(shift); return; }
   auto* a = arr(g);
   if (!a || i < 0 || i >= (int)a->size()) return;
   ItemStack& s = (*a)[i];
   ItemStack& cur = p.cursor;
   if (shift && !s.empty()) { quickMove(g, i); changed(g); sound("click"); return; }
-  if (g == Grp::Furn && i == 2) {
+  if ((g == Grp::Furn && i == 2) || (g == Grp::Mach && i == 1)) {
     // furnace output: take only
     if (s.empty()) return;
     if (cur.empty()) { cur = s; s.clear(); }
@@ -239,7 +270,7 @@ void InvSession::slotClick(Grp g, int i, bool right, bool shift) {
 // Can a drag spread items into this slot? (empty, or the same thing with room)
 bool InvSession::dragTarget(Grp g, int i) {
   const ItemStack& st = drag.active ? drag.orig : p.cursor;
-  if (st.empty() || g == Grp::Out || (g == Grp::Furn && i == 2)) return false;
+  if (st.empty() || g == Grp::Out || g == Grp::SOut || (g == Grp::Furn && i == 2) || (g == Grp::Mach && i == 1)) return false;
   auto* a = arr(g); if (!a || i < 0 || i >= (int)a->size()) return false;
   const ItemStack& s = (*a)[i];
   if (!accepts(g, i, st)) return false;
@@ -295,7 +326,7 @@ void InvSession::dragEnd() {
 // Number key over a slot: swap it with that hotbar slot.
 void InvSession::hotbarSwap(Grp g, int i, int k) {
   refresh();
-  if (g == Grp::Out || (g == Grp::Furn && i == 2)) return;
+  if (g == Grp::Out || g == Grp::SOut || (g == Grp::Furn && i == 2) || (g == Grp::Mach && i == 1)) return;
   auto* a = arr(g); if (!a || i < 0 || i >= (int)a->size() || k < 0 || k > 8) return;
   if (g == Grp::Main && i == k) return;
   ItemStack s = (*a)[i], h = p.inv[k];
@@ -328,6 +359,16 @@ void InvSession::quickMove(Grp g, int i) {
     if (!ok || (contIsPack && isPack)) return;
     if (into(cont, s) <= 0) s.clear();
     return;
+  }
+  if (o.mode == "machine" && ok) {
+    const json* t = machineTable(machKind);
+    if (t && t->contains(s.id) && (mach[0].empty() || stacksMerge(mach[0], s))) { std::vector<ItemStack> tmp{mach[0]}; int left = into(tmp, s); mach[0] = tmp[0]; if (left <= 0) s.clear(); return; }
+  }
+  if (o.mode == "station") {
+    for (int k : {0, 1}) if (sta[k].empty() || stacksMerge(sta[k], s)) { std::vector<ItemStack> tmp{sta[k]}; int left = into(tmp, s); sta[k] = tmp[0]; if (left <= 0) s.clear(); return; }
+  }
+  if (o.mode == "stonecutter") {
+    if (!stonecutterOptions(s.id).empty() && (cut[0].empty() || stacksMerge(cut[0], s))) { std::vector<ItemStack> tmp{cut[0]}; int left = into(tmp, s); cut[0] = tmp[0]; if (left <= 0) s.clear(); return; }
   }
   if (o.mode == "furnace" && ok) {
     auto one = [&](int k) { std::vector<ItemStack> tmp{furn[k]}; int left = into(tmp, s); furn[k] = tmp[0]; if (left <= 0) s.clear(); };
@@ -437,7 +478,7 @@ void InvSession::bookPick(int idx, bool all, bool instant) {
 
 void InvSession::dropFromSlot(Grp g, int i, bool all) {
   refresh();
-  if (g == Grp::Out) return;
+  if (g == Grp::Out || g == Grp::SOut) return;
   auto* a = arr(g); if (!a || i < 0 || i >= (int)a->size() || (*a)[i].empty()) return;
   ItemStack& s = (*a)[i];
   ItemStack t = s; t.n = all ? s.n : 1;
@@ -452,10 +493,59 @@ void InvSession::throwCursor(int n) {
   if (onThrow) onThrow(t);
 }
 
+// invui.js takeStation: the result to the cursor (or, shift, the bag); the inputs are used up; anvils wear out
+bool InvSession::takeStation(bool shift, bool* anvilBroke) {
+  refresh();
+  if (!staRes.ok) return false;
+  ItemStack out = staRes.out;
+  if (!shift && !p.cursor.empty() && !(stacksMerge(p.cursor, out) && p.cursor.n + out.n <= maxStackOf(out.id))) return false;
+  if (shift) { ItemStack o2 = out; int left = bagAdd(o2); if (left > 0 && onThrow) { ItemStack t = out; t.n = left; onThrow(t); } }
+  else if (!p.cursor.empty()) p.cursor.n += out.n; else p.cursor = out;
+  auto use = [&](int k, int n) { if (sta[k].empty() || n <= 0) return; sta[k].n -= n; if (sta[k].n <= 0) sta[k].clear(); };
+  // the fletching table takes its flint and feather from whichever slot holds them
+  if (o.kind == "fletching" && sta[0].id == "feather") { use(0, 1); use(1, 1); }
+  else { use(0, staRes.useA); use(1, staRes.useB); }
+  if (o.kind == "anvil" && o.hasPos && w) {
+    sound("anvil");
+    // anvils wear out: anvil -> chipped -> damaged -> gone
+    if (std::rand() / (double)RAND_MAX < 0.12) {
+      BlockId id = w->getBlock(o.pos.x, o.pos.y, o.pos.z); u8 m = w->getMeta(o.pos.x, o.pos.y, o.pos.z);
+      const std::string& k = reg().block(id).key;
+      BlockId next = k == "anvil" ? reg().blockId("chipped_anvil") : k == "chipped_anvil" ? reg().blockId("damaged_anvil") : AIR;
+      w->setBlock(o.pos.x, o.pos.y, o.pos.z, next, next ? m : 0);
+      if (!next && anvilBroke) *anvilBroke = true;
+    }
+  } else sound(o.kind == "grindstone" ? "grind" : "craft");
+  changed(Grp::Sta);
+  return true;
+}
+
+// invui.js cutPick: one block into option i (all: as many as the input allows, into the bag)
+void InvSession::cutPick(int idx, bool all) {
+  refresh();
+  if (cut[0].empty() || idx < 0 || idx >= (int)cutOpts.size()) return;
+  auto opt = cutOpts[idx];
+  bool any = false;
+  for (int k = 0; k < (all ? 64 : 1) && !cut[0].empty(); k++) {
+    ItemStack out(opt.first, opt.second);
+    if (!all) {
+      if (!p.cursor.empty() && !(stacksMerge(p.cursor, out) && p.cursor.n + out.n <= maxStackOf(out.id))) break;
+      if (!p.cursor.empty()) p.cursor.n += out.n; else p.cursor = out;
+    } else { ItemStack o2 = out; int left = bagAdd(o2); if (left > 0 && onThrow) { ItemStack t = out; t.n = left; onThrow(t); } }
+    if (--cut[0].n <= 0) cut[0].clear();
+    any = true;
+  }
+  if (!any) return;
+  sound("craft");
+  changed(Grp::Cut);
+}
+
 void InvSession::close() {
   refresh();
   // anything left on the crafting grid or the cursor goes back to the bag
   for (auto& s : grid) if (!s.empty()) { ItemStack t = s; s.clear(); giveBack(t); }
+  // the stonecutter's and the work station's inputs aren't stored in the block: they come back too
+  for (auto* v : {&cut, &sta}) for (auto& s : *v) if (!s.empty()) { ItemStack t = s; s.clear(); giveBack(t); }
   if (!p.cursor.empty()) { ItemStack t = p.cursor; p.cursor.clear(); giveBack(t); }
   changed(Grp::Main);
   p.selected = clampv(p.selected, 0, 8);

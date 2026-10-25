@@ -245,6 +245,7 @@ void App::frameLoop() {
     if (session && (!topScreen() || topScreen()->showsWorld())) { session->render(); session->drawHud(); }
     // screens draw back to front (an overlay may sit over another menu)
     for (size_t i = 0; i < screens.size(); i++) if (i + 1 == screens.size() || screens[i + 1]->showsWorld()) screens[i]->draw(*this);
+    uiAfterScreens(*this);   // the menu tab strip (ui/ui_main.cpp)
     if (input.pressed(Act::Pause) || input.pressed(Act::MenuBack)) {
       if (Screen* s = topScreen()) { if (!s->onBack(*this) && s->id() != std::string("title")) popScreen(); }
       else if (session && input.pressed(Act::Pause)) pushScreen(makePauseScreen());

@@ -50,7 +50,7 @@ public:
     GameSession* s = a.session.get();
     if (!s || !s->player || !m || s->player->dead) { a.popScreen(); return; }
     Input& in = a.input;
-    if (in.pressed(Act::Map) || in.pressed(Act::Inventory)) { a.popScreen(); return; }
+    if (in.pressed(Act::Map) || (in.pressed(Act::Inventory) && !in.padButtonPressed(3))) { a.popScreen(); return; }   // pad Y zooms here
     // a controller (or WASD): look around; X / Y zoom
     vec2 mv = in.moveAxis();
     if (in.down(Act::MenuLeft)) mv.x -= 1;

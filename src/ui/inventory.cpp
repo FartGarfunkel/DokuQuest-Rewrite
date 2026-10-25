@@ -10,6 +10,7 @@
 #include "client/app.h"
 #include "client/session.h"
 #include "audio/audio.h"
+#include "sim/machines.h"
 #include <imgui.h>
 #include <imgui_stdlib.h>
 
@@ -24,7 +25,7 @@ const std::pair<const char*, const char*> BOOK_CATS[] = {{"all", "All"}, {"block
 struct BookState { bool open = false; std::string cat = "all"; bool only = false; std::string query; std::string creativeWorld; };
 BookState& book() { static BookState b; return b; }
 
-enum HK { H_SLOT, H_BOOKR, H_CI, H_CAT, H_BOOKBTN, H_BOOKCLOSE, H_TRASH };
+enum HK { H_SLOT, H_BOOKR, H_CI, H_CAT, H_BOOKBTN, H_BOOKCLOSE, H_TRASH, H_CUT };
 struct Hit { HK k; Grp g = Grp::Main; int i = 0; std::string s; ImVec2 a, b; bool contains(ImVec2 p) const { return p.x >= a.x && p.y >= a.y && p.x < b.x && p.y < b.y; } };
 bool sameKey(const Hit& x, const Hit& y) { return x.k == y.k && x.g == y.g && x.i == y.i && x.s == y.s; }
 std::string lower(std::string s) { for (auto& c : s) c = (char)tolower((unsigned char)c); return s; }
@@ -153,13 +154,26 @@ public:
   }
   void activate(App& a, const Hit& h, bool right, bool shift, bool pad) {
     switch (h.k) {
-      case H_SLOT: sess->slotClick(h.g, h.i, right, shift); break;
+      case H_SLOT: if (h.g == Grp::SOut) takeStation(a, shift); else sess->slotClick(h.g, h.i, right, shift); break;
       case H_BOOKR: sess->bookPick(h.i, shift, pad); break;
       case H_CI: sess->creativePick(h.s, shift); break;
       case H_CAT: book().cat = h.s; playClick(); break;
       case H_BOOKBTN: case H_BOOKCLOSE: toggleBook(a); break;
       case H_TRASH: sess->trashCursor(); break;
+      case H_CUT: sess->cutPick(h.i, shift); break;
     }
+  }
+  // the work station's result: levels for enchantments, experience back from the grindstone (enchanting.js)
+  void takeStation(App& a, bool shift) {
+    Player& pl = sess->p;
+    StationResult r = sess->staRes;
+    if (!r.ok) return;
+    if (r.lv && !pl.creative() && pl.level < r.lv) { a.toast("You need " + std::to_string(r.lv) + " level" + (r.lv > 1 ? "s" : "") + " for that", "warn"); if (a.audio) a.audio->play("click_off"); return; }
+    bool broke = false;
+    if (!sess->takeStation(shift, &broke)) return;
+    if (r.lv && !pl.creative()) { spendLevels(pl, r.lv); if (a.audio) a.audio->play("enchant"); }
+    if (r.xp) { vec3 at = pl.pos + vec3(0, 1.6f, 0); grantXP(*a.session->level, pl, r.xp, &at); }
+    if (broke) { a.toast("The anvil broke", "warn"); uiDefer([](App& app) { if (app.topScreen() && app.topScreen()->id() == std::string("inventory")) app.popScreen(); }); }
   }
 
   // ---- layout + drawing -------------------------------------------------------------------------------
@@ -230,7 +244,7 @@ public:
     // layout(): fit the panel into the screen
     int bpRows = (int)((sess->groupSize(Grp::Bp) + 8) / 9);
     int contN = o.mode == "container" ? sess->groupSize(Grp::Cont) : 0;
-    float topRows = o.mode == "inventory" ? 4.8f : o.mode == "table" ? 4.6f : o.mode == "furnace" ? 3.2f : std::ceil((contN ? contN : 27) / 9.f);
+    float topRows = o.mode == "inventory" ? 4.8f : o.mode == "table" ? 4.6f : o.mode == "furnace" ? 3.2f : o.mode == "machine" || o.mode == "station" ? 2.6f : o.mode == "stonecutter" ? 3.4f : std::ceil((contN ? contN : 27) / 9.f);
     float rows = topRows + 6.1f + (bpRows ? bpRows + 0.65f : 0) + (o.mode != "inventory" ? 0.55f : 0);
     bool wide = vw > vh * 1.25f && vw > 640;
     float bookW = showBook ? (wide ? 6.4f : 0) : 0;
@@ -257,6 +271,8 @@ public:
     if (o.mode == "inventory") topH = std::max({4 * is, is * 3.4f + 8 * z + is * 0.4f, 5 * is * 1.2f + is * 0.1f, labelH + 2 * is + is * 0.15f + is * 0.75f});
     else if (o.mode == "table") topH = is * 0.4f + 3 * is + is * 0.15f + is * 0.75f;
     else if (o.mode == "furnace") topH = is * 0.3f + std::max(is * 2 + is * 0.6f + 4 * z, is * 1.3f);
+    else if (o.mode == "machine" || o.mode == "station") topH = is * 0.3f + is * 1.3f + statusH();
+    else if (o.mode == "stonecutter") topH = is * 0.24f + is * 2.6f + 8 * z;
     else topH = ((contN + 8) / 9) * is;
     float infoH = std::max(is * 0.45f, textSize(F_BODY, "Ag", 0, is * 0.3f / z / fontPx(F_BODY)).y * 2.6f);
     float innerH = titleH + topH + 2 * z + (bpRows ? labelH + is * 0.15f + bpRows * is + 2 * z : 0) + is * 0.15f + labelH + 2 * z + 3 * is + is * 0.15f + is + 3 * z + infoH;
@@ -276,6 +292,9 @@ public:
       float gw = 3 * is + is * 0.2f + is * 0.9f + is * 0.2f + is * 1.3f, gx = c.x + (contentW - gw) * 0.5f, gy = y + is * 0.2f;
       craft(dl, ImVec2(gx, gy), 3);
     } else if (o.mode == "furnace") drawFurnace(a, dl, ImVec2(c.x, y), contentW);
+    else if (o.mode == "machine") drawMachine(a, dl, ImVec2(c.x, y), contentW);
+    else if (o.mode == "station") drawStation(a, dl, ImVec2(c.x, y), contentW);
+    else if (o.mode == "stonecutter") drawCutter(a, dl, ImVec2(c.x, y), contentW);
     else grid9(dl, Grp::Cont, 0, contN, ImVec2(c.x, y));
     y += topH + 2 * z;
     if (bpRows) {
@@ -390,6 +409,87 @@ public:
     slot(dl, Grp::Furn, 2, ImVec2(x, mid - is * 0.65f), is * 1.3f, nullptr, true);
   }
 
+  // .mach-status: one or two lines of dim text under the machine / station row
+  float statusH() const { return textSize(F_BODY, "Ag", 0, is * 0.3f / Z() / fontPx(F_BODY)).y * 2.4f; }
+  void status(ImDrawList* dl, ImVec2 p, float w, const std::string& t, ImU32 c = col::dim) {
+    float sc = is * 0.3f / Z() / fontPx(F_BODY);
+    ImVec2 ts = textSize(F_BODY, t.c_str(), w, sc);
+    float x = p.x + std::max(0.f, (w - ts.x) * 0.5f);
+    text(dl, F_BODY, ImVec2(x, p.y) + ImVec2(1, 1) * Z(), col::black, t.c_str(), w, sc);
+    text(dl, F_BODY, ImVec2(x, p.y), c, t.c_str(), w, sc);
+  }
+  void drawMachine(App& a, ImDrawList* dl, ImVec2 p, float w) {
+    // .furn.mach: in · arrow (fills gold as it works) · out, then the status line (invui.js machineBars)
+    float totalW = is + is * 0.4f + is * 0.9f + is * 0.4f + is * 1.3f;
+    float x = p.x + (w - totalW) * 0.5f, y = p.y + is * 0.15f, mid = y + is * 0.65f;
+    const json* tbl = machineTable(sess->machKind);
+    std::string ph; if (tbl && tbl->is_object() && !tbl->empty()) ph = tbl->begin().key();
+    slot(dl, Grp::Mach, 0, ImVec2(x, mid - is * 0.5f), is, ph.empty() ? nullptr : ph.c_str());
+    x += is + is * 0.4f;
+    arrow(dl, ImVec2(x, mid - is * 0.3f), sess->machProgress);
+    x += is * 0.9f + is * 0.4f;
+    slot(dl, Grp::Mach, 1, ImVec2(x, mid - is * 0.65f), is * 1.3f, nullptr, true);
+    float sp = 0;
+    if (o.hasPos) if (Mechanics* m = mechanicsOf(*a.session->level, sess->p.realm)) sp = m->speedAt(o.pos.x, o.pos.y, o.pos.z);
+    std::string t = sp > 0.05f ? "Turning at " + std::to_string((int)std::lround(std::min(1.f, sp) * 100)) + "% \xE2\x80\x94 " +
+        (sess->machKind == "sawmill" ? "logs become 6 planks, planks 6 sticks" : "ores grind into 2 crushed ore, cobble to gravel, gravel to sand, flowers to dye")
+      : "Not turning. Join it to a windmill (high, in open air) or a waterwheel (in flowing water) with wooden axles.";
+    status(dl, ImVec2(p.x, y + is * 1.3f + is * 0.15f), w, t, sp > 0.05f ? col::gold : col::dim);
+  }
+  void drawStation(App& a, ImDrawList* dl, ImVec2 p, float w) {
+    // .furn.station: a + b → out, then what it does (invui.js renderStation)
+    float z = Z(), plusW = is * 0.45f;
+    float totalW = is + is * 0.4f + plusW + is * 0.4f + is + is * 0.4f + is * 0.9f + is * 0.4f + is * 1.3f;
+    float x = p.x + (w - totalW) * 0.5f, y = p.y + is * 0.15f, mid = y + is * 0.65f;
+    auto ph = stationPlaceholders(o.kind);
+    slot(dl, Grp::Sta, 0, ImVec2(x, mid - is * 0.5f), is, ph.first);
+    x += is + is * 0.4f;
+    float sc = is * 0.6f / z / fontPx(F_DISP); ImVec2 ts = textSize(F_DISP, "+", 0, sc);
+    text(dl, F_DISP, ImVec2(x + (plusW - ts.x) * 0.5f, mid - ts.y * 0.5f), col::dim, "+", 0, sc);
+    x += plusW + is * 0.4f;
+    slot(dl, Grp::Sta, 1, ImVec2(x, mid - is * 0.5f), is, ph.second);
+    x += is + is * 0.4f;
+    arrow(dl, ImVec2(x, mid - is * 0.3f));
+    x += is * 0.9f + is * 0.4f;
+    slot(dl, Grp::SOut, 0, ImVec2(x, mid - is * 0.65f), is * 1.3f, nullptr, true);
+    const StationResult& r = sess->staRes;
+    status(dl, ImVec2(p.x, y + is * 1.3f + is * 0.15f), w, r.ok ? r.note : stationHelp(o.kind));
+  }
+  void drawCutter(App& a, ImDrawList* dl, ImVec2 p, float w) {
+    // .cutter: the input · arrow · a 5-wide list of what it cuts into (invui.js renderCutter)
+    float z = Z(), listW = is * 5 + 8 * z, listH = is * 2.6f;
+    float totalW = is + is * 0.3f + is * 0.9f + is * 0.3f + listW;
+    float x = p.x + (w - totalW) * 0.5f, y = p.y + is * 0.12f, mid = y + listH * 0.5f;
+    slot(dl, Grp::Cut, 0, ImVec2(x, mid - is * 0.5f), is, "cobblestone");
+    x += is + is * 0.3f;
+    arrow(dl, ImVec2(x, mid - is * 0.3f));
+    x += is * 0.9f + is * 0.3f;
+    ImVec2 l0(x, y), l1(x + listW, y + listH);
+    dl->AddRectFilled(l0, l1, IM_COL32(0, 0, 0, 89));
+    bevel(dl, l0, l1, col::slLo, col::slHi, 2 * z);
+    const auto& opts = sess->cutOpts;
+    if (opts.empty()) { text(dl, F_SMALL, l0 + ImVec2(6, 6) * z, col::dim, "Put a stone block in to see what it cuts into.", listW - 12 * z); return; }
+    int rows = ((int)opts.size() + 4) / 5;
+    float viewH = listH - 4 * z, maxScroll = std::max(0.f, rows * is - viewH);
+    if (isHover(l0, l1)) cutScroll -= ImGui::GetIO().MouseWheel * is;
+    cutScroll += a.input.padScroll();
+    if (hasFocus && focus.k == H_CUT) { float ry = (focus.i / 5) * is; if (ry < cutScroll) cutScroll = ry; if (ry + is > cutScroll + viewH) cutScroll = ry + is - viewH; }
+    cutScroll = clampv(cutScroll, 0.f, maxScroll);
+    ImVec2 c0 = l0 + ImVec2(4, 2) * z;
+    dl->PushClipRect(l0 + ImVec2(2, 2) * z, l1 - ImVec2(2, 2) * z, true);
+    for (int i = 0; i < (int)opts.size(); i++) {
+      ImVec2 s0(c0.x + (i % 5) * is, c0.y + (i / 5) * is - cutScroll);
+      if (s0.y + is < l0.y || s0.y > l1.y) continue;
+      SlotLook lk; lk.hover = isHover(s0, s0 + ImVec2(is, is)); lk.focus = isFocus(H_CUT, Grp::Main, i);
+      drawSlot(dl, s0, is, lk);
+      drawItem(dl, ItemStack(opts[i].first, opts[i].second), s0, is);
+      ImVec2 h0(s0.x, std::max(s0.y, l0.y)), h1(s0.x + is, std::min(s0.y + is, l1.y));
+      if (h1.y > h0.y) addHit(H_CUT, Grp::Main, i, "", h0, h1);
+    }
+    dl->PopClipRect();
+  }
+  float cutScroll = 0;
+
   void drawInfo(App& a, ImDrawList* dl, ImVec2 p, float w) {
     if (!a.input.usingPad() || !hasFocus) return;
     const Hit* f = findHit(focus);
@@ -401,6 +501,7 @@ public:
       if (s && !s->empty()) itemInfoText(*s, &sess->p, &lines);
       else t = std::string("A take/place \xC2\xB7 X split \xC2\xB7 Y quick move \xC2\xB7 ") + (o.mode == "table" ? "LB recipe book" : "LB/RB menus") + " \xC2\xB7 B close";
     } else if (f && f->k == H_CI) { if (const ItemDef* d = reg().item(f->s)) itemInfoText(ItemStack(d->key, 1), &sess->p, &lines); }
+    else if (f && f->k == H_CUT && f->i < (int)sess->cutOpts.size()) { itemInfoText(ItemStack(sess->cutOpts[f->i].first, sess->cutOpts[f->i].second), &sess->p, &lines); lines.push_back({"  A one \xC2\xB7 Y all", 0xa8987e}); }
     float x = p.x;
     for (auto& [txt, c] : lines) {
       std::string s = txt; if (!s.empty() && s[0] == '\x01') s = s.substr(9);
@@ -419,6 +520,7 @@ public:
     if (h->k == H_SLOT) { const ItemStack* st = sess->at(h->g, h->i); if (st) s = *st; }
     else if (h->k == H_BOOKR) { const Recipe& r = reg().recipes[h->i]; s = ItemStack(r.out, r.n); }
     else if (h->k == H_CI) s = ItemStack(h->s, 1);
+    else if (h->k == H_CUT && h->i < (int)sess->cutOpts.size()) s = ItemStack(sess->cutOpts[h->i].first, sess->cutOpts[h->i].second);
     if (s.empty()) return;
     std::vector<std::pair<std::string, u32>> lines;
     itemInfoText(s, &sess->p, &lines);
