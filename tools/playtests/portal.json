@@ -6,7 +6,7 @@
  {"do":"fill","rel":true,"from":[0,1,-3],"to":[1,3,-3],"key":"air"},
  {"do":"give","item":"flint_and_steel"},
  {"do":"select","slot":0},
- {"wait":5,"do":"lookAt","rel":true,"x":0,"y":0,"z":-3},
+ {"wait":5,"do":"look","yaw":0,"pitch":-12},
  {"do":"mouse","button":"right","hold":3},
  {"wait":40,"do":"report"},
  {"do":"shot","path":"/tmp/p0.png"},

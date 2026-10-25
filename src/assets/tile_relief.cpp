@@ -84,16 +84,11 @@ void bakeTileRelief(TileSet& ts) {
   for (int tl = 0; tl < ts.count; tl++) {
     const u8* hp = ts.height.data() + (size_t)tl * N;
     const u8* px = ts.tile(tl);
-    int opaque = 0;
-    for (int i = 0; i < N; i++) { h0[i] = hp[i] / 255.f; if (px[i * 4 + 3] > 127) opaque++; }
-    const bool full = opaque >= N * 9 / 10;   // a whole block face: gets the slight bevel round its rim
+    (void)px;
+    for (int i = 0; i < N; i++) h0[i] = hp[i] / 255.f;
 
     // --- the smooth surface for lighting: the exact heights, blurred (sigma 1.4) ---
     blur5(h0, S, hS); blur5(hS, S, hS);
-    if (full) for (int y = 0; y < S; y++) for (int x = 0; x < S; x++) {
-      int e = std::min({x, y, S - 1 - x, S - 1 - y});
-      if (e < 2) hS[y * S + x] = std::max(hS[y * S + x], e == 0 ? 0.16f : 0.07f);
-    }
 
     // --- geometry: whole micro-voxel steps where the height changes a lot ---
     blur3(h0, S, hG);                                    // a light blur: a groove keeps its depth
@@ -104,9 +99,6 @@ void bakeTileRelief(TileSet& ts) {
       g[i] = t < 1.5f ? 0 : (u8)std::clamp((int)std::floor(t + 0.5f), 2, STEPS);
     }
     dropSpecks(g, S, 6);
-    if (full) for (int y = 0; y < S; y++) for (int x = 0; x < S; x++) {
-      if (std::min({x, y, S - 1 - x, S - 1 - y}) == 0) g[y * S + x] = std::max<u8>(g[y * S + x], 1);   // crisp, slightly bevelled block edge
-    }
     bool any = false;
     u8* rl = ts.relief.data() + (size_t)tl * N;
     for (int i = 0; i < N; i++) { rl[i] = g[i]; any |= g[i] > 1; }
