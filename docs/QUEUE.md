@@ -41,6 +41,7 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
 - Knight/Ranger talents hooked into combat.
 
 ## Systems
+- Sneak + use must work with BOTH keyboard/mouse and controller (the user uses both). dq-sweep's test (PlayerController, sneak flag) places on furnace/crafting table/barrel; check the real input paths: Shift + right mouse, and the pad's sneak (latch/tap in input.cpp) + use trigger.
 - Sneak + use with a block in hand on chests, furnaces, crafting tables etc. opens them instead of placing the block (user, alpha.3). sim/controller.cpp use() has the furnish.js rule (line ~420) — check whether an earlier "itemUse" handler consumes the use, or p.sneaking isn't set at that moment.
 - DUPE (high): taking armour off and putting it back in the inventory duplicates items (user, alpha.3). Not reproduced yet. Suspects: two InvSessions alive at once (the screen opened twice) writing stale back/cape/hook copies through InvSession::changed/store; the 3D doll's equip/hide buttons (ui/sheet.cpp, ui/inventory.cpp H_VIS); cape stored both in Player::cape and p.data["cape"]. Write a headless InvSession test (equip → click armour slot → click main slot → count items) and fix.
 - Portal: confirm worlds no longer vanish after crossing (fix in alpha.3: remesh after realm change). If it still happens through Nether portals, look at band switching in render/world_renderer.cpp drawPass and portal_view.cpp.
