@@ -130,7 +130,7 @@ static void moaBuild(ChunkWriter& w, const StructurePlan& S) {
 
 // ---- the Ember Depths ----
 static bool bastionPlan(const TerrainQuery&, int x, int z, Mulberry32&, StructurePlan& S) {
-  const int y = netherY(31);
+  const int y = DepthsGen::LAVA_Y + 8;   // just over the lava sea, as in the original (row 31 over the sea's 28)
   S.x0 = x - 34; S.x1 = x + 34; S.z0 = z - 34; S.z1 = z + 34; S.y = y; S.hashDy = 31 - y; S.cx = x; S.cz = z; S.name = "an Ember Bastion";
   S.data = {{"boss", {{"at", jat(x, y + 1, z)}, {"type", "ember_lord"}, {"box", {x - 6, y, z - 6, x + 6, y + 9, z + 6}}}},
             {"spawners", {mobAt(x - 9, y + 1, z + 9, "charred_ghoul"), mobAt(x + 9, y + 1, z - 9, "charred_ghoul")}}};
@@ -170,7 +170,7 @@ static void bastionBuild(ChunkWriter& w, const StructurePlan& S) {
 }
 
 static bool spirePlan(const TerrainQuery&, int x, int z, Mulberry32&, StructurePlan& S) {
-  const int y = netherY(30);
+  const int y = DepthsGen::LAVA_Y + 5;
   S.x0 = x - 4; S.x1 = x + 4; S.z0 = z - 4; S.z1 = z + 4; S.y = y; S.hashDy = 30 - y; S.cx = x; S.cz = z; S.name = "an Obsidian Spire";
   return true;
 }
@@ -215,7 +215,7 @@ static void forgeBuild(ChunkWriter& w, const StructurePlan& S) {
 }
 
 static bool bonePitPlan(const TerrainQuery&, int x, int z, Mulberry32&, StructurePlan& S) {
-  const int y = netherY(32);
+  const int y = DepthsGen::LAVA_Y + 10;
   S.x0 = x - 6; S.x1 = x + 6; S.z0 = z - 6; S.z1 = z + 6; S.y = y; S.hashDy = 32 - y; S.cx = x; S.cz = z; S.name = "a Bone Pit";
   S.data = {{"spawners", {mobAt(x, y - 3, z, "skeleton")}}};
   return true;
@@ -235,49 +235,9 @@ static void bonePitBuild(ChunkWriter& w, const StructurePlan& S) {
   P.put(cx - 4, y, cz - 2, "soul_lantern"); P.put(cx + 4, y, cz + 3, "soul_lantern");
 }
 
-// ---- Nether fortresses (nether2.js): long brick bridges across the lava, a keep at the crossing ----
-static bool fortressPlan(const TerrainQuery&, int x, int z, Mulberry32&, StructurePlan& S) {
-  const int y = netherY(34), A = 40;
-  S.x0 = x - A; S.x1 = x + A; S.z0 = z - A; S.z1 = z + A; S.y = y; S.hashDy = 34 - y; S.cx = x; S.cz = z; S.name = "a Nether Fortress";
-  S.data = {{"spawners", {mobAt(x + 6, y + 1, z - 6, "wither_skeleton"), mobAt(x - 6, y + 1, z + 6, "wither_skeleton"), mobAt(x + 24, y + 1, z, "cinder_wisp")}}};
-  return true;
-}
-static void fortressBuild(ChunkWriter& w, const StructurePlan& S) {
-  SP P(w); const int cx = S.cx, cz = S.cz, y = S.y, A = 40, K = 8;
-  const std::string nb = PLK("nether_bricks", "blackstone"), fence = PLK("nether_brick_fence", nb), stair = PLK("nether_brick_slab", nb);
-  // four long bridges meeting at the keep, held up on arches down into the lava
-  for (auto [ax, az] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-    const int px = -az, pz = ax;
-    for (int d = K + 1; d <= A; d++) for (int k = -2; k <= 2; k++) {
-      const int bx = cx + ax * d + px * k, bz = cz + az * d + pz * k;
-      P.put(bx, y, bz, nb);
-      for (int h = 1; h <= 5; h++) P.put(bx, y + h, bz, std::abs(k) == 2 ? (h <= 2 ? (h == 1 ? std::string_view(nb) : std::string_view(fence)) : "air") : "air");
-      // a roofed stretch every so often, with windows
-      if (d % 12 >= 8 && d % 12 <= 11) { if (std::abs(k) == 2) for (int h = 2; h <= 4; h++) P.put(bx, y + h, bz, h == 3 && d % 2 ? fence : nb); P.put(bx, y + 5, bz, nb); }
-      if (d % 8 == 0 && std::abs(k) <= 1) for (int q = 1; q <= kDepth(14); q++) P.put(bx, y - q, bz, nb);
-      if (d % 8 == 0 && std::abs(k) == 2) P.put(bx, y - 1, bz, stair);
-    }
-    // a watch post at the end of each bridge
-    const int ex = cx + ax * A, ez = cz + az * A;
-    P.fillf(ex - 2, y + 1, ez - 2, ex + 2, y + 1, ez + 2, [&](int x, int, int z) -> std::string_view { return (std::abs(x - ex) == 2 || std::abs(z - ez) == 2) ? std::string_view(fence) : "air"; });
-  }
-  // the keep: a walled courtyard round a hall
-  P.fill(cx - K, y + 1, cz - K, cx + K, y + 9, cz + K, "air");
-  P.fill(cx - K, y, cz - K, cx + K, y, cz + K, nb);
-  for (int dz = -K; dz <= K; dz += 4) for (int dx = -K; dx <= K; dx += 4) for (int q = 1; q <= kDepth(14); q++) P.put(cx + dx, y - q, cz + dz, nb);
-  P.fillf(cx - K, y + 1, cz - K, cx + K, y + 6, cz + K, [&](int x, int yy, int z) -> std::string_view { return (std::abs(x - cx) == K || std::abs(z - cz) == K) ? (yy - y == 3 && (x + z) % 3 == 0 ? std::string_view(fence) : std::string_view(nb)) : "air"; });
-  for (int d = -K; d <= K; d += 2) { P.put(cx + d, y + 7, cz - K, nb); P.put(cx + d, y + 7, cz + K, nb); P.put(cx - K, y + 7, cz + d, nb); P.put(cx + K, y + 7, cz + d, nb); }
-  for (auto [ax, az] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) for (int k = -1; k <= 1; k++) for (int h = 1; h <= 3; h++) P.put(cx + ax * K + -az * k, y + h, cz + az * K + ax * k, "air");
-  // the hall at the heart, and the nether wart garden beside it
-  P.fillf(cx - 3, y + 1, cz - 3, cx + 3, y + 5, cz + 3, [&](int x, int yy, int z) -> std::string_view { return (std::abs(x - cx) == 3 || std::abs(z - cz) == 3 || yy == y + 5) ? std::string_view(nb) : "air"; });
-  for (int h = 1; h <= 2; h++) P.put(cx, y + h, cz - 3, "air");
-  P.chest(cx - 2, y + 1, cz + 2, 2, "nether_fortress"); P.chest(cx + 2, y + 1, cz + 2, 2, "nether_fortress");
-  P.put(cx, y + 4, cz, "glowstone");
-  if (hasBlock("soul_sand")) for (int dz = -6; dz <= -5; dz++) for (int dx = -6; dx <= -2; dx++) { P.put(cx + dx, y, cz + dz, "soul_sand"); if (hasBlock("nether_wart")) P.put(cx + dx, y + 1, cz + dz, "nether_wart", 3); }
-  for (auto [a, b] : {std::pair{-K, -K}, {K, -K}, {-K, K}, {K, K}}) { P.fill(cx + a - 1, y + 1, cz + b - 1, cx + a + 1, y + 9, cz + b + 1, nb); P.put(cx + a, y + 10, cz + b, "glowstone"); }
-  P.chest(cx + 24, y + 1, cz + 1, 2, "nether_fortress");
-  P.spawner(cx + 6, y + 1, cz - 6, "wither_skeleton"); P.spawner(cx - 6, y + 1, cz + 6, "wither_skeleton"); P.spawner(cx + 24, y + 1, cz, "cinder_wisp");
-}
+// ---- Nether fortresses: Minecraft's bridges and castle (gen/structures_fortress.cpp) ----
+bool fortressPlanMC(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S);
+void fortressBuildMC(ChunkWriter& w, const StructurePlan& S);
 
 // ---- Floating Sanctums (batche.js): a quartz shrine on its own islet in open sky near the Skylands ----
 static bool sanctumPlan(const TerrainQuery& t, int x0, int z0, Mulberry32& rnd, StructurePlan& S) {
@@ -429,7 +389,7 @@ void registerStructureFarA() {   // places.js, STRUCTS 9..16
   regFar("bone_pit", "a Bone Pit", 280, 0.5, 20, 16, DIM_NETHER, bonePitPlan, bonePitBuild);
 }
 void registerStructureFarB() {   // nether2.js (20), batche.js (21)
-  regFar("nether_fortress", "a Nether Fortress", 520, 0.75, 60, 20, DIM_NETHER, fortressPlan, fortressBuild);
+  regFar("nether_fortress", "a Nether Fortress", 520, 0.75, 80, 20, DIM_NETHER, fortressPlanMC, fortressBuildMC);
   regFar("sky_sanctum", "a Floating Sanctum", 340, 0.55, 30, 21, DIM_AETHER, sanctumPlan, sanctumBuild);
 }
 
