@@ -10,6 +10,7 @@
 // One Redstone per World (realm), attached by the RedstoneLevel system; only the host runs circuits:
 // nothing here runs on a joined client (lv.isRemote()) — guests see the results as block changes.
 #pragma once
+#include "world/dirs.h"
 #include "sim/level.h"
 #include "core/itemstack.h"
 #include <unordered_set>
@@ -28,7 +29,7 @@ constexpr int D6X[6] = {0, 0, 0, 0, -1, 1}, D6Y[6] = {-1, 1, 0, 0, 0, 0}, D6Z[6]
 constexpr int OPP6[6] = {1, 0, 3, 2, 5, 4};
 constexpr int H2D6[4] = {2, 5, 3, 4};             // N E S W -> six-way
 constexpr int D62H[6] = {-1, -1, 0, 2, 3, 1};     // six-way -> N E S W
-constexpr int DIRX[4] = {0, 1, 0, -1}, DIRZ[4] = {-1, 0, 1, 0};   // N E S W
+// DIRX / DIRZ: world/dirs.h
 constexpr int TORCH_SUP[5] = {0, 4, 5, 2, 3};    // torch meta -> six-way side of the block it hangs on
 // rail shapes: 0 N-S, 1 E-W, 2-5 rising to E/W/N/S, 6-9 curves S-E, S-W, N-W, N-E; [shape][end] = {dx, dy, dz}
 extern const int RAIL_EXITS[10][2][3];

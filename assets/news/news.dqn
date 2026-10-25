@@ -12,5 +12,5 @@ DokuQuest is being rebuilt as a native C++ game, as close as possible to Alpha 0
 - **The Mod Studio is built in:** write DQ mods with templates and a syntax check, switch installed mods on and off, make data packs (blocks, items, recipes) without code, and browse the engine's source.
 - **Mods, like Fabric, Forge and OptiFine together:** JS mods with the original `DQ` API, data packs, native plugins, shader packs and resource packs.
 - **Updates from GitHub Releases:** the launcher checks for new versions, downloads and checks them, and keeps the previous version in case the new one won't start.
-- Linux AppImage and tar.gz, and a Windows zip. Your worlds are kept in the game folder.
+- Linux AppImage (and a tar.gz). A Windows build comes later. Your worlds are kept in the game folder.
 - Removed Herobrine.

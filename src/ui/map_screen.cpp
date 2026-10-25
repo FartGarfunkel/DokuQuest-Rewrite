@@ -59,7 +59,7 @@ public:
     if (in.down(Act::MenuDown)) mv.y -= 1;
     if (mv.x || mv.y) { cx += mv.x * (float)dt * 300 / k; cz -= mv.y * (float)dt * 300 / k; }
     for (auto& pad : in.pads()) {
-      auto pr = [&](int b) { return pad.btn[b] && !pad.prevBtn[b]; };
+      auto pr = [&](int b) { return b < 17 && pad.b[b] && !pad.prevB[b]; };   // standard layout: 2 = X, 3 = Y
       if (pr(SDL_CONTROLLER_BUTTON_X)) zoomBy(1 / 1.5f);
       if (pr(SDL_CONTROLLER_BUTTON_Y)) zoomBy(1.5f);
     }

@@ -1,7 +1,7 @@
 # Release: builds and publishes a DokuQuest release ONLY when you push a version tag yourself
 # (git tag v1.0.0-alpha.2 && git push origin v1.0.0-alpha.2) or start it by hand (Actions → Release → Run workflow).
 # Plain pushes never publish anything. Each release has:
-#   DokuQuest-<ver>-x86_64.AppImage, DokuQuest-<ver>-linux-x64.tar.gz, DokuQuest-<ver>-windows-x64.zip, SHA256SUMS.txt
+#   DokuQuest-<ver>-x86_64.AppImage, DokuQuest-<ver>-linux-x64.tar.gz, SHA256SUMS.txt (Linux only for now)
 # and its notes are the "## <ver> …" section of docs/CHANGELOG.md. The launcher's updater installs the newest one
 # (GitHub's "latest" release), so releases are published as full releases, not pre-releases.
 name: Release
@@ -88,31 +88,8 @@ jobs:
           name: dist-linux
           path: dist/DokuQuest-*
 
-  windows:
-    needs: version
-    runs-on: windows-2022
-    env:
-      VERSION: ${{ needs.version.outputs.version }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Fetch dependencies
-        shell: bash
-        run: bash tools/fetch_deps.sh
-      - name: Build (MSVC)
-        shell: bash
-        run: |
-          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DDQ_VERSION="$VERSION"
-          cmake --build build --config Release --parallel
-      - name: Package (zip)
-        shell: bash
-        run: bash tools/package.sh build "$VERSION" windows
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dist-windows
-          path: dist/DokuQuest-*
-
   publish:
-    needs: [version, linux, windows]
+    needs: [version, linux]
     runs-on: ubuntu-22.04
     env:
       VERSION: ${{ needs.version.outputs.version }}

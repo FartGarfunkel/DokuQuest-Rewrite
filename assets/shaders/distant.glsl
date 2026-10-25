@@ -25,7 +25,7 @@ void main() {
 }
 #endif
 #ifdef FRAGMENT
-uniform float uDay, uMinLight, uCell;
+uniform float uDay, uCell;   // uMinLight: common.glsl
 uniform vec2 uTileWorld;               // tile corner in world x,z (mod 8192) for the variety pattern
 uniform sampler2D uMask;
 uniform vec3 uMaskO;                   // mask corner relative to the camera's block, mask size in blocks

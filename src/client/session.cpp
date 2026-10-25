@@ -11,6 +11,8 @@
 #include "ui/magic_screens.h"
 #include "render/content_layers.h"
 #include "render/creature_layer.h"
+#include "client/play.h"
+#include "gen/structures_api.h"
 #include <imgui.h>
 
 namespace dq {
@@ -55,6 +57,10 @@ void GameSession::spawnPlayer() {
   else {
     p->mode = level->info.mode;
     vec3 sp = level->info.spawn;
+    float yaw = 0;
+    const char* at = std::getenv("DQ_SPAWN_AT");   // tests: "x,y,z" or a structure kind (gen/structures_api.h)
+    if (at && level->gen && debugSpawnPoint(*level->gen, at, sp, yaw)) p->yaw = yaw;
+    else if (sp.y < 0 && level->gen && villageStartPoint(*level->gen, sp, yaw)) { level->info.spawn = sp; p->yaw = yaw; }   // villages.js: a new world starts at a village's edge
     if (sp.y < 0) {
       DimGenerator* g = level->gen->forDim(DIM_OVERWORLD);
       int sx = 0, sz = 0, h = g ? g->spawnHeight(0, 0) : 100;
@@ -82,107 +88,7 @@ void GameSession::save() {
 }
 
 void GameSession::tickLocalPlayer(double dt) {
-  Player& p = *player;
-  Input& in = app.input;
-  World& w = world();
-  bool menu = app.topScreen() != nullptr;
-  vec2 look = menu ? vec2(0) : in.lookDelta();
-  p.yaw -= look.x; p.pitch = clampv(p.pitch - look.y, -1.55f, 1.55f);
-  vec2 mv = menu ? vec2(0) : in.moveAxis();
-  bool creative = p.creative();
-  if (creative && in.pressed(Act::Jump)) {
-    static double lastJump = -1;
-    if (app.time - lastJump < 0.3) p.flying = !p.flying;
-    lastJump = app.time;
-  }
-  p.sneaking = !menu && in.down(Act::Sneak);
-  if (!menu && in.down(Act::Sprint) && mv.y > 0) p.sprinting = true;
-  if (mv.y <= 0) p.sprinting = false;
-  float speed = p.flying ? (p.sprinting ? 21.6f : 10.8f) : p.sneaking ? 1.3f : p.sprinting ? 5.6f : 4.3f;
-  vec3 fwd(-std::sin(p.yaw), 0, -std::cos(p.yaw)), right(std::cos(p.yaw), 0, -std::sin(p.yaw));
-  vec3 wish = (fwd * mv.y + right * mv.x) * speed;
-  BlockId feet = w.getBlock(ifloor(p.pos.x), ifloor(p.pos.y + 0.1f), ifloor(p.pos.z));
-  p.inWater = reg().tLiquid[feet] == 1; p.inLava = reg().tLiquid[feet] == 2;
-  if (p.flying) {
-    p.vel = wish;
-    if (!menu && in.down(Act::Jump)) p.vel.y = speed; else if (!menu && in.down(Act::Sneak)) p.vel.y = -speed; else p.vel.y = 0;
-  } else {
-    float accel = p.onGround ? 14.f : 3.f;
-    p.vel.x += (wish.x - p.vel.x) * std::min(1.f, accel * (float)dt);
-    p.vel.z += (wish.z - p.vel.z) * std::min(1.f, accel * (float)dt);
-    if (p.inWater || p.inLava) {
-      p.vel *= std::pow(0.2f, (float)dt);
-      p.vel.y -= 4.f * (float)dt;
-      if (!menu && in.down(Act::Jump)) p.vel.y = std::min(p.vel.y + 18.f * (float)dt, 3.5f);
-    } else {
-      p.vel.y -= 32.f * (float)dt;
-      p.vel.y = std::max(p.vel.y, -78.4f);
-      if (!menu && in.down(Act::Jump) && p.onGround) p.vel.y = 9.0f;
-    }
-  }
-  vec3 before = p.pos;
-  MoveResult r = moveBox(w, p.pos, p.w, p.h, p.vel * (float)dt, p.onGround && !p.flying ? 0.6f : 0.f);
-  if (r.hitX) p.vel.x = 0;
-  if (r.hitZ) p.vel.z = 0;
-  if (r.hitY) { if (p.vel.y < 0 && !p.flying && p.fallDist > 3 && !creative) p.hp -= p.fallDist - 3; p.vel.y = 0; p.fallDist = 0; }
-  else if (p.vel.y < 0) p.fallDist += before.y - p.pos.y;
-  p.onGround = r.onGround;
-  if (p.onGround && p.flying && creative) p.flying = false;
-  // never fall out of the world below the End
-  if (p.pos.y < -64) { p.pos = level->info.spawn; p.vel = vec3(0); }
-
-  // hotbar
-  if (!menu) {
-    for (int i = 0; i < 9; i++) if (in.pressed((Act)((int)Act::Hot1 + i))) p.selected = i;
-    if (in.wheel() != 0) p.selected = floormod(p.selected - (int)in.wheel(), 9);
-    if (in.pressed(Act::HotNext)) p.selected = (p.selected + 1) % 9;
-    if (in.pressed(Act::HotPrev)) p.selected = (p.selected + 8) % 9;
-    if (in.pressed(Act::Debug)) debugOverlay = !debugOverlay;
-    if (in.pressed(Act::HideHud)) hudHidden = !hudHidden;
-    if (in.pressed(Act::View)) viewMode = (viewMode + 1) % 3;
-    if (in.pressed(Act::Screenshot)) app.takeScreenshot();
-  }
-
-  // crosshair target, mining and placing (the full rules live in sim/ gameplay systems)
-  glm::dvec3 eye = glm::dvec3(p.pos) + glm::dvec3(0, 1.62, 0);
-  vec3 dir(-std::sin(p.yaw) * std::cos(p.pitch), std::sin(p.pitch), -std::cos(p.yaw) * std::cos(p.pitch));
-  target = raycastBlocks(w, eye, dir, creative ? 6.f : 5.f);
-  if (menu) { breaking = false; return; }
-  if (target.hit && in.down(Act::Attack)) {
-    if (!breaking || target.block != breakBlock) { breaking = true; breakBlock = target.block; breakProgress = 0; }
-    const BlockDef& b = reg().block(target.id);
-    float hard = b.hardness < 0 ? 1e9f : b.hardness;
-    float t = creative ? 0 : std::max(0.05f, hard * 1.5f);
-    breakProgress += (float)dt;
-    if (breakProgress >= t && (creative ? in.pressed(Act::Attack) || breakProgress > 0.25f : true)) {
-      ivec3 bp = target.block;
-      json args = json::array({p.name, bp.x, bp.y, bp.z, b.key});
-      if (app.events.emit("blockBreak", args)) {
-        w.setBlock(bp.x, bp.y, bp.z, AIR, 0, SetFlags::Urgent);
-        if (!creative && !b.drop.empty()) p.give(ItemStack(b.drop, 1));
-        if (app.audio) app.audio->materialAt(b.sound, "dig", vec3(bp) + vec3(0.5f));
-      }
-      breaking = false; breakProgress = 0;
-    }
-  } else breaking = false;
-  if (target.hit && in.pressed(Act::Use)) {
-    ItemStack& h = p.held();
-    const ItemDef* it = h.def();
-    if (it && !it->block.empty()) {
-      ivec3 np = target.block + target.normal;
-      BlockId id = reg().blockId(it->block);
-      vec3 lo = vec3(np), hi = lo + vec3(1);
-      AABB pb{p.pos - vec3(p.w, 0, p.w), p.pos + vec3(p.w, p.h, p.w)};
-      BlockId there = w.getBlock(np.x, np.y, np.z);
-      if (id && (!reg().tSolid[id] || !pb.overlaps({lo, hi})) && (there == AIR || reg().tReplaceable[there])) {
-        if (app.events.emit("blockPlace", json::array({p.name, np.x, np.y, np.z, it->block}))) {
-          w.setBlock(np.x, np.y, np.z, id, 0, SetFlags::Urgent);
-          if (!creative && --h.n <= 0) h.clear();
-          if (app.audio) app.audio->materialAt(reg().block(id).sound, "place", vec3(np) + vec3(0.5f));
-        }
-      }
-    }
-  }
+  clientTickLocalPlayer(*this, dt);   // client/play.cpp -> sim/controller (the rules live in sim/)
 }
 
 void GameSession::update(double dt) {
@@ -205,17 +111,7 @@ void GameSession::update(double dt) {
   w.stream(anchors, 3.0);
   // camera
   Camera& cam = frame.cam;
-  cam.pos = glm::dvec3(player->pos) + glm::dvec3(0, player->sneaking ? 1.5 : 1.62, 0);
-  cam.yaw = player->yaw; cam.pitch = player->pitch;
-  if (viewMode) {
-    vec3 f = vec3(-std::sin(cam.yaw) * std::cos(cam.pitch), std::sin(cam.pitch), -std::cos(cam.yaw) * std::cos(cam.pitch));
-    float back = viewMode == 1 ? -4.f : 4.f;
-    RayHit h = raycastBlocks(w, cam.pos, glm::normalize(f * back), 4.f);
-    float d = h.hit ? std::max(0.3f, h.dist - 0.3f) : 4.f;
-    cam.pos += glm::dvec3(glm::normalize(f * back) * d);
-    if (viewMode == 2) { cam.yaw += PI; cam.pitch = -cam.pitch; }
-  }
-  cam.fov = app.settings.fov;
+  clientPlayerCamera(*this, cam, dt);   // client/play.cpp: eye height, view bob, shoulder/behind/front views
   int dw, dh; SDL_GL_GetDrawableSize(app.window, &dw, &dh);
   cam.aspect = dh > 0 ? (float)dw / dh : 1.f;
   cam.farZ = std::max(1024.f, (float)app.settings.farTerrain + 512.f);

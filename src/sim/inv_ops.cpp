@@ -8,31 +8,11 @@ namespace dq {
 static const char* GRP_NAMES[] = {"main", "armor", "off", "back", "hook", "charm", "cape", "bp", "grid", "cont", "furn", "out"};
 const char* grpName(Grp g) { return (int)g < (int)Grp::Count ? GRP_NAMES[(int)g] : "?"; }
 
-int maxStackOf(const std::string& key) { const ItemDef* d = reg().item(key); return d ? d->maxStack : 64; }
 static bool hasContents(const ItemStack& s) { return s.tag.is_object() && s.tag.contains("c"); }
 bool stacksMerge(const ItemStack& a, const ItemStack& b) {
   if (a.empty() || b.empty() || a.id != b.id || a.d || b.d || hasContents(a) || hasContents(b) || maxStackOf(a.id) <= 1) return false;
   auto norm = [](const json& t) { return t.is_object() && !t.empty() ? t : json(); };
   return norm(a.tag) == norm(b.tag);   // dye colour, map id... must agree
-}
-int addToSlots(std::vector<ItemStack>& slots, ItemStack& s, const std::vector<int>* order) {
-  if (s.empty()) return 0;
-  std::vector<int> all; if (!order) { all.resize(slots.size()); for (size_t i = 0; i < slots.size(); i++) all[i] = (int)i; order = &all; }
-  int max = maxStackOf(s.id);
-  if (max > 1 && !hasContents(s) && !s.d) {
-    for (int i : *order) {
-      if (i < 0 || i >= (int)slots.size()) continue;
-      ItemStack& t = slots[i];
-      if (!t.empty() && stacksMerge(t, s) && t.n < max) { int k = std::min(max - t.n, s.n); t.n += k; s.n -= k; if (!s.n) return 0; }
-    }
-  }
-  for (int i : *order) {
-    if (i < 0 || i >= (int)slots.size() || !slots[i].empty()) continue;
-    int k = std::min(max, s.n);
-    slots[i] = s; slots[i].n = k; s.n -= k;
-    if (!s.n) return 0;
-  }
-  return s.n;
 }
 
 static std::vector<ItemStack> loadArr(const json& j, size_t n) {

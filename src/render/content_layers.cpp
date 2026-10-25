@@ -53,7 +53,7 @@ SmallModel& hookModel() {
 vec2 lightAt(World& w, vec3 p) { u8 l = w.getLight(ifloor(p.x), ifloor(p.y), ifloor(p.z)); return vec2((l >> 4) / 15.f, (l & 15) / 15.f); }
 // where the line leaves the player (the rod's tip, or the hand that threw the hook)
 vec3 tipOf(const GameSession& s, const Player& p, float fwd, float side, float up) {
-  vec3 l = lookDir(p), r(std::cos(p.yaw), 0, -std::sin(p.yaw));
+  vec3 l = lookVec(p), r(std::cos(p.yaw), 0, -std::sin(p.yaw));
   return p.pos + vec3(0, EYE, 0) + l * fwd + r * side + vec3(0, up, 0);
 }
 std::vector<vec3> sagLine(vec3 a, vec3 b, float sag, int N, const Camera& cam) {
@@ -159,7 +159,7 @@ public:
         VR.draw(M.gl, m, VoxelLight{L.x, L.y});
         // the line, from the rod's tip, sagging unless something's pulling
         bool fp = p == s.player && s.viewMode == 0;
-        vec3 tip = fp ? tipOf(s, *p, 0.95f, 0.42f, 0.18f) : p->pos + vec3(0, 1.9f, 0) + lookDir(*p) * vec3(1.1f, 0.6f, 1.1f) + vec3(std::cos(p->yaw), 0, -std::sin(p->yaw)) * 0.5f;
+        vec3 tip = fp ? tipOf(s, *p, 0.95f, 0.42f, 0.18f) : p->pos + vec3(0, 1.9f, 0) + lookVec(*p) * vec3(1.1f, 0.6f, 1.1f) + vec3(std::cos(p->yaw), 0, -std::sin(p->yaw)) * 0.5f;
         vec3 end = b->pos + vec3(0, 0.24f, 0);
         float d = std::hypot(end.x - tip.x, end.z - tip.z);
         float sag = b->biteT > 0 ? 0.02f : b->state == Bobber::Float ? 0.12f + d * 0.025f : 0.06f;

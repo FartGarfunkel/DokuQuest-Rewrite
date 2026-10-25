@@ -3,12 +3,13 @@
 // furnace rules (core/items.js SMELTING, game/game.js tickFurnace, game/itemfix.js). Pure logic: the server
 // can validate crafting with it.
 #pragma once
+#include "sim/worldsys.h"   // fuelValue, smeltResult(input, kind), tickFurnace (the gameplay code owns furnaces)
 #include "core/itemstack.h"
 #include <map>
 
 namespace dq {
 
-constexpr double SMELT_TIME = 5;   // seconds per item
+// SMELT_TIME comes from sim/worldsys.h
 
 // What the crafting grid spells. idx >= 0: reg().recipes[idx]; -1: a special recipe (repair, dye, maps).
 struct CraftMatch {
@@ -51,9 +52,6 @@ std::string dyeMix(const std::vector<std::string>& hexes);
 std::string recolorKey(const std::string& key, const std::string& colour);   // "" if none
 
 // furnaces: kind = "furnace" | "smoker" | "blast" (BlockDef props "furnace")
-int fuelValue(const std::string& key);                                  // items smelted per fuel item
-std::string smeltResult(const std::string& kind, const std::string& input);   // "" = nothing
-bool tickFurnace(json& e, double dt, const std::string& kind);          // one step; true when something visible changed
 
 // optional hooks for systems that live elsewhere (maps): zooming a map out returns the new map id or ""
 struct CraftHooks { std::function<std::string(const std::string& mapId)> mapZoom; };

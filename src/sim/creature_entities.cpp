@@ -206,7 +206,7 @@ public:
         if (kind == "snow") if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.1f)) { DamageSrc d; d.knock = 2; damageEntity(lv, *c, c->type == "cinder_golem" ? 1 : 0.001f, owner, "projectile", d); splat(lv, kind); return; }
         if (solidAt(wd, pos)) { splat(lv, kind); return; }
       }
-      if (kind == "spit" && frand() < dt * 20) burst(lv, pos, "white", 1, 0.1f);
+      if (kind == "spit" && frand() < dt * 20) mobBurst(lv, pos, "white", 1, 0.1f);
       return;
     }
     if (age > 5) { removed = true; return; }
@@ -222,8 +222,8 @@ public:
     }
     if (frand() < dt * 40) flame(lv, pos);
   }
-  void explodeFx(Level& lv) { removed = true; burst(lv, pos, "fireball", 10, 0.8f); lv.fx->sound("burn", pos); }
-  void splat(Level& lv, const std::string& kind) { removed = true; if (kind == "snow") burst(lv, pos, "snow", 8, 2); else burst(lv, pos, "white", 10, 0.8f); }
+  void explodeFx(Level& lv) { removed = true; mobBurst(lv, pos, "fireball", 10, 0.8f); lv.fx->sound("burn", pos); }
+  void splat(Level& lv, const std::string& kind) { removed = true; if (kind == "snow") mobBurst(lv, pos, "snow", 8, 2); else mobBurst(lv, pos, "white", 10, 0.8f); }
 };
 
 // ------------------------------------------------------------------ hex flasks (monsters.js)
@@ -247,7 +247,7 @@ public:
     Entity* own = lv.entity(data.value("owner", 0u));
     auto* oc = dynamic_cast<Creature*>(own);
     lv.fx->sound("splash_small", pos);
-    burst(lv, pos, kind == "poison" ? "venom_sac" : "ice", 16, 1.6f);
+    mobBurst(lv, pos, kind == "poison" ? "venom_sac" : "ice", 16, 1.6f);
     for (Entity* q : pawnsOf(lv, realm)) {
       if (glm::distance(q->pos + vec3(0, 0.9f, 0), pos) > 3) continue;
       if (kind == "poison") setPlayerEffect(*q, "poison", std::max(playerEffect(*q, "poison"), 7.f)); else setPlayerEffect(*q, "slow", std::max(playerEffect(*q, "slow"), 8.f));
@@ -289,7 +289,7 @@ public:
     }
     for (int i = 0; i < 24 && bl.size(); i++) {
       float d = frand() * height, x = pos.x + 0.5f + fx * d, z = pos.z + 0.5f + fz * d;
-      burst(lv, vec3(x, landingY(wd, x, z, height) + 0.2f, z), bl[(size_t)(frand() * bl.size()) % bl.size()][3].get<std::string>(), 1, 0.8f);
+      mobBurst(lv, vec3(x, landingY(wd, x, z, height) + 0.2f, z), bl[(size_t)(frand() * bl.size()) % bl.size()][3].get<std::string>(), 1, 0.8f);
     }
     removed = true;
   }

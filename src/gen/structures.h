@@ -12,6 +12,7 @@
 // worker thread: plan()/build()/flatten() must be thread-safe and deterministic).
 #pragma once
 #include "gen/gendefs.h"
+#include <memory>
 #include <mutex>
 #include <unordered_map>
 
@@ -48,7 +49,11 @@ struct StructurePlan {
   int cx = 0, cz = 0;       // centre
   int rot = 0;
   u32 seed = 0;             // lairSeed(seed, rx, rz, 9200 + type)
-  json data;                // anything else the placer keeps (rooms, spawners...)
+  json data;                // anything else the placer keeps, in the original's shape (residents, spawners, boss, folk...)
+  int hashDy = 0;           // the original's base y minus y: added to y in per-block hashes and loot seeds, so random
+                            // picks (cracked bricks, loot) match the original's at the same place in the structure
+  bool surface = false;     // stands on the land (the original's S.surface): trees are kept off it
+  std::shared_ptr<const void> ext;   // the placer's own C++ data (rooms, buildings...): build() casts it back
 };
 
 // Writes one structure into the chunk being generated (the original sPut). y is band-local.
@@ -89,10 +94,23 @@ struct StructureType {
   // only asked for points within flattenPad of the footprint
   std::function<bool(const StructurePlan& s, int x, int z, double& weight, int& targetY)> flatten;
   int flattenPad = 0;
+  // --- placement variants (gen/structures_*.cpp) ---
+  int jsIndex = -1;                // the original's STRUCTS index for seeds and ids (-1 = the registration index)
+  // custom per-region placement, replacing chance/margin/candidate and the clearance check (villages, dungeons,
+  // dragon lairs, End cities use their own seeds and rules): fill `out` (id, seed too) and return true
+  std::function<bool(const class StructureIndex& idx, const TerrainQuery& t, int rx, int rz, StructurePlan& out)> place;
+  // plans fixed once for the whole world (strongholds): `region` is then ignored
+  std::function<void(const TerrainQuery& t, std::vector<StructurePlan>& out)> global;
+  // does a plan keep trees off (x, z)? (default: plans with `surface` set, within 3 blocks of the footprint)
+  std::function<bool(const StructurePlan& s, int x, int z)> treeOff;
+  int treePad = 3;                 // how far beyond the footprint treeOff may answer yes
 };
 
 int registerStructure(StructureType t);              // returns the type index (registration order = priority)
 const std::vector<StructureType>& structureTypes();
+int structureTypeIndex(const std::string& key);       // -1 = none
+// Indexes made while this is off have no structures (tools comparing terrain with and without them).
+void setStructuresEnabled(bool on);
 
 class StructureIndex {
 public:
@@ -103,13 +121,22 @@ public:
   void build(GenBuf& buf, Chunk& c) const;                                    // every plan overlapping the chunk
   bool flatten(int x, int z, double& weight, int& targetY) const;            // the strongest levelling here
   bool flagged(int x, int z, int pad, u32 flag) const;                        // inside (pad) a structure with flag
+                                                                               // (SF_SURFACE: asks the plans' treeOff)
+  // the nearest plan of a type to (x, z), searching `maxRegions` regions out (null = none found)
+  const StructurePlan* nearest(int type, int x, int z, int maxRegions = 8) const;
+  const std::vector<int>& typeList() const { return types; }
+  const TerrainQuery& terrain() const { return t; }
 private:
+  const std::vector<StructurePlan>& globals(int type) const;
+  const std::vector<const StructurePlan*>& chunkPlans(int cx, int cz) const;   // every plan within 16 of a chunk (memo)
   const TerrainQuery& t;
   int realm;
   std::vector<int> types;                  // type indices that apply to this band/realm
   bool anyFlatten = false;
   mutable std::mutex mx;
   mutable std::unordered_map<u64, std::unique_ptr<StructurePlan>> cache;   // null = no structure there
+  mutable std::unordered_map<int, std::unique_ptr<std::vector<StructurePlan>>> globalCache;
+  u64 serial;
 };
 
 } // namespace dq

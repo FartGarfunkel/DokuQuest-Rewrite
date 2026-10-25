@@ -27,11 +27,7 @@ float shipHalfAt(float lz) { return lz < SHIP.bow + 2.4f ? SHIP.halfW * clampv((
 bool onShipDeck(float lx, float lz, float inset) { return lz > SHIP.bow + 0.2f + inset && lz < SHIP.stern - inset && std::fabs(lx) < shipHalfAt(lz) - inset; }
 
 void vehToast(Level& lv, const Player& p, const std::string& text, const std::string& kind) { lv.fx->message(p.id, text, kind); }
-bool waterAt(const World& w, int x, int y, int z) {
-  BlockId id = w.getBlock(x, y, z);
-  if (reg().tLiquid[id] == 1) return true;
-  return reg().tWlog[id] && (w.getMeta(x, y, z) & 0x80) != 0;
-}
+// waterAt: world/shapes_compat.cpp
 void moveVehicle(Level& lv, Entity& e, double dt, bool* hitWall) {
   World& w = lv.world(e.realm);
   MoveResult r = moveBox(w, e.pos, e.w, e.h, e.vel * (float)dt, 0);

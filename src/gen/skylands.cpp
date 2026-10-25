@@ -18,6 +18,9 @@ int SkylandsGen::islandTop(int wx, int wz) const {
   return 70 + jsFloor(nHill.fbm2(wx / 60.0, wz / 60.0, 3) * 10) + SKY_DY;
 }
 
+double SkylandsGen::islandMask(int wx, int wz) const { return nCont.fbm2(wx / 180.0, wz / 180.0, 3); }
+int SkylandsGen::hillTop(int wx, int wz) const { return 70 + jsFloor(nHill.fbm2(wx / 60.0, wz / 60.0, 3) * 10) + SKY_DY; }
+
 void SkylandsGen::generate(Chunk& ch) {
   GenBuf& b = GenBuf::local();
   for (int i = 0; i < 256; i++) { ch.climate[i * 2] = 160; ch.climate[i * 2 + 1] = 190; }

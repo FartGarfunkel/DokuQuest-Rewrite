@@ -20,6 +20,7 @@ struct TileSet {
   std::vector<u8> rgba;          // count * size*size * 4
   std::vector<u8> height;        // count * size*size
   std::vector<u8> emissive;      // count * size*size (glowing micro-voxels: lava, ores, torch flames), 0..255
+  std::vector<u8> res;           // count: pixels across the source picture (16 = code-painted at 16 and doubled, 32 = full)
   std::unordered_map<std::string, int> index;   // tile name -> layer
   std::string packName;          // resource pack applied ("" = built-in)
   u8* tile(int i) { return rgba.data() + (size_t)i * size * size * 4; }
@@ -34,6 +35,12 @@ void deriveMicroVoxelHeights(TileSet& ts);   // relief from colour (mortar/crack
 // resolves settings.resourcePack ("auto" = GeruDoku if present) and applies it (assets/packs.cpp)
 std::string applyResourcePack(TileSet& ts, const std::string& choice);
 std::vector<std::string> listResourcePacks();
+int appendTile(TileSet& ts, const u8* rgba32x32);   // adds a tile (animation frames), returns its layer
+
+// Biome colour from the active pack's colormap (textures/colormap/grass.png or foliage.png), Minecraft's
+// lookup: x = (1 - temp), y = (1 - humid * temp). kind "grass"/"foliage"; ok = false when no pack colormap.
+// Same packing as climateTint (r | g << 8 | b << 16). Safe to call from mesher threads.
+u32 packTint(const char* kind, u8 temp, u8 humid, bool& ok);
 
 // decode/encode PNG (stb)
 bool loadPng(const fs::path& p, int& w, int& h, std::vector<u8>& rgba);
