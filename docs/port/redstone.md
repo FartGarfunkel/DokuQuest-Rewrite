@@ -1,7 +1,7 @@
 # Port notes: redstone, rails & minecarts, boats & ships, machines
 
 Workstream files: `src/sim/redstone*.{h,cpp}`, `sim/rsplace.cpp`, `sim/minecart.{h,cpp}`, `sim/vehicles.{h,cpp}`,
-`sim/machines.{h,cpp}`, `data/machines.json`, `tools/test_redstone.cpp`. Test: `build/test_redstone` (78 checks; the
+`sim/machines.{h,cpp}`, `data/machines.json`, `tools/test_redstone.cpp`. Test: `build/test_redstone` (81 checks; the
 expected values are what the original's probes `redstone06.js` / `rsplace06.js` print on 0.9.0.90, plus ship084.js,
 trains, machines, TNT and save/load).
 
@@ -47,13 +47,23 @@ trains, machines, TNT and save/load).
 - Animated like the original: cart wheels roll, TNT carts and lit TNT flash, the furnace glows while burning, sails
   fill and swing with the boom/yard, pennants stream downwind, oars row, axles/windmills/waterwheels/millstone/saw/
   rollers/harvester arms turn with their group's angle, belt slats run, piston heads and pushed blocks slide.
-- Riding glue: `afterPlayerMove` calls `vehicleInput` from the app's input when the controller didn't, then
+- Riding glue: the controller (sim/controller.cpp) emits `itemUse` (mounting, levers...) and its sneak-dismount calls the
+  vehicle's own dismount (one line in sim/build.cpp `PlayerController::dismount`); `afterPlayerMove` calls `vehicleInput`
+  from the app's input when the controller didn't, then
   `vehiclesAfterPlayerMove`. Container screens: "screenOpen" -> `openInventory` (block pos, or `InvOpen::entItems`
   for chest/hopper carts and boat chests — two fields added to sim/inv_ops InvOpen, read/written in InvSession).
 - Dev aid: `DQ_DEV_RS=1` sets carts, boats, the ship and a windmill in front of you.
 
+## Town gates (game/towns3.js gateLeverAt / gateToggle / gateSet)
+- `gateLever()` in sim/rsplace.cpp: using the lever just inside a walled town's gateway opens a shut gate (removes its
+  `gate_barrier` cells) or lets it down again (not on anyone standing in it; "Something is in the way of the gate"),
+  with the door/iron-door sound. Gates come from the village plan's `data["gates"]` (gen/structures_villages.cpp).
+  A joined client asks the host (`netAction` "gateLever"). Tested on a generated walled village (Glenton).
+- Not ported (towns workstream): `gatesTick` — the town opening its gates by day, shutting them at dusk, the watch
+  opening for you at night, using the barrier itself to open it. Until then gates stay as generated (shut) or as the
+  lever left them.
+
 ## Left to do
-- The player controller must emit `itemUse` (gameplay) for any of the placing/using to happen in game.
 - The ship/boat water mask (hide water inside hulls, a depth-only lid in boats2.js).
 - Riding on joined clients (vehicles are ghosts there: forward input with `lv.net->action`), net `ride/own/unown`.
 - Carry On wiring (gameplay); torch placement stays with gameplay rules.

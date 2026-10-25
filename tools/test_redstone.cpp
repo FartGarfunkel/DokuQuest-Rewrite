@@ -11,6 +11,7 @@
 #include "sim/minecart.h"
 #include "sim/vehicles.h"
 #include "sim/machines.h"
+#include "gen/structures_api.h"
 #include <thread>
 #include <cstdio>
 
@@ -343,6 +344,39 @@ int main(int argc, char** argv) {
     check(n2 == nCarts && l2 == nLinks && nLinks == 2, "carts and their joins come back after loading (" + std::to_string(n2) + "/" + std::to_string(nCarts) + " carts, " + std::to_string(l2) + "/" + std::to_string(nLinks) + " joins)");
     check(boats >= 3 && chests == 1, "boats come back, with the chest aboard");
     lv2->close();
+  }
+
+  // =============================================================== a walled town's gate lever (towns3.js)
+  {
+    LevelInfo gi; gi.name = "Gates"; gi.seedText = "gates"; gi.mode = "creative";
+    auto gl = Level::create(fs::path(ud) / "saves", gi, &pool, &bus);
+    World& gw = gl->world();
+    const json* G = nullptr; const StructurePlan* S = nullptr;
+    for (int r = 0; r < 4 && !G; r++) {
+      S = locateStructure(*gl->gen, DIM_OVERWORLD, "village", r * 900, r * 600, 12);
+      if (S && S->data.contains("gates") && S->data["gates"].is_array() && !S->data["gates"].empty()) G = &S->data["gates"][0];
+    }
+    if (!G) printf("skip gate lever: no walled village found\n");
+    else {
+      const int base = dimBase(DIM_OVERWORLD);
+      ivec3 L(G->at("lever")[0].get<int>(), base + G->at("lever")[1].get<int>(), G->at("lever")[2].get<int>());
+      auto gp = std::make_unique<Player>(); gp->name = "Gatekeeper"; gp->mode = "creative"; gp->pos = vec3(L) + vec3(0.5f, 0, 2.5f);
+      Player& q = *static_cast<Player*>(gl->spawn(std::move(gp)));
+      double g0 = nowSeconds();
+      auto ready = [&] { for (auto& c : G->at("cells")) if (!gw.isLoaded(c[0], base + c[1].get<int>(), c[2])) return false; return gw.isLoaded(L.x, L.y, L.z); };
+      while (!ready() && nowSeconds() - g0 < 240) { gw.stream({{vec3(L), 3, false}}, 20); gw.pumpMain(20); std::this_thread::sleep_for(std::chrono::milliseconds(5)); }
+      BlockId bar = R.blockId("gate_barrier");
+      auto barriers = [&] { int n = 0; for (auto& c : G->at("cells")) n += gw.getBlock(c[0], base + c[1].get<int>(), c[2]) == bar; return n; };
+      int before = barriers();
+      check(ready() && gw.getBlock(L.x, L.y, L.z) == R.blockId("lever"), "the town gate's lever is there (" + S->name + ")");
+      q.inv[q.selected].clear();
+      bus.emit("itemUse", json::array({q.name, "", L.x, L.y, L.z, (int)FACE_PY}));
+      int after = barriers();
+      check(before > 0 && after == 0, "pulling the lever opens the gate (" + std::to_string(before) + " -> " + std::to_string(after) + ")");
+      bus.emit("itemUse", json::array({q.name, "", L.x, L.y, L.z, (int)FACE_PY}));
+      check(barriers() == before, "pulling it again lets the gate down");
+    }
+    gl->close();
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);
