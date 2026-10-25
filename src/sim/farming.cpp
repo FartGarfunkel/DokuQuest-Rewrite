@@ -47,7 +47,7 @@ bool farmingUse(UseCtx& u) {
   }
   if (!d->has("wateringCan")) return false;
   // the watering can: fill it at water, pour it on the crops around where you look
-  RayHit hit = raycastBlocks(w, glm::dvec3(p.pos) + glm::dvec3(0, EYE, 0), lookDir(p), REACH, true);
+  RayHit hit = raycastBlocks(w, glm::dvec3(p.pos) + glm::dvec3(0, EYE, 0), lookVec(p), REACH, true);
   if (!hit.hit) return true;
   if (reg().tLiquid[hit.id] == 1) {
     if (!held.tag.is_object()) held.tag = json::object();

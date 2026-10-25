@@ -33,7 +33,6 @@ void setMobStatus(Level& lv, Entity& e, const char* key, float secs, Player* by 
 float mobStatus(const Entity& e, const char* key);
 
 // ---- experience (game/player.js) ----
-inline int xpForLevel(int level) { return 12 + level * 6; }
 int addXP(Player& p, int n);                                     // returns levels gained
 void grantXP(Level& lv, Player& p, int n, const vec3* at = nullptr);   // with Insight and Mending (enchanting.js)
 void spendLevels(Player& p, int n);

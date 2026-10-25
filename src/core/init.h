@@ -24,5 +24,6 @@ void registerMagic();            // sim/magic.cpp (magic, enchanting, brewing, s
 void registerContent();          // sim/content.cpp (maps, farming, fishing, camping, travel, elytra, stable, places)
 void registerVillagers();        // sim/villagers.cpp (villages, villagers, quests, shops, paths, gates, raids)
 void registerCreatures();        // sim/creature_spawn.cpp (creature/projectile entities + the spawning system)
+void registerRedstone();         // sim/rsplace.cpp: redstone, minecarts, boats/ships, machines
 
 } // namespace dq

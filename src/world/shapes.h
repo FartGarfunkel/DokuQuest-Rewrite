@@ -9,6 +9,7 @@
 // Meta bits are exactly the original's (see the table at the top of shapes.cpp).
 // No GL here: this is dqcore, the dedicated server uses it too.
 #pragma once
+#include "world/dirs.h"
 #include "world/world.h"
 
 namespace dq {
@@ -82,9 +83,12 @@ struct BoxF { vec3 lo, hi; };
 bool blockShapeBoxes(const World& w, int x, int y, int z, int purpose, std::vector<BoxF>& out);
 
 // ---- helpers shared with the mesher and gameplay ----
-extern const int DIRX[4], DIRZ[4];                     // N E S W
+// DIRX / DIRZ: world/dirs.h
 extern const int D6X[6], D6Y[6], D6Z[6], OPP6[6], H2D6[4], D62H[6], D6_FACE[6], FACE_D6[6];
-constexpr u8 WLOG = 0x80;
+#ifndef DQ_WLOG_DEFINED
+#define DQ_WLOG_DEFINED
+constexpr u8 WLOG = 0x80;   // waterlogged meta bit
+#endif
 inline bool isWaterlogged(BlockId id, u8 meta);
 void rotBox(ShapeBox& b, int f);                       // north-facing box turned to face f (0 N, 1 E, 2 S, 3 W)
 void flipBox(ShapeBox& b);                             // upside down
@@ -107,4 +111,15 @@ void clothBoxes(BlockId id, u8 meta, std::vector<ShapeBox>& out);   // flags, ba
 
 inline bool isWaterlogged(BlockId id, u8 meta) { return reg().tWlog[id] && (meta & WLOG); }
 
+} // namespace dq
+
+// ---- gameplay compatibility (sim/physics, player, build...): the same shapes as pixel boxes ----------------
+namespace dq {
+struct PixBox { float x0, y0, z0, x1, y1, z1; };   // block-local, 1/16-block pixels
+enum : int { SHAPE_DRAW = ShapePurpose::Draw, SHAPE_COLLIDE = ShapePurpose::Collide, SHAPE_SELECT = ShapePurpose::Select };
+// boxes of block `id` at (x,y,z) (sinking onto bottom slabs and wall torches set back included); false = a plain full cube
+bool worldBoxes(const World& w, int x, int y, int z, BlockId id, int purpose, std::vector<PixBox>& out);
+bool hasShapeBoxes(BlockId id);                              // shaped or modelled (not a plain cube)
+float liquidHeight(BlockId id, u8 meta, BlockId above);      // surface height of a liquid cell (mesher.js)
+bool waterAt(const World& w, int x, int y, int z);           // water, counting waterlogged blocks as still sources
 } // namespace dq

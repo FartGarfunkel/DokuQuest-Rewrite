@@ -21,10 +21,7 @@ float frand() {
   static thread_local std::mt19937 rng{std::random_device{}()};
   return std::uniform_real_distribution<float>(0.f, 1.f)(rng);
 }
-vec3 lookDir(const Player& p) { return vec3(-std::sin(p.yaw) * std::cos(p.pitch), std::sin(p.pitch), -std::cos(p.yaw) * std::cos(p.pitch)); }
-void toast(Level& lv, const Player& p, const std::string& text, const std::string& kind) { lv.fx->message(p.id, text, kind); }
-void sfxUi(Level& lv, const Player& p, const std::string& name) { lv.fx->soundUi(p.id, name); }
-void sfxAt(Level& lv, const std::string& name, vec3 at, float range) { lv.fx->sound(name, at, range); }
+vec3 lookVec(const Player& p) { return vec3(-std::sin(p.yaw) * std::cos(p.pitch), std::sin(p.pitch), -std::cos(p.yaw) * std::cos(p.pitch)); }
 
 void hurtPlayer(Level& lv, Player& p, float amount, const std::string& type) {
   if (amount <= 0 || p.dead) return;
@@ -55,20 +52,6 @@ void useUpHeld(Player& p, int n) {
   if (creativeOf(p)) return;
   ItemStack& h = p.held();
   h.n -= n; if (h.n <= 0) h.clear();
-}
-bool wearHeld(Level& lv, Player& p, int n) {
-  if (creativeOf(p)) return false;
-  ItemStack& h = p.held();
-  const ItemDef* d = h.def();
-  if (!d || !d->hasTool || d->tool.durability <= 0) return false;
-  h.d += n;
-  if (h.d >= d->tool.durability) {
-    toast(lv, p, "Your " + toLower(d->name) + " broke", "warn");
-    sfxUi(lv, p, "break_tool");
-    h.clear();
-    return true;
-  }
-  return false;
 }
 int countItem(const Player& p, const std::string& id) {
   int n = 0;

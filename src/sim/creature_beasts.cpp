@@ -261,7 +261,7 @@ static OptMove beeAI(Level& lv, Creature& b, float dt) {
     if ((b.workT -= dt) <= 0) {
       b.pollen = true; b.visits++;
       b.hasFlower = false; b.beeState = b.visits >= 1 + b.wantVisits ? 2 : 0;
-      burst(lv, vec3(f) + vec3(0.5f, 0.4f, 0.5f), "pollen", 3, 0.3f);
+      mobBurst(lv, vec3(f) + vec3(0.5f, 0.4f, 0.5f), "pollen", 3, 0.3f);
     }
   }
   if (b.beeState == 2) {
@@ -281,7 +281,7 @@ static OptMove beeAI(Level& lv, Creature& b, float dt) {
         BlockId id = w.getBlock(cx, cy, cz); const BlockDef& d = reg().block(id);
         if (d.has("crop") && d.render == Render::Cross) {
           int stages = d.props["crop"].is_object() ? d.props["crop"].value("stages", 4) : 4; u8 m = w.getMeta(cx, cy, cz);
-          if (m < stages - 1) { w.setBlock(cx, cy, cz, id, m + 1); burst(lv, vec3(cx + 0.5f, cy + 0.5f, cz + 0.5f), "pollen", 3, 0.3f); }
+          if (m < stages - 1) { w.setBlock(cx, cy, cz, id, m + 1); mobBurst(lv, vec3(cx + 0.5f, cy + 0.5f, cz + 0.5f), "pollen", 3, 0.3f); }
           break;
         }
         if (reg().tSolid[id]) break;
@@ -391,7 +391,7 @@ static Move swimmerAI(Level& lv, Creature& m, Entity* p, float dist, float dyp, 
     if (m.puffed && !was) lv.fx->sound("puff", m.pos, 14);
     if (m.puffed && p && dist < 1.2f && std::fabs(dyp) < 1.4f && m.attackCd <= 0) { m.attackCd = 1; DamageSrc s; s.knock = 2; damageEntity(lv, *p, 1, &m, "mob", s); }
   }
-  if (m.hurtTime > 0.3f && T.sound == "squid" && !m.inked) { m.inked = true; burst(lv, m.pos + vec3(0, 0.5f, 0), "black_wool", 24, 1.6f); }
+  if (m.hurtTime > 0.3f && T.sound == "squid" && !m.inked) { m.inked = true; mobBurst(lv, m.pos + vec3(0, 0.5f, 0), "black_wool", 24, 1.6f); }
   if (m.hurtTime <= 0) m.inked = false;
   m.swimT -= dt;
   float want = T.speed, dir = m.hasSwimDir ? m.swimDir : m.yaw, ty = m.hasSwimY ? m.swimY : m.pos.y;
@@ -546,7 +546,7 @@ void Creature::farmTick(Level& lv, float dt) {
   if (T->woolly && sheared && onGround && frand() < dt / 45) {
     static BlockId grass = reg().blockId("grass"), dirt = reg().blockId("dirt"), tall = reg().blockId("tall_grass");
     int bx = ifloor(pos.x), by = ifloor(pos.y - 0.1f), bz = ifloor(pos.z);
-    if (grass && wd.getBlock(bx, by, bz) == grass) { wd.setBlock(bx, by, bz, dirt); sheared = false; burst(lv, pos + vec3(0, 0.2f, 0), "grass", 6, 0.5f); }
+    if (grass && wd.getBlock(bx, by, bz) == grass) { wd.setBlock(bx, by, bz, dirt); sheared = false; mobBurst(lv, pos + vec3(0, 0.2f, 0), "grass", 6, 0.5f); }
     else if (tall && wd.getBlock(bx, by + 1, bz) == tall) { wd.setBlock(bx, by + 1, bz, AIR); sheared = false; }
   }
 }
@@ -676,7 +676,7 @@ bool useOnCreature(Level& lv, Player& p, Creature& e, bool sneaking) {
       e.owner = p.name; e.tamed = true; e.kept = true; e.angryT = 0; e.foe = 0; e.panicT = 0; e.quarrel = 0; e.petFoe = 0; e.stay = false; e.loveT = 0;
       hearts(lv, e.pos + vec3(0, e.h, 0), 7); lv.fx->sound("levelup", e.pos, 12);
       toast("Tamed! The " + name + " is yours" + (mountable ? " (a saddle lets you ride it)" : ""), "good");
-    } else burst(lv, e.pos + vec3(0, e.h, 0), "smoke", 6, 0.4f);
+    } else mobBurst(lv, e.pos + vec3(0, e.h, 0), "smoke", 6, 0.4f);
     return true;
   }
   if (mine && held.empty()) {

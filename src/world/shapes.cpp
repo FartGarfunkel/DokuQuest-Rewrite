@@ -29,7 +29,6 @@
 
 namespace dq {
 
-const int DIRX[4] = {0, 1, 0, -1}, DIRZ[4] = {-1, 0, 1, 0};
 const int D6X[6] = {0, 0, 0, 0, -1, 1}, D6Y[6] = {-1, 1, 0, 0, 0, 0}, D6Z[6] = {0, 0, -1, 1, 0, 0};
 const int OPP6[6] = {1, 0, 3, 2, 5, 4};
 const int H2D6[4] = {2, 5, 3, 4};

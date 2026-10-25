@@ -2,6 +2,7 @@
 // armour, air bubbles, XP bar and level, held-item name, toasts and pick-ups, boss bar, dimension name,
 // F3 debug / FPS / coordinates, screen effects, damage numbers, name tags; the chat log and chat line
 // (game/commands.js chatEls/openChat/submitChat), the death screen. Also the in-game keys that open menus.
+#include "sim/inventory.h"
 #include "ui/ui.h"
 #include "ui/theme.h"
 #include "client/app.h"
@@ -210,7 +211,6 @@ std::unique_ptr<Screen> makeDeathScreen(const std::string& cause, int level) { r
 
 // ---- the HUD layer ------------------------------------------------------------------------------------------
 namespace {
-int armorPoints(const Player& p) { int n = 0; for (auto& s : p.armor) if (const ItemDef* d = s.empty() ? nullptr : s.def()) if (d->has("armor")) n += d->props["armor"].value("points", 0); return n; }
 int xpForLevel(int level) { return 12 + level * 6; }
 
 // Level::fx messages (command replies, chat lines, server notices) reach this player's chat and toasts; every

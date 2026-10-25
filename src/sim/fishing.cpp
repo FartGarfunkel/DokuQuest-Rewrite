@@ -181,7 +181,7 @@ float castWindOf(const Player& p) { auto it = winds().find(p.id); return it != w
 std::string heldRodModel(Level& lv, const Player& p) { return fishingOf(lv, p) ? "fishing_rod_cast" : "fishing_rod"; }
 
 static void castLine(Level& lv, Player& p) {
-  vec3 l = lookDir(p), r(std::cos(p.yaw), 0, -std::sin(p.yaw));
+  vec3 l = lookVec(p), r(std::cos(p.yaw), 0, -std::sin(p.yaw));
   auto b = std::make_unique<Bobber>();
   b->owner = p.id; b->realm = p.realm;
   b->pos = p.pos + vec3(0, EYE + 0.1f, 0) + l * 0.8f + r * 0.3f;

@@ -27,10 +27,8 @@ struct FrameCtx {
   int dim = 2;               // band the camera is in
   // sky & weather extras (render/sky.cpp fills them every frame)
   vec3 horizonColor{0.7f, 0.8f, 1.f};
-  float minLight = 0.05f;    // light floor of this land
   float rain = 0, thunder = 0, flash = 0;   // rain/snow 0..1 where the camera is (wet look), thunderstorm, lightning flash
   float mist = 0;            // mist, fog bank, sandstorm, blizzard 0..1
-  float sea = 0;             // sea swell 0..1 (bigger waves in a storm)
   float cloudBank = 0;       // inside the cloud bank between the Overworld and the Skylands
   vec2 windDir{1, 0};        // the way the wind blows (x, z); strength is `wind`
   bool underwater = false;

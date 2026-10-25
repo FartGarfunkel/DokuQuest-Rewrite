@@ -55,6 +55,10 @@ add_executable(dq-creature-test tools/test/creature_test.cpp)
 target_link_libraries(dq-creature-test PRIVATE dqcore)
 add_test(NAME creatures COMMAND dq-creature-test)
 
+# headless gameplay checks (sim/ only, no graphics): ./build/dq-test-gameplay
+add_executable(dq-test-gameplay tools/test_gameplay.cpp)
+target_link_libraries(dq-test-gameplay PRIVATE dqcore)
+
 if(WIN32)
   set_target_properties(dokuquest dokuquest-launcher PROPERTIES WIN32_EXECUTABLE ON)
   target_link_libraries(dqclient PUBLIC SDL2::SDL2main)
@@ -69,7 +73,7 @@ if(DQ_PORTABLE AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 # Runtime data next to the executables (data/, assets/)
-foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool)
+foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-test-gameplay)
   add_custom_command(TARGET ${t} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:${t}>/data
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:${t}>/assets)
@@ -110,3 +114,8 @@ target_link_libraries(test_villagers PRIVATE dqcore)
 add_custom_command(TARGET test_villagers POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_villagers>/data)
 add_test(NAME villagers COMMAND test_villagers)
+# Redstone, rails/carts, boats/ships and machines test (headless). Run: build/test_redstone
+add_executable(test_redstone tools/test_redstone.cpp)
+target_link_libraries(test_redstone PRIVATE dqcore)
+add_custom_command(TARGET test_redstone POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_redstone>/data)

@@ -248,7 +248,7 @@ static OptMove monsterAI(Level& lv, Creature& m, Entity* p, float dist, float dy
     m.drinkCd -= dt;
     if (m.drinkT > 0) {
       m.drinkT -= dt; m.heldItem = "glass_bottle";
-      if (m.drinkT <= 0) { m.hp = std::min(m.maxHp, m.hp + 8); m.heldItem.clear(); lv.fx->sound("burp", m.pos + vec3(0, 1.5f, 0)); burst(lv, m.pos + vec3(0, 1.8f, 0), "white", 6, 0.4f); }
+      if (m.drinkT <= 0) { m.hp = std::min(m.maxHp, m.hp + 8); m.heldItem.clear(); lv.fx->sound("burp", m.pos + vec3(0, 1.5f, 0)); mobBurst(lv, m.pos + vec3(0, 1.8f, 0), "white", 6, 0.4f); }
       return Move{0, toPlayer};
     }
     if (m.hp < m.maxHp * 0.5f && m.drinkCd <= 0) { m.drinkT = 1.4f; m.drinkCd = 12; lv.fx->sound("eat", m.pos + vec3(0, 1.5f, 0)); return Move{0, toPlayer}; }
@@ -270,7 +270,7 @@ static OptMove monsterAI(Level& lv, Creature& m, Entity* p, float dist, float dy
   if (t == "wraith") {
     m.noGravity = true; m.hasFlyVy = true;
     if (dim == DIM_OVERWORLD && day > 0.55f && m.light(lv, 1).x >= 12) {   // daylight undoes them
-      m.removed = true; burst(lv, m.pos + vec3(0, 1, 0), "white", 18, 0.8f); lv.fx->voice("wraith", "death", m.pos + vec3(0, 1, 0));
+      m.removed = true; mobBurst(lv, m.pos + vec3(0, 1, 0), "white", 18, 0.8f); lv.fx->voice("wraith", "death", m.pos + vec3(0, 1, 0));
       return Move{0, m.yaw};
     }
     auto s = m.senses(lv, p, dist, dyp, dt, 28);
@@ -355,7 +355,7 @@ static OptMove monsterAI(Level& lv, Creature& m, Entity* p, float dist, float dy
       if (m.slamT <= 0) {
         vec3 f(m.pos.x - std::sin(m.yaw) * 1.4f, m.pos.y, m.pos.z - std::cos(m.yaw) * 1.4f);
         shakeNear(lv, m.pos, m.realm, 0.45f);
-        burst(lv, f + vec3(0, 0.1f, 0), "dirt", 26, 3);
+        mobBurst(lv, f + vec3(0, 0.1f, 0), "dirt", 26, 3);
         lv.fx->sound("thud", f); lv.fx->sound("explode", f, 18);
         auto hit = [&](Entity& q, bool pawn) {
           float d = std::hypot(q.pos.x - f.x, q.pos.z - f.z);
@@ -511,7 +511,7 @@ static void executeAttack(Level& lv, Creature& m, bool enraged) {
   if (a.kind == "slam") {
     lv.fx->sound("slam", m.pos); shakeNear(lv, m.pos, m.realm, 0.6f);
     float R = 4.6f;
-    for (int i = 0; i < 40; i++) { float ang = frand() * TAU, r = frand() * R; burst(lv, m.pos + vec3(std::cos(ang) * r, 0.2f, std::sin(ang) * r), "golem_rock", 1, 0.9f); }
+    for (int i = 0; i < 40; i++) { float ang = frand() * TAU, r = frand() * R; mobBurst(lv, m.pos + vec3(std::cos(ang) * r, 0.2f, std::sin(ang) * r), "golem_rock", 1, 0.9f); }
     for (Entity* q : pawnsOf(lv, m.realm)) {
       float d = std::hypot(q->pos.x - m.pos.x, q->pos.z - m.pos.z);
       if (d < R + 0.3f && std::fabs(q->pos.y - m.pos.y) < 2.2f) { DamageSrc s; s.knock = 9; damageEntity(lv, *q, enraged ? 8 : 7, &m, "mob", s); knockback(*q, vec3(0, 7, 0)); }

@@ -23,7 +23,7 @@ void elytraMove(Level& lv, Player& p, double dtd) {
   float dt = (float)dtd;
   if (p.onGround || p.inWater || p.inLava || p.flying || p.riding || p.dead || !hasElytra(p)) { p.gliding = false; p.h = PLAYER_H; return; }
   p.sneaking = false; p.swimming = false; p.crawling = false;
-  vec3 l = lookDir(p);
+  vec3 l = lookVec(p);
   float sp = glm::length(p.vel);
   sp += -l.y * 17 * dt;                           // diving gathers speed, climbing spends it
   sp -= sp * 0.05f * dt + 0.5f * dt;              // and the air takes a little
