@@ -18,4 +18,5 @@ Each workstream keeps its own notes in `docs/port/<area>.md` (what was ported, w
 | Portals & seamless dimensions | game/portals.js, portallinks, portalview, seamless.js, worlds.js (+ theend.js portal/void parts, riftarc.js tears as virtual portals) | sim/portals, sim/seamless, render/portal_view | ported (see docs/port/portals.md) |
 | Structures, villages, towns | game/structures.js, villages, villageflat, towns, towns3, dungeons, stronghold, deepdark, deephalls, seas, places | gen/ | wave 2 |
 | Network, server, mods | net/*.js, game/server.js, mods.js, together.js, launcher/desktop/lan.js | net/, server/, mod/ | done: protocol, server, LAN, JS/native mods (docs/port/net.md; together.js party UI left) |
-| Everything else (magic, enchanting, brewing, villagers, redstone, minecarts, ships, maps, rpg...) | game/*.js | sim/, ui/ | wave 3 |
+| Redstone, rails & minecarts, boats & ships, machines | game/redstone.js, rsplace, minecart, trains, vehicles, boats2, ships, lilypads, mech, machines | sim/redstone*, minecart, vehicles, machines | sim ported + tested (docs/port/redstone.md); render layer left |
+| Everything else (magic, enchanting, brewing, villagers, maps, rpg...) | game/*.js | sim/, ui/ | wave 3 |

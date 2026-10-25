@@ -80,3 +80,8 @@ target_compile_definitions(test_net PRIVATE DQ_SAMPLE_PLUGIN="$<TARGET_FILE:dq_s
 add_dependencies(test_net dq_sample_plugin)
 add_custom_command(TARGET test_net POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_net>/data)
+# Redstone, rails/carts, boats/ships and machines test (headless). Run: build/test_redstone
+add_executable(test_redstone tools/test_redstone.cpp)
+target_link_libraries(test_redstone PRIVATE dqcore)
+add_custom_command(TARGET test_redstone POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_redstone>/data)
