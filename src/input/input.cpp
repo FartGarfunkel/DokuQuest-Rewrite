@@ -4,7 +4,7 @@ namespace dq {
 
 static const char* ACT_NAMES[] = {"forward", "back", "left", "right", "jump", "sneak", "sprint", "attack", "use", "pickBlock", "inventory", "drop", "chat",
   "command", "pause", "hideHud", "screenshot", "debug", "view", "swapHands", "placeMode", "hot1", "hot2", "hot3", "hot4", "hot5", "hot6", "hot7", "hot8",
-  "hot9", "hotNext", "hotPrev", "map", "playerList", "zoom", "menuUp", "menuDown", "menuLeft", "menuRight", "menuOk", "menuBack", "menuTabLeft", "menuTabRight"};
+  "hot9", "hotNext", "hotPrev", "map", "playerList", "zoom", "spell", "spellbook", "castQuick", "skills", "journal", "menuUp", "menuDown", "menuLeft", "menuRight", "menuOk", "menuBack", "menuTabLeft", "menuTabRight"};
 static_assert(sizeof(ACT_NAMES) / sizeof(ACT_NAMES[0]) == (int)Act::Count, "action names");
 const char* actName(Act a) { return ACT_NAMES[(int)a]; }
 
@@ -17,6 +17,7 @@ void Input::defaults() {
   K(Act::Pause, SDL_SCANCODE_ESCAPE); K(Act::HideHud, SDL_SCANCODE_F1); K(Act::Screenshot, SDL_SCANCODE_F2); K(Act::Debug, SDL_SCANCODE_F3);
   K(Act::View, SDL_SCANCODE_F5); K(Act::SwapHands, SDL_SCANCODE_F); K(Act::PlaceMode, SDL_SCANCODE_R); K(Act::Map, SDL_SCANCODE_M);
   K(Act::PlayerList, SDL_SCANCODE_TAB); K(Act::Zoom, SDL_SCANCODE_C);
+  K(Act::Spell, SDL_SCANCODE_G); K(Act::Spellbook, SDL_SCANCODE_B); K(Act::CastQuick, SDL_SCANCODE_Z); K(Act::Skills, SDL_SCANCODE_K); K(Act::Journal, SDL_SCANCODE_J);
   for (int i = 0; i < 9; i++) keyBind[(int)Act::Hot1 + i] = (SDL_Scancode)(SDL_SCANCODE_1 + i);
   K(Act::MenuUp, SDL_SCANCODE_UP); K(Act::MenuDown, SDL_SCANCODE_DOWN); K(Act::MenuLeft, SDL_SCANCODE_LEFT); K(Act::MenuRight, SDL_SCANCODE_RIGHT);
   K(Act::MenuOk, SDL_SCANCODE_RETURN); K(Act::MenuBack, SDL_SCANCODE_ESCAPE);
