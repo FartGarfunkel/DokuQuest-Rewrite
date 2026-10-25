@@ -292,15 +292,42 @@ const CreatureModelGL* creatureModel(const std::string& key) {
     CreaturePartMesh& pm = *out->parts[i];
     if (hidden[i]) { pm.hidden = true; continue; }
     std::array<Pic, 6> F = pack && std::any_of(faces[i].begin(), faces[i].end(), [](const Pic& x) { return !x.empty(); }) ? faces[i] : tilesOf(ts, p.tex);
-    vec3 size = glm::max(p.max - p.min, vec3(1e-3f));
+    vec3 lo = p.min, size = glm::max(p.max - p.min, vec3(1e-3f));
+    bool packed = pack && std::any_of(faces[i].begin(), faces[i].end(), [](const Pic& x) { return !x.empty(); });
+    // birds' feet: the rig's legs are 1 px sticks, which loses the toes. With a pack skin the leg takes
+    // Minecraft's 3x5x3 box (its picture has the toes; the clear texels carve the rest away); with the
+    // original's tiles a foot of three toes forward and one back is added under the stick.
+    bool bird = p.role == "bleg" && size.x <= 1.6f / 16;
+    if (bird && packed) { lo = vec3(-1.5f, p.min.y * 16, -2.5f) / 16.f; size = vec3(3, size.y * 16, 3) / 16.f; }
     ivec3 n = glm::max(ivec3(glm::round(size * 32.f)), ivec3(1));
     VoxelGrid g;
     bool faceRelief = p.tex.is_object() && p.tex.contains("front") && !pack;
     voxelPart(g, n, F, p.glow || p.unlit, faceRelief);
+    if (bird && !packed && n.y >= 4) {
+      int sx = n.x, sz = n.z, T = std::max(1, sx);   // toe width = the stick's width
+      ivec3 m(sx + 4 * T, n.y, sz + 4 * T);           // room for toes on every side
+      VoxelGrid f; f.resize(m);
+      for (int z = 0; z < n.z; z++) for (int y = 0; y < n.y; y++) for (int x = 0; x < n.x; x++) if (g.solid(x, y, z)) f.set(x + 2 * T, y, z + 2 * T, g.at(x, y, z));
+      u32 c = 0; for (int y = 0; y < n.y && !c; y++) if (g.solid(0, y, 0)) c = g.at(0, y, 0);
+      if (!c) c = voxRGBA(232, 160, 40) | (u32)VOXEL_SOLID << 24;
+      u32 dark = voxRGBA((int)((c & 255) * 0.8f), (int)(((c >> 8) & 255) * 0.8f), (int)(((c >> 16) & 255) * 0.8f)) | (c & 0xFF000000u);
+      int cx = 2 * T, cz = 2 * T;
+      for (int t = 0; t < T; t++) for (int k = 0; k < sx; k++) {
+        for (int d = 1; d <= 2 * T; d++) {   // three toes forward (models face -z), splayed
+          f.set(cx + k, t, cz - d, dark);
+          f.set(std::max(0, cx + k - (d + 1) / 2 - T / 2), t, cz - d, dark);
+          f.set(std::min(m.x - 1, cx + k + (d + 1) / 2 + T / 2), t, cz - d, dark);
+        }
+        for (int d = 0; d < T; d++) f.set(cx + k, t, cz + sz + d, dark);   // and one back
+      }
+      g = std::move(f); n = m;
+      lo = vec3(lo.x - 2 * T / 32.f, lo.y, lo.z - 2 * T / 32.f);
+      size = vec3(m) / 32.f;
+    }
     VoxelMeshData md; buildVoxelMesh(g, md);
     if (md.verts.empty()) { pm.hidden = true; continue; }
     pm.gl.upload(md);
-    pm.local = glm::scale(glm::translate(mat4(1), p.min), size / vec3(n));
+    pm.local = glm::scale(glm::translate(mat4(1), lo), size / vec3(n));
   }
   auto* raw = out.get();
   cache()[key] = std::move(out);

@@ -542,6 +542,23 @@ void rigPose(Creature& m, const RigModel& M, const mat4& base) {
     if (rz) mm = glm::rotate(mm, rz, vec3(0, 0, 1));
     m.mats[i] = mm;
   }
+  // the cinder wisp (a blaze): its rods circle the burning heart in two rings turning opposite ways, each
+  // bobbing on its own, like Minecraft's blaze (the original only spun them where they stood)
+  if (M.post == "orbit") {
+    float tt = m.age + m.id * 0.37f;
+    for (size_t i = 0; i < M.parts.size(); i++) {
+      const RigPart& part = M.parts[i];
+      if (part.role != "rod" || m.lost.count(part.name)) continue;
+      bool upper = part.idx % 2;
+      float a0 = std::atan2(part.pivot.z, part.pivot.x), r = std::hypot(part.pivot.x, part.pivot.z) * 1.25f;
+      float a = a0 + (upper ? -1.f : 1.f) * tt * 1.8f;
+      float bob = std::sin(tt * 2.6f + part.idx * 1.3f) * 0.08f + (upper ? 0.05f : -0.1f);
+      mat4 mm = glm::translate(root, vec3(std::cos(a) * r, part.pivot.y + bob, std::sin(a) * r));
+      mm = glm::rotate(mm, -a, vec3(0, 1, 0));
+      mm = glm::rotate(mm, upper ? -0.15f : 0.15f, vec3(0, 0, 1));   // leaning in a little, top and bottom
+      m.mats[i] = mm;
+    }
+  }
 }
 
 bool rigPartShown(const Creature& m, const RigPart& p) {

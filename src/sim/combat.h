@@ -24,6 +24,7 @@ struct DamageSource {
   bool bypass = false;       // ignores the invulnerable moment after a hit
   bool bypassArmor = false;
   float raw = 0;             // the blow before anything softened it (set by damagePlayer)
+  bool hasRay = false; vec3 rayO{0}, rayD{0};   // where the blow came from (creatures: which limb it lands on)
 };
 
 // LocalPlayer.hurt + Player.hurt: rules (fall/drown/fire damage), creative, invulnerability,

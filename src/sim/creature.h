@@ -61,6 +61,8 @@ struct RigLife {
   float sqAge = -1, tilt = -1, sqYaw = 0, sqRoll = 0;
 };
 
+constexpr float DEATH_LINGER = 1.6f;   // seconds from the killing blow to the puff (the body topples, then lies there)
+
 class Creature : public Entity {
 public:
   explicit Creature(const std::string& type);
@@ -122,6 +124,8 @@ public:
   float navT = 0, stuckT = 0; bool hasNavGoal = false; vec3 navGoal{0}; std::vector<ivec3> path; size_t pathI = 0; bool hasPath = false; vec2 navLast{0}; bool hasNavLast = false;
   // network replica target
   vec3 tpos{0}; float tyaw = 0; bool hasTarget = false;
+  // sound3.js: footsteps and the night crowd's wandering calls (end of creature.cpp)
+  float stepAcc = 0, ambT = -1;
 
   // ---- behaviour ----
   void tick(Level& lv, double dt) override;
@@ -196,6 +200,11 @@ void mobBurst(Level& lv, vec3 p, const std::string& kind, int n, float spread = 
 void flame(Level& lv, vec3 p);
 void hearts(Level& lv, vec3 p, int n = 5);
 void floatText(Level& lv, u32 playerId, vec3 p, const std::string& text, const std::string& color);
+// sound3.js (end of creature.cpp): footsteps for everything with feet, and hostile ones calling as they
+// wander. Called after each update with where it was and its soundT before.
+void creatureSounds(Level& lv, Creature& m, vec3 from, float soundT0, float dt);
+// The voice a creature speaks with (MOB_TYPES voice, else sound; voiceless ones borrow a fitting call).
+const std::string& creatureVoice(const CreatureType& T);
 
 // Using a creature (game/blocks2.js useOnAnimal + game/pets.js petUse): feeding, breeding, taming, milking,
 // shearing, dyeing, saddling, riding, stay/follow. Returns true when something happened (the held stack is

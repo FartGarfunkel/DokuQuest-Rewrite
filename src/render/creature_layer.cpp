@@ -233,13 +233,14 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
     } else if (t == "projectile") {
       std::string k = e.data.value("kind", "fireball");
       SmallMeshes& S = small();
-      const VoxelMeshGL& mesh = k == "spit" ? S.spit : k == "snow" ? S.snow : S.fireball;
-      float sz = k == "spit" ? 0.12f : k == "snow" ? 0.22f : 0.35f;
-      int n = k == "spit" ? 4 : k == "snow" ? 6 : 8;
+      bool gust = k == "gust", big = k == "ghast";   // a zephyr's gust: a pale puff; a ghast's fireball: bigger
+      const VoxelMeshGL& mesh = k == "spit" ? S.spit : k == "snow" || gust ? S.snow : S.fireball;
+      float sz = k == "spit" ? 0.12f : k == "snow" ? 0.22f : gust ? 0.45f + std::sin(ip.age * 20) * 0.05f : big ? 0.7f : 0.35f;
+      int n = k == "spit" ? 4 : k == "snow" || gust ? 6 : 8;
       mat4 m = glm::translate(mat4(1), rel);
       m = glm::rotate(m, ip.age * 6, vec3(0.3f, 1, 0.2f));
       m = glm::scale(glm::translate(m, vec3(-sz / 2)), vec3(sz / n));
-      D.draw(mesh, m, k == "fireball" ? VoxelLight{1, 1} : lightAt(w, ip.pos));
+      D.draw(mesh, m, k == "fireball" || big ? VoxelLight{1, 1} : lightAt(w, ip.pos));
     } else if (t == "hex_flask") {
       const VoxelModel& im = itemModel("hex_flask");
       if (!im.ready()) continue;

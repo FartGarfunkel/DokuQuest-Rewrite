@@ -119,8 +119,9 @@ void updateInstruments(GameSession& s, double dtd) {
   }
   I.compassF = floormod((int)std::lround(I.compassA / TAU * COMPASS_FRAMES), COMPASS_FRAMES);
   // the death compass: the same needle, drawn to your grave (and lost when there's none in this world)
-  const json gr = inWorld && p->stats.is_object() ? p->stats.value("grave", json()) : json();
-  if (gr.is_object() && gr.value("dim", -1) == dim) {
+  // (the grave is Player::grave {realm, dim, x, y, z}, set by playerDie; it was read from stats before and never found)
+  const json gr = inWorld && p->grave.is_object() ? p->grave : json();
+  if (gr.is_object() && gr.value("dim", -1) == dim && gr.value("realm", p->realm) == p->realm) {
     float toYaw = std::atan2(-(gr.value("x", 0.f) + 0.5f - p->pos.x), -(gr.value("z", 0.f) + 0.5f - p->pos.z));
     float rel = std::fmod(std::fmod(toYaw - p->yaw, TAU) + TAU + PI, TAU) - PI;
     float d = std::fmod(std::fmod(-rel - I.deathA, TAU) + TAU * 1.5f, TAU) - PI;
@@ -141,7 +142,9 @@ void registerInstruments() {
     GLuint tex; vec4 uv;
     if (!instrumentIcon(st.id, tex, uv) || im.kind == VoxelModel::Block) return;
     // the live dial on both faces of the item (the picture spans the model's -0.5..0.5, scaled by its size)
-    float sz = itemSize(st.id), z = im.depth + 0.004f;
+    // (the dial model's own static picture plate sits at 0.068..0.078 x size, i.e. just in front of `depth`: the live
+    // face goes clearly in front of it, the same 0.9 wide, or the plate hides it and the needle never moves)
+    float sz = itemSize(st.id) * 0.9f, z = im.depth + 0.012f;
     Player* p = s.player;
     u8 l = p ? s.world().getLight(ifloor(p->pos.x), ifloor(p->pos.y + 1.62f), ifloor(p->pos.z)) : 0xF0;
     vec2 light((l >> 4) / 15.f, (l & 15) / 15.f);
