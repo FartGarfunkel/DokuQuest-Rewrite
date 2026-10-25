@@ -439,7 +439,7 @@ bool emitKelp3D(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int 
 void emitCrossFlat(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta, int tile, float yy) {
   const BlockTraits& T = traits(id);
   float sk = c.skyAt(x, y, z), bl = std::max<float>(c.blAt(x, y, z), c.R.tLight[id]), sh = 235 / 255.f;
-  u8 sway = T.fire ? 0 : Sway::Plant;
+  u8 sway = T.fire || (T.stackPlant && T.bodyTile >= 0) ? 0 : Sway::Plant;
   if (T.tint) c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0);
   if (T.crop) { for (float q : {0.25f, 0.75f}) { planeQuad(c, d, tile, x, yy, z, 0, q, 1, q, sk, bl, sh, sway); planeQuad(c, d, tile, x, yy, z, q, 0, q, 1, sk, bl, sh, sway); } }
   else { planeQuad(c, d, tile, x, yy, z, 0.15f, 0.15f, 0.85f, 0.85f, sk, bl, sh, sway); planeQuad(c, d, tile, x, yy, z, 0.15f, 0.85f, 0.85f, 0.15f, sk, bl, sh, sway); }
@@ -456,6 +456,13 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   int tile = self.faces[0];
   if (T.crop && !T.stageTiles.empty()) tile = T.stageTiles[std::min<int>(meta & 15, (int)T.stageTiles.size() - 1)];
   else if ((T.dbl || T.altTile) && (meta & 1) && T.upperTile >= 0) tile = T.upperTile;
+  // stacked vines are one strand: the body picture wherever the strand goes on (the tip picture at its end), every
+  // piece of a column at the same spot and angle, and no per-block sway (that would break the strand at each block)
+  const bool strand = T.stackPlant && T.bodyTile >= 0;
+  if (strand) {
+    const BlockTraits& N = traits(c.at(x, T.hangs ? y - 1 : y + 1, z));
+    if (N.stackPlant && N.bodyTile >= 0 && N.hangs == T.hangs) tile = T.bodyTile;
+  }
   bool detail = c.opt.detail && c.tiles;
   if (!detail && !T.hangs && key != "kelp" && key != "sugar_cane") { emitCrossFlat(c, d, id, x, y, z, meta, tile, yy); return; }
   bool isGrass = T.tint && keyHas(key, {"grass", "fern"}) && key.find("sea") == std::string::npos;
@@ -484,14 +491,14 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       }
     } else {
       // flowers, saplings, mushrooms, bushes: two slabs crossed, each plant a little off-centre and turned its own way
-      int hy = T.dbl && (meta & 1) ? ly - 1 : ly;
+      int hy = strand ? 0 : T.dbl && (meta & 1) ? ly - 1 : ly;
       u32 hsh = hashLocal(x, hy, z, 5);
       bool top = !T.dbl || (meta & 1);
       float jx = ((hsh & 255) / 255.f - 0.5f) * 0.24f, jz = (((hsh >> 8) & 255) / 255.f - 0.5f) * 0.24f, ang = ((hsh >> 16) & 255) / 255.f * PI / 2 + PI / 4;
       float cx = 0.5f + jx, cz = 0.5f + jz, r = 0.46f, ca = std::cos(ang) * r, sa = std::sin(ang) * r;
       // a double plant's lower half bends a little too, so the two halves stay joined
       float sb = T.dbl ? ((meta & 1) ? 0.5f : 0.f) : 0.f, ss = T.dbl ? 0.5f : 1.f;
-      bool sw = top || T.dbl;
+      bool sw = (top || T.dbl) && !strand;
       voxelPlane(c, d, *P, tile, x, yy, z, cx - ca, cz - sa, cx + ca, cz + sa, 0, 1, sk, bl, sw, sb, ss);
       voxelPlane(c, d, *P, tile, x, yy, z, cx + sa, cz - ca, cx - sa, cz + ca, 0, 1, sk, bl, sw, sb, ss);
     }
@@ -511,10 +518,10 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
     for (float q : {o, 1 - o}) { planeQuad(c, d, tile, x, yy, z, 0, q, 1, q, sk, bl, sh, top ? sway : 0); planeQuad(c, d, tile, x, yy, z, q, 0, q, 1, sk, bl, sh, top ? sway : 0); }
   } else if (!T.tint && !T.dbl) {
     // three planes round the stem, so they have some body from every side
-    u32 hsh = hashLocal(x, ly, z, 5);
+    u32 hsh = hashLocal(x, strand ? 0 : ly, z, 5);
     float jx = ((hsh & 255) / 255.f - 0.5f) * 0.3f, jz = (((hsh >> 8) & 255) / 255.f - 0.5f) * 0.3f, ang = ((hsh >> 16) & 255) / 255.f * PI;
     float cx = 0.5f + jx, cz = 0.5f + jz, r = 0.46f;
-    for (int k = 0; k < 3; k++) { float a = ang + k * PI / 3, ca = std::cos(a) * r, sa = std::sin(a) * r; planeQuad(c, d, tile, x, yy, z, cx - ca, cz - sa, cx + ca, cz + sa, sk, bl, sh, sway); }
+    for (int k = 0; k < 3; k++) { float a = ang + k * PI / 3, ca = std::cos(a) * r, sa = std::sin(a) * r; planeQuad(c, d, tile, x, yy, z, cx - ca, cz - sa, cx + ca, cz + sa, sk, bl, sh, strand ? 0 : sway); }
   } else {
     // each plant stands a little off-centre and turned its own way (the halves of a two-tall plant share theirs)
     int hy = T.dbl && (meta & 1) ? ly - 1 : ly; u32 hsh = hashLocal(x, hy, z, 5);

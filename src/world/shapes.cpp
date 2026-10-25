@@ -136,6 +136,10 @@ void initBlockTraits() {
     t.crop = b.has("crop"); t.dbl = b.has("double"); t.altTile = b.has("altTile"); t.hash = b.has("hash"); t.fire = b.has("fire");
     t.flower = b.has("flower"); t.hangs = b.has("hangs"); t.stackPlant = b.has("stackPlant");
     t.upperTile = b.props.contains("upperTile") && b.props["upperTile"].is_number() ? b.props["upperTile"].get<int>() : -1;
+    if (t.stackPlant) {   // weeping/twisting/cave vines: body tiles from tools/port/data_patches.py (or the pack's *_plant)
+      const size_t lit = b.key.find("_lit");
+      t.bodyTile = tileOf(lit != std::string::npos ? b.key.substr(0, lit) + "_plant_lit" : b.key + "_plant");
+    }
     if (b.props.contains("stageTiles")) for (auto& s : b.props["stageTiles"]) if (s.is_number()) t.stageTiles.push_back(s.get<u16>());
     if (b.props.contains("tex") && b.props["tex"].is_object() && b.props["tex"].contains("top")) t.bedTop = tileOf(b.props["tex"]["top"].get<std::string>());
     if (t.bedTop < 0) t.bedTop = tileOf("red_bed_top");

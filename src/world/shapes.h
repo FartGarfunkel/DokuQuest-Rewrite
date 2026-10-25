@@ -33,6 +33,7 @@ struct BlockTraits {
   bool emitsParticles = false;  // fire, torches, portals, candles... (for the particles engine)
   int model = -1, modelHang = -1, modelOut = -1;   // index into modelShapes() (def.shape, its "_hang" and campfire "_out" variants)
   int upperTile = -1;           // doors (upper half), double plants (upper), alt tile
+  int bodyTile = -1;            // stacked vines: the strand's body picture (<key>_plant) above/below the tip
   int bedTop = -1;              // the bed's top tile (for the folded blanket edge)
   int clothTex = -1;
   int f6t[6] = {-1, -1, -1, -1, -1, -1};   // frontV, front, back, backOn, top, side
