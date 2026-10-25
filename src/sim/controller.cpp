@@ -596,7 +596,7 @@ public:
       if (age > 60) { removed = true; return; }
       if (!reg().tSolid[w.getBlock(data.value("bx", 0), data.value("by", 0), data.value("bz", 0))]) { data["stuck"] = false; vel = vec3(0); return; }
       if (data.value("pickup", false)) for (Player* pl : playersIn(lv, realm)) {
-        if (!pl->dead && std::fabs(pl->pos.x - pos.x) < 1 && std::fabs(pl->pos.z - pos.z) < 1 && pos.y > pl->pos.y - 0.5f && pos.y < pl->pos.y + 2) {
+        if (!pl->dead && std::fabs(pl->pos.x - pos.x) < 1.6f && std::fabs(pl->pos.z - pos.z) < 1.6f && pos.y > pl->pos.y - 1.2f && pos.y < pl->pos.y + 2.8f) {   // Minecraft: the player box grown by 1
           if (pl->give(ItemStack("arrow", 1)) <= 0) { removed = true; sfxUi(lv, *pl, "pop"); if (lv.events) lv.events->emit("pickup", json::array({pl->name, "arrow", 1})); return; }
         }
       }

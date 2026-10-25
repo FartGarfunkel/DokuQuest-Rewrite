@@ -60,7 +60,7 @@ public:
       if (!R.tSolid[wd.getBlock(b.x, b.y, b.z)]) { data["stuck"] = false; vel = vec3(0); return; }
       if (data.value("pickup", false)) for (auto& e : lv.entities()) if (auto* p = dynamic_cast<Player*>(e.get())) {
         if (p->dead || p->removed || p->realm != realm) continue;
-        if (std::fabs(p->pos.x - pos.x) < 1 && std::fabs(p->pos.z - pos.z) < 1 && pos.y > p->pos.y - 0.5f && pos.y < p->pos.y + 2)
+        if (std::fabs(p->pos.x - pos.x) < 1.6f && std::fabs(p->pos.z - pos.z) < 1.6f && pos.y > p->pos.y - 1.2f && pos.y < p->pos.y + 2.8f)
           if (p->give(ItemStack("arrow", 1)) <= 0) { removed = true; lv.fx->soundUi(p->id, "pop"); return; }
       }
       return;
