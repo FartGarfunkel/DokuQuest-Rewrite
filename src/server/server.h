@@ -3,6 +3,7 @@
 // launcher's Server tab (in-process, with a console view) and by the headless dokuquest-server.
 #pragma once
 #include "sim/level.h"
+#include "server/server_view.h"
 #include <thread>
 #include <atomic>
 #include <mutex>
@@ -30,10 +31,12 @@ struct ServerConfig {
 };
 
 struct ServerPlayer { std::string name, address; int realm = 0; vec3 pos{0}; float hp = 20; bool op = false; u32 ping = 0; };
+struct ServerPlugin { std::string id, name, kind, version, error; bool plugin = false, enabled = true, loaded = false; };
 struct ServerStatus {
   bool running = false; int players = 0, maxPlayers = 0; double tps = 0; double mspt = 0;
   std::vector<std::string> playerNames; std::vector<ServerPlayer> playerList;
-  std::string world, name; int port = 0; i64 day = 0; double uptime = 0;
+  std::string world, name, motd, address; int port = 0; i64 day = 0; double uptime = 0;   // address: this computer on the home network
+  bool pluginsOn = false; std::vector<ServerPlugin> plugins;                               // the Plugins tab
 };
 struct ServerLogLine { u64 seq = 0; i64 at = 0; std::string text, kind; };   // kind: "", good, warn, chat
 
@@ -46,6 +49,9 @@ public:
   bool running() const { return runFlag; }
   void command(const std::string& line);     // console input (thread-safe): stop, save, say, list, kick, ban, op, tp, give... or any /command
   ServerStatus status() const;
+  // the dashboard's map / isometric view / players (server/server_view.h): say what is being looked at, take the latest copy
+  void setView(const ServerViewReq& r);
+  std::shared_ptr<const ServerView> view() const;
   std::vector<ServerLogLine> logSince(u64 seq) const;   // the console view (thread-safe), last 400 lines
   const ServerConfig& config() const { return cfg; }
   ModLoader* modLoader() const { return mods.get(); }   // the Plugins tab (read it while the server runs only from callbacks)
@@ -68,6 +74,8 @@ private:
   u64 logSeq = 0;
   ServerStatus st;
   double startedAt = 0;
+  ServerViewReq viewReq; ServerView viewWork; std::shared_ptr<const ServerView> viewPub; double viewAt = -100;
+  void updateView(double now);
 };
 
 } // namespace dq
