@@ -76,5 +76,10 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
   - mob heads/skulls, as drops, wearable and placeable;
   - spawn eggs for every creature.
 
+- Corrupted mobs (user, 2026-10-26, story update): corrupt existing mobs, hostile and ordinary animals alike.
+  - Look: his realm's purplish glitch (flickering purple/black texels, a slight jitter) and pure white eyes, as if he watches or controls them through them.
+  - Slow burn tied to fragments: almost none early, then rare far-off watchers, more and bolder as fragments are fed.
+  - Late stage: he brings groups of them through portals like the rift in town, then walks back and the portal closes.
+
 ## Roadmap (after the bugs)
 Start in the wild, potions stack to 16, test-build small fixes, coins/economy, roads and bridges, travellers, saddle bags, bigger ship, poses, torches on fences, chains/lanterns, rift to 10 fragments + slow pacing + lore, graphics presets, built-in shader levels, Skylands content, Shadowbloom ports, Iris/OptiFine shader packs.
