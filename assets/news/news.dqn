@@ -2,6 +2,10 @@
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
 
+## Alpha 1.0.0.4.7 — Hotfix | October 2026
+- **Iron golems are back in the villages:** every village of seven houses or more keeps one again, guarding it alongside the village guards.
+- Removed Herobrine.
+
 ## Alpha 1.0.0.4.6 — Hotfix | October 2026
 - **Ghosts look like ghosts:** a rounded sheet with a dome of a head, dark eye holes and a little round mouth, flowing out to a ragged hem that fades away.
 - **Fewer scarecrows and ghosts:** only now and then, and one at a time near you.

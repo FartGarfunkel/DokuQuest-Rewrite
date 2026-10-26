@@ -346,7 +346,7 @@ static bool townPlace(const StructureIndex&, const TerrainQuery& t, int rx, int 
   }
   S.data = {{"kind", "village"}, {"id", v.id}, {"name", name}, {"style", st.key}, {"tier", TIER_NAMES[tier]}, {"x", cx}, {"z", cz}, {"y", y0}, {"P", P}, {"hw", hw},
             {"r", std::max({X1 - cx, cx - X0, Z1 - cz, cz - Z0})}, {"board", jat(v.board[0], v.board[1], v.board[2])}, {"bell", jat(v.bell[0], v.bell[1], v.bell[2])},
-            {"stalls", stalls}, {"seats", seats}, {"folk", folk}, {"guards", (int)TT["guards"]}, {"golems", 0}, {"blds", blds}, {"roads", roads}, {"gates", gates}};
+            {"stalls", stalls}, {"seats", seats}, {"folk", folk}, {"guards", (int)TT["guards"]}, {"golems", blds.size() >= 7 ? 1 : 0},   /* villages.js: a village of seven houses or more keeps an iron golem */ {"blds", blds}, {"roads", roads}, {"gates", gates}};
   if (hasWay) S.data["waySpot"] = json::array({waySpot[0], waySpot[1]});
   if (v.hasWall) S.data["wall"] = {{"kind", v.wall.kind}, {"x0", v.wall.x0}, {"z0", v.wall.z0}, {"x1", v.wall.x1}, {"z1", v.wall.z1}, {"h", v.wall.h}};
   S.ext = e;

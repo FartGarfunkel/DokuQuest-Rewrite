@@ -66,5 +66,7 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
 - Biome fuseling variants (user, 2026-10-26, with the BTA update): one per biome, built from that biome's blocks (terracotta and gold, bamboo, mossy sandstone, gravel, cactus-topped sandstone, mud with a spike, snow, mossy cobble, flowering azalea, mushroom cap, terracotta totem, swamp). The user showed fan art as inspiration; make our own designs, don't copy the artist's.
 - After BTA (user, 2026-10-26): a Minecraft Story Mode feel for players, NPCs and mobs. That means blended transitions, follow-through on capes, hair and tails, anticipation and weight, head and eye look-at, feet planted on slopes, varied idles, expressive talking faces and smooth turning, all as one shared animation layer over the existing rigs.
 
+- Biome golems (user, 2026-10-26, with the biome fuselings): the village iron golem built from local materials per biome (sandstone, mossy cobble, terracotta, packed snow and ice, spruce and stone...), more articulated (elbow and knee joints, segmented limbs, hands), glowing eyes. Our own designs; the user's reference is a mod's art.
+
 ## Roadmap (after the bugs)
 Start in the wild, potions stack to 16, test-build small fixes, coins/economy, roads and bridges, travellers, saddle bags, bigger ship, poses, torches on fences, chains/lanterns, rift to 10 fragments + slow pacing + lore, graphics presets, built-in shader levels, Skylands content, Shadowbloom ports, Iris/OptiFine shader packs.
