@@ -17,7 +17,12 @@
 using namespace dq;
 #include <ctime>
 // thread CPU time: the build machine is shared, wall time is meaningless there
+#ifdef _WIN32
+#include <chrono>
+struct Clock { static double now() { return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count(); } };
+#else
 struct Clock { static double now() { timespec t; clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t); return t.tv_sec * 1e3 + t.tv_nsec / 1e6; } };
+#endif
 
 static std::string key(BlockId id) { return reg().block(id).key; }
 
