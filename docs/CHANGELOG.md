@@ -5,6 +5,11 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.4.3 — Halloween (October 2026)
+
+- **Halloween is here (all of October):** zombies, skeletons and some villagers wear carved pumpkins and glowing jack-o'-lanterns, and a few villagers wear black, orange or purple capes. Full moons rise as a big orange harvest moon, nights are foggier with pale wisps drifting about, bats come out at night, new land grows far more pumpkin patches, and new villages put out jack-o'-lanterns. Out in a village at night, a villager may toss you a treat. The game goes by your computer's date; Options > Holiday events turns it off.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.4.2 — Hotfix (October 2026)
 
 - **Every player has their own look:** Players & Skins has a tab for each of the four players, each with their own name, skin (or creator character), arms and painted cape, like the original. The skin editor, character creator and cape editor work on whichever player is chosen. Opened from a split-screen player's own pause menu, it opens on them, and players who join come in as themselves.
