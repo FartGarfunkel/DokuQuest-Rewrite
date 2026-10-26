@@ -7,6 +7,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 
 ## 1.0.0-alpha.4.9 — Hotfix (October 2026)
 
+- **Windows is back:** a Windows download (a zip: unzip it anywhere and run dokuquest-launcher.exe) comes with each release again, next to the Linux AppImage.
 - **The rift in town hums again:** its deep, low drone is back, like the original, for anyone within about 28 blocks of it, and on its other side too.
 - Removed Herobrine.
 
