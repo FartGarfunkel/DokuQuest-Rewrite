@@ -55,7 +55,11 @@ public:
     if (!ps) return;
     ps->farAnchors(s.player->realm, s.player->pos, s.app.settings.renderDist, want);
     auto it = want.find(s.player->realm);
-    if (it != want.end()) a.insert(a.end(), it->second.begin(), it->second.end());
+    s.worldRenderer.keepNear.clear();
+    if (it != want.end()) {
+      a.insert(a.end(), it->second.begin(), it->second.end());
+      for (auto& sa : it->second) s.worldRenderer.keepNear.push_back(sa.pos);
+    }
   }
 
   void update(GameSession& s, double dt) override {

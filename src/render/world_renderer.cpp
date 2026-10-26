@@ -66,7 +66,7 @@ void WorldRenderer::setWorld(World* nw) {
   w = nw;
   ++generation;   // meshes still being built for the old world are dropped when they come back
   for (auto& [k, m] : meshes) release(m->base, m->cap);
-  meshes.clear(); inFlight.clear(); again.clear();
+  meshes.clear(); inFlight.clear(); again.clear(); parked.clear();
   std::lock_guard<std::mutex> lk(shared->mx); shared->done.clear();
 }
 void WorldRenderer::remeshAll() {
@@ -106,10 +106,15 @@ void WorldRenderer::setupVao() {
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 void WorldRenderer::grow(u32 need) {
-  u32 ncap = std::max<u32>(capacity ? capacity * 2 : (u32)(64u << 20) / sizeof(ChunkVertex), capacity + need + 65536);
+  // doubles up to 512 MB, then grows 256 MB at a time (one buffer near 4 GB breaks some drivers)
+  const u32 first = (u32)(64u << 20) / sizeof(ChunkVertex), big = (u32)(512u << 20) / sizeof(ChunkVertex), step = (u32)(256u << 20) / sizeof(ChunkVertex);
+  u32 ncap = std::max<u32>(!capacity ? first : capacity < big ? capacity * 2 : capacity + step, capacity + need + 65536);
+  while (glGetError() != GL_NO_ERROR) {}
   GLuint nb; glGenBuffers(1, &nb);
   glBindBuffer(GL_COPY_WRITE_BUFFER, nb);
   glBufferData(GL_COPY_WRITE_BUFFER, (GLsizeiptr)ncap * sizeof(ChunkVertex), nullptr, GL_DYNAMIC_DRAW);
+  GLenum ge = glGetError();
+  DQ_LOG("terrain arena: %.0f MB%s", (double)ncap * sizeof(ChunkVertex) / 1048576.0, ge == GL_OUT_OF_MEMORY ? " - OUT OF GPU MEMORY" : ge ? " - GL error" : "");
   if (vbo && capacity) {
     glBindBuffer(GL_COPY_READ_BUFFER, vbo);
     glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, (GLsizeiptr)capacity * sizeof(ChunkVertex));
@@ -155,6 +160,15 @@ bool WorldRenderer::wantDetail(const SectionKey& k, const vec3& cam) const {
   if (plantDetail == 2) return true;
   float dx = k.cx * 16 + 8 - cam.x, dz = k.cz * 16 + 8 - cam.z;
   return std::sqrt(dx * dx + dz * dz) < PLANT_DETAIL_R + 12;
+}
+
+bool WorldRenderer::wanted(const SectionKey& k) const {
+  int band = dimOfY(clampv((int)std::floor(camPos.y), 0, WORLD_H - 1));
+  if (k.dim == band) return true;
+  float cy = (float)(dimBase(k.dim) + k.sy * 16 + 8);
+  if (std::abs(cy - camPos.y) < 56) return true;
+  for (auto& p : keepNear) if (dimOfY(clampv((int)std::floor(p.y), 0, WORLD_H - 1)) == k.dim && std::abs(cy - p.y) < 72) return true;
+  return false;
 }
 
 void WorldRenderer::submit(const SectionKey& k, ThreadPool& pool, float pri, bool detail) {
@@ -205,6 +219,7 @@ void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs)
   if (!vbo) grow(0);
   if (auto* le = w->system<LightEngine>()) le->flush(*w);   // a placed torch lights up in this frame's meshes
   for (auto& k : w->drainUnloaded()) for (int sy = 0; sy < SECS; sy++) {
+    parked.erase({k.dim, k.cx, sy, k.cz});
     auto it = meshes.find({k.dim, k.cx, sy, k.cz});
     if (it != meshes.end()) { release(it->second->base, it->second->cap); meshes.erase(it); }
   }
@@ -213,11 +228,29 @@ void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs)
   std::unordered_set<SectionKey, SectionKeyHash> seen;
   for (auto& k : dirty) {
     if (!seen.insert(k).second) continue;
+    if (!wanted(k)) { parked.insert(k); continue; }
     vec3 c(k.cx * 16 + 8, dimBase(k.dim) + k.sy * 16 + 8, k.cz * 16 + 8);
     float d = glm::distance(c, camPos);
     submit(k, pool, d - 10000, wantDetail(k, camPos));   // meshing beats generation in the shared pool
   }
   for (auto& k : std::vector<SectionKey>(again.begin(), again.end())) if (!inFlight.count(k)) { again.erase(k); submit(k, pool, -20000, wantDetail(k, camPos)); }
+  // the land next door is only drawn once you cross into it: mesh its sections near the edge (and at the far end of a
+  // portal window into it); the rest wait here, and meshes left behind are let go
+  parkT -= 1.0 / 60;
+  if (parkT <= 0) {
+    parkT = 0.5;
+    for (auto it = parked.begin(); it != parked.end();) {
+      if (!w->chunk(it->dim, it->cx, it->cz)) { it = parked.erase(it); continue; }
+      if (wanted(*it)) {
+        vec3 c(it->cx * 16 + 8, dimBase(it->dim) + it->sy * 16 + 8, it->cz * 16 + 8);
+        submit(*it, pool, glm::distance(c, camPos) - 10000, wantDetail(*it, camPos)); it = parked.erase(it);
+      } else ++it;
+    }
+    for (auto it = meshes.begin(); it != meshes.end();) {
+      if (!inFlight.count(it->first) && !wanted(it->first)) { release(it->second->base, it->second->cap); parked.insert(it->first); it = meshes.erase(it); }
+      else ++it;
+    }
+  }
   // as you go, the sections coming close are rebuilt with their 3D plants (original perfDetailTick)
   detailT -= 1.0 / 60;
   if (plantDetail == 1 && detailT <= 0) {

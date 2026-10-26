@@ -5,6 +5,12 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.5 — Hotfix (October 2026)
+
+- **Deep underground fix:** going deep below ground (near the bottom of the Overworld) could make the world around you vanish, leaving only the sky and the distant land. The land next door below is no longer built in full while you can't see it, which keeps graphics memory well within what every card handles.
+- **Quest list:** village quests on the side of the screen now sit under the story line instead of on top of it.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.4.10 — Windows (October 2026)
 
 - **Windows download:** this release comes with a Windows version again: download the windows-x64 zip, unzip it anywhere and run dokuquest-launcher.exe. Your worlds live in %APPDATA%\DokuQuest, and the launcher keeps itself up to date.

@@ -31,6 +31,8 @@ public:
   void setTileTextures(const TileTextures& t) { tex = t; }
   // clip plane for portal views (render only what lies beyond the portal plane), all zero => off
   vec4 clipPlane{0};
+  // same-realm portal windows into another land: the far ends to keep meshed (portal_view.cpp)
+  std::vector<vec3> keepNear;
   // portal views draw the same sections from another camera in between the main passes: keep the main list
   void pushView() { viewStack.push_back({drawnSections, std::move(visible)}); visible.clear(); }
   void popView() { if (viewStack.empty()) return; drawnSections = viewStack.back().first; visible = std::move(viewStack.back().second); viewStack.pop_back(); }
@@ -66,7 +68,9 @@ private:
   void setupVao();
   World* w = nullptr;
   std::unordered_map<SectionKey, std::unique_ptr<SecMesh>, SectionKeyHash> meshes;
-  std::unordered_set<SectionKey, SectionKeyHash> inFlight, again;
+  std::unordered_set<SectionKey, SectionKeyHash> inFlight, again, parked;   // parked: another land's sections, meshed when needed
+  double parkT = 0;
+  bool wanted(const SectionKey& k) const;
   std::shared_ptr<Shared> shared = std::make_shared<Shared>();
   Shader shader;
   TileTextures tex;
