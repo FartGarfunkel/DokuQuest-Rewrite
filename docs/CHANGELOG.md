@@ -5,6 +5,11 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.5.4 — Hotfix (October 2026)
+
+- **Glowing eyes fixed:** glowing white eyes show as two eyes again, like the original, instead of one solid bar across the face.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.5.3 — Hotfix (October 2026)
 
 - **Ghasts face you:** a ghast keeps its face on you while it fights, backing away when you get close instead of turning its back.
