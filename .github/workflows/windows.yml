@@ -1,0 +1,29 @@
+# Windows build check: push the `win` branch (or run it by hand) to build with MSVC. Compiler and linker errors are
+# turned into annotations, so they can be read from the run's summary.
+name: Windows build
+on:
+  push:
+    branches: [win]
+  workflow_dispatch:
+concurrency:
+  group: win-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch dependencies
+        shell: bash
+        run: bash tools/fetch_deps.sh
+      - name: Build (MSVC)
+        shell: bash
+        run: |
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DDQ_PORTABLE=ON > cfg.log 2>&1 || { tail -40 cfg.log | while IFS= read -r l; do echo "::error::cmake: ${l:0:300}"; done; exit 1; }
+          set +e
+          cmake --build build --config Release --parallel -- /nologo /v:minimal > build.log 2>&1
+          rc=$?
+          grep -E "(fatal )?error [A-Z]+[0-9]+|error MSB" build.log | sed -e 's/^ *//' -e 's/\[[^]]*\.vcxproj\]$//' | sort -u | head -60 | while IFS= read -r l; do echo "::error::${l:0:400}"; done
+          echo "build exit $rc"; exit $rc
