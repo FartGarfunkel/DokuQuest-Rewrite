@@ -125,7 +125,7 @@ void HeldItemLayer::update(GameSession& s, double dt) {
   // swings: attacking the air, placing and using, mining (held)
   if (!menu) {
     Input& in = s.app.input;
-    if (in.pressed(Act::Attack) && !s.target.hit) swingArm();
+    if (in.pressed(Act::Attack)) swingArm();   // every attack swings: the air, a creature in front of a wall, a block (mining keeps it going)
     if (in.pressed(Act::Use) && s.target.hit) swingArm();
     else if (in.pressed(Act::Use) && p->held().id == "fishing_rod") swingArm();   // cast / reel in
     if (s.breaking) { swinging = true; if (swing == 0) swing = 0.0001f; }

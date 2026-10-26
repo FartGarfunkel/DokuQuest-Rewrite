@@ -5,6 +5,14 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.4.6 — Hotfix (October 2026)
+
+- **Ghosts look like ghosts:** a rounded sheet with a dome of a head, dark eye holes and a little round mouth, flowing out to a ragged hem that fades away.
+- **Fewer scarecrows and ghosts:** only now and then, and one at a time near you.
+- **The pumpkin creature hides better:** while it waits it looks just like any jack-o'-lantern, with no see-through face giving it away.
+- **Every swing shows:** hitting a creature with a wall or the ground behind it now swings your arm too (the swing used to be skipped).
+- Removed Herobrine.
+
 ## 1.0.0-alpha.4.5 — Hotfix (October 2026)
 
 - **More villagers in capes for Halloween:** nearly half of the villagers without a costume now wear a black, orange or purple cape (only a few did before), and every vampire has the dark one.

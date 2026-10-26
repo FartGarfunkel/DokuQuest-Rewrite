@@ -82,9 +82,10 @@ static void injectTypes() {
   auto upx = [&](json x) { x["only"] = "d:up"; return x; };
   json pk = {{"rig", "hw_pumpkin"}, {"scale", 1}, {"hipY", 0}, {"height", 36}, {"bodyDepth", 16}};
   pk["parts"] = json::array({
-    part("tell", nullptr, {0, 0, 0}, {-7.75f, 0.25f, -8.5f}, {7.75f, 15.75f, -8.0f}, "jack_o_lantern", {{"only", "d:tell"}, {"alpha", 0.34}, {"glow", true}, {"noCull", true}}),
+    // hiding, it looks like any jack-o'-lantern: the lit face sits flush on the pumpkin (no ghostly see-through face in front)
+    part("tell", nullptr, {0, 0, 0}, {-8.0f, 0.0f, -8.06f}, {8.0f, 16.0f, -8.0f}, "jack_o_lantern", {{"only", "d:tell"}, {"glow", true}}),
     part("head", nullptr, {0, 0, 0}, {-8, 0, -8}, {8, 16, 8}, {{"side", "pumpkin_side"}, {"top", "pumpkin_top"}, {"bottom", "pumpkin_top"}, {"front", "carved_pumpkin"}}, up),
-    part("mask", "head", {0, 8, 0}, {-7.75f, -7.75f, -8.5f}, {7.75f, 7.75f, -8.0f}, "jack_o_lantern", {{"only", "d:up"}, {"glow", true}}),
+    part("mask", "head", {0, 8, 0}, {-8.0f, -8.0f, -8.06f}, {8.0f, 8.0f, -8.0f}, "jack_o_lantern", {{"only", "d:up"}, {"glow", true}}),
     part("stem", "head", {0, 16, 0}, {-1.5f, 0, -1.5f}, {1.5f, 4, 1.5f}, "moss_block", up),
     part("core", "head", {0, 0, 0}, {-4, -12, -4}, {4, 0, 4}, "moss_block", up),
     part("twistA", "core", {0, -4, 0}, {-5.5f, -1, -1}, {5.5f, 1, 1}, "moss_block", upx({{"rest", {0, 0.7, 0.5}}})),
@@ -130,18 +131,26 @@ static void injectTypes() {
   // borrows the wraith's rig ("wraith" + the drift post: it bobs, the hem and sleeves sway)
   json gh = {{"rig", "wraith"}, {"scale", 1}, {"hipY", 10}, {"height", 30}, {"post", "drift"}};
   auto sheetx = [&](float a, json x = json::object()) { x["alpha"] = a; x["noCull"] = true; x["glow"] = true; return x; };   // (self-lit: a pale glow in the dark)
+  // the classic sheet: a rounded dome of a head flowing into a cloth that widens and thins out towards a ragged hem (fading
+  // as it goes), two dark eye holes and a little round mouth, the arms only bumps under the cloth
+  auto holes = [](json x = json::object()) { x["alpha"] = 0.92f; x["noCull"] = true; return x; };   // (not lit: dark holes)
   gh["parts"] = json::array({
-    part("body", nullptr, {0, 16.5f, 0}, {-4.5f, -4.5f, -3}, {4.5f, 4.5f, 3}, "white_concrete", sheetx(0.5f, {{"role", "wbody"}})),
-    part("skirt", "body", {0, -4.5f, 0}, {-6.2f, -5, -4}, {6.2f, 0, 4}, "white_concrete", sheetx(0.46f)),
-    part("hem", "skirt", {0, -5, 0}, {-8, -7, -5}, {8, 0, 5}, "white_concrete", sheetx(0.42f, {{"role", "whem"}})),
-    part("head", "body", {0, 4.5f, 0}, {-4.5f, 0, -4.5f}, {4.5f, 8, 4.5f}, "white_concrete", sheetx(0.55f, {{"role", "whead"}})),
-    part("peak", "head", {0, 8, 0}, {-2.5f, 0, -2.5f}, {2.5f, 1.5f, 2.5f}, "white_concrete", sheetx(0.55f)),
-    part("hole", "head", {0, 0, 0}, {-3.6f, 1.5f, -5.0f}, {3.6f, 7, -4.5f}, "wraith_face", sheetx(0.92f)),
-    part("eyeL", "head", {0, 0, 0}, {-3.1f, 3.6f, -5.4f}, {-1.3f, 5.8f, -4.95f}, "white_concrete", sheetx(0.95f)),
-    part("eyeR", "head", {0, 0, 0}, {1.3f, 3.6f, -5.4f}, {3.1f, 5.8f, -4.95f}, "white_concrete", sheetx(0.95f)),
-    part("mouth", "head", {0, 0, 0}, {-0.9f, 2.0f, -5.4f}, {0.9f, 3.2f, -4.95f}, "white_concrete", sheetx(0.55f)),
-    part("armR", "body", {-5.5f, 3.5f, 0}, {-1.6f, -8, -1.6f}, {1.6f, 0, 1.6f}, "white_concrete", sheetx(0.45f, {{"role", "warm"}, {"rest", {0, 0, -0.55}}})),
-    part("armL", "body", {5.5f, 3.5f, 0}, {-1.6f, -8, -1.6f}, {1.6f, 0, 1.6f}, "white_concrete", sheetx(0.45f, {{"role", "warm"}, {"rest", {0, 0, 0.55}}}))});
+    part("body", nullptr, {0, 16, 0}, {-5, -5, -5}, {5, 5, 5}, "white_concrete", sheetx(0.6f, {{"role", "wbody"}})),
+    part("skirt", "body", {0, -5, 0}, {-5.7f, -5, -5.7f}, {5.7f, 0, 5.7f}, "white_concrete", sheetx(0.52f)),
+    part("hem", "skirt", {0, -5, 0}, {-6.3f, -3, -6.3f}, {6.3f, 0, 6.3f}, "white_concrete", sheetx(0.42f, {{"role", "whem"}})),
+    part("tailFL", "hem", {0, -3, 0}, {-6.3f, -3, -6.3f}, {-2.8f, 0, -2.8f}, "white_concrete", sheetx(0.32f)),
+    part("tailFR", "hem", {0, -3, 0}, {2.8f, -2.2f, -6.3f}, {6.3f, 0, -2.8f}, "white_concrete", sheetx(0.32f)),
+    part("tailBL", "hem", {0, -3, 0}, {-6.3f, -2.4f, 2.8f}, {-2.8f, 0, 6.3f}, "white_concrete", sheetx(0.32f)),
+    part("tailBR", "hem", {0, -3, 0}, {2.8f, -3.2f, 2.8f}, {6.3f, 0, 6.3f}, "white_concrete", sheetx(0.32f)),
+    part("tailM", "hem", {0, -3, 0}, {-1.6f, -1.6f, -6.3f}, {1.6f, 0, 6.3f}, "white_concrete", sheetx(0.3f)),
+    part("head", "body", {0, 5, 0}, {-4.7f, 0, -4.7f}, {4.7f, 6, 4.7f}, "white_concrete", sheetx(0.66f, {{"role", "whead"}})),
+    part("dome", "head", {0, 6, 0}, {-3.7f, 0, -3.7f}, {3.7f, 1.6f, 3.7f}, "white_concrete", sheetx(0.66f)),
+    part("crown", "dome", {0, 1.6f, 0}, {-2.1f, 0, -2.1f}, {2.1f, 1, 2.1f}, "white_concrete", sheetx(0.66f)),
+    part("eyeL", "head", {0, 0, 0}, {-3.1f, 2.4f, -4.95f}, {-1.2f, 4.9f, -4.65f}, "black_concrete", holes()),
+    part("eyeR", "head", {0, 0, 0}, {1.2f, 2.4f, -4.95f}, {3.1f, 4.9f, -4.65f}, "black_concrete", holes()),
+    part("mouth", "head", {0, 0, 0}, {-0.9f, 0.5f, -4.95f}, {0.9f, 1.9f, -4.65f}, "black_concrete", holes()),
+    part("armR", "body", {-5.2f, 3, 0}, {-1.1f, -6, -2}, {1.1f, 0, 2}, "white_concrete", sheetx(0.5f, {{"role", "warm"}, {"rest", {0, 0, -0.35}}})),
+    part("armL", "body", {5.2f, 3, 0}, {-1.1f, -6, -2}, {1.1f, 0, 2}, "white_concrete", sheetx(0.5f, {{"role", "warm"}, {"rest", {0, 0, 0.35}}}))});
   models["ghost"] = gh;
 }
 
@@ -404,7 +413,7 @@ public:
       else if (c->type == "scarecrow") { crows++; taken.push_back(c->pos); }
       else if (c->type == "ghost") ghosts++;
     }
-    const bool wantP = pumpkins < 2 + n && frand() < 0.4f, wantS = crows < 1 + n && frand() < 0.3f, wantG = ghosts < 1 + n && frand() < 0.25f;
+    const bool wantP = pumpkins < 2 + n && frand() < 0.4f, wantS = crows < 1 && frand() < 0.04f, wantG = ghosts < 1 && frand() < 0.03f;   // scarecrows and ghosts are rare: one at a time round you
     if (wantP || wantS) {
       // one pass over the loaded columns around the player: pumpkins on the surface, farmland / crops / hay bales
       static BlockId farmland = reg().blockId("farmland"), hay = reg().blockId("hay_bale");
