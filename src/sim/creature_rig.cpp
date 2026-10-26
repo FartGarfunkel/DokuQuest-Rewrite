@@ -4,6 +4,7 @@
 // render/monstex.js (slither, sting, drift, orbit), game/aquatic.js (squid & stranded fish), render/rigs2.js
 // (rigLife), game/anim.js (creature walk additions) and game/dismember.js.
 #include "sim/creature_rig.h"
+#include "sim/hallow.h"
 #include "sim/creature_entities.h"
 #include "core/registry.h"
 
@@ -603,6 +604,7 @@ bool rigPartShown(const Creature& m, const RigPart& p) {
   if (p.antler && !m.stag) return false;
   if (p.wool && m.sheared) return false;
   auto state = [&](const std::string& f) {
+    if (f.size() > 2 && f[0] == 'd' && f[1] == ':') return hwGet(m, f.c_str() + 2) > 0.5f;   // the October creatures' own flags (sim/hallow.h)
     if (f == "saddled") return m.saddled; if (f == "puffed") return m.puffed; if (f == "curled") return m.curled; if (f == "roosting") return m.roosting;
     if (f == "tongueOut") return m.tongueOut; if (f == "sleeping") return m.sleeping; if (f == "sitting") return m.sitting; if (f == "playDead") return m.playDead;
     if (f == "hasSting") return m.hasSting; if (f == "pollen") return m.pollen; if (f == "angry") return m.angryT > 0; if (f == "baby") return m.baby;

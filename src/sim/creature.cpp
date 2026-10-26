@@ -3,6 +3,7 @@
 // quarrels.js, pets.js (hurt), nightmobs.js (jockeys, slime split), husbandry.js (kept animals).
 #include "sim/creature.h"
 #include "common/holiday.h"
+#include "sim/hallow.h"
 #include "sim/mob_combat.h"
 #include "sim/physics.h"
 #include "sim/player.h"
@@ -33,7 +34,7 @@ static CreatureType parseType(const std::string& key, const json& j) {
   B(hostile) B(special) B(boss) B(undead) B(fireImmune) B(ranged) B(climber) B(flyer) B(hopper) B(slimy) B(swims) B(walks) B(water) B(farm)
   B(woolly) B(layer) B(floaty) B(grazer) B(pecker) B(herd) B(pack) B(protective) B(angersWhenHurt) B(stalker) B(nocturnal) B(retaliates) B(rams)
   B(spit) B(curls) B(roosts) B(perches) B(stings) B(school) B(puffs) B(playful) B(needsAir) B(playsDead) B(frogTongue) B(ambient) B(displays)
-  B(bear) B(snake) B(dayNeutral) B(noPush) B(fleesSun) B(npc) B(noDismember) B(carry) B(spirit)
+  B(bear) B(snake) B(dayNeutral) B(noPush) B(fleesSun) B(npc) B(noDismember) B(carry) B(spirit) B(phase)
 #undef B
   if (j.contains("tint") && j["tint"].is_array() && j["tint"].size() >= 4) { t.hasTint = true; for (int i = 0; i < 4; i++) t.tint[i] = j["tint"][i].get<float>(); }
   if (j.contains("drops") && j["drops"].is_array())
@@ -575,7 +576,7 @@ void Creature::update(Level& lv, float dt) {
   if (wantJump) { if (onGround && !noGravity) vel.y = T->hopper ? 6 : 7.8f; wantJump = false; }
   {
     vec3 before = pos;
-    MoveResult r = moveBox(wd, pos, w, h, vel * dt, onGround || wasGround ? 0.6f : 0.f);
+    MoveResult r = T->phase ? phaseMove(wd, pos, w, h, vel * dt) : moveBox(wd, pos, w, h, vel * dt, onGround || wasGround ? 0.6f : 0.f);
     hitWall = r.hitX || r.hitZ; hitCeiling = r.hitY && vel.y > 0;
     if (r.hitX) vel.x = 0;
     if (r.hitZ) vel.z = 0;
@@ -667,6 +668,7 @@ json Creature::snap() const {
             {"sw", r2(swingT)}, {"st", r2(shootT)}, {"gz", r2(grazeT)}, {"pk", r2(peckT)}, {"og", onGround ? 1 : 0}};
   if (attack.on) o["a"] = {attack.kind, r2(attack.progress), r2(attack.yaw)};
   if (data.contains("hat")) o["hd"] = data["hat"];
+  if (data.contains("hw")) o["hw"] = data["hw"];
   if (!lost.empty()) o["ls"] = lost;
   if (hasTilt) o["sf"] = {r2(surfaceTilt.x), r2(surfaceTilt.y)};
   return o;
@@ -692,6 +694,7 @@ void Creature::applySnap(const json& o) {
   fuse = o.value("fu", 0.f); if (int s = o.value("sz", 0)) if (s != size) setSize(s);
   swingT = o.value("sw", 0.f); shootT = o.value("st", 0.f); grazeT = o.value("gz", 0.f); peckT = o.value("pk", 0.f); onGround = o.value("og", 1);
   if (o.contains("hd")) data["hat"] = o["hd"];
+  if (o.contains("hw")) data["hw"] = o["hw"];
   lost.clear(); if (o.contains("ls")) for (auto& n : o["ls"]) lost.insert(n.get<std::string>());
   hasTilt = o.contains("sf"); if (hasTilt) surfaceTilt = vec2(o["sf"][0], o["sf"][1]);
 }

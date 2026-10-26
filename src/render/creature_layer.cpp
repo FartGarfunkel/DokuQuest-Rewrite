@@ -3,6 +3,7 @@
 // held items; Projectile.glow; FallingTree.draws; telegraphDecal), game/dismember.js Gib.draws and
 // game/blocks2.js Arrow.draws.
 #include "render/creature_layer.h"
+#include "sim/hallow.h"
 #include "render/creature_draw.h"
 #include "render/creature_models.h"
 #include "assets/item_models.h"
@@ -314,7 +315,8 @@ void CreatureLayer::drawTranslucent(GameSession& s, const FrameCtx& f) {
     for (size_t i = 0; i < RM->parts.size(); i++) {
       const RigPart& p = RM->parts[i];
       if (p.alpha >= 1 || CM->parts[i]->hidden || !rigPartPosed(*m, (int)i) || !rigPartShown(*m, p)) continue;
-      D.draw(CM->parts[i]->gl, glm::translate(mat4(1), rel) * m->mats[i] * CM->parts[i]->local, L, tint, p.alpha);
+      // (glowing see-through parts are drawn full bright: the pumpkin creature's faint face, the ghost's eyes; the ghost fades with data["hw"].fa)
+      D.draw(CM->parts[i]->gl, glm::translate(mat4(1), rel) * m->mats[i] * CM->parts[i]->local, p.glow ? VoxelLight{1, 1} : L, tint, p.alpha * (m->T->phase ? hwGet(*m, "fa", 1.f) : 1.f));
     }
     // a soft round shadow on the ground under it
     if (!m->T->flyer || m->onGround) {

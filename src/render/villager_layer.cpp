@@ -2,6 +2,7 @@
 // screens the villages open (see villager_layer.h).
 #include "render/villager_layer.h"
 #include "common/holiday.h"
+#include "render/halloween_costumes.h"
 #include "render/char_anim.h"
 #include "render/char_layer.h"
 #include "assets/char_model.h"
@@ -136,12 +137,22 @@ public:
       // guards in iron: the 3D outer layer goes under the armour
       std::string AR[4];
       if (N && c->data.contains("npcArmor") && c->data["npcArmor"].is_array()) for (int i = 0; i < 4 && i < (int)c->data["npcArmor"].size(); i++) if (c->data["npcArmor"][i].is_string()) AR[i] = c->data["npcArmor"][i];
+      // Halloween: who dresses up is a hash of the id (stable, nothing stored): ~30% a carved pumpkin or jack-o'-lantern, and of the
+      // rest about half a costume (render/halloween_costumes.h); the ghost sheet covers the arms and the body
+      u32 hh = 0; bool hwPumpkin = false; Costume hwCos = Costume::None;
+      if (halloween()) {
+        hh = c->id * 2654435761u; hh ^= hh >> 15; hh *= 2246822519u; hh ^= hh >> 13;
+        hwPumpkin = AR[0].empty() && hh % 100 < 30;
+        if (AR[0].empty() && AR[1].empty()) hwCos = villagerCostume(hh, hwPumpkin);
+      }
+      const bool sheet = hwCos == Costume::GhostSheet;
       bool hid[CP_COUNT] = {};
       hid[CP_HEAD] = !AR[0].empty();
       for (int i : {CP_BODY, CP_ARMR_U, CP_ARMR_D, CP_ARML_U, CP_ARML_D}) hid[i] = !AR[1].empty();
       hid[CP_LEGR_U] = hid[CP_LEGL_U] = !AR[2].empty();
       hid[CP_LEGR_D] = hid[CP_LEGL_D] = !AR[2].empty() || !AR[3].empty();
       for (int i = 0; i < CP_COUNT; i++) {
+        if (sheet && i >= CP_BODY && i <= CP_ARML_D) continue;
         mat4 m = R.part[i] * R.scale[i];
         if (M.base[i].ready()) VR.draw(M.base[i].gl, m * M.base[i].local(), light, tint);
         if (!hid[i] && M.ovl[i].ready()) VR.draw(M.ovl[i].gl, m * M.ovl[i].local(), light, tint);
@@ -154,18 +165,26 @@ public:
         const ArmorSet& A = armorMeshes(AR[slot], "", slot, M.slim, false, ts);
         for (auto& [pn, list] : A.byPart) { auto it = PART.find(pn); if (it == PART.end()) continue; mat4 m = R.part[it->second] * R.scale[it->second]; for (const CharMesh* cm : list) VR.draw(cm->gl, m * cm->local(), light, tint); }
       }
-      // Halloween: villagers dress up. A hash of the id picks who (stable, nothing stored): about 30% wear a carved pumpkin or a
-      // jack-o'-lantern (it glows), and a few a black, orange or purple cape
       if (halloween()) {
-        u32 hh = c->id * 2654435761u; hh ^= hh >> 15; hh *= 2246822519u; hh ^= hh >> 13;
-        if (AR[0].empty() && hh % 100 < 30) {
+        if (hwPumpkin) {
           const std::string hat = (hh >> 8) % 5 < 2 ? "jack_o_lantern" : "carved_pumpkin";
           const VoxelModel& hm = itemModel(hat);
           if (hm.ready()) VR.draw(hm.gl, glm::scale(glm::rotate(glm::translate(R.part[CP_HEAD], vec3(0, 4.8f, 0)), PI, vec3(0, 1, 0)), vec3(10.4f)) * hm.matrix(), hat == "jack_o_lantern" ? VoxelLight{1, 1} : light, tint);
         }
-        if (!sleep && (hh >> 12) % 100 < 18) {
+        const mat4 headM = R.part[CP_HEAD] * R.scale[CP_HEAD];
+        auto piece = [&](int pc, const mat4& m) { const CharMesh& cm = hwPiece(pc); if (cm.ready()) VR.draw(cm.gl, m * cm.local(), light, tint); };
+        switch (hwCos) {
+          case Costume::WitchHat: piece(HW_WITCH_HAT, headM); break;
+          case Costume::SkullPaint: piece(HW_SKULL_FACE, headM); break;
+          case Costume::GhostSheet: piece(HW_SHEET_HEAD, headM); piece(HW_SHEET_BODY, R.body); held.clear(); break;
+          case Costume::Vampire: piece(HW_COLLAR, headM); break;
+          default: break;
+        }
+        // a few more wear a black, orange or purple cape; the vampire always has the dark one
+        const bool cape = hwCos == Costume::Vampire || (hwCos == Costume::None && (hh >> 12) % 100 < 18);
+        if (!sleep && cape) {
           static const char* CAPES[3] = {"black_cape", "orange_cape", "purple_cape"};
-          if (const CharMesh* cm = capeMesh(CAPES[(hh >> 20) % 3], 0, ts)) {
+          if (const CharMesh* cm = capeMesh(hwCos == Costume::Vampire ? "black_cape" : CAPES[(hh >> 20) % 3], 0, ts)) {
             mat4 m = glm::rotate(glm::translate(R.body, vec3(0, 12, 2.1f)), -0.12f - 0.5f * ps.walkAmt, vec3(1, 0, 0));
             VR.draw(cm->gl, m * cm->local(), light, tint);
           }
