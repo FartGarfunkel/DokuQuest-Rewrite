@@ -5,6 +5,11 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.4.10 — Windows (October 2026)
+
+- **Windows download:** this release comes with a Windows version again: download the windows-x64 zip, unzip it anywhere and run dokuquest-launcher.exe. Your worlds live in %APPDATA%\DokuQuest, and the launcher keeps itself up to date.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.4.9 — Hotfix (October 2026)
 
 - **Windows is back:** a Windows download (a zip: unzip it anywhere and run dokuquest-launcher.exe) comes with each release again, next to the Linux AppImage.
