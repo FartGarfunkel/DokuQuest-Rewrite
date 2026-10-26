@@ -7,6 +7,7 @@
 #include "sim/slime_goo.h"
 #include "sim/creature.h"
 #include "sim/creature_entities.h"
+#include "sim/hallow.h"
 #include "sim/mob_combat.h"
 #include "common/holiday.h"
 #include "sim/physics.h"
@@ -676,6 +677,7 @@ void registerCreatures() {
   static bool done = false;
   if (done) return;
   done = true;
+  registerHalloweenMobs();   // sim/hallowmobs.cpp: types first, so the entity factory and every list below know them
   registerCreatureEntities();
   registerSpawners();
   registerPocket();

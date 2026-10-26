@@ -26,7 +26,7 @@ struct CreatureType {
        grazer = false, pecker = false, herd = false, pack = false, protective = false, angersWhenHurt = false, stalker = false, nocturnal = false,
        retaliates = false, rams = false, spit = false, curls = false, roosts = false, perches = false, stings = false, school = false, puffs = false,
        playful = false, needsAir = false, playsDead = false, frogTongue = false, ambient = false, displays = false, bear = false, snake = false,
-       dayNeutral = false, noPush = false, fleesSun = false, npc = false, noDismember = false, carry = false, spirit = false;
+       dayNeutral = false, noPush = false, fleesSun = false, npc = false, noDismember = false, carry = false, spirit = false, phase = false;   // phase: drifts through leaves (the October ghost)
   bool hasTint = false; vec4 tint{0};
   struct Drop { std::string id; int lo = 0, hi = 0; float chance = 1; };
   std::vector<Drop> drops;
