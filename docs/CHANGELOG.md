@@ -5,6 +5,14 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.4.4 — More Halloween (October 2026)
+
+- **More Halloween (October only):** three new night creatures. A pumpkin creature lies in pumpkin patches looking like any other pumpkin (watch for a faint glow in its face at night) until you come close or touch it, then rises on a body of vines. A scarecrow stands still in fields and by village farms, and only moves when nobody is looking at it. A pale ghost drifts about at night, chills you if it touches you, fades when you stare it down and keeps away from torchlight.
+- **Villagers in costume:** some villagers dress up for Halloween as witches, ghosts, skeletons and vampires.
+- **Bats** stay down around the treetops instead of flying up into the clouds.
+- **Villager conversations look like the original again:** the talk window, shop and quest board are rebuilt after the original's, and villagers babble their lines letter by letter in their own voices, in conversation and when they mutter as you pass.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.4.3 — Halloween (October 2026)
 
 - **Halloween is here (all of October):** zombies, skeletons and some villagers wear carved pumpkins and glowing jack-o'-lanterns, and a few villagers wear black, orange or purple capes. Full moons rise as a big orange harvest moon, nights are foggier with pale wisps drifting about, bats come out at night, new land grows far more pumpkin patches, and new villages put out jack-o'-lanterns. Out in a village at night, a villager may toss you a treat. The game goes by your computer's date; Options > Holiday events turns it off.

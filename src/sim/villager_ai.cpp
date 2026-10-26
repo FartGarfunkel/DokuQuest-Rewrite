@@ -284,8 +284,12 @@ void npcForgive(Level& lv, Player& who, const std::string& vid) {
 void npcSay(Level& lv, Creature& e, const std::string& line, float vol) {
   const json* N = npcOf(e);
   NpcVoice V = npcVoice(N ? N->value("s", 0u) : 0u);
-  lv.fx->voice("villager", "say", e.pos + vec3(0, 1.6f, 0), V.pitch / 235.f);
-  (void)line; (void)vol;
+  if (line.empty()) { lv.fx->voice("villager", "say", e.pos + vec3(0, 1.6f, 0), V.pitch / 235.f); return; }
+  // villagers.js babble: the line itself, a blip a letter in their own voice (audio/babble.h reads the name:
+  // "babble:" + pitch|formant|triangle|seed|rate|max blips|words), placed where they stand
+  char head[96];
+  std::snprintf(head, sizeof head, "%.2f|%.4f|%d|%d|%.2f|%d|", V.pitch, V.formant, V.triangle ? 1 : 0, V.seed, 26.f, 90);
+  lv.fx->sound(std::string("babble:") + head + line, e.pos + vec3(0, 1.6f, 0), 16, vol);
 }
 void npcMutter(Level& lv, Creature& e, const json& lines) {
   VillagerSystem* S = vsys(lv);
