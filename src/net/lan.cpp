@@ -2,6 +2,10 @@
 #include "net/lan.h"
 #include "net/protocol.h"
 #include <enet/enet.h>
+#ifdef _WIN32
+#undef near   // windows.h (through enet) defines near and far as nothing
+#undef far
+#endif
 
 namespace dq::net {
 

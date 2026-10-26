@@ -5,6 +5,10 @@
 #include "net/server_host.h"
 #include "world/region.h"
 #include <enet/enet.h>
+#ifdef _WIN32
+#undef near   // windows.h (through enet) defines near and far as nothing
+#undef far
+#endif
 #include <thread>
 
 namespace dq::net {

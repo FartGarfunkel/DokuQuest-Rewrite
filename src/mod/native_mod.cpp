@@ -6,6 +6,8 @@
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#undef near   // (windows.h defines near and far as nothing)
+#undef far
 #else
 #include <dlfcn.h>
 #endif

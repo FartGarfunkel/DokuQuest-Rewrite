@@ -5,6 +5,8 @@
 #include <miniz.h>
 #if defined(_WIN32)
 #include <windows.h>
+#undef near   // (windows.h defines near and far as nothing)
+#undef far
 #else
 #include <unistd.h>
 #include <climits>

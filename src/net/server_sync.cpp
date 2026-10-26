@@ -4,6 +4,10 @@
 #include "sim/commands.h"
 #include "world/region.h"
 #include <enet/enet.h>
+#ifdef _WIN32
+#undef near   // windows.h (through enet) defines near and far as nothing
+#undef far
+#endif
 
 namespace dq::net {
 
@@ -80,12 +84,12 @@ void ServerHost::applyBlocks(Peer& p, const json& m) {
     if (!b.is_array() || b.size() < 5) continue;
     int x = b[0], y = b[1], z = b[2]; u32 id = b[3]; u8 meta = (u8)b[4].get<int>();
     if (id >= R.blocks.size() || !inWorldY(y)) continue;
-    bool near = realm == p.pl->realm && glm::distance(vec3(x + 0.5f, y + 0.5f, z + 0.5f), p.pl->pos) <= 24;
-    if (!w.isLoaded(x, y, z)) { if (near) pendingBlocks.push_back({realm, x, y, z, (BlockId)id, meta, t + 10, p.id}); continue; }
+    bool nearby = realm == p.pl->realm && glm::distance(vec3(x + 0.5f, y + 0.5f, z + 0.5f), p.pl->pos) <= 24;
+    if (!w.isLoaded(x, y, z)) { if (nearby) pendingBlocks.push_back({realm, x, y, z, (BlockId)id, meta, t + 10, p.id}); continue; }
     BlockId old = w.getBlock(x, y, z);
     u8 oldMeta = w.getMeta(x, y, z);
     if (old == id && oldMeta == meta) continue;
-    if (!near) { fix.push_back({x, y, z, old, oldMeta}); continue; }
+    if (!nearby) { fix.push_back({x, y, z, old, oldMeta}); continue; }
     bool ok = true;
     if (level.events) {
       if (id == AIR && old != AIR) ok = level.events->emit("blockBreak", json::array({p.name, x, y, z, R.block(old).key}));
@@ -93,7 +97,7 @@ void ServerHost::applyBlocks(Peer& p, const json& m) {
     }
     if (!ok) { fix.push_back({x, y, z, old, oldMeta}); continue; }
     w.setBlock(x, y, z, (BlockId)id, meta, SetFlags::FromNet | SetFlags::Urgent);
-    // everyone else near hears it (their own game already played it for them)
+    // everyone else nearby hears it (their own game already played it for them)
     bool broke = id == AIR;
     std::string mat = R.block(broke ? old : (BlockId)id).sound;
     json item = json::array({mat, broke ? "dig" : "place", x + 0.5f, y + 0.5f, z + 0.5f});
@@ -212,15 +216,15 @@ void ServerHost::queueFx(char kind, json item) {
 }
 void ServerHost::sendFxTo(Peer& p, const char* key, json item) { if (p.fxOut.size() < 120) p.fxOut.push_back({key, std::move(item)}); }
 void ServerHost::flushEffects() {
-  auto near = [](const json& it, int at, vec3 pos, float r) { return glm::distance(vec3(it[at].get<float>(), it[at + 1].get<float>(), it[at + 2].get<float>()), pos) < r; };
+  auto nearby = [](const json& it, int at, vec3 pos, float r) { return glm::distance(vec3(it[at].get<float>(), it[at + 1].get<float>(), it[at + 2].get<float>()), pos) < r; };
   for (auto& [id, p] : peers) {
     if (!p.ready || !p.pl || !p.enet) { p.fxOut.clear(); continue; }
     json m = json::object();
     vec3 at = p.pl->pos;
-    for (auto& s : fxS) if (near(s, 1, at, s[4].get<float>())) m["s"].push_back(s);
-    for (auto& s : fxM) if (near(s, 2, at, 32)) m["m"].push_back(s);
-    for (auto& s : fxV) if (near(s, 2, at, 40)) m["v"].push_back(s);
-    for (auto& s : fxP) if (near(s, 1, at, 48)) m["p"].push_back(s);
+    for (auto& s : fxS) if (nearby(s, 1, at, s[4].get<float>())) m["s"].push_back(s);
+    for (auto& s : fxM) if (nearby(s, 2, at, 32)) m["m"].push_back(s);
+    for (auto& s : fxV) if (nearby(s, 2, at, 40)) m["v"].push_back(s);
+    for (auto& s : fxP) if (nearby(s, 1, at, 48)) m["p"].push_back(s);
     for (auto& [k, it] : p.fxOut) m[k].push_back(it);
     p.fxOut.clear();
     if (!m.empty()) send(p.enet, FX, m, 1, false);

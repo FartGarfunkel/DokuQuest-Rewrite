@@ -3,6 +3,8 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+#undef near   // (windows.h defines near and far as nothing)
+#undef far
 #else
 #include <spawn.h>
 #include <sys/wait.h>
