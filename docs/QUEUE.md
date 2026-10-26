@@ -81,5 +81,11 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
   - Slow burn tied to fragments: almost none early, then rare far-off watchers, more and bolder as fragments are fed.
   - Late stage: he brings groups of them through portals like the rift in town, then walks back and the portal closes.
 
+- Magic overhaul (user, 2026-10-26): keep the ways to unlock spells.
+  - Skyrim-style hands: a spell in either hand, the same spell in both hands to combine it into a stronger one, two different spells to mix their effects, or a weapon/tool in one hand and a spell in the off hand.
+  - One button per hand, on both mouse and controller.
+  - Spells level up with use, like gear, tools and weapons.
+- Economy (user, 2026-10-26): villagers trade in gold coins instead of emeralds, so emerald becomes a better-balanced ore. Keep or convert old saves' emerald trades.
+
 ## Roadmap (after the bugs)
 Start in the wild, potions stack to 16, test-build small fixes, coins/economy, roads and bridges, travellers, saddle bags, bigger ship, poses, torches on fences, chains/lanterns, rift to 10 fragments + slow pacing + lore, graphics presets, built-in shader levels, Skylands content, Shadowbloom ports, Iris/OptiFine shader packs.
