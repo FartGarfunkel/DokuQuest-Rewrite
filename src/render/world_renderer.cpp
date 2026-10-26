@@ -37,14 +37,15 @@ void TileTextures::bind(Shader& s, int u) const {
 }
 
 WorldRenderer::~WorldRenderer() {
-  if (vao) glDeleteVertexArrays(1, &vao);
+  for (auto& pg : pages) { glDeleteVertexArrays(1, &pg.vao); glDeleteBuffers(1, &pg.vbo); }
   if (tq[0]) glDeleteQueries(2, tq);
-  GLuint b[3] = {vbo, instVbo, cmdBuf};
+  GLuint b[2] = {instVbo, cmdBuf};
   for (GLuint x : b) if (x) glDeleteBuffers(1, &x);
 }
 
 bool WorldRenderer::init(const Settings& s, const TileTextures& t) {
   tex = t;
+  if (const char* e = std::getenv("DQ_ARENA_PAGE_MB")) if (pages.empty()) PAGE_V = (u32)(std::max(4, std::atoi(e)) * 1048576.0 / sizeof(ChunkVertex));
   microVoxels = s.microVoxels; microDist = (float)s.microVoxelDist;
   mopt.fancyLeaves = s.fancyLeaves; mopt.wavingPlants = s.wavingPlants;
   plantDetail = s.plantDetail == "off" || s.plantDetail == "flat" ? 0 : s.plantDetail == "all" ? 2 : 1;
@@ -84,10 +85,10 @@ static const std::vector<VertexAttrib> CHUNK_ATTRS = {
   {4, 3, GL_UNSIGNED_BYTE, GL_TRUE, false, 16},    // tint
   {5, 1, GL_UNSIGNED_BYTE, GL_FALSE, true, 19},    // mat
 };
-void WorldRenderer::setupVao() {
-  if (!vao) glGenVertexArrays(1, &vao);
-  glBindVertexArray(vao);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+void WorldRenderer::setupVao(Page& pg) {
+  if (!pg.vao) glGenVertexArrays(1, &pg.vao);
+  glBindVertexArray(pg.vao);
+  glBindBuffer(GL_ARRAY_BUFFER, pg.vbo);
   for (auto& a : CHUNK_ATTRS) {
     glEnableVertexAttribArray(a.index);
     if (a.integer) glVertexAttribIPointer(a.index, a.size, a.type, sizeof(ChunkVertex), (void*)(uintptr_t)a.offset);
@@ -106,30 +107,32 @@ void WorldRenderer::setupVao() {
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 void WorldRenderer::grow(u32 need) {
-  // doubles up to 512 MB, then grows 256 MB at a time (one buffer near 4 GB breaks some drivers)
-  const u32 first = (u32)(64u << 20) / sizeof(ChunkVertex), big = (u32)(512u << 20) / sizeof(ChunkVertex), step = (u32)(256u << 20) / sizeof(ChunkVertex);
-  u32 ncap = std::max<u32>(!capacity ? first : capacity < big ? capacity * 2 : capacity + step, capacity + need + 65536);
+  // the last page doubles (from 64 MB) until it is full, then a new page starts
+  const u32 first = (u32)(64u << 20) / sizeof(ChunkVertex);
+  if (pages.empty() || pages.back().cap >= PAGE_V) pages.push_back({});
+  Page& pg = pages.back(); u32 pi = (u32)pages.size() - 1;
+  u32 ncap = std::min<u32>(PAGE_V, std::max<u32>(pg.cap ? pg.cap * 2 : first, pg.cap + need + 65536));
   while (glGetError() != GL_NO_ERROR) {}
   GLuint nb; glGenBuffers(1, &nb);
   glBindBuffer(GL_COPY_WRITE_BUFFER, nb);
   glBufferData(GL_COPY_WRITE_BUFFER, (GLsizeiptr)ncap * sizeof(ChunkVertex), nullptr, GL_DYNAMIC_DRAW);
   GLenum ge = glGetError();
-  DQ_LOG("terrain arena: %.0f MB%s", (double)ncap * sizeof(ChunkVertex) / 1048576.0, ge == GL_OUT_OF_MEMORY ? " - OUT OF GPU MEMORY" : ge ? " - GL error" : "");
-  if (vbo && capacity) {
-    glBindBuffer(GL_COPY_READ_BUFFER, vbo);
-    glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, (GLsizeiptr)capacity * sizeof(ChunkVertex));
+  if (pg.vbo && pg.cap) {
+    glBindBuffer(GL_COPY_READ_BUFFER, pg.vbo);
+    glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, (GLsizeiptr)pg.cap * sizeof(ChunkVertex));
     glBindBuffer(GL_COPY_READ_BUFFER, 0);
-    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &pg.vbo);
   }
   glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
-  vbo = nb;
-  release(capacity, ncap - capacity);
-  capacity = ncap;
-  arenaBytes = (size_t)capacity * sizeof(ChunkVertex);
-  setupVao();
+  pg.vbo = nb;
+  addFree(pi * PAGE_V + pg.cap, ncap - pg.cap);
+  pg.cap = ncap;
+  arenaBytes = 0; for (auto& p : pages) arenaBytes += (size_t)p.cap * sizeof(ChunkVertex);
+  DQ_LOG("terrain arena: %.0f MB in %d page(s)%s", arenaBytes / 1048576.0, (int)pages.size(), ge == GL_OUT_OF_MEMORY ? " - OUT OF GPU MEMORY" : ge ? " - GL error" : "");
+  setupVao(pg);
 }
 u32 WorldRenderer::alloc(u32 n) {
-  for (int pass = 0; pass < 2; pass++) {
+  for (int pass = 0; pass < 4; pass++) {
     // best fit
     auto best = freeList.end();
     for (auto it = freeList.begin(); it != freeList.end(); ++it) if (it->second >= n && (best == freeList.end() || it->second < best->second)) { best = it; if (it->second == n) break; }
@@ -146,12 +149,16 @@ u32 WorldRenderer::alloc(u32 n) {
 }
 void WorldRenderer::release(u32 base, u32 n) {
   if (!n) return;
-  if (base < capacity) usedBytes -= std::min(usedBytes, (size_t)n * sizeof(ChunkVertex));
+  usedBytes -= std::min(usedBytes, (size_t)n * sizeof(ChunkVertex));
+  addFree(base, n);
+}
+void WorldRenderer::addFree(u32 base, u32 n) {
+  if (!n) return;
   auto it = freeList.emplace(base, n).first;
-  // merge with the following and preceding blocks
+  // merge with the following and preceding blocks of the same page
   auto nx = std::next(it);
-  if (nx != freeList.end() && it->first + it->second == nx->first) { it->second += nx->second; freeList.erase(nx); }
-  if (it != freeList.begin()) { auto pv = std::prev(it); if (pv->first + pv->second == it->first) { pv->second += it->second; freeList.erase(it); } }
+  if (nx != freeList.end() && it->first + it->second == nx->first && it->first / PAGE_V == nx->first / PAGE_V) { it->second += nx->second; freeList.erase(nx); }
+  if (it != freeList.begin()) { auto pv = std::prev(it); if (pv->first + pv->second == it->first && pv->first / PAGE_V == it->first / PAGE_V) { pv->second += it->second; freeList.erase(it); } }
 }
 
 // ---------------------------------------------------------------- meshing
@@ -207,8 +214,9 @@ void WorldRenderer::upload(Result& r) {
   if (maxQuads > 16384) quadIndexBuffer(maxQuads);
   m->origin = vec3(r.k.cx * 16, dimBase(r.k.dim) + r.k.sy * 16, r.k.cz * 16);
   m->fx = std::move(r.out.fx); m->detail = r.out.detail;
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  size_t off = (size_t)m->base * sizeof(ChunkVertex);
+  if (m->base / PAGE_V >= pages.size()) return;
+  glBindBuffer(GL_ARRAY_BUFFER, pages[m->base / PAGE_V].vbo);
+  size_t off = (size_t)(m->base % PAGE_V) * sizeof(ChunkVertex);
   const std::vector<ChunkVertex>* parts[3] = {&r.out.opaque, &r.out.cutout, &r.out.trans};
   for (auto* p : parts) { if (!p->empty()) glBufferSubData(GL_ARRAY_BUFFER, (GLintptr)off, (GLsizeiptr)(p->size() * sizeof(ChunkVertex)), p->data()); off += p->size() * sizeof(ChunkVertex); }
   glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -216,7 +224,7 @@ void WorldRenderer::upload(Result& r) {
 
 void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs) {
   if (!w) return;
-  if (!vbo) grow(0);
+  if (pages.empty()) grow(0);
   if (auto* le = w->system<LightEngine>()) le->flush(*w);   // a placed torch lights up in this frame's meshes
   for (auto& k : w->drainUnloaded()) for (int sy = 0; sy < SECS; sy++) {
     parked.erase({k.dim, k.cx, sy, k.cz});
@@ -277,7 +285,7 @@ void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs)
 struct DrawCmd { u32 count, instanceCount, firstIndex; i32 baseVertex; u32 baseInstance; };
 
 void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
-  if (!w || !vao) return;
+  if (!w || pages.empty()) return;
   shader.use();
   f.apply(shader);
   shader.set("uViewProj", f.cam.viewProj);
@@ -317,37 +325,43 @@ void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
       }
     }
   }
-  glBindVertexArray(vao);
-  auto passBase = [&](SecMesh* m) -> i32 { u32 o = m->base; for (int i = 0; i < pass; i++) o += m->nq[i] * 4; return (i32)o; };
+  // in page runs: opaque passes page by page (nearest first within each), the translucent one far to near
+  static std::vector<SecMesh*> order; order.clear();
+  if (pass == 2) { for (auto it = visible.rbegin(); it != visible.rend(); ++it) if (it->second->nq[pass]) order.push_back(it->second); }
+  else for (u32 p = 0; p < pages.size(); p++) for (auto& v : visible) if (v.second->nq[pass] && v.second->base / PAGE_V == p) order.push_back(v.second);
+  if (order.empty()) return;
+  auto passBase = [&](SecMesh* m) -> i32 { u32 o = m->base % PAGE_V; for (int i = 0; i < pass; i++) o += m->nq[i] * 4; return (i32)o; };
   if (gfx.mdi) {
     static std::vector<DrawCmd> cmds; static std::vector<vec3> origins;
     cmds.clear(); origins.clear();
-    auto add = [&](SecMesh* m) {
-      if (!m->nq[pass]) return;
+    for (SecMesh* m : order) {
       cmds.push_back({m->nq[pass] * 6, 1, 0, passBase(m), (u32)origins.size()});
       origins.push_back(vec3(glm::dvec3(m->origin) - f.cam.origin));
-    };
-    if (pass == 2) for (auto it = visible.rbegin(); it != visible.rend(); ++it) add(it->second);   // far to near
-    else for (auto& v : visible) add(v.second);
-    if (cmds.empty()) { glBindVertexArray(0); return; }
+    }
     glBindBuffer(GL_ARRAY_BUFFER, instVbo);
     glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(origins.size() * sizeof(vec3)), origins.data(), GL_STREAM_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     if (!cmdBuf) glGenBuffers(1, &cmdBuf);
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, cmdBuf);
     glBufferData(GL_DRAW_INDIRECT_BUFFER, (GLsizeiptr)(cmds.size() * sizeof(DrawCmd)), cmds.data(), GL_STREAM_DRAW);
-    glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, (GLsizei)cmds.size(), 0);
+    for (size_t a = 0; a < order.size();) {
+      u32 p = order[a]->base / PAGE_V; size_t b = a;
+      while (b < order.size() && order[b]->base / PAGE_V == p) b++;
+      glBindVertexArray(pages[p].vao);
+      glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(a * sizeof(DrawCmd)), (GLsizei)(b - a), 0);
+      a = b;
+    }
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
   } else {
     GLint locO = shader.loc("uOrigin");
-    auto one = [&](SecMesh* m) {
-      if (!m->nq[pass]) return;
+    u32 bound = ~0u;
+    for (SecMesh* m : order) {
+      u32 p = m->base / PAGE_V;
+      if (p != bound) { glBindVertexArray(pages[p].vao); bound = p; }
       vec3 rel = vec3(glm::dvec3(m->origin) - f.cam.origin);
       glUniform3fv(locO, 1, &rel[0]);
       glDrawElementsBaseVertex(GL_TRIANGLES, (GLsizei)(m->nq[pass] * 6), GL_UNSIGNED_INT, nullptr, passBase(m));
-    };
-    if (pass == 2) for (auto it = visible.rbegin(); it != visible.rend(); ++it) one(it->second);
-    else for (auto& v : visible) one(v.second);
+    }
   }
   glBindVertexArray(0);
 }

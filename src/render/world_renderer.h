@@ -65,7 +65,6 @@ private:
   u32 alloc(u32 n);
   void release(u32 base, u32 n);
   void grow(u32 need);
-  void setupVao();
   World* w = nullptr;
   std::unordered_map<SectionKey, std::unique_ptr<SecMesh>, SectionKeyHash> meshes;
   std::unordered_set<SectionKey, SectionKeyHash> inFlight, again, parked;   // parked: another land's sections, meshed when needed
@@ -76,8 +75,14 @@ private:
   TileTextures tex;
   std::vector<std::pair<float, SecMesh*>> visible;
   std::vector<std::pair<int, std::vector<std::pair<float, SecMesh*>>>> viewStack;
-  GLuint vao = 0, vbo = 0, ibo = 0, instVbo = 0, cmdBuf = 0;
-  u32 capacity = 0;                          // vertices
+  // the arena: pages of up to PAGE_V vertices, each its own buffer (one buffer past 4 GB fails on Mesa: width is 32-bit).
+  // A vertex address is page * PAGE_V + offset; a free block never crosses a page.
+  static inline u32 PAGE_V = 1u << 25;       // 32M vertices = 640 MB (DQ_ARENA_PAGE_MB to test small pages)
+  struct Page { GLuint vao = 0, vbo = 0; u32 cap = 0; };
+  std::vector<Page> pages;
+  GLuint ibo = 0, instVbo = 0, cmdBuf = 0;
+  void setupVao(Page& pg);
+  void addFree(u32 base, u32 n);
   std::map<u32, u32> freeList;               // base -> count
   u32 maxQuads = 0;
   vec3 camPos{0};
