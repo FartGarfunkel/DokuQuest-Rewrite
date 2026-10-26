@@ -1,5 +1,6 @@
 // render/sky.cpp — see sky.h. Ports the computeEnv chain of the original (game.js base, then
 // weather.js, skies.js, seamless.js, theend.js and riftarc.js) and the sky pass (renderer.js + gl.js skyFS).
+#include "common/holiday.h"
 #include "sim/endstory.h"
 #include "render/sky.h"
 #include "sim/level.h"
@@ -193,6 +194,21 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd, bool prima
       }
     }
   }
+  // Halloween: the Overworld's nights are foggier, with a cold blue-grey mist. Caves and rooms (no sky light at the head) keep
+  // the plain sky; the eased openness follows you in and out.
+  float hwFog = 0;
+  if (halloween() && realm == REALM_MAIN && d == DIM_OVERWORLD) {
+    float night = smoothstepf(0.55f, 0.25f, e.day);
+    if (night > 0.01f)
+      if (World* w = lv.worldIfOpen(realm)) {
+        int sky = w->getLight(ifloor(f.cam.pos.x), ifloor(f.cam.pos.y), ifloor(f.cam.pos.z)) >> 4;
+        static float openHw = 1; float want = std::clamp((sky - 3) / 9.f, 0.f, 1.f), viewOpen = want;
+        float& open = primary ? openHw : viewOpen;
+        if (primary) open += (want - open) * 0.05f;
+        hwFog = night * open;
+        e.fog = mixc(e.fog, rgb(0x3a4a60), 0.5f * hwFog); e.horizon = mixc(e.horizon, e.fog, 0.35f * hwFog);
+      }
+  }
   // looking out from under water or lava (game.js viewEnv)
   if (World* w = lv.worldIfOpen(realm)) {
     BlockId eye = w->getBlock(ifloor(f.cam.pos.x), ifloor(f.cam.pos.y), ifloor(f.cam.pos.z));
@@ -207,6 +223,7 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd, bool prima
   // so crossing it is a walk through cloud (only the camera's own land is drawn; see world_renderer.cpp)
   if (e.cloud > 0 && !e.underwater) { float s = smoothstepf(0.f, 0.75f, e.cloud); fr = vec2(fr.x * (1 - s), lerpf(fr.y, 14, s)); }
   if (e.mist > 0.01f && !e.underwater) { float end = 24 + (fr.y - 24) * std::pow(1 - std::min(1.f, e.mist), 2.f); fr = vec2(std::min(fr.x, end * 0.12f), std::min(fr.y, end)); }
+  if (hwFog > 0.01f && !e.underwater) fr = vec2(fr.x * (1 - 0.4f * hwFog), std::max(fr.x * (1 - 0.4f * hwFog) + 24, fr.y * (1 - 0.3f * hwFog)));
   e.fogRange = fr;
   if (primary) { env = e; g_env = e; }
   f.sky = std::make_shared<const SkyEnv>(e);
@@ -237,6 +254,7 @@ void SkyRenderer::draw(const FrameCtx& f) {
   shader.set("uAurora", e.aurora); shader.set("uRainbow", e.rainbow); shader.set("uSkyT", (float)std::fmod(skyT, 10000.0));
   shader.set("uShowSun", e.showSun && !e.underwater ? 1.f : 0.f); shader.set("uSunFade", 1.f - e.cloud);
   shader.set("uMoonPhase", e.moonPhase);
+  shader.set("uHarvest", halloween() && f.dim == DIM_OVERWORLD && e.moonPhase == 0 ? 1.f : 0.f);
   shader.set("uSunDir", e.sunDir);
   glBindVertexArray(vao);
   glDrawArrays(GL_TRIANGLES, 0, 3);

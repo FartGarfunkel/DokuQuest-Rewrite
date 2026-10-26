@@ -183,6 +183,9 @@ public:
     check("toggleSprint", "Toggle sprint", &s.toggleSprint, "Sprint stays on while you move forward.");
     check("screenShake", "Screen shake", &s.screenShake, "Explosions and boss slams shake the view.");
     check("hurtTilt", "Damage tilt", &s.hurtTilt, "The view tilts a little when you are hurt.");
+    { bool he = s.extra.value("holidayEvents", true);   // (kept in Settings::extra, saved as "holidayEvents")
+      check("holidayEvents", "Holiday events", &he, "Seasonal surprises from your computer's calendar, like Halloween in October. Off keeps the game plain all year.");
+      s.extra["holidayEvents"] = he; }
     check("heldSway", "Held item sway", &s.heldSway, "What you hold lags a touch behind when you turn, like Better Than Adventure.");
     // this version's own graphics options
     { int cur = clampv(s.microVoxels, 0, 2); int c = select("microVoxels", "Block detail", cur, {"Flat faces (fastest)", "Shaded micro-voxels", "Raised micro-voxels"}, "Every block is 32\xC3\x97" "32\xC3\x97" "32 little voxels coloured from its texture.");

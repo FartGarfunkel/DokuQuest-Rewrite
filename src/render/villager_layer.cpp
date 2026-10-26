@@ -1,6 +1,7 @@
 // render/villager_layer.cpp — villagers drawn as voxel people, their name tags and marks, your jobs on the HUD, and the
 // screens the villages open (see villager_layer.h).
 #include "render/villager_layer.h"
+#include "common/holiday.h"
 #include "render/char_anim.h"
 #include "render/char_layer.h"
 #include "assets/char_model.h"
@@ -152,6 +153,23 @@ public:
         if (AR[slot].empty() || !reg().item(AR[slot])) continue;
         const ArmorSet& A = armorMeshes(AR[slot], "", slot, M.slim, false, ts);
         for (auto& [pn, list] : A.byPart) { auto it = PART.find(pn); if (it == PART.end()) continue; mat4 m = R.part[it->second] * R.scale[it->second]; for (const CharMesh* cm : list) VR.draw(cm->gl, m * cm->local(), light, tint); }
+      }
+      // Halloween: villagers dress up. A hash of the id picks who (stable, nothing stored): about 30% wear a carved pumpkin or a
+      // jack-o'-lantern (it glows), and a few a black, orange or purple cape
+      if (halloween()) {
+        u32 hh = c->id * 2654435761u; hh ^= hh >> 15; hh *= 2246822519u; hh ^= hh >> 13;
+        if (AR[0].empty() && hh % 100 < 30) {
+          const std::string hat = (hh >> 8) % 5 < 2 ? "jack_o_lantern" : "carved_pumpkin";
+          const VoxelModel& hm = itemModel(hat);
+          if (hm.ready()) VR.draw(hm.gl, glm::scale(glm::rotate(glm::translate(R.part[CP_HEAD], vec3(0, 4.8f, 0)), PI, vec3(0, 1, 0)), vec3(10.4f)) * hm.matrix(), hat == "jack_o_lantern" ? VoxelLight{1, 1} : light, tint);
+        }
+        if (!sleep && (hh >> 12) % 100 < 18) {
+          static const char* CAPES[3] = {"black_cape", "orange_cape", "purple_cape"};
+          if (const CharMesh* cm = capeMesh(CAPES[(hh >> 20) % 3], 0, ts)) {
+            mat4 m = glm::rotate(glm::translate(R.body, vec3(0, 12, 2.1f)), -0.12f - 0.5f * ps.walkAmt, vec3(1, 0, 0));
+            VR.draw(cm->gl, m * cm->local(), light, tint);
+          }
+        }
       }
       if (!held.empty()) {
         std::string id = held == "fishing_rod" ? "fishing_rod_tp" : held;

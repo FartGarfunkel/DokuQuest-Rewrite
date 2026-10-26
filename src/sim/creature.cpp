@@ -2,6 +2,7 @@
 // layers the later modules wrapped round it: dismember.js, bestiary.js, sounds2.js, monsters.js,
 // quarrels.js, pets.js (hurt), nightmobs.js (jockeys, slime split), husbandry.js (kept animals).
 #include "sim/creature.h"
+#include "common/holiday.h"
 #include "sim/mob_combat.h"
 #include "sim/physics.h"
 #include "sim/player.h"
@@ -377,6 +378,13 @@ void Creature::tick(Level& lv, double dtd) {
   float dt = (float)dtd;
   World& w = lv.world(realm);
   if (ghost) { ghostStep(lv, dt); if (hurtTime > 0) hurtTime -= dt; if (deathTime > 0) deathTime += dt; return; }
+  // Halloween: about one in four ghouls and skeletons (and their kin) wears a carved pumpkin or a jack-o'-lantern on its head,
+  // rolled once per creature on its first tick (so cages, /summon and eggs get it too; drawn by render/creature_layer, the jack glows)
+  if (halloween() && !data.contains("hatRolled")) {
+    data["hatRolled"] = true;
+    if (type == "ghoul" || type == "rift_ghoul" || type == "husk" || type == "drowned" || type == "skeleton" || type == "stray" || type == "rift_skeleton")
+      if (frand() < 0.25f) data["hat"] = frand() < 0.4f ? "jack_o_lantern" : "carved_pumpkin";
+  }
   // nothing moves in a chunk that isn't there (it would fall out of the world)
   if (!w.isLoaded(ifloor(pos.x), clampv(ifloor(pos.y), 0, WORLD_H - 1), ifloor(pos.z))) { age -= dt; return; }
   // pets.js: riding along in a vehicle is handled by the vehicle (mountedOn) — not ported yet
@@ -658,6 +666,7 @@ json Creature::snap() const {
             {"v", variant}, {"fl", mobFlags(*this)}, {"hi", heldItem}, {"oi", offItem}, {"cr", crawling ? 1 : 0}, {"fu", r2(fuse)}, {"sz", size},
             {"sw", r2(swingT)}, {"st", r2(shootT)}, {"gz", r2(grazeT)}, {"pk", r2(peckT)}, {"og", onGround ? 1 : 0}};
   if (attack.on) o["a"] = {attack.kind, r2(attack.progress), r2(attack.yaw)};
+  if (data.contains("hat")) o["hd"] = data["hat"];
   if (!lost.empty()) o["ls"] = lost;
   if (hasTilt) o["sf"] = {r2(surfaceTilt.x), r2(surfaceTilt.y)};
   return o;
@@ -682,6 +691,7 @@ void Creature::applySnap(const json& o) {
   heldItem = o.value("hi", std::string()); offItem = o.value("oi", std::string()); crawling = o.value("cr", 0);
   fuse = o.value("fu", 0.f); if (int s = o.value("sz", 0)) if (s != size) setSize(s);
   swingT = o.value("sw", 0.f); shootT = o.value("st", 0.f); grazeT = o.value("gz", 0.f); peckT = o.value("pk", 0.f); onGround = o.value("og", 1);
+  if (o.contains("hd")) data["hat"] = o["hd"];
   lost.clear(); if (o.contains("ls")) for (auto& n : o["ls"]) lost.insert(n.get<std::string>());
   hasTilt = o.contains("sf"); if (hasTilt) surfaceTilt = vec2(o["sf"][0], o["sf"][1]);
 }

@@ -2,6 +2,7 @@
 // game/skies.js extraParticles, the LightningBolt), the ambient effects (game/particles2.js
 // particleWeather + torch flames + drips, game/ambientfx.js leaves, game/blockfx.js emitters) and the
 // layers that draw distant terrain, clouds and particles.
+#include "common/holiday.h"
 #include "render/env_layers.h"
 #include "render/distant.h"
 #include "render/clouds.h"
@@ -329,6 +330,14 @@ void WeatherFxLayer::ambient(GameSession& s, WeatherSystem* W, double step) {
   float dir = W ? W->windDir : 0, strength = W ? W->windStrength : 0.5f, gust = clampv((strength - 0.45f) * 2, 0.f, 1.f);
   int tries = (int)((P.level == 1 ? 30 : 70) * (1 + gust * 1.5f));
   static const char* LEAF[6] = {"leaf_green", "leaf_pink", "leaf_light", "leaf_dark", "leaf_deep", "leaf_white"};
+  // Halloween: on Overworld nights, out in the open, a few pale wisps drift by now and then
+  if (halloween() && P.level > 0 && s.player->realm == REALM_MAIN && dimOfY(clampv(ifloor(p.y), 0, WORLD_H - 1)) == DIM_OVERWORLD &&
+      std::sin((float)(s.level->info.time / DAY_LEN) * TAU) < -0.15f && (w.getLight(ifloor(p.x), ifloor(p.y) + 1, ifloor(p.z)) >> 4) >= 10 && rnd() < step * 0.25) {
+    float a = rnd() * TAU, d = 4 + rnd() * 10;
+    int x = ifloor(p.x + std::cos(a) * d), z = ifloor(p.z + std::sin(a) * d), gy = -1;
+    for (int yy = ifloor(p.y) + 4; yy > ifloor(p.y) - 6; yy--) if (w.getBlock(x, yy, z) == AIR && R.tSolid[w.getBlock(x, yy - 1, z)]) { gy = yy; break; }
+    if (gy >= 0) for (int k = 0, n = 1 + (int)(rnd() * 3); k < n; k++) P.spawn("wisp", vec3(x + 0.5f + (rnd() - 0.5f) * 3, gy + 0.5f + rnd() * 1.4f, z + 0.5f + (rnd() - 0.5f) * 3), 1);
+  }
   for (int i = 0; i < tries; i++) {
     int x = ifloor(p.x + (rnd() - 0.5f) * 34), y = ifloor(p.y + rnd() * 22 - 4), z = ifloor(p.z + (rnd() - 0.5f) * 34);
     BlockId id = w.getBlock(x, y, z);

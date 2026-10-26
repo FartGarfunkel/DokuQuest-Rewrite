@@ -241,6 +241,13 @@ void ParticleSystem::spawn(const std::string& kind, vec3 pos, int count, const j
     add(q);
     return;
   }
+  if (kind == "wisp") {   // Halloween: a pale ghost light that drifts slowly and fades out
+    Particle q; q.tile = (u16)tile("white"); q.p = pos; q.v = vec3(rs() * 0.12f, 0.04f + rnd() * 0.08f, rs() * 0.12f);
+    q.life = q.max = 8 + rnd() * 5; q.size = q.size0 = 0.11f + rnd() * 0.05f; q.grow = 0.5f; q.light = 0xFF; q.glow = true; q.flutter = 0.22f; q.ph = rnd() * 6;
+    q.tint[0] = 190; q.tint[1] = 225; q.tint[2] = 255;
+    add(q);
+    return;
+  }
   (void)few;
   // anything else: a burst of that tile or block, like the original's game.burst(x, y, z, name, n, speed)
   burst(pos, str("tile", kind), count, num("speed", 0.6f), num("grav", 14));

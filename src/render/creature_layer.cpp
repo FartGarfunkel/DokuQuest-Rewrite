@@ -220,6 +220,18 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
       };
       drawHeld(held, held.rfind("bow", 0) == 0 && m->aiming ? "foreL" : "foreR");
       drawHeld(m->offItem, "foreL");
+      // Halloween: a carved pumpkin or jack-o'-lantern on its head (rolled in sim/creature.cpp tick); the jack glows
+      if (m->data.contains("hat") && m->data["hat"].is_string() && !m->lost.count("head")) {
+        const std::string hat = m->data["hat"].get<std::string>();
+        int hi = RM->find("head");
+        const VoxelModel& im = itemModel(hat);
+        if (hi >= 0 && im.ready() && rigPartPosed(*m, hi) && rigPartShown(*m, RM->parts[hi])) {
+          const RigPart& hp = RM->parts[hi];
+          vec3 ctr = (hp.min + hp.max) * 0.5f, ext = glm::max(hp.max - hp.min, vec3(0.05f)) * 1.14f;
+          mat4 hm = glm::scale(glm::rotate(glm::translate(T0 * m->mats[hi], ctr + vec3(0, 0.02f, 0)), PI, vec3(0, 1, 0)), ext);   // (the carved face looks out the front)
+          D.draw(im.gl, hm * im.matrix(), hat == "jack_o_lantern" ? VoxelLight{1, 1} : L, tint);
+        }
+      }
       continue;
     }
     if (!f.cam.frustum.sphere(rel, 2.5f)) continue;

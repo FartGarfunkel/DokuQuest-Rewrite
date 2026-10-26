@@ -72,6 +72,7 @@ public:
         if (lv > 0) add(glm::dvec3(e->pos) + glm::dvec3(0, 0.4, 0), (float)lv - 1);
       } else if (e->type == "tnt") add(glm::dvec3(e->pos) + glm::dvec3(0, 0.5, 0), 8.f);
       else if (e->type == "projectile" && e->data.value("kind", std::string()) == "fireball") add(glm::dvec3(e->pos), 10.f);
+      else if (e->data.contains("hat") && e->data["hat"] == "jack_o_lantern" && e->hp > 0) add(glm::dvec3(e->pos) + glm::dvec3(0, e->h - 0.3, 0), 9.f);   // Halloween: a jack-o'-lantern head
     }
     std::sort(c.begin(), c.end(), [](const Cand& a, const Cand& b) { return a.score > b.score; });
     for (size_t i = 0; i < c.size() && i < 8; i++) f.dyn.push_back({c[i].pos, c[i].level});

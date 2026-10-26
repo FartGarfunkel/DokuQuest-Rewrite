@@ -3,6 +3,7 @@
 // wall, the street in front) with towns.js's furnishing helpers, vHouse (half-timbered houses: stone ground floor,
 // plastered storeys jettied out over the street, steep tiled or thatched roofs) and every TOWN_VT building.
 #include "gen/structures_town.h"
+#include "common/holiday.h"
 #include <optional>
 
 namespace dq {
@@ -101,6 +102,8 @@ public:
     if (!st.flat) { for (int k : {-1, 0, 1}) set(dx + k, 3, -1, st.slab, 1); set(dx - 1, 2, -1, "lantern", 1); set(dx + 1, 2, -1, "lantern", 1); }
     else { torch(dx - 1, 2, -1, 2); torch(dx + 1, 2, -1, 2); }
     frontPath(dx);
+    if (halloween() && hasBlock("jack_o_lantern"))   // October: a jack-o'-lantern each side of the door, faces to the street
+      for (int k : {-2, 2}) { const BlockId g = get(dx + k, 0, -1); if (g != 0 && g != NOBLOCK) set(dx + k, 1, -1, "jack_o_lantern", d(2) & 3); }
   }
   // ---- towns.js ----
   std::string pick(const char* kind) { const auto& l = townDecor(kind); const int k = salt++; return l.empty() ? std::string() : l[hash32((i32)b.seed, k, 77, 3) % l.size()]; }

@@ -7,6 +7,7 @@
 // in the plan), placed one per 352-block region exactly like the original (hash32(seed, rx, rz, 4242)).
 #include "gen/structures_town.h"
 #include "gen/structures_api.h"
+#include "common/holiday.h"
 #include <map>
 #include <set>
 
@@ -386,6 +387,9 @@ static void townBuild(ChunkWriter& w, const StructurePlan& S) {
   auto inC = [&](int x, int z) { return P.in(x, z); };
   auto get = [&](int x, int y, int z) { return P.get(x, y, z); };
   auto put = [&](int x, int y, int z, std::string_view key, int meta = 0) { P.put(x, y, z, key, (u8)meta); };
+  // October: about half the lamp posts carry a glowing jack-o'-lantern instead of a lantern
+  const bool hw = halloween();
+  auto lampTop = [&](int x, int z) -> std::string_view { return hw && hasBlock("jack_o_lantern") && ((x * 7 + z * 13) & 1) ? "jack_o_lantern" : "lantern"; };
   static const json& PAVE = SD()["TOWN_PAVE"];
   const std::vector<std::string> pave = v.style == VS_DESERT ? strList(PAVE["desert"]) : v.tier == TIER_VILLAGE ? st.path : strList(PAVE[TIER_NAMES[v.tier]]);
   const std::vector<std::string> lanePave = v.style == VS_DESERT ? strList(PAVE["desert"]) : v.tier == TIER_CITY ? strList(PAVE["town"]) : st.path;
@@ -491,12 +495,12 @@ static void townBuild(ChunkWriter& w, const StructurePlan& S) {
   }
   for (auto [dx, dz] : {std::pair{P0 - 2, P0 - 2}, {-(P0 - 2), P0 - 2}, {-(P0 - 2), -(P0 - 2)}, {P0 - 2, -(P0 - 2)}}) {
     const int x = v.x + dx, z = v.z + dz; if (std::abs(dx) + std::abs(dz) > P0 * 2 - 3) continue;
-    put(x, y0 + 1, z, st.lampPost); put(x, y0 + 2, z, st.lampPost); put(x, y0 + 3, z, st.lampPost); put(x, y0 + 4, z, "lantern");
+    put(x, y0 + 1, z, st.lampPost); put(x, y0 + 2, z, st.lampPost); put(x, y0 + 3, z, st.lampPost); put(x, y0 + 4, z, lampTop(x, z), (x + z) & 3);
   }
   for (const auto& [x, z] : v.lamps) {
     if (!inC(x, z)) continue;
     const int y = P.ground(x, z); if (y < SEA_LEVEL) continue;
-    put(x, y, z, kerb); put(x, y + 1, z, st.lampPost); put(x, y + 2, z, st.lampPost); put(x, y + 3, z, st.lampPost); put(x, y + 4, z, "lantern");
+    put(x, y, z, kerb); put(x, y + 1, z, st.lampPost); put(x, y + 2, z, st.lampPost); put(x, y + 3, z, st.lampPost); put(x, y + 4, z, lampTop(x, z), (x + z) & 3);
     for (int yy = y + 5; yy <= y + 6; yy++) if (softBlock(get(x, yy, z))) put(x, yy, z, "air");
   }
   static const std::vector<std::string> VFL = strList(SD()["VFLOWERS"]);

@@ -1,5 +1,6 @@
 #include "client/session.h"
 #include "client/app.h"
+#include "common/holiday.h"
 #include "render/sky.h"
 #include "ui/screen.h"
 #include "audio/audio.h"
@@ -24,6 +25,7 @@ void registerRenderLayer(RenderLayerFactory f) { layerFactories().push_back(std:
 
 GameSession::GameSession(App& a, std::unique_ptr<Level> lv) : app(a), level(std::move(lv)) {
   frame.settings = &app.settings;
+  setHolidayEventsEnabled(app.settings.extra.value("holidayEvents", true));
   fx = std::make_unique<ClientFx>(*this); level->fx = fx.get();
   worldRenderer.init(app.settings, app.tileTex);
   sky = std::make_unique<SkyRenderer>();
@@ -111,6 +113,7 @@ static bool perViewerLayer(const char* n) { return !std::strcmp(n, "hud") || !st
 
 void GameSession::update(double dt) {
   if (!player) return;
+  setHolidayEventsEnabled(app.settings.extra.value("holidayEvents", true));
   selectLocal(0);
   if (level->net) level->net->update(*level, dt);   // multiplayer (net/): a joined world, or one open to LAN
   checkJoin();                                      // Start on a free controller joins split screen

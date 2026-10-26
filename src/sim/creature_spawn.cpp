@@ -8,6 +8,7 @@
 #include "sim/creature.h"
 #include "sim/creature_entities.h"
 #include "sim/mob_combat.h"
+#include "common/holiday.h"
 #include "sim/physics.h"
 #include "sim/player.h"
 #include "core/registry.h"
@@ -250,8 +251,10 @@ public:
         }
       }
     }
-    // bats in dark caves
-    if (OVER && ambient < capB && frand() < 0.08f) {
+    // bats in dark caves (October: more of them, and a higher cap; the cap still holds)
+    const bool hw = halloween();
+    if (hw) capB += 3 + n;
+    if (OVER && ambient < capB && frand() < (hw ? 0.2f : 0.08f)) {
       ivec2 xz = ring(10, 28); int x = xz.x, z = xz.y;
       int y0 = ifloor(p->pos.y) + (int)(frand() * 20) - 10, sea = dimBase(DIM_OVERWORLD) + SEA_LEVEL;
       if (w.isLoaded(x, y0, z)) for (int y = y0; y > y0 - 10 && y > dimBase(dim) + 3; y--) {
@@ -261,6 +264,11 @@ public:
           break;
         }
       }
+    }
+    // October nights: small flocks of bats flutter about in the open near the player
+    if (hw && OVER && day < 0.42f && ambient < capB && frand() < 0.1f) {
+      ivec2 xz = ring(12, 32); int y = surfaceY(w, xz.x, xz.y, dim);
+      if (y > 0 && (w.getLight(xz.x, y, xz.y) >> 4) >= 8) group(lv, realm, "bat", vec3(xz.x, y + 2 + frand() * 4, xz.y), 2 + (int)(frand() * 3));
     }
     spawnRealms(lv, realm, *p, dim, day, peaceful);
     if (peaceful) return;
@@ -662,6 +670,8 @@ void summonGolem(Level& lv, int realm, vec3 at, Entity* near) {
   for (int i = 0; i < 30; i++) flame(lv, at + vec3((frand() - 0.5f) * 2, frand() * 3, (frand() - 0.5f) * 2));
 }
 
+void registerTrickOrTreat();   // sim/trickortreat.cpp: Halloween, villagers toss treats on October nights
+
 void registerCreatures() {
   static bool done = false;
   if (done) return;
@@ -670,6 +680,7 @@ void registerCreatures() {
   registerSpawners();
   registerPocket();
   registerUsables();
+  registerTrickOrTreat();
   registerWeaponRack();
   registerSlimeGoo();
   // every MOB_TYPES key is a creature (the "" fallback catches types added later by data packs and mods)

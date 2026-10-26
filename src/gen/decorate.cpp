@@ -2,12 +2,14 @@
 // decorateCaves). Elevation/depth tests use the original heights (OwColumn::h) so every column decides
 // exactly as in the original; positions are band-local.
 #include "gen/overworld.h"
+#include "common/holiday.h"
 
 namespace dq {
 using namespace vmap;
 
 void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) const {
   const int bx = cx * 16, bz = cz * 16;
+  const bool hw = halloween();   // October: three times the pumpkins
   const BlockId PLAIN_FLOWERS[] = {B.flower_yellow, B.flower_red, B.azure_bluet, B.oxeye_daisy, B.cornflower, B.red_tulip, B.orange_tulip, B.white_tulip, B.pink_tulip};
   const BlockId FOREST_FLOWERS[] = {B.lily_of_the_valley, B.allium, B.flower_red, B.lilac, B.rose_bush, B.peony};
   auto set = [&](int x, int y, int z, BlockId id, u8 meta = 0) { int i = colIdx(x, y, z); b.blocks[i] = id; b.meta[i] = meta; };
@@ -43,7 +45,7 @@ void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) con
         else if (r < 0.16) set(x, y, z, B.tall_grass);
         else if (r < 0.185) tall(x, y, z, B.tall_grass_double);
         else if (r < 0.19) tall(x, y, z, B.sunflower);
-        else if (r < 0.1915 && r2 < 0.5) set(x, y, z, B.pumpkin);
+        else if (r < (hw ? 0.1945 : 0.1915) && r2 < 0.5) set(x, y, z, B.pumpkin);
         else if (r < 0.205) set(x, y, z, PLAIN_FLOWERS[jsFloor(r2 * 3)]);
       } else if (c.biome == BIOME_FOREST) {
         if (r < 0.08) set(x, y, z, B.tall_grass);
@@ -93,6 +95,7 @@ void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) con
 
 void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) const {
   const int bx = cx * 16, bz = cz * 16;
+  const bool hw = halloween();   // October: three times the pumpkin patches
   auto at = [&](int x, int y, int z) -> int { return (x < 0 || x > 15 || z < 0 || z > 15 || y < 0 || y >= DIM_H) ? -1 : (int)b.blocks[colIdx(x, y, z)]; };
   auto set = [&](int x, int y, int z, BlockId id, u8 meta = 0) { if (x < 0 || x > 15 || z < 0 || z > 15 || y < 1 || y >= DIM_H) return; int i = colIdx(x, y, z); b.blocks[i] = id; b.meta[i] = meta; };
   auto waterBeside = [&](int x, int y, int z) { return at(x + 1, y, z) == B.water || at(x - 1, y, z) == B.water || at(x, y, z + 1) == B.water || at(x, y, z - 1) == B.water; };
@@ -132,7 +135,7 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
     }
     if (below == B.dirt_with_coniferous_litter) { if (r < 0.05) set(x, y, z, B.fern); else if (r < 0.06) set(x, y, z, B.brown_mushroom); continue; }
     if (below == B.grass) {
-      if (patch > 0.6 && r < 0.05 && (c.biome == BIOME_PLAINS || c.biome == BIOME_FOREST)) set(x, y, z, B.pumpkin, (u8)jsFloor(r2 * 4));
+      if (patch > 0.6 && r < (hw ? 0.15 : 0.05) && (c.biome == BIOME_PLAINS || c.biome == BIOME_FOREST)) set(x, y, z, B.pumpkin, (u8)jsFloor(r2 * 4));
       else if (c.biome == BIOME_MOUNTAINS && c.humid > 0.15 && c.h < 78 && r < 0.18) set(x, y, z, B.pink_petals);
       else if (c.biome == BIOME_PLAINS && r > 0.9985) set(x, y, z, B.torchflower);
       else if (c.biome == BIOME_PLAINS && r > 0.997 && r < 0.9985 && at(x, y + 1, z) == 0) { set(x, y, z, B.pitcher_plant, 0); set(x, y + 1, z, B.pitcher_plant, 1); }

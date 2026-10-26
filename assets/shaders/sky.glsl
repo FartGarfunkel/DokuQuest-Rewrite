@@ -16,6 +16,7 @@ uniform vec3 uZenith, uHorizon, uSunGlow, uStormCol;
 uniform float uStars, uVoid, uAurora, uRainbow, uSkyT, uShowSun, uSunFade;
 uniform vec4 uStorm;
 uniform int uMoonPhase;
+uniform float uHarvest;   // Halloween: a full moon is a harvest moon, 1.6x bigger and orange
 in vec2 vNdc;
 out vec4 fragColor;
 float h(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
@@ -95,11 +96,12 @@ void main() {
       if (dd < 4.5) c += vec3(1.0, 0.973, 0.847) * uSunFade;
       else if (dd < 7.5) c += vec3(1.0, 0.847, 0.416) * (200.0 - (dd - 4.5) * 60.0) / 255.0 * uSunFade;
     }
-    vec2 mp = billboard(d, -uSunDir, 10.0);
+    vec2 mp = billboard(d, -uSunDir, 10.0 * (1.0 + 0.6 * uHarvest));
     if (mp.x >= 2.0 && mp.x < 14.0 && mp.y >= 2.0 && mp.y < 14.0) {
       vec3 mc = vec3(0.875, 0.894, 0.925) * (0.9 + h2(mp) * 0.1);
       ivec2 ip = ivec2(mp);
       if ((ip == ivec2(5, 5)) || (ip == ivec2(6, 5)) || (ip == ivec2(9, 9)) || (ip == ivec2(10, 9)) || (ip == ivec2(9, 10)) || (ip == ivec2(5, 10)) || (ip == ivec2(11, 4))) mc = vec3(0.682, 0.714, 0.769);
+      mc = mix(mc, mc * vec3(1.0, 0.55, 0.22) * 1.12, uHarvest);
       // the phase: 0 full, 1-3 waning (lit on the left), 4 new, 5-7 waxing (lit on the right)
       float u = (mp.x - 7.5) / 6.0, s = cos(float(uMoonPhase) * 0.785398);
       bool lit = uMoonPhase == 0 || (uMoonPhase < 4 ? u < s : (uMoonPhase > 4 && u > -s));
