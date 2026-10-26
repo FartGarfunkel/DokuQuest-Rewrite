@@ -131,9 +131,15 @@ public:
     if (kind == "gust") {   // aether.js: a zephyr's gust — a little hurt and a big shove
       if (age > 4) { gustPop(lv); return; }
       if (frand() < dt * 30) mobBurst(lv, pos, "gust_ball", 1, 0.15f);
+      const bool back = data.value("deflected", false);   // punched back: it flies for whoever hit it
       for (int s = 0; s < 3; s++) {
         pos += vel * (dt / 3);
-        for (Entity* p : pawnsOf(lv, realm)) if (std::fabs(p->pos.x - pos.x) < 0.7f && std::fabs(p->pos.z - pos.z) < 0.7f && pos.y > p->pos.y - 0.3f && pos.y < p->pos.y + 2) {
+        if (back) if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.6f)) {
+          DamageSrc d; d.knock = 6;
+          damageEntity(lv, *c, c->type == "zephyr" ? 1000.f : 4.f, owner, "projectile", d);
+          gustPop(lv); return;
+        }
+        for (Entity* p : pawnsOf(lv, realm)) if (!(back && p == owner) && std::fabs(p->pos.x - pos.x) < 0.7f && std::fabs(p->pos.z - pos.z) < 0.7f && pos.y > p->pos.y - 0.3f && pos.y < p->pos.y + 2) {
           float l = std::max(1e-3f, std::hypot(vel.x, vel.z));
           DamageSrc d; d.knock = 0; damageEntity(lv, *p, 1, owner, "projectile", d);
           knockback(*p, vec3(vel.x / l * 13, 6.5f, vel.z / l * 13));
@@ -149,7 +155,8 @@ public:
     for (int s = 0; s < 3; s++) {
       pos += vel * (dt / 3);
       if (back) if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.8f)) {
-        DamageSrc d; d.element = "fire"; d.knock = 4;
+        DamageSrc d; d.knock = 4;
+        if (c->type != "ghast") d.element = "fire";   // a ghast shrugs off fire: its own fireball's blow is what kills it
         damageEntity(lv, *c, c->type == "ghast" ? 1000.f : 6.f, owner, "projectile", d);
         igniteEntity(*c, 2.5f);
         explodeFx(lv); return;
@@ -285,7 +292,7 @@ bool deflectFireball(Level& lv, Entity& by, vec3 eye, vec3 look, float reach) {
     auto* f = dynamic_cast<Projectile*>(e.get());
     if (!f || f->removed || f->realm != by.realm) continue;
     const std::string k = f->data.value("kind", "fireball");
-    if (k == "spit" || k == "snow" || k == "egg" || k == "slime" || k == "gust") continue;   // only fireballs are hit back
+    if (k == "spit" || k == "snow" || k == "egg" || k == "slime") continue;   // fireballs and zephyr gusts are hit back
     vec3 to = f->pos - eye; float t = glm::dot(to, look);
     if (t < 0 || t > reach) continue;
     if (glm::length(to - look * t) > 1.1f) continue;   // a generous swing: a fireball is a big target

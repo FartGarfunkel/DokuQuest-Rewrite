@@ -562,9 +562,10 @@ static OptMove realmAI(Level& lv, Creature& m, Entity* p, float dist, float dyp,
     float shootT = dget(m, "shootT", 2 + frand() * 2) - dt;
     if (shootT <= 0 && s.sees && dist < 40 && chargeT <= 0) { shootT = 3 + frand() * 1.5f; dset(m, "chargeT", 0.6f); lv.fx->sound("ghast_warn", m.pos + vec3(0, 2, 0)); }
     dset(m, "shootT", shootT);
-    if (dist < 10) return Move{T.speed, toPlayer + PI};
+    // it keeps its face (and its fireballs) on you: backs off facing you when you're close, hangs there in between
+    if (dist < 10) return Move{-T.speed, toPlayer};
     if (dist > 24 || !s.sees) return Move{T.speed, toPlayer};
-    return Move{T.speed * 0.4f, toPlayer + PI / 2};
+    return Move{0, toPlayer};
   }
   if (t == "enderman" && !creatureHooks("enderman")) {   // the End workstream's enderman (end_fight.cpp) wins when registered
     m.voiceTick(lv, dt, dist, 7, 10);

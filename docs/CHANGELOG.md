@@ -5,6 +5,13 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.5.3 — Hotfix (October 2026)
+
+- **Ghasts face you:** a ghast keeps its face on you while it fights, backing away when you get close instead of turning its back.
+- **Hit-back fireballs hurt ghasts:** a ghast shrugged off its own fireball because it doesn't burn. Now a fireball you punch back into it is the end of it.
+- **Punch back zephyr gusts:** the Skylands' cloud creature's gusts can be hit back like fireballs, and one sent back into it finishes it.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.5.2 — Hotfix (October 2026)
 
 - **The world no longer vanishes on high settings:** on Ultra, the Nether and deep caves could fill the graphics card's terrain memory past 4 GB in one piece, which the graphics driver can't hold, and everything near you disappeared into the fog. Terrain memory is now kept in smaller pieces, so it keeps working however much land is loaded.
