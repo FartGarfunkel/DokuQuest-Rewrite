@@ -96,6 +96,16 @@ void bevel(ImDrawList* dl, ImVec2 a, ImVec2 b, ImU32 tl, ImU32 br, float w);   /
 // radial-gradient(ellipse at c, transparent inner, colour at radius) — and solid beyond, to the screen edge
 void radialVignette(ImDrawList* dl, ImVec2 c, ImVec2 radius, float inner, ImU32 outer, float reach = 3);
 std::string ellipsize(FontId f, const std::string& s, float maxW);
+// the face of a .btn (gradient, inset shadows, 2px border inside the box) for rows that lay out their own label
+void btnFace(ImDrawList* dl, ImVec2 a, ImVec2 b, bool hot, bool held = false, float alpha = 1);
+// box-shadow: 0 offY blur rgba(0,0,0,alpha) under the box a..b (stacked translucent rects, so the edge fades)
+void dropShadow(ImDrawList* dl, ImVec2 a, ImVec2 b, float offY, float blur, float alpha);
+// text wrapped to `wrap` pixels and laid on a CSS line-height of `lineH` pixels (each line centred in its line box);
+// the draw call returns the height it took, textLinesSize measures. wrap <= 0: only '\n' breaks lines.
+float textLines(ImDrawList* dl, FontId f, ImVec2 pos, ImU32 c, const char* t, float wrap, float lineH, float scale = 1);
+ImVec2 textLinesSize(FontId f, const char* t, float wrap, float lineH, float scale = 1);
+// y of the text baseline for a text drawn with its top at 0 (to line texts of different fonts up like a CSS baseline row)
+float baselineOf(FontId f, float scale = 1);
 void playClick();                  // the menu click sound
 
 } // namespace ui

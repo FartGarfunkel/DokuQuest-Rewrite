@@ -273,6 +273,60 @@ void bevel(ImDrawList* dl, ImVec2 a, ImVec2 b, ImU32 tl, ImU32 br, float w) {
   dl->AddRectFilled(ImVec2(a.x, b.y - w), b, br); dl->AddRectFilled(ImVec2(b.x - w, a.y), b, br);
 }
 
+void btnFace(ImDrawList* dl, ImVec2 a, ImVec2 b, bool hot, bool held, float al) {
+  const float z = Z();
+  if (held) { a.y += 1 * z; b.y += 1 * z; }   // :active { translateY(1px) }
+  dl->AddRectFilledMultiColor(a, b, withAlpha(col::slotHi, al), withAlpha(col::slotHi, al), withAlpha(col::slot, al), withAlpha(col::slot, al));
+  dl->AddRectFilled(ImVec2(a.x, b.y - (held ? 1 : 3) * z), b, IM_COL32(0, 0, 0, (int)(89 * al)));   // inset 0 -3px 0 rgba(0,0,0,.35)
+  dl->AddRectFilled(a, ImVec2(b.x, a.y + 2 * z), IM_COL32(255, 255, 255, (int)(15 * al)));        // inset 0 2px 0 rgba(255,255,255,.06)
+  dl->AddRect(a + ImVec2(1, 1) * z, b - ImVec2(1, 1) * z, withAlpha(hot ? col::lineHi : col::line, al), 3 * z, 0, 2 * z);   // border: 2px, radius 4
+}
+
+void dropShadow(ImDrawList* dl, ImVec2 a, ImVec2 b, float offY, float blur, float alpha) {
+  const int N = 12;
+  const int la = (int)std::lround(255.f * (1.f - std::pow(1.f - alpha, 1.f / N)));   // N layers that add up to `alpha` in the middle
+  for (int j = 0; j < N; j++) {
+    float e = blur - 2 * blur * (j + 0.5f) / N;   // +blur (outermost) .. -blur (innermost): the fade across the edge
+    ImVec2 p0(a.x - e, a.y + offY - e), p1(b.x + e, b.y + offY + e);
+    if (p1.x <= p0.x || p1.y <= p0.y) continue;
+    dl->AddRectFilled(p0, p1, IM_COL32(0, 0, 0, la), std::max(0.f, e));
+  }
+}
+
+// the lines of `t` as ImGui would wrap them: [begin, end) pairs
+static void wrapLines(FontId f, const char* t, float wrap, float scale, std::vector<std::pair<const char*, const char*>>& out) {
+  ImFont* fo = font(f); const float k = sizeOf(f, scale) / fo->FontSize;
+  const char* end = t + std::strlen(t);
+  for (const char* s = t;;) {
+    const char* nl = (const char*)std::memchr(s, '\n', (size_t)(end - s));
+    const char* le = nl ? nl : end; const char* p = s;
+    if (p == le) out.push_back({p, p});
+    while (p < le) {
+      const char* w = wrap > 0 ? fo->CalcWordWrapPositionA(k, p, le, wrap) : le;
+      if (w <= p) { w = p + 1; while (w < le && ((u8)*w & 0xC0) == 0x80) w++; }
+      out.push_back({p, w});
+      p = w;
+      while (p < le && *p == ' ') p++;   // the space a line broke at
+    }
+    if (!nl) break;
+    s = nl + 1;
+  }
+}
+float textLines(ImDrawList* dl, FontId f, ImVec2 pos, ImU32 c, const char* t, float wrap, float lineH, float scale) {
+  std::vector<std::pair<const char*, const char*>> L; wrapLines(f, t, wrap, scale, L);
+  const float sz = sizeOf(f, scale), off = (lineH - sz) * 0.5f;
+  for (size_t i = 0; i < L.size(); i++)
+    if (L[i].second > L[i].first) dl->AddText(font(f), sz, ImVec2(std::round(pos.x), std::round(pos.y + i * lineH + off)), c, L[i].first, L[i].second);
+  return (float)L.size() * lineH;
+}
+ImVec2 textLinesSize(FontId f, const char* t, float wrap, float lineH, float scale) {
+  std::vector<std::pair<const char*, const char*>> L; wrapLines(f, t, wrap, scale, L);
+  const float sz = sizeOf(f, scale); float w = 0;
+  for (auto& l : L) w = std::max(w, font(f)->CalcTextSizeA(sz, FLT_MAX, 0, l.first, l.second).x);
+  return ImVec2(w, (float)L.size() * lineH);
+}
+float baselineOf(FontId f, float scale) { ImFont* fo = font(f); return fo->Ascent * sizeOf(f, scale) / fo->FontSize; }
+
 // ---- buttons --------------------------------------------------------------------------------------------
 static bool itemHot() { return ImGui::IsItemHovered() || (ImGui::IsItemFocused() && navVisible()); }
 

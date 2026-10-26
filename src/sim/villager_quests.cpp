@@ -429,7 +429,7 @@ static void say(Level& lv, Player& p, Talk& t, std::string text) {
     text.replace(i, A.size(), "Find the dungeons and defeat their keepers. The great beasts of the world carry them too: the golem of cinders, the archmage in his tower, the beast of the maze, the dragons. Bring four Realm Fragments to the rift.");
   t.text = fill(text, lv, t, p);
   t.voiceLines++;
-  if (Creature* e = talkNpc(lv, t)) npcSay(lv, *e, t.text);
+  t.spoken = t.text; t.spokenVol = 0.5f; t.spokenN++;   // babble(sfx, text, voice, { rate: 26 }): the talk screen plays it as the words type out
 }
 static Standing standOf(Level& lv, Player& p, const Talk& t) { return standingOf(t.vid.empty() ? 0 : repOf(p, t.vid)); }
 static std::string greeting(Level& lv, Player& p, Talk& t) {
@@ -657,7 +657,7 @@ void talkShopTrade(Level& lv, Player& p, Talk& t, int line) {
   std::string s;
   if (shopTrade(lv, p, *v, t.idx, t.job, t.tab, line, s)) {
     static const char* T[5] = {"Pleasure!", "Thank you!", "Deal!", "Ooh, good choice.", "Hm-hm!"};
-    if (Creature* e = talkNpc(lv, t)) npcSay(lv, *e, T[(int)std::floor(rnd() * 5)], 0.4f);
+    t.spoken = T[(int)std::floor(rnd() * 5)]; t.spokenVol = 0.4f; t.spokenN++;   // babble(..., { rate: 26, vol: 0.4 })
   } else if (!s.empty()) say(lv, p, t, s);
 }
 void talkShopBack(Level& lv, Player& p, Talk& t) { home(lv, p, t, "Anything else?"); }

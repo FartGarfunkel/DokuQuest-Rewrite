@@ -12,7 +12,7 @@
 //     hurt{entity,amount,tool,type,at} (strike the nearest creature of that type as the player, e.g. tool "axe")
 //     kill (the player / "local" dies)  drop{path} (a file dropped on the window) screen{name} (open a screen; "close" pops) data{key,value} wear{item,slot?}
 //     expect{screen | block:[x,y,z],is | entity,near | held | inv:slot,item,n | count:item,n | cursor:item |
-//            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text} report shot{path} save leave open{world} quit
+//            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text} lookAt{entity,job?,dist?: aim at (and stand dist south of) the nearest creature of a type} report{near?,ents?: a type, to list where each stands} shot{path} save leave open{world} quit
 // give takes "d" (wear) and "tag" (enchantments, gear xp). pad buttons: a b x y back guide start ls rs lb rb up down left right, lt / rt (triggers).
 // The log gets "TEST PASS/FAIL ..." lines and a final "TEST DONE passes=N fails=M".
 #include "client/test_script.h"
@@ -20,6 +20,7 @@
 #include "client/session.h"
 #include "ui/screen.h"
 #include "ui/ui.h"
+#include "ui/villager_screens.h"
 #include "sim/commands.h"
 #include "sim/player.h"
 #include "sim/combat.h"
@@ -165,6 +166,17 @@ void runStep(App& a, const json& st) {
   } else if (op == "lookAt" && p) {
     ivec3 b = at(st);
     vec3 t(b.x + 0.5f, b.y + 0.5f, b.z + 0.5f);
+    if (st.contains("entity") && s) {   // lookAt{entity:"villager",job?}: aim at the nearest one's head (it may have wandered off its spot)
+      const std::string want = st["entity"].get<std::string>(), job = st.value("job", "");
+      Entity* best = nullptr; float bd = 1e9f;
+      for (auto& e : s->level->entities()) if (e && !e->removed && e.get() != p && e->realm == p->realm && e->type == want) {
+        if (!job.empty() && !(e->data.is_object() && e->data.contains("npc") && e->data["npc"].is_object() && e->data["npc"].value("j", "") == job)) continue;
+        float d = glm::distance(e->pos, p->pos); if (d < bd) { bd = d; best = e.get(); }
+      }
+      if (!best) { result(false, "lookAt: no " + want + (job.empty() ? "" : " (" + job + ")") + " near"); return; }
+      if (st.contains("dist")) { p->pos = vec3(best->pos.x, p->pos.y, best->pos.z + st.value("dist", 2.5f)); p->vel = vec3(0); }   // stand that far south of it first
+      t = best->pos + vec3(0, best->h * 0.9f, 0);   // its head: stalls and counters stand in front of the chest
+    }
     vec3 d = glm::normalize(t - (p->pos + vec3(0, p->eye, 0)));
     p->pitch = std::asin(std::clamp(d.y, -1.f, 1.f)); p->yaw = std::atan2(-d.x, -d.z);
   } else if (op == "tp" && p) {
@@ -262,6 +274,12 @@ void runStep(App& a, const json& st) {
       for (auto& [k, n] : near) msg += " " + k + "=" + std::to_string(n);
     }
     DQ_LOG("test report: %s", msg.c_str());
+    if (s && p && st.contains("ents") && st["ents"].is_string()) {   // report{ents:"villager"}: where each one of that type stands (to lookAt / tp to it)
+      const std::string want = st["ents"].get<std::string>();
+      for (auto& e : s->level->entities()) if (e && !e->removed && e.get() != p && e->realm == p->realm && e->type == want && glm::distance(e->pos, p->pos) < st.value("near", 48.f))
+        DQ_LOG("test report ent: %s #%u at %.1f %.1f %.1f job %s", e->type.c_str(), e->id, e->pos.x, e->pos.y, e->pos.z,
+               e->data.is_object() && e->data.contains("npc") && e->data["npc"].is_object() ? e->data["npc"].value("j", std::string()).c_str() : "-");
+    }
   } else if (op == "shot") {
     a.takeScreenshot(st.value("path", "/tmp/dq_test.png"));
   } else if (op == "drop") {   // a file dragged onto the window
@@ -273,6 +291,8 @@ void runStep(App& a, const json& st) {
     if (n == "creator") a.pushScreen(makeCreatorScreen());
     else if (n == "skineditor") a.pushScreen(makeSkinEditorScreen());
     else if (n == "close") { if (a.topScreen()) a.popScreen(); }
+    else if (n == "board" && p) a.pushScreen(makeQuestBoardScreen(ivec3(ifloor(p->pos.x), ifloor(p->pos.y), ifloor(p->pos.z))));   // the village's quest board (stand in the village)
+    else if (n == "path") a.pushScreen(makePathScreen("knight"));
     else if (auto sc = makeScreenByName(a, n)) a.pushScreen(std::move(sc));
   } else if (op == "data" && p) {   // set Player::data[key] = value (hideGear, cape ...)
     p->data[st.value("key", "")] = st.contains("value") ? st["value"] : json();

@@ -1,6 +1,7 @@
 // audio/sfxlib.cpp — see sfxlib.h. The dispatch follows the original's chain (voices3.js -> sfxlib.js ->
 // sounds2.js -> audio.js) as recorded in data/sfx.json "names"; a pack equivalent is tried first.
 #include "audio/sfxlib.h"
+#include "audio/babble.h"
 #include "common/fs.h"
 
 namespace dq::snd {
@@ -29,6 +30,10 @@ static int takesOf(const json& rec) { return std::max(1, (int)rec["takes"].size(
 
 SoundRef SfxLibrary::resolve(const std::string& name) const {
   SoundRef r;
+  if (name.rfind("babble:", 0) == 0) {   // a villager's line (babble.h): the name carries its voice, pace and words
+    r.kind = SoundRef::Babble; r.key = name.substr(7); r.pv = 0; r.gap = 0; r.jitter = false; r.takes = 1;
+    return r;
+  }
   auto t = table.find(name);
   const json* e = t != table.end() ? &*t : nullptr;
   float gap = e ? e->value("gap", 0.04f) : 0.04f;
@@ -133,6 +138,7 @@ std::vector<float> SfxLibrary::render(const SoundRef& r, int take, u32 seed, flo
       return renderLive(l[take % l.size()], seed);
     }
     case SoundRef::Special: return renderSpecial(r.key, seed);
+    case SoundRef::Babble: return renderBabbleKey(r.key);
     case SoundRef::Note: {
       int n = std::atoi(r.key.c_str() + 2); std::string mat = r.key.substr(r.key.find(':', 2) + 1);
       return renderNote(n, mat, seed);
