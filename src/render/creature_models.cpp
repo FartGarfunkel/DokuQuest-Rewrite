@@ -303,6 +303,8 @@ const CreatureModelGL* creatureModel(const std::string& key) {
     VoxelGrid g;
     bool faceRelief = p.tex.is_object() && p.tex.contains("front") && !pack;
     voxelPart(g, n, F, p.glow || p.unlit, faceRelief);
+    if (p.eyes && !packed)   // render/models.js: two eyes, not one bar (the gap between them is the bridge of the nose)
+      for (int x = 0; x < n.x; x++) if (std::fabs(lo.x + (x + 0.5f) * size.x / n.x) < 0.065f) for (int z = 0; z < n.z; z++) for (int y = 0; y < n.y; y++) g.set(x, y, z, 0);
     if (bird && !packed && n.y >= 4) {
       int sx = n.x, sz = n.z, T = std::max(1, sx);   // toe width = the stick's width
       ivec3 m(sx + 4 * T, n.y, sz + 4 * T);           // room for toes on every side
