@@ -17,6 +17,8 @@
 #include <cstdio>
 
 namespace dq {
+float g_storyTrackBottom = 0;   // where the story line on the right ends this frame (0 = not shown)
+
 using namespace ui;   // text, textSize, Z, F_MID, col:: (ui/theme.h)
 
 namespace {
@@ -130,6 +132,7 @@ public:
     const json& R = lv.info.data.contains("rift") ? lv.info.data["rift"] : json();
     int stage = R.is_object() ? R.value("stage", 0) : 0;
     bool sealed = R.is_object() && R.contains("sealed") && R["sealed"] != false && R["sealed"] != 0;
+    g_storyTrackBottom = 0;
     if (stage && (!sealed || (p.stats.value("realmSeen", 0) == 1 && p.realm == REALM_HIS))) {
       int n = std::min(RIFT_NEED, R.value("frags", 0));
       std::string b = sealed ? "The rift is sealed" : stage >= 3 ? "Enter the rift and face him" : "The Temporal Keys: Realm Fragments";
@@ -137,6 +140,7 @@ public:
       ImVec2 bs = textSize(F_MID, b.c_str()), ss = textSize(F_DISP, sp.c_str(), 0, 0.5f);
       float bw = bs.x + (sp.empty() && !sealed ? 0 : ss.x + 10 * z + (sealed ? 14 * z : 0)) + 16 * z, bh = std::max(bs.y, ss.y) + 6 * z;
       ImVec2 p0(W - 10 * z - bw, 120 * z);
+      g_storyTrackBottom = p0.y + bh + 6 * z;   // the villagers' jobs line up under it (render/villager_layer.cpp)
       dl->AddRectFilled(p0, p0 + ImVec2(bw, bh), IM_COL32(30, 6, 40, 179));
       dl->AddRectFilled(p0, p0 + ImVec2(3 * z, bh), sealed ? col::xp : col::rgb(0xc040ff));
       text(dl, F_MID, p0 + ImVec2(8 * z, (bh - bs.y) * 0.5f), col::rgb(0xfff3d6), b.c_str());

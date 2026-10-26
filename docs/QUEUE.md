@@ -87,5 +87,11 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
   - Spells level up with use, like gear, tools and weapons.
 - Economy (user, 2026-10-26): villagers trade in gold coins instead of emeralds, so emerald becomes a better-balanced ore. Keep or convert old saves' emerald trades.
 
+- Bugs (user, alpha.4.10, 2026-10-26):
+  - Still clipping into blocks sometimes when climbing a ladder.
+  - Getting hung up on dirt path blocks sometimes (step-up across the 15/16 path edge, diagonals?).
+  - SEVERE: deep underground (Overworld band-local y≈42), the near world stops rendering. Only the sky, the far LOD land and entities show, on Legacy GL 4.6 / AMD RX 6950 XT. Debug overlay: chunks 1103, sections 1406/7669, mesh jobs 0, light 0. Not reproduced in a carved test room at y≈28 with render distance 4. Suspects: near meshes dropped (setWorld/generation counter, a portal view), the band index, the LOD hole. Ask for latest.log with DQ_DEBUG_BANDS=1.
+  - Fixed: the quest tracker now sits under the story line instead of on top of it.
+
 ## Roadmap (after the bugs)
 Start in the wild, potions stack to 16, test-build small fixes, coins/economy, roads and bridges, travellers, saddle bags, bigger ship, poses, torches on fences, chains/lanterns, rift to 10 fragments + slow pacing + lore, graphics presets, built-in shader levels, Skylands content, Shadowbloom ports, Iris/OptiFine shader packs.

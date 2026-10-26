@@ -16,6 +16,8 @@
 #include <unordered_map>
 
 namespace dq {
+extern float g_storyTrackBottom;   // render/endstory_layer.cpp
+
 using ui::operator*; using ui::operator+; using ui::operator-;
 
 namespace {
@@ -287,7 +289,7 @@ public:
     }
     // your jobs, top right (.quest-track)
     json& S = npcStats(me);
-    float x1 = W - 10 * z, y0 = 120 * z, maxW = 260 * z;
+    float x1 = W - 10 * z, y0 = std::max(120 * z, g_storyTrackBottom), maxW = 260 * z;   // under the story line when it shows
     int n = 0;
     for (auto& q : S["quests"]) {
       if (n++ >= 5) break;
