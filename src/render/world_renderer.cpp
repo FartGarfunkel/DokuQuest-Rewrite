@@ -299,12 +299,12 @@ void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
     visible.clear(); totalSections = (int)meshes.size();
     bool clip = clipPlane.x != 0 || clipPlane.y != 0 || clipPlane.z != 0 || clipPlane.w != 0;
     vec3 cf = vec3(f.cam.pos - f.cam.origin);
-    // one land at a time (game/seamless.js): the band next door is made ready and meshed near its edge,
-    // but only the camera's own band is drawn (other lands show through portal windows only)
+    // one land at a time (game/seamless.js): the band next door is meshed and drawn only near its edge, so a hole
+    // through the floor shows the land below while the Skylands stay out of sight from the ground
     int band = f.dim;
     for (auto& [k, m] : meshes) {
-      if (k.dim != band && band >= 0 && band < DIM_COUNT) continue;
       vec3 rel = vec3(glm::dvec3(m->origin) - f.cam.origin);
+      if (k.dim != band && band >= 0 && band < DIM_COUNT && std::abs(m->origin.y + 8 - (float)f.cam.pos.y) >= 56) continue;   // the land next door: only near its edge
       if (!f.cam.frustum.box(rel, rel + vec3(16))) continue;
       if (clip && glm::dot(vec3(clipPlane), rel + vec3(8)) + clipPlane.w < -14) continue;   // entirely behind the portal plane
       visible.push_back({glm::length(rel + vec3(8) - cf), m.get()});

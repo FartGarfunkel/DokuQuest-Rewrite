@@ -8,6 +8,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 ## 1.0.0-alpha.5.2 — Hotfix (October 2026)
 
 - **The world no longer vanishes on high settings:** on Ultra, the Nether and deep caves could fill the graphics card's terrain memory past 4 GB in one piece, which the graphics driver can't hold, and everything near you disappeared into the fog. Terrain memory is now kept in smaller pieces, so it keeps working however much land is loaded.
+- **See down into the Nether:** dig through the bottom of the Overworld and you see the Nether below through the hole again (and the Overworld above from the Nether's roof). The land next door shows near the edge between them, while the Skylands still stay out of sight from the ground.
 - Removed Herobrine.
 
 ## 1.0.0-alpha.5.1 — Hotfix (October 2026)
