@@ -2,6 +2,10 @@
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
 
+## Alpha 1.0.0.4.8 — Hotfix | October 2026
+- **Hit ghast fireballs back:** punch or swing at a ghast's fireball just before it reaches you and it flies back the way you're looking. Send it into the ghast and that's the end of the ghast.
+- Removed Herobrine.
+
 ## Alpha 1.0.0.4.7 — Hotfix | October 2026
 - **Iron golems are back in the villages:** every village of seven houses or more keeps one again, guarding it alongside the village guards.
 - Removed Herobrine.

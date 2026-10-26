@@ -15,6 +15,9 @@ namespace dq {
 
 Entity* spawnArrow(Level& lv, int realm, vec3 p, vec3 v, Entity* owner, float damage, bool pickup);
 Entity* spawnProjectile(Level& lv, int realm, vec3 p, vec3 v, const std::string& kind, Entity* owner);
+// a fireball (a ghast's, a blaze's) along `look` within `reach` of `eye`, punched back the way you look: it then flies for
+// you, and a ghast it hits is done for (Minecraft). True when one was hit back.
+bool deflectFireball(Level& lv, Entity& by, vec3 eye, vec3 look, float reach);
 Entity* spawnHexFlask(Level& lv, int realm, vec3 p, vec3 v, Entity* owner, const std::string& kind);
 Entity* spawnGib(Level& lv, Creature& from, const std::string& part, const mat4& partMatrix);
 

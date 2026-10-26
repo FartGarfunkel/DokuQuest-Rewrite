@@ -227,6 +227,8 @@ bool PlayerController::blockedByBody(int x, int y, int z) {
   return false;
 }
 
+bool deflectFireball(Level& lv, Entity& by, vec3 eye, vec3 look, float reach);   // sim/creature_entities.cpp
+
 // ---- mining / attacking / using --------------------------------------------------------------
 void PlayerController::interact(float dt, const PlayerInput& in) {
   if (breakCd > 0) breakCd -= dt;
@@ -235,6 +237,8 @@ void PlayerController::interact(float dt, const PlayerInput& in) {
   const ItemStack& h = p.held();
   if (!h.empty() && h.id == "we_wand") { if (in.attackPressed) weClick(1); if (in.usePressed) weClick(2); mining.active = false; return; }
   Entity* te = targetEnt ? lv.entity(targetEnt) : nullptr;
+  // a ghast's fireball can be punched back (Minecraft): it flies for you then, and finishes off a ghast it hits
+  if (in.attackPressed && deflectFireball(lv, p, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch), 4.5f)) { swingArm(); mining.active = false; fightHold = true; return; }
   if (in.attackPressed && te) { swingArm(); attackEntity(lv, p, *te); mining.active = false; fightHold = true; return; }
   if (!in.attack) fightHold = false;
   if (in.attackPressed && !target.hit) swingArm();

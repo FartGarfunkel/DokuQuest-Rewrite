@@ -5,6 +5,11 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.4.8 — Hotfix (October 2026)
+
+- **Hit ghast fireballs back:** punch or swing at a ghast's fireball just before it reaches you and it flies back the way you're looking. Send it into the ghast and that's the end of the ghast.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.4.7 — Hotfix (October 2026)
 
 - **Iron golems are back in the villages:** every village of seven houses or more keeps one again, guarding it alongside the village guards.

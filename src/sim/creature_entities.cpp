@@ -144,10 +144,17 @@ public:
       }
       return;
     }
-    if (age > 5) { removed = true; return; }
+    if (age > (data.value("deflected", false) ? 8 : 5)) { removed = true; return; }
+    const bool back = data.value("deflected", false);   // punched back: it flies for whoever hit it
     for (int s = 0; s < 3; s++) {
       pos += vel * (dt / 3);
-      for (Entity* p : pawnsOf(lv, realm)) if (std::fabs(p->pos.x - pos.x) < 0.55f && std::fabs(p->pos.z - pos.z) < 0.55f && pos.y > p->pos.y - 0.2f && pos.y < p->pos.y + 1.9f) {
+      if (back) if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.8f)) {
+        DamageSrc d; d.element = "fire"; d.knock = 4;
+        damageEntity(lv, *c, c->type == "ghast" ? 1000.f : 6.f, owner, "projectile", d);
+        igniteEntity(*c, 2.5f);
+        explodeFx(lv); return;
+      }
+      for (Entity* p : pawnsOf(lv, realm)) if (!(back && p == owner) && std::fabs(p->pos.x - pos.x) < 0.55f && std::fabs(p->pos.z - pos.z) < 0.55f && pos.y > p->pos.y - 0.2f && pos.y < p->pos.y + 1.9f) {
         DamageSrc d; d.element = "fire"; d.knock = 4;
         damageEntity(lv, *p, 4, owner, "projectile", d);
         igniteEntity(*p, 2.5f);
@@ -272,6 +279,27 @@ Entity* spawnArrow(Level& lv, int realm, vec3 p, vec3 v, Entity* owner, float da
   e->aim();
   return lv.spawn(std::move(e));
 }
+bool deflectFireball(Level& lv, Entity& by, vec3 eye, vec3 look, float reach) {
+  Projectile* best = nullptr; float bt = reach + 1;
+  for (auto& e : lv.entities()) {
+    auto* f = dynamic_cast<Projectile*>(e.get());
+    if (!f || f->removed || f->realm != by.realm) continue;
+    const std::string k = f->data.value("kind", "fireball");
+    if (k == "spit" || k == "snow" || k == "egg" || k == "slime" || k == "gust") continue;   // only fireballs are hit back
+    vec3 to = f->pos - eye; float t = glm::dot(to, look);
+    if (t < 0 || t > reach) continue;
+    if (glm::length(to - look * t) > 1.1f) continue;   // a generous swing: a fireball is a big target
+    if (t < bt) { bt = t; best = f; }
+  }
+  if (!best) return false;
+  float sp = std::max(18.f, glm::length(best->vel) * 1.3f);
+  best->vel = look * sp;
+  best->data["owner"] = by.id; best->data["deflected"] = true; best->age = 0;
+  lv.fx->sound("hit", best->pos, 24);
+  lv.fx->particles("crit", best->pos, 6);
+  return true;
+}
+
 Entity* spawnProjectile(Level& lv, int realm, vec3 p, vec3 v, const std::string& kind, Entity* owner) {
   auto e = std::make_unique<Projectile>();
   e->realm = realm; e->pos = p; e->vel = v; e->data = {{"owner", owner ? owner->id : 0}, {"kind", kind}};
