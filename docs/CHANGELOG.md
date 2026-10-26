@@ -5,6 +5,11 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.5.1 — Hotfix (October 2026)
+
+- **No more stuck in walls:** players and creatures can no longer end up inside blocks. Anything that gets shoved into a wall, a ladder's block or a block placed where it stands is put back out the shortest free way before it moves on.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.5 — Hotfix (October 2026)
 
 - **Deep underground fix:** going deep below ground (near the bottom of the Overworld) could make the world around you vanish, leaving only the sky and the distant land. The land next door below is no longer built in full while you can't see it, which keeps graphics memory well within what every card handles.

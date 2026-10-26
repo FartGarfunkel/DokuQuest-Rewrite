@@ -2,6 +2,7 @@
 #include "sim/physics.h"
 #include "world/shapes.h"
 #include "sim/blockinfo.h"
+#include <algorithm>
 
 namespace dq {
 
@@ -63,9 +64,45 @@ static float storeToward(double v, int side) {
   return f;
 }
 
+// A body that starts the tick inside something solid (shoved by a crowd or a blow, a block set where it stands, a
+// ladder's lip, a float rounded the wrong way) is put back out first, the shortest way that leaves it free (Minecraft's
+// pushOutOfBlocks). The sweep below only stops boxes ahead of a body, so without this it could walk on inside a wall.
+static void pushOut(const World& w, double& ex, double& ey, double& ez, double ew, double eh, bool sneak) {
+  static thread_local std::vector<DBox> bs;
+  const double E = 2e-3;
+  for (int it = 0; it < 3; it++) {
+    double mn[3] = {ex - ew + E, ey + E, ez - ew + E}, mx[3] = {ex + ew - E, ey + eh - E, ez + ew - E};
+    gatherBoxes(w, mn[0], mn[1], mn[2], mx[0], mx[1], mx[2], bs, ey, sneak);
+    double need[6] = {0, 0, 0, 0, 0, 0};   // +x -x +y -y +z -z
+    bool any = false;
+    for (auto& b : bs) {
+      if (!(b.x1 > mn[0] && b.x0 < mx[0] && b.y1 > mn[1] && b.y0 < mx[1] && b.z1 > mn[2] && b.z0 < mx[2])) continue;
+      any = true;
+      double c[6] = {b.x1 - (ex - ew), (ex + ew) - b.x0, b.y1 - ey, (ey + eh) - b.y0, b.z1 - (ez - ew), (ez + ew) - b.z0};
+      for (int k = 0; k < 6; k++) need[k] = std::max(need[k], c[k]);
+    }
+    if (!any) return;
+    int order[6] = {0, 1, 2, 3, 4, 5};
+    auto cost = [&](int k) { return need[k] * (k == 3 ? 2.0 : k == 2 ? 0.9 : 1.0); };   // rather up than down
+    std::sort(order, order + 6, [&](int a, int b) { return cost(a) < cost(b); });
+    static const int AX[6] = {0, 0, 1, 1, 2, 2}; static const double SG[6] = {1, -1, 1, -1, 1, -1};
+    bool done = false;
+    for (int k : order) {
+      if (need[k] > 1.25) break;
+      double p[3] = {ex, ey, ez}; p[AX[k]] += SG[k] * (need[k] + 1e-3);
+      if (!collides(w, p[0] - ew + E, p[1] + E, p[2] - ew + E, p[0] + ew - E, p[1] + eh - E, p[2] + ew - E)) { ex = p[0]; ey = p[1]; ez = p[2]; done = true; break; }
+    }
+    if (done) return;
+    int k = order[0];   // nowhere free in one step: take the shortest and look again from there
+    if (need[k] > 1.25) return;
+    (AX[k] == 0 ? ex : AX[k] == 1 ? ey : ez) += SG[k] * (need[k] + 1e-3);
+  }
+}
+
 MoveOut moveEntity(const World& w, Entity& e, float dt, const MoveParams& mp) {
   MoveOut res;
   double ex = e.pos.x, ey = e.pos.y, ez = e.pos.z, ew = e.w, eh = e.h;
+  pushOut(w, ex, ey, ez, ew, eh, mp.sneaking);
   double dx = (double)e.vel.x * dt, dy = (double)e.vel.y * dt, dz = (double)e.vel.z * dt;
   double step = mp.stepHeight;
   bool wasGround = e.onGround;

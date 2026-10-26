@@ -2,6 +2,10 @@
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
 
+## Alpha 1.0.0.5.1 — Hotfix | October 2026
+- **No more stuck in walls:** players and creatures can no longer end up inside blocks. Anything that gets shoved into a wall, a ladder's block or a block placed where it stands is put back out the shortest free way before it moves on.
+- Removed Herobrine.
+
 ## Alpha 1.0.0.5 — Hotfix | October 2026
 - **Deep underground fix:** going deep below ground (near the bottom of the Overworld) could make the world around you vanish, leaving only the sky and the distant land. The land next door below is no longer built in full while you can't see it, which keeps graphics memory well within what every card handles.
 - **Quest list:** village quests on the side of the screen now sit under the story line instead of on top of it.
