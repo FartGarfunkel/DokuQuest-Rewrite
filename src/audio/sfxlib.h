@@ -12,8 +12,8 @@
 namespace dq::snd {
 
 struct SoundRef {
-  enum Kind { None, Pack, Recipe, Live, Special, Note } kind = None;
-  std::string key;          // pack event / recipe key / sound name / "n:<n>:<mat>"
+  enum Kind { None, Pack, Recipe, Live, Special, Note, Babble } kind = None;
+  std::string key;          // pack event / recipe key / sound name / "n:<n>:<mat>" / a babble line (babble.h)
   float gain = 1, pv = 0, gap = 0.04f;
   bool mob = false;         // a creature's voice: the mob volume applies
   bool jitter = true;       // play a little louder or softer each time (Sfx.sample)

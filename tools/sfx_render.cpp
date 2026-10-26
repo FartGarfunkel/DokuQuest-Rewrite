@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
       double t = (double)i / snd::SR;
       for (auto& e : evs) if (e.t >= t && e.t < t + (double)blk / snd::SR) {
         if (e.name.rfind("music:", 0) == 0) continue;
-        if (e.name.find('.') != std::string::npos && e.name.rfind("fx.", 0) != 0) { auto d = e.name.find('.'); if (e.at) eng.materialAt(e.name.substr(0, d), e.name.substr(d + 1), e.p); else eng.material(e.name.substr(0, d), e.name.substr(d + 1)); }
+        if (e.name.find('.') != std::string::npos && e.name.rfind("fx.", 0) != 0 && e.name.rfind("babble:", 0) != 0) { auto d = e.name.find('.'); if (e.at) eng.materialAt(e.name.substr(0, d), e.name.substr(d + 1), e.p); else eng.material(e.name.substr(0, d), e.name.substr(d + 1)); }
         else if (e.at) eng.playAt(e.name, e.p); else eng.play(e.name);
       }
       eng.update((double)blk / snd::SR);

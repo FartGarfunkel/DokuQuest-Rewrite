@@ -108,7 +108,8 @@ struct Talk {
   std::string openScreen;              // "path" (the path window), "" = none
   std::string pathHint;
   bool greetLine = false;
-  int voiceLines = 0;                  // bumps each time a line is said (the screen babbles it)
+  int voiceLines = 0;                  // bumps each time a line is said (the text types out again)
+  std::string spoken; float spokenVol = 0.5f; int spokenN = 0;   // what the villager says aloud, and how loud: the screen babbles it (spokenN bumps each time)
 };
 bool talkOpen(Level& lv, Player& p, Creature& npc, Talk& t, bool confront = false, const std::string& victim = "");
 void talkChoose(Level& lv, Player& p, Talk& t, int option);

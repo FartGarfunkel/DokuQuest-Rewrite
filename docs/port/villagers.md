@@ -49,8 +49,9 @@ Workstream: villagers (`src/sim/villagers*.{h,cpp}`, `sim/villager_ai.cpp`, `sim
   `makeQuestBoardScreen(at)`, `makePathScreen(hint)` (ui/villager_screens.h).
 
 ## Differences
-- Babble: each line plays the villager voice (`LevelFx::voice("villager", "say", pos, pitch)` with the villager's own pitch) instead of
-  the per-letter formant babble (needs a buffer-playback API in audio/; the original's BABBLE_V table is in the data for it).
+- Babble: in a conversation the line is babbled letter by letter like the original (audio/babble.cpp: the same schedule, formants, pitch
+  per villager and 26 letters a second; `AudioEngine::play("babble:" + key)`, started by the talk screen as the words type out, 0.4 volume
+  for the shop's thanks). The ambient mutters / "Ow! Hey!" in the world (`npcSay`) still use the one villager voice sample, pitched.
 - Roads: the plan data carries `roads` as {d, L, hw} (no cells): road spots are worked out along the road with the ground found at run
   time; if the structures add `cells` ([x, z, h]) they are used. Town side streets aren't in the data, so they aren't walked.
 - The fountain radius (`fr`) isn't in the plan data (defaults to 1 for the plaza spots).
@@ -85,7 +86,7 @@ Visual: `DQ_VILLAGERS=farmer,librarian,guard,elder,baker DQ_DAYTIME=0.2 ./build/
 - New data: `data/villagers.json` (`python3 tools/port/jsdump.py <src> data/villagers.json "$(cat tools/port/villagers_expr.js)"`).
 
 ## Left to do
-- Babble synth; the gates' movement (towns3.js gateMeshes slid the portcullis up / swung the doors): render/villager_layer draws a
+- Babble for the in-world mutters (needs the line sent to net clients); the gates' movement (towns3.js gateMeshes slid the portcullis up / swung the doors): render/villager_layer draws a
   static portcullis (iron bars) or timber doors (planks, iron bands, log posts) in every cell that holds a `gate_barrier`, so a shut
   gate shows and an open one is gone — no animation in between.
 - Quest map marks (livingworld.js / hearth.js mapMarkers: jobs' `at` and your houses) — maps.cpp can read `stats.quests[].at` / `stats.homes`.

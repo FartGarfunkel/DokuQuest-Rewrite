@@ -4,6 +4,8 @@
 #include "ui/villager_screens.h"
 #include "ui/theme.h"
 #include "ui/ui.h"
+#include "audio/audio.h"
+#include "audio/babble.h"
 #include "client/app.h"
 #include "client/session.h"
 #include "render/content_draw.h"
@@ -21,13 +23,17 @@ namespace {
 GameSession* sess(App& a) { return a.session && a.session->player ? a.session.get() : nullptr; }
 constexpr ImGuiWindowFlags CARD = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground |
                                   ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoSavedSettings;
-// the cards' wood: a gradient body, a bevelled border, a black outline (.nt-card / .qb-card)
-void woodCard(ImDrawList* dl, ImVec2 a, ImVec2 b, u32 top, u32 bot, u32 hi, u32 lo) {
+// the cards' wood: a soft drop shadow, the black 2px outline, the gradient body, the bevelled 3px border (.nt-card / .npc-shop / .qb-card).
+// Drawn into the background list (the windows clip to their own rectangle, which would cut the outline and the shadow).
+void woodCard(ImDrawList* dl, ImVec2 a, ImVec2 b, u32 top, u32 bot, u32 hi, u32 lo, float shadowY = 18, float shadowBlur = 50) {
   float z = Z();
+  dropShadow(dl, a, b, shadowY * z, shadowBlur * z, 0.65f);
   dl->AddRectFilled(a - ImVec2(2, 2) * z, b + ImVec2(2, 2) * z, col::black);
-  dl->AddRectFilledMultiColor(a, b, col::rgb(top), col::rgb(top), col::rgb(bot), col::rgb(bot));
+  dl->AddRectFilledMultiColor(a + ImVec2(3, 3) * z, b - ImVec2(3, 3) * z, col::rgb(top), col::rgb(top), col::rgb(bot), col::rgb(bot));
   bevel(dl, a, b, col::rgb(hi), col::rgb(lo), 3 * z);
 }
+// a CSS pixel size on one of our fonts, as the `scale` argument of text() / textSize() (.nt-opt is 14px on the 13px F_MID...)
+float css(FontId f, float px) { return px / fontPx(f); }
 // a row/option the pad can select: returns true when clicked (or A pressed on it)
 bool rowButton(const char* id, ImVec2 size, bool sel, bool pressedA, u32 border = 0x5a4430) {
   ImVec2 p = ImGui::GetCursorScreenPos();
@@ -79,17 +85,22 @@ public:
     }
     face = makeTexRGBA(8, 8, img, true, false);
   }
-  void onClose(App& a) override { if (GameSession* s = sess(a)) talkClosed(*s->level, *s->player, t); }
+  void onClose(App& a) override {
+    if (voiceH && a.audio) a.audio->stop(voiceH);
+    if (GameSession* s = sess(a)) talkClosed(*s->level, *s->player, t);
+  }
   bool onBack(App& a) override {
     if (t.mode == "shop") { if (GameSession* s = sess(a)) talkShopBack(*s->level, *s->player, t); sel = 0; return true; }
     return false;
   }
   void update(App& a, double dt) override {
     GameSession* s = sess(a);
-    if (failed || !s) { a.popScreen(); return; }
+    if (failed || !s || closeReq) { a.popScreen(); return; }
     Level& lv = *s->level; Player& p = *s->player;
+    age += (float)dt;
     if (lines != t.voiceLines) { lines = t.voiceLines; shown = 0; }
-    shown = std::min((float)t.text.size(), shown + (float)dt * 26);
+    if (spokenSeen != t.spokenN) speak(a);
+    shown = std::min((float)t.text.size(), shown + (float)dt * 26);   // 26 letters a second (NpcTalk.frame)
     talkHold(lv, p, t);
     if (!talkStillOk(lv, p, t) || a.input.pressed(Act::Inventory) || a.input.pressed(Act::MenuY)) { a.popScreen(); return; }
     if (t.closeNow) {
@@ -116,136 +127,192 @@ public:
     Level& lv = *s->level; Player& p = *s->player;
     const float z = Z(), W = (float)a.width, H = (float)a.height;
     ImDrawList* bg = ImGui::GetBackgroundDrawList();
-    bg->AddRectFilledMultiColor(ImVec2(0, H * 0.45f), ImVec2(W, H), 0, 0, IM_COL32(6, 4, 2, 115), IM_COL32(6, 4, 2, 115));
-    const float cw = std::min(640 * z, W - 16 * z), pad = 12 * z;
-    // ---- the card: face, name, words, options (an option is as tall as its wrapped label) ----
-    const float mw0 = cw - 76 * z - pad * 3, labW = mw0 - 38 * z;
-    float textH = std::max(44 * z, textSize(F_BODY, t.text.c_str(), mw0).y);
-    std::vector<float> oh;
+    bg->AddRectFilledMultiColor(ImVec2(0, H * 0.45f), ImVec2(W, H), 0, 0, IM_COL32(6, 4, 2, 115), IM_COL32(6, 4, 2, 115));   // .npc-talk: linear-gradient(transparent 45%, rgba(6,4,2,.45))
+    const bool shop = t.mode == "shop";
+    // ---- .nt-card: a 3px border, 12px 14px of padding, the 76px face and .nt-main side by side with a 12px gap ----
+    const float bd = 3 * z, padX = 14 * z, padY = 12 * z, faceS = 76 * z;
+    const float cw = std::min(640.f, W / z - 24.f) * z;
+    const float mw = cw - 2 * (bd + padX) - faceS - 12 * z;
+    const float tsz = css(F_BODY, 16), lh = 16 * 1.35f * z;                       // .nt-text: 16px / 1.35
+    const float osz = css(F_MID, 14), olh = 14 * 1.2f * z, nsz = css(F_H3, 14);   // .nt-opt: 14px, its number in the display font
+    const float nameH = textSize(F_H3, "A").y;
+    const float textH = std::max(44 * z, textLinesSize(F_BODY, t.text.c_str(), mw, lh, tsz).y);   // min-height 44px, the whole line (it types out inside this)
+    std::vector<float> oh;           // an option is a .btn: 44px at least, taller when its label wraps (padding 4 + border 2)
+    std::vector<std::string> ics;
     float optsH = 0;
-    if (t.mode != "shop") for (auto& o : t.opts) { float h = std::max(30 * z, textSize(F_MID, o.label.c_str(), labW - 6 * z).y + 10 * z); oh.push_back(h); optsH += h + 4 * z; }
-    float ch = pad * 2 + std::max(80 * z, 30 * z + textH + 14 * z + optsH);
-    ch = std::min(ch, H - 16 * z);
-    // sits above the hotbar (92 px up) like .npc-talk; on a short window it moves down rather than off the top
-    float bottom = std::min(H - 92 * z, H - 8 * z);
-    ImVec2 c0((W - cw) / 2, std::max(8 * z, bottom - ch));
+    if (!shop) for (size_t i = 0; i < t.opts.size(); i++) {
+      ics.push_back(t.opts[i].icon.empty() ? std::to_string(i + 1) : t.opts[i].icon);
+      float lw = mw - 20 * z - textSize(F_H3, ics[i].c_str(), 0, nsz).x - 8 * z;
+      oh.push_back(std::max(44 * z, textLinesSize(F_MID, t.opts[i].label.c_str(), lw, olh, osz).y + 12 * z));
+      optsH += oh[i] + (i ? 4 * z : 0);
+    }
+    float ch = std::min(2 * bd + 2 * padY + std::max(faceS, nameH + 6 * z + textH + 8 * z + optsH), H - 16 * z);
+    // sits above the hotbar (padding-bottom 92px); on a short window it moves down rather than off the top
+    ImVec2 c0((W - cw) / 2, std::max(8 * z, H - 92 * z - ch));
     if (c0.y + ch > H - 8 * z) c0.y = H - 8 * z - ch;
+    cardR = ImVec4(c0.x, c0.y, c0.x + cw, c0.y + ch);
+    woodCard(bg, c0, c0 + ImVec2(cw, ch), 0x3e2e1e, 0x2e2216, 0x7a5a38, 0x1a0f06);
     ImGui::SetNextWindowPos(c0); ImGui::SetNextWindowSize(ImVec2(cw, ch));
-    ImGui::Begin("##npc-talk", nullptr, CARD | ImGuiWindowFlags_NoNavInputs);
+    ImGui::Begin("##npc-talk", nullptr, CARD);
     ImDrawList* dl = ImGui::GetWindowDrawList();
-    woodCard(dl, c0, c0 + ImVec2(cw, ch), 0x3e2e1e, 0x2e2216, 0x7a5a38, 0x1a0f06);
-    ImVec2 fp = c0 + ImVec2(pad, pad);
-    dl->AddRectFilled(fp, fp + ImVec2(76, 76) * z, col::rgb(0x1a120a)); dl->AddRect(fp, fp + ImVec2(76, 76) * z, col::rgb(0x1a0f06), 0, 0, 2 * z);
-    dl->AddRect(fp + ImVec2(2, 2) * z, fp + ImVec2(74, 74) * z, col::rgb(0x7a5a38), 0, 0, 2 * z);
+    const ImVec2 fp = c0 + ImVec2(bd + padX, bd + padY);
+    // .nt-face: 76px, a 2px dark border, the face over it at 72px
+    dl->AddRectFilled(fp, fp + ImVec2(faceS, faceS), col::rgb(0x1a120a));
+    dl->AddRect(fp + ImVec2(1, 1) * z, fp + ImVec2(75, 75) * z, col::rgb(0x1a0f06), 0, 0, 2 * z);
     if (face) dl->AddImage((ImTextureID)(intptr_t)face, fp + ImVec2(2, 2) * z, fp + ImVec2(74, 74) * z);
-    float mx = fp.x + 76 * z + pad, mw = c0.x + cw - pad - mx;
-    ImVec2 nm = textSize(F_H3, t.name.c_str());
-    textShadow(dl, F_H3, ImVec2(mx, fp.y - 4 * z), col::rgb(0xfff3d6), t.name.c_str(), ImVec2(2, 2) * z, col::rgb(0x1a0f06));
+    const float mx = fp.x + faceS + 12 * z;
+    // .nt-name: the name (display 24px, a pixel shadow), the job and village in gold, the standing at the far right, on one baseline
+    const ImVec2 nm = textSize(F_H3, t.name.c_str());
+    const float base = fp.y + baselineOf(F_H3);
+    textShadow(dl, F_H3, ImVec2(mx, fp.y), col::rgb(0xfff3d6), t.name.c_str(), ImVec2(2, 2) * z, col::rgb(0x1a0f06));
     float standW = 0; std::string st;
-    if (!t.vid.empty()) { st = standingOf(repOf(p, t.vid)).name; standW = textSize(F_SMALL, st.c_str()).x + 8 * z; }
-    float titleRoom = mw - nm.x - 8 * z - standW;
-    if (titleRoom > 24 * z) text(dl, F_MID, ImVec2(mx + nm.x + 8 * z, fp.y + nm.y - textSize(F_MID, "A").y - 6 * z), col::gold, fitText(F_MID, t.title, titleRoom).c_str());
-    if (standW > 0 && nm.x + standW + 8 * z < mw) text(dl, F_SMALL, ImVec2(mx + mw - standW + 8 * z, fp.y + 4 * z), col::muted, st.c_str());
-    std::string typed = t.text.substr(0, (size_t)shown);
-    text(dl, F_BODY, ImVec2(mx, fp.y + 30 * z), col::text, typed.c_str(), mw);
-    if (t.mode != "shop") {
-      // the options sit in their own scrolling list (mouse wheel, right stick, d-pad), so a long list never runs off the card
-      float top = fp.y + 30 * z + textH + 10 * z, availH = std::max(40 * z, c0.y + ch - pad - top);
-      ImGui::SetCursorScreenPos(ImVec2(mx, top));
+    const float ssz = css(F_SMALL, 12);
+    if (!t.vid.empty()) { st = standingOf(repOf(p, t.vid)).name; standW = textSize(F_SMALL, st.c_str(), 0, ssz).x; }
+    float titleRoom = mw - nm.x - 8 * z - (standW > 0 ? standW + 8 * z : 0);
+    if (titleRoom > 24 * z) text(dl, F_MID, ImVec2(mx + nm.x + 8 * z, base - baselineOf(F_MID)), col::gold, fitText(F_MID, t.title, titleRoom).c_str());
+    if (standW > 0 && nm.x + standW + 8 * z < mw) text(dl, F_SMALL, ImVec2(mx + mw - standW, base - baselineOf(F_SMALL, ssz)), col::muted, st.c_str(), 0, ssz);
+    // .nt-text: types out letter by letter (never cut inside a UTF-8 character)
+    size_t nshown = std::min(t.text.size(), (size_t)shown);
+    while (nshown > 0 && nshown < t.text.size() && ((u8)t.text[nshown] & 0xC0) == 0x80) nshown--;
+    const float ty = fp.y + nameH + 6 * z;
+    textLines(dl, F_BODY, ImVec2(mx, ty), col::text, t.text.substr(0, nshown).c_str(), mw, lh, tsz);
+    if (!shop) {
+      // .nt-opts: a column of .btn rows, 4px apart. They sit in their own scrolling list (mouse wheel, right stick,
+      // d-pad), so a long list never runs off the card; the list is 4px / 3px wider so a selected row's outline isn't cut.
+      const float top = ty + textH + 8 * z, availH = std::max(40 * z, c0.y + ch - bd - padY - top);
+      ImGui::SetCursorScreenPos(ImVec2(mx - 4 * z, top - 3 * z));
+      ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 4 * z));
       // NoNavInputs: these screens move their own highlight (padStep in update); ImGui's pad nav would move a second one
-      ImGui::BeginChild("##opts", ImVec2(mw, availH), false, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs);
+      ImGui::BeginChild("##opts", ImVec2(mw + 8 * z, availH + 12 * z), false, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs);
       padScrollHere();
       ImDrawList* od = ImGui::GetWindowDrawList();
-      float rw = ImGui::GetContentRegionAvail().x;
+      ImGui::SetCursorPos(ImVec2(4 * z, 3 * z));
+      const float rw = ImGui::GetContentRegionAvail().x - 4 * z;
       for (int i = 0; i < (int)t.opts.size() && i < (int)oh.size(); i++) {
         const TalkOpt o = t.opts[i];   // a copy: choosing changes the options
-        float optH = oh[i];
+        const float optH = oh[i];
         ImGui::PushID(i);
-        ImVec2 p0 = ImGui::GetCursorScreenPos();
-        bool click = rowButton("##o", ImVec2(rw, optH), sel == i, false);
-        // the highlight follows the mouse and the pad's/keyboard's focus, so what's lit is what A / Enter picks
-        if (ImGui::IsItemHovered() && (ImGui::GetIO().MouseDelta.x != 0 || ImGui::GetIO().MouseDelta.y != 0)) sel = i;
+        ImGui::SetCursorPosX(4 * z);
+        const ImVec2 p0 = ImGui::GetCursorScreenPos();
+        bool click = ImGui::InvisibleButton("##o", ImVec2(rw, optH));
+        bool hot = ImGui::IsItemHovered(), held = ImGui::IsItemActive();
+        // the highlight follows the mouse (when it moves) and the pad's/keyboard's focus, so what's lit is what A / Enter picks
+        if (hot && (ImGui::GetIO().MouseDelta.x != 0 || ImGui::GetIO().MouseDelta.y != 0)) sel = i;
         if (sel == i && scrolledTo != sel) { ImGui::SetScrollHereY(); scrolledTo = sel; }
-        std::string icon = o.icon.empty() ? std::to_string(i + 1) : o.icon;
-        text(od, F_BIG, p0 + ImVec2(8 * z, (optH - textSize(F_BIG, "1").y) / 2), col::gold, icon.c_str());
-        float lw = rw - 38 * z, lh = textSize(F_MID, o.label.c_str(), lw).y;
-        text(od, F_MID, p0 + ImVec2(30 * z, (optH - lh) / 2), col::text, o.label.c_str(), lw);
-        ImGui::Dummy(ImVec2(1, 4 * z));
+        btnFace(od, p0, p0 + ImVec2(rw, optH), hot, held);
+        if (sel == i) od->AddRect(p0 - ImVec2(1, 1) * z, p0 + ImVec2(rw, optH) + ImVec2(1, 1) * z, col::gold, 5 * z, 0, 2 * z);   // .nt-opt.sel { outline: 2px solid gold }
+        const float cy = p0.y + optH / 2 + (held ? z : 0);
+        const ImVec2 ns = textSize(F_H3, ics[i].c_str(), 0, nsz);
+        text(od, F_H3, ImVec2(p0.x + 10 * z, cy - ns.y / 2), col::gold, ics[i].c_str(), 0, nsz);
+        const float lx = p0.x + 10 * z + ns.x + 8 * z, lw = rw - (lx - p0.x) - 10 * z;
+        const float lhh = textLinesSize(F_MID, o.label.c_str(), lw, olh, osz).y;
+        textLines(od, F_MID, ImVec2(lx, cy - lhh / 2), col::text, o.label.c_str(), lw, olh, osz);
         ImGui::PopID();
         if (click) { choose(lv, p, i); break; }
       }
       ImGui::EndChild();
+      ImGui::PopStyleVar();
     }
     ImGui::End();
-    if (t.mode == "shop") drawShop(a, lv, p, c0, cw);
+    if (shop) drawShop(a, lv, p, c0, cw); else shopR = ImVec4(0, 0, 0, 0);
+    // a click on the dim backdrop (outside the card and the shop) closes it (NpcTalk: pointerdown on the overlay)
+    if (age > 0.25f && (ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1) || ImGui::IsMouseClicked(2))) {
+      const ImVec2 m = ImGui::GetMousePos(); const float e = 3 * z;
+      auto in = [&](const ImVec4& r) { return r.z > r.x && m.x >= r.x - e && m.x <= r.z + e && m.y >= r.y - e && m.y <= r.w + e; };
+      if (!in(cardR) && !in(shopR)) closeReq = true;
+    }
   }
 
 private:
   u32 npc; bool confront; std::string victim; bool startShop;
-  Talk t; bool failed = false; int sel = 0, lines = -1, scrolledTo = -1; float shown = 0; GLuint face = 0;
-  void choose(Level& lv, Player& p, int i) { talkChoose(lv, p, t, i); sel = 0; scrolledTo = -1; }
+  Talk t; bool failed = false, closeReq = false; int sel = 0, lines = -1, scrolledTo = -1, spokenSeen = 0, voiceH = 0; float shown = 0, age = 0; GLuint face = 0;
+  ImVec4 cardR{0, 0, 0, 0}, shopR{0, 0, 0, 0};   // the windows' rectangles (x0 y0 x1 y1), for the backdrop click
+  void choose(Level& lv, Player& p, int i) { playClick(); talkChoose(lv, p, t, i); sel = 0; scrolledTo = -1; }   // b.onclick: sfx.play('click'), then the option
+  // villagers.js babble(sfx, text, npcVoice(seed), { rate: 26 }): the line starts to babble as its words start to type out;
+  // a new line cuts the old one off (the original let two voices run over each other)
+  void speak(App& a) {
+    spokenSeen = t.spokenN;
+    if (!a.audio || t.spoken.empty()) return;
+    if (voiceH) a.audio->stop(voiceH);
+    const NpcVoice nv = npcVoice(t.seed);
+    snd::BabbleVoice v; v.pitch = nv.pitch; v.formant = nv.formant; v.triangle = nv.triangle; v.seed = nv.seed;
+    voiceH = babble(*a.audio, t.spoken, v, t.spokenVol);
+  }
   std::vector<ShopLine> rows(Level& lv, Player& p) { VillageRef v = villageById(lv, t.vid); return v ? shopLines(lv, p, *v, t.idx, t.job, t.tab) : std::vector<ShopLine>{}; }
+  // .npc-shop: a panel stacked on top of the card (left/right 0 of its padding box, 6px above it): Buy / Sell, the emeralds, Back,
+  // the list of trades and a hint
   void drawShop(App& a, Level& lv, Player& p, ImVec2 card, float cw) {
-    const float z = Z(), pad = 8 * z, rowH = 34 * z;
+    const float z = Z(), bd = 3 * z, pad = 8 * z, rowH = 30 * z, gap = 3 * z, headH = 36 * z;
+    const float osz = css(F_MID, 14), bsz = css(F_H3, 18), ssz = css(F_SMALL, 11), esz = css(F_H3, 20);
     auto L = rows(lv, p);
-    float listH = std::min((float)L.size() * (rowH + 3 * z) + 4 * z, std::min(380 * z, a.height * 0.52f) - 80 * z);
-    listH = std::min(listH, card.y - 6 * z - 8 * z - (pad * 2 + 34 * z + 24 * z));   // never above the top of the window
-    listH = std::max(listH, 40 * z);
-    if (L.empty()) listH = 30 * z;
-    float sh = pad * 2 + 34 * z + listH + 24 * z;
-    ImVec2 s0(card.x, std::max(4 * z, card.y - 6 * z - sh));
-    ImGui::SetNextWindowPos(s0); ImGui::SetNextWindowSize(ImVec2(cw, sh));
-    ImGui::Begin("##npc-shop", nullptr, CARD | ImGuiWindowFlags_NoNavInputs);
+    const std::string hint = standingOf(repOf(p, t.vid)).name + " prices \xC2\xB7 they restock each morning";
+    const float hintH = textSize(F_SMALL, hint.c_str(), 0, ssz).y + 6 * z, fixedH = 2 * bd + 2 * pad + headH + hintH;
+    const float sw = cw - 2 * bd, bottom = card.y + bd - 6 * z;
+    float natural = L.empty() ? 30 * z : (float)L.size() * rowH + (float)(L.size() - 1) * gap;
+    float listH = std::min(natural, std::min(380 * z, a.height * 0.52f) - fixedH);   // max-height: min(380px, 52vh)
+    listH = std::max(std::min(listH, bottom - 4 * z - fixedH), 40 * z);
+    const float sh = fixedH + listH;
+    const ImVec2 s0(card.x + bd, std::max(4 * z, bottom - sh));
+    shopR = ImVec4(s0.x, s0.y, s0.x + sw, s0.y + sh);
+    woodCard(ImGui::GetBackgroundDrawList(), s0, s0 + ImVec2(sw, sh), 0x3e2e1e, 0x2e2216, 0x7a5a38, 0x1a0f06, 12, 40);
+    ImGui::SetNextWindowPos(s0); ImGui::SetNextWindowSize(ImVec2(sw, sh));
+    ImGui::Begin("##npc-shop", nullptr, CARD);
     ImDrawList* dl = ImGui::GetWindowDrawList();
-    woodCard(dl, s0, s0 + ImVec2(cw, sh), 0x3e2e1e, 0x2e2216, 0x7a5a38, 0x1a0f06);
-    ImGui::SetCursorScreenPos(s0 + ImVec2(pad, pad));
+    const float cx = s0.x + bd + pad, cy = s0.y + bd + pad, inner = sw - 2 * (bd + pad);
+    ImGui::SetCursorScreenPos(ImVec2(cx, cy));
     if (button("Buy##tab", BTN_NORMAL, true)) { t.tab = "buy"; sel = 0; }
     outlineLast(t.tab == "buy");
-    ImGui::SameLine();
+    ImGui::SameLine(0, 6 * z);
     if (button("Sell##tab", BTN_NORMAL, true)) { t.tab = "sell"; sel = 0; }
     outlineLast(t.tab == "sell");
     int em = 0; for (auto& st : p.inv) if (st.id == "emerald") em += st.n;
-    std::string ems = std::to_string(em);
-    float bw = textSize(F_MID, "Back").x + 24 * z, ex = s0.x + cw - pad - bw - 8 * z - textSize(F_BIG, ems.c_str()).x;
-    drawIcon(dl, "emerald", ImVec2(ex - 26 * z, s0.y + pad + 4 * z), 22 * z);
-    text(dl, F_BIG, ImVec2(ex, s0.y + pad + 4 * z), col::rgb(0x9ff0a0), ems.c_str());
-    ImGui::SameLine(cw - pad - bw);
+    const std::string ems = std::to_string(em);
+    const float bw = textSize(F_MID, "Back").x + 24 * z;
+    const ImVec2 es = textSize(F_H3, ems.c_str(), 0, esz);
+    const float ex = cx + inner - bw - 6 * z - es.x;   // .sh-em: margin-left auto, so it hugs Back
+    drawIcon(dl, "emerald", ImVec2(ex - 26 * z, cy + 4 * z), 22 * z);
+    text(dl, F_H3, ImVec2(ex, cy + 15 * z - es.y / 2), col::rgb(0x9ff0a0), ems.c_str(), 0, esz);
+    ImGui::SetCursorScreenPos(ImVec2(cx + inner - bw, cy));
     if (button("Back##shop", BTN_NORMAL, true, bw)) { talkShopBack(lv, p, t); sel = 0; ImGui::End(); return; }
-    ImGui::SetCursorScreenPos(s0 + ImVec2(pad, pad + 36 * z));
-    ImGui::BeginChild("##rows", ImVec2(cw - pad * 2, listH), false, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs);
+    ImGui::SetCursorScreenPos(ImVec2(cx, cy + headH));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, gap));
+    // NoNavInputs: these screens move their own highlight (padStep in update); ImGui's pad nav would move a second one
+    ImGui::BeginChild("##rows", ImVec2(inner, listH), false, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs);
     padScrollHere();
     if (L.empty()) label(F_MID, col::muted, "Nothing today.");
     const json& TN = VD()["tierName"];
     for (int k = 0; k < (int)L.size(); k++) {
       const ShopLine& l = L[k];
       ImGui::PushID(k);
-      ImVec2 p0 = ImGui::GetCursorScreenPos(); float rw = ImGui::GetContentRegionAvail().x;
-      bool click = rowButton("##r", ImVec2(rw, rowH), sel == k, false);
+      const ImVec2 p0 = ImGui::GetCursorScreenPos(); const float rw = ImGui::GetContentRegionAvail().x;
+      bool click = rowButton("##r", ImVec2(rw, rowH), sel == k, false);   // .sh-row: 1px border, hover / .sel lights it
       if (ImGui::IsItemHovered() && (ImGui::GetIO().MouseDelta.x != 0 || ImGui::GetIO().MouseDelta.y != 0)) sel = k;
       if (sel == k && scrolledTo != sel) { ImGui::SetScrollHereY(); scrolledTo = sel; }
       ImDrawList* d2 = ImGui::GetWindowDrawList();
-      float al = l.locked ? 0.4f : l.can ? 1.f : 0.55f, ic = 22 * z, ty = p0.y + (rowH - textSize(F_BIG, "1").y) / 2, my = p0.y + (rowH - textSize(F_MID, "A").y) / 2;
-      bool buy = t.tab == "buy";
-      std::string giveN = std::to_string(buy ? l.price : l.n), getN = std::to_string(buy ? l.n : l.price);
-      float x = p0.x + 8 * z;
-      drawIcon(d2, buy ? "emerald" : l.id, ImVec2(x, p0.y + (rowH - ic) / 2), ic, al); x += ic + 4 * z;
-      text(d2, F_BIG, ImVec2(x, ty), withAlpha(col::rgb(0xfff3d6), al), giveN.c_str()); x = p0.x + 80 * z;
-      text(d2, F_MID, ImVec2(x, my), withAlpha(col::muted, al), "\xE2\x86\x92"); x += 20 * z;
-      drawIcon(d2, buy ? l.id : "emerald", ImVec2(x, p0.y + (rowH - ic) / 2), ic, al); x += ic + 4 * z;
-      text(d2, F_BIG, ImVec2(x, ty), withAlpha(col::rgb(0xfff3d6), al), getN.c_str()); x += textSize(F_BIG, getN.c_str()).x + 6 * z;
-      std::string nm = buy ? itemNameOf(l.id) : "for " + itemNameOf(l.id);
-      std::string right = l.locked ? TN[l.tier].get<std::string>() + " only" : l.left > 0 ? std::to_string(l.left) + " left" : "sold out";
-      ImVec2 rs = textSize(F_SMALL, right.c_str());
-      text(d2, F_MID, ImVec2(x, my), withAlpha(col::text, al), fitText(F_MID, nm, p0.x + rw - rs.x - 16 * z - x).c_str());
-      text(d2, F_SMALL, ImVec2(p0.x + rw - rs.x - 8 * z, p0.y + (rowH - rs.y) / 2), withAlpha(col::muted, al), right.c_str());
-      if (click) { sel = k; talkShopTrade(lv, p, t, k); }
-      ImGui::Dummy(ImVec2(1, 3 * z));
+      const float al = l.locked ? 0.4f : l.can ? 1.f : 0.55f, ic = 22 * z, cyr = p0.y + rowH / 2;
+      const bool buy = t.tab == "buy";
+      const std::string giveN = std::to_string(buy ? l.price : l.n), getN = std::to_string(buy ? l.n : l.price);
+      const ImVec2 gs = textSize(F_H3, giveN.c_str(), 0, bsz), ns = textSize(F_H3, getN.c_str(), 0, bsz), ms = textSize(F_MID, "A", 0, osz);
+      float x = p0.x + 9 * z;                                  // border 1 + padding 8
+      drawIcon(d2, buy ? "emerald" : l.id, ImVec2(x, cyr - ic / 2), ic, al);
+      text(d2, F_H3, ImVec2(x + ic + 4 * z, cyr - gs.y / 2), withAlpha(col::rgb(0xfff3d6), al), giveN.c_str(), 0, bsz);
+      x += std::max(64 * z, ic + 4 * z + gs.x) + 6 * z;        // .sh-give { min-width: 64px } then the flex gap
+      text(d2, F_MID, ImVec2(x, cyr - ms.y / 2), withAlpha(col::muted, al), "\xE2\x86\x92", 0, osz);
+      x += textSize(F_MID, "\xE2\x86\x92", 0, osz).x + 6 * z;
+      drawIcon(d2, buy ? l.id : "emerald", ImVec2(x, cyr - ic / 2), ic, al); x += ic + 6 * z;   // .sh-get { gap: 6px }
+      text(d2, F_H3, ImVec2(x, cyr - ns.y / 2), withAlpha(col::rgb(0xfff3d6), al), getN.c_str(), 0, bsz); x += ns.x + 4 * z;
+      const std::string nm = buy ? itemNameOf(l.id) : "for " + itemNameOf(l.id);
+      const std::string right = l.locked ? TN[l.tier].get<std::string>() + " only" : l.left > 0 ? std::to_string(l.left) + " left" : "sold out";
+      const ImVec2 rs = textSize(F_SMALL, right.c_str(), 0, ssz);
+      text(d2, F_MID, ImVec2(x, cyr - ms.y / 2), withAlpha(col::text, al), fitText(F_MID, nm, p0.x + rw - rs.x - 9 * z - 6 * z - x).c_str(), 0, osz);
+      text(d2, F_SMALL, ImVec2(p0.x + rw - rs.x - 9 * z, cyr - rs.y / 2), withAlpha(col::muted, al), right.c_str(), 0, ssz);
       ImGui::PopID();
+      if (click) { sel = k; talkShopTrade(lv, p, t, k); }
     }
     ImGui::EndChild();
-    std::string hint = standingOf(repOf(p, t.vid)).name + " prices \xC2\xB7 they restock each morning";
-    ImVec2 hs = textSize(F_SMALL, hint.c_str());
-    text(dl, F_SMALL, ImVec2(s0.x + (cw - hs.x) / 2, s0.y + sh - pad - hs.y), col::muted, hint.c_str());
+    ImGui::PopStyleVar();
+    const ImVec2 hs = textSize(F_SMALL, hint.c_str(), 0, ssz);
+    text(dl, F_SMALL, ImVec2(s0.x + (sw - hs.x) / 2, s0.y + sh - bd - pad - hs.y), col::muted, hint.c_str(), 0, ssz);   // .sh-hint
     ImGui::End();
   }
   static std::string itemNameOf(const std::string& id) { const ItemDef* d = reg().item(id); return d ? d->name : id; }
@@ -261,7 +328,8 @@ public:
   void onOpen(App& a) override { if (GameSession* s = sess(a)) { v = boardVillage(*s->level, s->player->realm, at); s->level->fx->soundUi(s->player->id, "map_paper"); } }
   void update(App& a, double dt) override {
     GameSession* s = sess(a);
-    if (!s || !v) { a.popScreen(); return; }
+    if (!s || !v || closeReq) { a.popScreen(); return; }
+    age += (float)dt;
     if (a.input.pressed(Act::Inventory) || a.input.pressed(Act::MenuY)) { a.popScreen(); return; }
     if ((refreshT -= (float)dt) <= 0) { refreshT = 1; posted = boardQuests(*s->level, *v); }
     int was = sel;
@@ -269,82 +337,128 @@ public:
     selMoved = sel != was;
     pressA = a.input.pressed(Act::MenuOk);
   }
+  // .quest-board / .qb-card: a dim backdrop, the 720px wooden card, notes pinned in a grid (auto-fill, min 200px, 8px gaps)
   void draw(App& a) override {
     GameSession* s = sess(a);
     if (!s || !v || !posted.is_array()) return;
     Level& lv = *s->level; Player& p = *s->player;
     const float z = Z(), W = (float)a.width, H = (float)a.height;
-    ImGui::GetBackgroundDrawList()->AddRectFilled(ImVec2(0, 0), ImVec2(W, H), IM_COL32(6, 4, 2, 140));
-    const float cw = std::min(720 * z, W - 16 * z), chMax = H - 16 * z;
-    ImGui::SetNextWindowPos(ImVec2(W / 2, H / 2), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-    ImGui::SetNextWindowSize(ImVec2(cw, std::min(chMax, lastH > 0 ? lastH : 520 * z)));
-    ImGui::Begin("##quest-board", nullptr, CARD | ImGuiWindowFlags_NoNavInputs);   // its own pad highlight (padStep)
+    ImDrawList* bg = ImGui::GetBackgroundDrawList();
+    bg->AddRectFilled(ImVec2(0, 0), ImVec2(W, H), IM_COL32(6, 4, 2, 140));
+    const float bd = 3 * z, padX = 14 * z, padY = 12 * z;
+    const float cw = std::min(720.f, W / z - 16.f) * z, ch = std::min(H - 16 * z, lastH > 0 ? lastH : 520 * z);
+    const ImVec2 w0((W - cw) / 2, (H - ch) / 2);
+    cardR = ImVec4(w0.x, w0.y, w0.x + cw, w0.y + ch);
+    woodCard(bg, w0, w0 + ImVec2(cw, ch), 0x5a4028, 0x46321e, 0x8a6a44, 0x2a1a0a);
+    ImGui::SetNextWindowPos(w0); ImGui::SetNextWindowSize(ImVec2(cw, ch));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::Begin("##quest-board", nullptr, CARD);   // its own pad highlight (padStep)
+    ImGui::PopStyleVar();
     padScrollHere();   // the right stick scrolls a tall board
     ImDrawList* dl = ImGui::GetWindowDrawList();
-    ImVec2 w0 = ImGui::GetWindowPos(), ws = ImGui::GetWindowSize();
-    woodCard(dl, w0, w0 + ws, 0x5a4028, 0x46321e, 0x8a6a44, 0x2a1a0a);
-    const float pad = 14 * z;
+    const float ox = bd + padX, iw = cw - 2 * ox;
+    ImGui::SetCursorPos(ImVec2(ox, bd + padY));
+    const ImVec2 org = ImGui::GetCursorScreenPos() - ImGui::GetCursorPos();   // where content (0, 0) is on screen, scroll included
+    auto scr = [&](float x, float y) { return org + ImVec2(x, y); };
     json& S = npcStats(p);
     Standing st = standingOf(repOf(p, v->id));
+    // .qb-head: the title and the standing on one baseline, space-between (the standing drops under the title when they don't fit)
     std::string head = v->name + " \xE2\x80\x94 Quest Board";
     std::string sub = "You are a " + st.name + " here (" + std::to_string((int)repOf(p, v->id)) + (st.hasNext ? " / " + std::to_string((int)st.next) : std::string()) + ")";
-    ImGui::SetCursorPos(ImVec2(pad, pad));
-    ImVec2 hp = ImGui::GetCursorScreenPos();
-    textShadow(dl, F_H3, hp, col::rgb(0xfff3d6), head.c_str(), ImVec2(2, 2) * z, col::rgb(0x1a0f06));
-    ImVec2 hsz = textSize(F_H3, head.c_str());
-    text(dl, F_MID, ImVec2(hp.x + hsz.x + 10 * z, hp.y + hsz.y - textSize(F_MID, "A").y - 4 * z), col::gold, sub.c_str());
-    ImGui::Dummy(ImVec2(1, hsz.y + 8 * z));
+    float y = bd + padY;
+    const ImVec2 hsz = textSize(F_H3, head.c_str()), ssz = textSize(F_MID, sub.c_str());
+    textShadow(dl, F_H3, scr(ox, y), col::rgb(0xfff3d6), head.c_str(), ImVec2(2, 2) * z, col::rgb(0x1a0f06));
+    if (hsz.x + 10 * z + ssz.x <= iw) { text(dl, F_MID, scr(ox + iw - ssz.x, y + baselineOf(F_H3) - baselineOf(F_MID)), col::gold, sub.c_str()); y += hsz.y; }
+    else { text(dl, F_MID, scr(ox, y + hsz.y), col::gold, sub.c_str()); y += hsz.y + ssz.y; }
+    y += 8 * z;
     int btn = 0; std::string take, fin;
-    const int cols = std::max(1, (int)((cw - pad * 2) / (200 * z)));
-    const float nw = (cw - pad * 2 - (cols - 1) * 8 * z) / cols;
+    const int cols = std::max(1, (int)((iw + 8 * z) / (208 * z)));
+    const float nw = (iw - (cols - 1) * 8 * z) / cols, nwi = nw - 20 * z;
+    const float tsz = css(F_H3, 18), tlh = 18 * z, plh = 13 * 1.3f * z;   // note title: display 18px; text 13px / 1.3
     auto notes = [&](const std::vector<std::pair<json, bool>>& list) {
-      int k = 0; float rowTop = ImGui::GetCursorPosY(), rowH = 0;
+      // heights first: the notes of a row stretch to the tallest (grid items)
+      struct N { json q; bool mine, done, ready; int have, need; float h; };
+      std::vector<N> ns;
       for (auto& [q0, mine] : list) {
-        json q = q0;
-        const int col = k % cols;
-        if (col == 0 && k) { rowTop += rowH + 8 * z; rowH = 0; }
-        ImGui::SetCursorPos(ImVec2(pad + col * (nw + 8 * z), rowTop));
-        ImVec2 n0 = ImGui::GetCursorScreenPos();
-        std::string title = q.value("title", std::string()), body = q.value("text", std::string());
-        float th = textSize(F_BIG, title.c_str(), nw - 20 * z).y, bh = textSize(F_MID, body.c_str(), nw - 20 * z).y;
-        float nh = 10 * z + th + 4 * z + bh + 6 * z + 22 * z + 6 * z + 30 * z + 8 * z;
-        const bool hunt = q.value("kind", "") == "hunt";
-        bool done = S["qdone"].contains(q.value("id", ""));
-        int need = q.value("need", 1), have = mine ? std::min(need, questHave(lv, p, q)) : 0;
-        bool ready = mine && have >= need;
-        float al = done ? 0.55f : 1.f;
-        dl->AddRectFilled(n0 + ImVec2(2, 3) * z, n0 + ImVec2(nw, nh) + ImVec2(2, 3) * z, IM_COL32(0, 0, 0, (int)(89 * al)));
-        dl->AddRectFilled(n0, n0 + ImVec2(nw, nh), withAlpha(col::rgb(0xe8dcc0), al));
-        dl->AddCircleFilled(n0 + ImVec2(nw / 2, 6 * z), 3.5f * z, withAlpha(col::rgb(hunt ? 0x2a6ac8 : 0xc83a2a), al));
-        text(dl, F_BIG, n0 + ImVec2(10, 12) * z, withAlpha(col::rgb(0x3a1a0a), al), title.c_str(), nw - 20 * z);
-        text(dl, F_MID, n0 + ImVec2(10 * z, 12 * z + th + 4 * z), withAlpha(col::rgb(0x3a2a1a), al), body.c_str(), nw - 20 * z);
-        float ry = n0.y + 12 * z + th + 4 * z + bh + 6 * z;
-        drawIcon(dl, "emerald", ImVec2(n0.x + 10 * z, ry), 22 * z, al);
-        std::string rew = std::to_string(q["reward"].value("em", 0)) + " \xC2\xB7 " + std::to_string(q["reward"].value("xp", 0)) + " xp";
-        text(dl, F_MID, ImVec2(n0.x + 36 * z, ry + 3 * z), withAlpha(col::rgb(0x2a5a2a), al), rew.c_str());
-        ImGui::SetCursorScreenPos(ImVec2(n0.x + nw - 10 * z - 90 * z, ry + 26 * z));
-        ImGui::PushID(q.value("id", std::string()).c_str());
-        if (done) text(dl, F_BIG, ImVec2(n0.x + nw - 10 * z - textSize(F_BIG, "Done").x, ry + 30 * z), col::rgb(0x6a3a1a), "Done");
-        else if (ready) { bool sl = sel == btn; if (button("Hand in", BTN_PRIMARY, true, 90 * z) || (sl && pressA)) fin = q.value("id", ""); outlineLast(sl, col::rgb(0xc83a2a)); if (sl && selMoved) ImGui::SetScrollHereY(0.5f); btn++; }
-        else if (mine) { std::string hv = std::to_string(have) + "/" + std::to_string(need); text(dl, F_BIG, ImVec2(n0.x + nw - 10 * z - textSize(F_BIG, hv.c_str()).x, ry + 30 * z), col::rgb(0x6a3a1a), hv.c_str()); }
-        else { bool sl = sel == btn; if (button("Take it", BTN_NORMAL, true, 90 * z) || (sl && pressA)) take = q.value("id", ""); outlineLast(sl, col::rgb(0xc83a2a)); if (sl && selMoved) ImGui::SetScrollHereY(0.5f); btn++; }
-        ImGui::PopID();
-        rowH = std::max(rowH, nh); k++;
+        N n{q0, mine, S["qdone"].contains(q0.value("id", "")), false, 0, q0.value("need", 1), 0};
+        n.have = mine ? std::min(n.need, questHave(lv, p, n.q)) : 0;
+        n.ready = mine && n.have >= n.need;
+        const bool plain = !n.done && !n.ready && n.mine;   // just "have/need" in the display font, no button
+        float th = textLinesSize(F_H3, n.q.value("title", std::string()).c_str(), nwi, tlh, tsz).y;
+        float bh = textLinesSize(F_MID, n.q.value("text", std::string()).c_str(), nwi, plh).y;
+        n.h = 10 * z + th + 4 * z + bh + 4 * z + 22 * z + 4 * z + ((n.done || plain) ? 18 * z : 30 * z) + 8 * z;
+        ns.push_back(n);
       }
-      ImGui::SetCursorPos(ImVec2(pad, rowTop + rowH + 8 * z));
+      for (size_t r0 = 0; r0 < ns.size(); r0 += cols) {
+        float rowH = 0; for (size_t k = r0; k < ns.size() && k < r0 + cols; k++) rowH = std::max(rowH, ns[k].h);
+        for (size_t k = r0; k < ns.size() && k < r0 + cols; k++) {
+          const N& n = ns[k]; const json& q = n.q;
+          const float nx = ox + (float)(k - r0) * (nw + 8 * z);
+          const ImVec2 n0 = scr(nx, y), n1 = n0 + ImVec2(nw, rowH);
+          const bool hunt = q.value("kind", "") == "hunt";
+          const float al = n.done ? 0.55f : 1.f;
+          dl->AddRectFilled(n0 + ImVec2(2, 3) * z, n1 + ImVec2(2, 3) * z, IM_COL32(0, 0, 0, (int)(89 * al)));   // box-shadow: 2px 3px 0 rgba(0,0,0,.35)
+          dl->AddRectFilled(n0, n1, withAlpha(col::rgb(0xe8dcc0), al));
+          dl->AddCircleFilled(n0 + ImVec2(nw / 2 + 1.5f, 7.5f) * z, 3.5f * z, IM_COL32(0, 0, 0, (int)(102 * al)));   // the pin and its shadow
+          dl->AddCircleFilled(n0 + ImVec2(nw / 2 + 0.5f, 6.5f) * z, 3.5f * z, withAlpha(col::rgb(hunt ? 0x2a6ac8 : 0xc83a2a), al));
+          float ty = n0.y + 10 * z;
+          std::string title = q.value("title", std::string()), body = q.value("text", std::string());
+          ty += textLines(dl, F_H3, ImVec2(n0.x + 10 * z, ty), withAlpha(col::rgb(0x3a1a0a), al), title.c_str(), nwi, tlh, tsz) + 4 * z;
+          ty += textLines(dl, F_MID, ImVec2(n0.x + 10 * z, ty), withAlpha(col::rgb(0x3a2a1a), al), body.c_str(), nwi, plh) + 4 * z;
+          drawIcon(dl, "emerald", ImVec2(n0.x + 10 * z, ty), 22 * z, al);   // .qb-rew
+          const json R = q.value("reward", json::object());
+          std::string rew = std::to_string(R.value("em", 0)) + " \xC2\xB7 " + std::to_string(R.value("xp", 0)) + " xp";
+          text(dl, F_MID, ImVec2(n0.x + 36 * z, ty + (22 * z - textSize(F_MID, rew.c_str()).y) / 2), withAlpha(col::rgb(0x2a5a2a), al), rew.c_str());
+          ty += 22 * z + 4 * z;
+          const float right = n0.x + nw - 10 * z;   // align-self: flex-end
+          ImGui::PushID(q.value("id", std::string()).c_str());
+          if (n.done || (n.mine && !n.ready)) {   // <em>Done</em> / <em>have/need</em>
+            std::string em = n.done ? "Done" : std::to_string(n.have) + "/" + std::to_string(n.need);
+            text(dl, F_H3, ImVec2(right - textSize(F_H3, em.c_str(), 0, tsz).x, ty), col::rgb(0x6a3a1a), em.c_str(), 0, tsz);
+          } else {
+            const char* lbl = n.ready ? "Hand in" : "Take it";
+            const float bw = textSize(F_MID, lbl).x + 24 * z;
+            ImGui::SetCursorScreenPos(ImVec2(right - bw, ty));
+            bool sl = sel == btn;
+            if (button(lbl, n.ready ? BTN_PRIMARY : BTN_NORMAL, true, bw) || (sl && pressA)) (n.ready ? fin : take) = q.value("id", "");
+            outlineLast(sl, col::rgb(0xc83a2a));   // .qb-note .btn.sel
+            if (sl && selMoved) ImGui::SetScrollHereY(0.5f);
+            btn++;
+          }
+          ImGui::PopID();
+        }
+        y += rowH + 8 * z;
+      }
+      y -= ns.empty() ? 0 : 8 * z;   // the grid's last row has no gap under it
     };
     std::vector<std::pair<json, bool>> board;
     for (auto& q : posted) { json* m = findQuest(p, q.value("id", "")); board.push_back({m ? *m : q, m != nullptr}); }
     notes(board);
     std::vector<std::pair<json, bool>> errands;
     for (auto& q : S["quests"]) if (q.value("vid", "") == v->id && q.value("giver", -1) >= 0) errands.push_back({q, true});
-    if (!errands.empty()) { label(F_BODY, col::gold, ("Errands for the folk of " + v->name).c_str()); ImGui::Dummy(ImVec2(1, 4 * z)); notes(errands); }
-    std::string hint = "New bounties every morning \xC2\xB7 villagers with a ! over their heads have errands \xC2\xB7 E to close";
-    ImVec2 hs = textSize(F_SMALL, hint.c_str());
-    ImGui::SetCursorPosX((cw - hs.x) / 2); label(F_SMALL, col::rgb(0xe8d8b8, 204), hint.c_str());
-    lastH = ImGui::GetCursorPosY() + pad;
+    if (!errands.empty()) {   // .qb-sub: margin 10px 0 6px, gold 14px
+      const float osz = css(F_MID, 14);
+      y += 10 * z;
+      std::string sb = "Errands for the folk of " + v->name;
+      text(dl, F_MID, scr(ox, y), col::gold, sb.c_str(), 0, osz);
+      y += textSize(F_MID, sb.c_str(), 0, osz).y + 6 * z;
+      notes(errands);
+    }
+    // .qb-hint: 12px, centred, margin-top 10px
+    const std::string hint = "New bounties every morning \xC2\xB7 villagers with a ! over their heads have errands \xC2\xB7 E to close";
+    const float hsz2 = css(F_SMALL, 12); const ImVec2 hs = textSize(F_SMALL, hint.c_str(), 0, hsz2);
+    y += 10 * z;
+    text(dl, F_SMALL, scr(ox + (iw - hs.x) / 2, y), col::rgb(0xe8d8b8, 204), hint.c_str(), 0, hsz2);
+    y += hs.y;
+    lastH = y + padY + bd;
+    ImGui::SetCursorPos(ImVec2(0, lastH - 1)); ImGui::Dummy(ImVec2(1, 1));   // the scrollable height
     nButtons = btn; pressA = false;
     ImGui::End();
+    // a click on the dim backdrop closes the board (QuestBoard: pointerdown on the overlay)
+    if (age > 0.25f && (ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1) || ImGui::IsMouseClicked(2))) {
+      const ImVec2 m = ImGui::GetMousePos(); const float e = 3 * z;
+      if (!(m.x >= cardR.x - e && m.x <= cardR.z + e && m.y >= cardR.y - e && m.y <= cardR.w + e)) closeReq = true;
+    }
     if (!take.empty()) for (auto& q : posted) if (q.value("id", "") == take) questTake(lv, p, q);
     if (!fin.empty()) if (json* q = findQuest(p, fin)) {
       if (q->value("giver", -1) >= 0) lv.fx->message(p.id, "Take it to " + q->value("from", std::string("them")) + " yourself", "");
@@ -352,7 +466,8 @@ public:
     }
   }
 private:
-  ivec3 at; VillageRef v; json posted; float refreshT = 0, lastH = 0; int sel = 0, nButtons = 0; bool pressA = false, selMoved = false;
+  ivec3 at; VillageRef v; json posted; float refreshT = 0, lastH = 0, age = 0; int sel = 0, nButtons = 0; bool pressA = false, selMoved = false, closeReq = false;
+  ImVec4 cardR{0, 0, 0, 0};
 };
 std::unique_ptr<Screen> makeQuestBoardScreen(ivec3 at) { return std::make_unique<BoardScreen>(at); }
 
