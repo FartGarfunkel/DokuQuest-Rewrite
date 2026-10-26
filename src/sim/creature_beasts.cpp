@@ -294,6 +294,15 @@ static OptMove beeAI(Level& lv, Creature& b, float dt) {
   return Move{d < 0.3f ? 0 : std::min(b.T->fly, d * 2.5f), std::atan2(-(t.x - b.pos.x), -(t.z - b.pos.z)) + std::sin(b.age * 7) * 0.25f};
 }
 
+// the ground under a flyer (y of the first solid or liquid block below it; the column's top when there's none close), so bats can be kept at tree height
+static float groundUnder(World& w, const Creature& m) {
+  const Registry& R = reg();
+  int x = ifloor(m.pos.x), z = ifloor(m.pos.z), y = ifloor(m.pos.y);
+  for (int i = 0; i < 28 && y > 0; i++, y--) { BlockId id = w.getBlock(x, y, z); if (R.tSolid[id] || R.tLiquid[id]) return (float)y + 1; }
+  int top = w.surfaceY(x, z, dimAt(m));
+  return top >= 0 ? (float)top : m.pos.y - 12;
+}
+
 static Move flyerAI(Level& lv, Creature& m, Entity* p, float dist, float dt) {
   const auto& T = *m.T;
   if (m.type == "bee" && m.hasHive && !(m.angryT > 0 && m.foe)) if (OptMove b = beeAI(lv, m, dt)) return *b;
@@ -313,6 +322,11 @@ static Move flyerAI(Level& lv, Creature& m, Entity* p, float dist, float dt) {
     if (m.flitT <= 0 || m.hitWall) { m.flitT = 0.4f + frand() * 1.2f; m.flitDir = frand() * TAU; m.flitUp = m.roostT < 3 ? 2.5f : (frand() - 0.45f) * 4; }
     if (solidAt(w, m.pos.x, m.pos.y - 0.6f, m.pos.z)) m.flitUp = std::max(m.flitUp, 1.5f);
     m.flyVy = m.flitUp;
+    // bats stay at about tree height: 2..10 blocks above whatever is under them (they used to climb to the clouds)
+    float up = m.pos.y - groundUnder(w, m);
+    if (up > 9) m.flyVy = std::min(m.flyVy, -1.5f - (up - 9) * 0.3f);
+    else if (up > 7) m.flyVy = std::min(m.flyVy, 0.f);
+    else if (up < 2 && !solidAt(w, m.pos.x, m.pos.y + m.h + 0.4f, m.pos.z)) m.flyVy = std::max(m.flyVy, 1.f);
     return {T.fly, m.flitDir};
   }
   if (T.stings && m.angryT > 0 && m.foe && m.hasSting) {   // bees sting whoever bothered them (once)
