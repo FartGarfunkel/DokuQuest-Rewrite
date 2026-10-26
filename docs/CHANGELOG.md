@@ -5,6 +5,11 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.4.9 — Hotfix (October 2026)
+
+- **The rift in town hums again:** its deep, low drone is back, like the original, for anyone within about 28 blocks of it, and on its other side too.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.4.8 — Hotfix (October 2026)
 
 - **Hit ghast fireballs back:** punch or swing at a ghast's fireball just before it reaches you and it flies back the way you're looking. Send it into the ghast and that's the end of the ghast.

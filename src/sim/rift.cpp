@@ -351,6 +351,23 @@ void riftTick(Level& lv, EndStory& S, double dt) {
     S.frozenCalm.clear();
   }
   syncTears(lv, S);
+  // riftarc.js: a tear hums, deep and low, every 2.4 s for anyone within 28 blocks (the square's, and its other side)
+  {
+    static double humT = 0;
+    if (jint(R, "stage") >= 1 && R.contains("at") && (humT -= dt) <= 0) {
+      humT = 2.4;
+      const int stage = jint(R, "stage"), frags = std::min(RIFT_NEED, jint(R, "frags"));
+      const float h = stage >= 3 ? 4.2f : 2.6f + frags * 0.2f;
+      const vec3 sq = vec3(glm::dvec3(jvec(R["at"]))) + vec3(0, h / 2, 0), ex(3.5f, realmFloor() + 1 + 2.1f, 0.5f);
+      bool nearSq = false, nearEx = false;
+      for (Player* q : livePlayers(lv)) {
+        if (q->realm == REALM_MAIN && std::hypot(q->pos.x - sq.x, q->pos.z - sq.z) < 28) nearSq = true;
+        if (q->realm == REALM_HIS && std::hypot(q->pos.x - ex.x, q->pos.z - ex.z) < 28) nearEx = true;
+      }
+      if (nearSq) lv.fx->sound("rift_hum", sq, 28);
+      if (nearEx) lv.fx->sound("rift_hum", ex, 28);
+    }
+  }
   if ((S.riftT -= (float)dt) > 0) return;
   S.riftT = 1;
   auto all = livePlayers(lv);
