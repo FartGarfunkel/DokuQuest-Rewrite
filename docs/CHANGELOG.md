@@ -5,6 +5,11 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.5.2 — Hotfix (October 2026)
+
+- **The world no longer vanishes on high settings:** on Ultra, the Nether and deep caves could fill the graphics card's terrain memory past 4 GB in one piece, which the graphics driver can't hold, and everything near you disappeared into the fog. Terrain memory is now kept in smaller pieces, so it keeps working however much land is loaded.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.5.1 — Hotfix (October 2026)
 
 - **No more stuck in walls:** players and creatures can no longer end up inside blocks. Anything that gets shoved into a wall, a ladder's block or a block placed where it stands is put back out the shortest free way before it moves on.
