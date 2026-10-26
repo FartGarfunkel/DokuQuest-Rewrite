@@ -2,6 +2,10 @@
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
 
+## Alpha 1.0.0.4.5 — Hotfix | October 2026
+- **More villagers in capes for Halloween:** nearly half of the villagers without a costume now wear a black, orange or purple cape (only a few did before), and every vampire has the dark one.
+- Removed Herobrine.
+
 ## Alpha 1.0.0.4.4 — More Halloween | October 2026
 - **More Halloween (October only):** three new night creatures. A pumpkin creature lies in pumpkin patches looking like any other pumpkin (watch for a faint glow in its face at night) until you come close or touch it, then rises on a body of vines. A scarecrow stands still in fields and by village farms, and only moves when nobody is looking at it. A pale ghost drifts about at night, chills you if it touches you, fades when you stare it down and keeps away from torchlight.
 - **Villagers in costume:** some villagers dress up for Halloween as witches, ghosts, skeletons and vampires.

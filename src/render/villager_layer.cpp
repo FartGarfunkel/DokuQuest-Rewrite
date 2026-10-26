@@ -180,8 +180,8 @@ public:
           case Costume::Vampire: piece(HW_COLLAR, headM); break;
           default: break;
         }
-        // a few more wear a black, orange or purple cape; the vampire always has the dark one
-        const bool cape = hwCos == Costume::Vampire || (hwCos == Costume::None && (hh >> 12) % 100 < 18);
+        // many more wear a black, orange or purple cape; the vampire always has the dark one
+        const bool cape = hwCos == Costume::Vampire || (hwCos == Costume::None && (hh >> 12) % 100 < 45);
         if (!sleep && cape) {
           static const char* CAPES[3] = {"black_cape", "orange_cape", "purple_cape"};
           if (const CharMesh* cm = capeMesh(hwCos == Costume::Vampire ? "black_cape" : CAPES[(hh >> 20) % 3], 0, ts)) {
