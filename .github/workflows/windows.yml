@@ -23,7 +23,7 @@ jobs:
         run: |
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DDQ_PORTABLE=ON > cfg.log 2>&1 || { tail -40 cfg.log | while IFS= read -r l; do echo "::error::cmake: ${l:0:300}"; done; exit 1; }
           set +e
-          cmake --build build --config Release --parallel -- /nologo /v:minimal > build.log 2>&1
+          cmake --build build --config Release --parallel -- -nologo -v:minimal > build.log 2>&1
           rc=$?
           grep -E "(fatal )?error [A-Z]+[0-9]+|error MSB" build.log | sed -e 's/^ *//' -e 's/\[[^]]*\.vcxproj\]$//' | sort -u | head -60 | while IFS= read -r l; do echo "::error::${l:0:400}"; done
           echo "build exit $rc"; exit $rc
