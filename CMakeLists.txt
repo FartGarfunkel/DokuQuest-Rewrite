@@ -16,6 +16,8 @@ add_subdirectory(third_party)
 
 if(MSVC)
   add_compile_options(/utf-8 /MP)
+  # windows.h's min/max macros break std::min/std::max; M_PI needs _USE_MATH_DEFINES
+  add_compile_definitions(NOMINMAX _USE_MATH_DEFINES _CRT_SECURE_NO_WARNINGS)
 else()
   set(DQ_WARN -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare)
 endif()
