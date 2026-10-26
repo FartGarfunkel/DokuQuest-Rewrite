@@ -68,5 +68,13 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
 
 - Biome golems (user, 2026-10-26, with the biome fuselings): the village iron golem built from local materials per biome (sandstone, mossy cobble, terracotta, packed snow and ice, spruce and stone...), more articulated (elbow and knee joints, segmented limbs, hands), glowing eyes. Our own designs; the user's reference is a mod's art.
 
+- Story beats (user, 2026-10-26):
+  - Nether foreshadowing: while players are in a fortress, he appears, opens a portal, grabs a wither skeleton and pulls it into his portal.
+  - The climax: we see him place the last wither skull, starting a Wither Storm. It is a campaign-only boss, never natural spawning: a giant, growing three-headed wither that tears up and pulls in blocks. Our own design, not Story Mode's model.
+- With BTA (user, 2026-10-26):
+  - the Wither boss, summoned by players with soul sand and 3 wither skeleton skulls, never natural;
+  - mob heads/skulls, as drops, wearable and placeable;
+  - spawn eggs for every creature.
+
 ## Roadmap (after the bugs)
 Start in the wild, potions stack to 16, test-build small fixes, coins/economy, roads and bridges, travellers, saddle bags, bigger ship, poses, torches on fences, chains/lanterns, rift to 10 fragments + slow pacing + lore, graphics presets, built-in shader levels, Skylands content, Shadowbloom ports, Iris/OptiFine shader packs.
