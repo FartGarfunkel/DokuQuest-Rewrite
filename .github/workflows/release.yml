@@ -76,7 +76,13 @@ jobs:
       - name: Build
         run: |
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DDQ_VERSION="$VERSION" -DDQ_PORTABLE=ON
-          cmake --build build --parallel
+          # two compiles at a time (a full --parallel can run the runner out of memory on the big files); errors annotated
+          set +e
+          cmake --build build --parallel 2 > build.log 2>&1
+          rc=$?
+          grep -E "error:|Killed signal|internal compiler error|FAILED:" build.log | sort -u | head -40 | while IFS= read -r l; do echo "::error::${l:0:400}"; done
+          tail -n 5 build.log
+          exit $rc
       - name: Smoke test (the release is only made from a build that runs)
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
