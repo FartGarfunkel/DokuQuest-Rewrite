@@ -141,7 +141,7 @@ bool buildEyeBand(const SkinImage& s, CharMesh& out) {
   }
   if (!built) return false;
   VoxelMeshData md; buildVoxelMesh(g, md);
-  upload(out, md, vec3(-4, 32 - eye - 2, -4.5f) - vec3(0, 24, 0));
+  upload(out, md, vec3(-4, 32 - eye - 1, -4.5f) - vec3(0, 24, 0));
   return out.ready();
 }
 

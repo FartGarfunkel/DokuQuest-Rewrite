@@ -5,6 +5,11 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.5.8 — Hotfix (October 2026)
+
+- **Glowing eyes line up:** on creatures wearing a skin, the glowing eyes sat one pixel below the skin's eyes. They sit on them now.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.5.7 — Modding (October 2026)
 
 - **Game art laid out like a resource pack:** the built-in pictures are now one PNG each in data/textures/block, item, entity and misc, and creature skins sit in data/textures/entity/<creature>/. Edit any of them and the game uses your version (any square size).
