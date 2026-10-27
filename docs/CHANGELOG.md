@@ -5,6 +5,13 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.5.6 — Hotfix (October 2026)
+
+- **Pumpkin creatures glow:** their head is lit like a real jack-o'-lantern.
+- **Endermen's eyes glow purple** again.
+- **Skins on creatures:** a dark skin's glowing eye pixels are picked out properly.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.5.5 — Hotfix (October 2026)
 
 - **Pumpkin creatures behave:** they stay hidden as a pumpkin until you come close, never stack pumpkins up into towers when you run, and wear a plain jack-o'-lantern head.

@@ -116,8 +116,11 @@ bool buildEyeBand(const SkinImage& s, CharMesh& out) {
   }
   if (best < 2) return false;
   int run[8], rn = 0, cnt[8] = {}, wsum[8] = {};
+  auto lumAt = [&](int i) { const u8* c = col(i, eye); return c[0] * 0.299f + c[1] * 0.587f + c[2] * 0.114f; };
+  float top = 0; for (int i = 0; i < 8; i++) if (col(i, eye)[3] >= 100) top = std::max(top, lumAt(i));
   for (int i = 0; i < 8; i++) {
-    bool white = col(i, eye)[3] >= 100 && diff(col(i, eye), col(0, 6)) > 90;   // stands out from the skin
+    // the eye pixels are the brightest of the row (a dark skin's mid greys around them are not eyes)
+    bool white = col(i, eye)[3] >= 100 && top > 120 && lumAt(i) >= top * 0.8f;
     run[i] = white ? rn - 1 >= 0 && run[i - 1] == rn - 1 ? run[i - 1] : (rn++, rn - 1) : -1;
     if (run[i] < 0) continue;
     cnt[run[i]]++;

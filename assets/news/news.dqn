@@ -2,6 +2,12 @@
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
 
+## Alpha 1.0.0.5.6 — Hotfix | October 2026
+- **Pumpkin creatures glow:** their head is lit like a real jack-o'-lantern.
+- **Endermen's eyes glow purple** again.
+- **Skins on creatures:** a dark skin's glowing eye pixels are picked out properly.
+- Removed Herobrine.
+
 ## Alpha 1.0.0.5.5 — Hotfix | October 2026
 - **Pumpkin creatures behave:** they stay hidden as a pumpkin until you come close, never stack pumpkins up into towers when you run, and wear a plain jack-o'-lantern head.
 - **Calmer October nights:** fewer pumpkin creatures and scarecrows, and only one ghost a night. The ghost is a proper sheet ghost now.

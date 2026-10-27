@@ -122,7 +122,7 @@ static void injectTypes() {
   json pk = {{"rig", "hw_pumpkin"}, {"scale", 1}, {"hipY", 0}, {"height", 36}, {"bodyDepth", 16}};
   const json plainPumpkin = {{"side", "pumpkin_side"}, {"top", "pumpkin_top"}, {"bottom", "pumpkin_top"}, {"front", "jack_o_lantern"}};   // a plain jack-o'-lantern head
   pk["parts"] = json::array({
-    part("head", nullptr, {0, 0, 0}, {-8, 0, -8}, {8, 16, 8}, plainPumpkin, up),
+    part("head", nullptr, {0, 0, 0}, {-8, 0, -8}, {8, 16, 8}, plainPumpkin, {{"only", "d:up"}, {"glow", true}}),   // lit like a jack-o'-lantern block
     part("stem", "head", {0, 16, 0}, {-1.5f, 0, -1.5f}, {1.5f, 4, 1.5f}, "moss_block", up),
     part("core", "head", {0, 0, 0}, {-4, -12, -4}, {4, 0, 4}, "moss_block", up),
     part("twistA", "core", {0, -4, 0}, {-5.5f, -1, -1}, {5.5f, 1, 1}, "moss_block", upx({{"rest", {0, 0.7, 0.5}}})),
@@ -195,6 +195,14 @@ static void injectTypes() {
   // the stock fuseling model is replaced outright by the creeper build (same key, so everything keyed on "fuseling"
   // — /summon, the entity factory, saves, PMSpec pack reskins — keeps working; only its look changed).
   models["fuseling"] = creeperModel();
+
+  // the enderman's eyes: two glowing purple eyes across the middle of the face (the whole-face eye tile showed nothing)
+  if (models.contains("enderman") && models["enderman"].contains("parts"))
+    for (json& p : models["enderman"]["parts"]) if (p.value("name", "") == "eyeglow") {
+      p["tex"] = "magenta_concrete"; p["glow"] = true; p["eyes"] = true;
+      p["box"] = {-4, 3, -4.06, 4, 4, -4.0};
+      p["min"] = {-0.25, 0.1875, -0.25375}; p["max"] = {0.25, 0.25, -0.25};
+    }
 }
 
 // ------------------------------------------------------------------ helpers
