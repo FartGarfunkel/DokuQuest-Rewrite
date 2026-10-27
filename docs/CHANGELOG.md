@@ -10,6 +10,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Pumpkin creatures behave:** they stay hidden as a pumpkin until you come close, never stack pumpkins up into towers when you run, and wear a plain jack-o'-lantern head.
 - **Calmer October nights:** fewer pumpkin creatures and scarecrows, and only one ghost a night. The ghost is a proper sheet ghost now.
 - **New fuseling look:** taller and narrower, with vines hanging down its sides.
+- **Deleting a world no longer crashes the game.**
 - Removed Herobrine.
 
 ## 1.0.0-alpha.5.4 — Hotfix (October 2026)

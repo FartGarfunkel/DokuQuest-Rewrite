@@ -197,6 +197,7 @@ public:
   const char* id() const override { return "worlds"; }
   std::vector<WorldEntry> worlds;
   std::string name = "New World", seed, msg, confirm;
+  bool relist = false;   // a world was deleted: list again after the loop (not while it walks the list)
   int mode = 0; bool moreOpen = false, importOpen = false;
   WorldForm form;
   double refreshAt = 0;
@@ -224,6 +225,7 @@ public:
     float cardW = leftW - 24 * z - ImGui::GetStyle().ScrollbarSize;
     if (worlds.empty()) label(F_BODY, col::muted, "No worlds yet. Name one and press Create world.", cardW);
     for (auto& w : worlds) drawWorld(a, w, cardW);
+    if (relist) { relist = false; worlds = listWorlds(); }
     ImGui::EndGroup();
     ImGui::Dummy(ImVec2(1, 8 * z));
     ImGui::EndChild();
@@ -279,7 +281,7 @@ public:
       std::string q = "Delete \xE2\x80\x9C" + nm + "\xE2\x80\x9D for good?";
       ImGui::AlignTextToFramePadding(); label(F_MID, col::rgb(0xffcabf), q.c_str());
       ImGui::SameLine(0, 8 * z);
-      if (button("Delete##yes", BTN_DANGER, true)) { std::error_code ec; fs::remove_all(w.folder, ec); confirm.clear(); worlds = listWorlds(); ImGui::EndGroup(); dl->ChannelsMerge(); ImGui::PopID(); return; }
+      if (button("Delete##yes", BTN_DANGER, true)) { std::error_code ec; fs::remove_all(w.folder, ec); confirm.clear(); relist = true; }
       ImGui::SameLine(0, 6 * z);
       if (button("Keep", BTN_NORMAL, true) || ImGui::IsWindowAppearing()) confirm.clear();
     }
