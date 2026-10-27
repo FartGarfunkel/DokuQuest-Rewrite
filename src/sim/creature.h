@@ -16,8 +16,12 @@ namespace dq {
 class Player;
 
 // One MOB_TYPES entry, parsed for the hot paths (the json stays in `j`).
+// a mob whose model key names a PLAYER SKIN (e.g. herobrine with "herobrine.png"): it is drawn as a voxel
+// character like the players (render/creature_layer), so its render rig is always the biped regardless of skin.
 struct CreatureType {
   std::string key, model, label, voice, sound, ai, faction, family, element, ride;
+  bool explicitSkin = false;          // mobs.json said "skin": "<file>.png" (as opposed to inferring it from the model name)
+  std::string skin;   // a player-skin reference for this mob ("" = the voxel models in data/models.json)
   std::vector<std::string> variants, food, prey;
   float hp = 10, w = 0.3f, h = 0.9f, speed = 1, run = 0, fly = 0, swimSpeed = 0, damage = 0, knockResist = 0, skittish = 0, glows = 0;
   int xp = 0;
@@ -28,6 +32,7 @@ struct CreatureType {
        playful = false, needsAir = false, playsDead = false, frogTongue = false, ambient = false, displays = false, bear = false, snake = false,
        dayNeutral = false, noPush = false, fleesSun = false, npc = false, noDismember = false, carry = false, spirit = false, phase = false;   // phase: drifts through leaves (the October ghost)
   bool hasTint = false; vec4 tint{0};
+  std::vector<std::string> skinGlowParts;      // mobs.json "skinGlow": ["head"] — skin parts drawn unlit (herobrine's white eyes)
   struct Drop { std::string id; int lo = 0, hi = 0; float chance = 1; };
   std::vector<Drop> drops;
   struct OnHit { float slow = 0, chill = 0, poison = 0, fire = 0; bool any = false; } onHit;
@@ -35,6 +40,9 @@ struct CreatureType {
   bool eats(const std::string& item) const { return std::find(food.begin(), food.end(), item) != food.end(); }
   bool hunts(const std::string& t) const { return std::find(prey.begin(), prey.end(), t) != prey.end(); }
 };
+// true when this entity draws as a voxel character from a player skin instead of its data/models.json rig
+// (a mobs.json entry with "skin": "<file>.png", e.g. herobrine); render/creature_layer.cpp checks it per frame.
+bool isSkinMob(const std::string& key);
 const CreatureType* creatureType(const std::string& key);   // nullptr if not a MOB_TYPES key
 bool isCreatureType(const std::string& key);
 void reloadCreatureTypes();                                  // after data packs / mods changed reg().mobs

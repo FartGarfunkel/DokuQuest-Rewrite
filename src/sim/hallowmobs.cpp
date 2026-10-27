@@ -1,6 +1,6 @@
 // sim/hallowmobs.cpp — October's three night creatures (own design; they exist only while halloween() is on):
-//  * pumpkin creature: sits in a pumpkin patch as a real pumpkin block. Its carved face glows faintly at night (the
-//    only tell, a see-through slab drawn on the block). Come within ~4 blocks (2.6 if you sneak), or hit / mine it,
+//  * pumpkin creature: sits in a pumpkin patch as a real pumpkin block with a plain pumpkin head on it. It is a dead
+//    giveaway by day; at night it stirs when you come within ~4 blocks (2.6 if you sneak), or hit / mine it,
 //    and it tears itself out of the block and rises on a tangle of vines; mining or hitting it first gives it a free
 //    strike. By day it just is a pumpkin again.
 //  * scarecrow: stands in fields and by village farms like a decoration; at night it only moves while no player is
@@ -62,6 +62,45 @@ static json part(const char* name, const char* parent, vec3 at, vec3 lo, vec3 hi
   return j;
 }
 
+// The creeper (the fuseling): rebuilt as a voxel model from Creeper.jpg (three views: front, three-quarter,
+// side — fine-grid pixel pass): a tall NARROW trunk body (as wide as deep, much taller than wide), a canopy head
+// barely wider than the trunk with the moss face at its crown, and long vine curtains hanging down the flanks
+// from brow to ground (the reference's vertical "stripes"; gaps between them read as eyes in the coarse pass).
+// The dark maw patch sits at the BASE front of the trunk (jaw there), and leaf tufts stick out along the sides.
+// My first attempt had the proportions inverted — squat body + oversized head slab — which the three-view sheet
+// immediately rules out. Part names, parents, roles and pivots stay exactly as before, so animPod + the "fuse"
+// post animate it identically. This replaces the stock fuseling model outright — same key "fuseling", so /summon
+// fuseling, saves, dismemberment and the resource pack's entity/creeper reskin all keep working.
+// Proportions follow the community-cited Minecraft creeper: Java height 1.7 blocks (0.6 wide; head 8x8 px,
+// body 4x8x12 px, legs 4x8x4 px). Our voxels are 16 units/block so ×16: h≈27, w≈10 with four 3.2-wide corner
+// legs reaching the ground (feet at y=0 — they detached last pass when I shortened leg boxes but kept their
+// old pivots; keep leg box bottom = -pivot.y exactly).
+static json creeperModel() {
+  const json moss = "moss_block", vineT = "vine", leafT = "leaves", rootT = "fuse_root", mawT = "fuse_maw";
+  json p = {{"rig", "pod"}, {"scale", 1}, {"height", 27}};
+  p["parts"] = json::array({
+    part("body", nullptr, {0, 8.5f, 0}, {-4, 0, -4}, {4, 17, 4}, moss, {{"role", "pbody"}}),
+    part("head", "body", {0, 17, 0}, {-4.75f, 0, -4.75f}, {4.75f, 8, 4.75f}, {{"all", moss}, {"front", vineT}}, {{"role", "phead"}, {"limb", "head"}}),
+    part("jaw", "body", {0, 3.5f, -4}, {-2.5f, -3.5f, -1.25f}, {2.5f, 0, 0}, {{"all", moss}, {"top", mawT}, {"front", mawT}}, {{"role", "jaw"}}),
+    part("frond0", "head", {-4.75f, 8, 0}, {-0.9f, -16, -1.3f}, {0, 0, 1.3f}, vineT, {{"role", "frond"}, {"noCull", true}}),
+    part("frond1", "head", {-3.2f, 8, -4.75f}, {-1.3f, -16, -0.9f}, {1.3f, 0, 0}, vineT, {{"role", "frond"}, {"noCull", true}}),
+    part("frond2", "head", {4.75f, 8, 0}, {0, -16, -1.3f}, {0.9f, 0, 1.3f}, vineT, {{"role", "frond"}, {"noCull", true}}),
+    part("frond3", "head", {3.2f, 8, -4.75f}, {-1.3f, -16, 0}, {1.3f, 0, 0.9f}, vineT, {{"role", "frond"}, {"noCull", true}}),
+    part("frond4", "head", {-2.6f, 8, 4.75f}, {-1.3f, -16, 0}, {1.3f, 0, 0.9f}, vineT, {{"role", "frond"}, {"noCull", true}}),
+    part("thorn10", "body", {4, 15, -1.5f}, {-0.5f, 0, -0.5f}, {0.5f, 2.5f, 0.5f}, leafT, {{"rest", {0, 0, -1.2f}}}),
+    part("thorn11", "body", {-4, 11, 1.5f}, {-0.5f, 0, -0.5f}, {0.5f, 2.5f, 0.5f}, leafT, {{"rest", {0, 0, 1.2f}}}),
+    part("thorn12", "body", {1.5f, 18, 4}, {-0.5f, 0, -0.5f}, {0.5f, 2.5f, 0.5f}, leafT, {{"rest", {1.1f, 0, 0}}}),
+    part("thorn13", "body", {-1.5f, 9, -4}, {-0.5f, 0, -0.5f}, {0.5f, 2.5f, 0.5f}, leafT, {{"rest", {-1.1f, 0, 0}}}),
+    part("thorn14", "body", {4, 6, 1.5f}, {-0.5f, 0, -0.5f}, {0.5f, 2.5f, 0.5f}, leafT, {{"rest", {0, 0, -1.2f}}}),
+    part("thorn15", "body", {-4, 3, -1.5f}, {-0.5f, 0, -0.5f}, {0.5f, 2.5f, 0.5f}, leafT, {{"rest", {0, 0, 1.2f}}}),
+    part("legFL", nullptr, {-3.4f, 8.5f, -3.4f}, {-1.6f, -8.5f, -1.6f}, {1.6f, 0, 1.6f}, rootT, {{"role", "qleg"}, {"front", true}, {"side", -1}, {"limb", "legFL"}}),
+    part("legFR", nullptr, {3.4f, 8.5f, -3.4f}, {-1.6f, -8.5f, -1.6f}, {1.6f, 0, 1.6f}, rootT, {{"role", "qleg"}, {"front", true}, {"side", 1}, {"limb", "legFR"}}),
+    part("legBL", nullptr, {-3.4f, 8.5f, 3.4f}, {-1.6f, -8.5f, -1.6f}, {1.6f, 0, 1.6f}, rootT, {{"role", "qleg"}, {"front", false}, {"side", -1}, {"limb", "legBL"}}),
+    part("legBR", nullptr, {3.4f, 8.5f, 3.4f}, {-1.6f, -8.5f, -1.6f}, {1.6f, 0, 1.6f}, rootT, {{"role", "qleg"}, {"front", false}, {"side", 1}, {"limb", "legBR"}})});
+  p["post"] = "fuse";
+  return p;
+}
+
 static void injectTypes() {
   json& mobs = reg().mobs; json& models = reg().models;
   if (!mobs.is_object() || !models.is_object() || mobs.contains("scarecrow")) return;
@@ -81,11 +120,9 @@ static void injectTypes() {
   const json up = {{"only", "d:up"}};
   auto upx = [&](json x) { x["only"] = "d:up"; return x; };
   json pk = {{"rig", "hw_pumpkin"}, {"scale", 1}, {"hipY", 0}, {"height", 36}, {"bodyDepth", 16}};
+  const json plainPumpkin = {{"side", "pumpkin_side"}, {"top", "pumpkin_top"}, {"bottom", "pumpkin_top"}, {"front", "jack_o_lantern"}};   // a plain jack-o'-lantern head
   pk["parts"] = json::array({
-    // hiding, it looks like any jack-o'-lantern: the lit face sits flush on the pumpkin (no ghostly see-through face in front)
-    part("tell", nullptr, {0, 0, 0}, {-8.0f, 0.0f, -8.06f}, {8.0f, 16.0f, -8.0f}, "jack_o_lantern", {{"only", "d:tell"}, {"glow", true}}),
-    part("head", nullptr, {0, 0, 0}, {-8, 0, -8}, {8, 16, 8}, {{"side", "pumpkin_side"}, {"top", "pumpkin_top"}, {"bottom", "pumpkin_top"}, {"front", "carved_pumpkin"}}, up),
-    part("mask", "head", {0, 8, 0}, {-8.0f, -8.0f, -8.06f}, {8.0f, 8.0f, -8.0f}, "jack_o_lantern", {{"only", "d:up"}, {"glow", true}}),
+    part("head", nullptr, {0, 0, 0}, {-8, 0, -8}, {8, 16, 8}, plainPumpkin, up),
     part("stem", "head", {0, 16, 0}, {-1.5f, 0, -1.5f}, {1.5f, 4, 1.5f}, "moss_block", up),
     part("core", "head", {0, 0, 0}, {-4, -12, -4}, {4, 0, 4}, "moss_block", up),
     part("twistA", "core", {0, -4, 0}, {-5.5f, -1, -1}, {5.5f, 1, 1}, "moss_block", upx({{"rest", {0, 0.7, 0.5}}})),
@@ -130,7 +167,8 @@ static void injectTypes() {
   // ghost: a white sheet (see-through), a black hole of a face with two pale glowing eyes, arms hanging under the cloth. It
   // borrows the wraith's rig ("wraith" + the drift post: it bobs, the hem and sleeves sway)
   json gh = {{"rig", "wraith"}, {"scale", 1}, {"hipY", 10}, {"height", 30}, {"post", "drift"}};
-  auto sheetx = [&](float a, json x = json::object()) { x["alpha"] = a; x["noCull"] = true; x["glow"] = true; return x; };   // (self-lit: a pale glow in the dark)
+  // a sheet you can barely see through (outer faces only, so the boxes underneath don't show as layers); the tatters thin out
+  auto sheetx = [&](float a, json x = json::object()) { x["alpha"] = std::min(0.9f, a + 0.3f); x["glow"] = true; return x; };   // (self-lit: a pale glow in the dark)
   // the classic sheet: a rounded dome of a head flowing into a cloth that widens and thins out towards a ragged hem (fading
   // as it goes), two dark eye holes and a little round mouth, the arms only bumps under the cloth
   auto holes = [](json x = json::object()) { x["alpha"] = 0.92f; x["noCull"] = true; return x; };   // (not lit: dark holes)
@@ -149,9 +187,14 @@ static void injectTypes() {
     part("eyeL", "head", {0, 0, 0}, {-3.1f, 2.4f, -4.95f}, {-1.2f, 4.9f, -4.65f}, "black_concrete", holes()),
     part("eyeR", "head", {0, 0, 0}, {1.2f, 2.4f, -4.95f}, {3.1f, 4.9f, -4.65f}, "black_concrete", holes()),
     part("mouth", "head", {0, 0, 0}, {-0.9f, 0.5f, -4.95f}, {0.9f, 1.9f, -4.65f}, "black_concrete", holes()),
-    part("armR", "body", {-5.2f, 3, 0}, {-1.1f, -6, -2}, {1.1f, 0, 2}, "white_concrete", sheetx(0.5f, {{"role", "warm"}, {"rest", {0, 0, -0.35}}})),
-    part("armL", "body", {5.2f, 3, 0}, {-1.1f, -6, -2}, {1.1f, 0, 2}, "white_concrete", sheetx(0.5f, {{"role", "warm"}, {"rest", {0, 0, 0.35}}}))});
+    // the arms are only bumps under the cloth
+    part("armR", "body", {-3.9f, 3, 0}, {-1.1f, -5, -1.8f}, {1.1f, 0, 1.8f}, "white_concrete", sheetx(0.5f, {{"role", "warm"}, {"rest", {0, 0, -0.12}}})),
+    part("armL", "body", {3.9f, 3, 0}, {-1.1f, -5, -1.8f}, {1.1f, 0, 1.8f}, "white_concrete", sheetx(0.5f, {{"role", "warm"}, {"rest", {0, 0, 0.12}}}))});
   models["ghost"] = gh;
+
+  // the stock fuseling model is replaced outright by the creeper build (same key, so everything keyed on "fuseling"
+  // — /summon, the entity factory, saves, PMSpec pack reskins — keeps working; only its look changed).
+  models["fuseling"] = creeperModel();
 }
 
 // ------------------------------------------------------------------ helpers
@@ -186,6 +229,13 @@ static void wakePumpkin(Level& lv, Creature& m, Entity* cause) {
   lv.fx->voice("hw_gourd", "angry", m.pos + vec3(0, 0.6f, 0));
 }
 
+// room to sit as a pumpkin: air or a small plant, on solid ground that is not another pumpkin (so they never stack up)
+static bool roomForPumpkin(World& w, int x, int y, int z) {
+  BlockId at = w.getBlock(x, y, z), under = w.getBlock(x, y - 1, z);
+  if (at && (reg().tSolid[at] || reg().tLiquid[at])) return false;
+  return reg().tSolid[under] && under != pumpkinBlock() && under != reg().blockId("jack_o_lantern") && under != reg().blockId("carved_pumpkin");
+}
+
 static OptMove pumpkinBrain(Level& lv, Creature& m, Entity* p, float dist, float dyp, float toPlayer, float dt) {
   World& w = lv.world(m.realm);
   const bool night = lv.isNight(), hw = halloween();
@@ -194,13 +244,14 @@ static OptMove pumpkinBrain(Level& lv, Creature& m, Entity* p, float dist, float
   if (!hwHas(m, "mode")) {   // first tick (a summoned one too): hide as a pumpkin where there is room, else it is just up
     if (p) m.yaw = m.prevYaw = std::round(toPlayer / (PI / 2)) * (PI / 2);   // (the face squarely on a block side, turned to whoever is near)
     if (w.getBlock(bx, by, bz) == pumpkinBlock()) hwSet(m, "mode", 0);
-    else if (!w.getBlock(bx, by, bz) && reg().tSolid[w.getBlock(bx, by - 1, bz)] && w.setBlock(bx, by, bz, pumpkinBlock(), 0)) { hwSet(m, "mode", 0); m.pos = vec3(bx + 0.5f, (float)by, bz + 0.5f); }
-    else { hwSet(m, "mode", 2); hwSet(m, "w", 1); hwSet(m, "up", 1); m.h = 2.2f; }
+    else if (roomForPumpkin(w, bx, by, bz) && w.setBlock(bx, by, bz, pumpkinBlock(), 0)) { hwSet(m, "mode", 0); m.pos = vec3(bx + 0.5f, (float)by, bz + 0.5f); }
+    else { m.removed = true; return Move{0, m.yaw}; }   // nowhere to hide: it never starts out up and hunting
   }
   int mode = (int)(hwGet(m, "mode") + 0.5f);
+  if (mode != 0) m.data.erase("inBlock");
   float wk = hwGet(m, "w");
   if (mode == 0) {   // a pumpkin block; only the face gives it away
-    m.noGravity = true; m.hasFlyVy = true; m.flyVy = 0; m.vel = vec3(0); m.h = 1.0f; m.w = 0.45f;
+    m.noGravity = true; m.hasFlyVy = true; m.flyVy = 0; m.vel = vec3(0); m.h = 1.0f; m.w = 0.45f; m.data["inBlock"] = true;
     if (!hw || !night) { m.removed = true; return Move{0, m.yaw}; }   // by day it is only a pumpkin (the block stays)
     hwSet(m, "tell", 1); hwSet(m, "up", 0);
     if (nobodyNear(lv, m, 90)) { m.removed = true; return Move{0, m.yaw}; }
@@ -227,7 +278,7 @@ static OptMove pumpkinBrain(Level& lv, Creature& m, Entity* p, float dist, float
     hwSet(m, "w", wk); m.h = 1.0f + 1.2f * smooth01(wk);
     if (wk <= 0) {
       hwSet(m, "w", 0);
-      if (hw && night && !w.getBlock(bx, by, bz) && reg().tSolid[w.getBlock(bx, by - 1, bz)] && w.setBlock(bx, by, bz, pumpkinBlock(), 0)) {
+      if (hw && night && roomForPumpkin(w, bx, by, bz) && w.setBlock(bx, by, bz, pumpkinBlock(), 0)) {
         m.pos = vec3(bx + 0.5f, (float)by, bz + 0.5f); m.vel = vec3(0); hwSet(m, "mode", 0); hwSet(m, "up", 0);
       } else { mobBurst(lv, m.pos + vec3(0, 0.8f, 0), "pumpkin_side", 10, 0.6f); m.removed = true; }
     }
@@ -413,7 +464,10 @@ public:
       else if (c->type == "scarecrow") { crows++; taken.push_back(c->pos); }
       else if (c->type == "ghost") ghosts++;
     }
-    const bool wantP = pumpkins < 2 + n && frand() < 0.4f, wantS = crows < 1 && frand() < 0.04f, wantG = ghosts < 1 && frand() < 0.03f;   // scarecrows and ghosts are rare: one at a time round you
+    // fewer than before: a couple of pumpkins about, a scarecrow now and then, and one ghost a night
+    static i64 ghostNight = INT64_MIN;
+    const i64 nightNo = (i64)std::floor(lv.info.time / DAY_LEN + (double)lv.info.day + 0.5);
+    const bool wantP = pumpkins < 1 + n / 2 && frand() < 0.15f, wantS = crows < 1 && frand() < 0.015f, wantG = ghosts < 1 && ghostNight != nightNo && frand() < 0.03f;   // scarecrows and ghosts are rare: one at a time round you
     if (wantP || wantS) {
       // one pass over the loaded columns around the player: pumpkins on the surface, farmland / crops / hay bales
       static BlockId farmland = reg().blockId("farmland"), hay = reg().blockId("hay_bale");
@@ -457,7 +511,7 @@ public:
       int x = ifloor(p->pos.x + std::cos(ang) * d), z = ifloor(p->pos.z + std::sin(ang) * d);
       int top = w.surfaceY(x, z, dim);
       if (top > 0 && w.isLoaded(x, top, z) && (w.getLight(x, top + 1, z) & 15) < 5)
-        if (Creature* c = spawnCreature(lv, realm, "ghost", vec3(x + 0.5f, top + 1.6f + frand() * 1.5f, z + 0.5f))) { c->kept = false; hwSet(*c, "fa", 0.05f); }
+        if (Creature* c = spawnCreature(lv, realm, "ghost", vec3(x + 0.5f, top + 1.6f + frand() * 1.5f, z + 0.5f))) { c->kept = false; hwSet(*c, "fa", 0.05f); ghostNight = nightNo; }
     }
   }
 };

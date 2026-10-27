@@ -19,6 +19,7 @@ constexpr float MAX_DIST = 48.f;
 
 class DynLightLayer : public RenderLayer {
 public:
+  int order() const override { return 1000; }   // runs after every layer that may add lights (e.g. the test harness), since it gathers and clears f.dyn
   const char* name() const override { return "dynlight"; }
   std::unordered_map<std::string, int> cache;   // item id -> light level
   int levelOf(const std::string& id) {
@@ -73,6 +74,7 @@ public:
       } else if (e->type == "tnt") add(glm::dvec3(e->pos) + glm::dvec3(0, 0.5, 0), 8.f);
       else if (e->type == "projectile" && e->data.value("kind", std::string()) == "fireball") add(glm::dvec3(e->pos), 10.f);
       else if (e->data.contains("hat") && e->data["hat"] == "jack_o_lantern" && e->hp > 0) add(glm::dvec3(e->pos) + glm::dvec3(0, e->h - 0.3, 0), 9.f);   // Halloween: a jack-o'-lantern head
+      else if (e->type == "pumpkin_creature" && e->hp > 0) add(glm::dvec3(e->pos) + glm::dvec3(0, e->h - 0.55, 0), 7.f);   // the pumpkin creature's carved face (lit whether it hides as a block or stands up)
     }
     std::sort(c.begin(), c.end(), [](const Cand& a, const Cand& b) { return a.score > b.score; });
     for (size_t i = 0; i < c.size() && i < 8; i++) f.dyn.push_back({c[i].pos, c[i].level});

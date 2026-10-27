@@ -51,6 +51,7 @@ struct CharModel {
   // the look's own shapes for (helmet worn, chestplate worn), built when first asked
   const std::map<std::string, CharMesh>& gear(bool helm, bool chest, const TileSet* ts) const;
   CharFace face;
+  CharMesh eyesBand;                           // buildEyeBand: the classic net's white eye pixels (the skin mob draws them unlit)
   u32 skinColor = 0, sleeveColor = 0;          // the right arm's hand and shoulder colours
   mutable std::map<std::string, CharMesh> gearSets[4];
   mutable bool gearBuilt[4] = {false, false, false, false};

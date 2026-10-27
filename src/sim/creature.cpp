@@ -24,6 +24,9 @@ static CreatureType parseType(const std::string& key, const json& j) {
   auto b = [&](const char* k) { return j.contains(k) && !j[k].is_null() && j[k] != false && j[k] != 0; };
   auto list = [&](const char* k) { std::vector<std::string> v; if (j.contains(k) && j[k].is_array()) for (auto& e : j[k]) if (e.is_string()) v.push_back(e); return v; };
   t.model = s("model"); t.label = s("label"); t.voice = s("voice"); t.sound = s("sound"); t.ai = s("ai"); t.faction = s("faction");
+  if (j.contains("skin") && j["skin"].is_string()) { t.skin = j["skin"].get<std::string>(); t.explicitSkin = true; }
+  else { std::string m = s("model"); if (m.empty()) m = key; if (m.find(".png") != std::string::npos) t.skin = m; }
+  if (j.contains("skinGlow") && j["skinGlow"].is_array()) for (auto& v : j["skinGlow"]) if (v.is_string()) t.skinGlowParts.push_back(v.get<std::string>());
   t.family = s("family"); t.element = s("element"); t.ride = s("ride");
   t.variants = list("variants"); t.food = list("food"); t.prey = list("prey");
   if (t.model.empty()) t.model = t.variants.empty() ? key : t.variants[0];
@@ -71,6 +74,15 @@ const CreatureType* creatureType(const std::string& key) {
   auto it = typeMap().find(key);
   return it == typeMap().end() ? nullptr : &it->second;
 }
+// a mob dressed in a PLAYER SKIN instead of its data/models.json rig. An explicit mobs.json "skin" WINS over
+// the stock voxel model (herobrine is now a skinned biped); an inferred "model": "<x>.png" stays subordinate
+// to any stock model, as it did before.
+static bool isSkinMobKey(const std::string& k) {
+  const CreatureType* T = creatureType(k);
+  if (!T || T->skin.empty()) return false;
+  return T->explicitSkin || !reg().models.contains(k);
+}
+bool isSkinMob(const std::string& key) { return isSkinMobKey(key); }
 bool isCreatureType(const std::string& key) { return creatureType(key) != nullptr; }
 const std::string& creatureVoice(const CreatureType& T) { return !T.voice.empty() ? T.voice : T.sound; }
 static const CreatureType& stubType() { static CreatureType t = [] { CreatureType s; s.key = s.model = "?"; return s; }(); return t; }
@@ -576,7 +588,8 @@ void Creature::update(Level& lv, float dt) {
   if (wantJump) { if (onGround && !noGravity) vel.y = T->hopper ? 6 : 7.8f; wantJump = false; }
   {
     vec3 before = pos;
-    MoveResult r = T->phase ? phaseMove(wd, pos, w, h, vel * dt) : moveBox(wd, pos, w, h, vel * dt, onGround || wasGround ? 0.6f : 0.f);
+    // a creature hiding inside a block (the October pumpkin creature) stays put: no move, no push out of the block
+    MoveResult r = data.value("inBlock", false) ? MoveResult{} : T->phase ? phaseMove(wd, pos, w, h, vel * dt) : moveBox(wd, pos, w, h, vel * dt, onGround || wasGround ? 0.6f : 0.f);
     hitWall = r.hitX || r.hitZ; hitCeiling = r.hitY && vel.y > 0;
     if (r.hitX) vel.x = 0;
     if (r.hitZ) vel.z = 0;

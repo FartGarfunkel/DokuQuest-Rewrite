@@ -6,6 +6,10 @@
 #include "sim/hallow.h"
 #include "render/creature_draw.h"
 #include "render/creature_models.h"
+#include "render/char_anim.h"
+#include "render/char_layer.h"
+#include "assets/char_model.h"
+#include "assets/char_creator.h"
 #include "assets/item_models.h"
 #include "assets/tileset.h"
 #include "assets/voxel_paint.h"
@@ -160,11 +164,59 @@ static Interp interp(const Entity& e, float a) {
   return {glm::mix(e.prevPos, e.pos, a), e.prevYaw + wrapAngle(e.yaw - e.prevYaw) * a, e.age + a * (float)TICK_DT};
 }
 
+// a mob dressed in a player skin (mobs.json "skin": "<file>.png"): the voxel-character pipeline from
+// render/char_layer.cpp (the same meshes, rig and face the players get), with the mob's own pose fields.
+static void drawSkinMob(const Creature& m, const Interp& ip, World& w, const FrameCtx& f, bool& begun) {
+  auto spec = resolveCharacter(m.T->skin);
+  CharPose ps;
+  ps.yaw = ip.yaw; ps.walk = m.walk * 1.4f; ps.walkAmt = std::min(1.f, m.walkAmt); ps.time = (float)m.age;
+  ps.headPitch = m.headPitch;
+  ps.swing = m.swingT > 0 ? std::sin(std::min(1.f, m.swingT / 0.3f) * PI) : 0;   // the same strike curve rigPose gives voxel mobs
+  ps.hasBodyYaw = true; ps.bodyYaw = ip.yaw;
+  if (m.deathTime > 0) ps.deathT = std::min(1.f, m.deathTime * 2);   // villagers clamp the topple the same way
+  ps.held = !m.heldItem.empty(); ps.off = !m.offItem.empty();       // the pose flags must follow the wear, like char_layer
+  CharWear wear;
+  wear.held = m.heldItem; wear.off = m.offItem;
+  VoxelLight L = lightAt(w, ip.pos + vec3(0, std::min(1.5f, m.h * 0.6f), 0));
+  if (m.T->glows > 0) L = {1, 1};
+  auto glowPart = [&](int i) {   // mobs.json "skinGlow": whole parts of the skin drawn unlit (a pumpkin-headed skin's face)
+    for (const std::string& g : m.T->skinGlowParts) { if (g == "head" && i == CP_HEAD) return true; if (g == "body" && i == CP_BODY) return true; }
+    return false; };
+  vec4 tint = m.hurtTime > 0 || m.deathTime > 0 ? vec4(1, 0.15f, 0.1f, 0.45f) : (m.T->hasTint ? m.T->tint : vec4(0));
+  // draw it through the voxelRenderer pipeline exactly like villagers and players do — NOT CreatureDraw's
+  // creature.glsl batch: that shader never gets uDynN/uDyn set (only world_renderer does), so under a lantern
+  // the skin mob rendered black-on-black and looked invisible at night.
+  VoxelRenderer& VR = voxelRenderer();
+  if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+  vec3 rel = f.cam.rel(glm::dvec3(ip.pos));
+  mat4 base = glm::translate(mat4(1), rel);
+  CharRig R;
+  charRig(charModel(*spec), ps, base, R, false, !wear.back.empty());
+  const CharModel& M = charModel(*spec);
+  bool hid[CP_COUNT] = {};
+  hid[CP_HEAD] = !wear.armor[0].empty();
+  for (int i : {CP_BODY, CP_ARMR_U, CP_ARMR_D, CP_ARML_U, CP_ARML_D}) hid[i] = !wear.armor[1].empty();
+  hid[CP_LEGR_U] = hid[CP_LEGL_U] = !wear.armor[2].empty();
+  hid[CP_LEGR_D] = hid[CP_LEGL_D] = !wear.armor[2].empty() || !wear.armor[3].empty();
+  for (int i = 0; i < CP_COUNT; i++) {
+    mat4 pm = R.part[i] * R.scale[i];
+    if (M.base[i].ready()) VR.draw(M.base[i].gl, pm * M.base[i].local(), glowPart(i) ? VoxelLight{1, 1} : L, tint);
+    if (!hid[i] && M.ovl[i].ready()) VR.draw(M.ovl[i].gl, pm * M.ovl[i].local(), glowPart(i) ? VoxelLight{1, 1} : L, tint);
+    if (i == CP_HEAD) {
+      // the classic net's white eye pixels, unlit like the stock rig's eyes (a skinned herobrine glows only in the
+      // eyes); mobs.json "skinGlow" parts stay fully unlit instead — a pumpkin-headed skin wants that.
+      if (!glowPart(i) && M.eyesBand.ready()) VR.draw(M.eyesBand.gl, pm * M.eyesBand.local(), VoxelLight{1, 1}, tint);
+      drawCharFace(M, ps, pm, glowPart(i) ? VoxelLight{1, 1} : L, tint);   // the blink and the talking mouth (endstory dialogue)
+    }
+  }
+}
+
 void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
   if (!s.player) return;
   World& w = s.world();
   CreatureDraw& D = creatureDraw();
   if (!D.begin(f)) return;
+  bool skinBegun = false;   // the voxelRenderer batch for skin mobs (separate from CreatureDraw's)
   float a = clampv((float)(s.tickAcc / TICK_DT), 0.f, 1.f);
   drawn = 0;
   float maxD = std::min(128.f, (float)s.app.settings.renderDist * 16);
@@ -176,6 +228,10 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
     if (glm::dot(rel, rel) > maxD * maxD) continue;
     if (auto* m = dynamic_cast<Creature*>(&e)) {
       if (m->T->npc) continue;   // villagers are voxel people (render/villager_layer)
+      // a mob whose mobs.json says "skin": "<file>.png" is drawn as a voxel character from that player skin,
+      // exactly like the players (and villagers): so herobrine.png — or any regular Minecraft skin dropped in
+      // userDir()/skins — dresses it. Its render rig is always the biped, whatever the skin's arms are.
+      if (m->T->explicitSkin || (!m->T->skin.empty() && !reg().models.contains(m->modelKey()))) { drawSkinMob(*m, ip, w, f, skinBegun); continue; }
       if (!f.cam.frustum.sphere(rel + vec3(0, m->h * 0.5f, 0), std::max(m->h, m->w * 2) + 1)) continue;
       const RigModel* RM = rigModel(m->modelKey());
       const CreatureModelGL* CM = creatureModel(m->modelKey());

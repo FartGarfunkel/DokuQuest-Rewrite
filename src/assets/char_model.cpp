@@ -93,6 +93,55 @@ bool buildShapes(const std::vector<const GearShape*>& S, const std::function<u32
 
 // skins.js skinFace: the eye row (a villager's is known; anyone else's is the row of the face that stands out most from the
 // skin), the lid over it and the mouth. Columns the hat layer covers are left out (the lid sits behind that layer).
+// herobrine.js eyes: the white of a classic skin's face stands out from every colour around it (hair, shirt, any
+// pupil), so the eye row is the face row with the most such pixels and the eye columns are its runs. The stock rig draws
+// those pixels unlit; a skinned mob gets this band back here (drawSkinMob) — players keep their shaded faces.
+bool buildEyeBand(const SkinImage& s, CharMesh& out) {
+  auto col = [&](int i, int j) { return s.at(8 + i, 8 + j); };
+  auto diff = [](const u8* a, const u8* b) { return (int)std::abs(a[0] - b[0]) + std::abs(a[1] - b[1]) + std::abs(a[2] - b[2]); };
+  int eye = -1, best = 0;
+  for (int j = 2; j <= 6; j++) {
+    int n = 0;
+    for (int i = 0; i < 8; i++) {
+      if (col(i, j)[3] < 100) continue;
+      bool standout = true;
+      for (int dj : {-1, 1}) for (int di : {-1, 0, 1}) {
+        int jj = j + dj, ii = i + di;
+        if (jj < 0 || jj > 7 || col(ii, jj)[3] < 100) continue;   // out of the face or transparent: no vote
+        if (diff(col(i, j), col(ii, jj)) <= 90) standout = false;
+      }
+      n += standout ? 1 : 0;
+    }
+    if (n > best) { best = n; eye = j; }
+  }
+  if (best < 2) return false;
+  int run[8], rn = 0, cnt[8] = {}, wsum[8] = {};
+  for (int i = 0; i < 8; i++) {
+    bool white = col(i, eye)[3] >= 100 && diff(col(i, eye), col(0, 6)) > 90;   // stands out from the skin
+    run[i] = white ? rn - 1 >= 0 && run[i - 1] == rn - 1 ? run[i - 1] : (rn++, rn - 1) : -1;
+    if (run[i] < 0) continue;
+    cnt[run[i]]++;
+    for (int k = 0; k < 3; k++) wsum[run[i]] += col(i, eye)[k];
+  }
+  VoxelGrid g(ivec3(16, 2, 1));
+  bool built = false;
+  for (int r = 0; r < rn; r++) {
+    if (cnt[r] < 1 || cnt[r] > 3) continue;   // the eyes are at most three pixels wide
+    u32 c = voxRGBA(wsum[r] / cnt[r], wsum[r] / cnt[r], wsum[r] / cnt[r]);
+    for (int i = 0; i < 8; i++) {
+      if (run[i] != r) continue;
+      int gi = (7 - i) * 2;
+      g.set(gi, 0, 0, c), g.set(gi + 1, 0, 0, c);
+      g.set(gi, 1, 0, c), g.set(gi + 1, 1, 0, c);
+      built = true;
+    }
+  }
+  if (!built) return false;
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  upload(out, md, vec3(-4, 32 - eye - 2, -4.5f) - vec3(0, 24, 0));
+  return out.ready();
+}
+
 void buildFace(const SkinImage& s, const std::string& ref, CharModel& m) {
   int eye = 4, mouth = -1, mxa = 2, mxb = 6;
   auto col = [&](int i, int j) { return s.at(8 + i, 8 + j); };
@@ -191,6 +240,7 @@ const CharModel& charModel(const CharacterSpec& spec) {
     buildOverlay(s, d, d.mn.y, l.mid, false, true, 1, false, m->ovl[l.dn], P[l.dn]);
   }
   buildFace(s, spec.ref, *m);
+  buildEyeBand(s, m->eyesBand);   // the face is at the same place on 64x32 and 64x64 nets; no standout eye pixels = no band
   m->skinColor = skinAverage(s, 44, 29, (int)aw, 3);
   m->sleeveColor = skinAverage(s, 44, 20, (int)aw, 3);
   c.lru.push_back(spec.hash);

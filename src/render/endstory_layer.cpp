@@ -81,7 +81,10 @@ public:
 
   void drawWatcher(GameSession& s, CreatureDraw& D, World& w, Entity& e, vec3 ip, vec3 rel) {
     bool boar = e.data.value("boar", false);
-    Creature& M = dummy(boar ? "boar" : "herobrine");
+    // the watcher is drawn from the stock voxel model (the hb_* parts, with the unlit white eyes), not the
+    // player skin herobrine now wears in the living worlds — so pin its render key to "herobrine" regardless.
+    Creature& M = dummy(boar ? "boar" : "watcher_herobrine");
+    if (!boar) M.variant = "herobrine";
     const RigModel* RM = rigModel(M.modelKey());
     const CreatureModelGL* CM = creatureModel(M.modelKey());
     if (!RM || !CM) return;

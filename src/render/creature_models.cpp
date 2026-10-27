@@ -220,6 +220,7 @@ static bool packSkin(const RigModel& M, std::vector<std::array<Pic, 6>>& faces, 
 
 // ------------------------------------------------------------------ voxelising a part
 static float lum(u32 c) { return (c & 255) * 0.299f + ((c >> 8) & 255) * 0.587f + ((c >> 16) & 255) * 0.114f; }
+
 static void voxelPart(VoxelGrid& g, ivec3 n, const std::array<Pic, 6>& F, bool glow, bool faceRelief) {
   g.resize(n);
   auto at = [&](int f, float s, float t) -> u32 { if (F[f].empty()) return 0; int x = clampv((int)(s * TILE), 0, TILE - 1), y = clampv((int)(t * TILE), 0, TILE - 1); return F[f][y * TILE + x]; };
