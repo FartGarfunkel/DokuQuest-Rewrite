@@ -34,15 +34,28 @@ u32 TileSet::avgColor(int i) const {
 
 bool loadBuiltinTiles(TileSet& ts) {
   auto tj = readJson(dataDir() / "tiles.json");
-  int w, h; std::vector<u8> img;
-  if (!tj || !loadPng(dataDir() / "tiles.png", w, h, img)) { DQ_ERR("data/tiles.png missing"); return false; }
+  if (!tj) { DQ_ERR("data/tiles.json missing"); return false; }
   ts.size = (*tj)["tile"]; int per = (*tj)["perRow"]; ts.count = (*tj)["count"];
   for (auto& [k, v] : (*tj)["names"].items()) ts.index[k] = v;
   int S = ts.size;
   ts.rgba.assign((size_t)ts.count * S * S * 4, 0);
-  for (int t = 0; t < ts.count; t++) {
-    int tx = (t % per) * S, ty = (t / per) * S;
-    for (int y = 0; y < S; y++) std::memcpy(ts.tile(t) + (size_t)y * S * 4, img.data() + ((size_t)(ty + y) * w + tx) * 4, (size_t)S * 4);
+  int w, h; std::vector<u8> img;
+  if (tj->contains("files") && (*tj)["files"].is_array()) {
+    // one picture per tile, laid out like a resource pack (data/textures/block, item, entity, misc;
+    // tools/port/split_tiles.py): any square size, scaled to the tile size
+    const json& F = (*tj)["files"]; int missing = 0;
+    for (int t = 0; t < ts.count && t < (int)F.size(); t++) {
+      if (!loadPng(dataDir() / F[t].get<std::string>(), w, h, img) || w <= 0 || h <= 0) { missing++; continue; }
+      u8* dst = ts.tile(t);
+      for (int y = 0; y < S; y++) for (int x = 0; x < S; x++) std::memcpy(dst + ((size_t)y * S + x) * 4, img.data() + ((size_t)(y * h / S) * w + (x * w / S)) * 4, 4);
+    }
+    if (missing) DQ_WARN("data/textures: %d tile pictures missing", missing);
+  } else {
+    if (!loadPng(dataDir() / "tiles.png", w, h, img)) { DQ_ERR("data/tiles.png missing"); return false; }
+    for (int t = 0; t < ts.count; t++) {
+      int tx = (t % per) * S, ty = (t / per) * S;
+      for (int y = 0; y < S; y++) std::memcpy(ts.tile(t) + (size_t)y * S * 4, img.data() + ((size_t)(ty + y) * w + tx) * 4, (size_t)S * 4);
+    }
   }
   ts.emissive.assign((size_t)ts.count * S * S, 0);
   ts.res.assign(ts.count, (u8)S);
