@@ -7,7 +7,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 
 ## 1.0.0-alpha.5.8 — Hotfix (October 2026)
 
-- **Glowing eyes line up:** on creatures wearing a skin, the glowing eyes sat one pixel below the skin's eyes. They sit on them now.
+- **Glowing eyes line up:** on creatures wearing a skin, the glowing eyes sat one pixel below the skin's eyes. They sit on them now, flush with the face instead of standing out from it.
 - Removed Herobrine.
 
 ## 1.0.0-alpha.5.7 — Modding (October 2026)
