@@ -1,0 +1,2 @@
+Creature sound: fox
+Replace this file with fox.wav (or fox.mp3 / fox.flac) to use your own recording.

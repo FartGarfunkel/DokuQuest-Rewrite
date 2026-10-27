@@ -1,0 +1,2 @@
+Creature sound: warden
+Replace this file with warden_hurt.wav (or warden_hurt.mp3 / warden_hurt.flac) to use your own recording.

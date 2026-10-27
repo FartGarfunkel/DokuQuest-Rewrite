@@ -1,0 +1,2 @@
+Block sound: place on sand blocks
+Replace this file with sand.place.wav (or sand.place.mp3 / sand.place.flac) to use your own recording.

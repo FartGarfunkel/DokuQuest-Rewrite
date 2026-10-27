@@ -1,0 +1,2 @@
+Block sound: burp on fx blocks
+Replace this file with fx.burp.wav (or fx.burp.mp3 / fx.burp.flac) to use your own recording.

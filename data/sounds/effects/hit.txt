@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with hit.wav (or hit.mp3 / hit.flac) to use your own recording.

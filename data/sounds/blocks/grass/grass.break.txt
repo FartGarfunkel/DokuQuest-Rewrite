@@ -1,0 +1,2 @@
+Block sound: break on grass blocks
+Replace this file with grass.break.wav (or grass.break.mp3 / grass.break.flac) to use your own recording.

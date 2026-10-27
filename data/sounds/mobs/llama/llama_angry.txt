@@ -1,0 +1,2 @@
+Creature sound: llama
+Replace this file with llama_angry.wav (or llama_angry.mp3 / llama_angry.flac) to use your own recording.

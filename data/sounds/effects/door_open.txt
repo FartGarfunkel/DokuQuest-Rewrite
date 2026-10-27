@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with door_open.wav (or door_open.mp3 / door_open.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Creature sound: ogre
+Replace this file with ogre_death.wav (or ogre_death.mp3 / ogre_death.flac) to use your own recording.

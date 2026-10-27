@@ -1,0 +1,2 @@
+Block sound: gate_open on fx blocks
+Replace this file with fx.gate_open.wav (or fx.gate_open.mp3 / fx.gate_open.flac) to use your own recording.

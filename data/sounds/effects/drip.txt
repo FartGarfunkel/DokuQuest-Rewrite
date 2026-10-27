@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with drip.wav (or drip.mp3 / drip.flac) to use your own recording.

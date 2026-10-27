@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with croc.wav (or croc.mp3 / croc.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with squish_angry.wav (or squish_angry.mp3 / squish_angry.flac) to use your own recording.

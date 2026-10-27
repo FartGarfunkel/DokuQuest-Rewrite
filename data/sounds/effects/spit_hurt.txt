@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with spit_hurt.wav (or spit_hurt.mp3 / spit_hurt.flac) to use your own recording.

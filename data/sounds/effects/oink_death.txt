@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with oink_death.wav (or oink_death.mp3 / oink_death.flac) to use your own recording.

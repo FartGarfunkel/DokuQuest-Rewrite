@@ -1,0 +1,2 @@
+Block sound: husk on vx blocks
+Replace this file with vx.husk.wav (or vx.husk.mp3 / vx.husk.flac) to use your own recording.

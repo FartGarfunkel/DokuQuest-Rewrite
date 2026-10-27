@@ -1,0 +1,2 @@
+Block sound: dig on wool blocks
+Replace this file with wool.dig.wav (or wool.dig.mp3 / wool.dig.flac) to use your own recording.

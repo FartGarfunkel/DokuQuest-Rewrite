@@ -1,0 +1,2 @@
+Block sound: lava_pop on fx blocks
+Replace this file with fx.lava_pop.wav (or fx.lava_pop.mp3 / fx.lava_pop.flac) to use your own recording.

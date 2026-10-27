@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with lava_pop.wav (or lava_pop.mp3 / lava_pop.flac) to use your own recording.

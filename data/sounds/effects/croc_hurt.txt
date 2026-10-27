@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with croc_hurt.wav (or croc_hurt.mp3 / croc_hurt.flac) to use your own recording.

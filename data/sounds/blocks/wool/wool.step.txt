@@ -1,0 +1,2 @@
+Block sound: step on wool blocks
+Replace this file with wool.step.wav (or wool.step.mp3 / wool.step.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: hook_throw on fx blocks
+Replace this file with fx.hook_throw.wav (or fx.hook_throw.mp3 / fx.hook_throw.flac) to use your own recording.

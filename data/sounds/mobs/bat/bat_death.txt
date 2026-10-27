@@ -1,0 +1,2 @@
+Creature sound: bat
+Replace this file with bat_death.wav (or bat_death.mp3 / bat_death.flac) to use your own recording.

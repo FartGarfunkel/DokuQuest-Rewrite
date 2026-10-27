@@ -1,0 +1,2 @@
+Block sound: cat_hurt on vx blocks
+Replace this file with vx.cat_hurt.wav (or vx.cat_hurt.mp3 / vx.cat_hurt.flac) to use your own recording.

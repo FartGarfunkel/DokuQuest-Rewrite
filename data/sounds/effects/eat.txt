@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with eat.wav (or eat.mp3 / eat.flac) to use your own recording.

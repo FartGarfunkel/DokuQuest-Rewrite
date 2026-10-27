@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with rattle_hurt.wav (or rattle_hurt.mp3 / rattle_hurt.flac) to use your own recording.

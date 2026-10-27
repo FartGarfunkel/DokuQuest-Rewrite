@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with firework_launch.wav (or firework_launch.mp3 / firework_launch.flac) to use your own recording.

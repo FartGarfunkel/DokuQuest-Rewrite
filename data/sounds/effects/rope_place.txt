@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with rope_place.wav (or rope_place.mp3 / rope_place.flac) to use your own recording.

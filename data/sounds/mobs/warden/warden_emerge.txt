@@ -1,0 +1,2 @@
+Creature sound: warden
+Replace this file with warden_emerge.wav (or warden_emerge.mp3 / warden_emerge.flac) to use your own recording.

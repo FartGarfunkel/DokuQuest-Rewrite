@@ -1,0 +1,2 @@
+Block sound: husk_hurt on vx blocks
+Replace this file with vx.husk_hurt.wav (or vx.husk_hurt.mp3 / vx.husk_hurt.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: whistle on fx blocks
+Replace this file with fx.whistle.wav (or fx.whistle.mp3 / fx.whistle.flac) to use your own recording.

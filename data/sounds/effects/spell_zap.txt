@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with spell_zap.wav (or spell_zap.mp3 / spell_zap.flac) to use your own recording.

@@ -1,6 +1,10 @@
 // audio/sfxlib.cpp — see sfxlib.h. The dispatch follows the original's chain (voices3.js -> sfxlib.js ->
 // sounds2.js -> audio.js) as recorded in data/sfx.json "names"; a pack equivalent is tried first.
 #include "audio/sfxlib.h"
+#include <miniaudio.h>
+#include "audio/dsp.h"
+#include "common/fs.h"
+#include <cctype>
 #include "audio/babble.h"
 #include "common/fs.h"
 
@@ -12,6 +16,19 @@ bool SfxLibrary::load(const std::filesystem::path& dir) {
   auto j = readJson(dir / "sfx.json");
   if (!j) { DQ_WARN("audio: data/sfx.json missing; the original's sounds are off"); }
   else { recipes = std::move((*j)["recipes"]); table = std::move((*j)["names"]); }
+  // recordings that replace sounds: data/sounds/<any folder>/<sound name>.wav|.mp3|.flac (the .txt files there list every
+  // sound by name), and the same under the user folder's sounds/ (wins)
+  for (const std::filesystem::path& root : {dir / "sounds", userDir() / "sounds"}) {
+    std::error_code ec;
+    if (!std::filesystem::is_directory(root, ec)) continue;
+    for (auto it = std::filesystem::recursive_directory_iterator(root, ec); !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec)) {
+      if (!it->is_regular_file(ec)) continue;
+      std::string ext = it->path().extension().string();
+      for (auto& c : ext) c = (char)std::tolower((unsigned char)c);
+      if (ext == ".wav" || ext == ".mp3" || ext == ".flac") files[it->path().stem().string()] = it->path().string();
+    }
+  }
+  if (!files.empty()) DQ_LOG("audio: %d sounds replaced by recordings in sounds/", (int)files.size());
   addHalloweenSounds(table);
   if (!pack.load(dir / "sounds.json", dir / "sounds.bin")) DQ_WARN("audio: no resource-pack sound profiles (data/sounds.*)");
   loaded = j.has_value() || pack.ok();
@@ -33,6 +50,7 @@ static int takesOf(const json& rec) { return std::max(1, (int)rec["takes"].size(
 
 SoundRef SfxLibrary::resolve(const std::string& name) const {
   SoundRef r;
+  if (auto f = files.find(name); f != files.end()) { r.kind = SoundRef::File; r.key = f->second; r.takes = 1; return r; }
   if (name.rfind("babble:", 0) == 0) {   // a villager's line (babble.h): the name carries its voice, pace and words
     r.kind = SoundRef::Babble; r.key = name.substr(7); r.pv = 0; r.gap = 0; r.jitter = false; r.takes = 1;
     return r;
@@ -88,6 +106,7 @@ SoundRef SfxLibrary::material(const std::string& matIn, const std::string& kindI
   std::string key = mat + "." + kind;
   SoundRef r; r.gap = kind == "step" ? 0.16f : 0.045f;
   float specGain = matGain(key);
+  if (auto f = files.find(key); f != files.end()) { r.kind = SoundRef::File; r.key = f->second; r.takes = 1; r.gain = specGain; r.pv = 0.06f; return r; }
   if (usePack) {
     std::string pk = key;
     if (mat == "log" && !pack.event(pk)) pk = "wood." + kind;
@@ -114,6 +133,14 @@ std::vector<float> SfxLibrary::render(const SoundRef& r, int take, u32 seed, flo
   if (pitch) *pitch = 1;
   if (vol) *vol = 1;
   switch (r.kind) {
+    case SoundRef::File: {   // a recording, decoded to the engine's mono rate
+      ma_decoder_config cfg = ma_decoder_config_init(ma_format_f32, 1, SR);
+      ma_uint64 n = 0; void* pcm = nullptr;
+      if (ma_decode_file(r.key.c_str(), &cfg, &n, &pcm) != MA_SUCCESS || !pcm) { DQ_WARN("audio: can't read %s", r.key.c_str()); return {}; }
+      std::vector<float> out((float*)pcm, (float*)pcm + n);
+      ma_free(pcm, nullptr);
+      return out;
+    }
     case SoundRef::Pack: {
       auto v = pack.event(r.key);
       if (!v || v->empty()) return {};

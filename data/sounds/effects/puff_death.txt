@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with puff_death.wav (or puff_death.mp3 / puff_death.flac) to use your own recording.

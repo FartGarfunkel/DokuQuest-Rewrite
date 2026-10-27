@@ -1,0 +1,2 @@
+Block sound: warden_boom_charge on fx blocks
+Replace this file with fx.warden_boom_charge.wav (or fx.warden_boom_charge.mp3 / fx.warden_boom_charge.flac) to use your own recording.

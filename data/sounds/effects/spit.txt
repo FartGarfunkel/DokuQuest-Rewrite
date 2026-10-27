@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with spit.wav (or spit.mp3 / spit.flac) to use your own recording.

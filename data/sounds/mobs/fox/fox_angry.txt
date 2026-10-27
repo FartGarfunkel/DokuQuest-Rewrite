@@ -1,0 +1,2 @@
+Creature sound: fox
+Replace this file with fox_angry.wav (or fox_angry.mp3 / fox_angry.flac) to use your own recording.

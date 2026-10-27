@@ -1,0 +1,2 @@
+Block sound: hit on fx blocks
+Replace this file with fx.hit.wav (or fx.hit.mp3 / fx.hit.flac) to use your own recording.

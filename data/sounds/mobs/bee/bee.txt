@@ -1,0 +1,2 @@
+Creature sound: bee
+Replace this file with bee.wav (or bee.mp3 / bee.flac) to use your own recording.

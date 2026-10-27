@@ -1,0 +1,2 @@
+Creature sound: villager
+Replace this file with villager_hurt.wav (or villager_hurt.mp3 / villager_hurt.flac) to use your own recording.

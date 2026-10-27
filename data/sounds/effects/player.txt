@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with player.wav (or player.mp3 / player.flac) to use your own recording.

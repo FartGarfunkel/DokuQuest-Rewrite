@@ -1,0 +1,2 @@
+Block sound: xp on fx blocks
+Replace this file with fx.xp.wav (or fx.xp.mp3 / fx.xp.flac) to use your own recording.

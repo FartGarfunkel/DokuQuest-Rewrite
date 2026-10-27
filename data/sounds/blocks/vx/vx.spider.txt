@@ -1,0 +1,2 @@
+Block sound: spider on vx blocks
+Replace this file with vx.spider.wav (or vx.spider.mp3 / vx.spider.flac) to use your own recording.

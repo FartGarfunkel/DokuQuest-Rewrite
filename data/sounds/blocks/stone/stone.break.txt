@@ -1,0 +1,2 @@
+Block sound: break on stone blocks
+Replace this file with stone.break.wav (or stone.break.mp3 / stone.break.flac) to use your own recording.

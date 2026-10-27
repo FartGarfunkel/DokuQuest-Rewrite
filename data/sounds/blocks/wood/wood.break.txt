@@ -1,0 +1,2 @@
+Block sound: break on wood blocks
+Replace this file with wood.break.wav (or wood.break.mp3 / wood.break.flac) to use your own recording.

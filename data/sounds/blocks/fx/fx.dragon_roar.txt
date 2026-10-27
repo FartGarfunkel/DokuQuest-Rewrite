@@ -1,0 +1,2 @@
+Block sound: dragon_roar on fx blocks
+Replace this file with fx.dragon_roar.wav (or fx.dragon_roar.mp3 / fx.dragon_roar.flac) to use your own recording.

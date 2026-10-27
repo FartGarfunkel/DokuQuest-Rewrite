@@ -1,0 +1,2 @@
+Block sound: campfire_pop on fx blocks
+Replace this file with fx.campfire_pop.wav (or fx.campfire_pop.mp3 / fx.campfire_pop.flac) to use your own recording.

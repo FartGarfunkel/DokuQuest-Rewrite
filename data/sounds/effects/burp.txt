@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with burp.wav (or burp.mp3 / burp.flac) to use your own recording.

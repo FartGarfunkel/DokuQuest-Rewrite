@@ -1,0 +1,2 @@
+Creature sound: moa
+Replace this file with moa_death.wav (or moa_death.mp3 / moa_death.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Creature sound: raccoon
+Replace this file with raccoon_hurt.wav (or raccoon_hurt.mp3 / raccoon_hurt.flac) to use your own recording.

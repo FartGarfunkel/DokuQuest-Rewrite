@@ -1,0 +1,2 @@
+Block sound: dig on log blocks
+Replace this file with log.dig.wav (or log.dig.mp3 / log.dig.flac) to use your own recording.

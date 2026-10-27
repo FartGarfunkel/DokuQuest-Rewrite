@@ -1,0 +1,2 @@
+Block sound: baa_hurt on vx blocks
+Replace this file with vx.baa_hurt.wav (or vx.baa_hurt.mp3 / vx.baa_hurt.flac) to use your own recording.

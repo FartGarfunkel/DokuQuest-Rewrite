@@ -1,0 +1,2 @@
+Creature sound: goat
+Replace this file with goat_hurt.wav (or goat_hurt.mp3 / goat_hurt.flac) to use your own recording.

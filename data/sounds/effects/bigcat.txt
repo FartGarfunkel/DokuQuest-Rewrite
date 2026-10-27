@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with bigcat.wav (or bigcat.mp3 / bigcat.flac) to use your own recording.

@@ -5,6 +5,12 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.5.7 — Modding (October 2026)
+
+- **Game art laid out like a resource pack:** the built-in pictures are now one PNG each in data/textures/block, item, entity and misc, and creature skins sit in data/textures/entity/<creature>/. Edit any of them and the game uses your version (any square size).
+- **Your own sounds:** data/sounds/ lists every sound in the game, sorted into blocks, mobs and effects. Drop a recording named after one (.wav, .mp3 or .flac) next to its placeholder, or into the sounds folder in your DokuQuest folder, and the game plays it instead.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.5.6 — Hotfix (October 2026)
 
 - **Pumpkin creatures glow:** their head is lit like a real jack-o'-lantern.

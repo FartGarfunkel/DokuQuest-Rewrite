@@ -1,0 +1,2 @@
+Block sound: sculk_click on fx blocks
+Replace this file with fx.sculk_click.wav (or fx.sculk_click.mp3 / fx.sculk_click.flac) to use your own recording.

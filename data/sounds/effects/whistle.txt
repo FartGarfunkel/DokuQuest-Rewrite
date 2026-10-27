@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with whistle.wav (or whistle.mp3 / whistle.flac) to use your own recording.

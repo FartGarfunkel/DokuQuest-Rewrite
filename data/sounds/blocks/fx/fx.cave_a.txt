@@ -1,0 +1,2 @@
+Block sound: cave_a on fx blocks
+Replace this file with fx.cave_a.wav (or fx.cave_a.mp3 / fx.cave_a.flac) to use your own recording.

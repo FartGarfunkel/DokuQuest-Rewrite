@@ -1,0 +1,2 @@
+Block sound: break on dirt blocks
+Replace this file with dirt.break.wav (or dirt.break.mp3 / dirt.break.flac) to use your own recording.

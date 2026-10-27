@@ -1,0 +1,2 @@
+Block sound: warden_emerge on fx blocks
+Replace this file with fx.warden_emerge.wav (or fx.warden_emerge.mp3 / fx.warden_emerge.flac) to use your own recording.

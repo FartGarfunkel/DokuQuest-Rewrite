@@ -1,0 +1,2 @@
+Block sound: step on snow blocks
+Replace this file with snow.step.wav (or snow.step.mp3 / snow.step.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with cluck_hurt.wav (or cluck_hurt.mp3 / cluck_hurt.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: husk_death on vx blocks
+Replace this file with vx.husk_death.wav (or vx.husk_death.mp3 / vx.husk_death.flac) to use your own recording.

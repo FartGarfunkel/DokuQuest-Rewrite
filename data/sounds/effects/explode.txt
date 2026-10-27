@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with explode.wav (or explode.mp3 / explode.flac) to use your own recording.

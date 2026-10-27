@@ -1,0 +1,2 @@
+Creature sound: dolphin
+Replace this file with dolphin_death.wav (or dolphin_death.mp3 / dolphin_death.flac) to use your own recording.

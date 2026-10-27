@@ -1,0 +1,2 @@
+Block sound: bow_draw on fx blocks
+Replace this file with fx.bow_draw.wav (or fx.bow_draw.mp3 / fx.bow_draw.flac) to use your own recording.

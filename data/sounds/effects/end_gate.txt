@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with end_gate.wav (or end_gate.mp3 / end_gate.flac) to use your own recording.

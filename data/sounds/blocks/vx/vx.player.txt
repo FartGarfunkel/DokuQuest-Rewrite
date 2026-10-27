@@ -1,0 +1,2 @@
+Block sound: player on vx blocks
+Replace this file with vx.player.wav (or vx.player.mp3 / vx.player.flac) to use your own recording.

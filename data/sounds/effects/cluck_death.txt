@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with cluck_death.wav (or cluck_death.mp3 / cluck_death.flac) to use your own recording.

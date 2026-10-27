@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with sculk_click.wav (or sculk_click.mp3 / sculk_click.flac) to use your own recording.

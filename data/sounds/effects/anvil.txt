@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with anvil.wav (or anvil.mp3 / anvil.flac) to use your own recording.

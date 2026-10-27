@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with snake.wav (or snake.mp3 / snake.flac) to use your own recording.

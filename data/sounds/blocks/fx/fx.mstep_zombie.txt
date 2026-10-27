@@ -1,0 +1,2 @@
+Block sound: mstep_zombie on fx blocks
+Replace this file with fx.mstep_zombie.wav (or fx.mstep_zombie.mp3 / fx.mstep_zombie.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: wisp on vx blocks
+Replace this file with vx.wisp.wav (or vx.wisp.mp3 / vx.wisp.flac) to use your own recording.

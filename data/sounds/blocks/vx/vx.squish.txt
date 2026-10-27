@@ -1,0 +1,2 @@
+Block sound: squish on vx blocks
+Replace this file with vx.squish.wav (or vx.squish.mp3 / vx.squish.flac) to use your own recording.

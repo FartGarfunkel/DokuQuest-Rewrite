@@ -1,0 +1,2 @@
+Block sound: place on metal blocks
+Replace this file with metal.place.wav (or metal.place.mp3 / metal.place.flac) to use your own recording.

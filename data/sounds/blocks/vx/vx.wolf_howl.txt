@@ -1,0 +1,2 @@
+Block sound: wolf_howl on vx blocks
+Replace this file with vx.wolf_howl.wav (or vx.wolf_howl.mp3 / vx.wolf_howl.flac) to use your own recording.

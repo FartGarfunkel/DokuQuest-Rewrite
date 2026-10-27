@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with rift_open.wav (or rift_open.mp3 / rift_open.flac) to use your own recording.

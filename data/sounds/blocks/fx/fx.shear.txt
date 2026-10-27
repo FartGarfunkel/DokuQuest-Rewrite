@@ -1,0 +1,2 @@
+Block sound: shear on fx blocks
+Replace this file with fx.shear.wav (or fx.shear.mp3 / fx.shear.flac) to use your own recording.

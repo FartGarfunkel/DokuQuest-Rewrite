@@ -1,0 +1,2 @@
+Block sound: villager on vx blocks
+Replace this file with vx.villager.wav (or vx.villager.mp3 / vx.villager.flac) to use your own recording.

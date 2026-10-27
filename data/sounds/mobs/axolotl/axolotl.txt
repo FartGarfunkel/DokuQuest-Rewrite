@@ -1,0 +1,2 @@
+Creature sound: axolotl
+Replace this file with axolotl.wav (or axolotl.mp3 / axolotl.flac) to use your own recording.

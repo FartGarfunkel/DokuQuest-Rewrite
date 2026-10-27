@@ -1,0 +1,2 @@
+Block sound: crit on fx blocks
+Replace this file with fx.crit.wav (or fx.crit.mp3 / fx.crit.flac) to use your own recording.

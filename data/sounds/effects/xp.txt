@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with xp.wav (or xp.mp3 / xp.flac) to use your own recording.

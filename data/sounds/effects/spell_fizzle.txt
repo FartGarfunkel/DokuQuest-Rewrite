@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with spell_fizzle.wav (or spell_fizzle.mp3 / spell_fizzle.flac) to use your own recording.

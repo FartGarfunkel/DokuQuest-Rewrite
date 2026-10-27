@@ -1,0 +1,2 @@
+Block sound: break on sand blocks
+Replace this file with sand.break.wav (or sand.break.mp3 / sand.break.flac) to use your own recording.

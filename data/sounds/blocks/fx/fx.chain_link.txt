@@ -1,0 +1,2 @@
+Block sound: chain_link on fx blocks
+Replace this file with fx.chain_link.wav (or fx.chain_link.mp3 / fx.chain_link.flac) to use your own recording.

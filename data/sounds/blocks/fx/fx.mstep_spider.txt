@@ -1,0 +1,2 @@
+Block sound: mstep_spider on fx blocks
+Replace this file with fx.mstep_spider.wav (or fx.mstep_spider.mp3 / fx.mstep_spider.flac) to use your own recording.

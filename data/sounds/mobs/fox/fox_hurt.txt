@@ -1,0 +1,2 @@
+Creature sound: fox
+Replace this file with fox_hurt.wav (or fox_hurt.mp3 / fox_hurt.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with bow.wav (or bow.mp3 / bow.flac) to use your own recording.

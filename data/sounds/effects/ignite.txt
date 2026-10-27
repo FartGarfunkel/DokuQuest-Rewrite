@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with ignite.wav (or ignite.mp3 / ignite.flac) to use your own recording.

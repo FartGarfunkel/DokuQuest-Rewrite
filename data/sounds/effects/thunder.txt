@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with thunder.wav (or thunder.mp3 / thunder.flac) to use your own recording.

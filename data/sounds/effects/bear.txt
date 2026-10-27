@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with bear.wav (or bear.mp3 / bear.flac) to use your own recording.

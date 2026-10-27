@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with cricket.wav (or cricket.mp3 / cricket.flac) to use your own recording.

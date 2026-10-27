@@ -1,0 +1,2 @@
+Block sound: green_snake on vx blocks
+Replace this file with vx.green_snake.wav (or vx.green_snake.mp3 / vx.green_snake.flac) to use your own recording.

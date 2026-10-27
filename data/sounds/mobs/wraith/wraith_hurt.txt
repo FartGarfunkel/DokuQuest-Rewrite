@@ -1,0 +1,2 @@
+Creature sound: wraith
+Replace this file with wraith_hurt.wav (or wraith_hurt.mp3 / wraith_hurt.flac) to use your own recording.

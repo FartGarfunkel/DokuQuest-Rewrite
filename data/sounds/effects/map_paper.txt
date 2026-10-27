@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with map_paper.wav (or map_paper.mp3 / map_paper.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: hurt on vx blocks
+Replace this file with vx.hurt.wav (or vx.hurt.mp3 / vx.hurt.flac) to use your own recording.

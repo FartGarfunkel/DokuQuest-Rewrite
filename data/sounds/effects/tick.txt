@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with tick.wav (or tick.mp3 / tick.flac) to use your own recording.

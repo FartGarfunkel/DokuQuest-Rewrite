@@ -1,0 +1,2 @@
+Creature sound: turtle
+Replace this file with turtle_hurt.wav (or turtle_hurt.mp3 / turtle_hurt.flac) to use your own recording.

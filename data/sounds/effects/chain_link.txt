@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with chain_link.wav (or chain_link.mp3 / chain_link.flac) to use your own recording.

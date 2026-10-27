@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with chirp.wav (or chirp.mp3 / chirp.flac) to use your own recording.

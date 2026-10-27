@@ -1,0 +1,2 @@
+Creature sound: moa
+Replace this file with moa.wav (or moa.mp3 / moa.flac) to use your own recording.

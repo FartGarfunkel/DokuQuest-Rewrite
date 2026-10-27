@@ -1,0 +1,2 @@
+Creature sound: mouse
+Replace this file with mouse.wav (or mouse.mp3 / mouse.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with campfire_pop.wav (or campfire_pop.mp3 / campfire_pop.flac) to use your own recording.

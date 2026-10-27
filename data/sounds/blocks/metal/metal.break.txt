@@ -1,0 +1,2 @@
+Block sound: break on metal blocks
+Replace this file with metal.break.wav (or metal.break.mp3 / metal.break.flac) to use your own recording.

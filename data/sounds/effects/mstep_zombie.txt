@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with mstep_zombie.wav (or mstep_zombie.mp3 / mstep_zombie.flac) to use your own recording.

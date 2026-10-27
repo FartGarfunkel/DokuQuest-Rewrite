@@ -1,0 +1,2 @@
+Creature sound: cat
+Replace this file with cat_purr_hurt.wav (or cat_purr_hurt.mp3 / cat_purr_hurt.flac) to use your own recording.

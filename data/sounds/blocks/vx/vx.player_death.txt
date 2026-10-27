@@ -1,0 +1,2 @@
+Block sound: player_death on vx blocks
+Replace this file with vx.player_death.wav (or vx.player_death.mp3 / vx.player_death.flac) to use your own recording.

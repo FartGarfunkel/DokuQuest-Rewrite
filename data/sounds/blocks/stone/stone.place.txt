@@ -1,0 +1,2 @@
+Block sound: place on stone blocks
+Replace this file with stone.place.wav (or stone.place.mp3 / stone.place.flac) to use your own recording.

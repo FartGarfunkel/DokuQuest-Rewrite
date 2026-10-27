@@ -1,0 +1,2 @@
+Block sound: gust_pop on fx blocks
+Replace this file with fx.gust_pop.wav (or fx.gust_pop.mp3 / fx.gust_pop.flac) to use your own recording.

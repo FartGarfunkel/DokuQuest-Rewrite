@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with dragon_breath.wav (or dragon_breath.mp3 / dragon_breath.flac) to use your own recording.

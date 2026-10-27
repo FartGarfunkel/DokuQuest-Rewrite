@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with magma.wav (or magma.mp3 / magma.flac) to use your own recording.

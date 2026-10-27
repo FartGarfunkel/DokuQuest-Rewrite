@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with rattle_death.wav (or rattle_death.mp3 / rattle_death.flac) to use your own recording.

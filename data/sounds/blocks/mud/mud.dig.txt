@@ -1,0 +1,2 @@
+Block sound: dig on mud blocks
+Replace this file with mud.dig.wav (or mud.dig.mp3 / mud.dig.flac) to use your own recording.

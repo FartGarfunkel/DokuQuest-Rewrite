@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with mite_hurt.wav (or mite_hurt.mp3 / mite_hurt.flac) to use your own recording.

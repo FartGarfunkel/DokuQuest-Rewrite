@@ -1,0 +1,2 @@
+Block sound: hook_reel on fx blocks
+Replace this file with fx.hook_reel.wav (or fx.hook_reel.mp3 / fx.hook_reel.flac) to use your own recording.

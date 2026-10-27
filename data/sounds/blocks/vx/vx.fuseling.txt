@@ -1,0 +1,2 @@
+Block sound: fuseling on vx blocks
+Replace this file with vx.fuseling.wav (or vx.fuseling.mp3 / vx.fuseling.flac) to use your own recording.

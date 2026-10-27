@@ -1,0 +1,2 @@
+Block sound: bow on fx blocks
+Replace this file with fx.bow.wav (or fx.bow.mp3 / fx.bow.flac) to use your own recording.

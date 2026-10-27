@@ -1,0 +1,2 @@
+Block sound: zephyr on fx blocks
+Replace this file with fx.zephyr.wav (or fx.zephyr.mp3 / fx.zephyr.flac) to use your own recording.

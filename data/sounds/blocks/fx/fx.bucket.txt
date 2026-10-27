@@ -1,0 +1,2 @@
+Block sound: bucket on fx blocks
+Replace this file with fx.bucket.wav (or fx.bucket.mp3 / fx.bucket.flac) to use your own recording.

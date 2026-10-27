@@ -1,0 +1,2 @@
+Block sound: lion_hurt on vx blocks
+Replace this file with vx.lion_hurt.wav (or vx.lion_hurt.mp3 / vx.lion_hurt.flac) to use your own recording.

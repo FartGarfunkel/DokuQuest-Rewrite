@@ -1,0 +1,2 @@
+Block sound: squish_hurt on vx blocks
+Replace this file with vx.squish_hurt.wav (or vx.squish_hurt.mp3 / vx.squish_hurt.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: warden_hit on fx blocks
+Replace this file with fx.warden_hit.wav (or fx.warden_hit.mp3 / fx.warden_hit.flac) to use your own recording.

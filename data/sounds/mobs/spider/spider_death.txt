@@ -1,0 +1,2 @@
+Creature sound: spider
+Replace this file with spider_death.wav (or spider_death.mp3 / spider_death.flac) to use your own recording.

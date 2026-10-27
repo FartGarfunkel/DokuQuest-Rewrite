@@ -1,0 +1,2 @@
+Block sound: click on fx blocks
+Replace this file with fx.click.wav (or fx.click.mp3 / fx.click.flac) to use your own recording.

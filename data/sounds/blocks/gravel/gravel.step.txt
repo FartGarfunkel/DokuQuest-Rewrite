@@ -1,0 +1,2 @@
+Block sound: step on gravel blocks
+Replace this file with gravel.step.wav (or gravel.step.mp3 / gravel.step.flac) to use your own recording.

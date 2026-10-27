@@ -1,0 +1,2 @@
+Block sound: egg_crack on fx blocks
+Replace this file with fx.egg_crack.wav (or fx.egg_crack.mp3 / fx.egg_crack.flac) to use your own recording.

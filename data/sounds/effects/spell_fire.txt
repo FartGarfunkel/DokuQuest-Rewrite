@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with spell_fire.wav (or spell_fire.mp3 / spell_fire.flac) to use your own recording.

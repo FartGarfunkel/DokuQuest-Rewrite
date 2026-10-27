@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with bigcat_angry.wav (or bigcat_angry.mp3 / bigcat_angry.flac) to use your own recording.

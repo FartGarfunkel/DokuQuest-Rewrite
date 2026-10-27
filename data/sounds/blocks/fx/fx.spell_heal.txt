@@ -1,0 +1,2 @@
+Block sound: spell_heal on fx blocks
+Replace this file with fx.spell_heal.wav (or fx.spell_heal.mp3 / fx.spell_heal.flac) to use your own recording.

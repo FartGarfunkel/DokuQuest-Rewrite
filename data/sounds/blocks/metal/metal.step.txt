@@ -1,0 +1,2 @@
+Block sound: step on metal blocks
+Replace this file with metal.step.wav (or metal.step.mp3 / metal.step.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: place on wool blocks
+Replace this file with wool.place.wav (or wool.place.mp3 / wool.place.flac) to use your own recording.

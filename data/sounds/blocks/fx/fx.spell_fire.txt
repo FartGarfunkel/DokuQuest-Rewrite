@@ -1,0 +1,2 @@
+Block sound: spell_fire on fx blocks
+Replace this file with fx.spell_fire.wav (or fx.spell_fire.mp3 / fx.spell_fire.flac) to use your own recording.

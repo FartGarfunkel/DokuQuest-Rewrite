@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with glass_break.wav (or glass_break.mp3 / glass_break.flac) to use your own recording.

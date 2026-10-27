@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with thunder_far.wav (or thunder_far.mp3 / thunder_far.flac) to use your own recording.

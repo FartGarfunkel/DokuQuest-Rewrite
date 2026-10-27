@@ -1,0 +1,2 @@
+Creature sound: panda
+Replace this file with panda_hurt.wav (or panda_hurt.mp3 / panda_hurt.flac) to use your own recording.

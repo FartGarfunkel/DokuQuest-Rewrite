@@ -1,0 +1,2 @@
+Creature sound: lion
+Replace this file with lion_hurt.wav (or lion_hurt.mp3 / lion_hurt.flac) to use your own recording.

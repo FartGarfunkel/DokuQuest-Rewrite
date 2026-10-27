@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with slam.wav (or slam.mp3 / slam.flac) to use your own recording.

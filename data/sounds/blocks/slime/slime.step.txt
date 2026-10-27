@@ -1,0 +1,2 @@
+Block sound: step on slime blocks
+Replace this file with slime.step.wav (or slime.step.mp3 / slime.step.flac) to use your own recording.

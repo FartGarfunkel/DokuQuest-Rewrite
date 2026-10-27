@@ -1,0 +1,2 @@
+Creature sound: boar
+Replace this file with boar_hurt.wav (or boar_hurt.mp3 / boar_hurt.flac) to use your own recording.

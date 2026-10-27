@@ -1,0 +1,2 @@
+Creature sound: ghoul
+Replace this file with ghoul_death.wav (or ghoul_death.mp3 / ghoul_death.flac) to use your own recording.

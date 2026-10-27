@@ -1,0 +1,2 @@
+Creature sound: husk
+Replace this file with husk_hurt.wav (or husk_hurt.mp3 / husk_hurt.flac) to use your own recording.

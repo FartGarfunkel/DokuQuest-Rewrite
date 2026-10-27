@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with swap.wav (or swap.mp3 / swap.flac) to use your own recording.

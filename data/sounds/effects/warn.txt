@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with warn.wav (or warn.mp3 / warn.flac) to use your own recording.

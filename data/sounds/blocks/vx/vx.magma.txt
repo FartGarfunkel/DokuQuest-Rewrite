@@ -1,0 +1,2 @@
+Block sound: magma on vx blocks
+Replace this file with vx.magma.wav (or vx.magma.mp3 / vx.magma.flac) to use your own recording.

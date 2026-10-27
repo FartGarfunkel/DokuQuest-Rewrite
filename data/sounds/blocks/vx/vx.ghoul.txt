@@ -1,0 +1,2 @@
+Block sound: ghoul on vx blocks
+Replace this file with vx.ghoul.wav (or vx.ghoul.mp3 / vx.ghoul.flac) to use your own recording.

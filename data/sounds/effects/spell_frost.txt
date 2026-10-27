@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with spell_frost.wav (or spell_frost.mp3 / spell_frost.flac) to use your own recording.

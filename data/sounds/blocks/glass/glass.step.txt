@@ -1,0 +1,2 @@
+Block sound: step on glass blocks
+Replace this file with glass.step.wav (or glass.step.mp3 / glass.step.flac) to use your own recording.

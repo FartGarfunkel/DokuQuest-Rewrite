@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with bear_angry_death.wav (or bear_angry_death.mp3 / bear_angry_death.flac) to use your own recording.

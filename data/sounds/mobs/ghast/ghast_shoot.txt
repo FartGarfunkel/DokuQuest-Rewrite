@@ -1,0 +1,2 @@
+Creature sound: ghast
+Replace this file with ghast_shoot.wav (or ghast_shoot.mp3 / ghast_shoot.flac) to use your own recording.

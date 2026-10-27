@@ -1,0 +1,2 @@
+Block sound: step on grass blocks
+Replace this file with grass.step.wav (or grass.step.mp3 / grass.step.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with hw_gourd_angry.wav (or hw_gourd_angry.mp3 / hw_gourd_angry.flac) to use your own recording.

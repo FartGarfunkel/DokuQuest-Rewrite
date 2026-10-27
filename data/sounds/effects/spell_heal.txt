@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with spell_heal.wav (or spell_heal.mp3 / spell_heal.flac) to use your own recording.

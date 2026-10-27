@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with player_angry.wav (or player_angry.mp3 / player_angry.flac) to use your own recording.

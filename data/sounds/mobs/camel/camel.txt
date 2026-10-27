@@ -1,0 +1,2 @@
+Creature sound: camel
+Replace this file with camel.wav (or camel.mp3 / camel.flac) to use your own recording.

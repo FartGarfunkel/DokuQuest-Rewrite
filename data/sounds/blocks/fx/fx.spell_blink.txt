@@ -1,0 +1,2 @@
+Block sound: spell_blink on fx blocks
+Replace this file with fx.spell_blink.wav (or fx.spell_blink.mp3 / fx.spell_blink.flac) to use your own recording.

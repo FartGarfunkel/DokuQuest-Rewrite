@@ -1,0 +1,2 @@
+Creature sound: ghast
+Replace this file with ghast_death.wav (or ghast_death.mp3 / ghast_death.flac) to use your own recording.

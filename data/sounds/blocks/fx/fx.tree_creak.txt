@@ -1,0 +1,2 @@
+Block sound: tree_creak on fx blocks
+Replace this file with fx.tree_creak.wav (or fx.tree_creak.mp3 / fx.tree_creak.flac) to use your own recording.

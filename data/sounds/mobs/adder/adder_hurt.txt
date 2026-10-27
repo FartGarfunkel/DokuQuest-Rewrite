@@ -1,0 +1,2 @@
+Creature sound: adder
+Replace this file with adder_hurt.wav (or adder_hurt.mp3 / adder_hurt.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: place on wood blocks
+Replace this file with wood.place.wav (or wood.place.mp3 / wood.place.flac) to use your own recording.

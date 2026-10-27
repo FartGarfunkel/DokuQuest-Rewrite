@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with cave_c.wav (or cave_c.mp3 / cave_c.flac) to use your own recording.

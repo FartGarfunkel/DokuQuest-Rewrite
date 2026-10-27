@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with magma_death.wav (or magma_death.mp3 / magma_death.flac) to use your own recording.

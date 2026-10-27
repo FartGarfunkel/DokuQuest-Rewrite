@@ -1,0 +1,2 @@
+Block sound: place on slime blocks
+Replace this file with slime.place.wav (or slime.place.mp3 / slime.place.flac) to use your own recording.

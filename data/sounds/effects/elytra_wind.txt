@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with elytra_wind.wav (or elytra_wind.mp3 / elytra_wind.flac) to use your own recording.

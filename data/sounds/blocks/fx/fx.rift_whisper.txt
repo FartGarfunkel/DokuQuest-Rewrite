@@ -1,0 +1,2 @@
+Block sound: rift_whisper on fx blocks
+Replace this file with fx.rift_whisper.wav (or fx.rift_whisper.mp3 / fx.rift_whisper.flac) to use your own recording.

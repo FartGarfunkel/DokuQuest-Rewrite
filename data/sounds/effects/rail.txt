@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with rail.wav (or rail.mp3 / rail.flac) to use your own recording.

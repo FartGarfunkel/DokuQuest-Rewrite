@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with pigman_hurt.wav (or pigman_hurt.mp3 / pigman_hurt.flac) to use your own recording.

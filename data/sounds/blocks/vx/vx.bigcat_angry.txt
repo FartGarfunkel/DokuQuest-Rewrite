@@ -1,0 +1,2 @@
+Block sound: bigcat_angry on vx blocks
+Replace this file with vx.bigcat_angry.wav (or vx.bigcat_angry.mp3 / vx.bigcat_angry.flac) to use your own recording.

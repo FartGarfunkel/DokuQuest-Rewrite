@@ -1,0 +1,2 @@
+Block sound: spell_ward on fx blocks
+Replace this file with fx.spell_ward.wav (or fx.spell_ward.mp3 / fx.spell_ward.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: warden_heart on fx blocks
+Replace this file with fx.warden_heart.wav (or fx.warden_heart.mp3 / fx.warden_heart.flac) to use your own recording.

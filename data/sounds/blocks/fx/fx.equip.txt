@@ -1,0 +1,2 @@
+Block sound: equip on fx blocks
+Replace this file with fx.equip.wav (or fx.equip.mp3 / fx.equip.flac) to use your own recording.

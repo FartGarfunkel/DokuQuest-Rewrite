@@ -1,0 +1,2 @@
+Block sound: trapdoor_close on fx blocks
+Replace this file with fx.trapdoor_close.wav (or fx.trapdoor_close.mp3 / fx.trapdoor_close.flac) to use your own recording.

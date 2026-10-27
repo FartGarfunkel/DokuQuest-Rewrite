@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with wisp_hurt.wav (or wisp_hurt.mp3 / wisp_hurt.flac) to use your own recording.

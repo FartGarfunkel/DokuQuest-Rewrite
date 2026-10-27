@@ -1,0 +1,2 @@
+Block sound: rattle on vx blocks
+Replace this file with vx.rattle.wav (or vx.rattle.mp3 / vx.rattle.flac) to use your own recording.

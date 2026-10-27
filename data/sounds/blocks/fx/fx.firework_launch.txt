@@ -1,0 +1,2 @@
+Block sound: firework_launch on fx blocks
+Replace this file with fx.firework_launch.wav (or fx.firework_launch.mp3 / fx.firework_launch.flac) to use your own recording.

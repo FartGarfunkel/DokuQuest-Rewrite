@@ -1,0 +1,2 @@
+Block sound: map_paper on fx blocks
+Replace this file with fx.map_paper.wav (or fx.map_paper.mp3 / fx.map_paper.flac) to use your own recording.

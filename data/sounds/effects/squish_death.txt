@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with squish_death.wav (or squish_death.mp3 / squish_death.flac) to use your own recording.

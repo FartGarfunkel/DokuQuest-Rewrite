@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with fire_crackle.wav (or fire_crackle.mp3 / fire_crackle.flac) to use your own recording.

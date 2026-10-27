@@ -1,0 +1,2 @@
+Block sound: dig on wood blocks
+Replace this file with wood.dig.wav (or wood.dig.mp3 / wood.dig.flac) to use your own recording.

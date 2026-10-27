@@ -1,0 +1,2 @@
+Block sound: mstep_bone on fx blocks
+Replace this file with fx.mstep_bone.wav (or fx.mstep_bone.mp3 / fx.mstep_bone.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with sculk_bloom.wav (or sculk_bloom.mp3 / sculk_bloom.flac) to use your own recording.

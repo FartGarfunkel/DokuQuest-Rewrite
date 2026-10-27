@@ -1,0 +1,2 @@
+Creature sound: stray
+Replace this file with stray_hurt.wav (or stray_hurt.mp3 / stray_hurt.flac) to use your own recording.

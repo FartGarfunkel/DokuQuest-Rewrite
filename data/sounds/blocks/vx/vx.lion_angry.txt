@@ -1,0 +1,2 @@
+Block sound: lion_angry on vx blocks
+Replace this file with vx.lion_angry.wav (or vx.lion_angry.mp3 / vx.lion_angry.flac) to use your own recording.

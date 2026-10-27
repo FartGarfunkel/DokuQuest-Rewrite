@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with bell.wav (or bell.mp3 / bell.flac) to use your own recording.

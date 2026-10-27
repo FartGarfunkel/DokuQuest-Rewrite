@@ -1,0 +1,2 @@
+Creature sound: cat
+Replace this file with cat.wav (or cat.mp3 / cat.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: ignite on fx blocks
+Replace this file with fx.ignite.wav (or fx.ignite.mp3 / fx.ignite.flac) to use your own recording.

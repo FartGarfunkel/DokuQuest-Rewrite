@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with mite_death.wav (or mite_death.mp3 / mite_death.flac) to use your own recording.

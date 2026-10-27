@@ -1,0 +1,2 @@
+Creature sound: mouse
+Replace this file with mouse_angry.wav (or mouse_angry.mp3 / mouse_angry.flac) to use your own recording.

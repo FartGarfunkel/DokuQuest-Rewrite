@@ -1,0 +1,2 @@
+Block sound: dig on gravel blocks
+Replace this file with gravel.dig.wav (or gravel.dig.mp3 / gravel.dig.flac) to use your own recording.

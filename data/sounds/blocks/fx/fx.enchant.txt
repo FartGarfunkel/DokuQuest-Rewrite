@@ -1,0 +1,2 @@
+Block sound: enchant on fx blocks
+Replace this file with fx.enchant.wav (or fx.enchant.mp3 / fx.enchant.flac) to use your own recording.

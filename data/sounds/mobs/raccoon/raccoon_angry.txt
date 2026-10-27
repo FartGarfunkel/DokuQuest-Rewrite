@@ -1,0 +1,2 @@
+Creature sound: raccoon
+Replace this file with raccoon_angry.wav (or raccoon_angry.mp3 / raccoon_angry.flac) to use your own recording.

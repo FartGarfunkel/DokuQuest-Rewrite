@@ -1,0 +1,2 @@
+Creature sound: panda
+Replace this file with panda_angry.wav (or panda_angry.mp3 / panda_angry.flac) to use your own recording.

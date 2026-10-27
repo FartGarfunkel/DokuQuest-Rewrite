@@ -1,0 +1,2 @@
+Block sound: place on grass blocks
+Replace this file with grass.place.wav (or grass.place.mp3 / grass.place.flac) to use your own recording.

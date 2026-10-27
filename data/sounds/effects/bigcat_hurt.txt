@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with bigcat_hurt.wav (or bigcat_hurt.mp3 / bigcat_hurt.flac) to use your own recording.

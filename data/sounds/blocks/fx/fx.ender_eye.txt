@@ -1,0 +1,2 @@
+Block sound: ender_eye on fx blocks
+Replace this file with fx.ender_eye.wav (or fx.ender_eye.mp3 / fx.ender_eye.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with pickup.wav (or pickup.mp3 / pickup.flac) to use your own recording.

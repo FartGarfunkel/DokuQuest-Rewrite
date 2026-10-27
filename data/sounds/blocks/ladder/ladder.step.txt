@@ -1,0 +1,2 @@
+Block sound: step on ladder blocks
+Replace this file with ladder.step.wav (or ladder.step.mp3 / ladder.step.flac) to use your own recording.

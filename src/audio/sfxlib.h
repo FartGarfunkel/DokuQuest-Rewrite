@@ -6,13 +6,14 @@
 // the original let a pack's recordings replace its own sounds — here resynthesised from profiles.
 #pragma once
 #include "audio/resynth.h"
+#include <map>
 #include <memory>
 #include <mutex>
 
 namespace dq::snd {
 
 struct SoundRef {
-  enum Kind { None, Pack, Recipe, Live, Special, Note, Babble } kind = None;
+  enum Kind { None, Pack, Recipe, Live, Special, Note, Babble, File } kind = None;   // File: a recording dropped in data/sounds (key = its path)
   std::string key;          // pack event / recipe key / sound name / "n:<n>:<mat>" / a babble line (babble.h)
   float gain = 1, pv = 0, gap = 0.04f;
   bool mob = false;         // a creature's voice: the mob volume applies
@@ -37,6 +38,7 @@ private:
   bool loaded = false;
   PackSounds pack;
   json recipes, table;      // data/sfx.json: "recipes", "names"
+  std::map<std::string, std::string> files;   // sound name -> a recording that replaces it (data/sounds/**, userDir()/sounds/**)
   float matGain(const std::string& key) const;
 };
 

@@ -1,0 +1,2 @@
+Block sound: place on dirt blocks
+Replace this file with dirt.place.wav (or dirt.place.mp3 / dirt.place.flac) to use your own recording.

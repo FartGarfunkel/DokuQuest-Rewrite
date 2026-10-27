@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with moo_death.wav (or moo_death.mp3 / moo_death.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: break on log blocks
+Replace this file with log.break.wav (or log.break.mp3 / log.break.flac) to use your own recording.

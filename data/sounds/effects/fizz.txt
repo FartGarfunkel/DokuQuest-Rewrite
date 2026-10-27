@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with fizz.wav (or fizz.mp3 / fizz.flac) to use your own recording.

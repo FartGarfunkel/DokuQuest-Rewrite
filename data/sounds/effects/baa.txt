@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with baa.wav (or baa.mp3 / baa.flac) to use your own recording.

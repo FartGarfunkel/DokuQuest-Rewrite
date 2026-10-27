@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with cluck.wav (or cluck.mp3 / cluck.flac) to use your own recording.

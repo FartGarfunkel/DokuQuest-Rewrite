@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with dig_gravel.wav (or dig_gravel.mp3 / dig_gravel.flac) to use your own recording.

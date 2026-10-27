@@ -1,0 +1,2 @@
+Block sound: rift_open on fx blocks
+Replace this file with fx.rift_open.wav (or fx.rift_open.mp3 / fx.rift_open.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Creature sound: mouse
+Replace this file with mouse_death.wav (or mouse_death.mp3 / mouse_death.flac) to use your own recording.

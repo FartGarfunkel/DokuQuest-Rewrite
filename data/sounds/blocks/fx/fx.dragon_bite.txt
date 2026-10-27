@@ -1,0 +1,2 @@
+Block sound: dragon_bite on fx blocks
+Replace this file with fx.dragon_bite.wav (or fx.dragon_bite.mp3 / fx.dragon_bite.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: sculk_bloom on fx blocks
+Replace this file with fx.sculk_bloom.wav (or fx.sculk_bloom.mp3 / fx.sculk_bloom.flac) to use your own recording.

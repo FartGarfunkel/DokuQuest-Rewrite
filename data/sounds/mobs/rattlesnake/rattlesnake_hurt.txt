@@ -1,0 +1,2 @@
+Creature sound: rattlesnake
+Replace this file with rattlesnake_hurt.wav (or rattlesnake_hurt.mp3 / rattlesnake_hurt.flac) to use your own recording.

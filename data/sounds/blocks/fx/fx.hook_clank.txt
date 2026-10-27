@@ -1,0 +1,2 @@
+Block sound: hook_clank on fx blocks
+Replace this file with fx.hook_clank.wav (or fx.hook_clank.mp3 / fx.hook_clank.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: spell_fizzle on fx blocks
+Replace this file with fx.spell_fizzle.wav (or fx.spell_fizzle.mp3 / fx.spell_fizzle.flac) to use your own recording.

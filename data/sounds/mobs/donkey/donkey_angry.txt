@@ -1,0 +1,2 @@
+Creature sound: donkey
+Replace this file with donkey_angry.wav (or donkey_angry.mp3 / donkey_angry.flac) to use your own recording.

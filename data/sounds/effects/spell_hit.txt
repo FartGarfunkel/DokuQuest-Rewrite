@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with spell_hit.wav (or spell_hit.mp3 / spell_hit.flac) to use your own recording.

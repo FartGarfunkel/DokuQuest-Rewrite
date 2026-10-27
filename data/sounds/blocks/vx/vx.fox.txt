@@ -1,0 +1,2 @@
+Block sound: fox on vx blocks
+Replace this file with vx.fox.wav (or vx.fox.mp3 / vx.fox.flac) to use your own recording.

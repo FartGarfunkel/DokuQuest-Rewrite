@@ -1,0 +1,2 @@
+Block sound: cluck on vx blocks
+Replace this file with vx.cluck.wav (or vx.cluck.mp3 / vx.cluck.flac) to use your own recording.

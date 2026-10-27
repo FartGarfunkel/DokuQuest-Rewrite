@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with thud.wav (or thud.mp3 / thud.flac) to use your own recording.

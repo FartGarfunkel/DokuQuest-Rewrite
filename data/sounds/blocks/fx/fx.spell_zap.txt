@@ -1,0 +1,2 @@
+Block sound: spell_zap on fx blocks
+Replace this file with fx.spell_zap.wav (or fx.spell_zap.mp3 / fx.spell_zap.flac) to use your own recording.

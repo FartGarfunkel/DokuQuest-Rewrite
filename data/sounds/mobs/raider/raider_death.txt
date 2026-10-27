@@ -1,0 +1,2 @@
+Creature sound: raider
+Replace this file with raider_death.wav (or raider_death.mp3 / raider_death.flac) to use your own recording.

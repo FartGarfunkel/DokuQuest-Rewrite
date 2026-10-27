@@ -1,0 +1,2 @@
+Block sound: break on wool blocks
+Replace this file with wool.break.wav (or wool.break.mp3 / wool.break.flac) to use your own recording.

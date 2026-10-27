@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with gate_open.wav (or gate_open.mp3 / gate_open.flac) to use your own recording.

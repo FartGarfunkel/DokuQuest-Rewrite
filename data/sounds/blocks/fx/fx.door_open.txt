@@ -1,0 +1,2 @@
+Block sound: door_open on fx blocks
+Replace this file with fx.door_open.wav (or fx.door_open.mp3 / fx.door_open.flac) to use your own recording.

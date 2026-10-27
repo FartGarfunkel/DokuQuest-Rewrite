@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with charge.wav (or charge.mp3 / charge.flac) to use your own recording.

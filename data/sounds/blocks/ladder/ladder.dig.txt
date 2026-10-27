@@ -1,0 +1,2 @@
+Block sound: dig on ladder blocks
+Replace this file with ladder.dig.wav (or ladder.dig.mp3 / ladder.dig.flac) to use your own recording.

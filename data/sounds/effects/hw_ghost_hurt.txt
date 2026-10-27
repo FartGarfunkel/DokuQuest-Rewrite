@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with hw_ghost_hurt.wav (or hw_ghost_hurt.mp3 / hw_ghost_hurt.flac) to use your own recording.

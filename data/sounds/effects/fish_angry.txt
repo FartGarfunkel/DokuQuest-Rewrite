@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with fish_angry.wav (or fish_angry.mp3 / fish_angry.flac) to use your own recording.

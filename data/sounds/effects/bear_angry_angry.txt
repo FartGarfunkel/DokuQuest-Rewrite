@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with bear_angry_angry.wav (or bear_angry_angry.mp3 / bear_angry_angry.flac) to use your own recording.

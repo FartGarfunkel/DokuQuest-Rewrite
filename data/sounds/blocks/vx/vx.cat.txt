@@ -1,0 +1,2 @@
+Block sound: cat on vx blocks
+Replace this file with vx.cat.wav (or vx.cat.mp3 / vx.cat.flac) to use your own recording.

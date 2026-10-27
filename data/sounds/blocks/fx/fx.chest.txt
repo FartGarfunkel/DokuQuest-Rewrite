@@ -1,0 +1,2 @@
+Block sound: chest on fx blocks
+Replace this file with fx.chest.wav (or fx.chest.mp3 / fx.chest.flac) to use your own recording.

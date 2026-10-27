@@ -1,0 +1,2 @@
+Block sound: step on sand blocks
+Replace this file with sand.step.wav (or sand.step.mp3 / sand.step.flac) to use your own recording.

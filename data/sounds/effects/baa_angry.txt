@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with baa_angry.wav (or baa_angry.mp3 / baa_angry.flac) to use your own recording.
