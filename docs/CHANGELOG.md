@@ -5,6 +5,13 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.5.9 — Sounds (October 2026)
+
+- **New sounds:** many more creature and block sounds from the new sound set.
+- **Under water sounds like water:** everything is muffled under water now, instead of ringing like a cave.
+- **Creature sounds sorted:** the wolf's howl no longer plays its death sound, the duck's death isn't a splash, and horses don't use ghost or undead horse sounds.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.5.8 — Hotfix (October 2026)
 
 - **Glowing eyes line up:** on creatures wearing a skin, the glowing eyes sat one pixel below the skin's eyes. They sit on them now, flush with the face instead of standing out from it.

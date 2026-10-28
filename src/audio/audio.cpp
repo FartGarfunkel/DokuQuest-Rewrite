@@ -47,7 +47,7 @@ void AudioEngine::Impl::mix(float* out, int n) {
       case AudioCmd::Stop: for (auto& v : voices) if (v.on && v.handle == c.handle) v.fadeStep = 1.f / (0.01f * SR); break;
       case AudioCmd::Wind: wind.target = c.a; wind.ft = c.b; break;
       case AudioCmd::Rain: rain.target = c.a; break;
-      case AudioCmd::Verb: roomT = c.a; caveT = c.b; break;
+      case AudioCmd::Verb: roomT = c.a; under = c.b < 0; caveT = std::max(0.f, c.b); break;   // b < 0: under water
       default: if (music) music->command(c); break;
     }
   }
@@ -92,6 +92,7 @@ void AudioEngine::Impl::mix(float* out, int n) {
   // sound3.js: everything through one bus, with a small room and a cave on sends
   float rs = 1.f / (0.6f * SR);
   bool verb = roomG > 1e-4f || caveG > 1e-4f || roomT > 1e-4f || caveT > 1e-4f;
+  const float uwK = 0.085f;   // a one-pole low-pass near 700 Hz: the world heard through water
   for (int i = 0; i < n; i++) {
     float L = bus[2 * i], R = bus[2 * i + 1];
     if (verb) {
@@ -100,6 +101,8 @@ void AudioEngine::Impl::mix(float* out, int n) {
       room.process(L * roomG, R * roomG, a, b); cave.process(L * caveG, R * caveG, x, y);
       L += a + x; R += b + y;
     }
+    uwG += ((under ? 1.f : 0.f) - uwG) * rs * 2;
+    if (uwG > 1e-3f) { uwL += uwK * (L - uwL); uwR += uwK * (R - uwR); L += (uwL * 1.15f - L) * uwG; R += (uwR * 1.15f - R) * uwG; }
     dry[2 * i] = L; dry[2 * i + 1] = R;
   }
   // the music bus (its own volume, straight out like music.js)

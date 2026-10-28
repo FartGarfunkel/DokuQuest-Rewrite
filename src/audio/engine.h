@@ -63,6 +63,7 @@ struct AudioEngine::Impl {
   Voice voices[MAXV];
   snd::Reverb room, cave;
   float roomG = 0, caveG = 0, roomT = 0, caveT = 0;
+  bool under = false; float uwG = 0, uwL = 0, uwR = 0;   // under water: everything muffled (no cave ring)
   struct Wind { float g = 0, target = 0, f = 420, ft = 420; snd::Biquad bp; snd::Rng r{77}; } wind;
   struct Rain { float g = 0, target = 0; bool init = false; snd::Biquad lp, hp; snd::Rng r{91}; } rain;   // weather.js rain hiss (looping noise)
   std::unique_ptr<snd::MusicSynth> music;

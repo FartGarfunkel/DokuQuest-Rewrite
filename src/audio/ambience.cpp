@@ -126,6 +126,7 @@ void Ambience::update(double dtIn, const AudioScene& s) {
       cave = shut * std::clamp((size - 1500) / 9000, 0.f, 1.f) * 0.55f;
       room = shut * std::clamp(size / 600, 0.f, 1.f) * (1 - cave / 0.55f) * 0.3f;
     }
+    if (s.eyeWater) { room = 0.06f; cave = -1; }   // under water: muffled, not a cave's ring (b < 0 = under water)
     AudioCmd c; c.t = AudioCmd::Verb; c.a = room; c.b = cave; e.send(c);
   }
   float level = e.vAmb.load();
