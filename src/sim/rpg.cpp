@@ -118,6 +118,9 @@ void onEnchanted(Level& lv, Player& p, int spent) {
   skillGain(lv, p, "alchemy", 40 + spent * 30.0);
   if (hasPerk(p, "alchemy", 90) && spent > 0 && !p.creative()) p.level += 1;   // Philosopher
 }
+// "sealed" may be saved as true or as a number (a time): either counts (a number used to crash the journal)
+static bool sealedOf(const json& R) { auto it = R.find("sealed"); return it != R.end() && (it->is_boolean() ? it->get<bool>() : it->is_number() ? it->get<double>() != 0 : false); }
+
 
 // ---- Realm Fragments from the great foes --------------------------------------------------------------------------
 void onGreatFoeDied(Level& lv, Entity& mob) {
@@ -131,7 +134,7 @@ void onGreatFoeDied(Level& lv, Entity& mob) {
   if (!flags.is_object()) flags = json::object();
   json& got = flags["fragFoes"];
   if (!got.is_object()) got = json::object();
-  if (R.value("sealed", false) || got.contains(mob.type)) return;
+  if (sealedOf(R) || got.contains(mob.type)) return;
   got[mob.type] = 1;
   if (R.value("stage", 0) >= 3) { if (reg().item("rift_crystal")) dropStack(lv, mob.realm, ItemStack("rift_crystal", 3), mob.pos + vec3(0, 1, 0)); return; }
   dropStack(lv, mob.realm, ItemStack("realm_fragment", 1), mob.pos + vec3(0, 1, 0));
@@ -162,7 +165,7 @@ Story storyOf(Level& lv, Player& p) {
   const json& dims = sub(sub(st, "explore"), "dims");
   const int NEED = 4;
   int frags = std::min(NEED, R.value("frags", 0)), stage = R.value("stage", 0);
-  bool sealed = R.value("sealed", false);
+  bool sealed = sealedOf(R);
   int lairs = 0;
   for (auto& [k, l] : sub(lv.info.data, "dragons").items()) if (l.is_object() && l.value("slain", false)) lairs++;
   bool ancient = false;
