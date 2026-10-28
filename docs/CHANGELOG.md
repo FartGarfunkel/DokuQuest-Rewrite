@@ -7,7 +7,6 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 
 ## 1.0.0-alpha.6.1 — Hotfix (October 2026)
 
-- **Fuselings and skeletons look right again:** their pictures in the new default art didn't fit their bodies, so they're back to their own look until they get matching pictures.
 - **Windows download is back** (a folder name in the new art stopped the Windows build).
 - Removed Herobrine.
 
