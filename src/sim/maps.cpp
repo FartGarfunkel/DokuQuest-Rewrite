@@ -257,7 +257,7 @@ std::vector<MapMarker> mapMarkers(Level& lv, const PaperMap& m, const Player* vi
     if (sp.y >= 0) { vec2 q = P(sp.x, sp.z); if (inside(q)) mark(4, q); }
     // places you've found: villages, dungeons (green once cleared) and the rift
     const json R = D.is_object() && D.contains("rift") ? D["rift"] : json();
-    bool riftOpen = R.is_object() && R.value("stage", 0) >= 1 && !R.value("sealed", false) && R.contains("at");
+    bool riftOpen = R.is_object() && R.value("stage", 0) >= 1 && !(R.contains("sealed") && R["sealed"] != false && R["sealed"] != 0) && R.contains("at");
     auto& H = contentHooks();
     if (S.contains("vseen") && S["vseen"].is_object() && H.villageById)
       for (auto& [id, _] : S["vseen"].items()) {
