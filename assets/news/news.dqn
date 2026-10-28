@@ -2,6 +2,11 @@
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
 
+## Alpha 1.0.0.6.1 — Hotfix | October 2026
+- **Fuselings and skeletons look right again:** their pictures in the new default art didn't fit their bodies, so they're back to their own look until they get matching pictures.
+- **Windows download is back** (a folder name in the new art stopped the Windows build).
+- Removed Herobrine.
+
 ## Alpha 1.0.0.6 — New look | October 2026
 - **New default art:** the game now ships its own texture set, DokuQuest Base, as the default look: blocks, items, mobs, chests and leather armour. Anything it doesn't cover keeps the generated pictures. Choose "none" in Options → Resource pack for the old generated look, or any other pack as before.
 - The base set lives in data/resourcepacks/DokuQuest Base in the game folder, laid out like a Minecraft resource pack, so it can be edited directly.
