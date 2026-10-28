@@ -108,6 +108,19 @@ pack and folder names stay plain ([A-Za-z0-9_ .-]) so Windows builds work.
     corrupted minions and teleporting, and add more corrupted attacks. The close-range brawling AI goes.
   - **His world-marks** in the slow burn: 2x2 tunnels in rock, small perfect sand pyramids in the ocean, groves with
     their leaves cut off, torches and signs that aren't yours.
+  - **Ideas to pick from (docs/HEROBRINE_LORE.md, the user's lore compendium):**
+    - world-marks: redstone trails into dark caves; burning netherrack/obsidian crosses; garbled signs
+      ("Error: NULL", "YOU ARE RUNNING OUT OF TIME")
+    - glitch effects as he gets close: the HUD shakes, hearts blacken, hotbar slots scramble for a moment; the sky snaps
+      noon/midnight; sounds slow, reverse or turn to static
+    - combat: targeted lightning; lifting/freezing the player and throwing blocks; arrows phasing through him; teleporting
+      into your blind spot; his stare giving blindness/nausea; a brief bedrock cage
+    - minions: white-eyed corrupted mobs (faster, tougher); translucent decoy clones charging through the fog; glitch
+      creatures made of broken textures that burst into static
+    - the Void Realm (his realm) as broken, deleted-world ruins
+    - the old summoning altar (3x3 gold, netherrack core, four redstone torches, lit) as an optional way to call him
+  - **Safety lines:** none of it may really crash the game, lock the controls so you can't pause or quit, or touch real
+    files. The effects are staged and brief, and every one can be escaped or survived.
 
 ## 8. BTA update (full detail: WEEKEND_PLAN.md Part B)
 - **The BTA list:** everything on it, in our own designs: biomes, blocks, items, mobs, structures, a BTA-style Nether,
