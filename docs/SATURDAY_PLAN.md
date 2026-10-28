@@ -169,7 +169,7 @@ pack and folder names stay plain ([A-Za-z0-9_ .-]) so Windows builds work.
 - Other holiday events from the PC clock (Christmas and so on), with villagers decorating their towns.
 
 ## Reference: Vintage Story's API (design ideas only)
-https://github.com/anegostudios/vsapi/tree/master/Client (C#). Read the matching parts when each step comes up, for
+https://github.com/anegostudios/vsapi/tree/master (the whole API; Client/ is the client side) (C#). Read the matching parts when each step comes up, for
 architecture ideas only. Check its licence before reusing anything beyond ideas; never port code wholesale.
 - **Weighted ambient modifiers** (fog, sky, clouds, sun blended by weight): the model for the alpha-fog dread layer
   (step 7). Herobrine, night, weather and caves each push a weighted modifier.
