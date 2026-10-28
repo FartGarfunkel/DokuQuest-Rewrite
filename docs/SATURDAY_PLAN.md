@@ -96,6 +96,18 @@ pack and folder names stay plain ([A-Za-z0-9_ .-]) so Windows builds work.
 - **Portal incursions** late in the story.
 - **Fortress foreshadowing:** he appears in a Nether fortress and pulls a wither skeleton into his portal.
 - **Climax:** he places the last wither skull and starts a **Wither Storm** (story only, our own design).
+- **The fog and the watcher** (from the original Herobrine creepypasta: a figure standing in the deep fog of an
+  early-alpha world, empty white eyes, gone when you approach; 2x2 tunnels, sand pyramids in the sea, trees stripped of
+  leaves). Design notes for now, details later:
+  - **Two kinds of distance:** keep the far-terrain LOD ("see forever"), but bring back early alpha/beta-style fog as an
+    eerie layer. Thick low fog near the player in the story's dread moments, and at night or in certain weather, with the
+    distant land fading in and out behind it. He can stand at the edge of the fog looking back, then vanish when you get
+    close or look away.
+  - **Him:** he glitches more as the story progresses: head twitches, jitter, flickers, frames dropping out.
+  - **Combat:** less running up and punching (it doesn't suit him). Keep and build on the long-range attacks, summoning
+    corrupted minions and teleporting, and add more corrupted attacks. The close-range brawling AI goes.
+  - **His world-marks** in the slow burn: 2x2 tunnels in rock, small perfect sand pyramids in the ocean, groves with
+    their leaves cut off, torches and signs that aren't yours.
 
 ## 8. BTA update (full detail: WEEKEND_PLAN.md Part B)
 - **The BTA list:** everything on it, in our own designs: biomes, blocks, items, mobs, structures, a BTA-style Nether,
