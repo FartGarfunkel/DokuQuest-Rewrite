@@ -165,6 +165,13 @@ pack and folder names stay plain ([A-Za-z0-9_ .-]) so Windows builds work.
 
 ## Backlog (after all of this)
 - Over/Under-style original music for every part of the world.
+- **Dulcimer music set** (user asked, inspired by Yáhno's "melodic EDM on ancient strings"): original tracks in
+  src/audio/music.cpp.
+  - Lead: a synthesised hammered dulcimer (struck strings, sympathetic ringing, a bright attack, a long shimmer).
+  - Underneath: soft, pretty melodic EDM (warm pads, gentle side-chained pulses, light drums that build and fall away).
+  - Calm stretches: a hint of C418's sparse, wistful piano-and-space feel.
+  - Placement: daytime and travel music in the Overworld and Skylands, with calmer variants for night.
+  - Original melodies only: no copying either artist's songs.
 - An Options screen laid out like the launcher's.
 - Other holiday events from the PC clock (Christmas and so on), with villagers decorating their towns.
 
