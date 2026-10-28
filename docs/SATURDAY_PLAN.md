@@ -167,3 +167,17 @@ pack and folder names stay plain ([A-Za-z0-9_ .-]) so Windows builds work.
 - Over/Under-style original music for every part of the world.
 - An Options screen laid out like the launcher's.
 - Other holiday events from the PC clock (Christmas and so on), with villagers decorating their towns.
+
+## Reference: Vintage Story's API (design ideas only)
+https://github.com/anegostudios/vsapi/tree/master/Client (C#). Read the matching parts when each step comes up, for
+architecture ideas only. Check its licence before reusing anything beyond ideas; never port code wholesale.
+- **Weighted ambient modifiers** (fog, sky, clouds, sun blended by weight): the model for the alpha-fog dread layer
+  (step 7). Herobrine, night, weather and caves each push a weighted modifier.
+- **Render stages** (opaque, order-independent transparency, shadows, post-process, ortho): our RenderLayer passes,
+  water/glass sorting.
+- **Data-driven shapes and keyframe animations** (JSON shapes, animation manager): per-mob files (step 2a) and the Story
+  Mode animation layer (step 9).
+- **Particle properties** (simple/advanced): the particle overhaul (step 4).
+- **Sound parameters** (position, range, pitch, filters, reverb): the sound overhaul (step 4).
+- **GUI composer:** the launcher studios (step 11).
+- **Client API, events and registries:** our JS mod API.
