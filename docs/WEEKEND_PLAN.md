@@ -1,5 +1,7 @@
 # DokuQuest — the complete plan from Saturday, October 31 2026
 
+> **Run order:** see docs/SATURDAY_PLAN.md (supersedes Part A below; Parts B and C still apply).
+
 Everything we're adding or fixing, in the order it runs. Work starts automatically after the weekly reset (12:05 PM Toronto).
 Items 1–5 are realistic for Saturday; the big updates (6–9) run into Sunday and beyond, and anything unfinished carries
 over in this order. Standing rules: no hunger, no phantoms, full controller AND keyboard/mouse in every menu, patch notes
