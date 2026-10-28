@@ -150,4 +150,4 @@ jobs:
         run: |
           flags=(--repo "$GITHUB_REPOSITORY" --title "DokuQuest $VERSION" --notes-file notes.md --target "$GITHUB_SHA" --latest)
           if [ "$DRAFT" = true ]; then flags+=(--draft); fi
-          gh release create "v$VERSION" "${flags[@]}" dist/*
+          gh release create "v$VERSION" "${flags[@]}" dist/* || gh release upload "v$VERSION" dist/* --clobber --repo "$GITHUB_REPOSITORY"   # a rerun: the release is there, fill in what is missing
