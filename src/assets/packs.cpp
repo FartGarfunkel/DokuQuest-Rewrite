@@ -143,7 +143,7 @@ u32 packTint(const char* kind, u8 temp, u8 humid, bool& ok) {
 std::vector<std::string> listResourcePacks() {
   std::vector<std::string> out;
   std::error_code ec;
-  fs::path dir = userSub("resourcepacks");
+  for (const fs::path& dir : {dataDir() / "resourcepacks", userSub("resourcepacks")})   // the game's own packs, then the player's
   for (auto& e : fs::directory_iterator(dir, ec)) {
     std::string fn = e.path().filename().string();
     if (e.is_directory(ec)) { if (fs::exists(e.path() / "pack.mcmeta", ec) || fs::exists(e.path() / "assets", ec)) out.push_back(fn); }
@@ -155,14 +155,16 @@ std::vector<std::string> listResourcePacks() {
 }
 
 static fs::path packPath(const std::string& name) {
-  fs::path dir = userSub("resourcepacks");
   std::error_code ec;
-  if (fs::is_directory(dir / name, ec)) return dir / name;
-  if (fs::exists(dir / (name + ".zip"), ec)) return dir / (name + ".zip");
-  if (fs::exists(dir / name, ec)) return dir / name;
+  for (const fs::path& dir : {userSub("resourcepacks"), dataDir() / "resourcepacks"}) {   // a player's pack of the same name wins
+    if (fs::is_directory(dir / name, ec)) return dir / name;
+    if (fs::exists(dir / (name + ".zip"), ec)) return dir / (name + ".zip");
+    if (fs::exists(dir / name, ec)) return dir / name;
+  }
   return {};
 }
 
+static const char* DEFAULT_PACK = "DokuQuest Base";
 std::string applyResourcePack(TileSet& ts, const std::string& choice) {
   setActivePack(nullptr);
   std::atomic_store(&g_colormaps, std::shared_ptr<const Colormaps>());
@@ -171,7 +173,8 @@ std::string applyResourcePack(TileSet& ts, const std::string& choice) {
   std::string name = choice;
   if (name == "auto") {
     name.clear();
-    for (auto& n : listResourcePacks()) if (toLower(n).find("gerudoku") != std::string::npos) { name = n; break; }
+    name = DEFAULT_PACK;   // the game's own art (data/resourcepacks); "none" = the generated pictures
+    if (packPath(name).empty()) for (auto& n : listResourcePacks()) if (toLower(n).find("gerudoku") != std::string::npos) { name = n; break; }
   }
   if (name.empty() || name == "none") return "";
   fs::path path = packPath(name);

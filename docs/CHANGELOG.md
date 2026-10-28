@@ -5,6 +5,12 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.6 — New look (October 2026)
+
+- **New default art:** the game now ships its own texture set, DokuQuest Base, as the default look: blocks, items, mobs, chests and leather armour. Anything it doesn't cover keeps the generated pictures. Choose "none" in Options → Resource pack for the old generated look, or any other pack as before.
+- The base set lives in data/resourcepacks/DokuQuest Base in the game folder, laid out like a Minecraft resource pack, so it can be edited directly.
+- Removed Herobrine.
+
 ## 1.0.0-alpha.5.9 — Sounds (October 2026)
 
 - **New sounds:** many more creature and block sounds from the new sound set.
