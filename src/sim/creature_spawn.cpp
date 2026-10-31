@@ -685,6 +685,7 @@ void registerCreatures() {
   registerUsables();
   registerLeads();   // sim/leads.cpp
   { void registerJars(); registerJars(); }   // sim/jars.cpp
+  { void registerSieve(); registerSieve(); }   // sim/sieve.cpp
   registerTrickOrTreat();
   registerWeaponRack();
   registerSlimeGoo();

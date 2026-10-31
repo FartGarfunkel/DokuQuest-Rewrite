@@ -443,6 +443,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     }
     if (hit && bhas(hit->id, BF::Carry)) { pickUpBlock(hit->block.x, hit->block.y, hit->block.z); return; }
   }
+  if (hit && repeat && !fromOff && R.block(hit->id).has("sieve") && useBlockAt(*hit, held.empty() ? nullptr : &held, def)) return;   // hold use to keep sifting
   if (hit && !repeat && !fromOff) {
     const BlockDef& b = R.block(hit->id);
     if (b.has("pile")) { usePile(*hit, held.empty() ? nullptr : &held); return; }

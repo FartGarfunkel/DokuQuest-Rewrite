@@ -133,6 +133,7 @@ void DepthsGen::generate(Chunk& ch) {
     // Cinder Isles, low islands of cinder sand out on the lava sea with pumice on their higher shores
     const double ember = nMount.noise2(wx / 120.0 + 211, wz / 120.0 - 97);
     const double isle = nFloor.noise3(wx / 22.0, 41.5, wz / 22.0);
+    const double sulph = nDetail.noise2(wx / 48.0 + 401, wz / 48.0 - 307);   // the Sulphur Springs, between the groves and the ash
     const bool wastes = !delta && std::fabs(wood) <= 0.35 && !(vale < -0.4);
     for (int y = DIM_H - 7; y > 5; y--) {
       const int i = colIdx(x, y, z);
@@ -179,6 +180,11 @@ void DepthsGen::generate(Chunk& ch) {
         b.blocks[i] = patch > 0.5 ? B.emberstone : B.cinder_sand;
         if (r > 0.992 && y < Y90) { int len = 2 + jsFloor(hashFloat(wx, y, wz, 92) * 5); for (int k = 1; k <= len && b.blocks[colIdx(x, y + k, z)] == AIR; k++) b.blocks[colIdx(x, y + k, z)] = B.emberglass_block; }
         else if (r > 0.93 && y < Y95) b.blocks[colIdx(x, y + 1, z)] = B.emberglass_cluster;
+      }
+      else if (sulph > 0.42 && ember > -0.45 && ember < 0.45) {   // the Sulphur Springs: yellow crust round bubbling magma pools
+        const bool pool = sulph > 0.55 && hashFloat(wx, y, wz, 93) < 0.12;
+        b.blocks[i] = pool ? B.magma_block : r < 0.62 ? B.sulphur_block : r < 0.8 ? B.basalt : B.netherrack;
+        if (pool && hashFloat(wx, y, wz, 94) < 0.5) b.blocks[colIdx(x, y - 1, z)] = B.lava;
       }
       else if (ember < -0.45) {   // the Ashen Wastes: deep ash with pumice boulders
         b.blocks[i] = r < 0.8 ? B.ash : B.basalt;

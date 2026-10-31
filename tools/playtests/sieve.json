@@ -1,0 +1,14 @@
+{"steps":[
+ {"wait":200,"do":"anchor"},
+ {"do":"tp","rel":true,"x":0,"y":0,"z":0},
+ {"do":"fill","rel":true,"from":[-3,0,-4],"to":[3,4,2],"key":"air"},
+ {"do":"fill","rel":true,"from":[-3,-1,-4],"to":[3,-1,2],"key":"stone"},
+ {"do":"setBlock","rel":true,"x":0,"y":0,"z":-2,"key":"sieve"},
+ {"wait":40,"do":"cmd","text":"/clear"},
+ {"do":"give","item":"gravel","n":64},
+ {"do":"select","slot":0},
+ {"do":"lookAt","rel":true,"x":0,"y":0,"z":-2,"fy":0.7},
+ {"wait":5,"do":"mouse","button":"right","hold":200},
+ {"wait":40,"do":"report"},
+ {"do":"quit"}
+]}

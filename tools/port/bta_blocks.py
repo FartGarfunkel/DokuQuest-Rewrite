@@ -208,9 +208,35 @@ def main(d):
     block('motion_sensor', 'Motion Sensor', {'hardness': 2, 'sound': 'stone', 'rs': 'plate', 'plate': 'motion', 'tex': 'motion_sensor'}, [tiles['motion_sensor']] * 6)
     recipe('iron_mesh', 4, ['BB', 'BB'], {'B': 'iron_bars'})
     recipe('motion_sensor', 1, ['CCC', 'RQR', 'CCC'], {'C': 'cobblestone', 'R': 'redstone', 'Q': 'quartz'})
+
+    # the sieve (BTA's trommel, by hand): use gravel, sand, dirt, mud, soul sand, ash or cinder sand on it and what
+    # was in it falls out below (sim/sieve.cpp)
+    if 'sieve' not in sj['shapes']:
+        P = 'spruce_planks'
+        legs = [{'b': [x, 0, z, x + 2, 10, z + 2], 'side': P, 'end': P} for x in (1, 13) for z in (1, 13)]
+        rim = [{'b': [0, 10, 0, 16, 13, 2], 'side': P, 'end': P}, {'b': [0, 10, 14, 16, 13, 16], 'side': P, 'end': P},
+               {'b': [0, 10, 2, 2, 13, 14], 'side': P, 'end': P}, {'b': [14, 10, 2, 16, 13, 14], 'side': P, 'end': P}]
+        sj['shapes']['sieve'] = legs + rim + [{'b': [2, 11, 2, 14, 11.5, 14], 'side': 'iron_mesh', 'end': 'iron_mesh'}]
+    block('sieve', 'Sieve', {'render': 6, 'opaque': False, 'hardness': 1.5, 'tool': 'axe', 'sound': 'wood', 'shape': 'sieve', 'sieve': True,
+                             'tex': 'spruce_planks'}, [tiles['spruce_planks']] * 6)
+    recipe('sieve', 1, ['PTP', 'S S'], {'P': '#planks', 'T': 'string', 'S': 'stick'})
+
+    # sulphur: the crust of the Nether's Sulphur Springs; it crumbles to sulphur, which makes gunpowder with charcoal
+    if 'sulphur_block' not in tiles:
+        tile('sulphur_block', recolour(src_pic(d, tiles, files, 'sand'), hsv_map(hue=0.15, sat=1.6, val=1.05)))
+        im = recolour(src_pic(d, tiles, files, 'glowstone_dust'), hsv_map(hue=0.15, sat=1.4, val=1.0))
+        rel = 'textures/item/sulphur.png'; im.save(d / rel)
+        tiles['sulphur'] = tj['count']; files.append(rel); tj['res'].append(32); tj['count'] += 1
+    block('sulphur_block', 'Sulphur', {'hardness': 0.6, 'tool': 'pickaxe', 'sound': 'gravel', 'drop': 'sulphur', 'dropCount': [2, 4], 'tex': 'sulphur_block'},
+          [tiles['sulphur_block']] * 6)
+    if 'sulphur' not in items:
+        items['sulphur'] = {'key': 'sulphur', 'name': 'Sulphur', 'maxStack': 64, 'icon': 'sulphur', 'desc': 'With charcoal it makes gunpowder.'}
+    recipe('gunpowder', 2, items_=['sulphur', 'sulphur', 'charcoal'])
+    recipe('sulphur_block', 1, ['SS', 'SS'], {'S': 'sulphur'})
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'shapes.json').write_text(json.dumps(sj, separators=(',', ':'), ensure_ascii=False))
     sh = json.loads((d / 'itemshapes.json').read_text())
+    if 'sulphur' not in sh['itemTiles']: sh['itemTiles'].append('sulphur'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'paintbrush' not in sh['itemTiles']: sh['itemTiles'].append('paintbrush'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
     (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':'), ensure_ascii=False))
