@@ -664,6 +664,7 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   if (tool == "hoe" && HOE.count(b.key) && w.getBlock(x, y + 1, z) == AIR && B.farmland) { w.setBlock(x, y, z, B.farmland, 0); sfxMaterial(lv, "gravel", "dig", c); wearHeld(lv, p, 1); swingArm(); return true; }
   if ((tool == "sword" || (def && def->has("shears"))) && id == B.pumpkin && id) {
     w.setBlock(x, y, z, B.carved_pumpkin, (u8)facingMeta(p));
+    lv.fx->sound("pumpkin_carve", vec3(x, y, z) + vec3(0.5f), 16);   // the sound set's own carving sound (block/pumpkin/carve1-2)
     dropItem(lv, p.realm, ItemStack("pumpkin_seeds", 4), vec3(x + 0.5f + hit.normal.x * 0.6f, y + 0.5f, z + 0.5f + hit.normal.z * 0.6f), true);
     swingArm(); return true;
   }
