@@ -220,6 +220,21 @@ def main(d):
     block('sieve', 'Sieve', {'render': 6, 'opaque': False, 'hardness': 1.5, 'tool': 'axe', 'sound': 'wood', 'shape': 'sieve', 'sieve': True,
                              'tex': 'spruce_planks'}, [tiles['spruce_planks']] * 6)
     recipe('sieve', 1, ['PTP', 'S S'], {'P': '#planks', 'T': 'string', 'S': 'stick'})
+    if 'hand_sieve' not in tiles:   # the hand sieve: a hoop of wood strung across
+        from PIL import Image as _I
+        im = _I.new('RGBA', (32, 32), (0, 0, 0, 0)); px = im.load()
+        for y in range(32):
+            for x in range(32):
+                r = ((x - 13.5) ** 2 + (y - 13.5) ** 2) ** 0.5
+                if 9 < r < 12: px[x, y] = (140, 98, 56, 255) if r < 11 else (104, 70, 40, 255)
+                elif r <= 9 and (x % 3 == 0 or y % 3 == 0): px[x, y] = (220, 214, 196, 255)
+        for k in range(8): px[min(31, 22 + k), min(31, 22 + k)] = (120, 84, 48, 255); px[min(31, 23 + k), min(31, 22 + k)] = (96, 66, 38, 255)
+        rel = 'textures/item/hand_sieve.png'; im.save(d / rel)
+        tiles['hand_sieve'] = tj['count']; files.append(rel); tj['res'].append(32); tj['count'] += 1
+    if 'hand_sieve' not in items:
+        items['hand_sieve'] = {'key': 'hand_sieve', 'name': 'Hand Sieve', 'maxStack': 1, 'icon': 'hand_sieve',
+                               'desc': 'Use it on gravel, sand, dirt, mud, soul sand, ash or cinder sand to sift it where it lies.'}
+    recipe('hand_sieve', 1, [' T ', 'TST', ' T '], {'T': 'string', 'S': 'stick'})
 
     # sulphur: the crust of the Nether's Sulphur Springs; it crumbles to sulphur, which makes gunpowder with charcoal
     if 'sulphur_block' not in tiles:
@@ -346,6 +361,7 @@ def main(d):
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'shapes.json').write_text(json.dumps(sj, separators=(',', ':'), ensure_ascii=False))
     sh = json.loads((d / 'itemshapes.json').read_text())
+    if 'hand_sieve' not in sh['itemTiles']: sh['itemTiles'].append('hand_sieve'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'glass_door_item' not in sh['itemTiles']: sh['itemTiles'].append('glass_door_item'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'sulphur' not in sh['itemTiles']: sh['itemTiles'].append('sulphur'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'paintbrush' not in sh['itemTiles']: sh['itemTiles'].append('paintbrush'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))

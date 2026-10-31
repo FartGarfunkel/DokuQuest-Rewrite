@@ -29,10 +29,36 @@ const std::unordered_map<std::string, std::vector<Find>>& finds() {
 }
 } // namespace
 
+// what comes out of a block of it (nothing if it isn't siftable)
+static bool siftOut(Level& lv, int realm, const std::string& block, vec3 at) {
+  auto it = finds().find(block);
+  if (it == finds().end()) return false;
+  for (const Find& f : it->second) {
+    if (frand() >= f.chance || !reg().item(f.item)) continue;
+    int n = f.lo + (f.hi > f.lo ? (int)(frand() * (f.hi - f.lo + 1)) : 0);
+    dropItem(lv, realm, ItemStack(f.item, n), at, true, nullptr, 0.f);
+  }
+  return true;
+}
+
 void registerSieve() {
   static bool done = false;
   if (done) return;
   done = true;
+  // the hand sieve: used on a siftable block where it lies, it sifts it away
+  hooks().useBlock.push_back([](PlayerController& pc, const RayHit& hit, ItemStack* held, const ItemDef*) {
+    if (pc.lv.isRemote() || !held || held->id != "hand_sieve") return false;
+    const BlockDef& b = reg().block(hit.id);
+    vec3 c = vec3(hit.block) + vec3(0.5f);
+    if (!siftOut(pc.lv, pc.p.realm, b.key, c)) { pc.toastMsg("Sieve gravel, sand, dirt, mud, soul sand, ash or cinder sand"); return true; }
+    World& w = pc.lv.world(pc.p.realm);
+    w.setBlock(hit.block.x, hit.block.y, hit.block.z, AIR);
+    pc.lv.fx->particles("block", c, 10, {{"block", b.key}});
+    pc.lv.fx->material(b.sound.empty() ? "gravel" : b.sound, "dig", c);
+    if (!pc.p.creative() && ++held->d >= 96) { held->clear(); pc.lv.fx->sound("break", c, 16); }   // it wears out
+    pc.swingArm();
+    return true;
+  });
   hooks().useBlock.push_back([](PlayerController& pc, const RayHit& hit, ItemStack* held, const ItemDef* def) {
     if (pc.lv.isRemote() || !reg().block(hit.id).has("sieve") || !held || held->empty() || !def || def->block.empty()) return false;
     auto it = finds().find(def->block);
@@ -41,11 +67,7 @@ void registerSieve() {
     vec3 c = vec3(hit.block) + vec3(0.5f, 0.75f, 0.5f);
     const std::string mat = reg().block(reg().blockId(def->block)).sound;
     if (!pc.p.creative()) { if (--held->n <= 0) held->clear(); }
-    for (const Find& f : it->second) {
-      if (frand() >= f.chance || !reg().item(f.item)) continue;
-      int n = f.lo + (f.hi > f.lo ? (int)(frand() * (f.hi - f.lo + 1)) : 0);
-      dropItem(lv, pc.p.realm, ItemStack(f.item, n), vec3(hit.block) + vec3(0.5f, 0.2f, 0.5f), true, nullptr, 0.f);
-    }
+    siftOut(lv, pc.p.realm, def->block, vec3(hit.block) + vec3(0.5f, 0.2f, 0.5f));
     lv.fx->particles("block", c, 10, {{"block", def->block}});
     lv.fx->material(mat.empty() ? "gravel" : mat, "dig", c);
     pc.swingArm();
