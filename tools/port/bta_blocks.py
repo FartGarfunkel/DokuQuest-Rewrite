@@ -339,6 +339,35 @@ def main(d):
                                                'wlog': True, 'trapdoor': True, 'tex': 'glass_trapdoor'}, [tiles['glass_trapdoor']] * 6)
     recipe('glass_door', 1, ['GG', 'GG', 'GG'], {'G': 'glass'})
     recipe('glass_trapdoor', 2, ['GGG', 'GGG'], {'G': 'glass'})
+    # the steel set (BTA's steel tier pieces): a steel door and trapdoor (opened by redstone, like iron, but no blast
+    # breaks them), a steel fence, and steel-framed glass (clear, and blast-proof)
+    steel = hsv_map(hue=0.6, sat=0.35, val=0.82)
+    if 'steel_door_lower' not in tiles:
+        tile('steel_door_lower', recolour(src_pic(d, tiles, files, 'iron_door_lower'), steel))
+        tile('steel_door_upper', recolour(src_pic(d, tiles, files, 'iron_door_upper'), steel))
+        tile('steel_trapdoor', recolour(src_pic(d, tiles, files, 'iron_trapdoor'), steel))
+        fg = src_pic(d, tiles, files, 'glass').convert('RGBA'); px = fg.load()
+        for y in range(32):
+            for x in range(32):
+                if x < 2 or x > 29 or y < 2 or y > 29 or x in (15, 16) or y in (15, 16): px[x, y] = (128, 138, 152, 255) if (x * 3 + y) % 9 else (100, 110, 124, 255)
+        tile('steel_framed_glass', fg)
+        ic = recolour(src_pic(d, tiles, files, 'iron_door_item'), steel)
+        rel = 'textures/item/steel_door_item.png'; ic.save(d / rel)
+        tiles['steel_door_item'] = tj['count']; files.append(rel); tj['res'].append(32); tj['count'] += 1
+    block('steel_door', 'Steel Door', {'render': 7, 'opaque': False, 'hardness': 7, 'tool': 'pickaxe', 'tier': 2, 'sound': 'metal', 'shapeKind': 7, 'door': True,
+                                       'blastproof': True, 'rsOnly': True, 'tex': {'side': 'steel_door_lower', 'top': 'steel_door_lower'}, 'texUpper': 'steel_door_upper',
+                                       'upperTile': tiles['steel_door_upper'], 'itemIcon': 'steel_door_item'}, [tiles['steel_door_lower']] * 6)
+    items['steel_door'].update({'icon': 'steel_door_item', 'maxStack': 1})
+    block('steel_trapdoor', 'Steel Trapdoor', {'render': 7, 'opaque': False, 'hardness': 7, 'tool': 'pickaxe', 'tier': 2, 'sound': 'metal', 'shapeKind': 8,
+                                               'wlog': True, 'trapdoor': True, 'blastproof': True, 'rsOnly': True, 'tex': 'steel_trapdoor'}, [tiles['steel_trapdoor']] * 6)
+    block('steel_fence', 'Steel Fence', {'render': 7, 'opaque': False, 'hardness': 6, 'tool': 'pickaxe', 'tier': 2, 'sound': 'metal', 'base': 'steel_block',
+                                         'shapeKind': 3, 'wlog': True, 'family': 'fence', 'blastproof': True, 'tex': 'steel_block'}, [tiles['steel_block']] * 6)
+    block('steel_framed_glass', 'Steel-Framed Glass', {'render': 2, 'opaque': False, 'hardness': 5, 'tool': 'pickaxe', 'tier': 2, 'sound': 'glass',
+                                                       'blastproof': True, 'tex': 'steel_framed_glass'}, [tiles['steel_framed_glass']] * 6)
+    recipe('steel_door', 1, ['SS', 'SS', 'SS'], {'S': 'steel_ingot'})
+    recipe('steel_trapdoor', 1, ['SS', 'SS'], {'S': 'steel_ingot'})
+    recipe('steel_fence', 3, ['SIS', 'SIS'], {'S': 'steel_ingot', 'I': 'iron_ingot'})
+    recipe('steel_framed_glass', 4, ['GSG', 'SGS', 'GSG'], {'G': 'glass', 'S': 'steel_ingot'})
     for k, nm in (('bluebells', 'Bluebells'), ('marigold', 'Marigold'), ('spinifex', 'Spinifex')):
         block(k, nm, {'render': 3, 'solid': False, 'opaque': False, 'hardness': 0, 'tool': None, 'sound': 'grass', 'needsSupport': True,
                       'flower': k != 'spinifex', 'tex': k}, [tiles[k]] * 6)
@@ -362,6 +391,7 @@ def main(d):
     (d / 'shapes.json').write_text(json.dumps(sj, separators=(',', ':'), ensure_ascii=False))
     sh = json.loads((d / 'itemshapes.json').read_text())
     if 'hand_sieve' not in sh['itemTiles']: sh['itemTiles'].append('hand_sieve'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
+    if 'steel_door_item' not in sh['itemTiles']: sh['itemTiles'].append('steel_door_item'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'glass_door_item' not in sh['itemTiles']: sh['itemTiles'].append('glass_door_item'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'sulphur' not in sh['itemTiles']: sh['itemTiles'].append('sulphur'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'paintbrush' not in sh['itemTiles']: sh['itemTiles'].append('paintbrush'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))

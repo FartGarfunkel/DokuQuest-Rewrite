@@ -20,7 +20,7 @@ void explode(Level& lv, int realm, vec3 c, float power, const ExplodeOpts& o) {
       if (by < 0 || by >= WORLD_H) continue;
       BlockId id = w.getBlock(bx, by, bz);
       const BlockDef& b = R.block(id);
-      if (!id || R.tLiquid[id] || b.hardness < 0 || b.hardness >= 20 || b.str("mech") == "none") continue;
+      if (!id || R.tLiquid[id] || b.hardness < 0 || b.hardness >= 20 || b.str("mech") == "none" || b.has("blastproof")) continue;
       if (o.onBlock && !o.onBlock(bx, by, bz, id)) continue;
       if (json* be = w.blockEntity(bx, by, bz)) {   // spill what a chest held
         if (be->contains("items") && (*be)["items"].is_array()) for (auto& s : (*be)["items"]) { ItemStack st = ItemStack::fromJson(s); if (!st.empty()) dropItem(lv, realm, st, vec3(bx + 0.5f, by + 0.5f, bz + 0.5f), true); }

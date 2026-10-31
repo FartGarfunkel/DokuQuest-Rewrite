@@ -161,7 +161,7 @@ static bool useRedstone(Level& lv, Player& p, World& w, ivec3 hp, const ItemDef*
       screenOpen(lv, p, json{{"pos", {hp.x, hp.y, hp.z}}});
       return true;
   }
-  if ((b.key == "iron_door" || b.key == "iron_trapdoor") && !p.creative()) { vehToast(lv, p, "Iron doors open with redstone \xE2\x80\x94 try a button or lever beside it"); return true; }
+  if ((b.key == "iron_door" || b.key == "iron_trapdoor" || b.has("rsOnly")) && !p.creative()) { vehToast(lv, p, "Iron doors open with redstone \xE2\x80\x94 try a button or lever beside it"); return true; }
   return false;
 }
 
