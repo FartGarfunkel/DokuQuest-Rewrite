@@ -233,7 +233,7 @@ bool surroundedCovered(const MeshCtx& c, int x, int y, int z) {
   for (int f = 0; f < 6; f++) {
     const FaceDef& F = FACES[f];
     int nx = x + F.n[0], ny = y + F.n[1], nz = z + F.n[2];
-    if (!c.opaqueSolid(nx, ny, nz)) continue;
+    if (!c.opaqueSolid(nx, ny, nz)) return false;   // an open side: the block must be drawn
     BlockId nbid = c.at(nx, ny, nz);
     u8 cm = c.carveAt(nx, ny, nz);
     if (!cm) return false;   // plain opaque neighbour: not covered
