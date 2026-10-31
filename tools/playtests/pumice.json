@@ -1,0 +1,17 @@
+{"steps":[
+ {"wait":200,"do":"anchor"},
+ {"do":"tp","rel":true,"x":0,"y":0,"z":0},
+ {"do":"fill","rel":true,"from":[-4,-3,-8],"to":[4,3,-2],"key":"air"},
+ {"do":"fill","rel":true,"from":[-4,-4,-8],"to":[4,-4,-2],"key":"stone"},
+ {"do":"fill","rel":true,"from":[-3,-3,-7],"to":[3,-3,-3],"key":"lava"},
+ {"do":"setBlock","rel":true,"x":0,"y":-2,"z":-5,"key":"pumice"},
+ {"wait":5,"do":"expect","rel":true,"block":[0,-2,-5],"is":"molten_pumice"},
+ {"do":"expect","rel":true,"block":[0,-3,-5],"is":"air"},
+ {"do":"expect","rel":true,"block":[3,-3,-7],"is":"air"},
+ {"do":"setBlock","rel":true,"x":1,"y":-2,"z":-5,"key":"water"},
+ {"wait":5,"do":"expect","rel":true,"block":[0,-2,-5],"is":"pumice"},
+ {"do":"setBlock","rel":true,"x":0,"y":0,"z":-1,"key":"spike_trap"},
+ {"do":"tp","rel":true,"x":0,"y":0,"z":-1},
+ {"wait":40,"do":"report"},
+ {"do":"quit"}
+]}

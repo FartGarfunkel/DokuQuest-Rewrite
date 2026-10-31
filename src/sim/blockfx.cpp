@@ -6,6 +6,7 @@
 #include "sim/combat.h"
 #include "sim/rules.h"
 #include <random>
+#include <unordered_set>
 
 namespace dq {
 
@@ -198,6 +199,27 @@ static void dropUnsupported(Level& lv, World& w, int x, int y, int z, BlockId ne
   }
 }
 
+// Pumice (our take on BTA's): it soaks up the lava round it — a flood fill of up to 64 lava cells within 6 — and turns
+// molten; water cools molten pumice back. Started when either is put down next to the other.
+static void pumiceSoak(World& w, int x, int y, int z) {
+  const Registry& R = reg();
+  static const BlockId molten = R.blockId("molten_pumice");
+  std::vector<ivec3> q{ivec3(x, y, z)}; std::unordered_set<i64> seen; int took = 0;
+  auto key = [](int a, int b, int c) { return ((i64)(a & 0xfffff) << 40) ^ ((i64)(b & 0xfffff) << 20) ^ (i64)(c & 0xfffff); };
+  seen.insert(key(x, y, z));
+  for (size_t i = 0; i < q.size() && took < 64; i++) {
+    for (int d = 0; d < 6; d++) {
+      int nx = q[i].x + (d == 0) - (d == 1), ny = q[i].y + (d == 2) - (d == 3), nz = q[i].z + (d == 4) - (d == 5);
+      if (std::abs(nx - x) > 6 || std::abs(ny - y) > 6 || std::abs(nz - z) > 6 || !seen.insert(key(nx, ny, nz)).second) continue;
+      if (R.tLiquid[w.getBlock(nx, ny, nz)] != 2) continue;
+      w.setBlock(nx, ny, nz, AIR); took++;
+      q.push_back(ivec3(nx, ny, nz));
+      if (took >= 64) break;
+    }
+  }
+  if (took && molten) w.setBlock(x, y, z, molten);
+}
+
 void onCarveChangedRules(Level& lv, World& w, int x, int y, int z) {
   BlockId id = w.getBlock(x, y, z);
   bool solid = reg().tSolid[id];
@@ -215,6 +237,21 @@ void onBlockChangedRules(Level& lv, World& w, int x, int y, int z, BlockId oldId
   if (!R.tSolid[newId] || R.tShape[newId]) {
     bool s = R.tSolid[newId], sides[4] = {s, s, s, s};
     dropUnsupported(lv, w, x, y, z, newId, s, s, sides);
+  }
+  // pumice and lava, molten pumice and water
+  {
+    static const BlockId pumice = R.blockId("pumice"), molten = R.blockId("molten_pumice");
+    if (pumice && molten) {
+      static const int N6[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+      if (newId == pumice) {
+        for (auto& n : N6) if (R.tLiquid[w.getBlock(x + n[0], y + n[1], z + n[2])] == 2) { pumiceSoak(w, x, y, z); break; }
+      } else if (R.tLiquid[newId] == 2) {
+        for (auto& n : N6) if (w.getBlock(x + n[0], y + n[1], z + n[2]) == pumice) { pumiceSoak(w, x + n[0], y + n[1], z + n[2]); break; }
+      }
+      auto cool = [&](int cx, int cy, int cz) { w.setBlock(cx, cy, cz, pumice); sfxAt(lv, "fizz", vec3(cx + 0.5f, cy + 0.5f, cz + 0.5f)); };
+      if (newId == molten) { for (auto& n : N6) if (R.tLiquid[w.getBlock(x + n[0], y + n[1], z + n[2])] == 1) { cool(x, y, z); break; } }
+      else if (R.tLiquid[newId] == 1) for (auto& n : N6) if (w.getBlock(x + n[0], y + n[1], z + n[2]) == molten) cool(x + n[0], y + n[1], z + n[2]);
+    }
   }
   // a dirt path under a new solid block packs back into dirt (Minecraft)
   if (R.tSolid[newId] && !R.tShape[newId] && B.dirt_path && B.dirt && w.getBlock(x, y - 1, z) == B.dirt_path) w.setBlock(x, y - 1, z, B.dirt);

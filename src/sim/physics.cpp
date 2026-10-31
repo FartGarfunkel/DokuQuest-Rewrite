@@ -201,6 +201,9 @@ Contacts sampleContacts(const World& w, const Entity& e, float eye) {
   }
   BlockId under = w.getBlock(ifloor(e.pos.x), ifloor(e.pos.y - 0.05f), ifloor(e.pos.z));
   if (bhas(under, BF::Hot)) r.hot = true;
+  // spikes underfoot hurt like cactus (the spike trap)
+  static const BlockId spikes = reg().blockId("spike_trap");
+  if (spikes && w.getBlock(ifloor(e.pos.x), ifloor(e.pos.y + 0.05f), ifloor(e.pos.z)) == spikes) r.cactus = true;
   // cactus is touched from the sides
   BlockId cactus = KB().cactus;
   if (cactus) for (int y = y0; y <= y1; y++) {

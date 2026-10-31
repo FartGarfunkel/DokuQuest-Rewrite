@@ -239,6 +239,8 @@ static MobContacts contacts(World& w, const Entity& e) {
   // cactus: touching the sides
   if (cactus) for (int z = ifloor(e.pos.z - e.w - 0.05f); z <= ifloor(e.pos.z + e.w + 0.05f); z++) for (int x = ifloor(e.pos.x - e.w - 0.05f); x <= ifloor(e.pos.x + e.w + 0.05f); x++)
     if (w.getBlock(x, y0, z) == cactus || w.getBlock(x, y0 - 1, z) == cactus) c.cactus = true;
+  static const BlockId spikes = reg().blockId("spike_trap");
+  if (spikes && w.getBlock(ifloor(e.pos.x), y0, ifloor(e.pos.z)) == spikes) c.cactus = true;   // walked into a spike trap
   return c;
 }
 
