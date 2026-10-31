@@ -186,6 +186,7 @@ void runStep(App& a, const json& st) {
   } else if (op == "give" && p) {
     ItemStack gs(st.value("item", "stone"), st.value("n", 1), st.value("d", 0));
     if (st.contains("tag") && st["tag"].is_object()) gs.tag = st["tag"];   // e.g. {"en":{"sharp":3},"gx":900}
+    if (st.value("offhand", false)) { if (p->offhand.empty()) p->offhand.resize(1); p->offhand[0] = gs; return; }   // straight into the other hand
     int left = p->give(gs);
     if (left) DQ_WARN("test: give %s left %d", st.value("item", "").c_str(), left);
   } else if (op == "be" && s) {   // set a block entity (a monster cage: {"type":"spawner","mob":"zombie"})

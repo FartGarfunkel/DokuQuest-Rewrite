@@ -1,0 +1,19 @@
+{"steps":[
+ {"wait":200,"do":"anchor"},
+ {"do":"tp","rel":true,"x":0,"y":0,"z":0},
+ {"do":"fill","rel":true,"from":[-3,0,-6],"to":[3,4,-1],"key":"air"},
+ {"do":"fill","rel":true,"from":[-3,-1,-6],"to":[3,-1,-1],"key":"stone"},
+ {"do":"setBlock","rel":true,"x":1,"y":0,"z":-3,"key":"planks"},
+ {"do":"setBlock","rel":true,"x":-2,"y":0,"z":-3,"key":"wool"},
+ {"do":"give","item":"paintbrush"},
+ {"do":"give","item":"blue_dye","n":4,"offhand":true},
+ {"do":"select","slot":0},
+ {"wait":10,"do":"lookAt","rel":true,"x":1,"y":0,"z":-3},
+ {"wait":5,"do":"mouse","button":"right","hold":1},
+ {"wait":10,"do":"expect","rel":true,"block":[1,0,-3],"is":"blue_painted_planks"},
+ {"do":"lookAt","rel":true,"x":-2,"y":0,"z":-3},
+ {"wait":5,"do":"mouse","button":"right","hold":1},
+ {"wait":10,"do":"expect","rel":true,"block":[-2,0,-3],"is":"blue_wool"},
+ {"do":"report"},
+ {"do":"quit"}
+]}

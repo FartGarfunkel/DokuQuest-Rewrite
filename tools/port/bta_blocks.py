@@ -118,8 +118,53 @@ def main(d):
     recipe('brazier', 1, ['IcI', 'III'], {'I': 'iron_ingot', 'c': 'coal'})
     recipe('spike_trap', 2, ['NNN', 'III'], {'N': 'iron_nugget', 'I': 'iron_ingot'})
 
+
+    # painted planks, 16 colours, from the oak planks (a paintbrush and a dye in the other hand paint any planks)
+    DYE = {'white': (240, 240, 240), 'orange': (230, 128, 40), 'magenta': (190, 70, 180), 'light_blue': (110, 170, 220), 'yellow': (240, 210, 60),
+           'lime': (130, 200, 50), 'pink': (235, 140, 170), 'gray': (90, 92, 96), 'light_gray': (160, 160, 156), 'cyan': (40, 140, 150),
+           'purple': (120, 50, 170), 'blue': (50, 70, 170), 'brown': (120, 80, 50), 'green': (80, 110, 40), 'red': (170, 45, 40), 'black': (35, 32, 38)}
+    base = src_pic(d, tiles, files, 'oak_planks' if (d / PACK / 'oak_planks.png').exists() or 'oak_planks' in tiles else 'planks')
+    lum = [[0] * 32 for _ in range(32)]; bp = base.load()
+    for y in range(32):
+        for x in range(32):
+            r, g, b, a = bp[x, y]; lum[y][x] = (r * 299 + g * 587 + b * 114) / 1000
+    mean = sum(map(sum, lum)) / 1024 or 1
+    for col, (cr, cg, cb) in DYE.items():
+        im = base.copy(); px = im.load()
+        for y in range(32):
+            for x in range(32):
+                k = lum[y][x] / mean   # the grain and the seams, carried over
+                px[x, y] = (min(255, int(cr * k)), min(255, int(cg * k)), min(255, int(cb * k)), 255)
+        key = col + '_painted_planks'
+        t = tile(key, im)
+        block(key, ' '.join(w.capitalize() for w in col.split('_')) + ' Painted Planks',
+              {'hardness': 2, 'tool': 'axe', 'sound': 'wood', 'fuel': 1.5, 'tex': key, 'painted': col}, [t] * 6)
+        if key not in rj['tags']['#planks']: rj['tags']['#planks'].append(key)
+    if 'paintbrush' not in items:
+        items['paintbrush'] = {'key': 'paintbrush', 'name': 'Paintbrush', 'maxStack': 1, 'icon': 'paintbrush', 'paintbrush': True,
+                               'tool': {'type': 'brush', 'tier': 0, 'speed': 1, 'damage': 1, 'durability': 128},
+                               'desc': 'Hold a dye in your other hand and paint planks, wool, glass or terracotta its colour.'}
+    if 'paintbrush' not in tiles:   # a brush: a wooden handle, a bound ferrule, bristles
+        im = Image.new('RGBA', (32, 32), (0, 0, 0, 0)); px = im.load()
+        for i in range(4, 22):
+            for w in (-1, 0, 1):
+                x, y = 27 - i + w, i + 1
+                if 0 <= x < 32: px[x, y] = (150 - w * 20, 100 - w * 14, 55, 255)   # the handle, lit along one side
+        for i in range(22, 25):
+            for w in (-2, -1, 0, 1, 2):
+                x, y = 27 - i + w, i + 1
+                if 0 <= x < 32: px[x, y] = (190, 190, 200, 255) if w else (225, 225, 235, 255)
+        for i in range(25, 31):
+            for w in (-2, -1, 0, 1, 2):
+                x, y = 27 - i + w, i + 1
+                if 0 <= x < 32 and 0 <= y < 32: px[x, y] = (60, 50, 45, 255) if abs(w) < 2 else (85, 72, 60, 255)
+        rel = 'textures/item/paintbrush.png'; im.save(d / rel)
+        tiles['paintbrush'] = tj['count']; files.append(rel); tj['res'].append(32); tj['count'] += 1
+    recipe('paintbrush', 1, [' W', 'S '], {'W': 'wool', 'S': 'stick'})
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'shapes.json').write_text(json.dumps(sj, separators=(',', ':'), ensure_ascii=False))
+    sh = json.loads((d / 'itemshapes.json').read_text())
+    if 'paintbrush' not in sh['itemTiles']: sh['itemTiles'].append('paintbrush'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
     (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':'), ensure_ascii=False))
     (d / 'recipes.json').write_text(json.dumps(rj, separators=(',', ':'), ensure_ascii=False))

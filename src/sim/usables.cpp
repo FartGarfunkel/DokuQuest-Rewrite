@@ -8,6 +8,7 @@
 #include "sim/creature_entities.h"
 #include <unordered_map>
 #include <chrono>
+#include <cstring>
 #include "sim/content.h"
 
 namespace dq {
@@ -124,6 +125,33 @@ void registerUsables() {
         if (json* be = w.blockEntity(at.x, at.y, at.z, true)) { *be = {{"type", "head"}, {"mob", d->str("mobHead")}, {"rot", rot}, {"item", ItemStack(d->key, 1).toJson()}}; w.blockEntityChanged(at.x, at.y, at.z); }
         lv.fx->material("stone", "place", vec3(at) + vec3(0.5f));
         if (!p->creative()) useUp(*p);
+        p->swingT = 0.01f;
+        return false;
+      }
+      if (d->has("paintbrush")) {   // a dye in the other hand: planks, wool, glass and terracotta take its colour
+        if (!hitBlock) return true;
+        ItemStack* dye = p->offhand.empty() || p->offhand[0].empty() ? nullptr : &p->offhand[0];
+        const ItemDef* dd = dye ? dye->def() : nullptr;
+        std::string col = dd ? dd->str("dye") : "";
+        if (col.empty()) { lv.fx->message(p->id, "Hold a dye in your other hand to paint with"); return false; }
+        World& w = lv.world(p->realm);
+        const std::string k = reg().block(w.getBlock(hb.x, hb.y, hb.z)).key;
+        auto ends = [&](const char* e) { size_t n = std::strlen(e); return k.size() >= n && k.compare(k.size() - n, n, e) == 0; };
+        std::string to;
+        if (k == "planks" || ends("_planks")) to = col + "_painted_planks";
+        else if (k == "wool" || ends("_wool")) to = col == "white" ? "wool" : col + "_wool";
+        else if (k == "glass" || ends("_stained_glass")) to = col + "_stained_glass";
+        else if (k == "terracotta" || ends("_terracotta")) to = col + "_terracotta";
+        BlockId tid = to.empty() ? 0 : reg().blockId(to);
+        if (!tid || to == k) return false;
+        w.setBlock(hb.x, hb.y, hb.z, tid, w.getMeta(hb.x, hb.y, hb.z));
+        lv.fx->particles("dust", vec3(hb) + vec3(0.5f), 8);
+        lv.fx->material("wool", "place", vec3(hb) + vec3(0.5f));
+        if (!p->creative()) {
+          if (--dye->n <= 0) dye->clear();
+          ItemStack& h = p->held(); h.d++;
+          if (d->hasTool && h.d >= d->tool.durability) h.clear();
+        }
         p->swingT = 0.01f;
         return false;
       }
