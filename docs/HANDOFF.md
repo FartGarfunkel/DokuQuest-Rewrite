@@ -5,8 +5,9 @@ The full feature list is `docs/MASTER_PLAN.md` (the user's master doc, V2); the 
 Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`.
 
 ## How the user wants us to work (budget first)
-- **Save usage, not time.** One stream of work, no parallel agents. Targeted reads and edits. Few screenshots
-  (crop and downscale before viewing). Automated checks over pictures.
+- **Save usage, not time.** One stream of work, no parallel agents. Targeted reads and edits. **No screenshots
+  unless the user asks for one** (2026-10-31: visual problems get caught in the playthrough bug-test phase).
+  Automated, text-only checks (smoke scripts with `expect`/`report`).
 - **Releases:** one release per day, not one per fix. Ask the user to batch bug reports.
 - **The user's standing rules:**
   - no hunger, no phantoms
@@ -25,14 +26,18 @@ Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`.
 
 ## Where things are
 - **Repo:** `/home/claude/dq` (GitHub FartGarfunkel/DokuQuest-Rewrite).
-- **Branches:** latest release is **alpha.6.1** (main). Work in progress is branch **`chisel`** (d05c83b), not
-  merged to main yet.
-- **Build:** `/home/claude/dqbuild.sh /home/claude/dq dokuquest` (ninja -j1 gate + ccache). Never edit while a build
-  of the same tree runs.
+- **Branches:** latest release is **alpha.7** (main = `chisel`, b444e69). Keep working on `chisel` (or main).
+- **Build:** a fresh session has no deps or ccache: `bash tools/fetch_deps.sh`, then `cmake -S . -B build -G Ninja
+  -DCMAKE_BUILD_TYPE=Release` and `ninja -C build -j2 dokuquest` in the background (~25 min first time, 2 cores).
+  Never edit a .cpp while it's being compiled; touch edited files and rebuild if unsure.
 - **Headless test:**
   - Run Xvfb on :90 if it isn't up: `Xvfb :90 -screen 0 1280x720x24 &`
   - `DISPLAY=:90 SDL_VIDEO_X11_FORCE_EGL=1 ./build/dokuquest --userdir /tmp/x --create T --seed hello --smoke-script s.json`
-  - Ops: wait, cmd, anchor, fill {rel,from,to,key,meta}, tp, lookAt, give, select, key, pad, shot, report, quit.
+  - Ops: wait, cmd, anchor, fill {rel,from,to,key,meta}, setBlock, tp, lookAt {rel x,y,z | entity}, give, select,
+    mouse {button,hold}, expect {block,is | entity,near}, hurt {entity}, key, pad, shot, report, quit.
+  - Gotchas: `/summon` puts creatures 3 blocks ahead; use reach is ~4.5 blocks; `/kill` kills the PLAYER; tp rel
+    first so the player stands at a block centre.
+  - Playtests in `tools/playtests/`: chisel.json (6 checks), eggs.json, lavaboat.json.
   - Block keys are the game's own, e.g. oak planks = `planks`.
   - Gameplay harness: `dq-test-gameplay`.
 - **Releases:**
@@ -71,38 +76,37 @@ Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`.
   - `src/audio/audio.cpp` mixer; under water muffled, cave reverb otherwise
   - `src/audio/music.cpp` procedural music, including the user's new instruments on the `chisel` branch
 - **The user's raw sound work and import tools:** `/mnt/user-data/uploads/DokuQuest_C___Rewrite_Sounds.zip`
-  (their tree, with `tools/_import_*.py`). Don't take its `sounds.json` (contains C418 music profiles).
+  (their tree, with `tools/_import_*.py`). Checked 2026-10-31 against their `Chisel_wip` zip: its sounds.json/.bin
+  are EXACTLY the repo's set plus 5 C418 profiles appended to the end of the blob (06, 07, 08, 13, 18 = events
+  `music.mc_*`, never played by code). The repo's set is that file with them cut off: nothing else to take.
+  Only other differences: their file maps wolf howl -> death sound, duck death -> splash, horses -> ghost/undead
+  variants; alpha.5.9 changed those on purpose (asked the user whether to restore; no answer yet).
+- `fx.pumpkin_carve` (added 2026-10-31) plays their `block/pumpkin/carve1-2` when a pumpkin is carved.
 
-## The chisel work (branch `chisel`)
-**Done:**
-- The user's chisel merge: carve byte (2×2×2 octants) per block, `iron_chisel` item, new music instruments in
-  `src/audio/music.cpp` (dulcimer, mandolin, fiddle...), and the user's 529 edited pictures. Sound data stays at
-  alpha.5.9 (their sounds.json held C418 profiles).
-- Mesher bug fixed: blocks with no plain opaque neighbour were skipped (blocks placed on paths, floating blocks
-  vanished).
-- `end_crystal` picture added.
-- Chains drawn as crossed planes using the picture's link strips (they were invisible), so hanging lanterns connect.
-- Slabs and stairs are chiseled blocks now (`src/world/carve_forms.*`): converted on generation, old saves and
-  `setBlock`; their items are hidden and their 151 recipes retired. Waterlogged ones stay as the old blocks for now.
+## The chisel work (released in alpha.7)
+**Done:** the user's chisel merge (carve byte = 2×2×2 octants, `iron_chisel`, music instruments, 529 pictures),
+mesher fix (blocks on paths / floating blocks vanished), chains visible, slabs and stairs are chiseled blocks
+(`src/world/carve_forms.*`), torches/lanterns/plants fix only to a whole face and drop when it's carved
+(`world/carve_faces.h`, `onCarveChangedRules` in sim/blockfx.cpp), path -> dirt under a solid block, jack o'lantern
+sounds like wood, chisel uses the block's own sound.
 
-**Left to do, before alpha.7:**
-- `jack_o_lantern` sound is "glass" in `data/blocks.json`; should be "wood".
-- The user reported "campfire with cobblestone texture". Not reproduced with the base pack: check village campfires
-  and the user's pack.
-- Waterlogging chiseled blocks (like Minecraft stairs).
-- Torches, lanterns and items attach to chiseled blocks (support checks).
-- 2×2 / 4×4 / 8×8 chisel resolution. Needs sparse sub-voxel storage beyond the carve byte, plus mesher, physics,
+**Still open:**
+- Waterlogging chiseled blocks (waterlogged slabs/stairs stay as the old blocks until then).
+- 2×2 / 4×4 / 8×8 chisel resolution: needs sparse sub-voxel storage beyond the carve byte, plus mesher, physics,
   pick and save support.
-- Tidy the duplicated comments in the chisel block of `src/sim/build.cpp`; the old stairs→slab trim chain there is
-  obsolete.
-- Paths: the vanishing was the mesher bug. Optionally also do Minecraft's path→dirt when built on.
-- Then merge `chisel` → main and release **alpha.7**.
+- "Campfire with cobblestone texture": not reproduced with the base pack; ask the user for a save or which pack.
+- The crosshair raycast treats a chiseled block as its full cell (you can't click through a notch).
 
 ## Agreed order after the chisel (features first, then structure and GUI)
-1. **Quick wins:**
-   - mobs: fuseling (creeper) scale and model with the pack skin, enderman angry face, ghast firing face, bees
-   - drops and items: rare mob/wither skull drops plus wearable/placeable heads, spawn eggs for every mob
-   - player: block-placing loop, capes and cloth moving in the wind, lava boats
+1. **Quick wins.** Done in alpha.7: spawn eggs (`tools/port/spawn_eggs.py`, creative "Spawn Eggs" tab, never one for
+   the story's figure), pack skins for enderman/ghast/fuseling (render/creature_models.cpp packMobs; `PMSpec::box` =
+   Minecraft boxes in model space), ghast `#shooting` model while charging, angry enderman lifts its head off a jagged
+   dark jaw (models.json `jaw` part via data_patches.py; the user REJECTED white teeth), enderman legs ±2 px, the
+   placing loop (item_layers.cpp), lava boat. NOTE: the fuseling's runtime rig is `creeperModel()` in
+   sim/hallowmobs.cpp, not data/models.json. Left:
+   - bees (AI, hive tracking, flying)
+   - rare mob/wither skull drops plus wearable/placeable heads
+   - capes and cloth moving in the wind
 2. **Crowds and AI:** no standing inside each other, gentle pushing, slipping through doorways; NPCs avoid wells;
    Skylands mobs don't walk off edges (check aitoolkit's licence); swimming overhaul.
 3. **Villages:** gates swing properly, villagers use furniture, church banners; Animal Crossing-style house upgrades
