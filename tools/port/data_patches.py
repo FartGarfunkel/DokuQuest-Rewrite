@@ -62,10 +62,37 @@ if en and not any(pt['name'] == 'jaw' for pt in en['parts']):
     i = next(k for k, pt in enumerate(en['parts']) if pt['name'] == 'head')
     en['parts'].insert(i + 1, {"name": "jaw", "parent": "body", "at": [0, 12, 0], "box": [-3.5, 0.5, -3.5, 3.5, 7.5, 3.5],
                                "tex": "ender_skin", "pivot": [0, 0.75, 0], "min": [-0.21875, 0.03125, -0.21875], "max": [0.21875, 0.46875, 0.21875]})
+for pt in (en['parts'] if en else []):   # the jaw: 7x5x7 on the shoulders, its toothed rim just under the lifted head
+    if pt['name'] == 'jaw':
+        pt['box'] = [-3.5, 0, -3.5, 3.5, 5, 3.5]; pt['min'] = [-0.21875, 0, -0.21875]; pt['max'] = [0.21875, 0.3125, 0.21875]
 for pt in (en['parts'] if en else []):   # its legs a little apart (Minecraft's +-2 px), not pressed together
     if pt['name'] in ('legR', 'legL') and abs(pt['at'][0]) == 1:
         sx = 1 if pt['at'][0] > 0 else -1; pt['at'][0] = 2 * sx; pt['pivot'][0] = 0.125 * sx
 (d / 'models.json').write_text(json.dumps(mj, separators=(',', ':'), ensure_ascii=False))
+
+# ---- the lava boat: a rowboat of crimson or warped wood (which doesn't burn) that floats on lava ----
+from PIL import Image as _I
+items = json.loads((d / 'items.json').read_text()); tj2 = json.loads((d / 'tiles.json').read_text())
+rj = json.loads((d / 'recipes.json').read_text()); sh2 = json.loads((d / 'itemshapes.json').read_text())
+if 'lava_rowboat' not in tj2['names']:
+    src = _I.open(d / tj2['files'][tj2['names']['rowboat']]).convert('RGBA'); px = src.load()
+    for y in range(src.size[1]):
+        for x in range(src.size[0]):
+            r, g, b, a = px[x, y]
+            if a: l = (r * 299 + g * 587 + b * 114) // 1000; px[x, y] = (min(255, l * 3 // 2 + 30), l * 2 // 5, l * 3 // 5, a)   # crimson wood
+    src.save(d / 'textures/item/lava_rowboat.png')
+    tj2['res'] += [32] * max(0, tj2['count'] - len(tj2['res']))
+    tj2['names']['lava_rowboat'] = tj2['count']; tj2['files'].append('textures/item/lava_rowboat.png'); tj2['res'].append(32); tj2['count'] += 1
+    (d / 'tiles.json').write_text(json.dumps(tj2, separators=(',', ':'), ensure_ascii=False))
+if 'lava_rowboat' not in sh2['itemTiles']:
+    sh2['itemTiles'].append('lava_rowboat'); (d / 'itemshapes.json').write_text(json.dumps(sh2, separators=(',', ':'), ensure_ascii=False))
+items['lava_rowboat'] = {'key': 'lava_rowboat', 'name': 'Lava Boat', 'maxStack': 1, 'icon': 'lava_rowboat', 'boat': 'lava_rowboat',
+                         'desc': 'Crimson or warped wood floats on lava. Place on lava or water; the lava never reaches you aboard.'}
+(d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
+if not any(r.get('out') == 'lava_rowboat' for r in rj['recipes']):
+    for wood in ('crimson_planks', 'warped_planks'):
+        rj['recipes'].append({'out': 'lava_rowboat', 'n': 1, 'shape': ['PMP', 'PPP'], 'key': {'P': wood, 'M': 'magma_cream'}, 'h': 2, 'w': 3})
+    (d / 'recipes.json').write_text(json.dumps(rj, separators=(',', ':'), ensure_ascii=False))
 
 # ---- spawn eggs for every creature (tools/port/spawn_eggs.py) ----
 import importlib.util as _u

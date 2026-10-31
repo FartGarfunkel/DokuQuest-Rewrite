@@ -561,7 +561,7 @@ void rigPose(Creature& m, const RigModel& M, const mat4& base) {
   // Minecraft's enderman: in anger the head lifts off its jaw and the mouth gapes; the jaw turns with the head
   if (int hi = M.find("head"), ji = M.find("jaw"); M.key == "enderman" && hi >= 0 && ji >= 0) {
     if (P.has[hi]) { P.has[ji] = 1; P.P[ji] = P.P[hi]; }
-    if (m.angryT > 0) P.headLift = 5.f / 16;
+    if (m.angryT > 0) P.headLift = 6.f / 16;   // a pixel of dark mouth between the head and the jaw's teeth
   }
   if (!k.empty()) rigLife(m, M, P);
   mat4 root = base;
