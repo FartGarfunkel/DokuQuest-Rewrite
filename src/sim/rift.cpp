@@ -196,9 +196,74 @@ static void riftFreeze(Level& lv, EndStory& S, Player& p) {
   u32 wid = wt->id, pid = p.id;
   S.later(2, [wid, pid](Level& l) { if (Entity* e = l.entity(wid); e && !e->removed) watcherVanish(l, *e); l.fx->soundUi(pid, "rift_whisper"); });
 }
+// in a fortress of the Depths: is the player among its bricks?
+static bool inFortress(Level& lv, const Player& p) {
+  if (p.realm != REALM_MAIN || dimHere(p) != DIM_NETHER) return false;
+  static const BlockId nb = reg().blockId("nether_bricks");
+  if (!nb) return false;
+  World& w = lv.world(p.realm);
+  int n = 0;
+  for (int dy = -2; dy <= 4; dy += 2) for (int dz = -6; dz <= 6; dz += 2) for (int dx = -6; dx <= 6; dx += 2) if (w.getBlock(ifloor(p.pos.x) + dx, ifloor(p.pos.y) + dy, ifloor(p.pos.z) + dz) == nb) n++;
+  return n >= 18;
+}
+// the fortress: down a corridor a tear opens with him beside it, and the wither skeletons walk into it, one by one
+static void riftFortress(Level& lv, EndStory& S, Player& p) {
+  World& w = lv.world(p.realm);
+  for (int i = 0; i < 24; i++) {
+    float ang = p.yaw + (rnd() - 0.5f) * 1.2f, d = 10 + rnd() * 8;
+    float x = std::floor(p.pos.x - std::sin(ang) * d) + 0.5f, z = std::floor(p.pos.z - std::cos(ang) * d) + 0.5f;
+    if (!w.isLoaded(ifloor(x), ifloor(p.pos.y), ifloor(z))) continue;
+    int y = standY(w, x, z, p.pos.y);
+    if (y < 0 || std::abs(y - p.pos.y) > 3) continue;
+    vec3 eye = p.pos + vec3(0, EYE, 0), head(x, y + 1.6f, z);
+    if (!lineOfSight(lv, p.realm, eye, head, glm::distance(eye, head))) continue;
+    const vec3 at(x, y, z);
+    const float yaw = headingTo(at, p.pos.x, p.pos.z) + PI / 2;
+    std::string id = "rift_fort" + std::to_string(p.id);
+    if (PortalSystem* ps = portalSystem(lv)) {
+      VirtualPortal v; v.realm = p.realm; v.bottom = glm::dvec3(at); v.yaw = yaw;
+      v.w = 1.1f; v.h = 2.6f; v.walk = false; v.torn = true; v.destRealm = REALM_HIS; v.destBottom = glm::dvec3(HALL + 48.5, realmFloor() + 1, 0.5); v.destYaw = 0;
+      ps->setVirtual(id, v);
+    }
+    lv.fx->sound("rift_open", at + vec3(0, 1, 0), 40);
+    // him, a step to the side of it, watching you
+    const vec3 side(std::cos(yaw) * 1.6f, 0, -std::sin(yaw) * 1.6f);
+    Entity* wt = spawnWatcher(lv, p, at + side, "peek", 7, true);
+    const u32 wid = wt ? wt->id : 0;
+    // two or three wither skeletons come out of the dark and walk into it
+    std::vector<u32> sk;
+    for (int k = 0, n = 2 + (int)(rnd() * 2); k < n; k++) {
+      vec3 from = at - side * (1.5f + k * 1.2f) + vec3((rnd() - 0.5f) * 0.6f, 0, (rnd() - 0.5f) * 0.6f);
+      if (Creature* c = spawnMob(lv, p.realm, "wither_skeleton", from)) { c->calm = true; c->data["rc"] = 1; sk.push_back(c->id); }
+    }
+    for (int step = 1; step <= 24; step++)
+      S.later(0.25 * step, [sk, at, step](Level& l) {
+        int k = 0;
+        for (u32 cid : sk) {
+          Entity* e = l.entity(cid);
+          if (!e || e->removed) { k++; continue; }
+          if (step < 3 + k * 6) { k++; continue; }   // one at a time
+          vec3 to = at - e->pos; to.y = 0; float dd = glm::length(to);
+          e->yaw = std::atan2(-to.x, -to.z);
+          if (dd < 0.45f) { e->removed = true; l.fx->sound("portal", at + vec3(0, 1, 0), 18); }
+          else { e->pos += to / dd * std::min(dd, 0.42f); e->vel.x = e->vel.z = 0; }
+          k++;
+        }
+      });
+    S.later(6.5, [id, wid, sk](Level& l) {
+      if (PortalSystem* q = portalSystem(l)) q->removeVirtual(id);
+      if (Entity* e = l.entity(wid); e && !e->removed) watcherVanish(l, *e);
+      for (u32 cid : sk) if (Entity* e = l.entity(cid); e && !e->removed) if (auto* c = dynamic_cast<Creature*>(e)) c->calm = false;   // the ones left behind wake
+    });
+    p.data["dreadT"] = 1.5;
+    return;
+  }
+  forceSighting(lv, p);
+}
 static void riftEvent(Level& lv, EndStory& S, Player& p, const std::string& ev, bool mon) {
   if (p.realm == REALM_POCKET) { forceSighting(lv, p); return; }   // (0.9.0.50) in a pocket dimension he only ever comes through its portal
-  if (ev == "freeze") riftFreeze(lv, S, p);
+  if (ev == "fortress") riftFortress(lv, S, p);
+  else if (ev == "freeze") riftFreeze(lv, S, p);
   else if (ev == "phantom") riftPhantom(lv, p);
   else if (ev == "micro") riftMicro(lv, S, p, mon);
   else riftDoorway(lv, S, p);
@@ -283,7 +348,7 @@ static OptMove herobrineAI(Level& lv, Creature& m, Entity* p, float dist, float 
   // steps through space to somewhere near you
   if (M.hbTp <= 0) {
     M.hbTp = (frac < 0.33f ? 2.2f : 3.5f) + rnd() * 2;
-    float a = rnd() * TAU, d = 4 + rnd() * 4, x = p->pos.x + std::cos(a) * d, z = p->pos.z + std::sin(a) * d;
+    float a = rnd() * TAU, d = 8 + rnd() * 5, x = p->pos.x + std::cos(a) * d, z = p->pos.z + std::sin(a) * d;
     if (!solid(w.getBlock(ifloor(x), ifloor(m.pos.y), ifloor(z))) && solid(w.getBlock(ifloor(x), ifloor(m.pos.y) - 1, ifloor(z)))) {
       sfx::burst(lv, m.pos + vec3(0, 1, 0), "mana_arcane", 30, 1.6f, json{{"life", 0.6f}, {"spread", 0.8f}});
       m.pos.x = x; m.pos.z = z; m.vel.x = m.vel.z = 0;
@@ -293,7 +358,7 @@ static OptMove herobrineAI(Level& lv, Creature& m, Entity* p, float dist, float 
   }
   // bolts of his realm
   if (M.hbBolt <= 0 && dist < 30) {
-    M.hbBolt = frac < 0.33f ? 1.1f : 2;
+    M.hbBolt = frac < 0.33f ? 0.8f : 1.4f;
     vec3 s = m.pos + vec3(0, 1.5f, 0), t = p->pos + vec3(0, 1, 0) - s; float l = std::max(1e-3f, glm::length(t));
     auto b = std::make_unique<RiftBolt>(); b->realm = m.realm; b->pos = s; b->vel = t / l * 16.f; b->data = {{"owner", m.id}};
     lv.spawn(std::move(b));
@@ -302,9 +367,11 @@ static OptMove herobrineAI(Level& lv, Creature& m, Entity* p, float dist, float 
   // the stare: time stops for whoever he looks at
   if (frac < 0.5f && M.hbFreeze <= 0 && dist < 20 && p->isPlayer()) { M.hbFreeze = 14; S->frozenT = 1.4; p->data["dreadT"] = 1.8; lv.fx->soundUi(p->id, "rift_static"); }
   else if (M.hbFreeze <= 0) M.hbFreeze = 6;
-  if (dist < 1.8f + m.w && std::fabs(dyp) < 2 && m.attackCd <= 0) { m.attackCd = 1; m.swingT = 0.3f; hurtPawn(lv, *p, T.damage, &m, "mob", 3); }
-  std::optional<float> nd; if (dist > 2.5f) nd = m.navDir(lv, p->pos, dt);
-  return Move{dist < 1.2f ? 0 : T.speed * 0.8f, nd ? *nd : toPlayer};
+  // he never brawls: come close and he is gone, to somewhere out of reach; otherwise he circles at a distance
+  (void)dyp;
+  if (dist < 6) { M.hbTp = std::min(M.hbTp, 0.35f); return Move{T.speed, toPlayer + PI}; }
+  if (dist > 16) { std::optional<float> nd = m.navDir(lv, p->pos, dt); return Move{T.speed * 0.8f, nd ? *nd : toPlayer}; }
+  return Move{T.speed * 0.5f, toPlayer + PI * 0.5f};
 }
 
 static void riftSeal(Level& lv, Creature& boss) {
@@ -440,6 +507,7 @@ void riftTick(Level& lv, EndStory& S, double dt) {
   float r = rnd();
   Player* who = live[(size_t)(rnd() * live.size()) % live.size()];
   std::string ev = st < 15 && r < 0.3f ? "freeze" : st < 15 && r < 0.55f ? "phantom" : st < 40 && r < 0.75f ? "micro" : "door";
+  if (st < 60 && inFortress(lv, *who) && rnd() < 0.6f) ev = "fortress";   // in a fortress of the Depths, his errand there
   int dim = dimHere(*who);
   bool mon = ev == "micro" && rnd() < (envDay(lv, dim < 0 ? DIM_OVERWORLD : dim) < 0.45f ? 0.45f : 0.2f);
   riftEvent(lv, S, *who, ev, mon);

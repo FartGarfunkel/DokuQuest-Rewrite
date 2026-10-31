@@ -135,9 +135,35 @@ Features (BTA list done except seasons; #11 End and Skylands done):
   (render/pile_layer.cpp "solo"), held torch flame + smoke (render/content_layers.cpp heldFlames).
 - alpha.8 notes are drafted in docs/CHANGELOG.md and assets/news/news.dqn ("Far Lands"); bump DQ_VERSION to
   1.0.0-alpha.8 on release day, merge chisel -> main, wait for CI, release.
-Still open: End ambience sound, seasons (optional), bows (grip/draw/scale, visual: wait for the user's eyes), the
-particle overhaul, waterlogged chiseled blocks, the user's "items going flat" report (asked which items), wolf
-howl/duck/horse sound mappings (asked). Item 2 of the list below (crowds) was already in: crowdPush in
+Later the same night (all in the alpha.8 notes except the rift work, which the notes must never hint at):
+- Leather/pelts/hides/saddles sculpt "thin" (assets/item_models.cpp sculptKind); flat things keep a sliver.
+- Chiseled blocks hold water (WLOG meta bit on carved blocks; build.cpp bucket/afterBreak; light/mesher emitLiquid).
+- Coloured + inverted lamps, metal bricks, butterfly jar, glass door/trapdoor, bluebells/marigold/spinifex, sugar
+  cane bundle, hand sieve, the steel set (door/trapdoor need redstone: block prop `rsOnly`; `blastproof` skips
+  explosions in sim/explosion.cpp).
+- Particles: sprint crumbs, landing ring, crit stars, creature dust, breath fog where snow falls (controller.cpp
+  breathAcc, particle "breath"), snow/sand/gravel puffs per step.
+- Magic hands (sim/magic_hands.cpp): left-hand spell `stats.spellOff` (spellbook L / X / right-click); dual cast,
+  mixes + fusions (gazePoint burst), sword/axe casts the left spell and sets `MagicState::bladeEl` (combat.cpp
+  spellbladeHit). Spell ranks I..X: `stats.spellXp`, `spellRankPower/Mana` applied in castSpellKey (old castSpell
+  body, sim/magic_spells.cpp; `handMods()` carries the hand's power/mana/noStaff). `/spell learn|right|left|cast`.
+  Old spells (OLD/ARCANA) need a staff in that hand. Test report shows "spells R .. L .. mana .. blade ..".
+- Tool Forge (tools/port/forging.py): heads `<mat>_<tool>_head` (12 materials x 5 tools, item prop `forgeHead`),
+  made in the forge block (stonecutter screen with InvOpen.kind "forge": sim/stations.cpp forgeOptions/forgeCost);
+  head + haft shapeless recipes -> tool (stick = the existing tool where there is one, else `<mat>_<tool>`;
+  `<haft>_hafted_<mat>_<tool>` for bone/cinder/steel). Creative tab "Forged". Icons: iron tool picture split into
+  head/haft by colour (outline pixels take the nearest colour's side), recoloured.
+- Rift story (Phase 11), on `chisel`: RIFT_NEED 10 (sim/endstory.h); stability = 100 - 92*frags/10 paces the
+  haunting; the old fog (render/sky.cpp `f.nearFog` -> `uNearFog` in common.glsl applyFog, layered over the far fog)
+  in dread and on nights once stability < 75; corruption (rift.cpp corruptTick: data `corrupt`, judged once per
+  creature via `rc`; purple flicker + white eyes in render/creature_layer.cpp; animals stare and vanish within 5);
+  stripped groves and ocean sand pyramids (haunt.cpp sandPyramid); watcher glitches by stability
+  (render/endstory_layer.cpp); the fortress scene (rift.cpp riftFortress: a tear, him beside it, wither skeletons
+  walk in); the final boss fights at range (teleports away under 6 blocks, circles, more bolts, no melee).
+  Not done from Phase 11: the player-triggered Wither Storm climax.
+Still open: End ambience sound, seasons (optional), bows (grip/draw/scale, visual: wait for the user's eyes), wolf
+howl/duck/horse sound mappings (asked), the Wither Storm, the music studio, more BTA leftovers (statue, painting,
+quiver, basket, activator, reinforced piston, siphon, handcannon, palm/cacao/giant trees). Item 2 of the list below (crowds) was already in: crowdPush in
 sim/creature_spawn.cpp.
 
 ## Agreed order after the chisel (features first, then structure and GUI)
