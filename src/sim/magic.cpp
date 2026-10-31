@@ -255,6 +255,7 @@ bool magicItemUse(Level& lv, Player& p, const std::string& key, ivec3 at, int fa
     if (b.has("container") || b.has("table") || b.has("door") || b.has("station") || b.has("questBoard") || b.has("bed") || b.has("furnace")) return true;
   }
   if (d->has("tome")) { learnTome(lv, p, h); return false; }
+  if (!p.sneaking && castWithWeapon(lv, p)) return false;   // a sword or axe: the left hand casts
   if (d->has("staff")) {
     if (p.sneaking) { cycleSpell(lv, p); return false; }
     castSpell(lv, p);

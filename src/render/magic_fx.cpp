@@ -539,7 +539,8 @@ void MagicLayer::drawHud(GameSession& gs) {
     float max = manaMax(*p), mana = m.mana < 0 ? max : m.mana;
     std::string k = activeSpell(*p);
     const SpellDef* S = magicData().spell(k);
-    std::string txt = (S ? S->name : std::string("No spells")) + " \xC2\xB7 " + std::to_string((int)std::floor(mana)) + "/" + std::to_string((int)max) + (m.ward > 0 ? " \xC2\xB7 ward " + std::to_string((int)std::round(m.ward)) : "");
+    const std::string L = offSpell(*p);
+    std::string txt = (S ? spellTitle(*p, k) : std::string("No spells")) + (L.empty() ? "" : L == k ? " \xC3\x97 2" : " + " + spellTitle(*p, L)) + " \xC2\xB7 " + std::to_string((int)std::floor(mana)) + "/" + std::to_string((int)max) + (m.ward > 0 ? " \xC2\xB7 ward " + std::to_string((int)std::round(m.ward)) : "");
     float bw = 364 * sc, bh = 6 * sc, x0 = W / 2 - bw / 2, y0 = H - 104 * sc;
     dl->AddRectFilled(ImVec2(x0, y0), ImVec2(x0 + bw, y0 + bh), IM_COL32(10, 14, 40, 200), 3);
     dl->AddRectFilled(ImVec2(x0, y0), ImVec2(x0 + bw * clampv(mana / std::max(1.f, max), 0.f, 1.f), y0 + bh), IM_COL32(70, 120, 255, 255), 3);

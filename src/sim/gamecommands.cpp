@@ -5,6 +5,7 @@
 #include "sim/combat.h"
 #include "sim/rules.h"
 #include "sim/worldsys.h"
+#include "sim/magic.h"
 #include "gen/structures_api.h"
 #include <random>
 #include <regex>
@@ -155,6 +156,26 @@ static void registerBuiltinCommands() {
     std::string m; for (auto& s : a) m += (m.empty() ? "" : " ") + s;
     c.lv.fx->message(0, "[" + c.p.name + "] " + m, "chat");
     return "";
+  });
+  C("spell", "learn <spell|all> | right <spell> | left <spell|none> | cast", "Learn, ready or cast spells", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
+    const std::string op = a.empty() ? "" : toLower(a[0]), k = a.size() > 1 ? toLower(a[1]) : "";
+    const MagicData& md = magicData();
+    if (op == "learn") {
+      json& sp = c.p.stats["spells"];
+      if (!sp.is_array()) sp = json::array();
+      int n = 0;
+      for (auto& s : md.spellOrder) {
+        if (k != "all" && s != k) continue;
+        bool has = false; for (auto& x : sp) has |= x == s;
+        if (!has) { sp.push_back(s); n++; }
+      }
+      if (!n && k != "all") return "No such spell (or already known): " + k;
+      return "Learned " + std::to_string(n) + " spell" + (n == 1 ? "" : "s");
+    }
+    if (op == "right") { if (!pickSpell(c.lv, c.p, k)) return "You don't know " + k; return "Right hand: " + k; }
+    if (op == "left") { setOffSpell(c.lv, c.p, k == "none" ? "" : k); return "Left hand: " + offSpell(c.p); }
+    if (op == "cast") { MagicState& m = magicState(c.lv, c.p); m.castCd = 0; m.bare = !heldStaff(c.p); castSpell(c.lv, c.p); m.bare = false; return "Cast"; }
+    throw CommandUsage{};
   });
   C("locate", "<structure, e.g. end_city, village, nether_fortress>", "Find the nearest structure of a kind", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
     if (a.empty() || !c.lv.gen) throw CommandUsage{};

@@ -23,6 +23,7 @@ struct MagicState {
   bool bare = false;               // casting without a staff (Z)
   bool jumpHeld = false;           // set by the controller each frame (levitation: jump to rise)
   std::string lastSpell;           // shown by the HUD
+  std::string bladeEl; i64 bladeUntil = 0;   // the spellblade: a spell's school carried by the blade, until (unix ms)
 };
 
 class MagicSystem;
@@ -40,6 +41,24 @@ void cycleSpell(Level& lv, Player& p);                        // G / sneak + use
 bool pickSpell(Level& lv, Player& p, const std::string& k);   // the spellbook
 bool learnTome(Level& lv, Player& p, ItemStack& tome);
 bool castSpell(Level& lv, Player& p);                         // with the held staff; false = not a staff in hand
+// ---- the hands (sim/magic_hands.cpp): a spell readied in each hand. With the left hand free (empty or a staff in
+// it) the left-hand spell joins every cast: the same spell twice is one dual cast, two spells go off together (and
+// some pairs fuse: steam, plasma, hail...). A sword or axe in the right hand: use casts the left-hand spell, and the
+// blade carries it for a few blows. Spells rank up I..X with use (stronger, cheaper).
+struct HandMods { float power = 1, mana = 1; bool noStaff = false, ok = false; };
+HandMods& handMods();                                         // set around each hand's cast
+bool castSpellKey(Level& lv, Player& p, const std::string& k);   // one hand's cast (sim/magic_spells.cpp)
+bool spellNeedsStaff(const std::string& k);                   // the first spells can't be cast bare-handed
+std::string offSpell(const Player& p);                        // the left hand's spell ("" = none)
+void setOffSpell(Level& lv, Player& p, const std::string& k); // "" clears it
+int spellRank(const Player& p, const std::string& k);         // 1..10
+float spellRankProgress(const Player& p, const std::string& k);   // 0..1 toward the next rank
+float spellRankPower(const Player& p, const std::string& k);
+float spellRankMana(const Player& p, const std::string& k);
+void spellPractice(Level& lv, Player& p, const std::string& k, double xp);
+std::string spellTitle(const Player& p, const std::string& k);   // "Firebolt III"
+bool castWithWeapon(Level& lv, Player& p);                    // a weapon in hand: the left-hand spell (false = none)
+float spellbladeHit(Level& lv, Player& p, Entity& e, float dmg, std::string& element);   // extra damage on a melee blow
 void castQuick(Level& lv, Player& p);                         // Z: with or without a staff
 bool spellRepeats(const std::string& k);                      // held button repeats the cast
 const std::vector<std::string>& knownSpells(const Player& p); // (reads stats.spells)

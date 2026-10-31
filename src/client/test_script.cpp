@@ -15,6 +15,7 @@
 //            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text} lookAt{entity,job?,dist?: aim at (and stand dist south of) the nearest creature of a type} report{near?,ents?: a type, to list where each stands} shot{path} save leave open{world} quit
 // give takes "d" (wear) and "tag" (enchantments, gear xp). pad buttons: a b x y back guide start ls rs lb rb up down left right, lt / rt (triggers).
 // The log gets "TEST PASS/FAIL ..." lines and a final "TEST DONE passes=N fails=M".
+#include "sim/magic.h"
 #include "client/test_script.h"
 #include "client/app.h"
 #include "client/session.h"
@@ -270,6 +271,12 @@ void runStep(App& a, const json& st) {
       msg += " | inv:"; for (auto& [k, n] : inv) msg += " " + k + "=" + std::to_string(n);
       std::map<std::string, int> near;
       for (auto& e : s->level->entities()) if (e && !e->removed && e.get() != p && e->realm == p->realm && glm::distance(e->pos, p->pos) < st.value("near", 48.f)) near[e->type]++;
+      if (!knownSpells(*p).empty()) {   // magic: the hands, ranks and mana
+        MagicState& m = magicState(*s->level, *p);
+        std::string L = offSpell(*p), R0 = activeSpell(*p);
+        msg += " | spells R " + spellTitle(*p, R0) + " L " + (L.empty() ? std::string("-") : spellTitle(*p, L)) + " mana " + std::to_string((int)m.mana);
+        if (!m.bladeEl.empty()) msg += " blade " + m.bladeEl;
+      }
       { const InstrumentState& I = instruments(); char ib[96]; std::snprintf(ib, sizeof ib, " | compass %d death %d clock %d grave %s", I.compassF, I.deathF, I.clockF, p->grave.is_object() ? "yes" : "no"); msg += ib; }
       msg += " | near:";
       for (auto& [k, n] : near) msg += " " + k + "=" + std::to_string(n);

@@ -1,6 +1,7 @@
 // sim/combat.cpp — damage, death and respawn (local.js hurt/die/respawn, player.js hurt/wearArmor,
 // entities.js Mob.hurt/die, fairplay.js raw-blow floor).
 #include "sim/combat.h"
+#include "sim/magic.h"
 #include "sim/gameplay.h"
 #include "sim/rules.h"
 #include "sim/physics.h"
@@ -167,6 +168,7 @@ float attackEntity(Level& lv, Player& p, Entity& e) {
   DamageSource src; src.attacker = p.id; src.element = heldToolElement(p); src.knock = 5;
   if (tool) src.tool = tool->type;
   if (!p.inv[p.selected].empty()) src.weapon = p.inv[p.selected].id;
+  dmg = spellbladeHit(lv, p, e, dmg, src.element);   // a spell carried on the blade (sim/magic_hands.cpp)
   src.hasRay = true; src.rayO = p.pos + vec3(0, p.eye, 0); src.rayD = lookVector(p.yaw, p.pitch);   // dismember.js: the ray from your eyes
   float dealt;
   if (e.ghost && lv.net && lv.net->isClient()) {   // a joined world: the server's creature; it takes the hit there

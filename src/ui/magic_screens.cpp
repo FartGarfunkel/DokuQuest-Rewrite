@@ -137,7 +137,7 @@ public:
     ImGui::TextColored(ImVec4(0.85f, 0.75f, 1, 1), "Spellbook \xC2\xB7 Magic %d \xC2\xB7 %d/%d mana", lvl, (int)std::floor(m.mana < 0 ? manaMax(*p) : m.mana), (int)manaMax(*p));
     ImGui::PopFont();
     ImGui::BeginChild("##sbl", ImVec2(0, -ImGui::GetFrameHeightWithSpacing() - 4), ImGuiChildFlags_NavFlattened); ui::padScrollHere();
-    std::string active = activeSpell(*p);
+    std::string active = activeSpell(*p), left = offSpell(*p);
     for (auto& sc : md.schools) {
       std::vector<std::string> ks;
       for (auto& k : md.spellOrder) if (md.spells.at(k).school == sc[0]) ks.push_back(k);
@@ -152,7 +152,11 @@ public:
         bool sel = k == active;
         if (ImGui::Selectable("##row", sel, 0, ImVec2(0, ImGui::GetTextLineHeight())) && kn) pickSpell(*lv, *p, k);
         if (sel && ImGui::IsWindowAppearing()) ImGui::SetItemDefaultFocus();
-        ImGui::SameLine(12); ImGui::TextColored(col4(S.col), "%s", S.name.c_str());
+        // the left hand: right-click, or X / L on the chosen row
+        if (kn && (ImGui::IsItemClicked(ImGuiMouseButton_Right) || (ImGui::IsItemFocused() && (ImGui::IsKeyPressed(ImGuiKey_GamepadFaceLeft, false) || ImGui::IsKeyPressed(ImGuiKey_L, false))))) setOffSpell(*lv, *p, k);
+        const bool inLeft = kn && k == left;
+        ImGui::SameLine(12); ImGui::TextColored(col4(S.col), "%s%s%s", sel ? "R " : inLeft ? "L " : "", kn ? spellTitle(*p, k).c_str() : S.name.c_str(), sel && inLeft ? " (both hands)" : "");
+        if (kn && ImGui::IsItemHovered()) ImGui::SetTooltip("Rank %d of 10 \xC2\xB7 %d%% to the next", spellRank(*p, k), (int)(spellRankProgress(*p, k) * 100));
         ImGui::SameLine(190); ImGui::TextColored(ImVec4(0.6f, 0.82f, 1, 1), "Magic %d \xC2\xB7 %d mana", S.lvl, S.mana);
         ImGui::SameLine(330);
         ImGui::TextColored(ImVec4(0.73f, 0.73f, 0.73f, 1), "%s%s", kn ? "" : (lvl >= S.lvl ? "(find its tome) " : "(locked) "), S.desc.c_str());
@@ -161,7 +165,7 @@ public:
       }
     }
     ImGui::EndChild();
-    ImGui::TextDisabled("\xE2\x86\x91/\xE2\x86\x93 or d-pad: choose \xC2\xB7 Enter / A / click: make active \xC2\xB7 Esc / B: close \xC2\xB7 Z casts it without a staff");
+    ImGui::TextDisabled("\xE2\x86\x91/\xE2\x86\x93 or d-pad: choose \xC2\xB7 Enter / A / click: right hand \xC2\xB7 L / X / right-click: left hand \xC2\xB7 Esc / B: close \xC2\xB7 Z casts without a staff");
     endPanel();
   }
   std::string lv0;

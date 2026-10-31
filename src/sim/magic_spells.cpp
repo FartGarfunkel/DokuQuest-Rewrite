@@ -67,11 +67,16 @@ static void thriftAndArchmage(Level& lv, Player& p, MagicState& m, float spent) 
 static const std::unordered_set<std::string> ARCANA = {"missiles", "regrowth", "haste", "fireball", "icenova", "guardian"};
 static const std::unordered_set<std::string> OLD = {"firebolt", "frost", "light", "heal", "levitate", "stoneskin", "blink", "familiar", "ward", "lightning"};
 
-bool castSpell(Level& lv, Player& p) {
+bool spellNeedsStaff(const std::string& k) { return OLD.count(k) || ARCANA.count(k); }
+HandMods& handMods() { static thread_local HandMods h; return h; }
+
+// one hand's cast of spell k (sim/magic_hands.cpp decides the hands and sets handMods: power, mana, no staff)
+bool castSpellKey(Level& lv, Player& p, const std::string& k) {
   const MagicData& md = magicData();
   MagicState& m = magicState(lv, p);
-  const json* staff = heldStaff(p);
-  std::string k = activeSpell(p);
+  HandMods& HM = handMods();
+  HM.ok = false;
+  const json* staff = HM.noStaff ? nullptr : heldStaff(p);
   bool newer = !k.empty() && !OLD.count(k) && !ARCANA.count(k);
   if (!staff && !(newer && m.bare)) return false;
   if (k.empty()) { toast(lv, p, "You know no spells yet \xE2\x80\x94 read a spell tome"); return true; }
@@ -86,7 +91,8 @@ bool castSpell(Level& lv, Player& p) {
     m.castCd = 0.4f; return true;
   }
   bool cr = p.creative();
-  if (m.mana < S->mana && !cr) { toast(lv, p, "Not enough mana", "warn"); ui(lv, p, "spell_fizzle"); m.castCd = 0.4f; return true; }
+  const float rankP = spellRankPower(p, k) * HM.power, cost = S->mana * HM.mana * spellRankMana(p, k);
+  if (m.mana < cost && !cr) { toast(lv, p, "Not enough mana", "warn"); ui(lv, p, "spell_fizzle"); m.castCd = 0.4f; return true; }
   ItemStack& held = p.held();
   json st = staff ? *staff : json{{"power", 0.7}};
   int arcane = enchLv(held, "arcane");
@@ -98,13 +104,13 @@ bool castSpell(Level& lv, Player& p) {
   c.look = lookVec(p); c.eye = p.pos + vec3(0, 1.55f, 0);
   float m0 = m.mana, cd0 = m.castCd;
   if (newer) {
-    float power = stPower * school * skill * robe * (1 + 0.15f * arcane);
+    float power = stPower * school * skill * robe * (1 + 0.15f * arcane) * rankP;
     castNewSpell(lv, p, k, st, power, c);
     if (!c.ok) { m.castCd = 0.3f; return true; }
     if (!cr) {
-      m.mana -= S->mana;
-      thriftAndArchmage(lv, p, m, (float)S->mana);
-      if (slv >= 50) m.mana = std::min(manaMax(p), m.mana + S->mana / 6.f);
+      m.mana -= cost;
+      thriftAndArchmage(lv, p, m, cost);
+      if (slv >= 50) m.mana = std::min(manaMax(p), m.mana + cost / 6.f);
     }
     if (S->cd > 0) cds[k] = now + (i64)(S->cd * 1000);
     m.castCd = c.cd;
@@ -115,19 +121,23 @@ bool castSpell(Level& lv, Player& p) {
     sfx::circle(lv, p.pos, S->fx);
     castFx(lv, p, *S, c, k);
     m.lastSpell = k;
+    spellPractice(lv, p, k, xp);
+    HM.ok = true;
     return true;
   }
-  float power = stPower * school * robe * skill * (1 + gearBonus(held, 0.2f));
+  float power = stPower * school * robe * skill * (1 + gearBonus(held, 0.2f)) * rankP;
   if (ARCANA.count(k)) power *= 1 + 0.15f * arcane;
   bool ok = ARCANA.count(k) ? castNewSpell(lv, p, k, st, power, c) : castOldSpell(lv, p, k, st, power, c);
   (void)ok;
   if (!c.ok) { m.castCd = 0.3f; return true; }
-  if (!cr) m.mana -= S->mana;
+  if (!cr) m.mana -= cost;
   m.castCd = ARCANA.count(k) ? c.cd : k == "lightning" ? 2.2f : 0.45f;
   wearHeld(lv, p, 1);
   skillGain(lv, p, "magic", S->mana * 6.0);
   if (!held.empty()) gearGain(lv, p, held, 2);
-  thriftAndArchmage(lv, p, m, cr ? 0.f : (float)S->mana);
+  thriftAndArchmage(lv, p, m, cr ? 0.f : cost);
+  spellPractice(lv, p, k, S->mana * 6.0);
+  HM.ok = true;
   sfx::circle(lv, p.pos, S->fx);
   castFx(lv, p, *S, c, k);
   m.lastSpell = k;
