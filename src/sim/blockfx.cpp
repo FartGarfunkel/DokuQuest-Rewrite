@@ -9,6 +9,8 @@
 
 namespace dq {
 
+void villageSeatChanged(Level& lv, World& w, int x, int y, int z, BlockId oldId, BlockId newId);   // sim/villagers.cpp
+
 static double rnd() { static thread_local std::mt19937 g{std::random_device{}()}; return std::uniform_real_distribution<double>(0, 1)(g); }
 
 // ---- a block in mid-air: lands where it stops ----
@@ -217,6 +219,7 @@ void onBlockChangedRules(Level& lv, World& w, int x, int y, int z, BlockId oldId
   // a dirt path under a new solid block packs back into dirt (Minecraft)
   if (R.tSolid[newId] && !R.tShape[newId] && B.dirt_path && B.dirt && w.getBlock(x, y - 1, z) == B.dirt_path) w.setBlock(x, y - 1, z, B.dirt);
   for (auto& h : hooks().blockChanged) h(lv, w, x, y, z, oldId, newId);
+  villageSeatChanged(lv, w, x, y, z, oldId, newId);   // furniture put down in a village gets used
   if (bhas(newId, BF::Falls)) checkFall(lv, w, x, y, z);
   if (newId == B.water || R.tLiquid[newId] == 1) {
     static const int N[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, 1, 0}, {0, -1, 0}};

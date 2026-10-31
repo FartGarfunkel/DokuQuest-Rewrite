@@ -489,6 +489,24 @@ static std::string cmdRaid(CommandSource& src, const std::vector<std::string>&) 
   return raidStart(*src.level, *v, 60, false) ? "Drums in the dark\xE2\x80\xA6" : "The raiders found nowhere to gather";
 }
 
+// A chair, stool or bench put down (or taken up) inside a village: its folk sit on it too. The village's record keeps the
+// list (sim/blockfx.cpp calls this from the block rules).
+void villageSeatChanged(Level& lv, World& w, int x, int y, int z, BlockId oldId, BlockId newId) {
+  if (w.realm != REALM_MAIN) return;
+  const Registry& R = reg();
+  bool was = R.block(oldId).has("seat"), is = R.block(newId).has("seat");
+  if (was == is) return;
+  for (auto& v : villagesNear(lv, (float)x, (float)z, 0)) {
+    if (std::hypot(x - v->x, z - v->z) > v->r + 8) continue;
+    json& rec = villageRec(lv, v->id);
+    if (!rec.contains("seats") || !rec["seats"].is_array()) rec["seats"] = json::array();
+    json& S = rec["seats"];
+    for (size_t i = 0; i < S.size(); i++) if (S[i].is_array() && S[i].size() >= 3 && S[i][0] == x && S[i][1] == y && S[i][2] == z) { S.erase(i); break; }
+    if (is && S.size() < 64) S.push_back(json::array({x, y, z, w.getMeta(x, y, z) & 3}));
+    break;
+  }
+}
+
 void registerVillagerUseHook();
 void registerVillagers() {
   static bool done = false;

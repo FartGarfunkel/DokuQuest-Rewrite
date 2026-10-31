@@ -389,13 +389,22 @@ static Move brainInner(Level& lv, Creature& e, NpcMind& M, json& N, const Villag
   const bool shop = hasShop(job);
   enum { NONE, SLEEP, IDLE, WORK, SIT, SOCIAL } act = NONE;
   bool hasGoal = false; vec3 goal(0);
-  const VSeatSpot* seat = v.seats.empty() ? nullptr : &v.seats[idx % v.seats.size()];
+  // the village's own seats, then any chair, stool or bench a player put down there (villagers.cpp records them)
+  static thread_local std::vector<VSeatSpot> seats; seats.assign(v.seats.begin(), v.seats.end());
+  {
+    json& rec = villageRec(lv, v.id);
+    if (rec.contains("seats") && rec["seats"].is_array()) for (auto& sj : rec["seats"]) if (sj.is_array() && sj.size() >= 4) {
+      VSeatSpot o; o.at = ivec3(sj[0].get<int>(), sj[1].get<int>(), sj[2].get<int>()); o.f = sj[3].get<int>() & 3;
+      if (reg().block(lv.world(REALM_MAIN).getBlock(o.at.x, o.at.y, o.at.z)).has("seat")) seats.push_back(o);
+    }
+  }
+  const VSeatSpot* seat = seats.empty() ? nullptr : &seats[idx % seats.size()];
   if (night && folk) { goal = vec3(folk->home); hasGoal = true; act = SLEEP; }
   else if (ph < 0.04) act = IDLE;
   else if (folk && folk->hasWork && (ph < 0.3 || (shop && ph < 0.46))) { goal = vec3(folk->work); hasGoal = true; act = WORK; }
   else if (ph >= 0.43 && seat) {
     goal = seat->walk ? vec3(seat->ax, seat->at.y, seat->az) : vec3(seat->at.x + DXL[seat->f], seat->at.y, seat->at.z + DZL[seat->f]); hasGoal = true; act = SIT;   // walk up to the bench, then sit
-    if (idx >= (int)v.seats.size()) { act = SOCIAL; hasGoal = false; }
+    if (idx >= (int)seats.size()) { act = SOCIAL; hasGoal = false; }
   } else act = SOCIAL;
   if (act == SOCIAL) {
     if (!M.hasGoal || M.goalT <= 0) { M.goal = npcPickSpot(lv, v, rnd() < 0.55f); M.hasGoal = true; M.goalT = 25 + rnd() * 25; M.goalSerial++; }
