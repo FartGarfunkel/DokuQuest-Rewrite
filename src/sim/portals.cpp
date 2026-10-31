@@ -169,7 +169,7 @@ int portalTargetDim(int fromDim, PortalKind k) {
   return fromDim == DIM_OVERWORLD ? far : DIM_OVERWORLD;
 }
 
-vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, PortalSystem* ps) {
+vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, PortalSystem* ps, int ow, int oh, int axis) {
   const Registry& R = reg();
   KindDef K = kindDef(kind);
   // 1. an existing portal close by? (stand beside it)
@@ -178,13 +178,17 @@ vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, Portal
     int axis = w.getMeta(c.x, c.y, c.z) & 1;
     return vec3(c.x + (axis ? 1.5f : 0.5f), (float)c.y, c.z + (axis ? 0.5f : 1.5f));
   }
-  // 2. build one, on safe ground (the original's height ranges, doubled for the 256-tall band)
+  // 2. build one, the same size and way round as the portal you came through (so its window lines up), on safe
+  //    ground (the original's height ranges, doubled for the 256-tall band)
+  ow = clampv(ow, 1, 21); oh = clampv(oh, 2, 21); axis &= 1;
+  const int fw = ow + 2, fh = oh + 2;
   int bx = ifloor(x), bz = ifloor(z), base = dimBase(dim), by = -1;
+  auto at = [&](int a, int dy, int b) { return axis ? ivec3(bx + b, dy, bz + a) : ivec3(bx + a, dy, bz + b); };   // a: along the portal, b: across
   auto solid = [&](int yy) { return R.tSolid[w.getBlock(bx, yy, bz)] != 0; };
   if (dim == DIM_NETHER) {
     for (int y = base + 24; y < base + 200 && by < 0; y++) {
       bool ok = true;
-      for (int dx = -1; dx <= 3 && ok; dx++) for (int dy = 0; dy < 5 && ok; dy++) if (w.getBlock(bx + dx, y + dy, bz) != AIR) ok = false;
+      for (int da = -1; da < fw && ok; da++) for (int dy = 0; dy < fh && ok; dy++) { ivec3 q = at(da, y + dy, 0); if (w.getBlock(q.x, q.y, q.z) != AIR) ok = false; }
       if (ok && solid(y - 1)) by = y;
     }
     if (by < 0) by = base + 90;
@@ -202,17 +206,21 @@ vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, Portal
   BlockId floor = R.blockId(dim == DIM_AETHER ? "skystone" : (dim == DIM_NETHER || dim == DIM_END) ? "obsidian" : "cobblestone");
   if (ps) ps->guard++;
   // clear space + platform
-  for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 4; dx++) {
-    w.setBlock(bx + dx, by - 1, bz + dz, floor, 0);
-    for (int dy = 0; dy < 6; dy++) w.setBlock(bx + dx, by + dy, bz + dz, AIR, 0);
+  for (int db = -2; db <= 2; db++) for (int da = -2; da <= fw; da++) {
+    ivec3 q = at(da, by - 1, db);
+    w.setBlock(q.x, q.y, q.z, floor, 0);
+    for (int dy = 0; dy < fh + 1; dy++) w.setBlock(q.x, by + dy, q.z, AIR, 0);
   }
-  // frame 4 wide x 5 tall in the X plane, opening 2 x 3, its foot set into the floor (walk straight in)
-  for (int dx = 0; dx < 4; dx++) for (int dy = 0; dy < 5; dy++) {
-    bool edge = dx == 0 || dx == 3 || dy == 0 || dy == 4;
-    w.setBlock(bx + dx, by - 1 + dy, bz, edge ? K.frame : K.portal, 0, SetFlags::Urgent);
+  // the frame (4 x 5 for Minecraft's 2 x 3 opening), its foot set into the floor (walk straight in)
+  for (int da = 0; da < fw; da++) for (int dy = 0; dy < fh; dy++) {
+    bool edge = da == 0 || da == fw - 1 || dy == 0 || dy == fh - 1;
+    ivec3 q = at(da, by - 1 + dy, 0);
+    w.setBlock(q.x, q.y, q.z, edge ? K.frame : K.portal, edge ? 0 : (u8)axis, SetFlags::Urgent);
   }
   if (ps) ps->guard--;
-  return vec3(bx + 1.5f, (float)by, bz + 1.6f);
+  DQ_LOG("portal built at %d,%d,%d: opening %dx%d, axis %d", bx, by, bz, ow, oh, axis);
+  vec3 mid = vec3(at(1, by, 0)) + (axis ? vec3(1.6f, 0, ow * 0.5f) : vec3(ow * 0.5f, 0, 1.6f));   // in front of the opening's middle
+  return mid;
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -542,7 +550,8 @@ void PortalSystem::prelink(const PortalWindow& w, const Pending& p) {
   World& W = lv.world(p.realm);
   int cx = ifloor(p.x) >> 4, cz = ifloor(p.z) >> 4;
   for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++) if (!W.chunk(p.dim, cx + dx, cz + dz)) return;   // not there yet
-  vec3 pos = arrivePortal(W, p.dim, p.x, p.z, p.kind, this);
+  const int ow = (w.axis == 1 ? w.hi.z - w.lo.z : w.hi.x - w.lo.x) + 1, oh = w.hi.y - w.lo.y + 1;
+  vec3 pos = arrivePortal(W, p.dim, p.x, p.z, p.kind, this, ow, oh, w.axis == 1 ? 1 : 0);
   ivec3 there;
   if (!portalAnchor(W, pos, there) && !portalAnchor(W, pos - vec3(1, 0, 1), there)) { failed.insert(w.key); return; }
   World& Here = lv.world(w.realm);

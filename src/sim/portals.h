@@ -96,7 +96,8 @@ bool portalAnchor(const World& w, vec3 p, ivec3& out);                 // portal
 vec3 portalStand(const World& w, ivec3 anchor);
 int portalTargetDim(int fromDim, PortalKind k);                        // Overworld <-> Depths / Skylands
 // find a portal of `kind` near (x, z) in band `dim`, or build one on safe ground; returns where to stand
-vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, class PortalSystem* idx = nullptr);
+// ow x oh: the opening to build, axis 0 along x / 1 along z (the portal you came through, so its window lines up)
+vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, class PortalSystem* idx = nullptr, int ow = 2, int oh = 3, int axis = 0);
 inline ivec3 faceNormal(int face) {   // 0..5 = +x -x +y -y +z -z (BlockDef::faces order)
   static const ivec3 N[6] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
   return face >= 0 && face < 6 ? N[face] : ivec3(0);
@@ -183,7 +184,7 @@ private:
   void swap(Entity& e, const PortalWindow& w, const PortalDest& d, bool mirror);
   void ensureEndPlatform(World& w);
   bool flatDest(const PortalWindow& w, PortalDest& d);
-  friend vec3 arrivePortal(World&, int, double, double, PortalKind, PortalSystem*);
+  friend vec3 arrivePortal(World&, int, double, double, PortalKind, PortalSystem*, int, int, int);
 };
 
 PortalSystem* portalSystem(Level& lv);   // nullptr if not running
