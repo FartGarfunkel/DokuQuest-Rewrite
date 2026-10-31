@@ -5,6 +5,7 @@
 #include "sim/combat.h"
 #include "sim/rules.h"
 #include "sim/worldsys.h"
+#include "gen/structures_api.h"
 #include <random>
 #include <regex>
 #include <set>
@@ -154,6 +155,17 @@ static void registerBuiltinCommands() {
     std::string m; for (auto& s : a) m += (m.empty() ? "" : " ") + s;
     c.lv.fx->message(0, "[" + c.p.name + "] " + m, "chat");
     return "";
+  });
+  C("locate", "<structure, e.g. end_city, village, nether_fortress>", "Find the nearest structure of a kind", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
+    if (a.empty() || !c.lv.gen) throw CommandUsage{};
+    const std::string kind = toLower(a[0]);
+    const int here = dimOfY(ifloor(c.p.pos.y));
+    for (int dim : {here, (int)DIM_OVERWORLD, (int)DIM_NETHER, (int)DIM_END, (int)DIM_AETHER}) {
+      if (const StructurePlan* s = locateStructure(*c.lv.gen, dim, kind, ifloor(c.p.pos.x), ifloor(c.p.pos.z), 16))
+        return strFormat("%s at %d, %d, %d (%d blocks away)", s->name.empty() ? kind.c_str() : s->name.c_str(), s->cx, s->y, s->cz,
+                         dim == here ? (int)std::lround(std::hypot(s->cx - c.p.pos.x, s->cz - c.p.pos.z)) : -1);
+    }
+    return "No " + kind + " found nearby";
   });
   C("seed", "", "Show the world seed", false, [](CommandCtx& c, std::vector<std::string>&) -> std::string {
     return "Seed: " + (c.lv.info.seedText.empty() ? std::to_string(c.lv.info.seed) : c.lv.info.seedText);

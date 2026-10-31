@@ -116,7 +116,7 @@ void SP::fill(int x0, int y0, int z0, int x1, int y1, int z1, std::string_view k
 }
 
 int SP::chest(int x, int y, int z, int f, const std::string& kind) {
-  int i = put(x, y, z, "chest", (f + 2) & 3);
+  int i = put(x, y, z, "chest", (2 - f) & 3);   // the placing meta: 0 S, 1 E, 2 N, 3 W (east and west ran backwards)
   if (i >= 0) { Mulberry32 r(hash32(x, y + S.hashDy, z, (i32)S.seed)); setEntity(i, json{{"type", "chest"}, {"items", structLoot(kind, r)}}); }
   return i;
 }

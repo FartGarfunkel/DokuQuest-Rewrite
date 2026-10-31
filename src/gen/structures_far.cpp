@@ -279,9 +279,12 @@ static void sanctumBuild(ChunkWriter& w, const StructurePlan& S) {
   P.chest(cx, y, cz, 2, "sky_sanctum");
 }
 
-// ---- End cities (theend.js): purpur towers out on the islands, some with a ship moored beside them ----
+// ---- End cities: a purpur hall on an outer island, its tower rising in stages to a crowned top room, bridges
+//      reaching out from it to hanging side towers, and often a ship moored off the top with the wings aboard and a
+//      dragon's head on its bow (our own take on Minecraft's, which grow piece by piece)
 constexpr int END_CITY_REG = 360;
-struct CityExt { int floors, dir; bool ship; };
+struct CityBranch { int dir, level, len, segs; };
+struct CityExt { int floors, dir; bool ship; std::vector<CityBranch> branches; };
 static bool endCityPlace(const StructureIndex&, const TerrainQuery& t, int rx, int rz, StructurePlan& S) {
   const EndGen* g = endOf(t); if (!g) return false;
   Mulberry32 rnd(lairSeed(t.seed(), rx, rz, 7701));
@@ -292,79 +295,125 @@ static bool endCityPlace(const StructureIndex&, const TerrainQuery& t, int rx, i
     const int x = x0 + jsRound((rnd() - 0.5) * 60), z = z0 + jsRound((rnd() - 0.5) * 60);
     EndGen::Isle c; if (!g->island(x, z, c) || c.top - c.bot < 8) continue;
     bool ok = true;
-    for (auto [dx, dz] : {std::pair{5, 5}, {-5, 5}, {5, -5}, {-5, -5}}) { EndGen::Isle o; if (!g->island(x + dx, z + dz, o) || std::abs(o.top - c.top) > 3) ok = false; }
+    for (auto [dx, dz] : {std::pair{6, 6}, {-6, 6}, {6, -6}, {-6, -6}}) { EndGen::Isle o; if (!g->island(x + dx, z + dz, o) || std::abs(o.top - c.top) > 3) ok = false; }
     if (!ok) continue;
     auto e = std::make_shared<CityExt>(); e->floors = 3 + jsFloor(rnd() * 3); e->dir = jsFloor(rnd() * 4); e->ship = rnd() < 0.65;
-    const int reach = e->ship ? 26 : 7;
+    const int nb = 1 + jsFloor(rnd() * 2.2);
+    for (int k = 0, d = jsFloor(rnd() * 4); k < 4 && (int)e->branches.size() < nb; k++, d = (d + 1) & 3) {
+      if (e->ship && d == e->dir) continue;
+      if (d == 2 && rnd() < 0.7) continue;   // the door side stays open
+      e->branches.push_back({d, jsFloor(rnd() * (e->floors - 1)), 9 + jsFloor(rnd() * 6), 2 + jsFloor(rnd() * 2)});
+    }
+    const int reach = 34;
     S.id = "e" + std::to_string(rx) + "_" + std::to_string(rz); S.seed = lairSeed(t.seed(), rx, rz, 7702); S.name = "an End city";
     S.cx = x; S.cz = z; S.y = c.top + 1; S.hashDy = -END_DY; S.x0 = x - reach; S.x1 = x + reach; S.z0 = z - reach; S.z1 = z + reach;
-    S.data = {{"roofY", S.y + e->floors * 6}, {"ship", e->ship}, {"dir", e->dir}, {"floors", e->floors}};
+    S.data = {{"roofY", S.y + 6 + e->floors * 5}, {"ship", e->ship}, {"dir", e->dir}, {"floors", e->floors}};
     S.ext = e;
     return true;
   }
   return false;
 }
 static void endCityBuild(ChunkWriter& w, const StructurePlan& S) {
-  SP P(w); const CityExt& E = extOf<CityExt>(S); const int x = S.cx, z = S.cz, y = S.y, floors = E.floors;
-  auto wall = [&](int xx, int, int zz) { return std::abs(xx - x) == 3 && std::abs(zz - z) == 3 ? "purpur_pillar" : "purpur_block"; };
-  // footing: a broad purpur base, its legs reaching down into the island
-  P.fill(x - 5, y - 1, z - 5, x + 5, y - 1, z + 5, "purpur_block");
-  for (auto [dx, dz] : {std::pair{-5, -5}, {5, -5}, {-5, 5}, {5, 5}}) for (int yy = y - 2; yy > y - 10; yy--) { const BlockId id = P.get(x + dx, yy, z + dz); if (id != AIR && id != NOBLOCK && tSolid(id)) break; P.put(x + dx, yy, z + dz, "purpur_pillar"); }
-  // the tower: a hollow column with a floor every six blocks, lit with end rods, windows of magenta glass
-  const int topY = y + floors * 6;
-  P.fillf(x - 3, y, z - 3, x + 3, topY, z + 3, wall);
-  P.fill(x - 2, y, z - 2, x + 2, topY - 1, z + 2, "air");
-  for (int f = 0; f < floors; f++) {
-    const int fy = y + f * 6;
-    if (f > 0) P.fill(x - 2, fy, z - 2, x + 2, fy, z + 2, "purpur_block");
-    P.put(x, fy + 5, z, "end_rod");
-    for (auto [dx, dz] : {std::pair{0, -3}, {3, 0}, {0, 3}, {-3, 0}}) if (!(f == 0 && dz == 3)) { P.put(x + dx, fy + 2, z + dz, "magenta_stained_glass"); P.put(x + dx, fy + 3, z + dz, "magenta_stained_glass"); }
-  }
-  // a ladder up the north wall, through a gap in each floor
-  for (int f = 1; f <= floors; f++) P.put(x, y + f * 6, z - 2, "air");
-  P.ladder(x, y, topY, z - 2, 0);
-  // the door
-  P.fill(x, y, z + 3, x, y + 1, z + 3, "air");
-  P.put(x, y - 1, z + 4, "purpur_block"); P.put(x, y - 1, z + 5, "purpur_block");
-  // the room at the top: open to the sky, a low wall of end stone bricks, its chests
-  P.fill(x - 5, topY, z - 5, x + 5, topY, z + 5, "purpur_block");
-  P.fillf(x - 5, topY + 1, z - 5, x + 5, topY + 1, z + 5, [&](int xx, int, int zz) { return std::abs(xx - x) == 5 || std::abs(zz - z) == 5 ? "end_stone_bricks" : "air"; });
-  P.fill(x - 4, topY + 2, z - 4, x + 4, topY + 6, z + 4, "air");
-  P.put(x, topY, z - 2, "ladder", 0);
-  for (auto [dx, dz] : {std::pair{-5, -5}, {5, -5}, {-5, 5}, {5, 5}}) { for (int yy = topY + 1; yy <= topY + 4; yy++) P.put(x + dx, yy, z + dz, "purpur_pillar"); P.put(x + dx, topY + 5, z + dz, "end_rod"); }
-  P.chest(x - 4, topY + 1, z + 4, 0, "end_city"); P.chest(x + 4, topY + 1, z + 4, 0, "end_city"); P.chest(x + 4, topY + 1, z - 4, 2, "end_city");
-  // the ship, moored off one side at the height of the roof, with a bridge across to it
-  if (!E.ship) return;
+  SP P(w); const CityExt& E = extOf<CityExt>(S); const int x = S.cx, z = S.cz, y = S.y;
   static const int D[4][2] = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
+  auto wallOf = [](int cx, int cz, int half) { return [=](int xx, int, int zz) { return std::abs(xx - cx) == half && std::abs(zz - cz) == half ? "purpur_pillar" : "purpur_block"; }; };
+  // a hollow storey: purpur walls (pillars at the corners), an end-stone-brick floor, magenta windows, an end rod light
+  auto storey = [&](int cx, int cz, int y0, int h, int half, bool floor) {
+    P.fillf(cx - half, y0, cz - half, cx + half, y0 + h - 1, cz + half, wallOf(cx, cz, half));
+    P.fill(cx - half + 1, y0 + (floor ? 1 : 0), cz - half + 1, cx + half - 1, y0 + h - 1, cz + half - 1, "air");
+    if (floor) P.fill(cx - half + 1, y0, cz - half + 1, cx + half - 1, y0, cz + half - 1, "end_stone_bricks");
+    for (int d = 0; d < 4; d++) for (int yy = y0 + 2; yy <= std::min(y0 + 3, y0 + h - 2); yy++) P.put(cx + D[d][0] * half, yy, cz + D[d][1] * half, "magenta_stained_glass");
+    P.put(cx, y0 + h - 1, cz, "end_rod");
+  };
+  // a crown: a top room open at the sides, a parapet, a stepped purpur roof and a spire of end rods
+  auto crown = [&](int cx, int cz, int y0, int half, bool loot) {
+    P.fill(cx - half, y0, cz - half, cx + half, y0, cz + half, "purpur_block");
+    P.fillf(cx - half, y0 + 1, cz - half, cx + half, y0 + 1, cz + half, [&](int xx, int, int zz) { return std::abs(xx - cx) == half || std::abs(zz - cz) == half ? "end_stone_bricks" : "air"; });
+    P.fill(cx - half + 1, y0 + 2, cz - half + 1, cx + half - 1, y0 + 4, cz + half - 1, "air");
+    for (auto [dx, dz] : {std::pair{-1, -1}, {1, -1}, {-1, 1}, {1, 1}}) for (int yy = y0 + 1; yy <= y0 + 4; yy++) P.put(cx + dx * half, yy, cz + dz * half, "purpur_pillar");
+    for (int k = 0; k <= half; k++) {   // the roof, stepping in
+      const int r = half - k, ry = y0 + 5 + k;
+      P.fillf(cx - r, ry, cz - r, cx + r, ry, cz + r, [&](int xx, int, int zz) { return std::abs(xx - cx) == r || std::abs(zz - cz) == r ? "purpur_block" : "air"; });
+    }
+    for (int yy = y0 + 6 + half; yy <= y0 + 8 + half; yy++) P.put(cx, yy, cz, "end_rod");
+    for (auto [dx, dz] : {std::pair{-1, -1}, {1, -1}, {-1, 1}, {1, 1}}) P.put(cx + dx * half, y0 + 5, cz + dz * half, "end_rod");
+    if (loot) { P.chest(cx - half + 1, y0 + 1, cz + half - 1, 0, "end_city"); P.chest(cx + half - 1, y0 + 1, cz - half + 1, 2, "end_city"); }
+  };
+  // the hall: an 11-wide two-storey base, its legs reaching down into the island
+  P.fill(x - 6, y - 1, z - 6, x + 6, y - 1, z + 6, "purpur_block");
+  for (auto [dx, dz] : {std::pair{-6, -6}, {6, -6}, {-6, 6}, {6, 6}}) for (int yy = y - 2; yy > y - 12; yy--) { const BlockId id = P.get(x + dx, yy, z + dz); if (id != AIR && id != NOBLOCK && tSolid(id)) break; P.put(x + dx, yy, z + dz, "purpur_pillar"); }
+  storey(x, z, y - 1, 6, 5, true);
+  P.fill(x - 4, y + 5, z - 4, x + 4, y + 5, z + 4, "purpur_block");
+  P.fill(x, y, z + 5, x, y + 2, z + 5, "air"); P.fill(x - 1, y, z + 5, x - 1, y + 1, z + 5, "air"); P.fill(x + 1, y, z + 5, x + 1, y + 1, z + 5, "air");   // the door
+  P.put(x, y - 1, z + 6, "purpur_block"); P.put(x, y - 1, z + 7, "purpur_block");
+  P.chest(x - 4, y, z - 4, 2, "end_city");
+  // the tower: storeys of five on the hall, a ladder up the inside of its north wall through every floor
+  const int tb = y + 5, topY = tb + E.floors * 5;
+  for (int f = 0; f < E.floors; f++) storey(x, z, tb + f * 5, 5, 3, true);
+  for (int yy = y; yy < topY; yy++) { P.put(x, yy, z - 2, "air"); }
+  P.ladder(x, y, topY, z - 3 + 1, 0);
+  crown(x, z, topY, 5, true);
+  P.put(x, topY, z - 2, "ladder", 0);
+  // the bridges and their hanging towers
+  for (const CityBranch& b : E.branches) {
+    const int ax = D[b.dir][0], az = D[b.dir][1], sx = -az, sz = ax, by = tb + b.level * 5;
+    P.fill(x + ax * 3, by + 1, z + az * 3, x + ax * 3, by + 2, z + az * 3, "air");   // a doorway out of the tower
+    for (int k = 4; k <= 3 + b.len; k++) {
+      const int bx = x + ax * k, bz = z + az * k;
+      P.put(bx, by, bz, "purpur_block"); P.put(bx + sx, by, bz + sz, "end_stone_bricks"); P.put(bx - sx, by, bz - sz, "end_stone_bricks");
+      P.put(bx + sx, by + 1, bz + sz, "purpur_slab"); P.put(bx - sx, by + 1, bz - sz, "purpur_slab");
+      for (int yy = by + 1; yy <= by + 3; yy++) P.put(bx, yy, bz, "air");
+      if (k % 4 == 0) { P.put(bx + sx, by + 2, bz + sz, "end_rod"); P.put(bx - sx, by + 2, bz - sz, "end_rod"); }
+    }
+    const int cx = x + ax * (b.len + 7), cz = z + az * (b.len + 7);
+    // hanging under: a tapering keel of purpur
+    for (int k = 1; k <= 4; k++) { const int r = 3 - (k > 1 ? k - 1 : 0); if (r < 0) break; P.fill(cx - r, by - k, cz - r, cx + r, by - k, cz + r, "purpur_block"); }
+    for (int f = 0; f < b.segs; f++) storey(cx, cz, by + f * 5, 5, 3, true);
+    P.fill(cx - ax * 3, by + 1, cz - az * 3, cx - ax * 3, by + 2, cz - az * 3, "air");   // its door from the bridge
+    const int ctop = by + b.segs * 5;
+    for (int yy = by + 1; yy < ctop; yy++) P.put(cx + ax * 2, yy, cz + az * 2, "air");
+    P.ladder(cx + ax * 2, by + 1, ctop, cz + az * 2, b.dir);
+    crown(cx, cz, ctop, 4, true);
+  }
+  // the ship, moored off the ship side at the height of the top room, a bridge across to it
+  if (!E.ship) return;
   const int ax = D[E.dir][0], az = D[E.dir][1], sx = -az, sz = ax;   // along the ship, and across it
-  const int cx = x + ax * 18, cz = z + az * 18, yS = topY;
+  const int cx = x + ax * 20, cz = z + az * 20, yS = topY;
   auto at = [&](int i, int j) { return std::pair{cx + ax * i + sx * j, cz + az * i + sz * j}; };
-  for (int k = 6; k <= 13; k++) { const int bx = x + ax * k, bz = z + az * k; P.put(bx, yS, bz, "purpur_block"); P.put(bx + sx, yS, bz + sz, "purpur_slab"); P.put(bx - sx, yS, bz - sz, "purpur_slab"); }
-  P.put(x + ax * 5, yS + 1, z + az * 5, "air");
-  // the hull: pointed at the bow, square at the stern
-  for (int i = -7; i <= 7; i++) {
-    const int hw = i >= 6 ? 0 : i >= 4 || i <= -6 ? 1 : 2;
+  for (int k = 6; k <= 12; k++) { const int bx = x + ax * k, bz = z + az * k; P.put(bx, yS, bz, "purpur_block"); P.put(bx + sx, yS, bz + sz, "purpur_slab"); P.put(bx - sx, yS, bz - sz, "purpur_slab"); }
+  P.fill(x + ax * 5, yS + 1, z + az * 5, x + ax * 5, yS + 2, z + az * 5, "air");
+  // the hull: pointed at the bow, square at the stern, a keel underneath
+  for (int i = -8; i <= 8; i++) {
+    const int hw = i >= 7 ? 0 : i >= 5 || i <= -7 ? 1 : 2;
     for (int j = -hw; j <= hw; j++) {
       auto [hx, hz] = at(i, j);
-      P.put(hx, yS - 2, hz, std::abs(j) < hw || hw == 0 ? "purpur_block" : "air");
+      if (std::abs(j) <= hw - 1 || hw == 0) P.put(hx, yS - 3, hz, "purpur_block");
+      P.put(hx, yS - 2, hz, std::abs(j) < hw || hw == 0 ? "purpur_block" : "purpur_pillar");
       P.put(hx, yS - 1, hz, std::abs(j) == hw ? "purpur_block" : "end_stone_bricks");
-      P.put(hx, yS, hz, std::abs(j) == hw || std::abs(i) == 7 ? "purpur_block" : "purpur_slab");
-      for (int yy = yS + 1; yy <= yS + 9; yy++) P.put(hx, yy, hz, "air");
-      if (std::abs(j) == hw && std::abs(i) < 7) P.put(hx, yS + 1, hz, "purpur_slab");
+      P.put(hx, yS, hz, std::abs(j) == hw || std::abs(i) == 8 ? "purpur_block" : "purpur_slab");
+      for (int yy = yS + 1; yy <= yS + 11; yy++) P.put(hx, yy, hz, "air");
+      if (std::abs(j) == hw && std::abs(i) < 8) P.put(hx, yS + 1, hz, "purpur_slab");
     }
   }
-  // the gap in the rail where the bridge comes aboard
-  { auto [gx, gz] = at(-8, 0); P.put(gx, yS, gz, "purpur_block"); auto [hx, hz] = at(-7, 0); P.put(hx, yS, hz, "purpur_slab"); P.put(hx, yS + 1, hz, "air"); }
-  // the mast and its sail
-  for (int yy = yS + 1; yy <= yS + 9; yy++) { auto [mx, mz] = at(1, 0); P.put(mx, yy, mz, "purpur_pillar"); }
-  for (int yy = yS + 4; yy <= yS + 8; yy++) for (int j = -2; j <= 2; j++) if (j) { auto [ux, uz] = at(1, j); P.put(ux, yy, uz, "magenta_wool"); }
-  { auto [lx, lz] = at(3, 0); P.put(lx, yS + 1, lz, "end_rod"); }
-  // the hold: down a hatch at the stern, the chest with the wings
-  auto [cx2, cz2] = at(-4, 0);
+  { auto [gx, gz] = at(-9, 0); P.put(gx, yS, gz, "purpur_block"); auto [hx, hz] = at(-8, 0); P.put(hx, yS, hz, "purpur_slab"); P.put(hx, yS + 1, hz, "air"); }
+  // two masts and their sails, an end rod lamp on the bow
+  for (int m : {1, -4}) {
+    for (int yy = yS + 1; yy <= yS + 10; yy++) { auto [mx, mz] = at(m, 0); P.put(mx, yy, mz, "purpur_pillar"); }
+    for (int yy = yS + 4; yy <= yS + 9; yy++) for (int j = -2; j <= 2; j++) if (j && (yy < yS + 9 || std::abs(j) < 2)) { auto [ux, uz] = at(m, j); P.put(ux, yy, uz, "magenta_wool"); }
+  }
+  { auto [lx, lz] = at(5, 0); P.put(lx, yS + 1, lz, "end_rod"); }
+  // the dragon's head on the bow, looking out ahead
+  { auto [hx, hz] = at(8, 0); const int i = P.put(hx, yS + 1, hz, "mob_head");
+    const int rot = ((int)std::lround(std::atan2((double)-ax, (double)-az) / (TAU / 16)) % 16 + 16) % 16;
+    if (i >= 0) P.setEntity(i, json{{"type", "head"}, {"mob", "ender_dragon"}, {"rot", rot}, {"item", {{"id", "ender_dragon_head"}, {"n", 1}}}}); }
+  // the wings: in an item frame on the after mast, facing the stern
+  { auto [fx, fz] = at(-5, 0); const int i = P.put(fx, yS + 2, fz, "item_frame", (u8)E.dir);
+    if (i >= 0) P.setEntity(i, json{{"type", "frame"}, {"item", {{"id", "elytra"}, {"n", 1}}}, {"rot", 0}}); }
+  // the hold: two chests below the deck at the stern, through a hatch
+  auto [cx2, cz2] = at(-6, 0);
   P.put(cx2, yS, cz2, "air");
-  const int i = P.chest(cx2, yS - 1, cz2, E.dir, "end_city");
-  if (i >= 0) if (json* be = P.entity(i)) if (be->contains("items")) { json& it = (*be)["items"]; int s = 13; while (!it[s].is_null() && s < 26) s++; it[s] = json{{"id", "elytra"}, {"n", 1}}; }
-  auto [k1x, k1z] = at(-3, 0); P.chest(k1x, yS - 1, k1z, E.dir, "end_city");
+  P.chest(cx2, yS - 1, cz2, E.dir, "end_city");
+  auto [k1x, k1z] = at(-2, 0); P.chest(k1x, yS - 1, k1z, E.dir, "end_city");
 }
 
 // ---- registration ----
