@@ -39,7 +39,8 @@ public:
   double t = 0;                  // this controller's clock (the original's g.time)
   double lastJump = -10, interactAt = -10, carryHint = -10;
   bool ledgeTip = false, chewTip = false;
-  float fallDistSeen = 0;        // the fall we last wrote to Entity::fallDist
+  float fallDistSeen = 0;
+  float breathAcc = 0;           // a breath of fog in the cold, every few seconds        // the fall we last wrote to Entity::fallDist
   json we = json::object();      // WorldEdit: pos1, pos2, clip, undo, redo
   std::vector<std::string> chatHist;
 

@@ -43,7 +43,7 @@ static void onScreenOpen(App& a, const json& args) {
     if (io.kind == "enchant" && io.hasPos) { ivec3 p = io.pos; make = [p] { return makeEnchantScreen(p); }; }
     else if (io.kind == "brew" && io.hasPos) { ivec3 p = io.pos; make = [p] { return makeBrewScreen(p); }; }
   }
-  else if (kind == "stonecutter") io.mode = "stonecutter";
+  else if (kind == "stonecutter") { io.mode = "stonecutter"; io.kind = o.value("kind", ""); }   // kind "forge": the Tool Forge
   else if (kind == "machine") { io.mode = "machine"; if (!io.hasPos) return; }
   else if (kind == "sign") { if (!io.hasPos) return; ivec3 p = io.pos; make = [p] { return makeSignScreen(p); }; }
   else if (kind == "lectern") { if (!io.hasPos) return; ivec3 p = io.pos; make = [p] { return makeLecternScreen(p); }; }

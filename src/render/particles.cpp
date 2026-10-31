@@ -152,6 +152,18 @@ void ParticleSystem::spawn(const std::string& kind, vec3 pos, int count, const j
     }
     return;
   }
+  if (kind == "breath") {   // a puff of breath in the cold, out along where you face
+    u16 t = (u16)tile("smoke_puff");
+    vec3 dir(num("dx", 0), 0, num("dz", 0));
+    for (int i = 0; i < count; i++) {
+      Particle q; q.tile = t; q.light = lightAt(pos); q.wind = wd * 0.5f;
+      q.p = pos + vec3(rs() * 0.03f, rs() * 0.03f, rs() * 0.03f);
+      q.v = dir * (0.45f + rnd() * 0.3f) + vec3(rs() * 0.08f, 0.04f + rnd() * 0.06f, rs() * 0.08f);
+      q.life = q.max = 0.8f + rnd() * 0.4f; q.size = q.size0 = 0.022f; q.grow = 2.4f; q.grav = -0.02f;
+      add(q);
+    }
+    return;
+  }
   if (kind == "explosion") {   // blockfx.js explode: a cloud of smoke
     float r = num("r", 3);
     u16 t = (u16)tile("smoke");

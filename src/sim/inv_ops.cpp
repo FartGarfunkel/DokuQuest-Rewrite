@@ -124,8 +124,8 @@ void InvSession::refresh() {
       title = b->name;
     } else ok = false;
   } else if (o.mode == "stonecutter") {
-    title = "Stonecutter";
-    cutOpts = stonecutterOptions(cut[0].empty() ? std::string() : cut[0].id);
+    title = o.kind == "forge" ? "Tool Forge" : "Stonecutter";
+    cutOpts = cutterOptions(o.kind, cut[0].empty() ? std::string() : cut[0].id);
   } else if (o.mode == "station") {
     const BlockDef* b = o.hasPos && w ? &reg().block(w->getBlock(o.pos.x, o.pos.y, o.pos.z)) : nullptr;
     if (o.hasPos && b && !b->has("station")) ok = false;   // the anvil broke, or someone took the table
@@ -226,7 +226,7 @@ bool InvSession::accepts(Grp g, int i, const ItemStack& s) const {
     case Grp::Furn: return i == 0 ? true : i == 1 ? fuelValue(s.id) > 0 : false;
     case Grp::Out: case Grp::SOut: return false;
     case Grp::Mach: { const json* t = machineTable(machKind); return i == 0 && t && t->contains(s.id); }
-    case Grp::Cut: return !stonecutterOptions(s.id).empty();
+    case Grp::Cut: return !cutterOptions(o.kind, s.id).empty();
     default: return true;
   }
 }
@@ -386,7 +386,7 @@ void InvSession::quickMove(Grp g, int i) {
     for (int k : {0, 1}) if (sta[k].empty() || stacksMerge(sta[k], s)) { std::vector<ItemStack> tmp{sta[k]}; int left = into(tmp, s); sta[k] = tmp[0]; if (left <= 0) s.clear(); return; }
   }
   if (o.mode == "stonecutter") {
-    if (!stonecutterOptions(s.id).empty() && (cut[0].empty() || stacksMerge(cut[0], s))) { std::vector<ItemStack> tmp{cut[0]}; int left = into(tmp, s); cut[0] = tmp[0]; if (left <= 0) s.clear(); return; }
+    if (!cutterOptions(o.kind, s.id).empty() && (cut[0].empty() || stacksMerge(cut[0], s))) { std::vector<ItemStack> tmp{cut[0]}; int left = into(tmp, s); cut[0] = tmp[0]; if (left <= 0) s.clear(); return; }
   }
   if (o.mode == "furnace" && ok) {
     auto one = [&](int k) { std::vector<ItemStack> tmp{furn[k]}; int left = into(tmp, s); furn[k] = tmp[0]; if (left <= 0) s.clear(); };
@@ -543,14 +543,15 @@ void InvSession::cutPick(int idx, bool all) {
   refresh();
   if (cut[0].empty() || idx < 0 || idx >= (int)cutOpts.size()) return;
   auto opt = cutOpts[idx];
+  const int cost = o.kind == "forge" ? forgeCost(opt.first) : 1;   // the Tool Forge: a head takes one to three
   bool any = false;
-  for (int k = 0; k < (all ? 64 : 1) && !cut[0].empty(); k++) {
+  for (int k = 0; k < (all ? 64 : 1) && !cut[0].empty() && cut[0].n >= cost; k++) {
     ItemStack out(opt.first, opt.second);
     if (!all) {
       if (!p.cursor.empty() && !(stacksMerge(p.cursor, out) && p.cursor.n + out.n <= maxStackOf(out.id))) break;
       if (!p.cursor.empty()) p.cursor.n += out.n; else p.cursor = out;
     } else { ItemStack o2 = out; int left = bagAdd(o2); if (left > 0 && onThrow) { ItemStack t = out; t.n = left; onThrow(t); } }
-    if (--cut[0].n <= 0) cut[0].clear();
+    if ((cut[0].n -= cost) <= 0) cut[0].clear();
     any = true;
   }
   if (!any) return;

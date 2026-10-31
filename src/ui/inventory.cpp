@@ -25,7 +25,7 @@ void drawGearVis(ImDrawList* dl, ImVec2 a, ImVec2 b, const Player& p, int k, boo
 void toggleGearVis(Player& p, int k);
 
 namespace {
-const std::pair<const char*, const char*> BOOK_CATS[] = {{"all", "All"}, {"blocks", "Blocks"}, {"redstone", "Redstone"}, {"tools", "Tools"}, {"armor", "Armor"}, {"food", "Food"}, {"eggs", "Spawn Eggs"}, {"misc", "Other"}};
+const std::pair<const char*, const char*> BOOK_CATS[] = {{"all", "All"}, {"blocks", "Blocks"}, {"redstone", "Redstone"}, {"tools", "Tools"}, {"armor", "Armor"}, {"food", "Food"}, {"eggs", "Spawn Eggs"}, {"forged", "Forged"}, {"misc", "Other"}};
 struct BookState { bool open = false; std::string cat = "all"; bool only = false; std::string query; std::string creativeWorld; };
 BookState& book() { static BookState b; return b; }
 
@@ -35,6 +35,7 @@ bool sameKey(const Hit& x, const Hit& y) { return x.k == y.k && x.g == y.g && x.
 std::string lower(std::string s) { for (auto& c : s) c = (char)tolower((unsigned char)c); return s; }
 std::string creativeCat(const ItemDef& d) {
   if (d.has("spawnEgg")) return "eggs";
+  if (d.has("forged")) return "forged";
   if (d.hasTool || endsWith(d.key, "_hoe") || d.has("shears")) return "tools";
   if (d.has("armor")) return "armor";
   if (isRedstoneItem(&d)) return "redstone";
@@ -483,7 +484,7 @@ public:
     float z = Z(), listW = is * 5 + 8 * z, listH = is * 2.6f;
     float totalW = is + is * 0.3f + is * 0.9f + is * 0.3f + listW;
     float x = p.x + (w - totalW) * 0.5f, y = p.y + is * 0.12f, mid = y + listH * 0.5f;
-    slot(dl, Grp::Cut, 0, ImVec2(x, mid - is * 0.5f), is, "cobblestone");
+    slot(dl, Grp::Cut, 0, ImVec2(x, mid - is * 0.5f), is, o.kind == "forge" ? "iron_ingot" : "cobblestone");
     x += is + is * 0.3f;
     arrow(dl, ImVec2(x, mid - is * 0.3f));
     x += is * 0.9f + is * 0.3f;
@@ -491,7 +492,7 @@ public:
     dl->AddRectFilled(l0, l1, IM_COL32(0, 0, 0, 89));
     bevel(dl, l0, l1, col::slLo, col::slHi, 2 * z);
     const auto& opts = sess->cutOpts;
-    if (opts.empty()) { text(dl, F_SMALL, l0 + ImVec2(6, 6) * z, col::dim, "Put a stone block in to see what it cuts into.", listW - 12 * z); return; }
+    if (opts.empty()) { text(dl, F_SMALL, l0 + ImVec2(6, 6) * z, col::dim, o.kind == "forge" ? "Put in a material (flint, an ingot, a gem, obsidian...) to forge a tool head (a pickaxe or axe head takes 3, a sword or hoe head 2, a shovel head 1). A head and a haft (a stick, bone, cinder rod or steel ingot) make the tool." : "Put a stone block in to see what it cuts into.", listW - 12 * z); return; }
     int rows = ((int)opts.size() + 4) / 5;
     float viewH = listH - 4 * z, maxScroll = std::max(0.f, rows * is - viewH);
     if (isHover(l0, l1)) cutScroll -= ImGui::GetIO().MouseWheel * is;

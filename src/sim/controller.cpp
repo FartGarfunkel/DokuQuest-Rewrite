@@ -1,6 +1,7 @@
 // sim/controller.cpp — port of game/local.js (LocalPlayer.update/interact/use/mining/breaking/tree
 // felling/breath/fire/falls/drop/pick block), fairplay.js (food over time), itemfix.js (eating for
 // effect, the off hand), blocks2.js (bow and arrows) and blockfx.js (cracks that mend).
+#include "sim/weather.h"
 #include "sim/controller.h"
 #include "sim/vehicles.h"
 #include "sim/effects.h"
@@ -114,12 +115,29 @@ void PlayerController::tickSurvival(float dt, const MoveInfo& mv) {
   // footsteps and a little dust
   if (p.onGround && mv.horizSpeed > 1) {
     p.stepAcc += mv.horizSpeed * dt;
-    if (p.stepAcc > 2.2f) { p.stepAcc = 0; BlockId id = w.getBlock(ifloor(p.pos.x), ifloor(p.pos.y - 0.2f), ifloor(p.pos.z)); if (id) sfxMaterial(lv, R.block(id).sound, "step", p.pos); }
+    if (p.stepAcc > 2.2f) {
+      p.stepAcc = 0; BlockId id = w.getBlock(ifloor(p.pos.x), ifloor(p.pos.y - 0.2f), ifloor(p.pos.z));
+      if (id) {
+        const BlockDef& sb = R.block(id);
+        sfxMaterial(lv, sb.sound, "step", p.pos);
+        // snow, sand and gravel give under each step
+        if (sb.sound == "snow" || sb.sound == "sand" || sb.sound == "gravel") lv.fx->particles("crumbs", p.pos + vec3(0, 0.05f, 0), 3, {{"block", sb.key}, {"speed", 0.35f}, {"grav", 12}});
+      }
+    }
     if (!c.water && (p.dustAcc += dt) > (p.sprinting ? 0.06f : 0.22f)) {   // bits of what you're running on kicked up behind you
       p.dustAcc = 0;
       BlockId under = w.getBlock(ifloor(p.pos.x), ifloor(p.pos.y - 0.2f), ifloor(p.pos.z));
       if (p.sprinting && under && R.tSolid[under]) lv.fx->particles("crumbs", p.pos + vec3(0, 0.1f, 0), 1, {{"block", R.block(under).key}, {"speed", 0.5f}, {"grav", 12}});
       else lv.fx->particles("dust", p.pos, 2, {{"speed", mv.horizSpeed}});
+    }
+  }
+  // your breath fogs in the cold (where snow falls)
+  if (!c.water && !p.dead && (breathAcc += dt) > 2.6f) {
+    breathAcc = (float)rnd() * 0.6f;
+    WeatherSystem* ws = weatherOf(lv);
+    if (ws && ws->precipAt(w, p.pos.x, p.pos.y + p.eye, p.pos.z) == 2) {
+      vec3 L = lookVector(p.yaw, 0);
+      lv.fx->particles("breath", p.pos + vec3(L.x * 0.32f, p.eye - 0.12f, L.z * 0.32f), 3, {{"dx", L.x}, {"dz", L.z}});
     }
   }
   // falling (another system zeroing Entity::fallDist — a seamless crossing, an updraft — cancels the fall)

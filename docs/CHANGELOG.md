@@ -17,6 +17,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Vines, ferns and leaves are green again,** and End rods show.
 - **Flags reach their poles.**
 - **Portals built on the far side match the size of the one you came through,** so the window lines up.
+- **Leather, pelts, hides and saddles aren't paper-flat in your hand any more,** and paper, feathers and maps keep a sliver of body.
 
 **New in the world:**
 
@@ -39,6 +40,21 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Ingots set down stack Vintage Story-style,** four across, each layer turned across the last.
 - **A torch in hand burns,** with a thread of smoke behind you.
 - `/locate <structure>` finds the nearest one of a kind.
+- **Chiseled blocks hold water:** slabs and stairs placed in water keep it in their carved-away part, a bucket fills or empties a chiseled block, and a notch carved under water fills.
+- **Coloured lamps** in 16 colours, the **inverted lamp** (it shines while unpowered), and **iron, gold, lapis and steel bricks.**
+- **Glass doors and trapdoors,** and the **steel set:** a steel door and trapdoor (opened by redstone, and no blast breaks them), a steel fence, and steel-framed glass.
+- **A jar of butterflies** (an empty jar over grass on a bright day), **bluebells** under forest trees, **marigolds** in the meadows, **spinifex** in the redlands, and the **sugar cane bundle.**
+- **The hand sieve:** sift gravel, sand, dirt and the rest right where it lies.
+- **Particles:** sprinting kicks up the ground you run on, a hard landing throws up a ring of it, critical blows burst into stars, and running beasts raise dust.
+
+**Gear and magic:**
+
+- **The Tool Forge:** put in flint, an ingot, a gem, obsidian or emberglass and forge a pickaxe, axe, shovel, sword or hoe head. A head and a haft make the tool: a stick for the plain one, bone for a sturdier one, a cinder rod for a fast, hot one (its blades burn), steel for one that lasts. Ruby, sapphire, obsidian, flint and emberglass tools are new.
+- **A spell in each hand.** The spellbook readies the right hand as before; L, X or right-click readies the left. While your left hand is free (empty, or holding a second staff), it casts with every cast.
+- **The same spell in both hands is a dual cast:** stronger, and dearer.
+- **Two different spells go off together,** a little cheaper, and some pairs fuse where you look: fire and frost make scalding steam, fire and storm plasma, frost and storm hail, life renews you, death drinks, nature snares, and two of one school resonate.
+- **A sword or axe in hand:** use casts your left-hand spell, and the blade carries it for a few seconds (burning, freezing, shocking, draining or snaring blows).
+- **Spells rank up from I to X with use,** each rank a little stronger and cheaper. `/spell` learns, readies and casts them.
 - Removed Herobrine.
 
 ## 1.0.0-alpha.7 — Chisel (October 2026)

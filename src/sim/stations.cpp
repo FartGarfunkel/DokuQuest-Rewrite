@@ -141,6 +141,23 @@ std::vector<std::pair<std::string, int>> stonecutterOptions(const std::string& i
   return out;
 }
 
+std::vector<std::pair<std::string, int>> forgeOptions(const std::string& id) {
+  std::vector<std::pair<std::string, int>> out;
+  if (id.empty()) return out;
+  static const char* ORDER[] = {"pickaxe", "axe", "shovel", "sword", "hoe"};
+  for (const char* t : ORDER)
+    for (auto& d : reg().items) {
+      if (!d.props.contains("forgeHead")) continue;
+      const json& h = d.props["forgeHead"];
+      if (h.value("mat", "") == id && h.value("tool", "") == t) out.push_back({d.key, 1});
+    }
+  return out;
+}
+int forgeCost(const std::string& head) {
+  const ItemDef* d = reg().item(head);
+  return d && d->props.contains("forgeHead") ? std::max(1, d->props["forgeHead"].value("cost", 1)) : 1;
+}
+
 const char* stationHelp(const std::string& kind) {
   if (kind == "anvil") return "Put in a worn tool and its own material (ingots, planks, stones\xE2\x80\xA6), or two of the same tool.";
   if (kind == "grindstone") return "Put in two worn tools of the same kind to join them.";

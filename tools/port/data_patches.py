@@ -129,6 +129,9 @@ _s = _u.spec_from_file_location('mob_heads', pathlib.Path(__file__).with_name('m
 # ---- BTA-inspired blocks (tools/port/bta_blocks.py) ----
 _s = _u.spec_from_file_location('bta_blocks', pathlib.Path(__file__).with_name('bta_blocks.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
 
+# ---- forged tools: heads and hafts, the Tool Forge (tools/port/forging.py) ----
+_s = _u.spec_from_file_location('forging', pathlib.Path(__file__).with_name('forging.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
+
 # ---- the lead (Minecraft's): leads an animal, ties it to a fence post (sim/leads.cpp) ----
 items = json.loads((d / 'items.json').read_text()); tj4 = json.loads((d / 'tiles.json').read_text())
 sh4 = json.loads((d / 'itemshapes.json').read_text()); rj4 = json.loads((d / 'recipes.json').read_text())
