@@ -210,6 +210,7 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
   double density = mid.biome == BIOME_FOREST ? 7 : mid.biome == BIOME_PLAINS ? 0.6 : mid.biome == BIOME_TAIGA ? 4 : mid.biome == BIOME_MOUNTAINS ? 0.8 : 0;
   if (jungle) density = 9;
   if (savanna) density = 0.9;
+  if (btaVariant(mid) == BV_MOSSMIRE) density = 3;   // a swampy wood
   bool bare = (mid.biome == BIOME_FOREST || mid.biome == BIOME_PLAINS) && hashFloat(cx, cz, seed_, 67) < 0.025;
   int n = jsFloor(density) + (rnd() < std::fmod(density, 1.0) ? 1 : 0) + (bare ? 3 : 0);
   for (int i = 0; i < n; i++) {
@@ -222,12 +223,16 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
       continue;
     }
     if (c.biome == BIOME_MOUNTAINS && c.h > 82) continue;
+    const BtaVariant bv = btaVariant(c);
+    if (bv == BV_GLACIER || (bv == BV_REDLANDS && r > 0.45) || (bv == BV_MEADOW && r > 0.3)) continue;   // open country
     u8 type = TREE_OAK;
     if (c.biome == BIOME_TAIGA || (c.biome == BIOME_MOUNTAINS && r < 0.7)) type = c.biome == BIOME_MOUNTAINS && c.humid > 0.15 && c.h < 78 && r < 0.25 ? TREE_CHERRY : r < 0.45 ? TREE_PINE : TREE_SPRUCE;
     else if (jungle) type = r < 0.7 ? TREE_JUNGLE : TREE_OAK;
     else if (savanna) type = TREE_ACACIA;
     else if (c.biome == BIOME_FOREST) type = r < 0.2 ? TREE_BIRCH : c.temp < 0 && r < 0.42 ? TREE_ASPEN : c.humid > 0.25 && r < 0.55 ? TREE_DARK_OAK : c.humid > 0.15 && r > 0.97 ? TREE_AZALEA : TREE_OAK;
     else if (c.biome == BIOME_PLAINS && c.temp < -0.05 && r < 0.4) type = TREE_ASPEN;
+    if (bv == BV_REDLANDS) type = TREE_BIRCH;                              // pale-barked gums standing alone
+    else if (bv == BV_MOSSMIRE) type = r < 0.6 ? TREE_DARK_OAK : TREE_MANGROVE;   // dark, mossy swamp trees
     bool bees = (type == TREE_OAK || type == TREE_BIRCH) && !bare && rnd() < (c.biome == BIOME_PLAINS ? 0.06 : 0.02);
     t.kind = type; t.bare = bare; t.bees = bees;
     list.push_back(t);

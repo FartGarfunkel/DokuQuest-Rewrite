@@ -596,7 +596,10 @@ bool carveBoxes(std::vector<ShapeBox>& out, u8 carve, const ShapeNb& nb) {   // 
       return !((carve >> ((ox << 2) | (oy << 1) | oz)) & 1);
     };
     auto covered = [&](int dx, int dy, int dz) -> bool {
-      if (sib(dx, dy, dz)) return true;   // interior shared face
+      int ox = x + dx, oy = y + dy, oz = z + dz;
+      // inside this block the next octant decides alone: present = an interior face, carved = the notch shows this face.
+      // (Checking the neighbouring BLOCK here hid the notch's inner faces whenever a full block stood beside it.)
+      if (ox >= 0 && ox <= 1 && oy >= 0 && oy <= 1 && oz >= 0 && oz <= 1) return sib(dx, dy, dz);
       if (!fullSolid(nb.id(dx, dy, dz))) return false;
       int hx = dx ? (dx > 0 ? 0 : 1) : x, hy = dy ? (dy > 0 ? 0 : 1) : y, hz = dz ? (dz > 0 ? 0 : 1) : z;
       return !((carveNib(nb, dx, dy, dz) >> ((hx << 2) | (hy << 1) | hz)) & 1);

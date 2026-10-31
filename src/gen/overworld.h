@@ -16,6 +16,17 @@ struct OwColumn {
   double temp = 0, humid = 0;
   float river = 0;      // 1 mid-stream, 0.5 on the banks
 };
+// Biome variants inspired by Better than Adventure (our own designs), carved out of the climate: the hottest, driest
+// savanna turns to Redlands (red sand, spinifex, pale gum trees), the coldest taiga and peaks to Glacier (packed and
+// blue ice, ice spires), mild damp plains to Meadow (flowers everywhere), wet lowland to Mossmire (moss, mud, dark trees).
+enum BtaVariant : u8 { BV_NONE = 0, BV_REDLANDS, BV_GLACIER, BV_MEADOW, BV_MOSSMIRE };
+inline BtaVariant btaVariant(const OwColumn& c) {
+  if (c.biome == BIOME_PLAINS && c.temp > 0.5 && c.humid < -0.18) return BV_REDLANDS;
+  if ((c.biome == BIOME_TAIGA || c.biome == BIOME_MOUNTAINS) && c.temp < -0.58) return BV_GLACIER;
+  if ((c.biome == BIOME_PLAINS || c.biome == BIOME_FOREST) && c.humid > 0.46 && c.temp > -0.15 && c.temp < 0.24 && c.h <= vmap::JS_SEA + 5 && c.h > vmap::JS_SEA) return BV_MOSSMIRE;
+  if (c.biome == BIOME_PLAINS && c.temp > 0.02 && c.temp < 0.26 && c.humid > 0.05 && c.humid < 0.28) return BV_MEADOW;
+  return BV_NONE;
+}
 struct SurfaceMat { BlockId top, filler, under; int fillDepth; };
 
 class OverworldGen : public DimGenerator, public TerrainQuery {

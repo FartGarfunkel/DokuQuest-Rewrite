@@ -123,6 +123,21 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
     if ((below == B.sand || below == B.silver_sand) && c.biome == BIOME_BEACH && r < 0.08) { set(x, y, z, B.marram_grass); continue; }
     // loose stones on hills, beaches and mountain meadows
     if (below >= 0 && B.solid[below] && below != B.water && (c.biome == BIOME_MOUNTAINS || c.biome == BIOME_BEACH || (c.h > JS_SEA + 14 && c.biome != BIOME_DESERT)) && r > 0.988) { set(x, y, z, B.loose_stones); continue; }
+    // the BTA-inspired variants: spinifex and dead bushes on the Redlands, ice spires on the Glacier, moss and orchids in the
+    // Mossmire, flowers all over the Meadow
+    if (below == B.red_sand && btaVariant(c) == BV_REDLANDS) { if (r < 0.12) set(x, y, z, B.dry_grass); else if (r < 0.14) set(x, y, z, B.dead_bush); continue; }
+    if (below == B.packed_ice && btaVariant(c) == BV_GLACIER) {
+      if (r > 0.992) { int h2 = 3 + jsFloor(r2 * 7); for (int k = 0; k < h2 && at(x, y + k, z) == 0; k++) set(x, y + k, z, k > h2 - 3 && B.blue_ice ? B.blue_ice : B.packed_ice); }
+      continue;
+    }
+    if (below == B.moss_block && btaVariant(c) == BV_MOSSMIRE) { if (r < 0.3) set(x, y, z, B.moss_carpet); else if (r < 0.33) set(x, y, z, B.blue_orchid); else if (r < 0.36) set(x, y, z, B.fern); continue; }
+    if (below == B.grass && btaVariant(c) == BV_MEADOW && r < 0.42) {
+      const BlockId fl[] = {B.azure_bluet, B.oxeye_daisy, B.cornflower, B.allium, B.flower_yellow, B.flower_red, B.tall_grass, B.tall_grass, B.lily_of_the_valley};
+      BlockId f = fl[jsFloor((patch * 0.5 + 0.5) * 8.99)];   // flowers in drifts of one kind
+      if (r < 0.08) f = B.tall_grass;
+      if (f) set(x, y, z, f);
+      continue;
+    }
     if (below == B.dirt_with_dry_grass) { if (r < 0.2) set(x, y, z, B.dry_grass); else if (r < 0.205) set(x, y, z, B.dead_bush); continue; }
     if (below == B.dirt_with_rainforest_litter || (jungle && below == B.grass)) {
       // bamboo groves stay out of villages and off other buildings (they'd poke through roofs, roads and walls)

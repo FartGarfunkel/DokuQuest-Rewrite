@@ -86,7 +86,7 @@ const char* biomeName(int b);
 // Block ids the generators place (the original's B.xxx), resolved from the registry once per generator.
 #define DQ_GEN_BLOCKS(X) \
   X(stone) X(dirt) X(grass) X(water) X(sand) X(sandstone) X(snowy_grass) X(clay) X(gravel) X(snow_block) X(mud) X(podzol) \
-  X(coarse_dirt) X(dirt_with_dry_grass) X(dirt_with_coniferous_litter) X(dirt_with_rainforest_litter) X(desert_sand) \
+  X(coarse_dirt) X(red_sand) X(terracotta) X(packed_ice) X(blue_ice) X(dirt_with_dry_grass) X(dirt_with_coniferous_litter) X(dirt_with_rainforest_litter) X(desert_sand) \
   X(desert_stone) X(desert_sandstone) X(silver_sand) X(peat) X(bedrock) X(slate) X(lava) X(ice) X(old_torch) X(tall_grass) \
   X(coal_ore) X(iron_ore) X(copper_ore) X(tin_ore) X(gold_ore) X(lapis_ore) X(diamond_ore) X(mese_ore) X(redstone_ore) \
   X(granite) X(diorite) X(andesite) X(tuff) X(marble) X(limestone) X(calcite) X(dripstone_block) X(emerald_ore) \
