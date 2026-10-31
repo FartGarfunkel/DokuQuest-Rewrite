@@ -5,6 +5,7 @@
 #include "sim/rules.h"
 #include "sim/blockfx.h"
 #include "world/carve_faces.h"
+#include "world/carve_forms.h"
 #include "sim/worldsys.h"
 #include <random>
 
@@ -274,6 +275,7 @@ bool PlayerController::supportOK(BlockId bid, int x, int y, int z, u8 meta) {
   if (bid == B.brown_mushroom || bid == B.red_mushroom || bid == B.amethyst_cluster || bid == B.small_amethyst_bud || bid == B.medium_amethyst_bud ||
       bid == B.large_amethyst_bud || bid == B.loose_stones || bid == B.sea_pickle || bid == B.pointed_dripstone) return R.tSolid[below];
   if (bid == B.cattail) return in(below, {B.sand, B.clay, B.gravel}) || inSoil(below);
+  if (R.tSink[bid]) return R.tSolid[below];   // things set down on a surface (jars...), not plants
   return inSoil(below);
 }
 
@@ -453,7 +455,7 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   if (!p.sneaking && !p.riding) {
     if (FURN_SEAT.count(b.str("furniture"))) { swingArm(); return sitOn(x, y, z); }
     float top, yaw; bool hy;
-    if (!hasHeld && (R.tShape[id] == ShapeKind::Stairs || R.tShape[id] == ShapeKind::Slab) && seatAt(w, x, y, z, top, yaw, hy) && hit.normal.y == 1) return sitOn(x, y, z);
+    if (!hasHeld && (R.tShape[id] == ShapeKind::Stairs || R.tShape[id] == ShapeKind::Slab || w.getCarve(x, y, z)) && seatAt(w, x, y, z, top, yaw, hy) && hit.normal.y == 1) return sitOn(x, y, z);
   }
   if (id == B.bookshelf && id && hasHeld && isBook(held->id) && !p.sneaking) { toastMsg("This bookshelf is full already. Books go in a Bookcase (planks and sticks: P S P / P \xC2\xB7 P / P S P)"); return true; }
   if (b.has("shelf") || b.has("bookcase")) {
@@ -728,6 +730,17 @@ bool seatAt(World& w, int x, int y, int z, float& top, float& yaw, bool& hasYaw)
   if (it != FURN_SEAT.end()) { top = it->second; yaw = PI + FURN_FACE_ANGLE[m & 3]; hasYaw = true; return true; }
   if (reg().tShape[id] == ShapeKind::Stairs && !(m & 4)) { static const float yw[4] = {PI, PI / 2, 0, -PI / 2}; top = 8; yaw = yw[m & 3]; hasYaw = true; return true; }
   if (reg().tShape[id] == ShapeKind::Slab && (m & 7) == 0) { top = 8; yaw = 0; hasYaw = false; return true; }
+  // a chiseled seat (slabs and stairs are chiseled blocks now): the bottom half whole, the top half carved away (a
+  // slab) or only part left standing (a stair's back, which you sit with behind you)
+  if (u8 cv = w.getCarve(x, y, z); cv && reg().tOpaque[id] && !(cv & 0x33) && (cv & 0xCC)) {
+    top = 8; hasYaw = false; yaw = 0;
+    if ((cv & 0xCC) != 0xCC) {
+      float bx = 0, bz = 0;
+      for (int hx = 0; hx < 2; hx++) for (int hz = 0; hz < 2; hz++) if (!(cv & octBit(hx, 1, hz))) { bx += hx - 0.5f; bz += hz - 0.5f; }
+      if (std::fabs(bx) > 0.1f || std::fabs(bz) > 0.1f) { hasYaw = true; yaw = std::atan2(bx, bz); if (std::fabs(bx) > 0.1f && std::fabs(bz) > 0.1f) hasYaw = false; }
+    }
+    return true;
+  }
   return false;
 }
 class SeatEntity : public Entity {

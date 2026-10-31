@@ -77,12 +77,16 @@ public:
   void fill(int x0, int y0, int z0, int x1, int y1, int z1, std::string_view key, int meta = 0) { for (int y = y0; y <= y1; y++) for (int z = z0; z <= z1; z++) for (int x = x0; x <= x1; x++) set(x, y, z, key, meta); }
   int d(int f) const { return (f + r) & 3; }
   void stairs(int lx, int ly, int lz, std::string_view key, int f, bool top = false) { set(lx, ly, lz, key, d(f) | (top ? 4 : 0)); }
-  void face(int lx, int ly, int lz, std::string_view key, int f) { set(lx, ly, lz, key, (d(f) + 2) & 3); }
+  // a block turned to look along local direction f. Furniture models turn with the rotation; blocks with a front picture
+  // (chests, furnaces, jack-o'-lanterns) use the placing meta, whose E and W run the other way (0 S, 1 E, 2 N, 3 W)
+  void face(int lx, int ly, int lz, std::string_view key, int f) { set(lx, ly, lz, key, modelFacing(key) ? (d(f) + 2) & 3 : frontMeta(f)); }
+  int frontMeta(int f) const { return (2 - d(f)) & 3; }
+  static bool modelFacing(std::string_view key) { BlockId id = reg().blockId(std::string(key)); return id && reg().block(id).has("facingModel"); }
   void log(int lx, int ly, int lz, std::string_view key, int axis) { set(lx, ly, lz, key, axis ? ((axis == 1) == !(r & 1) ? 1 : 2) : 0); }
   void door(int lx, int lz, std::string_view key, int f = 2, bool right = false) { const int m = d(f) | (right ? 8 : 0); set(lx, 1, lz, key, m); set(lx, 2, lz, key, m | 16); }
   void bed(int lx, int lz, int f, std::string_view key) { const int m = d(f); set(lx, 1, lz, key, m); set(lx + DXL[f], 1, lz + DZL[f], key, m | 4); }
   void torch(int lx, int ly, int lz, int wall) { static const int T[4] = {3, 2, 4, 1}; set(lx, ly, lz, "torch", T[d(wall)]); }
-  void chest(int lx, int ly, int lz, int f, const std::string& items) { int i = set(lx, ly, lz, "chest", (d(f) + 2) & 3); if (i >= 0) P.setEntity(i, json{{"type", "chest"}, {"items", vLoot(items, rnd)}}); }
+  void chest(int lx, int ly, int lz, int f, const std::string& items) { int i = set(lx, ly, lz, "chest", frontMeta(f)); if (i >= 0) P.setEntity(i, json{{"type", "chest"}, {"items", vLoot(items, rnd)}}); }
   void shutter(int lx, int ly, int lz, int toWall) { if (!st.trapdoor.empty()) set(lx, ly, lz, st.trapdoor, d(toWall) | 4); }
   void flower(int lx, int lz) {
     static const std::vector<std::string> F = strList(SD()["VFLOWERS"]);
@@ -103,7 +107,7 @@ public:
     else { torch(dx - 1, 2, -1, 2); torch(dx + 1, 2, -1, 2); }
     frontPath(dx);
     if (halloween() && hasBlock("jack_o_lantern"))   // October: a jack-o'-lantern each side of the door, faces to the street
-      for (int k : {-2, 2}) { const BlockId g = get(dx + k, 0, -1); if (g != 0 && g != NOBLOCK) set(dx + k, 1, -1, "jack_o_lantern", d(2) & 3); }   // facing meta is legacy again
+      for (int k : {-2, 2}) { const BlockId g = get(dx + k, 0, -1); if (g != 0 && g != NOBLOCK) set(dx + k, 1, -1, "jack_o_lantern", frontMeta(0)); }   // looking out at the street
   }
   // ---- towns.js ----
   std::string pick(const char* kind) { const auto& l = townDecor(kind); const int k = salt++; return l.empty() ? std::string() : l[hash32((i32)b.seed, k, 77, 3) % l.size()]; }
@@ -659,7 +663,7 @@ static void bFarm(VS& S) {
   }
   S.face(4, 1, 0, st.gate, 0);
   // the scarecrow
-  S.set(1, 1, 1, st.fence); S.set(1, 2, 1, "hay_bale"); S.set(1, 3, 1, VS::VB("jack_o_lantern", "hay_bale"), S.d(2) & 3);   // facing meta is legacy again
+  S.set(1, 1, 1, st.fence); S.set(1, 2, 1, "hay_bale"); S.set(1, 3, 1, VS::VB("jack_o_lantern", "hay_bale"), S.frontMeta(0));
   S.set(7, 1, 7, "composter"); S.set(7, 1, 1, "hay_bale");
 }
 static void bPen(VS& S) {

@@ -390,6 +390,21 @@ static void townBuild(ChunkWriter& w, const StructurePlan& S) {
   // October: about half the lamp posts carry a glowing jack-o'-lantern instead of a lantern
   const bool hw = halloween();
   auto lampTop = [&](int x, int z) -> std::string_view { return hw && hasBlock("jack_o_lantern") && ((x * 7 + z * 13) & 1) ? "jack_o_lantern" : "lantern"; };
+  // the facing meta that turns a jack-o'-lantern's face toward (fx, fz) (sim facingMeta: the face looks back at its placer)
+  auto faceMeta = [](int fx, int fz) { return std::abs(fx) >= std::abs(fz) ? (fx < 0 ? 3 : 1) : (fz < 0 ? 2 : 0); };
+  // a street lamp looks out over the street it stands beside (the nearest centreline it runs along)
+  auto faceStreet = [&](int x, int z) {
+    int best = 1 << 30, fx = 0, fz = 1;
+    auto look = [&](const Street& Sx) {
+      const int ax = DXL[Sx.d], az = DZL[Sx.d], rx = x - Sx.ox, rz = z - Sx.oz;
+      const int along = rx * ax + rz * az, across = rx * -az + rz * ax;
+      if (along < -2 || along > Sx.L + 2 || std::abs(across) >= best) return;
+      best = std::abs(across); const int s = across > 0 ? -1 : 1; fx = -az * s; fz = ax * s;
+    };
+    for (auto& Sx : v.roads) look(Sx);
+    for (auto& Sx : v.streets) look(Sx);
+    return faceMeta(fx, fz);
+  };
   static const json& PAVE = SD()["TOWN_PAVE"];
   const std::vector<std::string> pave = v.style == VS_DESERT ? strList(PAVE["desert"]) : v.tier == TIER_VILLAGE ? st.path : strList(PAVE[TIER_NAMES[v.tier]]);
   const std::vector<std::string> lanePave = v.style == VS_DESERT ? strList(PAVE["desert"]) : v.tier == TIER_CITY ? strList(PAVE["town"]) : st.path;
@@ -495,12 +510,12 @@ static void townBuild(ChunkWriter& w, const StructurePlan& S) {
   }
   for (auto [dx, dz] : {std::pair{P0 - 2, P0 - 2}, {-(P0 - 2), P0 - 2}, {-(P0 - 2), -(P0 - 2)}, {P0 - 2, -(P0 - 2)}}) {
     const int x = v.x + dx, z = v.z + dz; if (std::abs(dx) + std::abs(dz) > P0 * 2 - 3) continue;
-    put(x, y0 + 1, z, st.lampPost); put(x, y0 + 2, z, st.lampPost); put(x, y0 + 3, z, st.lampPost); put(x, y0 + 4, z, lampTop(x, z), (x + z) & 3);   // facing meta is legacy again: carve lives in its own byte now
+    put(x, y0 + 1, z, st.lampPost); put(x, y0 + 2, z, st.lampPost); put(x, y0 + 3, z, st.lampPost); put(x, y0 + 4, z, lampTop(x, z), faceMeta(v.x - x, v.z - z));   // the square's corner lamps look in over the square
   }
   for (const auto& [x, z] : v.lamps) {
     if (!inC(x, z)) continue;
     const int y = P.ground(x, z); if (y < SEA_LEVEL) continue;
-    put(x, y, z, kerb); put(x, y + 1, z, st.lampPost); put(x, y + 2, z, st.lampPost); put(x, y + 3, z, st.lampPost); put(x, y + 4, z, lampTop(x, z), (x + z) & 3);   // facing meta is legacy again: carve lives in its own byte now
+    put(x, y, z, kerb); put(x, y + 1, z, st.lampPost); put(x, y + 2, z, st.lampPost); put(x, y + 3, z, st.lampPost); put(x, y + 4, z, lampTop(x, z), faceStreet(x, z));
     for (int yy = y + 5; yy <= y + 6; yy++) if (softBlock(get(x, yy, z))) put(x, yy, z, "air");
   }
   static const std::vector<std::string> VFL = strList(SD()["VFLOWERS"]);
