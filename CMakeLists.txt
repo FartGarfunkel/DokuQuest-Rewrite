@@ -65,8 +65,6 @@ add_test(NAME creatures COMMAND dq-creature-test)
 # every item used and every block placed/used/broken through the player controller; prints anything odd (tools/sweep.cpp)
 add_executable(dq-sweep tools/sweep.cpp)
 target_link_libraries(dq-sweep PRIVATE dqcore)
-add_custom_command(TARGET dq-sweep POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:dq-sweep>/data)
 
 # headless gameplay checks (sim/ only, no graphics): ./build/dq-test-gameplay
 add_executable(dq-test-gameplay tools/test_gameplay.cpp)
@@ -85,12 +83,18 @@ if(DQ_PORTABLE AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
   endforeach()
 endif()
 
-# Runtime data next to the executables (data/, assets/)
-foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-test-gameplay)
-  add_custom_command(TARGET ${t} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:${t}>/data
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:${t}>/assets)
-endforeach()
+# Runtime data next to the executables (data/, assets/), copied ONCE by one target every program waits for: a copy
+# per program ran in parallel into the same folder and broke the Windows build (MSB3073 on copy_directory)
+get_property(DQ_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(DQ_MULTI_CONFIG)
+  set(DQ_RUNTIME_DIR "${CMAKE_BINARY_DIR}/$<CONFIG>")
+else()
+  set(DQ_RUNTIME_DIR "${CMAKE_BINARY_DIR}")
+endif()
+add_custom_target(dq_runtime_data ALL
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data ${DQ_RUNTIME_DIR}/data
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/assets ${DQ_RUNTIME_DIR}/assets
+  COMMENT "Copying data/ and assets/ next to the programs")
 
 # Install = one folder with the three programs, data/ and assets/ (tools/package.sh packs it):
 #   cmake --install build --prefix dist/DokuQuest
@@ -103,38 +107,33 @@ set_target_properties(dq_sample_plugin PROPERTIES PREFIX "" C_VISIBILITY_PRESET 
 # Magic, enchanting, brewing, skills and RPG rules (headless). Run: build/test_magic
 add_executable(test_magic tools/test_magic.cpp)
 target_link_libraries(test_magic PRIVATE dqcore)
-add_custom_command(TARGET test_magic POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_magic>/data)
 
 add_executable(test_net tools/test_net.cpp)
 target_link_libraries(test_net PRIVATE dqcore)
 target_compile_definitions(test_net PRIVATE DQ_SAMPLE_PLUGIN="$<TARGET_FILE:dq_sample_plugin>")
 add_dependencies(test_net dq_sample_plugin)
-add_custom_command(TARGET test_net POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_net>/data)
 # dq-sfx: offline sound renderer for checking the audio (tools/sfx_render.cpp)
 add_executable(dq-sfx tools/sfx_render.cpp)
 target_link_libraries(dq-sfx PRIVATE dqclient)
 # Content features test (headless): maps, fishing, camping, travel, elytra, the stable, places, farming. Run: build/test_content
 add_executable(test_content tools/test_content.cpp)
 target_link_libraries(test_content PRIVATE dqcore)
-add_custom_command(TARGET test_content POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_content>/data)
 # The End, dragons, the Deep Dark's guardian, the watcher and the story (headless). Run: build/test_endstory
 add_executable(test_endstory tools/test_endstory.cpp)
 target_link_libraries(test_endstory PRIVATE dqcore)
-add_custom_command(TARGET test_endstory POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_endstory>/data)
 add_test(NAME endstory COMMAND test_endstory)
 
 # Villagers test (headless): villages, schedules, trading, quests, standing, guards, paths, skins. Run: build/test_villagers
 add_executable(test_villagers tools/test_villagers.cpp)
 target_link_libraries(test_villagers PRIVATE dqcore)
-add_custom_command(TARGET test_villagers POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_villagers>/data)
 add_test(NAME villagers COMMAND test_villagers)
 # Redstone, rails/carts, boats/ships and machines test (headless). Run: build/test_redstone
 add_executable(test_redstone tools/test_redstone.cpp)
 target_link_libraries(test_redstone PRIVATE dqcore)
-add_custom_command(TARGET test_redstone POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:test_redstone>/data)
+
+# every program finds data/ and assets/ next to it
+foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone)
+  if(TARGET ${t})
+    add_dependencies(${t} dq_runtime_data)
+  endif()
+endforeach()
