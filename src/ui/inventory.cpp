@@ -25,7 +25,7 @@ void drawGearVis(ImDrawList* dl, ImVec2 a, ImVec2 b, const Player& p, int k, boo
 void toggleGearVis(Player& p, int k);
 
 namespace {
-const std::pair<const char*, const char*> BOOK_CATS[] = {{"all", "All"}, {"blocks", "Blocks"}, {"redstone", "Redstone"}, {"tools", "Tools"}, {"armor", "Armor"}, {"food", "Food"}, {"misc", "Other"}};
+const std::pair<const char*, const char*> BOOK_CATS[] = {{"all", "All"}, {"blocks", "Blocks"}, {"redstone", "Redstone"}, {"tools", "Tools"}, {"armor", "Armor"}, {"food", "Food"}, {"eggs", "Spawn Eggs"}, {"misc", "Other"}};
 struct BookState { bool open = false; std::string cat = "all"; bool only = false; std::string query; std::string creativeWorld; };
 BookState& book() { static BookState b; return b; }
 
@@ -34,6 +34,7 @@ struct Hit { HK k; Grp g = Grp::Main; int i = 0; std::string s; ImVec2 a, b; boo
 bool sameKey(const Hit& x, const Hit& y) { return x.k == y.k && x.g == y.g && x.i == y.i && x.s == y.s; }
 std::string lower(std::string s) { for (auto& c : s) c = (char)tolower((unsigned char)c); return s; }
 std::string creativeCat(const ItemDef& d) {
+  if (d.has("spawnEgg")) return "eggs";
   if (d.hasTool || endsWith(d.key, "_hoe") || d.has("shears")) return "tools";
   if (d.has("armor")) return "armor";
   if (isRedstoneItem(&d)) return "redstone";
@@ -606,6 +607,7 @@ public:
     float tsc = is * 0.28f / z / fontPx(F_BODY), tx = c.x;
     float tabH = textSize(F_BODY, "Ag", 0, tsc).y + 8 * z;
     for (auto& [k, l] : BOOK_CATS) {
+      if (!creative && std::string(k) == "eggs") continue;   // spawn eggs are creative-only: no recipe tab for them
       float tw = textSize(F_BODY, l, 0, tsc).x + 12 * z + 4 * z;
       if (tx + tw > c.x + w) { tx = c.x; y += tabH + 2 * z; }
       ImVec2 t0(tx, y), t1 = t0 + ImVec2(tw, tabH);

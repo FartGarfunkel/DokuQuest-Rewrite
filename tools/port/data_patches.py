@@ -54,3 +54,7 @@ for n in new:
         pm.append([n, [n], [n]])
 (d / 'packmap.json').write_text(json.dumps(pm, separators=(',', ':'), sort_keys=False))
 print('patched: gate_barrier drawn; body tiles', new, 'count', tj['count'])
+
+# ---- spawn eggs for every creature (tools/port/spawn_eggs.py) ----
+import importlib.util as _u
+_s = _u.spec_from_file_location('spawn_eggs', pathlib.Path(__file__).with_name('spawn_eggs.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)

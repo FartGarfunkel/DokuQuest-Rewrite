@@ -89,6 +89,27 @@ void registerUsables() {
         lv.fx->sound("wind_charge", p->pos, 24);
         return false;
       }
+      if (d->has("spawnEgg")) {   // a spawn egg on a block: the creature steps out on that face; on a monster cage it sets the cage
+        if (!hitBlock) return true;
+        std::string type = d->str("spawnEgg");
+        if (!isCreatureType(type)) return true;
+        World& w = lv.world(p->realm);
+        if (w.getBlock(hb.x, hb.y, hb.z) == reg().blockId("monster_spawner")) {
+          if (json* be = w.blockEntity(hb.x, hb.y, hb.z, true)) { (*be)["type"] = "spawner"; (*be)["mob"] = type; w.blockEntityChanged(hb.x, hb.y, hb.z); }
+          if (!p->creative()) useUp(*p);
+          return false;
+        }
+        static const int F[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+        const int* f = F[std::clamp(a[5].get<int>(), 0, 5)];
+        vec3 at = vec3(hb.x + f[0], hb.y + f[1], hb.z + f[2]) + vec3(0.5f, 0, 0.5f);
+        if (f[1] < 0) at.y -= 1;   // under a ceiling: hang down from it
+        if (Creature* c = spawnCreature(lv, p->realm, type, at)) {
+          c->yaw = p->yaw + (float)PI;   // facing whoever hatched it
+          lv.fx->particles("poof", at + vec3(0, 0.5f, 0), 8);
+          if (!p->creative()) useUp(*p);
+        }
+        return false;
+      }
       if (d->has("summon")) {
         if (!hitBlock || a[5].get<int>() != 2) { lv.fx->message(p->id, "Place the effigy on top of a block"); return false; }
         for (auto& e : lv.entities()) if (auto* c = dynamic_cast<Creature*>(e.get())) if (c->type == "cinder_golem" && c->alive()) { lv.fx->message(p->id, "A Cinder Golem already walks this world", "boss"); return false; }

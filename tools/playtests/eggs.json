@@ -1,0 +1,22 @@
+{"steps":[
+ {"wait":200,"do":"anchor"},
+ {"do":"tp","rel":true,"x":0,"y":0,"z":0},
+ {"do":"cmd","text":"/time set 6000"},
+ {"do":"fill","rel":true,"from":[-3,-1,-6],"to":[3,4,-1],"key":"air"},
+ {"do":"fill","rel":true,"from":[-3,-1,-6],"to":[3,-1,-1],"key":"stone"},
+ {"do":"setBlock","rel":true,"x":2,"y":0,"z":-3,"key":"monster_spawner"},
+ {"do":"give","item":"moa_spawn_egg","n":4},
+ {"do":"give","item":"cow_spawn_egg","n":2},
+ {"do":"give","item":"ember_dragon_spawn_egg"},
+ {"do":"give","item":"zombie_pigman_spawn_egg"},
+ {"do":"select","slot":0},
+ {"wait":10,"do":"lookAt","rel":true,"x":0,"y":-1,"z":-3},
+ {"wait":10,"do":"mouse","button":"right","hold":1},
+ {"wait":20,"do":"expect","entity":"moa","near":8},
+ {"do":"lookAt","rel":true,"x":2,"y":0,"z":-3},
+ {"wait":10,"do":"mouse","button":"right","hold":1},
+ {"wait":10,"do":"report"},
+ {"do":"lookAt","rel":true,"x":0,"y":-1,"z":-4},
+ {"wait":30,"do":"shot","path":"/tmp/eggs.png"},
+ {"do":"quit"}
+]}
