@@ -57,6 +57,22 @@ Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`.
   F♯ major / F major / C minor. Direction: Yáhno-style dulcimer melodic EDM plus a C418-like sparse feel,
   Overworld like the examples, every realm its own feel.
 
+## Sounds: where the user's sound work lives (all committed in the repo, main and chisel)
+- **`data/sounds.json` + `data/sounds.bin`:** the user's sound set as resynthesis profiles (1,125 sounds, 284 events:
+  GeruDoku plus their imported creature and block sounds, merged in alpha.5.9 with the mob fixes: wolf howl, duck
+  death, horse). Format: `sounds` = profile index into the `raw` blob in `sounds.bin`; `events` = "mob.<name>" /
+  "<material>.<kind>" / "fx.<name>" -> [[file, pitch, vol]...]. Loaded by `src/audio/resynth.cpp` (PackSounds).
+- **`data/sfx.json`:** the original HTML game's synthesised sounds (recipes per sound name + material), the fallback
+  when no profile exists.
+- **`data/sounds/`:** a placeholder `.txt` per sound (blocks/mobs/effects). A real `.wav`/`.mp3`/`.flac` with the same
+  name there, or in `<userDir>/sounds/`, replaces that sound (alpha.5.7).
+- **Code:**
+  - `src/audio/sfxlib.cpp` resolve order: recording file -> pack profile -> recipe
+  - `src/audio/audio.cpp` mixer; under water muffled, cave reverb otherwise
+  - `src/audio/music.cpp` procedural music, including the user's new instruments on the `chisel` branch
+- **The user's raw sound work and import tools:** `/mnt/user-data/uploads/DokuQuest_C___Rewrite_Sounds.zip`
+  (their tree, with `tools/_import_*.py`). Don't take its `sounds.json` (contains C418 music profiles).
+
 ## The chisel work (branch `chisel`)
 **Done:**
 - The user's chisel merge: carve byte (2×2×2 octants) per block, `iron_chisel` item, new music instruments in
