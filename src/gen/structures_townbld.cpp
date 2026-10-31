@@ -529,9 +529,15 @@ static void bChapel(VS& S) {
   S.set(4, 1, 11, ch); S.set(4, 2, 11, "candle"); S.set(3, 1, 11, "candle"); S.set(5, 1, 11, "candle");
   S.pile(4, 3, 11, {"", "book", "", ""});
   S.rug(4, 2, 4, 10, "red_carpet");
-  // banners either side of the altar
+  // banners either side of the altar, in the town's colours: real banners on their poles, swaying, facing the nave
+  // (the original hung its wool columns here; those stay where a style's colours have no banner)
   const auto& ban = st.banner;
-  for (int ly = 2; ly <= 5; ly++) { S.set(2, ly, 11, ban[0]); S.set(6, ly, 11, ban[ban.size() - 1]); }
+  auto bannerOf = [](const std::string& wool) { std::string c = wool == "wool" ? "white" : wool.substr(0, wool.rfind("_wool")); return c + "_banner"; };
+  for (auto [x, i] : {std::pair{2, 0}, {6, 1}}) {
+    const std::string& w = ban[i == 0 ? 0 : ban.size() - 1];
+    if (std::string b = bannerOf(w); hasBlock(b)) S.face(x, 1, 11, b, 0);
+    else for (int ly = 2; ly <= 5; ly++) S.set(x, ly, 11, w);
+  }
   for (auto [x, z, wl] : {std::tuple{1, 3, 3}, {7, 3, 1}, {1, 9, 3}, {7, 9, 1}}) S.torch(x, 4, z, wl);
   S.torch(4, 3, 11, 2);
   S.plant(1, 1, 11); S.plant(7, 1, 11);
