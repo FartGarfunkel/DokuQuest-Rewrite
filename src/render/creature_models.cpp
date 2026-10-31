@@ -278,24 +278,21 @@ static void voxelPart(VoxelGrid& g, ivec3 n, const std::array<Pic, 6>& F, bool g
 }
 
 // The enderman's jaw (Minecraft's headwear box): when it lifts its head in anger, the jaw's rim shows a crown of jagged
-// teeth around a dark open mouth. The top voxels of the box are carved into pointed teeth all round its edge.
+// teeth around a dark open mouth. The top voxels of the box are carved into points all round its edge, in the jaw's own colours.
 static void toothCrown(VoxelGrid& g, ivec3 n) {
   int th = std::max(2, n.y * 2 / 5);   // the teeth: the top two fifths of the jaw
   if (n.y <= th + 1 || n.x < 6 || n.z < 6) return;
-  auto col = [](int r, int gg, int b) { return voxRGBA(r, gg, b) | (u32)VOXEL_SOLID << 24; };
-  const u32 bone = col(206, 198, 214), boneDark = col(150, 138, 162), mouth = col(30, 8, 34);
   static const int H[4] = {2, 4, 2, 0};   // a tooth every 4 voxels: rising to a point, then a gap
   for (int y = n.y - th; y < n.y; y++) {
     int k = y - (n.y - th);   // 0 = the gum line
     for (int z = 0; z < n.z; z++) for (int x = 0; x < n.x; x++) {
       bool rim = x == 0 || z == 0 || x == n.x - 1 || z == n.z - 1;
-      if (!rim) { g.set(x, y, z, 0); continue; }   // the mouth is open
       int u = (z == 0 || z == n.z - 1) ? x : z;
-      int h = H[u & 3] * th / 4;
-      g.set(x, y, z, k < h ? (k + 1 >= h ? boneDark : bone) : 0);
+      if (!rim || k >= H[u & 3] * th / 4) g.set(x, y, z, 0);   // the mouth is open; between the points, air
     }
   }
-  for (int z = 1; z < n.z - 1; z++) for (int x = 1; x < n.x - 1; x++) g.set(x, n.y - th - 1, z, mouth);   // the dark inside of the mouth
+  u32 mouth = voxRGBA(18, 6, 22);
+  for (int z = 1; z < n.z - 1; z++) for (int x = 1; x < n.x - 1; x++) if (g.solid(x, n.y - th - 1, z)) g.set(x, n.y - th - 1, z, mouth);   // the dark inside
 }
 
 void buildTileBox(VoxelGrid& g, ivec3 n, const std::string& tile, bool glow) {
