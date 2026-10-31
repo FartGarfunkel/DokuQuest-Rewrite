@@ -397,6 +397,14 @@ public:
           DamageSrc d; d.knock = 1; damageEntity(lv, *c, 1, owner, "mob", d); land(lv, *owner, n, false, ivec3(0)); return;
         }
       BlockId id = w.getBlock(ifloor(n.x), ifloor(n.y), ifloor(n.z));
+      static const BlockId gw = B("end_gateway");
+      if (gw && id == gw) {   // into an End gateway: it takes you (sim gatewayTick sends you on from inside it)
+        removed = true;
+        particles(lv, "end_mote", n, 18, 2, 0); lv.fx->sound("ender_tp", n, 30);
+        if (owner->riding) if (auto* m = dynamic_cast<Creature*>(lv.entity(owner->riding))) dismount(lv, *m, *owner);
+        teleport(lv, *owner, vec3(ifloor(n.x) + 0.5f, (float)ifloor(n.y) - 0.5f, ifloor(n.z) + 0.5f));
+        return;
+      }
       if (solid(id) || liquid(id) || n.y < -40) { land(lv, *owner, pos, true, ivec3(ifloor(n.x), ifloor(n.y), ifloor(n.z))); return; }
       pos = n;
     }

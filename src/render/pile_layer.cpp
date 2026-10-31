@@ -164,6 +164,7 @@ public:
       }
       if (!e.contains("items") || !e["items"].is_array()) return;
       const json& items = e["items"];
+      int filled = 0; for (size_t k = 0; k < items.size() && k < 4; k++) if (items[k].is_object()) filled++;
       for (size_t k = 0; k < items.size() && k < 4; k++) {
         if (!items[k].is_object()) continue;
         ItemStack st = ItemStack::fromJson(items[k]);
@@ -177,12 +178,19 @@ public:
         bool bar = std::regex_search(st.id, BAR), tool = im.kind != VoxelModel::Block && isHandheld(st.id);
         bool block = im.kind == VoxelModel::Block;
         int n = st.n;
-        int copies = block ? std::min(4, (n + 15) / 16) : bar ? std::min(16, (n + 3) / 4) : tool ? 1 : std::min(5, (n + 11) / 12);
+        // a stack of bars on its own (Vintage Story's ingot piles): four across the whole block, each layer turned
+        // across the one under it, the pile rising as the stack grows
+        const bool solo = bar && filled == 1;
+        int copies = block ? std::min(4, (n + 15) / 16) : solo ? std::min(32, (n + 1) / 2) : bar ? std::min(16, (n + 3) / 4) : tool ? 1 : std::min(5, (n + 11) / 12);
         for (int c = 0; c < copies; c++) {
           mat4 m = base;
           float j = (float)((k * 7 + c * 13) % 10) / 10.f - 0.5f;
           if (block) {
             m = glm::translate(m, vec3(ox, 0.125f + c * 0.25f, oz)); m = glm::rotate(m, r0 + c * 0.25f, vec3(0, 1, 0)); m = glm::scale(m, vec3(0.25f));
+          } else if (solo) {
+            int layer = c / 4; float across = ((c % 4) - 1.5f) * 0.22f;
+            m = glm::translate(m, vec3(0.5f, 0.03f + layer * 0.055f, 0.5f)); m = glm::rotate(m, r0 + (layer % 2) * PI / 2, vec3(0, 1, 0));
+            m = glm::translate(m, vec3(across, 0, 0)); m = glm::rotate(m, -PI / 2, vec3(1, 0, 0)); m = glm::scale(m, vec3(0.36f));
           } else if (bar) {
             int layer = c / 2; float side = c % 2 ? 1.f : -1.f;
             m = glm::translate(m, vec3(ox, 0.03f + layer * 0.055f, oz)); m = glm::rotate(m, r0 + (layer % 2) * PI / 2, vec3(0, 1, 0));

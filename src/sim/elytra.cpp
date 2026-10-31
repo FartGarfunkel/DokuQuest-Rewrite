@@ -1,6 +1,7 @@
 // sim/elytra.cpp — gliding on elytra, boosts, crashes (game/elytra.js; firework boost from game/batche.js).
 #include "sim/elytra.h"
 #include "sim/physics.h"
+#include <unordered_map>
 
 namespace dq {
 
@@ -25,15 +26,27 @@ void elytraMove(Level& lv, Player& p, double dtd) {
   float dt = (float)dtd;
   if (p.onGround || p.inWater || p.inLava || p.flying || p.riding || p.dead || !hasElytra(p)) { p.gliding = false; p.h = PLAYER_H; return; }
   p.sneaking = false; p.swimming = false; p.crawling = false;
+  // Minecraft's glide, step for step at its 20 ticks a second (in blocks per tick): gravity eased by how level you
+  // look, a dive turned into speed along your heading, a climb paid for with speed, the air's drag; a boost pulls
+  // you along where you look
   vec3 l = lookVec(p);
-  float sp = glm::length(p.vel);
-  sp += -l.y * 17 * dt;                           // diving gathers speed, climbing spends it
-  sp -= sp * 0.05f * dt + 0.5f * dt;              // and the air takes a little
-  if (p.glideBoost > 0) { p.glideBoost -= dt; sp += 26 * dt; }
-  sp = clampv(sp, 0.f, p.glideBoost > 0 ? 46.f : 40.f);
-  float k = std::min(1.f, dt * 2.4f);
-  p.vel += (l * sp - p.vel) * k;
-  if (sp < 8) p.vel.y -= (8 - sp) * 2.2f * dt + 3 * dt;   // too slow to stay up: it drops
+  static std::unordered_map<u32, float> acc;
+  float& a = acc[p.id]; a = std::min(a + dt, 0.25f);
+  vec3 v = p.vel / 20.f;
+  while (a >= 0.05f) {
+    a -= 0.05f;
+    const float pitch = -std::asin(clampv(l.y, -1.f, 1.f));   // Minecraft's: looking down is positive
+    const float hl = std::hypot(l.x, l.z), hs = std::hypot(v.x, v.z);
+    float cp = std::cos(pitch); cp = cp * cp * std::min(1.f, glm::length(l) / 0.4f);
+    v.y += 0.08f * (-1 + cp * 0.75f);
+    if (v.y < 0 && hl > 0) { float lift = v.y * -0.1f * cp; v += vec3(l.x * lift / hl, lift, l.z * lift / hl); }
+    if (pitch < 0 && hl > 0) { float climb = hs * -std::sin(pitch) * 0.04f; v += vec3(-l.x * climb / hl, climb * 3.2f, -l.z * climb / hl); }
+    if (hl > 0) { v.x += (l.x / hl * hs - v.x) * 0.1f; v.z += (l.z / hl * hs - v.z) * 0.1f; }
+    v *= vec3(0.99f, 0.98f, 0.99f);
+    if (p.glideBoost > 0) v += l * 0.1f + (l * 1.5f - v) * 0.5f;
+  }
+  if (p.glideBoost > 0) p.glideBoost -= dt;
+  p.vel = v * 20.f;
   p.fallDist = 0; p.h = SWIM_H;
   World& w = lv.world(p.realm);
   float before = glm::length(p.vel);
@@ -58,8 +71,8 @@ bool elytraUse(UseCtx& u) {
   Player& p = u.p;
   const ItemDef* d = p.held().def();
   if (!d || !p.gliding || u.item != p.held().id) return false;
-  if (d->has("gustPuff")) { useUpHeld(p); p.glideBoost = 1.8f; sfxUi(u.lv, p, "wind_charge"); return true; }
-  if (d->has("firework")) { useUpHeld(p); p.glideBoost = 2.6f; sfxUi(u.lv, p, "firework_launch"); return true; }
+  if (d->has("gustPuff")) { useUpHeld(p); p.glideBoost = 0.8f; sfxUi(u.lv, p, "wind_charge"); return true; }
+  if (d->has("firework")) { useUpHeld(p); p.glideBoost = 1.4f; sfxUi(u.lv, p, "firework_launch"); return true; }
   return false;
 }
 

@@ -8,6 +8,8 @@
  {"do":"setBlock","rel":true,"x":-1,"y":1,"z":-3,"key":"soul_sand"},
  {"do":"setBlock","rel":true,"x":0,"y":1,"z":-3,"key":"soul_sand"},
  {"do":"setBlock","rel":true,"x":1,"y":1,"z":-3,"key":"soul_sand"},
+ {"do":"setBlock","rel":true,"x":0,"y":0,"z":0,"key":"stone"},
+ {"do":"tp","rel":true,"x":0,"y":1,"z":0},
  {"wait":40,"do":"cmd","text":"/clear"},
  {"do":"give","item":"wither_skeleton_skull","n":3},
  {"do":"select","slot":0},
