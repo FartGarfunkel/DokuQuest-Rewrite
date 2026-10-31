@@ -243,6 +243,31 @@ def main(d):
     block('end_moss', 'End Moss', {'hardness': 3, 'tool': 'pickaxe', 'sound': 'grass', 'drop': 'end_stone', 'tex': {'top': 'end_moss', 'side': 'end_stone', 'bottom': 'end_stone'}},
           [tiles['end_stone'], tiles['end_stone'], tiles['end_moss'], tiles['end_stone'], tiles['end_stone'], tiles['end_stone']])
 
+    # the Skylands (our own take on the Aether): three clouds (a soft puff that breaks any fall, a blue one that
+    # throws you up, a golden one that lets you float down), glimmersand (slick pale sand at the islands' rims), the
+    # rare sunwood tree with golden leaves, and sky blooms
+    if 'bounce_cloud' not in tiles:
+        tile('cloud_puff_block', recolour(src_pic(d, tiles, files, 'snow'), lambda r, g, b, a, x, y: (min(255, r + 6), min(255, g + 6), min(255, b + 10), a)))
+        tile('bounce_cloud', recolour(src_pic(d, tiles, files, 'snow'), lambda r, g, b, a, x, y: (r * 150 // 255, g * 200 // 255, b, a)))
+        tile('sun_cloud', recolour(src_pic(d, tiles, files, 'snow'), lambda r, g, b, a, x, y: (r, g * 215 // 255, b * 120 // 255, a)))
+        tile('glimmersand', recolour(src_pic(d, tiles, files, 'sand'), hsv_map(hue=0.13, sat=0.35, val=1.18)))
+        lv = src_pic(d, tiles, files, 'leaves')
+        tile('sunwood_leaves', recolour(lv, lambda r, g, b, a, x, y: (min(255, 120 + g * 135 // 255), min(255, 90 + g * 120 // 255), 30 + b // 6, 255 if a else 0)))
+        tile('sunwood_log', recolour(src_pic(d, tiles, files, 'birch_log_side'), hsv_map(hue=0.1, sat=0.8, val=0.95)))
+        tile('sky_bloom', recolour(src_pic(d, tiles, files, 'allium'), hsv_map(hue=0.58, sat=0.7, val=1.15)))
+    cloud = {'opaque': False, 'render': 2, 'hardness': 0.3, 'tool': None, 'sound': 'wool', 'cloud': True, 'selfCull': True}
+    block('cloud_puff', 'Cloud Puff', dict(cloud, tex='cloud_puff_block'), [tiles['cloud_puff_block']] * 6)
+    block('bounce_cloud', 'Bounce Cloud', dict(cloud, tex='bounce_cloud', bouncy=True), [tiles['bounce_cloud']] * 6)
+    block('sun_cloud', 'Sun Cloud', dict(cloud, tex='sun_cloud', light=6, sunCloud=True), [tiles['sun_cloud']] * 6)
+    block('glimmersand', 'Glimmersand', {'hardness': 0.5, 'tool': 'shovel', 'sound': 'sand', 'slippery': True, 'tex': 'glimmersand'}, [tiles['glimmersand']] * 6)
+    block('sunwood_log', 'Sunwood Log', {'hardness': 2, 'tool': 'axe', 'sound': 'log', 'isLog': True, 'axisBlock': True, 'fuel': 1.5,
+                                         'tex': {'top': 'birch_log_top', 'bottom': 'birch_log_top', 'side': 'sunwood_log'}},
+          [tiles['sunwood_log'], tiles['sunwood_log'], tiles['birch_log_top'], tiles['birch_log_top'], tiles['sunwood_log'], tiles['sunwood_log']])
+    block('sunwood_leaves', 'Sunwood Leaves', {'render': 2, 'opaque': False, 'hardness': 0.2, 'tool': None, 'sound': 'leaves', 'lightAtt': 1, 'light': 4,
+                                               'isLeaves': True, 'drop': 'stick', 'tex': 'sunwood_leaves'}, [tiles['sunwood_leaves']] * 6)
+    block('sky_bloom', 'Sky Bloom', {'render': 3, 'solid': False, 'opaque': False, 'hardness': 0, 'tool': None, 'sound': 'grass', 'needsSupport': True,
+                                     'tex': 'sky_bloom'}, [tiles['sky_bloom']] * 6)
+
     # thorn leaves: the Thornscrub's thorn trees (BTA's Caatinga); they prick like cactus
     if 'thorn_leaves' not in tiles:
         im = recolour(src_pic(d, tiles, files, 'acacia_leaves'), lambda r, g, b, a, x, y: (r * 150 // 255, g * 140 // 255, b * 70 // 255, 255 if a else 0))

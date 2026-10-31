@@ -3,6 +3,7 @@
 // effect, the off hand), blocks2.js (bow and arrows) and blockfx.js (cracks that mend).
 #include "sim/controller.h"
 #include "sim/vehicles.h"
+#include "sim/effects.h"
 #include "sim/rules.h"
 #include "sim/blockfx.h"
 #include "sim/worldsys.h"
@@ -128,7 +129,8 @@ void PlayerController::tickSurvival(float dt, const MoveInfo& mv) {
     if (fall > 1.2f) landT = 0.2f;
     BlockId landId = w.getBlock(ifloor(p.pos.x), ifloor(p.pos.y - 0.2f), ifloor(p.pos.z));
     // beds, hay, slime and honey break a fall
-    float soft = (bhas(landId, BF::Bed) || bhas(landId, BF::Bouncy) || bhas(landId, BF::Sticky) ? 0.f : startsWith(R.block(landId).key, "hay") ? 0.2f : 1.f) * (1 - charmBonus(p, "fall"));
+    float soft = (bhas(landId, BF::Bed) || bhas(landId, BF::Bouncy) || bhas(landId, BF::Sticky) || R.block(landId).has("cloud") ? 0.f : startsWith(R.block(landId).key, "hay") ? 0.2f : 1.f) * (1 - charmBonus(p, "fall"));
+    if (R.block(landId).has("sunCloud")) giveEffect(lv, p, "slowfall", 10);   // a golden cloud: float down from it
     int dmg = (int)std::floor((fall - 3) * soft);
     if (fall > 3.4f && !p.creative() && dmg > 0) { DamageSource s; s.type = "fall"; s.bypassArmor = true; hurt((float)dmg, s); sfxUi(lv, p, "thud"); }
   }

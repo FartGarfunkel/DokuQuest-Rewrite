@@ -193,6 +193,11 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
     BlockId ub = wd.getBlock(ifloor(pos.x), ifloor(pos.y - 0.1f), ifloor(pos.z));
     if (bhas(ub, BF::Bouncy)) { vel.y = -vyBefore * 0.82f; onGround = false; hasFallStart = false; bounced = true; }
   }
+  // a blue bounce cloud throws you up whenever you stand on it (sneak to stay)
+  if (onGround && !sneaking && !flying) {
+    static const BlockId bounceCloud = reg().blockId("bounce_cloud");
+    if (bounceCloud && wd.getBlock(ifloor(pos.x), ifloor(pos.y - 0.1f), ifloor(pos.z)) == bounceCloud) { vel.y = 15; onGround = false; hasFallStart = false; bounced = true; }
+  }
   if (flying && onGround && !inp.jump) flying = false;
   hitWallLast = hitWall;
   // jumped into a wall: catch the top edge if it's in reach (a ledge up to 2.7 above your feet)

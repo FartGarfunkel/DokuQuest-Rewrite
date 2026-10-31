@@ -296,6 +296,21 @@ void WeatherFxLayer::particleWeather(GameSession& s, WeatherSystem* W, double dt
       flies++;
     }
   }
+  // the Skylands: soft white motes and wisps drifting along on the breeze
+  if (d == DIM_AETHER) {
+    float n = 6 * amount * (float)dt;
+    u16 tMote = (u16)P.tile("sparkle");
+    while (n > rnd()) {
+      n -= 1;
+      float x = p.x + (rnd() - 0.5f) * 28, z = p.z + (rnd() - 0.5f) * 28, y = p.y - 2 + rnd() * 10;
+      if (R.tSolid[w.getBlock(ifloor(x), ifloor(y), ifloor(z))]) continue;
+      Particle q; q.p = vec3(x, y, z); q.life = q.max = 5 + rnd() * 4;
+      q.v = vec3(0.35f + rnd() * 0.25f, (rnd() - 0.4f) * 0.1f, 0.1f + (rnd() - 0.5f) * 0.2f);
+      q.size = q.size0 = 0.022f + rnd() * 0.015f; q.tile = tMote; q.light = 0xFF; q.flutter = 0.25f; q.ph = rnd() * 6;
+      q.tint[0] = 255; q.tint[1] = 250; q.tint[2] = 235;
+      P.add(q);
+    }
+  }
   // the End: violet motes drifting slowly up out of the void, and now and then a pale glint
   if (d == DIM_END) {
     float n = 5 * amount * (float)dt;
