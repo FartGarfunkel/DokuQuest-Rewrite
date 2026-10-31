@@ -11,6 +11,7 @@
 #include "assets/voxel.h"
 #include "sim/maps.h"
 #include "sim/leads.h"
+#include "render/particles.h"
 #include "sim/fishing.h"
 #include "render/rod_tip.h"
 #include "sim/camping.h"
@@ -113,12 +114,36 @@ public:
     else if (!menu && s.app.input.pressed(Act::Jump)) elytraJump(lv, *p);
   }
 
+  // a torch in hand burns: a flicker of flame at its head and a thread of smoke that trails behind as you move
+  double flameAcc = 0, smokeAcc = 0;
+  void heldFlames(GameSession& s, double dt) {
+    ParticleSystem& P = particles();
+    flameAcc += dt * 12; smokeAcc += dt * 5;
+    const int nf = (int)flameAcc, ns = (int)smokeAcc;
+    flameAcc -= nf; smokeAcc -= ns;
+    if (!nf && !ns) return;
+    for (auto& e : s.level->entities()) {
+      auto* pl = dynamic_cast<Player*>(e.get());
+      if (!pl || pl->removed || pl->dead || pl->realm != s.player->realm) continue;
+      for (int hand = 0; hand < 2; hand++) {
+        const ItemStack* it = hand == 0 ? &pl->held() : (pl->offhand.empty() ? nullptr : &pl->offhand[0]);
+        if (!it || it->empty() || (it->id != "torch" && it->id != "soul_torch")) continue;
+        const float side = hand == 0 ? 0.38f : -0.38f;
+        const bool fp = pl == s.player && s.viewMode == 0;
+        vec3 r(std::cos(pl->yaw), 0, -std::sin(pl->yaw));
+        vec3 tip = fp ? tipOf(s, *pl, 0.6f, side * 0.57f, -0.06f) : pl->pos + vec3(0, 1.3f, 0) + r * side * 0.9f + lookVec(*pl) * 0.45f;
+        for (int k = 0; k < nf; k++) P.spawn(it->id == "soul_torch" ? "soul_flame" : "held_flame", tip + vec3((frand() - 0.5f) * 0.04f, 0, (frand() - 0.5f) * 0.04f), 1);
+        for (int k = 0; k < ns; k++) P.spawn("smoke", tip + vec3(0, 0.08f, 0), 1);
+      }
+    }
+  }
   void update(GameSession& s, double dt) override {
     Player* p = s.player;
     if (!p) return;
     Level& lv = *s.level;
     if (!tapped && lv.isRemote()) { tapped = true; tap.inner = lv.fx; lv.fx = &tap; }
     updateInstruments(s, dt);
+    heldFlames(s, dt);
     snapPos = p->pos; snapVel = p->vel; haveSnap = true;
     // the M and H keys
     bool menu = s.app.topScreen() != nullptr;
