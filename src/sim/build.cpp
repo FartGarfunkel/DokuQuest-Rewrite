@@ -416,15 +416,18 @@ void PlayerController::useBucket(const ItemDef& def, ItemStack& held) {
 bool PlayerController::bucketWaterlog(const ItemDef& def, ItemStack& held) {
   World& w = world();
   const Registry& R = reg();
-  if (!target.hit || !R.tWlog[target.id]) return false;
+  if (!target.hit) return false;
   ivec3 b = target.block;
+  const u8 cv = R.tOpaque[target.id] ? w.getCarve(b.x, b.y, b.z) : 0;   // a chiseled block takes water in its carved-away part
+  if (!R.tWlog[target.id] && !cv) return false;
   u8 m = w.getMeta(b.x, b.y, b.z);
   std::string kind = def.str("bucket");
   if (kind == "water" && !(m & WLOG) && !(R.tShape[target.id] == ShapeKind::Slab && (m & 7) == 6)) {
-    w.setBlock(b.x, b.y, b.z, target.id, m | WLOG); if (!p.creative()) held = ItemStack("bucket", 1); sfxUi(lv, p, "bucket"); swingArm(); return true;
+    w.setBlock(b.x, b.y, b.z, target.id, m | WLOG); if (cv) w.setCarve(b.x, b.y, b.z, cv);
+    if (!p.creative()) held = ItemStack("bucket", 1); sfxUi(lv, p, "bucket"); swingArm(); return true;
   }
   if (kind == "empty" && (m & WLOG)) {
-    w.setBlock(b.x, b.y, b.z, target.id, m & ~WLOG);
+    w.setBlock(b.x, b.y, b.z, target.id, m & ~WLOG); if (cv) w.setCarve(b.x, b.y, b.z, cv);
     ItemStack full("water_bucket", 1);
     if (--held.n <= 0) held = full; else if (p.give(full) > 0) dropItem(lv, p.realm, full, p.pos + vec3(0, 1, 0), false);
     sfxUi(lv, p, "bucket"); swingArm(); return true;
@@ -658,6 +661,13 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
         if (nid != AIR && !R.tLiquid[nid])
           w.markBlockDirty(x + dx, y + dy, z + dz, true);   // any solid neighbour may share a face with the new notch
       }
+      if (next) {   // carved under water (water beside it or above): the notch fills
+        bool wet = false;
+        for (auto [dx, dy, dz] : {std::array<int, 3>{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, 1, 0}})
+          if (R.tLiquid[w.getBlock(x + dx, y + dy, z + dz)] == 1) wet = true;
+        u8 m2 = w.getMeta(x, y, z);
+        if (wet && !(m2 & WLOG)) { w.setBlock(x, y, z, id, m2 | WLOG, SetFlags::Urgent); w.setCarve(x, y, z, next, SetFlags::Urgent); }
+      }
       onCarveChangedRules(lv, w, x, y, z);   // torches, plants and lanterns on a face that is no longer whole drop off
       sfxMaterial(lv, b.sound, "dig", c); wearHeld(lv, p, 1); swingArm(); return true;
     }
@@ -684,7 +694,7 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
 void PlayerController::afterBreak(int x, int y, int z, BlockId id, u8 meta) {
   World& w = world();
   const Registry& R = reg();
-  if (R.tWlog[id] && (meta & WLOG)) w.setBlock(x, y, z, KB().water, 0);
+  if ((R.tWlog[id] || (R.tOpaque[id] && !R.tShape[id])) && (meta & WLOG)) w.setBlock(x, y, z, KB().water, 0);   // (a chiseled block's water stays)
   if (bhas(id, BF::Door)) { int oy = (meta & 16) ? y - 1 : y + 1; if (w.getBlock(x, oy, z) == id) w.setBlock(x, oy, z, AIR, 0, SetFlags::Urgent); }
   if (bhas(id, BF::Double)) { int oy = (meta & 1) ? y - 1 : y + 1; if (w.getBlock(x, oy, z) == id) w.setBlock(x, oy, z, AIR, 0, SetFlags::Urgent); }
   if (bhas(id, BF::Bed) && !R.block(id).has("bag")) {

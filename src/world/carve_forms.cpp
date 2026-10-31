@@ -44,9 +44,8 @@ bool isSlabOrStairs(BlockId id) { return id < g_forms.size() && g_forms[id].base
 
 CarveForm carveFormOf(BlockId id, u8 meta) {
   if (!isSlabOrStairs(id)) return {};
-  if (meta & WLOG) return {};   // waterlogged ones stay as they are until chiseled blocks hold water
   const Form& f = g_forms[id];
-  CarveForm out; out.base = f.base;
+  CarveForm out; out.base = f.base; out.meta = meta & WLOG;   // a waterlogged one keeps its water in the carved-away part
   if (f.kind == 1) {
     int m = meta & 7;
     if (m == 6) out.carve = 0;
@@ -73,7 +72,7 @@ void convertSlabsStairs(Chunk& c) {
       if (id >= g_forms.size() || !g_forms[id].base) continue;
       CarveForm f = carveFormOf(id, s->meta[i]);
       if (!f.base) continue;
-      s->blocks[i] = f.base; s->meta[i] = 0; s->carve[i] = f.carve;
+      s->blocks[i] = f.base; s->meta[i] = f.meta; s->carve[i] = f.carve;
     }
   }
 }

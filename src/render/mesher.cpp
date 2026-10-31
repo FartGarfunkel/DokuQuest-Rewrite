@@ -547,7 +547,7 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
       case Render::Shape: emitShapeBlock(c, R.tTrans[id] || isPuddle(R, id) ? out.trans : out.cutout, id, x, y, z, meta); break;
       default: break;
     }
-    if ((meta & WLOG) && R.tWlog[id] && waterId) emitLiquid(c, out.trans, waterId, x, y, z, 0);
+    if ((meta & WLOG) && (R.tWlog[id] || (R.tOpaque[id] && c.carveAt(x, y, z))) && waterId) emitLiquid(c, out.trans, waterId, x, y, z, 0);   // (a chiseled block holds water in its carved-away part)
     if (T.emitsParticles) out.fx.emitters.push_back({wp, id});
     // where drips form: under a block with water or lava on it, and under leaves (rain comes through)
     if (c.at(x, y - 1, z) == AIR) {

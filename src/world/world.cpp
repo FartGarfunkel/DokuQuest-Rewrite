@@ -77,7 +77,7 @@ bool World::setBlock(int x, int y, int z, BlockId id, u8 meta, u32 flags) {
   BlockId old = c->get(lx, ly, lz);
   u8 oldMeta = c->getMeta(lx, ly, lz);
   u8 setCarveTo = 0;
-  if (isSlabOrStairs(id)) { CarveForm f = carveFormOf(id, meta); if (f.base) { id = f.base; meta = 0; setCarveTo = f.carve; } }   // placed or built: its chiseled form
+  if (isSlabOrStairs(id)) { CarveForm f = carveFormOf(id, meta); if (f.base) { id = f.base; meta = f.meta; setCarveTo = f.carve; } }   // placed or built: its chiseled form
   bool oldCarved = c->getCarve(lx, ly, lz);
   if (old == id && oldMeta == meta && !oldCarved) return false;   // a carved block must fall through: set() clears its carve byte
   // carve-bit trace is now off: the layout moved to a full carve byte (meta&0x7F) on plain blocks,

@@ -200,7 +200,7 @@ Contacts sampleContacts(const World& w, const Entity& e, float eye) {
     if (!id) continue;
     int lq = R.tLiquid[id];
     if (lq == 1) r.water = true; else if (lq == 2) r.lava = true;
-    else if (R.tWlog[id] && (w.getMeta(x, y, z) & WLOG)) r.water = true;
+    else if ((R.tWlog[id] || (R.tOpaque[id] && w.getCarve(x, y, z))) && (w.getMeta(x, y, z) & WLOG)) r.water = true;
     if (R.tPortal[id]) r.portal = R.tPortal[id];
     const BlockInfo& bi = binfo(id);
     if (bi.f & BF::Climb) { r.ladder = true; if (bi.f & BF::Scaffold) r.scaffold = true; }
@@ -228,7 +228,7 @@ Contacts sampleContacts(const World& w, const Entity& e, float eye) {
       BlockId above = w.getBlock(ex, ey + 1, ez);
       double top = ey + liquidHeight(id, m, above);
       r.eyeWater = e.pos.y + eye < top;
-    } else if (R.tWlog[id] && (w.getMeta(ex, ey, ez) & WLOG)) r.eyeWater = true;
+    } else if ((R.tWlog[id] || (R.tOpaque[id] && w.getCarve(ex, ey, ez))) && (w.getMeta(ex, ey, ez) & WLOG)) r.eyeWater = true;
     if (R.tLiquid[id] == 2) r.eyeLava = true;
   }
   return r;
