@@ -70,7 +70,7 @@ static std::vector<ivec3> npcPath(const World& w, int sx, int sy, int sz, int tx
       }
       if (ny < 0) continue;
       if (farmland && w.getBlock(nx, ny - 1, nz) == farmland) cost += 4;   // keep off the crops
-      if (R.tLiquid[w.getBlock(nx, ny, nz)]) cost += 3;
+      if (R.tLiquid[w.getBlock(nx, ny, nz)] || R.tLiquid[w.getBlock(nx, ny - 1, nz)]) cost += 14;   // round a well or a pond, not through it: water only when there is no dry way
       i64 k = key(nx, ny, nz); float g2 = c.g + cost;
       auto it = seen.find(k);
       if (it != seen.end() && (nodes[it->second].closed || nodes[it->second].g <= g2)) continue;

@@ -185,6 +185,23 @@ vec2 Creature::light(Level& lv, float dy) const {
   u8 l = lv.world(realm).getLight(ifloor(pos.x), ifloor(pos.y + dy), ifloor(pos.z));
   return vec2(l >> 4, l & 15);
 }
+// Wandering about (not chasing or fleeing), a walker keeps off drops of more than three blocks and out of water and
+// lava: Skylands creatures stay on their islands, herds don't walk into wells or off cliffs (Minecraft's mobs avoid them).
+static bool safeAhead(Level& lv, const Creature& c, float dir) {
+  if (c.noGravity || c.ghost || c.inWater || c.T->water || c.T->fly > 0) return true;
+  const Registry& R = reg();
+  World& w = lv.world(c.realm);
+  float reach = c.w + 0.75f;
+  int x = ifloor(c.pos.x - std::sin(dir) * reach), z = ifloor(c.pos.z - std::cos(dir) * reach), y = ifloor(c.pos.y + 0.05f);
+  if (R.tSolid[w.getBlock(x, y, z)]) return true;   // a wall or a step: the usual collision and step-up deal with it
+  for (int d = 0; d <= 3; d++) {
+    BlockId b = w.getBlock(x, y - d, z);
+    if (R.tLiquid[b]) return false;
+    if (d > 0 && R.tSolid[b]) return true;
+  }
+  return false;   // more than three blocks down
+}
+
 void Creature::wander(float dt) {
   wanderT -= dt;
   if (wanderT <= 0) { wanderT = 2 + frand() * 5; wanderOn = frand() < 0.55f; wanderDir = frand() * TAU; }
@@ -524,7 +541,7 @@ void Creature::update(Level& lv, float dt) {
       if (dist < 0.9f) want = 0;
       soundT -= dt;
       if (soundT < 0) { soundT = 4 + frand() * 6; if (dist < 16) say(lv, "say"); }
-    } else { wander(dt); Move m = wanderMove(); want = m.want; dir = m.dir; }
+    } else { wander(dt); Move m = wanderMove(); if (m.want > 0 && !safeAhead(lv, *this, m.dir)) { wanderDir += PI * (0.7f + frand() * 0.6f); m = Move{0, yaw}; } want = m.want; dir = m.dir; }
     if (dist > 72) removed = true;
   } else {
     // passive animals: skittish ones bolt when someone comes close (sneaking helps)
@@ -540,7 +557,7 @@ void Creature::update(Level& lv, float dt) {
       if (hitWall) { if (!fleeTurn) fleeTurn = frand() < 0.5f ? -1 : 1; }
       else if (fleeTurn && frand() < dt * 0.8f) fleeTurn = 0;
       dir = away + fleeTurn * 0.9f + std::sin(age * 1.7f) * 0.18f; want = T->run > 0 ? T->run : T->speed * 2;
-    } else { wander(dt); Move m = wanderMove(); want = m.want; dir = m.dir; }
+    } else { wander(dt); Move m = wanderMove(); if (m.want > 0 && !safeAhead(lv, *this, m.dir)) { wanderDir += PI * (0.7f + frand() * 0.6f); m = Move{0, yaw}; } want = m.want; dir = m.dir; }
     soundT -= dt;
     if (soundT < 0) { soundT = 6 + frand() * 10; if (dist < 14 && (type == "boar" || !T->sound.empty())) lv.fx->voice(T->sound.empty() ? "boar" : T->sound, "say", pos); }
     if (dist > 110 && !kept) removed = true;
