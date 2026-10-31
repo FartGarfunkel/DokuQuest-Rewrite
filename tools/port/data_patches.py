@@ -62,7 +62,10 @@ if en and not any(pt['name'] == 'jaw' for pt in en['parts']):
     i = next(k for k, pt in enumerate(en['parts']) if pt['name'] == 'head')
     en['parts'].insert(i + 1, {"name": "jaw", "parent": "body", "at": [0, 12, 0], "box": [-3.5, 0.5, -3.5, 3.5, 7.5, 3.5],
                                "tex": "ender_skin", "pivot": [0, 0.75, 0], "min": [-0.21875, 0.03125, -0.21875], "max": [0.21875, 0.46875, 0.21875]})
-    (d / 'models.json').write_text(json.dumps(mj, separators=(',', ':'), ensure_ascii=False))
+for pt in (en['parts'] if en else []):   # its legs a little apart (Minecraft's +-2 px), not pressed together
+    if pt['name'] in ('legR', 'legL') and abs(pt['at'][0]) == 1:
+        sx = 1 if pt['at'][0] > 0 else -1; pt['at'][0] = 2 * sx; pt['pivot'][0] = 0.125 * sx
+(d / 'models.json').write_text(json.dumps(mj, separators=(',', ':'), ensure_ascii=False))
 
 # ---- spawn eggs for every creature (tools/port/spawn_eggs.py) ----
 import importlib.util as _u

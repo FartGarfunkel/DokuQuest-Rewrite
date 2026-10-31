@@ -38,7 +38,9 @@ static std::array<Pic, 6> tilesOf(const TileSet& ts, const json& spec) {
 struct PM { int u, v, w, h, d; };
 struct PMo { bool upper = false, lower = false, whole = false, mirror = false, lying = false, wool = false, slimeFace = false; int legStrip = -1; bool hasOver = false; PM over{}; };
 struct PMPart { std::string name; PM box; PMo o; };
-struct PMSpec { std::vector<std::string> tex; int texW = 64; std::string overlay, wool, eyes; std::vector<std::string> hide; std::vector<std::string> hidePrefix; std::vector<PMPart> parts; };
+struct PMSpec { std::vector<std::string> tex; int texW = 64; std::string overlay, wool, eyes; std::vector<std::string> hide; std::vector<std::string> hidePrefix; std::vector<PMPart> parts;
+  std::unordered_map<std::string, std::array<float, 6>> box;   // with the pack's skin, a part takes Minecraft's box: {lo x,y,z, size x,y,z} in px from its pivot
+};
 
 static std::vector<PMPart> pmBiped(PM head, std::optional<PM> hat, PM body, PM arm, std::optional<PM> armL, PM leg, std::optional<PM> legL) {
   std::vector<PMPart> out;
@@ -92,6 +94,9 @@ static const std::unordered_map<std::string, PMSpec>& packMobs() {
   { PMSpec s; s.tex = {"entity/witch"}; s.hide = {"hood", "herbs"}; s.parts = illager({0, 0, 8, 10, 8}, {16, 20, 8, 12, 6}, {44, 22, 4, 8, 4}, {0, 22, 4, 12, 4}, {P("skirt", {0, 38, 8, 18, 6})}); M["witch"] = s; }
   { PMSpec s; s.tex = {"entity/creeper/creeper"}; s.hide = {"cracks", "slits", "jaw", "crown"}; s.hidePrefix = {"frond", "thorn"};
     s.parts = {P("head", {0, 0, 8, 8, 8}), P("body", {16, 16, 8, 12, 4})}; for (const char* n : {"FR", "FL", "BR", "BL"}) s.parts.push_back(P(std::string("leg") + n, {0, 16, 4, 6, 4}));
+    // Minecraft's creeper proportions (legs 4x6x4, body 8x12x4, head 8x8x8: 26 px tall) on the fuseling's pivots, so the skin isn't stretched
+    s.box = {{"body", {-4, 1.5f, -2, 8, 12, 4}}, {"head", {-4, 1.5f, -4, 8, 8, 8}},
+             {"legFL", {-1, -4.5f, -3, 4, 6, 4}}, {"legFR", {-3, -4.5f, -3, 4, 6, 4}}, {"legBL", {-1, -4.5f, -1, 4, 6, 4}}, {"legBR", {-3, -4.5f, -1, 4, 6, 4}}};
     M["fuseling"] = s; }
   { PMSpec s; s.tex = {"entity/enderman/enderman", "entity/enderman"};   // Minecraft's 64x32 enderman; the jaw is its headwear box
     s.parts = {P("head", {0, 0, 8, 8, 8}), P("jaw", {0, 16, 8, 8, 8}), P("body", {32, 16, 8, 12, 4}),
@@ -272,6 +277,25 @@ static void voxelPart(VoxelGrid& g, ivec3 n, const std::array<Pic, 6>& F, bool g
   }
 }
 
+// The enderman's jaw, seen when it lifts its head in anger: a dark mouth with jagged teeth above and below (in the manner
+// of the Tweaked Enderman pack). Only on a plain dark jaw, so a pack that paints its own mouth keeps it.
+static void gapeMouth(Pic& f) {
+  if (f.size() != (size_t)TILE * TILE) return;
+  float sum = 0; int n = 0; for (u32 c : f) if (c) { sum += lum(c); n++; }
+  if (!n || sum / n > 60) return;
+  auto px = [](int r, int g, int b) { return 0xFF000000u | (u32)b << 16 | (u32)g << 8 | (u32)r; };
+  const u32 mouth = px(26, 6, 30), tooth = px(226, 214, 236), toothDim = px(170, 150, 186);
+  const int T = TILE, top = T * 11 / 32, bot = T * 29 / 32, edge = T / 32 * 2 + 2;   // the head covers the jaw down to ~row 11
+  for (int y = top; y < bot; y++) for (int x = edge; x < T - edge; x++) f[y * T + x] = mouth;
+  // pointed teeth: 5, 3, 1 voxels wide (at 32 px), the upper row hanging just under the lifted head, the lower row between them
+  const int h = std::max(2, T * 3 / 32), w = 2 * h - 1, step = w + 1, up = top + 1;
+  for (int x0 = edge; x0 + w <= T - edge; x0 += step) for (int k = 0; k < h; k++)
+    for (int x = x0 + k; x < x0 + w - k; x++) {
+      f[(up + k) * T + x] = k == h - 1 ? toothDim : tooth;
+      int xl = x + step / 2; if (xl < T - edge) f[(bot - 1 - k) * T + xl] = k == h - 1 ? toothDim : tooth;
+    }
+}
+
 void buildTileBox(VoxelGrid& g, ivec3 n, const std::string& tile, bool glow) {
   std::array<Pic, 6> F; Pic p = tilePic(app().tiles, tile); for (auto& f : F) f = p;
   voxelPart(g, n, F, glow, false);
@@ -303,6 +327,7 @@ const CreatureModelGL* creatureModel(const std::string& key) {
     CreaturePartMesh& pm = *out->parts[i];
     if (hidden[i]) { pm.hidden = true; continue; }
     std::array<Pic, 6> F = pack && std::any_of(faces[i].begin(), faces[i].end(), [](const Pic& x) { return !x.empty(); }) ? faces[i] : tilesOf(ts, p.tex);
+    if (p.name == "jaw" && M->key == "enderman") gapeMouth(F[5]);
     vec3 lo = p.min, size = glm::max(p.max - p.min, vec3(1e-3f));
     bool packed = pack && std::any_of(faces[i].begin(), faces[i].end(), [](const Pic& x) { return !x.empty(); });
     // birds' feet: the rig's legs are 1 px sticks, which loses the toes. With a pack skin the leg takes
@@ -310,6 +335,8 @@ const CreatureModelGL* creatureModel(const std::string& key) {
     // original's tiles a foot of three toes forward and one back is added under the stick.
     bool bird = p.role == "bleg" && size.x <= 1.6f / 16;
     if (bird && packed) { lo = vec3(-1.5f, p.min.y * 16, -2.5f) / 16.f; size = vec3(3, size.y * 16, 3) / 16.f; }
+    if (packed) if (auto si = packMobs().find(key); si != packMobs().end())
+      if (auto bi = si->second.box.find(p.name); bi != si->second.box.end()) { const auto& b = bi->second; lo = vec3(b[0], b[1], b[2]) / 16.f; size = vec3(b[3], b[4], b[5]) / 16.f; }
     ivec3 n = glm::max(ivec3(glm::round(size * 32.f)), ivec3(1));
     VoxelGrid g;
     bool faceRelief = p.tex.is_object() && p.tex.contains("front") && !pack;
