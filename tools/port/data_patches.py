@@ -94,6 +94,31 @@ if not any(r.get('out') == 'lava_rowboat' for r in rj['recipes']):
         rj['recipes'].append({'out': 'lava_rowboat', 'n': 1, 'shape': ['PMP', 'PPP'], 'key': {'P': wood, 'M': 'magma_cream'}, 'h': 2, 'w': 3})
     (d / 'recipes.json').write_text(json.dumps(rj, separators=(',', ':'), ensure_ascii=False))
 
+# ---- gold coins: the villagers' money (emeralds are a precious ore again; they still pay, at four coins each) ----
+items = json.loads((d / 'items.json').read_text()); tj3 = json.loads((d / 'tiles.json').read_text())
+sh3 = json.loads((d / 'itemshapes.json').read_text())
+if 'gold_coin' not in tj3['names']:
+    im = _I.new('RGBA', (32, 32), (0, 0, 0, 0)); px = im.load()
+    for y in range(32):
+        for x in range(32):
+            dx, dy = x - 15.5, y - 15.5; r = (dx * dx + dy * dy) ** 0.5
+            if r > 11.5: continue
+            lit = 1 - (dx + dy) / 40                        # lit from the top left
+            if r > 10.2: c = (150, 96, 20)                   # the dark milled edge
+            elif r > 8.6: c = (255, 214, 92)                 # the raised rim
+            else: c = (226, 168, 40)                         # the face
+            if 3.2 < r < 4.6 or (abs(dx) < 1 and abs(dy) < 5.5): c = (255, 228, 120)   # a ring and a bar: the crown's stamp
+            px[x, y] = (min(255, int(c[0] * lit)), min(255, int(c[1] * lit)), min(255, int(c[2] * lit)), 255)
+    im.save(d / 'textures/item/gold_coin.png')
+    tj3['res'] += [32] * max(0, tj3['count'] - len(tj3['res']))
+    tj3['names']['gold_coin'] = tj3['count']; tj3['files'].append('textures/item/gold_coin.png'); tj3['res'].append(32); tj3['count'] += 1
+    (d / 'tiles.json').write_text(json.dumps(tj3, separators=(',', ':'), ensure_ascii=False))
+if 'gold_coin' not in sh3['itemTiles']:
+    sh3['itemTiles'].append('gold_coin'); (d / 'itemshapes.json').write_text(json.dumps(sh3, separators=(',', ':'), ensure_ascii=False))
+items['gold_coin'] = {'key': 'gold_coin', 'name': 'Gold Coin', 'maxStack': 64, 'icon': 'gold_coin',
+                      'desc': 'The villages\' money. Shopkeepers still take emeralds, at four coins each.'}
+(d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
+
 # ---- spawn eggs for every creature (tools/port/spawn_eggs.py) ----
 import importlib.util as _u
 _s = _u.spec_from_file_location('spawn_eggs', pathlib.Path(__file__).with_name('spawn_eggs.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)

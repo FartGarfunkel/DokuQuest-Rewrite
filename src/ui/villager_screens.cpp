@@ -239,7 +239,7 @@ private:
     voiceH = babble(*a.audio, t.spoken, v, t.spokenVol);
   }
   std::vector<ShopLine> rows(Level& lv, Player& p) { VillageRef v = villageById(lv, t.vid); return v ? shopLines(lv, p, *v, t.idx, t.job, t.tab) : std::vector<ShopLine>{}; }
-  // .npc-shop: a panel stacked on top of the card (left/right 0 of its padding box, 6px above it): Buy / Sell, the emeralds, Back,
+  // .npc-shop: a panel stacked on top of the card (left/right 0 of its padding box, 6px above it): Buy / Sell, the purse, Back,
   // the list of trades and a hint
   void drawShop(App& a, Level& lv, Player& p, ImVec2 card, float cw) {
     const float z = Z(), bd = 3 * z, pad = 8 * z, rowH = 30 * z, gap = 3 * z, headH = 36 * z;
@@ -265,12 +265,12 @@ private:
     ImGui::SameLine(0, 6 * z);
     if (button("Sell##tab", BTN_NORMAL, true)) { t.tab = "sell"; sel = 0; }
     outlineLast(t.tab == "sell");
-    int em = 0; for (auto& st : p.inv) if (st.id == "emerald") em += st.n;
+    int em = 0; for (auto& st : p.inv) em += st.id == "gold_coin" ? st.n : st.id == "emerald" ? st.n * 4 : 0;   // the purse: coins, emeralds at four each
     const std::string ems = std::to_string(em);
     const float bw = textSize(F_MID, "Back").x + 24 * z;
     const ImVec2 es = textSize(F_H3, ems.c_str(), 0, esz);
     const float ex = cx + inner - bw - 6 * z - es.x;   // .sh-em: margin-left auto, so it hugs Back
-    drawIcon(dl, "emerald", ImVec2(ex - 26 * z, cy + 4 * z), 22 * z);
+    drawIcon(dl, "gold_coin", ImVec2(ex - 26 * z, cy + 4 * z), 22 * z);
     text(dl, F_H3, ImVec2(ex, cy + 15 * z - es.y / 2), col::rgb(0x9ff0a0), ems.c_str(), 0, esz);
     ImGui::SetCursorScreenPos(ImVec2(cx + inner - bw, cy));
     if (button("Back##shop", BTN_NORMAL, true, bw)) { talkShopBack(lv, p, t); sel = 0; ImGui::End(); return; }
@@ -294,12 +294,12 @@ private:
       const std::string giveN = std::to_string(buy ? l.price : l.n), getN = std::to_string(buy ? l.n : l.price);
       const ImVec2 gs = textSize(F_H3, giveN.c_str(), 0, bsz), ns = textSize(F_H3, getN.c_str(), 0, bsz), ms = textSize(F_MID, "A", 0, osz);
       float x = p0.x + 9 * z;                                  // border 1 + padding 8
-      drawIcon(d2, buy ? "emerald" : l.id, ImVec2(x, cyr - ic / 2), ic, al);
+      drawIcon(d2, buy ? "gold_coin" : l.id, ImVec2(x, cyr - ic / 2), ic, al);
       text(d2, F_H3, ImVec2(x + ic + 4 * z, cyr - gs.y / 2), withAlpha(col::rgb(0xfff3d6), al), giveN.c_str(), 0, bsz);
       x += std::max(64 * z, ic + 4 * z + gs.x) + 6 * z;        // .sh-give { min-width: 64px } then the flex gap
       text(d2, F_MID, ImVec2(x, cyr - ms.y / 2), withAlpha(col::muted, al), "\xE2\x86\x92", 0, osz);
       x += textSize(F_MID, "\xE2\x86\x92", 0, osz).x + 6 * z;
-      drawIcon(d2, buy ? l.id : "emerald", ImVec2(x, cyr - ic / 2), ic, al); x += ic + 6 * z;   // .sh-get { gap: 6px }
+      drawIcon(d2, buy ? l.id : "gold_coin", ImVec2(x, cyr - ic / 2), ic, al); x += ic + 6 * z;   // .sh-get { gap: 6px }
       text(d2, F_H3, ImVec2(x, cyr - ns.y / 2), withAlpha(col::rgb(0xfff3d6), al), getN.c_str(), 0, bsz); x += ns.x + 4 * z;
       const std::string nm = buy ? itemNameOf(l.id) : "for " + itemNameOf(l.id);
       const std::string right = l.locked ? TN[l.tier].get<std::string>() + " only" : l.left > 0 ? std::to_string(l.left) + " left" : "sold out";
@@ -405,7 +405,7 @@ public:
           std::string title = q.value("title", std::string()), body = q.value("text", std::string());
           ty += textLines(dl, F_H3, ImVec2(n0.x + 10 * z, ty), withAlpha(col::rgb(0x3a1a0a), al), title.c_str(), nwi, tlh, tsz) + 4 * z;
           ty += textLines(dl, F_MID, ImVec2(n0.x + 10 * z, ty), withAlpha(col::rgb(0x3a2a1a), al), body.c_str(), nwi, plh) + 4 * z;
-          drawIcon(dl, "emerald", ImVec2(n0.x + 10 * z, ty), 22 * z, al);   // .qb-rew
+          drawIcon(dl, "gold_coin", ImVec2(n0.x + 10 * z, ty), 22 * z, al);   // .qb-rew
           const json R = q.value("reward", json::object());
           std::string rew = std::to_string(R.value("em", 0)) + " \xC2\xB7 " + std::to_string(R.value("xp", 0)) + " xp";
           text(dl, F_MID, ImVec2(n0.x + 36 * z, ty + (22 * z - textSize(F_MID, rew.c_str()).y) / 2), withAlpha(col::rgb(0x2a5a2a), al), rew.c_str());
@@ -575,7 +575,7 @@ public:
       }
       ImGui::SetCursorPosX(pad);
       bool sl = sel == btn;
-      if (button("Forget it all (20 emeralds)", BTN_NORMAL, true) || (sl && pressA)) forget = true;
+      if (button("Forget it all (20 gold coins)", BTN_NORMAL, true) || (sl && pressA)) forget = true;
       outlineLast(sl); btn++;
     }
     ImGui::SetCursorPosX(pad); label(F_SMALL, col::muted, "E to close");

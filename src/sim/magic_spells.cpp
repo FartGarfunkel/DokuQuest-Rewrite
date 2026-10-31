@@ -429,13 +429,13 @@ bool castNewSpell(Level& lv, Player& p, const std::string& k, const json& st, fl
     ItemStack& s = p.offhand[0];
     double v = s.empty() ? 0 : alchValue(s.id);
     if (s.empty()) return fail("Hold the thing to transmute in your off hand");
-    if (!v || s.id == "emerald") { const ItemDef* d = s.def(); toast(lv, p, (d ? d->name : std::string("That")) + " cannot be transmuted"); c.ok = false; return false; }
+    if (!v || s.id == "emerald" || s.id == "gold_coin") { const ItemDef* d = s.def(); toast(lv, p, (d ? d->name : std::string("That")) + " cannot be transmuted"); c.ok = false; return false; }
     double bank = p.stats.value("alchBank", 0.0) + v * 0.6;
     int n = (int)std::floor(bank); bank -= n;
     p.stats["alchBank"] = bank;
     if (--s.n <= 0) s.clear();
-    if (n > 0) giveOrDrop(lv, p, ItemStack("emerald", n));
-    toast(lv, p, n > 0 ? "+" + std::to_string(n) + " emerald" + (n > 1 ? "s" : "") : "A little gold dust (saved toward the next emerald)", "good");
+    if (n > 0) giveOrDrop(lv, p, ItemStack("gold_coin", n));   // alchemy turns things to gold: the villages' money
+    toast(lv, p, n > 0 ? "+" + std::to_string(n) + " gold coin" + (n > 1 ? "s" : "") : "A little gold dust (saved toward the next coin)", "good");
     sfx::burst(lv, vec3(E.x + L.x * 0.6f, E.y - 0.3f, E.z + L.z * 0.6f), "mana_light", 30, 1.4f, json{{"life", 0.6}});
     ui(lv, p, "levelup"); c.cd = 0.8f;
   } else if (k == "drainlife") {

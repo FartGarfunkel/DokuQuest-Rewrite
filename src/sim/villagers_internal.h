@@ -109,5 +109,10 @@ std::string itemName(const std::string& id);
 int countOf(Player& p, const std::string& id);                   // 'log' counts every #log
 void removeOf(Player& p, const std::string& id, int n);
 void vGive(Level& lv, Player& p, const ItemStack& s);              // lp.give(), the rest dropped at your feet
+// money: villagers pay and charge gold coins; an emerald still pays, worth EMERALD_COINS (change comes back in coins)
+constexpr const char* COIN = "gold_coin";
+constexpr int EMERALD_COINS = 4;
+int purseOf(Player& p);                                              // coins + emeralds at their worth
+bool payCoins(Level& lv, Player& p, int price);                      // false (nothing taken) when the purse is short
 
 } // namespace dq

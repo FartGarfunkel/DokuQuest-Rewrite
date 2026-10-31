@@ -255,13 +255,13 @@ bool questFinish(Level& lv, Player& p, const std::string& qid) {
     for (size_t i = 0; i + 120 < ks.size(); i++) S["qdone"].erase(ks[i]);
   }
   const json R = q.value("reward", json::object());
-  if (R.value("em", 0) > 0) vGive(lv, p, ItemStack("emerald", R.value("em", 0)));
+  if (R.value("em", 0) > 0) vGive(lv, p, ItemStack(COIN, R.value("em", 0)));
   if (R.contains("item") && R["item"].is_array() && reg().item(R["item"][0].get<std::string>())) vGive(lv, p, ItemStack(R["item"][0].get<std::string>(), R["item"][1].get<int>()));
   if (R.value("xp", 0) > 0) grantXp(lv, p, R.value("xp", 0), p.pos + vec3(0, 1, 0));
   if (R.contains("skill") && R["skill"].is_array()) skillGain(lv, p, R["skill"][0].get<std::string>(), R["skill"][1].get<double>());
   npcRep(lv, p, q.value("vid", std::string()), R.value("rep", 5));
   sfxUi(lv, p, "levelup");
-  toast(lv, p, "Quest complete: " + q.value("title", std::string()) + " (+" + std::to_string(R.value("em", 0)) + " emeralds)", "epic");
+  toast(lv, p, "Quest complete: " + q.value("title", std::string()) + " (+" + std::to_string(R.value("em", 0)) + " gold coins)", "epic");
   S["questsDone"] = S.value("questsDone", 0) + 1;
   return true;
 }
@@ -297,7 +297,7 @@ std::vector<ShopLine> shopLines(Level& lv, Player& p, const Village& v, int npcI
   double disc = st.k >= 6 ? 0.8 : st.k >= 5 ? 0.9 : 1;
   json& S = npcStats(p); std::string k = shopKey(v, npcIndex); const i64 day = npcDay(lv);
   json rec = S["vstock"].contains(k) && S["vstock"][k].value("d", (i64)-1) == day ? S["vstock"][k] : json{{"d", day}, {"u", json::object()}};
-  int em = countOf(p, "emerald");
+  int em = purseOf(p);
   int i = 0;
   for (auto& l : list) {
     if (!reg().item(l[0].get<std::string>())) continue;
@@ -318,13 +318,12 @@ bool shopTrade(Level& lv, Player& p, const Village& v, int npcIndex, const std::
   if (l.locked) { say = "I keep that for my " + lower(TN[l.tier].get<std::string>()) + "s. Help the village and we'll see."; return false; }
   if (l.left <= 0) { say = "All gone for today. Come back tomorrow!"; return false; }
   if (tab == "buy") {
-    if (countOf(p, "emerald") < l.price) { say = "That's " + plural(l.price, "emerald") + ". You haven't enough."; sfxUi(lv, p, "click_off"); return false; }
-    removeOf(p, "emerald", l.price);
+    if (!payCoins(lv, p, l.price)) { say = "That's " + plural(l.price, "gold coin") + ". You haven't enough."; sfxUi(lv, p, "click_off"); return false; }
     vGive(lv, p, ItemStack(l.id, l.n));
   } else {
     if (countOf(p, l.id) < l.n) { say = "I need " + std::to_string(l.n) + " of those."; sfxUi(lv, p, "click_off"); return false; }
     removeOf(p, l.id, l.n);
-    vGive(lv, p, ItemStack("emerald", l.price));
+    vGive(lv, p, ItemStack(COIN, l.price));
   }
   json& S = npcStats(p); std::string k = shopKey(v, npcIndex); const i64 day = npcDay(lv);
   if (!S["vstock"].contains(k) || S["vstock"][k].value("d", (i64)-1) != day) S["vstock"][k] = {{"d", day}, {"u", json::object()}};
@@ -369,8 +368,7 @@ bool pathLearn(Level& lv, Player& p, const std::string& id) {
 }
 bool pathForget(Level& lv, Player& p) {
   if (!pathOf(p)) return false;
-  if (countOf(p, "emerald") < 20) { toast(lv, p, "That takes 20 emeralds", "warn"); return false; }
-  removeOf(p, "emerald", 20); p.stats["path"] = nullptr;
+  if (!payCoins(lv, p, 20)) { toast(lv, p, "That takes 20 gold coins", "warn"); return false; } p.stats["path"] = nullptr;
   toast(lv, p, "You set your path aside. Choose again when you're ready.");
   return true;
 }
@@ -593,7 +591,7 @@ void talkChoose(Level& lv, Player& p, Talk& t, int i) {
   if (a == "about") { home(lv, p, t, "This is " + (v ? v->name : std::string("our village")) + ". We are simple folk: farmers, smiths, traders. Help us and we will help you. The board by the well has work for brave hands."); return; }
   if (a == "offer") {
     const json& q = o.arg; int em = q["reward"].value("em", 0);
-    say(lv, p, t, q.value("text", std::string()) + " I can pay " + plural(em, "emerald") + ".");
+    say(lv, p, t, q.value("text", std::string()) + " I can pay " + plural(em, "gold coin") + ".");
     t.opts = {{"I'll do it", "", "take", q}, {"Not right now", "", "home", "Maybe another time, then."}};
     return;
   }
@@ -662,4 +660,20 @@ void talkShopTrade(Level& lv, Player& p, Talk& t, int line) {
 }
 void talkShopBack(Level& lv, Player& p, Talk& t) { home(lv, p, t, "Anything else?"); }
 
+// ------------------------------------------------------------------ money
+int purseOf(Player& p) { return countOf(p, COIN) + countOf(p, "emerald") * EMERALD_COINS; }
+bool payCoins(Level& lv, Player& p, int price) {
+  if (price <= 0) return true;
+  if (purseOf(p) < price) return false;
+  int coins = std::min(countOf(p, COIN), price);
+  removeOf(p, COIN, coins); price -= coins;
+  if (price > 0) {   // the rest in emeralds, the change back in coins
+    int em = (price + EMERALD_COINS - 1) / EMERALD_COINS;
+    removeOf(p, "emerald", em);
+    if (int change = em * EMERALD_COINS - price) vGive(lv, p, ItemStack(COIN, change));
+  }
+  return true;
+}
+
 } // namespace dq
+

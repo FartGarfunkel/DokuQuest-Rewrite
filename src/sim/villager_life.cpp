@@ -192,7 +192,7 @@ void raidTick(Level& lv, VillagerSystem& S, double dt) {
     for (Player* p : levelPlayers(lv)) {
       if (p->dead || !v || std::hypot(p->pos.x - v->x, p->pos.z - v->z) >= 90) continue;
       toast(lv, *p, "The raid on " + R.name + " is beaten! The village thanks you.", "epic");
-      vGive(lv, *p, ItemStack("emerald", 4 + R.n));
+      vGive(lv, *p, ItemStack(COIN, 4 + R.n));
       grantXp(lv, *p, 40 + R.n * 8, p->pos + vec3(0, 1, 0));
       npcRep(lv, *p, R.vid, 15, "raid");
       sfxUi(lv, *p, "levelup");
@@ -242,7 +242,7 @@ static void eliteSpawn(Level& lv, const json& q, Player* who) {
   T.damage = std::round((T0->damage ? T0->damage : 3) * 1.7f * k * 2) / 2; T.speed = (T0->speed ? T0->speed : 2.5f) * 1.15f;
   T.knockResist = std::max(T0->knockResist, 0.5f); T.hasTint = true; T.tint = vec4(1, 0.25f, 0.15f, 0.25f); T.xp = (T0->xp ? T0->xp : 5) * 8;
   static const char* PRIZE[4] = {"steel_sword", "mithril_sword", "steel_chestplate", "golden_apple"};
-  std::vector<CreatureType::Drop> extra = {{"emerald", 4, 10, 1}, {"gold_ingot", 1, 4, 0.8f}, {"diamond", 1, 2, 0.35f}, {"heart_crystal", 1, 1, 0.12f}, {PRIZE[(int)std::floor(rnd() * 4)], 1, 1, 0.5f}};
+  std::vector<CreatureType::Drop> extra = {{COIN, 4, 10, 1}, {"gold_ingot", 1, 4, 0.8f}, {"diamond", 1, 2, 0.35f}, {"heart_crystal", 1, 1, 0.12f}, {PRIZE[(int)std::floor(rnd() * 4)], 1, 1, 0.5f}};
   for (auto& d : extra) if (reg().item(d.id)) T.drops.push_back(d);
   m->T = &T;
   m->maxHp = m->hp = T.hp;
@@ -446,7 +446,7 @@ static HeroHouse homeGive(Level& lv, const Village& v, Player& who) {
   Site s = homeSite(lv, v);
   if (!s.ok) return {};
   json gifts = json::array();
-  for (auto& [k, n] : std::vector<std::pair<const char*, int>>{{"emerald", 16}, {"bread", 8}, {"cooked_beef", 8}, {"torch", 24}, {"golden_apple", 1}, {"flower_pot", 2}, {"oak_sapling", 2}, {"wheat_seeds", 8}}) if (reg().item(k)) gifts.push_back(json::array({k, n}));
+  for (auto& [k, n] : std::vector<std::pair<const char*, int>>{{COIN, 16}, {"bread", 8}, {"cooked_beef", 8}, {"torch", 24}, {"golden_apple", 1}, {"flower_pot", 2}, {"oak_sapling", 2}, {"wheat_seeds", 8}}) if (reg().item(k)) gifts.push_back(json::array({k, n}));
   HeroHouse h = g_builder ? g_builder(lv, v, s.r, s.ox, s.oz, s.y, gifts) : plainHouse(lv, v, s.r, s.ox, s.oz, s.y, gifts);
   if (!h.ok) return h;
   built[key] = {{"bed", json::array({h.bed.x, h.bed.y, h.bed.z})}, {"door", json::array({h.door.x, h.door.y, h.door.z})}, {"name", h.name}};
