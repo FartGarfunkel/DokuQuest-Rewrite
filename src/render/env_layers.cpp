@@ -66,7 +66,7 @@ public:
 
 // ---- weather and ambient effects (spawn particles; the particle layer moves and draws them) ----------------
 struct Emitter { i16 x, y, z; u8 kind, meta; float h; };   // x,z chunk-local, y global
-enum EmKind : u8 { EM_TORCH = 1, EM_SOUL_TORCH, EM_FIRE, EM_LAVA, EM_FURNACE, EM_CANDLE, EM_END_ROD, EM_CRYING, EM_SPORE, EM_PORTAL, EM_RS_TORCH, EM_RS_WIRE, EM_RS_ORE, EM_CAMPFIRE,
+enum EmKind : u8 { EM_TORCH = 1, EM_SOUL_TORCH, EM_FIRE, EM_LAVA, EM_FURNACE, EM_CANDLE, EM_END_ROD, EM_CRYING, EM_SPORE, EM_PORTAL, EM_RS_TORCH, EM_RS_WIRE, EM_RS_ORE, EM_CAMPFIRE, EM_FIREFLY_JAR,
                    EM_DRIP_WATER = 32, EM_DRIP_LAVA, EM_DRIP_LEAF, EM_DRIP_HONEY };
 
 class WeatherFxLayer : public RenderLayer {
@@ -107,6 +107,7 @@ void WeatherFxLayer::buildKinds() {
     else if (b.has("furnace") && b.light) k = EM_FURNACE;
     else if (b.has("candle")) k = EM_CANDLE;
     else if (b.key == "end_rod") k = EM_END_ROD;
+    else if (b.str("jar") == "fireflies") k = EM_FIREFLY_JAR;
     else if (b.key == "crying_obsidian") k = EM_CRYING;
     else if (b.key == "spore_blossom") k = EM_SPORE;
     else if (R.tPortal[b.id]) k = EM_PORTAL;
@@ -425,6 +426,10 @@ void WeatherFxLayer::emitters(GameSession& s, double dt, double step) {
             break;
           case EM_END_ROD:
             if (rnd() < step * 1.2f) { Particle q; q.p = vec3(x + 0.5f + (rnd() - 0.5f) * 0.3f, y + 0.5f + (rnd() - 0.5f) * 0.6f, z + 0.5f + (rnd() - 0.5f) * 0.3f); q.v = vec3(rnd() - 0.5f, rnd() - 0.5f, rnd() - 0.5f) * 0.3f; q.life = q.max = 1.6f; q.size = 0.04f; q.size0 = 0.05f; q.shrink = true; q.tile = (u16)P.tile("sparkle"); q.light = 0xFF; P.add(q); }
+            break;
+          case EM_FIREFLY_JAR:   // a few sparks blinking about inside the glass
+            if (rnd() < step * 3) { Particle q; q.p = vec3(x + 0.3f + rnd() * 0.4f, y + 0.12f + rnd() * 0.4f, z + 0.3f + rnd() * 0.4f); q.v = vec3(rnd() - 0.5f, rnd() - 0.5f, rnd() - 0.5f) * 0.06f;
+              q.life = q.max = 1.2f + rnd(); q.size = q.size0 = 0.025f; q.tile = (u16)P.tile("firefly"); q.light = 0xFF; q.blink = 3 + rnd() * 3; q.ph = rnd() * 6; P.add(q); }
             break;
           case EM_CRYING:
             if (rnd() < step * 0.6f && !reg().tSolid[w.getBlock((int)x, (int)y - 1, (int)z)]) P.spawn("drip_tear", vec3(x + 0.2f + rnd() * 0.6f, y - 0.03f, z + 0.2f + rnd() * 0.6f), 1);

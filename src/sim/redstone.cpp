@@ -7,6 +7,7 @@
 #include "sim/machines.h"
 #include "sim/physics.h"
 #include "sim/player.h"
+namespace dq { bool isMob(const Entity& e); }   // sim/gameplay.cpp
 #include <random>
 
 namespace dq {
@@ -671,6 +672,23 @@ void Redstone::runTickers() {
 }
 void Redstone::plateTick(int x, int y, int z, BlockId id, int m) {
   std::string kind = reg().block(id).str("plate");
+  if (kind == "motion") {   // the motion sensor: anything alive moving within 4 blocks (not you sneaking); off a second after
+    int n = 0;
+    vec3 c = vec3(x, y, z) + vec3(0.5f);
+    for (auto& e : lv.entities()) {
+      if (e->removed || e->realm != w.realm || (!e->isPlayer() && !isMob(*e))) continue;
+      if (glm::distance(e->pos, c) > 4.5f || std::hypot(e->vel.x, e->vel.z) < 0.4f) continue;
+      if (auto* pl = dynamic_cast<Player*>(e.get())) if (pl->sneaking || pl->dead) continue;
+      n++;
+    }
+    int p = n ? 15 : 0, cur = m & 15;
+    u64 k = posKey(x, y, z);
+    if (p) plateSeen[k] = now;
+    auto it = plateSeen.find(k);
+    i64 seen = it == plateSeen.end() ? 0 : it->second;
+    if (p > cur || (p < cur && now - seen >= 20)) { w.setBlock(x, y, z, id, (m & ~15) | p); if (p) lv.fx->sound("click", c, 12); }
+    return;
+  }
   int n = countIn(vec3(x + 1 / 16.f, y, z + 1 / 16.f), vec3(x + 15 / 16.f, y + 0.3f, z + 15 / 16.f), kind == "mobs" ? 0 : -1);
   int p = 0;
   if (n > 0) p = kind == "light" ? std::min(15, n) : kind == "heavy" ? std::min(15, (n + 9) / 10) : 15;

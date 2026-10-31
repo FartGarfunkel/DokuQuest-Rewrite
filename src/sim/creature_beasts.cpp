@@ -2,6 +2,7 @@
 // swimmer, amphibian), the farm animals (game/blocks2.js farmAI / breeding / eggs / wool), game/husbandry.js
 // (following food, babies trailing their elders, bees working flowers), game/aquatic.js (stranded flopping),
 // game/pets.js (taming, follow/stay, defending, riding with saddles) and monsters.js's stalking big cats.
+#include "sim/leads.h"
 #include "sim/creature.h"
 #include "sim/creature_entities.h"
 #include "sim/mob_combat.h"
@@ -577,6 +578,15 @@ OptMove Creature::controlAI(Level& lv, float dt) {
     float vx = -std::sin(r->yaw) * f + std::cos(r->yaw) * s, vz = -std::cos(r->yaw) * f - std::sin(r->yaw) * s, mm = std::hypot(vx, vz);
     if (mm < 0.1f) return Move{0, yaw};
     return Move{sp * (rideIn.sprint ? 1.3f : 0.75f) * std::min(1.f, mm), std::atan2(-vx, -vz)};
+  }
+  vec3 lh;
+  if (leashHolder(lv, *this, lh)) {   // on a lead: keep up with whoever holds it (sim/leads.cpp)
+    float d = std::hypot(lh.x - pos.x, lh.z - pos.z);
+    if (d > 2.5f) {
+      stay = false; sitting = false; sleeping = false; grazeT = 0;
+      std::optional<float> nd = navDir(lv, lh, dt);
+      return Move{(T->run > 0 ? T->run : T->speed * 1.5f) * std::min(1.f, (d - 2.f) / 2.f), nd ? *nd : heading(pos.x, pos.z, lh.x, lh.z)};
+    }
   }
   if (owner.empty()) return std::nullopt;
   // petAI

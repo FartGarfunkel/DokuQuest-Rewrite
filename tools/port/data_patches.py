@@ -23,11 +23,11 @@ for b in (blocks.values() if isinstance(blocks, dict) else blocks):
 # ---- tiles: body pictures for stacked vines ----
 tj = json.loads((d / 'tiles.json').read_text())
 names, T, per = tj['names'], tj['tile'], tj['perRow']
-img = Image.open(d / 'tiles.png').convert('RGBA')
+img = Image.open(d / 'tiles.png').convert('RGBA') if (d / 'tiles.png').exists() else None   # (retired: one file per picture now, the vine bodies among them)
 new = []
 for tip in ['weeping_vines', 'twisting_vines', 'cave_vines', 'cave_vines_lit']:
     body = tip.replace('cave_vines', 'cave_vines_plant') if tip.startswith('cave_vines') else tip + '_plant'
-    if tip not in names:
+    if tip not in names or img is None:
         continue
     i = names[tip]; sx, sy = (i % per) * T, (i // per) * T
     src = img.crop((sx, sy, sx + T, sy + T)); px = src.load()
@@ -43,7 +43,7 @@ for tip in ['weeping_vines', 'twisting_vines', 'cave_vines', 'cave_vines_lit']:
         names[body] = k; tj['count'] += 1
     img.paste(out, ((k % per) * T, (k // per) * T))
     new.append(body)
-img.save(d / 'tiles.png', optimize=True)
+if img is not None: img.save(d / 'tiles.png', optimize=True)
 (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':'), sort_keys=False))
 
 # ---- packmap: the pack's own body pictures ----
@@ -128,3 +128,33 @@ _s = _u.spec_from_file_location('mob_heads', pathlib.Path(__file__).with_name('m
 
 # ---- BTA-inspired blocks (tools/port/bta_blocks.py) ----
 _s = _u.spec_from_file_location('bta_blocks', pathlib.Path(__file__).with_name('bta_blocks.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
+
+# ---- the lead (Minecraft's): leads an animal, ties it to a fence post (sim/leads.cpp) ----
+items = json.loads((d / 'items.json').read_text()); tj4 = json.loads((d / 'tiles.json').read_text())
+sh4 = json.loads((d / 'itemshapes.json').read_text()); rj4 = json.loads((d / 'recipes.json').read_text())
+if 'lead' not in tj4['names']:
+    import math as _m
+    im = _I.new('RGBA', (32, 32), (0, 0, 0, 0)); px = im.load()
+    def rope(x, y, t):   # a twisted rope cell: light and dark strands
+        c = (196, 150, 96) if (int(t) // 2) % 2 == 0 else (150, 104, 60)
+        for ox, oy in ((0, 0), (1, 0), (0, 1), (1, 1)):
+            if 0 <= x + ox < 32 and 0 <= y + oy < 32: px[x + ox, y + oy] = c + (255,)
+    for k in range(80):   # the loop at the top right
+        a = k / 80 * 2 * _m.pi; rope(int(20 + 8 * _m.cos(a)), int(10 + 7 * _m.sin(a)), k)
+    for k in range(26):   # the tail down to the bottom left
+        rope(int(13 - k * 0.42), int(15 + k * 0.55), k + 3)
+    for y in range(13, 18):   # the knot: a dab of slime green
+        for x in range(10, 15):
+            if (x - 12) ** 2 + (y - 15) ** 2 <= 5: px[x, y] = (96, 176, 72, 255) if (x + y) % 3 else (60, 130, 48, 255)
+    im.save(d / 'textures/item/lead.png')
+    tj4['res'] += [32] * max(0, tj4['count'] - len(tj4['res']))
+    tj4['names']['lead'] = tj4['count']; tj4['files'].append('textures/item/lead.png'); tj4['res'].append(32); tj4['count'] += 1
+    (d / 'tiles.json').write_text(json.dumps(tj4, separators=(',', ':'), ensure_ascii=False))
+if 'lead' not in sh4['itemTiles']:
+    sh4['itemTiles'].append('lead'); (d / 'itemshapes.json').write_text(json.dumps(sh4, separators=(',', ':'), ensure_ascii=False))
+items['lead'] = {'key': 'lead', 'name': 'Lead', 'maxStack': 64, 'icon': 'lead',
+                 'desc': 'Use it on an animal to lead it; use a fence post to tie it there. Use the animal again to let go.'}
+(d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
+if not any(r.get('out') == 'lead' for r in rj4['recipes']):
+    rj4['recipes'].append({'out': 'lead', 'n': 2, 'shape': ['SS ', 'SB ', '  S'], 'key': {'S': 'string', 'B': 'slime_ball'}, 'h': 3, 'w': 3, 'group': 'tools'})
+    (d / 'recipes.json').write_text(json.dumps(rj4, separators=(',', ':'), ensure_ascii=False))

@@ -10,6 +10,7 @@
 #include "ui/content_screens.h"
 #include "assets/voxel.h"
 #include "sim/maps.h"
+#include "sim/leads.h"
 #include "sim/fishing.h"
 #include "render/rod_tip.h"
 #include "sim/camping.h"
@@ -182,6 +183,25 @@ public:
         float D = glm::distance(tip, h->pos);
         lines.push_back({sagLine(tip, h->pos, 0.05f + D * 0.04f, 10, f.cam), {vec4(0.72f, 0.58f, 0.35f, 1), L}});
       }
+    }
+    // leads: from the animal's neck to the holder's hand, or to the knot on a fence post (sim/leads.cpp)
+    for (auto& e : lv.entities()) {
+      if (e->removed || e->realm != s.player->realm || !e->data.is_object() || !e->data.contains("leash")) continue;
+      vec3 hold;
+      if (!leashHolder(lv, *e, hold)) continue;
+      const json& Ld = e->data["leash"];
+      if (Ld.is_string()) {
+        Player* hp = Ld.get<std::string>() == s.player->name ? s.player : nullptr;
+        if (hp && s.viewMode == 0) hold = tipOf(s, *hp, 0.55f, 0.38f, -0.35f);   // your own hand, in first person
+        else for (auto& o : lv.entities()) if (auto* op = dynamic_cast<Player*>(o.get())) if (op->name == Ld.get<std::string>()) {
+          hold = op->pos + vec3(std::cos(op->yaw) * 0.38f, 0.95f, -std::sin(op->yaw) * 0.38f); break;   // the right hand
+        }
+      }
+      float yw = e->yaw, fw = e->w * 0.9f;
+      vec3 neck = e->pos + vec3(-std::sin(yw) * fw, e->h * 0.72f, -std::cos(yw) * fw);
+      float D = glm::distance(neck, hold);
+      vec2 L = lightAt(w, (neck + hold) * 0.5f);
+      lines.push_back({sagLine(hold, neck, std::max(0.f, 0.35f - D * 0.03f), 12, f.cam), {vec4(0.55f, 0.4f, 0.24f, 1), L}});
     }
     // a rod in hand with its float not out: the float hangs from the tip on a short line, swaying as you move
     for (auto& e : lv.entities()) {

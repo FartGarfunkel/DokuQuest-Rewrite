@@ -3,6 +3,7 @@
 // colonies (game/husbandry.js), bodies that don't share space (game/crowd.js: not ported by gameplay, so it
 // lives here), item merging (game.js updateEntities), players' status effects; plus registerCreatures().
 // No phantoms, ever.
+#include "sim/leads.h"
 #include "sim/weapon_rack.h"
 #include "sim/slime_goo.h"
 #include "sim/creature.h"
@@ -682,6 +683,8 @@ void registerCreatures() {
   registerSpawners();
   registerPocket();
   registerUsables();
+  registerLeads();   // sim/leads.cpp
+  { void registerJars(); registerJars(); }   // sim/jars.cpp
   registerTrickOrTreat();
   registerWeaponRack();
   registerSlimeGoo();

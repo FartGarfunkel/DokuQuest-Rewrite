@@ -161,6 +161,53 @@ def main(d):
         rel = 'textures/item/paintbrush.png'; im.save(d / rel)
         tiles['paintbrush'] = tj['count']; files.append(rel); tj['res'].append(32); tj['count'] += 1
     recipe('paintbrush', 1, [' W', 'S '], {'W': 'wool', 'S': 'stick'})
+
+    # glass jars: an empty one catches fireflies over grass at night (sim/usables.cpp); a jar of fireflies glows, and
+    # opening it lets them go. Pictures: the jar's side and top as the 8 px box samples them (u = x, v = 16 - y)
+    if 'glass_jar_side' not in tiles:
+        from PIL import Image as _I
+        EDGE, HI, RIM = (205, 232, 238, 255), (250, 252, 255, 255), (170, 205, 214, 255)
+        im = _I.new('RGBA', (32, 32), (0, 0, 0, 0)); px = im.load()
+        for y in range(14, 32):
+            for x in (8, 23): px[x, y] = EDGE
+        for x in range(8, 24): px[x, 31] = RIM; px[x, 14] = RIM; px[x, 15] = RIM
+        for y in range(18, 28): px[11, y] = HI
+        for y in range(19, 23): px[13, y] = HI
+        tile('glass_jar_side', im)
+        im = _I.new('RGBA', (32, 32), (0, 0, 0, 0)); px = im.load()
+        for i in range(8, 24):
+            for j in (8, 23): px[i, j] = RIM; px[j, i] = RIM
+        tile('glass_jar_top', im)
+    if 'glass_jar' not in sj['shapes']:
+        sj['shapes']['glass_jar'] = [{'b': [4, 0, 4, 12, 9, 12], 'side': 'glass_jar_side', 'end': 'glass_jar_top'},
+                                     {'b': [5, 9, 5, 11, 10.5, 11], 'side': 'spruce_planks', 'end': 'spruce_planks'}]
+    for k, nm, lt in (('glass_jar', 'Glass Jar', 0), ('firefly_jar', 'Jar of Fireflies', 9)):
+        block(k, nm, {'render': 6, 'opaque': False, 'hardness': 0.3, 'tool': None, 'sound': 'glass', 'light': lt, 'shape': 'glass_jar',
+                      'tex': 'glass_jar_side', 'needsSupport': True, 'sink': True, 'jar': 'fireflies' if lt else 'empty'}, [tiles['glass_jar_side']] * 6)
+    recipe('glass_jar', 2, [' P ', 'G G', 'GGG'], {'P': '#planks', 'G': 'glass'})
+
+    # the mesh: an iron grate that stops players and creatures, but dropped items fall through (sim/physics.cpp)
+    # the motion sensor: gives a redstone signal while something moves within a few blocks of it (sim/redstone.cpp)
+    if 'iron_mesh' not in tiles:
+        from PIL import Image as _I
+        im = _I.new('RGBA', (32, 32), (0, 0, 0, 0)); px = im.load()
+        for i in range(32):
+            for j in range(32):
+                bar = i % 8 in (0, 1) or j % 8 in (0, 1)
+                if bar: px[i, j] = (150, 152, 158, 255) if (i % 8 == 0 or j % 8 == 0) else (104, 106, 112, 255)
+        tile('iron_mesh', im)
+        cob = src_pic(d, tiles, files, 'smooth_stone') if 'smooth_stone' in tiles else src_pic(d, tiles, files, 'stone')
+        im = recolour(cob, hsv_map(sat=0.3, val=0.62)); px = im.load()
+        for i in range(32):
+            for j in range(32):
+                r = ((i - 15.5) ** 2 + (j - 15.5) ** 2) ** 0.5
+                if r < 7.5: px[i, j] = (24, 22, 28, 255) if r > 6 else (40, 36, 44, 255)
+                if r < 4.2: px[i, j] = (200, 40, 36, 255) if r > 2 else (255, 120, 90, 255)
+        tile('motion_sensor', im)
+    block('iron_mesh', 'Iron Mesh', {'render': 2, 'opaque': False, 'hardness': 3, 'sound': 'metal', 'mesh': True, 'tex': 'iron_mesh'}, [tiles['iron_mesh']] * 6)
+    block('motion_sensor', 'Motion Sensor', {'hardness': 2, 'sound': 'stone', 'rs': 'plate', 'plate': 'motion', 'tex': 'motion_sensor'}, [tiles['motion_sensor']] * 6)
+    recipe('iron_mesh', 4, ['BB', 'BB'], {'B': 'iron_bars'})
+    recipe('motion_sensor', 1, ['CCC', 'RQR', 'CCC'], {'C': 'cobblestone', 'R': 'redstone', 'Q': 'quartz'})
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'shapes.json').write_text(json.dumps(sj, separators=(',', ':'), ensure_ascii=False))
     sh = json.loads((d / 'itemshapes.json').read_text())

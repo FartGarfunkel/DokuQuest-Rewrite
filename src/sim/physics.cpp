@@ -8,6 +8,12 @@ namespace dq {
 
 static thread_local std::vector<PixBox> t_pix;
 
+static thread_local bool t_itemMove = false;   // moveEntity for a dropped item: mesh blocks let it through
+static bool meshBlock(BlockId id) {
+  static std::vector<u8> T; const Registry& R = reg();
+  if (T.size() != R.blocks.size()) { T.assign(R.blocks.size(), 0); for (size_t i = 0; i < R.blocks.size(); i++) T[i] = R.blocks[i].has("mesh"); }
+  return id < T.size() && T[id];
+}
 void gatherBoxes(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ,
                  std::vector<DBox>& out, double feet, bool sneak) {
   out.clear();
@@ -17,7 +23,7 @@ void gatherBoxes(const World& w, double minX, double minY, double minZ, double m
   int z0 = (int)std::floor(minZ), z1 = (int)std::floor(maxZ - 1e-7);
   for (int y = y0; y <= y1; y++) for (int z = z0; z <= z1; z++) for (int x = x0; x <= x1; x++) {
     BlockId id = w.getBlockPhys(x, y, z);
-    if (!R.tSolid[id]) continue;
+    if (!R.tSolid[id] || (t_itemMove && meshBlock(id))) continue;
     bool carved = fullSolid(id) && w.getCarve(x, y, z);   // carve flag lives in its own byte now
     if (!hasShapeBoxes(id) && !carved) { if (y >= yb) out.push_back({(double)x, (double)y, (double)z, x + 1.0, y + 1.0, z + 1.0}); continue; }
     if (bhas(id, BF::Scaffold) && !std::isnan(feet) && (sneak || feet < y + 1 - 0.05)) continue;
@@ -103,6 +109,8 @@ static void pushOut(const World& w, double& ex, double& ey, double& ez, double e
 
 MoveOut moveEntity(const World& w, Entity& e, float dt, const MoveParams& mp) {
   MoveOut res;
+  struct ItemScope { bool old; ~ItemScope() { t_itemMove = old; } } itemScope{t_itemMove};
+  t_itemMove = mp.item;
   double ex = e.pos.x, ey = e.pos.y, ez = e.pos.z, ew = e.w, eh = e.h;
   pushOut(w, ex, ey, ez, ew, eh, mp.sneaking);
   double dx = (double)e.vel.x * dt, dy = (double)e.vel.y * dt, dz = (double)e.vel.z * dt;
