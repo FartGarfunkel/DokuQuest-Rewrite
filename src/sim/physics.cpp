@@ -212,12 +212,14 @@ Contacts sampleContacts(const World& w, const Entity& e, float eye) {
   // spikes underfoot hurt like cactus (the spike trap)
   static const BlockId spikes = reg().blockId("spike_trap");
   if (spikes && w.getBlock(ifloor(e.pos.x), ifloor(e.pos.y + 0.05f), ifloor(e.pos.z)) == spikes) r.cactus = true;
-  // cactus is touched from the sides
+  // cactus (and thorn leaves) are touched from the sides
   BlockId cactus = KB().cactus;
+  static const BlockId thorns = reg().blockId("thorn_leaves");
   if (cactus) for (int y = y0; y <= y1; y++) {
     const float off[4][2] = {{e.w + 0.05f, 0}, {-e.w - 0.05f, 0}, {0, e.w + 0.05f}, {0, -e.w - 0.05f}};
-    for (auto& o : off) if (w.getBlock(ifloor(e.pos.x + o[0]), y, ifloor(e.pos.z + o[1])) == cactus) r.cactus = true;
+    for (auto& o : off) { BlockId b = w.getBlock(ifloor(e.pos.x + o[0]), y, ifloor(e.pos.z + o[1])); if (b == cactus || (thorns && b == thorns)) r.cactus = true; }
   }
+  if (thorns && w.getBlock(ifloor(e.pos.x), ifloor(e.pos.y - 0.05f), ifloor(e.pos.z)) == thorns) r.cactus = true;   // standing in a thorn crown
   if (eye >= 0) {
     int ex = ifloor(e.pos.x), ey = ifloor(e.pos.y + eye), ez = ifloor(e.pos.z);
     BlockId id = w.getBlock(ex, ey, ez);

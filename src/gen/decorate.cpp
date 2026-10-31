@@ -130,6 +130,7 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
       if (r > 0.992) { int h2 = 3 + jsFloor(r2 * 7); for (int k = 0; k < h2 && at(x, y + k, z) == 0; k++) set(x, y + k, z, k > h2 - 3 && B.blue_ice ? B.blue_ice : B.packed_ice); }
       continue;
     }
+    if ((below == B.grass || below == B.coarse_dirt) && btaVariant(c) == BV_THORNSCRUB) { if (r < 0.16) set(x, y, z, B.dry_grass); else if (r < 0.19) set(x, y, z, B.dead_bush); continue; }
     if (below == B.moss_block && btaVariant(c) == BV_MOSSMIRE) { if (r < 0.3) set(x, y, z, B.moss_carpet); else if (r < 0.33) set(x, y, z, B.blue_orchid); else if (r < 0.36) set(x, y, z, B.fern); continue; }
     if (below == B.grass && btaVariant(c) == BV_MEADOW && r < 0.42) {
       const BlockId fl[] = {B.azure_bluet, B.oxeye_daisy, B.cornflower, B.allium, B.flower_yellow, B.flower_red, B.tall_grass, B.tall_grass, B.lily_of_the_valley};

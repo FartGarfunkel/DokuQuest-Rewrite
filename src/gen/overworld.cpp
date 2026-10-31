@@ -150,6 +150,7 @@ SurfaceMat OverworldGen::surface(const OwColumn& c, int wx, int wz) const {
     case BV_REDLANDS: top = fq < 0.75 ? B.red_sand : B.coarse_dirt; filler = B.red_sand; under = B.terracotta ? B.terracotta : B.sandstone; fillDepth = 3; break;
     case BV_GLACIER: if (h <= 96) { double g = nFloor.noise2(wx / 18.0, wz / 18.0); top = g > 0.1 ? B.packed_ice : B.snow_block; filler = B.packed_ice; under = g > 0.4 && B.blue_ice ? B.blue_ice : B.stone; fillDepth = 4; } break;
     case BV_MOSSMIRE: top = fq < 0.45 ? B.moss_block : B.mud; filler = B.mud; fillDepth = 3; break;
+    case BV_THORNSCRUB: if (fq > 0.55) top = B.coarse_dirt; break;   // dry ground showing through the grass
     default: break;
   }
   if (top == B.mud) under = B.peat;

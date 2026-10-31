@@ -4,7 +4,7 @@
 namespace dq {
 
 static const char* TREE_NAMES[TREE_KIND_COUNT] = {"none", "oak", "birch", "spruce", "pine", "jungle", "aspen", "azalea",
-  "acacia", "dark_oak", "cherry", "mangrove", "crimson", "warped"};
+  "acacia", "dark_oak", "cherry", "mangrove", "crimson", "warped", "thorn"};
 const char* treeKindName(u8 k) { return k < TREE_KIND_COUNT ? TREE_NAMES[k] : "none"; }
 u8 treeKindFromName(const std::string& s) { for (u8 k = 1; k < TREE_KIND_COUNT; k++) if (s == TREE_NAMES[k]) return k; return TREE_OAK; }
 
@@ -97,6 +97,16 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
       for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++)
         if (std::abs(dx) + std::abs(dz) <= 4 && !(std::abs(dx) == 3 && std::abs(dz) == 3)) put(tx + dx, y + H, tz + dz, B.acacia_leaves, true);
       for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) put(tx + dx, y + H + 1, tz + dz, B.acacia_leaves, true);
+      return;
+    }
+    case TREE_THORN: {   // low and crooked, a flat ragged crown of thorn leaves
+      int H = 2 + jsFloor(t.h * 2), d = jsFloor(rnd() * 4), tx = x, tz = z;
+      for (int k = 0; k < H; k++) { if (k == H - 1) { tx += DIRX[d]; tz += DIRZ[d]; } put(tx, y + k, tz, B.acacia_log); }
+      if (t.bare) return;
+      BlockId lf = B.thorn_leaves ? B.thorn_leaves : B.acacia_leaves;
+      for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++)
+        if (std::abs(dx) + std::abs(dz) <= 3 && rnd() < 0.8) put(tx + dx, y + H, tz + dz, lf, true);
+      put(tx, y + H + 1, tz, lf, true);
       return;
     }
     case TREE_DARK_OAK: {
@@ -211,6 +221,7 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
   if (jungle) density = 9;
   if (savanna) density = 0.9;
   if (btaVariant(mid) == BV_MOSSMIRE) density = 3;   // a swampy wood
+  if (btaVariant(mid) == BV_THORNSCRUB) density = 2.5;   // thick with thorn trees
   bool bare = (mid.biome == BIOME_FOREST || mid.biome == BIOME_PLAINS) && hashFloat(cx, cz, seed_, 67) < 0.025;
   int n = jsFloor(density) + (rnd() < std::fmod(density, 1.0) ? 1 : 0) + (bare ? 3 : 0);
   for (int i = 0; i < n; i++) {
@@ -233,6 +244,7 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
     else if (c.biome == BIOME_PLAINS && c.temp < -0.05 && r < 0.4) type = TREE_ASPEN;
     if (bv == BV_REDLANDS) type = TREE_BIRCH;                              // pale-barked gums standing alone
     else if (bv == BV_MOSSMIRE) type = r < 0.6 ? TREE_DARK_OAK : TREE_MANGROVE;   // dark, mossy swamp trees
+    else if (bv == BV_THORNSCRUB) type = r < 0.8 ? TREE_THORN : TREE_ACACIA;      // dry thorn country
     bool bees = (type == TREE_OAK || type == TREE_BIRCH) && !bare && rnd() < (c.biome == BIOME_PLAINS ? 0.06 : 0.02);
     t.kind = type; t.bare = bare; t.bees = bees;
     list.push_back(t);

@@ -233,6 +233,17 @@ def main(d):
         items['sulphur'] = {'key': 'sulphur', 'name': 'Sulphur', 'maxStack': 64, 'icon': 'sulphur', 'desc': 'With charcoal it makes gunpowder.'}
     recipe('gunpowder', 2, items_=['sulphur', 'sulphur', 'charcoal'])
     recipe('sulphur_block', 1, ['SS', 'SS'], {'S': 'sulphur'})
+
+    # thorn leaves: the Thornscrub's thorn trees (BTA's Caatinga); they prick like cactus
+    if 'thorn_leaves' not in tiles:
+        im = recolour(src_pic(d, tiles, files, 'acacia_leaves'), lambda r, g, b, a, x, y: (r * 150 // 255, g * 140 // 255, b * 70 // 255, 255 if a else 0))
+        px = im.load()
+        for k in range(24):   # pale spines among the leaves
+            x, y = (k * 13 + 5) % 32, (k * 7 + 11) % 32
+            if px[x, y][3]: px[x, y] = (226, 214, 170, 255)
+        tile('thorn_leaves', im)
+    block('thorn_leaves', 'Thorn Leaves', {'render': 2, 'opaque': False, 'hardness': 0.3, 'tool': None, 'sound': 'leaves', 'lightAtt': 1,
+                                           'isLeaves': True, 'thorns': True, 'drop': 'stick', 'tex': 'thorn_leaves'}, [tiles['thorn_leaves']] * 6)
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'shapes.json').write_text(json.dumps(sj, separators=(',', ':'), ensure_ascii=False))
     sh = json.loads((d / 'itemshapes.json').read_text())
