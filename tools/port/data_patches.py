@@ -179,3 +179,27 @@ for _n in ('acacia_leaves', 'birch_leaves', 'dark_oak_leaves', 'jungle_leaves', 
             else: _px[_x, _y] = (r, g, b, 253)
     _im.save(_p)
     print('tint marker:', _n)
+
+# ---- the Travel Journal (BTA's guidebook): every thing you've carried, with how it's made (ui/travel_journal.cpp) ----
+items = json.loads((d / 'items.json').read_text()); tj6 = json.loads((d / 'tiles.json').read_text())
+sh6 = json.loads((d / 'itemshapes.json').read_text()); rj6 = json.loads((d / 'recipes.json').read_text())
+if 'travel_journal' not in tj6['names']:
+    src = _I.open(d / tj6['files'][tj6['names']['book']]).convert('RGBA'); px = src.load()
+    for y in range(src.size[1]):
+        for x in range(src.size[0]):
+            r, g, b, a = px[x, y]
+            if a and r > g + 20: px[x, y] = (r * 70 // 100, g * 85 // 100 + 18, b * 60 // 100, a)   # a weathered green cover
+    for x, y in ((15, 13), (16, 13), (15, 14), (16, 14), (14, 12), (17, 15), (17, 12), (14, 15)):   # a compass rose on it
+        if px[x, y][3]: px[x, y] = (236, 206, 120, 255)
+    src.save(d / 'textures/item/travel_journal.png')
+    tj6['res'] += [32] * max(0, tj6['count'] - len(tj6['res']))
+    tj6['names']['travel_journal'] = tj6['count']; tj6['files'].append('textures/item/travel_journal.png'); tj6['res'].append(32); tj6['count'] += 1
+    (d / 'tiles.json').write_text(json.dumps(tj6, separators=(',', ':'), ensure_ascii=False))
+if 'travel_journal' not in sh6['itemTiles']:
+    sh6['itemTiles'].append('travel_journal'); (d / 'itemshapes.json').write_text(json.dumps(sh6, separators=(',', ':'), ensure_ascii=False))
+items['travel_journal'] = {'key': 'travel_journal', 'name': 'Travel Journal', 'maxStack': 1, 'icon': 'travel_journal',
+                           'desc': 'Everything you have come across, and how each is made. Use it to read.'}
+(d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
+if not any(r.get('out') == 'travel_journal' for r in rj6['recipes']):
+    rj6['recipes'].append({'out': 'travel_journal', 'n': 1, 'items': ['book', 'compass']})
+    (d / 'recipes.json').write_text(json.dumps(rj6, separators=(',', ':'), ensure_ascii=False))

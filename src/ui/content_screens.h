@@ -13,6 +13,7 @@ std::unique_ptr<Screen> makeMapScreen(int slot = -1);
 std::unique_ptr<Screen> makeWaystoneScreen(const std::string& hereId);
 std::unique_ptr<Screen> makeStableScreen();
 std::unique_ptr<Screen> makePlacesScreen();
+std::unique_ptr<Screen> makeTravelJournalScreen();   // ui/travel_journal.cpp
 bool canOpenMapScreen(class App& a);                 // the tab strip: a map with you (menutabs.js `can`)
 void stableListArrived(const json& list);             // a client: the host's answer (message kind "stable-list")
 

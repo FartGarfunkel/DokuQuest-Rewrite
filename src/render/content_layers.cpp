@@ -96,6 +96,7 @@ public:
       else if (id == "waystones") app.pushScreen(makeWaystoneScreen(args.value("here", "")));
       else if (id == "stable") app.pushScreen(makeStableScreen());
       else if (id == "places") app.pushScreen(makePlacesScreen());
+      else if (id == "travel_journal") app.pushScreen(makeTravelJournalScreen());
       return true;
     });
   }
