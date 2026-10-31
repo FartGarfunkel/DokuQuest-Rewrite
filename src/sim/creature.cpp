@@ -2,6 +2,7 @@
 // layers the later modules wrapped round it: dismember.js, bestiary.js, sounds2.js, monsters.js,
 // quarrels.js, pets.js (hurt), nightmobs.js (jockeys, slime split), husbandry.js (kept animals).
 #include "sim/creature.h"
+#include "sim/vehicles.h"
 #include "common/holiday.h"
 #include "sim/hallow.h"
 #include "sim/mob_combat.h"
@@ -472,7 +473,10 @@ void Creature::update(Level& lv, float dt) {
   MobContacts c = contacts(wd, *this);
   if (calm) burn = 0;   // the dev zoo: on show, not on fire
   inLava = c.lava;
-  if (c.lava && !T->fireImmune) { DamageSrc s; s.type = "lava"; hurt(lv, 2, s); burn = 4; if (!alive()) return; }
+  bool lavaBoat = false;   // a pet riding a lava boat is kept out of the lava
+  if (!data.value("mountedOn", std::string()).empty()) for (auto& e : lv.entities()) if (auto* b = dynamic_cast<Boat*>(e.get())) if (b->pet == id) { lavaBoat = b->kind == "lava_rowboat"; break; }
+  if (lavaBoat) burn = 0;
+  else if (c.lava && !T->fireImmune) { DamageSrc s; s.type = "lava"; hurt(lv, 2, s); burn = 4; if (!alive()) return; }
   if (burn > 0) {
     burn -= dt; burnTick += dt;
     if (burnTick > 0.8f) { burnTick = 0; if (!T->fireImmune) { DamageSrc s; s.type = "burn"; hurt(lv, 1, s); if (!alive()) return; } }

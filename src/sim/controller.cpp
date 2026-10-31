@@ -2,6 +2,7 @@
 // felling/breath/fire/falls/drop/pick block), fairplay.js (food over time), itemfix.js (eating for
 // effect, the off hand), blocks2.js (bow and arrows) and blockfx.js (cracks that mend).
 #include "sim/controller.h"
+#include "sim/vehicles.h"
 #include "sim/rules.h"
 #include "sim/blockfx.h"
 #include "sim/worldsys.h"
@@ -135,7 +136,10 @@ void PlayerController::tickSurvival(float dt, const MoveInfo& mv) {
   if (c.water && !p.wasWater && p.vel.y < -2.5f) { sfxUi(lv, p, "splash"); lv.fx->particles("splash", vec3(p.pos.x, std::floor(p.pos.y + 0.5f) + 0.9f, p.pos.z), 12, {{"big", p.vel.y < -9}}); }
   p.wasWater = c.water;
   breathe(dt);
-  if (c.lava) { DamageSource s; s.type = "lava"; hurt(4, s); p.burn = 7; }
+  bool lavaBoat = false;   // aboard a lava boat the lava never reaches you
+  if (p.riding) if (auto* b = dynamic_cast<Boat*>(lv.entity(p.riding))) lavaBoat = b->kind == "lava_rowboat";
+  if (lavaBoat) p.burn = 0;
+  else if (c.lava) { DamageSource s; s.type = "lava"; hurt(4, s); p.burn = 7; }
   if (p.burn > 0) {
     p.burn -= dt;
     if (c.water) { p.burn = 0; sfxUi(lv, p, "fizz"); }

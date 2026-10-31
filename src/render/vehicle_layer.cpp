@@ -262,8 +262,9 @@ private:
   }
 
   // ---------------------------------------------------------------- boats and the ship
-  static std::vector<Part> hullParts() {   // boats2.js: the clinker rowboat hull (the sailboat's too, scaled)
-    const std::string P = "boat_planks", R = "boat_rail", IN = "planks";
+  static std::vector<Part> hullParts() { return hullOf("boat_planks", "boat_rail", "planks"); }
+  static std::vector<Part> lavaHullParts() { return hullOf("crimson_planks", "polished_blackstone", "warped_planks"); }   // the lava boat: nether woods don't burn
+  static std::vector<Part> hullOf(const std::string& P, const std::string& R, const std::string& IN) {   // boats2.js: the clinker rowboat hull (the sailboat's too, scaled)
     std::vector<Part> v;
     v.push_back(bb(0, 0.03f, -0.1f, 0.05f, 0.05f, 1.27f, 0, R));
     v.push_back(bb(0, 0.06f, 0.28f, 0.6f, 0.025f, 0.8f, 0, P));
@@ -340,7 +341,7 @@ private:
       if (!b.cargo.is_null() || b.items.is_array()) drawItem(!b.cargo.is_null() ? b.cargo.value("key", "chest") : (b.cargoKey.empty() ? "chest" : b.cargoKey), base * T(vec3(SHIP.cargo.x, dk + 0.5f, SHIP.cargo.y)), L);
       return;
     }
-    Model& hull = model("boat_hull", 1.f / 32, hullParts, ts);
+    Model& hull = b.kind == "lava_rowboat" ? model("lava_boat_hull", 1.f / 32, lavaHullParts, ts) : model("boat_hull", 1.f / 32, hullParts, ts);
     VoxelLight L = lightAt(w, b.pos + vec3(0, 0.8f, 0));
     mat4 S = glm::scale(T(rel), vec3(sc));
     mat4 base = RX(RZ(RY(S, b.yaw), b.heel + (b.shakeT > 0 ? std::sin(b.age * 60) * 0.06f : 0)), std::sin(b.bob * 1.3f) * 0.025f + clampv(b.speed * 0.006f, -0.03f, 0.05f));

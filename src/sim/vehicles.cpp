@@ -19,6 +19,7 @@ void Wind::update(float dt) {
 
 static const BoatType BOATS[] = {
   {"rowboat", "rowboat", 3, 1.f, false, {vec3(0, 0.25f, 0.25f), vec3(0, 0.25f, -0.55f)}},
+  {"lava_rowboat", "lava_rowboat", 4, 1.f, false, {vec3(0, 0.25f, 0.25f), vec3(0, 0.25f, -0.55f)}},   // crimson/warped wood: floats on lava too
   {"sailboat", "sailboat", 4, 1.6f, false, {vec3(0, 0.42f, 1.38f), vec3(0, 0.42f, -1.15f)}},
   {"ship", "sailing_ship", 14, 1.f, true, {vec3(0, 1.3f, 3.75f), vec3(0.9f, 1.35f, -1.4f)}},
 };
@@ -88,6 +89,10 @@ vec3 Boat::seatPos(int i) const {
 float Boat::waterSurface(const World& w) const {
   int x = ifloor(pos.x), z = ifloor(pos.z), y0 = ifloor(pos.y + 0.5f);
   for (int y = y0 + 1; y >= y0 - 2; y--) if (waterAt(w, x, y, z) && !waterAt(w, x, y + 1, z)) return y + 0.88f;
+  if (kind == "lava_rowboat") {   // nether wood doesn't burn: the lava boat rides a lava lake like water
+    const Registry& R = reg();
+    for (int y = y0 + 1; y >= y0 - 2; y--) if (R.tLiquid[w.getBlock(x, y, z)] == 2 && R.tLiquid[w.getBlock(x, y + 1, z)] != 2) return y + 0.88f;
+  }
   return NAN;
 }
 bool Boat::mount(Level& lv, Player& p) {
@@ -335,8 +340,9 @@ bool placeBoatItem(Level& lv, Player& p, ItemStack& held) {
   glm::dvec3 eye = glm::dvec3(p.pos) + glm::dvec3(0, 1.62, 0);
   RayHit hit = raycastBlocks(w, eye, dir, 5.f, true);
   if (!hit.hit) return false;
-  bool water = reg().tLiquid[hit.id] == 1;
-  if (!water && !(hit.normal.y == 1 && reg().tSolid[hit.id])) { vehToast(lv, p, "Set a boat on water or on the shore"); return false; }
+  bool lavaBoat = def->str("boat") == "lava_rowboat";
+  bool water = reg().tLiquid[hit.id] == 1 || (lavaBoat && reg().tLiquid[hit.id] == 2);
+  if (!water && !(hit.normal.y == 1 && reg().tSolid[hit.id])) { vehToast(lv, p, lavaBoat ? "Set a lava boat on lava, water or the shore" : "Set a boat on water or on the shore"); return false; }
   float t = hit.dist;
   vec3 at((float)eye.x + dir.x * t, water ? hit.block.y + 0.6f : hit.block.y + 1.05f, (float)eye.z + dir.z * t);
   spawnBoat(lv, p.realm, def->str("boat"), at, p.yaw);
