@@ -204,24 +204,49 @@ public:
       }
     }
     // towns3.js: the town gates (shut = the barrier blocks are there): a portcullis of iron bars in a stone wall, timber
-    // doors banded with iron in a palisade. (The original slid/swung them; here they show while shut.)
+    // doors banded with iron in a palisade. Each gate eases between shut and open (about a second): the portcullis
+    // slides up into the wall, the two timber leaves swing in on their hinges, so a gate never pops in or out.
     static const BlockId bar = reg().blockId("gate_barrier");
     if (bar && s.player->realm == REALM_MAIN) {
+      static std::unordered_map<i64, float> openK;   // per gate: 0 shut .. 1 open
+      static double lastT = f.time;
+      float gdt = (float)std::clamp(f.time - lastT, 0.0, 0.1); lastT = f.time;
       const VoxelModel& iron = itemModel("iron_block"); const VoxelModel& wood = itemModel("spruce_planks"); const VoxelModel& log = itemModel("spruce_log");
       for (auto& v : villagesNear(*s.level, (float)f.cam.pos.x, (float)f.cam.pos.z, 96)) for (const VGate& G : v->gates) {
+        bool shut = false;
+        for (const ivec3& c : G.cells) if (w.getBlock(c.x, c.y, c.z) == bar) { shut = true; break; }
+        i64 gk = ((i64)ifloor(G.center.x) << 32) ^ (i64)(u32)ifloor(G.center.z);
+        auto it = openK.find(gk);
+        if (it == openK.end()) it = openK.emplace(gk, shut ? 0.f : 1.f).first;   // first seen: as it stands
+        float& k = it->second;
+        k = std::clamp(k + (shut ? -gdt : gdt) * 1.1f, 0.f, 1.f);
+        float ease = k * k * (3 - 2 * k);
         vec3 rc = f.cam.rel(glm::dvec3(G.center));
         if (glm::dot(rc, rc) > 160.f * 160.f || !f.cam.frustum.sphere(rc + vec3(0, 2.5f, 0), G.span + 3.f)) continue;
+        if (G.stone && ease >= 0.999f) continue;   // a portcullis fully up is inside the wall
         const bool along = G.d == 0 || G.d == 2;   // the wall runs east-west here: the gate is thin in z
+        int hgt = 0; for (const ivec3& c : G.cells) hgt = std::max(hgt, c.y - G.h0 + 1);
         for (const ivec3& c : G.cells) {
-          if (w.getBlock(c.x, c.y, c.z) != bar) continue;
           if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
           u8 l = w.getLight(c.x + G.inX, c.y, c.z + G.inZ);
           VoxelLight light{(l >> 4) / 15.f, (l & 15) / 15.f};
           vec3 cc = f.cam.rel(glm::dvec3(c) + glm::dvec3(0.5));
+          int s2 = along ? c.x - G.cx : c.z - G.cz;
+          mat4 place = glm::translate(mat4(1), cc);
+          if (G.stone) place = glm::translate(mat4(1), cc + vec3(0, ease * hgt, 0));   // the portcullis rises
+          else if (std::abs(s2) <= G.hw) {
+            // a leaf: the cells left of the middle (and the middle) swing on the left hinge, the rest on the right
+            float side = s2 <= 0 ? -1.f : 1.f;
+            float hingeOff = side * (G.hw + 0.5f) - (float)s2;   // from this cell's centre to its hinge, across
+            vec3 across = along ? vec3(1, 0, 0) : vec3(0, 0, 1), in(G.inX, 0, G.inZ);
+            vec3 hinge = cc + across * hingeOff;
+            float ang = ease * 1.75f * side * ((across.x * in.z - across.z * in.x) >= 0 ? 1.f : -1.f);   // swing in, towards the village
+            place = glm::translate(glm::rotate(glm::translate(mat4(1), hinge), ang, vec3(0, 1, 0)), cc - hinge);
+          }
           auto box = [&](const VoxelModel& m, vec3 off, vec3 size) {   // a unit block model scaled to a box (across, up, through)
             if (!m.ready()) return;
             vec3 o = along ? off : vec3(off.z, off.y, off.x), sz = along ? size : vec3(size.z, size.y, size.x);
-            VR.draw(m.gl, glm::scale(glm::translate(mat4(1), cc + o), sz) * m.matrix(), light);
+            VR.draw(m.gl, glm::scale(glm::translate(place, o), sz) * m.matrix(), light);
           };
           if (G.stone) {
             for (float x : {-0.25f, 0.25f}) box(iron, vec3(x, 0, 0), vec3(0.14f, 1, 0.14f));
@@ -229,7 +254,6 @@ public:
           } else {
             box(wood, vec3(0), vec3(1, 1, 0.24f));
             if (c.y - G.h0 == 1 || c.y - G.h0 == 3 || c.y - G.h0 == 5) box(iron, vec3(0, -0.1f, 0), vec3(1, 0.18f, 0.34f));
-            int s2 = along ? c.x - G.cx : c.z - G.cz;
             if (std::abs(s2) == G.hw + 1 || s2 == 0) box(log, vec3(0), vec3(0.3f, 1, 0.32f));
           }
         }
