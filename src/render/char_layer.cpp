@@ -478,19 +478,54 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   }
   if (!cape.empty() && cape != "elytra" && !fp && !ps.sleep) {
     const mat4& B = R.body;
+    // cloth: the cape hangs as a chain of pivots (like the banners' sway codes), so the hem
+    // whips while the mantle stays calm. charRig already turned pose.yaw to bodyYaw, so
+    // the wind vector below can be rotated into body-local space with just ps.yaw.
+    float t = ps.time;
+    float str = app().settings.wavingPlants ? 1.f : 0.f;   // same switch the banners honour
+    App& A = app();
+    static FrameCtx calm;                        // fallback for previews with no open session
+    const FrameCtx* Fs = A.session ? &A.session->frame : nullptr;
+    if (!Fs) { calm.windDir = vec2(1, 0); calm.wind = 0.3f; Fs = &calm; }
+    const FrameCtx& F = *Fs;                     // this frame's wind (world_renderer / sky fill it)
+    str *= std::min(1.5f, clampf(F.wind, 0.f, 1.5f) * 2.f + 0.3f);   // banners' uWind ~ 0.45 + strength*0.9
+    float c = std::cos(ps.yaw), s2 = std::sin(ps.yaw);
+    vec2 wloc(F.windDir.x * c - F.windDir.y * s2, F.windDir.x * s2 + F.windDir.y * c);   // wind in body-local space
+    float gust = 1.f + std::sin(t * 2.3f) * 0.45f + std::sin(t * 4.7f + 1.9f) * 0.25f;   // banner-style gusts
+    float ph = (floorf(o.camPos.x) + floorf(o.camPos.z)) * 1.7f;   // shared phase per block, so nearby capes ripple with the banners
+    auto swayX = [&](int k) { return (std::sin(t * 2.3f + ph + k * 0.9f) + 0.5f * std::sin(t * 4.1f + ph - k * 0.7f)) * 0.05f * gust * str; };
+    auto swayZ = [&](int k) { return std::cos(t * 1.9f + ph + k * 0.8f) * 0.04f * gust * str; };
     if (!back.empty()) {
       const CharMesh* upM = capeMesh(cape, 1, ts); const CharMesh* loM = capeMesh(cape, 2, ts);
       mat4 m = glm::translate(B, vec3(0, 12, ov.capeZ > 0 ? ov.capeZ : 2.03f));
       if (upM) VR.draw(upM->gl, m * upM->local(), light, tint);
       mat4 m2 = glm::translate(m, vec3(0, -11, 0));
       m2 = glm::rotate(m2, -std::min(1.2f, ps.capeA * 0.9f), vec3(1, 0, 0));
-      m2 = glm::rotate(m2, ps.capeSway * 0.6f, vec3(0, 0, 1));
+      m2 = glm::rotate(m2, ps.capeSway * 0.6f + swayZ(1), vec3(0, 0, 1));
+      m2 = glm::translate(m2, vec3(swayX(1) * 0.4f, 0.f, wloc.x * 0.012f * gust));   // the hem below the pack drifts with the wind
       if (loM) VR.draw(loM->gl, m2 * loM->local(), light, tint);
     } else if (const CharMesh* cm = capeMesh(cape, 0, ts)) {
       mat4 m = glm::translate(B, vec3(0, 12, 2.1f));
       m = glm::rotate(m, -ps.capeA, vec3(1, 0, 0));
       m = glm::rotate(m, ps.capeSway, vec3(0, 0, 1));
-      VR.draw(cm->gl, m * cm->local(), light, tint);
+      if (const CharMesh* loM2 = capeMesh(cape, 2, ts)) {   // upper rows drawn whole, lower rows hinged for the cloth
+        const CharMesh* upM2 = capeMesh(cape, 1, ts);
+        if (upM2) {
+          mat4 mu = glm::translate(B, vec3(0, 12, 2.1f));
+          mu = glm::rotate(mu, -ps.capeA * 0.55f, vec3(1, 0, 0));   // char_anim.cpp cloak path's upper tilt
+          mu = glm::rotate(mu, ps.capeSway, vec3(0, 0, 1));
+          mat4 mh = glm::translate(mu, vec3(0, -11, 0));
+          mh = glm::rotate(mh, -ps.capeA * 0.6f - std::sin(t * 3.1f) * 0.03f * ps.walkAmt, vec3(1, 0, 0));
+          mh = glm::rotate(mh, ps.capeSway * 0.6f + swayZ(2), vec3(0, 0, 1));
+          mh = glm::translate(mh, vec3(swayX(2) * 0.5f, 0.f, wloc.x * 0.02f * gust));
+          if (upM2) VR.draw(upM2->gl, mu * upM2->local(), light, tint);
+          if (loM2) VR.draw(loM2->gl, mh * loM2->local(), light, tint);
+        } else {
+          VR.draw(cm->gl, m * cm->local(), light, tint);
+        }
+      } else {
+        VR.draw(cm->gl, m * cm->local(), light, tint);
+      }
     }
   }
   // ---- what's in their hands (third person): Minecraft's thirdperson_righthand / lefthand ----

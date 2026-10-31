@@ -18,7 +18,8 @@ void gatherBoxes(const World& w, double minX, double minY, double minZ, double m
   for (int y = y0; y <= y1; y++) for (int z = z0; z <= z1; z++) for (int x = x0; x <= x1; x++) {
     BlockId id = w.getBlockPhys(x, y, z);
     if (!R.tSolid[id]) continue;
-    if (!hasShapeBoxes(id)) { if (y >= yb) out.push_back({(double)x, (double)y, (double)z, x + 1.0, y + 1.0, z + 1.0}); continue; }
+    bool carved = fullSolid(id) && w.getCarve(x, y, z);   // carve flag lives in its own byte now
+    if (!hasShapeBoxes(id) && !carved) { if (y >= yb) out.push_back({(double)x, (double)y, (double)z, x + 1.0, y + 1.0, z + 1.0}); continue; }
     if (bhas(id, BF::Scaffold) && !std::isnan(feet) && (sneak || feet < y + 1 - 0.05)) continue;
     if (!worldBoxes(w, x, y, z, id, SHAPE_COLLIDE, t_pix)) { if (y >= yb) out.push_back({(double)x, (double)y, (double)z, x + 1.0, y + 1.0, z + 1.0}); continue; }
     for (auto& b : t_pix) {
@@ -40,7 +41,8 @@ void blockBoxes(const World& w, int x, int y, int z, std::vector<AABB>& out) {
   BlockId id = w.getBlockPhys(x, y, z);
   if (!reg().tSolid[id]) return;
   vec3 b(x, y, z);
-  if (!hasShapeBoxes(id) || !worldBoxes(w, x, y, z, id, SHAPE_COLLIDE, t_pix)) { out.push_back({b, b + vec3(1)}); return; }
+  bool carved = fullSolid(id) && w.getCarve(x, y, z);
+  if ((!hasShapeBoxes(id) && !carved) || !worldBoxes(w, x, y, z, id, SHAPE_COLLIDE, t_pix)) { out.push_back({b, b + vec3(1)}); return; }
   for (auto& p : t_pix) out.push_back({b + vec3(p.x0, p.y0, p.z0) / 16.f, b + vec3(p.x1, p.y1, p.z1) / 16.f});
 }
 
@@ -270,6 +272,38 @@ RayHit raycastBlocks(const World& w, glm::dvec3 o, vec3 dirf, float maxDist, boo
       bool liquid = r == Render::Liquid;
       if (!liquid || (pickLiquid && R.tLiquid[id] && (w.getMeta(x, y, z) & 15) == 0)) {
         bool full = r == Render::Cube || r == Render::Cutout || liquid || !worldBoxes(w, x, y, z, id, SHAPE_SELECT, bx);
+        // Remember this cell for the aimed-sub-box pick when it is a chisel-carved block.
+        bool carved = id && !R.tLiquid[id] && w.getCarve(x, y, z);
+        if (full && !carved) { finish(x, y, z, id, n, t); return h; }
+        if (carved) {
+          std::vector<PixBox> cb;
+          if (!worldBoxes(w, x, y, z, id, SHAPE_SELECT, cb)) { /* fully carved: no octant boxes — fall through to the cell fallback below so a chisel can restore */ }
+          else {
+            double bt = INFINITY; ivec3 bn2(0); bool anyc = false;
+            for (auto& b : cb) {
+              double mn[3] = {x + b.x0 / 16.0, y + b.y0 / 16.0, z + b.z0 / 16.0}, mx[3] = {x + b.x1 / 16.0, y + b.y1 / 16.0, z + b.z1 / 16.0};
+              ivec3 nn; double tt = rayBoxN(o, d, mn, mx, nn);
+              if (tt < 0) continue;
+              glm::dvec3 P = o + d * tt;
+              P += glm::dvec3(d.x, d.y, d.z) * 0.01;   // step just inside the block from the entry face
+              bool contains = P.x > mn[0] && P.x < mx[0] && P.y > mn[1] && P.y < mx[1] && P.z > mn[2] && P.z < mx[2];
+              double rank = tt + (contains ? 0.0 : 1e9);
+              if (rank < bt) { bt = rank; bn2 = nn; anyc = true; }
+            }
+            double tCell = std::max({tmx - tdx, tmy - tdy, tmz - tdz});   // param at which the ray entered this cell
+            double btTrue = bt > 1e8 ? bt - 1e9 : bt;   // strip the containment penalty for the checks below
+            if (anyc && btTrue <= maxDist && (btTrue < tCell || t >= tCell)) { finish(x, y, z, id, bn2, btTrue); return h; }
+            // No octant hit in this cell's span: the crosshair passed THROUGH a carved-away notch,
+            // straight into the void where that corner used to be. The block still stands there, so
+            // finish on its cell — chisel then toggles the aimed (carved) quadrant back on.
+            // Only when the ray is INSIDE the cell: while it merely grazes a face plane exactly
+            // along an octant boundary line (e.g. aimed straight down a top corner's diagonal),
+            // every octant test returns the same grazing t, so this fallback would fire on the
+            // entry step and carve the whole block in one click.
+            bool inside = o.x > x && o.x < x + 1 && o.y > y && o.y < y + 1 && o.z > z && o.z < z + 1;
+            if (inside && t >= tCell && t <= maxDist) { finish(x, y, z, id, n, t); return h; }
+          }
+        }
         if (full) { finish(x, y, z, id, n, t); return h; }
         double best = INFINITY; ivec3 bn(0); bool any = false;
         for (auto& b : bx) {

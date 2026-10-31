@@ -495,12 +495,12 @@ static void townBuild(ChunkWriter& w, const StructurePlan& S) {
   }
   for (auto [dx, dz] : {std::pair{P0 - 2, P0 - 2}, {-(P0 - 2), P0 - 2}, {-(P0 - 2), -(P0 - 2)}, {P0 - 2, -(P0 - 2)}}) {
     const int x = v.x + dx, z = v.z + dz; if (std::abs(dx) + std::abs(dz) > P0 * 2 - 3) continue;
-    put(x, y0 + 1, z, st.lampPost); put(x, y0 + 2, z, st.lampPost); put(x, y0 + 3, z, st.lampPost); put(x, y0 + 4, z, lampTop(x, z), (x + z) & 3);
+    put(x, y0 + 1, z, st.lampPost); put(x, y0 + 2, z, st.lampPost); put(x, y0 + 3, z, st.lampPost); put(x, y0 + 4, z, lampTop(x, z), (x + z) & 3);   // facing meta is legacy again: carve lives in its own byte now
   }
   for (const auto& [x, z] : v.lamps) {
     if (!inC(x, z)) continue;
     const int y = P.ground(x, z); if (y < SEA_LEVEL) continue;
-    put(x, y, z, kerb); put(x, y + 1, z, st.lampPost); put(x, y + 2, z, st.lampPost); put(x, y + 3, z, st.lampPost); put(x, y + 4, z, lampTop(x, z), (x + z) & 3);
+    put(x, y, z, kerb); put(x, y + 1, z, st.lampPost); put(x, y + 2, z, st.lampPost); put(x, y + 3, z, st.lampPost); put(x, y + 4, z, lampTop(x, z), (x + z) & 3);   // facing meta is legacy again: carve lives in its own byte now
     for (int yy = y + 5; yy <= y + 6; yy++) if (softBlock(get(x, yy, z))) put(x, yy, z, "air");
   }
   static const std::vector<std::string> VFL = strList(SD()["VFLOWERS"]);

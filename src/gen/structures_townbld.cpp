@@ -103,7 +103,7 @@ public:
     else { torch(dx - 1, 2, -1, 2); torch(dx + 1, 2, -1, 2); }
     frontPath(dx);
     if (halloween() && hasBlock("jack_o_lantern"))   // October: a jack-o'-lantern each side of the door, faces to the street
-      for (int k : {-2, 2}) { const BlockId g = get(dx + k, 0, -1); if (g != 0 && g != NOBLOCK) set(dx + k, 1, -1, "jack_o_lantern", d(2) & 3); }
+      for (int k : {-2, 2}) { const BlockId g = get(dx + k, 0, -1); if (g != 0 && g != NOBLOCK) set(dx + k, 1, -1, "jack_o_lantern", d(2) & 3); }   // facing meta is legacy again
   }
   // ---- towns.js ----
   std::string pick(const char* kind) { const auto& l = townDecor(kind); const int k = salt++; return l.empty() ? std::string() : l[hash32((i32)b.seed, k, 77, 3) % l.size()]; }
@@ -653,7 +653,7 @@ static void bFarm(VS& S) {
   }
   S.face(4, 1, 0, st.gate, 0);
   // the scarecrow
-  S.set(1, 1, 1, st.fence); S.set(1, 2, 1, "hay_bale"); S.set(1, 3, 1, VS::VB("jack_o_lantern", "hay_bale"), S.d(2) & 3);
+  S.set(1, 1, 1, st.fence); S.set(1, 2, 1, "hay_bale"); S.set(1, 3, 1, VS::VB("jack_o_lantern", "hay_bale"), S.d(2) & 3);   // facing meta is legacy again
   S.set(7, 1, 7, "composter"); S.set(7, 1, 1, "hay_bale");
 }
 static void bPen(VS& S) {

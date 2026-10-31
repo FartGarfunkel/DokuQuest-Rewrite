@@ -21,21 +21,32 @@ const int FACE_AXIS[6] = {0, 0, 1, 1, 2, 2};
 struct Own { float sky, bl, l0; };
 
 void emitBox(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, u8 meta, int x, int y, int z, const ShapeBox& b,
-             int sideT, int topT, int botT, float sink, int shape, Own own, u8 mat) {
+             int sideT, int topT, int botT, float sink, int shape, Own own, u8 mat, u8 forceOnly = 0) {
   const Registry& R = c.R;
+  MeshShapeNb nb(c, x, y, z);   // neighbour ids/meta for all 6 directions (carve-aware cull below)
   const float P = 1 / 16.f;
   for (int f = 0; f < 6; f++) {
-    if (!(b.only & (1 << f))) continue;
+    bool forced = (forceOnly >> f) & 1;
+    if (!(b.only & (1 << f)) && !forced) continue;
     const FaceDef& F = FACES[f];
     bool onB = f == 0 ? b.b[3] >= 16 : f == 1 ? b.b[0] <= 0 : f == 2 ? b.b[4] + sink >= 16 : f == 3 ? b.b[1] + sink <= 0 : f == 4 ? b.b[5] >= 16 : b.b[2] <= 0;
     bool smooth = false;
     FaceCorners fc;
     if (onB) {
       int nx = x + F.n[0], ny = y + F.n[1], nz = z + F.n[2];
-      BlockId nb = c.at(nx, ny, nz);
-      if (R.tOpaque[nb]) continue;
+      BlockId nbid = c.at(nx, ny, nz);
+      u8 nm = c.metaAt(nx, ny, nz);
+      bool ncarved = nbid && c.carveAt(nx, ny, nz);   // neighbour carved (dedicated carve byte)
+      if (!forced && R.tOpaque[nbid]) {
+        if (ncarved) {
+          int hx = F.n[0] ? (F.n[0] > 0 ? 1 : 0) : (b.b[0] >= 8 ? 1 : 0);
+          int hy = F.n[1] ? (F.n[1] > 0 ? 1 : 0) : (b.b[1] >= 8 ? 1 : 0);
+          int hz = F.n[2] ? (F.n[2] > 0 ? 1 : 0) : (b.b[5] >= 8 ? 1 : 0);
+          if ((c.carveAt(nx, ny, nz) >> ((hx << 2) | (hy << 1) | hz)) & 1) continue;   // neighbour has material at our exact octant: cull
+        } else continue;   // plain opaque neighbour: cull
+      }
       // joined panes, walls and fences, and matching slabs, hide the faces they share
-      if (nb == id && f != 2 && f != 3 && (shape == ShapeKind::Pane || shape == ShapeKind::Wall || shape == ShapeKind::Fence ||
+      if (nbid == id && f != 2 && f != 3 && (shape == ShapeKind::Pane || shape == ShapeKind::Wall || shape == ShapeKind::Fence ||
           (shape == ShapeKind::Slab && (c.metaAt(nx, ny, nz) & 0x7f) == (meta & 0x7f)))) continue;
       faceCorners(c, x, y, z, f, fc); smooth = true;
     }
@@ -245,6 +256,21 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
     int ft = R.tile("candle_flame");
     if (ft >= 0) for (auto& b : boxes) emitFlame(c, d, ft, x + (b.b[0] + b.b[3]) / 32, y + (b.b[4] + sink) / 16, z + (b.b[2] + b.b[5]) / 32, 0.11f, 0.2f, own.sky, 15);
   }
+}
+
+// A full block whose high meta nibble carved some of its 8 corners (chisel): the eight octant
+// boxes that remain, with the same face tiles as the plain cube path (emitCube).
+void emitCarvedBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 carveMask) {
+  const Registry& R = c.R;
+  const BlockDef& self = R.block(id);
+  MeshShapeNb nb(c, x, y, z);
+  thread_local std::vector<ShapeBox> boxes;
+  if (!carveBoxes(boxes, carveMask, nb)) return;   // caller gate already checked the carve flag
+  int side = self.faces[0], top = self.faces[2], bot = self.faces[3];
+  Own own{(float)c.skyAt(x, y, z), std::max<float>((float)c.blAt(x, y, z), (float)R.tLight[id]), (float)R.metaLight(id, c.metaAt(x, y, z))};
+  u8 mat = Mat::Cutout | (R.tTrans[id] ? Mat::Translucent : 0);
+  for (auto& b : boxes)
+    emitBox(c, d, id, c.metaAt(x, y, z), x, y, z, b, side, top, bot, 0, /*shape=*/0, own, mat, b.only);
 }
 
 void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta) {

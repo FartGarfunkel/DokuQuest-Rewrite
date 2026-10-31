@@ -55,9 +55,11 @@ public:
   // ---- blocks in world coordinates (y global) ----
   BlockId getBlock(int x, int y, int z) const;
   u8 getMeta(int x, int y, int z) const;
+  u8 getCarve(int x, int y, int z) const;   // chisel octant mask (parallel to meta; 0 = never carved)
   u8 getLight(int x, int y, int z) const;        // sky<<4 | block; unloaded -> full sky
   bool setBlock(int x, int y, int z, BlockId id, u8 meta = 0, u32 flags = 0);
   bool setMeta(int x, int y, int z, u8 meta, u32 flags = 0);
+  bool setCarve(int x, int y, int z, u8 carve, u32 flags = 0);
   BlockId getBlockPhys(int x, int y, int z) const;   // unloaded chunks read as stone (no falling out of the world)
   json* blockEntity(int x, int y, int z, bool create = false);
   void setBlockEntity(int x, int y, int z, json e);   // null erases

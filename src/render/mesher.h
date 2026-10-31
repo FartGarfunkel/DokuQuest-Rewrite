@@ -41,6 +41,7 @@ struct MeshInput {
   int dim = 0, cx = 0, sy = 0, cz = 0;
   BlockId ids[N * N * NY];
   u8 meta[N * N * NY];
+  u8 carve[N * N * NY];   // chisel octant mask (parallel to meta)
   u8 light[N * N * NY];
   u8 climate[N * N * 2];                       // temp, humidity per apron column (x,z)
   std::vector<std::pair<int, BlockId>> potPlants;   // idx -> plant in a flower pot (block entities)

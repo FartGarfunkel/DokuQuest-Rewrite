@@ -16,6 +16,7 @@ inline int colIdx(int x, int y, int z) { return (y << 8) | (z << 4) | x; }      
 struct Section {
   BlockId blocks[4096]{};
   u8 meta[4096]{};
+  u8 carve[4096]{};   // chisel octant mask, kept OUT of meta so legacy metas (facing/stage/snow) can never masquerade as carved
   u8 light[4096]{};     // (sky << 4) | block
   u16 solidCount = 0;   // non-air blocks (0 -> may be freed)
 };
@@ -38,9 +39,11 @@ public:
   // band-local accessors (x,z 0..15, y 0..255)
   BlockId get(int x, int y, int z) const { if ((unsigned)y >= DIM_H) return AIR; const Section* s = secs[y >> 4].get(); return s ? s->blocks[secIdx(x, y & 15, z)] : AIR; }
   u8 getMeta(int x, int y, int z) const { if ((unsigned)y >= DIM_H) return 0; const Section* s = secs[y >> 4].get(); return s ? s->meta[secIdx(x, y & 15, z)] : 0; }
+  u8 getCarve(int x, int y, int z) const { if ((unsigned)y >= DIM_H) return 0; const Section* s = secs[y >> 4].get(); return s ? s->carve[secIdx(x, y & 15, z)] : 0; }
   u8 getLight(int x, int y, int z) const { if ((unsigned)y >= DIM_H) return 0xF0; const Section* s = secs[y >> 4].get(); return s ? s->light[secIdx(x, y & 15, z)] : airLight[y >> 4]; }
   void set(int x, int y, int z, BlockId id, u8 meta = 0);
   void setMeta(int x, int y, int z, u8 meta) { if (Section* s = secs[y >> 4].get()) s->meta[secIdx(x, y & 15, z)] = meta; }
+  void setCarve(int x, int y, int z, u8 carve) { Section* s = ensure(y >> 4); s->carve[secIdx(x, y & 15, z)] = carve; }
   void setLight(int x, int y, int z, u8 l) { Section* s = ensure(y >> 4); s->light[secIdx(x, y & 15, z)] = l; }
   Section* section(int sy) { return secs[sy].get(); }
   const Section* section(int sy) const { return secs[sy].get(); }

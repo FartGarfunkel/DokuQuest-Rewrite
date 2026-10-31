@@ -40,6 +40,19 @@ u8 World::getMeta(int x, int y, int z) const {
   Chunk* c = chunk(y >> 8, x >> 4, z >> 4);
   return c ? c->getMeta(x & 15, y & 255, z & 15) : 0;
 }
+u8 World::getCarve(int x, int y, int z) const {
+  if (!inWorldY(y)) return 0;
+  Chunk* c = chunk(y >> 8, x >> 4, z >> 4);
+  return c ? c->getCarve(x & 15, y & 255, z & 15) : 0;
+}
+bool World::setCarve(int x, int y, int z, u8 carve, u32 flags) {
+  if (!inWorldY(y)) return false;
+  Chunk* c = chunk(y >> 8, x >> 4, z >> 4);
+  if (!c) return false;
+  c->setCarve(x & 15, y & 255, z & 15, carve);
+  markBlockDirty(x, y, z, flags & SetFlags::Urgent);
+  return true;
+}
 u8 World::getLight(int x, int y, int z) const {
   if (!inWorldY(y)) return 0xF0;
   Chunk* c = chunk(y >> 8, x >> 4, z >> 4);
@@ -60,7 +73,10 @@ bool World::setBlock(int x, int y, int z, BlockId id, u8 meta, u32 flags) {
   int lx = x & 15, ly = y & 255, lz = z & 15;
   BlockId old = c->get(lx, ly, lz);
   u8 oldMeta = c->getMeta(lx, ly, lz);
-  if (old == id && oldMeta == meta) return false;
+  bool oldCarved = c->getCarve(lx, ly, lz);
+  if (old == id && oldMeta == meta && !oldCarved) return false;   // a carved block must fall through: set() clears its carve byte
+  // carve-bit trace is now off: the layout moved to a full carve byte (meta&0x7F) on plain blocks,
+  // which share bits with facing states on shape blocks, so an unconditional gate would be noisy.
   c->set(lx, ly, lz, id, meta);
   if (old != id) { auto it = c->blockEntities.find(colIdx(lx, ly, lz)); if (it != c->blockEntities.end() && !(flags & SetFlags::NoNotify)) c->blockEntities.erase(it); }
   if (!(flags & SetFlags::NoModify)) { c->modified = true; c->dirty = true; }

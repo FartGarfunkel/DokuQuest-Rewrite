@@ -455,7 +455,8 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     }
     bool sneakPlace = p.sneaking && def && (!def->block.empty() || def->has("backpack"));
     if (!sneakPlace) {
-      if (useBlockAt(*hit, held.empty() ? nullptr : &held, def)) return;
+      bool uba = useBlockAt(*hit, held.empty() ? nullptr : &held, def);
+      if (uba) return;
       json pos = {hit->block.x, hit->block.y, hit->block.z};
       if (bhas(hit->id, BF::Container)) { swingArm(); sfxAt(lv, "chest", vec3(hit->block) + vec3(0.5f)); containerEntity(w, hit->block.x, hit->block.y, hit->block.z); openScreen(lv, p, "container", {{"pos", pos}}); return; }
       if (b.has("table")) { swingArm(); openScreen(lv, p, "table"); return; }

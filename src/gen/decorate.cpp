@@ -135,7 +135,7 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
     }
     if (below == B.dirt_with_coniferous_litter) { if (r < 0.05) set(x, y, z, B.fern); else if (r < 0.06) set(x, y, z, B.brown_mushroom); continue; }
     if (below == B.grass) {
-      if (patch > 0.6 && r < (hw ? 0.15 : 0.05) && (c.biome == BIOME_PLAINS || c.biome == BIOME_FOREST)) set(x, y, z, B.pumpkin, (u8)jsFloor(r2 * 4));
+      if (patch > 0.6 && r < (hw ? 0.15 : 0.05) && (c.biome == BIOME_PLAINS || c.biome == BIOME_FOREST)) set(x, y, z, B.pumpkin, (u8)jsFloor(r2 * 4));   // facing meta is legacy again: carve lives in its own byte now
       else if (c.biome == BIOME_MOUNTAINS && c.humid > 0.15 && c.h < 78 && r < 0.18) set(x, y, z, B.pink_petals);
       else if (c.biome == BIOME_PLAINS && r > 0.9985) set(x, y, z, B.torchflower);
       else if (c.biome == BIOME_PLAINS && r > 0.997 && r < 0.9985 && at(x, y + 1, z) == 0) { set(x, y, z, B.pitcher_plant, 0); set(x, y + 1, z, B.pitcher_plant, 1); }

@@ -1,5 +1,6 @@
 #include "world/chunk.h"
 #include <cstring>
+#include "sim/blockinfo.h"
 
 namespace dq {
 
@@ -19,7 +20,7 @@ void Chunk::set(int x, int y, int z, BlockId id, u8 meta) {
   BlockId old = s->blocks[i];
   if (old == AIR && id != AIR) s->solidCount++;
   else if (old != AIR && id == AIR) s->solidCount--;
-  s->blocks[i] = id; s->meta[i] = meta;
+  s->blocks[i] = id; s->meta[i] = meta; s->carve[i] = 0;   // carve belongs to a block instance, never carried across a replacement
   int hi = z * 16 + x;
   if (id != AIR) { if (y + 1 > maxY) maxY = y + 1; if (y > heightMap[hi]) heightMap[hi] = (u8)y; }
   else if (y == heightMap[hi]) { int yy = y; while (yy > 0 && get(x, yy, z) == AIR) yy--; heightMap[hi] = (u8)yy; }
@@ -65,6 +66,7 @@ std::vector<u8> encodeChunk(const Chunk& c) {
   }
   std::vector<u8> raw;
   json head; head["palette"] = palette; head["dim"] = c.dim; head["cx"] = c.cx; head["cz"] = c.cz; head["t"] = c.savedAt;
+
   json be = json::object();
   for (auto& [i, e] : c.blockEntities) { int x = i & 15, z = (i >> 4) & 15, y = i >> 8; be[std::to_string(x) + "," + std::to_string(y) + "," + std::to_string(z)] = e; }
   head["be"] = be;
@@ -81,6 +83,7 @@ std::vector<u8> encodeChunk(const Chunk& c) {
   raw.push_back(wide ? 1 : 0);
   rle([&](int i) { return (int)pal[i]; }, wide);
   rle([&](int i) { int z = i / (16 * DIM_H), x = (i / DIM_H) & 15, y = i % DIM_H; return (int)c.getMeta(x, y, z); }, false);
+  rle([&](int i) { int z = i / (16 * DIM_H), x = (i / DIM_H) & 15, y = i % DIM_H; return (int)c.getCarve(x, y, z); }, false);
   auto z = zCompress(raw.data(), raw.size(), 6);
   std::vector<u8> out = {'D', 'Q', 'C', '1'};
   u32 rs = (u32)raw.size();
@@ -105,6 +108,7 @@ bool decodeChunk(Chunk& c, const u8* data, size_t n) {
   bool wide = *p++ != 0;
   std::vector<u16> pal(DIM_H * 256);
   std::vector<u8> meta(DIM_H * 256);
+  std::vector<u8> carve(DIM_H * 256, 0);
   auto unrle = [&](auto setv, bool w) {
     int k = 0;
     while (p < e && k < DIM_H * 256) {
@@ -116,11 +120,12 @@ bool decodeChunk(Chunk& c, const u8* data, size_t n) {
     return k == DIM_H * 256;
   };
   if (!unrle([&](int k, int v) { pal[k] = (u16)v; }, wide)) return false;
-  unrle([&](int k, int v) { meta[k] = (u8)v; }, false);
+  if (!unrle([&](int k, int v) { meta[k] = (u8)v; }, false)) return false;
+  if (!unrle([&](int k, int v) { carve[k] = (u8)v; }, false)) return false;
   int k = 0;
   for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) for (int y = 0; y < DIM_H; y++, k++) {
     BlockId id = pal[k] < ids.size() ? ids[pal[k]] : AIR;
-    if (id || meta[k]) c.set(x, y, z, id, meta[k]);
+    if (id || meta[k]) { c.set(x, y, z, id, meta[k]); if (carve[k]) c.setCarve(x, y, z, carve[k]); }
   }
   c.blockEntities.clear();
   if (head.contains("be")) for (auto& [pos, ent] : head["be"].items()) {

@@ -3,9 +3,19 @@
 
 namespace dq {
 
+bool hasShapeBoxes(BlockId id);
+
 bool worldBoxes(const World& w, int x, int y, int z, BlockId id, int purpose, std::vector<PixBox>& out) {
   out.clear();
   u8 meta = w.getMeta(x, y, z);
+  u8 carve = w.getCarve(x, y, z);
+  if (carve) {   // chisel-carved full block: carve flag lives in its own byte now
+    WorldShapeNb nb(w, x, y, z);
+    static thread_local std::vector<ShapeBox> cboxes;
+    if (!carveBoxes(cboxes, carve, nb)) return false;
+    for (auto& b : cboxes) out.push_back({b.b[0], b.b[1], b.b[2], b.b[3], b.b[4], b.b[5]});
+    return true;
+  }
   WorldShapeNb nb(w, x, y, z);
   static thread_local std::vector<ShapeBox> boxes;
   if (!shapeBoxes(id, meta, nb, purpose, boxes)) return false;

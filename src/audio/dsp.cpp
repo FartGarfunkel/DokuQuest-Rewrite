@@ -67,6 +67,15 @@ float Osc::next(double freq) {
     case 1: y = (ph < 0.5 ? 1.f : -1.f) + blep(ph, dt) - blep(std::fmod(ph + 0.5, 1.0), dt); break;
     case 2: y = (float)(2 * ph - 1) - blep(ph, dt); break;
     case 3: y = (float)(ph < 0.5 ? 4 * ph - 1 : 3 - 4 * ph); break;
+    case 4: { double u = std::fmod(freq, 1.0); if (u < 0) u += 1; y = (float)(std::sin(2*DPI*ph) + u * std::sin(2*DPI*(ph + freq/SR))); break; }
+    case 5: { double df = std::abs(freq) / SR * 4294967296.0; ibph += (unsigned long long)(df > 1 ? df : 1);
+             y = (float)((ibph & 0x80000000ull) ? -0.95 : 0.95); break; }
+    case 6: { double P = SR / std::max(1e-3, std::abs(freq));
+             ibph += (unsigned long long)std::llround(4294967296.0 / P);
+             integ += ((ibph & 0x80000000ull) ? -1.0 : 1.0);          // band-limited impulse train
+             double saw = integ * (P > 1 ? 1.0 / P : 1.0) * 2.0 - 1.0; // DC-leaky integrator -> ramp, normalized [-1,1]
+             if (saw != saw || saw > 4 || saw < -4) { integ = 0; saw = 0; }
+             y = (float)(2 * saw - 1 + blep(0.5 - 0.5, 1.0 / P)); break; }
     default: y = (float)std::sin(2 * DPI * ph);
   }
   ph += freq / SR; ph -= std::floor(ph);

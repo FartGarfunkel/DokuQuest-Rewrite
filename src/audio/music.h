@@ -10,7 +10,8 @@ namespace dq::snd {
 
 enum MusicIns : u8 { MI_PIANO, MI_PAD, MI_BELL, MI_DRONE, MI_HARP, MI_FLUTE, MI_STRINGS, MI_CHOIR, MI_HORN, MI_BRASS, MI_MARIMBA,
   MI_KALIMBA, MI_MUSICBOX, MI_CELESTA, MI_PLUCK, MI_CLARINET, MI_CELLO, MI_TAIKO, MI_TIMPANI, MI_SNARE, MI_HAND, MI_FRAME,
-  MI_SHAKER, MI_CYMBAL, MI_COUNT };
+  MI_SHAKER, MI_CYMBAL, MI_DULCIMER, MI_BASS, MI_UBASS, MI_GUITAR, MI_BOMBARD, MI_TREMOLO,
+  MI_MANDOLIN, MI_DULCBOW, MI_BANDORA, MI_SAWFIDDLE, MI_FIDDLE, MI_STRUMBO, MI_ZEPPELIN, MI_KAZOO, MI_GURDY, MI_DRONELOW, MI_MEZZO, MI_COUNT };
 int musicInsOf(const std::string& name);
 
 class MusicSynth {
@@ -31,7 +32,7 @@ public:
 };
 
 // (tests) write a piece for a mood, as the original would: [t seconds, instrument, midi, length s, velocity]
-struct MusicNote { double t; u8 ins; float m, d, v; };
+struct MusicNote { double t; u8 ins, bus = 0; float m, d, v; };
 std::vector<MusicNote> composeMusic(const std::string& mood, u32 seed);
 
 } // namespace dq::snd

@@ -52,8 +52,10 @@ struct Param {
 
 // Band-limited oscillators (PolyBLEP saw/square; sine; triangle) like WebAudio's OscillatorNode.
 struct Osc {
-  int type = 0;   // 0 sine 1 square 2 sawtooth 3 triangle
+  int type = 0;   // 0 sine 1 square 2 sawtooth 3 triangle 4 harmonic (band-limited single partial) 5 deepbass
   double ph = 0;
+  unsigned long long ibph = 0;   // integer BLIT phase for type 5
+  double integ = 0;    // leaky integrator state for type 6 (BLIT saw)
   float tri = 0;
   static int typeOf(const std::string& s);
   float next(double freq);

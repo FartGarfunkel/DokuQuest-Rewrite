@@ -622,6 +622,57 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   if (bhas(id, BF::Tnt) && def && def->str("igniter") == "flint") { w.setBlock(x, y, z, AIR); primeTNT(lv, w, x, y, z, 4); wearHeld(lv, p, 1); return true; }
   // tools on blocks
   if (tool == "axe" && b.has("strip")) { w.setBlock(x, y, z, R.blockId(b.str("strip")), meta); sfxMaterial(lv, "wood", "dig", c); wearHeld(lv, p, 1); swingArm(); return true; }
+  // chisel (Cubyz-style hand tool): carve placed blocks into their worked variant
+  // chisel (Cubyz-style): aim at one of a full block's 8 corners to carve it away, or re-chisel
+  // a carved corner to put it back. The corner bits live in meta>>4; the mesher and physics draw/
+  // collide them as octant boxes. Stairs/slab families also keep their trim chain (stairs->slab->base).
+  if (tool == "chisel") {
+    bool chiselable = R.tSolid[id] && R.tOpaque[id] && !R.tShape[id] && !R.tWlog[id] && !(b.has("family") || b.has("base"));   // keep source's exclusion: wlog blocks (lanterns, snow…) carry live meta state elsewhere
+    u8 carve = w.getCarve(x, y, z);   // octant bits live in the dedicated carve byte; meta keeps its legacy meaning
+    if (chiselable) {
+      // The crosshair raycast already hit this block; its entry point IS the geometry under the
+      // cursor. Pick that octant and TOGGLE it: carve it if present, put it back if already carved.
+      // When the crosshair passed through a carved-away notch, physics finishes the hit on the
+      // block's cell and the entry point still lies inside the aimed (carved) octant, so the same
+      // toggle restores it. Carving all 8 is NOT an auto-revert — each quadrant toggles on its own.
+      // Aimed-octant pick: the crosshair raycast already hit this block; its entry point IS
+      // the geometry under the cursor (verified from all 8 diagonal stances). Pick that octant and
+      // TOGGLE it: carve it if present, put it back if already carved — so you can remove any
+      // quadrant and re-add it by clicking the same spot again. When the crosshair passed through
+      // a carved-away notch, physics finishes the hit on the block's cell and the entry point
+      // still lies inside the aimed (carved) octant, so the same toggle restores it. Carving all
+      // 8 is NOT an auto-revert — each quadrant toggles on its own.
+      int enc = -1;
+      {
+        double fx = hit.point.x - x, fy = hit.point.y - y, fz = hit.point.z - z;
+        int hx = fx >= 0.5, hy = fy >= 0.5, hz = fz >= 0.5;
+        enc = (hx << 2) | (hy << 1) | hz;   // entry-point containing-octant
+      }
+      bool carvedBit = carve && ((carve >> enc) & 1);
+      u8 next = carvedBit ? (u8)(carve & ~(1 << enc))
+                          : (u8)(carve | (1 << enc));   // toggle the aimed octant; plain blocks get their first octant set
+      bool blockSame = (next != 0) == (carve != 0);
+      if (!blockSame) w.setBlock(x, y, z, id, meta, SetFlags::Urgent);   // first carve or full restore: touch the block so entities/remesh rules refresh
+      w.setCarve(x, y, z, next, SetFlags::Urgent);                      // toggle the aimed octant in the carve byte
+      if (next) for (int d = 0; d < 6; d++) {
+        int dx = d == 0 ? 1 : d == 1 ? -1 : 0, dy = d == 2 ? 1 : d == 3 ? -1 : 0, dz = d == 4 ? 1 : d == 5 ? -1 : 0;
+        BlockId nid = w.getBlock(x + dx, y + dy, z + dz);
+        if (nid != AIR && !R.tLiquid[nid])
+          w.markBlockDirty(x + dx, y + dy, z + dz, true);   // any solid neighbour may share a face with the new notch
+      }
+      sfxMaterial(lv, "stone", "dig", c); wearHeld(lv, p, 1); swingArm(); return true;
+    }
+    // trim chain: stairs -> slab -> base (family/base live in props JSON)
+    std::string fam = b.str("family"), base = b.str("base");
+    if (fam == "stairs") {
+      BlockId slab = R.blockId(b.key + "_slab");   // stone_brick_stairs -> stone_brick_slab
+      if (slab != AIR) { w.setBlock(x, y, z, slab, meta); sfxMaterial(lv, "stone", "dig", c); wearHeld(lv, p, 1); swingArm(); return true; }
+      if (!base.empty()) { BlockId out = R.blockId(base); if (out != AIR) { w.setBlock(x, y, z, out, 0); sfxMaterial(lv, "stone", "dig", c); wearHeld(lv, p, 1); swingArm(); return true; } }
+    } else if (fam == "slab") {
+      if (!base.empty()) { BlockId out = R.blockId(base); if (out != AIR) { w.setBlock(x, y, z, out, 0); sfxMaterial(lv, "stone", "dig", c); wearHeld(lv, p, 1); swingArm(); return true; } }
+    }
+    return false;
+  }
   static const std::unordered_set<std::string> HOE = {"grass", "dirt", "coarse_dirt", "rooted_dirt", "snowy_grass", "sky_grass", "podzol", "mycelium", "dirt_path", "dirt_with_dry_grass", "dirt_with_coniferous_litter", "dirt_with_rainforest_litter"};
   if (tool == "hoe" && HOE.count(b.key) && w.getBlock(x, y + 1, z) == AIR && B.farmland) { w.setBlock(x, y, z, B.farmland, 0); sfxMaterial(lv, "gravel", "dig", c); wearHeld(lv, p, 1); swingArm(); return true; }
   if ((tool == "sword" || (def && def->has("shears"))) && id == B.pumpkin && id) {

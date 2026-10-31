@@ -32,9 +32,19 @@ struct MeshCtx {
   bool inside(int y) const { return y >= MeshInput::Y0 && y <= 16; }
   BlockId at(int x, int y, int z) const { return inside(y) ? in.ids[I(x, y, z)] : AIR; }
   u8 metaAt(int x, int y, int z) const { return inside(y) ? in.meta[I(x, y, z)] : 0; }
+  u8 carveAt(int x, int y, int z) const { return inside(y) ? in.carve[I(x, y, z)] : 0; }
   u8 skyAt(int x, int y, int z) const { return inside(y) ? in.light[I(x, y, z)] >> 4 : 15; }
   u8 blAt(int x, int y, int z) const { return inside(y) ? in.light[I(x, y, z)] & 15 : 0; }
   bool opaque(int x, int y, int z) const { return R.tOpaque[at(x, y, z)]; }
+  // A chisel-carved neighbour does NOT fully cover the faces it shares: its meta high bits mark
+  // carved corner octants, so any face shared with it must draw on both sides. Treat carved blocks
+  // as non-opaque for culling (they get their own octant-box pass in the Cube case).
+  bool opaqueSolid(int x, int y, int z) const {
+    BlockId id = at(x, y, z);
+    if (!R.tOpaque[id]) return false;
+    if (carveAt(x, y, z)) return false;   // carved (dedicated carve byte): never cull against it
+    return true;
+  }
   bool water(int x, int y, int z) const { BlockId b = at(x, y, z); return R.tLiquid[b] == 1 || (R.tWlog[b] && (metaAt(x, y, z) & WLOG)); }
 
   // climate tint at a vertex corner (x,z in section-local block units), kind 0 grass 1 foliage 2 water
@@ -53,10 +63,12 @@ struct MeshShapeNb : ShapeNb {
   MeshShapeNb(const MeshCtx& c, int x, int y, int z) : c(c), x(x), y(y), z(z) {}
   BlockId id(int dx, int dy, int dz) const override { return c.at(x + dx, y + dy, z + dz); }
   u8 meta(int dx, int dy, int dz) const override { return c.metaAt(x + dx, y + dy, z + dz); }
+  u8 carve(int dx, int dy, int dz) const override { return c.carveAt(x + dx, y + dy, z + dz); }
 };
 
 // per-kind emitters
 void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
+void emitCarvedBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
 void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
 void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
 bool emitVoxelLeafPlate(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);   // vines, lily pads

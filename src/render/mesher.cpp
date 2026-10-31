@@ -142,8 +142,8 @@ void faceCorners(const MeshCtx& c, int x, int y, int z, int f, FaceCorners& fc) 
     int e1[3] = {0, 0, 0}, e2[3] = {0, 0, 0}, ax[2], n = 0;
     for (int a = 0; a < 3; a++) if (!F.n[a]) ax[n++] = a;
     e1[ax[0]] = F.c[k][ax[0]] ? 1 : -1; e2[ax[1]] = F.c[k][ax[1]] ? 1 : -1;
-    bool s1 = c.opaque(fx + e1[0], fy + e1[1], fz + e1[2]), s2 = c.opaque(fx + e2[0], fy + e2[1], fz + e2[2]);
-    bool cc = c.opaque(fx + e1[0] + e2[0], fy + e1[1] + e2[1], fz + e1[2] + e2[2]);
+    bool s1 = c.opaqueSolid(fx + e1[0], fy + e1[1], fz + e1[2]), s2 = c.opaqueSolid(fx + e2[0], fy + e2[1], fz + e2[2]);
+    bool cc = c.opaqueSolid(fx + e1[0] + e2[0], fy + e1[1] + e2[1], fz + e1[2] + e2[2]);
     int a = (s1 && s2) ? 0 : 3 - (s1 + s2 + cc);
     float sk = c.skyAt(fx, fy, fz), bl = c.blAt(fx, fy, fz); int cnt = 1;
     if (!s1) { sk += c.skyAt(fx + e1[0], fy + e1[1], fz + e1[2]); bl += c.blAt(fx + e1[0], fy + e1[1], fz + e1[2]); cnt++; }
@@ -177,6 +177,7 @@ bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in) {
       for (int y = MeshInput::Y0; y <= 16; y++) {
         int gy = baseY + y, i = MeshInput::idx(ox, y, oz);
         in.meta[i] = 0;
+        in.carve[i] = 0;
         if (!inWorldY(gy)) { in.ids[i] = AIR; in.light[i] = gy < 0 ? 0 : 0xF0; continue; }
         int d = gy >> 8;
         const Chunk* vc = c;
@@ -186,7 +187,7 @@ bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in) {
         const Section* s = vc->section(ly >> 4);
         if (!s) { in.ids[i] = AIR; in.light[i] = vc->airLight[ly >> 4]; continue; }
         int si = secIdx(x, ly & 15, z);
-        in.ids[i] = s->blocks[si]; in.meta[i] = s->meta[si]; in.light[i] = s->light[si];
+        in.ids[i] = s->blocks[si]; in.meta[i] = s->meta[si]; in.carve[i] = s->carve[si]; in.light[i] = s->light[si];
         if (dx == 0 && dz == 0 && y >= 0 && y < 16 && s->blocks[si] && traits(s->blocks[si]).pot) {
           auto it = vc->blockEntities.find(colIdx(x, ly, z));
           if (it != vc->blockEntities.end() && it->second.is_object() && it->second.contains("plant") && it->second["plant"].is_string()) {
@@ -223,6 +224,33 @@ vec2 faceUV(int f, vec3 p) {
   }
 }
 
+// A fully surrounded plain block can skip its mesh only when each opaque neighbour is itself
+// carved (or waterlogged): a PLAIN neighbour draws nothing, so the shared plane would be missing on
+// both sides (the hole seen next to chiselled blocks). Carved neighbours draw their shared face,
+// and this block's own face toward a carved neighbour is drawn by emitCube's culling gate.
+bool surroundedCovered(const MeshCtx& c, int x, int y, int z) {
+  const Registry& R = c.R;
+  for (int f = 0; f < 6; f++) {
+    const FaceDef& F = FACES[f];
+    int nx = x + F.n[0], ny = y + F.n[1], nz = z + F.n[2];
+    if (!c.opaqueSolid(nx, ny, nz)) continue;
+    BlockId nbid = c.at(nx, ny, nz);
+    u8 cm = c.carveAt(nx, ny, nz);
+    if (!cm) return false;   // plain opaque neighbour: not covered
+    // carved neighbour: only covered where IT has material touching our shared plane.
+    // If all four of its touching octants are carved away, the notch exposes our face -> must draw.
+    int h[3] = {F.n[0] > 0 ? 1 : 0, F.n[1] > 0 ? 1 : 0, F.n[2] > 0 ? 1 : 0};
+    bool anyTouch = false;
+    for (int k = 0; k < 4 && !anyTouch; k++) {
+      const int* cc = F.c[k];
+      int hx = h[0] ? cc[0] : 1 - cc[0], hy = h[1] ? cc[1] : 1 - cc[1], hz = h[2] ? cc[2] : 1 - cc[2];
+      anyTouch = !((cm >> ((hx << 2) | (hy << 1) | hz)) & 1);
+    }
+    if (!anyTouch) return false;   // neighbour's side toward us is carved out: our face needs drawing
+  }
+  return true;
+}
+
 void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& dst, BlockId id, int x, int y, int z, u8 meta) {
   const Registry& R = c.R;
   const BlockDef& self = R.block(id);
@@ -240,7 +268,8 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
   for (int f = 0; f < 6; f++) {
     const FaceDef& F = FACES[f];
     BlockId nb = c.at(x + F.n[0], y + F.n[1], z + F.n[2]);
-    if (R.tOpaque[nb]) continue;
+    u8 nmeta = c.metaAt(x + F.n[0], y + F.n[1], z + F.n[2]);
+    if (R.tOpaque[nb] && !c.carveAt(x + F.n[0], y + F.n[1], z + F.n[2])) continue;   // carved neighbour: face exposed, draw it
     if (nb == id && (T.selfCull || (!c.opt.fancyLeaves && T.leaves))) continue;
     int tile = faces[f], rot = 0;
     if (T.hasFront && f != 2 && f != 3) tile = f == frontFace ? faces[4] : faces[0];
@@ -496,7 +525,8 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
     switch (rt) {
       case Render::Cube: case Render::Cutout: {
         if (chestHiddenAt(wp.x, wp.y, wp.z)) break;   // the open chest is drawn by render/chest_layer.cpp
-        if (c.opaque(x + 1, y, z) && c.opaque(x - 1, y, z) && c.opaque(x, y, z + 1) && c.opaque(x, y, z - 1) && c.opaque(x, y + 1, z) && c.opaque(x, y - 1, z)) break;
+        if (u8 cm = c.carveAt(x, y, z)) { emitCarvedBlock(c, out.opaque, id, x, y, z, cm); break; }   // carve flag lives in its own byte now
+        if (surroundedCovered(c, x, y, z)) break;   // every opaque neighbour must itself be carved: a plain neighbour would leave the shared plane undrawn on both sides
         int pass = R.tTrans[id] ? 2 : rt == Render::Cutout ? 1 : 0;
         emitCube(c, gm, pass, pass == 2 ? out.trans : pass == 1 ? out.cutout : out.opaque, id, x, y, z, meta);
         if (tufts && id == grassBlock && c.at(x, y + 1, z) == AIR) emitGrassTufts(c, out.cutout, id, x, y, z);

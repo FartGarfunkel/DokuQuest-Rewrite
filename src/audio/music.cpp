@@ -11,7 +11,7 @@ static double hz(double m) { return 440.0 * std::pow(2.0, (m - 69) / 12.0); }
 
 int musicInsOf(const std::string& n) {
   static const char* names[MI_COUNT] = {"piano", "pad", "bell", "drone", "harp", "flute", "strings", "choir", "horn", "brass", "marimba", "kalimba",
-    "musicbox", "celesta", "pluck", "clarinet", "cello", "taiko", "timpani", "snare", "hand", "frame", "shaker", "cymbal"};
+    "musicbox", "celesta", "pluck", "clarinet", "cello", "taiko", "timpani", "snare", "hand", "frame", "shaker", "cymbal", "dulcimer", "bass", "ubass", "guitar", "bombard", "tremolo", "mandolin", "dulcbow", "bandora", "sawfiddle", "fiddle", "strumbo", "zeppelin", "kazoo", "gurdy", "dronelow", "mezzo"};
   for (int i = 0; i < MI_COUNT; i++) if (n == names[i]) return i;
   return MI_PIANO;
 }
@@ -21,7 +21,7 @@ int musicInsOf(const std::string& n) {
 // filter (or the choir's three vowel bands), a gain ramp; and an optional burst of filtered noise beside it.
 struct MV {
   int bus = 0; double t0 = 0, end = 0;
-  struct O { Osc o; Param f; float cents = 0, mul = 1, vibRate = 0; Param vib; bool hasVib = false; Param pg; bool hasPg = false; double stop = 1e9; } o[5];
+  struct O { Osc o; Param f; float cents = 0, mul = 1, vibRate = 0, bandLo = 0, bandHi = 0; Param vib; bool hasVib = false; Param pg; bool hasPg = false; double stop = 1e9; } o[6];
   int no = 0;
   Param g;
   int filt = 0;  // 0 none, 1 biquad, 2 choir formants
@@ -60,6 +60,7 @@ void MusicSynth::Impl::build(const AudioCmd& c, MV& v) {
   auto osc = [&](int type, double fr, double stop, float cents = 0, float mul = 1) -> MV::O& {
     MV::O& o = v.o[v.no++]; o.o.type = type; o.f.init = (float)fr; o.f.set((float)fr, 0); o.cents = cents; o.mul = mul; o.stop = stop; o.o.ph = 0; return o;
   };
+  auto oband = [&](MV::O& o, double lo, double hi) { o.bandLo = (float)lo; o.bandHi = (float)hi; };
   auto vib = [&](MV::O& o, double rate, double depth, double delay) { o.hasVib = true; o.vibRate = (float)rate; o.vib.set(0, 0); o.vib.lin((float)depth, delay + 0.3); };
   auto filter = [&](const char* type, float q) { v.filt = 1; v.ftype = type; v.fq = q; };
   auto noise = [&](double dur, const char* type, double nf, double q, double gain, double att = 0.002) {
@@ -186,6 +187,152 @@ void MusicSynth::Impl::build(const AudioCmd& c, MV& v) {
       break;
     }
     case MI_SHAKER: v.g.set(0, 0); noise(0.07, "highpass", 6500, 0.7, 0.035 * vel, 0.012); v.end = 0.12; break;
+    case MI_BASS: {     // warm double-bass: the recording's 300 Hz anchor — soft bowed low register
+      double dec = std::clamp(2.6 - (mm - 40) * 0.05, 1.0, 3.0), len = std::max(d, 0.6) + dec;
+      filter("lowpass", 1); v.ff.set(900, 0); v.ff.lin(1400, len * 0.4); v.ff.exp(700, len);   // stays warm up top
+      v.g.set(0.0001f, 0); v.g.lin((float)(0.05 * vel), 0.12); v.g.set((float)(0.045 * vel), len * 0.7); v.g.lin(0.0001f, len + 0.3);
+      auto& a = osc(3, f, len + 0.35); vib(a, 3.2, f * 0.004, 0.3);          // bowed root, slow waver
+      osc(0, f * 0.997, len + 0.35, 0, 0.6f);                                // breathy shadow a hair flat
+      osc(2, f * 2, len * 0.8, 3);                                           // light 10th-string hint
+      v.end = len + 0.35; break;
+    }
+    case MI_UBASS: {    // plucked upright bass: pizzicato low thump with woody body
+      double dec = std::clamp(1.4 - (mm - 38) * 0.02, 0.5, 1.6), len = std::max(d, 0.3) + dec;
+      filter("lowpass", 1); v.ff.set(1600, 0); v.ff.exp(500, dec * 0.8);
+      v.g.set(0.0001f, 0); v.g.exp((float)(0.12 * vel), 0.003); v.g.exp(0.0001f, dec);
+      osc(2, f, len + 0.05, -3);                                             // plucked body
+      auto& b = osc(3, f * 1.998, dec * 0.6, 4);                            // string harmonic
+      osc(0, f * 0.5, len + 0.05, 0, 0.5f);                                 // the wood-thump floor
+      v.end = len + 0.05; break;
+    }
+    case MI_GUITAR: {   // fingerpicked guitar: raszy mid register, spruce-box warmth (the 300 Hz band)
+      double dec = std::clamp(2.2 - (mm - 46) * 0.03, 0.8, 2.6), len = std::max(d, 0.4) + dec;
+      filter("lowpass", 1); v.ff.set(3500, 0); v.ff.exp(1200, dec);
+      v.g.set(0.0001f, 0); v.g.exp((float)(0.09 * vel), 0.004); v.g.exp(0.02 * vel, 0.18); v.g.exp(0.0001f, dec);
+      auto& a = osc(3, f, len + 0.05, -5); vib(a, 9, f * 0.004, 0.1);       // nail-on-string attack wobble
+      osc(2, f * 1.002, len + 0.05, 7);                                     // second hair of the string
+      auto& c3 = osc(0, f * 3.02, dec * 0.5, 0); vib(c3, 11, f * 0.01, 0.12); // ringing harmonic
+      v.end = len + 0.05; break;
+    }
+    case MI_BOMBARD: {  // big bass drum: soft low boom that carries a march under the melody
+      double dur = std::max(d, 0.3);
+      filter("lowpass", 1); v.ff.set(240, 0); v.ff.exp(90, dur * 0.6);      // deep head tone
+      v.g.set(0.0001f, 0); v.g.exp((float)(0.3 * vel), 0.008); v.g.exp(0.0001f, dur + 0.4);
+      osc(0, std::max(40., f * 0.16), dur + 0.5, 0, 1.2f);                  // felt-thump floor near 40–90 Hz
+      v.noise = true; v.nb.setWA("lowpass", 300, 1);                        // the mallet "whump"
+      v.ng.set(0.0001f, 0); v.ng.exp((float)(0.2 * vel), 0.004); v.ng.exp(0.0001f, 0.5); v.nEnd = dur + 0.6;
+      v.end = dur + 0.6; break;
+    }
+    case MI_TREMOLO: {  // frame drum tremolo: a rolled shake — perceived rattle at ~500 Hz with skin body under it
+      double dur = std::max(d, 0.5);
+      v.g.set(0.0001f, 0); v.g.lin((float)(0.09 * vel), 0.03); v.g.set((float)(0.08 * vel), dur * 0.8); v.g.lin(0.0001f, dur + 0.25);
+      auto& r = osc(3, 470, dur + 0.3, 0); vib(r, 17, 60, 0);   // the roll itself: ~17 Hz ripple heard at ~500 Hz
+      osc(3, 150, dur + 0.3, 0, 0.8f);                          // skin body under the shake
+      noise(dur + 0.2, "bandpass", 1400, 1.6, 0.015 * vel, 0.02);   // jingle grain up top
+      v.end = dur + 0.3; break;
+    }
+    case MI_DULCIMER: { // hammered dulcimer: open wire-struck strings, long bright decay, gentle overtone wobble
+      double dec = std::clamp(3.2 - (mm - 50) * 0.04, 1.2, 3.6), len = std::max(d, 0.5) + dec;
+      filter("lowpass", 1); v.ff.set(7000, 0); v.ff.exp(1800, dec);   // bright at the strike, mellowing as it rings
+      v.g.set(0.0001f, 0); v.g.exp((float)(0.13 * vel), 0.002); v.g.exp(0.0001f, dec);
+      auto& a = osc(2, f, len + 0.05, -4); vib(a, 6.5, f * 0.01, 0.25);          // the struck string, slight waver
+      auto& b = osc(3, f * 1.004, len + 0.05, 6);                                 // second string a hair sharp
+      auto& c2 = osc(0, f * 2.01, dec * 0.8, 2); vib(c2, 7.5, f * 0.014, 0.15);  // the octave string with more wobble
+      osc(3, f * 1.5, dec * 0.5, -2);                                            // a soft fifth-string shadow
+      auto& d = osc(0, f * 0.5, len + 0.05); vib(d, 3, f * 0.006, 0.3);         // body resonance: octave-down fundamental (real dulcimer's low ring)
+      v.end = len + 0.05; break;
+    }
+    case MI_MANDOLIN: { // mandolin: fast tremolo strings, bright and dry — the dense upper chatter in the recording's beds
+      double dur = std::max(d, 0.4);
+      v.g.set(0.0001f, 0); v.g.lin((float)(0.05 * vel), 0.012); v.g.exp(0.0001f, dur + 0.3);
+      filter("lowpass", 1); v.ff.set(6000, 0); v.ff.exp(2200, dur * 0.8);   // dry bright chatter
+      auto& a = osc(2, f, dur + 0.35, -6); vib(a, 21, f * 0.008, 0.05);          // the tremolo: ~21 Hz ripple on the fretted string
+      auto& b = osc(2, f * 1.003, dur + 0.35, 9); vib(b, 24, f * 0.008, 0.05);   // second string, counter-rolled
+      auto& c = osc(3, f * 0.996, dur * 0.7, 0, 0.5f);                          // woody body under the roll
+      osc(0, f * 0.5, dur * 0.6, 0, 0.4f);                                      // low string fundamental (mandolin's deep course)
+      v.end = dur + 0.35; break;
+    }
+    case MI_DULCBOW: {  // hammered dulcimer played with bowed mallets: sustained bright wire tone that can hold a line
+      double len = std::max(d, 0.6);
+      v.g.set(0.0001f, 0); v.g.lin((float)(0.05 * vel), 0.06); v.g.set((float)(0.045 * vel), len * 0.8); v.g.lin(0.0001f, len + 0.3);
+      filter("lowpass", 1); v.ff.set(5200, 0); v.ff.exp(2600, len * 0.5); v.ff.exp(900, len);   // mellowing sustain
+      auto& a = osc(2, f, len + 0.3, -4); vib(a, 7, f * 0.005, 0.15);            // struck wire with slow waver
+      auto& b = osc(2, f * 1.004, len + 0.3, 6); vib(b, 9, f * 0.006, 0.15);     // second course a hair sharp
+      osc(0, f * 2.01, len * 0.8, 0, 0.4f);                                     // bright octave wire
+      osc(3, f * 0.5, len + 0.3, 0, 0.3f);                                      // felted frame body
+      v.end = len + 0.3; break;
+    }
+    case MI_BANDORA: {  // bandora: low drone course plus a bright strum — the mid-low sustained bed the recording leans on
+      double len = std::max(d, 0.8);
+      v.g.set(0.0001f, 0); v.g.lin((float)(0.045 * vel), 0.08); v.g.set((float)(0.04 * vel), len * 0.75); v.g.lin(0.0001f, len + 0.35);
+      filter("lowpass", 1); v.ff.set(2600, 0); v.ff.exp(800, len * 0.6);         // dark sustained bed
+      osc(1, f * 0.5, len + 0.35, 0, 0.9f);                                     // the big drone course
+      auto& a = osc(2, f, len + 0.35, -3); vib(a, 6, f * 0.004, 0.2);           // strummed upper string
+      osc(2, f * 1.998, len * 0.7, 5, 0.5f);                                   // bright partial over the drone
+      v.end = len + 0.35; break;
+    }
+    case MI_SAWFIDDLE: { // musical saw: the open notch bends into a wide, vocal, whale-song glide
+      double len = std::max(d, 1.0);
+      v.g.set(0.0001f, 0); v.g.lin((float)(0.05 * vel), 0.25); v.g.set((float)(0.045 * vel), len * 0.8); v.g.lin(0.0001f, len + 0.4);
+      auto& a = osc(0, f, len + 0.4);                       // pure notch tone
+      a.f.set((float)f, 0); a.f.exp((float)(f * 1.35), len * 0.3); a.f.exp((float)(f * 0.8), len);   // the bend up and back
+      auto& b = osc(2, f * 1.998, len + 0.4, 0, 0.6f);      // tight harmonic shimmer
+      auto& d = osc(0, f * 0.5, len + 0.4); vib(d, 2, f * 0.004, 0.2);        // saw's low fundamental drone (open notch drops below the melody)
+      osc(1, f * 3.0, len * 0.7, 0, 0.3f);                                  // wide upper overtone reaching 600-2400 register
+      noise(len + 0.3, "bandpass", f * 3, 1.2, 0.01 * vel, 0.2);   // rosin breath
+      v.end = len + 0.4; break;
+    }
+    case MI_FIDDLE: {   // fiddle: fast lively bowing, thin bright singing tone
+      double len = std::max(d, 0.35);
+      v.g.set(0.0001f, 0); v.g.lin((float)(0.06 * vel), 0.02); v.g.exp(0.004f * vel, len * 0.9); v.g.exp(0.0001f, len + 0.15);
+      filter("lowpass", 1); v.ff.set(4200, 0); v.ff.exp(1600, len * 0.7);   // thin singing tone
+      auto& a = osc(2, f, len + 0.2, -7); vib(a, 4, f * 0.006, 0.08);
+      auto& b = osc(1, f * 1.002, len + 0.2, 11, 0.5f); vib(b, 3, f * 0.004, 0.08);   // drony second string
+      v.end = len + 0.2; break;
+    }
+    case MI_STRUMBO: {  // washtub bass / gutbucket strum: slap-style low booms with woody whine
+      double dur = std::max(d, 0.35);
+      filter("lowpass", 1); v.ff.set(900, 0); v.ff.exp(280, dur * 0.7);
+      v.g.set(0.0001f, 0); v.g.exp((float)(0.2 * vel), 0.004); v.g.lin((float)(0.05 * vel), dur * 0.3); v.g.exp(0.0001f, dur + 0.3);
+      osc(0, std::max(50., f * 0.2), dur + 0.4, 0, 1.6f);           // tub boom
+      auto& w = osc(2, f * 0.5, dur + 0.4, 0); w.f.exp((float)(f * 0.55), dur * 0.8);   // gut whine bending up
+      v.end = dur + 0.4; break;
+    }
+    case MI_ZEPPELIN: { // kazoo (jug band): buzzy nasal comb — cheap reedy crowd noise, exactly what the recording's bed hints at
+      double len = std::max(d, 0.5);
+      v.g.set(0.0001f, 0); v.g.lin((float)(0.03 * vel), 0.04); v.g.set((float)(0.028f * vel), len * 0.85); v.g.lin(0.0001f, len + 0.2);
+      filter("lowpass", 1); v.ff.set(2600, 0); v.ff.exp(900, len * 0.8);    // nasal comb
+      auto& a = osc(2, f, len + 0.25, 0); vib(a, 19, f * 0.03, 0.04);    // lip buzz
+      osc(1, f * 2.002, len + 0.25, 0, 0.7f);                            // comb partial
+      v.end = len + 0.25; break;
+    }
+    case MI_GURDY: {    // hurdy-gurdy: crank-driven drone with grinding buzz and a singing nyckelhart string
+      double len = std::max(d, 0.8);
+      v.g.set(0.0001f, 0); v.g.lin((float)(0.045 * vel), 0.05); v.g.set((float)(0.04 * vel), len * 0.85); v.g.lin(0.0001f, len + 0.3);
+      filter("lowpass", 1); v.ff.set(3600, 0); v.ff.exp(1300, len * 0.8);   // rosin grind
+      auto& a = osc(1, f, len + 0.35, -4); vib(a, 27, f * 0.02, 0.03);   // the crank buzz (rosin grind)
+      auto& b = osc(2, f * 1.499, len + 0.35, 8, 0.6f); vib(b, 6, f * 0.005, 0.15); // singing nyckelharpa string
+      osc(1, f * 0.5, len + 0.35, 0, 0.5f);                              // drone course
+      osc(0, f * 0.34, len + 0.35, 0, 0.6f);                             // deep bass course (sub-100 anchor)
+      v.end = len + 0.35; break;
+    }
+    case MI_DRONELOW: { // band-limited deep drone: ONE pure harmonic, register-locked (PolyBLEP concept ported from Polyhedrus/Gist band-limited osc practice)
+      double len = std::max(d, 0.8);
+      v.g.set(0.0001f, 0); v.g.lin((float)(0.05 * vel), 0.06); v.g.set((float)(0.045 * vel), len * 0.85); v.g.lin(0.0001f, len + 0.3);
+      // no filter: the BLIT lands its whole harmonic ladder by construction
+      auto& a = osc(5, f * 1.2, len + 0.35, -3);                      // BLIT impulse train: oscillates at the note's OWN Hz, exact deep harmonics to Nyquist (band-limited osc practice)
+      osc(0, f * 1.2, len + 0.35, 8, 0.3f);                        // voiced fundamental overlay
+      osc(4, f * 2.4, len + 0.35, 4, 0.16f);                       // first overtone for body
+      v.end = len + 0.35; break;
+    }
+    case MI_MEZZO: {   // band-limited mezzo drone: register-locked 600-2400 Hz sustain (the missing vocal/formant band)
+      double len = std::max(d, 0.8);
+      v.g.set(0.0001f, 0); v.g.lin((float)(0.035 * vel), 0.07); v.g.set((float)(0.03 * vel), len * 0.85); v.g.lin(0.0001f, len + 0.3);
+      // no filter: the band-limited type-4 harmonics land exactly where intended
+      auto& a = osc(5, f, len + 0.35, -2); vib(a, 4.5, f * 0.006, 0.2);        // BLIT impulse train: exact deep harmonics (PolyBLEP/BLIT band-limited practice)
+      osc(4, f * 1.99, len + 0.35, 6, 0.8f);                                   // octave-up partial fills 1200-2400
+      v.end = len + 0.35; break;
+    }
     case MI_CYMBAL: {
       v.g.set(0, 0); v.noise = true; v.nb.setWA("highpass", 5200, 1);
       v.ng.set(0.0001f, 0); v.ng.exp((float)(0.06 * vel), std::max(0.01, d)); v.ng.exp(0.0001f, d + 1.4); v.nEnd = d + 1.5; v.end = d + 1.5; break;
@@ -238,6 +385,8 @@ void MusicSynth::render(float* out, int n, double t0, float volume) {
           if (t < o.stop) {
             double ff = fr[k];
             if (o.hasVib) ff += std::sin(2 * DPI * o.vibRate * t) * vb[k];
+            // Polyhedrus-style band limiting: fold harmonics out of the instrument's register window
+            if (o.bandHi > 0) { double lim = o.bandHi; while (ff > lim) ff *= 0.5; double lo = o.bandLo; if (lo > 0) while (ff < lo && ff * 2.0 <= lim) ff *= 2.0; }
             x += o.o.next(ff) * o.mul * pa[k];
           }
           pa[k] += pstep[k];
@@ -253,7 +402,8 @@ void MusicSynth::render(float* out, int n, double t0, float volume) {
   }
   s.voices.erase(std::remove_if(s.voices.begin(), s.voices.end(), [&](const MV& v) { return t1 - v.t0 > v.end; }), s.voices.end());
   // the bus: three mixes (quiet pieces, battle, fanfare) -> tone -> dry + hall -> volume -> a gentle limiter
-  float vol = volume * 0.55f;
+  static double studioBus = [](){ const char* e = getenv("DQ_STUDIO_BUS"); return e ? atof(e) : 0.55; }();
+  float vol = volume * (float)studioBus;
   for (int i = 0; i < n; i++) {
     for (int b = 0; b < 3; b++) { if (s.bus[b] < s.busT[b]) s.bus[b] = std::min(s.busT[b], s.bus[b] + s.busStep[b]); else if (s.bus[b] > s.busT[b]) s.bus[b] = std::max(s.busT[b], s.bus[b] - s.busStep[b]); }
     if (!busy && vol <= 0) continue;
@@ -291,7 +441,7 @@ static const std::map<std::string, Mood>& moods() {
     {"menu", {{"major", "dorian", "lydian"}, {48, 50, 52}, {58, 68}, 0.55f, 0, {{0, 5, 3, 4}, {0, 3, 0, 4}, {5, 3, 0, 4}}, 0.25f}},
     {"creative", {{"lydian", "major"}, {50, 52, 55}, {66, 80}, 0.75f, 3, {{0, 4, 5, 3}, {3, 4, 0, 5}, {0, 1, 4, 3}}, 0.4f}},
     // music2.js
-    {"plains", {{"major", "lydian", "mixolydian"}, {50, 52, 53, 55}, {66, 80}, 0.6f, 2, {{0, 4, 5, 3}, {0, 3, 4, 0}, {0, 5, 3, 4}, {3, 4, 0, 0}}, 0.12f, false, false, "flute", "piano", "harp", "strings"}},
+    {"plains", {{"major", "lydian", "mixolydian"}, {50, 52, 53, 55}, {66, 80}, 0.6f, 2, {{0, 4, 5, 3}, {0, 3, 4, 0}, {0, 5, 3, 4}, {3, 4, 0, 0}}, 0.12f, false, false, "dulcimer", "sawfiddle", "bandora", "mandolin", "strumbo", "gurdy"}},
     {"forest", {{"dorian", "mixolydian", "major"}, {48, 50, 52}, {58, 70}, 0.55f, 0, {{0, 6, 3, 4}, {0, 3, 0, 4}, {0, 5, 6, 4}}, 0.2f, false, false, "piano", "flute", "harp", "strings"}},
     {"jungle", {{"penta", "mixolydian"}, {50, 53, 55}, {84, 100}, 0.7f, 2, {{0, 4, 3, 4}, {0, 3, 4, 3}, {0, 5, 3, 4}}, 0, false, false, "marimba", "kalimba", "kalimba", "pad", "hand"}},
     {"desert", {{"hijaz", "phrygian"}, {50, 52}, {70, 84}, 0.55f, 0, {{0, 1, 0, 6}, {0, 6, 1, 0}, {0, 3, 1, 0}}, 0, true, false, "pluck", "flute", "pluck", "pad", "frame"}},

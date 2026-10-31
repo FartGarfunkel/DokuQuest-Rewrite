@@ -562,6 +562,57 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
   return false;
 }
 
+// ---- chisel carving (Cubyz-style): a full block minus any of its 8 corners ----
+// The high nibble of meta carries which of the 8 corner octants are carved away.
+// Bit b = (hx<<2)|(hy<<1)|hz with hx/hz picking the +half along x/z, hy the upper half.
+// Carve octant mask lives in meta bits 0..6 (Cubyz-style byte: bit (hx<<2)|(hy<<1)|hz per corner).
+// Only full-solid NON-shape blocks ever carry it, and they never read those low bits as facing/shape
+// states (all such readers are trait-gated), so the whole low 7 bits are free. WLOG stays bit 7.
+static inline u8 carveNib(const ShapeNb& nb, int dx, int dy, int dz) {
+  BlockId n = nb.id(dx, dy, dz);
+  return fullSolid(n) ? nb.carve(dx, dy, dz) : 0;   // carve nibble comes from the dedicated carve channel now
+}
+// Face bits in ShapeBox.only follow FACES order: +x -x +y -y +z -z.
+bool carveBoxes(std::vector<ShapeBox>& out, u8 carve, const ShapeNb& nb) {   // carve = octant mask from the dedicated carve byte
+  out.clear();
+  // own octant present unless its bit is carved
+  auto own = [&](int x, int y, int z) { return !((carve >> ((x << 2) | (y << 1) | z)) & 1); };
+  for (int m = 0; m < 8; m++) {
+    // encode: bit = (hx<<2)|(hy<<1)|hz (Cubyz subBlockMask / build.cpp). Decode MUST match:
+    int x = (m >> 2) & 1, y = (m >> 1) & 1, z = m & 1;
+    if (!own(x, y, z)) continue;
+    // Cubyz: every PRESENT octant always stands (its collision box and geometry exist);
+    // only its faces get culled when the sub-block across each face plane is present.
+    u8 only = 0;
+    // A half-face is covered ONLY by a fullSolid neighbor whose touching corner is present:
+    // any other neighbor (open space, carved-away touching corner, or a non-full-solid
+    // shape) leaves our notch exposed. emitBox must not cull those faces against opaque
+    // neighbors, so carveBoxes marks them and the carve path passes their mask to emitBox.
+    // half-face toward a PRESENT sibling octant is interior (same block): don't draw it
+    auto sib = [&](int sx, int sy, int sz) {
+      int ox = x + sx, oy = y + sy, oz = z + sz;
+      if (ox < 0 || ox > 1 || oy < 0 || oy > 1 || oz < 0 || oz > 1) return false;
+      return !((carve >> ((ox << 2) | (oy << 1) | oz)) & 1);
+    };
+    auto covered = [&](int dx, int dy, int dz) -> bool {
+      if (sib(dx, dy, dz)) return true;   // interior shared face
+      if (!fullSolid(nb.id(dx, dy, dz))) return false;
+      int hx = dx ? (dx > 0 ? 0 : 1) : x, hy = dy ? (dy > 0 ? 0 : 1) : y, hz = dz ? (dz > 0 ? 0 : 1) : z;
+      return !((carveNib(nb, dx, dy, dz) >> ((hx << 2) | (hy << 1) | hz)) & 1);
+    };
+    if (!covered(1, 0, 0)) only |= 1;
+    if (!covered(-1, 0, 0)) only |= 2;
+    if (!covered(0, 1, 0)) only |= 4;
+    if (!covered(0, -1, 0)) only |= 8;
+    if (!covered(0, 0, 1)) only |= 16;
+    if (!covered(0, 0, -1)) only |= 32;
+    ShapeBox b(x * 8.f, y * 8.f, z * 8.f, x * 8 + 8.f, y * 8 + 8.f, z * 8 + 8.f);
+    b.only = only;   // interior faces sit against our own present octants and are culled by emitBox
+    out.push_back(b);
+  }
+  return true;
+}
+
 int sinkOffset(BlockId id, const ShapeNb& nb) {
   const Registry& R = reg();
   if (!R.tSink[id]) return 0;

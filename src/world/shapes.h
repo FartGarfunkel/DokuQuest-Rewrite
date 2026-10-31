@@ -61,12 +61,14 @@ struct ShapeNb {
   virtual ~ShapeNb() = default;
   virtual BlockId id(int dx, int dy, int dz) const = 0;
   virtual u8 meta(int dx, int dy, int dz) const = 0;
+  virtual u8 carve(int dx, int dy, int dz) const { return 0; }   // chisel octant mask (0 where no carve channel exists)
 };
 struct WorldShapeNb : ShapeNb {
   const World& w; int x, y, z;
   WorldShapeNb(const World& w, int x, int y, int z) : w(w), x(x), y(y), z(z) {}
   BlockId id(int dx, int dy, int dz) const override { return w.getBlock(x + dx, y + dy, z + dz); }
   u8 meta(int dx, int dy, int dz) const override { return w.getMeta(x + dx, y + dy, z + dz); }
+  u8 carve(int dx, int dy, int dz) const override { return w.getCarve(x + dx, y + dy, z + dz); }
 };
 
 namespace ShapePurpose { enum : int { Draw = 0, Collide = 1, Select = 2 }; }
@@ -119,6 +121,7 @@ namespace dq {
 struct PixBox { float x0, y0, z0, x1, y1, z1; };   // block-local, 1/16-block pixels
 enum : int { SHAPE_DRAW = ShapePurpose::Draw, SHAPE_COLLIDE = ShapePurpose::Collide, SHAPE_SELECT = ShapePurpose::Select };
 // boxes of block `id` at (x,y,z) (sinking onto bottom slabs and wall torches set back included); false = a plain full cube
+bool carveBoxes(std::vector<ShapeBox>& out, u8 carve, const ShapeNb& nb);  // full block minus carved corners (meta>>4 = 8 corner bits)
 bool worldBoxes(const World& w, int x, int y, int z, BlockId id, int purpose, std::vector<PixBox>& out);
 bool hasShapeBoxes(BlockId id);                              // shaped or modelled (not a plain cube)
 float liquidHeight(BlockId id, u8 meta, BlockId above);      // surface height of a liquid cell (mesher.js)
