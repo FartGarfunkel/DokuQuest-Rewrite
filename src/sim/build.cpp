@@ -188,17 +188,16 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
   int nx = hit.normal.x, ny = hit.normal.y, nz = hit.normal.z;
   if (R.tRender[bid] == (u8)Render::Torch) {
     BlockId cur = w.getBlock(x, y, z);
-    DQ_WARN("DBG torch hit %d %d %d n %d %d %d id %s cur %s", hit.block.x, hit.block.y, hit.block.z, nx, ny, nz, R.block(hit.id).key.c_str(), R.block(cur).key.c_str());
     if (!R.tReplaceable[cur] && cur != AIR) return;
     BlockId below = w.getBlock(x, y - 1, z);
-    bool belowTop = R.tSolid[below] && carveFaceFull(w.getCarve(x, y - 1, z), 0, 1, 0);   // a chiseled block's top must be whole
+    bool belowTop = R.tSolid[below] && carveFaceDepth(w.getCarve(x, y - 1, z), 0, 1, 0) >= 0;   // a whole top, or a slab's (it sinks onto it)
     if (ny == 1 || (R.tReplaceable[hit.id] && R.tSolid[below])) { if (!belowTop) { if (R.tSolid[below]) toastMsg("Torches stand on a whole top face"); return; } meta = 0; }
     else if (ny == -1) return;
     else {
       // on a wall only against a whole face: not the side of a fence post, pane, slab or a chiseled notch
       BlockId sid = hit.id; int sk = R.tShape[sid]; int sm = w.getMeta(hit.block.x, hit.block.y, hit.block.z) & 7;
       Render rr = (Render)R.tRender[sid];
-      bool whole = R.tSolid[sid] && (!sk ? (rr == Render::Cube || rr == Render::Cutout) && carveFaceFull(w.getCarve(hit.block.x, hit.block.y, hit.block.z), nx, ny, nz)
+      bool whole = R.tSolid[sid] && (!sk ? (rr == Render::Cube || rr == Render::Cutout) && carveFaceDepth(w.getCarve(hit.block.x, hit.block.y, hit.block.z), nx, ny, nz) >= 0
                                          : sk == ShapeKind::Slab && (sm == 6 || (sm >= 2 && (sm - 2 == dirOf((float)-nx, (float)-nz) || sm - 2 == dirOf((float)nx, (float)nz)))));
       if (!whole) { toastMsg("Torches fix to the full face of a block \xE2\x80\x94 or stand one on top"); return; }
       meta = nx == 1 ? 1 : nx == -1 ? 2 : nz == 1 ? 3 : 4;
@@ -207,7 +206,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
   } else if (bid == B.lantern || bid == B.soul_lantern) {
     BlockId up = w.getBlock(x, y + 1, z);
     bool upOK = R.tSolid[up] && carveFaceFull(w.getCarve(x, y + 1, z), 0, -1, 0);   // hangs from a whole underside
-    bool downOK = R.tSolid[w.getBlock(x, y - 1, z)] && carveFaceFull(w.getCarve(x, y - 1, z), 0, 1, 0);
+    bool downOK = R.tSolid[w.getBlock(x, y - 1, z)] && carveFaceDepth(w.getCarve(x, y - 1, z), 0, 1, 0) >= 0;   // (stands sunk onto a slab)
     if (ny == -1 && upOK) meta = 1;
     else if (downOK) meta = 0;
     else if (upOK || R.block(up).str("shape") == "chain") meta = 1;
@@ -260,7 +259,8 @@ bool PlayerController::supportOK(BlockId bid, int x, int y, int z, u8 meta) {
   auto in = [&](BlockId v, std::initializer_list<BlockId> l) { if (!v) return false; for (BlockId a : l) if (a && a == v) return true; return false; };
   auto inSoil = [&](BlockId v) { return v && std::find(SOIL.begin(), SOIL.end(), v) != SOIL.end(); };
   // a chiseled block only holds things on a whole face (no floating plants over a carved notch)
-  bool belowTop = carveFaceFull(w.getCarve(x, y - 1, z), 0, 1, 0), aboveBottom = carveFaceFull(w.getCarve(x, y + 1, z), 0, -1, 0);
+  const int bdp = carveFaceDepth(w.getCarve(x, y - 1, z), 0, 1, 0);
+  bool belowTop = bdp == 0 || (bdp == 8 && R.tSink[bid]), aboveBottom = carveFaceFull(w.getCarve(x, y + 1, z), 0, -1, 0);   // things that sink stand on a slab
   if (d.has("rs") || d.has("rail") || d.has("tripwire")) return d.has("attached") || (R.tSolid[below] && belowTop);   // redstone parts: the redstone module refines this
   if (bhas(bid, BF::Hangs) || (d.has("altTile") && (meta & 1)))
     return (R.tSolid[above] && aboveBottom) || above == bid || (bhas(above, BF::Hangs) && startsWith(R.block(above).key, "cave_vines") && startsWith(d.key, "cave_vines"));

@@ -57,6 +57,7 @@ void emitBox(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, u8 meta, int x
       const int* cc = F.c[k];
       float X = cc[0] ? b.b[3] : b.b[0], Y = cc[1] ? b.b[4] : b.b[1], Z = cc[2] ? b.b[5] : b.b[2];
       vec2 st = shapeST(f, X, Y, Z);
+      if (b.tu || b.uvT) { if (b.uvT) std::swap(st.x, st.y); st += vec2(b.tu, b.tv); }   // (model boxes' tv is addShapeBox's)
       float sk, bl, ao = 1;
       if (smooth) {
         float pv[3] = {X / 16, (Y + sink) / 16, Z / 16};
@@ -300,19 +301,28 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   u8 mat = Mat::Cutout;
   float sk = c.skyAt(x, y, z), bl = std::max<float>(c.blAt(x, y, z), R.tLight[id]);
   float lift = 0;
-  if (R.tSink[id] && R.tShape[c.at(x, y - 1, z)] == ShapeKind::Slab && (c.metaAt(x, y - 1, z) & 7) == 0) lift -= 8;
+  lift += (float)sinkOffset(id, MeshShapeNb(c, x, y, z));
   int rf = T.facingModel ? meta & 3 : 0;
   vec3 o(x, y, z);
   if (T.cloth) {
     // flags, banners, bunting: each vertex learns how far it is from what holds it, and the shader flaps it
     thread_local std::vector<ShapeBox> cb; clothBoxes(id, meta, cb);
+    // a flag reaches over to its pole: a fence post or wall post stands back from the cell's edge
+    float reach = 0;
+    if (T.cloth == 1) {
+      static const int PX[4] = {0, -1, 0, 1}, PZ[4] = {1, 0, -1, 0};
+      int ps = R.tShape[c.at(x + PX[rf], y, z + PZ[rf])];
+      reach = ps == ShapeKind::Fence ? 6.f : ps == ShapeKind::Wall ? 4.f : 0.f;
+    }
     for (auto& box0 : cb) {
-      ShapeBox box = box0; rotBox(box, rf);
+      ShapeBox box = box0;
+      if (reach > 0 && box.kind == 1) { box.b[2] += reach; box.b[5] += reach; }
+      rotBox(box, rf);
       u8 k = box.kind;
       std::function<u8(vec3)> fn = [&](vec3 p) -> u8 {
         float vx = p.x - x, vy = p.y - y, vz = p.z - z;
         if (k == 0) return 0;
-        if (k == 1) { float dd = rf == 0 ? 1 - vz : rf == 1 ? vx : rf == 2 ? vz : 1 - vx; return (u8)(((rf & 1) ? 48 : 64) + std::lround(clampv(dd, 0.f, 1.f) * 15)); }
+        if (k == 1) { float dd = (rf == 0 ? 1 - vz : rf == 1 ? vx : rf == 2 ? vz : 1 - vx) + reach / 16; return (u8)(((rf & 1) ? 48 : 64) + std::lround(clampv(dd, 0.f, 1.f) * 15)); }
         if (k == 2) { float dd = (meta & 4) ? 0.45f + (1 - vy) * 0.55f : (1 - vy) * 0.45f; return (u8)(((rf & 1) ? 64 : 48) + std::lround(clampv(dd, 0.f, 1.f) * 15)); }
         if (k == 3) { float dd = clampv((14 / 16.f - vy) / 0.55f, 0.f, 1.f) * 0.85f + 0.1f; return (u8)(((rf & 1) ? 64 : 48) + std::lround(dd * 15)); }
         if (k == 4) return Sway::Hang + 1;

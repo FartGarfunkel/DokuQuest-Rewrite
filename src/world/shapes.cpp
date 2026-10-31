@@ -25,6 +25,7 @@
 //   daylight      0-3 power, 4 inverted           tripwire hook: 0-1 wall side, 2 strung, 3 powered
 //   tripwire      0 powered, 1 strung
 #include "world/shapes.h"
+#include "world/carve_faces.h"
 #include <mutex>
 
 namespace dq {
@@ -212,7 +213,10 @@ bool joinsFence(BlockId id) { int s = reg().tShape[id]; return s == ShapeKind::F
 bool joinsWall(BlockId id) { int s = reg().tShape[id]; return s == ShapeKind::Wall || s == ShapeKind::Pane || s == ShapeKind::Gate || fullSolid(id); }
 bool joinsPane(BlockId id) { int s = reg().tShape[id]; return s == ShapeKind::Pane || s == ShapeKind::Wall || fullSolid(id); }
 bool hangingLantern(BlockId id, u8 meta) { return traits(id).lantern && (meta & 0x7f) == 1; }
-bool slabGap(BlockId id, u8 meta, int side) { return reg().tShape[id] == ShapeKind::Slab && (meta & 7) - 2 == side; }
+bool slabGap(BlockId id, u8 meta, int side, u8 carve) {
+  if (carve) return reg().tOpaque[id] && carveFaceDepth(carve, -DIRX[side], 0, -DIRZ[side]) == 8;
+  return reg().tShape[id] == ShapeKind::Slab && (meta & 7) - 2 == side;
+}
 
 int stairShape(u8 meta, const ShapeNb& nb) {
   int f = meta & 3, top = meta & 4;
@@ -390,6 +394,17 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
     case ShapeKind::Cake: push(ShapeBox(1.f + 2 * std::min(6, m & 7), 0, 1, 15, 8, 15)); return true;
     case ShapeKind::Rod: {
       int ax = m & 3;
+      if (purpose == ShapePurpose::Draw && T.endRod) {   // the picture is laid out like Minecraft's: a 2 px rod strip at the left, its tip and the base beside it
+        auto part = [&](ShapeBox b, u8 only, float tu, float tv, bool t) { b.only = only; b.tu = tu; b.tv = tv; b.uvT = t; push(b); };
+        const u8 FX = 1 | 2, FY = 4 | 8, FZ = 16 | 32;
+        if (ax == 1) { ShapeBox r(0, 7, 7, 16, 9, 9); part(r, FY | FZ, -7, 0, true); part(r, FX, -5, -7, false); }
+        else if (ax == 2) { ShapeBox r(7, 7, 0, 9, 9, 16); part(r, FX, -7, 0, true); part(r, FY, -7, 0, false); part(r, FZ, -5, -7, false); }
+        else {
+          ShapeBox r(7, 1, 7, 9, 16, 9), base(6, 0, 6, 10, 1, 10);
+          part(r, FX | FZ, -7, 0, false); part(r, FY, -5, -7, false); part(base, FX | FZ, -4, -9, false); part(base, FY, -4, -4, false);
+        }
+        return true;
+      }
       if (ax == 1) push(ShapeBox(0, 7, 7, 16, 9, 9));
       else if (ax == 2) push(ShapeBox(7, 7, 0, 9, 9, 16));
       else if (purpose == ShapePurpose::Draw && T.endRod) { push(ShapeBox(7, 1, 7, 9, 16, 9)); push(ShapeBox(6, 0, 6, 10, 1, 10)); }
@@ -407,7 +422,7 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
     case ShapeKind::Frame: {
       if (purpose == ShapePurpose::Collide) return false;
       int f = m & 3; ShapeBox bx(2, 2, 0, 14, 14, 1); rotBox(bx, f);
-      if (slabGap(nb.id(DIRX[f], 0, DIRZ[f]), nb.meta(DIRX[f], 0, DIRZ[f]), f)) { float ox = DIRX[f] * 8.f, oz = DIRZ[f] * 8.f; bx.b[0] += ox; bx.b[3] += ox; bx.b[2] += oz; bx.b[5] += oz; }
+      if (slabGap(nb.id(DIRX[f], 0, DIRZ[f]), nb.meta(DIRX[f], 0, DIRZ[f]), f, nb.carve(DIRX[f], 0, DIRZ[f]))) { float ox = DIRX[f] * 8.f, oz = DIRZ[f] * 8.f; bx.b[0] += ox; bx.b[3] += ox; bx.b[2] += oz; bx.b[5] += oz; }
       push(bx);
       return true;
     }
@@ -621,13 +636,14 @@ int sinkOffset(BlockId id, const ShapeNb& nb) {
   const Registry& R = reg();
   if (!R.tSink[id]) return 0;
   BlockId b = nb.id(0, -1, 0);
+  if (u8 cv = nb.carve(0, -1, 0)) return R.tOpaque[b] && carveFaceDepth(cv, 0, 1, 0) == 8 ? -8 : 0;   // a chiseled bottom half
   return R.tShape[b] == ShapeKind::Slab && (nb.meta(0, -1, 0) & 7) == 0 ? -8 : 0;
 }
 float torchSetBack(u8 m, const ShapeNb& nb) {
   if (m < 1 || m > 4) return 0;
   int wx = m == 1 ? 1 : m == 2 ? -1 : 0, wz = m == 3 ? 1 : m == 4 ? -1 : 0;
   static const int side[4] = {3, 1, 0, 2};
-  return slabGap(nb.id(-wx, 0, -wz), nb.meta(-wx, 0, -wz), side[m - 1]) ? 0.5f : 0.f;
+  return slabGap(nb.id(-wx, 0, -wz), nb.meta(-wx, 0, -wz), side[m - 1], nb.carve(-wx, 0, -wz)) ? 0.5f : 0.f;
 }
 
 bool blockShapeBoxes(const World& w, int x, int y, int z, int purpose, std::vector<BoxF>& out) {

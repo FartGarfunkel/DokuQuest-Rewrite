@@ -5,6 +5,12 @@ namespace dq {
 
 u8 skyTopLevel(int dim) { return dim == DIM_NETHER ? 0 : 15; }
 
+// A chiseled (carved) block of an opaque material takes light in, so its open octants and the faces beside them are
+// lit, but passes none on: light doesn't leak through walls of slabs, stairs and carved blocks.
+static inline bool carvedSink(const Registry& R, const Chunk& c, int lx, int ly, int lz, BlockId id) {
+  return R.tOpaque[id] && c.getCarve(lx, ly, lz);
+}
+
 // ---------------------------------------------------------------- first pass (worker thread)
 void initialChunkLight(Chunk& c) {
   const Registry& R = reg();
@@ -19,6 +25,7 @@ void initialChunkLight(Chunk& c) {
     for (int y = std::min(DIM_H - 1, c.maxY + 1); y >= 0; y--) { BlockId b = c.get(x, y, z); if (b && (R.tOpaque[b] || R.tAtt[b] || R.tLiquid[b])) { t = y; break; } }
     top[z * 16 + x] = t;
     if (skyTop) for (int y = t + 1; y < DIM_H; y++) SKY[idx(x, y, z)] = skyTop;
+    if (skyTop && t >= 0 && carvedSink(R, c, x, t, z, c.get(x, t, z))) SKY[idx(x, t, z)] = skyTop;
   }
   auto flood = [&](std::vector<u8>& L, bool sky) {
     size_t h = 0;
@@ -26,17 +33,18 @@ void initialChunkLight(Chunk& c) {
       u32 p = Q[h++]; int x = p & 15, z = (p >> 4) & 15, y = (int)(p >> 8);
       int l = L[idx(x, y, z)];
       if (l <= 1) continue;
+      { BlockId id = c.get(x, y, z); if (carvedSink(R, c, x, y, z, id) && (sky || !R.metaLight(id, c.getMeta(x, y, z)))) continue; }
       for (int d = 0; d < 6; d++) {
         int nx = x, ny = y, nz = z;
         if (d == 0) { if (++nx > 15) continue; } else if (d == 1) { if (--nx < 0) continue; }
         else if (d == 2) { if (++ny >= DIM_H) continue; } else if (d == 3) { if (--ny < 0) continue; }
         else if (d == 4) { if (++nz > 15) continue; } else { if (--nz < 0) continue; }
         BlockId nb = c.get(nx, ny, nz);
-        if (R.tOpaque[nb]) continue;
+        if (R.tOpaque[nb] && !c.getCarve(nx, ny, nz)) continue;
         int att = R.tAtt[nb];
         int nl = (sky && d == 3 && l == 15 && att == 0) ? 15 : l - 1 - att;
         int ni = idx(nx, ny, nz);
-        if (nl > L[ni]) { L[ni] = (u8)nl; Q.push_back((u32)(nx | (nz << 4) | (ny << 8))); }
+        if (nl > L[ni]) { L[ni] = (u8)nl; if (!R.tOpaque[nb]) Q.push_back((u32)(nx | (nz << 4) | (ny << 8))); }
       }
     }
     Q.clear();
@@ -144,12 +152,16 @@ void LightEngine::propagate(int ch) {
     Node n = Q[h];
     int l = get(n.x, n.y, n.z, ch);
     if (l <= 1) continue;
+    if (Chunk* nc = chunkAt(n.x, n.y, n.z)) {   // a carved block was lit but passes nothing on (unless it shines itself)
+      int lx = n.x & 15, ly = n.y & 255, lz = n.z & 15; BlockId id = nc->get(lx, ly, lz);
+      if (carvedSink(R, *nc, lx, ly, lz, id) && (ch == 0 || !R.metaLight(id, nc->getMeta(lx, ly, lz)))) continue;
+    }
     for (int d = 0; d < 6; d++) {
       int nx = n.x + (d == 0) - (d == 1), ny = n.y + (d == 2) - (d == 3), nz = n.z + (d == 4) - (d == 5);
       Chunk* c = chunkAt(nx, ny, nz);
       if (!c) continue;
       BlockId nb = c->get(nx & 15, ny & 255, nz & 15);
-      if (R.tOpaque[nb]) continue;
+      if (R.tOpaque[nb] && !c->getCarve(nx & 15, ny & 255, nz & 15)) continue;
       int att = R.tAtt[nb];
       // sky light pours straight down at full strength, also across a band border (the Skylands' open
       // underside onto the Overworld's sky)
@@ -200,7 +212,7 @@ void LightEngine::applyChange(const ivec3& p) {
     if (cur) { set(p.x, p.y, p.z, ch, 0); rem[ch].push_back({p.x, p.y, p.z, cur}); unpropagate(ch); }
     // ...then light it again from itself and from its neighbours
     if (e) { set(p.x, p.y, p.z, ch, e); inc[ch].push_back({p.x, p.y, p.z, e}); }
-    if (!R.tOpaque[id] || e) for (int d = 0; d < 6; d++) {
+    if (!R.tOpaque[id] || e || c->getCarve(lx, ly, lz)) for (int d = 0; d < 6; d++) {
       int nx = p.x + (d == 0) - (d == 1), ny = p.y + (d == 2) - (d == 3), nz = p.z + (d == 4) - (d == 5);
       if (!chunkAt(nx, ny, nz)) continue;
       u8 l = get(nx, ny, nz, ch);

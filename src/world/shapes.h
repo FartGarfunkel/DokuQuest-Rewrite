@@ -49,6 +49,8 @@ struct ShapeBox {
   bool hasFaces = false;
   bool nocol = false;                   // drawn but nothing to bump into
   u8 only = 63;                         // faces drawn (bit per face)
+  float tu = 0;                         // shape boxes: shift the picture across (with tv: down); uvT swaps its axes
+  bool uvT = false;
   u8 kind = 0;                          // cloth sway: 0 none, 1 len, 2 depth, 3 pen, 4 rope, 5 hang
   u8 glow = 0;                          // light the part gives itself (lit torches on repeaters)
   float tv = 0, lift = 0;               // model: shift down the picture; cloth: lift (pixels)
@@ -78,7 +80,7 @@ namespace ShapePurpose { enum : int { Draw = 0, Collide = 1, Select = 2 }; }
 bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector<ShapeBox>& out);
 int sinkOffset(BlockId id, const ShapeNb& nb);          // pixels: -8 when it sits on a bottom half slab
 float torchSetBack(u8 meta, const ShapeNb& nb);          // 0.5 when a wall torch leans on a vertical slab's open face
-bool slabGap(BlockId id, u8 meta, int side);
+bool slabGap(BlockId id, u8 meta, int side, u8 carve = 0);   // carve: a chiseled slab counts too
 
 // World-space boxes of the block at (x,y,z), sink and torch set-back applied. false = full cube.
 // This is what collision (purpose Collide), picking and the outline (Select) should use.

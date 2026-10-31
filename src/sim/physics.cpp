@@ -295,7 +295,7 @@ RayHit raycastBlocks(const World& w, glm::dvec3 o, vec3 dirf, float maxDist, boo
             }
             double tCell = std::max({tmx - tdx, tmy - tdy, tmz - tdz});   // param at which the ray entered this cell
             double btTrue = bt > 1e8 ? bt - 1e9 : bt;   // strip the containment penalty for the checks below
-            if (anyc && btTrue <= maxDist && (btTrue < tCell || t >= tCell)) { finish(x, y, z, id, bn2, btTrue); return h; }
+            if (anyc && btTrue <= maxDist) { finish(x, y, z, id, bn2, btTrue); return h; }   // (t and tCell are the same entry point: comparing them failed on rounding and the hit fell back to the cell's entry face)
             // No octant hit in this cell's span: the crosshair passed THROUGH a carved-away notch,
             // straight into the void where that corner used to be. The block still stands there, so
             // finish on its cell — chisel then toggles the aimed (carved) quadrant back on.

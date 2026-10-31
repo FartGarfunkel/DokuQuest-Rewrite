@@ -224,9 +224,16 @@ void onCarveChangedRules(Level& lv, World& w, int x, int y, int z) {
   BlockId id = w.getBlock(x, y, z);
   bool solid = reg().tSolid[id];
   u8 carve = w.getCarve(x, y, z);
+  const Registry& R = reg();
+  // a face carved back to a slab's inner face still holds what sits half a block in: sinking things on top, torches
+  // and item frames on the sides
+  auto holds = [&](int nx, int ny, int nz, BlockId on) {
+    int dp = carveFaceDepth(carve, nx, ny, nz);
+    return solid && (dp == 0 || (dp == 8 && (ny ? R.tSink[on] : (R.tRender[on] == (u8)Render::Torch || R.tShape[on] == ShapeKind::Frame))));
+  };
   bool sides[4];
-  for (int d = 0; d < 4; d++) sides[d] = solid && carveFaceFull(carve, -DIRX[d], 0, -DIRZ[d]);   // the face toward (x-DIRX[d], z-DIRZ[d])
-  dropUnsupported(lv, w, x, y, z, id, solid && carveFaceFull(carve, 0, 1, 0), solid && carveFaceFull(carve, 0, -1, 0), sides);
+  for (int d = 0; d < 4; d++) sides[d] = holds(-DIRX[d], 0, -DIRZ[d], w.getBlock(x - DIRX[d], y, z - DIRZ[d]));   // the face toward (x-DIRX[d], z-DIRZ[d])
+  dropUnsupported(lv, w, x, y, z, id, holds(0, 1, 0, w.getBlock(x, y + 1, z)), solid && carveFaceFull(carve, 0, -1, 0), sides);
 }
 
 // ---- reactions to world changes (Game.onBlockChanged) ----

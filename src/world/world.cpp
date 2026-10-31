@@ -52,6 +52,8 @@ bool World::setCarve(int x, int y, int z, u8 carve, u32 flags) {
   if (!c) return false;
   c->setCarve(x & 15, y & 255, z & 15, carve);
   markBlockDirty(x, y, z, flags & SetFlags::Urgent);
+  BlockId id = c->get(x & 15, y & 255, z & 15);
+  for (auto& s : systems) if (auto* le = dynamic_cast<LightEngine*>(s.get())) le->onBlockChanged(*this, x, y, z, id, id);   // carved blocks take light in
   return true;
 }
 u8 World::getLight(int x, int y, int z) const {
