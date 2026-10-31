@@ -129,9 +129,19 @@ void DepthsGen::generate(Chunk& ch) {
     const double wood = bi.wood, vale = bi.vale;
     const bool delta = isDelta(bi);
     const double patch = nFloor.noise3(wx / 14.0, 7.5, wz / 14.0);
+    // the wastes' own corners (BTA's Nether): Emberglass Groves (ember > 0.45), Ashen Wastes (ember < -0.45), and the
+    // Cinder Isles, low islands of cinder sand out on the lava sea with pumice on their higher shores
+    const double ember = nMount.noise2(wx / 120.0 + 211, wz / 120.0 - 97);
+    const double isle = nFloor.noise3(wx / 22.0, 41.5, wz / 22.0);
+    const bool wastes = !delta && std::fabs(wood) <= 0.35 && !(vale < -0.4);
     for (int y = DIM_H - 7; y > 5; y--) {
       const int i = colIdx(x, y, z);
       const BlockId here = b.blocks[i], above = b.blocks[colIdx(x, y + 1, z)];
+      if (y == LAVA_Y && here == B.lava && above == AIR && wastes && ember > -0.1 && isle > 0.5) {   // a Cinder Isle
+        b.blocks[i] = B.cinder_sand; b.blocks[colIdx(x, y - 1, z)] = B.cinder_sand;
+        if (isle > 0.62) { b.blocks[colIdx(x, y + 1, z)] = B.cinder_sand; if (isle > 0.7 && hashFloat(wx, y, wz, 91) < 0.08) b.blocks[colIdx(x, y + 2, z)] = B.emberglass_cluster; }
+        continue;
+      }
       if (here == AIR && wood > 0.35 && rockish(above) && hashFloat(wx, y, wz, 79) < 0.06) {
         int len = 2 + jsFloor(hashFloat(wx, y, wz, 80) * 7);
         if (hashFloat(wx, y, wz, 83) < 0.15) len += 6 + jsFloor(hashFloat(wx, y, wz, 84) * 10);
@@ -163,7 +173,17 @@ void DepthsGen::generate(Chunk& ch) {
         b.blocks[i] = r < 0.12 ? B.magma_block : r < 0.55 ? B.basalt : B.blackstone;
         if (r > 0.975 && y < Y90) { int len = 1 + jsFloor(hashFloat(wx, y, wz, 87) * 6); for (int k = 1; k <= len && b.blocks[colIdx(x, y + k, z)] == AIR; k++) b.blocks[colIdx(x, y + k, z)] = B.basalt; }
       }
+      else if (y <= LAVA_Y + 5 && ember > -0.1) b.blocks[i] = y >= LAVA_Y + 2 && patch > 0.35 ? B.pumice : B.cinder_sand;   // cinder shores
       else if (y <= LAVA_Y + 5) b.blocks[i] = patch > 0 ? B.soul_sand : B.gravel;      // the lava sea's shores
+      else if (ember > 0.45) {   // an Emberglass Grove: cinder sand floors set with glowing clusters and glass spires
+        b.blocks[i] = patch > 0.5 ? B.emberstone : B.cinder_sand;
+        if (r > 0.992 && y < Y90) { int len = 2 + jsFloor(hashFloat(wx, y, wz, 92) * 5); for (int k = 1; k <= len && b.blocks[colIdx(x, y + k, z)] == AIR; k++) b.blocks[colIdx(x, y + k, z)] = B.emberglass_block; }
+        else if (r > 0.93 && y < Y95) b.blocks[colIdx(x, y + 1, z)] = B.emberglass_cluster;
+      }
+      else if (ember < -0.45) {   // the Ashen Wastes: deep ash with pumice boulders
+        b.blocks[i] = r < 0.8 ? B.ash : B.basalt;
+        if (r > 0.994 && y < Y90) for (int k = 1; k <= 2; k++) b.blocks[colIdx(x, y + k, z)] = B.pumice;
+      }
       else if (patch > 0.55) b.blocks[i] = B.soul_sand;
       else if (patch < -0.62) b.blocks[i] = B.gravel;
       else if (r < 0.06) b.blocks[i] = B.ash;

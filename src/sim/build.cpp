@@ -188,6 +188,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
   int nx = hit.normal.x, ny = hit.normal.y, nz = hit.normal.z;
   if (R.tRender[bid] == (u8)Render::Torch) {
     BlockId cur = w.getBlock(x, y, z);
+    DQ_WARN("DBG torch hit %d %d %d n %d %d %d id %s cur %s", hit.block.x, hit.block.y, hit.block.z, nx, ny, nz, R.block(hit.id).key.c_str(), R.block(cur).key.c_str());
     if (!R.tReplaceable[cur] && cur != AIR) return;
     BlockId below = w.getBlock(x, y - 1, z);
     bool belowTop = R.tSolid[below] && carveFaceFull(w.getCarve(x, y - 1, z), 0, 1, 0);   // a chiseled block's top must be whole

@@ -165,7 +165,7 @@ void runStep(App& a, const json& st) {
       for (int z = std::min(a0.z, a1.z); z <= std::max(a0.z, a1.z); z++) s->world().setBlock(x, y, z, id, (u8)st.value("meta", 0));
   } else if (op == "lookAt" && p) {
     ivec3 b = at(st);
-    vec3 t(b.x + 0.5f, b.y + 0.5f, b.z + 0.5f);
+    vec3 t(b.x + st.value("fx", 0.5f), b.y + st.value("fy", 0.5f), b.z + st.value("fz", 0.5f));   // fx/fy/fz: where in the cell to aim
     if (st.contains("entity") && s) {   // lookAt{entity:"villager",job?}: aim at the nearest one's head (it may have wandered off its spot)
       const std::string want = st["entity"].get<std::string>(), job = st.value("job", "");
       Entity* best = nullptr; float bd = 1e9f;
