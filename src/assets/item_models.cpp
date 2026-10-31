@@ -46,15 +46,15 @@ Profile profileOf(const std::string& kind) {
   if (kind == "tool") return {0.9f, 2};
   if (kind == "blade") return {0.55f, 1.25f};
   if (kind == "thin") return {0.45f, 1};
-  if (kind == "flat") return {0, 0.5f};
+  if (kind == "flat") return {0.25f, 0.75f};   // still a little body to them (the user's ask: nothing goes paper-flat)
   return {0.8f, 3.5f};
 }
 std::string sculptKind(const std::string& key, const ItemDef* def) {
   if (!def) return "default";
   if (!def->block.empty()) return "thin";                                       // saplings, flowers, doors as items
   auto re = [&](const char* r) { return rxSearch(key, r); };
-  if (re("paper|map$|^leather$|^pelt$|feather|^string$|_cape$|saddle|name_tag|pattern|^lore_")) return "flat";
-  if (re("music_disc|compass|clock|charm$|_scale$|^turtle_scute$|minecart|boat$|ship$")) return "thin";
+  if (re("paper|map$|feather|^string$|_cape$|name_tag|pattern|^lore_")) return "flat";
+  if (re("^leather$|^pelt$|hide$|saddle|music_disc|compass|clock|charm$|_scale$|^turtle_scute$|minecart|boat$|ship$")) return "thin";
   if ((def->hasTool && def->tool.type == "sword") || re("dagger|blade$")) return "blade";
   if (def->hasTool || def->has("staff") || re("stick|rod$|bone$|^cinder_rod$|spyglass|horn$|whistle|tooth$|shard$")) return "tool";
   if (def->has("food") || re("ball$|egg|snowball|pearl|eye|seeds|berries|nugget|dust|powder|diamond|emerald|ruby|sapphire|quartz|crystal|lapis|coal|flint|bone_meal|_dye$|beans|wart|slime|cream|sac$|core$|heart|sugar|flour|crushed_|gunpowder|honeycomb|puff$|petal|ectoplasm")) return "round";
