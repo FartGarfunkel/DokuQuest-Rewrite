@@ -17,6 +17,7 @@
  {"wait":5,"do":"mouse","button":"right","hold":1},
  {"wait":10,"do":"expect","entity":"seat","near":2},
  {"do":"key","key":"Left Shift","hold":3},
+ {"wait":5,"do":"tp","rel":true,"x":0,"y":0,"z":0},
  {"wait":10,"do":"lookAt","rel":true,"x":-2,"y":0,"z":-2,"fy":0.45,"fz":0.4},
  {"wait":2,"do":"mouse","button":"right","hold":1},
  {"wait":10,"do":"expect","entity":"seat","near":2},
