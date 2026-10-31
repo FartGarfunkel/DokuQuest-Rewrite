@@ -291,6 +291,48 @@ def main(d):
     block('butterfly_jar', 'Jar of Butterflies', {'render': 6, 'opaque': False, 'hardness': 0.3, 'tool': None, 'sound': 'glass', 'shape': 'glass_jar',
                                                  'tex': 'glass_jar_side', 'needsSupport': True, 'sink': True, 'jar': 'butterflies'}, [tiles['glass_jar_side']] * 6)
 
+    # the glass door and trapdoor (a steel frame round clear panes); bluebells, marigolds and spinifex; the sugar cane
+    # bundle (a thatch block)
+    from PIL import Image as _I
+    def pane(trap=False):
+        im = _I.new('RGBA', (32, 32), (0, 0, 0, 0)); px = im.load()
+        for y in range(32):
+            for x in range(32):
+                edge = x < 3 or x > 28 or y < 3 or y > 28 or (trap and (x in (15, 16) or y in (15, 16)))
+                if edge: px[x, y] = (170, 176, 186, 255) if (x + y) % 7 else (130, 136, 146, 255)
+                elif (x - y) % 11 == 0 and 6 < x < 26: px[x, y] = (222, 240, 250, 255)   # a glint across the pane
+        return im
+    if 'glass_door_lower' not in tiles:
+        tile('glass_door_lower', pane()); tile('glass_door_upper', pane()); tile('glass_trapdoor', pane(True))
+        ic = _I.new('RGBA', (32, 32), (0, 0, 0, 0)); ip = ic.load(); low = pane().load()
+        for y in range(32):
+            for x in range(8, 24):
+                c = low[(x - 8) * 2, y]
+                if c[3]: ip[x, y] = c
+        rel = 'textures/item/glass_door_item.png'; ic.save(d / rel)
+        tiles['glass_door_item'] = tj['count']; files.append(rel); tj['res'].append(32); tj['count'] += 1
+        tile('bluebells', recolour(src_pic(d, tiles, files, 'cornflower'), hsv_map(hue=0.66, sat=1.1, val=1.0)))
+        tile('marigold', recolour(src_pic(d, tiles, files, 'flower_yellow'), hsv_map(hue=0.08, sat=1.3, val=1.05)))
+        tile('spinifex', recolour(src_pic(d, tiles, files, 'dry_grass'), hsv_map(hue=0.12, sat=0.8, val=1.1)))
+        tile('sugar_cane_bundle_side', recolour(src_pic(d, tiles, files, 'hay_side'), hsv_map(hue=0.25, sat=0.9, val=1.0)))
+        tile('sugar_cane_bundle_top', recolour(src_pic(d, tiles, files, 'hay_top'), hsv_map(hue=0.25, sat=0.9, val=1.0)))
+    block('glass_door', 'Glass Door', {'render': 7, 'opaque': False, 'hardness': 1, 'tool': None, 'sound': 'glass', 'shapeKind': 7, 'door': True,
+                                       'tex': {'side': 'glass_door_lower', 'top': 'glass_door_lower'}, 'texUpper': 'glass_door_upper',
+                                       'upperTile': tiles['glass_door_upper'], 'itemIcon': 'glass_door_item'}, [tiles['glass_door_lower']] * 6)
+    items['glass_door'].update({'icon': 'glass_door_item', 'maxStack': 1})
+    block('glass_trapdoor', 'Glass Trapdoor', {'render': 7, 'opaque': False, 'hardness': 1, 'tool': None, 'sound': 'glass', 'shapeKind': 8,
+                                               'wlog': True, 'trapdoor': True, 'tex': 'glass_trapdoor'}, [tiles['glass_trapdoor']] * 6)
+    recipe('glass_door', 1, ['GG', 'GG', 'GG'], {'G': 'glass'})
+    recipe('glass_trapdoor', 2, ['GGG', 'GGG'], {'G': 'glass'})
+    for k, nm in (('bluebells', 'Bluebells'), ('marigold', 'Marigold'), ('spinifex', 'Spinifex')):
+        block(k, nm, {'render': 3, 'solid': False, 'opaque': False, 'hardness': 0, 'tool': None, 'sound': 'grass', 'needsSupport': True,
+                      'flower': k != 'spinifex', 'tex': k}, [tiles[k]] * 6)
+    block('sugar_cane_bundle', 'Sugar Cane Bundle', {'hardness': 0.5, 'tool': None, 'sound': 'grass', 'axisBlock': True, 'fuel': 4,
+                                                     'tex': {'top': 'sugar_cane_bundle_top', 'bottom': 'sugar_cane_bundle_top', 'side': 'sugar_cane_bundle_side'}},
+          [tiles['sugar_cane_bundle_side'], tiles['sugar_cane_bundle_side'], tiles['sugar_cane_bundle_top'], tiles['sugar_cane_bundle_top'], tiles['sugar_cane_bundle_side'], tiles['sugar_cane_bundle_side']])
+    recipe('sugar_cane_bundle', 1, ['SSS', 'SSS', 'SSS'], {'S': 'sugar_cane'})
+    recipe('sugar_cane', 9, items_=['sugar_cane_bundle'])
+
     # thorn leaves: the Thornscrub's thorn trees (BTA's Caatinga); they prick like cactus
     if 'thorn_leaves' not in tiles:
         im = recolour(src_pic(d, tiles, files, 'acacia_leaves'), lambda r, g, b, a, x, y: (r * 150 // 255, g * 140 // 255, b * 70 // 255, 255 if a else 0))
@@ -304,6 +346,7 @@ def main(d):
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'shapes.json').write_text(json.dumps(sj, separators=(',', ':'), ensure_ascii=False))
     sh = json.loads((d / 'itemshapes.json').read_text())
+    if 'glass_door_item' not in sh['itemTiles']: sh['itemTiles'].append('glass_door_item'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'sulphur' not in sh['itemTiles']: sh['itemTiles'].append('sulphur'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'paintbrush' not in sh['itemTiles']: sh['itemTiles'].append('paintbrush'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
