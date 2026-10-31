@@ -776,6 +776,7 @@ void creatureSounds(Level& lv, Creature& m, vec3 from, float soundT0, float dt) 
     m.stepAcc += moved;
     if (m.stepAcc >= stride) {
       m.stepAcc = 0;
+      if (moved / std::max(dt, 1e-3f) > 3.5f && m.w >= 0.3f) lv.fx->particles("dust", m.pos, 2, {{"speed", 6}});   // a running beast kicks up the ground
       const char* own = ownStep(m);
       if (fam == "zombie" || fam == "bone" || fam == "spider") lv.fx->voice(fam, "step", m.pos);
       else if (*own) lv.fx->voice(own, "step", m.pos);

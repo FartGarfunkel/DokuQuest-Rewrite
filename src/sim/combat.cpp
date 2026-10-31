@@ -176,6 +176,7 @@ float attackEntity(Level& lv, Player& p, Entity& e) {
   p.attackCd = tool && tool->type == "sword" ? 0.45f : 0.6f;
   if (dealt > 0) {
     sfxUi(lv, p, crit ? "crit" : "hit");
+    if (crit) lv.fx->particles("crit", e.pos + vec3(0, e.h * 0.6f, 0), 10);   // a burst of stars on a critical blow
     char buf[32]; snprintf(buf, sizeof buf, "%s%g", crit ? "\xE2\x9C\xA6" : "", std::round(dealt * 10) / 10);
     floatText(lv, p, e.pos + vec3(0, e.h + 0.2f, 0), buf, src.element == "fire" ? "#ffb070" : src.element == "frost" ? "#9fe8ff" : crit ? "#ffe07a" : "#ffffff");
     if (src.element == "frost") sfxUi(lv, p, "frost");

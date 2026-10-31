@@ -115,7 +115,12 @@ void PlayerController::tickSurvival(float dt, const MoveInfo& mv) {
   if (p.onGround && mv.horizSpeed > 1) {
     p.stepAcc += mv.horizSpeed * dt;
     if (p.stepAcc > 2.2f) { p.stepAcc = 0; BlockId id = w.getBlock(ifloor(p.pos.x), ifloor(p.pos.y - 0.2f), ifloor(p.pos.z)); if (id) sfxMaterial(lv, R.block(id).sound, "step", p.pos); }
-    if (!c.water && (p.dustAcc += dt) > (p.sprinting ? 0.06f : 0.22f)) { p.dustAcc = 0; lv.fx->particles("dust", p.pos, 2, {{"speed", mv.horizSpeed}}); }
+    if (!c.water && (p.dustAcc += dt) > (p.sprinting ? 0.06f : 0.22f)) {   // bits of what you're running on kicked up behind you
+      p.dustAcc = 0;
+      BlockId under = w.getBlock(ifloor(p.pos.x), ifloor(p.pos.y - 0.2f), ifloor(p.pos.z));
+      if (p.sprinting && under && R.tSolid[under]) lv.fx->particles("crumbs", p.pos + vec3(0, 0.1f, 0), 1, {{"block", R.block(under).key}, {"speed", 0.5f}, {"grav", 12}});
+      else lv.fx->particles("dust", p.pos, 2, {{"speed", mv.horizSpeed}});
+    }
   }
   // falling (another system zeroing Entity::fallDist — a seamless crossing, an updraft — cancels the fall)
   if (p.hasFallStart && p.fallDist < fallDistSeen - 1e-4f) p.fallStart = p.pos.y;
@@ -128,6 +133,8 @@ void PlayerController::tickSurvival(float dt, const MoveInfo& mv) {
     p.hasFallStart = false;
     if (fall > 1.2f) landT = 0.2f;
     BlockId landId = w.getBlock(ifloor(p.pos.x), ifloor(p.pos.y - 0.2f), ifloor(p.pos.z));
+    if (fall > 2.5f && landId && R.tSolid[landId] && !c.water)   // a hard landing throws up a ring of what you land on
+      lv.fx->particles("crumbs", p.pos + vec3(0, 0.1f, 0), std::min(28, (int)(fall * 3)), {{"block", R.block(landId).key}, {"speed", std::min(3.f, 0.8f + fall * 0.12f)}, {"grav", 14}});
     // beds, hay, slime and honey break a fall
     float soft = (bhas(landId, BF::Bed) || bhas(landId, BF::Bouncy) || bhas(landId, BF::Sticky) || R.block(landId).has("cloud") ? 0.f : startsWith(R.block(landId).key, "hay") ? 0.2f : 1.f) * (1 - charmBonus(p, "fall"));
     if (R.block(landId).has("sunCloud")) giveEffect(lv, p, "slowfall", 10);   // a golden cloud: float down from it
