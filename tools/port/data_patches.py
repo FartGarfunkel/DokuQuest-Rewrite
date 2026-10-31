@@ -158,3 +158,24 @@ items['lead'] = {'key': 'lead', 'name': 'Lead', 'maxStack': 64, 'icon': 'lead',
 if not any(r.get('out') == 'lead' for r in rj4['recipes']):
     rj4['recipes'].append({'out': 'lead', 'n': 2, 'shape': ['SS ', 'SB ', '  S'], 'key': {'S': 'string', 'B': 'slime_ball'}, 'h': 3, 'w': 3, 'group': 'tools'})
     (d / 'recipes.json').write_text(json.dumps(rj4, separators=(',', ':'), ensure_ascii=False))
+
+# ---- plant pictures drawn grey for the biome tint (Minecraft-style) must carry the game's "tint me" marker (alpha 253);
+#      spruce leaves aren't tinted by biome in Minecraft, so theirs get its fixed colour painted in ----
+tj5 = json.loads((d / 'tiles.json').read_text())
+def _grey(im):
+    op = [p for p in im.getdata() if p[3] >= 128]
+    return op and sum(max(p[:3]) - min(p[:3]) for p in op) / len(op) < 8 and not any(p[3] == 253 for p in im.getdata())
+for _n in ('acacia_leaves', 'birch_leaves', 'dark_oak_leaves', 'jungle_leaves', 'fern', 'vine', 'spruce_leaves'):
+    if _n not in tj5['names']: continue
+    _p = d / tj5['files'][tj5['names'][_n]]
+    _im = Image.open(_p).convert('RGBA')
+    if not _grey(_im): continue
+    _px = _im.load()
+    for _y in range(_im.size[1]):
+        for _x in range(_im.size[0]):
+            r, g, b, a = _px[_x, _y]
+            if a < 128: continue
+            if _n == 'spruce_leaves': _px[_x, _y] = (r * 97 // 255, g * 153 // 255, b * 97 // 255, 255)
+            else: _px[_x, _y] = (r, g, b, 253)
+    _im.save(_p)
+    print('tint marker:', _n)
