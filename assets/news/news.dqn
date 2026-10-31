@@ -2,6 +2,21 @@
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
 
+## Alpha 1.0.0.7 — Chisel | October 2026
+- **The chisel:** carve any full block into eighths with the iron chisel. Aim at a corner to carve it away; chisel the same spot again to put it back.
+- **Slabs and stairs are chiseled blocks now.** The ones already in your worlds change over by themselves; make new ones with the chisel.
+- **Torches, lanterns and plants** only fix to a whole face, and drop off if you carve away the face they sit on.
+- **Dirt paths turn back to dirt** when you build on them, like Minecraft.
+- **Blocks no longer vanish** when placed on a path or left floating, and chains show again, so hanging lanterns connect.
+- **Spawn eggs for every creature,** with their own tab in the creative inventory. Use one on a monster cage to choose what it spawns.
+- **Lava Boat:** crimson or warped planks with magma cream in the middle (the rowboat shape). It floats on lava as well as water, and the lava never reaches you or your pet aboard.
+- **Endermen, ghasts and creepers wear the resource pack's skins.** An angry enderman lifts its head off its jagged jaw, a ghast opens its mouth before it fires, endermen stand with their legs apart, and creepers have Minecraft's proportions.
+- **Holding right-click** keeps placing blocks with the arm swinging smoothly.
+- **Sounds:** carving a pumpkin plays its own carving sound, and jack o'lanterns sound like wood.
+- **Music:** new instruments, including dulcimer, mandolin and fiddle.
+- **Art:** hundreds of updated pictures in the default art, and an end crystal picture.
+- Removed Herobrine.
+
 ## Alpha 1.0.0.6.1 — Hotfix | October 2026
 - **Windows download is back** (a folder name in the new art stopped the Windows build).
 - **The journal no longer crashes** once the story is finished.
