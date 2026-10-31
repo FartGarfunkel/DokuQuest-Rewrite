@@ -366,9 +366,11 @@ void VehicleSystem::tick(Level& l, double dt) {
 }
 Vehicle* ridingOf(Level& lv, Player& p) {
   if (!p.riding) return nullptr;
-  Vehicle* v = asVehicle(lv.entity(p.riding));
-  if (!v || v->removed || v->seatOf(p.id) < 0) { if (!v || v->removed || !isVehicle(*v)) p.riding = 0; return v && !v->removed && v->seatOf(p.id) >= 0 ? v : nullptr; }
-  return v;
+  Entity* e = lv.entity(p.riding);
+  if (!e || e->removed) { p.riding = 0; return nullptr; }   // what you rode is gone
+  Vehicle* v = asVehicle(e);
+  if (!v) return nullptr;   // a seat, a horse...: not ours (it used to drop you off chairs and benches the moment you sat)
+  return v->seatOf(p.id) >= 0 ? v : nullptr;
 }
 bool vehicleInput(Level& lv, Player& p, vec2 move, bool jump, bool sneak) {
   VehicleSystem* vs = vehicleSystem(lv);
