@@ -256,7 +256,7 @@ void Boat::tick(Level& lv, double dtd) {
   turn += (steer * (floating ? 1.6f : 0.6f) - turn) * std::min(1.f, dt * 4);
   yaw += turn * dt * (0.4f + std::min(1.f, std::fabs(speed) / 3));
   float target = 0;
-  if (kind == "rowboat") {
+  if (kind == "rowboat" || kind == "lava_rowboat") {   // rowed; the sailboat and the ship sail
     if (helm) target = inp.mz < -0.3f ? 4.6f : inp.mz > 0.3f ? -2.f : 0.f;
     if (!floating) target *= 0.15f;
   } else {
