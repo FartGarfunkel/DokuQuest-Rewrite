@@ -7,6 +7,7 @@
 #include "sim/explosion.h"
 #include "sim/physics.h"
 #include "sim/player.h"
+#include "sim/effects.h"
 #include "core/registry.h"
 
 namespace dq {
@@ -126,6 +127,26 @@ public:
         if (solidAt(wd, pos)) { splat(lv, kind); return; }
       }
       if (kind == "spit" && frand() < dt * 20) mobBurst(lv, pos, "white", 1, 0.1f);
+      return;
+    }
+    if (kind == "shulker") {   // a shulker's bolt: seeks its mark, and whoever it strikes floats up off the ground
+      if (age > 10) { removed = true; mobBurst(lv, pos, "end_mote", 8, 0.8f); return; }
+      Entity* tgt = lv.entity(data.value("target", 0u));
+      if (tgt && !tgt->removed && tgt->realm == realm) {
+        vec3 to = tgt->pos + vec3(0, 1.0f, 0) - pos; float d = glm::length(to);
+        if (d > 0.01f) vel += (to / d * 6.5f - vel) * std::min(1.f, dt * 2.2f);
+      }
+      for (int s = 0; s < 3; s++) {
+        pos += vel * (dt / 3);
+        for (Entity* p : pawnsOf(lv, realm)) if (std::fabs(p->pos.x - pos.x) < 0.5f && std::fabs(p->pos.z - pos.z) < 0.5f && pos.y > p->pos.y - 0.2f && pos.y < p->pos.y + 1.9f) {
+          DamageSrc d; d.knock = 1;
+          damageEntity(lv, *p, 4, owner, "projectile", d);
+          if (auto* pl = dynamic_cast<Player*>(p)) giveEffect(lv, *pl, "levitation", 5);
+          removed = true; mobBurst(lv, pos, "end_mote", 12, 1.2f); lv.fx->sound("ender_tp", pos, 16); return;
+        }
+        if (solidAt(wd, pos)) { removed = true; mobBurst(lv, pos, "end_mote", 8, 0.8f); return; }
+      }
+      if (frand() < dt * 30) mobBurst(lv, pos, "end_mote", 1, 0.1f);
       return;
     }
     if (kind == "gust") {   // aether.js: a zephyr's gust — a little hurt and a big shove

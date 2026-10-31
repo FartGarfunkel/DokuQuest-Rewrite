@@ -658,6 +658,21 @@ static OptMove realmAI(Level& lv, Creature& m, Entity* p, float dist, float dyp,
     if (m.onGround && m.lastWant > 0.1f && frand() < dt * 0.5f) m.wantJump = true;
     return nightBase(lv, m, "slime", p, dist, dyp, toPlayer, dt);
   }
+  if (t == "shulker") {   // clamped to its wall: the shell opens, and a seeking bolt comes out after you
+    m.vel.x = m.vel.z = 0;
+    auto s = m.senses(lv, p, dist, dyp, dt, 16);
+    const bool alert = s.hunting && s.sees && dist < 16;
+    float shootT = dget(m, "shootT", 2.f) - dt, open = dget(m, "openK", 0.f);
+    open += ((alert ? 1.f : 0.f) - open) * std::min(1.f, dt * 3);
+    if (alert && shootT <= 0 && open > 0.7f) {
+      shootT = 2.5f + frand() * 2.5f;
+      vec3 e = m.pos + vec3(0, 0.9f, 0);
+      if (Entity* b = spawnProjectile(lv, m.realm, e, vec3(0, 3, 0), "shulker", &m)) b->data["target"] = p->id;
+      lv.fx->sound("ender_tp", e, 12);
+    }
+    dset(m, "shootT", shootT); dset(m, "openK", open);
+    return Move{0, alert ? toPlayer : m.yaw};
+  }
   if (t == "aechor_plant") {   // rooted: spits thorns at whoever comes near
     m.vel.x = m.vel.z = 0;
     auto s = m.senses(lv, p, dist, dyp, dt, 14);

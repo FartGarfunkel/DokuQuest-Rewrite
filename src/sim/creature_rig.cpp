@@ -301,6 +301,10 @@ static void animRealm(Creature& m, const RigModel& d, Pose& P) {
     float shoot = m.data.value("chargeT", 0.f) > 0 ? 1.f : 0.f;
     for (int i = 0; i < 9; i++) P.set("tent" + std::to_string(i), {std::sin(t * 1.9f + i * 1.3f) * 0.28f - shoot * 0.2f, 0, std::cos(t * 1.4f + i * 0.9f) * 0.18f});
     P.lift = std::sin(t * 1.1f) * 0.06f;
+  } else if (k == "shulker") {
+    float open = m.data.value("openK", 0.f);
+    P.set("lid", {-open * 0.55f, 0, 0});
+    P.set("head", {0, m.headYawRel * 0.6f, 0});
   } else if (k == "aerwhale") {
     t += m.id * 1.3f;
     float sw = t * 1.1f * (m.hurtTime > 0 ? 2.2f : 1.f);
@@ -555,7 +559,7 @@ void rigPose(Creature& m, const RigModel& M, const mat4& base) {
   else if (k == "bee") animBee(m, M, P);
   else if (k == "turtle") animTurtle(m, M, P);
   else if (k == "frog") animFrog(m, M, P);
-  else if (k == "ghast" || k == "aerwhale" || k == "zephyr" || k == "aechor") animRealm(m, M, P);
+  else if (k == "ghast" || k == "aerwhale" || k == "zephyr" || k == "aechor" || k == "shulker") animRealm(m, M, P);
   if (M.pitch0) P.pitch += M.pitch0;
   if (!M.post.empty()) applyPost(m, M, P);
   // Minecraft's enderman: in anger the head lifts off its jaw and the mouth gapes; the jaw turns with the head

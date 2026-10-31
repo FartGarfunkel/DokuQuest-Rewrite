@@ -68,6 +68,9 @@ void tickEffects(Level& lv, Player& p, double dt) {
     m.poison -= (float)dt; m.poisonT += (float)dt;
     if (m.poisonT >= 1.25f) { m.poisonT = 0; if (p.hp > 1) combatHurt(lv, p, 1, json{{"type", "poison"}, {"bypassArmor", true}}); }
   }
+  if (hasEffect(p, "levitation") && !p.flying) {   // a shulker's bolt: you drift up while it lasts, and fall after
+    p.vel.y += (1.6f - p.vel.y) * std::min(1.f, (float)dt * 4); p.onGround = false;
+  }
   if (hasEffect(p, "slowfall") && !p.onGround && p.vel.y < 0 && !p.flying) {
     m.slowFallT = std::max(m.slowFallT, 0.25f);
     if (p.vel.y < -2.2f) p.vel.y += (-2.2f - p.vel.y) * std::min(1.f, (float)dt * 8);

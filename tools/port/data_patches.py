@@ -203,3 +203,57 @@ items['travel_journal'] = {'key': 'travel_journal', 'name': 'Travel Journal', 'm
 if not any(r.get('out') == 'travel_journal' for r in rj6['recipes']):
     rj6['recipes'].append({'out': 'travel_journal', 'n': 1, 'items': ['book', 'compass']})
     (d / 'recipes.json').write_text(json.dumps(rj6, separators=(',', ':'), ensure_ascii=False))
+
+# ---- the shulker: a purpur shell clamped to the End cities' walls; it opens to send a seeking bolt that lifts you
+#      off your feet (sim/creature_monsters.cpp, the "shulker" bolt in sim/creature_entities.cpp) ----
+mobs = json.loads((d / 'mobs.json').read_text()); models = json.loads((d / 'models.json').read_text())
+mg = json.loads((d / 'magic.json').read_text())
+def _part(name, at, box, tex):
+    return {'name': name, 'parent': None, 'at': at, 'box': box, 'tex': tex, 'pivot': [at[0] / 16, at[1] / 16, at[2] / 16],
+            'min': [box[0] / 16, box[1] / 16, box[2] / 16], 'max': [box[3] / 16, box[4] / 16, box[5] / 16]}
+models['shulker'] = {'rig': 'shulker', 'scale': 1, 'parts': [
+    _part('base', [0, 0, 0], [-8, 0, -8, 8, 8, 8], 'purpur_block'),
+    _part('head', [0, 5, 0], [-3, 0, -3, 3, 6, 3], 'end_stone'),
+    _part('lid', [0, 4, 8], [-8, 0, -16, 8, 12, 0], 'purpur_block')]}
+mobs['shulker'] = {'model': 'shulker', 'label': 'a shulker', 'hp': 30, 'w': 0.5, 'h': 1.0, 'speed': 0, 'xp': 5, 'hostile': True,
+                   'special': True, 'damage': 0, 'noPush': True, 'knockResist': 1, 'drops': [['ender_pearl', 0, 1, 0.3], ['purpur_block', 1, 2, 0.6]]}
+mg['effects']['levitation'] = {'name': 'Levitation', 'col': '#ceb8f0', 'bad': True}
+(d / 'mobs.json').write_text(json.dumps(mobs, separators=(',', ':'), ensure_ascii=False))
+(d / 'models.json').write_text(json.dumps(models, separators=(',', ':'), ensure_ascii=False))
+(d / 'magic.json').write_text(json.dumps(mg, separators=(',', ':'), ensure_ascii=False))
+
+# ---- the Wither: summoned (never natural) by three wither skeleton skulls on a T of soul sand; a three-headed
+#      flying boss whose skulls burst and wither you (sim/wither.cpp) ----
+mobs = json.loads((d / 'mobs.json').read_text()); models = json.loads((d / 'models.json').read_text())
+mg = json.loads((d / 'magic.json').read_text()); items = json.loads((d / 'items.json').read_text())
+tj7 = json.loads((d / 'tiles.json').read_text()); sh7 = json.loads((d / 'itemshapes.json').read_text())
+B_ = {'all': 'wskel_ribs', 'top': 'wskel_bone', 'bottom': 'wskel_bone'}
+H_ = {'all': 'wskel_head', 'front': 'wskel_face'}
+models['wither'] = {'rig': 'wither', 'scale': 1.5, 'parts': [
+    _part('spine', [0, 8, 1], [-1.5, 0, -1.5, 1.5, 13, 1.5], 'wskel_bone'),
+    _part('rib1', [0, 12, 1], [-5, 0, -1, 5, 1.5, 1], B_), _part('rib2', [0, 15, 1], [-5, 0, -1, 5, 1.5, 1], B_), _part('rib3', [0, 18, 1], [-5, 0, -1, 5, 1.5, 1], B_),
+    _part('shoulders', [0, 21, 0], [-10, 0, -1.5, 10, 3, 1.5], 'wskel_bone'),
+    _part('head', [0, 24, 0], [-4, 0, -4, 4, 8, 4], H_),
+    _part('headL', [-8, 23, 0], [-3, 0, -3, 3, 6, 3], H_), _part('headR', [8, 23, 0], [-3, 0, -3, 3, 6, 3], H_)]}
+mobs['wither'] = {'model': 'wither', 'label': 'the Wither', 'hp': 300, 'w': 0.9, 'h': 3.0, 'speed': 1.4, 'fly': 6, 'xp': 50, 'hostile': True,
+                  'boss': True, 'special': True, 'flyer': True, 'undead': True, 'fireImmune': True, 'knockResist': 1, 'damage': 0,
+                  'drops': [['nether_star', 1, 1, 1]]}
+mg['effects']['wither'] = {'name': 'Wither', 'col': '#3a3030', 'bad': True}
+if 'nether_star' not in tj7['names']:
+    im = _I.new('RGBA', (32, 32), (0, 0, 0, 0)); px = im.load()
+    import math as _m2
+    for y in range(32):
+        for x in range(32):
+            dx, dy = x - 15.5, y - 15.5; a = _m2.atan2(dy, dx); r = (dx * dx + dy * dy) ** 0.5
+            lim = 6 + 7 * abs(_m2.cos(2 * a)) ** 3   # a four-pointed star
+            if r < lim: px[x, y] = (255, 255, 236, 255) if r < 4 else (224, 232, 255, 255) if r < lim - 2 else (160, 176, 220, 255)
+    im.save(d / 'textures/item/nether_star.png')
+    tj7['res'] += [32] * max(0, tj7['count'] - len(tj7['res']))
+    tj7['names']['nether_star'] = tj7['count']; tj7['files'].append('textures/item/nether_star.png'); tj7['res'].append(32); tj7['count'] += 1
+    (d / 'tiles.json').write_text(json.dumps(tj7, separators=(',', ':'), ensure_ascii=False))
+if 'nether_star' not in sh7['itemTiles']:
+    sh7['itemTiles'].append('nether_star'); (d / 'itemshapes.json').write_text(json.dumps(sh7, separators=(',', ':'), ensure_ascii=False))
+items['nether_star'] = {'key': 'nether_star', 'name': 'Nether Star', 'maxStack': 64, 'icon': 'nether_star', 'glint': True,
+                        'desc': 'All that is left of the Wither. It never burns, never fades.'}
+for f, o in (('mobs.json', mobs), ('models.json', models), ('magic.json', mg)): (d / f).write_text(json.dumps(o, separators=(',', ':'), ensure_ascii=False))
+(d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
