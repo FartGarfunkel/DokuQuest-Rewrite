@@ -473,7 +473,7 @@ struct Composer {
   Composer(const Mood& m, u32 seed) : r(seed), M(m) {}
   template <class T> T pick(const std::vector<T>& a) { return a[std::min(a.size() - 1, (size_t)std::floor(r() * a.size()))]; }   // by value: callers pass temporaries
   int deg(int d, int oct = 0) { int o = (int)std::floor(d / 7.0); return root + mode[((d % 7) + 7) % 7] + 12 * (o + oct); }
-  void add(double bt, const std::string& ins, double m, double d, double v) { notes.push_back({bt * beat, (u8)musicInsOf(ins), (float)m, (float)(d * beat), (float)v}); }
+  void add(double bt, const std::string& ins, double m, double d, double v) { notes.push_back({bt * beat, (u8)musicInsOf(ins), (u8)0, (float)m, (float)(d * beat), (float)v}); }   // (bus 0: the quiet pieces' mix)
   void start() {
     mode = modes().at(pick(M.modes)); root = pick(M.roots) + M.reg;
     double bpm = M.tempo[0] + r() * (M.tempo[1] - M.tempo[0]); beat = 60 / bpm;
