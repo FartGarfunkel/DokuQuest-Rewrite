@@ -296,6 +296,22 @@ void WeatherFxLayer::particleWeather(GameSession& s, WeatherSystem* W, double dt
       flies++;
     }
   }
+  // the End: violet motes drifting slowly up out of the void, and now and then a pale glint
+  if (d == DIM_END) {
+    float n = 5 * amount * (float)dt;
+    u16 tMote = (u16)P.tile("sparkle");
+    while (n > rnd()) {
+      n -= 1;
+      float x = p.x + (rnd() - 0.5f) * 26, z = p.z + (rnd() - 0.5f) * 26, y = p.y - 4 + rnd() * 12;
+      if (R.tSolid[w.getBlock(ifloor(x), ifloor(y), ifloor(z))]) continue;
+      bool glint = rnd() < 0.15f;
+      Particle q; q.p = vec3(x, y, z); q.life = q.max = 4 + rnd() * 4;
+      q.v = vec3((rnd() - 0.5f) * 0.15f, 0.12f + rnd() * 0.2f, (rnd() - 0.5f) * 0.15f);
+      q.size = q.size0 = glint ? 0.035f : 0.025f; q.tile = tMote; q.light = 0xFF; q.flutter = 0.3f; q.ph = rnd() * 6; q.blink = glint ? 2 + rnd() * 2 : 0;
+      q.tint[0] = glint ? 240 : 170; q.tint[1] = glint ? 225 : 110; q.tint[2] = 255;
+      P.add(q);
+    }
+  }
   // the Ember Depths: ash drifting down, embers drifting up
   if (d == DIM_NETHER) {
     float n = 7 * amount * (float)dt;
