@@ -73,9 +73,12 @@ public:
   int dim() const override { return DIM_END; }
   i32 seed() const override { return seed_; }
   TerrainColumn terrainColumn(int x, int z) const override;
-  bool island(int x, int z, Isle& out) const;        // WorldGen.endColumn
+  bool island(int x, int z, Isle& out) const;        // WorldGen.endColumn (+ the outer End's craters)
+  int endBiome(int x, int z) const;                  // the outer End: 0 chorus highlands, 1 spire fields, 2 crater barrens, 3 violet moors
+  double craterDepth(int x, int z) const;            // how deep a crater bowl dips here (0: none; < 0: its raised rim)
   const std::vector<Pillar>& pillars() const { return pillars_; }
   int fountainY() const;                             // the exit portal's bowl floor + 1 (band-local)
+  void outerFeatures(int bx, int bz, class ChunkWriter& P) const;   // spires, arches and floating shards
   vec3 spawnPoint() const { return vec3(PLAT_X + 0.5f, PLAT_Y + 1, PLAT_Z + 0.5f); }
   StructureIndex structures;
 private:

@@ -234,6 +234,15 @@ def main(d):
     recipe('gunpowder', 2, items_=['sulphur', 'sulphur', 'charcoal'])
     recipe('sulphur_block', 1, ['SS', 'SS'], {'S': 'sulphur'})
 
+    # the outer End: null stone (the dark, void-scarred stone of craters, spire bands and arches) and end moss (a pale
+    # violet growth over end stone)
+    if 'null_stone' not in tiles:
+        tile('null_stone', recolour(src_pic(d, tiles, files, 'end_stone'), hsv_map(hue=0.76, sat=0.55, val=0.38)))
+        tile('end_moss', recolour(src_pic(d, tiles, files, 'moss_block'), hsv_map(hue=0.78, sat=0.55, val=1.15)))
+    block('null_stone', 'Null Stone', {'hardness': 3, 'tool': 'pickaxe', 'tier': 0, 'tex': 'null_stone'}, [tiles['null_stone']] * 6)
+    block('end_moss', 'End Moss', {'hardness': 3, 'tool': 'pickaxe', 'sound': 'grass', 'drop': 'end_stone', 'tex': {'top': 'end_moss', 'side': 'end_stone', 'bottom': 'end_stone'}},
+          [tiles['end_stone'], tiles['end_stone'], tiles['end_moss'], tiles['end_stone'], tiles['end_stone'], tiles['end_stone']])
+
     # thorn leaves: the Thornscrub's thorn trees (BTA's Caatinga); they prick like cactus
     if 'thorn_leaves' not in tiles:
         im = recolour(src_pic(d, tiles, files, 'acacia_leaves'), lambda r, g, b, a, x, y: (r * 150 // 255, g * 140 // 255, b * 70 // 255, 255 if a else 0))

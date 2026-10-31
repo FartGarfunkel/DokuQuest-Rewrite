@@ -107,7 +107,7 @@ const char* biomeName(int b);
   X(amethyst_block) X(large_amethyst_bud) X(small_amethyst_bud) X(glowstone) X(obsidian) X(blackstone) X(basalt) \
   X(netherrack) X(emberstone) X(magma_block) X(gilded_blackstone) X(soul_sand) X(soul_soil) X(bone_block) X(soul_fire) \
   X(crimson_nylium) X(crimson_fungus) X(crimson_roots) X(warped_nylium) X(twisting_vines) X(warped_fungus) X(warped_roots) \
-  X(nether_sprouts) X(ash) X(pumice) X(cinder_sand) X(emberglass_cluster) X(emberglass_block) X(sulphur_block) X(thorn_leaves) X(cinderite_ore) X(quartz_ore) X(nether_gold_ore) X(ancient_debris) X(skystone) X(sky_grass) \
+  X(nether_sprouts) X(ash) X(pumice) X(cinder_sand) X(emberglass_cluster) X(emberglass_block) X(sulphur_block) X(thorn_leaves) X(null_stone) X(end_moss) X(cinderite_ore) X(quartz_ore) X(nether_gold_ore) X(ancient_debris) X(skystone) X(sky_grass) \
   X(aether_crystal_ore) X(cloud_leaves) X(pocket_wall) X(ember_crust) X(void_crust) X(end_stone) X(chorus_plant) \
   X(chorus_flower) X(iron_bars) X(rift_wall) X(rift_glass) X(rift_crystal) X(sculk) X(sculk_vein) X(sculk_sensor) \
   X(sculk_shrieker) X(sculk_catalyst) X(cobbled_slate)
