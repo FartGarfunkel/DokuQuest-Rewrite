@@ -41,6 +41,8 @@ struct Tables {
   BlockId wire = 0, torch = 0, torchOff = 0, lamp = 0, lampOn = 0, bulb = 0, bulbLit = 0, piston = 0, sticky = 0, pistonExt = 0,
     stickyExt = 0, head = 0, moving = 0, slime = 0, honey = 0, tripwire = 0, water = 0, lava = 0, fire = 0, ore = 0, oreLit = 0,
     lily = 0, berryEmpty = 0;
+  BlockId lampFlip[MAX_BLOCKS]{};   // any lamp: its lit or dark partner (coloured lamps, the inverted lamp)
+  u8 lampLit[MAX_BLOCKS]{}, lampInv[MAX_BLOCKS]{};   // this one is the lit one; it shines without power (inverted)
 };
 const Tables& T();                  // built from the registry (rebuilt when blocks are added)
 inline int leverSup(int m) { int k = m & 7; return k == 0 ? 0 : k == 1 ? 1 : H2D6[(k - 2) & 3]; }

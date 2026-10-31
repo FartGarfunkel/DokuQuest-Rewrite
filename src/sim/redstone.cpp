@@ -51,7 +51,17 @@ const Tables& T() {
   }
   auto id = [&](const char* k) { return R.blockId(k); };
   t.wire = id("redstone_wire"); t.torch = id("redstone_torch"); t.torchOff = id("redstone_torch_off");
-  t.lamp = id("redstone_lamp"); t.lampOn = id("redstone_lamp_on"); t.bulb = id("copper_bulb"); t.bulbLit = id("copper_bulb_lit");
+  t.lamp = id("redstone_lamp"); t.lampOn = id("redstone_lamp_on");
+  // lamps pair up by data: "lampOn" names the lit form of a dark lamp; "inverted" lamps shine while unpowered
+  for (size_t i = 0; i < R.blocks.size() && i < MAX_BLOCKS; i++) {
+    const BlockDef& b = R.blocks[i];
+    std::string on = b.str("lampOn");
+    if (on.empty() && (BlockId)i == t.lamp) on = "redstone_lamp_on";
+    BlockId o = on.empty() ? 0 : id(on.c_str());
+    if (!o || o >= MAX_BLOCKS) continue;
+    t.lampFlip[i] = o; t.lampFlip[o] = (BlockId)i; t.lampLit[o] = 1;
+    if (b.has("inverted")) { t.lampInv[i] = 1; t.lampInv[o] = 1; }
+  } t.bulb = id("copper_bulb"); t.bulbLit = id("copper_bulb_lit");
   t.piston = id("piston"); t.sticky = id("sticky_piston"); t.pistonExt = id("piston_extended"); t.stickyExt = id("sticky_piston_extended");
   t.head = id("piston_head"); t.moving = id("moving_block"); t.slime = id("slime_block"); t.honey = id("honey_block");
   t.tripwire = id("tripwire"); t.water = id("water"); t.lava = id("lava"); t.fire = id("fire");
@@ -308,9 +318,10 @@ void Redstone::update(int x, int y, int z) {
       if (comparatorValue(x, y, z, m) != ((m >> 4) & 15)) schedule(x, y, z, 2, "comparator");
       break;
     case LAMP: {
-      bool on = powerAt(x, y, z) > 0;
-      if (on && id == t.lamp) { unschedule(x, y, z); w.setBlock(x, y, z, t.lampOn, m); }
-      else if (!on && id == t.lampOn) schedule(x, y, z, 4, "lamp");
+      if (!t.lampFlip[id]) break;
+      bool want = (powerAt(x, y, z) > 0) != !!t.lampInv[id];   // should it shine (an inverted lamp: without power)
+      if (want && !t.lampLit[id]) { unschedule(x, y, z); w.setBlock(x, y, z, t.lampFlip[id], m); }
+      else if (!want && t.lampLit[id]) schedule(x, y, z, 4, "lamp");
       break;
     }
     case BULB: {
@@ -416,7 +427,7 @@ void Redstone::fire(const Sched& s) {
     int nm = (m & 7) | (v > 0 ? 8 : 0) | (v << 4);
     if (nm != m) w.setBlock(x, y, z, id, nm);
   } else if (k == "lamp") {
-    if (id == t.lampOn && powerAt(x, y, z) == 0) w.setBlock(x, y, z, t.lamp, m);
+    if (t.lampLit[id] && t.lampFlip[id] && ((powerAt(x, y, z) > 0) == !!t.lampInv[id])) w.setBlock(x, y, z, t.lampFlip[id], m);
   } else if (k == "observer") {
     if (r != OBSERVER) return;
     if (s.want) { w.setBlock(x, y, z, id, m | 8); sched[posKey(x, y, z)] = Sched{x, y, z, now + 2, "observer", false, ++seqN, ++uidN}; }

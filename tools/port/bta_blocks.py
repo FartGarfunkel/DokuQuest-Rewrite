@@ -268,6 +268,29 @@ def main(d):
     block('sky_bloom', 'Sky Bloom', {'render': 3, 'solid': False, 'opaque': False, 'hardness': 0, 'tool': None, 'sound': 'grass', 'needsSupport': True,
                                      'tex': 'sky_bloom'}, [tiles['sky_bloom']] * 6)
 
+    # coloured lamps (a lamp and a dye), the inverted lamp (shines while unpowered), metal bricks, the butterfly jar
+    for col, rgb in DYE.items():
+        k = col + '_lamp'
+        if k + '_off_pic' not in tiles:
+            for on in (False, True):
+                srcp = src_pic(d, tiles, files, 'redstone_lamp_on' if on else 'redstone_lamp')
+                tint = (lambda c, o: (lambda r, g, b, a, x, y: (min(255, r * c[0] // 200), min(255, g * c[1] // 200), min(255, b * c[2] // 200), a)))(rgb, on)
+                tile(k + ('_on_pic' if on else '_off_pic'), recolour(srcp, tint))
+        block(k, col.replace('_', ' ').title() + ' Lamp', {'hardness': 0.3, 'tool': None, 'sound': 'glass', 'rs': 'lamp', 'lampOn': k + '_on', 'tex': k + '_off_pic'}, [tiles[k + '_off_pic']] * 6)
+        block(k + '_on', col.replace('_', ' ').title() + ' Lamp', {'hardness': 0.3, 'tool': None, 'sound': 'glass', 'rs': 'lamp', 'light': 15, 'drop': k, 'tex': k + '_on_pic'}, [tiles[k + '_on_pic']] * 6, item=False)
+        recipe(k, 1, items_=['redstone_lamp', col + '_dye'])
+    block('inverted_lamp', 'Inverted Lamp', {'hardness': 0.3, 'tool': None, 'sound': 'glass', 'rs': 'lamp', 'lampOn': 'inverted_lamp_on', 'inverted': True, 'tex': 'redstone_lamp'}, [tiles['redstone_lamp']] * 6)
+    block('inverted_lamp_on', 'Inverted Lamp', {'hardness': 0.3, 'tool': None, 'sound': 'glass', 'rs': 'lamp', 'light': 15, 'drop': 'inverted_lamp', 'inverted': True, 'tex': 'redstone_lamp_on'}, [tiles['redstone_lamp_on']] * 6, item=False)
+    recipe('inverted_lamp', 1, items_=['redstone_lamp', 'redstone_torch'])
+    for metal, blk, rgb in (('iron', 'iron_block', (220, 220, 225)), ('gold', 'gold_block', (250, 210, 80)), ('lapis', 'lapis_block', (60, 90, 200)), ('steel', 'steel_block', (150, 160, 175))):
+        k = metal + '_bricks'
+        if k not in tiles:
+            tile(k, recolour(src_pic(d, tiles, files, 'stone_bricks'), (lambda c: (lambda r, g, b, a, x, y: (min(255, r * c[0] // 150), min(255, g * c[1] // 150), min(255, b * c[2] // 150), a)))(rgb)))
+        block(k, metal.title() + ' Bricks', {'hardness': 4, 'tool': 'pickaxe', 'tier': 1, 'sound': 'metal', 'tex': k}, [tiles[k]] * 6)
+        recipe(k, 4, ['BB', 'BB'], {'B': blk})
+    block('butterfly_jar', 'Jar of Butterflies', {'render': 6, 'opaque': False, 'hardness': 0.3, 'tool': None, 'sound': 'glass', 'shape': 'glass_jar',
+                                                 'tex': 'glass_jar_side', 'needsSupport': True, 'sink': True, 'jar': 'butterflies'}, [tiles['glass_jar_side']] * 6)
+
     # thorn leaves: the Thornscrub's thorn trees (BTA's Caatinga); they prick like cactus
     if 'thorn_leaves' not in tiles:
         im = recolour(src_pic(d, tiles, files, 'acacia_leaves'), lambda r, g, b, a, x, y: (r * 150 // 255, g * 140 // 255, b * 70 // 255, 255 if a else 0))

@@ -1,0 +1,16 @@
+{"steps":[
+ {"wait":200,"do":"anchor"},
+ {"do":"fill","rel":true,"from":[-3,0,-4],"to":[4,3,-1],"key":"air"},
+ {"do":"fill","rel":true,"from":[-3,-1,-4],"to":[4,-1,-1],"key":"stone"},
+ {"do":"setBlock","rel":true,"x":0,"y":0,"z":-2,"key":"inverted_lamp"},
+ {"do":"setBlock","rel":true,"x":2,"y":0,"z":-2,"key":"red_lamp"},
+ {"wait":20,"do":"expect","rel":true,"block":[0,0,-2],"is":"inverted_lamp_on"},
+ {"do":"expect","rel":true,"block":[2,0,-2],"is":"red_lamp"},
+ {"do":"setBlock","rel":true,"x":3,"y":0,"z":-2,"key":"redstone_block"},
+ {"do":"setBlock","rel":true,"x":-1,"y":0,"z":-2,"key":"redstone_block"},
+ {"wait":20,"do":"expect","rel":true,"block":[2,0,-2],"is":"red_lamp_on"},
+ {"do":"expect","rel":true,"block":[0,0,-2],"is":"inverted_lamp"},
+ {"do":"setBlock","rel":true,"x":3,"y":0,"z":-2,"key":"air"},
+ {"wait":30,"do":"expect","rel":true,"block":[2,0,-2],"is":"red_lamp"},
+ {"do":"quit"}
+]}
