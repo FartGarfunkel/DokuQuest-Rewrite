@@ -1,4 +1,5 @@
 #include "world/world.h"
+#include "world/carve_forms.h"
 #include "world/region.h"
 #include "world/light.h"
 #include "world/shapes.h"
@@ -73,11 +74,14 @@ bool World::setBlock(int x, int y, int z, BlockId id, u8 meta, u32 flags) {
   int lx = x & 15, ly = y & 255, lz = z & 15;
   BlockId old = c->get(lx, ly, lz);
   u8 oldMeta = c->getMeta(lx, ly, lz);
+  u8 setCarveTo = 0;
+  if (isSlabOrStairs(id)) { CarveForm f = carveFormOf(id, meta); if (f.base) { id = f.base; meta = 0; setCarveTo = f.carve; } }   // placed or built: its chiseled form
   bool oldCarved = c->getCarve(lx, ly, lz);
   if (old == id && oldMeta == meta && !oldCarved) return false;   // a carved block must fall through: set() clears its carve byte
   // carve-bit trace is now off: the layout moved to a full carve byte (meta&0x7F) on plain blocks,
   // which share bits with facing states on shape blocks, so an unconditional gate would be noisy.
   c->set(lx, ly, lz, id, meta);
+  if (setCarveTo) c->setCarve(lx, ly, lz, setCarveTo);
   if (old != id) { auto it = c->blockEntities.find(colIdx(lx, ly, lz)); if (it != c->blockEntities.end() && !(flags & SetFlags::NoNotify)) c->blockEntities.erase(it); }
   if (!(flags & SetFlags::NoModify)) { c->modified = true; c->dirty = true; }
   if (!(flags & SetFlags::NoRemesh)) markBlockDirty(x, y, z, flags & SetFlags::Urgent);
@@ -156,6 +160,7 @@ void World::requestChunk(int dim, int cx, int cz, float priority) {
       if (DimGenerator* g = sh->gen ? sh->gen->forDim(k.dim) : nullptr) g->generate(*c);
       c->modified = false;
     }
+    convertSlabsStairs(*c);   // slabs and stairs arrive as chiseled blocks (generation and old saves)
     c->recomputeMaxY();
     initialChunkLight(*c);
     c->compact();

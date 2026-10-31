@@ -192,6 +192,27 @@ void emitFlame(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float cx, floa
 void addShapeBox(MeshCtx& c, std::vector<ChunkVertex>& d, const ShapeBox& box, vec3 o, float unit, float sk, float bl, float lift, int rot, u8 mat,
                  const std::function<u8(vec3)>* swayFn = nullptr) {
   int side = box.side >= 0 ? box.side : 0, end = box.end >= 0 ? box.end : side;
+  static int chainTile = -2;
+  if (chainTile == -2) chainTile = c.R.tile("chain");
+  if (chainTile >= 0 && box.side == chainTile) {
+    // a chain is drawn like Minecraft's: two crossed planes along the box's long axis, showing the picture's two link
+    // strips (columns 0-3 and 3-6). As a thin box it only showed the picture's empty middle and looked invisible.
+    float ext[3] = {box.b[3] - box.b[0], box.b[4] - box.b[1], box.b[5] - box.b[2]};
+    int ax = ext[1] >= ext[0] && ext[1] >= ext[2] ? 1 : ext[0] >= ext[2] ? 0 : 2, p = (ax + 1) % 3, q = (ax + 2) % 3;
+    float cp = (box.b[p] + box.b[p + 3]) / 2, cq = (box.b[q] + box.b[q + 3]) / 2, a0 = box.b[ax], a1 = box.b[ax + 3], hw = 1.5f;
+    for (int k = 0; k < 2; k++) {
+      float sq = k ? -1.f : 1.f, u0 = k ? 3.f : 0.f, u1 = u0 + 3;
+      MV v[4];
+      for (int i = 0; i < 4; i++) {
+        float s = (i == 0 || i == 3) ? -1.f : 1.f, along = (i < 2) ? a0 : a1;
+        float P[3]; P[ax] = along; P[p] = cp + s * hw; P[q] = cq + s * hw * sq;
+        vec3 pos = o + vec3(P[0], P[1] + lift, P[2]) * unit;
+        v[i] = {pos, vec2(s < 0 ? u0 : u1, 16 - along) / 16.f, sk, bl, 1.f, swayFn ? (*swayFn)(pos) : (u8)0};
+      }
+      c.quad2(d, v, chainTile, NORMAL_NONE, (u8)(mat | Mat::Cutout | Mat::NoRelief));
+    }
+    return;
+  }
   int xt = box.xt >= 0 ? box.xt : side, xf = (rot & 1) ? 4 : 0;
   for (int f = 0; f < 6; f++) {
     const FaceDef& F = FACES[f];
