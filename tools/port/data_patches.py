@@ -97,3 +97,6 @@ if not any(r.get('out') == 'lava_rowboat' for r in rj['recipes']):
 # ---- spawn eggs for every creature (tools/port/spawn_eggs.py) ----
 import importlib.util as _u
 _s = _u.spec_from_file_location('spawn_eggs', pathlib.Path(__file__).with_name('spawn_eggs.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
+
+# ---- mob heads (tools/port/mob_heads.py) ----
+_s = _u.spec_from_file_location('mob_heads', pathlib.Path(__file__).with_name('mob_heads.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)

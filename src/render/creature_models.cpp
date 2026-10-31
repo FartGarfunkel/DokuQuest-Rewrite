@@ -4,6 +4,7 @@
 #include "assets/tileset.h"
 #include "assets/pack_fs.h"
 #include "client/app.h"
+#include "sim/creature.h"
 
 namespace dq {
 
@@ -370,10 +371,41 @@ const CreatureModelGL* creatureModel(const std::string& key) {
     if (md.verts.empty()) { pm.hidden = true; continue; }
     pm.gl.upload(md);
     pm.local = glm::scale(glm::translate(mat4(1), lo), size / vec3(n));
+    pm.lo = lo; pm.size = size;
   }
   auto* raw = out.get();
   cache()[key] = std::move(out);
   return raw;
 }
 
+// ------------------------------------------------------------------ mob heads
+bool creatureHeadParts(const std::string& mob, const CreatureModelGL*& CM, std::vector<std::pair<int, mat4>>& out) {
+  out.clear(); CM = nullptr;
+  const CreatureType* T = creatureType(mob);
+  if (!T) return false;
+  const RigModel* M = rigModel(T->model);
+  CM = creatureModel(T->model);
+  if (!M || !CM || CM->parts.size() != M->parts.size()) return false;
+  int head = M->find("head");
+  if (head < 0) for (size_t i = 0; i < M->parts.size() && head < 0; i++) { const RigPart& p = M->parts[i]; if (p.limb == "head" || p.role == "head" || p.role == "phead") head = (int)i; }
+  if (head < 0 || CM->parts[head]->hidden) return false;
+  const CreaturePartMesh& H = *CM->parts[head];
+  float s = 1.f / std::max({H.size.x, H.size.y, H.size.z, 1e-3f});
+  mat4 fit = glm::translate(mat4(1), vec3(0.5f, 0, 0.5f)) * glm::scale(mat4(1), vec3(s)) * glm::translate(mat4(1), -vec3(H.lo.x + H.size.x * 0.5f, H.lo.y, H.lo.z + H.size.z * 0.5f));
+  std::vector<mat4> rel(M->parts.size(), mat4(0)); rel[head] = mat4(1);
+  out.push_back({head, fit});
+  for (size_t i = head + 1; i < M->parts.size(); i++) {   // parents come before their children
+    const RigPart& p = M->parts[i];
+    if (p.parent < 0 || rel[p.parent][3][3] == 0) continue;
+    mat4 r = glm::translate(rel[p.parent], p.pivot);
+    if (p.rest.y) r = glm::rotate(r, p.rest.y, vec3(0, 1, 0));
+    if (p.rest.x) r = glm::rotate(r, p.rest.x, vec3(1, 0, 0));
+    if (p.rest.z) r = glm::rotate(r, p.rest.z, vec3(0, 0, 1));
+    rel[i] = r;
+    if (!CM->parts[i]->hidden && p.alpha >= 1) out.push_back({(int)i, fit * r});
+  }
+  return true;
+}
+
 } // namespace dq
+

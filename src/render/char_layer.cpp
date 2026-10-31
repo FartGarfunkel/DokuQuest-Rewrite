@@ -6,6 +6,7 @@
 #include "assets/cape_tex.h"
 #include "render/item_layers.h"
 #include "client/app.h"
+#include "render/creature_models.h"
 #include "ui/screen.h"
 #include "core/registry.h"
 #include "assets/pack_armor.h"
@@ -271,7 +272,7 @@ CharWear charWearOf(const Player& p, const CharacterSpec& spec, bool withCarried
   }
   if (w.armor[1] == "elytra") w.armor[1].clear();   // worn in the chest slot (until the cape slot has them): wings, not a breastplate
   const ItemDef* hd = w.armor[0].empty() ? nullptr : reg().item(w.armor[0]);
-  w.hatItem = hd && hd->has("hat");
+  w.hatItem = hd && (hd->has("hat") || hd->has("mobHead"));   // a mob head is worn over the head, not as armour
   w.back = hidden(p, 4) ? "" : wornItem(p, "back");
   w.hook = wornItem(p, "hook");
   if (!hidden(p, 5)) {
@@ -436,6 +437,14 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
       // in first person the chest's sleeves would sit right at the eye when you look down: only the torso's shell
       mat4 m = R.part[pi] * R.scale[pi];
       for (const CharMesh* cm : list) VR.draw(cm->gl, m * cm->local(), light, tint);
+    }
+  }
+  // ---- a mob head worn in the helmet slot: the creature's own head, a little bigger than yours, over it ----
+  if (!AR[0].empty() && !fp && shows(CP_HEAD)) if (const ItemDef* hdef = reg().item(AR[0]); hdef && hdef->has("mobHead")) {
+    const CreatureModelGL* CM = nullptr; std::vector<std::pair<int, mat4>> hp;
+    if (creatureHeadParts(hdef->str("mobHead"), CM, hp)) {
+      mat4 m = R.part[CP_HEAD] * R.scale[CP_HEAD] * glm::scale(glm::translate(mat4(1), vec3(-4.25f, -0.25f, -4.25f)), vec3(8.5f));   // the head box is x,z -4..4, y 0..8 px
+      for (auto& [i, pm] : hp) VR.draw(CM->parts[i]->gl, m * pm * CM->parts[i]->local, light, tint);
     }
   }
   // ---- the skin ----

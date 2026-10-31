@@ -13,6 +13,7 @@ namespace dq {
 struct CreaturePartMesh {
   VoxelMeshGL gl;
   mat4 local{1};           // grid units -> part space (the box min..max)
+  vec3 lo{0}, size{0};     // that box in part space (blocks)
   bool hidden = false;     // put away while the resource pack is on (packmobs.js `hide`) or nothing to draw
 };
 struct CreatureModelGL {
@@ -24,5 +25,9 @@ const CreatureModelGL* creatureModel(const std::string& key);
 void creatureModelsReset();   // the tiles or the resource pack changed
 // A free-standing voxel box from a tile (fauna, projectiles): size in voxels, picture per face like a part.
 void buildTileBox(VoxelGrid& g, ivec3 n, const std::string& tile, bool glow = false);
+// A creature's head as a mob head (placed or worn): its head part and everything fixed to it (eyes, horns, fronds),
+// fitted into the unit cube standing on (0.5, 0, 0.5) and facing -z. Each entry: part index into CM->parts, matrix.
+// false: that creature has no head (a slime, a fish).
+bool creatureHeadParts(const std::string& mob, const CreatureModelGL*& CM, std::vector<std::pair<int, mat4>>& out);
 
 } // namespace dq

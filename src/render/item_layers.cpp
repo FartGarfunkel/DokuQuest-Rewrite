@@ -14,6 +14,7 @@
 #include <cstdio>
 
 namespace dq {
+void registerHeadLayer();   // render/head_layer.cpp
 
 void registerItemLayers() {
   static bool done = false;
@@ -26,6 +27,7 @@ void registerItemLayers() {
   registerChestLayer();     // chest lids that open with the chest's screen (render/chest_layer.cpp)
   registerFpBow();          // the bow drawn in first person (render/fp_bow.cpp)
   registerSpawnerLayer();   // the spinning monster inside a monster cage (render/spawner_layer.cpp)
+  registerHeadLayer();      // placed mob heads (render/head_layer.cpp)
 }
 
 // ------------------------------------------------------------------ the arm

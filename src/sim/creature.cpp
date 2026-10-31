@@ -328,6 +328,11 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   vec3 at = pos + vec3(0, 0.5f, 0);
   bool noDrops = data.contains("noDrops") && data["noDrops"] == true;   // summons, a called-back dragon (its own table)
   if (!baby && !noDrops) for (auto& d : T->drops) if (frand() < d.chance) { int n = roll(d.lo, d.hi); if (n > 0) dropItem(lv, realm, ItemStack(d.id, n), at, true); }
+  // mob heads, only to a player's blow: a wither skeleton's skull 2.5 % of the time (Minecraft), any other head 1 %
+  if (!baby && !noDrops && src.attacker && dynamic_cast<Player*>(ent(lv, src.attacker))) {
+    std::string hk = type + "_skull"; if (!reg().item(hk)) hk = type + "_head";
+    if (reg().item(hk) && frand() < (type == "wither_skeleton" ? 0.025f : 0.01f)) dropItem(lv, realm, ItemStack(hk, 1), at, true);
+  }
   if (T->woolly && !sheared && !baby) dropItem(lv, realm, ItemStack(color == "white" || color.empty() ? "wool" : color + "_wool", 1), at, true);
   if (type == "cinder_golem") {
     json& flags = lv.info.data["flags"]; if (!flags.is_object()) flags = json::object();

@@ -273,6 +273,7 @@ static void dragonSlain(Level& lv, EndStory& S, Creature& e) {
   // the exit portal opens, and the egg comes to rest on the pillar
   for (int z = -3; z <= 3; z++) for (int x = -3; x <= 3; x++) { float d = std::hypot((float)x, (float)z); if (d <= 2.6f && (x || z)) w.setBlock(x, fy, z, portal, 0); }
   if (slain == 1) w.setBlock(0, fy + 4, 0, B("dragon_egg_ender"), 0);   // (0.9.0.33) one egg
+  if (slain == 1 && reg().item("ender_dragon_head")) dropItem(lv, REALM_MAIN, ItemStack("ender_dragon_head", 1), vec3(0.5f, fy + 5.2f, 0.5f), true);   // its head (Minecraft keeps it on an End ship: here until those are built)
   gatewayOpen(lv);
   lv.fx->sound("end_portal_open", vec3(0, fy, 0), 300);
   for (int i = 0; i < 2; i++) sfx::burst(lv, e.pos + vec3(0, 1.5f, 0), i ? "mana_arcane" : "end_mote", 30, 6, json{{"life", 1.6f}, {"size", 0.25f}, {"vy", 4}});

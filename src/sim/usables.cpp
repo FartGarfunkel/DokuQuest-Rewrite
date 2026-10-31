@@ -110,6 +110,23 @@ void registerUsables() {
         }
         return false;
       }
+      if (d->has("mobHead")) {   // a mob head on a block: it stands on that face, turned to whoever placed it (16 ways)
+        if (!hitBlock) return true;
+        static const int F[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+        const int* f = F[std::clamp(a[5].get<int>(), 0, 5)];
+        ivec3 at(hb.x + f[0], hb.y + f[1], hb.z + f[2]);
+        World& w = lv.world(p->realm);
+        BlockId head = reg().blockId("mob_head"), cur = w.getBlock(at.x, at.y, at.z);
+        if (!head || (cur && !reg().tReplaceable[cur]) || reg().tLiquid[cur]) return false;
+        if (glm::distance(vec3(at) + vec3(0.5f), p->pos + vec3(0, 0.9f, 0)) < 0.9f) return false;   // not inside yourself
+        w.setBlock(at.x, at.y, at.z, head, 0);
+        int rot = ((int)std::lround((p->yaw + PI) / (TAU / 16)) % 16 + 16) % 16;
+        if (json* be = w.blockEntity(at.x, at.y, at.z, true)) { *be = {{"type", "head"}, {"mob", d->str("mobHead")}, {"rot", rot}, {"item", ItemStack(d->key, 1).toJson()}}; w.blockEntityChanged(at.x, at.y, at.z); }
+        lv.fx->material("stone", "place", vec3(at) + vec3(0.5f));
+        if (!p->creative()) useUp(*p);
+        p->swingT = 0.01f;
+        return false;
+      }
       if (d->has("summon")) {
         if (!hitBlock || a[5].get<int>() != 2) { lv.fx->message(p->id, "Place the effigy on top of a block"); return false; }
         for (auto& e : lv.entities()) if (auto* c = dynamic_cast<Creature*>(e.get())) if (c->type == "cinder_golem" && c->alive()) { lv.fx->message(p->id, "A Cinder Golem already walks this world", "boss"); return false; }

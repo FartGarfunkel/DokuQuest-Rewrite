@@ -68,6 +68,7 @@ void loadModels() {
       if (b.side < 0) b.side = 0;
       b.tv = x.value("tv", 0.f);
       b.nocol = x.value("nocol", false);
+      b.only = (u8)x.value("only", 63);   // faces drawn (0: collides and picks, drawn by a render layer)
       b.lift = x.value("lift", 0.f);
       boxes.push_back(b);
     }
