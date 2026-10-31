@@ -19,6 +19,7 @@ public:
   void drawOverlay(GameSession& s, const FrameCtx& f) override;
   // gameplay hooks (local.js): swing the arm (attack, place, use), start the eating/drinking motion
   void swingArm() { if (swing == 0 || swing > 0.6f) swing = 0.0001f; }
+  float simSwing = 0;   // the player's own swing last frame (a placement while Use is held restarts it)
   void eat() { eatAnim = 0.45f; }
   void setSwinging(bool on) { swinging = on; }   // held swing while mining (set every frame)
   float swing = 0, equip = 1, eatAnim = 0, bob = 0, bobAmt = 0;

@@ -129,7 +129,10 @@ void HeldItemLayer::update(GameSession& s, double dt) {
     if (in.pressed(Act::Use) && s.target.hit) swingArm();
     else if (in.pressed(Act::Use) && p->held().id == "fishing_rod") swingArm();   // cast / reel in
     if (s.breaking) { swinging = true; if (swing == 0) swing = 0.0001f; }
+    // holding Use places again and again: each placement restarts the player's swing, so the arm keeps looping (Minecraft)
+    if (p->swing > 0 && (simSwing == 0 || p->swing < simSwing)) swingArm();
   }
+  simSwing = p->swing;
   if (swinging || swing > 0) { swing += fdt * 3.6f; if (swing >= 1) swing = 0; }
   swinging = false;
   // a light for the hand: where your eyes are, and what you carry
