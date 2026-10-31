@@ -257,3 +257,21 @@ items['nether_star'] = {'key': 'nether_star', 'name': 'Nether Star', 'maxStack':
                         'desc': 'All that is left of the Wither. It never burns, never fades.'}
 for f, o in (('mobs.json', mobs), ('models.json', models), ('magic.json', mg)): (d / f).write_text(json.dumps(o, separators=(',', ':'), ensure_ascii=False))
 (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
+
+# ---- biome fuselings (our own creeper's cousins): a frost one in the snow, a dune one in the desert, a bog one in
+#      the swamps; same build, their own colour, and their own burst (sim/creature_monsters.cpp fuseBurst) ----
+mobs = json.loads((d / 'mobs.json').read_text())
+base = mobs['fuseling']
+for k, label, tint in (('frost_fuseling', 'a frost fuseling', [0.62, 0.86, 1.0, 0.55]), ('dune_fuseling', 'a dune fuseling', [1.0, 0.86, 0.55, 0.55]),
+                       ('bog_fuseling', 'a bog fuseling', [0.45, 0.6, 0.3, 0.55])):
+    v = dict(base); v['label'] = label; v['model'] = base.get('model', 'fuseling'); v['tint'] = tint
+    mobs[k] = v
+(d / 'mobs.json').write_text(json.dumps(mobs, separators=(',', ':'), ensure_ascii=False))
+
+# ---- village golems take after their land: sandstone in the desert, frost in the snow, mossy in the taiga ----
+mobs = json.loads((d / 'mobs.json').read_text())
+for k, label, tint in (('sandstone_golem', 'a sandstone golem', [1.0, 0.85, 0.55, 0.5]), ('frost_golem', 'a frost golem', [0.7, 0.88, 1.0, 0.5]),
+                       ('moss_golem', 'a mossy golem', [0.5, 0.72, 0.38, 0.5])):
+    v = dict(mobs['iron_golem']); v['label'] = label; v['tint'] = tint
+    mobs[k] = v
+(d / 'mobs.json').write_text(json.dumps(mobs, separators=(',', ':'), ensure_ascii=False))

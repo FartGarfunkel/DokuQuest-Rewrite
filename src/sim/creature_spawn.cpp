@@ -389,9 +389,9 @@ public:
     struct NE { const char* t; float w; };
     static const std::unordered_map<std::string, std::vector<NE>> NIGHT = {
       {"base", {{"ghoul", 30}, {"skeleton", 24}, {"spider", 22}, {"fuseling", 18}, {"wraith", 1.2f}, {"ogre", 0.8f}}},
-      {"desert", {{"husk", 30}, {"ghoul", 4}, {"skeleton", 20}, {"spider", 18}, {"fuseling", 16}, {"scorpion", 10}, {"wraith", 1}}},
-      {"snowy", {{"ghoul", 28}, {"stray", 26}, {"spider", 16}, {"fuseling", 16}, {"wraith", 1.5f}}},
-      {"swamp", {{"ghoul", 26}, {"skeleton", 18}, {"spider", 18}, {"fuseling", 14}, {"witch", 7}, {"slime", 8}, {"drowned", 6}}},
+      {"desert", {{"husk", 30}, {"ghoul", 4}, {"skeleton", 20}, {"spider", 18}, {"fuseling", 6}, {"dune_fuseling", 10}, {"scorpion", 10}, {"wraith", 1}}},
+      {"snowy", {{"ghoul", 28}, {"stray", 26}, {"spider", 16}, {"fuseling", 6}, {"frost_fuseling", 10}, {"wraith", 1.5f}}},
+      {"swamp", {{"ghoul", 26}, {"skeleton", 18}, {"spider", 18}, {"fuseling", 5}, {"bog_fuseling", 9}, {"witch", 7}, {"slime", 8}, {"drowned", 6}}},
       {"forest", {{"ghoul", 30}, {"skeleton", 24}, {"spider", 22}, {"fuseling", 18}, {"raider", 0.3f}, {"werewolf", 1.2f}, {"wraith", 1.2f}, {"ogre", 0.8f}}},
       {"open", {{"ghoul", 30}, {"skeleton", 24}, {"spider", 22}, {"fuseling", 18}, {"raider", 0.4f}, {"wraith", 1}, {"ogre", 1}}},
     };

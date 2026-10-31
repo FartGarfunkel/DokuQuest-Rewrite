@@ -13,6 +13,8 @@
 
 namespace dq {
 
+bool tryWitherSummon(Level& lv, int realm, ivec3 at);   // sim/wither.cpp
+
 namespace {
 Player* named(Level& lv, const std::string& n) {
   for (auto& e : lv.entities()) if (auto* p = dynamic_cast<Player*>(e.get())) if (!p->removed && p->name == n) return p;
@@ -126,6 +128,7 @@ void registerUsables() {
         lv.fx->material("stone", "place", vec3(at) + vec3(0.5f));
         if (!p->creative()) useUp(*p);
         p->swingT = 0.01f;
+        if (d->str("mobHead") == "wither_skeleton") tryWitherSummon(lv, p->realm, at);   // the third skull on a T of soul sand
         return false;
       }
       if (d->has("paintbrush")) {   // a dye in the other hand: planks, wool, glass and terracotta take its colour

@@ -68,6 +68,10 @@ void tickEffects(Level& lv, Player& p, double dt) {
     m.poison -= (float)dt; m.poisonT += (float)dt;
     if (m.poisonT >= 1.25f) { m.poisonT = 0; if (p.hp > 1) combatHurt(lv, p, 1, json{{"type", "poison"}, {"bypassArmor", true}}); }
   }
+  if (hasEffect(p, "wither")) {   // the Wither's touch: a heart every second and a half, and it can take the last one
+    m.witherT += (float)dt;
+    if (m.witherT >= 1.5f) { m.witherT = 0; combatHurt(lv, p, 1, json{{"type", "wither"}, {"bypassArmor", true}}); }
+  }
   if (hasEffect(p, "levitation") && !p.flying) {   // a shulker's bolt: you drift up while it lasts, and fall after
     p.vel.y += (1.6f - p.vel.y) * std::min(1.f, (float)dt * 4); p.onGround = false;
   }

@@ -8,6 +8,7 @@
 #include "sim/mob_combat.h"
 #include "sim/physics.h"
 #include "sim/player.h"
+#include "sim/effects.h"
 #include "core/registry.h"
 
 namespace dq {
@@ -104,7 +105,31 @@ static void throwFlask(Level& lv, Creature& m, Entity& p) {
 static void fuseBurst(Level& lv, Creature& m) {
   m.removed = true; m.deathTime = 0.0001f;
   ExplodeOpts o; o.noBlocks = !rule(lv, "mobGriefing"); o.source = m.id;
-  explode(lv, m.realm, m.pos + vec3(0, 0.6f, 0), 3, o);
+  const bool frost = m.type == "frost_fuseling", dune = m.type == "dune_fuseling", bog = m.type == "bog_fuseling";
+  explode(lv, m.realm, m.pos + vec3(0, 0.6f, 0), frost || dune || bog ? 2.2f : 3, o);
+  if (!(frost || dune || bog)) return;
+  // the biome ones leave something behind: a freeze, a choking cloud of sand, or a bog's sour air
+  World& w = lv.world(m.realm);
+  const Registry& R = reg();
+  if (frost) {
+    static const BlockId ice = R.blockId("ice"), snow = R.blockId("snow"), water = R.blockId("water");
+    for (int dz = -4; dz <= 4; dz++) for (int dx = -4; dx <= 4; dx++) {
+      if (dx * dx + dz * dz > 16) continue;
+      int x = ifloor(m.pos.x) + dx, z = ifloor(m.pos.z) + dz;
+      for (int y = ifloor(m.pos.y) + 3; y >= ifloor(m.pos.y) - 3; y--) {
+        BlockId b = w.getBlock(x, y, z);
+        if (b == water && water && ice && w.getBlock(x, y + 1, z) == AIR) { w.setBlock(x, y, z, ice); break; }
+        if (b != AIR && R.tSolid[b] && R.tOpaque[b] && snow && w.getBlock(x, y + 1, z) == AIR) { w.setBlock(x, y + 1, z, snow); break; }
+      }
+    }
+    lv.fx->particles("snow", m.pos + vec3(0, 1, 0), 40);
+  } else lv.fx->particles(dune ? "dust" : "smoke", m.pos + vec3(0, 1, 0), 40);
+  for (Entity* e : pawnsOf(lv, m.realm)) {
+    auto* p = dynamic_cast<Player*>(e);
+    if (!p || glm::distance(p->pos, m.pos) > 5) continue;
+    if (frost || dune) giveEffect(lv, *p, "slow", frost ? 8.f : 5.f);
+    if (bog) giveEffect(lv, *p, "poison", 7);
+  }
 }
 
 // ------------------------------------------------------------------ spiders: ground, walls and ceilings
@@ -237,6 +262,7 @@ static OptMove monsterAI(Level& lv, Creature& m, Entity* p, float dist, float dy
     return Move{dist < 0.8f ? 0 : T.speed * 1.15f, toPlayer};
   }
   if (t == "stray") return nightBase(lv, m, "skeleton", p, dist, dyp, toPlayer, dt);
+  if (t == "frost_fuseling" || t == "dune_fuseling" || t == "bog_fuseling") return nightBase(lv, m, "fuseling", p, dist, dyp, toPlayer, dt);
   if (t == "cave_spider") return nightBase(lv, m, "spider", p, dist, dyp, toPlayer, dt);
   if (t == "magma_slime") {
     if (m.onGround && m.lastWant > 0.1f && frand() < dt * 0.6f) m.wantJump = true;   // they leap higher than the green ones
@@ -502,6 +528,8 @@ static bool enderBlink(Level& lv, Creature& e, float cx, float cz, float r, bool
   return false;
 }
 
+std::optional<Move> witherBrain(Level& lv, Creature& m, Entity* p, float dist, float dyp, float toPlayer, float dt);   // sim/wither.cpp
+bool witherPreHurt(Creature& m, const std::string& type, const std::string& tool);
 static OptMove realmAI(Level& lv, Creature& m, Entity* p, float dist, float dyp, float toPlayer, float dt) {
   const std::string& t = m.type;
   const CreatureType& T = *m.T;
@@ -658,6 +686,7 @@ static OptMove realmAI(Level& lv, Creature& m, Entity* p, float dist, float dyp,
     if (m.onGround && m.lastWant > 0.1f && frand() < dt * 0.5f) m.wantJump = true;
     return nightBase(lv, m, "slime", p, dist, dyp, toPlayer, dt);
   }
+  if (t == "wither") return witherBrain(lv, m, p, dist, dyp, toPlayer, dt);   // sim/wither.cpp
   if (t == "shulker") {   // clamped to its wall: the shell opens, and a seeking bolt comes out after you
     m.vel.x = m.vel.z = 0;
     auto s = m.senses(lv, p, dist, dyp, dt, 16);
@@ -696,6 +725,7 @@ bool realmPreHurt(Level& lv, Creature& m, DamageSrc& src) {
   if (m.type == "enderman" && !creatureHooks("enderman") && !m.ghost && (src.tool == "arrow" || src.type == "arrow" || src.type == "projectile")) { enderBlink(lv, m, m.pos.x, m.pos.z, 12, false); return true; }   // nothing you shoot ever reaches it
   if (m.type == "golden_swet" && src.attacker) m.angryT = 30;
   if (m.type == "aechor_plant") src.knock = 0;
+  if (m.type == "wither" && witherPreHurt(m, src.type, src.tool)) return true;
   return false;
 }
 void realmAfterHurt(Level& lv, Creature& m, const DamageSrc& src, float dealt) {
@@ -727,7 +757,7 @@ Move Creature::specialAI(Level& lv, Entity* p, float dist, float dyp, float toPl
   // keep away from what hunts you
   const char* wa[2] = {nullptr, nullptr};
   if (type == "skeleton" || type == "stray") wa[0] = "wolf";
-  else if (type == "fuseling") { wa[0] = "ocelot"; wa[1] = "cat"; }
+  else if (type == "fuseling" || type == "frost_fuseling" || type == "dune_fuseling" || type == "bog_fuseling") { wa[0] = "ocelot"; wa[1] = "cat"; }
   if (wa[0]) {
     waryT -= dt;
     if (waryT <= 0) {

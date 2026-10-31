@@ -129,6 +129,23 @@ public:
       if (kind == "spit" && frand() < dt * 20) mobBurst(lv, pos, "white", 1, 0.1f);
       return;
     }
+    if (kind == "wither_skull") {   // the Wither's skull: flies straight, bursts on what it hits and withers whoever it catches
+      if (age > 6) { removed = true; return; }
+      auto burst = [&]() {
+        removed = true; ExplodeOpts o; o.source = data.value("owner", 0u);
+        explode(lv, realm, pos, 1.2f, o);
+        for (Entity* p : pawnsOf(lv, realm)) if (glm::distance(p->pos + vec3(0, 0.9f, 0), pos) < 3.f) if (auto* pl = dynamic_cast<Player*>(p)) giveEffect(lv, *pl, "wither", 8);
+      };
+      for (int s = 0; s < 3; s++) {
+        pos += vel * (dt / 3);
+        for (Entity* p : pawnsOf(lv, realm)) if (std::fabs(p->pos.x - pos.x) < 0.5f && std::fabs(p->pos.z - pos.z) < 0.5f && pos.y > p->pos.y - 0.2f && pos.y < p->pos.y + 1.9f) {
+          DamageSrc d; d.knock = 2; damageEntity(lv, *p, 6, owner, "projectile", d); burst(); return;
+        }
+        if (solidAt(wd, pos)) { burst(); return; }
+      }
+      if (frand() < dt * 30) lv.fx->particles("smoke", pos, 1);
+      return;
+    }
     if (kind == "shulker") {   // a shulker's bolt: seeks its mark, and whoever it strikes floats up off the ground
       if (age > 10) { removed = true; mobBurst(lv, pos, "end_mote", 8, 0.8f); return; }
       Entity* tgt = lv.entity(data.value("target", 0u));

@@ -17,7 +17,7 @@ struct MagicState {
   float ward = 0, wardT = 0;       // Ward spell / Warding potion
   float lightT = 0, levT = 0, stoneT = 0, slowFallT = 0;
   float poison = 0, poisonT = 0;   // venom timer (monsters.js), its tick
-  float regT = 0, secondWindT = 0, exT = 0, stT = 0, gtT = 0, saveT = 0;
+  float regT = 0, secondWindT = 0, exT = 0, stT = 0, gtT = 0, saveT = 0, witherT = 0;
   bool wardGot = false;
   vec3 witch{0}; bool witchSet = false;   // the witchlight's spot
   bool bare = false;               // casting without a staff (Z)

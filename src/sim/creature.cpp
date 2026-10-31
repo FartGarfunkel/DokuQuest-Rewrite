@@ -55,7 +55,7 @@ static CreatureType parseType(const std::string& key, const json& j) {
     else if (key == "shark") t.voice = "fish";
     else if (key == "warden_moon" || key == "warden_sun") t.voice = "warden";
     else if (key == "ember_lord" || key == "cinder_golem") t.voice = "ogre";
-    else if (key == "iron_golem") t.voice = "golem";
+    else if (key == "iron_golem" || (key.size() > 6 && key.compare(key.size() - 6, 6, "_golem") == 0 && key != "cinder_golem")) t.voice = "golem";
   }
   if (j.contains("onHit") && j["onHit"].is_object()) {
     auto& o = j["onHit"]; t.onHit.any = true;
@@ -761,7 +761,7 @@ static const char* ownStep(const Creature& m) {
   if (v == "oink") return "pig";
   if (v == "baa") return "sheep";
   if (v == "wolf") return "wolf";
-  if (m.type == "iron_golem") return "golem";
+  if (m.T->j.value("golem", false)) return "golem";
   return "";
 }
 
