@@ -9,7 +9,7 @@ const json& ruleDefaults() {
     {"dayMinutes", 10}, {"nightMinutes", 10},
     {"daylightCycle", true}, {"keepInventory", false}, {"graves", true}, {"mobSpawning", true}, {"mobGriefing", true}, {"tntExplodes", true},
     {"fireSpread", true}, {"blockDrops", true}, {"fallDamage", true}, {"drowning", true}, {"fireDamage", true}, {"naturalRegen", true},
-    {"grassSpread", true}, {"saplingsPlant", true}, {"showCoords", false}, {"commands", false}, {"downed", true}, {"haunting", true},
+    {"grassSpread", true}, {"saplingsPlant", true}, {"showCoords", false}, {"commands", false}, {"downed", true}, {"haunting", true}, {"allowSprinting", true}, {"allowSleeping", true}, {"weatherCycle", true},
   };
   return d;
 }
@@ -23,6 +23,9 @@ const std::vector<std::array<std::string, 3>>& ruleToggles() {
     {"tntExplodes", "TNT explodes", "Turn off and TNT just fizzles"},
     {"fireSpread", "Fire spreads", "Fire can spread to wood and leaves nearby"},
     {"blockDrops", "Blocks drop items", "Broken blocks drop what they're made of"},
+    {"allowSprinting", "Sprinting", "Turn off and nobody can sprint"},
+    {"allowSleeping", "Sleeping skips the night", "Turn off and beds only set your spawn point"},
+    {"weatherCycle", "Weather changes", "Turn off to keep the weather as it is"},
     {"fallDamage", "Fall damage", ""},
     {"drowning", "Drowning", "Your breath runs out under water"},
     {"fireDamage", "Fire and lava damage", ""},

@@ -120,7 +120,7 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
   if (crawlHold > 0) crawlHold -= dt;
   if (crawling && !swimming && !crawlWant && !(crawlHold > 0) && !collides(wd, pos.x - w, pos.y, pos.z - w, pos.x + w, pos.y + PLAYER_H, pos.z + w)) crawling = false;
   h = swimming || crawling ? SWIM_H : PLAYER_H;
-  float speed = flying ? (inp.sprint ? 18.f : 10.f) : sneaking ? SNEAK : (inp.sprint && inp.mz < -0.3f ? SPRINT : WALK);
+  float speed = flying ? (inp.sprint ? 18.f : 10.f) : sneaking ? SNEAK : (inp.sprint && inp.mz < -0.3f && !opts.noSprint ? SPRINT : WALK);
   if (flying) sneaking = false;
   sprinting = speed == SPRINT && !swimming;
   if (crawling) speed = SNEAK * 1.1f;

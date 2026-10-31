@@ -78,7 +78,7 @@ void PlayerController::update(float dt, const PlayerInput& in) {
   flyToggle(); hotbar();
   p.contacts = sampleContacts(w, p, p.eye);
   bool wasHang = (bool)p.hang, wasClimb = (bool)p.climb;
-  MoveOpts mo; mo.slow = p.carrying.is_null() ? 1.f : CARRY_SLOW; mo.noLedge = !p.carrying.is_null();
+  MoveOpts mo; mo.slow = p.carrying.is_null() ? 1.f : CARRY_SLOW; mo.noLedge = !p.carrying.is_null(); mo.noSprint = !rule(lv, "allowSprinting");
   MoveInfo mv = p.move(w, in, dt, mo);
   if (in.crawl) toastMsg(p.crawlWant ? "Crawling" : "Standing up");
   if (p.hang && !wasHang) { sfxMaterial(lv, "stone", "step", p.pos); if (!ledgeTip) { ledgeTip = true; toastMsg("Hanging on \xE2\x80\x94 move left or right along the ledge, jump to climb up, sneak to drop"); } }

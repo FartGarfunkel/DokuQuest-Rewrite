@@ -704,6 +704,7 @@ void PlayerController::sleep(int x, int y, int z, u8 meta) {
   p.spawnRealm = p.realm;
   if (p.realm != REALM_MAIN || dimOfY(y) != DIM_OVERWORLD) { toastMsg("Beds only work in the Overworld \xE2\x80\x94 your spawn is set here anyway", "warn"); return; }
   if (!isNightForSleep(lv)) { toastMsg("Spawn point set. You can only sleep at night.", "good"); return; }
+  if (!rule(lv, "allowSleeping")) { toastMsg("Spawn point set. Sleeping is off in this world.", "good"); return; }
   for (auto& e : lv.entities()) {
     if (e->removed || e->realm != p.realm || !isMob(*e) || e->hp <= 0) continue;
     if (reg().mobs[e->type].value("hostile", false) && std::hypot(e->pos.x - x, e->pos.z - z) < 8) { toastMsg("You may not rest now, there are monsters nearby", "warn"); return; }

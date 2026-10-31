@@ -31,7 +31,7 @@ struct PlayerInput {
   bool drop = false, dropAll = false, pick = false, swap = false, place = false, crawl = false, crawlHeld = false;
   int slot = -1, wheel = 0;
 };
-struct MoveOpts { bool autoJump = false; float slow = 1; bool noLedge = false; };
+struct MoveOpts { bool autoJump = false; float slow = 1; bool noLedge = false, noSprint = false; };
 struct MoveInfo { float horizSpeed = 0; bool landed = false; };
 
 struct LedgeHang { int bx = 0, bz = 0, cy = 0; float surf = 0; int dx = 0, dz = 0; float t = 0, x = 0, z = 0; bool water = false; float shimPh = 0, shimT = 0, scrapeT = 0; };
