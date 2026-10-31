@@ -2,6 +2,36 @@
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
 
+## Alpha 1.0.0.8 — Far Lands | November 2026
+**Fixes from your play:**
+- **Chiseled blocks and slabs are lit properly** (no more black rims on the desert roofs).
+- **Torches, lanterns, carpets and pots stand on half slabs,** and torches and item frames fix to a vertical slab's inside face.
+- **Clicks on chiseled blocks and slabs land on the face you aim at.**
+- **Sitting works again** on chairs, benches and stools (and on slab and stair benches).
+- **Jack-o'-lanterns face the street,** and chests, furnaces and work blocks in town buildings face the right way.
+- **Vines, ferns and leaves are green again,** and End rods show.
+- **Flags reach their poles.**
+- **Portals built on the far side match the size of the one you came through,** so the window lines up.
+**New in the world:**
+- **The Nether:** Cinder Isles out on the lava sea, Emberglass Groves, the Ashen Wastes and the Sulphur Springs (sulphur and charcoal make gunpowder).
+- **Thornscrub:** dry plains thick with low thorn trees whose leaves prick like cactus.
+- **The outer End:** spire fields, crater barrens, violet moors of end moss, stone arches and floating shards.
+- **End cities rebuilt:** a hall, a tower in storeys up to a crowned top room, bridges out to hanging towers, and the ship with the dragon's head on its bow and the wings in a frame. Shulkers keep them; their bolts lift you off your feet.
+- **The Skylands:** islands that hang to points, glimmersand rims, islets drifting above, banks of cloud (soft ones break a fall, blue ones throw you up, golden ones let you float down), sunwood trees and sky blooms.
+**New things to make and do:**
+- **The lead:** lead animals, tie them to a fence post.
+- **Glass jars:** catch fireflies over grass at night; a jar of them glows.
+- **The sieve:** sift gravel, sand, dirt, mud, soul sand, ash or cinder sand for what's hidden in it.
+- **Iron mesh** (items fall through, creatures don't) and the **motion sensor** (a redstone signal while something moves near it).
+- **The Travel Journal:** a book and a compass. Everything you've carried is in it, with how it's made.
+- **The Wither:** three wither skeleton skulls on a T of soul sand wake it. It drops a nether star.
+- **Biome fuselings** (frost, dune and bog, each with its own burst) and **village golems** that take after their land.
+- **Elytra glide like Minecraft's.** Throw an ender pearl into an End gateway to go through it.
+- **Ingots set down stack Vintage Story-style,** four across, each layer turned across the last.
+- **A torch in hand burns,** with a thread of smoke behind you.
+- `/locate <structure>` finds the nearest one of a kind.
+- Removed Herobrine.
+
 ## Alpha 1.0.0.7 — Chisel | October 2026
 - **The chisel:** carve any full block into eighths with the iron chisel. Aim at a corner to carve it away; chisel the same spot again to put it back.
 - **Slabs and stairs are chiseled blocks now.** The ones already in your worlds change over by themselves; make new ones with the chisel.
