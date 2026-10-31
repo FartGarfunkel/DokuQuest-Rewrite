@@ -12,7 +12,7 @@
  {"wait":5,"do":"mouse","button":"right","hold":1},
  {"wait":10,"do":"expect","count":"firefly_jar","n":1},
  {"do":"select","slot":1},
- {"do":"lookAt","rel":true,"x":0,"y":0,"z":-2},
+ {"do":"lookAt","rel":true,"x":0,"y":0,"z":-2,"fy":0.95,"fz":0.5},
  {"wait":5,"do":"mouse","button":"right","hold":1},
  {"wait":10,"do":"expect","rel":true,"block":[0,1,-2],"is":"firefly_jar"},
  {"do":"lookAt","rel":true,"x":0,"y":1,"z":-2,"fy":0.3},
