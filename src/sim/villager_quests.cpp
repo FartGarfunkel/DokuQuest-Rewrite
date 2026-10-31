@@ -473,6 +473,7 @@ static void home(Level& lv, Player& p, Talk& t, const std::string& text0 = "") {
   if (tier >= 0) O.push_back({tier == 0 ? "Seen anything strange lately?" : tier >= 5 ? "About what happened\xE2\x80\xA6" : "What do you make of the rift?", "?", "rift", nullptr});
   // hearth.js: the elder and a Hero's house
   if (t.job == "elder" && v && (homeOf(p, v->id) || isHero(p, v->id))) O.push_back({homeOf(p, v->id) ? "About my house\xE2\x80\xA6" : "You wanted a word?", "\xE2\x8C\x82", "house", nullptr});
+  if (t.job == "elder" && v && !houseUpOffers(lv, p, *v).empty()) O.push_back({"Improve my house\xE2\x80\xA6", "\xE2\x8C\x82", "houseups", nullptr});
   // paths.js: training
   const json& TR = VD()["trains"];
   if (TR.contains(t.job)) {
@@ -628,6 +629,18 @@ void talkChoose(Level& lv, Player& p, Talk& t, int i) {
                       : "It opened when you came. Something old is pressing on our world from the other side. The old tales say the keepers of the deep places hold the keys of time. Find the dungeons, defeat their keepers, bring their Realm Fragments to the rift. Four of them. " + (n ? "You have found " + std::to_string(n) + " so far." : std::string());
     say(lv, p, t, lines);
     t.opts.erase(t.opts.begin() + i);
+    return;
+  }
+  if (a == "houseups" && v) {   // the builders' list: a room, an upstairs, a cellar, then furnishing them
+    say(lv, p, t, "The builders can add to your house. What would you like?");
+    t.opts.clear();
+    for (auto& [label, key] : houseUpOffers(lv, p, *v)) t.opts.push_back({label, "\xE2\x8C\x82", "houseup", key});
+    t.opts.push_back({"Not now", "", "home", "Whenever you're ready."});
+    return;
+  }
+  if (a == "houseup" && v) {
+    std::string s; houseUpBuy(lv, p, *v, o.arg.is_string() ? o.arg.get<std::string>() : "", s);
+    home(lv, p, t, s);
     return;
   }
   if (a == "house") {

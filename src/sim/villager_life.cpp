@@ -10,6 +10,7 @@
 #include "gen/structures.h"
 #include "gen/generator.h"
 #include "world/dims.h"
+#include "world/dirs.h"
 #include "core/registry.h"
 #include <deque>
 
@@ -454,6 +455,171 @@ static HeroHouse homeGive(Level& lv, const Village& v, Player& who) {
   sfxUi(lv, who, "levelup");
   return h;
 }
+// ------------------------------------------------------------------ improving your house (Animal Crossing) and furnishing it (Skyrim)
+// The elder's builders add to the hero's house for gold coins: a second room, an upstairs, a cellar; then furnish them.
+// Each is built onto the plain house (plainHouse's layout: walls x 0..6, z 0..5, the door at x 3 on z 0) and recorded
+// in homeBuilt[...]["ups"].
+namespace {
+struct HouseUp { const char* key; const char* name; int price; const char* needs; const char* done; };
+const HouseUp HOUSE_UPS[] = {
+  {"room", "A second room", 40, "", "The builders knock through the east wall: a second room, ready for you."},
+  {"upstairs", "An upstairs", 80, "", "A new floor goes on, with a ladder up from the bedroom."},
+  {"cellar", "A cellar", 60, "", "They dig you a cellar, stone-lined and dry, a ladder down by the door."},
+  {"kitchen", "Furnish the kitchen", 25, "room", "Furnace, smoker, table and barrels: the second room is a kitchen now."},
+  {"study", "Furnish a study", 25, "upstairs", "Shelves of books, a lectern and a lamp: the upstairs is a study."},
+  {"hall", "A table and chairs", 15, "room", "A table and chairs by the window of the second room."},
+};
+struct HouseFrame {
+  World& w; int r = 0, ox = 0, oz = 0, Y = 0;
+  BlockId planks = 0, log = 0, stone = 0, slab = 0, glass = 0;
+  ivec3 at(int lx, int ly, int lz) const { auto [a, c] = vRot(r, lx, lz); return ivec3(ox + a, Y + ly, oz + c); }
+  void set(int lx, int ly, int lz, BlockId id, u8 m = 0) const { ivec3 p = at(lx, ly, lz); w.setBlock(p.x, p.y, p.z, id, m); }
+  BlockId get(int lx, int ly, int lz) const { ivec3 p = at(lx, ly, lz); return w.getBlock(p.x, p.y, p.z); }
+  u8 face(int f) const { return (u8)((f + r) & 3); }   // a local facing (0 -z, 1 +x, 2 +z, 3 -x) turned with the house
+  // a ladder at (lx,ly,lz) on the wall one step along local (dx,dz)
+  void ladder(int lx, int ly, int lz, int dx, int dz) const {
+    auto [a, c] = vRot(r, dx, dz); int d = 0; for (int k = 0; k < 4; k++) if (DIRX[k] == a && DIRZ[k] == c) d = k;
+    set(lx, ly, lz, B("ladder"), (u8)d);
+  }
+  void torch(int lx, int ly, int lz, int wallDx, int wallDz) const {   // a wall torch on the wall that way
+    static const int T[4] = {3, 2, 4, 1};
+    auto [a, c] = vRot(r, wallDx, wallDz); int d = 0; for (int k = 0; k < 4; k++) if (DIRX[k] == a && DIRZ[k] == c) d = k;
+    set(lx, ly, lz, B("torch"), (u8)T[d]);
+  }
+};
+bool houseFrame(Level& lv, const Village& v, const std::string& key, HouseFrame& F) {
+  const json& built = lv.info.data.value("homeBuilt", json::object());
+  const json& sites = lv.info.data.value("homeSites", json::object());
+  if (!built.contains(key) || !sites.contains(key)) return false;
+  const json& b = built[key]; const json& st = sites[key];
+  F.ox = st[0].get<int>(); F.Y = st[1].get<int>(); F.oz = st[2].get<int>();
+  ivec3 door(b["door"][0].get<int>(), b["door"][1].get<int>(), b["door"][2].get<int>());
+  F.r = -1;
+  for (int r = 0; r < 4; r++) { auto [a, c] = vRot(r, 3, -1); if (F.ox + a == door.x && F.oz + c == door.z) F.r = r; }
+  if (F.r < 0) return false;
+  const std::string wood = v.style == "savanna" ? "acacia" : v.style == "taiga" || v.style == "snowy" ? "spruce" : v.style == "desert" ? "" : "oak";
+  F.planks = wood.empty() ? B("smooth_sandstone") : B((wood + "_planks").c_str()); if (!F.planks) F.planks = B("oak_planks");
+  F.log = wood.empty() ? B("sandstone") : B((wood + "_log").c_str()); if (!F.log) F.log = F.planks;
+  F.stone = v.style == "desert" ? B("sandstone") : B("cobblestone");
+  F.slab = B((wood.empty() ? std::string("sandstone_slab") : wood + "_slab").c_str()); if (!F.slab) F.slab = F.planks;
+  F.glass = B("glass_pane");
+  return true;
+}
+// someone's things in the way (a chest, a bed, a portal): the builders won't touch them
+bool houseAreaFree(const HouseFrame& F, int x0, int x1, int y0, int y1, int z0, int z1) {
+  const Registry& R = reg();
+  for (int lz = z0; lz <= z1; lz++) for (int lx = x0; lx <= x1; lx++) for (int ly = y0; ly <= y1; ly++) {
+    ivec3 p = F.at(lx, ly, lz); BlockId id = F.w.getBlock(p.x, p.y, p.z);
+    if (id && (R.tPortal[id] || F.w.blockEntity(p.x, p.y, p.z) || R.block(id).has("container") || R.tShape[id] == ShapeKind::Bed)) return false;
+  }
+  return true;
+}
+bool buildHouseUp(const HouseFrame& F, const std::string& up) {
+  const Registry& R = reg();
+  if (up == "room") {   // east of the house, x 6..12: the shared wall opened in the middle
+    if (!houseAreaFree(F, 7, 13, 0, 6, -1, 6)) return false;
+    for (int lz = -1; lz <= 6; lz++) for (int lx = 7; lx <= 13; lx++) {
+      ivec3 p = F.at(lx, 0, lz);
+      for (int yy = F.Y + 1; yy <= F.Y + 6; yy++) F.w.setBlock(p.x, yy, p.z, AIR);
+      if (lx <= 12 && lz >= 0 && lz <= 5) for (int yy = F.Y; yy > F.Y - 6 && (yy == F.Y || !R.tSolid[F.w.getBlock(p.x, yy, p.z)]); yy--) F.w.setBlock(p.x, yy, p.z, F.stone);
+    }
+    for (int ly = 1; ly <= 4; ly++) for (int lz = 0; lz <= 5; lz++) for (int lx = 7; lx <= 12; lx++) {
+      bool ex = lx == 12, ez = lz == 0 || lz == 5;
+      if (!ex && !ez) continue;
+      bool win = ly == 2 && ((ez && (lx == 9 || lx == 10)) || (ex && (lz == 2 || lz == 3)));
+      F.set(lx, ly, lz, (ex && ez) ? F.log : win ? F.glass : F.planks);
+    }
+    for (int ly = 1; ly <= 2; ly++) for (int lz = 2; lz <= 3; lz++) F.set(6, ly, lz, AIR);   // through from the bedroom
+    for (int lz = -1; lz <= 6; lz++) for (int lx = 7; lx <= 13; lx++) F.set(lx, 5, lz, F.slab);
+    F.torch(11, 3, 1, 0, -1);
+    return true;
+  }
+  if (up == "upstairs") {   // walls on the roof, a floor in the old roof, a new roof, a ladder up from by the bed
+    if (!houseAreaFree(F, -1, 7, 5, 10, -1, 6)) return false;
+    for (int lz = -1; lz <= 6; lz++) for (int lx = -1; lx <= 7; lx++) {
+      bool in = lx >= 0 && lx <= 6 && lz >= 0 && lz <= 5;
+      F.set(lx, 5, lz, in ? F.planks : AIR);
+      for (int ly = 6; ly <= 10; ly++) F.set(lx, ly, lz, AIR);
+    }
+    for (int ly = 6; ly <= 8; ly++) for (int lz = 0; lz <= 5; lz++) for (int lx = 0; lx <= 6; lx++) {
+      bool ex = lx == 0 || lx == 6, ez = lz == 0 || lz == 5;
+      if (!ex && !ez) continue;
+      bool win = ly == 7 && ((ez && (lx == 2 || lx == 4)) || (ex && (lz == 2 || lz == 3)));
+      F.set(lx, ly, lz, (ex && ez) ? F.log : win ? F.glass : F.planks);
+    }
+    for (int lz = -1; lz <= 6; lz++) for (int lx = -1; lx <= 7; lx++) F.set(lx, 9, lz, F.slab);
+    for (int ly = 1; ly <= 6; ly++) F.ladder(1, ly, 1, 0, -1);   // up through a hole by the front wall
+    F.torch(5, 7, 4, 0, 1);
+    return true;
+  }
+  if (up == "cellar") {   // under the floor: stone walls, a ladder down by the door
+    for (int ly = -4; ly <= -1; ly++) for (int lz = 0; lz <= 5; lz++) for (int lx = 0; lx <= 6; lx++) {
+      bool wall = lx == 0 || lx == 6 || lz == 0 || lz == 5 || ly == -4;
+      ivec3 p = F.at(lx, ly, lz);
+      if (F.w.blockEntity(p.x, p.y, p.z)) return false;
+      F.set(lx, ly, lz, wall ? B("stone_bricks") ? B("stone_bricks") : F.stone : AIR);
+    }
+    for (int ly = -3; ly <= 0; ly++) F.ladder(5, ly, 1, 0, -1);
+    F.torch(1, -2, 4, 0, 1); F.torch(5, -2, 4, 0, 1);
+    if (BlockId bar = B("barrel")) { F.set(1, -3, 1, bar, 1); F.set(1, -3, 2, bar, 1); F.set(2, -3, 1, bar, 1); }
+    return true;
+  }
+  if (up == "kitchen") {
+    if (!houseAreaFree(F, 8, 11, 1, 2, 4, 4)) return false;
+    F.set(8, 1, 4, B("furnace"), F.face(2)); F.set(9, 1, 4, B("smoker") ? B("smoker") : B("furnace"), F.face(2));
+    F.set(10, 1, 4, B("crafting_table")); F.set(11, 1, 4, B("barrel"), 1);
+    if (BlockId cau = B("cauldron")) F.set(11, 1, 3, cau);
+    return true;
+  }
+  if (up == "hall") {
+    if (!houseAreaFree(F, 9, 10, 1, 1, 1, 2)) return false;
+    BlockId table = B("oak_table"), chair = B("oak_chair");
+    if (table) { F.set(9, 1, 1, table); F.set(10, 1, 1, table); }
+    if (chair) { F.set(9, 1, 2, chair, F.face(0)); F.set(10, 1, 2, chair, F.face(0)); }
+    if (BlockId c = B("candle")) F.set(9, 2, 1, c);
+    return true;
+  }
+  if (up == "study") {
+    if (!houseAreaFree(F, 2, 5, 6, 7, 4, 4)) return false;
+    for (int lx = 2; lx <= 5; lx++) for (int ly = 6; ly <= 7; ly++) F.set(lx, ly, 4, B("bookshelf"));
+    if (BlockId lec = B("lectern")) F.set(4, 6, 2, lec, F.face(2));
+    if (BlockId lan = B("lantern")) F.set(2, 6, 2, lan);
+    if (BlockId rug = B("red_carpet")) for (int lx = 3; lx <= 5; lx++) F.set(lx, 6, 3, rug);
+    return true;
+  }
+  return false;
+}
+} // namespace
+
+// the elder's offers for your house in this village: [label, upgrade key] (bought ones and those still waiting on another left out)
+std::vector<std::pair<std::string, std::string>> houseUpOffers(Level& lv, Player& p, const Village& v) {
+  std::vector<std::pair<std::string, std::string>> out;
+  const json& built = lv.info.data.value("homeBuilt", json::object());
+  std::string key = v.id + ":" + p.name;
+  if (!homeOf(p, v.id) || !built.contains(key)) return out;
+  const json ups = built[key].value("ups", json::array());
+  auto has = [&](const std::string& k) { for (auto& u : ups) if (u == k) return true; return false; };
+  for (auto& U : HOUSE_UPS) if (!has(U.key) && (!*U.needs || has(U.needs)))
+    out.push_back({std::string(U.name) + " (" + std::to_string(U.price) + " gold coins)", U.key});
+  return out;
+}
+bool houseUpBuy(Level& lv, Player& p, const Village& v, const std::string& up, std::string& sayText) {
+  const HouseUp* U = nullptr; for (auto& h : HOUSE_UPS) if (up == h.key) U = &h;
+  if (!U) return false;
+  std::string key = v.id + ":" + p.name;
+  HouseFrame F{lv.world(REALM_MAIN)};
+  if (!houseFrame(lv, v, key, F)) { sayText = "Your house\xE2\x80\xA6 the builders can't make sense of it any more. Has it changed?"; return false; }
+  if (purseOf(p) < U->price) { sayText = "That will be " + std::to_string(U->price) + " gold coins. Come back when you have them."; return false; }
+  if (!buildHouseUp(F, up)) { sayText = "Something of yours is in the way there. Move it and ask again."; return false; }
+  payCoins(lv, p, U->price);
+  json& built = lv.info.data["homeBuilt"][key];
+  if (!built.contains("ups") || !built["ups"].is_array()) built["ups"] = json::array();
+  built["ups"].push_back(up);
+  sayText = U->done;
+  sfxUi(lv, p, "levelup");
+  return true;
+}
+
 bool homeAsk(Level& lv, Player& p, const Village& v, std::string& sayText) {
   if (const json* mine = homeOf(p, v.id)) {
     const json& d = (*mine)["door"];

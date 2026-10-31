@@ -98,6 +98,8 @@ void playerLifeTick(Level& lv, VillagerSystem& S, Player& p, double dt);   // we
 void eliteSlain(Level& lv, Creature& m);
 bool homeAsk(Level& lv, Player& p, const Village& v, std::string& say);   // the elder's offer (hearth.js)
 const json* homeOf(Player& p, const std::string& vid);
+std::vector<std::pair<std::string, std::string>> houseUpOffers(Level& lv, Player& p, const Village& v);   // the elder's house improvements: [label, key]
+bool houseUpBuy(Level& lv, Player& p, const Village& v, const std::string& up, std::string& sayText);
 bool raidStart(Level& lv, const Village& v, double st, bool sealed);
 const std::vector<VGate>& gatesOf(Level& lv, const Village& v);
 
