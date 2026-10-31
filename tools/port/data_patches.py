@@ -55,6 +55,15 @@ for n in new:
 (d / 'packmap.json').write_text(json.dumps(pm, separators=(',', ':'), sort_keys=False))
 print('patched: gate_barrier drawn; body tiles', new, 'count', tj['count'])
 
+# ---- the enderman's jaw: Minecraft's shrunk "headwear" box, hidden inside the head until it lifts its head in anger ----
+mj = json.loads((d / 'models.json').read_text())
+en = mj.get('enderman')
+if en and not any(pt['name'] == 'jaw' for pt in en['parts']):
+    i = next(k for k, pt in enumerate(en['parts']) if pt['name'] == 'head')
+    en['parts'].insert(i + 1, {"name": "jaw", "parent": "body", "at": [0, 12, 0], "box": [-3.5, 0.5, -3.5, 3.5, 7.5, 3.5],
+                               "tex": "ender_skin", "pivot": [0, 0.75, 0], "min": [-0.21875, 0.03125, -0.21875], "max": [0.21875, 0.46875, 0.21875]})
+    (d / 'models.json').write_text(json.dumps(mj, separators=(',', ':'), ensure_ascii=False))
+
 # ---- spawn eggs for every creature (tools/port/spawn_eggs.py) ----
 import importlib.util as _u
 _s = _u.spec_from_file_location('spawn_eggs', pathlib.Path(__file__).with_name('spawn_eggs.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)

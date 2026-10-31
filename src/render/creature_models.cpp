@@ -93,6 +93,15 @@ static const std::unordered_map<std::string, PMSpec>& packMobs() {
   { PMSpec s; s.tex = {"entity/creeper/creeper"}; s.hide = {"cracks", "slits", "jaw", "crown"}; s.hidePrefix = {"frond", "thorn"};
     s.parts = {P("head", {0, 0, 8, 8, 8}), P("body", {16, 16, 8, 12, 4})}; for (const char* n : {"FR", "FL", "BR", "BL"}) s.parts.push_back(P(std::string("leg") + n, {0, 16, 4, 6, 4}));
     M["fuseling"] = s; }
+  { PMSpec s; s.tex = {"entity/enderman/enderman", "entity/enderman"};   // Minecraft's 64x32 enderman; the jaw is its headwear box
+    s.parts = {P("head", {0, 0, 8, 8, 8}), P("jaw", {0, 16, 8, 8, 8}), P("body", {32, 16, 8, 12, 4}),
+               P("armR", {56, 0, 2, 30, 2}, up), P("foreR", {56, 0, 2, 30, 2}, lo), P("armL", {56, 0, 2, 30, 2}, upM), P("foreL", {56, 0, 2, 30, 2}, loM),
+               P("legR", {56, 0, 2, 30, 2}, up), P("shinR", {56, 0, 2, 30, 2}, lo), P("legL", {56, 0, 2, 30, 2}, upM), P("shinL", {56, 0, 2, 30, 2}, loM)};
+    M["enderman"] = s; }
+  { PMSpec s; s.tex = {"entity/ghast/ghast", "entity/ghast"}; s.parts = {P("body", {0, 0, 16, 16, 16})};
+    for (int i = 0; i < 9; i++) s.parts.push_back(P("tent" + std::to_string(i), {0, 0, 2, 9, 2}));
+    M["ghast"] = s;
+    s.tex = {"entity/ghast/ghast_shooting", "entity/ghast_fire", "entity/ghast/ghast", "entity/ghast"}; M["ghast#shooting"] = s; }   // the open-mouthed face while it fires
   { PMSpec s; s.tex = {"entity/spider/spider"}; s.eyes = "entity/spider_eyes"; s.parts = pmSpider(); M["spider"] = s; }
   { PMSpec s; s.tex = {"entity/spider/cave_spider"}; s.eyes = "entity/spider_eyes"; s.parts = pmSpider(); M["cave_spider"] = s; }
   { PMSpec s; s.tex = {"entity/slime/slime"}; PMo sf; sf.slimeFace = true; s.parts = {P("cube", {0, 0, 8, 8, 8}), P("core", {0, 16, 6, 6, 6}, sf)}; M["slime"] = s; }
@@ -159,10 +168,10 @@ static std::array<FaceSpec, 6> pmFaces(PM box, const PMo& o) {
   return out;
 }
 // The faces of every part the pack has a picture for; hidden = parts to put away.
-static bool packSkin(const RigModel& M, std::vector<std::array<Pic, 6>>& faces, std::vector<u8>& hidden, std::string& used) {
+static bool packSkin(const RigModel& M, const std::string& key, std::vector<std::array<Pic, 6>>& faces, std::vector<u8>& hidden, std::string& used) {
   PackFS* pk = activePack();
   if (!pk || !pk->hasTextures()) return false;
-  auto it = packMobs().find(M.key);
+  auto it = packMobs().find(key);
   if (it == packMobs().end()) return false;
   const PMSpec& spec = it->second;
   Img img; std::string rel;
@@ -280,13 +289,14 @@ const CreatureModelGL* creatureModel(const std::string& key) {
   if (stamp != builtFor) { cache().clear(); builtFor = stamp; }
   auto it = cache().find(key);
   if (it != cache().end()) return it->second.get();
-  const RigModel* M = rigModel(key);
+  const RigModel* M = rigModel(key.substr(0, key.find('#')));   // "<model>#<state>": the same rig in another pack picture (a ghast firing)
   if (!M) return nullptr;
+  if (key.find('#') != std::string::npos && !packMobs().count(key)) return nullptr;
   auto out = std::make_unique<CreatureModelGL>();
   out->key = key;
   std::vector<std::array<Pic, 6>> faces(M->parts.size());
   std::vector<u8> hidden(M->parts.size(), 0);
-  bool pack = packSkin(*M, faces, hidden, out->packSkin);
+  bool pack = packSkin(*M, key, faces, hidden, out->packSkin);
   for (size_t i = 0; i < M->parts.size(); i++) out->parts.push_back(std::make_unique<CreaturePartMesh>());
   for (size_t i = 0; i < M->parts.size(); i++) {
     const RigPart& p = M->parts[i];

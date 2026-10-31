@@ -57,7 +57,7 @@ const RigModel* rigModel(const std::string& key) {
 struct Pose {
   const RigModel& M;
   std::vector<vec3> P; std::vector<u8> has;
-  float lift = 0, pitch = 0, roll = 0, headShift = 0;
+  float lift = 0, pitch = 0, roll = 0, headShift = 0, headLift = 0;   // headLift: the head raised off its jaw (an angry enderman)
   vec3 scratch{0};
   explicit Pose(const RigModel& m) : M(m), P(m.parts.size(), vec3(0)), has(m.parts.size(), 0) {}
   bool any(const char* n) const { int i = M.find(n); return i >= 0 && has[i]; }
@@ -558,6 +558,11 @@ void rigPose(Creature& m, const RigModel& M, const mat4& base) {
   else if (k == "ghast" || k == "aerwhale" || k == "zephyr" || k == "aechor") animRealm(m, M, P);
   if (M.pitch0) P.pitch += M.pitch0;
   if (!M.post.empty()) applyPost(m, M, P);
+  // Minecraft's enderman: in anger the head lifts off its jaw and the mouth gapes; the jaw turns with the head
+  if (int hi = M.find("head"), ji = M.find("jaw"); M.key == "enderman" && hi >= 0 && ji >= 0) {
+    if (P.has[hi]) { P.has[ji] = 1; P.P[ji] = P.P[hi]; }
+    if (m.angryT > 0) P.headLift = 5.f / 16;
+  }
   if (!k.empty()) rigLife(m, M, P);
   mat4 root = base;
   if (P.lift) root = glm::translate(root, vec3(0, P.lift, 0));
@@ -572,7 +577,7 @@ void rigPose(Creature& m, const RigModel& M, const mat4& base) {
     if (m.lost.count(part.name)) continue;
     const mat4* parent = part.parent >= 0 ? &m.mats[part.parent] : &root;
     if ((*parent)[3][3] == 0) continue;
-    mat4 mm = glm::translate(*parent, part.pivot - vec3(0, 0, part.name == "head" && P.headShift ? P.headShift : 0));
+    mat4 mm = glm::translate(*parent, part.pivot + (part.name == "head" ? vec3(0, P.headLift, -P.headShift) : vec3(0)));
     vec3 r = P.has[i] ? P.P[i] : vec3(0);
     float rx = part.rest.x + r.x, ry = part.rest.y + r.y, rz = part.rest.z + r.z;
     if (k.empty()) { rx += part.swing * sw + part.look * clampv(m.headPitch, -0.6f, 0.6f); }

@@ -20,6 +20,13 @@
 
 namespace dq {
 
+// the model to draw: a "#state" variant while the creature shows another face (a ghast opening its mouth to fire)
+static const CreatureModelGL* modelFor(const Creature& m) {
+  if (m.type == "ghast") { auto it = m.data.find("chargeT"); if (it != m.data.end() && it->is_number() && it->get<float>() > 0) if (auto* v = creatureModel(m.modelKey() + "#shooting")) return v; }
+  return creatureModel(m.modelKey());
+}
+
+
 static constexpr float RPX = 1.f / 16;
 
 // ------------------------------------------------------------------ the shader
@@ -234,7 +241,7 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
       if (m->T->explicitSkin || (!m->T->skin.empty() && !reg().models.contains(m->modelKey()))) { drawSkinMob(*m, ip, w, f, skinBegun); continue; }
       if (!f.cam.frustum.sphere(rel + vec3(0, m->h * 0.5f, 0), std::max(m->h, m->w * 2) + 1)) continue;
       const RigModel* RM = rigModel(m->modelKey());
-      const CreatureModelGL* CM = creatureModel(m->modelKey());
+      const CreatureModelGL* CM = modelFor(*m);
       if (!RM || !CM) continue;
       // pose at the interpolated moment
       float sy = m->yaw, sa = m->age; m->yaw = ip.yaw; m->age = ip.age;
@@ -363,7 +370,7 @@ void CreatureLayer::drawTranslucent(GameSession& s, const FrameCtx& f) {
     vec3 rel = f.cam.rel(glm::dvec3(ip.pos));
     if (glm::dot(rel, rel) > 64.f * 64.f || !f.cam.frustum.sphere(rel + vec3(0, m->h * 0.5f, 0), std::max(m->h, m->w * 2) + 1)) continue;
     const RigModel* RM = rigModel(m->modelKey());
-    const CreatureModelGL* CM = creatureModel(m->modelKey());
+    const CreatureModelGL* CM = modelFor(*m);
     if (!RM || !CM || CM->parts.size() != m->mats.size()) continue;
     VoxelLight L = lightAt(w, ip.pos + vec3(0, std::min(1.5f, m->h * 0.6f), 0));
     vec4 tint = m->hurtTime > 0 || m->deathTime > 0 ? vec4(1, 0.15f, 0.1f, 0.45f) : vec4(0);
