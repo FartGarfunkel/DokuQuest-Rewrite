@@ -224,6 +224,22 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd, bool prima
   if (e.cloud > 0 && !e.underwater) { float s = smoothstepf(0.f, 0.75f, e.cloud); fr = vec2(fr.x * (1 - s), lerpf(fr.y, 14, s)); }
   if (e.mist > 0.01f && !e.underwater) { float end = 24 + (fr.y - 24) * std::pow(1 - std::min(1.f, e.mist), 2.f); fr = vec2(std::min(fr.x, end * 0.12f), std::min(fr.y, end)); }
   if (hwFog > 0.01f && !e.underwater) fr = vec2(fr.x * (1 - 0.4f * hwFog), std::max(fr.x * (1 - 0.4f * hwFog) + 24, fr.y * (1 - 0.3f * hwFog)));
+  // the old fog: in dread, and on nights once the boundary has thinned, the land closes in the way it did in the earliest
+  // days, a thick wall a few chunks out, with the far lands only faint beyond it (layered: chunk shaders, uNearFog)
+  float oldFog = 0;
+  {
+    const Entity* me = nullptr; float bd = 8;
+    for (auto& u : lv.entities()) if (u && u->isPlayer() && u->realm == realm) { float dd = glm::distance(vec3(f.cam.pos), u->pos); if (dd < bd) { bd = dd; me = u.get(); } }
+    auto jf = [](const json& j, const char* k) { return j.contains(k) && j[k].is_number() ? j[k].get<float>() : 0.f; };
+    if (me) oldFog = std::min(1.f, std::max(jf(me->data, "dreadT"), jf(me->data, "dreadAll")) / 0.6f);
+    if (realm == REALM_MAIN && d == DIM_OVERWORLD) {
+      const int st = riftStability(lv);
+      if (st < 75) oldFog = std::max(oldFog, smoothstepf(0.55f, 0.25f, e.day) * (75 - st) / 67.f * 0.85f);
+    }
+    static float eased = 0;
+    if (primary) { eased += (oldFog - eased) * 0.02f; oldFog = eased; }
+  }
+  f.nearFog = oldFog > 0.01f && !e.underwater ? vec3(lerpf(fr.y, 8, oldFog), lerpf(fr.y, 46, oldFog), 0.92f * oldFog) : vec3(0);
   e.fogRange = fr;
   if (primary) { env = e; g_env = e; }
   f.sky = std::make_shared<const SkyEnv>(e);

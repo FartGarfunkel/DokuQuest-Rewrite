@@ -20,6 +20,7 @@ uniform vec3 uSkyColor;
 uniform vec3 uFogColor;
 uniform float uFogStart;
 uniform float uFogEnd;
+uniform vec3 uNearFog;   // the old fog: start, end, how thick (0 = none); the far lands stay faint beyond it
 uniform float uBrightness;    // settings.brightness
 uniform float uMicroDist;     // micro-voxel relief distance
 uniform float uWind;          // wind strength (original env.wind: 0.45 + strength * 0.9, 0 when waving is off)
@@ -89,6 +90,7 @@ vec3 lighting(float sky, float block, bool emissive) {
 }
 vec3 applyFog(vec3 c, float dist, vec3 dir) {
   float f = smoothstep(uFogStart, uFogEnd, dist);
+  if (uNearFog.z > 0.0) f = max(f, smoothstep(uNearFog.x, uNearFog.y, dist) * uNearFog.z);
   return mix(c, uFogColor, f);
 }
 

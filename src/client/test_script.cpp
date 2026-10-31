@@ -302,6 +302,10 @@ void runStep(App& a, const json& st) {
     else if (n == "board" && p) a.pushScreen(makeQuestBoardScreen(ivec3(ifloor(p->pos.x), ifloor(p->pos.y), ifloor(p->pos.z))));   // the village's quest board (stand in the village)
     else if (n == "path") a.pushScreen(makePathScreen("knight"));
     else if (auto sc = makeScreenByName(a, n)) a.pushScreen(std::move(sc));
+  } else if (op == "mobdata" && s && p) {   // set data[key] = value on the nearest creature of a type
+    std::string t = st.value("entity", ""); Entity* best = nullptr; float bd = st.value("near", 24.f);
+    for (auto& e : s->level->entities()) if (e && !e->removed && e.get() != p && e->type == t && glm::distance(e->pos, p->pos) < bd) { bd = glm::distance(e->pos, p->pos); best = e.get(); }
+    if (best) best->data[st.value("key", "")] = st.contains("value") ? st["value"] : json(); else result(false, "mobdata: no " + t + " near");
   } else if (op == "data" && p) {   // set Player::data[key] = value (hideGear, cape ...)
     p->data[st.value("key", "")] = st.contains("value") ? st["value"] : json();
   } else if (op == "wear" && p) {   // put an item on: armour slot, or cape/back/hook

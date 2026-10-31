@@ -14,6 +14,7 @@ void FrameCtx::apply(Shader& s) const {
   s.set("uFogColor", fogColor);
   s.set("uFogStart", fogStart);
   s.set("uFogEnd", fogEnd);
+  s.set("uNearFog", nearFog);
   s.set("uBrightness", settings ? settings->brightness : 0.35f);
   s.set("uMicroDist", settings ? (float)settings->microVoxelDist : 48.f);
   s.set("uWind", wind);

@@ -4,6 +4,7 @@
 // pulsing at the edge of sight (deepdark.js darkTick), the rift's dread (riftarc.js .fx-dread), the story's line in
 // the quest track (riftarc.js questHud) and the dragon eggs' countdowns (batchb.js egg tags).
 #include "client/session.h"
+#include <random>
 #include "client/app.h"
 #include "render/creature_draw.h"
 #include "render/creature_models.h"
@@ -93,9 +94,23 @@ public:
     M.pos = ip; M.yaw = e.yaw; M.age = e.age; M.walk = jf(e.data, "walk"); M.walkAmt = leaving > 0 ? 1 : 0;
     float pitch = std::atan2(p.pos.y + 1.62f - (ip.y + 1.6f), std::hypot(p.pos.x - ip.x, p.pos.z - ip.z));
     M.headPitch = leaving > 0 ? 0 : clampv(pitch, -0.5f, 0.5f);
+    M.headYawRel = 0;
+    // as the boundary thins he glitches: the head twitches, the figure jitters and skips frames, now and then a pose
+    // held a beat too long (0 until the rift has a few fragments, full near the end)
+    const float g = boar ? 0.f : clampv((75 - riftStability(*s.level)) / 67.f, 0.f, 1.f);
+    static std::minstd_rand gr(77);
+    auto gu = [&] { return (float)(gr() % 10000) / 10000.f; };
+    static float twitchT = 0, twitchYaw = 0, twitchPitch = 0;
+    vec3 jitter(0);
+    if (g > 0) {
+      if (twitchT > 0) twitchT -= 1.f / 60; else if (gu() < g * 0.03f) { twitchT = 0.08f + gu() * 0.25f; twitchYaw = (gu() - 0.5f) * 1.6f * g; twitchPitch = (gu() - 0.5f) * 0.9f * g; }
+      if (twitchT > 0) { M.headYawRel = twitchYaw; M.headPitch += twitchPitch; }
+      if (gu() < g * 0.12f) jitter = vec3(gu() - 0.5f, (gu() - 0.5f) * 0.3f, gu() - 0.5f) * (0.18f * g);
+      if (gu() < g * 0.05f) return;   // a dropped frame
+    }
     rigPose(M, *RM, creatureBase(M, true));
     VoxelLight L = lightAt(w, ip + vec3(0, 1.2f, 0));
-    mat4 T0 = glm::translate(mat4(1), rel);
+    mat4 T0 = glm::translate(mat4(1), rel + jitter);
     for (size_t i = 0; i < RM->parts.size(); i++) {
       const RigPart& part = RM->parts[i];
       const CreaturePartMesh& pm = *CM->parts[i];

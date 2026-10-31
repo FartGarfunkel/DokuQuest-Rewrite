@@ -1,4 +1,5 @@
 // sim/rpg.cpp — game/rpg.js: perks, Exploring and Alchemy experience, Realm Fragments, the journal; paths.js lookups.
+#include "sim/endstory.h"
 #include "sim/rpg.h"
 #include "sim/magic.h"
 #include "sim/magic_data.h"
@@ -163,7 +164,7 @@ Story storyOf(Level& lv, Player& p) {
   const json& E = sub(lv.info.data, "end");
   const json& S = sub(st, "story");
   const json& dims = sub(sub(st, "explore"), "dims");
-  const int NEED = 4;
+  const int NEED = RIFT_NEED;
   int frags = std::min(NEED, R.value("frags", 0)), stage = R.value("stage", 0);
   bool sealed = sealedOf(R);
   int lairs = 0;
@@ -175,10 +176,10 @@ Story storyOf(Level& lv, Player& p) {
   ch("A Village at the Edge", "Find a village and walk into its square.", "Your journey starts beside one. Talk to the villagers, trade with them, and look at the board by the well.", keysOf(st, "vseen") > 0);
   ch("Iron and Fire", "Make yourself an iron pickaxe or better, and some armour.", "Iron ore is common below about y 60. Smelt it in a furnace. Copper and tin make bronze on the way.", S.value("iron", 0) != 0);
   ch("The Tear in the Square", "A while after you arrive, something tears open in the village square. Speak to the elder.", "Keep playing: it opens on its own a quarter of an hour in.", stage >= 1);
-  ch("The Keepers", "Win four Realm Fragments (" + std::to_string(frags) + " of " + std::to_string(NEED) + ").", "Every dungeon keeper carries one (the quest board points to the nearest dungeon). So does the first of each great foe: the Cinder Golem (an Ember Effigy at night), the Hollow Archmage and the Minotaur in their towers and mazes, each of the dragons, the Warden, the Ender Dragon.", frags >= NEED || stage >= 3, false, false, frags / (float)NEED);
+  ch("The Keepers", "Win ten Realm Fragments (" + std::to_string(frags) + " of " + std::to_string(NEED) + ").", "Every dungeon keeper carries one (the quest board points to the nearest dungeon). So does the first of each great foe: the Cinder Golem (an Ember Effigy at night), the Hollow Archmage and the Minotaur in their towers and mazes, each of the dragons, the Warden, the Ender Dragon.", frags >= NEED || stage >= 3, false, false, frags / (float)NEED);
   ch("Fire Below", "Reach the Ember Depths.", "Beat the Cinder Golem for its core, make an Ember Igniter, and light an obsidian frame (2 wide, 3 tall inside). Or dig down far enough to break through.", dims.contains("1"), true);
   ch("Above the Clouds", "Reach the Skylands.", "Light a glowstone frame with water, or fly up on a mount. Watch for the storm dragon.", dims.contains("2"), true);
-  ch("The Gateway", "Bring four fragments to the rift and use it.", "Stand by the tear in the square with the fragments and use it.", stage >= 3);
+  ch("The Gateway", "Bring ten fragments to the rift and use it.", "Stand by the tear in the square with the fragments and use it.", stage >= 3);
   ch("His Realm", "Step through the gateway.", "Go together and go ready: good armour, food, potions. In co-op, everyone is drawn in.", st.value("realmSeen", false) || sealed);
   ch("The Seal", "Find Herobrine at the end of his halls and defeat him.", "Five halls. His bolts hurt; he steps through space; below half health his stare stops time.", sealed);
   ch("The End Beneath", "Slay the Ender Dragon.", "Eyes of ender (an ender pearl and cinder powder) fly toward a stronghold. Or break through the void crust at the very bottom of the Depths.", E.value("slain", 0) > 0, false, true);

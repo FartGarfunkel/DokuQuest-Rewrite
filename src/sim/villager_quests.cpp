@@ -422,9 +422,9 @@ static void say(Level& lv, Player& p, Talk& t, std::string text) {
     text = L[(int)std::floor(rnd() * 4)]; sfxUi(lv, p, "rift_static");
   }
   // rpg.js: the elder tells of every kind of keeper now
-  const std::string A = "Find the dungeons, defeat their keepers, bring their Realm Fragments to the rift. Four of them.";
+  const std::string A = "Find the dungeons, defeat their keepers, bring their Realm Fragments to the rift. Ten of them.";
   if (text.rfind("It opened when you came.", 0) == 0) if (size_t i = text.find(A); i != std::string::npos)
-    text.replace(i, A.size(), "Find the dungeons and defeat their keepers. The great beasts of the world carry them too: the golem of cinders, the archmage in his tower, the beast of the maze, the dragons. Bring four Realm Fragments to the rift.");
+    text.replace(i, A.size(), "Find the dungeons and defeat their keepers. The great beasts of the world carry them too: the golem of cinders, the archmage in his tower, the beast of the maze, the dragons. Bring ten Realm Fragments to the rift.");
   t.text = fill(text, lv, t, p);
   t.voiceLines++;
   t.spoken = t.text; t.spokenVol = 0.5f; t.spokenN++;   // babble(sfx, text, voice, { rate: 26 }): the talk screen plays it as the words type out
@@ -626,7 +626,7 @@ void talkChoose(Level& lv, Player& p, Talk& t, int i) {
     int n = std::min(4, R.value("frags", 0));
     std::string lines = R.value("sealed", 0) ? "You did it. The square is quiet, the nights are only nights again. We will sing of this for a hundred winters."
                       : R.value("stage", 0) >= 3 ? "The gateway stands open. He waits beyond it, at the end of his halls. Go together, go ready, and end this."
-                      : "It opened when you came. Something old is pressing on our world from the other side. The old tales say the keepers of the deep places hold the keys of time. Find the dungeons, defeat their keepers, bring their Realm Fragments to the rift. Four of them. " + (n ? "You have found " + std::to_string(n) + " so far." : std::string());
+                      : "It opened when you came. Something old is pressing on our world from the other side. The old tales say the keepers of the deep places hold the keys of time. Find the dungeons, defeat their keepers, bring their Realm Fragments to the rift. Ten of them. " + (n ? "You have found " + std::to_string(n) + " so far." : std::string());
     say(lv, p, t, lines);
     t.opts.erase(t.opts.begin() + i);
     return;

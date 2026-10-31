@@ -190,6 +190,10 @@ static void drawSkinMob(const Creature& m, const Interp& ip, World& w, const Fra
     for (const std::string& g : m.T->skinGlowParts) { if (g == "head" && i == CP_HEAD) return true; if (g == "body" && i == CP_BODY) return true; }
     return false; };
   vec4 tint = m.hurtTime > 0 || m.deathTime > 0 ? vec4(1, 0.15f, 0.1f, 0.45f) : (m.T->hasTint ? m.T->tint : vec4(0));
+  if (tint.a == 0 && m.data.is_object() && m.data.value("corrupt", false)) {   // corrupted (sim/rift.cpp): his purple flicker
+    float fl = 0.5f + 0.5f * std::sin(m.age * 23.f + (float)(m.id % 97));
+    tint = vec4(0.42f, 0.08f, 0.62f, fl > 0.92f ? 0.6f : 0.28f + 0.12f * fl);
+  }
   // draw it through the voxelRenderer pipeline exactly like villagers and players do — NOT CreatureDraw's
   // creature.glsl batch: that shader never gets uDynN/uDyn set (only world_renderer does), so under a lantern
   // the skin mob rendered black-on-black and looked invisible at night.
@@ -255,6 +259,9 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
       if (m->hurtTime > 0 || m->deathTime > 0) tint = vec4(1, 0.15f, 0.1f, 0.45f);
       if (m->type == "cinder_golem" && m->state == "tele") tint = vec4(1, 0.55f, 0.15f, 0.25f + 0.25f * std::sin(m->age * 30));
       if (m->fuse > 0 && std::sin(m->fuse * 18) > 0.2f) tint = vec4(1, 1, 1, 0.55f);
+      // corrupted (sim/rift.cpp): his purple flicker over it, and white eyes
+      const bool corrupt = m->data.is_object() && m->data.value("corrupt", false);
+      if (corrupt && tint.a == 0) { float fl = 0.5f + 0.5f * std::sin(m->age * 23.f + (float)(m->id % 97)); tint = vec4(0.42f, 0.08f, 0.62f, fl > 0.92f ? 0.6f : 0.28f + 0.12f * fl); }
       vec4 wool = m->T->woolly && !m->color.empty() && m->color != "white" ? dyeTint(m->color) : vec4(0);
       mat4 T0 = glm::translate(mat4(1), rel);
       for (size_t i = 0; i < RM->parts.size(); i++) {
@@ -264,6 +271,18 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
         mat4 model = T0 * m->mats[i] * pm.local;
         if (p.glow) { D.draw(pm.gl, model, {1, 1}, m->hurtTime > 0 ? tint : vec4(0)); continue; }
         D.draw(pm.gl, model, L, p.wool && wool.a > 0 && tint.a == 0 ? wool : tint);
+      }
+      if (corrupt) {
+        int hi = RM->find("head");
+        const VoxelModel& eye = itemModel("white_concrete");
+        if (hi >= 0 && eye.ready() && rigPartPosed(*m, hi) && rigPartShown(*m, RM->parts[hi]) && !m->lost.count("head")) {
+          const RigPart& hp = RM->parts[hi];
+          vec3 ctr = (hp.min + hp.max) * 0.5f, ext = glm::max(hp.max - hp.min, vec3(0.05f));
+          for (float sx : {-1.f, 1.f}) {
+            mat4 em = glm::translate(T0 * m->mats[hi], vec3(ctr.x + sx * ext.x * 0.22f, ctr.y + ext.y * 0.08f, hp.min.z - 0.004f));
+            D.draw(eye.gl, glm::scale(em, vec3(ext.x * 0.16f, ext.y * 0.12f, 0.01f)) * eye.matrix(), VoxelLight{1, 1}, vec4(1, 1, 1, 1));
+          }
+        }
       }
       // what it holds: the bow out in the left hand while aiming, else the right
       std::string held = m->heldItem;

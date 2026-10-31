@@ -2,7 +2,7 @@
 // of it). Phase 1: he watches (sim/haunt.cpp). Phase 2: a while after the first village is found a rift tears open in
 // its square, a window onto his realm. Phase 3: the keepers of the deep places drop Realm Fragments; every one thins
 // the boundary, and he grows bolder (doorways, little rifts, things coming through, time standing still). Phase 4:
-// four fragments given, the tear steadies into a gateway into his realm (REALM_HIS, gen/realms.cpp RealmGen): hall
+// ten fragments given, the tear steadies into a gateway into his realm (REALM_HIS, gen/realms.cpp RealmGen): hall
 // after hall of rift stone, corrupted creatures, and at the end, him. Beaten, the rift is sealed.
 // The tears are virtual portals (sim/portals.h setVirtual): true windows, walked through when they are gateways.
 // The villagers workstream talks to this through sim/endstory.h (riftAsk ...) and the villageEnter / villageRep events.
@@ -59,7 +59,7 @@ static void syncTears(Level& lv, EndStory& S) {
     // (0.9.0.24) sealed, the gateway stays: his realm can be visited again, quiet
     VirtualPortal v; v.realm = REALM_MAIN; v.bottom = glm::dvec3(jvec(R["at"])); v.yaw = (float)num(R, "yaw");
     bool gate = stage >= 3;
-    v.w = gate ? 2.6f : 1 + frags * 0.22f; v.h = gate ? 4.2f : 2.6f + frags * 0.2f;
+    v.w = gate ? 2.6f : 1 + frags * 0.88f / RIFT_NEED; v.h = gate ? 4.2f : 2.6f + frags * 0.8f / RIFT_NEED;
     v.destRealm = REALM_HIS; v.destBottom = glm::dvec3(exitAt); v.destYaw = PI / 2; v.walk = gate; v.torn = true;
     want.push_back({"rift_square", v});
     // and its other side, in his realm
@@ -328,6 +328,39 @@ static void riftSeal(Level& lv, Creature& boss) {
 }
 
 // ------------------------------------------------------------------ the story moving on (host)
+// ---- the corruption: once the boundary thins, now and then a creature of the Overworld comes out of the dark wrong (the
+// creature layer draws it with his purple flicker and white eyes). A corrupted monster is half again as hard to kill; a
+// corrupted animal stands and stares at you, and is gone in a puff when you come near. Each creature is judged once.
+static void corruptTick(Level& lv) {
+  const json& R = riftRec(lv);
+  const int st = riftStability(lv);
+  const float k = !truthy(R, "sealed") && st < 75 ? (75 - st) / 67.f : 0.f;
+  auto ps = livePlayers(lv, REALM_MAIN);
+  for (auto& u : lv.entities()) {
+    auto* c = dynamic_cast<Creature*>(u.get());
+    if (!c || c->removed || !c->alive() || c->realm != REALM_MAIN || !c->T) continue;
+    if (!c->data.contains("rc")) {
+      c->data["rc"] = 1;
+      const CreatureType& T = *c->T;
+      const bool eligible = !T.boss && !T.npc && !T.special && !T.spirit && !c->tamed && c->owner.empty() && c->type.rfind("rift_", 0) != 0 && c->type.find("golem") == std::string::npos;
+      if (k > 0 && eligible && rnd() < k * 0.07f) {
+        c->data["corrupt"] = true;
+        if (T.hostile) { c->maxHp *= 1.5f; c->hp = c->maxHp; }
+      }
+      continue;
+    }
+    if (!c->data.value("corrupt", false)) continue;
+    if (truthy(R, "sealed")) { c->data.erase("corrupt"); c->calm = false; continue; }   // sealed: it passes off them
+    if (c->T->hostile) continue;
+    Player* near = nullptr; float bd = 40;
+    for (Player* q : ps) { float d = glm::distance(q->pos, c->pos); if (d < bd) { bd = d; near = q; } }
+    if (!near) { c->calm = false; continue; }
+    c->calm = true; c->vel.x = c->vel.z = 0;
+    c->yaw = headingTo(c->pos, near->pos.x, near->pos.z);
+    if (bd < 5) { lv.fx->particles("poof", c->pos, 1); lv.fx->sound("rift_whisper", c->pos + vec3(0, 1, 0), 10); c->removed = true; }
+  }
+}
+
 void riftTick(Level& lv, EndStory& S, double dt) {
   json& R = riftRec(lv);
   // the Dread and time standing still
@@ -357,7 +390,7 @@ void riftTick(Level& lv, EndStory& S, double dt) {
     if (jint(R, "stage") >= 1 && R.contains("at") && (humT -= dt) <= 0) {
       humT = 2.4;
       const int stage = jint(R, "stage"), frags = std::min(RIFT_NEED, jint(R, "frags"));
-      const float h = stage >= 3 ? 4.2f : 2.6f + frags * 0.2f;
+      const float h = stage >= 3 ? 4.2f : 2.6f + frags * 0.8f / RIFT_NEED;
       const vec3 sq = vec3(glm::dvec3(jvec(R["at"]))) + vec3(0, h / 2, 0), ex(3.5f, realmFloor() + 1 + 2.1f, 0.5f);
       bool nearSq = false, nearEx = false;
       for (Player* q : livePlayers(lv)) {
@@ -370,6 +403,7 @@ void riftTick(Level& lv, EndStory& S, double dt) {
   }
   if ((S.riftT -= (float)dt) > 0) return;
   S.riftT = 1;
+  if (!lv.isRemote()) corruptTick(lv);
   auto all = livePlayers(lv);
   // ---- the catalyst: a while after the first village is found, the rift opens in its square ----
   if (!jint(R, "stage") && playTime(lv) > 900) {
@@ -650,7 +684,7 @@ std::string riftElderLine(Level& lv) {
   int n = std::min(RIFT_NEED, jint(R, "frags"));
   if (truthy(R, "sealed")) return "You did it. The square is quiet, the nights are only nights again. We will sing of this for a hundred winters.";
   if (jint(R, "stage") >= 3) return "The gateway stands open. He waits beyond it, at the end of his halls. Go together, go ready, and end this.";
-  return std::string("It opened when you came. Something old is pressing on our world from the other side. The old tales say the keepers of the deep places hold the keys of time. Find the dungeons, defeat their keepers, bring their Realm Fragments to the rift. Four of them. ") +
+  return std::string("It opened when you came. Something old is pressing on our world from the other side. The old tales say the keepers of the deep places hold the keys of time. Find the dungeons, defeat their keepers, bring their Realm Fragments to the rift. Ten of them. ") +
          (n ? "You have found " + std::to_string(n) + " so far." : "");
 }
 std::string riftCorruptSay(Level& lv, const std::string& job) {

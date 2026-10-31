@@ -24,10 +24,10 @@ class Creature;
 json& riftRec(Level& lv);
 int riftStability(Level& lv);          // 100 (quiet) .. 5 (paper thin); the Overworld's sky goes wrong under 15
 int riftTier(Level& lv);               // -1 nothing yet · 0 watched · 1 opened · 2 thinning · 3 paper-thin · 4 gateway · 5 sealed
-constexpr int RIFT_NEED = 4;
+constexpr int RIFT_NEED = 10;   // the Realm Fragments the rift wants (the original wanted four; ours burns slower)
 // Opens the rift in a village square (the catalyst; /rift open). at = global position of the tear's foot.
 void riftOpenAt(Level& lv, const std::string& villageId, const std::string& villageName, vec3 at, float yaw = 0);
-void riftOpenGate(Level& lv);           // the four fragments given: the tear steadies into a gateway (stage 3)
+void riftOpenGate(Level& lv);           // the fragments given: the tear steadies into a gateway (stage 3)
 void riftTravel(Level& lv, Player& p, bool toRealm);   // through the gateway / back out of his realm
 
 // ---- villagers (riftlore.js): what the folk make of it. Pure data + the asker's stats; the villagers workstream

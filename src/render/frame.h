@@ -18,6 +18,7 @@ struct FrameCtx {
   vec3 sunDir{0, 1, 0};
   vec3 skyColor{0.5f, 0.7f, 1.f}, fogColor{0.7f, 0.8f, 1.f};
   float fogStart = 64, fogEnd = 128;
+  vec3 nearFog{0};           // the old fog, layered in front of the far one: x start, y end, z how thick (0 = none)
   float wind = 0.3f;
   float sea = 0;             // storm swell on open water (weather), 0..1
   float minLight = 0.05f;    // light floor (original env.minLight: 0.025 + brightness * 0.07, more in the Depths/End)

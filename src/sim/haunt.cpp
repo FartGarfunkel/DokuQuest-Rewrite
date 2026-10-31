@@ -286,6 +286,9 @@ static bool stripTree(Level& lv, Player& p) {
   World& w = lv.world(p.realm);
   int dim = dimHere(p) < 0 ? DIM_OVERWORLD : dimHere(p), base = dimBase(dim);
   static const char* builtK[] = {"plank", "brick", "glass", "cobble", "wool", "door", "torch", "chest"};
+  // once the boundary is thin, a whole stand of them at once
+  const int want = riftStability(lv) < 60 ? 3 + (int)(rnd() * 4) : 1;
+  int stripped = 0;
   for (int tries = 0; tries < 12; tries++) {
     ivec3 s; if (!unseenSpot(lv, p, 30, 60, s)) return false;
     for (int dz = -6; dz <= 6; dz++) for (int dx = -6; dx <= 6; dx++) {
@@ -305,8 +308,38 @@ static bool stripTree(Level& lv, Player& p) {
       if (built) continue;
       int n = 0;
       for (int yy = y - 2; yy <= top + 2; yy++) for (int ez = -4; ez <= 4; ez++) for (int ex = -4; ex <= 4; ex++) if (isLeaves(w.getBlock(x + ex, yy, z + ez))) { w.setBlock(x + ex, yy, z + ez, AIR, 0); n++; }
-      if (n > 8) return true;
+      if (n > 8 && ++stripped >= want) return true;
     }
+  }
+  return stripped > 0;
+}
+// a perfect pyramid of sand rising out of shallow sea, where nobody is looking
+static bool sandPyramid(Level& lv, Player& p) {
+  if (p.realm != REALM_MAIN || dimHere(p) != DIM_OVERWORLD) return false;
+  World& w = lv.world(p.realm);
+  const int sea = dimBase(DIM_OVERWORLD) + SEA_LEVEL;   // the first air above the water
+  BlockId sand = B("sand"), water = B("water");
+  if (!sand || !water) return false;
+  auto ps = livePlayers(lv, p.realm);
+  for (int tries = 0; tries < 40; tries++) {
+    float a = rnd() * TAU, d = 48 + rnd() * 48;
+    int x = ifloor(p.pos.x + std::cos(a) * d), z = ifloor(p.pos.z + std::sin(a) * d);
+    if (w.getBlock(x, sea - 1, z) != water) continue;
+    int floor = sea - 1; while (floor > sea - 14 && w.getBlock(x, floor, z) == water) floor--;
+    if (w.getBlock(x, floor, z) == water) continue;   // too deep
+    const int apex = sea + 2 + (int)(rnd() * 3), R = apex - floor;
+    bool ok = true;
+    for (int k = 0; k < 4 && ok; k++) { int cx = x + (k & 1 ? R + 2 : -R - 2), cz = z + (k & 2 ? R + 2 : -R - 2); if (!w.isLoaded(cx, sea, cz) || w.getBlock(cx, sea - 1, cz) != water) ok = false; }   // all at sea
+    for (Player* q : ps) if (ok && (std::hypot(q->pos.x - x, q->pos.z - z) < 40 || seenBy(lv, *q, vec3(x + 0.5f, apex, z + 0.5f)))) ok = false;
+    if (!ok) continue;
+    for (int y = floor + 1; y <= apex; y++) {
+      const int r = apex - y;
+      for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) {
+        BlockId id = w.getBlock(x + dx, y, z + dz);
+        if (id == AIR || id == water || reg().tReplaceable[id]) w.setBlock(x + dx, y, z + dz, sand, 0);
+      }
+    }
+    return true;
   }
   return false;
 }
@@ -356,7 +389,8 @@ static bool leaveTrace(Level& lv, Player& p) {
     } else done = swapTorch(lv, p);
   } else {
     float r = rnd();
-    done = r < 0.4f ? digTunnel(lv, p) : r < 0.65f ? placeSign(lv, p) : r < 0.85f ? stripTree(lv, p) : swapTorch(lv, p);
+    done = r < 0.35f ? digTunnel(lv, p) : r < 0.55f ? placeSign(lv, p) : r < 0.75f ? stripTree(lv, p) : r < 0.87f ? sandPyramid(lv, p) : swapTorch(lv, p);
+    if (!done && r >= 0.75f && r < 0.87f) done = swapTorch(lv, p);   // no sea near: something smaller
   }
   if (done) f["watcherTraces"] = jint(f, "watcherTraces") + 1;
   return done;

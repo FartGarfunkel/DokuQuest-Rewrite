@@ -197,14 +197,14 @@ int riftStability(Level& lv) {
   const json& R = riftRec(lv);
   if (truthy(R, "sealed") || !jint(R, "stage")) return 100;
   if (jint(R, "stage") >= 3) return 5;
-  return std::max(8, 100 - 26 * std::min(RIFT_NEED, jint(R, "frags")));
+  return std::max(8, 100 - 92 * std::min(RIFT_NEED, jint(R, "frags")) / RIFT_NEED);   // thins slowly: quiet for the first few, bold near the end
 }
 int riftTier(Level& lv) {
   const json& R = riftRec(lv);
   if (truthy(R, "sealed")) return 5;
   int st = jint(R, "stage");
   if (st >= 3) return 4;
-  if (st >= 1) { int f = jint(R, "frags"); return f >= 3 ? 3 : f >= 1 ? 2 : 1; }
+  if (st >= 1) { int f = jint(R, "frags"); return f >= RIFT_NEED * 6 / 10 ? 3 : f >= 1 ? 2 : 1; }
   const json& F = lv.info.data.contains("flags") ? lv.info.data["flags"] : json::object();
   return jint(F, "watcherSeen") ? 0 : -1;
 }
