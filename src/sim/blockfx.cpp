@@ -1,6 +1,7 @@
 // sim/blockfx.cpp — port of game/blockfx.js (FallingBlock, PrimedTNT, checkFall, checkHarden,
 // primeTNT, explode, trySleep) and game.js onBlockChanged.
 #include "sim/blockfx.h"
+#include "world/carve_faces.h"
 #include "sim/gameplay.h"
 #include "sim/combat.h"
 #include "sim/rules.h"
@@ -149,53 +150,72 @@ void tickSleep(Level& lv, double dt) {
   if (lv.events) lv.events->emit("morning", json::array({lv.info.day}));
 }
 
+// Things fixed to the block at (x,y,z) whose face is no longer whole drop off: topOK/botOK/sideOK[d] say which faces still
+// hold (a plain block: all of them while it is solid; a chiseled block: the faces with all four octants left).
+static void dropUnsupported(Level& lv, World& w, int x, int y, int z, BlockId newId, bool topOK, bool botOK, const bool sideOK[4]) {
+  const Registry& R = reg();
+  const KnownBlocks& B = KB();
+  // things that stood on it
+  BlockId above = w.getBlock(x, y + 1, z); u8 am = w.getMeta(x, y + 1, z);
+  const BlockDef& ad = R.block(above);
+  std::string ash = ad.str("shape");
+  bool hangs = R.tRender[above] == (u8)Render::Torch ? (am & 7) != 0
+             : (ad.has("attached") && (ad.str("rs") == "hook" || (am & 7) != 0)) ? true
+             : (ash == "lantern" || ash == "soul_lantern") ? (am & 0x7f) == 1
+             : bhas(above, BF::Hangs) || ad.has("cocoa") || ad.has("frame") || (ad.has("altTile") && (am & 1));
+  if (above && bhas(above, BF::NeedsSupport) && !hangs && !bhas(above, BF::AlwaysWet) && !topOK) {
+    bool keep = bhas(above, BF::Door) && (am & 16);
+    if (!keep) { w.setBlock(x, y + 1, z, R.tWlog[above] && (am & WLOG) ? B.water : AIR); dropBlockItems(lv, w, x, y + 1, z, above, true, am); }
+  }
+  if (above && bhas(above, BF::Falls) && !topOK) checkFall(lv, w, x, y + 1, z);
+  // things that hung from it
+  BlockId below = w.getBlock(x, y - 1, z); u8 bm = w.getMeta(x, y - 1, z);
+  const BlockDef& bd = R.block(below);
+  std::string bsh = bd.str("shape");
+  if ((bsh == "lantern" || bsh == "soul_lantern") && (bm & 0x7f) == 1 && !botOK && R.block(newId).str("shape") != "chain") {
+    w.setBlock(x, y - 1, z, (bm & WLOG) ? B.water : AIR); dropBlockItems(lv, w, x, y - 1, z, below, true);
+  } else if ((bhas(below, BF::Hangs) || (bd.has("altTile") && (bm & 1))) && !botOK && !(bhas(newId, BF::Hangs) && bhas(newId, BF::StackPlant) && bhas(below, BF::StackPlant))) {
+    w.setBlock(x, y - 1, z, R.tWlog[below] && (bm & WLOG) ? B.water : AIR); dropBlockItems(lv, w, x, y - 1, z, below, true, bm);
+  }
+  // torches, ladders, signs and cocoa fixed to its sides
+  for (int d = 0; d < 4; d++) {
+    if (sideOK[d]) continue;
+    int nx = x - DIRX[d], nz = z - DIRZ[d];
+    BlockId nid = w.getBlock(nx, y, nz); u8 nm = w.getMeta(nx, y, nz);
+    if (!nid) continue;
+    const BlockDef& nd = R.block(nid);
+    static const int torchSide[4] = {3, 2, 4, 1};
+    bool attached = false;
+    if (R.tRender[nid] == (u8)Render::Torch) attached = (nm & 7) == torchSide[d];
+    else if (R.tShape[nid] == ShapeKind::Ladder) attached = (nm & 3) == d;
+    else if (bhas(nid, BF::Sign) && (nm & 16)) attached = (nm & 3) == d;
+    else if (nd.has("cocoa")) attached = ((nm >> 4) & 3) == d;
+    else if (nd.has("frame") || nd.num("rack") == 2) attached = (nm & 3) == d;
+    if (attached && (nd.has("frame") || nd.has("rack"))) if (json* fe = w.blockEntity(nx, y, nz)) { json c = *fe; spillEntity(lv, w, c, nx, y, nz); }
+    if (attached) { w.setBlock(nx, y, nz, R.tWlog[nid] && (nm & WLOG) ? B.water : AIR); if (nid != B.vine) dropBlockItems(lv, w, nx, y, nz, nid, true, nm); }
+  }
+}
+
+void onCarveChangedRules(Level& lv, World& w, int x, int y, int z) {
+  BlockId id = w.getBlock(x, y, z);
+  bool solid = reg().tSolid[id];
+  u8 carve = w.getCarve(x, y, z);
+  bool sides[4];
+  for (int d = 0; d < 4; d++) sides[d] = solid && carveFaceFull(carve, -DIRX[d], 0, -DIRZ[d]);   // the face toward (x-DIRX[d], z-DIRZ[d])
+  dropUnsupported(lv, w, x, y, z, id, solid && carveFaceFull(carve, 0, 1, 0), solid && carveFaceFull(carve, 0, -1, 0), sides);
+}
+
 // ---- reactions to world changes (Game.onBlockChanged) ----
 void onBlockChangedRules(Level& lv, World& w, int x, int y, int z, BlockId oldId, BlockId newId) {
   if (oldId == newId) return;
   const Registry& R = reg();
   const KnownBlocks& B = KB();
   if (!R.tSolid[newId] || R.tShape[newId]) {
-    // things that stood on it
-    BlockId above = w.getBlock(x, y + 1, z); u8 am = w.getMeta(x, y + 1, z);
-    const BlockDef& ad = R.block(above);
-    std::string ash = ad.str("shape");
-    bool hangs = R.tRender[above] == (u8)Render::Torch ? (am & 7) != 0
-               : (ad.has("attached") && (ad.str("rs") == "hook" || (am & 7) != 0)) ? true
-               : (ash == "lantern" || ash == "soul_lantern") ? (am & 0x7f) == 1
-               : bhas(above, BF::Hangs) || ad.has("cocoa") || ad.has("frame") || (ad.has("altTile") && (am & 1));
-    if (above && bhas(above, BF::NeedsSupport) && !hangs && !bhas(above, BF::AlwaysWet) && !R.tSolid[newId]) {
-      bool keep = bhas(above, BF::Door) && (am & 16);
-      if (!keep) { w.setBlock(x, y + 1, z, R.tWlog[above] && (am & WLOG) ? B.water : AIR); dropBlockItems(lv, w, x, y + 1, z, above, true, am); }
-    }
-    if (above && bhas(above, BF::Falls) && !R.tSolid[newId]) checkFall(lv, w, x, y + 1, z);
-    // things that hung from it
-    BlockId below = w.getBlock(x, y - 1, z); u8 bm = w.getMeta(x, y - 1, z);
-    const BlockDef& bd = R.block(below);
-    std::string bsh = bd.str("shape");
-    if ((bsh == "lantern" || bsh == "soul_lantern") && (bm & 0x7f) == 1 && !R.tSolid[newId] && R.block(newId).str("shape") != "chain") {
-      w.setBlock(x, y - 1, z, (bm & WLOG) ? B.water : AIR); dropBlockItems(lv, w, x, y - 1, z, below, true);
-    } else if ((bhas(below, BF::Hangs) || (bd.has("altTile") && (bm & 1))) && !R.tSolid[newId] && !(bhas(newId, BF::Hangs) && bhas(newId, BF::StackPlant) && bhas(below, BF::StackPlant))) {
-      w.setBlock(x, y - 1, z, R.tWlog[below] && (bm & WLOG) ? B.water : AIR); dropBlockItems(lv, w, x, y - 1, z, below, true, bm);
-    }
-    if (!R.tSolid[newId]) {
-      // torches, ladders, signs and cocoa fixed to its sides
-      for (int d = 0; d < 4; d++) {
-        int nx = x - DIRX[d], nz = z - DIRZ[d];
-        BlockId nid = w.getBlock(nx, y, nz); u8 nm = w.getMeta(nx, y, nz);
-        if (!nid) continue;
-        const BlockDef& nd = R.block(nid);
-        static const int torchSide[4] = {3, 2, 4, 1};
-        bool attached = false;
-        if (R.tRender[nid] == (u8)Render::Torch) attached = (nm & 7) == torchSide[d];
-        else if (R.tShape[nid] == ShapeKind::Ladder) attached = (nm & 3) == d;
-        else if (bhas(nid, BF::Sign) && (nm & 16)) attached = (nm & 3) == d;
-        else if (nd.has("cocoa")) attached = ((nm >> 4) & 3) == d;
-        else if (nd.has("frame") || nd.num("rack") == 2) attached = (nm & 3) == d;
-        if (attached && (nd.has("frame") || nd.has("rack"))) if (json* fe = w.blockEntity(nx, y, nz)) { json c = *fe; spillEntity(lv, w, c, nx, y, nz); }
-        if (attached) { w.setBlock(nx, y, nz, R.tWlog[nid] && (nm & WLOG) ? B.water : AIR); if (nid != B.vine) dropBlockItems(lv, w, nx, y, nz, nid, true, nm); }
-      }
-    }
+    bool s = R.tSolid[newId], sides[4] = {s, s, s, s};
+    dropUnsupported(lv, w, x, y, z, newId, s, s, sides);
   }
+  // a dirt path under a new solid block packs back into dirt (Minecraft)
+  if (R.tSolid[newId] && !R.tShape[newId] && B.dirt_path && B.dirt && w.getBlock(x, y - 1, z) == B.dirt_path) w.setBlock(x, y - 1, z, B.dirt);
   for (auto& h : hooks().blockChanged) h(lv, w, x, y, z, oldId, newId);
   if (bhas(newId, BF::Falls)) checkFall(lv, w, x, y, z);
   if (newId == B.water || R.tLiquid[newId] == 1) {

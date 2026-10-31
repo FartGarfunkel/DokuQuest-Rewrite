@@ -4,6 +4,7 @@
 #include "sim/vehicles.h"
 #include "sim/rules.h"
 #include "sim/blockfx.h"
+#include "world/carve_faces.h"
 #include "sim/worldsys.h"
 #include <random>
 
@@ -189,13 +190,14 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
     BlockId cur = w.getBlock(x, y, z);
     if (!R.tReplaceable[cur] && cur != AIR) return;
     BlockId below = w.getBlock(x, y - 1, z);
-    if (ny == 1 || (R.tReplaceable[hit.id] && R.tSolid[below])) { if (!R.tSolid[below]) return; meta = 0; }
+    bool belowTop = R.tSolid[below] && carveFaceFull(w.getCarve(x, y - 1, z), 0, 1, 0);   // a chiseled block's top must be whole
+    if (ny == 1 || (R.tReplaceable[hit.id] && R.tSolid[below])) { if (!belowTop) { if (R.tSolid[below]) toastMsg("Torches stand on a whole top face"); return; } meta = 0; }
     else if (ny == -1) return;
     else {
-      // on a wall only against a whole face: not the side of a fence post, pane or slab
+      // on a wall only against a whole face: not the side of a fence post, pane, slab or a chiseled notch
       BlockId sid = hit.id; int sk = R.tShape[sid]; int sm = w.getMeta(hit.block.x, hit.block.y, hit.block.z) & 7;
       Render rr = (Render)R.tRender[sid];
-      bool whole = R.tSolid[sid] && (!sk ? (rr == Render::Cube || rr == Render::Cutout)
+      bool whole = R.tSolid[sid] && (!sk ? (rr == Render::Cube || rr == Render::Cutout) && carveFaceFull(w.getCarve(hit.block.x, hit.block.y, hit.block.z), nx, ny, nz)
                                          : sk == ShapeKind::Slab && (sm == 6 || (sm >= 2 && (sm - 2 == dirOf((float)-nx, (float)-nz) || sm - 2 == dirOf((float)nx, (float)nz)))));
       if (!whole) { toastMsg("Torches fix to the full face of a block \xE2\x80\x94 or stand one on top"); return; }
       meta = nx == 1 ? 1 : nx == -1 ? 2 : nz == 1 ? 3 : 4;
@@ -203,9 +205,11 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
     if (R.tLiquid[cur]) return;
   } else if (bid == B.lantern || bid == B.soul_lantern) {
     BlockId up = w.getBlock(x, y + 1, z);
-    if (ny == -1 && R.tSolid[up]) meta = 1;
-    else if (R.tSolid[w.getBlock(x, y - 1, z)]) meta = 0;
-    else if (R.tSolid[up] || R.block(up).str("shape") == "chain") meta = 1;
+    bool upOK = R.tSolid[up] && carveFaceFull(w.getCarve(x, y + 1, z), 0, -1, 0);   // hangs from a whole underside
+    bool downOK = R.tSolid[w.getBlock(x, y - 1, z)] && carveFaceFull(w.getCarve(x, y - 1, z), 0, 1, 0);
+    if (ny == -1 && upOK) meta = 1;
+    else if (downOK) meta = 0;
+    else if (upOK || R.block(up).str("shape") == "chain") meta = 1;
     else return;
     if (R.tLiquid[w.getBlock(x, y, z)] == 1 && (w.getMeta(x, y, z) & 15) == 0) meta |= WLOG;
   } else {
@@ -254,9 +258,12 @@ bool PlayerController::supportOK(BlockId bid, int x, int y, int z, u8 meta) {
   auto& SOIL = soilIds();
   auto in = [&](BlockId v, std::initializer_list<BlockId> l) { if (!v) return false; for (BlockId a : l) if (a && a == v) return true; return false; };
   auto inSoil = [&](BlockId v) { return v && std::find(SOIL.begin(), SOIL.end(), v) != SOIL.end(); };
-  if (d.has("rs") || d.has("rail") || d.has("tripwire")) return d.has("attached") || R.tSolid[below];   // redstone parts: the redstone module refines this
+  // a chiseled block only holds things on a whole face (no floating plants over a carved notch)
+  bool belowTop = carveFaceFull(w.getCarve(x, y - 1, z), 0, 1, 0), aboveBottom = carveFaceFull(w.getCarve(x, y + 1, z), 0, -1, 0);
+  if (d.has("rs") || d.has("rail") || d.has("tripwire")) return d.has("attached") || (R.tSolid[below] && belowTop);   // redstone parts: the redstone module refines this
   if (bhas(bid, BF::Hangs) || (d.has("altTile") && (meta & 1)))
-    return R.tSolid[above] || above == bid || (bhas(above, BF::Hangs) && startsWith(R.block(above).key, "cave_vines") && startsWith(d.key, "cave_vines"));
+    return (R.tSolid[above] && aboveBottom) || above == bid || (bhas(above, BF::Hangs) && startsWith(R.block(above).key, "cave_vines") && startsWith(d.key, "cave_vines"));
+  if (!belowTop) return false;
   if (bid == B.cactus) return in(below, {B.sand, B.red_sand, B.desert_sand, B.cactus});
   if (bid == B.dead_bush || bid == B.dry_grass || bid == B.marram_grass) return in(below, {B.sand, B.red_sand, B.desert_sand, B.silver_sand, B.terracotta}) || inSoil(below);
   if (bid == B.bamboo) return in(below, {B.bamboo, B.sand, B.red_sand, B.gravel}) || inSoil(below);
@@ -622,26 +629,14 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   if (bhas(id, BF::Tnt) && def && def->str("igniter") == "flint") { w.setBlock(x, y, z, AIR); primeTNT(lv, w, x, y, z, 4); wearHeld(lv, p, 1); return true; }
   // tools on blocks
   if (tool == "axe" && b.has("strip")) { w.setBlock(x, y, z, R.blockId(b.str("strip")), meta); sfxMaterial(lv, "wood", "dig", c); wearHeld(lv, p, 1); swingArm(); return true; }
-  // chisel (Cubyz-style hand tool): carve placed blocks into their worked variant
-  // chisel (Cubyz-style): aim at one of a full block's 8 corners to carve it away, or re-chisel
-  // a carved corner to put it back. The corner bits live in meta>>4; the mesher and physics draw/
-  // collide them as octant boxes. Stairs/slab families also keep their trim chain (stairs->slab->base).
+  // chisel (Cubyz-style): aim at one of a full block's 8 corners to carve it away, or re-chisel a carved corner to put it
+  // back. The octant bits live in the block's carve byte (meta keeps its legacy meaning); the mesher and physics draw and
+  // collide them as octant boxes. The crosshair raycast's entry point is the geometry under the cursor, and a hit through
+  // a carved notch still lands inside the aimed octant, so the same click toggles it back. Each octant toggles on its own.
   if (tool == "chisel") {
-    bool chiselable = R.tSolid[id] && R.tOpaque[id] && !R.tShape[id] && !R.tWlog[id] && !(b.has("family") || b.has("base"));   // keep source's exclusion: wlog blocks (lanterns, snow…) carry live meta state elsewhere
-    u8 carve = w.getCarve(x, y, z);   // octant bits live in the dedicated carve byte; meta keeps its legacy meaning
+    bool chiselable = R.tSolid[id] && R.tOpaque[id] && !R.tShape[id] && !R.tWlog[id] && !(b.has("family") || b.has("base"));   // wlog blocks (lanterns, snow...) carry live meta state
+    u8 carve = w.getCarve(x, y, z);
     if (chiselable) {
-      // The crosshair raycast already hit this block; its entry point IS the geometry under the
-      // cursor. Pick that octant and TOGGLE it: carve it if present, put it back if already carved.
-      // When the crosshair passed through a carved-away notch, physics finishes the hit on the
-      // block's cell and the entry point still lies inside the aimed (carved) octant, so the same
-      // toggle restores it. Carving all 8 is NOT an auto-revert — each quadrant toggles on its own.
-      // Aimed-octant pick: the crosshair raycast already hit this block; its entry point IS
-      // the geometry under the cursor (verified from all 8 diagonal stances). Pick that octant and
-      // TOGGLE it: carve it if present, put it back if already carved — so you can remove any
-      // quadrant and re-add it by clicking the same spot again. When the crosshair passed through
-      // a carved-away notch, physics finishes the hit on the block's cell and the entry point
-      // still lies inside the aimed (carved) octant, so the same toggle restores it. Carving all
-      // 8 is NOT an auto-revert — each quadrant toggles on its own.
       int enc = -1;
       {
         double fx = hit.point.x - x, fy = hit.point.y - y, fz = hit.point.z - z;
@@ -660,16 +655,8 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
         if (nid != AIR && !R.tLiquid[nid])
           w.markBlockDirty(x + dx, y + dy, z + dz, true);   // any solid neighbour may share a face with the new notch
       }
-      sfxMaterial(lv, "stone", "dig", c); wearHeld(lv, p, 1); swingArm(); return true;
-    }
-    // trim chain: stairs -> slab -> base (family/base live in props JSON)
-    std::string fam = b.str("family"), base = b.str("base");
-    if (fam == "stairs") {
-      BlockId slab = R.blockId(b.key + "_slab");   // stone_brick_stairs -> stone_brick_slab
-      if (slab != AIR) { w.setBlock(x, y, z, slab, meta); sfxMaterial(lv, "stone", "dig", c); wearHeld(lv, p, 1); swingArm(); return true; }
-      if (!base.empty()) { BlockId out = R.blockId(base); if (out != AIR) { w.setBlock(x, y, z, out, 0); sfxMaterial(lv, "stone", "dig", c); wearHeld(lv, p, 1); swingArm(); return true; } }
-    } else if (fam == "slab") {
-      if (!base.empty()) { BlockId out = R.blockId(base); if (out != AIR) { w.setBlock(x, y, z, out, 0); sfxMaterial(lv, "stone", "dig", c); wearHeld(lv, p, 1); swingArm(); return true; } }
+      onCarveChangedRules(lv, w, x, y, z);   // torches, plants and lanterns on a face that is no longer whole drop off
+      sfxMaterial(lv, b.sound, "dig", c); wearHeld(lv, p, 1); swingArm(); return true;
     }
     return false;
   }

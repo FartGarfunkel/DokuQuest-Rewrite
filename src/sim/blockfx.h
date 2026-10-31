@@ -16,6 +16,8 @@ void explode(Level& lv, int realm, vec3 at, float power, bool noBlocks = false, 
 void tickSleep(Level& lv, double dt);
 // Game.onBlockChanged: supports, hanging things, attached torches/ladders/signs, falling, hardening.
 void onBlockChangedRules(Level& lv, World& w, int x, int y, int z, BlockId oldId, BlockId newId);
+// After a chisel changes a block's octants: things on a face that is no longer whole drop off.
+void onCarveChangedRules(Level& lv, World& w, int x, int y, int z);
 
 void registerBlockFxEntities();
 
