@@ -24,7 +24,8 @@ constexpr int MAX_LEVEL = 8;              // levels 0..8: columns of 2 .. 512 bl
 inline int cellSize(int L) { return 2 << L; }
 inline int tileSize(int L) { return CELLS * cellSize(L); }
 
-// A real chunk's surface in 2x2-block cells (distSummarize): ground, canopy, water, floating bottom.
+// A real chunk's surface in 2x2-block cells (distSummarize): ground, canopy, water, floating bottom, and the masses
+// under the top one where daylight (or a big cavern) gets between them.
 struct ChunkSummary {
   i16 g[64];          // top of the ground, band-local, quarter blocks (0 = nothing in that cell)
   i16 ct[64], cb[64]; // canopy top / bottom, quarter blocks (0 = none)
@@ -32,6 +33,11 @@ struct ChunkSummary {
   u8 gc[192], sc[192], cc[192];   // top / side / canopy colours
   u8 f[64];           // 1 water, 2 trunk under the canopy, 32 glowing (lava)
   u8 wd[64];          // water depth
+  // Voxy-style 3D: the solid masses under the top one in a cell (an overhang's ground, an arch's foot, the Nether's
+  // floor under its roof, a builder's bridge over a river), each band-local quarter blocks bottom..top, its top and
+  // side colours and flags (1 water, 32 lava)
+  struct Extra { u8 cell, flags; i16 y0, y1; u8 tc[3], sc[3]; };
+  std::vector<Extra> ex;
 };
 
 // Average colours of every block from the current tiles (resource pack aware), shared with workers.

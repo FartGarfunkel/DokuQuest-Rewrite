@@ -78,12 +78,14 @@ void DistantTerrain::addSummary(const ChunkKey& k, std::shared_ptr<ChunkSummary>
   if (it != sums.end()) {
     // the tiles that show it need making again only if its top has changed
     const ChunkSummary& o = *it->second; changed = false;
-    for (int q = 0; q < 64 && !changed; q++) if (std::abs(o.g[q] - s->g[q]) > 2 || std::abs(o.ct[q] - s->ct[q]) > 2 || std::abs(o.gc[q * 3 + 1] - s->gc[q * 3 + 1]) > 12) changed = true;
+    for (int q = 0; q < 64 && !changed; q++) if (std::abs(o.g[q] - s->g[q]) > 2 || std::abs(o.ct[q] - s->ct[q]) > 2 || std::abs(o.gc[q * 3 + 1] - s->gc[q * 3 + 1]) > 12 || o.fb[q] != s->fb[q]) changed = true;
+    if (!changed && o.ex.size() != s->ex.size()) changed = true;   // a mass under the top one came or went (a bridge, an arch)
+    for (size_t q = 0; q < o.ex.size() && !changed; q++) if (o.ex[q].cell != s->ex[q].cell || std::abs(o.ex[q].y0 - s->ex[q].y0) > 2 || std::abs(o.ex[q].y1 - s->ex[q].y1) > 2) changed = true;
     it->second = s;
   } else {
     sums[k] = s;
     sumRegions[rkey(k.dim, k.cx >> 4, k.cz >> 4)]++;
-    // kept small: at most twelve thousand chunks (about 13 MB)
+    // kept small: at most twelve thousand chunks (about 13 MB, a little more with the masses under the tops)
     if (sums.size() > 12000) {
       auto v = sums.begin(); if (v->first == k) ++v;
       auto rk = rkey(v->first.dim, v->first.cx >> 4, v->first.cz >> 4);

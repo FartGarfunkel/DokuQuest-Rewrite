@@ -4,6 +4,7 @@
 #include "render/distant.h"
 #include "render/mesher.h"
 #include "assets/tileset.h"
+#include <cstring>
 
 namespace dq::lod {
 
@@ -56,36 +57,72 @@ std::shared_ptr<ChunkSummary> summarizeChunk(const Chunk& c, const ColorTable& c
   auto& R = reg();
   bool floaty = c.dim == DIM_AETHER || c.dim == DIM_END;
   int top = std::min(DIM_H - 1, c.maxY + 1);
+  auto solid = [&](BlockId id) { return R.tOpaque[id] || R.tLiquid[id] || (R.tSolid[id] && R.tRender[id] != (u8)Render::Cross); };
+  u8 occ[DIM_H], lit[DIM_H];
   for (int j = 0; j < 8; j++) for (int i = 0; i < 8; i++) {
-    float gBest = -1, ctop = -1, cbot = 999, fbot = -1; BlockId gId = AIR, leaf = AIR; bool trunk = false; int wd = 0;
+    float gBest = -1, ctop = -1, cbot = 999; BlockId gId = AIR, leaf = AIR; bool trunk = false; int wd = 0;
+    std::memset(occ, 0, top + 1); std::memset(lit, 0, top + 1);
     for (int dz = 0; dz < 2; dz++) for (int dx = 0; dx < 2; dx++) {
-      int x = i * 2 + dx, z = j * 2 + dz; bool sawLeaf = false;
+      int x = i * 2 + dx, z = j * 2 + dz; bool sawLeaf = false, found = false;
       for (int y = top; y >= 0; y--) {
-        BlockId id = c.get(x, y, z); if (!id) continue;
-        if (R.tLeaves[id]) { sawLeaf = true; ctop = std::max(ctop, (float)y + 1); cbot = std::min(cbot, (float)y); if (!leaf) leaf = id; continue; }
-        if (ct.isLog[id] && sawLeaf) { trunk = true; continue; }
-        if (R.tOpaque[id] || R.tLiquid[id] || (R.tSolid[id] && R.tRender[id] != (u8)Render::Cross)) {
-          float gy = y + (R.tLiquid[id] ? 0.875f : 1.f);
-          if (gy > gBest) {
-            gBest = gy; gId = id;
-            wd = 0;
-            if (R.tLiquid[id] == 1) for (int yy = y; yy > 0 && R.tLiquid[c.get(x, yy, z)] == 1 && wd < 30; yy--) wd++;
-            fbot = -1;
-            if (floaty) { int yy = y; while (yy > 0 && c.get(x, yy - 1, z) != AIR) yy--; fbot = yy > 0 ? (float)yy : -1.f; }
-          }
-          break;
+        BlockId id = c.get(x, y, z);
+        if (!id || !solid(id) || R.tLeaves[id] || (ct.isLog[id] && sawLeaf)) {
+          if (R.tLeaves[id] && !found) { sawLeaf = true; ctop = std::max(ctop, (float)y + 1); cbot = std::min(cbot, (float)y); if (!leaf) leaf = id; }
+          else if (id && ct.isLog[id] && sawLeaf && !found) trunk = true;
+          if (c.lightReady && (c.getLight(x, y, z) >> 4) > 0) lit[y] = 1;   // daylight gets in here
+          continue;
+        }
+        occ[y]++;
+        if (found) continue;
+        found = true;
+        float gy = y + (R.tLiquid[id] ? 0.875f : 1.f);
+        if (gy > gBest) {
+          gBest = gy; gId = id;
+          wd = 0;
+          if (R.tLiquid[id] == 1) for (int yy = y; yy > 0 && R.tLiquid[c.get(x, yy, z)] == 1 && wd < 30; yy--) wd++;
         }
       }
     }
     int k = j * 8 + i;
     S->fb[k] = -1;
     if (gBest < 0) { S->g[k] = 0; S->ct[k] = 0; S->cb[k] = 0; S->f[k] = 0; S->wd[k] = 0; continue; }
+    // the cell's solid runs, top down; a gap between two is kept where daylight gets into it or it is a big cavern
+    // (6+ blocks: the Nether's open land under its roof), else filled in (caves shut away underground)
+    struct Run { int y1, y0; };
+    Run runs[24]; int nr = 0;
+    for (int y = top; y >= 0 && nr < 24;) {
+      while (y >= 0 && !occ[y]) y--;
+      if (y < 0) break;
+      const int y1 = y; while (y >= 0 && occ[y]) y--;
+      runs[nr++] = {y1, y + 1};
+    }
+    for (int r = 0; r + 1 < nr;) {
+      const int gt = runs[r].y0 - 1, gb = runs[r + 1].y1 + 1;
+      bool open = gt - gb + 1 >= 6;
+      for (int y = gb; y <= gt && !open; y++) open = lit[y];
+      if (open) { r++; continue; }
+      runs[r].y0 = runs[r + 1].y0;
+      for (int q = r + 1; q + 1 < nr; q++) runs[q] = runs[q + 1];
+      nr--;
+    }
+    while (nr > 4) { runs[nr - 2].y0 = runs[nr - 1].y0; nr--; }   // at most three masses under the top one
     int ci = ((j * 2) * 16 + i * 2) * 2;
     u8 tb = c.climate[ci], hb = c.climate[ci + 1];   // as the chunk mesher tints it
+    if (nr > 1) S->fb[k] = (i16)(runs[0].y0 * 4);                         // the top mass floats over a gap
+    else if (floaty && nr == 1 && runs[0].y0 > 0) S->fb[k] = (i16)(runs[0].y0 * 4);
+    for (int r = 1; r < nr; r++) {
+      BlockId id = AIR;
+      for (int dz = 0; dz < 2 && !id; dz++) for (int dx = 0; dx < 2 && !id; dx++) { BlockId b = c.get(i * 2 + dx, runs[r].y1, j * 2 + dz); if (b && solid(b) && !R.tLeaves[b]) id = b; }
+      ChunkSummary::Extra e; e.cell = (u8)k; e.y0 = (i16)(runs[r].y0 * 4); e.y1 = (i16)(runs[r].y1 * 4 + (R.tLiquid[id] ? 3 : 4));
+      e.flags = (u8)((R.tLiquid[id] == 1 ? 1 : 0) | (R.tLiquid[id] == 2 ? 32 : 0));
+      vec3 tc = blockColor(ct, id, tb, hb, false), sc = blockColor(ct, id, tb, hb, true);
+      if (R.tLiquid[id] == 1) { tc = waterColor(tc, 4); sc = tc; }
+      for (int q = 0; q < 3; q++) { e.tc[q] = q4(tc[q]); e.sc[q] = q4(sc[q]); }
+      S->ex.push_back(e);
+    }
     vec3 gc = blockColor(ct, gId, tb, hb, false), sc = blockColor(ct, gId, tb, hb, true);
     if (R.tLiquid[gId] == 1) { gc = waterColor(gc, (float)wd); sc = gc; }
     S->g[k] = (i16)std::lround(gBest * 4);
-    S->fb[k] = fbot < 0 ? (i16)-1 : (i16)std::lround(fbot * 4);
     for (int q = 0; q < 3; q++) { S->gc[k * 3 + q] = q4(gc[q]); S->sc[k * 3 + q] = q4(sc[q]); }
     S->f[k] = (R.tLiquid[gId] == 1 ? 1 : 0) | (R.tLiquid[gId] == 2 ? 32 : 0);
     S->wd[k] = (u8)wd;
@@ -106,7 +143,15 @@ struct Grid {
   int W;
   std::vector<float> G, B, CT, CB;
   std::vector<u8> GC, SC, CC, FL;
-  explicit Grid(int w) : W(w), G(w * w, VOID), B(w * w, GROUNDED), CT(w * w, 0), CB(w * w, 999), GC(w * w * 3, 0), SC(w * w * 3, 0), CC(w * w * 3, 0), FL(w * w, 0) {}
+  // up to three more masses per cell besides the top one (ChunkSummary::Extra; a roof from the generator)
+  std::vector<u8> XN, XT, XS, XF; std::vector<float> XY0, XY1;
+  explicit Grid(int w) : W(w), G(w * w, VOID), B(w * w, GROUNDED), CT(w * w, 0), CB(w * w, 999), GC(w * w * 3, 0), SC(w * w * 3, 0), CC(w * w * 3, 0), FL(w * w, 0),
+    XN(w * w, 0), XT(w * w * 9, 0), XS(w * w * 9, 0), XF(w * w * 3, 0), XY0(w * w * 3, 0), XY1(w * w * 3, 0) {}
+  void addX(int k, float y0, float y1, vec3 tc, vec3 sc, u8 fl) {
+    if (XN[k] >= 3 || y1 <= y0) return;
+    const int s = k * 3 + XN[k]++;
+    XY0[s] = y0; XY1[s] = y1; XF[s] = fl; setC(XT, s, tc); setC(XS, s, sc);
+  }
   void setC(std::vector<u8>& A, int k, vec3 c) { A[k * 3] = q4(c.x); A[k * 3 + 1] = q4(c.y); A[k * 3 + 2] = q4(c.z); }
   vec3 col(const std::vector<u8>& A, int k) const { return vec3(A[k * 3], A[k * 3 + 1], A[k * 3 + 2]); }
   bool same(const std::vector<u8>& A, int a, int b) const { return A[a * 3] == A[b * 3] && A[a * 3 + 1] == A[b * 3 + 1] && A[a * 3 + 2] == A[b * 3 + 2]; }
@@ -159,6 +204,7 @@ void buildTile(const TileInput& in, TileOutput& out) {
       for (int c = 0; c < 3; c++) { g.GC[k * 3 + c] = sm->gc[q * 3 + c]; g.SC[k * 3 + c] = sm->sc[q * 3 + c]; }
       if (sm->ct[q] > 0) { g.CT[k] = base + sm->ct[q] / 4.f; g.CB[k] = base + sm->cb[q] / 4.f; for (int c = 0; c < 3; c++) g.CC[k * 3 + c] = sm->cc[q * 3 + c]; }
       g.FL[k] = sm->f[q] | 64;   // 64: from a real chunk
+      for (const ChunkSummary::Extra& e : sm->ex) if (e.cell == q) g.addX(k, base + e.y0 / 4.f, base + e.y1 / 4.f, vec3(e.tc[0], e.tc[1], e.tc[2]), vec3(e.sc[0], e.sc[1], e.sc[2]), e.flags);
       continue;
     }
     if (!gen) continue;
@@ -179,6 +225,7 @@ void buildTile(const TileInput& in, TileOutput& out) {
       g.setC(g.SC, k, blockColor(ct, sideId, tb, hb, true, s.tint));
     }
     if (s.floatBottom >= 0 && s.floatBottom <= s.height) g.B[k] = base + (float)s.floatBottom;
+    if (s.roof > s.height && s.roof < DIM_H) { BlockId rb = s.roofBlock ? s.roofBlock : ct.dirt; g.addX(k, base + (float)s.roof, (float)(base + DIM_H), blockColor(ct, rb, tb, hb, false), blockColor(ct, rb, tb, hb, true), 0); }
     // far off, single trees can't be told apart: the forest is blended into the ground, as tall as its trees
     // (the generator gives the forest cover as treeTop; near tiles get the real trees below)
     if (L >= 2 && s.tree && s.leaves && s.treeTop >= s.height && !(g.FL[k] & 33)) {
@@ -243,49 +290,87 @@ void buildTile(const TileInput& in, TileOutput& out) {
       else { float y = g.B[k]; M.quad({x0, y, z0}, {x1, y, z0}, {x1, y, z1}, {x0, y, z1}, {0, -1, 0}, g.col(g.SC, k) * 0.85f, 145, 145, 145, 145); }
     }
   }
-  // walls, merged along each edge where they match
+  // the other masses' tops and undersides (overhangs, arches, the Nether's roof seen from under it)
+  for (int j = 0; j < N; j++) for (int i = 0; i < N; i++) {
+    const int k = (j + 1) * W + (i + 1);
+    for (int x = 0; x < g.XN[k]; x++) {
+      const int si = k * 3 + x;
+      const float x0 = (float)i * cs, z0 = (float)j * cs, x1 = x0 + cs, z1 = z0 + cs, y0 = g.XY0[si], y1 = g.XY1[si];
+      const u16 fl = (u16)((g.XF[si] & 1 ? 1 : 0) | (g.XF[si] & 32 ? 2 : 0));
+      if (y1 < base + DIM_H - 0.01f) M.quad({x0, y1, z0}, {x0, y1, z1}, {x1, y1, z1}, {x1, y1, z0}, {0, 1, 0}, g.col(g.XT, si), 255, 255, 255, 255, fl);
+      if (y0 > base + 0.01f) M.quad({x0, y0, z0}, {x1, y0, z0}, {x1, y0, z1}, {x0, y0, z1}, {0, -1, 0}, g.col(g.XS, si) * 0.85f, 145, 145, 145, 145);
+    }
+  }
+  // walls: each mass of a cell, less what the neighbour's masses cover, merged along each edge where they match
   const float skirt = 4 + cs * 0.75f;
-  struct Seg { float y1, y0; int k; bool on; };
+  struct Sp { float y0, y1; vec3 c; };
+  auto spansOf = [&](int k, Sp* out, bool withMain) -> int {
+    int n = 0;
+    if (withMain && !isVoid(k)) out[n++] = {g.B[k] > GROUNDED * 0.5f ? g.B[k] : (float)base, g.G[k], g.col(g.SC, k)};
+    for (int x = 0; x < g.XN[k]; x++) out[n++] = {g.XY0[k * 3 + x], g.XY1[k * 3 + x], g.col(g.XS, k * 3 + x)};
+    return n;
+  };
+  // [a0, a1] less the intervals in `by`: up to 8 pieces into out
+  auto subtract = [](float a0, float a1, const Sp* by, int nb, float (*out)[2]) -> int {
+    float cur[8][2]; int n = 0; cur[n][0] = a0; cur[n][1] = a1; n++;
+    for (int b = 0; b < nb; b++) {
+      float nxt[8][2]; int m = 0;
+      for (int p = 0; p < n; p++) {
+        const float lo = cur[p][0], hi = cur[p][1];
+        if (by[b].y1 <= lo || by[b].y0 >= hi) { if (m < 8) { nxt[m][0] = lo; nxt[m][1] = hi; m++; } continue; }
+        if (by[b].y0 > lo && m < 8) { nxt[m][0] = lo; nxt[m][1] = by[b].y0; m++; }
+        if (by[b].y1 < hi && m < 8) { nxt[m][0] = by[b].y1; nxt[m][1] = hi; m++; }
+      }
+      std::memcpy(cur, nxt, sizeof(float) * 2 * m); n = m;
+    }
+    int r = 0; for (int p = 0; p < n; p++) if (cur[p][1] - cur[p][0] > 0.01f) { out[r][0] = cur[p][0]; out[r][1] = cur[p][1]; r++; }
+    return r;
+  };
+  struct Seg { float y1, y0; vec3 c; int start; };
+  std::vector<Seg> runs, cur;
   for (int d = 0; d < 4; d++) {
     // d: 0 -z, 1 +z, 2 -x, 3 +x
     int dk = d == 0 ? -W : d == 1 ? W : d == 2 ? -1 : 1;
     int sh = d < 2 ? 205 : 170;
     vec3 n = d == 0 ? vec3(0, 0, -1) : d == 1 ? vec3(0, 0, 1) : d == 2 ? vec3(-1, 0, 0) : vec3(1, 0, 0);
     for (int line = 0; line < N; line++) {
-      Seg run[2] = {{0, 0, 0, false}, {0, 0, 0, false}}; int runStart[2] = {0, 0};
-      auto emit = [&](int slot, int a, int b) {
-        Seg& s = run[slot]; if (!s.on) return;
+      runs.clear();
+      auto emit = [&](const Seg& sg, int a, int b) {
         float t0 = (float)a * cs, t1 = (float)b * cs, e;
         vec3 p0, p1;
         if (d < 2) { e = (float)(d == 0 ? line : line + 1) * cs; p0 = {t0, 0, e}; p1 = {t1, 0, e}; }
         else { e = (float)(d == 2 ? line : line + 1) * cs; p0 = {e, 0, t0}; p1 = {e, 0, t1}; }
-        vec3 c = g.col(g.SC, s.k); int foot = footShade(sh, s.y1, s.y0);
-        M.quad({p0.x, s.y1, p0.z}, {p1.x, s.y1, p1.z}, {p1.x, s.y0, p1.z}, {p0.x, s.y0, p0.z}, n, c, sh, sh, foot, foot);
+        int foot = footShade(sh, sg.y1, sg.y0);
+        M.quad({p0.x, sg.y1, p0.z}, {p1.x, sg.y1, p1.z}, {p1.x, sg.y0, p1.z}, {p0.x, sg.y0, p0.z}, n, sg.c, sh, sh, foot, foot);
       };
       for (int t = 0; t <= N; t++) {
-        Seg cur[2] = {{0, 0, 0, false}, {0, 0, 0, false}};
+        cur.clear();
         if (t < N) {
           int i = d < 2 ? t : line, j = d < 2 ? line : t;
           int k = (j + 1) * W + (i + 1), nk = k + dk;
           bool edge = d == 0 ? j == 0 : d == 1 ? j == N - 1 : d == 2 ? i == 0 : i == N - 1;
-          if (!isVoid(k)) {
-            float h = g.G[k], b = g.B[k] > GROUNDED * 0.5f ? g.B[k] : (float)base;
-            if (isVoid(nk)) cur[0] = {h, b, k, h > b};
-            else {
-              float lo = std::max(g.G[nk], b);
-              if (edge) lo = std::min(lo, h) - skirt;
-              if (lo < h) cur[0] = {h, lo, k, true};
-              if (g.B[k] > GROUNDED * 0.5f && g.B[nk] > g.B[k] && !edge) { float top = std::min(g.B[nk], h); if (top > g.B[k]) cur[1] = {top, g.B[k], k, true}; }
+          Sp mine[4], theirs[4];
+          const int nm = spansOf(k, mine, true), nt = spansOf(nk, theirs, true);
+          for (int m = 0; m < nm; m++) {
+            const bool main = m == 0 && !isVoid(k);
+            if (main && edge && !isVoid(nk)) {   // the tile's edge: a skirt below the neighbour's top hides cracks to the next tile
+              const float lo = std::min(std::max(g.G[nk], mine[0].y0), mine[0].y1) - skirt;
+              cur.push_back({mine[0].y1, lo, mine[0].c, t});
+              continue;
             }
+            float pc[8][2]; const int np = subtract(mine[m].y0, mine[m].y1, theirs, nt, pc);
+            for (int p = 0; p < np; p++) cur.push_back({pc[p][1], pc[p][0], mine[m].c, t});
           }
         }
-        for (int slot = 0; slot < 2; slot++) {
-          Seg& r = run[slot]; Seg& c = cur[slot];
-          bool same = r.on && c.on && r.y1 == c.y1 && r.y0 == c.y0 && g.same(g.SC, r.k, c.k);
-          if (same) continue;
-          if (r.on) emit(slot, runStart[slot], t);
-          r = c; runStart[slot] = t;
+        // carry on the runs that match a piece here, emit the rest
+        for (size_t r = 0; r < runs.size();) {
+          bool kept = false;
+          for (Seg& c : cur) if (c.start >= 0 && c.y1 == runs[r].y1 && c.y0 == runs[r].y0 && c.c == runs[r].c) { c.start = -1; kept = true; break; }
+          if (kept) { r++; continue; }
+          emit(runs[r], runs[r].start, t);
+          runs[r] = runs.back(); runs.pop_back();
         }
+        for (Seg& c : cur) if (c.start >= 0) runs.push_back(c);
       }
     }
   }

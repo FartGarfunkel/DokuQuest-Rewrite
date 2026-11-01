@@ -20,6 +20,8 @@ struct ColumnSample {
   u32 tint = 0xFFFFFFFF;   // grass/foliage tint (0xAABBGGRR) from climate, 0xFFFFFFFF = none
   // floating layers (Skylands islands, End islands): bottom of the upper mass (or -1)
   i16 floatBottom = -1;
+  // a roof over it (the Nether's): rock from band-local `roof` up to the band's top (-1 = open above)
+  i16 roof = -1; BlockId roofBlock = AIR;
   u8 temp = 128, humid = 128;  // the column's climate bytes (Chunk::climate): tint = climateTint(kind, temp, humid)
   u8 biome = 255;              // Biome (gen/gendefs.h) for the Overworld, 255 elsewhere
 };

@@ -416,7 +416,7 @@ TerrainColumn DepthsGen::terrainBTA(int x, int z) const {
 void DepthsGen::sampleBTA(int wx, int wz, ColumnSample& s) const {
   const NetherCol c = bta_->column(wx, wz);
   s = ColumnSample();
-  s.height = (i16)c.floor; s.floatBottom = (i16)c.roof;
+  s.height = (i16)c.floor; s.roof = (i16)c.roof; s.roofBlock = c.biome == NB_VOLCANIC ? B.basalt : c.biome == NB_CRYSTAL ? B.blackstone : B.netherrack;
   BlockId top = B.netherrack, under = B.netherrack;
   switch (c.biome) {
     case NB_CRAG: top = c.floor <= LAVA_Y + 3 ? B.soul_sand : B.netherrack; break;
