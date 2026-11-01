@@ -60,6 +60,8 @@ struct MeshFx {
 // cave culling: the bit for a pair of faces (0 +x, 1 -x, 2 +y, 3 -y, 4 +z, 5 -z), 15 pairs
 inline int sectionVisPair(int a, int b) { if (a > b) std::swap(a, b); static const int base[6] = {0, 5, 9, 12, 14, 15}; return base[a] + (b - a - 1); }
 u16 sectionVisibility(const MeshInput& in);   // flood fill of the open cells (mesher.cpp)
+// blocks left out of the meshes while something else draws them (render/swing_layer.cpp: doors swinging); main thread
+std::vector<ivec3>& meshHiddenBlocks();
 struct MeshOutput {
   std::vector<ChunkVertex> opaque, cutout, trans;   // quads (4 vertices each)
   MeshFx fx;

@@ -66,6 +66,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **The Sound Studio** (launcher: Mod Studio → Sounds): hear and see every sound the game makes, shape one (pitch, gain, trim, fades, low-pass) or bring in your own recording, normalise it and save it as the game's own: it replaces that sound from the next start.
 - **The Texture Studio** (launcher: Mod Studio → Textures): every block and item picture, painted pixel by pixel like the skin editor (pencil, fill, picker, eraser, mirror, grid, undo and redo, the picture's own colours as a palette) with a live block preview and PNG import. "Use in the game" lays your picture over whatever resource pack is on; grass and leaves keep their biome colours.
 - **Grass grows back.** Bare dirt next to grass turns green again at Minecraft's pace (about a minute or two for a lone block), under trees too. A new game rule, randomTickSpeed, speeds it and the other slow growth up.
+- **Doors, gates and trapdoors swing** open and shut on their hinges instead of snapping, village gates included.
 
 **Gear and magic:**
 

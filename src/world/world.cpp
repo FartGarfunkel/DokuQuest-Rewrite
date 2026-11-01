@@ -87,7 +87,7 @@ bool World::setBlock(int x, int y, int z, BlockId id, u8 meta, u32 flags) {
   if (old != id) { auto it = c->blockEntities.find(colIdx(lx, ly, lz)); if (it != c->blockEntities.end() && !(flags & SetFlags::NoNotify)) c->blockEntities.erase(it); }
   if (!(flags & SetFlags::NoModify)) { c->modified = true; c->dirty = true; }
   if (!(flags & SetFlags::NoRemesh)) markBlockDirty(x, y, z, flags & SetFlags::Urgent);
-  if (!(flags & SetFlags::NoNotify)) { u32 pf = changeFlags; changeFlags = flags; for (auto& s : systems) s->onBlockChanged(*this, x, y, z, old, id); changeFlags = pf; }
+  if (!(flags & SetFlags::NoNotify)) { u32 pf = changeFlags; changeFlags = flags; changeOldMeta = oldMeta; for (auto& s : systems) s->onBlockChanged(*this, x, y, z, old, id); changeFlags = pf; }
   return true;
 }
 bool World::setMeta(int x, int y, int z, u8 meta, u32 flags) {

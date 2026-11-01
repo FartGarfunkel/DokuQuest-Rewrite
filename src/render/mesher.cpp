@@ -154,6 +154,8 @@ void faceCorners(const MeshCtx& c, int x, int y, int z, int f, FaceCorners& fc) 
 }
 
 // ---------------------------------------------------------------- gathering (main thread)
+std::vector<ivec3>& meshHiddenBlocks() { static std::vector<ivec3> v; return v; }
+
 bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in) {
   constexpr int N = MeshInput::N;
   Chunk* center = w.chunk(k.dim, k.cx, k.cz);
@@ -197,6 +199,11 @@ bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in) {
         }
       }
     }
+  }
+  for (const ivec3& h : meshHiddenBlocks()) {   // drawn elsewhere for now
+    const int ox = h.x - k.cx * 16, oz = h.z - k.cz * 16, oy = h.y - baseY;
+    if (ox < -1 || ox > 16 || oz < -1 || oz > 16 || oy < MeshInput::Y0 || oy > 16) continue;
+    const int i = MeshInput::idx(ox, oy, oz); in.ids[i] = AIR; in.meta[i] = 0; in.carve[i] = 0;
   }
   return true;
 }

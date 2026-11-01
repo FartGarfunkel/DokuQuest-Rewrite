@@ -93,6 +93,7 @@ public:
   std::shared_ptr<RegionStore> regionStoreShared() const { return store; }   // saved chunks (distant terrain reads them on workers)
 
   u32 changeFlags = 0;     // SetFlags of the setBlock being reported to systems (net/ skips NoModify/FromNet changes)
+  u8 changeOldMeta = 0;    // the meta before the setBlock being reported (render/swing_layer.cpp: doors opening)
   RegionStore* regionStore() const { return store.get(); }   // net/: a client keeps the server's chunk records here
 
   MainQueue mainQueue;   // results from workers (call pumpMain each frame)
