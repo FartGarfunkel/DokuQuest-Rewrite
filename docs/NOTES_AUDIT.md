@@ -68,7 +68,7 @@ Evidence is grep over src/, data/, tools/ (file:line where it helps).
 - [MP][SAT] Big sweep / user bug reports: ongoing; tools/playtests/containers.json still uses the old "open" op (stale, per HANDOFF)  **[containers passes 13/13 tonight; the full sweep is in HANDOFF]**
 - [MP][HO] Chisel bug sweep: campfire with cobblestone texture and jack-o'-lantern texture never reproduced; needs the user's save/pack
 - [MP][Q] Music sets: biome/cave/Nether/Skylands moods exist; Over/Under-style sets with seeded per-world variation not done
-- [HO] alpha.8 release: notes drafted (CHANGELOG, news.dqn), but DQ_VERSION is still 1.0.0-alpha.7 (CMakeLists.txt:4); not released
+- [HO] alpha.8 release: notes drafted (CHANGELOG, news.dqn), but DQ_VERSION is still 1.0.0-alpha.7 (CMakeLists.txt:4); not released  **[DONE: alpha.8 released 2026-11-01 from e8663de]**
 
 ## DOC STALE (done in code but not marked)
 - [MP] Ph3: lava boat, placement loop, creeper/enderman/ghast faces (alpha.7); ingot stacking, capes in wind, treading water (alpha.8); creatures float and paddle (creature.cpp:639)
