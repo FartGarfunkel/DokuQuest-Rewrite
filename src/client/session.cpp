@@ -1,3 +1,6 @@
+#include <map>
+#include <algorithm>
+#include <cstdlib>
 #include "client/session.h"
 #include "client/app.h"
 #include "common/holiday.h"
@@ -19,6 +22,29 @@
 #include <imgui.h>
 
 namespace dq {
+
+// ---- DQ_PROFILE=1: CPU time per render layer and per world pass, the slowest listed in the log every 600 frames ----
+namespace {
+struct Prof {
+  bool on = std::getenv("DQ_PROFILE") != nullptr;
+  std::map<std::string, double> ms; u64 frames = 0;
+  void add(const std::string& k, double t) { ms[k] += t; }
+  void frame() {
+    if (!on || ++frames % 600) return;
+    std::vector<std::pair<double, std::string>> v; for (auto& [k, t] : ms) v.push_back({t / 600.0, k});
+    std::sort(v.rbegin(), v.rend());
+    std::string out; for (size_t i = 0; i < v.size() && i < 16; i++) { char b[96]; snprintf(b, sizeof b, "%s %.2f | ", v[i].second.c_str(), v[i].first); out += b; }
+    DQ_LOG("profile (ms/frame): %s", out.c_str());
+    ms.clear();
+  }
+};
+Prof& prof() { static Prof p; return p; }
+struct ProfScope {
+  const char* a; const char* b; double t0;
+  ProfScope(const char* a_, const char* b_ = "") : a(a_), b(b_), t0(prof().on ? nowSeconds() : 0) {}
+  ~ProfScope() { if (prof().on) prof().add(std::string(a) + b, (nowSeconds() - t0) * 1000.0); }
+};
+}
 
 static std::vector<RenderLayerFactory>& layerFactories() { static std::vector<RenderLayerFactory> f; return f; }
 void registerRenderLayer(RenderLayerFactory f) { layerFactories().push_back(std::move(f)); }
@@ -140,7 +166,7 @@ void GameSession::update(double dt) {
     }
     tickAcc += dt;
     int ticks = 0;
-    while (tickAcc >= TICK_DT && ticks < 4) { level->tick(TICK_DT); tickAcc -= TICK_DT; ticks++; }
+    { ProfScope ps("sim.tick"); while (tickAcc >= TICK_DT && ticks < 4) { level->tick(TICK_DT); tickAcc -= TICK_DT; ticks++; } }
     if (ticks == 4) tickAcc = 0;
   }
   World& w = world();
@@ -149,7 +175,7 @@ void GameSession::update(double dt) {
   for (int i = 1; i < n; i++) if (locals[i].player && locals[i].player->realm == player->realm) anchors.push_back({locals[i].player->pos, app.settings.renderDist, true});
   for (auto& l : layers) l->streamAnchors(*this, anchors);
   if (level->net) level->net->streamAnchors(player->realm, anchors);   // the host keeps remote players' surroundings loaded
-  w.stream(anchors, 3.0);
+  { ProfScope ps("world.stream"); w.stream(anchors, 3.0); }
   // cameras: one per person, each in its own viewport
   int dw, dh; SDL_GL_GetDrawableSize(app.window, &dw, &dh);
   float sx = (float)dw / std::max(1, app.width), sy = (float)dh / std::max(1, app.height);
@@ -165,10 +191,10 @@ void GameSession::update(double dt) {
     frame.time = app.time; frame.width = vw; frame.height = vh;
     sky->computeFrame(*level, frame, app.settings.renderDist);
     cam.update();
-    worldRenderer.update(cam, *app.pool, 4.0 / n);
+    { ProfScope ps("world.meshUpdate"); worldRenderer.update(cam, *app.pool, 4.0 / n); }
   }
   selectLocal(0);
-  if (!split()) for (auto& l : layers) l->update(*this, dt);
+  if (!split()) for (auto& l : layers) { ProfScope ps(l->name(), ".update"); l->update(*this, dt); }
   else for (int i = 0; i < n; i++) {
     enterLocal(i);
     for (auto& l : layers) if (i == 0) l->update(*this, dt); else if (perViewerLayer(l->name())) l->update(*this, 0.0);
@@ -181,20 +207,21 @@ void GameSession::render() {
   if (split()) { splitRender(); return; }
   glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL);
   glEnable(GL_CULL_FACE); glCullFace(GL_BACK); glFrontFace(GL_CCW);
-  sky->draw(frame);
-  worldRenderer.drawOpaque(frame);
-  worldRenderer.drawCutout(frame);
-  for (auto& l : layers) l->drawOpaque(*this, frame);
-  worldRenderer.drawTranslucent(frame);
-  for (auto& l : layers) l->drawTranslucent(*this, frame);
-  for (auto& l : layers) l->drawOverlay(*this, frame);
+  prof().frame();
+  { ProfScope ps("sky"); sky->draw(frame); }
+  { ProfScope ps("world.opaque"); worldRenderer.drawOpaque(frame); }
+  { ProfScope ps("world.cutout"); worldRenderer.drawCutout(frame); }
+  for (auto& l : layers) { ProfScope ps(l->name(), ".opaque"); l->drawOpaque(*this, frame); }
+  { ProfScope ps("world.translucent"); worldRenderer.drawTranslucent(frame); }
+  for (auto& l : layers) { ProfScope ps(l->name(), ".translucent"); l->drawTranslucent(*this, frame); }
+  for (auto& l : layers) { ProfScope ps(l->name(), ".overlay"); l->drawOverlay(*this, frame); }
   glDisable(GL_DEPTH_TEST);
 }
 
 void GameSession::drawHud() {
   // the HUD itself (crosshair, hotbar, hearts, toasts, chat, F3 debug) is the UI's render layer (ui/hud.cpp);
   // layers check hudHidden themselves (F1 hides everything but the chat and toasts, like the original)
-  for (auto& l : layers) l->drawHud(*this);
+  for (auto& l : layers) { ProfScope ps(l->name(), ".hud"); l->drawHud(*this); }
 }
 
 } // namespace dq

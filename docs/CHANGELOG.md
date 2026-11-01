@@ -26,11 +26,19 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **In a chest or furnace on a controller, Y quick-moves straight away again instead of closing the menu.**
 - **Leaving a world with a menu open no longer crashes the game.**
 - **On a controller, the selected hotbar slot has the focus when a menu opens,** so A, X and Y work on it at once, even if the mouse pointer was left over another slot.
+- **Signs show what's written on them.** They were invisible boards; now each stands on its post or hangs on its wall with its four lines on it.
+- **Writing on a sign and pressing Esc keeps the writing,** and typing straight away works even when the sign was opened with a controller.
+- **The rain detector senses rain** (it acted like a daylight sensor), and **the party chest opens:** every party chest in the world shares the same 27 slots.
+- **The Knight's and the Ranger's talents work in a fight:** Heavy Blows, Eagle Eye, Deadeye, Poisoned Tips, Quiver Master, Fleet Foot and Unbreakable.
+- **Silver tools and the Watcher's Blade bite the undead,** half as hard again on ghouls, skeletons, wraiths and werewolves.
+- **Armour stands work:** set one down and dress it with armour and a weapon; an empty hand takes them back, and sneaking changes its pose.
+- **Every drop has a use:** pelts and crocodile scales tan into leather, shark teeth tip arrows, and glow ink makes a glow item frame.
+- **Many of the original pictures are redrawn to match the DokuQuest Base pack** (ores, ingots, bricks, armour, tools and more).
 
 **New in the world:**
 
 - **The Nether:** Cinder Isles out on the lava sea, Emberglass Groves, the Ashen Wastes and the Sulphur Springs (sulphur and charcoal make gunpowder).
-- **Seasons:** a year of four seven-day seasons in the Overworld. Grass and leaves turn gold and rust in autumn and dull in winter, snow falls on the temperate lands in winter and crops grow slowly in the cold, and each new season is announced. `/time season autumn` jumps to one; `/gamerule seasons false` turns them off.
+- **Seasons:** a year of four seven-day seasons in the Overworld. Grass and leaves turn gold and rust in autumn and dull in winter, snow falls on the temperate lands in winter and crops grow slowly in the cold, and each new season is announced. They're off unless you turn them on in World settings (or `/gamerule seasons true`); `/time season autumn` jumps to one.
 - **Thornscrub:** dry plains thick with low thorn trees whose leaves prick like cactus.
 - **Trees grow real branches:** slim branches that wind out of the trunk, fork and end in clumps of leaves, on great spreading oaks, dark oaks, jungle and cherry trees, and now and then on oaks and birches. Branches are blocks of their own too (two logs make four) and join up with logs, leaves and each other. Now and then a giant of the rainforest towers over the canopy. Saplings grow into the same shapes as wild trees.
 - **Palm trees** on warm beaches and here and there in the thornscrub, with palm wood; a felled palm drops coconuts.
@@ -85,6 +93,13 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Lead animals on a fishing line** (BTA): cast at an animal and the hook catches; it follows you on the line (too far and it snaps), and reeling in gives it a tug toward you.
 - **Sponges soak up water** when you put them down (everything within six blocks), turning into wet sponges; dry them in a furnace. A wet sponge used on dyed wool, glass, terracotta or painted planks washes the colour out (BTA).
 - **Furnace minecarts burn any fuel** a furnace would, not just coal (BTA).
+- **Armoured zombies and skeletons** (BTA): now and then one comes dressed in leather, copper, gold, iron or (rarely) diamond armour, and zombies carry more kinds of weapons. Armour soaks their hurt, a helmet keeps off the sun, and a piece may drop when they fall.
+- **The reinforced piston** (BTA): steel-bound, it pushes up to 16 blocks and flings whatever stands in front of it.
+- **Glow ink on a sign** makes its writing glow in the dark, an ink sac puts it out, and any dye colours it.
+- **The Siphon:** a copper pipe that draws items one at a time out of whatever is behind it (or lying there) and pushes them into whatever is in front.
+- **The Wicker Basket:** lift a chicken, rabbit, cat, duck, frog or any small animal into it, carry it off and set it down somewhere else.
+- **Move the HUD** (BTA): Options → Interface → Move HUD pieces, then drag the hotbar, the hearts, the boss bar, the chat and the messages wherever you like (a controller works too).
+- **Whole trees fall** is a World setting now, for those who'd rather take a tree down log by log.
 - **More of BTA's world:** scorched dirt in the Redlands (rich scorched dirt sifts out iron, gold and copper), perma-ice deep in the glaciers that never melts, ember coal ore in the Depths (burns hotter and longer), moss-grown dark oak and mangrove logs and algae on the still water of the Mossmire, and dried sugar cane bundles (smelt a bundle).
 - **More of BTA's Nether and Redlands:** cobbled and polished emberstone, soul schist low in the rock and bone shale higher up, petrified ashen trunks standing in the Ashen Wastes, and gum trees with pale bark and their own wood in the Redlands.
 - **The Snow Sentry** (BTA's snowman): set a carved pumpkin or jack-o'-lantern on two stacked snow blocks and it comes alive, throwing snowballs at monsters near it (they push them back and burn the creatures of fire). It leaves a dusting of snow where it walks in the cold and melts in hot lands.

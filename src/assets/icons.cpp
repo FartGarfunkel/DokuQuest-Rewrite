@@ -111,7 +111,12 @@ void ItemIcons::build(const TileSet& ts) {
     for (auto& e : fs::directory_iterator(cacheDir, ec)) { std::string f = e.path().filename().string(); if (startsWith(f, "icons-") && endsWith(f, ".png")) old.push_back({fs::last_write_time(e.path(), ec), e.path()}); }
     std::sort(old.begin(), old.end(), [](auto& a, auto& b) { return a.first > b.first; });
     for (size_t k = 2; k < old.size(); k++) fs::remove(old[k].second, ec);
-    savePng(cacheFile, atlasW, atlasH, out.data());
+    // written on a thread of its own (a big atlas takes longer to compress than to draw), to a side file first
+    std::thread([cacheFile, w = atlasW, hgt = atlasH, px = std::move(out)] {
+      fs::path tmp = cacheFile; tmp += ".part";
+      std::error_code e2;
+      if (savePng(tmp, w, hgt, px.data())) fs::rename(tmp, cacheFile, e2); else fs::remove(tmp, e2);
+    }).detach();
   }
 }
 
