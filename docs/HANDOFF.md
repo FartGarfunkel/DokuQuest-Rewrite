@@ -161,9 +161,25 @@ Later the same night (all in the alpha.8 notes except the rift work, which the n
   (render/endstory_layer.cpp); the fortress scene (rift.cpp riftFortress: a tear, him beside it, wither skeletons
   walk in); the final boss fights at range (teleports away under 6 blocks, circles, more bolts, no melee).
   Not done from Phase 11: the player-triggered Wither Storm climax.
+Then (user asked mid-session, all on `chisel`, in the alpha.8 notes):
+- Branching trees (user's request, Cubyz idea only, our own code): gen/trees.cpp `branch()` (sideways logs with axis
+  meta 1/2, climbing, forks, leaf clumps; writeTreeParts keeps a part's meta for axis blocks). Big oaks (h > 0.78),
+  dark oak, jungle, cherry, sometimes oak/birch; bare trees keep branches. Giant rainforest trees (jungle h > 0.93,
+  2x2). Saplings now grow the generator's shapes (sim/worldsys.cpp growTree used treeParts; hooks().growTree was
+  never set). Palms (TREE_PALM: beaches, thornscrub; palm wood/leaves/sapling on sand; coconuts from felled palms).
+- Quiver (sim/quiver.cpp, tag "arrows", bow draws offhand -> quiver -> loose). Paintings (render/painting_layer.cpp:
+  30 procedural pictures; block entity "painting" n; use cycles).
+- Music frequency setting (Settings::musicFreq 0..3, AudioEngine::Impl::musicFreq paces the director's wait).
+- In-game Settings re-laid like the launcher's Options (ui/options.cpp Row kit, two columns over 760 px; sections
+  Graphics, Packs, Sound, Controls, Game). ui::slider got an optional width.
+- Music Studio (launcher/music_studio.cpp, Mod Studio page "music"): audio/song.h/.cpp (Song JSON in
+  userDir()/music, SMF in/out, analyseRecording: spectral-flux comb tempo + phase, Krumhansl key with relative-minor
+  check, triad per bar; songFromMood; songFromAnalysis: our own composer, styles calm/folk/epic/dreamy).
+  AudioEngine::audioClock/musicNote/musicClear. Songs with a realm play in that land (music.cpp realmSong, 40%).
+  build/test_song <wav> checks it (synthetic Am F C G at 100 bpm -> 99.5, A minor, right chords).
 Still open: End ambience sound, seasons (optional), bows (grip/draw/scale, visual: wait for the user's eyes), wolf
-howl/duck/horse sound mappings (asked), the Wither Storm, the music studio, more BTA leftovers (statue, painting,
-quiver, basket, activator, reinforced piston, siphon, handcannon, palm/cacao/giant trees). Item 2 of the list below (crowds) was already in: crowdPush in
+howl/duck/horse sound mappings (asked), the Wither Storm, statue, basket, activator, siphon, handcannon, steel
+handled; the studio has not been heard (no sound device here). Item 2 of the list below (crowds) was already in: crowdPush in
 sim/creature_spawn.cpp.
 
 ## Agreed order after the chisel (features first, then structure and GUI)
