@@ -83,12 +83,12 @@ public:
   bool keyOnlyPressed(Act a) const { return f->kcur[(int)a] && !f->kprev[(int)a]; }
   // ---- split screen: read the game through one local player's devices (select(i)), or everything merged (select(-1)) ----
   void setSources(const std::vector<InputSource>& s) {
-    // a person whose devices just changed starts from what is held right now: the button press that claimed a controller
-    // (or joined) is still down next frame, and with no history it read as a second, fresh press (Y on a pad shut the
-    // inventory and opened it again at once, so the first Y never seemed to work)
+    // a person whose devices just changed takes this frame as everything saw it (fr[0]): the press that claimed a
+    // controller still counts this frame, and next frame it is a held button, not a fresh press (with no history the
+    // still-held Y read as a second press: the inventory shut and opened again, so the first Y never seemed to work)
     for (size_t i = 0; i < s.size() && i < 4; i++) {
       bool same = i < sources.size() && sources[i].kb == s[i].kb && sources[i].pads == s[i].pads;
-      if (!same) { fr[1 + i].cur = fr[1 + i].prev = fr[0].cur; fr[1 + i].kcur = fr[1 + i].kprev = fr[0].kcur; }
+      if (!same) fr[1 + i] = fr[0];
     }
     sources = s; if (sel >= (int)sources.size()) select(-1);
   }

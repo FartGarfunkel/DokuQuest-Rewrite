@@ -50,6 +50,19 @@ Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`.
   walk/knock/ladder check the notes asked for). Real game fix found by `rodlead`: the fishing line lobbed over an
   animal three blocks away; a cast aimed at a creature now flies flat at it (sim/fishing.cpp castLine) and the
   hook's catch box is a bit more generous. `puddle` gets 1800 s in run_all.sh (4000 frames on llvmpipe).
+- **Headless test programs** (all in build/, all pass now: gameplay 103, magic 57, content 64, endstory 73,
+  villagers 66, redstone 81, creature, net 59). Real bugs they found: **town gate levers did nothing** since
+  alpha.4.9 (villagers.cpp's itemUse handler AND rsplace.cpp's useRedstone both toggled the gate; now only
+  rsplace gateLever, which calls the villagers' gateUse first so their dusk/dawn logic respects the pull), and **a
+  controller's first press after the keyboard counted twice** (Input::setSources gave a newly claimed pad's frame no
+  history, so the still-held Y read as a fresh press next frame: the inventory shut and reopened; new source frames
+  now start from what is held). Stale tests fixed: slabs/stairs are chiseled forms (test_gameplay), villagers pay
+  in gold coins (test_villagers), the net test looks for the cow by Alice (the server's herds are about too) and
+  counts real checksum mismatches apart from re-asked chunks (NetClient::Stats::mismatches). Nightmares are off in
+  the bed check (a 30% wake in the dark made it flaky). `dq-sweep --items`: 6 notes, all expected (bucket/bottle
+  need a liquid, discs need a jukebox, salad leaves a bowl). Two checks failed once in five runs and passed on
+  rerun: dq-creature-test "herds came with the land" (generation wait is time-bound: 8 s) and test_endstory "before
+  the rift: all quiet" (something earlier in that test can stir the rift); look at them if they keep turning up.
 - **Notes audit** (/tmp/pt/notes_gaps.md, regenerate with an agent if needed): still open and worth doing next: painted
   doors/trapdoors/signs/chests, the Seasonal Forest, igneous emberstone, chimney smoke check on town buildings (campfires
   in the hearths already smoke through campFlue), the Nether's own ambience and steam vents,
@@ -100,7 +113,9 @@ Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`.
     names: `/time set midnight|noon`. `/locate <structure>` prints coordinates (e.g. end_city).
   - Data is copied into build/ by ninja (`dq_runtime_data`): rerun ninja after changing data/ before a test.
   - Block keys are the game's own, e.g. oak planks = `planks`.
-  - Gameplay harness: `dq-test-gameplay`.
+  - Gameplay harness: `dq-test-gameplay`. Every headless test program: dq-test-gameplay, test_magic, test_content,
+    test_endstory, test_villagers, test_redstone, dq-creature-test, test_net (+ `dq-sweep --items`); build them by
+    name with ninja and run each from build/. Run them before a release along with the playtest sweep.
 - **Releases:**
   1. Bump `DQ_VERSION` in CMakeLists.txt.
   2. Write notes in `docs/CHANGELOG.md` and `assets/news/news.dqn`.
