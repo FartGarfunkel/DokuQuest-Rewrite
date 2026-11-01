@@ -39,75 +39,66 @@ public:
   const char* id() const override { return "settings"; }
   void onClose(App& a) override { a.applySettings(); }
   bool onBack(App&) override { return backConsumedByText(); }
+  // Laid out like the launcher's Options: sections under headings, each row with its name and a muted line about it on
+  // the left, the control on the right, a faint rule under it; two columns when there's room, one on a small screen.
   void draw(App& a) override {
     if (a.topScreen() != this) return;
     Settings& s = a.settings;
-    float z = Z();
+    const float z = Z();
     Panel pn;
-    pn.begin("##settings", "Settings", 420, "Done");
+    pn.begin("##settings", "Settings", 980, "Done");
     pn.beginBody();
-    float w = pn.width - 32 * z - ImGui::GetStyle().ScrollbarSize;
-    ImGui::SetCursorPos(ImVec2(16 * z, 14 * z));
-    ImGui::BeginGroup();
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8 * z, 6 * z));
-    auto gap = [&]() { ImGui::Dummy(ImVec2(1, 8 * z)); };
+    const float full = pn.width - 32 * z - ImGui::GetStyle().ScrollbarSize;
+    const bool two = full > 760 * z;
+    const float colGap = 24 * z, w = two ? (full - colGap) * 0.5f : full;
     bool applyNow = false, applyLight = false;
-    // Renderer: chosen in the launcher
-    settingHead("Renderer", rendererName(gfx.modern ? RendererKind::Modern : RendererKind::Legacy), w);
-    desc(("OpenGL " + std::to_string(gfx.major) + "." + std::to_string(gfx.minor) + " \xC2\xB7 change it in the launcher (Options), where you start the game.").c_str(), w);
-    gap();
-    // Resource pack
-    {
-      settingHead("Resource pack", "", w);
-      std::vector<std::string> packs = listResourcePacks();
-      std::vector<std::string> items = {"Automatic (GeruDoku when installed)", "Built-in DokuQuest textures"};
-      int cur = s.resourcePack == "auto" ? 0 : s.resourcePack.empty() || s.resourcePack == "builtin" ? 1 : 0;
-      for (size_t i = 0; i < packs.size(); i++) { items.push_back(packs[i]); if (packs[i] == s.resourcePack) cur = (int)i + 2; }
-      if (combo("##pack", &cur, items, w)) { s.resourcePack = cur == 0 ? "auto" : cur == 1 ? "builtin" : packs[cur - 2]; s.save(); }
-      std::string now = a.tiles.packName.empty() ? "Built-in DokuQuest textures" : a.tiles.packName;
-      label(F_SMALL, col::text, now.c_str(), w);
-      desc("Minecraft Java Edition packs for 1.13 to 1.21 work best; 1.6 to 1.12 packs work for most blocks. 16x, 32x and 64x are all fine (32x matches the game). Put .zip packs in the resourcepacks folder. A new pack loads the next time the game starts.", w);
-      gap();
-    }
-    // Shader pack (render/gl.cpp): folders in shaderpacks/, switched at once
-    {
-      settingHead("Shader pack", "", w);
-      std::vector<std::string> sps = listShaderPacks();
-      std::vector<std::string> items = {"None (the game's own shaders)"};
-      int cur = 0;
-      for (size_t i = 0; i < sps.size(); i++) { items.push_back(sps[i]); if (sps[i] == s.shaderPack) cur = (int)i + 1; }
-      if (combo("##shaderpack", &cur, items, w)) {
-        s.shaderPack = cur == 0 ? "" : sps[cur - 1]; s.save();
-        setShaderPack(s.shaderPack); reloadAllShaders();
+    ImGui::SetCursorPos(ImVec2(16 * z, 10 * z));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8 * z, 6 * z));
+    float colX = ImGui::GetCursorPosX(), colTop = ImGui::GetCursorPosY(), leftBottom = colTop;
+
+    // ---- the row kit -------------------------------------------------------------------------------------------
+    struct Row {
+      ImVec2 start; float w, ctrlW, textH;
+      Row(const char* lbl, const char* d, const std::string& value, float w_, float ctrl) : w(w_) {
+        const float z = Z();
+        ctrlW = std::min(ctrl * z, w * 0.5f);
+        start = ImGui::GetCursorPos();
+        const float tw = w - ctrlW - 14 * z;
+        ImGui::BeginGroup();
+        std::string head = value.empty() ? std::string(lbl) : std::string(lbl);
+        label(F_BODY, col::text, head.c_str(), tw);
+        if (!value.empty()) { ImGui::SameLine(0, 8 * z); label(F_SMALL, col::ember, value.c_str()); }
+        if (d && *d) label(F_SMALL, col::muted, d, tw);
+        ImGui::EndGroup();
+        textH = ImGui::GetItemRectSize().y;
+        const float fh = ImGui::GetFrameHeight();
+        ImGui::SetCursorPos(ImVec2(start.x + w - ctrlW, start.y + std::max(0.f, (textH - fh) * 0.5f)));
+        ImGui::PushItemWidth(ctrlW);
+        ImGui::BeginGroup();
       }
-      desc("A shader pack is a folder in shaderpacks/ holding any of the game's shader files (chunk.glsl, sky.glsl, clouds.glsl, common.glsl ...) to use instead of its own. It switches at once; a file that doesn't compile falls back to the game's.", w);
-      gap();
-    }
-    // Controls / Controller
-    rowLabel("Controls", w);
-    ImGui::SameLine(w - textSize(F_MID, "Change controls\xE2\x80\xA6").x - 20 * z + 16 * z);
-    if (button("Change controls\xE2\x80\xA6", BTN_NORMAL, true)) a.pushScreen(makeControlsScreen());
-    desc("Choose the key, mouse button or controller button for every action.", w);
-    gap();
-    {
-      int n = s.padMaps.is_object() ? (int)s.padMaps.size() : 0;
-      rowLabel("Controller", w);
-      ImGui::SameLine(w - textSize(F_MID, "Set up buttons\xE2\x80\xA6").x - textSize(F_MID, "Reset").x - 52 * z + 16 * z);
-      if (button("Set up buttons\xE2\x80\xA6", BTN_NORMAL, true)) a.pushScreen(makePadSetupScreen());
-      ImGui::SameLine();
-      if (button("Reset##padmaps", BTN_GHOST, true, 0, n == 0)) { s.padMaps = json::object(); a.input.reloadBinds(); s.save(); }
-      std::string d = (n ? std::to_string(n) + " controller" + (n > 1 ? "s" : "") + " set up by hand. " : std::string()) +
-        "If a controller's buttons are mixed up, press each one when asked and it will work like any other. The right stick scrolls menus.";
-      desc(d.c_str(), w);
-      gap();
-    }
+      ~Row() {
+        ImGui::EndGroup();
+        ImGui::PopItemWidth();
+        const float z = Z();
+        const float h = std::max(textH, ImGui::GetItemRectMax().y - ImGui::GetWindowPos().y + ImGui::GetScrollY() - start.y);
+        const float y = start.y + h + 6 * z;
+        const ImVec2 wp = ImGui::GetWindowPos();
+        ImGui::GetWindowDrawList()->AddLine(ImVec2(wp.x + start.x, wp.y + y - ImGui::GetScrollY()), ImVec2(wp.x + start.x + w, wp.y + y - ImGui::GetScrollY()), IM_COL32(255, 255, 255, 18));
+        ImGui::SetCursorPos(ImVec2(start.x, y + 7 * z));
+      }
+    };
+    auto heading = [&](const char* t) {
+      ImGui::Dummy(ImVec2(1, 4 * z));
+      ImVec2 p = ImGui::GetCursorScreenPos();
+      textShadow(ImGui::GetWindowDrawList(), F_MID, p, col::text, t, ImVec2(2, 2) * z, IM_COL32(63, 63, 63, 255));
+      ImGui::Dummy(ImVec2(w, textSize(F_MID, t).y + 6 * z));
+    };
     auto range = [&](const char* key, const char* lbl, float* v, float mn, float mx, float step, std::string shown, const char* d) {
       ImGui::PushID(key);
-      settingHead(lbl, shown, w);
-      if (slider("##r", v, mn, mx, step, "")) applyLight = true;
-      if (ImGui::IsItemDeactivated()) applyNow = true;
-      if (ImGui::IsItemFocused() && a.input.navStep().x) applyNow = true;
-      desc(d, w); gap();
+      { Row r(lbl, d, shown, w, 230);
+        if (slider("##r", v, mn, mx, step, "", r.ctrlW)) applyLight = true;
+        if (ImGui::IsItemDeactivated()) applyNow = true;
+        if (ImGui::IsItemFocused() && a.input.navStep().x) applyNow = true; }
       ImGui::PopID();
     };
     auto rangeI = [&](const char* key, const char* lbl, int* v, int mn, int mx, std::string shown, const char* d) {
@@ -115,86 +106,136 @@ public:
     };
     auto check = [&](const char* key, const char* lbl, bool* v, const char* d = nullptr) {
       ImGui::PushID(key);
-      ImVec2 p = ImGui::GetCursorScreenPos();
-      text(ImGui::GetWindowDrawList(), F_BODY, ImVec2(p.x, p.y + 3 * z), col::text, lbl, 0, 14.f / 15.f);
-      ImGui::SetCursorScreenPos(ImVec2(p.x + w - ImGui::GetFrameHeight(), p.y));
-      if (ImGui::Checkbox("##c", v)) { applyNow = true; playClick(); }
-      desc(d, w); gap();
+      { Row r(lbl, d, "", w, 40);
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 40 * z - ImGui::GetFrameHeight());
+        if (ImGui::Checkbox("##c", v)) { applyNow = true; playClick(); } }
       ImGui::PopID();
     };
-    auto select = [&](const char* key, const char* lbl, int cur, const std::vector<std::string>& names, const char* d) -> int {
+    auto select = [&](const char* key, const char* lbl, int cur, const std::vector<std::string>& names, const char* d, float ctrl = 230) -> int {
       ImGui::PushID(key);
-      float bw = 0; for (auto& n : names) bw = std::max(bw, textSize(F_BODY, n.c_str()).x);
-      bw = std::min(w * 0.62f, bw + 44 * z);
-      ImVec2 p = ImGui::GetCursorScreenPos();
-      float fh = ImGui::GetFrameHeight();
-      text(ImGui::GetWindowDrawList(), F_BODY, ImVec2(p.x, p.y + (fh - textSize(F_BODY, "A").y) * 0.5f), col::text, lbl, w - bw - 8 * z, 14.f / 15.f);
-      ImGui::SetCursorScreenPos(ImVec2(p.x + w - bw, p.y));
       int c = cur;
-      if (combo("##s", &c, names, bw)) applyNow = true;
-      desc(d, w); gap();
+      { Row r(lbl, d, "", w, ctrl);
+        if (combo("##s", &c, names, std::min(ctrl * z, w * 0.5f))) applyNow = true; }
       ImGui::PopID();
       return c;
     };
-    rangeI("renderDist", "Render distance", &s.renderDist, 2, 16, std::to_string(s.renderDist) + " chunks", "Lower is faster on phones. Split-screen caps this a little.");
+    auto nextColumn = [&] {
+      if (!two) return;
+      leftBottom = ImGui::GetCursorPosY();
+      colX += w + colGap;
+      ImGui::SetCursorPos(ImVec2(colX, colTop));
+    };
+    auto keepX = [&] { if (two) ImGui::SetCursorPosX(colX); };
+
+    // ================= left: graphics and packs =================
+    ImGui::BeginGroup();
+    heading("Graphics");
+    { Row r("Renderer", ("OpenGL " + std::to_string(gfx.major) + "." + std::to_string(gfx.minor) + " \xC2\xB7 change it in the launcher's Options").c_str(), "", w, 230);
+      std::string rn = rendererName(gfx.modern ? RendererKind::Modern : RendererKind::Legacy); if (!rn.empty()) rn[0] = (char)toupper((unsigned char)rn[0]);
+      label(F_BODY, col::ember, rn.c_str()); }
+    rangeI("renderDist", "Render distance", &s.renderDist, 2, 16, std::to_string(s.renderDist) + " chunks", "Chunks of full detail around you. Split screen caps this a little.");
     { static const int v[] = {0, 512, 1024, 2048}; int cur = 0; for (int i = 0; i < 4; i++) if (s.farTerrain == v[i]) cur = i;
-      cur = select("farTerrain", "Distant terrain", cur, {"Off", "512 blocks", "1,024 blocks", "2,048 blocks"}, "The land beyond your render distance, drawn simply, like Distant Horizons. Off is fastest."); s.farTerrain = v[cur]; }
+      cur = select("farTerrain", "Distant terrain", cur, {"Off", "512 blocks", "1,024 blocks", "2,048 blocks"}, "Simplified land past the render distance (see forever). Off is fastest."); s.farTerrain = v[cur]; }
     range("scale", "Resolution", &s.scale, 0.4f, 1, 0.05f, pct(s.scale), "Render fewer pixels for smoother play.");
     range("fov", "Field of view", &s.fov, 55, 100, 1, std::to_string((int)std::lround(s.fov)) + "\xC2\xB0", nullptr);
-    range("sens", "Mouse & touch look speed", &s.sens, 0.2f, 3, 0.05f, strFormat("%.2f\xC3\x97", s.sens), nullptr);
-    range("padSens", "Controller look speed", &s.padSens, 0.3f, 3, 0.05f, strFormat("%.2f\xC3\x97", s.padSens), nullptr);
     range("brightness", "Brightness", &s.brightness, 0, 1, 0.05f, pct(s.brightness), "How much you can see in the dark.");
-    range("volume", "Sound volume", &s.volume, 0, 1, 0.05f, pct(s.volume), nullptr);
-    range("mobVol", "Mob sounds", &s.mobVol, 0, 1, 0.05f, s.mobVol > 0 ? pct(s.mobVol) : "Off", "Voices and footsteps of animals and monsters.");
-    range("music", "Music", &s.music, 0, 1, 0.05f, s.music > 0 ? pct(s.music) : "Off", "Quiet piano pieces now and then, like the old game. A new one every time.");
-    range("ambience", "Ambient sounds", &s.ambience, 0, 1, 0.05f, pct(s.ambience), "Wind, birds, crickets, rain, and the sounds of caves.");
-    { static const char* v[] = {"auto", "vertical", "horizontal"}; int cur = 0; for (int i = 0; i < 3; i++) if (s.split == v[i]) cur = i;
-      s.split = v[select("split", "Two-player split", cur, {"Automatic", "Side by side", "Top and bottom"}, nullptr)]; }
-    check("fancyLeaves", "Fancy leaves", &s.fancyLeaves, "See through tree canopies. Costs some speed.");
+    { int cur = clampv(s.microVoxels, 0, 2); s.microVoxels = select("microVoxels", "Block detail", cur, {"Flat faces (fastest)", "Shaded micro-voxels", "Raised micro-voxels"}, "Every block is 32\xC3\x97" "32\xC3\x97" "32 little voxels coloured from its texture."); }
+    { int cur = clampv(s.waterQuality, 0, 2); s.waterQuality = select("waterQuality", "Water", cur, {"Flat", "Waves", "Waves and reflections"}, nullptr); }
+    { bool sh = s.shadows != 0; check("shadows", "Sun shadows", &sh, "Modern renderer"); s.shadows = sh ? 1 : 0; }
+    { int cur = s.particles == 2 ? 0 : s.particles == 1 ? 1 : 2; cur = select("particles", "Particles", cur, {"All", "Fewer", "Off"}, nullptr); s.particles = 2 - cur; }
     { static const char* v[] = {"near", "all", "flat"}; int cur = 0; for (int i = 0; i < 3; i++) if (s.plantDetail == v[i]) cur = i;
-      s.plantDetail = v[select("plantDetail", "3D plants", cur, {"Near you", "Everywhere (slowest)", "Flat (fastest)"}, "Solid 3D grass, flowers and crops. Near you they are 3D and further out flat, which looks the same at a distance.")]; }
+      s.plantDetail = v[select("plantDetail", "3D plants", cur, {"Near you", "Everywhere (slowest)", "Flat (fastest)"}, "Solid 3D grass, flowers and crops near you; flat further out.")]; }
+    { bool g = s.extra.value("grass3d", s.preset != "potato"); bool g0 = g;
+      check("grass3d", "3D grass", &g, "Blades of grass waving near you.");
+      if (g != g0) s.extra["grass3d"] = g; }
+    check("fancyLeaves", "Fancy leaves", &s.fancyLeaves, "See through tree canopies. Costs some speed.");
     check("wavingPlants", "Waving grass, leaves & water", &s.wavingPlants);
     check("clouds", "Clouds", &s.clouds, "Big soft clouds drifting with the wind.");
-    { bool g = s.extra.value("grass3d", s.preset != "potato"); bool g0 = g;
-      check("grass3d", "3D grass", &g, "Short blades of grass on grass blocks near you, waving in the wind (fades out with distance). Turn off for more speed.");
-      if (g != g0) s.extra["grass3d"] = g; }
-    check("portalViews", "See through portals", &s.portalViews, "Portals show the other side as you walk up to them, and you step straight through. Costs some speed near a portal.");
-    check("autoJump", "Auto-jump (touch)", &s.autoJump);
-    check("viewBob", "View bobbing", &s.viewBob);
-    check("fpBody", "See your body in first person", &s.fpBody, "Look down to see your chest, legs and armour.");
+    check("portalViews", "See through portals", &s.portalViews, "Portals show the other side; you step straight through.");
+    { static const int v[] = {0, 30, 60, 120, 144, 240, -1}; int cur = 0; for (int i = 0; i < 7; i++) if (s.fpsLimit == v[i]) cur = i;
+      int c = select("fpsLimit", "Frame rate limit", cur, {"Match display (VSync)", "30 fps (saves battery)", "60 fps", "120 fps", "144 fps", "240 fps", "Unlimited"}, nullptr);
+      if (c != cur) { s.fpsLimit = v[c]; s.vsync = s.fpsLimit == 0; } }
+    check("fullscreen", "Full screen", &s.fullscreen, "F11 switches at any time");
+    keepX(); heading("Packs");
+    {
+      std::vector<std::string> packs = listResourcePacks();
+      std::vector<std::string> items = {"Automatic (GeruDoku when installed)", "Built-in DokuQuest textures"};
+      int cur = s.resourcePack == "auto" ? 0 : s.resourcePack.empty() || s.resourcePack == "builtin" ? 1 : 0;
+      for (size_t i = 0; i < packs.size(); i++) { items.push_back(packs[i]); if (packs[i] == s.resourcePack) cur = (int)i + 2; }
+      std::string now = "In use: " + (a.tiles.packName.empty() ? std::string("built-in DokuQuest textures") : a.tiles.packName) + ". Packs in resourcepacks/ (Java 1.13 to 1.21 work best); a new one loads next start.";
+      int c = cur;
+      ImGui::PushID("pack");
+      { Row r("Resource pack", now.c_str(), "", w, 260); if (combo("##pack", &c, items, std::min(260 * z, w * 0.5f))) { s.resourcePack = c == 0 ? "auto" : c == 1 ? "builtin" : packs[c - 2]; s.save(); } }
+      ImGui::PopID();
+    }
+    {
+      std::vector<std::string> sps = listShaderPacks();
+      std::vector<std::string> items = {"None (the game's own)"};
+      int cur = 0;
+      for (size_t i = 0; i < sps.size(); i++) { items.push_back(sps[i]); if (sps[i] == s.shaderPack) cur = (int)i + 1; }
+      int c = cur;
+      ImGui::PushID("shaderpack");
+      { Row r("Shader pack", "Folders in shaderpacks/ with any of the game's shader files. Switches at once.", "", w, 260);
+        if (combo("##sp", &c, items, std::min(260 * z, w * 0.5f)) && c != cur) { s.shaderPack = c == 0 ? "" : sps[c - 1]; s.save(); setShaderPack(s.shaderPack); reloadAllShaders(); } }
+      ImGui::PopID();
+    }
+    ImGui::EndGroup();
+    nextColumn();
+
+    // ================= right: sound, controls, game =================
+    ImGui::BeginGroup();
+    heading("Sound");
+    range("volume", "Sound volume", &s.volume, 0, 1, 0.05f, pct(s.volume), nullptr);
+    range("mobVol", "Mob sounds", &s.mobVol, 0, 1, 0.05f, s.mobVol > 0 ? pct(s.mobVol) : "Off", "Voices and footsteps of animals and monsters.");
+    range("music", "Music", &s.music, 0, 1, 0.05f, s.music > 0 ? pct(s.music) : "Off", "Pieces of the place and the hour, a new one every time.");
+    { int cur = clampv(s.musicFreq, 0, 3);
+      int c = select("musicFreq", "Music frequency", cur, {"Rarely", "Now and then", "Often", "Nearly always"}, "How long the quiet lasts between pieces.");
+      if (c != cur) { s.musicFreq = c; applyLight = true; } }
+    range("ambience", "Ambient sounds", &s.ambience, 0, 1, 0.05f, pct(s.ambience), "Wind, birds, crickets, rain, and the sounds of caves.");
+    keepX(); heading("Controls");
+    { ImGui::PushID("controls");
+      { Row r("Controls", "The key, mouse button or controller button for every action.", "", w, 200);
+        if (button("Change controls\xE2\x80\xA6", BTN_NORMAL, true)) a.pushScreen(makeControlsScreen()); }
+      ImGui::PopID(); }
+    { int n = s.padMaps.is_object() ? (int)s.padMaps.size() : 0;
+      std::string d = (n ? std::to_string(n) + " set up by hand. " : std::string()) + "If a controller's buttons are mixed up, press each one when asked.";
+      ImGui::PushID("padsetup");
+      { Row r("Controller", d.c_str(), "", w, 230);
+        if (button("Set up buttons\xE2\x80\xA6", BTN_NORMAL, true)) a.pushScreen(makePadSetupScreen());
+        ImGui::SameLine();
+        if (button("Reset##padmaps", BTN_GHOST, true, 0, n == 0)) { s.padMaps = json::object(); a.input.reloadBinds(); s.save(); } }
+      ImGui::PopID(); }
+    { static const char* v[] = {"xbox", "playstation", "nintendo"}; int cur = 0; for (int i = 0; i < 3; i++) if (s.padLayout == v[i]) cur = i;
+      s.padLayout = v[select("padLayout", "Controller buttons", cur, {"Xbox (A jumps)", "PlayStation (\xE2\x9C\x95 jumps)", "Nintendo (B jumps)"}, nullptr)]; }
+    range("sens", "Mouse & touch look speed", &s.sens, 0.2f, 3, 0.05f, strFormat("%.2f\xC3\x97", s.sens), nullptr);
+    range("padSens", "Controller look speed", &s.padSens, 0.3f, 3, 0.05f, strFormat("%.2f\xC3\x97", s.padSens), nullptr);
     check("invertY", "Invert look up/down", &s.invertY);
-    check("showFps", "Show FPS", &s.showFps);
-    { int cur = s.particles == 2 ? 0 : s.particles == 1 ? 1 : 2; cur = select("particles", "Particles", cur, {"All", "Fewer", "Off"}, nullptr); s.particles = 2 - cur; }
+    check("toggleSneak", "Toggle sneak", &s.toggleSneak, "Press once to crouch, again to stand.");
+    check("toggleSprint", "Toggle sprint", &s.toggleSprint, "Sprint stays on while you move forward.");
+    check("autoJump", "Auto-jump (touch)", &s.autoJump);
+    keepX(); heading("Game");
+    { static const char* v[] = {"auto", "vertical", "horizontal"}; int cur = 0; for (int i = 0; i < 3; i++) if (s.split == v[i]) cur = i;
+      s.split = v[select("split", "Two-player split", cur, {"Automatic", "Side by side", "Top and bottom"}, nullptr)]; }
     {
       float ui = 45; const std::string& g = s.guiScale;
       if (!g.empty() && isdigit((unsigned char)g[0])) ui = (float)std::atof(g.c_str()); else if (g == "small") ui = 80; else if (g == "normal") ui = 100; else if (g == "large") ui = 125;
       float before = ui;
-      range("uiScale", "Interface size", &ui, 45, 200, 5, ui < 50 ? "Auto" : std::to_string((int)ui) + "%", "How big the menus, hotbar, inventory and text are. Auto fits your screen; drag all the way left for it.");
+      range("uiScale", "Interface size", &ui, 45, 200, 5, ui < 50 ? "Auto" : std::to_string((int)ui) + "%", "Menus, hotbar and text. All the way left is Auto.");
       if (ui != before) pendingUi = ui;
       if (pendingUi > 0 && !ImGui::IsMouseDown(0)) { s.guiScale = pendingUi < 50 ? "auto" : std::to_string((int)pendingUi); pendingUi = -1; }
     }
-    { static const int v[] = {0, 30, 60, 120, 144, 240, -1}; int cur = 0; for (int i = 0; i < 7; i++) if (s.fpsLimit == v[i]) cur = i;
-      int c = select("fpsLimit", "Frame rate limit", cur, {"Match display (VSync)", "30 fps (saves battery)", "60 fps", "120 fps", "144 fps", "240 fps", "Unlimited"},
-        "Match display follows your screen's refresh rate. Unlimited turns VSync off for the most frames per second.");
-      if (c != cur) { s.fpsLimit = v[c]; s.vsync = s.fpsLimit == 0; } }
-    { static const char* v[] = {"xbox", "playstation", "nintendo"}; int cur = 0; for (int i = 0; i < 3; i++) if (s.padLayout == v[i]) cur = i;
-      s.padLayout = v[select("padLayout", "Controller buttons", cur, {"Xbox (A jumps)", "PlayStation (\xE2\x9C\x95 jumps)", "Nintendo (B jumps, A/B swapped)"}, nullptr)]; }
-    check("toggleSneak", "Toggle sneak", &s.toggleSneak, "Press sneak once to crouch, again to stand.");
-    check("toggleSprint", "Toggle sprint", &s.toggleSprint, "Sprint stays on while you move forward.");
+    check("viewBob", "View bobbing", &s.viewBob);
+    check("fpBody", "Your body in first person", &s.fpBody, "Look down to see your chest, legs and armour.");
+    check("heldSway", "Held item sway", &s.heldSway, "What you hold lags a touch behind when you turn.");
     check("screenShake", "Screen shake", &s.screenShake, "Explosions and boss slams shake the view.");
     check("hurtTilt", "Damage tilt", &s.hurtTilt, "The view tilts a little when you are hurt.");
-    { bool he = s.extra.value("holidayEvents", true);   // (kept in Settings::extra, saved as "holidayEvents")
-      check("holidayEvents", "Holiday events", &he, "Seasonal surprises from your computer's calendar, like Halloween in October. Off keeps the game plain all year.");
+    { bool he = s.extra.value("holidayEvents", true);
+      check("holidayEvents", "Holiday events", &he, "Seasonal surprises from your calendar, like Halloween in October.");
       s.extra["holidayEvents"] = he; }
-    check("heldSway", "Held item sway", &s.heldSway, "What you hold lags a touch behind when you turn, like Better Than Adventure.");
-    // this version's own graphics options
-    { int cur = clampv(s.microVoxels, 0, 2); int c = select("microVoxels", "Block detail", cur, {"Flat faces (fastest)", "Shaded micro-voxels", "Raised micro-voxels"}, "Every block is 32\xC3\x97" "32\xC3\x97" "32 little voxels coloured from its texture.");
-      s.microVoxels = c; }
-    { int cur = clampv(s.waterQuality, 0, 2); s.waterQuality = select("waterQuality", "Water", cur, {"Flat", "Waves", "Waves and reflections"}, nullptr); }
-    { bool sh = s.shadows != 0; check("shadows", "Sun shadows (Modern renderer)", &sh); s.shadows = sh ? 1 : 0; }
-    check("fullscreen", "Full screen", &s.fullscreen);
-    ImGui::PopStyleVar();
+    check("showFps", "Show FPS", &s.showFps);
     ImGui::EndGroup();
+    if (two && leftBottom > ImGui::GetCursorPosY()) ImGui::SetCursorPosY(leftBottom);
+    ImGui::PopStyleVar();
     ImGui::Dummy(ImVec2(1, 8 * z));
     pn.endBody();
     pn.end();

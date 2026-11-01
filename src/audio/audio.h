@@ -47,6 +47,10 @@ public:
   void stop(int handle);
   void setCategoryVolume(const std::string& cat, float v);   // master | sfx | mobs | music | ambience
   void setScene(const AudioScene& s);
+  // the Music Studio (launcher): notes straight onto the music bus, timed on the audio clock
+  double audioClock() const;
+  void musicNote(int ins, float midi, float dur, float vel, double at);
+  void musicClear();
   void update(double dt);           // ambience, music, fades, sounds waiting to be rendered
   bool ok() const;
   // tests and tools

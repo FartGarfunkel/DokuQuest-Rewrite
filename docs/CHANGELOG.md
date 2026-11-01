@@ -17,6 +17,8 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Vines, ferns and leaves are green again,** and End rods show.
 - **Flags reach their poles.**
 - **Portals built on the far side match the size of the one you came through,** so the window lines up.
+- **Settings are laid out like the launcher's Options:** Graphics, Packs, Sound, Controls and Game, in two columns, each option with a line about it.
+- **Music frequency:** a new setting for how often music plays, from rarely to nearly always.
 - **Leather, pelts, hides and saddles aren't paper-flat in your hand any more,** and paper, feathers and maps keep a sliver of body.
 
 **New in the world:**

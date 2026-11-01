@@ -198,7 +198,7 @@ void AudioEngine::shutdown() {
 
 void AudioEngine::setListener(vec3 pos, vec3 forward, vec3) { impl->lpos = pos; impl->lfwd = forward; }
 void AudioEngine::setVolumes(const Settings& s) {
-  impl->vMaster = s.volume; impl->vMobs = s.mobVol; impl->vMusic = s.music; impl->vAmb = s.ambience;
+  impl->vMaster = s.volume; impl->vMobs = s.mobVol; impl->vMusic = s.music; impl->vAmb = s.ambience; impl->musicFreq = s.musicFreq;
 }
 void AudioEngine::setCategoryVolume(const std::string& cat, float v) {
   if (cat == "master") impl->vMaster = v; else if (cat == "sfx") impl->vSfx = v; else if (cat == "mobs") impl->vMobs = v;
@@ -351,6 +351,13 @@ void AudioEngine::voice(const std::string& creature, const std::string& kind, ve
   playAt(n, pos, 28.f, 1, pitch * pm);
 }
 
+double AudioEngine::audioClock() const { return impl ? impl->audioNow() : 0; }
+void AudioEngine::musicNote(int ins, float midi, float dur, float vel, double at) {
+  if (!impl) return;
+  AudioCmd c; c.t = AudioCmd::Note; c.at = at; c.ins = (u8)ins; c.a = midi; c.b = dur; c.c = vel; c.bus = 0; impl->send(c);
+  AudioCmd v; v.t = AudioCmd::Bus; v.bus = 0; v.a = 1; v.b = 0; impl->send(v);
+}
+void AudioEngine::musicClear() { if (!impl) return; AudioCmd c; c.t = AudioCmd::MusicClear; c.bus = 0; impl->send(c); }
 void AudioEngine::stop(int handle) { AudioCmd c; c.t = AudioCmd::Stop; c.handle = handle; impl->send(c); }
 
 void AudioEngine::update(double dt) {

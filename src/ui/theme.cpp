@@ -413,9 +413,9 @@ bool checkbox(const char* lbl, bool* v, const char* desc) {
   return ch;
 }
 
-bool slider(const char* id, float* v, float mn, float mx, float step, const char* shown) {
+bool slider(const char* id, float* v, float mn, float mx, float step, const char* shown, float width) {
   // input[type=range] with accent-color ember: a thin light track, ember to the left of the round knob
-  float z = Z(), w = ImGui::GetContentRegionAvail().x, h = 20 * z;
+  float z = Z(), w = width > 0 ? width : ImGui::GetContentRegionAvail().x, h = 20 * z;
   ImVec2 p = ImGui::GetCursorScreenPos();
   ImGui::InvisibleButton(id, ImVec2(w, h), ImGuiButtonFlags_EnableNav);
   bool ch = false;

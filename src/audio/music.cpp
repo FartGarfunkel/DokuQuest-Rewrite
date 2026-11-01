@@ -736,7 +736,9 @@ void MusicDirector::update(double dt, const AudioScene& s) {
   d.inWorldT += dt;
   if (d.inWorldT > 0 && d.inWorldT < dt * 1.5) d.wait = std::min(d.wait, 15.0 + d.rnd() * 20);
   if (s.paused) return;
-  d.wait -= dt;
+  // the music frequency setting: the quiet between pieces passes slower (rarely) or faster (often, nearly always)
+  static const double PACE[4] = {0.4, 1, 2.5, 12};
+  d.wait -= dt * PACE[std::clamp(d.e.musicFreq.load(), 0, 3)];
   if (d.wait <= 0) d.play(d.moodNow(s));
 }
 

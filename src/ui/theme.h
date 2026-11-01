@@ -53,7 +53,7 @@ enum BtnStyle { BTN_NORMAL, BTN_PRIMARY, BTN_GHOST, BTN_DANGER };
 bool button(const char* label, BtnStyle st = BTN_NORMAL, bool tiny = false, float width = 0, bool disabled = false);
 // form widgets in the panel style (label above or left); they read pad left/right on sliders
 bool checkbox(const char* label, bool* v, const char* desc = nullptr);
-bool slider(const char* id, float* v, float mn, float mx, float step, const char* shown);
+bool slider(const char* id, float* v, float mn, float mx, float step, const char* shown, float width = -1);   // width < 0: the rest of the row
 bool combo(const char* id, int* cur, const std::vector<std::string>& items, float width = -1);
 bool inputText(const char* id, std::string* s, const char* hint = nullptr, size_t maxLen = 0, float width = -1, int flags = 0);
 void padScrollHere();              // right stick scrolls the current scrolling region
