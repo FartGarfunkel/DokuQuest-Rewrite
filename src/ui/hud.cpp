@@ -84,7 +84,7 @@ void hudInitEvents(App& a) {
 class ChatScreen : public Screen {
 public:
   explicit ChatScreen(std::string p) : buf(std::move(p)) {}
-  std::string buf; int hist = -1; bool first = true;
+  std::string buf; int hist = -1; bool first = true, refocus = false;
   const char* id() const override { return "chat"; }
   bool pausesGame() const override { return false; }
   void onOpen(App& a) override { H().chatOpen = true; }
@@ -121,6 +121,23 @@ public:
     float slot = std::floor(clampv(std::min({(vw - 24) / 9.6f, (vh - 140) / 9.5f, 46.f}), 24.f, 46.f));
     float w = std::min(520.f, vw * 0.7f) * z, x = 10 * z, bottom = H0 - (slot * 2.6f + 40) * z;
     float ih = textSize(F_BODY, "Ag").y + 12 * z + 4 * z;
+    {   // the emote picker (BTA): a row of faces to drop into the line
+      static const char* EMOTES[] = {":)", ":D", ";)", ":P", ":(", ":O", "<3", "o/", "\\o/", "^_^", "T_T", "xD", ">:(", "-_-"};
+      const float eh = textSize(F_SMALL, "Ag").y + 10 * z;
+      ImGui::SetNextWindowPos(ImVec2(x, bottom - ih - eh - 4 * z)); ImGui::SetNextWindowSize(ImVec2(w, eh));
+      ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0)); ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(3 * z, 0));
+      ImGui::Begin("##emotes", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing);
+      ImGui::PushFont(font(F_SMALL));
+      ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 150)); ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(90, 60, 30, 220)); ImGui::PushStyleColor(ImGuiCol_Text, col::white);
+      for (int i = 0; i < (int)(sizeof(EMOTES) / sizeof(*EMOTES)); i++) {
+        if (i) ImGui::SameLine();
+        ImGui::PushID(i);
+        if (ImGui::Button(EMOTES[i], ImVec2(0, eh))) { if (!buf.empty() && buf.back() != ' ') buf += ' '; buf += EMOTES[i]; buf += ' '; refocus = true; }
+        ImGui::PopID();
+      }
+      ImGui::PopStyleColor(3); ImGui::PopFont();
+      ImGui::End(); ImGui::PopStyleVar(2);
+    }
     ImGui::SetNextWindowPos(ImVec2(x, bottom - ih)); ImGui::SetNextWindowSize(ImVec2(w, ih));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::Begin("##chat", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings);
@@ -128,6 +145,7 @@ public:
     ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(0, 0, 0, 184)); ImGui::PushStyleColor(ImGuiCol_Text, col::white);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8 * z, 6 * z)); ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2 * z);
     if (first) { ImGui::SetKeyboardFocusHere(); ImGui::GetIO().InputQueueCharacters.resize(0); }   // the T or / that opened it isn't typed
+    if (refocus) { refocus = false; ImGui::SetKeyboardFocusHere(); first = true; }   // back to the line after an emote, cursor at the end
     ImGui::SetNextItemWidth(w);
     auto cb = [](ImGuiInputTextCallbackData* d) -> int {
       auto* self = (ChatScreen*)d->UserData;
