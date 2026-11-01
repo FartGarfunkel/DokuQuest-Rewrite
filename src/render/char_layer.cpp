@@ -1,5 +1,6 @@
 // render/char_layer.cpp — players drawn as voxel characters (render/skins.js avatarDraws, game/anim.js,
 // game/capes.js, game/carried.js, game/charparts.js, render/gear3d.js gearDraws).
+#include "sim/weather.h"
 #include "render/char_layer.h"
 #include "core/item_glint.h"
 #include "render/rod_tip.h"
@@ -202,13 +203,20 @@ void CharacterLayer::update(GameSession& s, double dt) {
     float yawRate = wrapAngle(body - st.lastBody) / fdt; st.lastBody = body;
     st.turnLean += (clampf(yawRate * 0.06f * std::min(1.f, hs / 5), -0.2f, 0.2f) - st.turnLean) * std::min(1.f, fdt * 5);
     // ---- capes.js: out behind when moving forward, lifted when falling, flapping a little ----
-    float cf = -(v.x * std::sin(p->yaw) + v.z * std::cos(p->yaw));
+    // the air the cape feels: your own motion, and the wind (sim/weather.h) blowing through it, gusting
+    vec3 air = -v;
+    if (const WeatherSystem* W = weatherOf(*s.level)) {
+      const float ws = (0.6f + W->windStrength * 2.2f + W->gust * 3.f) * (1 + 0.35f * std::sin((float)time * 1.7f + std::sin((float)time * 0.6f) * 2));
+      const bool sheltered = (s.world().getLight(ifloor(p->pos.x), ifloor(p->pos.y + 1.5f), ifloor(p->pos.z)) >> 4) < 10;   // indoors, in caves: still air
+      if (!sheltered) air += vec3(-std::sin(W->windDir), 0, -std::cos(W->windDir)) * ws;
+    }
+    float cf = air.x * std::sin(p->yaw) + air.z * std::cos(p->yaw);   // air streaming back past you lifts it out behind
     float want = 0.06f + clampf(cf, 0, 8) * 0.13f + clampf(-v.y, 0, 20) * 0.04f + (p->sneaking ? 0.25f : 0);
     if (p->swimming || e->riding) want = 0.3f;
     want = std::min(want, 1.35f) + std::sin(st.bob * 2.2f) * 0.04f * st.bobAmt;
     st.capeA += (want - st.capeA) * std::min(1.f, fdt * 7);
-    float side = v.x * std::cos(p->yaw) - v.z * std::sin(p->yaw);
-    st.capeSway = clampf(-side * 0.05f, -0.25f, 0.25f) + std::sin((float)time * 3.1f) * 0.02f;
+    float side = -(air.x * std::cos(p->yaw) - air.z * std::sin(p->yaw));
+    st.capeSway = clampf(-side * 0.05f, -0.25f, 0.25f) + std::sin((float)time * 3.1f) * (0.02f + 0.01f * clampf(glm::length(vec2(air.x, air.z)), 0, 6));
   }
   for (auto it = anims.begin(); it != anims.end();) it = it->second.seen + 120 < frameNo ? anims.erase(it) : std::next(it);
 }
