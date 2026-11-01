@@ -701,14 +701,15 @@ void PlayerController::updateHeldTools(float dt, const PlayerInput& in) {
   const ItemDef* def = held.empty() ? nullptr : reg().item(held.id);
   bool playing = !p.dead && p.carrying.is_null();
   if (playing && def && def->has("bow")) {
-    bool hasArrow = (!p.offhand[0].empty() && p.offhand[0].id == "arrow") || playerCount(p, "arrow") > 0;
+    int quiverArrows(Player& p); bool quiverTake(Player& p);   // sim/quiver.cpp
+    bool hasArrow = (!p.offhand[0].empty() && p.offhand[0].id == "arrow") || playerCount(p, "arrow") > 0 || quiverArrows(p) > 0;
     if (in.use) {
       if (!hasArrow && !p.creative()) { if (in.usePressed) toastMsg("You need arrows"); bowPull = 0; }
       else { if (bowPull <= 0) sfxUi(lv, p, "bow_draw"); bowPull = std::min(1.25f, bowPull + dt); }   // a creak as you draw (bows.js)
     } else if (bowPull > 0) {
       if (bowPull > 0.12f) {
         float power = std::min(1.f, bowPull);
-        if (!p.creative()) { if (!p.offhand[0].empty() && p.offhand[0].id == "arrow") { if (--p.offhand[0].n <= 0) p.offhand[0].clear(); } else playerRemove(p, "arrow", 1); }
+        if (!p.creative()) { if (!p.offhand[0].empty() && p.offhand[0].id == "arrow") { if (--p.offhand[0].n <= 0) p.offhand[0].clear(); } else if (!quiverTake(p)) playerRemove(p, "arrow", 1); }
         vec3 L = lookVector(p.yaw, p.pitch); float sp = 8 + power * 30;
         auto a = std::make_unique<ArrowEntity>();
         a->realm = p.realm; a->pos = p.pos + vec3(L.x * 0.4f, p.eye - 0.1f + L.y * 0.4f, L.z * 0.4f); a->vel = L * sp;

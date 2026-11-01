@@ -412,6 +412,26 @@ def main(d):
                                            'needsSupport': True, 'fuel': 0.5, 'tree': 'palm', 'tex': 'palm_sapling'}, [tiles['palm_sapling']] * 6)
     items['coconut'] = {'key': 'coconut', 'name': 'Coconut', 'maxStack': 64, 'icon': 'coconut', 'food': {'heal': 3}, 'desc': 'Falls from a felled palm.'}
     recipe('palm_planks', 4, items_=['palm_log'])
+    # the quiver (BTA's): a leather case of arrows (sim/quiver.cpp)
+    if 'quiver' not in tiles:
+        qv = _I.new('RGBA', (32, 32), (0, 0, 0, 0)); qp = qv.load()
+        for k in range(22):   # the case, slanting up to the right
+            cx, cy = 9 + k * 0.55, 28 - k
+            for w in range(-4, 5):
+                x, y = int(cx + w * 0.8), int(cy + w * 0.45)
+                if 0 <= x < 32 and 0 <= y < 32:
+                    edge = abs(w) == 4 or k in (0, 21)
+                    band = k in (5, 6, 15, 16)
+                    qp[x, y] = (70, 42, 22, 255) if edge else (92, 58, 30, 255) if band else (140, 88, 46, 255) if w < 1 else (118, 72, 38, 255)
+        for i, (fx, fy) in enumerate(((19, 4), (22, 3), (25, 5))):   # three arrows' fletching out of the top
+            for t in range(5):
+                for dx in (-1, 0, 1):
+                    x, y = fx + dx + t // 2, fy + t
+                    if 0 <= x < 32 and 0 <= y < 32 and not qp[x, y][3]: qp[x, y] = (236, 236, 236, 255) if dx else (90, 70, 50, 255)
+        rel = 'textures/item/quiver.png'; qv.save(d / rel)
+        tiles['quiver'] = tj['count']; files.append(rel); tj['res'].append(32); tj['count'] += 1
+    items['quiver'] = {'key': 'quiver', 'name': 'Quiver', 'maxStack': 1, 'icon': 'quiver', 'desc': 'Holds up to 192 arrows. Use it to gather them; crouch and use it to tip them out.'}
+    recipe('quiver', 1, ['LS', 'LL', 'LL'], {'L': 'leather', 'S': 'string'})
     # thorn leaves: the Thornscrub's thorn trees (BTA's Caatinga); they prick like cactus
     if 'thorn_leaves' not in tiles:
         im = recolour(src_pic(d, tiles, files, 'acacia_leaves'), lambda r, g, b, a, x, y: (r * 150 // 255, g * 140 // 255, b * 70 // 255, 255 if a else 0))
@@ -429,6 +449,7 @@ def main(d):
     if 'steel_door_item' not in sh['itemTiles']: sh['itemTiles'].append('steel_door_item'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'glass_door_item' not in sh['itemTiles']: sh['itemTiles'].append('glass_door_item'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'coconut' not in sh['itemTiles']: sh['itemTiles'].append('coconut'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
+    if 'quiver' not in sh['itemTiles']: sh['itemTiles'].append('quiver'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'sulphur' not in sh['itemTiles']: sh['itemTiles'].append('sulphur'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'paintbrush' not in sh['itemTiles']: sh['itemTiles'].append('paintbrush'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))

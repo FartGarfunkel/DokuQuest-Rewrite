@@ -23,7 +23,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 
 - **The Nether:** Cinder Isles out on the lava sea, Emberglass Groves, the Ashen Wastes and the Sulphur Springs (sulphur and charcoal make gunpowder).
 - **Thornscrub:** dry plains thick with low thorn trees whose leaves prick like cactus.
-- **Trees grow real branches:** great spreading oaks, limbs on dark oaks, jungle and cherry trees, now and then on oaks and birches, forking at the ends with a clump of leaves on each tip. Saplings grow into the same shapes as wild trees.
+- **Trees grow real branches:** great spreading oaks, limbs on dark oaks, jungle and cherry trees, now and then on oaks and birches, forking at the ends with a clump of leaves on each tip. Now and then a giant of the rainforest towers over the canopy. Saplings grow into the same shapes as wild trees.
 - **Palm trees** on warm beaches and here and there in the thornscrub, with palm wood; a felled palm drops coconuts.
 - **The outer End:** spire fields, crater barrens, violet moors of end moss, stone arches and floating shards.
 - **End cities rebuilt:** a hall, a tower in storeys up to a crowned top room, bridges out to hanging towers, and the ship with the dragon's head on its bow and the wings in a frame. Shulkers keep them; their bolts lift you off your feet.
@@ -47,6 +47,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Glass doors and trapdoors,** and the **steel set:** a steel door and trapdoor (opened by redstone, and no blast breaks them), a steel fence, and steel-framed glass.
 - **A jar of butterflies** (an empty jar over grass on a bright day), **bluebells** under forest trees, **marigolds** in the meadows, **spinifex** in the redlands, and the **sugar cane bundle.**
 - **The hand sieve:** sift gravel, sand, dirt and the rest right where it lies.
+- **The quiver:** holds up to 192 arrows; your bow draws from it.
 - **Particles:** sprinting kicks up the ground you run on, a hard landing throws up a ring of it, critical blows burst into stars, and running beasts raise dust.
 
 **Gear and magic:**

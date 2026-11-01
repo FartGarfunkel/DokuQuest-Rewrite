@@ -41,6 +41,11 @@ void tooltipEffectLines(const ItemStack& s, std::vector<std::pair<std::string, u
 
 void tooltipGearLines(const ItemStack& s, std::vector<std::pair<std::string, u32>>& out) {
   const ItemDef* d = s.def();
+  if (s.id == "quiver") {   // sim/quiver.cpp
+    const int n = s.tag.is_object() ? s.tag.value("arrows", 0) : 0;
+    out.push_back({n ? std::to_string(n) + " of 192 arrows" : "Empty: use it to gather your arrows", TS});
+    return;
+  }
   if (!d || !(d->hasTool || d->has("armor") || d->has("bow"))) return;
   double gx = s.tag.is_object() ? s.tag.value("gx", 0.0) : 0.0;
   int L = gearLevelOf(gx);
