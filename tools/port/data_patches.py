@@ -283,3 +283,32 @@ for k, label, tint in (('sandstone_golem', 'a sandstone golem', [1.0, 0.85, 0.55
     v = dict(mobs['iron_golem']); v['label'] = label; v['tint'] = tint
     mobs[k] = v
 (d / 'mobs.json').write_text(json.dumps(mobs, separators=(',', ':'), ensure_ascii=False))
+
+# ---- every drop has a use (tools/port/audit.py): pelts and crocodile scales tan into leather, shark teeth tip arrows,
+#      glow ink makes a glow item frame (and makes sign writing glow: sim/build.cpp) ----
+rj = json.loads((d / 'recipes.json').read_text())
+def _recipe(out, n, items_=None, shape=None, key=None):
+    if any(r.get('out') == out and r.get('items') == items_ and r.get('shape') == shape for r in rj['recipes']): return
+    r = {'out': out, 'n': n}
+    if shape: r.update({'shape': shape, 'key': key, 'h': len(shape), 'w': len(shape[0])})
+    else: r.update({'items': items_, 'w': 2, 'h': 2})
+    r['idx'] = len(rj['recipes']); rj['recipes'].append(r)
+_recipe('leather', 1, ['pelt'])
+_recipe('leather', 1, ['croc_scale', 'croc_scale'])
+_recipe('arrow', 4, shape=['T', 'S', 'F'], key={'T': 'shark_tooth', 'S': 'stick', 'F': 'feather'})
+_recipe('glow_item_frame', 1, ['item_frame', 'glow_ink_sac'])
+(d / 'recipes.json').write_text(json.dumps(rj, separators=(',', ':')))
+
+# ---- the armour stand (its item said "set it down and dress it"): a block drawn by render/stand_layer.cpp, its gear in
+#      the block entity (sim/build.cpp useBlockAt) ----
+bj = json.loads((d / 'blocks.json').read_text()); items = json.loads((d / 'items.json').read_text())
+tnames = json.loads((d / 'tiles.json').read_text())['names']
+if not any(b['key'] == 'armor_stand' for b in bj['blocks']):
+    bj['blocks'].append({'id': len(bj['blocks']), 'render': 0, 'solid': False, 'opaque': False, 'replaceable': False, 'hardness': 0.5,
+                         'tool': 'axe', 'tier': 0, 'drop': 'armor_stand', 'light': 0, 'lightAtt': 0, 'sound': 'wood', 'key': 'armor_stand',
+                         'name': 'Armor Stand', 'armorStand': True, 'facingModel': True, 'sink': True})
+    bj['faces'].append([tnames['planks']] * 6)
+    (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), sort_keys=False))
+if items['armor_stand'].get('block') != 'armor_stand':
+    items['armor_stand']['block'] = 'armor_stand'
+    (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))

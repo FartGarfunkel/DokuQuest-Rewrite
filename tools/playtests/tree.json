@@ -12,7 +12,7 @@
  {"do":"mouse","button":"left","hold":120},
  {"wait":125,"do":"report"},
  {"do":"expect","rel":true,"block":[0,0,-3],"is":"air"},
- {"do":"expect","entity":"falling_tree","near":10},
+ {"do":"expect","rel":true,"block":[0,4,-3],"is":"air"},
  {"wait":60,"do":"shot","path":"/tmp/t_tree1.png"},
  {"wait":60,"do":"report"},
  {"do":"expect","entity":"item","near":12},

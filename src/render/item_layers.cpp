@@ -24,7 +24,9 @@ void registerItemLayers() {
   registerRenderLayer([](GameSession&) { return std::make_shared<DroppedItemLayer>(); });
   registerPileLayer();   // piles and placed backpacks (render/pile_layer.cpp)
   { void registerPaintingLayer(); registerPaintingLayer(); }   // render/painting_layer.cpp
-  { void registerSwingLayer(); registerSwingLayer(); }         // render/swing_layer.cpp
+  { void registerSwingLayer(); registerSwingLayer(); }
+  { void registerSignLayer(); registerSignLayer(); }           // render/sign_layer.cpp
+  { void registerStandLayer(); registerStandLayer(); }         // render/stand_layer.cpp         // render/swing_layer.cpp
   { void registerHeldLightFx(); registerHeldLightFx(); }       // render/held_light_fx.cpp
   { void registerWinterVillageLayer(); registerWinterVillageLayer(); }   // render/winter_village_layer.cpp (December)
   { void registerColourFilterLayer(); registerColourFilterLayer(); }   // render/colour_filter_layer.cpp

@@ -5,7 +5,7 @@
 //             {"do":"pad","button":"a"}, {"do":"expect","screen":"inventory"}, {"do":"shot","path":"/tmp/a.png"}]}
 // do: key{key,hold} type{text} mouse{button,hold,x?,y?} move{dx,dy} pad{button,hold,id?} padaxis{axis,value,hold,id?}
 // (local = which split-screen player the look/tp/give/... steps act on; id = which virtual controller, 0..3: they attach on first use; Start on a free one joins split screen)
-//     cmd{text} look{yaw,pitch (degrees)} lookAt{x,y,z} tp{x,y,z} give{item,n} select{slot} setBlock{x,y,z,key}
+//     cmd{text} look{yaw,pitch (degrees)} lookAt{x,y,z} tp{x,y,z} give{item,n,clear?,hand?} select{slot} setBlock{x,y,z,key}
 //     anchor (remember the player's block; x/y/z, from/to and block in steps with "rel":true are relative to it)
 //     fill{from:[x,y,z],to:[x,y,z],key}
 //     expect{screen | block:[x,y,z],is | entity,near} report shot{path} save leave open{world} unjoin{local} quit
@@ -188,6 +188,8 @@ void runStep(App& a, const json& st) {
     ItemStack gs(st.value("item", "stone"), st.value("n", 1), st.value("d", 0));
     if (st.contains("tag") && st["tag"].is_object()) gs.tag = st["tag"];   // e.g. {"en":{"sharp":3},"gx":900}
     if (st.value("offhand", false)) { if (p->offhand.empty()) p->offhand.resize(1); p->offhand[0] = gs; return; }   // straight into the other hand
+    if (st.value("clear", false)) for (auto& it : p->inv) it = ItemStack();   // an empty bag first (whatever the spawn put in it)
+    if (st.value("hand", false) && p->selected < (int)p->inv.size()) { p->inv[p->selected] = gs; return; }   // straight into the held slot
     int left = p->give(gs);
     if (left) DQ_WARN("test: give %s left %d", st.value("item", "").c_str(), left);
   } else if (op == "be" && s) {   // set a block entity (a monster cage: {"type":"spawner","mob":"zombie"})

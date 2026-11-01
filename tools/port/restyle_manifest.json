@@ -1,0 +1,2198 @@
+{
+"adamantite_axe": {
+"donor": "own shape",
+"file": "item/adamantite_axe.png"
+},
+"adamantite_block": {
+"donor": "iron_block",
+"file": "block/adamantite_block.png"
+},
+"adamantite_boots": {
+"donor": "iron_boots",
+"file": "item/adamantite_boots.png"
+},
+"adamantite_helmet": {
+"donor": "iron_helmet",
+"file": "item/adamantite_helmet.png"
+},
+"adamantite_hoe": {
+"donor": "own shape",
+"file": "item/adamantite_hoe.png"
+},
+"adamantite_ingot": {
+"donor": "iron_ingot",
+"file": "item/adamantite_ingot.png"
+},
+"adamantite_leggings": {
+"donor": "iron_leggings",
+"file": "item/adamantite_leggings.png"
+},
+"adamantite_ore": {
+"donor": "iron_ore",
+"file": "block/adamantite_ore.png"
+},
+"adamantite_pickaxe": {
+"donor": "own shape",
+"file": "item/adamantite_pickaxe.png"
+},
+"adamantite_shovel": {
+"donor": "own shape",
+"file": "item/adamantite_shovel.png"
+},
+"adamantite_sword": {
+"donor": "iron_sword",
+"file": "item/adamantite_sword.png"
+},
+"aechor_petal": {
+"donor": "own shape",
+"file": "item/aechor_petal.png"
+},
+"aether_crystal": {
+"donor": "amethyst_shard",
+"file": "item/aether_crystal.png"
+},
+"aether_crystal_ore": {
+"donor": "iron_ore",
+"file": "block/aether_crystal_ore.png"
+},
+"ale_mug": {
+"donor": "own shape",
+"file": "item/ale_mug.png"
+},
+"apprentice_staff": {
+"donor": "own shape",
+"file": "item/apprentice_staff.png"
+},
+"archmage_boots": {
+"donor": "iron_boots",
+"file": "item/archmage_boots.png"
+},
+"archmage_helmet": {
+"donor": "iron_helmet",
+"file": "item/archmage_helmet.png"
+},
+"archmage_leggings": {
+"donor": "iron_leggings",
+"file": "item/archmage_leggings.png"
+},
+"ash": {
+"donor": "grindstone_wheel (grain)",
+"file": "block/ash.png"
+},
+"aspen_door_item": {
+"donor": "oak_door",
+"file": "item/aspen_door_item.png"
+},
+"aspen_sign_item": {
+"donor": "oak_sign",
+"file": "item/aspen_sign_item.png"
+},
+"axle": {
+"donor": "mud_bricks (grain)",
+"file": "block/axle.png"
+},
+"azalea": {
+"donor": "big_dripleaf_stem (grain)",
+"file": "block/azalea.png"
+},
+"bag_side": {
+"donor": "weathered_chiseled_copper (grain)",
+"file": "block/bag_side.png"
+},
+"bamboo_block_side": {
+"donor": "lime_terracotta (grain)",
+"file": "block/bamboo_block_side.png"
+},
+"bamboo_door_item": {
+"donor": "oak_door",
+"file": "item/bamboo_door_item.png"
+},
+"beehive_top": {
+"donor": "wet_sponge (grain)",
+"file": "block/beehive_top.png"
+},
+"berry_bush": {
+"donor": "bush (alike)",
+"file": "block/berry_bush.png"
+},
+"berry_bush_empty": {
+"donor": "bush (alike)",
+"file": "block/berry_bush_empty.png"
+},
+"black_cape": {
+"donor": "black_concrete (grain)",
+"file": "block/black_cape.png"
+},
+"black_cape_icon": {
+"donor": "own shape",
+"file": "item/black_cape_icon.png"
+},
+"black_firework_rocket": {
+"donor": "redstone_torch_off (grain)",
+"file": "block/black_firework_rocket.png"
+},
+"blackstone_bricks": {
+"donor": "stone_bricks",
+"file": "block/blackstone_bricks.png"
+},
+"blue_cape": {
+"donor": "blue_concrete (grain)",
+"file": "block/blue_cape.png"
+},
+"blue_cape_icon": {
+"donor": "own shape",
+"file": "item/blue_cape_icon.png"
+},
+"blue_firework_rocket": {
+"donor": "grass (grain)",
+"file": "block/blue_firework_rocket.png"
+},
+"brew_base": {
+"donor": "cobblestone (grain)",
+"file": "block/brew_base.png"
+},
+"bronze_axe": {
+"donor": "own shape",
+"file": "item/bronze_axe.png"
+},
+"bronze_block": {
+"donor": "iron_block",
+"file": "block/bronze_block.png"
+},
+"bronze_boots": {
+"donor": "iron_boots",
+"file": "item/bronze_boots.png"
+},
+"bronze_helmet": {
+"donor": "iron_helmet",
+"file": "item/bronze_helmet.png"
+},
+"bronze_hoe": {
+"donor": "own shape",
+"file": "item/bronze_hoe.png"
+},
+"bronze_ingot": {
+"donor": "iron_ingot",
+"file": "item/bronze_ingot.png"
+},
+"bronze_leggings": {
+"donor": "iron_leggings",
+"file": "item/bronze_leggings.png"
+},
+"bronze_pickaxe": {
+"donor": "own shape",
+"file": "item/bronze_pickaxe.png"
+},
+"bronze_shovel": {
+"donor": "own shape",
+"file": "item/bronze_shovel.png"
+},
+"bronze_sword": {
+"donor": "iron_sword",
+"file": "item/bronze_sword.png"
+},
+"brown_cape": {
+"donor": "brown_concrete_powder (grain)",
+"file": "block/brown_cape.png"
+},
+"brown_cape_icon": {
+"donor": "own shape",
+"file": "item/brown_cape_icon.png"
+},
+"brown_firework_rocket": {
+"donor": "pink_tulip (grain)",
+"file": "block/brown_firework_rocket.png"
+},
+"cabbage": {
+"donor": "own shape",
+"file": "item/cabbage.png"
+},
+"cabbage_seeds": {
+"donor": "own shape",
+"file": "item/cabbage_seeds.png"
+},
+"campfire_kit": {
+"donor": "own shape",
+"file": "item/campfire_kit.png"
+},
+"carriage": {
+"donor": "own shape",
+"file": "item/carriage.png"
+},
+"cartography_table_side": {
+"donor": "bricks (grain)",
+"file": "block/cartography_table_side.png"
+},
+"charred_log_side": {
+"donor": "oak_log",
+"file": "block/charred_log_side.png"
+},
+"charred_log_top": {
+"donor": "oak_log_top",
+"file": "block/charred_log_top.png"
+},
+"cherry_door_item": {
+"donor": "oak_door",
+"file": "item/cherry_door_item.png"
+},
+"chiseled_slate": {
+"donor": "stone",
+"file": "block/chiseled_slate.png"
+},
+"cinder_core": {
+"donor": "own shape",
+"file": "item/cinder_core.png"
+},
+"cinder_powder": {
+"donor": "own shape",
+"file": "item/cinder_powder.png"
+},
+"cinderite_axe": {
+"donor": "own shape",
+"file": "item/cinderite_axe.png"
+},
+"cinderite_boots": {
+"donor": "iron_boots",
+"file": "item/cinderite_boots.png"
+},
+"cinderite_helmet": {
+"donor": "iron_helmet",
+"file": "item/cinderite_helmet.png"
+},
+"cinderite_hoe": {
+"donor": "own shape",
+"file": "item/cinderite_hoe.png"
+},
+"cinderite_leggings": {
+"donor": "iron_leggings",
+"file": "item/cinderite_leggings.png"
+},
+"cinderite_ore": {
+"donor": "iron_ore",
+"file": "block/cinderite_ore.png"
+},
+"cinderite_pickaxe": {
+"donor": "own shape",
+"file": "item/cinderite_pickaxe.png"
+},
+"cinderite_shard": {
+"donor": "own shape",
+"file": "item/cinderite_shard.png"
+},
+"cinderite_shovel": {
+"donor": "own shape",
+"file": "item/cinderite_shovel.png"
+},
+"cinderite_sword": {
+"donor": "iron_sword",
+"file": "item/cinderite_sword.png"
+},
+"cloud_leaves": {
+"donor": "oak_leaves",
+"file": "block/cloud_leaves.png"
+},
+"cob": {
+"donor": "sulfur_bricks (grain)",
+"file": "block/cob.png"
+},
+"coniferous_litter": {
+"donor": "brown_concrete_side (grain)",
+"file": "block/coniferous_litter.png"
+},
+"coniferous_litter_side": {
+"donor": "jungle_log (grain)",
+"file": "block/coniferous_litter_side.png"
+},
+"conveyor_side": {
+"donor": "gray_concrete (grain)",
+"file": "block/conveyor_side.png"
+},
+"conveyor_top": {
+"donor": "test_block_log (grain)",
+"file": "block/conveyor_top.png"
+},
+"corn": {
+"donor": "own shape",
+"file": "item/corn.png"
+},
+"corn_seeds": {
+"donor": "own shape",
+"file": "item/corn_seeds.png"
+},
+"cracked_blackstone_bricks": {
+"donor": "stone_bricks",
+"file": "block/cracked_blackstone_bricks.png"
+},
+"cracked_slate_bricks": {
+"donor": "stone_bricks",
+"file": "block/cracked_slate_bricks.png"
+},
+"cracked_slate_tiles": {
+"donor": "blackstone_button (grain)",
+"file": "block/cracked_slate_tiles.png"
+},
+"crimson_nylium_top": {
+"donor": "red_wool (grain)",
+"file": "block/crimson_nylium_top.png"
+},
+"crushed_adamantite": {
+"donor": "own shape",
+"file": "item/crushed_adamantite.png"
+},
+"crushed_copper": {
+"donor": "own shape",
+"file": "item/crushed_copper.png"
+},
+"crushed_gold": {
+"donor": "own shape",
+"file": "item/crushed_gold.png"
+},
+"crushed_iron": {
+"donor": "own shape",
+"file": "item/crushed_iron.png"
+},
+"crushed_mithril": {
+"donor": "own shape",
+"file": "item/crushed_mithril.png"
+},
+"crushed_silver": {
+"donor": "own shape",
+"file": "item/crushed_silver.png"
+},
+"crushed_tin": {
+"donor": "own shape",
+"file": "item/crushed_tin.png"
+},
+"crusher_side": {
+"donor": "light_gray_wool (grain)",
+"file": "block/crusher_side.png"
+},
+"crusher_top": {
+"donor": "cobblestone (grain)",
+"file": "block/crusher_top.png"
+},
+"cyan_cape": {
+"donor": "cyan_wool (grain)",
+"file": "block/cyan_cape.png"
+},
+"cyan_cape_icon": {
+"donor": "own shape",
+"file": "item/cyan_cape_icon.png"
+},
+"cyan_firework_rocket": {
+"donor": "azure_bluet (grain)",
+"file": "block/cyan_firework_rocket.png"
+},
+"dark_roof_tiles": {
+"donor": "bricks",
+"file": "block/dark_roof_tiles.png"
+},
+"daub": {
+"donor": "exposed_copper (grain)",
+"file": "block/daub.png"
+},
+"dead_coral_block": {
+"donor": "light_gray_wool (grain)",
+"file": "block/dead_coral_block.png"
+},
+"death_compass": {
+"donor": "own shape",
+"file": "item/death_compass.png"
+},
+"decorated_pot_side": {
+"donor": "granite (grain)",
+"file": "block/decorated_pot_side.png"
+},
+"desert_cobble": {
+"donor": "poplar_log (grain)",
+"file": "block/desert_cobble.png"
+},
+"desert_sand": {
+"donor": "sand",
+"file": "block/desert_sand.png"
+},
+"desert_sandstone": {
+"donor": "stone",
+"file": "block/desert_sandstone.png"
+},
+"desert_sandstone_block": {
+"donor": "birch_planks (grain)",
+"file": "block/desert_sandstone_block.png"
+},
+"desert_sandstone_bricks": {
+"donor": "stone_bricks",
+"file": "block/desert_sandstone_bricks.png"
+},
+"desert_sandstone_top": {
+"donor": "stripped_birch_log (grain)",
+"file": "block/desert_sandstone_top.png"
+},
+"desert_stone": {
+"donor": "stone",
+"file": "block/desert_stone.png"
+},
+"desert_stone_block": {
+"donor": "brick_slab_double (grain)",
+"file": "block/desert_stone_block.png"
+},
+"desert_stone_bricks": {
+"donor": "stone_bricks",
+"file": "block/desert_stone_bricks.png"
+},
+"dragon_egg_bog": {
+"donor": "oak_log (grain)",
+"file": "block/dragon_egg_bog.png"
+},
+"dragon_egg_ember": {
+"donor": "redstone_block (grain)",
+"file": "block/dragon_egg_ember.png"
+},
+"dragon_egg_ender": {
+"donor": "polished_blackstone_bricks (grain)",
+"file": "block/dragon_egg_ender.png"
+},
+"dragon_egg_frost": {
+"donor": "ice (grain)",
+"file": "block/dragon_egg_frost.png"
+},
+"dragon_egg_sand": {
+"donor": "sand",
+"file": "block/dragon_egg_sand.png"
+},
+"dragon_egg_storm": {
+"donor": "light_blue_terracotta (grain)",
+"file": "block/dragon_egg_storm.png"
+},
+"dragon_egg_tide": {
+"donor": "light_blue_concrete_powder (grain)",
+"file": "block/dragon_egg_tide.png"
+},
+"dragon_egg_verdant": {
+"donor": "oxidized_copper_bulb_lit (grain)",
+"file": "block/dragon_egg_verdant.png"
+},
+"dragon_scale": {
+"donor": "own shape",
+"file": "item/dragon_scale.png"
+},
+"dragonscale_boots": {
+"donor": "iron_boots",
+"file": "item/dragonscale_boots.png"
+},
+"dragonscale_helmet": {
+"donor": "iron_helmet",
+"file": "item/dragonscale_helmet.png"
+},
+"dragonscale_leggings": {
+"donor": "iron_leggings",
+"file": "item/dragonscale_leggings.png"
+},
+"druid_boots": {
+"donor": "iron_boots",
+"file": "item/druid_boots.png"
+},
+"druid_helmet": {
+"donor": "iron_helmet",
+"file": "item/druid_helmet.png"
+},
+"druid_leggings": {
+"donor": "iron_leggings",
+"file": "item/druid_leggings.png"
+},
+"dry_dirt": {
+"donor": "dirt",
+"file": "block/dry_dirt.png"
+},
+"dry_dirt_grass_side": {
+"donor": "grass_block_side",
+"file": "block/dry_dirt_grass_side.png"
+},
+"dry_grass_side": {
+"donor": "grass_block_side",
+"file": "block/dry_grass_side.png"
+},
+"dry_grass_top": {
+"donor": "grass_block_top",
+"file": "block/dry_grass_top.png"
+},
+"dungeon_gate": {
+"donor": "spruce_leaves (grain)",
+"file": "block/dungeon_gate.png"
+},
+"echo_charm": {
+"donor": "own shape",
+"file": "item/echo_charm.png"
+},
+"ember_blade": {
+"donor": "own shape",
+"file": "item/ember_blade.png"
+},
+"ember_cape": {
+"donor": "orange_concrete_side (grain)",
+"file": "block/ember_cape.png"
+},
+"ember_cape_icon": {
+"donor": "own shape",
+"file": "item/ember_cape_icon.png"
+},
+"ember_charm": {
+"donor": "own shape",
+"file": "item/ember_charm.png"
+},
+"ember_crown": {
+"donor": "own shape",
+"file": "item/ember_crown.png"
+},
+"ember_crust": {
+"donor": "spruce_log (grain)",
+"file": "block/ember_crust.png"
+},
+"ember_effigy": {
+"donor": "own shape",
+"file": "item/ember_effigy.png"
+},
+"ember_igniter": {
+"donor": "own shape",
+"file": "item/ember_igniter.png"
+},
+"emberstone_bricks": {
+"donor": "stone_bricks",
+"file": "block/emberstone_bricks.png"
+},
+"emerald_axe": {
+"donor": "own shape",
+"file": "item/emerald_axe.png"
+},
+"emerald_boots": {
+"donor": "iron_boots",
+"file": "item/emerald_boots.png"
+},
+"emerald_helmet": {
+"donor": "iron_helmet",
+"file": "item/emerald_helmet.png"
+},
+"emerald_hoe": {
+"donor": "own shape",
+"file": "item/emerald_hoe.png"
+},
+"emerald_leggings": {
+"donor": "iron_leggings",
+"file": "item/emerald_leggings.png"
+},
+"emerald_pickaxe": {
+"donor": "own shape",
+"file": "item/emerald_pickaxe.png"
+},
+"emerald_shovel": {
+"donor": "own shape",
+"file": "item/emerald_shovel.png"
+},
+"emerald_sword": {
+"donor": "iron_sword",
+"file": "item/emerald_sword.png"
+},
+"ench_bottom": {
+"donor": "polished_blackstone (grain)",
+"file": "block/ench_bottom.png"
+},
+"ench_side": {
+"donor": "crimson_planks_double (grain)",
+"file": "block/ench_side.png"
+},
+"ench_top": {
+"donor": "red_concrete_powder (grain)",
+"file": "block/ench_top.png"
+},
+"end_portal": {
+"donor": "black_concrete (grain)",
+"file": "block/end_portal.png"
+},
+"explorer_backpack": {
+"donor": "own shape",
+"file": "item/explorer_backpack.png"
+},
+"feather_charm": {
+"donor": "own shape",
+"file": "item/feather_charm.png"
+},
+"fireball": {
+"donor": "lily_pad_flower_red (grain)",
+"file": "block/fireball.png"
+},
+"flag": {
+"donor": "orange_concrete_side (grain)",
+"file": "block/flag.png"
+},
+"flour": {
+"donor": "own shape",
+"file": "item/flour.png"
+},
+"flowering_azalea": {
+"donor": "dead_azalea_leaves (grain)",
+"file": "block/flowering_azalea.png"
+},
+"frost_cape": {
+"donor": "blue_ice (grain)",
+"file": "block/frost_cape.png"
+},
+"frost_cape_icon": {
+"donor": "own shape",
+"file": "item/frost_cape_icon.png"
+},
+"frost_shard": {
+"donor": "own shape",
+"file": "item/frost_shard.png"
+},
+"frostbite_dagger": {
+"donor": "own shape",
+"file": "item/frostbite_dagger.png"
+},
+"frostweaver_boots": {
+"donor": "iron_boots",
+"file": "item/frostweaver_boots.png"
+},
+"frostweaver_helmet": {
+"donor": "iron_helmet",
+"file": "item/frostweaver_helmet.png"
+},
+"frostweaver_leggings": {
+"donor": "iron_leggings",
+"file": "item/frostweaver_leggings.png"
+},
+"furn_bench_acacia": {
+"donor": "own shape",
+"file": "item/furn_bench_acacia.png"
+},
+"furn_bench_aspen": {
+"donor": "own shape",
+"file": "item/furn_bench_aspen.png"
+},
+"furn_bench_birch": {
+"donor": "own shape",
+"file": "item/furn_bench_birch.png"
+},
+"furn_bench_cherry": {
+"donor": "own shape",
+"file": "item/furn_bench_cherry.png"
+},
+"furn_bench_crimson": {
+"donor": "own shape",
+"file": "item/furn_bench_crimson.png"
+},
+"furn_bench_dark_oak": {
+"donor": "own shape",
+"file": "item/furn_bench_dark_oak.png"
+},
+"furn_bench_jungle": {
+"donor": "own shape",
+"file": "item/furn_bench_jungle.png"
+},
+"furn_bench_mangrove": {
+"donor": "own shape",
+"file": "item/furn_bench_mangrove.png"
+},
+"furn_bench_oak": {
+"donor": "own shape",
+"file": "item/furn_bench_oak.png"
+},
+"furn_bench_pine": {
+"donor": "own shape",
+"file": "item/furn_bench_pine.png"
+},
+"furn_bench_spruce": {
+"donor": "own shape",
+"file": "item/furn_bench_spruce.png"
+},
+"furn_bench_warped": {
+"donor": "own shape",
+"file": "item/furn_bench_warped.png"
+},
+"furn_bookcase_acacia": {
+"donor": "own shape",
+"file": "item/furn_bookcase_acacia.png"
+},
+"furn_bookcase_aspen": {
+"donor": "own shape",
+"file": "item/furn_bookcase_aspen.png"
+},
+"furn_bookcase_birch": {
+"donor": "own shape",
+"file": "item/furn_bookcase_birch.png"
+},
+"furn_bookcase_cherry": {
+"donor": "own shape",
+"file": "item/furn_bookcase_cherry.png"
+},
+"furn_bookcase_crimson": {
+"donor": "own shape",
+"file": "item/furn_bookcase_crimson.png"
+},
+"furn_bookcase_dark_oak": {
+"donor": "own shape",
+"file": "item/furn_bookcase_dark_oak.png"
+},
+"furn_bookcase_jungle": {
+"donor": "own shape",
+"file": "item/furn_bookcase_jungle.png"
+},
+"furn_bookcase_mangrove": {
+"donor": "own shape",
+"file": "item/furn_bookcase_mangrove.png"
+},
+"furn_bookcase_oak": {
+"donor": "own shape",
+"file": "item/furn_bookcase_oak.png"
+},
+"furn_bookcase_pine": {
+"donor": "own shape",
+"file": "item/furn_bookcase_pine.png"
+},
+"furn_bookcase_spruce": {
+"donor": "own shape",
+"file": "item/furn_bookcase_spruce.png"
+},
+"furn_bookcase_warped": {
+"donor": "own shape",
+"file": "item/furn_bookcase_warped.png"
+},
+"furn_cabinet_acacia": {
+"donor": "own shape",
+"file": "item/furn_cabinet_acacia.png"
+},
+"furn_cabinet_aspen": {
+"donor": "own shape",
+"file": "item/furn_cabinet_aspen.png"
+},
+"furn_cabinet_birch": {
+"donor": "own shape",
+"file": "item/furn_cabinet_birch.png"
+},
+"furn_cabinet_cherry": {
+"donor": "own shape",
+"file": "item/furn_cabinet_cherry.png"
+},
+"furn_cabinet_crimson": {
+"donor": "own shape",
+"file": "item/furn_cabinet_crimson.png"
+},
+"furn_cabinet_dark_oak": {
+"donor": "own shape",
+"file": "item/furn_cabinet_dark_oak.png"
+},
+"furn_cabinet_jungle": {
+"donor": "own shape",
+"file": "item/furn_cabinet_jungle.png"
+},
+"furn_cabinet_mangrove": {
+"donor": "own shape",
+"file": "item/furn_cabinet_mangrove.png"
+},
+"furn_cabinet_oak": {
+"donor": "own shape",
+"file": "item/furn_cabinet_oak.png"
+},
+"furn_cabinet_pine": {
+"donor": "own shape",
+"file": "item/furn_cabinet_pine.png"
+},
+"furn_cabinet_spruce": {
+"donor": "own shape",
+"file": "item/furn_cabinet_spruce.png"
+},
+"furn_cabinet_warped": {
+"donor": "own shape",
+"file": "item/furn_cabinet_warped.png"
+},
+"furn_chair_acacia": {
+"donor": "own shape",
+"file": "item/furn_chair_acacia.png"
+},
+"furn_chair_aspen": {
+"donor": "own shape",
+"file": "item/furn_chair_aspen.png"
+},
+"furn_chair_birch": {
+"donor": "own shape",
+"file": "item/furn_chair_birch.png"
+},
+"furn_chair_cherry": {
+"donor": "own shape",
+"file": "item/furn_chair_cherry.png"
+},
+"furn_chair_crimson": {
+"donor": "own shape",
+"file": "item/furn_chair_crimson.png"
+},
+"furn_chair_dark_oak": {
+"donor": "own shape",
+"file": "item/furn_chair_dark_oak.png"
+},
+"furn_chair_jungle": {
+"donor": "own shape",
+"file": "item/furn_chair_jungle.png"
+},
+"furn_chair_mangrove": {
+"donor": "own shape",
+"file": "item/furn_chair_mangrove.png"
+},
+"furn_chair_oak": {
+"donor": "own shape",
+"file": "item/furn_chair_oak.png"
+},
+"furn_chair_pine": {
+"donor": "own shape",
+"file": "item/furn_chair_pine.png"
+},
+"furn_chair_spruce": {
+"donor": "own shape",
+"file": "item/furn_chair_spruce.png"
+},
+"furn_chair_warped": {
+"donor": "own shape",
+"file": "item/furn_chair_warped.png"
+},
+"furn_shelf_acacia": {
+"donor": "own shape",
+"file": "item/furn_shelf_acacia.png"
+},
+"furn_shelf_aspen": {
+"donor": "own shape",
+"file": "item/furn_shelf_aspen.png"
+},
+"furn_shelf_birch": {
+"donor": "own shape",
+"file": "item/furn_shelf_birch.png"
+},
+"furn_shelf_cherry": {
+"donor": "own shape",
+"file": "item/furn_shelf_cherry.png"
+},
+"furn_shelf_crimson": {
+"donor": "own shape",
+"file": "item/furn_shelf_crimson.png"
+},
+"furn_shelf_dark_oak": {
+"donor": "own shape",
+"file": "item/furn_shelf_dark_oak.png"
+},
+"furn_shelf_jungle": {
+"donor": "own shape",
+"file": "item/furn_shelf_jungle.png"
+},
+"furn_shelf_mangrove": {
+"donor": "own shape",
+"file": "item/furn_shelf_mangrove.png"
+},
+"furn_shelf_oak": {
+"donor": "own shape",
+"file": "item/furn_shelf_oak.png"
+},
+"furn_shelf_pine": {
+"donor": "own shape",
+"file": "item/furn_shelf_pine.png"
+},
+"furn_shelf_spruce": {
+"donor": "own shape",
+"file": "item/furn_shelf_spruce.png"
+},
+"furn_shelf_warped": {
+"donor": "own shape",
+"file": "item/furn_shelf_warped.png"
+},
+"furn_standing_shelf_acacia": {
+"donor": "own shape",
+"file": "item/furn_standing_shelf_acacia.png"
+},
+"furn_standing_shelf_aspen": {
+"donor": "own shape",
+"file": "item/furn_standing_shelf_aspen.png"
+},
+"furn_standing_shelf_birch": {
+"donor": "own shape",
+"file": "item/furn_standing_shelf_birch.png"
+},
+"furn_standing_shelf_cherry": {
+"donor": "own shape",
+"file": "item/furn_standing_shelf_cherry.png"
+},
+"furn_standing_shelf_crimson": {
+"donor": "own shape",
+"file": "item/furn_standing_shelf_crimson.png"
+},
+"furn_standing_shelf_dark_oak": {
+"donor": "own shape",
+"file": "item/furn_standing_shelf_dark_oak.png"
+},
+"furn_standing_shelf_jungle": {
+"donor": "own shape",
+"file": "item/furn_standing_shelf_jungle.png"
+},
+"furn_standing_shelf_mangrove": {
+"donor": "own shape",
+"file": "item/furn_standing_shelf_mangrove.png"
+},
+"furn_standing_shelf_oak": {
+"donor": "own shape",
+"file": "item/furn_standing_shelf_oak.png"
+},
+"furn_standing_shelf_pine": {
+"donor": "own shape",
+"file": "item/furn_standing_shelf_pine.png"
+},
+"furn_standing_shelf_spruce": {
+"donor": "own shape",
+"file": "item/furn_standing_shelf_spruce.png"
+},
+"furn_standing_shelf_warped": {
+"donor": "own shape",
+"file": "item/furn_standing_shelf_warped.png"
+},
+"furn_stool_acacia": {
+"donor": "own shape",
+"file": "item/furn_stool_acacia.png"
+},
+"furn_stool_aspen": {
+"donor": "own shape",
+"file": "item/furn_stool_aspen.png"
+},
+"furn_stool_birch": {
+"donor": "own shape",
+"file": "item/furn_stool_birch.png"
+},
+"furn_stool_cherry": {
+"donor": "own shape",
+"file": "item/furn_stool_cherry.png"
+},
+"furn_stool_crimson": {
+"donor": "own shape",
+"file": "item/furn_stool_crimson.png"
+},
+"furn_stool_dark_oak": {
+"donor": "own shape",
+"file": "item/furn_stool_dark_oak.png"
+},
+"furn_stool_jungle": {
+"donor": "own shape",
+"file": "item/furn_stool_jungle.png"
+},
+"furn_stool_mangrove": {
+"donor": "own shape",
+"file": "item/furn_stool_mangrove.png"
+},
+"furn_stool_oak": {
+"donor": "own shape",
+"file": "item/furn_stool_oak.png"
+},
+"furn_stool_pine": {
+"donor": "own shape",
+"file": "item/furn_stool_pine.png"
+},
+"furn_stool_spruce": {
+"donor": "own shape",
+"file": "item/furn_stool_spruce.png"
+},
+"furn_stool_warped": {
+"donor": "own shape",
+"file": "item/furn_stool_warped.png"
+},
+"furn_table_acacia": {
+"donor": "own shape",
+"file": "item/furn_table_acacia.png"
+},
+"furn_table_aspen": {
+"donor": "own shape",
+"file": "item/furn_table_aspen.png"
+},
+"furn_table_birch": {
+"donor": "own shape",
+"file": "item/furn_table_birch.png"
+},
+"furn_table_cherry": {
+"donor": "own shape",
+"file": "item/furn_table_cherry.png"
+},
+"furn_table_crimson": {
+"donor": "own shape",
+"file": "item/furn_table_crimson.png"
+},
+"furn_table_dark_oak": {
+"donor": "own shape",
+"file": "item/furn_table_dark_oak.png"
+},
+"furn_table_jungle": {
+"donor": "own shape",
+"file": "item/furn_table_jungle.png"
+},
+"furn_table_mangrove": {
+"donor": "own shape",
+"file": "item/furn_table_mangrove.png"
+},
+"furn_table_oak": {
+"donor": "own shape",
+"file": "item/furn_table_oak.png"
+},
+"furn_table_pine": {
+"donor": "own shape",
+"file": "item/furn_table_pine.png"
+},
+"furn_table_spruce": {
+"donor": "own shape",
+"file": "item/furn_table_spruce.png"
+},
+"furn_table_warped": {
+"donor": "own shape",
+"file": "item/furn_table_warped.png"
+},
+"garden_salad": {
+"donor": "own shape",
+"file": "item/garden_salad.png"
+},
+"golden_feather": {
+"donor": "own shape",
+"file": "item/golden_feather.png"
+},
+"grappling_hook": {
+"donor": "own shape",
+"file": "item/grappling_hook.png"
+},
+"grave_stone": {
+"donor": "stone",
+"file": "block/grave_stone.png"
+},
+"gray_cape": {
+"donor": "gray_wool (grain)",
+"file": "block/gray_cape.png"
+},
+"gray_cape_icon": {
+"donor": "own shape",
+"file": "item/gray_cape_icon.png"
+},
+"gray_firework_rocket": {
+"donor": "grass (grain)",
+"file": "block/gray_firework_rocket.png"
+},
+"green_cape": {
+"donor": "moss_block (grain)",
+"file": "block/green_cape.png"
+},
+"green_cape_icon": {
+"donor": "own shape",
+"file": "item/green_cape_icon.png"
+},
+"green_firework_rocket": {
+"donor": "brown_mushroom (grain)",
+"file": "block/green_firework_rocket.png"
+},
+"grindstone_side": {
+"donor": "smooth_stone_slab_side (grain)",
+"file": "block/grindstone_side.png"
+},
+"gust_puff": {
+"donor": "own shape",
+"file": "item/gust_puff.png"
+},
+"harvester_side": {
+"donor": "brick_slab_double (grain)",
+"file": "block/harvester_side.png"
+},
+"harvester_top": {
+"donor": "stripped_jungle_log (grain)",
+"file": "block/harvester_top.png"
+},
+"heart_crystal": {
+"donor": "amethyst_shard",
+"file": "item/heart_crystal.png"
+},
+"hex_flask": {
+"donor": "own shape",
+"file": "item/hex_flask.png"
+},
+"hook_metal": {
+"donor": "clay (grain)",
+"file": "block/hook_metal.png"
+},
+"item_frame": {
+"donor": "brick_slab_double (grain)",
+"file": "block/item_frame.png"
+},
+"key_bronze": {
+"donor": "own shape",
+"file": "item/key_bronze.png"
+},
+"key_gold": {
+"donor": "own shape",
+"file": "item/key_gold.png"
+},
+"key_silver": {
+"donor": "own shape",
+"file": "item/key_silver.png"
+},
+"leather_backpack": {
+"donor": "own shape",
+"file": "item/leather_backpack.png"
+},
+"lectern_side": {
+"donor": "bamboo_planks (grain)",
+"file": "block/lectern_side.png"
+},
+"light_blue_cape": {
+"donor": "slime_block (grain)",
+"file": "block/light_blue_cape.png"
+},
+"light_blue_cape_icon": {
+"donor": "own shape",
+"file": "item/light_blue_cape_icon.png"
+},
+"light_blue_firework_rocket": {
+"donor": "vine_leaves (grain)",
+"file": "block/light_blue_firework_rocket.png"
+},
+"light_gray_cape": {
+"donor": "stonecutter_top (grain)",
+"file": "block/light_gray_cape.png"
+},
+"light_gray_cape_icon": {
+"donor": "own shape",
+"file": "item/light_gray_cape_icon.png"
+},
+"light_gray_firework_rocket": {
+"donor": "redstone_dust_line1 (grain)",
+"file": "block/light_gray_firework_rocket.png"
+},
+"lime_cape": {
+"donor": "lime_concrete (grain)",
+"file": "block/lime_cape.png"
+},
+"lime_cape_icon": {
+"donor": "own shape",
+"file": "item/lime_cape_icon.png"
+},
+"lime_firework_rocket": {
+"donor": "copper_torch_fire_e (grain)",
+"file": "block/lime_firework_rocket.png"
+},
+"limestone": {
+"donor": "stone",
+"file": "block/limestone.png"
+},
+"limestone_bricks": {
+"donor": "stone_bricks",
+"file": "block/limestone_bricks.png"
+},
+"lore_book": {
+"donor": "own shape",
+"file": "item/lore_book.png"
+},
+"mage_boots": {
+"donor": "iron_boots",
+"file": "item/mage_boots.png"
+},
+"mage_helmet": {
+"donor": "iron_helmet",
+"file": "item/mage_helmet.png"
+},
+"mage_leggings": {
+"donor": "iron_leggings",
+"file": "item/mage_leggings.png"
+},
+"magenta_cape": {
+"donor": "magenta_concrete_side (grain)",
+"file": "block/magenta_cape.png"
+},
+"magenta_cape_icon": {
+"donor": "own shape",
+"file": "item/magenta_cape_icon.png"
+},
+"magenta_firework_rocket": {
+"donor": "dead_cherry_leaves (grain)",
+"file": "block/magenta_firework_rocket.png"
+},
+"mangrove_door_item": {
+"donor": "oak_door",
+"file": "item/mangrove_door_item.png"
+},
+"marble_bricks": {
+"donor": "stone_bricks",
+"file": "block/marble_bricks.png"
+},
+"marble_pillar": {
+"donor": "quartz_pillar",
+"file": "block/marble_pillar.png"
+},
+"marble_pillar_top": {
+"donor": "quartz_pillar_top",
+"file": "block/marble_pillar_top.png"
+},
+"mese_crystal": {
+"donor": "amethyst_shard",
+"file": "item/mese_crystal.png"
+},
+"mese_lamp": {
+"donor": "redstone_lamp_on",
+"file": "block/mese_lamp.png"
+},
+"mese_ore": {
+"donor": "iron_ore",
+"file": "block/mese_ore.png"
+},
+"millstone_side": {
+"donor": "stone (grain)",
+"file": "block/millstone_side.png"
+},
+"millstone_top": {
+"donor": "smooth_stone_slab_side (grain)",
+"file": "block/millstone_top.png"
+},
+"minotaur_horn": {
+"donor": "own shape",
+"file": "item/minotaur_horn.png"
+},
+"mithril_axe": {
+"donor": "own shape",
+"file": "item/mithril_axe.png"
+},
+"mithril_block": {
+"donor": "iron_block",
+"file": "block/mithril_block.png"
+},
+"mithril_boots": {
+"donor": "iron_boots",
+"file": "item/mithril_boots.png"
+},
+"mithril_helmet": {
+"donor": "iron_helmet",
+"file": "item/mithril_helmet.png"
+},
+"mithril_hoe": {
+"donor": "own shape",
+"file": "item/mithril_hoe.png"
+},
+"mithril_ingot": {
+"donor": "iron_ingot",
+"file": "item/mithril_ingot.png"
+},
+"mithril_leggings": {
+"donor": "iron_leggings",
+"file": "item/mithril_leggings.png"
+},
+"mithril_ore": {
+"donor": "iron_ore",
+"file": "block/mithril_ore.png"
+},
+"mithril_pickaxe": {
+"donor": "own shape",
+"file": "item/mithril_pickaxe.png"
+},
+"mithril_shovel": {
+"donor": "own shape",
+"file": "item/mithril_shovel.png"
+},
+"mithril_staff": {
+"donor": "own shape",
+"file": "item/mithril_staff.png"
+},
+"mithril_sword": {
+"donor": "iron_sword",
+"file": "item/mithril_sword.png"
+},
+"monster_spawner": {
+"donor": "acacia_sapling (grain)",
+"file": "block/monster_spawner.png"
+},
+"mud": {
+"donor": "dirt",
+"file": "block/mud.png"
+},
+"music_disc_ember": {
+"donor": "own shape",
+"file": "item/music_disc_ember.png"
+},
+"music_disc_grove": {
+"donor": "own shape",
+"file": "item/music_disc_grove.png"
+},
+"music_disc_sun": {
+"donor": "own shape",
+"file": "item/music_disc_sun.png"
+},
+"music_disc_tide": {
+"donor": "own shape",
+"file": "item/music_disc_tide.png"
+},
+"obsidian_block": {
+"donor": "polished_blackstone (grain)",
+"file": "block/obsidian_block.png"
+},
+"obsidian_bricks": {
+"donor": "stone_bricks",
+"file": "block/obsidian_bricks.png"
+},
+"obsidian_glass": {
+"donor": "glass",
+"file": "block/obsidian_glass.png"
+},
+"old_torch": {
+"donor": "redstone_torch (alike)",
+"file": "block/old_torch.png"
+},
+"orange_cape": {
+"donor": "orange_concrete (grain)",
+"file": "block/orange_cape.png"
+},
+"orange_cape_icon": {
+"donor": "own shape",
+"file": "item/orange_cape_icon.png"
+},
+"orange_firework_rocket": {
+"donor": "lily_pad_flower_red (grain)",
+"file": "block/orange_firework_rocket.png"
+},
+"paper_wall": {
+"donor": "end_stone_slab (grain)",
+"file": "block/paper_wall.png"
+},
+"peat": {
+"donor": "dirt",
+"file": "block/peat.png"
+},
+"pepper": {
+"donor": "own shape",
+"file": "item/pepper.png"
+},
+"pepper_seeds": {
+"donor": "own shape",
+"file": "item/pepper_seeds.png"
+},
+"permafrost": {
+"donor": "polished_andesite (grain)",
+"file": "block/permafrost.png"
+},
+"pine_door_item": {
+"donor": "oak_door",
+"file": "item/pine_door_item.png"
+},
+"pine_sign_item": {
+"donor": "oak_sign",
+"file": "item/pine_sign_item.png"
+},
+"pink_cape": {
+"donor": "pink_concrete_side (grain)",
+"file": "block/pink_cape.png"
+},
+"pink_cape_icon": {
+"donor": "own shape",
+"file": "item/pink_cape_icon.png"
+},
+"pink_firework_rocket": {
+"donor": "mangrove_leaves (grain)",
+"file": "block/pink_firework_rocket.png"
+},
+"piston_side_base": {
+"donor": "chiseled_tuff (grain)",
+"file": "block/piston_side_base.png"
+},
+"pitcher_plant_lower": {
+"donor": "oxidized_copper_bar (grain)",
+"file": "block/pitcher_plant_lower.png"
+},
+"pitcher_plant_upper": {
+"donor": "cornflower (grain)",
+"file": "block/pitcher_plant_upper.png"
+},
+"pizza": {
+"donor": "own shape",
+"file": "item/pizza.png"
+},
+"plaster": {
+"donor": "chiseled_quartz_block (grain)",
+"file": "block/plaster.png"
+},
+"pocket_key": {
+"donor": "own shape",
+"file": "item/pocket_key.png"
+},
+"pocket_wall": {
+"donor": "crying_obsidian (grain)",
+"file": "block/pocket_wall.png"
+},
+"pointed_dripstone": {
+"donor": "stone",
+"file": "block/pointed_dripstone.png"
+},
+"pointed_dripstone_down": {
+"donor": "dirt_path_side (grain)",
+"file": "block/pointed_dripstone_down.png"
+},
+"polished_basalt": {
+"donor": "polished_andesite",
+"file": "block/polished_basalt.png"
+},
+"potion_ico_awkward": {
+"donor": "own shape",
+"file": "item/potion_ico_awkward.png"
+},
+"potion_ico_breath": {
+"donor": "own shape",
+"file": "item/potion_ico_breath.png"
+},
+"potion_ico_clarity": {
+"donor": "own shape",
+"file": "item/potion_ico_clarity.png"
+},
+"potion_ico_fireres": {
+"donor": "own shape",
+"file": "item/potion_ico_fireres.png"
+},
+"potion_ico_fortune": {
+"donor": "own shape",
+"file": "item/potion_ico_fortune.png"
+},
+"potion_ico_harm": {
+"donor": "own shape",
+"file": "item/potion_ico_harm.png"
+},
+"potion_ico_haste": {
+"donor": "own shape",
+"file": "item/potion_ico_haste.png"
+},
+"potion_ico_heal": {
+"donor": "own shape",
+"file": "item/potion_ico_heal.png"
+},
+"potion_ico_invis": {
+"donor": "own shape",
+"file": "item/potion_ico_invis.png"
+},
+"potion_ico_leap": {
+"donor": "own shape",
+"file": "item/potion_ico_leap.png"
+},
+"potion_ico_mana": {
+"donor": "own shape",
+"file": "item/potion_ico_mana.png"
+},
+"potion_ico_night": {
+"donor": "own shape",
+"file": "item/potion_ico_night.png"
+},
+"potion_ico_poison": {
+"donor": "own shape",
+"file": "item/potion_ico_poison.png"
+},
+"potion_ico_regen": {
+"donor": "own shape",
+"file": "item/potion_ico_regen.png"
+},
+"potion_ico_slow": {
+"donor": "own shape",
+"file": "item/potion_ico_slow.png"
+},
+"potion_ico_slowfall": {
+"donor": "own shape",
+"file": "item/potion_ico_slowfall.png"
+},
+"potion_ico_strength": {
+"donor": "own shape",
+"file": "item/potion_ico_strength.png"
+},
+"potion_ico_swift": {
+"donor": "own shape",
+"file": "item/potion_ico_swift.png"
+},
+"potion_ico_turtle": {
+"donor": "own shape",
+"file": "item/potion_ico_turtle.png"
+},
+"potion_ico_warding": {
+"donor": "own shape",
+"file": "item/potion_ico_warding.png"
+},
+"potion_ico_water": {
+"donor": "own shape",
+"file": "item/potion_ico_water.png"
+},
+"potion_ico_weak": {
+"donor": "own shape",
+"file": "item/potion_ico_weak.png"
+},
+"puddle": {
+"donor": "cornflower (grain)",
+"file": "block/puddle.png"
+},
+"purple_cape": {
+"donor": "purple_concrete_powder (grain)",
+"file": "block/purple_cape.png"
+},
+"purple_cape_icon": {
+"donor": "own shape",
+"file": "item/purple_cape_icon.png"
+},
+"purple_firework_rocket": {
+"donor": "vine_leaves_back (grain)",
+"file": "block/purple_firework_rocket.png"
+},
+"pyromancer_boots": {
+"donor": "iron_boots",
+"file": "item/pyromancer_boots.png"
+},
+"pyromancer_helmet": {
+"donor": "iron_helmet",
+"file": "item/pyromancer_helmet.png"
+},
+"pyromancer_leggings": {
+"donor": "iron_leggings",
+"file": "item/pyromancer_leggings.png"
+},
+"quest_board_side": {
+"donor": "coarse_dirt (grain)",
+"file": "block/quest_board_side.png"
+},
+"rain_detector_top": {
+"donor": "light_blue_terracotta (grain)",
+"file": "block/rain_detector_top.png"
+},
+"rainforest_litter": {
+"donor": "jungle_planks_underwater (grain)",
+"file": "block/rainforest_litter.png"
+},
+"rainforest_litter_side": {
+"donor": "jungle_log (grain)",
+"file": "block/rainforest_litter_side.png"
+},
+"realm_fragment": {
+"donor": "own shape",
+"file": "item/realm_fragment.png"
+},
+"red_cape": {
+"donor": "red_wool (grain)",
+"file": "block/red_cape.png"
+},
+"red_cape_icon": {
+"donor": "own shape",
+"file": "item/red_cape_icon.png"
+},
+"red_firework_rocket": {
+"donor": "red_mushroom (grain)",
+"file": "block/red_firework_rocket.png"
+},
+"redstone_dust_line": {
+"donor": "redstone_dust_line0 (alike)",
+"file": "block/redstone_dust_line.png"
+},
+"redstone_ore_lit": {
+"donor": "dripstone_block (grain)",
+"file": "block/redstone_ore_lit.png"
+},
+"reinforced_backpack": {
+"donor": "own shape",
+"file": "item/reinforced_backpack.png"
+},
+"rice": {
+"donor": "own shape",
+"file": "item/rice.png"
+},
+"rift_crystal": {
+"donor": "powder_snow (grain)",
+"file": "block/rift_crystal.png"
+},
+"rift_glass": {
+"donor": "glass",
+"file": "block/rift_glass.png"
+},
+"rift_staff": {
+"donor": "own shape",
+"file": "item/rift_staff.png"
+},
+"rift_wall": {
+"donor": "crying_obsidian (grain)",
+"file": "block/rift_wall.png"
+},
+"roasted_corn": {
+"donor": "own shape",
+"file": "item/roasted_corn.png"
+},
+"roof_tiles": {
+"donor": "bricks",
+"file": "block/roof_tiles.png"
+},
+"rope_item": {
+"donor": "own shape",
+"file": "item/rope_item.png"
+},
+"rowboat": {
+"donor": "own shape",
+"file": "item/rowboat.png"
+},
+"royal_cape": {
+"donor": "mycelium_side_snow (grain)",
+"file": "block/royal_cape.png"
+},
+"royal_cape_icon": {
+"donor": "own shape",
+"file": "item/royal_cape_icon.png"
+},
+"ruby_block": {
+"donor": "iron_block",
+"file": "block/ruby_block.png"
+},
+"ruby_ore": {
+"donor": "iron_ore",
+"file": "block/ruby_ore.png"
+},
+"ruby_staff": {
+"donor": "own shape",
+"file": "item/ruby_staff.png"
+},
+"sailboat": {
+"donor": "own shape",
+"file": "item/sailboat.png"
+},
+"sailing_ship": {
+"donor": "own shape",
+"file": "item/sailing_ship.png"
+},
+"sapphire": {
+"donor": "diamond",
+"file": "item/sapphire.png"
+},
+"sapphire_block": {
+"donor": "iron_block",
+"file": "block/sapphire_block.png"
+},
+"sapphire_ore": {
+"donor": "iron_ore",
+"file": "block/sapphire_ore.png"
+},
+"sapphire_staff": {
+"donor": "own shape",
+"file": "item/sapphire_staff.png"
+},
+"sawmill_side": {
+"donor": "jungle_log (grain)",
+"file": "block/sawmill_side.png"
+},
+"sawmill_top": {
+"donor": "coarse_dirt (grain)",
+"file": "block/sawmill_top.png"
+},
+"shark_tooth": {
+"donor": "own shape",
+"file": "item/shark_tooth.png"
+},
+"silver_axe": {
+"donor": "own shape",
+"file": "item/silver_axe.png"
+},
+"silver_block": {
+"donor": "iron_block",
+"file": "block/silver_block.png"
+},
+"silver_boots": {
+"donor": "iron_boots",
+"file": "item/silver_boots.png"
+},
+"silver_helmet": {
+"donor": "iron_helmet",
+"file": "item/silver_helmet.png"
+},
+"silver_hoe": {
+"donor": "own shape",
+"file": "item/silver_hoe.png"
+},
+"silver_ingot": {
+"donor": "iron_ingot",
+"file": "item/silver_ingot.png"
+},
+"silver_leggings": {
+"donor": "iron_leggings",
+"file": "item/silver_leggings.png"
+},
+"silver_ore": {
+"donor": "iron_ore",
+"file": "block/silver_ore.png"
+},
+"silver_pickaxe": {
+"donor": "own shape",
+"file": "item/silver_pickaxe.png"
+},
+"silver_sand": {
+"donor": "sand",
+"file": "block/silver_sand.png"
+},
+"silver_sandstone": {
+"donor": "stone",
+"file": "block/silver_sandstone.png"
+},
+"silver_sandstone_block": {
+"donor": "stripped_pale_oak_log (grain)",
+"file": "block/silver_sandstone_block.png"
+},
+"silver_sandstone_bricks": {
+"donor": "stone_bricks",
+"file": "block/silver_sandstone_bricks.png"
+},
+"silver_sandstone_top": {
+"donor": "light_gray_concrete_powder (grain)",
+"file": "block/silver_sandstone_top.png"
+},
+"silver_shovel": {
+"donor": "own shape",
+"file": "item/silver_shovel.png"
+},
+"silver_sword": {
+"donor": "iron_sword",
+"file": "item/silver_sword.png"
+},
+"sky_grass_side": {
+"donor": "grass_block_side",
+"file": "block/sky_grass_side.png"
+},
+"sky_grass_top": {
+"donor": "grass_block_top",
+"file": "block/sky_grass_top.png"
+},
+"sky_portal": {
+"donor": "slime_block (grain)",
+"file": "block/sky_portal.png"
+},
+"skystone_bricks": {
+"donor": "stone_bricks",
+"file": "block/skystone_bricks.png"
+},
+"sleeping_bag": {
+"donor": "own shape",
+"file": "item/sleeping_bag.png"
+},
+"smooth_quartz": {
+"donor": "white_terracotta (grain)",
+"file": "block/smooth_quartz.png"
+},
+"splash_ico_awkward": {
+"donor": "own shape",
+"file": "item/splash_ico_awkward.png"
+},
+"splash_ico_breath": {
+"donor": "own shape",
+"file": "item/splash_ico_breath.png"
+},
+"splash_ico_clarity": {
+"donor": "own shape",
+"file": "item/splash_ico_clarity.png"
+},
+"splash_ico_fireres": {
+"donor": "own shape",
+"file": "item/splash_ico_fireres.png"
+},
+"splash_ico_fortune": {
+"donor": "own shape",
+"file": "item/splash_ico_fortune.png"
+},
+"splash_ico_harm": {
+"donor": "own shape",
+"file": "item/splash_ico_harm.png"
+},
+"splash_ico_haste": {
+"donor": "own shape",
+"file": "item/splash_ico_haste.png"
+},
+"splash_ico_heal": {
+"donor": "own shape",
+"file": "item/splash_ico_heal.png"
+},
+"splash_ico_invis": {
+"donor": "own shape",
+"file": "item/splash_ico_invis.png"
+},
+"splash_ico_leap": {
+"donor": "own shape",
+"file": "item/splash_ico_leap.png"
+},
+"splash_ico_mana": {
+"donor": "own shape",
+"file": "item/splash_ico_mana.png"
+},
+"splash_ico_night": {
+"donor": "own shape",
+"file": "item/splash_ico_night.png"
+},
+"splash_ico_poison": {
+"donor": "own shape",
+"file": "item/splash_ico_poison.png"
+},
+"splash_ico_regen": {
+"donor": "own shape",
+"file": "item/splash_ico_regen.png"
+},
+"splash_ico_slow": {
+"donor": "own shape",
+"file": "item/splash_ico_slow.png"
+},
+"splash_ico_slowfall": {
+"donor": "own shape",
+"file": "item/splash_ico_slowfall.png"
+},
+"splash_ico_strength": {
+"donor": "own shape",
+"file": "item/splash_ico_strength.png"
+},
+"splash_ico_swift": {
+"donor": "own shape",
+"file": "item/splash_ico_swift.png"
+},
+"splash_ico_turtle": {
+"donor": "own shape",
+"file": "item/splash_ico_turtle.png"
+},
+"splash_ico_warding": {
+"donor": "own shape",
+"file": "item/splash_ico_warding.png"
+},
+"splash_ico_water": {
+"donor": "own shape",
+"file": "item/splash_ico_water.png"
+},
+"splash_ico_weak": {
+"donor": "own shape",
+"file": "item/splash_ico_weak.png"
+},
+"steel_axe": {
+"donor": "own shape",
+"file": "item/steel_axe.png"
+},
+"steel_blend": {
+"donor": "redstone",
+"file": "item/steel_blend.png"
+},
+"steel_block": {
+"donor": "iron_block",
+"file": "block/steel_block.png"
+},
+"steel_boots": {
+"donor": "iron_boots",
+"file": "item/steel_boots.png"
+},
+"steel_helmet": {
+"donor": "iron_helmet",
+"file": "item/steel_helmet.png"
+},
+"steel_hoe": {
+"donor": "own shape",
+"file": "item/steel_hoe.png"
+},
+"steel_ingot": {
+"donor": "iron_ingot",
+"file": "item/steel_ingot.png"
+},
+"steel_leggings": {
+"donor": "iron_leggings",
+"file": "item/steel_leggings.png"
+},
+"steel_pickaxe": {
+"donor": "own shape",
+"file": "item/steel_pickaxe.png"
+},
+"steel_shovel": {
+"donor": "own shape",
+"file": "item/steel_shovel.png"
+},
+"steel_sword": {
+"donor": "iron_sword",
+"file": "item/steel_sword.png"
+},
+"stone_block": {
+"donor": "tuff (grain)",
+"file": "block/stone_block.png"
+},
+"stormcaller_boots": {
+"donor": "iron_boots",
+"file": "item/stormcaller_boots.png"
+},
+"stormcaller_helmet": {
+"donor": "iron_helmet",
+"file": "item/stormcaller_helmet.png"
+},
+"stormcaller_leggings": {
+"donor": "iron_leggings",
+"file": "item/stormcaller_leggings.png"
+},
+"straw": {
+"donor": "own shape",
+"file": "item/straw.png"
+},
+"strawberry_tart": {
+"donor": "own shape",
+"file": "item/strawberry_tart.png"
+},
+"stripped_bamboo_block_side": {
+"donor": "sponge (grain)",
+"file": "block/stripped_bamboo_block_side.png"
+},
+"stuffed_pepper": {
+"donor": "own shape",
+"file": "item/stuffed_pepper.png"
+},
+"sun": {
+"donor": "stonecutter_saw (grain)",
+"file": "block/sun.png"
+},
+"sushi": {
+"donor": "own shape",
+"file": "item/sushi.png"
+},
+"swet_ball": {
+"donor": "own shape",
+"file": "item/swet_ball.png"
+},
+"thatch": {
+"donor": "yellow_wool (grain)",
+"file": "block/thatch.png"
+},
+"tide_charm": {
+"donor": "own shape",
+"file": "item/tide_charm.png"
+},
+"timber_frame": {
+"donor": "smooth_stone (grain)",
+"file": "block/timber_frame.png"
+},
+"timber_frame_cross": {
+"donor": "dripstone_block (grain)",
+"file": "block/timber_frame_cross.png"
+},
+"timber_frame_diagonal": {
+"donor": "poplar_planks (grain)",
+"file": "block/timber_frame_diagonal.png"
+},
+"tin_block": {
+"donor": "iron_block",
+"file": "block/tin_block.png"
+},
+"tin_ingot": {
+"donor": "iron_ingot",
+"file": "item/tin_ingot.png"
+},
+"tin_ore": {
+"donor": "iron_ore",
+"file": "block/tin_ore.png"
+},
+"tomato": {
+"donor": "own shape",
+"file": "item/tomato.png"
+},
+"tomato_seeds": {
+"donor": "own shape",
+"file": "item/tomato_seeds.png"
+},
+"tomato_soup": {
+"donor": "own shape",
+"file": "item/tomato_soup.png"
+},
+"tome_blink": {
+"donor": "own shape",
+"file": "item/tome_blink.png"
+},
+"tome_chainlight": {
+"donor": "own shape",
+"file": "item/tome_chainlight.png"
+},
+"tome_drainlife": {
+"donor": "own shape",
+"file": "item/tome_drainlife.png"
+},
+"tome_entangle": {
+"donor": "own shape",
+"file": "item/tome_entangle.png"
+},
+"tome_familiar": {
+"donor": "own shape",
+"file": "item/tome_familiar.png"
+},
+"tome_featherfall": {
+"donor": "own shape",
+"file": "item/tome_featherfall.png"
+},
+"tome_fireball": {
+"donor": "own shape",
+"file": "item/tome_fireball.png"
+},
+"tome_firebolt": {
+"donor": "own shape",
+"file": "item/tome_firebolt.png"
+},
+"tome_flames": {
+"donor": "own shape",
+"file": "item/tome_flames.png"
+},
+"tome_frost": {
+"donor": "own shape",
+"file": "item/tome_frost.png"
+},
+"tome_guardian": {
+"donor": "own shape",
+"file": "item/tome_guardian.png"
+},
+"tome_haste": {
+"donor": "own shape",
+"file": "item/tome_haste.png"
+},
+"tome_heal": {
+"donor": "own shape",
+"file": "item/tome_heal.png"
+},
+"tome_healother": {
+"donor": "own shape",
+"file": "item/tome_healother.png"
+},
+"tome_homeport": {
+"donor": "own shape",
+"file": "item/tome_homeport.png"
+},
+"tome_icenova": {
+"donor": "own shape",
+"file": "item/tome_icenova.png"
+},
+"tome_invisibility": {
+"donor": "own shape",
+"file": "item/tome_invisibility.png"
+},
+"tome_levitate": {
+"donor": "own shape",
+"file": "item/tome_levitate.png"
+},
+"tome_light": {
+"donor": "own shape",
+"file": "item/tome_light.png"
+},
+"tome_lightning": {
+"donor": "own shape",
+"file": "item/tome_lightning.png"
+},
+"tome_lowalch": {
+"donor": "own shape",
+"file": "item/tome_lowalch.png"
+},
+"tome_missiles": {
+"donor": "own shape",
+"file": "item/tome_missiles.png"
+},
+"tome_nightsight": {
+"donor": "own shape",
+"file": "item/tome_nightsight.png"
+},
+"tome_raiseskel": {
+"donor": "own shape",
+"file": "item/tome_raiseskel.png"
+},
+"tome_regrowth": {
+"donor": "own shape",
+"file": "item/tome_regrowth.png"
+},
+"tome_stoneskin": {
+"donor": "own shape",
+"file": "item/tome_stoneskin.png"
+},
+"tome_telekinesis": {
+"donor": "own shape",
+"file": "item/tome_telekinesis.png"
+},
+"tome_ward": {
+"donor": "own shape",
+"file": "item/tome_ward.png"
+},
+"tome_waterbreath": {
+"donor": "own shape",
+"file": "item/tome_waterbreath.png"
+},
+"treasure_map": {
+"donor": "own shape",
+"file": "item/treasure_map.png"
+},
+"tripwire_hook_item": {
+"donor": "own shape",
+"file": "item/tripwire_hook_item.png"
+},
+"valkyrie_lance": {
+"donor": "own shape",
+"file": "item/valkyrie_lance.png"
+},
+"vegetable_stew": {
+"donor": "own shape",
+"file": "item/vegetable_stew.png"
+},
+"venom_sac": {
+"donor": "own shape",
+"file": "item/venom_sac.png"
+},
+"vigor_charm": {
+"donor": "own shape",
+"file": "item/vigor_charm.png"
+},
+"void_crust": {
+"donor": "crying_obsidian (grain)",
+"file": "block/void_crust.png"
+},
+"ward_stone": {
+"donor": "stone",
+"file": "block/ward_stone.png"
+},
+"warped_door_item": {
+"donor": "oak_door",
+"file": "item/warped_door_item.png"
+},
+"warped_nylium_top": {
+"donor": "cyan_concrete (grain)",
+"file": "block/warped_nylium_top.png"
+},
+"watcher_blade": {
+"donor": "own shape",
+"file": "item/watcher_blade.png"
+},
+"watering_can": {
+"donor": "own shape",
+"file": "item/watering_can.png"
+},
+"waystone_side": {
+"donor": "iron_block (grain)",
+"file": "block/waystone_side.png"
+},
+"waystone_top": {
+"donor": "chiseled_stone_bricks (grain)",
+"file": "block/waystone_top.png"
+},
+"we_wand": {
+"donor": "own shape",
+"file": "item/we_wand.png"
+},
+"whistle": {
+"donor": "own shape",
+"file": "item/whistle.png"
+},
+"white": {
+"donor": "white_wool (grain)",
+"file": "block/white.png"
+},
+"white_cape": {
+"donor": "white_concrete_side (grain)",
+"file": "block/white_cape.png"
+},
+"white_cape_icon": {
+"donor": "own shape",
+"file": "item/white_cape_icon.png"
+},
+"white_firework_rocket": {
+"donor": "short_grass (grain)",
+"file": "block/white_firework_rocket.png"
+},
+"yellow_cape": {
+"donor": "raw_gold_block (grain)",
+"file": "block/yellow_cape.png"
+},
+"yellow_cape_icon": {
+"donor": "own shape",
+"file": "item/yellow_cape_icon.png"
+},
+"yellow_firework_rocket": {
+"donor": "lily_pad_flower_red (grain)",
+"file": "block/yellow_firework_rocket.png"
+}
+}

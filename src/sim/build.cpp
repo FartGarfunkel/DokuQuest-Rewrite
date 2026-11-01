@@ -245,6 +245,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
     w.setBlockEntity(x, y, z, {{"type", "chest"}, {"items", items}});
   } else if (bhas(bid, BF::Furnace)) containerEntity(w, x, y, z);
   if (bhas(bid, BF::Sign)) { w.setBlockEntity(x, y, z, {{"type", "sign"}, {"lines", {"", "", "", ""}}}); editSign(x, y, z); }
+  if (R.block(bid).has("armorStand")) w.setBlockEntity(x, y, z, {{"type", "stand"}, {"items", json::array({nullptr, nullptr, nullptr, nullptr, nullptr})}, {"pose", 0}});
   if (bdef.has("painting")) w.setBlockEntity(x, y, z, {{"type", "painting"}, {"n", (int)(rnd() * 30)}});   // a picture of its own (render/painting_layer.cpp)
   if (bdef.key == "rift_core") { bool tryWitherSummon(Level& lv, int realm, ivec3 at); tryWitherSummon(lv, p.realm, ivec3(x, y, z)); }   // sim/wither.cpp: the Wither Storm
   consumeHeld();
@@ -459,6 +460,33 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   vec3 c = vec3(x, y, z) + vec3(0.5f);
   std::string tool = def && def->hasTool ? def->tool.type : "";
   bool hasHeld = held && !held->empty();
+  // ---- the armour stand: dress it with armour and a weapon, take them back with an empty hand, sneak to change its pose.
+  //      Its gear is the block entity's "items" (helmet, chest, legs, boots, hand) so breaking it spills them ----
+  if (b.has("armorStand")) {
+    json* e = w.blockEntity(x, y, z, true);
+    if (!e->is_object() || e->value("type", "") != "stand") *e = {{"type", "stand"}, {"items", json::array({nullptr, nullptr, nullptr, nullptr, nullptr})}, {"pose", 0}};
+    json& I = (*e)["items"];
+    while (I.size() < 5) I.push_back(nullptr);
+    auto stackAt = [&](int i) { return I[i].is_null() ? ItemStack() : ItemStack::fromJson(I[i]); };
+    bool done = false;
+    if (!hasHeld && p.sneaking) { (*e)["pose"] = (e->value("pose", 0) + 1) % 5; done = true; }
+    else if (hasHeld) {
+      int slot = -1;
+      if (def && def->props.contains("armor") && def->props["armor"].is_object()) slot = def->props["armor"].value("slot", -1);
+      else if (def && (def->hasTool || def->has("bow") || def->has("staff") || held->id == "shield" || held->id == "trident")) slot = 4;
+      if (slot >= 0 && slot < 5) {
+        ItemStack old = stackAt(slot), one = *held; one.n = 1;
+        I[slot] = one.toJson();
+        if (!p.creative()) { held->n--; if (held->n <= 0) *held = ItemStack(); }
+        if (!old.empty()) { if (held->empty()) *held = old; else if (p.give(old) > 0) dropItem(lv, p.realm, old, c + vec3(0, 0.6f, 0), false); }
+        done = true;
+      }
+    } else {
+      for (int i : {4, 0, 1, 2, 3}) if (!stackAt(i).empty()) { *held = stackAt(i); I[i] = nullptr; done = true; break; }   // the hand first, then from the top
+    }
+    if (done) { w.blockEntityChanged(x, y, z); sfxMaterial(lv, "metal", "place", c); swingArm(); return true; }
+    if (!hasHeld) return true;
+  }
   // ---- furniture.js: sitting, shelves and bookcases ----
   if (!p.sneaking && !p.riding) {
     if (FURN_SEAT.count(b.str("furniture"))) { swingArm(); return sitOn(x, y, z); }
@@ -631,7 +659,25 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
     swingArm(); return true;
   }
   if (b.has("bellBlock")) { sfxAt(lv, "bell", vec3(x, y, z), 48); swingArm(); return true; }
-  if (bhas(id, BF::Sign)) { editSign(x, y, z); return true; }
+  if (bhas(id, BF::Sign)) {
+    // glow ink makes the writing glow, an ink sac puts it out, a dye colours it (Minecraft's sign inks)
+    std::string hk = held && !held->empty() ? held->id : "";
+    if (json* e = w.blockEntity(x, y, z); e && e->is_object() && (hk == "glow_ink_sac" || hk == "ink_sac" || (def && def->has("dye")))) {
+      bool changed = false;
+      if (hk == "glow_ink_sac" && !e->value("glow", false)) { (*e)["glow"] = true; changed = true; lv.fx->particles("end_mote", c + vec3(0, 0.2f, 0), 8); }
+      else if (hk == "ink_sac" && e->value("glow", false)) { (*e)["glow"] = false; changed = true; }
+      else if (def && def->has("dye") && hk != "ink_sac" && hk != "glow_ink_sac") {
+        std::string col = def->str("dye");
+        if (e->value("color", std::string("black")) != col) { (*e)["color"] = col; changed = true; }
+      }
+      if (changed) {
+        w.blockEntityChanged(x, y, z);
+        if (!p.creative()) { held->n--; if (held->n <= 0) *held = ItemStack(); }
+        sfxAt(lv, "pop", c); swingArm(); return true;
+      }
+    }
+    editSign(x, y, z); return true;
+  }
   if (b.has("stonecutter")) { openScreen(lv, p, "stonecutter"); return true; }
   if (b.has("forge")) { openScreen(lv, p, "stonecutter", {{"kind", "forge"}}); return true; }
   if (b.has("machine")) { openScreen(lv, p, "machine", {{"pos", {x, y, z}}}); return true; }
