@@ -2,6 +2,7 @@
 // game/music.js and game/music2.js; the instruments rebuild their WebAudio graphs (oscillators, filters,
 // AudioParam ramps) as small live voices.
 #include "audio/music.h"
+#include "audio/song.h"
 #include "world/dims.h"
 
 namespace dq::snd {
@@ -624,9 +625,25 @@ struct MusicDirector::Impl {
     std::string m = s.place.empty() ? "plains" : s.place;
     return s.day < 0.45f ? m + ":night" : m;
   }
+  // songs from the Music Studio given a realm (audio/song.h): read again now and then, so new ones join in
+  std::vector<Song> userSongs; double userRead = -1e9; int dimNow = -1; bool inWorldNow = false;
+  const Song* realmSong() {
+    if (e.audioNow() - userRead > 60) { userSongs = loadUserSongs(); userRead = e.audioNow(); }
+    const char* want = dimNow == DIM_OVERWORLD ? "overworld" : dimNow == DIM_NETHER ? "nether" : dimNow == DIM_END ? "end" : dimNow == DIM_AETHER ? "skylands" : "";
+    std::vector<const Song*> c;
+    for (auto& s : userSongs) if (*want && s.realm == want && !s.notes.empty()) c.push_back(&s);
+    return c.empty() ? nullptr : c[(size_t)(rnd() * c.size()) % c.size()];
+  }
   void play(const std::string& mood) {
     busTo(0, 1, 0);
-    notes = composeMusic(mood, (u32)(rnd() * 1e9));
+    notes.clear();
+    if (inWorldNow && rnd() < 0.4f)
+      if (const Song* us = realmSong()) {   // now and then, one of the player's own for this land
+        const double spb = 60.0 / std::max(1.f, us->bpm);
+        for (auto& n : us->notes) notes.push_back({n.beat * spb, n.ins, 0, n.midi, (float)(n.len * spb), n.vel});
+        std::sort(notes.begin(), notes.end(), [](const MusicNote& a, const MusicNote& b) { return a.t < b.t; });
+      }
+    if (notes.empty()) notes = composeMusic(mood, (u32)(rnd() * 1e9));
     ni = 0; start = e.audioNow() + 0.3; playing = true;
     end = start + (notes.empty() ? 1 : notes.back().t + 6);
     schedule();
@@ -703,6 +720,7 @@ MusicDirector::~MusicDirector() = default;
 
 void MusicDirector::update(double dt, const AudioScene& s) {
   Impl& d = *m;
+  d.dimNow = s.dim; d.inWorldNow = s.inWorld;
   float vol = d.e.vMusic.load();
   if (vol <= 0) { if (d.battle.on) d.endBattle(false); if (d.playing) d.stop(); return; }
   double now = d.e.audioNow();

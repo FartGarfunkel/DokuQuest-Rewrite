@@ -115,6 +115,9 @@ add_dependencies(test_net dq_sample_plugin)
 # dq-sfx: offline sound renderer for checking the audio (tools/sfx_render.cpp)
 add_executable(dq-sfx tools/sfx_render.cpp)
 target_link_libraries(dq-sfx PRIVATE dqclient)
+# The Music Studio's song core (headless): build/test_song <recording.wav>
+add_executable(test_song tools/test_song.cpp)
+target_link_libraries(test_song PRIVATE dqclient)
 # Content features test (headless): maps, fishing, camping, travel, elytra, the stable, places, farming. Run: build/test_content
 add_executable(test_content tools/test_content.cpp)
 target_link_libraries(test_content PRIVATE dqcore)

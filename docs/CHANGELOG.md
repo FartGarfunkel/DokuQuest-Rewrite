@@ -52,6 +52,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **The quiver:** holds up to 192 arrows; your bow draws from it.
 - **Paintings:** hang one on a wall for a picture of its own (landscapes, seascapes, snowy peaks, still lifes, colour fields); use it to turn to another.
 - **Particles:** sprinting kicks up the ground you run on, a hard landing throws up a ring of it, critical blows burst into stars, and running beasts raise dust.
+- **The Music Studio** (launcher: Mod Studio → Music): write songs on a piano roll with the game's own instruments, have a piece written to any of the game's moods, read a recording (WAV, MP3 or FLAC) for its tempo, key and chords and have an original piece written from them, and bring MIDI in or send it out. Give a song a realm and it plays there now and then.
 
 **Gear and magic:**
 

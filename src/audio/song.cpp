@@ -178,7 +178,7 @@ bool songFromMidi(const std::vector<u8>& b, Song& out, std::string& err) {
     if (std::string(b.begin() + p, b.begin() + p + 4) != "MTrk") { err = "Damaged track"; return false; }
     size_t end = std::min(b.size(), p + 8 + u32at(p + 4)); p += 8;
     u32 tick = 0; u8 run = 0; int prog[16] = {0};
-    std::map<int, std::pair<u32, u8>> on;   // (ch << 8 | key) -> start tick, velocity
+    std::map<int, std::vector<std::pair<u32, u8>>> on;   // (ch << 8 | key) -> the notes sounding on it (start tick, velocity), oldest first
     while (p < end) {
       u32 d = 0; for (int k = 0; k < 4 && p < end; k++) { u8 c = b[p++]; d = d << 7 | (c & 0x7f); if (!(c & 0x80)) break; }
       tick += d;
@@ -199,16 +199,16 @@ bool songFromMidi(const std::vector<u8>& b, Song& out, std::string& err) {
       if (p + nData > end) break;
       const u8 d1 = b[p], d2 = nData > 1 ? b[p + 1] : 0; p += nData;
       if (kind == 0xc0) prog[ch] = d1;
-      else if (kind == 0x90 && d2 > 0) on[ch << 8 | d1] = {tick, d2};
+      else if (kind == 0x90 && d2 > 0) on[ch << 8 | d1].push_back({tick, d2});
       else if (kind == 0x80 || (kind == 0x90 && d2 == 0)) {
         auto it = on.find(ch << 8 | d1);
-        if (it == on.end()) continue;
-        SongNote n; n.beat = it->second.first / (float)div; n.len = std::max(0.05f, (tick - it->second.first) / (float)div);
-        n.vel = it->second.second / 127.f;
+        if (it == on.end() || it->second.empty()) continue;
+        const auto first = it->second.front(); it->second.erase(it->second.begin());
+        SongNote n; n.beat = first.first / (float)div; n.len = std::max(0.05f, (tick - first.first) / (float)div);
+        n.vel = first.second / 127.f;
         if (ch == 9) { n.ins = (u8)insOfDrum(d1); n.midi = 0; n.len = std::min(n.len, 0.5f); }
         else { n.ins = (u8)insOfProgram(prog[ch]); n.midi = d1; }
         out.notes.push_back(n);
-        on.erase(it);
       }
     }
     p = end;
@@ -256,13 +256,19 @@ SongAnalysis analyseRecording(const std::string& path) {
   const float fr = (float)SRA / H;
   float mean = 0; for (float v : flux) mean += v; mean /= frames;
   for (float& v : flux) v = std::max(0.f, v - mean);
-  float best = -1; int bestLag = 0;
-  for (int lag = (int)(fr * 60 / 190); lag <= (int)(fr * 60 / 55); lag++) {
-    double s = 0; for (int i = lag; i < frames; i++) s += flux[i] * flux[i - lag];
-    const float bpm = 60 * fr / lag, prior = std::exp(-0.5f * std::pow(std::log2(bpm / 115.f) / 0.9f, 2.f));
-    if (s * prior > best) { best = (float)(s * prior); bestLag = lag; }
+  // the autocorrelation at whole lags, then each tempo scored on its beat and the next three (a comb), so a beat's
+  // multiples back it up and the off-beat tempos don't win
+  const int maxLag = std::min(frames - 1, (int)(fr * 60 / 50) * 4 + 2);
+  std::vector<double> ac(maxLag + 1, 0);
+  for (int lag = 1; lag <= maxLag; lag++) { double s = 0; for (int i = lag; i < frames; i++) s += flux[i] * flux[i - lag]; ac[lag] = s / (frames - lag); }
+  auto acAt = [&](float L) { int i = (int)L; float t = L - i; if (i + 1 > maxLag) return 0.0; return ac[i] * (1 - t) + ac[i + 1] * t; };
+  float best = -1, bestLag = 0;
+  for (float L = fr * 60 / 190; L <= fr * 60 / 55; L += 0.05f) {
+    const double s = acAt(L) + 0.5 * acAt(2 * L) + 0.33 * acAt(3 * L) + 0.25 * acAt(4 * L);
+    const float bpm = 60 * fr / L, prior = std::exp(-0.5f * std::pow(std::log2(bpm / 110.f) / 1.0f, 2.f));
+    if (s * prior > best) { best = (float)(s * prior); bestLag = L; }
   }
-  if (!bestLag) { A.err = "Couldn't hear a beat"; return A; }
+  if (bestLag <= 0) { A.err = "Couldn't hear a beat"; return A; }
   A.bpm = std::round(60 * fr / bestLag * 2) / 2;
   // key: the whole piece's pitch classes against the major and minor key profiles (Krumhansl-Kessler)
   static const float MAJ[12] = {6.35f, 2.23f, 3.48f, 2.33f, 4.38f, 4.09f, 2.52f, 5.19f, 2.39f, 3.66f, 2.29f, 2.88f};
@@ -277,9 +283,13 @@ SongAnalysis analyseRecording(const std::string& path) {
   float kb = -2;
   for (int k = 0; k < 12; k++) for (int mi = 0; mi < 2; mi++) { float r = corr(tot, mi ? MIN : MAJ, k); if (r > kb) { kb = r; A.key = k; A.minor = mi; } }
   // chords: a bar (four beats) at a time, the best-fitting major or minor triad
-  const int barFrames = std::max(1, (int)std::lround(bestLag * 4));
-  for (int f0 = 0; f0 + barFrames <= frames && A.chords.size() < 64; f0 += barFrames) {
-    std::array<float, 12> c{}; for (int f = f0; f < f0 + barFrames; f++) for (int i = 0; i < 12; i++) c[i] += chroma[f][i];
+  // the beat's phase: where the onsets fall on a grid of the beat; the bars start on it
+  float phase = 0, pb = -1;
+  for (float o = 0; o < bestLag; o += 0.5f) { double s = 0; for (float t = o; t < frames - 1; t += bestLag) s += flux[(int)t]; if (s > pb) { pb = (float)s; phase = o; } }
+  for (int bar = 0; A.chords.size() < 64; bar++) {
+    const int f0 = (int)std::lround(phase + bar * bestLag * 4), f1 = (int)std::lround(phase + (bar + 1) * bestLag * 4);
+    if (f1 > frames) break;
+    std::array<float, 12> c{}; for (int f = f0; f < f1; f++) for (int i = 0; i < 12; i++) c[i] += chroma[f][i];
     float cb = -1; int root = 0; bool mn = false;
     for (int r = 0; r < 12; r++) for (int mi = 0; mi < 2; mi++) {
       const float s = c[r] + c[(r + (mi ? 3 : 4)) % 12] + c[(r + 7) % 12] * 0.9f - 0.3f * (c[(r + (mi ? 4 : 3)) % 12]);
@@ -287,6 +297,12 @@ SongAnalysis analyseRecording(const std::string& path) {
     }
     A.chordRoots.push_back(root); A.chordMinor.push_back(mn);
     A.chords.push_back(std::string(PC[root]) + (mn ? "m" : ""));
+  }
+  // a major key whose relative minor chord is heard as much as its own home chord is read as that minor
+  if (!A.minor && !A.chordRoots.empty()) {
+    int home = 0, rel = 0;
+    for (size_t i = 0; i < A.chordRoots.size(); i++) { if (A.chordRoots[i] == A.key && !A.chordMinor[i]) home++; if (A.chordRoots[i] == (A.key + 9) % 12 && A.chordMinor[i]) rel++; }
+    if (rel >= home && rel > 0) { A.key = (A.key + 9) % 12; A.minor = true; }
   }
   A.ok = true;
   return A;
