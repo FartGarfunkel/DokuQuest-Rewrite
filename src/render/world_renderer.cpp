@@ -108,11 +108,12 @@ void WorldRenderer::setupVao(Page& pg) {
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 void WorldRenderer::grow(u32 need) {
-  // the last page doubles (from 64 MB) until it is full, then a new page starts
-  const u32 first = (u32)(64u << 20) / sizeof(ChunkVertex);
+  // the last page grows by a quarter (at least 32 MB, from 64 MB) until it is full, then a new page starts: doubling
+  // left up to half of a big arena empty (the Nether at a long render distance ran to gigabytes)
+  const u32 first = (u32)(64u << 20) / sizeof(ChunkVertex), step = (u32)(32u << 20) / sizeof(ChunkVertex);
   if (pages.empty() || pages.back().cap >= PAGE_V) pages.push_back({});
   Page& pg = pages.back(); u32 pi = (u32)pages.size() - 1;
-  u32 ncap = std::min<u32>(PAGE_V, std::max<u32>(pg.cap ? pg.cap * 2 : first, pg.cap + need + 65536));
+  u32 ncap = std::min<u32>(PAGE_V, std::max<u32>(pg.cap ? pg.cap + std::max(step, pg.cap / 4) : first, pg.cap + need + 65536));
   while (glGetError() != GL_NO_ERROR) {}
   GLuint nb; glGenBuffers(1, &nb);
   glBindBuffer(GL_COPY_WRITE_BUFFER, nb);
@@ -359,7 +360,7 @@ void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
         for (auto& [k, m] : meshes) if (k.dim >= 0 && k.dim < DIM_COUNT) per[k.dim]++;
         for (auto& v : visible) { int d = dimOfY((int)v.second->origin.y); if (d >= 0 && d < DIM_COUNT) vis[d]++; }
         for (auto& [k, c] : w->chunks()) if (k.dim >= 0 && k.dim < DIM_COUNT) chunks[k.dim]++;
-        DQ_LOG("bands: cam %.0f %.0f %.0f dim %d | chunks %d/%d/%d/%d meshes %d/%d/%d/%d visible %d/%d/%d/%d inFlight %d again %d", f.cam.pos.x, f.cam.pos.y, f.cam.pos.z, f.dim,
+        DQ_LOG("bands: arena %.0f MB used %.0f MB | cam %.0f %.0f %.0f dim %d | chunks %d/%d/%d/%d meshes %d/%d/%d/%d visible %d/%d/%d/%d inFlight %d again %d", arenaBytes / 1048576.0, usedBytes / 1048576.0, f.cam.pos.x, f.cam.pos.y, f.cam.pos.z, f.dim,
                chunks[0], chunks[1], chunks[2], chunks[3], per[0], per[1], per[2], per[3], vis[0], vis[1], vis[2], vis[3], (int)inFlight.size(), (int)again.size());
       }
     }
