@@ -598,6 +598,34 @@ def main(d):
            tiles['dried_sugar_cane_bundle_side'], tiles['dried_sugar_cane_bundle_side']])
     rj.setdefault('smelting', {}).setdefault('sugar_cane_bundle', 'dried_sugar_cane_bundle')
     rj['smelting'].setdefault('ember_coal_ore', 'ember_coal')
+    # BTA's Nether stone family and strata, in our emberstone: cobbled and polished emberstone, soul schist and bone shale
+    # in the deep rock, ashen trunks standing petrified on the Ashen Wastes; and gum wood for the Redlands' pale trees
+    if 'polished_emberstone' not in tiles:
+        tile('cobbled_emberstone', recolour(src_pic(d, tiles, files, 'cobblestone'), hsv_map(hue=0.0, sat=0.9, val=0.75, add=4)))
+        tile('polished_emberstone', recolour(src_pic(d, tiles, files, 'polished_andesite'), hsv_map(hue=0.0, sat=0.85, val=0.7)))
+        tile('soul_schist', recolour(src_pic(d, tiles, files, 'deepslate'), hsv_map(hue=0.08, sat=0.45, val=0.85)))
+        tile('bone_shale', recolour(src_pic(d, tiles, files, 'calcite'), hsv_map(hue=0.1, sat=0.35, val=0.95)))
+        tile('ashen_trunk_side', recolour(src_pic(d, tiles, files, 'oak_log_side' if 'oak_log_side' in tiles else 'log_side'), hsv_map(sat=0.08, val=0.62)))
+        tile('ashen_trunk_top', recolour(src_pic(d, tiles, files, 'oak_log_top' if 'oak_log_top' in tiles else 'log_top'), hsv_map(sat=0.08, val=0.62)))
+        tile('gum_log_side', recolour(src_pic(d, tiles, files, 'birch_log_side'), hsv_map(hue=0.08, sat=0.6, val=1.05)))
+        tile('gum_log_top', recolour(src_pic(d, tiles, files, 'birch_log_top'), hsv_map(hue=0.08, sat=0.6, val=1.05)))
+        tile('gum_planks', recolour(src_pic(d, tiles, files, 'birch_planks'), hsv_map(hue=0.07, sat=0.8, val=1.0)))
+        tile('gum_leaves', recolour(src_pic(d, tiles, files, 'birch_leaves'), hsv_map(val=1.0)))
+    for k, nm, tx, hard in (('cobbled_emberstone', 'Cobbled Emberstone', 'cobbled_emberstone', 1.2), ('polished_emberstone', 'Polished Emberstone', 'polished_emberstone', 1.5),
+                            ('soul_schist', 'Soul Schist', 'soul_schist', 2.5), ('bone_shale', 'Bone Shale', 'bone_shale', 2.0)):
+        block(k, nm, {'hardness': hard, 'tier': 1, 'tex': tx}, [tiles[tx]] * 6)
+    block('ashen_trunk', 'Ashen Trunk', {'hardness': 2.5, 'tier': 1, 'sound': 'stone', 'axisBlock': True,
+                                         'tex': {'top': 'ashen_trunk_top', 'bottom': 'ashen_trunk_top', 'side': 'ashen_trunk_side'}},
+          [tiles['ashen_trunk_side'], tiles['ashen_trunk_side'], tiles['ashen_trunk_top'], tiles['ashen_trunk_top'], tiles['ashen_trunk_side'], tiles['ashen_trunk_side']])
+    block('gum_log', 'Gum Log', {'hardness': 2, 'tool': 'axe', 'sound': 'log', 'isLog': True, 'axisBlock': True, 'fuel': 1.5,
+                                 'tex': {'top': 'gum_log_top', 'bottom': 'gum_log_top', 'side': 'gum_log_side'}},
+          [tiles['gum_log_side'], tiles['gum_log_side'], tiles['gum_log_top'], tiles['gum_log_top'], tiles['gum_log_side'], tiles['gum_log_side']])
+    block('gum_planks', 'Gum Planks', {'hardness': 2, 'tool': 'axe', 'sound': 'wood', 'fuel': 1.5, 'tex': 'gum_planks'}, [tiles['gum_planks']] * 6)
+    block('gum_leaves', 'Gum Leaves', {'render': 2, 'opaque': False, 'hardness': 0.2, 'tool': None, 'sound': 'leaves', 'lightAtt': 1,
+                                       'isLeaves': True, 'tint': 'foliage', 'drop': 'stick', 'tex': 'gum_leaves'}, [tiles['gum_leaves']] * 6)
+    recipe('gum_planks', 4, items_=['gum_log'])
+    recipe('polished_emberstone', 4, ['EE', 'EE'], {'E': 'emberstone'})
+    recipe('cobbled_emberstone', 2, items_=['emberstone', 'gravel'])
     # the wet sponge (Minecraft's): a sponge that soaked up water; dry it in a furnace. Used on dyed wool, terracotta,
     # glass or painted planks it washes the colour out (BTA)
     if 'wet_sponge' not in tiles:

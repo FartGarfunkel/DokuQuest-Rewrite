@@ -271,6 +271,8 @@ void writeTreeParts(const GenBlocks& B, GenBuf& b, int cx, int cz, const TreeSpe
     BlockId id = p.id;
     if (t.mossy && ((id == B.dark_oak_log && B.mossy_dark_oak_log) || (id == B.mangrove_log && B.mossy_mangrove_log)) && hash32(jsTrunc(p.x), jsTrunc(p.y), jsTrunc(p.z), 77) % 100 < 45)
       id = id == B.dark_oak_log ? B.mossy_dark_oak_log : B.mossy_mangrove_log;
+    if (t.gum && B.gum_log && id == B.birch_log) id = B.gum_log;
+    if (t.gum && B.gum_leaves && id == B.birch_leaves) id = B.gum_leaves;
     b.blocks[i] = id;
     if (p.meta >= 0) b.meta[i] = (u8)p.meta;
     if (B.axis[p.id] && p.meta < 0) b.meta[i] = 0;   // logs stand upright unless a branch turned them
@@ -314,7 +316,7 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
     else if (bv == BV_MOSSMIRE) type = r < 0.6 ? TREE_DARK_OAK : TREE_MANGROVE;   // dark, mossy swamp trees
     else if (bv == BV_THORNSCRUB) type = r < 0.72 ? TREE_THORN : r < 0.86 ? TREE_PALM : TREE_ACACIA;   // dry thorn country, a palm here and there
     bool bees = (type == TREE_OAK || type == TREE_BIRCH) && !bare && rnd() < (c.biome == BIOME_PLAINS ? 0.06 : 0.02);
-    t.kind = type; t.bare = bare; t.bees = bees; t.mossy = bv == BV_MOSSMIRE;
+    t.kind = type; t.bare = bare; t.bees = bees; t.mossy = bv == BV_MOSSMIRE; t.gum = bv == BV_REDLANDS;
     list.push_back(t);
   }
   // no trees growing through the floors of surface structures

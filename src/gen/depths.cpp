@@ -189,6 +189,10 @@ void DepthsGen::generate(Chunk& ch) {
       else if (ember < -0.45) {   // the Ashen Wastes: deep ash with pumice boulders
         b.blocks[i] = r < 0.8 ? B.ash : B.basalt;
         if (r > 0.994 && y < Y90) for (int k = 1; k <= 2; k++) b.blocks[colIdx(x, y + k, z)] = B.pumice;
+        else if (B.ashen_trunk && r > 0.985 && r <= 0.994 && y < Y90 - 8) {   // a petrified trunk standing in the ash (BTA's petrified log)
+          const int th = 3 + (int)(hashFloat(wx, y, wz, 95) * 4);
+          for (int k = 1; k <= th; k++) b.blocks[colIdx(x, y + k, z)] = B.ashen_trunk;
+        }
       }
       else if (patch > 0.55) b.blocks[i] = B.soul_sand;
       else if (patch < -0.62) b.blocks[i] = B.gravel;
@@ -270,7 +274,9 @@ void DepthsGen::ores(GenBuf& b, int cx, int cz) const {
     veins(2, 7, 10, DIM_H - 20, B.gold_ore, ember);
     veins(1, 3, 8, 40, B.ancient_debris, deep);       // ancient debris: deep, under the lava sea
     if (rnd.nextInt(2) == 0) veins(1, 2, 8, DIM_H - 40, B.ancient_debris, deep);
-    if (B.ember_coal_ore) veins(10, 12, 10, DIM_H - 20, B.ember_coal_ore, ember);   // BTA's Nether coal: ember coal in the emberstone
+    if (B.ember_coal_ore) veins(10, 12, 10, DIM_H - 20, B.ember_coal_ore, ember);
+    if (B.soul_schist) veins(5, 30, 8, 70, B.soul_schist, ember);        // BTA's Nether strata: dark schist low down,
+    if (B.bone_shale) veins(4, 24, 40, DIM_H - 40, B.bone_shale, ember);  // pale bone shale higher up   // BTA's Nether coal: ember coal in the emberstone
   }
 }
 
