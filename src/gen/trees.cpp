@@ -290,6 +290,7 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
   if (savanna) density = 0.9;
   if (btaVariant(mid) == BV_MOSSMIRE) density = 3;   // a swampy wood
   if (btaVariant(mid) == BV_THORNSCRUB) density = 2.5;   // thick with thorn trees
+  if (btaVariant(mid) == BV_HIGHLANDS) density = 6;      // close-grown spruce
   bool bare = (mid.biome == BIOME_FOREST || mid.biome == BIOME_PLAINS) && hashFloat(cx, cz, seed_, 67) < 0.025;
   int n = jsFloor(density) + (rnd() < std::fmod(density, 1.0) ? 1 : 0) + (bare ? 3 : 0);
   for (int i = 0; i < n; i++) {
@@ -305,7 +306,7 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
     }
     if (c.biome == BIOME_MOUNTAINS && c.h > 82) continue;
     const BtaVariant bv = btaVariant(c);
-    if (bv == BV_GLACIER || (bv == BV_REDLANDS && r > 0.45) || (bv == BV_MEADOW && r > 0.3)) continue;   // open country
+    if (bv == BV_GLACIER || (bv == BV_REDLANDS && r > 0.45) || (bv == BV_MEADOW && r > 0.3) || (bv == BV_TUNDRA && r > 0.08)) continue;   // open country
     u8 type = TREE_OAK;
     if (c.biome == BIOME_TAIGA || (c.biome == BIOME_MOUNTAINS && r < 0.7)) type = c.biome == BIOME_MOUNTAINS && c.humid > 0.15 && c.h < 78 && r < 0.25 ? TREE_CHERRY : r < 0.45 ? TREE_PINE : TREE_SPRUCE;
     else if (jungle) type = r < 0.7 ? TREE_JUNGLE : TREE_OAK;
@@ -315,6 +316,8 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
     if (bv == BV_REDLANDS) type = TREE_BIRCH;                              // pale-barked gums standing alone
     else if (bv == BV_MOSSMIRE) type = r < 0.6 ? TREE_DARK_OAK : TREE_MANGROVE;   // dark, mossy swamp trees
     else if (bv == BV_THORNSCRUB) type = r < 0.72 ? TREE_THORN : r < 0.86 ? TREE_PALM : TREE_ACACIA;   // dry thorn country, a palm here and there
+    else if (bv == BV_HIGHLANDS) type = r < 0.85 ? TREE_SPRUCE : TREE_PINE;   // the boreal hills
+    else if (bv == BV_TUNDRA) type = TREE_SPRUCE;                             // a lone stunted spruce
     bool bees = (type == TREE_OAK || type == TREE_BIRCH) && !bare && rnd() < (c.biome == BIOME_PLAINS ? 0.06 : 0.02);
     t.kind = type; t.bare = bare; t.bees = bees; t.mossy = bv == BV_MOSSMIRE; t.gum = bv == BV_REDLANDS;
     list.push_back(t);
