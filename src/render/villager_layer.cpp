@@ -127,6 +127,12 @@ public:
       ps.sit = sit; ps.sleep = sleep; ps.time = (float)time + (float)(seed % 50);
       ps.deathT = c->deathTime > 0 ? std::min(1.f, c->deathTime * 2) : 0;
       ps.wave = P & NP_WAVE ? 1.f : 0.f; ps.talk = P & NP_TALK; ps.fold = P & NP_FOLD; ps.read = P & NP_READ;
+      {   // standing about with nothing to do: the same idles as the players' (a look round, a stretch, a scratch...)
+        const float dtv = L.lastT < 0 ? 0.f : (float)std::min(0.1, time - L.lastT); L.lastT = time;
+        const bool still = c->walkAmt < 0.05f && !sit && !sleep && !(P & (NP_WAVE | NP_TALK | NP_READ)) && c->onGround;
+        L.idleT = still ? L.idleT + dtv : 0;
+        ps.idleT = L.idleT; ps.seed = seed;
+      }
       std::string held = c->heldItem;
       if (sleep || ((P & NP_READ) && job != "librarian")) held.clear();
       else if (sit && N && N->contains("sh") && reg().item(N->value("sh", std::string()))) held = N->value("sh", std::string());
@@ -339,7 +345,7 @@ public:
   }
 
 private:
-  struct Look { float hy = 0, pitch = 0; u64 seen = 0; };
+  struct Look { float hy = 0, pitch = 0; u64 seen = 0; float idleT = 0; double lastT = -1; };   // idleT: standing about (Story Mode-style idles)
   App& app;
   int hScreen = 0;
   double time = 0; u64 frameNo = 0;

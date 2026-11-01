@@ -142,6 +142,43 @@ CharAngles charAnimate(const CharPose& pose) {
   A.head.x -= A.body.x - b0; A.head.y -= A.body.y - b1;
   if (!special && !pose.air) { A.head.x += std::fabs(std::cos(ph)) * 0.04f * a + std::sin(t * 0.53f) * 0.02f * idle; A.head.y += std::sin(t * 0.37f) * 0.04f * idle; }
   if (pose.turned && pose.headTurn) A.head.y += clampf(pose.headTurn, -1.25f, 1.25f);
+  // ---- Story Mode-style life ----
+  if (!special && !pose.air && !pose.fp && pose.deathT <= 0) {
+    // feet planted on uneven ground: the hips drop to the lower foot and the other knee bends up to its step
+    const float k = clampf(1 - a * 3, 0, 1);
+    if (k > 0 && (pose.footL != 0 || pose.footR != 0)) {
+      const float lo = std::min(0.f, std::min(pose.footL, pose.footR));
+      A.lift += lo * k;
+      auto bend = [&](float up, vec3& leg, vec3& shin) {
+        const float r = clampf(up, 0, 0.6f), ang = std::acos(clampf(1 - r / 0.75f, -1, 1));
+        leg.x += ang * k; shin.x -= 2 * ang * k;
+      };
+      bend(pose.footR - lo, A.legR, A.shinR); bend(pose.footL - lo, A.legL, A.shinL);
+    }
+    // idles: after a few seconds standing about, now and then something to do, each person their own way
+    const bool armsFree = !pose.held && pose.swing <= 0 && pose.eat <= 0 && !pose.mapMain && !pose.talk && !pose.read && pose.wave <= 0;
+    if (pose.idleT > 5 && idle > 0.95f && !pose.sneak) {
+      const float span = 9.f, u = (pose.idleT - 5) / span;
+      const int n = (int)u; const float ph = u - n;
+      const float e = std::sin(clampf((ph - 0.1f) / 0.55f, 0, 1) * PI), env = e * e * (3 - 2 * e);
+      u32 h = pose.seed * 2654435761u + (u32)n * 40503u; h ^= h >> 13; h *= 0x5bd1e995u; h ^= h >> 15;
+      switch (h % 6) {
+        case 0: A.head.y += std::sin(ph * TAU * 1.5f) * 0.75f * env; A.head.x -= 0.08f * env; break;   // a look round
+        case 1: if (armsFree) {   // a stretch: arms up, a lean back
+          A.armR = mixv(A.armR, vec3(2.75f, 0, 0.35f), env); A.armL = mixv(A.armL, vec3(2.75f, 0, -0.35f), env);
+          A.foreR = mixv(A.foreR, vec3(0.1f, 0, 0), env); A.foreL = mixv(A.foreL, vec3(0.1f, 0, 0), env);
+          A.body.x += 0.12f * env; A.head.x -= 0.35f * env; A.lift += 0.02f * env;
+        } break;
+        case 2: if (armsFree) {   // a scratch of the head
+          A.armR = mixv(A.armR, vec3(2.3f, 0.2f, -0.55f), env); A.foreR = mixv(A.foreR, vec3(1.35f + std::sin(t * 15) * 0.1f, 0, 0), env);
+          A.head.x += 0.1f * env; A.head.z = 0.12f * env;
+        } break;
+        case 3: A.head.x += 0.5f * env; A.armR.x += 0.55f * env * (armsFree ? 1.f : 0.6f); A.armL.x += 0.45f * env; A.foreR.x += 0.5f * env; A.foreL.x += 0.4f * env; break;   // a look at the hands
+        case 4: A.legR.x += std::max(0.f, std::sin(t * 9)) * 0.18f * env; A.shinR.x -= std::max(0.f, std::sin(t * 9)) * 0.1f * env; A.body.z += 0.04f * env; break;   // a tap of the foot
+        default: A.body.z += std::sin(ph * PI * 2) * 0.06f * env; A.legR.z += 0.05f * env; A.legL.z += 0.05f * env; A.head.y += 0.25f * env; break;   // the weight shifted, a glance aside
+      }
+    }
+  }
   // maps.js: a map held up in front of the chest, in both hands (or one, when the other holds something)
   if (!(pose.fp || pose.carry || pose.sleep || pose.swim || pose.hang || pose.climb > 0 || pose.deathT > 0 || pose.swing > 0) && (pose.mapMain || pose.mapOff)) {
     if (pose.mapMain && !pose.off) { A.armR = vec3(0.95f, 0, -0.3f); A.armL = vec3(0.95f, 0, 0.3f); A.foreR = A.foreL = vec3(0.2f, 0, 0); }

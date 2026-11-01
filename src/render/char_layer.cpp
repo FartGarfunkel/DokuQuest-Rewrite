@@ -177,6 +177,32 @@ void CharacterLayer::update(GameSession& s, double dt) {
     if (e->inWater || p->flying) st.falling = false;
     if (e->onGround && st.falling) { if (st.fallStart - e->pos.y > 1.2f) st.landT = 0.2f; st.falling = false; }
     st.deathT = p->dead ? st.deathT + fdt : 0;
+    // standing about (for the idles), and the ground under each foot a few times a second (a step or a slab under one), eased
+    {
+      const bool calm = ground && hs < 0.25f && p->swingT <= 0 && p->eatT <= 0 && p->bowPull <= 0 && !p->riding && !p->sleeping && !p->swimming && !p->dead;
+      st.idleT = calm ? st.idleT + fdt : 0;
+      float wl = 0, wr = 0;
+      if (e->onGround && hs < 1.5f && !p->swimming && !p->riding && !p->sleeping && !p->dead) {
+        if ((st.footT -= fdt) <= 0) {
+          st.footT = 0.12f;
+          const float c = std::cos(st.bodyYaw), sn = std::sin(st.bodyYaw);
+          const vec3 right(c, 0, -sn);
+          auto groundAt = [&](vec3 at) -> float {
+            thread_local std::vector<DBox> bx; bx.clear();
+            gatherBoxes(s.world(), at.x - 0.07, e->pos.y - 0.65, at.z - 0.07, at.x + 0.07, e->pos.y + 0.6, at.z + 0.07, bx);
+            float top = -0.6f;
+            for (auto& b : bx) if (b.y1 <= e->pos.y + 0.6 && (float)(b.y1 - e->pos.y) > top) top = (float)(b.y1 - e->pos.y);
+            return std::clamp(top, -0.6f, 0.6f);
+          };
+          st.footTL = groundAt(e->pos - right * 0.13f); st.footTR = groundAt(e->pos + right * 0.13f);
+          static const bool dbg = std::getenv("DQ_FOOT_LOG") != nullptr;
+          if (dbg) DQ_LOG("feet %s: L %.2f R %.2f", p->name.c_str(), st.footTL, st.footTR);
+        }
+        wl = st.footTL; wr = st.footTR;
+      } else st.footT = 0;
+      const float k = std::min(1.f, fdt * 10);
+      st.footL += (wl - st.footL) * k; st.footR += (wr - st.footR) * k;
+    }
     st.wing += (((p->gliding || devPose == "glide") ? 1.f : 0.f) - st.wing) * std::min(1.f, fdt * 9);   // the elytra's wings opening and folding
     // ---- anim.js: which way the body faces, and the leans ----
     float aim = p->yaw, body = st.bodyYaw, legTurn = 0;
@@ -328,6 +354,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   ps.swimPh = st.swimPh; ps.swimMv = std::min(1.f, std::hypot(st.vel.x, st.vel.z) / 2.2f);
   ps.hasBodyYaw = true; ps.bodyYaw = st.bodyYaw; ps.headTurn = wrapAngle(p.yaw - st.bodyYaw); ps.legTurn = st.legTurn;
   ps.accLean = p.onGround ? st.accLean : 0; ps.turnLean = st.turnLean;
+  ps.idleT = st.idleT; ps.seed = p.id * 7919u + (u32)std::hash<std::string>()(p.name); ps.footL = st.footL; ps.footR = st.footR;
   if (p.flying && !p.riding) { ps.fly = true; ps.flySpeed = std::min(1.f, std::hypot(st.vel.x, st.vel.z) / 14); ps.flyVy = st.vel.y; ps.air = false; ps.lean = 0.85f * ps.flySpeed; }
   if (!devPose.empty() && &p == s.player) {
     if (devPose == "sit") ps.sit = true;

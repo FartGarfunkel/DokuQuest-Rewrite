@@ -29,6 +29,10 @@ struct CharPose {
   float headYaw = 0, wave = 0, hoe = 0; bool talk = false, fold = false, read = false;
   // game/elytra.js: gliding on elytra (arms swept back, legs together; the wings open by wingOpen 0..1)
   bool glide = false; float wingOpen = 0;
+  // Story Mode-style life (render/char_anim.cpp): how long it has stood idle (varied idles: looking round, a stretch, a
+  // scratch of the head, a look at its hands, a tap of the foot), who it is (picks its idles), and the ground under each
+  // foot relative to where it stands (blocks, + higher): the feet plant on steps and slabs, the hips drop, a knee bends
+  float idleT = 0; u32 seed = 0; float footL = 0, footR = 0;
 };
 
 // part angles (x, y, z; applied as rotY, rotX, rotZ) and the lift of the whole body (blocks)
