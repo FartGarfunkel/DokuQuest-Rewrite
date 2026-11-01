@@ -243,6 +243,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
     w.setBlockEntity(x, y, z, {{"type", "chest"}, {"items", items}});
   } else if (bhas(bid, BF::Furnace)) containerEntity(w, x, y, z);
   if (bhas(bid, BF::Sign)) { w.setBlockEntity(x, y, z, {{"type", "sign"}, {"lines", {"", "", "", ""}}}); editSign(x, y, z); }
+  if (bdef.has("painting")) w.setBlockEntity(x, y, z, {{"type", "painting"}, {"n", (int)(rnd() * 30)}});   // a picture of its own (render/painting_layer.cpp)
   consumeHeld();
   swingArm();
   sfxMaterial(lv, bdef.sound, "place", vec3(x, y, z) + vec3(0.5f));
@@ -564,6 +565,13 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
     }
     if (e && e->value("book", false) && !hasHeld) { giveItem(lv, p, ItemStack("book", 1)); w.setBlockEntity(x, y, z, nullptr); swingArm(); return true; }
     return false;
+  }
+  if (b.has("painting")) {   // turn to the next picture (crouch: the one before)
+    json* e = w.blockEntity(x, y, z);
+    const int n = e && e->is_object() ? e->value("n", 0) : 0;
+    w.setBlockEntity(x, y, z, {{"type", "painting"}, {"n", ((n + (p.sneaking ? 29 : 1)) % 30)}});
+    sfxAt(lv, "click", vec3(x, y, z) + vec3(0.5f)); swingArm();
+    return true;
   }
   if (b.has("frame")) {
     json* e = w.blockEntity(x, y, z);

@@ -412,6 +412,29 @@ def main(d):
                                            'needsSupport': True, 'fuel': 0.5, 'tree': 'palm', 'tex': 'palm_sapling'}, [tiles['palm_sapling']] * 6)
     items['coconut'] = {'key': 'coconut', 'name': 'Coconut', 'maxStack': 64, 'icon': 'coconut', 'food': {'heal': 3}, 'desc': 'Falls from a felled palm.'}
     recipe('palm_planks', 4, items_=['palm_log'])
+    # the painting: a framed canvas whose picture is painted by render/painting_layer.cpp (use it to turn to the next)
+    if 'painting_frame' not in tiles:
+        pf = recolour(src_pic(d, tiles, files, 'dark_oak_planks'), hsv_map(val=0.95)); pp = pf.load()
+        for y in range(32):
+            for x in range(32):
+                if 3 <= x <= 28 and 3 <= y <= 28: pp[x, y] = (46, 40, 34, 255)
+                elif x in (2, 29) or y in (2, 29): pp[x, y] = (200, 160, 70, 255)   # a gilt fillet
+        tile('painting_frame', pf)
+        ic = _I.new('RGBA', (32, 32), (0, 0, 0, 0)); ip = ic.load()
+        for y in range(4, 28):
+            for x in range(3, 29):
+                edge = x in (3, 4, 27, 28) or y in (4, 5, 26, 27)
+                if edge: ip[x, y] = (92, 60, 32, 255)
+                else:
+                    hill = 19 + int(2.5 * __import__('math').sin(x * 0.4))
+                    ip[x, y] = (88, 140, 60, 255) if y >= hill else (140, 190, 230, 255) if y > 10 else (170, 210, 240, 255)
+        for x, y in ((21, 9), (22, 9), (21, 10), (22, 10)): ip[x, y] = (250, 236, 150, 255)
+        rel = 'textures/item/painting_item.png'; ic.save(d / rel)
+        tiles['painting_item'] = tj['count']; files.append(rel); tj['res'].append(32); tj['count'] += 1
+    block('painting', 'Painting', {'render': 7, 'solid': False, 'opaque': False, 'hardness': 0.3, 'tool': None, 'sound': 'wood', 'shapeKind': 18,
+                                   'painting': True, 'tex': 'painting_frame', 'itemIcon': 'painting_item', 'fuel': 0.5}, [tiles['painting_frame']] * 6)
+    items['painting'].update({'icon': 'painting_item'})
+    recipe('painting', 1, ['SSS', 'SWS', 'SSS'], {'S': 'stick', 'W': '#wool'})
     # the quiver (BTA's): a leather case of arrows (sim/quiver.cpp)
     if 'quiver' not in tiles:
         qv = _I.new('RGBA', (32, 32), (0, 0, 0, 0)); qp = qv.load()
@@ -450,6 +473,7 @@ def main(d):
     if 'glass_door_item' not in sh['itemTiles']: sh['itemTiles'].append('glass_door_item'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'coconut' not in sh['itemTiles']: sh['itemTiles'].append('coconut'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'quiver' not in sh['itemTiles']: sh['itemTiles'].append('quiver'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
+    if 'painting_item' not in sh['itemTiles']: sh['itemTiles'].append('painting_item'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'sulphur' not in sh['itemTiles']: sh['itemTiles'].append('sulphur'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'paintbrush' not in sh['itemTiles']: sh['itemTiles'].append('paintbrush'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))

@@ -48,6 +48,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **A jar of butterflies** (an empty jar over grass on a bright day), **bluebells** under forest trees, **marigolds** in the meadows, **spinifex** in the redlands, and the **sugar cane bundle.**
 - **The hand sieve:** sift gravel, sand, dirt and the rest right where it lies.
 - **The quiver:** holds up to 192 arrows; your bow draws from it.
+- **Paintings:** hang one on a wall for a picture of its own (landscapes, seascapes, snowy peaks, still lifes, colour fields); use it to turn to another.
 - **Particles:** sprinting kicks up the ground you run on, a hard landing throws up a ring of it, critical blows burst into stars, and running beasts raise dust.
 
 **Gear and magic:**
