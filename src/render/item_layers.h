@@ -28,6 +28,8 @@ public:
   // render/instruments.cpp): m maps the item model's space (before VoxelModel::matrix()) to view space
   inline static std::function<int(HeldItemLayer&, GameSession&, const FrameCtx&, const mat4& proj)> handsHook;
   inline static std::function<void(GameSession&, const FrameCtx&, const mat4& proj, const ItemStack&, const mat4& m, const VoxelModel&)> itemHook;
+  // where the flame of a torch held in each hand was last drawn (world space; render/held_light_fx.cpp)
+  inline static glm::dvec3 torchTip[2]{}; inline static bool torchTipOn[2]{};
 private:
   bool swinging = false;
   std::string lastHeld = "\x01";

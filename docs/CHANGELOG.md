@@ -68,6 +68,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Grass grows back.** Bare dirt next to grass turns green again at Minecraft's pace (about a minute or two for a lone block), under trees too. A new game rule, randomTickSpeed, speeds it and the other slow growth up.
 - **Doors, gates and trapdoors swing** open and shut on their hinges instead of snapping, village gates included.
 - **Elytra ride the wind.** Out under the open sky a headwind lifts you, a tailwind pushes you on, a crosswind drifts you sideways and gusts carry you up.
+- **Torches burn in your hand.** A held torch has a little flame and a thread of smoke, and leaves a trail of sparks when you swing it (soul torches burn blue, redstone torches give off red dust), for you and for everyone else carrying one.
 
 **Gear and magic:**
 

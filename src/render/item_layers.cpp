@@ -25,6 +25,7 @@ void registerItemLayers() {
   registerPileLayer();   // piles and placed backpacks (render/pile_layer.cpp)
   { void registerPaintingLayer(); registerPaintingLayer(); }   // render/painting_layer.cpp
   { void registerSwingLayer(); registerSwingLayer(); }         // render/swing_layer.cpp
+  { void registerHeldLightFx(); registerHeldLightFx(); }       // render/held_light_fx.cpp
   { void registerStatueLayer(); registerStatueLayer(); }   // render/statue_layer.cpp
   registerLecternLayer();   // books on lecterns (render/lectern_layer.cpp)
   registerChestLayer();     // chest lids that open with the chest's screen (render/chest_layer.cpp)
@@ -205,6 +206,12 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       m = glm::translate(m, vec3(-side * 0.02f, 0.05f, -0.05f));
       m = glm::rotate(m, -0.3f, vec3(1, 0, 0)); m = glm::rotate(m, side * 0.2f, vec3(0, 0, 1)); m = glm::rotate(m, side * 0.6f, vec3(0, 1, 0));
       m = glm::scale(m, vec3(0.46f)); m = glm::translate(m, vec3(0, 0.6f, 0));
+      {   // the flame's place, for the held-light particles: view space back to the world
+        const vec4 tv = m * vec4(0, 0.16f, 0, 1);
+        const vec4 rs = glm::inverse(f.cam.view) * vec4(vec3(tv), 1);
+        const int h = side > 0 ? 0 : 1;
+        torchTip[h] = f.cam.origin + glm::dvec3(vec3(rs)); torchTipOn[h] = true;
+      }
     } else if (im.kind == VoxelModel::Block) {
       m = glm::translate(m, vec3(-side * 0.03f, 0.1f, -0.06f));
       m = glm::rotate(m, side * 0.78f, vec3(0, 1, 0)); m = glm::scale(m, vec3(0.4f));
