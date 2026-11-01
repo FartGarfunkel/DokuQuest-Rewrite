@@ -40,6 +40,11 @@ void bakeTileRelief(TileSet& ts);            // once per finished tile set: whol
 std::string applyResourcePack(TileSet& ts, const std::string& choice);
 std::vector<std::string> listResourcePacks();
 int appendTile(TileSet& ts, const u8* rgba32x32);   // adds a tile (animation frames), returns its layer
+// the player's own pictures (Texture Studio): userDir()/textures/<tile name>.png over whatever pack is on; a tile the
+// game tints by biome keeps its tint where it had it; an animated tile goes still. Returns how many were used.
+int applyUserTiles(TileSet& ts);
+// a picture of any square size brought to the tile size (smaller doubled up, bigger averaged down)
+std::vector<u8> fitTile(const std::vector<u8>& rgba, int w, int h, int T);
 
 // Biome colour from the active pack's colormap (textures/colormap/grass.png or foliage.png), Minecraft's
 // lookup: x = (1 - temp), y = (1 - humid * temp). kind "grass"/"foliage"; ok = false when no pack colormap.

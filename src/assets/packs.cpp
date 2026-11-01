@@ -12,6 +12,7 @@
 #include "assets/gui_textures.h"
 #include <unordered_set>
 #include <atomic>
+#include <mutex>
 #include <cstring>
 
 namespace dq {
@@ -166,6 +167,7 @@ static fs::path packPath(const std::string& name) {
 
 static const char* DEFAULT_PACK = "DokuQuest Base";
 std::string applyResourcePack(TileSet& ts, const std::string& choice) {
+  static std::mutex mu; std::lock_guard<std::mutex> lock(mu);   // the launcher loads tiles on two threads (map, Texture Studio)
   setActivePack(nullptr);
   std::atomic_store(&g_colormaps, std::shared_ptr<const Colormaps>());
   resetPackArmor();
@@ -302,6 +304,51 @@ std::string applyResourcePack(TileSet& ts, const std::string& choice) {
   std::string nm = P->name();
   setActivePack(std::move(P));
   return nm;
+}
+
+std::vector<u8> fitTile(const std::vector<u8>& rgba, int w, int h, int T) {
+  std::vector<u8> out((size_t)T * T * 4, 0);
+  if (w <= 0 || h <= 0 || rgba.size() < (size_t)w * h * 4) return out;
+  const int s = std::min(w, h);   // a strip: its first square frame
+  for (int y = 0; y < T; y++) for (int x = 0; x < T; x++) {
+    int x0 = x * s / T, x1 = std::max(x0 + 1, (x + 1) * s / T), y0 = y * s / T, y1 = std::max(y0 + 1, (y + 1) * s / T);
+    u32 acc[4] = {0, 0, 0, 0}, n = 0, na = 0;
+    for (int yy = y0; yy < y1; yy++) for (int xx = x0; xx < x1; xx++) {
+      const u8* p = &rgba[((size_t)yy * w + xx) * 4];
+      if (p[3] >= 128) { acc[0] += p[0]; acc[1] += p[1]; acc[2] += p[2]; na++; }
+      acc[3] += p[3]; n++;
+    }
+    u8* d = &out[((size_t)y * T + x) * 4];
+    if (na) { d[0] = (u8)(acc[0] / na); d[1] = (u8)(acc[1] / na); d[2] = (u8)(acc[2] / na); }
+    d[3] = (u8)(acc[3] / n >= 128 ? 255 : 0);
+  }
+  return out;
+}
+
+int applyUserTiles(TileSet& ts) {
+  std::error_code ec; int used = 0;
+  const fs::path dir = userDir() / "textures";
+  if (!fs::is_directory(dir, ec)) return 0;
+  const int T = ts.size;
+  for (auto& e : fs::directory_iterator(dir, ec)) {
+    if (!e.is_regular_file(ec) || toLower(e.path().extension().string()) != ".png") continue;
+    auto it = ts.index.find(e.path().stem().string());
+    if (it == ts.index.end() || it->second < 0 || it->second >= ts.count) continue;
+    int w = 0, h = 0; std::vector<u8> px;
+    if (!loadPng(e.path(), w, h, px)) continue;
+    std::vector<u8> t = fitTile(px, w, h, T);
+    u8* dst = ts.tile(it->second);
+    for (int i = 0; i < T * T; i++) {
+      const bool tint = dst[i * 4 + 3] == 253;
+      std::memcpy(dst + i * 4, &t[i * 4], 4);
+      if (tint && dst[i * 4 + 3] >= 128) dst[i * 4 + 3] = 253;
+    }
+    ts.res[it->second] = (u8)T;
+    dropTileAnim(ts, it->second);
+    used++;
+  }
+  if (used) { deriveMicroVoxelHeights(ts); DQ_LOG("your textures: %d pictures from %s", used, dir.string().c_str()); }
+  return used;
 }
 
 } // namespace dq

@@ -394,6 +394,8 @@ void randomTicks(Level& lv, World& w, float px, float pz) {
     if (it == cache->tickables.end()) { if (scanned++ > 24) continue; cache->scan(*c); it = cache->tickables.find(c->key()); }
     std::vector<int> idx(it->second.begin(), it->second.end());
     int base = c->baseY();
+    const int reps = (int)tickSpeed + (rnd() < tickSpeed - (int)tickSpeed ? 1 : 0);   // randomTickSpeed: 2 = twice as fast
+    for (int rep = 0; rep < reps; rep++)
     for (int i : idx) {
       int lx = i & 15, lz = (i >> 4) & 15, ly = i >> 8;
       BlockId id = c->get(lx, ly, lz);

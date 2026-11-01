@@ -25,6 +25,7 @@ bool tilesReady(Launcher& L) {
       Tiles& t = tiles();
       loadBuiltinTiles(t.ts);
       t.ts.packName = applyResourcePack(t.ts, pack);
+      applyUserTiles(t.ts);
       t.state = 2;
     });
   }
