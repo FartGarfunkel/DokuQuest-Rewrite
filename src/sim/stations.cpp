@@ -1,6 +1,7 @@
 // sim/stations.cpp — see stations.h. Line-by-line ports of stationResult (game/blocks2.js), its enchanting.js
 // wrapper (books onto gear, the grindstone taking enchantments off, joins keeping both enchantments) and
 // stonecutterOptions (core/items.js).
+#include "core/tool_parts.h"
 #include "sim/stations.h"
 
 namespace dq {
@@ -30,11 +31,19 @@ static StationResult baseResult(const std::string& kind, const ItemStack& a, con
   StationResult r;
   const ItemDef* da = a.empty() ? nullptr : reg().item(a.id);
   const ItemDef* db = b.empty() ? nullptr : reg().item(b.id);
+  if (kind == "forge") {   // the Tool Forge: a gem set in a tool (core/tool_parts.h)
+    if (a.empty() || b.empty()) return r;
+    ItemStack t = a; t.n = 1;
+    if (!setToolGem(t, b.id)) return r;
+    r.out = t; r.useA = 1; r.useB = 1; r.ok = true;
+    r.note = std::string("Sets the ") + (db ? db->name : b.id) + ": " + gemEffect(b.id);
+    return r;
+  }
   if (kind == "anvil" || kind == "grindstone") {
     if (a.empty() || b.empty()) return r;
-    int max = maxDurabilityOf(da);
+    int max = toolMaxDurability(a);
     if (!max || !(a.d > 0 || (b.id == a.id && b.d > 0))) return r;
-    if (a.id == b.id) {
+    if (a.id == b.id && partToolModelKey(a) == partToolModelKey(b)) {
       int left = (max - a.d) + (max - b.d) + (int)std::floor(max * (kind == "anvil" ? 0.12 : 0.05));
       r.out = a; r.out.n = 1; r.out.d = std::max(0, max - left);
       r.useA = 1; r.useB = 1; r.note = "Joins the two into one"; r.ok = true;
@@ -42,7 +51,9 @@ static StationResult baseResult(const std::string& kind, const ItemStack& a, con
     }
     if (kind == "anvil") {
       std::string mat = repairMaterial(a.id);
-      if (mat.empty() || !tagMatch(mat, b.id)) return r;
+      bool own = false;   // a mixed tool mends with any of its own materials
+      if (isPartTool(a)) if (const ToolMaterial* tm = toolMaterialOfItem(b.id)) for (auto& m : a.tag["pt"]["m"]) if (m == tm->key) own = true;
+      if (!own && (mat.empty() || !tagMatch(mat, b.id))) return r;
       int per = (int)std::ceil(max / 4.0), need = std::min(b.n, (int)std::ceil(a.d / (double)per));
       if (need <= 0) return r;
       r.out = a; r.out.n = 1; r.out.d = std::max(0, a.d - per * need);
@@ -160,6 +171,7 @@ int forgeCost(const std::string& head) {
 
 const char* stationHelp(const std::string& kind) {
   if (kind == "anvil") return "Put in a worn tool and its own material (ingots, planks, stones\xE2\x80\xA6), or two of the same tool.";
+  if (kind == "forge") return "Put in a tool and a gem to set in it: diamond (tougher), emerald, amethyst or charged crystal (faster), ruby (fire), sapphire (frost), quartz, red crystal, or cinderite (a tier higher). One gem a tool.";
   if (kind == "grindstone") return "Put in two worn tools of the same kind to join them.";
   if (kind == "smithing") return "Diamond gear + a cinderite shard \xE2\x86\x92 cinderite gear. Copper gear + a tin ingot \xE2\x86\x92 bronze gear.";
   if (kind == "loom") return "Wool, carpet, glass, terracotta, concrete powder, beds or candles + a dye: recolours up to eight.";
@@ -168,6 +180,7 @@ const char* stationHelp(const std::string& kind) {
 }
 std::pair<const char*, const char*> stationPlaceholders(const std::string& kind) {
   if (kind == "anvil") return {"iron_pickaxe", "iron_ingot"};
+  if (kind == "forge") return {"iron_pickaxe", "diamond"};
   if (kind == "grindstone") return {"iron_sword", "iron_sword"};
   if (kind == "smithing") return {"diamond_pickaxe", "cinderite_shard"};
   if (kind == "loom") return {"wool", "red_dye"};

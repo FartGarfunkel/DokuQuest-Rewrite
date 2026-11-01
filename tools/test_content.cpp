@@ -11,6 +11,9 @@
 #include "sim/stable.h"
 #include "sim/places.h"
 #include "sim/farming.h"
+#include "sim/crafting.h"
+#include "sim/stations.h"
+#include "core/tool_parts.h"
 #include "sim/creature.h"
 #include "sim/creature_entities.h"
 #include <thread>
@@ -305,6 +308,35 @@ int main(int argc, char** argv) {
     check(use("rice", ivec3(8, Y, 22), FACE_PY), "  ...and with water beside it, it can be planted");
     int seeds = 0; for (int i = 0; i < 200; i++) if (!wildSeed().empty()) seeds++;
     check(seeds == 200, "long grass can give up a garden seed");
+  }
+  // ------------------------------------------------------------ mixed tools (core/tool_parts.h)
+  {
+    auto grid = [](std::vector<std::string> ids) { std::vector<ItemStack> g(9); for (int i = 0; i < 9; i++) if (!ids[i].empty()) g[i] = ItemStack(ids[i], 1); return g; };
+    CraftMatch m = matchGrid(grid({"iron_ingot", "diamond", "copper_ingot", "", "stick", "", "", "stick", ""}), 3);
+    ItemStack t = m.ok ? m.result() : ItemStack();
+    check(t.id == "mixed_pickaxe" && isPartTool(t) && t.tag["pt"]["m"] == json::array({"iron", "diamond", "copper"}), "iron, diamond and copper across a pickaxe's head make a mixed pickaxe");
+    ToolInfo ti = toolOf(t), iron = reg().item("iron_pickaxe")->tool, dia = reg().item("diamond_pickaxe")->tool;
+    check(ti.type == "pickaxe" && ti.durability > iron.durability && ti.durability < dia.durability && ti.tier == 3 && ti.speed > iron.speed * 0.8f,
+          "its stats are the three's, mixed (dur " + std::to_string(ti.durability) + ", speed " + std::to_string(ti.speed) + ", tier " + std::to_string(ti.tier) + ")");
+    check(stackName(t) == "Iron, Diamond & Copper Pickaxe", "and its name says so: " + stackName(t));
+    check(partToolModelKey(t) == "pt:pickaxe:iron,diamond,copper:stick:", "its model key: " + partToolModelKey(t));
+    CraftMatch plain = matchGrid(grid({"iron_ingot", "iron_ingot", "iron_ingot", "", "stick", "", "", "stick", ""}), 3);
+    check(plain.ok && plain.out == "iron_pickaxe", "all iron is still the ordinary iron pickaxe");
+    CraftMatch sw = matchGrid(grid({"", "gold_ingot", "", "", "steel_ingot", "", "", "bone", ""}), 3);
+    ItemStack swt = sw.ok ? sw.result() : ItemStack();
+    check(swt.id == "mixed_sword" && stackName(swt) == "Bone-Hafted Golden & Steel Sword", "a gold-tipped steel sword on a bone haft: " + stackName(swt));
+    ItemStack worn = t; worn.d = 600;
+    std::vector<ItemStack> g2(9); g2[0] = worn; g2[1] = ItemStack("diamond", 1);
+    CraftMatch mend = matchGrid(g2, 3);
+    ItemStack mended = mend.ok ? mend.result() : ItemStack();
+    check(mended.id == "mixed_pickaxe" && mended.d < 600 && isPartTool(mended), "a worn mixed pickaxe and a diamond (one of its own) mend it (" + std::to_string(mended.d) + ")");
+    std::vector<ItemStack> g3(9); g3[0] = worn; g3[1] = ItemStack("gold_ingot", 1);
+    check(!matchGrid(g3, 3).ok, "  ...but not with a material it isn't made of");
+    StationResult gem = stationResult("forge", ItemStack("iron_pickaxe", 1), ItemStack("diamond", 1));
+    check(gem.ok && gem.out.tag.value("gem", "") == "diamond" && toolOf(gem.out).durability > iron.durability && stackName(gem.out) == "Iron Pickaxe (Diamond)",
+          "the Tool Forge sets a diamond in an iron pickaxe: tougher (" + std::to_string(toolOf(gem.out).durability) + ")");
+    StationResult again = stationResult("forge", gem.out, ItemStack("ruby", 1));
+    check(!again.ok, "  ...one gem a tool");
   }
   // ------------------------------------------------------------ the Wither: its skulls hit back hurt it, armoured or not
   {

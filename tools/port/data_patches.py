@@ -133,6 +133,7 @@ _s3 = _u.spec_from_file_location('nether_bta', pathlib.Path(__file__).with_name(
 
 # ---- forged tools: heads and hafts, the Tool Forge (tools/port/forging.py) ----
 _s = _u.spec_from_file_location('forging', pathlib.Path(__file__).with_name('forging.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
+_s = _u.spec_from_file_location('tool_parts', pathlib.Path(__file__).with_name('tool_parts.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
 
 # ---- the lead (Minecraft's): leads an animal, ties it to a fence post (sim/leads.cpp) ----
 items = json.loads((d / 'items.json').read_text()); tj4 = json.loads((d / 'tiles.json').read_text())

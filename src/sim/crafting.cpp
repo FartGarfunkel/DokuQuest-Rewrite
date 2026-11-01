@@ -1,6 +1,7 @@
 // sim/crafting.cpp — see crafting.h. Ported from core/items.js (matchGrid, recipeIngredients, recipeLayout,
 // SMELTING rules), game/inventory.js (recipeMissing, ingredientLabel), game/dyeing.js, game/maps.js,
 // game/blocks2.js (recolorKey), game/game.js (tickFurnace) and game/itemfix.js (smoker/blast classes).
+#include "core/tool_parts.h"
 #include "sim/crafting.h"
 #include <unordered_set>
 
@@ -89,12 +90,13 @@ static CraftMatch matchBase(const std::vector<ItemStack>& slots, int W) {
   if (count == 2) {
     std::vector<const ItemStack*> ts; for (auto& s : slots) if (!s.empty()) ts.push_back(&s);
     const ItemDef* d = ts[0]->def();
-    if (ts[0]->id == ts[1]->id && d && d->hasTool && d->maxStack == 1) {
-      int dur = d->tool.durability, left = (dur - ts[0]->d) + (dur - ts[1]->d) + (int)std::floor(dur * 0.05);
+    if (ts[0]->id == ts[1]->id && d && d->hasTool && d->maxStack == 1 && partToolModelKey(*ts[0]) == partToolModelKey(*ts[1])) {
+      int dur = toolMaxDurability(*ts[0]), left = (dur - ts[0]->d) + (dur - ts[1]->d) + (int)std::floor(dur * 0.05);
       auto gxOf = [](const ItemStack* s) { return s->tag.is_object() ? s->tag.value("gx", 0) : 0; };
       int gx = std::max(gxOf(ts[0]), gxOf(ts[1]));
       CraftMatch m = special(ts[0]->id, 1); m.repair = std::max(0, dur - left);
-      if (gx) m.extra = {{"gx", gx}};
+      if (ts[0]->tag.is_object()) m.extra = ts[0]->tag;   // (a mixed tool's makeup, a gem)
+      if (gx) { if (!m.extra.is_object()) m.extra = json::object(); m.extra["gx"] = gx; }
       return m;
     }
   }
@@ -130,6 +132,54 @@ static CraftMatch matchBase(const std::vector<ItemStack>& slots, int W) {
   return {};
 }
 
+// core/tool_parts.h: a tool's pattern whose head holds more than one material makes a mixed tool; a worn mixed tool and
+// some of its own materials mend it (a quarter each)
+static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
+  int x0 = W, y0 = W, x1 = -1, y1 = -1, count = 0;
+  for (int i = 0; i < W * W && i < (int)slots.size(); i++) if (!slots[i].empty()) {
+    int x = i % W, y = i / W; x0 = std::min(x0, x); x1 = std::max(x1, x); y0 = std::min(y0, y); y1 = std::max(y1, y); count++;
+  }
+  if (!count) return {};
+  // mending
+  {
+    const ItemStack* tool = nullptr; int mats = 0; bool other = false;
+    for (auto& s : slots) if (!s.empty()) {
+      if (isPartTool(s)) { if (tool) other = true; tool = &s; continue; }
+      mats++;
+    }
+    if (tool && mats && !other && tool->d > 0) {
+      std::vector<std::string> own; for (auto& m : tool->tag["pt"]["m"]) own.push_back(m.get<std::string>());
+      bool ok = true;
+      for (auto& s : slots) if (!s.empty() && &s != tool) { const ToolMaterial* tm = toolMaterialOfItem(s.id); if (!tm || std::find(own.begin(), own.end(), tm->key) == own.end()) ok = false; }
+      if (ok) {
+        const int max = toolMaxDurability(*tool);
+        CraftMatch m = special(tool->id, 1); m.extra = tool->tag; m.repair = std::max(0, tool->d - (int)std::ceil(max * 0.25 * mats));
+        return m;
+      }
+    }
+  }
+  const int bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+  auto at = [&](int x, int y) -> const ItemStack& { return slots[(y0 + y) * W + x0 + x]; };
+  for (const ToolPattern& P : toolPatterns()) {
+    if (P.w != bw || P.h != bh || (int)(P.head.size() + P.haft.size()) != count) continue;
+    for (int mirror = 0; mirror < (P.w > 1 ? 2 : 1); mirror++) {
+      auto cell = [&](ivec2 c) -> const ItemStack& { return at(mirror ? bw - 1 - c.x : c.x, c.y); };
+      std::vector<std::string> mats; std::string haft; bool ok = true;
+      for (ivec2 c : P.head) { const ItemStack& s = cell(c); const ToolMaterial* tm = s.empty() ? nullptr : toolMaterialOfItem(s.id); if (!tm) { ok = false; break; } mats.push_back(tm->key); }
+      for (ivec2 c : P.haft) { if (!ok) break; const ItemStack& s = cell(c); if (s.empty() || (!haft.empty() && s.id != haft)) ok = false; else haft = s.id; }
+      if (!ok) continue;
+      bool same = std::all_of(mats.begin(), mats.end(), [&](const std::string& m) { return m == mats[0]; });
+      const ToolMaterial* m0 = toolMaterial(mats[0]);
+      if (same && haft == "stick" && m0 && reg().item(m0->prefix + "_" + P.kind)) return {};   // all one material: the ordinary tool's own recipe
+      ItemStack out;
+      if (!makePartTool(P.kind, mats, haft, out)) continue;
+      CraftMatch m = special(out.id, 1, P.w, P.h); m.extra = out.tag;
+      return m;
+    }
+  }
+  return {};
+}
+
 // game/dyeing.js: a dye and one block takes the colour; leather armour mixes any number of dyes
 static CraftMatch matchDye(const std::vector<ItemStack>& slots, int W) {
   std::vector<const ItemStack*> dyes, rest;
@@ -150,6 +200,7 @@ static CraftMatch matchDye(const std::vector<ItemStack>& slots, int W) {
       if (!to.empty()) return special(to, 1);
     }
   }
+  if (CraftMatch t = matchPartTool(slots, W); t.ok) return t;
   return matchBase(slots, W);
 }
 

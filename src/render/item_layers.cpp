@@ -1,4 +1,5 @@
 // render/item_layers.cpp — the first-person hand with the held item, and dropped items (voxel models).
+#include "core/tool_parts.h"
 #include "render/item_layers.h"
 #include "render/char_layer.h"
 #include "render/chest_layer.h"
@@ -202,7 +203,8 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     // a fishing rod with its float out has no line hanging from the tip (fishing.js: fishing_rod_cast)
     bool rod = stack.id == "fishing_rod";
     float wind = rod ? castWindOf(*p) : 0.f;
-    const VoxelModel& im = itemModel(rod ? std::string("fishing_rod_cast") : stack.id);   // (the hanging float is drawn live from the tip)
+    const std::string pk = partToolModelKey(stack);
+    const VoxelModel& im = itemModel(rod ? std::string("fishing_rod_cast") : !pk.empty() ? pk : stack.id);   // (the hanging float is drawn live from the tip)
     bool tool = im.kind != VoxelModel::Block && isHandheld(stack.id);
     float e = side > 0 ? eat : 0, pitch = 1.62f + e * 0.35f, yaw = side * 0.32f;
     mat4 am = glm::translate(mat4(1), vec3(side * (FP_HAND.x + (side > 0 ? bx - e * 0.32f : -bx * 0.6f)),
@@ -310,7 +312,7 @@ void DroppedItemLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
     if (st.empty()) continue;
     vec3 rel = f.cam.rel(glm::dvec3(e->pos));
     if (glm::dot(rel, rel) > 96.f * 96.f || !f.cam.frustum.sphere(rel + vec3(0, 0.25f, 0), 0.8f)) continue;
-    const VoxelModel& im = itemModel(st.id);
+    const std::string pk = partToolModelKey(st); const VoxelModel& im = itemModel(pk.empty() ? st.id : pk);
     if (!im.ready()) continue;
     if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
     u8 l = w.getLight(ifloor(e->pos.x), ifloor(e->pos.y + 0.2f), ifloor(e->pos.z));

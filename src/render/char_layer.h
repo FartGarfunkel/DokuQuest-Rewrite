@@ -55,6 +55,7 @@ struct CharWear {
   std::string armor[4], dye[4];     // item keys (helmet .. boots), leather dye "rrggbb"
   std::string back, hook, cape;     // backpack item, belt item, cape TILE key ("" = none)
   std::string held, off;            // in the hands
+  std::string heldModel;            // a mixed tool's own model (core/tool_parts.h partToolModelKey), "" = the item's
   u32 rodOwner = 0;                 // the player whose rod tip is recorded for the fishing line (0 = nobody)
   bool heldGlint = false, offGlint = false;   // enchanted: the shimmer on it
   std::vector<std::string> carried; // carried.js: hotbar things not in the hand (third person)

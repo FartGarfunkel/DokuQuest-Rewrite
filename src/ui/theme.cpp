@@ -1,4 +1,5 @@
 // ui/theme.cpp — styles.css in ImGui (see theme.h).
+#include "core/tool_parts.h"
 #include "ui/theme.h"
 #include "client/app.h"
 #include "client/session.h"
@@ -592,12 +593,14 @@ void drawIcon(ImDrawList* dl, const std::string& key, ImVec2 p, float s, float a
 void drawItem(ImDrawList* dl, const ItemStack& st, ImVec2 p, float s, float alpha, bool count) {
   if (st.empty()) return;
   float in = s * 0.12f;
-  drawIcon(dl, st.id, p + ImVec2(in, in), s - in * 2, alpha);
+  const std::string pk = partToolModelKey(st);   // a mixed tool or a gem set in one: its own icon (core/tool_parts.h)
+  IconRef dyn = pk.empty() ? IconRef() : itemIcons().dynamic(pk);
+  if (dyn.valid()) dl->AddImage((ImTextureID)(intptr_t)dyn.tex, p + ImVec2(in, in), p + ImVec2(s - in, s - in), ImVec2(dyn.uv0.x, dyn.uv0.y), ImVec2(dyn.uv1.x, dyn.uv1.y), IM_COL32(255, 255, 255, (int)(255 * alpha)));
+  else drawIcon(dl, st.id, p + ImVec2(in, in), s - in * 2, alpha);
   if (itemGlints(st)) drawGlint(dl, st.id, p + ImVec2(in, in), s - in * 2, alpha);
   const ItemDef* d = st.def();
   int dur = 0;
-  if (d && d->hasTool) dur = d->tool.durability;
-  else if (d && d->has("armor")) dur = d->props["armor"].value("durability", 0);
+  if (d && (d->hasTool || d->has("armor"))) dur = toolMaxDurability(st);
   if (dur && st.d) {
     float f = std::max(0.f, 1 - (float)st.d / dur);
     ImVec2 a(p.x + in, p.y + s - 4 * Z() - 3 * Z()), b(p.x + s - in, p.y + s - 4 * Z());

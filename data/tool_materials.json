@@ -1,0 +1,239 @@
+{
+ "_comment": "tools/port/tool_parts.py: materials a mixed tool head can be made of",
+ "materials": {
+  "wood": {
+   "items": [
+    "#planks"
+   ],
+   "name": "Wooden",
+   "prefix": "wood",
+   "rgb": [
+    173,
+    135,
+    83
+   ],
+   "element": ""
+  },
+  "stone": {
+   "items": [
+    "#stone_tool"
+   ],
+   "name": "Stone",
+   "prefix": "stone",
+   "rgb": [
+    112,
+    105,
+    93
+   ],
+   "element": ""
+  },
+  "flint": {
+   "items": [
+    "flint"
+   ],
+   "name": "Flint",
+   "prefix": "flint",
+   "rgb": [
+    78,
+    78,
+    88
+   ],
+   "element": ""
+  },
+  "copper": {
+   "items": [
+    "copper_ingot"
+   ],
+   "name": "Copper",
+   "prefix": "copper",
+   "rgb": [
+    142,
+    93,
+    56
+   ],
+   "element": ""
+  },
+  "bronze": {
+   "items": [
+    "bronze_ingot"
+   ],
+   "name": "Bronze",
+   "prefix": "bronze",
+   "rgb": [
+    179,
+    129,
+    58
+   ],
+   "element": ""
+  },
+  "iron": {
+   "items": [
+    "iron_ingot"
+   ],
+   "name": "Iron",
+   "prefix": "iron",
+   "rgb": [
+    121,
+    144,
+    149
+   ],
+   "element": ""
+  },
+  "silver": {
+   "items": [
+    "silver_ingot"
+   ],
+   "name": "Silver",
+   "prefix": "silver",
+   "rgb": [
+    196,
+    200,
+    203
+   ],
+   "element": ""
+  },
+  "gold": {
+   "items": [
+    "gold_ingot"
+   ],
+   "name": "Golden",
+   "prefix": "gold",
+   "rgb": [
+    218,
+    186,
+    62
+   ],
+   "element": ""
+  },
+  "steel": {
+   "items": [
+    "steel_ingot"
+   ],
+   "name": "Steel",
+   "prefix": "steel",
+   "rgb": [
+    146,
+    150,
+    153
+   ],
+   "element": ""
+  },
+  "diamond": {
+   "items": [
+    "diamond"
+   ],
+   "name": "Diamond",
+   "prefix": "diamond",
+   "rgb": [
+    87,
+    156,
+    184
+   ],
+   "element": ""
+  },
+  "emerald": {
+   "items": [
+    "emerald"
+   ],
+   "name": "Emerald",
+   "prefix": "emerald",
+   "rgb": [
+    52,
+    182,
+    93
+   ],
+   "element": ""
+  },
+  "ruby": {
+   "items": [
+    "ruby"
+   ],
+   "name": "Ruby",
+   "prefix": "ruby",
+   "rgb": [
+    222,
+    40,
+    64
+   ],
+   "element": ""
+  },
+  "sapphire": {
+   "items": [
+    "sapphire"
+   ],
+   "name": "Sapphire",
+   "prefix": "sapphire",
+   "rgb": [
+    52,
+    92,
+    222
+   ],
+   "element": ""
+  },
+  "mithril": {
+   "items": [
+    "mithril_ingot"
+   ],
+   "name": "Mithril",
+   "prefix": "mithril",
+   "rgb": [
+    93,
+    160,
+    191
+   ],
+   "element": ""
+  },
+  "adamantite": {
+   "items": [
+    "adamantite_ingot"
+   ],
+   "name": "Adamantite",
+   "prefix": "adamantite",
+   "rgb": [
+    72,
+    145,
+    99
+   ],
+   "element": ""
+  },
+  "cinderite": {
+   "items": [
+    "cinderite_shard"
+   ],
+   "name": "Cinderite",
+   "prefix": "cinderite",
+   "rgb": [
+    210,
+    100,
+    42
+   ],
+   "element": "fire"
+  },
+  "obsidian": {
+   "items": [
+    "obsidian"
+   ],
+   "name": "Obsidian",
+   "prefix": "obsidian",
+   "rgb": [
+    52,
+    36,
+    80
+   ],
+   "element": ""
+  },
+  "emberglass": {
+   "items": [
+    "emberglass_cluster"
+   ],
+   "name": "Emberglass",
+   "prefix": "emberglass",
+   "rgb": [
+    240,
+    96,
+    40
+   ],
+   "element": "fire"
+  }
+ }
+}

@@ -1,5 +1,6 @@
 // render/char_layer.cpp — players drawn as voxel characters (render/skins.js avatarDraws, game/anim.js,
 // game/capes.js, game/carried.js, game/charparts.js, render/gear3d.js gearDraws).
+#include "core/tool_parts.h"
 #include "sim/weather.h"
 #include "render/char_layer.h"
 #include "core/item_glint.h"
@@ -59,9 +60,9 @@ float st0yaw(const CharPose& ps) { return ps.hasBodyYaw && !ps.fp ? ps.bodyYaw :
 struct Dial { std::string id; mat4 m; vec2 light; };
 std::vector<Dial>* g_dials = nullptr;
 // skins.js held(): an item in a fist (fore = the forearm's frame, model pixels about the elbow; side -1 = the left hand)
-void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0)) {
+void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0), const std::string& modelKey = "") {
   if (id == "fishing_rod") id = "fishing_rod_tp";
-  const VoxelModel& im = itemModel(id);
+  const VoxelModel& im = itemModel(modelKey.empty() ? id : modelKey);
   if (!im.ready()) return;
   // tuning aid: DQ_DEV_TPHELD="dy,dz,scale" (model pixels, scale added) for screenshots
   static float T[3] = {0, 0, 0}; static bool tl = false;
@@ -319,7 +320,7 @@ CharWear charWearOf(const Player& p, const CharacterSpec& spec, bool withCarried
       else w.cape = spec.cape;
     }
   }
-  if (!p.inv.empty() && p.selected >= 0 && p.selected < (int)p.inv.size() && !p.inv[p.selected].empty()) { w.held = p.inv[p.selected].id; w.heldGlint = itemGlints(p.inv[p.selected]); if (w.held == "fishing_rod") { w.rodOwner = p.id; if (p.data.value("rodOut", false)) w.held = "fishing_rod_cast"; } }
+  if (!p.inv.empty() && p.selected >= 0 && p.selected < (int)p.inv.size() && !p.inv[p.selected].empty()) { w.held = p.inv[p.selected].id; w.heldModel = partToolModelKey(p.inv[p.selected]); w.heldGlint = itemGlints(p.inv[p.selected]); if (w.held == "fishing_rod") { w.rodOwner = p.id; if (p.data.value("rodOut", false)) w.held = "fishing_rod_cast"; } }
   if (!p.offhand.empty() && !p.offhand[0].empty()) { w.off = p.offhand[0].id; w.offGlint = itemGlints(p.offhand[0]); }
   if (withCarried) for (int i = 0; i < 9 && i < (int)p.inv.size(); i++) if (i != p.selected && !p.inv[i].empty()) w.carried.push_back(p.inv[i].id);
   return w;
@@ -575,7 +576,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   // ---- what's in their hands (third person): Minecraft's thirdperson_righthand / lefthand ----
   if (!fp) {
     bool bowDraw = ps.bow > 0 && wear.held.rfind("bow", 0) == 0;
-    if (!wear.held.empty()) heldInHand(bowDraw ? R.part[CP_ARML_D] : R.part[CP_ARMR_D], wear.held, bowDraw ? -1.f : 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos);
+    if (!wear.held.empty()) heldInHand(bowDraw ? R.part[CP_ARML_D] : R.part[CP_ARMR_D], wear.held, bowDraw ? -1.f : 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel);
     if (!wear.off.empty() && !bowDraw) heldInHand(R.part[CP_ARML_D], wear.off, -1.f, light, tint, wear.offGlint);
   }
   // ---- a backpack: the pack itself, straps over the shoulders (in first person, just the straps down your chest) ----

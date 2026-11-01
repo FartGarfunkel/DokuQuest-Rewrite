@@ -2,6 +2,7 @@
 // or armour piece does in your hands and against what you have now) and the character sheet beside the doll
 // (sheet.js: skills, combat level, blow, protection, mana), the 3D doll (sheet.js drawDoll: the real voxel
 // character, turned by dragging or the right stick) and the show/hide buttons for what you wear (charparts.js).
+#include "core/tool_parts.h"
 #include "sim/villagers.h"
 #include "ui/ui.h"
 #include "ui/theme.h"
@@ -49,7 +50,7 @@ double protection(const Player& p) {
 double blowOf(const Player& p, const ItemStack& s) {
   const ItemDef* d = s.empty() ? nullptr : s.def();
   bool tool = d && d->hasTool;
-  double dmg = tool ? d->tool.damage : 1;
+  double dmg = tool ? toolOf(s).damage : 1;
   int sh = s.tag.is_object() && s.tag.contains("en") && s.tag["en"].is_object() ? s.tag["en"].value("sharp", 0) : 0;
   if (tool && sh) dmg += 0.5 * sh + 0.5;
   return dmg * (1 + skillBonus(p, "melee", 0.2) + (tool ? gearBonus(s, 0.25) : 0)) / 2;
@@ -71,17 +72,27 @@ std::string itemInfoText(const ItemStack& s, const Player* p, std::vector<std::p
   const ItemDef* d = s.def();
   if (!d) { L.push_back({s.id, TN}); if (out) *out = L; return s.id; }
   std::string rar = d->str("rarity");
-  L.push_back({d->name + (s.n > 1 ? " \xC3\x97" + std::to_string(s.n) : ""), rar == "rare" ? 0x8fe3ff : rar == "epic" ? 0xc88cff : TN});
+  L.push_back({stackName(s) + (s.n > 1 ? " \xC3\x97" + std::to_string(s.n) : ""), rar == "rare" ? 0x8fe3ff : rar == "epic" ? 0xc88cff : isPartTool(s) ? 0xffd27a : TN});
   { std::vector<std::pair<std::string, u32>> en; if (tooltipEnchantLines(s, en)) { L[0].second = 0x8fe8ff; L.insert(L.end(), en.begin(), en.end()); } }   // .tn.enchanted
   tooltipEffectLines(s, L);
   if (d->has("food") && d->props["food"].is_object()) { double h = d->props["food"].value("heal", 0.0); L.push_back({"Heals " + num(h / 2) + (h == 2 ? " heart" : " hearts") + " instantly", TS}); }
   if (d->hasTool) {
-    const ToolInfo& t = d->tool;
+    const ToolInfo t = toolOf(s);
     static const std::map<std::string, std::string> EL = {{"fire", "Fire"}, {"frost", "Frost"}, {"physical", "Physical"}};
     std::string el = d->props.contains("tool") && d->props["tool"].is_object() ? d->props["tool"].value("element", std::string()) : "";
+    if (isPartTool(s) && s.tag["pt"].contains("el")) el = s.tag["pt"].value("el", std::string());
     auto e = EL.find(el);
     L.push_back({(t.type == "sword" ? std::string("Attack") : "Mining speed " + num(t.speed) + "\xC3\x97 \xC2\xB7 attack") + " " + num(t.damage / 2) + " \xE2\x99\xA5" + (e != EL.end() ? " \xC2\xB7 " + e->second + " element" : ""), TS});
     L.push_back({"Durability " + std::to_string(t.durability - s.d) + " / " + std::to_string(t.durability), TD});
+    if (isPartTool(s)) {   // what it's made of (core/tool_parts.h)
+      std::string mk; const json& m = s.tag["pt"]["m"];
+      for (size_t i = 0; i < m.size(); i++) { const ToolMaterial* tm = toolMaterial(m[i].get<std::string>()); mk += (i ? " \xC2\xB7 " : "") + (tm ? tm->name : m[i].get<std::string>()); }
+      L.push_back({"Head: " + mk + " \xC2\xB7 harvest tier " + std::to_string(t.tier), TS});
+    }
+    if (s.tag.is_object() && s.tag.contains("gem") && s.tag["gem"].is_string()) if (const char* ge = gemEffect(s.tag["gem"].get<std::string>())) {
+      const ItemDef* gd = reg().item(s.tag["gem"].get<std::string>());
+      L.push_back({"Set with " + (gd ? gd->name : std::string("a gem")) + ": " + ge, 0xc88cff});
+    }
   }
   if (d->has("armor")) {
     const json& a = d->props["armor"];

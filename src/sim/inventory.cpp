@@ -1,3 +1,4 @@
+#include "core/tool_parts.h"
 #include "sim/inventory.h"
 #include "sim/player.h"
 
@@ -10,7 +11,7 @@ bool canMergeStacks(const ItemStack& a, const ItemStack& b) {
   return maxStackOf(a.id) > 1;
 }
 int maxStackOf(const std::string& id) { auto* d = reg().item(id); return d ? d->maxStack : 64; }
-std::string itemName(const ItemStack& s) { auto* d = reg().item(s.id); return d ? d->name : s.id; }
+std::string itemName(const ItemStack& s) { if (s.tag.is_object()) return stackName(s); auto* d = reg().item(s.id); return d ? d->name : s.id; }
 
 int addToSlots(Slots& slots, ItemStack& stack, const std::vector<int>* order) {
   if (stack.empty()) return 0;

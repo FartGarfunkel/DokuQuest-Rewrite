@@ -1,6 +1,7 @@
 // assets/icons.cpp — the icon atlas: every item's voxel model rendered from a 3/4 view (blocks as the
 // original's renderBlockIcons view: rotateX 30°, rotateY 45°), supersampled 2x. Flat sprites first as a
 // fallback, so the atlas is valid even without FBOs.
+#include "render/content_draw.h"
 #include "assets/icons.h"
 #include "assets/tileset.h"
 #include "assets/item_models.h"
@@ -237,6 +238,70 @@ IconRef ItemIcons::get(const std::string& key) const {
   if (it == slot.end() || !tex) return {};
   return refFor(tex, it->second, cols, size, atlasW, atlasH);
 }
+IconRef ItemIcons::dynamic(const std::string& key) {
+  auto it = dynSlot.find(key);
+  const int N = dynCols * dynCols, S = size, W = dynCols * S;
+  if (it != dynSlot.end()) return it->second < 0 ? IconRef{} : refFor(dynTex, it->second, dynCols, S, W, W);
+  // a couple of new ones a frame
+  const double now = app().time;
+  if (now != dynFrame) { dynFrame = now; dynMade = 0; }
+  if (dynMade >= 2 || !voxelRenderer().init()) return {};
+  dynMade++;
+  VoxelModel m;
+  if (!buildItemModel(key, m) || m.data.verts.empty()) { dynSlot[key] = -1; return {}; }
+  if (!dynTex) {
+    std::vector<u8> zero((size_t)W * W * 4, 0);
+    dynTex = makeTexRGBA(W, W, zero.data(), false, false);
+    dynKeys.assign(N, "");
+  }
+  const int slotI = dynNext; dynNext = (dynNext + 1) % N;   // round and round: the oldest goes
+  if (!dynKeys[slotI].empty()) dynSlot.erase(dynKeys[slotI]);
+  dynKeys[slotI] = key;
+  const int SS = S * 2;
+  GLint prevFbo = 0, prevVp[4]; glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prevFbo); glGetIntegerv(GL_VIEWPORT, prevVp);
+  GLboolean sc = glIsEnabled(GL_SCISSOR_TEST), bl = glIsEnabled(GL_BLEND), dt = glIsEnabled(GL_DEPTH_TEST), cf = glIsEnabled(GL_CULL_FACE);
+  GLuint srcTex, depth, src, dst;
+  glGenTextures(1, &srcTex); glBindTexture(GL_TEXTURE_2D, srcTex);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, SS, SS, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glGenRenderbuffers(1, &depth); glBindRenderbuffer(GL_RENDERBUFFER, depth); glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, SS, SS);
+  glGenFramebuffers(1, &src); glBindFramebuffer(GL_FRAMEBUFFER, src);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, srcTex, 0);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
+  glGenFramebuffers(1, &dst); glBindFramebuffer(GL_FRAMEBUFFER, dst);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, dynTex, 0);
+  bool ok = glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+  if (ok) {
+    VoxelMeshGL gm; gm.upload(m.data);
+    mat4 rot(1); rot = glm::rotate(rot, 0.32f, vec3(1, 0, 0)); rot = glm::rotate(rot, -0.55f, vec3(0, 1, 0));   // as render3D turns items
+    const mat4 M = rot * m.matrix();
+    vec3 lo(1e9f), hi(-1e9f);
+    for (int c = 0; c < 8; c++) { vec3 p = vec3(M * vec4(c & 1 ? m.size.x : 0, c & 2 ? m.size.y : 0, c & 4 ? m.size.z : 0, 1)); lo = glm::min(lo, p); hi = glm::max(hi, p); }
+    const float ext = std::max(hi.x - lo.x, hi.y - lo.y) * 0.5f / 0.9f; const vec3 c = (lo + hi) * 0.5f;
+    const mat4 view = glm::scale(mat4(1), vec3(1 / std::max(ext, 1e-3f))) * glm::translate(mat4(1), vec3(-c.x, -c.y, 0));
+    const float zr = std::max(std::abs(lo.z), std::abs(hi.z)) + 1;
+    const mat4 proj = glm::ortho(-1.f, 1.f, -1.f, 1.f, -zr * 4, zr * 4);
+    glDisable(GL_SCISSOR_TEST); glDisable(GL_BLEND); glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); glDepthMask(GL_TRUE);
+    glEnable(GL_CULL_FACE); glCullFace(GL_BACK); glFrontFace(GL_CCW);
+    glBindFramebuffer(GL_FRAMEBUFFER, src); glViewport(0, 0, SS, SS);
+    glClearColor(0, 0, 0, 0); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    voxelRenderer().beginNeutral(proj * view); voxelRenderer().draw(gm, M); voxelRenderer().end();
+    const int x = (slotI % dynCols) * S, y = (slotI / dynCols) * S;
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, src); glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst);
+    glBlitFramebuffer(0, 0, SS, SS, x, y + S, x + S, y, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+    gm.release();
+  }
+  glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prevFbo); glViewport(prevVp[0], prevVp[1], prevVp[2], prevVp[3]);
+  glDeleteFramebuffers(1, &src); glDeleteFramebuffers(1, &dst); glDeleteRenderbuffers(1, &depth); glDeleteTextures(1, &srcTex);
+  if (sc) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+  if (bl) glEnable(GL_BLEND); else glDisable(GL_BLEND);
+  if (dt) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+  if (cf) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
+  if (!ok) { dynSlot[key] = -1; return {}; }
+  dynSlot[key] = slotI;
+  return refFor(dynTex, slotI, dynCols, S, W, W);
+}
+
 IconRef ItemIcons::tile(int t) const {
   if (!tileTex || t < 0 || t >= tileCount) return {};
   return refFor(tileTex, t, tileCols, tileSize, tileW, tileH);

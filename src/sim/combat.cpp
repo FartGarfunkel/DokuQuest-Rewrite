@@ -1,5 +1,6 @@
 // sim/combat.cpp — damage, death and respawn (local.js hurt/die/respawn, player.js hurt/wearArmor,
 // entities.js Mob.hurt/die, fairplay.js raw-blow floor).
+#include "core/tool_parts.h"
 #include "sim/combat.h"
 #include "sim/magic.h"
 #include "sim/gameplay.h"
@@ -35,11 +36,16 @@ const ToolInfo* heldTool(const Player& p) {
   const ItemStack& h = p.inv[p.selected];
   if (h.empty()) return nullptr;
   auto* d = reg().item(h.id);
-  return d && d->hasTool ? &d->tool : nullptr;
+  if (!d || !d->hasTool) return nullptr;
+  if (!h.tag.is_object()) return &d->tool;
+  thread_local ToolInfo mixed; mixed = toolOf(h);   // a mixed tool's own stats, a gem's (core/tool_parts.h)
+  return &mixed;
 }
 std::string heldToolElement(const Player& p) {
   const ItemStack& h = p.inv[p.selected];
   auto* d = h.empty() ? nullptr : reg().item(h.id);
+  if (isPartTool(h) && h.tag["pt"].contains("el")) return h.tag["pt"].value("el", std::string());
+  if (!h.empty() && h.tag.is_object() && h.tag.contains("gem")) { const std::string g = h.tag.value("gem", std::string()); if (g == "ruby") return "fire"; if (g == "sapphire") return "frost"; }
   if (!d || !d->props.contains("tool") || !d->props["tool"].is_object()) return "";
   return d->props["tool"].value("element", std::string());
 }
@@ -48,9 +54,10 @@ bool wearHeld(Level& lv, Player& p, int n) {
   ItemStack& s = p.inv[p.selected];
   if (s.empty()) return false;
   auto* d = reg().item(s.id);
-  if (!d || !d->hasTool || d->tool.durability <= 0) return false;
+  const int max = toolMaxDurability(s);
+  if (!d || !d->hasTool || max <= 0) return false;
   s.d += n;
-  if (s.d >= d->tool.durability) { toast(lv, p, "Your " + toLower(d->name) + " broke", "warn"); sfxUi(lv, p, "break_tool"); s.clear(); return true; }
+  if (s.d >= max) { toast(lv, p, "Your " + toLower(stackName(s)) + " broke", "warn"); sfxUi(lv, p, "break_tool"); s.clear(); return true; }
   return false;
 }
 void wearArmor(Player& p) {

@@ -22,6 +22,9 @@ public:
   void build(const TileSet& tiles);
   IconRef get(const std::string& itemKey) const;
   IconRef tile(int tileLayer) const;        // a raw tile (block faces, GUI bits)
+  // a model key's icon made when first asked for (mixed tools, gems set in tools: core/tool_parts.h partToolModelKey),
+  // a couple a frame (GL thread); invalid until it's made
+  IconRef dynamic(const std::string& modelKey);
   void release();
   int iconSize() const { return size; }     // pixels per icon in the atlas
 private:
@@ -31,6 +34,7 @@ private:
   std::unordered_map<std::string, int> slot;   // item key -> slot
   unsigned tileTex = 0;                      // raw tiles
   int tileCols = 64, tileSize = 32, tileW = 0, tileH = 0, tileCount = 0;
+  unsigned dynTex = 0; int dynCols = 8; std::unordered_map<std::string, int> dynSlot; std::vector<std::string> dynKeys; int dynNext = 0; double dynFrame = -1; int dynMade = 0;
 };
 
 ItemIcons& itemIcons();
