@@ -19,6 +19,16 @@
 #include "gen/structures_api.h"
 
 namespace dq {
+// (declared out here: MSVC gives a function declared inside a block the global namespace, so these never linked on Windows)
+void registerBasket();
+void registerJars();
+void registerSieve();
+void registerQuiver();
+void registerGuns();
+void registerTravelJournal();
+void registerAchievements();
+void registerSnowSentry();
+void registerEndShulkers();
 
 bool beeFlower(World& w, vec3 at, float R, int tries, ivec3& out);   // creature_beasts.cpp
 vec3 hiveFront(World& w, ivec3 h);
@@ -692,15 +702,15 @@ void registerCreatures() {
   registerPocket();
   registerUsables();
   registerLeads();   // sim/leads.cpp
-  { void registerBasket(); registerBasket(); }   // sim/basket.cpp: the wicker basket
-  { void registerJars(); registerJars(); }   // sim/jars.cpp
-  { void registerSieve(); registerSieve(); }   // sim/sieve.cpp
-  { void registerQuiver(); registerQuiver(); }   // sim/quiver.cpp
-  { void registerGuns(); registerGuns(); }   // sim/guns.cpp
-  { void registerTravelJournal(); registerTravelJournal(); }   // sim/travel_journal.cpp
-  { void registerAchievements(); registerAchievements(); }     // sim/achievements.cpp
-  { void registerSnowSentry(); registerSnowSentry(); }         // sim/snow_sentry.cpp
-  { void registerEndShulkers(); registerEndShulkers(); }   // sim/end_shulkers.cpp
+  registerBasket();   // sim/basket.cpp: the wicker basket
+  registerJars();   // sim/jars.cpp
+  registerSieve();   // sim/sieve.cpp
+  registerQuiver();   // sim/quiver.cpp
+  registerGuns();   // sim/guns.cpp
+  registerTravelJournal();   // sim/travel_journal.cpp
+  registerAchievements();     // sim/achievements.cpp
+  registerSnowSentry();         // sim/snow_sentry.cpp
+  registerEndShulkers();   // sim/end_shulkers.cpp
   registerTrickOrTreat();
   registerWeaponRack();
   registerSlimeGoo();

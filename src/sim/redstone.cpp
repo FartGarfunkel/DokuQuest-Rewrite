@@ -8,7 +8,11 @@
 #include "sim/physics.h"
 #include "sim/weather.h"
 #include "sim/player.h"
-namespace dq { bool isMob(const Entity& e); }   // sim/gameplay.cpp
+namespace dq {
+bool isMob(const Entity& e);   // sim/gameplay.cpp
+// (declared out here: MSVC gives a function declared inside a block the global namespace, so it never linked on Windows)
+std::vector<ItemStack> blockDrops(Level& lv, World& w, int x, int y, int z, BlockId id, u8 meta, const ToolInfo* tool, bool washed);   // sim/gameplay.h
+}
 #include <random>
 
 namespace dq {
@@ -955,7 +959,6 @@ void Redstone::dispense(int x, int y, int z) {
     if (ad && ad->hasTool && front && !R.tLiquid[front] && fb.hardness >= 0 && fb.hardness < 20 && !fb.has("container") &&
         (ad->tool.type == "pickaxe" || ad->tool.type == "axe" || ad->tool.type == "shovel" || ad->tool.type == "hoe" || ad->tool.type == "shears")) {
       if (fb.tier > ad->tool.tier && fb.str("tool") == ad->tool.type) { lv.fx->sound("dispense_fail", c, 20); return; }
-      std::vector<ItemStack> blockDrops(Level& lv, World& w, int x, int y, int z, BlockId id, u8 meta, const ToolInfo* tool, bool washed);   // sim/gameplay.h
       for (ItemStack& d : blockDrops(lv, w, ax, ay, az, front, (u8)w.getMeta(ax, ay, az), &ad->tool, false)) dropStack(lv, w.realm, d, ac, vec3(0), 0.1f);
       w.setBlock(ax, ay, az, AIR, 0);
       lv.fx->particles("burst", ac, 8, {{"tile", fb.key}, {"speed", 1.5f}});

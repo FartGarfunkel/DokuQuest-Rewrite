@@ -13,6 +13,8 @@
 #include <cstdlib>
 
 namespace dq {
+// (declared out here: MSVC gives a function declared inside a block the global namespace, so these never linked on Windows)
+std::unique_ptr<Screen> makeAchievementsScreen();
 
 void registerHudLayer();            // ui/hud.cpp
 void hudInitEvents(App& a);         // ui/hud.cpp
@@ -73,7 +75,7 @@ static void registerMenuTabs() {
   registerInventoryTab();
   registerMenuTab({"map", "Map", [](App& a) { a.pushScreen(makeMapScreen(-1)); }, [](App& a) { return canOpenMapScreen(a); }});
   registerMenuTab({"journal", "Journal", [](App& a) { a.pushScreen(makeJournalScreen()); }, nullptr});
-  { std::unique_ptr<Screen> makeAchievementsScreen(); registerMenuTab({"achievements", "Achievements", [](App& a) { a.pushScreen(makeAchievementsScreen()); }, nullptr}); }
+  { registerMenuTab({"achievements", "Achievements", [](App& a) { a.pushScreen(makeAchievementsScreen()); }, nullptr}); }
   registerMenuTab({"skills", "Skills", [](App& a) { a.pushScreen(makeSkillsScreen()); }, nullptr});
   registerMenuTab({"spells", "Spellbook", [](App& a) { a.pushScreen(makeSpellbookScreen()); }, nullptr});
   registerMenuTab({"stable", "Stable", [](App& a) { a.pushScreen(makeStableScreen()); }, nullptr});

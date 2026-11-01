@@ -13,6 +13,8 @@
 #include <unordered_set>
 
 namespace dq {
+// (declared out here: MSVC gives a function declared inside a block the global namespace, so these never linked on Windows)
+int quiverArrows(Player& p); bool quiverTake(Player& p); bool goldenQuiver(Player& p);   // sim/quiver.cpp
 // the paths' talents (sim/villager_quests.cpp) and a poisoned arrow (sim/mob_combat.cpp)
 float pathArrowFactor(const Player& p, float distance); bool pathArrowPoisons(const Player& p); bool pathQuiverSaves(const Player& p);
 void poisonCreature(Entity& e, float secs);
@@ -718,7 +720,6 @@ void PlayerController::updateHeldTools(float dt, const PlayerInput& in) {
   const ItemDef* def = held.empty() ? nullptr : reg().item(held.id);
   bool playing = !p.dead && p.carrying.is_null();
   if (playing && def && def->has("bow")) {
-    int quiverArrows(Player& p); bool quiverTake(Player& p); bool goldenQuiver(Player& p);   // sim/quiver.cpp
     const bool golden = goldenQuiver(p);
     bool hasArrow = (!p.offhand[0].empty() && p.offhand[0].id == "arrow") || playerCount(p, "arrow") > 0 || quiverArrows(p) > 0 || golden;
     if (in.use) {

@@ -47,6 +47,10 @@ jobs:
           set +e; cmake --build build --parallel -- -k 0 2>&1 | tee build.log; rc=${PIPESTATUS[0]}; set -e
           grep -E "error:|undefined reference|multiple definition" build.log | sort -u | head -40 | while IFS= read -r l; do echo "::error::$l"; done
           exit $rc
+      - name: No functions declared inside a block (MSVC puts those in the global namespace and the Windows release fails to link)
+        run: |
+          bad=$(grep -rnE '\{ (void|bool|int|float) [A-Za-z_]+\([^)]*\); |\{ std::[A-Za-z_:<>]+ [A-Za-z_]+\(\); ' src tools | grep -vE ':[0-9]+:\s*namespace ' || true)
+          if [ -n "$bad" ]; then echo "$bad" | while IFS= read -r l; do echo "::error::declare it at namespace scope: $l"; done; exit 1; fi
       - name: Smoke test
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'

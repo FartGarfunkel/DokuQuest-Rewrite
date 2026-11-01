@@ -14,6 +14,15 @@
 #include <cstdio>
 
 namespace dq {
+// (declared out here: MSVC gives a function declared inside a block the global namespace, so these never linked on Windows)
+void registerPaintingLayer();
+void registerSwingLayer();
+void registerSignLayer();
+void registerStandLayer();
+void registerHeldLightFx();
+void registerWinterVillageLayer();
+void registerColourFilterLayer();
+void registerStatueLayer();
 void registerHeadLayer();   // render/head_layer.cpp
 
 void registerItemLayers() {
@@ -23,14 +32,14 @@ void registerItemLayers() {
   registerRenderLayer([](GameSession&) { return std::make_shared<HeldItemLayer>(); });
   registerRenderLayer([](GameSession&) { return std::make_shared<DroppedItemLayer>(); });
   registerPileLayer();   // piles and placed backpacks (render/pile_layer.cpp)
-  { void registerPaintingLayer(); registerPaintingLayer(); }   // render/painting_layer.cpp
-  { void registerSwingLayer(); registerSwingLayer(); }
-  { void registerSignLayer(); registerSignLayer(); }           // render/sign_layer.cpp
-  { void registerStandLayer(); registerStandLayer(); }         // render/stand_layer.cpp         // render/swing_layer.cpp
-  { void registerHeldLightFx(); registerHeldLightFx(); }       // render/held_light_fx.cpp
-  { void registerWinterVillageLayer(); registerWinterVillageLayer(); }   // render/winter_village_layer.cpp (December)
-  { void registerColourFilterLayer(); registerColourFilterLayer(); }   // render/colour_filter_layer.cpp
-  { void registerStatueLayer(); registerStatueLayer(); }   // render/statue_layer.cpp
+  registerPaintingLayer();   // render/painting_layer.cpp
+  registerSwingLayer();
+  registerSignLayer();           // render/sign_layer.cpp
+  registerStandLayer();         // render/stand_layer.cpp         // render/swing_layer.cpp
+  registerHeldLightFx();       // render/held_light_fx.cpp
+  registerWinterVillageLayer();   // render/winter_village_layer.cpp (December)
+  registerColourFilterLayer();   // render/colour_filter_layer.cpp
+  registerStatueLayer();   // render/statue_layer.cpp
   registerLecternLayer();   // books on lecterns (render/lectern_layer.cpp)
   registerChestLayer();     // chest lids that open with the chest's screen (render/chest_layer.cpp)
   registerFpBow();          // the bow drawn in first person (render/fp_bow.cpp)
