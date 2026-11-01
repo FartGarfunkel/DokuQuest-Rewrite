@@ -79,6 +79,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Lead animals on a fishing line** (BTA): cast at an animal and the hook catches; it follows you on the line (too far and it snaps), and reeling in gives it a tug toward you.
 - **Sponges soak up water** when you put them down (everything within six blocks), turning into wet sponges; dry them in a furnace. A wet sponge used on dyed wool, glass, terracotta or painted planks washes the colour out (BTA).
 - **Furnace minecarts burn any fuel** a furnace would, not just coal (BTA).
+- **More of BTA's world:** scorched dirt in the Redlands (rich scorched dirt sifts out iron, gold and copper), perma-ice deep in the glaciers that never melts, ember coal ore in the Depths (burns hotter and longer), moss-grown dark oak and mangrove logs and algae on the still water of the Mossmire, and dried sugar cane bundles (smelt a bundle).
 - **Stars come in colours** (BTA): mostly white, some blue, yellow, orange and red, and they twinkle a little.
 - **Achievements** (BTA): 27 of them, from Getting Wood to The End., on their own tab beside the Stable. A toast when you earn one, and the date you did.
 - **Colour filters** for colour blindness (Options → Graphics → Colour filter): red-blind, green-blind and blue-blind, shifting the colours you may not tell apart into ones you can.

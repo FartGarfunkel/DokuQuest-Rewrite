@@ -37,6 +37,7 @@ void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) con
     }
     // lily pads on calm, shallow water near land
     if (here == B.water && y == SEA_LEVEL && c.h >= JS_SEA - 2 && c.humid > 0.2 && r < 0.05) { set(x, y + 1, z, B.lily_pad); continue; }
+    if (here == B.water && y == SEA_LEVEL && B.algae && btaVariant(c) == BV_MOSSMIRE && r < 0.3) { set(x, y + 1, z, B.algae); continue; }   // the Mossmire's still water grows algae
     if (here != AIR) continue;
     const double patch = nDetail.noise2(wx / 14.0, wz / 14.0);
     if (below == B.grass) {

@@ -270,6 +270,7 @@ void DepthsGen::ores(GenBuf& b, int cx, int cz) const {
     veins(2, 7, 10, DIM_H - 20, B.gold_ore, ember);
     veins(1, 3, 8, 40, B.ancient_debris, deep);       // ancient debris: deep, under the lava sea
     if (rnd.nextInt(2) == 0) veins(1, 2, 8, DIM_H - 40, B.ancient_debris, deep);
+    if (B.ember_coal_ore) veins(10, 12, 10, DIM_H - 20, B.ember_coal_ore, ember);   // BTA's Nether coal: ember coal in the emberstone
   }
 }
 

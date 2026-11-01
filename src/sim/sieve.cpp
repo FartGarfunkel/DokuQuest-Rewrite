@@ -18,6 +18,8 @@ const std::unordered_map<std::string, std::vector<Find>>& finds() {
     {"gravel", {{"flint", 0.35f, 1, 1}, {"iron_nugget", 0.14f, 1, 2}, {"gold_nugget", 0.05f, 1, 1}, {"coal", 0.06f, 1, 1}, {"lapis_lazuli", 0.02f, 1, 2}}},
     {"sand", {{"clay_ball", 0.15f, 1, 1}, {"gold_nugget", 0.06f, 1, 2}, {"quartz", 0.03f, 1, 1}, {"amethyst_shard", 0.01f, 1, 1}}},
     {"red_sand", {{"gold_nugget", 0.12f, 1, 2}, {"redstone", 0.06f, 1, 2}, {"clay_ball", 0.1f, 1, 1}}},
+    {"rich_scorched_dirt", {{"iron_nugget", 0.5f, 1, 3}, {"gold_nugget", 0.25f, 1, 2}, {"crushed_copper", 0.15f, 1, 1}, {"redstone", 0.08f, 1, 2}}},   // BTA
+    {"scorched_dirt", {{"iron_nugget", 0.05f, 1, 1}, {"dead_bush", 0.04f, 1, 1}, {"wheat_seeds", 0.05f, 1, 1}}},
     {"dirt", {{"wheat_seeds", 0.2f, 1, 1}, {"pumpkin_seeds", 0.04f, 1, 1}, {"melon_seeds", 0.04f, 1, 1}, {"potato", 0.03f, 1, 1}, {"bone_meal", 0.08f, 1, 1}, {"string", 0.04f, 1, 1}}},
     {"mud", {{"clay_ball", 0.3f, 1, 2}, {"string", 0.05f, 1, 1}, {"bone", 0.05f, 1, 1}}},
     {"soul_sand", {{"quartz", 0.15f, 1, 2}, {"bone", 0.15f, 1, 1}, {"glowstone_dust", 0.08f, 1, 2}, {"gold_nugget", 0.08f, 1, 2}, {"nether_wart_item", 0.03f, 1, 1}}},

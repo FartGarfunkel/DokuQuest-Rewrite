@@ -147,8 +147,10 @@ SurfaceMat OverworldGen::surface(const OwColumn& c, int wx, int wz) const {
   if (c.biome == BIOME_DESERT && c.temp > 0.55) { top = B.desert_sand; filler = B.desert_sand; under = B.desert_stone; }
   if (c.biome == BIOME_BEACH && c.temp < -0.2) { top = B.silver_sand; filler = B.silver_sand; }
   switch (btaVariant(c)) {
-    case BV_REDLANDS: top = fq < 0.75 ? B.red_sand : B.coarse_dirt; filler = B.red_sand; under = B.terracotta ? B.terracotta : B.sandstone; fillDepth = 3; break;
-    case BV_GLACIER: if (h <= 96) { double g = nFloor.noise2(wx / 18.0, wz / 18.0); top = g > 0.1 ? B.packed_ice : B.snow_block; filler = B.packed_ice; under = g > 0.4 && B.blue_ice ? B.blue_ice : B.stone; fillDepth = 4; } break;
+    case BV_REDLANDS: top = fq < 0.55 ? B.red_sand : fq < 0.82 && B.scorched_dirt ? B.scorched_dirt : B.coarse_dirt; filler = B.red_sand; under = B.terracotta ? B.terracotta : B.sandstone; fillDepth = 3;
+      if (fq > 0.985 && B.rich_scorched_dirt) top = B.rich_scorched_dirt;   // BTA: rich scorched dirt sifts out metal
+      break;
+    case BV_GLACIER: if (h <= 96) { double g = nFloor.noise2(wx / 18.0, wz / 18.0); top = g > 0.1 ? B.packed_ice : B.snow_block; filler = g > 0.3 && B.perma_ice ? B.perma_ice : B.packed_ice; under = g > 0.4 && B.blue_ice ? B.blue_ice : B.stone; fillDepth = 4; } break;
     case BV_MOSSMIRE: top = fq < 0.45 ? B.moss_block : B.mud; filler = B.mud; fillDepth = 3; break;
     case BV_THORNSCRUB: if (fq > 0.55) top = B.coarse_dirt; break;   // dry ground showing through the grass
     default: break;

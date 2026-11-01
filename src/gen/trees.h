@@ -15,7 +15,7 @@ struct TreeSpec {
   int ySeed = 0;             // the y its shape is seeded with (the original's world y; = y for saplings)
   u8 kind = TREE_OAK;
   double h = 0;              // 0..1 size roll
-  bool bare = false, bees = false;
+  bool bare = false, bees = false, mossy = false;   // mossy: the Mossmire's logs grow moss
 };
 struct TreePart { double x, y, z; BlockId id; bool onlyAir; int meta; };   // meta -1 = leave as is
 // Every block of a tree, in the original's order (some leaf balls sit on half-block centres).

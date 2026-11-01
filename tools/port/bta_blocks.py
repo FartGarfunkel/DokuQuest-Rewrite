@@ -556,6 +556,48 @@ def main(d):
         tile('thorn_leaves', im)
     block('thorn_leaves', 'Thorn Leaves', {'render': 2, 'opaque': False, 'hardness': 0.3, 'tool': None, 'sound': 'leaves', 'lightAtt': 1,
                                            'isLeaves': True, 'thorns': True, 'drop': 'stick', 'tex': 'thorn_leaves'}, [tiles['thorn_leaves']] * 6)
+    # BTA's rarer ground and wood: scorched dirt of the Redlands (the rich kind sifts out raw metal), ice that never
+    # melts in the glaciers, ember coal in the Depths, moss-grown logs and algae in the Mossmire, dried cane bundles
+    if 'scorched_dirt' not in tiles:
+        tile('scorched_dirt', recolour(src_pic(d, tiles, files, 'dirt'), hsv_map(hue=0.06, sat=1.25, val=1.12)))
+        rich = recolour(src_pic(d, tiles, files, 'dirt'), hsv_map(hue=0.06, sat=1.25, val=1.0)); rp = rich.load()
+        for k in range(30):
+            x, y = (k * 11 + 3) % 32, (k * 17 + 7) % 32
+            rp[x, y] = (214, 170, 96, 255) if k % 3 else (196, 196, 204, 255)   # flecks of metal
+        tile('rich_scorched_dirt', rich)
+        tile('perma_ice', recolour(src_pic(d, tiles, files, 'packed_ice'), hsv_map(sat=0.7, val=0.9, add=6)))
+        eco = recolour(src_pic(d, tiles, files, 'coal_ore'), lambda r, g, b, a, x, y: (min(255, r + 70), g + 10, max(0, b - 10), a) if max(r, g, b) < 70 else (r * 120 // 100, g * 70 // 100, b * 60 // 100, a))
+        tile('ember_coal_ore', eco)
+        for w in ('dark_oak', 'mangrove'):
+            im = src_pic(d, tiles, files, w + '_log_side'); px = im.load()
+            for y in range(32):
+                for x in range(32):
+                    r, g, b, a = px[x, y]
+                    if ((x * 7 + y * 13) % 11 < 4 and y > 6 + (x * 5) % 9) or y > 26 - (x * 3) % 5: px[x, y] = (r * 50 // 100 + 30, g * 60 // 100 + 70, b * 40 // 100 + 20, a)
+            tile('mossy_%s_log_side' % w, im)
+        tile('algae', recolour(src_pic(d, tiles, files, 'lily_pad'), hsv_map(hue=0.22, sat=0.8, val=0.85)))
+        tile('dried_sugar_cane_bundle_side', recolour(src_pic(d, tiles, files, 'sugar_cane_bundle_side'), hsv_map(hue=0.13, sat=0.75, val=1.1)))
+        tile('dried_sugar_cane_bundle_top', recolour(src_pic(d, tiles, files, 'sugar_cane_bundle_top'), hsv_map(hue=0.13, sat=0.75, val=1.1)))
+    block('scorched_dirt', 'Scorched Dirt', {'hardness': 0.6, 'tool': 'shovel', 'sound': 'dirt', 'tex': 'scorched_dirt'}, [tiles['scorched_dirt']] * 6)
+    block('rich_scorched_dirt', 'Rich Scorched Dirt', {'hardness': 0.7, 'tool': 'shovel', 'sound': 'dirt', 'tex': 'rich_scorched_dirt'}, [tiles['rich_scorched_dirt']] * 6)
+    block('perma_ice', 'Perma-Ice', {'hardness': 0.6, 'sound': 'glass', 'slippery': True, 'noMelt': True, 'tex': 'perma_ice'}, [tiles['perma_ice']] * 6)
+    block('ember_coal_ore', 'Ember Coal Ore', {'hardness': 3, 'tier': 1, 'drop': 'ember_coal', 'xp': 2, 'light': 3, 'tex': 'ember_coal_ore'}, [tiles['ember_coal_ore']] * 6)
+    if 'ember_coal' not in items:
+        items['ember_coal'] = {'key': 'ember_coal', 'name': 'Ember Coal', 'maxStack': 64, 'icon': 'coal', 'fuel': 14,
+                               'desc': 'Coal from the Depths. It burns hotter and longer than the ordinary kind.'}
+    for w, nm in (('dark_oak', 'Dark Oak'), ('mangrove', 'Mangrove')):
+        k = 'mossy_%s_log' % w
+        block(k, 'Mossy %s Log' % nm, {'hardness': 2, 'tool': 'axe', 'sound': 'log', 'isLog': True, 'axisBlock': True, 'fuel': 1.5,
+                                       'tex': {'top': w + '_log_top', 'bottom': w + '_log_top', 'side': k + '_side'}},
+              [tiles[k + '_side'], tiles[k + '_side'], tiles[w + '_log_top'], tiles[w + '_log_top'], tiles[k + '_side'], tiles[k + '_side']])
+    block('algae', 'Algae', {'render': 7, 'solid': True, 'opaque': False, 'hardness': 0, 'tool': None, 'sound': 'grass', 'drop': 'algae',
+                             'tint': 'foliage', 'shapeKind': 10, 'onWater': True, 'tex': 'algae'}, [tiles['algae']] * 6)
+    block('dried_sugar_cane_bundle', 'Dried Sugar Cane Bundle', {'hardness': 0.5, 'tool': None, 'sound': 'grass', 'axisBlock': True, 'fuel': 6,
+                                                                 'tex': {'top': 'dried_sugar_cane_bundle_top', 'bottom': 'dried_sugar_cane_bundle_top', 'side': 'dried_sugar_cane_bundle_side'}},
+          [tiles['dried_sugar_cane_bundle_side'], tiles['dried_sugar_cane_bundle_side'], tiles['dried_sugar_cane_bundle_top'], tiles['dried_sugar_cane_bundle_top'],
+           tiles['dried_sugar_cane_bundle_side'], tiles['dried_sugar_cane_bundle_side']])
+    rj.setdefault('smelting', {}).setdefault('sugar_cane_bundle', 'dried_sugar_cane_bundle')
+    rj['smelting'].setdefault('ember_coal_ore', 'ember_coal')
     # the wet sponge (Minecraft's): a sponge that soaked up water; dry it in a furnace. Used on dyed wool, terracotta,
     # glass or painted planks it washes the colour out (BTA)
     if 'wet_sponge' not in tiles:
