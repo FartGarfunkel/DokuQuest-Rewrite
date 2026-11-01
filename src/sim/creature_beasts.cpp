@@ -49,6 +49,7 @@ static const std::unordered_map<std::string, TameFood>& tameTable() {
 static bool mountStats(const std::string& t, float& speed, float& jump) {
   static const std::unordered_map<std::string, vec2> M = {
     {"horse", {10, 9.5f}}, {"donkey", {7.5f, 8.5f}}, {"llama", {6.5f, 8}}, {"camel", {7.5f, 8}}, {"deer", {9.5f, 10}}, {"goat", {6.5f, 11}}, {"moa", {8.5f, 10}},
+    {"pig", {5.5f, 5.6f}},   // BTA: a saddled pig is ridden too; its short legs can't jump a whole block (stairs and slabs help)
     {"brown_bear", {6.5f, 8}}, {"polar_bear", {6.5f, 8}}, {"lion", {9.5f, 9.5f}}, {"lioness", {9.5f, 9.5f}}, {"tiger", {10, 9.5f}}, {"panther", {10, 10}}, {"snow_leopard", {9, 10.5f}}};
   auto it = M.find(t);
   if (it == M.end()) { speed = 7; jump = 8; return false; }
@@ -680,6 +681,20 @@ bool useOnCreature(Level& lv, Player& p, Creature& e, bool sneaking) {
   std::string name = petLabel(e);
   float sp, jump; bool mountable = mountStats(e.type, sp, jump);
   auto toast = [&](const std::string& t, const std::string& k = "") { lv.fx->message(p.id, t, k); };
+  // ---- BTA: any grown pig takes a saddle (no taming), and then you ride it ----
+  if (e.type == "pig" && !e.baby && e.owner.empty()) {
+    if (!held.empty() && held.id == "saddle" && !e.saddled) {
+      e.saddled = true; e.kept = true; use1(p, held); lv.fx->soundUi(p.id, "equip");
+      toast("Saddled \xE2\x80\x94 use it to ride. Its short legs can't jump a whole block: stairs and slabs help", "good"); return true;
+    }
+    if (held.empty() && e.saddled && !sneaking && !p.riding) {
+      if (e.riddenBy) { toast("Someone is riding it"); return true; }
+      e.riddenBy = p.id; p.riding = e.id; p.vel = vec3(0); p.yaw = e.yaw;
+      toast("WASD to ride \xC2\xB7 jump \xC2\xB7 sneak to get off");
+      lv.fx->voice(e.T->sound.empty() ? "pop" : e.T->sound, "say", e.pos + vec3(0, 1, 0));
+      return true;
+    }
+  }
   // ---- pets.js petUse ----
   if (mine && !held.empty() && held.id == "saddle") {
     if (!mountable || e.baby) { toast("A saddle won't fit that"); return true; }

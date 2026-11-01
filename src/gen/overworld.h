@@ -51,6 +51,7 @@ public:
 
   OwColumn column(int x, int z) const;          // the column as generated (structures' levelling applied)
   double climateScale = 1;                      // how wide the climate (and so the biomes) spreads: 2 from terrain version 4
+  bool floes = false;
   OwColumn rawColumn(int x, int z) const;       // terrain and rivers only
   int biomeAt(int x, int z) const { return column(x, z).biome; }
   bool goodSpawn(int x, int z) const;           // a dry, gentle spot (WorldGen.goodSpawn)

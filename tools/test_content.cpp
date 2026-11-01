@@ -343,6 +343,18 @@ int main(int argc, char** argv) {
     StationResult again = stationResult("forge", gem.out, ItemStack("ruby", 1));
     check(!again.ok, "  ...one gem a tool");
   }
+  // ------------------------------------------------------------ BTA: a saddled pig is ridden (no taming)
+  {
+    Creature* pig = spawnCreature(*L, P->realm, "pig", P->pos + vec3(1.5f, 0, 0));
+    check(pig != nullptr, "a pig");
+    if (pig) {
+      pig->baby = false;
+      P->held() = ItemStack("saddle", 1);
+      check(useOnCreature(*L, *P, *pig, false) && pig->saddled && P->held().empty(), "a saddle goes on a wild pig");
+      check(useOnCreature(*L, *P, *pig, false) && P->riding == pig->id && pig->riddenBy == P->id, "  ...and an empty hand gets on it");
+      P->riding = 0; pig->riddenBy = 0; pig->removed = true;
+    }
+  }
   // ------------------------------------------------------------ the Wither: its skulls hit back hurt it, armoured or not
   {
     P->pos = vec3(8.5f, Y + 1, 8.5f); P->hp = 20;

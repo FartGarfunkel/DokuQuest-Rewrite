@@ -11,7 +11,8 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
     nCont(o.seed ^ 0x1234), nHill(o.seed ^ 0x2345), nDetail(o.seed ^ 0x3456), nMount(o.seed ^ 0x4567), nRidge(o.seed ^ 0x5678),
     nTemp(o.seed ^ 0x6789), nHumid(o.seed ^ 0x789a), nCave1(o.seed ^ 0x89ab), nCave2(o.seed ^ 0x9abc), nCave3(o.seed ^ 0xabcd),
     nFloor(o.seed ^ 0xbcde), nRiver(o.seed ^ 0x5eed11), nDeep(o.seed ^ 0xDEE9), nDeepC(o.seed ^ 0xDEEC) {
-  climateScale = o.genVersion >= 4 ? 2.0 : 1.0;   // terrain version 4 (BTA): biomes about twice as big
+  climateScale = o.genVersion >= 4 ? 2.0 : 1.0;
+  floes = o.genVersion >= 5;   // terrain version 5: BTA's ice floes in the seas round the glaciers   // terrain version 4 (BTA): biomes about twice as big
   B.resolve();
   initUnderground();
 }
@@ -196,6 +197,14 @@ void OverworldGen::generate(Chunk& ch) {
     }
     const bool cold = c.temp < -0.38;
     for (int y = H + 1; y <= SEA_LEVEL; y++) b.blocks[colIdx(x, y, z)] = (y == SEA_LEVEL && cold) ? B.ice : B.water;
+    if (floes && c.temp < -0.5 && H < SEA_LEVEL - 3) {   // the seas by the glaciers: great floes of packed ice, open water between
+      const double f = nFloor.noise2(wx / 26.0 + 77, wz / 26.0 - 31) + 0.35 * nFloor.noise2(wx / 7.0, wz / 7.0);
+      if (f > 0.12) {
+        const int t = std::min(5, 2 + (int)((f - 0.12) * 9));
+        for (int y = std::max(H + 1, SEA_LEVEL - t + 2); y <= SEA_LEVEL + 1; y++) b.blocks[colIdx(x, y, z)] = B.packed_ice;
+        if (f > 0.45 && B.snow_block) b.blocks[colIdx(x, SEA_LEVEL + 1, z)] = B.snow_block;
+      } else b.blocks[colIdx(x, SEA_LEVEL, z)] = B.water;
+    }
   }
 
   carve(b, cols, ch.cx, ch.cz);
