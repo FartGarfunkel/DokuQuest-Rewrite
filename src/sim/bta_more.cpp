@@ -14,6 +14,9 @@
 #include "sim/redstone.h"
 #include "sim/gameplay.h"
 #include "sim/physics.h"
+#include "sim/steam.h"
+#include "sim/mob_combat.h"
+#include "sim/level.h"
 #include "core/registry.h"
 #include <unordered_set>
 
@@ -51,10 +54,46 @@ const std::vector<std::string>& wandMobs() {
 }
 } // namespace
 
+// the steam vents: whoever stands over one while it breathes is scalded and lifted a little
+class SteamVents : public LevelSystem {
+public:
+  const char* name() const override { return "steam_vents"; }
+  double acc = 0;
+  std::unordered_map<u32, double> lastHit;
+  void tick(Level& lv, double dt) override {
+    if (lv.isRemote() || (acc += dt) < 0.25) return;
+    acc = 0;
+    static const BlockId vent = reg().blockId("steam_vent");
+    if (!vent) return;
+    const double t = lv.info.time;
+    for (auto& up : lv.entities()) {
+      Entity& e = *up;
+      if (e.removed || e.realm != REALM_MAIN || e.hp <= 0) continue;
+      const bool player = e.isPlayer();
+      if (!player && !dynamic_cast<Creature*>(&e)) continue;
+      const int ex = ifloor(e.pos.x), ey = ifloor(e.pos.y), ez = ifloor(e.pos.z);
+      if (dimOfY(ey) != DIM_NETHER) continue;
+      World& w = lv.world(e.realm);
+      for (int k = 1; k <= 3; k++) {
+        if (w.getBlock(ex, ey - k, ez) != vent) { if (reg().tSolid[w.getBlock(ex, ey - k, ez)]) break; continue; }
+        if (!steamGust(t, ex, ey - k, ez)) break;
+        double& lh = lastHit[e.id];
+        if (t - lh > 0.75 || t < lh) {
+          lh = t;
+          if (!player || !static_cast<Player&>(e).creative()) { DamageSrc s; damageEntity(lv, e, 1, nullptr, "burn", s); }
+        }
+        e.vel.y = std::max(e.vel.y, 4.5f);   // the plume lifts you
+        break;
+      }
+    }
+  }
+};
+
 void registerBtaMore() {
   static bool done = false;
   if (done) return;
   done = true;
+  registerLevelSystem([](Level&) -> std::shared_ptr<LevelSystem> { return std::make_shared<SteamVents>(); });
   // the gold mesh and the matcher take a filter; paintings take a trim
   hooks().useBlock.push_back([](PlayerController& pc, const RayHit& hit, ItemStack* held, const ItemDef*) {
     if (pc.lv.isRemote()) return false;

@@ -280,6 +280,7 @@ void writeTreeParts(const GenBlocks& B, GenBuf& b, int cx, int cz, const TreeSpe
       id = id == B.dark_oak_log ? B.mossy_dark_oak_log : B.mossy_mangrove_log;
     if (t.gum && B.gum_log && id == B.birch_log) id = B.gum_log;
     if (t.gum && B.gum_leaves && id == B.birch_leaves) id = B.gum_leaves;
+    if (t.seasonal && B.seasonal_leaves && id == B.cherry_leaves) id = B.seasonal_leaves;
     b.blocks[i] = id;
     if (p.meta >= 0) b.meta[i] = (u8)p.meta;
     if (B.axis[p.id] && p.meta < 0) b.meta[i] = 0;   // logs stand upright unless a branch turned them
@@ -298,6 +299,7 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
   if (btaVariant(mid) == BV_MOSSMIRE) density = 3;   // a swampy wood
   if (btaVariant(mid) == BV_THORNSCRUB) density = 2.5;   // thick with thorn trees
   if (btaVariant(mid) == BV_HIGHLANDS) density = 6;      // close-grown spruce
+  if (btaVariant(mid) == BV_SEASONAL) density = 5;       // the Seasonal Forest
   bool bare = (mid.biome == BIOME_FOREST || mid.biome == BIOME_PLAINS) && hashFloat(cx, cz, seed_, 67) < 0.025;
   int n = jsFloor(density) + (rnd() < std::fmod(density, 1.0) ? 1 : 0) + (bare ? 3 : 0);
   for (int i = 0; i < n; i++) {
@@ -325,8 +327,9 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
     else if (bv == BV_THORNSCRUB) type = r < 0.72 ? TREE_THORN : r < 0.86 ? TREE_PALM : TREE_ACACIA;   // dry thorn country, a palm here and there
     else if (bv == BV_HIGHLANDS) type = r < 0.85 ? TREE_SPRUCE : TREE_PINE;   // the boreal hills
     else if (bv == BV_TUNDRA) type = TREE_SPRUCE;                             // a lone stunted spruce
+    else if (bv == BV_SEASONAL) type = r < 0.62 ? TREE_CHERRY : r < 0.85 ? TREE_OAK : TREE_BIRCH;   // the Seasonal Forest's cherry groves
     bool bees = (type == TREE_OAK || type == TREE_BIRCH) && !bare && rnd() < (c.biome == BIOME_PLAINS ? 0.06 : 0.02);
-    t.kind = type; t.bare = bare; t.bees = bees; t.mossy = bv == BV_MOSSMIRE; t.gum = bv == BV_REDLANDS;
+    t.kind = type; t.bare = bare; t.bees = bees; t.mossy = bv == BV_MOSSMIRE; t.gum = bv == BV_REDLANDS; t.seasonal = bv == BV_SEASONAL;
     list.push_back(t);
   }
   // no trees growing through the floors of surface structures

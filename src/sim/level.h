@@ -20,7 +20,7 @@ struct LevelInfo {
   std::string mode = "survival";       // survival | creative | adventure | spectator
   std::string difficulty = "normal";   // peaceful | easy | normal | hard
   std::string worldType = "default";
-  int genVersion = 3;
+  int genVersion = 4;   // new worlds: the newest terrain (old saves keep theirs: fromJson defaults to 3)
   double time = 300;           // seconds into the day (0 = sunrise in the original's clock)
   i64 day = 0;
   i64 created = 0, lastPlayed = 0;

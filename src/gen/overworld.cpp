@@ -11,6 +11,7 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
     nCont(o.seed ^ 0x1234), nHill(o.seed ^ 0x2345), nDetail(o.seed ^ 0x3456), nMount(o.seed ^ 0x4567), nRidge(o.seed ^ 0x5678),
     nTemp(o.seed ^ 0x6789), nHumid(o.seed ^ 0x789a), nCave1(o.seed ^ 0x89ab), nCave2(o.seed ^ 0x9abc), nCave3(o.seed ^ 0xabcd),
     nFloor(o.seed ^ 0xbcde), nRiver(o.seed ^ 0x5eed11), nDeep(o.seed ^ 0xDEE9), nDeepC(o.seed ^ 0xDEEC) {
+  climateScale = o.genVersion >= 4 ? 2.0 : 1.0;   // terrain version 4 (BTA): biomes about twice as big
   B.resolve();
   initUnderground();
 }
@@ -28,8 +29,9 @@ OverworldGen::BaseCol OverworldGen::baseColumn(int x, int z) const {
   BaseCol c;
   c.hc = jsClamp(h, 4, 120);
   c.h = jsFloor(c.hc);
-  c.temp = nTemp.fbm2(x / 800.0, z / 800.0, 2) - (c.h > 90 ? (c.h - 90) / 40.0 : 0);
-  c.humid = nHumid.fbm2(x / 650.0, z / 650.0, 2);
+  c.temp = nTemp.fbm2(x / (800.0 * climateScale), z / (800.0 * climateScale), 2) - (c.h > 90 ? (c.h - 90) / 40.0 : 0);
+  c.humid = nHumid.fbm2(x / (650.0 * climateScale), z / (650.0 * climateScale), 2);
+  if (climateScale > 1) c.temp -= 0.06;   // and the cold lands a little more common (BTA: more snow biomes)
   const int hh = c.h; const double t = c.temp, u = c.humid;
   u8 b;
   if (hh < JS_SEA - 1) b = BIOME_OCEAN;

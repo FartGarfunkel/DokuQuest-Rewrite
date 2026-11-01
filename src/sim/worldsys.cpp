@@ -386,6 +386,19 @@ static void growExtra(Level& lv, World& w, int x, int y, int z, BlockId id, u8 m
     else if (id == B.cave_vines && rnd() < 1.0 / 60) w.setBlock(x, y, z, B.cave_vines_lit, meta);
     return;
   }
+  if (d.has("seasonalForm")) {   // the Seasonal Forest (BTA): its leaves turn with the year, a few at a time
+    static const BlockId F[4] = {R.blockId("seasonal_blossom"), R.blockId("seasonal_leaves"), R.blockId("seasonal_leaves_autumn"), R.blockId("seasonal_leaves_winter")};
+    float ph = seasonPhase(lv);
+    if (ph < 0) ph = (float)std::fmod(lv.info.day / 7.0, 4.0);   // with world seasons off the grove keeps its own year
+    const int want = (int)ph & 3, now = (int)d.num("seasonalForm", 1);
+    if (want != now && F[want] && rnd() < 0.04) w.setBlock(x, y, z, F[want], meta);
+    return;
+  }
+  if (d.has("regrows")) {   // emberglass (BTA's rubyglass) regrows: now and then a fresh cluster on top, in the Depths
+    static const BlockId cl = R.blockId(d.str("regrows"));
+    if (cl && dimOfY(y) == DIM_NETHER && w.getBlock(x, y + 1, z) == AIR && rnd() < 0.02) w.setBlock(x, y + 1, z, cl, 0);
+    return;
+  }
   if (d.has("igneous")) {   // igneous emberstone (BTA): a fire on top that never goes out, and wet sponges beside it dry
     static const BlockId fireId = R.blockId("fire"), wet = R.blockId("wet_sponge"), dry = R.blockId("sponge");
     if (fireId && w.getBlock(x, y + 1, z) == AIR) w.setBlock(x, y + 1, z, fireId, 0);
@@ -452,7 +465,7 @@ void randomTicks(Level& lv, World& w, float px, float pz) {
         if (h < (id == B.kelp ? 8 : 3) && (id == B.kelp ? R.tLiquid[above] == 1 : above == AIR)) w.setBlock(x, y + 1, z, id, id == B.kelp ? WLOG : 0);
       } else if (bhas(id, BF::Fire)) {
         BlockId below = w.getBlock(x, y - 1, z);
-        if (below && (below == B.emberstone || below == B.magma_block || below == B.soul_soil || below == B.ash)) continue;
+        if (below && (below == B.emberstone || below == B.magma_block || below == B.soul_soil || below == B.ash || R.block(below).has("igneous"))) continue;
         if (rnd() < 0.3) w.setBlock(x, y, z, AIR);
       } else if (d.has("oxidizes")) { if (rnd() < 1.0 / 2400) w.setBlock(x, y, z, R.blockId(d.str("oxidizes")), meta); }
       else growExtra(lv, w, x, y, z, id, meta);

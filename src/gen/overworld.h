@@ -19,7 +19,7 @@ struct OwColumn {
 // Biome variants inspired by Better than Adventure (our own designs), carved out of the climate: the hottest, driest
 // savanna turns to Redlands (red sand, spinifex, pale gum trees), the coldest taiga and peaks to Glacier (packed and
 // blue ice, ice spires), mild damp plains to Meadow (flowers everywhere), wet lowland to Mossmire (moss, mud, dark trees).
-enum BtaVariant : u8 { BV_NONE = 0, BV_REDLANDS, BV_GLACIER, BV_MEADOW, BV_MOSSMIRE, BV_THORNSCRUB, BV_HIGHLANDS, BV_TUNDRA };
+enum BtaVariant : u8 { BV_NONE = 0, BV_REDLANDS, BV_GLACIER, BV_MEADOW, BV_MOSSMIRE, BV_THORNSCRUB, BV_HIGHLANDS, BV_TUNDRA, BV_SEASONAL };
 inline BtaVariant btaVariant(const OwColumn& c) {
   if (c.biome == BIOME_PLAINS && c.temp > 0.5 && c.humid < -0.18) return BV_REDLANDS;
   if (c.biome == BIOME_PLAINS && c.temp > 0.32 && c.humid >= -0.16 && c.humid < -0.04) return BV_THORNSCRUB;   // BTA's Caatinga
@@ -28,6 +28,8 @@ inline BtaVariant btaVariant(const OwColumn& c) {
   if (c.biome == BIOME_PLAINS && c.temp > 0.02 && c.temp < 0.26 && c.humid > 0.05 && c.humid < 0.28) return BV_MEADOW;
   // BTA's Highland Spruce (Boreal): tall spruce woods on podzol up in the cool hills
   if ((c.biome == BIOME_TAIGA || c.biome == BIOME_MOUNTAINS) && c.temp > -0.45 && c.temp < -0.08 && c.h > vmap::JS_SEA + 16 && c.h < vmap::JS_SEA + 52) return BV_HIGHLANDS;
+  // BTA's Seasonal Forest: mild, damp lowland groves of cherry whose leaves turn with the year (sim/worldsys.cpp)
+  if ((c.biome == BIOME_FOREST || c.biome == BIOME_PLAINS) && c.temp > 0.04 && c.temp < 0.3 && c.humid > 0.28 && c.humid < 0.46 && c.h > vmap::JS_SEA + 1 && c.h < vmap::JS_SEA + 22) return BV_SEASONAL;
   // the tundra step between the snowy woods and the plains: open snowy grass over permafrost, hardly a tree
   if (c.biome == BIOME_PLAINS && c.temp < -0.32) return BV_TUNDRA;
   return BV_NONE;
@@ -48,6 +50,7 @@ public:
   int finalSurfaceY(int x, int z) const override { return column(x, z).H; }
 
   OwColumn column(int x, int z) const;          // the column as generated (structures' levelling applied)
+  double climateScale = 1;                      // how wide the climate (and so the biomes) spreads: 2 from terrain version 4
   OwColumn rawColumn(int x, int z) const;       // terrain and rivers only
   int biomeAt(int x, int z) const { return column(x, z).biome; }
   bool goodSpawn(int x, int z) const;           // a dry, gentle spot (WorldGen.goodSpawn)

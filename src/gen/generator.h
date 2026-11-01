@@ -45,7 +45,7 @@ public:
 
 struct WorldGenOptions {
   i32 seed = 0;
-  int genVersion = 3;                  // C++ terrain generation version
+  int genVersion = 4;                  // C++ terrain generation version (4: BTA's bigger biomes)
   std::string worldType = "default";   // default | flat | amplified | ... (from the create-world screen)
   json extra;                          // structures on/off, bonus chest, etc.
 };

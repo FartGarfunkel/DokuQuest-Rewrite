@@ -219,6 +219,50 @@ def main(d):
     block('cacao_sapling', 'Cacao Sapling', cs, [tiles['cacao_sapling']] * 6)
     recipe('cacao_sapling', 1, items_=['jungle_sapling', 'cocoa_beans'])
 
+    # ---- the Sulphur Springs' steam vent (BTA): a crusted hole that breathes out scalding steam now and then ----
+    if 'steam_vent' not in tiles:
+        sv = pic('sulphur_block') if 'sulphur_block' in tiles else pic('netherrack'); vp = sv.load()
+        for y in range(32):
+            for x in range(32):
+                d2 = (x - 15.5) ** 2 + (y - 15.5) ** 2
+                if d2 < 30: vp[x, y] = (24, 20, 18, 255)
+                elif d2 < 60: r, g, b, a = vp[x, y]; vp[x, y] = (r * 6 // 10, g * 6 // 10, b * 5 // 10, a)
+        tile('steam_vent', sv)
+    side = 'sulphur_block' if 'sulphur_block' in tiles else 'netherrack'
+    block('steam_vent', 'Steam Vent', {'hardness': 1.2, 'tier': 0, 'steamVent': True, 'tex': {'top': 'steam_vent', 'bottom': side, 'side': side}},
+          [tiles[side], tiles[side], tiles['steam_vent'], tiles[side], tiles[side], tiles[side]])
+    # emberglass regrows: a block of it now and then grows a fresh cluster on top (in the Depths)
+    if 'emberglass_block' in B: B['emberglass_block'].update({'regrows': 'emberglass_cluster', 'randomTick': True})
+
+    # ---- the Seasonal Forest's leaves: four forms that follow the year (sim/worldsys.cpp turns them on random ticks):
+    #      0 spring blossom (pink), 1 summer green (biome tinted), 2 autumn (orange and red), 3 winter (bare twigs) ----
+    if 'seasonal_leaves' not in tiles:
+        tile('seasonal_leaves', pic('leaves') if 'leaves' in tiles else pic('oak_leaves'))
+        tile('seasonal_blossom', pic('cherry_leaves'))
+        au = pic('leaves') if 'leaves' in tiles else pic('oak_leaves'); ap = au.load()
+        for y in range(32):
+            for x in range(32):
+                r, g, b, a = ap[x, y]
+                if a > 8:
+                    l = (r * 299 + g * 587 + b * 114) / 1000 / 110
+                    hot = (x * 7 + y * 3) % 5 < 2
+                    ap[x, y] = (min(255, int((215 if hot else 190) * l)), min(255, int((70 if hot else 110) * l)), min(255, int(30 * l)), a)
+        tile('seasonal_leaves_autumn', au)
+        wi = pic('leaves') if 'leaves' in tiles else pic('oak_leaves'); wp = wi.load()
+        for y in range(32):
+            for x in range(32):
+                r, g, b, a = wp[x, y]
+                twig = (x + y * 2) % 9 == 0 or (x * 3 - y) % 11 == 0
+                wp[x, y] = (96, 74, 56, 255) if (a > 8 and twig) else (0, 0, 0, 0)
+        tile('seasonal_leaves_winter', wi)
+    base_l = B.get('leaves') or B.get('oak_leaves')
+    for k, nm, tx, form, tint in (('seasonal_blossom', 'Blossoming Leaves', 'seasonal_blossom', 0, None), ('seasonal_leaves', 'Seasonal Leaves', 'seasonal_leaves', 1, 'foliage'),
+                                  ('seasonal_leaves_autumn', 'Autumn Leaves', 'seasonal_leaves_autumn', 2, None), ('seasonal_leaves_winter', 'Bare Branches', 'seasonal_leaves_winter', 3, None)):
+        lb = dict(base_l); lb.pop('id', None); lb.pop('name', None); lb.pop('tint', None)
+        lb.update({'key': k, 'drop': k, 'tex': tx, 'isLeaves': True, 'sapling': 'cherry_sapling', 'seasonalForm': form, 'randomTick': True})
+        if tint: lb['tint'] = tint
+        block(k, nm, lb, [tiles[tx]] * 6)
+
     # ---- the summoning wand (creative): use it to call up the creature it is set to; sneak + use picks the next ----
     if 'summoning_wand' not in tiles:
         item_pic('summoning_wand', recolour(pic('stick'), hsv_map(hue=0.75, sat=1.5, val=1.1, add=10)))

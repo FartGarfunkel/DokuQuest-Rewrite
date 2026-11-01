@@ -91,7 +91,7 @@ const char* biomeName(int b);
   X(coal_ore) X(iron_ore) X(copper_ore) X(tin_ore) X(gold_ore) X(lapis_ore) X(diamond_ore) X(mese_ore) X(redstone_ore) \
   X(granite) X(diorite) X(andesite) X(tuff) X(marble) X(limestone) X(calcite) X(dripstone_block) X(emerald_ore) \
   X(silver_ore) X(mithril_ore) X(adamantite_ore) X(ruby_ore) X(sapphire_ore) \
-  X(spruce_log) X(spruce_leaves) X(jungle_log) X(jungle_leaves) X(cacao_leaves) X(vine) X(cocoa) X(pine_log) X(pine_needles) X(aspen_log) \
+  X(spruce_log) X(spruce_leaves) X(jungle_log) X(jungle_leaves) X(cacao_leaves) X(seasonal_leaves) X(vine) X(cocoa) X(pine_log) X(pine_needles) X(aspen_log) \
   X(aspen_leaves) X(log) X(leaves) X(birch_log) X(birch_leaves) X(flowering_azalea_leaves) X(azalea_leaves) X(acacia_log) \
   X(acacia_leaves) X(dark_oak_log) X(dark_oak_leaves) X(cherry_log) X(cherry_leaves) X(mangrove_log) X(mangrove_leaves) \
   X(crimson_stem) X(warped_stem) X(nether_wart_block) X(warped_wart_block) X(shroomlight) X(weeping_vines) X(bee_nest) \
@@ -107,7 +107,7 @@ const char* biomeName(int b);
   X(amethyst_block) X(large_amethyst_bud) X(small_amethyst_bud) X(glowstone) X(obsidian) X(blackstone) X(basalt) \
   X(netherrack) X(emberstone) X(magma_block) X(gilded_blackstone) X(soul_sand) X(soul_soil) X(bone_block) X(soul_fire) \
   X(crimson_nylium) X(crimson_fungus) X(crimson_roots) X(warped_nylium) X(twisting_vines) X(warped_fungus) X(warped_roots) \
-  X(nether_sprouts) X(ash) X(pumice) X(cinder_sand) X(emberglass_cluster) X(emberglass_block) X(sulphur_block) X(thorn_leaves) X(null_stone) X(end_moss) X(cloud_puff) X(bounce_cloud) X(sun_cloud) X(glimmersand) X(sunwood_log) X(sunwood_leaves) X(palm_log) X(palm_leaves) X(oak_branch) X(birch_branch) X(dark_oak_branch) X(jungle_branch) X(cherry_branch) X(acacia_branch) X(mangrove_branch) X(sky_bloom) X(bluebells) X(marigold) X(spinifex) X(scorched_dirt) X(rich_scorched_dirt) X(perma_ice) X(permafrost) X(ember_coal_ore) X(mossy_dark_oak_log) X(mossy_mangrove_log) X(algae) X(soul_schist) X(bone_shale) X(ashen_trunk) X(gum_log) X(gum_leaves) X(cinderite_ore) X(quartz_ore) X(nether_gold_ore) X(ancient_debris) X(skystone) X(sky_grass) \
+  X(nether_sprouts) X(ash) X(pumice) X(cinder_sand) X(emberglass_cluster) X(emberglass_block) X(sulphur_block) X(steam_vent) X(igneous_emberstone) X(thorn_leaves) X(null_stone) X(end_moss) X(cloud_puff) X(bounce_cloud) X(sun_cloud) X(glimmersand) X(sunwood_log) X(sunwood_leaves) X(palm_log) X(palm_leaves) X(oak_branch) X(birch_branch) X(dark_oak_branch) X(jungle_branch) X(cherry_branch) X(acacia_branch) X(mangrove_branch) X(sky_bloom) X(bluebells) X(marigold) X(spinifex) X(scorched_dirt) X(rich_scorched_dirt) X(perma_ice) X(permafrost) X(ember_coal_ore) X(mossy_dark_oak_log) X(mossy_mangrove_log) X(algae) X(soul_schist) X(bone_shale) X(ashen_trunk) X(gum_log) X(gum_leaves) X(cinderite_ore) X(quartz_ore) X(nether_gold_ore) X(ancient_debris) X(skystone) X(sky_grass) \
   X(aether_crystal_ore) X(cloud_leaves) X(pocket_wall) X(ember_crust) X(void_crust) X(end_stone) X(chorus_plant) \
   X(chorus_flower) X(iron_bars) X(rift_wall) X(rift_glass) X(rift_crystal) X(sculk) X(sculk_vein) X(sculk_sensor) \
   X(sculk_shrieker) X(sculk_catalyst) X(cobbled_slate)

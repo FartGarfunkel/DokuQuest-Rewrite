@@ -512,20 +512,39 @@ static bool mazePlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Struc
 static void mazeBuild(ChunkWriter& w, const StructurePlan& S) {
   SP P(w); const MazeExt& M = extOf<MazeExt>(S);
   const int y = S.y;
+  // now and then the darker labyrinth (BTA): blackstone halls with no light but the glow of crystals, spikes in the
+  // floor, iron mesh windows onto the next corridor, and ceiling lamps that wake when something moves under the
+  // motion sensors beside them
+  const bool dark = hash32(M.mx0, y, M.mz0, 0x1AB) % 100 < 40;
   static const std::vector<const char*> walls = {"stone_bricks", "stone_bricks", "mossy_stone_bricks", "cracked_stone_bricks", "stone_bricks", "mossy_stone_bricks"};
-  auto wall = [&](int x, int yy, int z) { return P.pickw(walls, x, yy, z, 1); };
+  static const std::vector<const char*> darkWalls = {"blackstone_bricks", "blackstone_bricks", "cracked_blackstone_bricks", "polished_blackstone", "blackstone_bricks", "cobbled_slate"};
+  auto wall = [&](int x, int yy, int z) { return P.pickw(dark ? darkWalls : walls, x, yy, z, 1); };
+  const char* floorA = dark ? "polished_blackstone" : "stone_bricks";
+  const char* floorB = dark ? "cracked_blackstone_bricks" : "cracked_stone_bricks";
+  const char* carved = dark ? "chiseled_polished_blackstone" : "chiseled_stone_bricks";
   for (int gz = 0; gz < MAZE_SIZE; gz++) for (int gx = 0; gx < MAZE_SIZE; gx++) {
     const int x = M.mx0 + gx, z = M.mz0 + gz; if (!P.in(x, z)) continue;
-    P.put(x, y, z, P.h(x, 0, z, 2) < 0.25 ? "cracked_stone_bricks" : "stone_bricks");
-    P.put(x, y + 5, z, "stone_bricks");
+    P.put(x, y, z, P.h(x, 0, z, 2) < 0.25 ? floorB : floorA);
+    P.put(x, y + 5, z, dark ? "blackstone_bricks" : "stone_bricks");
     const bool o = M.open[gx * MAZE_SIZE + gz];
-    for (int yy = y + 1; yy <= y + 4; yy++) P.put(x, yy, z, o ? "air" : (yy == y + 4 && (gx + gz) % 6 == 0 ? "chiseled_stone_bricks" : wall(x, yy, z)));
+    for (int yy = y + 1; yy <= y + 4; yy++) P.put(x, yy, z, o ? "air" : (yy == y + 4 && (gx + gz) % 6 == 0 ? carved : wall(x, yy, z)));
     if (o && P.h(x, 3, z, 3) < 0.04) P.put(x, y + 4, z, "cobweb");
     if (o && P.h(x, 4, z, 4) < 0.012) P.put(x, y + 1, z, "bone_block");
+    if (!dark) continue;
+    const auto openAt = [&](int ax, int az) { return ax >= 0 && az >= 0 && ax < MAZE_SIZE && az < MAZE_SIZE && M.open[ax * MAZE_SIZE + az]; };
+    if (o && P.h(x, 5, z, 7) < 0.035) P.put(x, y + 1, z, "spike_trap");                       // spikes in the floor
+    else if (o && P.h(x, 6, z, 8) < 0.025) P.put(x, y + 1, z, "emberglass_cluster");          // the only light: crystals
+    else if (o && P.h(x, 8, z, 9) < 0.02) P.put(x, y + 1, z, "amethyst_cluster");
+    // a ceiling lamp over the corridor with a motion sensor in the ceiling beside it, over the wall
+    if (o && P.h(x, 9, z, 10) < 0.02) for (auto [dx, dz] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}})
+      if (!openAt(gx + dx, gz + dz) && P.in(x + dx, z + dz)) { P.put(x, y + 5, z, "redstone_lamp"); P.put(x + dx, y + 5, z + dz, "motion_sensor"); break; }
+    // a mesh window through a thin wall into the next corridor
+    if (!o && P.h(x, 10, z, 11) < 0.05 && ((openAt(gx - 1, gz) && openAt(gx + 1, gz)) || (openAt(gx, gz - 1) && openAt(gx, gz + 1))))
+      for (int yy = y + 2; yy <= y + 3; yy++) P.put(x, yy, z, "iron_mesh");
   }
-  // lamps in the heart, chests at its back
+  // lamps in the heart (crystals in the dark one), chests at its back
   const int hx = M.hx, hz = M.hz;
-  for (auto [a, b] : {std::pair{-3, -3}, {4, -3}, {-3, 4}, {4, 4}}) { P.put(hx + a, y + 1, hz + b, "chiseled_stone_bricks"); P.put(hx + a, y + 2, hz + b, "soul_lantern"); }
+  for (auto [a, b] : {std::pair{-3, -3}, {4, -3}, {-3, 4}, {4, 4}}) { P.put(hx + a, y + 1, hz + b, carved); P.put(hx + a, y + 2, hz + b, dark ? "emberglass_cluster" : "soul_lantern"); }
   P.chest(hx - 1, y + 1, hz - 3, 2, "maze_heart"); P.chest(hx + 2, y + 1, hz - 3, 2, "maze_heart");
   P.lectern(hx, y + 1, hz + 4, 0, "labyrinth");
   // the dead ends
