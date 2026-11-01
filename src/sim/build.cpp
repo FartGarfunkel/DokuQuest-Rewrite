@@ -275,6 +275,7 @@ bool PlayerController::supportOK(BlockId bid, int x, int y, int z, u8 meta) {
   if (bid == B.brown_mushroom || bid == B.red_mushroom || bid == B.amethyst_cluster || bid == B.small_amethyst_bud || bid == B.medium_amethyst_bud ||
       bid == B.large_amethyst_bud || bid == B.loose_stones || bid == B.sea_pickle || bid == B.pointed_dripstone) return R.tSolid[below];
   if (bid == B.cattail) return in(below, {B.sand, B.clay, B.gravel}) || inSoil(below);
+  { static const BlockId palmSap = reg().blockId("palm_sapling"); if (palmSap && bid == palmSap) return in(below, {B.sand, B.red_sand, B.desert_sand}) || inSoil(below); }   // palms take to sand
   if (R.tSink[bid]) return R.tSolid[below];   // things set down on a surface (jars...), not plants
   return inSoil(below);
 }

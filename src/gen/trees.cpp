@@ -1,10 +1,11 @@
 // gen/trees.cpp — trees (world/worldgen.js treesForChunk, treeParts, writeTree), exact ports.
 #include "gen/overworld.h"
+#include <functional>
 
 namespace dq {
 
 static const char* TREE_NAMES[TREE_KIND_COUNT] = {"none", "oak", "birch", "spruce", "pine", "jungle", "aspen", "azalea",
-  "acacia", "dark_oak", "cherry", "mangrove", "crimson", "warped", "thorn"};
+  "acacia", "dark_oak", "cherry", "mangrove", "crimson", "warped", "thorn", "palm"};
 const char* treeKindName(u8 k) { return k < TREE_KIND_COUNT ? TREE_NAMES[k] : "none"; }
 u8 treeKindFromName(const std::string& s) { for (u8 k = 1; k < TREE_KIND_COUNT; k++) if (s == TREE_NAMES[k]) return k; return TREE_OAK; }
 
@@ -18,6 +19,28 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
       double d = (dx * dx + dz * dz) / (r * r) + (dy * dy) / den;
       if (d <= 1 - rnd() * 0.18) put(cx + dx, cy + dy, cz + dz, id, true);
     }
+  };
+  // a branch (our own take on the idea of branching trees): sideways logs, turned along the way they reach, that climb
+  // a step every other block; a diagonal one goes x then z so every log meets the last by a face; at the end it may
+  // fork into two twigs; each tip carries a clump of leaves (none on a bare tree: leafR 0)
+  static const int BX[8] = {1, 1, 0, -1, -1, -1, 0, 1}, BZ[8] = {0, 1, 1, 1, 0, -1, -1, -1};
+  std::function<void(int, int, int, int, int, BlockId, BlockId, double, bool)> branch;
+  branch = [&](int bx, int by, int bz, int d, int n, BlockId lg, BlockId lf, double leafR, bool canFork) {
+    const int dx = BX[d & 7], dz = BZ[d & 7];
+    bool zTurn = rnd() < 0.5;
+    for (int k = 0; k < n; k++) {
+      int mx = dx, mz = dz;
+      if (dx && dz) { if (zTurn) mx = 0; else mz = 0; zTurn = !zTurn; }
+      bx += mx; bz += mz;
+      put(bx, by, bz, lg, false, mx ? 1 : 2);
+      if (k + 1 < n && (k % 2 == 1 || rnd() < 0.3)) { by++; put(bx, by, bz, lg, false, 0); }
+    }
+    if (canFork && n >= 3 && rnd() < 0.55) {
+      branch(bx, by, bz, d + 1, 2, lg, lf, leafR * 0.85, false);
+      branch(bx, by, bz, d + 7, 2, lg, lf, leafR * 0.85, false);
+      return;
+    }
+    if (leafR > 0) leafBall(bx, by + 1, bz, leafR, lf, 0.6);
   };
   const int x = t.x, y = t.y, z = t.z;
   switch (t.kind) {
@@ -41,12 +64,9 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
       int H = 8 + jsFloor(t.h * 6);
       for (int k = 0; k < H; k++) put(x, y + k, z, B.jungle_log);
       if (t.bare) return;
+      for (int b = 0, nb = 2 + jsFloor(rnd() * 3), d0 = jsFloor(rnd() * 8); b < nb; b++)
+        branch(x, y + jsFloor(H * (0.5 + 0.4 * b / nb)), z, d0 + b * 3, 3 + jsFloor(rnd() * 3), B.jungle_log, B.jungle_leaves, 2.2, true);
       leafBall(x, y + H, z, 3.2, B.jungle_leaves, 0.55);
-      for (int b = 0; b < 2; b++) {
-        int d = jsFloor(rnd() * 4); int by = y + jsFloor(H * (0.5 + rnd() * 0.25));
-        put(x + DIRX[d], by, z + DIRZ[d], B.jungle_log);
-        leafBall(x + DIRX[d] * 2, by + 1, z + DIRZ[d] * 2, 1.8, B.jungle_leaves, 0.6);
-      }
       for (int d = 0; d < 4; d++) for (int k = 1; k < H - 2; k++) {
         double q = rnd();
         if (q < 0.35) put(x + DIRX[d], y + k, z + DIRZ[d], B.vine, true);
@@ -109,10 +129,28 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
       put(tx, y + H + 1, tz, lf, true);
       return;
     }
+    case TREE_PALM: {   // a ringed trunk leaning one way, a crown of fronds drooping all round
+      BlockId lg = B.palm_log ? B.palm_log : B.jungle_log, lf = B.palm_leaves ? B.palm_leaves : B.jungle_leaves;
+      int H = 5 + jsFloor(t.h * 4), d = jsFloor(rnd() * 4), tx = x, tz = z;
+      for (int k = 0; k < H; k++) { if (k >= 2 && k % 3 == 2) { tx += DIRX[d]; tz += DIRZ[d]; } put(tx, y + k, tz, lg); }
+      if (t.bare) return;
+      const int top = y + H;
+      put(tx, top, tz, lf, true);
+      for (int a = 0; a < 8; a++) {   // eight fronds: out two, then down
+        static const int FX[8] = {1, 1, 0, -1, -1, -1, 0, 1}, FZ[8] = {0, 1, 1, 1, 0, -1, -1, -1};
+        const int len = 3 + (rnd() < 0.5 ? 1 : 0);
+        for (int k = 1; k <= len; k++) put(tx + FX[a] * k, top - (k >= 3 ? 1 : 0) - (k >= 4 ? 1 : 0), tz + FZ[a] * k, lf, true);
+      }
+      return;
+    }
     case TREE_DARK_OAK: {
       int H = 6 + jsFloor(t.h * 3);
       static const int AX[4][2] = {{0, 0}, {1, 0}, {0, 1}, {1, 1}};
       for (int k = 0; k < H; k++) for (auto& a : AX) put(x + a[0], y + k, z + a[1], B.dark_oak_log);
+      for (int b = 0, nb = 3 + jsFloor(rnd() * 2), d0 = jsFloor(rnd() * 8); b < nb; b++) {
+        const int d = (d0 + b * 2 + jsFloor(rnd() * 2)) & 7;
+        branch(x + (BX[d] > 0 ? 1 : 0), y + H - 3 + jsFloor(rnd() * 2), z + (BZ[d] > 0 ? 1 : 0), d, 3 + jsFloor(rnd() * 2), B.dark_oak_log, B.dark_oak_leaves, t.bare ? 0 : 2.6, true);
+      }
       if (t.bare) return;
       leafBall(x + 0.5, y + H - 1, z + 0.5, 3.6, B.dark_oak_leaves, 0.5);
       leafBall(x + 0.5, y + H + 0.5, z + 0.5, 2.4, B.dark_oak_leaves, 0.5);
@@ -122,12 +160,8 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
       int H = 4 + jsFloor(t.h * 2);
       for (int k = 0; k < H; k++) put(x, y + k, z, B.cherry_log);
       if (t.bare) return;
-      for (int b = 0; b < 2; b++) {
-        int d = (jsFloor(rnd() * 4) + b * 2) & 3;
-        int bx = x, bz = z, by = y + H - 1;
-        for (int k = 0; k < 3; k++) { bx += DIRX[d]; bz += DIRZ[d]; if (k) by++; put(bx, by, bz, B.cherry_log); }
-        leafBall(bx, by + 1, bz, 2.8, B.cherry_leaves, 0.6);
-      }
+      for (int b = 0, nb = 2 + jsFloor(rnd() * 2), d0 = jsFloor(rnd() * 8); b < nb; b++)
+        branch(x, y + H - 2 + (b & 1), z, d0 + b * (8 / nb), 3 + jsFloor(rnd() * 2), B.cherry_log, B.cherry_leaves, 2.6, true);
       leafBall(x, y + H + 1, z, 2.2, B.cherry_leaves, 0.6);
       return;
     }
@@ -165,19 +199,21 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
   // oak & birch (big oaks now and then)
   bool birch = t.kind == TREE_BIRCH;
   BlockId lg = birch ? B.birch_log : B.log, leaf = birch ? B.birch_leaves : B.leaves;
-  bool big = t.kind == TREE_OAK && t.h > 0.88 && !t.bare;
-  int H = big ? 7 + jsFloor(rnd() * 3) : (birch ? 5 : 4) + jsFloor(t.h * 3);
+  bool big = t.kind == TREE_OAK && t.h > 0.78;
+  int H = big ? 7 + jsFloor(rnd() * 4) : (birch ? 5 : 4) + jsFloor(t.h * 3);
   for (int k = 0; k < H; k++) put(x, y + k, z, lg);
-  if (t.bare) return;
-  if (big) {
-    for (int b = 0; b < 3; b++) {
-      int d = jsFloor(rnd() * 4), by = y + H - 3 + b;
-      put(x + DIRX[d], by, z + DIRZ[d], lg);
-      leafBall(x + DIRX[d] * 2, by + 1, z + DIRZ[d] * 2, 2.2, leaf, 0.7);
-    }
-    leafBall(x, y + H, z, 2.6, leaf, 0.8);
+  if (big) {   // a great spreading oak: limbs all round from halfway up, forking, a clump on every tip
+    for (int b = 0, nb = 3 + jsFloor(rnd() * 3), d0 = jsFloor(rnd() * 8); b < nb; b++)
+      branch(x, y + H / 2 + jsFloor((H / 2 - 1) * (b + rnd()) / nb), z, d0 + b * 3, 3 + jsFloor(rnd() * 3), lg, leaf, t.bare ? 0 : 2.3, true);
+    if (t.bare) return;
+    leafBall(x, y + H, z, 2.7, leaf, 0.8);
     return;
   }
+  // an ordinary oak or birch: now and then a limb or two under the crown
+  if (t.h > (birch ? 0.75 : 0.5))
+    for (int b = 0, nb = 1 + (rnd() < 0.5 ? 1 : 0), d0 = jsFloor(rnd() * 8); b < nb; b++)
+      branch(x, y + H - 3 - b, z, d0 + b * 4, 2, lg, leaf, t.bare ? 0 : 1.7, false);
+  if (t.bare) return;
   if (t.bees) { int d = jsFloor(rnd() * 4); put(x + DIRX[d], y + H - 4, z + DIRZ[d], B.bee_nest, true, d | 0x0c); }
   for (int ly = H - 3; ly <= H + 1; ly++) {
     int r = ly >= H ? 1 : 2;
@@ -207,7 +243,7 @@ void writeTreeParts(const GenBlocks& B, GenBuf& b, int cx, int cz, const TreeSpe
     if (!p.onlyAir && B.liquid[cur] && B.wlog[p.id]) b.meta[i] |= WLOG;
     b.blocks[i] = p.id;
     if (p.meta >= 0) b.meta[i] = (u8)p.meta;
-    if (B.axis[p.id]) b.meta[i] = 0;
+    if (B.axis[p.id] && p.meta < 0) b.meta[i] = 0;   // logs stand upright unless a branch turned them
   }
 }
 
@@ -229,6 +265,8 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
     OwColumn c = column(x, z);
     double r = rnd(), r2 = rnd();
     TreeSpec t; t.x = x; t.z = z; t.y = c.H + 1; t.ySeed = c.h + 1; t.h = r2;
+    // palms on warm beaches
+    if (c.biome == BIOME_BEACH && c.h > JS_SEA && c.temp > 0.22 && r < 0.3) { t.kind = TREE_PALM; list.push_back(t); continue; }
     if (c.h <= JS_SEA || c.biome == BIOME_DESERT || c.biome == BIOME_BEACH || c.biome == BIOME_OCEAN) {
       if (c.h >= JS_SEA - 2 && c.h <= JS_SEA && c.temp > 0.2 && c.humid > 0.25 && c.biome != BIOME_DESERT && r < 0.5) { t.kind = TREE_MANGROVE; list.push_back(t); }
       continue;
@@ -244,7 +282,7 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
     else if (c.biome == BIOME_PLAINS && c.temp < -0.05 && r < 0.4) type = TREE_ASPEN;
     if (bv == BV_REDLANDS) type = TREE_BIRCH;                              // pale-barked gums standing alone
     else if (bv == BV_MOSSMIRE) type = r < 0.6 ? TREE_DARK_OAK : TREE_MANGROVE;   // dark, mossy swamp trees
-    else if (bv == BV_THORNSCRUB) type = r < 0.8 ? TREE_THORN : TREE_ACACIA;      // dry thorn country
+    else if (bv == BV_THORNSCRUB) type = r < 0.72 ? TREE_THORN : r < 0.86 ? TREE_PALM : TREE_ACACIA;   // dry thorn country, a palm here and there
     bool bees = (type == TREE_OAK || type == TREE_BIRCH) && !bare && rnd() < (c.biome == BIOME_PLAINS ? 0.06 : 0.02);
     t.kind = type; t.bare = bare; t.bees = bees;
     list.push_back(t);
@@ -263,7 +301,7 @@ bool OverworldGen::treeGroundOk(const TreeSpec& t) const {
   BlockId g = m.top;   // the carvers leave a planted tree's trunk column alone (gen/underground.cpp)
   bool soil = g == B.grass || g == B.snowy_grass || g == B.dirt || g == B.podzol || g == B.coarse_dirt || g == B.mud ||
               g == B.dirt_with_dry_grass || g == B.dirt_with_coniferous_litter || g == B.dirt_with_rainforest_litter;
-  return soil || (t.kind == TREE_MANGROVE && (g == B.sand || g == B.clay || g == B.gravel || g == B.mud));
+  return soil || (t.kind == TREE_MANGROVE && (g == B.sand || g == B.clay || g == B.gravel || g == B.mud)) || (t.kind == TREE_PALM && (g == B.sand || g == B.red_sand));
 }
 
 void OverworldGen::placeTrees(GenBuf& b, int cx, int cz) const {

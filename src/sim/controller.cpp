@@ -404,6 +404,7 @@ void PlayerController::fellTree(int x, int y, int z, const std::vector<std::arra
     // the sapling of the tree it came from, so every kind can be grown back
     if (rnd() < 0.05) extras[R.block((BlockId)l[3]).str("sapling", "sapling")]++;
     if (l[3] == KB().leaves && rnd() < 0.02) extras["apple"]++;
+    { static const BlockId palmLeaves = R.blockId("palm_leaves"); if (palmLeaves && l[3] == palmLeaves && rnd() < 0.06) extras["coconut"]++; }   // a felled palm drops its coconuts
     if (rnd() < 0.015) extras["stick"]++;
   }
   for (auto& l : logs) w.setBlock(l[0], l[1], l[2], AIR, 0, SetFlags::Urgent);

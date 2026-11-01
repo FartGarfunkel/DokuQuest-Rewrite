@@ -5,6 +5,8 @@
 #include "sim/rules.h"
 #include "sim/weather.h"
 #include "common/noise.h"
+#include "gen/trees.h"
+#include "gen/gendefs.h"
 #include <random>
 #include <regex>
 #include <unordered_set>
@@ -238,9 +240,22 @@ bool growTree(Level& lv, World& w, int x, int y, int z, double r) {
   if (!log || !leaves) return false;
   bool conifer = type == "spruce" || type == "pine";
   int H = (conifer ? 6 : 4) + (int)(r * (conifer ? 4 : 3));
-  std::vector<std::array<int, 5>> parts;   // x,y,z,id,onlyAir
-  for (int k = 0; k < H; k++) parts.push_back({x, y + k, z, log, 0});
-  if (conifer) {
+  std::vector<std::array<int, 6>> parts;   // x,y,z,id,onlyAir,meta
+  // the world generator's own shape of that kind of tree, where it has one (palms lean, acacias fork, jungles tower)
+  const u8 kind = treeKindFromName(type);
+  const bool genShape = kind != TREE_NONE && type == treeKindName(kind);
+  if (genShape) {
+    static GenBlocks GB; static bool gbOk = false;
+    if (!gbOk) { GB.resolve(); gbOk = true; }
+    const int base = dimBase(dimOfY(y));
+    TreeSpec t; t.kind = kind; t.x = x; t.z = z; t.y = t.ySeed = y - base; t.h = r;
+    std::vector<TreePart> tp;
+    treeParts(GB, (i32)hash32(x, y, z, 91), t, tp);
+    for (auto& p : tp) if (p.id) parts.push_back({(int)std::floor(p.x), (int)std::floor(p.y) + base, (int)std::floor(p.z), (int)p.id, p.onlyAir ? 1 : 0, p.meta >= 0 ? p.meta : 0});
+  }
+  else for (int k = 0; k < H; k++) parts.push_back({x, y + k, z, log, 0});
+  if (genShape) {
+  } else if (conifer) {
     int rad = 0;
     for (int yy = H; yy >= 2; yy--) {
       for (int dz = -rad; dz <= rad; dz++) for (int dx = -rad; dx <= rad; dx++) if (std::abs(dx) + std::abs(dz) <= rad + 1 && (dx || dz || yy >= H)) parts.push_back({x + dx, y + yy, z + dz, leaves, 1});
@@ -268,7 +283,7 @@ bool growTree(Level& lv, World& w, int x, int y, int z, double r) {
   for (auto& p : parts) {
     BlockId b = w.getBlock(p[0], p[1], p[2]);
     if (p[4] && b && !R.tReplaceable[b]) continue;
-    w.setBlock(p[0], p[1], p[2], (BlockId)p[3], 0);
+    w.setBlock(p[0], p[1], p[2], (BlockId)p[3], (u8)p[5]);
   }
   return true;
 }

@@ -377,6 +377,41 @@ def main(d):
     recipe('sugar_cane_bundle', 1, ['SSS', 'SSS', 'SSS'], {'S': 'sugar_cane'})
     recipe('sugar_cane', 9, items_=['sugar_cane_bundle'])
 
+    # palms (BTA's palm trees): warm beaches and the thornscrub; a leaning ringed trunk, a crown of drooping fronds,
+    # coconuts falling when one is felled (sim/controller.cpp timber)
+    if 'palm_log_side' not in tiles:
+        side = recolour(src_pic(d, tiles, files, 'jungle_log_side'), hsv_map(hue=0.09, sat=0.55, val=1.15))
+        px = side.load()
+        for y in range(0, 32, 6):   # the rings of old fronds
+            for x in range(32):
+                r, g, b, a = px[x, y]
+                if a: px[x, y] = (r * 3 // 4, g * 3 // 4, b * 3 // 4, a)
+        tile('palm_log_side', side)
+        tile('palm_log_top', recolour(src_pic(d, tiles, files, 'jungle_log_top'), hsv_map(hue=0.09, sat=0.55, val=1.15)))
+        tile('palm_leaves', recolour(src_pic(d, tiles, files, 'jungle_leaves'), hsv_map(val=1.12)))
+        tile('palm_planks', recolour(src_pic(d, tiles, files, 'birch_planks'), hsv_map(hue=0.1, sat=1.25, val=0.98)))
+        tile('palm_sapling', recolour(src_pic(d, tiles, files, 'jungle_sapling'), hsv_map(dh=-0.03, val=1.1)))
+        co = _I.new('RGBA', (32, 32), (0, 0, 0, 0)); cp = co.load()
+        for y in range(32):
+            for x in range(32):
+                dx, dy = x - 15.5, y - 16.5
+                if dx * dx + dy * dy <= 110:
+                    shade = 1.0 - (dx + dy) / 40.0
+                    cp[x, y] = (int(min(255, 112 * shade)), int(min(255, 72 * shade)), int(min(255, 40 * shade)), 255)
+                    if (x * 7 + y * 3) % 11 == 0: cp[x, y] = (86, 54, 30, 255)   # husk fibres
+        for x, y in ((12, 9), (16, 8), (20, 10)): cp[x, y] = (60, 38, 22, 255)   # the three eyes
+        rel = 'textures/item/coconut.png'; co.save(d / rel)
+        tiles['coconut'] = tj['count']; files.append(rel); tj['res'].append(32); tj['count'] += 1
+    block('palm_log', 'Palm Log', {'hardness': 2, 'tool': 'axe', 'sound': 'log', 'isLog': True, 'axisBlock': True, 'fuel': 1.5,
+                                   'tex': {'top': 'palm_log_top', 'bottom': 'palm_log_top', 'side': 'palm_log_side'}},
+          [tiles['palm_log_side'], tiles['palm_log_side'], tiles['palm_log_top'], tiles['palm_log_top'], tiles['palm_log_side'], tiles['palm_log_side']])
+    block('palm_leaves', 'Palm Leaves', {'render': 2, 'opaque': False, 'hardness': 0.2, 'tool': None, 'sound': 'leaves', 'lightAtt': 1,
+                                         'isLeaves': True, 'tint': 'foliage', 'sapling': 'palm_sapling', 'tex': 'palm_leaves'}, [tiles['palm_leaves']] * 6)
+    block('palm_planks', 'Palm Planks', {'hardness': 2, 'tool': 'axe', 'sound': 'wood', 'fuel': 1.5, 'tex': 'palm_planks'}, [tiles['palm_planks']] * 6)
+    block('palm_sapling', 'Palm Sapling', {'render': 3, 'solid': False, 'opaque': False, 'hardness': 0, 'tool': None, 'sound': 'grass',
+                                           'needsSupport': True, 'fuel': 0.5, 'tree': 'palm', 'tex': 'palm_sapling'}, [tiles['palm_sapling']] * 6)
+    items['coconut'] = {'key': 'coconut', 'name': 'Coconut', 'maxStack': 64, 'icon': 'coconut', 'food': {'heal': 3}, 'desc': 'Falls from a felled palm.'}
+    recipe('palm_planks', 4, items_=['palm_log'])
     # thorn leaves: the Thornscrub's thorn trees (BTA's Caatinga); they prick like cactus
     if 'thorn_leaves' not in tiles:
         im = recolour(src_pic(d, tiles, files, 'acacia_leaves'), lambda r, g, b, a, x, y: (r * 150 // 255, g * 140 // 255, b * 70 // 255, 255 if a else 0))
@@ -393,6 +428,7 @@ def main(d):
     if 'hand_sieve' not in sh['itemTiles']: sh['itemTiles'].append('hand_sieve'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'steel_door_item' not in sh['itemTiles']: sh['itemTiles'].append('steel_door_item'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'glass_door_item' not in sh['itemTiles']: sh['itemTiles'].append('glass_door_item'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
+    if 'coconut' not in sh['itemTiles']: sh['itemTiles'].append('coconut'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'sulphur' not in sh['itemTiles']: sh['itemTiles'].append('sulphur'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'paintbrush' not in sh['itemTiles']: sh['itemTiles'].append('paintbrush'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))

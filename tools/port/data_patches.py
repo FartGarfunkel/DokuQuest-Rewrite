@@ -168,7 +168,7 @@ tj5 = json.loads((d / 'tiles.json').read_text())
 def _grey(im):
     op = [p for p in im.getdata() if p[3] >= 128]
     return op and sum(max(p[:3]) - min(p[:3]) for p in op) / len(op) < 8 and not any(p[3] == 253 for p in im.getdata())
-for _n in ('acacia_leaves', 'birch_leaves', 'dark_oak_leaves', 'jungle_leaves', 'fern', 'vine', 'spruce_leaves'):
+for _n in ('acacia_leaves', 'birch_leaves', 'dark_oak_leaves', 'jungle_leaves', 'palm_leaves', 'fern', 'vine', 'spruce_leaves'):
     if _n not in tj5['names']: continue
     _p = d / tj5['files'][tj5['names'][_n]]
     _im = Image.open(_p).convert('RGBA')
