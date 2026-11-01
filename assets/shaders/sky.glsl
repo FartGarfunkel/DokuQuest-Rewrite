@@ -17,6 +17,7 @@ uniform float uStars, uVoid, uAurora, uRainbow, uSkyT, uShowSun, uSunFade;
 uniform vec4 uStorm;
 uniform int uMoonPhase;
 uniform float uHarvest;   // Halloween: a full moon is a harvest moon, 1.6x bigger and orange
+uniform float uDream;     // dreamlike light (render/dreamlight_layer.cpp): 0 off, 1, 1.6 strong
 in vec2 vNdc;
 out vec4 fragColor;
 float h(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
@@ -42,6 +43,13 @@ void main() {
   if (d.y < 0.0) c = mix(uHorizon, uHorizon * (1.0 - uVoid * 0.85), clamp(-d.y * 3.0, 0.0, 1.0));
   float sg = max(dot(d, uSunDir), 0.0);
   c += uSunGlow * pow(sg, 6.0) * clamp(1.0 - abs(d.y) * 2.0, 0.0, 1.0);
+  if (uDream > 0.0 && uShowSun > 0.5) {   // Horizon's Golden Hour sky: warm round a low sun, a deeper blue overhead by day
+    float day = smoothstep(-0.1, 0.1, uSunDir.y) * uSunFade, low = 1.0 - smoothstep(0.0, 0.35, abs(uSunDir.y));
+    float nearH = 1.0 - smoothstep(0.0, 0.4, abs(d.y));
+    float halo = pow(sg, 6.0) * 0.6 + nearH * sg * sg * 0.4;
+    c += vec3(1.0, 0.55, 0.25) * halo * low * day * 0.6 * uDream;
+    c *= 1.0 - smoothstep(0.1, 1.0, d.y) * day * 0.12 * uDream * vec3(0.5, 0.25, 0.0);
+  }
   if (uStars > 0.0 && d.y > 0.0) {
     vec3 q = floor(d * 220.0);
     float s = step(0.9975, h(q));

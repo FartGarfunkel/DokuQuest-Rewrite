@@ -23,6 +23,7 @@ void registerStandLayer();
 void registerHeldLightFx();
 void registerWinterVillageLayer();
 void registerColourFilterLayer();
+void registerDreamlightLayer();
 void registerStatueLayer();
 void registerHeadLayer();   // render/head_layer.cpp
 
@@ -40,6 +41,7 @@ void registerItemLayers() {
   registerHeldLightFx();       // render/held_light_fx.cpp
   registerWinterVillageLayer();   // render/winter_village_layer.cpp (December)
   registerColourFilterLayer();   // render/colour_filter_layer.cpp
+  registerDreamlightLayer();     // render/dreamlight_layer.cpp
   registerStatueLayer();   // render/statue_layer.cpp
   registerLecternLayer();   // books on lecterns (render/lectern_layer.cpp)
   registerChestLayer();     // chest lids that open with the chest's screen (render/chest_layer.cpp)

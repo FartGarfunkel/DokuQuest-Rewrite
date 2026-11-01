@@ -293,6 +293,7 @@ void SkyRenderer::draw(const FrameCtx& f) {
   shader.set("uStorm", e.hasStorm ? e.storm : vec4(0, 1, 1000, 0)); shader.set("uStormCol", e.stormCol);
   shader.set("uAurora", e.aurora); shader.set("uRainbow", e.rainbow); shader.set("uSkyT", (float)std::fmod(skyT, 10000.0));
   shader.set("uShowSun", e.showSun && !e.underwater ? 1.f : 0.f); shader.set("uSunFade", 1.f - e.cloud);
+  { const int dl = g_settings ? g_settings->extra.value("dreamLight", 1) : 1; shader.set("uDream", dl <= 0 ? 0.f : dl >= 2 ? 1.6f : 1.f); }   // dreamlight.glsl's sky
   shader.set("uMoonPhase", e.moonPhase);
   shader.set("uHarvest", halloween() && f.dim == DIM_OVERWORLD && e.moonPhase == 0 ? 1.f : 0.f);
   shader.set("uSunDir", e.sunDir);
