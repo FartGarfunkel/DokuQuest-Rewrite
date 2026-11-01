@@ -97,6 +97,7 @@ const std::vector<std::array<const char*, 3>>& ruleToggles() {
     {"blockDrops", "Blocks drop items", "Broken blocks drop what they're made of"},
     {"allowSprinting", "Sprinting", "Turn off and nobody can sprint"},
     {"allowSleeping", "Sleeping skips the night", "Turn off and beds only set your spawn point"},
+    {"nightmares", "Nightmares", "Sleep in the dark with monsters about and one may come to your bed and wake you"},
     {"weatherCycle", "Weather changes", "Turn off to keep the weather as it is"},
     {"fallDamage", "Fall damage", ""},
     {"drowning", "Drowning", "Your breath runs out under water"},
