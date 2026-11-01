@@ -331,7 +331,22 @@ void deriveMicroVoxelHeights(TileSet& ts) {
     else if (isOreName(names[t])) { oreRelief(p, S, lum, lumS, d); ores++; }
     else if (featureRelief(p, S, lumS, d)) features++;
     else if (grooveRelief(p, S, lum, lumS, d)) grooved++;
-    else { lumRelief(p, S, lumS, avg, d); std::vector<float> bl; blur3(d, S, bl); d.swap(bl); }   // plain surfaces: smoothed luminance, then blurred again (no single-pixel spikes)
+    else {   // plain surfaces: smoothed luminance, then blurred again (no single-pixel spikes)
+      lumRelief(p, S, lumS, avg, d); std::vector<float> bl; blur3(d, S, bl); d.swap(bl);
+      // stretched to the tile's own spread, so a soft picture (sand, dirt, terracotta, obsidian, wool) is raised in
+      // whole micro-voxels too instead of staying under the geometry threshold (flat); a picture with next to no
+      // contrast (concrete, smooth stone) stays nearly flat
+      float m = 0, v = 0; for (int i = 0; i < S * S; i++) m += lum[i]; m /= S * S;
+      for (int i = 0; i < S * S; i++) v += (lum[i] - m) * (lum[i] - m);
+      const float sd = std::sqrt(v / (S * S));
+      if (!old && sd > 0.012f) {
+        std::vector<float> s(d); const size_t lo = s.size() / 10, hi = s.size() * 9 / 10;
+        std::nth_element(s.begin(), s.begin() + lo, s.end()); const float p10 = s[lo];
+        std::nth_element(s.begin(), s.begin() + hi, s.end()); const float p90 = s[hi];
+        const float amp = 0.75f * clampv((sd - 0.012f) / 0.03f, 0.f, 1.f);   // up to 3 micro-voxels deep
+        if (p90 - p10 > 1e-4f) for (float& x : d) x = clampv((x - p10) / (p90 - p10), 0.f, 1.f) * amp;
+      }
+    }
     if (!old && n >= S * S * 9 / 10) {
       // (no bevel round the faces: it drew a grid over every surface)
     }
