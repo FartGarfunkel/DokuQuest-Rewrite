@@ -424,6 +424,20 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
     auto it = bi.find(key);
     std::string k = it != bi.end() ? (*it)["k"].get<std::string>() : "sprite";
     VoxelGrid g; VoxelFaceColor fc;
+    if (it == bi.end()) {   // a block added since itemshapes.json was made (the Tool Forge, the BTA blocks...): a plain cube is drawn as one
+      BlockId bid = reg().blockId(def->block);
+      const BlockDef* bd = bid ? &reg().block(bid) : nullptr;
+      if (bd && (bd->render == Render::Cube || (bd->render == Render::Cutout && bd->solid)) && !bd->shapeKind && !bd->has("shape")) {
+        PxBox b{{0, 0, 0, 16, 16, 16}, {}, 0};
+        for (int f = 0; f < 6; f++) b.tile[f] = bd->faces[f];
+        std::vector<PxBox> boxes{b};
+        buildBoxes(ts, boxes, g, fc);
+        VoxelFrame fr; fr.voxel = 1.f / 32; fr.origin = vec3(-0.5f);
+        out.kind = VoxelModel::Block; out.depth = 0.5f;
+        finishGrid(out, g, fr, &fc);
+        return true;
+      }
+    }
     {   // furniture and other shaped blocks that only had a flat picture: build them from their real shape
       std::vector<PxBox> sbx;
       if (k == "sprite" && shapedBlockBoxes(*def, sbx)) {
