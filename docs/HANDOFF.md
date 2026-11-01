@@ -93,9 +93,10 @@ Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`.
 
 ## Where things are
 - **Repo:** `/home/claude/dq` (GitHub FartGarfunkel/DokuQuest-Rewrite).
-- **Branches:** latest release is **alpha.8** (2026-11-01, released from e8663de after the full playtest sweep, all
-  headless tests and CI passed; main = `chisel` at e8663de). Next release is **alpha.9**, no earlier than Nov 2 (one
-  per day). Work goes on `chisel`.
+- **Branches:** latest release is **alpha.8** (2026-11-01; tag at e8663de, which passed the full playtest sweep, all
+  headless tests and CI; its Windows link failed, so the assets were rebuilt from 0820251 = e8663de + declarations
+  moved to namespace scope, re-verified, and uploaded onto the same release: AppImage, tar.gz, Windows zip). main =
+  `chisel` at 0820251. Next release is **alpha.9**, no earlier than Nov 2 (one per day). Work goes on `chisel`.
 - **Build:** a fresh session has no deps or ccache: `bash tools/fetch_deps.sh`, then `cmake -S . -B build -G Ninja
   -DCMAKE_BUILD_TYPE=Release` and `ninja -C build -j2 dokuquest` in the background (~25 min first time, 2 cores).
   Never edit a .cpp while it's being compiled; touch edited files and rebuild if unsure.
