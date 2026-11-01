@@ -38,6 +38,7 @@ std::string riftAskLabel(Level& lv);                            // the button: "
 std::string riftGreeting(Level& lv);                            // a greeting that carries it ("" = the usual one)
 std::string riftNews(Level& lv);                                // what passes for news ("" = the usual news)
 std::string riftElderLine(Level& lv);                           // the elder's "The rift in the square…" answer ("" = none)
+std::string riftDream(Level& lv);                               // a dream on waking, as the world wears thin ("" = none; sim/rift.cpp)
 std::string riftElderLabel(Level& lv);
 std::string riftCorruptSay(Level& lv, const std::string& job);  // a villager's words breaking into his ("" = none)
 // The villagers emit this when someone first walks into a village (riftlore.js RIFT_CALL): EventBus

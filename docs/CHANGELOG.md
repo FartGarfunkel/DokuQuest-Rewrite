@@ -73,6 +73,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Hardcore worlds.** Pick Hardcore when you make a world: survival with one life, no commands. When you die you can stay and watch the world as a spectator, or leave.
 - **Sorting.** Middle-click a chest, a backpack or your bag (or click the right stick on one) and its stacks are put in order and topped up; the hotbar stays as you left it.
 - **New commands:** /playsound plays any of the game's sounds (with volume, pitch and a place) and /particle makes any particle (smoke, flame, heart, firework...).
+- **Nightmares** (a game rule, on by default): sleep in the dark with monsters about and one may come to your bed and wake you. Light your bedroom.
 
 **Gear and magic:**
 

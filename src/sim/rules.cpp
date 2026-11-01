@@ -9,7 +9,7 @@ const json& ruleDefaults() {
     {"dayMinutes", 10}, {"nightMinutes", 10},
     {"daylightCycle", true}, {"keepInventory", false}, {"graves", true}, {"mobSpawning", true}, {"mobGriefing", true}, {"tntExplodes", true},
     {"fireSpread", true}, {"blockDrops", true}, {"fallDamage", true}, {"drowning", true}, {"fireDamage", true}, {"naturalRegen", true},
-    {"grassSpread", true}, {"randomTickSpeed", 1}, {"hardcore", false}, {"saplingsPlant", true}, {"showCoords", false}, {"commands", false}, {"downed", true}, {"haunting", true}, {"allowSprinting", true}, {"allowSleeping", true}, {"weatherCycle", true},
+    {"grassSpread", true}, {"randomTickSpeed", 1}, {"hardcore", false}, {"nightmares", true}, {"saplingsPlant", true}, {"showCoords", false}, {"commands", false}, {"downed", true}, {"haunting", true}, {"allowSprinting", true}, {"allowSleeping", true}, {"weatherCycle", true},
   };
   return d;
 }
@@ -25,6 +25,7 @@ const std::vector<std::array<std::string, 3>>& ruleToggles() {
     {"blockDrops", "Blocks drop items", "Broken blocks drop what they're made of"},
     {"allowSprinting", "Sprinting", "Turn off and nobody can sprint"},
     {"allowSleeping", "Sleeping skips the night", "Turn off and beds only set your spawn point"},
+    {"nightmares", "Nightmares", "Sleep in the dark with monsters about and one may come to your bed and wake you"},
     {"weatherCycle", "Weather changes", "Turn off to keep the weather as it is"},
     {"fallDamage", "Fall damage", ""},
     {"drowning", "Drowning", "Your breath runs out under water"},

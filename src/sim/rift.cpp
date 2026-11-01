@@ -761,4 +761,22 @@ std::string riftCorruptSay(Level& lv, const std::string& job) {
   return pick(L);
 }
 
+// ------------------------------------------------------------------ dreams
+// Once the rift is open the sleepers dream, now and then, of the same place; the dreams come closer as it thins, and
+// stop once it is sealed.
+std::string riftDream(Level& lv) {
+  const int tier = riftTier(lv);
+  if (tier < 0 || tier >= 5) return "";
+  const int st = riftStability(lv);
+  if (rnd() > 0.15 + (100 - st) / 160.0) return "";
+  static const std::vector<std::vector<std::string>> D = {
+    {"You dreamed of a long hallway. You don't remember the colour of it.", "You dreamed someone stood at the foot of your bed. Only a dream.", "You dreamed of a village where every window was dark."},
+    {"You dreamed of a purple hallway, very long. Something was at the end of it.", "You dreamed the stars went out one at a time, and nobody minded.", "You dreamed you were mining, and the stone looked back."},
+    {"The hallway again. Nearer the end this time. There is a chair.", "You dreamed of a face without eyes, and woke looking at the ceiling.", "You dreamed the villagers all said your name at once."},
+    {"The chair at the end of the hallway is still warm.", "You dreamed the sky was a painted ceiling, and it was peeling.", "You woke before the dream ended. You think it was waiting for that."},
+    {"You dreamed of the gate in the square, open. Something was holding it open from the other side.", "You didn't dream. Something else did, and you watched."}};
+  const auto& v = D[std::min<size_t>((size_t)std::max(0, tier), D.size() - 1)];
+  return v[(size_t)(rnd() * v.size()) % v.size()];
+}
+
 } // namespace dq

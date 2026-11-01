@@ -1,6 +1,8 @@
 // sim/blockfx.cpp — port of game/blockfx.js (FallingBlock, PrimedTNT, checkFall, checkHarden,
 // primeTNT, explode, trySleep) and game.js onBlockChanged.
 #include "sim/blockfx.h"
+#include "sim/endstory.h"
+#include "sim/rules.h"
 #include "world/carve_faces.h"
 #include "sim/gameplay.h"
 #include "sim/combat.h"
@@ -135,6 +137,8 @@ void explode(Level& lv, int realm, vec3 at, float power, bool noBlocks, u32 sour
   }
 }
 
+class Creature; Creature* spawnCreature(Level& lv, int realm, const std::string& type, vec3 p);   // sim/creature.h (it clashes with gameplay.h here)
+
 // Everyone in bed: skip to morning (1.8 s of fade first, like the original).
 void tickSleep(Level& lv, double dt) {
   std::vector<Player*> all;
@@ -146,10 +150,42 @@ void tickSleep(Level& lv, double dt) {
   t += dt;
   if (t < 1.8) return;
   t = 0;
+  // nightmares (BTA's doNightmares, Minecraft beta's): asleep in the dark in the Overworld with monsters about, one may find
+  // its way to your bed and wake you, and the night goes on
+  if (rule(lv, "nightmares") && !lv.isRemote() && rule(lv, "mobSpawning")) {
+    bool woken = false;
+    for (Player* p : all) {
+      if (!p->sleeping || p->realm != REALM_MAIN || dimOfY(ifloor(p->pos.y)) != DIM_OVERWORLD || p->creative()) continue;
+      World& w = lv.world(p->realm);
+      const int bx = ifloor(p->pos.x), by = ifloor(p->pos.y), bz = ifloor(p->pos.z);
+      if ((w.getLight(bx, by, bz) & 15) >= 8 || rnd() > 0.3) continue;   // a lit room keeps them away; and only now and then
+      const Registry& R = reg();
+      for (int tries = 0; tries < 24 && !woken; tries++) {
+        const float a = (float)(rnd() * TAU), d = 2 + (float)rnd() * 3;
+        const int x = ifloor(p->pos.x + std::cos(a) * d), z = ifloor(p->pos.z + std::sin(a) * d);
+        for (int y = by + 1; y >= by - 2; y--) {
+          if (!R.tSolid[w.getBlock(x, y - 1, z)] || R.tSolid[w.getBlock(x, y, z)] || R.tSolid[w.getBlock(x, y + 1, z)] || R.tLiquid[w.getBlock(x, y, z)]) continue;
+          if ((w.getLight(x, y, z) & 15) >= 8) break;
+          static const char* KIND[3] = {"zombie", "skeleton", "spider"};
+          if (spawnCreature(lv, p->realm, KIND[(int)(rnd() * 3) % 3], vec3(x + 0.5f, (float)y, z + 0.5f))) {
+            woken = true;
+            for (Player* q : all) q->sleeping = false;
+            lv.fx->message(p->id, "You were woken by something at your bedside", "bad");
+            lv.fx->sound("hurt", p->pos, 12);
+          }
+          break;
+        }
+      }
+      if (woken) break;
+    }
+    if (woken) return;
+  }
   lv.info.time = DAY_LEN * 0.02;
   lv.info.day++;
   for (Player* p : all) p->sleeping = false;
   toastAll(lv, "Good morning", "good");
+  // dreams: as the world wears thin the sleepers dream of the same place (the story; riftDream says what, "" = none)
+  for (Player* p : all) { const std::string dr = riftDream(lv); if (!dr.empty()) lv.fx->message(p->id, dr, "dream"); }
   if (lv.events) lv.events->emit("morning", json::array({lv.info.day}));
 }
 
