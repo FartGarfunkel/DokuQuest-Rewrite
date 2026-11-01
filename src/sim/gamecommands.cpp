@@ -250,6 +250,22 @@ static void registerBuiltinCommands() {
     p.pos = vec3(x + 0.5f, y, z + 0.5f); p.vel = vec3(0); p.hasFallStart = false; p.prevPos = p.pos;
     return "Teleported to " + std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(z);
   });
+  C("playsound", "<sound> [volume] [pitch] [x y z]", "Play one of the game's sounds (BTA)", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
+    if (a.empty()) throw CommandUsage{};
+    const double v = num(a, 1, 1), pt = num(a, 2, 1);
+    vec3 at = c.p.pos + vec3(0, 1.6f, 0);
+    if (a.size() >= 6) at = vec3(coord(c.p, a, 3, 0) + 0.5f, coord(c.p, a, 4, 1) + 0.5f, coord(c.p, a, 5, 2) + 0.5f);
+    c.lv.fx->sound(a[0], at, 32, std::isfinite(v) ? clampv((float)v, 0.f, 4.f) : 1.f, std::isfinite(pt) ? clampv((float)pt, 0.25f, 4.f) : 1.f);
+    return "Playing " + a[0];
+  });
+  C("particle", "<kind> [count] [x y z]", "Make particles (smoke, flame, heart, firework...) (BTA)", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
+    if (a.empty()) throw CommandUsage{};
+    const double n = num(a, 1, 12);
+    vec3 at = c.p.pos + vec3(0, 1, 0) + vec3(-std::sin(c.p.yaw), 0, -std::cos(c.p.yaw)) * 2.f;
+    if (a.size() >= 5) at = vec3(coord(c.p, a, 2, 0) + 0.5f, coord(c.p, a, 3, 1) + 0.5f, coord(c.p, a, 4, 2) + 0.5f);
+    c.lv.fx->particles(a[0], at, std::isfinite(n) ? clampv((int)n, 1, 500) : 12);
+    return "Particles: " + a[0];
+  });
   C("give", "<item> [count]", "Get items", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
     if (a.empty()) throw CommandUsage{};
     std::string k = resolveItem(a[0]);
