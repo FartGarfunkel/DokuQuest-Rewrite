@@ -1,8 +1,36 @@
-# DokuQuest — session handoff (2026-11-01, overnight)
+# DokuQuest — session handoff (2026-11-01, day)
 
 Start here in a new session. Read this file, `CLAUDE.md` (the code map), and only the files a task needs.
 The full feature list is `docs/MASTER_PLAN.md` (the user's master doc, V2); the BTA detail is `docs/BTA_GAP.md`; the
-Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`.
+Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`. Third-party credits: `docs/CREDITS.md` (Horizon MIT; Cubyz and
+BTA ideas only). alpha.9's notes are written in CHANGELOG/news (not released yet: one release a day, verified builds).
+
+## Day 2026-11-01 (the user's bug reports while testing alpha.8, then the BTA 8.0 Nether, Cubyz tools, Horizon light)
+- **Terrain version 5** (LevelInfo/WorldGenOptions genVersion default 5; old saves keep theirs): `gen/nether_bta.*` is
+  BTA 8.0's Nether (NetherShape: floor/roof heightfields, five lands as jittered 230-block cells blended 56 blocks:
+  Crag, Volcanic Islands (cones with breached lava craters), Sulfur Pools (acid pools with rims), Crystal Forest (spires
+  on a 7-block grid, hanging ones), Old World (ash dunes, pits, ruins of scorched brick)); DepthsGen routes generate/
+  solidAt/terrainColumn/sample to it when `bta_` is set. `dq-gentool nether <seed>` maps the lands and finds a crater
+  and a pool. Overworld v5: ice floes by glaciers (`floes`). Per-land haze + minLight 0.27 (render/sky.cpp
+  btaNetherEnv, render/terrain_fx.cpp). Blocks from tools/port/nether_bta.py (acid = liquid kind 3: registry tLiquid 3,
+  physics Contacts::acid also sets water; controller/creature damage; worldsys flows it; buckets refuse it).
+- **Mixed tools/armour** (`core/tool_parts.*`, data/tool_materials.json + mixed_* items from tools/port/tool_parts.py):
+  crafting.cpp matchPartTool (patterns, mending with own materials), tag "pt"/"pa"; toolOf()/toolMaxDurability()/
+  stackName()/armorPointsOf() used by combat, wear, tooltips (ui/sheet.cpp), anvil; models keyed partToolModelKey
+  ("pt:..."/"pa:...") recoloured in item_models.cpp (g_recolour hook in finishGrid); per-stack icons
+  ItemIcons::dynamic (theme.cpp drawItem). The Tool Forge is a two-slot station "forge": gems (setToolGem).
+- **Fixes:** campfire (tileset.cpp unpackCampfireLog + shapes.json z/fit/grain on model boxes), open chest hole
+  (mesher hideAt), door/trapdoor swing relief voxels (swing_layer leafModel), lantern chains to ceilings (meta bits
+  2..6 = extra half blocks), skull item models (render/creature_models.cpp creatureHeadGrid), Wither Storm from a
+  command block, creative breaks hardness -1, Wither skull hit-back + arrows glance, LAN skins (net SKINS message,
+  netSkinHook, "net:<hash>" refs, assets registerNetSkin), portal view culled/scissored to its screen rect, villagers
+  sit from any side / badSeat, newer cube blocks drawn as cubes in hand, saddled pigs ridden.
+- **Light/distance:** render/dreamlight_layer.cpp + assets/shaders/dreamlight.glsl (Options → Lighting, extra
+  "dreamLight"), sky.glsl warm halo (uDream); distant tiles dither-fade (Tile::readyAt, uFadeIn/uFadeOut).
+- **Still open from the user's list:** raised micro-voxels "broke for most blocks" (asked which blocks; alpha.7 vs now
+  looked the same in a comparison), the Aether trees ("leaves broken") need a look in game, BTA sounds list
+  (Nether ambience per land, biome moods, discs, jukebox playback), eruptions/particles per Nether land, Nether mobs per
+  land, a true 3D voxel LOD (Voxy) is still not done (the LOD is 2.5D columns + floating bottoms).
 
 ## Overnight 2026-11-01 (the user: "work overnight, game-wide playtest, optimizing pass, check all the notes")
 - **Playtests:** `tools/playtests/run_all.sh out.txt [names]` runs every playtest in a fresh world on a copy of the
