@@ -1,6 +1,7 @@
 // render/painting_layer.cpp — paintings (BTA's painting, our own pictures): a framed canvas on the wall whose picture is
 // painted here from its number (block entity "painting", n): landscapes, seascapes, peaks, still lifes and colour
 // fields, each in one of six palettes, in 32 x 32 pixel art. Use one to turn to the next picture (sim/build.cpp).
+#include "render/tile_box.h"
 #include "render/item_layers.h"
 #include "render/be_scan.h"
 #include "render/content_draw.h"
@@ -123,8 +124,23 @@ public:
       mat4 m = glm::translate(mat4(1), rel + vec3(0.5f));
       m = glm::rotate(m, TURN[fm], vec3(0, 1, 0));
       m = glm::translate(m, vec3(0, 0, -0.5f + 0.07f));
+      const mat4 m0 = m;
       m = glm::scale(m, vec3(0.8125f, 0.8125f, 1));
       cd.picture(paintingTex(e.value("n", 0)), m, vec4(0, 0, 1, 1), vec4(1), vec2((l >> 4) / 15.f, (l & 15) / 15.f));
+      // a gold or an iron trim round the canvas (BTA): four thin bars of the metal block just proud of the frame
+      const std::string trim = e.value("trim", std::string());
+      if (!trim.empty()) {
+        const BlockId mb = reg().blockId(trim == "gold" ? "gold_block" : "iron_block");
+        const GLuint tx = mb ? tileTexture(s.app, reg().block(mb).faces[0]) : 0;
+        if (tx) {
+          const float h = 0.40625f + 0.05f, t = 0.05f, z0 = -0.035f, z1 = 0.035f;
+          const vec2 L((l >> 4) / 15.f, (l & 15) / 15.f);
+          drawTileBox(cd, m0, vec3(-h, h - t, z0), vec3(h, h, z1), tx, tx, tx, L, vec3(1), false);
+          drawTileBox(cd, m0, vec3(-h, -h, z0), vec3(h, -h + t, z1), tx, tx, tx, L, vec3(1), false);
+          drawTileBox(cd, m0, vec3(-h, -h + t, z0), vec3(-h + t, h - t, z1), tx, tx, tx, L, vec3(1), false);
+          drawTileBox(cd, m0, vec3(h - t, -h + t, z0), vec3(h, h - t, z1), tx, tx, tx, L, vec3(1), false);
+        }
+      }
     });
     if (begun) cd.end();
   }

@@ -10,6 +10,7 @@
 #include "sim/player.h"
 namespace dq {
 bool isMob(const Entity& e);   // sim/gameplay.cpp
+class Creature; Creature* spawnCreature(Level& lv, int realm, const std::string& type, vec3 p);   // sim/creature.h
 // (declared out here: MSVC gives a function declared inside a block the global namespace, so it never linked on Windows)
 std::vector<ItemStack> blockDrops(Level& lv, World& w, int x, int y, int z, BlockId id, u8 meta, const ToolInfo* tool, bool washed);   // sim/gameplay.h
 }
@@ -34,13 +35,13 @@ const Tables& T() {
   static const std::unordered_map<std::string, u8> ROLE = {{"wire", WIRE}, {"torch", TORCH}, {"torch_off", TORCH_OFF}, {"block", BLOCK},
     {"lever", LEVER}, {"button", BUTTON}, {"plate", PLATE}, {"repeater", REPEATER}, {"comparator", COMPARATOR}, {"observer", OBSERVER},
     {"lamp", LAMP}, {"piston", PISTON}, {"dispenser", DISPENSER}, {"dropper", DROPPER}, {"hopper", HOPPER}, {"daylight", DAYLIGHT},
-    {"target", TARGET}, {"prail", PRAIL}, {"drail", DRAIL}, {"bulb", BULB}, {"hook", HOOK}};
+    {"target", TARGET}, {"prail", PRAIL}, {"drail", DRAIL}, {"bulb", BULB}, {"hook", HOOK}, {"conduit", CONDUIT}, {"matcher", MATCHER}};
   for (size_t i = 0; i < R.blocks.size() && i < MAX_BLOCKS; i++) {
     const BlockDef& b = R.blocks[i];
     u8 r = 0;
     std::string rr = b.str("rs");
     if (!rr.empty()) { auto it = ROLE.find(rr); if (it != ROLE.end()) r = it->second; }
-    if (b.key == "redstone_block") r = BLOCK;
+    if (b.key == "redstone_block" || b.has("rsBlock")) r = BLOCK;   // (the redstone pumpkin powers like a redstone block)
     else if (b.has("noteBlock")) r = NOTE;
     else if (b.has("tnt")) r = TNT;
     else if (b.has("door")) r = DOOR;
@@ -49,7 +50,7 @@ const Tables& T() {
     else if (b.has("bellBlock") || b.has("cmdBlock")) r = BELL;
     t.role[i] = r;
     t.cond[i] = b.solid && b.opaque && !b.shapeKind && b.render == Render::Cube && r != BLOCK && r != OBSERVER && r != PISTON ? 1 : 0;
-    t.ticker[i] = r == HOPPER ? 1 : r == DAYLIGHT ? 2 : r == PLATE ? 3 : r == HOOK ? 4 : r == DRAIL ? 5 : b.has("siphon") ? 6 : 0;
+    t.ticker[i] = r == HOPPER ? 1 : r == DAYLIGHT ? 2 : r == PLATE ? 3 : r == HOOK ? 4 : r == DRAIL ? 5 : b.has("siphon") ? 6 : r == MATCHER ? 7 : 0;
     std::string rail = b.str("rail");
     t.rail[i] = rail == "normal" ? RAIL_NORMAL : rail == "powered" ? RAIL_POWERED : rail == "detector" ? RAIL_DETECTOR : rail == "activator" ? RAIL_ACTIVATOR : RAIL_NONE;
     t.mech[i] = b.has("mech") ? 1 : 0;
@@ -66,7 +67,13 @@ const Tables& T() {
     if (!o || o >= MAX_BLOCKS) continue;
     t.lampFlip[i] = o; t.lampFlip[o] = (BlockId)i; t.lampLit[o] = 1;
     if (b.has("inverted")) { t.lampInv[i] = 1; t.lampInv[o] = 1; }
-  } t.bulb = id("copper_bulb"); t.bulbLit = id("copper_bulb_lit");
+  }
+  for (size_t i = 0; i < R.blocks.size() && i < MAX_BLOCKS; i++) {   // conduits: "conduitLit" names the lit form of a dark one
+    BlockId o = R.blocks[i].has("conduitLit") ? id(R.blocks[i].str("conduitLit").c_str()) : 0;
+    if (!o || o >= MAX_BLOCKS) continue;
+    t.conduitFlip[i] = o; t.conduitFlip[o] = (BlockId)i; t.conduitLit[o] = 1;
+  }
+  t.bulb = id("copper_bulb"); t.bulbLit = id("copper_bulb_lit");
   t.piston = id("piston"); t.sticky = id("sticky_piston"); t.pistonExt = id("piston_extended"); t.stickyExt = id("sticky_piston_extended");
   t.reinf = id("reinforced_piston"); t.reinfExt = id("reinforced_piston_extended");
   t.head = id("piston_head"); t.moving = id("moving_block"); t.slime = id("slime_block"); t.honey = id("honey_block");
@@ -240,6 +247,8 @@ int Redstone::emit(int x, int y, int z, BlockId id, int m, int d) {
     case COMPARATOR: return d == H2D6[m & 3] ? (m >> 4) & 15 : 0;
     case OBSERVER: return (m & 8) && d == OPP6[(m & 7) % 6] ? 15 : 0;
     case DRAIL: case HOOK: return m & 8 ? 15 : 0;
+    case CONDUIT: return T().conduitLit[id] ? 15 : 0;
+    case MATCHER: return d == H2D6[m & 3] ? (m & 8 ? 15 : 0) : 0;
     case WIRE: {
       int p = m & 15;
       if (!p || d == 1) return 0;
@@ -258,6 +267,8 @@ int Redstone::strong(int x, int y, int z, BlockId id, int m, int d) {
     case REPEATER: case COMPARATOR: case OBSERVER: return emit(x, y, z, id, m, d);
     case DRAIL: return d == 0 && (m & 8) ? 15 : 0;
     case HOOK: return (m & 8) && d == hookSup(m) ? 15 : 0;
+    case MATCHER: return emit(x, y, z, id, m, d);
+    case CONDUIT: return 0;   // a conduit powers what touches it, but not through a block (no loop back into the run)
   }
   return 0;
 }
@@ -387,6 +398,8 @@ void Redstone::update(int x, int y, int z) {
       }
       break;
     }
+    case CONDUIT: updateConduit(x, y, z); break;
+    case MATCHER: matcherTick(x, y, z, id, m); break;
     case PRAIL: {
       bool on = railPowered(x, y, z, id, m);
       if (on != !!(m & 8)) w.setBlock(x, y, z, id, on ? m | 8 : m & ~8);
@@ -683,6 +696,7 @@ void Redstone::runTickers() {
     if (kind == 1) { if (now % 8 == 0) hopperTick(x, y, z, id, m); continue; }
     if (kind == 2) { if (now % 20 == 0) daylightTick(x, y, z, id, m); continue; }
     if (kind == 6) { if (now % 8 == 4) siphonTick(x, y, z, id, m); continue; }
+    if (kind == 7) { if (now % 8 == 2) matcherTick(x, y, z, id, m); continue; }
     if (kind == 3) plateTick(x, y, z, id, m);
     else if (kind == 4) hookTick(x, y, z, id, m);
     else if (kind == 5) detectorTick(x, y, z, id, m);
@@ -992,6 +1006,12 @@ void Redstone::dispense(int x, int y, int z) {
   bool freeCell = cur == AIR || (R.tReplaceable[cur] && !R.tLiquid[cur]);
   auto ok = [&] { smoke(); lv.fx->sound("dispense", c, 20); };
   std::string bucket = def ? def->str("bucket") : "";
+  if (def && def->has("summonWand")) {   // the summoning wand (BTA): from a dispenser too it calls up its creature
+    std::string mob = s.tag.is_object() ? s.tag.value("mob", std::string("pig")) : std::string("pig");
+    if (freeCell && spawnCreature(lv, w.realm, mob, fc - vec3(0, 0.5f, 0))) { ok(); lv.fx->particles("end_mote", fc, 10); }
+    else lv.fx->sound("dispense_fail", c, 20);
+    return;
+  }
   if (s.id == "arrow") {
     float sp = 22;
     auto a = createEntity("arrow");

@@ -38,7 +38,7 @@ void PlayerController::consumeHeld(int n) {
 }
 
 static bool itemHasUse(const ItemDef& d) {
-  for (const char* k : {"cape", "block", "heartCrystal", "cart", "boat", "food", "backpack", "bucket", "igniter", "pocketKey", "summon", "armor", "bow", "spyglass", "bonemeal", "plants", "disc", "bottle", "drink"})
+  for (const char* k : {"cape", "block", "heartCrystal", "cart", "boat", "food", "backpack", "bucket", "igniter", "pocketKey", "summon", "armor", "bow", "spyglass", "bonemeal", "plants", "disc", "bottle", "drink", "summonWand", "paintbrush"})
     if (d.has(k)) return true;
   return false;
 }

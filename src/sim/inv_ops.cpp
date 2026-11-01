@@ -26,7 +26,8 @@ static int packSize(const ItemStack& s) { const ItemDef* d = s.empty() ? nullptr
 
 // (0.9.0.65) two chests side by side open as one large chest (invui.js chestPartner)
 static bool chestPartner(World& w, int x, int y, int z, ivec3& out) {
-  BlockId chest = reg().blockId("chest");
+  BlockId chest = w.getBlock(x, y, z);   // a chest, or a painted chest (two of the same colour open as one)
+  if (!chest || (chest != reg().blockId("chest") && reg().block(chest).str("paintOf") != "chest")) return false;
   int m = w.getMeta(x, y, z) & 3; ivec2 ax = (m & 1) ? ivec2(0, 1) : ivec2(1, 0);
   auto same = [&](int k) { int a = x + ax.x * k, c = z + ax.y * k; return w.getBlock(a, y, c) == chest && (w.getMeta(a, y, c) & 3) == m; };
   int below = 0; while (below < 16 && same(-(below + 1))) below++;

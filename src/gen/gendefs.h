@@ -91,7 +91,7 @@ const char* biomeName(int b);
   X(coal_ore) X(iron_ore) X(copper_ore) X(tin_ore) X(gold_ore) X(lapis_ore) X(diamond_ore) X(mese_ore) X(redstone_ore) \
   X(granite) X(diorite) X(andesite) X(tuff) X(marble) X(limestone) X(calcite) X(dripstone_block) X(emerald_ore) \
   X(silver_ore) X(mithril_ore) X(adamantite_ore) X(ruby_ore) X(sapphire_ore) \
-  X(spruce_log) X(spruce_leaves) X(jungle_log) X(jungle_leaves) X(vine) X(cocoa) X(pine_log) X(pine_needles) X(aspen_log) \
+  X(spruce_log) X(spruce_leaves) X(jungle_log) X(jungle_leaves) X(cacao_leaves) X(vine) X(cocoa) X(pine_log) X(pine_needles) X(aspen_log) \
   X(aspen_leaves) X(log) X(leaves) X(birch_log) X(birch_leaves) X(flowering_azalea_leaves) X(azalea_leaves) X(acacia_log) \
   X(acacia_leaves) X(dark_oak_log) X(dark_oak_leaves) X(cherry_log) X(cherry_leaves) X(mangrove_log) X(mangrove_leaves) \
   X(crimson_stem) X(warped_stem) X(nether_wart_block) X(warped_wart_block) X(shroomlight) X(weeping_vines) X(bee_nest) \

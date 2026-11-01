@@ -23,7 +23,7 @@ void blockBoxes(const World& w, int x, int y, int z, std::vector<AABB>& out);
 
 // Move an entity by its velocity for dt, sliding along walls and stepping up onto slabs and
 // stairs (stepHeight; airStep = the little lip a body just off the ground may still step over).
-struct MoveParams { float stepHeight = 0.6f, airStep = 0; bool sneaking = false, item = false; };   // item: a dropped item (falls through mesh)
+struct MoveParams { float stepHeight = 0.6f, airStep = 0; bool sneaking = false, item = false; const std::string* itemId = nullptr; };   // item: a dropped item (falls through mesh; a gold mesh lets through only the item it is set to)
 struct MoveOut { bool hitWall = false, hitX = false, hitZ = false, hitCeiling = false, landed = false; };
 MoveOut moveEntity(const World& w, Entity& e, float dt, const MoveParams& mp = {});
 

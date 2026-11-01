@@ -88,6 +88,13 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
         }
         return;
       }
+      if (B.cacao_leaves && (hash32(t.x, t.ySeed, t.z, seed ^ 911) & 1023) < 72 && !t.bare) {   // now and then a cacao tree (BTA): short, cocoa all up the trunk
+        int Hc = 5 + jsFloor(t.h * 3);
+        for (int k = 0; k < Hc; k++) put(x, y + k, z, B.jungle_log);
+        leafBall(x, y + Hc - 1, z, 2.4, B.cacao_leaves, 0.75);
+        for (int d = 0; d < 4; d++) for (int k = 1; k < Hc - 2; k++) if (rnd() < 0.5) put(x + DIRX[d], y + k, z + DIRZ[d], B.cocoa, true, (((d + 2) & 3) << 4) | jsFloor(rnd() * 3));
+        return;
+      }
       int H = 8 + jsFloor(t.h * 6);
       for (int k = 0; k < H; k++) put(x, y + k, z, B.jungle_log);
       if (t.bare) return;

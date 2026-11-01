@@ -14,6 +14,21 @@
 #include "sim/content.h"
 
 namespace dq {
+bool chestPartner(World& w, int x, int y, int z, ivec3& out);   // sim/build.cpp
+// swap a block for another of its family (plain <-> painted) keeping its state: its meta and block entity (a chest's
+// contents, a sign's words), a door's other half, a double chest's other half
+static void repaintBlock(World& w, ivec3 at, BlockId to) {
+  const BlockId from = w.getBlock(at.x, at.y, at.z);
+  std::vector<ivec3> cells{at};
+  if (reg().block(from).has("door")) cells.push_back(at + ivec3(0, (w.getMeta(at.x, at.y, at.z) & 16) ? -1 : 1, 0));
+  ivec3 partner; if (chestPartner(w, at.x, at.y, at.z, partner)) cells.push_back(partner);
+  for (const ivec3& c : cells) {
+    if (w.getBlock(c.x, c.y, c.z) != from) continue;
+    json* e = w.blockEntity(c.x, c.y, c.z); json keep = e ? *e : json();
+    w.setBlock(c.x, c.y, c.z, to, w.getMeta(c.x, c.y, c.z));
+    if (!keep.is_null()) w.setBlockEntity(c.x, c.y, c.z, keep);
+  }
+}
 
 bool tryWitherSummon(Level& lv, int realm, ivec3 at);   // sim/wither.cpp
 
@@ -200,9 +215,16 @@ void registerUsables() {
         for (const char* c : COLS) { const std::string pre = std::string(c) + "_"; if (k.rfind(pre, 0) == 0) { rest = k.substr(pre.size()); break; } }
         const std::string to = rest == "wool" ? "wool" : rest == "terracotta" ? "terracotta" : rest == "stained_glass" ? "glass" :
                                rest == "stained_glass_pane" ? "glass_pane" : rest == "painted_planks" ? "planks" : "";
-        const BlockId tid = to.empty() ? 0 : reg().blockId(to);
-        if (tid && to != k) {
-          w.setBlock(hb.x, hb.y, hb.z, tid, w.getMeta(hb.x, hb.y, hb.z));
+        BlockId tid = to.empty() ? 0 : reg().blockId(to);
+        const BlockDef& wd = reg().block(w.getBlock(hb.x, hb.y, hb.z));
+        if (!tid && wd.has("paintOf")) tid = reg().blockId(wd.str("paintOf"));   // painted doors, trapdoors, buttons, plates, chests
+        if (!tid && wd.has("sign")) if (json* e = w.blockEntity(hb.x, hb.y, hb.z); e && e->is_object() && e->contains("paint")) {
+          e->erase("paint"); w.blockEntityChanged(hb.x, hb.y, hb.z);
+          lv.fx->particles("splash", vec3(hb) + vec3(0.5f, 1, 0.5f), 10); lv.fx->sound("splash_small", vec3(hb) + vec3(0.5f), 12); p->swingT = 0.01f;
+          return false;
+        }
+        if (tid && reg().block(tid).key != k) {
+          repaintBlock(w, hb, tid);
           lv.fx->particles("splash", vec3(hb) + vec3(0.5f, 1, 0.5f), 10);
           lv.fx->sound("splash_small", vec3(hb) + vec3(0.5f), 12);
           p->swingT = 0.01f;
@@ -219,13 +241,32 @@ void registerUsables() {
         const std::string k = reg().block(w.getBlock(hb.x, hb.y, hb.z)).key;
         auto ends = [&](const char* e) { size_t n = std::strlen(e); return k.size() >= n && k.compare(k.size() - n, n, e) == 0; };
         std::string to;
+        const BlockDef& bd = reg().block(w.getBlock(hb.x, hb.y, hb.z));
+        const bool wooden = bd.sound == "wood" || bd.has("painted");
+        bool signPaint = false;
         if (k == "planks" || ends("_planks")) to = col + "_painted_planks";
         else if (k == "wool" || ends("_wool")) to = col == "white" ? "wool" : col + "_wool";
         else if (k == "glass" || ends("_stained_glass")) to = col + "_stained_glass";
         else if (k == "terracotta" || ends("_terracotta")) to = col + "_terracotta";
-        BlockId tid = to.empty() ? 0 : reg().blockId(to);
-        if (!tid || to == k) return false;
-        w.setBlock(hb.x, hb.y, hb.z, tid, w.getMeta(hb.x, hb.y, hb.z));
+        // BTA's painted wood: doors, trapdoors, buttons, pressure plates and chests of any wood, signs (their board), lamps
+        else if (bd.has("door") && wooden) to = col + "_painted_door";
+        else if (bd.has("trapdoor") && wooden) to = col + "_painted_trapdoor";
+        else if (bd.str("rs") == "button" && (bd.has("wooden") || wooden)) to = col + "_painted_button";
+        else if (bd.str("rs") == "plate" && wooden) to = col + "_painted_pressure_plate";
+        else if (k == "chest" || bd.str("paintOf") == "chest") to = col + "_painted_chest";
+        else if (bd.str("rs") == "lamp" && !bd.has("inverted")) to = col + (ends("_on") ? "_lamp_on" : "_lamp");
+        else if (bd.has("sign")) signPaint = true;
+        if (signPaint) {
+          json* e = w.blockEntity(hb.x, hb.y, hb.z, true);
+          if (!e) return false;
+          if (!e->is_object()) *e = {{"type", "sign"}};
+          if (e->value("paint", std::string()) == col) return false;
+          (*e)["paint"] = col; w.blockEntityChanged(hb.x, hb.y, hb.z);
+        } else {
+          BlockId tid = to.empty() ? 0 : reg().blockId(to);
+          if (!tid || to == k) return false;
+          repaintBlock(w, hb, tid);
+        }
         lv.fx->particles("dust", vec3(hb) + vec3(0.5f), 8);
         lv.fx->material("wool", "place", vec3(hb) + vec3(0.5f));
         if (!p->creative()) {

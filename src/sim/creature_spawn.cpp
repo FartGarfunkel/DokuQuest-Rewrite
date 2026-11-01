@@ -29,6 +29,7 @@ void registerTravelJournal();
 void registerAchievements();
 void registerSnowSentry();
 void registerEndShulkers();
+void registerBtaMore();   // sim/bta_more.cpp
 
 bool beeFlower(World& w, vec3 at, float R, int tries, ivec3& out);   // creature_beasts.cpp
 vec3 hiveFront(World& w, ivec3 h);
@@ -710,7 +711,7 @@ void registerCreatures() {
   registerTravelJournal();   // sim/travel_journal.cpp
   registerAchievements();     // sim/achievements.cpp
   registerSnowSentry();         // sim/snow_sentry.cpp
-  registerEndShulkers();   // sim/end_shulkers.cpp
+  registerBtaMore(); registerEndShulkers();   // sim/end_shulkers.cpp
   registerTrickOrTreat();
   registerWeaponRack();
   registerSlimeGoo();

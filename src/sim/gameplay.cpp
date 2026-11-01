@@ -162,7 +162,7 @@ public:
         }
       }
     }
-    moveEntity(w, *this, dt, {0.6f, 0, false, true});
+    { MoveParams mp{0.6f, 0, false, true}; mp.itemId = &stack.id; moveEntity(w, *this, dt, mp); }
     // a sapling left lying on soil takes root, so forests grow back by themselves
     if (onGround && !floating) {
       if (plantT < 0) plantT = 10 + (float)rnd() * 25;

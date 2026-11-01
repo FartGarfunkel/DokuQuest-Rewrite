@@ -30,9 +30,10 @@ json* containerEntity(World& w, int x, int y, int z) {
   w.setBlockEntity(x, y, z, make);
   return w.blockEntity(x, y, z);
 }
+static bool chestKind(BlockId id) { return id && (id == KB().chest || reg().block(id).str("paintOf") == "chest"); }   // a chest or a painted one
 bool chestPartner(World& w, int x, int y, int z, ivec3& out) {
-  BlockId chest = KB().chest;
-  if (!chest || w.getBlock(x, y, z) != chest) return false;
+  BlockId chest = w.getBlock(x, y, z);   // (two of the same colour join)
+  if (!chestKind(chest)) return false;
   int m = w.getMeta(x, y, z) & 3, ax = (m & 1) ? 0 : 1, az = (m & 1) ? 1 : 0;
   auto same = [&](int k) { return w.getBlock(x + ax * k, y, z + az * k) == chest && (w.getMeta(x + ax * k, y, z + az * k) & 3) == m; };
   int below = 0; while (below < 16 && same(-(below + 1))) below++;
@@ -139,11 +140,11 @@ bool PlayerController::placement(const RayHit& hit, BlockId bid, Placement& out)
   } else if (bhas(bid, BF::FacingFront)) {
     meta = (u8)facingMeta(p);
     // a chest set beside a lone chest turns to match it so the two join
-    if (bid == B.chest && bid) {
+    if (chestKind(bid)) {
       int pick = -1;
       for (auto [dx, dz] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
         int ax = x + dx, az = z + dz;
-        if (w.getBlock(ax, y, az) != B.chest) continue;
+        if (w.getBlock(ax, y, az) != bid) continue;
         int nm = w.getMeta(ax, y, az) & 3;
         ivec3 partner;
         if (((nm & 1) ? 0 : 1) != (dx ? 1 : 0) || chestPartner(w, ax, y, az, partner)) continue;
@@ -240,7 +241,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
   ItemStack placed = held;   // (contents travel with chests and barrels)
   w.setBlock(x, y, z, bid, meta, SetFlags::Urgent);
   for (auto& a : also) w.setBlock(a[0], a[1], a[2], (BlockId)a[3], (u8)a[4], SetFlags::Urgent);
-  if (bid == B.chest || bid == B.barrel) {
+  if (chestKind(bid) || bid == B.barrel) {
     json items = json::array();
     if (placed.tag.is_object() && placed.tag.contains("c") && placed.tag["c"].is_array()) items = placed.tag["c"];
     else for (int i = 0, n = (int)bdef.num("container", 27); i < n; i++) items.push_back(nullptr);

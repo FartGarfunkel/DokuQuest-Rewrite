@@ -234,6 +234,39 @@ bool growTree(Level& lv, World& w, int x, int y, int z, double r) {
   const Registry& R = reg();
   BlockId sap = w.getBlock(x, y, z);
   std::string type = R.block(sap).str("tree", "oak");
+  auto placeParts = [&](const std::vector<std::array<int, 6>>& parts) {
+    for (auto& p : parts) {
+      if (p[1] == y && p[0] == x && p[2] == z) continue;
+      BlockId b = w.getBlock(p[0], p[1], p[2]);
+      if (b && !bhas(b, BF::IsLeaves) && !R.tReplaceable[b] && R.block(b).key != "tall_grass") return false;
+    }
+    w.setBlock(x, y, z, AIR);
+    for (auto& p : parts) {
+      BlockId b = w.getBlock(p[0], p[1], p[2]);
+      if (p[4] && b && !R.tReplaceable[b]) continue;
+      w.setBlock(p[0], p[1], p[2], (BlockId)p[3], (u8)p[5]);
+    }
+    return true;
+  };
+  if (type == "cacao") {   // the cacao tree (BTA): a short jungle-wood trunk under its own leaves, cocoa pods all up the trunk
+    BlockId lg = R.blockId("jungle_log"), lf = R.blockId("cacao_leaves"), pod = R.blockId("cocoa");
+    if (!lg || !lf) return false;
+    std::vector<std::array<int, 6>> cp;
+    Mulberry32 m(hash32(x, y, z, 31));
+    int H = 5 + (int)(r * 3);
+    for (int k = 0; k < H; k++) cp.push_back({x, y + k, z, (int)lg, 0, 0});
+    for (int ly = H - 2; ly <= H + 1; ly++) {
+      int rad = ly >= H ? 1 : 2;
+      for (int dz = -rad; dz <= rad; dz++) for (int dx = -rad; dx <= rad; dx++) {
+        if (std::abs(dx) == rad && std::abs(dz) == rad && (ly >= H || m() < 0.5)) continue;
+        if (!dx && !dz && ly < H) continue;
+        cp.push_back({x + dx, y + ly, z + dz, (int)lf, 1, 0});
+      }
+    }
+    if (pod) for (int d = 0; d < 4; d++) for (int k = 1; k < H - 2; k++) if (m() < 0.45)
+      cp.push_back({x + DIRX[d], y + k, z + DIRZ[d], (int)pod, 1, (((d + 2) & 3) << 4) | (int)(m() * 3)});
+    return placeParts(cp);
+  }
   if (hooks().growTree) return hooks().growTree(w, x, y, z, type, r);
   auto pick = [&](std::initializer_list<std::string> keys) { for (auto& k : keys) { BlockId id = R.blockId(k); if (id) return id; } return (BlockId)0; };
   BlockId log = pick({type + "_log", "log"}), leaves = pick({type + "_leaves", type + "_needles", "leaves"});
@@ -274,18 +307,7 @@ bool growTree(Level& lv, World& w, int x, int y, int z, double r) {
       }
     }
   }
-  for (auto& p : parts) {
-    if (p[1] == y && p[0] == x && p[2] == z) continue;
-    BlockId b = w.getBlock(p[0], p[1], p[2]);
-    if (b && !bhas(b, BF::IsLeaves) && !R.tReplaceable[b] && R.block(b).key != "tall_grass") return false;
-  }
-  w.setBlock(x, y, z, AIR);
-  for (auto& p : parts) {
-    BlockId b = w.getBlock(p[0], p[1], p[2]);
-    if (p[4] && b && !R.tReplaceable[b]) continue;
-    w.setBlock(p[0], p[1], p[2], (BlockId)p[3], (u8)p[5]);
-  }
-  return true;
+  return placeParts(parts);
 }
 
 // ---- random ticks --------------------------------------------------------------------------------
@@ -362,6 +384,13 @@ static void growExtra(Level& lv, World& w, int x, int y, int z, BlockId id, u8 m
   if (id == B.weeping_vines || id == B.cave_vines) {
     if (rnd() < 1.0 / 680 && w.getBlock(x, y - 1, z) == AIR) { int h = 1; while (h < 26 && bhas(w.getBlock(x, y + h, z), BF::Hangs)) h++; if (h < 25) w.setBlock(x, y - 1, z, id == B.cave_vines && rnd() < 0.15 ? B.cave_vines_lit : id, 0); }
     else if (id == B.cave_vines && rnd() < 1.0 / 60) w.setBlock(x, y, z, B.cave_vines_lit, meta);
+    return;
+  }
+  if (d.has("igneous")) {   // igneous emberstone (BTA): a fire on top that never goes out, and wet sponges beside it dry
+    static const BlockId fireId = R.blockId("fire"), wet = R.blockId("wet_sponge"), dry = R.blockId("sponge");
+    if (fireId && w.getBlock(x, y + 1, z) == AIR) w.setBlock(x, y + 1, z, fireId, 0);
+    if (wet && dry) for (int dz = -2; dz <= 2; dz++) for (int dy = -1; dy <= 2; dy++) for (int dx = -2; dx <= 2; dx++)
+      if (w.getBlock(x + dx, y + dy, z + dz) == wet) { w.setBlock(x + dx, y + dy, z + dz, dry, 0); lv.fx->particles("poof", vec3(x + dx, y + dy, z + dz) + vec3(0.5f), 6); }
     return;
   }
   if (d.has("hive")) { if ((meta & 0x0c) != 0x0c && rnd() < 1.0 / 140) w.setBlock(x, y, z, id, meta + 4); return; }

@@ -100,6 +100,7 @@ public:
       std::string wood = bd.key.substr(0, bd.key.size() - 5);
       BlockId pl = reg().blockId(wood == "oak" ? "planks" : wood + "_planks");
       if (!pl) pl = reg().blockId("planks");
+      if (e.contains("paint") && e["paint"].is_string()) if (BlockId pp = reg().blockId(e["paint"].get<std::string>() + "_painted_planks")) pl = pp;   // painted with the brush (BTA)
       GLuint side = tileTexture(a, reg().block(pl).faces[0]), top = tileTexture(a, reg().block(pl).faces[2]);
       if (!side) return;
       if (!begun) { if (!cd.begin(f, f.cam.viewProj)) return; begun = true; }
