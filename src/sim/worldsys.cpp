@@ -335,18 +335,22 @@ static void grassTick(Level& lv, World& w, int x, int y, int z, BlockId id) {
   BlockId above = w.getBlock(x, y + 1, z);
   if ((R.tOpaque[above] && R.tSolid[above] && !bhas(above, BF::IsLog)) || R.tLiquid[above]) { if (rule(lv, "grassSpread")) w.setBlock(x, y, z, B.dirt, 0); return; }
   if (!rule(lv, "grassSpread")) return;
-  int tx = x + (int)std::floor(rnd() * 3) - 1, ty = y + (int)std::floor(rnd() * 5) - 3, tz = z + (int)std::floor(rnd() * 3) - 1;
-  if (w.getBlock(tx, ty, tz) != B.dirt) return;
-  BlockId a = w.getBlock(tx, ty + 1, tz);
-  if (R.tOpaque[a] || R.tLiquid[a]) return;
-  u8 l = w.getLight(tx, ty + 1, tz);
-  if (std::max(l >> 4, l & 15) < 9) return;
-  w.setBlock(tx, ty, tz, id, 0);
+  // Minecraft's way: four tries at bare dirt in the 3 x 5 x 3 around (one up, three down), each needing light and air above
+  static const BlockId snowy = R.blockId("snowy_grass");
+  for (int t = 0; t < 4; t++) {
+    int tx = x + (int)std::floor(rnd() * 3) - 1, ty = y + (int)std::floor(rnd() * 5) - 3, tz = z + (int)std::floor(rnd() * 3) - 1;
+    if (w.getBlock(tx, ty, tz) != B.dirt) continue;
+    BlockId a = w.getBlock(tx, ty + 1, tz);
+    if ((R.tOpaque[a] && R.tSolid[a]) || R.tLiquid[a]) continue;
+    u8 l = w.getLight(tx, ty + 1, tz);
+    if (std::max(l >> 4, l & 15) < 9) continue;
+    w.setBlock(tx, ty, tz, id == snowy && snowy ? (BlockId)R.blockId("grass") : id, 0);
+  }
 }
 static void growExtra(Level& lv, World& w, int x, int y, int z, BlockId id, u8 meta) {
   const Registry& R = reg(); const KnownBlocks& B = KB();
   const BlockDef& d = R.block(id);
-  if (R.tGrassy[id]) { if (rnd() > 1.0 / 30) return; grassTick(lv, w, x, y, z, id); return; }
+  if (R.tGrassy[id]) { grassTick(lv, w, x, y, z, id); return; }
   if (d.has("crop") && d.props["crop"].contains("fruit")) { if ((meta & 15) >= d.props["crop"].value("stages", 1) - 1 && rnd() < 1.0 / 340) stemFruit(w, x, y, z, d); return; }
   if (id == B.bamboo) {
     if (rnd() > 1.0 / 205) return;
@@ -382,6 +386,7 @@ void randomTicks(Level& lv, World& w, float px, float pz) {
   if (!cache) { auto c = std::make_shared<RandomTickCache>(); cache = c.get(); w.addSystem(c); }
   int pcx = ifloor(px) >> 4, pcz = ifloor(pz) >> 4;
   int scanned = 0;
+  const double tickSpeed = std::clamp(ruleNum(lv, "randomTickSpeed"), 0.0, 100.0);
   std::vector<Chunk*> list;
   for (auto& [k, c] : w.chunks()) if (std::abs(k.cx - pcx) <= 6 && std::abs(k.cz - pcz) <= 6) list.push_back(c.get());
   for (Chunk* c : list) {
@@ -421,14 +426,16 @@ void randomTicks(Level& lv, World& w, float px, float pz) {
       } else if (d.has("oxidizes")) { if (rnd() < 1.0 / 2400) w.setBlock(x, y, z, R.blockId(d.str("oxidizes")), meta); }
       else growExtra(lv, w, x, y, z, id, meta);
     }
-    // grass creeping: a few random columns per chunk each second
-    for (int k = 0; k < 4; k++) {
+    // grass creeping: four random columns per chunk each second (about once a minute for each, as in Minecraft; the
+    // randomTickSpeed rule scales it), looking down through leaves, logs and plants to the ground under trees too
+    for (int k = 0, n = (int)std::lround(4 * tickSpeed); k < n; k++) {
       int col = ((int)(rnd() * 16)) | (((int)(rnd() * 16)) << 4);
       int cx = col & 15, cz = col >> 4;
       int y = std::min(c->maxY, DIM_H - 1);
-      while (y > 0 && !R.tSolid[c->get(cx, y, cz)]) y--;
+      while (y > 0) { BlockId b = c->get(cx, y, cz); if (R.tSolid[b] && !R.tLeaves[b] && !bhas(b, BF::IsLog)) break; y--; }
       BlockId id = c->get(cx, y, cz);
-      if (R.tGrassy[id]) growExtra(lv, w, c->worldX() + cx, base + y, c->worldZ() + cz, id, c->getMeta(cx, y, cz));
+      static const BlockId snowyG = R.blockId("snowy_grass");
+      if (R.tGrassy[id] || (snowyG && id == snowyG)) grassTick(lv, w, c->worldX() + cx, base + y, c->worldZ() + cz, id);
     }
   }
 }

@@ -1,0 +1,117 @@
+{
+"steps": [
+{
+"wait": 200,
+"do": "anchor"
+},
+{
+"do": "cmd",
+"text": "/time set noon"
+},
+{
+"do": "cmd",
+"text": "/gamerule randomTickSpeed 100"
+},
+{
+"do": "fill",
+"rel": true,
+"from": [
+-8,
+0,
+-8
+],
+"to": [
+8,
+6,
+8
+],
+"key": "air"
+},
+{
+"do": "fill",
+"rel": true,
+"from": [
+-8,
+-1,
+-8
+],
+"to": [
+8,
+-1,
+8
+],
+"key": "grass"
+},
+{
+"do": "fill",
+"rel": true,
+"from": [
+-3,
+-1,
+-3
+],
+"to": [
+3,
+-1,
+3
+],
+"key": "dirt"
+},
+{
+"do": "tp",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -6
+},
+{
+"wait": 20,
+"do": "expect",
+"rel": true,
+"block": [
+0,
+-1,
+0
+],
+"is": "dirt"
+},
+{
+"wait": 900,
+"do": "expect",
+"rel": true,
+"block": [
+-3,
+-1,
+0
+],
+"is": "grass"
+},
+{
+"do": "expect",
+"rel": true,
+"block": [
+3,
+-1,
+3
+],
+"is": "grass"
+},
+{
+"do": "expect",
+"rel": true,
+"block": [
+0,
+-1,
+0
+],
+"is": "grass"
+},
+{
+"do": "cmd",
+"text": "/gamerule randomTickSpeed 1"
+},
+{
+"do": "quit"
+}
+]
+}

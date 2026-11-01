@@ -3,7 +3,7 @@
 // Installed mods (enable/disable through mod/modloader.h), Data packs (forms that write blocks.json /
 // items.json / recipes.json for a mod) and the Engine source browser.
 #include "launcher/modstudio.h"
-namespace dq { void drawMusicStudio(struct Launcher& L); }   // launcher/music_studio.cpp
+namespace dq { void drawMusicStudio(struct Launcher& L); void drawSoundStudio(struct Launcher& L); }   // launcher/music_studio.cpp
 #include "mod/modloader.h"
 #include "core/registry.h"
 #include <imgui_stdlib.h>
@@ -42,8 +42,8 @@ bool jsSyntaxCheck(const std::string& code, std::string& err) {
 
 namespace studio {
 namespace {
-enum Page { P_OVERVIEW, P_API, P_EDITOR, P_MODS, P_DATA, P_ENGINE, P_MUSIC, P_COUNT };
-const char* pageNames[] = {"Overview", "DQ API", "Mod editor", "Installed mods", "Data packs", "Engine source", "Music"};
+enum Page { P_OVERVIEW, P_API, P_EDITOR, P_MODS, P_DATA, P_ENGINE, P_MUSIC, P_SOUNDS, P_COUNT };
+const char* pageNames[] = {"Overview", "DQ API", "Mod editor", "Installed mods", "Data packs", "Engine source", "Music", "Sounds"};
 
 struct Editor {
   bool inited = false; int tpl = 0;
@@ -373,12 +373,13 @@ void drawStudioPage(Launcher& L) {
     case P_DATA: drawData(L); break;
     case P_ENGINE: drawEngine(L); break;
     case P_MUSIC: drawMusicStudio(L); break;
+    case P_SOUNDS: drawSoundStudio(L); break;
   }
 }
 } // namespace studio
 
 void studioOpenPage(const std::string& name) {
-  static const char* ids[] = {"overview", "api", "editor", "mods", "data", "engine", "music"};
+  static const char* ids[] = {"overview", "api", "editor", "mods", "data", "engine", "music", "sounds"};
   for (int i = 0; i < studio::P_COUNT; i++) if (name == ids[i]) studio::S().page = i;
 }
 

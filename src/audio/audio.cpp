@@ -5,6 +5,7 @@
 #define MA_NO_GENERATION
 #include <miniaudio.h>
 #include "audio/engine.h"
+#include <deque>
 #include "audio/music.h"
 #include "audio/ambience.h"
 #include "common/fs.h"
@@ -356,6 +357,15 @@ void AudioEngine::musicNote(int ins, float midi, float dur, float vel, double at
   if (!impl) return;
   AudioCmd c; c.t = AudioCmd::Note; c.at = at; c.ins = (u8)ins; c.a = midi; c.b = dur; c.c = vel; c.bus = 0; impl->send(c);
   AudioCmd v; v.t = AudioCmd::Bus; v.bus = 0; v.a = 1; v.b = 0; impl->send(v);
+}
+int AudioEngine::playSamples(const std::vector<float>& mono48k, float volume, float pitch) {
+  if (!impl || !impl->ok || mono48k.size() < 2) return 0;
+  static std::deque<std::unique_ptr<AudioBuffer>> kept;   // a few studio buffers stay alive while they may be playing
+  kept.push_back(std::make_unique<AudioBuffer>()); kept.back()->d = mono48k;
+  while (kept.size() > 6) kept.pop_front();
+  AudioCmd c; c.t = AudioCmd::Play; c.buf = kept.back().get(); c.gL = c.gR = volume; c.rate = pitch; c.cat = CAT_SFX; c.handle = impl->nextHandle++;
+  impl->send(c);
+  return c.handle;
 }
 void AudioEngine::musicClear() { if (!impl) return; AudioCmd c; c.t = AudioCmd::MusicClear; c.bus = 0; impl->send(c); }
 void AudioEngine::stop(int handle) { AudioCmd c; c.t = AudioCmd::Stop; c.handle = handle; impl->send(c); }

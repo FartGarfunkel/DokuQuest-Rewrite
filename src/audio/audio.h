@@ -51,6 +51,8 @@ public:
   double audioClock() const;
   void musicNote(int ins, float midi, float dur, float vel, double at);
   void musicClear();
+  // the Sound Studio (launcher): play samples of its own (mono, 48 kHz) at a pitch; returns a handle for stop()
+  int playSamples(const std::vector<float>& mono48k, float volume = 1, float pitch = 1);
   void update(double dt);           // ambience, music, fades, sounds waiting to be rendered
   bool ok() const;
   // tests and tools
