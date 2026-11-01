@@ -20,7 +20,8 @@ uniform vec3 uSkyColor;
 uniform vec3 uFogColor;
 uniform float uFogStart;
 uniform float uFogEnd;
-uniform vec3 uNearFog;   // the old fog: start, end, how thick (0 = none); the far lands stay faint beyond it
+uniform vec3 uNearFog;
+uniform vec4 uSeason;    // seasons: grass and leaves turn toward rgb by a (0 = summer green)   // the old fog: start, end, how thick (0 = none); the far lands stay faint beyond it
 uniform float uBrightness;    // settings.brightness
 uniform float uMicroDist;     // micro-voxel relief distance
 uniform float uWind;          // wind strength (original env.wind: 0.45 + strength * 0.9, 0 when waving is off)

@@ -239,6 +239,18 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd, bool prima
     static float eased = 0;
     if (primary) { eased += (oldFog - eased) * 0.02f; oldFog = eased; }
   }
+  // seasons (sim/weather.h): spring fresh, summer as it is, autumn gold and rust, winter dull; eased across a day
+  if (realm == REALM_MAIN && d == DIM_OVERWORLD) {
+    const float ph = seasonPhase(lv);
+    if (ph >= 0) {
+      static const vec4 S[4] = {vec4(0.62f, 1.0f, 0.42f, 0.18f), vec4(1, 1, 1, 0), vec4(1.0f, 0.56f, 0.18f, 0.6f), vec4(0.72f, 0.68f, 0.56f, 0.5f)};
+      const int a = (int)ph & 3, b = (a + 1) & 3;
+      const float k = smoothstepf(6.f / 7.f, 1.f, ph - std::floor(ph));   // the last day of a season turns into the next
+      vec4 A = S[a], B = S[b];
+      if (A.a == 0) A = vec4(vec3(B), 0); if (B.a == 0) B = vec4(vec3(A), 0);
+      f.season = glm::mix(A, B, k);
+    } else f.season = vec4(0);
+  } else f.season = vec4(0);
   f.nearFog = oldFog > 0.01f && !e.underwater ? vec3(lerpf(fr.y, 8, oldFog), lerpf(fr.y, 46, oldFog), 0.92f * oldFog) : vec3(0);
   e.fogRange = fr;
   if (primary) { env = e; g_env = e; }

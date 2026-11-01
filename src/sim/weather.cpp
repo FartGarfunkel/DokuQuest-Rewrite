@@ -158,6 +158,16 @@ std::string WeatherSystem::skyZone(Level& lv, float x, float z) const {
   return "temperate";
 }
 
+float seasonPhase(const Level& lv) {
+  const json& R = lv.info.rules;
+  if (R.is_object() && R.contains("seasons") && R["seasons"] == false) return -1;
+  const double dayLen = 1200;   // (the original's day: 20 minutes)
+  const double days = (double)lv.info.day + std::fmod(std::max(0.0, lv.info.time), dayLen) / dayLen;
+  return (float)std::fmod(days / 7.0, 4.0);
+}
+int seasonOf(const Level& lv) { const float p = seasonPhase(lv); return p < 0 ? -1 : (int)p & 3; }
+const char* seasonName(int s) { static const char* N[4] = {"Spring", "Summer", "Autumn", "Winter"}; return s >= 0 && s < 4 ? N[s] : ""; }
+
 int WeatherSystem::precipAt(World& w, float x, float y, float z) {
   if (w.realm != REALM_MAIN || dimOfY(clampv(ifloor(y), 0, WORLD_H - 1)) != DIM_OVERWORLD || !lvl) return 0;
   bool shower = showerK > 0.01f && kind == "clear";
@@ -172,6 +182,7 @@ int WeatherSystem::precipAt(World& w, float x, float y, float z) {
   int k = 1;
   if (c.desert || (c.temp > 0.28f && c.humid < 0.02f)) k = 0;
   else if (c.temp < -0.3f || high) k = 2;
+  else if (seasonOf(*lvl) == 3 && c.temp < 0.25f) k = 2;   // winter: the temperate lands get snow too
   // rain only falls on the jungle or the swamp in one of their own showers
   if (k && shower) { std::string zn = skyZone(*lvl, x, z); if (zn != "jungle" && zn != "swamp") k = 0; }
   pcache.map[key] = k;
@@ -210,6 +221,10 @@ void WeatherSystem::tick(Level& lv, double dt) {
   if (!loaded) load(lv);
   lvl = &lv;
   clock += dt;
+  {   // a new season is announced
+    const int se = seasonOf(lv);
+    if (se != lastSeason) { if (lastSeason >= -1 && se >= 0 && !lv.isRemote()) lv.fx->message(0, std::string(seasonName(se)) + " has come", "good"); lastSeason = se; }
+  }
   // the lead player: fronts are measured from them, and the local weather is theirs
   Player* lead = nullptr;
   for (auto& e : lv.entities()) if (!e->removed && e->isPlayer()) { lead = static_cast<Player*>(e.get()); break; }

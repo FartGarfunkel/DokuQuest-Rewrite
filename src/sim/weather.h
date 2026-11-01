@@ -33,6 +33,7 @@ public:
   double left = 900;                   // seconds until it changes
   WeatherFront front, trail;
   float mist = 0, rainbowT = 0, seaFog = 0;
+  int lastSeason = -2;   // the season last announced
   std::vector<ivec3> ice;              // ice a storm froze (thaws again)
 
   // ---- wind ----
@@ -95,6 +96,11 @@ private:
 };
 
 WeatherSystem* weatherOf(Level& lv);
+// Seasons (BTA's, world rule "seasons", on unless turned off): a year of four seasons of seven days each in the
+// Overworld. seasonPhase: 0..4 (0 spring, 1 summer, 2 autumn, 3 winter, fractions between), -1 when off.
+float seasonPhase(const Level& lv);
+int seasonOf(const Level& lv);   // 0..3, -1 off
+const char* seasonName(int s);
 void registerWeatherSystem();   // called from initCore()
 
 } // namespace dq

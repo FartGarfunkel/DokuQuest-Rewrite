@@ -407,6 +407,7 @@ void randomTicks(Level& lv, World& w, float px, float pz) {
           if (std::max(l >> 4, l & 15) < 9 && (l >> 4) * bandDaylight(lv, y) < 9) continue;
         }
         bool wet = d.has("soil") || d.has("cocoa") || waterNear(w, x, y - 1, z, 4);
+        if (seasonOf(lv) == 3 && dimOfY(y) == DIM_OVERWORLD && w.realm == REALM_MAIN && rnd() < 0.7) continue;   // winter: crops out in the cold grow slowly
         if (rnd() < (wet ? 1 / (RT * 4) : 1 / (RT * 8))) w.setBlock(x, y, z, id, (u8)((meta & ~15) | (m + 1)));
       } else if (id == B.sugar_cane || id == B.cactus || id == B.kelp) {
         if (rnd() > (id == B.kelp ? 0.14 / RT : 1 / (RT * 16))) continue;

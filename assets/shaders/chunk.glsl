@@ -206,7 +206,9 @@ void main() {
   if ((vMat & 128u) != 0u) col.rgb *= vTint * 1.25;
   else if (vTint.r + vTint.g + vTint.b < 2.99) {
     float w = clamp((1.0 - col.a) * 127.5, 0.0, 1.0);
-    col.rgb *= mix(vec3(1.0), vTint * 1.3, w);
+    vec3 tint = vTint * 1.3;
+    if (uSeason.a > 0.0) tint = mix(tint, uSeason.rgb * (dot(tint, vec3(0.299, 0.587, 0.114)) * 1.6), uSeason.a);   // the season's colour
+    col.rgb *= mix(vec3(1.0), tint, w);
   }
   if (uPass != 2) col.a = 1.0;
 

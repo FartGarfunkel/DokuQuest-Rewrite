@@ -19,6 +19,7 @@
 - **Leather, pelts, hides and saddles aren't paper-flat in your hand any more,** and paper, feathers and maps keep a sliver of body.
 **New in the world:**
 - **The Nether:** Cinder Isles out on the lava sea, Emberglass Groves, the Ashen Wastes and the Sulphur Springs (sulphur and charcoal make gunpowder).
+- **Seasons:** a year of four seven-day seasons in the Overworld. Grass and leaves turn gold and rust in autumn and dull in winter, snow falls on the temperate lands in winter and crops grow slowly in the cold, and each new season is announced. `/time season autumn` jumps to one; `/gamerule seasons false` turns them off.
 - **Thornscrub:** dry plains thick with low thorn trees whose leaves prick like cactus.
 - **Trees grow real branches:** slim branches that wind out of the trunk, fork and end in clumps of leaves, on great spreading oaks, dark oaks, jungle and cherry trees, and now and then on oaks and birches. Branches are blocks of their own too (two logs make four) and join up with logs, leaves and each other. Now and then a giant of the rainforest towers over the canopy. Saplings grow into the same shapes as wild trees.
 - **Palm trees** on warm beaches and here and there in the thornscrub, with palm wood; a felled palm drops coconuts.

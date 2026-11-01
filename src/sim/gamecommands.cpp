@@ -6,6 +6,7 @@
 #include "sim/rules.h"
 #include "sim/worldsys.h"
 #include "sim/magic.h"
+#include "sim/weather.h"
 #include "gen/structures_api.h"
 #include <random>
 #include <regex>
@@ -199,9 +200,14 @@ static void registerBuiltinCommands() {
     if (mode == "survival") c.p.flying = false;
     return "Game mode: " + mode;
   });
-  C("time", "set <day|noon|night|midnight|0-1200> | add <n> | query", "Set the time of day", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
+  C("time", "set <day|noon|night|midnight|0-1200> | add <n> | season <spring|summer|autumn|winter> | query", "Set the time of day", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
     LevelInfo& I = c.lv.info;
-    if (!a.empty() && a[0] == "query") return "Time " + std::to_string((int)std::round(I.time)) + " of " + std::to_string((int)DAY_LEN) + " (day " + std::to_string(I.day) + ")";
+    if (!a.empty() && a[0] == "query") return "Time " + std::to_string((int)std::round(I.time)) + " of " + std::to_string((int)DAY_LEN) + " (day " + std::to_string(I.day) + (seasonOf(c.lv) >= 0 ? std::string(", ") + seasonName(seasonOf(c.lv)) : std::string()) + ")";
+    if (!a.empty() && a[0] == "season" && a.size() > 1) {   // /time season spring|summer|autumn|winter: jump to the start of one
+      static const char* N[4] = {"spring", "summer", "autumn", "winter"};
+      for (int k = 0; k < 4; k++) if (toLower(a[1]) == N[k]) { I.day = (I.day / 28) * 28 + k * 7; return std::string(seasonName(k)) + " it is"; }
+      throw CommandUsage{};
+    }
     static const std::unordered_map<std::string, double> named = {{"day", 60}, {"morning", 30}, {"noon", DAY_LEN * 0.25}, {"sunset", DAY_LEN * 0.48}, {"night", DAY_LEN * 0.55}, {"midnight", DAY_LEN * 0.75}};
     if (!a.empty() && a[0] == "set") {
       double v = a.size() > 1 && named.count(a[1]) ? named.at(a[1]) : num(a, 1);
