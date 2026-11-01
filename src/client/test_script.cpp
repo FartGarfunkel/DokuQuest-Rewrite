@@ -312,7 +312,9 @@ void runStep(App& a, const json& st) {
     std::string k = st.value("item", ""); const ItemDef* d = reg().item(k);
     if (d && d->props.contains("armor") && d->props["armor"].is_object()) { int sl = d->props["armor"].value("slot", 0); if (sl >= 0 && sl < (int)p->armor.size()) p->armor[sl] = ItemStack(k, 1); }
     else if (d) { std::string g = d->has("cape") ? "cape" : d->has("backpack") ? "back" : st.value("slot", "off");
-      if (g == "off") { if (!p->offhand.empty()) p->offhand[0] = ItemStack(k, 1); } else p->data[g] = json::array({ItemStack(k, 1).toJson()}); }
+      if (g == "off") { if (!p->offhand.empty()) p->offhand[0] = ItemStack(k, 1); }
+      else if (g == "cape" && !p->cape.empty()) p->cape[0] = ItemStack(k, 1);
+      else p->data[g] = json::array({ItemStack(k, 1).toJson()}); }
   } else if (op == "save" && s) {
     s->save();
   } else if (op == "leave") {
