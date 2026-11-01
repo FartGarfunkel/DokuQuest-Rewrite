@@ -41,6 +41,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **The Wither:** three wither skeleton skulls on a T of soul sand wake it. It drops a nether star.
 - **Biome fuselings** (frost, dune and bog, each with its own burst) and **village golems** that take after their land.
 - **Elytra glide like Minecraft's.** Throw an ender pearl into an End gateway to go through it.
+- **Treading water:** hold jump with your head out of the water and you float at the waterline, bobbing gently, instead of popping out and splashing back.
 - **Ingots set down stack Vintage Story-style,** four across, each layer turned across the last.
 - **A torch in hand burns,** with a thread of smoke behind you.
 - `/locate <structure>` finds the nearest one of a kind.

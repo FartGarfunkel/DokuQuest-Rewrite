@@ -154,6 +154,14 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
     vel.z += (L.z * SWIM * want - vel.z) * kk;
     float up = !c.eyeWater && L.y > 0 && !inp.jump ? std::min(L.y, 0.05f) : L.y;   // skim along the surface
     vel.y += (up * SWIM * want + (inp.jump ? 2.f : 0.f) - vel.y) * kk;
+  } else if (inWater && inp.jump && !c.eyeWater && !hitWallLast && !sneaking) {
+    // treading water: with your head out, jump keeps you afloat at the waterline, bobbing gently (Minecraft-like),
+    // instead of popping out and splashing back
+    const int bx = ifloor(pos.x), bz = ifloor(pos.z);
+    int sy = ifloor(pos.y);
+    while (sy < ifloor(pos.y) + 3 && R.tLiquid[wd.getBlock(bx, sy, bz)] == 1) sy++;
+    const float target = clampv(((float)sy - 1.3f - pos.y) * 5.f, -2.f, 2.5f) + std::sin(swimPh * 1.6f) * 0.3f;
+    vel.y += (target - vel.y) * std::min(1.f, 8 * dt);
   } else if (inWater || inLava) {
     // the classic game's water: sink slowly, kick up with jump, dive with sneak, drag on every move
     float drag = std::pow(inLava ? 0.5f : 0.8f, 20 * dt);
