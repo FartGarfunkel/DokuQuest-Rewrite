@@ -103,6 +103,9 @@ public:
   float loveT = 0, breedCd = 0, growT = 0, eggT = 0; bool baby = false, kept = false, sheared = false, fed = false;
   std::string color;
   std::string heldItem, offItem;
+  void rollArmour();
+  const std::string& armourPiece(int slot) const;    // data["armor"][slot]: 0 helmet .. 3 boots ("" = none)
+  float armourPoints() const;
   // the night crowd
   bool aiming = false, sees = false, yelled = false; float shootT = -1, strafeT = 0, losT = 0, huntT = 0, alertT = 0, quarrelT = 0; int strafe = 1;
   u32 quarrel = 0, leader = 0, wary = 0; float waryT = 0;

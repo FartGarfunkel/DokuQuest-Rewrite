@@ -315,6 +315,32 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
           D.draw(im.gl, hm * im.matrix(), hat == "jack_o_lantern" ? VoxelLight{1, 1} : L, tint);
         }
       }
+      // armour (an armoured zombie or skeleton, sim Creature::rollArmour): the players' armour meshes, each made for a
+      // Minecraft-sized part, stretched from that part's box onto the rig part's (a skeleton's thin bones get slim plates)
+      if (m->data.contains("armor")) {
+        struct AP { const char* charPart; const char* rigPart; vec3 lo, hi; };
+        static const AP MAP[] = {
+          {"head", "head", {-4, 0, -4}, {4, 8, 4}}, {"body", "body", {-4, 0, -2}, {4, 12, 2}},
+          {"armR_u", "armR", {-2, -4, -2}, {2, 2, 2}}, {"armL_u", "armL", {-2, -4, -2}, {2, 2, 2}},
+          {"armR_d", "foreR", {-2, -6, -2}, {2, 0, 2}}, {"armL_d", "foreL", {-2, -6, -2}, {2, 0, 2}},
+          {"legR_u", "legR", {-2, -6, -2}, {2, 0, 2}}, {"legL_u", "legL", {-2, -6, -2}, {2, 0, 2}},
+          {"legR_d", "shinR", {-2, -6, -2}, {2, 0, 2}}, {"legL_d", "shinL", {-2, -6, -2}, {2, 0, 2}}};
+        for (int slot = 0; slot < 4; slot++) {
+          const std::string& key = m->armourPiece(slot);
+          if (key.empty() || !reg().item(key)) continue;
+          const ArmorSet& A = armorMeshes(key, "", slot, false, false, app().tiles);
+          for (auto& [pn, list] : A.byPart) {
+            const AP* ap = nullptr; for (const AP& q : MAP) if (pn == q.charPart) ap = &q;
+            int ri = ap ? RM->find(ap->rigPart) : -1;
+            if (ri < 0 || !rigPartPosed(*m, ri) || m->lost.count(ap->rigPart)) continue;
+            const RigPart& rp = RM->parts[ri];
+            if (!rigPartShown(*m, rp)) continue;
+            vec3 k = (rp.max - rp.min) / glm::max(ap->hi - ap->lo, vec3(0.01f));
+            mat4 pm = glm::translate(T0 * m->mats[ri], rp.min) * glm::scale(mat4(1), k) * glm::translate(mat4(1), -ap->lo);
+            for (const CharMesh* cm : list) D.draw(cm->gl, pm * cm->local(), L, tint);
+          }
+        }
+      }
       continue;
     }
     if (!f.cam.frustum.sphere(rel, 2.5f)) continue;

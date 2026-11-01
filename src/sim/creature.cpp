@@ -1,6 +1,7 @@
 // sim/creature.cpp — the creature core (game/entities.js Mob: update, hurt, die, drawing state) with the
 // layers the later modules wrapped round it: dismember.js, bestiary.js, sounds2.js, monsters.js,
 // quarrels.js, pets.js (hurt), nightmobs.js (jockeys, slime split), husbandry.js (kept animals).
+#include <cstdlib>
 #include "sim/creature.h"
 #include "sim/vehicles.h"
 #include "common/holiday.h"
@@ -161,7 +162,11 @@ Creature::Creature(const std::string& type) {
   if (T->layer) eggT = 300 + frand() * 300;
   if (T->j.contains("held") && T->j["held"].is_string()) heldItem = T->j["held"];
   if (!T->variants.empty()) variant = T->variants[(size_t)(frand() * T->variants.size()) % T->variants.size()];
-  if ((type == "ghoul" || type == "charred_ghoul") && frand() < 0.07f) { const char* W[] = {"iron_sword", "iron_shovel", "stone_axe", "gold_sword"}; heldItem = W[(int)(frand() * 4) & 3]; }
+  if ((type == "ghoul" || type == "charred_ghoul" || type == "husk") && frand() < 0.1f) {
+    const char* W[] = {"iron_sword", "iron_shovel", "stone_axe", "gold_sword", "copper_sword", "stone_sword", "iron_axe", "wooden_sword"};
+    heldItem = W[(int)(frand() * 8) & 7];
+  }
+  rollArmour();
   if (type == "slime" || type == "magma_slime") setSize(2);
 }
 
@@ -169,6 +174,38 @@ float Creature::weaponBonus() const {
   const std::string& id = !heldItem.empty() ? heldItem : offItem;
   const ItemDef* d = id.empty() ? nullptr : reg().item(id);
   return d && d->hasTool ? std::max(0.f, std::round((d->tool.damage - 1) * 0.6f)) : 0.f;
+}
+// BTA's armoured zombies (and Minecraft's): one undead walker in nine comes dressed, the helmet first and each next piece
+// on a coin toss, mostly leather and copper, now and then iron or gold, rarely diamond. Worn in data["armor"] (4 keys)
+void Creature::rollArmour() {
+  static const char* WEARS[] = {"ghoul", "charred_ghoul", "husk", "drowned", "skeleton", "stray"};
+  bool wears = false; for (const char* w : WEARS) if (type == w) wears = true;
+  static const bool all = std::getenv("DQ_ARMOUR") != nullptr;   // tests: every one dressed
+  if (!wears || frand() >= (all ? 2.f : 0.11f)) return;
+  float r = frand();
+  const char* mat = r < 0.36f ? "leather" : r < 0.62f ? "copper" : r < 0.80f ? "gold" : r < 0.97f ? "iron" : "diamond";
+  static const char* PIECE[] = {"helmet", "chestplate", "leggings", "boots"};
+  json a = json::array({"", "", "", ""});
+  for (int i = 0; i < 4; i++) {
+    if (i > 0 && frand() < 0.5f) continue;
+    std::string k = std::string(mat) + "_" + PIECE[i];
+    if (reg().item(k)) a[i] = k;
+  }
+  data["armor"] = a;
+}
+const std::string& Creature::armourPiece(int slot) const {
+  static const std::string none;
+  if (!data.contains("armor") || !data["armor"].is_array() || slot >= (int)data["armor"].size() || !data["armor"][slot].is_string()) return none;
+  return data["armor"][slot].get_ref<const std::string&>();
+}
+float Creature::armourPoints() const {
+  float pts = 0;
+  for (int i = 0; i < 4; i++) {
+    const std::string& k = armourPiece(i);
+    const ItemDef* d = k.empty() ? nullptr : reg().item(k);
+    if (d && d->props.contains("armor") && d->props["armor"].is_object()) pts += d->props["armor"].value("points", 0.f);
+  }
+  return pts;
 }
 void Creature::makeBaby() { baby = true; growT = 300; w = T->w * 0.55f; h = T->h * 0.55f; kept = true; }
 void Creature::grow(Level& lv) {
@@ -279,6 +316,7 @@ float Creature::hurtBase(Level& lv, float amount, const DamageSrc& srcIn) {
   if (src.element == "frost" && type == "cinder_golem") dmg *= 2;
   if (src.type == "lava" && T->fireImmune) dmg = 0;
   if (dmg <= 0) { if (a && a->isPlayer()) floatText(lv, a->id, pos + vec3(0, h + 0.3f, 0), "Immune", "#ffb070"); return 0; }
+  if (!src.bypassArmor) if (float ap = armourPoints(); ap > 0) dmg *= 1 - std::min(20.f, ap) * 0.04f;   // as a player's armour: 4% a point
   hp -= dmg;
   hurtTime = 0.35f;
   if (a) {
@@ -352,6 +390,7 @@ void Creature::die(Level& lv, const DamageSrc& src) {
     std::string hk = type + "_skull"; if (!reg().item(hk)) hk = type + "_head";
     if (reg().item(hk) && frand() < (type == "wither_skeleton" ? 0.025f : 0.01f)) dropItem(lv, realm, ItemStack(hk, 1), at, true);
   }
+  if (!noDrops) for (int i = 0; i < 4; i++) if (!armourPiece(i).empty() && frand() < 0.085f) dropItem(lv, realm, ItemStack(armourPiece(i), 1), at, true);
   if (T->woolly && !sheared && !baby) dropItem(lv, realm, ItemStack(color == "white" || color.empty() ? "wool" : color + "_wool", 1), at, true);
   if (type == "cinder_golem") {
     json& flags = lv.info.data["flags"]; if (!flags.is_object()) flags = json::object();
@@ -513,7 +552,7 @@ void Creature::update(Level& lv, float dt) {
   int dim = dimAt(*this);
   float day = envDay(lv, dim);
   if ((type == "ghoul" || T->undead) && dim == DIM_OVERWORLD && day > 0.65f && !c.water && !calm) {
-    if (light(lv, h - 0.1f).x >= 14) burn = std::max(burn, 2.f);
+    if (light(lv, h - 0.1f).x >= 14 && armourPiece(0).empty()) burn = std::max(burn, 2.f);   // a helmet shades it
   }
 
   // AI -> desired horizontal direction & speed
@@ -711,6 +750,7 @@ json Creature::snap() const {
   if (attack.on) o["a"] = {attack.kind, r2(attack.progress), r2(attack.yaw)};
   if (data.contains("hat")) o["hd"] = data["hat"];
   if (data.contains("hw")) o["hw"] = data["hw"];
+  if (data.contains("armor")) o["ar"] = data["armor"];
   if (!lost.empty()) o["ls"] = lost;
   if (hasTilt) o["sf"] = {r2(surfaceTilt.x), r2(surfaceTilt.y)};
   return o;
@@ -737,6 +777,7 @@ void Creature::applySnap(const json& o) {
   swingT = o.value("sw", 0.f); shootT = o.value("st", 0.f); grazeT = o.value("gz", 0.f); peckT = o.value("pk", 0.f); onGround = o.value("og", 1);
   if (o.contains("hd")) data["hat"] = o["hd"];
   if (o.contains("hw")) data["hw"] = o["hw"];
+  if (o.contains("ar")) data["armor"] = o["ar"]; else if (data.is_object()) data.erase("armor");
   lost.clear(); if (o.contains("ls")) for (auto& n : o["ls"]) lost.insert(n.get<std::string>());
   hasTilt = o.contains("sf"); if (hasTilt) surfaceTilt = vec2(o["sf"][0], o["sf"][1]);
 }
