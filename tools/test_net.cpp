@@ -227,8 +227,11 @@ int main(int argc, char** argv) {
 
   // ---- entities ----
   submitChat(*A.lv, A.me, "/spawnit cow");
-  check(pump(5, [&] { return B.ghost("cow") != nullptr; }), "a creature the server spawns (DQ.spawn) appears for Bob as a ghost");
-  if (Entity* cow = B.ghost("cow")) check(glm::distance(cow->pos, B.me->pos) < 20 && cow->hp > 0, "the ghost is where the server says");
+  // the one spawned beside Alice (the server's own herds can be about too, further off)
+  auto nearCow = [&]() -> Entity* { Entity* best = nullptr; for (auto& e : B.lv->entities()) if (!e->removed && e->ghost && e->type == "cow" && (!best || glm::distance(e->pos, A.me->pos) < glm::distance(best->pos, A.me->pos))) best = e.get(); return best; };
+  check(pump(5, [&] { Entity* c = nearCow(); return c && glm::distance(c->pos, A.me->pos) < 8; }), "a creature the server spawns (DQ.spawn) appears for Bob as a ghost");
+  if (Entity* cow = nearCow()) check(glm::distance(cow->pos, B.me->pos) < 20 && cow->hp > 0, strFormat("the ghost is where the server says (%.1f from Bob, hp %.1f; cow %.1f %.1f %.1f, Alice %.1f %.1f %.1f)",
+      glm::distance(cow->pos, B.me->pos), cow->hp, cow->pos.x, cow->pos.y, cow->pos.z, A.me->pos.x, A.me->pos.y, A.me->pos.z));
   // an item Alice drops here is made by the server
   {
     auto drop = createEntity("item");
@@ -256,7 +259,8 @@ int main(int argc, char** argv) {
   check(st.running && st.players == 2 && st.tps > 10, strFormat("status: %d players, %.0f ticks/s", st.players, st.tps));
   check(A.nc->stats.records + A.nc->stats.sums > 0, strFormat("chunks came as records/checksums (%llu records, %llu sums in, %llu compared, %zu waiting, %llu asked again)",
         (unsigned long long)A.nc->stats.records, (unsigned long long)A.nc->stats.sumsIn, (unsigned long long)A.nc->stats.sums, A.nc->sumsWaiting(), (unsigned long long)A.nc->stats.needs));
-  check(A.nc->stats.needs == 0, "chunks made here from the seed match the server's (no checksum mismatches)");
+  // (a chunk the host changed before it loaded here is asked for again too: that's "needs", not a mismatch)
+  check(A.nc->stats.mismatches == 0, strFormat("chunks made here from the seed match the server's (%llu checksum mismatches)", (unsigned long long)A.nc->stats.mismatches));
   check(A.lv->info.time > 0, "time of day is sent");
 
   // a mod that never stops is switched off, the game goes on

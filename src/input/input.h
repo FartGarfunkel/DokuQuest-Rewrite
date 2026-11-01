@@ -82,7 +82,16 @@ public:
   // keyboard / mouse only (a pad button doesn't count): the Inventory key and the Q / E tab keys can share a key
   bool keyOnlyPressed(Act a) const { return f->kcur[(int)a] && !f->kprev[(int)a]; }
   // ---- split screen: read the game through one local player's devices (select(i)), or everything merged (select(-1)) ----
-  void setSources(const std::vector<InputSource>& s) { sources = s; if (sel >= (int)sources.size()) select(-1); }
+  void setSources(const std::vector<InputSource>& s) {
+    // a person whose devices just changed starts from what is held right now: the button press that claimed a controller
+    // (or joined) is still down next frame, and with no history it read as a second, fresh press (Y on a pad shut the
+    // inventory and opened it again at once, so the first Y never seemed to work)
+    for (size_t i = 0; i < s.size() && i < 4; i++) {
+      bool same = i < sources.size() && sources[i].kb == s[i].kb && sources[i].pads == s[i].pads;
+      if (!same) { fr[1 + i].cur = fr[1 + i].prev = fr[0].cur; fr[1 + i].kcur = fr[1 + i].kprev = fr[0].kcur; }
+    }
+    sources = s; if (sel >= (int)sources.size()) select(-1);
+  }
   void select(int i) { sel = (i >= 0 && i < (int)sources.size()) ? i : -1; f = &fr[sel + 1]; }
   int selected() const { return sel; }
   const std::vector<InputSource>& sourceList() const { return sources; }

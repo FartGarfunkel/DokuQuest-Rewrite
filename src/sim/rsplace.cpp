@@ -2,6 +2,7 @@
 // the vehicle parts of local.js use(), trains.js/ships.js use overrides, build.js mech placement), all through
 // the EventBus "itemUse" event. Also registerRedstone() (level systems and entity factories).
 #include "sim/redstone.h"
+#include "sim/villagers.h"
 #include "sim/redstone_entities.h"
 #include "sim/minecart.h"
 #include "sim/vehicles.h"
@@ -118,6 +119,10 @@ bool gateLever(Level& lv, Player* p, World& w, int x, int y, int z) {
   const json* G = gateLeverAt(w, x, y, z);
   if (!G) return false;
   if (lv.isRemote()) { if (lv.net && p) lv.net->action(*p, "gateLever", json::array({x, y, z})); return true; }
+  // the villagers' own gate first (it also keeps their dusk and dawn from undoing your pull for a while). This is the
+  // only place a lever works a gate: the villagers' itemUse handler used to do it as well, so one pull opened the gate
+  // and shut it again
+  if (p && w.realm == REALM_MAIN && gateUse(lv, *p, ivec3(x, y, z), true)) return true;
   int base = dimBase(DIM_OVERWORLD);
   bool shut = gateIsShut(w, *G, base);
   if (!gateSet(lv, w, *G, shut, base) && !(!shut && gateIsShut(w, *G, base)) && p) vehToast(lv, *p, "Something is in the way of the gate");

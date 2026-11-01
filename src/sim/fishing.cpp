@@ -116,9 +116,9 @@ void Bobber::tick(Level& lv, double dtd) {
       vel.y -= 16 * h; float k = std::max(0.f, 1 - h * 0.4f); vel.x *= k; vel.z *= k;
       vec3 n = pos + vel * h;
       // a creature in the way: the hook catches in it (BTA leads animals on a fishing line)
-      if (age > 0.12f) for (auto& e : lv.entities()) {
+      if (age > 0.05f) for (auto& e : lv.entities()) {
         if (e->removed || e->realm != realm || e->hp <= 0 || !isMob(*e) || e->data.contains("hooked")) continue;
-        if (std::fabs(e->pos.x - n.x) < e->w + 0.15f && std::fabs(e->pos.z - n.z) < e->w + 0.15f && n.y > e->pos.y - 0.1f && n.y < e->pos.y + e->h + 0.1f) {
+        if (std::fabs(e->pos.x - n.x) < e->w + 0.25f && std::fabs(e->pos.z - n.z) < e->w + 0.25f && n.y > e->pos.y - 0.2f && n.y < e->pos.y + e->h + 0.3f) {
           state = Hooked; mob = e->id; vel = vec3(0); pos = n;
           sfxAt(lv, "pop", pos, 16);
           return;
@@ -209,7 +209,21 @@ static void castLine(Level& lv, Player& p) {
   auto b = std::make_unique<Bobber>();
   b->owner = p.id; b->realm = p.realm;
   b->pos = p.pos + vec3(0, EYE + 0.1f, 0) + l * 0.8f + r * 0.3f;
-  b->vel = vec3(l.x * 13, l.y * 13 + 3.5f, l.z * 13);
+  // aimed at a creature close by: a flat throw straight at it (the usual lob sailed over a cow three blocks off)
+  float lift = 3.5f;
+  vec3 eye = p.pos + vec3(0, EYE, 0);
+  for (auto& e : lv.entities()) {
+    if (e->removed || e->realm != p.realm || e->hp <= 0 || !isMob(*e) || e.get() == (Entity*)&p) continue;
+    vec3 lo = e->pos - vec3(e->w + 0.2f, 0.1f, e->w + 0.2f), hi = e->pos + vec3(e->w + 0.2f, e->h + 0.1f, e->w + 0.2f);
+    float t0 = 0, t1 = 9;
+    for (int k = 0; k < 3 && t0 <= t1; k++) {
+      if (std::fabs(l[k]) < 1e-6f) { if (eye[k] < lo[k] || eye[k] > hi[k]) t1 = -1; continue; }
+      float a = (lo[k] - eye[k]) / l[k], c = (hi[k] - eye[k]) / l[k];
+      t0 = std::max(t0, std::min(a, c)); t1 = std::min(t1, std::max(a, c));
+    }
+    if (t0 <= t1) { lift = 0.6f; b->pos = eye + l * 0.6f; break; }
+  }
+  b->vel = vec3(l.x * 13, l.y * 13 + lift, l.z * 13);
   Entity* e = lv.spawn(std::move(b));
   floats()[p.id] = e->id;
   sfxUi(lv, p, "bow");

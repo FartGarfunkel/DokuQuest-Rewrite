@@ -56,7 +56,7 @@ public:
   void close(const std::string& why = "");   // leave politely (sends our latest bags)
 
   // for tests and the debug overlay
-  struct Stats { u64 msgsIn = 0, msgsOut = 0, records = 0, sumsIn = 0, sums = 0, needs = 0, blocksIn = 0, blocksOut = 0; } stats;
+  struct Stats { u64 msgsIn = 0, msgsOut = 0, records = 0, sumsIn = 0, sums = 0, needs = 0, mismatches = 0, blocksIn = 0, blocksOut = 0; } stats;   // needs: asked again (a mismatch, or a chunk the host changed before it loaded here)
   size_t sumsWaiting() const { return sums.size(); }
   Player* localPlayer() const { return me; }
 

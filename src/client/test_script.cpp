@@ -84,6 +84,8 @@ bool ensurePad(int id = 0) {
     SDL_Joystick* j = SDL_JoystickOpen(idx);
     DQ_LOG("test: virtual controller %d attached (%s)", (int)R.vjoys.size(), j ? "open" : SDL_GetError());
     if (!j) return false;
+    SDL_JoystickSetVirtualAxis(j, SDL_CONTROLLER_AXIS_TRIGGERLEFT, SDL_JOYSTICK_AXIS_MIN);    // triggers rest at the minimum
+    SDL_JoystickSetVirtualAxis(j, SDL_CONTROLLER_AXIS_TRIGGERRIGHT, SDL_JOYSTICK_AXIS_MIN);
     R.vjoys.push_back(j);
     if (R.vjoys.size() == 1) R.vjoy = j;
   }
@@ -124,7 +126,9 @@ void runStep(App& a, const json& st) {
     std::string b = st.value("button", "left");
     int btn = b == "right" ? SDL_BUTTON_RIGHT : b == "middle" ? SDL_BUTTON_MIDDLE : SDL_BUTTON_LEFT;
     int x = st.value("x", a.width / 2), y = st.value("y", a.height / 2);
-    if (st.contains("x")) pushMotion(x, y, 0, 0);
+    // the pointer itself goes there too: ImGui's SDL backend reads the system pointer each frame while no button is
+    // down, which put a made-up motion event straight back where the real pointer sat (clicks on the menu tabs missed)
+    if (st.contains("x")) { SDL_WarpMouseInWindow(a.window, x, y); pushMotion(x, y, 0, 0); }
     if (st.value("hover", false)) return;   // just move the pointer (tooltips)
     R.later.push_back({f + 1, [btn, x, y] { pushMouseButton(btn, true, x, y); }});
     R.later.push_back({f + 1 + hold, [btn, x, y] { pushMouseButton(btn, false, x, y); }});
@@ -136,7 +140,9 @@ void runStep(App& a, const json& st) {
     if (!ensurePad(pid)) return;
     SDL_Joystick* vj = R.vjoys[pid];
     SDL_JoystickSetVirtualAxis(vj, ax, 32767);
-    R.later.push_back({f + hold, [ax, vj] { SDL_JoystickSetVirtualAxis(vj, ax, 0); }});
+    // a trigger at rest is the axis minimum, not 0 (0 reads as half pulled, past the 25% let-go mark: LT stayed held
+    // after every test press, so the next press never counted as one and a held use kept placing blocks)
+    R.later.push_back({f + hold, [ax, vj] { SDL_JoystickSetVirtualAxis(vj, ax, SDL_JOYSTICK_AXIS_MIN); }});
   } else if (op == "pad") {
     int b = padButton(st.value("button", "a")), pid = st.value("id", 0);
     if (b < 0 || !ensurePad(pid)) return;
@@ -147,8 +153,11 @@ void runStep(App& a, const json& st) {
     int ax = padAxis(st.value("axis", "leftx")), pid = st.value("id", 0);
     if (ax < 0 || !ensurePad(pid)) return;
     SDL_Joystick* vj = R.vjoys[pid];
-    SDL_JoystickSetVirtualAxis(vj, ax, (Sint16)std::clamp(st.value("value", 0.f) * 32767.f, -32768.f, 32767.f));
-    R.later.push_back({f + hold, [ax, vj] { SDL_JoystickSetVirtualAxis(vj, ax, 0); }});
+    bool trig = ax == SDL_CONTROLLER_AXIS_TRIGGERLEFT || ax == SDL_CONTROLLER_AXIS_TRIGGERRIGHT;
+    float v = st.value("value", 0.f); if (trig) v = v * 2 - 1;   // a trigger's 0..1 spans the whole axis
+    SDL_JoystickSetVirtualAxis(vj, ax, (Sint16)std::clamp(v * 32767.f, -32768.f, 32767.f));
+    Sint16 rest = trig ? SDL_JOYSTICK_AXIS_MIN : 0;
+    R.later.push_back({f + hold, [ax, vj, rest] { SDL_JoystickSetVirtualAxis(vj, ax, rest); }});
   } else if (op == "cmd") {
     if (!s) return;
     if (s->level->info.rules.is_object()) s->level->info.rules["commands"] = true;   // tests may always use commands
@@ -210,6 +219,19 @@ void runStep(App& a, const json& st) {
         auto& v = s->locals[li].screens; top = v.empty() ? "(none)" : v.back()->id(); open = "local " + std::to_string(li) + ": " + top;
       }
       result(top == want, "screen " + want + " (open: " + open + ")");
+    }
+    // where the player stands: "pos": [x,y,z] (a block, "rel" from the anchor) within "within" blocks of its middle;
+    // "minY": at least that high (from the anchor with "rel")
+    if (st.contains("pos") && p) {
+      ivec3 b = at(st, "pos"); vec3 c = vec3(b) + vec3(0.5f, 0, 0.5f);
+      float d = glm::distance(vec2(p->pos.x, p->pos.z), vec2(c.x, c.z)) + std::fabs(p->pos.y - c.y), r = st.value("within", 1.f);
+      char buf[160]; std::snprintf(buf, sizeof buf, "player near %s (off by %.2f, at %.2f %.2f %.2f)", st["pos"].dump().c_str(), d, p->pos.x, p->pos.y, p->pos.z);
+      result(d <= r, buf);
+    }
+    if (st.contains("minY") && p) {
+      float want = st.value("minY", 0.f) + (st.value("rel", false) ? (float)R.anchor.y : 0.f);
+      char buf[120]; std::snprintf(buf, sizeof buf, "player at least at y %.1f (got %.2f)", want, p->pos.y);
+      result(p->pos.y >= want, buf);
     }
     if (st.contains("block") && s) {
       ivec3 b = at(st, "block");

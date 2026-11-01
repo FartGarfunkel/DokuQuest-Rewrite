@@ -370,9 +370,10 @@ int main(int argc, char** argv) {
       int before = barriers();
       check(ready() && gw.getBlock(L.x, L.y, L.z) == R.blockId("lever"), "the town gate's lever is there (" + S->name + ")");
       q.inv[q.selected].clear();
+      int lm0 = gw.getMeta(L.x, L.y, L.z);
       bus.emit("itemUse", json::array({q.name, "", L.x, L.y, L.z, (int)FACE_PY}));
       int after = barriers();
-      check(before > 0 && after == 0, "pulling the lever opens the gate (" + std::to_string(before) + " -> " + std::to_string(after) + ")");
+      check(before > 0 && after == 0, "pulling the lever opens the gate (" + std::to_string(before) + " -> " + std::to_string(after) + ", lever " + std::to_string(lm0) + " -> " + std::to_string(gw.getMeta(L.x, L.y, L.z)) + ")");
       bus.emit("itemUse", json::array({q.name, "", L.x, L.y, L.z, (int)FACE_PY}));
       check(barriers() == before, "pulling it again lets the gate down");
     }

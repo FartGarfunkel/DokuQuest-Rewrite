@@ -450,9 +450,7 @@ static bool onItemUse(Level& lv, const json& a) {
     openVillagerScreen(lv, *p, "board", {{"x", at.x}, {"y", at.y}, {"z", at.z}});
     return false;
   }
-  if (b.key == "lever" && !(p->sneaking && reg().item(a[1].get<std::string>()) && !reg().item(a[1].get<std::string>())->block.empty())) {
-    if (gateUse(lv, *p, at, true)) return true;   // the lever flips too
-  }
+  // (a town gate's lever: the redstone side works the gate when the lever flips, sim/rsplace.cpp gateLever)
   if (b.key == "gate_barrier" && gateUse(lv, *p, at, false)) { p->swingT = 0.001f; return false; }
   return true;
 }

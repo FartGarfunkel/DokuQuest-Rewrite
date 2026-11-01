@@ -34,6 +34,8 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Armour stands work:** set one down and dress it with armour and a weapon; an empty hand takes them back, and sneaking changes its pose.
 - **Every drop has a use:** pelts and crocodile scales tan into leather, shark teeth tip arrows, and glow ink makes a glow item frame.
 - **Many of the original pictures are redrawn to match the DokuQuest Base pack** (ores, ingots, bricks, armour, tools and more).
+- **Town gate levers work:** one pull opens the gate (it opened and shut again in the same moment).
+- **On a controller, the first press of Y after using the keyboard shuts the inventory** (it shut and opened again at once).
 
 **New in the world:**
 
@@ -54,7 +56,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Iron mesh** (items fall through, creatures don't) and the **motion sensor** (a redstone signal while something moves near it).
 - **The Travel Journal:** a book and a compass. Everything you've carried is in it, with how it's made.
 - **The Wither:** three wither skeleton skulls on a T of soul sand wake it. It drops a nether star.
-- **The Wither Storm:** set a rift core (rift crystals round a nether star) in the middle of a Wither's T, between two wither skeleton skulls. It hangs high overhead, tears up the ground beneath it and grows stronger on every block it swallows, pulls you toward it, and fires from all three heads at once. When it falls, what it swallowed comes down.
+- **The Wither Storm:** set a humming core (crystals round a nether star) in the middle of a Wither's T, between two wither skeleton skulls. It hangs high overhead, tears up the ground beneath it and grows stronger on every block it swallows, pulls you toward it, and fires from all three heads at once. When it falls, what it swallowed comes down.
 - **Biome fuselings** (frost, dune and bog, each with its own burst) and **village golems** that take after their land.
 - **Elytra glide like Minecraft's.** Throw an ender pearl into an End gateway to go through it.
 - **Treading water:** hold jump with your head out of the water and you float at the waterline, bobbing gently, instead of popping out and splashing back.

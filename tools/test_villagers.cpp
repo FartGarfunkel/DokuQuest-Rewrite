@@ -137,8 +137,9 @@ int main(int argc, char** argv) {
   int locked = -1; lines = shopLines(*L, *P, *v, 1, "librarian", "buy"); for (auto& l : lines) if (l.locked) { locked = l.i; break; }
   std::string said; check(locked >= 0 && !shopTrade(*L, *P, *v, 1, "librarian", "buy", locked, said) && said.find("Help the village") != std::string::npos, "a Friend-only ware is kept back for strangers");
   P->give(ItemStack("paper", 24));
-  em = count("emerald");
-  check(shopTrade(*L, *P, *v, 1, "librarian", "sell", 0, said) && count("emerald") == em + 1 && count("paper") == 0, "selling 24 paper for an emerald");
+  int gc = count("gold_coin");   // villagers pay in gold coins (an emerald still buys: 4 coins, change in coins)
+  { bool ok = shopTrade(*L, *P, *v, 1, "librarian", "sell", 0, said);
+    check(ok && count("gold_coin") > gc && count("paper") == 0, "selling 24 paper for coins (" + std::to_string(ok) + ", coins " + std::to_string(gc) + " -> " + std::to_string(count("gold_coin")) + ", paper " + std::to_string(count("paper")) + ")"); }
   for (int i = 0; i < 11; i++) shopTrade(*L, *P, *v, 1, "librarian", "buy", 0, said);
   check(!shopTrade(*L, *P, *v, 1, "librarian", "buy", 0, said) && said.find("All gone") != std::string::npos, "twelve a day, then sold out");
   L->info.day++;
@@ -172,9 +173,10 @@ int main(int argc, char** argv) {
   }
   json* hq = findQuest(*P, hunt["id"]);
   check(hq && (*hq)["have"].get<int>() == need && questReady(*L, *P, *hq), "slaying the bounty's monsters counts (" + mob + ")");
-  em = count("emerald");
-  int rew = hunt["reward"]["em"];
-  check(questFinish(*L, *P, hunt["id"]) && count("emerald") == em + rew && !findQuest(*P, hunt["id"]) && npcStats(*P)["qdone"].contains(hunt["id"].get<std::string>()), "handing it in: emeralds, and it's done");
+  gc = count("gold_coin");
+  int rew = hunt["reward"]["em"];   // paid in gold coins
+  { bool ok = questFinish(*L, *P, hunt["id"]);
+    check(ok && count("gold_coin") == gc + rew && !findQuest(*P, hunt["id"]) && npcStats(*P)["qdone"].contains(hunt["id"].get<std::string>()), "handing it in: gold coins, and it's done (" + std::to_string(ok) + ", coins " + std::to_string(gc) + " -> " + std::to_string(count("gold_coin")) + " want +" + std::to_string(rew) + ")"); }
   json sup = boardQuests(*L, *v)[2];
   questTake(*L, *P, sup);
   L->info.day += 7;

@@ -130,8 +130,14 @@
 "n": 5
 },
 {
+"do": "padaxis",
+"axis": "rightx",
+"value": 0
+},
+{
 "do": "pad",
-"button": "y"
+"button": "y",
+"wait": 5
 },
 {
 "wait": 10,

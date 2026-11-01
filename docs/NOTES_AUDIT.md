@@ -10,7 +10,7 @@ Evidence is grep over src/, data/, tools/ (file:line where it helps).
 - [HO][BTA] Siphon: HANDOFF says "done", but there's no key, code or data anywhere (repo-wide grep -i siphon matches only docs)  **[DONE tonight]**
 - [HO][BTA] Basket / Wicker Basket: HANDOFF says "done", but nothing in src/data/tools (grep -i basket matches only docs)  **[DONE tonight]**
 - [Q] Knight/Ranger talents in combat: pathMeleeFactor/pathArrowFactor/pathArrowPoisons/pathQuiverSaves/pathSpeedFactor/pathCheatDeath are defined (sim/villager_quests.cpp ~375-390) but nothing calls them  **[DONE tonight]**
-- [MP][SAT][WE] Automated walk/knock clipping test (walls, ladders, path blocks): no ladder/path/knock test in tools/*.cpp or playtests (the pushOut fix is in sim/physics.cpp:76)
+- [MP][SAT][WE] Automated walk/knock clipping test (walls, ladders, path blocks): no ladder/path/knock test in tools/*.cpp or playtests (the pushOut fix is in sim/physics.cpp:76)  **[walk over dirt paths + climb a ladder and step off on top DONE tonight (tools/playtests/clip.json, passes); knockback into walls still untested]**
 - [Q] Potions stack to 16: every potion_* has maxStack 1 in data/items.json  **[DONE tonight]**
 - [Q] Lingering potions + effect cloud: no "linger"/effect-cloud code (splash only, sim/brewing.cpp:114)  **[DONE tonight]**
 - [Q] Block sweep extension (every block x every tool, drops vs the original's tables): tools/sweep.cpp only checks use/place/screens
@@ -61,11 +61,11 @@ Evidence is grep over src/, data/, tools/ (file:line where it helps).
 - [MP][SAT] Art pass: restyle.py covers block and item pictures; mob skins and "blend the clashing base textures" not done
 - [MP][SAT] Studios (counted done) sub-gaps: Texture Studio tabs are Blocks/Items/Yours only (no entity/mob-skin browsing, no save into a pack); Sound Studio has no synth sandbox
 - [MP][SAT] Journal test at every story stage: test_magic.cpp:234 checks only stage 0 to 1; no test opens the journal with the rift sealed
-- [MP][Q] Ladder back-clipping / dirt-path hang-ups: alpha.5.1 push-out is in; never re-verified (see the missing test)
+- [MP][Q] Ladder back-clipping / dirt-path hang-ups: alpha.5.1 push-out is in; never re-verified (see the missing test)  **[verified tonight: clip.json passes]**
 - [Q] Nether portal world invisible until reload: portal.json is screenshot-only (no expect); not confirmed fixed
 - [PS] Split screen: LAN + split and players in side realms not yet; together.js party UI; carriage (only sim/travel.h); map net sync
 - [Q][PS] Villagers/dragons over the network: generic entity sync only; guest actions, riding on clients, Joining screen (docs/port/net.md "Left to do")
-- [MP][SAT] Big sweep / user bug reports: ongoing; tools/playtests/containers.json still uses the old "open" op (stale, per HANDOFF)
+- [MP][SAT] Big sweep / user bug reports: ongoing; tools/playtests/containers.json still uses the old "open" op (stale, per HANDOFF)  **[containers passes 13/13 tonight; the full sweep is in HANDOFF]**
 - [MP][HO] Chisel bug sweep: campfire with cobblestone texture and jack-o'-lantern texture never reproduced; needs the user's save/pack
 - [MP][Q] Music sets: biome/cave/Nether/Skylands moods exist; Over/Under-style sets with seeded per-world variation not done
 - [HO] alpha.8 release: notes drafted (CHANGELOG, news.dqn), but DQ_VERSION is still 1.0.0-alpha.7 (CMakeLists.txt:4); not released

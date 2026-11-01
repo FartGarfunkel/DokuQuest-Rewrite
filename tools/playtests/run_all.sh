@@ -13,7 +13,8 @@ for n in "${names[@]}"; do
     code=$?; rm -rf /tmp/pt/u_persist; mkdir -p /tmp/pt/u_persist; cp /tmp/pt/u_containers/latest.log /tmp/pt/u_persist/
   else
     rm -rf /tmp/pt/u_$n
-    DISPLAY=:90 SDL_VIDEO_X11_FORCE_EGL=1 timeout 600 ./build/dokuquest-pt --userdir /tmp/pt/u_$n --create T1 --seed hello --smoke-script tools/playtests/$n.json >/dev/null 2>&1
+    lim=600; [ "$n" = puddle ] && lim=1800   # puddle waits 4000 frames for the sun to dry it: slow on a software renderer
+    DISPLAY=:90 SDL_VIDEO_X11_FORCE_EGL=1 timeout $lim ./build/dokuquest-pt --userdir /tmp/pt/u_$n --create T1 --seed hello --smoke-script tools/playtests/$n.json >/dev/null 2>&1
     code=$?
   fi
   echo "$n exit=$code $(grep -a 'TEST DONE' /tmp/pt/u_$n/latest.log | tail -1)" >> "$out"

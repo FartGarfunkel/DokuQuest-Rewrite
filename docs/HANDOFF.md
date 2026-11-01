@@ -40,6 +40,16 @@ Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`.
   floor, forest nights, Skylands grass), zombie pigmen only on natural Depths ground, December carols (audio/music.cpp
   carol(): four public-domain melodies), New Year fireworks over villages (sim/usables.cpp), a brighter village tree,
   elytra hung 1.5 px lower. alpha.8 = DQ_VERSION bumped; released from the commit the final sweep passed on.
+- **Final sweep fixes (test harness, 05:00):** the virtual pad's triggers were "released" to axis 0, which SDL reads
+  as half pulled, past the 25% let-go mark, so LT/RT stayed held after every test press (furnace/containers/split
+  failures: the next press never counted and a held use kept placing blocks). test_script.cpp now rests triggers at
+  SDL_JOYSTICK_AXIS_MIN (and `padaxis` lt/rt maps 0..1 over the whole axis). `mouse` with x/y also warps the real
+  pointer: ImGui's SDL backend reads the system pointer every frame while no button is down, so clicks on the menu
+  tabs landed where the Xvfb pointer sat. New expect ops: `pos` [x,y,z] + `within`, `minY` (both take `rel`). New
+  playtest `clip.json`: walk stone → dirt path → grass → path into a ladder, climb 7 and step off on top (the
+  walk/knock/ladder check the notes asked for). Real game fix found by `rodlead`: the fishing line lobbed over an
+  animal three blocks away; a cast aimed at a creature now flies flat at it (sim/fishing.cpp castLine) and the
+  hook's catch box is a bit more generous. `puddle` gets 1800 s in run_all.sh (4000 frames on llvmpipe).
 - **Notes audit** (/tmp/pt/notes_gaps.md, regenerate with an agent if needed): still open and worth doing next: painted
   doors/trapdoors/signs/chests, the Seasonal Forest, igneous emberstone, chimney smoke check on town buildings (campfires
   in the hearths already smoke through campFlue), the Nether's own ambience and steam vents,
@@ -79,7 +89,9 @@ Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`.
   - Run Xvfb on :90 if it isn't up: `Xvfb :90 -screen 0 1280x720x24 &`
   - `DISPLAY=:90 SDL_VIDEO_X11_FORCE_EGL=1 ./build/dokuquest --userdir /tmp/x --create T --seed hello --smoke-script s.json`
   - Ops: wait, cmd, anchor, fill {rel,from,to,key,meta}, setBlock, tp, lookAt {rel x,y,z | entity}, give, select,
-    mouse {button,hold}, expect {block,is | entity,near}, hurt {entity}, key, pad, shot, report, quit.
+    mouse {button,hold,x,y}, expect {block,is | entity,near | pos,within | minY | screen | inv | count | container},
+    hurt {entity}, key, pad, padaxis, shot, report, quit. The first pad press right after the virtual pad attaches
+    can be lost: start with `{"do":"padaxis","axis":"rightx","value":0}` and a few frames' wait.
   - Gotchas: `/summon` puts creatures 3 blocks ahead; use reach is ~4.5 blocks; `/kill` kills the PLAYER; tp rel
     first so the player stands at a block centre.
   - Playtests in `tools/playtests/`: chisel, eggs, lavaboat, heads, pumice, paint, slabtorch, lead, jar, sensor,

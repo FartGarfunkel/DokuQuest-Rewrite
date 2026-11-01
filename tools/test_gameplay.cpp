@@ -208,35 +208,38 @@ int main(int argc, char** argv) {
     auto aimFace = [&](ivec3 b, ivec3 n, float fy = 0.5f) { vec3 at = vec3(b) + vec3(0.5f) + vec3(n) * 0.5f; at.y = b.y + (n.y ? (n.y > 0 ? 1.f : 0.f) : fy); r.lookAt(at); r.c->updateTarget(); };
     PlayerInput use; use.use = true; use.usePressed = true;
     r.set(0, Y, 0, stone);
-    // slab on the side of a block, low half -> bottom slab; high -> top slab
+    // slabs and stairs are chiseled forms since alpha.7 (their items are retired; an old one still sets down its form):
+    // a slab item on the low half of a side is the block's lower half (the upper octants carved), on the high half the
+    // upper; R mode stands it on end; stairs set down the base block with one quarter carved
+    BlockId planks = r.B("planks");
+    auto carveAt = [&](int x, int y, int z) { return (int)r.w().getCarve(x, y, z); };
     r.hold(0, "oak_slab", 10);
     aimFace({0, Y, 0}, {0, 0, 1}, 0.25f); r.step(0.05, use);
-    CHECK(r.get(0, Y, 1) == r.B("oak_slab") && (r.w().getMeta(0, Y, 1) & 7) == 0, "slab on the low half of a side: bottom slab");
+    int lowC = carveAt(0, Y, 1);
+    CHECK(r.get(0, Y, 1) == planks && lowC != 0, "slab on the low half of a side: its chiseled form (%s, carve %d)", reg().block(r.get(0, Y, 1)).key.c_str(), lowC);
     r.set(0, Y, 1, AIR); r.step(0.3);
     aimFace({0, Y, 0}, {0, 0, 1}, 0.75f); r.step(0.05, use);
-    CHECK(r.get(0, Y, 1) == r.B("oak_slab") && (r.w().getMeta(0, Y, 1) & 7) == 1, "on the high half: top slab (meta %d)", r.w().getMeta(0, Y, 1));
+    int highC = carveAt(0, Y, 1);
+    CHECK(r.get(0, Y, 1) == planks && highC != 0 && highC != lowC, "on the high half: the other half (carve %d vs %d)", highC, lowC);
     r.set(0, Y, 1, AIR); r.step(0.3);
-    aimFace({0, Y, 0}, {0, 0, 1}, 0.25f); r.step(0.05, use);
-    aimFace({0, Y, 1}, {0, 1, 0}); r.step(0.3); r.step(0.05, use);
-    CHECK((r.w().getMeta(0, Y, 1) & 7) == 6 && r.p->inv[0].n == 6, "a second slab on a bottom slab makes a double (meta %d, left %d)", r.w().getMeta(0, Y, 1) & 7, r.p->inv[0].n);
-    r.set(0, Y, 1, AIR);
-    // placing mode R: vertical slab
     PlayerInput R; R.place = true; r.step(0.05, R);
     aimFace({0, Y, 0}, {0, 0, 1}); r.step(0.3); r.step(0.05, use);
-    int vk = r.w().getMeta(0, Y, 1) & 7;
-    CHECK(vk >= 2 && vk <= 5, "R mode: a vertical slab (meta %d)", vk);
+    int vC = carveAt(0, Y, 1);
+    CHECK(r.get(0, Y, 1) == planks && vC != 0 && vC != lowC && vC != highC, "R mode: a slab on end (carve %d)", vC);
     r.step(0.05, R); r.set(0, Y, 1, AIR);
-    // stairs face the way you look; upside down from below
     r.hold(0, "oak_stairs", 4);
     aimFace({0, Y, 0}, {0, 1, 0}); r.step(0.3); r.step(0.05, use);
-    u8 sm = r.w().getMeta(0, Y + 1, 0);
-    CHECK(r.get(0, Y + 1, 0) == r.B("oak_stairs") && (sm & 3) == lookDir(*r.p) && !(sm & 4), "stairs face the way you look (meta %d, look %d)", sm, lookDir(*r.p));
-    r.set(0, Y + 1, 0, AIR);
+    int sC = carveAt(0, Y + 1, 0), quarters = 0; for (int b = 0; b < 8; b++) quarters += (sC >> b) & 1;
+    CHECK(r.get(0, Y + 1, 0) == planks && quarters == 2, "stairs: the block with a quarter carved away (carve %d)", sC);
+    for (int yy = 0; yy <= 2; yy++) { r.set(0, Y + yy, 0, yy ? AIR : stone); r.set(0, Y + yy, 1, AIR); }
+    r.step(0.3);
     // door: two halves, toggles open; bed: two halves
     r.hold(0, "oak_door", 2);
     aimFace({0, Y - 1, 1}, {0, 1, 0}); r.step(0.3); r.step(0.05, use);
     BlockId door = r.B("oak_door");
-    CHECK(r.get(0, Y, 1) == door && r.get(0, Y + 1, 1) == door && (r.w().getMeta(0, Y + 1, 1) & 16), "a door takes two blocks");
+    CHECK(r.get(0, Y, 1) == door && r.get(0, Y + 1, 1) == door && (r.w().getMeta(0, Y + 1, 1) & 16), "a door takes two blocks (%s / %s, below %s, aim %d %d %d hit %d, held %s)",
+          reg().block(r.get(0, Y, 1)).key.c_str(), reg().block(r.get(0, Y + 1, 1)).key.c_str(), reg().block(r.get(0, Y - 1, 1)).key.c_str(),
+          r.c->target.block.x, r.c->target.block.y - Y, r.c->target.block.z, (int)r.c->target.hit, r.p->inv[0].id.c_str());
     r.p->inv[0].clear();
     aimFace({0, Y, 1}, {0, 0, 1}); r.step(0.3); r.step(0.05, use);
     CHECK(r.w().getMeta(0, Y, 1) & 4, "using a door opens it");
@@ -248,7 +251,8 @@ int main(int argc, char** argv) {
     aimFace({0, Y - 1, 1}, {0, 1, 0}); r.step(0.3); r.step(0.05, use);
     int f = lookDir(*r.p);
     CHECK(bhas(r.get(0, Y, 1), BF::Bed) && bhas(r.get(0 + DIRX[f], Y, 1 + DIRZ[f]), BF::Bed), "a bed takes two blocks");
-    // sleeping at night sets spawn and skips to morning
+    // sleeping at night sets spawn and skips to morning (nightmares off: in the dark one wakes you three times in ten)
+    r.lv->info.rules["nightmares"] = false;
     r.lv->info.time = DAY_LEN * 0.75;
     r.p->inv[0].clear();
     aimFace({0, Y, 1}, {0, 1, 0}); r.step(0.3); r.step(0.05, use);

@@ -229,7 +229,7 @@ void NetClient::update(Level& level, double dt) {
       int r, d, cx, cz; unpackChunkKey(it->first, r, d, cx, cz);
       World* w = level.worldIfOpen(r); Chunk* c = w ? w->chunk(d, cx, cz) : nullptr;
       if (c && chunkSettled(*w, *c)) {
-        if (!c->modified && chunkHash(*c, &l2s) != it->second) { sendTo(NEED, {{"rl", r}, {"d", d}, {"cx", cx}, {"cz", cz}}); stats.needs++; }
+        if (!c->modified && chunkHash(*c, &l2s) != it->second) { sendTo(NEED, {{"rl", r}, {"d", d}, {"cx", cx}, {"cz", cz}}); stats.needs++; stats.mismatches++; }
         stats.sums++;
         it = sums.erase(it);
       } else ++it;
