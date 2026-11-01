@@ -25,7 +25,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 
 - **The Nether:** Cinder Isles out on the lava sea, Emberglass Groves, the Ashen Wastes and the Sulphur Springs (sulphur and charcoal make gunpowder).
 - **Thornscrub:** dry plains thick with low thorn trees whose leaves prick like cactus.
-- **Trees grow real branches:** great spreading oaks, limbs on dark oaks, jungle and cherry trees, now and then on oaks and birches, forking at the ends with a clump of leaves on each tip. Now and then a giant of the rainforest towers over the canopy. Saplings grow into the same shapes as wild trees.
+- **Trees grow real branches:** slim branches that wind out of the trunk, fork and end in clumps of leaves, on great spreading oaks, dark oaks, jungle and cherry trees, and now and then on oaks and birches. Branches are blocks of their own too (two logs make four) and join up with logs, leaves and each other. Now and then a giant of the rainforest towers over the canopy. Saplings grow into the same shapes as wild trees.
 - **Palm trees** on warm beaches and here and there in the thornscrub, with palm wood; a felled palm drops coconuts.
 - **The outer End:** spire fields, crater barrens, violet moors of end moss, stone arches and floating shards.
 - **End cities rebuilt:** a hall, a tower in storeys up to a crowned top room, bridges out to hanging towers, and the ship with the dragon's head on its bow and the wings in a frame. Shulkers keep them; their bolts lift you off your feet.
@@ -51,6 +51,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **The hand sieve:** sift gravel, sand, dirt and the rest right where it lies.
 - **The quiver:** holds up to 192 arrows; your bow draws from it.
 - **Paintings:** hang one on a wall for a picture of its own (landscapes, seascapes, snowy peaks, still lifes, colour fields); use it to turn to another.
+- **The handcannon and the rocket launcher:** cannonballs burst where they land without breaking blocks (fire one at your feet to fling yourself up), rockets fly straight and blast what they hit.
 - **Particles:** sprinting kicks up the ground you run on, a hard landing throws up a ring of it, critical blows burst into stars, and running beasts raise dust.
 - **The Music Studio** (launcher: Mod Studio → Music): write songs on a piano roll with the game's own instruments, have a piece written to any of the game's moods, read a recording (WAV, MP3 or FLAC) for its tempo, key and chords and have an original piece written from them, and bring MIDI in or send it out. Give a song a realm and it plays there now and then.
 

@@ -35,7 +35,7 @@ void explode(Level& lv, int realm, vec3 c, float power, const ExplodeOpts& o) {
     float d = glm::distance(p->pos + vec3(0, 1, 0), c);
     if (d < power * 2) {
       float k = 1 - d / (power * 2); DamageSrc s; s.knock = 0;
-      damageEntity(lv, *p, std::round(k * 14), nullptr, "explosion", s);
+      if (p->id != o.source) damageEntity(lv, *p, std::round(k * 14), nullptr, "explosion", s);   // (whoever set it off isn't hurt by it)
       float l = d > 0 ? d : 1;
       knockback(*p, vec3((p->pos.x - c.x) / l * 10 * k, 6 * k, (p->pos.z - c.z) / l * 10 * k));
     }

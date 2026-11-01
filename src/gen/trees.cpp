@@ -20,28 +20,40 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
       if (d <= 1 - rnd() * 0.18) put(cx + dx, cy + dy, cz + dz, id, true);
     }
   };
-  // a branch (our own take on the idea of branching trees): sideways logs, turned along the way they reach, that climb
-  // a step every other block; a diagonal one goes x then z so every log meets the last by a face; at the end it may
-  // fork into two twigs; each tip carries a clump of leaves (none on a bare tree: leafR 0)
+  // a branch (the idea is Cubyz's, the code ours): slim branch blocks (world/shapes.cpp ShapeKind::Branch, they join
+  // to logs, branches and leaves) winding out of the trunk, climbing a step every other block, a diagonal going x then
+  // z; thick near the trunk and thin toward the tip (meta bit 0); now and then a leaf along the way; at the end it may
+  // fork into two twigs; each tip vanishes into a clump of leaves (none on a bare tree: leafR 0). With no branch
+  // block for that wood it falls back to sideways logs.
   static const int BX[8] = {1, 1, 0, -1, -1, -1, 0, 1}, BZ[8] = {0, 1, 1, 1, 0, -1, -1, -1};
-  std::function<void(int, int, int, int, int, BlockId, BlockId, double, bool)> branch;
-  branch = [&](int bx, int by, int bz, int d, int n, BlockId lg, BlockId lf, double leafR, bool canFork) {
+  auto branchOf = [&](BlockId lg) -> BlockId {
+    if (lg == B.log) return B.oak_branch; if (lg == B.birch_log) return B.birch_branch; if (lg == B.dark_oak_log) return B.dark_oak_branch;
+    if (lg == B.jungle_log) return B.jungle_branch; if (lg == B.cherry_log) return B.cherry_branch; if (lg == B.acacia_log) return B.acacia_branch;
+    if (lg == B.mangrove_log) return B.mangrove_branch;
+    return 0;
+  };
+  std::function<void(int, int, int, int, int, BlockId, BlockId, double, bool, int)> grow;
+  grow = [&](int bx, int by, int bz, int d, int n, BlockId lg, BlockId lf, double leafR, bool canFork, int done) {
+    const BlockId br = branchOf(lg);
     const int dx = BX[d & 7], dz = BZ[d & 7];
     bool zTurn = rnd() < 0.5;
     for (int k = 0; k < n; k++) {
       int mx = dx, mz = dz;
       if (dx && dz) { if (zTurn) mx = 0; else mz = 0; zTurn = !zTurn; }
       bx += mx; bz += mz;
-      put(bx, by, bz, lg, false, mx ? 1 : 2);
-      if (k + 1 < n && (k % 2 == 1 || rnd() < 0.3)) { by++; put(bx, by, bz, lg, false, 0); }
+      const int thin = done + k >= 2 ? 1 : 0;
+      if (br) put(bx, by, bz, br, false, thin); else put(bx, by, bz, lg, false, mx ? 1 : 2);
+      if (br && thin && leafR > 0 && rnd() < 0.3) put(bx, by + 1, bz, lf, true);   // a leaf along the way
+      if (k + 1 < n && (k % 2 == 1 || rnd() < 0.3)) { by++; if (br) put(bx, by, bz, br, false, thin); else put(bx, by, bz, lg, false, 0); }
     }
     if (canFork && n >= 3 && rnd() < 0.55) {
-      branch(bx, by, bz, d + 1, 2, lg, lf, leafR * 0.85, false);
-      branch(bx, by, bz, d + 7, 2, lg, lf, leafR * 0.85, false);
+      grow(bx, by, bz, d + 1, 2, lg, lf, leafR * 0.85, false, done + n);
+      grow(bx, by, bz, d + 7, 2, lg, lf, leafR * 0.85, false, done + n);
       return;
     }
     if (leafR > 0) leafBall(bx, by + 1, bz, leafR, lf, 0.6);
   };
+  auto branch = [&](int bx, int by, int bz, int d, int n, BlockId lg, BlockId lf, double leafR, bool canFork) { grow(bx, by, bz, d, n, lg, lf, leafR, canFork, 0); };
   const int x = t.x, y = t.y, z = t.z;
   switch (t.kind) {
     case TREE_SPRUCE: {
@@ -67,7 +79,7 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
         for (int k = 0; k < H; k++) for (auto& a : AX) put(x + a[0], y + k, z + a[1], B.jungle_log);
         for (int b = 0, nb = 4 + jsFloor(rnd() * 3), d0 = jsFloor(rnd() * 8); b < nb; b++) {
           const int d = (d0 + b * 3) & 7;
-          branch(x + (BX[d] > 0 ? 1 : 0), y + jsFloor(H * (0.45 + 0.45 * b / nb)), z + (BZ[d] > 0 ? 1 : 0), d, 4 + jsFloor(rnd() * 3), B.jungle_log, B.jungle_leaves, 2.8, true);
+          branch(x + (BX[d] > 0 ? 1 : 0), y + jsFloor(H * (0.45 + 0.45 * b / nb)), z + (BZ[d] > 0 ? 1 : 0), d, 4 + jsFloor(rnd() * 3), B.jungle_log, B.jungle_leaves, 2.1, true);
         }
         leafBall(x + 0.5, y + H, z + 0.5, 4.2, B.jungle_leaves, 0.5);
         for (int d = 0; d < 4; d++) for (int k = 1; k < H - 3; k++) if (rnd() < 0.3) {   // vines down the sides of the trunk
@@ -80,7 +92,7 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
       for (int k = 0; k < H; k++) put(x, y + k, z, B.jungle_log);
       if (t.bare) return;
       for (int b = 0, nb = 2 + jsFloor(rnd() * 3), d0 = jsFloor(rnd() * 8); b < nb; b++)
-        branch(x, y + jsFloor(H * (0.5 + 0.4 * b / nb)), z, d0 + b * 3, 3 + jsFloor(rnd() * 3), B.jungle_log, B.jungle_leaves, 2.2, true);
+        branch(x, y + jsFloor(H * (0.5 + 0.4 * b / nb)), z, d0 + b * 3, 3 + jsFloor(rnd() * 3), B.jungle_log, B.jungle_leaves, 1.7, true);
       leafBall(x, y + H, z, 3.2, B.jungle_leaves, 0.55);
       for (int d = 0; d < 4; d++) for (int k = 1; k < H - 2; k++) {
         double q = rnd();
@@ -164,7 +176,7 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
       for (int k = 0; k < H; k++) for (auto& a : AX) put(x + a[0], y + k, z + a[1], B.dark_oak_log);
       for (int b = 0, nb = 3 + jsFloor(rnd() * 2), d0 = jsFloor(rnd() * 8); b < nb; b++) {
         const int d = (d0 + b * 2 + jsFloor(rnd() * 2)) & 7;
-        branch(x + (BX[d] > 0 ? 1 : 0), y + H - 3 + jsFloor(rnd() * 2), z + (BZ[d] > 0 ? 1 : 0), d, 3 + jsFloor(rnd() * 2), B.dark_oak_log, B.dark_oak_leaves, t.bare ? 0 : 2.6, true);
+        branch(x + (BX[d] > 0 ? 1 : 0), y + H - 3 + jsFloor(rnd() * 2), z + (BZ[d] > 0 ? 1 : 0), d, 3 + jsFloor(rnd() * 2), B.dark_oak_log, B.dark_oak_leaves, t.bare ? 0 : 1.9, true);
       }
       if (t.bare) return;
       leafBall(x + 0.5, y + H - 1, z + 0.5, 3.6, B.dark_oak_leaves, 0.5);
@@ -176,7 +188,7 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
       for (int k = 0; k < H; k++) put(x, y + k, z, B.cherry_log);
       if (t.bare) return;
       for (int b = 0, nb = 2 + jsFloor(rnd() * 2), d0 = jsFloor(rnd() * 8); b < nb; b++)
-        branch(x, y + H - 2 + (b & 1), z, d0 + b * (8 / nb), 3 + jsFloor(rnd() * 2), B.cherry_log, B.cherry_leaves, 2.6, true);
+        branch(x, y + H - 2 + (b & 1), z, d0 + b * (8 / nb), 3 + jsFloor(rnd() * 2), B.cherry_log, B.cherry_leaves, 2.0, true);
       leafBall(x, y + H + 1, z, 2.2, B.cherry_leaves, 0.6);
       return;
     }
@@ -219,7 +231,7 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
   for (int k = 0; k < H; k++) put(x, y + k, z, lg);
   if (big) {   // a great spreading oak: limbs all round from halfway up, forking, a clump on every tip
     for (int b = 0, nb = 3 + jsFloor(rnd() * 3), d0 = jsFloor(rnd() * 8); b < nb; b++)
-      branch(x, y + H / 2 + jsFloor((H / 2 - 1) * (b + rnd()) / nb), z, d0 + b * 3, 3 + jsFloor(rnd() * 3), lg, leaf, t.bare ? 0 : 2.3, true);
+      branch(x, y + H / 2 + jsFloor((H / 2 - 1) * (b + rnd()) / nb), z, d0 + b * 3, 3 + jsFloor(rnd() * 3), lg, leaf, t.bare ? 0 : 1.7, true);
     if (t.bare) return;
     leafBall(x, y + H, z, 2.7, leaf, 0.8);
     return;
@@ -227,7 +239,7 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
   // an ordinary oak or birch: now and then a limb or two under the crown
   if (t.h > (birch ? 0.75 : 0.5))
     for (int b = 0, nb = 1 + (rnd() < 0.5 ? 1 : 0), d0 = jsFloor(rnd() * 8); b < nb; b++)
-      branch(x, y + H - 3 - b, z, d0 + b * 4, 2, lg, leaf, t.bare ? 0 : 1.7, false);
+      branch(x, y + H - 3 - b, z, d0 + b * 4, 2, lg, leaf, t.bare ? 0 : 1.4, false);
   if (t.bare) return;
   if (t.bees) { int d = jsFloor(rnd() * 4); put(x + DIRX[d], y + H - 4, z + DIRZ[d], B.bee_nest, true, d | 0x0c); }
   for (int ly = H - 3; ly <= H + 1; ly++) {

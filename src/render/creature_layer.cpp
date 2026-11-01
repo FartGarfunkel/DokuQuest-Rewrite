@@ -326,6 +326,15 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
       m = glm::rotate(m, e.yaw, vec3(0, 1, 0)); m = glm::rotate(m, e.pitch, vec3(1, 0, 0));
       m = glm::rotate(m, PI / 2, vec3(0, 1, 0)); m = glm::rotate(m, -PI / 4, vec3(0, 0, 1)); m = glm::scale(m, vec3(0.7f));
       D.draw(im.gl, m * im.matrix(), lightAt(w, ip.pos));
+    } else if (t == "projectile" && (e.data.value("kind", "") == "cannonball" || e.data.value("kind", "") == "rocket")) {
+      const std::string k = e.data.value("kind", "");
+      const VoxelModel& im = itemModel(k);
+      if (!im.ready()) continue;
+      mat4 m = glm::translate(mat4(1), rel);
+      if (k == "rocket") { vec3 v = e.vel; m = glm::rotate(m, std::atan2(-v.x, -v.z), vec3(0, 1, 0)); m = glm::rotate(m, std::atan2(v.y, std::hypot(v.x, v.z)) - PI / 4, vec3(1, 0, 0)); }
+      else m = glm::rotate(m, ip.age * 8, vec3(1, 0, 0));
+      m = glm::scale(m, vec3(k == "rocket" ? 0.6f : 0.35f));
+      D.draw(im.gl, m * im.matrix(), lightAt(w, ip.pos));
     } else if (t == "projectile") {
       std::string k = e.data.value("kind", "fireball");
       SmallMeshes& S = small();

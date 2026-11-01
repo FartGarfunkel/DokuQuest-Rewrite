@@ -129,6 +129,27 @@ public:
       if (kind == "spit" && frand() < dt * 20) mobBurst(lv, pos, "white", 1, 0.1f);
       return;
     }
+    if (kind == "cannonball" || kind == "rocket") {   // the handcannon's ball (falls, bursts without breaking blocks) and the launcher's rocket (flies straight, breaks them)
+      const bool rocket = kind == "rocket";
+      if (age > (rocket ? 8 : 6)) { removed = true; return; }
+      auto burst = [&]() {
+        removed = true; ExplodeOpts o; o.source = data.value("owner", 0u); o.noBlocks = !rocket;
+        explode(lv, realm, pos, rocket ? 2.6f : 1.6f, o);
+        if (owner && !owner->removed) {   // the blast flings whoever fired it too (rocket jumping), without the harm
+          vec3 d = owner->pos + vec3(0, 0.9f, 0) - pos; float l = glm::length(d);
+          if (l < 4.5f) knockback(*owner, d / std::max(0.3f, l) * (rocket ? 19.f : 15.f) * (1 - l / 4.5f));
+        }
+      };
+      if (!rocket) vel.y -= 9 * dt;
+      for (int s = 0; s < 3; s++) {
+        pos += vel * (dt / 3);
+        if (age > 0.08f) for (Entity* p : pawnsOf(lv, realm)) if (p != owner && std::fabs(p->pos.x - pos.x) < 0.5f && std::fabs(p->pos.z - pos.z) < 0.5f && pos.y > p->pos.y - 0.2f && pos.y < p->pos.y + 1.9f) { burst(); return; }
+        if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.15f)) { DamageSrc d; d.knock = 3; damageEntity(lv, *c, rocket ? 8 : 5, owner, "projectile", d); burst(); return; }
+        if (solidAt(wd, pos)) { burst(); return; }
+      }
+      if (frand() < dt * (rocket ? 40 : 14)) lv.fx->particles("smoke", pos - vel * 0.03f, 1);
+      return;
+    }
     if (kind == "wither_skull") {   // the Wither's skull: flies straight, bursts on what it hits and withers whoever it catches
       if (age > 6) { removed = true; return; }
       auto burst = [&]() {

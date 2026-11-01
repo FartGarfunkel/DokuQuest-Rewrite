@@ -435,6 +435,64 @@ def main(d):
                                    'painting': True, 'tex': 'painting_frame', 'itemIcon': 'painting_item', 'fuel': 0.5}, [tiles['painting_frame']] * 6)
     items['painting'].update({'icon': 'painting_item'})
     recipe('painting', 1, ['SSS', 'SWS', 'SSS'], {'S': 'stick', 'W': '#wool'})
+    # tree branches (the idea is Cubyz's): slim bark stems that join to logs, other branches and leaves (world/shapes.cpp
+    # ShapeKind::Branch = 37); the trees grow them (gen/trees.cpp branch()); they burn and can be built with
+    for wood, logk in (('oak', 'log'), ('birch', 'birch_log'), ('spruce', 'spruce_log'), ('jungle', 'jungle_log'), ('acacia', 'acacia_log'),
+                       ('dark_oak', 'dark_oak_log'), ('cherry', 'cherry_log'), ('mangrove', 'mangrove_log'), ('pine', 'pine_log'), ('aspen', 'aspen_log'), ('palm', 'palm_log')):
+        side = logk + '_side' if logk != 'log' else 'log_side'
+        if side not in tiles: continue
+        k = wood + '_branch'
+        block(k, wood.replace('_', ' ').title() + ' Branch', {'render': 7, 'opaque': False, 'hardness': 1.2, 'tool': 'axe', 'sound': 'log', 'shapeKind': 37,
+                                                               'branch': True, 'isLog': True, 'fuel': 1, 'tex': side}, [tiles[side]] * 6)
+        recipe(k, 4, ['L', 'L'], {'L': logk})
+    # powder weapons (sim/guns.cpp): the handcannon and its cannonballs, the rocket launcher and its rockets
+    if 'handcannon' not in tiles:
+        def canvas(): return _I.new('RGBA', (32, 32), (0, 0, 0, 0))
+        def save_item(name, im):
+            rel = 'textures/item/%s.png' % name; im.save(d / rel)
+            tiles[name] = tj['count']; files.append(rel); tj['res'].append(32); tj['count'] += 1
+        hc = canvas(); hp = hc.load()
+        for k in range(20):   # the barrel, slanting up to the right
+            for w in range(-2, 3):
+                x, y = 9 + k, 19 - k // 2 + w
+                if 0 <= x < 32 and 0 <= y < 32: hp[x, y] = (40, 40, 46, 255) if abs(w) == 2 else (92, 94, 104, 255) if w < 0 else (66, 68, 76, 255)
+        for x in range(27, 30):
+            for y in range(7, 13): hp[x, y] = (30, 30, 34, 255)   # the muzzle
+        for k in range(9):   # the wooden grip
+            for w in range(-1, 2):
+                x, y = 9 + w + k // 3, 19 + k
+                if 0 <= x < 32 and 0 <= y < 32: hp[x, y] = (110, 70, 36, 255) if w else (138, 92, 50, 255)
+        save_item('handcannon', hc)
+        rl = canvas(); rp = rl.load()
+        for k in range(26):
+            for w in range(-3, 4):
+                x, y = 3 + k, 24 - k * 3 // 4 + w
+                if 0 <= x < 32 and 0 <= y < 32: rp[x, y] = (40, 46, 54, 255) if abs(w) == 3 else (140, 150, 168, 255) if w < 0 else (104, 114, 130, 255)
+        for x, y in ((12, 22), (13, 22), (12, 23), (13, 23), (12, 24), (13, 25)): rp[x, y] = (60, 40, 24, 255)   # the handle
+        save_item('rocket_launcher', rl)
+        cb = canvas(); cp = cb.load()
+        for y in range(32):
+            for x in range(32):
+                dx, dy = x - 15.5, y - 16.5
+                if dx * dx + dy * dy <= 64: sh = 1 - (dx + dy) / 24; cp[x, y] = (int(min(255, 60 * sh)), int(min(255, 60 * sh)), int(min(255, 68 * sh)), 255)
+        save_item('cannonball', cb)
+        rk = canvas(); kp = rk.load()
+        for k in range(18):
+            for w in range(-2, 3):
+                x, y = 7 + k, 24 - k + w
+                if 0 <= x < 32 and 0 <= y < 32: kp[x, y] = (200, 40, 36, 255) if k > 13 else (226, 222, 210, 255) if w < 1 else (184, 180, 168, 255)
+        for x, y in ((6, 22), (5, 23), (6, 26), (9, 27), (8, 25)): kp[x, y] = (240, 160, 40, 255)   # the flame
+        save_item('rocket', rk)
+    items['handcannon'] = {'key': 'handcannon', 'name': 'Handcannon', 'maxStack': 1, 'icon': 'handcannon', 'tool': {'type': 'gun', 'tier': 0, 'speed': 1, 'damage': 2, 'durability': 250},
+                           'desc': 'Fires cannonballs that burst where they land without breaking blocks. Fire at your feet to fling yourself.'}
+    items['rocket_launcher'] = {'key': 'rocket_launcher', 'name': 'Rocket Launcher', 'maxStack': 1, 'icon': 'rocket_launcher', 'tool': {'type': 'gun', 'tier': 0, 'speed': 1, 'damage': 2, 'durability': 120},
+                                'desc': 'Fires rockets that fly straight and blast what they hit.'}
+    items['cannonball'] = {'key': 'cannonball', 'name': 'Cannonball', 'maxStack': 64, 'icon': 'cannonball'}
+    items['rocket'] = {'key': 'rocket', 'name': 'Rocket', 'maxStack': 16, 'icon': 'rocket'}
+    recipe('handcannon', 1, ['I  ', 'IF ', ' IP'], {'I': 'iron_ingot', 'F': 'flint', 'P': 'planks'})
+    recipe('rocket_launcher', 1, ['S  ', ' SR', '  S'], {'S': 'steel_ingot', 'R': 'redstone'})
+    recipe('cannonball', 4, items_=['iron_ingot', 'gunpowder'])
+    recipe('rocket', 2, items_=['firework_rocket', 'gunpowder', 'iron_ingot'])
     # the quiver (BTA's): a leather case of arrows (sim/quiver.cpp)
     if 'quiver' not in tiles:
         qv = _I.new('RGBA', (32, 32), (0, 0, 0, 0)); qp = qv.load()
@@ -474,6 +532,8 @@ def main(d):
     if 'coconut' not in sh['itemTiles']: sh['itemTiles'].append('coconut'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'quiver' not in sh['itemTiles']: sh['itemTiles'].append('quiver'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'painting_item' not in sh['itemTiles']: sh['itemTiles'].append('painting_item'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
+    for _k in ('handcannon', 'rocket_launcher', 'cannonball', 'rocket'):
+        if _k not in sh['itemTiles']: sh['itemTiles'].append(_k); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'sulphur' not in sh['itemTiles']: sh['itemTiles'].append('sulphur'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'paintbrush' not in sh['itemTiles']: sh['itemTiles'].append('paintbrush'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))

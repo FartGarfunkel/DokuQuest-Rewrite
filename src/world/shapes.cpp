@@ -123,6 +123,7 @@ void initBlockTraits() {
       it = g_modelIdx.find(shape + "_hang"); if (it != g_modelIdx.end()) t.modelHang = it->second;
     }
     if (t.campfire) { auto it = g_modelIdx.find("campfire_out"); if (it != g_modelIdx.end()) t.modelOut = it->second; }
+    t.branch = b.has("branch"); t.logLike = b.has("isLog");
     t.pickle = b.has("pickle"); t.chorus = b.has("chorus"); t.chorusFlower = b.key == "chorus_flower"; t.tripwire = b.has("tripwire");
     t.door = b.has("door"); t.candle = b.has("candle"); t.cauldron = b.has("cauldron"); t.pot = b.has("pot");
     t.endRod = b.key == "end_rod"; t.facingModel = b.has("facingModel"); t.pile = b.has("pile"); t.backpack = b.has("placedBackpack");
@@ -549,6 +550,20 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
         if (isC(nb.id(0, 0, 1))) push(ShapeBox(a, a, b, b, b, 16));
         if (isC(nb.id(0, 0, -1))) push(ShapeBox(a, a, 0, b, b, a));
       }
+      return true;
+    }
+    case ShapeKind::Branch: {
+      // a tree branch (the idea is Cubyz's): a slim stem reaching into the branches, logs and leaves beside it, so a
+      // branch winds out of the trunk and vanishes into its leaves; thinner out toward the tips (meta bit 0)
+      auto joins = [](BlockId k) { const BlockTraits& t = traits(k); return t.branch || t.logLike || t.leaves; };
+      const float a = (m & 1) ? 5.5f : 4.5f, b = 16 - a;
+      push(ShapeBox(a, a, a, b, b, b));
+      if (joins(nb.id(0, -1, 0))) push(ShapeBox(a, 0, a, b, a, b));
+      if (joins(nb.id(0, 1, 0))) push(ShapeBox(a, b, a, b, 16, b));
+      if (joins(nb.id(1, 0, 0))) push(ShapeBox(b, a, a, 16, b, b));
+      if (joins(nb.id(-1, 0, 0))) push(ShapeBox(0, a, a, a, b, b));
+      if (joins(nb.id(0, 0, 1))) push(ShapeBox(a, a, b, b, b, 16));
+      if (joins(nb.id(0, 0, -1))) push(ShapeBox(a, a, 0, b, b, a));
       return true;
     }
     default: break;

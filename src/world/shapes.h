@@ -26,6 +26,7 @@ struct BlockTraits {
   u8 tint = 0;                  // climate tint: 0 none, 1 grass, 2 foliage
   u8 cloth = 0;                 // 1 flag, 2 banner, 3 bunting, 4 washing line, 5 shop sign
   u8 campfire = 0;              // 1 campfire, 2 soul campfire
+  bool branch = false, logLike = false;   // a tree branch (shape Branch) and what it grows from
   bool pickle = false, chorus = false, chorusFlower = false, tripwire = false, door = false, candle = false, cauldron = false, pot = false;
   bool endRod = false, facingModel = false, lantern = false, bamboo = false, pile = false, backpack = false, hive = false;
   bool axis = false, hasFront = false, f6 = false, sideAll = false, selfCull = false, leaves = false;
