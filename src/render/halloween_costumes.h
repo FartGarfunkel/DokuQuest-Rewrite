@@ -11,7 +11,10 @@ enum class Costume : u8 { None, WitchHat, GhostSheet, SkullPaint, Vampire };
 // hh = the villager's hash (render/villager_layer.cpp); about 35% of all villagers are dressed (never one with a pumpkin head)
 Costume villagerCostume(u32 hh, bool pumpkinHead);
 
-enum HwPiece { HW_WITCH_HAT, HW_SKULL_FACE, HW_SHEET_HEAD, HW_SHEET_BODY, HW_COLLAR, HW_PIECE_COUNT };
+enum HwPiece { HW_WITCH_HAT, HW_SKULL_FACE, HW_SHEET_HEAD, HW_SHEET_BODY, HW_COLLAR,
+               HW_WINTER_CAP, HW_SCARF, HW_PIECE_COUNT };   // December: a red winter cap (head), a striped scarf (body space)
+// December: who wears what (a hash, like the costumes): bit 1 the cap, bit 2 the scarf
+int villagerWinterWear(u32 hh);
 // A piece (built on first use, GL thread). Head pieces: part space of CP_HEAD (about the neck, y up, front = -z);
 // HW_SHEET_BODY: CharRig::body space (about the hip).
 const CharMesh& hwPiece(int piece);

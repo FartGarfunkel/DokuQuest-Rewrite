@@ -111,6 +111,7 @@ void App::reloadTiles() {
   addBuiltinTileAnims(tiles);   // render/tile_anim.h (before a pack replaces tiles)
   tiles.packName = applyResourcePack(tiles, settings.resourcePack);
   applyUserTiles(tiles);   // the Texture Studio's pictures, over any pack
+  holidayTiles(tiles);     // December's wrapped chests
   // ice you can see through like Minecraft's (about 60 % cover), whichever pack painted it
   for (const char* k : {"ice", "frosted_ice"}) {
     auto it = tiles.index.find(k);

@@ -9,6 +9,8 @@ Costume villagerCostume(u32 hh, bool pumpkinHead) {
   return (Costume)(1 + (hh >> 24) % 4);
 }
 
+int villagerWinterWear(u32 hh) { return ((hh >> 9) % 100 < 45 ? 1 : 0) | ((hh >> 17) % 100 < 40 ? 2 : 0); }
+
 namespace {
 // a grid of half-pixel voxels over a box of part space; fill() colours each voxel by its centre (0 = empty)
 struct Builder {
@@ -103,6 +105,35 @@ void collar(CharMesh& m) {
   });
   b.finish(m);
 }
+// December's red winter cap (our own): a white furry band, the soft cone flopping over to one side, a white bobble
+void winterCap(CharMesh& m) {
+  Builder b(vec3(-7.f, 6.4f, -5.2f), vec3(7.f, 15.6f, 5.2f));
+  b.fill([](vec3 p) -> u32 {
+    auto sq = [](float x, float z, float r) { return std::pow(std::fabs(x) / r, 4.f) + std::pow(std::fabs(z) / r, 4.f) <= 1.f; };
+    const float fur = 0.9f + 0.1f * std::sin(p.x * 3.1f + p.z * 2.3f + p.y * 1.7f);
+    if (p.y < 8.4f) return sq(p.x, p.z, 4.75f) ? rgb((int)(244 * fur), (int)(242 * fur), (int)(236 * fur)) : 0u;   // the band
+    const float t = (p.y - 8.4f) / 6.6f;                     // up the cone
+    const float cx = t * t * 3.8f, cy = 0;                   // the tip leans over to the right
+    const float r = 4.3f * (1 - t) + 0.6f;
+    if (t <= 1 && sq(p.x - cx, p.z - cy, r)) return rgb((int)(196 - 30 * t), 28 + (int)(8 * std::sin(p.x * 2 + p.z)), 34);
+    if (glm::length(p - vec3(4.6f, 14.4f, 0)) < 1.45f) return rgb((int)(246 * fur), (int)(244 * fur), (int)(240 * fur));   // the bobble
+    return 0u;
+  });
+  b.finish(m);
+}
+// a knitted scarf in stripes, wound round the neck with one end hanging down the front (body space: shoulders at y 12)
+void scarf(CharMesh& m) {
+  Builder b(vec3(-5.f, 3.4f, -3.4f), vec3(5.f, 13.6f, 3.2f));
+  b.fill([](vec3 p) -> u32 {
+    const u32 C[3] = {rgb(184, 32, 40), rgb(236, 232, 222), rgb(40, 120, 64)};
+    const bool ring = p.y >= 11.2f && p.y < 13.4f && std::fabs(p.x) <= 4.6f && std::fabs(p.z) <= 2.7f && !(std::fabs(p.x) < 4.0f && std::fabs(p.z) < 2.1f);
+    if (ring) return C[(int)std::floor((p.x + p.z * 0.4f + 10) / 1.5f) % 3];
+    const bool tail = p.x >= 1.0f && p.x < 3.1f && p.z >= -3.3f && p.z < -2.5f && p.y >= 4.f && p.y < 11.4f;
+    if (tail) return p.y < 4.6f ? (((int)(p.x * 2)) & 1 ? C[1] : 0u) : C[(int)std::floor((p.y - 4) / 1.4f) % 3];   // a fringe at the end
+    return 0u;
+  });
+  b.finish(m);
+}
 } // namespace
 
 const CharMesh& hwPiece(int piece) {
@@ -116,6 +147,8 @@ const CharMesh& hwPiece(int piece) {
       case HW_SKULL_FACE: skullFace(meshes[piece]); break;
       case HW_SHEET_HEAD: sheetHead(meshes[piece]); break;
       case HW_SHEET_BODY: sheetBody(meshes[piece]); break;
+      case HW_WINTER_CAP: winterCap(meshes[piece]); break;
+      case HW_SCARF: scarf(meshes[piece]); break;
       default: collar(meshes[piece]); break;
     }
   }

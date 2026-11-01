@@ -2,7 +2,7 @@
 // "village gates swing"). When one turns (World::changeOldMeta tells the open bit flipped), the block is left out of
 // the chunk mesh (meshHiddenBlocks) and drawn here for a moment as boxes turning on their hinges: a door about its
 // hinge post, each wing of a gate about its post, a trapdoor about its hinged edge. Then the mesh takes it back.
-#include "render/content_draw.h"
+#include "render/tile_box.h"
 #include "render/mesher.h"
 #include "client/session.h"
 #include "client/app.h"
@@ -32,38 +32,6 @@ public:
   }
 };
 
-GLuint tileTex(App& a, int layer) {
-  static std::unordered_map<int, GLuint> cache;
-  static const TileSet* of = nullptr; static int count = -1;
-  if (of != &a.tiles || count != a.tiles.count) { for (auto& [k, t] : cache) glDeleteTextures(1, &t); cache.clear(); of = &a.tiles; count = a.tiles.count; }
-  auto it = cache.find(layer);
-  if (it != cache.end()) return it->second;
-  if (layer < 0 || layer >= a.tiles.count) return 0;
-  const int N = a.tiles.size;
-  std::vector<u8> px(a.tiles.tile(layer), a.tiles.tile(layer) + N * N * 4);
-  for (size_t i = 3; i < px.size(); i += 4) if (px[i] >= 250) px[i] = 255;
-  return cache[layer] = makeTexRGBA(N, N, px.data(), true, false);
-}
-
-// one box (in 1/16 block, x0..x1 etc.) as six pictures under `m`; side tile on the four sides, top/bottom on the ends
-void box(ContentDraw& cd, const mat4& m, vec3 a, vec3 b, GLuint side, GLuint top, GLuint bot, vec2 light) {
-  a /= 16.f; b /= 16.f;
-  const vec3 c = (a + b) * 0.5f, s = b - a;
-  auto pic = [&](GLuint t, const mat4& q, vec4 uv, float shade) { cd.picture(t, m * q, uv, vec4(shade, shade, shade, 1), light); };
-  // the faces facing z (front and back)
-  for (int k = 0; k < 2; k++) {
-    mat4 q = glm::translate(mat4(1), vec3(c.x, c.y, k ? b.z : a.z)); q = glm::scale(q, vec3(s.x, s.y, 1));
-    pic(side, q, vec4(a.x, 1 - b.y, b.x, 1 - a.y), 0.9f);
-  }
-  for (int k = 0; k < 2; k++) {   // facing x
-    mat4 q = glm::translate(mat4(1), vec3(k ? b.x : a.x, c.y, c.z)); q = glm::rotate(q, PI / 2, vec3(0, 1, 0)); q = glm::scale(q, vec3(s.z, s.y, 1));
-    pic(side, q, vec4(a.z, 1 - b.y, b.z, 1 - a.y), 0.75f);
-  }
-  for (int k = 0; k < 2; k++) {   // facing y
-    mat4 q = glm::translate(mat4(1), vec3(c.x, k ? b.y : a.y, c.z)); q = glm::rotate(q, PI / 2, vec3(1, 0, 0)); q = glm::scale(q, vec3(s.x, s.z, 1));
-    pic(k ? top : bot, q, vec4(a.x, a.z, b.x, b.z), k ? 1.f : 0.6f);
-  }
-}
 // turning about a hinge line through (px, pz) (1/16 block) by `ang` about y, or about x through (py, pz)
 mat4 aboutY(float px, float pz, float ang) { mat4 q = glm::translate(mat4(1), vec3(px, 0, pz) / 16.f); q = glm::rotate(q, ang, vec3(0, 1, 0)); return glm::translate(q, -vec3(px, 0, pz) / 16.f); }
 mat4 aboutX(float py, float pz, float ang) { mat4 q = glm::translate(mat4(1), vec3(0, py, pz) / 16.f); q = glm::rotate(q, ang, vec3(1, 0, 0)); return glm::translate(q, -vec3(0, py, pz) / 16.f); }
@@ -111,7 +79,7 @@ public:
       const int fm = o.to & 3;
       int side = d.faces[0], top = d.faces[2], bot = d.faces[3];
       if (T.door) { if ((o.to & 16) && T.upperTile >= 0) side = T.upperTile; top = bot = side; }
-      const GLuint ts = tileTex(s.app, side), tt = tileTex(s.app, top), tb = tileTex(s.app, bot);
+      const GLuint ts = tileTexture(s.app, side), tt = tileTexture(s.app, top), tb = tileTexture(s.app, bot);
       const u8 l = w.getLight(o.p.x, o.p.y, o.p.z);
       const vec2 light((l >> 4) / 15.f, (l & 15) / 15.f);
       mat4 m = glm::translate(mat4(1), f.cam.rel(glm::dvec3(o.p)) + vec3(0.5f, 0, 0.5f));
@@ -119,20 +87,20 @@ public:
       m = glm::translate(m, vec3(-0.5f, 0, -0.5f));
       if (kind == ShapeKind::Door) {
         const bool right = o.to & 8;
-        box(cd, m * aboutY(right ? 14.5f : 1.5f, 14.5f, (right ? -1 : 1) * PI / 2 * open), vec3(0, 0, 13), vec3(16, 16, 16), ts, tt, tb, light);
+        drawTileBox(cd, m * aboutY(right ? 14.5f : 1.5f, 14.5f, (right ? -1 : 1) * PI / 2 * open), vec3(0, 0, 13), vec3(16, 16, 16), ts, tt, tb, light);
       } else if (kind == ShapeKind::Trapdoor) {
         const bool high = o.to & 8;
         const mat4 q = m * (high ? aboutX(14.5f, 1.5f, PI / 2 * open) : aboutX(1.5f, 1.5f, -PI / 2 * open));
-        box(cd, q, vec3(0, high ? 13 : 0, 0), vec3(16, high ? 16 : 3, 16), ts, tt, tb, light);
+        drawTileBox(cd, q, vec3(0, high ? 13 : 0, 0), vec3(16, high ? 16 : 3, 16), ts, tt, tb, light);
       } else {   // a gate: two posts, and a wing on each turning about its post
-        box(cd, m, vec3(0, 5, 7), vec3(2, 16, 9), ts, tt, tb, light);
-        box(cd, m, vec3(14, 5, 7), vec3(16, 16, 9), ts, tt, tb, light);
+        drawTileBox(cd, m, vec3(0, 5, 7), vec3(2, 16, 9), ts, tt, tb, light);
+        drawTileBox(cd, m, vec3(14, 5, 7), vec3(16, 16, 9), ts, tt, tb, light);
         for (int k = 0; k < 2; k++) {
           const mat4 q = m * aboutY(k ? 15.f : 1.f, 8, (k ? 1 : -1) * PI / 2 * open);
           const float x0 = k ? 8 : 2, x1 = k ? 14 : 8;
-          box(cd, q, vec3(x0, 6, 7), vec3(x1, 9, 9), ts, tt, tb, light);
-          box(cd, q, vec3(x0, 12, 7), vec3(x1, 15, 9), ts, tt, tb, light);
-          box(cd, q, vec3(k ? 8 : 6, 9, 7), vec3(k ? 10 : 8, 12, 9), ts, tt, tb, light);
+          drawTileBox(cd, q, vec3(x0, 6, 7), vec3(x1, 9, 9), ts, tt, tb, light);
+          drawTileBox(cd, q, vec3(x0, 12, 7), vec3(x1, 15, 9), ts, tt, tb, light);
+          drawTileBox(cd, q, vec3(k ? 8 : 6, 9, 7), vec3(k ? 10 : 8, 12, 9), ts, tt, tb, light);
         }
       }
     }

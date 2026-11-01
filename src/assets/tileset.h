@@ -43,6 +43,7 @@ int appendTile(TileSet& ts, const u8* rgba32x32);   // adds a tile (animation fr
 // the player's own pictures (Texture Studio): userDir()/textures/<tile name>.png over whatever pack is on; a tile the
 // game tints by biome keeps its tint where it had it; an animated tile goes still. Returns how many were used.
 int applyUserTiles(TileSet& ts);
+void holidayTiles(TileSet& ts);   // December: chests wrapped as presents (assets/holiday_tiles.cpp)
 // a picture of any square size brought to the tile size (smaller doubled up, bigger averaged down)
 std::vector<u8> fitTile(const std::vector<u8>& rgba, int w, int h, int T);
 

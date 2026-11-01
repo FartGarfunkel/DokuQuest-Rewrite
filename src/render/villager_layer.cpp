@@ -192,6 +192,13 @@ public:
           }
         }
       }
+      if (christmas()) {   // December: red winter caps and striped scarves (render/halloween_costumes.h)
+        u32 wh = c->id * 2654435761u; wh ^= wh >> 15; wh *= 2246822519u; wh ^= wh >> 13;
+        const int wear = villagerWinterWear(wh);
+        auto piece = [&](int pc, const mat4& m) { const CharMesh& cm = hwPiece(pc); if (cm.ready()) VR.draw(cm.gl, m * cm.local(), light, tint); };
+        if ((wear & 1) && AR[0].empty()) piece(HW_WINTER_CAP, R.part[CP_HEAD] * R.scale[CP_HEAD]);
+        if ((wear & 2) && AR[1].empty()) piece(HW_SCARF, R.body);
+      }
       if (!held.empty()) {
         std::string id = held == "fishing_rod" ? "fishing_rod_tp" : held;
         const VoxelModel& im = itemModel(id);
