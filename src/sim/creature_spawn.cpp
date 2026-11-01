@@ -689,6 +689,7 @@ void registerCreatures() {
   { void registerQuiver(); registerQuiver(); }   // sim/quiver.cpp
   { void registerGuns(); registerGuns(); }   // sim/guns.cpp
   { void registerTravelJournal(); registerTravelJournal(); }   // sim/travel_journal.cpp
+  { void registerAchievements(); registerAchievements(); }     // sim/achievements.cpp
   { void registerEndShulkers(); registerEndShulkers(); }   // sim/end_shulkers.cpp
   registerTrickOrTreat();
   registerWeaponRack();

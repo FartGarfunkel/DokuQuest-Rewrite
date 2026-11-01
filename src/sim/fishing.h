@@ -15,7 +15,8 @@ class Bobber : public Entity {
 public:
   Bobber() { type = "fishing_bobber"; w = 0.08f; h = 0.12f; netLocal = true; noGravity = true; }
   u32 owner = 0;                 // the player's entity id
-  enum State : u8 { Fly, Float, Ground } state = Fly;
+  enum State : u8 { Fly, Float, Ground, Hooked } state = Fly;   // Hooked: caught on a creature (BTA: lead it on the line)
+  u32 mob = 0;                   // the creature hooked
   float waitT = 0, biteT = 0, comeT = 0;
   bool coming = false; vec3 comeFrom{0};
   u32 fish = 0;                  // the fish swimming up (entity id)

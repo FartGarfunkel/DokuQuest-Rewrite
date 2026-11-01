@@ -49,7 +49,8 @@ std::vector<ActInfo> buildTable() {
   t.push_back({Act::HotNext, "next", "Hotbar right", V{}, {5, 15}, false, true});
   t.push_back({Act::Pause, "pause", "Pause", V{"Escape"}, {9}, false, true});
   // C++ additions (multiplayer list, zoom): bindable keys, no defaults for zoom
-  t.push_back({Act::PlayerList, "playerList", "Player list", V{"Tab"}, {}, true, false});
+  t.push_back({Act::HotbarRow, "hotbarRow", "Next row of the bag into the hotbar", V{"Tab"}, {}, true, false});   // BTA's hotbar pages
+  t.push_back({Act::PlayerList, "playerList", "Player list", V{}, {}, true, false});
   t.push_back({Act::Zoom, "zoom", "Zoom", V{}, {}, true, false});
   return t;
 }

@@ -8,6 +8,7 @@
 #include "sim/creature_entities.h"
 #include <unordered_map>
 #include <chrono>
+#include <set>
 #include <cstring>
 #include "sim/content.h"
 
@@ -48,11 +49,48 @@ void registerUsables() {
   registerEntityFactory("firework", [](const std::string&) { return std::make_unique<FireworkRocket>(); });
   registerLevelSystem([](Level& lv) -> std::shared_ptr<LevelSystem> {
     struct S : LevelSystem {
-      Level* lv = nullptr; int h = 0;
+      Level* lv = nullptr; int h = 0, hp = 0;
+      std::vector<std::pair<int, ivec3>> sponges;   // just placed: soak up the water round them next tick
       const char* name() const override { return "usables"; }
-      ~S() override { if (lv && lv->events && h) lv->events->off(h); }
+      ~S() override { if (lv && lv->events) { if (h) lv->events->off(h); if (hp) lv->events->off(hp); } }
+      // Minecraft's sponge: the water within 6 steps (up to 65 blocks of it) is soaked up and the sponge turns wet
+      void tick(Level& L, double) override {
+        if (sponges.empty()) return;
+        static const BlockId sponge = reg().blockId("sponge"), wet = reg().blockId("wet_sponge");
+        for (auto& [realm, at] : sponges) {
+          World& w = L.world(realm);
+          if (!sponge || !wet || w.getBlock(at.x, at.y, at.z) != sponge) continue;
+          const Registry& R = reg();
+          std::vector<std::pair<ivec3, int>> q{{at, 0}}; std::set<std::tuple<int, int, int>> seen{{at.x, at.y, at.z}};
+          int n = 0;
+          for (size_t i = 0; i < q.size() && n < 65; i++) {
+            const auto [c, dist] = q[i];
+            if (dist >= 6) continue;
+            static const int D[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+            for (auto& d : D) {
+              const ivec3 nb(c.x + d[0], c.y + d[1], c.z + d[2]);
+              if (!seen.insert({nb.x, nb.y, nb.z}).second) continue;
+              if (R.tLiquid[w.getBlock(nb.x, nb.y, nb.z)] != 1) continue;
+              w.setBlock(nb.x, nb.y, nb.z, AIR); n++; q.push_back({nb, dist + 1});
+              if (n >= 65) break;
+            }
+          }
+          if (n > 0) {
+            w.setBlock(at.x, at.y, at.z, wet, 0);
+            L.fx->particles("splash", vec3(at) + vec3(0.5f, 1, 0.5f), 24);
+            L.fx->sound("splash_small", vec3(at) + vec3(0.5f), 16);
+          }
+        }
+        sponges.clear();
+      }
     };
     auto s = std::make_shared<S>(); s->lv = &lv;
+    if (lv.events) s->hp = lv.events->on("blockPlace", [&lv, sp = s.get()](const json& a) {   // [player, x, y, z, key]
+      if (lv.isRemote() || !a.is_array() || a.size() < 5 || !a[4].is_string() || a[4].get<std::string>() != "sponge") return true;
+      Player* p = a[0].is_string() ? named(lv, a[0].get<std::string>()) : nullptr;
+      sp->sponges.push_back({p ? p->realm : REALM_MAIN, ivec3(a[1].get<int>(), a[2].get<int>(), a[3].get<int>())});
+      return true;
+    });
     if (lv.events) s->h = lv.events->on("itemUse", [&lv](const json& a) {   // [player, item, x, y, z, face]
       if (lv.isRemote() || !a.is_array() || a.size() < 6 || !a[1].is_string() || !a[0].is_string()) return true;
       const ItemDef* d = reg().item(a[1].get<std::string>());
@@ -131,6 +169,23 @@ void registerUsables() {
         p->swingT = 0.01f;
         if (d->str("mobHead") == "wither_skeleton") tryWitherSummon(lv, p->realm, at);   // the third skull on a T of soul sand
         return false;
+      }
+      if (d->key == "wet_sponge" && hitBlock) {   // BTA: a wet sponge washes the dye out of wool, glass, terracotta and planks
+        World& w = lv.world(p->realm);
+        const std::string k = reg().block(w.getBlock(hb.x, hb.y, hb.z)).key;
+        static const char* COLS[16] = {"white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray", "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black"};
+        std::string rest;
+        for (const char* c : COLS) { const std::string pre = std::string(c) + "_"; if (k.rfind(pre, 0) == 0) { rest = k.substr(pre.size()); break; } }
+        const std::string to = rest == "wool" ? "wool" : rest == "terracotta" ? "terracotta" : rest == "stained_glass" ? "glass" :
+                               rest == "stained_glass_pane" ? "glass_pane" : rest == "painted_planks" ? "planks" : "";
+        const BlockId tid = to.empty() ? 0 : reg().blockId(to);
+        if (tid && to != k) {
+          w.setBlock(hb.x, hb.y, hb.z, tid, w.getMeta(hb.x, hb.y, hb.z));
+          lv.fx->particles("splash", vec3(hb) + vec3(0.5f, 1, 0.5f), 10);
+          lv.fx->sound("splash_small", vec3(hb) + vec3(0.5f), 12);
+          p->swingT = 0.01f;
+          return false;
+        }
       }
       if (d->has("paintbrush")) {   // a dye in the other hand: planks, wool, glass and terracotta take its colour
         if (!hitBlock) return true;

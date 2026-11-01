@@ -62,6 +62,7 @@ static void registerMenuTabs() {
   registerInventoryTab();
   registerMenuTab({"map", "Map", [](App& a) { a.pushScreen(makeMapScreen(-1)); }, [](App& a) { return canOpenMapScreen(a); }});
   registerMenuTab({"journal", "Journal", [](App& a) { a.pushScreen(makeJournalScreen()); }, nullptr});
+  { std::unique_ptr<Screen> makeAchievementsScreen(); registerMenuTab({"achievements", "Achievements", [](App& a) { a.pushScreen(makeAchievementsScreen()); }, nullptr}); }
   registerMenuTab({"skills", "Skills", [](App& a) { a.pushScreen(makeSkillsScreen()); }, nullptr});
   registerMenuTab({"spells", "Spellbook", [](App& a) { a.pushScreen(makeSpellbookScreen()); }, nullptr});
   registerMenuTab({"stable", "Stable", [](App& a) { a.pushScreen(makeStableScreen()); }, nullptr});
@@ -198,8 +199,8 @@ void throwStackFromPlayer(App& a, const ItemStack& s) {
 // ---- menu tabs (game/menutabs.js) ---------------------------------------------------------------------------
 static std::vector<MenuTab>& tabs() { static std::vector<MenuTab> t; return t; }
 void registerMenuTab(MenuTab t) {
-  static const char* order[] = {"inventory", "map", "journal", "skills", "spells", "stable"};
-  auto rank = [](const std::string& k) { for (int i = 0; i < 6; i++) if (k == order[i]) return i; return 6; };
+  static const char* order[] = {"inventory", "map", "journal", "skills", "spells", "stable", "achievements"};
+  auto rank = [](const std::string& k) { for (int i = 0; i < 7; i++) if (k == order[i]) return i; return 7; };
   auto& v = tabs();
   for (auto& o : v) if (o.key == t.key) { o = std::move(t); return; }
   auto it = std::find_if(v.begin(), v.end(), [&](const MenuTab& o) { return rank(o.key) > rank(t.key); });
@@ -215,9 +216,11 @@ bool inventoryClosePressed(App& a, bool tabScreen) {
 }
 
 static int g_tabClick = -1;
+static u64 g_tabSwitchFrame = 0;   // the frame of the last switch: the screen it opens must not take the same press again
 static void tabGo(App& a, int cur, int to, int dir) {
   // (the switch happens between frames, outside any screen's draw)
   if (!a.session || !a.session->player || a.session->player->dead) return;
+  g_tabSwitchFrame = a.frame;
   auto& v = tabs(); int n = (int)v.size();
   a.popScreen();
   for (int k = 0; k < n; k++, to = ((to + dir) % n + n) % n) {
@@ -254,6 +257,7 @@ static const char* tabKeyOfScreen(const std::string& id) {
   if (id == "skills") return "skills";
   if (id == "spellbook") return "spells";
   if (id == "stable") return "stable";
+  if (id == "achievements") return "achievements";
   return nullptr;
 }
 void uiAfterScreens(App& a) {
@@ -263,12 +267,12 @@ void uiAfterScreens(App& a) {
   if (!key) return;
   menuTabsDraw(a, key);
   // one LB/RB press = one tab: the screen a switch opens must not see the same press again
-  static u64 lastSwitch = 0;
-  if (a.frame <= lastSwitch + 2) return;
+  // (a switch made from the inventory's own update counts too: it used to skip a tab, Q from the inventory landing two over)
+  if (a.frame <= g_tabSwitchFrame + 2) return;
   int cur, to, dir;
   if (tabsWant(a, key, cur, to, dir)) {
-    lastSwitch = a.frame;
-    uiDefer([s, cur, to, dir](App& a2) { if (a2.topScreen() == s) { tabGo(a2, cur, to, dir); lastSwitch = a2.frame; } });
+    g_tabSwitchFrame = a.frame;
+    uiDefer([s, cur, to, dir](App& a2) { if (a2.topScreen() == s) tabGo(a2, cur, to, dir); });
   }
 }
 void menuTabsDraw(App& a, const std::string& current) {

@@ -55,7 +55,7 @@ void clientTickLocalPlayer(GameSession& s, double dt) {
     pi.attack = in.down(Act::Attack); pi.attackPressed = in.pressed(Act::Attack);
     pi.use = in.down(Act::Use); pi.usePressed = in.pressed(Act::Use);
     pi.drop = in.pressed(Act::Drop) && !justMenu && !in.down(Act::Sprint); pi.dropAll = in.pressed(Act::Drop) && !justMenu && in.down(Act::Sprint);
-    pi.pick = in.pressed(Act::PickBlock); pi.swap = in.pressed(Act::SwapHands); pi.place = in.pressed(Act::PlaceMode);
+    pi.pick = in.pressed(Act::PickBlock); pi.swap = in.pressed(Act::SwapHands); pi.place = in.pressed(Act::PlaceMode); pi.hotRow = in.pressed(Act::HotbarRow);
     // crawl: sneak tapped twice (keyboard and pads alike)
     if (in.pressed(Act::Sneak)) { if (app.time - st.sneakTapT < 0.3) { pi.crawl = true; st.sneakTapT = -10; } else st.sneakTapT = app.time; }
     for (int i = 0; i < 9; i++) if (in.pressed((Act)((int)Act::Hot1 + i))) pi.slot = i;

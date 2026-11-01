@@ -74,6 +74,14 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Sorting.** Middle-click a chest, a backpack or your bag (or click the right stick on one) and its stacks are put in order and topped up; the hotbar stays as you left it.
 - **New commands:** /playsound plays any of the game's sounds (with volume, pitch and a place) and /particle makes any particle (smoke, flame, heart, firework...).
 - **Nightmares** (a game rule, on by default): sleep in the dark with monsters about and one may come to your bed and wake you. Light your bedroom.
+- **Hotbar rows** (BTA): Tab turns the rows of your bag round into the hotbar, like pages.
+- **Lead animals on a fishing line** (BTA): cast at an animal and the hook catches; it follows you on the line (too far and it snaps), and reeling in gives it a tug toward you.
+- **Sponges soak up water** when you put them down (everything within six blocks), turning into wet sponges; dry them in a furnace. A wet sponge used on dyed wool, glass, terracotta or painted planks washes the colour out (BTA).
+- **Furnace minecarts burn any fuel** a furnace would, not just coal (BTA).
+- **Stars come in colours** (BTA): mostly white, some blue, yellow, orange and red, and they twinkle a little.
+- **Achievements** (BTA): 27 of them, from Getting Wood to The End., on their own tab beside the Stable. A toast when you earn one, and the date you did.
+- Fixed: switching menu tabs from the inventory (Q / LB / RB) skipped a tab.
+- Fixed: in a chest or furnace on a controller, Y quick-moves straight away again instead of closing the menu.
 
 **Gear and magic:**
 

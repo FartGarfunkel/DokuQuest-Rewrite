@@ -556,6 +556,12 @@ def main(d):
         tile('thorn_leaves', im)
     block('thorn_leaves', 'Thorn Leaves', {'render': 2, 'opaque': False, 'hardness': 0.3, 'tool': None, 'sound': 'leaves', 'lightAtt': 1,
                                            'isLeaves': True, 'thorns': True, 'drop': 'stick', 'tex': 'thorn_leaves'}, [tiles['thorn_leaves']] * 6)
+    # the wet sponge (Minecraft's): a sponge that soaked up water; dry it in a furnace. Used on dyed wool, terracotta,
+    # glass or painted planks it washes the colour out (BTA)
+    if 'wet_sponge' not in tiles:
+        tile('wet_sponge', recolour(src_pic(d, tiles, files, 'sponge'), lambda r, g, b, a, x, y: (r * 150 // 255, g * 160 // 255, b * 110 // 255 + 20, a)))
+    block('wet_sponge', 'Wet Sponge', {'hardness': 0.6, 'tool': 'hoe', 'sound': 'grass', 'wetSponge': True, 'tex': 'wet_sponge'}, [tiles['wet_sponge']] * 6)
+    rj.setdefault('smelting', {}).setdefault('wet_sponge', 'sponge')
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'shapes.json').write_text(json.dumps(sj, separators=(',', ':'), ensure_ascii=False))
     sh = json.loads((d / 'itemshapes.json').read_text())

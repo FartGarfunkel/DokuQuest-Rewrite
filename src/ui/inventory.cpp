@@ -136,9 +136,9 @@ public:
     const Hit* f = hasFocus ? findHit(focus) : nullptr;
     bool A = in.padButtonPressed(0), X = in.padButtonPressed(2), Y = in.padButtonPressed(3);
     if (A || X) padActed = true;
-    // the pad's inventory button toggles: Y right after opening (nothing moved, nothing on the cursor) shuts it again;
-    // once you have moved around, Y is the quick-move button it is in the original
-    if (Y && !in.textActive && !padActed && p->cursor.empty()) { a.popScreen(); return; }
+    // the pad's inventory button toggles the plain inventory: Y right after opening it (nothing moved, nothing on the
+    // cursor) shuts it again; once you have moved around, or in a container, Y is the quick-move button it is in the original
+    if (Y && o.mode == "inventory" && !in.textActive && !padActed && p->cursor.empty()) { a.popScreen(); return; }   // (a chest, furnace... opened with Use: Y is quick move at once)
     if (f && (A || X || Y)) activate(a, *f, X, Y, true);
     // sorting (BTA): the right stick's click over a bag, chest or backpack slot; the middle mouse button over one
     if (f && f->k == H_SLOT && in.padButtonPressed(11)) sess->sortGroup(f->g);

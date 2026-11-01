@@ -4,6 +4,7 @@
 #include "sim/redstone_entities.h"
 #include "sim/player.h"
 #include "sim/physics.h"
+#include "sim/worldsys.h"
 
 namespace dq {
 using namespace rs;
@@ -79,10 +80,13 @@ bool Minecart::use(Level& lv, Player& p, ItemStack* held) {
     return true;
   }
   if (kind == "minecart" && pet) { Entity* m = lv.entity(pet); std::string n = m ? m->type : "pet"; std::replace(n.begin(), n.end(), '_', ' '); vehToast(lv, p, "There's a " + n + " in this cart (sneak + use to lift it out)"); return true; }
-  if (kind == "furnace" && held && isCoal(held->id)) {
+  // any fuel keeps it going (BTA), as long as a furnace would burn it: coal 180 s, a block of coal 1620 s, planks 34 s...
+  const float fv = held && held->id.find("bucket") == std::string::npos ? fuelValue(held->id) : 0.f;
+  if (kind == "furnace" && held && (isCoal(held->id) || fv > 0)) {
     bool block = held->id == "coal_block";
+    const float add = isCoal(held->id) ? (block ? 1620.f : 180.f) : fv * 22.5f;
     consume(p, held);
-    fuel = block ? std::min(fuel + 1620.f, 3600.f) : std::min(fuel + 180.f, 1800.f);
+    fuel = std::max(fuel, std::min(fuel + add, block ? 3600.f : 1800.f));
     float dx = pos.x - p.pos.x, dz = pos.z - p.pos.z, d = std::hypot(dx, dz); if (d < 1e-4f) d = 1;
     pushX = dx / d; pushZ = dz / d;
     lv.fx->sound("ignite", c);
@@ -95,7 +99,7 @@ bool Minecart::use(Level& lv, Player& p, ItemStack* held) {
     if (lv.events) lv.events->emit("screenOpen", json::array({p.name, "container", json{{"entity", id}, {"name", T().key == std::string("chest") ? "Minecart with Chest" : "Minecart with Hopper"}}}));
     return true;
   }
-  if (kind == "furnace") { vehToast(lv, p, "Feed it coal and it pushes itself along"); return true; }
+  if (kind == "furnace") { vehToast(lv, p, "Feed it coal (or any fuel) and it pushes itself along"); return true; }
   if (kind == "tnt" && held && held->def() && held->def()->str("igniter") == "flint") {
     prime(lv);
     if (!p.creative()) { held->d++; const ItemDef* d = held->def(); if (d->hasTool && d->tool.durability > 0 && held->d >= d->tool.durability) held->clear(); }

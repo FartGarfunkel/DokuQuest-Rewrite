@@ -29,6 +29,7 @@ struct PlayerInput {
   float mx = 0, mz = 0, lookX = 0, lookY = 0;
   bool jump = false, sneak = false, sprint = false, attack = false, attackPressed = false, use = false, usePressed = false;
   bool drop = false, dropAll = false, pick = false, swap = false, place = false, crawl = false, crawlHeld = false;
+  bool hotRow = false;   // BTA: the hotbar swaps with the next row of the bag (the rows turn round like pages)
   int slot = -1, wheel = 0;
 };
 struct MoveOpts { bool autoJump = false; float slow = 1; bool noLedge = false, noSprint = false; };

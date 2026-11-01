@@ -1,4 +1,4 @@
-# DokuQuest — session handoff (2026-10-31)
+# DokuQuest — session handoff (2026-11-01)
 
 Start here in a new session. Read this file, `CLAUDE.md` (the code map), and only the files a task needs.
 The full feature list is `docs/MASTER_PLAN.md` (the user's master doc, V2); the BTA detail is `docs/BTA_GAP.md`; the
@@ -177,10 +177,45 @@ Then (user asked mid-session, all on `chisel`, in the alpha.8 notes):
   check, triad per bar; songFromMood; songFromAnalysis: our own composer, styles calm/folk/epic/dreamy).
   AudioEngine::audioClock/musicNote/musicClear. Songs with a realm play in that land (music.cpp realmSong, 40%).
   build/test_song <wav> checks it (synthetic Am F C G at 100 bpm -> 99.5, A minor, right chords).
-Still open: End ambience sound, seasons (optional), bows (grip/draw/scale, visual: wait for the user's eyes), wolf
-howl/duck/horse sound mappings (asked), the Wither Storm, statue, basket, activator, siphon, handcannon, steel
-handled; the studio has not been heard (no sound device here). Item 2 of the list below (crowds) was already in: crowdPush in
+Done since then: the Wither Storm (rift_core), statue, basket, activator, siphon, handcannon and the steel set.
+The studio has not been heard (no sound device here). Item 2 of the list below (crowds) was already in: crowdPush in
 sim/creature_spawn.cpp.
+Then (2026-10-31 night, the user asked for a faster pace, all on `chisel`, alpha.8 notes updated):
+- Sound Studio (launcher/sound_studio.cpp, Mod Studio page "sounds"): list/filter, waveform, pitch/gain/trim/fades/
+  low-pass, "Another take", normalise, import WAV/MP3/FLAC (ma_decode_file), save userDir()/sounds/<name>.wav
+  (AudioEngine::playSamples previews).
+- Texture Studio (launcher/texture_studio.cpp, page "textures"): tile list with atlas thumbnails (Blocks/Items/Yours),
+  pencil/fill/picker/eraser, mirror, grid, undo/redo, palette from the tile, cube + tiled preview, PNG import
+  (fitTile), "Use in the game" = userDir()/textures/<tile>.png, laid over any pack by assets/packs.cpp
+  applyUserTiles (keeps the 253 biome-tint marker where the base tile had it). Controller paint mode like the music
+  studio. DQ_TEX_OPEN=<tile> opens one (tests). applyResourcePack now holds a mutex (two loader threads).
+- Grass grows back (sim/worldsys.cpp grassTick: Minecraft's 4 tries in 3x5x3, every column ~once a minute, looks
+  through leaves/logs). Game rule `randomTickSpeed` (number, default 1) scales all random ticks. Playtest grass.json.
+- Doors/gates/trapdoors swing (render/swing_layer.cpp): World::changeOldMeta tells the open bit flipped; the block
+  is left out of the mesh (render/mesher.h meshHiddenBlocks, applied in gatherMeshInput) for 0.22 s and drawn as
+  turning boxes (render/tile_box.h drawTileBox/tileTexture). DQ_SWING_SLOW=1 slows it 25x (tests).
+- Elytra ride the weather's wind (sim/elytra.cpp). Test op `wear` now fills Player::cape.
+- Held torches burn (render/held_light_fx.cpp): first person reads HeldItemLayer::torchTip (set in drawOverlay).
+- The End's ambience (audio/audio.cpp Drone loop + ambience.cpp far ender_tp).
+- Hardcore (rule `hardcore`, New World mode "Hardcore"): death screen offers Spectate / Title screen (ui/hud.cpp).
+- Sorting (InvSession::sortGroup): middle click or R3 over bag/chest/backpack slots; hotbar untouched.
+- /playsound and /particle (sim/gamecommands.cpp).
+- Nightmares (rule `nightmares`, in World settings): asleep in the dark (block light < 8) in the Overworld, 30% a
+  zombie/skeleton/spider spawns 2-5 blocks off and wakes everyone (sim/blockfx.cpp tickSleep). The user: the toggle
+  must NEVER affect the story's dreams: riftDream (sim/rift.cpp) runs on every morning skip regardless (rift open,
+  not sealed; chance grows as stability falls). Dreams stay out of the patch notes.
+- Hotbar rows (BTA): Tab (Act::HotbarRow; PlayerList lost its unused Tab default) turns the bag rows into the hotbar.
+- December (started, then the user said: finish the core list first, holidays later): common/holiday.h christmas()
+  and newYear() (DQ_EVENT=christmas|newyear); villagers' winter caps and scarves (render/halloween_costumes.cpp
+  HW_WINTER_CAP/HW_SCARF, render/villager_layer.cpp); wrapped chests (assets/holiday_tiles.cpp); lights under the
+  eaves and a decorated tree on the square (render/winter_village_layer.cpp, render-only). NOT done: carols in the
+  music director (public-domain melodies), New Year fireworks over villages, a brighter tree. Not in the notes yet.
+- Answered the user: items are already true voxel models; "detail blocks" (any block a 16^3 grid of 6.25 cm voxels:
+  storage, mesher, collision, picking, water, chisel) is the recommended path if they want 6 cm building; a full 6 cm
+  world is not. Waiting for their answer (16 or 32 per block).
+- The full playtest run (/tmp/pt/run.sh pattern: every tools/playtests/*.json with --create P) shows all.json and
+  containers.json are stale: they expect a world called T1 (`open`), the old pad-Y quick move (Y now closes the
+  inventory if nothing was done yet) and the old menu tab order.
 
 ## Agreed order after the chisel (features first, then structure and GUI)
 1. **Quick wins.** Done in alpha.7: spawn eggs (`tools/port/spawn_eggs.py`, creative "Spawn Eggs" tab, never one for

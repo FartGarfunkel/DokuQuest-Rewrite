@@ -1,0 +1,88 @@
+{
+"steps": [
+{
+"wait": 200,
+"do": "anchor"
+},
+{
+"do": "cmd",
+"text": "/time set noon"
+},
+{
+"do": "fill",
+"rel": true,
+"from": [
+-6,
+0,
+-12
+],
+"to": [
+6,
+4,
+6
+],
+"key": "air"
+},
+{
+"do": "fill",
+"rel": true,
+"from": [
+-6,
+-1,
+-12
+],
+"to": [
+6,
+-1,
+6
+],
+"key": "grass"
+},
+{
+"do": "give",
+"item": "fishing_rod",
+"n": 1
+},
+{
+"do": "select",
+"slot": 0
+},
+{
+"do": "cmd",
+"text": "/summon cow"
+},
+{
+"wait": 10,
+"do": "lookAt",
+"entity": "cow"
+},
+{
+"wait": 2,
+"do": "mouse",
+"button": "right"
+},
+{
+"wait": 60,
+"do": "report"
+},
+{
+"do": "tp",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": 5
+},
+{
+"wait": 200,
+"do": "expect",
+"entity": "cow",
+"near": 5
+},
+{
+"do": "report"
+},
+{
+"do": "quit"
+}
+]
+}

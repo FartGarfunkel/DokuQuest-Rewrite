@@ -3,6 +3,7 @@
 #include <cmath>
 
 namespace dq {
+bool isMob(const Entity& e);   // sim/gameplay.h
 
 namespace {
 std::unordered_map<u32, u32>& floats() { static std::unordered_map<u32, u32> m; return m; }      // player id -> float id
@@ -114,6 +115,15 @@ void Bobber::tick(Level& lv, double dtd) {
       float h = dt / 3;
       vel.y -= 16 * h; float k = std::max(0.f, 1 - h * 0.4f); vel.x *= k; vel.z *= k;
       vec3 n = pos + vel * h;
+      // a creature in the way: the hook catches in it (BTA leads animals on a fishing line)
+      if (age > 0.12f) for (auto& e : lv.entities()) {
+        if (e->removed || e->realm != realm || e->hp <= 0 || !isMob(*e) || e->data.contains("hooked")) continue;
+        if (std::fabs(e->pos.x - n.x) < e->w + 0.15f && std::fabs(e->pos.z - n.z) < e->w + 0.15f && n.y > e->pos.y - 0.1f && n.y < e->pos.y + e->h + 0.1f) {
+          state = Hooked; mob = e->id; vel = vec3(0); pos = n;
+          sfxAt(lv, "pop", pos, 16);
+          return;
+        }
+      }
       BlockId b = w.getBlock(ifloor(n.x), ifloor(n.y), ifloor(n.z));
       if (reg().tLiquid[b] == 1) {
         pos = n; state = Float; vel = vec3(0);
@@ -131,6 +141,20 @@ void Bobber::tick(Level& lv, double dtd) {
       pos = n;
     }
     if (pos.y < -10) endFishing(lv, *p, false);
+    return;
+  }
+  if (state == Hooked) {   // on the line: it follows; drift too far and it's pulled after you, too far still and the line snaps
+    Entity* m = mob ? lv.entity(mob) : nullptr;
+    if (!m || m->removed || m->hp <= 0 || m->realm != realm) { endFishing(lv, *p, false); return; }
+    pos = m->pos + vec3(0, m->h * 0.75f, 0);
+    const vec3 d = p->pos - m->pos; const float L = glm::length(vec2(d.x, d.z));
+    if (L > 14) { endFishing(lv, *p, false); toast(lv, *p, "The line snapped", "warn"); return; }
+    if (L > 3.5f) {
+      const float pull = std::min(8.f, (L - 3.5f) * 3.f);
+      m->vel.x += (d.x / L * pull - m->vel.x) * std::min(1.f, dt * 4);
+      m->vel.z += (d.z / L * pull - m->vel.z) * std::min(1.f, dt * 4);
+      if (m->onGround && d.y > 0.6f && L > 4) m->vel.y = std::max(m->vel.y, 5.5f);   // up a step after you
+    }
     return;
   }
   if (state != Float) return;
@@ -196,6 +220,14 @@ void endFishing(Level& lv, Player& p, bool reel) {
   floats().erase(p.id);
   if (!b) return;
   b->removed = true;
+  if (b->state == Bobber::Hooked) {   // reeling a hooked creature: a tug toward you, and the hook comes free
+    if (Entity* m = b->mob ? lv.entity(b->mob) : nullptr) if (reel && !m->removed) {
+      const vec3 d = p.pos - m->pos; const float L = std::max(0.5f, glm::length(d));
+      m->vel += vec3(d.x / L * 7, 4.f, d.z / L * 7);
+      wearHeld(lv, p, 1);
+    }
+    return;
+  }
   bool bite = b->state == Bobber::Float && b->biteT > 0;
   if (!(bite && reel)) b->letGo(lv, true);
   if (!reel) return;

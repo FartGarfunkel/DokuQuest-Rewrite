@@ -22,6 +22,7 @@ enum class Act : int {
   // added with the full controls port (ids follow the original's KEY_ACTIONS)
   Crawl, Shoulder, Skills, Spell, Stable, Journal, Spellbook, CastQuick,
   MenuX, MenuY, MenuStart,
+  HotbarRow,   // BTA: the next bag row into the hotbar
   Count
 };
 const char* actName(Act a);         // the original action id ("forward", "pick", "slot1", ...)

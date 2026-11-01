@@ -1,0 +1,44 @@
+{
+"steps": [
+{
+"wait": 200,
+"do": "anchor"
+},
+{
+"do": "give",
+"item": "log",
+"n": 2
+},
+{
+"do": "give",
+"item": "crafting_table",
+"n": 1
+},
+{
+"wait": 90,
+"do": "key",
+"key": "E"
+},
+{
+"wait": 20,
+"do": "expect",
+"screen": "inventory"
+},
+{
+"do": "key",
+"key": "Q"
+},
+{
+"wait": 20,
+"do": "expect",
+"screen": "achievements"
+},
+{
+"do": "shot",
+"path": "/tmp/ach.png"
+},
+{
+"do": "quit"
+}
+]
+}

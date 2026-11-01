@@ -9,7 +9,7 @@ Never makes an egg for creatures that only the story brings (SKIP)."""
 import json, sys, pathlib, hashlib
 from PIL import Image
 
-SKIP = {'herobrine', 'end_crystal'}
+SKIP = {'herobrine', 'end_crystal', 'wither_storm'}   # the story's figure, and its climax (summoned, never hatched)
 # our creature -> the Minecraft name its pack egg picture uses, where ours stands in for theirs
 MC = {'ghoul': 'zombie', 'fuseling': 'creeper', 'stone_mite': 'silverfish', 'zombie_pigman': 'zombified_piglin',
       'magma_slime': 'magma_cube', 'snow_fox': 'fox_snow'}
