@@ -42,7 +42,7 @@ public:
     lod.update(*s.level, s.world(), s.frame, *s.app.pool, dt, s.app.tiles);
   }
   bool testWeather = false;
-  void drawOpaque(GameSession& s, const FrameCtx& f) override { lod.draw(f, skyOf(f)); }
+  void drawOpaque(GameSession& s, const FrameCtx& f) override { lod.draw(f, skyOf(f), s.app.tileTex); }
   void drawHud(GameSession& s) override {
     if (!s.debugOverlay) return;
     WeatherSystem* W = weatherOf(*s.level);

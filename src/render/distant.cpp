@@ -4,6 +4,7 @@
 // of real chunks (loaded, or out of the save) and drawing (drawDistant: cut away chunk by chunk where
 // the real chunks are drawn, the storm's shadow and rain over it, fog at the far edge).
 #include "render/distant.h"
+#include <cstring>
 #include "render/sky.h"
 #include "sim/level.h"
 #include "sim/weather.h"
@@ -18,8 +19,9 @@ namespace {
 const std::vector<VertexAttrib> LOD_ATTRS = {
   {0, 2, GL_UNSIGNED_SHORT, GL_FALSE, false, 0},
   {1, 1, GL_SHORT, GL_FALSE, false, 4},
-  {2, 4, GL_UNSIGNED_BYTE, GL_TRUE, false, 6},
-  {3, 1, GL_UNSIGNED_SHORT, GL_FALSE, true, 10},
+  {2, 1, GL_UNSIGNED_SHORT, GL_FALSE, true, 6},
+  {3, 4, GL_UNSIGNED_BYTE, GL_TRUE, false, 8},
+  {4, 1, GL_UNSIGNED_SHORT, GL_FALSE, true, 12},
 };
 inline u64 tkey(int L, int tx, int tz) { return ((u64)L << 58) | ((u64)((u32)tx & 0x1FFFFFFFu) << 29) | (u64)((u32)tz & 0x1FFFFFFFu); }
 inline u64 rkey(int dim, int rx, int rz) { return ((u64)dim << 60) | ((u64)((u32)rx & 0x3FFFFFFFu) << 30) | (u64)((u32)rz & 0x3FFFFFFFu); }
@@ -78,14 +80,14 @@ void DistantTerrain::addSummary(const ChunkKey& k, std::shared_ptr<ChunkSummary>
   if (it != sums.end()) {
     // the tiles that show it need making again only if its top has changed
     const ChunkSummary& o = *it->second; changed = false;
-    for (int q = 0; q < 64 && !changed; q++) if (std::abs(o.g[q] - s->g[q]) > 2 || std::abs(o.ct[q] - s->ct[q]) > 2 || std::abs(o.gc[q * 3 + 1] - s->gc[q * 3 + 1]) > 12 || o.fb[q] != s->fb[q]) changed = true;
-    if (!changed && o.ex.size() != s->ex.size()) changed = true;   // a mass under the top one came or went (a bridge, an arch)
-    for (size_t q = 0; q < o.ex.size() && !changed; q++) if (o.ex[q].cell != s->ex[q].cell || std::abs(o.ex[q].y0 - s->ex[q].y0) > 2 || std::abs(o.ex[q].y1 - s->ex[q].y1) > 2) changed = true;
+    // (any voxel changed: a block placed or dug that shows at 2x2 blocks)
+    changed = o.runs.size() != s->runs.size() || std::memcmp(o.start, s->start, sizeof o.start) != 0;
+    for (size_t q = 0; q < o.runs.size() && !changed; q++) if (o.runs[q].y0 != s->runs[q].y0 || o.runs[q].y1 != s->runs[q].y1 || o.runs[q].id != s->runs[q].id) changed = true;
     it->second = s;
   } else {
     sums[k] = s;
     sumRegions[rkey(k.dim, k.cx >> 4, k.cz >> 4)]++;
-    // kept small: at most twelve thousand chunks (about 13 MB, a little more with the masses under the tops)
+    // kept small: at most twelve thousand chunks (a few hundred voxel runs each, about 20 MB)
     if (sums.size() > 12000) {
       auto v = sums.begin(); if (v->first == k) ++v;
       auto rk = rkey(v->first.dim, v->first.cx >> 4, v->first.cz >> 4);
@@ -219,11 +221,15 @@ void DistantTerrain::submit(Band& b, int L, int tx, int tz, ThreadPool& pool, fl
   bool any = false;
   for (int rz = z0 >> 8; rz <= (z1 >> 8) && !any; rz++) for (int rx = x0 >> 8; rx <= (x1 >> 8) && !any; rx++) if (sumRegions.count(rkey(b.dim, rx, rz))) any = true;
   if (any) {
-    in->sums.resize((size_t)W * W);
-    for (int j = 0; j < W; j++) for (int i = 0; i < W; i++) {
-      int fx = (int)std::floor(tx * (double)size + (i - 1 + 0.5) * cs), fz = (int)std::floor(tz * (double)size + (j - 1 + 0.5) * cs);
+    // a cell's centre at level 0; past it, the centres of its four quarters (a coarse voxel is made from finer ones)
+    const int Q = L == 0 ? 1 : 4;
+    in->sums.resize((size_t)W * W * Q);
+    for (int j = 0; j < W; j++) for (int i = 0; i < W; i++) for (int q = 0; q < Q; q++) {
+      const double cx = tx * (double)size + (i - 1 + 0.5) * cs, cz = tz * (double)size + (j - 1 + 0.5) * cs;
+      const int fx = Q == 1 ? (int)std::floor(cx) : (int)std::floor(std::floor(cx) + ((q & 1) ? 0.25 : -0.25) * cs);
+      const int fz = Q == 1 ? (int)std::floor(cz) : (int)std::floor(std::floor(cz) + ((q & 2) ? 0.25 : -0.25) * cs);
       auto it = sums.find({b.dim, fx >> 4, fz >> 4});
-      if (it != sums.end()) in->sums[j * W + i] = it->second;
+      if (it != sums.end()) in->sums[((size_t)j * W + i) * Q + q] = it->second;
     }
   }
   inFlight++;
@@ -365,7 +371,7 @@ void DistantTerrain::update(Level& lv, World& w, const FrameCtx& f, ThreadPool& 
   }
 }
 
-void DistantTerrain::draw(const FrameCtx& f, const SkyEnv& env) {
+void DistantTerrain::draw(const FrameCtx& f, const SkyEnv& env, const TileTextures& tex) {
   if (f.portalDepth > 0 && (f.cam.realm != REALM_MAIN || f.dim < 0 || f.dim >= DIM_COUNT || !bands[f.dim]->active)) return;   // a portal's view: only into a land drawn here
   if (f.portalDepth == 0) drawn = 0;
   bool any = false;
@@ -394,6 +400,7 @@ void DistantTerrain::draw(const FrameCtx& f, const SkyEnv& env) {
     float lum = 0.25f + 0.75f * clampv((env.day - 0.2f) / 0.8f, 0.f, 1.f);
     shader.set("uRainCol", vec3(th ? 0.36f : 0.52f, th ? 0.38f : 0.55f, th ? 0.43f : 0.6f) * lum);
   }
+  tex.bind(shader, 5);   // the blocks' own textures (units 5..10), drawn on the voxels like Cubyz's far chunks
   glActiveTexture(GL_TEXTURE4);
   shader.set("uMask", 4);
   GLint locO = shader.loc("uTileOrigin"), locS = shader.loc("uTileScale"), locC = shader.loc("uCell"), locW = shader.loc("uTileWorld");

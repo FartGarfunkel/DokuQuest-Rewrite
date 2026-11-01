@@ -36,9 +36,14 @@ BTA ideas only). alpha.9's notes are written in CHANGELOG/news (not released yet
     (audio/nether_sfx.cpp live-synth sounds; AudioScene::netherLand set in client_fx.cpp; ambience.cpp per-land wind and
     timers), volcano eruptions (gen netherVolcanoes() + render/nether_fx_layer.cpp: clock from world time so shared
     worlds agree; DQ_ERUPT=1 makes every volcano erupt every 20 s for testing), embers/fumes/glints per land.
-  - Distant terrain 3D: ChunkSummary::ex (masses under the top one per 2x2 cell; a gap kept if daylight reaches it or it
-    is 6+ tall), Grid extras + generic wall subtraction in render/distant_build.cpp, ColumnSample::roof (the Nether's
-    roof, BTA sample). Unvisited Overworld land is still columns (its generator has no overhangs except caves).
+  - Distant terrain rebuilt after Cubyz's LOD (the user asked for Cubyz's code to be studied; read in a scratch clone,
+    ideas only): render/distant_build.cpp — ChunkSummary = a chunk brought down to 2x2-block voxels (runs of block ids
+    per cell; Cubyz's pick: solid if any, the most-exposed block wins; hollows without daylight under 6 tall filled),
+    coarser levels merge the four quarter points (TileInput::sums has 4 per cell past L0), the generator's ColumnSample
+    (+ roof, trees) fills unvisited land; meshing = run tops/bottoms merged greedily + walls = runs minus the neighbour's
+    solid spans (skirt at tile edges). LodVertex is 16 bytes with the face's tile layer; distant.glsl textures each voxel
+    face (uCell blocks a texture), grass/leaf/water tints as chunk.glsl, leaves drawn in their average colour (flag 8).
+    DistantTerrain::draw binds TileTextures at units 5..10.
   - Skylands trees looked at from outside the cloud bank (land on an island at -40,60 seed hello): cloud leaves render
     like every other leaf block (white, from the pack's oak leaves; trunks are the pack's dark birch). Nothing visibly
     broken; asked the user what they saw.

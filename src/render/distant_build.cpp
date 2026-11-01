@@ -1,6 +1,14 @@
-// render/distant_build.cpp — the worker side of distant terrain (game/distant.js distSummarize,
-// distBuild, distMesh): colours, summaries of real chunks, and a tile's columns turned into a mesh
-// (tops and undersides merged into rectangles, walls merged along their edge).
+// render/distant_build.cpp — the worker side of distant terrain, built the way Cubyz builds its far land (ideas from
+// Cubyz's chunk.zig updateFromLowerResolution and renderer/mesh_storage.zig; no code taken, Cubyz is GPL):
+//  * the land is VOXELS at every distance, only coarser further off: 2x2 blocks across next to the loaded chunks,
+//    then 4, 8 ... (one block high each, so far hills keep their true heights);
+//  * a coarse voxel is made from the finer ones under it: solid if ANY of them is (air is avoided, so thin walls,
+//    bridges and spires survive), and of the block that shows the most — one with air round it beats one buried, so
+//    grass stays on top of dirt and a wall keeps its bricks;
+//  * real chunks are brought down to 2x2-block voxels once (summarizeChunk) and every coarser level is made from those;
+//    where nobody has been, the generator's columns give the voxels;
+//  * the voxels are drawn with the blocks' own textures (one texture per voxel face, like Cubyz's LOD chunks), merged
+//    into big quads where the same block runs on.
 #include "render/distant.h"
 #include "render/mesher.h"
 #include "assets/tileset.h"
@@ -9,29 +17,41 @@
 namespace dq::lod {
 
 namespace {
-inline u8 q4(float v) { return (u8)std::min(252.f, std::max(0.f, std::round(v / 4) * 4)); }
+using Col = std::array<BlockId, DIM_H>;   // a column of voxels, band-local y
 vec3 unpack(u32 c) { return vec3(c & 255, (c >> 8) & 255, (c >> 16) & 255); }
-vec3 tintOf(const ColorTable& ct, BlockId id, u8 temp, u8 humid) {
-  u8 k = id < ct.tint.size() ? ct.tint[id] : 0;
-  if (k == 3) return vec3(60, 160, 224) / 255.f;   // the water tint the chunk mesher uses
+inline u8 b8(float v) { return (u8)clampv((int)std::lround(v), 0, 255); }
+
+// what a voxel can be made of: plants, torches and the like vanish far off (Cubyz's lodReplacement)
+inline bool lodSolid(const Registry& R, BlockId id) {
+  return id && (R.tOpaque[id] || R.tLiquid[id] || R.tLeaves[id] || (R.tSolid[id] && R.tRender[id] != (u8)Render::Cross));
+}
+
+// Cubyz's pick for a coarse voxel: solid if any of the finer columns is solid at that height, and the block among them
+// with the most air round it (above, below, and in the voxel's other columns)
+void mergeCols(const Col* const* sub, int n, const Registry& R, Col& out) {
+  for (int y = 0; y < DIM_H; y++) {
+    int best = -1, bestScore = -1;
+    for (int s = 0; s < n; s++) {
+      const BlockId id = (*sub[s])[y];
+      if (!lodSolid(R, id)) continue;
+      int sc = 1;
+      if (y + 1 >= DIM_H || !lodSolid(R, (*sub[s])[y + 1])) sc += 5;
+      if (y > 0 && !lodSolid(R, (*sub[s])[y - 1])) sc += 5;
+      for (int o = 0; o < n; o++) if (o != s && !lodSolid(R, (*sub[o])[y])) sc += 5;
+      if (sc > bestScore) { bestScore = sc; best = s; }
+    }
+    out[y] = best < 0 ? AIR : (*sub[best])[y];
+  }
+}
+
+// the grass / foliage / water tint of a block in a climate (as the chunk mesher tints it); white if none
+vec3 tintOf(const ColorTable& ct, BlockId id, u8 temp, u8 humid, u32 sampleTint) {
+  const u8 k = id < ct.tint.size() ? ct.tint[id] : 0;
+  if (k == 3) return vec3(60, 160, 224) / 255.f;
   if (k == 0) return vec3(1);
+  if (sampleTint != 0xFFFFFFFF) return unpack(sampleTint) / 255.f * (k == 2 ? 0.9f : 1.f);
   return unpack(climateTint(k == 2 ? "foliage" : "grass", temp, humid)) / 255.f * (k == 2 ? 0.9f : 1.f);
 }
-// a block's colour from above (or from the side) in this climate (distBlockColor)
-vec3 blockColor(const ColorTable& ct, BlockId id, u8 temp, u8 humid, bool side, u32 sampleTint = 0xFFFFFFFF) {
-  if (id >= ct.top.size()) return vec3(128);
-  vec3 base = unpack(side ? ct.side[id] : ct.top[id]);
-  u8 k = ct.tint[id];
-  if (k == 0 || (side && k == 1)) return base;
-  if (k != 3 && sampleTint != 0xFFFFFFFF) return base * unpack(sampleTint) / 255.f * (k == 2 ? 0.9f : 1.f);
-  return base * tintOf(ct, id, temp, humid);
-}
-// water: lighter and greener in the shallows, deep blue far out (distWater)
-vec3 waterColor(vec3 w, float depth) {
-  float k = clampv((depth - 1) / 14, 0.f, 1.f);
-  return vec3(lerpf(w.x * 1.05f + 30, w.x * 0.55f, k), lerpf(w.y * 1.05f + 40, w.y * 0.6f, k), lerpf(w.z * 0.95f + 20, w.z * 0.75f, k));
-}
-constexpr float VOID = -1e9f, GROUNDED = -1e9f;
 } // namespace
 
 std::shared_ptr<ColorTable> makeColorTable(const TileSet& tiles) {
@@ -51,131 +71,70 @@ std::shared_ptr<ColorTable> makeColorTable(const TileSet& tiles) {
   return ct;
 }
 
-// ---- a real chunk's surface, 2x2 columns a cell: ground, canopy, water (distSummarize) ---------------------
+// ---- a real chunk brought down to 2x2-block voxels, one block high (Cubyz: a level made from the one under it) ----
 std::shared_ptr<ChunkSummary> summarizeChunk(const Chunk& c, const ColorTable& ct) {
+  (void)ct;
   auto S = std::make_shared<ChunkSummary>();
-  auto& R = reg();
-  bool floaty = c.dim == DIM_AETHER || c.dim == DIM_END;
-  int top = std::min(DIM_H - 1, c.maxY + 1);
-  auto solid = [&](BlockId id) { return R.tOpaque[id] || R.tLiquid[id] || (R.tSolid[id] && R.tRender[id] != (u8)Render::Cross); };
-  u8 occ[DIM_H], lit[DIM_H];
+  const Registry& R = reg();
+  const int top = std::min(DIM_H - 1, c.maxY + 1);
+  Col cols[4], m;
+  u8 lit[DIM_H];
   for (int j = 0; j < 8; j++) for (int i = 0; i < 8; i++) {
-    float gBest = -1, ctop = -1, cbot = 999; BlockId gId = AIR, leaf = AIR; bool trunk = false; int wd = 0;
-    std::memset(occ, 0, top + 1); std::memset(lit, 0, top + 1);
-    for (int dz = 0; dz < 2; dz++) for (int dx = 0; dx < 2; dx++) {
-      int x = i * 2 + dx, z = j * 2 + dz; bool sawLeaf = false, found = false;
-      for (int y = top; y >= 0; y--) {
-        BlockId id = c.get(x, y, z);
-        if (!id || !solid(id) || R.tLeaves[id] || (ct.isLog[id] && sawLeaf)) {
-          if (R.tLeaves[id] && !found) { sawLeaf = true; ctop = std::max(ctop, (float)y + 1); cbot = std::min(cbot, (float)y); if (!leaf) leaf = id; }
-          else if (id && ct.isLog[id] && sawLeaf && !found) trunk = true;
-          if (c.lightReady && (c.getLight(x, y, z) >> 4) > 0) lit[y] = 1;   // daylight gets in here
-          continue;
-        }
-        occ[y]++;
-        if (found) continue;
-        found = true;
-        float gy = y + (R.tLiquid[id] ? 0.875f : 1.f);
-        if (gy > gBest) {
-          gBest = gy; gId = id;
-          wd = 0;
-          if (R.tLiquid[id] == 1) for (int yy = y; yy > 0 && R.tLiquid[c.get(x, yy, z)] == 1 && wd < 30; yy--) wd++;
-        }
+    const int k = j * 8 + i;
+    S->start[k] = (u16)S->runs.size();
+    std::memset(lit, 0, sizeof lit);
+    for (int s = 0; s < 4; s++) {
+      const int x = i * 2 + (s & 1), z = j * 2 + (s >> 1);
+      for (int y = 0; y < DIM_H; y++) {
+        const BlockId id = y <= top ? c.get(x, y, z) : AIR;
+        cols[s][y] = id;
+        if (!lodSolid(R, id) && c.lightReady && y <= top && (c.getLight(x, y, z) >> 4) > 0) lit[y] = 1;   // daylight gets in here
       }
     }
-    int k = j * 8 + i;
-    S->fb[k] = -1;
-    if (gBest < 0) { S->g[k] = 0; S->ct[k] = 0; S->cb[k] = 0; S->f[k] = 0; S->wd[k] = 0; continue; }
-    // the cell's solid runs, top down; a gap between two is kept where daylight gets into it or it is a big cavern
-    // (6+ blocks: the Nether's open land under its roof), else filled in (caves shut away underground)
-    struct Run { int y1, y0; };
-    Run runs[24]; int nr = 0;
-    for (int y = top; y >= 0 && nr < 24;) {
-      while (y >= 0 && !occ[y]) y--;
-      if (y < 0) break;
-      const int y1 = y; while (y >= 0 && occ[y]) y--;
-      runs[nr++] = {y1, y + 1};
+    const Col* p[4] = {&cols[0], &cols[1], &cols[2], &cols[3]};
+    mergeCols(p, 4, R, m);
+    // a hollow shut away underground (no daylight, under six blocks tall) is filled in: nobody sees it from afar
+    for (int y = 1; y < DIM_H - 1;) {
+      if (lodSolid(R, m[y]) || !lodSolid(R, m[y - 1])) { y++; continue; }
+      int y1 = y; while (y1 < DIM_H && !lodSolid(R, m[y1])) y1++;
+      if (y1 >= DIM_H) break;   // open to the sky above
+      bool open = y1 - y >= 6;
+      for (int q = y; q < y1 && !open; q++) open = lit[q];
+      if (!open) for (int q = y; q < y1; q++) m[q] = m[y1];
+      y = y1;
     }
-    for (int r = 0; r + 1 < nr;) {
-      const int gt = runs[r].y0 - 1, gb = runs[r + 1].y1 + 1;
-      bool open = gt - gb + 1 >= 6;
-      for (int y = gb; y <= gt && !open; y++) open = lit[y];
-      if (open) { r++; continue; }
-      runs[r].y0 = runs[r + 1].y0;
-      for (int q = r + 1; q + 1 < nr; q++) runs[q] = runs[q + 1];
-      nr--;
+    for (int y = 0; y < DIM_H; y++) {
+      if (!lodSolid(R, m[y])) continue;
+      if (S->runs.size() > S->start[k] && S->runs.back().id == m[y] && S->runs.back().y1 + 1 == y) { S->runs.back().y1 = (u8)y; continue; }
+      S->runs.push_back({(u8)y, (u8)y, m[y]});
     }
-    while (nr > 4) { runs[nr - 2].y0 = runs[nr - 1].y0; nr--; }   // at most three masses under the top one
-    int ci = ((j * 2) * 16 + i * 2) * 2;
-    u8 tb = c.climate[ci], hb = c.climate[ci + 1];   // as the chunk mesher tints it
-    if (nr > 1) S->fb[k] = (i16)(runs[0].y0 * 4);                         // the top mass floats over a gap
-    else if (floaty && nr == 1 && runs[0].y0 > 0) S->fb[k] = (i16)(runs[0].y0 * 4);
-    for (int r = 1; r < nr; r++) {
-      BlockId id = AIR;
-      for (int dz = 0; dz < 2 && !id; dz++) for (int dx = 0; dx < 2 && !id; dx++) { BlockId b = c.get(i * 2 + dx, runs[r].y1, j * 2 + dz); if (b && solid(b) && !R.tLeaves[b]) id = b; }
-      ChunkSummary::Extra e; e.cell = (u8)k; e.y0 = (i16)(runs[r].y0 * 4); e.y1 = (i16)(runs[r].y1 * 4 + (R.tLiquid[id] ? 3 : 4));
-      e.flags = (u8)((R.tLiquid[id] == 1 ? 1 : 0) | (R.tLiquid[id] == 2 ? 32 : 0));
-      vec3 tc = blockColor(ct, id, tb, hb, false), sc = blockColor(ct, id, tb, hb, true);
-      if (R.tLiquid[id] == 1) { tc = waterColor(tc, 4); sc = tc; }
-      for (int q = 0; q < 3; q++) { e.tc[q] = q4(tc[q]); e.sc[q] = q4(sc[q]); }
-      S->ex.push_back(e);
-    }
-    vec3 gc = blockColor(ct, gId, tb, hb, false), sc = blockColor(ct, gId, tb, hb, true);
-    if (R.tLiquid[gId] == 1) { gc = waterColor(gc, (float)wd); sc = gc; }
-    S->g[k] = (i16)std::lround(gBest * 4);
-    for (int q = 0; q < 3; q++) { S->gc[k * 3 + q] = q4(gc[q]); S->sc[k * 3 + q] = q4(sc[q]); }
-    S->f[k] = (R.tLiquid[gId] == 1 ? 1 : 0) | (R.tLiquid[gId] == 2 ? 32 : 0);
-    S->wd[k] = (u8)wd;
-    S->ct[k] = 0; S->cb[k] = 0;
-    if (leaf && ctop > gBest + 0.5f) {
-      S->ct[k] = (i16)std::lround(ctop * 4); S->cb[k] = (i16)std::lround(std::max(cbot, gBest) * 4);
-      vec3 lc = blockColor(ct, leaf, tb, hb, false);
-      for (int q = 0; q < 3; q++) S->cc[k * 3 + q] = q4(lc[q]);
-      if (trunk) S->f[k] |= 2;
-    }
+    const int ci = ((j * 2) * 16 + i * 2) * 2;
+    S->temp[k] = c.climate[ci]; S->humid[k] = c.climate[ci + 1];
   }
+  S->start[64] = (u16)S->runs.size();
+  S->runs.shrink_to_fit();
   return S;
 }
 
-// ---- a tile: its columns, then its mesh ---------------------------------------------------------------
+// ---- a tile: its voxel columns, then its mesh ---------------------------------------------------------------
 namespace {
-struct Grid {
-  int W;
-  std::vector<float> G, B, CT, CB;
-  std::vector<u8> GC, SC, CC, FL;
-  // up to three more masses per cell besides the top one (ChunkSummary::Extra; a roof from the generator)
-  std::vector<u8> XN, XT, XS, XF; std::vector<float> XY0, XY1;
-  explicit Grid(int w) : W(w), G(w * w, VOID), B(w * w, GROUNDED), CT(w * w, 0), CB(w * w, 999), GC(w * w * 3, 0), SC(w * w * 3, 0), CC(w * w * 3, 0), FL(w * w, 0),
-    XN(w * w, 0), XT(w * w * 9, 0), XS(w * w * 9, 0), XF(w * w * 3, 0), XY0(w * w * 3, 0), XY1(w * w * 3, 0) {}
-  void addX(int k, float y0, float y1, vec3 tc, vec3 sc, u8 fl) {
-    if (XN[k] >= 3 || y1 <= y0) return;
-    const int s = k * 3 + XN[k]++;
-    XY0[s] = y0; XY1[s] = y1; XF[s] = fl; setC(XT, s, tc); setC(XS, s, sc);
-  }
-  void setC(std::vector<u8>& A, int k, vec3 c) { A[k * 3] = q4(c.x); A[k * 3 + 1] = q4(c.y); A[k * 3 + 2] = q4(c.z); }
-  vec3 col(const std::vector<u8>& A, int k) const { return vec3(A[k * 3], A[k * 3 + 1], A[k * 3 + 2]); }
-  bool same(const std::vector<u8>& A, int a, int b) const { return A[a * 3] == A[b * 3] && A[a * 3 + 1] == A[b * 3 + 1] && A[a * 3 + 2] == A[b * 3 + 2]; }
-};
+struct Run { i16 y0, y1; BlockId id; };   // band-local, inclusive
 
 struct MeshOut {
   std::vector<LodVertex>& v; float size; float minY = 1e9f, maxY = -1e9f;
-  void vert(vec3 p, vec3 c, int sh, u16 flags) {
+  void vert(vec3 p, u16 tile, vec3 c, int sh, u16 flags) {
     LodVertex o;
     o.x = (u16)clampv((int)std::lround(p.x / size * 32768.f), 0, 65535);
     o.z = (u16)clampv((int)std::lround(p.z / size * 32768.f), 0, 65535);
     o.y = (i16)clampv((int)std::lround(p.y * 8), -32768, 32767);
-    o.r = (u8)clampv((int)c.x, 0, 255); o.g = (u8)clampv((int)c.y, 0, 255); o.b = (u8)clampv((int)c.z, 0, 255);
-    o.shade = (u8)clampv(sh, 0, 255); o.flags = flags;
+    o.tile = tile; o.r = b8(c.x); o.g = b8(c.y); o.b = b8(c.z); o.shade = (u8)clampv(sh, 0, 255); o.flags = flags; o.pad = 0;
     minY = std::min(minY, p.y); maxY = std::max(maxY, p.y);
     v.push_back(o);
   }
-  // a quad facing `n` (corners in any order around the edge), shades per corner
-  void quad(vec3 a, vec3 b, vec3 c, vec3 d, vec3 n, vec3 col, int sa, int sb, int sc, int sd, u16 fl = 0, vec3 colLow = vec3(-1)) {
-    vec3 lo = colLow.x < 0 ? col : colLow;
+  // a quad facing `n` (corners in any order round the edge), shades per corner
+  void quad(vec3 a, vec3 b, vec3 c, vec3 d, vec3 n, u16 tile, vec3 col, int sa, int sb, int sc, int sd, u16 fl) {
     if (glm::dot(glm::cross(b - a, c - a), n) < 0) { std::swap(b, d); std::swap(sb, sd); }
-    float top = std::max(std::max(a.y, b.y), std::max(c.y, d.y)) - 1e-4f;
-    vert(a, a.y >= top ? col : lo, sa, fl); vert(b, b.y >= top ? col : lo, sb, fl);
-    vert(c, c.y >= top ? col : lo, sc, fl); vert(d, d.y >= top ? col : lo, sd, fl);
+    vert(a, tile, col, sa, fl); vert(b, tile, col, sb, fl); vert(c, tile, col, sc, fl); vert(d, tile, col, sd, fl);
   }
 };
 // the wall's foot in shadow, for depth
@@ -184,229 +143,233 @@ int footShade(int sh, float y1, float y0) { return std::max(80, (int)std::round(
 
 void buildTile(const TileInput& in, TileOutput& out) {
   double t0 = nowSeconds();
-  const int N = CELLS, L = in.L, cs = cellSize(L), size = N * cs, W = N + 2;
+  const int N = CELLS, L = in.L, cs = cellSize(L), size = N * cs, W = N + 2, Q = L == 0 ? 1 : 4;
   const int ox = in.tx * size, oz = in.tz * size, base = dimBase(in.dim);
   const ColorTable& ct = *in.colors;
-  auto& R = reg();
-  Grid g(W);
+  const Registry& R = reg();
   DimGenerator* gen = in.gen ? in.gen->forDim(in.dim) : nullptr;
-  bool floaty = in.dim == DIM_AETHER || in.dim == DIM_END;
-  // 1. the ground, cell by cell: a real chunk's surface where there is one, otherwise the generator's
-  for (int j = 0; j < W; j++) for (int i = 0; i < W; i++) {
-    int k = j * W + i;
-    int fx = (int)std::floor(ox + (i - 1 + 0.5) * cs), fz = (int)std::floor(oz + (j - 1 + 0.5) * cs);
-    const ChunkSummary* sm = in.sums.empty() ? nullptr : in.sums[k].get();
-    if (sm) {
-      int q = ((fz & 15) >> 1) * 8 + ((fx & 15) >> 1);
-      if (!sm->g[q]) { if (!floaty) { g.G[k] = base + SEA_LEVEL + 0.875f; g.FL[k] = 1; vec3 w = waterColor(unpack(ct.top[ct.water]) * vec3(60, 160, 224) / 255.f, 8); g.setC(g.GC, k, w); g.setC(g.SC, k, w); } continue; }
-      g.G[k] = base + sm->g[q] / 4.f;
-      if (sm->fb[q] >= 0) g.B[k] = base + sm->fb[q] / 4.f;
-      for (int c = 0; c < 3; c++) { g.GC[k * 3 + c] = sm->gc[q * 3 + c]; g.SC[k * 3 + c] = sm->sc[q * 3 + c]; }
-      if (sm->ct[q] > 0) { g.CT[k] = base + sm->ct[q] / 4.f; g.CB[k] = base + sm->cb[q] / 4.f; for (int c = 0; c < 3; c++) g.CC[k * 3 + c] = sm->cc[q * 3 + c]; }
-      g.FL[k] = sm->f[q] | 64;   // 64: from a real chunk
-      for (const ChunkSummary::Extra& e : sm->ex) if (e.cell == q) g.addX(k, base + e.y0 / 4.f, base + e.y1 / 4.f, vec3(e.tc[0], e.tc[1], e.tc[2]), vec3(e.sc[0], e.sc[1], e.sc[2]), e.flags);
-      continue;
-    }
-    if (!gen) continue;
-    ColumnSample s; gen->sample(fx, fz, s);
-    if (s.height < 0 && s.water < 0) continue;   // nothing here (the void between islands)
-    u8 tb = s.temp, hb = s.humid;   // the column's climate: tinted as the chunk mesher tints it
-    if (s.water >= 0 && s.water >= s.height && s.fluid) {
-      bool lava = R.tLiquid[s.fluid] == 2;
-      g.G[k] = base + s.water + 0.875f; g.FL[k] = lava ? 32 : 1;
-      vec3 c = blockColor(ct, s.fluid, tb, hb, false, s.tint);
-      if (!lava) c = waterColor(c, (float)std::min(16, (int)std::round((s.water - s.height) / 2.f) * 2));
-      g.setC(g.GC, k, c); g.setC(g.SC, k, c);
-    } else {
-      g.G[k] = base + s.height + 1.f;
-      BlockId top = s.top ? s.top : ct.dirt;
-      g.setC(g.GC, k, blockColor(ct, top, tb, hb, false, s.tint));
-      BlockId sideId = R.tGrassy[top] && s.under ? s.under : top;
-      g.setC(g.SC, k, blockColor(ct, sideId, tb, hb, true, s.tint));
-    }
-    if (s.floatBottom >= 0 && s.floatBottom <= s.height) g.B[k] = base + (float)s.floatBottom;
-    if (s.roof > s.height && s.roof < DIM_H) { BlockId rb = s.roofBlock ? s.roofBlock : ct.dirt; g.addX(k, base + (float)s.roof, (float)(base + DIM_H), blockColor(ct, rb, tb, hb, false), blockColor(ct, rb, tb, hb, true), 0); }
-    // far off, single trees can't be told apart: the forest is blended into the ground, as tall as its trees
-    // (the generator gives the forest cover as treeTop; near tiles get the real trees below)
-    if (L >= 2 && s.tree && s.leaves && s.treeTop >= s.height && !(g.FL[k] & 33)) {
-      vec3 lc = blockColor(ct, s.leaves, tb, hb, false, s.tint);
-      float lift = (float)(s.treeTop - s.height), cover = clampv(lift / 6 + 0.1f, 0.1f, 1.f);
-      g.setC(g.GC, k, glm::mix(g.col(g.GC, k), lc * 0.85f, std::min(1.f, cover * 1.2f)));
-      g.setC(g.SC, k, lc * 0.7f);
-      g.G[k] += lift;
-    }
-  }
-  // trees, where the generator plants them, with their real crowns (near tiles; distBuild step 3)
+  static const BlockId DEEP[DIM_COUNT] = {R.blockId("end_stone"), R.blockId("netherrack"), R.blockId("stone"), R.blockId("skystone") ? R.blockId("skystone") : R.blockId("stone")};
+  const BlockId deep = in.dim >= 0 && in.dim < DIM_COUNT && DEEP[in.dim] ? DEEP[in.dim] : ct.dirt;
+
+  // trees where the generator plants them (near tiles): their crowns and trunks as voxels too
+  struct TreeCol { i16 top = -1, leafBottom = 999; BlockId leaves = AIR, log = AIR; };
+  std::vector<TreeCol> trees;
   if (L <= 1 && gen) {
-    int x0 = ox - cs, z0 = oz - cs, x1 = ox + size + cs, z1 = oz + size + cs;
+    trees.assign((size_t)W * W, TreeCol());
+    const int x0 = ox - cs, z0 = oz - cs, x1 = ox + size + cs, z1 = oz + size + cs;
     std::vector<TreeSample> list;
     for (int cz = floordiv(z0 - 8, 16); cz <= floordiv(z1 + 8, 16); cz++) for (int cx = floordiv(x0 - 8, 16); cx <= floordiv(x1 + 8, 16); cx++) {
       list.clear(); gen->trees(cx, cz, list);
-      for (const TreeSample& t : list) {
-        u8 tb = 128, hb = 128;
-        bool colOk = false;
-        for (const TreeColumn& c : t.cols) {
-          int wx = t.x + c.dx, wz = t.z + c.dz;
-          if (wx < x0 || wz < z0 || wx >= x1 || wz >= z1) continue;
-          int i = floordiv(wx - ox, cs) + 1, j = floordiv(wz - oz, cs) + 1, k = j * W + i;
-          if (g.FL[k] & 64) continue;                   // a real chunk: its trees are in its surface already
-          float top = base + (float)c.top;
-          if (top <= g.G[k] + 0.5f) continue;
-          if (top > g.CT[k]) g.CT[k] = top;
-          if (c.leafBottom < 999 && base + c.leafBottom < g.CB[k]) g.CB[k] = base + (float)c.leafBottom;
-          if (c.leaves && !(g.FL[k] & 8)) {
-            if (!colOk) { ColumnSample cs2; gen->sample(t.x, t.z, cs2); tb = cs2.temp; hb = cs2.humid; colOk = true; }
-            g.setC(g.CC, k, blockColor(ct, c.leaves, tb, hb, false)); g.FL[k] |= 8;
-          }
-          if (c.log) g.FL[k] |= 2;
-        }
+      for (const TreeSample& t : list) for (const TreeColumn& c : t.cols) {
+        const int wx = t.x + c.dx, wz = t.z + c.dz;
+        if (wx < x0 || wz < z0 || wx >= x1 || wz >= z1) continue;
+        TreeCol& tc = trees[(size_t)(floordiv(wz - oz, cs) + 1) * W + (floordiv(wx - ox, cs) + 1)];
+        if (c.top > tc.top) tc.top = (i16)c.top;
+        if (c.leafBottom < tc.leafBottom) tc.leafBottom = (i16)c.leafBottom;
+        if (c.leaves && !tc.leaves) tc.leaves = c.leaves;
+        if (c.log) tc.log = c.log;
       }
     }
   }
-  // 2. the mesh: a column per cell, walls down to lower neighbours, crowns over the ground, a skirt round the edge
-  MeshOut M{out.verts, (float)size};
-  out.verts.reserve(N * N * 8);
-  auto isVoid = [&](int k) { return g.G[k] <= VOID * 0.5f; };
-  auto flagsOf = [&](int k) -> u16 { return (u16)((g.FL[k] & 1 ? 1 : 0) | (g.FL[k] & 32 ? 2 : 0)); };
-  // tops (and the undersides of floating land), merged into rectangles of the same height and colour
-  std::vector<u8> done(N * N);
-  for (int pass = 0; pass < 2; pass++) {
-    std::fill(done.begin(), done.end(), 0);
-    auto key = [&](int a, int b) {
-      if (isVoid(a) || isVoid(b)) return false;
-      if (pass == 0) return g.G[a] == g.G[b] && g.same(g.GC, a, b) && flagsOf(a) == flagsOf(b);
-      return g.B[a] == g.B[b] && g.same(g.SC, a, b);
-    };
-    for (int j = 0; j < N; j++) for (int i = 0; i < N; i++) {
-      int k = (j + 1) * W + (i + 1);
-      if (done[j * N + i] || isVoid(k)) continue;
-      if (pass == 1 && g.B[k] <= GROUNDED * 0.5f) continue;
-      int w = 1; while (i + w < N && !done[j * N + i + w] && key(k, k + w)) w++;
-      int h = 1;
-      for (; j + h < N; h++) { bool ok = true; for (int q = 0; q < w; q++) if (done[(j + h) * N + i + q] || !key(k, k + h * W + q)) { ok = false; break; } if (!ok) break; }
-      for (int jj = 0; jj < h; jj++) for (int q = 0; q < w; q++) done[(j + jj) * N + i + q] = 1;
-      float x0 = (float)i * cs, z0 = (float)j * cs, x1 = (float)(i + w) * cs, z1 = (float)(j + h) * cs;
-      if (pass == 0) { float y = g.G[k]; M.quad({x0, y, z0}, {x0, y, z1}, {x1, y, z1}, {x1, y, z0}, {0, 1, 0}, g.col(g.GC, k), 255, 255, 255, 255, flagsOf(k)); }
-      else { float y = g.B[k]; M.quad({x0, y, z0}, {x1, y, z0}, {x1, y, z1}, {x0, y, z1}, {0, -1, 0}, g.col(g.SC, k) * 0.85f, 145, 145, 145, 145); }
+
+  // 1. each cell's column of voxels: from real chunks where they are known, otherwise from the generator
+  std::vector<Run> runs; runs.reserve((size_t)W * W * 6);
+  std::vector<int> start((size_t)W * W + 1, 0);
+  std::vector<u8> temp((size_t)W * W, 128), humid((size_t)W * W, 128);
+  std::vector<u32> stint((size_t)W * W, 0xFFFFFFFF);
+  Col sub[4], col;
+  auto fromSummary = [&](const ChunkSummary& sm, int wx, int wz, Col& c) {
+    c.fill(AIR);
+    const int q = ((wz & 15) >> 1) * 8 + ((wx & 15) >> 1);
+    for (int r = sm.start[q]; r < sm.start[q + 1]; r++) for (int y = sm.runs[r].y0; y <= sm.runs[r].y1; y++) c[y] = sm.runs[r].id;
+    return q;
+  };
+  auto fromGenerator = [&](int wx, int wz, Col& c, ColumnSample& s, int k) {
+    c.fill(AIR);
+    gen->sample(wx, wz, s);
+    if (s.height >= DIM_H) s.height = DIM_H - 1;
+    if (s.height >= 0) {
+      const int bottom = s.floatBottom >= 0 && s.floatBottom <= s.height ? s.floatBottom : 0;
+      const BlockId top = s.top ? s.top : ct.dirt, under = s.under ? s.under : top;
+      for (int y = bottom; y <= s.height; y++) c[y] = y == s.height ? top : y >= s.height - 3 ? under : deep;
+    }
+    if (s.water >= 0 && s.fluid) for (int y = std::max(0, (int)s.height + 1); y <= std::min<int>(DIM_H - 1, s.water); y++) c[y] = s.fluid;
+    if (s.roof >= 0 && s.roof > s.height) for (int y = s.roof; y < DIM_H; y++) c[y] = s.roofBlock ? s.roofBlock : deep;
+    // far off, single trees can't be told apart: the forest is a canopy as tall as its trees (near tiles plant them)
+    if (L >= 2 && s.tree && s.leaves && s.treeTop > s.height && !(s.water > s.height)) for (int y = s.height + 1; y <= std::min<int>(DIM_H - 1, s.treeTop); y++) c[y] = s.leaves;
+    if (!trees.empty() && k >= 0 && trees[k].top > s.height) {
+      const TreeCol& t = trees[k];
+      const int lb = std::max<int>(s.height + 1, t.leafBottom < 999 ? t.leafBottom : t.top);
+      for (int y = lb; y <= std::min<int>(DIM_H - 1, t.top); y++) if (!c[y]) c[y] = t.leaves ? t.leaves : s.leaves;
+      if (t.log) for (int y = s.height + 1; y < lb && y < DIM_H; y++) if (!c[y]) c[y] = t.log;
+    }
+  };
+  for (int j = 0; j < W; j++) for (int i = 0; i < W; i++) {
+    const int k = j * W + i;
+    start[k] = (int)runs.size();
+    const int fx = (int)std::floor(ox + (i - 1 + 0.5) * cs), fz = (int)std::floor(oz + (j - 1 + 0.5) * cs);
+    bool anyReal = false;
+    for (int s = 0; s < Q && !in.sums.empty(); s++) if (in.sums[(size_t)k * Q + s]) anyReal = true;
+    ColumnSample smp;
+    if (!anyReal) {
+      if (!gen) continue;
+      fromGenerator(fx, fz, col, smp, k);
+      temp[k] = smp.temp; humid[k] = smp.humid; stint[k] = smp.tint;
+    } else {
+      // Cubyz: a coarse voxel from the finer ones under it; the land nobody has seen from the generator
+      for (int s = 0; s < Q; s++) {
+        const int qx = Q == 1 ? fx : (int)std::floor(fx + ((s & 1) ? 0.25 : -0.25) * cs), qz = Q == 1 ? fz : (int)std::floor(fz + ((s & 2) ? 0.25 : -0.25) * cs);
+        const ChunkSummary* sm = in.sums[(size_t)k * Q + s].get();
+        if (sm) { int q = fromSummary(*sm, qx, qz, sub[s]); temp[k] = sm->temp[q]; humid[k] = sm->humid[q]; }
+        else if (gen) fromGenerator(qx, qz, sub[s], smp, -1);
+        else sub[s].fill(AIR);
+      }
+      if (Q == 1) col = sub[0];
+      else { const Col* p[4] = {&sub[0], &sub[1], &sub[2], &sub[3]}; mergeCols(p, 4, R, col); }
+    }
+    for (int y = 0; y < DIM_H; y++) {
+      if (!lodSolid(R, col[y])) continue;
+      if ((int)runs.size() > start[k] && runs.back().id == col[y] && runs.back().y1 + 1 == y) { runs.back().y1 = (i16)y; continue; }
+      runs.push_back({(i16)y, (i16)y, col[y]});
     }
   }
-  // the other masses' tops and undersides (overhangs, arches, the Nether's roof seen from under it)
+  start[(size_t)W * W] = (int)runs.size();
+
+  // 2. the mesh: each voxel face that meets air, merged into quads where the same block runs on
+  MeshOut M{out.verts, (float)size};
+  out.verts.reserve((size_t)N * N * 12);
+  auto faceOf = [&](BlockId id, int f) -> u16 { return R.block(id).faces[f]; };
+  // flags: 1 water, 2 glows (lava), 4 tint every pixel (water), 8 drawn in its average colour (leaves and the like:
+  // their see-through pixels mean nothing from afar); bits 8..10 the face (for the texture's direction)
+  auto flagsOf = [&](BlockId id) -> u16 {
+    return (u16)((R.tLiquid[id] == 1 ? 1 | 4 : 0) | (R.tLiquid[id] == 2 ? 2 : 0) | (R.tLeaves[id] || R.tRender[id] == (u8)Render::Cutout ? 8 : 0));
+  };
+  // a face's colour: the tint (white if none); a flat-coloured block's own colour, tinted
+  auto colourOf = [&](BlockId id, int k, bool side) -> vec3 {
+    vec3 t = tintOf(ct, id, temp[k], humid[k], stint[k]);
+    if (side && ct.tint[id] == 1) t = vec3(1);   // grass sides: the picture marks which pixels take the tint
+    if (flagsOf(id) & 8) return unpack(side ? ct.side[id] : ct.top[id]) * t;
+    return t * 255.f;
+  };
+  // tops and undersides, merged into rectangles of the same height and block (a quad's texture repeats per voxel)
+  struct Face { i16 y; BlockId id; };
+  std::vector<std::vector<Face>> tops((size_t)N * N), bots((size_t)N * N);
   for (int j = 0; j < N; j++) for (int i = 0; i < N; i++) {
     const int k = (j + 1) * W + (i + 1);
-    for (int x = 0; x < g.XN[k]; x++) {
-      const int si = k * 3 + x;
-      const float x0 = (float)i * cs, z0 = (float)j * cs, x1 = x0 + cs, z1 = z0 + cs, y0 = g.XY0[si], y1 = g.XY1[si];
-      const u16 fl = (u16)((g.XF[si] & 1 ? 1 : 0) | (g.XF[si] & 32 ? 2 : 0));
-      if (y1 < base + DIM_H - 0.01f) M.quad({x0, y1, z0}, {x0, y1, z1}, {x1, y1, z1}, {x1, y1, z0}, {0, 1, 0}, g.col(g.XT, si), 255, 255, 255, 255, fl);
-      if (y0 > base + 0.01f) M.quad({x0, y0, z0}, {x1, y0, z0}, {x1, y0, z1}, {x0, y0, z1}, {0, -1, 0}, g.col(g.XS, si) * 0.85f, 145, 145, 145, 145);
+    for (int r = start[k]; r < start[k + 1]; r++) {
+      const bool above = r + 1 < start[k + 1] && runs[r + 1].y0 == runs[r].y1 + 1, below = r > start[k] && runs[r - 1].y1 == runs[r].y0 - 1;
+      if (!above && runs[r].y1 + 1 < DIM_H) tops[(size_t)j * N + i].push_back({(i16)(runs[r].y1 + 1), runs[r].id});
+      if (!below && runs[r].y0 > 0) bots[(size_t)j * N + i].push_back({runs[r].y0, runs[r].id});
     }
   }
-  // walls: each mass of a cell, less what the neighbour's masses cover, merged along each edge where they match
+  std::vector<std::vector<u8>> used((size_t)N * N);
+  for (int pass = 0; pass < 2; pass++) {
+    auto& F = pass == 0 ? tops : bots;
+    for (size_t q = 0; q < F.size(); q++) used[q].assign(F[q].size(), 0);
+    // a face not yet taken at (i, j) matching f (same height and block, same tint)
+    auto find = [&](int i, int j, const Face& f, int kRef) -> int {
+      const auto& v = F[(size_t)j * N + i];
+      const int k = (j + 1) * W + (i + 1);
+      for (size_t q = 0; q < v.size(); q++) if (!used[(size_t)j * N + i][q] && v[q].y == f.y && v[q].id == f.id &&
+          (ct.tint[f.id] == 0 || (temp[k] == temp[kRef] && humid[k] == humid[kRef] && stint[k] == stint[kRef]))) return (int)q;
+      return -1;
+    };
+    int hit[CELLS];
+    for (int j = 0; j < N; j++) for (int i = 0; i < N; i++) {
+      for (size_t q = 0; q < F[(size_t)j * N + i].size(); q++) {
+        if (used[(size_t)j * N + i][q]) continue;
+        const Face f = F[(size_t)j * N + i][q];
+        const int k = (j + 1) * W + (i + 1);
+        used[(size_t)j * N + i][q] = 1;
+        int w = 1;
+        while (i + w < N) { int g = find(i + w, j, f, k); if (g < 0) break; used[(size_t)j * N + i + w][g] = 1; w++; }
+        int h = 1;
+        for (; j + h < N; h++) {
+          int x = 0;
+          for (; x < w; x++) { hit[x] = find(i + x, j + h, f, k); if (hit[x] < 0) break; }
+          if (x < w) break;
+          for (x = 0; x < w; x++) used[(size_t)(j + h) * N + i + x][hit[x]] = 1;
+        }
+        const float x0 = (float)i * cs, z0 = (float)j * cs, x1 = (float)(i + w) * cs, z1 = (float)(j + h) * cs;
+        const float y = (float)(base + f.y) - (pass == 0 && R.tLiquid[f.id] ? 0.125f : 0.f);
+        const u16 fl = flagsOf(f.id);
+        if (pass == 0) M.quad({x0, y, z0}, {x0, y, z1}, {x1, y, z1}, {x1, y, z0}, {0, 1, 0}, faceOf(f.id, 2), colourOf(f.id, k, false), 255, 255, 255, 255, (u16)(fl | (2 << 8)));
+        else M.quad({x0, y, z0}, {x1, y, z0}, {x1, y, z1}, {x0, y, z1}, {0, -1, 0}, faceOf(f.id, 3), colourOf(f.id, k, true) * 0.85f, 145, 145, 145, 145, (u16)(fl | (3 << 8)));
+      }
+    }
+  }
+
+  // walls: each run of a cell, less what the neighbour's solid voxels cover, merged along each edge where they match
   const float skirt = 4 + cs * 0.75f;
-  struct Sp { float y0, y1; vec3 c; };
-  auto spansOf = [&](int k, Sp* out, bool withMain) -> int {
+  struct Sp { float y0, y1; };
+  auto solidSpans = [&](int k, Sp* o, int cap, float lowerTop) -> int {
     int n = 0;
-    if (withMain && !isVoid(k)) out[n++] = {g.B[k] > GROUNDED * 0.5f ? g.B[k] : (float)base, g.G[k], g.col(g.SC, k)};
-    for (int x = 0; x < g.XN[k]; x++) out[n++] = {g.XY0[k * 3 + x], g.XY1[k * 3 + x], g.col(g.XS, k * 3 + x)};
+    for (int r = start[k]; r < start[k + 1]; r++) {
+      const float y0 = (float)(base + runs[r].y0), y1 = (float)(base + runs[r].y1 + 1);
+      if (n > 0 && o[n - 1].y1 == y0) { o[n - 1].y1 = y1; continue; }
+      if (n < cap) o[n++] = {y0, y1};
+    }
+    for (int q = 0; q < n; q++) o[q].y1 -= lowerTop;
     return n;
   };
-  // [a0, a1] less the intervals in `by`: up to 8 pieces into out
-  auto subtract = [](float a0, float a1, const Sp* by, int nb, float (*out)[2]) -> int {
-    float cur[8][2]; int n = 0; cur[n][0] = a0; cur[n][1] = a1; n++;
+  auto subtract = [](float a0, float a1, const Sp* by, int nb, float (*o)[2]) -> int {
+    float cur[16][2]; int n = 0; cur[n][0] = a0; cur[n][1] = a1; n++;
     for (int b = 0; b < nb; b++) {
-      float nxt[8][2]; int m = 0;
+      float nxt[16][2]; int m = 0;
       for (int p = 0; p < n; p++) {
         const float lo = cur[p][0], hi = cur[p][1];
-        if (by[b].y1 <= lo || by[b].y0 >= hi) { if (m < 8) { nxt[m][0] = lo; nxt[m][1] = hi; m++; } continue; }
-        if (by[b].y0 > lo && m < 8) { nxt[m][0] = lo; nxt[m][1] = by[b].y0; m++; }
-        if (by[b].y1 < hi && m < 8) { nxt[m][0] = by[b].y1; nxt[m][1] = hi; m++; }
+        if (by[b].y1 <= lo || by[b].y0 >= hi) { if (m < 16) { nxt[m][0] = lo; nxt[m][1] = hi; m++; } continue; }
+        if (by[b].y0 > lo && m < 16) { nxt[m][0] = lo; nxt[m][1] = by[b].y0; m++; }
+        if (by[b].y1 < hi && m < 16) { nxt[m][0] = by[b].y1; nxt[m][1] = hi; m++; }
       }
       std::memcpy(cur, nxt, sizeof(float) * 2 * m); n = m;
     }
-    int r = 0; for (int p = 0; p < n; p++) if (cur[p][1] - cur[p][0] > 0.01f) { out[r][0] = cur[p][0]; out[r][1] = cur[p][1]; r++; }
+    int r = 0; for (int p = 0; p < n; p++) if (cur[p][1] - cur[p][0] > 0.01f) { o[r][0] = cur[p][0]; o[r][1] = cur[p][1]; r++; }
     return r;
   };
-  struct Seg { float y1, y0; vec3 c; int start; };
-  std::vector<Seg> runs, cur;
+  struct Seg { float y1, y0; BlockId id; vec3 c; int start; };
+  std::vector<Seg> open, cur;
   for (int d = 0; d < 4; d++) {
-    // d: 0 -z, 1 +z, 2 -x, 3 +x
-    int dk = d == 0 ? -W : d == 1 ? W : d == 2 ? -1 : 1;
-    int sh = d < 2 ? 205 : 170;
-    vec3 n = d == 0 ? vec3(0, 0, -1) : d == 1 ? vec3(0, 0, 1) : d == 2 ? vec3(-1, 0, 0) : vec3(1, 0, 0);
+    // d: 0 -z, 1 +z, 2 -x, 3 +x (block faces 5, 4, 1, 0)
+    const int dk = d == 0 ? -W : d == 1 ? W : d == 2 ? -1 : 1, face = d == 0 ? 5 : d == 1 ? 4 : d == 2 ? 1 : 0;
+    const int sh = d < 2 ? 205 : 170;
+    const vec3 n = d == 0 ? vec3(0, 0, -1) : d == 1 ? vec3(0, 0, 1) : d == 2 ? vec3(-1, 0, 0) : vec3(1, 0, 0);
     for (int line = 0; line < N; line++) {
-      runs.clear();
+      open.clear();
       auto emit = [&](const Seg& sg, int a, int b) {
-        float t0 = (float)a * cs, t1 = (float)b * cs, e;
+        const float t0 = (float)a * cs, t1 = (float)b * cs;
         vec3 p0, p1;
-        if (d < 2) { e = (float)(d == 0 ? line : line + 1) * cs; p0 = {t0, 0, e}; p1 = {t1, 0, e}; }
-        else { e = (float)(d == 2 ? line : line + 1) * cs; p0 = {e, 0, t0}; p1 = {e, 0, t1}; }
-        int foot = footShade(sh, sg.y1, sg.y0);
-        M.quad({p0.x, sg.y1, p0.z}, {p1.x, sg.y1, p1.z}, {p1.x, sg.y0, p1.z}, {p0.x, sg.y0, p0.z}, n, sg.c, sh, sh, foot, foot);
+        if (d < 2) { const float e = (float)(d == 0 ? line : line + 1) * cs; p0 = {t0, 0, e}; p1 = {t1, 0, e}; }
+        else { const float e = (float)(d == 2 ? line : line + 1) * cs; p0 = {e, 0, t0}; p1 = {e, 0, t1}; }
+        const int foot = footShade(sh, sg.y1, sg.y0);
+        M.quad({p0.x, sg.y1, p0.z}, {p1.x, sg.y1, p1.z}, {p1.x, sg.y0, p1.z}, {p0.x, sg.y0, p0.z}, n, faceOf(sg.id, face), sg.c, sh, sh, foot, foot, (u16)(flagsOf(sg.id) | (face << 8)));
       };
       for (int t = 0; t <= N; t++) {
         cur.clear();
         if (t < N) {
-          int i = d < 2 ? t : line, j = d < 2 ? line : t;
-          int k = (j + 1) * W + (i + 1), nk = k + dk;
-          bool edge = d == 0 ? j == 0 : d == 1 ? j == N - 1 : d == 2 ? i == 0 : i == N - 1;
-          Sp mine[4], theirs[4];
-          const int nm = spansOf(k, mine, true), nt = spansOf(nk, theirs, true);
-          for (int m = 0; m < nm; m++) {
-            const bool main = m == 0 && !isVoid(k);
-            if (main && edge && !isVoid(nk)) {   // the tile's edge: a skirt below the neighbour's top hides cracks to the next tile
-              const float lo = std::min(std::max(g.G[nk], mine[0].y0), mine[0].y1) - skirt;
-              cur.push_back({mine[0].y1, lo, mine[0].c, t});
-              continue;
-            }
-            float pc[8][2]; const int np = subtract(mine[m].y0, mine[m].y1, theirs, nt, pc);
-            for (int p = 0; p < np; p++) cur.push_back({pc[p][1], pc[p][0], mine[m].c, t});
+          const int i = d < 2 ? t : line, j = d < 2 ? line : t;
+          const int k = (j + 1) * W + (i + 1), nk = k + dk;
+          const bool edge = d == 0 ? j == 0 : d == 1 ? j == N - 1 : d == 2 ? i == 0 : i == N - 1;
+          // at the tile's edge the neighbour's voxels count a skirt lower, so a wall hangs down over any crack to the next
+          // tile (which may be finer or coarser: Cubyz draws the faces toward a coarser neighbour for the same reason)
+          Sp theirs[16]; const int nt = solidSpans(nk, theirs, 16, edge ? skirt : 0.f);
+          for (int r = start[k]; r < start[k + 1]; r++) {
+            const BlockId id = runs[r].id;
+            if (R.tLiquid[id] && nt > 0 && !edge) continue;   // water and lava: their tops, and walls only at an open edge
+            float pc[16][2]; const int np = subtract((float)(base + runs[r].y0), (float)(base + runs[r].y1 + 1), theirs, nt, pc);
+            const vec3 c = colourOf(id, k, true);
+            for (int p = 0; p < np; p++) cur.push_back({pc[p][1], pc[p][0], id, c, t});
           }
         }
         // carry on the runs that match a piece here, emit the rest
-        for (size_t r = 0; r < runs.size();) {
+        for (size_t r = 0; r < open.size();) {
           bool kept = false;
-          for (Seg& c : cur) if (c.start >= 0 && c.y1 == runs[r].y1 && c.y0 == runs[r].y0 && c.c == runs[r].c) { c.start = -1; kept = true; break; }
+          for (Seg& c : cur) if (c.start >= 0 && c.y1 == open[r].y1 && c.y0 == open[r].y0 && c.id == open[r].id && c.c == open[r].c) { c.start = -1; kept = true; break; }
           if (kept) { r++; continue; }
-          emit(runs[r], runs[r].start, t);
-          runs[r] = runs.back(); runs.pop_back();
+          emit(open[r], open[r].start, t);
+          open[r] = open.back(); open.pop_back();
         }
-        for (Seg& c : cur) if (c.start >= 0) runs.push_back(c);
-      }
-    }
-  }
-  // crowns of leaves over the ground (near tiles), their trunks under them (nearest)
-  if (L <= 1) {
-    const int EDX[4] = {0, 0, -1, 1}, EDZ[4] = {-1, 1, 0, 0};
-    for (int j = 0; j < N; j++) for (int i = 0; i < N; i++) {
-      int k = (j + 1) * W + (i + 1);
-      float h = g.G[k], ctop = g.CT[k];
-      if (isVoid(k) || !(ctop > h + 0.4f)) continue;
-      float x0 = (float)i * cs, z0 = (float)j * cs, x1 = x0 + cs, z1 = z0 + cs;
-      vec3 cc = g.col(g.CC, k);
-      bool flt = L == 0;
-      float bot = flt && g.CB[k] < 998 ? std::max(g.CB[k], h) : h;
-      M.quad({x0, ctop, z0}, {x0, ctop, z1}, {x1, ctop, z1}, {x1, ctop, z0}, {0, 1, 0}, cc, 245, 245, 245, 245);
-      if (bot > h + 0.3f) M.quad({x0, bot, z0}, {x1, bot, z0}, {x1, bot, z1}, {x0, bot, z1}, {0, -1, 0}, cc, 110, 110, 110, 110);
-      for (int e = 0; e < 4; e++) {
-        int nk = k + EDZ[e] * W + EDX[e];
-        float nct = g.CT[nk] > g.G[nk] + 0.4f ? g.CT[nk] : 0.f;
-        float nbot = nct ? (flt && g.CB[nk] < 998 ? std::max(g.CB[nk], g.G[nk]) : g.G[nk]) : 1e9f;
-        float from = nct && nbot <= bot + 0.01f ? std::max(bot, nct) : bot;
-        if (from >= ctop - 0.01f) continue;
-        vec3 a, b;
-        if (e == 0) { a = {x0, 0, z0}; b = {x1, 0, z0}; } else if (e == 1) { a = {x0, 0, z1}; b = {x1, 0, z1}; }
-        else if (e == 2) { a = {x0, 0, z0}; b = {x0, 0, z1}; } else { a = {x1, 0, z0}; b = {x1, 0, z1}; }
-        int s = (int)std::round((e < 2 ? 205 : 170) * 0.92f);
-        vec3 n(EDX[e], 0, EDZ[e]);
-        M.quad({a.x, ctop, a.z}, {b.x, ctop, b.z}, {b.x, from, b.z}, {a.x, from, a.z}, n, cc * 0.9f, s, s, s, s, 0, cc * 0.75f);
-      }
-      if (flt && (g.FL[k] & 2) && bot > h + 0.3f) {
-        float tw = std::min((float)cs, 1.f) / 2, mx = x0 + cs / 2.f, mz = z0 + cs / 2.f;
-        vec3 tc(92, 70, 46);
-        M.quad({mx - tw, bot, mz - tw}, {mx + tw, bot, mz - tw}, {mx + tw, h, mz - tw}, {mx - tw, h, mz - tw}, {0, 0, -1}, tc, 200, 200, 200, 200);
-        M.quad({mx - tw, bot, mz + tw}, {mx + tw, bot, mz + tw}, {mx + tw, h, mz + tw}, {mx - tw, h, mz + tw}, {0, 0, 1}, tc, 200, 200, 200, 200);
-        M.quad({mx - tw, bot, mz - tw}, {mx - tw, bot, mz + tw}, {mx - tw, h, mz + tw}, {mx - tw, h, mz - tw}, {-1, 0, 0}, tc, 165, 165, 165, 165);
-        M.quad({mx + tw, bot, mz - tw}, {mx + tw, bot, mz + tw}, {mx + tw, h, mz + tw}, {mx + tw, h, mz - tw}, {1, 0, 0}, tc, 165, 165, 165, 165);
+        for (Seg& c : cur) if (c.start >= 0) open.push_back(c);
       }
     }
   }

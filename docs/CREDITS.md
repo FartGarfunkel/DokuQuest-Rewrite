@@ -26,7 +26,13 @@ SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
 
 - tools and armour made of several materials, each part of the crafting grid colouring its part of the item and adding to
   its stats (`core/tool_parts.*`, the mixed tools and armour);
-- the distant terrain's level-of-detail approach (see `render/distant*.cpp`).
+- the distant terrain (`render/distant*.cpp`, `assets/shaders/distant.glsl`), after Cubyz's LOD chunks (`chunk.zig`
+  `updateFromLowerResolution`, `renderer/mesh_storage.zig`): the far land is voxels at every distance, coarser further
+  off; a coarse voxel is solid if any finer voxel under it is, and takes the block that shows the most (air round it
+  beats buried); each level is made from the finer one; the voxels are drawn with the blocks' own textures, one per
+  voxel face; a coarse piece gives way to the finer ones only once all of them are ready, and faces toward a coarser
+  neighbour are drawn so no crack shows. Written for our engine (quadtree tiles over 256-high bands, voxels one block
+  high so heights stay exact, runs of voxels per column instead of 32-cubed chunks).
 
 ## Better than Adventure! — ideas only
 

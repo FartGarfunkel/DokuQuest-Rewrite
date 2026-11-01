@@ -1,5 +1,5 @@
-// render/distant.h — distant terrain (game/distant.js), in the spirit of Distant Horizons and Voxy:
-// past the loaded chunks the land goes on as blocky columns, 2 blocks across just outside them, then
+// render/distant.h — distant terrain (game/distant.js), built like Cubyz's far land (see distant_build.cpp):
+// past the loaded chunks the land goes on as textured voxels, 2 blocks across just outside them, then
 // 4, 8, 16 ... 512 blocks, out to settings.farTerrain (up to 16384 blocks). Tiles of 32x32 columns
 // in a quadtree around the camera, coarse ones first so there is never a hole, finer ones as they're
 // made; each built on a worker thread from DimGenerator::sample() and from summaries of real chunks
@@ -24,20 +24,13 @@ constexpr int MAX_LEVEL = 8;              // levels 0..8: columns of 2 .. 512 bl
 inline int cellSize(int L) { return 2 << L; }
 inline int tileSize(int L) { return CELLS * cellSize(L); }
 
-// A real chunk's surface in 2x2-block cells (distSummarize): ground, canopy, water, floating bottom, and the masses
-// under the top one where daylight (or a big cavern) gets between them.
+// A real chunk brought down to voxels 2x2 blocks across and one block high (Cubyz: each LOD level made from the one
+// under it; render/distant_build.cpp summarizeChunk): per cell, its solid runs bottom up, each one block type.
 struct ChunkSummary {
-  i16 g[64];          // top of the ground, band-local, quarter blocks (0 = nothing in that cell)
-  i16 ct[64], cb[64]; // canopy top / bottom, quarter blocks (0 = none)
-  i16 fb[64];         // bottom of a floating mass (islands), quarter blocks, -1 = solid to the bottom
-  u8 gc[192], sc[192], cc[192];   // top / side / canopy colours
-  u8 f[64];           // 1 water, 2 trunk under the canopy, 32 glowing (lava)
-  u8 wd[64];          // water depth
-  // Voxy-style 3D: the solid masses under the top one in a cell (an overhang's ground, an arch's foot, the Nether's
-  // floor under its roof, a builder's bridge over a river), each band-local quarter blocks bottom..top, its top and
-  // side colours and flags (1 water, 32 lava)
-  struct Extra { u8 cell, flags; i16 y0, y1; u8 tc[3], sc[3]; };
-  std::vector<Extra> ex;
+  struct Run { u8 y0, y1; u16 id; };   // band-local, inclusive
+  u16 start[65] = {};                  // cell q's runs: runs[start[q] .. start[q + 1])
+  std::vector<Run> runs;
+  u8 temp[64] = {}, humid[64] = {};    // climate (grass and foliage tints)
 };
 
 // Average colours of every block from the current tiles (resource pack aware), shared with workers.
@@ -48,14 +41,16 @@ struct ColorTable {
   BlockId water = 0, lava = 0, dirt = 0, ice = 0;
 };
 
-struct LodVertex { u16 x, z; i16 y; u8 r, g, b, shade; u16 flags; };   // x,z: tile/32768 units, y: 1/8 block
-static_assert(sizeof(LodVertex) == 12, "LOD vertex must be 12 bytes");
+// x,z: tile/32768 units, y: 1/8 block; tile: the block face's texture layer; r,g,b: its tint; flags: 1 water, 2 glows,
+// 4 tint every pixel, 8 average colour only, bits 8..10 the face (+x -x +y -y +z -z)
+struct LodVertex { u16 x, z; i16 y; u16 tile; u8 r, g, b, shade; u16 flags, pad; };
+static_assert(sizeof(LodVertex) == 16, "LOD vertex must be 16 bytes");
 
 struct TileInput {
   int dim = 2, L = 0, tx = 0, tz = 0;
   std::shared_ptr<WorldGen> gen;
   std::shared_ptr<const ColorTable> colors;
-  std::vector<std::shared_ptr<const ChunkSummary>> sums;   // per cell (W*W) or empty
+  std::vector<std::shared_ptr<const ChunkSummary>> sums;   // per cell (W*W, or 4 a cell past level 0: its quarters) or empty
 };
 struct TileOutput { std::vector<LodVertex> verts; float minY = 0, maxY = 0; double ms = 0; };
 
@@ -70,7 +65,7 @@ public:
   ~DistantTerrain();
   // per frame: what to draw from here, what to make next, results to upload
   void update(Level& lv, World& w, const FrameCtx& f, ThreadPool& pool, double dt, const TileSet& tiles);
-  void draw(const FrameCtx& f, const SkyEnv& env);
+  void draw(const FrameCtx& f, const SkyEnv& env, const TileTextures& tex);
   void reset();                 // forget everything (world change, pack change, option off)
   float range = 0;              // how far it reaches this frame (blocks)
   bool adaptive = true;         // draw closer by itself when the frame rate drops (distantFor)
