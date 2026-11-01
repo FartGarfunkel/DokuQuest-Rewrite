@@ -242,6 +242,11 @@ mobs['wither'] = {'model': 'wither', 'label': 'the Wither', 'hp': 300, 'w': 0.9,
                   'boss': True, 'special': True, 'flyer': True, 'undead': True, 'fireImmune': True, 'knockResist': 1, 'damage': 0,
                   'drops': [['nether_star', 1, 1, 1]]}
 mg['effects']['wither'] = {'name': 'Wither', 'col': '#3a3030', 'bad': True}
+# the Wither Storm: a Wither grown out of a rift core (sim/wither.cpp stormBrain): the same bones, huge and dark
+models['wither_storm'] = dict(models['wither']); models['wither_storm']['scale'] = 5.0
+mobs['wither_storm'] = {'model': 'wither_storm', 'label': 'the Wither Storm', 'hp': 900, 'w': 2.8, 'h': 9.5, 'speed': 1.1, 'fly': 5, 'xp': 500, 'hostile': True,
+                        'boss': True, 'special': True, 'flyer': True, 'undead': True, 'fireImmune': True, 'knockResist': 1, 'damage': 0,
+                        'tint': [0.22, 0.06, 0.32, 0.45], 'drops': [['nether_star', 3, 3, 1], ['rift_crystal', 6, 10, 1]]}
 if 'nether_star' not in tj7['names']:
     im = _I.new('RGBA', (32, 32), (0, 0, 0, 0)); px = im.load()
     import math as _m2

@@ -412,6 +412,12 @@ def main(d):
                                            'needsSupport': True, 'fuel': 0.5, 'tree': 'palm', 'tex': 'palm_sapling'}, [tiles['palm_sapling']] * 6)
     items['coconut'] = {'key': 'coconut', 'name': 'Coconut', 'maxStack': 64, 'icon': 'coconut', 'food': {'heal': 3}, 'desc': 'Falls from a felled palm.'}
     recipe('palm_planks', 4, items_=['palm_log'])
+    # the rift core: set in the middle of a Wither's T between two wither skeleton skulls, it wakes the Wither Storm
+    if 'rift_core' not in tiles:
+        tile('rift_core', recolour(src_pic(d, tiles, files, 'crying_obsidian' if 'crying_obsidian' in tiles else 'obsidian'), hsv_map(hue=0.78, sat=1.2, val=1.15)))
+    block('rift_core', 'Rift Core', {'hardness': 10, 'tool': 'pickaxe', 'tier': 3, 'sound': 'stone', 'light': 7, 'tex': 'rift_core'}, [tiles['rift_core']] * 6)
+    items['rift_core'].update({'rarity': 'epic', 'desc': 'Humming with the rift. Set it in the middle of a Wither\'s T, between two wither skeleton skulls.'})
+    recipe('rift_core', 1, ['CCC', 'CNC', 'CCC'], {'C': 'rift_crystal', 'N': 'nether_star'})
     # the statue (BTA's): a stone plinth; a spawn egg used on it carves that creature standing on it (render/statue_layer.cpp)
     if 'statue_side' not in tiles:
         tile('statue_side', recolour(src_pic(d, tiles, files, 'chiseled_stone_bricks' if 'chiseled_stone_bricks' in tiles else 'stone_bricks'), hsv_map(val=1.05)))

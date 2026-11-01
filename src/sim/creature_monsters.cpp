@@ -529,6 +529,8 @@ static bool enderBlink(Level& lv, Creature& e, float cx, float cz, float r, bool
 }
 
 std::optional<Move> witherBrain(Level& lv, Creature& m, Entity* p, float dist, float dyp, float toPlayer, float dt);   // sim/wither.cpp
+std::optional<Move> stormBrain(Level& lv, Creature& m, Entity* p, float dist, float dyp, float toPlayer, float dt);
+bool stormPreHurt(Creature& m, const std::string& type, const std::string& tool);
 bool witherPreHurt(Creature& m, const std::string& type, const std::string& tool);
 static OptMove realmAI(Level& lv, Creature& m, Entity* p, float dist, float dyp, float toPlayer, float dt) {
   const std::string& t = m.type;
@@ -687,6 +689,7 @@ static OptMove realmAI(Level& lv, Creature& m, Entity* p, float dist, float dyp,
     return nightBase(lv, m, "slime", p, dist, dyp, toPlayer, dt);
   }
   if (t == "wither") return witherBrain(lv, m, p, dist, dyp, toPlayer, dt);   // sim/wither.cpp
+  if (t == "wither_storm") return stormBrain(lv, m, p, dist, dyp, toPlayer, dt);
   if (t == "shulker") {   // clamped to its wall: the shell opens, and a seeking bolt comes out after you
     m.vel.x = m.vel.z = 0;
     auto s = m.senses(lv, p, dist, dyp, dt, 16);
@@ -726,6 +729,7 @@ bool realmPreHurt(Level& lv, Creature& m, DamageSrc& src) {
   if (m.type == "golden_swet" && src.attacker) m.angryT = 30;
   if (m.type == "aechor_plant") src.knock = 0;
   if (m.type == "wither" && witherPreHurt(m, src.type, src.tool)) return true;
+  if (m.type == "wither_storm" && stormPreHurt(m, src.type, src.tool)) return true;
   return false;
 }
 void realmAfterHurt(Level& lv, Creature& m, const DamageSrc& src, float dealt) {

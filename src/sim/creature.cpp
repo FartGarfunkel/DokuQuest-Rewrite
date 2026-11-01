@@ -374,6 +374,7 @@ void Creature::die(Level& lv, const DamageSrc& src) {
     int n = type == "slime" ? 2 + (int)(frand() * 3) : 2 + (int)(frand() * 2);
     for (int i = 0; i < n; i++) if (auto* m = spawnCreature(lv, realm, type, pos + vec3((frand() - 0.5f) * 0.6f, 0.3f, (frand() - 0.5f) * 0.6f))) { m->setSize(1); m->vel.y = type == "slime" ? 3 : 3.5f; }
   }
+  if (type == "wither_storm") { void stormFalls(Level& lv, Creature& m); stormFalls(lv, *this); }   // sim/wither.cpp
   if (!owner.empty()) if (Player* o = ownerPawn(lv)) lv.fx->message(o->id, "Your " + (petName.empty() ? T->label.empty() ? type : T->label.substr(T->label.find(' ') + 1) : petName) + " died", "warn");
   // mods.js: DQ.on('mobDeath', (info, killer) => ...)
   if (lv.events) lv.events->emit("mobDeath", json::array({json{{"type", type}, {"x", pos.x}, {"y", pos.y}, {"z", pos.z}, {"id", id}},
