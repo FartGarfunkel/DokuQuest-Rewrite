@@ -2,6 +2,7 @@
 // SMELTING rules), game/inventory.js (recipeMissing, ingredientLabel), game/dyeing.js, game/maps.js,
 // game/blocks2.js (recolorKey), game/game.js (tickFurnace) and game/itemfix.js (smoker/blast classes).
 #include "core/tool_parts.h"
+#include <algorithm>
 #include "sim/crafting.h"
 #include <unordered_set>
 
