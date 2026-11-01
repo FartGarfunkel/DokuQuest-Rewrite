@@ -10,6 +10,8 @@
 - **The Crystal Forest:** a maze of huge glowing red crystals, some hanging from the roof. **Charged crystals** hold latent energy: they power redstone.
 - **The Old World:** a colossal desert of ash with smouldering embers (they burn unless you sneak), pits down to the lava, petrified trunks and ruins of scorched brick.
 - Worlds made before keep the Nether they had.
+- **Each land has its own life:** sulfur slimes (their touch poisons) in the Sulfur Pools, crystal wisps in the Crystal Forest, scorched skeleton archers in the Old World's ruins, magma slimes and ember fuselings by the volcanoes, zombie pigmen in the Crag and the Old World. And its own sounds: stones falling in the Crag, the ground grumbling by the volcanoes, bubbling acid, crystals chiming, wind moaning through the Old World's ruins.
+- **Volcanoes erupt** now and then: a grumble, a blast you hear from far off, a fountain of lava, glowing bombs over the slopes and a column of ash up to the roof. The ground shakes if you're close.
 **Tools and armour of mixed materials:**
 - **Mix materials at the crafting table:** a pickaxe of iron, diamond and copper (or any tool or armour with more than one material in its pattern) is one tool, each material showing on its own part of it, with stats mixed from all of them. Bone, cinder rod or steel hafts change it too.
 - **Mend a mixed tool or piece** with any of its own materials, at the crafting table or the anvil.
@@ -17,6 +19,8 @@
 **Light and distance:**
 - **Dreamlike lighting** (Options → Graphics → Lighting): a soft glow round bright things, golden light when the sun is low, soft focus and a warm halo round a low sun. After the Horizon project's shaders; Classic turns it off.
 - **Far land fades in** instead of popping, and floating islands far off show their stone undersides.
+- **Far land is drawn in 3D where you've been:** overhangs, arches, bridges and cave mouths keep their shape far off instead of turning into solid columns, and the Nether's roof goes on into the distance.
+- **Raised micro-voxels on every textured block:** sand, dirt, terracotta, netherrack, granite and the other softer pictures stand out in relief too (they were flat).
 **More from Better than Adventure:**
 - **Saddle a pig and ride it** (no taming needed). Its short legs can't jump a whole block: stairs and slabs help.
 - **Ice floes** drift in the seas by the glaciers (new worlds).

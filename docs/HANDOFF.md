@@ -27,10 +27,22 @@ BTA ideas only). alpha.9's notes are written in CHANGELOG/news (not released yet
   sit from any side / badSeat, newer cube blocks drawn as cubes in hand, saddled pigs ridden.
 - **Light/distance:** render/dreamlight_layer.cpp + assets/shaders/dreamlight.glsl (Options → Lighting, extra
   "dreamLight"), sky.glsl warm halo (uDream); distant tiles dither-fade (Tile::readyAt, uFadeIn/uFadeOut).
-- **Still open from the user's list:** raised micro-voxels "broke for most blocks" (asked which blocks; alpha.7 vs now
-  looked the same in a comparison), the Aether trees ("leaves broken") need a look in game, BTA sounds list
-  (Nether ambience per land, biome moods, discs, jukebox playback), eruptions/particles per Nether land, Nether mobs per
-  land, a true 3D voxel LOD (Voxy) is still not done (the LOD is 2.5D columns + floating bottoms).
+- **Later the same day (the user: "keep working, nothing left unfinished"):**
+  - Raised micro-voxels: soft pictures (sand, dirt, terracotta, netherrack, granite...) stayed under the relief's
+    geometry threshold and drew flat; assets/tileset.cpp deriveMicroVoxelHeights now stretches plain surfaces to their
+    own contrast (3211 of 3753 tiles have whole-voxel relief, was 2687).
+  - Nether lands: creatures per land in sim/creature_spawn.cpp (landAt via netherBiomeMix; new mobs sulfur_slime,
+    crystal_wisp, scorched_skeleton from tools/port/nether_bta.py; brains in creature_monsters.cpp), sounds per land
+    (audio/nether_sfx.cpp live-synth sounds; AudioScene::netherLand set in client_fx.cpp; ambience.cpp per-land wind and
+    timers), volcano eruptions (gen netherVolcanoes() + render/nether_fx_layer.cpp: clock from world time so shared
+    worlds agree; DQ_ERUPT=1 makes every volcano erupt every 20 s for testing), embers/fumes/glints per land.
+  - Distant terrain 3D: ChunkSummary::ex (masses under the top one per 2x2 cell; a gap kept if daylight reaches it or it
+    is 6+ tall), Grid extras + generic wall subtraction in render/distant_build.cpp, ColumnSample::roof (the Nether's
+    roof, BTA sample). Unvisited Overworld land is still columns (its generator has no overhangs except caves).
+  - Skylands trees looked at from outside the cloud bank (land on an island at -40,60 seed hello): cloud leaves render
+    like every other leaf block (white, from the pack's oak leaves; trunks are the pack's dark birch). Nothing visibly
+    broken; asked the user what they saw.
+- **Still open:** BTA sounds list (biome moods, discs, jukebox playback); alpha.9 release on Nov 2 after full checks.
 
 ## Overnight 2026-11-01 (the user: "work overnight, game-wide playtest, optimizing pass, check all the notes")
 - **Playtests:** `tools/playtests/run_all.sh out.txt [names]` runs every playtest in a fresh world on a copy of the
