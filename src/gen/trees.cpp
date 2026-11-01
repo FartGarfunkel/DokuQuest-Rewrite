@@ -61,6 +61,21 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
       return;
     }
     case TREE_JUNGLE: {
+      if (t.h > 0.93 && !t.bare) {   // now and then a giant of the rainforest: a thick trunk far above the canopy, great limbs
+        const int H = 18 + jsFloor(rnd() * 10);
+        static const int AX[4][2] = {{0, 0}, {1, 0}, {0, 1}, {1, 1}};
+        for (int k = 0; k < H; k++) for (auto& a : AX) put(x + a[0], y + k, z + a[1], B.jungle_log);
+        for (int b = 0, nb = 4 + jsFloor(rnd() * 3), d0 = jsFloor(rnd() * 8); b < nb; b++) {
+          const int d = (d0 + b * 3) & 7;
+          branch(x + (BX[d] > 0 ? 1 : 0), y + jsFloor(H * (0.45 + 0.45 * b / nb)), z + (BZ[d] > 0 ? 1 : 0), d, 4 + jsFloor(rnd() * 3), B.jungle_log, B.jungle_leaves, 2.8, true);
+        }
+        leafBall(x + 0.5, y + H, z + 0.5, 4.2, B.jungle_leaves, 0.5);
+        for (int d = 0; d < 4; d++) for (int k = 1; k < H - 3; k++) if (rnd() < 0.3) {   // vines down the sides of the trunk
+          const int ox = DIRX[d] > 0 ? 2 : DIRX[d] < 0 ? -1 : (k & 1), oz = DIRZ[d] > 0 ? 2 : DIRZ[d] < 0 ? -1 : (k & 1);
+          put(x + ox, y + k, z + oz, B.vine, true, (d + 2) & 3);
+        }
+        return;
+      }
       int H = 8 + jsFloor(t.h * 6);
       for (int k = 0; k < H; k++) put(x, y + k, z, B.jungle_log);
       if (t.bare) return;
