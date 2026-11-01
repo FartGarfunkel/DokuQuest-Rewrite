@@ -16,6 +16,10 @@ DepthsGen::DepthsGen(const WorldGenOptions& o)
     if (id) R.carvable[id] = 1;
   R.lava = 0; R.minY = 6; R.maxY = DIM_H - 8; R.hell = true;
   R.seed = (i64)((u64)(i64)seed_ * 6364136223846793005ULL + 0x4E7E4);
+  if (o.genVersion >= 5) {   // BTA 8.0's Nether: an open land of five biomes (gen/nether_bta.cpp)
+    bta_ = std::make_unique<NetherShape>(seed_);
+    btaCarve_ = R; btaCarve_.maxY = 120; btaCarve_.carvable[B.ash] = 1; btaCarve_.carvable[B.sulphur_block] = 1;
+  }
 }
 
 static inline void rowOf(int y, int& i, double& t) {
@@ -39,12 +43,14 @@ bool DepthsGen::solidFrom(const float* D, int y) {
   return jsLerp(D[i], D[i + 1], t) + bias(y) > 0.18;
 }
 bool DepthsGen::solidAt(int x, int y, int z) const {
+  if (bta_) return solidBTA(x, y, z);
   thread_local int lx = INT32_MIN, lz = INT32_MIN; thread_local const DepthsGen* lg = nullptr; thread_local float D[LAYERS];
   if (lx != x || lz != z || lg != this) { densityColumn(x, z, D); lx = x; lz = z; lg = this; }
   return solidFrom(D, y);
 }
 
 void DepthsGen::fungusTrees(int cx, int cz, std::vector<TreeSpec>& out) const {
+  if (bta_) return;
   Mulberry32 rnd(hash32(seed_, cx, cz, 0xf00));
   float D[LAYERS];
   for (int k = 0; k < 3; k++) {
@@ -62,6 +68,7 @@ void DepthsGen::fungusTrees(int cx, int cz, std::vector<TreeSpec>& out) const {
 }
 
 void DepthsGen::generate(Chunk& ch) {
+  if (bta_) { generateBTA(ch); return; }
   GenBuf& b = GenBuf::local();
   std::fill(ch.climate.begin(), ch.climate.end(), (u8)128);
   const int bx = ch.cx * CS, bz = ch.cz * CS;
@@ -282,6 +289,7 @@ void DepthsGen::ores(GenBuf& b, int cx, int cz) const {
 }
 
 TerrainColumn DepthsGen::terrainColumn(int x, int z) const {
+  if (bta_) return terrainBTA(x, z);
   float D[LAYERS]; densityColumn(x, z, D);
   TerrainColumn t;
   // the cavern floor: the first open space above the lava sea's bed
@@ -294,6 +302,7 @@ TerrainColumn DepthsGen::terrainColumn(int x, int z) const {
 }
 
 void DepthsGen::sample(int wx, int wz, ColumnSample& s) const {
+  if (bta_) { sampleBTA(wx, wz, s); return; }
   // cheap: nCave1 exact (no grid), floor found row by row from the lava sea up, the roof in steps of 3 rows
   auto dens = [&](int L) { return nCave1.noise3(wx / 48.0, L / 26.0, wz / 48.0) + nCave2.noise3(wx / 16.0, L / 12.0, wz / 16.0) * 0.35 + bias(netherY(L)); };
   s = ColumnSample();

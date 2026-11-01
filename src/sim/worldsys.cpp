@@ -33,8 +33,8 @@ public:
   std::unordered_map<PosKey, u64, PosKeyHash> q;
   std::vector<PosKey> order;      // insertion order, like the original's Map
 
-  static int fluidMax(int kind, int y) { return kind == 1 ? 7 : dimOfY(y) == DIM_NETHER ? 6 : 3; }
-  static int fluidRate(int kind, int y) { return kind == 1 ? 5 : dimOfY(y) == DIM_NETHER ? 10 : 28; }
+  static int fluidMax(int kind, int y) { return kind == 1 ? 7 : kind == 3 ? 4 : dimOfY(y) == DIM_NETHER ? 6 : 3; }
+  static int fluidRate(int kind, int y) { return kind == 1 ? 5 : kind == 3 ? 12 : dimOfY(y) == DIM_NETHER ? 10 : 28; }
 
   void schedule(World& w, int x, int y, int z) {
     if (!inWorldY(y)) return;
@@ -113,7 +113,8 @@ public:
       return;
     }
     if (id && !R.tLiquid[id]) dropBlockItems(*lv, w, x, y, z, id, true, w.getMeta(x, y, z));
-    w.setBlock(x, y, z, kind == 1 ? B.water : B.lava, meta);
+    static const BlockId acid = reg().blockId("acid");
+    w.setBlock(x, y, z, kind == 1 ? B.water : kind == 3 && acid ? acid : B.lava, meta);
   }
   void update(World& w, int x, int y, int z) {
     const Registry& R = reg(); const KnownBlocks& B = KB();

@@ -254,6 +254,31 @@ private:
       vc.proj = obliqueProjection(vc.proj, clipEye);
       vc.viewProj = vc.proj * vc.view;
       vc.frustum.fromMatrix(vc.viewProj);
+      // only what can be seen through the window is drawn: the far side is culled to the window's rectangle on the
+      // screen (its corners as the near camera sees them), and the pixels outside it are scissored away. Before this
+      // the whole view behind a portal was drawn again, the lag beside a portal.
+      bool scissored = false;
+      {
+        vec2 mn(1e9f), mx(-1e9f); bool behind = false;
+        const glm::dvec3 lo = glm::dvec3(L.w.lo) - 0.6, hi = glm::dvec3(L.w.hi) + 1.6;
+        for (int c = 0; c < 8 && !behind; c++) {
+          const glm::dvec3 p((c & 1) ? hi.x : lo.x, (c & 2) ? hi.y : lo.y, (c & 4) ? hi.z : lo.z);
+          const vec4 q = f.cam.viewProj * vec4(vec3(p - f.cam.origin), 1.f);
+          if (q.w <= 0.05f) { behind = true; break; }
+          const vec2 ndc = vec2(q) / q.w; mn = glm::min(mn, ndc); mx = glm::max(mx, ndc);
+        }
+        if (!behind) {
+          mn = glm::max(mn - vec2(0.02f), vec2(-1)); mx = glm::min(mx + vec2(0.02f), vec2(1));
+          if (mx.x <= mn.x || mx.y <= mn.y) { glStencilFunc(GL_EQUAL, ref, 0xFF); glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP); continue; }
+          const vec2 sc = 2.f / (mx - mn), mid = (mn + mx) * 0.5f;
+          mat4 S(1); S[0][0] = sc.x; S[1][1] = sc.y; S[3][0] = -mid.x * sc.x; S[3][1] = -mid.y * sc.y;
+          vc.frustum.fromMatrix(S * vc.viewProj);
+          GLint vp[4]; glGetIntegerv(GL_VIEWPORT, vp);
+          const int x0 = vp[0] + (int)std::floor((mn.x * 0.5f + 0.5f) * vp[2]), y0 = vp[1] + (int)std::floor((mn.y * 0.5f + 0.5f) * vp[3]);
+          const int x1 = vp[0] + (int)std::ceil((mx.x * 0.5f + 0.5f) * vp[2]), y1 = vp[1] + (int)std::ceil((mx.y * 0.5f + 0.5f) * vp[3]);
+          if (level == 0) { glEnable(GL_SCISSOR_TEST); glScissor(x0, y0, std::max(1, x1 - x0), std::max(1, y1 - y0)); scissored = true; }
+        }
+      }
       vf.portalDepth = level + 1;
       glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); glEnable(GL_CULL_FACE); glCullFace(GL_BACK);
       WorldRenderer* wr = rendererFor(s, L.d.realm);
@@ -290,6 +315,7 @@ private:
       setup(f, 1, &L.w); buildPlane(L.w, f.cam, off); flush();
       glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); glDepthFunc(GL_LEQUAL); glEnable(GL_CULL_FACE);
       glStencilFunc(GL_EQUAL, ref, 0xFF); glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+      if (scissored) glDisable(GL_SCISSOR_TEST);
       live[std::min(level, 3)].insert(L.w.key);
     }
     (void)parentKey;

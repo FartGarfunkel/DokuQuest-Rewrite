@@ -1030,7 +1030,7 @@ void Redstone::dispense(int x, int y, int z) {
     me.set(slot, ItemStack("bucket", 1)); changedInv(me); lv.fx->sound("bucket", fc);
     return;
   }
-  if (bucket == "empty" && R.tLiquid[cur] && (w.getMeta(fx, fy, fz) & 15) == 0) {
+  if (bucket == "empty" && R.tLiquid[cur] && R.tLiquid[cur] != 3 && (w.getMeta(fx, fy, fz) & 15) == 0) {
     w.setBlock(fx, fy, fz, AIR, 0);
     ItemStack full2(R.tLiquid[cur] == 1 ? "water_bucket" : "lava_bucket", 1);
     if (s.n == 1) me.set(slot, full2);

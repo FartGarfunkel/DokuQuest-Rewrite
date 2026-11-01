@@ -5,6 +5,7 @@
 //   dq-gentool structs <request.json> <out.json>        structure plans and blocks for tools/port/struct_compare.py
 //   dq-gentool stats <seed> <dim> <cx0> <cz0> <n>       block counts per 8-row band of y over n x n chunks (ores, caves...)
 //   dq-gentool slice <seed> <dim> <x0> <z> <w> [y0 y1]  ASCII cutaway along x at z (one char per block)
+#include "gen/nether_bta.h"
 #include "core/init.h"
 #include "gen/overworld.h"
 #include "gen/dimgens.h"
@@ -263,6 +264,25 @@ int main(int argc, char** argv) {
   if (m == "bench" && argc >= 3) return bench(argv[2], argc > 3 ? atoi(argv[3]) : 64);
   if (m == "spawns" && argc >= 4) return spawns(argv[2], atoi(argv[3]));
   if (m == "structs" && argc >= 4) return structs(argv[2], argv[3]);
+  if (m == "nether" && argc >= 3) {   // dq-gentool nether <seed>: where each of the BTA Nether's lands lies (and a coarse map)
+    NetherShape S(seedFromString(argv[2]));
+    int found[NB_COUNT][3]; for (auto& f : found) f[0] = INT32_MIN;
+    for (int z = -1600; z <= 1600; z += 64) {
+      std::string row;
+      for (int x = -1600; x <= 1600; x += 32) {
+        NetherCol c = S.column(x, z);
+        row += "CVSXO"[c.biome];
+        if (c.mix > 0.98f && found[c.biome][0] == INT32_MIN && std::abs(x) < 1500 && std::abs(z) < 1500) { found[c.biome][0] = x; found[c.biome][1] = z; found[c.biome][2] = c.floor; }
+      }
+      printf("%s\n", row.c_str());
+    }
+    for (int b = 0; b < NB_COUNT; b++) printf("%s: %d %d floor %d\n", netherBiomeName(b), found[b][0], found[b][1], found[b][2]);
+    for (int k = 1; k <= 2; k++) {   // a crater's lava, a pool's acid
+      bool done = false;
+      for (int z = -1500; z <= 1500 && !done; z += 4) for (int x = -1500; x <= 1500 && !done; x += 4) { NetherCol c = S.column(x, z); if (c.pool == k) { printf("%s at %d %d top %d floor %d\n", k == 1 ? "crater" : "acid pool", x, z, c.poolTop, c.floor); done = true; } }
+    }
+    return 0;
+  }
   if (m == "map" && argc >= 8) return map(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]));
   fprintf(stderr, "dq-gentool dump <req.json> <out.json> | bench <seed> [chunks] | map <seed> <dim> <x0> <z0> <step> <n>\n");
   return 2;

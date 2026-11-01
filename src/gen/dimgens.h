@@ -4,6 +4,8 @@
 //   EndGen      The End (theend.js: islands, pillars, exit portal bowl, platform, chorus), lifted 64
 //   PocketGen   the pocket dimension's rooms (worldgen.js generatePocket), RealmGen his realm (riftarc.js)
 #pragma once
+#include "gen/nether_bta.h"
+#include <memory>
 #include "gen/generator.h"
 #include "gen/structures.h"
 #include "gen/trees.h"
@@ -32,6 +34,13 @@ public:
   StructureIndex structures;
 private:
   void fungusTrees(int cx, int cz, std::vector<TreeSpec>& out) const;
+  // terrain version 5: BTA 8.0's Nether (gen/nether_bta.cpp)
+  std::unique_ptr<NetherShape> bta_;
+  CarveRules btaCarve_;
+  void generateBTA(Chunk& c);
+  bool solidBTA(int x, int y, int z) const;
+  TerrainColumn terrainBTA(int x, int z) const;
+  void sampleBTA(int wx, int wz, ColumnSample& s) const;
   void glowstone(GenBuf& b, int cx, int cz) const;     // clusters hanging from the roofs (WorldGenGlowStone)
   void ores(GenBuf& b, int cx, int cz) const;          // quartz, gold, cinderite, debris veins
   i32 seed_;

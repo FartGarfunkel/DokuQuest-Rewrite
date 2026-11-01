@@ -265,7 +265,7 @@ Player* Creature::ownerPawn(Level& lv) const {
 bool Creature::isPetOf(const Entity* who) const { auto* p = dynamic_cast<const Player*>(who); return p && !owner.empty() && owner == p->name; }
 
 // ------------------------------------------------------------------ contacts (physics.js sampleContacts)
-struct MobContacts { bool water = false, lava = false, cactus = false; };
+struct MobContacts { bool water = false, lava = false, cactus = false, acid = false; };
 static MobContacts contacts(World& w, const Entity& e) {
   MobContacts c;
   static BlockId cactus = reg().blockId("cactus");
@@ -273,7 +273,7 @@ static MobContacts contacts(World& w, const Entity& e) {
   for (int y = y0; y <= y1; y++) for (int z = z0; z <= z1; z++) for (int x = x0; x <= x1; x++) {
     BlockId id = w.getBlock(x, y, z);
     u8 l = reg().tLiquid[id];
-    if (l == 1) c.water = true; else if (l == 2) c.lava = true;
+    if (l == 1) c.water = true; else if (l == 2) c.lava = true; else if (l == 3) c.water = c.acid = true;
   }
   // cactus: touching the sides
   if (cactus) for (int z = ifloor(e.pos.z - e.w - 0.05f); z <= ifloor(e.pos.z + e.w + 0.05f); z++) for (int x = ifloor(e.pos.x - e.w - 0.05f); x <= ifloor(e.pos.x + e.w + 0.05f); x++)
@@ -543,6 +543,7 @@ void Creature::update(Level& lv, float dt) {
   if (!data.value("mountedOn", std::string()).empty()) for (auto& e : lv.entities()) if (auto* b = dynamic_cast<Boat*>(e.get())) if (b->pet == id) { lavaBoat = b->kind == "lava_rowboat"; break; }
   if (lavaBoat) burn = 0;
   else if (c.lava && !T->fireImmune) { DamageSrc s; s.type = "lava"; hurt(lv, 2, s); burn = 4; if (!alive()) return; }
+  if (c.acid && !T->fireImmune) { if ((acidT += dt) > 1) { acidT = 0; DamageSrc s; s.type = "acid"; hurt(lv, 1, s); if (!alive()) return; } }
   if (burn > 0) {
     burn -= dt; burnTick += dt;
     if (burnTick > 0.8f) { burnTick = 0; if (!T->fireImmune) { DamageSrc s; s.type = "burn"; hurt(lv, 1, s); if (!alive()) return; } }

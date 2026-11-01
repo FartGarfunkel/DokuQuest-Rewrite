@@ -34,7 +34,7 @@ MoveResult moveBox(const World& w, vec3& pos, float hw, float h, vec3 delta, flo
 // Which liquids/portals/cactus/ladders touch the entity's box (eye = eye height, < 0 = none).
 struct Contacts {
   bool water = false, lava = false, eyeWater = false, eyeLava = false, cactus = false, ladder = false, scaffold = false,
-       web = false, fire = false, hot = false;
+       web = false, fire = false, hot = false, acid = false;   // acid: in the Sulfur Pools' acid (also counts as water)
   int portal = 0;
 };
 Contacts sampleContacts(const World& w, const Entity& e, float eye = -1);

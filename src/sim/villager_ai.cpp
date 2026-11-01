@@ -399,11 +399,18 @@ static Move brainInner(Level& lv, Creature& e, NpcMind& M, json& N, const Villag
     }
   }
   const VSeatSpot* seat = seats.empty() ? nullptr : &seats[idx % seats.size()];
+  if (seat && seat->at == M.badSeat && S->now < M.badSeatUntil) seat = nullptr;   // couldn't get to it: not now
   if (night && folk) { goal = vec3(folk->home); hasGoal = true; act = SLEEP; }
   else if (ph < 0.04) act = IDLE;
   else if (folk && folk->hasWork && (ph < 0.3 || (shop && ph < 0.46))) { goal = vec3(folk->work); hasGoal = true; act = WORK; }
   else if (ph >= 0.43 && seat) {
     goal = seat->walk ? vec3(seat->ax, seat->at.y, seat->az) : vec3(seat->at.x + DXL[seat->f], seat->at.y, seat->at.z + DZL[seat->f]); hasGoal = true; act = SIT;   // walk up to the bench, then sit
+    if (!seat->walk) {   // its front blocked (a bench against a wall, one set down the wrong way round): come up from a side that's open
+      World& w = lv.world(e.realm); const Registry& R = reg();
+      auto open = [&](int x, int y, int z) { return !R.tSolid[w.getBlock(x, y, z)] && !R.tSolid[w.getBlock(x, y + 1, z)]; };
+      if (!open((int)goal.x, (int)goal.y, (int)goal.z))
+        for (int k = 1; k < 4; k++) { const int f = (seat->f + k) & 3; if (open(seat->at.x + DXL[f], seat->at.y, seat->at.z + DZL[f])) { goal = vec3(seat->at.x + DXL[f], seat->at.y, seat->at.z + DZL[f]); break; } }
+    }
     if (idx >= (int)seats.size()) { act = SOCIAL; hasGoal = false; }
   } else act = SOCIAL;
   if (act == SOCIAL) {
@@ -421,7 +428,12 @@ static Move brainInner(Level& lv, Creature& e, NpcMind& M, json& N, const Villag
     float gx = soc ? goal.x : goal.x + 0.5f, gz = soc ? goal.z : goal.z + 0.5f;
     float d = std::hypot(gx - e.pos.x, gz - e.pos.z);
     bool seated = act == SIT && std::hypot(seat->at.x + 0.5f - e.pos.x, seat->at.z + 0.5f - e.pos.z) < 0.35f && std::fabs(e.pos.y - seat->at.y - 0.25f) < 0.3f;
-    if (d > 0.6f && !seated) {
+    // close enough to the seat itself (from any side) is close enough to sit down: no more circling to the one spot in front
+    const bool byIt = act == SIT && std::hypot(seat->at.x + 0.5f - e.pos.x, seat->at.z + 0.5f - e.pos.z) < 1.3f && std::fabs(e.pos.y - seat->at.y) < 1.2f;
+    if (act == SIT && !seated && !byIt && M.stuckGo > 6) {   // it can't get there: leave that seat be for a couple of minutes
+      M.badSeat = seat->at; M.badSeatUntil = S->now + 120; M.stuckGo = 0; M.hasPath = false; return Move{0, e.yaw};
+    }
+    if (d > 0.6f && !seated && !byIt) {
       // stuck for a long time and nobody about to see it: step there (villagers know their way home)
       if (M.stuckGo > 8 && !nearestPawn(lv, e.realm, e.pos, 24)) { e.pos = vec3(gx, goal.y + 0.01f, gz); M.stuckGo = 0; M.hasPath = false; return Move{0, e.yaw}; }
       if (M.stuckGo > 10 && soc) { M.hasGoal = false; M.stuckGo = 0; }

@@ -189,6 +189,15 @@ void PlayerController::tickSurvival(float dt, const MoveInfo& mv) {
   if (c.cactus) { DamageSource s; s.type = "cactus"; hurt(1, s); }
   if (c.fire && !c.water) p.burn = std::max(p.burn, 3.f);
   if (c.hot && !p.sneaking) { if ((p.hotT += dt) > 1) { p.hotT = 0; DamageSource s; s.type = "burn"; hurt(1, s); } }
+  if (c.acid && !p.creative()) {   // the Sulfur Pools' acid: it eats at bare skin (one hurt a second per piece of armour not worn), and at the armour
+    if ((p.acidT += dt) > 1) {
+      p.acidT = 0;
+      int bare = 0; for (auto& a : p.armor) if (a.empty()) bare++;
+      if (bare) { DamageSource s; s.type = "acid"; s.bypassArmor = true; hurt((float)bare, s); }
+      wearArmor(p);
+      if (bare && !p.data.value("toldAcid", false)) { p.data["toldAcid"] = true; toast(lv, p, "The acid burns! Armour keeps it off your skin.", "bad"); }
+    }
+  } else p.acidT = 0;
   float voidY = p.realm == REALM_MAIN ? -32.f : dimBase(DIM_OVERWORLD) - 32.f;
   if (p.pos.y < voidY) { DamageSource s; s.type = "void"; s.bypassArmor = s.bypass = true; hurt(4, s); }
   if (p.invuln > 0) p.invuln -= dt;

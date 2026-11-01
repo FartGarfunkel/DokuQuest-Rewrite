@@ -208,7 +208,7 @@ Contacts sampleContacts(const World& w, const Entity& e, float eye) {
     BlockId id = w.getBlock(x, y, z);
     if (!id) continue;
     int lq = R.tLiquid[id];
-    if (lq == 1) r.water = true; else if (lq == 2) r.lava = true;
+    if (lq == 1) r.water = true; else if (lq == 2) r.lava = true; else if (lq == 3) r.water = r.acid = true;
     else if ((R.tWlog[id] || (R.tOpaque[id] && w.getCarve(x, y, z))) && (w.getMeta(x, y, z) & WLOG)) r.water = true;
     if (R.tPortal[id]) r.portal = R.tPortal[id];
     const BlockInfo& bi = binfo(id);
@@ -232,7 +232,7 @@ Contacts sampleContacts(const World& w, const Entity& e, float eye) {
   if (eye >= 0) {
     int ex = ifloor(e.pos.x), ey = ifloor(e.pos.y + eye), ez = ifloor(e.pos.z);
     BlockId id = w.getBlock(ex, ey, ez);
-    if (R.tLiquid[id] == 1) {
+    if (R.tLiquid[id] == 1 || R.tLiquid[id] == 3) {
       u8 m = w.getMeta(ex, ey, ez);
       BlockId above = w.getBlock(ex, ey + 1, ez);
       double top = ey + liquidHeight(id, m, above);

@@ -7,6 +7,7 @@
 #include "sim/weather.h"
 #include "core/registry.h"
 #include "gen/gendefs.h"
+#include "gen/nether_bta.h"
 
 namespace dq {
 
@@ -19,6 +20,15 @@ vec3 rgb(u32 hex) { return vec3(((hex >> 16) & 255) / 255.f, ((hex >> 8) & 255) 
 vec3 mixc(vec3 a, vec3 b, float t) { return a + (b - a) * t; }
 vec3 grey(vec3 c, float k) { float l = (c.x + c.y + c.z) / 3; return mixc(c, vec3(l), k); }
 
+glm::dvec3 g_cam(0);   // where the sky is seen from (computeSkyEnv / computeFrame set it)
+// BTA 8.0's Nether (gen/nether_bta.h): each land its own haze, and light enough to find your way across it
+void btaNetherEnv(Level& lv, SkyEnv& e) {
+  static const u32 FOG[NB_COUNT] = {0x4e1a10, 0x5a2410, 0x48421a, 0x52101e, 0x40364a}, ZEN[NB_COUNT] = {0x200805, 0x2a0c04, 0x231f08, 0x26050c, 0x1a1420};
+  u8 a, b; float m;
+  netherBiomeMix(lv.info.seed, (int)std::floor(g_cam.x), (int)std::floor(g_cam.z), a, b, m);
+  e.fog = mixc(rgb(FOG[b]), rgb(FOG[a]), m); e.zenith = mixc(rgb(ZEN[b]), rgb(ZEN[a]), m); e.horizon = mixc(e.fog, e.zenith, 0.3f);
+  e.fogStart = std::max(e.fogStart, 0.38f); e.minLight = std::max(e.minLight, 0.27f); e.day = std::max(e.day, 0.3f);
+}
 // game.js computeEnv (+ theend.js, riftarc.js): the land's own sky
 SkyEnv baseEnv(Level& lv, int dim, int realm, const Settings* st) {
   SkyEnv e;
@@ -53,6 +63,7 @@ SkyEnv baseEnv(Level& lv, int dim, int realm, const Settings* st) {
     }
     case DIM_NETHER:
       e.day = 0.22f; e.zenith = rgb(0x1e0604); e.horizon = rgb(0x4a1408); e.fog = rgb(0x3a1006); e.fogStart = 0.25f; e.minLight = std::max(e.minLight, 0.07f);
+      if (realm == REALM_MAIN && lv.info.genVersion >= 5) btaNetherEnv(lv, e);
       break;
     case DIM_AETHER:
       e.day = 1; e.zenith = rgb(0x7ab4f8); e.horizon = rgb(0xf2f8ff); e.fog = rgb(0xe2f0fc); e.showSun = true; e.voidBelow = st && !st->clouds;
@@ -136,6 +147,7 @@ float skyFarRange() { return g_farRange; }
 const SkyEnv& currentSkyEnv() { return g_env; }
 
 SkyEnv computeSkyEnv(Level& lv, int dim, int realm, glm::dvec3 camPos, bool blend) {
+  g_cam = camPos;
   SkyEnv e = landEnv(lv, dim, realm, g_settings);
   if (!blend || realm != REALM_MAIN) return e;
   // seamless.js: near the edge between two stacked lands their skies meet halfway, and between the

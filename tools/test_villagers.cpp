@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
     {{"home", bed(-6, 6)}, {"job", "elder"}, {"work", spot(8, 6, 0)}},
   });
   json plan = {{"kind", "village"}, {"id", "t5000_5000"}, {"name", "Testbury"}, {"style", "plains"}, {"tier", "village"}, {"x", 8}, {"z", 0}, {"y", ly}, {"P", 7}, {"hw", 1}, {"r", 20},
-               {"board", json::array({10, ly + 1, 2})}, {"bell", json::array({8, ly + 1, 2})}, {"folk", folk}, {"guards", 1}, {"golems", 0}, {"seats", json::array()},
+               {"board", json::array({10, ly + 1, 2})}, {"bell", json::array({8, ly + 1, 2})}, {"folk", folk}, {"guards", 1}, {"golems", 0}, {"seats", json::array({json::array({2, ly + 1, 10, 0})})},
                {"blds", json::array()}, {"roads", json::array({{{"d", 1}, {"L", 12}, {"hw", 1}}})}, {"seed", 12345}};
   addVillage(*L, plan);
   VillageRef v = villageById(*L, "t5000_5000");
@@ -112,6 +112,19 @@ int main(int argc, char** argv) {
     fx.msgs.clear();
     bool used = useOnCreature(*L, *P, *farmer, false);
     check(used && fx.heard("fast asleep"), "using a sleeping villager: \"is fast asleep\"");
+  }
+  // ------------------------------------------------------------ a bench boxed in on three sides (its front blocked): the farmer
+  // still gets to it from the open side and sits, and stays sat (no circling, no hopping on and off)
+  {
+    BlockId bench = reg().blockId("oak_bench");
+    w.setBlock(2, Y + 1, 10, bench, 0);
+    for (auto [dx, dz] : {std::pair{1, 0}, {-1, 0}, {0, 1}}) for (int k = 1; k <= 2; k++) w.setBlock(2 + dx, Y + k, 10 + dz, stone);
+    setPhase(0.45);
+    tick(40);
+    auto sat = [&]() { return farmer && (npcOf(*farmer)->value("p", 0) & NP_SIT) && std::hypot(farmer->pos.x - 2.5f, farmer->pos.z - 10.5f) < 0.2f; };
+    check(sat(), "in the afternoon the farmer sits on the bench, even with its front walled in (" + std::to_string(farmer ? farmer->pos.x : 0) + ", " + std::to_string(farmer ? farmer->pos.z : 0) + ")");
+    int stays = 0; for (int i = 0; i < 20; i++) { tick(0.5); if (sat()) stays++; }
+    check(stays == 20, "and stays sat (" + std::to_string(stays) + "/20)");
   }
   setPhase(0.2);
   tick(3);

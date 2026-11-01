@@ -402,6 +402,7 @@ void PlayerController::useBucket(const ItemDef& def, ItemStack& held) {
     RayHit h = raycastBlocks(w, glm::dvec3(p.pos.x, p.pos.y + p.eye, p.pos.z), L, 5, true);
     if (!h.hit || !R.tLiquid[h.id]) return;
     if ((w.getMeta(h.block.x, h.block.y, h.block.z) & 15) != 0) return;
+    if (R.tLiquid[h.id] == 3) { toast(lv, p, "The acid would eat through the bucket", "info"); return; }
     w.setBlock(h.block.x, h.block.y, h.block.z, AIR, 0, SetFlags::Urgent);
     ItemStack full(R.tLiquid[h.id] == 1 ? "water_bucket" : "lava_bucket", 1);
     if (--held.n <= 0) held = full; else if (p.give(full) > 0) dropItem(lv, p.realm, full, p.pos + vec3(0, 1, 0), false);

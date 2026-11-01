@@ -186,7 +186,7 @@ vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, Portal
   auto at = [&](int a, int dy, int b) { return axis ? ivec3(bx + b, dy, bz + a) : ivec3(bx + a, dy, bz + b); };   // a: along the portal, b: across
   auto solid = [&](int yy) { return R.tSolid[w.getBlock(bx, yy, bz)] != 0; };
   if (dim == DIM_NETHER) {
-    for (int y = base + 24; y < base + 200 && by < 0; y++) {
+    for (int y = base + 51; y < base + 200 && by < 0; y++) {   // over the lava sea (DepthsGen::LAVA_Y): not in a tunnel under the ground
       bool ok = true;
       for (int da = -1; da < fw && ok; da++) for (int dy = 0; dy < fh && ok; dy++) { ivec3 q = at(da, y + dy, 0); if (w.getBlock(q.x, q.y, q.z) != AIR) ok = false; }
       if (ok && solid(y - 1)) by = y;

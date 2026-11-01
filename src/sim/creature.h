@@ -92,7 +92,7 @@ public:
   std::vector<mat4> mats;              // last pose (part matrices, model space; empty = none)
 
   // ---- life ----
-  float deathTime = 0, burn = 0, burnTick = 0, slowT = 0, attackCd = 0, invulnT = 0, poisonT = 0, poisonTick = 0;
+  float deathTime = 0, burn = 0, burnTick = 0, slowT = 0, attackCd = 0, invulnT = 0, poisonT = 0, poisonTick = 0, acidT = 0;
   std::string state = "idle"; float stateT = 0;
   struct Attack { bool on = false; std::string kind; float tele = 0, progress = 0, yaw = 0, start = 0, t = 0; int left = 0; std::set<u32> hit; } attack;
   bool enragedOnce = false;

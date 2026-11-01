@@ -23,6 +23,7 @@ struct NpcMind {
   std::vector<ivec3> path; size_t pathI = 0; bool hasPath = false; float navT = 0; bool hasNavGoal = false; vec3 navGoal{0};
   int stuckGo = 0; float stuckT = 0, sideStepT = 0; bool hasNav = false; vec2 navXZ{0};
   float stuckCheckT = 0; int stuckN = 0;   // towns3.js npcStuckCheck
+  ivec3 badSeat{INT32_MIN}; double badSeatUntil = 0;   // a seat it couldn't reach: left alone for a while
   // towns3.js: the watch at the gates
   float watchT = 0, watchLen = 0; bool patrol = false;
   // hearth.js: the missing
