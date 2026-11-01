@@ -74,13 +74,14 @@ std::vector<u8> plantDepth(const std::vector<u8>& M, int S) {
   return out;
 }
 
-std::shared_ptr<PlantTemplate> buildTemplate(const MeshTiles& T, int tile) {
+std::shared_ptr<PlantTemplate> buildTemplate(const MeshTiles& T, int tile, bool even = false) {
   auto P = std::make_shared<PlantTemplate>();
   const int S = T.size;
   if (tile < 0 || tile >= T.count) return P;
   std::vector<u8> M(S * S);
   for (int j = 0; j < S; j++) for (int i = 0; i < S; i++) M[j * S + i] = T.px(tile, i, j)[3] >= 128;
   std::vector<u8> D = plantDepth(M, S);
+  if (even) for (auto& d : D) if (d) d = 1;   // one thickness all over: only the outline makes steps
   auto th = [&](int i, int j) -> int { return (i < 0 || j < 0 || i >= S || j >= S) ? 0 : D[j * S + i]; };
   auto& Q = P->q;
   const float inv = 1.f / S;
@@ -144,6 +145,10 @@ std::shared_ptr<PlantTemplate> plantTemplate(const MeshTiles* T, int tile) {
   auto it = g_tpl.find(tile);
   if (it != g_tpl.end()) return it->second;
   auto p = buildTemplate(*T, tile);
+  // a ragged picture (vines, roots, sprouts) makes hundreds of little steps at its many thicknesses: past a budget it
+  // is built one thickness all over, which keeps most of the look for a fraction of the quads (the Nether's vines and
+  // roots were most of its terrain memory)
+  if (p->q.size() / 4 > 160) { auto even = buildTemplate(*T, tile, true); if (even->q.size() < p->q.size()) p = even; }
   g_tpl[tile] = p;
   return p;
 }
@@ -518,7 +523,9 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   u8 sway = T.fire ? 0 : Sway::Plant;
   if (T.tint) c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0);
   // seagrass and coral are solid too (an extension of the original, which drew them flat)
-  bool voxPlant = !T.fire && !T.tint && key != "cobweb" && key != "kelp";
+  // vines that hang or climb in strands are drawn as planes round the stem (as solid voxels they were most of the
+  // Nether's terrain memory, thousands of little faces a block)
+  bool voxPlant = !T.fire && !T.tint && key != "cobweb" && key != "kelp" && !T.stackPlant && !T.hangs;
   int ly = c.in.sy * 16 + y;
   if (voxPlant && detail) {
     auto P = plantTemplate(c.tiles, tile);

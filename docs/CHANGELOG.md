@@ -18,6 +18,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Flags reach their poles.**
 - **Portals built on the far side match the size of the one you came through,** so the window lines up.
 - **Faster underground and in hilly country:** caves and rooms shut away behind rock aren't drawn any more (cave culling); down a mine shaft the game draws well under half as much.
+- **Less memory, most of all in the Nether:** hanging and climbing vines are drawn as planes round the stem, ragged plants (roots, sprouts) with one thickness, and the terrain's memory grows in smaller steps; in a test of the Nether the terrain took 195 MB where it took 422 MB.
 - **Settings are laid out like the launcher's Options:** Graphics, Packs, Sound, Controls and Game, in two columns, each option with a line about it.
 - **Music frequency:** a new setting for how often music plays, from rarely to nearly always.
 - **Leather, pelts, hides and saddles aren't paper-flat in your hand any more,** and paper, feathers and maps keep a sliver of body.

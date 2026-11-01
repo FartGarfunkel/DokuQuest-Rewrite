@@ -50,7 +50,7 @@ public:
   int microVoxels = 1;
   float microDist = 48;
   int plantDetail = 1;                       // 0 off, 1 near (PLANT_DETAIL_R), 2 all
-  static constexpr float PLANT_DETAIL_R = 44;
+  static constexpr float PLANT_DETAIL_R = 36;   // (was 44: 3D plants are most of the terrain memory where they grow thick)
 
 private:
   struct SecMesh { u32 base = 0, cap = 0; u32 nq[3] = {0, 0, 0}; vec3 origin{0}; MeshFx fx; bool detail = true; };

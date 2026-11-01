@@ -302,6 +302,15 @@ void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs)
     for (auto& [k, m] : meshes) if (!m->detail && !inFlight.count(k) && wantDetail(k, camPos)) list.push_back({glm::distance(m->origin + vec3(8), camPos), k});
     std::sort(list.begin(), list.end(), [](auto& a, auto& b) { return a.first < b.first; });
     for (size_t i = 0; i < list.size() && i < 6; i++) submit(list[i].second, pool, list[i].first - 9000, true);
+    // and the ones left well behind go back to flat plants, so their 3D plants don't pile up in memory as you travel
+    // (3D plants were most of the Nether's terrain memory)
+    std::vector<std::pair<float, SectionKey>> far;
+    for (auto& [k, m] : meshes) if (m->detail && !inFlight.count(k)) {
+      const float dx = k.cx * 16 + 8 - camPos.x, dz = k.cz * 16 + 8 - camPos.z;
+      if (std::sqrt(dx * dx + dz * dz) > PLANT_DETAIL_R + 36) far.push_back({-std::sqrt(dx * dx + dz * dz), k});
+    }
+    std::sort(far.begin(), far.end(), [](auto& a, auto& b) { return a.first < b.first; });
+    for (size_t i = 0; i < far.size() && i < 4; i++) submit(far[i].second, pool, 20000 - far[i].first, false);
   }
   double t0 = nowSeconds();
   std::vector<Result> done;
@@ -360,7 +369,9 @@ void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
         for (auto& [k, m] : meshes) if (k.dim >= 0 && k.dim < DIM_COUNT) per[k.dim]++;
         for (auto& v : visible) { int d = dimOfY((int)v.second->origin.y); if (d >= 0 && d < DIM_COUNT) vis[d]++; }
         for (auto& [k, c] : w->chunks()) if (k.dim >= 0 && k.dim < DIM_COUNT) chunks[k.dim]++;
-        DQ_LOG("bands: arena %.0f MB used %.0f MB | cam %.0f %.0f %.0f dim %d | chunks %d/%d/%d/%d meshes %d/%d/%d/%d visible %d/%d/%d/%d inFlight %d again %d", arenaBytes / 1048576.0, usedBytes / 1048576.0, f.cam.pos.x, f.cam.pos.y, f.cam.pos.z, f.dim,
+        u64 q0 = 0, q1 = 0, q2 = 0, qd = 0; int nd = 0; for (auto& [kk, mm] : meshes) { q0 += mm->nq[0]; q1 += mm->nq[1]; q2 += mm->nq[2]; if (mm->detail) { nd++; qd += mm->nq[1]; } }
+        DQ_LOG("bands: detailed sections %d with %llu cutout quads", nd, (unsigned long long)qd);
+        DQ_LOG("bands: quads %llu/%llu/%llu | arena %.0f MB used %.0f MB | cam %.0f %.0f %.0f dim %d | chunks %d/%d/%d/%d meshes %d/%d/%d/%d visible %d/%d/%d/%d inFlight %d again %d", (unsigned long long)q0, (unsigned long long)q1, (unsigned long long)q2, arenaBytes / 1048576.0, usedBytes / 1048576.0, f.cam.pos.x, f.cam.pos.y, f.cam.pos.z, f.dim,
                chunks[0], chunks[1], chunks[2], chunks[3], per[0], per[1], per[2], per[3], vis[0], vis[1], vis[2], vis[3], (int)inFlight.size(), (int)again.size());
       }
     }

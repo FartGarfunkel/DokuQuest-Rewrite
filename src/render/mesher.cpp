@@ -567,7 +567,18 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
         if (tufts && id == grassBlock && c.at(x, y + 1, z) == AIR) emitGrassTufts(c, out.cutout, id, x, y, z);
         break;
       }
-      case Render::Cross: emitCross(c, out.cutout, id, x, y, z, meta); break;
+      case Render::Cross: {
+        static const bool stats = std::getenv("DQ_PLANT_STATS") != nullptr;
+        const size_t before = out.cutout.size();
+        emitCross(c, out.cutout, id, x, y, z, meta);
+        if (stats && opt.detail) {   // (debug) which plants fill the meshes
+          static std::mutex mx; static std::unordered_map<std::string, std::pair<u64, u64>> tally; static u64 n = 0;
+          std::lock_guard<std::mutex> lk(mx);
+          auto& t = tally[R.block(id).key]; t.first++; t.second += (out.cutout.size() - before) / 4;
+          if (++n % 5000 == 0) { std::vector<std::pair<u64, std::string>> v; for (auto& [k, p] : tally) v.push_back({p.second, k + " x" + std::to_string(p.first)}); std::sort(v.rbegin(), v.rend()); for (size_t i = 0; i < v.size() && i < 6; i++) DQ_LOG("plant stats: %s: %llu quads", v[i].second.c_str(), (unsigned long long)v[i].first); }
+        }
+        break;
+      }
       case Render::Liquid: {
         bool deep = R.tLiquid[id] == 1 && c.water(x, y + 1, z) && c.water(x + 1, y, z) && c.water(x - 1, y, z) && c.water(x, y, z + 1) && c.water(x, y, z - 1) && (c.water(x, y - 1, z) || c.opaque(x, y - 1, z));
         if (!deep) emitLiquid(c, R.tLiquid[id] == 2 ? out.opaque : out.trans, id, x, y, z, meta);
