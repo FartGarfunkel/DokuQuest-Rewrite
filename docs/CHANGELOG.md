@@ -24,6 +24,8 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Leather, pelts, hides and saddles aren't paper-flat in your hand any more,** and paper, feathers and maps keep a sliver of body.
 - **Switching menu tabs from the inventory (Q / LB / RB) goes to the next tab** instead of skipping one.
 - **In a chest or furnace on a controller, Y quick-moves straight away again instead of closing the menu.**
+- **Leaving a world with a menu open no longer crashes the game.**
+- **On a controller, the selected hotbar slot has the focus when a menu opens,** so A, X and Y work on it at once, even if the mouse pointer was left over another slot.
 
 **New in the world:**
 
