@@ -1,4 +1,4 @@
-# DokuQuest — session handoff (2026-11-01)
+# DokuQuest — session handoff (2026-11-01, overnight)
 
 Start here in a new session. Read this file, `CLAUDE.md` (the code map), and only the files a task needs.
 The full feature list is `docs/MASTER_PLAN.md` (the user's master doc, V2); the BTA detail is `docs/BTA_GAP.md`; the
@@ -32,13 +32,21 @@ Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`.
 - **Optimizing:** DQ_PROFILE=1 logs CPU ms per layer/pass every 600 frames. On llvmpipe the world cutout pass (plants,
   leaves) and clouds dominate (fill-bound there); sections already draw nearest first; clouds are instanced and culled.
   The icon cache PNG is now written on a thread (its compression took longer than drawing the 2162 icons).
+- **Later the same night:** lingering potions (data_patches: lingering_* from every splash_*, splash + ectoplasm;
+  PotionFlask::smash spawns a PotionCloud in sim/magic_bolt.cpp; splashPotionAt takes radius and scale), potions stack
+  to 16 (brewing stand takes one bottle a slot, cauldron fill keeps the stack), permafrost family + mossy oak log +
+  mossy emberstone (bta_blocks.py), Highland Spruce (BV_HIGHLANDS) and the tundra step (BV_TUNDRA) in
+  gen/overworld.h/.cpp + trees.cpp, ember/moss/sky fuselings (fuseBurst in creature_monsters.cpp; spawns: Depths
+  floor, forest nights, Skylands grass), zombie pigmen only on natural Depths ground, December carols (audio/music.cpp
+  carol(): four public-domain melodies), New Year fireworks over villages (sim/usables.cpp), a brighter village tree,
+  elytra hung 1.5 px lower. alpha.8 = DQ_VERSION bumped; released from the commit the final sweep passed on.
 - **Notes audit** (/tmp/pt/notes_gaps.md, regenerate with an agent if needed): still open and worth doing next: painted
-  doors/trapdoors/signs/chests, lingering potions, Highland Spruce + Seasonal Forest + tundra step, permafrost family,
-  mossy oak log, mossy/igneous emberstone, chimney smoke on town buildings, the Nether's own ambience and steam vents,
+  doors/trapdoors/signs/chests, the Seasonal Forest, igneous emberstone, chimney smoke check on town buildings (campfires
+  in the hearths already smoke through campFlue), the Nether's own ambience and steam vents,
   dye-tuned portals (probably skip), coloured block light, a scripted start-to-finish playthrough test, crows on
-  scarecrows, church banners, biome fuselings (3 of ~12), articulated biome golems, Story Mode follow-through on
-  capes/hair and talking faces, elytra sit too high on the back, render distance above 16, holidays (carols, New Year
-  fireworks). Docs MASTER_PLAN/BTA_GAP still list many done things as open (see the audit's DOC STALE list).
+  scarecrows, church banners, more biome fuselings (6 now), articulated biome golems, Story Mode follow-through on
+  capes/hair and talking faces, render distance above 16. Docs MASTER_PLAN/BTA_GAP still list many done things as
+  open (see the audit's DOC STALE list).
 
 ## How the user wants us to work (budget first)
 - **Save usage, not time.** One stream of work, no parallel agents. Targeted reads and edits. **No screenshots
