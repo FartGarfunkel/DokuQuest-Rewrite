@@ -55,8 +55,8 @@ Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`.
   alpha.4.9 (villagers.cpp's itemUse handler AND rsplace.cpp's useRedstone both toggled the gate; now only
   rsplace gateLever, which calls the villagers' gateUse first so their dusk/dawn logic respects the pull), and **a
   controller's first press after the keyboard counted twice** (Input::setSources gave a newly claimed pad's frame no
-  history, so the still-held Y read as a fresh press next frame: the inventory shut and reopened; new source frames
-  now start from what is held). Stale tests fixed: slabs/stairs are chiseled forms (test_gameplay), villagers pay
+  history, so the still-held Y read as a fresh press next frame: the inventory shut and reopened; a new source's
+  frame is now a copy of this frame's merged view fr[0], so the claiming press counts once and is held after). Stale tests fixed: slabs/stairs are chiseled forms (test_gameplay), villagers pay
   in gold coins (test_villagers), the net test looks for the cow by Alice (the server's herds are about too) and
   counts real checksum mismatches apart from re-asked chunks (NetClient::Stats::mismatches). Nightmares are off in
   the bed check (a 30% wake in the dark made it flaky). `dq-sweep --items`: 6 notes, all expected (bucket/bottle
