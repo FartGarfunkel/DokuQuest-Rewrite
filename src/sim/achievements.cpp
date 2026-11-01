@@ -53,6 +53,7 @@ void grant(Level& lv, Player& p, const char* id) {
   if (has(p.data, id)) return;
   json& a = p.data["ach"]; if (!a.is_object()) a = json::object();
   a[id] = unixMillis() / 1000;
+  DQ_LOG("achievement %s: %s", p.name.c_str(), id);
   for (auto& d : achievementList()) if (std::string(d.id) == id) { lv.fx->message(p.id, std::string("Achievement: ") + d.title, "achievement"); break; }
   lv.fx->soundUi(p.id, "levelup");
 }

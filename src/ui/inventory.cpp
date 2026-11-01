@@ -51,7 +51,7 @@ public:
   InvOpen o;
   std::unique_ptr<InvSession> sess;
   std::vector<Hit> hits, prevHits;
-  bool hasFocus = false; Hit focus; Hit focusRect;
+  bool hasFocus = false, focusFromMouse = false; Hit focus; Hit focusRect;
   ImVec2 panelA, panelB, bookA, bookB; bool bookShown = false;
   float is = 40;
   std::string info;                 // .ip-info line for the controller
@@ -128,13 +128,16 @@ public:
     if (o.mode == "table" && (in.padButtonPressed(4) || in.padButtonPressed(5))) toggleBook(a);   // (Q drops here, E closes)
     // spatial navigation between everything focusable
     ivec2 nav = in.textActive ? ivec2(0) : in.navStep();
-    if (nav != ivec2(0) && in.usingPad()) padActed = true;
+    if (nav != ivec2(0) && in.usingPad()) { if (!padActed && focusFromMouse) { hasFocus = false; focusFromMouse = false; } padActed = true; }
     if (nav != ivec2(0) && in.usingPad()) {
       if (!hasFocus || !findHit(focus)) { hasFocus = true; focus = Hit{H_SLOT, Grp::Main, 9}; }
       else moveFocus(nav.x, nav.y);
     } else if (nav != ivec2(0) && !in.usingPad() && hasFocus) moveFocus(nav.x, nav.y);
-    const Hit* f = hasFocus ? findHit(focus) : nullptr;
     bool A = in.padButtonPressed(0), X = in.padButtonPressed(2), Y = in.padButtonPressed(3);
+    // on a pad the selected hotbar slot has the focus from the start, so A / X / Y work on it at once
+    // (and taking up the pad after the mouse starts there too, not wherever the pointer was left)
+    if ((in.usingPad() || A || X || Y) && (!hasFocus || (focusFromMouse && !padActed)) && p->selected >= 0) { hasFocus = true; focus = Hit{H_SLOT, Grp::Main, p->selected}; focusFromMouse = false; }
+    const Hit* f = hasFocus ? findHit(focus) : nullptr;
     if (A || X) padActed = true;
     // the pad's inventory button toggles the plain inventory: Y right after opening it (nothing moved, nothing on the
     // cursor) shuts it again; once you have moved around, or in a container, Y is the quick-move button it is in the original
@@ -712,7 +715,10 @@ public:
     ImVec2 m = io.MousePos;
     bool overWidget = ImGui::IsAnyItemHovered() || ImGui::IsAnyItemActive();
     const Hit* h = nullptr; for (auto& x : hits) if (x.contains(m)) h = &x;
-    if (h && h->k == H_SLOT) { hasFocus = true; focus = *h; }
+    // the hovered slot takes the focus when the mouse moves or clicks (a pointer left resting over a slot doesn't steal
+    // it from the pad's focus)
+    const bool moved = io.MouseDelta.x != 0 || io.MouseDelta.y != 0 || ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1);
+    if (h && h->k == H_SLOT && moved) { hasFocus = true; focus = *h; focusFromMouse = true; }
     // drag: spreading over more slots
     if (sess->dragging()) {
       if (ImGui::IsMouseDown(0) || ImGui::IsMouseDown(1)) { if (h && h->k == H_SLOT) sess->dragAdd(h->g, h->i); }

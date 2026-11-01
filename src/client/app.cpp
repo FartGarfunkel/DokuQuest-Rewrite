@@ -164,7 +164,9 @@ bool App::createWorld(LevelInfo info) {
 bool App::joinServer(const std::string& address) { return netJoin(*this, address); }   // client/netplay.cpp
 void App::leaveWorld(bool toTitle) {
   netBeforeLeave(*this);   // goodbye to the host / stop serving (client/netplay.cpp)
-  if (session) { session->save(); session.reset(); }
+  // the open menus close first, while the world is still here (an open inventory hands its crafting grid back to the
+  // player as it closes; closed after the world went, it wrote into a player that no longer existed and crashed)
+  if (session) { setScreen(nullptr); session->save(); session.reset(); }
   if (toTitle) setScreen(makeTitleScreen());
 }
 
