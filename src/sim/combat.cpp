@@ -67,7 +67,8 @@ void wearArmor(Player& p) {
     auto* d = reg().item(s.id);
     if (!d || !d->props.contains("armor")) continue;
     s.d++;
-    if (s.d >= d->props["armor"].value("durability", 1 << 30)) { p.brokeSomething = d->name; s.clear(); }
+    const int max = toolMaxDurability(s);
+    if (s.d >= (max > 0 ? max : 1 << 30)) { p.brokeSomething = stackName(s); s.clear(); }
   }
 }
 

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <mutex>
+#include <map>
 
 namespace dq {
 
@@ -63,6 +64,55 @@ const ToolMaterial* toolMaterialOfItem(const std::string& item) {
 }
 
 bool isPartTool(const ItemStack& s) { return !s.empty() && s.tag.is_object() && s.tag.contains("pt") && s.tag["pt"].is_object(); }
+bool isPartArmor(const ItemStack& s) { return !s.empty() && s.tag.is_object() && s.tag.contains("pa") && s.tag["pa"].is_object(); }
+
+const std::vector<ArmorPattern>& armorPatterns() {
+  static const std::vector<ArmorPattern> P = {
+    {"helmet", 0, 3, 2, {{0, 0}, {1, 0}, {2, 0}, {0, 1}, {2, 1}}},
+    {"chestplate", 1, 3, 3, {{0, 0}, {2, 0}, {0, 1}, {1, 1}, {2, 1}, {0, 2}, {1, 2}, {2, 2}}},
+    {"leggings", 2, 3, 3, {{0, 0}, {1, 0}, {2, 0}, {0, 1}, {2, 1}, {0, 2}, {2, 2}}},
+    {"boots", 3, 3, 2, {{0, 0}, {2, 0}, {0, 1}, {2, 1}}},
+  };
+  return P;
+}
+const ArmorPattern* armorPattern(const std::string& piece) { for (auto& p : armorPatterns()) if (p.piece == piece) return &p; return nullptr; }
+
+bool makePartArmor(const std::string& piece, const std::vector<std::string>& mats, ItemStack& out) {
+  const ArmorPattern* P = armorPattern(piece);
+  if (!P || mats.size() != P->cells.size() || !reg().item("mixed_" + piece)) return false;
+  float pts = 0, dur = 0, fr = 0; std::vector<std::string> distinct;
+  for (auto& k : mats) {
+    const ToolMaterial* m = toolMaterial(k);
+    const ItemDef* a = m ? reg().item(m->prefix + "_" + piece) : nullptr;
+    if (!a || !a->props.contains("armor") || !a->props["armor"].is_object()) return false;
+    const json& A = a->props["armor"];
+    pts += A.value("points", 0.f); dur += A.value("durability", 0.f); fr = std::max(fr, A.value("fireResist", 0.f));
+    if (std::find(distinct.begin(), distinct.end(), k) == distinct.end()) distinct.push_back(k);
+  }
+  const float n = (float)mats.size();
+  out = ItemStack("mixed_" + piece, 1);
+  out.tag = json{{"pa", {{"p", piece}, {"m", mats}, {"pts", std::round(pts / n * 10) / 10 + 0.25f * (float)(distinct.size() - 1)},
+                         {"dur", (int)std::lround(dur / n * (1 + 0.06f * (float)(distinct.size() - 1)))}, {"fr", fr}}}};
+  return true;
+}
+float armorPointsOf(const ItemStack& s) {
+  if (isPartArmor(s)) return s.tag["pa"].value("pts", 0.f);
+  const ItemDef* d = s.empty() ? nullptr : s.def();
+  return d && d->props.contains("armor") && d->props["armor"].is_object() ? d->props["armor"].value("points", 0.f) : 0.f;
+}
+float armorFireResistOf(const ItemStack& s) {
+  if (isPartArmor(s)) return s.tag["pa"].value("fr", 0.f);
+  const ItemDef* d = s.empty() ? nullptr : s.def();
+  return d && d->props.contains("armor") && d->props["armor"].is_object() ? d->props["armor"].value("fireResist", 0.f) : 0.f;
+}
+std::string partArmorWornLook(const ItemStack& s) {
+  if (!isPartArmor(s)) return s.id;
+  std::map<std::string, int> n; std::string best; int bn = 0;
+  for (auto& m : s.tag["pa"]["m"]) if (m.is_string() && ++n[m.get<std::string>()] > bn) { bn = n[m.get<std::string>()]; best = m.get<std::string>(); }
+  const ToolMaterial* tm = toolMaterial(best);
+  const std::string id = tm ? tm->prefix + "_" + s.tag["pa"].value("p", std::string()) : "";
+  return reg().item(id) ? id : s.id;
+}
 
 ToolInfo toolOf(const ItemStack& s) {
   const ItemDef* d = s.empty() ? nullptr : s.def();
@@ -82,6 +132,7 @@ int toolMaxDurability(const ItemStack& s) {
   const ItemDef* d = s.empty() ? nullptr : s.def();
   if (!d) return 0;
   if (d->hasTool) return std::max(0, toolOf(s).durability);
+  if (isPartArmor(s)) return s.tag["pa"].value("dur", 0);
   if (d->props.contains("armor") && d->props["armor"].is_object()) return d->props["armor"].value("durability", 0);
   return 0;
 }
@@ -97,12 +148,24 @@ std::string stackName(const ItemStack& s) {
     for (size_t i = 0; i < names.size(); i++) mats += (i ? (i + 1 == names.size() ? " & " : ", ") : "") + names[i];
     const Haft* h = haftOf(p.value("h", std::string("stick")));
     base = std::string(h ? h->adj : "") + mats + " " + cap(p.value("t", std::string("tool")));
+  } else if (isPartArmor(s)) {
+    std::vector<std::string> names;
+    for (auto& m : s.tag["pa"]["m"]) if (m.is_string()) { const ToolMaterial* tm = toolMaterial(m.get<std::string>()); std::string n = tm ? tm->name : m.get<std::string>(); if (std::find(names.begin(), names.end(), n) == names.end()) names.push_back(n); }
+    std::string mats;
+    for (size_t i = 0; i < names.size(); i++) mats += (i ? (i + 1 == names.size() ? " & " : ", ") : "") + names[i];
+    base = mats + " " + cap(s.tag["pa"].value("p", std::string("armor")));
   }
   if (s.tag.is_object() && s.tag.contains("gem") && s.tag["gem"].is_string()) if (const Gem* g = gemOf(s.tag["gem"].get<std::string>())) base += std::string(" (") + g->name + ")";
   return base;
 }
 
 std::string partToolModelKey(const ItemStack& s) {
+  if (isPartArmor(s)) {   // "pa:<piece>:<m1,m2,...>" (one per cell)
+    std::string k = "pa:" + s.tag["pa"].value("p", std::string("helmet")) + ":";
+    const json& m = s.tag["pa"]["m"];
+    for (size_t i = 0; i < m.size(); i++) k += (i ? "," : "") + m[i].get<std::string>();
+    return k;
+  }
   const bool pt = isPartTool(s), gem = !s.empty() && s.tag.is_object() && s.tag.contains("gem") && s.tag["gem"].is_string();
   if (!pt && !gem) return "";
   std::string k = "pt:";

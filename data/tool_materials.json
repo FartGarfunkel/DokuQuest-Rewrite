@@ -234,6 +234,19 @@
     40
    ],
    "element": "fire"
+  },
+  "leather": {
+   "items": [
+    "leather"
+   ],
+   "name": "Leather",
+   "prefix": "leather",
+   "rgb": [
+    160,
+    101,
+    64
+   ],
+   "element": ""
   }
  }
 }

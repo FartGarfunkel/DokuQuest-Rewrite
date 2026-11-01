@@ -302,7 +302,7 @@ CharWear charWearOf(const Player& p, const CharacterSpec& spec, bool withCarried
   CharWear w;
   for (int i = 0; i < 4 && i < (int)p.armor.size(); i++) {
     if (p.armor[i].empty() || hidden(p, i)) continue;
-    w.armor[i] = p.armor[i].id;
+    w.armor[i] = partArmorWornLook(p.armor[i]);   // a mixed piece looks like its main material's
     if (p.armor[i].tag.is_object() && p.armor[i].tag.contains("col") && p.armor[i].tag["col"].is_string()) { std::string c = p.armor[i].tag["col"]; w.dye[i] = c.size() == 7 ? c.substr(1) : ""; }
   }
   if (w.armor[1] == "elytra") w.armor[1].clear();   // worn in the chest slot (until the cape slot has them): wings, not a breastplate

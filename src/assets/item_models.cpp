@@ -284,6 +284,29 @@ static void recolourPartTool(VoxelGrid& g, const std::string& kind, const std::v
   }
 }
 
+// mixed armour: the piece's pattern laid over its model (front view), each voxel in the colour of the cell it falls in (the
+// nearest cell of the pattern where the pattern has a gap), its light and shade kept
+static void recolourPartArmor(VoxelGrid& g, const std::string& piece, const std::vector<std::string>& mats) {
+  const ArmorPattern* P = armorPattern(piece);
+  if (!P || mats.size() != P->cells.size()) return;
+  ivec3 lo, hi; if (!g.bounds(lo, hi)) return;
+  auto lumOf = [](u32 c) { return ((c & 255) * 0.299f + ((c >> 8) & 255) * 0.587f + ((c >> 16) & 255) * 0.114f) / 255.f; };
+  float mean = 0; int n = 0;
+  for (u32 c : g.c) if (c) { mean += lumOf(c); n++; }
+  if (!n) return;
+  mean /= n;
+  for (int z = lo.z; z < hi.z; z++) for (int y = lo.y; y < hi.y; y++) for (int x = lo.x; x < hi.x; x++) {
+    u32& c = g.c[g.idx(x, y, z)]; if (!c) continue;
+    const float u = (x - lo.x + 0.5f) / (hi.x - lo.x) * P->w, v = (1 - (y - lo.y + 0.5f) / (hi.y - lo.y)) * P->h;
+    int best = 0; float bd = 1e9f;
+    for (size_t i = 0; i < P->cells.size(); i++) { const float dx = P->cells[i].x + 0.5f - u, dy = P->cells[i].y + 0.5f - v, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = (int)i; } }
+    const ToolMaterial* m = toolMaterial(mats[best]);
+    if (!m) continue;
+    const float k = clampv(lumOf(c) / std::max(mean, 0.05f), 0.35f, 1.7f);
+    c = voxRGBA((int)(m->rgb.x * 255 * k), (int)(m->rgb.y * 255 * k), (int)(m->rgb.z * 255 * k), (u8)(c >> 24));
+  }
+}
+
 // ------------------------------------------------------------------ building one model
 static void finishGrid(VoxelModel& out, VoxelGrid& g, const VoxelFrame& fr, const VoxelFaceColor* fc) {
   if (g_recolour && !fc) (*g_recolour)(g);
@@ -348,6 +371,17 @@ bool shapedBlockBoxes(const ItemDef& def, std::vector<PxBox>& out) {
 namespace { std::shared_ptr<const TileSet>& tilesSnap() { static std::shared_ptr<const TileSet> t; return t; } std::mutex g_snapMx; }
 
 bool buildItemModel(const std::string& key, VoxelModel& out) {
+  if (startsWith(key, "pa:")) {   // mixed armour: "pa:<piece>:<m1,m2,...>"
+    const size_t c1 = key.find(':', 3);
+    const std::string piece = key.substr(3, c1 == std::string::npos ? std::string::npos : c1 - 3), list = c1 == std::string::npos ? "" : key.substr(c1 + 1);
+    std::vector<std::string> mats; for (size_t s = 0, e; !list.empty() && s <= list.size(); s = e + 1) { e = list.find(',', s); if (e == std::string::npos) e = list.size(); mats.push_back(list.substr(s, e - s)); }
+    const std::function<void(VoxelGrid&)> fn = [&](VoxelGrid& g) { recolourPartArmor(g, piece, mats); };
+    const auto* prev = g_recolour; g_recolour = &fn;
+    const bool ok = buildItemModel("iron_" + piece, out);
+    g_recolour = prev;
+    out.key = key;
+    return ok;
+  }
   if (startsWith(key, "pt:")) {   // a mixed tool, or a tool with a gem: "pt:<kind>:<m1,m2,..>:<haft>:<gem>" / "pt:=<item>:::<gem>"
     std::vector<std::string> f; size_t a = 3;
     for (size_t b; (b = key.find(':', a)) != std::string::npos; a = b + 1) f.push_back(key.substr(a, b - a));

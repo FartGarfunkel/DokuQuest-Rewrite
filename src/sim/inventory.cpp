@@ -113,7 +113,7 @@ int playerRemoveTag(Player& p, const std::string& key, int n) {
 }
 int armorPoints(const Player& p) {
   int pts = 0;
-  for (auto& s : p.armor) if (!s.empty()) if (auto* d = reg().item(s.id)) if (d->props.contains("armor")) pts += d->props["armor"].value("points", 0);
+  for (auto& s : p.armor) if (!s.empty()) pts += (int)std::lround(armorPointsOf(s));   // (a mixed piece's own, core/tool_parts.h)
   return pts;
 }
 float charmBonus(const Player& p, const std::string& kind) {

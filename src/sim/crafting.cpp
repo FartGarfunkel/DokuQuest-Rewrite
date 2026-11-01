@@ -144,11 +144,11 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
   {
     const ItemStack* tool = nullptr; int mats = 0; bool other = false;
     for (auto& s : slots) if (!s.empty()) {
-      if (isPartTool(s)) { if (tool) other = true; tool = &s; continue; }
+      if (isPartTool(s) || isPartArmor(s)) { if (tool) other = true; tool = &s; continue; }
       mats++;
     }
     if (tool && mats && !other && tool->d > 0) {
-      std::vector<std::string> own; for (auto& m : tool->tag["pt"]["m"]) own.push_back(m.get<std::string>());
+      std::vector<std::string> own; for (auto& m : tool->tag[isPartTool(*tool) ? "pt" : "pa"]["m"]) own.push_back(m.get<std::string>());
       bool ok = true;
       for (auto& s : slots) if (!s.empty() && &s != tool) { const ToolMaterial* tm = toolMaterialOfItem(s.id); if (!tm || std::find(own.begin(), own.end(), tm->key) == own.end()) ok = false; }
       if (ok) {
@@ -176,6 +176,16 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
       CraftMatch m = special(out.id, 1, P.w, P.h); m.extra = out.tag;
       return m;
     }
+  }
+  for (const ArmorPattern& P : armorPatterns()) {   // mixed armour: every cell a material with a piece of its own, not all the same
+    if (P.w != bw || P.h != bh || (int)P.cells.size() != count) continue;
+    std::vector<std::string> mats; bool ok = true;
+    for (ivec2 c : P.cells) { const ItemStack& s = at(c.x, c.y); const ToolMaterial* tm = s.empty() ? nullptr : toolMaterialOfItem(s.id); if (!tm) { ok = false; break; } mats.push_back(tm->key); }
+    if (!ok || std::all_of(mats.begin(), mats.end(), [&](const std::string& m) { return m == mats[0]; })) continue;
+    ItemStack out;
+    if (!makePartArmor(P.piece, mats, out)) continue;
+    CraftMatch m = special(out.id, 1, P.w, P.h); m.extra = out.tag;
+    return m;
   }
   return {};
 }

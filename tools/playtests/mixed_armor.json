@@ -1,0 +1,10 @@
+{"steps":[
+ {"wait":200,"do":"anchor"},
+ {"do":"cmd","text":"/clear"},
+ {"do":"give","item":"mixed_helmet","n":1,"tag":{"pa":{"p":"helmet","m":["gold","diamond","gold","iron","iron"],"pts":2.7,"dur":190,"fr":0}}},
+ {"do":"give","item":"mixed_chestplate","n":1,"tag":{"pa":{"p":"chestplate","m":["copper","copper","diamond","diamond","diamond","iron","iron","iron"],"pts":6,"dur":300,"fr":0}}},
+ {"do":"give","item":"mixed_boots","n":1,"tag":{"pa":{"p":"boots","m":["emerald","gold","emerald","gold"],"pts":2,"dur":200,"fr":0}}},
+ {"do":"key","key":"e"},
+ {"wait":60,"do":"shot","path":"/tmp/pt/marmor_inv.png"},
+ {"do":"report"}
+]}

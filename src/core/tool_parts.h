@@ -31,6 +31,18 @@ struct ToolPattern { std::string kind; int w, h; std::vector<ivec2> head, haft; 
 const std::vector<ToolPattern>& toolPatterns();
 // A mixed tool from these head materials (one per section) and haft item. false if they don't make one.
 bool makePartTool(const std::string& kind, const std::vector<std::string>& mats, const std::string& haft, ItemStack& out);
+// Mixed armour: the same at the crafting table for a helmet, chestplate, leggings or boots whose cells hold more than one
+// material (each must have a piece of its own). Stack tag "pa": {"p": piece, "m": [material per cell, in the pattern's
+// order], "pts", "dur", "fr"}; each cell's material colours its part of the piece's model (the cells laid over the picture).
+struct ArmorPattern { std::string piece; int slot, w, h; std::vector<ivec2> cells; };
+const std::vector<ArmorPattern>& armorPatterns();
+const ArmorPattern* armorPattern(const std::string& piece);
+bool isPartArmor(const ItemStack& s);
+bool makePartArmor(const std::string& piece, const std::vector<std::string>& mats, ItemStack& out);
+float armorPointsOf(const ItemStack& s);                                // worn: what it turns aside
+float armorFireResistOf(const ItemStack& s);
+std::string partArmorWornLook(const ItemStack& s);                      // the piece worn looks like: its main material's own
+
 // Set a gem in a tool (the Tool Forge): what each gem does, and the tool with it (false: not a gem, or it already has one)
 const char* gemEffect(const std::string& gemItem);
 bool setToolGem(ItemStack& tool, const std::string& gemItem);

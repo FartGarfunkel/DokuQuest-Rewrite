@@ -36,7 +36,7 @@ double gearBonus(const ItemStack& s, double max) {
   int lv = std::min(50, 1 + (int)std::floor(std::sqrt(gx / 30.0)));
   return (lv - 1) / 49.0 * max;
 }
-int armorPts(const Player& p) { int n = 0; for (auto& s : p.armor) if (!s.empty()) if (const ItemDef* d = s.def()) if (d->has("armor")) n += d->props["armor"].value("points", 0); return n; }
+int armorPts(const Player& p) { int n = 0; for (auto& s : p.armor) if (!s.empty()) n += (int)std::lround(armorPointsOf(s)); return n; }
 // combatLevel (sheet.js): sim/villagers.h (one definition; the paths use it too)
 // how much of a blow your armour, your Defence and its wear turn aside (0..1)
 double protection(const Player& p) {
@@ -96,8 +96,14 @@ std::string itemInfoText(const ItemStack& s, const Player* p, std::vector<std::p
   }
   if (d->has("armor")) {
     const json& a = d->props["armor"];
-    L.push_back({"Armor +" + num(a.value("points", 0.0)) + (a.value("fireResist", 0.0) ? " \xC2\xB7 fire resist" : ""), TS});
-    int dur = a.value("durability", 0); L.push_back({"Durability " + std::to_string(dur - s.d) + " / " + std::to_string(dur), TD});
+    (void)a;
+    L.push_back({"Armor +" + num(armorPointsOf(s)) + (armorFireResistOf(s) ? " \xC2\xB7 fire resist" : ""), TS});
+    int dur = toolMaxDurability(s); L.push_back({"Durability " + std::to_string(dur - s.d) + " / " + std::to_string(dur), TD});
+    if (isPartArmor(s)) {
+      std::string mk; const json& m = s.tag["pa"]["m"]; std::vector<std::string> seen;
+      for (auto& x : m) { const ToolMaterial* tm = toolMaterial(x.get<std::string>()); std::string n = tm ? tm->name : x.get<std::string>(); if (std::find(seen.begin(), seen.end(), n) == seen.end()) { seen.push_back(n); mk += (mk.empty() ? "" : " \xC2\xB7 ") + n; } }
+      L.push_back({"Made of " + mk, TS});
+    }
   }
   if (d->has("backpack")) L.push_back({num(d->num("backpack")) + " extra slots when worn", TS});
   int light = d->props.contains("light") && d->props["light"].is_number() ? d->props["light"].get<int>() : 0;
