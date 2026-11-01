@@ -270,6 +270,7 @@ bool deflectFireball(Level& lv, Entity& by, vec3 eye, vec3 look, float reach);  
 void PlayerController::interact(float dt, const PlayerInput& in) {
   if (breakCd > 0) breakCd -= dt;
   if (p.attackCd > 0) p.attackCd -= dt;
+  if (p.mode == "spectator") { mining.active = false; return; }   // watching only: no breaking, placing, using or fighting
   if (!p.carrying.is_null()) { mining.active = false; if (in.usePressed) placeCarried(); return; }
   const ItemStack& h = p.held();
   if (!h.empty() && h.id == "we_wand") { if (in.attackPressed) weClick(1); if (in.usePressed) weClick(2); mining.active = false; return; }
@@ -281,7 +282,7 @@ void PlayerController::interact(float dt, const PlayerInput& in) {
   if (in.attackPressed && !target.hit) swingArm();
   // a held swing that hit a creature never digs into the ground behind it; in creative a sword never breaks blocks (Minecraft)
   const ToolInfo* ti = heldTool(p);
-  bool noDig = fightHold || (p.creative() && ti && ti->type == "sword");
+  bool noDig = fightHold || (p.creative() && ti && ti->type == "sword") || p.mode == "adventure";   // adventure: the world stays as it is
   if (in.attack && target.hit && !te && !noDig) {
     const RayHit& tg = target;
     if (!mining.active || mining.x != tg.block.x || mining.y != tg.block.y || mining.z != tg.block.z || mining.id != tg.id) {

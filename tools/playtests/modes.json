@@ -1,0 +1,117 @@
+{
+"steps": [
+{
+"wait": 200,
+"do": "anchor"
+},
+{
+"do": "cmd",
+"text": "/gamemode adventure"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -2,
+"key": "dirt"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 1,
+"z": -2,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -1,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 1,
+"z": -1,
+"key": "air"
+},
+{
+"do": "lookAt",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -2
+},
+{
+"wait": 3,
+"do": "mouse",
+"button": "left",
+"hold": 150
+},
+{
+"wait": 170,
+"do": "expect",
+"rel": true,
+"block": [
+0,
+0,
+-2
+],
+"is": "dirt"
+},
+{
+"do": "cmd",
+"text": "/gamemode spectator"
+},
+{
+"do": "fill",
+"rel": true,
+"from": [
+-1,
+0,
+-1
+],
+"to": [
+1,
+2,
+1
+],
+"key": "stone"
+},
+{
+"wait": 120,
+"do": "report"
+},
+{
+"do": "cmd",
+"text": "/gamemode survival"
+},
+{
+"do": "fill",
+"rel": true,
+"from": [
+-1,
+0,
+-1
+],
+"to": [
+1,
+2,
+1
+],
+"key": "air"
+},
+{
+"wait": 30,
+"do": "report"
+},
+{
+"do": "quit"
+}
+]
+}

@@ -82,6 +82,7 @@ static float playerHurtRaw(Player& p, float amount, const DamageSource& src) {
 float damagePlayer(Level& lv, Player& p, float amount, DamageSource src) {
   if (p.dead) return 0;
   if (p.creative() && src.type != "void") return 0;
+  if (p.mode == "spectator") return 0;   // only watching
   if ((src.type == "fall" && !rule(lv, "fallDamage")) || (src.type == "drown" && !rule(lv, "drowning")) ||
       ((src.type == "lava" || src.type == "burn") && !rule(lv, "fireDamage"))) return 0;
   src.raw = amount;

@@ -192,12 +192,14 @@ static void registerBuiltinCommands() {
   C("seed", "", "Show the world seed", false, [](CommandCtx& c, std::vector<std::string>&) -> std::string {
     return "Seed: " + (c.lv.info.seedText.empty() ? std::to_string(c.lv.info.seed) : c.lv.info.seedText);
   });
-  C("gamemode", "<survival|creative>", "Change game mode", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
+  C("gamemode", "<survival|creative|adventure|spectator>", "Change game mode", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
     std::string m = a.empty() ? "" : toLower(a[0]);
-    std::string mode = startsWith(m, "c") || m == "1" ? "creative" : startsWith(m, "s") || m == "0" ? "survival" : "";
+    std::string mode = startsWith(m, "c") || m == "1" ? "creative" : m == "sp" || startsWith(m, "spec") || m == "3" ? "spectator" :
+                       startsWith(m, "s") || m == "0" ? "survival" : startsWith(m, "a") || m == "2" ? "adventure" : "";
     if (mode.empty()) throw CommandUsage{};
     c.lv.info.mode = mode; c.p.mode = mode;
-    if (mode == "survival") c.p.flying = false;
+    if (mode == "survival" || mode == "adventure") c.p.flying = false;
+    if (mode == "spectator") c.p.flying = true;
     return "Game mode: " + mode;
   });
   C("time", "set <day|noon|night|midnight|0-1200> | add <n> | season <spring|summer|autumn|winter> | query", "Set the time of day", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {

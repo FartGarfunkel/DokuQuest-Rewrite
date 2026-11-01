@@ -129,8 +129,9 @@ struct WorldForm {
     if (named) { ImGui::AlignTextToFramePadding(); row("Name"); inputText("##wsfname", &name, nullptr, 32, width - 112 * z); }
     if (moded) {
       ImGui::AlignTextToFramePadding(); row("Game mode");
-      int m = mode == "creative" ? 1 : 0;
-      if (combo("##wsfmode", &m, {"Survival", "Creative"}, width - 112 * z)) mode = m ? "creative" : "survival";
+      int m = mode == "creative" ? 1 : mode == "adventure" ? 2 : mode == "spectator" ? 3 : 0;
+      static const char* MODES[4] = {"survival", "creative", "adventure", "spectator"};
+      if (combo("##wsfmode", &m, {"Survival", "Creative", "Adventure", "Spectator"}, width - 112 * z)) mode = MODES[clampv(m, 0, 3)];
     }
     // Daytime lasts / Night lasts
     std::vector<std::string> opts; for (int m : MINS) opts.push_back(std::to_string(m) + " min");
@@ -307,7 +308,8 @@ public:
     inputText("##nwseed", &seed, "Random", 40, fw);
     label(F_MID, col::muted, "Game mode");
     if (combo("##nwmode", &mode, {"Survival \xE2\x80\x94 gather, craft, stay alive", "Creative \xE2\x80\x94 every block, flight, no damage",
-                                   "Hardcore \xE2\x80\x94 survival with one life; after that you can only watch"}, fw)) form.rules["commands"] = mode == 1;
+                                   "Hardcore \xE2\x80\x94 survival with one life; after that you can only watch",
+                                   "Adventure \xE2\x80\x94 explore and fight; blocks can't be broken or placed"}, fw)) form.rules["commands"] = mode == 1;
     // <details class="more-opts"><summary> in gold, wrapping
     {
       const char* sum = "More world options: day and night, game rules, commands";
@@ -324,7 +326,7 @@ public:
     if (moreOpen) form.draw(fw, true);
     ImGui::Dummy(ImVec2(1, 2 * z));
     if (button("Create world", BTN_PRIMARY, false, fw)) {
-      LevelInfo li; li.name = name.empty() ? "New World" : name; li.seedText = seed; li.mode = mode == 1 ? "creative" : "survival";
+      LevelInfo li; li.name = name.empty() ? "New World" : name; li.seedText = seed; li.mode = mode == 1 ? "creative" : mode == 3 ? "adventure" : "survival";
       li.rules = form.rules;
       if (mode == 2) { li.rules["hardcore"] = true; li.rules["commands"] = false; li.rules["keepInventory"] = false; }   // BTA / Minecraft hardcore
       a.settings.extra["played"] = true;

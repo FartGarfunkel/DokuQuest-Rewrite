@@ -168,6 +168,7 @@ bool PlayerController::placement(const RayHit& hit, BlockId bid, Placement& out)
 }
 
 void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemStack& held) {
+  if (p.mode == "adventure" || p.mode == "spectator") return;   // adventure: blocks can't be placed (or broken)
   World& w = world();
   const Registry& R = reg(); const KnownBlocks& B = KB();
   BlockId bid = R.blockId(def.block);

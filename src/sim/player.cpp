@@ -182,6 +182,7 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
     if (c.web) vel.y = std::max(vel.y, -1.f);
     if (inp.jump && onGround) { vel.y = JUMP_V * (bhas(under, BF::Sticky) ? 0.55f : 1.f); if (sprinting) { vel.x *= 1.15f; vel.z *= 1.15f; } }
   }
+  if (mode == "spectator") flying = true;   // a spectator always flies, through anything
   if (flying) { vel.y = (inp.jump ? 7.5f : 0.f) - (inp.sneak ? 7.5f : 0.f); hasFallStart = false; }
   // auto-jump (touch): walking into a one-block step
   if (opts.autoJump && onGround && !inWater && (std::fabs(tx) + std::fabs(tz)) > 0.5f && speed > 0) {
@@ -194,7 +195,9 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
   bool wasGround = onGround;
   // a moment after stepping off a little lip you can still step over the next one
   airStep = !onGround && !flying && !inWater && !inLava && !c.ladder && vel.y <= 0.5f && airT < 0.25f ? 0.26f : 0.f;
-  MoveOut mo = moveEntity(wd, *this, dt, {0.6f, airStep, sneaking});
+  MoveOut mo;
+  if (mode == "spectator") { pos += vel * dt; onGround = false; }
+  else mo = moveEntity(wd, *this, dt, {0.6f, airStep, sneaking});
   hitWall = mo.hitWall; hitCeiling = mo.hitCeiling;
   // slime blocks throw you back up (sneak to land softly)
   if (!wasGround && onGround && vyBefore < -2.5f && !sneaking) {

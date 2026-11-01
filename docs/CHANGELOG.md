@@ -71,6 +71,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Torches burn in your hand.** A held torch has a little flame and a thread of smoke, and leaves a trail of sparks when you swing it (soul torches burn blue, redstone torches give off red dust), for you and for everyone else carrying one.
 - **The End has a sound of its own:** a low, slowly breathing drone with a hollow wind through it, and now and then something far off blinking from place to place.
 - **Hardcore worlds.** Pick Hardcore when you make a world: survival with one life, no commands. When you die you can stay and watch the world as a spectator, or leave.
+- **Adventure and Spectator modes** (BTA): Adventure lets you explore, fight, trade and use things, but blocks can't be broken or placed; Spectator flies through anything and only watches. Pick Adventure for a new world, switch any world in World settings, or use /gamemode.
 - **Sorting.** Middle-click a chest, a backpack or your bag (or click the right stick on one) and its stacks are put in order and topped up; the hotbar stays as you left it.
 - **New commands:** /playsound plays any of the game's sounds (with volume, pitch and a place) and /particle makes any particle (smoke, flame, heart, firework...).
 - **Nightmares** (a game rule, on by default): sleep in the dark with monsters about and one may come to your bed and wake you. Light your bedroom.
