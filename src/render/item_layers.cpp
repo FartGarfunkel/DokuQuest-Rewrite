@@ -27,6 +27,7 @@ void registerItemLayers() {
   { void registerSwingLayer(); registerSwingLayer(); }         // render/swing_layer.cpp
   { void registerHeldLightFx(); registerHeldLightFx(); }       // render/held_light_fx.cpp
   { void registerWinterVillageLayer(); registerWinterVillageLayer(); }   // render/winter_village_layer.cpp (December)
+  { void registerColourFilterLayer(); registerColourFilterLayer(); }   // render/colour_filter_layer.cpp
   { void registerStatueLayer(); registerStatueLayer(); }   // render/statue_layer.cpp
   registerLecternLayer();   // books on lecterns (render/lectern_layer.cpp)
   registerChestLayer();     // chest lids that open with the chest's screen (render/chest_layer.cpp)

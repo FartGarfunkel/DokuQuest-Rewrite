@@ -16,6 +16,7 @@ struct Settings {
   std::string plantDetail = "near";   // off | near | all
   bool wavingPlants = true, autoJump = false;
   float volume = 0.6f, mobVol = 1, music = 0.5f, ambience = 0.7f;
+  int colorFilter = 0;           // colour-blind filter: 0 off, 1 protanopia, 2 deuteranopia, 3 tritanopia (render/colour_filter_layer.cpp)
   int musicFreq = 1;             // how often music plays: 0 rarely, 1 now and then, 2 often, 3 nearly always
   bool invertY = false, showFps = false, fpBody = true, viewBob = true;
   float brightness = 0.35f;

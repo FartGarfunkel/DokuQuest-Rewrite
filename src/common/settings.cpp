@@ -9,7 +9,7 @@ const char* rendererName(RendererKind k) {
 
 #define DQ_SETTINGS_FIELDS(X) \
   X(renderDist) X(sens) X(padSens) X(fov) X(scale) X(fancyLeaves) X(plantDetail) X(wavingPlants) X(autoJump) \
-  X(volume) X(mobVol) X(music) X(musicFreq) X(ambience) X(invertY) X(showFps) X(fpBody) X(viewBob) X(brightness) X(split) \
+  X(volume) X(mobVol) X(music) X(musicFreq) X(colorFilter) X(ambience) X(invertY) X(showFps) X(fpBody) X(viewBob) X(brightness) X(split) \
   X(particles) X(guiScale) X(toggleSneak) X(toggleSprint) X(screenShake) X(hurtTilt) X(fpsLimit) X(padLayout) \
   X(heldSway) X(clouds) X(portalViews) X(farTerrain) X(preset) X(microVoxels) X(microVoxelDist) X(waterQuality) \
   X(shadows) X(vsync) X(fullscreen) X(windowW) X(windowH) X(workerThreads) X(resourcePack) X(shaderPack) \

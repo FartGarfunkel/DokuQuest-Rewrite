@@ -80,6 +80,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Furnace minecarts burn any fuel** a furnace would, not just coal (BTA).
 - **Stars come in colours** (BTA): mostly white, some blue, yellow, orange and red, and they twinkle a little.
 - **Achievements** (BTA): 27 of them, from Getting Wood to The End., on their own tab beside the Stable. A toast when you earn one, and the date you did.
+- **Colour filters** for colour blindness (Options → Graphics → Colour filter): red-blind, green-blind and blue-blind, shifting the colours you may not tell apart into ones you can.
 - Fixed: switching menu tabs from the inventory (Q / LB / RB) skipped a tab.
 - Fixed: in a chest or furnace on a controller, Y quick-moves straight away again instead of closing the menu.
 

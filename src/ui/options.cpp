@@ -143,6 +143,7 @@ public:
     { int cur = clampv(s.waterQuality, 0, 2); s.waterQuality = select("waterQuality", "Water", cur, {"Flat", "Waves", "Waves and reflections"}, nullptr); }
     { bool sh = s.shadows != 0; check("shadows", "Sun shadows", &sh, "Modern renderer"); s.shadows = sh ? 1 : 0; }
     { int cur = s.particles == 2 ? 0 : s.particles == 1 ? 1 : 2; cur = select("particles", "Particles", cur, {"All", "Fewer", "Off"}, nullptr); s.particles = 2 - cur; }
+    { int cur = clampv(s.colorFilter, 0, 3); s.colorFilter = select("colorFilter", "Colour filter", cur, {"Off", "Red-blind (protanopia)", "Green-blind (deuteranopia)", "Blue-blind (tritanopia)"}, "Shifts the colours you may not tell apart into ones you can."); }
     { static const char* v[] = {"near", "all", "flat"}; int cur = 0; for (int i = 0; i < 3; i++) if (s.plantDetail == v[i]) cur = i;
       s.plantDetail = v[select("plantDetail", "3D plants", cur, {"Near you", "Everywhere (slowest)", "Flat (fastest)"}, "Solid 3D grass, flowers and crops near you; flat further out.")]; }
     { bool g = s.extra.value("grass3d", s.preset != "potato"); bool g0 = g;
