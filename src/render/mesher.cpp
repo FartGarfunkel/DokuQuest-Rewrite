@@ -497,9 +497,44 @@ void emitTorch(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, int
 } // namespace
 
 // ---------------------------------------------------------------- the section (worker threads)
+u16 sectionVisibility(const MeshInput& in) {
+  // cave culling (the idea of Tommaso Checchi's "advanced cave culling"): flood the section's open cells; each pocket
+  // that touches two faces lets one be seen from the other
+  const Registry& R = reg();
+  static thread_local std::vector<u8> seen; seen.assign(4096, 0);
+  static thread_local std::vector<u16> q; q.resize(4096);
+  auto open = [&](int x, int y, int z) { const int i = MeshInput::idx(x, y, z); return !R.tOpaque[in.ids[i]] || in.carve[i]; };
+  u16 vis = 0;
+  for (int c = 0; c < 4096; c++) {
+    const int x0 = c & 15, z0 = (c >> 4) & 15, y0 = c >> 8;
+    if (seen[c]) continue;
+    seen[c] = 1;
+    if (!open(x0, y0, z0)) continue;
+    int head = 0, tail = 0; u8 faces = 0;
+    q[tail++] = (u16)c;
+    while (head < tail) {
+      const int cc = q[head++], x = cc & 15, z = (cc >> 4) & 15, y = cc >> 8;
+      if (x == 15) faces |= 1; if (x == 0) faces |= 2; if (y == 15) faces |= 4; if (y == 0) faces |= 8; if (z == 15) faces |= 16; if (z == 0) faces |= 32;
+      const int nx[6] = {x + 1, x - 1, x, x, x, x}, ny[6] = {y, y, y + 1, y - 1, y, y}, nz[6] = {z, z, z, z, z + 1, z - 1};
+      for (int d = 0; d < 6; d++) {
+        if (nx[d] < 0 || nx[d] > 15 || ny[d] < 0 || ny[d] > 15 || nz[d] < 0 || nz[d] > 15) continue;
+        const int n = nx[d] | (nz[d] << 4) | (ny[d] << 8);
+        if (seen[n]) continue;
+        seen[n] = 1;
+        if (open(nx[d], ny[d], nz[d])) q[tail++] = (u16)n;
+      }
+    }
+    for (int a = 0; a < 6; a++) if (faces & (1 << a)) for (int b = a + 1; b < 6; b++) if (faces & (1 << b)) vis |= (u16)(1u << sectionVisPair(a, b));
+    if (vis == 0x7FFF) break;
+  }
+  return vis;
+}
+
 void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions& opt) {
   out.opaque.clear(); out.cutout.clear(); out.trans.clear(); out.fx = MeshFx(); out.detail = opt.detail;
+  out.vis = 0x7FFF;
   if (in.empty) return;
+  out.vis = sectionVisibility(in);
   double t0 = nowSeconds();
   initF6Rot();
   const Registry& R = reg();

@@ -67,6 +67,11 @@ private:
   void grow(u32 need);
   World* w = nullptr;
   std::unordered_map<SectionKey, std::unique_ptr<SecMesh>, SectionKeyHash> meshes;
+  // cave culling: each meshed section's face-to-face visibility (sections not here count as open), and the sections a
+  // walk from the camera through open faces can reach this frame
+  std::unordered_map<SectionKey, u16, SectionKeyHash> secVis;
+  std::unordered_set<SectionKey, SectionKeyHash> reach;
+  void caveWalk(const FrameCtx& f, int band);
   std::unordered_set<SectionKey, SectionKeyHash> inFlight, again, parked;   // parked: another land's sections, meshed when needed
   double parkT = 0;
   bool wanted(const SectionKey& k) const;

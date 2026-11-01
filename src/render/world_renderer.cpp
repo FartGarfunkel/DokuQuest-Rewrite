@@ -183,7 +183,7 @@ void WorldRenderer::submit(const SectionKey& k, ThreadPool& pool, float pri, boo
   if (inFlight.count(k)) { again.insert(k); return; }
   auto in = std::make_shared<MeshInput>();
   if (!gatherMeshInput(*w, k, *in)) return;
-  if (in->empty) { auto it = meshes.find(k); if (it != meshes.end()) { release(it->second->base, it->second->cap); meshes.erase(it); } return; }
+  if (in->empty) { secVis.erase(k); auto it = meshes.find(k); if (it != meshes.end()) { release(it->second->base, it->second->cap); meshes.erase(it); } return; }
   inFlight.insert(k);
   auto sh = shared; MesherOptions mo = mopt; mo.detail = detail; u32 gen = generation;
   pool.submit([sh, in, k, mo, gen] {
@@ -194,10 +194,42 @@ void WorldRenderer::submit(const SectionKey& k, ThreadPool& pool, float pri, boo
   }, pri);
 }
 
+// Cave culling (the idea of Tommaso Checchi's "advanced cave culling", as Minecraft does it): walk out from the camera's
+// section, face to face, only through sections that let you see from the face you came in by to the face you leave
+// by, never turning back against a way already gone, only into what the frustum holds. What the walk can't reach is
+// shut away behind rock and isn't drawn.
+void WorldRenderer::caveWalk(const FrameCtx& f, int band) {
+  reach.clear();
+  const glm::dvec3 cp = f.cam.pos;
+  const SectionKey start{band, (int)std::floor(cp.x / 16), (int)std::floor((std::floor(cp.y) - dimBase(band)) / 16), (int)std::floor(cp.z / 16)};
+  if (start.sy < 0 || start.sy >= SECS) { for (auto& [k, m] : meshes) reach.insert(k); return; }
+  static const int DX[6] = {1, -1, 0, 0, 0, 0}, DY[6] = {0, 0, 1, -1, 0, 0}, DZ[6] = {0, 0, 0, 0, 1, -1};
+  struct Q { SectionKey k; int8_t from; u8 dirs; };
+  static thread_local std::vector<Q> q; q.clear();
+  q.push_back({start, -1, 0}); reach.insert(start);
+  const int R = 40;   // sections out from the camera at most
+  for (size_t i = 0; i < q.size(); i++) {
+    const Q cur = q[i];
+    auto vi = secVis.find(cur.k);
+    const u16 vis = vi == secVis.end() ? 0x7FFF : vi->second;
+    for (int d = 0; d < 6; d++) {
+      if (cur.dirs & (1 << (d ^ 1))) continue;   // never back against a way already gone
+      if (cur.from >= 0 && !(vis & (1u << sectionVisPair(cur.from, d)))) continue;
+      SectionKey n{band, cur.k.cx + DX[d], cur.k.sy + DY[d], cur.k.cz + DZ[d]};
+      if (n.sy < 0 || n.sy >= SECS || std::abs(n.cx - start.cx) > R || std::abs(n.cz - start.cz) > R || reach.count(n)) continue;
+      const vec3 rel = vec3(glm::dvec3(n.cx * 16.0, dimBase(band) + n.sy * 16.0, n.cz * 16.0) - f.cam.origin);
+      if (!f.cam.frustum.box(rel, rel + vec3(16))) continue;
+      reach.insert(n);
+      q.push_back({n, (int8_t)(d ^ 1), (u8)(cur.dirs | (1 << d))});
+    }
+  }
+}
+
 void WorldRenderer::upload(Result& r) {
   if (r.gen != generation) return;   // built for the world shown before a realm change
   inFlight.erase(r.k);
   auto it = meshes.find(r.k);
+  if (w && w->chunk(r.k.dim, r.k.cx, r.k.cz)) { if (r.out.vis == 0x7FFF) secVis.erase(r.k); else secVis[r.k] = r.out.vis; } else secVis.erase(r.k);
   if (!w || !w->chunk(r.k.dim, r.k.cx, r.k.cz) || r.out.empty()) {
     if (it != meshes.end()) { release(it->second->base, it->second->cap); meshes.erase(it); }
     return;
@@ -229,6 +261,7 @@ void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs)
   if (auto* le = w->system<LightEngine>()) le->flush(*w);   // a placed torch lights up in this frame's meshes
   for (auto& k : w->drainUnloaded()) for (int sy = 0; sy < SECS; sy++) {
     parked.erase({k.dim, k.cx, sy, k.cz});
+    secVis.erase({k.dim, k.cx, sy, k.cz});
     auto it = meshes.find({k.dim, k.cx, sy, k.cz});
     if (it != meshes.end()) { release(it->second->base, it->second->cap); meshes.erase(it); }
   }
@@ -303,9 +336,14 @@ void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
     // one land at a time (game/seamless.js): the band next door is meshed and drawn only near its edge, so a hole
     // through the floor shows the land below while the Skylands stay out of sight from the ground
     int band = f.dim;
+    // cave culling: not through a portal's window (its own view), and not when switched off (DQ_NO_CAVE_CULL)
+    static const bool noCull = std::getenv("DQ_NO_CAVE_CULL") != nullptr;
+    const bool cull = !clip && !noCull && band >= 0 && band < DIM_COUNT;
+    if (cull) caveWalk(f, band);
     for (auto& [k, m] : meshes) {
       vec3 rel = vec3(glm::dvec3(m->origin) - f.cam.origin);
       if (k.dim != band && band >= 0 && band < DIM_COUNT && std::abs(m->origin.y + 8 - (float)f.cam.pos.y) >= 56) continue;   // the land next door: only near its edge
+      if (cull && k.dim == band && !reach.count(k)) continue;   // shut away behind rock
       if (!f.cam.frustum.box(rel, rel + vec3(16))) continue;
       if (clip && glm::dot(vec3(clipPlane), rel + vec3(8)) + clipPlane.w < -14) continue;   // entirely behind the portal plane
       visible.push_back({glm::length(rel + vec3(8) - cf), m.get()});
