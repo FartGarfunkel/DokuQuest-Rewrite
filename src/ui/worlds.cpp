@@ -305,7 +305,8 @@ public:
     ImGui::PushStyleColor(ImGuiCol_Text, withAlpha(col::muted, 0.8f)); ImGui::TextUnformatted("(optional \xE2\x80\x94 words or numbers)"); ImGui::PopStyleColor(2); ImGui::PopFont();
     inputText("##nwseed", &seed, "Random", 40, fw);
     label(F_MID, col::muted, "Game mode");
-    if (combo("##nwmode", &mode, {"Survival \xE2\x80\x94 gather, craft, stay alive", "Creative \xE2\x80\x94 every block, flight, no damage"}, fw)) form.rules["commands"] = mode == 1;
+    if (combo("##nwmode", &mode, {"Survival \xE2\x80\x94 gather, craft, stay alive", "Creative \xE2\x80\x94 every block, flight, no damage",
+                                   "Hardcore \xE2\x80\x94 survival with one life; after that you can only watch"}, fw)) form.rules["commands"] = mode == 1;
     // <details class="more-opts"><summary> in gold, wrapping
     {
       const char* sum = "More world options: day and night, game rules, commands";
@@ -322,8 +323,9 @@ public:
     if (moreOpen) form.draw(fw, true);
     ImGui::Dummy(ImVec2(1, 2 * z));
     if (button("Create world", BTN_PRIMARY, false, fw)) {
-      LevelInfo li; li.name = name.empty() ? "New World" : name; li.seedText = seed; li.mode = mode ? "creative" : "survival";
+      LevelInfo li; li.name = name.empty() ? "New World" : name; li.seedText = seed; li.mode = mode == 1 ? "creative" : "survival";
       li.rules = form.rules;
+      if (mode == 2) { li.rules["hardcore"] = true; li.rules["commands"] = false; li.rules["keepInventory"] = false; }   // BTA / Minecraft hardcore
       a.settings.extra["played"] = true;
       uiDefer([li](App& app) { if (!app.createWorld(li)) app.toast("Could not create the world", "warn"); });
     }

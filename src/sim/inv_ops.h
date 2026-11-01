@@ -80,6 +80,7 @@ public:
   bool takeStation(bool shift, bool* anvilBroke = nullptr);
   void cutPick(int option, bool all);   // the stonecutter's list
   void trashCursor();
+  bool sortGroup(Grp g);   // BTA's sorting: like with like, stacks topped up (the bag only, not the hotbar); false = nothing to sort
   void bookPick(int recipeIdx, bool all, bool instant);   // instant: controller / touch (fill on first pick)
   void dropFromSlot(Grp g, int i, bool all);              // Q over a slot
   void throwCursor(int n);                                // click outside the panel

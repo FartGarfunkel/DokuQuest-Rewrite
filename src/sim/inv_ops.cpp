@@ -450,6 +450,54 @@ void InvSession::creativePick(const std::string& key, bool all) {
 }
 void InvSession::trashCursor() { if (!p.cursor.empty()) { p.cursor.clear(); sound("click"); } }
 
+// Sorting (BTA, middle click): the stacks of a container, the worn backpack or the bag (not the hotbar) put in order:
+// blocks, then tools and weapons, armour, food, then everything else, alphabetically within each; like stacks joined.
+bool InvSession::sortGroup(Grp g) {
+  if (g != Grp::Main && g != Grp::Cont && g != Grp::Bp) return false;
+  std::vector<ItemStack>* a = arr(g);
+  if (!a) return false;
+  const int from = g == Grp::Main ? 9 : 0, to = g == Grp::Main ? std::min(36, (int)a->size()) : groupSize(g);
+  if (to - from < 2) return false;
+  std::vector<ItemStack> in;
+  for (int i = from; i < to; i++) if (!(*a)[i].empty()) in.push_back((*a)[i]);
+  std::vector<ItemStack> out;
+  for (auto& s : in) {   // join like with like
+    for (auto& o : out) {
+      if (s.n <= 0) break;
+      if (!stacksMerge(o, s)) continue;
+      const int room = maxStackOf(o.id) - o.n;
+      if (room > 0) { const int k = std::min(room, s.n); o.n += k; s.n -= k; }
+    }
+    if (s.n > 0) out.push_back(s);
+  }
+  auto rank = [](const ItemStack& s) {
+    const ItemDef* d = reg().item(s.id);
+    if (!d) return 9;
+    if (d->has("block")) return 0;
+    if (d->has("tool") || d->has("weapon") || d->has("damage")) return 1;
+    if (d->props.contains("armor")) return 2;
+    if (d->has("food")) return 3;
+    return 4;
+  };
+  std::stable_sort(out.begin(), out.end(), [&](const ItemStack& x, const ItemStack& y) {
+    const int rx = rank(x), ry = rank(y);
+    if (rx != ry) return rx < ry;
+    if (x.id != y.id) return x.id < y.id;
+    return x.n > y.n;
+  });
+  bool same = (int)out.size() == (int)in.size();
+  for (int i = from, k = 0; i < to; i++, k++) {
+    ItemStack want = k < (int)out.size() ? out[k] : ItemStack();
+    const ItemStack& had = (*a)[i];
+    if (want.id != had.id || want.n != had.n) same = false;
+    (*a)[i] = want;
+  }
+  if (same) return false;
+  changed(g);
+  sound("click");
+  return true;
+}
+
 std::string InvSession::takeOne(const std::string& key) {
   Bags b = bags();
   std::vector<std::string> ids;

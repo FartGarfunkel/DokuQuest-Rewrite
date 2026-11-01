@@ -178,10 +178,22 @@ public:
     H().deathShown_[who()] = false;
     a.popScreen();
   }
+  // hardcore: one life. After it the world can only be watched (spectator, back where you fell) or left
+  static bool hardcore(App& a) { return a.session && a.session->level && a.session->level->info.rules.is_object() && a.session->level->info.rules.value("hardcore", false); }
+  void spectate(App& a) {
+    if (!a.session || !a.session->player) { a.popScreen(); return; }
+    Player& p = *a.session->player;
+    const vec3 at = p.pos;
+    if (a.events.emit("respawn", json::array({p.name}))) { p.dead = false; p.hp = p.maxHp; p.vel = vec3(0); p.fallDist = 0; }
+    p.mode = "spectator"; p.flying = true; p.pos = at + vec3(0, 1.5f, 0);
+    p.data["hardcoreOver"] = true;
+    H().deathShown_[who()] = false;
+    a.popScreen();
+  }
   void update(App& a, double) override {
     if (a.session && a.session->player && !a.session->player->dead) { H().deathShown_[who()] = false; a.popScreen(); return; }
     // controller players respawn with A after a short pause
-    if (a.time - openedAt > 1.2 && a.input.usingPad() && a.input.pressed(Act::MenuOk)) respawn(a);
+    if (a.time - openedAt > 1.2 && a.input.usingPad() && a.input.pressed(Act::MenuOk)) { if (hardcore(a)) spectate(a); else respawn(a); }
   }
   void draw(App& a) override {
     float z = Z(), W = (float)a.width, H0 = (float)a.height;
@@ -190,7 +202,8 @@ public:
     ImGui::Begin("##death", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
     ImDrawList* dl = ImGui::GetWindowDrawList();
     float big = clampv(9 * W / z / 100.f, 40.f, 84.f) / fontPx(F_HUGE);
-    std::string note = "Your items were dropped where you fell. You keep level " + std::to_string(level) + ".";
+    const bool hc = hardcore(a);
+    std::string note = hc ? "This was a hardcore world: there is no coming back. You can stay and watch it go on without you." : "Your items were dropped where you fell. You keep level " + std::to_string(level) + ".";
     float colW = std::max({textSize(F_HUGE, "You died", 0, big).x, textSize(F_BODY, cause.c_str()).x, textSize(F_MID, note.c_str()).x, 160 * z}) + 32 * z;
     auto centered = [&](FontId f, const char* t, ImU32 c, float k, ImU32 sh, ImVec2 off) {
       ImVec2 s = textSize(f, t, 0, k); ImVec2 p = ImGui::GetCursorScreenPos();
@@ -202,10 +215,16 @@ public:
     centered(F_HUGE, "You died", col::rgb(0xffd9d4), big, col::rgb(0x3a0000), ImVec2(0, 4 * z));
     centered(F_BODY, cause.c_str(), col::text, 1, 0, ImVec2());
     centered(F_MID, note.c_str(), col::muted, 1, 0, ImVec2());
-    float bw = textSize(F_BODY, "Respawn").x + 40 * z;
+    const char* main = hc ? "Spectate the world" : "Respawn";
+    float bw = textSize(F_BODY, main).x + 40 * z;
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (colW - bw) * 0.5f);
     if (a.input.padCount() && ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
-    if (button("Respawn", BTN_PRIMARY, false, bw)) respawn(a);
+    if (button(main, BTN_PRIMARY, false, bw)) { if (hc) spectate(a); else respawn(a); }
+    if (hc) {
+      const float qw = textSize(F_BODY, "Title screen").x + 40 * z;
+      ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (colW - qw) * 0.5f);
+      if (button("Title screen", BTN_NORMAL, false, qw)) uiDefer([](App& app) { app.leaveWorld(true); });
+    }
     ImGui::End();
   }
 };

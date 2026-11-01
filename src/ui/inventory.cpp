@@ -140,6 +140,9 @@ public:
     // once you have moved around, Y is the quick-move button it is in the original
     if (Y && !in.textActive && !padActed && p->cursor.empty()) { a.popScreen(); return; }
     if (f && (A || X || Y)) activate(a, *f, X, Y, true);
+    // sorting (BTA): the right stick's click over a bag, chest or backpack slot; the middle mouse button over one
+    if (f && f->k == H_SLOT && in.padButtonPressed(11)) sess->sortGroup(f->g);
+    if (!in.textActive && ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) if (const Hit* h = hovered()) if (h->k == H_SLOT && !creative) sess->sortGroup(h->g);
     // keyboard over the hovered slot: 1-9 swaps with the hotbar, Q drops one (Ctrl: the stack)
     if (!in.textActive) {
       const Hit* h = hovered();
