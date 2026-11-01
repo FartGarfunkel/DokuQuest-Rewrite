@@ -84,8 +84,40 @@ void PotionFlask::tick(Level& lv, double dt) {
     if (reg().tSolid[w.getBlock(ifloor(pos.x), ifloor(pos.y), ifloor(pos.z))]) { smash(lv); return; }
   }
 }
+namespace {
+// a lingering potion's cloud: motes over a disc on the ground, a weak pulse of the potion each second, 10 s
+class PotionCloud : public Entity {
+public:
+  PotionCloud() { type = "potion_cloud"; noGravity = true; w = 0.1f; h = 0.1f; hp = maxHp = 1; }
+  std::string potion; u32 owner = 0; float life = 10, pulseT = 0, moteT = 0;
+  void tick(Level& lv, double dt) override {
+    life -= (float)dt; pulseT -= (float)dt; moteT -= (float)dt;
+    if (life <= 0) { removed = true; return; }
+    float r = 3.f * std::min(1.f, 0.5f + life / 20.f);   // it shrinks a little as it thins
+    if (pulseT <= 0) { pulseT = 1; splashPotionAt(lv, realm, pos, potion, asPlayer(lv, owner), r, 0.25f); }
+    if (moteT <= 0) {
+      moteT = 0.15f;
+      const json* P = potionInfo(potion);
+      std::string col;
+      if (P && (*P)["fx"].is_array() && !(*P)["fx"].empty() && (*P)["fx"][0].is_array()) col = (*P)["fx"][0][0].get<std::string>();
+      for (int i = 0; i < 4; i++) {
+        float a = mrand() * TAU, d = std::sqrt(mrand()) * r;
+        lv.fx->particles(col.empty() ? "brew_bubble" : "fxmote_" + col, pos + vec3(std::cos(a) * d, 0.15f + mrand() * 0.4f, std::sin(a) * d), 1);
+      }
+    }
+  }
+  json save() const override { json j = Entity::save(); j["potion"] = potion; j["life"] = life; return j; }
+};
+}
+void spawnPotionCloud(Level& lv, int realm, vec3 at, const std::string& potionItem, u32 owner) {
+  auto c = std::make_unique<PotionCloud>();
+  c->realm = realm; c->pos = c->prevPos = at; c->potion = potionItem; c->owner = owner; c->persistent = false;
+  lv.spawn(std::move(c));
+}
+
 void PotionFlask::smash(Level& lv) {
   removed = true;
+  if (const json* P = potionInfo(potion); P && P->value("lingering", false)) spawnPotionCloud(lv, realm, pos + vec3(0, 0.1f, 0), potion, owner);
   splashPotionAt(lv, realm, pos, potion, asPlayer(lv, owner));
 }
 json PotionFlask::save() const { json j = Entity::save(); j["data"]["potion"] = potion; j["data"]["owner"] = owner; return j; }

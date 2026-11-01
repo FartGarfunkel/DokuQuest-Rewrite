@@ -512,7 +512,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
       const CharMesh* wm = elytraWingMesh(side, ts);
       if (!wm) continue;
       float sd = side == 0 ? 1.f : -1.f, open = clampf(ps.wingOpen, 0, 1);
-      mat4 m = glm::translate(R.body, vec3(0, 12, !back.empty() && ov.capeZ > 0 ? ov.capeZ : 2.1f));
+      mat4 m = glm::translate(R.body, vec3(0, 10.5f, !back.empty() && ov.capeZ > 0 ? ov.capeZ : 2.1f));   // hung a little below the shoulders (they sat too high)
       m = glm::translate(m, vec3(sd * 0.5f, 0, 0.6f));
       m = glm::rotate(m, open * 1.15f * 0.35f, vec3(1, 0, 0));            // tipped back by spread * 0.35
       m = glm::rotate(m, sd * (0.16f + open * 1.15f), vec3(0, 0, 1));     // turned out about the top inner corner

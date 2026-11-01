@@ -27,7 +27,10 @@ float brewFuel(const json& e);                                // 0..1 of the fue
 // drinking and throwing (itemUse on a potion), filling bottles, Bottle o' Enchanting
 bool drinkPotion(Level& lv, Player& p, ItemStack& held);
 void throwPotion(Level& lv, Player& p, ItemStack& held);
-void splashPotionAt(Level& lv, int realm, vec3 at, const std::string& potionItem, Player* owner);
+void splashPotionAt(Level& lv, int realm, vec3 at, const std::string& potionItem, Player* owner, float radius = 4, float scale = 1);
+// a lingering potion's cloud (Minecraft's): a ring of the potion's motes on the ground for 10 s, giving a quarter of
+// its effect every second to whoever stands in it (sim/magic_bolt.cpp)
+void spawnPotionCloud(Level& lv, int realm, vec3 at, const std::string& potionItem, u32 owner);
 bool fillBottle(Level& lv, Player& p, ItemStack& held, ivec3 hit, int face);   // at water or a cauldron
 bool breakXpBottle(Level& lv, Player& p, ItemStack& held);
 

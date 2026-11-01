@@ -632,6 +632,37 @@ def main(d):
         tile('wet_sponge', recolour(src_pic(d, tiles, files, 'sponge'), lambda r, g, b, a, x, y: (r * 150 // 255, g * 160 // 255, b * 110 // 255 + 20, a)))
     block('wet_sponge', 'Wet Sponge', {'hardness': 0.6, 'tool': 'hoe', 'sound': 'grass', 'wetSponge': True, 'tex': 'wet_sponge'}, [tiles['wet_sponge']] * 6)
     rj.setdefault('smelting', {}).setdefault('wet_sponge', 'sponge')
+    # the rest of BTA's stone families: permafrost cut down to cobbles, polished and laid as bricks; a mossy oak log;
+    # mossy emberstone. Pictures from the base pack's own (cobblestone, polished andesite, stone bricks, oak log, moss)
+    if 'cobbled_permafrost' not in tiles:
+        ice = lambda r, g, b, a, x, y: (r * 78 // 100 + 18, g * 88 // 100 + 24, min(255, b * 100 // 100 + 40), a)
+        tile('cobbled_permafrost', recolour(src_pic(d, tiles, files, 'cobblestone'), ice))
+        tile('polished_permafrost', recolour(src_pic(d, tiles, files, 'polished_andesite'), ice))
+        tile('permafrost_bricks', recolour(src_pic(d, tiles, files, 'stone_bricks'), ice))
+        im = src_pic(d, tiles, files, 'log_side'); px = im.load()
+        for y in range(32):
+            for x in range(32):
+                r, g, b, a = px[x, y]
+                if ((x * 7 + y * 13) % 11 < 4 and y > 6 + (x * 5) % 9) or y > 26 - (x * 3) % 5: px[x, y] = (r * 50 // 100 + 30, g * 60 // 100 + 70, b * 40 // 100 + 20, a)
+        tile('mossy_oak_log_side', im)
+        em = src_pic(d, tiles, files, 'emberstone'); ep = em.load()
+        for y in range(32):
+            for x in range(32):
+                r, g, b, a = ep[x, y]
+                if (x * 5 + y * 3) % 7 < 2 and (x // 6 + y // 5) % 3 == 0: ep[x, y] = (r * 40 // 100 + 40, g * 50 // 100 + 90, b * 30 // 100 + 24, a)
+        tile('mossy_emberstone', em)
+    for k, nm in (('cobbled_permafrost', 'Cobbled Permafrost'), ('polished_permafrost', 'Polished Permafrost'), ('permafrost_bricks', 'Permafrost Bricks'),
+                  ('mossy_emberstone', 'Mossy Emberstone')):
+        block(k, nm, {'hardness': 1.5 if 'permafrost' in k else 0.6, 'tex': k}, [tiles[k]] * 6)
+    block('mossy_oak_log', 'Mossy Oak Log', {'hardness': 2, 'tool': 'axe', 'sound': 'log', 'isLog': True, 'axisBlock': True, 'fuel': 1.5,
+                                             'tex': {'top': 'log_top', 'bottom': 'log_top', 'side': 'mossy_oak_log_side'}},
+          [tiles['mossy_oak_log_side'], tiles['mossy_oak_log_side'], tiles['log_top'], tiles['log_top'], tiles['mossy_oak_log_side'], tiles['mossy_oak_log_side']])
+    pf = next((b for b in blocks if b['key'] == 'permafrost'), None)
+    if pf and pf.get('drop') == 'dirt': pf['drop'] = 'cobbled_permafrost'   # BTA: mined permafrost breaks to cobbles
+    recipe('polished_permafrost', 4, ['CC', 'CC'], {'C': 'cobbled_permafrost'})
+    recipe('permafrost_bricks', 4, ['PP', 'PP'], {'P': 'polished_permafrost'})
+    recipe('mossy_oak_log', 1, items_=['log', 'vine'])
+    recipe('mossy_emberstone', 1, items_=['emberstone', 'vine'])
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'shapes.json').write_text(json.dumps(sj, separators=(',', ':'), ensure_ascii=False))
     sh = json.loads((d / 'itemshapes.json').read_text())

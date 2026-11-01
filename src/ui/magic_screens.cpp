@@ -421,7 +421,10 @@ public:
     bagGrid(*p, sz, [&](int i) {
       ItemStack& s = p->inv[i];
       if (s.empty()) return;
-      if (potionInfo(s.id)) { for (int k = 0; k < 3; k++) if (at(k).empty()) { e["items"][k] = s.toJson(); s.clear(); changed = true; break; } return; }
+      if (potionInfo(s.id)) {   // one bottle to a stand slot (potions stack to 16): as many empty slots as the stack fills
+        for (int k = 0; k < 3 && !s.empty(); k++) if (at(k).empty()) { ItemStack one = s; one.n = 1; e["items"][k] = one.toJson(); if (--s.n <= 0) s.clear(); changed = true; }
+        return;
+      }
       for (int k : {3, 4}) {
         if (!brewAccepts(k, s.id)) continue;
         ItemStack b = at(k);

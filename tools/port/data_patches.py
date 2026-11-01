@@ -403,3 +403,22 @@ for f, o in (('blocks.json', bj), ('shapes.json', sj)): (d / f).write_text(json.
 (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
 (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':'))); (d / 'recipes.json').write_text(json.dumps(rj, separators=(',', ':')))
 (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':')))
+
+# ---- potions stack to 16 (the stand takes one bottle a slot: ui/magic_screens.cpp); lingering potions (Minecraft's):
+#      a splash potion and ectoplasm make one that leaves a cloud of itself on the ground for ten seconds
+#      (sim/magic_bolt.cpp PotionCloud) ----
+items = json.loads((d / 'items.json').read_text()); rj = json.loads((d / 'recipes.json').read_text())
+for k, v in list(items.items()):
+    if isinstance(v.get('potion'), dict) and v.get('maxStack', 1) < 16: v['maxStack'] = 16
+for k, v in list(items.items()):
+    if not k.startswith('splash_potion_') or not isinstance(v.get('potion'), dict): continue
+    lk = 'lingering_' + k[len('splash_'):]
+    if lk not in items:
+        nv = json.loads(json.dumps(v)); nv['key'] = lk
+        nv['name'] = v['name'].replace('Splash', 'Lingering', 1) if v['name'].startswith('Splash') else 'Lingering ' + v['name']
+        nv['potion']['lingering'] = True; nv['desc'] = 'Use to throw it. It leaves a cloud of itself on the ground for a while.'
+        items[lk] = nv
+    if not any(r.get('out') == lk for r in rj['recipes']):
+        rj['recipes'].append({'out': lk, 'n': 1, 'items': [k, 'ectoplasm'], 'w': 2, 'h': 2, 'idx': len(rj['recipes'])})
+(d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
+(d / 'recipes.json').write_text(json.dumps(rj, separators=(',', ':')))

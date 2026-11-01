@@ -111,16 +111,17 @@ void throwPotion(Level& lv, Player& p, ItemStack& held) {
   lv.fx->sound("bow", p.pos + vec3(0, 1.4f, 0), 16);
 }
 
-void splashPotionAt(Level& lv, int realm, vec3 at, const std::string& key, Player* owner) {
-  lv.fx->sound("glass_break", at, 24);
+void splashPotionAt(Level& lv, int realm, vec3 at, const std::string& key, Player* owner, float radius, float scale) {
+  const bool pulse = scale < 1;   // a lingering cloud's pulse: quiet, weaker, over its own radius
+  if (!pulse) lv.fx->sound("glass_break", at, 24);
   const json* P = potionInfo(key);
   if (!P) return;
   const json& fx = (*P)["fx"];
   std::string col = !fx.empty() && magicData().effect(fx[0][0]) ? fx[0][0].get<std::string>() : "";
-  lv.fx->particles(col.empty() ? "brew_bubble" : "fxmote_" + col, at + vec3(0, 0.1f, 0), 40, json{{"m", "splash"}});
+  if (!pulse) lv.fx->particles(col.empty() ? "brew_bubble" : "fxmote_" + col, at + vec3(0, 0.1f, 0), 40, json{{"m", "splash"}});
   auto isInstant = [](const std::string& e) { return e == "heal" || e == "harm" || e == "mana"; };
   if (P->value("P", "") == "water") {   // water puts out fire
-    for (auto& e : lv.entities()) if (!e->removed && e->realm == realm && glm::distance(e->pos + vec3(0, e->isPlayer() ? 0.9f : 0, 0), at) < 4) e->data.erase("burnT");
+    for (auto& e : lv.entities()) if (!e->removed && e->realm == realm && glm::distance(e->pos + vec3(0, e->isPlayer() ? 0.9f : 0, 0), at) < radius) e->data.erase("burnT");
     return;
   }
   for (auto& up : lv.entities()) {
@@ -130,14 +131,14 @@ void splashPotionAt(Level& lv, int realm, vec3 at, const std::string& key, Playe
       Player& q = static_cast<Player&>(e);
       if (q.dead || q.ghost) continue;
       float dist = glm::distance(q.pos + vec3(0, 0.9f, 0), at);
-      if (dist > 4) continue;
-      float k = owner == &q && dist < 1.5f ? 1 : 1 - dist / 4;
+      if (dist > radius) continue;
+      float k = (owner == &q && dist < 1.5f ? 1 : 1 - dist / radius) * scale;
       for (auto& f : fx) { std::string eff = f[0]; float t = f[1]; int l = f.size() > 2 && f[2].is_number() ? f[2].get<int>() : 0;
         giveEffect(lv, q, eff, isInstant(eff) ? std::max(1.f, std::round(t * k)) : t * 0.75f * k, l, owner); }
     } else if (isMob(e) && isAlive(e)) {
       float dist = glm::distance(e.pos + vec3(0, e.h / 2, 0), at);
-      if (dist > 4) continue;
-      float k = 1 - dist / 4;
+      if (dist > radius) continue;
+      float k = (1 - dist / radius) * scale;
       bool harmful = false;
       for (auto& f : fx) { std::string eff = f[0]; float t = f[1]; int l = f.size() > 2 && f[2].is_number() ? f[2].get<int>() : 0;
         mobEffect(lv, e, eff, isInstant(eff) ? std::max(1.f, std::round(t * k)) : t * 0.75f * k, l, owner);
@@ -162,7 +163,11 @@ bool fillBottle(Level& lv, Player& p, ItemStack& held, ivec3 hit, int face) {
     if (b.has("cauldron")) {
       u8 m = w.getMeta(hit.x, hit.y, hit.z), l = m & 3;
       if (held.id == "glass_bottle" && l > 0) { w.setBlock(hit.x, hit.y, hit.z, id, (u8)((m & ~3) | (l - 1))); fill(); return true; }
-      if (held.id == "potion_water" && l < 3) { w.setBlock(hit.x, hit.y, hit.z, id, (u8)((m & ~3) | (l + 1))); held = ItemStack("glass_bottle", 1); lv.fx->sound("splash_small", vec3(hit) + vec3(0.5f), 12); return true; }
+      if (held.id == "potion_water" && l < 3) {
+        w.setBlock(hit.x, hit.y, hit.z, id, (u8)((m & ~3) | (l + 1)));
+        if (--held.n <= 0) held = ItemStack("glass_bottle", 1); else giveOrDrop(lv, p, ItemStack("glass_bottle", 1));   // (potions stack)
+        lv.fx->sound("splash_small", vec3(hit) + vec3(0.5f), 12); return true;
+      }
     }
     if (b.has("hive") || b.key == "bee_nest" || b.key == "beehive") return false;
   }

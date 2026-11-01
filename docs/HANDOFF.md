@@ -4,6 +4,42 @@ Start here in a new session. Read this file, `CLAUDE.md` (the code map), and onl
 The full feature list is `docs/MASTER_PLAN.md` (the user's master doc, V2); the BTA detail is `docs/BTA_GAP.md`; the
 Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`.
 
+## Overnight 2026-11-01 (the user: "work overnight, game-wide playtest, optimizing pass, check all the notes")
+- **Playtests:** `tools/playtests/run_all.sh out.txt [names]` runs every playtest in a fresh world on a copy of the
+  binary (`build/dokuquest-pt`), `persist` reopening the world `containers` saved. Test op `give` takes `clear` (empty
+  bag first) and `hand` (into the held slot) so a test doesn't depend on what the spawn put in the bag (a pitcher plant
+  near seed hello's spawn breaks and gets picked up). `look` pitch is in degrees, NEGATIVE = down. `all.json` was a
+  stale duplicate of the menu tests and is gone. New: `bta_leftovers.json` (reinforced piston, party chest, sign text,
+  HUD editor), `siphon_basket.json`.
+- **Found broken and fixed:** signs were invisible (render NONE with no layer): `render/sign_layer.cpp` draws board,
+  post and the four lines (pixel font from the ImGui atlas, 128x64 texture per sign, cached); Esc in an ImGui text box
+  reverted the line (sign_screen keeps `keep[i]`); typed letters with no focused line go on the first line. The rain
+  detector acted as a daylight sensor (redstone.cpp daylightTick: rain branch). The party chest didn't open (now an
+  entItems container on `lv.info.data["partyChest"]`, ui_main.cpp). Knight/Ranger talents were defined but never
+  called (combat.cpp, controller.cpp arrows, player.cpp speed). Silver (`holy`) did nothing (combat.cpp,
+  `creatureIsCursed` in mob_combat.cpp). Armour stands had an item but no block (`armor_stand` block, render NONE,
+  block entity "stand" items[5] + pose; sim/build.cpp; render/stand_layer.cpp maps the players' armour meshes onto a
+  Minecraft-sized wooden figure). HANDOFF said the Siphon and the Wicker Basket were done: they weren't; both added
+  (sim/basket.cpp: basket hooks useEntity first, releases via useItem + useBlock; siphon = Redstone ticker kind 6).
+- **New:** armoured/armed undead (Creature::rollArmour, data["armor"], armourPoints soak, 8.5% drops, helmet = no sun
+  burn; drawn in creature_layer by stretching the char armour meshes onto rig parts; DQ_ARMOUR=1 dresses all), the
+  reinforced piston (blocks reinforced_piston(+_extended) with "launcher": push 16, fling entities; steel tiles from the
+  pack's piston pictures), the movable HUD (ui/hud_edit.cpp; hud.cpp shifts each piece's vertices by
+  settings.extra["hudLayout"][piece]), glow ink / ink sac / dye on signs, recipes so every drop has a use, the
+  art restyle (tools/port/restyle.py + code_tiles.txt + restyle_manifest.json; never the user's edited pictures),
+  tools/port/audit.py (broken links, unobtainable, unused), World settings "Seasons" (now OFF unless on) and "Whole trees
+  fall" (rule treeFelling).
+- **Optimizing:** DQ_PROFILE=1 logs CPU ms per layer/pass every 600 frames. On llvmpipe the world cutout pass (plants,
+  leaves) and clouds dominate (fill-bound there); sections already draw nearest first; clouds are instanced and culled.
+  The icon cache PNG is now written on a thread (its compression took longer than drawing the 2162 icons).
+- **Notes audit** (/tmp/pt/notes_gaps.md, regenerate with an agent if needed): still open and worth doing next: painted
+  doors/trapdoors/signs/chests, lingering potions, Highland Spruce + Seasonal Forest + tundra step, permafrost family,
+  mossy oak log, mossy/igneous emberstone, chimney smoke on town buildings, the Nether's own ambience and steam vents,
+  dye-tuned portals (probably skip), coloured block light, a scripted start-to-finish playthrough test, crows on
+  scarecrows, church banners, biome fuselings (3 of ~12), articulated biome golems, Story Mode follow-through on
+  capes/hair and talking faces, elytra sit too high on the back, render distance above 16, holidays (carols, New Year
+  fireworks). Docs MASTER_PLAN/BTA_GAP still list many done things as open (see the audit's DOC STALE list).
+
 ## How the user wants us to work (budget first)
 - **Save usage, not time.** One stream of work, no parallel agents. Targeted reads and edits. **No screenshots
   unless the user asks for one** (2026-10-31: visual problems get caught in the playthrough bug-test phase).
