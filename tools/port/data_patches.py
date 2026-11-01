@@ -271,8 +271,10 @@ for f, o in (('mobs.json', mobs), ('models.json', models), ('magic.json', mg)): 
 mobs = json.loads((d / 'mobs.json').read_text())
 base = mobs['fuseling']
 for k, label, tint in (('frost_fuseling', 'a frost fuseling', [0.62, 0.86, 1.0, 0.55]), ('dune_fuseling', 'a dune fuseling', [1.0, 0.86, 0.55, 0.55]),
-                       ('bog_fuseling', 'a bog fuseling', [0.45, 0.6, 0.3, 0.55])):
+                       ('bog_fuseling', 'a bog fuseling', [0.45, 0.6, 0.3, 0.55]), ('ember_fuseling', 'an ember fuseling', [1.0, 0.42, 0.18, 0.55]),
+                       ('moss_fuseling', 'a moss fuseling', [0.36, 0.64, 0.28, 0.5]), ('sky_fuseling', 'a sky fuseling', [0.86, 0.93, 1.0, 0.5])):
     v = dict(base); v['label'] = label; v['model'] = base.get('model', 'fuseling'); v['tint'] = tint
+    if k == 'ember_fuseling': v['fireImmune'] = True
     mobs[k] = v
 (d / 'mobs.json').write_text(json.dumps(mobs, separators=(',', ':'), ensure_ascii=False))
 

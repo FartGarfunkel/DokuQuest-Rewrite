@@ -3,6 +3,7 @@
 // colonies (game/husbandry.js), bodies that don't share space (game/crowd.js: not ported by gameplay, so it
 // lives here), item merging (game.js updateEntities), players' status effects; plus registerCreatures().
 // No phantoms, ever.
+#include <unordered_set>
 #include "sim/leads.h"
 #include "sim/weapon_rack.h"
 #include "sim/slime_goo.h"
@@ -326,9 +327,15 @@ public:
           int y = floorAt(xz.x, xz.y, py + (int)(frand() * 20) - 10, 12);
           if (y > 0) for (int i = 0, k = 2 + (int)(frand() * 3); i < k; i++) {
             int sx = xz.x + (int)std::floor((frand() - 0.5f) * 4), sz = xz.y + (int)std::floor((frand() - 0.5f) * 4), sy = floorAt(sx, sz, y + 2, 5);
-            if (sy > 0) add("zombie_pigman", sx + 0.5f, sy, sz + 0.5f);
+            // BTA: only on the Depths' own ground, not on bricks or what you've built
+            static const std::unordered_set<BlockId> NATURAL = [] { std::unordered_set<BlockId> n; for (const char* k : {"netherrack", "soul_sand", "soul_soil", "crimson_nylium", "warped_nylium", "emberstone", "ash", "cinder_sand", "basalt", "blackstone", "magma_block", "gravel", "scorched_dirt"}) if (BlockId b = reg().blockId(k)) n.insert(b); return n; }();
+            if (sy > 0 && (NATURAL.empty() || NATURAL.count(w.getBlock(sx, sy - 1, sz)))) add("zombie_pigman", sx + 0.5f, sy, sz + 0.5f);
           }
         }
+      }
+      if (!peaceful && count("ember_fuseling", 96) < 3 && frand() < 0.05f) {   // ember fuselings creep over the Depths' floors
+        ivec2 xz = ring(18, 36);
+        if (w.isLoaded(xz.x, py, xz.y)) { int y = floorAt(xz.x, xz.y, py + (int)(frand() * 20) - 10, 12); if (y > 0) add("ember_fuseling", xz.x + 0.5f, y, xz.y + 0.5f); }
       }
       if (!peaceful && count("ghast", 96) < 2 && frand() < 0.06f) {
         ivec2 xz = ring(24, 40);
@@ -361,6 +368,7 @@ public:
       };
       if (!peaceful && frand() < 0.035f && count("swet", 96) + count("golden_swet", 96) < 4) ground(frand() < 0.2f ? "golden_swet" : "swet", 16, 34);
       if (!peaceful && frand() < 0.02f && count("aechor_plant", 96) < 3) ground("aechor_plant", 18, 40);
+      if (!peaceful && frand() < 0.012f && count("sky_fuseling", 96) < 2) ground("sky_fuseling", 18, 36);
     }
     // endermen
     if (!peaceful) {
@@ -392,7 +400,7 @@ public:
       {"desert", {{"husk", 30}, {"ghoul", 4}, {"skeleton", 20}, {"spider", 18}, {"fuseling", 6}, {"dune_fuseling", 10}, {"scorpion", 10}, {"wraith", 1}}},
       {"snowy", {{"ghoul", 28}, {"stray", 26}, {"spider", 16}, {"fuseling", 6}, {"frost_fuseling", 10}, {"wraith", 1.5f}}},
       {"swamp", {{"ghoul", 26}, {"skeleton", 18}, {"spider", 18}, {"fuseling", 5}, {"bog_fuseling", 9}, {"witch", 7}, {"slime", 8}, {"drowned", 6}}},
-      {"forest", {{"ghoul", 30}, {"skeleton", 24}, {"spider", 22}, {"fuseling", 18}, {"raider", 0.3f}, {"werewolf", 1.2f}, {"wraith", 1.2f}, {"ogre", 0.8f}}},
+      {"forest", {{"ghoul", 30}, {"skeleton", 24}, {"spider", 22}, {"fuseling", 18}, {"moss_fuseling", 7}, {"raider", 0.3f}, {"werewolf", 1.2f}, {"wraith", 1.2f}, {"ogre", 0.8f}}},
       {"open", {{"ghoul", 30}, {"skeleton", 24}, {"spider", 22}, {"fuseling", 18}, {"raider", 0.4f}, {"wraith", 1}, {"ogre", 1}}},
     };
     auto habGroup = [](const std::string& h) -> std::string {

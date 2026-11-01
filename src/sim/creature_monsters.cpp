@@ -106,7 +106,36 @@ static void fuseBurst(Level& lv, Creature& m) {
   m.removed = true; m.deathTime = 0.0001f;
   ExplodeOpts o; o.noBlocks = !rule(lv, "mobGriefing"); o.source = m.id;
   const bool frost = m.type == "frost_fuseling", dune = m.type == "dune_fuseling", bog = m.type == "bog_fuseling";
-  explode(lv, m.realm, m.pos + vec3(0, 0.6f, 0), frost || dune || bog ? 2.2f : 3, o);
+  const bool ember = m.type == "ember_fuseling", moss = m.type == "moss_fuseling", sky = m.type == "sky_fuseling";
+  if (sky) o.noBlocks = true;   // a gust, not a blast: it throws you skyward and breaks nothing
+  explode(lv, m.realm, m.pos + vec3(0, 0.6f, 0), frost || dune || bog || ember || moss ? 2.2f : sky ? 1.4f : 3, o);
+  if (ember || moss || sky) {
+    World& w = lv.world(m.realm);
+    const Registry& R = reg();
+    static const BlockId fire = R.blockId("fire"), stone = R.blockId("stone"), cobble = R.blockId("cobblestone"), mossy = R.blockId("mossy_cobblestone"),
+                         bricks = R.blockId("stone_bricks"), mbricks = R.blockId("mossy_stone_bricks"), dirt = R.blockId("dirt"), grass = R.blockId("grass");
+    for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) {
+      if (dx * dx + dz * dz > 9 || sky) continue;
+      int x = ifloor(m.pos.x) + dx, z = ifloor(m.pos.z) + dz;
+      for (int y = ifloor(m.pos.y) + 2; y >= ifloor(m.pos.y) - 2; y--) {
+        BlockId b = w.getBlock(x, y, z);
+        if (b == AIR || !R.tSolid[b]) continue;
+        if (ember && fire && w.getBlock(x, y + 1, z) == AIR && frand() < 0.45f && rule(lv, "fireSpread")) w.setBlock(x, y + 1, z, fire);   // embers left burning
+        if (moss) { if (b == cobble && mossy) w.setBlock(x, y, z, mossy); else if (b == stone && mossy && frand() < 0.5f) w.setBlock(x, y, z, mossy);
+                    else if (b == bricks && mbricks) w.setBlock(x, y, z, mbricks); else if (b == dirt && grass) w.setBlock(x, y, z, grass); }   // spores take root
+        break;
+      }
+    }
+    lv.fx->particles(ember ? "ember" : moss ? "leaf" : "poof", m.pos + vec3(0, 1, 0), 40);
+    for (Entity* e : pawnsOf(lv, m.realm)) {
+      auto* p = dynamic_cast<Player*>(e);
+      if (!p || glm::distance(p->pos, m.pos) > 5) continue;
+      if (ember) igniteEntity(*p, 5);
+      if (moss) giveEffect(lv, *p, "poison", 4);
+      if (sky) { p->vel.y = std::max(p->vel.y, 16.f); vec3 d = p->pos - m.pos; d.y = 0; if (glm::length(d) > 0.01f) p->vel += glm::normalize(d) * 6.f; }
+    }
+    return;
+  }
   if (!(frost || dune || bog)) return;
   // the biome ones leave something behind: a freeze, a choking cloud of sand, or a bog's sour air
   World& w = lv.world(m.realm);
@@ -262,7 +291,7 @@ static OptMove monsterAI(Level& lv, Creature& m, Entity* p, float dist, float dy
     return Move{dist < 0.8f ? 0 : T.speed * 1.15f, toPlayer};
   }
   if (t == "stray") return nightBase(lv, m, "skeleton", p, dist, dyp, toPlayer, dt);
-  if (t == "frost_fuseling" || t == "dune_fuseling" || t == "bog_fuseling") return nightBase(lv, m, "fuseling", p, dist, dyp, toPlayer, dt);
+  if (t == "frost_fuseling" || t == "dune_fuseling" || t == "bog_fuseling" || t == "ember_fuseling" || t == "moss_fuseling" || t == "sky_fuseling") return nightBase(lv, m, "fuseling", p, dist, dyp, toPlayer, dt);
   if (t == "cave_spider") return nightBase(lv, m, "spider", p, dist, dyp, toPlayer, dt);
   if (t == "magma_slime") {
     if (m.onGround && m.lastWant > 0.1f && frand() < dt * 0.6f) m.wantJump = true;   // they leap higher than the green ones
@@ -761,7 +790,7 @@ Move Creature::specialAI(Level& lv, Entity* p, float dist, float dyp, float toPl
   // keep away from what hunts you
   const char* wa[2] = {nullptr, nullptr};
   if (type == "skeleton" || type == "stray") wa[0] = "wolf";
-  else if (type == "fuseling" || type == "frost_fuseling" || type == "dune_fuseling" || type == "bog_fuseling") { wa[0] = "ocelot"; wa[1] = "cat"; }
+  else if (type == "fuseling" || type.size() > 9 && type.compare(type.size() - 9, 9, "_fuseling") == 0) { wa[0] = "ocelot"; wa[1] = "cat"; }
   if (wa[0]) {
     waryT -= dt;
     if (waryT <= 0) {
