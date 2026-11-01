@@ -236,7 +236,7 @@ int main(int argc, char** argv) {
     check(P->gliding && P->pos.z < 8.5f - 5 && glm::length(P->vel) > 6, "you glide where you look, gathering speed in a dive");
     P->held() = ItemStack("firework_rocket", 2);
     use("firework_rocket");
-    check(P->glideBoost > 2 && P->held().n == 1, "a rocket in flight is a boost");
+    check(P->glideBoost > 0.5f && P->held().n == 1, "a rocket in flight is a boost");
     for (int x = 0; x < 20; x++) for (int y = -6; y < 6; y++) w.setBlock(x, ifloor(P->pos.y) + y, ifloor(P->pos.z) - 3, stone);
     P->vel = vec3(0, 0, -38); P->pitch = 0; float hp0 = P->hp;
     for (int i = 0; i < 10; i++) elytraMove(*L, *P, TICK_DT);

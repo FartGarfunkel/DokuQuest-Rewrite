@@ -108,14 +108,14 @@ int main(int argc, char** argv) {
     for (auto* c : all("end_crystal")) kill(*c, P);
     tick(0.2);
     check(fx.heard("The last crystal shatters"), "the last crystal");
-    int xp0 = P->xp;
+    int xp0 = P->xp, lv0 = P->level;
     kill(*dragons[0], P);
     tick(1.2);
     const json& E = L->info.data["end"];
     check(E.value("slain", 0) == 1 && E.value("gates", 0) == 1, "slain once, one gateway");
     check(w.getBlock(1, fy, 0) == B("end_portal") && w.getBlock(-2, fy, 1) == B("end_portal"), "the exit portal opens");
     check(w.getBlock(0, fy + 4, 0) == B("dragon_egg_ender"), "its egg rests on the pillar");
-    check(P->xp - xp0 >= 1200, "the dragon's experience");
+    check(P->level > lv0 || P->xp - xp0 >= 1200, "the dragon's experience");   // (xp is the progress within a level)
     vec3 g = endGatewaySpot(0);
     load(g, 3); tick(2.5);
     check(w.getBlock((int)g.x, (int)g.y, (int)g.z) == B("end_gateway"), "a gateway opens round the main island");
@@ -126,7 +126,7 @@ int main(int argc, char** argv) {
     tick(0.2);
     check(std::hypot(P->pos.x, P->pos.z) > 600, "the gateway flings you out to the far islands (" + std::to_string((int)std::hypot(P->pos.x, P->pos.z)) + ")");
     tick(2);
-    check(all("ender_dragon").empty(), "no second dragon once slain");
+    { bool alive = false; for (auto* d : all("ender_dragon")) alive |= d->alive(); check(!alive, "no second dragon once slain"); }   // (the slain one may still be falling)
   }
   // ------------------------------------------------------------ endermen
   {
@@ -175,9 +175,9 @@ int main(int argc, char** argv) {
     bool chilled = false;
     for (int i = 0; i < 90 && !chilled; i++) { tick(0.5); chilled = playerEffect(*P, "chill") > 0 || playerEffect(*P, "slow") > 0; }
     check(chilled, "its frost breath chills you (state " + d->state + ")");
-    int xp0 = P->xp;
+    int xp0 = P->xp, lv0 = P->level;
     kill(*d, P); tick(1.2);
-    check(L->info.data["dragons"]["Ltest"].value("slain", 0) == 1 && P->xp - xp0 >= 250, "slain, its lair is quiet for good");
+    check(L->info.data["dragons"]["Ltest"].value("slain", 0) == 1 && (P->level > lv0 || P->xp - xp0 >= 250), "slain, its lair is quiet for good");
     // an egg kept warm hatches a drake that is yours
     w.setBlock(1002, Y + 1, 0, B("dragon_egg_frost")); w.setBlock(1003, Y + 1, 0, B("campfire"));
     tick(1.5);
@@ -278,17 +278,17 @@ int main(int argc, char** argv) {
     // a keeper falls
     Creature* k = spawnCreature(*L, REALM_MAIN, "ghoul", vec3(1005.5f, Y + 1, 0.5f)); k->data["dungeon"] = "d1_1";
     kill(*k, P); tick(1.5);
-    check(riftRec(*L).value("frags", 0) == 1 && riftStability(*L) == 74 && countItems("realm_fragment") == frag0 + 1, "a keeper's Realm Fragment thins the boundary");
+    check(riftRec(*L).value("frags", 0) == 1 && riftStability(*L) == 100 - 92 / RIFT_NEED && countItems("realm_fragment") == frag0 + 1, "a keeper's Realm Fragment thins the boundary");
     tick(2);
-    check(fx.heard("The world shudders. (1 of 4 fragments)"), "the world shudders");
-    // the rift wants four
+    check(fx.heard("The world shudders. (1 of " + std::to_string(RIFT_NEED) + " fragments)"), "the world shudders");
+    // the rift wants all of them
     P->pos = vec3(1001.5f, Y + 1, 10.5f);
     P->inv[3] = ItemStack("realm_fragment", 2);
     use("");
-    check(fx.heard("but it wants 4. You have 2."), "two aren't enough");
-    P->inv[3] = ItemStack("realm_fragment", 4);
+    check(fx.heard("but it wants " + std::to_string(RIFT_NEED) + ". You have 2."), "two aren't enough");
+    P->inv[3] = ItemStack("realm_fragment", RIFT_NEED);
     use("");
-    check(riftRec(*L).value("stage", 0) == 3 && P->inv[3].empty() && riftTier(*L) == 4, "four fragments: the gateway steadies");
+    check(riftRec(*L).value("stage", 0) == 3 && P->inv[3].empty() && riftTier(*L) == 4, "all the fragments: the gateway steadies");
     tick(1.2);
     bool gate = false; if (ps) for (auto& win : ps->windows(REALM_MAIN)) if (win.kind == PortalKind::Rift && win.walk) gate = true;
     check(gate, "the gateway can be walked through");
