@@ -1,6 +1,7 @@
 // sim/usables.cpp — items the original used through its "drink: milk" hook that nothing else here handled:
 // firework rockets sent up from the ground (batche.js FireworkRocket; the elytra boost is sim/elytra.cpp),
 // the gust puff's great leap (aether.js), and the Ember Effigy that wakes a Cinder Golem at night (local.js summon).
+#include "common/holiday.h"
 #include "sim/creature.h"
 #include "sim/player.h"
 #include "sim/effects.h"
@@ -54,7 +55,28 @@ void registerUsables() {
       const char* name() const override { return "usables"; }
       ~S() override { if (lv && lv->events) { if (h) lv->events->off(h); if (hp) lv->events->off(hp); } }
       // Minecraft's sponge: the water within 6 steps (up to 65 blocks of it) is soaked up and the sponge turns wet
-      void tick(Level& L, double) override {
+      double fwT = 0;
+      // New Year's Eve and Day (common/holiday newYear()): after dark the villages let off fireworks, now and then,
+      // from among their people
+      void fireworks(Level& L, double dt) {
+        if (L.isRemote() || !newYear() || (fwT -= dt) > 0) return;
+        fwT = 1.2 + frand() * 2.2;
+        if (envDay(L, DIM_OVERWORLD) > 0.32f) return;
+        static const char* COL[] = {"red", "yellow", "lime", "light_blue", "magenta", "white", "orange", "blue"};   // wool colours (render/particles.cpp)
+        std::vector<Entity*> folk;
+        for (auto& e : L.entities()) if (!e->removed && e->type == "villager" && e->realm == REALM_MAIN && dimOfY(ifloor(e->pos.y)) == DIM_OVERWORLD) {
+          for (auto& q : L.entities()) if (q->isPlayer() && !q->removed && q->realm == e->realm && glm::distance(q->pos, e->pos) < 96) { folk.push_back(e.get()); break; }
+        }
+        if (folk.empty()) return;
+        Entity* v = folk[(size_t)(frand() * folk.size()) % folk.size()];
+        auto r = std::make_unique<FireworkRocket>();
+        r->realm = v->realm; r->pos = v->pos + vec3(frand2() * 2, 2.2f, frand2() * 2); r->vel = vec3(frand2() * 1.5f, 14 + frand() * 6, frand2() * 1.5f);
+        r->data["fuse"] = 1.1f + frand() * 0.8f; r->data["color"] = COL[(int)(frand() * 8) & 7];
+        L.fx->sound("firework_launch", r->pos, 64);
+        L.spawn(std::move(r));
+      }
+      void tick(Level& L, double dt) override {
+        fireworks(L, dt);
         if (sponges.empty()) return;
         static const BlockId sponge = reg().blockId("sponge"), wet = reg().blockId("wet_sponge");
         for (auto& [realm, at] : sponges) {

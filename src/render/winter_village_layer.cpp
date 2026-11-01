@@ -141,7 +141,7 @@ private:
     if (!f.cam.frustum.sphere(rel + vec3(0, 3.5f, 0), 4.5f)) return;
     World& w = s.world();
     const u8 l = w.getLight(ifloor(d.treeAt.x), ifloor(d.treeAt.y) + 1, ifloor(d.treeAt.z));
-    const vec2 light((l >> 4) / 15.f, std::max(0.55f, (l & 15) / 15.f));   // its own lights light it a little
+    const vec2 light((l >> 4) / 15.f, std::max(0.8f, (l & 15) / 15.f));   // its own lights light it up
     const mat4 m = glm::translate(mat4(1), rel);
     const GLuint log = tileTexture(s.app, "spruce_log_side"), logTop = tileTexture(s.app, "spruce_log_top"), leaves = tileTexture(s.app, "spruce_leaves");
     drawTileBox(cd, m, vec3(-0.22f, 0, -0.22f), vec3(0.22f, 1.3f, 0.22f), log, logTop, logTop, light, vec3(1), false);
@@ -150,12 +150,12 @@ private:
     for (int i = 0; i < 5; i++) {
       const float hw = 2.2f - i * 0.43f, y0 = 0.8f + i * 1.0f, hh = 1.25f;
       drawTileBox(cd, m, vec3(-hw, y0, -hw), vec3(hw, y0 + hh, hw), leaves, leaves, leaves, light, green, false);
-      const int per = std::max(2, (int)(hw * 2.4f));   // lights round the tier's lower edge
+      const int per = std::max(3, (int)(hw * 3.6f));   // lights round the tier's lower edge
       for (int side = 0; side < 4; side++) for (int k = 0; k < per; k++) {
         const float u = -hw + (k + 0.5f) * (2 * hw) / per, o = hw + 0.04f;
         const float ly = y0 + 0.62f;   // above the tier below
         const vec3 p = side == 0 ? vec3(u, ly, -o) : side == 1 ? vec3(o, ly, u) : side == 2 ? vec3(-u, ly, o) : vec3(-o, ly, -u);
-        bulb(d.treeAt + p, (bi + i) % 6, 0.19f, bi); bi++;
+        bulb(d.treeAt + p, (bi + i) % 6, 0.25f, bi); bi++;
       }
     }
     // the star, turning slowly on top

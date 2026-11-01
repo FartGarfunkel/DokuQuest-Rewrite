@@ -1,6 +1,7 @@
 // audio/music.cpp — see music.h. composePiece / composePiece2 / battleBar / fanfare are line-by-line ports of
 // game/music.js and game/music2.js; the instruments rebuild their WebAudio graphs (oscillators, filters,
 // AudioParam ramps) as small live voices.
+#include "common/holiday.h"
 #include "audio/music.h"
 #include "audio/song.h"
 #include "world/dims.h"
@@ -634,10 +635,44 @@ struct MusicDirector::Impl {
     for (auto& s : userSongs) if (*want && s.realm == want && !s.notes.empty()) c.push_back(&s);
     return c.empty() ? nullptr : c[(size_t)(rnd() * c.size()) % c.size()];
   }
+  // December: now and then a carol in the Overworld (public-domain melodies: Silent Night 1818, Jingle Bells 1857,
+  // We Wish You a Merry Christmas and Deck the Halls, traditional), on bells with a soft harp under them
+  bool carol() {
+    static const std::vector<std::vector<std::pair<int, float>>> C = {
+      // Silent Night (3/4)
+      {{67, 1.5f}, {69, .5f}, {67, 1}, {64, 3}, {67, 1.5f}, {69, .5f}, {67, 1}, {64, 3}, {74, 2}, {74, 1}, {71, 3}, {72, 2}, {72, 1}, {67, 3},
+       {69, 2}, {69, 1}, {72, 1.5f}, {71, .5f}, {69, 1}, {67, 1.5f}, {69, .5f}, {67, 1}, {64, 3}, {69, 2}, {69, 1}, {72, 1.5f}, {71, .5f}, {69, 1},
+       {67, 1.5f}, {69, .5f}, {67, 1}, {64, 3}, {74, 2}, {74, 1}, {77, 1.5f}, {74, .5f}, {71, 1}, {72, 3}, {76, 3}, {72, 1}, {67, 1}, {64, 1},
+       {67, 1.5f}, {65, .5f}, {62, 1}, {60, 6}},
+      // Jingle Bells (the chorus, twice)
+      {{64, 1}, {64, 1}, {64, 2}, {64, 1}, {64, 1}, {64, 2}, {64, 1}, {67, 1}, {60, 1.5f}, {62, .5f}, {64, 4}, {65, 1}, {65, 1}, {65, 1.5f}, {65, .5f},
+       {65, 1}, {64, 1}, {64, 1}, {64, .5f}, {64, .5f}, {64, 1}, {62, 1}, {62, 1}, {64, 1}, {62, 2}, {67, 2},
+       {64, 1}, {64, 1}, {64, 2}, {64, 1}, {64, 1}, {64, 2}, {64, 1}, {67, 1}, {60, 1.5f}, {62, .5f}, {64, 4}, {65, 1}, {65, 1}, {65, 1.5f}, {65, .5f},
+       {65, 1}, {64, 1}, {64, 1}, {64, .5f}, {64, .5f}, {67, 1}, {67, 1}, {65, 1}, {62, 1}, {60, 4}},
+      // We Wish You a Merry Christmas (3/4)
+      {{67, 1}, {72, 1}, {72, .5f}, {74, .5f}, {72, .5f}, {71, .5f}, {69, 1}, {69, 1}, {69, 1}, {74, 1}, {74, .5f}, {76, .5f}, {74, .5f}, {72, .5f},
+       {71, 1}, {67, 1}, {67, 1}, {76, 1}, {76, .5f}, {77, .5f}, {76, .5f}, {74, .5f}, {72, 1}, {69, 1}, {67, .5f}, {67, .5f}, {69, 1}, {74, 1}, {71, 1}, {72, 3}},
+      // Deck the Halls
+      {{67, 1.5f}, {65, .5f}, {64, 1}, {62, 1}, {60, 1}, {62, 1}, {64, 1}, {60, 1}, {62, .5f}, {64, .5f}, {65, .5f}, {62, .5f}, {64, 1.5f}, {62, .5f},
+       {60, 1}, {59, 1}, {60, 2}, {67, 1.5f}, {65, .5f}, {64, 1}, {62, 1}, {60, 1}, {62, 1}, {64, 1}, {60, 1}, {62, .5f}, {64, .5f}, {65, .5f}, {62, .5f},
+       {64, 1.5f}, {62, .5f}, {60, 1}, {59, 1}, {60, 2}, {62, 1.5f}, {64, .5f}, {65, 1}, {62, 1}, {64, 1.5f}, {65, .5f}, {67, 1}, {62, 1},
+       {64, .5f}, {66, .5f}, {67, 1}, {69, .5f}, {71, .5f}, {72, 1}, {71, 1}, {69, 1}, {67, 2}, {67, 1.5f}, {65, .5f}, {64, 1}, {62, 1},
+       {60, 1}, {62, 1}, {64, 1}, {60, 1}, {69, .5f}, {69, .5f}, {69, .5f}, {69, .5f}, {67, 1.5f}, {65, .5f}, {64, 1}, {62, 1}, {60, 2}}};
+    const auto& mel = C[(size_t)(rnd() * C.size()) % C.size()];
+    const double spb = 60.0 / 96;
+    double t = 0;
+    for (auto& [m, b] : mel) {
+      notes.push_back({t * spb, MI_BELL, 0, (float)m, (float)(b * spb * 0.95), 0.55f});
+      notes.push_back({t * spb, MI_HARP, 0, (float)(m - 12), (float)(b * spb), 0.28f});
+      t += b;
+    }
+    return true;
+  }
   void play(const std::string& mood) {
     busTo(0, 1, 0);
     notes.clear();
-    if (inWorldNow && rnd() < 0.4f)
+    if (inWorldNow && dimNow == DIM_OVERWORLD && christmas() && rnd() < 0.3f) carol();
+    if (notes.empty() && inWorldNow && rnd() < 0.4f)
       if (const Song* us = realmSong()) {   // now and then, one of the player's own for this land
         const double spb = 60.0 / std::max(1.f, us->bpm);
         for (auto& n : us->notes) notes.push_back({n.beat * spb, n.ins, 0, n.midi, (float)(n.len * spb), n.vel});
