@@ -123,7 +123,7 @@ public:
           if (thrown) knockback(*p, glm::normalize(vec3(vel.x, 0, vel.z) + vec3(1e-4f)) * 2.f);
           splat(lv, kind); return;
         }
-        if (thrown) if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.1f)) { DamageSrc d; d.knock = 2; damageEntity(lv, *c, c->type == "cinder_golem" ? 1 : 0.001f, owner, "projectile", d); splat(lv, kind); return; }
+        if (thrown) if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.1f)) { DamageSrc d; d.knock = 2; damageEntity(lv, *c, c->type == "cinder_golem" ? 1 : kind == "snow" && c->T && c->T->fireImmune ? 3 : 0.001f, owner, "projectile", d); splat(lv, kind); return; }   // snow burns the creatures of fire (Minecraft's blazes)
         if (solidAt(wd, pos)) { splat(lv, kind); return; }
       }
       if (kind == "spit" && frand() < dt * 20) mobBurst(lv, pos, "white", 1, 0.1f);
