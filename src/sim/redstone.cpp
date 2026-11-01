@@ -905,6 +905,53 @@ void Redstone::dispense(int x, int y, int z) {
   if (!me || !me.items) return;
   std::vector<int> full;
   for (int i = 0; i < me.size(); i++) if (!me.get(i).empty()) full.push_back(i);
+  // the activator (BTA's): it uses what it holds on the block in front, like a hand: sets a block down, digs with a
+  // tool, and with nothing in it swings a door, trapdoor or gate. Anything else it uses as a dispenser would, but it
+  // never throws things out.
+  const bool activator = R.block(id).has("activator");
+  if (activator) {
+    const int ax = x + D6X[dir], ay = y + D6Y[dir], az = z + D6Z[dir];
+    const BlockId front = w.getBlock(ax, ay, az);
+    const vec3 ac = vec3(ax, ay, az) + vec3(0.5f);
+    const BlockDef& fb = R.block(front);
+    if (full.empty()) {
+      const int fm = w.getMeta(ax, ay, az);
+      if (fb.has("door")) {
+        const int lower = fm & 16 ? ay - 1 : ay, ml = w.getMeta(ax, lower, az);
+        w.setBlock(ax, lower, az, front, ml ^ 4); w.setBlock(ax, lower + 1, az, front, (ml ^ 4) | 16);
+        lv.fx->sound(doorSound(fb, !(ml & 4)), ac);
+      } else if (fb.has("trapdoor") || R.tShape[front] == ShapeKind::Gate) {
+        w.setBlock(ax, ay, az, front, fm ^ 4);
+        lv.fx->sound(doorSound(fb, !(fm & 4)), ac);
+      } else lv.fx->sound("dispense_fail", c, 20);
+      return;
+    }
+    const int aslot = full[0];
+    ItemStack as = me.get(aslot);
+    const ItemDef* ad = as.def();
+    const bool freeFront = front == AIR || (R.tReplaceable[front] && !R.tLiquid[front]);
+    if (ad && !ad->block.empty() && freeFront) {
+      if (BlockId nb = R.blockId(ad->block)) {
+        w.setBlock(ax, ay, az, nb, 0);
+        as.n--; me.set(aslot, as); changedInv(me);
+        lv.fx->sound("place", ac, 16);
+        return;
+      }
+    }
+    if (ad && ad->hasTool && front && !R.tLiquid[front] && fb.hardness >= 0 && fb.hardness < 20 && !fb.has("container") &&
+        (ad->tool.type == "pickaxe" || ad->tool.type == "axe" || ad->tool.type == "shovel" || ad->tool.type == "hoe" || ad->tool.type == "shears")) {
+      if (fb.tier > ad->tool.tier && fb.str("tool") == ad->tool.type) { lv.fx->sound("dispense_fail", c, 20); return; }
+      std::vector<ItemStack> blockDrops(Level& lv, World& w, int x, int y, int z, BlockId id, u8 meta, const ToolInfo* tool, bool washed);   // sim/gameplay.h
+      for (ItemStack& d : blockDrops(lv, w, ax, ay, az, front, (u8)w.getMeta(ax, ay, az), &ad->tool, false)) dropStack(lv, w.realm, d, ac, vec3(0), 0.1f);
+      w.setBlock(ax, ay, az, AIR, 0);
+      lv.fx->particles("burst", ac, 8, {{"tile", fb.key}, {"speed", 1.5f}});
+      as.d++;
+      if (ad->tool.durability > 0 && as.d >= ad->tool.durability) as.clear();
+      me.set(aslot, as); changedInv(me);
+      lv.fx->sound("break", ac, 16);
+      return;
+    }
+  }
   if (full.empty()) { lv.fx->sound("dispense_fail", c, 20); return; }
   int slot = full[std::min((int)full.size() - 1, (int)(rnd() * full.size()))];
   ItemStack s = me.get(slot);
@@ -997,7 +1044,8 @@ void Redstone::dispense(int x, int y, int z) {
       return;
     }
   }
-  // anything else is simply thrown out
+  // anything else is simply thrown out (an activator keeps it)
+  if (activator) { lv.fx->sound("dispense_fail", c, 20); return; }
   spit(x, y, z, dir, one()); take(); ok();
 }
 

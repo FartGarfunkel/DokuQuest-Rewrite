@@ -445,6 +445,17 @@ def main(d):
         block(k, wood.replace('_', ' ').title() + ' Branch', {'render': 7, 'opaque': False, 'hardness': 1.2, 'tool': 'axe', 'sound': 'log', 'shapeKind': 37,
                                                                'branch': True, 'isLog': True, 'fuel': 1, 'tex': side}, [tiles[side]] * 6)
         recipe(k, 4, ['L', 'L'], {'L': logk})
+    # the activator (BTA's): a dispenser that uses what it holds on the block in front (sim/redstone.cpp dispense)
+    if 'activator_front' not in tiles:
+        hand = lambda r, g, b_, a, x, y: (min(255, b_ + 40), min(255, g + 10), r // 2 + 40, a) if 9 <= x <= 22 and 9 <= y <= 22 else (r, g, b_, a)
+        tile('activator_front', recolour(src_pic(d, tiles, files, 'dispenser_front'), hand))
+        tile('activator_front_vertical', recolour(src_pic(d, tiles, files, 'dispenser_front_vertical'), hand))
+    disp = next(x for x in blocks if x['key'] == 'dispenser')
+    f6 = dict(disp.get('f6', {})); f6['front'] = tiles['activator_front']; f6['frontV'] = tiles['activator_front_vertical']
+    block('activator', 'Activator', {'hardness': 3.5, 'tool': 'pickaxe', 'sound': 'stone', 'tex': {'front': 'activator_front', 'frontV': 'activator_front_vertical', 'side': 'furnace_side', 'top': 'furnace_top'},
+                                     'facing6': True, 'container': 9, 'rs': 'dispenser', 'activator': True, 'f6': f6},
+          [tiles['furnace_side'], tiles['furnace_side'], tiles['furnace_top'], tiles['furnace_top'], tiles['activator_front'], tiles['furnace_side']])
+    recipe('activator', 1, ['CCC', 'CLC', 'CRC'], {'C': 'cobblestone', 'L': 'lever', 'R': 'redstone'})
     # powder weapons (sim/guns.cpp): the handcannon and its cannonballs, the rocket launcher and its rockets
     if 'handcannon' not in tiles:
         def canvas(): return _I.new('RGBA', (32, 32), (0, 0, 0, 0))
