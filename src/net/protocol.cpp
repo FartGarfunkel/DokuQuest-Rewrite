@@ -18,8 +18,18 @@ const char* msgName(u8 t) {
     case NEED: return "need"; case BYE: return "bye"; case REFUSE: return "refuse"; case WELCOME: return "welcome"; case CKDONE: return "ckdone";
     case CK: return "ck"; case CS: return "cs"; case ES: return "es"; case ENV: return "env"; case FX: return "efx"; case MSG: return "msg";
     case SELF: return "self"; case PEER: return "peer"; case FOLLOW: return "dim"; case KICK: return "kick"; case FLUSH: return "flush";
+    case SKINS: return "skins";
   }
   return "?";
+}
+
+std::function<void(const std::string&, const json&)>& netSkinHook() { static std::function<void(const std::string&, const json&)> h; return h; }
+std::string netSkinRef(const json& payload) {
+  const std::string d = payload.dump();
+  u64 h = 1469598103934665603ull;   // FNV-1a: the same name for the same skin on every computer
+  for (unsigned char c : d) { h ^= c; h *= 1099511628211ull; }
+  char b[32]; std::snprintf(b, sizeof b, "net:%016llx", (unsigned long long)h);
+  return b;
 }
 
 static std::mutex g_initMx;

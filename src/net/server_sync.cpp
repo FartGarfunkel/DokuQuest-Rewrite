@@ -40,6 +40,7 @@ void applyPlayerInv(Player& p, const json& j) {
 }
 
 // ---- what a player's game sees of an entity (netsync.js netSnap) ----
+std::unordered_map<std::string, std::string>& netSkinAliases() { static std::unordered_map<std::string, std::string> m; return m; }
 json entitySnapshot(const Entity& e) {
   json s = {{"i", e.id}, {"t", e.type}, {"x", r3(e.pos.x)}, {"y", r3(e.pos.y)}, {"z", r3(e.pos.z)}, {"r", r3(e.yaw)}, {"p", r3(e.pitch)},
             {"b", r3(e.bodyYaw)}, {"hp", std::round(e.hp * 10) / 10}, {"mh", e.maxHp}, {"w", e.w}, {"h", e.h}};
@@ -47,7 +48,8 @@ json entitySnapshot(const Entity& e) {
   if (f) s["f"] = f;
   if (e.riding) s["rd"] = e.riding;
   if (auto* p = dynamic_cast<const Player*>(&e)) {
-    s["n"] = p->name; s["sk"] = p->skin; s["md"] = p->mode;
+    s["n"] = p->name; s["md"] = p->mode;
+    { auto& A = netSkinAliases(); auto a = A.find(p->skin); s["sk"] = a != A.end() ? a->second : p->skin; }   // the host's own skins by their net names
     const ItemStack& h = p->inv[clampv(p->selected, 0, INV_MAIN - 1)];
     if (!h.empty()) s["hd"] = h.id;
     json ar = json::array(); bool anyAr = false;

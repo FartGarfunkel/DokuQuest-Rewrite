@@ -15,6 +15,7 @@ namespace dq::net {
 struct JoinOptions {
   std::string address;       // "host[:port]"
   std::string name = "Player", skin, password;
+  json skinData;             // the skin itself (netSkinHook): sent so the others see it
   int viewDistance = 8;      // chunks; the server may cap it
   double timeout = 12;       // seconds for connecting + joining
 };

@@ -302,6 +302,53 @@ void buildTileBox(VoxelGrid& g, ivec3 n, const std::string& tile, bool glow) {
 }
 
 // ------------------------------------------------------------------ cache
+// one part of a creature as a voxel grid (CPU only: any thread), where it sits in the part's space (lo, size)
+static void partGrid(const TileSet& ts, const RigModel& M, const std::string& key, size_t i, const std::vector<std::array<Pic, 6>>& faces, bool pack,
+                     VoxelGrid& g, vec3& lo, vec3& size) {
+  const RigPart& p = M.parts[i];
+  g = VoxelGrid();
+  std::array<Pic, 6> F = pack && std::any_of(faces[i].begin(), faces[i].end(), [](const Pic& x) { return !x.empty(); }) ? faces[i] : tilesOf(ts, p.tex);
+  lo = p.min; size = glm::max(p.max - p.min, vec3(1e-3f));
+  bool packed = pack && std::any_of(faces[i].begin(), faces[i].end(), [](const Pic& x) { return !x.empty(); });
+  // birds' feet: the rig's legs are 1 px sticks, which loses the toes. With a pack skin the leg takes
+  // Minecraft's 3x5x3 box (its picture has the toes; the clear texels carve the rest away); with the
+  // original's tiles a foot of three toes forward and one back is added under the stick.
+  bool bird = p.role == "bleg" && size.x <= 1.6f / 16;
+  if (bird && packed) { lo = vec3(-1.5f, p.min.y * 16, -2.5f) / 16.f; size = vec3(3, size.y * 16, 3) / 16.f; }
+  if (packed) if (auto si = packMobs().find(key); si != packMobs().end())
+    if (auto bi = si->second.box.find(p.name); bi != si->second.box.end()) {   // model space -> this part's own space (whatever rig the creature has)
+      const auto& b = bi->second; vec3 piv(0); for (int q = (int)i; q >= 0; q = M.parts[q].parent) piv += M.parts[q].pivot;
+      lo = vec3(b[0], b[1], b[2]) / 16.f - piv; size = vec3(b[3], b[4], b[5]) / 16.f;
+    }
+  ivec3 n = glm::max(ivec3(glm::round(size * 32.f)), ivec3(1));
+  bool faceRelief = p.tex.is_object() && p.tex.contains("front") && !pack;
+  voxelPart(g, n, F, p.glow || p.unlit, faceRelief);
+  if (p.name == "jaw" && M.key == "enderman") toothCrown(g, n);
+  if (p.eyes && !packed)   // render/models.js: two eyes, not one bar (the gap between them is the bridge of the nose)
+    for (int x = 0; x < n.x; x++) if (std::fabs(lo.x + (x + 0.5f) * size.x / n.x) < 0.065f) for (int z = 0; z < n.z; z++) for (int y = 0; y < n.y; y++) g.set(x, y, z, 0);
+  if (bird && !packed && n.y >= 4) {
+    int sx = n.x, sz = n.z, T = std::max(1, sx);   // toe width = the stick's width
+    ivec3 m(sx + 4 * T, n.y, sz + 4 * T);           // room for toes on every side
+    VoxelGrid f; f.resize(m);
+    for (int z = 0; z < n.z; z++) for (int y = 0; y < n.y; y++) for (int x = 0; x < n.x; x++) if (g.solid(x, y, z)) f.set(x + 2 * T, y, z + 2 * T, g.at(x, y, z));
+    u32 c = 0; for (int y = 0; y < n.y && !c; y++) if (g.solid(0, y, 0)) c = g.at(0, y, 0);
+    if (!c) c = voxRGBA(232, 160, 40) | (u32)VOXEL_SOLID << 24;
+    u32 dark = voxRGBA((int)((c & 255) * 0.8f), (int)(((c >> 8) & 255) * 0.8f), (int)(((c >> 16) & 255) * 0.8f)) | (c & 0xFF000000u);
+    int cx = 2 * T, cz = 2 * T;
+    for (int t = 0; t < T; t++) for (int k = 0; k < sx; k++) {
+      for (int d = 1; d <= 2 * T; d++) {   // three toes forward (models face -z), splayed
+        f.set(cx + k, t, cz - d, dark);
+        f.set(std::max(0, cx + k - (d + 1) / 2 - T / 2), t, cz - d, dark);
+        f.set(std::min(m.x - 1, cx + k + (d + 1) / 2 + T / 2), t, cz - d, dark);
+      }
+      for (int d = 0; d < T; d++) f.set(cx + k, t, cz + sz + d, dark);   // and one back
+    }
+    g = std::move(f); n = m;
+    lo = vec3(lo.x - 2 * T / 32.f, lo.y, lo.z - 2 * T / 32.f);
+    size = vec3(m) / 32.f;
+  }
+}
+
 static std::unordered_map<std::string, std::unique_ptr<CreatureModelGL>>& cache() { static auto* m = new std::unordered_map<std::string, std::unique_ptr<CreatureModelGL>>(); return *m; }
 static std::string builtFor;
 void creatureModelsReset() { cache().clear(); }
@@ -323,54 +370,14 @@ const CreatureModelGL* creatureModel(const std::string& key) {
   bool pack = packSkin(*M, key, faces, hidden, out->packSkin);
   for (size_t i = 0; i < M->parts.size(); i++) out->parts.push_back(std::make_unique<CreaturePartMesh>());
   for (size_t i = 0; i < M->parts.size(); i++) {
-    const RigPart& p = M->parts[i];
     CreaturePartMesh& pm = *out->parts[i];
     if (hidden[i]) { pm.hidden = true; continue; }
-    std::array<Pic, 6> F = pack && std::any_of(faces[i].begin(), faces[i].end(), [](const Pic& x) { return !x.empty(); }) ? faces[i] : tilesOf(ts, p.tex);
-    vec3 lo = p.min, size = glm::max(p.max - p.min, vec3(1e-3f));
-    bool packed = pack && std::any_of(faces[i].begin(), faces[i].end(), [](const Pic& x) { return !x.empty(); });
-    // birds' feet: the rig's legs are 1 px sticks, which loses the toes. With a pack skin the leg takes
-    // Minecraft's 3x5x3 box (its picture has the toes; the clear texels carve the rest away); with the
-    // original's tiles a foot of three toes forward and one back is added under the stick.
-    bool bird = p.role == "bleg" && size.x <= 1.6f / 16;
-    if (bird && packed) { lo = vec3(-1.5f, p.min.y * 16, -2.5f) / 16.f; size = vec3(3, size.y * 16, 3) / 16.f; }
-    if (packed) if (auto si = packMobs().find(key); si != packMobs().end())
-      if (auto bi = si->second.box.find(p.name); bi != si->second.box.end()) {   // model space -> this part's own space (whatever rig the creature has)
-        const auto& b = bi->second; vec3 piv(0); for (int q = (int)i; q >= 0; q = M->parts[q].parent) piv += M->parts[q].pivot;
-        lo = vec3(b[0], b[1], b[2]) / 16.f - piv; size = vec3(b[3], b[4], b[5]) / 16.f;
-      }
-    ivec3 n = glm::max(ivec3(glm::round(size * 32.f)), ivec3(1));
-    VoxelGrid g;
-    bool faceRelief = p.tex.is_object() && p.tex.contains("front") && !pack;
-    voxelPart(g, n, F, p.glow || p.unlit, faceRelief);
-    if (p.name == "jaw" && M->key == "enderman") toothCrown(g, n);
-    if (p.eyes && !packed)   // render/models.js: two eyes, not one bar (the gap between them is the bridge of the nose)
-      for (int x = 0; x < n.x; x++) if (std::fabs(lo.x + (x + 0.5f) * size.x / n.x) < 0.065f) for (int z = 0; z < n.z; z++) for (int y = 0; y < n.y; y++) g.set(x, y, z, 0);
-    if (bird && !packed && n.y >= 4) {
-      int sx = n.x, sz = n.z, T = std::max(1, sx);   // toe width = the stick's width
-      ivec3 m(sx + 4 * T, n.y, sz + 4 * T);           // room for toes on every side
-      VoxelGrid f; f.resize(m);
-      for (int z = 0; z < n.z; z++) for (int y = 0; y < n.y; y++) for (int x = 0; x < n.x; x++) if (g.solid(x, y, z)) f.set(x + 2 * T, y, z + 2 * T, g.at(x, y, z));
-      u32 c = 0; for (int y = 0; y < n.y && !c; y++) if (g.solid(0, y, 0)) c = g.at(0, y, 0);
-      if (!c) c = voxRGBA(232, 160, 40) | (u32)VOXEL_SOLID << 24;
-      u32 dark = voxRGBA((int)((c & 255) * 0.8f), (int)(((c >> 8) & 255) * 0.8f), (int)(((c >> 16) & 255) * 0.8f)) | (c & 0xFF000000u);
-      int cx = 2 * T, cz = 2 * T;
-      for (int t = 0; t < T; t++) for (int k = 0; k < sx; k++) {
-        for (int d = 1; d <= 2 * T; d++) {   // three toes forward (models face -z), splayed
-          f.set(cx + k, t, cz - d, dark);
-          f.set(std::max(0, cx + k - (d + 1) / 2 - T / 2), t, cz - d, dark);
-          f.set(std::min(m.x - 1, cx + k + (d + 1) / 2 + T / 2), t, cz - d, dark);
-        }
-        for (int d = 0; d < T; d++) f.set(cx + k, t, cz + sz + d, dark);   // and one back
-      }
-      g = std::move(f); n = m;
-      lo = vec3(lo.x - 2 * T / 32.f, lo.y, lo.z - 2 * T / 32.f);
-      size = vec3(m) / 32.f;
-    }
+    VoxelGrid g; vec3 lo, size;
+    partGrid(ts, *M, key, i, faces, pack, g, lo, size);
     VoxelMeshData md; buildVoxelMesh(g, md);
     if (md.verts.empty()) { pm.hidden = true; continue; }
     pm.gl.upload(md);
-    pm.local = glm::scale(glm::translate(mat4(1), lo), size / vec3(n));
+    pm.local = glm::scale(glm::translate(mat4(1), lo), size / vec3(g.size));
     pm.lo = lo; pm.size = size;
   }
   auto* raw = out.get();
@@ -407,5 +414,66 @@ bool creatureHeadParts(const std::string& mob, const CreatureModelGL*& CM, std::
   return true;
 }
 
-} // namespace dq
+// A creature's head as ONE voxel grid (CPU only, any thread): the model of a mob head item, so a skull in your hand or
+// inventory is that creature's skull (it was drawn as a helmet). The head part and what's fixed to it, fitted like
+// creatureHeadParts but turned to face +z (the way block items show their front), sampled at 32 voxels a block.
+bool creatureHeadGrid(const std::string& mob, const TileSet& ts, VoxelGrid& out, ivec3& lo32) {
+  const CreatureType* T = creatureType(mob);
+  if (!T) return false;
+  const RigModel* M = rigModel(T->model);
+  if (!M) return false;
+  const std::string key = T->model;
+  std::vector<std::array<Pic, 6>> faces(M->parts.size());
+  std::vector<u8> hidden(M->parts.size(), 0);
+  std::string used;
+  const bool pack = packSkin(*M, key, faces, hidden, used);
+  int head = M->find("head");
+  if (head < 0) for (size_t i = 0; i < M->parts.size() && head < 0; i++) { const RigPart& p = M->parts[i]; if (p.limb == "head" || p.role == "head" || p.role == "phead") head = (int)i; }
+  if (head < 0 || hidden[head]) return false;
+  struct PG { VoxelGrid g; mat4 toGrid; };   // unit space -> the part's grid
+  std::vector<PG> parts;
+  vec3 hlo, hsize;
+  { VoxelGrid g; partGrid(ts, *M, key, head, faces, pack, g, hlo, hsize); if (!g.size.x) return false; }
+  const float s = 1.f / std::max({hsize.x, hsize.y, hsize.z, 1e-3f});
+  const mat4 fit = glm::translate(mat4(1), vec3(0.5f, 0, 0.5f)) * glm::rotate(mat4(1), PI, vec3(0, 1, 0)) * glm::scale(mat4(1), vec3(s)) *
+                   glm::translate(mat4(1), -vec3(hlo.x + hsize.x * 0.5f, hlo.y, hlo.z + hsize.z * 0.5f));
+  std::vector<mat4> rel(M->parts.size(), mat4(0)); rel[head] = mat4(1);
+  vec3 bmin(1e9f), bmax(-1e9f);
+  for (size_t i = head; i < M->parts.size(); i++) {
+    const RigPart& p = M->parts[i];
+    if ((int)i != head) {
+      if (p.parent < 0 || rel[p.parent][3][3] == 0) continue;
+      mat4 r = glm::translate(rel[p.parent], p.pivot);
+      if (p.rest.y) r = glm::rotate(r, p.rest.y, vec3(0, 1, 0));
+      if (p.rest.x) r = glm::rotate(r, p.rest.x, vec3(1, 0, 0));
+      if (p.rest.z) r = glm::rotate(r, p.rest.z, vec3(0, 0, 1));
+      rel[i] = r;
+      if (hidden[i] || p.alpha < 1) continue;
+    }
+    PG pg; vec3 lo, size;
+    partGrid(ts, *M, key, i, faces, pack, pg.g, lo, size);
+    if (!pg.g.size.x || !pg.g.count()) continue;
+    const mat4 toUnit = fit * rel[i] * glm::scale(glm::translate(mat4(1), lo), size / vec3(pg.g.size));
+    pg.toGrid = glm::inverse(toUnit);
+    for (int c = 0; c < 8; c++) {
+      vec3 q = vec3(toUnit * vec4((c & 1) ? pg.g.size.x : 0, (c & 2) ? pg.g.size.y : 0, (c & 4) ? pg.g.size.z : 0, 1));
+      bmin = glm::min(bmin, q); bmax = glm::max(bmax, q);
+    }
+    parts.push_back(std::move(pg));
+  }
+  if (parts.empty()) return false;
+  lo32 = ivec3(glm::floor(bmin * 32.f)); const ivec3 hi32 = ivec3(glm::ceil(bmax * 32.f));
+  const ivec3 n = glm::clamp(hi32 - lo32, ivec3(1), ivec3(96));
+  out.resize(n);
+  for (int z = 0; z < n.z; z++) for (int y = 0; y < n.y; y++) for (int x = 0; x < n.x; x++) {
+    const vec4 c((lo32.x + x + 0.5f) / 32.f, (lo32.y + y + 0.5f) / 32.f, (lo32.z + z + 0.5f) / 32.f, 1);
+    for (const PG& pg : parts) {
+      const vec3 q = vec3(pg.toGrid * c);
+      const u32 v = pg.g.at(ifloor(q.x), ifloor(q.y), ifloor(q.z));
+      if (v) { out.set(x, y, z, v); break; }
+    }
+  }
+  return true;
+}
 
+} // namespace dq

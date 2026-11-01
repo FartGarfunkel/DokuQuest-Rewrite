@@ -29,5 +29,9 @@ void buildTileBox(VoxelGrid& g, ivec3 n, const std::string& tile, bool glow = fa
 // fitted into the unit cube standing on (0.5, 0, 0.5) and facing -z. Each entry: part index into CM->parts, matrix.
 // false: that creature has no head (a slime, a fish).
 bool creatureHeadParts(const std::string& mob, const CreatureModelGL*& CM, std::vector<std::pair<int, mat4>>& out);
+// the same head as one voxel grid (CPU, any thread; for the mob head items): a block wide, standing on y 0, facing +z;
+// voxel (x, y, z) covers (lo32 + (x, y, z)) / 32 in block units. false: no head.
+struct TileSet; struct VoxelGrid;
+bool creatureHeadGrid(const std::string& mob, const TileSet& ts, VoxelGrid& out, ivec3& lo32);
 
 } // namespace dq

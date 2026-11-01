@@ -225,7 +225,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
       if (lv.events && !lv.events->emit("blockPlace", json::array({p.name, x, y, z, bdef.key}))) return;
       w.setBlock(x, y, z, bid, meta, SetFlags::Urgent);
       consumeHeld(); swingArm(); sfxMaterial(lv, bdef.sound, "place", vec3(x, y, z) + vec3(0.5f));
-      if (bdef.key == "rift_core") tryWitherSummon(lv, p.realm, ivec3(x, y, z));   // sim/wither.cpp: the Wither Storm
+      if (bdef.key == "rift_core" || bdef.key == "command_block") tryWitherSummon(lv, p.realm, ivec3(x, y, z));   // sim/wither.cpp: the Wither Storm
       return;
     }
   }
@@ -250,7 +250,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
   if (bhas(bid, BF::Sign)) { w.setBlockEntity(x, y, z, {{"type", "sign"}, {"lines", {"", "", "", ""}}}); editSign(x, y, z); }
   if (R.block(bid).has("armorStand")) w.setBlockEntity(x, y, z, {{"type", "stand"}, {"items", json::array({nullptr, nullptr, nullptr, nullptr, nullptr})}, {"pose", 0}});
   if (bdef.has("painting")) w.setBlockEntity(x, y, z, {{"type", "painting"}, {"n", (int)(rnd() * 30)}});   // a picture of its own (render/painting_layer.cpp)
-  if (bdef.key == "rift_core") tryWitherSummon(lv, p.realm, ivec3(x, y, z));   // sim/wither.cpp: the Wither Storm
+  if (bdef.key == "rift_core" || bdef.key == "command_block") tryWitherSummon(lv, p.realm, ivec3(x, y, z));   // sim/wither.cpp: the Wither Storm
   consumeHeld();
   swingArm();
   sfxMaterial(lv, bdef.sound, "place", vec3(x, y, z) + vec3(0.5f));

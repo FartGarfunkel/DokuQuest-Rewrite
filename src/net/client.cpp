@@ -98,7 +98,7 @@ NetClient::State NetClient::poll() {
   while (host && enet_host_service(host, &ev, 0) > 0) {
     if (ev.type == ENET_EVENT_TYPE_CONNECT) {
       st = State::Joining;
-      send(peer, HELLO, {{"proto", PROTO}, {"version", DQ_VERSION}, {"name", opts.name}, {"skin", opts.skin}, {"password", opts.password}, {"R", opts.viewDistance}});
+      send(peer, HELLO, {{"proto", PROTO}, {"version", DQ_VERSION}, {"name", opts.name}, {"skin", opts.skin}, {"skinData", opts.skinData}, {"password", opts.password}, {"R", opts.viewDistance}});
     } else if (ev.type == ENET_EVENT_TYPE_RECEIVE) {
       u8 ty; json m;
       bool ok = parsePacket(ev.packet, ty, m);
@@ -109,6 +109,7 @@ NetClient::State NetClient::poll() {
       if (ty == WELCOME) onWelcome(m);
       else if (ty == CK) { if (m.contains("r") && m["r"].is_binary()) { auto& b = m["r"].get_binary(); storeRecord(m.value("rl", 0), m.value("d", 0), m.value("cx", 0), m.value("cz", 0), std::vector<u8>(b.begin(), b.end()), true); gotRecords++; } }
       else if (ty == CS) { sums[packChunkKey(m.value("rl", 0), m.value("d", 0), m.value("cx", 0), m.value("cz", 0))] = m.value("h", 0u); stats.sumsIn++; }
+      else if (ty == SKINS) { if (m.contains("s") && m["s"].is_object() && netSkinHook()) for (auto& [ref, pl] : m["s"].items()) netSkinHook()(ref, pl); }
       else if (ty == CKDONE) { expectRecords = m.value("n", 0); if (!welcomeMsg.is_null()) { st = State::Ready; break; } }
       // anything else before we're in (block changes, entities) is caught up with by the regular updates
     } else if (ev.type == ENET_EVENT_TYPE_DISCONNECT) {
@@ -327,6 +328,9 @@ void NetClient::handle(u8 ty, json& m) {
     case ENV: applyEnv(m); break;
     case FX: applyFx(m); break;
     case MSG: L.fx->message(0, m.value("text", ""), m.value("k", "")); break;
+    case SKINS:   // everyone's skins (see netSkinHook)
+      if (m.contains("s") && m["s"].is_object() && netSkinHook()) for (auto& [ref, pl] : m["s"].items()) netSkinHook()(ref, pl);
+      break;
     case PEER: {
       std::string n = m.value("n", "Someone");
       L.fx->message(0, n + (m.value("j", 0) ? " joined the game" : " left the game"), m.value("j", 0) ? "good" : "");

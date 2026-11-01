@@ -66,6 +66,9 @@ void loadModels() {
       b.end = x.contains("end") ? tileOf(x["end"].get<std::string>()) : -1;
       if (b.end < 0) b.end = b.side;
       b.xt = x.contains("x") ? tileOf(x["x"].get<std::string>()) : -1;
+      b.zt = x.contains("z") ? tileOf(x["z"].get<std::string>()) : -1;
+      b.fit = x.value("fit", false);
+      { std::string g = x.value("grain", std::string()); b.grain = g == "x" ? 1 : g == "z" ? 2 : 0; }
       if (b.side < 0) b.side = 0;
       b.tv = x.value("tv", 0.f);
       b.nocol = x.value("nocol", false);

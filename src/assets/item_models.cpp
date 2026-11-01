@@ -1,6 +1,7 @@
 // assets/item_models.cpp — the item model cache, block items, the sculpt, and which builder each item gets
 // (the original's itemMesh chain: models3d.js -> sculpt.js -> items3d.js -> models.js).
 #include "assets/item_build.h"
+#include "render/creature_models.h"
 #include "common/threadpool.h"
 #include "world/shapes.h"
 #include <regex>
@@ -300,6 +301,16 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
   const ItemDef* def = reg().item(base);
   auto tileOf = [&](const std::string& n) { auto it = ts.index.find(n); return it == ts.index.end() ? -1 : it->second; };
 
+  // ---- mob heads and skulls: the creature's own head (they have a helmet slot to be worn, but aren't helmets)
+  if (def && def->has("mobHead")) {
+    VoxelGrid g; ivec3 lo32;
+    if (creatureHeadGrid(def->str("mobHead"), ts, g, lo32)) {
+      VoxelFrame fr; fr.voxel = 1.f / 32; fr.origin = vec3(-0.5f) + vec3(lo32) / 32.f;
+      out.kind = VoxelModel::Block; out.depth = 0.5f;
+      finishGrid(out, g, fr, nullptr);
+      return true;
+    }
+  }
   // ---- block items
   if (def && !def->block.empty()) {
     const json& bi = blockItems();

@@ -214,20 +214,30 @@ void addShapeBox(MeshCtx& c, std::vector<ChunkVertex>& d, const ShapeBox& box, v
     }
     return;
   }
-  int xt = box.xt >= 0 ? box.xt : side, xf = (rot & 1) ? 4 : 0;
+  int xt = box.xt >= 0 ? box.xt : side, xf = (rot & 1) ? 4 : 0, zf = (rot & 1) ? 0 : 4;
   for (int f = 0; f < 6; f++) {
     const FaceDef& F = FACES[f];
-    int tile = f == 2 || f == 3 ? end : (f == xf || f == xf + 1) ? xt : side;
+    const bool onX = f == xf || f == xf + 1, onZ = box.zt >= 0 && (f == zf || f == zf + 1);
+    int tile = f == 2 || f == 3 ? end : onX ? xt : onZ ? box.zt : side;
+    // a log's end shows its whole ring however small the face; a log's top runs its grain along the log
+    const bool fitF = box.fit && f != 2 && f != 3 && ((onX && box.xt >= 0) || onZ);
+    const bool turn = box.grain && (f == 2 || f == 3) && ((box.grain == 2) != !!(rot & 1));
     MV v[4];
     for (int k = 0; k < 4; k++) {
       const int* cc = F.c[k];
       float X = cc[0] ? box.b[3] : box.b[0], Y = cc[1] ? box.b[4] : box.b[1], Z = cc[2] ? box.b[5] : box.b[2];
       vec2 st = shapeST(f, X, Y, Z);
       if (box.tv && f != 2 && f != 3) st.y += box.tv;
+      if (turn) std::swap(st.x, st.y);
       vec3 p = o + vec3(X, Y + lift, Z) * unit;
       v[k] = {p, st / 16.f, sk, bl, std::min(1.f, F.shade + 0.06f), swayFn ? (*swayFn)(p) : (u8)0};
     }
-    c.quad(d, v, tile, f, mat);
+    if (fitF) {   // stretch the picture over the face
+      vec2 mn(1e9f), mx(-1e9f);
+      for (auto& q : v) { mn = glm::min(mn, q.uv); mx = glm::max(mx, q.uv); }
+      for (auto& q : v) q.uv = (q.uv - mn) / glm::max(mx - mn, vec2(1e-4f));
+    }
+    c.quad(d, v, tile, f, fitF ? (u8)(mat | Mat::NoRelief) : mat);
   }
 }
 } // namespace

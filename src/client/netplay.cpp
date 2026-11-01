@@ -6,6 +6,7 @@
 #include "net/server_host.h"
 #include "mod/modloader.h"
 #include "ui/screen.h"
+#include "assets/char_creator.h"
 
 namespace dq {
 
@@ -14,11 +15,15 @@ static net::ServerHost* hostOf(App& app) { return app.session && app.session->le
 bool netIsGuest(App& app) { return clientOf(app) != nullptr; }
 bool netIsHosting(App& app) { return hostOf(app) != nullptr; }
 
+// skins received over the network go to the skin loader (net/protocol.h netSkinHook)
+static void skinHook() { if (!net::netSkinHook()) net::netSkinHook() = [](const std::string& ref, const json& payload) { registerNetSkin(ref, payload); }; }
+
 bool netJoin(App& app, const std::string& address, const std::string& password) {
   app.leaveWorld(false);
   auto nc = std::make_shared<net::NetClient>();
   net::JoinOptions o;
   o.address = address; o.name = app.settings.playerName; o.skin = app.settings.skin; o.password = password; o.viewDistance = app.settings.renderDist;
+  skinHook(); o.skinData = skinPayload(app.settings.skin);
   if (!nc->connect(o)) { app.toast(nc->error(), "bad"); return false; }
   return netJoinFinish(app, nc, address);
 }
@@ -27,6 +32,7 @@ std::shared_ptr<net::NetClient> netJoinBegin(App& app, const std::string& addres
   auto nc = std::make_shared<net::NetClient>();
   net::JoinOptions o;
   o.address = address; o.name = app.settings.playerName; o.skin = app.settings.skin; o.password = password; o.viewDistance = app.settings.renderDist;
+  skinHook(); o.skinData = skinPayload(app.settings.skin);
   if (!nc->begin(o)) return nc;   // nc->error() says why; state() is Failed
   return nc;
 }
@@ -57,6 +63,11 @@ bool openToLan(App& app, const LanOpenOptions& o, std::string* err) {
   net::HostOptions h;
   h.name = lv.info.name; h.hostName = app.settings.playerName; h.port = o.port; h.maxPlayers = o.maxPlayers; h.motd = o.motd;
   h.password = o.password; h.lan = o.announce; h.pvp = o.pvp; h.viewDistance = o.viewDistance; h.dedicated = false;
+  skinHook();
+  for (auto& e : lv.entities()) if (!e->removed && e->isPlayer() && !e->ghost) {   // our own players' skins, for the guests
+    const std::string& ref = static_cast<Player*>(e.get())->skin;
+    if (!ref.empty()) h.localSkins.push_back({ref, skinPayload(ref)});
+  }
   auto host = std::make_shared<net::ServerHost>(lv, h);
   std::string e;
   if (!host->start(&e)) { if (err) *err = e; app.toast("Could not open the world to LAN: " + e, "bad"); return false; }

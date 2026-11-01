@@ -3,6 +3,7 @@
 // object with short keys, like the original's JSON messages). Unknown types and unknown fields are ignored, so
 // later versions can add both; PROTO only changes when an old peer could no longer understand a new one.
 #pragma once
+#include <functional>
 #include "world/world.h"
 
 struct _ENetPacket;
@@ -24,9 +25,16 @@ enum Msg : u8 {
   HELLO = 1, ME = 2, SAVE = 3, BLK = 4, BE = 5, CHAT = 6, HIT = 7, ACT = 8, SPAWN = 9, PORTAL = 10, NEED = 11, BYE = 12,
   // server -> client (BLK and BE are also sent this way)
   REFUSE = 32, WELCOME = 33, CKDONE = 34, CK = 35, CS = 36, ES = 38, ENV = 39, FX = 40, MSG = 41, SELF = 42, PEER = 43,
-  FOLLOW = 44, KICK = 45, FLUSH = 46,
+  FOLLOW = 44, KICK = 45, FLUSH = 46, SKINS = 47,
 };
 const char* msgName(u8 t);
+
+// Skins over the network: a player's skin reference names a file on THEIR computer ("me.png", "creator:Bob"), so what
+// travels is the skin itself (a payload: {"png": base64, "slim"} or {"char": <the creator's character file>}). The host
+// names each one "net:<hash>" and sends it to everyone; whoever receives one hands it to this hook (the game registers
+// it with the skin loader, assets/char_creator.cpp registerNetSkin), and the players' "sk" carries the net name.
+std::function<void(const std::string& ref, const json& payload)>& netSkinHook();
+std::string netSkinRef(const json& payload);
 
 // Disconnect codes (enet_peer_disconnect data), like the original's WebSocket close codes
 enum Bye : u32 { BYE_NORMAL = 0, BYE_KICKED = 4000, BYE_CLOSED = 4001, BYE_REFUSED = 4002 };

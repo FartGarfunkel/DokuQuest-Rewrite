@@ -3,6 +3,7 @@
 // block-entity sync, entities as ghosts, chat, mod and plugin commands/events, server console commands
 // (give, tp, kick), movement checks, saved players and the server going away.
 //   test_net [--userdir DIR] [--port N]       exit code 0 = everything passed
+#include <set>
 #include "core/init.h"
 #include "server/server.h"
 #include "net/client.h"
@@ -18,6 +19,7 @@
 using namespace dq;
 
 static int fails = 0, passes = 0;
+static std::set<std::string> g_skinsSeen;   // skins handed to netSkinHook
 static void check(bool ok, const std::string& what) {
   printf("%s %s\n", ok ? "ok  " : "FAIL", what.c_str());
   (ok ? passes : fails)++;
@@ -41,6 +43,7 @@ struct Client {
   bool join(const std::string& addr, ThreadPool* pool) {
     nc = std::make_shared<net::NetClient>();
     net::JoinOptions o; o.address = addr; o.name = name; o.viewDistance = 3; o.timeout = 15;
+    o.skin = name + ".png"; o.skinData = {{"png", "c2tpbg=="}, {"slim", name == "Alice"}};   // (a stand-in picture: only the plumbing is checked)
     if (!nc->connect(o)) { err = nc->error(); nc.reset(); return false; }
     fs::path dir = userSub("cache") / "test" / name;
     std::error_code ec; fs::remove_all(dir, ec); fs::create_directories(dir, ec);
@@ -130,6 +133,7 @@ int main(int argc, char** argv) {
   ServerConfig cfg; cfg.world = "NetTest"; cfg.seed = "multiplayer"; cfg.port = port; cfg.motd = "Hello from the test server"; cfg.viewDistance = 4;
   DedicatedServer srv(cfg);
   std::string err;
+  net::netSkinHook() = [](const std::string& ref, const json&) { g_skinsSeen.insert(ref); };
   check(srv.start(&err), "server starts " + err);
   if (!srv.running()) return 1;
   std::string addr = "127.0.0.1:" + std::to_string(port);
@@ -182,6 +186,11 @@ int main(int argc, char** argv) {
   check(pump(6, [&] { return A.heard("Welcome, Bob!"); }), "plugin hears the join and DQ.say reaches everyone");
   check(pump(4, [&] { return B.heard("Hello from the test server"); }), "the welcome message (motd) arrives");
   check(pump(6, [&] { return A.ghost("player", "Bob") && B.ghost("player", "Alice"); }), "each sees the other as a ghost player");
+  {
+    Player* ga = B.ghost("player", "Alice") ? dynamic_cast<Player*>(B.ghost("player", "Alice")) : nullptr;
+    const std::string want = net::netSkinRef(json{{"png", "c2tpbg=="}, {"slim", true}});
+    check(ga && ga->skin == want && g_skinsSeen.count(want), "a player's skin travels with them: the others get it by its net name (" + (ga ? ga->skin : std::string("-")) + ")");
+  }
   check(A.me && A.me->id >= net::LOCAL_ID_BASE, "the local player has a client-side id");
 
   // wait until both have the ground round spawn

@@ -20,10 +20,15 @@ bool witherSkullAt(World& w, ivec3 p) {
 float dget(const Creature& m, const char* k, float d) { auto it = m.data.find(k); return it != m.data.end() && it->is_number() ? it->get<float>() : d; }
 } // namespace
 
-bool riftCoreAt(World& w, ivec3 p) { static const BlockId core = reg().blockId("rift_core"); return core && w.getBlock(p.x, p.y, p.z) == core; }
+// the Storm's heart: the humming rift core, or a command block (as in the story the Storm comes from)
+bool riftCoreAt(World& w, ivec3 p) {
+  static const BlockId core = reg().blockId("rift_core"), cmd = reg().blockId("command_block");
+  const BlockId id = w.getBlock(p.x, p.y, p.z);
+  return id && (id == core || id == cmd);
+}
 
-// a wither skeleton skull (or a rift core) was just set at `at`: does it finish a T of soul sand? Three skulls wake the
-// Wither; a rift core in the middle between two skulls wakes the Wither Storm
+// a wither skeleton skull (or a rift core / command block) was just set at `at`: does it finish a T of soul sand? Three
+// skulls wake the Wither; a rift core or a command block in the middle between two skulls wakes the Wither Storm
 bool tryWitherSummon(Level& lv, int realm, ivec3 at) {
   World& w = lv.world(realm);
   for (int axis = 0; axis < 2; axis++) {

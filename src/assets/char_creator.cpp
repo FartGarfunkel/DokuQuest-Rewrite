@@ -280,6 +280,33 @@ std::shared_ptr<const CharacterSpec> resolveCharacter(const std::string& ref) {
   return spec;
 }
 
+json skinPayload(const std::string& ref) {
+  if (ref.empty()) return json();
+  auto spec = resolveCharacter(ref);
+  if (!spec || !spec->skin.valid()) return json();
+  std::vector<u8> png = encodeSkinPng(spec->skin);
+  if (png.empty()) return json();
+  json j = {{"png", base64Encode(png.data(), png.size())}, {"slim", spec->skin.slim}};
+  if (!spec->body.plain()) j["body"] = spec->body.toJson();
+  if (!spec->cape.empty()) j["cape"] = spec->cape;
+  return j;
+}
+
+void registerNetSkin(const std::string& ref, const json& payload) {
+  if (!payload.is_object() || !payload.contains("png") || !payload["png"].is_string()) return;
+  auto spec = std::make_shared<CharacterSpec>();
+  spec->ref = ref;
+  auto png = base64Decode(payload["png"].get<std::string>());
+  std::string err;
+  if (png.empty() || !loadSkinPngData(png.data(), png.size(), spec->skin, &err)) { DQ_WARN("net skin %s: %s", ref.c_str(), err.c_str()); return; }
+  spec->skin.slim = payload.value("slim", spec->skin.slim);
+  if (payload.contains("body") && payload["body"].is_object()) spec->body = BodyShape::fromJson(payload["body"]);
+  spec->cape = payload.value("cape", std::string());
+  spec->hash = spec->skin.hash() ^ (spec->body.hash() * 31) ^ std::hash<std::string>()(spec->cape);
+  std::lock_guard<std::mutex> l(g_mu);
+  cache()[ref] = spec;
+}
+
 void invalidateCharacter(const std::string& ref) {
   std::lock_guard<std::mutex> l(g_mu);
   if (ref.empty()) cache().clear(); else cache().erase(ref);

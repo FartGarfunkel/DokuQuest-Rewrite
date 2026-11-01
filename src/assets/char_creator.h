@@ -80,6 +80,10 @@ struct CharacterSpec {
   u64 hash = 0;              // skin + body
 };
 std::shared_ptr<const CharacterSpec> resolveCharacter(const std::string& ref);   // cached; never null (falls back to the default skin)
+// skins over the network (net/protocol.h netSkinHook): what another computer needs to draw a reference (the picture,
+// arms, body shape and cape; null for none), and one received, registered under its net name for resolveCharacter
+json skinPayload(const std::string& ref);
+void registerNetSkin(const std::string& ref, const json& payload);
 void invalidateCharacter(const std::string& ref = "");                          // "" = all (after saving a skin or character)
 
 } // namespace dq

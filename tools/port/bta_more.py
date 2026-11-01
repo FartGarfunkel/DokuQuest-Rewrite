@@ -282,6 +282,15 @@ def main(d):
     recipe('string', 2, items_=['rotten_cloth'], extra=True)
     recipe('bed', 1, ['CCC', 'WWW', 'PPP'], {'C': 'rotten_cloth', 'W': '#wool' if '#wool' in rj.get('tags', {}) else 'wool', 'P': '#planks'}, extra=True)
 
+    # ---- campfire logs: bark all round, the ring on the log ends (stretched over them), the grain along each log ----
+    for cf in ('campfire', 'soul_campfire'):
+        for b in sj['shapes'].get(cf, []):
+            if b.get('side') != 'campfire_log': continue
+            x0, y0, z0, x1, y1, z1 = b['b']
+            b['end'] = 'campfire_log'; b['fit'] = True
+            if z1 - z0 > x1 - x0: b['z'] = 'campfire_log_end'; b['grain'] = 'z'; b.pop('x', None)
+            else: b['x'] = 'campfire_log_end'; b['grain'] = 'x'; b.pop('z', None)
+
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'shapes.json').write_text(json.dumps(sj, separators=(',', ':'), ensure_ascii=False))
     (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))

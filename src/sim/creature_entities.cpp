@@ -151,15 +151,22 @@ public:
       return;
     }
     if (kind == "wither_skull") {   // the Wither's skull: flies straight, bursts on what it hits and withers whoever it catches
-      if (age > 6) { removed = true; return; }
+      if (age > (data.value("deflected", false) ? 8 : 6)) { removed = true; return; }
       auto burst = [&]() {
         removed = true; ExplodeOpts o; o.source = data.value("owner", 0u);
         explode(lv, realm, pos, 1.2f, o);
         for (Entity* p : pawnsOf(lv, realm)) if (glm::distance(p->pos + vec3(0, 0.9f, 0), pos) < 3.f) if (auto* pl = dynamic_cast<Player*>(p)) giveEffect(lv, *pl, "wither", 8);
       };
+      const bool back = data.value("deflected", false);   // punched back: it flies for whoever hit it, and bites the Wither
       for (int s = 0; s < 3; s++) {
         pos += vel * (dt / 3);
-        for (Entity* p : pawnsOf(lv, realm)) if (std::fabs(p->pos.x - pos.x) < 0.5f && std::fabs(p->pos.z - pos.z) < 0.5f && pos.y > p->pos.y - 0.2f && pos.y < p->pos.y + 1.9f) {
+        if (back) if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.9f)) {
+          DamageSrc d; d.knock = 2;
+          const bool boss = c->type == "wither" || c->type == "wither_storm";
+          damageEntity(lv, *c, boss ? 12.f : 8.f, owner, "skull", d);   // "skull", not "projectile": its hardened bones don't turn it
+          burst(); return;
+        }
+        for (Entity* p : pawnsOf(lv, realm)) if (!(back && p == owner) && std::fabs(p->pos.x - pos.x) < 0.5f && std::fabs(p->pos.z - pos.z) < 0.5f && pos.y > p->pos.y - 0.2f && pos.y < p->pos.y + 1.9f) {
           DamageSrc d; d.knock = 2; damageEntity(lv, *p, 6, owner, "projectile", d); burst(); return;
         }
         if (solidAt(wd, pos)) { burst(); return; }

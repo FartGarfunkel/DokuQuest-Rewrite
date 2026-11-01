@@ -26,6 +26,7 @@ struct HostOptions {
   int viewDistance = 8;                    // chunks; a player's own setting is capped to this
   bool pvp = true;
   bool dedicated = true;                   // false = "Open to LAN" (the host plays in the same level)
+  std::vector<std::pair<std::string, json>> localSkins;   // the host's own players: their skin reference -> the skin (netSkinHook)
 };
 
 struct RCKey {
@@ -112,6 +113,7 @@ private:
   std::vector<Pending> pendingBlocks;                                       // changes to chunks still loading here
   std::vector<json> fxS, fxM, fxV, fxP;
   json bans, ops;
+  json skins = json::object();             // every player's skin by its net name (netSkinHook)
   std::vector<std::string> palette;
 
   Peer* peerOf(struct _ENetPeer* e);
@@ -146,6 +148,7 @@ private:
 std::string playerInvSig(const Player& p);   // what a player carries, in short (netInvSig)
 json playerInvJson(const Player& p);         // inv/armor/offhand/selected/xp/level
 void applyPlayerInv(Player& p, const json& j);
+std::unordered_map<std::string, std::string>& netSkinAliases();   // a host player's own skin reference -> its net name
 json entitySnapshot(const Entity& e);        // what clients see of an entity (the original's netSnap)
 
 void registerNetCommands();                  // /list /kick /ban /pardon /op /deop /msg (mod/register.cpp calls it)

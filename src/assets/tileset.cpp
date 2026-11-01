@@ -32,6 +32,7 @@ u32 TileSet::avgColor(int i) const {
   return 0xFF000000u | (u32)(b / n) << 16 | (u32)(g / n) << 8 | (u32)(r / n);
 }
 
+void unpackCampfireLog(TileSet& ts);
 bool loadBuiltinTiles(TileSet& ts) {
   auto tj = readJson(dataDir() / "tiles.json");
   if (!tj) { DQ_ERR("data/tiles.json missing"); return false; }
@@ -60,8 +61,32 @@ bool loadBuiltinTiles(TileSet& ts) {
   ts.emissive.assign((size_t)ts.count * S * S, 0);
   ts.res.assign(ts.count, (u8)S);
   if (tj->contains("res") && (*tj)["res"].is_array()) for (int t = 0; t < ts.count && t < (int)(*tj)["res"].size(); t++) ts.res[t] = (u8)(*tj)["res"][t].get<int>();
+  unpackCampfireLog(ts);
   deriveMicroVoxelHeights(ts);
   return true;
+}
+
+// A campfire log picture laid out like Minecraft's (the bark in a strip along the top quarter, the log's end ring in a
+// quarter-size square under it, the ash bed in the bottom half) is cut up for this game's log boxes: the bark strip is
+// repeated down the whole picture (so every log side shows bark, not the ash), and the ring becomes the end picture.
+void unpackCampfireLog(TileSet& ts) {
+  auto it = ts.index.find("campfire_log");
+  if (it == ts.index.end()) return;
+  const int S = ts.size, Q = S / 4;
+  u8* p = ts.tile(it->second);
+  auto A = [&](int x, int y) { return p[((size_t)y * S + x) * 4 + 3]; };
+  int empty = 0, n = 0, solid = 0, m = 0, ring = 0;
+  for (int y = Q; y < 2 * Q; y++) for (int x = Q + 1; x < S; x++) { n++; if (A(x, y) < 16) empty++; }
+  for (int y = 0; y < Q; y++) for (int x = 0; x < S; x++) { m++; if (A(x, y) > 200) solid++; }
+  for (int y = Q; y < 2 * Q; y++) for (int x = 0; x < Q; x++) if (A(x, y) > 200) ring++;
+  if (empty < n * 0.9 || solid < m * 0.9 || ring < Q * Q * 0.9) return;   // not that layout: the picture is a plain bark tile
+  std::vector<u8> src(p, p + (size_t)S * S * 4);
+  auto end = ts.index.find("campfire_log_end");
+  if (end != ts.index.end()) {
+    u8* e = ts.tile(end->second);
+    for (int y = 0; y < S; y++) for (int x = 0; x < S; x++) std::memcpy(e + ((size_t)y * S + x) * 4, &src[((size_t)(Q + y / 4) * S + x / 4) * 4], 4);
+  }
+  for (int y = 0; y < S; y++) std::memcpy(p + (size_t)y * S * 4, &src[(size_t)(y % Q) * S * 4], (size_t)S * 4);
 }
 
 int appendTile(TileSet& ts, const u8* px) {

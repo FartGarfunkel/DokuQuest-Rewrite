@@ -315,8 +315,8 @@ void PlayerController::interact(float dt, const PlayerInput& in) {
 
 float PlayerController::breakTime(BlockId id, const RayHit* hit) {
   const BlockDef& b = reg().block(id);
+  if (p.creative()) return 0.05f;   // creative breaks anything, bedrock and command blocks too (Minecraft)
   if (b.hardness < 0) return INFINITY;
-  if (p.creative()) return 0.05f;
   if (b.hardness == 0) return 0;
   const ToolInfo* tool = heldTool(p);
   bool right = tool && !b.tool.empty() && tool->type == b.tool;
@@ -674,7 +674,9 @@ public:
       float drag = std::max(0.f, 1 - h2 * 0.25f);
       vel *= drag;
       vec3 n = pos + vel * h2;
+      const bool glanced = data.value("glanced", false);
       for (auto& e : lv.entities()) {
+        if (glanced) break;   // turned aside by a Wither's hardened bones: it only falls now
         if (e->removed || e->realm != realm || e->id == owner || e->hp <= 0) continue;
         bool mob = isMob(*e), player = e->isPlayer();
         if (!mob && !(player && !(owner && lv.entity(owner) && lv.entity(owner)->isPlayer()))) continue;
@@ -686,6 +688,18 @@ public:
           // the Ranger's path (Eagle Eye, Deadeye at range, Poisoned Tips: sim/villager_quests.cpp)
           float pk = o && o->isPlayer() ? pathArrowFactor(*static_cast<Player*>(o), glm::distance(o->pos, e->pos)) : 1.f;
           float dealt = damageEntity(lv, *e, std::max(1.f, std::round(data.value("damage", 3.0f) * pk * speed / 30)), src);
+          if (dealt <= 0 && (e->type == "wither" || e->type == "wither_storm") && e->hp > 0) {
+            // below half its strength the Wither's bones harden: the arrow glances off (it doesn't vanish into it)
+            vel = vec3(-vel.x * 0.25f, 2.5f + std::fabs(vel.y) * 0.2f, -vel.z * 0.25f);
+            data["glanced"] = true;
+            lv.fx->particles("crit", n, 8);
+            lv.fx->material("metal", "place", n);
+            if (o && o->isPlayer() && !e->data.value("toldArmor", false)) {
+              e->data["toldArmor"] = true;
+              toast(lv, *static_cast<Player*>(o), "Its bones have hardened: arrows glance off. Strike it, or hit its skulls back!", "info");
+            }
+            return;
+          }
           if (dealt > 0 && o && o->isPlayer() && !e->isPlayer() && pathArrowPoisons(*static_cast<Player*>(o))) poisonCreature(*e, 4);
           if (data.value("flame", false) && !e->isPlayer()) igniteEntity(*e, 5);
           if (dealt > 0 && o && o->isPlayer()) { char buf[16]; snprintf(buf, sizeof buf, "%g", std::round(dealt * 10) / 10); floatText(lv, *static_cast<Player*>(o), e->pos + vec3(0, e->h + 0.2f, 0), buf, "#ffffff"); }

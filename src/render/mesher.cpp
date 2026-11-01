@@ -200,11 +200,15 @@ bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in) {
       }
     }
   }
-  for (const ivec3& h : meshHiddenBlocks()) {   // drawn elsewhere for now
+  auto hideAt = [&](const ivec3& h) {
     const int ox = h.x - k.cx * 16, oz = h.z - k.cz * 16, oy = h.y - baseY;
-    if (ox < -1 || ox > 16 || oz < -1 || oz > 16 || oy < MeshInput::Y0 || oy > 16) continue;
+    if (ox < -1 || ox > 16 || oz < -1 || oz > 16 || oy < MeshInput::Y0 || oy > 16) return;
     const int i = MeshInput::idx(ox, oy, oz); in.ids[i] = AIR; in.meta[i] = 0; in.carve[i] = 0;
-  }
+  };
+  for (const ivec3& h : meshHiddenBlocks()) hideAt(h);   // drawn elsewhere for now
+  // the open chest too (render/chest_layer.cpp draws it): as air here, the blocks beside it draw the faces it covered
+  // (they were left out against a solid chest, a hole into the world beside an open one)
+  if (g_chestHide.load(std::memory_order_relaxed)) hideAt(ivec3(g_chestHideX.load(), g_chestHideY.load(), g_chestHideZ.load()));
   return true;
 }
 

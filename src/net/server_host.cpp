@@ -22,6 +22,11 @@ static bool validPlayerName(const std::string& n) {
 ServerHost::ServerHost(Level& lv, HostOptions o) : opts(std::move(o)), level(lv) {
   for (auto& b : reg().blocks) palette.push_back(b.key);
   loadLists();
+  netSkinAliases().clear();
+  for (auto& [local, payload] : opts.localSkins) if (payload.is_object() && !payload.empty()) {
+    const std::string ref = netSkinRef(payload);
+    skins[ref] = payload; netSkinAliases()[local] = ref;
+  }
 }
 ServerHost::~ServerHost() {
   // the level may already be gone: stop() (while it's open) saves everyone and says goodbye; this only closes the port
@@ -251,6 +256,12 @@ void ServerHost::welcome(Peer& p, const json& m) {
     refuse(p, "The host is called " + name + " too. Pick another name in Players & Skins."); return;
   }
   p.hello = true; p.skin = m.value("skin", ""); p.R = clampv(m.value("R", 6), 2, 32);
+  // their skin itself: named for the network, drawn here too, and passed to everyone (below, after the welcome)
+  json skinNew;
+  if (m.contains("skinData") && m["skinData"].is_object() && !m["skinData"].empty() && m["skinData"].dump().size() < 400000) {
+    p.skin = netSkinRef(m["skinData"]);
+    if (!skins.contains(p.skin)) { skins[p.skin] = m["skinData"]; skinNew[p.skin] = m["skinData"]; if (netSkinHook()) netSkinHook()(p.skin, m["skinData"]); }
+  }
   p.joinedAt = nowSeconds(); p.lastMeAt = p.joinedAt; p.allowJumpUntil = p.joinedAt + 5;
   // their body here: as they left it, or new at spawn
   auto pl = std::make_unique<Player>();
@@ -270,6 +281,8 @@ void ServerHost::welcome(Peer& p, const json& m) {
             {"name", opts.name}, {"host", opts.hostName}, {"vd", std::min(p.R, opts.viewDistance)}, {"op", isOp(name)},
             {"dedicated", opts.dedicated}, {"version", DQ_VERSION}};
   send(p.enet, WELCOME, w);
+  send(p.enet, SKINS, {{"s", skins}});                              // everyone's skins (theirs too)
+  if (!skinNew.empty()) toAll(SKINS, {{"s", skinNew}}, p.id);      // and theirs to everyone else
   // the changed chunks round where they'll start come straight away
   updateRange(p, true);
   size_t n = p.ckQ.size();

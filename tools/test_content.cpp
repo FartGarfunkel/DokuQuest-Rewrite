@@ -11,9 +11,12 @@
 #include "sim/stable.h"
 #include "sim/places.h"
 #include "sim/farming.h"
+#include "sim/creature.h"
+#include "sim/creature_entities.h"
 #include <thread>
 #include <cstdio>
 using namespace dq;
+namespace dq { bool deflectFireball(Level& lv, Entity& by, vec3 eye, vec3 look, float reach); }   // sim/creature_entities.cpp
 
 static int fails = 0, passes = 0;
 static void check(bool ok, const std::string& what) { printf("%s %s\n", ok ? "ok  " : "FAIL", what.c_str()); (ok ? passes : fails)++; }
@@ -302,6 +305,28 @@ int main(int argc, char** argv) {
     check(use("rice", ivec3(8, Y, 22), FACE_PY), "  ...and with water beside it, it can be planted");
     int seeds = 0; for (int i = 0; i < 200; i++) if (!wildSeed().empty()) seeds++;
     check(seeds == 200, "long grass can give up a garden seed");
+  }
+  // ------------------------------------------------------------ the Wither: its skulls hit back hurt it, armoured or not
+  {
+    P->pos = vec3(8.5f, Y + 1, 8.5f); P->hp = 20;
+    Creature* wi = spawnCreature(*L, P->realm, "wither", vec3(8.5f, Y + 4, -2.5f));
+    check(wi != nullptr, "a Wither can be called up");
+    if (wi) {
+      wi->data["spawnT"] = 99.f;
+      for (int armoured = 0; armoured < 2; armoured++) {
+        if (armoured) wi->hp = wi->T->hp * 0.4f;
+        const float hp0 = wi->hp;
+        const vec3 eye = P->pos + vec3(0, 1.62f, 0), from = eye + vec3(0, 0, -2.5f);
+        Entity* sk = spawnProjectile(*L, P->realm, from, vec3(0, 0, 13), "wither_skull", wi);
+        const vec3 look = glm::normalize(wi->pos + vec3(0, wi->h * 0.5f, 0) - eye);
+        const bool hitBack = sk && deflectFireball(*L, *P, eye, glm::normalize(from - eye), 4.5f);
+        (void)look;
+        if (sk) { const vec3 c = wi->pos + vec3(0, wi->h * 0.5f, 0); sk->pos = c + vec3(0, 0, 2.5f); sk->vel = vec3(0, 0, -20); }   // flying straight back at it
+        tick(0.5);
+        check(hitBack && wi->hp < hp0, std::string("a Wither skull punched back hurts the Wither") + (armoured ? " (armoured too)" : "") + " (" + std::to_string(hp0) + " -> " + std::to_string(wi->hp) + ")");
+      }
+      wi->removed = true;
+    }
   }
   lvp->close();
   printf("\n%d passed, %d failed\n", passes, fails);

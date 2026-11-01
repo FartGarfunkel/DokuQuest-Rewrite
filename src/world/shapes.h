@@ -46,6 +46,9 @@ const BlockTraits& traits(BlockId id);
 struct ShapeBox {
   float b[6] = {0, 0, 0, 16, 16, 16};   // x0 y0 z0 x1 y1 z1 in pixels
   int side = -1, end = -1, xt = -1;     // tile layers (-1 = the block's own side / top+bottom tiles)
+  int zt = -1;                          // model boxes: the tile on the two z faces ("z"), like xt
+  bool fit = false;                     // model boxes: the xt/zt faces show their whole picture (log ends)
+  u8 grain = 0;                         // model boxes: the top and bottom picture's rows run along x (1) or z (2)
   int faces[6] = {-1, -1, -1, -1, -1, -1};   // per-face tiles (+x -x +y -y +z -z) when hasFaces
   bool hasFaces = false;
   bool nocol = false;                   // drawn but nothing to bump into
