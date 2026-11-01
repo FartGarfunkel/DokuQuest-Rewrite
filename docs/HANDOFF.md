@@ -44,6 +44,12 @@ BTA ideas only). alpha.9's notes are written in CHANGELOG/news (not released yet
     solid spans (skirt at tile edges). LodVertex is 16 bytes with the face's tile layer; distant.glsl textures each voxel
     face (uCell blocks a texture), grass/leaf/water tints as chunk.glsl, leaves drawn in their average colour (flag 8).
     DistantTerrain::draw binds TileTextures at units 5..10.
+  - Then (the user: "as good as Cubyz") the far land is generated for real: DistantTerrain::genFar generates chunks nobody
+    has loaded with DimGenerator::generate on a worker (priority 1000, 4 a job, 1-2 jobs), nearest first in square rings
+    out to min(range, 1024), summarizes them (summarizeChunk: sky flood instead of light for unlit chunks; buried rock
+    collapsed to the band's deep block). Summaries capped by trimSummaries (16000, farthest go, may be made again).
+    Generated ones (ChunkSummary::generated) are kept in <world>/lod_far.bin (zlib, block keys palette, tag = version/
+    genVersion/seed) and loaded on a worker before generating more. Big tiles rebuild at most every 6 s (Tile::madeAt).
   - Skylands trees looked at from outside the cloud bank (land on an island at -40,60 seed hello): cloud leaves render
     like every other leaf block (white, from the pack's oak leaves; trunks are the pack's dark birch). Nothing visibly
     broken; asked the user what they saw.

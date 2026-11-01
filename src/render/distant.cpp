@@ -41,6 +41,7 @@ struct DistantTerrain::Tile {
   u64 used = 0;
   bool dirty = false, building = false, ready = false;
   double readyAt = -1e9;          // when it was first made (its fade in)
+  double madeAt = -1e9;           // when it was last made: a big tile changing as the far land is generated waits a while
   float fadeIn = 1; vec4 fadeOut{0};   // this frame: how far in it has faded; a parent's four quarters, how far their children have
 };
 struct DistantTerrain::Band {
@@ -55,14 +56,55 @@ struct DistantTerrain::Band {
 };
 
 DistantTerrain::DistantTerrain() { for (int d = 0; d < DIM_COUNT; d++) { bands[d] = std::make_unique<Band>(); bands[d]->dim = d; } }
-DistantTerrain::~DistantTerrain() = default;
+DistantTerrain::~DistantTerrain() { saveFarCache(); }
+
+// ---- the far land's cache: header (magic, tag), the block keys used, then each chunk's voxel runs; zlib'd ----------
+namespace {
+void putU32(std::vector<u8>& o, u32 v) { for (int i = 0; i < 4; i++) o.push_back((u8)(v >> (8 * i))); }
+void putU16(std::vector<u8>& o, u16 v) { o.push_back((u8)v); o.push_back((u8)(v >> 8)); }
+struct Rd { const u8* p; size_t n, i = 0; bool ok = true;
+  u8 b() { if (i >= n) { ok = false; return 0; } return p[i++]; }
+  u16 h() { u16 a = b(); return (u16)(a | b() << 8); }
+  u32 w() { u32 a = h(); return a | (u32)h() << 16; } };
+}
+void DistantTerrain::saveFarCache() {
+  if (cacheFile.empty() || !cacheLoaded) return;
+  std::vector<std::pair<ChunkKey, const ChunkSummary*>> list;
+  for (auto& [k, sp] : sums) if (sp && sp->generated) list.push_back({k, sp.get()});
+  if (list.empty()) return;
+  const Registry& R = reg();
+  std::unordered_map<u16, u16> pal; std::vector<u16> ids;
+  for (auto& [k, sm] : list) for (auto& r : sm->runs) if (!pal.count(r.id)) { pal[r.id] = (u16)ids.size(); ids.push_back(r.id); }
+  std::vector<u8> o;
+  putU32(o, (u32)cacheTag.size()); o.insert(o.end(), cacheTag.begin(), cacheTag.end());
+  putU32(o, (u32)ids.size());
+  for (u16 id : ids) { const std::string& key = R.block(id).key; putU16(o, (u16)key.size()); o.insert(o.end(), key.begin(), key.end()); }
+  putU32(o, (u32)list.size());
+  for (auto& [k, sm] : list) {
+    putU32(o, (u32)k.dim); putU32(o, (u32)k.cx); putU32(o, (u32)k.cz);
+    for (u16 v : sm->start) putU16(o, v);
+    o.insert(o.end(), sm->temp, sm->temp + 64); o.insert(o.end(), sm->humid, sm->humid + 64);
+    for (auto& r : sm->runs) { o.push_back(r.y0); o.push_back(r.y1); putU16(o, pal[r.id]); }
+  }
+  std::vector<u8> z = zCompress(o.data(), o.size(), 3);
+  std::error_code ec; fs::path tmp = cacheFile; tmp += ".tmp";
+  if (FILE* f = std::fopen(tmp.string().c_str(), "wb")) {
+    const char magic[8] = {'D', 'Q', 'L', 'O', 'D', 'F', '1', 0};
+    std::fwrite(magic, 1, 8, f); u32 raw = (u32)o.size(); std::fwrite(&raw, 4, 1, f); std::fwrite(z.data(), 1, z.size(), f); std::fclose(f);
+    fs::rename(tmp, cacheFile, ec);
+    DQ_LOG("distant terrain: kept %zu generated chunks of far land (%.1f MB)", list.size(), z.size() / 1048576.0);
+  }
+}
 
 void DistantTerrain::reset() {
+  saveFarCache();
   for (auto& b : bands) { b->tiles.clear(); b->draw.clear(); b->want.clear(); b->active = false; }
   sums.clear(); sumRegions.clear(); seen.clear(); scanOrder.clear(); scanPos = 0;
   shared = std::make_shared<Shared>();   // results of jobs still running are dropped
   inFlight = 0; storedInFlight = 0; storedRequested = false; storedPos = 0; storedKeys.clear();
   gpuBytes = 0; tilesHeld = 0; summaries = 0;
+  genTried.clear(); genInFlight = 0; genCx = 1 << 30; genDim = -1; genRing = 0; genIdx = 0;
+  cacheFile.clear(); cacheLoaded = true;
 }
 
 void DistantTerrain::markDirty(int dim, int cx, int cz) {
@@ -87,16 +129,68 @@ void DistantTerrain::addSummary(const ChunkKey& k, std::shared_ptr<ChunkSummary>
   } else {
     sums[k] = s;
     sumRegions[rkey(k.dim, k.cx >> 4, k.cz >> 4)]++;
-    // kept small: at most twelve thousand chunks (a few hundred voxel runs each, about 20 MB)
-    if (sums.size() > 12000) {
-      auto v = sums.begin(); if (v->first == k) ++v;
-      auto rk = rkey(v->first.dim, v->first.cx >> 4, v->first.cz >> 4);
-      if (--sumRegions[rk] <= 0) sumRegions.erase(rk);
-      sums.erase(v);
-    }
+    // (kept small by trimSummaries: the farthest go first)
   }
   summaries = sums.size();
   if (changed && !quiet) markDirty(k.dim, k.cx, k.cz);
+}
+
+// at most sixteen thousand chunks' voxels (a few hundred runs each, about 25 MB): past that the farthest are let go (and
+// may be made again if you come back toward them)
+void DistantTerrain::trimSummaries(glm::dvec3 cam) {
+  const size_t CAP = 16000, KEEP = 14000;
+  if (sums.size() <= CAP) return;
+  std::vector<std::pair<double, ChunkKey>> v; v.reserve(sums.size());
+  for (auto& [k, s] : sums) v.push_back({std::hypot(k.cx * 16 + 8 - cam.x, k.cz * 16 + 8 - cam.z) + (k.dim == dimOfY((int)std::floor(cam.y)) ? 0 : 1e6), k});
+  std::nth_element(v.begin(), v.begin() + KEEP, v.end(), [](auto& a, auto& b) { return a.first < b.first; });
+  for (size_t i = KEEP; i < v.size(); i++) {
+    const ChunkKey& k = v[i].second;
+    auto rk = rkey(k.dim, k.cx >> 4, k.cz >> 4);
+    if (--sumRegions[rk] <= 0) sumRegions.erase(rk);
+    sums.erase(k); genTried.erase(k);
+  }
+  summaries = sums.size();
+}
+
+void DistantTerrain::genFar(World& w, int dim, glm::dvec3 cam, ThreadPool& pool) {
+  const int maxJobs = pool.threads() > 2 ? 2 : 1;
+  if (!gen || !colors || genInFlight >= maxJobs || dim < 0 || dim >= DIM_COUNT || !gen->forDim(dim)) return;
+  const int ccx = (int)std::floor(cam.x / 16), ccz = (int)std::floor(cam.z / 16);
+  if (ccx != genCx || ccz != genCz || dim != genDim) { genCx = ccx; genCz = ccz; genDim = dim; genRing = 0; genIdx = 0; }
+  // out to the far land's reach, at most 1024 blocks (past it the voxels are 32+ blocks wide: the generator's columns do)
+  const int maxRing = std::min(64, (int)(range / 16) + 1);
+  std::vector<ChunkKey> batch;
+  int looked = 0;
+  while (batch.size() < 4 && genRing <= maxRing && looked < 4096) {
+    const int r = genRing, n = r == 0 ? 1 : 8 * r;
+    if (genIdx >= n) { genRing++; genIdx = 0; continue; }
+    const int t = genIdx++, side = r ? t / (2 * r) : 0, off = r ? t % (2 * r) : 0;
+    const int dx = r == 0 ? 0 : side == 0 ? -r + off : side == 1 ? r : side == 2 ? r - off : -r;
+    const int dz = r == 0 ? 0 : side == 0 ? -r : side == 1 ? -r + off : side == 2 ? r : r - off;
+    looked++;
+    if (dx * dx + dz * dz > maxRing * maxRing) continue;
+    const ChunkKey k{dim, ccx + dx, ccz + dz};
+    if (sums.count(k) || seen.count(k) || genTried.count(k) || w.chunk(dim, k.cx, k.cz)) continue;
+    genTried.insert(k); batch.push_back(k);
+  }
+  if (batch.empty()) return;
+  genInFlight++;
+  auto sh = shared; auto g = gen; auto cols = colors;
+  pool.submit([sh, g, cols, batch] {
+    std::vector<std::pair<ChunkKey, std::shared_ptr<ChunkSummary>>> got;
+    for (const ChunkKey& k : batch) {
+      DimGenerator* dg = g->forDim(k.dim);
+      if (!dg) continue;
+      Chunk c(k.dim, k.cx, k.cz);
+      dg->generate(c);
+      c.recomputeMaxY();
+      auto sm = summarizeChunk(c, *cols); sm->generated = true;
+      got.push_back({k, sm});
+    }
+    std::lock_guard<std::mutex> lk(sh->mx);
+    for (auto& x : got) sh->gen.push_back(std::move(x));
+    sh->genBatches++;
+  }, 1000);
 }
 
 bool DistantTerrain::chunkReal(int dim, int cx, int cz) const {
@@ -200,7 +294,7 @@ void DistantTerrain::select(Band& b, double cx, double cz) {
     }
     if (t && t->ready) {
       t->fadeOut = vec4(0); t->fadeIn = (float)std::min(1.0, (clock - t->readyAt) / FADE_S);
-      b.draw.push_back(t); t->used = frame; if (t->dirty && !t->building) b.want.push_back({L, tx, tz, (float)mid + 400});
+      b.draw.push_back(t); t->used = frame; if (t->dirty && !t->building && clock - t->madeAt > (L >= 3 ? 6.0 : L >= 1 ? 1.5 : 0.0)) b.want.push_back({L, tx, tz, (float)mid + 400});
     }
     else if (!t) b.want.push_back({L, tx, tz, (float)(mid - (Lt - L) * 2000)});   // coarse ones first
     else t->used = frame;
@@ -254,12 +348,58 @@ void DistantTerrain::update(Level& lv, World& w, const FrameCtx& f, ThreadPool& 
     return;
   }
   lvl = &lv;
-  if (&w != worldFor || lv.gen != gen) { reset(); worldFor = &w; gen = lv.gen; store = w.regionStoreShared(); }
+  if (&w != worldFor || lv.gen != gen) {
+    reset(); worldFor = &w; gen = lv.gen; store = w.regionStoreShared();
+    // the far land made last time, out of the world's folder (on a worker; nothing is generated again till it's in)
+    if (!lv.folder.empty()) {
+      cacheFile = lv.folder / "lod_far.bin";
+      cacheTag = std::string(DQ_VERSION) + "/" + std::to_string(lv.info.genVersion) + "/" + std::to_string(lv.info.seed);
+      cacheLoaded = false;
+      auto sh = shared; fs::path file = cacheFile; std::string tag = cacheTag;
+      pool.submit([sh, file, tag] {
+        std::vector<std::pair<ChunkKey, std::shared_ptr<ChunkSummary>>> got;
+        std::vector<u8> blob;
+        if (FILE* f = std::fopen(file.string().c_str(), "rb")) {
+          std::fseek(f, 0, SEEK_END); long n = std::ftell(f); std::fseek(f, 0, SEEK_SET);
+          if (n > 12) { blob.resize((size_t)n); if (std::fread(blob.data(), 1, blob.size(), f) != blob.size()) blob.clear(); }
+          std::fclose(f);
+        }
+        std::vector<u8> raw;
+        if (blob.size() > 12 && std::memcmp(blob.data(), "DQLODF1", 8) == 0) {
+          u32 rawN; std::memcpy(&rawN, blob.data() + 8, 4);
+          if (zDecompress(blob.data() + 12, blob.size() - 12, raw, rawN)) {
+            Rd r{raw.data(), raw.size()};
+            const u32 tn = r.w(); std::string t(std::min<u32>(tn, 256), '\0'); for (auto& c : t) c = (char)r.b();
+            const u32 np = r.ok && t == tag ? r.w() : 0;
+            if (r.ok && t == tag && np < 65536) {
+              const Registry& R = reg();
+              std::vector<u16> ids(np);
+              for (auto& id : ids) { std::string key(std::min<u16>(r.h(), 200), '\0'); for (auto& c : key) c = (char)r.b(); id = R.blockId(key); }
+              const u32 count = r.w();
+              for (u32 q = 0; q < count && r.ok; q++) {
+                ChunkKey k{(int)r.w(), (int)r.w(), (int)r.w()};
+                auto sm = std::make_shared<ChunkSummary>(); sm->generated = true;
+                for (auto& v : sm->start) v = r.h();
+                for (auto& v : sm->temp) v = r.b();
+                for (auto& v : sm->humid) v = r.b();
+                sm->runs.resize(sm->start[64]);
+                for (auto& run : sm->runs) { run.y0 = r.b(); run.y1 = r.b(); u16 pi = r.h(); run.id = pi < ids.size() ? ids[pi] : AIR; }
+                if (r.ok && k.dim >= 0 && k.dim < DIM_COUNT) got.push_back({k, sm});
+              }
+            }
+          }
+        }
+        std::lock_guard<std::mutex> lk(sh->mx);
+        for (auto& x : got) sh->gen.push_back(std::move(x));
+        sh->cacheDone = true;
+      }, -50);
+    }
+  }
   std::string ck = tiles.packName + ":" + std::to_string(tiles.count);
   if (!colors || colorsFor != ck) {   // a new resource pack: the far land takes its colours
     colors = makeColorTable(tiles); colorsFor = ck;
     for (auto& b : bands) for (auto& [k, t] : b->tiles) t->dirty = true;
-    sums.clear(); sumRegions.clear(); seen.clear(); scanOrder.clear(); storedRequested = false; storedPos = 0;
+    sums.clear(); sumRegions.clear(); seen.clear(); scanOrder.clear(); storedRequested = false; storedPos = 0; genTried.clear(); genCx = 1 << 30;
   }
   // on a machine that can't keep up it draws closer by itself, and reaches back out when it can
   float fps = dt > 0 ? (float)(1.0 / dt) : 60.f, cap = st && st->fpsLimit > 0 ? (float)st->fpsLimit : 60.f;
@@ -272,7 +412,12 @@ void DistantTerrain::update(Level& lv, World& w, const FrameCtx& f, ThreadPool& 
   // results from the workers: summaries out of the save, finished tiles (uploaded within a budget)
   {
     std::vector<Done> done; std::vector<std::pair<ChunkKey, std::shared_ptr<ChunkSummary>>> got; std::vector<ChunkKey> stored; bool listed = false;
-    { std::lock_guard<std::mutex> lk(shared->mx); done.swap(shared->done); got.swap(shared->sums); if (shared->storedListed) { stored.swap(shared->stored); listed = true; shared->storedListed = false; } }
+    std::vector<std::pair<ChunkKey, std::shared_ptr<ChunkSummary>>> made; int batches = 0;
+    { std::lock_guard<std::mutex> lk(shared->mx); done.swap(shared->done); got.swap(shared->sums); made.swap(shared->gen); batches = shared->genBatches; shared->genBatches = 0;
+      if (shared->cacheDone) { shared->cacheDone = false; cacheLoaded = true; }
+      if (shared->storedListed) { stored.swap(shared->stored); listed = true; shared->storedListed = false; } }
+    genInFlight = std::max(0, genInFlight - batches);
+    for (auto& [k, s] : made) { genTried.insert(k); if (s && !seen.count(k) && !sums.count(k)) { addSummary(k, s, false); generated++; } }
     if (listed) { storedKeys = std::move(stored); storedPos = 0; }
     for (auto& [k, s] : got) { storedInFlight = std::max(0, storedInFlight - 1); if (s && !seen.count(k)) addSummary(k, s, false); }
     double t0 = nowSeconds(); size_t i = 0;
@@ -289,7 +434,7 @@ void DistantTerrain::update(Level& lv, World& w, const FrameCtx& f, ThreadPool& 
       if (quads) t.mesh.uploadQuads(d.out.verts.data(), d.out.verts.size() * sizeof(LodVertex), quads);
       else if (t.quads) t.mesh.release();
       if (!t.ready) t.readyAt = clock;   // (a remake of a tile already shown doesn't fade again)
-      t.quads = quads; t.bytes = d.out.verts.size() * sizeof(LodVertex) + 64; t.minY = d.out.minY; t.maxY = d.out.maxY; t.ready = true;
+      t.quads = quads; t.bytes = d.out.verts.size() * sizeof(LodVertex) + 64; t.minY = d.out.minY; t.maxY = d.out.maxY; t.ready = true; t.madeAt = clock;
       gpuBytes += t.bytes; built++;
       buildMsTotal += d.out.ms; buildMsMax = std::max(buildMsMax, d.out.ms);
       if ((nowSeconds() - t0) * 1000 > 3) { i++; break; }
@@ -326,8 +471,10 @@ void DistantTerrain::update(Level& lv, World& w, const FrameCtx& f, ThreadPool& 
   }
   // which lands: the one you're in (the only one drawn: game/seamless.js), and the one beyond the cloud bank
   // (Overworld <-> Skylands) made ready while you're in the bank, so it's there when you come out of it
-  for (auto& b : bands) b->active = false;
   int d = f.dim;
+  if (d != DIM_NETHER && cacheLoaded) genFar(w, d, f.cam.pos, pool);
+  trimSummaries(f.cam.pos);
+  for (auto& b : bands) b->active = false;
   if (d == DIM_NETHER) { setSkyFarRange(0); for (auto& b : bands) b->draw.clear(); drawn = 0; return; }   // a roofed land: the fog hides the far end
   setSkyFarRange(range);
   int maskR = std::min(40, R + 3);

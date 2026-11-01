@@ -31,6 +31,7 @@ struct ChunkSummary {
   u16 start[65] = {};                  // cell q's runs: runs[start[q] .. start[q + 1])
   std::vector<Run> runs;
   u8 temp[64] = {}, humid[64] = {};    // climate (grass and foliage tints)
+  bool generated = false;              // made by the generator for the far land alone (kept in the world's lod_far.bin)
 };
 
 // Average colours of every block from the current tiles (resource pack aware), shared with workers.
@@ -71,18 +72,27 @@ public:
   bool adaptive = true;         // draw closer by itself when the frame rate drops (distantFor)
   // stats (debug overlay, docs/port/lod.md)
   int drawn = 0, tilesHeld = 0, building = 0, built = 0;
-  size_t gpuBytes = 0, summaries = 0;
+  size_t gpuBytes = 0, summaries = 0, generated = 0;
   double buildMsTotal = 0, buildMsMax = 0;
 private:
   struct Tile;
   struct Band;
   struct Done { int dim, L, tx, tz; lod::TileOutput out; };
-  struct Shared { std::mutex mx; std::vector<Done> done; std::vector<std::pair<ChunkKey, std::shared_ptr<lod::ChunkSummary>>> sums; std::vector<ChunkKey> stored; bool storedListed = false; };
+  struct Shared { std::mutex mx; std::vector<Done> done; std::vector<std::pair<ChunkKey, std::shared_ptr<lod::ChunkSummary>>> sums, gen; int genBatches = 0; bool cacheDone = false; std::vector<ChunkKey> stored; bool storedListed = false; };
   void select(Band& b, double cx, double cz);
   void submit(Band& b, int L, int tx, int tz, ThreadPool& pool, float pri);
   void scanChunks(World& w, double now);
   void addSummary(const ChunkKey& k, std::shared_ptr<lod::ChunkSummary> s, bool quiet);
   void markDirty(int dim, int cx, int cz);
+  // Cubyz makes its far land with the world generator itself: the chunks nobody has been to are generated on a worker
+  // (caves, ravines, villages, lakes, trees), brought down to voxels and kept, nearest first
+  void genFar(World& w, int dim, glm::dvec3 cam, ThreadPool& pool);
+  void trimSummaries(glm::dvec3 cam);
+  // the far land generated so far is kept in the world's folder (lod_far.bin), so it's there at once next time
+  void saveFarCache();
+  fs::path cacheFile; std::string cacheTag; bool cacheLoaded = true;
+  std::unordered_set<ChunkKey, ChunkKeyHash> genTried;
+  int genInFlight = 0, genCx = 1 << 30, genCz = 0, genDim = -1, genRing = 0, genIdx = 0;
   void updateMask(Band& b, const FrameCtx& f, int maskR);
   bool chunkReal(int dim, int cx, int cz) const;
   std::unique_ptr<Band> bands[DIM_COUNT];

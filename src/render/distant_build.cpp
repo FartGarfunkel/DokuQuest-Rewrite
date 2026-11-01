@@ -72,26 +72,51 @@ std::shared_ptr<ColorTable> makeColorTable(const TileSet& tiles) {
 }
 
 // ---- a real chunk brought down to 2x2-block voxels, one block high (Cubyz: a level made from the one under it) ----
+// Works for chunks you've seen and for chunks the generator makes for the far land alone (DistantTerrain::genFar).
 std::shared_ptr<ChunkSummary> summarizeChunk(const Chunk& c, const ColorTable& ct) {
   (void)ct;
   auto S = std::make_shared<ChunkSummary>();
   const Registry& R = reg();
   const int top = std::min(DIM_H - 1, c.maxY + 1);
-  Col cols[4], m;
-  u8 lit[DIM_H];
+  static const BlockId DEEP[DIM_COUNT] = {R.blockId("end_stone"), R.blockId("netherrack"), R.blockId("stone"), R.blockId("skystone") ? R.blockId("skystone") : R.blockId("stone")};
+  const BlockId deep = c.dim >= 0 && c.dim < DIM_COUNT ? DEEP[c.dim] : AIR;
+  // where daylight gets in: the chunk's sky light, or (a chunk just generated, not lit) the air the open sky reaches
+  static thread_local std::vector<u8> sky;
+  const bool useLight = c.lightReady;
+  if (!useLight) {
+    const int H = top + 2, NN = 16 * 16 * H;
+    sky.assign(NN, 0);
+    static thread_local std::vector<int> q; q.clear();
+    auto idx = [&](int x, int y, int z) { return (y * 16 + z) * 16 + x; };
+    auto air = [&](int x, int y, int z) { return y > top || !lodSolid(R, c.get(x, y, z)); };
+    for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) { sky[idx(x, H - 1, z)] = 1; q.push_back(idx(x, H - 1, z)); }
+    for (size_t h = 0; h < q.size(); h++) {
+      const int i = q[h], x = i & 15, z = (i >> 4) & 15, y = i >> 8;
+      const int nx[6] = {x + 1, x - 1, x, x, x, x}, nz[6] = {z, z, z + 1, z - 1, z, z}, ny[6] = {y, y, y, y, y - 1, y + 1};
+      for (int d = 0; d < 6; d++) {
+        if (nx[d] < 0 || nx[d] > 15 || nz[d] < 0 || nz[d] > 15 || ny[d] < 0 || ny[d] >= H) continue;
+        const int j = idx(nx[d], ny[d], nz[d]);
+        if (sky[j] || !air(nx[d], ny[d], nz[d])) continue;
+        sky[j] = 1; q.push_back(j);
+      }
+    }
+  }
+  static thread_local std::vector<Col> cell; cell.resize(64);
+  Col cols[4];
+  static thread_local std::vector<std::array<u8, DIM_H>> lit; lit.resize(64);
   for (int j = 0; j < 8; j++) for (int i = 0; i < 8; i++) {
     const int k = j * 8 + i;
-    S->start[k] = (u16)S->runs.size();
-    std::memset(lit, 0, sizeof lit);
+    lit[k].fill(0);
     for (int s = 0; s < 4; s++) {
       const int x = i * 2 + (s & 1), z = j * 2 + (s >> 1);
       for (int y = 0; y < DIM_H; y++) {
         const BlockId id = y <= top ? c.get(x, y, z) : AIR;
         cols[s][y] = id;
-        if (!lodSolid(R, id) && c.lightReady && y <= top && (c.getLight(x, y, z) >> 4) > 0) lit[y] = 1;   // daylight gets in here
+        if (!lodSolid(R, id) && y <= top && (useLight ? (c.getLight(x, y, z) >> 4) > 0 : sky[((y * 16 + z) * 16 + x)] != 0)) lit[k][y] = 1;
       }
     }
     const Col* p[4] = {&cols[0], &cols[1], &cols[2], &cols[3]};
+    Col& m = cell[k];
     mergeCols(p, 4, R, m);
     // a hollow shut away underground (no daylight, under six blocks tall) is filled in: nobody sees it from afar
     for (int y = 1; y < DIM_H - 1;) {
@@ -99,10 +124,26 @@ std::shared_ptr<ChunkSummary> summarizeChunk(const Chunk& c, const ColorTable& c
       int y1 = y; while (y1 < DIM_H && !lodSolid(R, m[y1])) y1++;
       if (y1 >= DIM_H) break;   // open to the sky above
       bool open = y1 - y >= 6;
-      for (int q = y; q < y1 && !open; q++) open = lit[q];
+      for (int q = y; q < y1 && !open; q++) open = lit[k][q];
       if (!open) for (int q = y; q < y1; q++) m[q] = m[y1];
       y = y1;
     }
+  }
+  // buried voxels (rock on every side, well under the ground's top) become plain rock, so a column is a few runs, not
+  // dozens (ores, slate, bedrock): nobody sees them, and a cliff in the next chunk shows rock there anyway
+  auto solidAt = [&](int i, int j, int y) { return i < 0 || i > 7 || j < 0 || j > 7 || lodSolid(R, cell[j * 8 + i][y]); };
+  if (deep) for (int j = 0; j < 8; j++) for (int i = 0; i < 8; i++) {
+    Col& m = cell[j * 8 + i];
+    int yTop = -1; for (int y = DIM_H - 1; y >= 0; y--) if (lodSolid(R, m[y])) { yTop = y; break; }
+    for (int y = 1; y < yTop - 4; y++) {
+      if (!lodSolid(R, m[y]) || R.tLiquid[m[y]] || !lodSolid(R, m[y - 1]) || !lodSolid(R, m[y + 1])) continue;
+      if (solidAt(i - 1, j, y) && solidAt(i + 1, j, y) && solidAt(i, j - 1, y) && solidAt(i, j + 1, y)) m[y] = deep;
+    }
+  }
+  for (int j = 0; j < 8; j++) for (int i = 0; i < 8; i++) {
+    const int k = j * 8 + i;
+    const Col& m = cell[k];
+    S->start[k] = (u16)S->runs.size();
     for (int y = 0; y < DIM_H; y++) {
       if (!lodSolid(R, m[y])) continue;
       if (S->runs.size() > S->start[k] && S->runs.back().id == m[y] && S->runs.back().y1 + 1 == y) { S->runs.back().y1 = (u8)y; continue; }

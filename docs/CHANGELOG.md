@@ -29,7 +29,8 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 
 - **Dreamlike lighting** (Options → Graphics → Lighting): a soft glow round bright things, golden light when the sun is low, soft focus and a warm halo round a low sun. After the Horizon project's shaders; Classic turns it off.
 - **Far land fades in** instead of popping, and floating islands far off show their stone undersides.
-- **Far land is made of voxels now, like Cubyz's:** textured with the blocks' own pictures (stone cliffs, snowy peaks, sand, brick builds), coarser the further it is, each coarse voxel taking the block that shows the most. Where you've been it keeps its true shape far off: overhangs, arches, bridges and cave mouths instead of solid columns. Trees far off are voxel crowns, and the Nether's roof goes on into the distance.
+- **Far land is made of voxels now, like Cubyz's:** textured with the blocks' own pictures (stone cliffs, snowy peaks, sand, brick builds), coarser the further it is, each coarse voxel taking the block that shows the most.
+- **And it's the real world out there:** the land you haven't been to yet is made by the world generator itself in the background, nearest first, so caves and ravines, natural arches, villages and towers, lakes, ice floes and real trees show far off as they are, overhangs and all. It's kept in the world's folder, so next time it's there at once.
 - **Raised micro-voxels on every textured block:** sand, dirt, terracotta, netherrack, granite and the other softer pictures stand out in relief too (they were flat).
 
 **More from Better than Adventure:**

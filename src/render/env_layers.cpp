@@ -27,7 +27,7 @@ public:
   const char* name() const override { return "distant"; }
   int order() const override { return -20; }
   ~DistantLayer() override {
-    if (lod.built) DQ_LOG("distant terrain: %d tiles built, avg %.2f ms, max %.2f ms, %d held, %.1f MB GPU, %zu chunk summaries", lod.built, lod.buildMsTotal / lod.built, lod.buildMsMax, lod.tilesHeld, lod.gpuBytes / 1048576.0, lod.summaries);
+    if (lod.built) DQ_LOG("distant terrain: %d tiles built, avg %.2f ms, max %.2f ms, %d held, %.1f MB GPU, %zu chunk summaries (%zu generated for the far land)", lod.built, lod.buildMsTotal / lod.built, lod.buildMsMax, lod.tilesHeld, lod.gpuBytes / 1048576.0, lod.summaries, lod.generated);
   }
   void update(GameSession& s, double dt) override {
     // DQ_ENV_TEST="x y z yaw pitch [dayTime] [clear|rain|thunder|front]": hold the player there (testing the sky, weather and far land)
