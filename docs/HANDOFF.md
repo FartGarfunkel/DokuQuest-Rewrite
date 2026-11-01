@@ -213,6 +213,16 @@ Then (2026-10-31 night, the user asked for a faster pace, all on `chisel`, alpha
 - Answered the user: items are already true voxel models; "detail blocks" (any block a 16^3 grid of 6.25 cm voxels:
   storage, mesher, collision, picking, water, chisel) is the recommended path if they want 6 cm building; a full 6 cm
   world is not. Waiting for their answer (16 or 32 per block).
+- BTA batch: hotbar rows on Tab; fishing-rod leads (fishing.h Bobber::Hooked + mob; reel = tug, > 14 snaps;
+  playtest rodlead.json); sponges soak water on placing (usables.cpp blockPlace hook -> next tick, 6 steps / 65 blocks)
+  -> wet_sponge (bta_blocks.py; smelts back); a wet sponge used on dyed wool/glass/terracotta/painted planks washes
+  it; furnace carts take any fuel (fuelValue x 22.5 s); coloured twinkling stars (sky.glsl); achievements
+  (sim/achievements.cpp list + checks once a second from data["found"]/place/state + mobDeath/fishCaught/morning;
+  ui/achievements_screen.cpp, menu tab "achievements" last); colour-blind filters (render/colour_filter_layer.cpp,
+  colour_filter.glsl, Settings::colorFilter, Options -> Graphics); Adventure/Spectator modes (controller interact,
+  build placeBlock, player.cpp no-clip, combat damagePlayer; New World "Adventure", World settings all four).
+- Fixed: tab switching from the inventory skipped a tab (ui_main.cpp g_tabSwitchFrame); pad Y in a container closed
+  it (inventory.cpp: the toggle is for the plain inventory only). No spawn egg for wither_storm (spawn_eggs.py SKIP).
 - The full playtest run (/tmp/pt/run.sh pattern: every tools/playtests/*.json with --create P) shows all.json and
   containers.json are stale: they expect a world called T1 (`open`), the old pad-Y quick move (Y now closes the
   inventory if nothing was done yet) and the old menu tab order.
