@@ -22,6 +22,8 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Settings are laid out like the launcher's Options:** Graphics, Packs, Sound, Controls and Game, in two columns, each option with a line about it.
 - **Music frequency:** a new setting for how often music plays, from rarely to nearly always.
 - **Leather, pelts, hides and saddles aren't paper-flat in your hand any more,** and paper, feathers and maps keep a sliver of body.
+- **Switching menu tabs from the inventory (Q / LB / RB) goes to the next tab** instead of skipping one.
+- **In a chest or furnace on a controller, Y quick-moves straight away again instead of closing the menu.**
 
 **New in the world:**
 
@@ -48,7 +50,6 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Treading water:** hold jump with your head out of the water and you float at the waterline, bobbing gently, instead of popping out and splashing back.
 - **Capes stream in the wind** out under the sky, gusting with the weather; indoors and in caves they hang still.
 - **Ingots set down stack Vintage Story-style,** four across, each layer turned across the last.
-- **A torch in hand burns,** with a thread of smoke behind you.
 - `/locate <structure>` finds the nearest one of a kind.
 - **Chiseled blocks hold water:** slabs and stairs placed in water keep it in their carved-away part, a bucket fills or empties a chiseled block, and a notch carved under water fills.
 - **Coloured lamps** in 16 colours, the **inverted lamp** (it shines while unpowered), and **iron, gold, lapis and steel bricks.**
@@ -83,8 +84,6 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Stars come in colours** (BTA): mostly white, some blue, yellow, orange and red, and they twinkle a little.
 - **Achievements** (BTA): 27 of them, from Getting Wood to The End., on their own tab beside the Stable. A toast when you earn one, and the date you did.
 - **Colour filters** for colour blindness (Options → Graphics → Colour filter): red-blind, green-blind and blue-blind, shifting the colours you may not tell apart into ones you can.
-- Fixed: switching menu tabs from the inventory (Q / LB / RB) skipped a tab.
-- Fixed: in a chest or furnace on a controller, Y quick-moves straight away again instead of closing the menu.
 
 **Gear and magic:**
 

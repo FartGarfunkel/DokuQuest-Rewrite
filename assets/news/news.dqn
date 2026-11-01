@@ -1,6 +1,8 @@
 # DokuQuest patch notes for the C++ versions, newest first (shown in the launcher's news panel).
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
+- **Switching menu tabs from the inventory (Q / LB / RB) goes to the next tab** instead of skipping one.
+- **In a chest or furnace on a controller, Y quick-moves straight away again instead of closing the menu.**
 
 ## Alpha 1.0.0.8 — Far Lands | November 2026
 **Fixes from your play:**
@@ -39,7 +41,6 @@
 - **Treading water:** hold jump with your head out of the water and you float at the waterline, bobbing gently, instead of popping out and splashing back.
 - **Capes stream in the wind** out under the sky, gusting with the weather; indoors and in caves they hang still.
 - **Ingots set down stack Vintage Story-style,** four across, each layer turned across the last.
-- **A torch in hand burns,** with a thread of smoke behind you.
 - `/locate <structure>` finds the nearest one of a kind.
 - **Chiseled blocks hold water:** slabs and stairs placed in water keep it in their carved-away part, a bucket fills or empties a chiseled block, and a notch carved under water fills.
 - **Coloured lamps** in 16 colours, the **inverted lamp** (it shines while unpowered), and **iron, gold, lapis and steel bricks.**
@@ -74,8 +75,6 @@
 - **Stars come in colours** (BTA): mostly white, some blue, yellow, orange and red, and they twinkle a little.
 - **Achievements** (BTA): 27 of them, from Getting Wood to The End., on their own tab beside the Stable. A toast when you earn one, and the date you did.
 - **Colour filters** for colour blindness (Options → Graphics → Colour filter): red-blind, green-blind and blue-blind, shifting the colours you may not tell apart into ones you can.
-- Fixed: switching menu tabs from the inventory (Q / LB / RB) skipped a tab.
-- Fixed: in a chest or furnace on a controller, Y quick-moves straight away again instead of closing the menu.
 **Gear and magic:**
 - **The Tool Forge:** put in flint, an ingot, a gem, obsidian or emberglass and forge a pickaxe, axe, shovel, sword or hoe head. A head and a haft make the tool: a stick for the plain one, bone for a sturdier one, a cinder rod for a fast, hot one (its blades burn), steel for one that lasts. Ruby, sapphire, obsidian, flint and emberglass tools are new.
 - **A spell in each hand.** The spellbook readies the right hand as before; L, X or right-click readies the left. While your left hand is free (empty, or holding a second staff), it casts with every cast.
