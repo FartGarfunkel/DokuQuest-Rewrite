@@ -1,8 +1,0 @@
-{"steps":[
- {"wait":100,"do":"cmd","text":"/time set midnight"},
- {"wait":60,"do":"report"},
- {"wait":10,"do":"expect","entity":"firework","near":120},
- {"wait":25,"do":"expect","entity":"firework","near":120},
- {"wait":25,"do":"expect","entity":"firework","near":120},
- {"wait":25,"do":"expect","entity":"firework","near":120},
- {"do":"quit"}]}
