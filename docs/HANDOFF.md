@@ -126,6 +126,10 @@ Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`.
   5. If it fails, `gh run rerun --failed` once.
   - Versions: alpha.7 next, then alpha.7.1, ... Never alpha.N.10, because GitHub sorts it below .9.
   - Session limits: we can't delete or edit releases from here. GraphQL is blocked (use the REST `gh api`).
+  - CI (ci.yml) builds Linux only; the first Windows build is the release's. **Never declare a function inside a
+    block** (`{ void registerX(); registerX(); }`): MSVC gives it the global namespace and the Windows link fails
+    (alpha.8's first release run lost its Windows zip to 25 of these). Declare it at namespace scope; ci.yml now
+    fails on that pattern. A release re-run uploads onto the existing release with --clobber.
   - `pkill -f` on a pattern that appears in your own command kills your shell: use `[x]` tricks, or run it alone.
 - **Reference sources** (re-extract if /tmp was wiped):
   - Horizon: `/mnt/user-data/attachments/cf5aa8f7-9a50-50d5-8270-c5644c73a5ee/88ea2ea7-rust-main.zip`
