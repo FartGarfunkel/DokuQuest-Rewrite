@@ -499,6 +499,18 @@ static void rigLife(Creature& m, const RigModel& d, Pose& P) {
     if (!m.lookAt || a > 0.3f) { vec3& h = P.at("head"); h.y += L.look * (1 - a); h.z += L.cock * (1 - a); }
   }
   if (!dead && a < 0.2f && kind != "slime") P.lift += std::sin(t * 1.9f + m.id) * 0.006f;
+  // Story Mode-style weight: an attack carries the whole body into it (a lunge, then the follow-through settles), and a
+  // biped standing about looks round now and then, each its own way
+  if (!dead && m.swingT > 0 && (kind == "biped" || kind == "quad")) {
+    const float u = clampv(1 - m.swingT / 0.3f, 0.f, 1.f), k = std::sin(u * PI), over = u > 0.6f ? std::sin((u - 0.6f) / 0.4f * PI) * 0.35f : 0;
+    if (kind == "biped") { P.add("body", 0.22f * k - 0.06f * over, 0, 0); P.add("head", -0.12f * k, 0, 0); P.add("legL", -0.25f * k, 0, 0); P.add("legR", 0.2f * k, 0, 0); }
+    else { P.pitch += 0.14f * k - 0.05f * over; P.add("head", 0.3f * k, 0, 0); P.lift -= 0.03f * k; }
+  }
+  if (!dead && kind == "biped" && a < 0.05f && ground && !m.lookAt && P.any("head")) {
+    const float cyc = std::fmod(t * 0.11f + (m.id % 97) * 0.37f, 1.f);   // about every nine seconds, a slow look to one side and back
+    const float e = cyc < 0.35f ? std::sin(cyc / 0.35f * PI) : 0;
+    P.add("head", -0.05f * e, ((m.id >> 3) & 1 ? 1 : -1) * 0.7f * e * e, 0);
+  }
   if (dead) {   // knees buckle, limbs go limp (the fall itself is in creatureBase)
     float k = clampv(m.deathTime / 0.3f, 0.f, 1.f);
     if (kind == "biped") {
