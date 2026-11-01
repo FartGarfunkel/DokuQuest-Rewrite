@@ -32,6 +32,9 @@ uniform vec3 uMaskO;                   // mask corner relative to the camera's b
 uniform vec4 uFront, uTrail, uStorm;   // the weather (game/skies.js stormAt)
 uniform vec2 uAnchor;                  // relative to the camera's block
 uniform vec3 uRainCol;
+uniform float uFadeIn;                 // a new tile fading in (dithered: Horizon's fade, render/distant.cpp)
+uniform vec4 uFadeOut;                 // a parent under its new children: each quarter as far gone as its child has come
+uniform float uTileSize;
 in vec4 vCol;
 in vec3 vPos;
 in vec3 vRel;
@@ -44,7 +47,18 @@ float stormAt(vec2 p) {
   if (uFront.w > 0.5) s = max(s, clamp((dot(r, uFront.xy) - uFront.z) / uStorm.z + 0.5, 0.0, 1.0));
   return s * s * (3.0 - 2.0 * s);
 }
+float bayer4(vec2 p) {   // a 4x4 ordered dither, 1/32 .. 31/32
+  ivec2 q = ivec2(mod(p, 4.0));
+  int m[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
+  return (float(m[q.y * 4 + q.x]) + 0.5) / 16.0;
+}
 void main() {
+  float th = bayer4(gl_FragCoord.xy);
+  if (th > uFadeIn) discard;
+  if (uFadeOut != vec4(0.0)) {
+    int q = (vLocal.x >= uTileSize * 0.5 ? 1 : 0) + (vLocal.y >= uTileSize * 0.5 ? 2 : 0);
+    if (th <= uFadeOut[q]) discard;
+  }
   // where a real chunk is drawn, it's drawn instead (chunk by chunk, so while chunks are still loading this fills in)
   vec2 mp = (vPos.xz - uMaskO.xy) / uMaskO.z;
   if (mp.x >= 0.0 && mp.y >= 0.0 && mp.x < 1.0 && mp.y < 1.0 && texture(uMask, mp).r > 0.5) discard;

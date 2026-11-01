@@ -31,12 +31,15 @@ u32 chunkHash(const Chunk& c) {
 }
 } // namespace
 
+constexpr double FADE_S = 0.9;   // seconds a new tile takes to fade in
 struct DistantTerrain::Tile {
   int L = 0, tx = 0, tz = 0;
   Mesh mesh; size_t quads = 0; size_t bytes = 0;
   float minY = 0, maxY = 0;
   u64 used = 0;
   bool dirty = false, building = false, ready = false;
+  double readyAt = -1e9;          // when it was first made (its fade in)
+  float fadeIn = 1; vec4 fadeOut{0};   // this frame: how far in it has faded; a parent's four quarters, how far their children have
 };
 struct DistantTerrain::Band {
   int dim = 0;
@@ -177,10 +180,24 @@ void DistantTerrain::select(Band& b, double cx, double cz) {
         auto kt = b.tiles.find(tkey(L - 1, a, c));
         if (kt == b.tiles.end() || !kt->second->ready) ready = false;
       }
-      if (ready) { for (int q = 0; q < 4; q++) if (live >> q & 1) visit(L - 1, tx * 2 + (q & 1), tz * 2 + (q >> 1)); return; }
+      if (ready) {
+        for (int q = 0; q < 4; q++) if (live >> q & 1) visit(L - 1, tx * 2 + (q & 1), tz * 2 + (q >> 1));
+        // the finer tiles fade in over this one (a dither, pixel by pixel: Horizon's fade), so the land doesn't pop
+        vec4 fo(0); bool fading = false;
+        for (int q = 0; q < 4; q++) if (live >> q & 1) {
+          auto kt = b.tiles.find(tkey(L - 1, tx * 2 + (q & 1), tz * 2 + (q >> 1)));
+          float f = kt == b.tiles.end() ? 1.f : (float)std::min(1.0, (clock - kt->second->readyAt) / FADE_S);
+          fo[q] = f; if (f < 1) fading = true;
+        }
+        if (fading && t && t->ready) { t->fadeIn = 1; t->fadeOut = fo; b.draw.push_back(t); t->used = frame; }
+        return;
+      }
       for (int q = 0; q < 4; q++) if (live >> q & 1) { int a = tx * 2 + (q & 1), c = tz * 2 + (q >> 1); if (!b.tiles.count(tkey(L - 1, a, c))) b.want.push_back({L - 1, a, c, (float)mid}); }
     }
-    if (t && t->ready) { b.draw.push_back(t); t->used = frame; if (t->dirty && !t->building) b.want.push_back({L, tx, tz, (float)mid + 400}); }
+    if (t && t->ready) {
+      t->fadeOut = vec4(0); t->fadeIn = (float)std::min(1.0, (clock - t->readyAt) / FADE_S);
+      b.draw.push_back(t); t->used = frame; if (t->dirty && !t->building) b.want.push_back({L, tx, tz, (float)mid + 400});
+    }
     else if (!t) b.want.push_back({L, tx, tz, (float)(mid - (Lt - L) * 2000)});   // coarse ones first
     else t->used = frame;
   };
@@ -263,6 +280,7 @@ void DistantTerrain::update(Level& lv, World& w, const FrameCtx& f, ThreadPool& 
       t.mesh.setup(sizeof(LodVertex), LOD_ATTRS);
       if (quads) t.mesh.uploadQuads(d.out.verts.data(), d.out.verts.size() * sizeof(LodVertex), quads);
       else if (t.quads) t.mesh.release();
+      if (!t.ready) t.readyAt = clock;   // (a remake of a tile already shown doesn't fade again)
       t.quads = quads; t.bytes = d.out.verts.size() * sizeof(LodVertex) + 64; t.minY = d.out.minY; t.maxY = d.out.maxY; t.ready = true;
       gpuBytes += t.bytes; built++;
       buildMsTotal += d.out.ms; buildMsMax = std::max(buildMsMax, d.out.ms);
@@ -394,6 +412,7 @@ void DistantTerrain::draw(const FrameCtx& f, const SkyEnv& env) {
       glUniform1f(locS, size / 32768.f);
       glUniform1f(locC, (float)cellSize(t->L));
       glUniform2f(locW, (float)std::fmod(wx, 8192.0), (float)std::fmod(wz, 8192.0));
+      shader.set("uFadeIn", t->fadeIn); shader.set("uFadeOut", t->fadeOut); shader.set("uTileSize", (float)size);
       t->mesh.draw();
       drawn++;
     }

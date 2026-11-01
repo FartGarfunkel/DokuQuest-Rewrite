@@ -116,7 +116,7 @@ void SkylandsGen::sample(int wx, int wz, ColumnSample& s) const {
   if (mask <= 0.05) { s.height = -1; return; }
   const int topY = 70 + jsFloor(nHill.fbm2(wx / 60.0, wz / 60.0, 3) * 10);
   const double thick = underside(mask), n = nCave1.noise3(wx / 30.0, (topY - thick * 0.5) / 20.0, wz / 30.0) * 0.4;
-  s.height = (i16)(topY + SKY_DY); s.top = B.sky_grass; s.under = B.dirt;
+  s.height = (i16)(topY + SKY_DY); s.top = B.sky_grass; s.under = B.skystone ? B.skystone : B.dirt;   // (the island's mass, seen from afar: its walls and underside are skystone)
   s.floatBottom = (i16)(std::max(21, topY - std::max(0, (int)std::ceil(thick * (0.6 + n)) - 1)) + SKY_DY);
 }
 
