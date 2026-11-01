@@ -34,7 +34,18 @@ static void onScreenOpen(App& a, const json& args) {
   InvOpen io;
   if (o.contains("pos") && o["pos"].is_array() && o["pos"].size() == 3) { io.hasPos = true; io.pos = ivec3(o["pos"][0].get<int>(), o["pos"][1].get<int>(), o["pos"][2].get<int>()); }
   std::function<std::unique_ptr<Screen>()> make;
-  if (kind == "container") { io.mode = "container"; io.ender = o.value("ender", false); io.heldPack = o.value("held", false); }
+  if (kind == "container") {
+    io.mode = "container"; io.ender = o.value("ender", false); io.heldPack = o.value("held", false);
+    if (o.value("party", false)) {   // the party chest: one 27-slot store in the world's data, the same from every party chest
+      Level* lv = a.session->level.get();
+      io.entItems = [lv]() -> json* {
+        json& d = lv->info.data["partyChest"];
+        if (!d.is_array() || d.size() != 27) { json n = json::array(); for (int i = 0; i < 27; i++) n.push_back(i < (int)(d.is_array() ? d.size() : 0) ? d[i] : json()); d = n; }
+        return &d;
+      };
+      io.entTitle = "Party Chest"; io.hasPos = false;
+    }
+  }
   else if (kind == "table") io.mode = "table";
   else if (kind == "furnace") io.mode = "furnace";
   else if (kind == "station") {
@@ -48,7 +59,7 @@ static void onScreenOpen(App& a, const json& args) {
   else if (kind == "sign") { if (!io.hasPos) return; ivec3 p = io.pos; make = [p] { return makeSignScreen(p); }; }
   else if (kind == "lectern") { if (!io.hasPos) return; ivec3 p = io.pos; make = [p] { return makeLecternScreen(p); }; }
   else { hudToast("That screen isn't in this build yet", "warn"); return; }
-  if (io.mode == "container" && !io.hasPos && !io.ender && !io.heldPack) { if (!o.contains("entity")) hudToast("That screen isn't in this build yet", "warn"); return; }
+  if (io.mode == "container" && !io.hasPos && !io.ender && !io.heldPack && !io.entItems) { if (!o.contains("entity")) hudToast("That screen isn't in this build yet", "warn"); return; }
   if (!make) make = [io] { return makeInventoryScreen(io); };
   uiDefer([make](App& a2) {
     if (!a2.session || !a2.session->player) return;

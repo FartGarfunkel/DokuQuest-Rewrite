@@ -576,6 +576,7 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
     }
     return false;
   }
+  if (b.has("partyChest")) { swingArm(); sfxUi(lv, p, "chest"); openScreen(lv, p, "container", {{"party", true}}); return true; }
   if (b.has("enderChest")) { swingArm(); sfxUi(lv, p, "chest"); openScreen(lv, p, "container", {{"ender", true}}); return true; }
   if (b.has("station")) {
     swingArm();

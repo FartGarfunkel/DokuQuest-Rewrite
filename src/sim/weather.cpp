@@ -160,7 +160,7 @@ std::string WeatherSystem::skyZone(Level& lv, float x, float z) const {
 
 float seasonPhase(const Level& lv) {
   const json& R = lv.info.rules;
-  if (R.is_object() && R.contains("seasons") && R["seasons"] == false) return -1;
+  if (!R.is_object() || !R.contains("seasons") || R["seasons"] != true) return -1;   // off unless the world turns them on
   const double dayLen = 1200;   // (the original's day: 20 minutes)
   const double days = (double)lv.info.day + std::fmod(std::max(0.0, lv.info.time), dayLen) / dayLen;
   return (float)std::fmod(days / 7.0, 4.0);

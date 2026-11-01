@@ -2,6 +2,7 @@
 // armour, air bubbles, XP bar and level, held-item name, toasts and pick-ups, boss bar, dimension name,
 // F3 debug / FPS / coordinates, screen effects, damage numbers, name tags; the chat log and chat line
 // (game/commands.js chatEls/openChat/submitChat), the death screen. Also the in-game keys that open menus.
+#include <map>
 #include "sim/inventory.h"
 #include "ui/ui.h"
 #include "ui/theme.h"
@@ -14,6 +15,26 @@
 #include <imgui_stdlib.h>
 
 namespace dq {
+
+// ---- the movable HUD (BTA's rearrangeable HUD): each piece drawn between hudPieceBegin/End is shifted by its offset in
+//      settings extra "hudLayout" {piece: [fx, fy]} (fractions of the screen), and its box is kept for the editor
+//      (ui/hud_edit.cpp) ----
+std::map<std::string, std::pair<ImVec2, ImVec2>>& hudPieceBoxes() { static std::map<std::string, std::pair<ImVec2, ImVec2>> m; return m; }
+ImVec2 hudPieceOffset(App& a, const std::string& piece) {
+  const json& L = a.settings.extra.contains("hudLayout") ? a.settings.extra["hudLayout"] : json();
+  if (!L.is_object() || !L.contains(piece) || !L[piece].is_array() || L[piece].size() < 2) return ImVec2(0, 0);
+  return ImVec2(L[piece][0].get<float>() * (float)a.width, L[piece][1].get<float>() * (float)a.height);
+}
+static int hudPieceBegin(ImDrawList* dl) { return dl->VtxBuffer.Size; }
+static void hudPieceEnd(App& a, ImDrawList* dl, int start, const char* piece) {
+  ImVec2 off = hudPieceOffset(a, piece), lo(1e9f, 1e9f), hi(-1e9f, -1e9f);
+  for (int i = start; i < dl->VtxBuffer.Size; i++) {
+    ImDrawVert& v = dl->VtxBuffer[i];
+    v.pos.x += off.x; v.pos.y += off.y;
+    lo.x = std::min(lo.x, v.pos.x); lo.y = std::min(lo.y, v.pos.y); hi.x = std::max(hi.x, v.pos.x); hi.y = std::max(hi.y, v.pos.y);
+  }
+  if (hi.x > lo.x) hudPieceBoxes()[piece] = {lo, hi};
+}
 using namespace ui;
 
 namespace {
@@ -371,7 +392,10 @@ public:
       dl->AddRectFilled(ImVec2(c.x - t, c.y - r), ImVec2(c.x + t, c.y + r), IM_COL32(255, 255, 255, 230));
       dl->AddRectFilled(ImVec2(c.x - r, c.y - t), ImVec2(c.x + r, c.y + t), IM_COL32(255, 255, 255, 230));
     }
-    if (!hidden) { drawBoss(s, dl, z, W); drawBottom(s, dl, z, W, H0, vw, vh, eyeWater); drawDebug(s, dl, z); }
+    if (!hidden) {
+      int b0 = hudPieceBegin(dl); drawBoss(s, dl, z, W); hudPieceEnd(a, dl, b0, "boss");
+      drawBottom(s, dl, z, W, H0, vw, vh, eyeWater); drawDebug(s, dl, z);
+    }
     // dimension name (dimIn 3.2 s)
     double dt = now() - h.dimAt;
     if (!hidden && dt < 3.3 && !h.dimName.empty()) {
@@ -382,8 +406,8 @@ public:
       text(dl, F_TITLE, p0 + ImVec2(0, 4 * z), withAlpha(col::black, al), h.dimName.c_str(), 0, sc);
       text(dl, F_TITLE, p0, withAlpha(col::text, al), h.dimName.c_str(), 0, sc);
     }
-    drawToasts(dl, z, vw);
-    drawChat(dl, z, W, H0, vw, vh);
+    { int t0 = hudPieceBegin(dl); drawToasts(dl, z, vw); hudPieceEnd(a, dl, t0, "toasts"); }
+    { int c0 = hudPieceBegin(dl); drawChat(dl, z, W, H0, vw, vh); hudPieceEnd(a, dl, c0, "chat"); }
     // saving badge
     if (h.saving || now() < h.savingOff) {
       const char* t = "Saving\xE2\x80\xA6"; ImVec2 ts = textSize(F_SMALL, t, 0, 12 / 12.5f);
@@ -436,6 +460,7 @@ public:
     float hs = clampv(std::min(vw / 900.f, vh / 560.f), 0.65f, 1.f), sp = 16 * hs * z;
     float rowW = slot * 9 + 16 * z, x0 = std::round((W - rowW) * 0.5f);
     float y = H0 - 8 * z;
+    int hb0v = hudPieceBegin(dl);
     // hotbar (.hotbar: padding 4, gap 2, 2px border)
     float hbW = slot * 9 + 2 * z * 8 + 8 * z + 4 * z, hbH = slot + 12 * z;
     ImVec2 hb0(std::round((W - hbW) * 0.5f), y - hbH), hb1 = hb0 + ImVec2(hbW, hbH);
@@ -452,6 +477,8 @@ public:
       dl->AddRectFilled(o0, o0 + ImVec2(slot + 4 * z, slot + 4 * z), IM_COL32(8, 12, 10, 179), 3 * z);
       SlotLook lk; lk.inv = false; drawSlot(dl, o0 + ImVec2(2, 2) * z, slot, lk); drawItem(dl, p.offhand[0], o0 + ImVec2(2, 2) * z, slot);
     }
+    hudPieceEnd(a, dl, hb0v, "hotbar");
+    int bars0 = hudPieceBegin(dl);
     y = hb0.y - 4 * z;
     // XP row (height 10: bar inset 2px, level number above its middle)
     ImVec2 xa(x0, y - 8 * z), xb(x0 + rowW, y - 2 * z);
@@ -500,6 +527,7 @@ public:
       for (ImVec2 o : {ImVec2(0, 2), ImVec2(1, 1), ImVec2(-1, 1), ImVec2(0, 0)}) text(dl, F_BODY, q + o * z, IM_COL32(0, 0, 0, 160), nm.c_str());
       text(dl, F_BODY, q, c, nm.c_str());
     }
+    hudPieceEnd(a, dl, bars0, "bars");
     // carry hint
     if (p.data.contains("carrying") && p.data["carrying"].is_object()) {
       std::string t = "Carrying " + p.data["carrying"].value("name", std::string("something")) + " \xC2\xB7 use to set down";

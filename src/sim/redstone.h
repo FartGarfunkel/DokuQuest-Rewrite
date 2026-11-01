@@ -39,7 +39,7 @@ struct Tables {
   size_t nblocks = 0;
   u8 role[MAX_BLOCKS]{}, cond[MAX_BLOCKS]{}, ticker[MAX_BLOCKS]{}, rail[MAX_BLOCKS]{}, mech[MAX_BLOCKS]{};
   BlockId wire = 0, torch = 0, torchOff = 0, lamp = 0, lampOn = 0, bulb = 0, bulbLit = 0, piston = 0, sticky = 0, pistonExt = 0,
-    stickyExt = 0, head = 0, moving = 0, slime = 0, honey = 0, tripwire = 0, water = 0, lava = 0, fire = 0, ore = 0, oreLit = 0,
+    stickyExt = 0, reinf = 0, reinfExt = 0, head = 0, moving = 0, slime = 0, honey = 0, tripwire = 0, water = 0, lava = 0, fire = 0, ore = 0, oreLit = 0,
     lily = 0, berryEmpty = 0;
   BlockId lampFlip[MAX_BLOCKS]{};   // any lamp: its lit or dark partner (coloured lamps, the inverted lamp)
   u8 lampLit[MAX_BLOCKS]{}, lampInv[MAX_BLOCKS]{};   // this one is the lit one; it shines without power (inverted)
@@ -158,6 +158,8 @@ private:
   struct Plan { std::vector<std::array<int, 5>> move; std::vector<std::array<int, 4>> breaks; };   // move: x,y,z,id,meta
   void pistonMove(int x, int y, int z);
   bool gather(int sx, int sy, int sz, int mv, ivec3 piston, Plan& out);
+  int pushLimit = 12;   // blocks a piston can shove (16 for the reinforced one, set around its gather)
+  void siphonTick(int x, int y, int z, BlockId id, int m);   // sim/basket.cpp
   void extend(int x, int y, int z, BlockId id, int dir);
   void retract(int x, int y, int z, BlockId id, int dir);
   void carry(const Plan& plan, int mv, const std::function<void()>& then, std::vector<std::array<int, 9>> extra, u64 key);

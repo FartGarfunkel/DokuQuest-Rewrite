@@ -6,6 +6,7 @@
 #include "sim/vehicles.h"
 #include "sim/machines.h"
 #include "sim/physics.h"
+#include "sim/weather.h"
 #include "sim/player.h"
 namespace dq { bool isMob(const Entity& e); }   // sim/gameplay.cpp
 #include <random>
@@ -44,7 +45,7 @@ const Tables& T() {
     else if (b.has("bellBlock") || b.has("cmdBlock")) r = BELL;
     t.role[i] = r;
     t.cond[i] = b.solid && b.opaque && !b.shapeKind && b.render == Render::Cube && r != BLOCK && r != OBSERVER && r != PISTON ? 1 : 0;
-    t.ticker[i] = r == HOPPER ? 1 : r == DAYLIGHT ? 2 : r == PLATE ? 3 : r == HOOK ? 4 : r == DRAIL ? 5 : 0;
+    t.ticker[i] = r == HOPPER ? 1 : r == DAYLIGHT ? 2 : r == PLATE ? 3 : r == HOOK ? 4 : r == DRAIL ? 5 : b.has("siphon") ? 6 : 0;
     std::string rail = b.str("rail");
     t.rail[i] = rail == "normal" ? RAIL_NORMAL : rail == "powered" ? RAIL_POWERED : rail == "detector" ? RAIL_DETECTOR : rail == "activator" ? RAIL_ACTIVATOR : RAIL_NONE;
     t.mech[i] = b.has("mech") ? 1 : 0;
@@ -63,6 +64,7 @@ const Tables& T() {
     if (b.has("inverted")) { t.lampInv[i] = 1; t.lampInv[o] = 1; }
   } t.bulb = id("copper_bulb"); t.bulbLit = id("copper_bulb_lit");
   t.piston = id("piston"); t.sticky = id("sticky_piston"); t.pistonExt = id("piston_extended"); t.stickyExt = id("sticky_piston_extended");
+  t.reinf = id("reinforced_piston"); t.reinfExt = id("reinforced_piston_extended");
   t.head = id("piston_head"); t.moving = id("moving_block"); t.slime = id("slime_block"); t.honey = id("honey_block");
   t.tripwire = id("tripwire"); t.water = id("water"); t.lava = id("lava"); t.fire = id("fire");
   t.ore = id("redstone_ore"); t.oreLit = id("redstone_ore_lit"); t.lily = id("lily_pad"); t.berryEmpty = id("berry_bush_empty");
@@ -676,6 +678,7 @@ void Redstone::runTickers() {
     m = w.getMeta(x, y, z);
     if (kind == 1) { if (now % 8 == 0) hopperTick(x, y, z, id, m); continue; }
     if (kind == 2) { if (now % 20 == 0) daylightTick(x, y, z, id, m); continue; }
+    if (kind == 6) { if (now % 8 == 4) siphonTick(x, y, z, id, m); continue; }
     if (kind == 3) plateTick(x, y, z, id, m);
     else if (kind == 4) hookTick(x, y, z, id, m);
     else if (kind == 5) detectorTick(x, y, z, id, m);
@@ -749,6 +752,17 @@ void Redstone::queueAround(int x, int y, int z) {
 }
 void Redstone::daylightTick(int x, int y, int z, BlockId id, int m) {
   int p = 0;
+  static const BlockId RAIN = reg().blockId("rain_detector");
+  if (id == RAIN && id) {   // the rain detector: full signal while rain or snow falls on it (inverted: while it doesn't)
+    bool wet = false;
+    if (w.realm == REALM_MAIN) if (auto* ws = lv.system<WeatherSystem>()) {
+      bool falling = ws->kind != "clear" || ws->stormAt((float)x, (float)z) > 0.3f || ws->showerK > 0.01f;
+      wet = falling && ws->precipAt(w, x + 0.5f, (float)y + 1.1f, z + 0.5f) > 0 && ws->topAt(w, x, z) <= y + 1;
+    }
+    p = (wet != ((m & 16) != 0)) ? 15 : 0;
+    if (p != (m & 15)) w.setBlock(x, y, z, id, (m & ~15) | p);
+    return;
+  }
   if (w.realm == REALM_MAIN && dimOfY(y) == DIM_OVERWORLD) {
     int sky = w.getLight(x, y + 1, z) >> 4;
     // env.day = 0.2 + 0.8 * smoothstep(-0.2, 0.25, sin(t * TAU)) (game.js); sun = (day - 0.2) / 0.8

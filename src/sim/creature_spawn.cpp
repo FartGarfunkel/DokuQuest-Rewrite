@@ -684,6 +684,7 @@ void registerCreatures() {
   registerPocket();
   registerUsables();
   registerLeads();   // sim/leads.cpp
+  { void registerBasket(); registerBasket(); }   // sim/basket.cpp: the wicker basket
   { void registerJars(); registerJars(); }   // sim/jars.cpp
   { void registerSieve(); registerSieve(); }   // sim/sieve.cpp
   { void registerQuiver(); registerQuiver(); }   // sim/quiver.cpp

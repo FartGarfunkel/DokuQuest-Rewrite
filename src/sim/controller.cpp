@@ -13,6 +13,12 @@
 #include <unordered_set>
 
 namespace dq {
+// the paths' talents (sim/villager_quests.cpp) and a poisoned arrow (sim/mob_combat.cpp)
+float pathArrowFactor(const Player& p, float distance); bool pathArrowPoisons(const Player& p); bool pathQuiverSaves(const Player& p);
+void poisonCreature(Entity& e, float secs);
+}
+
+namespace dq {
 
 static double rnd() { static thread_local std::mt19937 g{std::random_device{}()}; return std::uniform_real_distribution<double>(0, 1)(g); }
 constexpr float REACH = 5;
@@ -338,7 +344,7 @@ void PlayerController::breakBlock(int x, int y, int z) {
   if (!id) return;
   const BlockDef& b = reg().block(id);
   if (lv.events && !lv.events->emit("blockBreak", json::array({p.name, x, y, z, b.key}))) return;   // a mod said no
-  if (bhas(id, BF::IsLog) && !p.sneaking) {
+  if (bhas(id, BF::IsLog) && !p.sneaking && rule(lv, "treeFelling")) {
     std::vector<std::array<int, 4>> logs, leaves; bool ok;
     scanTree(x, y, z, logs, leaves, ok);
     if (ok) { fellTree(x, y, z, logs, leaves); return; }
@@ -437,7 +443,7 @@ void PlayerController::useOffhand(bool repeat, const PlayerInput& in) {
 static bool interactable(BlockId id) {
   const BlockDef& b = reg().block(id);
   static const char* keys[] = {"anvil", "enchant", "brewing", "grindstone", "loom", "smithing", "cartography", "fletching", "composter", "cauldron", "lectern", "barrel", "chest", "furnace", "smoker", "crafting", "table", "bench", "bed", "door", "gate", "trapdoor", "bell", "note", "jukebox", "shelf", "bookcase", "campfire", "cooking", "altar", "forge", "press", "mill", "rack", "stand"};
-  for (const char* k : {"container", "table", "furnace", "lectern", "station", "enderChest", "machine", "stonecutter", "jukebox", "bed", "door", "trapdoor", "noteBlock", "bellBlock", "cauldron", "pile", "placedBackpack", "frame", "sign", "pot"}) if (b.has(k)) return true;
+  for (const char* k : {"container", "table", "furnace", "lectern", "station", "enderChest", "partyChest", "machine", "stonecutter", "jukebox", "bed", "door", "trapdoor", "noteBlock", "bellBlock", "cauldron", "pile", "placedBackpack", "frame", "sign", "pot"}) if (b.has(k)) return true;
   if (reg().tShape[id] == ShapeKind::Gate) return true;
   for (const char* k : keys) if (b.key.find(k) != std::string::npos) return true;
   return false;
@@ -674,9 +680,12 @@ public:
         if (n.x > e->pos.x - e->w - 0.1f && n.x < e->pos.x + e->w + 0.1f && n.z > e->pos.z - e->w - 0.1f && n.z < e->pos.z + e->w + 0.1f && n.y > e->pos.y && n.y < e->pos.y + e->h) {
           float speed = glm::length(vel);
           DamageSource src; src.attacker = owner; src.knock = 3 * (1 + 1.2f * data.value("punch", 0)); src.tool = "arrow"; src.type = "arrow";   // Punch (enchanting.js)
-          float dealt = damageEntity(lv, *e, std::max(1.f, std::round(data.value("damage", 3.0f) * speed / 30)), src);
-          if (data.value("flame", false) && !e->isPlayer()) igniteEntity(*e, 5);
           Entity* o = owner ? lv.entity(owner) : nullptr;
+          // the Ranger's path (Eagle Eye, Deadeye at range, Poisoned Tips: sim/villager_quests.cpp)
+          float pk = o && o->isPlayer() ? pathArrowFactor(*static_cast<Player*>(o), glm::distance(o->pos, e->pos)) : 1.f;
+          float dealt = damageEntity(lv, *e, std::max(1.f, std::round(data.value("damage", 3.0f) * pk * speed / 30)), src);
+          if (dealt > 0 && o && o->isPlayer() && !e->isPlayer() && pathArrowPoisons(*static_cast<Player*>(o))) poisonCreature(*e, 4);
+          if (data.value("flame", false) && !e->isPlayer()) igniteEntity(*e, 5);
           if (dealt > 0 && o && o->isPlayer()) { char buf[16]; snprintf(buf, sizeof buf, "%g", std::round(dealt * 10) / 10); floatText(lv, *static_cast<Player*>(o), e->pos + vec3(0, e->h + 0.2f, 0), buf, "#ffffff"); }
           sfxAt(lv, "hit", e->pos);
           removed = true; return;
@@ -730,6 +739,7 @@ void PlayerController::updateHeldTools(float dt, const PlayerInput& in) {
         a->aim();
         lv.spawn(std::move(a));
         if (enchInfinity(held) && !p.creative()) p.give(ItemStack("arrow", 1));   // Infinity: the arrow isn't used up
+        else if (!p.creative() && !goldShot && pathQuiverSaves(p)) p.give(ItemStack("arrow", 1));   // Quiver Master
         sfxUi(lv, p, "bow");
         wearHeld(lv, p, 1);
       }

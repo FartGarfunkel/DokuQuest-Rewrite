@@ -96,7 +96,7 @@ private:
 };
 
 WeatherSystem* weatherOf(Level& lv);
-// Seasons (BTA's, world rule "seasons", on unless turned off): a year of four seasons of seven days each in the
+// Seasons (BTA's, world rule "seasons", off unless turned on in World settings): a year of four seasons of seven days each in the
 // Overworld. seasonPhase: 0..4 (0 spring, 1 summer, 2 autumn, 3 winter, fractions between), -1 when off.
 float seasonPhase(const Level& lv);
 int seasonOf(const Level& lv);   // 0..3, -1 off

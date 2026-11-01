@@ -8,6 +8,7 @@
 #include <random>
 
 namespace dq {
+float pathMeleeFactor(const Player& p); bool pathCheatDeath(Level& lv, Player& p);   // sim/villager_quests.cpp (the paths' talents)
 
 bool creatureTakesHit(Level& lv, Entity& e, float amount, const DamageSource& src, float& dealt);   // sim/mob_combat.cpp
 
@@ -94,7 +95,7 @@ float damagePlayer(Level& lv, Player& p, float amount, DamageSource src) {
   if (lv.events) lv.events->emit("rumble", json::array({p.name, std::min(1.f, 0.25f + dealt * 0.08f), 140}));
   if (src.attacker && src.knock != 0) if (Entity* a = lv.entity(src.attacker)) knockback(p, a->pos, src.knock < 0 ? 5.f : src.knock, 4);
   if (src.element == "fire" && src.type != "burn") p.burn = std::max(p.burn, 2.f);
-  if (p.hp <= 0) playerDie(lv, p, src);
+  if (p.hp <= 0 && !pathCheatDeath(lv, p)) playerDie(lv, p, src);   // Unbreakable: once in two minutes, half a heart instead
   return dealt;
 }
 
@@ -159,6 +160,8 @@ float damageEntity(Level& lv, Entity& e, float amount, const DamageSource& src) 
   return mobHurtDefault(lv, e, amount, src);
 }
 
+bool creatureIsCursed(const Entity& e);   // sim/mob_combat.cpp: undead, ghouls, werewolves, wraiths
+
 float attackEntity(Level& lv, Player& p, Entity& e) {
   if (p.swing == 0 || p.swing > 0.6f) p.swing = 0.0001f;
   if (p.attackCd > 0) return 0;
@@ -170,6 +173,13 @@ float attackEntity(Level& lv, Player& p, Entity& e) {
   if (tool) src.tool = tool->type;
   if (!p.inv[p.selected].empty()) src.weapon = p.inv[p.selected].id;
   dmg = spellbladeHit(lv, p, e, dmg, src.element);   // a spell carried on the blade (sim/magic_hands.cpp)
+  dmg *= pathMeleeFactor(p);                          // the Knight's Heavy Blows (sim/villager_quests.cpp)
+  // silver (items.json "holy"): bites the undead and the cursed half as hard again
+  if (const ItemDef* wd = src.weapon.empty() ? nullptr : reg().item(src.weapon); wd && wd->has("holy"))
+    if (creatureIsCursed(e)) {
+      dmg *= 1.5f;
+      lv.fx->particles("end_mote", e.pos + vec3(0, e.h * 0.6f, 0), 6);
+    }
   src.hasRay = true; src.rayO = p.pos + vec3(0, p.eye, 0); src.rayD = lookVector(p.yaw, p.pitch);   // dismember.js: the ray from your eyes
   float dealt;
   if (e.ghost && lv.net && lv.net->isClient()) {   // a joined world: the server's creature; it takes the hit there

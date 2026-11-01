@@ -282,7 +282,7 @@ ShapeBox B6(const float* b) { return ShapeBox(b[0], b[1], b[2], b[3], b[4], b[5]
 ShapeBox BT(float x0, float y0, float z0, float x1, float y1, float z1, int side, int end) { ShapeBox b(x0, y0, z0, x1, y1, z1); b.side = side; b.end = end; return b; }
 struct TileNames {   // tile ids the shapes name, looked up once per registry
   int composter_side, composter_bottom, compost, compost_ready, daylight_side, daylight_top, daylight_inv, smooth_stone, rs_post_on, rs_post_off,
-      rs_head_on, rs_head_off, bedrock, piston_inner, piston_bottom, piston_side_base, piston_top, piston_top_sticky, piston_head_side, piston_rod,
+      rs_head_on, rs_head_off, bedrock, piston_inner, piston_bottom, piston_side_base, piston_top, piston_top_sticky, piston_head_side, piston_rod, rpiston_side_base, rpiston_bottom,
       hopper_outside, hopper_top, hopper_inside, planks, iron_block, tripwire, bed_pillow, cobblestone, rep[2][2][4], cmp[2][4];
 };
 const TileNames& tn() {
@@ -294,6 +294,7 @@ const TileNames& tn() {
     t.smooth_stone = T("smooth_stone"); t.rs_post_on = T("rs_post_on"); t.rs_post_off = T("rs_post_off"); t.rs_head_on = T("rs_head_on"); t.rs_head_off = T("rs_head_off");
     t.bedrock = T("bedrock"); t.piston_inner = T("piston_inner"); t.piston_bottom = T("piston_bottom"); t.piston_side_base = T("piston_side_base");
     t.piston_top = T("piston_top"); t.piston_top_sticky = T("piston_top_sticky"); t.piston_head_side = T("piston_head_side"); t.piston_rod = T("piston_rod");
+    t.rpiston_side_base = T("reinforced_piston_side_base"); t.rpiston_bottom = T("reinforced_piston_bottom");
     t.hopper_outside = T("hopper_outside"); t.hopper_top = T("hopper_top"); t.hopper_inside = T("hopper_inside"); t.planks = T("planks");
     t.iron_block = T("iron_block"); t.tripwire = T("tripwire"); t.bed_pillow = T("bed_pillow"); t.cobblestone = T("cobblestone");
     for (int on = 0; on < 2; on++) for (int f = 0; f < 4; f++) {
@@ -483,7 +484,8 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
     }
     case ShapeKind::PistonBase: {
       const TileNames& t = tn(); int dir = std::min(5, m & 7);
-      ShapeBox b = box6(ShapeBox(0, 0, 0, 16, 12, 16), dir); faces6(b, dir, t.piston_inner, t.piston_bottom, t.piston_side_base);
+      bool rf = reg().block(id).has("launcher") && t.rpiston_side_base >= 0;   // the reinforced piston's steel base
+      ShapeBox b = box6(ShapeBox(0, 0, 0, 16, 12, 16), dir); faces6(b, dir, t.piston_inner, rf ? t.rpiston_bottom : t.piston_bottom, rf ? t.rpiston_side_base : t.piston_side_base);
       push(b); return true;
     }
     case ShapeKind::PistonHead: {

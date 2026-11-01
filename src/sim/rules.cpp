@@ -9,7 +9,7 @@ const json& ruleDefaults() {
     {"dayMinutes", 10}, {"nightMinutes", 10},
     {"daylightCycle", true}, {"keepInventory", false}, {"graves", true}, {"mobSpawning", true}, {"mobGriefing", true}, {"tntExplodes", true},
     {"fireSpread", true}, {"blockDrops", true}, {"fallDamage", true}, {"drowning", true}, {"fireDamage", true}, {"naturalRegen", true},
-    {"grassSpread", true}, {"randomTickSpeed", 1}, {"hardcore", false}, {"nightmares", true}, {"saplingsPlant", true}, {"showCoords", false}, {"commands", false}, {"downed", true}, {"haunting", true}, {"allowSprinting", true}, {"allowSleeping", true}, {"weatherCycle", true},
+    {"grassSpread", true}, {"randomTickSpeed", 1}, {"hardcore", false}, {"nightmares", true}, {"seasons", false}, {"treeFelling", true}, {"saplingsPlant", true}, {"showCoords", false}, {"commands", false}, {"downed", true}, {"haunting", true}, {"allowSprinting", true}, {"allowSleeping", true}, {"weatherCycle", true},
   };
   return d;
 }

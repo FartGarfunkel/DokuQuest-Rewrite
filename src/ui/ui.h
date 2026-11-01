@@ -21,6 +21,7 @@ void uiDefer(std::function<void(App&)> f);
 std::unique_ptr<Screen> makeWorldsScreen();
 std::unique_ptr<Screen> makeOptionsScreen();
 std::unique_ptr<Screen> makeControlsScreen();
+std::unique_ptr<Screen> makeHudEditScreen();   // ui/hud_edit.cpp: move the HUD's pieces
 std::unique_ptr<Screen> makePadSetupScreen();
 std::unique_ptr<Screen> makeHowToScreen();
 std::unique_ptr<Screen> makeNewsScreen();

@@ -225,6 +225,9 @@ public:
       if (ui != before) pendingUi = ui;
       if (pendingUi > 0 && !ImGui::IsMouseDown(0)) { s.guiScale = pendingUi < 50 ? "auto" : std::to_string((int)pendingUi); pendingUi = -1; }
     }
+    // BTA's rearrangeable HUD: drag the hotbar, hearts, boss bar, chat and messages where you like (ui/hud_edit.cpp)
+    if (a.session) { if (button("Move HUD pieces\xE2\x80\xA6", BTN_NORMAL, true)) a.pushScreen(makeHudEditScreen()); }
+    else if (s.extra.contains("hudLayout") && !s.extra["hudLayout"].empty()) { if (button("Put the HUD back where it was", BTN_GHOST, true)) { s.extra.erase("hudLayout"); s.save(); } }
     check("viewBob", "View bobbing", &s.viewBob);
     check("fpBody", "Your body in first person", &s.fpBody, "Look down to see your chest, legs and armour.");
     check("heldSway", "Held item sway", &s.heldSway, "What you hold lags a touch behind when you turn.");

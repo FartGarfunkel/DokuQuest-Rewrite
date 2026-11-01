@@ -59,7 +59,7 @@ bool Redstone::gather(int sx, int sy, int sz, int mv, ivec3 piston, Plan& out) {
     if (pistonImmovable(w, id, p.x, p.y, p.z)) return false;
     moveSet.insert(k);
     out.move.push_back({p.x, p.y, p.z, id, w.getMeta(p.x, p.y, p.z)});
-    if (out.move.size() > 12) return false;
+    if ((int)out.move.size() > pushLimit) return false;
     // whatever is in the way moves too
     q.push_back({p.x + D6X[mv], p.y + D6Y[mv], p.z + D6Z[mv]});
     // slime and honey drag their neighbours along
@@ -89,14 +89,32 @@ bool Redstone::gather(int sx, int sy, int sz, int mv, ivec3 piston, Plan& out) {
 }
 void Redstone::extend(int x, int y, int z, BlockId id, int dir) {
   const Tables& t = T();
-  bool sticky = reg().block(id).has("sticky");
+  bool sticky = reg().block(id).has("sticky"), launcher = reg().block(id).has("launcher");
   int hx = x + D6X[dir], hy = y + D6Y[dir], hz = z + D6Z[dir];
   if (!inWorldY(hy) || dimOfY(hy) != dimOfY(y)) return;
   Plan plan;
-  if (!gather(hx, hy, hz, dir, ivec3(x, y, z), plan)) return;
-  carry(plan, dir, [&] { w.setBlock(x, y, z, sticky ? t.stickyExt : t.pistonExt, dir); },
+  pushLimit = launcher ? 16 : 12;
+  bool can = gather(hx, hy, hz, dir, ivec3(x, y, z), plan);
+  pushLimit = 12;
+  if (!can) return;
+  carry(plan, dir, [&] { w.setBlock(x, y, z, sticky ? t.stickyExt : launcher ? t.reinfExt : t.pistonExt, dir); },
         {{x, y, z, hx, hy, hz, (int)t.head, dir | (sticky ? 8 : 0), 0}}, posKey(x, y, z));
   lv.fx->sound("piston_out", vec3(x, y, z) + vec3(0.5f), 24);
+  if (launcher) {
+    // BTA's reinforced piston: whatever stands in front of the head (or on the blocks it shoves) is flung along
+    vec3 d((float)D6X[dir], (float)D6Y[dir], (float)D6Z[dir]);
+    int reach = (int)plan.move.size() + 2;
+    vec3 lo(std::min(hx, hx + D6X[dir] * reach), std::min(hy, hy + D6Y[dir] * reach), std::min(hz, hz + D6Z[dir] * reach));
+    vec3 hi = vec3(std::max(hx, hx + D6X[dir] * reach), std::max(hy, hy + D6Y[dir] * reach), std::max(hz, hz + D6Z[dir] * reach)) + vec3(1, 1.6f, 1);
+    for (auto& e : lv.entities()) {
+      if (e->removed || e->realm != w.realm || e->type == "piston_anim") continue;
+      if (e->pos.x < lo.x - 0.3f || e->pos.x > hi.x + 0.3f || e->pos.y < lo.y - 0.2f || e->pos.y > hi.y || e->pos.z < lo.z - 0.3f || e->pos.z > hi.z + 0.3f) continue;
+      vec3 v = d * 16.f + vec3(0, D6Y[dir] ? 0.f : 7.f, 0);
+      e->vel += v;
+    }
+    lv.fx->sound("explode", vec3(hx, hy, hz) + vec3(0.5f), 20, 0.35f, 1.6f);
+    lv.fx->particles("poof", vec3(hx, hy, hz) + vec3(0.5f), 6);
+  }
 }
 void Redstone::retract(int x, int y, int z, BlockId id, int dir) {
   const Tables& t = T();
@@ -104,7 +122,7 @@ void Redstone::retract(int x, int y, int z, BlockId id, int dir) {
   bool sticky = reg().block(id).has("sticky");
   int hx = x + D6X[dir], hy = y + D6Y[dir], hz = z + D6Z[dir];
   if (w.getBlock(hx, hy, hz) == t.head) w.setBlock(hx, hy, hz, AIR, 0);
-  w.setBlock(x, y, z, sticky ? t.sticky : t.piston, dir);
+  w.setBlock(x, y, z, sticky ? t.sticky : reg().block(id).has("launcher") ? t.reinf : t.piston, dir);
   lv.fx->sound("piston_in", vec3(x, y, z) + vec3(0.5f), 24);
   std::vector<std::array<int, 9>> anim = {{hx, hy, hz, x, y, z, (int)t.head, dir | (sticky ? 8 : 0), 1}};
   if (sticky) {
@@ -200,7 +218,7 @@ void Redstone::pistonPartBroken(int x, int y, int z, BlockId oldId) {
     int nm = w.getMeta(nx, ny, nz);
     if (b.has("pistonHead") && R.block(nid).has("extended") && (nm & 7) == OPP6[e]) {
       w.setBlock(nx, ny, nz, AIR, 0);
-      dropBlockItems(lv, w.realm, nx, ny, nz, R.block(nid).has("sticky") ? T().sticky : T().piston);
+      dropBlockItems(lv, w.realm, nx, ny, nz, R.block(nid).has("sticky") ? T().sticky : R.block(nid).has("launcher") ? T().reinf : T().piston);
     }
     if (b.has("extended") && R.block(nid).has("pistonHead") && (nm & 7) == e) w.setBlock(nx, ny, nz, AIR, 0);
   }

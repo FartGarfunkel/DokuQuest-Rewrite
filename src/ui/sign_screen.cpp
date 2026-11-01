@@ -17,7 +17,7 @@ class SignScreen : public Screen {
 public:
   explicit SignScreen(ivec3 at) : at(at) {}
   ivec3 at;
-  std::array<std::string, 4> lines;
+  std::array<std::string, 4> lines, keep;
   int focusLine = 0;            // the box that gets keyboard focus next frame (-1 = none)
   bool saved = false;
   const char* id() const override { return "sign"; }
@@ -80,6 +80,14 @@ public:
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6 * z, std::max(2.f, (ih - ImGui::GetFontSize()) * 0.5f)));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(gap, gap));
     int submitted = -1;
+    // typing while no line has the focus (opened from a pad, the focus on Done): the letters go on the first line
+    // that isn't full, and that line takes the focus, rather than being lost
+    if (ImGuiIO& io = ImGui::GetIO(); !io.WantTextInput && io.InputQueueCharacters.Size > 0) {
+      int li = 0; while (li < 3 && lines[li].size() >= 16) li++;
+      for (ImWchar c : io.InputQueueCharacters) if (c >= 32 && c < 0x80 && lines[li].size() < 16) lines[li].push_back((char)c);
+      io.InputQueueCharacters.resize(0);
+      focusLine = li;
+    }
     for (int i = 0; i < 4; i++) {
       ImGui::PushID(i);
       if (focusLine == i) { ImGui::SetKeyboardFocusHere(); focusLine = -1; }
@@ -87,6 +95,9 @@ public:
       // centred text like the original's text-align: center
       if (ImGui::InputText("##l", &lines[i], ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackCharFilter,
                            [](ImGuiInputTextCallbackData* d) { return d->EventChar < 32 ? 1 : 0; })) submitted = i;
+      // Esc in an ImGui text box puts back what it held before: on a sign Esc means "done", so keep what was written
+      if (ImGui::IsItemActive()) keep[i] = lines[i];
+      else if (ImGui::IsItemDeactivated() && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) lines[i] = keep[i];
       if (lines[i].size() > 16) { lines[i].resize(16); while (!lines[i].empty() && ((u8)lines[i].back() & 0xC0) == 0x80) lines[i].pop_back(); }
       if (ImGui::IsItemFocused() && navVisible()) { ImVec2 a0 = ImGui::GetItemRectMin(), a1 = ImGui::GetItemRectMax(); dl->AddRect(a0 - ImVec2(2, 2) * z, a1 + ImVec2(2, 2) * z, col::gold, 0, 0, 2 * z); }
       ImGui::PopID();

@@ -312,3 +312,94 @@ if not any(b['key'] == 'armor_stand' for b in bj['blocks']):
 if items['armor_stand'].get('block') != 'armor_stand':
     items['armor_stand']['block'] = 'armor_stand'
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
+
+# ---- the reinforced piston (BTA's): steel-bound, pushes 16 blocks, and flings whatever stands in front of it
+#      (sim/redstone_parts.cpp); its pictures are the piston's, steel-blue with rivets ----
+bj = json.loads((d / 'blocks.json').read_text()); items = json.loads((d / 'items.json').read_text())
+tj = json.loads((d / 'tiles.json').read_text()); rj = json.loads((d / 'recipes.json').read_text())
+tn, tf = tj['names'], tj['files']
+tj['res'] += [32] * max(0, tj['count'] - len(tj['res']))
+def _steel(src, dst):
+    p = d / 'resourcepacks' / 'DokuQuest Base' / 'assets' / 'minecraft' / 'textures' / 'block' / (src + '.png')   # the base pack's own, else ours
+    if not p.exists(): p = d / tf[tn[src]]
+    im = Image.open(p).convert('RGBA'); im = im.crop((0, 0, im.width, im.width)).resize((32, 32), Image.NEAREST)
+    px = im.load()
+    for y in range(32):
+        for x in range(32):
+            r, g, b, a = px[x, y]
+            if not a: continue
+            l = (r * 30 + g * 59 + b * 11) // 100
+            if r > g + 12 and r > b + 20:   # the wooden parts: dark steel
+                px[x, y] = (l * 70 // 100, l * 78 // 100, l * 92 // 100, a)
+            else:                            # the stone: blue-grey steel
+                px[x, y] = (min(255, l * 88 // 100), min(255, l * 96 // 100), min(255, l * 110 // 100), a)
+    for x, y in ((3, 3), (28, 3), (3, 28), (28, 28)):   # rivets
+        if px[x, y][3]: px[x, y] = (210, 220, 232, 255); px[x + 1, y + 1] = (60, 66, 78, 255)
+    rel = 'textures/block/%s.png' % dst
+    im.save(d / rel)
+    if dst not in tn: tn[dst] = tj['count']; tf.append(rel); tj['res'].append(32); tj['count'] += 1
+    return tn[dst]
+t_top = _steel('piston_top', 'reinforced_piston_top'); t_side = _steel('piston_side', 'reinforced_piston_side')
+t_bot = _steel('piston_bottom', 'reinforced_piston_bottom'); t_base = _steel('piston_side_base', 'reinforced_piston_side_base')
+if not any(b['key'] == 'reinforced_piston' for b in bj['blocks']):
+    byk = {b['key']: b for b in bj['blocks']}
+    base = dict(byk['piston']); ext = dict(byk['piston_extended'])
+    base.update({'id': len(bj['blocks']), 'key': 'reinforced_piston', 'name': 'Reinforced Piston', 'drop': 'reinforced_piston', 'hardness': 3.5,
+                 'tex': {'front': 'reinforced_piston_top', 'back': 'reinforced_piston_bottom', 'side': 'reinforced_piston_side'}, 'launcher': True,
+                 'f6': {'front': t_top, 'frontV': t_top, 'back': t_bot, 'backOn': t_bot, 'side': t_side, 'top': t_side}})
+    bj['blocks'].append(base); bj['faces'].append([t_side, t_side, t_side, t_side, t_top, t_bot])
+    ext.update({'id': len(bj['blocks']), 'key': 'reinforced_piston_extended', 'name': 'Reinforced Piston', 'drop': 'reinforced_piston', 'hardness': 3.5,
+                'tex': 'reinforced_piston_side_base', 'launcher': True})
+    bj['blocks'].append(ext); bj['faces'].append([t_base] * 6)
+    items['reinforced_piston'] = {'key': 'reinforced_piston', 'name': 'Reinforced Piston', 'maxStack': 64, 'icon': 'block:reinforced_piston',
+                                  'block': 'reinforced_piston', 'desc': 'Pushes up to 16 blocks, and flings whatever stands in front of it.'}
+    (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), sort_keys=False))
+    (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
+    (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':')))
+if not any(r.get('out') == 'reinforced_piston' for r in rj['recipes']):
+    rj['recipes'].append({'out': 'reinforced_piston', 'n': 1, 'shape': ['SSS', 'SPS', 'SRS'], 'key': {'S': 'steel_ingot', 'P': 'piston', 'R': 'redstone_block'},
+                          'idx': len(rj['recipes']), 'h': 3, 'w': 3})
+    (d / 'recipes.json').write_text(json.dumps(rj, separators=(',', ':')))
+
+# ---- the Wicker Basket (carries a small animal: sim/basket.cpp) and the Siphon (a copper pipe that moves items along) ----
+bj = json.loads((d / 'blocks.json').read_text()); items = json.loads((d / 'items.json').read_text())
+tj = json.loads((d / 'tiles.json').read_text()); rj = json.loads((d / 'recipes.json').read_text())
+sj = json.loads((d / 'shapes.json').read_text()); sh = json.loads((d / 'itemshapes.json').read_text())
+tn, tf = tj['names'], tj['files']
+tj['res'] += [32] * max(0, tj['count'] - len(tj['res']))
+_pk = d / 'resourcepacks' / 'DokuQuest Base' / 'assets' / 'minecraft' / 'textures' / 'item' / 'bundle.png'
+if _pk.exists():
+    im = Image.open(_pk).convert('RGBA'); im = im.crop((0, 0, im.width, im.width)).resize((32, 32), Image.NEAREST)
+    px = im.load()
+    for yy in range(32):
+        for xx in range(32):
+            r, g, b, a = px[xx, yy]
+            if not a: continue
+            l = (r * 30 + g * 59 + b * 11) // 100
+            weave = 1.12 if ((xx // 3) + (yy // 3)) % 2 == 0 else 0.86     # woven cane
+            px[xx, yy] = (min(255, int((l * 1.05 + 40) * weave)), min(255, int((l * 0.82 + 22) * weave)), min(255, int((l * 0.42 + 6) * weave)), a)
+    rel = 'textures/item/wicker_basket.png'; im.save(d / rel)
+    if 'wicker_basket' not in tn: tn['wicker_basket'] = tj['count']; tf.append(rel); tj['res'].append(32); tj['count'] += 1
+    if 'wicker_basket' not in sh['itemTiles']: sh['itemTiles'].append('wicker_basket')
+if 'wicker_basket' not in items and 'wicker_basket' in tn:
+    items['wicker_basket'] = {'key': 'wicker_basket', 'name': 'Wicker Basket', 'maxStack': 1, 'icon': 'wicker_basket',
+                              'desc': 'Use it on a small animal to lift it in; use it on the ground to set it down again.'}
+if 'siphon' not in sj['shapes']:
+    sj['shapes']['siphon'] = [{'b': [4, 4, 2, 12, 12, 14], 'side': 'copper_block', 'end': 'copper_block'},
+                              {'b': [3, 3, 0, 13, 13, 2], 'side': 'iron_block', 'end': 'iron_block'},
+                              {'b': [2, 2, 14, 14, 14, 16], 'side': 'iron_block', 'end': 'hopper_outside' if 'hopper_outside' in tn else 'iron_block'}]
+if not any(b['key'] == 'siphon' for b in bj['blocks']):
+    bj['blocks'].append({'id': len(bj['blocks']), 'render': 6, 'solid': True, 'opaque': False, 'replaceable': False, 'hardness': 2.5, 'tool': 'pickaxe',
+                         'tier': 0, 'drop': 'siphon', 'light': 0, 'lightAtt': 0, 'sound': 'metal', 'key': 'siphon', 'name': 'Siphon', 'shape': 'siphon',
+                         'facingModel': True, 'siphon': True, 'tex': 'copper_block'})
+    bj['faces'].append([tn['copper_block']] * 6)
+    items['siphon'] = {'key': 'siphon', 'name': 'Siphon', 'maxStack': 64, 'icon': 'block:siphon', 'block': 'siphon',
+                       'desc': 'Draws items out of whatever is behind it (or lying there) and pushes them into whatever is in front.'}
+for out, shape, key in (('wicker_basket', ['S S', 'CCC'], {'S': 'stick', 'C': 'sugar_cane'}),
+                        ('siphon', ['CCC', 'CHC'], {'C': 'copper_ingot', 'H': 'hopper'})):
+    if not any(r.get('out') == out for r in rj['recipes']):
+        rj['recipes'].append({'out': out, 'n': 1, 'shape': shape, 'key': key, 'idx': len(rj['recipes']), 'h': len(shape), 'w': len(shape[0])})
+for f, o in (('blocks.json', bj), ('shapes.json', sj)): (d / f).write_text(json.dumps(o, separators=(',', ':'), sort_keys=False))
+(d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
+(d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':'))); (d / 'recipes.json').write_text(json.dumps(rj, separators=(',', ':')))
+(d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':')))

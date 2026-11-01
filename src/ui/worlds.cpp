@@ -99,6 +99,8 @@ const std::vector<std::array<const char*, 3>>& ruleToggles() {
     {"allowSleeping", "Sleeping skips the night", "Turn off and beds only set your spawn point"},
     {"nightmares", "Nightmares", "Sleep in the dark with monsters about and one may come to your bed and wake you"},
     {"weatherCycle", "Weather changes", "Turn off to keep the weather as it is"},
+    {"seasons", "Seasons", "Spring, summer, autumn and winter, seven days each: snow in the winter, colour in the autumn"},
+    {"treeFelling", "Whole trees fall", "Chop the bottom of a trunk and the whole tree comes down (sneak to take one log)"},
     {"fallDamage", "Fall damage", ""},
     {"drowning", "Drowning", "Your breath runs out under water"},
     {"fireDamage", "Fire and lava damage", ""},

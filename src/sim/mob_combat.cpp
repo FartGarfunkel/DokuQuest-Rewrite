@@ -64,6 +64,15 @@ bool creatureTakesHit(Level& lv, Entity& e, float amount, const DamageSource& sr
   return true;
 }
 
+bool creatureIsCursed(const Entity& e) {
+  auto* c = dynamic_cast<const Creature*>(&e);
+  return c && (c->T->undead || c->T->j.value("family", "") == "ghoul" || c->type == "werewolf" || c->type == "wraith" || c->type == "ghost" || c->type == "vampire");
+}
+
+void poisonCreature(Entity& e, float secs) {
+  if (auto* c = dynamic_cast<Creature*>(&e); c && !c->T->undead) c->poisonT = std::max(c->poisonT, secs);
+}
+
 void knockback(Entity& e, vec3 v) {
   e.vel.x += v.x; e.vel.z += v.z;
   if (v.y) e.vel.y = std::max(e.vel.y, v.y);

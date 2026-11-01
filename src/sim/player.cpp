@@ -5,6 +5,8 @@
 #include "sim/blockinfo.h"
 #include "world/shapes.h"
 
+namespace dq { float pathSpeedFactor(const Player& p); }   // Fleet Foot (sim/villager_quests.cpp)
+
 namespace dq {
 
 Player::Player() {
@@ -134,6 +136,7 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
     if (!flying) speed *= 0.35f;
   }
   if (slow > 0) speed *= 0.55f;
+  speed *= pathSpeedFactor(*this);   // Fleet Foot (sim/villager_quests.cpp)
   speed *= opts.slow;
   BlockId under = wd.getBlock(ifloor(pos.x), ifloor(pos.y - 0.1f), ifloor(pos.z));
   if (onGround && !flying) speed *= binfo(under).slow;   // soul sand and honey drag at your feet
