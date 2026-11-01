@@ -54,7 +54,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **The Tool Forge shows in your hand,** and so do the other newer blocks.
 - **The Skylands' grass, trees, stone and cloud banks, and the new flowers, use the DokuQuest Base pack's own pictures,** recoloured; berry bushes lost their black spots.
 
-Removed Herobrine.
+- Removed Herobrine.
 
 ## 1.0.0-alpha.8 — Far Lands (November 2026)
 
