@@ -28,6 +28,11 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Dreamlike lighting** (Options → Graphics → Lighting): a soft glow round bright things, golden light when the sun is low, soft focus and a warm halo round a low sun. After the Horizon project's shaders; Classic turns it off.
 - **Far land fades in** instead of popping, and floating islands far off show their stone undersides.
 
+**More from Better than Adventure:**
+
+- **Saddle a pig and ride it** (no taming needed). Its short legs can't jump a whole block: stairs and slabs help.
+- **Ice floes** drift in the seas by the glaciers (new worlds).
+
 **Fixes from your play:**
 
 - **Campfire logs show bark** (they showed a stony ash texture).
