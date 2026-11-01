@@ -1,6 +1,37 @@
 # DokuQuest patch notes for the C++ versions, newest first (shown in the launcher's news panel).
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
+## Alpha 1.0.0.9 — The Better Nether | November 2026
+**A new Nether (new worlds):**
+- **The Nether is a land you can cross now,** like Better than Adventure's: open ground under a high roof instead of a maze of caverns, lit well enough to find your way, each land with its own haze. Five lands:
+- **The Crag:** the old Nether's netherrack hills and crags, rock spires and pillars, lavafalls from the roof, melting rock and bleached bones.
+- **The Volcanic Islands:** a lava sea with islands of basalt and blackstone, and volcanoes whose craters spill lava down one side; brimstone on their flanks.
+- **The Sulfur Pools:** a flat yellow wasteland with steam vents and pools of **acid**. It burns whoever swims in it without armour, and wears the armour down; buckets can't hold it.
+- **The Crystal Forest:** a maze of huge glowing red crystals, some hanging from the roof. **Charged crystals** hold latent energy: they power redstone.
+- **The Old World:** a colossal desert of ash with smouldering embers (they burn unless you sneak), pits down to the lava, petrified trunks and ruins of scorched brick.
+- Worlds made before keep the Nether they had.
+**Tools and armour of mixed materials:**
+- **Mix materials at the crafting table:** a pickaxe of iron, diamond and copper (or any tool or armour with more than one material in its pattern) is one tool, each material showing on its own part of it, with stats mixed from all of them. Bone, cinder rod or steel hafts change it too.
+- **Mend a mixed tool or piece** with any of its own materials, at the crafting table or the anvil.
+- **The Tool Forge sets gems:** one gem a tool. Diamond makes it tougher; emerald, amethyst or a charged crystal faster; ruby adds fire, sapphire frost; quartz and red crystal hit harder; cinderite raises its tier. The gem shows on the tool.
+**Light and distance:**
+- **Dreamlike lighting** (Options → Graphics → Lighting): a soft glow round bright things, golden light when the sun is low, soft focus and a warm halo round a low sun. After the Horizon project's shaders; Classic turns it off.
+- **Far land fades in** instead of popping, and floating islands far off show their stone undersides.
+**Fixes from your play:**
+- **Campfire logs show bark** (they showed a stony ash texture).
+- **Opening a chest no longer leaves a hole** in the block beside it.
+- **Doors and trapdoors keep their raised pixels while they swing.**
+- **Lanterns hang on a chain to a ceiling up to eight blocks up,** or from the underside of a top half slab.
+- **Skulls and heads are the creature's own head** in your hand and inventory, not helmets.
+- **The Wither Storm can be raised with a command block** in the middle of the Wither's T as well as with the humming core.
+- **In creative mode you can break anything,** command blocks included.
+- **The Wither:** a skull you punch back hurts it, even once its bones harden; below half its strength, arrows visibly glance off it with a hint, instead of seeming to pass through.
+- **On a LAN game everyone sees everyone's skin,** the host's too.
+- **Less lag beside a Nether portal:** the view through it draws only what shows through the window.
+- **Villagers sit on benches from any side** and give up on one they can't reach (they circled it before).
+- **The Tool Forge shows in your hand,** and so do the other newer blocks.
+- **The Skylands' grass, trees, stone and cloud banks, and the new flowers, use the DokuQuest Base pack's own pictures,** recoloured; berry bushes lost their black spots.
+Removed Herobrine.
 ## Alpha 1.0.0.8 — Far Lands | November 2026
 **Fixes from your play:**
 - **Chiseled blocks and slabs are lit properly** (no more black rims on the desert roofs).
