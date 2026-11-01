@@ -1,5 +1,6 @@
 // client/client_fx.cpp — see client_fx.h.
 #include "sim/creature.h"
+#include "gen/nether_bta.h"
 #include "client/client_fx.h"
 #include "client/session.h"
 #include "client/app.h"
@@ -94,8 +95,13 @@ public:
     float sh = (float)std::sin(t * 2 * 3.14159265358979), x = std::clamp((sh + 0.2f) / 0.45f, 0.f, 1.f);
     sc.day = 0.2f + 0.8f * x * x * (3 - 2 * x);
     sc.time = s.level->info.time;
-    if ((placeT -= dt) <= 0) { placeT = 2; place = placeMood(*s.level, p.pos); }
+    if ((placeT -= dt) <= 0) {
+      placeT = 2; place = placeMood(*s.level, p.pos);
+      land = -1;
+      if (sc.dim == DIM_NETHER && p.realm == REALM_MAIN && s.level->info.genVersion >= 5) { u8 a, b; float m; netherBiomeMix(s.level->info.seed, (int)std::floor(p.pos.x), (int)std::floor(p.pos.z), a, b, m); land = a; }
+    }
     sc.place = place;
+    sc.netherLand = sc.dim == DIM_NETHER ? land : -1;
     if (WeatherSystem* W = weatherOf(*s.level); W && p.realm == REALM_MAIN && sc.dim == DIM_OVERWORLD) sc.rain = W->rainLevel;
     // the nearest boss within 40 blocks (music2.js bossNear); (sleeping dragons and tamed ones don't count)
     float bd = 40;
@@ -112,7 +118,7 @@ public:
   }
 private:
   GameSession& sess;
-  vec3 lastPos{0};
+  vec3 lastPos{0}; int land = -1;
   float stepAcc = 0;
   double placeT = 0;
   std::string place = "plains";

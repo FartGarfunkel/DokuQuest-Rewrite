@@ -3,6 +3,7 @@
 // colonies (game/husbandry.js), bodies that don't share space (game/crowd.js: not ported by gameplay, so it
 // lives here), item merging (game.js updateEntities), players' status effects; plus registerCreatures().
 // No phantoms, ever.
+#include "gen/nether_bta.h"
 #include <unordered_set>
 #include "sim/leads.h"
 #include "sim/weapon_rack.h"
@@ -332,7 +333,29 @@ public:
         int x = fort.x + (int)std::floor((frand() - 0.5f) * 60), z = fort.z + (int)std::floor((frand() - 0.5f) * 60);
         if (std::hypot(x - p.pos.x, z - p.pos.z) > 12 && w.isLoaded(x, base + fort.y, z)) { int y = floorAt(x, z, base + fort.y + 3, 4); if (y > 0) add("wither_skeleton", x + 0.5f, y, z + 0.5f); }
       }
-      if (count("zombie_pigman", 96) < 8 && frand() < 0.22f) {
+      // BTA 8.0's Nether (terrain version 5): each land its own crowd. Pigmen keep to the Crag and the Old World, ember
+      // fuselings and magma slimes to the volcanoes, sulfur slimes to the acid pools, crystal wisps to the Crystal
+      // Forest, scorched skeletons to the Old World's ruins
+      const bool bta = realm == REALM_MAIN && lv.info.genVersion >= 5;
+      auto landAt = [&](ivec2 xz) { if (!bta) return -1; u8 a, b; float m; netherBiomeMix(lv.info.seed, xz.x, xz.y, a, b, m); return (int)a; };
+      const int here = landAt(ivec2(ifloor(p.pos.x), ifloor(p.pos.z)));
+      auto ground = [&](const char* t, float lo, float hi, int land) {
+        ivec2 xz = ring(lo, hi);
+        if (!w.isLoaded(xz.x, py, xz.y) || (land >= 0 && landAt(xz) != land)) return (Creature*)nullptr;
+        int y = floorAt(xz.x, xz.y, py + (int)(frand() * 20) - 10, 12);
+        return y > 0 ? add(t, xz.x + 0.5f, y, xz.y + 0.5f) : nullptr;
+      };
+      if (bta && !peaceful) {
+        if (here == NB_SULFUR && count("sulfur_slime", 96) < 5 && frand() < 0.08f) if (Creature* m = ground("sulfur_slime", 16, 34, NB_SULFUR)) m->setSize(frand() < 0.6f ? 2 : 1);
+        if (here == NB_CRYSTAL && count("crystal_wisp", 96) < 3 && frand() < 0.05f) {
+          ivec2 xz = ring(16, 32);
+          if (w.isLoaded(xz.x, py, xz.y) && landAt(xz) == NB_CRYSTAL) { int y = floorAt(xz.x, xz.y, py + (int)(frand() * 16) - 8, 12); if (y > 0) add("crystal_wisp", xz.x + 0.5f, y + 1.5f, xz.y + 0.5f); }
+        }
+        if (here == NB_OLDWORLD && count("scorched_skeleton", 96) < 4 && frand() < 0.06f) ground("scorched_skeleton", 18, 36, NB_OLDWORLD);
+        if (here == NB_VOLCANIC && count("magma_slime", 96) < 5 && frand() < 0.06f) if (Creature* m = ground("magma_slime", 16, 34, NB_VOLCANIC)) m->setSize(frand() < 0.5f ? 2 : 1);
+      }
+      const float pigK = !bta || here == NB_CRAG || here == NB_OLDWORLD ? 1.f : 0.25f, fuseK = here == NB_VOLCANIC ? 3.f : bta ? 0.4f : 1.f;
+      if (count("zombie_pigman", 96) < 8 && frand() < 0.22f * pigK) {
         ivec2 xz = ring(18, 36);
         if (w.isLoaded(xz.x, py, xz.y)) {
           int y = floorAt(xz.x, xz.y, py + (int)(frand() * 20) - 10, 12);
@@ -344,11 +367,11 @@ public:
           }
         }
       }
-      if (!peaceful && count("ember_fuseling", 96) < 3 && frand() < 0.05f) {   // ember fuselings creep over the Depths' floors
+      if (!peaceful && count("ember_fuseling", 96) < 3 && frand() < 0.05f * fuseK) {   // ember fuselings creep over the Depths' floors
         ivec2 xz = ring(18, 36);
         if (w.isLoaded(xz.x, py, xz.y)) { int y = floorAt(xz.x, xz.y, py + (int)(frand() * 20) - 10, 12); if (y > 0) add("ember_fuseling", xz.x + 0.5f, y, xz.y + 0.5f); }
       }
-      if (!peaceful && count("ghast", 96) < 2 && frand() < 0.06f) {
+      if (!peaceful && count("ghast", 96) < 2 && frand() < 0.06f * (here == NB_CRYSTAL || here == NB_SULFUR ? 0.4f : 1.f)) {
         ivec2 xz = ring(24, 40);
         if (w.isLoaded(xz.x, py, xz.y)) for (int y = py + 12; y > py - 2; y--) {
           bool open = true;

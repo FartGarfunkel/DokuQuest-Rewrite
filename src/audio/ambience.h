@@ -24,7 +24,7 @@ private:
   std::vector<u8> dist;
   std::vector<int> queue;
   double fieldT = 0, moodT = 0, mood = 0;
-  double tBird = 3, tCricket = 2, tDrip = 4, tRumble = 30;
+  double tBird = 3, tCricket = 2, tDrip = 4, tRumble = 30, tLand = 4;
   float windG = 0;
   void computeField(const AudioScene& s);
   float wallCount(const World& w, vec3 a, vec3 b) const;

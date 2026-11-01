@@ -20,6 +20,7 @@ struct AudioScene {
   double time = 0;                // world clock in seconds (the wind's slow wobble)
   float gust = 0;                 // weather: how hard the wind gusts, 0..1
   float rain = 0;                 // weather: the rain hiss level (WeatherSystem::rainLevel)
+  int netherLand = -1;            // BTA 8.0's Nether: which of its five lands (gen/nether_bta.h NetherBiome), -1 elsewhere
   std::string place;              // the music of the place: plains forest jungle desert savanna frost peaks swamp ocean village
   bool jukebox = false;           // a jukebox is playing nearby: the music keeps quiet
   // the nearest boss within 40 blocks that has turned on the player (music2.js battle music)

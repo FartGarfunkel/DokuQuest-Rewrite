@@ -290,7 +290,8 @@ static OptMove monsterAI(Level& lv, Creature& m, Entity* p, float dist, float dy
     m.meleeAt(lv, *p, dist, dyp);
     return Move{dist < 0.8f ? 0 : T.speed * 1.15f, toPlayer};
   }
-  if (t == "stray") return nightBase(lv, m, "skeleton", p, dist, dyp, toPlayer, dt);
+  if (t == "stray" || t == "scorched_skeleton") return nightBase(lv, m, "skeleton", p, dist, dyp, toPlayer, dt);
+  if (t == "sulfur_slime") return nightBase(lv, m, "slime", p, dist, dyp, toPlayer, dt);
   if (t == "frost_fuseling" || t == "dune_fuseling" || t == "bog_fuseling" || t == "ember_fuseling" || t == "moss_fuseling" || t == "sky_fuseling") return nightBase(lv, m, "fuseling", p, dist, dyp, toPlayer, dt);
   if (t == "cave_spider") return nightBase(lv, m, "spider", p, dist, dyp, toPlayer, dt);
   if (t == "magma_slime") {
@@ -342,17 +343,21 @@ static OptMove monsterAI(Level& lv, Creature& m, Entity* p, float dist, float dy
     }
     return Move{T.speed, toPlayer};
   }
-  if (t == "cinder_wisp") {
+  if (t == "cinder_wisp" || t == "crystal_wisp") {
     World& w = lv.world(m.realm);
+    const bool crystal = t == "crystal_wisp";   // the Crystal Forest's: glints instead of flames, shorter volleys
     m.noGravity = true; m.hasFlyVy = true;
     if (m.inWater) { DamageSrc d; d.type = "drown"; m.hurt(lv, 1, d); }
     int floor = 0; for (int k = 1; k <= 6; k++) { if (solidAt(w, m.pos.x, m.pos.y - k, m.pos.z)) break; floor = k; }
     auto s = m.senses(lv, p, dist, dyp, dt, 26);
     m.voiceTick(lv, dt, dist, 3, 4);
-    if (frand() < dt * 8) flame(lv, m.pos + vec3((frand() - 0.5f) * 0.6f, 0.4f + frand() * 0.6f, (frand() - 0.5f) * 0.6f));
+    if (crystal) { if (frand() < dt * 7) lv.fx->particles("spark", m.pos + vec3((frand() - 0.5f) * 0.7f, 0.3f + frand() * 0.7f, (frand() - 0.5f) * 0.7f), 1); }
+    else if (frand() < dt * 8) flame(lv, m.pos + vec3((frand() - 0.5f) * 0.6f, 0.4f + frand() * 0.6f, (frand() - 0.5f) * 0.6f));
+    if (!crystal) {
     // a blaze's smoke: it trails off the spinning rods and the burning heart
     if (frand() < dt * 6) { float a = frand() * TAU; lv.fx->particles(frand() < 0.5f ? "smoke" : "smoke_dark", m.pos + vec3(std::cos(a) * 0.45f, 0.3f + frand() * 0.6f, std::sin(a) * 0.45f), 1); }
     if (frand() < dt * 4) { float a = frand() * TAU; flame(lv, m.pos + vec3(std::cos(a) * 0.4f, 0.25f + frand() * 0.55f, std::sin(a) * 0.4f)); }
+    }
     if (!s.hunting) { m.flyVy = floor < 2 ? 0.8f : floor > 4 ? -0.6f : std::sin(m.age) * 0.3f; m.wander(dt); return m.wanderMove(); }
     float wantY = std::max(p->pos.y + 2, m.pos.y - floor + 2.5f);
     m.flyVy = clampv((wantY - m.pos.y) * 1.5f, -2.f, 2.f);
@@ -364,7 +369,7 @@ static OptMove monsterAI(Level& lv, Creature& m, Entity* p, float dist, float dy
       auto jit = [] { return (frand() - 0.5f) * 0.08f; };
       spawnProjectile(lv, m.realm, e, vec3(d.x / l + jit(), d.y / l + jit(), d.z / l + jit()) * 13.f, "fireball", &m);
       lv.fx->sound("ignite", e);
-      if (m.shots >= 3) { m.shots = 0; m.volleyT = 3.5f + frand() * 1.5f; } else m.volleyT = 0.35f;
+      if (m.shots >= (crystal ? 2 : 3)) { m.shots = 0; m.volleyT = 3.5f + frand() * 1.5f; } else m.volleyT = 0.35f;
     }
     if (dist < 5) return Move{T.speed * 0.6f, toPlayer + PI};
     if (dist > 12 || !s.sees) return Move{T.speed, toPlayer};

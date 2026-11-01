@@ -88,6 +88,21 @@ def main(d):
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
     (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':'), ensure_ascii=False))
+
+    # ---- the lands' own creatures (sim/creature_spawn.cpp spawnRealms): a sulfur slime in the Sulfur Pools (its touch
+    #      poisons), a crystal wisp in the Crystal Forest, a scorched skeleton archer in the Old World's ruins ----
+    mobs = json.loads((d / 'mobs.json').read_text())
+    v = dict(mobs['slime']); v.update({'label': 'a sulfur slime', 'tint': [0.86, 0.9, 0.22, 0.6], 'hp': 14, 'damage': 2, 'fireImmune': True,
+                                       'onHit': {'poison': 4}, 'drops': [['slime_ball', 0, 1, 1], ['sulphur', 0, 2, 0.6]]})
+    mobs['sulfur_slime'] = v
+    v = dict(mobs['cinder_wisp']); v.update({'label': 'a crystal wisp', 'tint': [1.0, 0.32, 0.4, 0.6], 'hp': 16,
+                                             'drops': [['red_crystal_cluster', 0, 1, 0.5], ['glowstone_dust', 0, 2, 0.5]]})
+    mobs['crystal_wisp'] = v
+    v = dict(mobs['skeleton']); v.update({'label': 'a scorched skeleton', 'tint': [0.36, 0.28, 0.3, 0.62], 'hp': 24, 'fireImmune': True,
+                                          'drops': [['bone', 0, 2, 1], ['arrow', 0, 2, 1], ['coal', 0, 1, 0.4]]})
+    v.pop('fleesSun', None)
+    mobs['scorched_skeleton'] = v
+    (d / 'mobs.json').write_text(json.dumps(mobs, separators=(',', ':'), ensure_ascii=False))
     print('nether bta ok')
 
 

@@ -136,13 +136,16 @@ void Ambience::update(double dtIn, const AudioScene& s) {
   float high = std::clamp((localY - 96) / 40.f, 0.f, 1.f);       // the original's y 80 is 32 above its sea; ours is at 64
   if (level > 0) {
     float gust = std::clamp(s.gust / 0.35f, 0.f, 1.f);
-    float want = level * (s.dim == DIM_OVERWORLD || s.dim == DIM_AETHER ? 0.02f + open * (0.025f + high * 0.08f) * (1 + gust * 1.6f) : s.dim == DIM_NETHER ? 0.035f : 0.01f);
+    // the Nether's lands each blow their own way: the Old World's ash wind loud and airy, the volcanoes' low and hot
+    static const float LAND_WIND[5] = {0.05f, 0.03f, 0.028f, 0.02f, 0.075f}, LAND_FR[5] = {300, 210, 260, 380, 470};
+    const bool land = s.dim == DIM_NETHER && s.netherLand >= 0 && s.netherLand < 5;
+    float want = level * (s.dim == DIM_OVERWORLD || s.dim == DIM_AETHER ? 0.02f + open * (0.025f + high * 0.08f) * (1 + gust * 1.6f) : land ? LAND_WIND[s.netherLand] : s.dim == DIM_NETHER ? 0.035f : 0.01f);
     windG += (want - windG) * std::min(1.f, dt * 1.5f);
-    wind(windG, 300 + high * 400 + (float)std::sin(s.time * 0.21) * 80);
+    wind(windG, (land ? LAND_FR[s.netherLand] : 300 + high * 400) + (float)std::sin(s.time * 0.21) * 80);
   } else if (windG > 0) { windG = 0; wind(0, 420); }
   { AudioCmd c; c.t = AudioCmd::Rain; c.a = level * s.rain * 1.6f; e.send(c); }   // weather.js: ambience volume × rain × (0.08 + 0.22 open)
   { AudioCmd c; c.t = AudioCmd::Drone; c.a = s.dim == DIM_END && !s.dead ? level * 0.55f : 0.f; e.send(c); }   // the End's drone
-  tBird -= dt; tCricket -= dt; tDrip -= dt; tRumble -= dt;
+  tBird -= dt; tCricket -= dt; tDrip -= dt; tRumble -= dt; tLand -= dt;
   float vol = level;
   if (vol > 0.05f) {
     if (s.dim == DIM_OVERWORLD || s.dim == DIM_AETHER) {
@@ -151,7 +154,17 @@ void Ambience::update(double dtIn, const AudioScene& s) {
     }
     if (sky < 4 && tDrip <= 0) { tDrip = 1.5 + e.rnd() * 5; if (e.rnd() < vol) at(s, "drip", 8); }
     if (sky < 2 && tRumble <= 0) { tRumble = 40 + e.rnd() * 80; if (e.rnd() < vol * 0.8f) { SoundRef r = e.lib.resolve("cave"); AudioCmd c; c.cat = CAT_AMB; if (r && e.gapOk("cave", r.gap)) e.start(r, c, 1); } }
-    if (s.dim == DIM_NETHER && tDrip <= 0.1 && e.rnd() < dt * 0.3f) at(s, "burn", 6);
+    if (s.dim == DIM_NETHER && tDrip <= 0.1 && e.rnd() < dt * (s.netherLand == 1 ? 0.7f : 0.3f)) at(s, "burn", 6);
+    // each of the Nether's lands its own sounds (audio/nether_sfx.cpp)
+    if (s.dim == DIM_NETHER && s.netherLand >= 0 && tLand <= 0) {
+      switch (s.netherLand) {
+        case 0: tLand = 8 + e.rnd() * 14; if (e.rnd() < vol) at(s, "crag_crack", 22); break;           // the Crag: stones falling
+        case 1: tLand = 14 + e.rnd() * 22; if (e.rnd() < vol) at(s, "nether_rumble", 30); break;       // Volcanic Islands: the ground grumbles
+        case 2: tLand = 0.8 + e.rnd() * 2.6; if (e.rnd() < vol) at(s, "acid_bubble", 9); break;       // Sulfur Pools: bubbling acid
+        case 3: tLand = 2.5 + e.rnd() * 5; if (e.rnd() < vol) at(s, "crystal_chime", 12); break;      // Crystal Forest: crystals ringing
+        default: tLand = 18 + e.rnd() * 24; if (e.rnd() < vol) at(s, "ash_moan", 30); break;          // the Old World: wind in the ruins
+      }
+    }
     if (s.dim == DIM_END && e.rnd() < dt * 0.035f && e.rnd() < vol) at(s, "ender_tp", 34);   // somewhere far off, something blinks from place to place
   }
   // ---- sound3.js: sit in the dark long enough and the caves start making their noises ----

@@ -11,6 +11,7 @@
 //                     ash-choked pits down to the lava, petrified trunks and ruins of scorched brick.
 // The lands are big cells (jittered, their borders warped) blended a few dozen blocks across.
 #pragma once
+#include <vector>
 #include "common/noise.h"
 
 namespace dq {
@@ -45,5 +46,9 @@ private:
 
 // for the renderer (fog) and the spawner: the land at (x, z) in a world of this seed
 void netherBiomeMix(i32 seed, int x, int z, u8& a, u8& b, float& mix);
+
+// the Volcanic Islands' volcanoes within `range` blocks of (x, z): the crater's centre, its lava's band y, the cone's radius
+struct NetherVolcano { int x = 0, z = 0, lavaY = 0; float radius = 0, crater = 0, height = 0; u32 hash = 0; };
+void netherVolcanoes(i32 seed, int x, int z, int range, std::vector<NetherVolcano>& out);
 
 } // namespace dq

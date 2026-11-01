@@ -26,6 +26,7 @@ void registerColourFilterLayer();
 void registerDreamlightLayer();
 void registerStatueLayer();
 void registerHeadLayer();   // render/head_layer.cpp
+void registerNetherFxLayer();   // render/nether_fx_layer.cpp
 
 void registerItemLayers() {
   static bool done = false;
@@ -48,6 +49,7 @@ void registerItemLayers() {
   registerFpBow();          // the bow drawn in first person (render/fp_bow.cpp)
   registerSpawnerLayer();   // the spinning monster inside a monster cage (render/spawner_layer.cpp)
   registerHeadLayer();      // placed mob heads (render/head_layer.cpp)
+  registerNetherFxLayer();  // the Nether lands' eruptions, embers, fumes and glints (render/nether_fx_layer.cpp)
 }
 
 // ------------------------------------------------------------------ the arm

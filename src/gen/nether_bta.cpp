@@ -149,6 +149,28 @@ void netherBiomeMix(i32 seed, int x, int z, u8& a, u8& b, float& mix) {
   s->biomeMix(x, z, a, b, mix);
 }
 
+void netherVolcanoes(i32 seed, int x, int z, int range, std::vector<NetherVolcano>& out) {
+  out.clear();
+  const double G = 84;   // as floorOf's NB_VOLCANIC
+  const int gx0 = (int)std::floor((x - range) / G), gx1 = (int)std::floor((x + range) / G);
+  const int gz0 = (int)std::floor((z - range) / G), gz1 = (int)std::floor((z + range) / G);
+  for (int cz = gz0; cz <= gz1; cz++) for (int cx = gx0; cx <= gx1; cx++) {
+    const u32 hh = hash32(cx, cz, 0x7010, seed);
+    if ((hh & 255) > 150) continue;
+    const u32 h2 = hash32(cx, cz, 0x7011, seed);
+    const double px = (cx + 0.2 + 0.6 * h01(hh, 8)) * G, pz = (cz + 0.2 + 0.6 * h01(h2, 0)) * G;
+    if (std::hypot(px - x, pz - z) > range) continue;
+    u8 a, b; float mix;
+    netherBiomeMix(seed, (int)std::floor(px), (int)std::floor(pz), a, b, mix);
+    if (a != NB_VOLCANIC || mix < 0.93f) continue;   // craters only well inside their own land (column())
+    const double R = 11 + 9 * h01(h2, 16), H = 26 + 26 * h01(hh, 16), cr = R * 0.24;
+    const double rim = NetherShape::LAVA - 2 + (H + 2) * std::pow(1 - cr / R, 1.3);
+    NetherVolcano v; v.x = (int)std::floor(px); v.z = (int)std::floor(pz); v.lavaY = (int)std::floor(rim) - 1;
+    v.radius = (float)R; v.crater = (float)cr; v.height = (float)H; v.hash = hh ^ (h2 << 7);
+    out.push_back(v);
+  }
+}
+
 // =================================================================================================== generation
 namespace {
 // one land's blocks

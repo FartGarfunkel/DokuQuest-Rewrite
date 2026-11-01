@@ -169,7 +169,7 @@ Creature::Creature(const std::string& type) {
     heldItem = W[(int)(frand() * 8) & 7];
   }
   rollArmour();
-  if (type == "slime" || type == "magma_slime") setSize(2);
+  if (type == "slime" || type == "magma_slime" || type == "sulfur_slime") setSize(2);
 }
 
 float Creature::weaponBonus() const {
@@ -411,7 +411,7 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   // death cries (bestiary.js / sounds2.js)
   if (!creatureVoice(*T).empty()) lv.fx->voice(creatureVoice(*T), "death", pos + vec3(0, h * 0.6f, 0));
   // nightmobs.js / monsters.js: big slimes split
-  if ((type == "slime" || type == "magma_slime") && size > 1) {
+  if ((type == "slime" || type == "magma_slime" || type == "sulfur_slime") && size > 1) {
     int n = type == "slime" ? 2 + (int)(frand() * 3) : 2 + (int)(frand() * 2);
     for (int i = 0; i < n; i++) if (auto* m = spawnCreature(lv, realm, type, pos + vec3((frand() - 0.5f) * 0.6f, 0.3f, (frand() - 0.5f) * 0.6f))) { m->setSize(1); m->vel.y = type == "slime" ? 3 : 3.5f; }
   }
