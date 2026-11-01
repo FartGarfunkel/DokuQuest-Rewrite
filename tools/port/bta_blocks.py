@@ -412,6 +412,15 @@ def main(d):
                                            'needsSupport': True, 'fuel': 0.5, 'tree': 'palm', 'tex': 'palm_sapling'}, [tiles['palm_sapling']] * 6)
     items['coconut'] = {'key': 'coconut', 'name': 'Coconut', 'maxStack': 64, 'icon': 'coconut', 'food': {'heal': 3}, 'desc': 'Falls from a felled palm.'}
     recipe('palm_planks', 4, items_=['palm_log'])
+    # the statue (BTA's): a stone plinth; a spawn egg used on it carves that creature standing on it (render/statue_layer.cpp)
+    if 'statue_side' not in tiles:
+        tile('statue_side', recolour(src_pic(d, tiles, files, 'chiseled_stone_bricks' if 'chiseled_stone_bricks' in tiles else 'stone_bricks'), hsv_map(val=1.05)))
+        tile('statue_top', recolour(src_pic(d, tiles, files, 'smooth_stone' if 'smooth_stone' in tiles else 'stone'), hsv_map(val=1.08)))
+    block('statue', 'Statue', {'hardness': 2, 'tool': 'pickaxe', 'sound': 'stone', 'statue': True,
+                               'tex': {'top': 'statue_top', 'bottom': 'statue_top', 'side': 'statue_side'}},
+          [tiles['statue_side'], tiles['statue_side'], tiles['statue_top'], tiles['statue_top'], tiles['statue_side'], tiles['statue_side']])
+    items['statue']['desc'] = 'A plinth: use a spawn egg on it to carve that creature in stone. Crouch with an empty hand to clear it.'
+    recipe('statue', 1, ['SSS', ' C ', 'SSS'], {'S': 'smooth_stone' if 'smooth_stone' in items else 'stone', 'C': 'chiseled_stone_bricks' if 'chiseled_stone_bricks' in items else 'stone_bricks'})
     # the painting: a framed canvas whose picture is painted by render/painting_layer.cpp (use it to turn to the next)
     if 'painting_frame' not in tiles:
         pf = recolour(src_pic(d, tiles, files, 'dark_oak_planks'), hsv_map(val=0.95)); pp = pf.load()
@@ -522,6 +531,13 @@ def main(d):
                     if 0 <= x < 32 and 0 <= y < 32 and not qp[x, y][3]: qp[x, y] = (236, 236, 236, 255) if dx else (90, 70, 50, 255)
         rel = 'textures/item/quiver.png'; qv.save(d / rel)
         tiles['quiver'] = tj['count']; files.append(rel); tj['res'].append(32); tj['count'] += 1
+    if 'golden_quiver' not in tiles:
+        gq = recolour(_I.open(d / files[tiles['quiver']]).convert('RGBA'), lambda r, g, b_, a, x, y: (min(255, r + 90), min(255, g + 70), b_ // 3, a) if (r, g, b_) != (236, 236, 236) else (r, g, b_, a))
+        rel = 'textures/item/golden_quiver.png'; gq.save(d / rel)
+        tiles['golden_quiver'] = tj['count']; files.append(rel); tj['res'].append(32); tj['count'] += 1
+    items['golden_quiver'] = {'key': 'golden_quiver', 'name': 'Golden Quiver', 'maxStack': 1, 'icon': 'golden_quiver', 'rarity': 'rare',
+                              'desc': 'Never runs dry. Its arrows hit a little softer and break where they land.'}
+    recipe('golden_quiver', 1, ['GQG', 'GAG', 'GGG'], {'G': 'gold_ingot', 'Q': 'quiver', 'A': 'arrow'})
     items['quiver'] = {'key': 'quiver', 'name': 'Quiver', 'maxStack': 1, 'icon': 'quiver', 'desc': 'Holds up to 192 arrows. Use it to gather them; crouch and use it to tip them out.'}
     recipe('quiver', 1, ['LS', 'LL', 'LL'], {'L': 'leather', 'S': 'string'})
     # thorn leaves: the Thornscrub's thorn trees (BTA's Caatinga); they prick like cactus
@@ -541,6 +557,7 @@ def main(d):
     if 'steel_door_item' not in sh['itemTiles']: sh['itemTiles'].append('steel_door_item'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'glass_door_item' not in sh['itemTiles']: sh['itemTiles'].append('glass_door_item'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'coconut' not in sh['itemTiles']: sh['itemTiles'].append('coconut'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
+    if 'golden_quiver' not in sh['itemTiles']: sh['itemTiles'].append('golden_quiver'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'quiver' not in sh['itemTiles']: sh['itemTiles'].append('quiver'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     if 'painting_item' not in sh['itemTiles']: sh['itemTiles'].append('painting_item'); (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':'), ensure_ascii=False))
     for _k in ('handcannon', 'rocket_launcher', 'cannonball', 'rocket'):

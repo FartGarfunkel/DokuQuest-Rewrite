@@ -18,6 +18,11 @@ int quiverArrows(Player& p) {
   for (auto* v : {&p.inv, &p.offhand}) for (auto& s : *v) if (!s.empty() && s.id == "quiver") n += held(s);
   return n;
 }
+// the golden quiver (BTA's): never runs dry, but its arrows hit a little softer and break where they land
+bool goldenQuiver(Player& p) {
+  for (auto* v : {&p.inv, &p.offhand}) for (auto& s : *v) if (!s.empty() && s.id == "golden_quiver") return true;
+  return false;
+}
 bool quiverTake(Player& p) {
   for (auto* v : {&p.offhand, &p.inv}) for (auto& s : *v) if (!s.empty() && s.id == "quiver" && held(s) > 0) { setHeld(s, held(s) - 1); return true; }
   return false;

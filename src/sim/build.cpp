@@ -566,6 +566,17 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
     if (e && e->value("book", false) && !hasHeld) { giveItem(lv, p, ItemStack("book", 1)); w.setBlockEntity(x, y, z, nullptr); swingArm(); return true; }
     return false;
   }
+  if (b.has("statue")) {   // a spawn egg carves its creature on the plinth, facing you; crouch with an empty hand to clear it
+    const ItemDef* hd = held && !held->empty() ? held->def() : nullptr;
+    const std::string egg = hd ? hd->str("spawnEgg") : "";
+    if (!egg.empty() || (p.sneaking && (!held || held->empty()))) {
+      const float yaw = std::atan2(-(p.pos.x - (x + 0.5f)), -(p.pos.z - (z + 0.5f))) + PI;
+      if (egg.empty()) w.setBlockEntity(x, y, z, {{"type", "statue"}});
+      else { w.setBlockEntity(x, y, z, {{"type", "statue"}, {"mob", egg}, {"yaw", std::round(yaw / (PI / 4)) * (PI / 4)}}); if (!p.creative() && --held->n <= 0) held->clear(); }
+      sfxMaterial(lv, "stone", "place", vec3(x, y, z)); swingArm();
+      return true;
+    }
+  }
   if (b.has("painting")) {   // turn to the next picture (crouch: the one before)
     json* e = w.blockEntity(x, y, z);
     const int n = e && e->is_object() ? e->value("n", 0) : 0;

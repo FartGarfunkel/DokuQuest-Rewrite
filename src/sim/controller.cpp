@@ -685,6 +685,7 @@ public:
           for (auto& b : bs) if (n.x >= bx + b.x0 / 16 && n.x <= bx + b.x1 / 16 && n.y >= by + b.y0 / 16 && n.y <= by + b.y1 / 16 && n.z >= bz + b.z0 / 16 && n.z <= bz + b.z1 / 16) hitIt = true;
         }
         if (hitIt) {
+          if (data.value("golden", false)) { removed = true; lv.fx->particles("burst", pos, 6, {{"tile", "gold_block"}, {"speed", 1.2f}}); return; }   // a golden quiver's arrow breaks where it lands
           aim(); data["stuck"] = true; data["bx"] = bx; data["by"] = by; data["bz"] = bz; age = 0; vel = vec3(0);
           sfxAt(lv, "arrow_hit", n);
           return;
@@ -701,19 +702,22 @@ void PlayerController::updateHeldTools(float dt, const PlayerInput& in) {
   const ItemDef* def = held.empty() ? nullptr : reg().item(held.id);
   bool playing = !p.dead && p.carrying.is_null();
   if (playing && def && def->has("bow")) {
-    int quiverArrows(Player& p); bool quiverTake(Player& p);   // sim/quiver.cpp
-    bool hasArrow = (!p.offhand[0].empty() && p.offhand[0].id == "arrow") || playerCount(p, "arrow") > 0 || quiverArrows(p) > 0;
+    int quiverArrows(Player& p); bool quiverTake(Player& p); bool goldenQuiver(Player& p);   // sim/quiver.cpp
+    const bool golden = goldenQuiver(p);
+    bool hasArrow = (!p.offhand[0].empty() && p.offhand[0].id == "arrow") || playerCount(p, "arrow") > 0 || quiverArrows(p) > 0 || golden;
     if (in.use) {
       if (!hasArrow && !p.creative()) { if (in.usePressed) toastMsg("You need arrows"); bowPull = 0; }
       else { if (bowPull <= 0) sfxUi(lv, p, "bow_draw"); bowPull = std::min(1.25f, bowPull + dt); }   // a creak as you draw (bows.js)
     } else if (bowPull > 0) {
       if (bowPull > 0.12f) {
         float power = std::min(1.f, bowPull);
-        if (!p.creative()) { if (!p.offhand[0].empty() && p.offhand[0].id == "arrow") { if (--p.offhand[0].n <= 0) p.offhand[0].clear(); } else if (!quiverTake(p)) playerRemove(p, "arrow", 1); }
+        bool goldShot = false;
+        if (!p.creative()) { if (!p.offhand[0].empty() && p.offhand[0].id == "arrow") { if (--p.offhand[0].n <= 0) p.offhand[0].clear(); } else if (!quiverTake(p)) { if (playerCount(p, "arrow") > 0) playerRemove(p, "arrow", 1); else goldShot = golden; } }
         vec3 L = lookVector(p.yaw, p.pitch); float sp = 8 + power * 30;
         auto a = std::make_unique<ArrowEntity>();
         a->realm = p.realm; a->pos = p.pos + vec3(L.x * 0.4f, p.eye - 0.1f + L.y * 0.4f, L.z * 0.4f); a->vel = L * sp;
-        a->data = {{"owner", p.id}, {"damage", (3 + power * 6) * enchArrowDamageFactor(held)}, {"pickup", !p.creative() && !enchInfinity(held)}};
+        a->data = {{"owner", p.id}, {"damage", (3 + power * 6) * enchArrowDamageFactor(held) * (goldShot ? 0.8f : 1.f)}, {"pickup", !p.creative() && !enchInfinity(held) && !goldShot}};
+        if (goldShot) a->data["golden"] = true;
         if (int pu = enchArrowPunch(held)) a->data["punch"] = pu;
         if (enchArrowFlame(held)) a->data["flame"] = true;
         a->aim();

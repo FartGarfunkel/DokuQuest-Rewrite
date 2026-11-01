@@ -54,7 +54,9 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **A jar of butterflies** (an empty jar over grass on a bright day), **bluebells** under forest trees, **marigolds** in the meadows, **spinifex** in the redlands, and the **sugar cane bundle.**
 - **The hand sieve:** sift gravel, sand, dirt and the rest right where it lies.
 - **The quiver:** holds up to 192 arrows; your bow draws from it.
+- **The golden quiver:** never runs dry, though its arrows hit a little softer and break where they land.
 - **Paintings:** hang one on a wall for a picture of its own (landscapes, seascapes, snowy peaks, still lifes, colour fields); use it to turn to another.
+- **Statues:** use a spawn egg on a statue plinth and that creature stands on it carved in stone, facing you.
 - **The handcannon and the rocket launcher:** cannonballs burst where they land without breaking blocks (fire one at your feet to fling yourself up), rockets fly straight and blast what they hit.
 - **The activator:** a redstone block that uses what it holds on the block in front, like a hand: it sets blocks down, digs with a tool, and with nothing in it swings a door, trapdoor or gate.
 - **Particles:** sprinting kicks up the ground you run on, a hard landing throws up a ring of it, critical blows burst into stars, and running beasts raise dust.

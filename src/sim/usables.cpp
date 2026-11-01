@@ -97,6 +97,7 @@ void registerUsables() {
         std::string type = d->str("spawnEgg");
         if (!isCreatureType(type)) return true;
         World& w = lv.world(p->realm);
+        if (reg().block(w.getBlock(hb.x, hb.y, hb.z)).has("statue")) return true;   // on a statue's plinth it carves the figure (sim/build.cpp)
         if (w.getBlock(hb.x, hb.y, hb.z) == reg().blockId("monster_spawner")) {
           if (json* be = w.blockEntity(hb.x, hb.y, hb.z, true)) { (*be)["type"] = "spawner"; (*be)["mob"] = type; w.blockEntityChanged(hb.x, hb.y, hb.z); }
           if (!p->creative()) useUp(*p);
