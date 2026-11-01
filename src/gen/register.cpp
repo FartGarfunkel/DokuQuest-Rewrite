@@ -9,5 +9,6 @@ namespace dq {
 void registerWorldTypes() {
   registerStructures();        // every structure type (gen/structures_register.cpp), before any generator exists
   registerDefaultWorldGen();   // "default", "pocket", "realm" (gen/realms.cpp)
+  { void registerSkyblockWorldGen(); registerSkyblockWorldGen(); }   // "skyblock" (gen/skyblock.cpp)
 }
 } // namespace dq

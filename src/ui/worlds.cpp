@@ -203,7 +203,7 @@ public:
   std::vector<WorldEntry> worlds;
   std::string name = "New World", seed, msg, confirm;
   bool relist = false;   // a world was deleted: list again after the loop (not while it walks the list)
-  int mode = 0; bool moreOpen = false, importOpen = false;
+  int mode = 0, wtype = 0; bool moreOpen = false, importOpen = false;
   WorldForm form;
   double refreshAt = 0;
   void onOpen(App& a) override { worlds = listWorlds(); form.init(json(), false, nullptr, nullptr); }
@@ -310,6 +310,8 @@ public:
     if (combo("##nwmode", &mode, {"Survival \xE2\x80\x94 gather, craft, stay alive", "Creative \xE2\x80\x94 every block, flight, no damage",
                                    "Hardcore \xE2\x80\x94 survival with one life; after that you can only watch",
                                    "Adventure \xE2\x80\x94 explore and fight; blocks can't be broken or placed"}, fw)) form.rules["commands"] = mode == 1;
+    label(F_MID, col::muted, "World type");
+    combo("##nwtype", &wtype, {"Default \xE2\x80\x94 the whole world", "Skyblock \xE2\x80\x94 one small island in an empty sky (BTA)"}, fw);
     // <details class="more-opts"><summary> in gold, wrapping
     {
       const char* sum = "More world options: day and night, game rules, commands";
@@ -328,6 +330,7 @@ public:
     if (button("Create world", BTN_PRIMARY, false, fw)) {
       LevelInfo li; li.name = name.empty() ? "New World" : name; li.seedText = seed; li.mode = mode == 1 ? "creative" : mode == 3 ? "adventure" : "survival";
       li.rules = form.rules;
+      if (wtype == 1) li.worldType = "skyblock";
       if (mode == 2) { li.rules["hardcore"] = true; li.rules["commands"] = false; li.rules["keepInventory"] = false; }   // BTA / Minecraft hardcore
       a.settings.extra["played"] = true;
       uiDefer([li](App& app) { if (!app.createWorld(li)) app.toast("Could not create the world", "warn"); });

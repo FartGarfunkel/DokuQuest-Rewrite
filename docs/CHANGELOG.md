@@ -76,6 +76,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **The End has a sound of its own:** a low, slowly breathing drone with a hollow wind through it, and now and then something far off blinking from place to place.
 - **Hardcore worlds.** Pick Hardcore when you make a world: survival with one life, no commands. When you die you can stay and watch the world as a spectator, or leave.
 - **Adventure and Spectator modes** (BTA): Adventure lets you explore, fight, trade and use things, but blocks can't be broken or placed; Spectator flies through anything and only watches. Pick Adventure for a new world, switch any world in World settings, or use /gamemode.
+- **Skyblock worlds** (BTA): pick the Skyblock world type for a new world and you start on one small island of grass in an empty sky, with an oak tree and a chest of what you'll need (lava, ice, seeds, a sapling). The Depths, the Skylands and the End are still there to reach.
 - **Sorting.** Middle-click a chest, a backpack or your bag (or click the right stick on one) and its stacks are put in order and topped up; the hotbar stays as you left it.
 - **New commands:** /playsound plays any of the game's sounds (with volume, pitch and a place) and /particle makes any particle (smoke, flame, heart, firework...).
 - **An emote row in the chat** (BTA): click a face to drop it into your line.
