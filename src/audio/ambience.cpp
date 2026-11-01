@@ -141,6 +141,7 @@ void Ambience::update(double dtIn, const AudioScene& s) {
     wind(windG, 300 + high * 400 + (float)std::sin(s.time * 0.21) * 80);
   } else if (windG > 0) { windG = 0; wind(0, 420); }
   { AudioCmd c; c.t = AudioCmd::Rain; c.a = level * s.rain * 1.6f; e.send(c); }   // weather.js: ambience volume × rain × (0.08 + 0.22 open)
+  { AudioCmd c; c.t = AudioCmd::Drone; c.a = s.dim == DIM_END && !s.dead ? level * 0.55f : 0.f; e.send(c); }   // the End's drone
   tBird -= dt; tCricket -= dt; tDrip -= dt; tRumble -= dt;
   float vol = level;
   if (vol > 0.05f) {
@@ -151,6 +152,7 @@ void Ambience::update(double dtIn, const AudioScene& s) {
     if (sky < 4 && tDrip <= 0) { tDrip = 1.5 + e.rnd() * 5; if (e.rnd() < vol) at(s, "drip", 8); }
     if (sky < 2 && tRumble <= 0) { tRumble = 40 + e.rnd() * 80; if (e.rnd() < vol * 0.8f) { SoundRef r = e.lib.resolve("cave"); AudioCmd c; c.cat = CAT_AMB; if (r && e.gapOk("cave", r.gap)) e.start(r, c, 1); } }
     if (s.dim == DIM_NETHER && tDrip <= 0.1 && e.rnd() < dt * 0.3f) at(s, "burn", 6);
+    if (s.dim == DIM_END && e.rnd() < dt * 0.035f && e.rnd() < vol) at(s, "ender_tp", 34);   // somewhere far off, something blinks from place to place
   }
   // ---- sound3.js: sit in the dark long enough and the caves start making their noises ----
   if (s.dead || level <= 0) return;

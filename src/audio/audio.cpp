@@ -48,6 +48,7 @@ void AudioEngine::Impl::mix(float* out, int n) {
       case AudioCmd::Stop: for (auto& v : voices) if (v.on && v.handle == c.handle) v.fadeStep = 1.f / (0.01f * SR); break;
       case AudioCmd::Wind: wind.target = c.a; wind.ft = c.b; break;
       case AudioCmd::Rain: rain.target = c.a; break;
+      case AudioCmd::Drone: drone.target = c.a; break;
       case AudioCmd::Verb: roomT = c.a; under = c.b < 0; caveT = std::max(0.f, c.b); break;   // b < 0: under water
       default: if (music) music->command(c); break;
     }
@@ -89,6 +90,22 @@ void AudioEngine::Impl::mix(float* out, int n) {
       float nz = rain.r.pm(), s = (rain.lp.run(nz) * 0.9f + rain.hp.run(rain.r.pm()) * 0.25f) * rain.g * master;
       bus[2 * i] += s; bus[2 * i + 1] += s * 0.97f;
     }
+  }
+  // the End: two low tones a breath apart (they beat slowly), a fifth and an octave faintly over them, swelling and
+  // fading over nine seconds, and a hollow wind breathing through a narrow band
+  if (drone.g > 1e-5f || drone.target > 1e-5f) {
+    if (!drone.init) { drone.bp.setWA("bandpass", 190, 3.0); drone.init = true; }
+    const double TAU2 = 6.283185307179586;
+    for (int i = 0; i < n; i++) {
+      drone.g += (drone.target - drone.g) * 0.00015f;
+      const double t = drone.t; drone.t += 1.0 / SR;
+      const float sw = 0.6f + 0.4f * (float)std::sin(TAU2 * t / 9.3), sw2 = 0.5f + 0.5f * (float)std::sin(TAU2 * t / 13.7 + 1);
+      const float a = (float)(std::sin(TAU2 * 55 * t) + 0.8 * std::sin(TAU2 * 55.45 * t) + 0.35 * std::sin(TAU2 * 82.5 * t + 0.4) + 0.18 * std::sin(TAU2 * 110.3 * t));
+      const float h = drone.bp.run(drone.r.pm()) * 1.6f * sw2;
+      const float s = (a * 0.11f * sw + h * 0.5f) * drone.g * master;
+      bus[2 * i] += s; bus[2 * i + 1] += s * 0.95f + a * 0.004f * drone.g * master;
+    }
+    if (drone.t > 1e6) drone.t -= 1e6;
   }
   // sound3.js: everything through one bus, with a small room and a cave on sends
   float rs = 1.f / (0.6f * SR);
