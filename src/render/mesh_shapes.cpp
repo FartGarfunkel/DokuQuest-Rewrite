@@ -201,6 +201,7 @@ void addShapeBox(MeshCtx& c, std::vector<ChunkVertex>& d, const ShapeBox& box, v
     float ext[3] = {box.b[3] - box.b[0], box.b[4] - box.b[1], box.b[5] - box.b[2]};
     int ax = ext[1] >= ext[0] && ext[1] >= ext[2] ? 1 : ext[0] >= ext[2] ? 0 : 2, p = (ax + 1) % 3, q = (ax + 2) % 3;
     float cp = (box.b[p] + box.b[p + 3]) / 2, cq = (box.b[q] + box.b[q + 3]) / 2, a0 = box.b[ax], a1 = box.b[ax + 3], hw = 1.5f;
+    const float vbase = std::floor(a0 / 16.f) * 16.f;   // a long chain comes in block-long pieces: each takes the picture from its own block's start
     for (int k = 0; k < 2; k++) {
       float sq = k ? -1.f : 1.f, u0 = k ? 3.f : 0.f, u1 = u0 + 3;
       MV v[4];
@@ -208,7 +209,7 @@ void addShapeBox(MeshCtx& c, std::vector<ChunkVertex>& d, const ShapeBox& box, v
         float s = (i == 0 || i == 3) ? -1.f : 1.f, along = (i < 2) ? a0 : a1;
         float P[3]; P[ax] = along; P[p] = cp + s * hw; P[q] = cq + s * hw * sq;
         vec3 pos = o + vec3(P[0], P[1] + lift, P[2]) * unit;
-        v[i] = {pos, vec2(s < 0 ? u0 : u1, 16 - along) / 16.f, sk, bl, 1.f, swayFn ? (*swayFn)(pos) : (u8)0};
+        v[i] = {pos, vec2(s < 0 ? u0 : u1, 16 - (along - vbase)) / 16.f, sk, bl, 1.f, swayFn ? (*swayFn)(pos) : (u8)0};
       }
       c.quad2(d, v, chainTile, NORMAL_NONE, (u8)(mat | Mat::Cutout | Mat::NoRelief));
     }
@@ -349,9 +350,16 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   if (!boxes) return;
   // a hanging lantern swings gently: the further below the hook, the more it moves
   std::function<u8(vec3)> hangFn = [&](vec3 p) -> u8 { return (u8)(Sway::Hang + std::lround(clampv(y + 1 - p.y, 0.f, 1.f) * 11)); };
+  const int extra = hang ? (meta >> 2) & 31 : 0;   // a chain up to a ceiling further up (half blocks beyond its own block)
+  static int chainTile = -2; if (chainTile == -2) chainTile = R.tile("chain");
   for (auto& b0 : *boxes) {
     ShapeBox b = b0; if (rf) rotBox(b, rf);
     addShapeBox(c, d, b, o, 1 / 16.f, sk, bl, lift, rf, mat, hang ? &hangFn : nullptr);
+    if (extra && chainTile >= 0 && b.side == chainTile)
+      for (float a = 16; a < 16 + extra * 8; a += 16) {   // the rest of it, a block at a time
+        ShapeBox s = b; s.b[1] = a; s.b[4] = std::min(16.f + extra * 8, a + 16);
+        addShapeBox(c, d, s, o, 1 / 16.f, sk, bl, lift, rf, mat, nullptr);
+      }
   }
   if (T.campfire && !out) {
     int ft = R.tile(T.campfire == 1 ? "campfire_fire" : "soul_campfire_fire");

@@ -216,7 +216,7 @@ bool fullSolid(BlockId id) { const Registry& R = reg(); return R.tSolid[id] && R
 bool joinsFence(BlockId id) { int s = reg().tShape[id]; return s == ShapeKind::Fence || s == ShapeKind::Gate || fullSolid(id); }
 bool joinsWall(BlockId id) { int s = reg().tShape[id]; return s == ShapeKind::Wall || s == ShapeKind::Pane || s == ShapeKind::Gate || fullSolid(id); }
 bool joinsPane(BlockId id) { int s = reg().tShape[id]; return s == ShapeKind::Pane || s == ShapeKind::Wall || fullSolid(id); }
-bool hangingLantern(BlockId id, u8 meta) { return traits(id).lantern && (meta & 0x7f) == 1; }
+bool hangingLantern(BlockId id, u8 meta) { return traits(id).lantern && (meta & 3) == 1; }   // (bits 2..6: the chain's extra length, half blocks)
 bool slabGap(BlockId id, u8 meta, int side, u8 carve) {
   if (carve) return reg().tOpaque[id] && carveFaceDepth(carve, -DIRX[side], 0, -DIRZ[side]) == 8;
   return reg().tShape[id] == ShapeKind::Slab && (meta & 7) - 2 == side;

@@ -200,7 +200,7 @@ static void dropUnsupported(Level& lv, World& w, int x, int y, int z, BlockId ne
   std::string ash = ad.str("shape");
   bool hangs = R.tRender[above] == (u8)Render::Torch ? (am & 7) != 0
              : (ad.has("attached") && (ad.str("rs") == "hook" || (am & 7) != 0)) ? true
-             : (ash == "lantern" || ash == "soul_lantern") ? (am & 0x7f) == 1
+             : (ash == "lantern" || ash == "soul_lantern") ? (am & 3) == 1
              : bhas(above, BF::Hangs) || ad.has("cocoa") || ad.has("frame") || (ad.has("altTile") && (am & 1));
   if (above && bhas(above, BF::NeedsSupport) && !hangs && !bhas(above, BF::AlwaysWet) && !topOK) {
     bool keep = bhas(above, BF::Door) && (am & 16);
@@ -211,7 +211,7 @@ static void dropUnsupported(Level& lv, World& w, int x, int y, int z, BlockId ne
   BlockId below = w.getBlock(x, y - 1, z); u8 bm = w.getMeta(x, y - 1, z);
   const BlockDef& bd = R.block(below);
   std::string bsh = bd.str("shape");
-  if ((bsh == "lantern" || bsh == "soul_lantern") && (bm & 0x7f) == 1 && !botOK && R.block(newId).str("shape") != "chain") {
+  if ((bsh == "lantern" || bsh == "soul_lantern") && (bm & 3) == 1 && ((bm >> 2) & 31) == 0 && !botOK && R.block(newId).str("shape") != "chain") {   // (one on a long chain hangs from higher up)
     w.setBlock(x, y - 1, z, (bm & WLOG) ? B.water : AIR); dropBlockItems(lv, w, x, y - 1, z, below, true);
   } else if ((bhas(below, BF::Hangs) || (bd.has("altTile") && (bm & 1))) && !botOK && !(bhas(newId, BF::Hangs) && bhas(newId, BF::StackPlant) && bhas(below, BF::StackPlant))) {
     w.setBlock(x, y - 1, z, R.tWlog[below] && (bm & WLOG) ? B.water : AIR); dropBlockItems(lv, w, x, y - 1, z, below, true, bm);

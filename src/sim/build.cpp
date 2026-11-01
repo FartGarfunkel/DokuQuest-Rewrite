@@ -212,9 +212,21 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
     BlockId up = w.getBlock(x, y + 1, z);
     bool upOK = R.tSolid[up] && carveFaceFull(w.getCarve(x, y + 1, z), 0, -1, 0);   // hangs from a whole underside
     bool downOK = R.tSolid[w.getBlock(x, y - 1, z)] && carveFaceDepth(w.getCarve(x, y - 1, z), 0, 1, 0) >= 0;   // (stands sunk onto a slab)
+    // a ceiling further up, or an underside lifted half a block (a top slab, a chiseled block's carved-away bottom): the chain
+    // runs up to it. Its extra length beyond the lantern's own block is kept in meta bits 2..6, in half blocks.
+    int extra = -1;
+    if (!upOK) for (int k = 1; k <= 8 && extra < 0; k++) {
+      const BlockId b = w.getBlock(x, y + k, z);
+      if (R.block(b).str("shape") == "chain") { extra = 2 * (k - 1); break; }
+      if (!b || R.tLiquid[b]) continue;
+      if (!R.tSolid[b]) break;   // a torch, a plant... in the way
+      extra = 2 * (k - 1) + (carveFaceDepth(w.getCarve(x, y + k, z), 0, -1, 0) == 0 ? 0 : 1);
+    }
     if (ny == -1 && upOK) meta = 1;
+    else if (ny == -1 && extra >= 0) meta = (u8)(1 | std::min(extra, 31) << 2);
     else if (downOK) meta = 0;
     else if (upOK || R.block(up).str("shape") == "chain") meta = 1;
+    else if (extra >= 0) meta = (u8)(1 | std::min(extra, 31) << 2);
     else return;
     if (R.tLiquid[w.getBlock(x, y, z)] == 1 && (w.getMeta(x, y, z) & 15) == 0) meta |= WLOG;
   } else {

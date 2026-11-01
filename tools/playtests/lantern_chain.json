@@ -1,0 +1,16 @@
+{"steps":[
+ {"wait":200,"do":"anchor"},
+ {"do":"cmd","text":"/time set noon"},
+ {"do":"fill","rel":true,"from":[-4,0,-7],"to":[4,6,1],"key":"air"},
+ {"do":"fill","rel":true,"from":[-4,-1,-7],"to":[4,-1,1],"key":"stone"},
+ {"do":"fill","rel":true,"from":[-2,5,-5],"to":[2,5,-3],"key":"stone"},
+ {"do":"setBlock","rel":true,"x":1,"y":2,"z":-4,"key":"stone"},
+ {"do":"give","item":"lantern","n":4,"clear":true,"hand":true},
+ {"do":"lookAt","rel":true,"x":1,"y":2,"z":-4,"fx":0.0,"fy":0.5,"fz":0.5},
+ {"wait":5,"do":"mouse","button":"right","hold":1},
+ {"wait":10,"do":"expect","rel":true,"block":[0,2,-4],"is":"lantern"},
+ {"do":"tp","rel":true,"x":0,"y":0,"z":0},
+ {"do":"lookAt","rel":true,"x":0,"y":3,"z":-4},
+ {"wait":40,"do":"shot","path":"/tmp/pt/lantern1.png"},
+ {"do":"report"}
+]}
