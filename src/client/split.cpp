@@ -85,10 +85,12 @@ void GameSession::routeInput() {
 // A controller nobody plays with pressed Start: that person joins (gamepad.js claim). A controller the first person already
 // plays with (it did something besides Start) keeps pausing instead.
 void lanShareLocalSkin(App& app, const std::string& ref);   // client/netplay.cpp
+bool netAddCouch(App& app, Player& p);                       // client/netplay.cpp: a guest's couch player joins the host too
+void netRemoveCouch(App& app, Player& p);
 
 void GameSession::checkJoin() {
   Input& in = app.input;
-  if ((level->net && level->isRemote()) || locals.size() >= 4 || !app.screens.empty() || entered || in.setupActive) return;   // (a world you host on LAN takes couch players too)
+  if (locals.size() >= 4 || !app.screens.empty() || entered || in.setupActive) return;   // (in a LAN game, hosting or joined, couch players come too)
   if (g_p1Pad >= 0 && std::none_of(in.pads().begin(), in.pads().end(), [](const PadState& p) { return p.active && p.id == g_p1Pad; })) {
     g_p1Pad = -1; routeInput();   // their controller went away: the next one used is theirs
   }
@@ -108,7 +110,8 @@ void GameSession::checkJoin() {
 }
 
 int GameSession::addLocal(SDL_JoystickID pad) {
-  if ((level->net && level->isRemote()) || locals.size() >= 4 || locals.empty()) return -1;
+  if (locals.size() >= 4 || locals.empty()) return -1;
+  const bool guest = level->net && level->isRemote();   // in someone else's world: they join the host on a link of their own
   selectLocal(0);
   int i = (int)locals.size();
   if (i == 1) {   // the first person keeps the keyboard and the controllers they have been playing with
@@ -122,7 +125,7 @@ int GameSession::addLocal(SDL_JoystickID pad) {
   np->skin = look.skin;
   if (!look.cape.empty()) np->data["customCape"] = look.cape;
   Player* p0 = locals[0].player;
-  json saved = level->loadPlayer(np->name);   // their inventory from last time, by name
+  json saved = guest ? json() : level->loadPlayer(np->name);   // their inventory from last time, by name (a guest's: the host has it)
   bool placed = false;
   if (!saved.is_null()) { np->load(saved); placed = np->realm == p0->realm && glm::distance(np->pos, p0->pos) < 64.f; }
   else np->mode = level->info.mode;
@@ -132,7 +135,8 @@ int GameSession::addLocal(SDL_JoystickID pad) {
     np->realm = p0->realm; np->yaw = p0->yaw; np->pitch = 0; np->vel = vec3(0);
   }
   Player* ent = static_cast<Player*>(level->spawn(std::move(np)));
-  if (level->net) lanShareLocalSkin(app, ent->skin);   // hosting on LAN: the guests get their skin too
+  if (guest) { if (!netAddCouch(app, *ent)) { ent->removed = true; app.toast("Couldn't add a player to this game", "bad"); return -1; } }
+  else if (level->net) lanShareLocalSkin(app, ent->skin);   // hosting on LAN: the guests get their skin too
   locals.emplace_back();
   LocalPlayer& L = locals.back();
   L.index = i; L.player = ent; L.frame.settings = &app.settings; L.src.kb = false; L.src.pads = {pad};
@@ -148,7 +152,11 @@ void GameSession::removeLocal(int i) {
   selectLocal(0);
   LocalPlayer& L = locals[i];
   std::string name = L.player ? L.player->name : "";
-  if (L.player) { level->savePlayer(L.player->name, L.player->save()); L.player->removed = true; }
+  if (L.player) {
+    if (level->net && level->isRemote()) netRemoveCouch(app, *L.player);   // the host keeps their bags (their link's last save)
+    else level->savePlayer(L.player->name, L.player->save());
+    L.player->removed = true;
+  }
   freeLocalUi(L);
   locals.erase(locals.begin() + i);
   for (int k = 0; k < (int)locals.size(); k++) locals[k].index = k;

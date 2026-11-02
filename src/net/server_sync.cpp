@@ -177,7 +177,7 @@ void ServerHost::flushChunks(Peer& p, int maxRecords) {
       n++;
       continue;
     }
-    if (!c) { if (q.force) keep.push_back(q); continue; }   // asked for, not loaded here yet: once it is
+    if (!c) { keep.push_back(q); continue; }   // not loaded here yet (still being made on a busy host): once it is
     // untouched: their game makes it from the seed too; a checksum says whether it came out the same
     if (chunkSettled(*w, *c)) { head["h"] = chunkHash(*c); send(p.enet, CS, head); }
     else keep.push_back(q);
@@ -237,7 +237,7 @@ void ServerHost::sendFxTo(Peer& p, const char* key, json item) { if (p.fxOut.siz
 void ServerHost::flushEffects() {
   auto nearby = [](const json& it, int at, vec3 pos, float r) { return glm::distance(vec3(it[at].get<float>(), it[at + 1].get<float>(), it[at + 2].get<float>()), pos) < r; };
   for (auto& [id, p] : peers) {
-    if (!p.ready || !p.pl || !p.enet) { p.fxOut.clear(); continue; }
+    if (!p.ready || !p.pl || !p.enet || p.lite) { p.fxOut.clear(); continue; }
     json m = json::object();
     vec3 at = p.pl->pos;
     for (auto& s : fxS) if (nearby(s, 1, at, s[4].get<float>())) m["s"].push_back(s);

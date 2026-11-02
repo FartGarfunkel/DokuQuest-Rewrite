@@ -12,20 +12,19 @@ the pack or over it); the skin check (a skin with no head or body falls back); I
 and the built-in shader levels; distant terrain (per-block textures, water like the near water, the breath blob was a
 particle; then four times finer, corner AO on the tops, lumpy canopies, sea ice in the sea's blue); a terrain memory
 budget (far land fills the ring) and a 12-byte far-land vertex (was 16); the particle pass (soft blended smoke/breath/mist,
-relit as they drift); dragons and world progress synced; split screen with LAN (host side); steam vents in every
+relit as they drift); dragons and world progress synced; split screen with LAN (hosting or joined: a guest's couch players get light links of their own); steam vents in every
 Nether; the engine editor with the engine bridge and Strata (OpenAI-style endpoint); the data archive (data.dqa);
 game-only updates with a version picker (rollback, three kept); /lineup.
 Partly: the art pass on our own creature skins (tools/port/mob_restyle.py smooths speckle; the user's pack untouched).
-Not yet: split screen on a LAN guest's side; a smaller chunk (near terrain) vertex format; the launcher
+Not yet: a smaller chunk (near terrain) vertex format; the launcher
 replacing itself (it now only needs to when DQ_LAUNCHER_VERSION goes up).
 
 ## Still open after that
-- Mob tweaks from BTA: creepers hiding under trapdoors, smarter squid, pigs keeping momentum on stairs; dwarf mode
-  (game rule); an easy-bridge key; spawners passing items along.
+- Mob tweaks from BTA: creepers hiding under trapdoors, smarter squid, pigs keeping momentum on stairs. (Dropped by
+  the user 2026-11-02: dwarf mode, the easy-bridge key, spawners passing items along, the host deciding trades.)
 - Audio: a sound-by-sound check of every event; the Sound Studio's synth sandbox.
 - Tests: every block × every tool drop check; a scripted start-to-finish playthrough; Travel Journal checks at every
   story stage; the Nether-portal-invisible test.
-- Multiplayer: the host deciding villager trades.
 - From the notes audit: painted doors/trapdoors/signs/chests; the Seasonal Forest; igneous emberstone; chimney smoke
   on town buildings.
 - Creature looks: sheared-sheep skins from the user's sheet; more looks per land fuseling; villager looks.

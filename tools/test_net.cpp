@@ -226,6 +226,26 @@ int main(int argc, char** argv) {
   check(pump(3, [&] { return A.heard("Alice rolls a"); }), "a mod's command (DQ.command) answers in chat");
   submitChat(*B.lv, B.me, "/who");
   check(pump(3, [&] { return B.heard("Alice,Bob"); }), "DQ.players() lists everyone");
+
+  // ---- a couch player of Alice's (split screen while she's a guest): their own light link to the host ----
+  if (std::getenv("NO_COUCH") == nullptr) {
+    auto cp = std::make_unique<Player>();
+    cp->name = "Carol"; cp->pos = A.me->pos + vec3(1.2f, 0, 0); cp->realm = A.me->realm;
+    Player* carol = static_cast<Player*>(A.lv->spawn(std::move(cp)));
+    check(A.nc->addCouch(*carol, json{{"png", "c2tpbg=="}, {"slim", false}}), "a guest's couch player starts joining the host");
+    check(pump(8, [&] { return B.ghost("player", "Carol") != nullptr; }), "the others see the couch player");
+    pumpFor(1.0);
+    int carolGhostsAtAlice = 0;
+    for (auto& e : A.lv->entities()) if (!e->removed && e->ghost && e->isPlayer()) if (auto* p = dynamic_cast<Player*>(e.get())) if (p->name == "Carol") carolGhostsAtAlice++;
+    check(carolGhostsAtAlice == 0, "and on the guest's own screen the couch player isn't doubled by a ghost of themselves");
+    carol->pos += vec3(3, 0, 0);
+    vec3 want = carol->pos;
+    check(pump(4, [&] { Entity* g = B.ghost("player", "Carol"); return g && glm::distance(g->pos, want) < 1.0f; }), "the couch player's moves reach the others");
+    submitChat(*A.lv, carol, "hi from the couch");
+    check(pump(3, [&] { return B.heard("<Carol> hi from the couch"); }), "the couch player's chat goes out under their own name");
+    A.nc->removeCouch(*carol); carol->removed = true;
+    check(pump(6, [&] { return B.ghost("player", "Carol") == nullptr; }), "and when they leave, they're gone for everyone");
+  }
 #ifdef DQ_SAMPLE_PLUGIN
   submitChat(*A.lv, A.me, "/ping");
   check(pump(3, [&] { return A.heard("pong"); }), "a native plugin's command answers");

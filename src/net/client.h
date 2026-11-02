@@ -49,6 +49,12 @@ public:
   void portal(Player& who, int realm, vec3 to) override;
   std::vector<std::string> playerNames() const override;
 
+  // Couch players (split screen in someone else's world): each one joins the host on a light link of its own (HELLO
+  // "sub"), so the host has a body for them with their own bags and health; the world itself still comes over ours.
+  // Their hits, chat and actions go out on their link, and their bodies on the host are hidden here (they're local).
+  bool addCouch(Player& p, const json& skinData);
+  void removeCouch(Player& p);
+
   bool lost() const { return st == State::Closed || st == State::Failed; }
   std::string lostReason;                  // why the server let us go (kicked, closed, connection lost)
   std::string serverName, hostName;
@@ -90,6 +96,12 @@ private:
   std::string invSig; json lastSave;
   int lastRealm = 0;
   bool applying = false, applyingBE = false;
+  // couch players' links (see addCouch); a link of that kind only carries its player's own news
+  bool subMode = false; Player* subMe = nullptr; bool subReady = false;
+  std::vector<std::unique_ptr<NetClient>> subs;
+  std::unordered_set<u32> hideEids;
+  NetClient* subFor(const Player& p) const;
+  void updateSub(Level& level, double dt);
 
   void handle(u8 ty, json& m);
   void onWelcome(json& m);

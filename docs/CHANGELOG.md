@@ -23,7 +23,8 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 
 **Playing together:**
 - **Dragons and world progress are shared:** friends see the dragons as you do, and your world's progress (eggs, the End, tuned portals, cleared dungeons, places found) reaches them too.
-- **Split screen and LAN together:** the host of a LAN game can add couch players, and their skins reach everyone.
+- **Split screen and LAN together:** couch players come along whether you host a LAN game or join someone else's: each has their own body, bags and health on the host, their skin reaches everyone, and their chat goes out under their own name.
+- A friend's game no longer misses checking some of the world on a busy host (chunks the host was still making).
 
 **Looks:**
 - **Distant terrain, much closer to Cubyz:** the far land is four times finer at every distance (a far voxel stays a few pixels across instead of turning hills into giant steps at the edges of the view); every block shows its own picture at its true size (no more one picture stretched across a mountain), fading to the block's colour where a block is smaller than a pixel; the corners of its tops are shaded where higher ground stands over them, so slopes and cliffs have depth; far forests are a lumpy canopy, not a flat roof; and its water takes the colour of the water near you, darkens with depth and catches the sky at a low angle.

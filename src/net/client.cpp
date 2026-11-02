@@ -99,7 +99,7 @@ NetClient::State NetClient::poll() {
   while (host && enet_host_service(host, &ev, 0) > 0) {
     if (ev.type == ENET_EVENT_TYPE_CONNECT) {
       st = State::Joining;
-      send(peer, HELLO, {{"proto", PROTO}, {"version", DQ_VERSION}, {"name", opts.name}, {"skin", opts.skin}, {"skinData", opts.skinData}, {"password", opts.password}, {"R", opts.viewDistance}});
+      send(peer, HELLO, {{"proto", PROTO}, {"version", DQ_VERSION}, {"name", opts.name}, {"skin", opts.skin}, {"skinData", opts.skinData}, {"password", opts.password}, {"R", opts.viewDistance}, {"sub", subMode}});
     } else if (ev.type == ENET_EVENT_TYPE_RECEIVE) {
       u8 ty; json m;
       bool ok = parsePacket(ev.packet, ty, m);
@@ -108,6 +108,7 @@ NetClient::State NetClient::poll() {
       stats.msgsIn++;
       if (ty == REFUSE) { err = m.value("why", "The host said no"); st = State::Failed; break; }
       if (ty == WELCOME) onWelcome(m);
+      else if (subMode && (ty == CK || ty == CS)) {}   // (a couch player's link: the world comes over the main one)
       else if (ty == CK) { if (m.contains("r") && m["r"].is_binary()) { auto& b = m["r"].get_binary(); storeRecord(m.value("rl", 0), m.value("d", 0), m.value("cx", 0), m.value("cz", 0), std::vector<u8>(b.begin(), b.end()), true); gotRecords++; } }
       else if (ty == CS) { sums[packChunkKey(m.value("rl", 0), m.value("d", 0), m.value("cx", 0), m.value("cz", 0))] = m.value("h", 0u); stats.sumsIn++; }
       else if (ty == SKINS) { if (m.contains("s") && m["s"].is_object() && netSkinHook()) for (auto& [ref, pl] : m["s"].items()) netSkinHook()(ref, pl); }
@@ -192,12 +193,14 @@ void NetClient::attach(Level& level) {
 }
 
 void NetClient::findMe() {
+  if (subMode) { me = subMe && !subMe->removed ? subMe : nullptr; return; }
   if (me && !me->removed) return;
   me = nullptr;
   for (auto& e : lv->entities()) if (!e->removed && !e->ghost && e->isPlayer() && e->id >= LOCAL_ID_BASE) { me = dynamic_cast<Player*>(e.get()); if (me) break; }
 }
 
 void NetClient::update(Level& level, double dt) {
+  if (subMode) { updateSub(level, dt); return; }
   if (!lv) attach(level);
   if (!host || st != State::Ready) return;
   t += dt;
@@ -263,6 +266,88 @@ void NetClient::update(Level& level, double dt) {
   if (!blkOut.empty()) {
     for (auto& [r, l] : blkOut.items()) sendTo(BLK, {{"rl", std::stoi(r)}, {"l", l}});
     blkOut = json::object();
+  }
+  if (host) enet_host_flush(host);
+  // the couch players' links; their bodies on the host are drawn here as they are, not as ghosts
+  for (size_t i = 0; i < subs.size();) {
+    NetClient& c = *subs[i];
+    c.update(level, dt);
+    if (c.st == State::Ready && c.myEid && hideEids.insert(c.myEid).second)
+      if (Entity* e = level.entity(c.myEid)) if (e->ghost) e->removed = true;
+    if (c.st == State::Failed || c.st == State::Closed) {
+      const std::string who = c.subMe ? c.subMe->name : std::string("A player");
+      if (lv && lv->fx) lv->fx->message(0, who + " couldn't stay in the game: " + (c.err.empty() ? c.lostReason : c.err), "bad");
+      hideEids.erase(c.myEid); c.close(); subs.erase(subs.begin() + i); continue;
+    }
+    i++;
+  }
+}
+
+// ---- couch players ----
+bool NetClient::addCouch(Player& p, const json& skinData) {
+  if (subMode || st != State::Ready || subFor(p)) return false;
+  auto c = std::make_unique<NetClient>();
+  c->subMode = true; c->subMe = &p; c->lv = lv;
+  JoinOptions o = opts; o.name = p.name; o.skin = p.skin; o.skinData = skinData; o.viewDistance = 2;
+  if (!c->begin(o)) return false;
+  DQ_LOG("net: %s joins on a link of their own", p.name.c_str());
+  subs.push_back(std::move(c));
+  return true;
+}
+void NetClient::removeCouch(Player& p) {
+  for (size_t i = 0; i < subs.size(); i++) if (subs[i]->subMe == &p) {
+    hideEids.erase(subs[i]->myEid);
+    subs[i]->close(); subs.erase(subs.begin() + i);
+    return;
+  }
+}
+NetClient* NetClient::subFor(const Player& p) const {
+  for (auto& s : subs) if (s->subMe == &p) return s.get();
+  return nullptr;
+}
+void NetClient::updateSub(Level& level, double dt) {
+  lv = &level; findMe();
+  if (!host) return;
+  if (st == State::Connecting || st == State::Joining) {
+    if (poll() != State::Ready || !me) return;
+    // their bags and level, as the host kept them for this name (where they stand stays: beside the first player)
+    json rec = playerRecord();
+    if (rec.is_object()) {
+      Player tmp; tmp.load(rec);
+      me->inv = tmp.inv; me->armor = tmp.armor; me->offhand = tmp.offhand; me->selected = tmp.selected;
+      me->xp = tmp.xp; me->level = tmp.level; me->mode = tmp.mode;
+    }
+    invSig = playerInvSig(*me);
+    return;
+  }
+  if (st != State::Ready) return;
+  t += dt;
+  ENetEvent ev; int guard = 0;
+  while (host && guard++ < 4096 && enet_host_service(host, &ev, 0) > 0) {
+    if (ev.type == ENET_EVENT_TYPE_RECEIVE) {
+      u8 ty; json m;
+      bool ok = parsePacket(ev.packet, ty, m);
+      enet_packet_destroy(ev.packet);
+      if (!ok) continue;
+      stats.msgsIn++;
+      try {
+        if (ty == SELF) applySelf(m);
+        else if (ty == FLUSH) sendSave();
+        else if (ty == UIEV) { if (level.events && m.contains("e") && m["e"].is_string() && m.contains("a")) level.events->emit(m["e"].get<std::string>(), m["a"]); }
+        else if (ty == KICK) { lostReason = m.value("why", "The host removed them from the world."); if (peer) { enet_peer_disconnect_now(peer, BYE_NORMAL); peer = nullptr; } st = State::Closed; }
+        // the rest (the world, creatures, weather) comes over the main link
+      } catch (const std::exception& e) { DQ_WARN("net: couch link %s: %s", msgName(ty), e.what()); }
+    } else if (ev.type == ENET_EVENT_TYPE_DISCONNECT) { disconnected(ev.data); return; }
+  }
+  if (me) {
+    if ((tMe += dt) >= SEND_ME) { tMe = 0; sendMe(); }
+    if ((tInv += dt) >= 0.5) {
+      tInv = 0;
+      std::string sig = playerInvSig(*me);
+      if (!invSig.empty() && sig != invSig && saveDue == 0) saveDue = t + 0.7;
+      invSig = sig;
+    }
+    if ((tSave += dt) >= SEND_SAVE || (saveDue > 0 && t >= saveDue)) sendSave();
   }
   if (host) enet_host_flush(host);
 }
@@ -361,7 +446,7 @@ void NetClient::applyEntities(const json& m) {
   if (me && realm != me->realm) return;   // on the way through a portal: that land's news isn't for here
   for (auto& s : m["l"]) {
     u32 id = s.value("i", 0u);
-    if (!id || id >= LOCAL_ID_BASE) continue;
+    if (!id || id >= LOCAL_ID_BASE || hideEids.count(id)) continue;
     Entity* e = L.entity(id);
     if (e && !e->ghost) continue;
     vec3 pos(s.value("x", 0.f), s.value("y", 0.f), s.value("z", 0.f));
@@ -450,13 +535,23 @@ void NetClient::applyFx(const json& m) {
   if (m.contains("k")) for (auto& s : m["k"]) fx.shake(myEnt, s);
 }
 
-bool NetClient::chat(Player&, const std::string& text) { sendTo(CHAT, {{"text", text.substr(0, 200)}}); return true; }
-void NetClient::hitEntity(Player&, u32 id, float amount, const json& src) { sendTo(HIT, {{"id", id}, {"a", amount}, {"s", src}}); }
-void NetClient::action(Player&, const std::string& name, const json& args) {
+bool NetClient::chat(Player& by, const std::string& text) {
+  if (NetClient* s = subFor(by)) return s->chat(by, text);   // a couch player: on their own link
+  sendTo(CHAT, {{"text", text.substr(0, 200)}}); return true;
+}
+void NetClient::hitEntity(Player& by, u32 id, float amount, const json& src) {
+  if (NetClient* s = subFor(by)) { s->hitEntity(by, id, amount, src); return; }
+  sendTo(HIT, {{"id", id}, {"a", amount}, {"s", src}});
+}
+void NetClient::action(Player& by, const std::string& name, const json& args) {
+  if (NetClient* s = subFor(by)) { s->action(by, name, args); return; }
   if (name == "useEnt" || name == "use") sendSave();   // our bags as they are now first: the host feeds, tames or saddles with what we hold
   sendTo(ACT, {{"n", name}, {"a", args}});
 }
-void NetClient::portal(Player& who, int realm, vec3 to) { sendTo(PORTAL, {{"rl", realm}, {"to", v3(to)}}); }
+void NetClient::portal(Player& who, int realm, vec3 to) {
+  if (NetClient* s = subFor(who)) { s->portal(who, realm, to); return; }
+  sendTo(PORTAL, {{"rl", realm}, {"to", v3(to)}});
+}
 std::vector<std::string> NetClient::playerNames() const {
   std::vector<std::string> v;
   if (lv) for (auto& e : lv->entities()) if (!e->removed && e->isPlayer()) if (auto* p = dynamic_cast<Player*>(e.get())) v.push_back(p->name);
@@ -472,6 +567,8 @@ void NetClient::disconnected(u32 code) {
 }
 
 void NetClient::close(const std::string& why) {
+  for (auto& c : subs) c->close();   // couch players leave with us
+  subs.clear(); hideEids.clear();
   if (host) {
     if (peer && st == State::Ready) {
       if (me && lv) { try { sendSave(); } catch (...) {} }

@@ -281,7 +281,7 @@ void ServerHost::welcome(Peer& p, const json& m) {
   for (auto& e : level.entities()) if (!e->removed && e->isPlayer() && !e->ghost && lowerName(static_cast<Player*>(e.get())->name) == lowerName(name)) {
     refuse(p, "The host is called " + name + " too. Pick another name in Players & Skins."); return;
   }
-  p.hello = true; p.skin = m.value("skin", ""); p.R = clampv(m.value("R", 6), 2, 32);
+  p.hello = true; p.skin = m.value("skin", ""); p.R = clampv(m.value("R", 6), 2, 32); p.lite = m.value("sub", false);
   // their skin itself: named for the network, drawn here too, and passed to everyone (below, after the welcome)
   json skinNew;
   if (m.contains("skinData") && m["skinData"].is_object() && !m["skinData"].empty() && m["skinData"].dump().size() < 400000) {
@@ -310,11 +310,10 @@ void ServerHost::welcome(Peer& p, const json& m) {
   send(p.enet, SKINS, {{"s", skins}});                              // everyone's skins (theirs too)
   if (!skinNew.empty()) toAll(SKINS, {{"s", skinNew}}, p.id);      // and theirs to everyone else
   // the changed chunks round where they'll start come straight away
-  updateRange(p, true);
-  size_t n = p.ckQ.size();
-  flushChunks(p, 1 << 30);
+  size_t n = 0;
+  if (!p.lite) { updateRange(p, true); n = p.ckQ.size(); flushChunks(p, 1 << 30); }
   send(p.enet, CKDONE, {{"n", (int)n}});
-  serverLog(name + " is joining from " + p.addr, "");
+  serverLog(name + " is joining from " + p.addr + (p.lite ? " (a couch player)" : ""), "");
 }
 
 void ServerHost::peerLeft(Peer& p, bool quiet) {
@@ -418,7 +417,7 @@ void ServerHost::update(Level& lv, double dt) {
   flushEffects();
   if ((tChunks += dt) >= SEND_CHUNKS) {
     tChunks = 0;
-    for (auto& [id, p] : peers) if (p.ready && p.pl && p.enet) { updateRange(p, false); flushChunks(p, 10); }
+    for (auto& [id, p] : peers) if (p.ready && p.pl && p.enet && !p.lite) { updateRange(p, false); flushChunks(p, 10); }
   }
   if ((tEnts += dt) >= SEND_ENTS) {
     tEnts = 0;
@@ -430,7 +429,7 @@ void ServerHost::update(Level& lv, double dt) {
         sn.dataHash = e->data.is_null() || e->data.empty() ? 0 : std::hash<std::string>()(e->data.dump());
         snaps.emplace(e->id, std::move(sn));
       }
-      for (auto& [id, p] : peers) if (p.ready && p.pl && p.enet) sendEntities(p, snaps);
+      for (auto& [id, p] : peers) if (p.ready && p.pl && p.enet && !p.lite) sendEntities(p, snaps);
     }
   }
   if ((tEnv += dt) >= SEND_ENV) { tEnv = 0; sendEnv(); }

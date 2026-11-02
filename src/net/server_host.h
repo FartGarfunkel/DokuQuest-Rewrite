@@ -80,6 +80,8 @@ public:
   struct Peer {
     u32 id = 0; struct _ENetPeer* enet = nullptr; std::string addr;
     bool hello = false, ready = false, left = false;
+    bool lite = false;   // a guest's couch player: their game already has the world from the guest's own link, so only
+                         // that player's own news goes this way (SELF, their bags, kicks), no chunks, creatures or weather
     std::string name, skin; int R = 6;
     Player* pl = nullptr; u32 eid = 0;
     // what the player's own game last told us (anything else on the mirror was done by the server)

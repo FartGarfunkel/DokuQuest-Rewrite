@@ -57,6 +57,13 @@ bool netJoinFinish(App& app, std::shared_ptr<net::NetClient> nc, const std::stri
 }
 
 // a couch player who joined a world open to LAN: their skin goes to the guests too
+bool netAddCouch(App& app, Player& p) {
+  net::NetClient* c = clientOf(app);
+  if (!c) return false;
+  skinHook();
+  return c->addCouch(p, skinPayload(p.skin));
+}
+void netRemoveCouch(App& app, Player& p) { if (net::NetClient* c = clientOf(app)) c->removeCouch(p); }
 void lanShareLocalSkin(App& app, const std::string& ref) {
   if (auto* h = hostOf(app)) if (!ref.empty()) { skinHook(); h->addLocalSkin(ref, skinPayload(ref)); }
 }
