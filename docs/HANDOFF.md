@@ -15,7 +15,8 @@ Released as alpha.12. docs/STATUS.md has the done / partly / not-yet split. Wher
   creature_beasts.cpp scarecrowPerchAI. **Church:** villager_ai.cpp npcService (every 7th day). **Skylands:**
   tools/port/skylands_more.py, blockfx.cpp floats/FallingBlock up, creature.cpp whirlwindTick, keepers.cpp valkyries.
 - **MP:** server_sync.cpp "st" (world progress), server_host.cpp "sd" (per-player), split.cpp + netplay.cpp
-  lanShareLocalSkin (host-side couch players in a LAN game; a guest's own couch players are NOT done).
+  lanShareLocalSkin (host-side couch players in a LAN game). A guest's couch players: net/client.cpp addCouch (a "lite"
+  sub-link per couch player: HELLO "sub", server_host.cpp Peer.lite skips chunks/entities/fx; tools/test_net.cpp).
 - **Texture Studio Creatures tab:** launcher/texture_studio.cpp (openSkin/saveSkin; pack folder under userDir, else
   userDir/textures/entity overlay, which render/creature_models.cpp loadPackPic reads first). DQ_TS_OPEN=<rel> opens one.
 - **Skin check:** creature_models.cpp (no head/body parts -> warn once, fall back).
@@ -28,7 +29,8 @@ Released as alpha.12. docs/STATUS.md has the done / partly / not-yet split. Wher
 - **Particles:** particles.cpp soft particles (sorted, blended, faded, near-camera fade, relit as they drift).
 - **Engine editor + bridge:** client/engine_bridge.cpp (--bridge, 127.0.0.1:25590, JSON lines), net/line_socket.*,
   launcher/engine_tools.cpp (edit/build/live/Strata over an OpenAI-style endpoint via curl). docs/engine-bridge.md.
-  The user's Strata API is unknown: the endpoint/model/key-variable are settings; ask the user how Strata is reached.
+  Ask Strata finds local models like Zed does (Ollama /api/tags, LM Studio and llama.cpp /v1/models, every 20 s) and
+  picks any "strata" model; launcher/mcp_server.cpp (`dokuquest-launcher --mcp`) is the bridge as an MCP server.
 - **Data archive:** common/fs.cpp DataArchive (installDir()/data.dqa; loose data/ files win); tools/package.sh makes it.
 - **Updates:** "-game" packages (no launcher); the whole one only when launcher.version > DQ_LAUNCHER_VERSION
   (CMakeLists.txt, raise it when the launcher changes); versions.json "pinned" + Options > Updates "Version to play".

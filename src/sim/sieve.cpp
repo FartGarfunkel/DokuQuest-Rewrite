@@ -57,7 +57,7 @@ void registerSieve() {
     w.setBlock(hit.block.x, hit.block.y, hit.block.z, AIR);
     pc.lv.fx->particles("block", c, 10, {{"block", b.key}});
     pc.lv.fx->material(b.sound.empty() ? "gravel" : b.sound, "dig", c);
-    if (!pc.p.creative() && ++held->d >= 96) { held->clear(); pc.lv.fx->sound("break", c, 16); }   // it wears out
+    if (!pc.p.creative() && ++held->d >= 96) { held->clear(); pc.lv.fx->sound("break_tool", c, 16); }   // it wears out
     pc.swingArm();
     return true;
   });

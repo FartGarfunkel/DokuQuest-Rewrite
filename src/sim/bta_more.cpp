@@ -138,7 +138,7 @@ void registerBtaMore() {
     vec3 at;
     if (pc.target.hit) at = vec3(pc.target.block) + vec3(0.5f, 0, 0.5f) + vec3(pc.target.normal) * (pc.target.normal.y == 0 ? 1.f : 0.f) + vec3(0, pc.target.normal.y > 0 ? 1.f : 0.f, 0);
     else { vec3 l = lookVector(pc.p.yaw, pc.p.pitch); at = pc.p.pos + vec3(l.x * 3, 0, l.z * 3); }
-    if (spawnCreature(pc.lv, pc.p.realm, cur, at)) { pc.lv.fx->particles("end_mote", at + vec3(0, 0.6f, 0), 12); pc.lv.fx->sound("teleport", at, 16); }
+    if (spawnCreature(pc.lv, pc.p.realm, cur, at)) { pc.lv.fx->particles("end_mote", at + vec3(0, 0.6f, 0), 12); pc.lv.fx->sound("ender_tp", at, 16); }
     pc.swingArm();
     return true;
   });

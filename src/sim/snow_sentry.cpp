@@ -2,6 +2,7 @@
 // stacked snow blocks and they come alive as a sentry that throws snowballs at monsters near it (they push them back,
 // and burn the creatures of fire). It leaves a dusting of snow where it walks in the cold, and melts away in hot lands
 // and in the Depths. Two snowballs of snow sit at its base when it falls.
+#include "sim/gameplay.h"
 #include "sim/creature.h"
 #include "sim/creature_entities.h"
 #include "sim/mob_combat.h"
@@ -93,7 +94,7 @@ struct BuildWatch : LevelSystem {
       if (!snow || (top != carved && top != lantern) || w.getBlock(p.x, p.y - 1, p.z) != snow || w.getBlock(p.x, p.y - 2, p.z) != snow) continue;
       for (int k = 0; k < 3; k++) w.setBlock(p.x, p.y - k, p.z, AIR);
       if (Creature* c = spawnCreature(lv, realm, "snow_sentry", vec3(p.x + 0.5f, (float)(p.y - 2), p.z + 0.5f))) { c->kept = true; mobBurst(lv, c->pos + vec3(0, 1, 0), "snow", 24, 1.4f); }
-      lv.fx->sound("snow_place", vec3(p) + vec3(0.5f), 16);
+      sfxMaterial(lv, "snow", "place", vec3(p) + vec3(0.5f));
     }
     fresh.clear();
   }

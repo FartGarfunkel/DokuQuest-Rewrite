@@ -1,6 +1,7 @@
 // sim/redstone.cpp — circuits (game/redstone.js): power, dust, torches, repeaters, comparators, observers,
 // lamps, bulbs, note blocks, bells, TNT, doors, rails, timers (plates, hooks, detector rails, daylight),
 // hoppers, dispensers and droppers. Pistons live in sim/redstone_parts.cpp.
+#include "sim/gameplay.h"
 #include "sim/redstone.h"
 #include "sim/minecart.h"
 #include "sim/vehicles.h"
@@ -966,7 +967,7 @@ void Redstone::dispense(int x, int y, int z) {
       if (BlockId nb = R.blockId(ad->block)) {
         w.setBlock(ax, ay, az, nb, 0);
         as.n--; me.set(aslot, as); changedInv(me);
-        lv.fx->sound("place", ac, 16);
+        sfxMaterial(lv, R.block(nb).sound, "place", ac);
         return;
       }
     }
@@ -979,7 +980,7 @@ void Redstone::dispense(int x, int y, int z) {
       as.d++;
       if (ad->tool.durability > 0 && as.d >= ad->tool.durability) as.clear();
       me.set(aslot, as); changedInv(me);
-      lv.fx->sound("break", ac, 16);
+      sfxMaterial(lv, fb.sound, "break", ac);
       return;
     }
   }

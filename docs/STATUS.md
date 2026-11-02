@@ -23,9 +23,9 @@ replacing itself (it now only needs to when DQ_LAUNCHER_VERSION goes up).
 - (Dropped by the user 2026-11-02: dwarf mode, the easy-bridge key, spawners passing items along, the host deciding
   trades. Done 2026-11-02: the BTA mob tweaks; painted doors/trapdoors/buttons/plates/chests, the Seasonal Forest,
   igneous emberstone and chimney smoke were already in.)
-- Audio: a sound-by-sound check of every event; the Sound Studio's synth sandbox.
-- Tests: every block × every tool drop check; a scripted start-to-finish playthrough; Travel Journal checks at every
-  story stage; the Nether-portal-invisible test.
+- Audio: the Sound Studio's synth sandbox. (Done 2026-11-02: the sound-by-sound check; five silent names fixed.)
+- Tests: a scripted start-to-finish playthrough; the Nether-portal-invisible test. (Done 2026-11-02: dq-sweep --drops,
+  every block × every tool, in CI; Travel Journal checks at every story stage in test_endstory.)
 - Creature looks: sheared-sheep skins from the user's sheet; more looks per land fuseling; villager looks.
 - Story: the player-triggered Wither Storm finale.
 - Watch a portal's far side in game to confirm its creatures show up (spawning is in, not yet seen).
