@@ -12,6 +12,7 @@
 #include <imgui_stdlib.h>
 #include <algorithm>
 #include <deque>
+#include <cstdlib>
 
 namespace dq::studio {
 

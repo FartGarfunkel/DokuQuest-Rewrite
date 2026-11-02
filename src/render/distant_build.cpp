@@ -237,7 +237,12 @@ void buildTile(const TileInput& in, TileOutput& out) {
     if (s.water >= 0 && s.fluid) for (int y = std::max(0, (int)s.height + 1); y <= std::min<int>(DIM_H - 1, s.water); y++) c[y] = s.fluid;
     if (s.roof >= 0 && s.roof > s.height) for (int y = s.roof; y < DIM_H; y++) c[y] = s.roofBlock ? s.roofBlock : deep;
     // far off, single trees can't be told apart: the forest is a canopy as tall as its trees (near tiles plant them)
-    if (L >= 2 && s.tree && s.leaves && s.treeTop > s.height && !(s.water > s.height)) for (int y = s.height + 1; y <= std::min<int>(DIM_H - 1, s.treeTop); y++) c[y] = s.leaves;
+    // (each cell's crown a little higher or lower than the next, so a forest is a lumpy canopy, not a flat roof)
+    if (L >= 2 && s.tree && s.leaves && s.treeTop > s.height && !(s.water > s.height)) {
+      u32 hsh = (u32)wx * 73856093u ^ (u32)wz * 19349663u; hsh ^= hsh >> 13; hsh *= 0x5bd1e995u; hsh ^= hsh >> 15;
+      const int top = std::max<int>(s.height + 1, s.treeTop - (int)(hsh % 4));
+      for (int y = s.height + 1; y <= std::min<int>(DIM_H - 1, top); y++) c[y] = s.leaves;
+    }
     if (!trees.empty() && k >= 0 && trees[k].top > s.height) {
       const TreeCol& t = trees[k];
       const int lb = std::max<int>(s.height + 1, t.leafBottom < 999 ? t.leafBottom : t.top);
@@ -293,16 +298,33 @@ void buildTile(const TileInput& in, TileOutput& out) {
     return t * 255.f;
   };
   // tops and undersides, merged into rectangles of the same height and block (a quad's texture repeats per voxel)
-  struct Face { i16 y; BlockId id; };
+  // ambient occlusion on the tops, as Cubyz and the near chunks have it: a top next to higher ground is darker in the
+  // corners that ground stands over, so hills, terraces and cliff feet read with depth. Those tops are their own quads
+  // (shaded per corner); the open ones still merge into big rectangles.
+  struct Face { i16 y; BlockId id; u8 ao[4]; };   // ao: corners (x0,z0) (x0,z1) (x1,z1) (x1,z0), 3 open .. 0 shut in
+  auto solidCell = [&](int k, int y) {
+    for (int r = start[k]; r < start[k + 1]; r++) if (y >= runs[r].y0 && y <= runs[r].y1) return !R.tLiquid[runs[r].id];
+    return false;
+  };
   std::vector<std::vector<Face>> tops((size_t)N * N), bots((size_t)N * N);
   for (int j = 0; j < N; j++) for (int i = 0; i < N; i++) {
     const int k = (j + 1) * W + (i + 1);
     for (int r = start[k]; r < start[k + 1]; r++) {
       const bool above = r + 1 < start[k + 1] && runs[r + 1].y0 == runs[r].y1 + 1, below = r > start[k] && runs[r - 1].y1 == runs[r].y0 - 1;
-      if (!above && runs[r].y1 + 1 < DIM_H) tops[(size_t)j * N + i].push_back({(i16)(runs[r].y1 + 1), runs[r].id});
-      if (!below && runs[r].y0 > 0) bots[(size_t)j * N + i].push_back({runs[r].y0, runs[r].id});
+      if (!above && runs[r].y1 + 1 < DIM_H) {
+        Face f{(i16)(runs[r].y1 + 1), runs[r].id, {3, 3, 3, 3}};
+        if (!R.tLiquid[f.id]) {
+          auto o = [&](int dx, int dz) { return solidCell(k + dz * W + dx, f.y) ? 1 : 0; };
+          const int xm = o(-1, 0), xp = o(1, 0), zm = o(0, -1), zp = o(0, 1);
+          auto ao = [](int a, int b, int c) { return (u8)(a && b ? 0 : 3 - (a + b + c)); };
+          f.ao[0] = ao(xm, zm, o(-1, -1)); f.ao[1] = ao(xm, zp, o(-1, 1)); f.ao[2] = ao(xp, zp, o(1, 1)); f.ao[3] = ao(xp, zm, o(1, -1));
+        }
+        tops[(size_t)j * N + i].push_back(f);
+      }
+      if (!below && runs[r].y0 > 0) bots[(size_t)j * N + i].push_back({runs[r].y0, runs[r].id, {3, 3, 3, 3}});
     }
   }
+  auto open4 = [](const Face& f) { return f.ao[0] == 3 && f.ao[1] == 3 && f.ao[2] == 3 && f.ao[3] == 3; };
   std::vector<std::vector<u8>> used((size_t)N * N);
   for (int pass = 0; pass < 2; pass++) {
     auto& F = pass == 0 ? tops : bots;
@@ -311,7 +333,7 @@ void buildTile(const TileInput& in, TileOutput& out) {
     auto find = [&](int i, int j, const Face& f, int kRef) -> int {
       const auto& v = F[(size_t)j * N + i];
       const int k = (j + 1) * W + (i + 1);
-      for (size_t q = 0; q < v.size(); q++) if (!used[(size_t)j * N + i][q] && v[q].y == f.y && v[q].id == f.id &&
+      for (size_t q = 0; q < v.size(); q++) if (!used[(size_t)j * N + i][q] && v[q].y == f.y && v[q].id == f.id && open4(v[q]) &&
           (ct.tint[f.id] == 0 || (temp[k] == temp[kRef] && humid[k] == humid[kRef] && stint[k] == stint[kRef]))) return (int)q;
       return -1;
     };
@@ -322,6 +344,12 @@ void buildTile(const TileInput& in, TileOutput& out) {
         const Face f = F[(size_t)j * N + i][q];
         const int k = (j + 1) * W + (i + 1);
         used[(size_t)j * N + i][q] = 1;
+        if (!open4(f)) {   // shaded in its corners: a quad of its own
+          const float x0 = (float)i * cs, z0 = (float)j * cs, x1 = (float)(i + 1) * cs, z1 = (float)(j + 1) * cs, y = (float)(base + f.y);
+          auto sh = [](u8 a) { return 125 + 43 * (int)a; };
+          M.quad({x0, y, z0}, {x0, y, z1}, {x1, y, z1}, {x1, y, z0}, {0, 1, 0}, faceOf(f.id, 2), colourOf(f.id, k, false), sh(f.ao[0]), sh(f.ao[1]), sh(f.ao[2]), sh(f.ao[3]), (u16)(flagsOf(f.id) | (2 << 8)));
+          continue;
+        }
         int w = 1;
         while (i + w < N) { int g = find(i + w, j, f, k); if (g < 0) break; used[(size_t)j * N + i + w][g] = 1; w++; }
         int h = 1;

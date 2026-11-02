@@ -15,6 +15,7 @@
 #include "sim/commands.h"
 #include "sim/player.h"
 #include <deque>
+#include <algorithm>
 #include <mutex>
 
 namespace dq {
