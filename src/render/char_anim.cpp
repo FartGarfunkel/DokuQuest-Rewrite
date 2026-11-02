@@ -28,7 +28,8 @@ CharAngles charAnimate(const CharPose& pose) {
   A.armL = vec3(sL * amp * 0.8f, 0, -(0.05f + std::sin(t * 1.3f) * 0.03f) * idle);
   A.foreR.x = A.foreL.x = 0.1f + 0.45f * run * a + 0.06f * idle;
   A.body = vec3(-0.2f * run * a, sL * 0.1f * a, 0);
-  A.lift = (1 - std::fabs(sL)) * 0.045f * a + std::sin(t * 1.9f) * 0.004f * idle;
+  A.lift = (1 - std::fabs(sL)) * (0.045f + 0.035f * run) * a + std::sin(t * 1.9f) * 0.004f * idle;   // (running: a bigger bounce, more weight)
+  A.head.x += std::fabs(sL) * 0.06f * run * a;   // the head nods into each running footfall
   // standing about: a slow shift of weight from foot to foot, the shoulders rising with each breath
   A.body.z += std::sin(t * 0.55f) * 0.025f * idle; A.body.x += std::sin(t * 1.9f) * 0.012f * idle;
   A.legR.z += std::sin(t * 0.55f) * 0.02f * idle; A.legL.z += std::sin(t * 0.55f) * 0.02f * idle;
@@ -36,18 +37,28 @@ CharAngles charAnimate(const CharPose& pose) {
   if (pose.off && !pose.carry) A.armL.x = A.armL.x * 0.5f + 0.31f;
   // off the ground: knees up; falling hard: arms up
   if (pose.air && !pose.swim && !pose.sit) {
-    float fall = clampf(-pose.vy / 12, 0, 1);
-    A.legR = vec3(0.55f, 0, 0.05f); A.shinR = vec3(-1.0f, 0, 0); A.legL = vec3(-0.15f, 0, -0.05f); A.shinL = vec3(-0.4f, 0, 0);
-    if (!pose.held) A.armR = vec3(0.3f + fall * 2.2f, 0, 0.3f + fall * 0.5f);
-    if (!pose.off) A.armL = vec3(0.3f + fall * 2.2f, 0, -0.3f - fall * 0.5f);
+    // Story Mode weight: pushing off (legs straight under you, arms swung up), tucked at the top, then reaching down for
+    // the ground as you fall (and arms going up with a long fall)
+    const float fall = clampf(-pose.vy / 12, 0, 1), rise = clampf(pose.vy / 6, 0, 1), apex = 1 - clampf(std::fabs(pose.vy) / 4, 0, 1);
+    const float reach = clampf((-pose.vy - 2) / 6, 0, 1);
+    A.legR = vec3(0.55f * (1 - rise) * (1 - reach * 0.6f) - 0.15f * rise, 0, 0.05f); A.shinR = vec3(-1.0f * (1 - rise * 0.8f) * (1 - reach * 0.7f) - 0.3f * apex, 0, 0);
+    A.legL = vec3(-0.15f + 0.35f * apex - 0.05f * rise, 0, -0.05f); A.shinL = vec3(-0.4f - 0.5f * apex, 0, 0);
+    if (!pose.held) A.armR = vec3(0.3f + fall * 2.2f + rise * 0.5f, 0, 0.3f + fall * 0.5f);
+    if (!pose.off) A.armL = vec3(0.3f + fall * 2.2f + rise * 0.5f, 0, -0.3f - fall * 0.5f);
+    A.body.x += 0.1f * rise - 0.08f * reach;
   }
-  if (pose.land > 0) { float k = pose.land / 0.2f; A.lift -= 0.1f * k; A.legR.x += 0.5f * k; A.legL.x += 0.5f * k; A.shinR.x -= k; A.shinL.x -= k; A.body.x -= 0.25f * k; }
+  if (pose.land > 0) {   // the landing: knees give, hips drop, the body folds forward — as deep as the drop was hard
+    const float dur = 0.2f * std::max(1.f, pose.landAmt), u = clampf(pose.land / dur, 0, 1), k = (u * u * (3 - 2 * u)) * pose.landAmt;
+    A.lift -= 0.1f * k; A.legR.x += 0.5f * k; A.legL.x += 0.5f * k; A.shinR.x -= k; A.shinL.x -= k; A.body.x -= 0.25f * k;
+    if (!pose.held) A.armR.x += 0.35f * k; if (!pose.off) A.armL.x += 0.35f * k;   // the arms come forward to balance
+  }
   // swinging a tool: Minecraft's attack swing, a quick chop that eases out, the body twisting with it
   float at = pose.swing;
   if (at > 0) {
     float tw = std::sin(std::sqrt(at) * TAU) * 0.2f;
     float f = 1 - at; f *= f; f *= f; f = 1 - f;
     float f2 = std::sin(f * PI), f3 = std::sin(at * PI) * (pose.headPitch + 0.7f) * 0.75f;
+    if (at < 0.16f) { const float w = std::sin(at / 0.16f * PI); f2 -= 0.45f * w; A.body.y += 0.08f * w; }   // anticipation: a wind-up before the blow
     A.body.y -= tw;
     A.armR.x += f2 * 1.2f + f3; A.armR.y -= tw * 2; A.armR.z -= std::sin(at * PI) * 0.4f;
     A.armL.y -= tw; A.armL.x -= tw;

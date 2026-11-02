@@ -62,7 +62,7 @@ struct NpcVoice { float pitch = 200, formant = 1; bool triangle = false; int see
 NpcVoice npcVoice(u32 seed);
 // their skins (villagers.js npcSkinCanvas, the same pixels): 64x64 RGBA; the face for the conversation window is (8,8)-(16,16) + the hat layer (40,8)
 void npcSkinPixels(u32 seed, const std::string& job, std::vector<u8>& px);
-enum NpcPose : int { NP_SLEEP = 1, NP_SIT = 2, NP_WAVE = 4, NP_TALK = 8, NP_WORK = 16, NP_READ = 32, NP_FOLD = 64, NP_HOE = 128 };
+enum NpcPose : int { NP_SLEEP = 1, NP_SIT = 2, NP_WAVE = 4, NP_TALK = 8, NP_WORK = 16, NP_READ = 32, NP_FOLD = 64, NP_HOE = 128, NP_BOW = 256 };
 bool isVillager(const Entity& e);                     // a creature with data.npc (golems included)
 const json* npcOf(const Entity& e);                   // data["npc"] or null
 double npcPhase(const Level& lv);                     // time of day 0..1 (the original's meta.time / DAY_LEN)

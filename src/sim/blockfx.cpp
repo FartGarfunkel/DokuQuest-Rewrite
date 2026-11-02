@@ -24,13 +24,21 @@ public:
     float dt = (float)dtd;
     World& w = lv.world(realm);
     if (!w.isLoaded(ifloor(pos.x), ifloor(pos.y), ifloor(pos.z))) return;
-    vel.y = std::max(-40.f, vel.y - 28 * dt);
-    moveEntity(w, *this, dt, {0, 0, false});
-    if (!onGround && age <= 20) return;
+    const bool up = data.value("up", false);   // driftstone falls up (tools/port/skylands_more.py)
+    if (up) {
+      vel.y = std::min(14.f, vel.y + 18 * dt);
+      const MoveOut mo = moveEntity(w, *this, dt, {0, 0, false});
+      const bool stopped = mo.hitCeiling || pos.y > WORLD_H - 2;   // met something above
+      if (!stopped && age <= 20) return;
+    } else {
+      vel.y = std::max(-40.f, vel.y - 28 * dt);
+      moveEntity(w, *this, dt, {0, 0, false});
+      if (!onGround && age <= 20) return;
+    }
     removed = true;
     BlockId block = reg().blockId(data.value("block", std::string()));
     u8 meta = (u8)data.value("meta", 0);
-    int x = ifloor(pos.x), y = ifloor(pos.y + 0.3f), z = ifloor(pos.z);
+    int x = ifloor(pos.x), y = ifloor(pos.y + (up ? 0.7f : 0.3f)), z = ifloor(pos.z);
     BlockId cur = w.getBlock(x, y, z);
     if (block && (cur == AIR || reg().tReplaceable[cur])) {
       if (cur && !reg().tLiquid[cur]) dropBlockItems(lv, w, x, y, z, cur, true);
@@ -66,6 +74,18 @@ void checkFall(Level& lv, World& w, int x, int y, int z) {
   BlockId id = w.getBlock(x, y, z);
   if (!bhas(id, BF::Falls)) return;
   const Registry& R = reg();
+  if (R.block(id).has("floats")) {   // driftstone: nothing above it, and it drifts up until it meets something
+    BlockId above = w.getBlock(x, y + 1, z);
+    if (!inWorldY(y + 1) || !w.isLoaded(x, y + 1, z)) return;
+    if (above && !R.tLiquid[above] && !R.tReplaceable[above]) return;
+    u8 meta = w.getMeta(x, y, z);
+    w.setBlock(x, y, z, AIR, 0, SetFlags::Urgent);
+    auto e = std::make_unique<FallingBlock>();
+    e->realm = w.realm; e->pos = vec3(x + 0.5f, y, z + 0.5f);
+    e->data = {{"block", R.block(id).key}, {"meta", meta}, {"up", true}};
+    lv.spawn(std::move(e));
+    return;
+  }
   BlockId below = w.getBlock(x, y - 1, z);
   if (!inWorldY(y - 1) || !w.isLoaded(x, y - 1, z)) return;
   if (below && !R.tReplaceable[below] && !R.tLiquid[below] && R.tSolid[below]) return;
@@ -207,6 +227,7 @@ static void dropUnsupported(Level& lv, World& w, int x, int y, int z, BlockId ne
     if (!keep) { w.setBlock(x, y + 1, z, R.tWlog[above] && (am & WLOG) ? B.water : AIR); dropBlockItems(lv, w, x, y + 1, z, above, true, am); }
   }
   if (above && bhas(above, BF::Falls) && !topOK) checkFall(lv, w, x, y + 1, z);
+  { const BlockId under = w.getBlock(x, y - 1, z); if (under && bhas(under, BF::Falls) && R.block(under).has("floats")) checkFall(lv, w, x, y - 1, z); }   // driftstone held down by it drifts up
   // things that hung from it
   BlockId below = w.getBlock(x, y - 1, z); u8 bm = w.getMeta(x, y - 1, z);
   const BlockDef& bd = R.block(below);

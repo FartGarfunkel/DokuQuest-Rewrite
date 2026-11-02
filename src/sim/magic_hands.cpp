@@ -198,6 +198,29 @@ bool castSpell(Level& lv, Player& p) {
   return r;
 }
 
+// ---- one hand alone (the cast buttons: one for each hand; both at once cast with both) ---------------------------
+void castHand(Level& lv, Player& p, int hand) {
+  if (hand == 2) { castQuick(lv, p); return; }   // both hands: the dual cast / fusion
+  MagicState& m = magicState(lv, p);
+  if (hand == 1) {
+    const std::string left = offSpell(p);
+    if (left.empty()) { lv.fx->message(p.id, "Your left hand holds no spell (choose one in the spellbook)", ""); return; }
+    if (!leftFree(p)) { lv.fx->message(p.id, "Your left hand is full", ""); return; }
+    if (m.castCd > 0) return;
+    castLeft(lv, p, left, 1, 1);
+    return;
+  }
+  const std::string right = activeSpell(p);
+  if (right.empty()) { lv.fx->message(p.id, "You know no spells yet \xE2\x80\x94 read a spell tome", ""); return; }
+  if (m.castCd > 0) return;
+  const bool staff = staffIn(p.held());
+  if (!staff && spellNeedsStaff(right)) { const SpellDef* S = magicData().spell(right); lv.fx->message(p.id, "Hold a staff to cast " + (S ? S->name : right), ""); return; }
+  HandMods& H = handMods(); H = {}; H.noStaff = !staff;
+  const bool bare0 = m.bare; m.bare = !staff;
+  castSpellKey(lv, p, right);
+  m.bare = bare0; H = {};
+}
+
 // ---- a weapon in the right hand: the left hand casts, the blade carries it --------------------------------------------
 bool castWithWeapon(Level& lv, Player& p) {
   if (!weaponIn(p.held())) return false;

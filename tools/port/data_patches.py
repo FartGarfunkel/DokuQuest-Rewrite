@@ -434,5 +434,12 @@ for k, v in list(items.items()):
 # ---- the biome fuselings and golems built from their lands' blocks (after the tinted ones above) ----
 _s6 = _u.spec_from_file_location('biome_mobs', pathlib.Path(__file__).with_name('biome_mobs.py')); _m6 = _u.module_from_spec(_s6); _s6.loader.exec_module(_m6); _m6.main(d)
 
+# ---- more for the Skylands: driftstone, whirlwinds, valkyries (tools/port/skylands_more.py) ----
+_s10 = _u.spec_from_file_location('skylands_more', pathlib.Path(__file__).with_name('skylands_more.py')); _m10 = _u.module_from_spec(_s10); _s10.loader.exec_module(_m10); _m10.main(d)
+
+# ---- crows that settle on the scarecrows (tools/port/crows.py) ----
+_s9 = _u.spec_from_file_location('crows', pathlib.Path(__file__).with_name('crows.py')); _m9 = _u.module_from_spec(_s9); _s9.loader.exec_module(_m9); _m9.main(d)
+_s = _u.spec_from_file_location('spawn_eggs', pathlib.Path(__file__).with_name('spawn_eggs.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)   # (its egg)
+
 # ---- every creature's looks with stories of their own (tools/port/mob_variants.py; after the biome mobs, which get theirs too) ----
 _s8 = _u.spec_from_file_location('mob_variants', pathlib.Path(__file__).with_name('mob_variants.py')); _m8 = _u.module_from_spec(_s8); _s8.loader.exec_module(_m8); _m8.main(d)

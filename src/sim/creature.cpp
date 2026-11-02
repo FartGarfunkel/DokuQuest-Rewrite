@@ -560,6 +560,31 @@ void Creature::ghostStep(Level& lv, float dt) {
   speedNow = hs;
 }
 
+// A whirlwind (tools/port/skylands_more.py): it wanders, whirls cloud about itself, and whatever it touches — you, a
+// creature, a dropped item — is thrown up into the air and spun out; after a minute or two it blows itself out.
+static void whirlwindTick(Level& lv, Creature& m, float dt) {
+  float life = m.data.value("life", 0.f) + dt; m.data["life"] = life;
+  const float lifeMax = m.data.value("lifeMax", 0.f) > 0 ? m.data.value("lifeMax", 0.f) : (float)(m.data["lifeMax"] = 60 + frand() * 60);
+  if (life > lifeMax) { lv.fx->particles("poof", m.pos + vec3(0, 1, 0), 16); m.removed = true; return; }
+  if (frand() < dt * 10) {   // the swirl
+    const float a = m.age * 7 + frand() * 6.28f, r = 0.4f + frand() * 0.8f, y = frand() * 2.2f;
+    lv.fx->particles("breath", m.pos + vec3(std::cos(a) * r, y, std::sin(a) * r), 1);
+  }
+  for (auto& e : lv.entities()) {
+    Entity* o = e.get();
+    if (o == &m || o->removed || o->realm != m.realm) continue;
+    const float dx = o->pos.x - m.pos.x, dz = o->pos.z - m.pos.z, d = std::hypot(dx, dz);
+    if (d > 1.3f || o->pos.y < m.pos.y - 0.5f || o->pos.y > m.pos.y + 2.5f) continue;
+    if (auto* pl = dynamic_cast<Player*>(o)) { if (pl->creative() || pl->dead || pl->mode == "spectator") continue; }
+    else if (auto* c = dynamic_cast<Creature*>(o)) { if (c->T->j.value("whirlwind", false) || c->T->boss || c->T->w > 1.2f) continue; }
+    if (o->vel.y > 4) continue;   // already on its way up
+    const float a = std::atan2(dz, dx) + 1.5f;   // round and out
+    o->vel = vec3(std::cos(a) * 4.5f, 8.5f + frand() * 2, std::sin(a) * 4.5f);
+    o->onGround = false;
+    lv.fx->sound("gust", o->pos, 18);
+  }
+}
+
 void Creature::tick(Level& lv, double dtd) {
   float dt = (float)dtd;
   World& w = lv.world(realm);
@@ -589,6 +614,7 @@ void Creature::tick(Level& lv, double dtd) {
   if (jockeyRider) { auto* r = dynamic_cast<Creature*>(ent(lv, jockeyRider)); if (!r || r->jockeyOf != id) jockeyRider = 0; }
   vec3 from = pos; float st0 = soundT;
   update(lv, dt);
+  if (!removed && alive() && T->j.value("whirlwind", false)) whirlwindTick(lv, *this, dt);
   if (!removed && alive()) creatureSounds(lv, *this, from, st0, dt);
   if (mnt) { pos = mnt->pos + vec3(0, mnt->h * 0.8f, 0); vel = vec3(mnt->vel.x, 0, mnt->vel.z); onGround = true; }
   // monsters.js: night creatures nobody is near wander off

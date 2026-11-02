@@ -59,7 +59,8 @@ void spellPractice(Level& lv, Player& p, const std::string& k, double xp);
 std::string spellTitle(const Player& p, const std::string& k);   // "Firebolt III"
 bool castWithWeapon(Level& lv, Player& p);                    // a weapon in hand: the left-hand spell (false = none)
 float spellbladeHit(Level& lv, Player& p, Entity& e, float dmg, std::string& element);   // extra damage on a melee blow
-void castQuick(Level& lv, Player& p);                         // Z: with or without a staff
+void castQuick(Level& lv, Player& p);                         // both hands (the dual cast), with or without a staff
+void castHand(Level& lv, Player& p, int hand);                // the cast buttons: 0 right hand, 1 left hand, 2 both
 bool spellRepeats(const std::string& k);                      // held button repeats the cast
 const std::vector<std::string>& knownSpells(const Player& p); // (reads stats.spells)
 int schoolLv(const Player& p, const std::string& school);

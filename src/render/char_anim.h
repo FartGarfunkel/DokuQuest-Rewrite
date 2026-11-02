@@ -9,7 +9,7 @@ namespace dq {
 
 // skins.js avatarDraws' pose (+ anim.js's additions)
 struct CharPose {
-  float yaw = 0, headPitch = 0, walk = 0, walkAmt = 0, swing = 0, time = 0, vy = 0, land = 0, bow = 0, eat = 0;
+  float yaw = 0, headPitch = 0, walk = 0, walkAmt = 0, swing = 0, time = 0, vy = 0, land = 0, landAmt = 1, bow = 0, eat = 0;   // landAmt: how hard (0.3 a hop .. 1.6 a long drop)
   float swimPh = 0, swimMv = 0, swimPitch = 0, climb = 0, deathT = 0, lean = 0, castWind = 0;
   bool sneak = false, sit = false, sleep = false, swim = false, hang = false, air = false, sprint = false;
   bool held = false, off = false, carry = false, paddle = false, fp = false, fpLeftArm = false;

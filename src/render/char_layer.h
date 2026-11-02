@@ -29,7 +29,7 @@ public:
   struct Anim {   // per entity: what a pose needs that the entity doesn't keep (LocalPlayer.pose state)
     bool init = false;
     vec3 lastPos{0}, vel{0};
-    float bob = 0, bobAmt = 0, swimPh = 0, landT = 0, fallStart = 0; bool falling = false;
+    float bob = 0, bobAmt = 0, swimPh = 0, landT = 0, landAmt = 1, fallStart = 0; bool falling = false;
     float bodyYaw = 0, legTurn = 0, stillT = 0, lastFwd = 0, accLean = 0, lastBody = 0, turnLean = 0;
     float capeA = 0.1f, capeSway = 0, deathT = 0, ladderPh = 0, wing = 0;
     float idleT = 0, footL = 0, footR = 0, footT = 0, footTL = 0, footTR = 0;   // Story Mode-style life: standing about, the ground under each foot (eased, sampled)

@@ -23,6 +23,7 @@ enum class Act : int {
   Crawl, Shoulder, Skills, Spell, Stable, Journal, Spellbook, CastQuick,
   MenuX, MenuY, MenuStart,
   HotbarRow,   // BTA: the next bag row into the hotbar
+  CastLeft,    // the left hand's spell (CastQuick is the right hand's; both at once: both hands)
   Count
 };
 const char* actName(Act a);         // the original action id ("forward", "pick", "slot1", ...)

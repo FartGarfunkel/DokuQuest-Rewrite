@@ -375,6 +375,65 @@ OptMove travellerAI(Level& lv, Creature& e, NpcMind& M, Entity* p, float dist, f
 }
 
 // ------------------------------------------------------------------ the mind of a villager
+// The week's service (brainInner): the pews are the village's seats inside the chapel; the banners are the banner blocks
+// in it (found once a minute). One villager a pew seat, the rest stand at the back; from ph 0.40 each bows at a banner.
+struct ChapelInfo { std::vector<VSeatSpot> pews; std::vector<ivec3> banners; double at = -1e9; bool rung = false; i64 rungDay = -1; };
+static std::unordered_map<std::string, ChapelInfo>& chapels() { static std::unordered_map<std::string, ChapelInfo> m; return m; }
+static OptMove npcService(Level& lv, Creature& e, NpcMind& M, const Village& v, const VBld& ch, int idx, double ph, float dt) {
+  ChapelInfo& C = chapels()[v.id];
+  World& w = lv.world(REALM_MAIN);
+  const Registry& R = reg();
+  const double now = lv.info.time + (double)lv.info.day * 1e6;
+  if (now - C.at > 60) {
+    C.at = now; C.pews.clear(); C.banners.clear();
+    for (auto& st : v.seats) if (st.at.x >= ch.x0 && st.at.x <= ch.x1 && st.at.z >= ch.z0 && st.at.z <= ch.z1) C.pews.push_back(st);
+    for (int x = ch.x0; x <= ch.x1; x++) for (int z = ch.z0; z <= ch.z1; z++) for (int y = ch.y; y <= ch.y + 4; y++) {
+      const std::string& k = R.block(w.getBlock(x, y, z)).key;
+      if (k.size() > 7 && k.compare(k.size() - 7, 7, "_banner") == 0) C.banners.push_back(ivec3(x, y, z));
+    }
+  }
+  if (C.pews.empty() && C.banners.empty()) return std::nullopt;
+  // the bell, once a service
+  if (!C.rung || C.rungDay != npcDay(lv)) {
+    C.rung = true; C.rungDay = npcDay(lv);
+    const vec3 b = ch.hasMid ? vec3(ch.mid) : vec3((ch.x0 + ch.x1) * 0.5f, (float)ch.y + 12, (ch.z0 + ch.z1) * 0.5f);
+    for (int k = 0; k < 3; k++) lv.fx->sound("bell", b + vec3(0, 8, 0), 96);
+  }
+  auto pin = [&]() { e.vel = vec3(0); e.noGravity = true; e.lockMove = true; M.pinned = true; };
+  const vec3 mid((ch.x0 + ch.x1 + 1) * 0.5f, (float)ch.y + 1, (ch.z0 + ch.z1 + 1) * 0.5f);
+  if (ph >= 0.40 && !C.banners.empty()) {   // the banners: stand before one (on the side toward the nave) and bow
+    const ivec3 bn = C.banners[(size_t)idx % C.banners.size()];
+    vec3 spot(0); float best = 1e9f;
+    for (int f = 0; f < 4; f++) {
+      const int x = bn.x + DXL[f], z = bn.z + DZL[f], y = bn.y;
+      if (R.tSolid[w.getBlock(x, y, z)] || R.tSolid[w.getBlock(x, y + 1, z)]) continue;
+      const float d = std::hypot(x + 0.5f - mid.x, z + 0.5f - mid.z) + (float)(idx % 3) * 0.01f;
+      if (d < best) { best = d; spot = vec3(x + 0.5f, (float)y, z + 0.5f); }
+    }
+    if (best < 1e8f) {
+      if (std::hypot(spot.x - e.pos.x, spot.z - e.pos.z) > 0.9f) { if (OptMove m = npcGo(lv, e, M, spot, dt, e.T->speed * 0.4f)) return m; }
+      e.yaw = turnTo(e.yaw, hdg(e.pos, vec3(bn) + vec3(0.5f, 0, 0.5f)), dt * 6);
+      M.pose |= NP_FOLD | NP_BOW;
+      return Move{0, e.yaw};
+    }
+  }
+  if (idx < (int)C.pews.size()) {   // a pew: walk up to it and sit, facing the altar
+    const VSeatSpot& sp = C.pews[(size_t)idx];
+    const vec3 front = sp.walk ? vec3(sp.ax + 0.5f, (float)sp.at.y, sp.az + 0.5f) : vec3(sp.at.x + DXL[sp.f] + 0.5f, (float)sp.at.y, sp.at.z + DZL[sp.f] + 0.5f);
+    const bool byIt = std::hypot(sp.at.x + 0.5f - e.pos.x, sp.at.z + 0.5f - e.pos.z) < 1.3f && std::fabs(e.pos.y - sp.at.y) < 1.2f;
+    if (!byIt) { if (OptMove m = npcGo(lv, e, M, front, dt, e.T->speed * 0.42f)) return m; if (M.stuckGo <= 8) return Move{0, e.yaw}; }
+    e.pos = vec3(sp.at.x + 0.5f, sp.at.y + 0.25f, sp.at.z + 0.5f);
+    e.yaw = std::atan2((float)-DXL[sp.f], (float)-DZL[sp.f]); M.pose |= NP_SIT | NP_FOLD; pin(); M.hasPath = false;
+    return Move{0, e.yaw};
+  }
+  // no pew left: stand at the back of the nave, facing the altar end
+  const vec3 back = ch.hasMid ? vec3(ch.door) + (mid - vec3(ch.door)) * 0.35f + vec3((float)(idx % 3 - 1) * 0.8f, 0, 0) : mid;
+  if (std::hypot(back.x - e.pos.x, back.z - e.pos.z) > 0.9f) { if (OptMove m = npcGo(lv, e, M, back, dt, e.T->speed * 0.42f)) return m; }
+  e.yaw = turnTo(e.yaw, hdg(e.pos, mid + (mid - vec3(ch.door)) * 0.6f), dt * 4);
+  M.pose |= NP_FOLD;
+  return Move{0, e.yaw};
+}
+
 static Move brainInner(Level& lv, Creature& e, NpcMind& M, json& N, const Village& v, Entity* p, float dist, float dt) {
   VillagerSystem* S = vsys(lv);
   const double ph = npcPhase(lv); const bool night = npcNight(lv);
@@ -434,6 +493,13 @@ static Move brainInner(Level& lv, Creature& e, NpcMind& M, json& N, const Villag
   }
   const VSeatSpot* seat = seats.empty() ? nullptr : &seats[idx % seats.size()];
   if (seat && seat->at == M.badSeat && S->now < M.badSeatUntil) seat = nullptr;   // couldn't get to it: not now
+  // ---- the week's service (every seventh day, late morning): the chapel bell rings, the village sits in the pews
+  // facing the altar while the cleric reads at it, and as it ends each goes up to the town's banners either side of
+  // the altar and bows before them. Shopkeepers keep their shops.
+  if (!night && ph >= 0.3 && ph < 0.42 && npcDay(lv) % 7 == 0 && !(folk && folk->hasWork && shop)) {
+    const VBld* ch = nullptr; for (auto& b : v.blds) if (b.type == "chapel") { ch = &b; break; }
+    if (ch) if (OptMove m = npcService(lv, e, M, v, *ch, idx, ph, dt)) return *m;
+  }
   if (night && folk) { goal = vec3(folk->home); hasGoal = true; act = SLEEP; }
   else if (ph < 0.04) act = IDLE;
   else if (folk && folk->hasWork && (ph < 0.3 || (shop && ph < 0.46))) { goal = vec3(folk->work); hasGoal = true; act = WORK; }

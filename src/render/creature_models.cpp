@@ -5,6 +5,7 @@
 #include "assets/pack_fs.h"
 #include "client/app.h"
 #include "sim/creature.h"
+#include <mutex>
 
 namespace dq {
 
@@ -12,7 +13,25 @@ static constexpr int TILE = 32;
 using Pic = std::vector<u32>;   // TILE*TILE voxel colours (0 = clear); empty = the face is left open
 
 // ------------------------------------------------------------------ the original's tiles (models.js tilesOf)
+// "@name": a creature look's own picture (tools/port/mob_variants.py), data/textures/entity/<name>.png, read here on the
+// CPU only (the creatures are voxelised on the CPU), so the hundreds of looks' pictures take no room in the GPU's tile
+// arrays (two pages of 2048 at most).
+static Pic filePic(const std::string& name) {
+  static std::mutex mu; static std::unordered_map<std::string, Pic> cache;
+  std::lock_guard<std::mutex> lk(mu);
+  if (auto it = cache.find(name); it != cache.end()) return it->second;
+  Pic p(TILE * TILE, 0);
+  int w = 0, h = 0; std::vector<u8> px;
+  if (loadPng(dataDir() / "textures" / "entity" / (name + ".png"), w, h, px) && w > 0 && h > 0)
+    for (int y = 0; y < TILE; y++) for (int x = 0; x < TILE; x++) {
+      const u8* q = &px[((size_t)(y * h / TILE) * w + (size_t)(x * w / TILE)) * 4];
+      if (q[3] >= 128) p[y * TILE + x] = voxRGBA(q[0], q[1], q[2], VOXEL_SOLID);
+    }
+  else p.assign(TILE * TILE, voxRGBA(200, 200, 200, VOXEL_SOLID));
+  return cache[name] = p;
+}
 static Pic tilePic(const TileSet& ts, const std::string& name) {
+  if (!name.empty() && name[0] == '@') return filePic(name.substr(1));
   auto it = ts.index.find(name);
   int t = it == ts.index.end() ? -1 : it->second;
   if (t < 0) { auto w = ts.index.find("white"); t = w == ts.index.end() ? 0 : w->second; }

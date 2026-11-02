@@ -108,7 +108,7 @@ const char* biomeName(int b);
   X(netherrack) X(emberstone) X(magma_block) X(gilded_blackstone) X(soul_sand) X(soul_soil) X(bone_block) X(soul_fire) \
   X(crimson_nylium) X(crimson_fungus) X(crimson_roots) X(warped_nylium) X(twisting_vines) X(warped_fungus) X(warped_roots) \
   X(nether_sprouts) X(ash) X(pumice) X(cinder_sand) X(emberglass_cluster) X(emberglass_block) X(sulphur_block) X(steam_vent) X(igneous_emberstone) X(thorn_leaves) X(null_stone) X(end_moss) X(cloud_puff) X(bounce_cloud) X(sun_cloud) X(glimmersand) X(sunwood_log) X(sunwood_leaves) X(palm_log) X(palm_leaves) X(oak_branch) X(birch_branch) X(dark_oak_branch) X(jungle_branch) X(cherry_branch) X(acacia_branch) X(mangrove_branch) X(sky_bloom) X(bluebells) X(marigold) X(spinifex) X(scorched_dirt) X(rich_scorched_dirt) X(perma_ice) X(permafrost) X(ember_coal_ore) X(mossy_dark_oak_log) X(mossy_mangrove_log) X(algae) X(soul_schist) X(bone_shale) X(ashen_trunk) X(gum_log) X(gum_leaves) X(cinderite_ore) X(quartz_ore) X(nether_gold_ore) X(ancient_debris) X(skystone) X(sky_grass) \
-  X(aether_crystal_ore) X(cloud_leaves) X(pocket_wall) X(ember_crust) X(void_crust) X(end_stone) X(chorus_plant) \
+  X(aether_crystal_ore) X(driftstone) X(cloud_leaves) X(pocket_wall) X(ember_crust) X(void_crust) X(end_stone) X(chorus_plant) \
   X(chorus_flower) X(iron_bars) X(rift_wall) X(rift_glass) X(rift_crystal) X(sculk) X(sculk_vein) X(sculk_sensor) \
   X(sculk_shrieker) X(sculk_catalyst) X(cobbled_slate) \
   X(fire) X(acid) X(red_crystal) X(charged_crystal) X(red_crystal_cluster) X(smouldering_ash) X(scorched_bricks) X(cracked_scorched_bricks)

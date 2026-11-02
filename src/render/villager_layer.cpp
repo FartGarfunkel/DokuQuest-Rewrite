@@ -84,9 +84,10 @@ public:
       if (!c || c->removed || !c->T->npc || !me) continue;
       Look& L = looks[c->id];
       const json* N = npcOf(*c);
-      bool sleep = N && (N->value("p", 0) & NP_SLEEP);
+      bool sleep = N && (N->value("p", 0) & NP_SLEEP), bow = N && (N->value("p", 0) & NP_BOW);
       float want = 0, pitch = 0;
-      if (!sleep) {
+      if (bow) pitch = 0.6f;   // bowed before the chapel's banners
+      else if (!sleep) {
         float lx = me->pos.x - c->pos.x, lz = me->pos.z - c->pos.z, ly = me->pos.y + 1.5f - (c->pos.y + 1.6f), d = std::hypot(lx, lz);
         if (d < 8) { want = clampf(wrapAngle(std::atan2(-lx, -lz) - c->yaw), -1.1f, 1.1f); pitch = clampf(-std::atan2(ly, d), -0.5f, 0.5f); }
       }

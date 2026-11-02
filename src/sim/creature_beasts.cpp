@@ -305,6 +305,78 @@ static float groundUnder(World& w, const Creature& m) {
   return top >= 0 ? (float)top : m.pos.y - 12;
 }
 
+// Crows (tools/port/crows.py): over fields and farms they pick somewhere to sit — a scarecrow's head first (a pumpkin on
+// a hay bale: the village farms' scarecrows), else a fence post by the crops — fly to it, and settle there a while,
+// two to a head. A player close by (not sneaking) puts them up again, and they keep away from that spot for a bit.
+static bool scarecrowPerchAI(Level& lv, Creature& m, Entity* p, float dist, float dt) {
+  World& w = lv.world(m.realm);
+  const Registry& R = reg();
+  static const BlockId jack = R.blockId("jack_o_lantern"), carved = R.blockId("carved_pumpkin"), pumpkin = R.blockId("pumpkin"),
+                       hay = R.blockId("hay_bale"), farmland = R.blockId("farmland");
+  auto isHead = [&](BlockId b) { return b && (b == jack || b == carved || b == pumpkin); };
+  json& D = m.data;
+  float cool = D.value("perchCool", 0.f);
+  if (cool > 0) D["perchCool"] = cool - dt;
+  if (!D.contains("perchAt") || !D["perchAt"].is_array()) {
+    if (cool > 0 || m.perched) return false;
+    float look = D.value("perchLook", 0.f) - dt; D["perchLook"] = look;
+    if (look > 0) return false;
+    D["perchLook"] = 4 + frand() * 5;
+    // the tops of the columns round about: a scarecrow's head, or a fence post with farmland beside it
+    const int bx = ifloor(m.pos.x), bz = ifloor(m.pos.z), dim = dimOfY(ifloor(m.pos.y));
+    ivec3 best(0); float bestD = 1e9f; bool head = false;
+    for (int dz = -18; dz <= 18; dz++) for (int dx = -18; dx <= 18; dx++) {
+      const int x = bx + dx, z = bz + dz, y = w.surfaceY(x, z, dim);
+      if (y < 0) continue;
+      const BlockId t = w.getBlock(x, y, z);
+      bool sc = isHead(t) && w.getBlock(x, y - 1, z) == hay;
+      bool post = !sc && R.tShape[t] == ShapeKind::Fence && (w.getBlock(x + 1, y - 1, z) == farmland || w.getBlock(x - 1, y - 1, z) == farmland ||
+                                                             w.getBlock(x, y - 1, z + 1) == farmland || w.getBlock(x, y - 1, z - 1) == farmland);
+      if (!sc && !post) continue;
+      float d = (float)(dx * dx + dz * dz) * (sc ? 0.4f : 1.f) + frand() * 20;
+      if (head && !sc) continue;
+      if ((sc && !head) || d < bestD) { bestD = d; best = ivec3(x, y, z); head = sc; }
+    }
+    if (bestD > 1e8f) return false;
+    // two to a scarecrow's head (one each side), one to a post
+    int taken = 0;
+    for (auto& e : lv.entities()) if (auto* c = dynamic_cast<Creature*>(e.get())) if (c != &m && !c->removed && c->type == m.type && c->data.contains("perchAt")) {
+      const json& a = c->data["perchAt"]; if (a.is_array() && a.size() >= 3 && a[0] == best.x && a[1] == best.y && a[2] == best.z) taken++;
+    }
+    if (taken >= (head ? 2 : 1)) { D["perchLook"] = 2.f; return false; }
+    D["perchAt"] = {best.x, best.y, best.z}; D["perchSide"] = taken ? -1 : 1; D["perchHead"] = head;
+    m.perched = false; m.wantPerch = false;
+  }
+  const json& a = D["perchAt"];
+  const ivec3 at(a[0].get<int>(), a[1].get<int>(), a[2].get<int>());
+  const float side = D.value("perchSide", 1) * (D.value("perchHead", false) ? 0.22f : 0.f);
+  const vec3 seat(at.x + 0.5f + side, at.y + 1.f, at.z + 0.5f);
+  // gone (the head knocked off), or someone walked up: off they go
+  const BlockId t = w.getBlock(at.x, at.y, at.z);
+  const bool still = D.value("perchHead", false) ? isHead(t) : R.tShape[t] == ShapeKind::Fence;
+  if (!still || (p && dist < 4 && !pawnSneaking(p)) || m.hurtTime > 0) {
+    D.erase("perchAt"); D["perchCool"] = 12 + frand() * 10;
+    if (m.perched) { m.perched = false; m.noGravity = true; m.hasFlyVy = true; m.flyVy = 3.5f; lv.fx->voice(m.T->sound, "say", m.pos); }
+    return false;
+  }
+  if (m.perched) {
+    m.noGravity = true; m.hasFlyVy = true; m.flyVy = 0; m.vel = vec3(0); m.pos = seat;
+    m.perchT -= dt;
+    if (m.perchT <= 0) { D.erase("perchAt"); D["perchCool"] = 6 + frand() * 8; m.perched = false; m.flyVy = 2.5f; }
+    m.speedNow = 0; m.flitDir = m.yaw;
+    return true;
+  }
+  const float hd = std::hypot(seat.x - m.pos.x, seat.z - m.pos.z);
+  m.flitDir = heading(m.pos.x, m.pos.z, seat.x, seat.z);
+  m.flyVy = clampv((seat.y + (hd > 2 ? 1.5f : 0.1f) - m.pos.y) * 2.f, -2.5f, 2.5f);
+  if (hd < 0.35f && std::fabs(m.pos.y - seat.y) < 0.6f) {
+    m.perched = true; m.perchT = 18 + frand() * 30; m.pos = seat; m.yaw = frand() * TAU;
+    if (frand() < 0.5f) lv.fx->voice(m.T->sound, "say", m.pos);
+  }
+  m.speedNow = m.T->fly * clampv(hd / 3, 0.25f, 1.f);
+  return true;
+}
+
 static Move flyerAI(Level& lv, Creature& m, Entity* p, float dist, float dt) {
   const auto& T = *m.T;
   if (m.type == "bee" && m.hasHive && !(m.angryT > 0 && m.foe)) if (OptMove b = beeAI(lv, m, dt)) return *b;
@@ -339,6 +411,7 @@ static Move flyerAI(Level& lv, Creature& m, Entity* p, float dist, float dt) {
       return {T.fly * 1.3f, heading(m.pos.x, m.pos.z, f->pos.x, f->pos.z)};
     }
   }
+  if (T.j.value("scarecrowPerch", false) && scarecrowPerchAI(lv, m, p, dist, dt)) return {m.speedNow, m.flitDir};
   if (m.perched) {
     m.flyVy = -1; m.noGravity = false; m.hasFlyVy = false;
     m.perchT -= dt;

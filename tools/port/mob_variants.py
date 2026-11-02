@@ -20,6 +20,9 @@ MOBS = None
 
 # ------------------------------------------------------------------ tiles: our own paintings
 def tile_path(name):
+    if name.startswith('@'):
+        q = D / 'textures' / 'entity' / (name[1:] + '.png')
+        return q if q.exists() else None
     i = TJ['names'].get(name)
     if i is None: return None
     p = D / TJ['files'][i]
@@ -32,11 +35,13 @@ def tile_img(name):
 
 
 def add_tile(name, im):
-    rel = 'textures/entity/%s.png' % name
-    im.save(D / rel)
-    if name not in TJ['names']:
-        TJ['names'][name] = TJ['count']; TJ['files'].append(rel); TJ['res'].append(im.size[0]); TJ['count'] += 1
-    return name
+    """A look's own picture: saved as data/textures/entity/<name>.png and used by its file ('@name', read on the CPU by
+    render/creature_models.cpp), never put in tiles.json: the GPU's tile arrays hold 4096 at most."""
+    im.save(D / 'textures' / 'entity' / (name + '.png'))
+    return '@' + name
+
+
+def has_tile(name): return tile_path(name) is not None
 
 
 def tint_px(r, g, b, t):
@@ -374,7 +379,7 @@ def entity_tiles(m):
     def walk(t):
         if isinstance(t, str):
             p = tile_path(t)
-            if p and '/entity/' in str(p).replace('\\', '/'): out.add(t)
+            if p and not t.startswith('@') and '/entity/' in str(p).replace('\\', '/'): out.add(t)
         elif isinstance(t, dict):
             for v in t.values(): walk(v)
         elif isinstance(t, list):
@@ -672,11 +677,11 @@ def catalogue():
     look('cow', 'cookie', 'a belted cow', 0.7, ptint=True, tint={'hue': 200, 'sat': 0.25, 'val': 0.5}, only={'cow_hide', 'cow_face'}, lands=['mountains', 'taiga', 'plains'],
          build=lambda k, m, r: k.ring_z('wool', 'body', 0.35, 0.65, pad=0.2))
     def shaggy(k, m, r):
-        k.coat('cow_hide_wooly' if 'cow_hide_wooly' in TJ['names'] else 'orange_wool', 'body', pad=0.9, hang=3.0)
+        k.coat('@cow_hide_wooly' if has_tile('@cow_hide_wooly') else 'orange_wool', 'body', pad=0.9, hang=3.0)
         x0, y0, z0, x1, y1, z1 = P(m, 'head')['box']
-        k.add('fringe', 'head', (0, y1, z0), (x0 - 0.5, -3.2, -0.6, x1 + 0.5, 0.8, 3.5), 'cow_hide_wooly' if 'cow_hide_wooly' in TJ['names'] else 'orange_wool')
+        k.add('fringe', 'head', (0, y1, z0), (x0 - 0.5, -3.2, -0.6, x1 + 0.5, 0.8, 3.5), '@cow_hide_wooly' if has_tile('@cow_hide_wooly') else 'orange_wool')
         k.horns_long('cow_horn', reach=4.0, up=1.8)
-        for s in ('FR', 'FL', 'BR', 'BL'): k.band('cow_hide_wooly' if 'cow_hide_wooly' in TJ['names'] else 'orange_wool', 'leg' + s, 0.2, 1.0, pad=0.6)
+        for s in ('FR', 'FL', 'BR', 'BL'): k.band('@cow_hide_wooly' if has_tile('@cow_hide_wooly') else 'orange_wool', 'leg' + s, 0.2, 1.0, pad=0.6)
     look('cow', 'wooly', 'a shaggy highland cow', 1.0, ptint=True, tint={'hue': 12, 'sat': 1.6, 'val': 1.25}, pattern=pat_stripes((150, 70, 26), period=3, width=1, vertical=True),
          only={'cow_hide', 'cow_face'}, lands=COLD + ['mountains'], build=shaggy, drops=[['wool', 1, 2, 0.5]])
     look('cow', 'belled', 'a belled cow', 1.0, village=True,
@@ -762,7 +767,7 @@ def catalogue():
     look('wolf', 'pug', 'a pug', 0.4, village=True, tint={'mix': [0.86, 0.68, 0.45, 0.65]}, edit=pug,
          build=lambda k, m, r: k.add('mask', 'head', (0, 0, P(m, 'head')['box'][2]), (-2.6, -2.6, -0.3, 2.6, 1.6, 0.05), 'black_wool'))
     look('wolf', 'leader', 'a pack leader', 0.25, lands=COLD + WOODS, scale=1.15, tint={'sat': 0.6, 'val': 0.75},
-         build=lambda k, m, r: (k.eyepatch(), k.add('ruff', 'body', (0, 0.5, -3), (-4.6, -4.2, -4.0, 4.6, 4.2, 4.0), 'wolf_fur_leader' if 'wolf_fur_leader' in TJ['names'] else 'gray_wool')))
+         build=lambda k, m, r: (k.eyepatch(), k.add('ruff', 'body', (0, 0.5, -3), (-4.6, -4.2, -4.0, 4.6, 4.2, 4.0), 'gray_wool')))
 
     # ===== the wild =====
     def feathered(k, m, r):
@@ -923,7 +928,6 @@ def main(d):
         for b in base: b['w'] = round(bw, 3)
         v['variantDefs'] = base + defs
         n += len(defs)
-    (D / 'tiles.json').write_text(json.dumps(TJ, separators=(',', ':')))
     (D / 'models.json').write_text(json.dumps(models, separators=(',', ':'), ensure_ascii=False))
     (D / 'mobs.json').write_text(json.dumps(MOBS, separators=(',', ':'), ensure_ascii=False))
     print('mob variants ok: %d looks for %d creatures' % (n, len(DEFS)))

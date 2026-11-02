@@ -74,21 +74,21 @@ std::string habitatAt(World& w, int x, int z, BlockId ground) {
 struct SpawnE { const char* t; float w; int lo, hi; };
 static const std::unordered_map<std::string, std::vector<SpawnE>>& spawnTable() {
   static const std::unordered_map<std::string, std::vector<SpawnE>> S = {
-    {"plains", {{"horse", 8, 2, 4}, {"donkey", 2, 1, 2}, {"sheep", 12, 2, 4}, {"cow", 10, 2, 4}, {"pig", 10, 1, 3}, {"chicken", 10, 2, 4}, {"rabbit", 4, 1, 3}, {"turkey", 4, 2, 4}, {"mouse", 2, 1, 2}, {"duck", 3, 2, 3}, {"adder", 1, 1, 1}}},
-    {"forest", {{"deer", 8, 2, 4}, {"boar", 5, 1, 3}, {"wolf", 8, 2, 4}, {"pig", 6, 1, 3}, {"chicken", 6, 1, 3}, {"sheep", 4, 2, 3}, {"cow", 4, 2, 3}, {"rabbit", 4, 1, 3}, {"raccoon", 3, 1, 2}, {"turkey", 3, 2, 3}, {"brown_bear", 2, 1, 2}, {"mouse", 2, 1, 2}, {"adder", 2, 1, 1}}},
-    {"birch_forest", {{"deer", 8, 2, 4}, {"rabbit", 6, 1, 3}, {"pig", 5, 1, 3}, {"chicken", 5, 1, 3}, {"sheep", 5, 2, 3}, {"cow", 4, 2, 3}, {"fox", 3, 1, 2}}},
+    {"plains", {{"crow", 4, 2, 4}, {"horse", 8, 2, 4}, {"donkey", 2, 1, 2}, {"sheep", 12, 2, 4}, {"cow", 10, 2, 4}, {"pig", 10, 1, 3}, {"chicken", 10, 2, 4}, {"rabbit", 4, 1, 3}, {"turkey", 4, 2, 4}, {"mouse", 2, 1, 2}, {"duck", 3, 2, 3}, {"adder", 1, 1, 1}}},
+    {"forest", {{"crow", 2, 2, 3}, {"deer", 8, 2, 4}, {"boar", 5, 1, 3}, {"wolf", 8, 2, 4}, {"pig", 6, 1, 3}, {"chicken", 6, 1, 3}, {"sheep", 4, 2, 3}, {"cow", 4, 2, 3}, {"rabbit", 4, 1, 3}, {"raccoon", 3, 1, 2}, {"turkey", 3, 2, 3}, {"brown_bear", 2, 1, 2}, {"mouse", 2, 1, 2}, {"adder", 2, 1, 1}}},
+    {"birch_forest", {{"crow", 2, 2, 3}, {"deer", 8, 2, 4}, {"rabbit", 6, 1, 3}, {"pig", 5, 1, 3}, {"chicken", 5, 1, 3}, {"sheep", 5, 2, 3}, {"cow", 4, 2, 3}, {"fox", 3, 1, 2}}},
     {"taiga", {{"wolf", 12, 2, 5}, {"fox", 8, 1, 3}, {"rabbit", 6, 1, 3}, {"deer", 5, 2, 3}, {"sheep", 4, 2, 3}, {"pig", 3, 1, 2}, {"brown_bear", 3, 1, 2}}},
     {"snowy_taiga", {{"wolf", 12, 2, 5}, {"snow_fox", 8, 1, 3}, {"rabbit", 6, 1, 3}, {"deer", 3, 2, 3}, {"brown_bear", 2, 1, 2}}},
     {"snowy_plains", {{"polar_bear", 3, 1, 2}, {"snow_fox", 6, 1, 2}, {"rabbit", 8, 1, 3}, {"wolf", 5, 2, 4}}},   // (BTA: wolves are about more often)
     {"snowy_peaks", {{"goat", 10, 2, 3}, {"snow_fox", 2, 1, 2}, {"rabbit", 3, 1, 2}, {"snow_leopard", 2, 1, 1}}},
     {"mountains", {{"goat", 10, 2, 3}, {"llama", 6, 2, 4}, {"sheep", 5, 2, 3}, {"rabbit", 3, 1, 2}}},
-    {"savanna", {{"horse", 8, 2, 5}, {"donkey", 5, 1, 3}, {"llama", 4, 2, 4}, {"cow", 4, 2, 3}, {"armadillo", 7, 1, 2}, {"sheep", 3, 2, 3}, {"lioness", 3, 2, 3}, {"lion", 1, 1, 1}}},
+    {"savanna", {{"crow", 2, 2, 3}, {"horse", 8, 2, 5}, {"donkey", 5, 1, 3}, {"llama", 4, 2, 4}, {"cow", 4, 2, 3}, {"armadillo", 7, 1, 2}, {"sheep", 3, 2, 3}, {"lioness", 3, 2, 3}, {"lion", 1, 1, 1}}},
     {"desert", {{"camel", 6, 1, 2}, {"rabbit", 8, 1, 3}, {"armadillo", 3, 1, 2}, {"rattlesnake", 4, 1, 1}, {"scorpion", 2, 1, 2}}},
     {"jungle", {{"parrot", 10, 1, 3}, {"ocelot", 5, 1, 2}, {"panda", 4, 1, 2}, {"chicken", 4, 1, 3}, {"pig", 3, 1, 2}, {"tiger", 2, 1, 1}, {"panther", 2, 1, 1}, {"green_snake", 4, 1, 2}}},
     {"swamp", {{"frog", 10, 2, 4}, {"duck", 6, 2, 4}, {"raccoon", 3, 1, 2}, {"mouse", 2, 1, 2}, {"crocodile", 4, 1, 2}, {"green_snake", 3, 1, 1}}},
     {"beach", {{"turtle", 8, 2, 4}, {"duck", 2, 1, 3}}},
     {"snowy_beach", {{"snow_fox", 3, 1, 2}, {"rabbit", 3, 1, 2}}},
-    {"skylands", {{"aerbunny", 6, 1, 3}, {"moa", 3, 1, 2}, {"phyg", 5, 1, 3}, {"flying_cow", 4, 1, 3}, {"sheepuff", 5, 2, 3}}},
+    {"skylands", {{"whirlwind", 1, 1, 1}, {"aerbunny", 6, 1, 3}, {"moa", 3, 1, 2}, {"phyg", 5, 1, 3}, {"flying_cow", 4, 1, 3}, {"sheepuff", 5, 2, 3}}},
   };
   return S;
 }

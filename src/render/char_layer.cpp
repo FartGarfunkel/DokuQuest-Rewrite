@@ -186,7 +186,11 @@ void CharacterLayer::update(GameSession& s, double dt) {
     if (st.landT > 0) st.landT -= fdt;
     if (!e->onGround && !e->inWater && !p->flying) { if (!st.falling || e->pos.y > st.fallStart) st.fallStart = st.falling ? std::max(st.fallStart, e->pos.y) : e->pos.y; st.falling = true; }
     if (e->inWater || p->flying) st.falling = false;
-    if (e->onGround && st.falling) { if (st.fallStart - e->pos.y > 1.2f) st.landT = 0.2f; st.falling = false; }
+    if (e->onGround && st.falling) {   // Story Mode weight: the bigger the drop, the deeper and longer the landing
+      const float drop = st.fallStart - e->pos.y;
+      if (drop > 0.8f) { st.landAmt = clampf(0.3f + drop / 5, 0.3f, 1.6f); st.landT = 0.2f * std::max(1.f, st.landAmt); }
+      st.falling = false;
+    }
     st.deathT = p->dead ? st.deathT + fdt : 0;
     // standing about (for the idles), and the ground under each foot a few times a second (a step or a slab under one), eased
     {
@@ -355,7 +359,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   ps.ladder = p.contacts.ladder && !p.onGround && !p.flying && !ps.hang && ps.climb <= 0 && !ps.swim;
   if (ps.ladder) ps.ladderPh = st.ladderPh, ps.ladderMv = std::min(1.f, std::fabs(st.vel.y) / 2.f);
   ps.held = !wear.held.empty(); ps.off = !wear.off.empty(); ps.deathT = p.dead ? std::max(st.deathT, 0.01f) : 0;
-  ps.air = !p.onGround && !p.flying && !p.inWater && !p.riding && !ps.ladder && !ps.hang && ps.climb <= 0; ps.vy = st.vel.y; ps.sprint = p.sprinting; ps.land = std::max(0.f, st.landT);
+  ps.air = !p.onGround && !p.flying && !p.inWater && !p.riding && !ps.ladder && !ps.hang && ps.climb <= 0; ps.vy = st.vel.y; ps.sprint = p.sprinting; ps.land = std::max(0.f, st.landT); ps.landAmt = st.landAmt;
   ps.bow = p.bowPull; ps.eat = p.eatT;
   {   // local.js paddling(): treading water or swimming along upright in water deeper than about a block
     auto liquidAt = [&](float dy) { return reg().tLiquid[w.getBlock(ifloor(p.pos.x), ifloor(p.pos.y + dy), ifloor(p.pos.z))] == 1; };

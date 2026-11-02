@@ -60,8 +60,9 @@ void clientTickLocalPlayer(GameSession& s, double dt) {
     if (in.pressed(Act::Sneak)) { if (app.time - st.sneakTapT < 0.3) { pi.crawl = true; st.sneakTapT = -10; } else st.sneakTapT = app.time; }
     for (int i = 0; i < 9; i++) if (in.pressed((Act)((int)Act::Hot1 + i))) pi.slot = i;
     pi.wheel = -(int)in.wheel();
-    if (in.pressed(Act::HotNext)) pi.wheel += 1;
-    if (in.pressed(Act::HotPrev)) pi.wheel -= 1;
+    const bool padCast = in.usingPad() && in.down(Act::Sneak) && (in.padButtonDown(4) || in.padButtonDown(5));   // sneak + a bumper casts (render/magic_fx.cpp)
+    if (in.pressed(Act::HotNext) && !padCast) pi.wheel += 1;
+    if (in.pressed(Act::HotPrev) && !padCast) pi.wheel -= 1;
     if (in.pressed(Act::Debug)) s.debugOverlay = !s.debugOverlay;
     if (in.pressed(Act::HideHud)) s.hudHidden = !s.hudHidden;
     if (in.pressed(Act::View)) s.viewMode = (s.viewMode + 1) % 4;   // first person, over the shoulder, behind, in front

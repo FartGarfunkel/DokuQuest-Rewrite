@@ -80,6 +80,15 @@ void SkylandsGen::generate(Chunk& ch) {
       x += rnd() * 2 - 1; y += rnd() * 2 - 1; z += rnd() * 2 - 1;
     }
   }
+  // driftstone in the islands' undersides (it falls up when freed: sim/blockfx.cpp)
+  if (B.driftstone) for (int v = 0; v < 2; v++) {
+    double x = rnd() * 16, y = 44 + rnd() * 40, z = rnd() * 16;
+    for (int k = 0; k < 6; k++) {
+      int ix = jsFloor(x), iy = jsFloor(y), iz = jsFloor(z);
+      if (ix >= 0 && ix < 16 && iz >= 0 && iz < 16 && iy > 0) { BlockId& cur = b.blocks[colIdx(ix, iy + SKY_DY, iz)]; if (cur == B.skystone && b.blocks[colIdx(ix, iy + SKY_DY - 1, iz)] == AIR) cur = B.driftstone; else if (cur == B.skystone && k > 2) cur = B.driftstone; }
+      x += rnd() * 2 - 1; y += rnd() * 1.4 - 0.7; z += rnd() * 2 - 1;
+    }
+  }
   // a few cloud-pine trees
   Mulberry32 tr(hash32(seed_, ch.cx, ch.cz, 44));
   int nt = tr() < 0.6 ? 1 + jsFloor(tr() * 2) : 0;

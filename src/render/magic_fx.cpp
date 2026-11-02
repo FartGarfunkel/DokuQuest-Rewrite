@@ -226,7 +226,7 @@ public:
   std::vector<FloatText> texts;
   std::deque<Pop> pops;
   float flashT = 0;
-  double scanT = 0, time = 0;
+  double scanT = 0, time = 0, lastLeftAt = -1e9, lastRightAt = -1e9;   // (the cast buttons: both at once = both hands)
   std::vector<ivec3> tables, stands;
   std::unordered_map<i64, BookAnim> books;
   std::string test; int testFrame = 0; ivec3 testAt{0};
@@ -275,7 +275,15 @@ void MagicLayer::update(GameSession& gs, double dt) {
   if (!app.topScreen() && !p->dead) {
     Input& in = app.input;
     if (in.pressed(Act::Spell)) cycleSpell(lv, *p);
-    if (in.pressed(Act::CastQuick)) castQuick(lv, *p);
+    // a cast button for each hand (keys Z / N, the mouse's side buttons; on a controller hold sneak and press a bumper:
+    // RB the right hand, LB the left). Both within a moment of each other: both hands together (dual cast / fusion).
+    const bool padR = in.usingPad() && in.down(Act::Sneak) && in.padButtonPressed(5), padL = in.usingPad() && in.down(Act::Sneak) && in.padButtonPressed(4);
+    const bool r = in.pressed(Act::CastQuick) || padR, l = in.pressed(Act::CastLeft) || padL;
+    if (r || l) {
+      if ((r && l) || (r && time - lastLeftAt < 0.25) || (l && time - lastRightAt < 0.25)) { castHand(lv, *p, 2); lastLeftAt = lastRightAt = -1e9; }
+      else if (r) { lastRightAt = time; castHand(lv, *p, 0); }
+      else { lastLeftAt = time; castHand(lv, *p, 1); }
+    }
     bool padBook = in.usingPad() && in.down(Act::Sneak) && in.pressed(Act::MenuUp) && p->held().empty() && !s.target.hit;
     if (in.pressed(Act::Spellbook) || padBook) app.pushScreen(makeSpellbookScreen());
     else if (in.pressed(Act::Skills)) app.pushScreen(makeSkillsScreen());
