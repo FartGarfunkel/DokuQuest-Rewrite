@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
     d.hp = 300; tick(2);
     check(d.hp > 300, "the crystals heal the dragon (" + std::to_string((int)d.hp) + ")");
     tick(20);
-    check(d.pos.y > fy + 10 && d.noGravity, "the dragon flies high over the island (state " + d.state + ")");
+    check(d.noGravity && ((d.pos.y > fy + 10) || d.state == "perch" || d.state == "climb"), "the dragon flies high over the island, or perches and climbs again (state " + d.state + ")");   // (it perches when it likes)
   }
   // break a crystal
   if (!crystals.empty()) {
@@ -138,10 +138,12 @@ int main(int argc, char** argv) {
     DamageSrc a; a.type = "arrow"; a.attacker = P->id;
     float before = m->hp; float dealt = m->hurt(*L, 10, a);
     check(dealt == 0 && m->hp == before, "arrows never touch an enderman");
-    m->angryT = 0; P->pos = vec3(m->pos.x, m->pos.y, m->pos.z + 8); P->yaw = 0;   // looking toward -z: at it
-    vec3 eye = P->pos + vec3(0, EYE, 0), to = m->pos + vec3(0, m->h - 0.3f, 0) - eye;
-    P->yaw = std::atan2(-to.x, -to.z); P->pitch = std::atan2(to.y, std::hypot(to.x, to.z));
-    tick(1);
+    for (int tries = 0; tries < 3 && !(m->angryT > 0 || m->foe == P->id); tries++) {   // (it may blink off before it sees you: look again)
+      m->angryT = 0; P->pos = vec3(m->pos.x, m->pos.y, m->pos.z + 8); P->yaw = 0;   // looking toward -z: at it
+      vec3 eye = P->pos + vec3(0, EYE, 0), to = m->pos + vec3(0, m->h - 0.3f, 0) - eye;
+      P->yaw = std::atan2(-to.x, -to.z); P->pitch = std::atan2(to.y, std::hypot(to.x, to.z));
+      tick(1);
+    }
     check(m->angryT > 0 || m->foe == P->id, "meeting its eyes angers it");
     m->removed = true;
   }

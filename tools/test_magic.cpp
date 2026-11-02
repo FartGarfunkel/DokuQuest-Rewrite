@@ -1,6 +1,7 @@
 // tools/test_magic.cpp — headless rules test for magic, enchanting, brewing, skills and the RPG side.
 // The enchanting offers and rune strings are checked against values taken from the running original
 // (tools/port/jsdump.py: enchOffers / enchRunes / skillLevel). Run: build/test_magic
+#include "sim/creature.h"
 #include "core/init.h"
 #include "sim/magic.h"
 #include "sim/magic_entities.h"
@@ -119,6 +120,7 @@ int main(int argc, char** argv) {
   p.inv[0] = ItemStack("apprentice_staff", 1); p.selected = 0;
   p.yaw = 0; p.pitch = 0;   // looking down -z
   Entity* sk = spawnCreature(*lv, "skeleton", 0, p.pos + vec3(0, 0, -6));
+  if (auto* c = dynamic_cast<Creature*>(sk)) { c->data.erase("armor"); c->variant = ""; }   // a plain one: no random armour or look to soak the blow
   float hp0 = sk ? sk->hp : 0;
   bool used = !bus.emit("itemUse", json::array({"Mage", "apprentice_staff", 0, 0, 0, -1}));
   MagicState& m = magicState(*lv, p);
@@ -233,7 +235,7 @@ int main(int argc, char** argv) {
 
   // ---- the journal ----
   Story s = storyOf(*lv, p);
-  check(s.ch.size() == 12 && s.cur == 0 && s.ch[0].t == "A Village at the Edge", "the journal starts at the village");
+  check(s.ch.size() == 13 && s.cur == 0 && s.ch[0].t == "A Village at the Edge", "the journal starts at the village");
   p.stats["vseen"] = json{{"v1", 1}};
   s = storyOf(*lv, p);
   check(s.cur == 1 && s.ch[0].done, "...and moves on once you find one");
