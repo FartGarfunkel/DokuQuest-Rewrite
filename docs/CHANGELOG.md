@@ -5,6 +5,14 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.12 (in progress)
+
+**Fixes:**
+
+- **Placed mob heads no longer flicker:** the block under each head drew a stone box in the same place as the head, and the two fought (most easily seen on a Wither skull on soul sand or a command block).
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.11 — Every Creature Its Own (November 2026)
 
 **Every creature comes in looks of its own:** 255 of them across 121 creatures, each built a little differently and each from somewhere in the world. Where it turns up, what it carries and what it drops all come from its story.

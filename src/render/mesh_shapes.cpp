@@ -353,6 +353,8 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   const int extra = hang ? (meta >> 2) & 31 : 0;   // a chain up to a ceiling further up (half blocks beyond its own block)
   static int chainTile = -2; if (chainTile == -2) chainTile = R.tile("chain");
   for (auto& b0 : *boxes) {
+    if (!b0.only) continue;   // a box that collides and picks but a render layer draws (a placed mob head: its stone box
+                              // fought the head's own faces, the flicker round placed skulls)
     ShapeBox b = b0; if (rf) rotBox(b, rf);
     addShapeBox(c, d, b, o, 1 / 16.f, sk, bl, lift, rf, mat, hang ? &hangFn : nullptr);
     if (extra && chainTile >= 0 && b.side == chainTile)
