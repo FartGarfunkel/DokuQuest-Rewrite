@@ -97,6 +97,7 @@ NetClient::State NetClient::poll() {
   if (!host || st == State::Ready || st == State::Failed || st == State::Closed) return st;
   ENetEvent ev;
   while (host && enet_host_service(host, &ev, 0) > 0) {
+    heardAt = nowSeconds();   // anything at all from the host: it's there, and the world is still coming
     if (ev.type == ENET_EVENT_TYPE_CONNECT) {
       st = State::Joining;
       send(peer, HELLO, {{"proto", PROTO}, {"version", DQ_VERSION}, {"name", opts.name}, {"skin", opts.skin}, {"skinData", opts.skinData}, {"password", opts.password}, {"R", opts.viewDistance}, {"sub", subMode}});
@@ -119,8 +120,12 @@ NetClient::State NetClient::poll() {
       st = State::Failed; peer = nullptr; break;
     }
   }
-  if ((st == State::Connecting || st == State::Joining) && nowSeconds() - startedAt > opts.timeout) {
-    err = st == State::Connecting ? "No answer from that address" : "The host did not answer";
+  const double now = nowSeconds();
+  if (st == State::Connecting && now - startedAt > opts.timeout) {
+    err = "No answer from that address. On the internet: the host's router must forward that port as UDP (not TCP) to the host's computer, and its firewall must let UDP in";
+    st = State::Failed;
+  } else if (st == State::Joining && (now - heardAt > opts.quiet || now - startedAt > opts.joinCap)) {
+    err = "The host stopped answering while sending the world";
     st = State::Failed;
   }
   if (st == State::Failed) { if (peer) enet_peer_reset(peer); peer = nullptr; DQ_WARN("net: join failed: %s", err.c_str()); }

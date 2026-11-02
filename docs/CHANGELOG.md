@@ -5,6 +5,16 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.15 — Over the Hills (November 2026)
+
+**Playing over the internet:**
+- **Joining from another house could give up halfway:** joining had twelve seconds to fetch the whole first download of the world's changes. On a home network that's plenty; over a home internet upload a well-played world takes longer, so friends were turned back with "The host did not answer", whether you'd opened your world to LAN or were running a server. Joining now carries on as long as the world keeps coming.
+- **The firewall help told you to open the wrong kind of port:** the game talks over UDP, and the "They can't connect?" help in Open to LAN said TCP, which let nobody in. It gives the right command now: `sudo firewall-cmd --permanent --add-port=25580-25589/udp && sudo firewall-cmd --reload`.
+- **Open to LAN has a "Playing over the internet" section:** forward the UDP port on your router, let it through the firewall, and a button that finds your internet address to give your friend. The server dashboard in the launcher has the same button and firewall line.
+- If nobody can reach you at all, the join screen now says what to check (the router's UDP forward and the firewall).
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.14 — Tractor Beam (November 2026)
 
 **The Wither Storm, as in Story Mode:** it isn't a Wither drawn five times bigger any more but the behemoth itself: a black obsidian mass with three heads (the middle one huge), glowing violet eyes, mandibles and fangs, the command block glowing in its chest, and long tentacles hanging under it that sway and coil as it drifts. It rises out of the T a third of its size and grows with everything it eats. Its violet tractor beam tears up the ground under it (the blocks fly up the beam into its maw), drags you toward it, and pulls the creatures round it in to be devoured; too near its maw, the wither sickness takes you. And it roars.

@@ -7,12 +7,18 @@
 #include "client/session.h"
 #include "client/netplay.h"
 #include "net/client.h"
+#include "net/lan.h"
 #include <imgui.h>
+#include <atomic>
+#include <mutex>
+#include <thread>
 
 namespace dq {
 using namespace ui;
 
-static const char* FIREWALL_CMD = "sudo firewall-cmd --permanent --add-port=25580-25589/tcp --add-port=25581/udp && sudo firewall-cmd --reload";
+// the game talks over UDP (ENet): the game's ports 25580-25589 and the home-network announcements on 25581. (It used to say
+// TCP here, which let nobody in: the firewall still dropped the game's UDP.)
+static const char* FIREWALL_CMD = "sudo firewall-cmd --permanent --add-port=25580-25589/udp && sudo firewall-cmd --reload";
 
 // ---- Joining… -------------------------------------------------------------------------------------------
 class JoiningScreen : public Screen {
@@ -126,7 +132,10 @@ std::unique_ptr<Screen> makeMultiplayerScreen() { return std::make_unique<Multip
 class LanHostScreen : public Screen {
 public:
   const char* id() const override { return "lanhost"; }
-  std::string msg; bool fwOpen = false;
+  std::string msg; bool fwOpen = false, netOpen = false;
+  // this computer's address on the internet, looked up on a worker when asked (net::internetAddress)
+  struct Lookup { std::mutex mx; std::string addr; bool busy = false, done = false; };
+  std::shared_ptr<Lookup> look = std::make_shared<Lookup>();
   void draw(App& a) override {
     if (a.topScreen() != this || !a.session) return;
     float z = Z();
@@ -162,10 +171,34 @@ public:
       ImGui::SetNextItemOpen(fwOpen); fwOpen = ImGui::CollapsingHeader("They can't connect?");
       ImGui::PopStyleColor(2);
       if (fwOpen) {
-        label(F_MID, col::text, "Be on the same Wi-Fi or network. openSUSE's firewall blocks people joining until you allow it once. Open a terminal and run:", w);
+        label(F_MID, col::text, "openSUSE's firewall blocks people joining until you allow it once (on the internet as well as at home). Open a terminal and run:", w);
         label(F_MONO, col::text, FIREWALL_CMD, w);
         if (button("Copy", BTN_NORMAL, true)) { SDL_SetClipboardText(FIREWALL_CMD); msg = "Copied"; }
-        label(F_MID, col::muted, "It asks for your password. Then try joining again. Other Linux systems: allow TCP ports 25580\xE2\x80\x93" "25589 and UDP 25581.", w);
+        label(F_MID, col::muted, "It asks for your password. Then try joining again. Other Linux systems, and Windows: allow UDP ports 25580\xE2\x80\x93" "25589. (UDP, not TCP: the game doesn't use TCP at all.)", w);
+      }
+      ImGui::PushStyleColor(ImGuiCol_Text, col::gold); ImGui::PushStyleColor(ImGuiCol_Header, 0);
+      ImGui::SetNextItemOpen(netOpen); netOpen = ImGui::CollapsingHeader("Playing over the internet");
+      ImGui::PopStyleColor(2);
+      if (netOpen) {
+        const std::string port = std::to_string(st.port);
+        label(F_MID, col::text, ("1. On your router, forward UDP port " + port + " (UDP, not TCP) to this computer" + (st.address.empty() ? std::string() : " (" + st.address + ")") + ".").c_str(), w);
+        label(F_MID, col::text, "2. Let it through this computer's firewall too (above): a port open on the router isn't enough.", w);
+        label(F_MID, col::text, "3. They type your internet address, not the home one above:", w);
+        std::string addr; bool busy, done;
+        { std::lock_guard<std::mutex> lk(look->mx); addr = look->addr; busy = look->busy; done = look->done; }
+        if (!addr.empty()) {
+          const std::string full = addr + ":" + port;
+          label(F_BIG, col::ember, full.c_str());
+          if (button("Copy##net", BTN_NORMAL, true)) { SDL_SetClipboardText(full.c_str()); msg = "Copied"; }
+        } else if (busy) label(F_MID, col::muted, "Looking it up\xE2\x80\xA6", w);
+        else {
+          if (button("Find my internet address", BTN_NORMAL, true)) {
+            { std::lock_guard<std::mutex> lk(look->mx); look->busy = true; }
+            std::thread([l = look] { std::string a = net::internetAddress(); std::lock_guard<std::mutex> lk(l->mx); l->addr = a; l->busy = false; l->done = true; }).detach();
+          }
+          if (done) label(F_MID, col::muted, "Couldn't find it out (no curl, or offline). Search \"what is my IP\" in a browser instead.", w);
+        }
+        label(F_MID, col::muted, "Still nothing? If your router's own internet (WAN) address isn't the one above, your provider shares one address among many homes (CGNAT) and nobody can reach you from outside: ask them for a public IPv4 address. And you both need the same DokuQuest version.", w);
       }
       ImGui::Dummy(ImVec2(1, 6 * z));
       if (button("Stop sharing this world")) { closeLan(a); a.toast("Your world is just yours again", ""); }

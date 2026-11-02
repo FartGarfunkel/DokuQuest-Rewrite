@@ -8,6 +8,9 @@
 #include "sim/rules.h"
 #include <imgui_stdlib.h>
 #include <map>
+#include <mutex>
+#include <thread>
+#include "net/lan.h"
 
 namespace dq {
 
@@ -215,6 +218,29 @@ void drawServerDashboard(Launcher& L, DedicatedServer& srv, const ServerStatus& 
   ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_FROST), "%s", addr.c_str()); ImGui::SameLine();
   ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "%s", c.lan ? "· on this network it shows up in Multiplayer by itself · from the internet the router must let UDP in on that port"
                                                                          : "· from the internet the router must let UDP in on that port");
+  {   // over the internet: the internet address to give out, and the firewall line (UDP: the game never uses TCP)
+    static std::mutex mx; static std::string inet; static bool busy = false, tried = false;
+    std::string have; bool b;
+    { std::lock_guard<std::mutex> lk(mx); have = inet; b = busy; }
+    const int port = st.port ? st.port : c.port;
+    ImGui::AlignTextToFramePadding(); ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "From the internet");
+    ImGui::SameLine();
+    if (!have.empty()) {
+      const std::string full = have + ":" + std::to_string(port);
+      ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_FROST), "%s", full.c_str()); ImGui::SameLine();
+      if (ImGui::SmallButton("Copy##inet")) ImGui::SetClipboardText(full.c_str());
+    } else if (b) ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "looking it up...");
+    else {
+      if (ImGui::SmallButton("Find my internet address")) {
+        { std::lock_guard<std::mutex> lk(mx); busy = true; }
+        std::thread([] { std::string a = net::internetAddress(); std::lock_guard<std::mutex> lk(mx); inet = a; busy = false; tried = true; }).detach();
+      }
+      if (tried) { ImGui::SameLine(); ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "(couldn't: search \"what is my IP\")"); }
+    }
+    const std::string fw = "sudo firewall-cmd --permanent --add-port=" + std::to_string(port) + "/udp && sudo firewall-cmd --reload";
+    ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "Router: forward UDP %d (not TCP) to this computer. openSUSE firewall: %s", port, fw.c_str()); ImGui::SameLine();
+    if (ImGui::SmallButton("Copy##fw")) ImGui::SetClipboardText(fw.c_str());
+  }
   ImGui::PopFont();
   ImVec2 after = ImGui::GetCursorPos();
   ImGui::SetCursorPos(ImVec2(p0.x + right - bw * 2 - 8, p0.y));

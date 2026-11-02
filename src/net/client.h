@@ -17,7 +17,10 @@ struct JoinOptions {
   std::string name = "Player", skin, password;
   json skinData;             // the skin itself (netSkinHook): sent so the others see it
   int viewDistance = 8;      // chunks; the server may cap it
-  double timeout = 12;       // seconds for connecting + joining
+  double timeout = 15;       // seconds to reach the host; once it answers, joining goes on as long as the world keeps
+                             // coming (silence for `quiet` seconds gives up): over a home internet upload the first
+                             // download of a well-played world takes far longer than on a home network
+  double quiet = 25, joinCap = 300;
 };
 
 class NetClient : public LevelNet {
@@ -74,7 +77,7 @@ private:
   State st = State::Idle;
   std::string err;
   JoinOptions opts;
-  double startedAt = 0, t = 0;
+  double startedAt = 0, t = 0, heardAt = 0;
   json welcomeMsg;
   int expectRecords = -1, gotRecords = 0;
   Level* lv = nullptr;

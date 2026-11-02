@@ -40,6 +40,8 @@ private:
   std::vector<LanGame> found;
 };
 
+std::string internetAddress();   // this computer's address as the internet sees it (asks api.ipify.org through curl; blocks
+                                 // up to ~6 s, so call it off the main thread); "" when it can't be found out
 std::string localAddress();   // this computer's address on the home network ("" if it has none), for "open on <address>:<port>"
 
 } // namespace dq::net

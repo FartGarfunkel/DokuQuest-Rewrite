@@ -1,4 +1,6 @@
 // net/lan.cpp — LAN announcements and the scanner (see net/lan.h). Uses ENet's portable socket calls.
+#include <cstdio>
+#include <cctype>
 #include "net/lan.h"
 #include "net/protocol.h"
 #include <enet/enet.h>
@@ -98,6 +100,27 @@ std::string localAddress() {
   }
   enetDone();
   return out == "0.0.0.0" ? "" : out;
+}
+
+
+std::string internetAddress() {
+  // the system's curl (every Linux desktop; Windows 10 and later have curl.exe): one short line back, the address
+#ifdef _WIN32
+  FILE* f = _popen("curl -s --max-time 6 https://api.ipify.org 2>NUL", "r");
+#else
+  FILE* f = popen("curl -s --max-time 6 https://api.ipify.org 2>/dev/null", "r");
+#endif
+  if (!f) return "";
+  char buf[128] = {0}; size_t n = fread(buf, 1, sizeof buf - 1, f);
+#ifdef _WIN32
+  _pclose(f);
+#else
+  pclose(f);
+#endif
+  std::string a(buf, n);
+  while (!a.empty() && (a.back() == '\n' || a.back() == '\r' || a.back() == ' ')) a.pop_back();
+  for (char c : a) if (!(std::isdigit((unsigned char)c) || c == '.' || c == ':' || std::isxdigit((unsigned char)c))) return "";
+  return a.size() >= 7 && a.size() <= 45 ? a : "";
 }
 
 } // namespace dq::net
