@@ -45,7 +45,8 @@ std::unique_ptr<Screen> makeScreenByName(App& a, const std::string& name);   // 
 void openInventory(App& a, const InvOpen& o = InvOpen());   // chest/furnace/table: InvOpen{mode, hasPos, pos}
 void openChat(App& a, const std::string& prefill = "");
 void chatLine(const std::string& text, const std::string& kind = "");     // kind: "" | ok | err | dim
-void hudToast(const std::string& text, const std::string& kind = "");     // good | warn | boss | rare | whisper | epic
+void hudToast(const std::string& text, const std::string& kind = "");
+bool hudTakesMessages();   // the HUD layer is up and shows Level::fx messages itself (ClientFx then leaves them to it)     // good | warn | boss | rare | whisper | epic
 void hudPickup(const std::string& itemKey, int n);
 void hudDimName(const std::string& name);
 void hudFloatText(vec3 pos, const std::string& text, u32 rgb = 0xffffff);

@@ -284,6 +284,8 @@ int xpForLevel(int level) { return 12 + level * 6; }
 
 // Level::fx messages (command replies, chat lines, server notices) reach this player's chat and toasts; every
 // other effect goes on to whatever sink was there before (sounds, particles).
+int gHudFx = 0;   // HudLayers alive (hudTakesMessages)
+
 class HudFx : public LevelFx {
 public:
   LevelFx* next = nullptr; u32 me = 0;
@@ -305,9 +307,9 @@ class HudLayer : public RenderLayer {
 public:
   explicit HudLayer(GameSession& s) : session(&s) {
     fx.next = s.level->fx; fx.me = s.player ? s.player->id : 0;
-    s.level->fx = &fx;
+    s.level->fx = &fx; gHudFx++;
   }
-  ~HudLayer() override { if (session && session->level && session->level->fx == &fx) session->level->fx = fx.next; }
+  ~HudLayer() override { gHudFx--; if (session && session->level && session->level->fx == &fx) session->level->fx = fx.next; }
   GameSession* session; HudFx fx;
   const char* name() const override { return "hud"; }
   int order() const override { return 1000; }
@@ -655,5 +657,7 @@ public:
 }
 
 void registerHudLayer() { registerRenderLayer([](GameSession& s) { return std::make_shared<HudLayer>(s); }); }
+
+bool hudTakesMessages() { return gHudFx > 0; }
 
 } // namespace dq

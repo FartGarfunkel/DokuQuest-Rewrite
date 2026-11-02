@@ -19,6 +19,7 @@ void ClientFx::particles(const std::string& kind, vec3 pos, int count, const jso
 }
 void ClientFx::message(u32 playerId, const std::string& text, const std::string& kind) {
   if (playerId && (!s.player || playerId != s.player->id)) return;
+  if (hudTakesMessages()) return;   // the HUD shows it (as a toast or a chat line); toasting here too doubled every one
   hudToast(text, kind);
 }
 class PlayerController; PlayerController* localController(GameSession& s);   // client/play.h
