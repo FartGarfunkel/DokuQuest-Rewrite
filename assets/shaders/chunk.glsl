@@ -212,7 +212,7 @@ void main() {
   }
   if (uPass != 2) col.a = 1.0;
 
-  vec3 lc = lighting(vLight.x, uDynN > 0 ? max(vLight.y, dynLight(vRel, N)) : vLight.y, (vMat & 1u) != 0u);
+  vec3 lc = lightingAt(vLight.x, uDynN > 0 ? max(vLight.y, dynLight(vRel, N)) : vLight.y, (vMat & 1u) != 0u, vRel + N * 0.25);
   float emis = tileHeightAt(fract(uv), layer).g;
   lc = max(lc, vec3(emis));
   if (lava) lc = vec3(1.0) * (0.92 + 0.16 * vnoise(vWorld.xz * 1.3 + vec2(uTime * 0.25, -uTime * 0.17)));

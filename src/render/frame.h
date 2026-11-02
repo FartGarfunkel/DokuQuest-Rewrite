@@ -25,6 +25,7 @@ struct FrameCtx {
   float minLight = 0.05f;    // light floor (original env.minLight: 0.025 + brightness * 0.07, more in the Depths/End)
   int eyeFluid = 0;          // camera eye in 0 air, 1 water, 2 lava (underwater fog + tint)
   vec3 blockLightColor{1.0f, 0.85f, 0.62f};
+  GLuint lightVol = 0; bool lightVolOn = false; glm::dvec3 lightVolMin{0};   // coloured block light (render/light_colour_layer.cpp, unit 12)
   int width = 1280, height = 720;
   const Settings* settings = nullptr;
   int dim = 2;               // band the camera is in

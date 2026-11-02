@@ -23,6 +23,10 @@ void FrameCtx::apply(Shader& s) const {
   s.set("uMinLight", minLight);
   s.set("uEyeFluid", eyeFluid);
   s.set("uBlockLightColor", blockLightColor);
+  // coloured block light: the volume round the camera (render/light_colour_layer.cpp) on unit 12
+  glActiveTexture(GL_TEXTURE0 + 12); glBindTexture(GL_TEXTURE_3D, lightVol); glActiveTexture(GL_TEXTURE0);
+  s.set("uLightVol", 12); s.set("uLightVolOn", lightVolOn && lightVol ? 1 : 0);
+  s.set("uLightVolOrigin", cam.rel(lightVolMin)); s.set("uLightVolSize", vec3(64, 48, 64));
   // dynamic point lights (common.glsl dynLight): xyz relative to the camera's block, w = level
   vec4 d[8]; int n = 0;
   if (portalDepth == 0) for (const DynLight& l : dyn) { if (n >= 8) break; d[n++] = vec4(cam.rel(l.pos), l.level); }

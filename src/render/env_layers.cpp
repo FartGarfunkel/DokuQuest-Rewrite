@@ -553,6 +553,7 @@ public:
 };
 } // namespace
 
+void registerLightColourLayer();   // render/light_colour_layer.cpp
 void registerEnvironmentLayers() {
   static bool done = false;
   if (done) return;
@@ -562,6 +563,7 @@ void registerEnvironmentLayers() {
   registerRenderLayer([](GameSession&) { return std::make_shared<WeatherFxLayer>(); });
   registerRenderLayer([](GameSession&) { return std::make_shared<ParticleLayer>(); });
   registerDynLights();
+  registerLightColourLayer();   // coloured block light (render/light_colour_layer.cpp)
 }
 
 } // namespace dq

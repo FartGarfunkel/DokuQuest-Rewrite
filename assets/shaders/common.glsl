@@ -89,6 +89,19 @@ vec3 lighting(float sky, float block, bool emissive) {
   vec3 lc = max(vec3(lightCurve(sky) * uDaylight), vec3(lightCurve(block)) * uBlockLightColor);
   return max(lc, vec3(uMinLight));
 }
+// coloured block light (render/light_colour_layer.cpp): the colour of the light where this point is, from the volume
+// round the camera; rel = the point relative to the camera's block (as vRel)
+uniform sampler3D uLightVol;
+uniform int uLightVolOn;
+uniform vec3 uLightVolOrigin, uLightVolSize;
+vec3 lightingAt(float sky, float block, bool emissive, vec3 rel) {
+  if (emissive || uLightVolOn == 0) return lighting(sky, block, emissive);
+  vec3 t = (rel - uLightVolOrigin) / uLightVolSize;
+  vec3 col = uBlockLightColor;
+  if (all(greaterThan(t, vec3(0.0))) && all(lessThan(t, vec3(1.0)))) col = texture(uLightVol, t).rgb * 1.0;
+  vec3 lc = max(vec3(lightCurve(sky) * uDaylight), vec3(lightCurve(block)) * col);
+  return max(lc, vec3(uMinLight));
+}
 vec3 applyFog(vec3 c, float dist, vec3 dir) {
   float f = smoothstep(uFogStart, uFogEnd, dist);
   if (uNearFog.z > 0.0) f = max(f, smoothstep(uNearFog.x, uNearFog.y, dist) * uNearFog.z);

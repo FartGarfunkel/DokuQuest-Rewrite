@@ -240,7 +240,7 @@ private:
       glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); glDepthFunc(GL_LEQUAL);
       // 3. the far side, from where you'd be standing over there
       PortalXform x = portalXform(L.w, L.d, f.cam.pos);
-      FrameCtx vf = f;
+      FrameCtx vf = f; vf.lightVolOn = false;   // (the coloured-light volume is round this camera, not the far one)
       Camera& vc = vf.cam;
       vc.pos = x.point(f.cam.pos); vc.yaw = f.cam.yaw + x.yaw; vc.realm = L.d.realm;
       vc.update();
