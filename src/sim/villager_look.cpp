@@ -109,8 +109,9 @@ void npcSkinPixels(u32 seed, const std::string& job, std::vector<u8>& px) {
 
 // ---- their own touches (ours, not the original's), over the original's skin (npcSkinPixels stays pixel for pixel the
 // original's: tools/test_villagers checks it). Freckles, a scar, an earring, a headband or a flower behind the ear, a scarf, a
-  // satchel strap, a patched knee or elbow. The outer layers (hat, jacket) stand off the body: real bumps on the voxel
-  // person, not just paint
+// satchel strap, a patched knee or elbow. Only whole pieces go on the outer layers (a scarf, a pouch), which stand off the
+// body as real bumps; small things are painted flat on the skin, and single stray pixels the original put on the outer
+// layers (glasses, a monocle) are laid flat too: on the voxel person a lone outer pixel is a cube floating off the face
 void npcSkinTouches(u32 seed, const std::string& job, std::vector<u8>& px) {
   if (px.size() != 64 * 64 * 4) return;
   (void)job;
@@ -128,12 +129,12 @@ void npcSkinTouches(u32 seed, const std::string& job, std::vector<u8>& px) {
   if (Q() < 0.22) for (int y = 4; y <= 5; y++) for (int x : {1, 2, 5, 6}) if (Q() < 0.45 && near_(get(8 + x, 8 + y), skin)) set(8 + x, 8 + y, dark(skin, 0.78));
   // an old scar down a cheek
   if (Q() < 0.07) { const int x = Q() < 0.5 ? 1 : 6; for (int y = 3; y <= 5; y++) if (near_(get(8 + x, 8 + y), skin)) set(8 + x, 8 + y, rgb(std::min(255.0, skin.r * 1.18), skin.g * 1.02, skin.b * 1.0)); }
-  // an earring, standing off the side of the head
-  if (Q() < 0.1 && free_(32 + 5, 8 + 5)) set(32 + 5, 8 + 5, pickc({"#e8c040", "#d8d8e0", "#c86a3a"}));
-  // a headband, or a flower behind the ear (only where no hat or hood is)
+  // an earring, painted on the ear (both sides)
+  if (Q() < 0.1) { Col e = pickc({"#e8c040", "#d8d8e0", "#c86a3a"}); set(0 + 4, 8 + 6, e); set(16 + 3, 8 + 6, e); }
+  // a headband round the hair, or a flower behind the ear (only where no hat or hood is): painted on the head itself
   bool bare = true; for (int x = 0; x < 8; x++) if (!free_(40 + x, 8 + 1)) bare = false;
-  if (bare && Q() < 0.12) { Col hb = pickc({"#8a2a2a", "#2a4a8a", "#3a6a3a", "#c89a3a", "#6a3a7a"}); for (int x = 0; x < 8; x++) { set(40 + x, 8 + 2, hb); set(56 + x, 8 + 2, hb); set(32 + x, 8 + 2, hb); set(48 + x, 8 + 2, hb); } }
-  else if (bare && Q() < 0.1) { set(32 + 5, 8 + 2, pickc({"#e84a4a", "#f0d040", "#6a8ae8", "#f0f0f0"})); set(32 + 5, 8 + 3, hexc("#3a7a2a")); }
+  if (bare && Q() < 0.12) { Col hb = pickc({"#8a2a2a", "#2a4a8a", "#3a6a3a", "#c89a3a", "#6a3a7a"}); for (int x = 0; x < 8; x++) { set(8 + x, 8 + 1, hb); set(24 + x, 8 + 1, hb); set(0 + x, 8 + 1, hb); set(16 + x, 8 + 1, hb); } }
+  else if (bare && Q() < 0.1) { set(0 + 5, 8 + 1, pickc({"#e84a4a", "#f0d040", "#6a8ae8", "#f0f0f0"})); set(0 + 5, 8 + 2, hexc("#3a7a2a")); }
   // a scarf on the jacket layer, its end hanging down the front
   bool collarFree = true; for (int x = 0; x < 8; x++) if (!free_(20 + x, 36)) collarFree = false;
   if (collarFree && Q() < 0.15) {
@@ -146,7 +147,7 @@ void npcSkinTouches(u32 seed, const std::string& job, std::vector<u8>& px) {
   // a satchel strap across the chest (jacket layer), shoulder to hip
   else if (Q() < 0.12) {
     Col st = pickc({"#5a3a1a", "#3a2a1a", "#6a4a2a"});
-    for (int i = 0; i < 9; i++) { const int x = i * 7 / 8, y = 36 + i + 1; if (free_(20 + x, y)) set(20 + x, y, st); if (free_(32 + 7 - x, y)) set(32 + 7 - x, y, st); }
+    for (int i = 0; i < 9; i++) { const int x = i * 7 / 8, y = 20 + i + 1; set(20 + x, y, st); set(32 + 7 - x, y, st); }   // (painted on the shirt)
     for (int y = 44; y <= 46; y++) for (int x = 0; x < 3; x++) if (free_(28 + x, y)) set(28 + x, y, dark(st, 1.15));   // the bag at the hip
   }
   // a patched knee, or a patched elbow
@@ -156,6 +157,22 @@ void npcSkinTouches(u32 seed, const std::string& job, std::vector<u8>& px) {
     const int u = knee ? (Q() < 0.5 ? 4 : 20) : (Q() < 0.5 ? 44 : 36), v = knee ? (u == 4 ? 20 : 52) + 5 : (u == 44 ? 20 : 52) + 2;
     for (int y = 0; y < 2; y++) for (int x = 1; x < 3; x++) if (!free_(u + x, v + y)) set(u + x, v + y, pc);
   }
+  // lone pixels on the hat and jacket layers lie flat on the skin under them (glasses, a monocle, a button)
+  auto flatten = [&](int x0, int y0, int x1, int y1, int dx, int dy) {
+   for (int pass = 0; pass < 6; pass++) {   // (taking some away can leave others alone: again until none are)
+    std::vector<std::pair<int, int>> lone;
+    for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) {
+      if (free_(x, y)) continue;
+      int n = 0;
+      for (auto [ox, oy] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) { const int nx = x + ox, ny = y + oy; if (nx >= x0 && nx < x1 && ny >= y0 && ny < y1 && !free_(nx, ny)) n++; }
+      if (n <= 1) lone.push_back({x, y});
+    }
+    for (auto [x, y] : lone) { u8* o = px_(x, y); u8* b = px_(x + dx, y + dy); b[0] = o[0]; b[1] = o[1]; b[2] = o[2]; b[3] = 255; o[3] = 0; }
+    if (lone.empty()) break;
+   }
+  };
+  flatten(32, 0, 64, 16, -32, 0);   // the hat layer over the head
+  flatten(16, 32, 40, 48, 0, -16);  // the jacket layer over the body
 }
 
 } // namespace dq

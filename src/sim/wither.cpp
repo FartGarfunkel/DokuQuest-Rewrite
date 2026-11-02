@@ -8,6 +8,9 @@
 #include "core/registry.h"
 #include "common/fs.h"
 #include "sim/mob_combat.h"
+#include "sim/magic_fx.h"
+#include "sim/effects.h"
+#include "sim/creature_rig.h"
 
 namespace dq {
 
@@ -113,9 +116,31 @@ std::optional<Move> witherBrain(Level& lv, Creature& m, Entity* p, float dist, f
 // ---- the Wither Storm: a Wither grown out of a rift core. It gathers itself longer, then hangs high over whoever is
 // near, tearing up the ground under it with its pull (the blocks fly up into it and are gone, and every one feeds it),
 // drawing you toward it, and three skulls at a time from its heads. It falls in a storm of what it swallowed.
+void spawnPulledBlock(Level& lv, int realm, vec3 at, const std::string& key, u8 meta, u32 puller);   // sim/blockfx.cpp
+
+// How big it has grown: it rises out of the T a third of its size, and every block and creature it eats makes it bigger
+// (Story Mode's Storm grows from a Wither into a behemoth). The renderer and its hit box both scale by this.
+float stormScale(const Creature& m) {
+  const float spawnT = dget(m, "spawnT", 99.f);
+  if (spawnT < 12) return 0.35f + 0.65f * spawnT / 12;
+  return 1 + std::min(dget(m, "grown", 0), 400.f) / 250;
+}
+// its middle head's maw, where the tractor beam starts and what it pulls in goes
+static vec3 stormMaw(const Creature& m) {
+  const float s = stormScale(m);
+  return m.pos + vec3(-std::sin(m.yaw), 0, -std::cos(m.yaw)) * (3.0f * s) + vec3(0, 6.6f * s, 0);
+}
+
 std::optional<Move> stormBrain(Level& lv, Creature& m, Entity* p, float dist, float dyp, float toPlayer, float dt) {
   m.noGravity = true; m.hasFlyVy = true;
   float spawnT = dget(m, "spawnT", 99.f);
+  {   // its size: the hit box follows the body
+    const float s = stormScale(m);
+    m.data["growS"] = s; m.w = m.T->w * s; m.h = m.T->h * s;
+  }
+  float roarT = dget(m, "roarT", 3) - dt;
+  if (roarT <= 0) { roarT = 8 + frand() * 7; lv.fx->sound(frand() < 0.5f ? "dragon_roar" : "warden_roar", m.pos, 160); }
+  m.data["roarT"] = roarT;
   if (frand() < dt * 25) lv.fx->particles("burst", m.pos + vec3((frand() - 0.5f) * 6, frand() * m.h, (frand() - 0.5f) * 6), 1, {{"tile", "obsidian"}, {"speed", 0.6f}});
   if (spawnT < 12) {
     spawnT += dt; m.data["spawnT"] = spawnT;
@@ -152,23 +177,63 @@ std::optional<Move> stormBrain(Level& lv, Creature& m, Entity* p, float dist, fl
   }
   // hang high over its mark, drifting after it
   m.flyVy = clampv((p->pos.y + 14 - m.pos.y) * 0.8f, -3.f, 3.f);
-  // the pull: whoever is near is drawn in
-  if (dist < 22 && p->isPlayer()) { vec3 to = m.pos + vec3(0, m.h * 0.4f, 0) - p->pos; float l = glm::length(to); if (l > 3) p->vel += to / l * (6.f * dt) * (1 - l / 22); }
+  // the tractor beam: whoever is near is drawn up it toward the maw, and too close to it the wither sickness takes them
+  const vec3 maw = stormMaw(m);
+  const float reach = 22 * std::max(1.f, stormScale(m) * 0.8f);
+  float beamT = dget(m, "beamT", 0) - dt;
+  const bool drawBeam = beamT <= 0;
+  if (drawBeam) beamT = 0.12f;
+  m.data["beamT"] = beamT;
+  if (dist < reach && p->isPlayer()) {
+    vec3 to = maw - p->pos; float l = glm::length(to);
+    if (l > 3) p->vel += to / l * (7.f * dt) * (1 - l / reach);
+    if (drawBeam && l > 4) {   // (it stops short of the eyes: up close the motes would fill the view)
+      const vec3 end = p->pos + vec3(0, 1, 0) + to / l * 2.5f;
+      lv.fx->particles("mana_arcane", maw, 1, json{{"m", "beam"}, {"to", json::array({end.x, end.y, end.z})}, {"size", 0.22f}, {"width", 0.9f}, {"life", 0.3f}});
+    }
+    if (l < 8) if (auto* pl = dynamic_cast<Player*>(p)) giveEffect(lv, *pl, "wither", 3);
+  }
+  {   // the beam down to the ground it's tearing up
+    float tearT = dget(m, "tearT", 0) - dt; m.data["tearT"] = tearT;
+    if (tearT > 0 && drawBeam && m.data.contains("tear") && m.data["tear"].is_array()) {
+      const json& t = m.data["tear"];
+      lv.fx->particles("mana_arcane", maw, 1, json{{"m", "beam"}, {"to", t}, {"size", 0.24f}, {"width", 1.4f}, {"life", 0.3f}});
+    }
+  }
+  // and the creatures round it: drawn up the beam and eaten (each one feeds it)
+  for (auto& e : lv.entities()) {
+    auto* c = dynamic_cast<Creature*>(e.get());
+    if (!c || c == &m || c->removed || !c->alive() || c->realm != m.realm || (c->T && c->T->boss)) continue;
+    const vec3 to = maw - (c->pos + vec3(0, c->h * 0.5f, 0)); const float l = glm::length(to);
+    if (l > reach * 0.8f) continue;
+    c->vel += to / std::max(0.5f, l) * (9.f * dt); c->vel.y = std::max(c->vel.y, 2.5f);
+    if (drawBeam && frand() < 0.3f) lv.fx->particles("mana_arcane", maw, 1, json{{"m", "beam"}, {"to", json::array({c->pos.x, c->pos.y + c->h * 0.5f, c->pos.z})}, {"size", 0.18f}, {"width", 0.6f}, {"life", 0.3f}});
+    if (l < 2.2f * stormScale(m)) {
+      c->removed = true;
+      sfx::burst(lv, c->pos + vec3(0, c->h * 0.5f, 0), "mana_arcane", 30, 2.f, json{{"life", 0.6f}, {"size", 0.12f}});
+      lv.fx->sound("dragon_bite", maw, 48);
+      const float grown = dget(m, "grown", 0) + 4;
+      m.data["grown"] = grown; m.maxHp = std::max(m.maxHp, m.T->hp + grown * 2); m.hp = std::min(m.maxHp, m.hp + 8.f);
+    }
+  }
   // tearing up the ground under it
   float pullT = dget(m, "pullT", 4) - dt;
   if (pullT <= 0) {
-    pullT = 3 + frand() * 2;
+    const float sc = stormScale(m);   // the bigger it is, the faster and wider it eats
+    pullT = (3 + frand() * 2) / sc;
     int taken = 0;
     const int gx = ifloor(m.pos.x), gz = ifloor(m.pos.z);
-    for (int tries = 0; tries < 60 && taken < 10; tries++) {
-      const int x = gx + (int)((frand() - 0.5f) * 14), z = gz + (int)((frand() - 0.5f) * 14);
+    for (int tries = 0; tries < 60 && taken < (int)(10 * sc); tries++) {
+      const int x = gx + (int)((frand() - 0.5f) * 14 * sc), z = gz + (int)((frand() - 0.5f) * 14 * sc);
       for (int y = ifloor(m.pos.y) - 1; y > ifloor(m.pos.y) - 40; y--) {
         const BlockId id = w.getBlock(x, y, z);
         if (!id) continue;
         const BlockDef& b = reg().block(id);
         if (reg().tLiquid[id] || b.hardness < 0 || b.hardness >= 20 || b.has("container") || b.has("blastproof")) break;
+        const u8 meta = w.getMeta(x, y, z);
         w.setBlock(x, y, z, AIR, 0);
-        lv.fx->particles("burst", vec3(x, y, z) + vec3(0.5f), 6, {{"tile", b.key}, {"speed", 3.f}});
+        spawnPulledBlock(lv, m.realm, vec3(x + 0.5f, (float)y, z + 0.5f), b.key, meta, m.id);   // it flies up the beam into the maw
+        if (taken == 0) { m.data["tear"] = json::array({x + 0.5f, y + 0.5f, z + 0.5f}); m.data["tearT"] = 2.0f; }   // the beam holds on the ground it tears
         taken++;
         break;
       }
@@ -230,6 +295,28 @@ void stormFalls(Level& lv, Creature& m) {
     if (lv.events) lv.events->emit("stormBroken", json::array());
   }
 }
+
+// how it moves (rig "wither_storm", tools/port/wither_storm.py): the tentacles sway and coil, each segment more than the
+// one above it; the mandibles work, faster while it's pulling something in; the heads turn a little each their own way
+static void animStorm(Creature& m, const RigModel& M, RigAnimOut& R) {
+  const float t = m.age;
+  auto set = [&](const std::string& n, vec3 v) { const int i = M.find(n); if (i < 0) return; R.has[i] = 1; R.rot[i] = v; };
+  for (int i = 0; i < 6; i++) for (int j = 0; j < 4; j++) {
+    const float k = 0.18f + 0.12f * j, ph = t * (1.1f + 0.13f * i) + i * 1.7f + j * 0.7f;
+    set("tent" + std::to_string(i) + "_" + std::to_string(j), vec3(std::sin(ph) * k, std::sin(ph * 0.6f + i) * 0.2f, std::cos(ph * 0.8f) * k));
+  }
+  const bool feeding = dget(m, "pullT", 4) < 1.5f;
+  const float chew = (feeding ? 0.35f : 0.18f) + std::sin(t * (feeding ? 6.f : 2.2f)) * (feeding ? 0.25f : 0.1f);
+  for (const char* h : {"head", "headL", "headR"}) {
+    const std::string hn = h;
+    set(hn + "JawL", vec3(chew, 0, -chew * 0.6f)); set(hn + "JawR", vec3(chew, 0, chew * 0.6f));
+  }
+  set("head", vec3(std::sin(t * 0.7f) * 0.08f, std::sin(t * 0.45f) * 0.12f, 0));
+  set("headL", vec3(std::sin(t * 0.9f + 1) * 0.1f, 0.25f + std::sin(t * 0.6f) * 0.2f, 0));
+  set("headR", vec3(std::sin(t * 0.8f + 2) * 0.1f, -0.25f + std::sin(t * 0.55f + 1) * 0.2f, 0));
+  R.lift = std::sin(t * 0.8f) * 0.35f;
+}
+void registerStormRig() { registerRigAnim("wither_storm", animStorm); }
 
 // its hide: untouchable while it gathers itself; once its bones harden, arrows glance off
 bool witherPreHurt(Creature& m, const std::string& type, const std::string& tool) {

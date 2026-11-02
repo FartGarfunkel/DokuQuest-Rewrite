@@ -532,6 +532,7 @@ static void rigLife(Creature& m, const RigModel& d, Pose& P) {
 mat4 creatureBase(const Creature& m, bool full) {
   mat4 b(1);
   if (m.baby) b = glm::scale(b, vec3(0.55f));
+  if (m.type == "wither_storm") if (auto g = m.data.find("growS"); g != m.data.end() && g->is_number()) b = glm::scale(b, vec3(g->get<float>()));   // it grows (sim/wither.cpp stormScale)
   if (full) {
     if (m.type == "slime" || m.T->slimy) {
       float s = m.size == 1 ? 0.5f : 1, sq = m.onGround ? 1 : 1 + std::min(0.25f, std::fabs(m.vel.y) * 0.04f);

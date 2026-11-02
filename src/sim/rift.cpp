@@ -318,6 +318,22 @@ public:
     if (age > 3) { removed = true; return; }
     World& wd = lv.world(realm);
     Entity* owner = lv.entity(data.value("owner", 0u));
+    if (data.value("deflected", false)) {   // struck back: it flies for whoever hit it, and burns the one who threw it
+      for (int s = 0; s < 3; s++) {
+        pos += vel * (dt / 3);
+        for (auto& e : lv.entities()) {
+          auto* c = dynamic_cast<Creature*>(e.get());
+          if (!c || c->removed || !c->alive() || c->realm != realm || (owner && c->id == owner->id)) continue;
+          if (std::fabs(c->pos.x - pos.x) < c->w * 0.5f + 0.4f && std::fabs(c->pos.z - pos.z) < c->w * 0.5f + 0.4f && pos.y > c->pos.y - 0.2f && pos.y < c->pos.y + c->h + 0.2f) {
+            DamageSrc d; d.type = "projectile"; d.attacker = owner ? owner->id : 0; d.knock = 3;
+            c->hurt(lv, c->T && c->T->boss ? 12.f : 8.f, d); burst(lv); return;
+          }
+        }
+        if (solid(wd.getBlock(ifloor(pos.x), ifloor(pos.y), ifloor(pos.z)))) { burst(lv); return; }
+      }
+      sfx::burst(lv, pos, "mana_arcane", 3, 0.3f, json{{"life", 0.4f}, {"size", 0.1f}});
+      return;
+    }
     for (int s = 0; s < 3; s++) {
       pos += vel * (dt / 3);
       for (Entity* p : pawnsOf(lv, realm)) if (std::fabs(p->pos.x - pos.x) < 0.5f && std::fabs(p->pos.z - pos.z) < 0.5f && pos.y > p->pos.y - 0.2f && pos.y < p->pos.y + 1.9f) {
@@ -363,7 +379,7 @@ static OptMove herobrineAI(Level& lv, Creature& m, Entity* p, float dist, float 
   if (M.hbBolt <= 0 && dist < 30) {
     M.hbBolt = frac < 0.33f ? 0.8f : 1.4f;
     vec3 s = m.pos + vec3(0, 1.5f, 0), t = p->pos + vec3(0, 1, 0) - s; float l = std::max(1e-3f, glm::length(t));
-    auto b = std::make_unique<RiftBolt>(); b->realm = m.realm; b->pos = s; b->vel = t / l * 16.f; b->data = {{"owner", m.id}};
+    auto b = std::make_unique<RiftBolt>(); b->realm = m.realm; b->pos = s; b->vel = t / l * 16.f; b->data = {{"owner", m.id}, {"deflectable", true}};
     lv.spawn(std::move(b));
     m.swingT = 0.3f;
   }

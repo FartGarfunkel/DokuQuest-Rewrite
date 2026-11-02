@@ -5,6 +5,16 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.14 — Tractor Beam (November 2026)
+
+**The Wither Storm, as in Story Mode:** it isn't a Wither drawn five times bigger any more but the behemoth itself: a black obsidian mass with three heads (the middle one huge), glowing violet eyes, mandibles and fangs, the command block glowing in its chest, and long tentacles hanging under it that sway and coil as it drifts. It rises out of the T a third of its size and grows with everything it eats. Its violet tractor beam tears up the ground under it (the blocks fly up the beam into its maw), drags you toward it, and pulls the creatures round it in to be devoured; too near its maw, the wither sickness takes you. And it roars.
+
+**Hit it back:** fireballs punched back now hurt the creatures of fire that threw them (the cinder wisps and the Cinder Golem shrugged them off before), and a shulker's bolt hit back flies home to its shulker and stings it. Ghast fireballs and Wither skulls go back as before.
+
+**Villagers:** no more odd bits sticking off them: the ring some wore round their heads, the cubes on their cheeks (earrings) and the librarians' floating spectacles are painted flat on them now. Scarves and pouches still stand out.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.13 — Undercoat (November 2026)
 
 **Lighter on memory:** the land near you takes a fifth less graphics memory (16 bytes a corner instead of 20). Grass, leaves and water now take their colour from the climate where they stand as they're drawn, with the resource pack's grass and foliage colour maps, so the colours along the edge of the loaded land settle by themselves as the next chunks arrive.

@@ -6,6 +6,19 @@ Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`. Third-party credits: `doc
 BTA ideas only). Released: alpha.9, alpha.10 (On the Road) and alpha.11 (Every Creature Its Own) on 2026-11-01 evening;
 alpha.12 (Coloured Light) on 2026-11-02 night.
 
+## Afternoon 2026-11-02 (alpha.14 "Tractor Beam": the user's look at alpha.13)
+- **Wither Storm like Story Mode:** tools/port/wither_storm.py (the model: obsidian mass, three heads with eyes, maws,
+  mandibles, fangs, the command-block heart, six tentacles of four segments; rig "wither_storm"); sim/wither.cpp
+  stormScale (0.35 -> 1 while it gathers, then 1 + grown/250 up to 2.6; creature_rig.cpp creatureBase scales by
+  data.growS, the brain scales w/h), stormMaw, the tractor beam (magic_fx "beam" particles, now with size/width/life),
+  torn blocks fly up it (blockfx.cpp spawnPulledBlock, FallingBlock "pull"), creatures are pulled in and eaten, wither
+  sickness near the maw, roars; animStorm (tentacles, jaws, heads).
+- **Hit back:** creature_entities.cpp deflectFireball takes any Projectile but thrown/cannon kinds, and entities with
+  data.deflectable (rift bolts); punched-back fireballs land on fire-immune creatures (no fire element), shulker bolts
+  go home (data.from). test_content checks wisp, Cinder Golem, shulker.
+- **Villagers:** villager_look.cpp npcSkinTouches paints earrings/headbands/flowers on the base layer and flattens lone
+  hat/jacket-layer pixels (glasses, monocles) until none are left; test_villagers checks 2261 skins.
+
 ## Morning 2026-11-02 (alpha.13 "Undercoat": what alpha.12 left open)
 - **Near-terrain vertex 20 -> 16 bytes:** render/mesher.h ChunkVertex (four packed u32; 14-bit fixed point positions and
   uvs at 1/256 with +16 offset, measured ranges [-0.1, 16.1]); the tint is a kind (none/grass/foliage/water/dust+power)

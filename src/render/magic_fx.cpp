@@ -117,9 +117,10 @@ public:
       add(t, p + vec3(std::cos(a) * r, h, std::sin(a) * r), vec3(-std::sin(a) * 0.8f, jv(o, "vy", 0.9f), std::cos(a) * 0.8f), jv(o, "life", 0.9f) * (0.7f + frand() * 0.6f), jv(o, "size", 0.08f));
     }
   }
-  void beam(const std::string& t, vec3 a, vec3 b) {
+  void beam(const std::string& t, vec3 a, vec3 b, float size = 0.07f, float width = 0.15f, float life = 0.35f) {
     float L = std::max(0.01f, glm::distance(a, b));
-    for (float d = 0; d <= L; d += 0.3f) { float k = d / L; add(t, a + (b - a) * k + vec3((frand() - 0.5f) * 0.15f, (frand() - 0.5f) * 0.15f, 0), vec3(0), 0.35f, 0.07f); }
+    const float step = std::max(0.3f, size * 2.5f);
+    for (float d = 0; d <= L; d += step) { float k = d / L; add(t, a + (b - a) * k + vec3((frand() - 0.5f) * width, (frand() - 0.5f) * width, (frand() - 0.5f) * width), vec3(0), life, size); }
   }
   void circle(const std::string& fxT, vec3 p) {
     ring(fxT, p + vec3(0, 0.06f, 0), 0.95f, 28, json{{"speed", 0.25}, {"life", 0.7}, {"size", 0.1}, {"flat", true}});
@@ -163,7 +164,7 @@ public:
     else if (m == "spark") spark(kind, p, o);
     else if (m == "ring") ring(kind, p, jv(o, "r", 1), n, o);
     else if (m == "spiral") spiral(kind, p, n, o);
-    else if (m == "beam" && o.contains("to")) beam(kind, p, vec3(o["to"][0], o["to"][1], o["to"][2]));
+    else if (m == "beam" && o.contains("to")) beam(kind, p, vec3(o["to"][0], o["to"][1], o["to"][2]), jv(o, "size", 0.07f), jv(o, "width", 0.15f), jv(o, "life", 0.35f));
     else if (m == "circle") circle(kind, p);
     else if (m == "vortex") { float r = jv(o, "r", 1.1f); for (int i = 0; i < n; i++) { float a = i / (float)n * TAU, hh = frand() * 2; add(kind, p + vec3(std::cos(a) * r, hh, std::sin(a) * r), vec3(-std::cos(a) * 2 - std::sin(a) * 2, 0.2f, -std::sin(a) * 2 + std::cos(a) * 2), 0.5f, 0.08f); } }
     else if (m == "implode") {

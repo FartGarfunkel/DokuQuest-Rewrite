@@ -379,6 +379,23 @@ int main(int argc, char** argv) {
       wi->removed = true;
     }
   }
+  // ------------------------------------------------------------ fireballs punched back hurt the creatures of fire that threw them
+  for (const char* who : {"cinder_wisp", "cinder_golem", "shulker"}) {
+    P->pos = vec3(8.5f, Y + 1, 8.5f); P->hp = 20;
+    Creature* c = creatureType(who) ? spawnCreature(*L, P->realm, who, vec3(8.5f, Y + 1, -2.5f)) : nullptr;
+    if (!c) continue;
+    c->invulnT = 0; c->calm = true; c->data["spawnT"] = 99.f;
+    const float hp0 = c->hp;
+    const vec3 eye = P->pos + vec3(0, 1.62f, 0), from = eye + vec3(0, 0, -2.5f);
+    const bool shulker = std::string(who) == "shulker";
+    Entity* f = spawnProjectile(*L, P->realm, from, vec3(0, 0, 13), shulker ? "shulker" : "fireball", c);
+    if (f && shulker) f->data["target"] = P->id;
+    const bool hitBack = f && deflectFireball(*L, *P, eye, glm::normalize(from - eye), 4.5f);
+    if (f) { const vec3 at = c->pos + vec3(0, c->h * 0.5f, 0); f->pos = at + vec3(0, 0, 2.0f); f->vel = vec3(0, 0, -20); }
+    tick(0.6);
+    check(hitBack && c->hp < hp0, std::string("a shot punched back hurts the ") + who + " that sent it (" + std::to_string((int)hp0) + " -> " + std::to_string((int)c->hp) + ")");
+    c->removed = true;
+  }
 
   // ---- every creature's looks (tools/port/mob_variants.py, mobs.json variantDefs)
   {

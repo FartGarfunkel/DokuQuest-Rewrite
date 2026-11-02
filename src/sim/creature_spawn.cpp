@@ -751,10 +751,13 @@ void summonGolem(Level& lv, int realm, vec3 at, Entity* near) {
 
 void registerTrickOrTreat();   // sim/trickortreat.cpp: Halloween, villagers toss treats on October nights
 
+void registerStormRig();   // sim/wither.cpp: how the Wither Storm moves
+
 void registerCreatures() {
   static bool done = false;
   if (done) return;
   done = true;
+  registerStormRig();
   registerHalloweenMobs();   // sim/hallowmobs.cpp: types first, so the entity factory and every list below know them
   registerCreatureEntities();
   registerSpawners();

@@ -25,6 +25,19 @@ public:
     World& w = lv.world(realm);
     if (!w.isLoaded(ifloor(pos.x), ifloor(pos.y), ifloor(pos.z))) return;
     const bool up = data.value("up", false);   // driftstone falls up (tools/port/skylands_more.py)
+    if (const u32 by = data.value("pull", 0u)) {   // torn up by the Wither Storm: it flies up the beam into the maw and is gone
+      Entity* st = lv.entity(by);
+      if (st && !st->removed && st->realm == realm) {
+        const float s = st->data.value("growS", 1.f);
+        const vec3 maw = st->pos + vec3(-std::sin(st->yaw), 0, -std::cos(st->yaw)) * (3.0f * s) + vec3(0, 6.6f * s, 0);   // (sim/wither.cpp stormMaw)
+        const vec3 to = maw - (pos + vec3(0, 0.5f, 0)); const float l = glm::length(to);
+        if (l < 1.5f + s || age > 12) { removed = true; return; }
+        vel += (to / std::max(0.3f, l) * (6.f + age * 6.f) - vel) * std::min(1.f, dt * 2.f);
+        pos += vel * dt;
+        return;
+      }
+      data.erase("pull");   // the Storm is gone: it falls like any block
+    }
     if (up) {
       vel.y = std::min(14.f, vel.y + 18 * dt);
       const MoveOut mo = moveEntity(w, *this, dt, {0, 0, false});
@@ -63,6 +76,13 @@ public:
     if (fuse <= 0) { removed = true; explode(lv, realm, pos + vec3(0, 0.5f, 0), 4); }
   }
 };
+
+void spawnPulledBlock(Level& lv, int realm, vec3 at, const std::string& key, u8 meta, u32 puller) {
+  auto e = std::make_unique<FallingBlock>();
+  e->realm = realm; e->pos = at; e->vel = vec3(0, 3, 0);
+  e->data = {{"block", key}, {"meta", meta}, {"pull", puller}};
+  lv.spawn(std::move(e));
+}
 
 void registerBlockFxEntities() {
   registerEntityFactory("falling_block", [](const std::string&) { return std::unique_ptr<Entity>(new FallingBlock()); });

@@ -57,6 +57,20 @@ int main(int argc, char** argv) {
     check(h == 2483321190u, "npcSkinCanvas(777, farmer): every pixel the same as the original (hash " + std::to_string(h) + ")");
     check(p[0] == 210 && p[4] == 212 && px[(11 * 64 + 10) * 4 + 0] == 60, "the skin's face pixels");
   }
+  {   // our touches over it: no lone pixel left on the hat or jacket layer (on the voxel person each is a cube floating off
+      // the face: the librarian's glasses, an earring, a headband's ring round the head)
+    int lone = 0, skins = 0; std::string where;
+    for (const auto& [job, J] : VD()["jobs"].items()) for (u32 seed = 1; seed < 120; seed++) {
+      std::vector<u8> px; npcSkinPixels(seed, job, px); npcSkinTouches(seed, job, px); skins++;
+      auto a = [&](int x, int y) { return px[((size_t)y * 64 + x) * 4 + 3] != 0; };
+      for (auto [x0, y0, x1, y1] : {std::array<int, 4>{32, 0, 64, 16}, {16, 32, 40, 48}})
+        for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) if (a(x, y)) {
+          int n = 0; for (auto [ox, oy] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) { int nx = x + ox, ny = y + oy; if (nx >= x0 && nx < x1 && ny >= y0 && ny < y1 && a(nx, ny)) n++; }
+          if (n <= 1) { lone++; if (where.empty()) where = job + " " + std::to_string(seed) + " at " + std::to_string(x) + "," + std::to_string(y); }
+        }
+    }
+    check(lone == 0, "villagers' outer layers have no lone floating pixels (" + std::to_string(skins) + " skins" + (lone ? ", " + std::to_string(lone) + ": " + where : "") + ")");
+  }
 
   ThreadPool pool(2);
   LevelInfo li; li.name = "VillagerTest"; li.seedText = "villagers";

@@ -176,6 +176,17 @@ public:
     }
     if (kind == "shulker") {   // a shulker's bolt: seeks its mark, and whoever it strikes floats up off the ground
       if (age > 10) { removed = true; mobBurst(lv, pos, "end_mote", 8, 0.8f); return; }
+      if (data.value("deflected", false)) {   // punched back: it seeks the shulker that sent it, and stings it
+        Entity* home = lv.entity(data.value("from", 0u));
+        if (home && !home->removed && home->realm == realm) { vec3 to = home->pos + vec3(0, 0.5f, 0) - pos; float d = glm::length(to); if (d > 0.01f) vel += (to / d * 9.f - vel) * std::min(1.f, dt * 3.f); }
+        for (int s = 0; s < 3; s++) {
+          pos += vel * (dt / 3);
+          if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.7f)) { DamageSrc d; d.knock = 1; damageEntity(lv, *c, 6, owner, "projectile", d); removed = true; mobBurst(lv, pos, "end_mote", 12, 1.2f); lv.fx->sound("ender_tp", pos, 16); return; }
+          if (solidAt(wd, pos)) { removed = true; mobBurst(lv, pos, "end_mote", 8, 0.8f); return; }
+        }
+        if (frand() < dt * 30) mobBurst(lv, pos, "end_mote", 1, 0.1f);
+        return;
+      }
       Entity* tgt = lv.entity(data.value("target", 0u));
       if (tgt && !tgt->removed && tgt->realm == realm) {
         vec3 to = tgt->pos + vec3(0, 1.0f, 0) - pos; float d = glm::length(to);
@@ -221,10 +232,14 @@ public:
     for (int s = 0; s < 3; s++) {
       pos += vel * (dt / 3);
       if (back) if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.8f)) {
+        // punched back, it's the blow that lands, not the fire: a ghast dies of it, and the creatures of fire that threw it
+        // (wisps, the Cinder Golem) take it like anyone else (only the burning after it passes them by)
         DamageSrc d; d.knock = 4;
-        if (c->type != "ghast") d.element = "fire";   // a ghast shrugs off fire: its own fireball's blow is what kills it
-        damageEntity(lv, *c, c->type == "ghast" ? 1000.f : 6.f, owner, "projectile", d);
-        igniteEntity(*c, 2.5f);
+        const bool fiery = c->T && c->T->fireImmune;
+        if (!fiery) d.element = "fire";
+        const float dmg = c->type == "ghast" ? 1000.f : c->T && c->T->boss ? 14.f : fiery ? 8.f : 6.f;
+        damageEntity(lv, *c, dmg, owner, "projectile", d);
+        if (!fiery) igniteEntity(*c, 2.5f);
         explodeFx(lv); return;
       }
       for (Entity* p : pawnsOf(lv, realm)) if (!(back && p == owner) && std::fabs(p->pos.x - pos.x) < 0.55f && std::fabs(p->pos.z - pos.z) < 0.55f && pos.y > p->pos.y - 0.2f && pos.y < p->pos.y + 1.9f) {
@@ -353,12 +368,15 @@ Entity* spawnArrow(Level& lv, int realm, vec3 p, vec3 v, Entity* owner, float da
   return lv.spawn(std::move(e));
 }
 bool deflectFireball(Level& lv, Entity& by, vec3 eye, vec3 look, float reach) {
-  Projectile* best = nullptr; float bt = reach + 1;
+  Entity* best = nullptr; float bt = reach + 1;
   for (auto& e : lv.entities()) {
-    auto* f = dynamic_cast<Projectile*>(e.get());
+    Entity* f = e.get();
     if (!f || f->removed || f->realm != by.realm) continue;
-    const std::string k = f->data.value("kind", "fireball");
-    if (k == "spit" || k == "snow" || k == "egg" || k == "slime") continue;   // fireballs and zephyr gusts are hit back
+    if (dynamic_cast<Projectile*>(f)) {
+      const std::string k = f->data.value("kind", "fireball");
+      if (k == "spit" || k == "snow" || k == "egg" || k == "slime" || k == "cannonball" || k == "rocket") continue;   // fireballs, skulls, gusts, shulker bolts are hit back
+    } else if (!(f->data.is_object() && f->data.value("deflectable", false))) continue;   // (other shots that say so: the rift's bolts)
+    if (f->data.value("owner", 0u) == by.id) continue;   // not your own
     vec3 to = f->pos - eye; float t = glm::dot(to, look);
     if (t < 0 || t > reach) continue;
     if (glm::length(to - look * t) > 1.1f) continue;   // a generous swing: a fireball is a big target
@@ -367,6 +385,7 @@ bool deflectFireball(Level& lv, Entity& by, vec3 eye, vec3 look, float reach) {
   if (!best) return false;
   float sp = std::max(18.f, glm::length(best->vel) * 1.3f);
   best->vel = look * sp;
+  best->data["from"] = best->data.value("owner", 0u);   // who sent it: a punched-back shulker bolt goes home to it
   best->data["owner"] = by.id; best->data["deflected"] = true; best->age = 0;
   lv.fx->sound("hit", best->pos, 24);
   lv.fx->particles("crit", best->pos, 6);
