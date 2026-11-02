@@ -1,7 +1,6 @@
 // sim/redstone.cpp — circuits (game/redstone.js): power, dust, torches, repeaters, comparators, observers,
 // lamps, bulbs, note blocks, bells, TNT, doors, rails, timers (plates, hooks, detector rails, daylight),
 // hoppers, dispensers and droppers. Pistons live in sim/redstone_parts.cpp.
-#include "sim/gameplay.h"
 #include "sim/redstone.h"
 #include "sim/minecart.h"
 #include "sim/vehicles.h"
@@ -10,6 +9,7 @@
 #include "sim/weather.h"
 #include "sim/player.h"
 namespace dq {
+void sfxMaterial(Level& lv, const std::string& mat, const std::string& kind, vec3 pos);   // sim/gameplay.h (its D6X clashes with rs::)
 bool isMob(const Entity& e);   // sim/gameplay.cpp
 class Creature; Creature* spawnCreature(Level& lv, int realm, const std::string& type, vec3 p);   // sim/creature.h
 // (declared out here: MSVC gives a function declared inside a block the global namespace, so it never linked on Windows)
