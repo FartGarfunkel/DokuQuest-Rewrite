@@ -188,8 +188,10 @@ static void registerBuiltinCommands() {
     const int here = dimOfY(ifloor(c.p.pos.y));
     for (int dim : {here, (int)DIM_OVERWORLD, (int)DIM_NETHER, (int)DIM_END, (int)DIM_AETHER}) {
       if (const StructurePlan* s = locateStructure(*c.lv.gen, dim, kind, ifloor(c.p.pos.x), ifloor(c.p.pos.z), 16))
-        return strFormat("%s at %d, %d, %d (%d blocks away)", s->name.empty() ? kind.c_str() : s->name.c_str(), s->cx, s->y, s->cz,
-                         dim == here ? (int)std::lround(std::hypot(s->cx - c.p.pos.x, s->cz - c.p.pos.z)) : -1);
+        // y as /tp takes it (the stacked world's y, not the land's own); another land is named, not measured
+        return strFormat("%s at %d, %d, %d (%s)", s->name.empty() ? kind.c_str() : s->name.c_str(), s->cx, dimBase(dim) + s->y, s->cz,
+                         dim == here ? strFormat("%d blocks away", (int)std::lround(std::hypot(s->cx - c.p.pos.x, s->cz - c.p.pos.z))).c_str()
+                                     : (std::string("in ") + dimName(dim)).c_str());
     }
     return "No " + kind + " found nearby";
   });
