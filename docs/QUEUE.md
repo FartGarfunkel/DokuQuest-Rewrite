@@ -1,5 +1,7 @@
 # DokuQuest C++ — bug and feature queue (after 1.0.0-alpha.3)
 
+**All done (checked 2026-11-01).** The live list is `docs/STATUS.md`.
+
 Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bottom; check each in the running game (scripted playtests, `dq-sweep`).
 
 ## Rendering

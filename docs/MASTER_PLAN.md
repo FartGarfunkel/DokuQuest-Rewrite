@@ -4,6 +4,28 @@ This document consolidates all project goals, existing development schedules (`S
 
 ---
 
+## Status (2026-11-01, after alpha.11) — the live list is `docs/STATUS.md`
+* **Phase 0** done. **Phase 1:** done except Travel Journal checks at every story stage and the start-to-finish sweep.
+* **Phase 2:** procedural equipment, Cubyz-style LOD (first version), the base pack's relief done; **in progress:** the
+  engine GUI with Strata, the data archive and game-only launcher updates, the skin audit; **on hold:** per-mob files,
+  skin variant folders (creature looks are done another way: tools/port/mob_variants.py), Zig/Rust modules.
+* **Phase 3** done (swimming, lava boats, placing loop, cloth in the wind, creeper/enderman/ghast faces, heads and eggs,
+  bees, ingot piles).
+* **Phase 4** done except the 2×2/4×4/8×8 chisel (on hold: detail blocks).
+* **Phase 5** done except villagers using church banners (in progress).
+* **Phase 6** done except the sound-by-sound check and the Sound Studio's synth sandbox.
+* **Phase 7:** cave culling done; **in progress:** compact vertex format and the distance memory budget.
+* **Phase 8:** bows, elytra, End gateways done; **in progress:** the particle pass.
+* **Phase 9:** restyle and Texture Studio done; **in progress:** the mob skin art pass (only what the user's pack doesn't
+  cover) and the Texture Studio's creature-skin tab.
+* **Phase 10** done (levelling, magic hands, spell ranks); **in progress:** a cast button for each hand.
+* **Phase 11** done except the player-triggered Wither Storm finale.
+* **Phase 12** done except coloured light, dye-tuned portals and the bigger-biomes option (in progress) and the BTA mob
+  tweaks (open).
+* **Phase 13:** Options and holidays done; **in progress:** the Story Mode animation layer.
+
+---
+
 ## Phase 0: Merge Work & Code Review
 * **Zip Integration:** Ingest and merge your latest zip of changes (code, `data/textures`, `data/sounds`, and the base pack) before starting runtime work.
 * **Code Audit:** Rigorously review code edits during merging to catch common errors (e.g., dangling `else` statements, inverted skin checks).

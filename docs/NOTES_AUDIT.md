@@ -1,4 +1,6 @@
 # Notes audit (overnight 2026-11-01)
+
+**Superseded by `docs/STATUS.md` (2026-11-01 night).**
 Every planned item and bug in docs/ checked against the code. Items marked **[DONE tonight]** were finished in the night's work (alpha.8).
 
 Sources read: docs/MASTER_PLAN [MP], BTA_GAP [BTA] (= WEEKEND Part B), QUEUE [Q] (= WEEKEND Part C), HANDOFF [HO],
