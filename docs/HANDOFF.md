@@ -6,6 +6,19 @@ Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`. Third-party credits: `doc
 BTA ideas only). Released: alpha.9, alpha.10 (On the Road) and alpha.11 (Every Creature Its Own) on 2026-11-01 evening;
 alpha.12 (Coloured Light) on 2026-11-02 night.
 
+## Morning 2026-11-02 (alpha.13 "Undercoat": what alpha.12 left open)
+- **Near-terrain vertex 20 -> 16 bytes:** render/mesher.h ChunkVertex (four packed u32; 14-bit fixed point positions and
+  uvs at 1/256 with +16 offset, measured ranges [-0.1, 16.1]); the tint is a kind (none/grass/foliage/water/dust+power)
+  and chunk.glsl colours it: world_renderer.cpp climateFor() fills a 1024x1024 RG8 climate array (a layer per land,
+  units 13) as sections upload, buildTintLut() makes the 256x256 grass/foliage/water table (unit 14, rebuilt when the
+  pack's colormaps change). Greedy merging still keys on the CPU corner colour (one climate per merged face).
+- **Sheared sheep:** undercoat parts (flag "undercoat", shown only while sheared: creature_rig.cpp); pack spec tries
+  entity/sheep/sheep_fur, sheep/sheep_wool, sheep_wool and sheep(_wool)_undercoat.
+- **Looks:** mob_variants.py LAND (28 looks); villager_look.cpp npcSkinTouches (a second random sequence; test_villagers
+  keeps npcSkinPixels pixel-exact).
+- **The finale (story; never in the notes):** sim/wither.cpp riftHeart + finale/hpFloor/heartT; creature.cpp hpFloor;
+  achievements "storm"; rpg.cpp chapter "The Storm"; rift.cpp hint 90 s after the seal; villager_quests elder lines.
+
 ## Early morning 2026-11-02 (the check and the player's playthrough, before alpha.12 went out)
 Scripted playthroughs (menus, title → worlds, village/trade, night, rain, Nether/End/Skylands, combat, magic, portals,
 under water) found and fixed: every HUD notice shown twice (ClientFx + HudFx both toasted; ui/hud.cpp hudTakesMessages);

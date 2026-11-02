@@ -16,8 +16,13 @@ relit as they drift); dragons and world progress synced; split screen with LAN (
 Nether; the engine editor with the engine bridge and Strata (OpenAI-style endpoint); the data archive (data.dqa);
 game-only updates with a version picker (rollback, three kept); /lineup.
 Partly: the art pass on our own creature skins (tools/port/mob_restyle.py smooths speckle; the user's pack untouched).
-Not yet: a smaller chunk (near terrain) vertex format; the launcher
-replacing itself (it now only needs to when DQ_LAUNCHER_VERSION goes up).
+Not yet: the launcher replacing itself (it now only needs to when DQ_LAUNCHER_VERSION goes up).
+alpha.13 (2026-11-02 morning, the user: "get these done too"): the near-terrain vertex is 16 bytes (render/mesher.h:
+packed words; the tint is a kind, coloured in chunk.glsl from world_renderer.cpp's climate texture + tint table);
+sheared sheep keep an undercoat (tools/port/sheep_undercoat.py, creature_models.cpp spec.under); two more looks for
+every land fuseling (mob_variants.py LAND); villager touches (sim/villager_look.cpp npcSkinTouches, over the original's
+exact painting); the story's finale (sim/wither.cpp: the Storm from a Rift Core once the rift is sealed; heart phase;
+rift.stormBroken; test_endstory).
 
 ## Still open after that
 - (Dropped by the user 2026-11-02: dwarf mode, the easy-bridge key, spawners passing items along, the host deciding
@@ -26,8 +31,6 @@ replacing itself (it now only needs to when DQ_LAUNCHER_VERSION goes up).
 - Audio: the Sound Studio's synth sandbox. (Done 2026-11-02: the sound-by-sound check; five silent names fixed.)
 - Tests: the Nether-portal-invisible test as an expect (a portal's window is seen in portal.json's first shot). (Done 2026-11-02: a scripted start-to-finish playthrough, see HANDOFF; dq-sweep --drops,
   every block × every tool, in CI; Travel Journal checks at every story stage in test_endstory.)
-- Creature looks: sheared-sheep skins from the user's sheet; more looks per land fuseling; villager looks.
-- Story: the player-triggered Wither Storm finale.
 - Watch a portal's far side in game to confirm its creatures show up (spawning is in, not yet seen).
 
 ## On hold until the user says go

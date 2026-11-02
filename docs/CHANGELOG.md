@@ -5,6 +5,25 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.13 — Undercoat (November 2026)
+
+**Lighter on memory:** the land near you takes a fifth less graphics memory (16 bytes a corner instead of 20). Grass, leaves and water now take their colour from the climate where they stand as they're drawn, with the resource pack's grass and foliage colour maps, so the colours along the edge of the loaded land settle by themselves as the next chunks arrive.
+
+**Sheep:** a shorn sheep keeps a short undercoat of tufts in its own colour until its wool grows back (as in Minecraft 1.21.5), from the resource pack's own undercoat picture when it has one. A pack's sheep wool picture is used now too (only its body was before).
+
+**Creatures:** every land's fuseling comes in two more looks, grown, burnt or bleached into it by its land:
+- barnacled and kelp-draped on the beaches, reed-grown and mud-caked in the bogs, cactus-spined and sun-bleached in the dunes
+- icicled and snow-capped in the frost, flint-studded and cobbled on the gravel, vine-hung and blooming in the jungle
+- flowering and hay-backed in the meadows, toadstool-sprouting and fern-tufted in the moss, great-capped and brown-spored among the mushrooms
+- gold-seamed and terraced in the redlands, thorn-backed and scrub-tufted in the savanna, lily-backed and slime-streaked in the swamps
+- cinder-cracked and obsidian-plated in the Nether, cloud-wrapped and storm-crested in the Skylands
+
+Many of them drop a little of what grows on them.
+
+**Villagers:** each villager has touches of their own now: freckles, an old scar, an earring, a headband or a flower behind the ear, a scarf, a satchel strap, a patched knee or elbow. Scarves, headbands, earrings and satchels stand off the body.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.12 — Coloured Light (November 2026)
 
 **Light in colour:** redstone glows red, soul fire and soul lanterns blue, sea lanterns cyan, amethyst violet, the coloured lamps their own colour, and torches and fire stay warm. The colours spread through the air and mix where lights meet, on blocks, creatures and what you hold (Options → Coloured light).
