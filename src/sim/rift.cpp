@@ -391,6 +391,7 @@ static void riftSeal(Level& lv, Creature& boss) {
   });
   riftSay(lv, "Herobrine is defeated. The rift is sealed, and the watching is over.", "epic");
   if (EndStory* S = endStory(lv)) S->later(3.5, [](Level& l) { riftSay(l, "The villages will hear of this. A way home has opened in the arena.", "good"); });
+  if (EndStory* S = endStory(lv)) S->later(90, [](Level& l) { riftSay(l, "In the quiet you hear it, far off past the seal: a storm still gathering out of everything he pulled through. (Your Travel Journal: The Storm)", "warn"); });
   for (Player* l : levelPlayers(lv)) {
     grantXP(lv, *l, 400, at);
     if (R.contains("village") && lv.events) lv.events->emit("villageRep", json::array({l->name, R["village"], 60}));

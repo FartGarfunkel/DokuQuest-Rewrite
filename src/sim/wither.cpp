@@ -6,6 +6,8 @@
 #include "sim/player.h"
 #include "sim/explosion.h"
 #include "core/registry.h"
+#include "common/fs.h"
+#include "sim/mob_combat.h"
 
 namespace dq {
 
@@ -38,6 +40,8 @@ bool tryWitherSummon(Level& lv, int realm, ivec3 at) {
     for (int dy = 0; dy <= 1; dy++) for (int o = -1; o <= 1; o++) {
       const ivec3 m = at - a * o + dn * dy;   // the middle skull (placing the T's middle block: the skull row is above it)
       const bool coreHead = riftCoreAt(w, m), coreBody = riftCoreAt(w, m - dn), storm = coreHead || coreBody;
+      static const BlockId realCore = reg().blockId("rift_core");
+      const bool riftHeart = storm && realCore && (w.getBlock(m.x, m.y, m.z) == realCore || w.getBlock(m.x, m.y - 1, m.z) == realCore);
       if (!witherSkullAt(w, m - a) || !(coreHead || witherSkullAt(w, m)) || !witherSkullAt(w, m + a)) continue;
       const ivec3 body[4] = {m - a - dn, m - dn, m + a - dn, m - dn * 2};
       bool ok = true;
@@ -50,6 +54,15 @@ bool tryWitherSummon(Level& lv, int realm, ivec3 at) {
         c->data["spawnT"] = 0.f; c->noGravity = true; c->hasFlyVy = true;
         lv.fx->sound("ghast_warn", p, storm ? 160 : 64);
         lv.fx->message(0, storm ? "The Wither Storm rises" : "The Wither stirs", "boss");
+        // the story's last fight: the rift sealed, and a Storm woken from the rift's own crystals. It's bigger, and it
+        // can't be worn down past a quarter until its heart shows (stormBrain); breaking the heart ends the story
+        const json& R = lv.info.data.contains("rift") ? lv.info.data["rift"] : json();
+        if (riftHeart && jflag(R, "sealed") && !jflag(R, "stormBroken")) {
+          c->data["finale"] = true;
+          c->maxHp = c->hp = c->T->hp * 1.5f;
+          c->data["hpFloor"] = c->maxHp * 0.25f;
+          lv.fx->message(0, "Everything he pulled through the rift comes back at once.", "epic");
+        }
       }
       return true;
     }
@@ -113,6 +126,30 @@ std::optional<Move> stormBrain(Level& lv, Creature& m, Entity* p, float dist, fl
   }
   if (!p) { m.flyVy = (frand() - 0.5f) * 0.4f; m.wander(dt); return m.wanderMove(); }
   World& w = lv.world(m.realm);
+  // the finale: worn down to a quarter it sinks and its heart shows. Only blows struck up close reach it then (arrows
+  // and skulls glance off); left alone half a minute, the heart closes over, it heals to half and rises again
+  if (jflag(m.data, "finale")) {
+    float heartT = dget(m, "heartT", -1);
+    if (heartT < 0 && m.hp <= m.maxHp * 0.25f + 0.01f) {
+      heartT = 0; m.data["hpFloor"] = 0.f;
+      lv.fx->message(0, "The Storm sinks, and its heart shows. Strike it!", "boss");
+      lv.fx->sound("rift_boom", m.pos, 120);
+    }
+    if (heartT >= 0) {
+      heartT += dt;
+      const vec3 heart = m.pos + vec3(0, m.h * 0.45f, 0);
+      if (frand() < dt * 30) lv.fx->particles("burst", heart + vec3((frand() - 0.5f) * 1.4f, (frand() - 0.5f) * 1.4f, (frand() - 0.5f) * 1.4f), 2, {{"tile", "rift_core"}, {"speed", 1.2f}});
+      if (frand() < dt * 3) lv.fx->sound("rift_hum", heart, 40);
+      m.flyVy = clampv((p->pos.y - 2.f - m.pos.y) * 0.8f, -2.f, 2.f);   // low enough to reach its heart from the ground
+      if (heartT > 30) {
+        heartT = -1; m.hp = std::max(m.hp, m.maxHp * 0.5f); m.data["hpFloor"] = m.maxHp * 0.25f;
+        lv.fx->message(0, "Its heart closes over, and the Storm rises again.", "boss");
+      }
+      m.data["heartT"] = heartT;
+      return Move{m.T->speed * 0.35f, toPlayer};
+    }
+    m.data["heartT"] = heartT;
+  }
   // hang high over its mark, drifting after it
   m.flyVy = clampv((p->pos.y + 14 - m.pos.y) * 0.8f, -3.f, 3.f);
   // the pull: whoever is near is drawn in
@@ -163,7 +200,7 @@ std::optional<Move> stormBrain(Level& lv, Creature& m, Entity* p, float dist, fl
 }
 bool stormPreHurt(Creature& m, const std::string& type, const std::string& tool) {
   if (dget(m, "spawnT", 99.f) < 12) return true;
-  (void)type; (void)tool;
+  if (jflag(m.data, "finale") && dget(m, "heartT", -1) >= 0 && (tool == "arrow" || type == "arrow" || type == "projectile" || type == "explosion")) return true;   // the heart: up close only
   return false;
 }
 // when it falls: what it swallowed comes down
@@ -175,6 +212,23 @@ void stormFalls(Level& lv, Creature& m) {
   for (int i = 0; i < std::min(48, grown / 2 + 8); i++)
     dropItem(lv, m.realm, ItemStack(rain[i % 5], 1 + (int)(frand() * 3)), m.pos + vec3((frand() - 0.5f) * 8, m.h * frand(), (frand() - 0.5f) * 8), true);
   lv.fx->message(0, "The Wither Storm falls", "boss");
+  if (jflag(m.data, "finale")) {   // the story's end
+    json& R = lv.info.data["rift"];
+    if (!R.is_object()) R = json::object();
+    R["stormBroken"] = 1;
+    for (auto [id, n] : std::vector<std::pair<const char*, int>>{{"nether_star", 3}, {"heart_crystal", 3}, {"rift_crystal", 8}, {"diamond", 16}})
+      if (reg().item(id)) dropItem(lv, m.realm, ItemStack(id, n), m.pos + vec3(0, 2, 0), true);
+    lv.fx->message(0, "Its heart breaks. The last of what he gathered is gone, and the rift's hum is silent at last.", "epic");
+    for (auto& e : lv.entities()) if (e && !e->removed && e->isPlayer()) {
+      Player& pl = *static_cast<Player*>(e.get());
+      grantXP(lv, pl, 600, m.pos);
+      if (!pl.data.is_object()) pl.data = json::object();
+      if (!pl.stats.is_object()) pl.stats = json::object();
+      pl.stats["story"]["storm"] = 1;
+    }
+    if (lv.events) lv.events->emit("riftChanged", json::array({R}));
+    if (lv.events) lv.events->emit("stormBroken", json::array());
+  }
 }
 
 // its hide: untouchable while it gathers itself; once its bones harden, arrows glance off

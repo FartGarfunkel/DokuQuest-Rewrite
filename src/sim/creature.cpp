@@ -453,6 +453,7 @@ float Creature::hurtBase(Level& lv, float amount, const DamageSrc& srcIn) {
   }
   if (src.element == "fire" && !T->fireImmune) burn = std::max(burn, 3.f);
   if (src.element == "frost") slowT = 3;
+  if (auto fl = data.find("hpFloor"); fl != data.end() && fl->is_number() && hp < fl->get<float>()) hp = fl->get<float>();   // a boss that can't be worn below this yet (the Storm's heart)
   if (hp <= 0) die(lv, src);
   float dealt = dmg;
   // dismember.js

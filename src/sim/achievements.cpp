@@ -41,6 +41,7 @@ const std::vector<AchDef>& achievementList() {
     {"dragon", "The End.", "Defeat the Ender Dragon", "dragon_egg"},
     {"glide", "Wings", "Glide on elytra", "elytra"},
     {"wither", "Withering Heights", "Defeat the Wither", "nether_star"},
+    {"storm", "The Calm", "Break the Wither Storm's heart", "rift_core"},
   };
   return L;
 }
@@ -125,6 +126,11 @@ void registerAchievements() {
         if (type == "ender_dragon") grant(lv, *p, "dragon");
         if (type == "wither") grant(lv, *p, "wither");
         if (const CreatureType* ct = creatureType(type); ct && ct->hostile) grant(lv, *p, "monster");
+        return true;
+      }));
+      s->hs.push_back(lv.events->on("stormBroken", [&lv](const json&) {
+        if (lv.isRemote()) return true;
+        for (auto& e : lv.entities()) if (e && !e->removed && e->isPlayer()) grant(lv, *static_cast<Player*>(e.get()), "storm");
         return true;
       }));
       s->hs.push_back(lv.events->on("fishCaught", [&lv](const json& a) { if (!lv.isRemote() && a.is_array() && !a.empty()) if (Player* p = byName(lv, a[0])) grant(lv, *p, "fish"); return true; }));

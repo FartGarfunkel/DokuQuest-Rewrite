@@ -39,7 +39,7 @@ const RigModel* rigModel(const std::string& key) {
     p.only = pj.contains("only") && pj["only"].is_string() ? pj["only"].get<std::string>() : "";
     p.notFlag = pj.contains("not") && pj["not"].is_string() ? pj["not"].get<std::string>() : "";
     p.side = (int)num(pj, "side", 0); p.idx = (int)num(pj, "idx", 0); p.front = flag(pj, "front");
-    p.antler = flag(pj, "antler"); p.wool = flag(pj, "wool"); p.glow = flag(pj, "glow"); p.unlit = flag(pj, "unlit"); p.noCull = flag(pj, "noCull"); p.eyes = flag(pj, "eyes");
+    p.antler = flag(pj, "antler"); p.wool = flag(pj, "wool"); p.undercoat = flag(pj, "undercoat"); p.glow = flag(pj, "glow"); p.unlit = flag(pj, "unlit"); p.noCull = flag(pj, "noCull"); p.eyes = flag(pj, "eyes");
     p.alpha = num(pj, "alpha", 1);
     p.pivot = v3(pj["pivot"]); p.min = v3(pj["min"]); p.max = v3(pj["max"]); p.rest = v3(pj.value("rest", json()));
     p.hasHand = pj.contains("hand"); p.hand = v3(pj.value("hand", json()));
@@ -626,6 +626,7 @@ void rigPose(Creature& m, const RigModel& M, const mat4& base) {
 bool rigPartShown(const Creature& m, const RigPart& p) {
   if (p.antler && !m.stag) return false;
   if (p.wool && m.sheared) return false;
+  if (p.undercoat && !m.sheared) return false;   // the short undercoat shows once the wool is off
   auto state = [&](const std::string& f) {
     if (f.size() > 2 && f[0] == 'd' && f[1] == ':') return hwGet(m, f.c_str() + 2) > 0.5f;   // the October creatures' own flags (sim/hallow.h)
     if (f == "saddled") return m.saddled; if (f == "puffed") return m.puffed; if (f == "curled") return m.curled; if (f == "roosting") return m.roosting;

@@ -12,7 +12,7 @@ namespace dq {
 struct RigPart {
   std::string name, role, limb, only, notFlag;
   int parent = -1, side = 0, idx = 0;
-  bool front = false, antler = false, wool = false, glow = false, unlit = false, noCull = false, eyes = false, hasHand = false;
+  bool front = false, antler = false, wool = false, undercoat = false, glow = false, unlit = false, noCull = false, eyes = false, hasHand = false;
   float alpha = 1;
   vec3 pivot{0}, min{0}, max{0}, rest{0}, hand{0};
   json tex;                       // tile name, per-face object/array (models.js tilesOf)

@@ -143,7 +143,7 @@ void onGreatFoeDied(Level& lv, Entity& mob) {
   R["frags"] = frags;
   std::string who = F.value(mob.type, std::string("it"));
   if (lv.events) lv.events->emit("riftChanged", json::array());
-  lv.fx->message(0, "A Realm Fragment falls from " + who + ". (" + std::to_string(std::min(4, frags)) + " of 4)", "epic");
+  lv.fx->message(0, "A Realm Fragment falls from " + who + ". (" + std::to_string(std::min(RIFT_NEED, frags)) + " of " + std::to_string(RIFT_NEED) + ")", "epic");
 }
 std::vector<std::string> greatFoesBeaten(Level& lv) {
   std::vector<std::string> out;
@@ -182,6 +182,7 @@ Story storyOf(Level& lv, Player& p) {
   ch("The Gateway", "Bring ten fragments to the rift and use it.", "Stand by the tear in the square with the fragments and use it.", stage >= 3);
   ch("His Realm", "Step through the gateway.", "Go together and go ready: good armour, food, potions. In co-op, everyone is drawn in.", jflag(st, "realmSeen") || sealed);
   ch("The Seal", "Find Herobrine at the end of his halls and defeat him.", "Five halls. His bolts hurt; he steps through space; below half health his stare stops time.", sealed);
+  ch("The Storm", "Wake the Wither Storm from a Rift Core, and break its heart.", "What he pulled through the rift isn't done. Bind eight rift crystals round a Wither's nether star into a Rift Core, set it between two wither skeleton skulls on a T of soul sand, and go ready. Worn down to a quarter it sinks and its heart shows: strike it up close (arrows glance off), before it closes over again.", jflag(R, "stormBroken"));
   ch("The End Beneath", "Slay the Ender Dragon.", "Eyes of ender (an ender pearl and cinder powder) fly toward a stronghold. Or break through the void crust at the very bottom of the Depths.", jflag(E, "slain"), false, true);
   ch("The Deep Dark", "Find an Ancient City.", "Far below some lands the stone turns to slate and sculk. Tread softly.", ancient, false, true);
   ch("Dragonslayer", "Slay the seven dragons of the world (" + std::to_string(lairs) + " of 7).", "Each land has its dragon: forest, frost, sand, tide, ember (the Depths), storm (the Skylands), and one more. Their eggs hatch into drakes you can ride.", lairs >= 7, false, true, lairs / 7.f);
@@ -202,7 +203,7 @@ std::vector<std::pair<std::string, std::string>> journalRecords(Level& lv, Playe
     {"Villages found", std::to_string(keysOf(st, "vseen"))}, {"Dungeons found", std::to_string(keysOf(st, "dseen"))}, {"Places found", std::to_string(keysOf(st, "sseen"))},
     {"Lands seen", std::to_string(sub(sub(st, "explore"), "biomes").size())}, {"Worlds visited", std::to_string(sub(sub(st, "explore"), "dims").size())},
     {"Walked", strFormat("%.1f km", st.value("walkedKm", 0.0))}, {"Creatures beaten", std::to_string(st.value("mobsKilled", 0))}, {"Quests done", std::to_string(st.value("questsDone", 0))},
-    {"Realm Fragments", std::to_string(std::min(4, R.value("frags", 0))) + " of 4"}, {"Play time", strFormat("%dh %dm", (int)(pt / 3600), (int)std::fmod(pt / 60, 60))},
+    {"Realm Fragments", std::to_string(std::min(RIFT_NEED, R.value("frags", 0))) + " of " + std::to_string(RIFT_NEED)}, {"Play time", strFormat("%dh %dm", (int)(pt / 3600), (int)std::fmod(pt / 60, 60))},
   };
 }
 

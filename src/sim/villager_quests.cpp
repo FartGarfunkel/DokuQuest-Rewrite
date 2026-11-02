@@ -5,6 +5,7 @@
 #include "sim/villagers_internal.h"
 #include "sim/skills.h"
 #include "sim/rpg.h"
+#include "sim/endstory.h"
 #include "sim/magic_data.h"
 #include "sim/mob_combat.h"
 #include "gen/overworld.h"
@@ -468,7 +469,7 @@ static void home(Level& lv, Player& p, Talk& t, const std::string& text0 = "") {
   // riftarc.js: the elder knows the tale
   const json R = lv.info.data.value("rift", json::object());
   if (t.job == "elder" && R.is_object() && R.value("stage", 0) && (text0.empty() || t.greetLine))
-    O.push_back({R.value("sealed", 0) ? "About the rift\xE2\x80\xA6" : R.value("stage", 0) >= 3 ? "The gateway\xE2\x80\xA6" : "The rift in the square\xE2\x80\xA6", "\xE2\x98\x85", "riftElder", nullptr});
+    O.push_back({jflag(R, "sealed") ? "About the rift\xE2\x80\xA6" : R.value("stage", 0) >= 3 ? "The gateway\xE2\x80\xA6" : "The rift in the square\xE2\x80\xA6", "\xE2\x98\x85", "riftElder", nullptr});
   // riftlore.js: seen anything strange?
   if (tier >= 0) O.push_back({tier == 0 ? "Seen anything strange lately?" : tier >= 5 ? "About what happened\xE2\x80\xA6" : "What do you make of the rift?", "?", "rift", nullptr});
   // hearth.js: the elder and a Hero's house
@@ -623,8 +624,9 @@ void talkChoose(Level& lv, Player& p, Talk& t, int i) {
   if (a == "rift") { riftAsk(lv, p, t); return; }
   if (a == "riftElder") {
     const json R = lv.info.data.value("rift", json::object());
-    int n = std::min(4, R.value("frags", 0));
-    std::string lines = R.value("sealed", 0) ? "You did it. The square is quiet, the nights are only nights again. We will sing of this for a hundred winters."
+    int n = std::min(RIFT_NEED, R.value("frags", 0));
+    std::string lines = jflag(R, "stormBroken") ? "The storm too. The sky over the square is just sky. Sit with us a while; there's nothing left to watch for."
+                      : jflag(R, "sealed") ? "You did it. The square is quiet, the nights are only nights again. We will sing of this for a hundred winters. Only, the old ones say a storm still gathers from what he took. If it ever wakes, it wakes from a heart of the rift's own crystal."
                       : R.value("stage", 0) >= 3 ? "The gateway stands open. He waits beyond it, at the end of his halls. Go together, go ready, and end this."
                       : "It opened when you came. Something old is pressing on our world from the other side. The old tales say the keepers of the deep places hold the keys of time. Find the dungeons, defeat their keepers, bring their Realm Fragments to the rift. Ten of them. " + (n ? "You have found " + std::to_string(n) + " so far." : std::string());
     say(lv, p, t, lines);
