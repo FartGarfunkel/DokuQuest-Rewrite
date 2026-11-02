@@ -18,6 +18,7 @@ const std::vector<VertexAttrib> P_ATTRS = {
   {3, 1, GL_UNSIGNED_BYTE, GL_FALSE, true, 16},
   {4, 3, GL_UNSIGNED_BYTE, GL_TRUE, false, 17},
   {5, 1, GL_UNSIGNED_BYTE, GL_FALSE, true, 20},
+  {6, 1, GL_UNSIGNED_BYTE, GL_TRUE, false, 21},
 };
 bool solidAt(World* w, vec3 p) { return w && reg().tSolid[w->getBlock(ifloor(p.x), ifloor(p.y), ifloor(p.z))]; }
 } // namespace
@@ -93,7 +94,7 @@ void ParticleSystem::addWaterfallSplash(vec3 pos) {
   if (rnd() < (level >= 2 ? 0.35f : 0.12f)) {
     Particle q; q.tile = (u16)tile("smoke_puff"); q.p = pos + vec3(rs() * 0.8f, 0.1f, rs() * 0.8f);
     q.v = vec3(rs() * 0.3f, 0.4f + rnd() * 0.3f, rs() * 0.3f); q.life = q.max = 1.0f + rnd() * 0.6f; q.size = q.size0 = 0.08f; q.grow = 1.4f;
-    q.light = l; q.grav = 0; q.tint[0] = 225; q.tint[1] = 235; q.tint[2] = 245;
+    q.light = l; q.grav = 0; q.tint[0] = 225; q.tint[1] = 235; q.tint[2] = 245; q.soft = true; q.alpha = 0.5f;
     add(q);
   }
 }
@@ -143,10 +144,10 @@ void ParticleSystem::spawn(const std::string& kind, vec3 pos, int count, const j
     bool dark = kind == "smoke_dark" || kind == "fire_smoke", wisp = kind == "torch_smoke", camp = kind == "campfire_smoke";
     u16 t = (u16)tile(dark ? "smoke_dark" : wisp ? "smoke_puff" : camp ? "campfire_smoke" : "smoke");
     for (int i = 0; i < count; i++) {
-      Particle q; q.tile = t; q.light = 0xFF; q.rise = true; q.wind = wd * (dark ? 2.f : camp ? 2.f : 1.f);
+      Particle q; q.tile = t; q.light = lightAt(pos + vec3(0, 0.5f, 0)); q.rise = true; q.wind = wd * (dark ? 2.f : camp ? 2.f : 1.f); q.soft = true; q.alpha = dark ? 0.8f : camp ? 0.6f : 0.65f;
       if (wisp) { q.p = pos + vec3(0, 0.04f, 0); q.v = vec3(rs() * 0.04f, 0.3f + rnd() * 0.15f, rs() * 0.04f); q.life = q.max = 1.3f + rnd() * 0.9f; q.size = q.size0 = 0.03f; q.grow = 1.6f; q.grav = -0.04f; }
       else if (dark) { q.p = pos + vec3(rs() * 0.6f, 0, rs() * 0.6f); q.v = vec3(0, 0.7f + rnd() * 0.4f, 0); q.life = q.max = 3; q.size = q.size0 = 0.12f; q.grow = 1.6f; q.grav = -0.08f; }
-      else if (camp) { q.p = pos + vec3(rs() * 0.4f, 0, rs() * 0.4f); q.v = vec3(rs() * 0.12f, 1.25f + rnd() * 0.4f, rs() * 0.12f); q.life = q.max = 5 + rnd() * 3; q.size = q.size0 = 0.12f + rnd() * 0.06f; q.grow = 2.8f; q.grav = -0.03f; q.light = lightAt(pos); }
+      else if (camp) { q.p = pos + vec3(rs() * 0.4f, 0, rs() * 0.4f); q.v = vec3(rs() * 0.12f, 1.25f + rnd() * 0.4f, rs() * 0.12f); q.life = q.max = 5 + rnd() * 3; q.size = q.size0 = 0.12f + rnd() * 0.06f; q.grow = 2.8f; q.grav = -0.03f; }
       else { q.p = pos + vec3(rs() * 0.5f, 0, rs() * 0.5f); q.v = vec3(0, 0.45f, 0); q.life = q.max = 2.2f; q.size = q.size0 = 0.06f; q.grow = 1.5f; q.grav = -0.08f; }
       add(q);
     }
@@ -156,10 +157,12 @@ void ParticleSystem::spawn(const std::string& kind, vec3 pos, int count, const j
     u16 t = (u16)tile("smoke_puff");
     vec3 dir(num("dx", 0), 0, num("dz", 0));
     for (int i = 0; i < count; i++) {
-      Particle q; q.tile = t; q.light = lightAt(pos); q.wind = wd * 0.5f;
-      q.p = pos + vec3(rs() * 0.03f, rs() * 0.03f, rs() * 0.03f);
+      // a thin pale wisp, a little ahead of the face so it never fills your view, fading as it spreads
+      Particle q; q.tile = t; q.light = lightAt(pos); q.wind = wd * 0.5f; q.soft = true; q.alpha = 0.3f;
+      q.tint[0] = 235; q.tint[1] = 240; q.tint[2] = 248;
+      q.p = pos + dir * 0.18f + vec3(rs() * 0.03f, rs() * 0.03f, rs() * 0.03f);
       q.v = dir * (0.45f + rnd() * 0.3f) + vec3(rs() * 0.08f, 0.04f + rnd() * 0.06f, rs() * 0.08f);
-      q.life = q.max = 0.8f + rnd() * 0.4f; q.size = q.size0 = 0.022f; q.grow = 2.4f; q.grav = -0.02f;
+      q.life = q.max = 0.7f + rnd() * 0.4f; q.size = q.size0 = 0.018f; q.grow = 2.2f; q.grav = -0.02f;
       add(q);
     }
     return;
@@ -169,7 +172,7 @@ void ParticleSystem::spawn(const std::string& kind, vec3 pos, int count, const j
     u16 t = (u16)tile("smoke");
     for (int i = 0; i < count; i++) {
       Particle q; q.tile = t; q.p = pos + vec3(rs(), rs(), rs()) * r; q.v = vec3(rs() * 3, rnd() * 3, rs() * 3);
-      q.life = q.max = 0.9f; q.size = 0.35f + rnd() * 0.3f; q.size0 = 0.5f; q.shrink = true; q.light = 0xFF; q.grav = -1;
+      q.life = q.max = 0.9f + rnd() * 0.5f; q.size = q.size0 = 0.35f + rnd() * 0.3f; q.grow = 0.6f; q.light = 0xFF; q.grav = -1; q.soft = true; q.alpha = 0.85f;
       add(q);
     }
     return;
@@ -180,7 +183,7 @@ void ParticleSystem::spawn(const std::string& kind, vec3 pos, int count, const j
     for (int i = 0; i < count; i++) {
       Particle q; q.tile = t; q.life = q.max = 0.5f + rnd() * 0.4f;
       q.p = pos + vec3(rs() * w * 2, rnd() * h, rs() * w * 2); q.v = vec3(rs() * 0.6f, 0.3f + rnd() * 0.5f, rs() * 0.6f);
-      q.size = q.size0 = 0.12f; q.grow = 0.8f; q.light = l; q.grav = 0;
+      q.size = q.size0 = 0.12f; q.grow = 0.8f; q.light = l; q.grav = 0; q.soft = true; q.alpha = 0.8f;
       add(q);
     }
     return;
@@ -255,7 +258,7 @@ void ParticleSystem::spawn(const std::string& kind, vec3 pos, int count, const j
   }
   if (kind == "wisp") {   // Halloween: a pale ghost light that drifts slowly and fades out
     Particle q; q.tile = (u16)tile("white"); q.p = pos; q.v = vec3(rs() * 0.12f, 0.04f + rnd() * 0.08f, rs() * 0.12f);
-    q.life = q.max = 8 + rnd() * 5; q.size = q.size0 = 0.11f + rnd() * 0.05f; q.grow = 0.5f; q.light = 0xFF; q.glow = true; q.flutter = 0.22f; q.ph = rnd() * 6;
+    q.life = q.max = 8 + rnd() * 5; q.size = q.size0 = 0.11f + rnd() * 0.05f; q.grow = 0.5f; q.light = 0xFF; q.glow = true; q.flutter = 0.22f; q.ph = rnd() * 6; q.soft = true; q.alpha = 0.55f;
     q.tint[0] = 190; q.tint[1] = 225; q.tint[2] = 255;
     add(q);
     return;
@@ -267,7 +270,7 @@ void ParticleSystem::spawn(const std::string& kind, vec3 pos, int count, const j
 
 // ---- the simulation ----------------------------------------------------------------------------------
 void ParticleSystem::update(World* w, double dtd, double time) {
-  world = w; now = time;
+  world = w; now = time; relightTick++;
   float dt = (float)std::min(dtd, 0.1);
   auto& L = list;
   std::vector<Particle> born;   // splashes from landings, added after the loop
@@ -289,6 +292,8 @@ void ParticleSystem::update(World* w, double dtd, double time) {
       }
       continue;
     }
+    // smoke and mist take the light of where they've drifted to (out of the firelight into the night...)
+    if (p.soft && !p.glow && p.light != 0xFF && ((i + relightTick) & 7) == 0) p.light = lightAt(p.p);
     if (p.flutter > 0) { float t = p.life * 2.4f + p.ph; p.p.x += std::sin(t) * p.flutter * dt; p.p.z += std::cos(t * 0.8f) * p.flutter * 0.7f * dt; }
     p.v.y -= p.grav * dt;
     // smoke: rises, and when it meets a ceiling it spreads out underneath and gathers there
@@ -340,10 +345,9 @@ void ParticleSystem::draw(const FrameCtx& f, const TileTextures& tex) {
   vec3 right = cam.right(), fwd = cam.forward(), up = glm::cross(right, fwd);
   verts.clear(); verts.reserve(list.size() * 4);
   glm::dvec3 o = cam.origin;
-  for (const Particle& p : list) {
-    vec3 c = vec3(glm::dvec3(p.p) - o);
+  const vec3 eye = vec3(cam.pos - o);
+  auto quad = [&](const Particle& p, vec3 c, u8 alpha) {
     float s = p.size;
-    if (s <= 0.0005f) continue;
     vec3 A = right, B = up;
     if (p.streak > 0) {
       // a long thin stroke along its direction, turned about that line to face you
@@ -352,11 +356,34 @@ void ParticleSystem::draw(const FrameCtx& f, const TileTextures& tex) {
     } else if (p.flat) { A = vec3(1, 0, 0); B = vec3(0, 0, 1); }
     else if (p.vert > 0) B = vec3(0, p.vert / s, 0);
     A *= s; B *= s;
-    Vtx v{}; v.layer = p.tile; v.light = p.light; v.r = p.tint[0]; v.g = p.tint[1]; v.b = p.tint[2]; v.flags = p.light == 0xFF || p.glow ? 1 : 0;
+    Vtx v{}; v.layer = p.tile; v.light = p.light; v.r = p.tint[0]; v.g = p.tint[1]; v.b = p.tint[2];
+    v.flags = (u8)((p.light == 0xFF || p.glow ? 1 : 0) | (p.soft ? 2 : 0)); v.a = alpha;
     auto put = [&](vec3 q, u8 u, u8 vv) { v.x = q.x; v.y = q.y; v.z = q.z; v.u = u; v.v = vv; verts.push_back(v); };
     put(c - A - B, p.uv[0], p.uv[3]); put(c + A - B, p.uv[2], p.uv[3]); put(c + A + B, p.uv[2], p.uv[1]); put(c - A + B, p.uv[0], p.uv[1]);
+  };
+  // the solid ones (crumbs, sparks, drops): alpha-tested, in any order; none right in your face
+  softList.clear();
+  for (const Particle& p : list) {
+    if (p.size <= 0.0005f) continue;
+    vec3 c = vec3(glm::dvec3(p.p) - o);
+    float d = glm::length(c - eye);
+    if (p.soft) { softList.push_back({d, &p}); continue; }
+    if (d < p.size * 1.5f + 0.08f) continue;
+    quad(p, c, 255);
+  }
+  const size_t hardQuads = verts.size() / 4;
+  // the soft ones (smoke, breath, mist): see-through, back to front; each fades in, thins out as it ends, and fades away
+  // close to your eyes, so a puff never fills the view
+  std::sort(softList.begin(), softList.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
+  for (auto& [d, pp] : softList) {
+    const Particle& p = *pp;
+    float k = p.max > 0 ? clampv(p.life / p.max, 0.f, 1.f) : 1.f;   // 1 new .. 0 gone
+    float a = p.alpha * smoothstepf(1.f, 0.88f, k) * smoothstepf(0.f, 0.45f, k) * smoothstepf(0.25f + p.size, 0.9f + p.size * 2, d);
+    if (a < 0.01f) continue;
+    quad(p, vec3(glm::dvec3(p.p) - o), (u8)clampv((int)(a * 255), 1, 255));
   }
   if (verts.empty()) return;
+  const size_t softQuads = verts.size() / 4 - hardQuads;
   mesh.uploadQuads(verts.data(), verts.size() * sizeof(Vtx), verts.size() / 4, GL_STREAM_DRAW);
   shader.use();
   f.apply(shader);
@@ -364,7 +391,13 @@ void ParticleSystem::draw(const FrameCtx& f, const TileTextures& tex) {
   shader.set("uCamFrac", vec3(cam.pos - cam.origin));
   tex.bind(shader);
   glDisable(GL_CULL_FACE);
-  mesh.draw();
+  if (hardQuads) mesh.drawRange(0, hardQuads * 6);
+  if (softQuads) {
+    GLboolean blend = glIsEnabled(GL_BLEND); GLboolean dm; glGetBooleanv(GL_DEPTH_WRITEMASK, &dm);
+    glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); glDepthMask(GL_FALSE);
+    mesh.drawRange(hardQuads * 6, softQuads * 6);
+    glDepthMask(dm); if (!blend) glDisable(GL_BLEND);
+  }
   glEnable(GL_CULL_FACE);
 }
 

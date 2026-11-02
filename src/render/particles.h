@@ -29,6 +29,8 @@ struct Particle {
   u8 drip = 0;                  // 1 water, 2 lava, 3 rain off leaves, 4 honey
   u8 drop = 0;                  // weather: 1 rain, 2 snow
   bool shrink = false, rise = false, pooled = false, flat = false, fell = false, glow = false;
+  bool soft = false;            // smoke, breath, mist, poofs: see-through and blended, fading in and out (drawn after the rest)
+  float alpha = 1;              // a soft particle's opacity at its thickest
 };
 
 class ParticleSystem {
@@ -61,7 +63,9 @@ private:
   Shader shader; Mesh mesh; bool glReady = false;
   int drops = 0;
   double now = 0;
-  struct Vtx { float x, y, z; u16 layer; u8 u, v; u8 light, r, g, b; u8 flags, pad[3]; };
+  u32 relightTick = 0;
+  struct Vtx { float x, y, z; u16 layer; u8 u, v; u8 light, r, g, b; u8 flags, a, pad[2]; };
+  std::vector<std::pair<float, const Particle*>> softList;
   std::vector<Vtx> verts;
 };
 

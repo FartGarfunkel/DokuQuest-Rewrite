@@ -38,6 +38,7 @@ uniform vec3 uRainCol;
 uniform float uFadeIn;                 // a new tile fading in (dithered: Horizon's fade, render/distant.cpp)
 uniform vec4 uFadeOut;                 // a parent under its new children: each quarter as far gone as its child has come
 uniform float uTileSize;
+uniform vec2 uTileWorld;              // the tile's corner in the world (mod 8192), so the pictures line up with the blocks'
 in vec4 vCol;
 in vec3 vPos;
 in vec3 vRel;
@@ -67,14 +68,22 @@ void main() {
   // where a real chunk is drawn, it's drawn instead (chunk by chunk, so while chunks are still loading this fills in)
   vec2 mp = (vPos.xz - uMaskO.xy) / uMaskO.z;
   if (mp.x >= 0.0 && mp.y >= 0.0 && mp.x < 1.0 && mp.y < 1.0 && texture(uMask, mp).r > 0.5) discard;
-  // the voxel's texture: one picture per voxel face (uCell blocks across), as the blocks' own faces are drawn
+  // the voxel's texture
   vec3 c;
   if ((vFlags & 8u) != 0u) c = vCol.rgb;   // leaves and the like: their average colour (see-through pixels mean nothing far off)
   else {
     int face = int((vFlags >> 8u) & 7u);
-    vec2 uv = face < 2 ? vec2(vLocal.y, -vY) : face < 4 ? vLocal : vec2(vLocal.x, -vY);
-    uv /= uCell;
-    vec4 t = tileColorGrad(fract(uv), vTile, dFdx(uv), dFdy(uv));
+    // one picture per BLOCK, as the real chunks draw them (a coarse voxel 16 blocks across shows 16x16 of them, not one
+    // picture stretched over it); where a block is under a pixel, its average colour, so the far land doesn't shimmer
+    vec2 wl = vLocal + uTileWorld;
+    vec2 uv = face < 2 ? vec2(wl.y, -vY) : face < 4 ? wl : vec2(wl.x, -vY);
+    vec2 gx = dFdx(uv), gy = dFdy(uv);
+    vec4 t = tileColorGrad(fract(uv), vTile, gx, gy);
+    float fp = max(length(gx), length(gy));   // blocks per pixel
+    if (fp > 0.3) {
+      vec4 avg = (tileColorLod(vec2(0.25, 0.25), vTile, 4.0) + tileColorLod(vec2(0.75, 0.25), vTile, 4.0) + tileColorLod(vec2(0.25, 0.75), vTile, 4.0) + tileColorLod(vec2(0.75, 0.75), vTile, 4.0)) * 0.25;
+      t = mix(t, avg, smoothstep(0.3, 0.9, fp));
+    }
     if ((vFlags & 4u) != 0u) t.rgb *= vCol.rgb * 1.25;
     else if (vCol.r + vCol.g + vCol.b < 2.99) {   // grass and leaf pixels marked for the tint (alpha 253), as chunk.glsl
       float w = clamp((1.0 - t.a) * 127.5, 0.0, 1.0);
@@ -87,6 +96,13 @@ void main() {
   c *= vCol.a;
   if ((vFlags & 2u) == 0u) c *= max(uDay, uMinLight);
   float dist = length(vRel);
+  if ((vFlags & 1u) != 0u && ((vFlags >> 8u) & 7u) == 2u) {
+    // open water, as chunk.glsl draws it: the sea floor darkening it through the water, the sky in it at a low angle
+    vec3 v = -vRel / max(dist, 1e-4);
+    float fres = pow(1.0 - clamp(v.y, 0.0, 1.0), 3.0);
+    c *= 0.8;
+    c = mix(c, mix(uSkyColor, uFogColor, 0.35) * max(uDay, uMinLight), fres * 0.45);
+  }
   if (uStorm.y > 0.001) {
     float st = stormAt(vPos.xz);
     c *= 1.0 - st * uStorm.y * 0.4;                                        // in the storm's shadow

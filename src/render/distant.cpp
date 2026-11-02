@@ -25,7 +25,7 @@ const std::vector<VertexAttrib> LOD_ATTRS = {
 };
 inline u64 tkey(int L, int tx, int tz) { return ((u64)L << 58) | ((u64)((u32)tx & 0x1FFFFFFFu) << 29) | (u64)((u32)tz & 0x1FFFFFFFu); }
 inline u64 rkey(int dim, int rx, int rz) { return ((u64)dim << 60) | ((u64)((u32)rx & 0x3FFFFFFFu) << 30) | (u64)((u32)rz & 0x3FFFFFFFu); }
-int topLevel(float range) { int L = 3; while (L < MAX_LEVEL && tileSize(L) < range / 4) L++; return L; }
+int topLevel(float range) { int L = 2; while (L < MAX_LEVEL && tileSize(L) < range / 4) L++; return L; }
 u32 chunkHash(const Chunk& c) {
   u32 h = 2166136261u ^ (u32)c.maxY;
   for (int i = 0; i < 256; i++) { int y = c.heightMap[i]; h = (h ^ (u32)y) * 16777619u; h = (h ^ (u32)c.get(i & 15, y, i >> 4)) * 16777619u; }
@@ -34,6 +34,7 @@ u32 chunkHash(const Chunk& c) {
 } // namespace
 
 constexpr double FADE_S = 0.9;   // seconds a new tile takes to fade in
+static const double REFINE = [] { const char* e = std::getenv("DQ_LOD_REFINE"); double v = e ? std::atof(e) : 0; return v > 0.5 ? v : 4.5; }();
 struct DistantTerrain::Tile {
   int L = 0, tx = 0, tz = 0;
   Mesh mesh; size_t quads = 0; size_t bytes = 0;
@@ -194,6 +195,7 @@ void DistantTerrain::genFar(World& w, int dim, glm::dvec3 cam, ThreadPool& pool)
 }
 
 bool DistantTerrain::chunkReal(int dim, int cx, int cz) const {
+  if (realR < 1e8f) { const double dx = cx * 16 + 8 - camAt.x, dz = cz * 16 + 8 - camAt.z; if (dx * dx + dz * dz > (double)realR * realR) return false; }
   auto it = seen.find({dim, cx, cz});
   return it != seen.end() && clock - it->second.first > 0.6;
 }
@@ -269,7 +271,10 @@ void DistantTerrain::select(Band& b, double cx, double cz) {
     auto it = b.tiles.find(tkey(L, tx, tz));
     Tile* t = it == b.tiles.end() ? nullptr : it->second.get();
     double mid = std::hypot(x0 + s / 2.0 - cx, z0 + s / 2.0 - cz);
-    if (L > 0 && mid < s * 1.25) {
+    // a tile splits into its four finer ones while it's nearer than REFINE tile-widths: a voxel then stays about
+    // distance/150 across, a few pixels on screen at any distance, as Cubyz keeps its far land (at 1.25 it was
+    // distance/40: far hills became stairs of 32-block steps, worst at the wide edges of the view)
+    if (L > 0 && mid < s * REFINE) {
       int ks = tileSize(L - 1), live = 0; bool ready = true;
       for (int q = 0; q < 4; q++) {
         int a = tx * 2 + (q & 1), c = tz * 2 + (q >> 1); double kx = (double)a * ks, kz = (double)c * ks;
@@ -337,7 +342,7 @@ void DistantTerrain::submit(Band& b, int L, int tx, int tz, ThreadPool& pool, fl
 }
 
 void DistantTerrain::update(Level& lv, World& w, const FrameCtx& f, ThreadPool& pool, double dt, const TileSet& tiles) {
-  clock += dt; frame++;
+  clock += dt; frame++; camAt = f.cam.pos;
   const Settings* st = f.settings;
   int want = st ? st->farTerrain : 0, R = st ? st->renderDist : 8;
   bool on = want > 0 && f.cam.realm == REALM_MAIN && w.realm == REALM_MAIN && lv.gen;
@@ -408,7 +413,7 @@ void DistantTerrain::update(Level& lv, World& w, const FrameCtx& f, ThreadPool& 
   if (adaptLow > 5) { adaptScale = std::max(0.3f, adaptScale * 0.8f); adaptLow = 0; }
   if (adaptHigh > 12 && adaptScale < 1) { adaptScale = std::min(1.f, adaptScale * 1.15f); adaptHigh = 0; }
   range = std::max(std::round(want * adaptScale), R * 16.f + 160.f);
-  maxBytes = (size_t)((24.0 + want / 16384.0 * 200.0) * 1048576.0);
+  maxBytes = (size_t)((96.0 + want / 16384.0 * 600.0) * 1048576.0);   // (finer tiles: more of them)
   // results from the workers: summaries out of the save, finished tiles (uploaded within a budget)
   {
     std::vector<Done> done; std::vector<std::pair<ChunkKey, std::shared_ptr<ChunkSummary>>> got; std::vector<ChunkKey> stored; bool listed = false;
@@ -492,7 +497,7 @@ void DistantTerrain::update(Level& lv, World& w, const FrameCtx& f, ThreadPool& 
   for (auto& b : bands) if (!b->active) b->draw.clear();
   // what to make next: one or two tiles at a time on the workers, nearest and coarsest first
   std::sort(wants.begin(), wants.end(), [](auto& a, auto& b) { return std::get<0>(a) < std::get<0>(b); });
-  int maxJobs = std::max(1, std::min(3, pool.threads()));
+  int maxJobs = std::max(1, std::min(6, pool.threads() - 1));
   for (auto& [pri, dim, wv] : wants) {
     if (inFlight >= maxJobs) break;
     Band& b = *bands[dim];

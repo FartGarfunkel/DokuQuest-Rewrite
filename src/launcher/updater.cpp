@@ -93,9 +93,12 @@ bool parseRelease(const json& j, ReleaseInfo& r, std::string& err) {
   return true;
 }
 
-const ReleaseAsset* pickAsset(const ReleaseInfo& r, const std::string& plat) {
+const ReleaseAsset* pickAsset(const ReleaseInfo& r, const std::string& plat, bool gameOnly) {
+  // the game alone ("-game": no launcher) when there is one and it's wanted, else the whole package
   const char* suffix = plat == "windows" ? "-windows-x64.zip" : plat == "linux" ? "-linux-x64.tar.gz" : nullptr;
+  const char* gsuffix = plat == "windows" ? "-windows-x64-game.zip" : "-linux-x64-game.tar.gz";
   if (!suffix) return nullptr;
+  if (gameOnly) for (auto& a : r.assets) if (endsWith(toLower(a.name), gsuffix)) return &a;
   for (auto& a : r.assets) if (endsWith(toLower(a.name), suffix)) return &a;
   return nullptr;
 }
@@ -170,6 +173,14 @@ std::string Updater::activeVersion() const { return loadState().value("active", 
 
 fs::path Updater::executable(const std::string& base, std::string* version) const {
   json s = loadState();
+  // a version the player picked (Options > Updates: rolled back, or kept on one): that one, whatever its number
+  const std::string pin = s.value("pinned", "");
+  if (pin == DQ_VERSION) { if (version) *version = DQ_VERSION; return installDir() / exeName(base); }
+  if (!pin.empty() && s["installed"].contains(pin)) {
+    fs::path exe = fs::path(s["installed"][pin].value("dir", "")) / exeName(base);
+    if (fs::exists(exe)) { if (version) *version = pin; return exe; }
+    if (base != "dokuquest") { if (version) *version = DQ_VERSION; return installDir() / exeName(base); }   // a game-only version: this launcher
+  }
   for (const char* k : {"active", "previous"}) {
     std::string v = s.value(k, "");
     if (v.empty() || s["bad"].contains(v) || compareVersions(v, DQ_VERSION) <= 0 || !s["installed"].contains(v)) continue;
@@ -183,6 +194,19 @@ fs::path Updater::executable(const std::string& base, std::string* version) cons
 std::string Updater::currentVersion() const {
   std::string v; executable("dokuquest", &v);
   return v;
+}
+std::vector<std::string> Updater::installedVersions() const {
+  json s = loadState(); std::vector<std::string> v;
+  for (auto& [k, x] : s["installed"].items()) if (!s["bad"].contains(k)) v.push_back(k);
+  std::sort(v.begin(), v.end(), [](const std::string& a, const std::string& b) { return compareVersions(a, b) > 0; });
+  return v;
+}
+std::string Updater::pinnedVersion() const { return loadState().value("pinned", ""); }
+void Updater::pin(const std::string& v) {
+  json s = loadState();
+  if (v.empty()) s.erase("pinned"); else s["pinned"] = v;
+  saveState(s);
+  DQ_LOG("updater: %s", v.empty() ? "playing the newest version" : ("playing " + v + " (picked)").c_str());
 }
 void Updater::markBad(const std::string& v, const std::string& why) {
   if (v == DQ_VERSION) return;
@@ -255,7 +279,7 @@ void Updater::poll() {
     if (compareVersions(rel.version, cur) <= 0) { state = State::Done; message = "You have the newest game (" + niceVersion(cur) + ")."; return; }
     json s = loadState();
     if (s["bad"].contains(rel.version)) { state = State::Done; message = "Version " + niceVersion(rel.version) + " did not start on this computer before, so it is skipped."; return; }
-    const ReleaseAsset* a = pickAsset(rel, platformName());
+    const ReleaseAsset* a = pickAsset(rel, platformName(), !wantWhole);
     if (!a) { fail("Release " + rel.tag + " has no download for this computer."); return; }
     if (a->size > APP_MAX) { fail(a->name + " is unexpectedly large."); return; }
     asset = *a;
@@ -323,6 +347,22 @@ void Updater::finishExtract() {
     if (fs::exists(p)) fs::permissions(p, fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec, fs::perm_options::add, ec);
   }
 #endif
+  // a game-only package from a release whose launcher is newer than this one: the whole package instead (it has the new
+  // launcher, which takes over next start: launcher_main.cpp handOff)
+  if (!wantWhole && !fs::exists(found / exeName("dokuquest-launcher"))) {
+    std::string lv; if (auto t = readFile(found / "launcher.version")) { lv = *t; while (!lv.empty() && std::isspace((unsigned char)lv.back())) lv.pop_back(); }
+    if (!lv.empty() && compareVersions(lv, DQ_LAUNCHER_VERSION) > 0) {
+      if (const ReleaseAsset* whole = pickAsset(rel, platformName(), false); whole && whole->name != asset.name) {
+        DQ_LOG("updater: %s comes with a newer launcher (%s): getting the whole package", rel.version.c_str(), lv.c_str());
+        fs::remove_all(part, ec); fs::remove(tmpDir() / (asset.name + ".part"), ec);
+        wantWhole = true; asset = *whole;
+        wantSha = startsWith(asset.digest, "sha256:") ? toLower(asset.digest.substr(7)) : "";
+        startDownload();
+        return;
+      }
+    }
+  }
+  wantWhole = false;
   fs::path rel2 = fs::relative(found, part, ec);
   fs::remove_all(dest, ec);
   fs::rename(part, dest, ec);
@@ -333,10 +373,15 @@ void Updater::finishExtract() {
   if (!old.empty() && old != rel.version) s["previous"] = old;
   s["active"] = rel.version;
   s["installed"][rel.version] = {{"dir", (dest / rel2).lexically_normal().string()}, {"asset", asset.name}, {"sha256", wantSha}, {"at", unixMillis()}};
-  // keep the active and the previous version, remove older ones
-  std::string prev = s.value("previous", "");
+  if (s.value("pinned", "") != "" && s.value("pinned", "") != rel.version) DQ_LOG("updater: %s installed; the player keeps playing %s (pinned)", rel.version.c_str(), s.value("pinned", "").c_str());
+  // keep the three newest versions (to go back to, offline too) and the one the player picked; remove older ones
+  std::vector<std::string> keep;
+  for (auto& [k, v] : s["installed"].items()) keep.push_back(k);
+  std::sort(keep.begin(), keep.end(), [](const std::string& a, const std::string& b) { return compareVersions(a, b) > 0; });
+  if (keep.size() > 3) keep.resize(3);
+  const std::string pin = s.value("pinned", "");
   for (auto it = s["installed"].begin(); it != s["installed"].end();) {
-    if (it.key() != rel.version && it.key() != prev) { fs::remove_all(vroot / it.key(), ec); it = s["installed"].erase(it); }
+    if (std::find(keep.begin(), keep.end(), it.key()) == keep.end() && it.key() != pin) { fs::remove_all(vroot / it.key(), ec); it = s["installed"].erase(it); }
     else ++it;
   }
   saveState(s);

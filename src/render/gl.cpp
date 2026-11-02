@@ -19,7 +19,9 @@ void setShaderPack(const std::string& name) {
   if (name.empty()) { DQ_LOG("shader pack: none"); return; }
   fs::path dir = userDir() / "shaderpacks" / name;
   std::error_code ec;
+  if (fs::exists(dir, ec) && !fs::is_directory(dir, ec)) { DQ_LOG("shader pack '%s': an Iris/OptiFine pack (its post passes run: render/post_layer.cpp)", name.c_str()); return; }
   if (!fs::is_directory(dir, ec)) { DQ_WARN("shader pack '%s' not found in %s", name.c_str(), (userDir() / "shaderpacks").string().c_str()); return; }
+  if (fs::is_directory(dir / "shaders", ec)) DQ_LOG("shader pack '%s': an Iris/OptiFine pack (its post passes run: render/post_layer.cpp)", name.c_str());
   std::string files;
   for (auto& e : fs::directory_iterator(dir, ec)) if (e.path().extension() == ".glsl") files += (files.empty() ? "" : ", ") + e.path().filename().string();
   DQ_LOG("shader pack '%s': replaces %s", name.c_str(), files.empty() ? "nothing (no .glsl files)" : files.c_str());
@@ -29,7 +31,11 @@ std::vector<std::string> listShaderPacks() {
   std::vector<std::string> out;
   std::error_code ec;
   fs::path dir = userDir() / "shaderpacks";
-  if (fs::is_directory(dir, ec)) for (auto& e : fs::directory_iterator(dir, ec)) if (e.is_directory(ec)) out.push_back(e.path().filename().string());
+  if (fs::is_directory(dir, ec)) for (auto& e : fs::directory_iterator(dir, ec)) {
+    // folders (our own packs, or an Iris/OptiFine pack unpacked), and Iris/OptiFine packs as they come, zipped
+    if (e.is_directory(ec)) out.push_back(e.path().filename().string());
+    else if (toLower(e.path().extension().string()) == ".zip") out.push_back(e.path().filename().string());
+  }
   std::sort(out.begin(), out.end());
   return out;
 }
@@ -109,6 +115,23 @@ static GLuint compile(GLenum type, const std::string& src, const std::string& na
     glDeleteShader(s); return 0;
   }
   return s;
+}
+
+GLuint buildProgram(const std::string& vs, const std::string& fsrc, const std::string& name, std::string* err) {
+  auto comp = [&](GLenum type, const std::string& src) -> GLuint {
+    GLuint s = glCreateShader(type); const char* p = src.c_str();
+    glShaderSource(s, 1, &p, nullptr); glCompileShader(s);
+    GLint ok = 0; glGetShaderiv(s, GL_COMPILE_STATUS, &ok);
+    if (!ok) { char log[4096]; glGetShaderInfoLog(s, sizeof log, nullptr, log); if (err) *err = log; DQ_WARN("shader %s (%s) failed:\n%s", name.c_str(), type == GL_VERTEX_SHADER ? "vertex" : "fragment", log); glDeleteShader(s); return 0; }
+    return s;
+  };
+  GLuint v = comp(GL_VERTEX_SHADER, vs), f = v ? comp(GL_FRAGMENT_SHADER, fsrc) : 0;
+  if (!v || !f) { if (v) glDeleteShader(v); return 0; }
+  GLuint p = glCreateProgram(); glAttachShader(p, v); glAttachShader(p, f); glLinkProgram(p);
+  glDeleteShader(v); glDeleteShader(f);
+  GLint ok = 0; glGetProgramiv(p, GL_LINK_STATUS, &ok);
+  if (!ok) { char log[4096]; glGetProgramInfoLog(p, sizeof log, nullptr, log); if (err) *err = log; DQ_WARN("shader %s didn't link:\n%s", name.c_str(), log); glDeleteProgram(p); return 0; }
+  return p;
 }
 
 Shader::~Shader() { liveShaders().erase(this); if (prog) glDeleteProgram(prog); }

@@ -44,6 +44,11 @@ public:
   // stats
   int drawnSections = 0, totalSections = 0, pendingJobs = 0;
   size_t arenaBytes = 0, usedBytes = 0;
+  // the terrain's memory budget (Options > Terrain memory; 0 = none): past it, the sections farthest out are let go and
+  // the ring is drawn by the far land instead (render/distant.cpp), the meshed radius pulled in a chunk at a time; it
+  // reaches back out as memory frees up
+  size_t budgetBytes = 0;
+  float budgetR = 1e9f;   // blocks from the camera that are meshed (1e9 = all that's loaded)
   double meshMsAvg = 0; int meshCount = 0; double uploadMs = 0;
   bool timing = false; double gpuMs = 0;     // GL timer query around the terrain passes (stats mode)
   MesherOptions mopt;

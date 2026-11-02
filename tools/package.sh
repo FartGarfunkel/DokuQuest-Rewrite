@@ -3,7 +3,8 @@
 #   dist/DokuQuest-<ver>-x86_64.AppImage      Linux: make it executable and run it (the launcher starts)
 #   dist/DokuQuest-<ver>-linux-x64.tar.gz     Linux without AppImage/FUSE: unpack, run DokuQuest/dokuquest-launcher
 #   dist/DokuQuest-<ver>-windows-x64.zip      Windows: unzip anywhere, run DokuQuest\dokuquest-launcher.exe
-# Each holds one DokuQuest/ folder: dokuquest (game), dokuquest-launcher, dokuquest-server, data/, assets/.
+# Each holds one DokuQuest/ folder: dokuquest (game), dokuquest-launcher, dokuquest-server, data.dqa (+ data/ for packs and
+# sounds), assets/. The "-game" packages are the same without the launcher: what the launcher's updates download.
 # The launcher's updater downloads the tar.gz / zip of newer releases (src/launcher/updater.h).
 #
 #   bash tools/package.sh <build dir> <version> [linux|windows]     (default: this platform)
@@ -22,6 +23,10 @@ CONFIG="${CONFIG:-Release}"
 stage() { # dest folder: the install tree (programs + data + assets)
   rm -rf "$1"; mkdir -p "$1"
   cmake --install "$BUILD" --config "$CONFIG" --prefix "$1" > /dev/null
+  # the data archive: data/ in one file, data.dqa (a zip the game reads; common/fs.cpp), instead of ~9500 loose files.
+  # resourcepacks/ and sounds/ stay folders (players drop things in them); a loose file in data/ always wins.
+  ( cd "$1/data" && set -- $(ls -A | grep -v -x -e resourcepacks -e sounds) && cmake -E tar cf ../data.dqa --format=zip "$@" && rm -rf "$@" )
+  echo "  data.dqa: $(du -h "$1/data.dqa" | cut -f1)"
 }
 
 if [ "$WHAT" = linux ]; then
@@ -39,6 +44,8 @@ Your worlds and settings are kept in ~/.local/share/DokuQuest, so newer versions
 The launcher keeps itself up to date from GitHub Releases (Options > Updates).
 EOS
   tar -C "$STAGE" -czf "$OUT/DokuQuest-$VERSION-linux-x64.tar.gz" DokuQuest
+  # the game alone (no launcher): what the launcher's updates download (launcher/updater.cpp)
+  tar -C "$STAGE" -czf "$OUT/DokuQuest-$VERSION-linux-x64-game.tar.gz" --exclude=DokuQuest/dokuquest-launcher DokuQuest
 
   # ---- AppImage: AppRun starts the launcher. Bundles the non-system libraries the programs need, but never
   # libGL/libEGL/libvulkan or the other driver/desktop libraries (those must come from the user's system).
@@ -102,6 +109,12 @@ if [ "$WHAT" = windows ]; then
   ZIP="$OUT/DokuQuest-$VERSION-windows-x64.zip"; rm -f "$ZIP"
   if command -v 7z > /dev/null; then (cd "$STAGE" && 7z a -tzip -mx=9 "$ZIP" DokuQuest > /dev/null)
   else powershell -NoProfile -Command "Compress-Archive -Path '$(cygpath -w "$APP")' -DestinationPath '$(cygpath -w "$ZIP")'"; fi
+  # the game alone (no launcher): what the launcher's updates download (launcher/updater.cpp)
+  GAMEZIP="$OUT/DokuQuest-$VERSION-windows-x64-game.zip"; rm -f "$GAMEZIP"
+  mv "$APP/dokuquest-launcher.exe" "$STAGE/launcher.exe.keep"
+  if command -v 7z > /dev/null; then (cd "$STAGE" && 7z a -tzip -mx=9 "$GAMEZIP" DokuQuest > /dev/null)
+  else powershell -NoProfile -Command "Compress-Archive -Path '$(cygpath -w "$APP")' -DestinationPath '$(cygpath -w "$GAMEZIP")'"; fi
+  mv "$STAGE/launcher.exe.keep" "$APP/dokuquest-launcher.exe"
   rm -rf "$STAGE"
 fi
 

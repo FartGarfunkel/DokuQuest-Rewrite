@@ -31,6 +31,13 @@ ServerHost::ServerHost(Level& lv, HostOptions o) : opts(std::move(o)), level(lv)
     skins[ref] = payload; netSkinAliases()[local] = ref;
   }
 }
+void ServerHost::addLocalSkin(const std::string& local, const json& payload) {
+  if (!payload.is_object() || payload.empty()) return;
+  const std::string ref = netSkinRef(payload);
+  skins[ref] = payload; netSkinAliases()[local] = ref;
+  json one = json::object(); one[ref] = payload;
+  toAll(SKINS, {{"s", one}});
+}
 ServerHost::~ServerHost() {
   // the level may already be gone: stop() (while it's open) saves everyone and says goodbye; this only closes the port
   if (!host) return;
@@ -619,6 +626,12 @@ void ServerHost::diffMirrors() {
     if (pl.mode != p.aMode) { s["md"] = pl.mode; p.aMode = pl.mode; }
     if (pl.xp != p.aXp || pl.level != p.aLevel) { s["xp"] = pl.xp; s["lv"] = pl.level; p.aXp = pl.xp; p.aLevel = pl.level; }
     if (pl.flying != p.aFly) { s["fl"] = pl.flying; p.aFly = pl.flying; }
+    {   // the story's touch on them (the darkness closing in, the dread while he stares): their game draws it
+      json sd = json::object();
+      for (const char* k : {"darkT", "dreadT", "dreadAll"}) if (pl.data.contains(k) && pl.data[k].is_number()) sd[k] = std::round(pl.data[k].get<float>() * 10) / 10;
+      const std::string sig = sd.dump();
+      if (sig != p.aStory) { s["sd"] = sd; p.aStory = sig; }
+    }
     if (!s.empty()) send(p.enet, SELF, s);
   }
 }

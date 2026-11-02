@@ -1,9 +1,39 @@
-# DokuQuest — session handoff (2026-11-01, evening)
+# DokuQuest — session handoff (2026-11-02, night)
 
 Start here in a new session. Read this file, `CLAUDE.md` (the code map), and only the files a task needs.
 The full feature list is `docs/MASTER_PLAN.md` (the user's master doc, V2); the BTA detail is `docs/BTA_GAP.md`; the
 Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`. Third-party credits: `docs/CREDITS.md` (Horizon MIT; Cubyz and
-BTA ideas only). Released: alpha.9, alpha.10 (On the Road) and alpha.11 (Every Creature Its Own) on 2026-11-01 evening.
+BTA ideas only). Released: alpha.9, alpha.10 (On the Road) and alpha.11 (Every Creature Its Own) on 2026-11-01 evening;
+alpha.12 (Coloured Light) on 2026-11-02 night.
+
+## Night 2026-11-01/02 (the user's list "Let's get these done": gameplay, BTA leftovers, art and tools, rendering, MP)
+Released as alpha.12. docs/STATUS.md has the done / partly / not-yet split. Where the new pieces are:
+- **Coloured light:** render/light_colour_layer.cpp (a 64x48x64 RGB volume flooded on a worker, unit 12, common.glsl
+  lightingAt). **Dyed portals:** sim/portals.cpp (dyeOf/setDye, lv.info.data["portalDye"]). **Bigger biomes:** worldType
+  "large_biomes" (gen/overworld.cpp climateScale x3). **Steam vents:** render/nether_fx_layer.cpp steamVents.
+- **Cast per hand:** sim/magic_hands.cpp castHand; input Act::CastLeft. **Crows:** tools/port/crows.py +
+  creature_beasts.cpp scarecrowPerchAI. **Church:** villager_ai.cpp npcService (every 7th day). **Skylands:**
+  tools/port/skylands_more.py, blockfx.cpp floats/FallingBlock up, creature.cpp whirlwindTick, keepers.cpp valkyries.
+- **MP:** server_sync.cpp "st" (world progress), server_host.cpp "sd" (per-player), split.cpp + netplay.cpp
+  lanShareLocalSkin (host-side couch players in a LAN game; a guest's own couch players are NOT done).
+- **Texture Studio Creatures tab:** launcher/texture_studio.cpp (openSkin/saveSkin; pack folder under userDir, else
+  userDir/textures/entity overlay, which render/creature_models.cpp loadPackPic reads first). DQ_TS_OPEN=<rel> opens one.
+- **Skin check:** creature_models.cpp (no head/body parts -> warn once, fall back).
+- **Shaders:** render/post_layer.cpp (levels: settings.extra.shaderLevel 0..4, assets/shaders/post.glsl; Iris/OptiFine
+  composite*/final passes translated from GLSL 120; zipped packs listed). docs/shader-packs.md.
+- **Distant terrain:** distant.glsl per-block UVs (uTileWorld) + average colour past a pixel; water as chunk water
+  (climateWater, fresnel). Test with DQ_ENV_TEST="x y z yaw pitch time clear" (yaw/pitch in RADIANS; it turns the
+  adaptive range off, which otherwise shrinks the far land in software GL and fogs everything).
+- **Terrain memory budget:** world_renderer.cpp budgetR (settings.extra.terrainMemoryMB), distant.cpp realR/chunkReal.
+- **Particles:** particles.cpp soft particles (sorted, blended, faded, near-camera fade, relit as they drift).
+- **Engine editor + bridge:** client/engine_bridge.cpp (--bridge, 127.0.0.1:25590, JSON lines), net/line_socket.*,
+  launcher/engine_tools.cpp (edit/build/live/Strata over an OpenAI-style endpoint via curl). docs/engine-bridge.md.
+  The user's Strata API is unknown: the endpoint/model/key-variable are settings; ask the user how Strata is reached.
+- **Data archive:** common/fs.cpp DataArchive (installDir()/data.dqa; loose data/ files win); tools/package.sh makes it.
+- **Updates:** "-game" packages (no launcher); the whole one only when launcher.version > DQ_LAUNCHER_VERSION
+  (CMakeLists.txt, raise it when the launcher changes); versions.json "pinned" + Options > Updates "Version to play".
+- **/lineup <page> [n]:** every creature side by side (sim/creature.cpp spawnLineup).
+- **Art pass:** tools/port/mob_restyle.py (only our own creature skins; the 19 the user's pack skins are left alone).
 
 ## Evening 2026-11-01 (the user tested alpha.9: bug list + "variants for every mob, physically different, with lore")
 - **alpha.10 (3670957 + 9c70365):** roads/bridges/travellers (gen/structures_roads.cpp, sim/villager_life.cpp

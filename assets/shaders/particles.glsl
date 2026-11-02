@@ -8,6 +8,7 @@ layout(location = 2) in vec2 aUV;
 layout(location = 3) in uint aLight;
 layout(location = 4) in vec3 aTint;
 layout(location = 5) in uint aFlags;
+layout(location = 6) in float aAlpha;
 uniform mat4 uViewProj;
 uniform vec3 uCamFrac;
 out vec2 vUV;
@@ -16,6 +17,7 @@ out vec2 vLight;
 out vec3 vTint;
 flat out uint vFlags;
 out float vDist;
+out float vAlpha;
 void main() {
   gl_Position = uViewProj * vec4(aPos, 1.0);
   vUV = aUV / 128.0;
@@ -24,6 +26,7 @@ void main() {
   vTint = aTint;
   vFlags = aFlags;
   vDist = length(aPos - uCamFrac);
+  vAlpha = aAlpha;
 }
 #endif
 #ifdef FRAGMENT
@@ -33,13 +36,21 @@ in vec2 vLight;
 in vec3 vTint;
 flat in uint vFlags;
 in float vDist;
+in float vAlpha;
 out vec4 fragColor;
 void main() {
   vec2 uv = clamp(vUV, 0.0, 0.999);
   vec4 t = vLayer < uPageSize ? texture(uTiles, vec3(uv, vLayer)) : texture(uTiles2, vec3(uv, vLayer - uPageSize));
-  if (t.a < 0.5) discard;
+  bool soft = (vFlags & 2u) != 0u;
+  float a = 1.0;
+  if (soft) {
+    // a puff: soft at its rim (whatever the picture's edge), its own alpha, the fade
+    vec2 q = vUV * 2.0 - 1.0;
+    a = t.a * vAlpha * (1.0 - smoothstep(0.55, 1.0, length(q)));
+    if (a < 0.01) discard;
+  } else if (t.a < 0.5) discard;
   vec3 lc = (vFlags & 1u) != 0u ? vec3(1.0) : lighting(vLight.x, vLight.y, false);
   vec3 c = t.rgb * vTint * lc * 0.9;
-  fragColor = vec4(DQ_GRADE(applyFog(c, vDist, vec3(0.0))), 1.0);
+  fragColor = vec4(DQ_GRADE(applyFog(c, vDist, vec3(0.0))), a);
 }
 #endif

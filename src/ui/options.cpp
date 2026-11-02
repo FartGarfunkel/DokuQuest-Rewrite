@@ -136,6 +136,9 @@ public:
     rangeI("renderDist", "Render distance", &s.renderDist, 2, 32, std::to_string(s.renderDist) + " chunks", "Chunks of full detail around you. Split screen caps this a little.");
     { static const int v[] = {0, 512, 1024, 2048}; int cur = 0; for (int i = 0; i < 4; i++) if (s.farTerrain == v[i]) cur = i;
       cur = select("farTerrain", "Distant terrain", cur, {"Off", "512 blocks", "1,024 blocks", "2,048 blocks"}, "Simplified land past the render distance (see forever). Off is fastest."); s.farTerrain = v[cur]; }
+    { static const int v[] = {0, 768, 1536, 3072}; int mb = s.extra.value("terrainMemoryMB", 0), cur = 0; for (int i = 0; i < 4; i++) if (mb == v[i]) cur = i;
+      int c = select("terrainMem", "Terrain memory", cur, {"No limit", "768 MB", "1.5 GB", "3 GB"}, "The graphics memory the land may use. Past it, the chunks farthest out are drawn as distant terrain instead.");
+      if (c != cur) s.extra["terrainMemoryMB"] = v[c]; }
     range("scale", "Resolution", &s.scale, 0.4f, 1, 0.05f, pct(s.scale), "Render fewer pixels for smoother play.");
     range("fov", "Field of view", &s.fov, 55, 100, 1, std::to_string((int)std::lround(s.fov)) + "\xC2\xB0", nullptr);
     range("brightness", "Brightness", &s.brightness, 0, 1, 0.05f, pct(s.brightness), "How much you can see in the dark.");
@@ -177,8 +180,16 @@ public:
       for (size_t i = 0; i < sps.size(); i++) { items.push_back(sps[i]); if (sps[i] == s.shaderPack) cur = (int)i + 1; }
       int c = cur;
       ImGui::PushID("shaderpack");
-      { Row r("Shader pack", "Folders in shaderpacks/ with any of the game's shader files. Switches at once.", "", w, 260);
+      { Row r("Shader pack", "In shaderpacks/: our own packs (folders of the game's shader files), and Iris/OptiFine packs (.zip or folder: their colour, bloom and other after-effects run; their own lighting and shadows don't). Switches at once.", "", w, 260);
         if (combo("##sp", &c, items, std::min(260 * z, w * 0.5f)) && c != cur) { s.shaderPack = c == 0 ? "" : sps[c - 1]; s.save(); setShaderPack(s.shaderPack); reloadAllShaders(); } }
+      ImGui::PopID();
+    }
+    {
+      static const std::vector<std::string> lv = {"Off", "Low: a film grade and vignette", "Medium: and bloom", "High: and sun rays, sharper", "Ultra: all of it, stronger"};
+      int c = std::clamp(s.extra.value("shaderLevel", 0), 0, 4);
+      ImGui::PushID("shaderlevel");
+      { Row r("Shaders", "The game's own shaders over the picture, from a light grade to bloom and sun rays. Works with a shader pack too.", "", w, 260);
+        if (combo("##sl", &c, lv, std::min(260 * z, w * 0.5f))) { s.extra["shaderLevel"] = c; s.save(); } }
       ImGui::PopID();
     }
     ImGui::EndGroup();
@@ -235,6 +246,9 @@ public:
       check("holidayEvents", "Holiday events", &he, "Seasonal surprises from your calendar, like Halloween in October.");
       s.extra["holidayEvents"] = he; }
     check("showFps", "Show FPS", &s.showFps);
+    { bool eb = s.extra.value("engineBridge", false);
+      check("engineBridge", "Engine bridge", &eb, "Lets the launcher's Engine page and coding tools on this computer (like Strata) talk to the game while it runs: commands, shaders reloaded live, screenshots. Port 25590, this computer only.");
+      s.extra["engineBridge"] = eb; }
     // BTA's accessibility page: captions, the colour-blind filters, and the motion that can make some people unwell
     keepX(); heading("Accessibility");
     check("captions", "Captions", &s.captions, "Words at the side of the screen for the sounds around you, with the way they come from.");

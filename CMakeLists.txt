@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.20)
 project(DokuQuest VERSION 1.0.0 LANGUAGES C CXX)
 # DokuQuest C++ — game client, launcher (with dedicated server + Mod Studio) and headless server.
 set(DQ_VERSION "1.0.0-alpha.11" CACHE STRING "Full game version shown in game and launcher")
+# the launcher's own version: raised only when the launcher itself changes. Updates install just the game (the "-game"
+# packages); the whole package, launcher and all, only when this is newer than the running launcher's (launcher/updater.cpp)
+set(DQ_LAUNCHER_VERSION "1.0.0-alpha.12")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -26,7 +29,7 @@ file(GLOB_RECURSE DQ_CORE_SRC CONFIGURE_DEPENDS
   src/common/*.cpp src/core/*.cpp src/world/*.cpp src/gen/*.cpp src/sim/*.cpp src/net/*.cpp src/mod/*.cpp src/server/*.cpp)
 add_library(dqcore STATIC ${DQ_CORE_SRC})
 target_include_directories(dqcore PUBLIC src)
-target_compile_definitions(dqcore PUBLIC DQ_VERSION="${DQ_VERSION}")
+target_compile_definitions(dqcore PUBLIC DQ_VERSION="${DQ_VERSION}" DQ_LAUNCHER_VERSION="${DQ_LAUNCHER_VERSION}")
 target_compile_options(dqcore PRIVATE ${DQ_WARN})
 target_link_libraries(dqcore PUBLIC dq_headers miniz enet quickjs Threads::Threads ${CMAKE_DL_LIBS})
 
@@ -100,6 +103,8 @@ add_custom_target(dq_runtime_data ALL
 #   cmake --install build --prefix dist/DokuQuest
 install(TARGETS dokuquest dokuquest-launcher dokuquest-server RUNTIME DESTINATION .)
 install(DIRECTORY data assets DESTINATION .)
+file(WRITE ${CMAKE_BINARY_DIR}/launcher.version "${DQ_LAUNCHER_VERSION}\n")
+install(FILES ${CMAKE_BINARY_DIR}/launcher.version DESTINATION .)
 # Multiplayer + mods test (headless): a dedicated server and two scripted clients. Run: build/test_net
 add_library(dq_sample_plugin MODULE tools/sample_plugin.c)
 target_include_directories(dq_sample_plugin PRIVATE src)

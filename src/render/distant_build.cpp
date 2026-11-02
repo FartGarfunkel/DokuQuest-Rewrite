@@ -47,7 +47,7 @@ void mergeCols(const Col* const* sub, int n, const Registry& R, Col& out) {
 // the grass / foliage / water tint of a block in a climate (as the chunk mesher tints it); white if none
 vec3 tintOf(const ColorTable& ct, BlockId id, u8 temp, u8 humid, u32 sampleTint) {
   const u8 k = id < ct.tint.size() ? ct.tint[id] : 0;
-  if (k == 3) return vec3(60, 160, 224) / 255.f;
+  if (k == 3) return unpack(climateWater(temp, humid)) / 255.f;   // the chunks' own water colour for the climate
   if (k == 0) return vec3(1);
   if (sampleTint != 0xFFFFFFFF) return unpack(sampleTint) / 255.f * (k == 2 ? 0.9f : 1.f);
   return unpack(climateTint(k == 2 ? "foliage" : "grass", temp, humid)) / 255.f * (k == 2 ? 0.9f : 1.f);

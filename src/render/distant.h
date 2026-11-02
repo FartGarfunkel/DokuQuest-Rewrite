@@ -70,6 +70,7 @@ public:
   void reset();                 // forget everything (world change, pack change, option off)
   float range = 0;              // how far it reaches this frame (blocks)
   bool adaptive = true;         // draw closer by itself when the frame rate drops (distantFor)
+  float realR = 1e9f;           // the chunks are only drawn this far (the terrain memory budget): past it, the far land fills in
   // stats (debug overlay, docs/port/lod.md)
   int drawn = 0, tilesHeld = 0, building = 0, built = 0;
   size_t gpuBytes = 0, summaries = 0, generated = 0;
@@ -117,6 +118,7 @@ private:
   bool glReady = false;
   size_t maxBytes = 64u << 20;
   double clock = 0;
+  glm::dvec3 camAt{0};
 };
 
 } // namespace dq

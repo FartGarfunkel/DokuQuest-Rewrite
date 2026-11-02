@@ -177,6 +177,10 @@ bool WorldRenderer::wantDetail(const SectionKey& k, const vec3& cam) const {
 }
 
 bool WorldRenderer::wanted(const SectionKey& k) const {
+  if (budgetR < 1e8f) {   // over the memory budget: only this near
+    const float dx = k.cx * 16 + 8 - camPos.x, dz = k.cz * 16 + 8 - camPos.z;
+    if (dx * dx + dz * dz > budgetR * budgetR) return false;
+  }
   int band = dimOfY(clampv((int)std::floor(camPos.y), 0, WORLD_H - 1));
   if (k.dim == band) return true;
   float cy = (float)(dimBase(k.dim) + k.sy * 16 + 8);
@@ -287,6 +291,18 @@ void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs)
   parkT -= 1.0 / 60;
   if (parkT <= 0) {
     parkT = 0.5;
+    // the memory budget: over it, mesh a chunk less far out; well under it, a chunk further again
+    if (budgetBytes > 0) {
+      float farthest = 0;
+      for (auto& [k, m] : meshes) { const float dx = k.cx * 16 + 8 - camPos.x, dz = k.cz * 16 + 8 - camPos.z; farthest = std::max(farthest, std::sqrt(dx * dx + dz * dz)); }
+      if (usedBytes > budgetBytes && farthest > 56) {
+        const float was = budgetR; budgetR = std::max(48.f, std::min(budgetR, farthest) - 16.f);
+        if (was >= 1e8f) DQ_LOG("terrain memory: %.0f MB is over the %.0f MB budget; meshing out to %.0f blocks (the far land shows the rest)", usedBytes / 1048576.0, budgetBytes / 1048576.0, budgetR);
+      } else if (budgetR < 1e8f && usedBytes < budgetBytes * 0.72) {
+        budgetR += 16.f;
+        if (budgetR > farthest + 48.f) budgetR = 1e9f;
+      }
+    } else budgetR = 1e9f;
     for (auto it = parked.begin(); it != parked.end();) {
       if (!w->chunk(it->dim, it->cx, it->cz)) { it = parked.erase(it); continue; }
       if (wanted(*it)) {

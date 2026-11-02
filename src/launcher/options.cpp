@@ -4,6 +4,7 @@
 // (common/settings.h, userDir()/settings.json), so the game starts with what is chosen here.
 #include "launcher/launcher.h"
 #include <cstring>
+#include <algorithm>
 #include <cctype>
 
 namespace dq {
@@ -264,6 +265,23 @@ void drawOptions(Launcher& L) {
     ImGui::PushStyleColor(ImGuiCol_Text, L.updater.state == Updater::State::Failed ? C_BAD : C_DIM);
     ImGui::PushTextWrapPos(0); ImGui::TextUnformatted(L.updater.message.c_str()); ImGui::PopTextWrapPos();
     ImGui::PopStyleColor(); ImGui::PopFont();
+  }
+  {
+    // going back to a version kept in versions/ (offline too), or staying on one
+    static std::vector<std::string> vers; static double at = -1;
+    if (at < 0 || nowSeconds() - at > 3) { vers = L.updater.installedVersions(); at = nowSeconds(); }
+    std::vector<std::string> items = {"The newest"}, keys = {""};
+    for (auto& v : vers) { items.push_back(niceVersion(v)); keys.push_back(v); }
+    if (std::find(keys.begin(), keys.end(), std::string(DQ_VERSION)) == keys.end()) { items.push_back(niceVersion(DQ_VERSION) + " (with this launcher)"); keys.push_back(DQ_VERSION); }
+    const std::string pin = L.updater.pinnedVersion();
+    int cur = 0; for (size_t i = 0; i < keys.size(); i++) if (keys[i] == pin) cur = (int)i;
+    Opt o(L, "Version to play", "Go back to an earlier version you have (worlds made in a newer one may not open in an older one), or keep the newest", 260);
+    ImGui::SetNextItemWidth(260);
+    if (ImGui::BeginCombo("##ver", items[cur].c_str())) {
+      for (size_t i = 0; i < items.size(); i++)
+        if (ImGui::Selectable(items[i].c_str(), (int)i == cur) && (int)i != cur) { L.updater.pin(keys[i]); L.setNotice(i == 0 ? std::string("Playing the newest version") : "Playing " + items[i]); }
+      ImGui::EndCombo();
+    }
   }
   {
     Opt o(L, "Check when the launcher starts", "New game versions install by themselves", 40);

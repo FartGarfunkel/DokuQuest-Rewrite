@@ -43,6 +43,7 @@ void App::parseArgs(int argc, char** argv) {
     else if (a == "--smoke-script") { auto j = readJson(next()); if (j) args.smokeScript = *j; }
     else if (a == "--launcher") args.fromLauncher = true;
     else if (a == "--screen") args.screen = next();
+    else if (a == "--bridge") { args.bridge = 25590; if (i + 1 < argc && std::isdigit((unsigned char)argv[i + 1][0])) args.bridge = std::atoi(argv[++i]); }
   }
 }
 
@@ -235,6 +236,8 @@ int App::run(int argc, char** argv) {
   return 0;
 }
 
+void engineBridgeFrame(App& app, int port);   // client/engine_bridge.cpp
+
 void App::frameLoop() {
   double last = nowSeconds();
   while (!quit) {
@@ -243,6 +246,7 @@ void App::frameLoop() {
     input.dt = dt;
     input.beginFrame();
     testScriptFrame(*this);   // --smoke-script: scripted keys/pad/commands (client/test_script.cpp)
+    if (args.bridge || settings.extra.value("engineBridge", false)) engineBridgeFrame(*this, args.bridge ? args.bridge : 25590);   // the launcher's Engine page, Strata
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
       ImGui_ImplSDL2_ProcessEvent(&e);

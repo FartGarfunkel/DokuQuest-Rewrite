@@ -41,6 +41,9 @@ uniform float uPageSize;
 vec4 tileColorGrad(vec2 uv, float layer, vec2 dx, vec2 dy) {
   return layer < uPageSize ? textureGrad(uTiles, vec3(uv, layer), dx, dy) : textureGrad(uTiles2, vec3(uv, layer - uPageSize), dx, dy);
 }
+vec4 tileColorLod(vec2 uv, float layer, float lod) {
+  return layer < uPageSize ? textureLod(uTiles, vec3(uv, layer), lod) : textureLod(uTiles2, vec3(uv, layer - uPageSize), lod);
+}
 vec4 tileHeightAt(vec2 uv, float layer) {
   return layer < uPageSize ? textureLod(uHeights, vec3(uv, layer), 0.0) : textureLod(uHeights2, vec3(uv, layer - uPageSize), 0.0);
 }

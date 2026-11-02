@@ -3,6 +3,8 @@
 #include <sstream>
 #include <cstdlib>
 #include <miniz.h>
+#include <mutex>
+#include <unordered_map>
 #if defined(_WIN32)
 #include <windows.h>
 #undef near   // (windows.h defines near and far as nothing)
@@ -14,15 +16,54 @@
 
 namespace dq {
 
+// ---- the data archive: a release keeps data/ in one file, data.dqa (a zip, made by tools/package.sh), next to the
+// programs; a file is read from data/ itself if it's there (development, mods, a player's own change), else from it
+namespace {
+struct DataArchive {
+  std::mutex mx; bool tried = false, ok = false; mz_zip_archive za{};
+  std::unordered_map<std::string, unsigned> idx; std::string root;
+  void open() {
+    tried = true;
+    const fs::path p = installDir() / "data.dqa";
+    std::error_code ec;
+    if (!fs::exists(p, ec)) return;
+    if (!mz_zip_reader_init_file(&za, p.string().c_str(), 0)) { DQ_WARN("data.dqa: can't read it"); return; }
+    const unsigned n = mz_zip_reader_get_num_files(&za);
+    for (unsigned i = 0; i < n; i++) {
+      char nm[512]; mz_zip_reader_get_filename(&za, i, nm, sizeof nm);
+      if (!mz_zip_reader_is_file_a_directory(&za, i)) idx[nm] = i;
+    }
+    root = dataDir().lexically_normal().generic_string() + "/";
+    ok = true;
+    DQ_LOG("data.dqa: %zu files (loose files in data/ win)", idx.size());
+  }
+  bool read(const fs::path& p, std::string& out) {
+    std::lock_guard<std::mutex> lk(mx);
+    if (!tried) open();
+    if (!ok) return false;
+    const std::string g = p.lexically_normal().generic_string();
+    if (g.compare(0, root.size(), root) != 0) return false;
+    auto it = idx.find(g.substr(root.size()));
+    if (it == idx.end()) return false;
+    size_t n = 0; void* d = mz_zip_reader_extract_to_heap(&za, it->second, &n, 0);
+    if (!d) return false;
+    out.assign((const char*)d, n); mz_free(d);
+    return true;
+  }
+};
+DataArchive& dataArchive() { static DataArchive* a = new DataArchive(); return *a; }   // kept past exit
+} // namespace
+bool inDataArchive(const fs::path& p) { std::string s; return dataArchive().read(p, s); }
+
 std::optional<std::string> readFile(const fs::path& p) {
   std::ifstream f(p, std::ios::binary);
-  if (!f) return std::nullopt;
+  if (!f) { std::string s; if (dataArchive().read(p, s)) return s; return std::nullopt; }
   std::ostringstream ss; ss << f.rdbuf();
   return ss.str();
 }
 std::optional<std::vector<u8>> readBinary(const fs::path& p) {
   std::ifstream f(p, std::ios::binary | std::ios::ate);
-  if (!f) return std::nullopt;
+  if (!f) { std::string s; if (dataArchive().read(p, s)) return std::vector<u8>(s.begin(), s.end()); return std::nullopt; }
   auto n = f.tellg(); f.seekg(0);
   std::vector<u8> v((size_t)n);
   if (n > 0) f.read((char*)v.data(), n);

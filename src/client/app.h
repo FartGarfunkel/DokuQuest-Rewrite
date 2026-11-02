@@ -33,6 +33,7 @@ struct LaunchArgs {
   json smokeScript;          // smoke test: scripted actions
   bool fromLauncher = false;
   std::string screen;        // --screen <name>: open that menu at start (tests, screenshots)
+  int bridge = 0;            // --bridge [port]: the engine bridge on (client/engine_bridge.cpp)
 };
 
 class App {

@@ -441,5 +441,9 @@ _s10 = _u.spec_from_file_location('skylands_more', pathlib.Path(__file__).with_n
 _s9 = _u.spec_from_file_location('crows', pathlib.Path(__file__).with_name('crows.py')); _m9 = _u.module_from_spec(_s9); _s9.loader.exec_module(_m9); _m9.main(d)
 _s = _u.spec_from_file_location('spawn_eggs', pathlib.Path(__file__).with_name('spawn_eggs.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)   # (its egg)
 
+# ---- the art pass on our own creature skins: into the base pack's light and colour (tools/port/mob_restyle.py; the
+# pack's own creatures untouched; before the looks, which are made from these) ----
+_s11 = _u.spec_from_file_location('mob_restyle', pathlib.Path(__file__).with_name('mob_restyle.py')); _m11 = _u.module_from_spec(_s11); _s11.loader.exec_module(_m11); _m11.main(d)
+
 # ---- every creature's looks with stories of their own (tools/port/mob_variants.py; after the biome mobs, which get theirs too) ----
 _s8 = _u.spec_from_file_location('mob_variants', pathlib.Path(__file__).with_name('mob_variants.py')); _m8 = _u.module_from_spec(_s8); _s8.loader.exec_module(_m8); _m8.main(d)

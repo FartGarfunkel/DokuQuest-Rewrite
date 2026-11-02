@@ -407,6 +407,7 @@ void NetClient::applySelf(const json& m) {
   Player& p = *me;
   if (m.contains("tp")) { p.pos = p.prevPos = v3(m["tp"], p.pos); p.vel = vec3(0); p.fallDist = 0; p.realm = m.value("rl", p.realm); }
   if (m.contains("kb")) p.vel += v3(m["kb"]);
+  if (m.contains("sd") && m["sd"].is_object()) for (const char* k : {"darkT", "dreadT", "dreadAll"}) { if (m["sd"].contains(k)) p.data[k] = m["sd"][k]; else p.data.erase(k); }
   if (m.contains("hurt")) {
     float a = m["hurt"].get<float>();
     p.hp -= a; p.hurtTime = 0.5f;
@@ -431,6 +432,10 @@ void NetClient::applyEnv(const json& m) {
   I.day = m.value("day", I.day);
   if (m.contains("w") && !m["w"].is_null()) { if (!I.data.is_object()) I.data = json::object(); I.data["weather"] = m["w"]; }
   if (m.contains("rules") && m["rules"].is_object()) I.rules = m["rules"];
+  if (m.contains("st") && m["st"].is_object()) {   // the story's state, as the host has it (server_sync.cpp sendEnv)
+    if (!I.data.is_object()) I.data = json::object();
+    for (const char* k : {"rift", "eggs", "end", "portalDye", "dungeons", "structs"}) { if (m["st"].contains(k)) I.data[k] = m["st"][k]; else I.data.erase(k); }
+  }
 }
 
 void NetClient::applyFx(const json& m) {

@@ -5,10 +5,44 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
-## 1.0.0-alpha.12 (in progress)
+## 1.0.0-alpha.12 — Coloured Light (November 2026)
+
+**Light in colour:** redstone glows red, soul fire and soul lanterns blue, sea lanterns cyan, amethyst violet, the coloured lamps their own colour, and torches and fire stay warm. The colours spread through the air and mix where lights meet, on blocks, creatures and what you hold (Options → Coloured light).
+
+**Gameplay:**
+- **A cast button for each hand:** cast your right hand's spell, your left hand's, or both together (Z / mouse 4 for both, N / mouse 3 for the left; on a controller hold Sneak and press RB or LB).
+- **Crows** flock over fields and village farms and settle on scarecrows (a pumpkin on a hay bale on a fence post) and on fence posts by the crops, two to a head. Walk up on them and they take off, unless you sneak.
+- **Villagers go to church:** every seventh morning the bell rings, villagers fill the pews and stand at the back, and bow before the chapel's banners.
+- **More in the Skylands:** driftstone, a pale lilac stone that falls *up* until it meets something; whirlwinds that wander the islands and toss whatever they touch into the air; and the Valkyrie Queen now wakes with two valkyries at her side.
+- **Players move better:** a push-off and a tuck when you jump, a landing that sinks with the height of the fall, a wind-up before a swing, a bounce and a nod as you run.
+- **Steam vents in the Nether:** the vents breathe out plumes of steam with a hiss now and then, in every Nether land.
+
+**Worlds and portals:**
+- **Tune a portal with dye:** use a dye on a portal's frame and it takes that colour and links only with a portal of the same colour, so many portals can stand side by side and each goes where you mean it to.
+- **Bigger biomes:** a new world option makes every land three times as wide.
+
+**Playing together:**
+- **Dragons and world progress are shared:** friends see the dragons as you do, and your world's progress (eggs, the End, tuned portals, cleared dungeons, places found) reaches them too.
+- **Split screen and LAN together:** the host of a LAN game can add couch players, and their skins reach everyone.
+
+**Looks:**
+- **Distant terrain:** the far land now shows every block's own picture at its true size (no more blocks stretched across a mountain), fading to the block's colour where a block is smaller than a pixel; its water takes the same colour as the water near you, darkens with depth and catches the sky at a low angle.
+- **Terrain memory:** a new option caps the graphics memory the land uses; past it, the chunks farthest out are drawn as distant terrain instead.
+- **Particles:** smoke, breath, mist and poofs are soft and see-through now, fade in and out, and take the light of wherever they drift; your breath in the cold no longer fills your view.
+- **Shaders:** built-in shader levels (Off, Low, Medium, High, Ultra): a film grade and vignette, bloom, sun rays and sharpening. And **Iris/OptiFine shader packs** can be used: drop the pack's .zip in shaderpacks/ and its after-effects (colour, bloom, tone mapping, depth of field...) run over the game's picture.
+- **Creatures:** the skins the DokuQuest Base pack has none of (about a hundred creatures) now sit with the pack's own: a shade darker and less sweet, their speckle smoothed into a soft mottle, their markings kept; the pack's own creatures are untouched. Every creature's skin is checked when it loads (one without a head or a body falls back to its own instead of drawing broken).
+
+**Tools:**
+- **Texture Studio:** a new Creatures tab: open any creature's skin from your resource pack, paint it at its own size with a live preview, and save it straight into the pack (or over it, without touching the pack); "Put the pack's back" undoes it.
+- **The Engine page** in the Mod Studio is now an engine editor: open and edit the engine's source, shaders and data, build it, start the game with the engine bridge and drive it live (commands, shaders reloaded as you save, screenshots, its log), and ask a coding assistant such as Strata about the open file. Tools on your computer can drive the game through the same bridge (docs/engine-bridge.md).
+- **/lineup <page>** sets every creature out side by side, a page at a time.
+
+**Downloads and updates:**
+- Releases keep the game's data in one file (data.dqa) instead of nine and a half thousand; a loose file in data/ still wins, for mods and your own changes.
+- Updates download just the game; the whole package only when the launcher itself has changed.
+- **Pick the version to play** (Options → Updates): go back to an earlier version you have, offline too; the last three are kept.
 
 **Fixes:**
-
 - **Placed mob heads no longer flicker:** the block under each head drew a stone box in the same place as the head, and the two fought (most easily seen on a Wither skull on soul sand or a command block).
 
 - Removed Herobrine.

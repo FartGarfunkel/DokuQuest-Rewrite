@@ -1,7 +1,8 @@
 // launcher/updater.h — updates from GitHub Releases (port of launcher/desktop/updater.js's rules).
 // The launcher asks GitHub for the newest release of FartGarfunkel/DokuQuest-Rewrite with the system curl
 // (curl on Linux, curl.exe on Windows 10+; no HTTP library is linked), picks this platform's build
-// (…-linux-x64.tar.gz / …-windows-x64.zip), downloads it into userDir()/versions/, checks its size and
+// (…-linux-x64-game.tar.gz / …-windows-x64-game.zip: the game alone; the whole package only when the release's launcher is
+// newer than this one, DQ_LAUNCHER_VERSION), downloads it into userDir()/versions/, checks its size and
 // SHA-256 (the asset's "digest", else the release's SHA256SUMS.txt), unpacks it with the system tar into
 // userDir()/versions/<version>/ and makes it the active version. Play then starts that version's game;
 // the previous version is kept, so a version whose game fails to start falls back to the one before.
@@ -21,7 +22,7 @@ struct ReleaseInfo {
 bool parseRelease(const json& j, ReleaseInfo& out, std::string& err);   // GitHub /releases/latest JSON
 int compareVersions(const std::string& a, const std::string& b);      // semver-ish: 1.0.0-alpha.2 < 1.0.0-beta < 1.0.0
 std::string niceVersion(const std::string& v);                        // "0.9.0-alpha.8" → "0.9.0.8" (how players see it)
-const ReleaseAsset* pickAsset(const ReleaseInfo& r, const std::string& platform);   // "linux" | "windows"
+const ReleaseAsset* pickAsset(const ReleaseInfo& r, const std::string& platform, bool gameOnly = true);   // "linux" | "windows"; the "-game" package first
 std::string platformName();
 std::string sha256Hex(const void* data, size_t n);
 std::string sha256File(const fs::path& p);
@@ -49,6 +50,11 @@ public:
   // build, else the one next to the launcher. *version receives the version it belongs to.
   fs::path executable(const std::string& base, std::string* version) const;
   void markBad(const std::string& version, const std::string& why);
+  // going back: the versions kept in versions/ (newest first), and the one the player picked to play ("" = the newest;
+  // DQ_VERSION = the one next to the launcher). Works offline.
+  std::vector<std::string> installedVersions() const;
+  std::string pinnedVersion() const;
+  void pin(const std::string& version);
   std::string currentVersion() const;   // max(this build, active installed)
 private:
   void fail(const std::string& msg);
@@ -63,6 +69,7 @@ private:
   ReleaseInfo rel;
   ReleaseAsset asset;
   std::string wantSha;
+  bool wantWhole = false;   // this release's launcher is newer than ours: the whole package, not just the game
 };
 
 } // namespace dq

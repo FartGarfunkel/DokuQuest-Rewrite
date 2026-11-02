@@ -21,7 +21,8 @@ bool writeJson(const fs::path& p, const json& j, bool pretty = true);
 //  userDir()     — per-user folder: ~/.local/share/DokuQuest (Linux), %APPDATA%\DokuQuest (Windows)
 //                  saves/, resourcepacks/, mods/, shaderpacks/, skins/, screenshots/, servers/, settings.json
 fs::path installDir();
-fs::path dataDir();      // installDir()/data
+fs::path dataDir();      // installDir()/data (a release keeps its files in installDir()/data.dqa: readFile/readBinary/readJson look there too)
+bool inDataArchive(const fs::path& p);   // is this data/ file in data.dqa?
 fs::path assetsDir();    // installDir()/assets
 fs::path userDir();
 fs::path userSub(const char* name);   // creates it

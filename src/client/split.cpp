@@ -84,9 +84,11 @@ void GameSession::routeInput() {
 
 // A controller nobody plays with pressed Start: that person joins (gamepad.js claim). A controller the first person already
 // plays with (it did something besides Start) keeps pausing instead.
+void lanShareLocalSkin(App& app, const std::string& ref);   // client/netplay.cpp
+
 void GameSession::checkJoin() {
   Input& in = app.input;
-  if (level->net || locals.size() >= 4 || !app.screens.empty() || entered || in.setupActive) return;
+  if ((level->net && level->isRemote()) || locals.size() >= 4 || !app.screens.empty() || entered || in.setupActive) return;   // (a world you host on LAN takes couch players too)
   if (g_p1Pad >= 0 && std::none_of(in.pads().begin(), in.pads().end(), [](const PadState& p) { return p.active && p.id == g_p1Pad; })) {
     g_p1Pad = -1; routeInput();   // their controller went away: the next one used is theirs
   }
@@ -106,7 +108,7 @@ void GameSession::checkJoin() {
 }
 
 int GameSession::addLocal(SDL_JoystickID pad) {
-  if (level->net || locals.size() >= 4 || locals.empty()) return -1;
+  if ((level->net && level->isRemote()) || locals.size() >= 4 || locals.empty()) return -1;
   selectLocal(0);
   int i = (int)locals.size();
   if (i == 1) {   // the first person keeps the keyboard and the controllers they have been playing with
@@ -130,6 +132,7 @@ int GameSession::addLocal(SDL_JoystickID pad) {
     np->realm = p0->realm; np->yaw = p0->yaw; np->pitch = 0; np->vel = vec3(0);
   }
   Player* ent = static_cast<Player*>(level->spawn(std::move(np)));
+  if (level->net) lanShareLocalSkin(app, ent->skin);   // hosting on LAN: the guests get their skin too
   locals.emplace_back();
   LocalPlayer& L = locals.back();
   L.index = i; L.player = ent; L.frame.settings = &app.settings; L.src.kb = false; L.src.pads = {pad};

@@ -33,3 +33,22 @@ take the sepia grade; choose "None" to go back.
 
 Bigger packs copy a file (say `clouds.glsl` or `chunk.glsl`) into the pack folder and edit it; keep the
 same `in`/`out`/uniform names, since the game sets those by name.
+
+## Iris / OptiFine packs
+Drop the pack's `.zip` (or its unpacked folder, the one holding `shaders/`) into `shaderpacks/` and pick it
+the same way. The game runs the pack's **post passes** — `shaders/composite.fsh`, `composite1..15.fsh` and
+`final.fsh` (with their `.vsh`, and `world0/` versions first) — over its own picture, so a pack's colour
+grading, tone mapping, bloom, depth of field, vignettes and film looks come through. Each pass gets
+`colortex0`/`gcolor` (the picture so far), `depthtex0`/`depthtex1` (the depth), and the usual uniforms
+(`viewWidth`, `viewHeight`, `frameTimeCounter`, `sunPosition`, `upPosition`, `gbufferProjection(Inverse)`,
+`gbufferModelView(Inverse)`, `cameraPosition`, `worldTime`, `rainStrength`, `isEyeInWater`, `near`, `far`...).
+The pack's `gbuffers_*`, `shadow` and `deferred` programs are **not** run — the game's own world shaders
+draw the world — so whatever a pack does with its own G-buffers (its lighting, shadows, water,
+reflections) isn't there, and a pass that reads `colortex1..7` sees black. Old `#version 120` GLSL is
+translated (`texture2D`, `varying`, `gl_FragData`, `gl_TexCoord`, `ftransform()`...); a pass that still
+won't compile is left out and the log says why.
+
+## The built-in shaders (Settings → Shaders)
+Off, Low (a film grade and a vignette), Medium (and bloom), High (and sun rays, a little sharpening),
+Ultra (stronger bloom and longer rays). They run after a shader pack's passes, so the two go together.
+`assets/shaders/post.glsl` holds them; a pack can replace it like any other file.

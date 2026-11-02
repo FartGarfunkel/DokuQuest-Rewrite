@@ -217,6 +217,29 @@ int spawnLookRow(Level& lv, int realm, vec3 at, float yaw, const std::string& ty
   }
   return n;
 }
+// /lineup <page> [per page]: every creature in turn, a page of them side by side (checking their skins and looks)
+std::string spawnLineup(Level& lv, int realm, vec3 at, float yaw, int page, int per) {
+  std::vector<std::string> all;
+  if (reg().mobs.is_object()) for (auto& [k, v] : reg().mobs.items()) if (k != "herobrine" && isCreatureType(k)) all.push_back(k);
+  std::sort(all.begin(), all.end());
+  per = clampv(per, 1, 16);
+  const int pages = ((int)all.size() + per - 1) / per;
+  if (page < 1 || page > pages) return "Pages 1 to " + std::to_string(pages);
+  const vec3 fwd(-std::sin(yaw), 0, -std::cos(yaw)), side(std::cos(yaw), 0, -std::sin(yaw));
+  std::vector<std::string> row(all.begin() + (page - 1) * per, all.begin() + std::min((int)all.size(), page * per));
+  float total = 0; std::vector<float> wd;
+  for (auto& k : row) { const CreatureType* T = creatureType(k); float w = T ? std::max(0.8f, T->w * 2.2f + 0.5f) : 1; wd.push_back(w); total += w; }
+  float x = -total * 0.5f; std::string names;
+  for (size_t i = 0; i < row.size(); i++) {
+    x += wd[i] * 0.5f;
+    Creature* c = spawnCreature(lv, realm, row[i], at + fwd * 7.f + side * x);
+    x += wd[i] * 0.5f;
+    if (!c) continue;
+    c->variant = ""; c->calm = true; c->yaw = yaw + PI; c->kept = false; c->data["noDrops"] = true;
+    names += (names.empty() ? "" : ", ") + row[i];
+  }
+  return "Page " + std::to_string(page) + "/" + std::to_string(pages) + ": " + names;
+}
 std::string creatureLabelOf(Entity& e) {
   if (auto* c = dynamic_cast<Creature*>(&e)) return c->label();
   return std::string();

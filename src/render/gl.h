@@ -71,6 +71,8 @@ private:
   bool sharedIbo = false;
   std::vector<VertexAttrib> attrs;
 };
+// a program from two finished sources (no shader-pack lookup, no #include): Iris/OptiFine post passes (render/post_layer.cpp)
+GLuint buildProgram(const std::string& vs, const std::string& fs, const std::string& name, std::string* err = nullptr);
 GLuint quadIndexBuffer(size_t quads);   // shared 0,1,2, 0,2,3 pattern for quad lists
 
 GLuint makeTexture2D(int w, int h, const void* rgba, bool nearest = true, bool mips = false, bool repeat = true);

@@ -39,6 +39,10 @@ public:
       if (n >= 6 && tm >= 0) s.level->info.time = tm;
       if (n >= 7 && !testWeather) { testWeather = true; if (WeatherSystem* W = weatherOf(*s.level)) { std::string k = wk; if (k == "front") W->startFront("thunder"); else { W->set(k); W->rain = k == "clear" ? 0.f : 1.f; W->thunderK = k == "thunder" ? 1.f : 0.f; } } }
     }
+    // the terrain memory budget (MB; 0 = none) and how far the chunks are meshed under it: the far land fills the rest
+    const int mb = s.app.settings.extra.value("terrainMemoryMB", 0);
+    s.worldRenderer.budgetBytes = mb > 0 ? (size_t)mb << 20 : 0;
+    lod.realR = s.worldRenderer.budgetR;
     lod.update(*s.level, s.world(), s.frame, *s.app.pool, dt, s.app.tiles);
   }
   bool testWeather = false;

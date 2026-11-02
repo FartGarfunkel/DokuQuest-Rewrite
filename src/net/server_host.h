@@ -83,7 +83,7 @@ public:
     std::string name, skin; int R = 6;
     Player* pl = nullptr; u32 eid = 0;
     // what the player's own game last told us (anything else on the mirror was done by the server)
-    vec3 aPos{0}, aVel{0}; float aHp = 20; std::string aInv, aMode; int aXp = 0, aLevel = 0, aRealm = 0; bool aFly = false, aDead = false;
+    vec3 aPos{0}, aVel{0}; float aHp = 20; std::string aInv, aMode, aStory; int aXp = 0, aLevel = 0, aRealm = 0; bool aFly = false, aDead = false;
     int invSeq = 0;
     u32 aRide = 0; bool rideSeen = true;   // riding: what the server last set (sent as SELF rd) and whether their game has it yet
     double allowJumpUntil = 0, lastMeAt = 0, savedAt = 0, joinedAt = 0, motdAt = -1, chunkBytes = 0;
@@ -104,6 +104,7 @@ private:
   std::set<int> watched;
   LanAnnouncer lanAnn;
   double t = 0, tEnts = 0, tEnv = 0, tChunks = 0, tSave = 0;
+  std::string storySig; double storyAt = -1e9;   // (sendEnv: the story's state, sent when it changes)
   bool logging = false;
   // queued for everyone
   struct BlkQ { int realm, x, y, z; BlockId id; u8 meta; };
@@ -143,6 +144,9 @@ private:
   void flushBlocks();
   void flushEffects();
   void sendEnv();
+public:
+  void addLocalSkin(const std::string& local, const json& payload);   // a couch player who joined after the world opened
+private:
   void queueFx(char kind, json item);
   void sendFxTo(Peer& p, const char* key, json item);
 };

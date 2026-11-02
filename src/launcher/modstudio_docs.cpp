@@ -293,6 +293,13 @@ const Area areas[] = {
   {"client", "App (window, loop, screens), GameSession (world, player, render layers)", "client"},
   {"launcher", "this launcher: news, Play, options, server, Mod Studio, updater", "client"},
 };
+// past src/: the other folders you'd edit (relative to src/)
+const Area extraAreas[] = {
+  {"../assets/shaders", "the GLSL shaders (one file per shader; saving one reloads it in the running game)", "render"},
+  {"../data", "the game's data: blocks, items, recipes, creatures, models (JSON)", "core"},
+  {"../tools/port", "the data tools (Python) that make data/ from the original game and our additions", "data"},
+  {"../docs", "notes, plans and the guides (shader packs, the engine bridge)", "—"},
+};
 struct EngineState { int sel = 0; fs::path srcRoot; bool searched = false; std::vector<std::pair<std::string, int>> files; int fileSel = -1; std::string preview; int listedFor = -1; };
 EngineState& es() { static EngineState s; return s; }
 fs::path findSource() {
@@ -302,6 +309,9 @@ fs::path findSource() {
   return {};
 }
 }
+
+void engineOpenFile(const fs::path& p);   // launcher/engine_tools.cpp
+void drawEngineTools(Launcher& L, const fs::path& root);
 
 void drawEngine(Launcher& L) {
   EngineState& E = es();
@@ -317,13 +327,15 @@ void drawEngine(Launcher& L) {
   ImGui::Spacing();
   if (twoColumns("##eng")) {
     cardBegin(L, "Areas");
-    for (int i = 0; i < (int)std::size(areas); i++) {
-      std::string lbl = std::string("src/") + areas[i].dir;
+    const int nA = (int)std::size(areas), nX = E.srcRoot.empty() ? 0 : (int)std::size(extraAreas);
+    for (int i = 0; i < nA + nX; i++) {
+      const Area& ar = i < nA ? areas[i] : extraAreas[i - nA];
+      std::string lbl = i < nA ? std::string("src/") + ar.dir : std::string(ar.dir + 3);
       if (ImGui::Selectable((lbl + "##a").c_str(), E.sel == i)) { E.sel = i; E.fileSel = -1; E.preview.clear(); }
-      if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", areas[i].what);
+      if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", ar.what);
     }
     cardEnd(); nextCell();
-    const Area& a = areas[E.sel];
+    const Area& a = E.sel < nA ? areas[E.sel] : extraAreas[E.sel - nA];
     cardBegin(L, (std::string("src/") + a.dir + "##card").c_str());
     ImGui::PushStyleColor(ImGuiCol_Text, S_TEXT); ImGui::TextUnformatted(a.what); ImGui::PopStyleColor();
     hint(L, (std::string("Builds on: ") + a.links).c_str());
@@ -344,8 +356,7 @@ void drawEngine(Launcher& L) {
       for (int i = 0; i < (int)E.files.size(); i++) {
         if (ImGui::Selectable(strFormat("%s  (%d lines)##f%d", E.files[i].first.c_str(), E.files[i].second, i).c_str(), E.fileSel == i)) {
           E.fileSel = i;
-          auto t = readFile(E.srcRoot / a.dir / E.files[i].first);
-          E.preview = t ? (t->size() > 60000 ? t->substr(0, 60000) + "\n\n/* … truncated for preview … */" : *t) : "";
+          engineOpenFile((E.srcRoot / a.dir / E.files[i].first).lexically_normal());   // into the editor below
         }
       }
     } else hint(L, "This copy has no source next to it; the files are on GitHub.");
@@ -358,6 +369,7 @@ void drawEngine(Launcher& L) {
     ImGui::PopFont();
   }
   panelEnd();
+  if (!E.srcRoot.empty()) drawEngineTools(L, E.srcRoot.parent_path());   // edit, build, the live game, Strata
   panelBegin(L, "Editing the engine safely");
   static bool chk[5] = {};
   const char* items[] = {"I kept a backup of my worlds (the saves folder)", "I preferred a mod or data pack when the DQ API was enough",

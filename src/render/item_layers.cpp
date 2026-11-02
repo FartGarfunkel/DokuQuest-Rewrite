@@ -23,6 +23,7 @@ void registerStandLayer();
 void registerHeldLightFx();
 void registerWinterVillageLayer();
 void registerColourFilterLayer();
+void registerPostLayer();   // render/post_layer.cpp
 void registerDreamlightLayer();
 void registerStatueLayer();
 void registerHeadLayer();   // render/head_layer.cpp
@@ -41,6 +42,7 @@ void registerItemLayers() {
   registerStandLayer();         // render/stand_layer.cpp         // render/swing_layer.cpp
   registerHeldLightFx();       // render/held_light_fx.cpp
   registerWinterVillageLayer();   // render/winter_village_layer.cpp (December)
+  registerPostLayer();           // the built-in shader levels and Iris/OptiFine post passes
   registerColourFilterLayer();   // render/colour_filter_layer.cpp
   registerDreamlightLayer();     // render/dreamlight_layer.cpp
   registerStatueLayer();   // render/statue_layer.cpp

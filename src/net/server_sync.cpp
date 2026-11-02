@@ -213,8 +213,17 @@ void ServerHost::sendEntities(Peer& p, const std::unordered_map<u32, Snap>& snap
 
 // ---- time & weather ----
 void ServerHost::sendEnv() {
-  json w = level.info.data.is_object() && level.info.data.contains("weather") ? level.info.data["weather"] : json();
-  toAll(ENV, {{"time", level.info.time}, {"day", level.info.day}, {"w", w}, {"rules", level.info.rules}}, 0, 1);
+  const json& D = level.info.data;
+  json w = D.is_object() && D.contains("weather") ? D["weather"] : json();
+  json m = {{"time", level.info.time}, {"day", level.info.day}, {"w", w}, {"rules", level.info.rules}};
+  // the story and the world's shared happenings, for friends' games to show as the host's does: the rift (fragments,
+  // stage, sealed: the quest line, the fog, the sky going wrong), the dragon eggs' countdowns, the End's state, tuned
+  // portals' colours — when they change, and every ten seconds anyway
+  json st = json::object();
+  if (D.is_object()) for (const char* k : {"rift", "eggs", "end", "portalDye", "dungeons", "structs"}) if (D.contains(k)) st[k] = D[k];
+  const std::string sig = st.dump();
+  if (sig != storySig || t - storyAt > 10) { m["st"] = st; storySig = sig; storyAt = t; }
+  toAll(ENV, m, 0, 1);
 }
 
 // ---- sounds, puffs, messages ----

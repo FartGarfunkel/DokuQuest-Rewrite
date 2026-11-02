@@ -16,6 +16,7 @@
 namespace dq {
 bool setCreatureLook(Entity& e, const std::string& look);   // sim/creature.cpp (creature.h clashes with gameplay.h here)
 int spawnLookRow(Level& lv, int realm, vec3 at, float yaw, const std::string& type);
+std::string spawnLineup(Level& lv, int realm, vec3 at, float yaw, int page, int per);
 
 static double rnd() { static thread_local std::mt19937 g{std::random_device{}()}; return std::uniform_real_distribution<double>(0, 1)(g); }
 
@@ -345,6 +346,10 @@ static void registerBuiltinCommands() {
     if (a.empty()) throw CommandUsage{};
     int n = spawnLookRow(c.lv, c.p.realm, c.p.pos, c.p.yaw, toLower(a[0]));
     return n ? std::to_string(n) + " looks of " + toLower(a[0]) : "No such creature";
+  });
+  C("lineup", "<page> [per page]", "Every creature, a page at a time, side by side", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
+    double pg = num(a, 0, 1), per = num(a, 1, 8);
+    return spawnLineup(c.lv, c.p.realm, c.p.pos, c.p.yaw, std::isfinite(pg) ? (int)pg : 1, std::isfinite(per) ? (int)per : 8);
   });
   C("setblock", "<x y z> <block>", "Place one block", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
     int x = coord(c.p, a, 0, 0), y = coord(c.p, a, 1, 1), z = coord(c.p, a, 2, 2);

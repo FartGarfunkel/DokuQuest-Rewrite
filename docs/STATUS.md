@@ -1,21 +1,22 @@
-# DokuQuest C++ — what's done and what's left (updated 2026-11-01, after alpha.11)
+# DokuQuest C++ — what's done and what's left (updated 2026-11-02, alpha.12)
 
 This is the one current list. It replaces the open items in QUEUE.md (the alpha.3 queue: all done), NOTES_AUDIT.md
 (the alpha.8 audit) and the bug lists in SATURDAY_PLAN / WEEKEND_PLAN. MASTER_PLAN.md keeps the phases, with a
 status block at the top.
 
-## Being worked on now (the user's list, 2026-11-01 night)
-- **Gameplay:** a cast button for each hand (magic); the Story Mode animation layer; more Skylands content; villagers
-  using church banners; crows landing on scarecrows.
-- **BTA leftovers:** coloured block light; portals tuned with dye; a "bigger biomes" world option.
-- **Art and tools:** an art pass on mob skins and textures that clash (only the ones NOT from the user's own pack, the
-  DokuQuest Base pack); a creature-skin tab in the Texture Studio that saves straight into a pack; a check of every
-  mob's skin; Iris/OptiFine shader packs and built-in shader levels.
-- **Rendering:** distant terrain bugs and anomalies (bring it up to Cubyz's quality); a smaller vertex format and a
-  memory budget for distant terrain; a particle pass.
-- **Multiplayer:** dragons and the story synced for friends; split screen combined with LAN.
-- **World:** steam vents in the Nether.
-- **Tools:** the engine GUI with Strata; the data archive and game-only launcher updates.
+## The user's list of 2026-11-01 night (alpha.12)
+Done: a cast button for each hand; the Story Mode animation layer (jump push-off/tuck, landing, swing wind-up, run
+bounce); more Skylands (driftstone, whirlwinds, valkyries); villagers at church with the banners; crows on scarecrows;
+coloured block light; portals tuned with dye; bigger biomes; the creature-skin tab in the Texture Studio (saves into
+the pack or over it); the skin check (a skin with no head or body falls back); Iris/OptiFine packs (their post passes)
+and the built-in shader levels; distant terrain (per-block textures, water like the near water, the breath blob was a
+particle); a terrain memory budget (far land fills the ring); the particle pass (soft blended smoke/breath/mist,
+relit as they drift); dragons and world progress synced; split screen with LAN (host side); steam vents in every
+Nether; the engine editor with the engine bridge and Strata (OpenAI-style endpoint); the data archive (data.dqa);
+game-only updates with a version picker (rollback, three kept); /lineup.
+Partly: the art pass on our own creature skins (tools/port/mob_restyle.py smooths speckle; the user's pack untouched).
+Not yet: split screen on a LAN guest's side; a smaller chunk vertex format (the budget came first); the launcher
+replacing itself (it now only needs to when DQ_LAUNCHER_VERSION goes up).
 
 ## Still open after that
 - Mob tweaks from BTA: creepers hiding under trapdoors, smarter squid, pigs keeping momentum on stairs; dwarf mode

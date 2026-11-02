@@ -165,6 +165,8 @@ static Img loadPackPic(PackFS* pk, const std::string& rel) {
   Img im;
   if (!pk || rel.empty()) return im;
   std::string r = rel; if (r.rfind("entity/", 0) != 0) r = "entity/" + r;
+  // your own skin over the pack's (the Texture Studio's Creatures: userDir()/textures/entity/...)
+  { std::error_code ec; const fs::path mine = userDir() / "textures" / (r + ".png"); if (fs::exists(mine, ec) && loadPng(mine, im.w, im.h, im.px)) return im; im.w = 0; }
   auto data = pk->read(pk->texRoot + r + ".png");
   if (!data || !loadPngMem(data->data(), data->size(), im.w, im.h, im.px)) im.w = 0;
   return im;
@@ -266,6 +268,15 @@ static bool packSkin(const RigModel& M, const std::string& key, std::vector<std:
       if (a) { fs[f] = std::move(px); any = true; }
     }
     if (any) { faces[pi] = std::move(fs); done.insert(pp.name); } else empty.insert(pp.name);
+  }
+  // the skin check: a pack picture of the wrong layout (another mob's, an old 64x32 net where a 64x64 is read...) leaves
+  // the head or the body empty — that would draw a headless or bodiless creature. Such a skin isn't used: the creature
+  // keeps the game's own pictures, and the log says which skin was turned down (once each).
+  for (const char* must : {"head", "body"}) if (M.find(must) >= 0 && empty.count(must) && !done.count(must)) {
+    static std::set<std::string> told;
+    if (told.insert(rel).second) DQ_WARN("creature skins: %s.png from the resource pack doesn't fit %s (its %s is empty); using the game's own", rel.c_str(), key.c_str(), must);
+    for (auto& f : faces) f = std::array<Pic, 6>{};
+    return false;
   }
   int eyesPart = M.find("eyes");
   if (eyesPart >= 0) {
