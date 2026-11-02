@@ -52,6 +52,10 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **/kill and /summon know creatures by name:** `/kill ghoul` or `/kill @e[type=ghoul]` clears those nearby (it used to kill *you*, whatever you typed after it), `/kill @e` every creature nearby, and the Minecraft names work too (`/summon zombie` is a ghoul, a creeper a fuseling). A name that's no creature gets a few that look like it instead of all hundred and twenty.
 - **Death messages for every way to die:** acid, poison, withering, lightning, a falling block or tree and more now say what got you instead of a bare "You died".
 - **Stepping through a portal mid-stride** could count as a fall from the height you left.
+- **/weather works again:** it only took effect once the world was closed and opened (and saving could undo it); now the rain, snow or storm rolls in at once.
+- **The death screen says what killed you** (it always said "You died").
+- **/tp to a land with no ground just there** (the End's void, a gap in the Skylands) takes you to the nearest ground instead of dropping you into the void.
+- **Portals into the Nether** look round for a floor before building over open air, and a portal built over a drop gets a wider landing: walking through, you used to step off its edge and fall.
 - **Messages no longer show twice:** achievements, warnings and other notices each popped up two times over.
 - **/locate** gives a place's height the way /tp takes it (it gave the land's own height, so copying it into /tp dropped you into another land), and names the land when the place is in another one.
 

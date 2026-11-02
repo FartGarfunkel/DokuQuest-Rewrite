@@ -188,12 +188,22 @@ vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, Portal
   auto at = [&](int a, int dy, int b) { return axis ? ivec3(bx + b, dy, bz + a) : ivec3(bx + a, dy, bz + b); };   // a: along the portal, b: across
   auto solid = [&](int yy) { return R.tSolid[w.getBlock(bx, yy, bz)] != 0; };
   if (dim == DIM_NETHER) {
-    for (int y = base + 51; y < base + 200 && by < 0; y++) {   // over the lava sea (DepthsGen::LAVA_Y): not in a tunnel under the ground
-      bool ok = true;
-      for (int da = -1; da < fw && ok; da++) for (int dy = 0; dy < fh && ok; dy++) { ivec3 q = at(da, y + dy, 0); if (w.getBlock(q.x, q.y, q.z) != AIR) ok = false; }
-      if (ok && solid(y - 1)) by = y;
+    // the spot itself, then the ones round it out to 8 blocks (nearest first): a floor with room for the frame over
+    // it, rather than a platform hung in the open air with a long drop off its edge
+    std::vector<ivec2> offs;
+    for (int dz = -8; dz <= 8; dz += 2) for (int dx = -8; dx <= 8; dx += 2) offs.push_back(ivec2(dx, dz));
+    std::stable_sort(offs.begin(), offs.end(), [](ivec2 p, ivec2 q) { return p.x * p.x + p.y * p.y < q.x * q.x + q.y * q.y; });
+    const int bx0 = bx, bz0 = bz;
+    for (ivec2 o : offs) {
+      bx = bx0 + o.x; bz = bz0 + o.y;
+      for (int y = base + 51; y < base + 200 && by < 0; y++) {   // over the lava sea (DepthsGen::LAVA_Y): not in a tunnel under the ground
+        bool ok = true;
+        for (int da = -1; da < fw && ok; da++) for (int dy = 0; dy < fh && ok; dy++) { ivec3 q = at(da, y + dy, 0); if (w.getBlock(q.x, q.y, q.z) != AIR) ok = false; }
+        if (ok && solid(y - 1)) by = y;
+      }
+      if (by >= 0) break;
     }
-    if (by < 0) by = base + 90;
+    if (by < 0) { bx = bx0; bz = bz0; by = base + 90; }
   } else if (dim == DIM_AETHER) {
     for (int y = base + 220; y > base + 40; y--) if (solid(y)) { by = y + 1; break; }
     if (by < 0) by = base + 160;
@@ -207,11 +217,15 @@ vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, Portal
   by = clampv(by, base + 2, base + DIM_H - 8);
   BlockId floor = R.blockId(dim == DIM_AETHER ? "skystone" : (dim == DIM_NETHER || dim == DIM_END) ? "obsidian" : "cobblestone");
   if (ps) ps->guard++;
-  // clear space + platform
-  for (int db = -2; db <= 2; db++) for (int da = -2; da <= fw; da++) {
+  // clear space + platform; past that, floor out to four blocks each side wherever there's nothing to stand on (you
+  // walk through a portal and keep walking: a portal built over a drop, in the Nether's open air or a Skylands gap,
+  // had two blocks of ledge and then a fall)
+  for (int db = -4; db <= 4; db++) for (int da = -2; da <= fw; da++) {
     ivec3 q = at(da, by - 1, db);
-    w.setBlock(q.x, q.y, q.z, floor, 0);
-    for (int dy = 0; dy < fh + 1; dy++) w.setBlock(q.x, by + dy, q.z, AIR, 0);
+    if (std::abs(db) <= 2) {
+      w.setBlock(q.x, q.y, q.z, floor, 0);
+      for (int dy = 0; dy < fh + 1; dy++) w.setBlock(q.x, by + dy, q.z, AIR, 0);
+    } else if (!R.tSolid[w.getBlock(q.x, q.y, q.z)] && !R.tSolid[w.getBlock(q.x, q.y + 1, q.z)]) w.setBlock(q.x, q.y, q.z, floor, 0);
   }
   // the frame (4 x 5 for Minecraft's 2 x 3 opening), its foot set into the floor (walk straight in)
   for (int da = 0; da < fw; da++) for (int dy = 0; dy < fh; dy++) {

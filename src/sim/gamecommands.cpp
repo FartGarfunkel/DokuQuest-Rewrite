@@ -278,9 +278,19 @@ static void registerBuiltinCommands() {
                     : d == "nether" || d == "depths" || d == "ember" ? DIM_NETHER : d == "end" || d == "the_end" ? DIM_END : -1;
       if (dim >= 0) {
         if (p.realm != REALM_MAIN) return "Only from the main world";
-        const int x = a.size() >= 3 ? coord(p, a, 1, 0) : ifloor(p.pos.x), z = a.size() >= 3 ? coord(p, a, 2, 2) : ifloor(p.pos.z);
+        int x = a.size() >= 3 ? coord(p, a, 1, 0) : ifloor(p.pos.x), z = a.size() >= 3 ? coord(p, a, 2, 2) : ifloor(p.pos.z);
         const DimGenerator* g = c.lv.gen ? c.lv.gen->forDim(dim) : nullptr;
         int y = g ? g->spawnHeight(x, z) : -1;
+        // no ground just there (the End's void, a gap between Skylands islands) and no place asked for: the nearest
+        // ground out to 640 blocks, rings of 8, instead of dropping you into the void
+        if (g && !(y > 0 && y < DIM_H - 2) && a.size() < 3)
+          for (int r = 8; r <= 640 && !(y > 0 && y < DIM_H - 2); r += 8)
+            for (int i = 0; i < 8 * r / 8 && !(y > 0 && y < DIM_H - 2); i++) {
+              const double ang = i * 6.2831853 / (8 * r / 8);
+              const int tx = x + (int)std::lround(std::cos(ang) * r), tz = z + (int)std::lround(std::sin(ang) * r);
+              const int ty = g->spawnHeight(tx, tz);
+              if (ty > 0 && ty < DIM_H - 2) { x = tx; z = tz; y = ty; }
+            }
         y = y > 0 && y < DIM_H - 2 ? dimBase(dim) + y + 1 : dimBase(dim) + 160;   // no ground there (open sky, the void): high up
         World& w = c.lv.world(p.realm);
         for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) w.requestChunk(dim, (x >> 4) + dx, (z >> 4) + dz, 1000);
@@ -405,7 +415,8 @@ static void registerBuiltinCommands() {
     if (kind.empty()) throw CommandUsage{};
     double secs = num(a, 1);
     if (!(secs > 0)) secs = kind == "clear" ? 900 + rnd() * 1200 : 300 + rnd() * 360;
-    c.lv.info.data["weather"] = {{"kind", kind}, {"left", secs}};   // the weather system reads meta.weather
+    if (WeatherSystem* W = weatherOf(c.lv)) W->set(kind, secs);     // now (it only read meta.weather when the world opened)
+    else c.lv.info.data["weather"] = {{"kind", kind}, {"left", secs}};
     if (c.lv.events) c.lv.events->emit("weather", json::array({kind, secs}));
     return "Weather: " + kind;
   });

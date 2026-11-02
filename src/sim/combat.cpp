@@ -259,6 +259,8 @@ void playerDie(Level& lv, Player& p, const DamageSource& src) {
   }
   if (!p.carrying.is_null()) dropCarried(lv, p);
   p.hang.reset(); p.climb.reset(); p.vel = vec3(0);
+  if (!p.data.is_object()) p.data = json::object();
+  p.data["deathCause"] = cause;   // the death screen's line under "You died" (ui/hud.cpp)
   DQ_LOG("%s died: %s (%s%s)", p.name.c_str(), cause.c_str(), src.type.c_str(), a ? (", " + a->type).c_str() : "");
   if (lv.events) lv.events->emit("playerDeath", json::array({p.name, cause, p.level}));
   toast(lv, p, cause, "death");
