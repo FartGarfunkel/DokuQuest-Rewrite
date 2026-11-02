@@ -163,7 +163,7 @@ public:
     int stage = R.is_object() ? R.value("stage", 0) : 0;
     bool sealed = R.is_object() && R.contains("sealed") && R["sealed"] != false && R["sealed"] != 0;
     g_storyTrackBottom = 0;
-    if (stage && (!sealed || (p.stats.value("realmSeen", 0) == 1 && p.realm == REALM_HIS))) {
+    if (stage && (!sealed || (jflag(p.stats, "realmSeen") && p.realm == REALM_HIS))) {
       int n = std::min(RIFT_NEED, R.value("frags", 0));
       std::string b = sealed ? "The rift is sealed" : stage >= 3 ? "Enter the rift and face him" : "The Temporal Keys: Realm Fragments";
       std::string sp = sealed || stage >= 3 ? "" : std::to_string(n) + "/" + std::to_string(RIFT_NEED);

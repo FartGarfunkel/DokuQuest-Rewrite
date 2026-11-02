@@ -38,7 +38,7 @@ static void onScreenOpen(App& a, const json& args) {
   std::function<std::unique_ptr<Screen>()> make;
   if (kind == "container") {
     io.mode = "container"; io.ender = o.value("ender", false); io.heldPack = o.value("held", false);
-    if (o.value("party", false)) {   // the party chest: one 27-slot store in the world's data, the same from every party chest
+    if (jflag(o, "party")) {   // the party chest: one 27-slot store in the world's data, the same from every party chest
       Level* lv = a.session->level.get();
       io.entItems = [lv]() -> json* {
         json& d = lv->info.data["partyChest"];

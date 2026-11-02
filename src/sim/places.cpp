@@ -79,7 +79,7 @@ std::vector<FoundPlace> foundPlaces(Level& lv, const Player& p) {
       if (!v.is_array() || v.size() < 3) continue;
       FoundPlace f; f.id = id; f.kind = "place"; f.x = v[0].get<float>(); f.z = v[1].get<float>(); f.name = v[2].is_string() ? v[2].get<std::string>() : id;
       f.dim = v.size() > 3 ? v[3].get<int>() : 0;
-      f.cleared = D.contains("structs") && D["structs"].contains(id) && D["structs"][id].value("cleared", 0) != 0;
+      f.cleared = D.contains("structs") && D["structs"].contains(id) && jflag(D["structs"][id], "cleared");
       out.push_back(f);
     }
   if (S.contains("vseen") && S["vseen"].is_object())
@@ -92,7 +92,7 @@ std::vector<FoundPlace> foundPlaces(Level& lv, const Player& p) {
     for (auto& [id, _] : S["dseen"].items()) {
       FoundPlace f; f.id = id; f.kind = "dungeon"; f.name = "A dungeon";
       if (H.dungeonById) if (auto d = H.dungeonById(lv, id)) { f.name = d->name; f.x = (d->x0 + d->x1) * 0.5f; f.z = (d->z0 + d->z1) * 0.5f; }
-      f.cleared = D.contains("dungeons") && D["dungeons"].contains(id) && D["dungeons"][id].value("cleared", false);
+      f.cleared = D.contains("dungeons") && D["dungeons"].contains(id) && jflag(D["dungeons"][id], "cleared");
       out.push_back(f);
     }
   if (S.contains("ways") && S["ways"].is_object())

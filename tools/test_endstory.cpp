@@ -10,6 +10,7 @@
 #include "sim/content.h"
 #include "sim/commands.h"
 #include "sim/portals.h"
+#include "sim/rpg.h"
 #include "gen/dimgens.h"
 #include <thread>
 #include <cstdio>
@@ -318,6 +319,27 @@ int main(int argc, char** argv) {
     check(P->realm == REALM_MAIN, "and home again");
   }
   check(all("phantom").empty(), "still no phantoms");
+  // the Travel Journal at every point of the story (it once crashed on the rift's sealed flag): every stage, fragment
+  // count, sealed or not, the End's state, dragons slain, written as numbers or as true/false
+  {
+    const json saved = L->info.data;
+    int combos = 0, bad = 0; std::string why;
+    for (int stage = 0; stage <= 6; stage++) for (int frags : {0, 1, 5, 10, 12}) for (int sealed = 0; sealed < 3; sealed++) for (int end = 0; end < 3; end++) {
+      json& D = L->info.data; if (!D.is_object()) D = json::object();
+      D["rift"] = {{"stage", stage}, {"frags", frags}};
+      if (sealed == 1) D["rift"]["sealed"] = 1; else if (sealed == 2) D["rift"]["sealed"] = true;
+      D["end"] = end == 0 ? json::object() : end == 1 ? json{{"dragon", "slain"}, {"killed", 1}} : json{{"killed", true}, {"egg", true}};
+      D["dragons"] = end == 2 ? json{{"ember", {{"slain", true}}}, {"frost", {{"slain", 1}}}} : json::object();
+      try {
+        Story st = storyOf(*L, *P);
+        auto recs = journalRecords(*L, *P);
+        combos++;
+        if (st.ch.empty() || st.cur >= (int)st.ch.size()) { bad++; why = strFormat("stage %d frags %d sealed %d end %d: %zu chapters, current %d", stage, frags, sealed, end, st.ch.size(), st.cur); }
+      } catch (const std::exception& e) { bad++; why = strFormat("stage %d frags %d sealed %d end %d: %s", stage, frags, sealed, end, e.what()); }
+    }
+    L->info.data = saved;
+    check(bad == 0, strFormat("the Travel Journal reads right at every point of the story (%d tried)%s", combos, bad ? (": " + why).c_str() : ""));
+  }
   printf("\n%d passed, %d failed\n", passes, fails);
   L->close();
   return fails ? 1 : 0;

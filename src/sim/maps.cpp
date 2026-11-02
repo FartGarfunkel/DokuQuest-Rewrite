@@ -268,7 +268,7 @@ std::vector<MapMarker> mapMarkers(Level& lv, const PaperMap& m, const Player* vi
     if (S.contains("dseen") && S["dseen"].is_object() && H.dungeonById)
       for (auto& [id, _] : S["dseen"].items()) {
         auto d = H.dungeonById(lv, id); if (!d) continue;
-        bool cleared = D.contains("dungeons") && D["dungeons"].contains(id) && D["dungeons"][id].value("cleared", false);
+        bool cleared = D.contains("dungeons") && D["dungeons"].contains(id) && jflag(D["dungeons"][id], "cleared");
         vec2 q = P((d->x0 + d->x1) * 0.5, (d->z0 + d->z1) * 0.5);
         if (inside(q)) mark(cleared ? 15 : 13, q, d->name + (cleared ? " (cleared)" : ""));
       }
@@ -296,7 +296,7 @@ std::vector<MapMarker> mapMarkers(Level& lv, const PaperMap& m, const Player* vi
     if (S.contains("sseen") && S["sseen"].is_object())
       for (auto& [id, v] : S["sseen"].items()) {
         if (!v.is_array() || v.size() < 3 || (v.size() > 3 && v[3].is_number() ? v[3].get<int>() != m.dim : m.dim != JS_OVERWORLD)) continue;
-        bool cleared = D.contains("structs") && D["structs"].contains(id) && D["structs"][id].value("cleared", 0) != 0;
+        bool cleared = D.contains("structs") && D["structs"].contains(id) && jflag(D["structs"][id], "cleared");
         vec2 q = P(v[0].get<double>(), v[1].get<double>()); if (inside(q)) mark(cleared ? 15 : 13, q, v[2].is_string() ? v[2].get<std::string>() : "");
       }
     // hearth.js: your houses

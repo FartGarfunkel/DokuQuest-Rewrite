@@ -6,6 +6,18 @@
 #include <nlohmann/json.hpp>
 
 namespace dq {
+
+// a flag in saved data, however it was written: true, a number other than 0, a non-empty text (saves and older
+// versions write some flags as 1 and others as true; reading one as the other threw and crashed the Travel Journal)
+inline bool jflag(const nlohmann::json& j, const char* k) {
+  if (!j.is_object()) return false;
+  auto it = j.find(k);
+  if (it == j.end() || it->is_null()) return false;
+  if (it->is_boolean()) return it->get<bool>();
+  if (it->is_number()) return it->get<double>() != 0;
+  if (it->is_string()) return !it->get_ref<const std::string&>().empty();
+  return !it->empty();
+}
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 

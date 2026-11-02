@@ -168,7 +168,7 @@ Story storyOf(Level& lv, Player& p) {
   int frags = std::min(NEED, R.value("frags", 0)), stage = R.value("stage", 0);
   bool sealed = sealedOf(R);
   int lairs = 0;
-  for (auto& [k, l] : sub(lv.info.data, "dragons").items()) if (l.is_object() && l.value("slain", false)) lairs++;
+  for (auto& [k, l] : sub(lv.info.data, "dragons").items()) if (l.is_object() && jflag(l, "slain")) lairs++;
   bool ancient = false;
   for (auto& [k, v] : sub(st, "sseen").items()) if (v.is_array() && v.size() > 2 && v[2].is_string() && toLower(v[2].get<std::string>()).find("ancient city") != std::string::npos) ancient = true;
   Story s;
@@ -180,9 +180,9 @@ Story storyOf(Level& lv, Player& p) {
   ch("Fire Below", "Reach the Ember Depths.", "Beat the Cinder Golem for its core, make an Ember Igniter, and light an obsidian frame (2 wide, 3 tall inside). Or dig down far enough to break through.", dims.contains("1"), true);
   ch("Above the Clouds", "Reach the Skylands.", "Light a glowstone frame with water, or fly up on a mount. Watch for the storm dragon.", dims.contains("2"), true);
   ch("The Gateway", "Bring ten fragments to the rift and use it.", "Stand by the tear in the square with the fragments and use it.", stage >= 3);
-  ch("His Realm", "Step through the gateway.", "Go together and go ready: good armour, food, potions. In co-op, everyone is drawn in.", st.value("realmSeen", false) || sealed);
+  ch("His Realm", "Step through the gateway.", "Go together and go ready: good armour, food, potions. In co-op, everyone is drawn in.", jflag(st, "realmSeen") || sealed);
   ch("The Seal", "Find Herobrine at the end of his halls and defeat him.", "Five halls. His bolts hurt; he steps through space; below half health his stare stops time.", sealed);
-  ch("The End Beneath", "Slay the Ender Dragon.", "Eyes of ender (an ender pearl and cinder powder) fly toward a stronghold. Or break through the void crust at the very bottom of the Depths.", E.value("slain", 0) > 0, false, true);
+  ch("The End Beneath", "Slay the Ender Dragon.", "Eyes of ender (an ender pearl and cinder powder) fly toward a stronghold. Or break through the void crust at the very bottom of the Depths.", jflag(E, "slain"), false, true);
   ch("The Deep Dark", "Find an Ancient City.", "Far below some lands the stone turns to slate and sculk. Tread softly.", ancient, false, true);
   ch("Dragonslayer", "Slay the seven dragons of the world (" + std::to_string(lairs) + " of 7).", "Each land has its dragon: forest, frost, sand, tide, ember (the Depths), storm (the Skylands), and one more. Their eggs hatch into drakes you can ride.", lairs >= 7, false, true, lairs / 7.f);
   for (int pass = 0; pass < 3 && s.cur < 0; pass++)

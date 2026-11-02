@@ -97,7 +97,7 @@ json boardQuests(Level& lv, const Village& v) {
       const StructurePlan* d = idx->at(k, rx + dx, rz + dz);
       if (!d || !d->data.contains("ent")) continue;
       double dist = std::hypot(d->data["ent"][0].get<double>() - v.x, d->data["ent"][1].get<double>() - v.z);
-      bool cleared = D.is_object() && D.contains(d->id) && D[d->id].value("cleared", false);
+      bool cleared = D.is_object() && D.contains(d->id) && jflag(D[d->id], "cleared");
       if (dist < bd && !cleared) { bd = dist; best = d; }
     }
     if (best) {
@@ -206,7 +206,7 @@ int questHave(Level& lv, Player& p, json& q) {
   if (k == "dungeon" && !q.value("have", 0)) {   // fairplay.js: a cleared dungeon counts whoever cleared it
     const json& D = lv.info.data.value("dungeons", json::object());
     std::string did = q.value("did", std::string());
-    if (D.is_object() && D.contains(did) && D[did].value("cleared", false)) q["have"] = 1;
+    if (D.is_object() && D.contains(did) && jflag(D[did], "cleared")) q["have"] = 1;
   }
   if (k == "hunt" || k == "elite" || k == "rescue" || k == "dungeon") return q.value("have", 0);
   if (k == "scout") { const json& s = p.stats.value("sseen", json::object()); return s.is_object() && s.contains(q.value("sid", "")) ? 1 : 0; }
@@ -268,7 +268,7 @@ bool questFinish(Level& lv, Player& p, const std::string& qid) {
 void questKill(Level& lv, Player& p, const std::string& type, bool party) {
   bool hit = false;
   for (auto& q : npcStats(p)["quests"]) {
-    if (q.value("kind", "") != "hunt" || (party && !q.value("party", 0))) continue;
+    if (q.value("kind", "") != "hunt" || (party && !jflag(q, "party"))) continue;
     const json& F = famOf(q.value("fam", ""));
     if (std::find(F.begin(), F.end(), type) == F.end() || q.value("have", 0) >= q.value("need", 1)) continue;
     q["have"] = q.value("have", 0) + 1; hit = true;
