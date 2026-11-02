@@ -38,6 +38,8 @@
 - **Sounds that played nothing now do:** a sieve wearing out, the block placer placing and breaking blocks, a snow sentry building its snow, and the summoning wand calling a creature up. Every sound the game plays is checked now.
 - **Under water you can see:** a few blocks down (in a well, a pond, the sea) it was a dark navy wall; now your eyes adjust after a moment, like Minecraft's water vision: murky blue, but you see the walls, the bottom and what's in front of you (more by day than by night).
 - **/kill and /summon know creatures by name:** `/kill ghoul` or `/kill @e[type=ghoul]` clears those nearby (it used to kill *you*, whatever you typed after it), `/kill @e` every creature nearby, and the Minecraft names work too (`/summon zombie` is a ghoul, a creeper a fuseling). A name that's no creature gets a few that look like it instead of all hundred and twenty.
+- **Death messages for every way to die:** acid, poison, withering, lightning, a falling block or tree and more now say what got you instead of a bare "You died".
+- **Stepping through a portal mid-stride** could count as a fall from the height you left.
 - **Messages no longer show twice:** achievements, warnings and other notices each popped up two times over.
 - **/locate** gives a place's height the way /tp takes it (it gave the land's own height, so copying it into /tp dropped you into another land), and names the land when the place is in another one.
 - Removed Herobrine.

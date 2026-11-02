@@ -100,6 +100,7 @@ float damagePlayer(Level& lv, Player& p, float amount, DamageSource src) {
   if (p.sleeping) p.sleeping = false;
   float dealt = playerHurtRaw(p, amount, src);
   if (!dealt) return 0;
+  if (dealt >= 5) DQ_LOG("%s took %.1f (%s)", p.name.c_str(), dealt, src.type.c_str());   // big hits, for playtests and the bridge's log
   sfxUi(lv, p, "hurt");
   if (lv.events) lv.events->emit("rumble", json::array({p.name, std::min(1.f, 0.25f + dealt * 0.08f), 140}));
   if (src.attacker && src.knock != 0) if (Entity* a = lv.entity(src.attacker)) knockback(p, a->pos, src.knock < 0 ? 5.f : src.knock, 4);
@@ -232,7 +233,11 @@ void playerDie(Level& lv, Player& p, const DamageSource& src) {
   sfxUi(lv, p, "death");
   static const std::unordered_map<std::string, std::string> causes = {
     {"drown", "You drowned"}, {"fall", "You fell from a high place"}, {"lava", "You tried to swim in lava"}, {"burn", "You burned to death"},
-    {"void", "You fell out of the world"}, {"cactus", "You hugged a cactus"}, {"projectile", "You were struck by a fireball"}};
+    {"void", "You fell out of the world"}, {"cactus", "You hugged a cactus"}, {"projectile", "You were struck by a fireball"},
+    {"acid", "You dissolved in acid"}, {"poison", "You were poisoned"}, {"wither", "You withered away"}, {"magic", "You were killed by magic"},
+    {"freeze", "You froze to death"}, {"lightning", "You were struck by lightning"}, {"suffocate", "You suffocated in a wall"},
+    {"starve", "You starved"}, {"thorns", "You were pricked to death"}, {"sting", "You were stung to death"}, {"heat", "You were cooked by the heat"},
+    {"falling_block", "You were squashed by a falling block"}, {"falling_tree", "A falling tree flattened you"}};
   std::string cause = causes.count(src.type) ? causes.at(src.type) : "You died";
   Entity* a = src.attacker ? lv.entity(src.attacker) : nullptr;
   if (a && !a->isPlayer()) {
@@ -254,6 +259,7 @@ void playerDie(Level& lv, Player& p, const DamageSource& src) {
   }
   if (!p.carrying.is_null()) dropCarried(lv, p);
   p.hang.reset(); p.climb.reset(); p.vel = vec3(0);
+  DQ_LOG("%s died: %s (%s%s)", p.name.c_str(), cause.c_str(), src.type.c_str(), a ? (", " + a->type).c_str() : "");
   if (lv.events) lv.events->emit("playerDeath", json::array({p.name, cause, p.level}));
   toast(lv, p, cause, "death");
 }

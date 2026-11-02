@@ -1,5 +1,6 @@
 // sim/portals.cpp — frames, lighting, links, windows and walking through (see portals.h).
 #include "sim/portals.h"
+#include "sim/player.h"
 #include "sim/seamless.h"
 #include "sim/creature.h"
 #include <algorithm>
@@ -640,6 +641,7 @@ void PortalSystem::swap(Entity& e, const PortalWindow& w, const PortalDest& d, b
     g->yaw += x.yaw; g->bodyYaw += x.yaw; g->prevYaw += x.yaw;
     g->realm = d.realm;
     g->fallDist = 0;
+    if (g->isPlayer()) static_cast<Player*>(g)->hasFallStart = false;   // a step through isn't a fall from the height you left
     Track& t = tracks[g->id];
     t.init = true; t.pos = g->pos; t.realm = g->realm; t.cool = mirror ? 3.f : 0.35f; t.portalTime = 0;
     if (lv.events) lv.events->emit("portalEnter", json::array({g->id, w.realm, d.realm, g->pos.x, g->pos.y, g->pos.z, w.key}));
