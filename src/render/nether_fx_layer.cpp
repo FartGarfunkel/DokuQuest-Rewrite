@@ -9,6 +9,7 @@
 #include "client/session.h"
 #include "client/app.h"
 #include "audio/audio.h"
+#include "sim/steam.h"
 #include "render/particles.h"
 #include "gen/nether_bta.h"
 #include "core/registry.h"
@@ -30,12 +31,14 @@ public:
   const char* name() const override { return "nether_lands"; }
   void update(GameSession& s, double dtIn) override {
     if (!s.player || !s.level || s.paused() || dtIn <= 0) return;
-    if (s.frame.dim != DIM_NETHER || s.player->realm != REALM_MAIN || s.level->info.genVersion < 5) { vols.clear(); scanT = 0; return; }
+    if (s.frame.dim != DIM_NETHER || s.player->realm != REALM_MAIN) { vols.clear(); scanT = 0; vents.clear(); return; }
     const float dt = (float)std::min(dtIn, 0.1);
     ParticleSystem& P = particles();
     if (P.level <= 0) return;
     const float amount = P.level == 1 ? 0.4f : 1.f;
     const vec3 p = s.player->pos;
+    steamVents(s, P, p, amount, dt);   // (in every Nether: the old one has vents too)
+    if (s.level->info.genVersion < 5) { vols.clear(); scanT = 0; return; }
     const i32 seed = s.level->info.seed;
     if ((scanT -= dt) <= 0 || glm::distance(vec2(p.x, p.z), vec2(scanAt.x, scanAt.z)) > 32) { scanT = 2; scanAt = p; netherVolcanoes(seed, (int)std::floor(p.x), (int)std::floor(p.z), 220, vols); }
     volcanoes(s, P, p, amount, dt);
@@ -44,6 +47,44 @@ public:
 
 private:
   std::vector<NetherVolcano> vols;
+  // the steam vents (sim/steam.h: each breathes on its own beat; sim/bta_more.cpp scalds and lifts): found every couple of
+  // seconds round the player, a white plume shot up out of each while it breathes, a hiss as it starts, a wisp between
+  std::vector<ivec3> vents; float ventScanT = 0; vec3 ventAt{0}; std::unordered_map<u64, float> ventPh;
+  void steamVents(GameSession& s, ParticleSystem& P, vec3 p, float amount, float dt) {
+    static const BlockId vent = reg().blockId("steam_vent");
+    if (!vent) return;
+    World& w = s.world();
+    if ((ventScanT -= dt) <= 0 || glm::distance(p, ventAt) > 12) {
+      ventScanT = 2; ventAt = p; vents.clear();
+      const int px = (int)std::floor(p.x), py = (int)std::floor(p.y), pz = (int)std::floor(p.z);
+      for (int z = pz - 24; z <= pz + 24; z++) for (int x = px - 24; x <= px + 24; x++) for (int y = py - 10; y <= py + 6; y++)
+        if (w.getBlock(x, y, z) == vent && w.getBlock(x, y + 1, z) == AIR) vents.push_back(ivec3(x, y, z));
+    }
+    const double now = s.level->info.time;
+    const u16 smoke = (u16)P.tile("smoke");
+    AudioEngine* a = s.app.audio.get();
+    for (const ivec3& v : vents) {
+      const vec3 c(v.x + 0.5f, v.y + 1.02f, v.z + 0.5f);
+      const float d = glm::distance(c, p);
+      if (d > 40) continue;
+      const float ph = steamPhase(now, v.x, v.y, v.z);
+      const u64 key = ((u64)(u32)v.x << 40) ^ ((u64)(u32)v.y << 20) ^ (u64)(u32)v.z;
+      float& last = ventPh[key];
+      if (ph < 0.22f && (last >= 0.22f || last > ph) && a && d < 32) a->playAt("fizz", c, 32, 0.9f);   // the hiss as it starts
+      last = ph;
+      const bool gust = ph < 0.22f;
+      const float rate = (gust ? 40.f : 1.5f) * amount;
+      for (int n = (int)std::floor(rate * dt + rnd()); n > 0; n--) {
+        Particle q; q.tile = smoke; q.rise = true; q.light = 0xF0 | 13; q.p = c + vec3(rs() * 0.2f, 0, rs() * 0.2f);
+        const float up = gust ? 7.f + rnd() * 3.f : 0.6f + rnd() * 0.4f;
+        q.v = vec3(rs() * (gust ? 0.5f : 0.15f), up, rs() * (gust ? 0.5f : 0.15f));
+        q.life = q.max = gust ? 1.1f + rnd() * 0.6f : 2.5f; q.size = q.size0 = gust ? 0.25f + rnd() * 0.2f : 0.15f; q.grow = gust ? 3.f : 1.5f;
+        q.grav = gust ? 6.f : -0.05f; q.wind = P.windDrift * 0.3f;   // (falls back from its burst height and spreads)
+        q.tint[0] = 240; q.tint[1] = 240; q.tint[2] = 236;
+        P.add(q);
+      }
+    }
+  }
   std::unordered_map<u32, long long> erupted, grumbled;
   float scanT = 0, landT = 0; vec3 scanAt{0}; int land = -1;
 

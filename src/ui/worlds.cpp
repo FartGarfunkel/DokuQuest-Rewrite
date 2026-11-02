@@ -314,7 +314,7 @@ public:
                                    "Hardcore \xE2\x80\x94 survival with one life; after that you can only watch",
                                    "Adventure \xE2\x80\x94 explore and fight; blocks can't be broken or placed"}, fw)) form.rules["commands"] = mode == 1;
     label(F_MID, col::muted, "World type");
-    combo("##nwtype", &wtype, {"Default \xE2\x80\x94 the whole world", "Skyblock \xE2\x80\x94 one small island in an empty sky (BTA)"}, fw);
+    combo("##nwtype", &wtype, {"Default \xE2\x80\x94 the whole world", "Skyblock \xE2\x80\x94 one small island in an empty sky (BTA)", "Bigger biomes \xE2\x80\x94 every land three times as wide"}, fw);
     // <details class="more-opts"><summary> in gold, wrapping
     {
       const char* sum = "More world options: day and night, game rules, commands";
@@ -334,6 +334,7 @@ public:
       LevelInfo li; li.name = name.empty() ? "New World" : name; li.seedText = seed; li.mode = mode == 1 ? "creative" : mode == 3 ? "adventure" : "survival";
       li.rules = form.rules;
       if (wtype == 1) li.worldType = "skyblock";
+      else if (wtype == 2) li.worldType = "large_biomes";
       if (mode == 2) { li.rules["hardcore"] = true; li.rules["commands"] = false; li.rules["keepInventory"] = false; }   // BTA / Minecraft hardcore
       a.settings.extra["played"] = true;
       uiDefer([li](App& app) { if (!app.createWorld(li)) app.toast("Could not create the world", "warn"); });

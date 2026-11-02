@@ -170,12 +170,12 @@ int portalTargetDim(int fromDim, PortalKind k) {
   return fromDim == DIM_OVERWORLD ? far : DIM_OVERWORLD;
 }
 
-vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, PortalSystem* ps, int ow, int oh, int axis) {
+vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, PortalSystem* ps, int ow, int oh, int axis, const std::string& dye) {
   const Registry& R = reg();
   KindDef K = kindDef(kind);
-  // 1. an existing portal close by? (stand beside it)
+  // 1. an existing portal close by? (stand beside it) — a tuned portal only to one of its own colour
   ivec3 c;
-  if (ps && ps->nearestPortalCell(w.realm, K.portal, dim, x, z, 24, c)) {
+  if (ps && ps->nearestPortalCell(w.realm, K.portal, dim, x, z, 24, c, &dye)) {
     int axis = w.getMeta(c.x, c.y, c.z) & 1;
     return vec3(c.x + (axis ? 1.5f : 0.5f), (float)c.y, c.z + (axis ? 0.5f : 1.5f));
   }
@@ -320,9 +320,14 @@ void PortalSystem::onBlockChanged(World& w, int x, int y, int z, BlockId o, Bloc
   guard--;
 }
 
-bool PortalSystem::nearestPortalCell(int realm, BlockId id, int dim, double x, double z, int r, ivec3& out) {
+bool PortalSystem::nearestPortalCell(int realm, BlockId id, int dim, double x, double z, int r, ivec3& out, const std::string* dye) {
   auto it = idx.find(realm);
   if (it == idx.end()) return false;
+  if (dye) { if (it->second.builtVersion != it->second.version) rebuild(realm, it->second); }
+  auto dyeAt = [&](ivec3 p) -> std::string {   // the tuning of the portal this cell belongs to
+    for (const PortalWindow& w : it->second.wins) if (p.x >= w.lo.x && p.x <= w.hi.x && p.y >= w.lo.y && p.y <= w.hi.y && p.z >= w.lo.z && p.z <= w.hi.z) return w.dye;
+    return std::string();
+  };
   int bx = ifloor(x), bz = ifloor(z), best = 1 << 30;
   bool found = false;
   for (int cz = (bz - r) >> 4; cz <= (bz + r) >> 4; cz++) for (int cx = (bx - r) >> 4; cx <= (bx + r) >> 4; cx++) {
@@ -332,6 +337,7 @@ bool PortalSystem::nearestPortalCell(int realm, BlockId id, int dim, double x, d
       if (c.id != id) continue;
       int d = std::max(std::abs(c.p.x - bx), std::abs(c.p.z - bz));
       if (d > r) continue;
+      if (dye && dyeAt(c.p) != *dye) continue;
       int score = d * 2048 + (c.p.y - dimBase(dim));
       if (score < best) { best = score; out = c.p; found = true; }
     }
@@ -384,6 +390,8 @@ void PortalSystem::rebuild(int realm, RealmIdx& r) {
       w.n = w.axis ? vec3(1, 0, 0) : vec3(0, 0, 1);
       w.along = w.axis ? vec3(0, 0, 1) : vec3(1, 0, 0);
       w.rim = w.kind == PortalKind::Sky ? vec3(0.55f, 0.85f, 1.0f) : vec3(1.0f, 0.45f, 0.12f);
+      w.dye = dyeOf(realm, w.anchor);
+      if (!w.dye.empty()) w.rim = dyeColour(w.dye);
     }
     r.wins.push_back(std::move(w));
   }
@@ -422,6 +430,30 @@ void PortalSystem::setVirtual(const std::string& id, const VirtualPortal& v) {
 void PortalSystem::removeVirtual(const std::string& id) {
   if (!virtuals.erase(id)) return;
   for (auto& [r, x] : idx) x.version++;
+  epoch_++;
+}
+
+// ---- tuning (BTA's dyed portals): a dye used on a portal colours it, and it links only to a portal of the same colour
+vec3 dyeColour(const std::string& c) {
+  static const std::unordered_map<std::string, vec3> C = {
+    {"white", {0.95f, 0.95f, 0.95f}}, {"orange", {1.0f, 0.55f, 0.1f}}, {"magenta", {0.85f, 0.3f, 0.85f}}, {"light_blue", {0.45f, 0.75f, 1.0f}},
+    {"yellow", {1.0f, 0.88f, 0.2f}}, {"lime", {0.5f, 0.95f, 0.2f}}, {"pink", {1.0f, 0.55f, 0.7f}}, {"gray", {0.45f, 0.45f, 0.5f}},
+    {"light_gray", {0.7f, 0.7f, 0.72f}}, {"cyan", {0.15f, 0.75f, 0.8f}}, {"purple", {0.6f, 0.25f, 0.9f}}, {"blue", {0.2f, 0.35f, 1.0f}},
+    {"brown", {0.55f, 0.35f, 0.2f}}, {"green", {0.25f, 0.6f, 0.15f}}, {"red", {0.95f, 0.18f, 0.15f}}, {"black", {0.12f, 0.1f, 0.16f}}};
+  auto it = C.find(c);
+  return it == C.end() ? vec3(1.0f, 0.45f, 0.12f) : it->second;
+}
+std::string PortalSystem::dyeOf(int realm, ivec3 a) {
+  const json& d = lv.info.data;
+  if (!d.is_object() || !d.contains("portalDye") || !d["portalDye"].is_object()) return "";
+  return d["portalDye"].value(strFormat("%d:%d,%d,%d", realm, a.x, a.y, a.z), std::string());
+}
+void PortalSystem::setDye(int realm, ivec3 a, const std::string& dye) {
+  json& d = lv.info.data;
+  if (!d.contains("portalDye") || !d["portalDye"].is_object()) d["portalDye"] = json::object();
+  const std::string k = strFormat("%d:%d,%d,%d", realm, a.x, a.y, a.z);
+  if (dye.empty()) d["portalDye"].erase(k); else d["portalDye"][k] = dye;
+  for (auto& [r, R] : idx) R.version++;   // the windows take the new colour
   epoch_++;
 }
 
@@ -552,9 +584,10 @@ void PortalSystem::prelink(const PortalWindow& w, const Pending& p) {
   int cx = ifloor(p.x) >> 4, cz = ifloor(p.z) >> 4;
   for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++) if (!W.chunk(p.dim, cx + dx, cz + dz)) return;   // not there yet
   const int ow = (w.axis == 1 ? w.hi.z - w.lo.z : w.hi.x - w.lo.x) + 1, oh = w.hi.y - w.lo.y + 1;
-  vec3 pos = arrivePortal(W, p.dim, p.x, p.z, p.kind, this, ow, oh, w.axis == 1 ? 1 : 0);
+  vec3 pos = arrivePortal(W, p.dim, p.x, p.z, p.kind, this, ow, oh, w.axis == 1 ? 1 : 0, w.dye);
   ivec3 there;
   if (!portalAnchor(W, pos, there) && !portalAnchor(W, pos - vec3(1, 0, 1), there)) { failed.insert(w.key); return; }
+  if (!w.dye.empty() && dyeOf(p.realm, there).empty()) setDye(p.realm, there, w.dye);   // a portal built for a tuned one takes its colour
   World& Here = lv.world(w.realm);
   link(w.realm, w.anchor, portalStand(Here, w.anchor), p.realm, there, pos);
   DQ_LOG("portal %s linked to %d:%d,%d,%d", w.key.c_str(), p.realm, there.x, there.y, there.z);
@@ -724,6 +757,35 @@ bool PortalSystem::onItemUse(const json& a) {
   bool creative = pl && pl->creative();
   ItemStack* held = pl && pl->held().id == key ? &pl->held() : nullptr;
   vec3 at = vec3(hit) + vec3(0.5f);
+  // a dye on a portal tunes it (BTA): it takes the colour, comes loose from where it led, and from now on links only to a
+  // portal of the same colour (one is built there if none is near)
+  if (key.size() > 4 && key.compare(key.size() - 4, 4, "_dye") == 0 && face >= 0) {
+    const BlockId b = W.getBlock(hit.x, hit.y, hit.z);
+    if (b == bEmber || b == bSky || b == bObsidian || b == bGlow) {   // (the opening can't be aimed at: its frame will do)
+      const std::string col = key.substr(0, key.size() - 4);
+      auto ri = idx.find(W.realm);
+      if (ri != idx.end()) {
+        if (ri->second.builtVersion != ri->second.version) rebuild(W.realm, ri->second);
+        for (const PortalWindow& w : ri->second.wins) {
+          if (w.kind == PortalKind::End || hit.x < w.lo.x - 1 || hit.x > w.hi.x + 1 || hit.y < w.lo.y - 1 || hit.y > w.hi.y + 1 || hit.z < w.lo.z - 1 || hit.z > w.hi.z + 1 || w.dye == col) continue;
+          json& L = links();
+          if (auto li = L.find(w.key); li != L.end() && li->is_object() && li->contains("anchor")) {
+            const json& j = *li;
+            L.erase(strFormat("%d:%d,%d,%d", j.value("realm", 0), j["anchor"][0].get<int>(), j["anchor"][1].get<int>(), j["anchor"][2].get<int>()));
+            L.erase(w.key);
+          }
+          failed.erase(w.key);
+          setDye(W.realm, w.anchor, col);
+          if (held && !creative) { held->n--; if (held->n <= 0) *held = ItemStack(); }
+          const vec3 c = dyeColour(col);
+          lv.fx->particles("burst", vec3(w.c), 30, json{{"tex", "white"}, {"spread", 1.5}, {"tint", {(int)(c.x * 255), (int)(c.y * 255), (int)(c.z * 255)}}});
+          lv.fx->sound("portal", vec3(w.c), 24);
+          lv.fx->message(pid, "The portal is tuned to " + col + ": it leads to a portal of the same colour", "good");
+          return false;
+        }
+      }
+    }
+  }
   std::string ig = it->str("igniter");
   if (!ig.empty()) {
     if (face >= 0) {

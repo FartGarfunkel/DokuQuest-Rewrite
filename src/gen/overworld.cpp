@@ -12,6 +12,7 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
     nTemp(o.seed ^ 0x6789), nHumid(o.seed ^ 0x789a), nCave1(o.seed ^ 0x89ab), nCave2(o.seed ^ 0x9abc), nCave3(o.seed ^ 0xabcd),
     nFloor(o.seed ^ 0xbcde), nRiver(o.seed ^ 0x5eed11), nDeep(o.seed ^ 0xDEE9), nDeepC(o.seed ^ 0xDEEC) {
   climateScale = o.genVersion >= 4 ? 2.0 : 1.0;
+  if (o.worldType == "large_biomes") climateScale *= 3;   // the "Bigger biomes" world: every land three times as wide
   floes = o.genVersion >= 5;   // terrain version 5: BTA's ice floes in the seas round the glaciers   // terrain version 4 (BTA): biomes about twice as big
   B.resolve();
   initUnderground();

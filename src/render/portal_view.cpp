@@ -197,6 +197,7 @@ private:
     if (w) {
       shader.set("uKind", (int)w->kind);
       shader.set("uRim", w->rim);
+      shader.set("uDyed", w->dye.empty() ? 0 : 1);   // a tuned portal swirls in its dye's colour
       shader.set("uTorn", w->torn ? 1 : 0);
     }
     shader.set("uFade", fade);

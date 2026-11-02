@@ -47,6 +47,7 @@ struct PortalWindow {
   bool walk = true;             // can be walked through
   bool torn = false;            // ragged edge (rifts)
   vec3 rim{1.0f, 0.45f, 0.12f}; // glow colour at the edge of the window
+  std::string dye;              // a dyed (tuned) portal's colour ("" = its own): it links only to a portal of that colour
   std::string key;              // "realm:x,y,z" for block portals, "rift:<id>" for virtual ones
 };
 
@@ -97,7 +98,8 @@ vec3 portalStand(const World& w, ivec3 anchor);
 int portalTargetDim(int fromDim, PortalKind k);                        // Overworld <-> Depths / Skylands
 // find a portal of `kind` near (x, z) in band `dim`, or build one on safe ground; returns where to stand
 // ow x oh: the opening to build, axis 0 along x / 1 along z (the portal you came through, so its window lines up)
-vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, class PortalSystem* idx = nullptr, int ow = 2, int oh = 3, int axis = 0);
+vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, class PortalSystem* idx = nullptr, int ow = 2, int oh = 3, int axis = 0, const std::string& dye = "");
+vec3 dyeColour(const std::string& dye);   // a tuned portal's colour (the 16 dyes)
 inline ivec3 faceNormal(int face) {   // 0..5 = +x -x +y -y +z -z (BlockDef::faces order)
   static const ivec3 N[6] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
   return face >= 0 && face < 6 ? N[face] : ivec3(0);
@@ -138,7 +140,9 @@ public:
   json& links();
   void link(int realmA, ivec3 a, vec3 posA, int realmB, ivec3 b, vec3 posB);
   // the portal-cell index (also used by arrivePortal to find a portal near a target quickly)
-  bool nearestPortalCell(int realm, BlockId id, int dim, double x, double z, int r, ivec3& out);
+  bool nearestPortalCell(int realm, BlockId id, int dim, double x, double z, int r, ivec3& out, const std::string* dye = nullptr);
+  std::string dyeOf(int realm, ivec3 anchor);             // a portal's tuning colour ("" = none)
+  void setDye(int realm, ivec3 anchor, const std::string& dye);
   // damage hook (gameplay replaces it with its own damage function); default subtracts health
   std::function<void(Entity&, float amount, const char* type)> hurt;
   u64 epoch() const { return epoch_; }
@@ -184,7 +188,7 @@ private:
   void swap(Entity& e, const PortalWindow& w, const PortalDest& d, bool mirror);
   void ensureEndPlatform(World& w);
   bool flatDest(const PortalWindow& w, PortalDest& d);
-  friend vec3 arrivePortal(World&, int, double, double, PortalKind, PortalSystem*, int, int, int);
+  friend vec3 arrivePortal(World&, int, double, double, PortalKind, PortalSystem*, int, int, int, const std::string&);
 };
 
 PortalSystem* portalSystem(Level& lv);   // nullptr if not running
