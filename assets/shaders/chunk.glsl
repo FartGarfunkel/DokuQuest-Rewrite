@@ -7,12 +7,11 @@
 #include "common.glsl"
 
 #ifdef VERTEX
-layout(location = 0) in vec3 aPos;      // 1/256 block units, section-relative
-layout(location = 1) in uint aTile;     // layer | normal << 12
-layout(location = 2) in vec2 aUV;       // (tile units + 64) * 256
-layout(location = 3) in uvec4 aLight;   // sway, sky, block, shade
-layout(location = 4) in vec3 aTint;
-layout(location = 5) in uint aMat;
+layout(location = 0) in uvec4 aV;      // 16 bytes, packed (render/mesher.h ChunkVertex):
+//   x: x14 | y14 << 14 | normal3 << 28 | NoRelief << 31     y: z14 | tile12 << 14 | tint5 << 26 | Lava << 31
+//   z: u14 | v14 << 14 | mat bits 0-3 << 28                 w: sky8 | block8 << 8 | shade8 << 16 | sway7 << 24 | Flowing << 31
+uniform sampler2DArray uClimate;        // RG: temperature, humidity of each column, 1024 x 1024 wrapping, a layer per land
+uniform sampler2DArray uTintLut;        // the tint of a climate: grass, foliage, water (256 x 256 by the climate bytes)
 #ifdef DQ_MODERN
 layout(location = 6) in vec3 aOrigin;   // per draw (multi-draw-indirect instance attribute)
 #else
@@ -36,10 +35,21 @@ void main() {
 #else
   vec3 origin = uOrigin;
 #endif
-  vec3 p = aPos / 256.0;
+  vec3 p = vec3(float(aV.x & 16383u), float((aV.x >> 14u) & 16383u), float(aV.y & 16383u)) / 256.0 - 16.0;
   vec3 rel = origin + p;
   vec3 world = rel + uWorldOrigin;
-  float sw = float(aLight.x);
+  float sw = float((aV.w >> 24u) & 127u);
+  // the tint: the climate where the vertex stands (filtered: a corner takes the four columns round it), then its colour
+  uint tk = (aV.y >> 26u) & 31u;
+  vec3 tint = vec3(1.0);
+  if (tk >= 4u) {   // redstone dust by its power (mesh_shapes.cpp dustColor)
+    float f = float(tk - 4u) / 15.0;
+    tint = vec3(f * 0.6 + (f > 0.0 ? 0.4 : 0.3), clamp(f * f * 0.7 - 0.5, 0.0, 1.0), clamp(f * f * 0.6 - 0.7, 0.0, 1.0)) * (204.0 / 255.0);
+  } else if (tk > 0u) {
+    float land = clamp(floor((origin.y + uWorldOrigin.y + 8.0) / 256.0), 0.0, 3.0);   // the section's own land
+    vec2 cl = textureLod(uClimate, vec3(world.xz / 1024.0, land), 0.0).rg;
+    tint = textureLod(uTintLut, vec3((cl * 255.0 + 0.5) / 256.0, float(tk - 1u)), 0.0).rgb;
+  }
   vec3 wo = waveOffset(sw, world);
   if (sw > 79.5) {
     // a grass blade's tip: sinks into the ground as you go away from it (gone well before the detail ring)
@@ -50,11 +60,13 @@ void main() {
   rel += wo;
   vRel = rel;
   vWorld = world;
-  vUV = vec3(aUV / 256.0 - 64.0, float(aTile & 4095u));
-  vTint = aTint;
-  vLight = vec4(float(aLight.y) / 255.0, float(aLight.z) / 255.0, float(aLight.w) / 255.0, 0.0);
-  vNormal = int(aTile >> 12u) & 7;
-  vMat = aMat;
+  vUV = vec3(float(aV.z & 16383u) / 256.0 - 16.0, float((aV.z >> 14u) & 16383u) / 256.0 - 16.0, float((aV.y >> 14u) & 4095u));
+  vTint = tint;
+  vLight = vec4(float(aV.w & 255u) / 255.0, float((aV.w >> 8u) & 255u) / 255.0, float((aV.w >> 16u) & 255u) / 255.0, 0.0);
+  vNormal = int((aV.x >> 28u) & 7u);
+  uint mat = ((aV.z >> 28u) & 15u) | (((aV.x >> 31u) & 1u) << 4u) | (((aV.y >> 31u) & 1u) << 5u) | (((aV.w >> 31u) & 1u) << 6u);
+  if (tk >= 3u) mat |= 128u;   // water and dust take the whole picture (Mat::TintAll)
+  vMat = mat;
   gl_Position = uViewProj * vec4(rel, 1.0);
 }
 #endif

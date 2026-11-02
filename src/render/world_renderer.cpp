@@ -3,6 +3,7 @@
 #include "world/light.h"
 #include "assets/tileset.h"
 #include <cstring>
+#include <climits>
 
 namespace dq {
 
@@ -72,6 +73,7 @@ void WorldRenderer::setWorld(World* nw) {
   if (nw == w) return;
   w = nw;
   ++generation;   // meshes still being built for the old world are dropped when they come back
+  std::fill(climateOwner.begin(), climateOwner.end(), INT64_MIN);   // its climate goes in again as its sections come
   for (auto& [k, m] : meshes) release(m->base, m->cap);
   meshes.clear(); inFlight.clear(); again.clear(); parked.clear();
   std::lock_guard<std::mutex> lk(shared->mx); shared->done.clear();
@@ -84,12 +86,7 @@ void WorldRenderer::setTiles(const TileSet& ts) { setMeshTiles(ts); remeshAll();
 
 // ---------------------------------------------------------------- arena
 static const std::vector<VertexAttrib> CHUNK_ATTRS = {
-  {0, 3, GL_SHORT, GL_FALSE, false, 0},            // pos
-  {1, 1, GL_UNSIGNED_SHORT, GL_FALSE, true, 6},    // tile | normal << 12
-  {2, 2, GL_UNSIGNED_SHORT, GL_FALSE, false, 8},   // uv
-  {3, 4, GL_UNSIGNED_BYTE, GL_FALSE, true, 12},    // sway, sky, blk, shade
-  {4, 3, GL_UNSIGNED_BYTE, GL_TRUE, false, 16},    // tint
-  {5, 1, GL_UNSIGNED_BYTE, GL_FALSE, true, 19},    // mat
+  {0, 4, GL_UNSIGNED_INT, GL_FALSE, true, 0},      // the four packed words (mesher.h ChunkVertex; chunk.glsl unpacks them)
 };
 void WorldRenderer::setupVao(Page& pg) {
   if (!pg.vao) glGenVertexArrays(1, &pg.vao);
@@ -235,8 +232,66 @@ void WorldRenderer::caveWalk(const FrameCtx& f, int band) {
   }
 }
 
+// ---------------------------------------------------------------- climate and tint (what the vertex's tint kind reads)
+static constexpr int CLIM = 1024, CLIM_SLOTS = CLIM / 16;
+u32 climateTint(const char* kind, u8 t, u8 h);   // render/mesher.cpp
+void WorldRenderer::buildTintLut() {
+  // the colours the mesher used to put on each vertex (MeshCtx::cornerTint): grass, foliage (the pack's colormap, else
+  // the grass colour a shade darker), water; indexed by the climate bytes
+  std::vector<u8> px((size_t)256 * 256 * 4 * 3);
+  u32 sig = 2166136261u;
+  for (int layer = 0; layer < 3; layer++) for (int h = 0; h < 256; h++) for (int t = 0; t < 256; t++) {
+    u32 c;
+    if (layer == 2) c = climateTint("water", (u8)t, (u8)h);
+    else if (layer == 0) c = climateTint("grass", (u8)t, (u8)h);
+    else {
+      bool ok = false; c = packTint("foliage", (u8)t, (u8)h, ok);
+      if (!ok) { u32 g = climateTint("grass", (u8)t, (u8)h); c = (u32)std::lround((g & 255) * 0.8f * 0.82f) | (u32)std::lround(((g >> 8) & 255) * 0.8f * 0.86f) << 8 | (u32)std::lround(((g >> 16) & 255) * 0.8f * 0.8f) << 16; }
+    }
+    u8* p = &px[(((size_t)layer * 256 + h) * 256 + t) * 4];
+    p[0] = c & 255; p[1] = (c >> 8) & 255; p[2] = (c >> 16) & 255; p[3] = 255;
+    if ((t & 63) == 7 && (h & 63) == 7) sig = (sig ^ c) * 16777619u;
+  }
+  lutSig = sig;
+  if (!tintLut) glGenTextures(1, &tintLut);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, tintLut);
+  glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, 256, 256, 3, 0, GL_RGBA, GL_UNSIGNED_BYTE, px.data());
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR); glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+}
+void WorldRenderer::climateFor(int dim, int cx, int cz) {
+  if (!w || dim < 0 || dim >= DIM_COUNT) return;
+  if (!climateTex) {
+    glGenTextures(1, &climateTex);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, climateTex);
+    std::vector<u8> mid((size_t)CLIM * CLIM * 2, 128);   // a mild climate where nothing's been seen yet
+    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RG8, CLIM, CLIM, DIM_COUNT, 0, GL_RG, GL_UNSIGNED_BYTE, nullptr);
+    for (int d = 0; d < DIM_COUNT; d++) glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, d, CLIM, CLIM, 1, GL_RG, GL_UNSIGNED_BYTE, mid.data());
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR); glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT); glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+    climateOwner.assign((size_t)DIM_COUNT * CLIM_SLOTS * CLIM_SLOTS, INT64_MIN);
+  }
+  const int sx = floormod(cx, CLIM_SLOTS), sz = floormod(cz, CLIM_SLOTS);
+  i64& own = climateOwner[((size_t)dim * CLIM_SLOTS + sz) * CLIM_SLOTS + sx];
+  const i64 me = ((i64)cx << 32) ^ (u32)cz;
+  if (own == me) return;
+  const Chunk* ch = w->chunk(dim, cx, cz);
+  if (!ch) return;
+  u8 px[16 * 16 * 2];
+  for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) { px[(z * 16 + x) * 2] = ch->climate[(z * 16 + x) * 2]; px[(z * 16 + x) * 2 + 1] = ch->climate[(z * 16 + x) * 2 + 1]; }
+  glBindTexture(GL_TEXTURE_2D_ARRAY, climateTex);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, sx * 16, sz * 16, dim, 16, 16, 1, GL_RG, GL_UNSIGNED_BYTE, px);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+  own = me;
+}
+
 void WorldRenderer::upload(Result& r) {
   if (r.gen != generation) return;   // built for the world shown before a realm change
+  climateFor(r.k.dim, r.k.cx, r.k.cz);   // (empty sections too: a neighbour's edge reads this column's climate)
   inFlight.erase(r.k);
   auto it = meshes.find(r.k);
   if (w && w->chunk(r.k.dim, r.k.cx, r.k.cz)) { if (r.out.vis == 0x7FFF) secVis.erase(r.k); else secVis[r.k] = r.out.vis; } else secVis.erase(r.k);
@@ -360,6 +415,18 @@ void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
   shader.set("uPass", pass);
   shader.set("uGrassFade", gfx.modern ? vec2(20, 34) : vec2(13, 22));
   tex.bind(shader);
+  if (pass == 0 && f.time - lutCheckT > 1.0) {   // the pack's colormaps may have changed: look again now and then
+    lutCheckT = f.time;
+    u32 sig = 2166136261u;
+    bool ok = false; const u32 g = packTint("grass", 135, 135, ok), fo = packTint("foliage", 71, 199, ok);
+    sig = (sig ^ g) * 16777619u; sig = (sig ^ fo) * 16777619u;
+    if (!tintLut || sig != lutSeen) { lutSeen = sig; buildTintLut(); }
+  }
+  if (!climateTex && w) climateFor(DIM_OVERWORLD, 0, 0);   // (makes the texture)
+  glActiveTexture(GL_TEXTURE0 + 13); glBindTexture(GL_TEXTURE_2D_ARRAY, climateTex);
+  glActiveTexture(GL_TEXTURE0 + 14); glBindTexture(GL_TEXTURE_2D_ARRAY, tintLut);
+  glActiveTexture(GL_TEXTURE0);
+  shader.set("uClimate", 13); shader.set("uTintLut", 14);
   if (pass == 0) {
     visible.clear(); totalSections = (int)meshes.size();
     bool clip = clipPlane.x != 0 || clipPlane.y != 0 || clipPlane.z != 0 || clipPlane.w != 0;

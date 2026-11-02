@@ -445,6 +445,9 @@ _s = _u.spec_from_file_location('spawn_eggs', pathlib.Path(__file__).with_name('
 # pack's own creatures untouched; before the looks, which are made from these) ----
 _s11 = _u.spec_from_file_location('mob_restyle', pathlib.Path(__file__).with_name('mob_restyle.py')); _m11 = _u.module_from_spec(_s11); _s11.loader.exec_module(_m11); _m11.main(d)
 
+# ---- sheared sheep keep a short undercoat (tools/port/sheep_undercoat.py) ----
+_s12 = _u.spec_from_file_location('sheep_undercoat', pathlib.Path(__file__).with_name('sheep_undercoat.py')); _m12 = _u.module_from_spec(_s12); _s12.loader.exec_module(_m12); _m12.main(d)
+
 # ---- every creature's looks with stories of their own (tools/port/mob_variants.py; after the biome mobs, which get theirs too) ----
 _s8 = _u.spec_from_file_location('mob_variants', pathlib.Path(__file__).with_name('mob_variants.py')); _m8 = _u.module_from_spec(_s8); _s8.loader.exec_module(_m8); _m8.main(d)
 

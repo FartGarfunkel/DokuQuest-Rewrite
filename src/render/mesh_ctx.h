@@ -24,7 +24,8 @@ struct MV { vec3 p; vec2 uv; float sky, blk; float shade; u8 sway; };
 struct MeshCtx {
   const MeshInput& in; MeshOutput& out; const MesherOptions& opt; const Registry& R; const MeshTiles* tiles;
   int wx0, wy0, wz0;          // world position of the section's corner
-  u32 tint = 0xFFFFFF;        // current tint (0xBBGGRR); 0xFFFFFF = none
+  u32 tint = 0xFFFFFF;        // current tint colour (0xBBGGRR; 0xFFFFFF none): only for merging faces of one climate now
+  u8 tintKind = 0;            // what each vertex carries: Tint::None/Grass/Foliage/Water, Tint::Dust + power (mesher.h)
   u8 extraMat = 0;            // OR-ed into every vertex (TintAll for water and dust)
   MeshCtx(const MeshInput& in, MeshOutput& out, const MesherOptions& opt, const Registry& R, const MeshTiles* t);
 

@@ -98,6 +98,14 @@ private:
   vec3 camPos{0};
   double detailT = 0;
   GLuint tq[2] = {0, 0}; int tqi = 0; bool tqActive = false, tqUsed[2] = {false, false};
+  // the tint the vertices no longer carry (mesher.h): each land's climate per column, 1024 x 1024 wrapping round the
+  // camera (RG8 temperature/humidity, a layer per land), and the colour for a climate (256 x 256 by temperature and
+  // humidity: grass, foliage, water; the resource pack's colormaps when it has them)
+  GLuint climateTex = 0, tintLut = 0;
+  std::vector<i64> climateOwner;              // which chunk each 16 x 16 slot holds, per land
+  u32 lutSig = 0, lutSeen = 0; double lutCheckT = -10;
+  void climateFor(int dim, int cx, int cz);
+  void buildTintLut();
 };
 
 void registerTerrainLayers();   // client start-up: the terrain RenderLayer (terrain_fx.cpp) and the "showcase" world type

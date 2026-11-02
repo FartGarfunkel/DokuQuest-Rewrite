@@ -289,7 +289,7 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
         if (pm.hidden || !rigPartPosed(*m, (int)i) || !rigPartShown(*m, p) || p.alpha < 1) continue;
         mat4 model = T0 * m->mats[i] * pm.local;
         if (p.glow) { D.draw(pm.gl, model, {1, 1}, m->hurtTime > 0 ? tint : vec4(0)); continue; }
-        D.draw(pm.gl, model, L, p.wool && wool.a > 0 && tint.a == 0 ? wool : tint);
+        D.draw(pm.gl, model, L, (p.wool || p.undercoat) && wool.a > 0 && tint.a == 0 ? wool : tint);
       }
       if (corrupt) {
         int hi = RM->find("head");

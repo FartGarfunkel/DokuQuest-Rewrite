@@ -12,21 +12,19 @@ namespace dq {
 
 struct TileSet;
 
-// 20 bytes per vertex.
+// 16 bytes per vertex (was 20): four words, unpacked in chunk.glsl.
+//   a: x (14 bits) | y (14) << 14 | face normal (3) << 28 | Mat::NoRelief << 31   position: section-relative, 1/256 block, +16 blocks
+//   b: z (14)      | tile layer (12) << 14 | tint (5) << 26 | Mat::Lava << 31
+//   c: u (14)      | v (14) << 14 | Mat bits 0-3 << 28                         uv: tile units, 1/256, +16 tiles (a merged face spans 16)
+//   d: sky light (8) | block light (8) << 8 | shade (8) << 16 | sway (7) << 24 | Mat::Flowing << 31
+// The tint isn't a colour any more but which one: 0 none, 1 grass, 2 foliage, 3 water (the shader reads the climate of
+// the column from a texture and looks the colour up: render/world_renderer.cpp climate + tint table), 4..19 redstone
+// dust at power 0..15. Water and dust take the whole picture (Mat::TintAll, set by the shader).
 #pragma pack(push, 1)
-struct ChunkVertex {
-  i16 x, y, z;      // section-relative, 1/256 block
-  u16 tile;         // bits 0-11 tile layer, bits 12-14 face normal (0..5 = +x -x +y -y +z -z; 6 = none: plants, tilted parts)
-  u16 u, v;         // tile units * 256, offset by +64 tiles (the shader wraps; a merged face spans several tiles)
-  u8 sway;          // wind/wave code (the original's SWAY codes): 0 none, 1 plant tip, 2 leaves, 3 water, 4..15 hanging (swing grows),
-                    // 16..31 partway up a solid plant, 32..47 water surface + how open the water is, 48..63 / 64..79 cloth flapping across z / x
-  u8 sky, blk;      // smooth light, level * 17 (0..255)
-  u8 shade;         // face shade * ambient occlusion (0..255); liquids: shore foam (0..255)
-  u8 r, g, b;       // climate tint (grass/foliage/water/dust); 255,255,255 = none
-  u8 mat;           // Mat flags
-};
+struct ChunkVertex { u32 a = 0, b = 0, c = 0, d = 0; };
 #pragma pack(pop)
-static_assert(sizeof(ChunkVertex) == 20, "vertex must be 20 bytes");
+static_assert(sizeof(ChunkVertex) == 16, "vertex must be 16 bytes");
+namespace Tint { enum : u8 { None = 0, Grass = 1, Foliage = 2, Water = 3, Dust = 4 }; }
 
 namespace Sway { enum : u8 { None = 0, Plant = 1, Leaves = 2, Water = 3, Hang = 4 }; }
 // Emissive: lit at full brightness; Liquid: water/lava/portal surface; Cutout: alpha-tested; Translucent: blended;

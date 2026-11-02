@@ -360,7 +360,7 @@ void blade(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, vec3 A, vec3 B, ve
 void emitGrassClump(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta, int tile, int part) {
   const BlockTraits& T = traits(id);
   float sk = c.skyAt(x, y, z), bl = std::max<float>(c.blAt(x, y, z), c.R.tLight[id]);
-  if (T.tint) c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0);
+  if (T.tint) { c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0); c.tintKind = (u8)(1 + (T.tint == 2 ? 1 : 0)); }
   int ly = c.in.sy * 16 + y - (part == 2 ? 1 : 0);   // both halves of a tall plant share their blades
   u32 h = hashLocal(x, ly, z, 9);
   auto rnd = [&]() { h = (u32)((h ^ (h >> 15)) * 0x2c1b3c6du) ^ 0x297a2d39u; h ^= h >> 12; return (h % 10000) / 10000.f; };
@@ -376,7 +376,7 @@ void emitGrassClump(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
       blade(c, d, tile, vec3(px - ca, y, pz - sa), vec3(px + ca, y, pz + sa), vec3(px + ca + lx, y + hh, pz + sa + lz), vec3(px - ca + lx, y + hh, pz - sa + lz), u0, u1, 0, 1, sk, bl, sh, 23, (u8)(23 + std::lround(8 * hh)));
     }
   }
-  c.tint = 0xFFFFFF;
+  c.tint = 0xFFFFFF; c.tintKind = 0;
 }
 
 bool emitCane3D(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z) {
@@ -385,7 +385,7 @@ bool emitCane3D(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int 
   auto L = caneLook(c.tiles, tile);
   if (L->none) return false;
   float sk = c.skyAt(x, y, z), bl = std::max<float>(c.blAt(x, y, z), c.R.tLight[id]);
-  if (T.tint) c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0);
+  if (T.tint) { c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0); c.tintKind = (u8)(1 + (T.tint == 2 ? 1 : 0)); }
   Kit K{c, d, tile, sk, bl, [](float) -> u8 { return 0; }};
   int caps = (c.at(x, y + 1, z) != id ? 1 : 0) | (c.at(x, y - 1, z) != id ? 2 : 0);
   u32 h = hashLocal(x, 0, z, 23); float turn = (h & 3) * PI / 2;
@@ -415,7 +415,7 @@ bool emitCane3D(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int 
       K.box(std::min(lx0, lx1) - std::fabs(dz) * t, yy, std::min(lz0, lz1) - std::fabs(dx) * t, std::max(lx0, lx1) + std::fabs(dz) * t, yy + 1 / R, std::max(lz0, lz1) + std::fabs(dx) * t, lf.p);
     }
   }
-  c.tint = 0xFFFFFF;
+  c.tint = 0xFFFFFF; c.tintKind = 0;
   return true;
 }
 
@@ -446,10 +446,10 @@ void emitCrossFlat(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, i
   const BlockTraits& T = traits(id);
   float sk = c.skyAt(x, y, z), bl = std::max<float>(c.blAt(x, y, z), c.R.tLight[id]), sh = 235 / 255.f;
   u8 sway = T.fire || (T.stackPlant && T.bodyTile >= 0) ? 0 : Sway::Plant;
-  if (T.tint) c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0);
+  if (T.tint) { c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0); c.tintKind = (u8)(1 + (T.tint == 2 ? 1 : 0)); }
   if (T.crop) { for (float q : {0.25f, 0.75f}) { planeQuad(c, d, tile, x, yy, z, 0, q, 1, q, sk, bl, sh, sway); planeQuad(c, d, tile, x, yy, z, q, 0, q, 1, sk, bl, sh, sway); } }
   else { planeQuad(c, d, tile, x, yy, z, 0.15f, 0.15f, 0.85f, 0.85f, sk, bl, sh, sway); planeQuad(c, d, tile, x, yy, z, 0.15f, 0.85f, 0.85f, 0.15f, sk, bl, sh, sway); }
-  c.tint = 0xFFFFFF;
+  c.tint = 0xFFFFFF; c.tintKind = 0;
 }
 } // namespace
 
@@ -466,7 +466,7 @@ void emitGrassTufts(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   const BlockDef& B = c.R.block(id);
   int tile = B.faces[2];
   float sk = c.skyAt(x, y + 1, z), bl = c.blAt(x, y + 1, z);
-  c.tint = c.cornerTint((float)x + 0.5f, (float)z + 0.5f, 0);
+  { c.tint = c.cornerTint((float)x + 0.5f, (float)z + 0.5f, 0); c.tintKind = (u8)(1 + (0)); }
   int n = meshGrassTufts();
   u32 h = hashLocal(c.wx0 + x, c.wy0 + y, c.wz0 + z, 31);
   auto rnd = [&]() { h = (u32)((h ^ (h >> 15)) * 0x2c1b3c6du) ^ 0x297a2d39u; h ^= h >> 12; return (h % 10000) / 10000.f; };
@@ -487,7 +487,7 @@ void emitGrassTufts(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
                {vec3(px + ca * tw + lx, top + hh, pz + sa * tw + lz), uvT, sk, bl, sh1, tip}, {vec3(px - ca * tw + lx, top + hh, pz - sa * tw + lz), uvT, sk, bl, sh1, tip}};
     c.quad2(d, v, tile, NORMAL_NONE, Mat::Cutout | Mat::NoRelief);
   }
-  c.tint = 0xFFFFFF;
+  c.tint = 0xFFFFFF; c.tintKind = 0;
 }
 
 
@@ -521,7 +521,7 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   }
   float sk = c.skyAt(x, y, z), bl = std::max<float>(c.blAt(x, y, z), c.R.tLight[id]), sh = 235 / 255.f;
   u8 sway = T.fire ? 0 : Sway::Plant;
-  if (T.tint) c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0);
+  if (T.tint) { c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0); c.tintKind = (u8)(1 + (T.tint == 2 ? 1 : 0)); }
   // seagrass and coral are solid too (an extension of the original, which drew them flat)
   // vines that hang or climb in strands are drawn as planes round the stem (as solid voxels they were most of the
   // Nether's terrain memory, thousands of little faces a block)
@@ -577,7 +577,7 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
     planeQuad(c, d, tile, x, yy, z, cx - ca, cz - sa, cx + ca, cz + sa, sk, bl, sh, top ? sway : 0);
     planeQuad(c, d, tile, x, yy, z, cx + sa, cz - ca, cx - sa, cz + ca, sk, bl, sh, top ? sway : 0);
   }
-  c.tint = 0xFFFFFF;
+  c.tint = 0xFFFFFF; c.tintKind = 0;
 }
 
 // vines (against their wall) and lily pads (flat on the water) as voxel plates
@@ -588,7 +588,7 @@ bool emitVoxelLeafPlate(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int
   auto P = plantTemplate(c.tiles, tile);
   if (P->q.empty()) return false;
   float sk = c.skyAt(x, y, z), bl = std::max<float>(c.blAt(x, y, z), c.R.tLight[id]);
-  c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0);
+  { c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0); c.tintKind = (u8)(1 + (T.tint == 2 ? 1 : 0)); }
   bool flat = c.R.tShape[id] == ShapeKind::Carpet;
   int f = meta & 3;
   auto rot = [f](float lx, float lz) {
@@ -605,7 +605,7 @@ bool emitVoxelLeafPlate(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int
     }
     c.quad(d, v, tile, NORMAL_NONE, PLANT_MAT);
   }
-  c.tint = 0xFFFFFF;
+  c.tint = 0xFFFFFF; c.tintKind = 0;
   return true;
 }
 

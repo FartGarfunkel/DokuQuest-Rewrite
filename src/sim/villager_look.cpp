@@ -107,4 +107,55 @@ void npcSkinPixels(u32 seed, const std::string& job, std::vector<u8>& px) {
   if (apron && !robe) { Col a = hexc(str("apron")); for (auto [u, v] : {std::pair{0, 32}, {0, 48}}) box(u, v, 4, 12, 4, [&](int f, int, int y, int, int) { return f == FRONT && y < 7 ? a : NONE; }); }
 }
 
+// ---- their own touches (ours, not the original's), over the original's skin (npcSkinPixels stays pixel for pixel the
+// original's: tools/test_villagers checks it). Freckles, a scar, an earring, a headband or a flower behind the ear, a scarf, a
+  // satchel strap, a patched knee or elbow. The outer layers (hat, jacket) stand off the body: real bumps on the voxel
+  // person, not just paint
+void npcSkinTouches(u32 seed, const std::string& job, std::vector<u8>& px) {
+  if (px.size() != 64 * 64 * 4) return;
+  (void)job;
+  // the skin and clothes colours the original picked, read back off the skin: the face's cheek, the shirt, the trousers
+  auto at0 = [&](int x, int y) { const u8* p = px.data() + ((size_t)y * 64 + x) * 4; return rgb(p[0], p[1], p[2]); };
+  const Col skin = at0(8 + 1, 8 + 4), shirt = at0(20 + 4, 20 + 5), trousers = at0(4 + 1, 20 + 4);
+  Mulberry32 Q((u32)((u64)(seed ^ 0x5bd1e995u) * 2246822519ull));
+  auto px_ = [&](int x, int y) { return px.data() + ((size_t)y * 64 + x) * 4; };
+  auto free_ = [&](int x, int y) { return px_(x, y)[3] == 0; };
+  auto set = [&](int x, int y, const Col& c) { if (!c.ok) return; u8* p = px_(x, y); p[0] = (u8)clampv(c.r, 0.0, 255.0); p[1] = (u8)clampv(c.g, 0.0, 255.0); p[2] = (u8)clampv(c.b, 0.0, 255.0); p[3] = 255; };
+  auto get = [&](int x, int y) { const u8* p = px_(x, y); return rgb(p[0], p[1], p[2]); };
+  auto near_ = [&](const Col& a, const Col& b) { return std::abs(a.r - b.r) + std::abs(a.g - b.g) + std::abs(a.b - b.b) < 40; };
+  auto pickc = [&](std::initializer_list<const char*> l) { size_t i = (size_t)std::floor(Q() * l.size()); return hexc(*(l.begin() + std::min(i, l.size() - 1))); };
+  // freckles over the nose and cheeks
+  if (Q() < 0.22) for (int y = 4; y <= 5; y++) for (int x : {1, 2, 5, 6}) if (Q() < 0.45 && near_(get(8 + x, 8 + y), skin)) set(8 + x, 8 + y, dark(skin, 0.78));
+  // an old scar down a cheek
+  if (Q() < 0.07) { const int x = Q() < 0.5 ? 1 : 6; for (int y = 3; y <= 5; y++) if (near_(get(8 + x, 8 + y), skin)) set(8 + x, 8 + y, rgb(std::min(255.0, skin.r * 1.18), skin.g * 1.02, skin.b * 1.0)); }
+  // an earring, standing off the side of the head
+  if (Q() < 0.1 && free_(32 + 5, 8 + 5)) set(32 + 5, 8 + 5, pickc({"#e8c040", "#d8d8e0", "#c86a3a"}));
+  // a headband, or a flower behind the ear (only where no hat or hood is)
+  bool bare = true; for (int x = 0; x < 8; x++) if (!free_(40 + x, 8 + 1)) bare = false;
+  if (bare && Q() < 0.12) { Col hb = pickc({"#8a2a2a", "#2a4a8a", "#3a6a3a", "#c89a3a", "#6a3a7a"}); for (int x = 0; x < 8; x++) { set(40 + x, 8 + 2, hb); set(56 + x, 8 + 2, hb); set(32 + x, 8 + 2, hb); set(48 + x, 8 + 2, hb); } }
+  else if (bare && Q() < 0.1) { set(32 + 5, 8 + 2, pickc({"#e84a4a", "#f0d040", "#6a8ae8", "#f0f0f0"})); set(32 + 5, 8 + 3, hexc("#3a7a2a")); }
+  // a scarf on the jacket layer, its end hanging down the front
+  bool collarFree = true; for (int x = 0; x < 8; x++) if (!free_(20 + x, 36)) collarFree = false;
+  if (collarFree && Q() < 0.15) {
+    Col sc = pickc({"#a83a2a", "#3a5a9a", "#d8b040", "#4a7a4a", "#7a4a8a", "#e8e0d0"}); Col scD = dark(sc, 0.8);
+    for (int x = 0; x < 8; x++) { set(20 + x, 36, sc); set(20 + x, 37, x % 2 ? scD : sc); set(32 + x, 36, sc); set(32 + x, 37, scD); }
+    for (int x = 0; x < 4; x++) { set(16 + x, 36, sc); set(28 + x, 36, sc); }
+    for (int x = 0; x < 8; x++) set(20 + x, 32 + (x < 4 ? 0 : 0), sc);   // round the top of the shoulders
+    for (int y = 38; y <= 40; y++) set(20 + 5, y, y == 40 ? scD : sc);
+  }
+  // a satchel strap across the chest (jacket layer), shoulder to hip
+  else if (Q() < 0.12) {
+    Col st = pickc({"#5a3a1a", "#3a2a1a", "#6a4a2a"});
+    for (int i = 0; i < 9; i++) { const int x = i * 7 / 8, y = 36 + i + 1; if (free_(20 + x, y)) set(20 + x, y, st); if (free_(32 + 7 - x, y)) set(32 + 7 - x, y, st); }
+    for (int y = 44; y <= 46; y++) for (int x = 0; x < 3; x++) if (free_(28 + x, y)) set(28 + x, y, dark(st, 1.15));   // the bag at the hip
+  }
+  // a patched knee, or a patched elbow
+  if (Q() < 0.2) {
+    const bool knee = Q() < 0.6;
+    Col pc = Q() < 0.5 ? dark(knee ? trousers : shirt, 0.72) : pickc({"#8a6a4a", "#6a6a8a", "#8a4a4a", "#5a7a5a"});
+    const int u = knee ? (Q() < 0.5 ? 4 : 20) : (Q() < 0.5 ? 44 : 36), v = knee ? (u == 4 ? 20 : 52) + 5 : (u == 44 ? 20 : 52) + 2;
+    for (int y = 0; y < 2; y++) for (int x = 1; x < 3; x++) if (!free_(u + x, v + y)) set(u + x, v + y, pc);
+  }
+}
+
 } // namespace dq

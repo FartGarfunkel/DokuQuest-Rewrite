@@ -114,15 +114,17 @@ u32 MeshCtx::cornerTint(float x, float z, int kind) {
   return tintCache[key] = pack3(o);
 }
 void MeshCtx::put(std::vector<ChunkVertex>& d, const MV& v, int tile, int normal, u8 mat) const {
+  // packed as mesher.h says: 14-bit fixed point (1/256, +16) for the position and the uv
+  auto fx14 = [](float f) { return (u32)clampv((int)std::lround((f + 16) * 256), 0, 16383); };
+  const u32 m = (u32)(mat | extraMat);
+  const u32 sw = opt.wavingPlants ? v.sway : ((v.sway >= 32 && v.sway < 48) || v.sway >= 80 ? v.sway : 0);   // water and the grass tufts' fade mark stay
+  const u32 sky = (u32)clampv((int)std::lround(v.sky * 17), 0, 255), blk = (u32)clampv((int)std::lround(v.blk * 17), 0, 255);
+  const u32 shade = (u32)clampv((int)std::lround(v.shade * 255), 0, 255);
   ChunkVertex cv;
-  cv.x = (i16)std::lround(v.p.x * 256); cv.y = (i16)std::lround(v.p.y * 256); cv.z = (i16)std::lround(v.p.z * 256);
-  cv.tile = (u16)((tile & 0xFFF) | (normal << 12));
-  cv.u = (u16)clampv((int)std::lround((v.uv.x + 64) * 256), 0, 65535); cv.v = (u16)clampv((int)std::lround((v.uv.y + 64) * 256), 0, 65535);
-  cv.sway = opt.wavingPlants ? v.sway : ((v.sway >= 32 && v.sway < 48) || v.sway >= 80 ? v.sway : 0);   // water and the grass tufts' fade mark stay
-  cv.sky = (u8)clampv((int)std::lround(v.sky * 17), 0, 255); cv.blk = (u8)clampv((int)std::lround(v.blk * 17), 0, 255);
-  cv.shade = (u8)clampv((int)std::lround(v.shade * 255), 0, 255);
-  cv.r = tint & 255; cv.g = (tint >> 8) & 255; cv.b = (tint >> 16) & 255;
-  cv.mat = mat | extraMat;
+  cv.a = fx14(v.p.x) | fx14(v.p.y) << 14 | (u32)(normal & 7) << 28 | ((m >> 4) & 1u) << 31;
+  cv.b = fx14(v.p.z) | (u32)(tile & 0xFFF) << 14 | (u32)(tintKind & 31) << 26 | ((m >> 5) & 1u) << 31;
+  cv.c = fx14(v.uv.x) | fx14(v.uv.y) << 14 | (m & 15u) << 28;
+  cv.d = sky | blk << 8 | shade << 16 | (sw & 127u) << 24 | ((m >> 6) & 1u) << 31;
   d.push_back(cv);
 }
 void MeshCtx::quad(std::vector<ChunkVertex>& d, const MV v[4], int tile, int normal, u8 mat, bool flip) const {
@@ -302,7 +304,7 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
       FaceKey key;
       u8 sk = (u8)std::lround(fc.sky[0] * 17), bl = (u8)std::lround(fc.bl[0] * 17), sh = (u8)std::lround(F.shade * fc.ao[0] * 255);
       key.a = (u64)(tile & 0xFFFF) | (u64)sk << 16 | (u64)bl << 24 | (u64)sh << 32 | (u64)mat << 40 | (u64)1 << 63;
-      key.b = tints[0];
+      key.b = tints[0] | (T.tint ? (u32)(tintKind + 1) << 24 : 0u);   // the colour (one climate merges) and which tint
       int pos[3] = {x, y, z};
       int s = pos[FAXIS[f]], a = pos[FA[f]], b = pos[FB[f]];
       gm->m[f][s][b][a] = key; gm->pass[f][s][b][a] = (u8)pass; gm->any[f] = true;
@@ -314,14 +316,14 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
       vec2 uv = rot == 0 ? faceUV(f, p) : vec2(FACE_UV[(k + rot) & 3][0], FACE_UV[(k + rot) & 3][1]);
       v[k] = {p, uv, fc.sky[k], fc.bl[k], F.shade * fc.ao[k], sway};
     }
-    c.tint = tints[0];
+    c.tint = tints[0]; c.tintKind = T.tint ? (u8)(tintKind + 1) : 0;
     // per-corner tints: emit with each vertex's own colour
     if (T.tint) {
       bool flip = fc.aoi[0] + fc.aoi[2] < fc.aoi[1] + fc.aoi[3];
       int order[4] = {0, 1, 2, 3}; if (flip) { order[0] = 1; order[1] = 2; order[2] = 3; order[3] = 0; }
       for (int k = 0; k < 4; k++) { c.tint = tints[order[k]]; c.put(dst, v[order[k]], tile, f, mat); }
     } else c.quad(dst, v, tile, f, mat, fc.aoi[0] + fc.aoi[2] < fc.aoi[1] + fc.aoi[3]);
-    c.tint = 0xFFFFFF;
+    c.tint = 0xFFFFFF; c.tintKind = 0;
   }
 }
 
@@ -351,9 +353,9 @@ void flushGreedy(MeshCtx& c, GreedyMasks& gm) {
           vec3 p(F.c[q][0] ? hi.x : lo.x, F.c[q][1] ? hi.y : lo.y, F.c[q][2] ? hi.z : lo.z);
           v[q] = {p, faceUV(f, p), sk, bl, sh, 0};
         }
-        c.tint = k.b;
+        c.tint = k.b & 0xFFFFFF; c.tintKind = (u8)((k.b >> 24) & 31);
         c.quad(*passes[gm.pass[f][s][b][a]], v, tile, f, mat);
-        c.tint = 0xFFFFFF;
+        c.tint = 0xFFFFFF; c.tintKind = 0;
         a += w;
       }
     }
@@ -440,7 +442,7 @@ void emitLiquid(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, in
   }
   bool falling = water && (meta & 8);
   u8 base = Mat::NoRelief | (isPortal ? Mat::Translucent : R.tLiquid[id] == 2 ? (Mat::Liquid | Mat::Lava) : (Mat::Liquid | Mat::Translucent));
-  if (water) { c.tint = c.cornerTint((float)x + 1, (float)z + 1, 2); c.extraMat = Mat::TintAll; }
+  if (water) { c.tint = c.cornerTint((float)x + 1, (float)z + 1, 2); c.tintKind = Tint::Water; c.extraMat = Mat::TintAll; }
   for (int f = 0; f < 6; f++) {
     const FaceDef& F = FACES[f];
     int ox = x + F.n[0], oy = y + F.n[1], oz = z + F.n[2];
@@ -472,7 +474,7 @@ void emitLiquid(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, in
     c.quad(dst, v, tile, f, mat);
     if (top || isPortal) { MV r[4] = {v[1], v[0], v[3], v[2]}; c.quad(dst, r, tile, f, mat); }   // visible from below / inside
   }
-  c.tint = 0xFFFFFF; c.extraMat = 0;
+  c.tint = 0xFFFFFF; c.tintKind = 0; c.extraMat = 0;
 }
 
 // ---------------------------------------------------------------- torches

@@ -904,6 +904,44 @@ def catalogue():
         fk = f + '_fuseling'
         if fk not in MOBS: continue
         look(fk, 'elder', 'an elder ' + f + ' fuseling', 0.4, scale=1.2, build=lambda k, m, r: k.lumps(spots_on(m, [('head', 'top', 2), ('body', 'back', 2)], r), 'mossy_cobblestone', size=(1.4, 1.2), thick=0.5))
+    # ===== two more looks for every land's fuseling: what its land has grown on it, or burnt, or bleached into it =====
+    sp = lambda m, r, plan: spots_on(m, plan, r)
+    TOP2 = [('head', 'top', 2), ('body', 'back', 2)]
+    LAND = {
+        'beach': [('barnacled', 'a barnacled beach fuseling', lambda k, m, r: k.lumps(sp(m, r, [('body', 'back', 3), ('head', 'top', 2), ('body', 'front', 2)]), 'bone_block_side', size=(1.3, 1.12), thick=0.85), None, [['bone_meal', 1, 2, 0.5]]),
+                  ('kelp', 'a kelp-draped beach fuseling', lambda k, m, r: (k.drape('kelp', 'body', 'front', h=6, u=0.5, w=0.8), k.fans(sp(m, r, [('head', 'top', 2)]), 'seagrass', w=1.2, h=2.4)), None, [['kelp', 1, 2, 0.6]])],
+        'bog': [('reedy', 'a reed-grown bog fuseling', lambda k, m, r: k.fans(sp(m, r, [('head', 'top', 3), ('body', 'back', 2)]), 'sugar_cane', w=1.0, h=3.4), None, [['sugar_cane', 1, 2, 0.5]]),
+                ('mudcaked', 'a mud-caked bog fuseling', lambda k, m, r: k.lumps(sp(m, r, [('body', 'front', 3), ('body', 'back', 2), ('head', 'top', 1)]), 'mud', size=(2.32, 1.82), thick=1.19), {'val': 0.85}, None)],
+        'dune': [('spined', 'a cactus-spined dune fuseling', lambda k, m, r: k.spikes(sp(m, r, [('head', 'top', 3), ('body', 'back', 3)]), 'cactus_side', w=0.6, h=(2.7, 4.8)), None, [['cactus', 1, 1, 0.4]]),
+                 ('bleached', 'a sun-bleached dune fuseling', lambda k, m, r: k.lumps(sp(m, r, TOP2), 'sand', size=(2.03, 1.4), thick=0.68), {'sat': 0.45, 'val': 1.18}, None)],
+        'frost': [('icicled', 'an icicled frost fuseling', lambda k, m, r: k.spikes(sp(m, r, [('head', 'top', 2), ('body', 'back', 3), ('body', 'left', 1), ('body', 'right', 1)]), 'ice', w=0.6, h=(2.25, 4.5)), None, [['ice', 1, 1, 0.3]]),
+                  ('snowcapped', 'a snow-capped frost fuseling', lambda k, m, r: k.lumps(sp(m, r, [('head', 'top', 3), ('body', 'back', 2)]), 'snow', size=(2.9, 2.52), thick=1.36), None, [['snowball', 1, 3, 0.7]])],
+        'gravel': [('flinty', 'a flint-studded gravel fuseling', lambda k, m, r: k.spikes(sp(m, r, [('body', 'front', 2), ('body', 'back', 2), ('head', 'top', 2)]), 'flint', w=0.7, h=(1.8, 3.3)), None, [['flint', 1, 2, 0.6]]),
+                   ('cobbled', 'a cobbled gravel fuseling', lambda k, m, r: k.lumps(sp(m, r, [('body', 'front', 3), ('head', 'top', 2), ('body', 'back', 2)]), 'cobblestone', size=(1.89, 1.54), thick=1.02), None, None)],
+        'jungle': [('vined', 'a vine-hung jungle fuseling', lambda k, m, r: (k.drape('vine', 'body', 'front', h=7, u=0.3), k.drape('vine', 'body', 'back', h=6, u=0.7)), None, [['vine', 1, 1, 0.4]]),
+                   ('blooming', 'a blooming jungle fuseling', lambda k, m, r: k.fans(sp(m, r, [('head', 'top', 3)]), 'blue_orchid', w=1.3, h=2.2), None, [['blue_orchid', 1, 1, 0.5]])],
+        'meadow': [('flowering', 'a flowering meadow fuseling', lambda k, m, r: (k.fans(sp(m, r, [('head', 'top', 2)]), 'cornflower', w=1.2, h=2.0), k.fans(sp(m, r, [('body', 'back', 2)]), 'red_tulip', w=1.2, h=2.0)), None, [['cornflower', 1, 1, 0.4]]),
+                   ('hayback', 'a hay-backed meadow fuseling', lambda k, m, r: k.lumps(sp(m, r, TOP2), 'hay_side', size=(2.61, 1.96), thick=1.02), None, [['wheat', 1, 2, 0.5]])],
+        'moss': [('shroomed', 'a toadstool-sprouting moss fuseling', lambda k, m, r: k.shrooms(sp(m, r, [('head', 'top', 2), ('body', 'back', 2)]), s=0.8), None, [['red_mushroom', 1, 1, 0.5]]),
+                 ('ferny', 'a fern-tufted moss fuseling', lambda k, m, r: k.fans(sp(m, r, [('head', 'top', 3), ('body', 'back', 2)]), 'fern', w=1.4, h=2.6), None, None)],
+        'mushroom': [('toadstool', 'a great-capped mushroom fuseling', lambda k, m, r: k.shrooms(sp(m, r, [('head', 'top', 1)]), s=1.6), None, [['red_mushroom', 1, 2, 0.6]]),
+                     ('brownspore', 'a brown-spored mushroom fuseling', lambda k, m, r: k.shrooms(sp(m, r, [('head', 'top', 2), ('body', 'back', 2)]), cap='brown_mushroom_block', s=0.9), {'hue': -12, 'val': 0.9}, [['brown_mushroom', 1, 2, 0.6]])],
+        'redlands': [('goldseamed', 'a gold-seamed redlands fuseling', lambda k, m, r: k.lumps(sp(m, r, [('body', 'front', 3), ('body', 'back', 2), ('head', 'top', 1)]), 'gold_ore', size=(1.74, 1.4), thick=0.85), None, [['gold_nugget', 1, 3, 0.7]]),
+                     ('terraced', 'a terraced redlands fuseling', lambda k, m, r: k.lumps(sp(m, r, TOP2), 'terracotta', size=(2.9, 1.26), thick=1.02), {'hue': 8, 'sat': 1.15}, None)],
+        'savanna': [('thorned', 'a thorn-backed savanna fuseling', lambda k, m, r: k.spikes(sp(m, r, [('body', 'back', 3), ('head', 'top', 2)]), 'acacia_log_side', w=0.5, h=(2.4, 4.2)), None, [['stick', 1, 2, 0.5]]),
+                    ('scrubby', 'a scrub-tufted savanna fuseling', lambda k, m, r: k.fans(sp(m, r, [('head', 'top', 2), ('body', 'back', 2)]), 'dead_bush', w=1.4, h=2.2), {'hue': 6, 'val': 0.92}, None)],
+        'swamp': [('lilybacked', 'a lily-backed swamp fuseling', lambda k, m, r: k.lumps(sp(m, r, [('head', 'top', 1), ('body', 'back', 2)]), 'lily_pad', size=(3.19, 3.08), thick=0.15), None, [['lily_pad', 1, 1, 0.4]]),
+                  ('slimed', 'a slime-streaked swamp fuseling', lambda k, m, r: k.lumps(sp(m, r, [('body', 'front', 2), ('body', 'back', 2), ('head', 'top', 1)]), 'slime_block', size=(1.89, 1.54), thick=0.85), {'hue': 10, 'sat': 1.2}, [['slime_ball', 1, 2, 0.6]])],
+        'ember': [('cindercracked', 'a cinder-cracked ember fuseling', lambda k, m, r: k.lumps(sp(m, r, [('body', 'front', 3), ('body', 'back', 2), ('head', 'top', 2)]), 'magma_block', size=(1.74, 1.4), thick=0.68, glow=True), None, [['magma_cream', 1, 1, 0.4]]),
+                  ('obsidian', 'an obsidian-plated ember fuseling', lambda k, m, r: k.lumps(sp(m, r, [('body', 'front', 2), ('body', 'back', 3), ('head', 'top', 1)]), 'obsidian', size=(2.61, 1.96), thick=0.85), {'val': 0.8}, [['obsidian', 1, 1, 0.25]])],
+        'sky': [('cloudwrapped', 'a cloud-wrapped sky fuseling', lambda k, m, r: k.lumps(sp(m, r, [('body', 'front', 2), ('body', 'back', 3), ('head', 'top', 2)]), 'cloud_puff_block', size=(2.9, 2.24), thick=1.19), None, None),
+                ('stormcrest', 'a storm-crested sky fuseling', lambda k, m, r: k.crest('cloud_side', h=2.8, n=4), {'hue': 200, 'sat': 0.7}, [['feather', 1, 2, 0.6]])],
+    }
+    for f_, looks in LAND.items():
+        fk = f_ + '_fuseling'
+        if fk not in MOBS: continue
+        for suf, label, build, tint, drops in looks:
+            look(fk, suf, label, 0.5, tint=tint, build=build, drops=drops)
     for dk in ('bog_drake', 'ember_drake', 'ender_drake', 'frost_drake', 'sand_drake', 'storm_drake', 'tide_drake', 'verdant_drake'):
         look(dk, 'scarred', 'a scarred ' + dk.replace('_', ' '), 0.6, build=lambda k, m, r: k.arrows(spots_on(m, [('body', 'top', 2), ('body', 'left', 1)], r)), drops=[['arrow', 1, 3, 0.6]])
 

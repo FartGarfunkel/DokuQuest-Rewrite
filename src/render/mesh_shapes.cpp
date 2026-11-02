@@ -106,7 +106,7 @@ void emitWire(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y,
   else if (n == 1) for (int h = 0; h < 4; h++) if (cn[h]) arms[(h + 2) & 3] = true;
   int power = meta & 15;
   vec3 col = dustColor(power);
-  c.tint = (u32)col.r | (u32)col.g << 8 | (u32)col.b << 16; c.extraMat = Mat::TintAll;
+  c.tint = (u32)col.r | (u32)col.g << 8 | (u32)col.b << 16; c.tintKind = (u8)(Tint::Dust + power); c.extraMat = Mat::TintAll;
   float sk = c.skyAt(x, y, z), bl = std::max<float>(c.blAt(x, y, z), power ? (power >> 1) + 1 : 0);
   float Y = y + 0.016f + sinkOffset(id, nb) / 16.f;
   int line = c.R.tile("redstone_dust_line"), dot = c.R.tile("redstone_dust_dot");
@@ -133,7 +133,7 @@ void emitWire(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y,
     vec2 st[4] = {{1, 0}, {1, 1}, {0, 1}, {0, 0}};
     quadST(c, d, p, st, line, sk, bl, 220 / 255.f, true, mat);
   }
-  c.tint = 0xFFFFFF; c.extraMat = 0;
+  c.tint = 0xFFFFFF; c.tintKind = 0; c.extraMat = 0;
 }
 
 void emitRail(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta) {
@@ -273,7 +273,7 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   float sink = (float)sinkOffset(id, nb);
   float L0 = R.metaLight(id, meta);
   Own own{(float)c.skyAt(x, y, z), std::max<float>(c.blAt(x, y, z), L0), L0};
-  if (T.tint) c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0);
+  if (T.tint) { c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0); c.tintKind = (u8)(1 + (T.tint == 2 ? 1 : 0)); }
   u8 mat = Mat::Cutout | (R.tTrans[id] ? Mat::Translucent : 0);
   if (isPuddle(R, id)) mat = Mat::Liquid | Mat::Translucent | Mat::NoRelief;   // water: flat, glossy, sky-tinted highlight
   for (auto& b : boxes) {
@@ -282,7 +282,7 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
     Own o = b.glow ? Own{own.sky, std::max<float>(own.bl, b.glow), (float)b.glow} : own;
     emitBox(c, d, id, meta, x, y, z, b, st, tt, bt, sink, kind, o, mat);
   }
-  c.tint = 0xFFFFFF;
+  c.tint = 0xFFFFFF; c.tintKind = 0;
   if (kind == ShapeKind::Lever) emitLeverHandle(c, d, x, y, z, meta, own);
   // lit candles: a little flame on every wick
   if (T.candle && (meta & 4)) {
@@ -369,10 +369,10 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   }
   if (T.cauldron && (meta & 3)) {
     // water in a cauldron
-    c.tint = c.cornerTint((float)x + 1, (float)z + 1, 2); c.extraMat = Mat::TintAll;
+    { c.tint = c.cornerTint((float)x + 1, (float)z + 1, 2); c.tintKind = (u8)(1 + (2)); } c.extraMat = Mat::TintAll;
     ShapeBox wb(2, 4, 2, 14, 4 + (meta & 3) * 3.6f, 14); wb.side = wb.end = R.tile("water");
     addShapeBox(c, d, wb, o, 1 / 16.f, sk, bl, 0, 0, Mat::NoRelief);
-    c.tint = 0xFFFFFF; c.extraMat = 0;
+    c.tint = 0xFFFFFF; c.tintKind = 0; c.extraMat = 0;
   }
   if (T.pot) {
     int idx = MeshInput::idx(x, y, z);

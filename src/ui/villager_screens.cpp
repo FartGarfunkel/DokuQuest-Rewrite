@@ -76,7 +76,7 @@ public:
     if (!c || !talkOpen(*s->level, *s->player, *c, t, confront, victim)) { failed = true; return; }
     if (startShop && hasShop(t.job)) for (int i = 0; i < (int)t.opts.size(); i++) if (t.opts[i].act == "shop") { talkChoose(*s->level, *s->player, t, i); break; }
     // the face, big (villagers.js npcPortrait): the head's front with its hat layer over it
-    std::vector<u8> px; npcSkinPixels(t.seed, t.job, px);
+    std::vector<u8> px; npcSkinPixels(t.seed, t.job, px); npcSkinTouches(t.seed, t.job, px);
     u8 img[8 * 8 * 4];
     for (int y = 0; y < 8; y++) for (int x = 0; x < 8; x++) {
       const u8* b = &px[((8 + y) * 64 + 8 + x) * 4]; const u8* o = &px[((8 + y) * 64 + 40 + x) * 4];

@@ -42,7 +42,7 @@ std::string npcSkinRef(u32 seed, const std::string& job) {
   static std::unordered_map<std::string, bool> made;
   std::string ref = "npc:" + std::to_string(seed) + ":" + job;
   if (!made.count(ref)) {
-    SkinImage img; std::vector<u8> px; npcSkinPixels(seed, job, px);
+    SkinImage img; std::vector<u8> px; npcSkinPixels(seed, job, px); npcSkinTouches(seed, job, px);
     if (px.size() == img.px.size()) img.px = px;
     registerSkin(ref, img);
     made[ref] = true;

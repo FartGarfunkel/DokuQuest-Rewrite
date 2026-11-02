@@ -56,9 +56,9 @@ static std::array<Pic, 6> tilesOf(const TileSet& ts, const json& spec) {
 
 // ------------------------------------------------------------------ resource-pack skins (packmobs.js)
 struct PM { int u, v, w, h, d; };
-struct PMo { bool upper = false, lower = false, whole = false, mirror = false, lying = false, wool = false, slimeFace = false; int legStrip = -1; bool hasOver = false; PM over{}; };
+struct PMo { bool upper = false, lower = false, whole = false, mirror = false, lying = false, wool = false, under = false, slimeFace = false; int legStrip = -1; bool hasOver = false; PM over{}; };
 struct PMPart { std::string name; PM box; PMo o; };
-struct PMSpec { std::vector<std::string> tex; int texW = 64; std::string overlay, wool, eyes; std::vector<std::string> hide; std::vector<std::string> hidePrefix; std::vector<PMPart> parts;
+struct PMSpec { std::vector<std::string> tex; int texW = 64; std::string overlay, eyes; std::vector<std::string> wool, under; std::vector<std::string> hide; std::vector<std::string> hidePrefix; std::vector<PMPart> parts;
   std::unordered_map<std::string, std::array<float, 6>> box;   // with the pack's skin, a part takes Minecraft's box: {lo x,y,z, size x,y,z} in px, model space (feet at 0)
 };
 
@@ -146,8 +146,14 @@ static const std::unordered_map<std::string, PMSpec>& packMobs() {
     M["cow"] = s; }
   { PMSpec s; s.tex = {"entity/pig/temperate_pig", "entity/pig/pig"}; s.parts = pmQuad({0, 0, 8, 8, 8}, {28, 8, 10, 16, 8}, {0, 16, 4, 6, 4});
     s.parts.push_back(P("snout", {16, 16, 4, 3, 1})); s.parts.push_back(P("tail", {0, 16, 4, 6, 4})); M["pig"] = s; }
-  { PMSpec s; s.tex = {"entity/sheep/sheep"}; s.wool = "entity/sheep/sheep_fur"; s.parts = pmQuad({0, 0, 6, 6, 8}, {28, 8, 8, 16, 6}, {0, 16, 4, 12, 4});
+  { PMSpec s; s.tex = {"entity/sheep/sheep", "entity/sheep"};
+    s.wool = {"entity/sheep/sheep_fur", "entity/sheep/sheep_wool", "entity/sheep_wool"};   // Minecraft's old name, 1.21.5's, a pack's own place
+    s.under = {"entity/sheep/sheep_wool_undercoat", "entity/sheep_wool_undercoat"};          // 1.21.5's undercoat: what a sheared sheep keeps
+    s.parts = pmQuad({0, 0, 6, 6, 8}, {28, 8, 8, 16, 6}, {0, 16, 4, 12, 4});
     PMo w = ly; w.wool = true; PMo w2; w2.wool = true;
+    PMo u = ly; u.under = true; PMo u2; u2.under = true;
+    s.parts.push_back(P("under", {28, 8, 8, 16, 6}, u)); s.parts.push_back(P("underCap", {0, 0, 6, 6, 6}, u2));
+    for (const char* n : {"FL", "FR", "BL", "BR"}) s.parts.push_back(P(std::string("legUnder") + n, {0, 16, 4, 6, 4}, u2));
     s.parts.push_back(P("tail", {0, 16, 4, 12, 4})); s.parts.push_back(P("wool", {28, 8, 8, 16, 6}, w)); s.parts.push_back(P("cap", {0, 0, 6, 6, 6}, w2));
     for (const char* n : {"FL", "FR", "BL", "BR"}) s.parts.push_back(P(std::string("legWool") + n, {0, 16, 4, 6, 4}, w2));
     M["sheep"] = s; }
@@ -236,16 +242,18 @@ static bool packSkin(const RigModel& M, const std::string& key, std::vector<std:
   const bool own = img.ok();
   if (!own) for (auto& t : spec.tex) { img = loadPackPic(pk, t); if (img.ok()) { rel = t; break; } }
   if (!img.ok()) return false;
-  Img over = loadPackPic(pk, spec.overlay), wool = loadPackPic(pk, spec.wool), eyes = loadPackPic(pk, spec.eyes);
+  Img over = loadPackPic(pk, spec.overlay), eyes = loadPackPic(pk, spec.eyes), wool, under;
+  for (auto& t : spec.wool) { wool = loadPackPic(pk, t); if (wool.ok()) break; }
+  for (auto& t : spec.under) { under = loadPackPic(pk, t); if (under.ok()) break; }
   if (!own && !M.packBase.empty()) { tintImg(img, M.packTint); tintImg(over, M.packTint); }
   float k = img.w / (float)spec.texW;
   std::set<std::string> empty, done;
   for (const PMPart& pp : spec.parts) {
     int pi = M.find(pp.name);
     if (pi < 0) continue;
-    const Img& src = pp.o.wool ? wool : img;
+    const Img& src = pp.o.wool ? wool : pp.o.under ? under : img;
     if (!src.ok()) continue;
-    float kk = src.w / (pp.o.wool ? 64.f : (float)spec.texW);
+    float kk = src.w / (pp.o.wool || pp.o.under ? 64.f : (float)spec.texW);
     PMo o = pp.o;
     if (o.whole && M.find("shin" + pp.name.substr(3)) >= 0) o.whole = false;   // a leg with a knee: the thigh takes the top half
     auto F = pmFaces(pp.box, o);
@@ -255,7 +263,7 @@ static bool packSkin(const RigModel& M, const std::string& key, std::vector<std:
       if (o.legStrip >= 0) { reg = {pp.box.u + pp.box.d, pp.box.v + pp.box.d, pp.box.w, pp.box.h}; xf = o.legStrip ? CW : ID; }
       Pic px; pmPatch(src, kk, reg, xf, px, false, F[f].slice);
       if (o.hasOver) pmPatch(src, kk, pmFaces(o.over, o)[f].reg, xf, px, true, F[f].slice);
-      if (over.ok() && !o.wool) pmPatch(over, over.w / 64.f, reg, xf, px, true, F[f].slice);
+      if (over.ok() && !o.wool && !o.under) pmPatch(over, over.w / 64.f, reg, xf, px, true, F[f].slice);
       if (o.slimeFace && f == 5) {   // the slime's eyes and mouth are little boxes of their own in front of the core
         const int E[3][6] = {{34, 2, 2, 2, 10, 18}, {34, 6, 2, 2, 60, 18}, {33, 9, 1, 1, 45, 62}};
         for (auto& e : E) {
