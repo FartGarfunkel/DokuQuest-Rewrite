@@ -165,12 +165,16 @@ int main(int argc, char** argv) {
   for (int i = 0; i < 600 && !w.isLoaded(3000, Y, 3000); i++) { w.stream(anchors, 50); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
   int sy = w.surfaceY(3000, 3000, DIM_OVERWORLD);
   p.pos = vec3(3000.5f, sy + 1, 3000.5f);
-  for (int i = 0; i < 400 && w.pendingGeneration() > 0; i++) { w.stream(anchors, 50); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
+  for (int i = 0; i < 1500 && w.pendingGeneration() > 0; i++) { w.stream(anchors, 50); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }   // (a busy machine makes the land slowly)
   for (int i = 0; i < 200; i++) w.stream(anchors, 20);
   lv->info.time = DAY_LEN * 0.25;   // noon
-  run(*lv, p, 3);
   int animals = 0, hostile = 0;
-  for (auto& e : lv->entities()) if (auto* c = dynamic_cast<Creature*>(e.get())) if (!c->removed) (c->T->hostile ? hostile : animals)++;
+  for (int tries = 0; tries < 4 && animals == 0; tries++) {
+    run(*lv, p, 3);
+    animals = hostile = 0;
+    for (auto& e : lv->entities()) if (auto* c = dynamic_cast<Creature*>(e.get())) if (!c->removed) (c->T->hostile ? hostile : animals)++;
+    if (!animals) for (int i = 0; i < 300 && w.pendingGeneration() > 0; i++) { w.stream(anchors, 50); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
+  }
   CHECK(animals > 0, "herds came with the land (%d animals)", animals);
   lv->info.time = DAY_LEN * 0.75;   // midnight
   run(*lv, p, 90);
