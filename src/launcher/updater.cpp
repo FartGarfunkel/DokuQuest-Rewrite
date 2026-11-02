@@ -181,6 +181,15 @@ fs::path Updater::executable(const std::string& base, std::string* version) cons
     if (fs::exists(exe)) { if (version) *version = pin; return exe; }
     if (base != "dokuquest") { if (version) *version = DQ_VERSION; return installDir() / exeName(base); }   // a game-only version: this launcher
   }
+  // the launcher: the newest one any installed package brought (game-only updates carry none), so a launcher that
+  // came with an update keeps taking over (handOff) however many game-only versions come after it
+  if (base == "dokuquest-launcher") {
+    const std::string lv = s.value("launcherFrom", "");
+    if (!lv.empty() && !s["bad"].contains(lv) && s["installed"].contains(lv)) {
+      fs::path exe = fs::path(s["installed"][lv].value("dir", "")) / exeName(base);
+      if (fs::exists(exe) && compareVersions(s["installed"][lv].value("launcher", std::string()), DQ_LAUNCHER_VERSION) > 0) { if (version) *version = lv; return exe; }
+    }
+  }
   for (const char* k : {"active", "previous"}) {
     std::string v = s.value(k, "");
     if (v.empty() || s["bad"].contains(v) || compareVersions(v, DQ_VERSION) <= 0 || !s["installed"].contains(v)) continue;
@@ -373,6 +382,11 @@ void Updater::finishExtract() {
   if (!old.empty() && old != rel.version) s["previous"] = old;
   s["active"] = rel.version;
   s["installed"][rel.version] = {{"dir", (dest / rel2).lexically_normal().string()}, {"asset", asset.name}, {"sha256", wantSha}, {"at", unixMillis()}};
+  if (fs::exists(dest / rel2 / exeName("dokuquest-launcher"))) {   // a whole package: its launcher takes over from now on
+    std::string lv; if (auto t = readFile(dest / rel2 / "launcher.version")) { lv = *t; while (!lv.empty() && std::isspace((unsigned char)lv.back())) lv.pop_back(); }
+    s["installed"][rel.version]["launcher"] = lv.empty() ? rel.version : lv;
+    if (compareVersions(lv.empty() ? rel.version : lv, DQ_LAUNCHER_VERSION) > 0) s["launcherFrom"] = rel.version;
+  }
   if (s.value("pinned", "") != "" && s.value("pinned", "") != rel.version) DQ_LOG("updater: %s installed; the player keeps playing %s (pinned)", rel.version.c_str(), s.value("pinned", "").c_str());
   // keep the three newest versions (to go back to, offline too) and the one the player picked; remove older ones
   std::vector<std::string> keep;
@@ -381,7 +395,7 @@ void Updater::finishExtract() {
   if (keep.size() > 3) keep.resize(3);
   const std::string pin = s.value("pinned", "");
   for (auto it = s["installed"].begin(); it != s["installed"].end();) {
-    if (std::find(keep.begin(), keep.end(), it.key()) == keep.end() && it.key() != pin) { fs::remove_all(vroot / it.key(), ec); it = s["installed"].erase(it); }
+    if (std::find(keep.begin(), keep.end(), it.key()) == keep.end() && it.key() != pin && it.key() != s.value("launcherFrom", "")) { fs::remove_all(vroot / it.key(), ec); it = s["installed"].erase(it); }
     else ++it;
   }
   saveState(s);
