@@ -480,8 +480,19 @@ static Move swimmerAI(Level& lv, Creature& m, Entity* p, float dist, float dyp, 
     if (m.puffed && !was) lv.fx->sound("puff", m.pos, 14);
     if (m.puffed && p && dist < 1.2f && std::fabs(dyp) < 1.4f && m.attackCd <= 0) { m.attackCd = 1; DamageSrc s; s.knock = 2; damageEntity(lv, *p, 1, &m, "mob", s); }
   }
-  if (m.hurtTime > 0.3f && T.sound == "squid" && !m.inked) { m.inked = true; mobBurst(lv, m.pos + vec3(0, 0.5f, 0), "black_wool", 24, 1.6f); }
+  const bool squid = T.sound == "squid";
+  if (m.hurtTime > 0.3f && squid && !m.inked) { m.inked = true; mobBurst(lv, m.pos + vec3(0, 0.5f, 0), "black_wool", 24, 1.6f); }
   if (m.hurtTime <= 0) m.inked = false;
+  // BTA's smarter squid: someone swimming up close startles it: a cloud of ink and a dash away (then a while before the
+  // next; puffT is a pufferfish's puff timer, free on a squid, so it keeps the wait)
+  if (squid) {
+    m.puffT = std::max(0.f, m.puffT - dt);
+    if (p && dist < 3.2f && std::fabs(dyp) < 2.5f && (p->inWater || p->riding) && m.puffT <= 0) {
+      mobBurst(lv, m.pos + vec3(0, 0.5f, 0), "black_wool", 18, 1.4f); lv.fx->sound("splash", m.pos, 10, 0.4f, 1.6f);
+      m.hurtTime = std::max(m.hurtTime, 0.6f);   // (flees as if hit, below)
+      m.puffT = 8 + frand() * 6;
+    }
+  }
   m.swimT -= dt;
   float want = T.speed, dir = m.hasSwimDir ? m.swimDir : m.yaw, ty = m.hasSwimY ? m.swimY : m.pos.y;
   bool fleeing = !T.playful && (m.hurtTime > 0 || (p && dist < 4 && std::fabs(dyp) < 3 && !T.puffs && T.sound != "squid"));
@@ -494,15 +505,17 @@ static Move swimmerAI(Level& lv, Creature& m, Entity* p, float dist, float dyp, 
   else if (leader && leader->alive()) { dir = heading(m.pos.x, m.pos.z, leader->pos.x + std::sin((float)m.id) * 0.8f, leader->pos.z + std::cos((float)m.id) * 0.8f); ty = leader->pos.y; want = std::hypot(leader->pos.x - m.pos.x, leader->pos.z - m.pos.z) > 1.5f ? T.speed * 1.2f : T.speed * 0.4f; }
   else if (m.swimT <= 0 || m.hitWall) {
     m.swimT = 2 + frand() * 4;
-    for (int i = 0; i < 6; i++) {
-      float a = frand() * TAU, r = 3 + frand() * 5, nx = m.pos.x - std::sin(a) * r, nz = m.pos.z - std::cos(a) * r, ny = m.pos.y + (frand() - 0.5f) * 4;
-      if (wetAt(w, nx, ny, nz) && wetAt(w, nx, ny + 0.4f, nz)) { m.swimDir = a; m.hasSwimDir = true; m.swimY = ny; m.hasSwimY = true; break; }
+    for (int i = 0; i < (squid ? 10 : 6); i++) {
+      // (a squid keeps to the deep: it heads for water with more water over it and under it, and never into the shallows)
+      float a = frand() * TAU, r = 3 + frand() * 5, nx = m.pos.x - std::sin(a) * r, nz = m.pos.z - std::cos(a) * r, ny = m.pos.y + (frand() - (squid ? 0.65f : 0.5f)) * 4;
+      if (wetAt(w, nx, ny, nz) && wetAt(w, nx, ny + 0.4f, nz) && (!squid || (wetAt(w, nx, ny + 1.6f, nz) && wetAt(w, nx, ny - 1.2f, nz)))) { m.swimDir = a; m.hasSwimDir = true; m.swimY = ny; m.hasSwimY = true; break; }
     }
     if (m.hasSwimDir) dir = m.swimDir; if (m.hasSwimY) ty = m.swimY;
-    if (T.sound == "squid") want = T.speed * (0.4f + frand() * 0.8f);
+    if (squid) want = T.speed * (0.4f + frand() * 0.8f);
   }
   if (!wetAt(w, m.pos.x, ty + m.h, m.pos.z) && !(T.playful && frand() < 0.002f)) ty = std::min(ty, m.pos.y);
   if (T.playful && m.speedNow > 3 && !wetAt(w, m.pos.x, m.pos.y + 1.2f, m.pos.z) && frand() < dt * 0.6f) { m.vel.y = 7; lv.fx->sound("splash", m.pos + vec3(0, 1, 0), 20); }
+  if (squid && !fleeing) want *= 0.35f + 1.3f * std::pow(std::max(0.f, std::sin(m.age * 2.6f)), 3.f);   // a squid moves in strokes: push, glide
   m.swimVy = clampv((ty - m.pos.y) * 1.2f, -2.f, 2.f);
   m.swimPitch = clampv(-m.vel.y * 0.2f, -0.6f, 0.6f);
   return {want, dir};

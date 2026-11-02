@@ -43,7 +43,18 @@ std::vector<ivec3> findPath(const World& w, ivec3 s, ivec3 t, const PathOpts& o)
     return true;
   };
   auto pass = [&](int x, int y, int z, int ax) { BlockId id = w.getBlock(x, y, z); return R.tSolid[id] ? doorish(id) && doorOK(x, y, z, ax) : !navDanger[id]; };
-  auto clear = [&](int x, int y, int z, int ax) { for (int k = 0; k < H; k++) if (!pass(x, y + k, z, ax)) return false; return true; };
+  // BTA: a creature a little under its cells' height (a fuseling, 1.7) walks under what only fills the top of its head's
+  // cell, like a shut trapdoor at the top of the block
+  const float headRoom = o.hf > 0 ? (float)H - o.hf : 0;
+  auto overhead = [&](int x, int y, int z) {
+    if (headRoom < 0.1f) return false;
+    BlockId id = w.getBlock(x, y, z);
+    if (!R.tSolid[id] || navDanger[id]) return false;
+    tmp.clear(); blockBoxes(w, x, y, z, tmp);
+    for (auto& b : tmp) if (b.lo.y - y < 1 - headRoom + 0.01f) return false;
+    return !tmp.empty();
+  };
+  auto clear = [&](int x, int y, int z, int ax) { for (int k = 0; k < H; k++) if (!pass(x, y + k, z, ax) && !(k == H - 1 && overhead(x, y + k, z))) return false; return true; };
   auto inDoor = [&](int x, int y, int z) { for (int k = 0; k < H; k++) if (doorish(w.getBlock(x, y + k, z))) return true; return false; };
   auto water = [&](int x, int y, int z) { return R.tLiquid[w.getBlock(x, y, z)] == 1; };
   auto ground = [&](int x, int y, int z) { BlockId id = w.getBlock(x, y - 1, z); return (R.tSolid[id] && !navNoStand[id] && !navDanger[id]) || (o.swim && water(x, y - 1, z)) || (o.swim && water(x, y, z)); };
@@ -104,7 +115,7 @@ std::optional<float> Creature::navDir(Level& lv, vec3 to, float dt) {
   bool moved = !hasNavGoal || std::hypot(to.x - navGoal.x, to.z - navGoal.z) > 1.5f || std::fabs(to.y - navGoal.y) > 1.5f;
   if (navT <= 0 || moved || !hasPath) {
     navT = 0.6f + frand() * 0.4f;
-    PathOpts o; o.h = std::max(1, (int)std::ceil(h - 0.05f)); o.maxDrop = 3; o.swim = true; o.w = w;
+    PathOpts o; o.h = std::max(1, (int)std::ceil(h - 0.05f)); o.maxDrop = 3; o.swim = true; o.w = w; o.hf = h;
     path = findPath(lv.world(realm), ivec3(ifloor(pos.x), ifloor(pos.y + 0.45f), ifloor(pos.z)), ivec3(ifloor(to.x), ifloor(to.y + 0.45f), ifloor(to.z)), o);
     hasPath = !path.empty(); pathI = 0; navGoal = to; hasNavGoal = true;
   }

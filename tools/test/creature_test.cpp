@@ -80,6 +80,18 @@ int main(int argc, char** argv) {
   CHECK(gap, "goes through the gap");
   for (int z = -5; z < 39; z++) for (int y = Y; y < Y + 3; y++) w.setBlock(15, y, z, AIR);
   w.setBlock(25, Y, 5, AIR);
+  // BTA: a fuseling (1.7 tall) walks under a shut trapdoor at the top of its head's block; a ghoul (1.95) can't
+  {
+    BlockId trap = reg().blockId("oak_trapdoor") ? reg().blockId("oak_trapdoor") : reg().blockId("trapdoor");
+    for (int z = -5; z < 39; z++) { w.setBlock(15, Y + 2, z, stone); w.setBlock(15, Y + 1, z, trap, 8 /* top half */); }
+    PathOpts f; f.h = 2; f.hf = 1.7f; f.w = 0.3f;
+    auto pf = findPath(w, ivec3(10, Y, 5), ivec3(20, Y, 5), f);
+    PathOpts gh; gh.h = 2; gh.hf = 1.95f; gh.w = 0.3f;
+    auto pg = findPath(w, ivec3(10, Y, 5), ivec3(20, Y, 5), gh);
+    CHECK(trap && !pf.empty() && pf.back() == ivec3(20, Y, 5), "a fuseling-sized creature paths under a row of shut top trapdoors (%zu nodes)", pf.size());
+    CHECK(pg.empty() || pg.back() != ivec3(20, Y, 5), "a ghoul-sized one doesn't fit under them");
+    for (int z = -5; z < 39; z++) for (int y = Y; y < Y + 3; y++) w.setBlock(15, y, z, AIR);
+  }
 
   printf("melee\n");
   Creature* g = spawnCreature(*lv, 0, "ghoul", vec3(4.5f, Y, 14.5f));

@@ -3,6 +3,7 @@
 // colonies (game/husbandry.js), bodies that don't share space (game/crowd.js: not ported by gameplay, so it
 // lives here), item merging (game.js updateEntities), players' status effects; plus registerCreatures().
 // No phantoms, ever.
+#include "sim/weather.h"
 #include "gen/nether_bta.h"
 #include <unordered_set>
 #include "sim/leads.h"
@@ -239,6 +240,7 @@ public:
     }
     int n = (int)ps.size();
     int capA = 7 + n * 2, capW = 6 + n * 2, capB = 2 + n, capH = 6 + n * 2;
+    if (dim == DIM_OVERWORLD && seasonOf(lv) == 3) capH += 2 + n;   // BTA: winter's long dark brings more monsters out
     bool peaceful = lv.info.difficulty == "peaceful";
     auto ring = [&](float a, float b) { float ang = frand() * TAU, d = a + frand() * (b - a); return ivec2(ifloor(p->pos.x + std::cos(ang) * d), ifloor(p->pos.z + std::sin(ang) * d)); };
     auto crowded = [&](int x, int z, float rad, int max) {

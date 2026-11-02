@@ -837,7 +837,7 @@ void Creature::update(Level& lv, float dt) {
   {
     vec3 before = pos;
     // a creature hiding inside a block (the October pumpkin creature) stays put: no move, no push out of the block
-    MoveResult r = data.value("inBlock", false) ? MoveResult{} : T->phase ? phaseMove(wd, pos, w, h, vel * dt) : moveBox(wd, pos, w, h, vel * dt, onGround || wasGround ? 0.6f : 0.f);
+    MoveResult r = data.value("inBlock", false) ? MoveResult{} : T->phase ? phaseMove(wd, pos, w, h, vel * dt) : moveBox(wd, pos, w, h, vel * dt, onGround || wasGround ? (riddenBy ? 1.05f : 0.6f) : 0.f);   // (ridden: up stairs and slabs at a run, as BTA's pigs keep their momentum)
     hitWall = r.hitX || r.hitZ; hitCeiling = r.hitY && vel.y > 0;
     if (r.hitX) vel.x = 0;
     if (r.hitZ) vel.z = 0;

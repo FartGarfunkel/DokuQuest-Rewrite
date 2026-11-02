@@ -15,6 +15,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Villagers go to church:** every seventh morning the bell rings, villagers fill the pews and stand at the back, and bow before the chapel's banners.
 - **More in the Skylands:** driftstone, a pale lilac stone that falls *up* until it meets something; whirlwinds that wander the islands and toss whatever they touch into the air; and the Valkyrie Queen now wakes with two valkyries at her side.
 - **Players move better:** a push-off and a tuck when you jump, a landing that sinks with the height of the fall, a wind-up before a swing, a bounce and a nod as you run.
+- **Creatures, as in BTA:** fuselings slip under a shut trapdoor at head height (a ghoul doesn't fit); squid keep to deep water, swim in strokes, and squirt ink and dash off when you swim up close; a ridden horse or pig takes stairs and slabs at a run instead of stopping at each; and winter's long dark brings more monsters out.
 - **Steam vents in the Nether:** the vents breathe out plumes of steam with a hiss now and then, in every Nether land.
 
 **Worlds and portals:**
