@@ -20,8 +20,8 @@ const std::vector<VertexAttrib> LOD_ATTRS = {
   {0, 2, GL_UNSIGNED_SHORT, GL_FALSE, false, 0},
   {1, 1, GL_SHORT, GL_FALSE, false, 4},
   {2, 1, GL_UNSIGNED_SHORT, GL_FALSE, true, 6},
-  {3, 4, GL_UNSIGNED_BYTE, GL_TRUE, false, 8},
-  {4, 1, GL_UNSIGNED_SHORT, GL_FALSE, true, 12},
+  {3, 1, GL_UNSIGNED_SHORT, GL_FALSE, true, 8},    // tint 5-6-5
+  {4, 1, GL_UNSIGNED_SHORT, GL_FALSE, true, 10},   // flags | face << 4 | shade << 7
 };
 inline u64 tkey(int L, int tx, int tz) { return ((u64)L << 58) | ((u64)((u32)tx & 0x1FFFFFFFu) << 29) | (u64)((u32)tz & 0x1FFFFFFFu); }
 inline u64 rkey(int dim, int rx, int rz) { return ((u64)dim << 60) | ((u64)((u32)rx & 0x3FFFFFFFu) << 30) | (u64)((u32)rz & 0x3FFFFFFFu); }

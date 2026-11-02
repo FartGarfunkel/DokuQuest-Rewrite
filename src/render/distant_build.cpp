@@ -168,7 +168,9 @@ struct MeshOut {
     o.x = (u16)clampv((int)std::lround(p.x / size * 32768.f), 0, 65535);
     o.z = (u16)clampv((int)std::lround(p.z / size * 32768.f), 0, 65535);
     o.y = (i16)clampv((int)std::lround(p.y * 8), -32768, 32767);
-    o.tile = tile; o.r = b8(c.x); o.g = b8(c.y); o.b = b8(c.z); o.shade = (u8)clampv(sh, 0, 255); o.flags = flags; o.pad = 0;
+    o.tile = tile;
+    o.rgb = (u16)(((b8(c.x) * 31 + 127) / 255) << 11 | ((b8(c.y) * 63 + 127) / 255) << 5 | ((b8(c.z) * 31 + 127) / 255));
+    o.pk = (u16)((flags & 15) | ((flags >> 8) & 7) << 4 | clampv(sh, 0, 255) << 7);
     minY = std::min(minY, p.y); maxY = std::max(maxY, p.y);
     v.push_back(o);
   }
@@ -288,10 +290,12 @@ void buildTile(const TileInput& in, TileOutput& out) {
   // flags: 1 water, 2 glows (lava), 4 tint every pixel (water), 8 drawn in its average colour (leaves and the like:
   // their see-through pixels mean nothing from afar); bits 8..10 the face (for the texture's direction)
   auto flagsOf = [&](BlockId id) -> u16 {
-    return (u16)((R.tLiquid[id] == 1 ? 1 | 4 : 0) | (R.tLiquid[id] == 2 ? 2 : 0) | (R.tLeaves[id] || R.tRender[id] == (u8)Render::Cutout ? 8 : 0));
+    return (u16)((R.tLiquid[id] == 1 ? 1 | 4 : 0) | (R.tLiquid[id] == 2 ? 2 : 0) | (R.tLeaves[id] || R.tRender[id] == (u8)Render::Cutout ? 8 : 0) | (id == ct.ice ? 4 : 0));
   };
   // a face's colour: the tint (white if none); a flat-coloured block's own colour, tinted
   auto colourOf = [&](BlockId id, int k, bool side) -> vec3 {
+    // sea ice: near, it's see-through with the sea under it; far off it's drawn solid, so it takes the sea's blue
+    if (id == ct.ice) return glm::mix(vec3(1.f), unpack(climateWater(temp[k], humid[k])) / 255.f, 0.5f) * (255.f / 1.25f);
     vec3 t = tintOf(ct, id, temp[k], humid[k], stint[k]);
     if (side && ct.tint[id] == 1) t = vec3(1);   // grass sides: the picture marks which pixels take the tint
     if (flagsOf(id) & 8) return unpack(side ? ct.side[id] : ct.top[id]) * t;

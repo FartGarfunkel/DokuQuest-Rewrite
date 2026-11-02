@@ -32,7 +32,8 @@ Choose "WarmEvening" in Settings → Shader pack: terrain, sky, clouds, far land
 take the sepia grade; choose "None" to go back.
 
 Bigger packs copy a file (say `clouds.glsl` or `chunk.glsl`) into the pack folder and edit it; keep the
-same `in`/`out`/uniform names, since the game sets those by name.
+same `in`/`out`/uniform names, since the game sets those by name. (alpha.12 changed `distant.glsl`'s inputs: the tint
+and shade now come packed as `aRgb` (5-6-5) and `aPk`; a pack with its own copy needs the new one's top.)
 
 ## Iris / OptiFine packs
 Drop the pack's `.zip` (or its unpacked folder, the one holding `shaders/`) into `shaderpacks/` and pick it

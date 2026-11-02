@@ -42,10 +42,11 @@ struct ColorTable {
   BlockId water = 0, lava = 0, dirt = 0, ice = 0;
 };
 
-// x,z: tile/32768 units, y: 1/8 block; tile: the block face's texture layer; r,g,b: its tint; flags: 1 water, 2 glows,
-// 4 tint every pixel, 8 average colour only, bits 8..10 the face (+x -x +y -y +z -z)
-struct LodVertex { u16 x, z; i16 y; u16 tile; u8 r, g, b, shade; u16 flags, pad; };
-static_assert(sizeof(LodVertex) == 16, "LOD vertex must be 16 bytes");
+// 12 bytes (it was 16: the far land is most of a long view's vertices). x,z: tile/32768 units, y: 1/8 block; tile: the
+// block face's texture layer; rgb: its tint as 5-6-5; pk: bits 0..3 flags (1 water, 2 glows, 4 tint every pixel,
+// 8 average colour only), 4..6 the face (+x -x +y -y +z -z), 7..14 the shade
+struct LodVertex { u16 x, z; i16 y; u16 tile; u16 rgb; u16 pk; };
+static_assert(sizeof(LodVertex) == 12, "LOD vertex must be 12 bytes");
 
 struct TileInput {
   int dim = 2, L = 0, tx = 0, tz = 0;

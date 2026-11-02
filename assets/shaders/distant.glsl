@@ -7,8 +7,8 @@
 layout(location = 0) in vec2 aXZ;      // tile/32768 units
 layout(location = 1) in float aY;      // 1/8 block
 layout(location = 2) in uint aTile;    // the face's texture layer
-layout(location = 3) in vec4 aCol;     // tint rgb, shade
-layout(location = 4) in uint aFlags;   // 1 water, 2 glowing (lava), 4 tint every pixel, 8 average colour only; bits 8..10 the face
+layout(location = 3) in uint aRgb;     // the tint, 5-6-5
+layout(location = 4) in uint aPk;      // bits 0..3: 1 water, 2 glowing (lava), 4 tint every pixel, 8 average colour only; 4..6 the face; 7..14 the shade
 uniform mat4 uViewProj;
 uniform vec3 uTileOrigin;              // tile corner relative to the camera's block (y = -camera block y)
 uniform float uTileScale;
@@ -25,7 +25,8 @@ void main() {
   vec3 local = vec3(aXZ.x * uTileScale, aY / 8.0 - uDrop, aXZ.y * uTileScale);
   vec3 p = local + uTileOrigin;
   gl_Position = uViewProj * vec4(p, 1.0);
-  vCol = aCol; vPos = p; vRel = p - uCamFrac; vLocal = local.xz; vFlags = aFlags; vY = aY / 8.0; vTile = float(aTile);
+  vCol = vec4(float((aRgb >> 11u) & 31u) / 31.0, float((aRgb >> 5u) & 63u) / 63.0, float(aRgb & 31u) / 31.0, float((aPk >> 7u) & 255u) / 255.0);
+  vPos = p; vRel = p - uCamFrac; vLocal = local.xz; vFlags = (aPk & 15u) | (((aPk >> 4u) & 7u) << 8u); vY = aY / 8.0; vTile = float(aTile);
 }
 #endif
 #ifdef FRAGMENT
