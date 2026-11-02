@@ -61,7 +61,10 @@ void engineBridgeFrame(App& app, int port) {
       }
     } else if (cmd == "command") {
       if (!s || !s->level) { r["ok"] = false; r["error"] = "no world open"; }
-      else r["reply"] = runCommand(*s->level, s->player, q.value("text", ""));
+      else {   // (the bridge is the person at the keyboard, a developer: commands work even where cheats are off)
+        CommandSource src; src.level = s->level.get(); src.player = s->player; src.name = s->player ? s->player->name : "Engine"; src.op = true;
+        r["reply"] = runCommand(*s->level, src, q.value("text", ""));
+      }
     } else if (cmd == "reloadShaders") {
       r["reloaded"] = reloadAllShaders();
     } else if (cmd == "shot") {

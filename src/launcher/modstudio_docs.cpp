@@ -317,7 +317,7 @@ void drawEngine(Launcher& L) {
   EngineState& E = es();
   if (!E.searched) { E.srcRoot = findSource(); E.searched = true; }
   const std::string repo = "https://github.com/" + L.updater.source;
-  panelBegin(L, "Engine source");
+  panelBegin(L, "The engine");
   hint(L, "The engine is open source. Each folder under src/ is one area; the lower ones build on the upper ones. "
           "dqcore (common … server) has no graphics and is all the dedicated server needs; dqclient adds the game window.");
   ImGui::Spacing();

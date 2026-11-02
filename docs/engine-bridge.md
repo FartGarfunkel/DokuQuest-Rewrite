@@ -29,7 +29,21 @@ From a shell: `printf '{"cmd":"state"}\n' | nc -q1 127.0.0.1 25590`
 - **Build** runs `cmake --build build --parallel` in the source folder (configure it once first, see the
   README); **Start the game (bridge on)** runs `build/dokuquest --bridge`.
 - **The game, live**: its state, a command line, Reload shaders, Screenshot, its log.
-- **Ask Strata**: the question goes, with the open file, to a chat endpoint in the OpenAI style
-  (`POST {model, messages}` → `choices[0].message.content`), through the system `curl`. Set the endpoint,
-  the model name, and the environment variable holding an API key if it needs one. Code it answers with
+- **Ask Strata**: like the Zed editor, the page finds the models running on this computer by itself — it asks
+  Ollama (`127.0.0.1:11434/api/tags`), LM Studio (`127.0.0.1:1234/v1/models`) and llama.cpp's server
+  (`127.0.0.1:8080/v1/models`) every 20 seconds — so Strata shows up in **Model on this computer** while it runs,
+  and is picked by itself the first time (any model with "strata" in its name). The question goes, with the open
+  file, to that server's OpenAI-style chat endpoint (`/v1/chat/completions`) through the system `curl`.
+  **Elsewhere** takes any other address, model and API-key variable (a hosted model). Code it answers with
   (the first ``` block) can be put into the editor to look over before you Save; nothing is saved by itself.
+
+## As an MCP server (Strata, Claude, any MCP client)
+`dokuquest-launcher --mcp [port]` speaks the Model Context Protocol on stdin/stdout and passes each tool call to
+the running game's bridge: `game_state`, `run_command`, `reload_shaders`, `screenshot`, `read_log`,
+`set_setting`. In an MCP client's settings:
+```json
+{ "mcpServers": { "dokuquest": { "command": "/path/to/DokuQuest/dokuquest-launcher", "args": ["--mcp"] } } }
+```
+(the AI edits the engine's files with its own file tools, and uses these to see and test the result live.)
+Commands sent through the bridge run with full permissions, even in a world with cheats off: it's the person at
+the keyboard.

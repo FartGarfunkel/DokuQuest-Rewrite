@@ -26,6 +26,16 @@ struct Tools {
   ChildProcess game; LineClient link; std::deque<std::string> console; std::string cmdLine; double tryAt = -10; json state;
   // Strata
   ChildProcess ask; bool asking = false; std::string question, answer, endpoint, model, keyEnv; bool cfgLoaded = false; fs::path askOut;
+  // the local models running on this computer, found the way Zed finds them: Ollama (11434), LM Studio (1234),
+  // llama.cpp's server (8080), each asked for its models; Strata shows up among them when it's running
+  struct Found { std::string label, model, endpoint; };
+  std::vector<Found> found; ChildProcess look[3]; bool looking = false; double lookedAt = -1e9; fs::path lookOut[3];
+};
+struct Provider { const char* name; const char* list; const char* chat; };
+const Provider PROVIDERS[3] = {
+  {"Ollama", "http://127.0.0.1:11434/api/tags", "http://127.0.0.1:11434/v1/chat/completions"},
+  {"LM Studio", "http://127.0.0.1:1234/v1/models", "http://127.0.0.1:1234/v1/chat/completions"},
+  {"llama.cpp", "http://127.0.0.1:8080/v1/models", "http://127.0.0.1:8080/v1/chat/completions"},
 };
 Tools& T() { static Tools* t = new Tools(); return *t; }
 
@@ -158,16 +168,60 @@ void drawEngineTools(Launcher& L, const fs::path& root) {
   if (!t.cfgLoaded) {
     t.cfgLoaded = true;
     const json& x = L.settings.extra;
-    t.endpoint = x.value("strataEndpoint", std::string("http://127.0.0.1:8080/v1/chat/completions"));
+    t.endpoint = x.value("strataEndpoint", std::string("http://127.0.0.1:11434/v1/chat/completions"));
     t.model = x.value("strataModel", std::string("strata")); t.keyEnv = x.value("strataKeyEnv", std::string("STRATA_API_KEY"));
   }
-  hint(L, "Strata, or any coding assistant with an OpenAI-style chat endpoint (a local server or a hosted one). It gets your "
-          "question with the file you have open; code it sends back can go into the editor for you to look over, then Save. "
-          "It can also drive the running game itself through the engine bridge (docs/engine-bridge.md).");
+  hint(L, "Strata, or any coding model running on this computer: like Zed, the Studio finds the models Ollama, LM Studio and "
+          "llama.cpp are serving, so Strata shows up here by itself while it runs. It gets your question with the file you "
+          "have open; code it sends back can go into the editor for you to look over, then Save. It can also drive the "
+          "running game itself, through the engine bridge or as an MCP server (docs/engine-bridge.md).");
+  // looking for local models: at once, then every 20 s while the page is open (and on "Look again")
+  if (!t.looking && nowSeconds() - t.lookedAt > 20) {
+    t.looking = true; t.lookedAt = nowSeconds();
+    for (int i = 0; i < 3; i++) {
+      t.lookOut[i] = userSub("logs") / strFormat("models_%d.json", i);
+      std::error_code ec; fs::remove(t.lookOut[i], ec);
+      ProcOptions o; o.hidden = true; o.searchPath = true;
+      t.look[i].start(exeName("curl"), {"-sS", "--max-time", "2", "-o", t.lookOut[i].string(), PROVIDERS[i].list}, o);
+    }
+  }
+  if (t.looking && !t.look[0].running() && !t.look[1].running() && !t.look[2].running()) {
+    t.looking = false;
+    std::vector<Tools::Found> f;
+    for (int i = 0; i < 3; i++) {
+      auto j = readJson(t.lookOut[i]);
+      if (!j || !j->is_object()) continue;
+      const json& list = (*j).contains("models") ? (*j)["models"] : (*j).contains("data") ? (*j)["data"] : json();
+      if (list.is_array()) for (auto& m : list) {
+        std::string id = m.is_object() ? m.value("name", m.value("id", m.value("model", std::string()))) : "";
+        if (!id.empty()) f.push_back({id + "  (" + PROVIDERS[i].name + ")", id, PROVIDERS[i].chat});
+      }
+    }
+    const bool first = t.found.empty();
+    if (f.size() != t.found.size()) { std::string l; for (auto& x : f) l += (l.empty() ? "" : ", ") + x.label; DQ_LOG("engine: models on this computer: %s", l.empty() ? "none" : l.c_str()); }
+    t.found = f;
+    // Strata running and nothing else chosen yet: it's the one
+    if (first) for (auto& x : t.found) if (toLower(x.model).find("strata") != std::string::npos && L.settings.extra.value("strataModel", std::string()).empty()) { t.model = x.model; t.endpoint = x.endpoint; break; }
+  }
   bool cfg = false;
-  ImGui::SetNextItemWidth(420); cfg |= ImGui::InputText("Endpoint", &t.endpoint);
-  ImGui::SetNextItemWidth(200); cfg |= ImGui::InputText("Model", &t.model);
-  ImGui::SetNextItemWidth(200); cfg |= ImGui::InputText("API key from the variable", &t.keyEnv);
+  {
+    std::string cur = "Choose a model";
+    for (auto& x : t.found) if (x.model == t.model && x.endpoint == t.endpoint) cur = x.label;
+    if (t.found.empty()) cur = "None running (start Strata, Ollama or LM Studio)";
+    ImGui::SetNextItemWidth(420);
+    if (ImGui::BeginCombo("Model on this computer", cur.c_str())) {
+      for (auto& x : t.found) if (ImGui::Selectable(x.label.c_str(), x.model == t.model && x.endpoint == t.endpoint)) { t.model = x.model; t.endpoint = x.endpoint; cfg = true; }
+      ImGui::EndCombo();
+    }
+    ImGui::SameLine();
+    if (button(L, "Look again")) t.lookedAt = -1e9;
+  }
+  if (ImGui::TreeNode("Elsewhere (a hosted model, or another address)")) {
+    ImGui::SetNextItemWidth(420); cfg |= ImGui::InputText("Endpoint", &t.endpoint);
+    ImGui::SetNextItemWidth(200); cfg |= ImGui::InputText("Model", &t.model);
+    ImGui::SetNextItemWidth(200); cfg |= ImGui::InputText("API key from the variable", &t.keyEnv);
+    ImGui::TreePop();
+  }
   if (cfg) { L.settings.extra["strataEndpoint"] = t.endpoint; L.settings.extra["strataModel"] = t.model; L.settings.extra["strataKeyEnv"] = t.keyEnv; L.saveSettings(); }
   ImGui::InputTextMultiline("##q", &t.question, ImVec2(-16, 70));
   if (t.asking && !t.ask.running()) {

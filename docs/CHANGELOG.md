@@ -35,7 +35,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 
 **Tools:**
 - **Texture Studio:** a new Creatures tab: open any creature's skin from your resource pack, paint it at its own size with a live preview, and save it straight into the pack (or over it, without touching the pack); "Put the pack's back" undoes it.
-- **The Engine page** in the Mod Studio is now an engine editor: open and edit the engine's source, shaders and data, build it, start the game with the engine bridge and drive it live (commands, shaders reloaded as you save, screenshots, its log), and ask a coding assistant such as Strata about the open file. Tools on your computer can drive the game through the same bridge (docs/engine-bridge.md).
+- **The Engine page** in the Mod Studio is now an engine editor: open and edit the engine's source, shaders and data, build it, start the game with the engine bridge and drive it live (commands, shaders reloaded as you save, screenshots, its log), and ask Strata about the open file. Like the Zed editor, it finds the models running on your computer by itself (Ollama, LM Studio, llama.cpp), so Strata shows up and is picked while it runs. Strata (or any AI that speaks MCP) can also drive the running game itself: `dokuquest-launcher --mcp` (docs/engine-bridge.md).
 - **/lineup <page>** sets every creature out side by side, a page at a time.
 
 **Downloads and updates:**

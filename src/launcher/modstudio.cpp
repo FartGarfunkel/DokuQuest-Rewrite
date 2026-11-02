@@ -43,7 +43,7 @@ bool jsSyntaxCheck(const std::string& code, std::string& err) {
 namespace studio {
 namespace {
 enum Page { P_OVERVIEW, P_API, P_EDITOR, P_MODS, P_DATA, P_ENGINE, P_MUSIC, P_SOUNDS, P_TEXTURES, P_COUNT };
-const char* pageNames[] = {"Overview", "DQ API", "Mod editor", "Installed mods", "Data packs", "Engine source", "Music", "Sounds", "Textures"};
+const char* pageNames[] = {"Overview", "DQ API", "Mod editor", "Installed mods", "Data packs", "Engine", "Music", "Sounds", "Textures"};
 
 struct Editor {
   bool inited = false; int tpl = 0;
@@ -398,7 +398,7 @@ void drawStudio(Launcher& L) {
   dl->AddLine(ImVec2(p.x, p.y + hh), ImVec2(p.x + W, p.y + hh), S_LINE, 2);
   dl->AddText(L.fTitle, L.fTitle->FontSize, ImVec2(p.x + 18, p.y + 10), S_EMBER, "DokuQuest Mod Studio");
   float tw = L.fTitle->CalcTextSizeA(L.fTitle->FontSize, FLT_MAX, 0, "DokuQuest Mod Studio").x;
-  dl->AddText(L.fSmall, L.fSmall->FontSize, ImVec2(p.x + 18 + tw + 16, p.y + 10 + L.fTitle->FontSize - L.fSmall->FontSize - 6), S_MUTED, "Learn the engine, write DQ mods and data packs, browse the C++ source.", nullptr, W - tw - 60);
+  dl->AddText(L.fSmall, L.fSmall->FontSize, ImVec2(p.x + 18 + tw + 16, p.y + 10 + L.fTitle->FontSize - L.fSmall->FontSize - 6), S_MUTED, "Learn the engine, write DQ mods and data packs, edit and build the engine with Strata.", nullptr, W - tw - 60);
   ImGui::SetCursorPos(ImVec2(18, L.fTitle->FontSize + 18));
   for (int i = 0; i < P_COUNT; i++) {
     if (i) ImGui::SameLine(0, 6);

@@ -194,8 +194,15 @@ void drawFrame(Launcher& L) {
 } // namespace
 } // namespace dq
 
+namespace dq { int runMcpServer(int port); }   // launcher/mcp_server.cpp
+
 int main(int argc, char** argv) {
   using namespace dq;
+  // --mcp [port]: the engine bridge as an MCP server on stdin/stdout (no window; nothing else may write to stdout)
+  for (int i = 1; i < argc; i++) if (std::string(argv[i]) == "--mcp") {
+    int port = i + 1 < argc && std::isdigit((unsigned char)argv[i + 1][0]) ? std::atoi(argv[i + 1]) : 25590;
+    return runMcpServer(port);
+  }
   installCrashHandler();
   Args a = parseArgs(argc, argv);
   CoreOptions co; co.userDirOverride = a.userDir;
