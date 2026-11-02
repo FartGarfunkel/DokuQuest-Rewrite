@@ -1,9 +1,34 @@
-# DokuQuest — session handoff (2026-11-01, day)
+# DokuQuest — session handoff (2026-11-01, evening)
 
 Start here in a new session. Read this file, `CLAUDE.md` (the code map), and only the files a task needs.
 The full feature list is `docs/MASTER_PLAN.md` (the user's master doc, V2); the BTA detail is `docs/BTA_GAP.md`; the
 Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`. Third-party credits: `docs/CREDITS.md` (Horizon MIT; Cubyz and
-BTA ideas only). alpha.9's notes are written in CHANGELOG/news (not released yet: one release a day, verified builds).
+BTA ideas only). Released: alpha.9, alpha.10 (On the Road) and alpha.11 (Every Creature Its Own) on 2026-11-01 evening.
+
+## Evening 2026-11-01 (the user tested alpha.9: bug list + "variants for every mob, physically different, with lore")
+- **alpha.10 (3670957 + 9c70365):** roads/bridges/travellers (gen/structures_roads.cpp, sim/villager_life.cpp
+  travellersTick), saddle bags + galleon (tools/port/travel.py, sim/vehicles.*), start in the wild, guest use of
+  creatures/containers (controller.cpp runGuestUse), portal chase + far-side spawns, ghast sound range, KeeperSystem
+  (sim/keepers.cpp: dungeon keepers/structure masters wake on entry, clear records), creeper-shaped land fuselings and
+  no-glow golems (tools/port/biome_mobs.py), small bees again, bow held right, footsteps on the stride, Nether places on
+  the new Nether ground (TerrainQuery::openNether), Wither Storm from the T with a command block, captions +
+  Accessibility page, /tp <land>. The user's Herobrine skin: assets/char_creator.cpp userHerobrineSkin() (skins/).
+- **alpha.11 (e57e1cc): creature looks.** tools/port/mob_variants.py (hooked last in data_patches.py) builds 255 looks
+  for 121 creatures: each a model `<mob>_<look>` = the base model + Kit parts (arrows, helmet+lamp, tool on back,
+  hats, moss/snow/coral lumps, spikes, fans, drapes, bands/rings, coats, packs, saddlebags, horns, antlers, crests,
+  eyepatch, beard, things inside slimes) and/or recoloured+patterned copies of its own tiles (`<tile>_<look>`, our own
+  painting: tint_px matches C++ tintImg). mobs.json `variantDefs` [{model, w, label, lands, cave, surface, village,
+  water, dim, held, drops}]; the base look's weight is 1.2x the others' total. sim/creature.cpp placeVariant (in
+  spawnCreature) picks by place; Creature::label(); death message uses it (combat.cpp creatureLabelOf). Models carry
+  packBase/packTint/packTex (creature_rig.h): with a pack (the built-in "DokuQuest Base" pack is active by default and
+  has wolf/sheep/cat/horse/llama/spider/skeleton/zombie/creeper/golem skins!) a look wears its base's pack skin,
+  tinted (packTint, only when the whole coat was recoloured: `ptint`), or the pack's own picture (packTex: e.g.
+  entity/wolf/wolf_ashen). Patterns don't show on pack skins. Golems of other blocks use pack=False. `/looks <mob>`
+  lines them up; `/summon <mob> [n] [look]`. Thin parts are cut by their face pictures only (creature_models.cpp
+  voxelPart thinAxis). Not given looks: bosses, the story's figures, villagers (professions), end crystals.
+- **Open from the user's bug list:** placed skulls "flickering textures around them" (not reproduced; ask which skull
+  and where), portal far-side creatures not visually confirmed. Ideas for more looks: per-land fuseling looks beyond
+  "elder", villager looks, sheared-sheep skin looks from the user's sheet.
 
 ## Day 2026-11-01 (the user's bug reports while testing alpha.8, then the BTA 8.0 Nether, Cubyz tools, Horizon light)
 - **Terrain version 5** (LevelInfo/WorldGenOptions genVersion default 5; old saves keep theirs): `gen/nether_bta.*` is
