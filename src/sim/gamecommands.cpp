@@ -415,7 +415,7 @@ static void registerBuiltinCommands() {
     if (kind.empty()) throw CommandUsage{};
     double secs = num(a, 1);
     if (!(secs > 0)) secs = kind == "clear" ? 900 + rnd() * 1200 : 300 + rnd() * 360;
-    if (WeatherSystem* W = weatherOf(c.lv)) W->set(kind, secs);     // now (it only read meta.weather when the world opened)
+    if (WeatherSystem* W = weatherOf(c.lv)) { W->set(kind, secs); W->save(c.lv); }   // now (it only read meta.weather when the world opened)
     else c.lv.info.data["weather"] = {{"kind", kind}, {"left", secs}};
     if (c.lv.events) c.lv.events->emit("weather", json::array({kind, secs}));
     return "Weather: " + kind;
