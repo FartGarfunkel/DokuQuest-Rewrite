@@ -12,6 +12,8 @@
 #include "mod/modloader.h"
 #include "sim/commands.h"
 #include "gen/generator.h"
+#include "sim/creature.h"
+#include "sim/gameplay.h"
 #include <atomic>
 #include <thread>
 #include <cstdio>
@@ -349,6 +351,38 @@ int main(int argc, char** argv) {
     if (mirror) { mirror->hp -= 3; }   // the host's world hurts them (a creature, a fall...)
     float hpBefore = C.me->hp;
     check(both(3, [&] { return C.me->hp <= hpBefore - 2.9f; }), "damage the host's world does to a friend reaches their game");
+    // ---- creatures between host and friend: how they look, using them, riding (net/server_sync.cpp, server_host.cpp) ----
+    {
+      vec3 at = C.me->pos + vec3(2.5f, 0, 0);
+      Creature* pig = spawnCreature(*lv, 0, "pig", at);
+      Creature* slime = spawnCreature(*lv, 0, "slime", at + vec3(0, 0, 3));
+      if (pig) { pig->saddled = true; pig->kept = true; }
+      if (slime) slime->setSize(3);
+      auto ghostOf = [&](Creature* c) -> Creature* { Entity* e = c ? C.lv->entity(c->id) : nullptr; return e && e->ghost ? dynamic_cast<Creature*>(e) : nullptr; };
+      check(both(5, [&] { Creature* g = ghostOf(pig); return g && g->saddled; }), "a creature's state reaches the friend (a saddled pig)");
+      check(both(5, [&] { Creature* g = ghostOf(slime); return g && g->size == 3; }), "and its size (a big slime)");
+      // the friend uses the pig with an empty hand: the host's game seats their mirror, and their game hears of it
+      Creature* gp = ghostOf(pig);
+      if (gp && mirror) {
+        C.me->inv[C.me->selected] = ItemStack();
+        C.lv->net->action(*C.me, "useEnt", json{{"id", gp->id}, {"sel", C.me->selected}, {"sn", 0}});
+        bool on = both(5, [&] { return C.me->riding == gp->id && pig->riddenBy == mirror->id; });
+        check(on, "a friend gets on a saddled pig (asked of the host, seated there and here)");
+        vec3 p0 = pig->pos;
+        both(4, [&] { rideControl(*C.lv, *C.me, 1, 0, false, false, false); return glm::distance(pig->pos, p0) > 2.5f; });
+        check(glm::distance(pig->pos, p0) > 2.5f, strFormat("and rides it: the host's pig goes where the friend steers (%.1f blocks)", glm::distance(pig->pos, p0)));
+        rideControl(*C.lv, *C.me, 0, 0, false, false, false);   // (a frame of riding: our seat follows the pig as it is here)
+        check(glm::distance(C.me->pos, gp->pos) < 2.5f, strFormat("the friend sits on the pig in their own game (%.1f from it; riding %u, its rider %u, me %u)", glm::distance(C.me->pos, gp->pos), C.me->riding, gp->riddenBy, C.me->id));
+        rideControl(*C.lv, *C.me, 0, 0, false, false, true);   // sneak: off
+        check(both(4, [&] { return pig->riddenBy == 0 && C.me->riding == 0; }), "and gets off again");
+      }
+      // a screen the host's game opens for the friend opens on the friend's game
+      int opened = 0;
+      int h = C.lv->events->on("screenOpen", [&](const json& a) { if (a.is_array() && a.size() > 1 && a[1] == "table") opened++; return true; });
+      if (mirror) openScreen(*lv, *mirror, "table");
+      check(both(3, [&] { return opened > 0; }), "a screen the host's world opens for a friend opens on the friend's game");
+      C.lv->events->off(h);
+    }
     sh->stop("The host closed the world.");
     lv->net.reset();
     check(both(3, [&] { return C.nc && C.nc->lost(); }), "closing LAN lets the friend go");

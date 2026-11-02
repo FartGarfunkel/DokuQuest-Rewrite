@@ -15,7 +15,8 @@ void registerJars() {
   if (done) return;
   done = true;
   hooks().useItem.push_back([](PlayerController& pc, ItemStack& held, const ItemDef& def, bool repeat) {
-    if (repeat || def.key != "glass_jar" || pc.target.hit || pc.targetEnt || pc.lv.isRemote()) return false;
+    if (repeat || def.key != "glass_jar" || pc.target.hit || pc.targetEnt) return false;
+    if (pc.lv.isRemote()) return useOnHost(pc, "item");
     Level& lv = pc.lv; Player& p = pc.p;
     World& w = lv.world(p.realm);
     int px = ifloor(p.pos.x), py = ifloor(p.pos.y), pz = ifloor(p.pos.z);
@@ -38,7 +39,7 @@ void registerJars() {
   hooks().useBlock.push_back([](PlayerController& pc, const RayHit& hit, ItemStack*, const ItemDef*) {
     static BlockId full = reg().blockId("firefly_jar"), flutter = reg().blockId("butterfly_jar"), empty = reg().blockId("glass_jar");
     if ((!full || hit.id != full) && (!flutter || hit.id != flutter)) return false;
-    if (pc.lv.isRemote()) return false;
+    if (pc.lv.isRemote()) return useOnHost(pc, "block", &hit);
     World& w = pc.lv.world(pc.p.realm);
     w.setBlock(hit.block.x, hit.block.y, hit.block.z, empty, w.getMeta(hit.block.x, hit.block.y, hit.block.z));
     if (hit.id == full) pc.lv.fx->particles("firefly", vec3(hit.block) + vec3(0.5f, 0.6f, 0.5f), 10);   // they're free

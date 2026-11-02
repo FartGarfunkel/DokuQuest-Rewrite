@@ -48,7 +48,7 @@ void registerPlacesNearHook() {
     const StructureIndex* idx = structureIndexOf(lv.gen->forDim(dim));
     if (!idx || !idx->active()) return out;
     std::vector<const StructurePlan*> plans;
-    idx->near(ifloor(pos.x), ifloor(pos.z), (int)pad, plans);
+    idx->near(ifloor(pos.x), ifloor(pos.z), (int)pad, plans, NEAR_PLACES);
     const auto& T = structureTypes();
     for (auto* P : plans) {
       if (!P || P->id.empty()) continue;

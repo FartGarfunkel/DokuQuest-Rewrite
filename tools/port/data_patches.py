@@ -130,6 +130,9 @@ _s = _u.spec_from_file_location('mob_heads', pathlib.Path(__file__).with_name('m
 _s = _u.spec_from_file_location('bta_blocks', pathlib.Path(__file__).with_name('bta_blocks.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
 _s2 = _u.spec_from_file_location('bta_more', pathlib.Path(__file__).with_name('bta_more.py')); _m2b = _u.module_from_spec(_s2); _s2.loader.exec_module(_m2b); _m2b.main(d)
 _s3 = _u.spec_from_file_location('nether_bta', pathlib.Path(__file__).with_name('nether_bta.py')); _m3 = _u.module_from_spec(_s3); _s3.loader.exec_module(_m3); _m3.main(d)
+_s4 = _u.spec_from_file_location('discs', pathlib.Path(__file__).with_name('discs.py')); _m4 = _u.module_from_spec(_s4); _s4.loader.exec_module(_m4); _m4.main(d)
+_s5 = _u.spec_from_file_location('bees', pathlib.Path(__file__).with_name('bees.py')); _m5 = _u.module_from_spec(_s5); _s5.loader.exec_module(_m5); _m5.main(d)
+_s7 = _u.spec_from_file_location('travel', pathlib.Path(__file__).with_name('travel.py')); _m7 = _u.module_from_spec(_s7); _s7.loader.exec_module(_m7); _m7.main(d)
 
 # ---- forged tools: heads and hafts, the Tool Forge (tools/port/forging.py) ----
 _s = _u.spec_from_file_location('forging', pathlib.Path(__file__).with_name('forging.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
@@ -427,3 +430,6 @@ for k, v in list(items.items()):
         rj['recipes'].append({'out': lk, 'n': 1, 'items': [k, 'ectoplasm'], 'w': 2, 'h': 2, 'idx': len(rj['recipes'])})
 (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
 (d / 'recipes.json').write_text(json.dumps(rj, separators=(',', ':')))
+
+# ---- the biome fuselings and golems built from their lands' blocks (after the tinted ones above) ----
+_s6 = _u.spec_from_file_location('biome_mobs', pathlib.Path(__file__).with_name('biome_mobs.py')); _m6 = _u.module_from_spec(_s6); _s6.loader.exec_module(_m6); _m6.main(d)

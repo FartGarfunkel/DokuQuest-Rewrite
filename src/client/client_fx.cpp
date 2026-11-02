@@ -27,7 +27,10 @@ void ClientFx::shake(u32 playerId, float strength) {
   if (!s.player || (playerId && playerId != s.player->id)) return;
   if (PlayerController* c = localController(s)) { float& k = controllerShake(*c); k = std::max(k, strength); }
 }
-void ClientFx::sound(const std::string& name, vec3 pos, float range, float volume, float pitch) { if (s.app.audio) s.app.audio->playAt(name, pos, range, volume, pitch); }
+void ClientFx::sound(const std::string& name, vec3 pos, float range, float volume, float pitch) {
+  if (s.app.audio) s.app.audio->playAt(name, pos, range, volume, pitch);
+  if (s.app.settings.captions && s.player && glm::distance(s.player->pos, pos) < std::max(8.f, range)) hudCaption(captionForSound(name), pos, true);
+}
 void ClientFx::soundUi(u32 playerId, const std::string& name) {
   if (!s.app.audio || (playerId && s.player && playerId != s.player->id)) return;
   s.app.audio->play(name);
@@ -39,8 +42,12 @@ void ClientFx::material(const std::string& mat, const std::string& kind, vec3 po
   if (!s.app.audio) return;
   if (s.player && glm::distance(s.player->pos + vec3(0, 0.9f, 0), pos) < 6.5f) { s.app.audio->material(mat, kind); return; }
   s.app.audio->materialAt(mat, kind, pos);
+  if (s.app.settings.captions && s.player && glm::distance(s.player->pos, pos) < 20) hudCaption(captionForMaterial(mat, kind), pos, true);   // (not your own)
 }
-void ClientFx::voice(const std::string& creature, const std::string& kind, vec3 pos, float pitch) { if (s.app.audio) s.app.audio->voice(creature, kind, pos, pitch); }
+void ClientFx::voice(const std::string& creature, const std::string& kind, vec3 pos, float pitch) {
+  if (s.app.audio) s.app.audio->voice(creature, kind, pos, pitch);
+  if (s.app.settings.captions && s.player && glm::distance(s.player->pos, pos) < 24) hudCaption(captionForVoice(creature, kind), pos, true);
+}
 
 // The music of the place (music2.js biomeMood), read from the overworld generator's column under the player.
 // TODO(gen): use the biome itself (and villages nearby) once the generators expose them.
@@ -51,6 +58,9 @@ static std::string placeMood(Level& lv, vec3 p) {
   ColumnSample c; g->sample((int)std::floor(p.x), (int)std::floor(p.z), c);
   const std::string& top = reg().block(c.top).key, &leaves = reg().block(c.leaves).key;
   if (c.water >= 0 && c.water > c.height) return "ocean";
+  // Better than Adventure's lands, each its own music (gen/overworld.h BtaVariant)
+  static const char* BV[] = {"", "redlands", "glacier", "meadow", "mossmire", "thornscrub", "highlands", "tundra", "seasonal"};
+  if (c.variant > 0 && c.variant < 9) return BV[c.variant];
   if (top.find("snow") != std::string::npos || top.find("ice") != std::string::npos) return "frost";
   if (top == "sand" || top.find("sandstone") != std::string::npos) return "desert";
   if (top.find("red_sand") != std::string::npos || top.find("terracotta") != std::string::npos) return "savanna";
@@ -102,6 +112,23 @@ public:
     }
     sc.place = place;
     sc.netherLand = sc.dim == DIM_NETHER ? land : -1;
+    sc.worldSeed = (u32)s.level->info.seed; sc.realm = p.realm;
+    // a jukebox with a disc in it within 40 blocks: its music plays, louder the nearer (looked for once a second)
+    if ((jukeT -= dt) <= 0) {
+      jukeT = 1; disc.clear(); discD = 1e9f;
+      const int pcx = (int)std::floor(p.pos.x) >> 4, pcz = (int)std::floor(p.pos.z) >> 4, pd = dimOfY((int)std::floor(p.pos.y));
+      for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) if (const Chunk* c = w.chunk(pd, pcx + dx, pcz + dz)) for (auto& [i, e] : c->blockEntities) {
+        if (!e.is_object() || e.value("type", "") != "jukebox" || !e.contains("disc") || !e["disc"].is_string()) continue;
+        const int lx = i & 15, lz = (i >> 4) & 15, ly = i >> 8;
+        const vec3 at((pcx + dx) * 16 + lx + 0.5f, dimBase(pd) + ly + 0.5f, (pcz + dz) * 16 + lz + 0.5f);
+        const float d = glm::distance(at, p.pos);
+        if (d > 40 || d >= discD) continue;
+        const ItemDef* def = reg().item(e["disc"].get<std::string>());
+        if (!def) continue;
+        discD = d; disc = def->str("disc");
+      }
+    }
+    if (!disc.empty()) { sc.jukebox = true; sc.jukeboxDisc = disc; sc.jukeboxGain = std::clamp(1.f - (discD - 6) / 34.f, 0.f, 1.f); }
     if (WeatherSystem* W = weatherOf(*s.level); W && p.realm == REALM_MAIN && sc.dim == DIM_OVERWORLD) sc.rain = W->rainLevel;
     // the nearest boss within 40 blocks (music2.js bossNear); (sleeping dragons and tamed ones don't count)
     float bd = 40;
@@ -118,7 +145,7 @@ public:
   }
 private:
   GameSession& sess;
-  vec3 lastPos{0}; int land = -1;
+  vec3 lastPos{0}; int land = -1; float jukeT = 0, discD = 1e9f; std::string disc;
   float stepAcc = 0;
   double placeT = 0;
   std::string place = "plains";

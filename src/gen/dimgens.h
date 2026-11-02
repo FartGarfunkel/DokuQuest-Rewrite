@@ -38,6 +38,7 @@ private:
   std::unique_ptr<NetherShape> bta_;
   CarveRules btaCarve_;
   void generateBTA(Chunk& c);
+  bool openNether() const override { return bta_ != nullptr; }
   bool solidBTA(int x, int y, int z) const;
   TerrainColumn terrainBTA(int x, int z) const;
   void sampleBTA(int wx, int wz, ColumnSample& s) const;

@@ -7,6 +7,7 @@
 // in the plan), placed one per 352-block region exactly like the original (hash32(seed, rx, rz, 4242)).
 #include "gen/structures_town.h"
 #include "gen/structures_api.h"
+#include "gen/generator.h"
 #include "common/holiday.h"
 #include <map>
 #include <set>
@@ -746,6 +747,21 @@ static void townLife(SP& P, const Town& v, const VStyle& st) {
 }
 
 // a new world starts at the edge of a village (villages.js placeAtSpawn), facing it
+bool wildStartPoint(const WorldGen& wg, vec3& pos) {
+  const DimGenerator* g = wg.forDim(DIM_OVERWORLD);
+  if (!g) return false;
+  for (int r = 64; r < 4000; r += 48) for (int a = 0; a < 8; a++) {
+    const float ang = a * 0.785398f + r * 0.013f;
+    const int x = (int)std::lround(std::cos(ang) * r), z = (int)std::lround(std::sin(ang) * r);
+    ColumnSample s; g->sample(x, z, s);
+    if (s.height <= 0 || s.water >= 0) continue;
+    const StructurePlan* v = locateStructure(wg, DIM_OVERWORLD, "village", x, z, 2);
+    if (v && std::hypot(v->cx - x, v->cz - z) < 200) continue;
+    pos = vec3(x + 0.5f, dimBase(DIM_OVERWORLD) + s.height + 2, z + 0.5f);
+    return true;
+  }
+  return false;
+}
 bool villageStartPoint(const WorldGen& wg, vec3& pos, float& yaw) {
   const StructureIndex* idx = structureIndexOf(wg.forDim(DIM_OVERWORLD));
   const int k = structureTypeIndex("village");
@@ -767,6 +783,16 @@ bool villageStartPoint(const WorldGen& wg, vec3& pos, float& yaw) {
   yaw = (float)std::atan2(-(double)(v.x - x), -(double)(v.z - z));
   return true;
 }
+
+std::vector<std::array<int, 3>> townStreetEnds(const StructurePlan& S) {
+  std::vector<std::array<int, 3>> out;
+  if (!S.ext) return out;
+  const Town& v = extOf<TownExt>(S).v;
+  for (const Street& r : v.roads) { const int t = r.L + 2; out.push_back({v.x + DXL[r.d] * t, v.z + DZL[r.d] * t, r.d}); }
+  if (out.empty()) out.push_back({v.x, v.z, 0});
+  return out;
+}
+int townStyleOf(const StructurePlan& S) { return S.ext ? extOf<TownExt>(S).v.style : VS_PLAINS; }
 
 void registerStructureVillages() {
   StructureType t; t.key = "village"; t.name = "a village"; t.region = VREG; t.clearance = 24; t.dims = 1u << DIM_OVERWORLD;

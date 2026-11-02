@@ -24,6 +24,7 @@ struct ColumnSample {
   i16 roof = -1; BlockId roofBlock = AIR;
   u8 temp = 128, humid = 128;  // the column's climate bytes (Chunk::climate): tint = climateTint(kind, temp, humid)
   u8 biome = 255;              // Biome (gen/gendefs.h) for the Overworld, 255 elsewhere
+  u8 variant = 0;              // the Overworld's Better than Adventure land (gen/overworld.h BtaVariant), 0 none
 };
 
 // A generated tree, column by column (for distant terrain near the player: game/distant.js distTreeCols).

@@ -247,7 +247,41 @@ std::mutex g_mu;
 std::map<std::string, std::shared_ptr<const CharacterSpec>>& cache() { static auto* m = new std::map<std::string, std::shared_ptr<const CharacterSpec>>(); return *m; }
 }
 
+// the player's own skin for him, wherever under userDir()/skins they put it: skins/herobrine.png first, then any .png
+// named for him in skins/ or a folder of its own (skins/herobrine/...), then the resource packs' entity texture. Empty:
+// none (the game's own). Looked for again every 10 s, so a skin dropped in while playing is picked up.
+fs::path userHerobrineSkin() {
+  static fs::path found; static double at = -1e9;
+  const double now = nowSeconds();
+  if (now - at < 10) return found;
+  at = now; found.clear();
+  auto lower = [](std::string s) { for (auto& c : s) c = (char)std::tolower((unsigned char)c); return s; };
+  std::error_code ec;
+  const fs::path sd = skinsDir();
+  if (fs::exists(sd / "herobrine.png", ec)) return found = sd / "herobrine.png";
+  if (fs::is_directory(sd, ec)) for (auto it = fs::recursive_directory_iterator(sd, ec); it != fs::recursive_directory_iterator(); it.increment(ec)) {
+    if (ec) break;
+    const fs::path& p = it->path();
+    if (lower(p.extension().string()) != ".png") continue;
+    if (lower(p.string()).find("herobrine") != std::string::npos) { found = p; break; }
+  }
+  if (found.empty()) {
+    const fs::path rp = userDir() / "resourcepacks";
+    if (fs::is_directory(rp, ec)) for (auto& pk : fs::directory_iterator(rp, ec)) {
+      const fs::path f = pk.path() / "assets" / "minecraft" / "textures" / "entity" / "herobrine" / "herobrine.png";
+      if (fs::exists(f, ec)) { found = f; break; }
+    }
+  }
+  if (!found.empty()) DQ_LOG("his skin: %s", found.string().c_str());
+  return found;
+}
+
 std::shared_ptr<const CharacterSpec> resolveCharacter(const std::string& ref) {
+  // his: the player's own skin for him wins over the game's (the cache is keyed by the file it came from)
+  if (ref.find("herobrine") != std::string::npos && ref.rfind("user:", 0) != 0) {
+    const fs::path u = userHerobrineSkin();
+    if (!u.empty()) return resolveCharacter("user:" + u.string());
+  }
   {
     std::lock_guard<std::mutex> l(g_mu);
     auto it = cache().find(ref);
@@ -261,7 +295,7 @@ std::shared_ptr<const CharacterSpec> resolveCharacter(const std::string& ref) {
     if (loadCharacter(ref.substr(8), L, spec->skin)) { spec->body = L.shape; spec->cape = L.cape == "none" ? "" : L.cape; ok = true; }
   } else if (auto r = registeredSkin(ref)) { spec->skin = *r; ok = true; }
   else if (!ref.empty()) {
-    auto [file, arms] = skinArms(ref);
+    auto [file, arms] = skinArms(ref.rfind("user:", 0) == 0 ? ref.substr(5) : ref);
     std::string err;
     fs::path p = fs::path(file).is_absolute() ? fs::path(file) : skinsDir() / file;
     // ship assets: a bare ".png" skin not found in userDir()/skins falls back to data/<file>

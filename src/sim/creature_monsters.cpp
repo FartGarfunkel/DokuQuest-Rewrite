@@ -107,8 +107,22 @@ static void fuseBurst(Level& lv, Creature& m) {
   ExplodeOpts o; o.noBlocks = !rule(lv, "mobGriefing"); o.source = m.id;
   const bool frost = m.type == "frost_fuseling", dune = m.type == "dune_fuseling", bog = m.type == "bog_fuseling";
   const bool ember = m.type == "ember_fuseling", moss = m.type == "moss_fuseling", sky = m.type == "sky_fuseling";
+  const bool biome = m.type != "fuseling";   // every land's fuseling: a smaller blast, and something of its land
   if (sky) o.noBlocks = true;   // a gust, not a blast: it throws you skyward and breaks nothing
-  explode(lv, m.realm, m.pos + vec3(0, 0.6f, 0), frost || dune || bog || ember || moss ? 2.2f : sky ? 1.4f : 3, o);
+  explode(lv, m.realm, m.pos + vec3(0, 0.6f, 0), biome && !sky ? 2.2f : sky ? 1.4f : 3, o);
+  {   // the newer lands' fuselings
+    const std::string& t = m.type;
+    const char* puff = t == "redlands_fuseling" ? "crit" : t == "jungle_fuseling" || t == "meadow_fuseling" ? "leaf" : t == "beach_fuseling" ? "splash" : t == "mushroom_fuseling" ? "poof" : t == "savanna_fuseling" ? "dust" : nullptr;
+    if (puff) lv.fx->particles(puff, m.pos + vec3(0, 1, 0), 36);
+    if (t == "redlands_fuseling") for (int k = 0; k < 2 + (int)(frand() * 3); k++) dropItem(lv, m.realm, ItemStack("gold_nugget", 1), m.pos + vec3(0, 0.8f, 0), true);   // gold in its terracotta
+    for (Entity* e : pawnsOf(lv, m.realm)) {
+      auto* pl = dynamic_cast<Player*>(e);
+      if (!pl || glm::distance(pl->pos, m.pos) > 5) continue;
+      if (t == "mushroom_fuseling") giveEffect(lv, *pl, "poison", 3);   // spores
+      if (t == "meadow_fuseling" || t == "jungle_fuseling") giveEffect(lv, *pl, "slow", 3);   // pollen, tangling vines
+      if (t == "beach_fuseling") { vec3 dd = pl->pos - m.pos; dd.y = 0; if (glm::length(dd) > 0.01f) pl->vel += glm::normalize(dd) * 8.f; }   // a wave
+    }
+  }
   if (ember || moss || sky) {
     World& w = lv.world(m.realm);
     const Registry& R = reg();
@@ -292,7 +306,7 @@ static OptMove monsterAI(Level& lv, Creature& m, Entity* p, float dist, float dy
   }
   if (t == "stray" || t == "scorched_skeleton") return nightBase(lv, m, "skeleton", p, dist, dyp, toPlayer, dt);
   if (t == "sulfur_slime") return nightBase(lv, m, "slime", p, dist, dyp, toPlayer, dt);
-  if (t == "frost_fuseling" || t == "dune_fuseling" || t == "bog_fuseling" || t == "ember_fuseling" || t == "moss_fuseling" || t == "sky_fuseling") return nightBase(lv, m, "fuseling", p, dist, dyp, toPlayer, dt);
+  if (t.size() > 9 && t.compare(t.size() - 9, 9, "_fuseling") == 0) return nightBase(lv, m, "fuseling", p, dist, dyp, toPlayer, dt);   // every land's fuseling
   if (t == "cave_spider") return nightBase(lv, m, "spider", p, dist, dyp, toPlayer, dt);
   if (t == "magma_slime") {
     if (m.onGround && m.lastWant > 0.1f && frand() < dt * 0.6f) m.wantJump = true;   // they leap higher than the green ones
@@ -614,7 +628,7 @@ static OptMove realmAI(Level& lv, Creature& m, Entity* p, float dist, float dyp,
         float l = glm::length(tv); if (l < 1e-3f) l = 1;
         vec3 dir = tv / l;
         spawnProjectile(lv, m.realm, e + vec3(dir.x, 0, dir.z) * (m.w + 0.4f), dir * 11.f, "ghast", &m);
-        lv.fx->sound("ghast_shoot", e);
+        lv.fx->sound("ghast_shoot", e, 64);   // a ghast is heard a long way off: it shoots from up to 40 blocks
       }
     }
     if (!s.hunting) {
@@ -624,7 +638,7 @@ static OptMove realmAI(Level& lv, Creature& m, Entity* p, float dist, float dyp,
     float wantY = std::max(p->pos.y + 4 + std::sin(m.age * 0.5f) * 2, m.pos.y - floor + 3);
     m.flyVy = roof < 2 ? -1 : clampv((wantY - m.pos.y) * 0.8f, -1.5f, 1.5f);
     float shootT = dget(m, "shootT", 2 + frand() * 2) - dt;
-    if (shootT <= 0 && s.sees && dist < 40 && chargeT <= 0) { shootT = 3 + frand() * 1.5f; dset(m, "chargeT", 0.6f); lv.fx->sound("ghast_warn", m.pos + vec3(0, 2, 0)); }
+    if (shootT <= 0 && s.sees && dist < 40 && chargeT <= 0) { shootT = 3 + frand() * 1.5f; dset(m, "chargeT", 0.6f); lv.fx->sound("ghast_warn", m.pos + vec3(0, 2, 0), 64); }
     dset(m, "shootT", shootT);
     // it keeps its face (and its fireballs) on you: backs off facing you when you're close, hangs there in between
     if (dist < 10) return Move{-T.speed, toPlayer};

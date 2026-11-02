@@ -133,7 +133,7 @@ public:
     { Row r("Renderer", ("OpenGL " + std::to_string(gfx.major) + "." + std::to_string(gfx.minor) + " \xC2\xB7 change it in the launcher's Options").c_str(), "", w, 230);
       std::string rn = rendererName(gfx.modern ? RendererKind::Modern : RendererKind::Legacy); if (!rn.empty()) rn[0] = (char)toupper((unsigned char)rn[0]);
       label(F_BODY, col::ember, rn.c_str()); }
-    rangeI("renderDist", "Render distance", &s.renderDist, 2, 16, std::to_string(s.renderDist) + " chunks", "Chunks of full detail around you. Split screen caps this a little.");
+    rangeI("renderDist", "Render distance", &s.renderDist, 2, 32, std::to_string(s.renderDist) + " chunks", "Chunks of full detail around you. Split screen caps this a little.");
     { static const int v[] = {0, 512, 1024, 2048}; int cur = 0; for (int i = 0; i < 4; i++) if (s.farTerrain == v[i]) cur = i;
       cur = select("farTerrain", "Distant terrain", cur, {"Off", "512 blocks", "1,024 blocks", "2,048 blocks"}, "Simplified land past the render distance (see forever). Off is fastest."); s.farTerrain = v[cur]; }
     range("scale", "Resolution", &s.scale, 0.4f, 1, 0.05f, pct(s.scale), "Render fewer pixels for smoother play.");
@@ -144,7 +144,6 @@ public:
     { bool sh = s.shadows != 0; check("shadows", "Sun shadows", &sh, "Modern renderer"); s.shadows = sh ? 1 : 0; }
     { int cur = s.particles == 2 ? 0 : s.particles == 1 ? 1 : 2; cur = select("particles", "Particles", cur, {"All", "Fewer", "Off"}, nullptr); s.particles = 2 - cur; }
     { int cur = clampv(s.extra.value("dreamLight", 1), 0, 2); cur = select("dreamLight", "Lighting", cur, {"Classic", "Dreamlike", "Dreamlike (strong)"}, "Dreamlike: a soft glow round bright things, golden light when the sun is low, soft focus (after Horizon's shaders)."); s.extra["dreamLight"] = cur; }
-    { int cur = clampv(s.colorFilter, 0, 3); s.colorFilter = select("colorFilter", "Colour filter", cur, {"Off", "Red-blind (protanopia)", "Green-blind (deuteranopia)", "Blue-blind (tritanopia)"}, "Shifts the colours you may not tell apart into ones you can."); }
     { static const char* v[] = {"near", "all", "flat"}; int cur = 0; for (int i = 0; i < 3; i++) if (s.plantDetail == v[i]) cur = i;
       s.plantDetail = v[select("plantDetail", "3D plants", cur, {"Near you", "Everywhere (slowest)", "Flat (fastest)"}, "Solid 3D grass, flowers and crops near you; flat further out.")]; }
     { bool g = s.extra.value("grass3d", s.preset != "potato"); bool g0 = g;
@@ -229,15 +228,19 @@ public:
     // BTA's rearrangeable HUD: drag the hotbar, hearts, boss bar, chat and messages where you like (ui/hud_edit.cpp)
     if (a.session) { if (button("Move HUD pieces\xE2\x80\xA6", BTN_NORMAL, true)) a.pushScreen(makeHudEditScreen()); }
     else if (s.extra.contains("hudLayout") && !s.extra["hudLayout"].empty()) { if (button("Put the HUD back where it was", BTN_GHOST, true)) { s.extra.erase("hudLayout"); s.save(); } }
-    check("viewBob", "View bobbing", &s.viewBob);
     check("fpBody", "Your body in first person", &s.fpBody, "Look down to see your chest, legs and armour.");
     check("heldSway", "Held item sway", &s.heldSway, "What you hold lags a touch behind when you turn.");
-    check("screenShake", "Screen shake", &s.screenShake, "Explosions and boss slams shake the view.");
-    check("hurtTilt", "Damage tilt", &s.hurtTilt, "The view tilts a little when you are hurt.");
     { bool he = s.extra.value("holidayEvents", true);
       check("holidayEvents", "Holiday events", &he, "Seasonal surprises from your calendar, like Halloween in October.");
       s.extra["holidayEvents"] = he; }
     check("showFps", "Show FPS", &s.showFps);
+    // BTA's accessibility page: captions, the colour-blind filters, and the motion that can make some people unwell
+    keepX(); heading("Accessibility");
+    check("captions", "Captions", &s.captions, "Words at the side of the screen for the sounds around you, with the way they come from.");
+    { int cur = clampv(s.colorFilter, 0, 3); s.colorFilter = select("colorFilter", "Colour filter", cur, {"Off", "Red-blind (protanopia)", "Green-blind (deuteranopia)", "Blue-blind (tritanopia)"}, "Shifts the colours you may not tell apart into ones you can."); }
+    check("viewBob", "View bobbing", &s.viewBob);
+    check("screenShake", "Screen shake", &s.screenShake, "Explosions and boss slams shake the view.");
+    check("hurtTilt", "Damage tilt", &s.hurtTilt, "The view tilts a little when you are hurt.");
     ImGui::EndGroup();
     if (two && leftBottom > ImGui::GetCursorPosY()) ImGui::SetCursorPosY(leftBottom);
     ImGui::PopStyleVar();

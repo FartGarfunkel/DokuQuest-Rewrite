@@ -5,6 +5,56 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.10 — On the Road (November 2026)
+
+**Between the villages:**
+
+- **Roads join neighbouring villages:** a path of the villages' own street blocks from the end of one's main street to the end of the next's, winding round hills and lakes, with lamp posts along the way.
+- **Bridges** carry a road over a river or lake: planks with railings, on posts down to the bed.
+- **Travellers:** by day you may meet a merchant walking a road from one village to the next. Talk to them to trade.
+- **Saddle bags** (four leather, string and a chest): put them on a saddled mount of yours and sneak-use it to open 18 slots that go where it goes. If it dies, everything in them falls, and the bags too.
+- **The galleon:** the sailing ship built bigger, with two masts, a bowsprit, a wide deck and a hold of 54 slots. Two sailing ships, a chest and three wool.
+- **Start in the wild** (a new world's setting): begin out in the wilds, with no village within 200 blocks, instead of at a village's edge.
+
+**Creatures:**
+
+- **Bees are small again,** the size they were in the HTML game, several to a nest: they come out one at a time by day to work the flowers, carry pollen home to make honey, and go in at night or in the rain. Bee nests are more common near flowers, in meadows and plains most of all.
+- **Every land has its own fuseling, built from the land:** creeper-shaped, with the creeper's face, and each one shaped its own way — a redlands one of terracotta flecked with gold with a little cactus on its head, a jungle one that's a bamboo stalk on a mossy foot, mossy sandstone on the beach, cactus-topped sandstone in the desert, mud with a spike in the bog, snow with two stones on its head, mossy cobble with grass tufts in the woods, a flowering azalea bush in the meadows, a stem under a wide red cap in the mushroom fields and a totem of three terracotta faces on the savanna. New: **gravel fuselings** in the mountains and **swamp fuselings** with a bone face under a leafy brim.
+- **Savanna villages keep a savanna golem,** and each village golem is built from its land and shaped its own way, with no glow: shoulder plates and a cactus spine on the sandstone one, ice spikes and an icicle beard on the frost one, moss, vines and a mushroom on the mossy one, acacia horns and a sash on the savanna one.
+- **Wolves are about more often** in forests, the taiga and the snow.
+- **Dungeon keepers wake** when you walk into their hall, and the masters of the great places (the lich king, the pirate captain, the ember lord and the rest) when you come in: killing one clears the dungeon or the place for good, on your maps and for the quest board. One lost while nobody was about is back at its post next time.
+- **Monsters after you follow you through a portal,** and the far side of a portal you're near has its own creatures, so there's life to see through it.
+- **Ghasts are heard all the way out to where they shoot from:** their cry and their shot carry 64 blocks (a shot from far off used to come in silent).
+
+**Music:**
+
+- **Every land sounds different:** the Overworld, the Skylands, the Nether and the End each have pieces of their own.
+- **New melodic pieces on a hammered dulcimer,** warm and bass-heavy at a gentle dance tempo, for the Overworld by day and night, the Skylands, the Nether and the End.
+- **Eight more music discs** (Skylark, Void, Aurora, Lantern, Harvest, Frost, Dune and Crag), found in dungeon chests and by fishing. Each plays its own tune in a jukebox, the same every time.
+
+**Playing together:**
+
+- **A friend in your world can use your creatures:** feed, tame, saddle and ride them, lead them, put them in a basket. The host's game does it as it would for its own player.
+- **Saddle bags and the chests of carts and boats open for friends too,** and what they move in or out stays put for everyone.
+- **Summoning wands, glass jars, mesh filters, the matcher and painting trims** work for friends in your world.
+
+**Accessibility (Options → Accessibility):**
+
+- **Captions:** words at the side of the screen for the sounds around you (creatures, doors, explosions, footsteps, the Nether's volcanoes...), with an arrow for the way they come from.
+- **The colour filters, view bobbing, screen shake and damage tilt** are on the same page now.
+
+**Smaller things:**
+
+- **The bow is held the right way round in third person** (upright, the curve away from you, the string toward you), and in first person it's the same size at rest as when you draw it.
+- **Footsteps land on your steps:** the legs, the view's bob and the step sounds all follow one stride, walking or running.
+- **The Nether's places stand on the new Nether's ground:** forges, bastions, spires and bone pits sat at the old Nether's heights (a forge could float in the air).
+- **The Wither Storm also rises from the Wither's T with a command block as the middle block of the T's top row** and the three skulls on top.
+
+- **Render distance goes to 32 chunks.**
+- **/tp overworld, /tp skylands, /tp nether and /tp end** take you to that land's ground above where you are (or above x z).
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.9 — The Better Nether (November 2026)
 
 **A new Nether (new worlds):**

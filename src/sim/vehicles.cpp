@@ -22,10 +22,11 @@ static const BoatType BOATS[] = {
   {"lava_rowboat", "lava_rowboat", 4, 1.f, false, {vec3(0, 0.25f, 0.25f), vec3(0, 0.25f, -0.55f)}},   // crimson/warped wood: floats on lava too
   {"sailboat", "sailboat", 4, 1.6f, false, {vec3(0, 0.42f, 1.38f), vec3(0, 0.42f, -1.15f)}},
   {"ship", "sailing_ship", 14, 1.f, true, {vec3(0, 1.3f, 3.75f), vec3(0.9f, 1.35f, -1.4f)}},
+  {"galleon", "galleon", 24, 1.6f, true, {vec3(0, 2.08f, 6.0f), vec3(1.44f, 2.16f, -2.24f)}},   // the bigger ship
 };
 const BoatType& boatType(const std::string& k) { for (auto& b : BOATS) if (k == b.key) return b; return BOATS[0]; }
-float shipHalfAt(float lz) { return lz < SHIP.bow + 2.4f ? SHIP.halfW * clampv((lz - SHIP.bow) / 2.4f, 0.15f, 1.f) : SHIP.halfW; }
-bool onShipDeck(float lx, float lz, float inset) { return lz > SHIP.bow + 0.2f + inset && lz < SHIP.stern - inset && std::fabs(lx) < shipHalfAt(lz) - inset; }
+float shipHalfAt(float lz, const ShipDims& D) { const float k = D.halfW / SHIP.halfW, run = 2.4f * k; return lz < D.bow + run ? D.halfW * clampv((lz - D.bow) / run, 0.15f, 1.f) : D.halfW; }
+bool onShipDeck(float lx, float lz, float inset, const ShipDims& D) { return lz > D.bow + 0.2f + inset && lz < D.stern - inset && std::fabs(lx) < shipHalfAt(lz, D) - inset; }
 
 void vehToast(Level& lv, const Player& p, const std::string& text, const std::string& kind) { lv.fx->message(p.id, text, kind); }
 // waterAt: world/shapes_compat.cpp
@@ -42,6 +43,13 @@ void moveVehicle(Level& lv, Entity& e, double dt, bool* hitWall) {
 // ---------------------------------------------------------------------------------------- shared vehicle bits
 bool isVehicle(const Entity& e) { return dynamic_cast<const Vehicle*>(&e) != nullptr; }
 Vehicle* asVehicle(Entity* e) { return e ? dynamic_cast<Vehicle*>(e) : nullptr; }
+json* entityContainer(Entity* e) {
+  if (!e || e->removed) return nullptr;
+  if (auto* c = dynamic_cast<Minecart*>(e)) return c->items();
+  if (auto* b = dynamic_cast<Boat*>(e)) return b->items.is_array() ? &b->items : nullptr;
+  if (e->hp > 0 && e->data.contains("bags") && e->data["bags"].is_array()) return &e->data["bags"];
+  return nullptr;
+}
 void Vehicle::ensureUid() {
   if (!uid.empty()) return;
   static std::mt19937_64 g{std::random_device{}()};
@@ -100,11 +108,12 @@ bool Boat::mount(Level& lv, Player& p) {
   auto& st = vs->ps(p.id);
   if (ship()) {
     // from outside you climb aboard; on deck you take the wheel
+    const ShipDims D = dims();
     if (st.aboard != id) {
       vec2 l = toLocal(p.pos.x, p.pos.z);
-      float lz = clampv(l.y, SHIP.bow + 1.2f, SHIP.stern - 0.6f), hw = shipHalfAt(lz) - 0.5f, lx = clampv(l.x, -hw, hw);
+      float lz = clampv(l.y, D.bow + 1.2f, D.stern - 0.6f), hw = shipHalfAt(lz, D) - 0.5f, lx = clampv(l.x, -hw, hw);
       vec2 wp = toWorld(lx, lz);
-      p.pos = vec3(wp.x, pos.y + SHIP.deck, wp.y); p.vel = vec3(0); p.fallDist = 0; p.onGround = true;
+      p.pos = vec3(wp.x, pos.y + D.deck, wp.y); p.vel = vec3(0); p.fallDist = 0; p.onGround = true;
       st.aboard = id; st.shipPose = vec4(pos, yaw);
       vehToast(lv, p, "Aboard. Use the wheel at the back to sail");
       lv.fx->material("wood", "step", p.pos);
@@ -134,8 +143,9 @@ void Boat::dismount(Level& lv, Player& p) {
   st.yawSet = false;
   if (ship()) {
     // let go of the wheel and stay on deck
-    vec2 wp = toWorld(0, SHIP.helm.y + 0.2f);
-    p.pos = vec3(wp.x, pos.y + SHIP.deck, wp.y); p.vel.y = 0; p.fallDist = 0;
+    const ShipDims D = dims();
+    vec2 wp = toWorld(0, D.helm.y + 0.2f);
+    p.pos = vec3(wp.x, pos.y + D.deck, wp.y); p.vel.y = 0; p.fallDist = 0;
     st.aboard = id; st.shipPose = vec4(pos, yaw);
     return;
   }
@@ -185,7 +195,7 @@ bool Boat::pick(vec3 eye, vec3 dir, float& t) const {
   float c = std::cos(yaw), n = std::sin(yaw);
   vec3 ld(dir.x * c - dir.z * n, dir.y, dir.x * n + dir.z * c), lo(o.x, eye.y - pos.y, o.y);
   vec3 bmin, bmax;
-  if (ship()) { bmin = vec3(-SHIP.halfW - 0.15f, 0, SHIP.bow - 0.45f); bmax = vec3(SHIP.halfW + 0.15f, SHIP.deck + 1.2f, SHIP.stern + 0.3f); }
+  if (ship()) { const ShipDims D = dims(); bmin = vec3(-D.halfW - 0.15f, 0, D.bow - 0.45f); bmax = vec3(D.halfW + 0.15f, D.deck + 1.2f, D.stern + 0.3f); }
   else { float sc = scale(); bmin = vec3(-0.72f, 0, SMALL_BOAT.bow - 0.05f) * sc; bmax = vec3(0.72f, 0.62f, SMALL_BOAT.stern + 0.07f) * sc; }
   float t0 = 0, t1 = 1e9f;
   for (int a = 0; a < 3; a++) {
@@ -209,9 +219,10 @@ bool Boat::loadCargo(Level& lv, const json& c) {
   }
   std::string key = c.value("key", "");
   if (key == "chest" || key == "barrel" || key == "trapped_chest") {
-    items = json::array(); for (int i = 0; i < 27; i++) items.push_back(nullptr);
+    const int slots = holdSlots();
+    items = json::array(); for (int i = 0; i < slots; i++) items.push_back(nullptr);
     cargoKey = key;
-    if (c.contains("ent") && c["ent"].is_object() && c["ent"]["items"].is_array()) { const json& s = c["ent"]["items"]; for (size_t i = 0; i < s.size() && i < 27; i++) items[i] = s[i]; }
+    if (c.contains("ent") && c["ent"].is_object() && c["ent"]["items"].is_array()) { const json& s = c["ent"]["items"]; for (size_t i = 0; i < s.size() && i < (size_t)slots; i++) items[i] = s[i]; }
   } else cargo = json{{"key", key}, {"meta", c.value("meta", 0)}, {"ent", c.contains("ent") ? c["ent"] : json(nullptr)}};
   lv.fx->sound("chest", pos);
   return true;
@@ -232,11 +243,11 @@ void Boat::tick(Level& lv, double dtd) {
   float dt = (float)dtd;
   World& w = lv.world(realm);
   const BoatType& BT = T();
-  if (BT.ship) { this->w = 1.3f; h = 1.6f; heel *= 0.6f; }
+  if (BT.ship) { this->w = 1.3f * BT.scale; h = 1.6f * BT.scale; heel *= BT.scale > 1 ? 0.45f : 0.6f; }
   else if (BT.scale != 1 && !scaled) { scaled = true; this->w = 0.65f * BT.scale; }
   // (lilypads.js) a hull pushes through lily pads, breaking them off
   if (BlockId lily = rs::T().lily) {
-    float r = (BT.ship ? 1.6f : this->w) + 0.35f, sp = std::min(3.f, std::hypot(vel.x, vel.z) * 0.25f);
+    float r = (BT.ship ? 1.6f * BT.scale : this->w) + 0.35f, sp = std::min(3.f, std::hypot(vel.x, vel.z) * 0.25f);
     float cx = pos.x + vel.x * 0.25f, cz = pos.z + vel.z * 0.25f;
     for (int y = ifloor(pos.y - 0.6f); y <= ifloor(pos.y + 0.9f); y++)
       for (int x = ifloor(cx - r - sp); x <= ifloor(cx + r + sp); x++) for (int z = ifloor(cz - r - sp); z <= ifloor(cz + r + sp); z++) {
@@ -266,7 +277,7 @@ void Boat::tick(Level& lv, double dtd) {
     float th = std::acos(clampv(hx * wx + hz * wz, -1.f, 1.f));                                         // 0 = wind straight behind
     const float P = PI;
     eff = th < P / 2 ? lerpf(0.72f, 1, th / (P / 2)) : th < 0.78f * P ? lerpf(1, 0.42f, (th - P / 2) / (0.28f * P)) : std::max(0.f, lerpf(0.42f, 0, (th - 0.78f * P) / (0.1f * P)));
-    target = floating ? sail * wind.strength * eff * 10 : 0;
+    target = floating ? sail * wind.strength * eff * (kind == "galleon" ? 11.5f : 10) : 0;   // the galleon's two sails carry it a little faster
     // the boom swings out to leeward, more the further off the wind
     float cr = hx * wz - hz * wx, side = cr > 0 ? 1.f : cr < 0 ? -1.f : 1.f;
     float wantBoom = side * clampv((P - th) * 0.55f, 0.12f, 1.35f);
@@ -321,7 +332,7 @@ void Boat::load(const json& j) {
   health = (float)T().hp;
   loadCommon(data);
   sail = data.value("sail", 0.6f);
-  if (data["items"].is_array()) { items = data["items"]; while (items.size() < 27) items.push_back(nullptr); cargoKey = data.value("ck", "chest"); }
+  if (data["items"].is_array()) { items = data["items"]; while ((int)items.size() < holdSlots()) items.push_back(nullptr); cargoKey = data.value("ck", "chest"); }
   if (data.contains("cg")) cargo = data["cg"];
   bob = rnd() * 10;
 }
@@ -431,29 +442,30 @@ void vehiclesAfterPlayerMove(Level& lv, Player& p, double dt) {
       continue;
     }
     // the ship
-    if (std::fabs(e->pos.x - p.pos.x) > 7 || std::fabs(e->pos.z - p.pos.z) > 7) continue;
-    float deck = e->pos.y + SHIP.deck;
+    const ShipDims D = e->dims();
+    if (std::fabs(e->pos.x - p.pos.x) > D.stern + 3 || std::fabs(e->pos.z - p.pos.z) > D.stern + 3) continue;
+    float deck = e->pos.y + D.deck;
     vec2 l = e->toLocal(p.pos.x, p.pos.z);
     if (st.aboard != e->id && !(p.pos.y >= deck - 0.4f || p.pos.y + 1.7f < e->pos.y - 0.2f)) {
       // its side stops you (from the water or the shore)
-      float m = 0.3f, cz = clampv(l.y, SHIP.bow, SHIP.stern), hw = shipHalfAt(cz) + m;
-      if (!(l.y < SHIP.bow - m || l.y > SHIP.stern + m || std::fabs(l.x) > hw)) {
-        float dSide = hw - std::fabs(l.x), dBow = l.y - (SHIP.bow - m), dStern = SHIP.stern + m - l.y, nlx = l.x, nlz = l.y;
-        if (dSide <= dBow && dSide <= dStern) nlx = (l.x < 0 ? -1.f : 1.f) * hw; else if (dBow < dStern) nlz = SHIP.bow - m; else nlz = SHIP.stern + m;
+      float m = 0.3f, cz = clampv(l.y, D.bow, D.stern), hw = shipHalfAt(cz, D) + m;
+      if (!(l.y < D.bow - m || l.y > D.stern + m || std::fabs(l.x) > hw)) {
+        float dSide = hw - std::fabs(l.x), dBow = l.y - (D.bow - m), dStern = D.stern + m - l.y, nlx = l.x, nlz = l.y;
+        if (dSide <= dBow && dSide <= dStern) nlx = (l.x < 0 ? -1.f : 1.f) * hw; else if (dBow < dStern) nlz = D.bow - m; else nlz = D.stern + m;
         vec2 wp = e->toWorld(nlx, nlz); p.pos.x = wp.x; p.pos.z = wp.y;
         continue;
       }
     }
     // the deck holds you up; the rails keep you on unless you jump them
-    if (!onShipDeck(l.x, l.y)) continue;
+    if (!onShipDeck(l.x, l.y, 0, D)) continue;
     if (p.pos.y < deck - 0.8f || p.pos.y > deck + 0.35f || p.vel.y > 0.5f) { if (st.aboard == e->id && p.pos.y >= deck - 0.8f && p.pos.y < deck + 1.2f) aboard = e->id; continue; }
     p.pos.y = deck; p.vel.y = 0; p.onGround = true; p.fallDist = 0; aboard = e->id;
   }
   if (Boat* on = dynamic_cast<Boat*>(lv.entity(aboard))) {
     vec2 l = on->toLocal(p.pos.x, p.pos.z);
-    float inset = 0.3f;
-    if (p.pos.y < on->pos.y + SHIP.deck + 0.6f && !onShipDeck(l.x, l.y, inset)) {
-      float cz = clampv(l.y, SHIP.bow + 0.2f + inset, SHIP.stern - inset), hw = shipHalfAt(cz) - inset, cx = clampv(l.x, -hw, hw);
+    float inset = 0.3f; const ShipDims D = on->dims();
+    if (p.pos.y < on->pos.y + D.deck + 0.6f && !onShipDeck(l.x, l.y, inset, D)) {
+      float cz = clampv(l.y, D.bow + 0.2f + inset, D.stern - inset), hw = shipHalfAt(cz, D) - inset, cx = clampv(l.x, -hw, hw);
       vec2 wp = on->toWorld(cx, cz); p.pos.x = wp.x; p.pos.z = wp.y;
     }
     st.shipPose = vec4(on->pos, on->yaw);

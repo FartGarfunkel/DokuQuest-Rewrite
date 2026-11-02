@@ -1,6 +1,9 @@
 // net/server_host.cpp — the host side of net.js (Net.host / hostMsg / welcome / peerLeft) and the parts of
 // game/server.js that aren't screens: the player limit, the welcome message, kick, plus ban and op lists.
 #include "net/server_host.h"
+#include "sim/creature.h"
+#include "sim/controller.h"
+#include "sim/vehicles.h"
 #include "net/net_internal.h"
 #include "sim/commands.h"
 #include "gen/generator.h"
@@ -55,6 +58,20 @@ bool ServerHost::start(std::string* err) {
   fx = new NetFx(*this, innerFx);
   level.fx = fx;
   ensureWatchers();
+  // a screen the world opens for a guest (talking to a villager, a stable...) opens on their game
+  if (level.events) for (const char* ev : {"screenOpen", "villagerScreen", "contentScreen"}) {
+    const std::string name = ev;
+    uiHandles.push_back(level.events->on(name, [this, name](const json& a) {
+      if (!a.is_array() || a.empty() || !a[0].is_string()) return true;
+      Peer* p = peerByName(a[0].get<std::string>());
+      if (!p || !p->ready || !p->enet) return true;   // the host's own player: its own screens open here
+      json args = a;   // a container on an entity (saddle bags, a cart's or boat's chest): what's in it goes along
+      if (name == "screenOpen" && args.size() > 2 && args[2].is_object() && args[2].contains("entity"))
+        if (json* it = entityContainer(level.entity(args[2].value("entity", 0u)))) args[2]["items"] = *it;
+      send(p->enet, UIEV, {{"e", name}, {"a", args}});
+      return false;
+    }, 50));
+  }
   if (opts.lan) lanAnn.start();
   serverLog(strFormat("\"%s\" is open on port %d (%s)", opts.name.c_str(), boundPort, level.info.name.c_str()), "good");
   return true;
@@ -62,6 +79,8 @@ bool ServerHost::start(std::string* err) {
 
 void ServerHost::stop(const std::string& why) {
   if (!host) return;
+  if (level.events) for (int h : uiHandles) level.events->off(h);
+  uiHandles.clear();
   flushSaves();
   saveAll();
   for (auto& [id, p] : peers) if (p.enet) {
@@ -449,7 +468,23 @@ void ServerHost::receive(Peer& p, u8 ty, json& m) {
       }
       break;
     }
-    case ACT: if (level.events) level.events->emit("netAction", json::array({p.name, m.value("n", ""), m.value("a", json())})); break;
+    case ACT:
+      // a guest used a creature (fed, tamed, sheared, saddled, rode, talked to it): the host's game does it with their
+      // mirror, as it would for the host's own player; what changes comes back in snapshots and their bags
+      // (sim/controller.cpp useOnHost / runGuestUse: creatures, a summoning wand, jars, filters... the same hooks)
+      if ((m.value("n", "") == "use" || m.value("n", "") == "useEnt") && p.pl && m.contains("a") && m["a"].is_object()) {
+        json a = m["a"]; if (m.value("n", "") == "useEnt") a["k"] = "ent";
+        runGuestUse(level, *p.pl, a);
+        break;
+      }
+      if (m.value("n", "") == "entInv" && p.pl && m.contains("a") && m["a"].is_object()) {   // a guest changed a container on an entity
+        const json& a = m["a"]; Entity* e = level.entity(a.value("id", 0u));
+        json* it = entityContainer(e);
+        if (it && e->realm == p.pl->realm && glm::distance(e->pos, p.pl->pos) < 8 && a.contains("items") && a["items"].is_array() && a["items"].size() == it->size()) *it = a["items"];
+        break;
+      }
+      if (level.events) level.events->emit("netAction", json::array({p.name, m.value("n", ""), m.value("a", json())}));
+      break;
     case SPAWN: {
       json e = m.value("e", json::object());
       std::string type = e.value("type", "");
@@ -501,7 +536,7 @@ void ServerHost::applyMe(Peer& p, const json& m) {
     serverLog(p.name + " moved too quickly!", "warn");
     return;
   }
-  pl.pos = pl.netPos = np;
+  if (!pl.riding) pl.pos = pl.netPos = np;
   pl.realm = realm;
   pl.vel = vec3(m.value("vx", 0.f), m.value("vy", 0.f), m.value("vz", 0.f));
   pl.yaw = pl.netYaw = m.value("r", pl.yaw); pl.pitch = m.value("p", pl.pitch); pl.bodyYaw = m.value("b", pl.yaw);
@@ -509,7 +544,20 @@ void ServerHost::applyMe(Peer& p, const json& m) {
   pl.onGround = f & 1; pl.inWater = f & 2; pl.sneaking = f & 4; pl.sprinting = f & 8; pl.flying = f & 16; pl.swimming = f & 32; pl.crawling = f & 64;
   pl.hp = m.value("hp", pl.hp); pl.dead = dead;
   pl.selected = clampv(m.value("sel", pl.selected), 0, 8);
-  pl.riding = m.value("rd", 0u);
+  // riding: the server put them on a mount (SELF rd) until their game says so it keeps it; after that their game decides
+  // (getting off is theirs); what they steer goes to the mount ("ri": forward, strafe, jump, sprint, descend)
+  const u32 rd = m.value("rd", 0u);
+  if (pl.riding != p.aRide) {   // the host's game changed it since (seated by a use, thrown off): tell them, and wait for it
+    p.aRide = pl.riding; p.rideSeen = false;
+    send(p.enet, SELF, {{"rd", pl.riding}});
+  }
+  if (!p.rideSeen) { if (rd == p.aRide) p.rideSeen = true; }
+  else { pl.riding = rd; p.aRide = rd; }
+  if (pl.riding && m.contains("ri") && m["ri"].is_array() && m["ri"].size() >= 5)
+    if (auto* c = dynamic_cast<Creature*>(level.entity(pl.riding)); c && c->riddenBy == pl.id) {
+      const json& r = m["ri"];
+      c->rideIn = {r[0].get<float>(), r[1].get<float>(), r[2].get<int>() != 0, r[3].get<int>() != 0, r[4].get<int>() != 0};
+    }
   p.aPos = pl.pos; p.aVel = pl.vel; p.aHp = pl.hp; p.aRealm = pl.realm; p.aFly = pl.flying; p.aDead = dead;
   if (!p.ready) {
     p.ready = true; p.motdAt = t + 1.5;
@@ -555,6 +603,8 @@ void ServerHost::diffMirrors() {
     if (!p.ready || !p.pl || p.left || !p.enet) continue;
     Player& pl = *p.pl;
     json s = json::object();
+    if (pl.riding != p.aRide) { s["rd"] = pl.riding; p.aRide = pl.riding; p.rideSeen = false; }   // on or off a mount (a guest's use, a death)
+    if (pl.riding) p.aPos = pl.pos;   // a mount carries them: their game follows it by itself
     if (glm::distance(pl.pos, p.aPos) > 0.75f || pl.realm != p.aRealm) {
       s["tp"] = v3(pl.pos); s["rl"] = pl.realm; p.allowJumpUntil = t + 3;
       p.aPos = pl.pos; p.aRealm = pl.realm; pl.netPos = pl.pos;

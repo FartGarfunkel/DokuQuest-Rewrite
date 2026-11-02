@@ -26,6 +26,7 @@ enum Msg : u8 {
   // server -> client (BLK and BE are also sent this way)
   REFUSE = 32, WELCOME = 33, CKDONE = 34, CK = 35, CS = 36, ES = 38, ENV = 39, FX = 40, MSG = 41, SELF = 42, PEER = 43,
   FOLLOW = 44, KICK = 45, FLUSH = 46, SKINS = 47,
+  UIEV = 48,   // a screen the host's game opens for a guest (screenOpen / villagerScreen / contentScreen): the guest's UI opens it
 };
 const char* msgName(u8 t);
 

@@ -101,6 +101,13 @@ float damageFor(Level& lv, int x, int y, int z, BlockId id);
 void forgetDamage(Level& lv, int x, int y, int z);
 std::vector<Crack> damageCracks(Level& lv, World& w, vec3 cam, const Mining* current);   // for the renderer
 
+// A joined world: the creatures and much of the world's state are the host's, so a use that changes them is asked of
+// the host (net ACT "use"): useOnHost sends it (kind "ent" / "block" / "item", our slot, sneak, look, the target) and
+// returns true; the host's runGuestUse does it with that player's mirror, running the same hooks as for its own player.
+// What changes comes back in snapshots, block updates and the guest's bags.
+bool useOnHost(PlayerController& pc, const std::string& kind, const RayHit* hit = nullptr, u32 ent = 0);
+void runGuestUse(Level& lv, Player& mirror, const json& a);
+
 // sitting: where can you sit, how high (pixels) and facing which way (furniture.js seatAt)
 bool seatAt(World& w, int x, int y, int z, float& top, float& yaw, bool& hasYaw);
 void registerBuildEntities();

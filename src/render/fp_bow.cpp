@@ -52,7 +52,7 @@ int drawFpBow(HeldItemLayer& L, GameSession& s, const FrameCtx& f, const mat4& p
   if (!im) return 0;
   // the step bob, as the hands have it
   const Settings& st = s.app.settings;
-  float bobK = st.viewBob ? L.bobAmt : 0, hsn = std::sin(L.bob * 1.1f), bx = hsn * 0.025f * bobK, by = -hsn * hsn * 0.03f * bobK;
+  float bobK = st.viewBob ? L.bobAmt : 0, hsn = std::sin(L.bob * 1.4f), bx = hsn * 0.025f * bobK, by = -hsn * hsn * 0.03f * bobK;
   // the bow's own frame: tips upright (leaning a touch), the belly away from you, the string toward you
   const float cant = 0.22f, sc = 0.85f;
   vec3 T(std::sin(cant), std::cos(cant), 0), U(0, 0, -1), N(-std::cos(cant), std::sin(cant), 0);

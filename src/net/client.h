@@ -84,6 +84,7 @@ private:
   std::vector<u64> replaceQ;
   std::unordered_map<std::string, int> bePend;   // our block-entity changes the server hasn't taken in yet
   int beSeq = 0, invSeq = 0, myId = 0;
+  u32 myEid = 0;   // our player's entity id on the host
   json blkOut = json::object();             // realm -> [[x,y,z,id,meta]...]
   double tMe = 0, tSave = 0, tInv = 0, saveDue = 0, tSums = 0;
   std::string invSig; json lastSave;

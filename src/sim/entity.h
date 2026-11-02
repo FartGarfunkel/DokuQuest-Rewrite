@@ -26,7 +26,7 @@ public:
   // glides to netPos/netYaw (the server's last snapshot). netLocal entities exist on this device only (never sent).
   bool ghost = false, netLocal = false;
   vec3 netPos{0}; float netYaw = 0;
-  void glide(double dt) {
+  virtual void glide(double dt) {
     float k = std::min(1.f, (float)dt * 14.f);
     if (glm::distance(netPos, pos) > 8) pos = netPos; else pos += (netPos - pos) * k;
     yaw += std::remainder(netYaw - yaw, 2 * PI) * k;

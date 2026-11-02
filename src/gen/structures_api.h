@@ -17,6 +17,8 @@ const StructureIndex* structureIndexOf(const DimGenerator* g);
 const StructurePlan* locateStructure(const WorldGen& wg, int dim, const std::string& kind, int x, int z, int maxRegions = 12);
 // a new world's first spawn at the edge of the nearest village, facing it (global y); false = no village near
 bool villageStartPoint(const WorldGen& wg, vec3& pos, float& yaw);
+// World setting "Start in the wild": dry land with no village within 200 blocks, outward from the origin (global y)
+bool wildStartPoint(const WorldGen& wg, vec3& pos);
 bool debugSpawnPoint(const WorldGen& wg, const std::string& spec, vec3& pos, float& yaw);
 
 } // namespace dq

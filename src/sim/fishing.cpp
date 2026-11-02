@@ -42,7 +42,7 @@ FishCatch fishingCatch(Level& lv, int realm, vec3 at) {
     for (auto& e : ok) { q -= e.second; if (q <= 0) return e.first; }
     return ok.empty() ? "cod" : ok[0].first;
   };
-  if (r < 0.04f) return {pick({{"saddle", 2}, {"bow", 2}, {"emerald", 3}, {"gold_ingot", 3}, {"diamond", 1}, {"music_disc_tide", 1}, {"music_disc_grove", 1}, {"fishing_rod", 2}}), "treasure", 0};
+  if (r < 0.04f) return {pick({{"saddle", 2}, {"bow", 2}, {"emerald", 3}, {"gold_ingot", 3}, {"diamond", 1}, {"music_disc_tide", 1}, {"music_disc_grove", 1}, {"music_disc_frost", 1}, {"music_disc_aurora", 1}, {"fishing_rod", 2}}), "treasure", 0};
   if (r < 0.12f) return {pick({{"stick", 3}, {"string", 3}, {"bowl", 2}, {"leather", 2}, {"bone", 3}, {"lily_pad", 2}, {"kelp", 3}, {"ink_sac", 1}}), "junk", 0};
   std::vector<std::pair<const char*, float>> fish =
     ocean ? (temp > 0.3f ? std::vector<std::pair<const char*, float>>{{"tropical_fish", 4}, {"pufferfish", 2}, {"cod", 4}}

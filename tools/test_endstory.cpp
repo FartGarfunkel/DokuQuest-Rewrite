@@ -216,6 +216,7 @@ int main(int argc, char** argv) {
   }
   // ------------------------------------------------------------ the Deep Dark: the sculk listens, the Warden comes
   {
+    const json riftBefore = L->info.data.value("rift", json());
     const int DY = OB + 30;   // well inside the Deep Dark's depth
     P->pos = vec3(2000.5f, DY + 1, 0.5f); load(P->pos, 2);
     for (int x = 1985; x < 2016; x++) for (int z = -15; z < 16; z++) { w.setBlock(x, DY, z, B("stone")); for (int y = DY + 1; y < DY + 6; y++) w.setBlock(x, y, z, AIR); }
@@ -246,6 +247,10 @@ int main(int argc, char** argv) {
       check(hit, "struck, it knows who did it and comes for them");
       W.removed = true; P->hp = P->maxHp;
     }
+    // (that much play time lets the story's catalyst open the rift at the nearest village, if one is near enough and
+    // its plan is already known: the story checks below start from before it)
+    L->info.data["playTime"] = 0.0;
+    if (riftBefore.is_null()) L->info.data.erase("rift"); else L->info.data["rift"] = riftBefore;
   }
   // ------------------------------------------------------------ the watcher
   {
@@ -262,7 +267,7 @@ int main(int argc, char** argv) {
   }
   // ------------------------------------------------------------ the story
   {
-    check(riftTier(*L) <= 0 && riftStability(*L) == 100, "before the rift: all quiet");
+    check(riftTier(*L) <= 0 && riftStability(*L) == 100, strFormat("before the rift: all quiet (tier %d, stability %d, stage %d)", riftTier(*L), riftStability(*L), L->info.data.value("rift", json::object()).value("stage", 0)));
     check(riftRec(*L).value("frags", 0) == 2, "the Ender Dragon and a lair dragon each gave a Realm Fragment (rpg.js great foes)");
     riftRec(*L)["frags"] = 0;
     int frag0 = countItems("realm_fragment");

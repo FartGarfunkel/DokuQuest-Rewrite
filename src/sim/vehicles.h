@@ -68,8 +68,10 @@ struct BoatType { const char* key; const char* item; int hp; float scale; bool s
 const BoatType& boatType(const std::string& kind);
 struct ShipDims { float deck = 1.3f, halfW = 1.42f, bow = -4.2f, stern = 4.2f; vec2 helm{0, 3.2f}, cargo{0, -2.4f}; };
 constexpr ShipDims SHIP{};
-float shipHalfAt(float lz);
-bool onShipDeck(float lx, float lz, float inset = 0);
+// the galleon is the sailing ship built 1.6 times over (two masts, a bigger hold): its dims are SHIP's scaled
+inline ShipDims shipDimsOf(float s) { ShipDims d; d.deck *= s; d.halfW *= s; d.bow *= s; d.stern *= s; d.helm *= s; d.cargo *= s; return d; }
+float shipHalfAt(float lz, const ShipDims& D = SHIP);
+bool onShipDeck(float lx, float lz, float inset = 0, const ShipDims& D = SHIP);
 struct SmallBoat { float top = 0.6f, bow = -1.42f, stern = 1.16f; float half(float lz) const { return lz > -0.52f ? 0.7f : 0.7f * clampv((lz + 1.42f) / 0.9f, 0.08f, 1.f); } };
 constexpr SmallBoat SMALL_BOAT{};
 
@@ -85,6 +87,8 @@ public:
   const BoatType& T() const { return boatType(kind); }
   bool ship() const { return T().ship; }
   float scale() const { return T().scale; }
+  ShipDims dims() const { return shipDimsOf(ship() ? T().scale : 1.f); }
+  int holdSlots() const { return kind == "galleon" ? 54 : 27; }
   void tick(Level& lv, double dt) override;
   json save() const override;
   void load(const json& j) override;
@@ -120,6 +124,8 @@ Wind& windOf(Level& lv);
 
 bool isVehicle(const Entity& e);
 Vehicle* asVehicle(Entity* e);
+// a container riding on an entity: a cart's or a boat's chest, a mount's saddle bags (null: none)
+json* entityContainer(Entity* e);
 Vehicle* ridingOf(Level& lv, Player& p);
 Entity* spawnBoat(Level& lv, int realm, const std::string& kind, vec3 pos, float yaw);
 bool vehicleInput(Level& lv, Player& p, vec2 move, bool jump, bool sneak);

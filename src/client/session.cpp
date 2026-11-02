@@ -19,6 +19,7 @@
 #include "render/villager_layer.h"
 #include "client/play.h"
 #include "gen/structures_api.h"
+#include "sim/rules.h"
 #include <imgui.h>
 
 namespace dq {
@@ -95,7 +96,8 @@ void GameSession::spawnPlayer() {
     float yaw = 0;
     const char* at = std::getenv("DQ_SPAWN_AT");   // tests: "x,y,z" or a structure kind (gen/structures_api.h)
     if (at && level->gen && debugSpawnPoint(*level->gen, at, sp, yaw)) p->yaw = yaw;
-    else if (sp.y < 0 && level->gen && villageStartPoint(*level->gen, sp, yaw)) { level->info.spawn = sp; p->yaw = yaw; }   // villages.js: a new world starts at a village's edge
+    else if (sp.y < 0 && level->gen && !rule(*level, "startInWild") && villageStartPoint(*level->gen, sp, yaw)) { level->info.spawn = sp; p->yaw = yaw; }   // villages.js: a new world starts at a village's edge
+    if (sp.y < 0 && level->gen && rule(*level, "startInWild") && wildStartPoint(*level->gen, sp)) level->info.spawn = sp;   // World setting "Start in the wild"
     if (sp.y < 0) {
       DimGenerator* g = level->gen->forDim(DIM_OVERWORLD);
       int sx = 0, sz = 0, h = g ? g->spawnHeight(0, 0) : 100;

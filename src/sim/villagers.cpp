@@ -240,13 +240,13 @@ Creature* npcSpawn(Level& lv, const Village& v, int i, const std::string& kind) 
   else if (f->hasWork) at = vec3(f->work) + vec3(0.5f, 0, 0.5f);
   else at = vec3(f->home) + vec3(0.5f, 0, 0.5f);
   // a village's golem takes after its land
-  const char* golem = v.style == "desert" ? "sandstone_golem" : v.style == "snowy" ? "frost_golem" : v.style == "taiga" ? "moss_golem" : "iron_golem";
+  const char* golem = v.style == "desert" ? "sandstone_golem" : v.style == "snowy" ? "frost_golem" : v.style == "taiga" ? "moss_golem" : v.style == "savanna" ? "savanna_golem" : "iron_golem";
   const char* type = kind == "golem" ? (isCreatureType(golem) ? golem : "iron_golem") : kind == "guard" ? "village_guard" : "villager";
   Creature* e = spawnCreature(lv, REALM_MAIN, type, at);
   if (!e) return nullptr;
   int idx = kind == "guard" ? 100 + i : kind == "golem" ? 200 + i : i;
   u32 seed = kind == "golem" ? 0 : npcSeedOf(v, idx);
-  e->data["npc"] = {{"v", v.id}, {"i", idx}, {"n", kind == "golem" ? std::string(e->type == "sandstone_golem" ? "Sandstone Golem" : e->type == "frost_golem" ? "Frost Golem" : e->type == "moss_golem" ? "Mossy Golem" : "Iron Golem") : npcName(seed)}, {"j", job}, {"s", seed}, {"p", 0}};
+  e->data["npc"] = {{"v", v.id}, {"i", idx}, {"n", kind == "golem" ? std::string(e->type == "sandstone_golem" ? "Sandstone Golem" : e->type == "frost_golem" ? "Frost Golem" : e->type == "moss_golem" ? "Mossy Golem" : e->type == "savanna_golem" ? "Savanna Golem" : "Iron Golem") : npcName(seed)}, {"j", job}, {"s", seed}, {"p", 0}};
   if (kind == "guard") { e->heldItem = "iron_sword"; e->data["npcArmor"] = json::array({"iron_helmet", "iron_chestplate", "iron_leggings", "iron_boots"}); }
   else if (kind != "golem") { const json& J = VD()["jobs"]; e->heldItem = J.contains(job) && J[job].contains("held") && J[job]["held"].is_string() ? J[job]["held"].get<std::string>() : ""; }
   if (!e->heldItem.empty() && !reg().item(e->heldItem)) e->heldItem.clear();
@@ -340,6 +340,7 @@ void VillagerSystem::tick(Level& lv, double dt) {
   raidTick(lv, *this, dt);
   eliteTick(lv, *this, dt);
   lostTick(lv, *this, dt);
+  travellersTick(lv, *this, dt);
   homeTick(lv, *this, dt);
   for (Player* p : levelPlayers(lv)) playerLifeTick(lv, *this, *p, dt);
   for (size_t i = 0; i < later.size();) {
@@ -561,9 +562,9 @@ void registerVillagers() {
     else if (auto* e = dynamic_cast<const EndGen*>(g)) idx = &e->structures;
     if (!idx) return out;
     std::vector<const StructurePlan*> plans;
-    idx->near(ifloor(pos.x), ifloor(pos.z), (int)pad, plans);
+    idx->near(ifloor(pos.x), ifloor(pos.z), (int)pad, plans, NEAR_PLACES);
     for (auto* P : plans) {
-      if (P->data.is_object() && P->data.value("kind", std::string()) == "village") continue;   // villages are found by villages.js's rule
+      if (P->id.empty() || (P->data.is_object() && P->data.value("kind", std::string()) == "village")) continue;   // villages are found by villages.js's rule; roads are no place
       PlaceInfo o; o.id = P->id; o.name = P->name; o.realm = realm; o.x0 = P->x0; o.z0 = P->z0; o.x1 = P->x1; o.z1 = P->z1; o.y = P->y + dimBase(dim);
       out.push_back(o);
     }

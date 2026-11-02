@@ -12,6 +12,7 @@
 // worker thread: plan()/build()/flatten() must be thread-safe and deterministic).
 #pragma once
 #include "gen/gendefs.h"
+#include <array>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
@@ -38,6 +39,8 @@ public:
   virtual bool solidAt(int x, int y, int z) const { TerrainColumn c = terrainColumn(x, z); return c.y >= 0 && y <= c.y; }
   // the ground as finally generated (with structures' levelling): for build(), never from plan()
   virtual int finalSurfaceY(int x, int z) const { return surfaceY(x, z); }
+  // the Nether of terrain version 5 (BTA's: open land under a high roof): its structures stand on the ground there
+  virtual bool openNether() const { return false; }
 };
 
 struct StructurePlan {
@@ -77,6 +80,8 @@ public:
 
 constexpr u32 SF_SURFACE = 1;    // stands on the surface: trees are kept 3 blocks off its footprint
 constexpr u32 SF_NO_CARVE = 2;   // the Deep Dark's halls are not carved inside its footprint (ancient cities)
+constexpr u32 SF_HIDDEN = 4;     // not a place (roads): near(..., NEAR_PLACES) leaves it out
+constexpr int NEAR_PLACES = -2;  // near()'s type: every kind but the hidden ones
 
 struct StructureType {
   std::string key, name;
@@ -138,5 +143,10 @@ private:
   mutable std::unordered_map<int, std::unique_ptr<std::vector<StructurePlan>>> globalCache;
   u64 serial;
 };
+
+// the road between two villages passing nearest (x, z), within pad (gen/structures_roads.cpp): its points (world x, z,
+// from one village's street end to the other's) and the two villages' ids
+struct RoadInfo { std::vector<std::array<int, 2>> pts; std::string from, to; };
+bool roadNear(const StructureIndex& idx, int x, int z, int pad, RoadInfo& out);
 
 } // namespace dq

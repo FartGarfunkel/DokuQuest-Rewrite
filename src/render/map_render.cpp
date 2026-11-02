@@ -179,7 +179,7 @@ int heldMaps(HeldItemLayer& L, GameSession& s, const FrameCtx& f, const mat4& pr
   u8 l = w.getLight(ifloor(p->pos.x), ifloor(p->pos.y + EYE), ifloor(p->pos.z));
   vec2 light((l >> 4) / 15.f, (l & 15) / 15.f);
   float bobK = s.app.settings.viewBob ? L.bobAmt : 0;
-  float bx = std::sin(L.bob * 1.1f) * 0.02f * bobK, by = -std::fabs(std::sin(L.bob * 2.2f)) * 0.02f * bobK;
+  float bx = std::sin(L.bob * 1.4f) * 0.02f * bobK, by = -std::fabs(std::sin(L.bob * 2.8f)) * 0.02f * bobK;
   float eq = 1 - L.equip, look = clampv(-p->pitch / 0.9f, 0.f, 1.f), sw = std::sin(L.swing * PI);
   struct ArmAt { vec3 f; float yaw, pitch; };
   std::vector<ArmAt> arms;

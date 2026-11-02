@@ -30,5 +30,9 @@ private:
 };
 
 void registerCreatureLayers();   // idempotent
+// a creature dressed in a player skin (its mobs.json "skin") drawn at pos facing yaw: the watcher wears his this way
+// when the player has a skin of their own for him (assets/char_creator.cpp userHerobrineSkin)
+class Creature;
+void drawSkinFigure(const Creature& m, vec3 pos, float yaw, World& w, const FrameCtx& f);
 
 } // namespace dq

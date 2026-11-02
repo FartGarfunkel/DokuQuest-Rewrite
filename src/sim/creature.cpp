@@ -393,6 +393,10 @@ void Creature::die(Level& lv, const DamageSrc& src) {
     if (reg().item(hk) && frand() < (type == "wither_skeleton" ? 0.025f : 0.01f)) dropItem(lv, realm, ItemStack(hk, 1), at, true);
   }
   if (!noDrops) for (int i = 0; i < 4; i++) if (!armourPiece(i).empty() && frand() < 0.085f) dropItem(lv, realm, ItemStack(armourPiece(i), 1), at, true);
+  if (data.contains("bags") && data["bags"].is_array()) {   // saddle bags: everything in them, and the bags
+    for (auto& s : data["bags"]) { ItemStack st = ItemStack::fromJson(s); if (!st.empty()) dropItem(lv, realm, st, at, true); }
+    dropItem(lv, realm, ItemStack("saddle_bags", 1), at, true); data.erase("bags");
+  }
   if (T->woolly && !sheared && !baby) dropItem(lv, realm, ItemStack(color == "white" || color.empty() ? "wool" : color + "_wool", 1), at, true);
   if (type == "cinder_golem") {
     json& flags = lv.info.data["flags"]; if (!flags.is_object()) flags = json::object();
@@ -564,10 +568,32 @@ void Creature::update(Level& lv, float dt) {
   float dx = p ? p->pos.x - pos.x : 0, dz = p ? p->pos.z - pos.z : 0, dist = p ? std::hypot(dx, dz) : 999, dyp = p ? p->pos.y - pos.y : 0;
   float toPlayer = std::atan2(-dx, -dz);
   lookAt = p ? p->id : 0;
-  OptMove hooked; if (!calm && globalCreatureHooks().brain) hooked = globalCreatureHooks().brain(lv, *this, p, dist, dt);
+  // after someone who went through a portal (sim/portals.cpp swap): through it after them, unless there's someone to
+  // hunt on this side after all, or it takes too long
+  bool chasing = false;
+  if (data.contains("chase") && !calm) {
+    json& C = data["chase"];
+    const float t = C.value("t", 0.f) - dt;
+    if (t <= 0 || !C.contains("c") || (p && dist < 16 && std::fabs(dyp) < 8)) data.erase("chase");
+    else {
+      C["t"] = t; chasing = true;
+      const vec3 c(C["c"][0].get<float>(), C["c"][1].get<float>(), C["c"][2].get<float>()), n(C["n"][0].get<float>(), C["n"][1].get<float>(), C["n"][2].get<float>());
+      const vec3 goal = c - n * (glm::dot(n, pos - c) >= 0 ? 2.5f : -2.5f);   // just through it
+      std::optional<float> nd = navDir(lv, goal, dt);
+      dir = nd ? *nd : std::atan2(-(goal.x - pos.x), -(goal.z - pos.z)); want = T->speed * 1.15f;
+    }
+  }
+  OptMove hooked; if (!calm && !chasing && globalCreatureHooks().brain) hooked = globalCreatureHooks().brain(lv, *this, p, dist, dt);
   if (calm) { want = 0; dir = yaw; }
+  else if (chasing) {}
   else if (OptMove hk = brainHook(lv, p, dist, dyp, toPlayer, dt)) { want = hk->want; dir = hk->dir; }
   else if (hooked) { want = hooked->want; dir = hooked->dir; }
+  else if (data.value("corruptHostile", false) && p && dist < 32) {   // one of his: an ordinary animal that comes for you (sim/rift.cpp incursions)
+    std::optional<float> nd; if (dist > 2.2f) nd = navDir(lv, p->pos, dt);
+    dir = nd ? *nd : toPlayer; want = std::max(T->speed, 2.4f) * (T->run > 0 ? 1.2f : 1.f);
+    bite(lv, p, std::max(2.f, T->damage));
+    if (dist < 0.9f) want = 0;
+  }
   else if (OptMove ctl = controlAI(lv, dt)) { want = ctl->want; dir = ctl->dir; }
   else if (type == "cinder_golem") { Move m = bossAI(lv, p, dist, toPlayer, dt); want = m.want; dir = m.dir; }
   else if (T->special) { Move m = specialAI(lv, p, dist, dyp, toPlayer, dt); want = m.want; dir = m.dir; }
@@ -756,7 +782,25 @@ json Creature::snap() const {
   if (data.contains("armor")) o["ar"] = data["armor"];
   if (!lost.empty()) o["ls"] = lost;
   if (hasTilt) o["sf"] = {r2(surfaceTilt.x), r2(surfaceTilt.y)};
+  // (more than the original sent: pets, riders, a dragon's wings, a limp)
+  if (!owner.empty()) o["ow"] = owner;
+  if (!petName.empty()) o["pn"] = petName;
+  if (riddenBy) o["rb"] = riddenBy;
+  if (tamed || stay) o["tm"] = (tamed ? 1 : 0) | (stay ? 2 : 0);
+  if (breathT > 0) o["br"] = r2(breathT);
+  if (hoverT > 0) o["hv"] = r2(hoverT);
+  if (limp) o["lm"] = limp;
   return o;
+}
+void Creature::glide(double dt) {
+  const vec3 o = pos;
+  Entity::glide(dt);
+  const float fdt = std::max((float)dt, 1e-3f), hs = std::hypot(pos.x - o.x, pos.z - o.z) / fdt;
+  walkAmt += (std::min(1.f, hs / 2) - walkAmt) * std::min(1.f, fdt * 6);
+  walk += hs * fdt * 3.2f;
+  speedNow = hs;
+  if (hurtTime > 0) hurtTime -= fdt;
+  if (deathTime > 0) deathTime += fdt;
 }
 void Creature::applySnap(const json& o) {
   ghost = true;
@@ -783,6 +827,9 @@ void Creature::applySnap(const json& o) {
   if (o.contains("ar")) data["armor"] = o["ar"]; else if (data.is_object()) data.erase("armor");
   lost.clear(); if (o.contains("ls")) for (auto& n : o["ls"]) lost.insert(n.get<std::string>());
   hasTilt = o.contains("sf"); if (hasTilt) surfaceTilt = vec2(o["sf"][0], o["sf"][1]);
+  owner = o.value("ow", std::string()); petName = o.value("pn", std::string()); riddenBy = o.value("rb", 0u);
+  const int tm = o.value("tm", 0); tamed = tm & 1; stay = tm & 2;
+  breathT = o.value("br", 0.f); hoverT = o.value("hv", 0.f); limp = o.value("lm", 0);
 }
 
 // ------------------------------------------------------------------ sound3.js: footsteps for everything with feet, and

@@ -7,6 +7,8 @@
 #include <random>
 #include "client/app.h"
 #include "render/creature_draw.h"
+#include "render/creature_layer.h"
+#include "assets/char_creator.h"
 #include "render/creature_models.h"
 #include "assets/item_models.h"
 #include "sim/creature_rig.h"
@@ -75,13 +77,23 @@ public:
         D.draw(im.gl, m * im.matrix(), VoxelLight{1, 1});
         continue;
       }
-      drawWatcher(s, D, w, e, ip, rel);
+      drawWatcher(s, D, w, e, ip, rel, f);
     }
     if (begun) D.end();
   }
 
-  void drawWatcher(GameSession& s, CreatureDraw& D, World& w, Entity& e, vec3 ip, vec3 rel) {
+  void drawWatcher(GameSession& s, CreatureDraw& D, World& w, Entity& e, vec3 ip, vec3 rel, const FrameCtx& f) {
     bool boar = e.data.value("boar", false);
+    // the player made him a skin of their own (skins/herobrine.png, a folder of his, or a pack's): he wears it
+    if (!boar && !userHerobrineSkin().empty()) {
+      Creature& H = dummy("herobrine");
+      const float leaving = jf(e.data, "leaving");
+      H.age = e.age; H.walk = jf(e.data, "walk"); H.walkAmt = leaving > 0 ? 1 : 0;
+      H.headPitch = leaving > 0 ? 0 : clampv(std::atan2(s.player->pos.y + 1.62f - (ip.y + 1.6f), std::hypot(s.player->pos.x - ip.x, s.player->pos.z - ip.z)), -0.5f, 0.5f);
+      drawSkinFigure(H, ip, e.yaw, w, f);
+      D.begin(f);   // (the skin pipeline used its own shader)
+      return;
+    }
     // the watcher is drawn from the stock voxel model (the hb_* parts, with the unlit white eyes), not the
     // player skin herobrine now wears in the living worlds — so pin its render key to "herobrine" regardless.
     Creature& M = dummy(boar ? "boar" : "watcher_herobrine");

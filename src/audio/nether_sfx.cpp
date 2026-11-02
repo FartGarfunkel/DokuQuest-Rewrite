@@ -20,7 +20,7 @@ json moan(std::initializer_list<std::pair<double, double>> f, double dur, double
 } // namespace
 
 void addNetherSounds(json& table) {
-  if (!table.is_object() || table.contains("nether_rumble")) return;
+  if (!table.is_object() || table.contains("nether_rumble")) return;   // (also the nightmare sting, below)
   const double P[3] = {1.0, 0.88, 1.13};
   json rumble = json::array(), erupt = json::array(), bubble = json::array(), chime = json::array(), ash = json::array(), crack = json::array();
   for (double p : P) {
@@ -41,7 +41,13 @@ void addNetherSounds(json& table) {
     crack.push_back(json::array({nh(0, 0.05, 2600 * p, 1.2, 0.24, "bandpass"), tone(0, 190 * p, 0.2, "triangle", 0.12, 90 * p), nh(0.14, 0.04, 3100 * p, 1.5, 0.12, "bandpass"),
                                  nh(0.29, 0.035, 2800 * p, 1.5, 0.08, "bandpass"), nh(0.41, 0.03, 3300 * p, 1.6, 0.05, "bandpass")}));
   }
+  // waking from a nightmare: a sharp low jolt, a dissonant cluster rising and a breath of noise
+  json sting = json::array();
+  for (double p : P) sting.push_back(json::array({nh(0, 0.35, 160 * p, 0.9, 0.7, "lowpass"), tone(0, 62 * p, 1.4, "sawtooth", 0.12, 40 * p),
+                                                  tone(0.05, 233 * p, 1.6, "sine", 0.07, 247 * p), tone(0.05, 247 * p, 1.6, "sine", 0.06, 262 * p),
+                                                  tone(0.1, 349 * p, 1.4, "triangle", 0.04, 370 * p), swell(1.8, 300 * p, 1400 * p, 1.4, 0.12, 0.6, 0.1)}));
   auto add = [&](const char* name, json takes, double gap) { table[name] = {{"live", takes}, {"gap", gap}}; };
+  add("nightmare", sting, 2);
   add("nether_rumble", rumble, 3); add("eruption", erupt, 2); add("acid_bubble", bubble, 0.2); add("crystal_chime", chime, 0.8);
   add("ash_moan", ash, 4); add("crag_crack", crack, 1);
 }

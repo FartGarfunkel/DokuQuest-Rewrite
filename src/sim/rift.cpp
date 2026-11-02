@@ -7,6 +7,7 @@
 // The tears are virtual portals (sim/portals.h setVirtual): true windows, walked through when they are gateways.
 // The villagers workstream talks to this through sim/endstory.h (riftAsk ...) and the villageEnter / villageRep events.
 #include "sim/endstory_int.h"
+#include <cstdlib>
 #include "sim/portals.h"
 #include "sim/commands.h"
 #include "gen/dimgens.h"
@@ -104,6 +105,7 @@ static void riftMobs(Level& lv, int realm, vec3 at) {
   for (int k = 0, n = 2 + (int)(rnd() * 2); k < n; k++) if (Creature* m = spawnMob(lv, realm, T[(int)(rnd() * 3) % 3], at + vec3(rnd() - 0.5f, 0, rnd() - 0.5f))) m->huntT = 30;
 }
 static void forceSighting(Level& lv, Player& p) { hauntForceSighting(lv, p); }
+static void riftIncursion(Level& lv, EndStory& S, Player& p);
 // in a doorway of the village you're in, or somewhere at the edge of sight
 static void riftDoorway(Level& lv, EndStory& S, Player& p) {
   if (inOverworld(p)) {
@@ -263,6 +265,7 @@ static void riftFortress(Level& lv, EndStory& S, Player& p) {
 static void riftEvent(Level& lv, EndStory& S, Player& p, const std::string& ev, bool mon) {
   if (p.realm == REALM_POCKET) { forceSighting(lv, p); return; }   // (0.9.0.50) in a pocket dimension he only ever comes through its portal
   if (ev == "fortress") riftFortress(lv, S, p);
+  else if (ev == "incursion") riftIncursion(lv, S, p);
   else if (ev == "freeze") riftFreeze(lv, S, p);
   else if (ev == "phantom") riftPhantom(lv, p);
   else if (ev == "micro") riftMicro(lv, S, p, mon);
@@ -394,6 +397,71 @@ static void riftSeal(Level& lv, Creature& boss) {
   }
 }
 
+// the late story (seven fragments and more): anywhere at all — a mine, a cave, out on any land — a tear opens near you,
+// he steps out of it, and his corrupted come through one by one: monsters and ordinary animals alike, all of them his,
+// the animals coming for you too. Then he walks back into it and it closes behind him, leaving them.
+static void riftIncursion(Level& lv, EndStory& S, Player& p) {
+  World& w = lv.world(p.realm);
+  const json& R = riftRec(lv);
+  const int frags = std::min(RIFT_NEED, jint(R, "frags"));
+  for (int i = 0; i < 30; i++) {
+    float ang = p.yaw + (rnd() - 0.5f) * 1.6f, d = 11 + rnd() * 9;
+    float x = std::floor(p.pos.x - std::sin(ang) * d) + 0.5f, z = std::floor(p.pos.z - std::cos(ang) * d) + 0.5f;
+    if (!w.isLoaded(ifloor(x), ifloor(p.pos.y), ifloor(z))) continue;
+    int y = standY(w, x, z, p.pos.y);
+    if (y < 0 || std::abs(y - p.pos.y) > 4) continue;
+    const BlockId above = w.getBlock(ifloor(x), y + 3, ifloor(z));
+    if (reg().tSolid[above]) continue;   // room for the tear
+    vec3 eye = p.pos + vec3(0, EYE, 0), mid(x, y + 1.6f, z);
+    if (!lineOfSight(lv, p.realm, eye, mid, glm::distance(eye, mid))) continue;
+    const vec3 at(x, y, z);
+    const float yaw = headingTo(at, p.pos.x, p.pos.z) + PI / 2;
+    const std::string id = "rift_inc" + std::to_string(p.id);
+    if (PortalSystem* ps = portalSystem(lv)) {
+      VirtualPortal v; v.realm = p.realm; v.bottom = glm::dvec3(at); v.yaw = yaw;
+      v.w = 2.2f; v.h = 3.4f; v.walk = false; v.torn = true; v.destRealm = REALM_HIS; v.destBottom = glm::dvec3(HALL + 48.5, realmFloor() + 1, 0.5); v.destYaw = 0;
+      ps->setVirtual(id, v);
+    }
+    lv.fx->sound("rift_open", at + vec3(0, 1, 0), 48);
+    lv.fx->shake(p.id, 0.3f);
+    DQ_LOG("rift: a tear opens at %.0f %.0f %.0f (%d fragments)", at.x, at.y, at.z, frags);
+    const vec3 toward = glm::normalize(vec3(p.pos.x - at.x, 0, p.pos.z - at.z) + vec3(1e-4f, 0, 0));
+    Entity* wt = spawnWatcher(lv, p, at + toward * 1.4f, "peek", 9, true);
+    const u32 wid = wt ? wt->id : 0;
+    // his corrupted, through the tear one at a time: monsters, and ordinary animals that are his now
+    static const char* MON[] = {"ghoul", "skeleton", "spider", "fuseling"};
+    static const char* ANI[] = {"cow", "pig", "sheep", "boar", "deer", "wolf"};
+    const int n = 3 + frags / 3;
+    for (int k = 0; k < n; k++) {
+      const bool animal = k % 3 == 2;
+      const std::string type = animal ? ANI[(int)(rnd() * 6) % 6] : MON[(int)(rnd() * 4) % 4];
+      S.later(1.6 + k * 0.9, [type, animal, at, toward](Level& l) {
+        Creature* c = spawnMob(l, REALM_MAIN, type, at + vec3((rnd() - 0.5f) * 0.6f, 0, (rnd() - 0.5f) * 0.6f));
+        if (!c) return;
+        c->data["rc"] = 1; c->data["corrupt"] = true; c->kept = true;
+        if (animal) c->data["corruptHostile"] = true;
+        else { c->maxHp *= 1.5f; c->hp = c->maxHp; c->huntT = 40; c->alertT = 20; }
+        c->vel = toward * 3.f; c->yaw = std::atan2(-toward.x, -toward.z);
+        l.fx->particles("poof", c->pos + vec3(0, 0.8f, 0), 4);
+        l.fx->sound("rift_whisper", c->pos + vec3(0, 1, 0), 18);
+        DQ_LOG("rift: a corrupted %s comes through", type.c_str());
+      });
+    }
+    // then he walks back into it, and it closes behind him
+    const double back = 2.5 + n * 0.9;
+    S.later(back, [wid, at](Level& l) {
+      if (Entity* e = l.entity(wid); e && !e->removed) { e->pos = at; watcherVanish(l, *e); }
+    });
+    S.later(back + 1.2, [id, at](Level& l) {
+      if (PortalSystem* q = portalSystem(l)) q->removeVirtual(id);
+      l.fx->sound("portal", at + vec3(0, 1, 0), 30);
+    });
+    p.data["dreadT"] = 2.5;
+    return;
+  }
+  forceSighting(lv, p);
+}
+
 // ------------------------------------------------------------------ the story moving on (host)
 // ---- the corruption: once the boundary thins, now and then a creature of the Overworld comes out of the dark wrong (the
 // creature layer draws it with his purple flicker and white eyes). A corrupted monster is half again as hard to kill; a
@@ -468,6 +536,10 @@ void riftTick(Level& lv, EndStory& S, double dt) {
       if (nearEx) lv.fx->sound("rift_hum", ex, 28);
     }
   }
+  // (testing: DQ_RIFT_EVENT=<event> plays that one once, a few seconds in, whatever the story's stage)
+  static const char* forced = std::getenv("DQ_RIFT_EVENT");
+  static double forcedT = 6;
+  if (forced && forcedT > 0 && (forcedT -= dt) <= 0) { auto ap = levelPlayers(lv); if (!ap.empty()) riftEvent(lv, S, *ap[0], forced, false); }
   if ((S.riftT -= (float)dt) > 0) return;
   S.riftT = 1;
   if (!lv.isRemote()) corruptTick(lv);
@@ -486,6 +558,7 @@ void riftTick(Level& lv, EndStory& S, double dt) {
     if (!v.ok && playTime(lv) > 1500) for (Player* l : all) if (inOverworld(*l)) { Vil a = villageAtPos(lv, l->pos, 600); if (a.ok) { v = a; break; } }
     if (v.ok) {
       bool close = false; for (Player* l : all) if (l->realm == REALM_MAIN && std::hypot(l->pos.x - v.c.x, l->pos.z - v.c.z) < 90) close = true;
+      DQ_LOG("rift: the catalyst opens it in %s (%s; play time %.0f)", v.name.c_str(), vid.empty() ? "near a player" : vid.c_str(), playTime(lv));
       riftOpenAt(lv, v.id, v.name, v.c + vec3(0.5f, 1, 5.5f), 0);
       if (close) { lv.fx->sound("rift_open", v.c + vec3(0, 2, 0), 80); riftSay(lv, "Something tears open in the square of " + v.name + "\xE2\x80\xA6", "warn"); }
       else riftSay(lv, "Far away, in " + v.name + ", the air tears with a sound like cloth. The elder will know more.", "warn");
@@ -508,6 +581,7 @@ void riftTick(Level& lv, EndStory& S, double dt) {
   Player* who = live[(size_t)(rnd() * live.size()) % live.size()];
   std::string ev = st < 15 && r < 0.3f ? "freeze" : st < 15 && r < 0.55f ? "phantom" : st < 40 && r < 0.75f ? "micro" : "door";
   if (st < 60 && inFortress(lv, *who) && rnd() < 0.6f) ev = "fortress";   // in a fortress of the Depths, his errand there
+  else if (std::min(RIFT_NEED, jint(R, "frags")) >= 7 && !truthy(R, "sealed") && who->realm == REALM_MAIN && rnd() < 0.45f) ev = "incursion";   // late: he comes through
   int dim = dimHere(*who);
   bool mon = ev == "micro" && rnd() < (envDay(lv, dim < 0 ? DIM_OVERWORLD : dim) < 0.45f ? 0.45f : 0.2f);
   riftEvent(lv, S, *who, ev, mon);

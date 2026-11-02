@@ -118,7 +118,7 @@ json boardQuests(Level& lv, const Village& v) {
     for (Player* p : levelPlayers(lv)) if (p->stats.contains("sseen") && p->stats["sseen"].is_object()) for (auto& [k, x] : p->stats["sseen"].items()) seen.insert(k);
     const StructurePlan* best = nullptr; double bd = 480;
     if (idx) {
-      static const std::set<std::string> NOT = {"village", "dungeon", "dragon_lair", "stronghold", "ancient_city"};
+      static const std::set<std::string> NOT = {"village", "dungeon", "dragon_lair", "stronghold", "ancient_city", "road"};
       const auto& T = structureTypes();
       for (int k = 0; k < (int)T.size(); k++) {
         if (!(T[k].dims & (1u << DIM_OVERWORLD)) || NOT.count(T[k].key) || T[k].region <= 0 || T[k].region > 4096) continue;

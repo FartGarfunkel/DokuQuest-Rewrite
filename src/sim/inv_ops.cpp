@@ -150,7 +150,7 @@ void InvSession::store(Grp g) {
       if (o.mode != "container" || !ok) break;
       if (o.heldPack) { ItemStack& h = p.held(); if (packSize(h)) { if (!h.tag.is_object()) h.tag = json::object(); h.tag["c"] = saveArr(cont); } }
       else if (o.ender) { ender = cont; p.ender = ender; }
-      else if (o.entItems) { if (json* it = o.entItems()) *it = saveArr(cont); }
+      else if (o.entItems) { if (json* it = o.entItems()) { *it = saveArr(cont); if (o.entSaved) o.entSaved(*it); } }
       else if (o.hasPos && w) {
         const BlockDef& b = reg().block(w->getBlock(o.pos.x, o.pos.y, o.pos.z));
         if (b.key == "backpack_block") {

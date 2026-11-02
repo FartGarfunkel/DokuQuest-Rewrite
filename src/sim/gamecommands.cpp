@@ -8,6 +8,7 @@
 #include "sim/magic.h"
 #include "sim/weather.h"
 #include "gen/structures_api.h"
+#include "gen/generator.h"
 #include <random>
 #include <regex>
 #include <set>
@@ -239,9 +240,27 @@ static void registerBuiltinCommands() {
     else { static const std::regex yes("^(true|on|1|yes)$", std::regex::icase); r[a[0]] = std::regex_match(a[1], yes); }
     return a[0] + " = " + show(r[a[0]]);
   });
-  C("tp", "<x y z> | spawn | <player>", "Teleport", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
+  C("tp", "<x y z> | spawn | <player> | <overworld|skylands|nether|end> [x z]", "Teleport", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
     Player& p = c.p;
     if (!a.empty() && a[0] == "spawn") { placeAtSpawn(c.lv, p, false); return "To spawn"; }
+    // BTA: /tp to a dimension (here a band of the stacked world): onto its ground above x, z
+    if (!a.empty()) {
+      const std::string d = toLower(a[0]);
+      const int dim = d == "overworld" || d == "world" ? DIM_OVERWORLD : d == "skylands" || d == "aether" || d == "sky" ? DIM_AETHER
+                    : d == "nether" || d == "depths" || d == "ember" ? DIM_NETHER : d == "end" || d == "the_end" ? DIM_END : -1;
+      if (dim >= 0) {
+        if (p.realm != REALM_MAIN) return "Only from the main world";
+        const int x = a.size() >= 3 ? coord(p, a, 1, 0) : ifloor(p.pos.x), z = a.size() >= 3 ? coord(p, a, 2, 2) : ifloor(p.pos.z);
+        const DimGenerator* g = c.lv.gen ? c.lv.gen->forDim(dim) : nullptr;
+        int y = g ? g->spawnHeight(x, z) : -1;
+        y = y > 0 && y < DIM_H - 2 ? dimBase(dim) + y + 1 : dimBase(dim) + 160;   // no ground there (open sky, the void): high up
+        World& w = c.lv.world(p.realm);
+        for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) w.requestChunk(dim, (x >> 4) + dx, (z >> 4) + dz, 1000);
+        p.pos = vec3(x + 0.5f, y, z + 0.5f); p.vel = vec3(0); p.hasFallStart = false; p.prevPos = p.pos; p.fallDist = 0;
+        static const char* N[DIM_COUNT] = {"the End", "the Nether", "the Overworld", "the Skylands"};
+        return std::string("To ") + N[dim] + " at " + std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(z);
+      }
+    }
     if (a.size() == 1) {
       for (auto& e : c.lv.entities()) if (e->isPlayer() && toLower(static_cast<Player*>(e.get())->name) == toLower(a[0])) { p.pos = e->pos; p.realm = e->realm; return "To " + static_cast<Player*>(e.get())->name; }
       return "No player called " + a[0];

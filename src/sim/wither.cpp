@@ -28,18 +28,20 @@ bool riftCoreAt(World& w, ivec3 p) {
 }
 
 // a wither skeleton skull (or a rift core / command block) was just set at `at`: does it finish a T of soul sand? Three
-// skulls wake the Wither; a rift core or a command block in the middle between two skulls wakes the Wither Storm
+// skulls wake the Wither. The Wither Storm: a command block (or a rift core) in the middle of the T's top row with the
+// three skulls on it, as in the mod the Storm comes from; or (the older way) the block in place of the middle skull
 bool tryWitherSummon(Level& lv, int realm, ivec3 at) {
   World& w = lv.world(realm);
+  const ivec3 dn(0, 1, 0);
   for (int axis = 0; axis < 2; axis++) {
     const ivec3 a = axis ? ivec3(0, 0, 1) : ivec3(1, 0, 0);
-    for (int o = -1; o <= 1; o++) {
-      const ivec3 m = at - a * o;   // the middle skull
-      const bool storm = riftCoreAt(w, m);
-      if (!witherSkullAt(w, m - a) || !(storm || witherSkullAt(w, m)) || !witherSkullAt(w, m + a)) continue;
-      const ivec3 body[4] = {m - a - ivec3(0, 1, 0), m - ivec3(0, 1, 0), m + a - ivec3(0, 1, 0), m - ivec3(0, 2, 0)};
+    for (int dy = 0; dy <= 1; dy++) for (int o = -1; o <= 1; o++) {
+      const ivec3 m = at - a * o + dn * dy;   // the middle skull (placing the T's middle block: the skull row is above it)
+      const bool coreHead = riftCoreAt(w, m), coreBody = riftCoreAt(w, m - dn), storm = coreHead || coreBody;
+      if (!witherSkullAt(w, m - a) || !(coreHead || witherSkullAt(w, m)) || !witherSkullAt(w, m + a)) continue;
+      const ivec3 body[4] = {m - a - dn, m - dn, m + a - dn, m - dn * 2};
       bool ok = true;
-      for (auto& b : body) if (!soulish(w.getBlock(b.x, b.y, b.z))) ok = false;
+      for (int i = 0; i < 4; i++) if (!soulish(w.getBlock(body[i].x, body[i].y, body[i].z)) && !(i == 1 && coreBody)) ok = false;
       if (!ok) continue;
       for (int k = -1; k <= 1; k++) { ivec3 h = m + a * k; w.setBlock(h.x, h.y, h.z, AIR); }
       for (auto& b : body) w.setBlock(b.x, b.y, b.z, AIR);

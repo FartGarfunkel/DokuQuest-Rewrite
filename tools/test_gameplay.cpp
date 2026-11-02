@@ -8,6 +8,11 @@
 #include "sim/rules.h"
 #include "sim/worldsys.h"
 #include "sim/blockfx.h"
+#include "sim/creature.h"
+#include "sim/vehicles.h"
+#include "sim/portals.h"
+#include "sim/creature_entities.h"
+#include <set>
 #include <cstdio>
 
 using namespace dq;
@@ -497,6 +502,86 @@ int main(int argc, char** argv) {
     reply = runCommand(*r.lv, r.p, "/give stone"); CHECK(reply.find("Commands are off") != std::string::npos, "commands off: refused");
     reply = runCommand(*r.lv, r.p, "/seed"); CHECK(startsWith(reply, "Seed:"), "/seed always allowed (%s)", reply.c_str());
     rules(*r.lv)["commands"] = true;
+  }
+
+  printf("[travel]\n");
+  {
+    // saddle bags on a horse of ours: 18 slots it carries, opened with sneak-use, dropped (with the bags) if it dies
+    Creature* h = spawnCreature(*r.lv, REALM_MAIN, "horse", r.p->pos + vec3(2, 0, 0));
+    CHECK(h != nullptr, "a horse");
+    if (h) {
+      h->owner = r.p->name; h->tamed = true; h->baby = false;
+      r.p->selected = 0; r.p->inv[0] = ItemStack("saddle_bags", 1);
+      useOnCreature(*r.lv, *r.p, *h, false);
+      CHECK(!h->data.contains("bags") && r.p->inv[0].id == "saddle_bags", "saddle bags want a saddle first");
+      h->saddled = true;
+      useOnCreature(*r.lv, *r.p, *h, false);
+      CHECK(h->data.contains("bags") && h->data["bags"].size() == 18 && r.p->inv[0].empty(), "saddle bags go on a saddled horse of ours: 18 slots");
+      int opened = 0; auto hs = bus.on("screenOpen", [&](const json& a) { if (a.size() > 2 && a[2].value("entity", 0u) == h->id) opened++; return true; });
+      useOnCreature(*r.lv, *r.p, *h, true);
+      bus.off(hs);
+      CHECK(opened == 1 && entityContainer(h) == &h->data["bags"], "sneak-use opens them (the entity container screen)");
+      h->data["bags"][3] = ItemStack("emerald", 5).toJson();
+      size_t before = r.lv->entities().size();
+      h->die(*r.lv, DamageSrc{});
+      int emer = 0, bags = 0;
+      for (auto& e : r.lv->entities()) if (e->type == "item" && !e->removed) { ItemStack s = ItemStack::fromJson(e->data["stack"]); if (s.id == "emerald") emer += s.n; if (s.id == "saddle_bags") bags++; }
+      CHECK(emer == 5 && bags == 1 && r.lv->entities().size() > before, "if it dies, what they held falls, and the bags too");
+    }
+    // the galleon: the bigger ship, its deck and hold scaled up
+    Entity* g = spawnBoat(*r.lv, REALM_MAIN, "galleon", r.p->pos + vec3(0, 0, -12), 0);
+    auto* gb = dynamic_cast<Boat*>(g);
+    CHECK(gb && gb->ship() && gb->kind == "galleon" && gb->dims().stern > SHIP.stern * 1.5f && gb->holdSlots() == 54, "the galleon is a ship 1.6 times the size, with a 54-slot hold");
+    if (gb) {
+      CHECK(onShipDeck(0, 5.5f, 0, gb->dims()) && !onShipDeck(0, 5.5f), "its deck reaches where the ship's doesn't");
+      CHECK(gb->loadCargo(*r.lv, json{{"key", "chest"}}) && gb->items.size() == 54, "a chest set in it holds 54");
+      gb->removed = true;
+    }
+    CHECK(reg().item("galleon") && reg().item("galleon")->str("boat") == "galleon" && reg().item("saddle_bags"), "the galleon and saddle bags are items");
+  }
+
+  printf("[portals]\n");
+  {
+    // two windows of one portal pair on the arena floor (a virtual portal, as the rifts use): in at (0.5, -8), out at
+    // (18.5, -8), both facing +z, so going through moves you 18 blocks east
+    rules(*r.lv)["mobSpawning"] = false;
+    for (auto& e : r.lv->entities()) if (!e->isPlayer()) e->removed = true;
+    PortalSystem* ps = portalSystem(*r.lv);
+    CHECK(ps != nullptr, "the portal system");
+    if (ps) {
+      VirtualPortal v; v.realm = REALM_MAIN; v.bottom = glm::dvec3(0.5, Y, -8); v.yaw = 0; v.w = 2.6f; v.h = 3.4f; v.walk = true; v.torn = false;
+      v.destRealm = REALM_MAIN; v.destBottom = glm::dvec3(18.5, Y, -8); v.destYaw = 0;
+      ps->setVirtual("test", v);
+      std::set<u32> crossed; auto hp = bus.on("portalEnter", [&](const json& a) { crossed.insert(a[0].get<u32>()); return true; });
+      r.lv->tick(TICK_DT);
+      // an arrow through it hits what's on the other side
+      Creature* pig = spawnCreature(*r.lv, REALM_MAIN, "pig", vec3(18.5f, Y, -13.5f));
+      if (pig) { pig->calm = true; pig->vel = vec3(0); }
+      Entity* arrow = spawnArrow(*r.lv, REALM_MAIN, vec3(0.5f, Y + 0.7f, -4.5f), vec3(0, 2.5f, -26), r.p, 4, false);
+      const float pigHp = pig ? pig->hp : 0; const u32 arrowId = arrow ? arrow->id : 0;
+      for (int i = 0; i < 60 && pig && pig->hp >= pigHp; i++) r.lv->tick(TICK_DT);
+      CHECK(arrowId && crossed.count(arrowId), "an arrow flies through a portal");
+      CHECK(pig && pig->hp < pigHp, "and hits the pig on the other side (hp %.1f of %.1f)", pig ? pig->hp : 0.f, pigHp);
+      if (pig) pig->removed = true;
+      // a monster after you follows you through
+      r.put(0.5f, Y, -5.5f); r.p->yaw = 0; r.step(0.2);
+      Creature* f = spawnCreature(*r.lv, REALM_MAIN, "fuseling", vec3(0.5f, Y, 6.5f));
+      if (f) f->alertT = 20;
+      r.step(0.5);
+      PlayerInput fw; fw.mz = -1;
+      for (int i = 0; i < 30 && !crossed.count(r.p->id); i++) r.step(0.1, fw);
+      CHECK(crossed.count(r.p->id) && r.p->pos.x > 14, "walking through takes you across (x %.1f)", r.p->pos.x);
+      r.step(0.4);   // and stand clear of it
+      PlayerInput none; r.step(0.1, none);
+      r.p->pos.z -= 3;
+      CHECK(f && f->data.contains("chase"), "the fuseling after you means to follow");
+      for (int i = 0; i < 160 && f && !f->removed && !crossed.count(f->id); i++) r.lv->tick(TICK_DT * 2);
+      CHECK(f && crossed.count(f->id), "and comes through the portal after you");
+      if (f) f->removed = true;
+      bus.off(hp);
+      ps->removeVirtual("test");
+      r.lv->tick(TICK_DT);
+    }
   }
 
   printf("[save]\n");

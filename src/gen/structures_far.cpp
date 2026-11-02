@@ -129,8 +129,19 @@ static void moaBuild(ChunkWriter& w, const StructurePlan& S) {
 }
 
 // ---- the Ember Depths ----
-static bool bastionPlan(const TerrainQuery&, int x, int z, Mulberry32&, StructurePlan& S) {
-  const int y = DepthsGen::LAVA_Y + 8;   // just over the lava sea, as in the original (row 31 over the sea's 28)
+// BTA's open Nether: the ground under a structure, from the middle and four points round it (the lowest dry one; over
+// the lava sea, just over the lava as in the old Nether)
+static int netherGround(const TerrainQuery& t, int x, int z, int r, int overLava) {
+  int best = 1 << 20;
+  for (auto [dx, dz] : {std::pair{0, 0}, {r, 0}, {-r, 0}, {0, r}, {0, -r}}) {
+    const TerrainColumn c = t.terrainColumn(x + dx, z + dz);
+    const int g = c.water > c.y ? DepthsGen::LAVA_Y + overLava : c.y + 1;
+    best = std::min(best, g);
+  }
+  return std::max(best, DepthsGen::LAVA_Y + overLava);
+}
+static bool bastionPlan(const TerrainQuery& t, int x, int z, Mulberry32&, StructurePlan& S) {
+  const int y = t.openNether() ? netherGround(t, x, z, 12, 8) : DepthsGen::LAVA_Y + 8;   // just over the lava sea, as in the original (row 31 over the sea's 28)
   S.x0 = x - 34; S.x1 = x + 34; S.z0 = z - 34; S.z1 = z + 34; S.y = y; S.hashDy = 31 - y; S.cx = x; S.cz = z; S.name = "an Ember Bastion";
   S.data = {{"boss", {{"at", jat(x, y + 1, z)}, {"type", "ember_lord"}, {"box", {x - 6, y, z - 6, x + 6, y + 9, z + 6}}}},
             {"spawners", {mobAt(x - 9, y + 1, z + 9, "charred_ghoul"), mobAt(x + 9, y + 1, z - 9, "charred_ghoul")}}};
@@ -169,8 +180,8 @@ static void bastionBuild(ChunkWriter& w, const StructurePlan& S) {
   }
 }
 
-static bool spirePlan(const TerrainQuery&, int x, int z, Mulberry32&, StructurePlan& S) {
-  const int y = DepthsGen::LAVA_Y + 5;
+static bool spirePlan(const TerrainQuery& t, int x, int z, Mulberry32&, StructurePlan& S) {
+  const int y = t.openNether() ? netherGround(t, x, z, 3, 5) : DepthsGen::LAVA_Y + 5;
   S.x0 = x - 4; S.x1 = x + 4; S.z0 = z - 4; S.z1 = z + 4; S.y = y; S.hashDy = 30 - y; S.cx = x; S.cz = z; S.name = "an Obsidian Spire";
   return true;
 }
@@ -193,8 +204,8 @@ static void spireBuild(ChunkWriter& w, const StructurePlan& S) {
   for (auto [a, b] : {std::pair{0, -3}, {0, 3}, {-3, 0}, {3, 0}}) P.put(cx + a, top - 3, cz + b, PLK("glass", "air"));
 }
 
-static bool forgePlan(const TerrainQuery&, int x, int z, Mulberry32& rnd, StructurePlan& S) {
-  const int yo = 40 + jsFloor(rnd() * 30), y = netherY(yo);
+static bool forgePlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) {
+  const int yo = 40 + jsFloor(rnd() * 30), y = t.openNether() ? netherGround(t, x, z, 6, 2) : netherY(yo);
   S.x0 = x - 7; S.x1 = x + 7; S.z0 = z - 7; S.z1 = z + 7; S.y = y; S.hashDy = yo - y; S.cx = x; S.cz = z; S.name = "a Ruined Forge";
   return true;
 }
@@ -214,8 +225,8 @@ static void forgeBuild(ChunkWriter& w, const StructurePlan& S) {
   P.fill(cx - 1, y + 1, cz - 6, cx + 1, y + 3, cz - 6, "air");
 }
 
-static bool bonePitPlan(const TerrainQuery&, int x, int z, Mulberry32&, StructurePlan& S) {
-  const int y = DepthsGen::LAVA_Y + 10;
+static bool bonePitPlan(const TerrainQuery& t, int x, int z, Mulberry32&, StructurePlan& S) {
+  const int y = t.openNether() ? netherGround(t, x, z, 5, 10) : DepthsGen::LAVA_Y + 10;
   S.x0 = x - 6; S.x1 = x + 6; S.z0 = z - 6; S.z1 = z + 6; S.y = y; S.hashDy = 32 - y; S.cx = x; S.cz = z; S.name = "a Bone Pit";
   S.data = {{"spawners", {mobAt(x, y - 3, z, "skeleton")}}};
   return true;

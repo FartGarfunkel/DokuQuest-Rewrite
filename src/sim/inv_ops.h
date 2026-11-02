@@ -36,6 +36,7 @@ struct InvOpen {
   bool heldPack = false;            // the backpack in your hand
   bool single = false;              // a chest that must not join its neighbour
   std::function<json*()> entItems;  // a container on an entity (chest/hopper carts, boat chests): its items array, null when gone
+  std::function<void(const json&)> entSaved;   // after its items change (a joined world: they go to the host)
   std::string entTitle;
 };
 

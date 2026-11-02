@@ -340,6 +340,40 @@ OptMove lostAI(Level& lv, Creature& e, NpcMind& M, float dt) {
   return Move{0, e.yaw};
 }
 
+// ------------------------------------------------------------------ a traveller on the road (villager_life.cpp travellersTick)
+// data.road {pts [[x, z]...], k: the point they're making for, d: +1 / -1 along the road}: they walk it point to point,
+// stop and face whoever comes up to them (talk to trade), and at the far end go once nobody is about.
+OptMove travellerAI(Level& lv, Creature& e, NpcMind& M, Entity* p, float dist, float dt) {
+  M.pose = 0;
+  json& R = e.data["road"];
+  if (!R.contains("pts") || !R["pts"].is_array() || R["pts"].empty()) { e.removed = true; return Move{0, e.yaw}; }
+  if (M.holdT > 0) { M.holdT -= dt; if (Entity* who = lv.entity(M.holdBy)) e.yaw = turnTo(e.yaw, hdg(e.pos, who->pos), dt * 8); M.pose |= NP_TALK; return Move{0, e.yaw}; }
+  if (e.panicT > 0) { e.panicT -= dt; Entity* f = lv.entity(e.fleeFrom); return Move{e.T->speed * 1.5f, f ? std::atan2(-(e.pos.x - f->pos.x), -(e.pos.z - f->pos.z)) : e.yaw}; }
+  if (p && dist < 4.5f) {   // someone come to talk: stand and look at them
+    e.yaw = turnTo(e.yaw, hdg(e.pos, p->pos), dt * 5);
+    if (M.waveT <= 0 && !M.greeted.count("road")) { M.greeted["road"] = 1; M.waveT = 1.5f; }
+    if (M.waveT > 0) { M.waveT -= dt; M.pose |= NP_WAVE; }
+    return Move{0, e.yaw};
+  }
+  const json& pts = R["pts"]; const int n = (int)pts.size();
+  int k = R.value("k", 0), d = R.value("d", 1);
+  if (k < 0 || k >= n) {   // there: on into the village, and gone when nobody's watching
+    if (!p || dist > 40) e.removed = true;
+    return Move{0, e.yaw};
+  }
+  const float tx = pts[k][0].get<int>() + 0.5f, tz = pts[k][1].get<int>() + 0.5f;
+  if (std::hypot(tx - e.pos.x, tz - e.pos.z) < 2.2f) { R["k"] = k + d; M.hasGoal = false; return Move{e.T->speed * 0.4f, e.yaw}; }
+  if (!M.hasGoal || std::hypot(M.goal.x - tx, M.goal.z - tz) > 0.5f) {
+    World& w = lv.world(e.realm);
+    const int y = w.isLoaded(ifloor(tx), ifloor(e.pos.y), ifloor(tz)) ? findSafeY(w, ifloor(tx), ifloor(tz), DIM_OVERWORLD) : -1;
+    M.goal = vec3(tx, y > 0 ? (float)y : e.pos.y, tz); M.hasGoal = true; M.goalT = 30; M.stuckGo = 0;
+  }
+  if ((M.goalT -= dt) <= 0 || M.stuckGo > 8) { R["k"] = k + d; M.hasGoal = false; }   // can't get there: on to the next
+  if (rnd() < dt * 0.04f && p && dist < 16) npcMutter(lv, e, VD()["chat"]);
+  OptMove m = npcGo(lv, e, M, M.goal, dt, e.T->speed * 0.45f);
+  return m ? *m : Move{e.T->speed * 0.45f, e.goToward(lv, M.goal, dt)};
+}
+
 // ------------------------------------------------------------------ the mind of a villager
 static Move brainInner(Level& lv, Creature& e, NpcMind& M, json& N, const Village& v, Entity* p, float dist, float dt) {
   VillagerSystem* S = vsys(lv);
@@ -496,6 +530,7 @@ OptMove npcBrain(Level& lv, Creature& e, Entity* p, float dist, float dt) {
   if ((M.stuckCheckT -= dt) <= 0) { M.stuckCheckT = 1; npcStuckCheck(lv, e, M); }
   Move out{0, e.yaw};
   if (N.value("i", 0) == 300) { OptMove m = lostAI(lv, e, M, dt); out = m ? *m : out; }
+  else if (N.value("i", 0) == 400) { OptMove m = travellerAI(lv, e, M, p, dist, dt); out = m ? *m : out; }
   else if (VillageRef v = villageById(lv, N.value("v", std::string()))) {
     out = brainInner(lv, e, M, N, *v, p, dist, dt);
     // towns3.js: the watch at the gates — each guard keeps one, either side of the road just inside, looking out

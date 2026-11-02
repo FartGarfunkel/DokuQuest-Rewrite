@@ -85,6 +85,7 @@ public:
     // what the player's own game last told us (anything else on the mirror was done by the server)
     vec3 aPos{0}, aVel{0}; float aHp = 20; std::string aInv, aMode; int aXp = 0, aLevel = 0, aRealm = 0; bool aFly = false, aDead = false;
     int invSeq = 0;
+    u32 aRide = 0; bool rideSeen = true;   // riding: what the server last set (sent as SELF rd) and whether their game has it yet
     double allowJumpUntil = 0, lastMeAt = 0, savedAt = 0, joinedAt = 0, motdAt = -1, chunkBytes = 0;
     std::unordered_set<RCKey, RCKeyHash> inRange;
     std::vector<CkQ> ckQ;
@@ -113,6 +114,7 @@ private:
   std::vector<Pending> pendingBlocks;                                       // changes to chunks still loading here
   std::vector<json> fxS, fxM, fxV, fxP;
   json bans, ops;
+  std::vector<int> uiHandles;              // the host's screen events, passed to the guest they're for
   json skins = json::object();             // every player's skin by its net name (netSkinHook)
   std::vector<std::string> palette;
 

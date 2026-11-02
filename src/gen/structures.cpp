@@ -119,6 +119,7 @@ void StructureIndex::near(int x, int z, int pad, std::vector<const StructurePlan
   for (int k : types) {
     if (only >= 0 && k != only) continue;
     const StructureType& T = structureTypes()[k];
+    if (only == NEAR_PLACES && (T.flags & SF_HIDDEN)) continue;
     if (T.global) {
       for (const auto& S : globals(k)) if (x >= S.x0 - pad && x <= S.x1 + pad && z >= S.z0 - pad && z <= S.z1 + pad) out.push_back(&S);
       continue;

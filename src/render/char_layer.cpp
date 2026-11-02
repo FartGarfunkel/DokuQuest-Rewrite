@@ -51,7 +51,17 @@ mat4 heldMatrix(float tilt, float s, vec2 grip, bool upright) {
   vec3 Z(s, 0, 0), t = -(grip.x * X + grip.y * Y);
   return mat4(vec4(X, 0), vec4(Y, 0), vec4(Z, 0), vec4(t, 1));
 }
+// a bow stands upright in the fist, its belly (the stave's curve, the sprite's upper left) away from you and the string
+// toward you, gripped at the middle of the stave (the sprite's chord, bottom left to top right, made vertical)
+static mat4 bowHeldMatrix(float s, vec2 grip) {
+  const float r2 = std::sqrt(0.5f);
+  const vec3 X(0, r2 * s, r2 * s), Y(0, r2 * s, -r2 * s), Z(-s, 0, 0), t = -(grip.x * X + grip.y * Y);
+  return mat4(vec4(X, 0), vec4(Y, 0), vec4(Z, 0), vec4(t, 1));
+}
+static bool isBowKey(const std::string& id) { return id == "bow" || id.rfind("bow_pulling", 0) == 0 || id.rfind("bow_pq", 0) == 0; }
 const mat4& heldMat(const std::string& id) {
+  static const mat4 BOW = bowHeldMatrix(0.8f, {-0.2f, 0.15f});
+  if (isBowKey(id)) return BOW;
   static const mat4 TOOL = heldMatrix(0.25f, 0.85f, {-0.34f, -0.24f}, false), ITEM = heldMatrix(0.2f, 0.55f, {0, -0.25f}, true), ROD = heldMatrix(0.75f, 0.85f, {-0.34f, -0.24f}, false);
   return id == "fishing_rod" || id == "fishing_rod_cast" || id == "fishing_rod_tp" ? ROD : isHandheld(id) ? TOOL : ITEM;
 }

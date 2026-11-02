@@ -151,6 +151,7 @@ public:
   void load(const json& j) override;
   json snap() const;                    // compact state for guests (entities.js Mob.snap)
   void applySnap(const json& o);
+  void glide(double dt) override;   // a network replica: glides to the snapshot, its legs walking as it goes
 
   // shared know-how (used across the brain files)
   void wander(float dt);

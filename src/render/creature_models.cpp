@@ -112,6 +112,15 @@ static const std::unordered_map<std::string, PMSpec>& packMobs() {
   { PMSpec s; s.tex = {"entity/spider/cave_spider"}; s.eyes = "entity/spider_eyes"; s.parts = pmSpider(); M["cave_spider"] = s; }
   { PMSpec s; s.tex = {"entity/slime/slime"}; PMo sf; sf.slimeFace = true; s.parts = {P("cube", {0, 0, 8, 8, 8}), P("core", {0, 16, 6, 6, 6}, sf)}; M["slime"] = s; }
   { PMSpec s; s.tex = {"entity/blaze"}; s.parts = {P("core", {0, 0, 8, 8, 8})}; for (int i = 0; i < 6; i++) s.parts.push_back(P("rod" + std::to_string(i), {0, 16, 2, 8, 2})); M["cinder_wisp"] = s; }
+  { // the bee (the pack's entity/bee: Minecraft's 64x64 layout), plain, angry and carrying nectar
+    PMSpec s; s.tex = {"entity/bee/bee", "entity/bee"};
+    PMo wl; wl.mirror = true;
+    s.parts = {P("body", {0, 0, 7, 7, 10}), P("sting", {26, 7, 1, 1, 2}), P("antL", {2, 0, 1, 2, 3}), P("antR", {2, 3, 1, 2, 3}),
+               P("legs", {26, 1, 7, 2, 2}), P("wingR", {0, 18, 9, 0, 6}), P("wingL", {0, 18, 9, 0, 6}, wl)};
+    M["bee"] = s;
+    s.tex = {"entity/bee/bee_angry", "entity/bee/bee", "entity/bee"}; M["bee#angry"] = s;
+    s.tex = {"entity/bee/bee_nectar", "entity/bee/bee", "entity/bee"}; M["bee#nectar"] = s;
+    s.tex = {"entity/bee/bee_angry_nectar", "entity/bee/bee_angry", "entity/bee/bee", "entity/bee"}; M["bee#angry_nectar"] = s; }
   { PMSpec s; s.tex = {"entity/silverfish"}; s.parts = {P("head", {0, 0, 3, 2, 2}), P("seg1", {0, 4, 4, 3, 2}), P("seg2", {0, 9, 6, 4, 3}), P("seg3", {0, 16, 3, 3, 3}), P("seg4", {0, 22, 2, 2, 3}), P("seg5", {11, 0, 2, 1, 2})}; M["stone_mite"] = s; }
   { PMSpec s; s.tex = {"entity/cow/temperate_cow", "entity/cow/cow"}; s.parts = pmQuad({0, 0, 8, 8, 6}, {18, 4, 12, 18, 10}, {0, 16, 4, 12, 4});
     s.parts.push_back(P("hornR", {22, 0, 1, 3, 1})); s.parts.push_back(P("hornL", {22, 0, 1, 3, 1}, mir)); s.parts.push_back(P("udder", {52, 0, 4, 6, 1}, ly)); s.parts.push_back(P("tail", {0, 16, 4, 12, 4}));

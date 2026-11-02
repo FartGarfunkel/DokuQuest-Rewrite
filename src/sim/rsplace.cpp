@@ -268,9 +268,9 @@ bool rsItemUse(Level& lv, const json& a) {
     }
     // on a ship's deck, beside the wheel: take it (or open the ship's chest)
     if (vs && !held && !p.sneaking && !p.riding) if (auto* s = dynamic_cast<Boat*>(lv.entity(vs->ps(p.id).aboard))) {
-      vec2 h = s->toWorld(SHIP.helm.x, SHIP.helm.y);
+      const ShipDims D = s->dims(); vec2 h = s->toWorld(D.helm.x, D.helm.y);
       if (std::hypot(h.x - p.pos.x, h.y - p.pos.z) < 1.8f) { s->mount(lv, p); return false; }
-      if (s->items.is_array()) { vec2 c = s->toWorld(SHIP.cargo.x, SHIP.cargo.y); if (std::hypot(c.x - p.pos.x, c.y - p.pos.z) < 1.8f) { screenOpen(lv, p, json{{"entity", s->id}, {"name", "Ship's Chest"}}); return false; } }
+      if (s->items.is_array()) { vec2 c = s->toWorld(D.cargo.x, D.cargo.y); if (std::hypot(c.x - p.pos.x, c.y - p.pos.z) < 1.8f) { screenOpen(lv, p, json{{"entity", s->id}, {"name", s->kind == "galleon" ? "Galleon's Hold" : "Ship's Chest"}}); return false; } }
     }
     // a vehicle under the crosshair, nearer than the block (local.js use: boats mount, carts use)
     float vd = 0;

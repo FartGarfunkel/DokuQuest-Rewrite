@@ -45,7 +45,7 @@ public:
   std::map<std::string, VillageRef> manual;                      // addVillage
   std::unordered_map<const void*, VillageRef> parsed;            // structure plan -> village
   std::map<std::string, Offence> offence;                        // player|village
-  float npcT = 0, gateT = 0, raidCheckT = 30, eliteT = 0, lostT = 0, homeT = 0;
+  float npcT = 0, gateT = 0, raidCheckT = 30, eliteT = 0, lostT = 0, homeT = 0, travelT = 20;
   bool cleaned = false;
   // towns3.js gates
   std::map<std::string, int> gateSeen; std::map<std::string, float> gateHeld, gateManual; std::map<std::string, int> gatePending;
@@ -77,6 +77,7 @@ void later(Level& lv, double secs, const Player& p, const std::string& text);
 // villager_ai.cpp
 OptMove npcBrain(Level& lv, Creature& e, Entity* p, float dist, float dt);
 OptMove lostAI(Level& lv, Creature& e, NpcMind& M, float dt);
+OptMove travellerAI(Level& lv, Creature& e, NpcMind& M, Entity* p, float dist, float dt);
 void npcOffend(Level& lv, Player& who, const std::string& vid, Creature& victim, bool killed);
 void npcForgive(Level& lv, Player& who, const std::string& vid);
 void npcMutter(Level& lv, Creature& e, const json& lines);
@@ -94,6 +95,7 @@ void gatesTick(Level& lv, VillagerSystem& S, double dt);
 void raidTick(Level& lv, VillagerSystem& S, double dt);
 void eliteTick(Level& lv, VillagerSystem& S, double dt);
 void lostTick(Level& lv, VillagerSystem& S, double dt);
+void travellersTick(Level& lv, VillagerSystem& S, double dt);   // merchants on the roads between villages
 void homeTick(Level& lv, VillagerSystem& S, double dt);
 void playerLifeTick(Level& lv, VillagerSystem& S, Player& p, double dt);   // welcome, rift calls, path told, lapses
 void eliteSlain(Level& lv, Creature& m);

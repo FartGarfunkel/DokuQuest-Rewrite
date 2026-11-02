@@ -17,6 +17,7 @@ void registerStructureDeepA();        // structures_deep.cpp: stronghold (7), an
 void registerStructureFarA();         // structures_far.cpp: places.js (9..16)
 void registerStructureDeepB();        // structures_deep.cpp: deep halls (17), twin vault (18), pirate cove (19)
 void registerStructureFarB();         // structures_far.cpp: nether fortress (20), floating sanctum (21)
+void registerStructureRoads();        // structures_roads.cpp: roads and bridges between neighbouring villages
 
 const StructureIndex* structureIndexOf(const DimGenerator* g) {
   if (auto* o = dynamic_cast<const OverworldGen*>(g)) return &o->structures;
@@ -127,6 +128,7 @@ void registerStructures() {
   registerStructureFarA();
   registerStructureDeepB();
   registerStructureFarB();
+  registerStructureRoads();   // last: nothing keeps clear of a road
   registerLocate();
 }
 

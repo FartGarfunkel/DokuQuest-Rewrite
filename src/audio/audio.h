@@ -23,6 +23,10 @@ struct AudioScene {
   int netherLand = -1;            // BTA 8.0's Nether: which of its five lands (gen/nether_bta.h NetherBiome), -1 elsewhere
   std::string place;              // the music of the place: plains forest jungle desert savanna frost peaks swamp ocean village
   bool jukebox = false;           // a jukebox is playing nearby: the music keeps quiet
+  std::string jukeboxDisc;        // ...its disc ("sun", "tide"...) and how loud it is here (0..1, by distance)
+  float jukeboxGain = 0;
+  u32 worldSeed = 0;              // every world its own soundtrack: its pieces are composed from its seed
+  int realm = 0;                  // REALM_MAIN, or a side realm (the pocket, his realm)
   // the nearest boss within 40 blocks that has turned on the player (music2.js battle music)
   bool boss = false, bossDragon = false, bossEerie = false; float bossHp = 1; u32 bossId = 0;
 };

@@ -13,6 +13,7 @@
 #include "world/dirs.h"
 #include "core/registry.h"
 #include <deque>
+#include <cstdlib>
 
 namespace dq {
 
@@ -338,6 +339,54 @@ bool lostTake(Level& lv, Creature& e, Player& p, std::string* said) {
   VillageRef v = villageById(lv, npcOf(e)->value("v", ""));
   if (said) *said = npcOf(e)->value("n", std::string("They")) + ": \"Oh, thank the stars! Take me home" + (v ? " to " + v->name : std::string()) + ", please. I'll stay close.\"";
   return true;
+}
+
+// ------------------------------------------------------------------ travellers on the roads (gen/structures_roads.cpp)
+// By day, now and then, someone out on a road between villages meets a merchant walking it from one village to the
+// other (two at most about at once). villager_ai.cpp travellerAI walks them; talking to one trades as with any merchant.
+void travellersTick(Level& lv, VillagerSystem& S, double dt) {
+  if ((S.travelT -= (float)dt) > 0) return;
+  static const bool forced = std::getenv("DQ_TRAVELLER") != nullptr;   // tests: one at once, every time
+  S.travelT = forced ? 2 : 25;
+  if (npcNight(lv) || !lv.gen) return;
+  auto* og = dynamic_cast<const OverworldGen*>(lv.gen->forDim(DIM_OVERWORLD));
+  if (!og) return;
+  int out = 0;
+  for (auto& up : lv.entities()) if (!up->removed && up->data.contains("road")) out++;
+  if (out >= 2 || (forced && out >= 1)) return;
+  World& w = lv.world(REALM_MAIN);
+  for (Player* p : levelPlayers(lv)) {
+    if (p->realm != REALM_MAIN || dimOfY(ifloor(p->pos.y)) != DIM_OVERWORLD || (!forced && rnd() > 0.3f)) continue;
+    if (villageAtPos(lv, REALM_MAIN, p->pos, 20)) continue;
+    RoadInfo r;
+    if (!roadNear(og->structures, ifloor(p->pos.x), ifloor(p->pos.z), 48, r) || r.pts.size() < 6) continue;
+    std::vector<int> cand;
+    for (int i = 1; i + 1 < (int)r.pts.size(); i++) {
+      const float d = std::hypot(r.pts[i][0] + 0.5f - p->pos.x, r.pts[i][1] + 0.5f - p->pos.z);
+      if (d >= 26 && d <= 60 && w.isLoaded(r.pts[i][0], ifloor(p->pos.y), r.pts[i][1])) cand.push_back(i);
+    }
+    if (cand.empty()) continue;
+    const int k = cand[(size_t)std::floor(rnd() * cand.size()) % cand.size()];
+    const int y = findSafeY(w, r.pts[k][0], r.pts[k][1], DIM_OVERWORLD);
+    if (y < 1) continue;
+    // walking toward the player's side of the road, mostly: they meet on the way
+    const float dn = std::hypot(r.pts[k + 1][0] - p->pos.x, r.pts[k + 1][1] - p->pos.z), dp = std::hypot(r.pts[k - 1][0] - p->pos.x, r.pts[k - 1][1] - p->pos.z);
+    const int d = (dn < dp) == (rnd() < 0.8f) ? 1 : -1;
+    const std::string home = d > 0 ? r.from : r.to, dest = d > 0 ? r.to : r.from;
+    VillageRef hv = villageById(lv, home), dv = villageById(lv, dest);
+    Creature* e = spawnCreature(lv, REALM_MAIN, "villager", vec3(r.pts[k][0] + 0.5f, y, r.pts[k][1] + 0.5f));
+    if (!e) continue;
+    const u32 seed = hash32((i32)lv.info.seed, r.pts[k][0], r.pts[k][1], (i32)npcDay(lv)) % 100000;
+    e->data["npc"] = {{"v", home}, {"i", 400}, {"n", npcName(seed)}, {"j", "merchant"}, {"s", seed}, {"p", 0}};
+    json pts = json::array(); for (auto& q : r.pts) pts.push_back({q[0], q[1]});
+    e->data["road"] = {{"pts", pts}, {"k", k + d}, {"d", d}, {"to", dv ? dv->name : std::string()}, {"from", hv ? hv->name : std::string()}};
+    const json& J = VD()["jobs"];
+    e->heldItem = J.contains("merchant") && J["merchant"].contains("held") && J["merchant"]["held"].is_string() ? J["merchant"]["held"].get<std::string>() : "";
+    if (!e->heldItem.empty() && !reg().item(e->heldItem)) e->heldItem.clear();
+    e->kept = false; e->yaw = std::atan2(-(float)(r.pts[k + d][0] - r.pts[k][0]), -(float)(r.pts[k + d][1] - r.pts[k][1]));
+    S.mind(e->id) = NpcMind();
+    return;
+  }
 }
 
 // ------------------------------------------------------------------ a house of your own (hearth.js)

@@ -94,7 +94,7 @@ void clientPlayerCamera(GameSession& s, Camera& cam, double dtd) {
   // view bobbing: one gentle dip with each step, a sway from side to side, a touch of roll and a little nod
   float bx = 0, by = 0, roll = 0, nod = 0;
   if (set.viewBob && p.bobAmt > 0.01f) {
-    float ph = p.bob * 1.1f, sn = std::sin(ph), a = p.bobAmt;
+    float ph = p.bob * 1.4f, sn = std::sin(ph), a = p.bobAmt;   // the legs' stride (render/char_layer.cpp): a dip as each foot comes down (sim/controller.cpp steps)
     bx = sn * 0.03f * a; by = -sn * sn * 0.05f * a; roll = sn * 0.0055f * a; nod = sn * sn * 0.006f * a;
   }
   if (p.hurtTilt != 0) { roll += p.hurtTilt; p.hurtTilt *= std::max(0.f, 1 - dt * 8); if (std::fabs(p.hurtTilt) < 0.002f) p.hurtTilt = 0; }

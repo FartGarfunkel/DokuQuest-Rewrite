@@ -96,8 +96,8 @@ void registerBtaMore() {
   registerLevelSystem([](Level&) -> std::shared_ptr<LevelSystem> { return std::make_shared<SteamVents>(); });
   // the gold mesh and the matcher take a filter; paintings take a trim
   hooks().useBlock.push_back([](PlayerController& pc, const RayHit& hit, ItemStack* held, const ItemDef*) {
-    if (pc.lv.isRemote()) return false;
     const BlockDef& b = reg().block(hit.id);
+    if (pc.lv.isRemote()) return (b.has("meshFilter") || b.has("matcher") || (b.has("painting") && held && !held->empty())) && !pc.p.sneaking ? useOnHost(pc, "block", &hit) : false;
     if (b.has("meshFilter") && !pc.p.sneaking) return setFilter(pc, hit, held, "mesh");
     if (b.has("matcher") && !pc.p.sneaking) return setFilter(pc, hit, held, "matcher");
     if (b.has("painting") && held && !held->empty() && (held->id == "gold_ingot" || held->id == "iron_ingot" || held->id == "shears")) {
@@ -121,7 +121,8 @@ void registerBtaMore() {
   });
   // the summoning wand
   hooks().useItem.push_back([](PlayerController& pc, ItemStack& held, const ItemDef& def, bool repeat) {
-    if (repeat || !def.has("summonWand") || pc.lv.isRemote()) return false;
+    if (repeat || !def.has("summonWand")) return false;
+    if (pc.lv.isRemote()) return useOnHost(pc, "item");
     const auto& L = wandMobs();
     if (L.empty()) return true;
     if (!held.tag.is_object()) held.tag = json::object();

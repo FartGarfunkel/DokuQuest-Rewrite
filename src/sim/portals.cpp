@@ -1,6 +1,7 @@
 // sim/portals.cpp — frames, lighting, links, windows and walking through (see portals.h).
 #include "sim/portals.h"
 #include "sim/seamless.h"
+#include "sim/creature.h"
 #include <algorithm>
 #include <set>
 
@@ -612,6 +613,18 @@ void PortalSystem::swap(Entity& e, const PortalWindow& w, const PortalDest& d, b
   }
   if (SeamlessSystem* ss = lv.system<SeamlessSystem>())
     for (Entity* g : group) ss->arrived(*g, w.kind, fromDim, dimOfY(ifloor(g->pos.y)));
+  // a player who goes through with monsters after them isn't safe: whatever was hunting them nearby follows through
+  // the portal (Creature::tick portalChase), and comes out after them on the other side
+  if (e.isPlayer() && w.walk) {
+    const vec3 c(w.c), n(w.n);
+    for (auto& o : lv.entities()) {
+      auto* m = dynamic_cast<Creature*>(o.get());
+      if (!m || m->removed || !m->alive() || m->realm != w.realm || m->T->boss || !m->owner.empty() || m->riddenBy || m->kept || m->noGravity) continue;
+      const bool after = m->T->hostile || (m->angryT > 0 && m->foe == e.id);
+      if (!after || glm::distance(m->pos, c) > 24) continue;
+      m->data["chase"] = {{"c", {c.x, c.y, c.z}}, {"n", {n.x, n.y, n.z}}, {"t", 20.0}, {"who", e.id}};
+    }
+  }
 }
 
 bool PortalSystem::track(Entity& e, double dt, bool fromClient) {

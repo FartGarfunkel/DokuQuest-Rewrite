@@ -21,7 +21,7 @@ json lootItem(JRandom& r) {
     case 6: return slot("bucket", 1);
     case 7: return r.nextInt(100) == 0 ? slot("golden_apple", 1) : json();
     case 8: return r.nextInt(2) == 0 ? slot("redstone", r.nextInt(4) + 1) : json();
-    case 9: if (r.nextInt(10) == 0) { static const char* D[] = {"music_disc_grove", "music_disc_sun", "music_disc_ember", "music_disc_tide"}; return slot(D[r.nextInt(4)], 1); } return json();
+    case 9: if (r.nextInt(10) == 0) { static const char* D[] = {"music_disc_grove", "music_disc_sun", "music_disc_ember", "music_disc_tide", "music_disc_skylark", "music_disc_void", "music_disc_aurora", "music_disc_lantern", "music_disc_harvest", "music_disc_frost", "music_disc_dune", "music_disc_crag"}; return slot(D[r.nextInt(12)], 1); } return json();
     case 10: return slot("cocoa_beans", r.nextInt(3) + 1);
     case 11: { static const char* G[] = {"gold_ingot", "coal", "bone", "rotten_flesh", "pumpkin_seeds", "melon_seeds"}; int k = r.nextInt(6); return slot(G[k], k < 1 ? r.nextInt(3) + 1 : r.nextInt(6) + 1); }
     case 12: { static const char* Q[] = {"silver_ingot", "tin_ingot", "copper_ingot", "book", "arrow", "lapis_lazuli"}; int k = r.nextInt(6); return slot(Q[k], r.nextInt(k == 3 ? 2 : 5) + 1); }

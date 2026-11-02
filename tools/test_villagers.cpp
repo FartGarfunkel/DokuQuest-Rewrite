@@ -9,6 +9,10 @@
 #include "sim/skills.h"
 #include "sim/rpg.h"
 #include "sim/mob_combat.h"
+#include "sim/villagers_internal.h"
+#include "gen/overworld.h"
+#include "gen/structures.h"
+#include "gen/structures_api.h"
 #include "world/dims.h"
 #include <thread>
 #include <cstdio>
@@ -280,6 +284,68 @@ int main(int argc, char** argv) {
   tick(3);
   check(villagers(v->id).empty(), "the villagers go when everyone has left");
   bus.off(hScr);
+
+  // ------------------------------------------------------------ where a new world starts: a village's edge, or (a world setting) the wild
+  {
+    vec3 vs(0), ws(0); float yaw = 0;
+    const bool hv = villageStartPoint(*L->gen, vs, yaw), hw = wildStartPoint(*L->gen, ws);
+    const StructurePlan* nv = hw ? locateStructure(*L->gen, DIM_OVERWORLD, "village", ifloor(ws.x), ifloor(ws.z), 3) : nullptr;
+    const float dv = nv ? std::hypot(nv->cx - ws.x, nv->cz - ws.z) : 1e9f;
+    check(hv && hw && dv >= 200 && dimOfY(ifloor(ws.y)) == DIM_OVERWORLD, strFormat("start at a village, or in the wild with none within 200 blocks (nearest %.0f away)", dv));
+  }
+
+  // ------------------------------------------------------------ roads between villages, and travellers on them
+  {
+    const StructureIndex* idx = nullptr;
+    if (auto* o = dynamic_cast<const OverworldGen*>(L->gen->forDim(DIM_OVERWORLD))) idx = &o->structures;
+    const int rt = structureTypeIndex("road");
+    RoadInfo road; int plans = 0; const double tr0 = nowSeconds();
+    for (int rz = -2; rz <= 2 && idx && rt >= 0; rz++) for (int rx = -2; rx <= 2; rx++) if (const StructurePlan* S = idx->at(rt, rx, rz)) {
+      plans++;
+      if (road.pts.empty()) roadNear(*idx, (S->x0 + S->x1) / 2, (S->z0 + S->z1) / 2, 600, road);
+    }
+    check(plans > 0 && road.pts.size() >= 6, strFormat("roads join neighbouring villages (%d road plans near the origin, planned in %.1f s; one of %zu points)", plans, nowSeconds() - tr0, road.pts.size()));
+    VillageRef a = villageById(*L, road.from), b = villageById(*L, road.to);
+    check(a && b && a != b, "each from one village (" + (a ? a->name : std::string("?")) + ") to another (" + (b ? b->name : std::string("?")) + ")");
+    if (road.pts.size() >= 6 && a && b) {
+      // stand on the road halfway, away from both villages, by day: before long a merchant comes along it
+      const auto mid = road.pts[road.pts.size() / 2];
+      P->pos = vec3(mid[0] + 0.5f, base + 120, mid[1] + 0.5f);
+      double t1 = nowSeconds(); int y = -1;
+      while (nowSeconds() - t1 < 60) {
+        w.stream({{P->pos, 4, false}}, 20);
+        if (w.isLoaded(mid[0] + 40, base + 64, mid[1]) && w.isLoaded(mid[0] - 40, base + 64, mid[1]) && w.isLoaded(mid[0], base + 64, mid[1] + 40) && w.isLoaded(mid[0], base + 64, mid[1] - 40)) {
+          y = findSafeY(w, mid[0], mid[1], DIM_OVERWORLD); if (y > 0) break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+      }
+      const BlockId path = reg().blockId("dirt_path"), gravel = reg().blockId("gravel");
+      int paved = 0;
+      for (auto& q : road.pts) if (w.isLoaded(q[0], base + 64, q[1])) {
+        const int gy = findSafeY(w, q[0], q[1], DIM_OVERWORLD); if (gy < 1) continue;
+        const BlockId g = w.getBlock(q[0], gy - 1, q[1]);
+        if (g == path || g == gravel || reg().block(g).key.find("planks") != std::string::npos || reg().block(g).key.find("sandstone") != std::string::npos || reg().block(g).key.find("coarse") != std::string::npos || reg().block(g).key == "podzol" || reg().block(g).key == "packed_ice") paved++;
+      }
+      check(paved >= 3, strFormat("the road is laid in the world (%d of its points here paved or bridged)", paved));
+      P->pos = vec3(mid[0] + 0.5f, y > 0 ? y : base + 90, mid[1] + 0.5f); P->onGround = true; P->vel = vec3(0);
+      setPhase(0.3);
+      VillagerSystem& VS = *vsys(*L);
+      Creature* tr = nullptr;
+      for (int i = 0; i < 80 && !tr; i++) {
+        VS.travelT = 0; travellersTick(*L, VS, 0.1);
+        for (auto& e : L->entities()) if (auto* c = dynamic_cast<Creature*>(e.get())) if (!c->removed && c->data.contains("road")) tr = c;
+      }
+      check(tr && npcOf(*tr) && npcOf(*tr)->value("i", 0) == 400 && npcOf(*tr)->value("j", "") == "merchant", "a merchant comes along the road" + (tr ? " (" + npcOf(*tr)->value("n", std::string()) + ", on the way to " + tr->data["road"].value("to", std::string()) + ")" : std::string()));
+      if (tr) {
+        const vec3 p0 = tr->pos; const int k0 = tr->data["road"].value("k", 0);
+        tick(12);
+        const int k1 = tr->removed ? k0 : tr->data["road"].value("k", 0);
+        check(!tr->removed && (glm::distance(tr->pos, p0) > 2 || k1 != k0), strFormat("and walks it (%.1f blocks in 12 s, point %d -> %d)", glm::distance(tr->pos, p0), k0, k1));
+        Talk tk; const bool talked = !tr->removed && talkOpen(*L, *P, *tr, tk);
+        check(talked && tk.title.find(" of ") != std::string::npos, "talking to them: " + tk.title);
+      }
+    }
+  }
 
   printf("\n%d passed, %d failed\n", passes, fails);
   lvp->close();

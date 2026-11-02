@@ -101,6 +101,7 @@ const std::vector<std::array<const char*, 3>>& ruleToggles() {
     {"weatherCycle", "Weather changes", "Turn off to keep the weather as it is"},
     {"seasons", "Seasons", "Spring, summer, autumn and winter, seven days each: snow in the winter, colour in the autumn"},
     {"treeFelling", "Whole trees fall", "Chop the bottom of a trunk and the whole tree comes down (sneak to take one log)"},
+    {"startInWild", "Start in the wild", "Begin out in the wilds, well away from any village, instead of at a village's edge"},
     {"fallDamage", "Fall damage", ""},
     {"drowning", "Drowning", "Your breath runs out under water"},
     {"fireDamage", "Fire and lava damage", ""},

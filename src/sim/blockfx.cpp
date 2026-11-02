@@ -171,7 +171,7 @@ void tickSleep(Level& lv, double dt) {
             woken = true;
             for (Player* q : all) q->sleeping = false;
             lv.fx->message(p->id, "You were woken by something at your bedside", "bad");
-            lv.fx->sound("hurt", p->pos, 12);
+            lv.fx->sound("nightmare", p->pos, 12);   // a sting: a jolt and a dread swell (audio/nether_sfx.cpp)
           }
           break;
         }

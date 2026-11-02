@@ -431,6 +431,7 @@ static const std::map<std::string, std::vector<int>>& modes() {
 struct Mood {
   std::vector<std::string> modes; std::vector<int> roots; float tempo[2]; float density; int reg; std::vector<std::vector<int>> progs; float bell;
   bool drone = false, arp = false; std::string lead, lead2, lh, padIns, perc, bellIns;
+  bool edm = false;   // melodic EDM on a hammered dulcimer (Composer::piece3)
 };
 static const std::map<std::string, Mood>& moods() {
   static const std::map<std::string, Mood> M = {
@@ -457,6 +458,25 @@ static const std::map<std::string, Mood>& moods() {
     {"sky2", {{"lydian", "major"}, {53, 55, 57}, {60, 72}, 0.55f, 5, {{0, 1, 4, 0}, {0, 4, 1, 5}, {0, 5, 3, 4}}, 0.5f, false, true, "flute", "harp", "harp", "choir"}},
     {"depths2", {{"harmonic", "phrygian", "hijaz"}, {38, 40, 41}, {48, 58}, 0.4f, -5, {{0, 1, 0, 4}, {0, 5, 1, 4}}, 0, true, false, "cello", "clarinet", "pluck", "choir", "frame"}},
     {"cave2", {{"phrygian", "aeolian", "whole"}, {40, 43, 45}, {46, 56}, 0.3f, -4, {{0, 1, 0, 6}, {0, 5, 6, 0}}, 0.35f, true, false, "piano", "musicbox", "harp", "strings", "", "musicbox"}},
+    // ---- melodic EDM on a hammered dulcimer, after the user's three pieces (warm and bass-heavy, gentle, slow to mid
+    //      tempo; F# major, F major, C minor) and Yáhno's ancient strings over soft electronic pulses; every land its own
+    {"ow_edm", {{"major"}, {54, 53}, {94, 108}, 0.6f, 0, {{0, 4, 5, 3}, {0, 5, 3, 4}, {5, 3, 0, 4}, {0, 3, 4, 4}}, 0.15f, false, false, "dulcimer", "", "piano", "pad", "", "bell", true}},
+    {"ow_edm_min", {{"aeolian"}, {48}, {90, 104}, 0.55f, 0, {{0, 5, 2, 6}, {0, 3, 6, 4}, {0, 6, 5, 4}, {5, 6, 0, 0}}, 0.2f, false, false, "dulcimer", "", "piano", "pad", "", "bell", true}},
+    {"sky_edm", {{"lydian"}, {57, 55}, {88, 100}, 0.55f, 0, {{0, 1, 4, 0}, {0, 4, 1, 5}, {0, 5, 3, 4}}, 0.45f, false, false, "dulcimer", "", "harp", "choir", "", "celesta", true}},
+    {"nether_edm", {{"harmonic", "phrygian"}, {41, 43}, {86, 98}, 0.5f, 0, {{0, 1, 0, 4}, {0, 5, 1, 4}, {0, 6, 5, 4}}, 0.1f, true, false, "dulcimer", "", "cello", "pad", "", "bell", true}},
+    {"end_edm", {{"phrygian", "aeolian"}, {40, 42}, {84, 94}, 0.4f, 0, {{0, 1, 0, 6}, {0, 5, 6, 0}}, 0.3f, true, false, "celesta", "", "musicbox", "choir", "none", "musicbox", true}},
+    // ---- the End and his realm: lands of their own ----
+    {"end", {{"whole", "phrygian"}, {40, 42}, {50, 60}, 0.3f, -2, {{0, 1, 0, 4}, {0, 5, 1, 0}}, 0.45f, true, false, "celesta", "choir", "musicbox", "choir", "", "musicbox"}},
+    {"hisrealm", {{"phrygian", "harmonic"}, {38}, {44, 52}, 0.25f, -4, {{0, 1, 0, 1}, {0, 1, 6, 0}}, 0.2f, true, false, "mezzo", "", "cello", "choir", "", "musicbox"}},
+    // ---- the newer lands (Better than Adventure's biomes) ----
+    {"redlands", {{"minpenta", "dorian"}, {50, 52}, {78, 90}, 0.6f, 0, {{0, 3, 4, 3}, {0, 4, 3, 0}}, 0, false, false, "guitar", "bandora", "pluck", "pad", "hand"}},
+    {"glacier", {{"lydian", "aeolian"}, {55, 57}, {48, 58}, 0.4f, 4, {{0, 5, 3, 4}, {0, 1, 4, 0}}, 0.6f, false, true, "celesta", "musicbox", "harp", "strings", "", "celesta"}},
+    {"mossmire", {{"dorian", "aeolian"}, {45, 48}, {56, 66}, 0.45f, -2, {{0, 6, 0, 4}, {0, 3, 1, 0}}, 0, true, false, "clarinet", "flute", "pluck", "pad", "hand"}},
+    {"highlands", {{"dorian", "mixolydian"}, {45, 48, 50}, {60, 72}, 0.5f, 0, {{0, 6, 0, 4}, {0, 3, 6, 4}}, 0.1f, true, false, "fiddle", "horn", "harp", "strings"}},
+    {"seasonal", {{"major", "lydian"}, {50, 52, 55}, {64, 76}, 0.55f, 2, {{0, 4, 5, 3}, {0, 5, 3, 4}}, 0.25f, false, true, "harp", "flute", "harp", "strings", "", "celesta"}},
+    {"thornscrub", {{"hijaz", "phrygian"}, {50, 52}, {72, 84}, 0.5f, 0, {{0, 1, 0, 6}, {0, 6, 1, 0}}, 0, true, false, "pluck", "flute", "bandora", "pad", "frame"}},
+    {"tundra", {{"aeolian", "dorian"}, {50, 52}, {50, 60}, 0.38f, 2, {{0, 5, 3, 4}, {0, 3, 5, 4}}, 0.45f, false, false, "musicbox", "piano", "piano", "strings", "", "celesta"}},
+    {"meadow", {{"major", "lydian"}, {52, 55}, {66, 78}, 0.6f, 2, {{0, 4, 5, 3}, {0, 3, 4, 0}}, 0.15f, false, false, "flute", "dulcimer", "harp", "pad", "shaker"}},
   };
   return M;
 }
@@ -574,6 +594,57 @@ struct Composer {
     }
     add(t, lh, deg(0, -1), 4, 0.5); add(t + 0.03, lh, deg(4, -1), 4, 0.4); add(t + 0.06, lead == "horn" ? "harp" : lead, deg(0), 4, 0.45);
   }
+  // melodic EDM on a hammered dulcimer: a pad and a deep round bass, soft four-on-the-floor in the busy parts with
+  // claps and hats, offbeat chord stabs like a side-chained pad in the drop, the dulcimer rippling arpeggios and
+  // carrying the tune, and a quiet breakdown on the keys (the C418-like stretch). Our own melodies.
+  void piece3() {
+    start();
+    const auto& prog = pick(M.progs); const auto& progB = pick(M.progs);
+    const std::string lead = M.lead.empty() ? "dulcimer" : M.lead, pad = M.padIns.empty() ? "pad" : M.padIns, keys = M.lh.empty() ? "piano" : M.lh;
+    const bool drums = M.perc != "none";
+    struct Sec { int bars, kind; };   // 0 intro, 1 verse, 2 breakdown, 3 build, 4 drop, 5 outro
+    std::vector<Sec> secs = r() < 0.5 ? std::vector<Sec>{{8, 0}, {16, 1}, {8, 2}, {4, 3}, {16, 4}, {8, 2}, {16, 4}, {8, 5}}
+                                      : std::vector<Sec>{{8, 0}, {16, 1}, {4, 3}, {16, 4}, {8, 2}, {4, 3}, {16, 4}, {8, 5}};
+    auto mo = motif(0.12, true), moB = motif(0.15, true);
+    double t = 0;
+    for (auto& S : secs) {
+      for (int b = 0; b < S.bars; b++) {
+        const bool B = S.kind == 2 || (S.kind == 4 && (b / 8) % 2 == 1);
+        const auto& P = B ? progB : prog;
+        const bool last = S.kind == 5 && b == S.bars - 1;
+        const int ch = last ? 0 : P[(b / 2) % P.size()];
+        const double T0 = t + b * 4;
+        const double lvl = S.kind == 0 ? std::min(1.0, 0.4 + b * 0.08) : S.kind == 5 ? std::max(0.25, 1.0 - b * 0.1) : 1.0;
+        if (b % 2 == 0 || last) for (int k : {0, 2, 4}) add(T0, pad, deg(ch + k, -1), 8, (0.45 + r() * 0.15) * lvl);   // the pad, long and soft
+        // the bass: low and round; an offbeat pulse in the busy parts
+        if (S.kind == 1 || S.kind == 4) for (int i = 0; i < 4; i++) add(T0 + i + 0.5, "ubass", deg(ch, -2), 0.45, 0.75 * lvl);
+        else if (S.kind != 3 && !(S.kind == 0 && b < 4)) add(T0, "bass", deg(ch, -2), 3.8, 0.6 * lvl);
+        if (drums) {   // soft four on the floor, claps on two and four in the drop, hats in eighths, a snare roll into it
+          if (S.kind == 1 || S.kind == 4) for (int i = 0; i < 4; i++) add(T0 + i, "taiko", 36, 0.3, S.kind == 4 ? 0.55 : 0.42);
+          if (S.kind == 4) { add(T0 + 1, "snare", 60, 0.2, 0.28); add(T0 + 3, "snare", 60, 0.2, 0.3); }
+          if (S.kind == 1 || S.kind == 4) for (int i = 0; i < 8; i++) add(T0 + i * 0.5, "shaker", 0, 0.08, i % 2 ? 0.35 : 0.18);
+          if (S.kind == 3) { const int n = b < 2 ? 4 : b < 3 ? 8 : 16; for (int i = 0; i < n; i++) add(T0 + i * 4.0 / n, "snare", 60, 0.1, 0.12 + 0.3 * (b * n + i) / (S.bars * 16.0)); }
+        }
+        if (S.kind == 4) for (int i = 0; i < 4; i++) for (int k : {0, 2, 4}) add(T0 + i + 0.5, "pluck", deg(ch + k), 0.4, 0.2);   // the pump
+        if (S.kind != 5 || b < 4) {   // the dulcimer's arpeggios, rising through the build
+          static const int up[8] = {0, 2, 4, 7, 9, 7, 4, 2};
+          const double step = S.kind == 4 || S.kind == 3 ? 0.25 : 0.5;
+          const int n = (int)(4 / step);
+          for (int i = 0; i < n; i++) if (r() < (S.kind == 0 ? 0.5 : 0.85)) add(T0 + i * step, lead, deg(ch + up[i % 8] + (S.kind == 3 ? (i / 8) * 2 : 0)), step * 1.8, (0.3 + r() * 0.1) * lvl);
+        }
+        if ((S.kind == 1 || S.kind == 4 || S.kind == 2) && (b % 2 == 0 || r() < M.density * 0.6)) {   // the tune
+          const auto& m2 = B ? moB : mo;
+          double at = T0 + (r() < 0.5 ? 0 : 0.5);
+          const int st = ch + pick(std::vector<int>{0, 2, 4}) + 7 + (S.kind == 4 ? 7 : 0);
+          const std::string ins = S.kind == 2 ? keys : lead;
+          for (auto& nn : m2) { if (!nn.rest && at < T0 + 4.5) add(at, ins, deg(st + (int)nn.s), nn.len, (0.6 + r() * 0.2) * lvl); at += nn.len; }
+        }
+        if (M.bell > 0 && S.kind == 2 && r() < M.bell) add(T0 + pick(std::vector<double>{1, 2, 3}), M.bellIns.empty() ? "bell" : M.bellIns, deg(ch + pick(std::vector<int>{0, 2, 4}), 2), 1.2, 0.4);
+      }
+      t += S.bars * 4;
+    }
+    add(t, pad, deg(0, -1), 6, 0.5); add(t, "bass", deg(0, -2), 6, 0.5); add(t + 0.05, lead, deg(0), 4, 0.5); add(t + 0.1, lead, deg(4), 4, 0.4);
+  }
 };
 
 std::vector<MusicNote> composeMusic(const std::string& moodIn, u32 seed) {
@@ -582,7 +653,8 @@ std::vector<MusicNote> composeMusic(const std::string& moodIn, u32 seed) {
   auto it = moods().find(k); if (it == moods().end()) it = moods().find("day");
   Mood M = colon != std::string::npos ? night(it->second) : it->second;
   Composer c(M, seed);
-  if (M.lead.empty() && M.lh.empty() && M.perc.empty() && M.padIns.empty()) c.piece1(); else c.piece2();
+  if (M.edm) c.piece3();
+  else if (M.lead.empty() && M.lh.empty() && M.perc.empty() && M.padIns.empty()) c.piece1(); else c.piece2();
   std::stable_sort(c.notes.begin(), c.notes.end(), [](const MusicNote& a, const MusicNote& b) { return a.t < b.t; });
   return c.notes;
 }
@@ -614,20 +686,39 @@ struct MusicDirector::Impl {
       note(std::max(e.audioNow() + 0.02, start + n.t), n.ins, n.m, n.d, n.v, 0);
     }
   }
+  // every land its own music: the Overworld's places and its dulcimer pieces, the Nether's, the Skylands', the End's,
+  // his realm's
   std::string moodNow(const AudioScene& s) {
     if (!s.inWorld) return "menu";
-    if (s.dim == DIM_NETHER) return rnd() < 0.5 ? "depths" : "depths2";
-    if (s.dim == DIM_AETHER) return rnd() < 0.35 ? "sky" : "sky2";
-    if (s.dim == DIM_END) return "cave2";
+    if (s.realm == 2) return "hisrealm";   // (sim/level.h REALM_HIS)
+    const float r = rnd();
+    if (s.dim == DIM_NETHER) return r < 0.35f ? "depths" : r < 0.65f ? "depths2" : "nether_edm";
+    if (s.dim == DIM_AETHER) return r < 0.3f ? "sky" : r < 0.6f ? "sky2" : "sky_edm";
+    if (s.dim == DIM_END) return r < 0.5f ? "end" : r < 0.8f ? "end_edm" : "cave2";
     if (s.eyeWater) return "deep";
     int localY = (int)std::floor(s.head.y) - dimBase(DIM_OVERWORLD);
     if (s.skyAtHead < 4 && localY < 64 - 4) return rnd() < 0.5 ? "cave" : "cave2";
     if (s.creative && rnd() < 0.25) return "creative";
+    if (rnd() < 0.4f) return s.day < 0.45f ? "ow_edm_min:night" : rnd() < 0.65f ? "ow_edm" : "ow_edm_min";   // the dulcimer pieces, now and then
     std::string m = s.place.empty() ? "plains" : s.place;
     return s.day < 0.45f ? m + ":night" : m;
   }
   // songs from the Music Studio given a realm (audio/song.h): read again now and then, so new ones join in
-  std::vector<Song> userSongs; double userRead = -1e9; int dimNow = -1; bool inWorldNow = false;
+  std::vector<Song> userSongs; double userRead = -1e9; int dimNow = -1; bool inWorldNow = false; u32 worldSeed = 0;
+  std::string discNow;   // a jukebox's disc playing (its own piece: the same tune every time, the same in every world)
+  static u32 hashMix(u32 seed, const std::string& k, u32 slot) { u32 h = seed * 2654435761u ^ slot * 40503u; for (char c : k) h = (h ^ (u8)c) * 16777619u; return h ? h : 1; }
+  static std::string discMood(const std::string& d) {
+    static const std::map<std::string, std::string> D = {{"sun", "ow_edm"}, {"tide", "ocean"}, {"grove", "forest"}, {"ember", "nether_edm"}, {"skylark", "sky_edm"},
+      {"void", "end_edm"}, {"aurora", "ow_edm_min"}, {"lantern", "cave2"}, {"harvest", "village"}, {"frost", "glacier"}, {"dune", "desert"}, {"crag", "depths2"}};
+    auto it = D.find(d); return it != D.end() ? it->second : "ow_edm";
+  }
+  void playDisc(const std::string& disc) {
+    stop(); busTo(0, 1, 0.3f);
+    notes = composeMusic(discMood(disc), hashMix(0x5eed, disc, 7));
+    ni = 0; start = e.audioNow() + 0.2; playing = true; discNow = disc;
+    end = start + (notes.empty() ? 1 : notes.back().t + 6);
+    schedule();
+  }
   const Song* realmSong() {
     if (e.audioNow() - userRead > 60) { userSongs = loadUserSongs(); userRead = e.audioNow(); }
     const char* want = dimNow == DIM_OVERWORLD ? "overworld" : dimNow == DIM_NETHER ? "nether" : dimNow == DIM_END ? "end" : dimNow == DIM_AETHER ? "skylands" : "";
@@ -678,7 +769,8 @@ struct MusicDirector::Impl {
         for (auto& n : us->notes) notes.push_back({n.beat * spb, n.ins, 0, n.midi, (float)(n.len * spb), n.vel});
         std::sort(notes.begin(), notes.end(), [](const MusicNote& a, const MusicNote& b) { return a.t < b.t; });
       }
-    if (notes.empty()) notes = composeMusic(mood, (u32)(rnd() * 1e9));
+    // every world its own soundtrack: six pieces a mood, composed from the world's seed (the menu's are any)
+    if (notes.empty()) notes = composeMusic(mood, inWorldNow && worldSeed ? hashMix(worldSeed, mood, (u32)(rnd() * 6)) : (u32)(rnd() * 1e9));
     ni = 0; start = e.audioNow() + 0.3; playing = true;
     end = start + (notes.empty() ? 1 : notes.back().t + 6);
     schedule();
@@ -770,6 +862,16 @@ void MusicDirector::update(double dt, const AudioScene& s) {
     while (b.next < now + 1.2) { d.battleBar(b, b.next); b.next += 4 * 60 / b.bpm; }
     return;
   }
+  // a jukebox nearby: its disc plays (louder the nearer you are) instead of the land's music, round and round
+  d.worldSeed = s.worldSeed;
+  if (!s.jukeboxDisc.empty() && s.inWorld) {
+    if (d.discNow != s.jukeboxDisc || !d.playing) d.playDisc(s.jukeboxDisc);
+    d.busTo(0, std::clamp(s.jukeboxGain, 0.f, 1.f), 0.4f);
+    d.schedule();
+    if (now > d.end) d.playing = false;   // the disc's end: it starts again next frame
+    return;
+  }
+  if (!d.discNow.empty()) { d.discNow.clear(); d.stop(); d.wait = 20 + d.rnd() * 30; return; }
   // music.js update, with music2.js's shorter quiet spells
   bool wasPlaying = d.playing;
   if (s.jukebox && d.playing) d.stop();

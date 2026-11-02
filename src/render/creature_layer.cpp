@@ -23,6 +23,10 @@ namespace dq {
 // the model to draw: a "#state" variant while the creature shows another face (a ghast opening its mouth to fire)
 static const CreatureModelGL* modelFor(const Creature& m) {
   if (m.type == "ghast") { auto it = m.data.find("chargeT"); if (it != m.data.end() && it->is_number() && it->get<float>() > 0) if (auto* v = creatureModel(m.modelKey() + "#shooting")) return v; }
+  if (m.type == "bee" && (m.angryT > 0 || m.pollen)) {   // angry (red eyes), and/or with pollen on its legs
+    const std::string k = m.modelKey() + (m.angryT > 0 && m.pollen ? "#angry_nectar" : m.angryT > 0 ? "#angry" : "#nectar");
+    if (auto* v = creatureModel(k)) return v;
+  }
   return creatureModel(m.modelKey());
 }
 
@@ -136,7 +140,17 @@ static mat4 heldMatrix(float tilt, float s, vec2 grip, bool upright) {
   vec3 Z(s, 0, 0), t = -(grip.x * X + grip.y * Y);
   return mat4(vec4(X, 0), vec4(Y, 0), vec4(Z, 0), vec4(t, 1));
 }
+// a bow stands upright in the fist, its belly (the stave's curve, the sprite's upper left) away from you and the string
+// toward you, gripped at the middle of the stave (the sprite's chord, bottom left to top right, made vertical)
+static mat4 bowHeldMatrix(float s, vec2 grip) {
+  const float r2 = std::sqrt(0.5f);
+  const vec3 X(0, r2 * s, r2 * s), Y(0, r2 * s, -r2 * s), Z(-s, 0, 0), t = -(grip.x * X + grip.y * Y);
+  return mat4(vec4(X, 0), vec4(Y, 0), vec4(Z, 0), vec4(t, 1));
+}
+static bool isBowKey(const std::string& id) { return id == "bow" || id.rfind("bow_pulling", 0) == 0 || id.rfind("bow_pq", 0) == 0; }
 static const mat4& heldMat(const std::string& id) {
+  static const mat4 BOW = bowHeldMatrix(0.8f, {-0.2f, 0.15f});
+  if (isBowKey(id)) return BOW;
   static const mat4 TOOL = heldMatrix(0.25f, 0.85f, vec2(-0.34f, -0.24f), false), ITEM = heldMatrix(0.2f, 0.55f, vec2(0, -0.25f), true), ROD = heldMatrix(0.75f, 0.85f, vec2(-0.34f, -0.24f), false);
   if (id == "fishing_rod" || id == "fishing_rod_cast") return ROD;
   return isHandheld(id) ? TOOL : ITEM;
@@ -220,6 +234,11 @@ static void drawSkinMob(const Creature& m, const Interp& ip, World& w, const Fra
       drawCharFace(M, ps, pm, glowPart(i) ? VoxelLight{1, 1} : L, tint);   // the blink and the talking mouth (endstory dialogue)
     }
   }
+}
+
+void drawSkinFigure(const Creature& m, vec3 pos, float yaw, World& w, const FrameCtx& f) {
+  bool begun = false;
+  drawSkinMob(m, Interp{pos, yaw, m.age}, w, f, begun);
 }
 
 void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {

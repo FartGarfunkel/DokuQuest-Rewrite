@@ -29,6 +29,44 @@ constexpr float FOOD_CD = 2.2f;
 
 PlayerController::PlayerController(Level& l, Player& pl) : lv(l), p(pl) {}
 
+bool useOnHost(PlayerController& pc, const std::string& kind, const RayHit* hit, u32 ent) {
+  if (!pc.lv.isRemote() || !pc.lv.net) return false;
+  json a = {{"k", kind}, {"sel", pc.p.selected}, {"sn", pc.p.sneaking ? 1 : 0}, {"yaw", pc.p.yaw}, {"pitch", pc.p.pitch}};
+  if (hit && hit->hit) { a["b"] = {hit->block.x, hit->block.y, hit->block.z}; a["n"] = {hit->normal.x, hit->normal.y, hit->normal.z}; }
+  if (ent) a["id"] = ent;
+  pc.lv.net->action(pc.p, "use", a);
+  pc.swingArm();
+  return true;
+}
+void runGuestUse(Level& lv, Player& p, const json& a) {
+  if (!a.is_object() || p.dead) return;
+  PlayerController pc(lv, p);
+  p.selected = clampv(a.value("sel", p.selected), 0, 8);
+  const bool was = p.sneaking; p.sneaking = a.value("sn", 0) != 0;
+  p.yaw = a.value("yaw", p.yaw); p.pitch = a.value("pitch", p.pitch);
+  ItemStack& held = p.held();
+  const ItemDef* def = held.empty() ? nullptr : reg().item(held.id);
+  const std::string k = a.value("k", std::string());
+  if (k == "ent") {
+    Entity* e = lv.entity(a.value("id", 0u));
+    if (e && !e->removed && e->realm == p.realm && glm::distance(e->pos, p.pos) < 8) {
+      pc.targetEnt = e->id;
+      for (auto& h : hooks().useEntity) if (h(pc, *e, held.empty() ? nullptr : &held, def)) break;
+    }
+  } else if (k == "block" && a.contains("b") && a["b"].is_array() && a["b"].size() == 3) {
+    RayHit hit; hit.hit = true; hit.block = ivec3(a["b"][0].get<int>(), a["b"][1].get<int>(), a["b"][2].get<int>());
+    if (a.contains("n") && a["n"].is_array() && a["n"].size() == 3) hit.normal = ivec3(a["n"][0].get<int>(), a["n"][1].get<int>(), a["n"][2].get<int>());
+    hit.id = lv.world(p.realm).getBlock(hit.block.x, hit.block.y, hit.block.z); hit.point = vec3(hit.block) + vec3(0.5f);
+    if (glm::distance(vec3(hit.block) + vec3(0.5f), p.pos) < 8) {
+      pc.target = hit;
+      for (auto& h : hooks().useBlock) if (h(pc, hit, held.empty() ? nullptr : &held, def)) break;
+    }
+  } else if (k == "item" && def) {
+    for (auto& h : hooks().useItem) if (h(pc, held, *def, false)) break;
+  }
+  p.sneaking = was;
+}
+
 void PlayerController::swingArm() { if (p.swing == 0 || p.swing > 0.6f) p.swing = 0.0001f; }
 void PlayerController::heldBecomes(ItemStack s) { p.inv[p.selected] = std::move(s); }
 void PlayerController::consumeHeld(int n) {
@@ -126,11 +164,12 @@ void PlayerController::tickSurvival(float dt, const MoveInfo& mv) {
   World& w = world();
   const Registry& R = reg();
   const Contacts& c = p.contacts;
-  // footsteps and a little dust
+  // footsteps and a little dust: one as each foot comes down, on the stride the legs swing (render/char_layer.cpp) and the
+  // view dips (client/play.cpp) to: phase p.bob * 1.4, a foot down at each pi/2 + k*pi (every 1.4 blocks)
   if (p.onGround && mv.horizSpeed > 1) {
-    p.stepAcc += mv.horizSpeed * dt;
-    if (p.stepAcc > 2.2f) {
-      p.stepAcc = 0; BlockId id = w.getBlock(ifloor(p.pos.x), ifloor(p.pos.y - 0.2f), ifloor(p.pos.z));
+    const float foot = std::floor((p.bob * 1.4f - (float)PI / 2) / (float)PI);
+    if (foot != p.stepAcc) {
+      p.stepAcc = foot; BlockId id = w.getBlock(ifloor(p.pos.x), ifloor(p.pos.y - 0.2f), ifloor(p.pos.z));
       if (id) {
         const BlockDef& sb = R.block(id);
         sfxMaterial(lv, sb.sound, "step", p.pos);

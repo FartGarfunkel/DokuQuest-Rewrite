@@ -50,6 +50,12 @@ void hudPickup(const std::string& itemKey, int n);
 void hudDimName(const std::string& name);
 void hudFloatText(vec3 pos, const std::string& text, u32 rgb = 0xffffff);
 void hudSaving(bool on);
+// captions for the sounds around you (settings.captions; ui/captions.cpp words, drawn by ui/hud.cpp): positional = it
+// comes from pos (an arrow shows the way), else it's all about you
+void hudCaption(const std::string& text, vec3 pos, bool positional);
+std::string captionForSound(const std::string& name);
+std::string captionForVoice(const std::string& creature, const std::string& kind);
+std::string captionForMaterial(const std::string& mat, const std::string& kind);
 void throwStackFromPlayer(App& a, const ItemStack& s);   // drop in front of the local player (EventBus "throwStack")
 
 // ---- menu tabs (game/menutabs.js): LB / RB between inventory, map, journal, skills, spellbook, stable ----

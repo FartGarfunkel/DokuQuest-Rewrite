@@ -2,6 +2,7 @@
 // chunkLoaded (checksums and stale chunks), plus what netsync.js does on a guest (block changes reported, things
 // made here handed to the server).
 #include "net/client.h"
+#include "sim/creature.h"
 #include "net/server_host.h"
 #include "world/region.h"
 #include <enet/enet.h>
@@ -137,7 +138,7 @@ bool NetClient::connect(const JoinOptions& o) {
 
 void NetClient::onWelcome(json& m) {
   welcomeMsg = m;
-  myId = m.value("id", 0);
+  myId = m.value("id", 0); myEid = m.value("eid", 0u);
   serverName = m.value("name", "a world"); hostName = m.value("host", "someone");
   op = m.value("op", false); dedicated = m.value("dedicated", true); viewDistance = m.value("vd", opts.viewDistance);
   // block ids: the server's palette, matched to ours by key
@@ -272,7 +273,11 @@ void NetClient::sendMe() {
   json m = {{"x", r3(p.pos.x)}, {"y", r3(p.pos.y)}, {"z", r3(p.pos.z)}, {"vx", r3(p.vel.x)}, {"vy", r3(p.vel.y)}, {"vz", r3(p.vel.z)},
             {"r", r3(p.yaw)}, {"p", r3(p.pitch)}, {"b", r3(p.bodyYaw)}, {"rl", p.realm}, {"f", f}, {"hp", std::round(p.hp * 10) / 10},
             {"dead", p.dead ? 1 : 0}, {"sel", p.selected}};
-  if (p.riding) m["rd"] = p.riding;
+  if (p.riding) {
+    m["rd"] = p.riding;
+    // what we steer it with goes to the host, whose game moves the mount (and us on it)
+    if (auto* c = dynamic_cast<Creature*>(lv->entity(p.riding))) { const auto& r = c->rideIn; m["ri"] = json::array({r3(r.fwd), r3(r.strafe), r.jump ? 1 : 0, r.sprint ? 1 : 0, r.descend ? 1 : 0}); }
+  }
   sendTo(ME, m, 1, false);
 }
 
@@ -337,6 +342,9 @@ void NetClient::handle(u8 ty, json& m) {
       break;
     }
     case FLUSH: sendSave(); break;
+    case UIEV:   // a screen the host's game opened for us: our UI opens it (the same event as in a game of our own)
+      if (L.events && m.contains("e") && m["e"].is_string() && m.contains("a")) L.events->emit(m["e"].get<std::string>(), m["a"]);
+      break;
     case KICK:   // let go: don't wait for the connection to wind down
       lostReason = m.value("why", "The host removed you from the world.");
       if (peer) { enet_peer_disconnect_now(peer, BYE_NORMAL); peer = nullptr; }
@@ -375,6 +383,11 @@ void NetClient::applyEntities(const json& m) {
     if (f & 8) e->hurtTime = std::max(e->hurtTime, 0.3f);
     e->riding = s.value("rd", 0u);
     if (s.contains("d")) e->data = s["d"];
+    if (auto* c = dynamic_cast<Creature*>(e)) if (s.contains("cs") && s["cs"].is_object()) {   // its look and state (Creature::snap)
+      json cs = s["cs"]; cs["x"] = c->pos.x; cs["y"] = c->pos.y; cs["z"] = c->pos.z; cs["r"] = c->yaw; cs["h"] = e->hp;   // (the glide moves it)
+      c->applySnap(cs);
+      if (c->riddenBy && c->riddenBy == myEid && me) c->riddenBy = me->id;   // ridden by us (our player's id here)
+    }
     if (auto* p = dynamic_cast<Player*>(e)) {
       p->name = s.value("n", p->name); p->skin = s.value("sk", p->skin); p->mode = s.value("md", p->mode);
       p->selected = 0;
@@ -403,6 +416,7 @@ void NetClient::applySelf(const json& m) {
   if (m.contains("inv")) { applyPlayerInv(p, m["inv"]); invSeq = m.value("seq", invSeq); invSig = playerInvSig(p); }
   if (m.contains("md")) p.mode = m["md"].get<std::string>();
   if (m.contains("fl")) p.flying = m["fl"].get<bool>();
+  if (m.contains("rd")) { p.riding = m["rd"].get<u32>(); p.vel = vec3(0); }   // the host put us on a mount (or took us off)
   if (m.contains("xp")) { p.xp = m.value("xp", p.xp); p.level = m.value("lv", p.level); }
 }
 
@@ -433,7 +447,10 @@ void NetClient::applyFx(const json& m) {
 
 bool NetClient::chat(Player&, const std::string& text) { sendTo(CHAT, {{"text", text.substr(0, 200)}}); return true; }
 void NetClient::hitEntity(Player&, u32 id, float amount, const json& src) { sendTo(HIT, {{"id", id}, {"a", amount}, {"s", src}}); }
-void NetClient::action(Player&, const std::string& name, const json& args) { sendTo(ACT, {{"n", name}, {"a", args}}); }
+void NetClient::action(Player&, const std::string& name, const json& args) {
+  if (name == "useEnt" || name == "use") sendSave();   // our bags as they are now first: the host feeds, tames or saddles with what we hold
+  sendTo(ACT, {{"n", name}, {"a", args}});
+}
 void NetClient::portal(Player& who, int realm, vec3 to) { sendTo(PORTAL, {{"rl", realm}, {"to", v3(to)}}); }
 std::vector<std::string> NetClient::playerNames() const {
   std::vector<std::string> v;

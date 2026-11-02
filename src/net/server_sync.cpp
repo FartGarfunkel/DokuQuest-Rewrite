@@ -1,6 +1,7 @@
 // net/server_sync.cpp — what the server keeps each player's game in step with (net.js hostTick, flushBlocks,
 // updateRange/flushChunks, sendEntities, flushEffects, env; netsync.js netSnap), plus the server's chat commands.
 #include "net/net_internal.h"
+#include "sim/creature.h"
 #include "sim/commands.h"
 #include "world/region.h"
 #include <enet/enet.h>
@@ -58,6 +59,13 @@ json entitySnapshot(const Entity& e) {
     if (!p->offhand.empty() && !p->offhand[0].empty()) s["of"] = p->offhand[0].id;
     int pf = (p->sneaking ? 1 : 0) | (p->sprinting ? 2 : 0) | (p->flying ? 4 : 0) | (p->swimming ? 8 : 0) | (p->crawling ? 16 : 0) | (p->dead ? 32 : 0);
     if (pf) s["pf"] = pf;
+  }
+  // a creature's look and state, in the original's own mob snapshot (netsync.js netSnap: sim/creature.cpp Creature::snap)
+  // less what the entity snapshot already has: size, coat, held things, what it's doing, pets and riders, lost limbs
+  if (auto* c = dynamic_cast<const Creature*>(&e)) {
+    json cs = c->snap();
+    for (const char* k : {"i", "k", "t", "x", "y", "z", "r", "h"}) cs.erase(k);
+    s["cs"] = std::move(cs);
   }
   return s;
 }

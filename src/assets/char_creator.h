@@ -79,6 +79,7 @@ struct CharacterSpec {
   std::string cape;          // the creator's cosmetic cape ("" = none)
   u64 hash = 0;              // skin + body
 };
+fs::path userHerobrineSkin();   // the player's own skin for him under userDir()/skins (or a pack's), empty for none
 std::shared_ptr<const CharacterSpec> resolveCharacter(const std::string& ref);   // cached; never null (falls back to the default skin)
 // skins over the network (net/protocol.h netSkinHook): what another computer needs to draw a reference (the picture,
 // arms, body shape and cape; null for none), and one received, registered under its net name for resolveCharacter

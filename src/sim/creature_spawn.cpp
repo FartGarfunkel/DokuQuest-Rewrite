@@ -9,6 +9,7 @@
 #include "sim/weapon_rack.h"
 #include "sim/slime_goo.h"
 #include "sim/creature.h"
+#include "sim/portals.h"
 #include "sim/creature_entities.h"
 #include "sim/hallow.h"
 #include "sim/mob_combat.h"
@@ -23,6 +24,7 @@ namespace dq {
 // (declared out here: MSVC gives a function declared inside a block the global namespace, so these never linked on Windows)
 void registerBasket();
 void registerJars();
+void registerKeepers();   // sim/keepers.cpp: dungeon keepers and the places' masters
 void registerSieve();
 void registerQuiver();
 void registerGuns();
@@ -52,6 +54,7 @@ std::string habitatAt(World& w, int x, int z, BlockId ground) {
   const std::string& g = R.block(ground).key;
   BlockId topId = top >= 0 ? w.getBlock(x, top, z) : AIR;
   if (R.tLiquid[topId] == 1) { int d = 0; while (d < 12 && R.tLiquid[w.getBlock(x, top - d, z)] == 1) d++; if (d > 6) return "ocean"; }
+  if (g == "red_sand" || g.find("terracotta") != std::string::npos || g == "scorched_dirt") return "redlands";   // (BTA's Outback)
   bool sand = g == "sand" || g == "red_sand" || g == "desert_sand" || g == "silver_sand";
   if (sand && h <= SEA_LEVEL + 3) return temp < -0.2f ? "snowy_beach" : "beach";
   if (sand && temp > 0.15f) return "desert";
@@ -72,11 +75,11 @@ struct SpawnE { const char* t; float w; int lo, hi; };
 static const std::unordered_map<std::string, std::vector<SpawnE>>& spawnTable() {
   static const std::unordered_map<std::string, std::vector<SpawnE>> S = {
     {"plains", {{"horse", 8, 2, 4}, {"donkey", 2, 1, 2}, {"sheep", 12, 2, 4}, {"cow", 10, 2, 4}, {"pig", 10, 1, 3}, {"chicken", 10, 2, 4}, {"rabbit", 4, 1, 3}, {"turkey", 4, 2, 4}, {"mouse", 2, 1, 2}, {"duck", 3, 2, 3}, {"adder", 1, 1, 1}}},
-    {"forest", {{"deer", 8, 2, 4}, {"boar", 5, 1, 3}, {"wolf", 5, 2, 4}, {"pig", 6, 1, 3}, {"chicken", 6, 1, 3}, {"sheep", 4, 2, 3}, {"cow", 4, 2, 3}, {"rabbit", 4, 1, 3}, {"raccoon", 3, 1, 2}, {"turkey", 3, 2, 3}, {"brown_bear", 2, 1, 2}, {"mouse", 2, 1, 2}, {"adder", 2, 1, 1}}},
+    {"forest", {{"deer", 8, 2, 4}, {"boar", 5, 1, 3}, {"wolf", 8, 2, 4}, {"pig", 6, 1, 3}, {"chicken", 6, 1, 3}, {"sheep", 4, 2, 3}, {"cow", 4, 2, 3}, {"rabbit", 4, 1, 3}, {"raccoon", 3, 1, 2}, {"turkey", 3, 2, 3}, {"brown_bear", 2, 1, 2}, {"mouse", 2, 1, 2}, {"adder", 2, 1, 1}}},
     {"birch_forest", {{"deer", 8, 2, 4}, {"rabbit", 6, 1, 3}, {"pig", 5, 1, 3}, {"chicken", 5, 1, 3}, {"sheep", 5, 2, 3}, {"cow", 4, 2, 3}, {"fox", 3, 1, 2}}},
-    {"taiga", {{"wolf", 8, 2, 4}, {"fox", 8, 1, 3}, {"rabbit", 6, 1, 3}, {"deer", 5, 2, 3}, {"sheep", 4, 2, 3}, {"pig", 3, 1, 2}, {"brown_bear", 3, 1, 2}}},
-    {"snowy_taiga", {{"wolf", 8, 2, 4}, {"snow_fox", 8, 1, 3}, {"rabbit", 6, 1, 3}, {"deer", 3, 2, 3}, {"brown_bear", 2, 1, 2}}},
-    {"snowy_plains", {{"polar_bear", 3, 1, 2}, {"snow_fox", 6, 1, 2}, {"rabbit", 8, 1, 3}, {"wolf", 3, 2, 4}}},
+    {"taiga", {{"wolf", 12, 2, 5}, {"fox", 8, 1, 3}, {"rabbit", 6, 1, 3}, {"deer", 5, 2, 3}, {"sheep", 4, 2, 3}, {"pig", 3, 1, 2}, {"brown_bear", 3, 1, 2}}},
+    {"snowy_taiga", {{"wolf", 12, 2, 5}, {"snow_fox", 8, 1, 3}, {"rabbit", 6, 1, 3}, {"deer", 3, 2, 3}, {"brown_bear", 2, 1, 2}}},
+    {"snowy_plains", {{"polar_bear", 3, 1, 2}, {"snow_fox", 6, 1, 2}, {"rabbit", 8, 1, 3}, {"wolf", 5, 2, 4}}},   // (BTA: wolves are about more often)
     {"snowy_peaks", {{"goat", 10, 2, 3}, {"snow_fox", 2, 1, 2}, {"rabbit", 3, 1, 2}, {"snow_leopard", 2, 1, 1}}},
     {"mountains", {{"goat", 10, 2, 3}, {"llama", 6, 2, 4}, {"sheep", 5, 2, 3}, {"rabbit", 3, 1, 2}}},
     {"savanna", {{"horse", 8, 2, 5}, {"donkey", 5, 1, 3}, {"llama", 4, 2, 4}, {"cow", 4, 2, 3}, {"armadillo", 7, 1, 2}, {"sheep", 3, 2, 3}, {"lioness", 3, 2, 3}, {"lion", 1, 1, 1}}},
@@ -193,7 +196,26 @@ public:
     World& w = lv.world(realm);
     std::vector<Entity*> ps = pawnsOf(lv, realm);
     if (ps.empty()) return;
-    Entity* p = ps[(size_t)(frand() * ps.size()) % ps.size()];
+    // the far side of a portal someone is near is live too: a stand-in there gets its share of spawning, so what you see
+    // through the portal has its creatures (and they can come through)
+    static std::vector<std::unique_ptr<Entity>> eyes;
+    std::vector<Entity*> cands = ps;
+    if (PortalSystem* psys = portalSystem(lv)) {
+      size_t k = 0;
+      for (Entity* q : ps) {
+        std::map<int, std::vector<StreamAnchor>> far;
+        psys->farAnchors(realm, q->pos, 2, far);
+        auto it = far.find(realm);
+        if (it == far.end()) continue;
+        for (const StreamAnchor& a : it->second) {
+          if (glm::distance(a.pos, q->pos) < 24 || dimOfY(ifloor(a.pos.y)) == dimAt(*q) || k >= 4) continue;   // only into another land
+          if (k >= eyes.size()) { eyes.push_back(std::make_unique<Entity>()); eyes.back()->type = "portal_eye"; }
+          Entity& e = *eyes[k++]; e.pos = a.pos; e.realm = realm;
+          cands.push_back(&e);
+        }
+      }
+    }
+    Entity* p = cands[(size_t)(frand() * cands.size()) % cands.size()];
     int dim = dimAt(*p);
     // only creatures near this player count toward its caps
     int animals = 0, hostiles = 0, water = 0, ambient = 0, depthsHostile = 0, wisps = 0, cockatrices = 0;
@@ -433,16 +455,27 @@ public:
       {"base", {{"ghoul", 30}, {"skeleton", 24}, {"spider", 22}, {"fuseling", 18}, {"wraith", 1.2f}, {"ogre", 0.8f}}},
       {"desert", {{"husk", 30}, {"ghoul", 4}, {"skeleton", 20}, {"spider", 18}, {"fuseling", 6}, {"dune_fuseling", 10}, {"scorpion", 10}, {"wraith", 1}}},
       {"snowy", {{"ghoul", 28}, {"stray", 26}, {"spider", 16}, {"fuseling", 6}, {"frost_fuseling", 10}, {"wraith", 1.5f}}},
-      {"swamp", {{"ghoul", 26}, {"skeleton", 18}, {"spider", 18}, {"fuseling", 5}, {"bog_fuseling", 9}, {"witch", 7}, {"slime", 8}, {"drowned", 6}}},
-      {"forest", {{"ghoul", 30}, {"skeleton", 24}, {"spider", 22}, {"fuseling", 18}, {"moss_fuseling", 7}, {"raider", 0.3f}, {"werewolf", 1.2f}, {"wraith", 1.2f}, {"ogre", 0.8f}}},
-      {"open", {{"ghoul", 30}, {"skeleton", 24}, {"spider", 22}, {"fuseling", 18}, {"raider", 0.4f}, {"wraith", 1}, {"ogre", 1}}},
+      {"swamp", {{"ghoul", 26}, {"skeleton", 18}, {"spider", 18}, {"fuseling", 5}, {"bog_fuseling", 5}, {"swamp_fuseling", 6}, {"witch", 7}, {"slime", 8}, {"drowned", 6}}},
+      {"forest", {{"ghoul", 30}, {"skeleton", 24}, {"spider", 22}, {"fuseling", 18}, {"moss_fuseling", 7}, {"mushroom_fuseling", 3}, {"raider", 0.3f}, {"werewolf", 1.2f}, {"wraith", 1.2f}, {"ogre", 0.8f}}},
+      {"open", {{"ghoul", 30}, {"skeleton", 24}, {"spider", 22}, {"fuseling", 18}, {"meadow_fuseling", 5}, {"raider", 0.4f}, {"wraith", 1}, {"ogre", 1}}},
+      // the newer lands' own fuselings
+      {"jungle", {{"ghoul", 28}, {"skeleton", 20}, {"spider", 26}, {"fuseling", 8}, {"jungle_fuseling", 10}, {"wraith", 1}}},
+      {"beach", {{"ghoul", 24}, {"skeleton", 22}, {"spider", 18}, {"fuseling", 8}, {"beach_fuseling", 10}, {"drowned", 8}}},
+      {"savanna", {{"ghoul", 28}, {"skeleton", 24}, {"spider", 20}, {"fuseling", 8}, {"savanna_fuseling", 10}, {"wraith", 1}, {"ogre", 1}}},
+      {"stony", {{"ghoul", 28}, {"skeleton", 26}, {"spider", 20}, {"fuseling", 10}, {"gravel_fuseling", 10}, {"wraith", 1}, {"ogre", 1}}},
+      {"redlands", {{"husk", 22}, {"skeleton", 24}, {"spider", 20}, {"fuseling", 6}, {"redlands_fuseling", 12}, {"scorpion", 6}}},
     };
     auto habGroup = [](const std::string& h) -> std::string {
       if (h == "desert") return "desert";
+      if (h == "redlands") return "redlands";
+      if (h == "beach" || h == "snowy_beach") return h == "beach" ? "beach" : "snowy";
+      if (h == "jungle") return "jungle";
+      if (h == "savanna") return "savanna";
       if (h.find("snow") != std::string::npos) return "snowy";
       if (h == "swamp") return "swamp";
       if (h.find("forest") != std::string::npos || h.find("taiga") != std::string::npos || h.find("jungle") != std::string::npos) return "forest";
-      if (h.find("plains") != std::string::npos || h.find("savanna") != std::string::npos || h.find("mountains") != std::string::npos) return "open";
+      if (h.find("mountains") != std::string::npos || h.find("stony") != std::string::npos || h.find("peaks") != std::string::npos || h.find("gravel") != std::string::npos) return "stony";
+      if (h.find("plains") != std::string::npos || h.find("savanna") != std::string::npos) return "open";
       return "base";
     };
     auto pickW = [](const std::vector<NE>& list) { float t = 0; for (auto& e : list) t += e.w; float q = frand() * t; for (auto& e : list) { q -= e.w; if (q <= 0) return std::string(e.t); } return std::string(list[0].t); };
@@ -728,6 +761,7 @@ void registerCreatures() {
   registerLeads();   // sim/leads.cpp
   registerBasket();   // sim/basket.cpp: the wicker basket
   registerJars();   // sim/jars.cpp
+  registerKeepers();
   registerSieve();   // sim/sieve.cpp
   registerQuiver();   // sim/quiver.cpp
   registerGuns();   // sim/guns.cpp

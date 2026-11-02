@@ -65,6 +65,9 @@ void townBuildingPlan(Bld& b, Mulberry32& rnd, const VStyle& st);        // TOWN
 void townBuildingBuild(SP& P, const Town& v, const Bld& b);              // vStamp + TOWN_VT[type].build, this chunk
 const std::vector<std::string>& townDecor(const std::string& kind);
 bool softBlock(BlockId id);    // villages.js soft(): air, not solid, liquid, a plant, leaves, logs, snow layers
+// a town plan's main streets' ends, just past where they stop: {x, z, direction} (structures_roads.cpp runs roads from them)
+std::vector<std::array<int, 3>> townStreetEnds(const StructurePlan& S);
+int townStyleOf(const StructurePlan& S);
 
 // villages.js vRot / vWorld
 inline std::pair<int, int> vRot(int r, int x, int z) { switch (r & 3) { case 0: return {x, z}; case 1: return {-z, x}; case 2: return {-x, -z}; default: return {z, -x}; } }

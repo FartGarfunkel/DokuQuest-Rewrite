@@ -106,13 +106,11 @@ public:
       else if (o.contains("entity")) {
         u32 id = o["entity"].get<u32>();
         op.entTitle = o.value("name", "");
-        op.entItems = [lv, id]() -> json* {
-          Entity* e = lv->entity(id);
-          if (!e || e->removed) return nullptr;
-          if (auto* c = dynamic_cast<Minecart*>(e)) return c->items();
-          if (auto* b = dynamic_cast<Boat*>(e)) return b->items.is_array() ? &b->items : nullptr;
-          return nullptr;
-        };
+        if (lv->isRemote() && o.contains("items") && o["items"].is_array()) {   // a joined world: the host sent what's in it; changes go back
+          auto box = std::make_shared<json>(o["items"]);
+          op.entItems = [box]() -> json* { return box.get(); };
+          op.entSaved = [lv, sp, id](const json& items) { if (lv->net && sp->player) lv->net->action(*sp->player, "entInv", json{{"id", id}, {"items", items}}); };
+        } else op.entItems = [lv, id]() -> json* { return entityContainer(lv->entity(id)); };
       } else return true;
       uiDefer([op](App& ap) { openInventory(ap, op); });
       return true;
@@ -177,7 +175,7 @@ public:
       vec3 rel = f.cam.rel(glm::dvec3(e->pos));
       if (glm::dot(rel, rel) > 128.f * 128.f) continue;
       if (auto* c = dynamic_cast<Minecart*>(e.get())) { if (f.cam.frustum.sphere(rel, 2)) drawCart(s, w, *c, rel, byUid); }
-      else if (auto* b = dynamic_cast<Boat*>(e.get())) { if (f.cam.frustum.sphere(rel, b->ship() ? 10.f : 4.f)) drawBoat(s, w, *b, rel); }
+      else if (auto* b = dynamic_cast<Boat*>(e.get())) { if (f.cam.frustum.sphere(rel, b->ship() ? 10.f * b->scale() : 4.f)) drawBoat(s, w, *b, rel); }
       else if (auto* a = dynamic_cast<PistonAnim*>(e.get())) drawPiston(s, w, *a, f);
       else if (auto* t = dynamic_cast<PrimedTnt*>(e.get())) {
         const VoxelModel& im = itemModel("tnt");
@@ -317,7 +315,7 @@ private:
     Wind& wind = windOf(*s.level);
     float sc = b.scale();
     if (b.ship()) {
-      const float dk = SHIP.deck;
+      const float dk = SHIP.deck;   // the models are the ship's; the galleon draws them scaled up (b.scale())
       Model& hull = model("ship_hull", 1.f / 16, shipHull, ts);
       Model& mast = model("ship_mast", 1.f / 16, [dk] {
         return std::vector<Part>{box({-0.13f, dk, -0.62f}, {0.13f, dk + 7.6f, -0.36f}, "axle"), box({-0.55f, dk + 5.6f, -0.99f}, {0.55f, dk + 5.75f, 0.01f}, "dark_oak_planks"),
@@ -326,18 +324,31 @@ private:
       Model& yard = model("ship_yard", 1.f / 16, [] { return std::vector<Part>{box({-2.4f, -0.07f, -0.07f}, {2.4f, 0.07f, 0.07f}, "axle")}; }, ts);
       Model& sail = model("ship_sail", 1.f / 16, [] { return std::vector<Part>{box({-2.2f, -1, -0.02f}, {2.2f, 0, 0.02f}, "sail")}; }, ts);
       Model& flag = model("ship_flag", 1.f / 32, [] { return std::vector<Part>{box({-0.01f, 0, 0}, {0.01f, 0.35f, 0.9f}, "flag")}; }, ts);
-      VoxelLight L = lightAt(w, b.pos + vec3(0, dk + 0.5f, 0));
-      mat4 base = RX(RZ(RY(T(rel), b.yaw), b.heel * 0.5f + (b.shakeT > 0 ? std::sin(b.age * 60) * 0.03f : 0)), std::sin(b.bob * 1.1f) * 0.012f);
+      VoxelLight L = lightAt(w, b.pos + vec3(0, dk * sc + 0.5f, 0));
+      mat4 base = RX(RZ(RY(glm::scale(T(rel), vec3(sc)), b.yaw), b.heel * 0.5f + (b.shakeT > 0 ? std::sin(b.age * 60) * 0.03f : 0)), std::sin(b.bob * 1.1f) * 0.012f);
       draw(hull, base, L); draw(mast, base, L);
-      // the yard swings to the wind; the sail drops as it's let out and bellies with the wind
-      mat4 ym = RY(base * T(vec3(0, dk + 7.1f, -0.75f)), b.boom * 0.45f);
-      draw(yard, ym, L);
-      float set = b.sail, fill = set * (0.3f + b.eff * 0.7f);
-      for (int k = 0; k < 3; k++) {
-        mat4 sm = ym * T(vec3(0, -0.05f - k * 1.55f * (0.3f + set * 0.7f), -std::sin((k + 0.5f) / 3 * PI) * fill * 0.6f));
-        draw(sail, glm::scale(sm, vec3(1 - k * 0.05f, 1.6f * (0.3f + set * 0.7f), 1)), L);
+      // the yard swings to the wind; the sail drops as it's let out and bellies with the wind (the galleon: a foremast too)
+      auto rig = [&](mat4 at, float k) {
+        mat4 ym = RY(at * T(vec3(0, (dk + 7.1f) * k, -0.75f)), b.boom * 0.45f);
+        draw(yard, glm::scale(ym, vec3(k, 1, 1)), L);
+        float set = b.sail, fill = set * (0.3f + b.eff * 0.7f);
+        for (int i = 0; i < 3; i++) {
+          mat4 sm = ym * T(vec3(0, -0.05f - i * 1.55f * k * (0.3f + set * 0.7f), -std::sin((i + 0.5f) / 3 * PI) * fill * 0.6f));
+          draw(sail, glm::scale(sm, vec3((1 - i * 0.05f) * k, 1.6f * k * (0.3f + set * 0.7f), 1)), L);
+        }
+      };
+      rig(base, 1);
+      if (b.kind == "galleon") {
+        Model& fore = model("ship_foremast", 1.f / 16, [dk] { return std::vector<Part>{box({-0.11f, dk, -0.62f}, {0.11f, dk + 6.0f, -0.4f}, "axle")}; }, ts);
+        mat4 fm = base * T(vec3(0, 0, -2.3f));
+        draw(fore, fm, L); rig(fm * T(vec3(0, -dk * 0.2f, 0)), 0.8f);
+        Model& sprit = model("ship_bowsprit", 1.f / 16, [dk] {   // a bowsprit, and lanterns at the stern
+          return std::vector<Part>{box({-0.06f, dk + 0.6f, -6.4f}, {0.06f, dk + 0.72f, -4.2f}, "axle"), box({-1.2f, dk + 1.12f, 4.3f}, {-1.0f, dk + 1.4f, 4.5f}, "lantern"),
+                                   box({1.0f, dk + 1.12f, 4.3f}, {1.2f, dk + 1.4f, 4.5f}, "lantern")};
+        }, ts);
+        draw(sprit, base, L);
       }
-      draw(flag, RY(T(rel + vec3(0, dk + 7.6f, 0)), wind.dir + PI + std::sin(b.age * 7) * 0.12f), L);
+      draw(flag, RY(glm::scale(T(rel + vec3(0, (dk + 7.6f) * sc, 0)), vec3(sc)), wind.dir + PI + std::sin(b.age * 7) * 0.12f), L);
       if (!b.cargo.is_null() || b.items.is_array()) drawItem(!b.cargo.is_null() ? b.cargo.value("key", "chest") : (b.cargoKey.empty() ? "chest" : b.cargoKey), base * T(vec3(SHIP.cargo.x, dk + 0.5f, SHIP.cargo.y)), L);
       return;
     }

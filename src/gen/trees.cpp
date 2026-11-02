@@ -328,7 +328,7 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
     else if (bv == BV_HIGHLANDS) type = r < 0.85 ? TREE_SPRUCE : TREE_PINE;   // the boreal hills
     else if (bv == BV_TUNDRA) type = TREE_SPRUCE;                             // a lone stunted spruce
     else if (bv == BV_SEASONAL) type = r < 0.62 ? TREE_CHERRY : r < 0.85 ? TREE_OAK : TREE_BIRCH;   // the Seasonal Forest's cherry groves
-    bool bees = (type == TREE_OAK || type == TREE_BIRCH) && !bare && rnd() < (c.biome == BIOME_PLAINS ? 0.06 : 0.02);
+    bool bees = (type == TREE_OAK || type == TREE_BIRCH || type == TREE_CHERRY) && !bare && rnd() < (bv == BV_MEADOW || bv == BV_SEASONAL ? 0.12 : c.biome == BIOME_PLAINS ? 0.08 : c.biome == BIOME_FOREST ? 0.04 : 0.02);
     t.kind = type; t.bare = bare; t.bees = bees; t.mossy = bv == BV_MOSSMIRE; t.gum = bv == BV_REDLANDS; t.seasonal = bv == BV_SEASONAL;
     list.push_back(t);
   }

@@ -185,7 +185,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     sx0 = clampv(hsx, -0.08f, 0.08f); sy0 = clampv(hsy, -0.06f, 0.06f);
   }
   float bobK = st.viewBob ? bobAmt : 0;
-  float hsn = std::sin(bob * 1.1f), bx = hsn * 0.025f * bobK + sx0, by = -hsn * hsn * 0.03f * bobK + sy0;
+  float hsn = std::sin(bob * 1.4f), bx = hsn * 0.025f * bobK + sx0, by = -hsn * hsn * 0.03f * bobK + sy0;
   float eq = 1 - equip;
   float eat = eatAnim > 0 ? std::sin(std::min(1.f, eatAnim / 0.45f) * PI) : 0;
 
@@ -210,6 +210,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     const std::string pk = partToolModelKey(stack);
     const VoxelModel& im = itemModel(rod ? std::string("fishing_rod_cast") : !pk.empty() ? pk : stack.id);   // (the hanging float is drawn live from the tip)
     bool tool = im.kind != VoxelModel::Block && isHandheld(stack.id);
+    const bool bowItem = im.kind != VoxelModel::Block && (stack.id == "bow" || stack.id == "crossbow");   // at rest the size it is drawn (render/fp_bow.cpp)
     float e = side > 0 ? eat : 0, pitch = 1.62f + e * 0.35f, yaw = side * 0.32f;
     mat4 am = glm::translate(mat4(1), vec3(side * (FP_HAND.x + (side > 0 ? bx - e * 0.32f : -bx * 0.6f)),
       FP_HAND.y + by - (side > 0 ? eq * 0.55f : eq * 0.3f) + lift + (side > 0 ? e * 0.2f : std::sin((float)time * 1.3f) * 0.006f), FP_HAND.z + e * 0.12f));
@@ -239,9 +240,9 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       static float T[6] = {0, 0, 0, 0, 0, 0}; static bool tl = false;
       if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_FPHELD")) std::sscanf(v, "%f,%f,%f,%f,%f,%f", &T[0], &T[1], &T[2], &T[3], &T[4], &T[5]); }
       m = glm::translate(m, vec3(side * T[0], T[1], T[2]));
-      m = glm::rotate(m, side * (-1.5f + 0.35f + T[4] + (tool ? 0.22f : 0.f)), vec3(0, 1, 0));   // tools turn a little more face-on
+      m = glm::rotate(m, side * (-1.5f + 0.35f + T[4] + (tool || bowItem ? 0.22f : 0.f)), vec3(0, 1, 0));   // tools turn a little more face-on
       m = glm::rotate(m, side * (0.42f + T[5]), vec3(0, 0, 1));
-      m = glm::scale(m, vec3(0.68f + T[3] + (tool ? 0.26f : 0.f)));   // swords and tools are drawn big, like Minecraft's first person
+      m = glm::scale(m, vec3(bowItem ? 0.85f + T[3] : 0.68f + T[3] + (tool ? 0.26f : 0.f)));   // swords and tools are drawn big, like Minecraft's first person
       if (rod) {   // a rod points out ahead with its tip (and the float hanging from it) in view, not up out of the picture
         static float RT[4] = {0.35f, -0.6f, 0.f, -0.08f}; static bool rl = false;
         if (!rl) { rl = true; if (const char* v = std::getenv("DQ_DEV_ROD")) std::sscanf(v, "%f,%f,%f,%f", &RT[0], &RT[1], &RT[2], &RT[3]); }
@@ -249,7 +250,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
         m = glm::scale(m, vec3(1 + RT[3]));
       }
       // the grip goes in the fist: the handle end of a tool, the bottom of anything else
-      m = glm::translate(m, tool ? vec3(0.3f * side, 0.28f, 0) : vec3(0, 0.3f, 0));
+      m = glm::translate(m, bowItem ? vec3(0.2f * side, -0.15f, 0) : tool ? vec3(0.3f * side, 0.28f, 0) : vec3(0, 0.3f, 0));
       if (side < 0) m = glm::scale(m, vec3(-1, 1, 1));
     }
     bool glint = itemGlints(stack);

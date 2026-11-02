@@ -654,6 +654,11 @@ Creature* rideControl(Level& lv, Player& p, float fwd, float strafe, bool jump, 
   bool descend = sneak && m->T->j.value("flyingMount", false) && m->noGravity && !m->onGround;
   if (sneak && !descend) { dismount(lv, *m, p); return nullptr; }
   m->rideIn = {fwd, strafe, jump, sprint, descend};
+  if (m->ghost) {   // a joined world: the host moves the mount (net: ME "ri"); we sit where it is here
+    float seatY = m->h * 0.7f;
+    if (reg().models.contains(m->modelKey())) seatY = reg().models[m->modelKey()].value("seatY", seatY);
+    p.pos = vec3(m->pos.x, m->pos.y + seatY - 0.28f, m->pos.z); p.vel = vec3(0); p.onGround = true; p.fallDist = 0;
+  }
   return m;
 }
 void petsDefend(Level& lv, Player& owner, Entity& foe) {
@@ -700,6 +705,19 @@ bool useOnCreature(Level& lv, Player& p, Creature& e, bool sneaking) {
     if (!mountable || e.baby) { toast("A saddle won't fit that"); return true; }
     if (e.saddled) { toast("It already has a saddle"); return true; }
     e.saddled = true; use1(p, held); lv.fx->soundUi(p.id, "equip"); toast("Saddled \xE2\x80\x94 use it to ride", "good"); return true;
+  }
+  // saddle bags: 18 slots kept on the mount (data "bags"), opened with sneak-use (the vehicles' entity container screen)
+  if (mine && !held.empty() && held.id == "saddle_bags") {
+    if (!mountable || e.baby || !e.saddled) { toast(e.saddled || !mountable ? "Saddle bags won't fit that" : "Saddle it first"); return true; }
+    if (e.data.contains("bags")) { toast("It already carries saddle bags"); return true; }
+    json b = json::array(); for (int i = 0; i < 18; i++) b.push_back(nullptr);
+    e.data["bags"] = b; e.kept = true; use1(p, held); lv.fx->soundUi(p.id, "equip");
+    toast("Saddle bags on \xE2\x80\x94 sneak and use it to open them", "good"); return true;
+  }
+  if (mine && held.empty() && sneaking && e.data.contains("bags") && e.data["bags"].is_array()) {
+    if (lv.events) lv.events->emit("screenOpen", json::array({p.name, "container", {{"entity", e.id}, {"name", "Saddle Bags"}}}));
+    lv.fx->soundUi(p.id, "chest");
+    return true;
   }
   if (mine && !held.empty() && tameFood(e.type, held.id) && e.hp < e.maxHp) {
     e.hp = std::min(e.maxHp, e.hp + 4); use1(p, held); lv.fx->soundUi(p.id, "eat"); hearts(lv, e.pos + vec3(0, e.h, 0), 2); return true;

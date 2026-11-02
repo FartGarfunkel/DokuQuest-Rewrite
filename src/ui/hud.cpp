@@ -41,12 +41,14 @@ namespace {
 struct Toast { std::string text, kind; double t; double life; std::string pickId; int pickN = 0; };
 struct ChatLine { std::string text, kind; double t; };
 struct Floater { vec3 pos; std::string text; u32 rgb; float life; };
+struct Caption { std::string text; vec3 pos; bool at; double t; };
 static int who() { return app().session ? clampv(app().session->cur, 0, 3) : 0; }   // which split-screen person is selected (0 when playing alone)
 struct HudState {
   std::deque<Toast> toasts;
   std::deque<ChatLine> chat;
   std::vector<std::string> history;
   std::vector<Floater> floaters;
+  std::deque<Caption> captions;   // the sounds about you (settings.captions)
   double chatClosedAt = -100, chatShowUntil = -100;
   u64 menuFrame_[4] = {0, 0, 0, 0};   // per split-screen person; the last frame a menu was on screen: the key that shut it must not open one again in the same frame
   bool chatOpen = false;
@@ -85,6 +87,13 @@ void hudDimName(const std::string& name) { H().dimName = name; H().dimAt = now()
 void hudFloatText(vec3 pos, const std::string& text, u32 rgb) {
   auto& f = H().floaters; f.push_back({pos, text, rgb, 1.1f});
   if (f.size() > 24) f.erase(f.begin());
+}
+void hudCaption(const std::string& text, vec3 pos, bool positional) {
+  if (text.empty()) return;
+  auto& c = H().captions;
+  for (auto& q : c) if (q.text == text) { q.pos = pos; q.at = positional; q.t = now(); return; }   // the same sound again: freshened
+  c.push_back({text, pos, positional, now()});
+  while (c.size() > 6) c.pop_front();
 }
 void hudSaving(bool on) { H().saving = on; if (!on) H().savingOff = now() + 0.6; }
 
@@ -408,6 +417,7 @@ public:
     }
     { int t0 = hudPieceBegin(dl); drawToasts(dl, z, vw); hudPieceEnd(a, dl, t0, "toasts"); }
     { int c0 = hudPieceBegin(dl); drawChat(dl, z, W, H0, vw, vh); hudPieceEnd(a, dl, c0, "chat"); }
+    if (a.settings.captions) { int k0 = hudPieceBegin(dl); drawCaptions(s, dl, z, W, H0); hudPieceEnd(a, dl, k0, "captions"); }
     // saving badge
     if (h.saving || now() < h.savingOff) {
       const char* t = "Saving\xE2\x80\xA6"; ImVec2 ts = textSize(F_SMALL, t, 0, 12 / 12.5f);
@@ -584,6 +594,35 @@ public:
       ImU32 tc = whisper ? IM_COL32(220, 220, 220, 140) : t.kind == "boss" ? col::rgb(0xffd0b0) : col::text;
       text(dl, f, p0 + ImVec2(13, 5) * z, withAlpha(tc, al), t.text.c_str(), maxW, k);
       y = p1.y + 4 * z;
+    }
+  }
+
+  // captions: bottom right, above the hotbar's height, newest at the bottom; an arrow on the side the sound is on
+  void drawCaptions(GameSession& s, ImDrawList* dl, float z, float W, float H0) {
+    auto& c = H().captions;
+    while (!c.empty() && now() - c.front().t > 3.2) c.pop_front();
+    if (c.empty() || !s.player) return;
+    const Player& p = *s.player;
+    const float k = 14.f / 15.f;
+    float wMax = 0; for (auto& q : c) wMax = std::max(wMax, textSize(F_BODY, q.text.c_str(), 0, k).x);
+    const float rowH = textSize(F_BODY, "Ag", 0, k).y + 6 * z, boxW = wMax + 64 * z;
+    float y = H0 - 96 * z - rowH * (float)c.size();
+    const float x1 = W - 12 * z, x0 = x1 - boxW;
+    dl->AddRectFilled(ImVec2(x0, y - 4 * z), ImVec2(x1, y + rowH * c.size() + 4 * z), IM_COL32(10, 15, 13, 180), 3 * z);
+    for (auto& q : c) {
+      const float age = (float)(now() - q.t), al = age > 2.4f ? std::max(0.f, 1 - (age - 2.4f) / 0.8f) : 1.f;
+      ImU32 tc = withAlpha(col::text, 0.45f + 0.55f * al);
+      ImVec2 ts = textSize(F_BODY, q.text.c_str(), 0, k);
+      text(dl, F_BODY, ImVec2((x0 + x1) * 0.5f - ts.x * 0.5f, y + 3 * z), tc, q.text.c_str(), 0, k);
+      if (q.at) {   // which side: the sound's bearing against where you look (yaw 0 looks toward -z)
+        const float dx = q.pos.x - p.pos.x, dz = q.pos.z - p.pos.z;
+        if (dx * dx + dz * dz > 2.25f) {
+          const float fx = -std::sin(p.yaw), fz = -std::cos(p.yaw), side = fx * dz - fz * dx, ahead = fx * dx + fz * dz;
+          const char* arrow = std::fabs(side) < std::fabs(ahead) * 0.35f ? (ahead > 0 ? nullptr : "v") : side > 0 ? ">" : "<";
+          if (arrow) text(dl, F_BODY, ImVec2(*arrow == '<' ? x0 + 8 * z : *arrow == '>' ? x1 - 16 * z : x1 - 16 * z, y + 3 * z), tc, arrow, 0, k);
+        }
+      }
+      y += rowH;
     }
   }
 
