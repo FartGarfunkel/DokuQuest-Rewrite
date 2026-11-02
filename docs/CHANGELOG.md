@@ -47,6 +47,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 **Fixes:**
 - **The Travel Journal, maps, the places list and the quest board no longer crash later in the game** (once a dragon was slain or a great dungeon cleared: some records were saved as numbers and read as yes/no). Checked now at every point of the game's progress.
 - **Placed mob heads no longer flicker:** the block under each head drew a stone box in the same place as the head, and the two fought (most easily seen on a Wither skull on soul sand or a command block).
+- **Sounds that played nothing now do:** a sieve wearing out, the block placer placing and breaking blocks, a snow sentry building its snow, and the summoning wand calling a creature up. Every sound the game plays is checked now.
 
 - Removed Herobrine.
 
