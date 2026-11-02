@@ -4,7 +4,7 @@ project(DokuQuest VERSION 1.0.0 LANGUAGES C CXX)
 set(DQ_VERSION "1.0.0-alpha.15" CACHE STRING "Full game version shown in game and launcher")
 # the launcher's own version: raised only when the launcher itself changes. Updates install just the game (the "-game"
 # packages); the whole package, launcher and all, only when this is newer than the running launcher's (launcher/updater.cpp)
-set(DQ_LAUNCHER_VERSION "1.0.0-alpha.12")
+set(DQ_LAUNCHER_VERSION "1.0.0-alpha.15")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
