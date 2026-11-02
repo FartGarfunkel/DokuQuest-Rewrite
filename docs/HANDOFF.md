@@ -6,6 +6,18 @@ Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`. Third-party credits: `doc
 BTA ideas only). Released: alpha.9, alpha.10 (On the Road) and alpha.11 (Every Creature Its Own) on 2026-11-01 evening;
 alpha.12 (Coloured Light) on 2026-11-02 night.
 
+## Early morning 2026-11-02 (the check and the player's playthrough, before alpha.12 went out)
+Scripted playthroughs (menus, title → worlds, village/trade, night, rain, Nether/End/Skylands, combat, magic, portals,
+under water) found and fixed: every HUD notice shown twice (ClientFx + HudFx both toasted; ui/hud.cpp hudTakesMessages);
+/weather never reached WeatherSystem (gamecommands.cpp now calls set()); the death screen's cause never set
+(combat.cpp playerDie -> p.data.deathCause); /kill always killed the player (now creatures by name / @e[type=] / @e);
+/summon takes Minecraft names (zombie = ghoul, creeper = fuseling) and says "did you mean"; /locate gave band-local y;
+/tp <land> over the void finds the nearest ground; Nether arrival portals search ±8 for a floor and get a wider
+landing; a portal crossing clears the fall start; water vision (render/terrain_fx.cpp: the light floor rises under
+water); death messages for acid/poison/etc.; deaths and hits of 5+ are logged ("X took N (type)"); five silent sound
+names; tools/check_sounds.py (in CI). The playthrough scripts live only in the session scratchpad; the useful ones to
+keep are tools/playtests/*.json.
+
 ## Night 2026-11-01/02 (the user's list "Let's get these done": gameplay, BTA leftovers, art and tools, rendering, MP)
 Released as alpha.12. docs/STATUS.md has the done / partly / not-yet split. Where the new pieces are:
 - **Coloured light:** render/light_colour_layer.cpp (a 64x48x64 RGB volume flooded on a worker, unit 12, common.glsl

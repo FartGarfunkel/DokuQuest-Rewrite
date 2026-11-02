@@ -24,7 +24,7 @@ replacing itself (it now only needs to when DQ_LAUNCHER_VERSION goes up).
   trades. Done 2026-11-02: the BTA mob tweaks; painted doors/trapdoors/buttons/plates/chests, the Seasonal Forest,
   igneous emberstone and chimney smoke were already in.)
 - Audio: the Sound Studio's synth sandbox. (Done 2026-11-02: the sound-by-sound check; five silent names fixed.)
-- Tests: a scripted start-to-finish playthrough; the Nether-portal-invisible test. (Done 2026-11-02: dq-sweep --drops,
+- Tests: the Nether-portal-invisible test as an expect (a portal's window is seen in portal.json's first shot). (Done 2026-11-02: a scripted start-to-finish playthrough, see HANDOFF; dq-sweep --drops,
   every block × every tool, in CI; Travel Journal checks at every story stage in test_endstory.)
 - Creature looks: sheared-sheep skins from the user's sheet; more looks per land fuseling; villager looks.
 - Story: the player-triggered Wither Storm finale.
