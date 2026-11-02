@@ -30,6 +30,8 @@ const RigModel* rigModel(const std::string& key) {
   M.scale = num(d, "scale", 1); M.hipY = num(d, "hipY", 0); M.hasRollY = d.contains("rollY"); M.rollY = num(d, "rollY", 0);
   M.bodyDepth = num(d, "bodyDepth", 4); M.height = num(d, "height", 16); M.bodyY = num(d, "bodyY", 0); M.bodyLen = num(d, "bodyLen", 12);
   M.legH = num(d, "legH", 6); M.pitch0 = num(d, "pitch0", 0); M.seatY = num(d, "seatY", 0);
+  M.packBase = d.value("packBase", std::string()); M.packTint = d.value("packTint", json());
+  if (d.contains("packTex") && d["packTex"].is_array()) for (auto& t : d["packTex"]) if (t.is_string()) M.packTex.push_back(t.get<std::string>());
   M.gallop = flag(d, "gallop"); M.armsReach = flag(d, "armsReach"); M.heavy = flag(d, "heavy"); M.flukes = flag(d, "flukes");
   for (auto& pj : d["parts"]) {
     RigPart p;

@@ -36,6 +36,19 @@ struct CreatureType {
   struct Drop { std::string id; int lo = 0, hi = 0; float chance = 1; };
   std::vector<Drop> drops;
   struct OnHit { float slow = 0, chill = 0, poison = 0, fire = 0; bool any = false; } onHit;
+  // A look of its own with a story (mobs.json "variantDefs", tools/port/mob_variants.py): a model of its own, how often,
+  // where it turns up (lands, underground, near a village, the dark), what it carries, what it drops on top of the usual.
+  struct VariantDef {
+    std::string model, label, held;
+    float w = 1;
+    std::vector<std::string> lands;      // habitats (sim/creature_spawn.cpp habitatAt names); empty = anywhere
+    bool cave = false, surface = false, village = false, water = false;
+    int dim = -1;                        // only in this dimension (-1 = any)
+    std::vector<Drop> drops;
+    bool open() const { return lands.empty() && !cave && !surface && !village && !water && dim < 0; }
+  };
+  std::vector<VariantDef> vdefs;
+  const VariantDef* vdef(const std::string& model) const { for (auto& v : vdefs) if (v.model == model) return &v; return nullptr; }
   json j;
   bool eats(const std::string& item) const { return std::find(food.begin(), food.end(), item) != food.end(); }
   bool hunts(const std::string& t) const { return std::find(prey.begin(), prey.end(), t) != prey.end(); }
@@ -77,6 +90,7 @@ public:
   const CreatureType* T;               // never null
   std::string variant;                 // model key when the type comes in coats/colours
   const std::string& modelKey() const { return variant.empty() ? T->model : variant; }
+  std::string label() const;           // "a miner skeleton" for a variant with a story, else the type's label ("" if none)
   bool alive() const { return deathTime == 0; }
   bool ghost = false;                  // a network replica: only smooths toward snapshots
   bool calm = false;                   // dev zoo: stands still, never attacks

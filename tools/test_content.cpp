@@ -16,6 +16,7 @@
 #include "core/tool_parts.h"
 #include "sim/creature.h"
 #include "sim/creature_entities.h"
+#include "sim/creature_rig.h"
 #include <thread>
 #include <cstdio>
 using namespace dq;
@@ -33,6 +34,7 @@ struct RecFx : LevelFx {
   bool heard(const std::string& s) const { for (auto& m : msgs) if (m.find(s) != std::string::npos) return true; return false; }
 };
 
+namespace dq { bool setCreatureLook(Entity& e, const std::string& look); }
 static Level* L; static Player* P; static EventBus bus; static RecFx fx;
 static BlockId B(const char* k) { return reg().blockId(k); }
 static void tick(double secs) { for (double t = 0; t < secs; t += TICK_DT) L->tick(TICK_DT); }
@@ -376,6 +378,46 @@ int main(int argc, char** argv) {
       }
       wi->removed = true;
     }
+  }
+
+  // ---- every creature's looks (tools/port/mob_variants.py, mobs.json variantDefs)
+  {
+    printf("\n[looks]\n");
+    int types = 0, looks = 0, bad = 0;
+    for (auto& [k, v] : reg().mobs.items()) if (const CreatureType* T = creatureType(k)) if (!T->vdefs.empty()) {
+      types++;
+      for (auto& d : T->vdefs) { looks++; const RigModel* M = rigModel(d.model); const RigModel* B = rigModel(T->model); if (!M || !B || M->parts.size() < B->parts.size()) { bad++; printf("  bad look %s\n", d.model.c_str()); } }
+    }
+    check(types > 100 && looks > 200 && bad == 0, "every look is a whole model of its own (" + std::to_string(looks) + " looks of " + std::to_string(types) + " creatures)");
+    // underground (a stone room with a roof, in the dark), miners turn up; under the open sky, never
+    World& w = L->world();
+    const BlockId stone = reg().blockId("stone");
+    const int cx = -8, cz = 24;
+    for (int x = cx - 3; x <= cx + 3; x++) for (int z = cz - 3; z <= cz + 3; z++) for (int y = Y; y <= Y + 6; y++) {
+      const bool wall = x == cx - 3 || x == cx + 3 || z == cz - 3 || z == cz + 3 || y == Y || y == Y + 6;
+      w.setBlock(x, y, z, wall ? stone : AIR, 0);
+    }
+    tick(0.2);   // (the light engine catches up)
+    int minerIn = 0, minerOut = 0;
+    for (int i = 0; i < 400; i++) {
+      if (Creature* c = spawnCreature(*L, P->realm, "skeleton", vec3(cx + 0.5f, Y + 1, cz + 0.5f))) { minerIn += c->variant == "skeleton_miner"; c->removed = true; }
+      if (Creature* c = spawnCreature(*L, P->realm, "skeleton", vec3(cx + 28.5f, Y + 1, cz - 30.5f))) { minerOut += c->variant == "skeleton_miner"; c->removed = true; }
+    }
+    tick(0.05);
+    check(minerIn > 10 && minerOut == 0, "miner skeletons turn up underground, never under the sky (" + std::to_string(minerIn) + " / " + std::to_string(minerOut) + ")");
+    // a look by name, with what it carries; its story's drops when it dies
+    Creature* sk = spawnCreature(*L, P->realm, "skeleton", vec3(cx + 28.5f, Y + 1, cz - 26.5f));
+    check(sk && setCreatureLook(*sk, "miner") && sk->variant == "skeleton_miner" && sk->heldItem == "stone_pickaxe" && sk->label() == "a miner skeleton", "a look by name: the miner, his pickaxe and his name");
+    int arrows = 0;
+    for (int i = 0; i < 3; i++) {
+      Creature* pin = spawnCreature(*L, P->realm, "skeleton", vec3(cx + 24.5f + i * 8, Y + 1, cz - 20.5f));
+      if (!pin || !setCreatureLook(*pin, "pincushion")) continue;
+      std::vector<Entity*> before; for (auto& e : L->entities()) before.push_back(e.get());
+      pin->die(*L, DamageSrc{});
+      for (auto& e : L->entities()) if (std::find(before.begin(), before.end(), e.get()) == before.end() && e->type == "item" && e->data.contains("stack") && e->data["stack"].value("id", "") == "arrow") arrows += e->data["stack"].value("n", 1);
+    }
+    check(arrows >= 5, "skeletons shot full of arrows leave their arrows (" + std::to_string(arrows) + " from 3)");
+    if (sk) sk->removed = true;
   }
   lvp->close();
   printf("\n%d passed, %d failed\n", passes, fails);

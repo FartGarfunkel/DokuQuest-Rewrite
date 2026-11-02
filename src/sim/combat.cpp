@@ -9,6 +9,7 @@
 #include <random>
 
 namespace dq {
+std::string creatureLabelOf(Entity& e);   // sim/creature.cpp (creature.h clashes with gameplay.h here)
 float pathMeleeFactor(const Player& p); bool pathCheatDeath(Level& lv, Player& p);   // sim/villager_quests.cpp (the paths' talents)
 
 bool creatureTakesHit(Level& lv, Entity& e, float amount, const DamageSource& src, float& dealt);   // sim/mob_combat.cpp
@@ -235,7 +236,7 @@ void playerDie(Level& lv, Player& p, const DamageSource& src) {
   std::string cause = causes.count(src.type) ? causes.at(src.type) : "You died";
   Entity* a = src.attacker ? lv.entity(src.attacker) : nullptr;
   if (a && !a->isPlayer()) {
-    std::string label = mobType(a->type).value("label", std::string());
+    std::string label = creatureLabelOf(*a);   // a variant's own ("a miner skeleton"), else the type's
     std::string t = a->type; std::replace(t.begin(), t.end(), '_', ' ');
     cause = "You were slain by " + (a->type == "cinder_golem" ? std::string("the Cinder Golem") : !label.empty() ? label : "a " + t);
   } else if (a && a->isPlayer()) cause = "You were slain by " + static_cast<Player*>(a)->name;

@@ -14,6 +14,8 @@
 #include <set>
 
 namespace dq {
+bool setCreatureLook(Entity& e, const std::string& look);   // sim/creature.cpp (creature.h clashes with gameplay.h here)
+int spawnLookRow(Level& lv, int realm, vec3 at, float yaw, const std::string& type);
 
 static double rnd() { static thread_local std::mt19937 g{std::random_device{}()}; return std::uniform_real_distribution<double>(0, 1)(g); }
 
@@ -321,7 +323,7 @@ static void registerBuiltinCommands() {
   C("setworldspawn", "", "Make here the world spawn", true, [](CommandCtx& c, std::vector<std::string>&) -> std::string {
     c.lv.info.spawn = c.p.pos; return "World spawn set";
   });
-  C("summon", "<creature> [count]", "Summon creatures", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
+  C("summon", "<creature> [count] [look]", "Summon creatures", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
     std::string t = a.empty() ? "" : toLower(a[0]);
     if (t == "spider_jockey") t = "spider";
     const json& M = reg().mobs;
@@ -334,9 +336,15 @@ static void registerBuiltinCommands() {
       e->pos = c.p.pos + vec3(L.x * 3 + (float)(rnd() - 0.5) * 2, 0.5f, L.z * 3 + (float)(rnd() - 0.5) * 2);
       const json& T = M[t];
       e->hp = e->maxHp = T.value("hp", 10.0f); e->w = T.value("w", e->w); e->h = T.value("h", e->h);
+      if (a.size() >= 3) setCreatureLook(*e, toLower(a[2]));   // a look by name: "miner" or "skeleton_miner"
       c.lv.spawn(std::move(e));
     }
     return "Summoned " + std::to_string(n) + " " + t;
+  });
+  C("looks", "<creature>", "Every look a creature comes in, side by side", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
+    if (a.empty()) throw CommandUsage{};
+    int n = spawnLookRow(c.lv, c.p.realm, c.p.pos, c.p.yaw, toLower(a[0]));
+    return n ? std::to_string(n) + " looks of " + toLower(a[0]) : "No such creature";
   });
   C("setblock", "<x y z> <block>", "Place one block", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
     int x = coord(c.p, a, 0, 0), y = coord(c.p, a, 1, 1), z = coord(c.p, a, 2, 2);

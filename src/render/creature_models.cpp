@@ -182,17 +182,41 @@ static std::array<FaceSpec, 6> pmFaces(PM box, const PMo& o) {
   for (int i = 0; i < 6; i++) out[i] = {f[i].first, f[i].second, i == 2 || i == 3 ? vec2(0, 1) : sl};
   return out;
 }
+// A variant's colours on its base's pack skin (RigModel::packTint): hue turn (degrees), saturation and value multipliers,
+// colVal = a value multiplier for the coloured texels only (brown patches to black, white stays white), mix = [r,g,b,amount].
+static void tintImg(Img& im, const json& t) {
+  if (!im.ok() || !t.is_object()) return;
+  const float hue = t.value("hue", 0.f), sat = t.value("sat", 1.f), val = t.value("val", 1.f), colVal = t.value("colVal", 1.f);
+  vec4 mix(0); if (t.contains("mix") && t["mix"].is_array() && t["mix"].size() >= 4) for (int i = 0; i < 4; i++) mix[i] = t["mix"][i].get<float>();
+  for (size_t i = 0; i + 3 < im.px.size(); i += 4) {
+    if (im.px[i + 3] < 8) continue;
+    float r = im.px[i] / 255.f, g = im.px[i + 1] / 255.f, b = im.px[i + 2] / 255.f;
+    float mx = std::max({r, g, b}), mn = std::min({r, g, b}), d = mx - mn, h = 0, s = mx > 0 ? d / mx : 0, v = mx;
+    if (d > 1e-5f) { h = mx == r ? std::fmod((g - b) / d, 6.f) : mx == g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if (h < 0) h += 360; }
+    const float s0 = s;
+    h = std::fmod(h + hue + 360, 360.f); s = clampv(s * sat, 0.f, 1.f); v = clampv(v * val * (1 + (colVal - 1) * std::min(1.f, s0 * 1.6f)), 0.f, 1.f);
+    float c = v * s, x = c * (1 - std::fabs(std::fmod(h / 60, 2.f) - 1)), m = v - c, rr = 0, gg = 0, bb = 0;
+    if (h < 60) { rr = c; gg = x; } else if (h < 120) { rr = x; gg = c; } else if (h < 180) { gg = c; bb = x; } else if (h < 240) { gg = x; bb = c; } else if (h < 300) { rr = x; bb = c; } else { rr = c; bb = x; }
+    rr += m; gg += m; bb += m;
+    if (mix.w > 0) { rr += (mix.x - rr) * mix.w; gg += (mix.y - gg) * mix.w; bb += (mix.z - bb) * mix.w; }
+    im.px[i] = (u8)clampv((int)(rr * 255 + 0.5f), 0, 255); im.px[i + 1] = (u8)clampv((int)(gg * 255 + 0.5f), 0, 255); im.px[i + 2] = (u8)clampv((int)(bb * 255 + 0.5f), 0, 255);
+  }
+}
 // The faces of every part the pack has a picture for; hidden = parts to put away.
 static bool packSkin(const RigModel& M, const std::string& key, std::vector<std::array<Pic, 6>>& faces, std::vector<u8>& hidden, std::string& used) {
   PackFS* pk = activePack();
   if (!pk || !pk->hasTextures()) return false;
   auto it = packMobs().find(key);
+  if (it == packMobs().end() && !M.packBase.empty()) it = packMobs().find(M.packBase);   // a variant: its base's skin
   if (it == packMobs().end()) return false;
   const PMSpec& spec = it->second;
   Img img; std::string rel;
-  for (auto& t : spec.tex) { img = loadPackPic(pk, t); if (img.ok()) { rel = t; break; } }
+  for (auto& t : M.packTex) { img = loadPackPic(pk, t); if (img.ok()) { rel = t; break; } }   // the pack's own picture of this look
+  const bool own = img.ok();
+  if (!own) for (auto& t : spec.tex) { img = loadPackPic(pk, t); if (img.ok()) { rel = t; break; } }
   if (!img.ok()) return false;
   Img over = loadPackPic(pk, spec.overlay), wool = loadPackPic(pk, spec.wool), eyes = loadPackPic(pk, spec.eyes);
+  if (!own && !M.packBase.empty()) { tintImg(img, M.packTint); tintImg(over, M.packTint); }
   float k = img.w / (float)spec.texW;
   std::set<std::string> empty, done;
   for (const PMPart& pp : spec.parts) {
@@ -249,13 +273,20 @@ static void voxelPart(VoxelGrid& g, ivec3 n, const std::array<Pic, 6>& F, bool g
   g.resize(n);
   auto at = [&](int f, float s, float t) -> u32 { if (F[f].empty()) return 0; int x = clampv((int)(s * TILE), 0, TILE - 1), y = clampv((int)(t * TILE), 0, TILE - 1); return F[f][y * TILE + x]; };
   auto open = [&](int f) { return F[f].empty(); };
+  int thinAxis = -1;
+  { const int d[3] = {n.x, n.y, n.z}; for (int a = 0; a < 3; a++) if (d[a] <= 2 && d[(a + 1) % 3] >= 4 && d[(a + 2) % 3] >= 4) thinAxis = a; }
   u32 avg = 0; { u64 r = 0, gg = 0, b = 0, k = 0; for (auto& f : F) for (u32 c : f) if (c) { r += c & 255; gg += (c >> 8) & 255; b += (c >> 16) & 255; k++; } if (k) avg = voxRGBA((int)(r / k), (int)(gg / k), (int)(b / k)); }
   for (int z = 0; z < n.z; z++) for (int y = 0; y < n.y; y++) for (int x = 0; x < n.x; x++) {
     vec3 u((x + 0.5f) / n.x, (y + 0.5f) / n.y, (z + 0.5f) / n.z);
     u32 c[6] = {at(0, 1 - u.z, 1 - u.y), at(1, u.z, 1 - u.y), at(2, u.x, u.z), at(3, 1 - u.x, u.z), at(4, u.x, 1 - u.y), at(5, 1 - u.x, 1 - u.y)};
-    // the visual hull: on every axis, one of the two pictures must be solid there (open faces don't carve)
+    // the visual hull: on every axis, one of the two pictures must be solid there (open faces don't carve). A thin
+    // plane (a leaf, a fern, a cobweb, a coral fan, a wing) is cut by its face pictures only: its edges are a strip of
+    // the picture squeezed to a voxel or two, and would carve the shape away.
     bool keep = true;
-    for (int a = 0; a < 3 && keep; a++) if (!(c[a * 2] || c[a * 2 + 1] || (open(a * 2) && open(a * 2 + 1)))) keep = false;
+    for (int a = 0; a < 3 && keep; a++) {
+      if (thinAxis >= 0 && a != thinAxis) continue;
+      if (!(c[a * 2] || c[a * 2 + 1] || (open(a * 2) && open(a * 2 + 1)))) keep = false;
+    }
     if (!keep) continue;
     float d[6] = {(float)(n.x - 1 - x), (float)x, (float)(n.y - 1 - y), (float)y, (float)(n.z - 1 - z), (float)z};
     int best = -1; for (int f = 0; f < 6; f++) if (c[f] && (best < 0 || d[f] < d[best])) best = f;
@@ -324,7 +355,7 @@ static void partGrid(const TileSet& ts, const RigModel& M, const std::string& ke
   // original's tiles a foot of three toes forward and one back is added under the stick.
   bool bird = p.role == "bleg" && size.x <= 1.6f / 16;
   if (bird && packed) { lo = vec3(-1.5f, p.min.y * 16, -2.5f) / 16.f; size = vec3(3, size.y * 16, 3) / 16.f; }
-  if (packed) if (auto si = packMobs().find(key); si != packMobs().end())
+  if (packed) if (auto si = packMobs().find(packMobs().count(key) || M.packBase.empty() ? key : M.packBase); si != packMobs().end())
     if (auto bi = si->second.box.find(p.name); bi != si->second.box.end()) {   // model space -> this part's own space (whatever rig the creature has)
       const auto& b = bi->second; vec3 piv(0); for (int q = (int)i; q >= 0; q = M.parts[q].parent) piv += M.parts[q].pivot;
       lo = vec3(b[0], b[1], b[2]) / 16.f - piv; size = vec3(b[3], b[4], b[5]) / 16.f;

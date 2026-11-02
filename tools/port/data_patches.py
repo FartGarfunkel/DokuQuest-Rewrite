@@ -433,3 +433,6 @@ for k, v in list(items.items()):
 
 # ---- the biome fuselings and golems built from their lands' blocks (after the tinted ones above) ----
 _s6 = _u.spec_from_file_location('biome_mobs', pathlib.Path(__file__).with_name('biome_mobs.py')); _m6 = _u.module_from_spec(_s6); _s6.loader.exec_module(_m6); _m6.main(d)
+
+# ---- every creature's looks with stories of their own (tools/port/mob_variants.py; after the biome mobs, which get theirs too) ----
+_s8 = _u.spec_from_file_location('mob_variants', pathlib.Path(__file__).with_name('mob_variants.py')); _m8 = _u.module_from_spec(_s8); _s8.loader.exec_module(_m8); _m8.main(d)

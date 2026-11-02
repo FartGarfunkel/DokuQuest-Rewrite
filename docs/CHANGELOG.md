@@ -5,6 +5,28 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.11 — Every Creature Its Own (November 2026)
+
+**Every creature comes in looks of its own:** 255 of them across 121 creatures, each built a little differently and each from somewhere in the world. Where it turns up, what it carries and what it drops all come from its story.
+
+- **Skeletons:** one shot full of arrows (it drops them), a miner with a lamp helmet and a pickaxe deep underground, mossy ones in the woods and swamps, sunken ones grown over with coral on the coasts, webbed ones in caves, a ranger with a quiver and a hat, and now and then a fallen knight.
+- **Ghouls:** miners in the dark with coal and torches on them, farmhands in straw hats with hoes near villages, frozen ones crusted with ice in the snow, overgrown ones under moss and vines in the jungles and swamps, lost travellers with a pack and a bedroll (and sometimes a compass), fallen soldiers in old helmets.
+- **Husks:** prospectors with wide hats and gold in their pockets, embalmed ones trailing wrappings, and ones stuck full of cactus spines. **Drowned:** barnacled, reef-grown with coral, a sailor with a fishing rod and an eyepatch, and one anchored in chains.
+- **Strays** with icicles or snow on their shoulders, or carrying a lantern; **scorched skeletons** with obsidian shards or chains; **wither skeletons** with a broken crown; **pigmen** in gold plates or bandages; **endermen** grown with purpur crystals or crusted with end stone; **witches** with mushrooms on their hats, from the bog, or lit with candles; **raiders** with a banner, a spyglass or an axe; **pirates** with an eyepatch, a parrot on the arm or a deckhand's stripes; **ogre chieftains**, **mossback ogres**, scarred **werewolves**, lantern **wraiths**; **guards** who are veterans, archers or lamplighters.
+- **Golems built of whatever their makers had:** copper with a lightning rod on its head, amethyst crystals in the mountains, a mushroom golem under a red cap, a cactus golem in flower, prismarine on the coasts, honeycomb in the meadows, quartz under snow, an ancient mossy stone one deep in the woods, a rusted one, and rarely gold, emerald or diamond. Village golems sometimes carry a flower.
+- **Cows:** dairy, pinto, ashen, umbra, sunset, belted, a shaggy highland cow in the cold, a belled cow by villages and longhorns on the savanna. **Pigs:** piebald, pink-footed, sooty, spotted, mottled, mud-caked, and a truffle hunter with a mushroom on its head. **Sheep:** patched, rocky, fuzzy, rams with curled horns and a bellwether with a bell. **Chickens:** stormy, amber, bronzed, gold-crested, skewbald, midnight, a fluffy silkie and a scrawny one.
+- **Wolves:** brown, husky, golden, black, chestnut, spotted, striped, snowy, a shepherd, a pug, and the rare scarred pack leader. Each wears its own picture when your resource pack has one.
+- **Out in the wild:** draft horses with feathered hooves, painted horses, a lost warhorse in its barding, runaway pack donkeys and caravan llamas with bags (and what was in them), trader camels, longhorn and frost-bearded goats, dappled and moss-antlered deer, old tuskers, honey-pawed bears with a bee about them, calico, ginger, siamese and tuxedo cats, a ship's cat on the coast, white lions and tigers, a jaguar, silver and cross foxes, rabbits of six coats and the very rare jackalope, harvest mice, mossback crocodiles, barnacled turtles, lily-hatted frogs.
+- **Crawlers and the rest:** spiders carrying egg sacs, mossback, frost and sand spiders, web-weavers, crystal cave spiders; slimes that swallowed a skull or a gold nugget; weeping ghasts; scarred old sharks; drakes with old arrows in their hides; elder fuselings of every land; and more.
+- **/looks <creature>** sets every look of a creature out in a row in front of you, and **/summon <creature> [count] [look]** summons one look.
+- **Your death message names the look that got you** ("You were slain by a miner skeleton").
+
+**Smaller things:**
+
+- **Thin things on creatures keep their shape:** leaves, ferns, cobwebs, coral fans and wings were cut down by their own edges.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.10 — On the Road (November 2026)
 
 **Between the villages:**

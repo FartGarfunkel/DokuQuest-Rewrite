@@ -10,6 +10,9 @@
 #include "sim/physics.h"
 #include "sim/player.h"
 #include "core/registry.h"
+#include "gen/structures.h"
+#include "gen/structures_api.h"
+#include "gen/generator.h"
 #include <random>
 #include <cstring>
 
@@ -47,6 +50,18 @@ static CreatureType parseType(const std::string& key, const json& j) {
   if (j.contains("drops") && j["drops"].is_array())
     for (auto& d : j["drops"]) if (d.is_array() && d.size() >= 4 && d[0].is_string() && reg().item(d[0].get<std::string>()))
       t.drops.push_back({d[0].get<std::string>(), d[1].get<int>(), d[2].get<int>(), d[3].get<float>()});
+  if (j.contains("variantDefs") && j["variantDefs"].is_array())
+    for (auto& v : j["variantDefs"]) if (v.is_object() && v.contains("model") && v["model"].is_string()) {
+      CreatureType::VariantDef d; d.model = v["model"].get<std::string>();
+      d.w = v.value("w", 1.f); d.label = v.value("label", std::string()); d.held = v.value("held", std::string());
+      if (v.contains("lands") && v["lands"].is_array()) for (auto& l : v["lands"]) if (l.is_string()) d.lands.push_back(l.get<std::string>());
+      d.cave = v.value("cave", false); d.surface = v.value("surface", false); d.village = v.value("village", false); d.water = v.value("water", false);
+      d.dim = v.value("dim", -1);
+      if (v.contains("drops") && v["drops"].is_array())
+        for (auto& e : v["drops"]) if (e.is_array() && e.size() >= 4 && e[0].is_string() && reg().item(e[0].get<std::string>()))
+          d.drops.push_back({e[0].get<std::string>(), e[1].get<int>(), e[2].get<int>(), e[3].get<float>()});
+      t.vdefs.push_back(std::move(d));
+    }
   // The original left a few creatures without a voice (their AI made its own noises, or none): give them a
   // fitting one so every creature is heard when it calls, is hit and dies. ("slime" was never a sound name.)
   if (t.sound == "slime") t.sound = "squish";
@@ -131,12 +146,93 @@ Entity* dropItem(Level& lv, int realm, const ItemStack& st, vec3 p, bool scatter
   e->w = 0.15f; e->h = 0.3f;
   return lv.spawn(std::move(e));
 }
+// The look it comes in, by where it turns up (mobs.json variantDefs): a miner down in the dark, a frozen one in the snow,
+// a farmer by a village. Any that fit, by weight; the ones that fit anywhere are always among them.
+static void placeVariant(Level& lv, Creature& c) {
+  const CreatureType& T = *c.T;
+  if (T.vdefs.empty() || c.realm != REALM_MAIN) return;
+  World& w = lv.world(c.realm);
+  const int x = ifloor(c.pos.x), y = ifloor(c.pos.y), z = ifloor(c.pos.z), dim = dimOfY(y);
+  const int top = w.surfaceY(x, z, dim);
+  const bool cave = top > y + 3 && (w.getLight(x, y, z) >> 4) < 4;
+  const bool wet = reg().tLiquid[w.getBlock(x, y, z)] == 1;
+  std::string land; bool landDone = false;
+  int village = -1;
+  float tot = 0; std::vector<const CreatureType::VariantDef*> ok;
+  for (auto& v : T.vdefs) {
+    if (v.dim >= 0 && v.dim != dim) continue;
+    if (v.cave && !cave) continue;
+    if (v.surface && cave) continue;
+    if (v.water && !wet) continue;
+    if (!v.lands.empty()) {
+      if (dim != DIM_OVERWORLD) continue;
+      if (!landDone) { land = habitatAt(w, x, z, w.getBlock(x, y - 1, z)); landDone = true; }
+      if (std::find(v.lands.begin(), v.lands.end(), land) == v.lands.end()) continue;
+    }
+    if (v.village) {
+      if (village < 0) {
+        village = 0;
+        if (lv.gen) if (const StructureIndex* idx = structureIndexOf(lv.gen->forDim(dim))) if (idx->active()) {
+          std::vector<const StructurePlan*> plans; idx->near(x, z, 72, plans, NEAR_PLACES);
+          for (const StructurePlan* S : plans) if (S && S->type >= 0 && S->type < (int)structureTypes().size() && structureTypes()[S->type].key == "village") village = 1;
+        }
+      }
+      if (!village) continue;
+    }
+    ok.push_back(&v); tot += v.w;
+  }
+  if (ok.empty() || tot <= 0) return;
+  float q = frand() * tot;
+  const CreatureType::VariantDef* pick = ok.back();
+  for (auto* v : ok) if ((q -= v->w) <= 0) { pick = v; break; }
+  c.variant = pick->model == T.model ? "" : pick->model;
+  if (!pick->held.empty()) c.heldItem = pick->held;
+}
+bool setCreatureLook(Entity& e, const std::string& look) {
+  auto* c = dynamic_cast<Creature*>(&e);
+  if (!c) return false;
+  std::string v = look; if (!reg().models.contains(v)) v = c->type + "_" + v;
+  if (!reg().models.contains(v)) return false;
+  c->variant = v == c->T->model ? "" : v;
+  if (const auto* d = c->T->vdef(v)) if (!d->held.empty()) c->heldItem = d->held;
+  return true;
+}
+// /looks <creature>: every look it comes in, side by side in front of you, standing still to be looked at
+int spawnLookRow(Level& lv, int realm, vec3 at, float yaw, const std::string& type) {
+  const CreatureType* T = creatureType(type);
+  if (!T) return 0;
+  std::vector<std::string> keys;
+  if (!T->vdefs.empty()) for (auto& v : T->vdefs) keys.push_back(v.model); else if (!T->variants.empty()) keys = T->variants; else keys.push_back(T->model);
+  const vec3 fwd(-std::sin(yaw), 0, -std::cos(yaw)), side(std::cos(yaw), 0, -std::sin(yaw));
+  const float gap = std::max(1.2f, T->w * 2.6f + 0.6f);
+  int n = 0;
+  for (size_t i = 0; i < keys.size(); i++) {
+    const vec3 p = at + fwd * (3.f + T->w * 2) + side * ((float)i - (keys.size() - 1) * 0.5f) * gap;
+    Creature* c = spawnCreature(lv, realm, type, p);
+    if (!c) continue;
+    c->variant = keys[i] == T->model ? "" : keys[i];
+    if (const auto* d = T->vdef(keys[i])) { if (!d->held.empty()) c->heldItem = d->held; }
+    c->calm = true; c->yaw = yaw + PI; c->kept = false; c->data["noDrops"] = true;
+    n++;
+  }
+  return n;
+}
+std::string creatureLabelOf(Entity& e) {
+  if (auto* c = dynamic_cast<Creature*>(&e)) return c->label();
+  return std::string();
+}
+std::string Creature::label() const {
+  if (!variant.empty()) if (const auto* v = T->vdef(variant)) if (!v->label.empty()) return v->label;
+  return T->label;
+}
+
 Creature* spawnCreature(Level& lv, int realm, const std::string& type, vec3 p) {
   if (!isCreatureType(type)) return nullptr;
   auto e = createEntity(type);
   auto* c = dynamic_cast<Creature*>(e.get());
   if (!c) return nullptr;
   c->realm = realm; c->pos = p; c->prevPos = p;
+  placeVariant(lv, *c);
   const CreatureType& T = *c->T;
   // husbandry.js: a land animal, once it exists, is here to stay
   if (!T.hostile && !T.water && !T.ambient && T.ai != "swimmer" && !T.roosts && type != "bee") c->kept = true;
@@ -163,7 +259,11 @@ Creature::Creature(const std::string& type) {
   if (T->woolly) { float r = frand(); color = r < 0.82f ? "white" : r < 0.87f ? "black" : r < 0.92f ? "gray" : r < 0.97f ? "light_gray" : r < 0.998f ? "brown" : "pink"; }
   if (T->layer) eggT = 300 + frand() * 300;
   if (T->j.contains("held") && T->j["held"].is_string()) heldItem = T->j["held"];
-  if (!T->variants.empty()) variant = T->variants[(size_t)(frand() * T->variants.size()) % T->variants.size()];
+  if (!T->vdefs.empty()) {   // one that turns up anywhere (spawnCreature picks again with the place in mind)
+    float tot = 0; for (auto& v : T->vdefs) if (v.open()) tot += v.w;
+    float q = frand() * tot;
+    for (auto& v : T->vdefs) if (v.open() && (q -= v.w) <= 0) { variant = v.model == T->model ? "" : v.model; break; }
+  } else if (!T->variants.empty()) variant = T->variants[(size_t)(frand() * T->variants.size()) % T->variants.size()];
   if ((type == "ghoul" || type == "charred_ghoul" || type == "husk") && frand() < 0.1f) {
     const char* W[] = {"iron_sword", "iron_shovel", "stone_axe", "gold_sword", "copper_sword", "stone_sword", "iron_axe", "wooden_sword"};
     heldItem = W[(int)(frand() * 8) & 7];
@@ -387,6 +487,8 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   vec3 at = pos + vec3(0, 0.5f, 0);
   bool noDrops = data.contains("noDrops") && data["noDrops"] == true;   // summons, a called-back dragon (its own table)
   if (!baby && !noDrops) for (auto& d : T->drops) if (frand() < d.chance) { int n = roll(d.lo, d.hi); if (n > 0) dropItem(lv, realm, ItemStack(d.id, n), at, true); }
+  if (!baby && !noDrops && !variant.empty()) if (const auto* vd = T->vdef(variant))   // what its story left on it
+    for (auto& d : vd->drops) if (frand() < d.chance) { int n = roll(d.lo, d.hi); if (n > 0) dropItem(lv, realm, ItemStack(d.id, n), at, true); }
   // mob heads, only to a player's blow: a wither skeleton's skull 2.5 % of the time (Minecraft), any other head 1 %
   if (!baby && !noDrops && src.attacker && dynamic_cast<Player*>(ent(lv, src.attacker))) {
     std::string hk = type + "_skull"; if (!reg().item(hk)) hk = type + "_head";
