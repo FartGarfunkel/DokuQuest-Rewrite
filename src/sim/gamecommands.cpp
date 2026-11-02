@@ -9,6 +9,7 @@
 #include "sim/weather.h"
 #include "gen/structures_api.h"
 #include "gen/generator.h"
+#include <map>
 #include <random>
 #include <regex>
 #include <set>
@@ -24,6 +25,28 @@ struct CommandCtx { Level& lv; Player& p; };
 struct CommandUsage {};   // thrown by a command to print its usage line
 using GameCmd = std::function<std::string(CommandCtx&, std::vector<std::string>&)>;
 // A game command in the registry: a player runs it; usage lines and errors come back as text.
+// A creature named the way a player types it: our key, "@e[type=x]", or a Minecraft name for ours (zombie is a ghoul,
+// creeper a fuseling). "" when there's none.
+static std::string creatureKey(std::string t) {
+  t = toLower(t);
+  if (t.rfind("@e[type=", 0) == 0) { t = t.substr(8); if (!t.empty() && t.back() == ']') t.pop_back(); }
+  if (t.rfind("minecraft:", 0) == 0) t = t.substr(10);
+  static const std::map<std::string, std::string> mc = {{"zombie", "ghoul"}, {"creeper", "fuseling"}, {"spider_jockey", "spider"},
+    {"husk", "ghoul"}, {"drowned", "ghoul"}, {"zombie_villager", "ghoul"}, {"stray", "skeleton"}};
+  const json& M = reg().mobs;
+  if (!M.is_object()) return "";
+  if (M.contains(t)) return t;
+  if (auto it = mc.find(t); it != mc.end() && M.contains(it->second)) return it->second;
+  return "";
+}
+// what to say for a name that isn't a creature: a few that look like it, not all hundred and twenty
+static std::string noCreature(const std::string& typed) {
+  const json& M = reg().mobs; std::string near; int n = 0;
+  const std::string t = toLower(typed);
+  if (M.is_object()) for (auto& [k, v] : M.items()) if (!t.empty() && (k.find(t) != std::string::npos || (t.size() >= 3 && k.rfind(t.substr(0, 3), 0) == 0)) && n < 8) { near += (n ? ", " : "") + k; n++; }
+  return "No creature called " + typed + (n ? ". Did you mean: " + near + "?" : ". /lineup shows them all.");
+}
+
 static void addCommand(const std::string& name, const std::string& usage, const std::string& desc, bool cheat, GameCmd f) {
   registerChatCommand(name, desc, [name, usage, f](CommandSource& src, const std::vector<std::string>& args) -> std::string {
     // the server console has no player (the original parked a pawn for it): commands that only change the world
@@ -310,8 +333,23 @@ static void registerBuiltinCommands() {
     for (auto* v : {&c.p.inv, &c.p.armor, &c.p.offhand, &c.p.hook, &c.p.charm}) for (auto& s : *v) s.clear();
     return "Inventory cleared";
   });
-  C("kill", "", "Respawn the hard way", true, [](CommandCtx& c, std::vector<std::string>&) -> std::string {
-    DamageSource s; s.type = "void"; s.bypass = s.bypassArmor = true; damagePlayer(c.lv, c.p, 9999, s); return "";
+  C("kill", "[creature | @e[type=creature] | @e]", "No name: respawn the hard way. A creature's name: every one of them nearby", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
+    const std::string arg = a.empty() ? "" : toLower(a[0]);
+    if (arg.empty() || arg == "@s" || arg == "@p" || arg == "me" || arg == toLower(c.p.name)) {
+      DamageSource s; s.type = "void"; s.bypass = s.bypassArmor = true; damagePlayer(c.lv, c.p, 9999, s); return "";
+    }
+    const bool all = arg == "@e";
+    const std::string t = all ? "" : creatureKey(arg);
+    if (!all && t.empty()) return noCreature(a[0]);
+    int n = 0;
+    for (auto& e : c.lv.entities()) {   // creatures only (never a player, a dropped item or a cart), within 128 blocks
+      if (!e || e->removed || e->isPlayer() || e->realm != c.p.realm || !reg().mobs.contains(e->type)) continue;
+      if (!all && e->type != t) continue;
+      if (glm::distance(e->pos, c.p.pos) > 128) continue;
+      DamageSource s; s.type = "void"; s.bypass = s.bypassArmor = true;
+      damageEntity(c.lv, *e, 1e6f, s); n++;
+    }
+    return n ? "Killed " + std::to_string(n) + (all ? " creatures" : " " + t) : "No " + (all ? std::string("creatures") : t) + " nearby";
   });
   C("heal", "", "Full health and breath", true, [](CommandCtx& c, std::vector<std::string>&) -> std::string {
     c.p.hp = c.p.maxHp; c.p.air = AIR_MAX; c.p.burn = 0; return "Healed";
@@ -327,9 +365,9 @@ static void registerBuiltinCommands() {
     c.lv.info.spawn = c.p.pos; return "World spawn set";
   });
   C("summon", "<creature> [count] [look]", "Summon creatures", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
-    std::string t = a.empty() ? "" : toLower(a[0]);
-    if (t == "spider_jockey") t = "spider";
+    std::string t = a.empty() ? "" : creatureKey(a[0]);
     const json& M = reg().mobs;
+    if (!a.empty() && t.empty()) return noCreature(a[0]);
     if (t.empty() || !M.is_object() || !M.contains(t)) { std::string s = "Creatures: "; bool f = true; if (M.is_object()) for (auto& [k, v] : M.items()) { s += (f ? "" : ", ") + k; f = false; } return s; }
     double nn = num(a, 1, 1); int n = clampv(std::isfinite(nn) ? (int)nn : 1, 1, 20);
     vec3 L = lookVector(c.p.yaw, c.p.pitch);

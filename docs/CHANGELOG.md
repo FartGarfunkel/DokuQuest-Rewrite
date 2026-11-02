@@ -48,6 +48,8 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **The Travel Journal, maps, the places list and the quest board no longer crash later in the game** (once a dragon was slain or a great dungeon cleared: some records were saved as numbers and read as yes/no). Checked now at every point of the game's progress.
 - **Placed mob heads no longer flicker:** the block under each head drew a stone box in the same place as the head, and the two fought (most easily seen on a Wither skull on soul sand or a command block).
 - **Sounds that played nothing now do:** a sieve wearing out, the block placer placing and breaking blocks, a snow sentry building its snow, and the summoning wand calling a creature up. Every sound the game plays is checked now.
+- **Under water you can see:** a few blocks down (in a well, a pond, the sea) it was a dark navy wall; now your eyes adjust after a moment, like Minecraft's water vision: murky blue, but you see the walls, the bottom and what's in front of you (more by day than by night).
+- **/kill and /summon know creatures by name:** `/kill ghoul` or `/kill @e[type=ghoul]` clears those nearby (it used to kill *you*, whatever you typed after it), `/kill @e` every creature nearby, and the Minecraft names work too (`/summon zombie` is a ghoul, a creeper a fuseling). A name that's no creature gets a few that look like it instead of all hundred and twenty.
 - **Messages no longer show twice:** achievements, warnings and other notices each popped up two times over.
 - **/locate** gives a place's height the way /tp takes it (it gave the land's own height, so copying it into /tp dropped you into another land), and names the land when the place is in another one.
 

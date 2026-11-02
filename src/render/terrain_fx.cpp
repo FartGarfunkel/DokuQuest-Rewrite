@@ -48,6 +48,7 @@ public:
     anim.reset();
   }
 
+  double wetAt = -1;   // when the camera went under water (water vision)
   void update(GameSession& s, double dt) override {
     App& a = s.app;
     syncTiles(s);
@@ -67,6 +68,16 @@ public:
     const Registry& R = reg();
     f.eyeFluid = R.tLiquid[eb] == 1 || isWaterlogged(eb, w.getMeta(ex, ey, ez)) ? 1 : R.tLiquid[eb] == 2 ? 2 : 0;
     if (f.eyeFluid) { f.fogColor = f.eyeFluid == 1 ? vec3(0.09f, 0.23f, 0.48f) : vec3(1.f, 0.35f, 0.04f); f.fogStart = 0; f.fogEnd = 22; }
+    // under water the eyes adjust (Minecraft's water vision): over a few seconds the floor of light rises, more by day
+    // than by night, so a well or a sea a few blocks deep is murky blue but readable, not a navy wall (water takes two
+    // levels of sky light a block, so five down the light is nearly gone). The fog lifts a little with it.
+    if (f.eyeFluid == 1) {
+      if (wetAt < 0) wetAt = nowSeconds();
+      const float k = std::clamp((float)(nowSeconds() - wetAt) / 3.f, 0.35f, 1.f), day = std::clamp(f.daylight, 0.f, 1.f);
+      f.minLight = std::max(f.minLight, k * (0.14f + 0.30f * day));
+      f.fogColor = vec3(0.09f, 0.23f, 0.48f) * (0.55f + 0.6f * day * k);
+      f.fogEnd = 22 + 10 * k * day;
+    } else wetAt = -1;
     // test hooks
     if (camSet && s.player) { s.player->pos = dbgPos; s.player->vel = vec3(0); s.player->yaw = dbgYaw; s.player->pitch = dbgPitch; s.player->flying = true; }
     if (dbgTime >= 0) s.level->info.time = dbgTime;
