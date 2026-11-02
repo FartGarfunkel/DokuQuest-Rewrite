@@ -80,8 +80,8 @@ bool related(const std::string& a, const std::string& b) {
 } // namespace
 
 int main(int argc, char** argv) {
-  bool doItems = true, doBlocks = true, doInv = true; std::string only;
-  for (int i = 1; i < argc; i++) { std::string a = argv[i]; if (a == "--inv") doItems = doBlocks = false; else if (a == "--items") doBlocks = doInv = false; else if (a == "--blocks") doItems = doInv = false; else if (a == "--only" && i + 1 < argc) only = argv[++i]; }
+  bool doItems = true, doBlocks = true, doInv = true, doDrops = true; std::string only;
+  for (int i = 1; i < argc; i++) { std::string a = argv[i]; if (a == "--inv") doItems = doBlocks = doDrops = false; else if (a == "--items") doBlocks = doInv = doDrops = false; else if (a == "--blocks") doItems = doInv = doDrops = false; else if (a == "--drops") doItems = doBlocks = doInv = false; else if (a == "--only" && i + 1 < argc) only = argv[++i]; }
   for (int s : {SIGSEGV, SIGABRT, SIGFPE}) std::signal(s, onCrash);
   std::string ud = "/tmp/dq-sweep"; std::error_code ec; fs::remove_all(ud, ec); fs::create_directories(ud);
   CoreOptions co; co.server = true; co.userDirOverride = ud;
@@ -166,6 +166,51 @@ int main(int argc, char** argv) {
         if (now) { r.c->breakBlock(x, y, z); r.step(1.0, PlayerInput{}); }
       } catch (const std::exception& e) { issue("EXCEPTION", key, e.what()); }
     }
+  }
+  if (doDrops) {
+    // every block broken by hand and with the right diamond tool: a block that says what it drops drops it with the
+    // right tool; one that needs a tool (a tier) gives nothing by hand
+    printf("== drops: every block, by hand and with the right tool\n");
+    int nDrops = 0;
+    auto dropsOf = [&](BlockId id, const std::string& tool) {
+      r.reset(); fx.ev.clear();
+      const int x = 0, y = r.Y, z = -2;
+      r.p->mode = "survival";
+      if (!tool.empty() && reg().item(tool)) { r.p->inv[0] = ItemStack(tool, 1); r.p->selected = 0; }
+      r.w().setBlock(x, y, z, id, 0); r.lv->tick(TICK_DT);
+      r.look(vec3(x + 0.5f, y + 0.5f, z + 0.5f));
+      r.c->breakBlock(x, y, z); r.step(0.3, PlayerInput{});
+      std::map<std::string, int> got;
+      for (auto& e : r.lv->entities()) if (!e->removed && e->type == "item" && glm::distance(e->pos, vec3(x + 0.5f, y, z + 0.5f)) < 3) {
+        json j = e->save(); json st = j.contains("data") && j["data"].contains("stack") ? j["data"]["stack"] : json();
+        ItemStack it = ItemStack::fromJson(st); if (!it.empty()) got[it.id] += it.n;
+      }
+      return got;
+    };
+    for (BlockId id = 1; id < (BlockId)R.blocks.size(); id++) {
+      const BlockDef& b = R.block(id); const std::string& key = b.key;
+      if (!only.empty() && key != only) continue;
+      // (leaves have their own drops: saplings and sticks by chance, themselves with shears; falling and floating blocks
+      // move off as soon as they're set down here; bedrock and the like can't be broken)
+      if (R.tLiquid[id] || key == "air" || !R.tSolid[id] || R.tLeaves[id] || b.num("hardness", 1) < 0 || b.num("hardness", 1) > 1000 || b.has("unbreakable") || b.has("noDrop") || b.has("falls") || b.has("floats") || key == "bedrock" || b.has("dropChance")) continue;
+      g_cur = key.c_str();
+      const std::string tool = b.str("tool"), want = b.str("drop");
+      const int tier = (int)b.num("tier", 0);
+      try {
+        if (!tool.empty() && tool != "any") {
+          auto withTool = dropsOf(id, tool == "shears" ? "shears" : (reg().item("adamantite_" + tool) ? "adamantite_" : "diamond_") + tool);   // the best tool there is
+          if (!want.empty() && want != "none" && !withTool.count(want) && withTool.empty()) { issue("NO DROP", key, "with the best " + tool + ": nothing (drop " + want + ")"); nDrops++; }
+          if (tier > 0) {
+            auto byHand = dropsOf(id, "");
+            if (!byHand.empty()) { issue("HAND DROP", key, "needs a tier-" + std::to_string(tier) + " " + tool + " but drops " + byHand.begin()->first + " by hand"); nDrops++; }
+          }
+        } else if (!want.empty() && want != "none") {
+          auto byHand = dropsOf(id, "");
+          if (byHand.empty()) { issue("NO DROP", key, "by hand: nothing (drop " + want + ")"); nDrops++; }
+        }
+      } catch (const std::exception& e) { issue("EXCEPTION", key, e.what()); }
+    }
+    printf("drops: %d odd\n", nDrops);
   }
   if (doInv) {
     printf("== sneak + use with a block in hand on stations places the block (furnish.js)\n");

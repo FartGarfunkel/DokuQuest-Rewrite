@@ -447,3 +447,19 @@ _s11 = _u.spec_from_file_location('mob_restyle', pathlib.Path(__file__).with_nam
 
 # ---- every creature's looks with stories of their own (tools/port/mob_variants.py; after the biome mobs, which get theirs too) ----
 _s8 = _u.spec_from_file_location('mob_variants', pathlib.Path(__file__).with_name('mob_variants.py')); _m8 = _u.module_from_spec(_s8); _s8.loader.exec_module(_m8); _m8.main(d)
+
+# ---- stairs, slabs and walls take the tool and tier of their block (plaster's needed a stone pickaxe while plaster
+# itself breaks by hand; found by dq-sweep --drops) ----
+def _match_family_tools(d):
+    bj = json.loads((pathlib.Path(d) / 'blocks.json').read_text())
+    by = {b['key']: b for b in bj['blocks']}
+    n = 0
+    for b in bj['blocks']:
+        for suf in ('_stairs', '_slab', '_wall'):
+            if not b['key'].endswith(suf): continue
+            base = by.get(b['key'][:-len(suf)])
+            if base and (b.get('tier', 0) != base.get('tier', 0) or b.get('tool') != base.get('tool')):
+                b['tier'] = base.get('tier', 0); b['tool'] = base.get('tool'); n += 1
+    (pathlib.Path(d) / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
+    print('family tools: %d stairs/slabs/walls matched to their block' % n)
+_match_family_tools(d)
