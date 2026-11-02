@@ -10,12 +10,13 @@ bounce); more Skylands (driftstone, whirlwinds, valkyries); villagers at church 
 coloured block light; portals tuned with dye; bigger biomes; the creature-skin tab in the Texture Studio (saves into
 the pack or over it); the skin check (a skin with no head or body falls back); Iris/OptiFine packs (their post passes)
 and the built-in shader levels; distant terrain (per-block textures, water like the near water, the breath blob was a
-particle); a terrain memory budget (far land fills the ring); the particle pass (soft blended smoke/breath/mist,
+particle; then four times finer, corner AO on the tops, lumpy canopies, sea ice in the sea's blue); a terrain memory
+budget (far land fills the ring) and a 12-byte far-land vertex (was 16); the particle pass (soft blended smoke/breath/mist,
 relit as they drift); dragons and world progress synced; split screen with LAN (host side); steam vents in every
 Nether; the engine editor with the engine bridge and Strata (OpenAI-style endpoint); the data archive (data.dqa);
 game-only updates with a version picker (rollback, three kept); /lineup.
 Partly: the art pass on our own creature skins (tools/port/mob_restyle.py smooths speckle; the user's pack untouched).
-Not yet: split screen on a LAN guest's side; a smaller chunk vertex format (the budget came first); the launcher
+Not yet: split screen on a LAN guest's side; a smaller chunk (near terrain) vertex format; the launcher
 replacing itself (it now only needs to when DQ_LAUNCHER_VERSION goes up).
 
 ## Still open after that
