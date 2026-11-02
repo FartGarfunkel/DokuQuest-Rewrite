@@ -25,10 +25,10 @@ static std::vector<PotionFx> fxList(const nlohmann::ordered_json& a) {
 
 bool loadMagicData(const fs::path& file) {
   // ordered: the original's key order matters (enchantment picks, the effect list)
-  std::ifstream in(file);
-  if (!in) { DQ_WARN("magic: %s missing", file.string().c_str()); return false; }
+  auto text = readFile(file);   // (from data/ or the release's data.dqa)
+  if (!text) { DQ_WARN("magic: %s missing", file.string().c_str()); return false; }
   nlohmann::ordered_json j;
-  try { j = nlohmann::ordered_json::parse(in); } catch (std::exception& e) { DQ_WARN("magic: %s: %s", file.string().c_str(), e.what()); return false; }
+  try { j = nlohmann::ordered_json::parse(*text); } catch (std::exception& e) { DQ_WARN("magic: %s: %s", file.string().c_str(), e.what()); return false; }
   MagicData d;
   for (auto& k : G(j, "spellOrder")) d.spellOrder.push_back(k);
   for (auto& [k, v] : G(j, "spells").items()) {
