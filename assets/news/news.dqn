@@ -1,6 +1,14 @@
 # DokuQuest patch notes for the C++ versions, newest first (shown in the launcher's news panel).
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
+## Alpha 1.0.0.16 — Port of Call | November 2026
+**Playing over the internet:**
+- **Your servers:** the Multiplayer screen keeps a list of servers, as Minecraft does. Type an address, give it a name and press Save server; Join, Edit or Remove it from the list later. The last address you joined is filled in the next time.
+- **VPNs:** with a VPN on (NordVPN, Proton, Mullvad…), Open to LAN and the server showed the VPN's own address instead of your home one, and the internet address it found was the VPN's, which nobody can join. Open to LAN shows your home address now. Open to LAN, the server dashboard and the server's console say when a VPN is on, that friends on the internet can't get through it, and how to let the game's port skip it (NordVPN on Linux: `nordvpn allowlist add port 25580 protocol UDP`; on Windows: Split tunneling, turn the VPN off for DokuQuest), or to turn it off while you play together. A join that can't get through says so too when a VPN is on.
+- **On Windows, "Let DokuQuest through Windows Firewall"** on the Multiplayer screen: if Windows' question about networks was closed or answered Cancel, Windows quietly blocks the game from then on, so joining finds nobody. The button clears the block and lets the game through, after one Yes from Windows. (An antivirus with its own firewall needs DokuQuest allowed there too.)
+- **The server's console says when someone knocks:** "Heard from …" the moment a friend's first packet arrives, before they've joined. Now you can tell "their attempt never reached me" (the router, the firewall or a VPN) from "it reached me but didn't get through". It also says which UDP port it's listening on.
+- **Answers from an unexpected address:** some routers send the host's answer back from its home address instead of the internet one, or from another port (a host on both a cable and Wi-Fi can answer out of the other one), and the game threw those answers away, so the friend saw "No answer". It takes them now. Packets are a little smaller too, so they pass through VPN tunnels and PPPoE links whole.
+- Removed Herobrine.
 ## Alpha 1.0.0.15 — Over the Hills | November 2026
 **Playing over the internet:**
 - **Joining from another house could give up halfway:** joining had twelve seconds to fetch the whole first download of the world's changes. On a home network that's plenty; over a home internet upload a well-played world takes longer, so friends were turned back with "The host did not answer", whether you'd opened your world to LAN or were running a server. Joining now carries on as long as the world keeps coming.

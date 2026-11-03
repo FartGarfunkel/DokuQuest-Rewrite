@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
 project(DokuQuest VERSION 1.0.0 LANGUAGES C CXX)
 # DokuQuest C++ — game client, launcher (with dedicated server + Mod Studio) and headless server.
-set(DQ_VERSION "1.0.0-alpha.15" CACHE STRING "Full game version shown in game and launcher")
+set(DQ_VERSION "1.0.0-alpha.16" CACHE STRING "Full game version shown in game and launcher")
 # the launcher's own version: raised only when the launcher itself changes. Updates install just the game (the "-game"
 # packages); the whole package, launcher and all, only when this is newer than the running launcher's (launcher/updater.cpp)
-set(DQ_LAUNCHER_VERSION "1.0.0-alpha.15")
+set(DQ_LAUNCHER_VERSION "1.0.0-alpha.16")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -75,6 +75,7 @@ target_link_libraries(dq-test-gameplay PRIVATE dqcore)
 
 if(WIN32)
   set_target_properties(dokuquest dokuquest-launcher PROPERTIES WIN32_EXECUTABLE ON)
+  target_link_libraries(dqcore PUBLIC iphlpapi shell32)   # net/lan.cpp: the network adapters (home address, is a VPN on)
   target_link_libraries(dqclient PUBLIC SDL2::SDL2main)
   # app icon (assets/icon.ico) for the game and the launcher
   target_sources(dokuquest PRIVATE src/launcher/dokuquest.rc)

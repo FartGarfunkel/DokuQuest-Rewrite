@@ -6,6 +6,20 @@ Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`. Third-party credits: `doc
 BTA ideas only). Released: alpha.9, alpha.10 (On the Road) and alpha.11 (Every Creature Its Own) on 2026-11-01 evening;
 alpha.12 (Coloured Light) on 2026-11-02 night.
 
+## Evening 2026-11-02 (alpha.15/16: the fiancée can't join over the internet)
+- What the user found: the router, the host's firewall and the address are fine. Linux to Linux over mobile data by the
+  external IP works. Her Windows PC from her house can't join (Windows never tested on LAN either). No VPN on the host
+  (NordVPN is on another PC in the house; it was a red herring). Waiting on: what her screen says, her antivirus, her
+  version, and whether the host's console shows "Heard from <her IP>" when she tries (alpha.16).
+- alpha.16: net/server_host.cpp knockIntercept logs "Heard from ip:port" on the first packet of a new address (before
+  the handshake) and "Listening on UDP port N". net/client.cpp hairpinIntercept accepts the host's answer from another
+  address on the same port, or the same address on another port, while connecting (ENet still checks the connect id);
+  ENet MTU 1200 on both ends. net/lan.cpp: adapters() (getifaddrs / GetAdaptersAddresses) -> localAddress() skips VPN
+  adapters, vpnOn()/vpnAdvice() warnings (Open to LAN, server dashboard, console, join errors), firewallAllowSelf()
+  (Windows: netsh via ShellExecuteEx runas; clears every rule for the exe, allows in+out) behind a Windows-only button
+  on the Multiplayer screen. ui/multiplayer.cpp: saved servers (userDir()/servers.json: servers[{name,address}], last).
+- Test for the port-changing router: scratchpad udp_proxy.py (client :25600 -> server :25590, answers from :25601).
+
 ## Afternoon 2026-11-02 (alpha.14 "Tractor Beam": the user's look at alpha.13)
 - **Wither Storm like Story Mode:** tools/port/wither_storm.py (the model: obsidian mass, three heads with eyes, maws,
   mandibles, fangs, the command-block heart, six tentacles of four segments; rig "wither_storm"); sim/wither.cpp

@@ -1,6 +1,9 @@
 // net/server_host.cpp — the host side of net.js (Net.host / hostMsg / welcome / peerLeft) and the parts of
 // game/server.js that aren't screens: the player limit, the welcome message, kick, plus ban and op lists.
+#include <mutex>
+#include <unordered_map>
 #include "net/server_host.h"
+#include "net/lan.h"
 #include "sim/creature.h"
 #include "sim/controller.h"
 #include "sim/vehicles.h"
@@ -14,6 +17,38 @@
 #endif
 
 namespace dq::net {
+
+// The console says when someone out there reaches the server at all: the first packet from each new address (again
+// after a quiet minute). "Heard from X" with no "A connection from X" after it: their packets arrive but our answers
+// don't get back (their side, or the router's way back); nothing heard at all: they never reach this computer (the
+// router's UDP forward, the firewall, or the provider).
+namespace {
+std::mutex g_knockMx;
+std::unordered_map<const ENetHost*, ServerHost*> g_knockHosts;
+std::unordered_map<std::string, double> g_knocks;
+int ENET_CALLBACK knockIntercept(ENetHost* h, ENetEvent*) {
+  ServerHost* sh = nullptr;
+  { std::lock_guard<std::mutex> lk(g_knockMx); auto it = g_knockHosts.find(h); if (it != g_knockHosts.end()) sh = it->second; }
+  if (!sh) return 0;
+  for (size_t i = 0; i < h->peerCount; i++) {   // one of ours already: nothing to say
+    const ENetPeer& pe = h->peers[i];
+    if (pe.state != ENET_PEER_STATE_DISCONNECTED && pe.address.host == h->receivedAddress.host && pe.address.port == h->receivedAddress.port) return 0;
+  }
+  char ip[64] = "?"; enet_address_get_host_ip(&h->receivedAddress, ip, sizeof ip);
+  const std::string who = std::string(ip) + ":" + std::to_string(h->receivedAddress.port);
+  const double now = nowSeconds();
+  bool say = false;
+  {
+    std::lock_guard<std::mutex> lk(g_knockMx);
+    auto it = g_knocks.find(who);   // (a new address says so at once, even in the server's first minute)
+    if (it == g_knocks.end() || now - it->second > 60) { g_knocks[who] = now; say = true; }
+  }
+  if (say) sh->serverLog("Heard from " + who + " (someone trying to join)", "");
+  return 0;
+}
+} // namespace
+
+
 
 static std::string lowerName(const std::string& s) { return toLower(s); }
 static bool validPlayerName(const std::string& n) {
@@ -42,6 +77,7 @@ ServerHost::~ServerHost() {
   // the level may already be gone: stop() (while it's open) saves everyone and says goodbye; this only closes the port
   if (!host) return;
   for (auto& [id, p] : peers) if (p.enet) enet_peer_disconnect_now(p.enet, BYE_CLOSED);
+  { std::lock_guard<std::mutex> lk(g_knockMx); g_knockHosts.erase(host); }
   enet_host_destroy(host); host = nullptr;
   lanAnn.stop();
   enetDone();
@@ -60,6 +96,12 @@ bool ServerHost::start(std::string* err) {
     if (err) *err = strFormat("No free port between %d and %d", opts.port, opts.port + 9);
     return false;
   }
+  { std::lock_guard<std::mutex> lk(g_knockMx); g_knockHosts[host] = this; }
+  host->intercept = knockIntercept;
+  host->mtu = 1200;   // as the client asks (net/client.cpp)
+  if (boundPort != opts.port) serverLog(strFormat("Port %d was taken: listening on %d (friends must use :%d, and the router must forward %d)", opts.port, boundPort, boundPort, boundPort), "warn");
+  else serverLog(strFormat("Listening on UDP port %d", boundPort), "");
+  if (std::string v = vpnAdvice(boundPort); !v.empty()) serverLog(v, "warn");
   // sounds, puffs and messages of this world reach the players they're near
   innerFx = level.fx;
   fx = new NetFx(*this, innerFx);

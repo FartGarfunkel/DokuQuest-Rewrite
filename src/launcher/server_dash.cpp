@@ -237,6 +237,7 @@ void drawServerDashboard(Launcher& L, DedicatedServer& srv, const ServerStatus& 
       }
       if (tried) { ImGui::SameLine(); ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "(couldn't: search \"what is my IP\")"); }
     }
+    if (std::string v = net::vpnAdvice(port); !v.empty()) { ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + right - 24); ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_EMBER), "%s", v.c_str()); ImGui::PopTextWrapPos(); }
     const std::string fw = "sudo firewall-cmd --permanent --add-port=" + std::to_string(port) + "/udp && sudo firewall-cmd --reload";
     ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "Router: forward UDP %d (not TCP) to this computer. openSUSE firewall: %s", port, fw.c_str()); ImGui::SameLine();
     if (ImGui::SmallButton("Copy##fw")) ImGui::SetClipboardText(fw.c_str());

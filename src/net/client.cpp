@@ -66,6 +66,30 @@ void NetClient::sendTo(Msg ty, const json& m, int channel, bool reliable) {
   stats.msgsOut++;
 }
 
+// Joining by the host's internet address from the same house: many routers turn the packets round to the host
+// without rewriting the sender, so the host's answer comes straight back over the home network, from its home address
+// (192.168.x.x:port) instead of the internet one we called. ENet drops any packet from an address other than the
+// peer's, so the join hung with "No answer". While the connection is being made, an answer from the same port at
+// another address is taken as the host's: the peer moves to that address and carries on from there.
+static int ENET_CALLBACK hairpinIntercept(ENetHost* h, ENetEvent*) {
+  if (!h || h->peerCount < 1) return 0;
+  ENetPeer* pe = &h->peers[0];
+  const bool making = pe->state == ENET_PEER_STATE_CONNECTING || pe->state == ENET_PEER_STATE_ACKNOWLEDGING_CONNECT ||
+                      pe->state == ENET_PEER_STATE_CONNECTION_PENDING || pe->state == ENET_PEER_STATE_CONNECTION_SUCCEEDED;
+  // the home address on the same port (the router turned it round), or the same address on another port (the host's
+  // router gave its answer a port of its own: a host with two connections, wired and Wi-Fi, answers out of the other one).
+  // ENet still checks the connection's id in the answer, so only the host we called can be let in this way.
+  const bool otherHost = h->receivedAddress.port == pe->address.port && h->receivedAddress.host != pe->address.host;
+  const bool otherPort = h->receivedAddress.host == pe->address.host && h->receivedAddress.port != pe->address.port;
+  if (making && (otherHost || otherPort)) {
+    char was[64] = "?", now[64] = "?";
+    enet_address_get_host_ip(&pe->address, was, sizeof was); enet_address_get_host_ip(&h->receivedAddress, now, sizeof now);
+    DQ_LOG("net: the host answered from %s:%u instead of %s:%u: going on with that", now, (unsigned)h->receivedAddress.port, was, (unsigned)pe->address.port);
+    pe->address = h->receivedAddress;
+  }
+  return 0;   // ENet goes on with it as usual
+}
+
 bool NetClient::begin(const JoinOptions& o) {
   opts = o;
   std::string h; int port;
@@ -73,6 +97,8 @@ bool NetClient::begin(const JoinOptions& o) {
   if (!enetInit()) { err = "The network could not start"; st = State::Failed; return false; }
   host = enet_host_create(nullptr, 1, CHANNELS, 0, 0);
   if (!host) { enetDone(); err = "The network could not start"; st = State::Failed; return false; }
+  host->intercept = hairpinIntercept;
+  host->mtu = 1200;   // fits inside VPN tunnels and PPPoE links without being cut in pieces on the way (ENet: 1392)
   ENetAddress a;
   if (enet_address_set_host(&a, h.c_str()) != 0) { err = "Could not find " + h; st = State::Failed; return false; }
   a.port = (enet_uint16)port;
