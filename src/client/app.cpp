@@ -1,4 +1,5 @@
 #include "client/app.h"
+#include "common/ui_scale.h"
 #include "ui/profiles.h"
 #include "client/test_script.h"
 #include "render/portal_view.h"
@@ -48,8 +49,22 @@ void App::parseArgs(int argc, char** argv) {
 }
 
 bool App::initWindow() {
+#ifdef SDL_HINT_WINDOWS_DPI_AWARENESS
+  SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");   // physical pixels, so we scale the UI ourselves
+#endif
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) != 0) { DQ_ERR("SDL: %s", SDL_GetError()); return false; }
   if (auto db = readFile(assetsDir() / "gamecontrollerdb.txt")) SDL_GameControllerAddMappingsFromRW(SDL_RWFromConstMem(db->data(), (int)db->size()), 1);
+  // a 1280×720 window is tiny on a 2K/3K/4K monitor; grow the untouched default so Auto has room
+  {
+    SDL_Rect bounds{0, 0, 1920, 1080}, usable{0, 0, 1280, 720};
+    if (SDL_GetDisplayBounds(0, &bounds) != 0 || bounds.w < 320 || bounds.h < 240) bounds = {0, 0, 1920, 1080};
+    if (SDL_GetDisplayUsableBounds(0, &usable) != 0 || usable.w < 320 || usable.h < 240) usable = bounds;
+    int edge = std::min(bounds.w, bounds.h);
+    float z = uiZoomFromSetting(settings.guiScale, uiTierForEdge(edge).zoom);
+    int w = settings.windowW, h = settings.windowH;
+    gameWindowForZoom(z, usable.w, usable.h, settings.windowW, settings.windowH, w, h);
+    settings.windowW = w; settings.windowH = h;
+  }
   RendererKind want = args.rendererSet ? args.renderer : settings.renderer;
   if (want == RendererKind::Vulkan) { DQ_WARN("Vulkan renderer is not available yet; using Modern OpenGL"); want = RendererKind::Modern; }
   Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | (settings.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
@@ -252,7 +267,11 @@ void App::frameLoop() {
       ImGui_ImplSDL2_ProcessEvent(&e);
       input.handle(e);
       if (e.type == SDL_QUIT) quit = true;
-      if (e.type == SDL_WINDOWEVENT && (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)) SDL_GetWindowSize(window, &width, &height);
+      if (e.type == SDL_WINDOWEVENT && (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)) {
+        SDL_GetWindowSize(window, &width, &height);
+        Uint32 fl = SDL_GetWindowFlags(window);
+        if (!settings.fullscreen && (fl & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) == 0) { settings.windowW = width; settings.windowH = height; }
+      }
     }
     input.endFrame();
     // mouse capture: in-world with no menu open

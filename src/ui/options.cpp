@@ -233,7 +233,7 @@ public:
       float ui = 45; const std::string& g = s.guiScale;
       if (!g.empty() && isdigit((unsigned char)g[0])) ui = (float)std::atof(g.c_str()); else if (g == "small") ui = 80; else if (g == "normal") ui = 100; else if (g == "large") ui = 125;
       float before = ui;
-      range("uiScale", "Interface size", &ui, 45, 200, 5, ui < 50 ? "Auto" : std::to_string((int)ui) + "%", "Menus, hotbar and text. All the way left is Auto.");
+      range("uiScale", "Interface size", &ui, 45, 300, 5, ui < 50 ? "Auto" : std::to_string((int)ui) + "%", "Menus, hotbar and text. Auto is 100% on 1080p, 125% on 2K, 150% on 3K and 200% on 4K. All the way left is Auto.");
       if (ui != before) pendingUi = ui;
       if (pendingUi > 0 && !ImGui::IsMouseDown(0)) { s.guiScale = pendingUi < 50 ? "auto" : std::to_string((int)pendingUi); pendingUi = -1; }
     }

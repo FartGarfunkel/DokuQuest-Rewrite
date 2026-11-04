@@ -32,6 +32,8 @@ struct Launcher {
   SDL_Window* window = nullptr;
   SDL_GLContext gl = nullptr;
   int width = 1200, height = 740;
+  float uiZoom = 1;             // interface zoom (settings.guiScale): 1, 1.25 (2K), 1.5 (3K), 2 (4K)
+  int displayEdge = 1080;       // shorter side of the monitor, in window coordinates
   ImFont *fUi = nullptr, *fSmall = nullptr, *fMid = nullptr, *fBig = nullptr, *fTitle = nullptr, *fMono = nullptr;
   unsigned texDirt = 0, texBtn = 0, texBtnHi = 0, texGo = 0, texGoHi = 0, texIcon = 0;
   LTab tab = LTab::News;
@@ -60,6 +62,9 @@ struct Launcher {
   bool keepOpen() const { return settings.extra.value("launcherKeepOpen", true); }
   void saveSettings() { settings.save(); }
 };
+
+// Read settings.guiScale (and the monitor) and apply it. resizeWindow fits the window to the design size at that zoom.
+void syncInterfaceScale(Launcher& L, bool resizeWindow);
 
 // ---- ui.cpp: the Doku look
 void applyLauncherStyle();

@@ -61,8 +61,11 @@ void Launcher::pollGame() {
   } else if (code != 0) setNotice(strFormat("The game closed with an error (code %d). Its log is latest.log in the game folder.", code));
   // the game saves its own options (settings.json) when it quits: take them over
   std::string name = settings.playerName;
+  float prevZoom = uiZoom;
   settings = Settings::load();
   if (settings.playerName.empty()) settings.playerName = name;
+  syncInterfaceScale(*this, false);
+  if (uiZoom - prevZoom > 0.01f || prevZoom - uiZoom > 0.01f) syncInterfaceScale(*this, true);
   SDL_RestoreWindow(window); SDL_RaiseWindow(window);
   refreshWorlds(true);
 }
@@ -115,7 +118,8 @@ static int nameFilter(ImGuiInputTextCallbackData* d) {
 
 void drawBottomBar(Launcher& L, float barH) {
   ImDrawList* dl = ImGui::GetWindowDrawList();
-  ImVec2 a(0, (float)L.height - barH), b((float)L.width, (float)L.height);
+  ImVec2 ds = ImGui::GetIO().DisplaySize;
+  ImVec2 a(0, ds.y - barH), b(ds.x, ds.y);
   drawDirt(dl, a, b, L, 0.5f);
   dl->AddLine(ImVec2(a.x, a.y + 1), ImVec2(b.x, a.y + 1), IM_COL32(0, 0, 0, 255), 2);
   dl->AddLine(ImVec2(a.x, a.y + 3), ImVec2(b.x, a.y + 3), IM_COL32(255, 255, 255, 20), 2);

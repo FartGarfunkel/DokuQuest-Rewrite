@@ -3,6 +3,7 @@
 // resource/shader packs, frame rate, launcher behaviour and updates. These are the game's own settings
 // (common/settings.h, userDir()/settings.json), so the game starts with what is chosen here.
 #include "launcher/launcher.h"
+#include "common/ui_scale.h"
 #include <cstring>
 #include <algorithm>
 #include <cctype>
@@ -243,6 +244,37 @@ void drawOptions(Launcher& L) {
   ImGui::Dummy(ImVec2(0, 8));
 
   heading(L, "Launcher");
+  {
+    UiTier tier = uiTierForEdge(L.displayEdge);
+    bool isAuto = uiScaleIsAuto(s.guiScale);
+    struct Choice { const char* id; const char* label; };
+    const Choice choices[] = {
+      {"100", "100%  ·  1080p"}, {"125", "125%  ·  2K"}, {"150", "150%  ·  3K"},
+      {"175", "175%"}, {"200", "200%  ·  4K"}, {"250", "250%"}, {"300", "300%"},
+    };
+    std::string autoLabel = std::string("Auto  ·  ") + tier.name + " (" + std::to_string((int)std::lround(tier.zoom * 100.f)) + "%)";
+    std::string custom;
+    int cur = isAuto ? -1 : -2;
+    if (!isAuto) for (int i = 0; i < 7; i++) if (s.guiScale == choices[i].id) cur = i;
+    const char* preview = autoLabel.c_str();
+    if (cur >= 0) preview = choices[cur].label;
+    else if (!isAuto) { custom = s.guiScale + "%"; preview = custom.c_str(); }
+    Opt o(L, "Interface size", "Menus, buttons and text here and in the game. Auto is 100% on 1080p, 125% on 2K, 150% on 3K and 200% on 4K.", 280);
+    if (L.gameRunning) ImGui::BeginDisabled();
+    auto pick = [&](const char* id) {
+      if (s.guiScale == id) return;
+      s.guiScale = id; changed = true; syncInterfaceScale(L, true);
+    };
+    if (ImGui::BeginCombo("##uiscale", preview)) {
+      if (ImGui::Selectable(autoLabel.c_str(), isAuto)) pick("auto");
+      for (int i = 0; i < 7; i++) if (ImGui::Selectable(choices[i].label, cur == i)) pick(choices[i].id);
+      ImGui::EndCombo();
+    }
+    if (L.gameRunning) {
+      if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("The game is running. Change this in the game's Settings, or here once it has closed.");
+      ImGui::EndDisabled();
+    }
+  }
   {
     Opt o(L, "Keep the launcher open", "Come back here when you quit the game", 40);
     bool k = L.keepOpen();

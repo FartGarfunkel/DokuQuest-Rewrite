@@ -5,15 +5,18 @@
 // Test options: --update-api URL (a saved GitHub response, e.g. file:///…/latest.json) --check-updates --start-server --play --no-handoff
 //   --smoke-after SECONDS (the screenshot waits that long too, e.g. for a server world to load) --server-follow NAME (map/iso centre)
 #include "launcher/launcher.h"
+#include "common/ui_scale.h"
 #include "core/init.h"
 #include "mod/modloader.h"
 #include "render/gl.h"
 #include "assets/tileset.h"
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
+#include <imgui_internal.h>
 #include <SDL_main.h>
 #include <thread>
 #include <cstring>
+#include <cmath>
 
 namespace dq {
 namespace {
@@ -69,11 +72,15 @@ bool handOff(Launcher& L, const Args& a, int argc, char** argv, int& exitCode) {
 }
 
 bool initWindow(Launcher& L) {
+#ifdef SDL_HINT_WINDOWS_DPI_AWARENESS
+  SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");   // physical pixels, so the interface scale below is the one that applies
+#endif
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) != 0) { DQ_ERR("SDL: %s", SDL_GetError()); return false; }
   if (auto db = readFile(assetsDir() / "gamecontrollerdb.txt")) SDL_GameControllerAddMappingsFromRW(SDL_RWFromConstMem(db->data(), (int)db->size()), 1);
+  syncInterfaceScale(L, false);   // zoom from the monitor, before the window exists
   SDL_Rect r{0, 0, 1280, 800};
-  SDL_GetDisplayUsableBounds(0, &r);
-  L.width = std::min(1200, r.w - 40); L.height = std::min(760, r.h - 40);
+  if (SDL_GetDisplayUsableBounds(0, &r) != 0 || r.w < 320 || r.h < 240) r = {0, 0, 1280, 800};
+  launcherWindowForZoom(L.uiZoom, r.w, r.h, L.width, L.height);
   // the launcher only draws its UI, but it asks for the newest GL the driver has, so its GL_RENDERER/version
   // tell the options what this computer can run (same order of tries as the game)
   struct Try { int maj, min; } tries[] = {{4, 6}, {4, 5}, {4, 3}, {3, 3}};
@@ -92,7 +99,7 @@ bool initWindow(Launcher& L) {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "DokuQuest", "Your graphics driver doesn't support OpenGL 3.3, which DokuQuest needs.\nUpdating the graphics driver usually fixes this.", L.window);
     return false;
   }
-  SDL_SetWindowMinimumSize(L.window, 640, 400);
+  syncInterfaceScale(L, false);   // minimum size at this zoom
   SDL_GL_SetSwapInterval(1);
   SDL_GetWindowSize(L.window, &L.width, &L.height);
   if (auto icon = readBinary(assetsDir() / "icon.png")) {
@@ -105,6 +112,8 @@ bool initWindow(Launcher& L) {
   L.gpu = suggestForGpu(gfx.vendor, gfx.renderer, gfx.major, gfx.minor);
   DQ_LOG("launcher: graphics %s / %s (GL %d.%d) → suggest %s, %s renderer", gfx.vendor.c_str(), gfx.renderer.c_str(), gfx.major, gfx.minor,
          L.gpu.preset.c_str(), rendererName(L.gpu.kind));
+  UiTier tier = uiTierForEdge(L.displayEdge);
+  DQ_LOG("launcher: interface %d%% (display %s, shorter side %d)", (int)std::lround(L.uiZoom * 100.f), tier.name, L.displayEdge);
   return true;
 }
 
@@ -137,6 +146,40 @@ void screenshot(Launcher& L, const fs::path& path) {
   if (savePng(path, dw, dh, flip.data())) DQ_LOG("launcher: screenshot %s", path.string().c_str());
 }
 
+// Lay the launcher out in design pixels, then scale the whole draw to the window.
+// Every button, font and padding is authored at 1200×760; on a 4K display the zoom is 2,
+// so the same layout is twice as big. Mouse events stay in window pixels until here.
+void applyLauncherZoom(Launcher& L) {
+  if (L.width < 2 || L.height < 2) return;
+  ImGuiIO& io = ImGui::GetIO();
+  float z = L.uiZoom < 0.5f ? 1.f : L.uiZoom;
+  int dw = 0, dh = 0;
+  if (L.window) SDL_GL_GetDrawableSize(L.window, &dw, &dh);
+  float dpi = (L.width > 0 && dw > 0) ? (float)dw / (float)L.width : 1.f;
+  if (dpi < 1.f) dpi = 1.f;
+  io.DisplaySize = ImVec2(std::max(1.f, L.width / z), std::max(1.f, L.height / z));
+  io.DisplayFramebufferScale = ImVec2(dpi * z, dpi * z);
+  if (z == 1.f) return;
+  ImGuiContext& g = *ImGui::GetCurrentContext();
+  for (int n = 0; n < g.InputEventsQueue.Size; n++) {
+    ImGuiInputEvent& e = g.InputEventsQueue[n];
+    if (e.Type != ImGuiInputEventType_MousePos) continue;
+    if (e.MousePos.PosX != -FLT_MAX) e.MousePos.PosX /= z;
+    if (e.MousePos.PosY != -FLT_MAX) e.MousePos.PosY /= z;
+  }
+}
+
+void snapLauncherFont() {
+  ImTextureID id = ImGui::GetIO().Fonts->TexID;
+  if (!id) return;
+  static ImTextureID snapped = 0;
+  if (snapped == id) return;
+  snapped = id;
+  glBindTexture(GL_TEXTURE_2D, (GLuint)(intptr_t)id);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+}
+
 void drawFrame(Launcher& L) {
   ImGuiViewport* vp = ImGui::GetMainViewport();
   ImGui::SetNextWindowPos(vp->Pos); ImGui::SetNextWindowSize(vp->Size);
@@ -145,7 +188,8 @@ void drawFrame(Launcher& L) {
   ImGui::Begin("##launcher", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoBringToFrontOnFocus |
                                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollWithMouse);
   ImGui::PopStyleVar(2);
-  float W = (float)L.width, H = (float)L.height, barH = 112;
+  ImVec2 ds = ImGui::GetIO().DisplaySize;
+  float W = ds.x, H = ds.y, barH = 112;
   ImDrawList* bg = ImGui::GetBackgroundDrawList();
   drawDirt(bg, ImVec2(0, 0), ImVec2(W, H - barH), L);
   bg->AddRectFilledMultiColor(ImVec2(0, 0), ImVec2(W, H - barH), IM_COL32(0, 0, 0, 89), IM_COL32(0, 0, 0, 89), IM_COL32(0, 0, 0, 140), IM_COL32(0, 0, 0, 140));
@@ -192,6 +236,27 @@ void drawFrame(Launcher& L) {
 }
 
 } // namespace
+
+void syncInterfaceScale(Launcher& L, bool resizeWindow) {
+  int idx = 0;
+  if (L.window) { idx = SDL_GetWindowDisplayIndex(L.window); if (idx < 0) idx = 0; }
+  SDL_Rect bounds{0, 0, 1920, 1080}, usable{0, 0, 1280, 800};
+  if (SDL_GetDisplayBounds(idx, &bounds) != 0 || bounds.w < 320 || bounds.h < 240) bounds = {0, 0, 1920, 1080};
+  if (SDL_GetDisplayUsableBounds(idx, &usable) != 0 || usable.w < 320 || usable.h < 240) usable = bounds;
+  L.displayEdge = std::max(1, std::min(bounds.w, bounds.h));
+  L.uiZoom = uiZoomFromSetting(L.settings.guiScale, uiTierForEdge(L.displayEdge).zoom);
+  if (!L.window) return;
+  int w = 0, h = 0;
+  launcherWindowForZoom(L.uiZoom, usable.w, usable.h, w, h);
+  int mw = std::min(w, std::max(640, (int)std::lround(900 * std::min(L.uiZoom, 3.f))));
+  int mh = std::min(h, std::max(400, (int)std::lround(520 * std::min(L.uiZoom, 3.f))));
+  SDL_SetWindowMinimumSize(L.window, std::max(1, mw), std::max(1, mh));
+  if (!resizeWindow) return;
+  SDL_SetWindowSize(L.window, w, h);
+  SDL_SetWindowPosition(L.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+  L.width = w; L.height = h;
+}
+
 } // namespace dq
 
 namespace dq { int runMcpServer(int port); }   // launcher/mcp_server.cpp
@@ -247,6 +312,11 @@ int main(int argc, char** argv) {
       ImGui_ImplSDL2_ProcessEvent(&e);
       if (e.type == SDL_QUIT) L.quit = true;
       if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) SDL_GetWindowSize(L.window, &L.width, &L.height);
+      if (e.type == SDL_WINDOWEVENT && (e.window.event == SDL_WINDOWEVENT_MOVED || e.window.event == SDL_WINDOWEVENT_DISPLAY_CHANGED) && uiScaleIsAuto(L.settings.guiScale)) {
+        float prev = L.uiZoom;
+        syncInterfaceScale(L, false);
+        if (L.uiZoom - prev > 0.01f || prev - L.uiZoom > 0.01f) syncInterfaceScale(L, true);
+      }
     }
     double now = nowSeconds(); L.time += now - last; last = now;
     L.pollGame();
@@ -257,7 +327,10 @@ int main(int argc, char** argv) {
     }
     if (a.startServer && !serverAutostarted) { serverAutostarted = true; serverStartFromConfig(L); }
     if (a.play && frame == 1) L.play();
-    ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplSDL2_NewFrame(); ImGui::NewFrame();
+    if (L.uiZoom > 0.5f && L.uiZoom != 1.f && ImGui::GetIO().WantSetMousePos && ImGui::GetIO().MousePos.x > -1.0e30f) {
+      ImGui::GetIO().MousePos.x *= L.uiZoom; ImGui::GetIO().MousePos.y *= L.uiZoom;
+    }
+    ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplSDL2_NewFrame(); applyLauncherZoom(L); ImGui::NewFrame(); snapLauncherFont();
     ImGui::PushFont(L.fUi);
     drawFrame(L);
     ImGui::PopFont();

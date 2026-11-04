@@ -1,5 +1,6 @@
 // ui/theme.cpp — styles.css in ImGui (see theme.h).
 #include "core/tool_parts.h"
+#include "common/ui_scale.h"
 #include "ui/theme.h"
 #include "client/app.h"
 #include "client/session.h"
@@ -25,12 +26,15 @@ unsigned g_spriteTex = 0;
 float g_zoom = 1;
 
 float computeZoom(const App& a) {
-  const std::string& g = a.settings.guiScale;
-  float pct = 0;
-  if (g == "small") pct = 80; else if (g == "normal") pct = 100; else if (g == "large") pct = 125;
-  else if (!g.empty() && isdigit((unsigned char)g[0])) pct = (float)std::atof(g.c_str());
-  if (pct >= 50) return clampv(pct / 100.f, 0.5f, 2.f);
-  return clampv(std::min(a.width / 1920.f, a.height / 1080.f), 1.f, 2.f);
+  // Monitor tier (2K 125%, 3K 150%, 4K 200%), capped so the HUD still fits this window.
+  int edge = std::max(0, std::min(a.width, a.height));
+  if (a.window) {
+    int idx = SDL_GetWindowDisplayIndex(a.window);
+    if (idx < 0) idx = 0;
+    SDL_Rect b{};
+    if (SDL_GetDisplayBounds(idx, &b) == 0 && b.w > 0 && b.h > 0) edge = std::min(b.w, b.h);
+  }
+  return uiZoomFromSetting(a.settings.guiScale, autoUiZoom(a.width, a.height, edge));
 }
 
 void buildFonts(App& a, float zoom) {
@@ -156,6 +160,7 @@ void playClick() { if (app().audio) app().audio->play("click"); }
 
 void init(App& a) {
   g_zoom = computeZoom(a);
+  DQ_LOG("interface %d%%", (int)std::lround(g_zoom * 100.f));
   buildFonts(a, g_zoom);
   buildSprites();
   ImGuiStyle& s = ImGui::GetStyle();
