@@ -325,6 +325,19 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   if (kind == ShapeKind::Rail) { emitRail(c, d, id, x, y, z, meta); return; }
   // vines and lily pads, and every ladder. The ladder's rungs are real geometry, so looking up or down
   // the wall still shows the whole mesh. Plant detail only decides the vines and pads.
+  // Near the player the ladder is coloured voxels on that same wall. Far ones stay on the chunk picture.
+  if (kind == ShapeKind::Ladder) {
+    c.out.hasTorch = true;
+    if (c.opt.torchVoxels) {
+      CandleSpot s;
+      s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+      s.tile = self.faces[0];
+      s.only = (u8)(meta & 3);
+      s.flame = -4;
+      c.out.candles.push_back(s);
+      return;
+    }
+  }
   if ((kind == ShapeKind::Ladder || (c.opt.detail && T.tint && kind == ShapeKind::Carpet)) && emitVoxelLeafPlate(c, d, id, x, y, z, meta)) return;
   // A door is the same kind of cutout as a ladder: the relief march walks into the window and the
   // wood drops out when you look along it. The plate is real wood, and the swing turns this same plate.

@@ -514,6 +514,37 @@ const VoxelMeshGL* flamePlate(const TileSet& ts, int layer) {
   return spritePlate(ts, layer, true);
 }
 
+// A ladder's picture, one sixteenth thick, holes where the rungs are. Facing is a turn of this mesh.
+const VoxelMeshGL* ladderMesh(const TileSet& ts, int layer) {
+  struct Cache {
+    const u8* px = nullptr; int count = -1, size = -1;
+    std::unordered_map<int, std::unique_ptr<VoxelMeshGL>> m;
+  };
+  static Cache cache;
+  if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
+    cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
+  }
+  auto it = cache.m.find(layer);
+  if (it != cache.m.end()) return it->second.get();
+  const int S = ts.size > 0 ? ts.size : 32;
+  const int D = std::max(1, S / 16);
+  VoxelGrid g(ivec3(S, S, D));
+  if (layer >= 0 && layer < ts.count) {
+    for (int y = 0; y < S; y++) for (int x = 0; x < S; x++) {
+      const u8* p = ts.tile(layer) + ((size_t)(S - 1 - y) * S + x) * 4;
+      if (p[3] < 128) continue;
+      u32 c = voxRGBA(p[0], p[1], p[2]);
+      for (int z = 0; z < D; z++) g.set(x, y, z, c);
+    }
+  }
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  mesh->upload(md);
+  const VoxelMeshGL* out = mesh.get();
+  cache.m.emplace(layer, std::move(mesh));
+  return out;
+}
+
 // The lever's stick: the same 0.4..0.6 strip the tilted box showed, two voxels per sixteenth, ten tall.
 const VoxelMeshGL* leverStick(const TileSet& ts, int layer) {
   struct Cache {
@@ -612,6 +643,23 @@ public:
       for (const CandleSpot& c : spots) {
         vec3 cell = relO + vec3(c.cx, c.cy, c.cz);
         if (!f.cam.frustum.sphere(cell + vec3(0.5f), 0.9f)) continue;
+        // -4 is a ladder. only keeps the 0..3 turn rotBox uses. The picture stands against the same wall.
+        if (c.flame == -4) {
+          int layer = c.tile < ts.count ? (int)c.tile : -1;
+          if (layer >= 0 && anim[layer] >= 0) layer = anim[layer];
+          const VoxelMeshGL* plate = layer >= 0 ? ladderMesh(ts, layer) : nullptr;
+          if (!plate || !plate->ready()) continue;
+          if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+          const int PS = ts.size > 0 ? ts.size : 32;
+          const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
+          static const float TURN[4] = {0.f, -1.5707963f, 3.14159265f, 1.5707963f};
+          const mat4 model = glm::translate(mat4(1), cell + vec3(0.5f))
+              * glm::rotate(mat4(1), TURN[c.only & 3], vec3(0, 1, 0))
+              * glm::translate(mat4(1), vec3(-0.5f))
+              * glm::scale(mat4(1), vec3(1.f / PS));
+          VR.draw(*plate, model, VoxelLight{(lit >> 4) / 15.f, (lit & 15) / 15.f});
+          continue;
+        }
         // -3 is a flower in a pot: two crossed pictures, coloured, standing in the pot's mouth.
         if (c.flame == -3) {
           int layer = c.tile < ts.count ? (int)c.tile : -1;
