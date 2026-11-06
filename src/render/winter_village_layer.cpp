@@ -17,29 +17,57 @@ namespace dq {
 namespace {
 const vec3 BULB[6] = {{1.f, 0.18f, 0.16f}, {0.2f, 0.95f, 0.3f}, {0.25f, 0.45f, 1.f}, {1.f, 0.8f, 0.2f}, {1.f, 0.95f, 0.85f}, {0.95f, 0.3f, 0.85f}};
 
-GLuint roundTex() {   // a soft round bulb
-  static GLuint t = 0;
-  if (t) return t;
-  const int N = 16; std::vector<u8> px(N * N * 4);
-  for (int y = 0; y < N; y++) for (int x = 0; x < N; x++) {
-    float d = std::hypot(x + 0.5f - N / 2.f, y + 0.5f - N / 2.f) / (N / 2.f);
-    u8* p = &px[(y * N + x) * 4]; float k = 1 - 0.35f * d;
-    p[0] = p[1] = p[2] = (u8)(255 * k); p[3] = d < 0.92f ? 255 : 0;
+// A bulb is a small glowing ball. The same six meshes are scaled to each light, and the twinkle darkens them.
+constexpr int BULB_N = 8;
+const VoxelMeshGL* bulbMesh(int c) {
+  static std::unique_ptr<VoxelMeshGL> cache[6];
+  c = (c % 6 + 6) % 6;
+  if (cache[c]) return cache[c].get();
+  const float R = BULB_N * 0.5f - 0.55f;
+  VoxelGrid g(ivec3(BULB_N, BULB_N, BULB_N));
+  const vec3 col = BULB[c];
+  for (int z = 0; z < BULB_N; z++) for (int y = 0; y < BULB_N; y++) for (int x = 0; x < BULB_N; x++) {
+    const float dx = x + 0.5f - BULB_N * 0.5f, dy = y + 0.5f - BULB_N * 0.5f, dz = z + 0.5f - BULB_N * 0.5f;
+    const float d2 = dx * dx + dy * dy + dz * dz;
+    if (d2 > R * R) continue;
+    const float k = 1.f - 0.35f * std::sqrt(d2) / R;
+    g.set(x, y, z, voxRGBA((int)std::lround(col.r * 255.f * k), (int)std::lround(col.g * 255.f * k), (int)std::lround(col.b * 255.f * k), VOXEL_GLOW));
   }
-  return t = makeTexRGBA(N, N, px.data(), true, false);
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  cache[c] = std::make_unique<VoxelMeshGL>();
+  cache[c]->upload(md);
+  return cache[c].get();
 }
-GLuint starTex() {   // a five-pointed star
-  static GLuint t = 0;
-  if (t) return t;
-  const int N = 32; std::vector<u8> px(N * N * 4);
+// The star on top, the same five points as the old picture, one voxel thick so it can turn.
+const VoxelMeshGL* starMesh() {
+  static std::unique_ptr<VoxelMeshGL> mesh;
+  if (mesh) return mesh.get();
+  const int N = 32;
+  VoxelGrid g(ivec3(N, N, 1));
   for (int y = 0; y < N; y++) for (int x = 0; x < N; x++) {
-    float dx = x + 0.5f - N / 2.f, dy = N / 2.f - (y + 0.5f), r = std::hypot(dx, dy) / (N / 2.f), a = std::atan2(dx, dy);
-    float k = std::fmod(a + PI * 2 + PI / 5, PI * 2 / 5) / (PI * 2 / 5);   // 0..1 across one point
-    u8* p = &px[(y * N + x) * 4];
-    const bool in = r < 0.42f + 0.55f * (1 - std::fabs(k - 0.5f) * 2);   // the points reach out to ~0.97
-    p[0] = 255; p[1] = (u8)(210 + 45 * (1 - r)); p[2] = (u8)(70 + 120 * (1 - r)); p[3] = in ? 255 : 0;
+    const float dx = x + 0.5f - N / 2.f, dy = N / 2.f - (y + 0.5f), r = std::hypot(dx, dy) / (N / 2.f), a = std::atan2(dx, dy);
+    const float k = std::fmod(a + PI * 2 + PI / 5, PI * 2 / 5) / (PI * 2 / 5);
+    if (r >= 0.42f + 0.55f * (1 - std::fabs(k - 0.5f) * 2)) continue;
+    g.set(x, N - 1 - y, 0, voxRGBA(255, (int)std::lround(210 + 45 * (1 - r)), (int)std::lround(70 + 120 * (1 - r)), VOXEL_GLOW));
   }
-  return t = makeTexRGBA(N, N, px.data(), true, false);
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  mesh = std::make_unique<VoxelMeshGL>();
+  mesh->upload(md);
+  return mesh.get();
+}
+// A present is one flat colour. The ribbon is another. Face shade comes from the voxel shader.
+const VoxelMeshGL* colourCube(u32 col) {
+  static std::unordered_map<u32, std::unique_ptr<VoxelMeshGL>> cache;
+  auto it = cache.find(col);
+  if (it != cache.end()) return it->second.get();
+  VoxelGrid g(ivec3(1, 1, 1));
+  g.set(0, 0, 0, col);
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  auto box = std::make_unique<VoxelMeshGL>();
+  box->upload(md);
+  const VoxelMeshGL* out = box.get();
+  cache.emplace(col, std::move(box));
+  return out;
 }
 float hrand(u32 h) { h ^= h >> 15; h *= 2246822519u; h ^= h >> 13; h *= 3266489917u; h ^= h >> 16; return (h & 0xffffff) / 16777216.f; }
 } // namespace
@@ -62,25 +90,29 @@ public:
   }
   void drawOpaque(GameSession& s, const FrameCtx& f) override {
     if (!christmas() || deco.empty() || !s.player || s.player->realm != REALM_MAIN) return;
-    ContentDraw& cd = contentDraw();
-    bool begun = false;
+    VoxelRenderer& VR = voxelRenderer();
+    bool vr = false;
+    auto beginVR = [&]() { if (!vr) { VR.begin(f, f.cam.viewProj); vr = true; } };
+    auto endVR = [&]() { if (vr) { VR.end(); vr = false; } };
     const float t = (float)f.time;
     const glm::dvec3 cam = f.cam.pos;
-    const float cy = f.cam.yaw;
     auto bulb = [&](vec3 p, int c, float size, int i) {
       vec3 rel = f.cam.rel(glm::dvec3(p));
       if (!f.cam.frustum.sphere(rel, 0.2f)) return;
       const float tw = (i % 5 == 0) ? 0.55f + 0.45f * std::sin(t * 3.1f + i * 1.7f) : 0.85f + 0.15f * std::sin(t * 1.3f + i);   // some twinkle
-      mat4 m = glm::translate(mat4(1), rel); m = glm::rotate(m, cy, vec3(0, 1, 0)); m = glm::scale(m, vec3(size));
-      cd.picture(roundTex(), m, vec4(0, 0, 1, 1), vec4(BULB[c % 6] * tw, 1), vec2(1, 1), false);
+      const VoxelMeshGL* mesh = bulbMesh(c);
+      if (!mesh || !mesh->ready()) return;
+      beginVR();
+      // A dark mix is a multiply, so the twinkle still dims a glowing bulb.
+      const mat4 model = glm::translate(mat4(1), rel) * glm::scale(mat4(1), vec3(size / BULB_N)) * glm::translate(mat4(1), vec3(-BULB_N * 0.5f));
+      VR.draw(*mesh, model, VoxelLight{1.f, 1.f}, vec4(0, 0, 0, 1.f - tw));
     };
     for (auto& [id, d] : deco) {
       if (glm::distance(glm::dvec3(d.center), cam) > 120) continue;
-      if (!begun) { if (!cd.begin(f, f.cam.viewProj)) return; begun = true; }
       for (size_t i = 0; i < d.bulbs.size(); i++) if (glm::distance(glm::dvec3(d.bulbs[i].first), cam) < 64) bulb(d.bulbs[i].first, d.bulbs[i].second, 0.21f, (int)i);
-      if (d.tree) drawTree(s, f, cd, d, bulb);
+      if (d.tree) drawTree(s, f, VR, beginVR, endVR, d, bulb);
     }
-    if (begun) cd.end();
+    endVR();
   }
 private:
   struct Deco { double at = -1e9; vec3 center{0}; std::vector<std::pair<vec3, int>> bulbs; bool tree = false; vec3 treeAt{0}; u32 seed = 0; };
@@ -201,7 +233,8 @@ private:
     return out;
   }
 
-  template <class Bulb> void drawTree(GameSession& s, const FrameCtx& f, ContentDraw& cd, const Deco& d, Bulb& bulb) {
+  template <class Begin, class End, class Bulb>
+  void drawTree(GameSession& s, const FrameCtx& f, VoxelRenderer& VR, Begin& beginVR, End& endVR, const Deco& d, Bulb& bulb) {
     const vec3 rel = f.cam.rel(glm::dvec3(d.treeAt));
     if (!f.cam.frustum.sphere(rel + vec3(0, 3.5f, 0), 4.5f)) return;
     World& w = s.world();
@@ -236,9 +269,7 @@ private:
     };
     bool logBox = sideId < 0 || topId < 0, leafBox = leafId < 0;
     if (!logBox || !leafBox) {
-      cd.end();
-      VoxelRenderer& VR = voxelRenderer();
-      VR.begin(f, f.cam.viewProj);
+      beginVR();
       if (!logBox) logBox = !drawPiece(VR, vec3(-0.22f, 0, -0.22f), vec3(0.22f, 1.3f, 0.22f), (u16)sideId, (u16)topId, 255, 255, 255);
       if (!leafBox) {
         bool any = false;
@@ -246,17 +277,21 @@ private:
           any |= drawPiece(VR, vec3(-tierHw[i], tierY[i], -tierHw[i]), vec3(tierHw[i], tierY[i] + tierH, tierHw[i]), (u16)leafId, (u16)leafId, gt[0], gt[1], gt[2]);
         leafBox = !any;
       }
-      VR.end();
+    }
+    if (logBox || leafBox) {
+      endVR();
+      ContentDraw& cd = contentDraw();
       if (!cd.begin(f, f.cam.viewProj)) return;
-    }
-    if (logBox) {
-      const GLuint log = tileTexture(s.app, "spruce_log_side"), logTop = tileTexture(s.app, "spruce_log_top");
-      drawTileBox(cd, m, vec3(-0.22f, 0, -0.22f), vec3(0.22f, 1.3f, 0.22f), log, logTop, logTop, light, vec3(1), false);
-    }
-    if (leafBox) {
-      const GLuint leaves = tileTexture(s.app, "spruce_leaves");
-      for (int i = 0; i < 5; i++)
-        drawTileBox(cd, m, vec3(-tierHw[i], tierY[i], -tierHw[i]), vec3(tierHw[i], tierY[i] + tierH, tierHw[i]), leaves, leaves, leaves, light, green, false);
+      if (logBox) {
+        const GLuint log = tileTexture(s.app, "spruce_log_side"), logTop = tileTexture(s.app, "spruce_log_top");
+        drawTileBox(cd, m, vec3(-0.22f, 0, -0.22f), vec3(0.22f, 1.3f, 0.22f), log, logTop, logTop, light, vec3(1), false);
+      }
+      if (leafBox) {
+        const GLuint leaves = tileTexture(s.app, "spruce_leaves");
+        for (int i = 0; i < 5; i++)
+          drawTileBox(cd, m, vec3(-tierHw[i], tierY[i], -tierHw[i]), vec3(tierHw[i], tierY[i] + tierH, tierHw[i]), leaves, leaves, leaves, light, green, false);
+      }
+      cd.end();
     }
     int bi = 0;
     for (int i = 0; i < 5; i++) {
@@ -270,22 +305,31 @@ private:
       }
     }
     // the star, turning slowly on top
-    {
+    if (const VoxelMeshGL* star = starMesh(); star && star->ready()) {
+      beginVR();
+      const int N = 32;
       mat4 sm = glm::translate(m, vec3(0, 0.8f + 5 * 1.0f + 0.45f, 0));
-      sm = glm::rotate(sm, (float)f.time * 0.6f, vec3(0, 1, 0)); sm = glm::scale(sm, vec3(0.8f));
-      cd.picture(starTex(), sm, vec4(0, 0, 1, 1), vec4(1, 1, 1, 1), vec2(1, 1), false);
+      sm = glm::rotate(sm, (float)f.time * 0.6f, vec3(0, 1, 0));
+      sm = sm * glm::translate(mat4(1), vec3(-0.5f, -0.5f, -0.5f / N)) * glm::scale(mat4(1), vec3(0.8f / N));
+      VR.draw(*star, sm, VoxelLight{1.f, 1.f});
     }
     // presents underneath: wrapped boxes with a ribbon round them
     static const vec3 PAPER[5] = {{0.75f, 0.12f, 0.14f}, {0.16f, 0.45f, 0.24f}, {0.2f, 0.32f, 0.7f}, {0.85f, 0.85f, 0.82f}, {0.6f, 0.2f, 0.6f}};
+    const vec3 gold(0.95f, 0.78f, 0.25f);
+    auto solid = [&](const mat4& pm, vec3 a, vec3 b, vec3 rgb) {
+      const VoxelMeshGL* box = colourCube(voxRGBA((int)std::lround(rgb.r * 255.f), (int)std::lround(rgb.g * 255.f), (int)std::lround(rgb.b * 255.f)));
+      if (!box || !box->ready()) return;
+      beginVR();
+      const vec3 ext = b - a;
+      VR.draw(*box, pm * glm::translate(mat4(1), a) * glm::scale(mat4(1), ext), L);
+    };
     for (int k = 0; k < 5; k++) {
       const float a = k * 1.3f + hrand(d.seed + k) * 0.5f, r = 1.35f + hrand(d.seed * 7 + k) * 0.5f;
       const float sz = 0.32f + hrand(d.seed * 13 + k) * 0.22f, hy = sz * (0.7f + hrand(d.seed * 3 + k) * 0.5f);
       mat4 pm = glm::translate(m, vec3(std::cos(a) * r, 0, std::sin(a) * r)); pm = glm::rotate(pm, a * 2.1f, vec3(0, 1, 0));
-      const vec3 c = PAPER[(k + d.seed) % 5];
-      drawTileBox(cd, pm, vec3(-sz / 2, 0, -sz / 2), vec3(sz / 2, hy, sz / 2), 0, 0, 0, light, c, false);
-      const vec3 gold(0.95f, 0.78f, 0.25f);
-      drawTileBox(cd, pm, vec3(-0.035f, 0, -sz / 2 - 0.005f), vec3(0.035f, hy + 0.005f, sz / 2 + 0.005f), 0, 0, 0, light, gold, false);
-      drawTileBox(cd, pm, vec3(-sz / 2 - 0.005f, 0, -0.035f), vec3(sz / 2 + 0.005f, hy + 0.005f, 0.035f), 0, 0, 0, light, gold, false);
+      solid(pm, vec3(-sz / 2, 0, -sz / 2), vec3(sz / 2, hy, sz / 2), PAPER[(k + d.seed) % 5]);
+      solid(pm, vec3(-0.035f, 0, -sz / 2 - 0.005f), vec3(0.035f, hy + 0.005f, sz / 2 + 0.005f), gold);
+      solid(pm, vec3(-sz / 2 - 0.005f, 0, -0.035f), vec3(sz / 2 + 0.005f, hy + 0.005f, 0.035f), gold);
     }
   }
 };
