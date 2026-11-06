@@ -558,6 +558,43 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   if (kind == ShapeKind::Lever) emitLeverHandle(c, d, x, y, z, meta, own);
 }
 
+// Near the player a chiseled block's remaining corners are coloured voxels, the same octants and
+// the same faces the chunk boxes use. Grass, leaves and see-through blocks stay on the chunk picture.
+// Far chisels stay there too. Snow on a column keeps that top face.
+bool emitNearCarve(MeshCtx& c, BlockId id, int x, int y, int z, u8 carveMask) {
+  const Registry& R = c.R;
+  const BlockTraits& T = traits(id);
+  if (T.tint || T.leaves || R.tTrans[id]) return false;
+  c.out.hasTorch = true;
+  if (!c.opt.torchVoxels) return false;
+  const BlockDef& self = R.block(id);
+  int side = self.faces[0], top = self.faces[2], bot = self.faces[3];
+  MeshShapeNb nb(c, x, y, z);
+  thread_local std::vector<ShapeBox> boxes;
+  if (!carveBoxes(boxes, carveMask, nb)) return false;
+  if (boxes.empty()) return true;
+  const u8 coat = c.coatAt(x, y, z);
+  const u16 sideT = (u16)std::max(side, 0);
+  const u16 topT = (u16)std::max(top >= 0 ? top : side, 0);
+  const u16 botT = (u16)std::max(bot >= 0 ? bot : side, 0);
+  for (const ShapeBox& b : boxes) {
+    int hx = b.b[0] >= 8.f ? 1 : 0, hy = b.b[1] >= 8.f ? 1 : 0, hz = b.b[2] >= 8.f ? 1 : 0;
+    u8 only = b.only;
+    if ((coat & 0x0F) && (coat & colBit(hx, hz)) && columnTopY(carveMask, hx, hz) == hy) {
+      if (!(hy == 1 && c.opaqueSolid(x, y + 1, z))) only = (u8)(only & ~4u);
+    }
+    if (!only) continue;
+    CandleSpot s;
+    s.x0 = b.b[0]; s.y0 = b.b[1]; s.z0 = b.b[2]; s.x1 = b.b[3]; s.y1 = b.b[4]; s.z1 = b.b[5];
+    s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+    s.tile = sideT; s.nx = sideT; s.pz = sideT; s.nz = sideT;
+    s.top = topT; s.bot = botT;
+    s.only = only;
+    c.out.candles.push_back(s);
+  }
+  return true;
+}
+
 // A full block whose high meta nibble carved some of its 8 corners (chisel): the eight octant
 // boxes that remain, with the same face tiles as the plain cube path (emitCube).
 void emitCarvedBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 carveMask) {

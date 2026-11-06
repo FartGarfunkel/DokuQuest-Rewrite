@@ -77,6 +77,8 @@ struct MeshShapeNb : ShapeNb {
 // per-kind emitters
 void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
 void emitCarvedBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
+// Near the player, the corners that remain are coloured voxels. True means the chunk boxes were recorded and must not also be drawn.
+bool emitNearCarve(MeshCtx& c, BlockId id, int x, int y, int z, u8 carveMask);
 void emitSnowCaps(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 carve);
 void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
 void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
