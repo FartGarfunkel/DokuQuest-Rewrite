@@ -79,7 +79,7 @@ struct CandleSpot {
   u16 top = 0, bot = 0;
   u8 only = 63;       // faces drawn (bit per face). A cactus hides the faces that would sit inside it.
   u16 faceRot = 0;    // two bits a face: the quarter-turn a piston's side picture needs. 0 leaves it as it is.
-  i16 flame = -1;     // candle_flame layer when it is lit, else -1. -2 scaffolding, -3 a pot flower, -4 a ladder, -5 a campfire's four walls, -6 a fire block's two crosses. <= -10 glows.
+  i16 flame = -1;     // candle_flame layer when it is lit, else -1. -2 scaffolding, -3 a pot flower, -4 a ladder, -5 a campfire's four walls, -6 a fire block's two crosses, -7 a chain block's two link strips (only bit 0 stretches the top link). <= -10 glows.
 };
 // A lever handle. x,y,z is its centre in section-local blocks. The three axes are the stick's
 // (yy runs from the base toward the tip), the same ones the tilted box used.

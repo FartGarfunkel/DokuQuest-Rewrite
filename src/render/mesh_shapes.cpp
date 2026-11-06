@@ -573,8 +573,8 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   int mi = hang && T.modelHang >= 0 ? T.modelHang : out && T.modelOut >= 0 ? T.modelOut : T.model;
   const std::vector<ShapeBox>* boxes = modelShape(mi);
   if (!boxes) return;
-  // Pots, chairs, anvils and the other still props. A flag flaps, a hanging lantern swings, and a
-  // chain is two crossed pictures, so those stay on the chunk mesh.
+  // Pots, chairs, anvils and the other still props. A flag flaps and a hanging lantern swings,
+  // so those stay on the chunk mesh. A chain block's two link strips are coloured voxels nearby.
   // A grindstone's rim, a saw's shift and a campfire's end ring and grain are baked with the prop.
   // A lit campfire's flame still draws above the logs.
   auto endsWith = [](const std::string& s, const char* suf) {
@@ -598,6 +598,22 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   bool plain = nearProp;
   static int chainTile = -2;
   if (chainTile == -2) chainTile = R.tile("chain");
+  // The chain block only. A lantern's own links stay in the box loop below, where they can still sway.
+  if (shapeName == "chain") {
+    c.out.hasTorch = true;
+    if (c.opt.torchVoxels && chainTile >= 0) {
+      CandleSpot s;
+      s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+      s.tile = (u16)chainTile;
+      s.sink = lift;
+      s.x0 = sh.micro ? sh.x / 16.f : 0.f;
+      s.z0 = sh.micro ? sh.z / 16.f : 0.f;
+      s.only = stretchTop ? 1 : 0;
+      s.flame = -7;
+      c.out.candles.push_back(s);
+      return;
+    }
+  }
   if (plain) for (auto& b : *boxes) {
     if (b.tu != 0.f || b.uvT || b.only != 63) plain = false;
     if (chainTile >= 0 && (b.side == chainTile || b.end == chainTile)) plain = false;
