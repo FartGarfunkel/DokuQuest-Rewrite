@@ -73,6 +73,7 @@ struct Own { float sky, bl, l0; };
 void emitBox(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, u8 meta, int x, int y, int z, const ShapeBox& b,
              int sideT, int topT, int botT, float sink, int shape, Own own, u8 mat, u8 forceOnly = 0) {
   const Registry& R = c.R;
+  const int blockTint = traits(id).tint;
   MeshShapeNb nb(c, x, y, z);   // neighbour ids/meta for all 6 directions (carve-aware cull below)
   const float P = 1 / 16.f;
   for (int f = 0; f < 6; f++) {
@@ -145,6 +146,9 @@ void emitBox(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, u8 meta, int x
       float shade = FACES[f].shade * ao;
       v[k] = {vec3(x + X * P, y + (Y + sink) * P, z + Z * P), vec2(clampv(st.x, 0.f, 16.f) / 16, clampv(st.y, 0.f, 16.f) / 16), sk, bl, shade, 0, markCubyz(packCubyzLight(sample))};
     }
+    // Doors keep panelST and the swing mesh. Every other box paints the window of the picture this face uses.
+    if (c.opt.colourStep > 0 && shape != ShapeKind::Door && shape != ShapeKind::Trapdoor
+        && bakeColourQuad(c, d, v, tile, f, mat, blockTint)) continue;
     c.quad(d, v, tile, f, mat);
   }
 }
@@ -348,7 +352,9 @@ void addShapeBox(MeshCtx& c, std::vector<ChunkVertex>& d, const ShapeBox& box, v
       for (auto& q : v) { mn = glm::min(mn, q.uv); mx = glm::max(mx, q.uv); }
       for (auto& q : v) q.uv = (q.uv - mn) / glm::max(mx - mn, vec2(1e-4f));
     }
-    c.quad(d, v, tile, f, fitF ? (u8)(mat | Mat::NoRelief) : mat);
+    const u8 faceMat = fitF ? (u8)(mat | Mat::NoRelief) : mat;
+    if (c.opt.colourStep > 0 && bakeColourQuad(c, d, v, tile, f, faceMat, 0)) continue;
+    c.quad(d, v, tile, f, faceMat);
   }
 }
 } // namespace
