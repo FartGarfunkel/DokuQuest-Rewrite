@@ -306,10 +306,10 @@ bool surroundedCovered(const MeshCtx& c, int x, int y, int z) {
   return true;
 }
 
-// One exposed cube face, as coloured rectangles instead of a tile sample.
-// The Doku pictures are speckled (a stone face stays about 900 quads if every texel is its own),
-// so a near face is an 8×8 grid of 4-texel cells and a far face is one colour. Only this face is
-// built: the cube's hidden sides were already skipped, and the section was already frustum culled.
+// One exposed cube face, as coloured rectangles. colourStep 1 is the 32×32 picture, one cell per texel
+// (a stone face stays about 900 quads, and flat runs still merge). A coarser step averages that many
+// texels. Only this face is built: the cube's hidden sides were already skipped, and the section was
+// already frustum culled.
 bool emitColourFace(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& dst, const MV corn[4], const FaceCorners& fc, int f, int tile, int x, int y, int z, u8 mat, u8 sway, bool uniform, const u32 tints[4], int blockTint) {
   if (!c.opt.colourStep || !c.tiles || tile < 0 || tile >= c.tiles->count || tile >= BAKED_TILE) return false;
   if (c.tiles->animated(tile)) {
@@ -323,9 +323,9 @@ bool emitColourFace(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVert
   if (S < 1) return false;
   int step = pass == 2 ? S : c.opt.colourStep;   // glass stays one quad: a grid of it would overdraw
   if (step > S) step = S;
-  // Leaves do not hide the faces they share, and the picture does not merge, so a full 4-texel grid
-  // would be tens of quads on every side of every leaf. An 8-texel cell keeps the silhouette.
-  if ((mat & Mat::Cutout) && step < S && step < 8) step = 8;
+  // Full-texel leaves keep the picture. A coarser band uses an 8-texel cell: fancy leaves draw the
+  // faces they share, and those faces stay on this cube, so a whole wood at one texel is a lot of quads.
+  if ((mat & Mat::Cutout) && c.opt.colourStep > 1 && step < S && step < 8) step = 8;
   if (step < 1 || S % step) return false;
   int ix[2][2] = {{-1, -1}, {-1, -1}};
   for (int k = 0; k < 4; k++) {
@@ -333,7 +333,7 @@ bool emitColourFace(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVert
     ix[vi][ui] = k;
   }
   if (ix[0][0] < 0 || ix[0][1] < 0 || ix[1][0] < 0 || ix[1][1] < 0) return false;
-  const int bits = step >= S ? 4 : 5;   // far stone shares one level so a cliff still merges; near keeps more of the picture
+  const int bits = step >= S ? 4 : step <= 1 ? 8 : 5;   // one texel keeps the art's colour; a big average can share a level
   const int sh = 8 - bits;
   const int n = S / step;
   struct Cell { u32 key = 0; int r = 0, g = 0, b = 0; bool tinted = false, glow = false; };
@@ -855,7 +855,7 @@ bool bakeColourQuad(MeshCtx& c, std::vector<ChunkVertex>& dst, const MV corn[4],
     }
     if (!cnt) return true;
     if (cnt * 2 < (i1 - i0) * (j1 - j0)) return false;
-    const int bits = (c.opt.colourStep >= 32 || (mat & Mat::Translucent)) ? 4 : 5;
+    const int bits = (c.opt.colourStep >= 32 || (mat & Mat::Translucent)) ? 4 : c.opt.colourStep <= 1 ? 8 : 5;
     const int qsh = 8 - bits;
     MV v[4] = {corn[0], corn[1], corn[2], corn[3]};
     paintAs(v, ((r / cnt) >> qsh) << qsh, ((g / cnt) >> qsh) << qsh, ((b / cnt) >> qsh) << qsh, glow, blockTint && tinted * 2 >= cnt);
@@ -882,11 +882,11 @@ bool bakeColourQuad(MeshCtx& c, std::vector<ChunkVertex>& dst, const MV corn[4],
   const int spanI = i1 - i0, spanJ = j1 - j0;
   int step = c.opt.colourStep;
   if (mat & Mat::Translucent) step = std::max(spanI, spanJ);   // glass stays one quad: a grid of it would overdraw
-  else if ((mat & Mat::Cutout) && step < 8) step = 8;          // the cutout pass: an 8-texel cell keeps a leafy silhouette small
+  else if ((mat & Mat::Cutout) && c.opt.colourStep > 1 && step < 8) step = 8;   // far leaves: an 8-texel cell, the silhouette stays small
   if (step < 1) return false;
   const int nX = std::max(1, (spanI + step - 1) / step);
   const int nY = std::max(1, (spanJ + step - 1) / step);
-  const int bits = (c.opt.colourStep >= 32 || (mat & Mat::Translucent)) ? 4 : 5;
+  const int bits = (c.opt.colourStep >= 32 || (mat & Mat::Translucent)) ? 4 : step <= 1 ? 8 : 5;
   const int sh = 8 - bits;
   struct Cell { u32 key = 0; int r = 0, g = 0, b = 0; bool tinted = false, glow = false; };
   std::vector<Cell> cells((size_t)nX * nY);
@@ -1218,7 +1218,7 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
     }
   }
   if (gm) flushGreedy(c, *gm);
-  out.colourFine = opt.colourStep > 0 && opt.colourStep < 32;
+  out.colourFine = opt.colourStep == 1;
   out.torchVox = opt.torchVoxels && out.hasTorch;
   out.ms = (nowSeconds() - t0) * 1000;
 }

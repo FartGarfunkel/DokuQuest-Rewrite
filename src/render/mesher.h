@@ -127,7 +127,7 @@ struct MeshOutput {
   bool torchVox = false;       // those torches are in `torches` instead of the cutout list
   bool detail = true;          // built with 3D plants
   u16 vis = 0x7FFF;            // cave culling: which pairs of the section's 6 faces see each other through it (sectionVisPair)
-  bool colourFine = false;     // exposed cubes were baked as a near grid (colourStep below 32), not one colour for the face
+  bool colourFine = false;     // exposed cubes were baked at one cell per texel (colourStep 1)
   double ms = 0;               // time spent meshing
   bool empty() const { return opaque.empty() && cutout.empty() && trans.empty(); }
 };
@@ -138,8 +138,8 @@ struct MesherOptions {
   bool detail = true;          // 3D voxel plants (settings.plantDetail near/all decides per section)
   bool greedy = true;          // merge flat, evenly lit faces
   bool torchVoxels = false;    // near torches become coloured voxels instead of cutout quads
-  // 0 keeps the tile sample. 4 bakes each exposed cube face as 4-texel colour cells (the near band).
-  // 32 bakes one colour for the whole face (far enough that the cells are smaller than a pixel).
+  // 0 keeps the tile sample. 1 bakes one colour cell per texel (the 32×32 picture, near band).
+  // 2 averages 2×2 texels on a farther loaded face. 32 is one colour for the whole face.
   // A shader pack stays on 0: its chunk shader still wants real tile coordinates.
   int colourStep = 0;
 };
