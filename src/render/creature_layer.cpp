@@ -16,6 +16,8 @@
 #include "client/app.h"
 #include "render/tile_box.h"
 #include "render/mesher.h"
+#include "assets/voxel.h"
+#include <unordered_map>
 #include "world/shapes.h"
 #include "sim/creature_rig.h"
 #include "core/registry.h"
@@ -93,7 +95,7 @@ struct SmallMeshes {
 static SmallMeshes& small() { static SmallMeshes* m = new SmallMeshes(); m->build(); return *m; }
 
 // the foliage colour the chunk shader looks up for this climate (render/world_renderer.cpp's tint table)
-static void drawFallingTrees(GameSession& s, const FrameCtx& f, float a);
+static void drawFallingTrees(GameSession& s, const FrameCtx& f, float a, CreatureDraw& D);
 static vec3 foliageTintAt(const World& w, int x, int y, int z) {
   u8 t = 128, h = 128;
   if (Chunk* ch = w.chunkAtBlock(x, y, z)) {
@@ -400,17 +402,108 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
     }
   }
   fauna->draw(s, f);
+  drawFallingTrees(s, f, a, D);
   D.end();
-  drawFallingTrees(s, f, a);
 }
 
-// A felled tree used to be a nearest-face voxel copy: the top of a log wore the end-grain picture, and a leaf's
-// holes became missing voxels with a flat green multiply. Each block stays a box of its own side, top and bottom tiles.
-static void drawFallingTrees(GameSession& s, const FrameCtx& f, float a) {
+// A felled block is the same six pictures as the block still standing, one voxel per texel.
+// Alpha 253 keeps this tree's foliage colour (chunk.glsl). A hole stays a hole. A solid block is
+// filled in, so only its outside is drawn. The mesh is cached: a tree is a handful of pictures.
+struct FallKey {
+  u16 tile[6]{};
+  u32 tint = 0;
+  u16 season = 0;
+  u16 S = 32;
+  bool operator==(const FallKey& o) const {
+    return tint == o.tint && season == o.season && S == o.S && std::equal(tile, tile + 6, o.tile);
+  }
+};
+struct FallHash {
+  size_t operator()(const FallKey& k) const {
+    size_t h = (size_t)k.tint * 1315423911u ^ ((size_t)k.season << 1) ^ k.S;
+    for (u16 t : k.tile) h = h * 16777619u ^ t;
+    return h;
+  }
+};
+static float q8(float v) { return std::round(clampv(v, 0.f, 1.f) * 8.f) / 8.f; }
+static const VoxelMeshGL* fallingBlockMesh(const TileSet& ts, const FallKey& key, bool tinted) {
+  struct Cache {
+    const u8* px = nullptr;
+    int count = -1, size = -1;
+    std::unordered_map<FallKey, std::unique_ptr<VoxelMeshGL>, FallHash> m;
+  };
+  static Cache cache;
+  if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
+    cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
+  }
+  auto it = cache.m.find(key);
+  if (it != cache.m.end()) return it->second.get();
+  const int S = key.S;
+  const int src = ts.size > 0 ? ts.size : S;
+  VoxelGrid g(ivec3(S, S, S));
+  bool hole = false;
+  auto texel = [&](int tile, int x, int y, int z, int f) -> u32 {
+    if (tile < 0 || tile >= ts.count) { hole = true; return 0; }
+    float fx = (x + 0.5f) / S, fy = (y + 0.5f) / S, fz = (z + 0.5f) / S;
+    float u, v;
+    switch (f) {   // the same flips as faceUV in mesher.cpp, brought into one block
+      case 0: u = 1.f - fz; v = 1.f - fy; break;
+      case 1: u = fz; v = 1.f - fy; break;
+      case 2: u = fx; v = fz; break;
+      case 3: u = 1.f - fx; v = fz; break;
+      case 4: u = fx; v = 1.f - fy; break;
+      default: u = 1.f - fx; v = 1.f - fy; break;
+    }
+    int sx = clampv((int)(u * src), 0, src - 1), sy = clampv((int)(v * src), 0, src - 1);
+    const u8* p = ts.tile(tile) + ((size_t)sy * src + sx) * 4;
+    if (p[3] < 128) { hole = true; return 0; }
+    int r = p[0], gg = p[1], b = p[2];
+    if (tinted) {
+      float w = clampv((1.f - p[3] / 255.f) * 127.5f, 0.f, 1.f);
+      vec3 tint((key.tint & 255) / 255.f, ((key.tint >> 8) & 255) / 255.f, ((key.tint >> 16) & 255) / 255.f);
+      tint *= 1.3f;
+      float sa = (key.season & 15) / 8.f;
+      if (sa > 0.f) {
+        vec3 sc(((key.season >> 4) & 15) / 8.f, ((key.season >> 8) & 15) / 8.f, ((key.season >> 12) & 15) / 8.f);
+        tint = glm::mix(tint, sc * (glm::dot(tint, vec3(0.299f, 0.587f, 0.114f)) * 1.6f), sa);
+      }
+      auto mix1 = [&](int c, float t) { return clampv((int)std::lround(c * (1.f + (t - 1.f) * w)), 0, 255); };
+      r = mix1(r, tint.r); gg = mix1(gg, tint.g); b = mix1(b, tint.b);
+    }
+    return voxRGBA(r, gg, b);
+  };
+  for (int f = 0; f < 6; f++) {
+    for (int v = 0; v < S; v++) for (int u = 0; u < S; u++) {
+      int x = 0, y = 0, z = 0;
+      if (f == 0) { x = S - 1; z = u; y = v; }
+      else if (f == 1) { x = 0; z = u; y = v; }
+      else if (f == 2) { y = S - 1; x = u; z = v; }
+      else if (f == 3) { y = 0; x = u; z = v; }
+      else if (f == 4) { z = S - 1; x = u; y = v; }
+      else { z = 0; x = u; y = v; }
+      // The top and the bottom own their rim, so a log's end grain stays on the end.
+      if (f != 2 && f != 3 && (y == 0 || y == S - 1)) continue;
+      if (u32 c = texel((int)key.tile[f], x, y, z, f)) g.set(x, y, z, c);
+    }
+  }
+  if (!hole) {
+    u32 fill = voxRGBA(1, 1, 1);
+    for (int z = 0; z < S; z++) for (int y = 0; y < S; y++) for (int x = 0; x < S; x++) if (!g.at(x, y, z)) g.set(x, y, z, fill);
+  }
+  VoxelMeshData md;
+  buildVoxelMesh(g, md);
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  mesh->upload(md);
+  const VoxelMeshGL* out = mesh.get();
+  cache.m.emplace(key, std::move(mesh));
+  return out;
+}
+static void drawFallingTrees(GameSession& s, const FrameCtx& f, float a, CreatureDraw& D) {
   World& w = s.world();
-  ContentDraw& cd = contentDraw();
-  bool begun = false;
   const Registry& R = reg();
+  const TileSet& ts = s.app.tiles;
+  const int S = clampv(ts.size > 0 ? ts.size : 32, 1, 32);
+  vec4 season(q8(f.season.r), q8(f.season.g), q8(f.season.b), q8(f.season.a));
   for (auto& up : s.level->entities()) {
     Entity& e = *up;
     if (e.removed || e.type != "falling_tree" || e.realm != s.player->realm) continue;
@@ -420,8 +513,6 @@ static void drawFallingTrees(GameSession& s, const FrameCtx& f, float a) {
     vec3 rel = f.cam.rel(glm::dvec3(ip.pos));
     if (glm::dot(rel, rel) > 160.f * 160.f) continue;
     if (!f.cam.frustum.sphere(rel + vec3(0, 8, 0), 18.f)) continue;
-    if (!begun && !cd.begin(f, f.cam.viewProj)) return;
-    begun = true;
     float k = std::min(1.f, e.data.value("t", 0.f) / 1.1f), ang = k * k * PI / 2, dy = e.data.value("dirYaw", 0.f);
     mat4 m = glm::translate(mat4(1), rel + vec3(0.5f, 0, 0.5f));
     m = glm::rotate(m, dy, vec3(0, 1, 0));
@@ -429,26 +520,30 @@ static void drawFallingTrees(GameSession& s, const FrameCtx& f, float a) {
     m = glm::rotate(m, -dy, vec3(0, 1, 0));
     m = glm::translate(m, vec3(-0.5f, 0, -0.5f));
     vec3 leaf = foliageTintAt(w, ifloor(e.pos.x), ifloor(e.pos.y), ifloor(e.pos.z));
+    u32 leafTint = (u32)clampv((int)std::lround(leaf.r * 255), 0, 255)
+                 | (u32)clampv((int)std::lround(leaf.g * 255), 0, 255) << 8
+                 | (u32)clampv((int)std::lround(leaf.b * 255), 0, 255) << 16;
+    u16 seasonKey = (u16)((int)std::lround(season.a * 8) | ((int)std::lround(season.r * 8) << 4)
+                        | ((int)std::lround(season.g * 8) << 8) | ((int)std::lround(season.b * 8) << 12));
     u8 lit = w.getLight(ifloor(ip.pos.x), ifloor(ip.pos.y) + 1, ifloor(ip.pos.z));
-    vec2 light((lit >> 4) / 15.f, (lit & 15) / 15.f);
+    VoxelLight light{(lit >> 4) / 15.f, (lit & 15) / 15.f};
     for (auto& b : bl) {
       if (!b.is_array() || b.size() < 4 || !b[3].is_string()) continue;
       BlockId id = R.blockId(b[3].get<std::string>());
       if (!id) continue;
       const BlockDef& d = R.block(id);
-      int sideI = d.faces[0], topI = d.faces[2], botI = d.faces[3];
-      if (topI < 0) topI = sideI;
-      if (botI < 0) botI = topI;
-      GLuint side = tileTexture(s.app, sideI), top = tileTexture(s.app, topI), bot = tileTexture(s.app, botI);
-      if (!side) continue;
-      if (!top) top = side;
-      if (!bot) bot = top;
-      vec3 p((float)b[0].get<int>(), (float)b[1].get<int>(), (float)b[2].get<int>());
       bool leaves = R.tLeaves[id] || traits(id).tint == 2;
-      drawTileBox(cd, m, p, p + vec3(1), side, top, bot, light, vec3(1), false, true, leaves ? leaf : vec3(1));
+      FallKey key;
+      key.S = (u16)S;
+      for (int fi = 0; fi < 6; fi++) key.tile[fi] = d.faces[fi];
+      if (leaves) { key.tint = leafTint; key.season = seasonKey; }
+      const VoxelMeshGL* mesh = fallingBlockMesh(ts, key, leaves);
+      if (!mesh || !mesh->ready()) continue;
+      vec3 p((float)b[0].get<int>(), (float)b[1].get<int>(), (float)b[2].get<int>());
+      mat4 model = m * glm::translate(mat4(1), p) * glm::scale(mat4(1), vec3(1.f / S));
+      D.draw(*mesh, model, light);
     }
   }
-  if (begun) cd.end();
 }
 
 void CreatureLayer::drawTranslucent(GameSession& s, const FrameCtx& f) {
