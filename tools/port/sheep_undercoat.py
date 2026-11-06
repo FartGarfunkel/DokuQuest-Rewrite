@@ -5,7 +5,9 @@ runs it after the art pass and before the creature looks (so every sheep look ge
   - models.json: under / underCap / legUnder* parts (flag "undercoat": drawn only while sheared) on every model that
     has the sheep's wool parts.
   - data/textures/entity/sheep_wool_undercoat.png: our own picture of it, made from our wool tile (sparse short
-    tufts, the rest clear). A resource pack's entity/sheep/sheep_wool_undercoat.png wins (render/creature_models.cpp).
+    tufts, the rest clear). The part names it with a leading @, so the picture is read from that file. The name is
+    not a block tile; a bare name falls through to the white tile. A resource pack's
+    entity/sheep/sheep_wool_undercoat.png wins (render/creature_models.cpp).
 """
 import json, pathlib, random
 from PIL import Image
@@ -63,7 +65,7 @@ def main(d):
         for name, parent, box in UNDER:
             if parent not in names:
                 continue
-            parts.append({'name': name, 'parent': parent, 'at': [0, 0, 0], 'box': box, 'tex': 'sheep_wool_undercoat', 'undercoat': 1,
+            parts.append({'name': name, 'parent': parent, 'at': [0, 0, 0], 'box': box, 'tex': '@sheep_wool_undercoat', 'undercoat': 1,
                           'pivot': [0, 0, 0], 'min': [b / 16 for b in box[:3]], 'max': [b / 16 for b in box[3:]]})
         n += 1
     (d / 'models.json').write_text(json.dumps(models, separators=(',', ':'), ensure_ascii=False))
