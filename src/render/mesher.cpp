@@ -703,12 +703,14 @@ bool emitNearStation(MeshCtx& c, BlockId id, int x, int y, int z, u8 meta) {
           || k == "smithing_table" || k == "loom" || k == "cartography_table" || k == "fletching_table"
           || k == "tool_forge" || k == "quest_board"
           || k == "carved_pumpkin" || k == "jack_o_lantern" || k == "redstone_pumpkin";
-    // Top and sides differ, and the block is not a hillside or a field. The picture is copied as the chunk mesh draws it.
+    // Top and sides differ, and the block is not a hillside or a field. A pumpkin, a melon and
+    // ancient debris are the same kind of cube. The picture is copied as the chunk mesh draws it.
     if (!want && self.render == Render::Cube)
       want = k == "crafting_table" || k == "bookshelf" || k == "barrel" || k == "tnt"
           || k == "dried_kelp_block" || k == "millstone" || k == "sawmill" || k == "crusher"
           || k == "harvester" || k == "jukebox" || k == "command_block" || k == "target"
-          || k == "statue" || k == "steam_vent" || k == "waystone" || k == "sculk_catalyst";
+          || k == "statue" || k == "steam_vent" || k == "waystone" || k == "sculk_catalyst"
+          || k == "pumpkin" || k == "melon" || k == "ancient_debris";
     if (want) {
       int frontFace = T.hasFront ? FACING_FACE[meta & 3] : -1;
       for (int f = 0; f < 6; f++) {
