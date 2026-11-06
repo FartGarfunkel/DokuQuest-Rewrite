@@ -247,6 +247,104 @@ const VoxelMeshGL* propMesh(const TileSet& ts, int model, int facing) {
   return out;
 }
 
+// The end-rod picture is a strip down the left. These are the same shifts emitBox applies, so the
+// shaft and the base pick the same texels the chunk mesh used.
+const VoxelMeshGL* rodMesh(const TileSet& ts, int layer, int axis) {
+  struct Key {
+    u16 layer; u8 axis;
+    bool operator==(const Key& o) const { return layer == o.layer && axis == o.axis; }
+  };
+  struct Hash { size_t operator()(const Key& k) const { return (size_t)k.layer * 4u + k.axis; } };
+  struct Cache {
+    const u8* px = nullptr; int count = -1, size = -1;
+    std::unordered_map<Key, std::unique_ptr<VoxelMeshGL>, Hash> m;
+  };
+  static Cache cache;
+  if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
+    cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
+  }
+  Key key{(u16)std::max(layer, 0), (u8)axis};
+  auto it = cache.m.find(key);
+  if (it != cache.m.end()) return it->second.get();
+  struct Part { float x0, y0, z0, x1, y1, z1; u8 only; float tu, tv; bool swap; };
+  const u8 FX = 1 | 2, FY = 4 | 8, FZ = 16 | 32;
+  Part parts[4];
+  int n = 0;
+  if (axis == 1) {
+    parts[n++] = {0, 7, 7, 16, 9, 9, (u8)(FY | FZ), -7, 0, true};
+    parts[n++] = {0, 7, 7, 16, 9, 9, FX, -5, -7, false};
+  } else if (axis == 2) {
+    parts[n++] = {7, 7, 0, 9, 9, 16, FX, -7, 0, true};
+    parts[n++] = {7, 7, 0, 9, 9, 16, FY, -7, 0, false};
+    parts[n++] = {7, 7, 0, 9, 9, 16, FZ, -5, -7, false};
+  } else {
+    parts[n++] = {7, 1, 7, 9, 16, 9, (u8)(FX | FZ), -7, 0, false};
+    parts[n++] = {7, 1, 7, 9, 16, 9, FY, -5, -7, false};
+    parts[n++] = {6, 0, 6, 10, 1, 10, (u8)(FX | FZ), -4, -9, false};
+    parts[n++] = {6, 0, 6, 10, 1, 10, FY, -4, -4, false};
+  }
+  auto vox = [](float a) {
+    int v = (int)std::lround(a * 2.0);
+    if (v < 0) v = 0;
+    if (v > 48) v = 48;
+    return v;
+  };
+  int gx = 1, gy = 1, gz = 1;
+  for (int i = 0; i < n; i++) { gx = std::max(gx, vox(parts[i].x1)); gy = std::max(gy, vox(parts[i].y1)); gz = std::max(gz, vox(parts[i].z1)); }
+  VoxelGrid g(ivec3(gx, gy, gz));
+  const int S = ts.size > 0 ? ts.size : 32;
+  auto sample = [&](const Part& part, int f, float X, float Y, float Z) -> u32 {
+    if (layer < 0 || layer >= ts.count) return 0;
+    vec2 st = shapeST(f, X, Y, Z);
+    if (part.swap) std::swap(st.x, st.y);
+    st += vec2(part.tu, part.tv);
+    st.x = clampv(st.x, 0.f, 16.f); st.y = clampv(st.y, 0.f, 16.f);
+    int col = (int)std::floor(st.x / 16.f * S), row = (int)std::floor(st.y / 16.f * S);
+    col = clampv(col, 0, S - 1); row = clampv(row, 0, S - 1);
+    const u8* p = ts.tile(layer) + ((size_t)row * S + col) * 4;
+    if (p[3] < 128) return 0;
+    return voxRGBA(p[0], p[1], p[2]);
+  };
+  for (int i = 0; i < n; i++) {
+    const Part& part = parts[i];
+    int x0 = vox(part.x0), y0 = vox(part.y0), z0 = vox(part.z0);
+    int x1 = vox(part.x1), y1 = vox(part.y1), z1 = vox(part.z1);
+    if (x1 <= x0) x1 = x0 + 1;
+    if (y1 <= y0) y1 = y0 + 1;
+    if (z1 <= z0) z1 = z0 + 1;
+    x1 = std::min(x1, gx); y1 = std::min(y1, gy); z1 = std::min(z1, gz);
+    if (x1 <= x0 || y1 <= y0 || z1 <= z0) continue;
+    bool hole = false;
+    auto put = [&](int x, int y, int z, u32 c) {
+      if (!c) { hole = true; return; }
+      g.set(x, y, z, c);
+    };
+    if (part.only & 1) for (int iz = z0; iz < z1; iz++) for (int iy = y0; iy < y1; iy++)
+      put(x1 - 1, iy, iz, sample(part, 0, part.x1, part.y0 + (iy - y0 + 0.5f) * 0.5f, part.z0 + (iz - z0 + 0.5f) * 0.5f));
+    if (part.only & 2) for (int iz = z0; iz < z1; iz++) for (int iy = y0; iy < y1; iy++)
+      put(x0, iy, iz, sample(part, 1, part.x0, part.y0 + (iy - y0 + 0.5f) * 0.5f, part.z0 + (iz - z0 + 0.5f) * 0.5f));
+    if (part.only & 4) for (int iz = z0; iz < z1; iz++) for (int ix = x0; ix < x1; ix++)
+      put(ix, y1 - 1, iz, sample(part, 2, part.x0 + (ix - x0 + 0.5f) * 0.5f, part.y1, part.z0 + (iz - z0 + 0.5f) * 0.5f));
+    if (part.only & 8) for (int iz = z0; iz < z1; iz++) for (int ix = x0; ix < x1; ix++)
+      put(ix, y0, iz, sample(part, 3, part.x0 + (ix - x0 + 0.5f) * 0.5f, part.y0, part.z0 + (iz - z0 + 0.5f) * 0.5f));
+    if (part.only & 16) for (int iy = y0; iy < y1; iy++) for (int ix = x0; ix < x1; ix++)
+      put(ix, iy, z1 - 1, sample(part, 4, part.x0 + (ix - x0 + 0.5f) * 0.5f, part.y0 + (iy - y0 + 0.5f) * 0.5f, part.z1));
+    if (part.only & 32) for (int iy = y0; iy < y1; iy++) for (int ix = x0; ix < x1; ix++)
+      put(ix, iy, z0, sample(part, 5, part.x0 + (ix - x0 + 0.5f) * 0.5f, part.y0 + (iy - y0 + 0.5f) * 0.5f, part.z0));
+    if (!hole) {
+      const u32 fill = voxRGBA(1, 1, 1);
+      for (int z = z0 + 1; z < z1 - 1; z++) for (int y = y0 + 1; y < y1 - 1; y++) for (int x = x0 + 1; x < x1 - 1; x++)
+        if (!g.at(x, y, z)) g.set(x, y, z, fill);
+    }
+  }
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  mesh->upload(md);
+  const VoxelMeshGL* out = mesh.get();
+  cache.m.emplace(key, std::move(mesh));
+  return out;
+}
+
 // The flame picture is a few texels inside the whole tile. One voxel per texel keeps that sprite;
 // a plate only as wide as the quad (about four voxels) samples the empty part and the flame vanishes.
 const VoxelMeshGL* flamePlate(const TileSet& ts, int layer) {
@@ -421,6 +519,22 @@ public:
         vec3 corner = cell + vec3(m.ox, m.sink / 16.f, m.oz);
         const mat4 model = glm::translate(mat4(1), corner) * glm::scale(mat4(1), vec3(1.f / 32.f));
         const u8 lit = w.getLight((int)origin.x + m.cx, (int)origin.y + m.cy, (int)origin.z + m.cz);
+        VR.draw(*mesh, model, VoxelLight{(lit >> 4) / 15.f, (lit & 15) / 15.f});
+      }
+    });
+    s.worldRenderer.forEachRodSection([&](vec3 origin, const std::vector<RodSpot>& spots) {
+      vec3 relO = f.cam.rel(glm::dvec3(origin));
+      if (!f.cam.frustum.sphere(relO + vec3(8), 14.f)) return;
+      for (const RodSpot& r : spots) {
+        vec3 cell = relO + vec3(r.cx, r.cy, r.cz);
+        if (!f.cam.frustum.sphere(cell + vec3(0.5f), 1.2f)) continue;
+        int layer = r.tile < ts.count ? (int)r.tile : -1;
+        const VoxelMeshGL* mesh = layer >= 0 ? rodMesh(ts, layer, r.axis) : nullptr;
+        if (!mesh || !mesh->ready()) continue;
+        if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+        vec3 corner = cell + vec3(r.ox, r.sink / 16.f, r.oz);
+        const mat4 model = glm::translate(mat4(1), corner) * glm::scale(mat4(1), vec3(1.f / 32.f));
+        const u8 lit = w.getLight((int)origin.x + r.cx, (int)origin.y + r.cy, (int)origin.z + r.cz);
         VR.draw(*mesh, model, VoxelLight{(lit >> 4) / 15.f, (lit & 15) / 15.f});
       }
     });

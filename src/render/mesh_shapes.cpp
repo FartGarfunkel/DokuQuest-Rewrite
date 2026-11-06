@@ -383,6 +383,23 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
       return;
     }
   }
+  // An end rod's picture is a strip. Near the player that strip is coloured voxels (the base too).
+  // A lightning rod is a different picture and stays on the chunk mesh.
+  if (kind == ShapeKind::Rod && T.endRod) {
+    c.out.hasTorch = true;
+    if (c.opt.torchVoxels) {
+      RodSpot s;
+      s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+      int ax = meta & 3;
+      s.axis = (u8)(ax == 1 || ax == 2 ? ax : 0);
+      s.sink = sink;
+      s.ox = sox / 16.f; s.oz = soz / 16.f;
+      s.tile = (u16)std::max(side, 0);
+      c.out.rods.push_back(s);
+      c.tint = 0xFFFFFF; c.tintKind = 0;
+      return;
+    }
+  }
   // A cake's icing, a detector's face, a hopper's rim and a bed's pillow each keep the picture the
   // box already used. Near the player those boxes are coloured voxels; farther off they stay on the chunk mesh.
   if (kind == ShapeKind::Cake || kind == ShapeKind::Daylight || kind == ShapeKind::Hopper

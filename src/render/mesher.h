@@ -97,6 +97,14 @@ struct ModelSpot {
   float ox = 0, oz = 0;
   u16 model = 0;
 };
+// An end rod. axis is 0 up, 1 along x, 2 along z. The picture's strip is baked into the mesh.
+struct RodSpot {
+  u8 cx = 0, cy = 0, cz = 0;
+  u8 axis = 0;
+  float sink = 0;
+  float ox = 0, oz = 0;
+  u16 tile = 0;
+};
 
 // cave culling: the bit for a pair of faces (0 +x, 1 -x, 2 +y, 3 -y, 4 +z, 5 -z), 15 pairs
 inline int sectionVisPair(int a, int b) { if (a > b) std::swap(a, b); static const int base[6] = {0, 5, 9, 12, 14, 15}; return base[a] + (b - a - 1); }
@@ -110,6 +118,7 @@ struct MeshOutput {
   std::vector<CandleSpot> candles;
   std::vector<LeverSpot> levers;
   std::vector<ModelSpot> models;
+  std::vector<RodSpot> rods;
   bool hasTorch = false;       // a torch, candle, button, plate, lever or near prop, whether or not it was voxelised
   bool torchVox = false;       // those torches are in `torches` instead of the cutout list
   bool detail = true;          // built with 3D plants

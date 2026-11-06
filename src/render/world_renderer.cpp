@@ -349,7 +349,7 @@ void WorldRenderer::upload(Result& r) {
   inFlight.erase(r.k);
   auto it = meshes.find(r.k);
   if (w && w->chunk(r.k.dim, r.k.cx, r.k.cz)) { if (r.out.vis == 0x7FFF) secVis.erase(r.k); else secVis[r.k] = r.out.vis; } else secVis.erase(r.k);
-  if (!w || !w->chunk(r.k.dim, r.k.cx, r.k.cz) || (r.out.empty() && r.out.torches.empty() && r.out.candles.empty() && r.out.levers.empty() && r.out.models.empty())) {
+  if (!w || !w->chunk(r.k.dim, r.k.cx, r.k.cz) || (r.out.empty() && r.out.torches.empty() && r.out.candles.empty() && r.out.levers.empty() && r.out.models.empty() && r.out.rods.empty())) {
     if (it != meshes.end()) { release(it->second->base, it->second->cap); meshes.erase(it); }
     return;
   }
@@ -361,7 +361,7 @@ void WorldRenderer::upload(Result& r) {
     m->origin = vec3(r.k.cx * 16, dimBase(r.k.dim) + r.k.sy * 16, r.k.cz * 16);
     m->fx = std::move(r.out.fx); m->detail = r.out.detail;
     m->torches = std::move(r.out.torches); m->candles = std::move(r.out.candles); m->levers = std::move(r.out.levers);
-    m->models = std::move(r.out.models);
+    m->models = std::move(r.out.models); m->rods = std::move(r.out.rods);
     m->hasTorch = r.out.hasTorch; m->torchVox = r.out.torchVox;
     return;
   }
@@ -379,7 +379,7 @@ void WorldRenderer::upload(Result& r) {
   m->origin = vec3(r.k.cx * 16, dimBase(r.k.dim) + r.k.sy * 16, r.k.cz * 16);
   m->fx = std::move(r.out.fx); m->detail = r.out.detail;
   m->torches = std::move(r.out.torches); m->candles = std::move(r.out.candles); m->levers = std::move(r.out.levers);
-  m->models = std::move(r.out.models);
+  m->models = std::move(r.out.models); m->rods = std::move(r.out.rods);
   m->hasTorch = r.out.hasTorch; m->torchVox = r.out.torchVox;
   if (m->base / PAGE_V >= pages.size()) return;
   glBindBuffer(GL_ARRAY_BUFFER, pages[m->base / PAGE_V].vbo);
@@ -657,6 +657,9 @@ void WorldRenderer::forEachLeverSection(const std::function<void(vec3, const std
 }
 void WorldRenderer::forEachModelSection(const std::function<void(vec3, const std::vector<ModelSpot>&)>& fn) const {
   for (auto& [k, m] : meshes) if (m && !m->models.empty()) fn(m->origin, m->models);
+}
+void WorldRenderer::forEachRodSection(const std::function<void(vec3, const std::vector<RodSpot>&)>& fn) const {
+  for (auto& [k, m] : meshes) if (m && !m->rods.empty()) fn(m->origin, m->rods);
 }
 std::vector<ivec3> WorldRenderer::waterfallBases(const vec3& near, float radius) const {
   std::vector<ivec3> out; float r2 = radius * radius;
