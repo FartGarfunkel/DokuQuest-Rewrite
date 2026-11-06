@@ -732,7 +732,7 @@ void emitTorch(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, int
   } else if (!sh.micro) by += sinkOffset(id, nb) / 16.f;
   if (sh.micro) { bx += sh.x * P; by += sh.y * P; bz += sh.z * P; }
   c.out.hasTorch = true;
-  if (c.opt.torchVoxels) {
+  {
     TorchSpot s;
     s.x = bx; s.y = by; s.z = bz;
     s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
