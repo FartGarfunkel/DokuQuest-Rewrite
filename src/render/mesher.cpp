@@ -338,6 +338,7 @@ bool emitColourFace(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVert
   const int n = S / step;
   struct Cell { u32 key = 0; int r = 0, g = 0, b = 0; bool tinted = false, glow = false; };
   std::vector<Cell> cells((size_t)n * n);
+  int keptPaint = 0, droppedPaint = 0;
   for (int cy = 0; cy < n; cy++) for (int cx = 0; cx < n; cx++) {
     int r = 0, g = 0, b = 0, cnt = 0, tinted = 0;
     bool glow = false;
@@ -349,7 +350,14 @@ bool emitColourFace(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVert
       if (c.tiles->glowAt(tile, i, j) > 127) glow = true;
     }
     Cell& cell = cells[(size_t)cy * n + cx];
-    if (!cnt || cnt * 2 < step * step) continue;   // a hole: the cutout simply has no quad there
+    if (!cnt) continue;
+    const bool sparse = cnt * 2 < step * step;
+    // Stained glass is one see-through cell, coloured from its frame. Clear glass and a ladder are
+    // mostly holes: eating those pixels would erase the frame or fill the gaps, so the picture stays.
+    const bool frosted = (mat & Mat::Translucent) && step >= S && sparse;
+    if (sparse && !frosted) { droppedPaint += cnt; continue; }
+    if ((mat & Mat::Cutout) && !(mat & Mat::Translucent) && step >= S && cnt * 4 < step * step * 3) { droppedPaint += cnt; continue; }
+    keptPaint += cnt;
     cell.r = ((r / cnt) >> sh) << sh; cell.g = ((g / cnt) >> sh) << sh; cell.b = ((b / cnt) >> sh) << sh;
     cell.tinted = blockTint && tinted * 2 >= cnt;
     cell.glow = glow;
@@ -376,7 +384,8 @@ bool emitColourFace(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVert
     }
     rects.push_back({cx * step, cy * step, (x1 + 1) * step, (y1 + 1) * step, cells[at]});
   }
-  if (rects.empty()) return true;   // a face that is only holes
+  if (rects.empty()) return droppedPaint == 0;   // a clear face draws nothing; a thin frame keeps its picture
+  if (droppedPaint * 3 > keptPaint) return false;
   auto kindOf = [&](bool tinted) {
     if (!tinted || !blockTint) return 0;
     return blockTint == 2 ? 2 : 1;
