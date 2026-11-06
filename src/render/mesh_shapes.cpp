@@ -239,6 +239,20 @@ void emitRail(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y,
   if (tile < 0) tile = def.faces[0];
   MeshShapeNb nb(c, x, y, z);
   float lift = 1 / 16.f + sinkOffset(id, nb) / 16.f;
+  // Near the player the rail is coloured voxels. The picture, the turn and the slope stay as they are.
+  // Far rails stay on the chunk picture. A rail on a bottom slab keeps that drop.
+  if (tile >= 0) c.out.hasTorch = true;
+  if (tile >= 0 && c.opt.torchVoxels) {
+    CandleSpot s;
+    s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+    s.tile = (u16)tile;
+    s.only = (u8)(sh & 15);
+    s.faceRot = (on && def.str("rail") == "powered") ? 1 : 0;
+    s.sink = (float)sinkOffset(id, nb);
+    s.flame = -9;
+    c.out.candles.push_back(s);
+    return;
+  }
   auto map = [&](float a, float b) {
     if (curve) { switch (sh - 6) { case 0: return vec2(a, b); case 1: return vec2(1 - a, b); case 2: return vec2(1 - a, 1 - b); default: return vec2(a, 1 - b); } }
     return (sh == 1 || sh == 2 || sh == 3) ? vec2(b, 1 - a) : vec2(a, b);
