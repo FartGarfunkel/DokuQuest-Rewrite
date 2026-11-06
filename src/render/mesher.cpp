@@ -665,7 +665,7 @@ u16 sectionVisibility(const MeshInput& in) {
 
 void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions& opt) {
   out.opaque.clear(); out.cutout.clear(); out.trans.clear(); out.fx = MeshFx(); out.detail = opt.detail;
-  out.torches.clear(); out.candles.clear(); out.levers.clear(); out.models.clear(); out.hasTorch = false; out.torchVox = false;
+  out.torches.clear(); out.candles.clear(); out.levers.clear(); out.models.clear(); out.rods.clear(); out.hasTorch = false; out.torchVox = false;
   out.vis = 0x7FFF;
   if (in.empty) return;
   out.vis = sectionVisibility(in);
