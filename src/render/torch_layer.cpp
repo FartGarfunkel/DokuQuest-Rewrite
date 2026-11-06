@@ -77,15 +77,16 @@ vec2 shapeST(int f, float X, float Y, float Z) {
 struct WaxKey {
   u16 tile = 0, top = 0, bot = 0;
   i16 b[6] = {};
+  u8 glow = 0;
   bool operator==(const WaxKey& o) const {
-    return tile == o.tile && top == o.top && bot == o.bot && b[0] == o.b[0] && b[1] == o.b[1] && b[2] == o.b[2]
+    return tile == o.tile && top == o.top && bot == o.bot && glow == o.glow && b[0] == o.b[0] && b[1] == o.b[1] && b[2] == o.b[2]
         && b[3] == o.b[3] && b[4] == o.b[4] && b[5] == o.b[5];
   }
 };
 struct WaxHash {
   size_t operator()(const WaxKey& k) const {
     size_t h = k.tile * 131u + k.top;
-    h = h * 131u + k.bot;
+    h = h * 131u + k.bot + (size_t)k.glow * 17u;
     for (int i = 0; i < 6; i++) h = h * 131u + (u16)k.b[i];
     return h;
   }
@@ -103,7 +104,7 @@ void waxCounts(const i16 b[6], int& nx, int& ny, int& nz) {
 
 // Two voxels per sixteenth. A see-through texel stays empty; a solid crop is filled so only the outside shows.
 // topL and botL are the top and bottom pictures (a cake's icing). They match layer when the box had one picture.
-const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int topL, int botL) {
+const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int topL, int botL, bool glow = false) {
   struct Cache {
     const u8* px = nullptr; int count = -1, size = -1;
     std::unordered_map<WaxKey, std::unique_ptr<VoxelMeshGL>, WaxHash> m;
@@ -112,7 +113,7 @@ const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int 
   if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
     cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
   }
-  WaxKey key; key.tile = (u16)layer; key.top = (u16)std::max(topL, 0); key.bot = (u16)std::max(botL, 0);
+  WaxKey key; key.tile = (u16)layer; key.top = (u16)std::max(topL, 0); key.bot = (u16)std::max(botL, 0); key.glow = glow ? 1 : 0;
   for (int i = 0; i < 6; i++) key.b[i] = b[i];
   auto it = cache.m.find(key);
   if (it != cache.m.end()) return it->second.get();
@@ -130,7 +131,7 @@ const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int 
     col = clampv(col, 0, S - 1); row = clampv(row, 0, S - 1);
     const u8* p = ts.tile(L) + ((size_t)row * S + col) * 4;
     if (p[3] < 128) return 0;
-    return voxRGBA(p[0], p[1], p[2]);
+    return voxRGBA(p[0], p[1], p[2], glow ? VOXEL_GLOW : VOXEL_SOLID);
   };
   auto put = [&](int ix, int iy, int iz, u32 c) { if (!c) { hole = true; return; } g.set(ix, iy, iz, c); };
   for (int iz = 0; iz < nz; iz++) for (int iy = 0; iy < ny; iy++) {
@@ -149,7 +150,7 @@ const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int 
     put(ix, iy, 0, pix(5, X, Y, z0));
   }
   if (!hole) {
-    const u32 fill = voxRGBA(1, 1, 1);
+    const u32 fill = voxRGBA(1, 1, 1, glow ? VOXEL_GLOW : VOXEL_SOLID);
     for (int z = 1; z < nz - 1; z++) for (int y = 1; y < ny - 1; y++) for (int x = 1; x < nx - 1; x++) g.set(x, y, z, fill);
   }
   VoxelMeshData md; buildVoxelMesh(g, md);
@@ -569,8 +570,10 @@ public:
         waxCounts(box, nx, ny, nz);
         int topL = c.top < ts.count ? (int)c.top : layer;
         int botL = c.bot < ts.count ? (int)c.bot : layer;
+        // flame <= -10 is a glowing crop (a lit repeater torch) with no flame plate. -2 is scaffolding.
+        bool glow = c.flame <= -10;
         const VoxelMeshGL* mesh = c.flame == -2 ? (layer >= 0 ? scaffoldMesh(ts, layer, topL, botL) : nullptr)
-                                                 : (layer >= 0 ? candleMesh(ts, layer, box, topL, botL) : nullptr);
+                                                 : (layer >= 0 ? candleMesh(ts, layer, box, topL, botL, glow) : nullptr);
         const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
         VoxelLight light{(lit >> 4) / 15.f, (lit & 15) / 15.f};
         if (mesh && mesh->ready()) {
