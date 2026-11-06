@@ -1894,6 +1894,7 @@ public:
     const std::string& pack = s.app.settings.shaderPack;
     if (pack != irisFor || f.dim != irisDim) loadIris(pack, f.dim);
     s.worldRenderer.setPackGeometry(gbuf.prog != 0);
+    s.worldRenderer.setColourCubes(pack.empty() && gbuf.prog == 0);
     if (iris.empty() && !gbuf.prog) { packVoxelClear(); armCapture(); return; }
     GLint vp[4]; glGetIntegerv(GL_VIEWPORT, vp);
     if (vp[2] <= 16 || vp[3] <= 16) { packVoxelClear(); armCapture(); return; }

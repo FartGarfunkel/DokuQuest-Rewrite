@@ -5,8 +5,16 @@
 
 namespace dq {
 
-struct MeshTiles { int size = 32, count = 0; std::vector<u8> rgba; u64 gen = 0;
-  const u8* px(int tile, int i, int j) const { return rgba.data() + (((size_t)tile * size + j) * size + i) * 4; } };
+struct MeshTiles { int size = 32, count = 0; std::vector<u8> rgba; std::vector<u8> emissive; std::vector<u8> anim; u64 gen = 0;
+  const u8* px(int tile, int i, int j) const { return rgba.data() + (((size_t)tile * size + j) * size + i) * 4; }
+  u8 glowAt(int tile, int i, int j) const {
+    if (tile < 0 || tile >= count || i < 0 || j < 0 || i >= size || j >= size) return 0;
+    const size_t n = ((size_t)tile * size + (size_t)j) * size + (size_t)i;
+    if (n >= emissive.size()) return 0;
+    return emissive[n];
+  }
+  bool animated(int tile) const { return tile >= 0 && tile < (int)anim.size() && anim[tile] != 0; }
+};
 std::shared_ptr<const MeshTiles> meshTilesSnapshot();
 
 // Original face table: normal, 4 corners (CCW from outside), shading

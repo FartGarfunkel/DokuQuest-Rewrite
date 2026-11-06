@@ -49,7 +49,9 @@ static std::shared_ptr<const MeshTiles> g_tiles;
 static u64 g_tilesGen = 0;
 void setMeshTiles(const TileSet& ts) {
   auto t = std::make_shared<MeshTiles>();
-  t->size = ts.size; t->count = ts.count; t->rgba = ts.rgba;
+  t->size = ts.size; t->count = ts.count; t->rgba = ts.rgba; t->emissive = ts.emissive;
+  t->anim.assign(ts.count, 0);
+  for (const TileAnim& a : ts.anims) if (a.layer >= 0 && a.layer < ts.count) t->anim[a.layer] = 1;
   std::lock_guard<std::mutex> lk(g_tilesMx);
   t->gen = ++g_tilesGen;
   g_tiles = t;
@@ -246,7 +248,17 @@ bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in) {
 
 // ---------------------------------------------------------------- cubes
 namespace {
-struct FaceKey { u64 a = 0; u32 b = 0; u32 lit = 0; bool operator==(const FaceKey& o) const { return a == o.a && b == o.b && lit == o.lit; } };
+struct FaceKey {
+  u64 a = 0; u32 b = 0; u32 lit = 0; u32 rgb = 0; u8 colour = 0;
+  bool operator==(const FaceKey& o) const { return a == o.a && b == o.b && lit == o.lit && rgb == o.rgb && colour == o.colour; }
+};
+// Tile layer 4095: the uv word carries R, G, B and chunk.glsl does not sample the atlas.
+constexpr int BAKED_TILE = 4095;
+void colourToUv(int r, int g, int b, vec2& uv) {
+  const u32 bits = (u32)(r & 255) | (u32)(g & 255) << 8 | (u32)(b & 255) << 16;
+  uv.x = (bits & 16383u) / 256.f - 16.f;
+  uv.y = ((bits >> 14) & 16383u) / 256.f - 16.f;
+}
 struct GreedyMasks {
   // [face][slice][b][a]: a/b are the face plane's axes
   FaceKey m[6][16][16][16];
@@ -294,6 +306,130 @@ bool surroundedCovered(const MeshCtx& c, int x, int y, int z) {
   return true;
 }
 
+// One exposed cube face, as coloured rectangles instead of a tile sample.
+// The Doku pictures are speckled (a stone face stays about 900 quads if every texel is its own),
+// so a near face is an 8×8 grid of 4-texel cells and a far face is one colour. Only this face is
+// built: the cube's hidden sides were already skipped, and the section was already frustum culled.
+bool emitColourFace(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& dst, const MV corn[4], const FaceCorners& fc, int f, int tile, int x, int y, int z, u8 mat, u8 sway, bool uniform, const u32 tints[4], int blockTint) {
+  if (!c.opt.colourStep || !c.tiles || tile < 0 || tile >= c.tiles->count || tile >= BAKED_TILE) return false;
+  if (c.tiles->animated(tile)) return false;   // magma, lanterns, water: the frames still move on the atlas
+  const int S = c.tiles->size;
+  if (S < 1) return false;
+  int step = pass == 2 ? S : c.opt.colourStep;   // glass stays one quad: a grid of it would overdraw
+  if (step > S) step = S;
+  // Leaves do not hide the faces they share, and the picture does not merge, so a full 4-texel grid
+  // would be tens of quads on every side of every leaf. An 8-texel cell keeps the silhouette.
+  if ((mat & Mat::Cutout) && step < S && step < 8) step = 8;
+  if (step < 1 || S % step) return false;
+  int ix[2][2] = {{-1, -1}, {-1, -1}};
+  for (int k = 0; k < 4; k++) {
+    int ui = corn[k].uv.x >= 0.5f ? 1 : 0, vi = corn[k].uv.y >= 0.5f ? 1 : 0;
+    ix[vi][ui] = k;
+  }
+  if (ix[0][0] < 0 || ix[0][1] < 0 || ix[1][0] < 0 || ix[1][1] < 0) return false;
+  const int bits = step >= S ? 4 : 5;   // far stone shares one level so a cliff still merges; near keeps more of the picture
+  const int sh = 8 - bits;
+  const int n = S / step;
+  struct Cell { u32 key = 0; int r = 0, g = 0, b = 0; bool tinted = false, glow = false; };
+  std::vector<Cell> cells((size_t)n * n);
+  for (int cy = 0; cy < n; cy++) for (int cx = 0; cx < n; cx++) {
+    int r = 0, g = 0, b = 0, cnt = 0, tinted = 0;
+    bool glow = false;
+    for (int j = cy * step; j < (cy + 1) * step; j++) for (int i = cx * step; i < (cx + 1) * step; i++) {
+      const u8* p = c.tiles->px(tile, i, j);
+      if (p[3] < 128) continue;
+      cnt++; r += p[0]; g += p[1]; b += p[2];
+      if (p[3] == 253) tinted++;
+      if (c.tiles->glowAt(tile, i, j) > 127) glow = true;
+    }
+    Cell& cell = cells[(size_t)cy * n + cx];
+    if (!cnt || cnt * 2 < step * step) continue;   // a hole: the cutout simply has no quad there
+    cell.r = ((r / cnt) >> sh) << sh; cell.g = ((g / cnt) >> sh) << sh; cell.b = ((b / cnt) >> sh) << sh;
+    cell.tinted = blockTint && tinted * 2 >= cnt;
+    cell.glow = glow;
+    cell.key = 1u | (u32)cell.r << 1 | (u32)cell.g << 9 | (u32)cell.b << 17 | (cell.tinted ? 1u << 25 : 0u) | (cell.glow ? 1u << 26 : 0u);
+  }
+  struct Rect { int i0, j0, i1, j1; Cell cell; };
+  std::vector<Rect> rects;
+  std::vector<u8> done((size_t)n * n, 0);
+  for (int cy = 0; cy < n; cy++) for (int cx = 0; cx < n; cx++) {
+    const size_t at = (size_t)cy * n + cx;
+    if (done[at]) continue;
+    done[at] = 1;
+    if (!cells[at].key) continue;
+    int x1 = cx;
+    while (x1 + 1 < n && !done[cy * n + x1 + 1] && cells[cy * n + x1 + 1].key == cells[at].key) { done[cy * n + x1 + 1] = 1; x1++; }
+    int y1 = cy;
+    for (;;) {
+      if (y1 + 1 >= n) break;
+      bool ok = true;
+      for (int k = cx; k <= x1 && ok; k++) ok = !done[(y1 + 1) * n + k] && cells[(y1 + 1) * n + k].key == cells[at].key;
+      if (!ok) break;
+      for (int k = cx; k <= x1; k++) done[(y1 + 1) * n + k] = 1;
+      y1++;
+    }
+    rects.push_back({cx * step, cy * step, (x1 + 1) * step, (y1 + 1) * step, cells[at]});
+  }
+  if (rects.empty()) return true;   // a face that is only holes
+  auto kindOf = [&](bool tinted) {
+    if (!tinted || !blockTint) return 0;
+    return blockTint == 2 ? 2 : 1;
+  };
+  const bool full = rects.size() == 1 && rects[0].i0 == 0 && rects[0].j0 == 0 && rects[0].i1 == S && rects[0].j1 == S;
+  if (gm && full && uniform && sway == 0) {
+    const Cell& cell = rects[0].cell;
+    FaceKey key;
+    u8 sk = (u8)std::lround(fc.sky[0] * 17), bl = (u8)std::lround(fc.bl[0] * 17);
+    u8 shade = (u8)std::lround(FACES[f].shade * AO_CURVE[fc.aoi[0]] * 255.f);
+    u8 m = (u8)(mat | (cell.glow ? Mat::Emissive : 0));
+    key.a = (u64)(BAKED_TILE) | (u64)sk << 16 | (u64)bl << 24 | (u64)shade << 32 | (u64)m << 40 | (u64)1 << 63;
+    const int kind = kindOf(cell.tinted);
+    key.b = tints[0] | (u32)kind << 24;
+    key.lit = fc.lit[0];
+    key.rgb = (u32)cell.r | (u32)cell.g << 8 | (u32)cell.b << 16;
+    key.colour = 1;
+    int pos[3] = {x, y, z};
+    int s = pos[FAXIS[f]], a = pos[FA[f]], b = pos[FB[f]];
+    gm->m[f][s][b][a] = key; gm->pass[f][s][b][a] = (u8)pass; gm->any[f] = true;
+    return true;
+  }
+  auto ch5 = [](u32 w, int shift) { return (int)((w >> shift) & 31u); };
+  auto litAt = [&](float u, float v) {
+    const int sft[6] = {25, 20, 15, 10, 5, 0};
+    u32 pack = 0;
+    for (int i = 0; i < 6; i++) {
+      float a = ch5(corn[ix[0][0]].lit, sft[i]), b = ch5(corn[ix[0][1]].lit, sft[i]);
+      float d = ch5(corn[ix[1][0]].lit, sft[i]), e = ch5(corn[ix[1][1]].lit, sft[i]);
+      float r = lerpf(lerpf(a, b, u), lerpf(d, e, u), v);
+      pack |= (u32)clampv((int)std::lround(r), 0, 31) << sft[i];
+    }
+    return markCubyz(pack);
+  };
+  auto posAt = [&](float u, float v) {
+    vec3 a = corn[ix[0][0]].p, b = corn[ix[0][1]].p, d = corn[ix[1][0]].p, e = corn[ix[1][1]].p;
+    return glm::mix(glm::mix(a, b, u), glm::mix(d, e, u), v);
+  };
+  auto shadeAt = [&](float u, float v) {
+    float a = corn[ix[0][0]].shade, b = corn[ix[0][1]].shade, d = corn[ix[1][0]].shade, e = corn[ix[1][1]].shade;
+    return lerpf(lerpf(a, b, u), lerpf(d, e, u), v);
+  };
+  const bool flip = fc.aoi[0] + fc.aoi[2] < fc.aoi[1] + fc.aoi[3];
+  for (const Rect& rc : rects) {
+    const float u0 = rc.i0 / (float)S, u1 = rc.i1 / (float)S, v0 = rc.j0 / (float)S, v1 = rc.j1 / (float)S;
+    vec2 cuv; colourToUv(rc.cell.r, rc.cell.g, rc.cell.b, cuv);
+    MV v[4];
+    for (int k = 0; k < 4; k++) {
+      const float u = corn[k].uv.x >= 0.5f ? u1 : u0;
+      const float vv = corn[k].uv.y >= 0.5f ? v1 : v0;
+      v[k] = {posAt(u, vv), cuv, 0, 0, shadeAt(u, vv), sway, litAt(u, vv)};
+    }
+    c.tintKind = (u8)kindOf(rc.cell.tinted);
+    c.quad(dst, v, BAKED_TILE, f, (u8)(mat | (rc.cell.glow ? Mat::Emissive : 0)), flip);
+  }
+  c.tintKind = 0;
+  return true;
+}
+
 void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& dst, BlockId id, int x, int y, int z, u8 meta) {
   const Registry& R = c.R;
   const BlockDef& self = R.block(id);
@@ -330,6 +466,21 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
     for (int k = 0; k < 4; k++) tints[k] = T.tint ? c.cornerTint((float)(x + F.c[k][0]), (float)(z + F.c[k][2]), tintKind) : 0xFFFFFF;
     bool uniform = rot == 0 && sway == 0;
     for (int k = 1; k < 4 && uniform; k++) uniform = fc.aoi[k] == fc.aoi[0] && fc.sky[k] == fc.sky[0] && fc.bl[k] == fc.bl[0] && fc.lit[k] == fc.lit[0] && tints[k] == tints[0];
+    if (c.opt.colourStep > 0) {
+      MV corn[4];
+      for (int k = 0; k < 4; k++) {
+        vec3 p(x + F.c[k][0], y + F.c[k][1], z + F.c[k][2]);
+        vec2 uv = rot == 0 ? faceUV(f, p) : vec2(FACE_UV[(k + rot) & 3][0], FACE_UV[(k + rot) & 3][1]);
+        corn[k] = {p, uv, fc.sky[k], fc.bl[k], FACES[f].shade * fc.ao[k], sway, fc.lit[k]};
+      }
+      vec2 lo = corn[0].uv, hi = corn[0].uv;
+      for (int k = 1; k < 4; k++) { lo = glm::min(lo, corn[k].uv); hi = glm::max(hi, corn[k].uv); }
+      if (lo.x < -0.001f || lo.y < -0.001f || hi.x > 1.001f || hi.y > 1.001f) {
+        vec2 base(std::floor(lo.x + 1e-4f), std::floor(lo.y + 1e-4f));
+        for (int k = 0; k < 4; k++) corn[k].uv -= base;
+      }
+      if (emitColourFace(c, gm, pass, dst, corn, fc, f, tile, x, y, z, mat, sway, uniform, tints, T.tint)) continue;
+    }
     if (gm && uniform) {
       FaceKey key;
       // Same AO on every corner (the uniform test above). Face shade times that AO, so a wall is not as bright as a top.
@@ -400,7 +551,11 @@ void flushGreedy(MeshCtx& c, GreedyMasks& gm) {
           v[q] = {p, faceUV(f, p), sk, bl, sh, 0, k.lit};
         }
         c.tint = k.b & 0xFFFFFF; c.tintKind = (u8)((k.b >> 24) & 31);
-        c.quad(*passes[gm.pass[f][s][b][a]], v, tile, f, mat);
+        if (k.colour) {
+          vec2 cuv; colourToUv((int)(k.rgb & 255), (int)((k.rgb >> 8) & 255), (int)((k.rgb >> 16) & 255), cuv);
+          for (int q = 0; q < 4; q++) v[q].uv = cuv;
+          c.quad(*passes[gm.pass[f][s][b][a]], v, BAKED_TILE, f, mat);
+        } else c.quad(*passes[gm.pass[f][s][b][a]], v, tile, f, mat);
         c.tint = 0xFFFFFF; c.tintKind = 0;
         a += w;
       }
@@ -846,6 +1001,7 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
     }
   }
   if (gm) flushGreedy(c, *gm);
+  out.colourFine = opt.colourStep > 0 && opt.colourStep < 32;
   out.torchVox = opt.torchVoxels && out.hasTorch;
   out.ms = (nowSeconds() - t0) * 1000;
 }
