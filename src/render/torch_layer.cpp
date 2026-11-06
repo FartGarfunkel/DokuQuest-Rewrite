@@ -1983,7 +1983,8 @@ public:
         };
         layer = useFrame(layer); topL = useFrame(topL); botL = useFrame(botL);
         nxL = useFrame(nxL); pzL = useFrame(pzL); nzL = useFrame(nzL);
-        // flame <= -10 is a glowing crop (a lit repeater torch) with no flame plate. -2 is scaffolding.
+        // -11 is a glowing crop (a lit repeater torch) with no flame plate. -2 is scaffolding.
+        // Pictures from -12 downward are their own meshes and have already continued.
         bool glow = c.flame <= -10;
         const VoxelMeshGL* mesh = c.flame == -2 ? (layer >= 0 ? scaffoldMesh(ts, layer, topL, botL) : nullptr)
                                                  : (layer >= 0 ? candleMesh(ts, layer, box, topL, botL, glow, nxL, pzL, nzL, c.only, c.faceRot) : nullptr);
