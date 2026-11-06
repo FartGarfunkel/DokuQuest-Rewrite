@@ -578,9 +578,11 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       return;
     }
   }
-  // A cluster or a bud in a geode is a few crystals, not a field. Near you the same crossed
+  // A cluster or a bud in a geode is a few crystals, not a field. A dead bush, a berry bush and a
+  // mushroom are the same kind of crossed picture, a few in a stretch of ground. Near you that
   // picture is coloured voxels, turned the way the chunk plant turns. Farther off it stays on the mesh.
-  if (key == "amethyst_cluster" || key == "small_amethyst_bud" || key == "medium_amethyst_bud" || key == "large_amethyst_bud") {
+  if (key == "amethyst_cluster" || key == "small_amethyst_bud" || key == "medium_amethyst_bud" || key == "large_amethyst_bud"
+      || key == "dead_bush" || key == "berry_bush" || key == "berry_bush_empty" || key == "brown_mushroom" || key == "red_mushroom") {
     c.out.hasTorch = true;
     if (c.opt.torchVoxels && tile >= 0) {
       int ly = c.in.sy * 16 + y;
