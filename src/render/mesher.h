@@ -100,7 +100,7 @@ struct ModelSpot {
   float ox = 0, oz = 0;
   u16 model = 0;
 };
-// An end rod. axis is 0 up, 1 along x, 2 along z. The picture's strip is baked into the mesh.
+// An end rod. axis is 0 up, 1 along x, 2 along z. Bit 0x80 is a lightning rod: the copper strip, not the end-rod picture.
 struct RodSpot {
   u8 cx = 0, cy = 0, cz = 0;
   u8 axis = 0;

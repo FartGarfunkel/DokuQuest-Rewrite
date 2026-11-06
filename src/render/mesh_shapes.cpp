@@ -107,6 +107,20 @@ void emitBox(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, u8 meta, int x
       const int* cc = F.c[k];
       float X = cc[0] ? b.b[3] : b.b[0], Y = cc[1] ? b.b[4] : b.b[1], Z = cc[2] ? b.b[5] : b.b[2];
       vec2 st = (shape == ShapeKind::Door || shape == ShapeKind::Trapdoor) ? panelST(shape, meta, f, X, Y, Z) : shapeST(f, X, Y, Z);
+      // A lightning rod's picture is copper in columns 0-2. The thin box sits on columns 7-9, which are empty.
+      if (shape == ShapeKind::Rod && b.tu == 0.f && !b.uvT) {
+        float ext[3] = {b.b[3] - b.b[0], b.b[4] - b.b[1], b.b[5] - b.b[2]};
+        int L = (ext[1] >= ext[0] && ext[1] >= ext[2]) ? 1 : (ext[0] >= ext[2] ? 0 : 2);
+        int N = FACE_AXIS[f];
+        float P[3] = {X, Y, Z};
+        if (N == L) {
+          int a = (L + 1) % 3, c3 = (L + 2) % 3;
+          st = vec2(P[a] - 7.f, P[c3] - 7.f);
+        } else {
+          int S = 3 - N - L;
+          st = vec2(P[S] - 7.f, 16.f - P[L]);
+        }
+      }
       if (b.tu || b.uvT) { if (b.uvT) std::swap(st.x, st.y); st += vec2(b.tu, b.tv); }   // (model boxes' tv is addShapeBox's)
       float sk, bl, ao = 1.f;
       LightRgb sample;
@@ -399,7 +413,7 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
     }
   }
   // An end rod's picture is a strip. Near the player that strip is coloured voxels (the base too).
-  // A lightning rod is a different picture and stays on the chunk mesh.
+  // A lightning rod's copper is the left of its picture. Near the player that stick is coloured voxels.
   if (kind == ShapeKind::Rod && T.endRod) {
     c.out.hasTorch = true;
     if (c.opt.torchVoxels) {
@@ -407,6 +421,21 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
       s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
       int ax = meta & 3;
       s.axis = (u8)(ax == 1 || ax == 2 ? ax : 0);
+      s.sink = sink;
+      s.ox = sox / 16.f; s.oz = soz / 16.f;
+      s.tile = (u16)std::max(side, 0);
+      c.out.rods.push_back(s);
+      c.tint = 0xFFFFFF; c.tintKind = 0;
+      return;
+    }
+  }
+  if (kind == ShapeKind::Rod && !T.endRod) {
+    c.out.hasTorch = true;
+    if (c.opt.torchVoxels) {
+      RodSpot s;
+      s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+      int ax = meta & 3;
+      s.axis = (u8)((ax == 1 || ax == 2 ? ax : 0) | 0x80);
       s.sink = sink;
       s.ox = sox / 16.f; s.oz = soz / 16.f;
       s.tile = (u16)std::max(side, 0);
