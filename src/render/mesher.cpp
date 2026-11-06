@@ -784,19 +784,66 @@ void emitNotchWater(MeshCtx& c, std::vector<ChunkVertex>& dst, int x, int y, int
 }
 } // namespace
 
-// A stair, a slab, a fence or a wall already drew only the faces you can see. This paints those faces
-// from the part of the tile the quad actually uses, in cells, and leaves the section batch as it is.
-bool bakeColourQuad(MeshCtx& c, std::vector<ChunkVertex>& dst, const MV corn[4], int tile, int normal, u8 mat, int blockTint) {
+// A stair, a slab, a fence, a wall or a plant already drew only the faces you can see. This paints those
+// faces from the part of the tile the quad actually uses, in cells, and leaves the section batch as it is.
+bool bakeColourQuad(MeshCtx& c, std::vector<ChunkVertex>& dst, const MV corn[4], int tile, int normal, u8 mat, int blockTint, bool twoSided, bool allowGaps) {
   if (!c.opt.colourStep || !c.tiles || tile < 0 || tile >= c.tiles->count || tile >= BAKED_TILE) return false;
   if (c.tiles->animated(tile)) return false;
   if ((mat & (Mat::Liquid | Mat::Lava | Mat::Flowing)) || (c.extraMat & Mat::TintAll) || c.tintKind >= Tint::Water) return false;
-  for (int k = 0; k < 4; k++) if (corn[k].sway) return false;
+  // A plant's tip waves and its root stays put (codes 0, 1 and 16..31). Cloth and a grass-tuft tip
+  // use other codes, and those quads keep their picture so the flap stays exact.
+  bool sameSway = true, plantSway = true;
+  for (int k = 0; k < 4; k++) {
+    const u8 s = corn[k].sway;
+    if (s != corn[0].sway) sameSway = false;
+    if (!(s == 0 || s == 1 || (s >= 16 && s <= 31))) plantSway = false;
+  }
+  if (!sameSway && !plantSway) return false;
   const int S = c.tiles->size;
   if (S < 1) return false;
   vec2 lo = corn[0].uv, hi = corn[0].uv;
   for (int k = 1; k < 4; k++) { lo = glm::min(lo, corn[k].uv); hi = glm::max(hi, corn[k].uv); }
   const float du = hi.x - lo.x, dv = hi.y - lo.y;
-  if (du < 1e-4f || dv < 1e-4f) return false;
+  const u8 savedKind = c.tintKind;
+  auto kindBits = [&](bool tinted) -> u8 {
+    if (!blockTint) return savedKind;
+    if (!tinted) return 0;
+    return (u8)(blockTint == 2 ? 2 : 1);
+  };
+  auto paintAs = [&](MV v[4], int r, int g, int b, bool glow, bool tinted) {
+    vec2 cuv; colourToUv(r, g, b, cuv);
+    for (int k = 0; k < 4; k++) v[k].uv = cuv;
+    c.tintKind = kindBits(tinted);
+    const u8 m = (u8)(mat | (glow ? Mat::Emissive : 0));
+    if (twoSided) c.quad2(dst, v, BAKED_TILE, normal, m);
+    else c.quad(dst, v, BAKED_TILE, normal, m);
+  };
+  // A stem edge or a one-pixel box has no area in the picture. One colour, and each corner keeps its own bend.
+  if (du * S < 1.5f || dv * S < 1.5f) {
+    int i0 = (int)std::floor(clampv(lo.x, 0.f, 1.f) * S + 1e-4f);
+    int i1 = (int)std::ceil(clampv(hi.x, 0.f, 1.f) * S - 1e-4f);
+    int j0 = (int)std::floor(clampv(lo.y, 0.f, 1.f) * S + 1e-4f);
+    int j1 = (int)std::ceil(clampv(hi.y, 0.f, 1.f) * S - 1e-4f);
+    i0 = clampv(i0, 0, S); i1 = clampv(i1, 0, S); j0 = clampv(j0, 0, S); j1 = clampv(j1, 0, S);
+    if (i1 <= i0) { int i = clampv((int)std::floor((lo.x + hi.x) * 0.5f * S), 0, S - 1); i0 = i; i1 = i + 1; }
+    if (j1 <= j0) { int j = clampv((int)std::floor((lo.y + hi.y) * 0.5f * S), 0, S - 1); j0 = j; j1 = j + 1; }
+    int r = 0, g = 0, b = 0, cnt = 0, tinted = 0; bool glow = false;
+    for (int j = j0; j < j1; j++) for (int i = i0; i < i1; i++) {
+      const u8* p = c.tiles->px(tile, i, j);
+      if (p[3] < 128) continue;
+      cnt++; r += p[0]; g += p[1]; b += p[2];
+      if (p[3] == 253) tinted++;
+      if (c.tiles->glowAt(tile, i, j) > 127) glow = true;
+    }
+    if (!cnt) return true;
+    if (cnt * 2 < (i1 - i0) * (j1 - j0)) return false;
+    const int bits = (c.opt.colourStep >= 32 || (mat & Mat::Translucent)) ? 4 : 5;
+    const int qsh = 8 - bits;
+    MV v[4] = {corn[0], corn[1], corn[2], corn[3]};
+    paintAs(v, ((r / cnt) >> qsh) << qsh, ((g / cnt) >> qsh) << qsh, ((b / cnt) >> qsh) << qsh, glow, blockTint && tinted * 2 >= cnt);
+    c.tintKind = savedKind;
+    return true;
+  }
   int ix[2][2] = {{-1, -1}, {-1, -1}};
   for (int k = 0; k < 4; k++) {
     const int ui = std::fabs(corn[k].uv.x - hi.x) <= std::fabs(corn[k].uv.x - lo.x) ? 1 : 0;
@@ -847,8 +894,9 @@ bool bakeColourQuad(MeshCtx& c, std::vector<ChunkVertex>& dst, const MV corn[4],
     cell.glow = glow;
     cell.key = 1u | (u32)cell.r << 1 | (u32)cell.g << 9 | (u32)cell.b << 17 | (cell.tinted ? 1u << 25 : 0u) | (cell.glow ? 1u << 26 : 0u);
   }
-  // A thin frame (bars, a pane) would lose its paint if every cell failed the majority test. Keep the picture.
-  if (dropped) return false;
+  // A thin frame (bars, a pane) would lose its paint if a cell failed the majority test. Keep the picture.
+  // A flower passes allowGaps, so the clear cells drop and the stem still bakes.
+  if (dropped && !allowGaps) return false;
   struct Rect { int ia, ja, ib, jb; Cell cell; };
   std::vector<Rect> rects;
   std::vector<u8> done((size_t)nX * nY, 0);
@@ -872,11 +920,7 @@ bool bakeColourQuad(MeshCtx& c, std::vector<ChunkVertex>& dst, const MV corn[4],
     const int ja = j0 + cy * step, jb = std::min(j1, j0 + (y1 + 1) * step);
     rects.push_back({ia, ja, ib, jb, cells[at]});
   }
-  if (rects.empty()) return true;
-  auto kindOf = [&](bool tinted) {
-    if (!tinted || !blockTint) return 0;
-    return blockTint == 2 ? 2 : 1;
-  };
+  if (rects.empty()) return dropped == 0;
   const bool packed = (corn[0].lit & 0x80000000u) && (corn[1].lit & 0x80000000u) && (corn[2].lit & 0x80000000u) && (corn[3].lit & 0x80000000u);
   auto ch5 = [](u32 w, int shift) { return (int)((w >> shift) & 31u); };
   auto litAt = [&](float u, float v) {
@@ -909,9 +953,18 @@ bool bakeColourQuad(MeshCtx& c, std::vector<ChunkVertex>& dst, const MV corn[4],
     if (high && texel >= j1) return 1.f;
     return clampv((texel / (float)S - lo.y) / dv, 0.f, 1.f);
   };
-  const u8 savedKind = c.tintKind;
+  // Code 1 is a full plant wave. Spread that from the root (0) to the tip so a subdivided
+  // cross still shears, the same way the original two vertices did.
+  auto swayAt = [&](float u, float v) -> u8 {
+    if (sameSway) return corn[0].sway;
+    auto pk = [](u8 s) -> float { return s == 0 ? 0.f : s == 1 ? 1.f : (s - 16) / 15.f; };
+    const float a = pk(corn[ix[0][0]].sway), b = pk(corn[ix[0][1]].sway);
+    const float d = pk(corn[ix[1][0]].sway), e = pk(corn[ix[1][1]].sway);
+    const float p = lerpf(lerpf(a, b, u), lerpf(d, e, u), v);
+    if (p < 1.f / 32.f) return 0;
+    return (u8)(16 + clampv((int)std::lround(p * 15.f), 0, 15));
+  };
   for (const Rect& rc : rects) {
-    vec2 cuv; colourToUv(rc.cell.r, rc.cell.g, rc.cell.b, cuv);
     MV v[4];
     for (int k = 0; k < 4; k++) {
       const bool highU = k == ix[0][1] || k == ix[1][1];
@@ -920,10 +973,9 @@ bool bakeColourQuad(MeshCtx& c, std::vector<ChunkVertex>& dst, const MV corn[4],
       const float vv = highV ? paramV(rc.jb, true) : paramV(rc.ja, false);
       const float sky = packed ? 0.f : mix4(u, vv, [](const MV& m) { return m.sky; });
       const float blk = packed ? 0.f : mix4(u, vv, [](const MV& m) { return m.blk; });
-      v[k] = {posAt(u, vv), cuv, sky, blk, mix4(u, vv, [](const MV& m) { return m.shade; }), 0, litAt(u, vv)};
+      v[k] = {posAt(u, vv), vec2(0), sky, blk, mix4(u, vv, [](const MV& m) { return m.shade; }), swayAt(u, vv), litAt(u, vv)};
     }
-    c.tintKind = (u8)kindOf(rc.cell.tinted);
-    c.quad(dst, v, BAKED_TILE, normal, (u8)(mat | (rc.cell.glow ? Mat::Emissive : 0)));
+    paintAs(v, rc.cell.r, rc.cell.g, rc.cell.b, rc.cell.glow, rc.cell.tinted);
   }
   c.tintKind = savedKind;
   return true;

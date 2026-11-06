@@ -2,7 +2,7 @@
 // each comes from the tile array (one layer per tile), its depth from the height array.
 // A baked face (tile layer 4095) already carries that colour in the vertex, so it does not sample the array.
 // Only the exposed face is in the mesh. The cubes you cannot see were never built.
-// A stair, a slab, a fence or a wall uses that same colour, over the part of the picture that face shows.
+// A stair, a slab, a fence, a wall or a plant uses that same colour, over the part of the picture that face shows.
 //  MICRO_VOXELS 0: flat   1: shaded micro-voxels   2: relief — the face's height field is ray-marched one
 //  micro-voxel cell at a time (a voxel parallax), so each micro-voxel shows real depth, side walls and
 //  self-shadowing from the sun, fading to flat past uMicroDist. Legacy does not march: each nearby cell
