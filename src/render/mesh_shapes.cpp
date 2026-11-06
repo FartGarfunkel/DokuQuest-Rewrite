@@ -341,6 +341,26 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   float L0 = R.metaLight(id, meta);
   Own own{(float)c.skyAt(x, y, z), std::max<float>(c.blAt(x, y, z), L0), L0};
   if (T.tint) { c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0); c.tintKind = (u8)(1 + (T.tint == 2 ? 1 : 0)); }
+  if (kind == ShapeKind::Candle) {
+    c.out.hasTorch = true;
+    if (c.opt.torchVoxels) {
+      int ft = (T.candle && (meta & 4)) ? R.tile("candle_flame") : -1;
+      for (auto& b0 : boxes) {
+        ShapeBox b = b0;
+        b.b[0] += sox; b.b[3] += sox; b.b[2] += soz; b.b[5] += soz;
+        CandleSpot s;
+        s.x0 = b.b[0]; s.y0 = b.b[1]; s.z0 = b.b[2]; s.x1 = b.b[3]; s.y1 = b.b[4]; s.z1 = b.b[5];
+        s.sink = sink;
+        s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+        int st = b.side >= 0 ? b.side : side;
+        s.tile = (u16)std::max(st, 0);
+        s.flame = (i16)ft;
+        c.out.candles.push_back(s);
+      }
+      c.tint = 0xFFFFFF; c.tintKind = 0;
+      return;
+    }
+  }
   u8 mat = Mat::Cutout | (R.tTrans[id] ? Mat::Translucent : 0);
   if (isPuddle(R, id)) mat = Mat::Liquid | Mat::Translucent | Mat::NoRelief;   // water: flat, glossy, sky-tinted highlight
   for (auto& b0 : boxes) {

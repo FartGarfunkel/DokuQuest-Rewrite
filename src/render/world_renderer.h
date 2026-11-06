@@ -52,6 +52,7 @@ public:
   void forEachFx(const std::function<void(const SectionKey&, const MeshFx&)>& fn) const;
   // near torches left out of the cutout mesh (section origin in world blocks, spots are section-local)
   void forEachTorchSection(const std::function<void(vec3 origin, const std::vector<TorchSpot>&)>& fn) const;
+  void forEachCandleSection(const std::function<void(vec3 origin, const std::vector<CandleSpot>&)>& fn) const;
   std::vector<ivec3> waterfallBases(const vec3& near, float radius) const;
 
   // stats
@@ -73,7 +74,7 @@ public:
 private:
   struct SecMesh {
     u32 base = 0, cap = 0; u32 nq[3] = {0, 0, 0}; vec3 origin{0}; MeshFx fx; bool detail = true;
-    std::vector<TorchSpot> torches; bool hasTorch = false, torchVox = false;
+    std::vector<TorchSpot> torches; std::vector<CandleSpot> candles; bool hasTorch = false, torchVox = false;
   };
   struct Result { SectionKey k; MeshOutput out; u32 gen = 0; };
   u32 generation = 0;   // bumped by setWorld: results from the world before are dropped
