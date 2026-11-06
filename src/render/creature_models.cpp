@@ -2,6 +2,7 @@
 #include "render/creature_models.h"
 #include "assets/voxel_paint.h"
 #include "assets/tileset.h"
+#include "assets/baked_colours.h"
 #include "assets/pack_fs.h"
 #include "client/app.h"
 #include "sim/creature.h"
@@ -22,7 +23,9 @@ static Pic filePic(const std::string& name) {
   if (auto it = cache.find(name); it != cache.end()) return it->second;
   Pic p(TILE * TILE, 0);
   int w = 0, h = 0; std::vector<u8> px;
-  if (loadPng(dataDir() / "textures" / "entity" / (name + ".png"), w, h, px) && w > 0 && h > 0)
+  bool got = bakedImage("entity/" + name, w, h, px) && w > 0 && h > 0;
+  if (!got) got = loadPng(dataDir() / "textures" / "entity" / (name + ".png"), w, h, px) && w > 0 && h > 0;
+  if (got)
     for (int y = 0; y < TILE; y++) for (int x = 0; x < TILE; x++) {
       const u8* q = &px[((size_t)(y * h / TILE) * w + (size_t)(x * w / TILE)) * 4];
       if (q[3] >= 128) p[y * TILE + x] = voxRGBA(q[0], q[1], q[2], VOXEL_SOLID);
@@ -169,10 +172,13 @@ static const std::unordered_map<std::string, PMSpec>& packMobs() {
 struct Img { int w = 0, h = 0; std::vector<u8> px; bool ok() const { return w >= 16; } };
 static Img loadPackPic(PackFS* pk, const std::string& rel) {
   Img im;
-  if (!pk || rel.empty()) return im;
+  if (rel.empty()) return im;
   std::string r = rel; if (r.rfind("entity/", 0) != 0) r = "entity/" + r;
   // your own skin over the pack's (the Texture Studio's Creatures: userDir()/textures/entity/...)
   { std::error_code ec; const fs::path mine = userDir() / "textures" / (r + ".png"); if (fs::exists(mine, ec) && loadPng(mine, im.w, im.h, im.px)) return im; im.w = 0; }
+  if (bakedImage(r, im.w, im.h, im.px) && im.w > 0 && im.h > 0) return im;
+  im.w = 0; im.px.clear();
+  if (!pk) return im;
   auto data = pk->read(pk->texRoot + r + ".png");
   if (!data || !loadPngMem(data->data(), data->size(), im.w, im.h, im.px)) im.w = 0;
   return im;
@@ -252,7 +258,7 @@ static void tintPic(Pic& p, const json& t) {
 // The faces of every part the pack has a picture for; hidden = parts to put away.
 static bool packSkin(const RigModel& M, const std::string& key, std::vector<std::array<Pic, 6>>& faces, std::vector<u8>& hidden, std::string& used) {
   PackFS* pk = activePack();
-  if (!pk || !pk->hasTextures()) return false;
+  if ((!pk || !pk->hasTextures()) && !bakedColoursOn()) return false;
   auto it = packMobs().find(key);
   if (it == packMobs().end() && !M.packBase.empty()) it = packMobs().find(M.packBase);   // a variant: its base's skin
   if (it == packMobs().end()) return false;

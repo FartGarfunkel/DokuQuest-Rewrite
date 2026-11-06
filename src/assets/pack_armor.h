@@ -20,6 +20,7 @@ struct ArmorLayer { int w = 0, h = 0; std::vector<u8> rgba; };   // a 64x32-layo
 struct ArmorPiece { std::string name; int layer; vec3 lo, hi; int u, v, w, h, d; bool mirror; vec2 slice{0, 1}; };
 
 int loadPackArmor(const PackFS& P);     // called by applyResourcePack; returns the number of materials found
+int loadBakedArmor();                   // the same pictures from the colour bake, when the PNG files stay closed
 void resetPackArmor();
 bool packArmorHas(const std::string& mat);                 // leather, iron, gold, diamond, cinderite, copper
 std::string armorMatOf(const std::string& itemKey);        // "iron_chestplate" -> "iron" (skins.js armorMat)

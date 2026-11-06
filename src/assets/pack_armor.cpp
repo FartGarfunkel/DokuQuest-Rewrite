@@ -1,5 +1,6 @@
 // assets/pack_armor.cpp — the pack's armour pictures and boxes (render/packarmor.js).
 #include "assets/pack_armor.h"
+#include "assets/baked_colours.h"
 #include "assets/pack_fs.h"
 #include "assets/tileset.h"
 #include <map>
@@ -41,6 +42,33 @@ int loadPackArmor(const PackFS& P) {
     }
     if (S.l1 || S.l2) { g_sets[mat] = std::move(S); n++; }
   }
+  return n;
+}
+
+int loadBakedArmor() {
+  resetPackArmor();
+  auto first = [&](const std::vector<std::string>& keys) -> std::optional<ArmorLayer> {
+    for (auto& k : keys) {
+      ArmorLayer L;
+      if (!bakedImage(k, L.w, L.h, L.rgba)) continue;
+      if (L.w >= 64 && L.w == L.h * 2) return L;
+    }
+    return std::nullopt;
+  };
+  int n = 0;
+  for (auto& [mat, names] : NAMES) {
+    ArmorSet S;
+    for (auto& nm : names) {
+      if (!S.l1) S.l1 = first({"entity/equipment/humanoid/" + nm, "models/armor/" + nm + "_layer_1"});
+      if (!S.l2) S.l2 = first({"entity/equipment/humanoid_leggings/" + nm, "models/armor/" + nm + "_layer_2"});
+      if (mat == "leather") {
+        if (!S.o1) S.o1 = first({"entity/equipment/humanoid/" + nm + "_overlay", "models/armor/" + nm + "_layer_1_overlay"});
+        if (!S.o2) S.o2 = first({"entity/equipment/humanoid_leggings/" + nm + "_overlay", "models/armor/" + nm + "_layer_2_overlay"});
+      }
+    }
+    if (S.l1 || S.l2) { g_sets[mat] = std::move(S); n++; }
+  }
+  if (n) DQ_LOG("baked colours: %d armour sets", n);
   return n;
 }
 

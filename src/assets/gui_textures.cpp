@@ -1,5 +1,6 @@
 // assets/gui_textures.cpp — pack GUI pictures for the UI.
 #include "assets/gui_textures.h"
+#include "assets/baked_colours.h"
 #include "assets/pack_fs.h"
 #include "assets/tileset.h"
 #include "render/gl.h"
@@ -44,6 +45,16 @@ const Pic& pic(const std::string& rel) {
   auto it = g_pics.find(rel);
   if (it != g_pics.end()) return it->second;
   Pic p;
+  std::string key = rel;
+  if (key.size() > 4 && key.compare(key.size() - 4, 4, ".png") == 0) key.resize(key.size() - 4);
+  {
+    int bw = 0, bh = 0; std::vector<u8> px;
+    if (bakedImage(key, bw, bh, px) && bw > 0 && bh > 0) {
+      p.w = bw; p.h = bh;
+      p.tex = makeTexture2D(p.w, p.h, px.data(), true, false, false);
+      return g_pics[rel] = p;
+    }
+  }
   PackFS* P = activePack();
   if (P && P->hasTextures()) if (auto b = P->read(P->texRoot + rel)) {
     std::vector<u8> px;

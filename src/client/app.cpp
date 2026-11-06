@@ -15,6 +15,8 @@
 #include "client/client_fx.h"
 #include "mod/modloader.h"
 #include "assets/icons.h"
+#include "assets/baked_colours.h"
+#include "assets/pack_armor.h"
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
@@ -142,9 +144,18 @@ void App::initImGui() {
 
 void App::reloadTiles() {
   tiles = TileSet();
-  loadBuiltinTiles(tiles);
-  addBuiltinTileAnims(tiles);   // render/tile_anim.h (before a pack replaces tiles)
-  tiles.packName = applyResourcePack(tiles, settings.resourcePack);
+  dropBakedPictures();
+  // The default art is already in the program: block faces, item icons, creature skins, armour and the
+  // GUI sheets. "none" and any other pack still read their PNG files.
+  const std::string& choice = settings.resourcePack;
+  const bool wantBaked = choice != "none" && (choice.empty() || choice == "auto" || choice == "DokuQuest Base");
+  if (wantBaked && loadBakedColours(tiles)) loadBakedArmor();
+  else {
+    dropBakedPictures();
+    loadBuiltinTiles(tiles);
+    addBuiltinTileAnims(tiles);   // render/tile_anim.h (before a pack replaces tiles)
+    tiles.packName = applyResourcePack(tiles, settings.resourcePack);
+  }
   applyUserTiles(tiles);   // the Texture Studio's pictures, over any pack
   holidayTiles(tiles);     // December's wrapped chests
   // ice you can see through like Minecraft's (about 60 % cover), whichever pack painted it
