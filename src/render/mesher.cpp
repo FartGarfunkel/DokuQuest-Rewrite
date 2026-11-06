@@ -784,6 +784,151 @@ void emitNotchWater(MeshCtx& c, std::vector<ChunkVertex>& dst, int x, int y, int
 }
 } // namespace
 
+// A stair, a slab, a fence or a wall already drew only the faces you can see. This paints those faces
+// from the part of the tile the quad actually uses, in cells, and leaves the section batch as it is.
+bool bakeColourQuad(MeshCtx& c, std::vector<ChunkVertex>& dst, const MV corn[4], int tile, int normal, u8 mat, int blockTint) {
+  if (!c.opt.colourStep || !c.tiles || tile < 0 || tile >= c.tiles->count || tile >= BAKED_TILE) return false;
+  if (c.tiles->animated(tile)) return false;
+  if ((mat & (Mat::Liquid | Mat::Lava | Mat::Flowing)) || (c.extraMat & Mat::TintAll) || c.tintKind >= Tint::Water) return false;
+  for (int k = 0; k < 4; k++) if (corn[k].sway) return false;
+  const int S = c.tiles->size;
+  if (S < 1) return false;
+  vec2 lo = corn[0].uv, hi = corn[0].uv;
+  for (int k = 1; k < 4; k++) { lo = glm::min(lo, corn[k].uv); hi = glm::max(hi, corn[k].uv); }
+  const float du = hi.x - lo.x, dv = hi.y - lo.y;
+  if (du < 1e-4f || dv < 1e-4f) return false;
+  int ix[2][2] = {{-1, -1}, {-1, -1}};
+  for (int k = 0; k < 4; k++) {
+    const int ui = std::fabs(corn[k].uv.x - hi.x) <= std::fabs(corn[k].uv.x - lo.x) ? 1 : 0;
+    const int vi = std::fabs(corn[k].uv.y - hi.y) <= std::fabs(corn[k].uv.y - lo.y) ? 1 : 0;
+    if (ix[vi][ui] >= 0) return false;
+    ix[vi][ui] = k;
+  }
+  if (ix[0][0] < 0 || ix[0][1] < 0 || ix[1][0] < 0 || ix[1][1] < 0) return false;
+  int i0 = (int)std::floor(clampv(lo.x, 0.f, 1.f) * S + 1e-4f);
+  int i1 = (int)std::ceil(clampv(hi.x, 0.f, 1.f) * S - 1e-4f);
+  int j0 = (int)std::floor(clampv(lo.y, 0.f, 1.f) * S + 1e-4f);
+  int j1 = (int)std::ceil(clampv(hi.y, 0.f, 1.f) * S - 1e-4f);
+  i0 = clampv(i0, 0, S); i1 = clampv(i1, 0, S); j0 = clampv(j0, 0, S); j1 = clampv(j1, 0, S);
+  if (i1 <= i0) { int i = clampv((int)std::floor((lo.x + hi.x) * 0.5f * S), 0, S - 1); i0 = i; i1 = i + 1; }
+  if (j1 <= j0) { int j = clampv((int)std::floor((lo.y + hi.y) * 0.5f * S), 0, S - 1); j0 = j; j1 = j + 1; }
+  const int spanI = i1 - i0, spanJ = j1 - j0;
+  int step = c.opt.colourStep;
+  if (mat & Mat::Translucent) step = std::max(spanI, spanJ);   // glass stays one quad: a grid of it would overdraw
+  else if ((mat & Mat::Cutout) && step < 8) step = 8;          // the cutout pass: an 8-texel cell keeps a leafy silhouette small
+  if (step < 1) return false;
+  const int nX = std::max(1, (spanI + step - 1) / step);
+  const int nY = std::max(1, (spanJ + step - 1) / step);
+  const int bits = (c.opt.colourStep >= 32 || (mat & Mat::Translucent)) ? 4 : 5;
+  const int sh = 8 - bits;
+  struct Cell { u32 key = 0; int r = 0, g = 0, b = 0; bool tinted = false, glow = false; };
+  std::vector<Cell> cells((size_t)nX * nY);
+  int dropped = 0;
+  auto areaAt = [&](int cx, int cy, int& ia, int& ja, int& ib, int& jb) {
+    ia = i0 + cx * step; ib = std::min(i1, ia + step);
+    ja = j0 + cy * step; jb = std::min(j1, ja + step);
+  };
+  for (int cy = 0; cy < nY; cy++) for (int cx = 0; cx < nX; cx++) {
+    int ia, ja, ib, jb; areaAt(cx, cy, ia, ja, ib, jb);
+    int r = 0, g = 0, b = 0, cnt = 0, tinted = 0;
+    bool glow = false;
+    for (int j = ja; j < jb; j++) for (int i = ia; i < ib; i++) {
+      const u8* p = c.tiles->px(tile, i, j);
+      if (p[3] < 128) continue;
+      cnt++; r += p[0]; g += p[1]; b += p[2];
+      if (p[3] == 253) tinted++;
+      if (c.tiles->glowAt(tile, i, j) > 127) glow = true;
+    }
+    Cell& cell = cells[(size_t)cy * nX + cx];
+    const int area = (ib - ia) * (jb - ja);
+    if (!cnt || cnt * 2 < area) { dropped += cnt; continue; }
+    cell.r = ((r / cnt) >> sh) << sh; cell.g = ((g / cnt) >> sh) << sh; cell.b = ((b / cnt) >> sh) << sh;
+    cell.tinted = blockTint && tinted * 2 >= cnt;
+    cell.glow = glow;
+    cell.key = 1u | (u32)cell.r << 1 | (u32)cell.g << 9 | (u32)cell.b << 17 | (cell.tinted ? 1u << 25 : 0u) | (cell.glow ? 1u << 26 : 0u);
+  }
+  // A thin frame (bars, a pane) would lose its paint if every cell failed the majority test. Keep the picture.
+  if (dropped) return false;
+  struct Rect { int ia, ja, ib, jb; Cell cell; };
+  std::vector<Rect> rects;
+  std::vector<u8> done((size_t)nX * nY, 0);
+  for (int cy = 0; cy < nY; cy++) for (int cx = 0; cx < nX; cx++) {
+    const size_t at = (size_t)cy * nX + cx;
+    if (done[at]) continue;
+    done[at] = 1;
+    if (!cells[at].key) continue;
+    int x1 = cx;
+    while (x1 + 1 < nX && !done[cy * nX + x1 + 1] && cells[cy * nX + x1 + 1].key == cells[at].key) { done[cy * nX + x1 + 1] = 1; x1++; }
+    int y1 = cy;
+    for (;;) {
+      if (y1 + 1 >= nY) break;
+      bool ok = true;
+      for (int k = cx; k <= x1 && ok; k++) ok = !done[(y1 + 1) * nX + k] && cells[(y1 + 1) * nX + k].key == cells[at].key;
+      if (!ok) break;
+      for (int k = cx; k <= x1; k++) done[(y1 + 1) * nX + k] = 1;
+      y1++;
+    }
+    const int ia = i0 + cx * step, ib = std::min(i1, i0 + (x1 + 1) * step);
+    const int ja = j0 + cy * step, jb = std::min(j1, j0 + (y1 + 1) * step);
+    rects.push_back({ia, ja, ib, jb, cells[at]});
+  }
+  if (rects.empty()) return true;
+  auto kindOf = [&](bool tinted) {
+    if (!tinted || !blockTint) return 0;
+    return blockTint == 2 ? 2 : 1;
+  };
+  const bool packed = (corn[0].lit & 0x80000000u) && (corn[1].lit & 0x80000000u) && (corn[2].lit & 0x80000000u) && (corn[3].lit & 0x80000000u);
+  auto ch5 = [](u32 w, int shift) { return (int)((w >> shift) & 31u); };
+  auto litAt = [&](float u, float v) {
+    if (!packed) return 0u;
+    const int sft[6] = {25, 20, 15, 10, 5, 0};
+    u32 pack = 0;
+    for (int i = 0; i < 6; i++) {
+      float a = ch5(corn[ix[0][0]].lit, sft[i]), b = ch5(corn[ix[0][1]].lit, sft[i]);
+      float d = ch5(corn[ix[1][0]].lit, sft[i]), e = ch5(corn[ix[1][1]].lit, sft[i]);
+      float r = lerpf(lerpf(a, b, u), lerpf(d, e, u), v);
+      pack |= (u32)clampv((int)std::lround(r), 0, 31) << sft[i];
+    }
+    return markCubyz(pack);
+  };
+  auto mix4 = [&](float u, float v, auto field) {
+    float a = field(corn[ix[0][0]]), b = field(corn[ix[0][1]]), d = field(corn[ix[1][0]]), e = field(corn[ix[1][1]]);
+    return lerpf(lerpf(a, b, u), lerpf(d, e, u), v);
+  };
+  auto posAt = [&](float u, float v) {
+    vec3 a = corn[ix[0][0]].p, b = corn[ix[0][1]].p, d = corn[ix[1][0]].p, e = corn[ix[1][1]].p;
+    return glm::mix(glm::mix(a, b, u), glm::mix(d, e, u), v);
+  };
+  auto paramU = [&](int texel, bool high) {
+    if (!high && texel <= i0) return 0.f;
+    if (high && texel >= i1) return 1.f;
+    return clampv((texel / (float)S - lo.x) / du, 0.f, 1.f);
+  };
+  auto paramV = [&](int texel, bool high) {
+    if (!high && texel <= j0) return 0.f;
+    if (high && texel >= j1) return 1.f;
+    return clampv((texel / (float)S - lo.y) / dv, 0.f, 1.f);
+  };
+  const u8 savedKind = c.tintKind;
+  for (const Rect& rc : rects) {
+    vec2 cuv; colourToUv(rc.cell.r, rc.cell.g, rc.cell.b, cuv);
+    MV v[4];
+    for (int k = 0; k < 4; k++) {
+      const bool highU = k == ix[0][1] || k == ix[1][1];
+      const bool highV = k == ix[1][0] || k == ix[1][1];
+      const float u = highU ? paramU(rc.ib, true) : paramU(rc.ia, false);
+      const float vv = highV ? paramV(rc.jb, true) : paramV(rc.ja, false);
+      const float sky = packed ? 0.f : mix4(u, vv, [](const MV& m) { return m.sky; });
+      const float blk = packed ? 0.f : mix4(u, vv, [](const MV& m) { return m.blk; });
+      v[k] = {posAt(u, vv), cuv, sky, blk, mix4(u, vv, [](const MV& m) { return m.shade; }), 0, litAt(u, vv)};
+    }
+    c.tintKind = (u8)kindOf(rc.cell.tinted);
+    c.quad(dst, v, BAKED_TILE, normal, (u8)(mat | (rc.cell.glow ? Mat::Emissive : 0)));
+  }
+  c.tintKind = savedKind;
+  return true;
+}
+
 // ---------------------------------------------------------------- the section (worker threads)
 u16 sectionVisibility(const MeshInput& in) {
   // cave culling (the idea of Tommaso Checchi's "advanced cave culling"): flood the section's open cells; each pocket

@@ -73,6 +73,11 @@ struct MeshCtx {
   void quad2(std::vector<ChunkVertex>& d, const MV v[4], int tile, int normal, u8 mat) const;   // both sides
 };
 
+// One quad whose picture window may be only part of the tile (a stair tread, a slab, a fence post).
+// The colour is written into the vertex the same way a full cube face is. A moving picture, a liquid,
+// and a waving cloth stay on the caller's textured quad. False means that quad still has to be drawn.
+bool bakeColourQuad(MeshCtx& c, std::vector<ChunkVertex>& dst, const MV corn[4], int tile, int normal, u8 mat, int blockTint);
+
 // neighbour access for shapes.cpp
 struct MeshShapeNb : ShapeNb {
   const MeshCtx& c; int x, y, z;
