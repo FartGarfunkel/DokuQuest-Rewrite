@@ -113,7 +113,8 @@ static void fuseBurst(Level& lv, Creature& m) {
   {   // the newer lands' fuselings
     const std::string& t = m.type;
     const char* puff = t == "redlands_fuseling" ? "crit" : t == "jungle_fuseling" || t == "meadow_fuseling" ? "leaf" : t == "beach_fuseling" ? "splash" : t == "mushroom_fuseling" ? "poof" : t == "savanna_fuseling" ? "dust" : nullptr;
-    if (puff) lv.fx->particles(puff, m.pos + vec3(0, 1, 0), 36);
+    // A jungle canopy is the deep leaf. A meadow stays the ordinary green one.
+    if (puff) lv.fx->particles(puff, m.pos + vec3(0, 1, 0), 36, t == "jungle_fuseling" ? json{{"tile", "leaf_deep"}} : json(nullptr));
     if (t == "redlands_fuseling") for (int k = 0; k < 2 + (int)(frand() * 3); k++) dropItem(lv, m.realm, ItemStack("gold_nugget", 1), m.pos + vec3(0, 0.8f, 0), true);   // gold in its terracotta
     for (Entity* e : pawnsOf(lv, m.realm)) {
       auto* pl = dynamic_cast<Player*>(e);
