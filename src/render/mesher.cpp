@@ -711,10 +711,11 @@ bool emitNearStation(MeshCtx& c, BlockId id, int x, int y, int z, u8 meta) {
     // ancient debris are the same kind of cube. A note block, a sponge, a honeycomb, a lamp
     // and a copper bulb are one picture on every face. The picture is copied as the chunk mesh draws it.
     // A dyed lamp, a mese lamp, a motion sensor and an emberglass conduit are the same full cube.
+    // A rift core is the one heart set for the storm.
     if (!want && self.render == Render::Cube)
       want = k == "crafting_table" || k == "bookshelf" || k == "barrel" || k == "tnt"
           || k == "dried_kelp_block" || k == "millstone" || k == "sawmill" || k == "crusher"
-          || k == "harvester" || k == "jukebox" || k == "command_block" || k == "target"
+          || k == "harvester" || k == "jukebox" || k == "command_block" || k == "rift_core" || k == "target"
           || k == "statue" || k == "steam_vent" || k == "waystone" || k == "sculk_catalyst"
           || k == "pumpkin" || k == "melon" || k == "ancient_debris"
           || k == "hay_bale" || k == "bone_block" || k == "sugar_cane_bundle"
