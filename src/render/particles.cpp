@@ -3,6 +3,7 @@
 // quads: render/renderer.js buildParticles.
 #include "render/particles.h"
 #include "core/registry.h"
+#include "render/mesher.h"
 #include "world/world.h"
 
 namespace dq {
@@ -21,6 +22,23 @@ const std::vector<VertexAttrib> P_ATTRS = {
   {6, 1, GL_UNSIGNED_BYTE, GL_TRUE, false, 21},
 };
 bool solidAt(World* w, vec3 p) { return w && reg().tSolid[w->getBlock(ifloor(p.x), ifloor(p.y), ifloor(p.z))]; }
+
+// The same foliage colour the chunk shader uses (alpha 253). A leaf crumb is that grey picture times this.
+vec3 foliageTintAt(const World& w, int x, int y, int z) {
+  u8 t = 128, h = 128;
+  if (Chunk* ch = w.chunkAtBlock(x, y, z)) {
+    int i = ((z & 15) * 16 + (x & 15)) * 2;
+    t = ch->climate[i]; h = ch->climate[i + 1];
+  }
+  bool ok = false;
+  u32 c = packTint("foliage", t, h, ok);
+  if (!ok) {
+    u32 g = climateTint("grass", t, h);
+    auto sc = [](unsigned v, float k) { return clampv((int)std::lround(v * k), 0, 255) / 255.f; };
+    return vec3(sc(g & 255u, 0.8f * 0.82f), sc((g >> 8) & 255u, 0.8f * 0.86f), sc((g >> 16) & 255u, 0.8f * 0.8f));
+  }
+  return vec3((c & 255) / 255.f, ((c >> 8) & 255) / 255.f, ((c >> 16) & 255) / 255.f);
+}
 } // namespace
 
 ParticleSystem& particles() { static ParticleSystem ps; return ps; }
@@ -337,7 +355,7 @@ void ParticleSystem::ensureGl() {
   mesh.setup(sizeof(Vtx), P_ATTRS);
 }
 
-void ParticleSystem::draw(const FrameCtx& f, const TileTextures& tex) {
+void ParticleSystem::draw(const FrameCtx& f, const TileTextures& tex, const TileSet& ts) {
   if (list.empty()) return;
   ensureGl();
   if (!shader.ok()) return;
@@ -346,6 +364,15 @@ void ParticleSystem::draw(const FrameCtx& f, const TileTextures& tex) {
   verts.clear(); verts.reserve(list.size() * 24);   // a voxel cube is 6 quads; rain and splats stay one quad
   glm::dvec3 o = cam.origin;
   const vec3 eye = vec3(cam.pos - o);
+  // Which picture an animated tile is showing this frame (the same clock as TileAnimator).
+  const int S = ts.size > 0 ? ts.size : 32;
+  std::vector<int> anim(std::max(ts.count, 0), -1);
+  for (const TileAnim& an : ts.anims) {
+    if (an.frames.empty() || an.layer < 0 || an.layer >= ts.count) continue;
+    int fr = (int)((int64_t)(f.time * 1000.0 / std::max(1, an.frameTime)) % (int64_t)an.frames.size());
+    int src = an.frames[(size_t)fr];
+    if (src >= 0 && src < ts.count) anim[an.layer] = src;
+  }
   auto quad = [&](const Particle& p, vec3 c, u8 alpha) {
     float s = p.size;
     vec3 A = right, B = up;
@@ -362,15 +389,43 @@ void ParticleSystem::draw(const FrameCtx& f, const TileTextures& tex) {
     put(c - A - B, p.uv[0], p.uv[3]); put(c + A - B, p.uv[2], p.uv[3]); put(c + A + B, p.uv[2], p.uv[1]); put(c - A + B, p.uv[0], p.uv[1]);
   };
   // A crumb, a spark, a puff: a little cube of one colour from the middle of its picture.
-  // Rain strokes and ground splats stay flat. Cull is off for this pass, so either winding shows.
+  // The colour is baked here (the current animation frame, and alpha 253 takes this spot's foliage
+  // tint the way chunk.glsl does). Rain strokes and ground splats stay flat pictures.
   auto cube = [&](const Particle& p, vec3 c, u8 alpha) {
     float s = p.size;
-    u8 u = (u8)(((int)p.uv[0] + (int)p.uv[2]) / 2), vv = (u8)(((int)p.uv[1] + (int)p.uv[3]) / 2);
-    Vtx v{}; v.layer = p.tile; v.light = p.light; v.r = p.tint[0]; v.g = p.tint[1]; v.b = p.tint[2];
-    v.flags = (u8)((p.light == 0xFF || p.glow ? 1 : 0) | (p.soft ? 2 : 0)); v.a = alpha;
+    int layer = (int)p.tile;
+    if (layer < 0 || layer >= ts.count || S < 1) return;
+    if (layer < (int)anim.size() && anim[layer] >= 0) layer = anim[layer];
+    int su = ((int)p.uv[0] + (int)p.uv[2]) / 2, sv = ((int)p.uv[1] + (int)p.uv[3]) / 2;
+    int sx = clampv(su * S / 128, 0, S - 1), sy = clampv(sv * S / 128, 0, S - 1);
+    const u8* px = ts.tile(layer) + ((size_t)sy * (size_t)S + sx) * 4;
+    if (!p.soft && px[3] < 128) return;
+    float rr = px[0], gg = px[1], bb = px[2];
+    if (px[3] == 253 && world) {
+      vec3 tint = foliageTintAt(*world, ifloor(p.p.x), ifloor(p.p.y), ifloor(p.p.z)) * 1.3f;
+      if (f.season.a > 0.f) {
+        vec3 sc(f.season);
+        tint = glm::mix(tint, sc * (glm::dot(tint, vec3(0.299f, 0.587f, 0.114f)) * 1.6f), f.season.a);
+      }
+      rr *= tint.r; gg *= tint.g; bb *= tint.b;
+    }
+    rr *= p.tint[0] / 255.f; gg *= p.tint[1] / 255.f; bb *= p.tint[2] / 255.f;
+    u8 outA = alpha;
+    if (p.soft) {
+      int aa = (int)std::lround(alpha * (px[3] / 255.f));
+      if (aa < 1) return;
+      outA = (u8)aa;
+    }
+    u8 u = (u8)su, vv = (u8)sv;
+    Vtx v{}; v.layer = p.tile; v.light = p.light;
+    v.r = (u8)clampv((int)std::lround(rr), 0, 255);
+    v.g = (u8)clampv((int)std::lround(gg), 0, 255);
+    v.b = (u8)clampv((int)std::lround(bb), 0, 255);
+    v.flags = (u8)((p.light == 0xFF || p.glow ? 1 : 0) | (p.soft ? 2 : 0) | 4);
+    v.a = outA;
     auto put = [&](vec3 q) { v.x = q.x; v.y = q.y; v.z = q.z; v.u = u; v.v = vv; verts.push_back(v); };
     vec3 X(s, 0, 0), Y(0, s, 0), Z(0, 0, s);
-    auto face = [&](vec3 n, vec3 a, vec3 b) { vec3 o = c + n; put(o - a - b); put(o + a - b); put(o + a + b); put(o - a + b); };
+    auto face = [&](vec3 n, vec3 a, vec3 b) { vec3 o2 = c + n; put(o2 - a - b); put(o2 + a - b); put(o2 + a + b); put(o2 - a + b); };
     face(X, Y, Z); face(-X, Y, Z); face(Y, X, Z); face(-Y, X, Z); face(Z, X, Y); face(-Z, X, Y);
   };
   auto shape = [&](const Particle& p, vec3 c, u8 alpha) {

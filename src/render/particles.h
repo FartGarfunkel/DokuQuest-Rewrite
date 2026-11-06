@@ -9,6 +9,7 @@
 // an unknown kind is a burst of that tile or block, like the original's game.burst(x,y,z,name,n,speed)).
 #pragma once
 #include "render/frame.h"
+#include "assets/tileset.h"
 
 namespace dq {
 
@@ -48,7 +49,7 @@ public:
   int blockTile(const std::string& blockKey, int face = 0) const;   // -1 if not a block
   // ---- frame ----
   void update(World* w, double dt, double time);
-  void draw(const FrameCtx& f, const TileTextures& tex);
+  void draw(const FrameCtx& f, const TileTextures& tex, const TileSet& tiles);
   void clear() { list.clear(); drops = 0; }
   void removeDrops() { list.erase(std::remove_if(list.begin(), list.end(), [](const Particle& p) { return p.drop != 0; }), list.end()); drops = 0; }
   size_t count() const { return list.size(); }

@@ -1,5 +1,6 @@
 // particles.glsl — particle quads (render/particles.cpp): a piece of a tile, lit like the blocks
-// around it (or glowing), tinted, alpha-tested, fogged.
+// around it (or glowing), tinted, alpha-tested, fogged. A cube (flag bit 2) already holds its
+// texel colour in the tint, foliage mark included, so that face does not sample the atlas.
 #include "common.glsl"
 #ifdef VERTEX
 layout(location = 0) in vec3 aPos;
@@ -40,15 +41,16 @@ in float vAlpha;
 out vec4 fragColor;
 void main() {
   vec2 uv = clamp(vUV, 0.0, 0.999);
-  vec4 t = vLayer < uPageSize ? texture(uTiles, vec3(uv, vLayer)) : texture(uTiles2, vec3(uv, vLayer - uPageSize));
+  bool baked = (vFlags & 4u) != 0u;
   bool soft = (vFlags & 2u) != 0u;
+  vec4 t = baked ? vec4(1.0) : (vLayer < uPageSize ? texture(uTiles, vec3(uv, vLayer)) : texture(uTiles2, vec3(uv, vLayer - uPageSize)));
   float a = 1.0;
   if (soft) {
     // a puff: soft at its rim (whatever the picture's edge), its own alpha, the fade.
     // A voxel puff is one colour across the face, so there is no rim to fade.
     vec2 q = vUV * 2.0 - 1.0;
     float rim = 1.0 - smoothstep(0.55, 1.0, length(q));
-    if (abs(dFdx(vUV).x) + abs(dFdy(vUV).y) + abs(dFdx(vUV).y) + abs(dFdy(vUV).x) < 1e-4) rim = 1.0;
+    if (baked || abs(dFdx(vUV).x) + abs(dFdy(vUV).y) + abs(dFdx(vUV).y) + abs(dFdy(vUV).x) < 1e-4) rim = 1.0;
     a = t.a * vAlpha * rim;
     if (a < 0.01) discard;
   } else if (t.a < 0.5) discard;

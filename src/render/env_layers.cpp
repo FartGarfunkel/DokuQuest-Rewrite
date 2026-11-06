@@ -567,7 +567,7 @@ public:
     P.windDrift = vec2(-std::sin(wd) * ws * 0.35f, -std::cos(wd) * ws * 0.35f);
     P.update(&s.world(), s.paused() ? 0.0 : dt, s.app.time);
   }
-  void drawOpaque(GameSession& s, const FrameCtx& f) override { particles().draw(f, s.app.tileTex); }
+  void drawOpaque(GameSession& s, const FrameCtx& f) override { particles().draw(f, s.app.tileTex, s.app.tiles); }
 };
 } // namespace
 
