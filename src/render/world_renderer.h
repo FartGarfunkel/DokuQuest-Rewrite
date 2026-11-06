@@ -30,6 +30,8 @@ public:
   void setTiles(const TileSet& ts);          // the plant builder's copy of the tiles (+ remesh)
   // a shader pack's gbuffers need one texel per tile, so greedy merging (a quad that spans tiles) stays off while a pack is on
   void setPackGeometry(bool on);
+  // built-in terrain bakes exposed cube faces as vertex colours. A shader pack keeps the tile sample.
+  void setColourCubes(bool on);
   // the frame's visible sections, with whatever program is already bound (the pack's gbuffers_terrain)
   void drawSections(const FrameCtx& f, int pass);
   // every meshed section of this band within radius of the camera, frustum and cave cull ignored (sun shadows)
@@ -78,7 +80,7 @@ private:
   struct SecMesh {
     u32 base = 0, cap = 0; u32 nq[3] = {0, 0, 0}; vec3 origin{0}; MeshFx fx; bool detail = true;
     std::vector<TorchSpot> torches; std::vector<CandleSpot> candles; std::vector<LeverSpot> levers;
-    std::vector<ModelSpot> models; std::vector<RodSpot> rods; bool hasTorch = false, torchVox = false;
+    std::vector<ModelSpot> models; std::vector<RodSpot> rods; bool hasTorch = false, torchVox = false, colourFine = false;
   };
   struct Result { SectionKey k; MeshOutput out; u32 gen = 0; };
   u32 generation = 0;   // bumped by setWorld: results from the world before are dropped
@@ -120,7 +122,8 @@ private:
   std::map<u32, u32> freeList;               // base -> count
   u32 maxQuads = 0;
   vec3 camPos{0};
-  double detailT = 0, torchT = 0;
+  double detailT = 0, torchT = 0, colourT = 0;
+  bool colourCubes = true;   // false while a shader pack owns the terrain picture
   GLuint tq[2] = {0, 0}; int tqi = 0; bool tqActive = false, tqUsed[2] = {false, false};
   // the tint the vertices no longer carry (mesher.h): each land's climate per column, 1024 x 1024 wrapping round the
   // camera (RG8 temperature/humidity, a layer per land), and the colour for a climate (256 x 256 by temperature and

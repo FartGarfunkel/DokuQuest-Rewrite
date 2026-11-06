@@ -1,5 +1,7 @@
 // chunk.glsl — terrain sections. Every block face is a 32x32 grid of micro-voxels: the colour of
 // each comes from the tile array (one layer per tile), its depth from the height array.
+// A baked face (tile layer 4095) already carries that colour in the vertex, so it does not sample the array.
+// Only the exposed face is in the mesh. The cubes you cannot see were never built.
 //  MICRO_VOXELS 0: flat   1: shaded micro-voxels   2: relief — the face's height field is ray-marched one
 //  micro-voxel cell at a time (a voxel parallax), so each micro-voxel shows real depth, side walls and
 //  self-shadowing from the sun, fading to flat past uMicroDist. Legacy does not march: each nearby cell
@@ -141,6 +143,17 @@ void main() {
   vec3 N = faceNormal(n);
   float shade = (liquid && n == 2) ? 1.0 : vLight.z;
   float sunMod = 1.0;
+  // Layer 4095: R, G, B live in the uv word (render/mesher.h). No tile, height or normal sample.
+  bool baked = layer > 4094.5;
+  vec4 col = vec4(1.0);
+  if (baked) {
+    float ru = (vUV.x + 16.0) * 256.0;
+    float rv = (vUV.y + 16.0) * 256.0;
+    uint ub = uint(clamp(floor(ru + 0.5), 0.0, 16383.0));
+    uint vb = uint(clamp(floor(rv + 0.5), 0.0, 16383.0));
+    uint bits = ub | (vb << 14u);
+    col = vec4(float(bits & 255u), float((bits >> 8u) & 255u), float((bits >> 16u) & 255u), 255.0) / 255.0;
+  } else {
 
 #if MICRO_VOXELS >= 1 && defined(DQ_MODERN)
   // Legacy does not build this frame or read the normal map. The cell snap below is its whole
@@ -259,7 +272,6 @@ void main() {
   bool crisp = cellSnap && texel * float(VOX) < 0.85;
   bool tintedWater = liquid && !lava && (vMat & 128u) != 0u;
   bool sheet = !(liquid && (lava || tintedWater) && dist < 32.0);
-  vec4 col;
   if (!sheet && lava) col = vec4(1.0);
   else if (!sheet) col = vec4(vec3(0.62), 175.0 / 255.0);
   else col = crisp ? tileColorLod(fuv, layer, 0.0) : tileColorGrad(fuv, layer, gdx, gdy);
@@ -295,6 +307,10 @@ void main() {
     float lip = min(min(edge.x, 1.0 - edge.x), min(edge.y, 1.0 - edge.y));
     shade *= mix(1.0, mix(0.78, 1.0, smoothstep(0.0, 0.16, lip)), near);
   }
+  }
+  // A baked grass or leaf cell carries the raw texel. Alpha 0 makes the tint below take the whole cell,
+  // including the season. The opacity is put back after that multiply.
+  if (baked && (vTint.r + vTint.g + vTint.b) < 2.99) col.a = 0.0;
   // climate tint: water and dust take it all over; tint-marked pixels (alpha 253) of grass and leaves take it too
   if ((vMat & 128u) != 0u) col.rgb *= vTint * 1.25;
   else if (vTint.r + vTint.g + vTint.b < 2.99) {
@@ -304,12 +320,13 @@ void main() {
     col.rgb *= mix(vec3(1.0), tint, w);
   }
   if (uPass != 2) col.a = 1.0;
+  else if (baked) col.a = 160.0 / 255.0;
 
   vec3 block31 = vBlock;
   if (uDynN > 0) block31 = max(block31, dynBlock31(vRel + N * 0.25, N));
   vec3 lc = (vMat & 1u) != 0u ? vec3(1.0) : cubyzCombine(vSun, block31);
-  // Lava's light is the pulse below. The height map is a texture read it does not use.
-  float emis = lava ? 0.0 : tileHeightAt(fract(uv), layer).g;
+  // Lava's light is the pulse below. The height map is a texture read a baked face does not use.
+  float emis = (!baked && !lava) ? tileHeightAt(fract(uv), layer).g : 0.0;
   lc = max(lc, vec3(emis));
   if (lava) lc = vec3(1.0) * (0.92 + 0.16 * vnoise(vWorld.xz * 1.3 + vec2(uTime * 0.25, -uTime * 0.17)));
   vec3 c = col.rgb * lc * shade * sunMod;

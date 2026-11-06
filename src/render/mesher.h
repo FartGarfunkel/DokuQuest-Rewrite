@@ -16,6 +16,7 @@ struct TileSet;
 //   a: x (14 bits) | y (14) << 14 | face normal (3) << 28 | Mat::NoRelief << 31   position: section-relative, 1/256 block, +16 blocks
 //   b: z (14)      | tile layer (12) << 14 | tint (5) << 26 | Mat::Lava << 31
 //   c: u (14)      | v (14) << 14 | Mat bits 0-3 << 28                         uv: tile units, 1/256, +16 tiles (a merged face spans 16)
+//      Tile layer 4095 is not a tile. Those 28 bits hold R, G and B (the low 24) and the fragment does not sample a picture.
 //   d: sky light (8) | block light (8) << 8 | shade (8) << 16 | sway (7) << 24 | Mat::Flowing << 31
 //   e: sun R,G,B then block R,G,B, 5 bits each (0..31). Shader packs do not read this word; d's two bytes stay
 //      the 0..255 lightmap (31 -> 255) so eye brightness keeps a full sun.
@@ -126,6 +127,7 @@ struct MeshOutput {
   bool torchVox = false;       // those torches are in `torches` instead of the cutout list
   bool detail = true;          // built with 3D plants
   u16 vis = 0x7FFF;            // cave culling: which pairs of the section's 6 faces see each other through it (sectionVisPair)
+  bool colourFine = false;     // exposed cubes were baked as a near grid (colourStep below 32), not one colour for the face
   double ms = 0;               // time spent meshing
   bool empty() const { return opaque.empty() && cutout.empty() && trans.empty(); }
 };
@@ -136,6 +138,10 @@ struct MesherOptions {
   bool detail = true;          // 3D voxel plants (settings.plantDetail near/all decides per section)
   bool greedy = true;          // merge flat, evenly lit faces
   bool torchVoxels = false;    // near torches become coloured voxels instead of cutout quads
+  // 0 keeps the tile sample. 4 bakes each exposed cube face as 4-texel colour cells (the near band).
+  // 32 bakes one colour for the whole face (far enough that the cells are smaller than a pixel).
+  // A shader pack stays on 0: its chunk shader still wants real tile coordinates.
+  int colourStep = 0;
 };
 
 bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in);   // false if the chunk isn't loaded

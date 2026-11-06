@@ -58,6 +58,7 @@ bool WorldRenderer::init(const Settings& s, const TileTextures& t) {
   if (const char* e = std::getenv("DQ_ARENA_PAGE_MB")) if (pages.empty()) PAGE_V = (u32)(std::max(4, std::atoi(e)) * 1048576.0 / sizeof(ChunkVertex));
   microVoxels = s.microVoxels; microDist = (float)s.microVoxelDist;
   mopt.fancyLeaves = s.fancyLeaves; mopt.wavingPlants = s.wavingPlants;
+  colourCubes = s.shaderPack.empty();
   plantDetail = s.plantDetail == "off" || s.plantDetail == "flat" ? 0 : s.plantDetail == "all" ? 2 : 1;
   applyGrassSetting(s);
   reloadShaders();
@@ -91,6 +92,11 @@ void WorldRenderer::setPackGeometry(bool on) {
   if (packGeom == on) return;
   packGeom = on;
   mopt.greedy = !on;
+  remeshAll();
+}
+void WorldRenderer::setColourCubes(bool on) {
+  if (colourCubes == on) return;
+  colourCubes = on;
   remeshAll();
 }
 
@@ -246,7 +252,11 @@ void WorldRenderer::submit(const SectionKey& k, ThreadPool& pool, float pri, boo
   if (!gatherMeshInput(*w, k, *in)) return;
   if (in->empty) { secVis.erase(k); auto it = meshes.find(k); if (it != meshes.end()) { release(it->second->base, it->second->cap); meshes.erase(it); } return; }
   inFlight.insert(k);
-  auto sh = shared; MesherOptions mo = mopt; mo.detail = detail; mo.torchVoxels = nearTorch(k); u32 gen = generation;
+  auto sh = shared; MesherOptions mo = mopt; mo.detail = detail; mo.torchVoxels = nearTorch(k);
+  // Near faces keep an 8×8 colour grid (4 texels a cell). Far faces are one colour. Both skip the tile sample.
+  // A pack's own chunk shader still gets real texture coordinates.
+  mo.colourStep = (colourCubes && !packGeom) ? (nearTorch(k) ? 4 : 32) : 0;
+  u32 gen = generation;
   pool.submit([sh, in, k, mo, gen] {
     Result r; r.k = k; r.gen = gen;
     buildSectionMesh(*in, r.out, mo);
@@ -362,7 +372,7 @@ void WorldRenderer::upload(Result& r) {
     m->fx = std::move(r.out.fx); m->detail = r.out.detail;
     m->torches = std::move(r.out.torches); m->candles = std::move(r.out.candles); m->levers = std::move(r.out.levers);
     m->models = std::move(r.out.models); m->rods = std::move(r.out.rods);
-    m->hasTorch = r.out.hasTorch; m->torchVox = r.out.torchVox;
+    m->hasTorch = r.out.hasTorch; m->torchVox = r.out.torchVox; m->colourFine = r.out.colourFine;
     return;
   }
   meshMsAvg = (meshMsAvg * meshCount + r.out.ms) / (meshCount + 1); meshCount = std::min(meshCount + 1, 500);
@@ -380,7 +390,7 @@ void WorldRenderer::upload(Result& r) {
   m->fx = std::move(r.out.fx); m->detail = r.out.detail;
   m->torches = std::move(r.out.torches); m->candles = std::move(r.out.candles); m->levers = std::move(r.out.levers);
   m->models = std::move(r.out.models); m->rods = std::move(r.out.rods);
-  m->hasTorch = r.out.hasTorch; m->torchVox = r.out.torchVox;
+  m->hasTorch = r.out.hasTorch; m->torchVox = r.out.torchVox; m->colourFine = r.out.colourFine;
   if (m->base / PAGE_V >= pages.size()) return;
   glBindBuffer(GL_ARRAY_BUFFER, pages[m->base / PAGE_V].vbo);
   size_t off = (size_t)(m->base % PAGE_V) * sizeof(ChunkVertex);
@@ -474,6 +484,24 @@ void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs)
     std::sort(go.begin(), go.end(), [](auto& a, auto& b) { return a.first < b.first; });
     for (size_t i = 0; i < come.size() && i < 6; i++) submit(come[i].second, pool, come[i].first - 8000, wantDetail(come[i].second, camPos));
     for (size_t i = 0; i < go.size() && i < 4; i++) submit(go[i].second, pool, 20000 - go[i].first, wantDetail(go[i].second, camPos));
+  }
+  // The same ring for world cubes: inside it the exposed face is a colour grid, past it one colour.
+  // Walking in rebuilds the section, the same way a torch becomes voxels as you arrive.
+  colourT -= 1.0 / 60;
+  if (colourCubes && !packGeom && colourT <= 0) {
+    colourT = 0.25;
+    std::vector<std::pair<float, SectionKey>> come, go;
+    for (auto& [k, m] : meshes) {
+      if (!m || inFlight.count(k)) continue;
+      const float dx = k.cx * 16 + 8.f - camPos.x, dy = dimBase(k.dim) + k.sy * 16 + 8.f - camPos.y, dz = k.cz * 16 + 8.f - camPos.z;
+      const float d2 = dx * dx + dy * dy + dz * dz;
+      if (!m->colourFine && d2 < (32.f + 8.f) * (32.f + 8.f)) come.push_back({std::sqrt(d2), k});
+      else if (m->colourFine && d2 > (32.f + 24.f) * (32.f + 24.f)) go.push_back({-std::sqrt(d2), k});
+    }
+    std::sort(come.begin(), come.end(), [](auto& a, auto& b) { return a.first < b.first; });
+    std::sort(go.begin(), go.end(), [](auto& a, auto& b) { return a.first < b.first; });
+    for (size_t i = 0; i < come.size() && i < 4; i++) submit(come[i].second, pool, come[i].first - 7000, wantDetail(come[i].second, camPos));
+    for (size_t i = 0; i < go.size() && i < 2; i++) submit(go[i].second, pool, 22000 - go[i].first, wantDetail(go[i].second, camPos));
   }
   double t0 = nowSeconds();
   std::vector<Result> done;
