@@ -158,8 +158,30 @@ add_test(NAME villagers COMMAND test_villagers)
 add_executable(test_redstone tools/test_redstone.cpp)
 target_link_libraries(test_redstone PRIVATE dqcore)
 
+# Fold the block, item and creature colours into the game. dq-bake-colours reads the pictures once;
+# ld carries that table in dokuquest. The launcher and the tools keep the weak symbols empty and still read PNGs.
+add_executable(dq-bake-colours tools/bake_colours.cpp)
+target_link_libraries(dq-bake-colours PRIVATE dqclient)
+set(DQ_BAKED_BIN "${CMAKE_BINARY_DIR}/baked_colours.bin")
+set(DQ_BAKED_OBJ "${CMAKE_BINARY_DIR}/baked_colours.o")
+add_custom_command(
+  OUTPUT "${DQ_BAKED_BIN}"
+  COMMAND $<TARGET_FILE:dq-bake-colours> "${DQ_BAKED_BIN}"
+  DEPENDS dq-bake-colours dq_runtime_data
+  COMMENT "Baking block, creature and item colours"
+  VERBATIM)
+add_custom_command(
+  OUTPUT "${DQ_BAKED_OBJ}"
+  COMMAND ld -r -b binary -z noexecstack -o baked_colours.o baked_colours.bin
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+  DEPENDS "${DQ_BAKED_BIN}"
+  COMMENT "Carrying the colour bake in the game"
+  VERBATIM)
+set_source_files_properties("${DQ_BAKED_OBJ}" PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
+target_sources(dokuquest PRIVATE "${DQ_BAKED_OBJ}")
+
 # every program finds data/ and assets/ next to it
-foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone)
+foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone dq-bake-colours)
   if(TARGET ${t})
     add_dependencies(${t} dq_runtime_data)
   endif()

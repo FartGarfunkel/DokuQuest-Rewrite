@@ -5,6 +5,7 @@
 #include "assets/cape_tex.h"
 #include "assets/voxel_paint.h"
 #include "assets/pack_armor.h"
+#include "assets/baked_colours.h"
 #include "assets/tileset.h"
 #include "assets/pack_fs.h"
 #include <list>
@@ -423,9 +424,14 @@ const CharMesh* elytraWingMesh(int side, const TileSet& ts) {
   auto it = c.misc.find(key);
   if (it != c.misc.end()) return it->second && it->second->ready() ? it->second.get() : nullptr;
   // a resource pack's elytra picture (textures/entity/elytra.png, the vanilla 10 x 20 x 2 wing at u 22): cut up like a skin box
-  if (PackFS* P = activePack()) if (P->hasTextures()) if (auto b = P->read(P->texRoot + "entity/elytra.png")) {
-    int w = 0, h = 0; std::vector<u8> rgba;
-    if (loadPngMem(b->data(), b->size(), w, h, rgba) && w >= 64 && w == h * 2) {
+  int w = 0, h = 0; std::vector<u8> rgba;
+  bool got = bakedImage("entity/elytra", w, h, rgba) && w >= 64 && w == h * 2;
+  if (!got) {
+    w = 0; h = 0; rgba.clear();
+    if (PackFS* P = activePack()) if (P->hasTextures()) if (auto b = P->read(P->texRoot + "entity/elytra.png"))
+      got = loadPngMem(b->data(), b->size(), w, h, rgba) && w >= 64 && w == h * 2;
+  }
+  if (got) {
       ArmorPiece ap{"elytra", 0, vec3(0), vec3(10, 20, 2), 22, 0, 10, 20, 2, side == 0};
       VoxelGrid pg(ivec3(10 * CHAR_VPP, 20 * CHAR_VPP, 2 * CHAR_VPP));
       paintSkinBox(pg, ivec3(0), ap, rgba.data(), w, h, 64, 32, CHAR_VPP);
@@ -437,7 +443,6 @@ const CharMesh* elytraWingMesh(int side, const TileSet& ts) {
         c.misc[key] = std::move(cm);
         return r;
       }
-    }
   }
   int tOut = tileOf(ts, "elytra"), tIn = tileOf(ts, "elytra_in");
   if (tOut < 0) { c.misc[key] = nullptr; return nullptr; }

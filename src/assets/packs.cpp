@@ -141,6 +141,30 @@ u32 packTint(const char* kind, u8 temp, u8 humid, bool& ok) {
   return (u32)p[0] | (u32)p[1] << 8 | (u32)p[2] << 16;
 }
 
+void setPackColormaps(int grassW, int grassH, const u8* grass, int foliageW, int foliageH, const u8* foliage) {
+  auto cm = std::make_shared<Colormaps>();
+  auto fill = [](Img& im, int w, int h, const u8* px) {
+    if (!px || w < 2 || h < 2) return;
+    im.w = w; im.h = h; im.px.assign(px, px + (size_t)w * h * 4);
+  };
+  fill(cm->grass, grassW, grassH, grass);
+  fill(cm->foliage, foliageW, foliageH, foliage);
+  if (cm->grass.w || cm->foliage.w) std::atomic_store(&g_colormaps, std::shared_ptr<const Colormaps>(std::move(cm)));
+  else std::atomic_store(&g_colormaps, std::shared_ptr<const Colormaps>());
+}
+
+void copyPackColormaps(std::vector<u8>& grass, int& grassW, int& grassH, std::vector<u8>& foliage, int& foliageW, int& foliageH) {
+  grass.clear(); foliage.clear(); grassW = grassH = foliageW = foliageH = 0;
+  auto cm = std::atomic_load(&g_colormaps);
+  if (!cm) return;
+  if (cm->grass.w >= 2 && cm->grass.h >= 2 && cm->grass.px.size() >= (size_t)cm->grass.w * cm->grass.h * 4) {
+    grassW = cm->grass.w; grassH = cm->grass.h; grass = cm->grass.px;
+  }
+  if (cm->foliage.w >= 2 && cm->foliage.h >= 2 && cm->foliage.px.size() >= (size_t)cm->foliage.w * cm->foliage.h * 4) {
+    foliageW = cm->foliage.w; foliageH = cm->foliage.h; foliage = cm->foliage.px;
+  }
+}
+
 std::vector<std::string> listResourcePacks() {
   std::vector<std::string> out;
   std::error_code ec;

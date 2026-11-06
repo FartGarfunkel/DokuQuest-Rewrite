@@ -51,6 +51,9 @@ std::vector<u8> fitTile(const std::vector<u8>& rgba, int w, int h, int T);
 // lookup: x = (1 - temp), y = (1 - humid * temp). kind "grass"/"foliage"; ok = false when no pack colormap.
 // Same packing as climateTint (r | g << 8 | b << 16). Safe to call from mesher threads.
 u32 packTint(const char* kind, u8 temp, u8 humid, bool& ok);
+// The bake stores these maps and puts them back on launch. Null pixels clear that map.
+void setPackColormaps(int grassW, int grassH, const u8* grass, int foliageW, int foliageH, const u8* foliage);
+void copyPackColormaps(std::vector<u8>& grass, int& grassW, int& grassH, std::vector<u8>& foliage, int& foliageW, int& foliageH);
 
 // decode/encode PNG (stb)
 bool loadPng(const fs::path& p, int& w, int& h, std::vector<u8>& rgba);
