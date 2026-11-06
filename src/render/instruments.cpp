@@ -1,6 +1,7 @@
 // render/instruments.cpp — the compass, death compass and clock, painted and animated (game/instruments.js).
 #include "render/instruments.h"
 #include "render/item_layers.h"
+#include "assets/voxel.h"
 #include "client/session.h"
 #include "client/app.h"
 #include "sim/content.h"
@@ -87,7 +88,32 @@ Strip& strip(const std::string& key) {
   }
   return st;
 }
+
+// One frame of the dial, coloured pixels rather than a slice of the strip. The inventory icon still uses the strip.
+const VoxelMeshGL* instrumentMesh(const std::string& key, int frame) {
+  struct Key { std::string id; int f; bool operator==(const Key& o) const { return f == o.f && id == o.id; } };
+  struct Hash { size_t operator()(const Key& k) const { return std::hash<std::string>{}(k.id) ^ ((size_t)k.f * 1315423911u); } };
+  static std::unordered_map<Key, std::unique_ptr<VoxelMeshGL>, Hash> cache;
+  const int n = key == "clock" ? CLOCK_FRAMES : COMPASS_FRAMES;
+  frame = ((frame % n) + n) % n;
+  Key k{key, frame};
+  auto it = cache.find(k);
+  if (it != cache.end()) return it->second.get();
+  const std::vector<u8> px = paintInstrumentFrame(key, frame);
+  VoxelGrid g(ivec3(16, 16, 1));
+  for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+    const u8* p = px.data() + ((size_t)y * 16 + x) * 4;
+    if (p[3] < 90) continue;
+    g.set(x, 15 - y, 0, voxRGBA(p[0], p[1], p[2]));
+  }
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  mesh->upload(md);
+  const VoxelMeshGL* out = mesh.get();
+  cache.emplace(std::move(k), std::move(mesh));
+  return out;
 }
+} // namespace
 
 bool instrumentIcon(const std::string& key, GLuint& tex, vec4& uv) {
   if (!isInstrument(key)) return false;
@@ -136,17 +162,26 @@ void updateInstruments(GameSession& s, double dtd) {
 // (the dial model's own static picture plate sits at 0.068..0.078 x size, i.e. just in front of `depth`: the live
 // face goes clearly in front of it, the same 0.9 wide, or the plate hides it and the needle never moves)
 void drawInstrumentFace(const FrameCtx& f, const mat4& proj, bool fog, const std::string& id, const VoxelModel& im, const mat4& m, vec2 light) {
-  GLuint tex; vec4 uv;
-  if (!instrumentIcon(id, tex, uv) || im.kind == VoxelModel::Block) return;
-  float sz = itemSize(id) * 0.9f, z = im.depth + 0.012f;
-  ContentDraw& cd = contentDraw();
-  if (!cd.begin(f, proj, fog)) return;
+  if (!isInstrument(id) || im.kind == VoxelModel::Block) return;
+  const InstrumentState& I = instruments();
+  const int frame = id == "clock" ? I.clockF : id == "compass" ? I.compassF : I.deathF;
+  const VoxelMeshGL* mesh = instrumentMesh(id, frame);
+  if (!mesh || !mesh->ready()) return;
+  // The same place as the old picture: 0.9 of the item, just in front of its own plate, on both faces.
+  // The back is turned over and flipped in x, so the needle still points the same way in the world.
+  const float sz = itemSize(id) * 0.9f, z = im.depth + 0.012f, px = sz / 16.f, thick = 0.008f;
+  VoxelRenderer& VR = voxelRenderer();
+  VR.begin(f, proj, fog);
   glEnable(GL_POLYGON_OFFSET_FILL); glPolygonOffset(-1, -1);
-  cd.picture(tex, glm::scale(glm::translate(m, vec3(0, 0, z)), vec3(sz, sz, 1)), uv, vec4(1), light);
-  mat4 back = glm::rotate(glm::translate(m, vec3(0, 0, -z)), PI, vec3(0, 1, 0));
-  cd.picture(tex, glm::scale(back, vec3(sz, sz, 1)), vec4(uv.z, uv.y, uv.x, uv.w), vec4(1), light);
+  const VoxelLight L{light.x, light.y};
+  auto plate = [&](const mat4& base, float x0, float xSign) {
+    const mat4 model = base * glm::translate(mat4(1), vec3(x0, -sz * 0.5f, 0)) * glm::scale(mat4(1), vec3(xSign * px, px, thick));
+    VR.draw(*mesh, model, L);
+  };
+  plate(glm::translate(m, vec3(0, 0, z)), -sz * 0.5f, 1.f);
+  plate(glm::rotate(glm::translate(m, vec3(0, 0, -z)), PI, vec3(0, 1, 0)), sz * 0.5f, -1.f);
   glDisable(GL_POLYGON_OFFSET_FILL);
-  cd.end();
+  VR.end();
 }
 
 void registerInstruments() {
