@@ -260,7 +260,7 @@ void main() {
 #if MICRO_VOXELS >= 1
   // One colour per micro-voxel, and a thin darker lip so the cell reads as a cube.
   // Plates (NoRelief) get it too: a door, a ladder and a flame are already voxel geometry, and the
-  // picture on them was still being filtered. Liquids have their own grid below. No height march.
+  // picture on them was still being filtered. Water and lava read their tile below. No height march.
   if (n < 6 && !liquid && dist < uMicroDist) {
     cellSnap = true;
     vec2 edge = fract(uv * VOX);
@@ -275,21 +275,16 @@ void main() {
   // smaller than a pixel, where the sharp texel shimmers.
   float texel = max(length(gdx), length(gdy));
   bool crisp = cellSnap && texel * float(VOX) < 0.85;
+  // Acid carries its own yellow-green (tint kind 20). Water and lava read the animated tile.
+  acidCalm = liquid && !lava && (vMat & 128u) == 0u && (vTint.r + vTint.g + vTint.b) < 2.99;
   // The same 32×32 grid, one sample per pixel. A quad per texel filled the terrain arena past a
   // gigabyte and the load was killed before the world finished appearing.
-  if (uTexelGrid != 0 && !cellSnap && !liquid && texel * float(VOX) < 0.85) {
+  if (uTexelGrid != 0 && !cellSnap && !acidCalm && texel * float(VOX) < 0.85) {
     fuv = (floor(fuv * VOX) + 0.5) / VOX;
     crisp = true;
   }
-  bool tintedWater = liquid && !lava && (vMat & 128u) != 0u;
-  // A liquid never reads the tile. Lava's far colour is the calm hot end of the crust. Water and a puddle
-  // are the same calm grey the near water already used, and the climate tint paints the water. Acid carries
-  // its own yellow-green (tint kind 20) and stays opaque here so that tint is not applied a second time.
-  if (lava) col = vec4(0.55, 0.12, 0.02, 1.0);
-  else if (liquid) {
-    acidCalm = (vMat & 128u) == 0u && (vTint.r + vTint.g + vTint.b) < 2.99;
-    col = acidCalm ? vec4(vTint, 1.0) : vec4(vec3(0.62), 175.0 / 255.0);
-  } else col = crisp ? tileColorLod(fuv, layer, 0.0) : tileColorGrad(fuv, layer, gdx, gdy);
+  if (acidCalm) col = vec4(vTint, 1.0);
+  else col = crisp ? tileColorLod(fuv, layer, 0.0) : tileColorGrad(fuv, layer, gdx, gdy);
   if (uPass == 1 && !liquid) {
     // Looking along a cutout (a ladder, a leaf) the mip averages the holes into the solid texels and the
     // alpha test throws the rung away. The hole test stays on the sharp texel; the colour follows it when the mip has already gone clear.
@@ -297,27 +292,15 @@ void main() {
     if (sharp.a < 0.5) discard;
     if (col.a < 0.5) col.rgb = sharp.rgb;
   }
-  // A liquid face near the camera is a grid of eighths. Each eighth is one cell, with a lip, and the
-  // grid drifts (downstream on a flowing face). Past 64 blocks the calm colour is all that remains.
-  // Water's colour is the climate tint. Lava's cells are a hot crust. Acid's cells are its own colour.
-  if (liquid && dist < 64.0) {
-    float drift = lava ? uTime * 0.45 : (((vMat & 64u) != 0u) ? uTime * 0.55 : uTime * 0.07);
+  // Acid near the camera still shifts a little from cell to cell. Water and lava keep the tile,
+  // so the ripples and the crust stay the picture the atlas is showing. Past 64 blocks the shift fades.
+  if (acidCalm && dist < 64.0) {
+    float drift = uTime * 0.07;
     vec2 u2 = fract(uv + vec2(drift, drift * 0.37));
     vec2 cell = floor(u2 * 8.0);
-    vec4 q;
-    if (lava) {
-      float h = hash12(cell + floor(vWorld.xy + vWorld.yz));
-      vec3 hot = mix(vec3(0.42, 0.05, 0.01), vec3(1.0, 0.42, 0.02), smoothstep(0.2, 0.75, h));
-      if (h > 0.9) hot = vec3(1.0, 0.86, 0.35);
-      q = vec4(hot, 1.0);
-    } else if (tintedWater) {
-      q = vec4(vec3(0.62), 175.0 / 255.0);
-    } else {
-      q = vec4(col.rgb, col.a);
-    }
-    q.rgb *= mix(0.88, 1.06, hash12(cell + vec2(3.1, 1.7)));
     float near = 1.0 - smoothstep(32.0, 64.0, dist);
-    col = mix(col, q, near);
+    vec3 q = col.rgb * mix(0.88, 1.06, hash12(cell + vec2(3.1, 1.7)));
+    col.rgb = mix(col.rgb, q, near);
     vec2 edge = fract(u2 * 8.0);
     float lip = min(min(edge.x, 1.0 - edge.x), min(edge.y, 1.0 - edge.y));
     shade *= mix(1.0, mix(0.78, 1.0, smoothstep(0.0, 0.16, lip)), near);
