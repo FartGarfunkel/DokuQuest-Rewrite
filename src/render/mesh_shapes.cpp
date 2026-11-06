@@ -575,12 +575,13 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
 }
 
 // Near the player a chiseled block's remaining corners are coloured voxels, the same octants and
-// the same faces the chunk boxes use. Grass, leaves and see-through blocks stay on the chunk picture.
-// Far chisels stay there too. Snow on a column keeps that top face.
+// the same faces the chunk boxes use. Leaves and see-through blocks stay on the chunk picture.
+// Chiseled grass near you keeps this place's climate on the marked texels. Far grass carries that
+// colour on the chunk picture. Snow on a column keeps that top face.
 bool emitNearCarve(MeshCtx& c, BlockId id, int x, int y, int z, u8 carveMask) {
   const Registry& R = c.R;
   const BlockTraits& T = traits(id);
-  if (T.tint || T.leaves || R.tTrans[id]) return false;
+  if (T.leaves || R.tTrans[id]) return false;
   c.out.hasTorch = true;
   if (!c.opt.torchVoxels) return false;
   const BlockDef& self = R.block(id);
@@ -593,6 +594,15 @@ bool emitNearCarve(MeshCtx& c, BlockId id, int x, int y, int z, u8 carveMask) {
   const u16 sideT = (u16)std::max(side, 0);
   const u16 topT = (u16)std::max(top >= 0 ? top : side, 0);
   const u16 botT = (u16)std::max(bot >= 0 ? bot : side, 0);
+  // Grass is the tinted cube. The colour is one integer in sink (every value up to 24 bits is exact in
+  // a float). A white climate leaves the picture alone, the same test the chunk shader uses.
+  u32 climate = 0;
+  bool bake = false;
+  if (T.tint) {
+    climate = c.cornerTint((float)x + 1.f, (float)z + 1.f, T.tint == 2 ? 1 : 0) & 0xFFFFFFu;
+    const float sum = ((climate & 255) + ((climate >> 8) & 255) + ((climate >> 16) & 255)) / 255.f;
+    bake = sum < 2.99f;
+  }
   for (const ShapeBox& b : boxes) {
     int hx = b.b[0] >= 8.f ? 1 : 0, hy = b.b[1] >= 8.f ? 1 : 0, hz = b.b[2] >= 8.f ? 1 : 0;
     u8 only = b.only;
@@ -606,6 +616,10 @@ bool emitNearCarve(MeshCtx& c, BlockId id, int x, int y, int z, u8 carveMask) {
     s.tile = sideT; s.nx = sideT; s.pz = sideT; s.nz = sideT;
     s.top = topT; s.bot = botT;
     s.only = only;
+    if (bake) {
+      s.flame = -19;
+      s.sink = (float)climate;
+    }
     c.out.candles.push_back(s);
   }
   return true;
@@ -616,14 +630,18 @@ bool emitNearCarve(MeshCtx& c, BlockId id, int x, int y, int z, u8 carveMask) {
 void emitCarvedBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 carveMask) {
   const Registry& R = c.R;
   const BlockDef& self = R.block(id);
+  const BlockTraits& T = traits(id);
   MeshShapeNb nb(c, x, y, z);
   thread_local std::vector<ShapeBox> boxes;
   if (!carveBoxes(boxes, carveMask, nb)) return;   // caller gate already checked the carve flag
   int side = self.faces[0], top = self.faces[2], bot = self.faces[3];
   Own own{(float)c.skyAt(x, y, z), std::max<float>((float)c.blAt(x, y, z), (float)R.tLight[id]), (float)R.metaLight(id, c.metaAt(x, y, z))};
   u8 mat = Mat::Cutout | (R.tTrans[id] ? Mat::Translucent : 0);
+  // The chunk picture tints from this mark, sampled at each corner. Grass and a chiseled leaf keep their colour.
+  if (T.tint) c.tintKind = (u8)(1 + (T.tint == 2 ? 1 : 0));
   for (auto& b : boxes)
     emitBox(c, d, id, c.metaAt(x, y, z), x, y, z, b, side, top, bot, 0, /*shape=*/0, own, mat, b.only);
+  if (T.tint) c.tintKind = 0;
 }
 
 // Thin snow on each column that still has a micro-block. It sits on that column's top and grows upward.
