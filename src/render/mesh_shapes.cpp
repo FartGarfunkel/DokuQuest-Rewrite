@@ -668,9 +668,9 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       int ps = R.tShape[c.at(x + PX[rf], y, z + PZ[rf])];
       reach = ps == ShapeKind::Fence ? 6.f : ps == ShapeKind::Wall ? 4.f : 0.f;
     }
-    // A flag, a banner, bunting and a washing line near you are coloured voxels.
-    // The wind flaps them by the same measure the picture used. A shop sign stays on this mesh.
-    if (T.cloth <= 4) {
+    // A flag, a banner, bunting, a washing line and a shop sign near you are coloured voxels.
+    // The wind flaps them by the same measure the picture used.
+    if (T.cloth <= 5) {
       c.out.hasTorch = true;
       if (c.opt.torchVoxels) {
         CandleSpot s;
