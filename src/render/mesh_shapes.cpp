@@ -551,7 +551,9 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
         s.pz = (u16)std::max(pt, 0);
         s.nz = (u16)std::max(zt, 0);
         s.only = b.only;
-        s.flame = b.glow ? (i16)(-10 - b.glow) : (i16)-1;   // a lit torch glows; -2 is reserved for scaffolding
+        // -11 is a lit repeater torch: it glows, and it is not a picture of its own. -12 and below are
+        // those pictures (a grass chisel is -19), so the light level must not be written into the mark.
+        s.flame = b.glow ? (i16)-11 : (i16)-1;
         c.out.candles.push_back(s);
       }
       c.tint = 0xFFFFFF; c.tintKind = 0;
