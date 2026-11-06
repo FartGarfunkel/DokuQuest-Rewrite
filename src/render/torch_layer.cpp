@@ -478,6 +478,62 @@ const VoxelMeshGL* rodMesh(const TileSet& ts, int layer, int axis) {
   return out;
 }
 
+// The lightning rod is a thin stick. Its picture keeps the copper in columns 0-2; the middle of the tile is empty.
+const VoxelMeshGL* lightningMesh(const TileSet& ts, int layer, int axis) {
+  struct Key {
+    u16 layer; u8 axis;
+    bool operator==(const Key& o) const { return layer == o.layer && axis == o.axis; }
+  };
+  struct Hash { size_t operator()(const Key& k) const { return (size_t)k.layer * 4u + k.axis; } };
+  struct Cache {
+    const u8* px = nullptr; int count = -1, size = -1;
+    std::unordered_map<Key, std::unique_ptr<VoxelMeshGL>, Hash> m;
+  };
+  static Cache cache;
+  if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
+    cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
+  }
+  axis &= 3;
+  Key key{(u16)std::max(layer, 0), (u8)axis};
+  auto it = cache.m.find(key);
+  if (it != cache.m.end()) return it->second.get();
+  float b[6] = {7, 0, 7, 9, 16, 9};
+  if (axis == 1) { b[0] = 0; b[1] = 7; b[2] = 7; b[3] = 16; b[4] = 9; b[5] = 9; }
+  else if (axis == 2) { b[0] = 7; b[1] = 7; b[2] = 0; b[3] = 9; b[4] = 9; b[5] = 16; }
+  auto vox = [](float a) { return (int)std::lround(a * 2.0); };
+  int x0 = vox(b[0]), y0 = vox(b[1]), z0 = vox(b[2]), x1 = vox(b[3]), y1 = vox(b[4]), z1 = vox(b[5]);
+  if (x1 <= x0) x1 = x0 + 1;
+  if (y1 <= y0) y1 = y0 + 1;
+  if (z1 <= z0) z1 = z0 + 1;
+  VoxelGrid g(ivec3(x1, y1, z1));
+  const int S = ts.size > 0 ? ts.size : 32;
+  float ext[3] = {b[3] - b[0], b[4] - b[1], b[5] - b[2]};
+  int L = (ext[1] >= ext[0] && ext[1] >= ext[2]) ? 1 : (ext[0] >= ext[2] ? 0 : 2);
+  int loV[3] = {x0, y0, z0};
+  int hiV[3] = {x1, y1, z1};
+  int crossAx = (L + 1) % 3;
+  int nAcross = std::max(1, hiV[crossAx] - loV[crossAx]);
+  if (layer >= 0 && layer < ts.count) {
+    for (int z = z0; z < z1; z++) for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) {
+      int i[3] = {x, y, z};
+      float u = (i[crossAx] - loV[crossAx] + 0.5f) / (float)nAcross * 2.f;
+      float pix = b[L] + (i[L] - loV[L] + 0.5f) * 0.5f;
+      float v16 = 16.f - pix;
+      int col = clampv((int)std::floor(u / 16.f * S), 0, S - 1);
+      int row = clampv((int)std::floor(v16 / 16.f * S), 0, S - 1);
+      const u8* p = ts.tile(layer) + ((size_t)row * S + col) * 4;
+      if (p[3] < 128) continue;
+      g.set(x, y, z, voxRGBA(p[0], p[1], p[2]));
+    }
+  }
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  mesh->upload(md);
+  const VoxelMeshGL* out = mesh.get();
+  cache.m.emplace(key, std::move(mesh));
+  return out;
+}
+
 // One voxel per texel of a picture, holes left empty. A flame glows. A pot plant does not.
 const VoxelMeshGL* spritePlate(const TileSet& ts, int layer, bool glow) {
   struct Cache {
@@ -864,7 +920,8 @@ public:
         vec3 cell = relO + vec3(r.cx, r.cy, r.cz);
         if (!f.cam.frustum.sphere(cell + vec3(0.5f), 1.2f)) continue;
         int layer = r.tile < ts.count ? (int)r.tile : -1;
-        const VoxelMeshGL* mesh = layer >= 0 ? rodMesh(ts, layer, r.axis) : nullptr;
+        const bool bolt = (r.axis & 0x80) != 0;
+        const VoxelMeshGL* mesh = layer >= 0 ? (bolt ? lightningMesh(ts, layer, r.axis & 3) : rodMesh(ts, layer, r.axis)) : nullptr;
         if (!mesh || !mesh->ready()) continue;
         if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
         vec3 corner = cell + vec3(r.ox, r.sink / 16.f, r.oz);
