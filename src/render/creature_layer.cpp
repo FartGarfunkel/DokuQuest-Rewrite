@@ -28,9 +28,8 @@ namespace dq {
 // the model to draw: a "#state" variant while the creature shows another face (a ghast opening its mouth to fire)
 static const CreatureModelGL* modelFor(const Creature& m) {
   if (m.type == "ghast") { auto it = m.data.find("chargeT"); if (it != m.data.end() && it->is_number() && it->get<float>() > 0) if (auto* v = creatureModel(m.modelKey() + "#shooting")) return v; }
-  if (m.type == "bee" && (m.angryT > 0 || m.pollen)) {   // angry (red eyes), and/or with pollen on its legs
-    const std::string k = m.modelKey() + (m.angryT > 0 && m.pollen ? "#angry_nectar" : m.angryT > 0 ? "#angry" : "#nectar");
-    if (auto* v = creatureModel(k)) return v;
+  if (m.type == "bee" && m.pollen) {   // the yellow dusted picture. An angry bee keeps it; there is no separate red-eye model.
+    if (auto* v = creatureModel("bee_pollen")) return v;
   }
   return creatureModel(m.modelKey());
 }
