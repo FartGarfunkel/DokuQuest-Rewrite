@@ -634,7 +634,17 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   }
   if (T.campfire && !out) {
     int ft = R.tile(T.campfire == 1 ? "campfire_fire" : "soul_campfire_fire");
-    if (ft >= 0 && !emitVoxelPlates(c, d, ft, o.x, y + lift / 16, o.z, 0.08f, 1, 15, 15, true))
+    // Near the player the flame is four coloured walls, and the frame still changes. Far away it stays a chunk picture.
+    if (ft >= 0 && plain && c.opt.torchVoxels) {
+      CandleSpot s;
+      s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+      s.tile = (u16)ft;
+      s.sink = lift;
+      s.x0 = sh.micro ? sh.x / 16.f : 0.f;
+      s.z0 = sh.micro ? sh.z / 16.f : 0.f;
+      s.flame = -5;
+      c.out.candles.push_back(s);
+    } else if (ft >= 0 && !emitVoxelPlates(c, d, ft, o.x, y + lift / 16, o.z, 0.08f, 1, 15, 15, true))
       emitPlanes(c, d, ft, o.x, y + lift / 16, o.z, 0.08f, 1, 15, 15, false);
   }
   if (T.cauldron && (meta & 3)) {

@@ -685,6 +685,41 @@ public:
           cross(vec3(0.5f, 0.f, -0.5f), vec3(0.25f, 0.f, 0.75f));
           continue;
         }
+        // -5 is a lit campfire: four walls inset the way the chunk plates were. -6 is a fire block: two crosses.
+        if (c.flame == -5 || c.flame == -6) {
+          int layer = c.tile < ts.count ? (int)c.tile : -1;
+          if (layer >= 0 && anim[layer] >= 0) layer = anim[layer];
+          const VoxelMeshGL* plate = layer >= 0 ? flamePlate(ts, layer) : nullptr;
+          if (!plate || !plate->ready()) continue;
+          if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+          const int PS = ts.size > 0 ? ts.size : 32;
+          const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
+          VoxelLight light{(lit >> 4) / 15.f, (lit & 15) / 15.f};
+          const vec3 base = cell + vec3(c.x0, c.sink / 16.f, c.z0);
+          auto sheet = [&](vec3 along, vec3 from) {
+            vec3 nrm = glm::cross(along, vec3(0, 1, 0));
+            float nl = glm::length(nrm);
+            if (nl < 1e-5f) return;
+            nrm = nrm / nl * (1.f / 32.f);
+            mat4 m(1.f);
+            m[0] = vec4(along / (float)PS, 0.f);
+            m[1] = vec4(0.f, 1.f / PS, 0.f, 0.f);
+            m[2] = vec4(nrm, 0.f);
+            m[3] = vec4(base + from - nrm * 0.5f, 1.f);
+            VR.draw(*plate, m, light);
+          };
+          if (c.flame == -5) {
+            sheet(vec3(1, 0, 0), vec3(0, 0, 0.08f));
+            sheet(vec3(1, 0, 0), vec3(0, 0, 0.92f));
+            sheet(vec3(0, 0, 1), vec3(0.08f, 0, 0));
+            sheet(vec3(0, 0, 1), vec3(0.92f, 0, 0));
+          } else {
+            const float r = 0.42f;
+            sheet(vec3(r * 2, 0, r * 2), vec3(0.5f - r, 0, 0.5f - r));
+            sheet(vec3(-r * 2, 0, r * 2), vec3(0.5f + r, 0, 0.5f - r));
+          }
+          continue;
+        }
         int layer = c.tile < ts.count ? (int)c.tile : -1;
         i16 box[6] = {
           (i16)std::lround(c.x0), (i16)std::lround(c.y0), (i16)std::lround(c.z0),
