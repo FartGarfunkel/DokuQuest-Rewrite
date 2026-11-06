@@ -67,13 +67,15 @@ struct TorchSpot {
   i8 lx = 0, lz = 0;    // which way a wall torch leans (-1, 0, 1)
   u16 tile = 0;
 };
-// One small box the chunk mesh left out, in sixteenths: a candle, sea pickle, button, plate, or a lever's base.
-// The picture is the same crop the box used.
+// One small box the chunk mesh left out, in sixteenths: a candle, sea pickle, button, plate, a lever's base,
+// a cake or a daylight detector. Sides use `tile`. The top and the bottom use their own pictures (a cake's
+// icing, a detector's face); they match `tile` when the box had only one.
 struct CandleSpot {
   float x0 = 0, y0 = 0, z0 = 0, x1 = 0, y1 = 0, z1 = 0;
   float sink = 0;
   u8 cx = 0, cy = 0, cz = 0;
   u16 tile = 0;
+  u16 top = 0, bot = 0;
   i16 flame = -1;     // candle_flame layer when it is lit, else -1
 };
 // A lever handle. x,y,z is its centre in section-local blocks. The three axes are the stick's
@@ -85,6 +87,15 @@ struct LeverSpot {
   float zx = 0, zy = 0, zz = 1;
   u8 cx = 0, cy = 0, cz = 0;
   u16 tile = 0;
+};
+// A static prop (a pot, a chair, an anvil) the chunk mesh left out. model is an index into modelShape.
+// facing is the same 0..3 turn rotBox uses. ox,oz and sink are the seat shift, in blocks and pixels.
+struct ModelSpot {
+  u8 cx = 0, cy = 0, cz = 0;
+  u8 facing = 0;
+  float sink = 0;
+  float ox = 0, oz = 0;
+  u16 model = 0;
 };
 
 // cave culling: the bit for a pair of faces (0 +x, 1 -x, 2 +y, 3 -y, 4 +z, 5 -z), 15 pairs
@@ -98,7 +109,8 @@ struct MeshOutput {
   std::vector<TorchSpot> torches;   // filled only when torchVox: the cutout quads were left out
   std::vector<CandleSpot> candles;
   std::vector<LeverSpot> levers;
-  bool hasTorch = false;       // a torch, candle, button, plate or lever, whether or not it was voxelised
+  std::vector<ModelSpot> models;
+  bool hasTorch = false;       // a torch, candle, button, plate, lever or near prop, whether or not it was voxelised
   bool torchVox = false;       // those torches are in `torches` instead of the cutout list
   bool detail = true;          // built with 3D plants
   u16 vis = 0x7FFF;            // cave culling: which pairs of the section's 6 faces see each other through it (sectionVisPair)

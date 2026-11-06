@@ -4,6 +4,7 @@
 #include "client/app.h"
 #include "assets/voxel.h"
 #include "assets/tileset.h"
+#include "world/shapes.h"
 #include <unordered_map>
 #include <cmath>
 
@@ -74,16 +75,17 @@ vec2 shapeST(int f, float X, float Y, float Z) {
 }
 
 struct WaxKey {
-  u16 tile = 0;
+  u16 tile = 0, top = 0, bot = 0;
   i16 b[6] = {};
   bool operator==(const WaxKey& o) const {
-    return tile == o.tile && b[0] == o.b[0] && b[1] == o.b[1] && b[2] == o.b[2]
+    return tile == o.tile && top == o.top && bot == o.bot && b[0] == o.b[0] && b[1] == o.b[1] && b[2] == o.b[2]
         && b[3] == o.b[3] && b[4] == o.b[4] && b[5] == o.b[5];
   }
 };
 struct WaxHash {
   size_t operator()(const WaxKey& k) const {
-    size_t h = k.tile;
+    size_t h = k.tile * 131u + k.top;
+    h = h * 131u + k.bot;
     for (int i = 0; i < 6; i++) h = h * 131u + (u16)k.b[i];
     return h;
   }
@@ -100,7 +102,8 @@ void waxCounts(const i16 b[6], int& nx, int& ny, int& nz) {
 }
 
 // Two voxels per sixteenth. A see-through texel stays empty; a solid crop is filled so only the outside shows.
-const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6]) {
+// topL and botL are the top and bottom pictures (a cake's icing). They match layer when the box had one picture.
+const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int topL, int botL) {
   struct Cache {
     const u8* px = nullptr; int count = -1, size = -1;
     std::unordered_map<WaxKey, std::unique_ptr<VoxelMeshGL>, WaxHash> m;
@@ -109,7 +112,7 @@ const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6]) {
   if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
     cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
   }
-  WaxKey key; key.tile = (u16)layer;
+  WaxKey key; key.tile = (u16)layer; key.top = (u16)std::max(topL, 0); key.bot = (u16)std::max(botL, 0);
   for (int i = 0; i < 6; i++) key.b[i] = b[i];
   auto it = cache.m.find(key);
   if (it != cache.m.end()) return it->second.get();
@@ -119,12 +122,13 @@ const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6]) {
   VoxelGrid g(ivec3(nx, ny, nz));
   bool hole = false;
   auto pix = [&](int f, float X, float Y, float Z) -> u32 {
-    if (layer < 0 || layer >= ts.count) return 0;
+    int L = f == 2 ? topL : f == 3 ? botL : layer;
+    if (L < 0 || L >= ts.count) return 0;
     vec2 st = shapeST(f, X, Y, Z);
     st.x = clampv(st.x, 0.f, 16.f); st.y = clampv(st.y, 0.f, 16.f);
     int col = (int)std::floor(st.x / 16.f * S), row = (int)std::floor(st.y / 16.f * S);
     col = clampv(col, 0, S - 1); row = clampv(row, 0, S - 1);
-    const u8* p = ts.tile(layer) + ((size_t)row * S + col) * 4;
+    const u8* p = ts.tile(L) + ((size_t)row * S + col) * 4;
     if (p[3] < 128) return 0;
     return voxRGBA(p[0], p[1], p[2]);
   };
@@ -147,6 +151,93 @@ const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6]) {
   if (!hole) {
     const u32 fill = voxRGBA(1, 1, 1);
     for (int z = 1; z < nz - 1; z++) for (int y = 1; y < ny - 1; y++) for (int x = 1; x < nx - 1; x++) g.set(x, y, z, fill);
+  }
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  mesh->upload(md);
+  const VoxelMeshGL* out = mesh.get();
+  cache.m.emplace(key, std::move(mesh));
+  return out;
+}
+
+// A pot, chair or anvil: every box of the model, two voxels per sixteenth, turned the way rotBox turns it.
+// One mesh per model and facing, so a room of chairs is one draw each.
+const VoxelMeshGL* propMesh(const TileSet& ts, int model, int facing) {
+  struct Key {
+    u16 model; u8 facing;
+    bool operator==(const Key& o) const { return model == o.model && facing == o.facing; }
+  };
+  struct Hash { size_t operator()(const Key& k) const { return (size_t)k.model * 4u + k.facing; } };
+  struct Cache {
+    const u8* px = nullptr; int count = -1, size = -1;
+    std::unordered_map<Key, std::unique_ptr<VoxelMeshGL>, Hash> m;
+  };
+  static Cache cache;
+  if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
+    cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
+  }
+  Key key{(u16)model, (u8)(facing & 3)};
+  auto it = cache.m.find(key);
+  if (it != cache.m.end()) return it->second.get();
+  const std::vector<ShapeBox>* src = modelShape(model);
+  if (!src || src->empty()) return nullptr;
+  std::vector<ShapeBox> boxes = *src;
+  for (auto& b : boxes) rotBox(b, facing & 3);
+  auto vox = [](float a) {
+    int v = (int)std::lround(a * 2.0);
+    if (v < 0) v = 0;
+    if (v > 48) v = 48;
+    return v;
+  };
+  int gx = 1, gy = 1, gz = 1;
+  for (auto& b : boxes) { gx = std::max(gx, vox(b.b[3])); gy = std::max(gy, vox(b.b[4])); gz = std::max(gz, vox(b.b[5])); }
+  VoxelGrid g(ivec3(gx, gy, gz));
+  const int S = ts.size > 0 ? ts.size : 32;
+  auto sample = [&](int tile, int f, float X, float Y, float Z) -> u32 {
+    if (tile < 0 || tile >= ts.count) return 0;
+    vec2 st = shapeST(f, X, Y, Z);
+    st.x = clampv(st.x, 0.f, 16.f); st.y = clampv(st.y, 0.f, 16.f);
+    int col = (int)std::floor(st.x / 16.f * S), row = (int)std::floor(st.y / 16.f * S);
+    col = clampv(col, 0, S - 1); row = clampv(row, 0, S - 1);
+    const u8* p = ts.tile(tile) + ((size_t)row * S + col) * 4;
+    if (p[3] < 128) return 0;
+    return voxRGBA(p[0], p[1], p[2]);
+  };
+  for (auto& b : boxes) {
+    int x0 = vox(b.b[0]), y0 = vox(b.b[1]), z0 = vox(b.b[2]);
+    int x1 = vox(b.b[3]), y1 = vox(b.b[4]), z1 = vox(b.b[5]);
+    if (x1 <= x0) x1 = x0 + 1;
+    if (y1 <= y0) y1 = y0 + 1;
+    if (z1 <= z0) z1 = z0 + 1;
+    if (x0 >= gx || y0 >= gy || z0 >= gz) continue;
+    x1 = std::min(x1, gx); y1 = std::min(y1, gy); z1 = std::min(z1, gz);
+    int side = b.side >= 0 ? b.side : 0;
+    int end = b.end >= 0 ? b.end : side;
+    bool hole = false;
+    auto put = [&](int x, int y, int z, u32 c) {
+      if (!c) { hole = true; return; }
+      g.set(x, y, z, c);
+    };
+    const float X0 = b.b[0], Y0 = b.b[1], Z0 = b.b[2], X1 = b.b[3], Y1 = b.b[4], Z1 = b.b[5];
+    for (int iz = z0; iz < z1; iz++) for (int iy = y0; iy < y1; iy++) {
+      float Y = Y0 + (iy - y0 + 0.5f) * 0.5f, Z = Z0 + (iz - z0 + 0.5f) * 0.5f;
+      put(x1 - 1, iy, iz, sample(side, 0, X1, Y, Z));
+      put(x0, iy, iz, sample(side, 1, X0, Y, Z));
+    }
+    for (int iz = z0; iz < z1; iz++) for (int ix = x0; ix < x1; ix++) {
+      float X = X0 + (ix - x0 + 0.5f) * 0.5f, Z = Z0 + (iz - z0 + 0.5f) * 0.5f;
+      put(ix, y1 - 1, iz, sample(end, 2, X, Y1, Z));
+      put(ix, y0, iz, sample(end, 3, X, Y0, Z));
+    }
+    for (int iy = y0; iy < y1; iy++) for (int ix = x0; ix < x1; ix++) {
+      float X = X0 + (ix - x0 + 0.5f) * 0.5f, Y = Y0 + (iy - y0 + 0.5f) * 0.5f;
+      put(ix, iy, z1 - 1, sample(side, 4, X, Y, Z1));
+      put(ix, iy, z0, sample(side, 5, X, Y, Z0));
+    }
+    if (!hole) {
+      const u32 fill = voxRGBA(1, 1, 1);
+      for (int z = z0 + 1; z < z1 - 1; z++) for (int y = y0 + 1; y < y1 - 1; y++) for (int x = x0 + 1; x < x1 - 1; x++) g.set(x, y, z, fill);
+    }
   }
   VoxelMeshData md; buildVoxelMesh(g, md);
   auto mesh = std::make_unique<VoxelMeshGL>();
@@ -290,7 +381,9 @@ public:
           (i16)std::lround(c.x1), (i16)std::lround(c.y1), (i16)std::lround(c.z1)};
         int nx = 1, ny = 1, nz = 1;
         waxCounts(box, nx, ny, nz);
-        const VoxelMeshGL* mesh = layer >= 0 ? candleMesh(ts, layer, box) : nullptr;
+        int topL = c.top < ts.count ? (int)c.top : layer;
+        int botL = c.bot < ts.count ? (int)c.bot : layer;
+        const VoxelMeshGL* mesh = layer >= 0 ? candleMesh(ts, layer, box, topL, botL) : nullptr;
         const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
         VoxelLight light{(lit >> 4) / 15.f, (lit & 15) / 15.f};
         if (mesh && mesh->ready()) {
@@ -314,6 +407,21 @@ public:
         const mat4 at = glm::translate(mat4(1), ctr);
         VR.draw(*plate, at * park * sc, light);
         VR.draw(*plate, at * glm::rotate(mat4(1), 1.5707963f, vec3(0, 1, 0)) * park * sc, light);
+      }
+    });
+    s.worldRenderer.forEachModelSection([&](vec3 origin, const std::vector<ModelSpot>& spots) {
+      vec3 relO = f.cam.rel(glm::dvec3(origin));
+      if (!f.cam.frustum.sphere(relO + vec3(8), 14.f)) return;
+      for (const ModelSpot& m : spots) {
+        vec3 cell = relO + vec3(m.cx, m.cy, m.cz);
+        if (!f.cam.frustum.sphere(cell + vec3(0.5f), 1.4f)) continue;
+        const VoxelMeshGL* mesh = propMesh(ts, m.model, m.facing);
+        if (!mesh || !mesh->ready()) continue;
+        if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+        vec3 corner = cell + vec3(m.ox, m.sink / 16.f, m.oz);
+        const mat4 model = glm::translate(mat4(1), corner) * glm::scale(mat4(1), vec3(1.f / 32.f));
+        const u8 lit = w.getLight((int)origin.x + m.cx, (int)origin.y + m.cy, (int)origin.z + m.cz);
+        VR.draw(*mesh, model, VoxelLight{(lit >> 4) / 15.f, (lit & 15) / 15.f});
       }
     });
     s.worldRenderer.forEachLeverSection([&](vec3 origin, const std::vector<LeverSpot>& spots) {
