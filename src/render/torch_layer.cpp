@@ -1089,6 +1089,226 @@ const VoxelMeshGL* clothMesh(const TileSet& ts, BlockId id, u8 meta, float reach
   return out;
 }
 
+// A hanging lantern. The lamp is the same coloured boxes a standing one uses. The chain is two
+// crossed strips of the link picture, and each voxel keeps the hang the chunk shader used.
+const VoxelMeshGL* lanternHangMesh(const TileSet& ts, int model, u8 meta, bool stretch, float liftPx) {
+  struct Key {
+    u16 model; u8 extra; u8 stretch; i8 lift;
+    bool operator==(const Key& o) const { return model == o.model && extra == o.extra && stretch == o.stretch && lift == o.lift; }
+  };
+  struct Hash { size_t operator()(const Key& k) const { return ((size_t)k.model << 16) ^ ((size_t)k.extra << 8) ^ ((size_t)k.stretch << 7) ^ (u8)k.lift; } };
+  struct Cache {
+    const u8* px = nullptr; int count = -1, size = -1;
+    std::unordered_map<Key, std::unique_ptr<VoxelMeshGL>, Hash> m;
+  };
+  static Cache cache;
+  if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
+    cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
+  }
+  if (model < 0) return nullptr;
+  const int extra = (meta >> 2) & 31;
+  int lift = (int)std::lround(liftPx);
+  if (lift < -32) lift = -32;
+  if (lift > 32) lift = 32;
+  Key key{(u16)model, (u8)extra, stretch ? (u8)1 : (u8)0, (i8)lift};
+  auto it = cache.m.find(key);
+  if (it != cache.m.end()) return it->second.get();
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  const VoxelMeshGL* out = mesh.get();
+  const std::vector<ShapeBox>* src = modelShape(model);
+  if (!src || src->empty()) { cache.m.emplace(key, std::move(mesh)); return out; }
+  static int chainTile = -2;
+  if (chainTile == -2) chainTile = reg().tile("chain");
+  const float liftF = (float)lift;
+  auto hangSway = [&](float pixY) -> u8 {
+    float dd = clampv(1.f - (pixY + liftF) / 16.f, 0.f, 1.f);
+    return (u8)(Sway::Hang + std::lround(dd * 11.f));
+  };
+  auto vox = [](float a) {
+    int v = (int)std::lround(a * 2.f);
+    if (v < 0) v = 0;
+    if (v > 48) v = 48;
+    return v;
+  };
+  int gx = 1, gy = 1, gz = 1;
+  bool anyBody = false;
+  for (const ShapeBox& b0 : *src) {
+    if (!b0.only) continue;
+    if (chainTile >= 0 && b0.side == chainTile) continue;
+    anyBody = true;
+    gx = std::max(gx, vox(b0.b[3]));
+    gy = std::max(gy, vox(b0.b[4]));
+    gz = std::max(gz, vox(b0.b[5]));
+  }
+  VoxelGrid g(ivec3(gx, gy, gz));
+  const int S = ts.size > 0 ? ts.size : 32;
+  if (anyBody) {
+    for (const ShapeBox& b : *src) {
+      if (!b.only) continue;
+      if (chainTile >= 0 && b.side == chainTile) continue;
+      int x0 = vox(b.b[0]), y0 = vox(b.b[1]), z0 = vox(b.b[2]);
+      int x1 = vox(b.b[3]), y1 = vox(b.b[4]), z1 = vox(b.b[5]);
+      if (x1 <= x0) x1 = x0 + 1;
+      if (y1 <= y0) y1 = y0 + 1;
+      if (z1 <= z0) z1 = z0 + 1;
+      if (x0 >= gx || y0 >= gy || z0 >= gz) continue;
+      x1 = std::min(x1, gx); y1 = std::min(y1, gy); z1 = std::min(z1, gz);
+      const int side = b.side >= 0 ? b.side : 0;
+      const int end = b.end >= 0 ? b.end : side;
+      auto sample = [&](int f, float X, float Y, float Z) -> u32 {
+        int tile = (f == 2 || f == 3) ? end : side;
+        if (tile < 0 || tile >= ts.count) return 0;
+        vec2 st = shapeST(f, X, Y, Z);
+        st.x = clampv(st.x, 0.f, 16.f); st.y = clampv(st.y, 0.f, 16.f);
+        int col = clampv((int)std::floor(st.x / 16.f * S), 0, S - 1);
+        int row = clampv((int)std::floor(st.y / 16.f * S), 0, S - 1);
+        const u8* p = ts.tile(tile) + ((size_t)row * S + col) * 4;
+        if (p[3] < 128) return 0;
+        return voxRGBA(p[0], p[1], p[2]);
+      };
+      const float X0 = b.b[0], Y0 = b.b[1], Z0 = b.b[2], X1 = b.b[3], Y1 = b.b[4], Z1 = b.b[5];
+      bool hole = false;
+      auto put = [&](int x, int y, int z, u32 c) {
+        if (!c) { hole = true; return; }
+        g.set(x, y, z, c);
+      };
+      for (int iz = z0; iz < z1; iz++) for (int iy = y0; iy < y1; iy++) {
+        float Y = Y0 + (iy - y0 + 0.5f) * 0.5f, Z = Z0 + (iz - z0 + 0.5f) * 0.5f;
+        put(x1 - 1, iy, iz, sample(0, X1, Y, Z));
+        put(x0, iy, iz, sample(1, X0, Y, Z));
+      }
+      for (int iz = z0; iz < z1; iz++) for (int ix = x0; ix < x1; ix++) {
+        float X = X0 + (ix - x0 + 0.5f) * 0.5f, Z = Z0 + (iz - z0 + 0.5f) * 0.5f;
+        put(ix, y1 - 1, iz, sample(2, X, Y1, Z));
+        put(ix, y0, iz, sample(3, X, Y0, Z));
+      }
+      for (int iy = y0; iy < y1; iy++) for (int ix = x0; ix < x1; ix++) {
+        float X = X0 + (ix - x0 + 0.5f) * 0.5f, Y = Y0 + (iy - y0 + 0.5f) * 0.5f;
+        put(ix, iy, z1 - 1, sample(4, X, Y, Z1));
+        put(ix, iy, z0, sample(5, X, Y, Z0));
+      }
+      if (!hole) {
+        const u32 fill = voxRGBA(1, 1, 1);
+        for (int z = z0 + 1; z < z1 - 1; z++) for (int y = y0 + 1; y < y1 - 1; y++) for (int x = x0 + 1; x < x1 - 1; x++)
+          if (!g.at(x, y, z)) g.set(x, y, z, fill);
+      }
+    }
+  }
+  static const int C[6][4][3] = {
+    {{1, 0, 1}, {1, 0, 0}, {1, 1, 0}, {1, 1, 1}},
+    {{0, 0, 0}, {0, 0, 1}, {0, 1, 1}, {0, 1, 0}},
+    {{0, 1, 1}, {1, 1, 1}, {1, 1, 0}, {0, 1, 0}},
+    {{1, 0, 1}, {0, 0, 1}, {0, 0, 0}, {1, 0, 0}},
+    {{0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1}},
+    {{1, 0, 0}, {0, 0, 0}, {0, 1, 0}, {1, 1, 0}},
+  };
+  static const int N[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+  VoxelMeshData md;
+  auto push = [&](int x, int y, int z, int f, int k, u8 sway, u32 col) {
+    VoxelVertex vv;
+    vv.x = (u16)(x + C[f][k][0]);
+    vv.y = (u16)(y + C[f][k][1]);
+    vv.z = (u16)(z + C[f][k][2]);
+    vv.nao = (u8)(f | (3 << 3));
+    vv.pad = sway;
+    vv.rgba = col;
+    md.verts.push_back(vv);
+  };
+  if (anyBody) {
+    for (int z = 0; z < gz; z++) for (int y = 0; y < gy; y++) for (int x = 0; x < gx; x++) {
+      const u32 col = g.at(x, y, z);
+      if (!col) continue;
+      const u8 sway = hangSway((y + 0.5f) * 0.5f);
+      for (int f = 0; f < 6; f++) {
+        if (g.solid(x + N[f][0], y + N[f][1], z + N[f][2])) continue;
+        for (int k = 0; k < 4; k++) push(x, y, z, f, k, sway, col);
+      }
+    }
+  }
+  auto gOf = [](float px) {
+    int v = (int)std::lround(px * 2.f);
+    if (v < 0) v = 0;
+    if (v > 4000) v = 4000;
+    return v;
+  };
+  auto emitLinks = [&](float x0, float y0, float z0, float x1, float y1, float z1, int tile) {
+    if (tile < 0 || tile >= ts.count) return;
+    float ext[3] = {x1 - x0, y1 - y0, z1 - z0};
+    int ax = ext[1] >= ext[0] && ext[1] >= ext[2] ? 1 : ext[0] >= ext[2] ? 0 : 2;
+    int p = (ax + 1) % 3, q = (ax + 2) % 3;
+    float b0[3] = {x0, y0, z0}, b1[3] = {x1, y1, z1};
+    float cp = (b0[p] + b1[p]) * 0.5f, cq = (b0[q] + b1[q]) * 0.5f;
+    float a0 = b0[ax], a1 = b1[ax];
+    if (a1 < a0) std::swap(a0, a1);
+    if (a1 - a0 < 0.05f) return;
+    const float hw = 1.5f;
+    const float vbase = std::floor(a0 / 16.f) * 16.f;
+    const int W = std::max(1, S * 3 / 16);
+    const int H = std::max(1, (int)std::lround((a1 - a0) * S / 16.f));
+    for (int strip = 0; strip < 2; strip++) {
+      const float sq = strip ? -1.f : 1.f;
+      const float u0 = strip ? 3.f : 0.f;
+      const int face = strip ? 0 : 4;
+      for (int iy = 0; iy < H; iy++) for (int ix = 0; ix < W; ix++) {
+        const float along0 = a0 + (float)iy / H * (a1 - a0);
+        const float along1 = a0 + (float)(iy + 1) / H * (a1 - a0);
+        const float alongC = (along0 + along1) * 0.5f;
+        const float t0 = (float)ix / W * 2.f - 1.f;
+        const float t1 = (float)(ix + 1) / W * 2.f - 1.f;
+        float u = (u0 + (ix + 0.5f) / W * 3.f) / 16.f;
+        float uvY = (16.f - (alongC - vbase)) / 16.f;
+        uvY -= std::floor(uvY);
+        int col = clampv((int)std::floor(clampv(u, 0.f, 1.f) * S), 0, S - 1);
+        int row = clampv((int)std::floor(clampv(uvY, 0.f, 0.999f) * S), 0, S - 1);
+        const u8* px = ts.tile(tile) + ((size_t)row * S + col) * 4;
+        if (px[3] < 128) continue;
+        const u32 rgba = voxRGBA(px[0], px[1], px[2]);
+        float py = ax == 1 ? alongC : (b0[1] + b1[1]) * 0.5f;
+        const u8 sway = hangSway(py);
+        auto atP = [&](float along, float t, int& ox, int& oy, int& oz) {
+          float P[3];
+          P[ax] = along;
+          P[p] = cp + t * hw;
+          P[q] = cq + t * hw * sq;
+          ox = gOf(P[0]); oy = gOf(P[1]); oz = gOf(P[2]);
+        };
+        int c0[3], c1[3], c2[3], c3[3];
+        atP(along0, t0, c0[0], c0[1], c0[2]);
+        atP(along0, t1, c1[0], c1[1], c1[2]);
+        atP(along1, t1, c2[0], c2[1], c2[2]);
+        atP(along1, t0, c3[0], c3[1], c3[2]);
+        const int* cs[4] = {c0, c1, c2, c3};
+        auto vert = [&](const int* c) {
+          VoxelVertex vv;
+          vv.x = (u16)c[0]; vv.y = (u16)c[1]; vv.z = (u16)c[2];
+          vv.nao = (u8)(face | (3 << 3));
+          vv.pad = sway;
+          vv.rgba = rgba;
+          md.verts.push_back(vv);
+        };
+        for (int k = 0; k < 4; k++) vert(cs[k]);
+        for (int k = 3; k >= 0; k--) vert(cs[k]);
+      }
+    }
+  };
+  for (const ShapeBox& b0 : *src) {
+    if (!b0.only || chainTile < 0 || b0.side != chainTile) continue;
+    float y1 = b0.b[4];
+    const bool topLink = b0.b[4] >= 15.5f;
+    if (stretch && topLink && !extra) y1 += 8.f;
+    emitLinks(b0.b[0], b0.b[1], b0.b[2], b0.b[3], y1, b0.b[5], chainTile);
+    if (!extra) continue;
+    for (float a = 16.f; a < 16.f + extra * 8.f; a += 16.f) {
+      float s0 = a, s1 = std::min(16.f + extra * 8.f, a + 16.f);
+      if (stretch && s1 >= 16.f + extra * 8.f - 0.01f) s1 += 8.f;
+      emitLinks(b0.b[0], s0, b0.b[2], b0.b[3], s1, b0.b[5], chainTile);
+    }
+  }
+  mesh->upload(md);
+  cache.m.emplace(key, std::move(mesh));
+  return out;
+}
+
 class TorchLayer : public RenderLayer {
 public:
   const char* name() const override { return "voxel-torches"; }
@@ -1138,6 +1358,7 @@ public:
         // A chain reaches above the cell. Redstone on a bottom slab drops half a block, and a link climbs the cell.
         // A rail on a bottom slab drops the same way, and a slope climbs the cell.
         float reach = c.flame == -7 ? 1.25f : (c.flame == -8 || c.flame == -9 || c.flame == -14 || c.flame == -15 || c.flame == -16) ? 1.35f : 0.9f;
+        if (c.flame == -17) reach = 1.35f + ((c.only >> 2) & 31) * 0.5f + ((c.faceRot & 1) ? 0.5f : 0.f);
         if (!f.cam.frustum.sphere(cell + vec3(0.5f), reach)) continue;
         // -4 is a ladder. only keeps the 0..3 turn rotBox uses. The picture stands against the same wall.
         if (c.flame == -4) {
@@ -1275,6 +1496,20 @@ public:
             if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
             const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
             const mat4 model = glm::translate(mat4(1), cell - vec3(1.f)) * glm::scale(mat4(1), vec3(1.f / 32.f));
+            VR.draw(*mesh, model, VoxelLight{(lit >> 4) / 15.f, (lit & 15) / 15.f});
+          }
+          continue;
+        }
+        // -17 is a hanging lantern. tile is the block, only is its meta, faceRot bit 0 stretches the top link.
+        // The chain and the lamp share one mesh, and the lower end still swings.
+        if (c.flame == -17) {
+          const BlockTraits& T = traits((BlockId)c.tile);
+          const int mi = T.modelHang >= 0 ? T.modelHang : T.model;
+          const VoxelMeshGL* mesh = lanternHangMesh(ts, mi, c.only, (c.faceRot & 1) != 0, c.sink);
+          if (mesh && mesh->ready()) {
+            if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+            const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
+            const mat4 model = glm::translate(mat4(1), cell + vec3(c.x0, c.sink / 16.f, c.z0)) * glm::scale(mat4(1), vec3(1.f / 32.f));
             VR.draw(*mesh, model, VoxelLight{(lit >> 4) / 15.f, (lit & 15) / 15.f});
           }
           continue;
