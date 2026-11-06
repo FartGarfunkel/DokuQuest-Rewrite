@@ -349,7 +349,7 @@ void WorldRenderer::upload(Result& r) {
   inFlight.erase(r.k);
   auto it = meshes.find(r.k);
   if (w && w->chunk(r.k.dim, r.k.cx, r.k.cz)) { if (r.out.vis == 0x7FFF) secVis.erase(r.k); else secVis[r.k] = r.out.vis; } else secVis.erase(r.k);
-  if (!w || !w->chunk(r.k.dim, r.k.cx, r.k.cz) || (r.out.empty() && r.out.torches.empty())) {
+  if (!w || !w->chunk(r.k.dim, r.k.cx, r.k.cz) || (r.out.empty() && r.out.torches.empty() && r.out.candles.empty())) {
     if (it != meshes.end()) { release(it->second->base, it->second->cap); meshes.erase(it); }
     return;
   }
@@ -360,7 +360,8 @@ void WorldRenderer::upload(Result& r) {
     m->nq[0] = m->nq[1] = m->nq[2] = 0;
     m->origin = vec3(r.k.cx * 16, dimBase(r.k.dim) + r.k.sy * 16, r.k.cz * 16);
     m->fx = std::move(r.out.fx); m->detail = r.out.detail;
-    m->torches = std::move(r.out.torches); m->hasTorch = r.out.hasTorch; m->torchVox = r.out.torchVox;
+    m->torches = std::move(r.out.torches); m->candles = std::move(r.out.candles);
+    m->hasTorch = r.out.hasTorch; m->torchVox = r.out.torchVox;
     return;
   }
   meshMsAvg = (meshMsAvg * meshCount + r.out.ms) / (meshCount + 1); meshCount = std::min(meshCount + 1, 500);
@@ -376,7 +377,8 @@ void WorldRenderer::upload(Result& r) {
   if (maxQuads > 16384) quadIndexBuffer(maxQuads);
   m->origin = vec3(r.k.cx * 16, dimBase(r.k.dim) + r.k.sy * 16, r.k.cz * 16);
   m->fx = std::move(r.out.fx); m->detail = r.out.detail;
-  m->torches = std::move(r.out.torches); m->hasTorch = r.out.hasTorch; m->torchVox = r.out.torchVox;
+  m->torches = std::move(r.out.torches); m->candles = std::move(r.out.candles);
+  m->hasTorch = r.out.hasTorch; m->torchVox = r.out.torchVox;
   if (m->base / PAGE_V >= pages.size()) return;
   glBindBuffer(GL_ARRAY_BUFFER, pages[m->base / PAGE_V].vbo);
   size_t off = (size_t)(m->base % PAGE_V) * sizeof(ChunkVertex);
@@ -644,6 +646,9 @@ void WorldRenderer::drawTranslucent(const FrameCtx& f) {
 void WorldRenderer::forEachFx(const std::function<void(const SectionKey&, const MeshFx&)>& fn) const { for (auto& [k, m] : meshes) fn(k, m->fx); }
 void WorldRenderer::forEachTorchSection(const std::function<void(vec3, const std::vector<TorchSpot>&)>& fn) const {
   for (auto& [k, m] : meshes) if (m && !m->torches.empty()) fn(m->origin, m->torches);
+}
+void WorldRenderer::forEachCandleSection(const std::function<void(vec3, const std::vector<CandleSpot>&)>& fn) const {
+  for (auto& [k, m] : meshes) if (m && !m->candles.empty()) fn(m->origin, m->candles);
 }
 std::vector<ivec3> WorldRenderer::waterfallBases(const vec3& near, float radius) const {
   std::vector<ivec3> out; float r2 = radius * radius;

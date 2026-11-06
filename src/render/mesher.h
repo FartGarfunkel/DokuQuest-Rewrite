@@ -67,6 +67,14 @@ struct TorchSpot {
   i8 lx = 0, lz = 0;    // which way a wall torch leans (-1, 0, 1)
   u16 tile = 0;
 };
+// One candle or sea pickle in a cell, in sixteenths. The picture is the same crop the box used.
+struct CandleSpot {
+  float x0 = 0, y0 = 0, z0 = 0, x1 = 0, y1 = 0, z1 = 0;
+  float sink = 0;
+  u8 cx = 0, cy = 0, cz = 0;
+  u16 tile = 0;
+  i16 flame = -1;     // candle_flame layer when it is lit, else -1
+};
 
 // cave culling: the bit for a pair of faces (0 +x, 1 -x, 2 +y, 3 -y, 4 +z, 5 -z), 15 pairs
 inline int sectionVisPair(int a, int b) { if (a > b) std::swap(a, b); static const int base[6] = {0, 5, 9, 12, 14, 15}; return base[a] + (b - a - 1); }
@@ -77,7 +85,8 @@ struct MeshOutput {
   std::vector<ChunkVertex> opaque, cutout, trans;   // quads (4 vertices each)
   MeshFx fx;
   std::vector<TorchSpot> torches;   // filled only when torchVox: the cutout quads were left out
-  bool hasTorch = false;       // this section holds a torch, whether or not it was voxelised
+  std::vector<CandleSpot> candles;
+  bool hasTorch = false;       // a torch or a candle, whether or not it was voxelised
   bool torchVox = false;       // those torches are in `torches` instead of the cutout list
   bool detail = true;          // built with 3D plants
   u16 vis = 0x7FFF;            // cave culling: which pairs of the section's 6 faces see each other through it (sectionVisPair)
