@@ -84,9 +84,11 @@ struct WaxKey {
   u16 faceRot = 0;
   i16 b[6] = {};
   u8 glow = 0, only = 63;
+  u32 tint = 0;     // climate colour baked into alpha-253 texels (a chiseled grass corner). 0 leaves the picture.
+  u16 season = 0;
   bool operator==(const WaxKey& o) const {
     return tile == o.tile && top == o.top && bot == o.bot && nx == o.nx && pz == o.pz && nz == o.nz && faceRot == o.faceRot
-        && glow == o.glow && only == o.only
+        && glow == o.glow && only == o.only && tint == o.tint && season == o.season
         && b[0] == o.b[0] && b[1] == o.b[1] && b[2] == o.b[2] && b[3] == o.b[3] && b[4] == o.b[4] && b[5] == o.b[5];
   }
 };
@@ -96,6 +98,7 @@ struct WaxHash {
     h = h * 131u + k.bot + (size_t)k.glow * 17u + (size_t)k.only;
     h = h * 131u + k.nx; h = h * 131u + k.pz; h = h * 131u + k.nz;
     h = h * 131u + k.faceRot;
+    h = h * 131u + k.tint; h = h * 131u + k.season;
     for (int i = 0; i < 6; i++) h = h * 131u + (u16)k.b[i];
     return h;
   }
@@ -113,7 +116,7 @@ void waxCounts(const i16 b[6], int& nx, int& ny, int& nz) {
 
 // Two voxels per sixteenth. A see-through texel stays empty; a solid crop is filled so only the outside shows.
 // topL and botL are the top and bottom pictures (a cake's icing). They match layer when the box had one picture.
-const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int topL, int botL, bool glow = false, int nxL = -1, int pzL = -1, int nzL = -1, u8 only = 63, u16 faceRot = 0) {
+const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int topL, int botL, bool glow = false, int nxL = -1, int pzL = -1, int nzL = -1, u8 only = 63, u16 faceRot = 0, u32 tint = 0, u16 season = 0) {
   struct Cache {
     const u8* px = nullptr; int count = -1, size = -1;
     std::unordered_map<WaxKey, std::unique_ptr<VoxelMeshGL>, WaxHash> m;
@@ -127,6 +130,7 @@ const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int 
   if (nzL < 0) nzL = layer;
   WaxKey key; key.tile = (u16)layer; key.top = (u16)std::max(topL, 0); key.bot = (u16)std::max(botL, 0); key.glow = glow ? 1 : 0;
   key.nx = (u16)std::max(nxL, 0); key.pz = (u16)std::max(pzL, 0); key.nz = (u16)std::max(nzL, 0); key.only = only; key.faceRot = faceRot;
+  key.tint = tint; key.season = season;
   for (int i = 0; i < 6; i++) key.b[i] = b[i];
   auto it = cache.m.find(key);
   if (it != cache.m.end()) return it->second.get();
@@ -135,6 +139,20 @@ const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int 
   const float x0 = b[0], y0 = b[1], z0 = b[2], x1 = b[3], y1 = b[4], z1 = b[5];
   VoxelGrid g(ivec3(nx, ny, nz));
   bool hole = false;
+  // Alpha 253 takes the climate, then the season, the same mix the chunk picture uses. Alpha 255 (dirt on a
+  // grass side) stays its own colour. A box with no climate keeps every texel as the picture painted it.
+  vec3 tv(1.f);
+  // Bit 24 marks a climate bake, so a black climate still multiplies. Callers that omit it leave the picture.
+  const bool doTint = (key.tint & 0x01000000u) != 0;
+  if (doTint) {
+    tv = vec3((key.tint & 255) / 255.f, ((key.tint >> 8) & 255) / 255.f, ((key.tint >> 16) & 255) / 255.f);
+    tv *= 1.3f;
+    const float sa = (key.season & 15) / 8.f;
+    if (sa > 0.f) {
+      vec3 sc(((key.season >> 4) & 15) / 8.f, ((key.season >> 8) & 15) / 8.f, ((key.season >> 12) & 15) / 8.f);
+      tv = glm::mix(tv, sc * (glm::dot(tv, vec3(0.299f, 0.587f, 0.114f)) * 1.6f), sa);
+    }
+  }
   auto pix = [&](int f, float X, float Y, float Z) -> u32 {
     int L = f == 2 ? topL : f == 3 ? botL : f == 1 ? nxL : f == 4 ? pzL : f == 5 ? nzL : layer;
     if (L < 0 || L >= ts.count) return 0;
@@ -149,7 +167,10 @@ const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int 
     col = clampv(col, 0, S - 1); row = clampv(row, 0, S - 1);
     const u8* p = ts.tile(L) + ((size_t)row * S + col) * 4;
     if (p[3] < 128) return 0;
-    return voxRGBA(p[0], p[1], p[2], glow ? VOXEL_GLOW : VOXEL_SOLID);
+    if (!doTint) return voxRGBA(p[0], p[1], p[2], glow ? VOXEL_GLOW : VOXEL_SOLID);
+    const float w = clampv((1.f - p[3] / 255.f) * 127.5f, 0.f, 1.f);
+    auto mix1 = [&](int ch, float t) { return clampv((int)std::lround(ch * (1.f + (t - 1.f) * w)), 0, 255); };
+    return voxRGBA(mix1(p[0], tv.r), mix1(p[1], tv.g), mix1(p[2], tv.b), glow ? VOXEL_GLOW : VOXEL_SOLID);
   };
   auto put = [&](int ix, int iy, int iz, u32 c) { if (!c) { hole = true; return; } g.set(ix, iy, iz, c); };
   for (int iz = 0; iz < nz; iz++) for (int iy = 0; iy < ny; iy++) {
@@ -1881,6 +1902,40 @@ public:
             if (c.faceRot) bl = std::max(bl, 4);
             const mat4 model = glm::translate(mat4(1), cell + vec3(0.f, y0 / (float)PS, 0.f)) * glm::scale(mat4(1), vec3(1.f / PS));
             VR.draw(*mesh, model, VoxelLight{(lit >> 4) / 15.f, bl / 15.f});
+          }
+          continue;
+        }
+        // -19 is a chiseled grass corner. sink is the climate colour (an exact integer), not a drop.
+        // Marked texels take that colour and the season. Dirt on the sides stays its own colour.
+        if (c.flame == -19) {
+          int layer = c.tile < ts.count ? (int)c.tile : -1;
+          i16 box[6] = {
+            (i16)std::lround(c.x0), (i16)std::lround(c.y0), (i16)std::lround(c.z0),
+            (i16)std::lround(c.x1), (i16)std::lround(c.y1), (i16)std::lround(c.z1)};
+          int nx = 1, ny = 1, nz = 1;
+          waxCounts(box, nx, ny, nz);
+          int topL = c.top < ts.count ? (int)c.top : layer;
+          int botL = c.bot < ts.count ? (int)c.bot : layer;
+          int nxL = c.nx < ts.count ? (int)c.nx : layer;
+          int pzL = c.pz < ts.count ? (int)c.pz : layer;
+          int nzL = c.nz < ts.count ? (int)c.nz : layer;
+          auto useFrame = [&](int L) {
+            if (L < 0 || L >= (int)anim.size()) return L;
+            return anim[L] >= 0 ? anim[L] : L;
+          };
+          layer = useFrame(layer); topL = useFrame(topL); botL = useFrame(botL);
+          nxL = useFrame(nxL); pzL = useFrame(pzL); nzL = useFrame(nzL);
+          const u32 col = ((u32)std::lround(c.sink) & 0xFFFFFFu) | 0x01000000u;
+          auto q8 = [](float v) { return (int)std::lround(clampv(v, 0.f, 1.f) * 8.f); };
+          const u16 season = (u16)(q8(f.season.a) | (q8(f.season.r) << 4) | (q8(f.season.g) << 8) | (q8(f.season.b) << 12));
+          const VoxelMeshGL* mesh = layer >= 0 ? candleMesh(ts, layer, box, topL, botL, false, nxL, pzL, nzL, c.only, c.faceRot, col, season) : nullptr;
+          if (mesh && mesh->ready()) {
+            if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+            const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
+            float dx = std::max(c.x1 - c.x0, 0.01f), dy = std::max(c.y1 - c.y0, 0.01f), dz = std::max(c.z1 - c.z0, 0.01f);
+            vec3 corner = cell + vec3(c.x0, c.y0, c.z0) / 16.f;
+            const mat4 model = glm::translate(mat4(1), corner) * glm::scale(mat4(1), vec3(dx / (nx * 16.f), dy / (ny * 16.f), dz / (nz * 16.f)));
+            VR.draw(*mesh, model, VoxelLight{(lit >> 4) / 15.f, (lit & 15) / 15.f});
           }
           continue;
         }
