@@ -1,7 +1,7 @@
 // render/creature_layer.cpp — drawing creatures and their things (see creature_layer.h).
 // Ports the drawing half of game/entities.js (Mob.draws / drawRig: tints, wool colours, the death topple,
-// held items; Projectile.glow; FallingTree.draws; telegraphDecal), game/dismember.js Gib.draws and
-// game/blocks2.js Arrow.draws.
+// held items; Projectile.glow; FallingTree.draws; telegraphDecal), game/dismember.js Gib.draws,
+// game/blocks2.js Arrow.draws and game/blockfx.js FallingBlock.draws.
 #include "render/creature_layer.h"
 #include "render/pack_geom.h"
 #include "sim/hallow.h"
@@ -384,6 +384,14 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
       mat4 m = glm::translate(mat4(1), rel);
       m = glm::rotate(m, ip.age * 9, vec3(1, 0, 0)); m = glm::scale(m, vec3(0.4f));
       D.draw(im.gl, m * im.matrix(), lightAt(w, ip.pos));
+    } else if (t == "falling_block") {
+      // game/blockfx.js FallingBlock.draws: the block's own item cube, sat on the entity's feet.
+      const std::string key = e.data.value("block", "");
+      if (key.empty() || !reg().blockId(key)) continue;
+      const VoxelModel& im = itemModel(key);
+      if (!im.ready()) continue;
+      mat4 m = glm::translate(mat4(1), rel + vec3(0, 0.5f, 0));
+      D.draw(im.gl, m * im.matrix(), lightAt(w, ip.pos + vec3(0, 0.5f, 0)));
     } else if (t == "gib") {
       const CreatureModelGL* CM = creatureModel(e.data.value("model", ""));
       const RigModel* RM = rigModel(e.data.value("model", ""));
