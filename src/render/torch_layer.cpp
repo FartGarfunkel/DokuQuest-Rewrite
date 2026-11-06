@@ -534,6 +534,80 @@ const VoxelMeshGL* lightningMesh(const TileSet& ts, int layer, int axis) {
   return out;
 }
 
+// Redstone dust. The line and the dot are grey, and the power paints them the red the chunk shader uses
+// (the 204/255 of the tint times the extra 1.25 cancel). Arms are north, east, south, west. A link that
+// climbs sits on the cell face. The flat dust sits at the slab drop, a little above the floor.
+const VoxelMeshGL* dustMesh(const TileSet& ts, int line, int dot, u8 mask, int power, float sink) {
+  struct Key {
+    u16 line, dot; u8 mask, power; i8 sink;
+    bool operator==(const Key& o) const { return line == o.line && dot == o.dot && mask == o.mask && power == o.power && sink == o.sink; }
+  };
+  struct Hash {
+    size_t operator()(const Key& k) const {
+      return ((((size_t)k.line * 131u + k.dot) * 131u + k.mask) * 131u + k.power) * 131u + (u8)k.sink;
+    }
+  };
+  struct Cache {
+    const u8* px = nullptr; int count = -1, size = -1;
+    std::unordered_map<Key, std::unique_ptr<VoxelMeshGL>, Hash> m;
+  };
+  static Cache cache;
+  if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
+    cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
+  }
+  Key key; key.line = (u16)std::max(line, 0); key.dot = (u16)std::max(dot, 0); key.mask = mask; key.power = (u8)(power & 15); key.sink = (i8)std::lround(sink);
+  auto it = cache.m.find(key);
+  if (it != cache.m.end()) return it->second.get();
+  const int S = ts.size > 0 ? ts.size : 32;
+  const int y0 = (int)std::floor((sink / 16.f + 0.016f) * (float)S);
+  const bool up0 = (mask & 16) != 0, up1 = (mask & 32) != 0, up2 = (mask & 64) != 0, up3 = (mask & 128) != 0;
+  const bool anyUp = up0 || up1 || up2 || up3;
+  const int ny = anyUp ? S - y0 : 1;
+  VoxelGrid g(ivec3(S, std::max(ny, 1), S));
+  const float pf = (power & 15) / 15.f;
+  const float tr = pf * 0.6f + (pf > 0.f ? 0.4f : 0.3f);
+  const float tg = clampv(pf * pf * 0.7f - 0.5f, 0.f, 1.f);
+  const float tb = clampv(pf * pf * 0.6f - 0.7f, 0.f, 1.f);
+  auto paint = [&](int layer, float u, float v) -> u32 {
+    if (layer < 0 || layer >= ts.count) return 0;
+    int col = clampv((int)std::floor(u * (float)S), 0, S - 1);
+    int row = clampv((int)std::floor(v * (float)S), 0, S - 1);
+    const u8* p = ts.tile(layer) + ((size_t)row * (size_t)S + col) * 4;
+    if (p[3] < 128) return 0;
+    return voxRGBA((int)std::lround(p[0] * tr), (int)std::lround(p[1] * tg), (int)std::lround(p[2] * tb));
+  };
+  const bool a0 = (mask & 1) != 0, a1 = (mask & 2) != 0, a2 = (mask & 4) != 0, a3 = (mask & 8) != 0;
+  const bool straight = (a0 && a2 && !a1 && !a3) || (a1 && a3 && !a0 && !a2);
+  for (int iz = 0; iz < S; iz++) for (int ix = 0; ix < S; ix++) {
+    float fx = (ix + 0.5f) / (float)S, fz = (iz + 0.5f) / (float)S;
+    u32 c = 0;
+    auto take = [&](int layer, float u, float v) { if (u32 s = paint(layer, u, v)) c = s; };
+    if (!straight) take(dot, fx, fz);
+    if (a0 && fz < 0.5f) take(line, fx, fz);
+    if (a2 && fz >= 0.5f) take(line, fx, fz);
+    if (a1 && fx >= 0.5f) take(line, fz, fx);
+    if (a3 && fx < 0.5f) take(line, fz, fx);
+    if (c) g.set(ix, 0, iz, c);
+  }
+  if (anyUp) for (int iy = 0; iy < S; iy++) {
+    float fy = (iy + 0.5f) / (float)S, u = 1.f - fy;
+    for (int i = 0; i < S; i++) {
+      float fa = (i + 0.5f) / (float)S;
+      auto put = [&](int x, int z, float v) { if (u32 c = paint(line, u, v)) g.set(x, iy - y0, z, c); };
+      if (up0) put(i, 0, fa);
+      if (up2) put(i, S - 1, 1.f - fa);
+      if (up1) put(S - 1, i, fa);
+      if (up3) put(0, i, 1.f - fa);
+    }
+  }
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  mesh->upload(md);
+  const VoxelMeshGL* out = mesh.get();
+  cache.m.emplace(key, std::move(mesh));
+  return out;
+}
+
 // One voxel per texel of a picture, holes left empty. A flame glows. A pot plant does not.
 const VoxelMeshGL* spritePlate(const TileSet& ts, int layer, bool glow) {
   struct Cache {
@@ -742,7 +816,9 @@ public:
       for (const CandleSpot& c : spots) {
         vec3 cell = relO + vec3(c.cx, c.cy, c.cz);
         // A chain can sit on a corner and its top link can reach half a block higher.
-        if (!f.cam.frustum.sphere(cell + vec3(0.5f), c.flame == -7 ? 1.25f : 0.9f)) continue;
+        // A chain reaches above the cell. Redstone on a bottom slab drops half a block, and a link climbs the cell.
+        float reach = c.flame == -7 ? 1.25f : c.flame == -8 ? 1.35f : 0.9f;
+        if (!f.cam.frustum.sphere(cell + vec3(0.5f), reach)) continue;
         // -4 is a ladder. only keeps the 0..3 turn rotBox uses. The picture stands against the same wall.
         if (c.flame == -4) {
           int layer = c.tile < ts.count ? (int)c.tile : -1;
@@ -849,6 +925,23 @@ public:
           };
           sheet(a, vec3(3.f / 16.f, 0.f, 3.f / 16.f), vec3(6.5f / 16.f, 0.f, 6.5f / 16.f));
           sheet(b, vec3(-3.f / 16.f, 0.f, 3.f / 16.f), vec3(9.5f / 16.f, 0.f, 6.5f / 16.f));
+          continue;
+        }
+        // -8 is redstone dust. The flat part sits on the slab drop. A link up a block stays on the cell.
+        if (c.flame == -8) {
+          int line = c.tile < ts.count ? (int)c.tile : -1;
+          int dot = c.top < ts.count ? (int)c.top : line;
+          if (line >= 0 && anim[line] >= 0) line = anim[line];
+          if (dot >= 0 && anim[dot] >= 0) dot = anim[dot];
+          const VoxelMeshGL* mesh = line >= 0 ? dustMesh(ts, line, dot, c.only, c.faceRot & 15, c.sink) : nullptr;
+          if (mesh && mesh->ready()) {
+            if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+            const int PS = ts.size > 0 ? ts.size : 32;
+            const int y0 = (int)std::floor((c.sink / 16.f + 0.016f) * (float)PS);
+            const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
+            const mat4 model = glm::translate(mat4(1), cell + vec3(0.f, y0 / (float)PS, 0.f)) * glm::scale(mat4(1), vec3(1.f / PS));
+            VR.draw(*mesh, model, VoxelLight{(lit >> 4) / 15.f, (lit & 15) / 15.f});
+          }
           continue;
         }
         int layer = c.tile < ts.count ? (int)c.tile : -1;

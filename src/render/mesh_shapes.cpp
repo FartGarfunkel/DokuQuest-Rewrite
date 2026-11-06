@@ -184,6 +184,27 @@ void emitWire(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y,
   float Y = y + 0.016f + sinkOffset(id, nb) / 16.f;
   int line = c.R.tile("redstone_dust_line"), dot = c.R.tile("redstone_dust_dot");
   if (line < 0) line = c.R.block(id).faces[0]; if (dot < 0) dot = line;
+  // Near the player the dust is coloured voxels. The power paints the grey picture the same red.
+  // Far dust stays on the chunk picture. A wire on a bottom slab keeps that drop.
+  if (line >= 0) c.out.hasTorch = true;
+  if (line >= 0 && c.opt.torchVoxels) {
+    CandleSpot s;
+    s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+    s.tile = (u16)line;
+    s.top = (u16)std::max(dot, 0);
+    u8 bits = 0;
+    for (int h = 0; h < 4; h++) {
+      if (arms[h]) bits = (u8)(bits | (1u << h));
+      if (cn[h] == 2) bits = (u8)(bits | (1u << (h + 4)));
+    }
+    s.only = bits;
+    s.faceRot = (u16)(power & 15);
+    s.sink = (float)sinkOffset(id, nb);
+    s.flame = -8;
+    c.out.candles.push_back(s);
+    c.tint = 0xFFFFFF; c.tintKind = 0; c.extraMat = 0;
+    return;
+  }
   auto ns = [](float a, float b) { return vec2(a, b); };
   auto ew = [](float a, float b) { return vec2(b, a); };
   auto flat = [&](float, float, float yy) { return yy; };
