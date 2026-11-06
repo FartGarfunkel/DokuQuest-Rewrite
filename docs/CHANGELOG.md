@@ -5,6 +5,14 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.18 — Still Green (November 2026)
+
+**Blocks:**
+- A door and a trapdoor are a real mesh, the same way a ladder is. Looking along the panel still shows the wood.
+- A felled tree's leaves keep the colour of the leaves still on the standing trees. They were coming down grey.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.17 — Thaw (November 2026)
 
 **On a big screen:** interface size is one setting, in the launcher and in the game. Auto is 100% on 1080p, 125% on 2K, 150% on 3K and 200% on 4K, and you can set it anywhere from 100% to 300%. The launcher lays out in design pixels and scales the whole window. The game grows its default window and zooms the HUD to match.
@@ -20,7 +28,6 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 
 **Blocks:**
 - A door or a trapdoor shows the same print on both sides, handle on the same edge, and the picture stays put when it finishes opening or closing.
-- A door and a trapdoor are a real mesh, the same way a ladder is. Looking along the panel still shows the wood.
 - A ladder is a real mesh. Looking up or down the wall still shows the rungs.
 - Snow lands on each little column of a chiseled block, and water stands in the empty notches instead of floating over them.
 - A felled tree keeps each log's bark and end grain, and the leaves keep their holes.

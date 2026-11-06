@@ -15,7 +15,8 @@ GLuint tileTexture(App& a, int layer) {
   if (layer < 0 || layer >= a.tiles.count) return 0;
   const int N = a.tiles.size;
   std::vector<u8> px(a.tiles.tile(layer), a.tiles.tile(layer) + N * N * 4);
-  for (size_t i = 3; i < px.size(); i += 4) if (px[i] >= 250) px[i] = 255;
+  // 253 is the foliage mark (chunk.glsl). Turning it into 255 leaves a felled tree grey.
+  for (size_t i = 3; i < px.size(); i += 4) if (px[i] >= 250 && px[i] != 253) px[i] = 255;
   return cache[layer] = makeTexRGBA(N, N, px.data(), true, false);
 }
 GLuint tileTexture(App& a, const std::string& name) { auto it = a.tiles.index.find(name); return it == a.tiles.index.end() ? 0 : tileTexture(a, it->second); }
