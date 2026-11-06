@@ -664,7 +664,8 @@ u16 sectionVisibility(const MeshInput& in) {
 }
 
 // A chest, a cold furnace, a hive, a workstation, a carved pumpkin, a monster cage,
-// or a six-faced machine (a piston, a dispenser, an observer).
+// a six-faced machine (a piston, a dispenser, an observer), or a plain work block
+// (a crafting table, a barrel, a bookshelf, a machine).
 // Near the player that cube is coloured voxels. A lit furnace stays on the chunk picture so its fire keeps moving.
 // A machine's side picture is turned the same way the chunk mesh turns it.
 // Returns true when the cube was recorded and must not also be drawn on the chunk mesh.
@@ -699,6 +700,12 @@ bool emitNearStation(MeshCtx& c, BlockId id, int x, int y, int z, u8 meta) {
           || k == "smithing_table" || k == "loom" || k == "cartography_table" || k == "fletching_table"
           || k == "tool_forge" || k == "quest_board"
           || k == "carved_pumpkin" || k == "jack_o_lantern" || k == "redstone_pumpkin";
+    // Top and sides differ, and the block is not a hillside or a field. The picture is copied as the chunk mesh draws it.
+    if (!want && self.render == Render::Cube)
+      want = k == "crafting_table" || k == "bookshelf" || k == "barrel" || k == "tnt"
+          || k == "dried_kelp_block" || k == "millstone" || k == "sawmill" || k == "crusher"
+          || k == "harvester" || k == "jukebox" || k == "command_block" || k == "target"
+          || k == "statue" || k == "steam_vent" || k == "waystone" || k == "sculk_catalyst";
     if (want) {
       int frontFace = T.hasFront ? FACING_FACE[meta & 3] : -1;
       for (int f = 0; f < 6; f++) {
