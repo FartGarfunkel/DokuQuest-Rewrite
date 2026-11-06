@@ -356,7 +356,7 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
         s.sink = sink;
         s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
         int st = b.side >= 0 ? b.side : side;
-        s.tile = (u16)std::max(st, 0);
+        s.tile = s.top = s.bot = (u16)std::max(st, 0);
         s.flame = (i16)ft;
         c.out.candles.push_back(s);
       }
@@ -378,6 +378,32 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
         int ht = R.tile("lever_handle");
         L.tile = (u16)std::max(ht, 0);
         c.out.levers.push_back(L);
+      }
+      c.tint = 0xFFFFFF; c.tintKind = 0;
+      return;
+    }
+  }
+  // A cake's icing and a daylight detector's face are their own pictures. Near the player the box is
+  // coloured voxels; farther off it stays on the chunk mesh.
+  if (kind == ShapeKind::Cake || kind == ShapeKind::Daylight) {
+    c.out.hasTorch = true;
+    if (c.opt.torchVoxels) {
+      for (auto& b0 : boxes) {
+        ShapeBox b = b0;
+        b.b[0] += sox; b.b[3] += sox; b.b[2] += soz; b.b[5] += soz;
+        auto faceTile = [&](int f, int fallback) {
+          int t = b.hasFaces && b.faces[f] >= 0 ? b.faces[f] : fallback;
+          return (u16)std::max(t, 0);
+        };
+        CandleSpot s;
+        s.x0 = b.b[0]; s.y0 = b.b[1]; s.z0 = b.b[2]; s.x1 = b.b[3]; s.y1 = b.b[4]; s.z1 = b.b[5];
+        s.sink = sink;
+        s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+        s.tile = faceTile(0, side);
+        s.top = faceTile(2, top);
+        s.bot = faceTile(3, bot);
+        s.flame = -1;
+        c.out.candles.push_back(s);
       }
       c.tint = 0xFFFFFF; c.tintKind = 0;
       return;
@@ -483,6 +509,38 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   int mi = hang && T.modelHang >= 0 ? T.modelHang : out && T.modelOut >= 0 ? T.modelOut : T.model;
   const std::vector<ShapeBox>* boxes = modelShape(mi);
   if (!boxes) return;
+  // Pots, chairs, anvils and the other still props. A flag flaps, a hanging lantern swings, and a
+  // chain is two crossed pictures, so those stay on the chunk mesh. A box with a turned grain or its
+  // own end-cap picture stays there too.
+  auto endsWith = [](const std::string& s, const char* suf) {
+    size_t n = std::char_traits<char>::length(suf);
+    return s.size() >= n && s.compare(s.size() - n, n, suf) == 0;
+  };
+  const std::string shapeName = R.block(id).str("shape");
+  bool nearProp = endsWith(shapeName, "_chair") || endsWith(shapeName, "_stool") || endsWith(shapeName, "_bench")
+      || endsWith(shapeName, "_table") || endsWith(shapeName, "_shelf") || endsWith(shapeName, "_bookcase")
+      || endsWith(shapeName, "_cabinet") || shapeName.rfind("dragon_egg_", 0) == 0
+      || shapeName == "flower_pot" || shapeName == "decorated_pot" || shapeName == "bell" || shapeName == "lectern"
+      || shapeName == "anvil" || shapeName == "chipped_anvil" || shapeName == "damaged_anvil"
+      || shapeName == "brewing_stand" || shapeName == "glass_jar" || shapeName == "weapon_rack"
+      || shapeName == "wall_weapon_rack" || shapeName == "brazier" || shapeName == "loose_stones"
+      || shapeName == "sleeping_bag" || shapeName == "sieve" || shapeName == "siphon"
+      || shapeName == "grapple_anchor" || shapeName == "end_portal_frame" || shapeName == "end_portal_frame_eye";
+  bool plain = nearProp;
+  if (plain) for (auto& b : *boxes) {
+    if (b.fit || b.grain || b.tv != 0.f || b.tu != 0.f || b.uvT || b.xt >= 0 || b.zt >= 0 || b.only != 63) plain = false;
+  }
+  if (nearProp) c.out.hasTorch = true;
+  if (plain && c.opt.torchVoxels) {
+    ModelSpot s;
+    s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+    s.facing = (u8)(rf & 3);
+    s.sink = lift;
+    s.ox = sh.micro ? sh.x / 16.f : 0.f;
+    s.oz = sh.micro ? sh.z / 16.f : 0.f;
+    s.model = (u16)std::max(mi, 0);
+    c.out.models.push_back(s);
+  } else {
   // a hanging lantern swings gently: the further below the hook, the more it moves
   std::function<u8(vec3)> hangFn = [&](vec3 p) -> u8 { return (u8)(Sway::Hang + std::lround(clampv(y + 1 - p.y, 0.f, 1.f) * 11)); };
   const int extra = hang ? (meta >> 2) & 31 : 0;   // a chain up to a ceiling further up (half blocks beyond its own block)
@@ -500,6 +558,7 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
         if (stretchTop && s.b[4] >= 16.f + extra * 8 - 0.01f) s.b[4] += 8.f;
         addShapeBox(c, d, s, o, 1 / 16.f, sk, bl, lift, rf, mat, nullptr);
       }
+  }
   }
   if (T.campfire && !out) {
     int ft = R.tile(T.campfire == 1 ? "campfire_fire" : "soul_campfire_fire");
