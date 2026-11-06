@@ -277,9 +277,10 @@ const VoxelMeshGL* propMesh(const TileSet& ts, int model, int facing) {
   for (auto& b : boxes) { gx = std::max(gx, vox(b.b[3])); gy = std::max(gy, vox(b.b[4])); gz = std::max(gz, vox(b.b[5])); }
   VoxelGrid g(ivec3(gx, gy, gz));
   const int S = ts.size > 0 ? ts.size : 32;
-  auto sample = [&](int tile, int f, float X, float Y, float Z) -> u32 {
+  auto sample = [&](int tile, int f, float X, float Y, float Z, float tv) -> u32 {
     if (tile < 0 || tile >= ts.count) return 0;
     vec2 st = shapeST(f, X, Y, Z);
+    if (tv != 0.f && f != 2 && f != 3) st.y += tv;   // the same shift addShapeBox applies (a saw blade)
     st.x = clampv(st.x, 0.f, 16.f); st.y = clampv(st.y, 0.f, 16.f);
     int col = (int)std::floor(st.x / 16.f * S), row = (int)std::floor(st.y / 16.f * S);
     col = clampv(col, 0, S - 1); row = clampv(row, 0, S - 1);
@@ -297,6 +298,9 @@ const VoxelMeshGL* propMesh(const TileSet& ts, int model, int facing) {
     x1 = std::min(x1, gx); y1 = std::min(y1, gy); z1 = std::min(z1, gz);
     int side = b.side >= 0 ? b.side : 0;
     int end = b.end >= 0 ? b.end : side;
+    int xt = b.xt >= 0 ? b.xt : side;
+    int xf = (facing & 1) ? 4 : 0;   // addShapeBox: an odd turn puts the side picture on z
+    auto tileOf = [&](int f) { return (f == 2 || f == 3) ? end : (f == xf || f == xf + 1) ? xt : side; };
     bool hole = false;
     auto put = [&](int x, int y, int z, u32 c) {
       if (!c) { hole = true; return; }
@@ -305,18 +309,18 @@ const VoxelMeshGL* propMesh(const TileSet& ts, int model, int facing) {
     const float X0 = b.b[0], Y0 = b.b[1], Z0 = b.b[2], X1 = b.b[3], Y1 = b.b[4], Z1 = b.b[5];
     for (int iz = z0; iz < z1; iz++) for (int iy = y0; iy < y1; iy++) {
       float Y = Y0 + (iy - y0 + 0.5f) * 0.5f, Z = Z0 + (iz - z0 + 0.5f) * 0.5f;
-      put(x1 - 1, iy, iz, sample(side, 0, X1, Y, Z));
-      put(x0, iy, iz, sample(side, 1, X0, Y, Z));
+      put(x1 - 1, iy, iz, sample(tileOf(0), 0, X1, Y, Z, b.tv));
+      put(x0, iy, iz, sample(tileOf(1), 1, X0, Y, Z, b.tv));
     }
     for (int iz = z0; iz < z1; iz++) for (int ix = x0; ix < x1; ix++) {
       float X = X0 + (ix - x0 + 0.5f) * 0.5f, Z = Z0 + (iz - z0 + 0.5f) * 0.5f;
-      put(ix, y1 - 1, iz, sample(end, 2, X, Y1, Z));
-      put(ix, y0, iz, sample(end, 3, X, Y0, Z));
+      put(ix, y1 - 1, iz, sample(tileOf(2), 2, X, Y1, Z, b.tv));
+      put(ix, y0, iz, sample(tileOf(3), 3, X, Y0, Z, b.tv));
     }
     for (int iy = y0; iy < y1; iy++) for (int ix = x0; ix < x1; ix++) {
       float X = X0 + (ix - x0 + 0.5f) * 0.5f, Y = Y0 + (iy - y0 + 0.5f) * 0.5f;
-      put(ix, iy, z1 - 1, sample(side, 4, X, Y, Z1));
-      put(ix, iy, z0, sample(side, 5, X, Y, Z0));
+      put(ix, iy, z1 - 1, sample(tileOf(4), 4, X, Y, Z1, b.tv));
+      put(ix, iy, z0, sample(tileOf(5), 5, X, Y, Z0, b.tv));
     }
     if (!hole) {
       const u32 fill = voxRGBA(1, 1, 1);
