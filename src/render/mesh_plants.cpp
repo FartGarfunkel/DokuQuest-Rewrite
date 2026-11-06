@@ -599,6 +599,26 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       return;
     }
   }
+  // A sunflower, a lilac, a rose, a peony and a pitcher plant stand in ones and twos.
+  // The two halves share one turn. Near you each half is coloured voxels. Farther off it stays on the mesh.
+  if (key == "sunflower" || key == "lilac" || key == "rose_bush" || key == "peony" || key == "pitcher_plant") {
+    c.out.hasTorch = true;
+    if (c.opt.torchVoxels && tile >= 0) {
+      int ly = c.in.sy * 16 + y;
+      int hy = (meta & 1) ? ly - 1 : ly;
+      u32 hsh = hash32(x, hy, z, 5);
+      CandleSpot s;
+      s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+      s.tile = (u16)tile;
+      s.sink = (yy - (float)y) * 16.f;
+      s.x0 = ((hsh & 255) / 255.f - 0.5f) * 0.24f;
+      s.z0 = (((hsh >> 8) & 255) / 255.f - 0.5f) * 0.24f;
+      s.y0 = ((hsh >> 16) & 255) / 255.f * PI / 2.f + PI / 4.f;
+      s.flame = -12;
+      c.out.candles.push_back(s);
+      return;
+    }
+  }
   // A spore blossom hangs from a lush ceiling, a few in a cave. Near you those three
   // pictures are coloured voxels. Farther off they stay on the chunk mesh.
   if (key == "spore_blossom") {
