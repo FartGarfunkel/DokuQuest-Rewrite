@@ -395,22 +395,19 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
     }
   }
   if ((kind == ShapeKind::Ladder || (c.opt.detail && T.tint && kind == ShapeKind::Carpet)) && emitVoxelLeafPlate(c, d, id, x, y, z, meta)) return;
-  // A door or a trapdoor near you is a thick coloured plate, the same one the swing turns.
-  // Farther off the chunk plate stays, and the swing keeps that picture too.
+  // A door or a trapdoor is a thick coloured plate at any distance, the same one the swing turns.
   if (kind == ShapeKind::Door || kind == ShapeKind::Trapdoor) {
     c.out.hasTorch = true;
-    if (c.opt.torchVoxels) {
-      int tile = self.faces[0];
-      if (kind == ShapeKind::Door && (meta & 16) && T.upperTile >= 0) tile = T.upperTile;
-      if (tile >= 0) {
-        CandleSpot s;
-        s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
-        s.tile = (u16)tile;
-        s.only = meta;
-        s.flame = kind == ShapeKind::Trapdoor ? (i16)-15 : (i16)-14;
-        c.out.candles.push_back(s);
-        return;
-      }
+    int tile = self.faces[0];
+    if (kind == ShapeKind::Door && (meta & 16) && T.upperTile >= 0) tile = T.upperTile;
+    if (tile >= 0) {
+      CandleSpot s;
+      s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+      s.tile = (u16)tile;
+      s.only = meta;
+      s.flame = kind == ShapeKind::Trapdoor ? (i16)-15 : (i16)-14;
+      c.out.candles.push_back(s);
+      return;
     }
     if (emitVoxelDoor(c, d, id, x, y, z, meta)) return;
   }
@@ -527,7 +524,9 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   // A fence gate's posts and rails do too. A wool carpet and a conveyor are a thin plate of their picture.
   // Moss, a puddle, a lily pad and algae stay on the chunk picture.
   // Near the player those boxes are coloured voxels; farther off they stay on the chunk mesh.
-  // A composter is the farm's one bin, so it stays voxels at any distance, with the crafting table.
+  // A composter, a bed, a hopper, a cake and a daylight detector are few, so they stay voxels at any distance.
+  const bool rareShape = kind == ShapeKind::Composter || kind == ShapeKind::Bed || kind == ShapeKind::Hopper
+      || kind == ShapeKind::Cake || kind == ShapeKind::Daylight;
   if (kind == ShapeKind::Cake || kind == ShapeKind::Daylight || kind == ShapeKind::Hopper
       || kind == ShapeKind::Composter || kind == ShapeKind::Frame || kind == ShapeKind::Hook
       || kind == ShapeKind::Bed || kind == ShapeKind::Tripwire || kind == ShapeKind::Chorus
@@ -537,7 +536,7 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
       || (kind == ShapeKind::Pane && self.key.find("stained") == std::string::npos)
       || (kind == ShapeKind::Carpet && !T.tint && !isPuddle(R, id) && self.key != "moss_carpet")) {
     c.out.hasTorch = true;
-    if (c.opt.torchVoxels || kind == ShapeKind::Composter) {
+    if (c.opt.torchVoxels || rareShape) {
       for (auto& b0 : boxes) {
         ShapeBox b = b0;
         b.b[0] += sox; b.b[3] += sox; b.b[2] += soz; b.b[5] += soz;
@@ -793,23 +792,21 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       return;
     }
   }
-  // A hanging lantern near you is coloured voxels. The chain is two link strips, and the wind
-  // takes the lower end by the same measure the picture used. Farther off it stays on this mesh.
+  // A hanging lantern is coloured voxels at any distance. The chain is two link strips, and the wind
+  // takes the lower end by the same measure the picture used.
   if (hang) {
     c.out.hasTorch = true;
-    if (c.opt.torchVoxels) {
-      CandleSpot s;
-      s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
-      s.tile = id;
-      s.only = meta;
-      s.sink = lift;
-      s.x0 = sh.micro ? sh.x / 16.f : 0.f;
-      s.z0 = sh.micro ? sh.z / 16.f : 0.f;
-      s.faceRot = stretchTop ? 1 : 0;
-      s.flame = -17;
-      c.out.candles.push_back(s);
-      return;
-    }
+    CandleSpot s;
+    s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+    s.tile = id;
+    s.only = meta;
+    s.sink = lift;
+    s.x0 = sh.micro ? sh.x / 16.f : 0.f;
+    s.z0 = sh.micro ? sh.z / 16.f : 0.f;
+    s.faceRot = stretchTop ? 1 : 0;
+    s.flame = -17;
+    c.out.candles.push_back(s);
+    return;
   }
   if (plain) for (auto& b : *boxes) {
     if (b.tu != 0.f || b.uvT || b.only != 63) plain = false;
