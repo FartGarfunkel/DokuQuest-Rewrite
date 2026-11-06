@@ -95,7 +95,8 @@ public:
   void update(GameSession& s, double dt) override;
 private:
   std::vector<u8> kinds;   // per block id: what it gives off
-  std::vector<u8> leafTile;
+  std::vector<u8> leafTile;   // which leaf picture (green, pink, light, dark, deep, white)
+  std::vector<u32> leafMul;   // 0xFFFFFF, or a multiply that pulls that picture onto the block's colour
   BlockId grass = 0, mud = 0, moss = 0;
   int tileStreak = 0, tileSnow = 0;
   struct ChunkEm { const Chunk* ptr = nullptr; double at = -1; std::vector<Emitter> em; };
@@ -116,7 +117,7 @@ private:
 
 void WeatherFxLayer::buildKinds() {
   auto& R = reg();
-  kinds.assign(R.blocks.size(), 0); leafTile.assign(R.blocks.size(), 0);
+  kinds.assign(R.blocks.size(), 0); leafTile.assign(R.blocks.size(), 0); leafMul.assign(R.blocks.size(), 0xFFFFFFu);
   for (auto& b : R.blocks) {
     u8 k = 0; std::string rs = b.str("rs");
     if (b.render == Render::Torch) k = rs == "torch" ? EM_RS_TORCH : rs.empty() ? (b.key == "soul_torch" ? EM_SOUL_TORCH : EM_TORCH) : 0;
@@ -134,12 +135,32 @@ void WeatherFxLayer::buildKinds() {
     else if (b.key == "redstone_ore_lit") k = EM_RS_ORE;
     else if (b.str("shape") == "campfire" || b.str("shape") == "soul_campfire") k = EM_CAMPFIRE;
     kinds[b.id] = k;
-    // leaf colour for each kind of leaves (ambientfx LEAF_PARTICLE)
+    // leaf colour for each kind of leaves (ambientfx LEAF_PARTICLE).
+    // The six pictures share one shape. Their centres are the texel a particle cube samples.
+    // A multiply other than white is how a canopy the pictures cannot reach (crimson, warped,
+    // autumn, winter twigs, sunwood, thorn) still falls in that block's colour.
     if (R.tLeaves[b.id]) {
       const std::string& key = b.key; auto starts = [&](const char* p) { return key.rfind(p, 0) == 0; };
-      std::string t = starts("cherry") || key.find("flowering") != std::string::npos ? "leaf_pink" : starts("birch") || starts("aspen") ? "leaf_light"
-        : starts("spruce") || starts("pine") ? "leaf_dark" : starts("dark_oak") || starts("mangrove") || starts("jungle") ? "leaf_deep" : starts("cloud") ? "leaf_white" : "leaf_green";
-      leafTile[b.id] = t == "leaf_pink" ? 1 : t == "leaf_light" ? 2 : t == "leaf_dark" ? 3 : t == "leaf_deep" ? 4 : t == "leaf_white" ? 5 : 0;
+      constexpr int kGreen[3] = {58, 106, 42}, kPink[3] = {208, 122, 160}, kWhite[3] = {184, 196, 208};
+      int pic = 0, tr = 255, tg = 255, tb = 255;
+      auto aim = [&](int picture, int r, int g, int b, const int* centre) {
+        pic = picture;
+        auto ch = [](int target, int c) { int t = (target * 255 + c / 2) / (c < 1 ? 1 : c); return t < 0 ? 0 : t > 255 ? 255 : t; };
+        tr = ch(r, centre[0]); tg = ch(g, centre[1]); tb = ch(b, centre[2]);
+      };
+      if (key == "nether_wart_block") aim(1, 71, 15, 25, kPink);
+      else if (key == "warped_wart_block") aim(5, 68, 156, 152, kWhite);
+      else if (key == "seasonal_leaves_autumn") aim(1, 142, 67, 21, kPink);
+      else if (key == "seasonal_leaves_winter") aim(5, 96, 74, 56, kWhite);
+      else if (key == "sunwood_leaves") aim(5, 169, 133, 38, kWhite);
+      else if (key == "thorn_leaves") aim(0, 57, 54, 28, kGreen);
+      else if (key == "seasonal_blossom" || starts("cherry") || key.find("flowering") != std::string::npos) pic = 1;
+      else if (key == "seasonal_leaves" || starts("spruce") || starts("pine")) pic = 3;
+      else if (starts("birch") || starts("aspen")) pic = 2;
+      else if (starts("dark_oak") || starts("mangrove") || starts("jungle")) pic = 4;
+      else if (starts("cloud")) pic = 5;
+      leafTile[b.id] = (u8)pic;
+      leafMul[b.id] = (u32)tr | ((u32)tg << 8) | ((u32)tb << 16);
     }
   }
   grass = R.blockId("grass"); mud = R.blockId("mud"); moss = R.blockId("moss_block");
@@ -381,6 +402,25 @@ void WeatherFxLayer::ambient(GameSession& s, WeatherSystem* W, double step) {
   float dir = W ? W->windDir : 0, strength = W ? W->windStrength : 0.5f, gust = clampv((strength - 0.45f) * 2, 0.f, 1.f);
   int tries = (int)((P.level == 1 ? 30 : 70) * (1 + gust * 1.5f));
   static const char* LEAF[6] = {"leaf_green", "leaf_pink", "leaf_light", "leaf_dark", "leaf_deep", "leaf_white"};
+  auto paintLeaf = [&](Particle& q, BlockId id) {
+    u8 ix = id < leafTile.size() ? leafTile[id] : 0;
+    q.tile = (u16)P.tile(LEAF[ix]);
+    u32 mul = id < leafMul.size() ? leafMul[id] : 0xFFFFFFu;
+    if ((mul & 0xFFFFFFu) != 0xFFFFFFu) { q.tint[0] = (u8)(mul & 255); q.tint[1] = (u8)((mul >> 8) & 255); q.tint[2] = (u8)((mul >> 16) & 255); }
+  };
+  // The first leaf block in a widening column above this spot, or air when the ground is open.
+  auto nearbyLeaf = [&](int x, int y, int z) -> BlockId {
+    for (int r = 0; r <= 6; r += 2) {
+      for (int dz = -r; dz <= r; dz += 2) for (int dx = -r; dx <= r; dx += 2) {
+        if (std::max(std::abs(dx), std::abs(dz)) != r) continue;
+        for (int dy = 0; dy <= 14; dy++) {
+          BlockId id = w.getBlock(x + dx, y + dy, z + dz);
+          if (id && id < leafTile.size() && R.tLeaves[id]) return id;
+        }
+      }
+    }
+    return 0;
+  };
   // Halloween: on Overworld nights, out in the open, a few pale wisps drift by now and then
   if (halloween() && P.level > 0 && s.player->realm == REALM_MAIN && dimOfY(clampv(ifloor(p.y), 0, WORLD_H - 1)) == DIM_OVERWORLD &&
       std::sin((float)(s.level->info.time / DAY_LEN) * TAU) < -0.15f && (w.getLight(ifloor(p.x), ifloor(p.y) + 1, ifloor(p.z)) >> 4) >= 10 && rnd() < step * 0.25) {
@@ -396,7 +436,7 @@ void WeatherFxLayer::ambient(GameSession& s, WeatherSystem* W, double step) {
     if (rnd() > step * (3 + gust * 6)) continue;
     float sp = strength * (0.9f + gust * 1.8f);
     Particle q; q.p = vec3(x + rnd(), y - 0.02f, z + rnd()); q.v = vec3(-std::sin(dir) * sp, -0.5f - rnd() * 0.3f, -std::cos(dir) * sp);
-    q.life = 7 + rnd() * 4; q.max = 11; q.size = 0.075f + rnd() * 0.03f; q.tile = (u16)P.tile(LEAF[id < leafTile.size() ? leafTile[id] : 0]);
+    q.life = 7 + rnd() * 4; q.max = 11; q.size = 0.075f + rnd() * 0.03f; paintLeaf(q, id);
     q.light = w.getLight(x, y - 1, z); q.grav = 0.02f; q.flutter = 1.1f + gust; q.ph = rnd() * 6;
     P.add(q);
   }
@@ -405,7 +445,7 @@ void WeatherFxLayer::ambient(GameSession& s, WeatherSystem* W, double step) {
     if ((w.getBlock(x, y, z) == AIR && R.tSolid[w.getBlock(x, y - 1, z)]) || (w.getBlock(x, y - 1, z) == AIR && R.tSolid[w.getBlock(x, y - 2, z)])) {
       int yy = w.getBlock(x, y - 1, z) == AIR ? y - 1 : y;
       Particle q; q.p = vec3(x + rnd(), yy + 0.1f, z + rnd()); q.v = vec3(-std::sin(dir) * 2.5f, 0.6f, -std::cos(dir) * 2.5f); q.life = q.max = 4; q.size = 0.07f;
-      q.tile = (u16)P.tile("leaf_green"); q.light = w.getLight(x, yy, z); q.grav = 2.5f; q.flutter = 1.5f; q.ph = rnd() * 6;
+      paintLeaf(q, nearbyLeaf(x, yy, z)); q.light = w.getLight(x, yy, z); q.grav = 2.5f; q.flutter = 1.5f; q.ph = rnd() * 6;
       P.add(q);
     }
   }
