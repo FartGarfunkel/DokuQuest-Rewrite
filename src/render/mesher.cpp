@@ -312,7 +312,13 @@ bool surroundedCovered(const MeshCtx& c, int x, int y, int z) {
 // built: the cube's hidden sides were already skipped, and the section was already frustum culled.
 bool emitColourFace(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& dst, const MV corn[4], const FaceCorners& fc, int f, int tile, int x, int y, int z, u8 mat, u8 sway, bool uniform, const u32 tints[4], int blockTint) {
   if (!c.opt.colourStep || !c.tiles || tile < 0 || tile >= c.tiles->count || tile >= BAKED_TILE) return false;
-  if (c.tiles->animated(tile)) return false;   // magma, lanterns, water: the frames still move on the atlas
+  if (c.tiles->animated(tile)) {
+    // Magma and a sea lantern are solid cubes. The frames only swapped the picture, so this face
+    // keeps the still colour the same way stone does. A flame, a portal and a furnace front stay on the picture.
+    static int magma = -2, lantern = -2;
+    if (magma == -2) { magma = c.R.tile("magma_block"); lantern = c.R.tile("sea_lantern"); }
+    if (tile != magma && tile != lantern) return false;
+  }
   const int S = c.tiles->size;
   if (S < 1) return false;
   int step = pass == 2 ? S : c.opt.colourStep;   // glass stays one quad: a grid of it would overdraw
