@@ -339,8 +339,9 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   if (kind == ShapeKind::Rail) { emitRail(c, d, id, x, y, z, meta); return; }
   // vines and lily pads, and every ladder. The ladder's rungs are real geometry, so looking up or down
   // the wall still shows the whole mesh. Plant detail only decides the vines and pads.
-  // Near the player the ladder is coloured voxels on that same wall. Far ones stay on the chunk picture.
-  if (kind == ShapeKind::Ladder) {
+  // Near the player a ladder or glow lichen is coloured voxels on that wall. A vine keeps the
+  // chunk plate, so the climate still colours it and it can sway. Far ladders stay on the chunk picture.
+  if (kind == ShapeKind::Ladder && !T.tint) {
     c.out.hasTorch = true;
     if (c.opt.torchVoxels) {
       CandleSpot s;
@@ -465,6 +466,7 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   // A cake's icing, a detector's face, a hopper's rim and a bed's pillow each keep the picture the
   // box already used. A tripwire, a chorus stem, a repeater, a piston and a cactus do too.
   // Clear glass and iron bars do too. Stained glass stays on the chunk picture: its colour is a see-through wash.
+  // A cocoa pod keeps the ripe picture. A young pod is a smaller crop of that same picture.
   // Near the player those boxes
   // are coloured voxels; farther off they stay on the chunk mesh.
   if (kind == ShapeKind::Cake || kind == ShapeKind::Daylight || kind == ShapeKind::Hopper
@@ -472,6 +474,7 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
       || kind == ShapeKind::Bed || kind == ShapeKind::Tripwire || kind == ShapeKind::Chorus
       || kind == ShapeKind::Repeater || kind == ShapeKind::Comparator
       || kind == ShapeKind::PistonBase || kind == ShapeKind::PistonHead || kind == ShapeKind::Cactus
+      || kind == ShapeKind::Cocoa
       || (kind == ShapeKind::Pane && self.key.find("stained") == std::string::npos)) {
     c.out.hasTorch = true;
     if (c.opt.torchVoxels) {
