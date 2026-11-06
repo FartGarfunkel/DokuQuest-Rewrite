@@ -692,6 +692,25 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       return;
     }
   }
+  // A sky bloom is a few on an island, about one in fifty of that grass. Near you the
+  // picture is coloured voxels, turned the way the chunk plant turns. Farther off it stays on the mesh.
+  if (key == "sky_bloom") {
+    c.out.hasTorch = true;
+    if (c.opt.torchVoxels && tile >= 0) {
+      int ly = c.in.sy * 16 + y;
+      u32 hsh = hash32(x, ly, z, 5);
+      CandleSpot s;
+      s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+      s.tile = (u16)tile;
+      s.sink = (yy - (float)y) * 16.f;
+      s.x0 = ((hsh & 255) / 255.f - 0.5f) * 0.24f;
+      s.z0 = (((hsh >> 8) & 255) / 255.f - 0.5f) * 0.24f;
+      s.y0 = ((hsh >> 16) & 255) / 255.f * PI / 2.f + PI / 4.f;
+      s.flame = -12;
+      c.out.candles.push_back(s);
+      return;
+    }
+  }
   // Hanging roots dangle where a cave comes up under the dirt, a few on that ceiling.
   // Near you the three pictures are coloured voxels. Farther off they stay on the chunk mesh.
   if (key == "hanging_roots") {
