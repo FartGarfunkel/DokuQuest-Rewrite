@@ -88,6 +88,9 @@ struct PanelVert { vec3 p; vec2 uv; float sh; };
 bool doorPanelQuads(const MeshTiles* tiles, int tile, int which, std::vector<PanelVert>& out);
 bool emitVoxelDoor(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
 void emitPlanes(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, float y, float z, float inset, float scale, float sk, float bl, bool cross);
+// The same plates as a flame or a flower, instead of a flat picture. square is the campfire's four walls;
+// otherwise two crossed plates. False when the picture has nothing to build, so the flat planes still draw.
+bool emitVoxelPlates(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, float y, float z, float inset, float scale, float sk, float bl, bool square);
 
 // 3D grass (Lay of the Land style): short blades over the top of a grass block, swaying, faded out with
 // distance in chunk.glsl (sway codes 80..95 mark a tuft's tip). blades per block, 0 = off (settings grass3d).

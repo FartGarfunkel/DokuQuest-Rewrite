@@ -461,7 +461,8 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   }
   if (T.campfire && !out) {
     int ft = R.tile(T.campfire == 1 ? "campfire_fire" : "soul_campfire_fire");
-    if (ft >= 0) emitPlanes(c, d, ft, o.x, y + lift / 16, o.z, 0.08f, 1, 15, 15, false);
+    if (ft >= 0 && !emitVoxelPlates(c, d, ft, o.x, y + lift / 16, o.z, 0.08f, 1, 15, 15, true))
+      emitPlanes(c, d, ft, o.x, y + lift / 16, o.z, 0.08f, 1, 15, 15, false);
   }
   if (T.cauldron && (meta & 3)) {
     // water in a cauldron
@@ -472,7 +473,12 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   }
   if (T.pot) {
     int idx = MeshInput::idx(x, y, z);
-    for (auto& [i, plant] : c.in.potPlants) if (i == idx) emitPlanes(c, d, R.block(plant).faces[0], o.x, y + (lift + 4) / 16, o.z, 0.25f, 0.75f, sk, bl, true);
+    for (auto& [i, plant] : c.in.potPlants) if (i == idx) {
+      int pt = R.block(plant).faces[0];
+      float py = y + (lift + 4) / 16;
+      if (!emitVoxelPlates(c, d, pt, o.x, py, o.z, 0.25f, 0.75f, sk, bl, false))
+        emitPlanes(c, d, pt, o.x, py, o.z, 0.25f, 0.75f, sk, bl, true);
+    }
   }
 }
 

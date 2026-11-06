@@ -481,6 +481,26 @@ void emitCrossFlat(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, i
 }
 } // namespace
 
+// A campfire's four walls, or a pot plant's two crossed pictures, as the same plates a flame uses.
+// The tile's UVs stay, so an animated flame still changes frame. An empty picture returns false.
+bool emitVoxelPlates(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, float y, float z,
+                     float inset, float scale, float sk, float bl, bool square) {
+  if (!c.tiles || tile < 0) return false;
+  auto P = square ? fireTemplate(c.tiles, tile) : plantTemplate(c.tiles, tile);
+  if (!P || P->q.empty()) return false;
+  float a0 = inset, a1 = 1.f - inset, h1 = scale;
+  if (square) {
+    voxelPlane(c, d, *P, tile, x, y, z, 0, a0, 1, a0, 0, h1, sk, bl, false);
+    voxelPlane(c, d, *P, tile, x, y, z, 0, a1, 1, a1, 0, h1, sk, bl, false);
+    voxelPlane(c, d, *P, tile, x, y, z, a0, 0, a0, 1, 0, h1, sk, bl, false);
+    voxelPlane(c, d, *P, tile, x, y, z, a1, 0, a1, 1, 0, h1, sk, bl, false);
+  } else {
+    voxelPlane(c, d, *P, tile, x, y, z, a0, a0, a1, a1, 0, h1, sk, bl, false);
+    voxelPlane(c, d, *P, tile, x, y, z, a0, a1, a1, a0, 0, h1, sk, bl, false);
+  }
+  return true;
+}
+
 // ---- 3D grass on grass blocks -------------------------------------------------------------------------
 namespace { std::atomic<int> g_tufts{0}; }
 int meshGrassTufts() { return g_tufts.load(std::memory_order_relaxed); }
