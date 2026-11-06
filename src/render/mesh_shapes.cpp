@@ -649,12 +649,16 @@ void emitCarvedBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x,
 }
 
 // Thin snow on each column that still has a micro-block. It sits on that column's top and grows upward.
+// When the chisel itself is coloured voxels, the cap is the same kind of plate. A leaf chisel stays
+// on the chunk picture, and its snow stays with it.
 void emitSnowCaps(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 carve) {
   u8 coat = c.coatAt(x, y, z);
   if (!(coat & 0x0F) || !carve) return;
   int tile = c.R.tile("snow");
   if (tile < 0) tile = 0;
   float h = (coat & 0x10) ? 4.f : 2.f;
+  const BlockTraits& T = traits(id);
+  const bool voxelCap = c.opt.torchVoxels && !T.leaves && !c.R.tTrans[id];
   Own own{(float)c.skyAt(x, y, z), (float)c.blAt(x, y, z), 0};
   u8 mat = Mat::Cutout;
   u8 faces = (u8)(1 | 2 | 4 | 16 | 32);   // every side but the bottom, which would sit inside the stone
@@ -664,6 +668,17 @@ void emitSnowCaps(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, in
     if (top < 0) continue;
     if (top == 1 && c.opaqueSolid(x, y + 1, z)) continue;
     float x0 = hx ? 8.f : 0.f, z0 = hz ? 8.f : 0.f, y0 = top ? 16.f : 8.f;
+    if (voxelCap) {
+      CandleSpot s;
+      s.x0 = x0; s.y0 = y0; s.z0 = z0; s.x1 = x0 + 8.f; s.y1 = y0 + h; s.z1 = z0 + 8.f;
+      s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+      u16 t = (u16)tile;
+      s.tile = s.nx = s.pz = s.nz = s.top = s.bot = t;
+      s.only = faces;
+      s.flame = -1;
+      c.out.candles.push_back(s);
+      continue;
+    }
     ShapeBox b(x0, y0, z0, x0 + 8.f, y0 + h, z0 + 8.f);
     b.only = faces;
     emitBox(c, d, id, 0, x, y, z, b, tile, tile, tile, 0, 0, own, mat, faces);
