@@ -806,6 +806,13 @@ public:
         int nxL = c.nx < ts.count ? (int)c.nx : layer;
         int pzL = c.pz < ts.count ? (int)c.pz : layer;
         int nzL = c.nz < ts.count ? (int)c.nz : layer;
+        // A lit furnace's front is another layer each frame. The other faces stay put.
+        auto useFrame = [&](int L) {
+          if (L < 0 || L >= (int)anim.size()) return L;
+          return anim[L] >= 0 ? anim[L] : L;
+        };
+        layer = useFrame(layer); topL = useFrame(topL); botL = useFrame(botL);
+        nxL = useFrame(nxL); pzL = useFrame(pzL); nzL = useFrame(nzL);
         // flame <= -10 is a glowing crop (a lit repeater torch) with no flame plate. -2 is scaffolding.
         bool glow = c.flame <= -10;
         const VoxelMeshGL* mesh = c.flame == -2 ? (layer >= 0 ? scaffoldMesh(ts, layer, topL, botL) : nullptr)
