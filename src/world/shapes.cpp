@@ -149,6 +149,8 @@ void initBlockTraits() {
     }
     if (b.props.contains("stageTiles")) for (auto& s : b.props["stageTiles"]) if (s.is_number()) t.stageTiles.push_back(s.get<u16>());
     if (b.props.contains("tex") && b.props["tex"].is_object() && b.props["tex"].contains("top")) t.bedTop = tileOf(b.props["tex"]["top"].get<std::string>());
+    // A dyed bed lists its faces, so the folded edge takes that bed's own top. Red is only the last resort.
+    if (t.bedTop < 0 && b.has("bed")) t.bedTop = b.faces[FACE_PY];
     if (t.bedTop < 0) t.bedTop = tileOf("red_bed_top");
     t.emitsParticles = t.fire || t.campfire || b.render == Render::Torch || R.tPortal[b.id] || t.candle || b.key.find("portal") != std::string::npos;
   }
