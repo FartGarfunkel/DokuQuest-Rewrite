@@ -3,7 +3,6 @@
 // fields, each in one of six palettes, in 32 x 32 pixel art. Use one to turn to the next picture (sim/build.cpp).
 #include "render/item_layers.h"
 #include "render/be_scan.h"
-#include "render/content_draw.h"
 #include "assets/voxel.h"
 #include "assets/tileset.h"
 #include "client/session.h"
@@ -142,13 +141,24 @@ const VoxelMeshGL* trimMesh(const TileSet& ts, TrimKey key) {
   return out;
 }
 
-GLuint paintingTex(int n) {
-  static std::unordered_map<int, GLuint> cache;
+// The picture itself, one voxel a pixel, so the canvas is coloured wood and sky rather than a sampled picture.
+const VoxelMeshGL* canvasMesh(int n) {
+  static std::unordered_map<int, std::unique_ptr<VoxelMeshGL>> cache;
   n = ((n % PAINTINGS) + PAINTINGS) % PAINTINGS;
   auto it = cache.find(n);
-  if (it != cache.end()) return it->second;
+  if (it != cache.end()) return it->second.get();
   std::vector<u8> px = paint(n);
-  return cache[n] = makeTexRGBA(PX, PX, px.data(), true, false);
+  VoxelGrid g(ivec3(PX, PX, 1));
+  for (int y = 0; y < PX; y++) for (int x = 0; x < PX; x++) {
+    const u8* p = px.data() + ((size_t)(PX - 1 - y) * PX + x) * 4;
+    g.set(x, y, 0, voxRGBA(p[0], p[1], p[2]));
+  }
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  mesh->upload(md);
+  const VoxelMeshGL* out = mesh.get();
+  cache.emplace(n, std::move(mesh));
+  return out;
 }
 } // namespace
 
@@ -159,16 +169,15 @@ public:
   void drawOpaque(GameSession& s, const FrameCtx& f) override {
     if (!s.player) return;
     World& w = s.world();
-    ContentDraw& cd = contentDraw();
-    bool begun = false;
+    struct Canvas { mat4 m; int n; VoxelLight light; };
     struct Bar { mat4 m; vec3 a, b; u16 tile; VoxelLight light; };
+    std::vector<Canvas> canvases;
     std::vector<Bar> bars;
     forBlockEntities(w, f, 48.f, [&](const Chunk&, json& e, int x, int y, int z) {
       if (e.value("type", "") != "painting") return;
       vec3 rel = f.cam.rel(glm::dvec3(x, y, z));
       if (!f.cam.frustum.sphere(rel + vec3(0.5f), 1.f)) return;
       if (!reg().block(w.getBlock(x, y, z)).has("painting")) return;
-      if (!begun) { if (!cd.begin(f, f.cam.viewProj)) return; begun = true; }
       static const float TURN[4] = {0, -PI / 2, PI, PI / 2};
       const int fm = w.getMeta(x, y, z) & 3;
       const u8 l = w.getLight(x, y, z);
@@ -176,8 +185,10 @@ public:
       m = glm::rotate(m, TURN[fm], vec3(0, 1, 0));
       m = glm::translate(m, vec3(0, 0, -0.5f + 0.07f));
       const mat4 m0 = m;
-      m = glm::scale(m, vec3(0.8125f, 0.8125f, 1));
-      cd.picture(paintingTex(e.value("n", 0)), m, vec4(0, 0, 1, 1), vec4(1), vec2((l >> 4) / 15.f, (l & 15) / 15.f));
+      const float half = 0.8125f * 0.5f, sc = 0.8125f / PX;
+      mat4 cm = m0 * glm::translate(mat4(1), vec3(-half, -half, -0.5f / 32.f)) * glm::scale(mat4(1), vec3(sc, sc, 1.f / 32.f));
+      VoxelLight L{(l >> 4) / 15.f, (l & 15) / 15.f};
+      canvases.push_back({cm, e.value("n", 0), L});
       // a gold or an iron trim round the canvas (BTA): four thin bars of the metal block just proud of the frame
       const std::string trim = e.value("trim", std::string());
       if (!trim.empty()) {
@@ -185,7 +196,6 @@ public:
         const u16 tx = mb ? reg().block(mb).faces[0] : 0;
         if (mb && tx < s.app.tiles.count) {
           const float h = 0.40625f + 0.05f, t = 0.05f, z0 = -0.035f, z1 = 0.035f;
-          VoxelLight L{(l >> 4) / 15.f, (l & 15) / 15.f};
           bars.push_back({m0, vec3(-h, h - t, z0), vec3(h, h, z1), tx, L});
           bars.push_back({m0, vec3(-h, -h, z0), vec3(h, -h + t, z1), tx, L});
           bars.push_back({m0, vec3(-h, -h + t, z0), vec3(-h + t, h - t, z1), tx, L});
@@ -193,10 +203,14 @@ public:
         }
       }
     });
-    if (begun) cd.end();
+    if (canvases.empty() && bars.empty()) return;
+    VoxelRenderer& VR = voxelRenderer();
+    VR.begin(f, f.cam.viewProj);
+    for (auto& c : canvases) {
+      const VoxelMeshGL* mesh = canvasMesh(c.n);
+      if (mesh && mesh->ready()) VR.draw(*mesh, c.m, c.light);
+    }
     if (!bars.empty()) {
-      VoxelRenderer& VR = voxelRenderer();
-      VR.begin(f, f.cam.viewProj);
       for (auto& bar : bars) {
         vec3 d = bar.b - bar.a;
         int nx = std::max(1, (int)std::lround(std::fabs(d.x) * 32.f));
@@ -209,8 +223,8 @@ public:
         mat4 model = bar.m * glm::translate(mat4(1), bar.a) * glm::scale(mat4(1), vec3(d.x / key.n[0], d.y / key.n[1], d.z / key.n[2]));
         VR.draw(*mesh, model, bar.light);
       }
-      VR.end();
     }
+    VR.end();
   }
 };
 
