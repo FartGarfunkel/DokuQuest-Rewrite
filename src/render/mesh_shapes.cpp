@@ -358,6 +358,7 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
         int st = b.side >= 0 ? b.side : side;
         s.tile = s.top = s.bot = (u16)std::max(st, 0);
         s.nx = s.pz = s.nz = s.tile;
+        s.only = b.only;
         s.flame = (i16)ft;
         c.out.candles.push_back(s);
       }
@@ -420,13 +421,13 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
     }
   }
   // A cake's icing, a detector's face, a hopper's rim and a bed's pillow each keep the picture the
-  // box already used. A tripwire, a chorus stem, a repeater and a piston do too. Near the player those boxes
+  // box already used. A tripwire, a chorus stem, a repeater, a piston and a cactus do too. Near the player those boxes
   // are coloured voxels; farther off they stay on the chunk mesh.
   if (kind == ShapeKind::Cake || kind == ShapeKind::Daylight || kind == ShapeKind::Hopper
       || kind == ShapeKind::Composter || kind == ShapeKind::Frame || kind == ShapeKind::Hook
       || kind == ShapeKind::Bed || kind == ShapeKind::Tripwire || kind == ShapeKind::Chorus
       || kind == ShapeKind::Repeater || kind == ShapeKind::Comparator
-      || kind == ShapeKind::PistonBase || kind == ShapeKind::PistonHead) {
+      || kind == ShapeKind::PistonBase || kind == ShapeKind::PistonHead || kind == ShapeKind::Cactus) {
     c.out.hasTorch = true;
     if (c.opt.torchVoxels) {
       for (auto& b0 : boxes) {
@@ -448,6 +449,7 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
         s.bot = (u16)std::max(bt, 0);
         s.pz = (u16)std::max(pt, 0);
         s.nz = (u16)std::max(zt, 0);
+        s.only = b.only;
         s.flame = b.glow ? (i16)(-10 - b.glow) : (i16)-1;   // a lit torch glows; -2 is reserved for scaffolding
         c.out.candles.push_back(s);
       }
