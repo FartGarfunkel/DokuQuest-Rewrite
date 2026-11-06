@@ -67,7 +67,7 @@ struct TorchSpot {
   i8 lx = 0, lz = 0;    // which way a wall torch leans (-1, 0, 1)
   u16 tile = 0;
 };
-// One small box the chunk mesh left out, in sixteenths: a candle, sea pickle, button or plate.
+// One small box the chunk mesh left out, in sixteenths: a candle, sea pickle, button, plate, or a lever's base.
 // The picture is the same crop the box used.
 struct CandleSpot {
   float x0 = 0, y0 = 0, z0 = 0, x1 = 0, y1 = 0, z1 = 0;
@@ -75,6 +75,16 @@ struct CandleSpot {
   u8 cx = 0, cy = 0, cz = 0;
   u16 tile = 0;
   i16 flame = -1;     // candle_flame layer when it is lit, else -1
+};
+// A lever handle. x,y,z is its centre in section-local blocks. The three axes are the stick's
+// (yy runs from the base toward the tip), the same ones the tilted box used.
+struct LeverSpot {
+  float x = 0, y = 0, z = 0;
+  float xx = 1, xy = 0, xz = 0;
+  float yx = 0, yy = 1, yz = 0;
+  float zx = 0, zy = 0, zz = 1;
+  u8 cx = 0, cy = 0, cz = 0;
+  u16 tile = 0;
 };
 
 // cave culling: the bit for a pair of faces (0 +x, 1 -x, 2 +y, 3 -y, 4 +z, 5 -z), 15 pairs
@@ -87,7 +97,8 @@ struct MeshOutput {
   MeshFx fx;
   std::vector<TorchSpot> torches;   // filled only when torchVox: the cutout quads were left out
   std::vector<CandleSpot> candles;
-  bool hasTorch = false;       // a torch or a candle, whether or not it was voxelised
+  std::vector<LeverSpot> levers;
+  bool hasTorch = false;       // a torch, candle, button, plate or lever, whether or not it was voxelised
   bool torchVox = false;       // those torches are in `torches` instead of the cutout list
   bool detail = true;          // built with 3D plants
   u16 vis = 0x7FFF;            // cave culling: which pairs of the section's 6 faces see each other through it (sectionVisPair)

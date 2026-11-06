@@ -341,9 +341,10 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   float L0 = R.metaLight(id, meta);
   Own own{(float)c.skyAt(x, y, z), std::max<float>(c.blAt(x, y, z), L0), L0};
   if (T.tint) { c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0); c.tintKind = (u8)(1 + (T.tint == 2 ? 1 : 0)); }
-  // Candles, buttons and plates are the same little crop of one picture. Near the player that crop
-  // is coloured voxels (torch_layer.cpp). A lit candle still carries its flame.
-  if (kind == ShapeKind::Candle || kind == ShapeKind::Button || kind == ShapeKind::Plate) {
+  // Candles, buttons, plates and a lever's base are the same little crop of one picture. Near the
+  // player that crop is coloured voxels (torch_layer.cpp). A lit candle still carries its flame,
+  // and a lever still carries its tilted stick.
+  if (kind == ShapeKind::Candle || kind == ShapeKind::Button || kind == ShapeKind::Plate || kind == ShapeKind::Lever) {
     c.out.hasTorch = true;
     if (c.opt.torchVoxels) {
       int ft = (kind == ShapeKind::Candle && T.candle && (meta & 4)) ? R.tile("candle_flame") : -1;
@@ -358,6 +359,25 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
         s.tile = (u16)std::max(st, 0);
         s.flame = (i16)ft;
         c.out.candles.push_back(s);
+      }
+      if (kind == ShapeKind::Lever) {
+        float a = 0.7f * ((meta & 8) ? 1.f : -1.f);
+        vec3 dir(0.f, std::cos(a), std::sin(a));
+        vec3 ctr = attachPoint(vec3(8.f, 1.5f, 8.f) + dir * 5.f, meta, false);
+        vec3 ay = attachPoint(dir, meta, true);
+        vec3 ax = attachPoint(vec3(1.f, 0.f, 0.f), meta, true);
+        vec3 az = glm::cross(ax, ay);
+        vec3 seat = sh.micro ? vec3(sh.x, sh.y, sh.z) / 16.f : vec3(0);
+        vec3 cpos = vec3((float)x, (float)y, (float)z) + ctr / 16.f + seat;
+        LeverSpot L;
+        L.x = cpos.x; L.y = cpos.y; L.z = cpos.z;
+        L.xx = ax.x; L.xy = ax.y; L.xz = ax.z;
+        L.yx = ay.x; L.yy = ay.y; L.yz = ay.z;
+        L.zx = az.x; L.zy = az.y; L.zz = az.z;
+        L.cx = (u8)x; L.cy = (u8)y; L.cz = (u8)z;
+        int ht = R.tile("lever_handle");
+        L.tile = (u16)std::max(ht, 0);
+        c.out.levers.push_back(L);
       }
       c.tint = 0xFFFFFF; c.tintKind = 0;
       return;

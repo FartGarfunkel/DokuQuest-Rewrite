@@ -186,6 +186,58 @@ const VoxelMeshGL* flamePlate(const TileSet& ts, int layer) {
   return out;
 }
 
+// The lever's stick: the same 0.4..0.6 strip the tilted box showed, two voxels per sixteenth, ten tall.
+const VoxelMeshGL* leverStick(const TileSet& ts, int layer) {
+  struct Cache {
+    const u8* px = nullptr; int count = -1, size = -1;
+    std::unordered_map<int, std::unique_ptr<VoxelMeshGL>> m;
+  };
+  static Cache cache;
+  if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
+    cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
+  }
+  auto it = cache.m.find(layer);
+  if (it != cache.m.end()) return it->second.get();
+  const int S = ts.size > 0 ? ts.size : 32;
+  const int nx = 4, ny = 20, nz = 4;
+  VoxelGrid g(ivec3(nx, ny, nz));
+  bool hole = false;
+  auto pix = [&](float u, float v) -> u32 {
+    if (layer < 0 || layer >= ts.count) return 0;
+    int col = clampv((int)std::floor(clampv(u, 0.f, 0.999f) * S), 0, S - 1);
+    int row = clampv((int)std::floor(clampv(v, 0.f, 0.999f) * S), 0, S - 1);
+    const u8* p = ts.tile(layer) + ((size_t)row * S + col) * 4;
+    if (p[3] < 128) return 0;
+    return voxRGBA(p[0], p[1], p[2]);
+  };
+  auto put = [&](int x, int y, int z, u32 c) { if (!c) { hole = true; return; } g.set(x, y, z, c); };
+  for (int iy = 0; iy < ny; iy++) for (int iz = 0; iz < nz; iz++) {
+    float v = 1.f - (iy + 0.5f) / ny;
+    put(nx - 1, iy, iz, pix(0.6f - (iz + 0.5f) / nz * 0.2f, v));
+    put(0, iy, iz, pix(0.4f + (iz + 0.5f) / nz * 0.2f, v));
+  }
+  for (int iy = 0; iy < ny; iy++) for (int ix = 0; ix < nx; ix++) {
+    float v = 1.f - (iy + 0.5f) / ny;
+    put(ix, iy, nz - 1, pix(0.4f + (ix + 0.5f) / nx * 0.2f, v));
+    put(ix, iy, 0, pix(0.6f - (ix + 0.5f) / nx * 0.2f, v));
+  }
+  for (int iz = 0; iz < nz; iz++) for (int ix = 0; ix < nx; ix++) {
+    float u = 0.4f + (ix + 0.5f) / nx * 0.2f;
+    float vcap = (nz - 0.5f - iz) / nz * 0.12f;
+    put(ix, ny - 1, iz, pix(u, vcap));
+  }
+  if (!hole) {
+    const u32 fill = voxRGBA(1, 1, 1);
+    for (int z = 1; z < nz - 1; z++) for (int y = 1; y < ny - 1; y++) for (int x = 1; x < nx - 1; x++) g.set(x, y, z, fill);
+  }
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  mesh->upload(md);
+  const VoxelMeshGL* out = mesh.get();
+  cache.m.emplace(layer, std::move(mesh));
+  return out;
+}
+
 class TorchLayer : public RenderLayer {
 public:
   const char* name() const override { return "voxel-torches"; }
@@ -262,6 +314,26 @@ public:
         const mat4 at = glm::translate(mat4(1), ctr);
         VR.draw(*plate, at * park * sc, light);
         VR.draw(*plate, at * glm::rotate(mat4(1), 1.5707963f, vec3(0, 1, 0)) * park * sc, light);
+      }
+    });
+    s.worldRenderer.forEachLeverSection([&](vec3 origin, const std::vector<LeverSpot>& spots) {
+      vec3 relO = f.cam.rel(glm::dvec3(origin));
+      if (!f.cam.frustum.sphere(relO + vec3(8), 14.f)) return;
+      for (const LeverSpot& L : spots) {
+        vec3 rel = relO + vec3(L.x, L.y, L.z);
+        if (!f.cam.frustum.sphere(rel, 0.8f)) continue;
+        int layer = L.tile < ts.count ? (int)L.tile : -1;
+        const VoxelMeshGL* mesh = layer >= 0 ? leverStick(ts, layer) : nullptr;
+        if (!mesh || !mesh->ready()) continue;
+        if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+        mat4 basis(1.f);
+        basis[0] = vec4(L.xx, L.xy, L.xz, 0.f);
+        basis[1] = vec4(L.yx, L.yy, L.yz, 0.f);
+        basis[2] = vec4(L.zx, L.zy, L.zz, 0.f);
+        const mat4 model = glm::translate(mat4(1), rel) * basis
+            * glm::translate(mat4(1), vec3(-1.f / 16.f, -5.f / 16.f, -1.f / 16.f)) * glm::scale(mat4(1), vec3(1.f / 32.f));
+        const u8 lit = w.getLight((int)origin.x + L.cx, (int)origin.y + L.cy, (int)origin.z + L.cz);
+        VR.draw(*mesh, model, VoxelLight{(lit >> 4) / 15.f, (lit & 15) / 15.f});
       }
     });
     if (begun) VR.end();
