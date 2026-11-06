@@ -478,18 +478,18 @@ const VoxelMeshGL* rodMesh(const TileSet& ts, int layer, int axis) {
   return out;
 }
 
-// The flame picture is a few texels inside the whole tile. One voxel per texel keeps that sprite;
-// a plate only as wide as the quad (about four voxels) samples the empty part and the flame vanishes.
-const VoxelMeshGL* flamePlate(const TileSet& ts, int layer) {
+// One voxel per texel of a picture, holes left empty. A flame glows. A pot plant does not.
+const VoxelMeshGL* spritePlate(const TileSet& ts, int layer, bool glow) {
   struct Cache {
     const u8* px = nullptr; int count = -1, size = -1;
-    std::unordered_map<int, std::unique_ptr<VoxelMeshGL>> m;
+    std::unordered_map<u32, std::unique_ptr<VoxelMeshGL>> m;
   };
   static Cache cache;
   if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
     cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
   }
-  auto it = cache.m.find(layer);
+  u32 key = ((u32)std::max(layer, 0) << 1) | (glow ? 1u : 0u);
+  auto it = cache.m.find(key);
   if (it != cache.m.end()) return it->second.get();
   const int S = ts.size > 0 ? ts.size : 32;
   VoxelGrid g(ivec3(S, S, 1));
@@ -497,15 +497,21 @@ const VoxelMeshGL* flamePlate(const TileSet& ts, int layer) {
     for (int y = 0; y < S; y++) for (int x = 0; x < S; x++) {
       const u8* p = ts.tile(layer) + ((size_t)(S - 1 - y) * S + x) * 4;
       if (p[3] < 128) continue;
-      g.set(x, y, 0, voxRGBA(p[0], p[1], p[2], VOXEL_GLOW));
+      g.set(x, y, 0, voxRGBA(p[0], p[1], p[2], glow ? VOXEL_GLOW : VOXEL_SOLID));
     }
   }
   VoxelMeshData md; buildVoxelMesh(g, md);
   auto mesh = std::make_unique<VoxelMeshGL>();
   mesh->upload(md);
   const VoxelMeshGL* out = mesh.get();
-  cache.m.emplace(layer, std::move(mesh));
+  cache.m.emplace(key, std::move(mesh));
   return out;
+}
+
+// The flame picture is a few texels inside the whole tile. One voxel per texel keeps that sprite;
+// a plate only as wide as the quad (about four voxels) samples the empty part and the flame vanishes.
+const VoxelMeshGL* flamePlate(const TileSet& ts, int layer) {
+  return spritePlate(ts, layer, true);
 }
 
 // The lever's stick: the same 0.4..0.6 strip the tilted box showed, two voxels per sixteenth, ten tall.
@@ -606,6 +612,31 @@ public:
       for (const CandleSpot& c : spots) {
         vec3 cell = relO + vec3(c.cx, c.cy, c.cz);
         if (!f.cam.frustum.sphere(cell + vec3(0.5f), 0.9f)) continue;
+        // -3 is a flower in a pot: two crossed pictures, coloured, standing in the pot's mouth.
+        if (c.flame == -3) {
+          int layer = c.tile < ts.count ? (int)c.tile : -1;
+          if (layer >= 0 && anim[layer] >= 0) layer = anim[layer];
+          const VoxelMeshGL* plate = layer >= 0 ? spritePlate(ts, layer, false) : nullptr;
+          if (!plate || !plate->ready()) continue;
+          if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+          const int PS = ts.size > 0 ? ts.size : 32;
+          const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
+          VoxelLight light{(lit >> 4) / 15.f, (lit & 15) / 15.f};
+          const float yBase = cell.y + c.sink / 16.f;
+          const vec3 up(0.f, 0.75f / PS, 0.f);
+          auto cross = [&](vec3 along, vec3 from) {
+            vec3 n = glm::normalize(glm::cross(along, vec3(0, 1, 0))) * (1.f / 32.f);
+            mat4 m(1.f);
+            m[0] = vec4(along / (float)PS, 0.f);
+            m[1] = vec4(up, 0.f);
+            m[2] = vec4(n, 0.f);
+            m[3] = vec4(vec3(cell.x, yBase, cell.z) + from - n * 0.5f, 1.f);
+            VR.draw(*plate, m, light);
+          };
+          cross(vec3(0.5f, 0.f, 0.5f), vec3(0.25f, 0.f, 0.25f));
+          cross(vec3(0.5f, 0.f, -0.5f), vec3(0.25f, 0.f, 0.75f));
+          continue;
+        }
         int layer = c.tile < ts.count ? (int)c.tile : -1;
         i16 box[6] = {
           (i16)std::lround(c.x0), (i16)std::lround(c.y0), (i16)std::lround(c.z0),
