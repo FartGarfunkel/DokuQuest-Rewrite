@@ -527,6 +527,7 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   // A fence gate's posts and rails do too. A wool carpet and a conveyor are a thin plate of their picture.
   // Moss, a puddle, a lily pad and algae stay on the chunk picture.
   // Near the player those boxes are coloured voxels; farther off they stay on the chunk mesh.
+  // A composter is the farm's one bin, so it stays voxels at any distance, with the crafting table.
   if (kind == ShapeKind::Cake || kind == ShapeKind::Daylight || kind == ShapeKind::Hopper
       || kind == ShapeKind::Composter || kind == ShapeKind::Frame || kind == ShapeKind::Hook
       || kind == ShapeKind::Bed || kind == ShapeKind::Tripwire || kind == ShapeKind::Chorus
@@ -536,7 +537,7 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
       || (kind == ShapeKind::Pane && self.key.find("stained") == std::string::npos)
       || (kind == ShapeKind::Carpet && !T.tint && !isPuddle(R, id) && self.key != "moss_carpet")) {
     c.out.hasTorch = true;
-    if (c.opt.torchVoxels) {
+    if (c.opt.torchVoxels || kind == ShapeKind::Composter) {
       for (auto& b0 : boxes) {
         ShapeBox b = b0;
         b.b[0] += sox; b.b[3] += sox; b.b[2] += soz; b.b[5] += soz;
@@ -772,7 +773,7 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       || shapeName == "lantern" || shapeName == "grindstone" || shapeName == "stonecutter"
       || shapeName == "grave" || shapeName == "sculk_sensor" || shapeName == "sculk_shrieker"
       || shapeName == "spike_trap" || shapeName == "campfire" || shapeName == "soul_campfire"
-      || shapeName == "rope" || shapeName == "cauldron";
+      || shapeName == "rope" || shapeName == "cauldron" || shapeName == "enchanting_table";
   bool plain = nearProp;
   static int chainTile = -2;
   if (chainTile == -2) chainTile = R.tile("chain");
@@ -815,7 +816,10 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
     if (chainTile >= 0 && (b.side == chainTile || b.end == chainTile)) plain = false;
   }
   if (plain) c.out.hasTorch = true;
-  if (plain && c.opt.torchVoxels) {
+  // A chair, a table, an anvil, a lantern, a pot and an enchanting table stay coloured voxels at any
+  // distance. Loose stones and rope are common on the ground, so those wait until the player is close.
+  const bool scattered = shapeName == "loose_stones" || shapeName == "rope";
+  if (plain && (c.opt.torchVoxels || !scattered)) {
     ModelSpot s;
     s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
     s.facing = (u8)(rf & 3);
@@ -847,7 +851,7 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   if (T.campfire && !out) {
     int ft = R.tile(T.campfire == 1 ? "campfire_fire" : "soul_campfire_fire");
     // Near the player the flame is four coloured walls, and the frame still changes. Far away it stays a chunk picture.
-    if (ft >= 0 && plain && c.opt.torchVoxels) {
+    if (ft >= 0 && plain && (c.opt.torchVoxels || !scattered)) {
       CandleSpot s;
       s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
       s.tile = (u16)ft;
@@ -873,7 +877,7 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       float py = y + (lift + 4) / 16;
       // A plant near you is coloured voxels in the pot. Grass and ferns keep this place's climate, and the season.
       const BlockTraits& PT = traits(plant);
-      if (plain && c.opt.torchVoxels && pt >= 0) {
+      if (plain && (c.opt.torchVoxels || !scattered) && pt >= 0) {
         CandleSpot s;
         s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
         s.tile = (u16)pt;
