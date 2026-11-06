@@ -77,16 +77,16 @@ vec2 shapeST(int f, float X, float Y, float Z) {
 struct WaxKey {
   u16 tile = 0, top = 0, bot = 0, nx = 0, pz = 0, nz = 0;
   i16 b[6] = {};
-  u8 glow = 0;
+  u8 glow = 0, only = 63;
   bool operator==(const WaxKey& o) const {
-    return tile == o.tile && top == o.top && bot == o.bot && nx == o.nx && pz == o.pz && nz == o.nz && glow == o.glow
+    return tile == o.tile && top == o.top && bot == o.bot && nx == o.nx && pz == o.pz && nz == o.nz && glow == o.glow && only == o.only
         && b[0] == o.b[0] && b[1] == o.b[1] && b[2] == o.b[2] && b[3] == o.b[3] && b[4] == o.b[4] && b[5] == o.b[5];
   }
 };
 struct WaxHash {
   size_t operator()(const WaxKey& k) const {
     size_t h = k.tile * 131u + k.top;
-    h = h * 131u + k.bot + (size_t)k.glow * 17u;
+    h = h * 131u + k.bot + (size_t)k.glow * 17u + (size_t)k.only;
     h = h * 131u + k.nx; h = h * 131u + k.pz; h = h * 131u + k.nz;
     for (int i = 0; i < 6; i++) h = h * 131u + (u16)k.b[i];
     return h;
@@ -105,7 +105,7 @@ void waxCounts(const i16 b[6], int& nx, int& ny, int& nz) {
 
 // Two voxels per sixteenth. A see-through texel stays empty; a solid crop is filled so only the outside shows.
 // topL and botL are the top and bottom pictures (a cake's icing). They match layer when the box had one picture.
-const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int topL, int botL, bool glow = false, int nxL = -1, int pzL = -1, int nzL = -1) {
+const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int topL, int botL, bool glow = false, int nxL = -1, int pzL = -1, int nzL = -1, u8 only = 63) {
   struct Cache {
     const u8* px = nullptr; int count = -1, size = -1;
     std::unordered_map<WaxKey, std::unique_ptr<VoxelMeshGL>, WaxHash> m;
@@ -118,7 +118,7 @@ const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int 
   if (pzL < 0) pzL = layer;
   if (nzL < 0) nzL = layer;
   WaxKey key; key.tile = (u16)layer; key.top = (u16)std::max(topL, 0); key.bot = (u16)std::max(botL, 0); key.glow = glow ? 1 : 0;
-  key.nx = (u16)std::max(nxL, 0); key.pz = (u16)std::max(pzL, 0); key.nz = (u16)std::max(nzL, 0);
+  key.nx = (u16)std::max(nxL, 0); key.pz = (u16)std::max(pzL, 0); key.nz = (u16)std::max(nzL, 0); key.only = only;
   for (int i = 0; i < 6; i++) key.b[i] = b[i];
   auto it = cache.m.find(key);
   if (it != cache.m.end()) return it->second.get();
@@ -141,20 +141,20 @@ const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int 
   auto put = [&](int ix, int iy, int iz, u32 c) { if (!c) { hole = true; return; } g.set(ix, iy, iz, c); };
   for (int iz = 0; iz < nz; iz++) for (int iy = 0; iy < ny; iy++) {
     float Y = y0 + (iy + 0.5f) * 0.5f, Z = z0 + (iz + 0.5f) * 0.5f;
-    put(nx - 1, iy, iz, pix(0, x1, Y, Z));
-    put(0, iy, iz, pix(1, x0, Y, Z));
+    if (only & 1) put(nx - 1, iy, iz, pix(0, x1, Y, Z));
+    if (only & 2) put(0, iy, iz, pix(1, x0, Y, Z));
   }
   for (int iz = 0; iz < nz; iz++) for (int ix = 0; ix < nx; ix++) {
     float X = x0 + (ix + 0.5f) * 0.5f, Z = z0 + (iz + 0.5f) * 0.5f;
-    put(ix, ny - 1, iz, pix(2, X, y1, Z));
-    put(ix, 0, iz, pix(3, X, y0, Z));
+    if (only & 4) put(ix, ny - 1, iz, pix(2, X, y1, Z));
+    if (only & 8) put(ix, 0, iz, pix(3, X, y0, Z));
   }
   for (int iy = 0; iy < ny; iy++) for (int ix = 0; ix < nx; ix++) {
     float X = x0 + (ix + 0.5f) * 0.5f, Y = y0 + (iy + 0.5f) * 0.5f;
-    put(ix, iy, nz - 1, pix(4, X, Y, z1));
-    put(ix, iy, 0, pix(5, X, Y, z0));
+    if (only & 16) put(ix, iy, nz - 1, pix(4, X, Y, z1));
+    if (only & 32) put(ix, iy, 0, pix(5, X, Y, z0));
   }
-  if (!hole) {
+  if (!hole && only == 63) {
     const u32 fill = voxRGBA(1, 1, 1, glow ? VOXEL_GLOW : VOXEL_SOLID);
     for (int z = 1; z < nz - 1; z++) for (int y = 1; y < ny - 1; y++) for (int x = 1; x < nx - 1; x++) g.set(x, y, z, fill);
   }
@@ -581,7 +581,7 @@ public:
         // flame <= -10 is a glowing crop (a lit repeater torch) with no flame plate. -2 is scaffolding.
         bool glow = c.flame <= -10;
         const VoxelMeshGL* mesh = c.flame == -2 ? (layer >= 0 ? scaffoldMesh(ts, layer, topL, botL) : nullptr)
-                                                 : (layer >= 0 ? candleMesh(ts, layer, box, topL, botL, glow, nxL, pzL, nzL) : nullptr);
+                                                 : (layer >= 0 ? candleMesh(ts, layer, box, topL, botL, glow, nxL, pzL, nzL, c.only) : nullptr);
         const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
         VoxelLight light{(lit >> 4) / 15.f, (lit & 15) / 15.f};
         if (mesh && mesh->ready()) {
