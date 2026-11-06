@@ -1,11 +1,13 @@
 // render/painting_layer.cpp — paintings (BTA's painting, our own pictures): a framed canvas on the wall whose picture is
 // painted here from its number (block entity "painting", n): landscapes, seascapes, peaks, still lifes and colour
 // fields, each in one of six palettes, in 32 x 32 pixel art. Use one to turn to the next picture (sim/build.cpp).
-#include "render/tile_box.h"
 #include "render/item_layers.h"
 #include "render/be_scan.h"
 #include "render/content_draw.h"
+#include "assets/voxel.h"
+#include "assets/tileset.h"
 #include "client/session.h"
+#include "client/app.h"
 #include "core/registry.h"
 #include <unordered_map>
 
@@ -93,6 +95,53 @@ std::vector<u8> paint(int n) {
   return rgba;
 }
 
+// A trim bar: the metal tile stretched across the bar, one voxel per texel of a full block.
+struct TrimKey { u16 tile = 0; u8 n[3] = {}; bool operator==(const TrimKey& o) const { return tile == o.tile && n[0] == o.n[0] && n[1] == o.n[1] && n[2] == o.n[2]; } };
+struct TrimHash { size_t operator()(const TrimKey& k) const { return (size_t)k.tile * 1315423911u ^ k.n[0] ^ ((size_t)k.n[1] << 8) ^ ((size_t)k.n[2] << 16); } };
+const VoxelMeshGL* trimMesh(const TileSet& ts, TrimKey key) {
+  struct Cache {
+    const u8* px = nullptr; int count = -1, size = -1;
+    std::unordered_map<TrimKey, std::unique_ptr<VoxelMeshGL>, TrimHash> m;
+  };
+  static Cache cache;
+  if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
+    cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
+  }
+  for (int i = 0; i < 3; i++) if (!key.n[i]) key.n[i] = 1;
+  auto it = cache.m.find(key);
+  if (it != cache.m.end()) return it->second.get();
+  const int nx = key.n[0], ny = key.n[1], nz = key.n[2], src = ts.size > 0 ? ts.size : 32;
+  VoxelGrid g(ivec3(nx, ny, nz));
+  auto sample = [&](float u, float v) -> u32 {
+    if (key.tile >= ts.count) return 0;
+    int sx = clampv((int)(u * src), 0, src - 1), sy = clampv((int)(v * src), 0, src - 1);
+    const u8* p = ts.tile(key.tile) + ((size_t)sy * src + sx) * 4;
+    if (p[3] < 128) return 0;
+    return voxRGBA(p[0], p[1], p[2]);
+  };
+  for (int z = 0; z < nz; z++) for (int y = 0; y < ny; y++) for (int x = 0; x < nx; x++) g.set(x, y, z, voxRGBA(1, 1, 1));
+  for (int z = 0; z < nz; z++) for (int y = 0; y < ny; y++) {
+    float v = 1.f - (y + 0.5f) / ny;
+    if (u32 c = sample(1.f - (z + 0.5f) / nz, v)) g.set(nx - 1, y, z, c);
+    if (u32 c = sample((z + 0.5f) / nz, v)) g.set(0, y, z, c);
+  }
+  for (int z = 0; z < nz; z++) for (int x = 0; x < nx; x++) {
+    if (u32 c = sample((x + 0.5f) / nx, (z + 0.5f) / nz)) g.set(x, ny - 1, z, c);
+    if (u32 c = sample(1.f - (x + 0.5f) / nx, (z + 0.5f) / nz)) g.set(x, 0, z, c);
+  }
+  for (int y = 0; y < ny; y++) for (int x = 0; x < nx; x++) {
+    float v = 1.f - (y + 0.5f) / ny;
+    if (u32 c = sample((x + 0.5f) / nx, v)) g.set(x, y, nz - 1, c);
+    if (u32 c = sample(1.f - (x + 0.5f) / nx, v)) g.set(x, y, 0, c);
+  }
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  mesh->upload(md);
+  const VoxelMeshGL* out = mesh.get();
+  cache.m.emplace(key, std::move(mesh));
+  return out;
+}
+
 GLuint paintingTex(int n) {
   static std::unordered_map<int, GLuint> cache;
   n = ((n % PAINTINGS) + PAINTINGS) % PAINTINGS;
@@ -112,6 +161,8 @@ public:
     World& w = s.world();
     ContentDraw& cd = contentDraw();
     bool begun = false;
+    struct Bar { mat4 m; vec3 a, b; u16 tile; VoxelLight light; };
+    std::vector<Bar> bars;
     forBlockEntities(w, f, 48.f, [&](const Chunk&, json& e, int x, int y, int z) {
       if (e.value("type", "") != "painting") return;
       vec3 rel = f.cam.rel(glm::dvec3(x, y, z));
@@ -131,18 +182,35 @@ public:
       const std::string trim = e.value("trim", std::string());
       if (!trim.empty()) {
         const BlockId mb = reg().blockId(trim == "gold" ? "gold_block" : "iron_block");
-        const GLuint tx = mb ? tileTexture(s.app, reg().block(mb).faces[0]) : 0;
-        if (tx) {
+        const u16 tx = mb ? reg().block(mb).faces[0] : 0;
+        if (mb && tx < s.app.tiles.count) {
           const float h = 0.40625f + 0.05f, t = 0.05f, z0 = -0.035f, z1 = 0.035f;
-          const vec2 L((l >> 4) / 15.f, (l & 15) / 15.f);
-          drawTileBox(cd, m0, vec3(-h, h - t, z0), vec3(h, h, z1), tx, tx, tx, L, vec3(1), false);
-          drawTileBox(cd, m0, vec3(-h, -h, z0), vec3(h, -h + t, z1), tx, tx, tx, L, vec3(1), false);
-          drawTileBox(cd, m0, vec3(-h, -h + t, z0), vec3(-h + t, h - t, z1), tx, tx, tx, L, vec3(1), false);
-          drawTileBox(cd, m0, vec3(h - t, -h + t, z0), vec3(h, h - t, z1), tx, tx, tx, L, vec3(1), false);
+          VoxelLight L{(l >> 4) / 15.f, (l & 15) / 15.f};
+          bars.push_back({m0, vec3(-h, h - t, z0), vec3(h, h, z1), tx, L});
+          bars.push_back({m0, vec3(-h, -h, z0), vec3(h, -h + t, z1), tx, L});
+          bars.push_back({m0, vec3(-h, -h + t, z0), vec3(-h + t, h - t, z1), tx, L});
+          bars.push_back({m0, vec3(h - t, -h + t, z0), vec3(h, h - t, z1), tx, L});
         }
       }
     });
     if (begun) cd.end();
+    if (!bars.empty()) {
+      VoxelRenderer& VR = voxelRenderer();
+      VR.begin(f, f.cam.viewProj);
+      for (auto& bar : bars) {
+        vec3 d = bar.b - bar.a;
+        int nx = std::max(1, (int)std::lround(std::fabs(d.x) * 32.f));
+        int ny = std::max(1, (int)std::lround(std::fabs(d.y) * 32.f));
+        int nz = std::max(1, (int)std::lround(std::fabs(d.z) * 32.f));
+        TrimKey key; key.tile = bar.tile;
+        key.n[0] = (u8)std::min(nx, 255); key.n[1] = (u8)std::min(ny, 255); key.n[2] = (u8)std::min(nz, 255);
+        const VoxelMeshGL* mesh = trimMesh(s.app.tiles, key);
+        if (!mesh || !mesh->ready()) continue;
+        mat4 model = bar.m * glm::translate(mat4(1), bar.a) * glm::scale(mat4(1), vec3(d.x / key.n[0], d.y / key.n[1], d.z / key.n[2]));
+        VR.draw(*mesh, model, bar.light);
+      }
+      VR.end();
+    }
   }
 };
 
