@@ -419,11 +419,12 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
     }
   }
   // A cake's icing, a detector's face, a hopper's rim and a bed's pillow each keep the picture the
-  // box already used. A tripwire and a chorus stem do too. Near the player those boxes are coloured
-  // voxels; farther off they stay on the chunk mesh.
+  // box already used. A tripwire, a chorus stem and a repeater do too. Near the player those boxes
+  // are coloured voxels; farther off they stay on the chunk mesh.
   if (kind == ShapeKind::Cake || kind == ShapeKind::Daylight || kind == ShapeKind::Hopper
       || kind == ShapeKind::Composter || kind == ShapeKind::Frame || kind == ShapeKind::Hook
-      || kind == ShapeKind::Bed || kind == ShapeKind::Tripwire || kind == ShapeKind::Chorus) {
+      || kind == ShapeKind::Bed || kind == ShapeKind::Tripwire || kind == ShapeKind::Chorus
+      || kind == ShapeKind::Repeater || kind == ShapeKind::Comparator) {
     c.out.hasTorch = true;
     if (c.opt.torchVoxels) {
       for (auto& b0 : boxes) {
@@ -439,7 +440,7 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
         s.tile = (u16)std::max(st, 0);
         s.top = (u16)std::max(tt, 0);
         s.bot = (u16)std::max(bt, 0);
-        s.flame = -1;
+        s.flame = b.glow ? (i16)(-10 - b.glow) : (i16)-1;   // a lit torch glows; -2 is reserved for scaffolding
         c.out.candles.push_back(s);
       }
       c.tint = 0xFFFFFF; c.tintKind = 0;
@@ -566,7 +567,8 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       || shapeName == "grapple_anchor" || shapeName == "end_portal_frame" || shapeName == "end_portal_frame_eye"
       || shapeName == "lantern" || shapeName == "grindstone" || shapeName == "stonecutter"
       || shapeName == "grave" || shapeName == "sculk_sensor" || shapeName == "sculk_shrieker"
-      || shapeName == "spike_trap" || shapeName == "campfire" || shapeName == "soul_campfire";
+      || shapeName == "spike_trap" || shapeName == "campfire" || shapeName == "soul_campfire"
+      || shapeName == "rope";
   bool plain = nearProp;
   static int chainTile = -2;
   if (chainTile == -2) chainTile = R.tile("chain");
