@@ -327,6 +327,24 @@ void ParticleSystem::spawn(const std::string& kind, vec3 pos, int count, const j
     }
     return;
   }
+  if (kind == "heart") {   // a red heart rising off a fed or bred animal
+    u16 t = (u16)tile("heart_particle");
+    for (int i = 0; i < count; i++) {
+      Particle q; q.tile = t; q.p = pos + vec3((rnd() - 0.5f) * 0.6f, rnd() * 0.4f, (rnd() - 0.5f) * 0.6f); q.v = vec3(0, 0.6f, 0);
+      q.life = q.max = 1; q.size = 0.12f; q.light = 0xFF; q.grav = 0;
+      add(q);
+    }
+    return;
+  }
+  if (kind == "bubbles") {   // a pale bubble leaving the mouth under water
+    u16 t = (u16)tile("bubble_particle");
+    for (int i = 0; i < count; i++) {
+      Particle q; q.tile = t; q.p = pos; q.v = vec3((rnd() - 0.5f) * 0.2f, 1.2f, (rnd() - 0.5f) * 0.2f);
+      q.life = q.max = 1.2f; q.size = 0.05f; q.light = 0xFF; q.grav = -0.4f;
+      add(q);
+    }
+    return;
+  }
   (void)few;
   // anything else: a burst of that tile or block, like the original's game.burst(x, y, z, name, n, speed)
   burst(pos, str("tile", kind), count, num("speed", 0.6f), num("grav", 14));
