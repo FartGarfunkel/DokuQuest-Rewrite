@@ -116,6 +116,7 @@ void VoxelMeshGL::upload(const VoxelMeshData& d) {
       {0, 3, GL_UNSIGNED_SHORT, GL_FALSE, false, 0},
       {1, 1, GL_UNSIGNED_BYTE, GL_FALSE, true, 6},
       {2, 4, GL_UNSIGNED_BYTE, GL_TRUE, false, 8},
+      {3, 1, GL_UNSIGNED_BYTE, GL_FALSE, true, 7},   // pad byte: cloth sway, 0 on every other mesh
     });
   }
   mesh->uploadQuads(d.verts.data(), d.verts.size() * sizeof(VoxelVertex), d.quads());
@@ -141,6 +142,7 @@ void VoxelRenderer::begin(const FrameCtx& f, const mat4& viewProj, bool fog) {
   if (!fog) { sh->set("uFogStart", 1e6f); sh->set("uFogEnd", 2e6f); }
   sh->set("uViewProj", viewProj);
   sh->set("uCamFrac", vec3(f.cam.pos - f.cam.origin));
+  sh->set("uWorldOrigin", vec3(glm::mod(f.cam.origin, glm::dvec3(4096.0))));
   sh->set("uNeutral", 0.f);
   time = f.time;
   // The hand and the map pass a different projection. Only the world camera matches terrain depth.
@@ -158,6 +160,7 @@ void VoxelRenderer::beginNeutral(const mat4& viewProj, vec3 lightDir) {
   sh->set("uSunDir", glm::normalize(lightDir)); sh->set("uBlockLightColor", vec3(1));
   sh->set("uViewProj", viewProj);
   sh->set("uCamFrac", vec3(0, 0, 10));
+  sh->set("uWorldOrigin", vec3(0));
   sh->set("uNeutral", 1.f);
   time = 0;
   noteWorld = false;

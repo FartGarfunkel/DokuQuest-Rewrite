@@ -933,6 +933,162 @@ const VoxelMeshGL* flowerCupMesh(const TileSet& ts, int layer, u32 hsh, int kind
   return out;
 }
 
+// A flag, a banner, bunting or a washing line. The boxes are the ones the chunk mesh builds,
+// two voxels to a sixteenth, so the wool and the rope keep their picture. The spare byte on each
+// vertex is the same wind code, and the free edge still flaps.
+const VoxelMeshGL* clothMesh(const TileSet& ts, BlockId id, u8 meta, float reachPx) {
+  struct Key {
+    u16 id; u8 meta; u8 reach;
+    bool operator==(const Key& o) const { return id == o.id && meta == o.meta && reach == o.reach; }
+  };
+  struct Hash { size_t operator()(const Key& k) const { return ((size_t)k.id << 16) ^ ((size_t)k.meta << 8) ^ k.reach; } };
+  struct Cache {
+    const u8* px = nullptr; int count = -1, size = -1;
+    std::unordered_map<Key, std::unique_ptr<VoxelMeshGL>, Hash> m;
+  };
+  static Cache cache;
+  if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
+    cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
+  }
+  const int reach = std::max(0, (int)std::lround(reachPx));
+  Key key{id, meta, (u8)reach};
+  auto it = cache.m.find(key);
+  if (it != cache.m.end()) return it->second.get();
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  const VoxelMeshGL* out = mesh.get();
+  const BlockTraits& T = traits(id);
+  const int rf = T.facingModel ? (int)(meta & 3) : 0;
+  std::vector<ShapeBox> boxes;
+  clothBoxes(id, meta, boxes);
+  if (boxes.empty()) { cache.m.emplace(key, std::move(mesh)); return out; }
+  const float reachF = (float)reach;
+  const int BIAS = 32;
+  auto gOf = [](float px) {
+    int g = (int)std::lround(px * 2.f) + BIAS;
+    if (g < 0) g = 0;
+    if (g > 127) g = 127;
+    return g;
+  };
+  struct Span { ShapeBox geo; int x0, y0, z0, x1, y1, z1; };
+  std::vector<Span> spans;
+  int xlo = 999, ylo = 999, zlo = 999, xhi = 0, yhi = 0, zhi = 0;
+  for (auto& b0 : boxes) {
+    ShapeBox b = b0;
+    if (reachF > 0.f && b.kind == 1) { b.b[2] += reachF; b.b[5] += reachF; }
+    rotBox(b, rf);
+    Span s;
+    s.geo = b;
+    s.x0 = gOf(b.b[0]); s.x1 = gOf(b.b[3]);
+    s.y0 = gOf(b.b[1] + b.lift); s.y1 = gOf(b.b[4] + b.lift);
+    s.z0 = gOf(b.b[2]); s.z1 = gOf(b.b[5]);
+    if (s.x1 <= s.x0) s.x1 = std::min(127, s.x0 + 1);
+    if (s.y1 <= s.y0) s.y1 = std::min(127, s.y0 + 1);
+    if (s.z1 <= s.z0) s.z1 = std::min(127, s.z0 + 1);
+    xlo = std::min(xlo, s.x0); ylo = std::min(ylo, s.y0); zlo = std::min(zlo, s.z0);
+    xhi = std::max(xhi, s.x1); yhi = std::max(yhi, s.y1); zhi = std::max(zhi, s.z1);
+    spans.push_back(s);
+  }
+  const int DX = std::max(1, xhi - xlo), DY = std::max(1, yhi - ylo), DZ = std::max(1, zhi - zlo);
+  if ((size_t)DX * DY * DZ > 200000u) { cache.m.emplace(key, std::move(mesh)); return out; }
+  struct Cell { u32 col = 0; u8 sway = 0; };
+  std::vector<Cell> grid((size_t)DX * DY * DZ);
+  auto at = [&](int x, int y, int z) -> Cell& {
+    return grid[((size_t)(z - zlo) * DY + (size_t)(y - ylo)) * DX + (size_t)(x - xlo)];
+  };
+  const int S = ts.size > 0 ? ts.size : 32;
+  auto swayOf = [&](u8 kind, float vx, float vy, float vz) -> u8 {
+    if (kind == 0) return 0;
+    if (kind == 1) {
+      float dd = (rf == 0 ? 1.f - vz : rf == 1 ? vx : rf == 2 ? vz : 1.f - vx) + reachF / 16.f;
+      return (u8)(((rf & 1) ? 48 : 64) + std::lround(clampv(dd, 0.f, 1.f) * 15.f));
+    }
+    if (kind == 2) {
+      float dd = (meta & 4) ? 0.45f + (1.f - vy) * 0.55f : (1.f - vy) * 0.45f;
+      return (u8)(((rf & 1) ? 64 : 48) + std::lround(clampv(dd, 0.f, 1.f) * 15.f));
+    }
+    if (kind == 3) {
+      float dd = clampv((14.f / 16.f - vy) / 0.55f, 0.f, 1.f) * 0.85f + 0.1f;
+      return (u8)(((rf & 1) ? 64 : 48) + std::lround(dd * 15.f));
+    }
+    if (kind == 4) return (u8)(Sway::Hang + 1);
+    return (u8)(Sway::Hang + std::lround(clampv((1.f - vy) * 1.1f, 0.f, 1.f) * 11.f));
+  };
+  auto sample = [&](int tile, int f, float X, float Y, float Z) -> u32 {
+    if (tile < 0 || tile >= ts.count) return 0;
+    vec2 st = shapeST(f, X, Y, Z);
+    st.x = clampv(st.x, 0.f, 16.f); st.y = clampv(st.y, 0.f, 16.f);
+    int col = (int)std::floor(st.x / 16.f * S), row = (int)std::floor(st.y / 16.f * S);
+    col = clampv(col, 0, S - 1); row = clampv(row, 0, S - 1);
+    const u8* p = ts.tile(tile) + ((size_t)row * S + col) * 4;
+    if (p[3] < 128) return 0;
+    return voxRGBA(p[0], p[1], p[2]);
+  };
+  auto pix = [](int g) { return (g + 0.5f - BIAS) / 2.f; };
+  for (const Span& s : spans) {
+    const ShapeBox& b = s.geo;
+    const int side = b.side >= 0 ? b.side : 0;
+    const int end = b.end >= 0 ? b.end : side;
+    const float lift = b.lift;
+    auto put = [&](int x, int y, int z, int f, float X, float Y, float Z) {
+      if (x < xlo || y < ylo || z < zlo || x >= xhi || y >= yhi || z >= zhi) return;
+      u32 c = sample(f == 2 || f == 3 ? end : side, f, X, Y, Z);
+      if (!c) return;
+      Cell& cell = at(x, y, z);
+      cell.col = c;
+      cell.sway = swayOf(b.kind, pix(x) / 16.f, pix(y) / 16.f, pix(z) / 16.f);
+    };
+    for (int iz = s.z0; iz < s.z1; iz++) for (int iy = s.y0; iy < s.y1; iy++) {
+      float Y = pix(iy) - lift, Z = pix(iz);
+      put(s.x1 - 1, iy, iz, 0, b.b[3], Y, Z);
+      put(s.x0, iy, iz, 1, b.b[0], Y, Z);
+    }
+    for (int iz = s.z0; iz < s.z1; iz++) for (int ix = s.x0; ix < s.x1; ix++) {
+      float X = pix(ix), Z = pix(iz);
+      put(ix, s.y1 - 1, iz, 2, X, b.b[4], Z);
+      put(ix, s.y0, iz, 3, X, b.b[1], Z);
+    }
+    for (int iy = s.y0; iy < s.y1; iy++) for (int ix = s.x0; ix < s.x1; ix++) {
+      float X = pix(ix), Y = pix(iy) - lift;
+      put(ix, iy, s.z1 - 1, 4, X, Y, b.b[5]);
+      put(ix, iy, s.z0, 5, X, Y, b.b[2]);
+    }
+  }
+  static const int C[6][4][3] = {
+    {{1, 0, 1}, {1, 0, 0}, {1, 1, 0}, {1, 1, 1}},
+    {{0, 0, 0}, {0, 0, 1}, {0, 1, 1}, {0, 1, 0}},
+    {{0, 1, 1}, {1, 1, 1}, {1, 1, 0}, {0, 1, 0}},
+    {{1, 0, 1}, {0, 0, 1}, {0, 0, 0}, {1, 0, 0}},
+    {{0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1}},
+    {{1, 0, 0}, {0, 0, 0}, {0, 1, 0}, {1, 1, 0}},
+  };
+  static const int N[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+  auto solid = [&](int x, int y, int z) {
+    if (x < xlo || y < ylo || z < zlo || x >= xhi || y >= yhi || z >= zhi) return false;
+    return at(x, y, z).col != 0;
+  };
+  VoxelMeshData md;
+  for (int z = zlo; z < zhi; z++) for (int y = ylo; y < yhi; y++) for (int x = xlo; x < xhi; x++) {
+    const Cell& cell = at(x, y, z);
+    if (!cell.col) continue;
+    for (int f = 0; f < 6; f++) {
+      if (solid(x + N[f][0], y + N[f][1], z + N[f][2])) continue;
+      for (int k = 0; k < 4; k++) {
+        VoxelVertex vv;
+        vv.x = (u16)(x + C[f][k][0]);
+        vv.y = (u16)(y + C[f][k][1]);
+        vv.z = (u16)(z + C[f][k][2]);
+        vv.nao = (u8)(f | (3 << 3));
+        vv.pad = cell.sway;
+        vv.rgba = cell.col;
+        md.verts.push_back(vv);
+      }
+    }
+  }
+  mesh->upload(md);
+  cache.m.emplace(key, std::move(mesh));
+  return out;
+}
+
 class TorchLayer : public RenderLayer {
 public:
   const char* name() const override { return "voxel-torches"; }
@@ -981,7 +1137,7 @@ public:
         // A chain can sit on a corner and its top link can reach half a block higher.
         // A chain reaches above the cell. Redstone on a bottom slab drops half a block, and a link climbs the cell.
         // A rail on a bottom slab drops the same way, and a slope climbs the cell.
-        float reach = c.flame == -7 ? 1.25f : (c.flame == -8 || c.flame == -9 || c.flame == -14 || c.flame == -15) ? 1.35f : 0.9f;
+        float reach = c.flame == -7 ? 1.25f : (c.flame == -8 || c.flame == -9 || c.flame == -14 || c.flame == -15 || c.flame == -16) ? 1.35f : 0.9f;
         if (!f.cam.frustum.sphere(cell + vec3(0.5f), reach)) continue;
         // -4 is a ladder. only keeps the 0..3 turn rotBox uses. The picture stands against the same wall.
         if (c.flame == -4) {
@@ -1108,6 +1264,18 @@ public:
             const float open = (c.only & 4) ? 1.f : 0.f;
             const mat4 model = doorPanelModel(cell, c.only & 3, trap, right, open, PS);
             VR.draw(*plate, model, VoxelLight{(lit >> 4) / 15.f, (lit & 15) / 15.f});
+          }
+          continue;
+        }
+        // -16 is a flag, a banner, bunting or a washing line. tile is the block, only is its meta,
+        // x0 is how far a flag reaches to its pole. The wind is in the mesh.
+        if (c.flame == -16) {
+          const VoxelMeshGL* mesh = clothMesh(ts, (BlockId)c.tile, c.only, c.x0);
+          if (mesh && mesh->ready()) {
+            if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+            const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
+            const mat4 model = glm::translate(mat4(1), cell - vec3(1.f)) * glm::scale(mat4(1), vec3(1.f / 32.f));
+            VR.draw(*mesh, model, VoxelLight{(lit >> 4) / 15.f, (lit & 15) / 15.f});
           }
           continue;
         }
