@@ -3,8 +3,10 @@
 #include "client/session.h"
 #include "client/app.h"
 #include "assets/voxel.h"
+#include "assets/voxel_paint.h"
 #include "assets/tileset.h"
 #include "world/shapes.h"
+#include "common/noise.h"
 #include <unordered_map>
 #include <cmath>
 
@@ -834,6 +836,88 @@ const VoxelMeshGL* leverStick(const TileSet& ts, int layer) {
   return out;
 }
 
+// A torchflower's cup, the same stem, leaves and five petals the chunk flower builds.
+// The hash is the plant's own, so each one leans and turns the way that flower does.
+const VoxelMeshGL* flowerCupMesh(const TileSet& ts, int layer, u32 hsh) {
+  struct Cache {
+    const u8* px = nullptr; int count = -1, size = -1;
+    std::unordered_map<u64, std::unique_ptr<VoxelMeshGL>> m;
+  };
+  static Cache cache;
+  if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
+    cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
+  }
+  const u64 key = ((u64)(u32)std::max(layer, 0) << 32) | hsh;
+  auto it = cache.m.find(key);
+  if (it != cache.m.end()) return it->second.get();
+  const int S = ts.size > 0 ? ts.size : 32;
+  struct Px { int i, j, r, g, b; float lum; };
+  std::vector<Px> px;
+  if (layer >= 0 && layer < ts.count) {
+    for (int j = 0; j < S; j++) for (int i = 0; i < S; i++) {
+      const u8* p = ts.tile(layer) + ((size_t)j * S + i) * 4;
+      if (p[3] < 128) continue;
+      px.push_back({i, j, p[0], p[1], p[2], 0.3f * p[0] + 0.59f * p[1] + 0.11f * p[2]});
+    }
+  }
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  if (!px.empty()) {
+    auto green = [](const Px& p) { return p.g > p.r + 10 && p.g >= p.b - 8; };
+    auto common = [](const std::vector<Px>& list, Px& out) {
+      std::unordered_map<int, int> n; int bn = 0; bool found = false;
+      for (auto& p : list) { int k = (p.r >> 4) << 8 | (p.g >> 4) << 4 | (p.b >> 4); int c = ++n[k]; if (c > bn) { bn = c; out = p; found = true; } }
+      return found;
+    };
+    std::vector<Px> G, F;
+    for (auto& p : px) { if (green(p)) G.push_back(p); else if (p.lum > 25) F.push_back(p); }
+    Px stem = px[0]; common(G, stem);
+    Px leaf = stem; { float bl = -1; for (auto& p : G) if (p.lum > bl) { bl = p.lum; leaf = p; } }
+    Px petal = stem; common(F, petal);
+    std::vector<Px> far;
+    for (auto& p : F) if (std::abs(p.r - petal.r) + std::abs(p.g - petal.g) + std::abs(p.b - petal.b) > 70) far.push_back(p);
+    Px center = petal;
+    if (!common(far, center)) { float bl = 1e9f; for (auto& p : F) if (p.lum < bl) { bl = p.lum; center = p; } }
+    int top = S; for (auto& p : px) top = std::min(top, p.j);
+    float headRow = (float)top + 2.f;
+    if (!F.empty()) { float s = 0; for (auto& p : F) s += p.j; headRow = s / (float)F.size(); }
+    float R = (float)S;
+    float h = clampv((R - top) / R, 0.42f, 0.95f);
+    float head = clampv(1.f - (headRow + 0.5f) / R, 0.3f, 0.9f);
+    float r1 = (hsh & 255) / 255.f, r2 = ((hsh >> 8) & 255) / 255.f, r3 = ((hsh >> 16) & 255) / 255.f;
+    const float TAU = 6.2831853f, PI = 3.14159265f;
+    float cx = 0.5f + (r1 - 0.5f) * 0.3f, cz = 0.5f + (r2 - 0.5f) * 0.3f, rot = r3 * TAU;
+    float H = h * (0.88f + r1 * 0.2f), hy = std::min(H, head + 0.08f) - 0.02f;
+    if (hy < 0.12f) hy = 0.12f;
+    float mid = hy * 0.5f, lean = 0.035f, lx = std::cos(rot) * lean, lz = std::sin(rot) * lean;
+    float s1 = 1.f / 32.f;
+    float hx = cx + lx * 0.6f, hz = cz + lz * 0.6f;
+    VoxelPainter painter(ivec3(S, S * 2, S), vec3(0), 1.f / (float)S);
+    auto paint = [](int r, int g, int b) {
+      u32 c = voxRGBA(r, g, b);
+      return [c](const PaintPt&) { return c; };
+    };
+    painter.box(vec3(cx - s1, 0.f, cz - s1), vec3(cx + s1, mid, cz + s1), paint(stem.r, stem.g, stem.b));
+    painter.box(vec3(cx + lx * 0.5f - s1, mid - 0.01f, cz + lz * 0.5f - s1), vec3(cx + lx * 0.5f + s1, hy, cz + lz * 0.5f + s1), paint(stem.r, stem.g, stem.b));
+    for (int k = 0; k < 2; k++) {
+      float a = rot + k * PI + 0.6f, lyy = 0.06f + k * 0.08f, len = 0.17f + r2 * 0.06f;
+      painter.rod(vec3(cx, lyy, cz), vec3(cx + std::cos(a) * len, lyy + 0.13f, cz + std::sin(a) * len),
+                  vec2(0.075f, 0.02f), vec2(0.075f, 0.02f), paint(leaf.r, leaf.g, leaf.b));
+    }
+    painter.box(vec3(hx - 0.04f, hy - 0.01f, hz - 0.04f), vec3(hx + 0.04f, hy + 0.06f, hz + 0.04f), paint(center.r, center.g, center.b));
+    for (int k = 0; k < 5; k++) {
+      float a = rot + k / 5.f * TAU;
+      painter.rod(vec3(hx + std::cos(a) * 0.03f, hy, hz + std::sin(a) * 0.03f),
+                  vec3(hx + std::cos(a) * 0.085f, hy + 0.15f, hz + std::sin(a) * 0.085f),
+                  vec2(0.075f, 0.025f), vec2(0.075f, 0.025f), paint(petal.r, petal.g, petal.b));
+    }
+    VoxelMeshData md; buildVoxelMesh(painter.g, md);
+    mesh->upload(md);
+  }
+  const VoxelMeshGL* out = mesh.get();
+  cache.m.emplace(key, std::move(mesh));
+  return out;
+}
+
 class TorchLayer : public RenderLayer {
 public:
   const char* name() const override { return "voxel-torches"; }
@@ -965,6 +1049,34 @@ public:
             float a = ang + k * step, ca = std::cos(a) * rad, sa = std::sin(a) * rad;
             cross(vec3(2.f * ca, 0.f, 2.f * sa), vec3(cxp - ca, 0.f, czp - sa));
           }
+          continue;
+        }
+        // -13 is a torchflower. The cup is coloured voxels, and the whole flower takes the plant's wind step.
+        if (c.flame == -13) {
+          int layer = c.tile < ts.count ? (int)c.tile : -1;
+          if (layer >= 0 && anim[layer] >= 0) layer = anim[layer];
+          const int wy = (int)origin.y + c.cy;
+          const u32 hsh = hash32((i32)c.cx, (i32)wy, (i32)c.cz, 5);
+          const VoxelMeshGL* cup = layer >= 0 ? flowerCupMesh(ts, layer, hsh) : nullptr;
+          if (!cup || !cup->ready()) continue;
+          if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+          const int PS = ts.size > 0 ? ts.size : 32;
+          const u8 lit = w.getLight((int)origin.x + c.cx, wy, (int)origin.z + c.cz);
+          VoxelLight light{(lit >> 4) / 15.f, (lit & 15) / 15.f};
+          const vec3 world = origin + vec3((float)c.cx + 0.5f, (float)c.cy, (float)c.cz + 0.5f);
+          const float t = (float)std::fmod(f.time, 3600.0);
+          const float gust = 0.6f + 0.4f * std::sin(t * 0.35f + world.x * 0.02f + world.z * 0.015f);
+          const vec3 wave(
+              (std::sin(t * 1.9f + world.x * 0.37f + world.z * 0.23f) + 0.4f * std::sin(t * 3.3f + world.x * 1.1f)) * 0.075f * f.wind * gust,
+              0.f,
+              std::cos(t * 1.5f + world.z * 0.31f + world.x * 0.11f) * 0.055f * f.wind * gust);
+          const float yBase = cell.y + c.sink / 16.f;
+          mat4 m(1.f);
+          m[0] = vec4(1.f / (float)PS, 0.f, 0.f, 0.f);
+          m[1] = vec4(0.f, 1.f / (float)PS, 0.f, 0.f);
+          m[2] = vec4(0.f, 0.f, 1.f / (float)PS, 0.f);
+          m[3] = vec4(vec3(cell.x, yBase, cell.z) + wave, 1.f);
+          VR.draw(*cup, m, light);
           continue;
         }
         // -5 is a lit campfire: four walls inset the way the chunk plates were. -6 is a fire block: two crosses.
