@@ -85,6 +85,7 @@ void main() {
 #ifdef FRAGMENT
 uniform vec3 uCamFrac;       // camera position inside its block
 uniform int uPass;           // 0 opaque, 1 cutout, 2 translucent
+uniform int uTexelGrid;      // 1: a close face reads the centre of each 32×32 texel
 in vec3 vUV;
 in vec4 vLight;
 in vec3 vSun;
@@ -274,6 +275,12 @@ void main() {
   // smaller than a pixel, where the sharp texel shimmers.
   float texel = max(length(gdx), length(gdy));
   bool crisp = cellSnap && texel * float(VOX) < 0.85;
+  // The same 32×32 grid, one sample per pixel. A quad per texel filled the terrain arena past a
+  // gigabyte and the load was killed before the world finished appearing.
+  if (uTexelGrid != 0 && !cellSnap && !liquid && texel * float(VOX) < 0.85) {
+    fuv = (floor(fuv * VOX) + 0.5) / VOX;
+    crisp = true;
+  }
   bool tintedWater = liquid && !lava && (vMat & 128u) != 0u;
   // A liquid never reads the tile. Lava's far colour is the calm hot end of the crust. Water and a puddle
   // are the same calm grey the near water already used, and the climate tint paints the water. Acid carries

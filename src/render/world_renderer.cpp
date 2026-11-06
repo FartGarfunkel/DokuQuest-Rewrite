@@ -170,6 +170,16 @@ void WorldRenderer::grow(u32 need) {
   if (pages.empty() || pages.back().cap >= PAGE_V) pages.push_back({});
   Page& pg = pages.back(); u32 pi = (u32)pages.size() - 1;
   u32 ncap = std::min<u32>(PAGE_V, std::max<u32>(pg.cap ? pg.cap + std::max(step, pg.cap / 4) : first, pg.cap + need + 65536));
+  // The per-texel mesh climbed 64 MB → 1133 MB and the process was killed (signal 9) mid-load.
+  // Hold the arena here so a heavy section is skipped instead of taking the rest of memory.
+  size_t have = 0; for (auto& p : pages) have += (size_t)p.cap * sizeof(ChunkVertex);
+  size_t next = have - (size_t)pg.cap * sizeof(ChunkVertex) + (size_t)ncap * sizeof(ChunkVertex);
+  if (next > ((size_t)512 << 20)) {
+    static int told = 0;
+    if (told++ == 0) DQ_LOG("terrain arena: held at %.0f MB; a heavier section was left out", have / 1048576.0);
+    if (pg.cap == 0) pages.pop_back();
+    return;
+  }
   while (glGetError() != GL_NO_ERROR) {}
   GLuint nb; glGenBuffers(1, &nb);
   glBindBuffer(GL_COPY_WRITE_BUFFER, nb);
@@ -201,9 +211,14 @@ u32 WorldRenderer::alloc(u32 n) {
       usedBytes += (size_t)n * sizeof(ChunkVertex);
       return base;
     }
+    const size_t before = arenaBytes;
+    const u32 caps = pages.empty() ? 0u : pages.back().cap;
+    const size_t npages = pages.size();
     grow(n);
+    const u32 capsAfter = pages.empty() ? 0u : pages.back().cap;
+    if (arenaBytes == before && pages.size() == npages && capsAfter == caps) break;
   }
-  return 0;
+  return ~u32(0);
 }
 void WorldRenderer::release(u32 base, u32 n) {
   if (!n) return;
@@ -253,9 +268,9 @@ void WorldRenderer::submit(const SectionKey& k, ThreadPool& pool, float pri, boo
   if (in->empty) { secVis.erase(k); auto it = meshes.find(k); if (it != meshes.end()) { release(it->second->base, it->second->cap); meshes.erase(it); } return; }
   inFlight.insert(k);
   auto sh = shared; MesherOptions mo = mopt; mo.detail = detail; mo.torchVoxels = nearTorch(k);
-  // Near faces are the 32×32 picture: one colour cell per texel. Farther faces average 2×2 texels,
-  // which is about a pixel once the block is small. A pack's chunk shader still gets real coordinates.
-  mo.colourStep = (colourCubes && !packGeom) ? (nearTorch(k) ? 1 : 2) : 0;
+  // One quad per face. A quad per texel of the 32×32 picture filled the arena past a gigabyte
+  // and the load was killed. The chunk shader reads that picture one texel per pixel up close.
+  mo.colourStep = 0;
   u32 gen = generation;
   pool.submit([sh, in, k, mo, gen] {
     Result r; r.k = k; r.gen = gen;
@@ -382,7 +397,9 @@ void WorldRenderer::upload(Result& r) {
   if (!m) m = std::make_unique<SecMesh>();
   if (m->cap < nv || m->cap > nv * 2 + 4096) {
     release(m->base, m->cap); m->cap = 0;
-    m->base = alloc(nv); m->cap = nv;
+    u32 got = alloc(nv);
+    if (got == ~u32(0)) { m->base = 0; nq[0] = nq[1] = nq[2] = 0; }
+    else { m->base = got; m->cap = nv; }
   }
   for (int i = 0; i < 3; i++) { m->nq[i] = nq[i]; maxQuads = std::max(maxQuads, nq[i]); }
   if (maxQuads > 16384) quadIndexBuffer(maxQuads);
@@ -391,7 +408,7 @@ void WorldRenderer::upload(Result& r) {
   m->torches = std::move(r.out.torches); m->candles = std::move(r.out.candles); m->levers = std::move(r.out.levers);
   m->models = std::move(r.out.models); m->rods = std::move(r.out.rods);
   m->hasTorch = r.out.hasTorch; m->torchVox = r.out.torchVox; m->colourFine = r.out.colourFine;
-  if (m->base / PAGE_V >= pages.size()) return;
+  if (!m->cap || m->base / PAGE_V >= pages.size()) return;
   glBindBuffer(GL_ARRAY_BUFFER, pages[m->base / PAGE_V].vbo);
   size_t off = (size_t)(m->base % PAGE_V) * sizeof(ChunkVertex);
   const std::vector<ChunkVertex>* parts[3] = {&r.out.opaque, &r.out.cutout, &r.out.trans};
@@ -485,24 +502,8 @@ void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs)
     for (size_t i = 0; i < come.size() && i < 6; i++) submit(come[i].second, pool, come[i].first - 8000, wantDetail(come[i].second, camPos));
     for (size_t i = 0; i < go.size() && i < 4; i++) submit(go[i].second, pool, 20000 - go[i].first, wantDetail(go[i].second, camPos));
   }
-  // The same ring for world cubes: inside it every texel is its own cell, past it a 2×2 average.
-  // Walking in rebuilds the section, the same way a torch becomes voxels as you arrive.
-  colourT -= 1.0 / 60;
-  if (colourCubes && !packGeom && colourT <= 0) {
-    colourT = 0.25;
-    std::vector<std::pair<float, SectionKey>> come, go;
-    for (auto& [k, m] : meshes) {
-      if (!m || inFlight.count(k)) continue;
-      const float dx = k.cx * 16 + 8.f - camPos.x, dy = dimBase(k.dim) + k.sy * 16 + 8.f - camPos.y, dz = k.cz * 16 + 8.f - camPos.z;
-      const float d2 = dx * dx + dy * dy + dz * dz;
-      if (!m->colourFine && d2 < (32.f + 8.f) * (32.f + 8.f)) come.push_back({std::sqrt(d2), k});
-      else if (m->colourFine && d2 > (32.f + 24.f) * (32.f + 24.f)) go.push_back({-std::sqrt(d2), k});
-    }
-    std::sort(come.begin(), come.end(), [](auto& a, auto& b) { return a.first < b.first; });
-    std::sort(go.begin(), go.end(), [](auto& a, auto& b) { return a.first < b.first; });
-    for (size_t i = 0; i < come.size() && i < 4; i++) submit(come[i].second, pool, come[i].first - 7000, wantDetail(come[i].second, camPos));
-    for (size_t i = 0; i < go.size() && i < 2; i++) submit(go[i].second, pool, 22000 - go[i].first, wantDetail(go[i].second, camPos));
-  }
+  // No per-texel remesh. Those meshes are what grew the arena until the load was killed.
+  // Close faces take the 32×32 picture in the chunk shader, one texel per pixel.
   double t0 = nowSeconds();
   std::vector<Result> done;
   { std::lock_guard<std::mutex> lk(shared->mx); done.swap(shared->done); }
@@ -528,6 +529,7 @@ void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
   shader.set("uWorldOrigin", vec3(wo));
   shader.set("uCamFrac", vec3(f.cam.pos - f.cam.origin));
   shader.set("uPass", pass);
+  shader.set("uTexelGrid", (colourCubes && !packGeom) ? 1 : 0);
   shader.set("uGrassFade", gfx.modern ? vec2(20, 34) : vec2(13, 22));
   tex.bind(shader);
   if (pass == 0 && f.time - lutCheckT > 1.0) {   // the pack's colormaps may have changed: look again now and then
