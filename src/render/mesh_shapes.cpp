@@ -518,15 +518,17 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   // box already used. A tripwire, a chorus stem, a repeater, a piston and a cactus do too.
   // Clear glass and iron bars do too. Stained glass stays on the chunk picture: its colour is a see-through wash.
   // A cocoa pod keeps the ripe picture. A young pod is a smaller crop of that same picture.
-  // A fence gate's posts and rails do too. Near the player those boxes
-  // are coloured voxels; farther off they stay on the chunk mesh.
+  // A fence gate's posts and rails do too. A wool carpet and a conveyor are a thin plate of their picture.
+  // Moss, a puddle, a lily pad and algae stay on the chunk picture.
+  // Near the player those boxes are coloured voxels; farther off they stay on the chunk mesh.
   if (kind == ShapeKind::Cake || kind == ShapeKind::Daylight || kind == ShapeKind::Hopper
       || kind == ShapeKind::Composter || kind == ShapeKind::Frame || kind == ShapeKind::Hook
       || kind == ShapeKind::Bed || kind == ShapeKind::Tripwire || kind == ShapeKind::Chorus
       || kind == ShapeKind::Repeater || kind == ShapeKind::Comparator
       || kind == ShapeKind::PistonBase || kind == ShapeKind::PistonHead || kind == ShapeKind::Cactus
       || kind == ShapeKind::Cocoa || kind == ShapeKind::Gate
-      || (kind == ShapeKind::Pane && self.key.find("stained") == std::string::npos)) {
+      || (kind == ShapeKind::Pane && self.key.find("stained") == std::string::npos)
+      || (kind == ShapeKind::Carpet && !T.tint && !isPuddle(R, id) && self.key != "moss_carpet")) {
     c.out.hasTorch = true;
     if (c.opt.torchVoxels) {
       for (auto& b0 : boxes) {
