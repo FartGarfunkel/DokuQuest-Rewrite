@@ -68,8 +68,10 @@ public:
   std::string skyZone(Level& lv, float x, float z) const;
   void strike(Level& lv, int x, int y, int z, const ivec3* rod = nullptr);
   void noteIce(int x, int y, int z) { ice.push_back({x, y, z}); if (ice.size() > 1500) ice.erase(ice.begin(), ice.begin() + (ice.size() - 1500)); }
-  // random block ticks on puddles and snow layers (call from the random-tick system)
+  // random block ticks on puddles, snow layers and plain ice (call from the random-tick system)
   void blockTick(Level& lv, World& w, int x, int y, int z, BlockId id, u8 meta);
+  // Snow on a chiseled top sits on each column that is still there, instead of a full layer in the cell above.
+  void settleCarvedCover(World& w, int x, int y, int z);
   json toJson() const;
   void fromJson(const json& j);
 
@@ -78,6 +80,7 @@ private:
   void localWeather(Level& lv, World& w, double dt);
   float mistTarget(Level& lv, World& w, const std::string& zone, const WeatherColumn* c);
   void groundTick(Level& lv, World& w);
+  void coverMelt(Level& lv, World& w);
   void thaw(Level& lv, World& w, double dt);
   void strikeNear(Level& lv, World& w);
   void farBolts(Level& lv, double dt);

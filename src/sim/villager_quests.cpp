@@ -425,7 +425,7 @@ static void say(Level& lv, Player& p, Talk& t, std::string text) {
   // rpg.js: the elder tells of every kind of keeper now
   const std::string A = "Find the dungeons, defeat their keepers, bring their Realm Fragments to the rift. Ten of them.";
   if (text.rfind("It opened when you came.", 0) == 0) if (size_t i = text.find(A); i != std::string::npos)
-    text.replace(i, A.size(), "Find the dungeons and defeat their keepers. The great beasts of the world carry them too: the golem of cinders, the archmage in his tower, the beast of the maze, the dragons. Bring ten Realm Fragments to the rift.");
+    text.replace(i, A.size(), "Find the dungeons and defeat their keepers. The great beasts of the world carry them too: the golem of cinders, the archmage in his tower, the beast of the maze, the dragons. Hold a Realm Fragment up to the rift and use it. Ten of them, one at a time.");
   t.text = fill(text, lv, t, p);
   t.voiceLines++;
   t.spoken = t.text; t.spokenVol = 0.5f; t.spokenN++;   // babble(sfx, text, voice, { rate: 26 }): the talk screen plays it as the words type out
@@ -628,7 +628,7 @@ void talkChoose(Level& lv, Player& p, Talk& t, int i) {
     std::string lines = jflag(R, "stormBroken") ? "The storm too. The sky over the square is just sky. Sit with us a while; there's nothing left to watch for."
                       : jflag(R, "sealed") ? "You did it. The square is quiet, the nights are only nights again. We will sing of this for a hundred winters. Only, the old ones say a storm still gathers from what he took. If it ever wakes, it wakes from a heart of the rift's own crystal."
                       : R.value("stage", 0) >= 3 ? "The gateway stands open. He waits beyond it, at the end of his halls. Go together, go ready, and end this."
-                      : "It opened when you came. Something old is pressing on our world from the other side. The old tales say the keepers of the deep places hold the keys of time. Find the dungeons, defeat their keepers, bring their Realm Fragments to the rift. Ten of them. " + (n ? "You have found " + std::to_string(n) + " so far." : std::string());
+                      : "It opened when you came. Something old is pressing on our world from the other side. The old tales say the keepers of the deep places hold the keys of time. Find the dungeons, defeat their keepers, bring their Realm Fragments to the rift. Ten of them. " + (n ? "The rift has taken " + std::to_string(n) + " so far. Each one opens it a little wider." : "Hold one up to the tear and use it. One at a time.");
     say(lv, p, t, lines);
     t.opts.erase(t.opts.begin() + i);
     return;

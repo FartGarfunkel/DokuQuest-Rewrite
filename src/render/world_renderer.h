@@ -28,6 +28,17 @@ public:
   void reloadShaders();
   void remeshAll();
   void setTiles(const TileSet& ts);          // the plant builder's copy of the tiles (+ remesh)
+  // a shader pack's gbuffers need one texel per tile, so greedy merging (a quad that spans tiles) stays off while a pack is on
+  void setPackGeometry(bool on);
+  // the frame's visible sections, with whatever program is already bound (the pack's gbuffers_terrain)
+  void drawSections(const FrameCtx& f, int pass);
+  // every meshed section of this band within radius of the camera, frustum and cave cull ignored (sun shadows)
+  void drawShadowSections(const FrameCtx& f, int pass, float radius);
+  GLuint blockAtlas() const { return atlasTex; }
+  int atlasGrid() const { return atlasGridN; }
+  int atlasTileSize() const { return atlasTile; }
+  GLuint climateTexture() const { return climateTex; }
+  GLuint tintTexture() const { return tintLut; }
   void setTileTextures(const TileTextures& t) { tex = t; }
   // clip plane for portal views (render only what lies beyond the portal plane), all zero => off
   vec4 clipPlane{0};
@@ -65,6 +76,8 @@ private:
   void submit(const SectionKey& k, ThreadPool& pool, float pri, bool detail);
   void upload(Result& r);
   void drawPass(const FrameCtx& f, int pass);
+  void emitSections(const FrameCtx& f, int pass, GLint originLoc);
+  void rebuildAtlas(const TileSet& ts);
   bool wantDetail(const SectionKey& k, const vec3& cam) const;
   // arena (units: vertices)
   u32 alloc(u32 n);
@@ -102,6 +115,9 @@ private:
   // camera (RG8 temperature/humidity, a layer per land), and the colour for a climate (256 x 256 by temperature and
   // humidity: grass, foliage, water; the resource pack's colormaps when it has them)
   GLuint climateTex = 0, tintLut = 0;
+  GLuint atlasTex = 0;
+  int atlasGridN = 1, atlasTile = 32;
+  bool packGeom = false;
   std::vector<i64> climateOwner;              // which chunk each 16 x 16 slot holds, per land
   u32 lutSig = 0, lutSeen = 0; double lutCheckT = -10;
   void climateFor(int dim, int cx, int cz);

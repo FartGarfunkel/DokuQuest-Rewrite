@@ -7,6 +7,8 @@
 #include "sim/gameplay.h"
 #include "sim/combat.h"
 #include "sim/rules.h"
+#include "sim/weather.h"
+#include "sim/worldsys.h"
 #include <random>
 #include <unordered_set>
 
@@ -229,11 +231,63 @@ void tickSleep(Level& lv, double dt) {
   if (lv.events) lv.events->emit("morning", json::array({lv.info.day}));
 }
 
+// -1: not a seated attachment of this block (the old whole-face test decides). 0: drop it. 1: its octant is still there.
+// A seat lives on the attachment. Air's carve byte is 0, so a missing support must drop before that byte is read as "present".
+static int microKeep(World& w, int ax, int ay, int az, int sx, int sy, int sz) {
+  BlockId id = w.getBlock(ax, ay, az);
+  if (!id || fullSolid(id) || !seatsOnOctant(id)) return -1;
+  const Registry& R = reg();
+  u8 meta = w.getMeta(ax, ay, az);
+  int kind = R.tShape[id];
+  bool ours = false;
+  if (R.tRender[id] == (u8)Render::Torch) {
+    int t = meta & 7;
+    int dx = t == 1 ? -1 : t == 2 ? 1 : 0, dy = t == 0 ? -1 : 0, dz = t == 3 ? -1 : t == 4 ? 1 : 0;
+    ours = t <= 4 && sx == ax + dx && sy == ay + dy && sz == az + dz;
+  } else if (kind == ShapeKind::Ladder || kind == ShapeKind::Frame || kind == ShapeKind::Hook || (bhas(id, BF::Sign) && (meta & 16))) {
+    int f = meta & 3;
+    ours = sx == ax + DIRX[f] && sy == ay && sz == az + DIRZ[f];
+  } else if (kind == ShapeKind::Lever || kind == ShapeKind::Button) {
+    int k = meta & 7, s = k == 0 ? 0 : k == 1 ? 1 : H2D6[(k - 2) & 3];
+    ours = sx == ax + D6X[s] && sy == ay + D6Y[s] && sz == az + D6Z[s];
+  } else if (R.block(id).str("shape") == "chain") {
+    BlockId above = w.getBlock(ax, ay + 1, az), below = w.getBlock(ax, ay - 1, az);
+    bool upLink = above && (R.block(above).str("shape") == "chain" || traits(above).lantern);
+    if (fullSolid(above)) ours = sx == ax && sy == ay + 1 && sz == az;
+    else if (upLink) ours = false;   // the link above owns the solid, not this one
+    else if (fullSolid(below)) ours = sx == ax && sy == ay - 1 && sz == az;
+    else ours = sx == ax && sz == az && (sy == ay - 1 || sy == ay + 1);
+  } else if (traits(id).lantern && hangingLantern(id, meta)) {
+    if (((meta >> 2) & 31) != 0) return -1;   // a long chain hangs from higher up than the block directly above
+    BlockId above = w.getBlock(ax, ay + 1, az);
+    if (above && R.block(above).str("shape") == "chain" && !fullSolid(above)) return -1;
+    ours = sx == ax && sy == ay + 1 && sz == az;
+  } else ours = sx == ax && sy == ay - 1 && sz == az;
+  if (!ours) return -1;
+  u8 cv = w.getCarve(ax, ay, az);
+  BlockId sid = w.getBlock(sx, sy, sz);
+  if (seatMark(cv)) {
+    if (!fullSolid(sid)) return 0;
+    int o = cv & 7;
+    return octPresent(w.getCarve(sx, sy, sz), (o >> 2) & 1, (o >> 1) & 1, o & 1) ? 1 : 0;
+  }
+  // Levers, buttons, hooks and chains are not NeedsSupport, so a broken face used to leave them floating.
+  bool missed = kind == ShapeKind::Lever || kind == ShapeKind::Button || kind == ShapeKind::Hook || R.block(id).str("shape") == "chain";
+  if (!missed) return -1;
+  if (!fullSolid(sid)) return 0;
+  int nx = ax - sx, ny = ay - sy, nz = az - sz;
+  return carveFaceDepth(w.getCarve(sx, sy, sz), nx, ny, nz) >= 0 ? 1 : 0;
+}
+
 // Things fixed to the block at (x,y,z) whose face is no longer whole drop off: topOK/botOK/sideOK[d] say which faces still
 // hold (a plain block: all of them while it is solid; a chiseled block: the faces with all four octants left).
 static void dropUnsupported(Level& lv, World& w, int x, int y, int z, BlockId newId, bool topOK, bool botOK, const bool sideOK[4]) {
   const Registry& R = reg();
   const KnownBlocks& B = KB();
+  auto spillRack = [&](int ax, int ay, int az, const BlockDef& d) {
+    if (!(d.has("frame") || d.num("rack") == 2)) return;
+    if (json* fe = w.blockEntity(ax, ay, az)) { json c = *fe; spillEntity(lv, w, c, ax, ay, az); }
+  };
   // things that stood on it
   BlockId above = w.getBlock(x, y + 1, z); u8 am = w.getMeta(x, y + 1, z);
   const BlockDef& ad = R.block(above);
@@ -242,7 +296,12 @@ static void dropUnsupported(Level& lv, World& w, int x, int y, int z, BlockId ne
              : (ad.has("attached") && (ad.str("rs") == "hook" || (am & 7) != 0)) ? true
              : (ash == "lantern" || ash == "soul_lantern") ? (am & 3) == 1
              : bhas(above, BF::Hangs) || ad.has("cocoa") || ad.has("frame") || (ad.has("altTile") && (am & 1));
-  if (above && bhas(above, BF::NeedsSupport) && !hangs && !bhas(above, BF::AlwaysWet) && !topOK) {
+  int mkUp = microKeep(w, x, y + 1, z, x, y, z);
+  if (mkUp == 0 && above) {
+    spillRack(x, y + 1, z, ad);
+    w.setBlock(x, y + 1, z, R.tWlog[above] && (am & WLOG) ? B.water : AIR);
+    if (above != B.vine) dropBlockItems(lv, w, x, y + 1, z, above, true, am);
+  } else if (mkUp < 0 && above && bhas(above, BF::NeedsSupport) && !hangs && !bhas(above, BF::AlwaysWet) && !topOK) {
     bool keep = bhas(above, BF::Door) && (am & 16);
     if (!keep) { w.setBlock(x, y + 1, z, R.tWlog[above] && (am & WLOG) ? B.water : AIR); dropBlockItems(lv, w, x, y + 1, z, above, true, am); }
   }
@@ -251,19 +310,31 @@ static void dropUnsupported(Level& lv, World& w, int x, int y, int z, BlockId ne
   // things that hung from it
   BlockId below = w.getBlock(x, y - 1, z); u8 bm = w.getMeta(x, y - 1, z);
   const BlockDef& bd = R.block(below);
-  std::string bsh = bd.str("shape");
-  if ((bsh == "lantern" || bsh == "soul_lantern") && (bm & 3) == 1 && ((bm >> 2) & 31) == 0 && !botOK && R.block(newId).str("shape") != "chain") {   // (one on a long chain hangs from higher up)
+  int mkDn = microKeep(w, x, y - 1, z, x, y, z);
+  if (mkDn == 0 && below) {
+    spillRack(x, y - 1, z, bd);
+    w.setBlock(x, y - 1, z, R.tWlog[below] && (bm & WLOG) ? B.water : AIR);
+    dropBlockItems(lv, w, x, y - 1, z, below, true, bm);
+  } else if (mkDn < 0 && traits(below).lantern && (bm & 3) == 1 && ((bm >> 2) & 31) == 0 && !botOK && R.block(newId).str("shape") != "chain") {   // (one on a long chain hangs from higher up)
     w.setBlock(x, y - 1, z, (bm & WLOG) ? B.water : AIR); dropBlockItems(lv, w, x, y - 1, z, below, true);
-  } else if ((bhas(below, BF::Hangs) || (bd.has("altTile") && (bm & 1))) && !botOK && !(bhas(newId, BF::Hangs) && bhas(newId, BF::StackPlant) && bhas(below, BF::StackPlant))) {
+  } else if (mkDn < 0 && (bhas(below, BF::Hangs) || (bd.has("altTile") && (bm & 1))) && !botOK && !(bhas(newId, BF::Hangs) && bhas(newId, BF::StackPlant) && bhas(below, BF::StackPlant))) {
     w.setBlock(x, y - 1, z, R.tWlog[below] && (bm & WLOG) ? B.water : AIR); dropBlockItems(lv, w, x, y - 1, z, below, true, bm);
   }
   // torches, ladders, signs and cocoa fixed to its sides
   for (int d = 0; d < 4; d++) {
-    if (sideOK[d]) continue;
     int nx = x - DIRX[d], nz = z - DIRZ[d];
     BlockId nid = w.getBlock(nx, y, nz); u8 nm = w.getMeta(nx, y, nz);
     if (!nid) continue;
+    int mk = microKeep(w, nx, y, nz, x, y, z);
+    if (mk == 1) continue;
     const BlockDef& nd = R.block(nid);
+    if (mk == 0) {
+      spillRack(nx, y, nz, nd);
+      w.setBlock(nx, y, nz, R.tWlog[nid] && (nm & WLOG) ? B.water : AIR);
+      if (nid != B.vine) dropBlockItems(lv, w, nx, y, nz, nid, true, nm);
+      continue;
+    }
+    if (sideOK[d]) continue;
     static const int torchSide[4] = {3, 2, 4, 1};
     bool attached = false;
     if (R.tRender[nid] == (u8)Render::Torch) attached = (nm & 7) == torchSide[d];
@@ -271,7 +342,7 @@ static void dropUnsupported(Level& lv, World& w, int x, int y, int z, BlockId ne
     else if (bhas(nid, BF::Sign) && (nm & 16)) attached = (nm & 3) == d;
     else if (nd.has("cocoa")) attached = ((nm >> 4) & 3) == d;
     else if (nd.has("frame") || nd.num("rack") == 2) attached = (nm & 3) == d;
-    if (attached && (nd.has("frame") || nd.has("rack"))) if (json* fe = w.blockEntity(nx, y, nz)) { json c = *fe; spillEntity(lv, w, c, nx, y, nz); }
+    if (attached && (nd.has("frame") || nd.num("rack") == 2)) if (json* fe = w.blockEntity(nx, y, nz)) { json c = *fe; spillEntity(lv, w, c, nx, y, nz); }
     if (attached) { w.setBlock(nx, y, nz, R.tWlog[nid] && (nm & WLOG) ? B.water : AIR); if (nid != B.vine) dropBlockItems(lv, w, nx, y, nz, nid, true, nm); }
   }
 }
@@ -311,6 +382,8 @@ void onCarveChangedRules(Level& lv, World& w, int x, int y, int z) {
   bool sides[4];
   for (int d = 0; d < 4; d++) sides[d] = holds(-DIRX[d], 0, -DIRZ[d], w.getBlock(x - DIRX[d], y, z - DIRZ[d]));   // the face toward (x-DIRX[d], z-DIRZ[d])
   dropUnsupported(lv, w, x, y, z, id, holds(0, 1, 0, w.getBlock(x, y + 1, z)), solid && carveFaceFull(carve, 0, -1, 0), sides);
+  if (WeatherSystem* ws = weatherOf(lv)) ws->settleCarvedCover(w, x, y, z);
+  settleCarvedFluids(w, x, y, z);
 }
 
 // ---- reactions to world changes (Game.onBlockChanged) ----

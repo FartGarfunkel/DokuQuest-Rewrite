@@ -5,7 +5,7 @@
 
 namespace dq {
 
-enum class RendererKind { Legacy = 0, Modern = 1, Vulkan = 2 };   // GL 3.3 core / GL 4.6 core / (future)
+enum class RendererKind { Legacy = 0, Modern = 1, Vulkan = 2 };   // GL 3.3 core / GL 4.6 core / Vulkan 1.3
 const char* rendererName(RendererKind k);
 
 struct Settings {

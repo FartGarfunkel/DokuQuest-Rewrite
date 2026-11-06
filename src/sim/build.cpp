@@ -170,6 +170,40 @@ bool PlayerController::placement(const RayHit& hit, BlockId bid, Placement& out)
   return true;
 }
 
+// 0 = centred on a whole face or a clean slab. packSeat = the octant under the crosshair. 0xFF = that corner is open.
+static u8 seatForPlace(const World& w, const RayHit& hit, BlockId bid, int x, int y, int z, u8 meta) {
+  if (!seatsOnOctant(bid) || fullSolid(bid)) return 0;
+  const Registry& R = reg();
+  int sx = x, sy = y - 1, sz = z, nx = 0, ny = 1, nz = 0;
+  auto at = [&](int dx, int dy, int dz) { sx = x + dx; sy = y + dy; sz = z + dz; nx = -dx; ny = -dy; nz = -dz; };
+  if (R.tRender[bid] == (u8)Render::Torch) {
+    int t = meta & 7;
+    if (t == 1) at(-1, 0, 0);
+    else if (t == 2) at(1, 0, 0);
+    else if (t == 3) at(0, 0, -1);
+    else if (t == 4) at(0, 0, 1);
+    else at(0, -1, 0);
+  } else if (R.block(bid).str("shape") == "chain") {
+    BlockId above = inWorldY(y + 1) ? w.getBlock(x, y + 1, z) : (BlockId)0;
+    BlockId under = inWorldY(y - 1) ? w.getBlock(x, y - 1, z) : (BlockId)0;
+    bool hang = fullSolid(above) || (above && (traits(above).lantern || R.block(above).str("shape") == "chain"));
+    if (!hang && !fullSolid(under)) hang = true;   // a gap with nothing under it still looks upward
+    at(0, hang ? 1 : -1, 0);
+  } else if (traits(bid).lantern && hangingLantern(bid, meta)) {
+    at(0, 1, 0);
+  } else if (R.tShape[bid] == ShapeKind::Ladder || R.tShape[bid] == ShapeKind::Frame || R.tShape[bid] == ShapeKind::Hook || (bhas(bid, BF::Sign) && (meta & 16))) {
+    int f = meta & 3;
+    at(DIRX[f], 0, DIRZ[f]);
+  } else if (R.tShape[bid] == ShapeKind::Lever || R.tShape[bid] == ShapeKind::Button) {
+    int k = meta & 7, s = k == 0 ? 0 : k == 1 ? 1 : H2D6[(k - 2) & 3];
+    at(D6X[s], D6Y[s], D6Z[s]);
+  } else at(0, -1, 0);
+  bool aimed = hit.hit && hit.block.x == sx && hit.block.y == sy && hit.block.z == sz;
+  u8 seat = faceSeat(w, hit.point, aimed, sx, sy, sz, nx, ny, nz);
+  if (traits(bid).lantern || R.block(bid).str("shape") == "chain") seat = inheritColumn(w, x, y, z, seat);
+  return seat;
+}
+
 void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemStack& held) {
   if (p.mode == "adventure" || p.mode == "spectator") return;   // adventure: blocks can't be placed (or broken)
   World& w = world();
@@ -195,32 +229,40 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
     BlockId cur = w.getBlock(x, y, z);
     if (!R.tReplaceable[cur] && cur != AIR) return;
     BlockId below = w.getBlock(x, y - 1, z);
-    bool belowTop = R.tSolid[below] && carveFaceDepth(w.getCarve(x, y - 1, z), 0, 1, 0) >= 0;   // a whole top, or a slab's (it sinks onto it)
+    u8 bcv = w.getCarve(x, y - 1, z);
+    int bdp = carveFaceDepth(bcv, 0, 1, 0);
+    bool belowTop = R.tSolid[below] && (bdp >= 0 || (fullSolid(below) && bdp < 0 && exposedCols(bcv)));   // whole top, a slab, or the corner still under the crosshair
     if (ny == 1 || (R.tReplaceable[hit.id] && R.tSolid[below])) { if (!belowTop) { if (R.tSolid[below]) toastMsg("Torches stand on a whole top face"); return; } meta = 0; }
     else if (ny == -1) return;
     else {
-      // on a wall only against a whole face: not the side of a fence post, pane, slab or a chiseled notch
+      // a full block's face is enough: the seat picks the centre or the aimed corner. Fences, panes and odd shapes still refuse.
       BlockId sid = hit.id; int sk = R.tShape[sid]; int sm = w.getMeta(hit.block.x, hit.block.y, hit.block.z) & 7;
       Render rr = (Render)R.tRender[sid];
-      bool whole = R.tSolid[sid] && (!sk ? (rr == Render::Cube || rr == Render::Cutout) && carveFaceDepth(w.getCarve(hit.block.x, hit.block.y, hit.block.z), nx, ny, nz) >= 0
-                                         : sk == ShapeKind::Slab && (sm == 6 || (sm >= 2 && (sm - 2 == dirOf((float)-nx, (float)-nz) || sm - 2 == dirOf((float)nx, (float)nz)))));
+      bool whole = fullSolid(sid) || (R.tSolid[sid] && (!sk ? (rr == Render::Cube || rr == Render::Cutout) && carveFaceDepth(w.getCarve(hit.block.x, hit.block.y, hit.block.z), nx, ny, nz) >= 0
+                                         : sk == ShapeKind::Slab && (sm == 6 || (sm >= 2 && (sm - 2 == dirOf((float)-nx, (float)-nz) || sm - 2 == dirOf((float)nx, (float)nz))))));
       if (!whole) { toastMsg("Torches fix to the full face of a block \xE2\x80\x94 or stand one on top"); return; }
       meta = nx == 1 ? 1 : nx == -1 ? 2 : nz == 1 ? 3 : 4;
     }
     if (R.tLiquid[cur]) return;
-  } else if (bid == B.lantern || bid == B.soul_lantern) {
+  } else if (traits(bid).lantern) {
     BlockId up = w.getBlock(x, y + 1, z);
-    bool upOK = R.tSolid[up] && carveFaceFull(w.getCarve(x, y + 1, z), 0, -1, 0);   // hangs from a whole underside
-    bool downOK = R.tSolid[w.getBlock(x, y - 1, z)] && carveFaceDepth(w.getCarve(x, y - 1, z), 0, 1, 0) >= 0;   // (stands sunk onto a slab)
-    // a ceiling further up, or an underside lifted half a block (a top slab, a chiseled block's carved-away bottom): the chain
-    // runs up to it. Its extra length beyond the lantern's own block is kept in meta bits 2..6, in half blocks.
+    u8 uc = w.getCarve(x, y + 1, z);
+    int udp = carveFaceDepth(uc, 0, -1, 0);
+    bool upOK = (R.tSolid[up] && carveFaceFull(uc, 0, -1, 0)) || (fullSolid(up) && udp == -1);   // whole underside, or the corner you are looking at
+    BlockId down = w.getBlock(x, y - 1, z);
+    u8 dc = w.getCarve(x, y - 1, z);
+    int ddp = carveFaceDepth(dc, 0, 1, 0);
+    bool downOK = R.tSolid[down] && (ddp >= 0 || (fullSolid(down) && ddp == -1 && exposedCols(dc)));   // stands on a slab, or on one remaining corner
+    // a ceiling further up, or a top slab (its underside is half a block higher): the chain runs up to it.
+    // Extra length beyond the lantern's own block is meta bits 2..6, in half blocks. A clean slab adds one; a broken ceiling does not (the seat does).
     int extra = -1;
     if (!upOK) for (int k = 1; k <= 8 && extra < 0; k++) {
       const BlockId b = w.getBlock(x, y + k, z);
       if (R.block(b).str("shape") == "chain") { extra = 2 * (k - 1); break; }
       if (!b || R.tLiquid[b]) continue;
       if (!R.tSolid[b]) break;   // a torch, a plant... in the way
-      extra = 2 * (k - 1) + (carveFaceDepth(w.getCarve(x, y + k, z), 0, -1, 0) == 0 ? 0 : 1);
+      int dep = carveFaceDepth(w.getCarve(x, y + k, z), 0, -1, 0);
+      extra = 2 * (k - 1) + (dep == 8 ? 1 : 0);
     }
     if (ny == -1 && upOK) meta = 1;
     else if (ny == -1 && extra >= 0) meta = (u8)(1 | std::min(extra, 31) << 2);
@@ -229,6 +271,11 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
     else if (extra >= 0) meta = (u8)(1 | std::min(extra, 31) << 2);
     else return;
     if (R.tLiquid[w.getBlock(x, y, z)] == 1 && (w.getMeta(x, y, z) & 15) == 0) meta |= WLOG;
+  } else if (R.block(bid).str("shape") == "chain") {
+    BlockId curC = w.getBlock(x, y, z);
+    if (curC != AIR && !R.tReplaceable[curC]) return;
+    meta = 0;
+    if (R.tLiquid[curC] == 1 && (w.getMeta(x, y, z) & 15) == 0) meta |= WLOG;
   } else {
     Placement pl;
     if (!placement(hit, bid, pl)) return;
@@ -244,14 +291,17 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
   BlockId cur = w.getBlock(x, y, z);
   if (cur != AIR && !R.tReplaceable[cur]) return;
   bool door = bhas(bid, BF::Door);
-  if (bhas(bid, BF::NeedsSupport) && !bhas(bid, BF::Crop) && !bhas(bid, BF::AlwaysWet) && R.tRender[bid] != (u8)Render::Torch && bid != B.lantern && bid != B.soul_lantern && bid != B.sugar_cane && !door) {
+  if (bhas(bid, BF::NeedsSupport) && !bhas(bid, BF::Crop) && !bhas(bid, BF::AlwaysWet) && R.tRender[bid] != (u8)Render::Torch && !traits(bid).lantern && bid != B.sugar_cane && !door) {
     if (!supportOK(bid, x, y, z, meta)) return;
   }
   if (R.tSolid[bid] && !door && blockedByBody(x, y, z)) return;
   for (auto& a : also) { BlockId c2 = w.getBlock(a[0], a[1], a[2]); if (c2 != AIR && !R.tReplaceable[c2]) return; if (R.tSolid[bid] && !door && blockedByBody(a[0], a[1], a[2])) return; }
+  u8 seat = seatForPlace(w, hit, bid, x, y, z, meta);
+  if (seat == 0xFF) { toastMsg("Look at the part of the block you want it on"); return; }
   if (lv.events && !lv.events->emit("blockPlace", json::array({p.name, x, y, z, bdef.key}))) return;
   ItemStack placed = held;   // (contents travel with chests and barrels)
   w.setBlock(x, y, z, bid, meta, SetFlags::Urgent);
+  if (seat) w.setCarve(x, y, z, seat, SetFlags::Urgent);
   for (auto& a : also) w.setBlock(a[0], a[1], a[2], (BlockId)a[3], (u8)a[4], SetFlags::Urgent);
   if (chestKind(bid) || bid == B.barrel) {
     json items = json::array();
@@ -279,9 +329,13 @@ bool PlayerController::supportOK(BlockId bid, int x, int y, int z, u8 meta) {
   auto& SOIL = soilIds();
   auto in = [&](BlockId v, std::initializer_list<BlockId> l) { if (!v) return false; for (BlockId a : l) if (a && a == v) return true; return false; };
   auto inSoil = [&](BlockId v) { return v && std::find(SOIL.begin(), SOIL.end(), v) != SOIL.end(); };
-  // a chiseled block only holds things on a whole face (no floating plants over a carved notch)
-  const int bdp = carveFaceDepth(w.getCarve(x, y - 1, z), 0, 1, 0);
-  bool belowTop = bdp == 0 || (bdp == 8 && R.tSink[bid]), aboveBottom = carveFaceFull(w.getCarve(x, y + 1, z), 0, -1, 0);   // things that sink stand on a slab
+  // a whole face or a clean slab holds things in the middle. A face broken into corners holds the things that can sit on one octant.
+  u8 bcv = w.getCarve(x, y - 1, z), acv = w.getCarve(x, y + 1, z);
+  const int bdp = carveFaceDepth(bcv, 0, 1, 0);
+  bool belowTop = bdp == 0 || (bdp == 8 && R.tSink[bid]);
+  if (seatsOnOctant(bid) && fullSolid(below) && bdp < 0 && exposedCols(bcv)) belowTop = true;
+  bool aboveBottom = carveFaceFull(acv, 0, -1, 0);
+  if (seatsOnOctant(bid) && fullSolid(above) && acv && acv != 0xFF && carveFaceDepth(acv, 0, -1, 0) < 0) aboveBottom = true;
   if (d.has("rs") || d.has("rail") || d.has("tripwire")) return d.has("attached") || (R.tSolid[below] && belowTop);   // redstone parts: the redstone module refines this
   if (bhas(bid, BF::Hangs) || (d.has("altTile") && (meta & 1)))
     return (R.tSolid[above] && aboveBottom) || above == bid || (bhas(above, BF::Hangs) && startsWith(R.block(above).key, "cave_vines") && startsWith(d.key, "cave_vines"));
@@ -730,12 +784,7 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
     bool chiselable = R.tSolid[id] && R.tOpaque[id] && !R.tShape[id] && !R.tWlog[id] && !(b.has("family") || b.has("base"));   // wlog blocks (lanterns, snow...) carry live meta state
     u8 carve = w.getCarve(x, y, z);
     if (chiselable) {
-      int enc = -1;
-      {
-        double fx = hit.point.x - x, fy = hit.point.y - y, fz = hit.point.z - z;
-        int hx = fx >= 0.5, hy = fy >= 0.5, hz = fz >= 0.5;
-        enc = (hx << 2) | (hy << 1) | hz;   // entry-point containing-octant
-      }
+      int enc = aimedOctant(hit.point, x, y, z, hit.normal.x, hit.normal.y, hit.normal.z);
       bool carvedBit = carve && ((carve >> enc) & 1);
       u8 next = carvedBit ? (u8)(carve & ~(1 << enc))
                           : (u8)(carve | (1 << enc));   // toggle the aimed octant; plain blocks get their first octant set

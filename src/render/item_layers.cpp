@@ -1,6 +1,7 @@
 // render/item_layers.cpp — the first-person hand with the held item, and dropped items (voxel models).
 #include "core/tool_parts.h"
 #include "render/item_layers.h"
+#include "render/pack_geom.h"
 #include "render/char_layer.h"
 #include "render/chest_layer.h"
 #include "client/app.h"
@@ -191,11 +192,19 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   float eq = 1 - equip;
   float eat = eatAnim > 0 ? std::sin(std::min(1.f, eatAnim / 0.45f) * PI) : 0;
 
-  glClear(GL_DEPTH_BUFFER_BIT);
-  glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); glDepthMask(GL_TRUE);
-  glEnable(GL_CULL_FACE); glCullFace(GL_BACK); glDisable(GL_BLEND);
+  // The depth clear stays when the game draws the arm: its projection is not the world's.
+  // A pack with gbuffers_hand records the pose and draws it itself, into its own depth
+  // image, before the tonemap. Clearing the window depth here would not feed that pass.
   float aspect = f.height > 0 ? (float)f.width / f.height : 1.f;
   mat4 proj = glm::perspective(70 * PI / 180, aspect, 0.01f, 10.f);
+  struct HandCap {
+    bool on;
+    explicit HandCap(const mat4& p) : on(packHandSuppress()) { if (on) packHandBegin(p); }
+    ~HandCap() { if (on) packHandEnd(); }
+  } cap(proj);
+  if (!cap.on) glClear(GL_DEPTH_BUFFER_BIT);
+  glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); glDepthMask(GL_TRUE);
+  glEnable(GL_CULL_FACE); glCullFace(GL_BACK); glDisable(GL_BLEND);
   int taken = handsHook ? handsHook(*this, s, f, proj) : 0;
   std::vector<std::pair<ItemStack, mat4>> over;
   VoxelRenderer& VR = voxelRenderer();

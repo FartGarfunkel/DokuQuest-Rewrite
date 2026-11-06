@@ -20,7 +20,7 @@ GLuint tileTexture(App& a, int layer) {
 }
 GLuint tileTexture(App& a, const std::string& name) { auto it = a.tiles.index.find(name); return it == a.tiles.index.end() ? 0 : tileTexture(a, it->second); }
 
-void drawTileBox(ContentDraw& cd, const mat4& m, vec3 a, vec3 b, GLuint side, GLuint top, GLuint bot, vec2 light, vec3 color, bool sixteenths, bool lit) {
+void drawTileBox(ContentDraw& cd, const mat4& m, vec3 a, vec3 b, GLuint side, GLuint top, GLuint bot, vec2 light, vec3 color, bool sixteenths, bool lit, vec3 cutTint, int uvMode) {
   if (sixteenths) { a /= 16.f; b /= 16.f; }
   const vec3 c = (a + b) * 0.5f, s = b - a;
   // uv: where the box sits in its block (like the mesher), wrapped for boxes bigger than a block
@@ -30,18 +30,30 @@ void drawTileBox(ContentDraw& cd, const mat4& m, vec3 a, vec3 b, GLuint side, GL
     float a0 = fr(u0), b0 = a0 + (u1 - u0), c0 = fr(v0), d0 = c0 + (v1 - v0);
     return vec4(a0, 1 - d0, b0, 1 - c0);
   };
-  auto pic = [&](GLuint t, const mat4& q, vec4 uv, float shade) { cd.picture(t, m * q, uv, vec4(color * shade, 1), light, lit); };
+  // Picture corners for the unit quad after the face rotation, matching shapeST (mesh_shapes.cpp) except the two
+  // big faces of a door or trapdoor, which share one print so the handle stays on the same edge of the wood.
+  // vec4 is (u at aUV 0, v at aUV 0, u at aUV 1, v at aUV 1).
+  const float x0 = a.x, x1 = b.x, y0 = a.y, y1 = b.y, z0 = a.z, z1 = b.z;
+  auto shapeUV = [&](int face) -> vec4 {
+    if (face == 4 || (face == 5 && uvMode == 1)) return vec4(x0, 1 - y1, x1, 1 - y0);          // +Z, and a door's back
+    if (face == 5) return vec4(1 - x0, 1 - y1, 1 - x1, 1 - y0);                                 // -Z
+    if (face == 0) return vec4(1 - z1, 1 - y1, 1 - z0, 1 - y0);                                 // +X
+    if (face == 1) return vec4(z1, 1 - y1, z0, 1 - y0);                                         // -X
+    if (face == 2 || (face == 3 && uvMode == 2)) return vec4(x0, z1, x1, z0);                   // +Y, and a trapdoor's underside
+    return vec4(1 - x0, z1, 1 - x1, z0);                                                        // -Y
+  };
+  auto pic = [&](GLuint t, const mat4& q, vec4 uv, float shade) { cd.picture(t, m * q, uv, vec4(color * shade, 1), light, lit, cutTint); };
   for (int k = 0; k < 2; k++) {   // facing z
     mat4 q = glm::translate(mat4(1), vec3(c.x, c.y, k ? b.z : a.z)); q = glm::scale(q, vec3(s.x, s.y, 1));
-    pic(side, q, uvr(a.x, b.x, a.y, b.y), 0.9f);
+    pic(side, q, uvMode ? shapeUV(k ? 4 : 5) : uvr(a.x, b.x, a.y, b.y), 0.9f);
   }
   for (int k = 0; k < 2; k++) {   // facing x
     mat4 q = glm::translate(mat4(1), vec3(k ? b.x : a.x, c.y, c.z)); q = glm::rotate(q, PI / 2, vec3(0, 1, 0)); q = glm::scale(q, vec3(s.z, s.y, 1));
-    pic(side, q, uvr(a.z, b.z, a.y, b.y), 0.75f);
+    pic(side, q, uvMode ? shapeUV(k ? 0 : 1) : uvr(a.z, b.z, a.y, b.y), 0.75f);
   }
   for (int k = 0; k < 2; k++) {   // facing y
     mat4 q = glm::translate(mat4(1), vec3(c.x, k ? b.y : a.y, c.z)); q = glm::rotate(q, PI / 2, vec3(1, 0, 0)); q = glm::scale(q, vec3(s.x, s.z, 1));
-    vec4 uv = uvr(a.x, b.x, a.z, b.z);
+    vec4 uv = uvMode ? shapeUV(k ? 2 : 3) : uvr(a.x, b.x, a.z, b.z);
     pic(k ? top : bot, q, uv, k ? 1.f : 0.6f);
   }
 }

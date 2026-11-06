@@ -3,6 +3,7 @@
 // quarrels.js, pets.js (hurt), nightmobs.js (jockeys, slime split), husbandry.js (kept animals).
 #include <cstdlib>
 #include "sim/creature.h"
+#include "sim/creature_rig.h"
 #include "sim/vehicles.h"
 #include "common/holiday.h"
 #include "sim/hallow.h"
@@ -187,6 +188,11 @@ static void placeVariant(Level& lv, Creature& c) {
   for (auto* v : ok) if ((q -= v->w) <= 0) { pick = v; break; }
   c.variant = pick->model == T.model ? "" : pick->model;
   if (!pick->held.empty()) c.heldItem = pick->held;
+}
+// /summon goes through createEntity, not spawnCreature, so it never set kept. A spectator is not a
+// pawn, and a passive mob with nobody near is removed on the next tick. A summoned one stays.
+void keepSummoned(Entity& e) {
+  if (auto* c = dynamic_cast<Creature*>(&e)) c->kept = true;
 }
 bool setCreatureLook(Entity& e, const std::string& look) {
   auto* c = dynamic_cast<Creature*>(&e);
@@ -442,6 +448,17 @@ float Creature::hurtBase(Level& lv, float amount, const DamageSrc& srcIn) {
   if (src.type == "lava" && T->fireImmune) dmg = 0;
   if (dmg <= 0) { if (a && a->isPlayer()) floatText(lv, a->id, pos + vec3(0, h + 0.3f, 0), "Immune", "#ffb070"); return 0; }
   if (!src.bypassArmor) if (float ap = armourPoints(); ap > 0) dmg *= 1 - std::min(20.f, ap) * 0.04f;   // as a player's armour: 4% a point
+  // Minecraft's ender dragon: the head takes the blow, every other part takes a quarter plus at most 1
+  if (type == "ender_dragon" && src.hasRay && dmg > 0) {
+    const RigModel* RM = rigModel(modelKey());
+    if (RM && !RM->parts.empty()) {
+      rigPose(*this, *RM, creatureBase(*this, false));
+      int pi = rigHitPart(*this, *RM, src.rayO, src.rayD);
+      int limb = pi >= 0 ? rigLimbPart(*RM, pi) : -1;
+      bool head = limb >= 0 && RM->parts[limb].limb == "head";
+      if (!head) dmg = dmg * 0.25f + std::min(dmg, 1.f);
+    }
+  }
   hp -= dmg;
   hurtTime = 0.35f;
   if (a) {

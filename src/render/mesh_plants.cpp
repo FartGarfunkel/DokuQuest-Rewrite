@@ -115,7 +115,8 @@ std::shared_ptr<PlantTemplate> buildTemplate(const MeshTiles& T, int tile, bool 
       int j1 = j; while (j1 + 1 < S && th(b, j1 + 1) == L && th(b + 1, j1 + 1) == R) j1++;
       float t = (b + 1) * inv, hA = 1 - j * inv, hB = 1 - (j1 + 1) * inv, lo = (float)std::min(L, R), hi = (float)std::max(L, R);
       vec3 N = L > R ? vec3(1, 0, 0) : vec3(-1, 0, 0);
-      float uc = ((L > R ? b : b + 1) + 0.5f) * inv, sh = L > R ? 200.f : 185.f, va = j * inv, vb = (j1 + 1) * inv;
+      // the strip stays inside the opaque texels. A sample on the pixel edge blends with the hole beside it and the cap disappears.
+      float uc = ((L > R ? b : b + 1) + 0.5f) * inv, sh = L > R ? 200.f : 185.f, va = (j + 0.5f) * inv, vb = (j1 + 0.5f) * inv;
       PQ f1[4] = {{t, hB, lo, uc, vb, sh}, {t, hB, hi, uc, vb, sh}, {t, hA, hi, uc, va, sh}, {t, hA, lo, uc, va, sh}}; face(f1, N);
       PQ f2[4] = {{t, hB, -hi, uc, vb, sh}, {t, hB, -lo, uc, vb, sh}, {t, hA, -lo, uc, va, sh}, {t, hA, -hi, uc, va, sh}}; face(f2, N);
       j = j1 + 1;
@@ -130,7 +131,7 @@ std::shared_ptr<PlantTemplate> buildTemplate(const MeshTiles& T, int tile, bool 
       int i1 = i; while (i1 + 1 < S && th(i1 + 1, b) == U && th(i1 + 1, b + 1) == Dn) i1++;
       float hy = 1 - (b + 1) * inv, lo = (float)std::min(U, Dn), hi = (float)std::max(U, Dn);
       vec3 N = U > Dn ? vec3(0, -1, 0) : vec3(0, 1, 0);
-      float vc = ((U > Dn ? b : b + 1) + 0.5f) * inv, sh = U > Dn ? 150.f : 250.f, ua = i * inv, ub = (i1 + 1) * inv;
+      float vc = ((U > Dn ? b : b + 1) + 0.5f) * inv, sh = U > Dn ? 150.f : 250.f, ua = (i + 0.5f) * inv, ub = (i1 + 0.5f) * inv;
       PQ f1[4] = {{i * inv, hy, lo, ua, vc, sh}, {(i1 + 1) * inv, hy, lo, ub, vc, sh}, {(i1 + 1) * inv, hy, hi, ub, vc, sh}, {i * inv, hy, hi, ua, vc, sh}}; face(f1, N);
       PQ f2[4] = {{i * inv, hy, -hi, ua, vc, sh}, {(i1 + 1) * inv, hy, -hi, ub, vc, sh}, {(i1 + 1) * inv, hy, -lo, ub, vc, sh}, {i * inv, hy, -lo, ua, vc, sh}}; face(f2, N);
       i = i1 + 1;
@@ -588,7 +589,7 @@ bool emitVoxelLeafPlate(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int
   auto P = plantTemplate(c.tiles, tile);
   if (P->q.empty()) return false;
   float sk = c.skyAt(x, y, z), bl = std::max<float>(c.blAt(x, y, z), c.R.tLight[id]);
-  { c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0); c.tintKind = (u8)(1 + (T.tint == 2 ? 1 : 0)); }
+  if (T.tint) { c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0); c.tintKind = (u8)(1 + (T.tint == 2 ? 1 : 0)); }
   bool flat = c.R.tShape[id] == ShapeKind::Carpet;
   int f = meta & 3;
   auto rot = [f](float lx, float lz) {
@@ -601,7 +602,8 @@ bool emitVoxelLeafPlate(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int
       vec3 p;
       if (flat) p = vec3(x + q.t, y + 1.5f / 32 + q.s / 32, z + 1 - q.h);
       else { vec2 r = rot(q.t, 1.5f / 32 + q.s / 32); p = vec3(x + r.x, y + q.h, z + r.y); }
-      v[k] = {p, vec2(q.u, q.v), sk, bl, q.sh / 255.f, flat ? (u8)0 : (u8)(Sway::Hang + 2)};
+      u8 sw = (!flat && T.tint) ? (u8)(Sway::Hang + 2) : 0;   // a vine sways; a ladder stays put
+      v[k] = {p, vec2(q.u, q.v), sk, bl, q.sh / 255.f, sw};
     }
     c.quad(d, v, tile, NORMAL_NONE, PLANT_MAT);
   }

@@ -18,7 +18,7 @@ struct Mem {
   // endermen
   float stareT = 0, lookT = 0, tpT = 2, wetCd = 0;
   // dragons
-  float stT = 4, orbit = 0, flapT = 0, pbT = 2, breathHitT = 0, stuckT = 0; bool hasOrbit = false, breathed = false, perched = false, hasBreathPt = false;
+  float stT = 4, orbit = 0, flapT = 0, pbT = 2, breathHitT = 0, stuckT = 0, ringT = 0; int node = 0; bool hasOrbit = false, breathed = false, perched = false, hasBreathPt = false;
   vec3 breathPt{0};
   // the Warden
   std::unordered_map<u32, float> anger;

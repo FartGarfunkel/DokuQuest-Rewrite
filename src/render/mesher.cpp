@@ -1,6 +1,7 @@
 // render/mesher.cpp — the section mesher: gathering, climate tints, cubes (with greedy merging of
 // flat, evenly lit faces), liquids, torches and the per-section loop. Port of world/mesher.js.
 #include "render/mesh_ctx.h"
+#include "world/light_color.h"
 #include "render/chest_layer.h"
 #include "assets/tileset.h"
 #include "common/noise.h"
@@ -10,13 +11,15 @@
 namespace dq {
 
 // ---------------------------------------------------------------- tables (original FACES)
+// Shade matches distant_build.cpp (x 170, z 205, down 145, up 255) so a cliff meets the far mesh.
+// Multiplied by AO_CURVE at each corner. common.glsl axisShade uses the same three ratios.
 const FaceDef FACES[6] = {
-  {{1, 0, 0}, {{1, 0, 1}, {1, 0, 0}, {1, 1, 0}, {1, 1, 1}}, 0.8f},
-  {{-1, 0, 0}, {{0, 0, 0}, {0, 0, 1}, {0, 1, 1}, {0, 1, 0}}, 0.8f},
-  {{0, 1, 0}, {{0, 1, 1}, {1, 1, 1}, {1, 1, 0}, {0, 1, 0}}, 1.0f},
-  {{0, -1, 0}, {{1, 0, 1}, {0, 0, 1}, {0, 0, 0}, {1, 0, 0}}, 0.52f},
-  {{0, 0, 1}, {{0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1}}, 0.64f},
-  {{0, 0, -1}, {{1, 0, 0}, {0, 0, 0}, {0, 1, 0}, {1, 1, 0}}, 0.64f},
+  {{1, 0, 0}, {{1, 0, 1}, {1, 0, 0}, {1, 1, 0}, {1, 1, 1}}, 170.f / 255.f},
+  {{-1, 0, 0}, {{0, 0, 0}, {0, 0, 1}, {0, 1, 1}, {0, 1, 0}}, 170.f / 255.f},
+  {{0, 1, 0}, {{0, 1, 1}, {1, 1, 1}, {1, 1, 0}, {0, 1, 0}}, 1.f},
+  {{0, -1, 0}, {{1, 0, 1}, {0, 0, 1}, {0, 0, 0}, {1, 0, 0}}, 145.f / 255.f},
+  {{0, 0, 1}, {{0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1}}, 205.f / 255.f},
+  {{0, 0, -1}, {{1, 0, 0}, {0, 0, 0}, {0, 1, 0}, {1, 1, 0}}, 205.f / 255.f},
 };
 const int FACE_UV[4][2] = {{0, 1}, {1, 1}, {1, 0}, {0, 0}};
 const float AO_CURVE[4] = {0.5f, 0.68f, 0.84f, 1.0f};
@@ -118,13 +121,27 @@ void MeshCtx::put(std::vector<ChunkVertex>& d, const MV& v, int tile, int normal
   auto fx14 = [](float f) { return (u32)clampv((int)std::lround((f + 16) * 256), 0, 16383); };
   const u32 m = (u32)(mat | extraMat);
   const u32 sw = opt.wavingPlants ? v.sway : ((v.sway >= 32 && v.sway < 48) || v.sway >= 80 ? v.sway : 0);   // water and the grass tufts' fade mark stay
-  const u32 sky = (u32)clampv((int)std::lround(v.sky * 17), 0, 255), blk = (u32)clampv((int)std::lround(v.blk * 17), 0, 255);
   const u32 shade = (u32)clampv((int)std::lround(v.shade * 255), 0, 255);
+  u32 sky, blk, lit;
+  if (v.lit & 0x80000000u) {
+    // 5-bit channels. 31 upscales to 255 so a full sun stays full on the pack lightmap (31 << 3 would be 248).
+    lit = v.lit & 0x3fffffffu;
+    auto up = [](u32 q) -> u32 { return q >= 31 ? 255u : q << 3; };
+    auto mx = [](u32 a, u32 b, u32 c) { return a > b ? (a > c ? a : c) : (b > c ? b : c); };
+    sky = up(mx((lit >> 25) & 31u, (lit >> 20) & 31u, (lit >> 15) & 31u));
+    blk = up(mx((lit >> 10) & 31u, (lit >> 5) & 31u, lit & 31u));
+  } else {
+    sky = (u32)clampv((int)std::lround(v.sky * 17), 0, 255);
+    blk = (u32)clampv((int)std::lround(v.blk * 17), 0, 255);
+    u32 qs = sky >> 3, qb = blk >> 3;
+    lit = (qs << 25) | (qs << 20) | (qs << 15) | (qb << 10) | (qb << 5) | qb;
+  }
   ChunkVertex cv;
   cv.a = fx14(v.p.x) | fx14(v.p.y) << 14 | (u32)(normal & 7) << 28 | ((m >> 4) & 1u) << 31;
   cv.b = fx14(v.p.z) | (u32)(tile & 0xFFF) << 14 | (u32)(tintKind & 31) << 26 | ((m >> 5) & 1u) << 31;
   cv.c = fx14(v.uv.x) | fx14(v.uv.y) << 14 | (m & 15u) << 28;
   cv.d = sky | blk << 8 | shade << 16 | (sw & 127u) << 24 | ((m >> 6) & 1u) << 31;
+  cv.e = lit;
   d.push_back(cv);
 }
 void MeshCtx::quad(std::vector<ChunkVertex>& d, const MV v[4], int tile, int normal, u8 mat, bool flip) const {
@@ -147,11 +164,23 @@ void faceCorners(const MeshCtx& c, int x, int y, int z, int f, FaceCorners& fc) 
     bool s1 = c.opaqueSolid(fx + e1[0], fy + e1[1], fz + e1[2]), s2 = c.opaqueSolid(fx + e2[0], fy + e2[1], fz + e2[2]);
     bool cc = c.opaqueSolid(fx + e1[0] + e2[0], fy + e1[1] + e2[1], fz + e1[2] + e2[2]);
     int a = (s1 && s2) ? 0 : 3 - (s1 + s2 + cc);
-    float sk = c.skyAt(fx, fy, fz), bl = c.blAt(fx, fy, fz); int cnt = 1;
-    if (!s1) { sk += c.skyAt(fx + e1[0], fy + e1[1], fz + e1[2]); bl += c.blAt(fx + e1[0], fy + e1[1], fz + e1[2]); cnt++; }
-    if (!s2) { sk += c.skyAt(fx + e2[0], fy + e2[1], fz + e2[2]); bl += c.blAt(fx + e2[0], fy + e2[1], fz + e2[2]); cnt++; }
-    if (!cc && !(s1 && s2)) { sk += c.skyAt(fx + e1[0] + e2[0], fy + e1[1] + e2[1], fz + e1[2] + e2[2]); bl += c.blAt(fx + e1[0] + e2[0], fy + e1[1] + e2[1], fz + e1[2] + e2[2]); cnt++; }
-    fc.sky[k] = sk / cnt; fc.bl[k] = bl / cnt; fc.ao[k] = AO_CURVE[a]; fc.aoi[k] = a;
+    int ss[3] = {}, sb[3] = {}, cnt = 0;
+    auto take = [&](int x, int y, int z) {
+      LightRgb L = biasedRgb(c, x, y, z, F.n[0], F.n[1], F.n[2]);
+      for (int i = 0; i < 3; i++) { ss[i] += L.s[i]; sb[i] += L.b[i]; }
+      cnt++;
+    };
+    take(fx, fy, fz);
+    if (!s1) take(fx + e1[0], fy + e1[1], fz + e1[2]);
+    if (!s2) take(fx + e2[0], fy + e2[1], fz + e2[2]);
+    if (!cc && !(s1 && s2)) take(fx + e1[0] + e2[0], fy + e1[1] + e2[1], fz + e1[2] + e2[2]);
+    LightRgb avg;
+    if (cnt) for (int i = 0; i < 3; i++) { avg.s[i] = (u8)(ss[i] / cnt); avg.b[i] = (u8)(sb[i] / cnt); }
+    fc.rgb[k] = avg;
+    fc.lit[k] = markCubyz(packCubyzLight(avg));
+    fc.sky[k] = (float)(max3u(avg.s[0], avg.s[1], avg.s[2]) >> 4);
+    fc.bl[k] = (float)(max3u(avg.b[0], avg.b[1], avg.b[2]) >> 4);
+    fc.ao[k] = AO_CURVE[a]; fc.aoi[k] = a;
   }
 }
 
@@ -182,16 +211,17 @@ bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in) {
         int gy = baseY + y, i = MeshInput::idx(ox, y, oz);
         in.meta[i] = 0;
         in.carve[i] = 0;
-        if (!inWorldY(gy)) { in.ids[i] = AIR; in.light[i] = gy < 0 ? 0 : 0xF0; continue; }
+        in.coat[i] = 0;
+        if (!inWorldY(gy)) { in.ids[i] = AIR; in.light[i] = gy < 0 ? 0 : 0xF0; in.rgb[i] = gy < 0 ? LightRgb{} : fullSunRgb(); continue; }
         int d = gy >> 8;
         const Chunk* vc = c;
         if (d != k.dim) { if (!otherDone[d]) { other[d] = w.chunk(d, k.cx + dx, k.cz + dz); otherDone[d] = true; } vc = other[d]; }
-        if (!vc) { in.ids[i] = AIR; in.light[i] = 0xF0; continue; }
+        if (!vc) { in.ids[i] = AIR; in.light[i] = 0xF0; in.rgb[i] = fullSunRgb(); continue; }
         int ly = gy & 255;
         const Section* s = vc->section(ly >> 4);
-        if (!s) { in.ids[i] = AIR; in.light[i] = vc->airLight[ly >> 4]; continue; }
+        if (!s) { in.ids[i] = AIR; in.light[i] = vc->airLight[ly >> 4]; in.rgb[i] = vc->airRgb[ly >> 4]; continue; }
         int si = secIdx(x, ly & 15, z);
-        in.ids[i] = s->blocks[si]; in.meta[i] = s->meta[si]; in.carve[i] = s->carve[si]; in.light[i] = s->light[si];
+        in.ids[i] = s->blocks[si]; in.meta[i] = s->meta[si]; in.carve[i] = s->carve[si]; in.coat[i] = s->coat[si]; in.light[i] = s->light[si]; in.rgb[i] = s->rgb[si];
         if (dx == 0 && dz == 0 && y >= 0 && y < 16 && s->blocks[si] && traits(s->blocks[si]).pot) {
           auto it = vc->blockEntities.find(colIdx(x, ly, z));
           if (it != vc->blockEntities.end() && it->second.is_object() && it->second.contains("plant") && it->second["plant"].is_string()) {
@@ -205,7 +235,7 @@ bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in) {
   auto hideAt = [&](const ivec3& h) {
     const int ox = h.x - k.cx * 16, oz = h.z - k.cz * 16, oy = h.y - baseY;
     if (ox < -1 || ox > 16 || oz < -1 || oz > 16 || oy < MeshInput::Y0 || oy > 16) return;
-    const int i = MeshInput::idx(ox, oy, oz); in.ids[i] = AIR; in.meta[i] = 0; in.carve[i] = 0;
+    const int i = MeshInput::idx(ox, oy, oz); in.ids[i] = AIR; in.meta[i] = 0; in.carve[i] = 0; in.coat[i] = 0;
   };
   for (const ivec3& h : meshHiddenBlocks()) hideAt(h);   // drawn elsewhere for now
   // the open chest too (render/chest_layer.cpp draws it): as air here, the blocks beside it draw the faces it covered
@@ -216,7 +246,7 @@ bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in) {
 
 // ---------------------------------------------------------------- cubes
 namespace {
-struct FaceKey { u64 a = 0; u32 b = 0; bool operator==(const FaceKey& o) const { return a == o.a && b == o.b; } };
+struct FaceKey { u64 a = 0; u32 b = 0; u32 lit = 0; bool operator==(const FaceKey& o) const { return a == o.a && b == o.b && lit == o.lit; } };
 struct GreedyMasks {
   // [face][slice][b][a]: a/b are the face plane's axes
   FaceKey m[6][16][16][16];
@@ -299,12 +329,16 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
     u32 tints[4];
     for (int k = 0; k < 4; k++) tints[k] = T.tint ? c.cornerTint((float)(x + F.c[k][0]), (float)(z + F.c[k][2]), tintKind) : 0xFFFFFF;
     bool uniform = rot == 0 && sway == 0;
-    for (int k = 1; k < 4 && uniform; k++) uniform = fc.aoi[k] == fc.aoi[0] && fc.sky[k] == fc.sky[0] && fc.bl[k] == fc.bl[0] && tints[k] == tints[0];
+    for (int k = 1; k < 4 && uniform; k++) uniform = fc.aoi[k] == fc.aoi[0] && fc.sky[k] == fc.sky[0] && fc.bl[k] == fc.bl[0] && fc.lit[k] == fc.lit[0] && tints[k] == tints[0];
     if (gm && uniform) {
       FaceKey key;
-      u8 sk = (u8)std::lround(fc.sky[0] * 17), bl = (u8)std::lround(fc.bl[0] * 17), sh = (u8)std::lround(F.shade * fc.ao[0] * 255);
+      // Same AO on every corner (the uniform test above). Face shade times that AO, so a wall is not as bright as a top.
+      // The RGB word is what stops two colours merging.
+      u8 sk = (u8)std::lround(fc.sky[0] * 17), bl = (u8)std::lround(fc.bl[0] * 17);
+      u8 sh = (u8)std::lround(FACES[f].shade * AO_CURVE[fc.aoi[0]] * 255.f);
       key.a = (u64)(tile & 0xFFFF) | (u64)sk << 16 | (u64)bl << 24 | (u64)sh << 32 | (u64)mat << 40 | (u64)1 << 63;
       key.b = tints[0] | (T.tint ? (u32)(tintKind + 1) << 24 : 0u);   // the colour (one climate merges) and which tint
+      key.lit = fc.lit[0];
       int pos[3] = {x, y, z};
       int s = pos[FAXIS[f]], a = pos[FA[f]], b = pos[FB[f]];
       gm->m[f][s][b][a] = key; gm->pass[f][s][b][a] = (u8)pass; gm->any[f] = true;
@@ -314,7 +348,19 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
     for (int k = 0; k < 4; k++) {
       vec3 p(x + F.c[k][0], y + F.c[k][1], z + F.c[k][2]);
       vec2 uv = rot == 0 ? faceUV(f, p) : vec2(FACE_UV[(k + rot) & 3][0], FACE_UV[(k + rot) & 3][1]);
-      v[k] = {p, uv, fc.sky[k], fc.bl[k], F.shade * fc.ao[k], sway};
+      v[k] = {p, uv, fc.sky[k], fc.bl[k], FACES[f].shade * fc.ao[k], sway, fc.lit[k]};
+    }
+    // faceUV is in block units (a top at x=5 is 5..6). The game repeats that with fract()
+    // in the fragment shader. A pack samples the coordinate directly, and clamping it to
+    // 0..1 pinned every other face to one texel. This quad is one block, so shift it down
+    // into 0..1. The high corner stays at 1; fract() on the vertex would have turned it into 0.
+    {
+      vec2 lo = v[0].uv, hi = v[0].uv;
+      for (int k = 1; k < 4; k++) { lo = glm::min(lo, v[k].uv); hi = glm::max(hi, v[k].uv); }
+      if (lo.x < -0.001f || lo.y < -0.001f || hi.x > 1.001f || hi.y > 1.001f) {
+        vec2 base(std::floor(lo.x + 1e-4f), std::floor(lo.y + 1e-4f));
+        for (int k = 0; k < 4; k++) v[k].uv -= base;
+      }
     }
     c.tint = tints[0]; c.tintKind = T.tint ? (u8)(tintKind + 1) : 0;
     // per-corner tints: emit with each vertex's own colour
@@ -351,7 +397,7 @@ void flushGreedy(MeshCtx& c, GreedyMasks& gm) {
         MV v[4];
         for (int q = 0; q < 4; q++) {
           vec3 p(F.c[q][0] ? hi.x : lo.x, F.c[q][1] ? hi.y : lo.y, F.c[q][2] ? hi.z : lo.z);
-          v[q] = {p, faceUV(f, p), sk, bl, sh, 0};
+          v[q] = {p, faceUV(f, p), sk, bl, sh, 0, k.lit};
         }
         c.tint = k.b & 0xFFFFFF; c.tintKind = (u8)((k.b >> 24) & 31);
         c.quad(*passes[gm.pass[f][s][b][a]], v, tile, f, mat);
@@ -372,7 +418,22 @@ float liquidHeight(const Registry& R, BlockId id, u8 meta) {
 float liqH(const MeshCtx& c, int x, int y, int z, BlockId id, bool water) {
   BlockId b = c.at(x, y, z);
   if (water ? !c.water(x, y, z) : b != id) return -1;
-  if (!c.R.tLiquid[b]) return 0.875f;   // a waterlogged block holds a full source
+  if (!c.R.tLiquid[b]) {
+    u8 cv = c.carveAt(x, y, z);
+    if (c.R.tOpaque[b] && cv) {
+      int best = -1;
+      for (int m = 0; m < 8; m++) if ((cv >> m) & 1) best = std::max(best, (m >> 1) & 1);   // highest empty octant
+      if (best < 0) return 0.875f;
+      float h = (best + 1) * 0.5f;
+      if (h >= 1.f) {
+        BlockId up = c.at(x, y + 1, z);
+        bool upW = c.R.tLiquid[up] == 1 || ((c.metaAt(x, y + 1, z) & WLOG) && (c.R.tWlog[up] || (c.R.tOpaque[up] && c.carveAt(x, y + 1, z))));
+        if (!upW) h = 0.875f;   // the surface stops just under the next cell, same as a source
+      }
+      return h;
+    }
+    return 0.875f;   // a waterlogged block holds a full source
+  }
   return liquidHeight(c.R, b, c.metaAt(x, y, z));
 }
 float cornerH(const MeshCtx& c, int x, int y, int z, BlockId id, bool water, int dx, int dz) {
@@ -447,14 +508,21 @@ void emitLiquid(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, in
     const FaceDef& F = FACES[f];
     int ox = x + F.n[0], oy = y + F.n[1], oz = z + F.n[2];
     BlockId nb = c.at(ox, oy, oz);
+    bool carvedNb = R.tOpaque[nb] && c.carveAt(ox, oy, oz);   // a notch is not a full water neighbour: still draw this side
     if (nb == id && !water) continue;
-    if (water && c.water(ox, oy, oz)) continue;
-    if (R.tOpaque[nb] && !(f == 2 && !full)) continue;
+    if (water && c.water(ox, oy, oz) && !carvedNb) continue;
+    if (R.tOpaque[nb] && !carvedNb && !(f == 2 && !full)) continue;
     if (!isPortal && R.tLiquid[nb] && f != 2) continue;
-    float sk = R.tOpaque[nb] ? c.skyAt(x, y, z) : c.skyAt(ox, oy, oz);
-    float bl = std::max<float>(R.tOpaque[nb] ? c.blAt(x, y, z) : c.blAt(ox, oy, oz), R.tLight[id]);
+    int sx = R.tOpaque[nb] ? x : ox, sy = R.tOpaque[nb] ? y : oy, sz = R.tOpaque[nb] ? z : oz;
+    LightRgb L = biasedRgb(c, sx, sy, sz, F.n[0], F.n[1], F.n[2]);
+    u8 em[3]; blockLightRgb(id, R.tLight[id], em);
+    for (int i = 0; i < 3; i++) if (em[i] > L.b[i]) L.b[i] = em[i];
+    const u32 lit = markCubyz(packCubyzLight(L));
+    float sk = (float)(max3u(L.s[0], L.s[1], L.s[2]) >> 4), bl = (float)(max3u(L.b[0], L.b[1], L.b[2]) >> 4);
     bool top = f == 2, side = f != 2 && f != 3;
-    int tile = isPortal ? stillT : top ? (runs ? flowT : stillT) : side ? flowT : stillT;
+    // A still source beside ice (the ice is clear) must not wear the downward-flow picture.
+    bool calm = (meta & 15) == 0;
+    int tile = isPortal ? stillT : top ? (runs ? flowT : stillT) : side ? (calm ? stillT : flowT) : stillT;
     u8 mat = base | (((top && runs) || (side && falling)) ? Mat::Flowing : 0);
     MV v[4];
     for (int k = 0; k < 4; k++) {
@@ -468,8 +536,8 @@ void emitLiquid(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, in
         u = (cosA * ox2 - sinA * oz2) * scl + 0.5f; vv = (sinA * ox2 + cosA * oz2) * scl + 0.5f;
       } else if (side) { u = (float)t[0]; vv = cc[1] ? (1 - hc) : 1.f; }
       else { u = (float)t[0]; vv = (float)t[1]; }
-      float shade = top && !isPortal ? (water ? shoreAt(c, x, y, z, cc[0], cc[2]) : 0.f) : F.shade;
-      v[k] = {vec3(x + cc[0], y + hc, z + cc[2]), vec2(u, vv), sk, bl, shade, sway};
+      float shade = top && water && !isPortal ? shoreAt(c, x, y, z, cc[0], cc[2]) : 1.f;
+      v[k] = {vec3(x + cc[0], y + hc, z + cc[2]), vec2(u, vv), sk, bl, shade, sway, lit};
     }
     c.quad(dst, v, tile, f, mat);
     if (top || isPortal) { MV r[4] = {v[1], v[0], v[3], v[2]}; c.quad(dst, r, tile, f, mat); }   // visible from below / inside
@@ -484,20 +552,25 @@ void emitTorch(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, int
   int m = meta & 7;
   float wx = 0, wz = 0;
   if (m == 1) wx = 1; else if (m == 2) wx = -1; else if (m == 3) wz = 1; else if (m == 4) wz = -1;
+  MeshShapeNb nb(c, x, y, z);
+  SeatShift sh = seatShiftOf(id, (u8)meta, c.carveAt(x, y, z), nb);
   float bx = x + 0.5f, by = (float)y, bz = z + 0.5f;
   if (m) {
-    MeshShapeNb nb(c, x, y, z);
-    float back = torchSetBack((u8)m, nb);
+    float back = sh.micro ? 0.f : torchSetBack((u8)m, nb);   // a clean slab steps back; a corner seat does not
     bx = x + 0.5f - wx * (0.5f + back - 1.6f * P); bz = z + 0.5f - wz * (0.5f + back - 1.6f * P); by = y + 3.5f * P;
-  } else by += sinkOffset(id, MeshShapeNb(c, x, y, z)) / 16.f;
+  } else if (!sh.micro) by += sinkOffset(id, nb) / 16.f;
+  if (sh.micro) { bx += sh.x * P; by += sh.y * P; bz += sh.z * P; }
   float ca = std::cos(m ? LEAN : 0.f), sa = std::sin(m ? LEAN : 0.f);
   auto V = [&](float lx, float ly, float lz) { return vec3(bx + lx + wx * ly * sa, by + ly * ca, bz + lz + wz * ly * sa); };
-  float sk = c.skyAt(x, y, z), bl = (float)c.R.tLight[id];
+  LightRgb L = rgbAt(c, x, y, z);
+  { u8 em[3]; blockLightRgb(id, c.R.metaLight(id, meta), em); for (int i = 0; i < 3; i++) if (em[i] > L.b[i]) L.b[i] = em[i]; }
+  const u32 lit = markCubyz(packCubyzLight(L));
+  float sk = (float)(max3u(L.s[0], L.s[1], L.s[2]) >> 4), bl = (float)(max3u(L.b[0], L.b[1], L.b[2]) >> 4);
   float u0 = 7 / 16.f, u1 = 9 / 16.f, v0 = 6 / 16.f, v1 = 1;
   vec3 C[8] = {V(-w, 0, -w), V(w, 0, -w), V(w, 0, w), V(-w, 0, w), V(-w, hgt, -w), V(w, hgt, -w), V(w, hgt, w), V(-w, hgt, w)};
   u8 mat = Mat::Cutout | Mat::NoRelief;
   auto q = [&](int a, int b, int cc, int d, float ua, float ub, float va, float vb, float sh) {
-    MV v[4] = {{C[a], {ua, vb}, sk, bl, sh, 0}, {C[b], {ub, vb}, sk, bl, sh, 0}, {C[cc], {ub, va}, sk, bl, sh, 0}, {C[d], {ua, va}, sk, bl, sh, 0}};
+    MV v[4] = {{C[a], {ua, vb}, sk, bl, sh, 0, lit}, {C[b], {ub, vb}, sk, bl, sh, 0, lit}, {C[cc], {ub, va}, sk, bl, sh, 0, lit}, {C[d], {ua, va}, sk, bl, sh, 0, lit}};
     c.quad(dst, v, tile, NORMAL_NONE, mat);
   };
   q(2, 1, 5, 6, u0, u1, v0, v1, 220 / 255.f);
@@ -506,6 +579,43 @@ void emitTorch(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, int
   q(1, 0, 4, 5, u0, u1, v0, v1, 200 / 255.f);
   q(7, 6, 5, 4, u0, u1, 6 / 16.f, 8 / 16.f, 1.f);
   q(0, 1, 2, 3, u0, u1, 14 / 16.f, 1.f, 160 / 255.f);
+}
+
+// Water standing in the empty octants of a chiseled block. A lower notch is the bottom half;
+// an upper notch stops at 0.875 unless water continues in the cell above.
+void emitNotchWater(MeshCtx& c, std::vector<ChunkVertex>& dst, int x, int y, int z) {
+  u8 cv = c.carveAt(x, y, z);
+  BlockId wid = c.R.blockId("water");
+  if (!wid || !cv) return;
+  int tile = c.R.block(wid).faces[0];
+  BlockId up = c.at(x, y + 1, z);
+  bool above = c.R.tLiquid[up] == 1 || ((c.metaAt(x, y + 1, z) & WLOG) && (c.R.tWlog[up] || (c.R.tOpaque[up] && c.carveAt(x, y + 1, z))));
+  auto empty = [&](int hx, int hy, int hz) { return ((cv >> ((hx << 2) | (hy << 1) | hz)) & 1) != 0; };
+  c.tint = c.cornerTint((float)x + 1, (float)z + 1, 2);
+  c.tintKind = Tint::Water;
+  c.extraMat = Mat::TintAll;
+  u8 mat = (u8)(Mat::NoRelief | Mat::Liquid | Mat::Translucent);
+  LightRgb L = rgbAt(c, x, y, z);
+  const u32 lit = markCubyz(packCubyzLight(L));
+  float sk = (float)(max3u(L.s[0], L.s[1], L.s[2]) >> 4), bl = (float)(max3u(L.b[0], L.b[1], L.b[2]) >> 4);
+  auto quad = [&](int f, vec3 a, vec3 b, vec3 cc, vec3 d, bool top) {
+    MV v[4] = {{a, {0, 1}, sk, bl, 1, 0, lit}, {b, {1, 1}, sk, bl, 1, 0, lit}, {cc, {1, 0}, sk, bl, 1, 0, lit}, {d, {0, 0}, sk, bl, 1, 0, lit}};
+    c.quad(dst, v, tile, f, mat);
+    if (top) { MV r[4] = {v[1], v[0], v[3], v[2]}; c.quad(dst, r, tile, f, mat); }
+  };
+  for (int m = 0; m < 8; m++) {
+    int hx = (m >> 2) & 1, hy = (m >> 1) & 1, hz = m & 1;
+    if (!empty(hx, hy, hz)) continue;
+    float x0 = x + hx * 0.5f, x1 = x0 + 0.5f, z0 = z + hz * 0.5f, z1 = z0 + 0.5f;
+    float y0 = y + hy * 0.5f, y1 = y + (hy ? (above ? 1.f : 0.875f) : 0.5f);
+    if (!(hx < 1 && empty(hx + 1, hy, hz))) quad(0, {x1, y0, z1}, {x1, y0, z0}, {x1, y1, z0}, {x1, y1, z1}, false);
+    if (!(hx > 0 && empty(hx - 1, hy, hz))) quad(1, {x0, y0, z0}, {x0, y0, z1}, {x0, y1, z1}, {x0, y1, z0}, false);
+    if (!(hy < 1 && empty(hx, hy + 1, hz))) quad(2, {x0, y1, z1}, {x1, y1, z1}, {x1, y1, z0}, {x0, y1, z0}, true);
+    if (!(hy > 0 && empty(hx, hy - 1, hz))) quad(3, {x0, y0, z0}, {x1, y0, z0}, {x1, y0, z1}, {x0, y0, z1}, false);
+    if (!(hz < 1 && empty(hx, hy, hz + 1))) quad(4, {x0, y0, z1}, {x1, y0, z1}, {x1, y1, z1}, {x0, y1, z1}, false);
+    if (!(hz > 0 && empty(hx, hy, hz - 1))) quad(5, {x1, y0, z0}, {x0, y0, z0}, {x0, y1, z0}, {x1, y1, z0}, false);
+  }
+  c.tint = 0xFFFFFF; c.tintKind = 0; c.extraMat = 0;
 }
 } // namespace
 
@@ -573,7 +683,11 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
     switch (rt) {
       case Render::Cube: case Render::Cutout: {
         if (chestHiddenAt(wp.x, wp.y, wp.z)) break;   // the open chest is drawn by render/chest_layer.cpp
-        if (u8 cm = c.carveAt(x, y, z)) { emitCarvedBlock(c, out.opaque, id, x, y, z, cm); break; }   // carve flag lives in its own byte now
+        if (u8 cm = c.carveAt(x, y, z)) {
+          emitCarvedBlock(c, out.opaque, id, x, y, z, cm);
+          if (c.coatAt(x, y, z) & 0x0F) emitSnowCaps(c, out.cutout, id, x, y, z, cm);
+          break;
+        }
         if (surroundedCovered(c, x, y, z)) break;   // every opaque neighbour must itself be carved: a plain neighbour would leave the shared plane undrawn on both sides
         int pass = R.tTrans[id] ? 2 : rt == Render::Cutout ? 1 : 0;
         emitCube(c, gm, pass, pass == 2 ? out.trans : pass == 1 ? out.cutout : out.opaque, id, x, y, z, meta);
@@ -593,7 +707,12 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
         break;
       }
       case Render::Liquid: {
-        bool deep = R.tLiquid[id] == 1 && c.water(x, y + 1, z) && c.water(x + 1, y, z) && c.water(x - 1, y, z) && c.water(x, y, z + 1) && c.water(x, y, z - 1) && (c.water(x, y - 1, z) || c.opaque(x, y - 1, z));
+        auto fullWater = [&](int ax, int ay, int az) {
+          BlockId b = c.at(ax, ay, az);
+          if (R.tLiquid[b] == 1) return true;
+          return (c.metaAt(ax, ay, az) & WLOG) && R.tWlog[b] && !c.carveAt(ax, ay, az);   // a carved notch is not a full cell of water
+        };
+        bool deep = R.tLiquid[id] == 1 && fullWater(x, y + 1, z) && fullWater(x + 1, y, z) && fullWater(x - 1, y, z) && fullWater(x, y, z + 1) && fullWater(x, y, z - 1) && (fullWater(x, y - 1, z) || c.opaque(x, y - 1, z));
         if (!deep) emitLiquid(c, R.tLiquid[id] == 2 ? out.opaque : out.trans, id, x, y, z, meta);
         if (R.tLiquid[id] == 1 && (meta & 8)) {
           bool belowFalls = c.water(x, y - 1, z) && (c.metaAt(x, y - 1, z) & 8) && R.tLiquid[c.at(x, y - 1, z)] == 1;
@@ -606,7 +725,10 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
       case Render::Shape: emitShapeBlock(c, R.tTrans[id] || isPuddle(R, id) ? out.trans : out.cutout, id, x, y, z, meta); break;
       default: break;
     }
-    if ((meta & WLOG) && (R.tWlog[id] || (R.tOpaque[id] && c.carveAt(x, y, z))) && waterId) emitLiquid(c, out.trans, waterId, x, y, z, 0);   // (a chiseled block holds water in its carved-away part)
+    if ((meta & WLOG) && waterId) {
+      if (R.tOpaque[id] && c.carveAt(x, y, z)) emitNotchWater(c, out.trans, x, y, z);
+      else if (R.tWlog[id]) emitLiquid(c, out.trans, waterId, x, y, z, 0);
+    }
     if (T.emitsParticles) out.fx.emitters.push_back({wp, id});
     // where drips form: under a block with water or lava on it, and under leaves (rain comes through)
     if (c.at(x, y - 1, z) == AIR) {

@@ -10,6 +10,9 @@ c https://github.com/nothings/stb.git stb master
 c https://github.com/g-truc/glm.git glm 1.0.1
 c https://github.com/richgel999/miniz.git miniz 3.0.2
 c https://github.com/nlohmann/json.git json v3.11.3
+mkdir -p vulkan
+c https://github.com/KhronosGroup/Vulkan-Headers.git vulkan/Vulkan-Headers v1.3.296
+c https://github.com/KhronosGroup/glslang.git vulkan/glslang 15.3.0
 # nlohmann/json: keep only the single header as json/nlohmann/json.hpp
 if [ -d json/single_include ]; then mv json/single_include/nlohmann json_nl && rm -rf json && mkdir -p json && mv json_nl json/nlohmann; fi
 rm -rf SDL2/test glm/test imgui/examples quickjs/tests 2>/dev/null || true

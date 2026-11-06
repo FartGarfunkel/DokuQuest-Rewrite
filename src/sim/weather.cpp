@@ -5,6 +5,8 @@
 #include "core/init.h"
 #include "gen/gendefs.h"
 #include "gen/structures.h"
+#include "world/shapes.h"
+#include "world/carve_faces.h"
 
 namespace dq {
 
@@ -21,16 +23,34 @@ inline float rnd() { g_rng ^= g_rng << 13; g_rng ^= g_rng >> 17; g_rng ^= g_rng 
 
 struct Ids {
   BlockId water, ice, snow_layer, puddle, fire, glass, sand, red_sand, desert_sand, charred_log, rod, snow_block;
-  std::vector<u8> isLog, puddleGround;
+  std::vector<u8> isLog, puddleGround, heat;   // heat: 0 cold, 1 melts by its own light, 2 hot even when dim (magma)
   Ids() {
     auto& r = reg();
     water = r.blockId("water"); ice = r.blockId("ice"); snow_layer = r.blockId("snow_layer"); puddle = r.blockId("puddle");
     fire = r.blockId("fire"); glass = r.blockId("glass"); sand = r.blockId("sand"); red_sand = r.blockId("red_sand");
     desert_sand = r.blockId("desert_sand"); charred_log = r.blockId("charred_log"); rod = r.blockId("lightning_rod"); snow_block = r.blockId("snow_block");
-    isLog.assign(r.blocks.size(), 0); puddleGround.assign(r.blocks.size(), 0);
+    isLog.assign(r.blocks.size(), 0); puddleGround.assign(r.blocks.size(), 0); heat.assign(r.blocks.size(), 0);
     for (auto& b : r.blocks) if (b.has("isLog")) isLog[b.id] = 1;
     for (const char* k : {"grass", "dirt", "coarse_dirt", "dirt_path", "podzol", "mud", "stone", "cobblestone", "gravel", "mossy_cobblestone", "stone_bricks",
                           "dirt_with_coniferous_litter", "dirt_with_rainforest_litter", "packed_mud", "farmland"}) { BlockId id = r.blockId(k); if (id) puddleGround[id] = 1; }
+    // Flames, lava and a running furnace. Glowstone, lamps, end rods and soul fire are left out.
+    for (auto& b : r.blocks) {
+      if (b.has("hot")) { heat[b.id] = 2; continue; }
+      bool by = r.tLiquid[b.id] == 2 || b.has("fire");
+      if (!by && b.render == Render::Torch && !b.has("rs") && b.key != "old_torch") by = true;
+      if (!by && (b.key == "jack_o_lantern" || b.key == "campfire" || b.key == "brazier")) by = true;
+      if (!by && b.has("furnace") && b.key.rfind("lit_", 0) == 0) by = true;
+      if (by) heat[b.id] = 1;
+    }
+  }
+  // How many blocks away this cell still melts snow. A torch (14) reaches 2, lava (15) reaches 3, a lit furnace (13) reaches 1.
+  int heatReach(BlockId id, u8 meta) const {
+    if (id >= heat.size() || !heat[id]) return 0;
+    const Registry& r = reg();
+    int lit = r.tLMeta[id] ? r.metaLight(id, meta) : (int)r.tLight[id];
+    if (heat[id] == 2) return std::max(1, lit > 11 ? lit - 12 : 0);
+    if (lit <= 11) return 0;
+    return lit - 12;
   }
   bool log(BlockId id) const { return id < isLog.size() && isLog[id]; }
   bool sandy(BlockId id) const { return id && (id == sand || id == red_sand || id == desert_sand); }
@@ -364,8 +384,131 @@ float WeatherSystem::mistTarget(Level& lv, World& w, const std::string& zn, cons
 }
 
 // ---- the ground in the weather ------------------------------------------------------------------------
+struct Warmth {
+  int sky = 0, blk = 0;
+  bool snowing = false, sun = false, rain = false;
+};
+static Warmth warmthAt(WeatherSystem& ws, Level& lv, World& w, int x, int y, int z) {
+  Warmth e;
+  u8 l = w.getLight(x, y, z);
+  u8 a = inWorldY(y + 1) ? w.getLight(x, y + 1, z) : 0;
+  e.sky = std::max(l >> 4, a >> 4);
+  e.blk = std::max(l & 15, a & 15);
+  int pk = ws.precipAt(w, (float)x, (float)y, (float)z);
+  e.snowing = ws.rain > 0.3f && pk == 2;                 // falling snow, not merely a cold biome
+  float day = e.sky * envDay(lv.info.time);
+  e.sun = !e.snowing && day > 11.f;                      // open sun on a clear day, cold lands included
+  e.rain = !e.snowing && pk == 1 && ws.rain > 0.5f && e.sky >= 15;
+  return e;
+}
+static bool heatNear(World& w, int x, int y, int z, int blk) {
+  const Ids& I = ids();
+  const Registry& r = reg();
+  int R = blk > 11 ? 3 : 1;   // a dim cell can only feel magma and the other low flames next door
+  for (int dy = -R; dy <= R; dy++) {
+    int yy = y + dy;
+    if (!inWorldY(yy)) continue;
+    int spanY = R - std::abs(dy);
+    for (int dz = -spanY; dz <= spanY; dz++) {
+      int spanZ = spanY - std::abs(dz);
+      for (int dx = -spanZ; dx <= spanZ; dx++) {
+        if (!dx && !dy && !dz) continue;
+        BlockId id = w.getBlock(x + dx, yy, z + dz);
+        if (!id || id >= I.heat.size() || !I.heat[id]) continue;
+        u8 meta = r.tLMeta[id] ? w.getMeta(x + dx, yy, z + dz) : 0;
+        if (I.heatReach(id, meta) >= std::abs(dx) + std::abs(dy) + std::abs(dz)) return true;
+      }
+    }
+  }
+  return false;
+}
+// A ground probe is rare, so sun, rain or a flame is enough. A random tick visits every snow layer
+// once a second, so each cause waits: a clear day about a minute, rain a few seconds, a torch sooner than that.
+static bool meltsNow(WeatherSystem& ws, Level& lv, World& w, int x, int y, int z, bool sample, bool stormSnow) {
+  Warmth e = warmthAt(ws, lv, w, x, y, z);
+  if (sample) {
+    if (e.sun || e.rain) return true;
+    return heatNear(w, x, y, z, e.blk);
+  }
+  if (e.snowing) {
+    if (rnd() > (e.blk > 11 ? 1.f / 8.f : 1.f / 20.f)) return false;
+    return heatNear(w, x, y, z, e.blk);
+  }
+  if ((e.sun && rnd() < 1.f / 60.f) || (e.rain && rnd() < 1.f / 6.f)) return true;
+  if (stormSnow && !e.sun && rnd() < 1.f / 80.f) return true;   // snowfall left in the shade thins out after the storm
+  if (e.sun || e.rain) return false;
+  if (rnd() > (e.blk > 11 ? 1.f / 8.f : 1.f / 20.f)) return false;
+  return heatNear(w, x, y, z, e.blk);
+}
+static void meltCoatAt(WeatherSystem& ws, Level& lv, World& w, int x, int y, int z) {
+  if (!inWorldY(y) || !w.chunk(dimOfY(y), x >> 4, z >> 4)) return;
+  u8 coat = w.getCoat(x, y, z);
+  if (!(coat & 0x0F)) return;
+  if (!meltsNow(ws, lv, w, x, y, z, true, false) || rnd() >= 0.4f) return;
+  w.setCoat(x, y, z, (coat & 0x10) ? (u8)(coat & ~0x10) : 0);
+}
+static bool partialCarvedTop(const World& w, int x, int y, int z) {
+  BlockId id = w.getBlock(x, y, z);
+  if (!fullSolid(id)) return false;
+  u8 cv = w.getCarve(x, y, z);
+  return cv && !carveFaceFull(cv, 0, 1, 0);
+}
+
+void WeatherSystem::settleCarvedCover(World& w, int x, int y, int z) {
+  const Ids& I = ids();
+  BlockId id = w.getBlock(x, y, z);
+  u8 coat = w.getCoat(x, y, z);
+  if (!fullSolid(id)) {
+    if (coat) w.setCoat(x, y, z, 0);
+    return;
+  }
+  u8 cv = w.getCarve(x, y, z);
+  bool fullTop = carveFaceFull(cv, 0, 1, 0);
+  u8 cols = exposedCols(cv);
+  if (inWorldY(y + 1)) {
+    BlockId up = w.getBlock(x, y + 1, z);
+    if (!fullTop && cv && (up == I.snow_layer || (I.puddle && up == I.puddle))) {
+      u8 grown = (up == I.snow_layer && (w.getMeta(x, y + 1, z) & 7) >= 1) ? 0x10 : 0;
+      w.setCoat(x, y, z, (u8)(cols | ((coat | grown) & 0x10)));
+      w.setBlock(x, y + 1, z, AIR);
+      return;
+    }
+  }
+  if (fullTop || !cv) {
+    if (coat & 0x0F) {
+      w.setCoat(x, y, z, 0);
+      if (I.snow_layer && inWorldY(y + 1) && w.getBlock(x, y + 1, z) == AIR)
+        w.setBlock(x, y + 1, z, I.snow_layer, (u8)((coat & 0x10) ? 9 : 8));
+    } else if (coat) w.setCoat(x, y, z, 0);
+    return;
+  }
+  u8 keep = (u8)((coat & cols) | (coat & 0x10));
+  if (!(keep & 0x0F)) keep = 0;
+  if (keep != coat) w.setCoat(x, y, z, keep);
+}
+
+void WeatherSystem::coverMelt(Level& lv, World& w) {
+  if (leadDim != DIM_OVERWORLD || leadRealm != REALM_MAIN || !hostRules) return;
+  for (int k = 0; k < 6; k++) {
+    int x = ifloor(leadPos.x + (rnd() - 0.5f) * 56), z = ifloor(leadPos.z + (rnd() - 0.5f) * 56);
+    if (!w.chunk(DIM_OVERWORLD, x >> 4, z >> 4)) continue;
+    int y = topAt(w, x, z) - 1;
+    if (ids().snow_layer && w.getBlock(x, y, z) == ids().snow_layer) y--;
+    meltCoatAt(*this, lv, w, x, y, z);
+  }
+  // a torch in a dug-out room is not on the sky column
+  for (int k = 0; k < 4; k++) {
+    int x = ifloor(leadPos.x + (rnd() - 0.5f) * 24);
+    int y = ifloor(leadPos.y + (rnd() - 0.5f) * 12);
+    int z = ifloor(leadPos.z + (rnd() - 0.5f) * 24);
+    meltCoatAt(*this, lv, w, x, y, z);
+  }
+}
+
 void WeatherSystem::groundTick(Level& lv, World& w) {
-  if (rain < 0.5f || leadDim != DIM_OVERWORLD || leadRealm != REALM_MAIN || !hostRules) return;
+  if (leadDim != DIM_OVERWORLD || leadRealm != REALM_MAIN || !hostRules) return;
+  coverMelt(lv, w);
+  if (rain < 0.5f) return;
   const Ids& I = ids(); auto& r = reg();
   for (int k = 0; k < 8; k++) {
     int x = ifloor(leadPos.x + (rnd() - 0.5f) * 56), z = ifloor(leadPos.z + (rnd() - 0.5f) * 56);
@@ -377,17 +520,37 @@ void WeatherSystem::groundTick(Level& lv, World& w) {
     if (pk == 2) {
       if (id == I.water && I.water && w.getMeta(x, y, z) == 0 && I.ice && rnd() < 0.25f) { w.setBlock(x, y, z, I.ice, 0); noteIce(x, y, z); continue; }
       if (!I.snow_layer) continue;
-      if (id == I.snow_layer) { u8 mm = w.getMeta(x, y, z), m = mm & 7; if (m < 1 && (mm & 8) && rnd() < 0.15f) w.setBlock(x, y, z, I.snow_layer, (u8)((m + 1) | 8)); continue; }
+      if (id == I.snow_layer) {
+        if (inWorldY(y - 1) && partialCarvedTop(w, x, y - 1, z)) { settleCarvedCover(w, x, y - 1, z); continue; }
+        u8 mm = w.getMeta(x, y, z), m = mm & 7; if (m < 1 && (mm & 8) && rnd() < 0.15f) w.setBlock(x, y, z, I.snow_layer, (u8)((m + 1) | 8));
+        continue;
+      }
+      if (partialCarvedTop(w, x, y, z)) {
+        if (above == I.snow_layer || (I.puddle && above == I.puddle)) settleCarvedCover(w, x, y, z);
+        else if (above == AIR && rnd() < 0.35f) {
+          u8 cv = w.getCarve(x, y, z), coat = w.getCoat(x, y, z), cols = exposedCols(cv);
+          if (!(coat & 0x0F)) w.setCoat(x, y, z, cols);
+          else if (!(coat & 0x10) && rnd() < 0.15f) w.setCoat(x, y, z, (u8)((coat & 0x0F) | 0x10));
+        }
+        continue;
+      }
       if (above == AIR && r.tSolid[id] && r.tOpaque[id] && !r.tShape[id] && !r.tLeaves[id] && rnd() < 0.35f) w.setBlock(x, top, z, I.snow_layer, 8);
       if (above && above == I.puddle) w.setBlock(x, top, z, I.snow_layer, 8);
       continue;
     }
-    // rain: snow on warmer ground melts, a puddle forms in a dip
+    // rain: snow and plain ice melt, a puddle forms in a dip. Packed ice stays.
+    if (I.ice && id == I.ice) {
+      if (rnd() < 0.5f) w.setBlock(x, y, z, I.water, 0);
+      continue;
+    }
     if (I.snow_layer && (id == I.snow_layer || above == I.snow_layer)) {
       int sy = id == I.snow_layer ? y : top; u8 m = w.getMeta(x, sy, z) & 7;
       if (rnd() < 0.5f) { if (m > 0) w.setBlock(x, sy, z, I.snow_layer, (u8)(m - 1)); else w.setBlock(x, sy, z, AIR, 0); }
       continue;
     }
+    if ((w.getCoat(x, y, z) & 0x0F)) w.setCoat(x, y, z, 0);
+    if (id == I.snow_layer && inWorldY(y - 1) && (w.getCoat(x, y - 1, z) & 0x0F)) w.setCoat(x, y - 1, z, 0);
+    if (partialCarvedTop(w, x, y, z)) continue;   // rain does not leave a puddle floating over a low step
     if (!I.puddle || above != AIR || id >= I.puddleGround.size() || !I.puddleGround[id] || rnd() > 0.3f) continue;
     if ((hash32(x, 7, z, lv.info.seed) & 7) > 2) continue;   // puddles gather in patches, not everywhere
     int low = 0;
@@ -401,38 +564,33 @@ void WeatherSystem::groundTick(Level& lv, World& w) {
 
 void WeatherSystem::blockTick(Level& lv, World& w, int x, int y, int z, BlockId id, u8 meta) {
   const Ids& I = ids();
-  u8 l = w.getLight(x, y, z);
-  if (id == I.snow_layer && (l & 15) <= 11 && rnd() > 1.f / 60) return;   // snow is everywhere in cold lands: most ticks end here
-  int pk = precipAt(w, (float)x, (float)y, (float)z);
-  bool wetNow = rain > 0.3f;
-  float sun = (l >> 4) * envDay(lv.info.time);
   if (id == I.puddle) {
-    if (wetNow && pk == 1) return;
+    int pk = precipAt(w, (float)x, (float)y, (float)z);
+    u8 l = w.getLight(x, y, z);
+    float sun = (l >> 4) * envDay(lv.info.time);
+    if (rain > 0.3f && pk == 1) return;
     if (rnd() < (sun > 12 ? 1.f / 25 : 1.f / 90)) w.setBlock(x, y, z, AIR, 0);
     return;
   }
-  if (id == I.snow_layer) {
-    bool warm = pk != 2, snowing = wetNow && pk == 2;
-    bool gone = (meta & 8) && !snowing && rnd() < (sun > 11 ? 0.5f : 0.12f);
-    if ((l & 15) > 11 || (warm && !snowing && sun > 11) || gone) {
-      u8 m = meta & 7;
-      if (m > 0) w.setBlock(x, y, z, I.snow_layer, (u8)((m - 1) | (meta & 8))); else w.setBlock(x, y, z, AIR, 0);
-    }
-  }
+  if (id != I.snow_layer && id != I.ice) return;
+  if (!meltsNow(*this, lv, w, x, y, z, false, id == I.snow_layer && (meta & 8))) return;
+  if (id == I.ice) { w.setBlock(x, y, z, I.water, 0); return; }
+  u8 m = meta & 7;
+  if (m > 0) w.setBlock(x, y, z, I.snow_layer, (u8)((m - 1) | (meta & 8)));
+  else w.setBlock(x, y, z, AIR, 0);
 }
 
 void WeatherSystem::thaw(Level& lv, World& w, double dt) {
   if (ice.empty() || !hostRules || leadDim != DIM_OVERWORLD || (thawT -= (float)dt) > 0) return;
   thawT = 1;
-  if (!(kind == "clear" && rain < 0.1f)) return;
-  const Ids& I = ids(); float day = envDay(lv.info.time);
+  const Ids& I = ids();
   for (int i = (int)ice.size() - 1; i >= 0; i--) {
     ivec3 p = ice[i];
     if (!w.isLoaded(p.x, p.y, p.z)) continue;
     if (w.getBlock(p.x, p.y, p.z) != I.ice) { ice.erase(ice.begin() + i); continue; }
-    float sun = (w.getLight(p.x, p.y + 1, p.z) >> 4) * day;
-    bool cold = precipAt(w, (float)p.x, (float)p.y, (float)p.z) == 2;
-    if (rnd() < (sun > 11 ? 1.f / 120 : 1.f / 480) * (cold ? 0.5f : 1.f)) { w.setBlock(p.x, p.y, p.z, I.water, 0); ice.erase(ice.begin() + i); }
+    if (!meltsNow(*this, lv, w, p.x, p.y, p.z, false, false)) continue;
+    w.setBlock(p.x, p.y, p.z, I.water, 0);
+    ice.erase(ice.begin() + i);
   }
 }
 

@@ -272,32 +272,41 @@ int main(int argc, char** argv) {
   // ------------------------------------------------------------ the story
   {
     check(riftTier(*L) <= 0 && riftStability(*L) == 100, strFormat("before the rift: all quiet (tier %d, stability %d, stage %d)", riftTier(*L), riftStability(*L), L->info.data.value("rift", json::object()).value("stage", 0)));
-    check(riftRec(*L).value("frags", 0) == 2, "the Ender Dragon and a lair dragon each gave a Realm Fragment (rpg.js great foes)");
+    check(riftRec(*L).value("frags", 0) == 0, "a great foe's Realm Fragment is not counted until the rift drinks it");
     riftRec(*L)["frags"] = 0;
     int frag0 = countItems("realm_fragment");
     riftOpenAt(*L, "vtest", "Testvale", vec3(1000.5f, Y + 1, 10.5f), 0);
     tick(1.2);
     check(riftRec(*L).value("stage", 0) == 1 && riftTier(*L) == 1, "the rift opens in the square");
     PortalSystem* ps = portalSystem(*L);
-    bool tear = false; if (ps) for (auto& win : ps->windows(REALM_MAIN)) if (win.kind == PortalKind::Rift && !win.walk) tear = true;
+    bool tear = false; float tearW = 0; if (ps) for (auto& win : ps->windows(REALM_MAIN)) if (win.kind == PortalKind::Rift && !win.walk) { tear = true; tearW = win.w; }
     check(tear, "a window onto his realm (a torn virtual portal, not walkable yet)");
     check(!riftElderLine(*L).empty() && riftElderLabel(*L) == "The rift in the square\xE2\x80\xA6", "the elder knows the old tale");
     RiftLine q = riftAsk(*L, *P, "guard", {"farmer"});
     check(!q.text.empty() && !q.toast.empty(), "a villager has something to say about it");
-    // a keeper falls
+    // a keeper falls: the shard drops, and the boundary stays as it was
     Creature* k = spawnCreature(*L, REALM_MAIN, "ghoul", vec3(1005.5f, Y + 1, 0.5f)); k->data["dungeon"] = "d1_1";
     kill(*k, P); tick(1.5);
-    check(riftRec(*L).value("frags", 0) == 1 && riftStability(*L) == 100 - 92 / RIFT_NEED && countItems("realm_fragment") == frag0 + 1, "a keeper's Realm Fragment thins the boundary");
+    check(riftRec(*L).value("frags", 0) == 0 && riftStability(*L) == 100 && countItems("realm_fragment") == frag0 + 1, "a keeper drops a fragment and the rift has not taken it");
     tick(2);
-    check(fx.heard("The world shudders. (1 of " + std::to_string(RIFT_NEED) + " fragments)"), "the world shudders");
-    // the rift wants all of them
+    check(fx.heard("It counts only once the rift drinks it."), "the shard waits to be given");
+    // standing at the tear with it in the pack, but not held up, does not count
     P->pos = vec3(1001.5f, Y + 1, 10.5f);
+    for (auto& s : P->inv) if (s.id == "realm_fragment") s = ItemStack();
     P->inv[3] = ItemStack("realm_fragment", 2);
     use("");
-    check(fx.heard("but it wants " + std::to_string(RIFT_NEED) + ". You have 2."), "two aren't enough");
-    P->inv[3] = ItemStack("realm_fragment", RIFT_NEED);
-    use("");
-    check(riftRec(*L).value("stage", 0) == 3 && P->inv[3].empty() && riftTier(*L) == 4, "all the fragments: the gateway steadies");
+    check(riftRec(*L).value("frags", 0) == 0 && P->inv[3].n == 2 && fx.heard("Hold a Realm Fragment up to the rift"), "using empty-handed does not feed the rift");
+    // one use, one fragment: the tear widens and the boundary thins
+    use("realm_fragment");
+    check(riftRec(*L).value("frags", 0) == 1 && riftStability(*L) == 100 - 92 / RIFT_NEED && P->inv[3].n == 1, "one fragment, offered, thins the boundary");
+    tick(0.5);
+    check(fx.heard("The world shudders. The tear opens a little wider. (1 of " + std::to_string(RIFT_NEED) + ")"), "the world shudders when the rift drinks it");
+    float wider = 0; if (ps) for (auto& win : ps->windows(REALM_MAIN)) if (win.kind == PortalKind::Rift && !win.walk) wider = win.w;
+    check(wider > tearW + 0.01f, "the tear opens a little wider");
+    // the rest, one at a time; the tenth steadies the gateway
+    P->inv[3] = ItemStack("realm_fragment", RIFT_NEED - 1);
+    for (int i = 1; i < RIFT_NEED; i++) use("realm_fragment");
+    check(riftRec(*L).value("stage", 0) == 3 && P->inv[3].empty() && riftTier(*L) == 4, "the tenth fragment: the gateway steadies");
     tick(1.2);
     bool gate = false; if (ps) for (auto& win : ps->windows(REALM_MAIN)) if (win.kind == PortalKind::Rift && win.walk) gate = true;
     check(gate, "the gateway can be walked through");

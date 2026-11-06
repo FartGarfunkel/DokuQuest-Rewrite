@@ -1,10 +1,13 @@
-// world/light.h — light (sky << 4 | block, 0..15 each), stored per section in Chunk.
+// world/light.h — Cubyz-style light, stored per section in Chunk.
 //
-// Same rules as the original world/mesher.js computeRegionLight/floodLight: sky light falls straight
-// down at 15 through clear cells, spreads sideways (and down through leaves/water) losing 1 + the
-// block's light attenuation per step; block light spreads from emitters the same way; opaque blocks
-// stop both. The original recomputed a 3x3-chunk region from scratch for every mesh; here light is
-// persistent and incremental:
+// Sun and block light are each RGB bytes (0..255). Every step subtracts 8, so a full light reaches
+// about 31 blocks. Full white sun going straight down does not decay (a sun column). Crossing a
+// transparent block also subtracts that block's absorption (water takes more red than blue, stained
+// glass takes the dye's absorbedLight so the light beyond it is that color). Opaque
+// blocks stop both. The gameplay nibble (sky << 4 | block, 0..15) is derived from the brightest
+// channel so mobs, spawn and shader-pack eye brightness keep a 0..15 reading.
+//
+// Light is persistent and incremental:
 //   * initialChunkLight() lights a fresh chunk on the worker that generated/loaded it (chunk-local
 //     flood fill, like the original's first pass),
 //   * LightEngine (a WorldSystem, added to every World) merges light across chunk and band borders
@@ -31,7 +34,7 @@ public:
   // stats (debug overlay / benchmarks)
   int lastCells = 0; double lastMs = 0;
 private:
-  struct Node { int x, y, z; u8 l; };
+  struct Node { int x, y, z; u8 c[3]; };
   std::vector<ivec3> changes;
   std::vector<ChunkKey> arrivals;
   std::vector<Node> inc[2], rem[2];
@@ -41,10 +44,12 @@ private:
   SectionKey lastTouched{-1, 0, 0, 0};
   World* w = nullptr;
   int cells = 0;
+  struct R3 { u8 c[3]{}; };
+  static Node nodeAt(int x, int y, int z, const u8* c);
   Chunk* chunkAt(int x, int y, int z);
-  u8 get(int x, int y, int z, int ch);
-  void set(int x, int y, int z, int ch, u8 v);
-  u8 emission(int x, int y, int z, int ch, BlockId id, u8 meta);
+  R3 getC(int x, int y, int z, int ch);
+  void setC(int x, int y, int z, int ch, const R3& v);
+  R3 emission(int x, int y, int z, int ch, BlockId id, u8 meta);
   void touch(int x, int y, int z);
   void propagate(int ch);
   void unpropagate(int ch);

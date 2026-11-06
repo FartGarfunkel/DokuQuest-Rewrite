@@ -653,17 +653,28 @@ static float rayAABB(vec3 o, vec3 d, vec3 lo, vec3 hi) {
   }
   return t1 < 0 ? -1 : std::max(0.f, t0);
 }
-int rigHitPart(const Creature& m, const RigModel& M, vec3 o, vec3 d) {
+int rigHitPart(const Creature& m, const RigModel& M, vec3 o, vec3 d, float* outT) {
   int best = -1; float bt = 1e9f;
   for (size_t i = 0; i < M.parts.size() && i < m.mats.size(); i++) {
     if (!rigPartPosed(m, (int)i)) continue;
     mat4 inv = glm::inverse(m.mats[i]);
     vec3 lo = vec3(inv * vec4(o - m.pos, 1)), ld = vec3(inv * vec4(d, 0));
     const RigPart& p = M.parts[i];
-    float t = rayAABB(lo, ld, p.min - vec3(0.03f), p.max + vec3(0.03f));
+    // 0.12 local units: a wing membrane is only ~0.08 thick in world space, and 0.03 missed it
+    float t = rayAABB(lo, ld, p.min - vec3(0.12f), p.max + vec3(0.12f));
     if (t >= 0 && t < bt) { bt = t; best = (int)i; }
   }
+  if (outT && best >= 0) *outT = bt;
   return best;
+}
+int rigLimbPart(const RigModel& M, int part) {
+  int cur = part;
+  for (int guard = 0; cur >= 0 && guard < 16; guard++) {
+    if (cur >= (int)M.parts.size()) return -1;
+    if (!M.parts[cur].limb.empty()) return cur;
+    cur = M.parts[cur].parent;
+  }
+  return -1;
 }
 
 // ------------------------------------------------------------------ dismember.js
@@ -701,7 +712,11 @@ void Creature::tryDismember(Level& lv, const DamageSrc& src, float dealt) {
   rigPose(*this, *M, creatureBase(*this, false));   // the pose right now
   int pi = -1;
   if (src.hasRay) pi = rigHitPart(*this, *M, src.rayO, src.rayD);
-  if (pi < 0 || M->parts[pi].limb.empty()) {
+  if (pi >= 0) {
+    int limb = rigLimbPart(*M, pi);
+    if (limb < 0) return;   // the torso: a body hit does not tear off some other limb
+    pi = limb;
+  } else {
     std::vector<int> limbs; for (size_t i = 0; i < M->parts.size(); i++) if (!M->parts[i].limb.empty() && rigPartPosed(*this, (int)i)) limbs.push_back((int)i);
     if (limbs.empty()) return;
     pi = limbs[(size_t)(frand() * limbs.size()) % limbs.size()];

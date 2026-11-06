@@ -5,6 +5,7 @@
 #include "render/item_layers.h"
 #include "render/be_scan.h"
 #include "render/tile_box.h"
+#include "world/shapes.h"
 #include "client/app.h"
 #include "ui/theme.h"
 #include "imgui.h"
@@ -96,6 +97,9 @@ public:
       u8 meta = w.getMeta(x, y, z);
       bool wall = meta & 16;
       float ang = wall ? -(float)(meta & 3) * PI * 0.5f : (float)(meta & 15) / 16.f * TAU;
+      SeatShift sh = seatShiftOf(id, meta, w.getCarve(x, y, z), WorldShapeNb(w, x, y, z));
+      vec3 anchor(0.5f, 0, 0.5f);
+      if (sh.micro) anchor += vec3(sh.x, sh.y, sh.z) / 16.f;
       // the wood's planks for the board (oak_sign -> planks, birch_sign -> birch_planks ...)
       std::string wood = bd.key.substr(0, bd.key.size() - 5);
       BlockId pl = reg().blockId(wood == "oak" ? "planks" : wood + "_planks");
@@ -104,7 +108,7 @@ public:
       GLuint side = tileTexture(a, reg().block(pl).faces[0]), top = tileTexture(a, reg().block(pl).faces[2]);
       if (!side) return;
       if (!begun) { if (!cd.begin(f, f.cam.viewProj)) return; begun = true; }
-      mat4 m = glm::translate(mat4(1), rel + vec3(0.5f, 0, 0.5f));
+      mat4 m = glm::translate(mat4(1), rel + anchor);
       m = glm::rotate(m, ang, vec3(0, 1, 0));
       m = glm::translate(m, vec3(-0.5f, 0, -0.5f));
       // in this frame the writing faces +z; a wall sign's board lies against the wall at z 0
@@ -122,7 +126,7 @@ public:
         for (size_t i = 0; i < 4 && i < e["lines"].size(); i++) if (e["lines"][i].is_string()) { L[i] = e["lines"][i].get<std::string>(); any |= !L[i].empty(); }
       if (!any) return;
       vec3 nrm(std::sin(ang), 0, std::cos(ang));                       // the writing's side (+z turned by ang)
-      if (glm::dot(-(rel + vec3(0.5f, 0.6f, 0.5f)), nrm) < 0) return;   // seen from behind: plain boards
+      if (glm::dot(-(rel + anchor + vec3(0, 0.6f, 0)), nrm) < 0) return;   // seen from behind: plain boards
       bool glow = e.value("glow", false);
       std::string col = e.value("color", std::string("black"));
       auto dc = dyeColours().find(col);

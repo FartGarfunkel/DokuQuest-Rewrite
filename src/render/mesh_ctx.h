@@ -18,8 +18,9 @@ extern const float AO_CURVE[4];
 // the rain puddle (a flat carpet of water): drawn flat, glossy and see-through like water, never as relief
 inline bool isPuddle(const Registry& R, BlockId id) { static const BlockId pid = R.blockId("puddle"); return id && id == pid; }
 
-// One vertex before packing
-struct MV { vec3 p; vec2 uv; float sky, blk; float shade; u8 sway; };
+// One vertex before packing. `lit` is markCubyz(pack): bit 31 set means the 5-bit RGB word is real.
+// Left at 0, put() builds a grayscale word from sky and blk so plants keep the new brightness.
+struct MV { vec3 p; vec2 uv; float sky, blk; float shade; u8 sway; u32 lit = 0; };
 
 struct MeshCtx {
   const MeshInput& in; MeshOutput& out; const MesherOptions& opt; const Registry& R; const MeshTiles* tiles;
@@ -34,6 +35,7 @@ struct MeshCtx {
   BlockId at(int x, int y, int z) const { return inside(y) ? in.ids[I(x, y, z)] : AIR; }
   u8 metaAt(int x, int y, int z) const { return inside(y) ? in.meta[I(x, y, z)] : 0; }
   u8 carveAt(int x, int y, int z) const { return inside(y) ? in.carve[I(x, y, z)] : 0; }
+  u8 coatAt(int x, int y, int z) const { return inside(y) ? in.coat[I(x, y, z)] : 0; }
   u8 skyAt(int x, int y, int z) const { return inside(y) ? in.light[I(x, y, z)] >> 4 : 15; }
   u8 blAt(int x, int y, int z) const { return inside(y) ? in.light[I(x, y, z)] & 15 : 0; }
   bool opaque(int x, int y, int z) const { return R.tOpaque[at(x, y, z)]; }
@@ -46,7 +48,12 @@ struct MeshCtx {
     if (carveAt(x, y, z)) return false;   // carved (dedicated carve byte): never cull against it
     return true;
   }
-  bool water(int x, int y, int z) const { BlockId b = at(x, y, z); return R.tLiquid[b] == 1 || (R.tWlog[b] && (metaAt(x, y, z) & WLOG)); }
+  bool water(int x, int y, int z) const {
+    BlockId b = at(x, y, z);
+    if (R.tLiquid[b] == 1) return true;
+    if (!(metaAt(x, y, z) & WLOG)) return false;
+    return R.tWlog[b] || (R.tOpaque[b] && carveAt(x, y, z));
+  }
 
   // climate tint at a vertex corner (x,z in section-local block units), kind 0 grass 1 foliage 2 water
   u32 cornerTint(float x, float z, int kind);
@@ -70,6 +77,7 @@ struct MeshShapeNb : ShapeNb {
 // per-kind emitters
 void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
 void emitCarvedBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
+void emitSnowCaps(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 carve);
 void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
 void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
 bool emitVoxelLeafPlate(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);   // vines, lily pads
@@ -82,8 +90,33 @@ int meshGrassTufts();
 void setMeshGrassTufts(int bladesPerBlock);
 void applyGrassSetting(const struct Settings& s);   // world_renderer.cpp: settings "grass3d" -> setMeshGrassTufts
 
-// smooth light + AO at the four corners of a full face (same rules as cubes); light 0..15 floats
-struct FaceCorners { float sky[4], bl[4], ao[4]; int aoi[4]; };
+// smooth light + AO at the four corners of a full face (same rules as cubes). sky/bl stay 0..15 (the nibble).
+// rgb is the Cubyz sample after the darker-neighbour bias; lit is that sample packed, bit 31 set.
+struct FaceCorners { float sky[4], bl[4], ao[4]; int aoi[4]; LightRgb rgb[4]; u32 lit[4]; };
 void faceCorners(const MeshCtx& c, int x, int y, int z, int f, FaceCorners& fc);
+
+// Apron sample. Outside the gathered neighbourhood: dark below the world, full sun elsewhere.
+inline bool meshApron(int x, int y, int z) {
+  return x >= -1 && x <= 16 && z >= -1 && z <= 16 && y >= MeshInput::Y0 && y <= 16;
+}
+inline LightRgb rgbAt(const MeshCtx& c, int x, int y, int z) {
+  if (!meshApron(x, y, z)) return y < 0 ? LightRgb{} : fullSunRgb();
+  return c.in.rgb[c.I(x, y, z)];
+}
+// Cubyz smooth bias: along the face normal, a neighbour up to 8 darker pulls this sample down by 2.5 times that gap.
+inline void biasLightChannel(u8& a, u8 nxt) {
+  if (a <= nxt) return;
+  int diff = (int)a - (int)nxt; if (diff > 8) diff = 8;
+  int drop = diff * 5 / 2;
+  a = (u8)(a > drop ? a - drop : 0);
+}
+inline void biasRgb(LightRgb& L, const LightRgb& nxt) {
+  for (int i = 0; i < 3; i++) { biasLightChannel(L.s[i], nxt.s[i]); biasLightChannel(L.b[i], nxt.b[i]); }
+}
+inline LightRgb biasedRgb(const MeshCtx& c, int x, int y, int z, int nx, int ny, int nz) {
+  LightRgb L = rgbAt(c, x, y, z);
+  if (meshApron(x + nx, y + ny, z + nz)) biasRgb(L, rgbAt(c, x + nx, y + ny, z + nz));
+  return L;
+}
 
 } // namespace dq

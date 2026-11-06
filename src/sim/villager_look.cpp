@@ -125,6 +125,15 @@ void npcSkinTouches(u32 seed, const std::string& job, std::vector<u8>& px) {
   auto get = [&](int x, int y) { const u8* p = px_(x, y); return rgb(p[0], p[1], p[2]); };
   auto near_ = [&](const Col& a, const Col& b) { return std::abs(a.r - b.r) + std::abs(a.g - b.g) + std::abs(a.b - b.b) < 40; };
   auto pickc = [&](std::initializer_list<const char*> l) { size_t i = (size_t)std::floor(Q() * l.size()); return hexc(*(l.begin() + std::min(i, l.size() - 1))); };
+  // Brows. The original painter skips each one at random, and light hair darkened only to 0.85 vanishes on pale skin.
+  // Painted here so npcSkinPixels stays the locked picture. Always the four brow pixels, darker than the face.
+  {
+    const Col hair = get(8 + 3, 8);   // front hairline: always hair, whatever the cut
+    Col brow = dark(hair, 0.42);
+    const Col face = get(8 + 3, 8 + 4);
+    if (brow.r + brow.g + brow.b > face.r + face.g + face.b - 40.0) brow = dark(face, 0.45);
+    for (int x : {1, 2, 5, 6}) set(8 + x, 8 + 2, brow);
+  }
   // freckles over the nose and cheeks
   if (Q() < 0.22) for (int y = 4; y <= 5; y++) for (int x : {1, 2, 5, 6}) if (Q() < 0.45 && near_(get(8 + x, 8 + y), skin)) set(8 + x, 8 + y, dark(skin, 0.78));
   // an old scar down a cheek

@@ -63,6 +63,7 @@ bool gfxInit(RendererKind kind) {
   gfx.renderer = (const char*)glGetString(GL_RENDERER);
   gfx.version = (const char*)glGetString(GL_VERSION);
   int v = gfx.major * 10 + gfx.minor;
+  gfx.vulkan = false;
   gfx.modern = kind == RendererKind::Modern && v >= 43;
   gfx.mdi = gfx.modern && (v >= 43 || GLAD_GL_ARB_multi_draw_indirect);
   gfx.bufferStorage = gfx.modern && (v >= 44 || GLAD_GL_ARB_buffer_storage);

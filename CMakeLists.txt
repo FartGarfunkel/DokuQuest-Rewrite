@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
 project(DokuQuest VERSION 1.0.0 LANGUAGES C CXX)
 # DokuQuest C++ — game client, launcher (with dedicated server + Mod Studio) and headless server.
-set(DQ_VERSION "1.0.0-alpha.16" CACHE STRING "Full game version shown in game and launcher")
+set(DQ_VERSION "1.0.0-alpha.17" CACHE STRING "Full game version shown in game and launcher")
 # the launcher's own version: raised only when the launcher itself changes. Updates install just the game (the "-game"
 # packages); the whole package, launcher and all, only when this is newer than the running launcher's (launcher/updater.cpp)
-set(DQ_LAUNCHER_VERSION "1.0.0-alpha.16")
+set(DQ_LAUNCHER_VERSION "1.0.0-alpha.17")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -38,7 +38,22 @@ file(GLOB_RECURSE DQ_CLIENT_SRC CONFIGURE_DEPENDS
 list(FILTER DQ_CLIENT_SRC EXCLUDE REGEX ".*/client/main\\.cpp$")
 add_library(dqclient STATIC ${DQ_CLIENT_SRC})
 target_compile_options(dqclient PRIVATE ${DQ_WARN})
-target_link_libraries(dqclient PUBLIC dqcore glad imgui SDL2::SDL2-static)
+set(DQ_GLSLANG "${CMAKE_SOURCE_DIR}/third_party/vulkan/glslang")
+target_include_directories(dqclient PRIVATE
+  "${CMAKE_SOURCE_DIR}/third_party/vulkan/Vulkan-Headers/include"
+  "${DQ_GLSLANG}")
+if(EXISTS "/usr/lib64/libvulkan.so.1")
+  set(DQ_VULKAN_LIB "/usr/lib64/libvulkan.so.1")
+elseif(EXISTS "/usr/lib/libvulkan.so.1")
+  set(DQ_VULKAN_LIB "/usr/lib/libvulkan.so.1")
+else()
+  find_library(DQ_VULKAN_LIB NAMES vulkan)
+endif()
+target_link_libraries(dqclient PUBLIC dqcore glad imgui SDL2::SDL2-static
+  "${DQ_GLSLANG}/build/glslang/libglslang.a"
+  "${DQ_GLSLANG}/build/glslang/libglslang-default-resource-limits.a"
+  "${DQ_GLSLANG}/build/glslang/OSDependent/Unix/libOSDependent.a"
+  "${DQ_VULKAN_LIB}")
 
 add_executable(dokuquest src/client/main.cpp)
 target_link_libraries(dokuquest PRIVATE dqclient)

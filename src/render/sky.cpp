@@ -273,6 +273,14 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd, bool prima
   f.daylight = e.day; f.minLight = e.minLight;
   f.sunDir = e.showSun || d == DIM_OVERWORLD ? e.sunDir : vec3(0, 1, 0);
   f.fogStart = fr.x; f.fogEnd = fr.y;
+  // A shader pack draws its own air: light shafts, bloom fog, the tonemap. The game's fog would
+  // flatten the far land to one colour before that, which is not how the pack looks in Minecraft.
+  // Water, lava, a cloud bank, mist and the dread wall stay, because the pack does not replace those.
+  if (f.settings && !f.settings->shaderPack.empty() && !e.underwater && e.cloud <= 0.f && e.mist <= 0.01f && oldFog <= 0.01f) {
+    f.fogStart = 1.0e6f;
+    f.fogEnd = 2.0e6f;
+    f.nearFog = vec3(0);
+  }
   f.wind = e.wind;
   f.windDir = W ? vec2(-std::sin(W->windDir), -std::cos(W->windDir)) : vec2(1, 0);
   f.rain = e.raining; f.thunder = W && d == DIM_OVERWORLD ? W->thunderK : 0.f;
@@ -284,7 +292,11 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd, bool prima
 
 void SkyRenderer::draw(const FrameCtx& f) {
   const SkyEnv& e = f.sky ? *f.sky : env;
-  glDisable(GL_DEPTH_TEST); glDepthMask(GL_FALSE); glDisable(GL_BLEND);
+  // Full-screen triangle. It has no back face: leave culling off for this draw.
+  // Vulkan's framebuffer winding does not match this triangle's OpenGL winding,
+  // so leaving GL_CULL_FACE on drops the whole sky and the clear colour shows through.
+  GLboolean cull = glIsEnabled(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST); glDepthMask(GL_FALSE); glDisable(GL_BLEND); glDisable(GL_CULL_FACE);
   shader.use();
   f.apply(shader);
   shader.set("uInvViewProj", glm::inverse(f.cam.proj * mat4(mat3(f.cam.view))));
@@ -300,6 +312,7 @@ void SkyRenderer::draw(const FrameCtx& f) {
   glBindVertexArray(vao);
   glDrawArrays(GL_TRIANGLES, 0, 3);
   glDepthMask(GL_TRUE); glEnable(GL_DEPTH_TEST);
+  if (cull) glEnable(GL_CULL_FACE);
 }
 
 } // namespace dq

@@ -28,5 +28,7 @@ float fuelValue(const std::string& itemKey);
 std::string smeltResult(const std::string& input, const std::string& kind);   // "" if it doesn't smelt there
 void crowdPush(Level& lv, float dt);
 int fluidPending(World& w);   // queued fluid updates (tests/debug)
+// A chisel changed (x,y,z): water in the empty octants, and no source left floating over a low step.
+void settleCarvedFluids(World& w, int x, int y, int z);
 
 } // namespace dq

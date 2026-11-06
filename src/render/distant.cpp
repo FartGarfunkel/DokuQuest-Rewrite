@@ -535,7 +535,7 @@ void DistantTerrain::draw(const FrameCtx& f, const SkyEnv& env, const TileTextur
   f.apply(shader);
   shader.set("uViewProj", f.cam.viewProj);
   shader.set("uCamFrac", vec3(f.cam.pos - f.cam.origin));
-  shader.set("uDay", f.daylight * 0.92f);
+  shader.set("uDay", cubyzDayLuma(f.daylight));
   shader.set("uMinLight", f.minLight);
   shader.set("uDrop", 0.6f);
   // the weather over it (game/skies.js stormAt): the storm's shadow, and rain falling between you and it

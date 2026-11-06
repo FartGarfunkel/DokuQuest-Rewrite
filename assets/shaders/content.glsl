@@ -11,6 +11,7 @@ uniform vec4 uColor;         // multiplies the picture (or is the colour, withou
 uniform vec4 uUV;            // u0, v0, u1, v1 of the picture
 uniform float uUseTex;
 uniform float uLit;          // 1 = lit like the world, 0 = as painted
+uniform vec3 uCutTint;       // not white: alpha-253 texels take this colour, the same mark the chunk shader uses for leaves
 uniform sampler2D uTex;
 
 #ifdef VERTEX
@@ -32,7 +33,14 @@ in vec3 vRel;
 out vec4 fragColor;
 void main() {
   vec4 c = uColor;
-  if (uUseTex > 0.5) c *= texture(uTex, vUV);
+  if (uUseTex > 0.5) {
+    vec4 tex = texture(uTex, vUV);
+    if (uCutTint.r + uCutTint.g + uCutTint.b < 2.99) {
+      float w = clamp((1.0 - tex.a) * 127.5, 0.0, 1.0);
+      tex.rgb *= mix(vec3(1.0), uCutTint * 1.3, w);
+    }
+    c *= tex;
+  }
   if (c.a < 0.35) discard;
   if (uLit > 0.5) c.rgb *= lighting(uLight.x, uLight.y, false);
   vec3 v = vRel - uCamFrac;

@@ -35,10 +35,10 @@ bool ContentDraw::begin(const FrameCtx& f, const mat4& viewProj, bool fog) {
   glDisable(GL_CULL_FACE);
   return true;
 }
-void ContentDraw::picture(GLuint tex, const mat4& model, vec4 uv, vec4 color, vec2 light, bool lit) {
+void ContentDraw::picture(GLuint tex, const mat4& model, vec4 uv, vec4 color, vec2 light, bool lit, vec3 cutTint) {
   if (!sh || !sh->ok()) return;
   sh->set("uModel", model); sh->set("uUV", uv); sh->set("uColor", color); sh->set("uLight", light);
-  sh->set("uUseTex", tex ? 1.f : 0.f); sh->set("uLit", lit ? 1.f : 0.f);
+  sh->set("uUseTex", tex ? 1.f : 0.f); sh->set("uLit", lit ? 1.f : 0.f); sh->set("uCutTint", cutTint);
   glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, tex);
   glBindVertexArray(vao);
   glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -47,7 +47,7 @@ void ContentDraw::picture(GLuint tex, const mat4& model, vec4 uv, vec4 color, ve
 void ContentDraw::lines(const std::vector<vec3>& strip, vec4 color, vec2 light) {
   if (!sh || !sh->ok() || strip.size() < 2) return;
   sh->set("uModel", mat4(1)); sh->set("uUV", vec4(0, 0, 1, 1)); sh->set("uColor", color); sh->set("uLight", light);
-  sh->set("uUseTex", 0.f); sh->set("uLit", 1.f);
+  sh->set("uUseTex", 0.f); sh->set("uLit", 1.f); sh->set("uCutTint", vec3(1));
   glBindVertexArray(lvao); glBindBuffer(GL_ARRAY_BUFFER, lvbo);
   glBufferData(GL_ARRAY_BUFFER, strip.size() * sizeof(vec3), strip.data(), GL_STREAM_DRAW);
   glDrawArrays(GL_LINE_STRIP, 0, (GLsizei)strip.size());

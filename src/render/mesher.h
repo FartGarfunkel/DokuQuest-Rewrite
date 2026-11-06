@@ -12,18 +12,20 @@ namespace dq {
 
 struct TileSet;
 
-// 16 bytes per vertex (was 20): four words, unpacked in chunk.glsl.
+// 20 bytes per vertex: four words the pack lightmap still reads, plus Cubyz's 5-bit RGB light.
 //   a: x (14 bits) | y (14) << 14 | face normal (3) << 28 | Mat::NoRelief << 31   position: section-relative, 1/256 block, +16 blocks
 //   b: z (14)      | tile layer (12) << 14 | tint (5) << 26 | Mat::Lava << 31
 //   c: u (14)      | v (14) << 14 | Mat bits 0-3 << 28                         uv: tile units, 1/256, +16 tiles (a merged face spans 16)
 //   d: sky light (8) | block light (8) << 8 | shade (8) << 16 | sway (7) << 24 | Mat::Flowing << 31
+//   e: sun R,G,B then block R,G,B, 5 bits each (0..31). Shader packs do not read this word; d's two bytes stay
+//      the 0..255 lightmap (31 -> 255) so eye brightness keeps a full sun.
 // The tint isn't a colour any more but which one: 0 none, 1 grass, 2 foliage, 3 water (the shader reads the climate of
 // the column from a texture and looks the colour up: render/world_renderer.cpp climate + tint table), 4..19 redstone
 // dust at power 0..15. Water and dust take the whole picture (Mat::TintAll, set by the shader).
 #pragma pack(push, 1)
-struct ChunkVertex { u32 a = 0, b = 0, c = 0, d = 0; };
+struct ChunkVertex { u32 a = 0, b = 0, c = 0, d = 0, e = 0; };
 #pragma pack(pop)
-static_assert(sizeof(ChunkVertex) == 16, "vertex must be 16 bytes");
+static_assert(sizeof(ChunkVertex) == 20, "vertex must be 20 bytes");
 namespace Tint { enum : u8 { None = 0, Grass = 1, Foliage = 2, Water = 3, Dust = 4 }; }
 
 namespace Sway { enum : u8 { None = 0, Plant = 1, Leaves = 2, Water = 3, Hang = 4 }; }
@@ -40,7 +42,9 @@ struct MeshInput {
   BlockId ids[N * N * NY];
   u8 meta[N * N * NY];
   u8 carve[N * N * NY];   // chisel octant mask (parallel to meta)
+  u8 coat[N * N * NY];    // snow caps on a carved block (low 4 bits = columns, bit 4 = grown)
   u8 light[N * N * NY];
+  LightRgb rgb[N * N * NY];                // sun + block RGB the smooth bias samples (parallel to light)
   u8 climate[N * N * 2];                       // temp, humidity per apron column (x,z)
   std::vector<std::pair<int, BlockId>> potPlants;   // idx -> plant in a flower pot (block entities)
   bool empty = true;                           // nothing to draw

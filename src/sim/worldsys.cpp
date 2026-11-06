@@ -4,6 +4,7 @@
 #include "sim/blockfx.h"
 #include "sim/rules.h"
 #include "sim/weather.h"
+#include "world/carve_faces.h"
 #include "common/noise.h"
 #include "gen/trees.h"
 #include "gen/gendefs.h"
@@ -23,6 +24,14 @@ QuietEdits::QuietEdits() { t_quiet++; }
 QuietEdits::~QuietEdits() { t_quiet--; }
 bool quietEdits() { return t_quiet > 0; }
 
+// A cell that holds still water without being a liquid block: lanterns, and the empty octants of a chiseled block.
+static bool waterloggedCell(const Registry& R, const World& w, int x, int y, int z) {
+  BlockId id = w.getBlock(x, y, z);
+  if (!id || R.tLiquid[id]) return false;
+  if (!(w.getMeta(x, y, z) & WLOG)) return false;
+  return R.tWlog[id] || (R.tOpaque[id] && w.getCarve(x, y, z) != 0);
+}
+
 // ---- fluids ---------------------------------------------------------------------------------
 class FluidSystem : public WorldSystem {
 public:
@@ -40,7 +49,7 @@ public:
     if (!inWorldY(y)) return;
     BlockId id = w.getBlock(x, y, z);
     const Registry& R = reg();
-    int kind = R.tLiquid[id] ? R.tLiquid[id] : (R.tWlog[id] && (w.getMeta(x, y, z) & WLOG) ? 1 : 0);
+    int kind = R.tLiquid[id] ? R.tLiquid[id] : (waterloggedCell(R, w, x, y, z) ? 1 : 0);
     if (!kind) return;
     PosKey k{x, y, z};
     if (q.emplace(k, tickNo + fluidRate(kind, y)).second) order.push_back(k);
@@ -72,6 +81,19 @@ public:
         // running water that isn't fed any more settles too
         if (R.tLiquid[id] == 1 && s->meta[secIdx(x, ly, z)] == 8 && !R.tLiquid[c.get(x, y + 1, z)]) { schedule(w, bx + x, base + y, bz + z); continue; }
         bool leak = open(c.get(x, y - 1, z)) || open(at(x + 1, y, z)) || open(at(x - 1, y, z)) || open(at(x, y, z + 1)) || open(at(x, y, z - 1));
+        if (R.tLiquid[id] == 1) {
+          auto notch = [&](int nx, int ny, int nz, bool upper) {
+            BlockId nid; u8 ncv, nm;
+            if (nx >= 0 && nx < 16 && nz >= 0 && nz < 16 && ny >= 0 && ny < DIM_H) {
+              nid = c.get(nx, ny, nz); ncv = c.getCarve(nx, ny, nz); nm = c.getMeta(nx, ny, nz);
+            } else if (w.isLoaded(bx + nx, base + ny, bz + nz)) {
+              nid = w.getBlock(bx + nx, base + ny, bz + nz); ncv = w.getCarve(bx + nx, base + ny, bz + nz); nm = w.getMeta(bx + nx, base + ny, bz + nz);
+            } else return false;
+            if (!fullSolid(nid) || !ncv || (nm & WLOG)) return false;
+            return !upper || (ncv & 0xCC) != 0;   // below: an empty upper octant. beside: any notch
+          };
+          if (notch(x, y - 1, z, true) || notch(x + 1, y, z, false) || notch(x - 1, y, z, false) || notch(x, y, z + 1, false) || notch(x, y, z - 1, false)) leak = true;
+        }
         if (leak) schedule(w, bx + x, base + y, bz + z);
       }
     }
@@ -104,6 +126,13 @@ public:
   void flowInto(World& w, int x, int y, int z, int kind, u8 meta) {
     const Registry& R = reg(); const KnownBlocks& B = KB();
     BlockId id = w.getBlock(x, y, z);
+    if (fullSolid(id) && w.getCarve(x, y, z)) {
+      if (kind == 1) {
+        u8 m = w.getMeta(x, y, z), cv = w.getCarve(x, y, z);
+        if (!(m & WLOG)) { w.setBlock(x, y, z, id, (u8)(m | WLOG)); w.setCarve(x, y, z, cv); }
+      }
+      return;   // never replace a chiseled block, and lava does not fill its notches
+    }
     int other = R.tLiquid[id];
     if (other && other != kind) {
       u8 m = w.getMeta(x, y, z);
@@ -121,11 +150,11 @@ public:
     BlockId id = w.getBlock(x, y, z);
     int kind = R.tLiquid[id];
     u8 meta = w.getMeta(x, y, z);
-    bool logged = !kind && R.tWlog[id] && (meta & WLOG);   // a block holding water is a still source that only spreads
+    bool logged = !kind && waterloggedCell(R, w, x, y, z);   // a block holding water is a still source that only spreads
     if (logged) { kind = 1; meta = 0; }
     if (!kind) return;
     int max = fluidMax(kind, y);
-    auto same = [&](int xx, int yy, int zz) { BlockId b = w.getBlock(xx, yy, zz); return R.tLiquid[b] == kind || (kind == 1 && R.tWlog[b] && (w.getMeta(xx, yy, zz) & WLOG)); };
+    auto same = [&](int xx, int yy, int zz) { BlockId b = w.getBlock(xx, yy, zz); return R.tLiquid[b] == kind || (kind == 1 && waterloggedCell(R, w, xx, yy, zz)); };
     // lava touching water hardens
     if (kind == 2) {
       static const int N[5][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, 1, 0}};
@@ -160,7 +189,24 @@ public:
       else if (expected > max) { w.setBlock(x, y, z, AIR, 0); return; }
       else if (expected != (meta & 7) || (meta & 8)) { w.setBlock(x, y, z, id, (u8)expected); meta = (u8)expected; }
     }
-    // spread: down first, otherwise sideways
+    // spread: a carved neighbour takes water into its empty octants. Down first, otherwise sideways.
+    if (kind == 1) {
+      for (auto [dx, dz] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+        BlockId nid = w.getBlock(x + dx, y, z + dz);
+        u8 ncv = w.getCarve(x + dx, y, z + dz), nm = w.getMeta(x + dx, y, z + dz);
+        if (fullSolid(nid) && ncv && !(nm & WLOG)) { w.setBlock(x + dx, y, z + dz, nid, (u8)(nm | WLOG)); w.setCarve(x + dx, y, z + dz, ncv); }
+      }
+    }
+    if (kind == 1 && inWorldY(y - 1)) {
+      BlockId bel = w.getBlock(x, y - 1, z);
+      u8 bcv = w.getCarve(x, y - 1, z), bm = w.getMeta(x, y - 1, z);
+      if (fullSolid(bel) && bcv && !(bm & WLOG)) {
+        w.setBlock(x, y - 1, z, bel, (u8)(bm | WLOG));
+        w.setCarve(x, y - 1, z, bcv);
+        bool held = (bcv & 0xCC) != 0xCC;   // a stair still has a high step under this cell
+        if (!held && !same(x, y + 1, z)) { w.setBlock(x, y, z, AIR); return; }
+      }
+    }
     if (inWorldY(y - 1) && canFlowInto(w, x, y - 1, z, kind, 0) && !same(x, y - 1, z)) { flowInto(w, x, y - 1, z, kind, 8); return; }
     // resting on water: running water just feeds what's below; a source still spreads
     if (inWorldY(y - 1) && same(x, y - 1, z)) {
@@ -205,6 +251,9 @@ public:
   void onChunkUnloading(World& w, Chunk& c) override {}
 };
 int fluidPending(World& w) { auto* f = w.system<FluidSystem>(); return f ? (int)f->q.size() : 0; }
+void settleCarvedFluids(World& w, int x, int y, int z) {
+  if (auto* f = w.system<FluidSystem>()) f->scheduleAround(w, x, y, z);
+}
 
 class BlockRulesSystem : public WorldSystem {
 public:
@@ -418,8 +467,8 @@ static void growExtra(Level& lv, World& w, int x, int y, int z, BlockId id, u8 m
     if (next) w.setBlock(x, y + 1, z, next, 0);
   }
   // puddles dry up once the rain stops and a storm's snow melts away: the weather's own block tick (game/blocks2.js growExtra2)
-  static const BlockId puddleId = R.blockId("puddle"), snowLayerId = R.blockId("snow_layer");
-  if (id == puddleId || id == snowLayerId) { if (WeatherSystem* ws = weatherOf(lv)) ws->blockTick(lv, w, x, y, z, id, meta); return; }
+  static const BlockId puddleId = R.blockId("puddle"), snowLayerId = R.blockId("snow_layer"), iceId = R.blockId("ice");
+  if (id == puddleId || id == snowLayerId || id == iceId) { if (WeatherSystem* ws = weatherOf(lv)) ws->blockTick(lv, w, x, y, z, id, meta); return; }
 }
 
 void randomTicks(Level& lv, World& w, float px, float pz) {

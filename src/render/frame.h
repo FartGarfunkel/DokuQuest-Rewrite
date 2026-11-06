@@ -9,7 +9,24 @@ namespace dq {
 struct TileTextures { GLuint color[2] = {0, 0}, height[2] = {0, 0}, normal[2] = {0, 0}; int page = 2048; void bind(Shader& s, int firstUnit = 0) const; };
 
 struct SkyEnv;   // render/sky.h
-struct DynLight { glm::dvec3 pos; float level; };   // a point light: world position, level 0..15 (render/dyn_light.cpp)
+struct DynLight { glm::dvec3 pos; float level; vec3 color{1.f, 0.85f, 0.62f}; };   // point light: world position, level 0..15, its own colour (render/dyn_light.cpp)
+
+// Cubyz day ambient: 1 at noon, 0.1 when daylight is at its night floor (0.2), and never under the blue night colour.
+// Near chunks multiply by the colour. Distant land uses the luminance, so an open top meets the near mesh.
+inline vec3 cubyzAmbient(float daylight) {
+  float dayF = (daylight - 0.2f) / 0.8f;
+  if (dayF < 0.f) dayF = 0.f;
+  if (dayF > 1.f) dayF = 1.f;
+  vec3 amb(0.1f + 0.9f * dayF);
+  if (amb.x < 0.15f) amb.x = 0.15f;
+  if (amb.y < 0.20f) amb.y = 0.20f;
+  if (amb.z < 0.25f) amb.z = 0.25f;
+  return amb;
+}
+inline float cubyzDayLuma(float daylight) {
+  vec3 a = cubyzAmbient(daylight);
+  return a.x * 0.299f + a.y * 0.587f + a.z * 0.114f;
+}
 
 struct FrameCtx {
   Camera cam;

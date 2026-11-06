@@ -11,7 +11,7 @@ public:
   // binds the shader for a pass; viewProj maps render space (or view space for the hand overlay)
   bool begin(const FrameCtx& f, const mat4& viewProj, bool fog = true);
   // a picture on the unit quad (-0.5..0.5 in x and y, facing +z; v = 0 at the top), both sides
-  void picture(GLuint tex, const mat4& model, vec4 uv = vec4(0, 0, 1, 1), vec4 color = vec4(1), vec2 light = vec2(1, 0), bool lit = true);
+  void picture(GLuint tex, const mat4& model, vec4 uv = vec4(0, 0, 1, 1), vec4 color = vec4(1), vec2 light = vec2(1, 0), bool lit = true, vec3 cutTint = vec3(1));
   void lines(const std::vector<vec3>& strip, vec4 color, vec2 light);   // a line strip in the pass' space
   void end();
 private:

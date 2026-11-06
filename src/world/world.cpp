@@ -56,6 +56,20 @@ bool World::setCarve(int x, int y, int z, u8 carve, u32 flags) {
   for (auto& s : systems) if (auto* le = dynamic_cast<LightEngine*>(s.get())) le->onBlockChanged(*this, x, y, z, id, id);   // carved blocks take light in
   return true;
 }
+u8 World::getCoat(int x, int y, int z) const {
+  if (!inWorldY(y)) return 0;
+  Chunk* c = chunk(y >> 8, x >> 4, z >> 4);
+  return c ? c->getCoat(x & 15, y & 255, z & 15) : 0;
+}
+bool World::setCoat(int x, int y, int z, u8 coat, u32 flags) {
+  if (!inWorldY(y)) return false;
+  Chunk* c = chunk(y >> 8, x >> 4, z >> 4);
+  if (!c) return false;
+  c->setCoat(x & 15, y & 255, z & 15, coat);
+  if (!(flags & SetFlags::NoModify)) { c->modified = true; c->dirty = true; }
+  if (!(flags & SetFlags::NoRemesh)) markBlockDirty(x, y, z, flags & SetFlags::Urgent);
+  return true;
+}
 u8 World::getLight(int x, int y, int z) const {
   if (!inWorldY(y)) return 0xF0;
   Chunk* c = chunk(y >> 8, x >> 4, z >> 4);
@@ -78,12 +92,15 @@ bool World::setBlock(int x, int y, int z, BlockId id, u8 meta, u32 flags) {
   u8 oldMeta = c->getMeta(lx, ly, lz);
   u8 setCarveTo = 0;
   if (isSlabOrStairs(id)) { CarveForm f = carveFormOf(id, meta); if (f.base) { id = f.base; meta = f.meta; setCarveTo = f.carve; } }   // placed or built: its chiseled form
-  bool oldCarved = c->getCarve(lx, ly, lz);
-  if (old == id && oldMeta == meta && !oldCarved) return false;   // a carved block must fall through: set() clears its carve byte
+  u8 oldCarve = c->getCarve(lx, ly, lz);
+  u8 oldCoat = c->getCoat(lx, ly, lz);
+  if (old == id && oldMeta == meta && !oldCarve && !oldCoat) return false;   // set() clears carve and coat, so a carved block must fall through
   // carve-bit trace is now off: the layout moved to a full carve byte (meta&0x7F) on plain blocks,
   // which share bits with facing states on shape blocks, so an unconditional gate would be noisy.
   c->set(lx, ly, lz, id, meta);
   if (setCarveTo) c->setCarve(lx, ly, lz, setCarveTo);
+  else if (old == id && oldCarve) c->setCarve(lx, ly, lz, oldCarve);   // same block (waterlog, a seat): keep its octants
+  if (old == id && oldCoat) c->setCoat(lx, ly, lz, oldCoat);
   if (old != id) { auto it = c->blockEntities.find(colIdx(lx, ly, lz)); if (it != c->blockEntities.end() && !(flags & SetFlags::NoNotify)) c->blockEntities.erase(it); }
   if (!(flags & SetFlags::NoModify)) { c->modified = true; c->dirty = true; }
   if (!(flags & SetFlags::NoRemesh)) markBlockDirty(x, y, z, flags & SetFlags::Urgent);

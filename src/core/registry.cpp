@@ -126,10 +126,33 @@ void Registry::finalize() {
   // shaped blocks inherit textures from what they are made of
   for (auto& b : blocks) if (b.tex.empty() && b.has("base")) { BlockId p = blockId(b.str("base")); if (p) b.tex = blocks[p].tex; }
   static const char* tickKeys[] = {"berry_bush_empty", "sugar_cane", "cactus", "kelp", "bamboo", "twisting_vines", "weeping_vines", "cave_vines",
-                                   "budding_amethyst", "redstone_ore_lit", "moving_block", "puddle", "snow_layer"};
+                                   "budding_amethyst", "redstone_ore_lit", "moving_block", "puddle", "snow_layer", "ice"};
   for (auto& b : blocks) {
     u16 i = b.id;
     tOpaque[i] = b.opaque; tSolid[i] = b.solid; tRender[i] = (u8)b.render; tLight[i] = b.light; tAtt[i] = b.lightAtt;
+    tAbsR[i] = tAbsG[i] = tAbsB[i] = 0;
+    // Cubyz glass/*.zig.zon absorbedLight. light_blue and light_gray are not in Cubyz; same strength as the others.
+    if (b.key.find("stained_glass") != std::string::npos) {
+      const std::string dye = b.str("color");
+      u32 hex = 0;
+      if (dye == "white") hex = 0x0f0f0f;
+      else if (dye == "orange") hex = 0x1183ee;
+      else if (dye == "magenta") hex = 0x0d9f35;
+      else if (dye == "light_blue") hex = 0xc54c25;
+      else if (dye == "yellow") hex = 0x0d36f1;
+      else if (dye == "lime") hex = 0xa03ed0;
+      else if (dye == "pink") hex = 0x056830;
+      else if (dye == "gray") hex = 0x656565;
+      else if (dye == "light_gray") hex = 0x373737;
+      else if (dye == "cyan") hex = 0xc62031;
+      else if (dye == "purple") hex = 0x83d66a;
+      else if (dye == "blue") hex = 0xdc923c;
+      else if (dye == "brown") hex = 0x96bdd8;
+      else if (dye == "green") hex = 0xd966d9;
+      else if (dye == "red") hex = 0x2ad6d6;
+      else if (dye == "black") hex = 0xe6e6e6;
+      if (hex) { tAbsR[i] = (u8)(hex >> 16); tAbsG[i] = (u8)(hex >> 8); tAbsB[i] = (u8)hex; }
+    }
     tReplaceable[i] = b.replaceable;
     std::string liq = b.str("liquid");
     tLiquid[i] = liq == "water" ? 1 : liq == "lava" ? 2 : liq == "acid" ? 3 : 0;   // 3: the Sulfur Pools' acid (swum like water, it burns)

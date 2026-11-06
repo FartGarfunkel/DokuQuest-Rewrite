@@ -1,6 +1,6 @@
 // launcher/home.cpp — launcher.html's side panel (your worlds, tips) and bottom bar (logo + version, notice,
 // player name, Options… / Game folder, Play / Dedicated Server), and Play itself: the game runs as a child
-// process (`dokuquest --launcher --renderer legacy|modern [--world NAME]`); the launcher shows it running and
+// process (`dokuquest --launcher --renderer legacy|modern|vulkan [--world NAME]`); the launcher shows it running and
 // comes back when it exits.
 #include "launcher/launcher.h"
 #include <imgui_stdlib.h>
@@ -35,7 +35,7 @@ void Launcher::play(const std::string& world) {
   if (!fs::exists(exe)) { setNotice("The game program is missing next to the launcher. Reinstall DokuQuest."); return; }
   if (settings.playerName.empty()) settings.playerName = "Wanderer";
   saveSettings();
-  std::vector<std::string> args = {"--launcher", "--renderer", settings.renderer == RendererKind::Legacy ? "legacy" : "modern"};
+  std::vector<std::string> args = {"--launcher", "--renderer", rendererName(settings.renderer)};
   if (!userDirArg.empty()) { args.push_back("--userdir"); args.push_back(userDirArg); }
   if (!world.empty()) { args.push_back("--world"); args.push_back(world); }
   ProcOptions o; o.cwd = exe.parent_path();

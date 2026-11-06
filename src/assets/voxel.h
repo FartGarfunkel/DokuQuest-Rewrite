@@ -91,6 +91,9 @@ public:
 private:
   std::unique_ptr<Shader> sh;
   bool tried = false;
+  bool noteWorld = false;
+  bool noteHand = false;
+  bool handSuppress = false;
   double time = 0;
 };
 VoxelRenderer& voxelRenderer();

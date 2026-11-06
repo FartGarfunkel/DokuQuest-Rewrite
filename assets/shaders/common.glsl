@@ -1,7 +1,6 @@
 // common.glsl — shared lighting, fog, wind and micro-voxel helpers (include from any shader).
-// Lighting follows the original render/gl.js terrain shader: light levels 0..1 go through
-// curve(l) = l / (3.2 - 2.2 l), sky light is scaled by the day, block light is warm (1, 0.85, 0.62),
-// and nothing falls below env.minLight.
+// Lighting follows Cubyz: sun and block are added in quadrature, sun scaled by uAmbient (1 by day,
+// a blue floor at night). Nothing falls below env.minLight.
 #ifndef DQ_COMMON
 #define DQ_COMMON
 #ifndef MICRO_VOXELS
@@ -27,6 +26,7 @@ uniform float uMicroDist;     // micro-voxel relief distance
 uniform float uWind;          // wind strength (original env.wind: 0.45 + strength * 0.9, 0 when waving is off)
 uniform float uSea;           // storm swell on open water
 uniform float uMinLight;      // light floor
+uniform vec3 uAmbient;        // max(night blue, day scalar). Item previews set this to 1.
 uniform int uEyeFluid;        // camera in 0 air, 1 water, 2 lava
 uniform vec3 uBlockLightColor;
 
@@ -61,18 +61,21 @@ vec3 faceNormal(int n) {
   if (n == 5) return vec3(0, 0, -1);
   return vec3(0, 1, 0);
 }
-// the original face shading by direction (x 0.8, up 1, down 0.52, z 0.64), for any axis normal
+// Face shading by direction, the same ratios as the near mesh and the distant walls
+// (x 170/255, up 1, down 145/255, z 205/255). Micro-voxel side walls use this so they agree with the block face.
 float axisShade(vec3 n) {
   vec3 a = abs(n);
-  if (a.y >= a.x && a.y >= a.z) return n.y > 0.0 ? 1.0 : 0.52;
-  return a.x >= a.z ? 0.8 : 0.64;
+  if (a.y >= a.x && a.y >= a.z) return n.y > 0.0 ? 1.0 : 145.0 / 255.0;
+  return a.x >= a.z ? 170.0 / 255.0 : 205.0 / 255.0;
 }
 float faceShade(int n) { return n == 6 ? 1.0 : axisShade(faceNormal(n)); }
 float lightCurve(float l) { return l / (3.2 - 2.2 * l); }
 // Dynamic point lights (render/dyn_light.cpp, port of the original dynLight): carried torches, glowing drops, lit TNT,
 // fireballs. Position relative to the camera's block, w = level 0..15. Light falls off one level per block and
-// only lights faces turned toward it. Returns a block light 0..1 to max with the baked one.
+// only lights faces turned toward it. Each light has its own colour (uDynColor): a held torch is warm even when the
+// block-light volume here is some other colour, such as glow lichen's green. Returns a block light 0..1.
 uniform vec4 uDyn[8];
+uniform vec3 uDynColor[8];
 uniform int uDynN;
 float dynLight(vec3 pos, vec3 n) {
   float best = 0.0;
@@ -87,23 +90,61 @@ float dynLight(vec3 pos, vec3 n) {
   }
   return clamp(best, 0.0, 1.0);
 }
+// the same lights, already through lightCurve and tinted by each light's own colour
+vec3 dynLightRgb(vec3 pos, vec3 n) {
+  vec3 acc = vec3(0.0);
+  for (int i = 0; i < 8; i++) {
+    if (i >= uDynN) break;
+    vec3 d = uDyn[i].xyz - pos;
+    float l = length(d);
+    float lv = (uDyn[i].w - l) / 15.0;
+    if (lv <= 0.0) continue;
+    float face = clamp(dot(n, d / max(l, 0.001)) * 2.0 + 0.6, 0.0, 1.0);
+    acc = max(acc, vec3(lightCurve(clamp(lv * face, 0.0, 1.0))) * uDynColor[i]);
+  }
+  return acc;
+}
+// sun31 and block31 are Cubyz's 0..31 channels. sqrt(sun^2 + block^2), then the brightness floor.
+vec3 cubyzCombine(vec3 sun31, vec3 block31) {
+  vec3 amb = sun31 * uAmbient;
+  vec3 q = sqrt(amb * amb + block31 * block31);
+  return max(min(q, vec3(31.0)) / 31.0, vec3(uMinLight));
+}
+// A carried light, in the same 0..31 units: level*17 is the byte, one step of 8 per block.
+vec3 dynBlock31(vec3 pos, vec3 n) {
+  vec3 acc = vec3(0.0);
+  for (int i = 0; i < 8; i++) {
+    if (i >= uDynN) break;
+    vec3 d = uDyn[i].xyz - pos;
+    float l = length(d);
+    float raw = uDyn[i].w * 17.0 - l * 8.0;
+    if (raw <= 0.0) continue;
+    float face = clamp(dot(n, d / max(l, 0.001)) * 2.0 + 0.6, 0.0, 1.0);
+    acc = max(acc, vec3((raw / 8.0) * face) * uDynColor[i]);
+  }
+  return acc;
+}
 vec3 lighting(float sky, float block, bool emissive) {
   if (emissive) return vec3(1.0);
-  vec3 lc = max(vec3(lightCurve(sky) * uDaylight), vec3(lightCurve(block)) * uBlockLightColor);
-  return max(lc, vec3(uMinLight));
+  return cubyzCombine(vec3(sky * 31.0), vec3(block * 31.0) * uBlockLightColor);
 }
 // coloured block light (render/light_colour_layer.cpp): the colour of the light where this point is, from the volume
 // round the camera; rel = the point relative to the camera's block (as vRel)
 uniform sampler3D uLightVol;
 uniform int uLightVolOn;
 uniform vec3 uLightVolOrigin, uLightVolSize;
-vec3 lightingAt(float sky, float block, bool emissive, vec3 rel) {
-  if (emissive || uLightVolOn == 0) return lighting(sky, block, emissive);
-  vec3 t = (rel - uLightVolOrigin) / uLightVolSize;
+vec3 lightingAt(float sky, float block, bool emissive, vec3 rel, vec3 n) {
+  if (emissive) return vec3(1.0);
   vec3 col = uBlockLightColor;
-  if (all(greaterThan(t, vec3(0.0))) && all(lessThan(t, vec3(1.0)))) col = texture(uLightVol, t).rgb * 1.0;
-  vec3 lc = max(vec3(lightCurve(sky) * uDaylight), vec3(lightCurve(block)) * col);
-  return max(lc, vec3(uMinLight));
+  if (uLightVolOn != 0) {
+    vec3 t = (rel - uLightVolOrigin) / uLightVolSize;
+    if (all(greaterThan(t, vec3(0.0))) && all(lessThan(t, vec3(1.0)))) col = texture(uLightVol, t).rgb;
+  }
+  // Entities and particles only have a 0..1 nibble. The volume tints that gray. Terrain carries its own RGB
+  // and does not sample the volume (that would paint the colour a second time).
+  vec3 block31 = vec3(block * 31.0) * col;
+  if (uDynN > 0) block31 = max(block31, dynBlock31(rel, n));
+  return cubyzCombine(vec3(sky * 31.0), block31);
 }
 vec3 applyFog(vec3 c, float dist, vec3 dir) {
   float f = smoothstep(uFogStart, uFogEnd, dist);

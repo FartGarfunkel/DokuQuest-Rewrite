@@ -75,6 +75,9 @@ public:
   u8 tOpaque[MAX_BLOCKS]{}, tSolid[MAX_BLOCKS]{}, tRender[MAX_BLOCKS]{}, tLight[MAX_BLOCKS]{}, tAtt[MAX_BLOCKS]{},
      tReplaceable[MAX_BLOCKS]{}, tLiquid[MAX_BLOCKS]{}, tPortal[MAX_BLOCKS]{}, tShape[MAX_BLOCKS]{}, tWlog[MAX_BLOCKS]{},
      tSink[MAX_BLOCKS]{}, tTrans[MAX_BLOCKS]{}, tLMeta[MAX_BLOCKS]{}, tTick[MAX_BLOCKS]{}, tGrassy[MAX_BLOCKS]{}, tLeaves[MAX_BLOCKS]{};
+  // Cubyz absorbedLight for stained glass, subtracted per channel when light enters the block.
+  // Wool and concrete share the dye name but stay opaque, so they never use these.
+  u8 tAbsR[MAX_BLOCKS]{}, tAbsG[MAX_BLOCKS]{}, tAbsB[MAX_BLOCKS]{};
 
   bool loadBase(const fs::path& dataDir);                    // data/blocks.json, items.json, recipes.json, mobs.json, models.json, tiles.json
   bool loadDataPack(const fs::path& dir, const std::string& modId);   // same file names, merged in

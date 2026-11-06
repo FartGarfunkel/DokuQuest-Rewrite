@@ -130,8 +130,8 @@ public:
     // ================= left: graphics and packs =================
     ImGui::BeginGroup();
     heading("Graphics");
-    { Row r("Renderer", ("OpenGL " + std::to_string(gfx.major) + "." + std::to_string(gfx.minor) + " \xC2\xB7 change it in the launcher's Options").c_str(), "", w, 230);
-      std::string rn = rendererName(gfx.modern ? RendererKind::Modern : RendererKind::Legacy); if (!rn.empty()) rn[0] = (char)toupper((unsigned char)rn[0]);
+    { Row r("Renderer", (std::string(gfx.vulkan ? "Vulkan" : "OpenGL ") + (gfx.vulkan ? "" : std::to_string(gfx.major) + "." + std::to_string(gfx.minor)) + " \xC2\xB7 change it in the launcher's Options").c_str(), "", w, 230);
+      std::string rn = rendererName(gfx.vulkan ? RendererKind::Vulkan : gfx.modern ? RendererKind::Modern : RendererKind::Legacy); if (!rn.empty()) rn[0] = (char)toupper((unsigned char)rn[0]);
       label(F_BODY, col::ember, rn.c_str()); }
     rangeI("renderDist", "Render distance", &s.renderDist, 2, 32, std::to_string(s.renderDist) + " chunks", "Chunks of full detail around you. Split screen caps this a little.");
     { static const int v[] = {0, 512, 1024, 2048}; int cur = 0; for (int i = 0; i < 4; i++) if (s.farTerrain == v[i]) cur = i;

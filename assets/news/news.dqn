@@ -1,6 +1,27 @@
 # DokuQuest patch notes for the C++ versions, newest first (shown in the launcher's news panel).
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
+## Alpha 1.0.0.17 — Thaw | November 2026
+**On a big screen:** interface size is one setting, in the launcher and in the game. Auto is 100% on 1080p, 125% on 2K, 150% on 3K and 200% on 4K, and you can set it anywhere from 100% to 300%. The launcher lays out in design pixels and scales the whole window. The game grows its default window and zooms the HUD to match.
+**Weather:**
+- Snow layers, the snow sitting on a chiseled block, and plain ice melt from real heat (a torch, a campfire, a furnace that is actually burning, lava, magma and the other hot blocks), from rain, and from the sun when it is not snowing. Packed ice, blue ice and snow blocks stay. A lamp, glowstone or soul fire does not thaw what stands beside it.
+- Still water beside clear ice keeps its calm face. It no longer wears the downward-flow picture just because you can see through the ice.
+**Light:**
+- Sun and lamps mix the Cubyz way, and the night never drops below its floor.
+- Stained glass colours the light that passes through it. Wool and concrete stay opaque and do not.
+- A torch in your hand lights the ground in front of you in that torch's own warm colour, even where the air is already some other colour.
+**Blocks:**
+- A door or a trapdoor shows the same print on both sides, handle on the same edge, and the picture stays put when it finishes opening or closing.
+- A ladder is a real mesh. Looking up or down the wall still shows the rungs.
+- Snow lands on each little column of a chiseled block, and water stands in the empty notches instead of floating over them.
+- A felled tree keeps each log's bark and end grain, and the leaves keep their holes.
+**Creatures:**
+- A natural spawn is refused within 24 blocks of you in every direction, so a mob does not appear a few steps in front of your face. A ghast is a rare roll, one at a time, into a clear space out past that distance.
+- A blow lands on the limb it actually meets.
+- The ender dragon patrols the lair in a wide circle, and the dive and the strafe are aimed at you.
+**The story:** a Realm Fragment in your pack does nothing by itself. Hold it up to the town's tear and use it (right click, or the controller's use). The tear drinks that one, opens a little wider, and he grows bolder by the same count. The tenth one steadies the tear into a gateway.
+**Drawing the world:** shader packs in the Iris and OptiFine style can light the land, the water and the creatures when their programs link. Vulkan sits beside the legacy and modern renderers (`--renderer vulkan`). Looking along a ladder or a leaf no longer lets the little holes swallow the rung.
+- Removed Herobrine.
 ## Alpha 1.0.0.16 — Port of Call | November 2026
 **Playing over the internet:**
 - **Your servers:** the Multiplayer screen keeps a list of servers, as Minecraft does. Type an address, give it a name and press Save server; Join, Edit or Remove it from the list later. The last address you joined is filled in the next time.

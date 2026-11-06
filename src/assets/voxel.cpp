@@ -2,6 +2,7 @@
 #include "assets/voxel.h"
 #include "render/gl.h"
 #include "render/frame.h"
+#include "render/pack_geom.h"
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace dq {
@@ -142,18 +143,26 @@ void VoxelRenderer::begin(const FrameCtx& f, const mat4& viewProj, bool fog) {
   sh->set("uCamFrac", vec3(f.cam.pos - f.cam.origin));
   sh->set("uNeutral", 0.f);
   time = f.time;
+  // The hand and the map pass a different projection. Only the world camera matches terrain depth.
+  // The hand list is armed by the first-person layer for this begin only.
+  noteWorld = packVoxelCaptureOn() && viewProj == f.cam.viewProj;
+  noteHand = packHandCaptureOn();
+  handSuppress = noteHand && packHandSuppress();
 }
 
 void VoxelRenderer::beginNeutral(const mat4& viewProj, vec3 lightDir) {
   if (!init()) return;
   sh->use();
-  sh->set("uTime", 0.f); sh->set("uDaylight", 1.f); sh->set("uBrightness", 1.f);
+  sh->set("uTime", 0.f); sh->set("uDaylight", 1.f); sh->set("uBrightness", 1.f); sh->set("uAmbient", vec3(1.f));
   sh->set("uFogStart", 1e6f); sh->set("uFogEnd", 2e6f); sh->set("uFogColor", vec3(0)); sh->set("uSkyColor", vec3(1));
   sh->set("uSunDir", glm::normalize(lightDir)); sh->set("uBlockLightColor", vec3(1));
   sh->set("uViewProj", viewProj);
   sh->set("uCamFrac", vec3(0, 0, 10));
   sh->set("uNeutral", 1.f);
   time = 0;
+  noteWorld = false;
+  noteHand = false;
+  handSuppress = false;
 }
 
 void VoxelRenderer::draw(const VoxelMeshGL& m, const mat4& model, VoxelLight light, vec4 tint, float glint) {
@@ -163,9 +172,13 @@ void VoxelRenderer::draw(const VoxelMeshGL& m, const mat4& model, VoxelLight lig
   sh->set("uTint", tint);
   sh->set("uGlint", vec2(glint, (float)std::fmod(time, 1000.0)));
   bool mirrored = glm::determinant(mat3(model)) < 0;
-  if (mirrored) glFrontFace(GL_CW);
-  m.mesh->draw();
-  if (mirrored) glFrontFace(GL_CCW);
+  if (!handSuppress) {
+    if (mirrored) glFrontFace(GL_CW);
+    m.mesh->draw();
+    if (mirrored) glFrontFace(GL_CCW);
+  }
+  if (noteWorld && m.mesh) packVoxelNote(m.mesh.get(), model, light.sky, light.block, tint);
+  if (noteHand && m.mesh) packHandNote(m.mesh.get(), model, light.sky, light.block, tint);
 }
 
 void VoxelRenderer::end() { glBindVertexArray(0); }

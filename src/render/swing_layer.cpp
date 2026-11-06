@@ -8,9 +8,6 @@
 #include "client/app.h"
 #include "world/shapes.h"
 #include "core/registry.h"
-#include "assets/voxel.h"
-#include <unordered_map>
-#include <memory>
 
 namespace dq {
 
@@ -37,38 +34,6 @@ public:
 // turning about a hinge line through (px, pz) (1/16 block) by `ang` about y, or about x through (py, pz)
 mat4 aboutY(float px, float pz, float ang) { mat4 q = glm::translate(mat4(1), vec3(px, 0, pz) / 16.f); q = glm::rotate(q, ang, vec3(0, 1, 0)); return glm::translate(q, -vec3(px, 0, pz) / 16.f); }
 mat4 aboutX(float py, float pz, float ang) { mat4 q = glm::translate(mat4(1), vec3(0, py, pz) / 16.f); q = glm::rotate(q, ang, vec3(1, 0, 0)); return glm::translate(q, -vec3(0, py, pz) / 16.f); }
-
-// A door or trapdoor leaf as micro-voxels with the same raised and sunken pixels the chunk mesh gives it (the tile set's
-// baked relief), so it doesn't go flat while it turns: a slab 32 x 32 x 6 voxels, its face picture on both sides (the
-// back mirrored, as the mesher draws it), each pixel sunk by its relief step (keeping a voxel of core). Doors stand in
-// x/y with the slab across z; trapdoors lie in x/z with the slab across y.
-std::unique_ptr<VoxelMeshGL> leafModel(const TileSet& ts, int tile, bool lying) {
-  const int S = ts.size, D = 6;
-  if (tile < 0 || tile >= ts.count || S != 32) return nullptr;
-  const u8* px = ts.tile(tile);
-  const bool hasRelief = ts.relief.size() >= (size_t)ts.count * S * S;
-  auto rel = [&](int c, int r) { return hasRelief ? (int)ts.relief[(size_t)tile * S * S + r * S + c] : 0; };
-  auto col = [&](int c, int r) -> u32 { const u8* q = px + ((size_t)r * S + c) * 4; return q[3] < 128 ? 0u : voxRGBA(q[0], q[1], q[2]); };
-  VoxelGrid g(lying ? ivec3(S, D, S) : ivec3(S, S, D));
-  for (int a = 0; a < S; a++) for (int b = 0; b < S; b++) {
-    // (a, b) across the leaf; the front picture's column/row and the back's
-    int fc, fr, bc, br;
-    if (lying) { fc = a; fr = b; bc = S - 1 - a; br = b; }                    // top: (X, Z); bottom: (16 - X, Z)
-    else { fc = a; fr = S - 1 - b; bc = S - 1 - a; br = S - 1 - b; }         // +z: (X, 16 - Y); -z: (16 - X, 16 - Y)
-    const u32 cf = col(fc, fr), cb = col(bc, br);
-    int rf = std::min(rel(fc, fr), 3), rb = std::min(rel(bc, br), 2);
-    for (int d = 0; d < D; d++) {   // d = 0 at the back, D-1 at the front
-      const bool front = d >= D / 2;
-      const u32 c = front ? cf : cb;
-      if (!c) continue;
-      if (front ? (D - 1 - d) < rf : d < rb) continue;   // sunk
-      if (lying) g.set(a, d, b, c); else g.set(a, b, d, c);
-    }
-  }
-  VoxelMeshData md; buildVoxelMesh(g, md);
-  auto m = std::make_unique<VoxelMeshGL>(); m->upload(md);
-  return m;
-}
 } // namespace
 
 class SwingLayer : public RenderLayer {
@@ -102,41 +67,8 @@ public:
     if (live.empty()) return;
     World& w = s.world();
     const Registry& R = reg();
-    // doors and trapdoors: relief voxels (drawn first, in their own pass)
-    {
-      const TileSet& ts = s.app.tiles;
-      if (&ts != modelsOf || ts.count != modelsCount) { models.clear(); modelsOf = &ts; modelsCount = ts.count; }
-      bool begun = false;
-      for (auto& o : live) {
-        const int kind = R.tShape[o.id];
-        if (kind != ShapeKind::Door && kind != ShapeKind::Trapdoor) continue;
-        const BlockDef& d = R.block(o.id);
-        const BlockTraits& T = traits(o.id);
-        int side = kind == ShapeKind::Door ? d.faces[0] : d.faces[2];
-        if (T.door && (o.to & 16) && T.upperTile >= 0) side = T.upperTile;
-        const int key = side * 2 + (kind == ShapeKind::Trapdoor);
-        auto it = models.find(key);
-        if (it == models.end()) it = models.emplace(key, leafModel(ts, side, kind == ShapeKind::Trapdoor)).first;
-        if (!it->second || !it->second->ready()) continue;
-        if (!begun) { voxelRenderer().begin(f, f.cam.viewProj); begun = true; }
-        const float a = std::min(1.f, o.t / SWING), e = a * a * (3 - 2 * a);
-        const float open = (o.to & 4) ? e : 1 - e;
-        const u8 l = w.getLight(o.p.x, o.p.y, o.p.z);
-        mat4 m = glm::translate(mat4(1), f.cam.rel(glm::dvec3(o.p)) + vec3(0.5f, 0, 0.5f));
-        m = glm::rotate(m, -(o.to & 3) * PI / 2, vec3(0, 1, 0));
-        m = glm::translate(m, vec3(-0.5f, 0, -0.5f));
-        mat4 q;
-        if (kind == ShapeKind::Door) {
-          const bool right = o.to & 8;
-          q = m * aboutY(right ? 14.5f : 1.5f, 14.5f, (right ? -1 : 1) * PI / 2 * open) * glm::translate(mat4(1), vec3(0, 0, 13 / 16.f));
-        } else {
-          const bool high = o.to & 8;
-          q = m * (high ? aboutX(14.5f, 1.5f, PI / 2 * open) : aboutX(1.5f, 1.5f, -PI / 2 * open)) * glm::translate(mat4(1), vec3(0, high ? 13 / 16.f : 0, 0));
-        }
-        voxelRenderer().draw(*it->second, glm::scale(q, vec3(1 / 32.f)), VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f});
-      }
-      if (begun) voxelRenderer().end();
-    }
+    // The leaf stays on the same tile pictures as the resting block. A voxel copy baked the pixels into
+    // vertex colours and punched the relief holes, so the door changed texture for the whole swing.
     ContentDraw& cd = contentDraw();
     if (!cd.begin(f, f.cam.viewProj)) return;
     for (auto& o : live) {
@@ -155,14 +87,13 @@ public:
       m = glm::rotate(m, -fm * PI / 2, vec3(0, 1, 0));
       m = glm::translate(m, vec3(-0.5f, 0, -0.5f));
       if (kind == ShapeKind::Door) {
-        if (hasModel(o)) continue;
         const bool right = o.to & 8;
-        drawTileBox(cd, m * aboutY(right ? 14.5f : 1.5f, 14.5f, (right ? -1 : 1) * PI / 2 * open), vec3(0, 0, 13), vec3(16, 16, 16), ts, tt, tb, light);
+        // uvMode 1: both big faces share the picture, so the handle stays put as it shuts and when the mesh returns
+        drawTileBox(cd, m * aboutY(right ? 14.5f : 1.5f, 14.5f, (right ? -1 : 1) * PI / 2 * open), vec3(0, 0, 13), vec3(16, 16, 16), ts, tt, tb, light, vec3(1), true, true, vec3(1), 1);
       } else if (kind == ShapeKind::Trapdoor) {
-        if (hasModel(o)) continue;
         const bool high = o.to & 8;
         const mat4 q = m * (high ? aboutX(14.5f, 1.5f, PI / 2 * open) : aboutX(1.5f, 1.5f, -PI / 2 * open));
-        drawTileBox(cd, q, vec3(0, high ? 13 : 0, 0), vec3(16, high ? 16 : 3, 16), ts, tt, tb, light);
+        drawTileBox(cd, q, vec3(0, high ? 13 : 0, 0), vec3(16, high ? 16 : 3, 16), ts, tt, tb, light, vec3(1), true, true, vec3(1), 2);
       } else {   // a gate: two posts, and a wing on each turning about its post
         drawTileBox(cd, m, vec3(0, 5, 7), vec3(2, 16, 9), ts, tt, tb, light);
         drawTileBox(cd, m, vec3(14, 5, 7), vec3(16, 16, 9), ts, tt, tb, light);
@@ -179,16 +110,6 @@ public:
   }
 private:
   World* watchOn = nullptr;
-  std::unordered_map<int, std::unique_ptr<VoxelMeshGL>> models;   // leaf models by tile*2 + trapdoor
-  const TileSet* modelsOf = nullptr; int modelsCount = -1;
-  bool hasModel(const Swing& o) const {
-    const Registry& R = reg(); const int kind = R.tShape[o.id];
-    const BlockDef& d = R.block(o.id); const BlockTraits& T = traits(o.id);
-    int side = kind == ShapeKind::Door ? d.faces[0] : d.faces[2];
-    if (T.door && (o.to & 16) && T.upperTile >= 0) side = T.upperTile;
-    auto it = models.find(side * 2 + (kind == ShapeKind::Trapdoor));
-    return it != models.end() && it->second && it->second->ready();
-  }
   std::vector<Swing> live;
   static void unhide(const ivec3& p) { auto& H = meshHiddenBlocks(); for (size_t i = 0; i < H.size(); i++) if (H[i] == p) { H.erase(H.begin() + i); return; } }
   void release(GameSession&, bool) { live.clear(); meshHiddenBlocks().clear(); }

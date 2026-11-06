@@ -41,8 +41,11 @@ void rigPose(Creature& m, const RigModel& M, const mat4& base);
 inline bool rigPartPosed(const Creature& m, int i) { return i >= 0 && i < (int)m.mats.size() && m.mats[i][3][3] != 0; }
 // Is this part drawn right now? (antlers on stags, wool until shorn, `only`/`not` state flags)
 bool rigPartShown(const Creature& m, const RigPart& p);
-// Ray (world space) against the posed parts: index of the first part hit, -1 for none.
-int rigHitPart(const Creature& m, const RigModel& M, vec3 o, vec3 d);
+// Ray (world space) against the posed parts: index of the closest part hit, -1 for none.
+// outT, when set, receives the world-space ray distance (the part matrix already holds the scale).
+int rigHitPart(const Creature& m, const RigModel& M, vec3 o, vec3 d, float* outT = nullptr);
+// Walk parents until a part carries a limb tag. -1 means the blow landed on the torso.
+int rigLimbPart(const RigModel& M, int part);
 
 // Rig kinds animated outside this file (dragons, end crystals: sim/dragons.cpp). The function fills part turns
 // (radians x/y/z, added to each part's rest; `has` marks the ones it set) and the root lift / pitch / roll.

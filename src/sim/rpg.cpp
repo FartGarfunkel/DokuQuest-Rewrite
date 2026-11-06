@@ -139,11 +139,8 @@ void onGreatFoeDied(Level& lv, Entity& mob) {
   got[mob.type] = 1;
   if (R.value("stage", 0) >= 3) { if (reg().item("rift_crystal")) dropStack(lv, mob.realm, ItemStack("rift_crystal", 3), mob.pos + vec3(0, 1, 0)); return; }
   dropStack(lv, mob.realm, ItemStack("realm_fragment", 1), mob.pos + vec3(0, 1, 0));
-  int frags = R.value("frags", 0) + 1;
-  R["frags"] = frags;
   std::string who = F.value(mob.type, std::string("it"));
-  if (lv.events) lv.events->emit("riftChanged", json::array());
-  lv.fx->message(0, "A Realm Fragment falls from " + who + ". (" + std::to_string(std::min(RIFT_NEED, frags)) + " of " + std::to_string(RIFT_NEED) + ")", "epic");
+  lv.fx->message(0, "A Realm Fragment falls from " + who + ". Hold it up to the rift in the square and use it.", "epic");
 }
 std::vector<std::string> greatFoesBeaten(Level& lv) {
   std::vector<std::string> out;
@@ -176,10 +173,10 @@ Story storyOf(Level& lv, Player& p) {
   ch("A Village at the Edge", "Find a village and walk into its square.", "Your journey starts beside one. Talk to the villagers, trade with them, and look at the board by the well.", keysOf(st, "vseen") > 0);
   ch("Iron and Fire", "Make yourself an iron pickaxe or better, and some armour.", "Iron ore is common below about y 60. Smelt it in a furnace. Copper and tin make bronze on the way.", S.value("iron", 0) != 0);
   ch("The Tear in the Square", "A while after you arrive, something tears open in the village square. Speak to the elder.", "Keep playing: it opens on its own a quarter of an hour in.", stage >= 1);
-  ch("The Keepers", "Win ten Realm Fragments (" + std::to_string(frags) + " of " + std::to_string(NEED) + ").", "Every dungeon keeper carries one (the quest board points to the nearest dungeon). So does the first of each great foe: the Cinder Golem (an Ember Effigy at night), the Hollow Archmage and the Minotaur in their towers and mazes, each of the dragons, the Warden, the Ender Dragon.", frags >= NEED || stage >= 3, false, false, frags / (float)NEED);
+  ch("The Keepers", "Feed ten Realm Fragments to the rift (" + std::to_string(frags) + " of " + std::to_string(NEED) + ").", "Every dungeon keeper carries one (the quest board points to the nearest dungeon). So does the first of each great foe: the Cinder Golem (an Ember Effigy at night), the Hollow Archmage and the Minotaur in their towers and mazes, each of the dragons, the Warden, the Ender Dragon. A fragment in your pack does not count. Hold it up to the tear in the square and use it.", frags >= NEED || stage >= 3, false, false, frags / (float)NEED);
   ch("Fire Below", "Reach the Ember Depths.", "Beat the Cinder Golem for its core, make an Ember Igniter, and light an obsidian frame (2 wide, 3 tall inside). Or dig down far enough to break through.", dims.contains("1"), true);
   ch("Above the Clouds", "Reach the Skylands.", "Light a glowstone frame with water, or fly up on a mount. Watch for the storm dragon.", dims.contains("2"), true);
-  ch("The Gateway", "Bring ten fragments to the rift and use it.", "Stand by the tear in the square with the fragments and use it.", stage >= 3);
+  ch("The Gateway", "Feed the tenth fragment to the rift.", "Stand by the tear with a Realm Fragment in hand and use it (right click, or use/place on a controller). Each one opens the tear a little wider. The tenth makes it a gateway.", stage >= 3);
   ch("His Realm", "Step through the gateway.", "Go together and go ready: good armour, food, potions. In co-op, everyone is drawn in.", jflag(st, "realmSeen") || sealed);
   ch("The Seal", "Find Herobrine at the end of his halls and defeat him.", "Five halls. His bolts hurt; he steps through space; below half health his stare stops time.", sealed);
   ch("The Storm", "Wake the Wither Storm from a Rift Core, and break its heart.", "What he pulled through the rift isn't done. Bind eight rift crystals round a Wither's nether star into a Rift Core, set it between two wither skeleton skulls on a T of soul sand, and go ready. Worn down to a quarter it sinks and its heart shows: strike it up close (arrows glance off), before it closes over again.", jflag(R, "stormBroken"));
@@ -203,7 +200,7 @@ std::vector<std::pair<std::string, std::string>> journalRecords(Level& lv, Playe
     {"Villages found", std::to_string(keysOf(st, "vseen"))}, {"Dungeons found", std::to_string(keysOf(st, "dseen"))}, {"Places found", std::to_string(keysOf(st, "sseen"))},
     {"Lands seen", std::to_string(sub(sub(st, "explore"), "biomes").size())}, {"Worlds visited", std::to_string(sub(sub(st, "explore"), "dims").size())},
     {"Walked", strFormat("%.1f km", st.value("walkedKm", 0.0))}, {"Creatures beaten", std::to_string(st.value("mobsKilled", 0))}, {"Quests done", std::to_string(st.value("questsDone", 0))},
-    {"Realm Fragments", std::to_string(std::min(RIFT_NEED, R.value("frags", 0))) + " of " + std::to_string(RIFT_NEED)}, {"Play time", strFormat("%dh %dm", (int)(pt / 3600), (int)std::fmod(pt / 60, 60))},
+    {"Fragments given", std::to_string(std::min(RIFT_NEED, R.value("frags", 0))) + " of " + std::to_string(RIFT_NEED)}, {"Play time", strFormat("%dh %dm", (int)(pt / 3600), (int)std::fmod(pt / 60, 60))},
   };
 }
 

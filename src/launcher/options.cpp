@@ -119,13 +119,13 @@ void drawOptions(Launcher& L) {
   heading(L, "Graphics");
   if (locked) { ImGui::EndDisabled(); ImGui::PushFont(L.fSmall); dimText("The game is running: these options can be changed once it has closed."); ImGui::PopFont(); ImGui::BeginDisabled(); }
   {
-    Opt o(L, "Renderer", "Modern needs OpenGL 4.5+. Legacy runs on almost any PC since 2010.", 260);
-    const char* labels[] = {"Legacy (OpenGL 3.3 — older PCs)", "Modern (OpenGL 4.6)", "Vulkan (coming later)"};
+    Opt o(L, "Renderer", "Modern needs OpenGL 4.5+. Legacy runs on almost any PC since 2010. Vulkan uses the Vulkan driver.", 260);
+    const char* labels[] = {"Legacy (OpenGL 3.3 — older PCs)", "Modern (OpenGL 4.6)", "Vulkan"};
     int cur = (int)s.renderer;
     if (ImGui::BeginCombo("##renderer", labels[clampv(cur, 0, 2)])) {
       for (int k : {1, 0, 2}) {
         bool modernOk = k != 1 || L.gpu.major * 10 + L.gpu.minor >= 43;
-        if (ImGui::Selectable(labels[k], cur == k, k == 2 ? ImGuiSelectableFlags_Disabled : 0)) { s.renderer = (RendererKind)k; changed = true; }
+        if (ImGui::Selectable(labels[k], cur == k)) { s.renderer = (RendererKind)k; changed = true; }
         if (k == 1 && !modernOk && ImGui::IsItemHovered()) ImGui::SetTooltip("This driver offers OpenGL %d.%d; the game will fall back to Legacy.", L.gpu.major, L.gpu.minor);
       }
       ImGui::EndCombo();

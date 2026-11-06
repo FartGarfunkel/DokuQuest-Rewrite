@@ -3,6 +3,7 @@
 // effect, the off hand), blocks2.js (bow and arrows) and blockfx.js (cracks that mend).
 #include "sim/weather.h"
 #include "sim/controller.h"
+#include "sim/creature_rig.h"
 #include "sim/vehicles.h"
 #include "sim/effects.h"
 #include "sim/rules.h"
@@ -286,8 +287,25 @@ void PlayerController::updateTarget() {
     if (e->removed || e->realm != p.realm || e.get() == &p || e->id == p.riding) continue;
     bool vehicle = startsWith(e->type, "boat") || startsWith(e->type, "minecart") || e->data.value("vehicle", false);
     if (!vehicle && !(isMob(*e) && e->hp > 0)) continue;
-    double pad = startsWith(e->type, "boat") ? 0.45 : 0.1, hh = startsWith(e->type, "boat") ? 0.9 : e->h;
-    double tt = rayAABB(o, glm::dvec3(d), glm::dvec3(e->pos.x - e->w - pad, e->pos.y, e->pos.z - e->w - pad), glm::dvec3(e->pos.x + e->w + pad, e->pos.y + hh, e->pos.z + e->w + pad));
+    double tt = -1;
+    bool rigged = false;
+    if (!vehicle) if (auto* c = dynamic_cast<Creature*>(e.get())) {
+      const RigModel* M = rigModel(c->modelKey());
+      if (M && !M->rig.empty() && !M->parts.empty()) {
+        rigged = true;
+        float span = std::max(c->w, c->h) * 4.f + 4.f;
+        if (glm::distance(vec3(o), c->pos + vec3(0, c->h * 0.5f, 0)) < (double)REACH + span) {
+          rigPose(*c, *M, creatureBase(*c, false));
+          float partT = -1.f;
+          if (rigHitPart(*c, *M, vec3(o), d, &partT) >= 0) tt = partT;
+        }
+      }
+    }
+    // a rigged mob is only the parts you can see. vehicles and unrigged mobs keep one box
+    if (tt < 0 && !rigged) {
+      double pad = startsWith(e->type, "boat") ? 0.45 : 0.1, hh = startsWith(e->type, "boat") ? 0.9 : e->h;
+      tt = rayAABB(o, glm::dvec3(d), glm::dvec3(e->pos.x - e->w - pad, e->pos.y, e->pos.z - e->w - pad), glm::dvec3(e->pos.x + e->w + pad, e->pos.y + hh, e->pos.z + e->w + pad));
+    }
     if (tt >= 0 && tt < ed && tt < (vehicle ? 4.5 : 3.8)) { ed = tt; ent = e->id; }
   }
   target = hit; targetEnt = ent;
@@ -559,7 +577,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
       if (bhas(hit->id, BF::Furnace)) { swingArm(); containerEntity(w, hit->block.x, hit->block.y, hit->block.z); openScreen(lv, p, "furnace", {{"pos", pos}, {"kind", binfo(hit->id).furnace}}); return; }
       if (b.has("harvest")) {
         swingArm(); sfxMaterial(lv, "grass", "dig", vec3(hit->block));
-        dropItem(lv, p.realm, ItemStack(b.str("harvest"), 2 + (rnd() < 0.5 ? 1 : 0)), vec3(hit->block) + vec3(0.5f, 0.6f, 0.5f), true);
+        dropItem(lv, p.realm, ItemStack(b.str("harvest"), 2 + (rnd() < 0.5 ? 1 : 0)), vec3(hit->block) + vec3(0.5f, 0.6f, 0.5f), true, 0.f);
         w.setBlock(hit->block.x, hit->block.y, hit->block.z, KB().berry_bush_empty);
         return;
       }

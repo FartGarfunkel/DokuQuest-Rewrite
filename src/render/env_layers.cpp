@@ -6,6 +6,7 @@
 #include "render/env_layers.h"
 #include "render/distant.h"
 #include "render/clouds.h"
+#include "render/pack_geom.h"
 #include "render/particles.h"
 #include "render/sky.h"
 #include "client/session.h"
@@ -64,8 +65,21 @@ public:
   const char* name() const override { return "clouds"; }
   int order() const override { return -10; }
   void update(GameSession& s, double) override { clouds.update(*s.level, s.frame, skyOf(s.frame)); }
-  void drawOpaque(GameSession&, const FrameCtx& f) override { clouds.drawOpaque(f, skyOf(f)); }
-  void drawTranslucent(GameSession&, const FrameCtx& f) override { clouds.drawWisps(f, skyOf(f)); }
+  void drawOpaque(GameSession&, const FrameCtx& f) override {
+    // One line when the flag changes, so a sky shot can show whether these planes were drawn.
+    bool skip = packSkipGameClouds();
+    static int prev = -1;
+    if ((int)skip != prev) {
+      DQ_LOG("game clouds draw skip=%d", (int)skip);
+      prev = (int)skip;
+    }
+    if (skip) return;
+    clouds.drawOpaque(f, skyOf(f));
+  }
+  void drawTranslucent(GameSession&, const FrameCtx& f) override {
+    if (packSkipGameClouds()) return;
+    clouds.drawWisps(f, skyOf(f));
+  }
 };
 
 // ---- weather and ambient effects (spawn particles; the particle layer moves and draws them) ----------------

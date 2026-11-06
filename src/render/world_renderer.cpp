@@ -2,6 +2,7 @@
 #include "render/mesh_ctx.h"
 #include "world/light.h"
 #include "assets/tileset.h"
+#include <algorithm>
 #include <cstring>
 #include <climits>
 
@@ -23,16 +24,17 @@ void FrameCtx::apply(Shader& s) const {
   s.set("uSea", sea);
   s.set("uMinLight", minLight);
   s.set("uEyeFluid", eyeFluid);
+  s.set("uAmbient", cubyzAmbient(daylight));
   s.set("uBlockLightColor", blockLightColor);
   // coloured block light: the volume round the camera (render/light_colour_layer.cpp) on unit 12
   glActiveTexture(GL_TEXTURE0 + 12); glBindTexture(GL_TEXTURE_3D, lightVol); glActiveTexture(GL_TEXTURE0);
   s.set("uLightVol", 12); s.set("uLightVolOn", lightVolOn && lightVol ? 1 : 0);
   s.set("uLightVolOrigin", cam.rel(lightVolMin)); s.set("uLightVolSize", vec3(64, 48, 64));
-  // dynamic point lights (common.glsl dynLight): xyz relative to the camera's block, w = level
-  vec4 d[8]; int n = 0;
-  if (portalDepth == 0) for (const DynLight& l : dyn) { if (n >= 8) break; d[n++] = vec4(cam.rel(l.pos), l.level); }
+  // dynamic point lights (common.glsl dynLightRgb): xyz relative to the camera's block, w = level, colour separate
+  vec4 d[8]; vec3 cols[8]; int n = 0;
+  if (portalDepth == 0) for (const DynLight& l : dyn) { if (n >= 8) break; d[n] = vec4(cam.rel(l.pos), l.level); cols[n] = l.color; n++; }
   s.set("uDynN", n);
-  if (n) glUniform4fv(s.loc("uDyn"), n, &d[0].x);
+  if (n) { glUniform4fv(s.loc("uDyn"), n, &d[0].x); glUniform3fv(s.loc("uDynColor"), n, &cols[0].x); }
 }
 
 void TileTextures::bind(Shader& s, int u) const {
@@ -48,6 +50,7 @@ WorldRenderer::~WorldRenderer() {
   if (tq[0]) glDeleteQueries(2, tq);
   GLuint b[2] = {instVbo, cmdBuf};
   for (GLuint x : b) if (x) glDeleteBuffers(1, &x);
+  if (atlasTex) glDeleteTextures(1, &atlasTex);
 }
 
 bool WorldRenderer::init(const Settings& s, const TileTextures& t) {
@@ -82,11 +85,56 @@ void WorldRenderer::remeshAll() {
   if (!w) return;
   for (auto& [k, c] : w->chunks()) for (int sy = 0; sy < SECS; sy++) w->markSectionDirty(k.dim, k.cx, sy, k.cz);
 }
-void WorldRenderer::setTiles(const TileSet& ts) { setMeshTiles(ts); remeshAll(); }
+void WorldRenderer::setTiles(const TileSet& ts) { setMeshTiles(ts); rebuildAtlas(ts); remeshAll(); }
+
+void WorldRenderer::setPackGeometry(bool on) {
+  if (packGeom == on) return;
+  packGeom = on;
+  mopt.greedy = !on;
+  remeshAll();
+}
+
+void WorldRenderer::rebuildAtlas(const TileSet& ts) {
+  if (atlasTex) { glDeleteTextures(1, &atlasTex); atlasTex = 0; }
+  atlasGridN = 1; atlasTile = std::max(1, ts.size);
+  const size_t need = (size_t)ts.count * (size_t)ts.size * (size_t)ts.size * 4;
+  if (ts.count <= 0 || ts.size <= 0 || ts.rgba.size() < need) return;
+  int grid = 1;
+  while (grid * grid < ts.count) grid++;
+  if ((long)grid * ts.size > 16384) {
+    DQ_WARN("tile atlas %d x %d is past the texture limit; shader packs keep the game picture", grid * ts.size, grid * ts.size);
+    return;
+  }
+  atlasGridN = grid;
+  const int S = ts.size, A = grid * S;
+  std::vector<u8> img((size_t)A * A * 4, 0);
+  for (int i = 0; i < ts.count; i++) {
+    const int col = i % grid, row = i / grid;
+    const u8* src = ts.tile(i);
+    for (int y = 0; y < S; y++) {
+      u8* dst = img.data() + ((size_t)(row * S + y) * A + col * S) * 4;
+      std::memcpy(dst, src + (size_t)y * S * 4, (size_t)S * 4);
+    }
+  }
+  glGenTextures(1, &atlasTex);
+  glBindTexture(GL_TEXTURE_2D, atlasTex);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+  glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, A, A, 0, GL_RGBA, GL_UNSIGNED_BYTE, img.data());
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  DQ_LOG("tile atlas: %d tiles on a %d x %d sheet", ts.count, A, A);
+}
 
 // ---------------------------------------------------------------- arena
 static const std::vector<VertexAttrib> CHUNK_ATTRS = {
-  {0, 4, GL_UNSIGNED_INT, GL_FALSE, true, 0},      // the four packed words (mesher.h ChunkVertex; chunk.glsl unpacks them)
+  {0, 4, GL_UNSIGNED_INT, GL_FALSE, true, 0},      // a,b,c,d (mesher.h ChunkVertex). Pack shaders read only this.
+  {1, 1, GL_UNSIGNED_INT, GL_FALSE, true, 16},     // e: Cubyz sun/block RGB, 5 bits per channel
 };
 void WorldRenderer::setupVao(Page& pg) {
   if (!pg.vao) glGenVertexArrays(1, &pg.vao);
@@ -464,6 +512,10 @@ void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
       }
     }
   }
+  emitSections(f, pass, gfx.mdi ? -1 : shader.loc("uOrigin"));
+}
+
+void WorldRenderer::emitSections(const FrameCtx& f, int pass, GLint originLoc) {
   // in page runs: opaque passes page by page (nearest first within each), the translucent one far to near
   static std::vector<SecMesh*> order; order.clear();
   if (pass == 2) { for (auto it = visible.rbegin(); it != visible.rend(); ++it) if (it->second->nq[pass]) order.push_back(it->second); }
@@ -492,17 +544,49 @@ void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
     }
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
   } else {
-    GLint locO = shader.loc("uOrigin");
     u32 bound = ~0u;
     for (SecMesh* m : order) {
       u32 p = m->base / PAGE_V;
       if (p != bound) { glBindVertexArray(pages[p].vao); bound = p; }
       vec3 rel = vec3(glm::dvec3(m->origin) - f.cam.origin);
-      glUniform3fv(locO, 1, &rel[0]);
+      if (originLoc >= 0) glUniform3fv(originLoc, 1, &rel[0]);
       glDrawElementsBaseVertex(GL_TRIANGLES, (GLsizei)(m->nq[pass] * 6), GL_UNSIGNED_INT, nullptr, passBase(m));
     }
   }
   glBindVertexArray(0);
+}
+
+void WorldRenderer::drawSections(const FrameCtx& f, int pass) {
+  if (!w || pages.empty() || visible.empty()) return;
+  GLint loc = -1;
+  if (!gfx.mdi) {
+    GLint prog = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
+    if (prog) loc = glGetUniformLocation((GLuint)prog, "uOrigin");
+  }
+  emitSections(f, pass, loc);
+}
+
+void WorldRenderer::drawShadowSections(const FrameCtx& f, int pass, float radius) {
+  if (!w || pages.empty()) return;
+  auto saved = std::move(visible);
+  visible.clear();
+  const float r = radius + 24.f;
+  const float r2 = r * r;
+  for (auto& [k, m] : meshes) {
+    if (k.dim != f.dim || !m->nq[pass]) continue;
+    vec3 rel = vec3(glm::dvec3(m->origin) - f.cam.origin) + vec3(8.f);
+    if (rel.x * rel.x + rel.z * rel.z > r2 || std::abs(rel.y) > r) continue;
+    visible.push_back({0.f, m.get()});
+  }
+  GLint loc = -1;
+  if (!gfx.mdi) {
+    GLint prog = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
+    if (prog) loc = glGetUniformLocation((GLuint)prog, "uOrigin");
+  }
+  emitSections(f, pass, loc);
+  visible = std::move(saved);
 }
 
 void WorldRenderer::drawOpaque(const FrameCtx& f) {

@@ -1,4 +1,5 @@
 #include "world/chunk.h"
+#include <algorithm>
 #include <cstring>
 #include "sim/blockinfo.h"
 
@@ -8,6 +9,8 @@ Section* Chunk::ensure(int sy) {
   if (!secs[sy]) {
     secs[sy] = std::make_unique<Section>();
     std::memset(secs[sy]->light, airLight[sy], sizeof(secs[sy]->light));
+    const LightRgb fill = airRgb[sy];
+    for (LightRgb& r : secs[sy]->rgb) r = fill;
   }
   return secs[sy].get();
 }
@@ -20,7 +23,7 @@ void Chunk::set(int x, int y, int z, BlockId id, u8 meta) {
   BlockId old = s->blocks[i];
   if (old == AIR && id != AIR) s->solidCount++;
   else if (old != AIR && id == AIR) s->solidCount--;
-  s->blocks[i] = id; s->meta[i] = meta; s->carve[i] = 0;   // carve belongs to a block instance, never carried across a replacement
+  s->blocks[i] = id; s->meta[i] = meta; s->carve[i] = 0; s->coat[i] = 0;   // carve and snow coat belong to this block, never the next one
   int hi = z * 16 + x;
   if (id != AIR) { if (y + 1 > maxY) maxY = y + 1; if (y > heightMap[hi]) heightMap[hi] = (u8)y; }
   else if (y == heightMap[hi]) { int yy = y; while (yy > 0 && get(x, yy, z) == AIR) yy--; heightMap[hi] = (u8)yy; }
@@ -41,9 +44,9 @@ void Chunk::compact() {
     secs[sy]->solidCount = n;
     if (!n) {
       // an all-air section may only go if its light is uniform too (shade under an overhang, a lit cave)
-      const u8* L = secs[sy]->light; bool uniform = true;
-      for (int i = 1; i < 4096 && uniform; i++) uniform = L[i] == L[0];
-      if (uniform) { airLight[sy] = L[0]; secs[sy].reset(); }
+      const LightRgb* Rgb = secs[sy]->rgb; bool uniform = true;
+      for (int i = 1; i < 4096 && uniform; i++) uniform = Rgb[i] == Rgb[0];
+      if (uniform) { airRgb[sy] = Rgb[0]; airLight[sy] = lightNibble(Rgb[0]); secs[sy].reset(); }
     }
   }
 }
@@ -84,6 +87,7 @@ std::vector<u8> encodeChunk(const Chunk& c) {
   rle([&](int i) { return (int)pal[i]; }, wide);
   rle([&](int i) { int z = i / (16 * DIM_H), x = (i / DIM_H) & 15, y = i % DIM_H; return (int)c.getMeta(x, y, z); }, false);
   rle([&](int i) { int z = i / (16 * DIM_H), x = (i / DIM_H) & 15, y = i % DIM_H; return (int)c.getCarve(x, y, z); }, false);
+  rle([&](int i) { int z = i / (16 * DIM_H), x = (i / DIM_H) & 15, y = i % DIM_H; return (int)c.getCoat(x, y, z); }, false);   // trailing: old readers stop after carve
   auto z = zCompress(raw.data(), raw.size(), 6);
   std::vector<u8> out = {'D', 'Q', 'C', '1'};
   u32 rs = (u32)raw.size();
@@ -109,6 +113,7 @@ bool decodeChunk(Chunk& c, const u8* data, size_t n) {
   std::vector<u16> pal(DIM_H * 256);
   std::vector<u8> meta(DIM_H * 256);
   std::vector<u8> carve(DIM_H * 256, 0);
+  std::vector<u8> coat(DIM_H * 256, 0);
   auto unrle = [&](auto setv, bool w) {
     int k = 0;
     while (p < e && k < DIM_H * 256) {
@@ -122,10 +127,15 @@ bool decodeChunk(Chunk& c, const u8* data, size_t n) {
   if (!unrle([&](int k, int v) { pal[k] = (u16)v; }, wide)) return false;
   if (!unrle([&](int k, int v) { meta[k] = (u8)v; }, false)) return false;
   if (!unrle([&](int k, int v) { carve[k] = (u8)v; }, false)) return false;
+  if (p < e && !unrle([&](int k, int v) { coat[k] = (u8)v; }, false)) std::fill(coat.begin(), coat.end(), 0);   // a short old save has no coat
   int k = 0;
   for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) for (int y = 0; y < DIM_H; y++, k++) {
     BlockId id = pal[k] < ids.size() ? ids[pal[k]] : AIR;
-    if (id || meta[k]) { c.set(x, y, z, id, meta[k]); if (carve[k]) c.setCarve(x, y, z, carve[k]); }
+    if (id || meta[k] || carve[k] || coat[k]) {
+      c.set(x, y, z, id, meta[k]);
+      if (carve[k]) c.setCarve(x, y, z, carve[k]);
+      if (coat[k]) c.setCoat(x, y, z, coat[k]);
+    }
   }
   c.blockEntities.clear();
   if (head.contains("be")) for (auto& [pos, ent] : head["be"].items()) {

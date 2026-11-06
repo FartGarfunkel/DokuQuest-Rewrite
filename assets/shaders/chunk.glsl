@@ -7,9 +7,10 @@
 #include "common.glsl"
 
 #ifdef VERTEX
-layout(location = 0) in uvec4 aV;      // 16 bytes, packed (render/mesher.h ChunkVertex):
+layout(location = 0) in uvec4 aV;      // first 16 bytes, packed (render/mesher.h ChunkVertex):
 //   x: x14 | y14 << 14 | normal3 << 28 | NoRelief << 31     y: z14 | tile12 << 14 | tint5 << 26 | Lava << 31
 //   z: u14 | v14 << 14 | mat bits 0-3 << 28                 w: sky8 | block8 << 8 | shade8 << 16 | sway7 << 24 | Flowing << 31
+layout(location = 1) in uint aLit;     // sun RGB then block RGB, 5 bits each (0..31)
 uniform sampler2DArray uClimate;        // RG: temperature, humidity of each column, 1024 x 1024 wrapping, a layer per land
 uniform sampler2DArray uTintLut;        // the tint of a climate: grass, foliage, water (256 x 256 by the climate bytes)
 #ifdef DQ_MODERN
@@ -22,7 +23,9 @@ uniform vec3 uWorldOrigin;              // camera's integer block, wrapped (for 
 uniform vec2 uGrassFade;                // 3D grass: fully grown nearer than x, sunk into the ground past y
 
 out vec3 vUV;
-out vec4 vLight;                        // sky, block, shade (liquid tops: shore foam), unused
+out vec4 vLight;                        // sky byte, block byte, shade (liquid tops: shore foam), unused
+out vec3 vSun;                          // Cubyz sun channels, 0..31
+out vec3 vBlock;                        // Cubyz block channels, 0..31
 out vec3 vTint;
 out vec3 vRel;                          // position relative to the camera block
 out vec3 vWorld;                        // wrapped world position (patterns)
@@ -63,6 +66,8 @@ void main() {
   vUV = vec3(float(aV.z & 16383u) / 256.0 - 16.0, float((aV.z >> 14u) & 16383u) / 256.0 - 16.0, float((aV.y >> 14u) & 4095u));
   vTint = tint;
   vLight = vec4(float(aV.w & 255u) / 255.0, float((aV.w >> 8u) & 255u) / 255.0, float((aV.w >> 16u) & 255u) / 255.0, 0.0);
+  vSun = vec3(float((aLit >> 25u) & 31u), float((aLit >> 20u) & 31u), float((aLit >> 15u) & 31u));
+  vBlock = vec3(float((aLit >> 10u) & 31u), float((aLit >> 5u) & 31u), float(aLit & 31u));
   vNormal = int((aV.x >> 28u) & 7u);
   uint mat = ((aV.z >> 28u) & 15u) | (((aV.x >> 31u) & 1u) << 4u) | (((aV.y >> 31u) & 1u) << 5u) | (((aV.w >> 31u) & 1u) << 6u);
   if (tk >= 3u) mat |= 128u;   // water and dust take the whole picture (Mat::TintAll)
@@ -76,6 +81,8 @@ uniform vec3 uCamFrac;       // camera position inside its block
 uniform int uPass;           // 0 opaque, 1 cutout, 2 translucent
 in vec3 vUV;
 in vec4 vLight;
+in vec3 vSun;
+in vec3 vBlock;
 in vec3 vTint;
 in vec3 vRel;
 in vec3 vWorld;
@@ -105,6 +112,9 @@ vec3 smoothNormal(vec4 nm, float k) {
 }
 // light on a tilted micro-voxel: the sun where the sky reaches, and a key light from above for everything
 // (so the bumps read in a torch-lit cave too). Returns a multiplier for the face's colour.
+float cubyzSky() {
+  return max(vSun.r, max(vSun.g, vSun.b)) / 31.0 * max(uAmbient.r, max(uAmbient.g, uAmbient.b));
+}
 float bumpLight(vec3 nB, vec3 N, float skyLit) {
   const vec3 K = vec3(0.4423, 0.7372, 0.5108);   // normalize(0.6, 1.0, 0.7)
   float key = 1.0 + 0.55 * (dot(nB, K) - dot(N, K));
@@ -154,24 +164,34 @@ void main() {
       float depthIn = 0.0, hitDepth = 0.0;
       vec3 nt = vec3(0.0, 0.0, 1.0);
       int last = -1;
+      bool hit = false;
+      vec2 hitCell = cell;
       for (int i = 0; i < RELIEF_STEPS; i++) {
         float cd = cellDepth(cell, layer) * scale;
-        if (depthIn > cd + 1e-4) { hitDepth = depthIn; nt = last == 0 ? vec3(-st.x, 0.0, 0.0) : vec3(0.0, -st.y, 0.0); break; }   // into a column's side wall
+        if (depthIn > cd + 1e-4) {
+          // stepped into a shorter column: the wall belongs to the tall one we left, not the hole we entered
+          hit = true; hitDepth = depthIn;
+          if (last == 0) { nt = vec3(-st.x, 0.0, 0.0); hitCell = cell - vec2(st.x, 0.0); }
+          else { nt = vec3(0.0, -st.y, 0.0); hitCell = cell - vec2(0.0, st.y); }
+          break;
+        }
         float tExit = min(tMax.x, tMax.y);
-        if (tExit >= cd) { hitDepth = cd; nt = vec3(0.0, 0.0, 1.0); break; }                                                   // onto the column's top
+        if (tExit >= cd) { hit = true; hitDepth = cd; nt = vec3(0.0, 0.0, 1.0); hitCell = cell; break; }   // onto the column's top
         depthIn = tExit; hitDepth = depthIn;
         if (tMax.x < tMax.y) { cell.x += st.x; tMax.x += tDelta.x; last = 0; } else { cell.y += st.y; tMax.y += tDelta.y; last = 1; }
       }
-      uv = (cell + 0.5) / VOX;
+      // a steep look runs out of steps before it lands. Snapping to that far cell samples a hole and the rung vanishes.
+      if (hit) {
+      uv = (hitCell + 0.5) / VOX;
       vec3 nW = T * nt.x + B * nt.y + N * nt.z;
       shade *= axisShade(nW) / axisShade(N);                   // the side walls of micro-voxels shade like block faces
       shade *= 1.0 - 0.05 * hitDepth;                         // deeper is darker
-      float skyLit = smoothstep(0.45, 1.0, vLight.x) * uDaylight;
+      float skyLit = cubyzSky();
       float sunN = max(dot(N, uSunDir), 0.0);
       sunMod = 1.0 + 0.22 * skyLit * (max(dot(nW, uSunDir), 0.0) - sunN);
       // the smooth surface where the ray lands: crevice darkening everywhere, and on a column's top the sub-voxel
       // normal (round stones, bevelled gems, soft mortar lips)
-      vec2 hpT = clamp(p + dir * hitDepth, cell, cell + 1.0);
+      vec2 hpT = clamp(p + dir * hitDepth, hitCell, hitCell + 1.0);
       vec4 sm = tileNormalAt(hpT / VOX, layer);
       shade *= mix(1.0, sm.z, scale);
       if (nt.z > 0.5) {
@@ -199,21 +219,29 @@ void main() {
         sunMod *= mix(1.0, 0.72, (1.0 - lit) * skyLit);
       }
 #endif
+      }
     }
 #else
     // shaded micro-voxels (the Legacy-friendly look): no geometry, one smooth baked normal per pixel for the
     // lighting (stones bulge, mortar sinks) and the crevice darkening
     vec4 sm = tileNormalAt(uv, layer);
     vec3 bt = smoothNormal(sm, 1.0);
-    float skyLit = smoothstep(0.45, 1.0, vLight.x) * uDaylight;
+    float skyLit = cubyzSky();
     float bl = bumpLight(normalize(T * bt.x + B * bt.y + N * bt.z), N, skyLit);
     shade *= mix(1.0, (1.0 - sm.w * 0.22) * sm.z * bl, fade);
 #endif
   }
 #endif
 
-  vec4 col = tileColorGrad(fract(uv), layer, gdx, gdy);
-  if (uPass == 1 && col.a < 0.5) discard;
+  vec2 fuv = fract(uv);
+  vec4 col = tileColorGrad(fuv, layer, gdx, gdy);
+  if (uPass == 1) {
+    // Looking along a cutout (a ladder, a leaf) the mip averages the holes into the solid texels and the
+    // alpha test throws the rung away. The hole test stays on the sharp texel; the colour follows it when the mip has already gone clear.
+    vec4 sharp = tileColorLod(fuv, layer, 0.0);
+    if (sharp.a < 0.5) discard;
+    if (col.a < 0.5) col.rgb = sharp.rgb;
+  }
   // climate tint: water and dust take it all over; tint-marked pixels (alpha 253) of grass and leaves take it too
   if ((vMat & 128u) != 0u) col.rgb *= vTint * 1.25;
   else if (vTint.r + vTint.g + vTint.b < 2.99) {
@@ -224,7 +252,9 @@ void main() {
   }
   if (uPass != 2) col.a = 1.0;
 
-  vec3 lc = lightingAt(vLight.x, uDynN > 0 ? max(vLight.y, dynLight(vRel, N)) : vLight.y, (vMat & 1u) != 0u, vRel + N * 0.25);
+  vec3 block31 = vBlock;
+  if (uDynN > 0) block31 = max(block31, dynBlock31(vRel + N * 0.25, N));
+  vec3 lc = (vMat & 1u) != 0u ? vec3(1.0) : cubyzCombine(vSun, block31);
   float emis = tileHeightAt(fract(uv), layer).g;
   lc = max(lc, vec3(emis));
   if (lava) lc = vec3(1.0) * (0.92 + 0.16 * vnoise(vWorld.xz * 1.3 + vec2(uTime * 0.25, -uTime * 0.17)));
@@ -236,7 +266,7 @@ void main() {
     if (dot(wn, viewVec) > 0.0) wn = -wn;
     vec3 v = -viewVec / max(dist, 1e-4);
     float fres = pow(1.0 - clamp(dot(v, wn), 0.0, 1.0), 3.0);
-    float skyLit = lightCurve(vLight.x) * uDaylight;
+    float skyLit = cubyzSky();
     // a rain puddle is water without the climate tint: darker, glossier, a stronger sky reflection
     float pud = (vMat & 128u) == 0u ? 1.0 : 0.0;
     c *= 1.0 - 0.2 * pud;

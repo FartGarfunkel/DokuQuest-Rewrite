@@ -1,6 +1,7 @@
 // sim/physics.cpp — port of game/physics.js (gatherBoxes, clipAxis, moveEntity, sampleContacts, raycastBlocks).
 #include "sim/physics.h"
 #include "world/shapes.h"
+#include "world/carve_faces.h"
 #include "sim/blockinfo.h"
 #include <algorithm>
 
@@ -295,7 +296,7 @@ RayHit raycastBlocks(const World& w, glm::dvec3 o, vec3 dirf, float maxDist, boo
       if (!liquid || (pickLiquid && R.tLiquid[id] && (w.getMeta(x, y, z) & 15) == 0)) {
         bool full = r == Render::Cube || r == Render::Cutout || liquid || !worldBoxes(w, x, y, z, id, SHAPE_SELECT, bx);
         // Remember this cell for the aimed-sub-box pick when it is a chisel-carved block.
-        bool carved = id && !R.tLiquid[id] && w.getCarve(x, y, z);
+        bool carved = fullSolid(id) && w.getCarve(x, y, z);   // a seat mark on a torch is not geometry
         if (full && !carved) { finish(x, y, z, id, n, t); return h; }
         if (carved) {
           std::vector<PixBox> cb;
@@ -333,10 +334,18 @@ RayHit raycastBlocks(const World& w, glm::dvec3 o, vec3 dirf, float maxDist, boo
           ivec3 nn; double tt = rayBoxN(o, d, mn, mx, nn);
           if (tt >= 0 && tt < best) { best = tt; bn = nn; any = true; }
         }
-        // something sunk onto a bottom half slab pokes down into the slab's cell
-        if (R.tShape[id] == ShapeKind::Slab && (w.getMeta(x, y, z) & 7) == 0) {
+        // something sunk onto a bottom half, or onto a chiseled step, pokes down into that cell.
+        // A chain seated on a low octant straddles the support cell too.
+        bool lowTop = R.tShape[id] == ShapeKind::Slab && (w.getMeta(x, y, z) & 7) == 0;
+        if (!lowTop && fullSolid(id)) {
+          u8 cv = w.getCarve(x, y, z);
+          if (cv && carveFaceDepth(cv, 0, 1, 0) != 0) lowTop = true;
+        }
+        if (lowTop) {
           BlockId up = w.getBlock(x, y + 1, z);
-          if (up && R.tSink[up] && worldBoxes(w, x, y + 1, z, up, SHAPE_SELECT, ub)) for (auto& b : ub) {
+          u8 uc = up ? w.getCarve(x, y + 1, z) : 0;
+          bool poke = up && (R.tSink[up] || (!fullSolid(up) && seatMark(uc)) || R.block(up).str("shape") == "chain");
+          if (poke && worldBoxes(w, x, y + 1, z, up, SHAPE_SELECT, ub)) for (auto& b : ub) {
             double mn[3] = {x + b.x0 / 16.0, y + 1 + b.y0 / 16.0, z + b.z0 / 16.0}, mx[3] = {x + b.x1 / 16.0, y + 1 + b.y1 / 16.0, z + b.z1 / 16.0};
             ivec3 nn; double tt = rayBoxN(o, d, mn, mx, nn);
             if (tt >= 0 && tt < best && tt <= maxDist) { finish(x, y + 1, z, up, nn, tt); return h; }

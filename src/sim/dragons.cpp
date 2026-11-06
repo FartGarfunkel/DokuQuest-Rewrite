@@ -130,8 +130,11 @@ static OptMove lairDragonAI(Level& lv, Creature& m, Entity* p, float dist, float
   }
   if (st == "circle") {
     m.noGravity = true; M.stT -= dt;
-    M.orbit += dt * 0.45f;
-    float gx = p->pos.x + std::cos(M.orbit) * 16, gz = p->pos.z + std::sin(M.orbit) * 16, alt = p->pos.y + 12 + std::sin(m.age * 0.7f) * 2;
+    M.orbit += dt * 0.35f;
+    // patrol the lair, wide, the way the ender dragon circles its island. The player is the target of the strafe and the charge, not the centre of the orbit.
+    vec3 home = m.data.contains("home") ? jvec(m.data["home"]) : m.pos;
+    float rad = 32.f + 10.f * (0.5f + 0.5f * std::sin(M.orbit * 0.37f));
+    float gx = home.x + std::cos(M.orbit) * rad, gz = home.z + std::sin(M.orbit) * rad, alt = home.y + 16.f + std::sin(m.age * 0.5f) * 3.f;
     m.flyVy = clampf((alt - m.pos.y) * 1.2f, -6, 6);
     if ((M.flapT -= dt) <= 0) { M.flapT = 0.75f; lv.fx->sound("dragon_flap", m.pos + vec3(0, 2, 0), 40); }
     if (M.stT <= 0) {

@@ -1,8 +1,9 @@
 // sim/rift.cpp — game/riftarc.js (the Temporal Incursion: the players' story) and riftlore.js (what the villagers make
 // of it). Phase 1: he watches (sim/haunt.cpp). Phase 2: a while after the first village is found a rift tears open in
-// its square, a window onto his realm. Phase 3: the keepers of the deep places drop Realm Fragments; every one thins
-// the boundary, and he grows bolder (doorways, little rifts, things coming through, time standing still). Phase 4:
-// ten fragments given, the tear steadies into a gateway into his realm (REALM_HIS, gen/realms.cpp RealmGen): hall
+// its square, a window onto his realm. Phase 3: the keepers drop Realm Fragments. Carrying one does nothing. Hold it
+// up to the tear and use it (right click, or the controller's use/place) and the rift drinks that one: the tear opens
+// a little wider, and he grows bolder by the same count (doorways, little rifts, things coming through, time standing
+// still). Phase 4: the tenth fragment given, the tear steadies into a gateway into his realm (REALM_HIS): hall
 // after hall of rift stone, corrupted creatures, and at the end, him. Beaten, the rift is sealed.
 // The tears are virtual portals (sim/portals.h setVirtual): true windows, walked through when they are gateways.
 // The villagers workstream talks to this through sim/endstory.h (riftAsk ...) and the villageEnter / villageRep events.
@@ -604,7 +605,7 @@ void riftTick(Level& lv, EndStory& S, double dt) {
   riftEvent(lv, S, *who, ev, mon);
 }
 
-// ------------------------------------------------------------------ fragments: the keepers carry them; the rift takes them
+// ------------------------------------------------------------------ fragments: the keepers carry them; the rift drinks them one at a time
 void riftOnDeath(Level& lv, EndStory& S, Creature& c, Entity*) {
   json& R = riftRec(lv);
   const json& dg = c.data.contains("dungeon") ? c.data["dungeon"] : json();
@@ -612,11 +613,15 @@ void riftOnDeath(Level& lv, EndStory& S, Creature& c, Entity*) {
   vec3 at = c.pos + vec3(0, 1, 0); int realm = c.realm;
   if (keeper && !truthy(R, "sealed") && jint(R, "stage") >= 3) { S.later(0, [at, realm](Level& l) { if (reg().item("rift_crystal")) dropItem(l, realm, ItemStack("rift_crystal", 2), at, true); }); }   // (0.9.0.31) the gate is open
   else if (keeper && !truthy(R, "sealed")) {
+    // The drop is only a shard in the pack. frags (and so the tear, and how bold he is) moves when the rift drinks it.
     S.later(0, [at, realm](Level& l) { dropItem(l, realm, ItemStack("realm_fragment", 1), at, true); });
-    int frags = jint(R, "frags") + 1; R["frags"] = frags; riftChanged(lv);
-    int stage = jint(R, "stage");
-    if (stage >= 1 && stage < 3) S.later(2.5, [frags](Level& l) {
-      riftSay(l, frags >= RIFT_NEED ? "The boundary is paper-thin. Take the fragments to the rift." : "The world shudders. (" + std::to_string(std::min(RIFT_NEED, frags)) + " of " + std::to_string(RIFT_NEED) + " fragments)", "warn"); });
+    if (jint(R, "stage") < 3) S.later(2.5, [](Level& l) {
+      const json& R = riftRec(l);
+      if (truthy(R, "sealed") || jint(R, "stage") >= 3) return;
+      riftSay(l, jint(R, "stage") >= 1
+        ? "A Realm Fragment. Hold it up to the rift in the square and use it. It counts only once the rift drinks it."
+        : "A Realm Fragment. Keep it until a rift tears open in a village square, then hold it up to the tear and use it.", "warn");
+    });
   }
   if (c.type == "herobrine") riftSeal(lv, c);
 }
@@ -626,17 +631,31 @@ static int removeItems(Player& p, const std::string& id, int n) {
   for (auto& s : p.inv) if (left > 0 && s.id == id) { int k = std::min(left, s.n); s.n -= k; left -= k; if (s.n <= 0) s = ItemStack(); }
   return n - left;
 }
-// using the rift with the fragments in hand
-bool riftItemUse(Level& lv, EndStory&, Player& p, const std::string&, ivec3, int) {
+// One fragment, held up to the tear. Use and place are the same button (mouse right click, controller use/place):
+// itemUse fires before a block would be set down, so offering the shard is the use.
+static int takeOneFragment(Player& p) {
+  ItemStack& h = p.held();
+  if (h.id == "realm_fragment" && h.n > 0) { if (--h.n <= 0) h.clear(); return 1; }
+  return removeItems(p, "realm_fragment", 1);
+}
+bool riftItemUse(Level& lv, EndStory&, Player& p, const std::string& item, ivec3, int) {
   json& R = riftRec(lv);
   int stage = jint(R, "stage");
   if (p.realm != REALM_MAIN || stage < 1 || stage >= 3 || !R.contains("at")) return false;
   vec3 at = jvec(R["at"]);
   if (std::hypot(p.pos.x - at.x, p.pos.z - at.z) >= 3.5f || std::fabs(p.pos.y - at.y) >= 3) return false;
-  int have = countItem(p, "realm_fragment");
-  if (have >= RIFT_NEED) { removeItems(p, "realm_fragment", RIFT_NEED); riftOpenGate(lv); }
-  else say(lv, p.id, have ? "The rift pulls at the fragment in your hand, but it wants " + std::to_string(RIFT_NEED) + ". You have " + std::to_string(have) + "." : "The rift hums. Beyond it, something is looking back.");
   p.swingT = 0.01f;
+  if (item != "realm_fragment") {
+    say(lv, p.id, countItem(p, "realm_fragment") ? "Hold a Realm Fragment up to the rift and use it." : "The rift hums. Beyond it, something is looking back.");
+    return true;
+  }
+  if (!takeOneFragment(p)) { say(lv, p.id, "The rift hums. Beyond it, something is looking back."); return true; }
+  int frags = jint(R, "frags") + 1; R["frags"] = frags; riftChanged(lv);
+  // The tear's size and how often he acts both read frags (syncTears, riftStability). Nothing else to wake.
+  if (frags >= RIFT_NEED) { riftOpenGate(lv); return true; }
+  lv.fx->sound("rift_whisper", at + vec3(0, 1.5f, 0), 28);
+  sfx::spark(lv, at + vec3(0, 1.6f, 0), "mana_arcane", json{{"vy", 0.6f}, {"life", 0.8f}, {"size", 0.08f}});
+  riftSay(lv, "The world shudders. The tear opens a little wider. (" + std::to_string(frags) + " of " + std::to_string(RIFT_NEED) + ")", "warn");
   return true;
 }
 
@@ -766,7 +785,7 @@ void registerRift() {
       riftOpenAt(lv, v.id, v.name, v.c + vec3(0.5f, 1, 5.5f), 0);
       return "The rift opens in " + v.name + " (x " + std::to_string((int)v.c.x) + ", z " + std::to_string((int)v.c.z + 5) + ")";
     }
-    if (c == "frag") { if (p) giveOrDrop(lv, *p, ItemStack("realm_fragment", 1)); R["frags"] = jint(R, "frags") + 1; riftChanged(lv); return "Fragments: " + std::to_string(jint(R, "frags")) + " \xC2\xB7 stability " + std::to_string(riftStability(lv)); }
+    if (c == "frag") { if (p) giveOrDrop(lv, *p, ItemStack("realm_fragment", 1)); return "A Realm Fragment, not yet given. The rift has taken " + std::to_string(jint(R, "frags")) + " of " + std::to_string(RIFT_NEED) + "."; }
     if (c == "gate") { if (!jint(R, "stage")) return "Open it first"; riftOpenGate(lv); return "The gateway is open"; }
     if (c == "go") { if (p) travel(lv, *p, p->realm != REALM_HIS); if (p && p->realm == REALM_HIS) enteredRealm(lv, *p); return "Through the rift"; }
     if (c == "seal") { R["sealed"] = 1; R["stage"] = 5; riftChanged(lv); return "Sealed"; }
@@ -792,7 +811,7 @@ void riftOpenGate(Level& lv) {
   vec3 at = R.contains("at") ? jvec(R["at"]) : vec3(0);
   lv.fx->sound("rift_boom", at + vec3(0, 2, 0), 120);
   sfx::burst(lv, at + vec3(0, 2.5f, 0), "mana_arcane", 120, 3, json{{"life", 1.4f}, {"size", 0.1f}, {"spread", 3}});
-  riftSay(lv, "The fragments sink into the rift. It steadies into a gateway. Beyond it: his realm.", "epic");
+  riftSay(lv, "The last fragment sinks into the rift. It steadies into a gateway. Beyond it: his realm.", "epic");
 }
 void riftTravel(Level& lv, Player& p, bool toRealm) { travel(lv, p, toRealm); if (toRealm && p.realm == REALM_HIS) enteredRealm(lv, p); }
 
@@ -844,7 +863,7 @@ std::string riftElderLine(Level& lv) {
   if (truthy(R, "sealed")) return "You did it. The square is quiet, the nights are only nights again. We will sing of this for a hundred winters.";
   if (jint(R, "stage") >= 3) return "The gateway stands open. He waits beyond it, at the end of his halls. Go together, go ready, and end this.";
   return std::string("It opened when you came. Something old is pressing on our world from the other side. The old tales say the keepers of the deep places hold the keys of time. Find the dungeons, defeat their keepers, bring their Realm Fragments to the rift. Ten of them. ") +
-         (n ? "You have found " + std::to_string(n) + " so far." : "");
+         (n ? "The rift has taken " + std::to_string(n) + " so far. Each one opens it a little wider." : "Hold one up to the tear and use it. One at a time.");
 }
 std::string riftCorruptSay(Level& lv, const std::string& job) {
   if (riftStability(lv) >= 15 || job == "elder" || rnd() >= 0.18f) return "";

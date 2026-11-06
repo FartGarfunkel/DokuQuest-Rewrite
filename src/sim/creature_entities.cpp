@@ -2,6 +2,7 @@
 // (game/entities.js DroppedItem / Projectile / FallingTree, game/blocks2.js Arrow, game/monsters.js HexFlask,
 // game/bestiary.js llama spit, game/dismember.js Gib, game/theend.js snowballs' landing puff).
 #include "sim/creature_entities.h"
+#include "sim/creature_rig.h"
 #include "sim/slime_goo.h"
 #include "sim/mob_combat.h"
 #include "sim/explosion.h"
@@ -21,13 +22,49 @@ static bool boxFree(const World& w, vec3 p, float hw, float h) {
   }
   return true;
 }
-static Creature* creatureHit(Level& lv, int realm, vec3 p, u32 skip, float pad) {
+static bool coarseBody(const Creature& c, vec3 p, float pad) {
+  return p.x > c.pos.x - c.w - pad && p.x < c.pos.x + c.w + pad && p.z > c.pos.z - c.w - pad && p.z < c.pos.z + c.w + pad && p.y > c.pos.y && p.y < c.pos.y + c.h;
+}
+// A rigged mob is hit on the posed part the shot actually enters. Mobs without a rig keep the body box.
+// `from` is the previous point of the shot, so a thin wing is not skipped between ticks.
+static Creature* creatureHit(Level& lv, int realm, vec3 p, u32 skip, float pad, const vec3* from = nullptr) {
+  Creature* best = nullptr;
+  float bestT = 1e9f;
   for (auto& e : lv.entities()) {
     auto* c = dynamic_cast<Creature*>(e.get());
     if (!c || c->removed || !c->alive() || c->realm != realm || c->id == skip) continue;
-    if (p.x > c->pos.x - c->w - pad && p.x < c->pos.x + c->w + pad && p.z > c->pos.z - c->w - pad && p.z < c->pos.z + c->w + pad && p.y > c->pos.y && p.y < c->pos.y + c->h) return c;
+    const RigModel* M = rigModel(c->modelKey());
+    if (!M || M->rig.empty() || M->parts.empty()) {
+      if (!best && coarseBody(*c, p, pad)) best = c;
+      continue;
+    }
+    float span = std::max(c->w, 1.f) * 4.f + c->h + pad + 2.f;
+    vec3 mid = c->pos + vec3(0, c->h * 0.5f, 0);
+    if (glm::distance(p, mid) > span && (!from || glm::distance(*from, mid) > span)) continue;
+    rigPose(*c, *M, creatureBase(*c, false));
+    if (from) {
+      vec3 dir = p - *from;
+      float len = glm::length(dir);
+      if (len > 1e-4f) {
+        float t = -1.f;
+        if (rigHitPart(*c, *M, *from, dir / len, &t) >= 0 && t >= -pad && t <= len + pad && t < bestT) { bestT = t; best = c; }
+        continue;
+      }
+    }
+    for (size_t i = 0; i < M->parts.size() && i < c->mats.size(); i++) {
+      if (!rigPartPosed(*c, (int)i)) continue;
+      mat4 inv = glm::inverse(c->mats[i]);
+      vec3 local = vec3(inv * vec4(p - c->pos, 1));
+      vec3 lo = M->parts[i].min - vec3(0.12f), hi = M->parts[i].max + vec3(0.12f);
+      if (local.x >= lo.x && local.x <= hi.x && local.y >= lo.y && local.y <= hi.y && local.z >= lo.z && local.z <= hi.z) { best = c; bestT = 0; break; }
+    }
   }
-  return nullptr;
+  return best;
+}
+static void aimRay(DamageSrc& d, vec3 from, vec3 to) {
+  vec3 dir = to - from; float l = glm::length(dir);
+  if (l < 1e-4f) return;
+  d.hasRay = true; d.rayO = from; d.rayD = dir / l;
 }
 
 // ------------------------------------------------------------------ dropped items
@@ -75,7 +112,7 @@ public:
       float drag = std::max(0.f, 1 - hh * 0.25f); vel *= drag;
       vec3 n = pos + vel * hh;
       if (arrowHitsPawn(lv, *this, n, owner)) { removed = true; return; }
-      if (Creature* c = creatureHit(lv, realm, n, owner ? owner->id : 0, 0.1f)) {
+      if (Creature* c = creatureHit(lv, realm, n, owner ? owner->id : 0, 0.1f, &pos)) {
         float speed = glm::length(vel), sl = speed > 0 ? speed : 1;
         DamageSrc ds; ds.knock = 3; ds.tool = "arrow"; ds.hasRay = true; ds.rayO = pos; ds.rayD = vel / sl;
         if (data.value("burning", false)) ds.element = "fire";
@@ -123,7 +160,7 @@ public:
           if (thrown) knockback(*p, glm::normalize(vec3(vel.x, 0, vel.z) + vec3(1e-4f)) * 2.f);
           splat(lv, kind); return;
         }
-        if (thrown) if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.1f)) { DamageSrc d; d.knock = 2; damageEntity(lv, *c, c->type == "cinder_golem" ? 1 : kind == "snow" && c->T && c->T->fireImmune ? 3 : 0.001f, owner, "projectile", d); splat(lv, kind); return; }   // snow burns the creatures of fire (Minecraft's blazes)
+        if (thrown) if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.1f, nullptr)) { DamageSrc d; d.knock = 2; aimRay(d, pos - vel * (dt / 3), pos); damageEntity(lv, *c, c->type == "cinder_golem" ? 1 : kind == "snow" && c->T && c->T->fireImmune ? 3 : 0.001f, owner, "projectile", d); splat(lv, kind); return; }   // snow burns the creatures of fire (Minecraft's blazes)
         if (solidAt(wd, pos)) { splat(lv, kind); return; }
       }
       if (kind == "spit" && frand() < dt * 20) mobBurst(lv, pos, "white", 1, 0.1f);
@@ -144,7 +181,7 @@ public:
       for (int s = 0; s < 3; s++) {
         pos += vel * (dt / 3);
         if (age > 0.08f) for (Entity* p : pawnsOf(lv, realm)) if (p != owner && std::fabs(p->pos.x - pos.x) < 0.5f && std::fabs(p->pos.z - pos.z) < 0.5f && pos.y > p->pos.y - 0.2f && pos.y < p->pos.y + 1.9f) { burst(); return; }
-        if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.15f)) { DamageSrc d; d.knock = 3; damageEntity(lv, *c, rocket ? 8 : 5, owner, "projectile", d); burst(); return; }
+        if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.15f)) { DamageSrc d; d.knock = 3; aimRay(d, pos - vel * (dt / 3), pos); damageEntity(lv, *c, rocket ? 8 : 5, owner, "projectile", d); burst(); return; }
         if (solidAt(wd, pos)) { burst(); return; }
       }
       if (frand() < dt * (rocket ? 40 : 14)) lv.fx->particles("smoke", pos - vel * 0.03f, 1);
@@ -161,7 +198,7 @@ public:
       for (int s = 0; s < 3; s++) {
         pos += vel * (dt / 3);
         if (back) if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.9f)) {
-          DamageSrc d; d.knock = 2;
+          DamageSrc d; d.knock = 2; aimRay(d, pos - vel * (dt / 3), pos);
           const bool boss = c->type == "wither" || c->type == "wither_storm";
           damageEntity(lv, *c, boss ? 12.f : 8.f, owner, "skull", d);   // "skull", not "projectile": its hardened bones don't turn it
           burst(); return;
@@ -181,7 +218,7 @@ public:
         if (home && !home->removed && home->realm == realm) { vec3 to = home->pos + vec3(0, 0.5f, 0) - pos; float d = glm::length(to); if (d > 0.01f) vel += (to / d * 9.f - vel) * std::min(1.f, dt * 3.f); }
         for (int s = 0; s < 3; s++) {
           pos += vel * (dt / 3);
-          if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.7f)) { DamageSrc d; d.knock = 1; damageEntity(lv, *c, 6, owner, "projectile", d); removed = true; mobBurst(lv, pos, "end_mote", 12, 1.2f); lv.fx->sound("ender_tp", pos, 16); return; }
+          if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.7f)) { DamageSrc d; d.knock = 1; aimRay(d, pos - vel * (dt / 3), pos); damageEntity(lv, *c, 6, owner, "projectile", d); removed = true; mobBurst(lv, pos, "end_mote", 12, 1.2f); lv.fx->sound("ender_tp", pos, 16); return; }
           if (solidAt(wd, pos)) { removed = true; mobBurst(lv, pos, "end_mote", 8, 0.8f); return; }
         }
         if (frand() < dt * 30) mobBurst(lv, pos, "end_mote", 1, 0.1f);
@@ -212,7 +249,7 @@ public:
       for (int s = 0; s < 3; s++) {
         pos += vel * (dt / 3);
         if (back) if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.6f)) {
-          DamageSrc d; d.knock = 6;
+          DamageSrc d; d.knock = 6; aimRay(d, pos - vel * (dt / 3), pos);
           damageEntity(lv, *c, c->type == "zephyr" ? 1000.f : 4.f, owner, "projectile", d);
           gustPop(lv); return;
         }
@@ -234,7 +271,7 @@ public:
       if (back) if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.8f)) {
         // punched back, it's the blow that lands, not the fire: a ghast dies of it, and the creatures of fire that threw it
         // (wisps, the Cinder Golem) take it like anyone else (only the burning after it passes them by)
-        DamageSrc d; d.knock = 4;
+        DamageSrc d; d.knock = 4; aimRay(d, pos - vel * (dt / 3), pos);
         const bool fiery = c->T && c->T->fireImmune;
         if (!fiery) d.element = "fire";
         const float dmg = c->type == "ghast" ? 1000.f : c->T && c->T->boss ? 14.f : fiery ? 8.f : 6.f;

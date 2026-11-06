@@ -105,6 +105,16 @@ void dragonBreath(Level& lv, Creature& e, Entity& target, float dt);
 }
 namespace dq::es {
 
+// A ring of waypoints around the island, the way the vanilla dragon flies node to node rather than one smooth orbit.
+static void dragonNode(int i, float fy, float& x, float& y, float& z) {
+  const int N = 12;
+  int k = i % N; if (k < 0) k += N;
+  float a = k * (TAU / (float)N);
+  float rad = (k % 2 == 0) ? 42.f : 58.f;
+  x = std::cos(a) * rad; z = std::sin(a) * rad;
+  y = fy + 20.f + (k % 3) * 9.f;
+}
+
 static OptMove enderDragonAI(Level& lv, Creature& m, Entity*, float, float, float, float dt) {
   EndStory* S = endStory(lv); if (!S) return std::nullopt;
   Mem& M = S->mem(m);
@@ -175,14 +185,29 @@ static OptMove enderDragonAI(Level& lv, Creature& m, Entity*, float, float, floa
       if (dist < 22 && !(m.breathT > 0) && (M.pbT -= dt) <= 0) { M.pbT = 4 + rnd() * 2; m.breathT = 2; lv.fx->sound("dragon_breath", m.pos + vec3(0, 2, 0), 60); }
       if (m.breathT > 0) { m.breathT -= dt; dragonBreath(lv, m, *p, dt); }
     }
+    // sitting on the fountain: a ring of dragon fire on the stone, the way the perched dragon breathes at its feet
+    if (M.perched && (M.ringT -= dt) <= 0) {
+      M.ringT = 0.5f;
+      for (int i = 0; i < 14; i++) {
+        float a = i * (TAU / 14.f) + m.age, rad = 3.5f + (i % 3);
+        sfx::spark(lv, vec3(0.5f + std::cos(a) * rad, fy + 0.2f, 0.5f + std::sin(a) * rad), "end_mote", json{{"life", 0.6f}, {"size", 0.28f}});
+      }
+      for (Entity* q : pawnsOf(lv, m.realm))
+        if (std::hypot(q->pos.x - 0.5f, q->pos.z - 0.5f) < 8.f && std::fabs(q->pos.y - fy) < 6.f)
+          hurtPawn(lv, *q, 2.f, &m, "magic", 0);
+    }
     if (M.stT <= 0) { M.perched = false; m.state = "climb"; M.stT = 2; lv.fx->sound("dragon_roar", m.pos + vec3(0, 2, 0), 120); }
     return Move{0, m.yaw};
   }
-  // circling the island, high over the pillars
+  // node to node around the island, high over the pillars
   m.state = "circle";
-  if (!M.hasOrbit) { M.orbit = std::atan2(m.pos.z, m.pos.x); M.hasOrbit = true; }
-  M.orbit += dt * 0.32f;
-  float gx = std::cos(M.orbit) * 55, gz = std::sin(M.orbit) * 55, alt = fy + 30 + std::sin(m.age * 0.4f) * 5;
+  if (!M.hasOrbit) { M.node = (int)(rnd() * 12.f); M.hasOrbit = true; }
+  float gx, alt, gz;
+  dragonNode(M.node, fy, gx, alt, gz);
+  if (std::hypot(gx - m.pos.x, gz - m.pos.z) < 12.f) {
+    M.node = (M.node + 1 + (int)(rnd() * 3.f)) % 12;
+    dragonNode(M.node, fy, gx, alt, gz);
+  }
   if (M.stT <= 0) {
     int crystals = crystalsAlive(lv, nullptr); float r = rnd();
     M.stT = 6 + rnd() * 5;

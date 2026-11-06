@@ -3,6 +3,7 @@
 // held items; Projectile.glow; FallingTree.draws; telegraphDecal), game/dismember.js Gib.draws and
 // game/blocks2.js Arrow.draws.
 #include "render/creature_layer.h"
+#include "render/pack_geom.h"
 #include "sim/hallow.h"
 #include "render/creature_draw.h"
 #include "render/creature_models.h"
@@ -12,8 +13,10 @@
 #include "assets/char_creator.h"
 #include "assets/item_models.h"
 #include "assets/tileset.h"
-#include "assets/voxel_paint.h"
 #include "client/app.h"
+#include "render/tile_box.h"
+#include "render/mesher.h"
+#include "world/shapes.h"
 #include "sim/creature_rig.h"
 #include "core/registry.h"
 #include <cstdlib>
@@ -56,6 +59,8 @@ void CreatureDraw::draw(const VoxelMeshGL& m, const mat4& model, VoxelLight ligh
   if (mirrored) glFrontFace(GL_CW);
   m.mesh->draw();
   if (mirrored) glFrontFace(GL_CCW);
+  // Translucent decals (blob shadows, telegraphs) did not write a depth the pack can match.
+  if (alpha >= 0.99f && m.mesh) packVoxelNote(m.mesh.get(), model, light.sky, light.block, tint);
 }
 void CreatureDraw::end() { glBindVertexArray(0); }
 VoxelLight lightAt(const World& w, vec3 p) { u8 l = w.getLight(ifloor(p.x), ifloor(p.y), ifloor(p.z)); return {(l >> 4) / 15.f, (l & 15) / 15.f}; }
@@ -87,39 +92,22 @@ struct SmallMeshes {
 };
 static SmallMeshes& small() { static SmallMeshes* m = new SmallMeshes(); m->build(); return *m; }
 
-// ------------------------------------------------------------------ felled trees: a voxel model per tree
-struct TreeMesh { VoxelMeshGL gl; ivec3 lo{0}; u32 id = 0; bool used = false; };
-static std::unordered_map<u32, std::unique_ptr<TreeMesh>>& treeMeshes() { static auto* m = new std::unordered_map<u32, std::unique_ptr<TreeMesh>>(); return *m; }
-static TreeMesh* treeMesh(const Entity& e) {
-  auto& M = treeMeshes();
-  auto it = M.find(e.id);
-  if (it != M.end()) { it->second->used = true; return it->second.get(); }
-  const json& bl = e.data.value("blocks", json::array());
-  if (!bl.is_array() || bl.empty()) return nullptr;
-  ivec3 lo(1 << 20), hi(-(1 << 20));
-  for (auto& b : bl) { ivec3 p(b[0].get<int>(), b[1].get<int>(), b[2].get<int>()); lo = glm::min(lo, p); hi = glm::max(hi, p); }
-  const int R = 8;
-  VoxelGrid g((hi - lo + 1) * R);
-  const TileSet& ts = app().tiles;
-  for (auto& b : bl) {
-    ivec3 p = ivec3(b[0].get<int>(), b[1].get<int>(), b[2].get<int>()) - lo;
-    const BlockDef& d = reg().block(reg().blockId(b[3].get<std::string>()));
-    for (int z = 0; z < R; z++) for (int y = 0; y < R; y++) for (int x = 0; x < R; x++) {
-      vec3 n((x + 0.5f) / R, (y + 0.5f) / R, (z + 0.5f) / R);
-      float dd[6] = {1 - n.x, n.x, 1 - n.y, n.y, 1 - n.z, n.z};
-      int f = 0; for (int i = 1; i < 6; i++) if (dd[i] < dd[f]) f = i;
-      float sx = f == 0 ? 1 - n.z : f == 1 ? n.z : f == 2 ? n.x : f == 3 ? 1 - n.x : f == 4 ? n.x : 1 - n.x, ty = f == 2 || f == 3 ? n.z : 1 - n.y;
-      u32 c = tileVoxel(ts, d.faces[f], (int)(sx * ts.size), (int)(ty * ts.size));
-      if (!c) continue;
-      if (reg().tLeaves[d.id]) c = voxRGBA((int)((c & 255) * 0.55f), (int)(((c >> 8) & 255) * 0.8f), (int)(((c >> 16) & 255) * 0.45f));   // TINT_FOLIAGE-ish
-      g.set(p.x * R + x, p.y * R + y, p.z * R + z, c | 0xFF000000u);
-    }
+// the foliage colour the chunk shader looks up for this climate (render/world_renderer.cpp's tint table)
+static void drawFallingTrees(GameSession& s, const FrameCtx& f, float a);
+static vec3 foliageTintAt(const World& w, int x, int y, int z) {
+  u8 t = 128, h = 128;
+  if (Chunk* ch = w.chunkAtBlock(x, y, z)) {
+    int i = ((z & 15) * 16 + (x & 15)) * 2;
+    t = ch->climate[i]; h = ch->climate[i + 1];
   }
-  auto tm = std::make_unique<TreeMesh>();
-  VoxelMeshData md; buildVoxelMesh(g, md); tm->gl.upload(md);
-  tm->lo = lo; tm->id = e.id; tm->used = true;
-  auto* raw = tm.get(); M[e.id] = std::move(tm);
-  return raw;
+  bool ok = false;
+  u32 c = packTint("foliage", t, h, ok);
+  if (!ok) {
+    u32 g = climateTint("grass", t, h);
+    auto sc = [](unsigned v, float k) { return clampv((int)std::lround(v * k), 0, 255) / 255.f; };
+    return vec3(sc(g & 255u, 0.8f * 0.82f), sc((g >> 8) & 255u, 0.8f * 0.86f), sc((g >> 16) & 255u, 0.8f * 0.8f));
+  }
+  return vec3((c & 255) / 255.f, ((c >> 8) & 255) / 255.f, ((c >> 16) & 255) / 255.f);
 }
 
 // ------------------------------------------------------------------ helpers
@@ -175,9 +163,6 @@ void registerCreatureLayers() {
 void CreatureLayer::update(GameSession& s, double dt) {
   if (!zooDone) { zooDone = true; if (std::getenv("DQ_ZOO")) zoo(s); }
   if (!s.paused()) fauna->update(s, (float)dt);
-  // trees that fell are done with their meshes
-  auto& M = treeMeshes();
-  for (auto it = M.begin(); it != M.end();) { if (!it->second->used) it = M.erase(it); else { it->second->used = false; ++it; } }
 }
 
 struct Interp { vec3 pos; float yaw, age; };
@@ -412,19 +397,58 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
       const CreatureType* T = creatureType(e.data.value("from", ""));
       vec4 tint = fade > 0 ? vec4(0, 0, 0, fade * 0.6f) : (T && T->hasTint ? T->tint : vec4(0));
       D.draw(CM->parts[pi]->gl, m * CM->parts[pi]->local, lightAt(w, ip.pos + vec3(0, 0.2f, 0)), tint);
-    } else if (t == "falling_tree") {
-      TreeMesh* tm = treeMesh(e);
-      if (!tm) continue;
-      float k = std::min(1.f, e.data.value("t", 0.f) / 1.1f), ang = k * k * PI / 2, dy = e.data.value("dirYaw", 0.f);
-      mat4 m = glm::translate(mat4(1), rel + vec3(0.5f, 0, 0.5f));
-      m = glm::rotate(m, dy, vec3(0, 1, 0)); m = glm::rotate(m, -ang, vec3(1, 0, 0)); m = glm::rotate(m, -dy, vec3(0, 1, 0));
-      m = glm::translate(m, vec3(-0.5f, 0, -0.5f) + vec3(tm->lo));
-      m = glm::scale(m, vec3(1.f / 8));
-      D.draw(tm->gl, m, lightAt(w, ip.pos + vec3(0, 1, 0)));
     }
   }
   fauna->draw(s, f);
   D.end();
+  drawFallingTrees(s, f, a);
+}
+
+// A felled tree used to be a nearest-face voxel copy: the top of a log wore the end-grain picture, and a leaf's
+// holes became missing voxels with a flat green multiply. Each block stays a box of its own side, top and bottom tiles.
+static void drawFallingTrees(GameSession& s, const FrameCtx& f, float a) {
+  World& w = s.world();
+  ContentDraw& cd = contentDraw();
+  bool begun = false;
+  const Registry& R = reg();
+  for (auto& up : s.level->entities()) {
+    Entity& e = *up;
+    if (e.removed || e.type != "falling_tree" || e.realm != s.player->realm) continue;
+    const json& bl = e.data.value("blocks", json::array());
+    if (!bl.is_array() || bl.empty()) continue;
+    Interp ip = interp(e, a);
+    vec3 rel = f.cam.rel(glm::dvec3(ip.pos));
+    if (glm::dot(rel, rel) > 160.f * 160.f) continue;
+    if (!f.cam.frustum.sphere(rel + vec3(0, 8, 0), 18.f)) continue;
+    if (!begun && !cd.begin(f, f.cam.viewProj)) return;
+    begun = true;
+    float k = std::min(1.f, e.data.value("t", 0.f) / 1.1f), ang = k * k * PI / 2, dy = e.data.value("dirYaw", 0.f);
+    mat4 m = glm::translate(mat4(1), rel + vec3(0.5f, 0, 0.5f));
+    m = glm::rotate(m, dy, vec3(0, 1, 0));
+    m = glm::rotate(m, -ang, vec3(1, 0, 0));
+    m = glm::rotate(m, -dy, vec3(0, 1, 0));
+    m = glm::translate(m, vec3(-0.5f, 0, -0.5f));
+    vec3 leaf = foliageTintAt(w, ifloor(e.pos.x), ifloor(e.pos.y), ifloor(e.pos.z));
+    u8 lit = w.getLight(ifloor(ip.pos.x), ifloor(ip.pos.y) + 1, ifloor(ip.pos.z));
+    vec2 light((lit >> 4) / 15.f, (lit & 15) / 15.f);
+    for (auto& b : bl) {
+      if (!b.is_array() || b.size() < 4 || !b[3].is_string()) continue;
+      BlockId id = R.blockId(b[3].get<std::string>());
+      if (!id) continue;
+      const BlockDef& d = R.block(id);
+      int sideI = d.faces[0], topI = d.faces[2], botI = d.faces[3];
+      if (topI < 0) topI = sideI;
+      if (botI < 0) botI = topI;
+      GLuint side = tileTexture(s.app, sideI), top = tileTexture(s.app, topI), bot = tileTexture(s.app, botI);
+      if (!side) continue;
+      if (!top) top = side;
+      if (!bot) bot = top;
+      vec3 p((float)b[0].get<int>(), (float)b[1].get<int>(), (float)b[2].get<int>());
+      bool leaves = R.tLeaves[id] || traits(id).tint == 2;
+      drawTileBox(cd, m, p, p + vec3(1), side, top, bot, light, vec3(1), false, true, leaves ? leaf : vec3(1));
+    }
+  }
+  if (begun) cd.end();
 }
 
 void CreatureLayer::drawTranslucent(GameSession& s, const FrameCtx& f) {

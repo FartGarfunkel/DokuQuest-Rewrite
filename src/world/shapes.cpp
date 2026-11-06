@@ -26,6 +26,7 @@
 //   tripwire      0 powered, 1 strung
 #include "world/shapes.h"
 #include "world/carve_faces.h"
+#include "sim/blockinfo.h"
 #include <mutex>
 
 namespace dq {
@@ -119,7 +120,7 @@ void initBlockTraits() {
     t.clothTex = tileOf(b.str("clothTex"));
     std::string shape = b.str("shape");
     t.campfire = shape == "campfire" ? 1 : shape == "soul_campfire" ? 2 : 0;
-    t.lantern = shape == "lantern" || shape == "soul_lantern";
+    t.lantern = shape == "lantern" || shape == "soul_lantern" || shape == "firefly_lantern";
     t.bamboo = b.key == "bamboo";
     if (!shape.empty()) {
       auto it = g_modelIdx.find(shape); if (it != g_modelIdx.end()) t.model = it->second;
@@ -217,6 +218,86 @@ bool joinsFence(BlockId id) { int s = reg().tShape[id]; return s == ShapeKind::F
 bool joinsWall(BlockId id) { int s = reg().tShape[id]; return s == ShapeKind::Wall || s == ShapeKind::Pane || s == ShapeKind::Gate || fullSolid(id); }
 bool joinsPane(BlockId id) { int s = reg().tShape[id]; return s == ShapeKind::Pane || s == ShapeKind::Wall || fullSolid(id); }
 bool hangingLantern(BlockId id, u8 meta) { return traits(id).lantern && (meta & 3) == 1; }   // (bits 2..6: the chain's extra length, half blocks)
+
+bool seatsOnOctant(BlockId id) {
+  const Registry& R = reg();
+  if (!id) return false;
+  if (R.tRender[id] == (u8)Render::Torch) return true;
+  if (R.tSink[id]) return true;
+  const std::string sh = R.block(id).str("shape");
+  if (sh == "chain" || sh == "lantern" || sh == "soul_lantern" || sh == "firefly_lantern") return true;
+  int k = R.tShape[id];
+  if (k == ShapeKind::Candle || k == ShapeKind::Lever || k == ShapeKind::Button || k == ShapeKind::Plate
+      || k == ShapeKind::Frame || k == ShapeKind::Ladder || k == ShapeKind::Hook) return true;
+  if (bhas(id, BF::Sign)) return true;
+  if (R.tRender[id] == (u8)Render::Cross && bhas(id, BF::NeedsSupport) && !bhas(id, BF::Crop) && !bhas(id, BF::Tree)) return true;
+  return false;
+}
+
+static bool chainOrLantern(BlockId id) {
+  if (!id) return false;
+  if (traits(id).lantern) return true;
+  return reg().block(id).str("shape") == "chain";
+}
+
+SeatShift seatShiftOf(BlockId id, u8 meta, u8 carve, const ShapeNb& nb) {
+  SeatShift s;
+  if (!id || fullSolid(id) || !seatMark(carve)) return s;
+  s.micro = true;
+  int o = carve & 7;
+  s.hy = (o >> 1) & 1;
+  const Registry& R = reg();
+  int kind = R.tShape[id];
+  bool wall = false, hang = false;
+  int facing = meta & 7;
+  if (R.tRender[id] == (u8)Render::Torch && (meta & 7) != 0) wall = true;
+  else if (kind == ShapeKind::Ladder || kind == ShapeKind::Frame || kind == ShapeKind::Hook || (bhas(id, BF::Sign) && (meta & 16))) {
+    wall = true;
+    int f = meta & 3;
+    facing = (f == 1 || f == 3) ? 1 : 3;   // ±X wall vs ±Z wall (torch facing codes)
+  } else if (kind == ShapeKind::Lever || kind == ShapeKind::Button) {
+    int k = meta & 7;
+    if (k == 1) hang = true;
+    else if (k >= 2) {
+      wall = true;
+      int f = k - 2;
+      facing = (f == 1 || f == 3) ? 1 : 3;
+    }
+  } else if (traits(id).lantern && hangingLantern(id, meta)) hang = true;
+  else if (R.block(id).str("shape") == "chain") {
+    BlockId above = nb.id(0, 1, 0);
+    if (fullSolid(above) || chainOrLantern(above)) hang = true;
+    else if (fullSolid(nb.id(0, -1, 0))) hang = false;
+    else hang = true;
+  }
+  s.hang = hang;
+  seatPixels(carve, facing, hang, wall, s.x, s.y, s.z);
+  // A lever or button on an upper underside sits 8px above the cell. Chains reach that with a longer link.
+  if (hang && s.hy == 1 && !traits(id).lantern && R.block(id).str("shape") != "chain") s.y += 8.f;
+  return s;
+}
+
+u8 faceSeat(const World& w, vec3 point, bool aimed, int sx, int sy, int sz, int nx, int ny, int nz) {
+  BlockId sid = w.getBlock(sx, sy, sz);
+  if (!fullSolid(sid)) return 0;
+  u8 cv = w.getCarve(sx, sy, sz);
+  if (carveFaceDepth(cv, nx, ny, nz) >= 0) return 0;   // whole face, or a clean slab: stay in the middle
+  if (!aimed) return 0xFF;                              // a broken face we did not aim at would float in the middle
+  int oct = aimedOctant(point, sx, sy, sz, nx, ny, nz);
+  int hx = (oct >> 2) & 1, hy = (oct >> 1) & 1, hz = oct & 1;
+  if (!octPresent(cv, hx, hy, hz)) return 0xFF;
+  return packSeat(oct);
+}
+
+u8 inheritColumn(const World& w, int x, int y, int z, u8 seat) {
+  if (!inWorldY(y + 1)) return seat;
+  BlockId up = w.getBlock(x, y + 1, z);
+  if (fullSolid(up) || !chainOrLantern(up)) return seat;
+  u8 uc = w.getCarve(x, y + 1, z);
+  if (!seatMark(uc)) return seat;
+  int o = uc & 7;
+  return packSeat(((o >> 2) & 1) << 2 | (o & 1));   // same column, hy 0 so only the top link stretches
+}
 bool slabGap(BlockId id, u8 meta, int side, u8 carve) {
   if (carve) return reg().tOpaque[id] && carveFaceDepth(carve, -DIRX[side], 0, -DIRZ[side]) == 8;
   return reg().tShape[id] == ShapeKind::Slab && (meta & 7) - 2 == side;
@@ -670,17 +751,23 @@ bool blockShapeBoxes(const World& w, int x, int y, int z, int purpose, std::vect
   out.clear();
   BlockId id = w.getBlock(x, y, z);
   u8 meta = w.getMeta(x, y, z);
+  u8 carve = w.getCarve(x, y, z);
   WorldShapeNb nb(w, x, y, z);
   static thread_local std::vector<ShapeBox> boxes;
   if (!shapeBoxes(id, meta, nb, purpose, boxes)) return false;
-  float sink = (float)sinkOffset(id, nb);
-  vec3 off(0);
-  if (reg().tRender[id] == (u8)Render::Torch) {
+  SeatShift sh = seatShiftOf(id, meta, carve, nb);
+  float sink = sh.micro ? sh.y : (float)sinkOffset(id, nb);
+  vec3 off(sh.micro ? sh.x : 0, 0, sh.micro ? sh.z : 0);
+  if (!sh.micro && reg().tRender[id] == (u8)Render::Torch) {
     int m = meta & 7; float back = torchSetBack((u8)m, nb);
     if (back > 0) off = vec3(m == 1 ? -8 : m == 2 ? 8 : 0, 0, m == 3 ? -8 : m == 4 ? 8 : 0);
   }
+  bool stretch = sh.micro && sh.hang && sh.hy == 1;
   vec3 base(x, y, z);
-  for (auto& b : boxes) out.push_back({base + (vec3(b.b[0], b.b[1] + sink, b.b[2]) + off) / 16.f, base + (vec3(b.b[3], b.b[4] + sink, b.b[5]) + off) / 16.f});
+  for (auto& b : boxes) {
+    float y1 = b.b[4] + (stretch && b.b[4] >= 15.5f ? 8.f : 0.f);
+    out.push_back({base + (vec3(b.b[0], b.b[1] + sink, b.b[2]) + off) / 16.f, base + (vec3(b.b[3], y1 + sink, b.b[5]) + off) / 16.f});
+  }
   return true;
 }
 

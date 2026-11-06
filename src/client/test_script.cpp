@@ -313,6 +313,7 @@ void runStep(App& a, const json& st) {
                e->data.is_object() && e->data.contains("npc") && e->data["npc"].is_object() ? e->data["npc"].value("j", std::string()).c_str() : "-");
     }
   } else if (op == "shot") {
+    if (p) DQ_LOG("test: shot pos %.2f %.2f %.2f yaw %.1f pitch %.1f", p->pos.x, p->pos.y, p->pos.z, p->yaw * 180.f / (float)PI, p->pitch * 180.f / (float)PI);
     a.takeScreenshot(st.value("path", "/tmp/dq_test.png"));
   } else if (op == "drop") {   // a file dragged onto the window
     std::string f = st.value("path", "");

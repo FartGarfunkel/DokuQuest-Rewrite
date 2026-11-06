@@ -112,6 +112,16 @@ extern const int RAIL_EXITS[10][2][3];
 bool fullSolid(BlockId id);
 bool joinsFence(BlockId id), joinsWall(BlockId id), joinsPane(BlockId id);
 bool hangingLantern(BlockId id, u8 meta);
+// Torches, lanterns, chains and the small things that can sit on one corner of a chiseled face.
+bool seatsOnOctant(BlockId id);
+// Where a seated attachment moves, in pixels. micro is false when it stays centred.
+struct SeatShift { float x = 0, y = 0, z = 0; bool micro = false, hang = false; int hy = 0; };
+SeatShift seatShiftOf(BlockId id, u8 meta, u8 carve, const ShapeNb& nb);
+// 0 = centred (whole face or a clean slab). packSeat(oct) = the corner under the crosshair.
+// 0xFF = that corner is open, so the item must not be placed.
+u8 faceSeat(const World& w, vec3 point, bool aimed, int sx, int sy, int sz, int nx, int ny, int nz);
+// A chain or lantern under one that already chose a column uses that column (hy kept 0).
+u8 inheritColumn(const World& w, int x, int y, int z, u8 seat);
 
 // static block models (data/shapes.json): name -> boxes
 const std::vector<ShapeBox>* modelShape(int index);

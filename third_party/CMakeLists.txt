@@ -15,6 +15,10 @@ add_library(imgui STATIC
   ${IMGUI_DIR}/imgui_demo.cpp ${IMGUI_DIR}/misc/cpp/imgui_stdlib.cpp
   ${IMGUI_DIR}/backends/imgui_impl_sdl2.cpp ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp)
 target_include_directories(imgui PUBLIC ${IMGUI_DIR} ${IMGUI_DIR}/backends ${IMGUI_DIR}/misc/cpp)
+target_include_directories(imgui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/glad/include)
+# Use the game's GL entry points (glad, or the Vulkan stand-in) instead of ImGui's own loader.
+set_property(SOURCE ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp APPEND PROPERTY COMPILE_DEFINITIONS IMGUI_IMPL_OPENGL_LOADER_CUSTOM)
+set_property(SOURCE ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp APPEND PROPERTY COMPILE_OPTIONS "-include" "glad/gl.h")
 target_link_libraries(imgui PUBLIC SDL2::SDL2-static)
 
 add_library(enet STATIC enet/callbacks.c enet/compress.c enet/host.c enet/list.c enet/packet.c enet/peer.c enet/protocol.c enet/unix.c enet/win32.c)

@@ -16,6 +16,7 @@
 
 namespace dq {
 bool setCreatureLook(Entity& e, const std::string& look);   // sim/creature.cpp (creature.h clashes with gameplay.h here)
+void keepSummoned(Entity& e);
 int spawnLookRow(Level& lv, int realm, vec3 at, float yaw, const std::string& type);
 std::string spawnLineup(Level& lv, int realm, vec3 at, float yaw, int page, int per);
 
@@ -388,6 +389,7 @@ static void registerBuiltinCommands() {
       const json& T = M[t];
       e->hp = e->maxHp = T.value("hp", 10.0f); e->w = T.value("w", e->w); e->h = T.value("h", e->h);
       if (a.size() >= 3) setCreatureLook(*e, toLower(a[2]));   // a look by name: "miner" or "skeleton_miner"
+      keepSummoned(*e);
       c.lv.spawn(std::move(e));
     }
     return "Summoned " + std::to_string(n) + " " + t;
