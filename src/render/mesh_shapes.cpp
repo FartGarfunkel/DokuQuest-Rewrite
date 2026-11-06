@@ -680,7 +680,7 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   // Pots, chairs, anvils and the other still props. A flag flaps and a hanging lantern swings,
   // so those stay on the chunk mesh. A chain block's two link strips are coloured voxels nearby.
   // A grindstone's rim, a saw's shift and a campfire's end ring and grain are baked with the prop.
-  // A lit campfire's flame still draws above the logs.
+  // A lit campfire's flame still draws above the logs. A cauldron's iron is coloured voxels, and the water in it still draws.
   auto endsWith = [](const std::string& s, const char* suf) {
     size_t n = std::char_traits<char>::length(suf);
     return s.size() >= n && s.compare(s.size() - n, n, suf) == 0;
@@ -698,7 +698,7 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       || shapeName == "lantern" || shapeName == "grindstone" || shapeName == "stonecutter"
       || shapeName == "grave" || shapeName == "sculk_sensor" || shapeName == "sculk_shrieker"
       || shapeName == "spike_trap" || shapeName == "campfire" || shapeName == "soul_campfire"
-      || shapeName == "rope";
+      || shapeName == "rope" || shapeName == "cauldron";
   bool plain = nearProp;
   static int chainTile = -2;
   if (chainTile == -2) chainTile = R.tile("chain");
