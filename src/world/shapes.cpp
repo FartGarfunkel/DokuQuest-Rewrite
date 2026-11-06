@@ -524,7 +524,13 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
     case ShapeKind::Cocoa: {
       int st = m & 3, f = (m >> 4) & 3;
       float w = 4.f + st * 2, h = 5.f + st * 2, d = w;
-      pushRot(ShapeBox(8 - w / 2, 12 - h, 1, 8 + w / 2, 12, 1 + d), f);
+      ShapeBox pod(8 - w / 2, 12 - h, 1, 8 + w / 2, 12, 1 + d);
+      // A young pod is the green picture. The last age is the brown one. The block's own face is that last age.
+      if (purpose == ShapePurpose::Draw && !T.stageTiles.empty()) {
+        int tile = T.stageTiles[std::min(st, (int)T.stageTiles.size() - 1)];
+        pod.side = pod.end = tile;
+      }
+      pushRot(pod, f);
       return true;
     }
     case ShapeKind::Petals: push(ShapeBox(0, 0, 0, 16, 0.6f, 16)); return true;

@@ -517,7 +517,7 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   // A cake's icing, a detector's face, a hopper's rim and a bed's pillow each keep the picture the
   // box already used. A tripwire, a chorus stem, a repeater, a piston and a cactus do too.
   // Clear glass and iron bars do too. Stained glass stays on the chunk picture: its colour is a see-through wash.
-  // A cocoa pod keeps the ripe picture. A young pod is a smaller crop of that same picture.
+  // A cocoa pod uses the picture of its age. A young pod is the green one, and it is smaller.
   // A fence gate's posts and rails do too. A wool carpet and a conveyor are a thin plate of their picture.
   // Moss, a puddle, a lily pad and algae stay on the chunk picture.
   // Near the player those boxes are coloured voxels; farther off they stay on the chunk mesh.
