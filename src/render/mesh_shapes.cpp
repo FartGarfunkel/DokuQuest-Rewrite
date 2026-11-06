@@ -326,6 +326,9 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   // vines and lily pads, and every ladder. The ladder's rungs are real geometry, so looking up or down
   // the wall still shows the whole mesh. Plant detail only decides the vines and pads.
   if ((kind == ShapeKind::Ladder || (c.opt.detail && T.tint && kind == ShapeKind::Carpet)) && emitVoxelLeafPlate(c, d, id, x, y, z, meta)) return;
+  // A door is the same kind of cutout as a ladder: the relief march walks into the window and the
+  // wood drops out when you look along it. The plate is real wood, and the swing turns this same plate.
+  if ((kind == ShapeKind::Door || kind == ShapeKind::Trapdoor) && emitVoxelDoor(c, d, id, x, y, z, meta)) return;
   MeshShapeNb nb(c, x, y, z);
   thread_local std::vector<ShapeBox> boxes;
   if (!shapeBoxes(id, meta, nb, ShapePurpose::Draw, boxes)) return;

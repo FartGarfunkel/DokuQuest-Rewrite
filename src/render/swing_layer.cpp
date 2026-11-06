@@ -3,7 +3,7 @@
 // the chunk mesh (meshHiddenBlocks) and drawn here for a moment as boxes turning on their hinges: a door about its
 // hinge post, each wing of a gate about its post, a trapdoor about its hinged edge. Then the mesh takes it back.
 #include "render/tile_box.h"
-#include "render/mesher.h"
+#include "render/mesh_ctx.h"
 #include "client/session.h"
 #include "client/app.h"
 #include "world/shapes.h"
@@ -34,6 +34,28 @@ public:
 // turning about a hinge line through (px, pz) (1/16 block) by `ang` about y, or about x through (py, pz)
 mat4 aboutY(float px, float pz, float ang) { mat4 q = glm::translate(mat4(1), vec3(px, 0, pz) / 16.f); q = glm::rotate(q, ang, vec3(0, 1, 0)); return glm::translate(q, -vec3(px, 0, pz) / 16.f); }
 mat4 aboutX(float py, float pz, float ang) { mat4 q = glm::translate(mat4(1), vec3(0, py, pz) / 16.f); q = glm::rotate(q, ang, vec3(1, 0, 0)); return glm::translate(q, -vec3(0, py, pz) / 16.f); }
+
+// The resting door is a voxel plate. Draw that same plate, still sampling the tile, so the swing
+// does not pop back to a flat box. A missing picture falls through to the box.
+bool drawPanel(ContentDraw& cd, const mat4& model, const MeshTiles* tiles, int tile, int which, GLuint tex, vec2 light) {
+  if (!tiles || !tex) return false;
+  std::vector<PanelVert> q;
+  if (!doorPanelQuads(tiles, tile, which, q) || q.size() < 4) return false;
+  bool any = false;
+  for (size_t i = 0; i + 3 < q.size(); i += 4) {
+    const PanelVert& a = q[i];
+    const PanelVert& b = q[i + 1];
+    const PanelVert& d = q[i + 3];
+    vec3 ex = b.p - a.p, ey = d.p - a.p;
+    if (glm::dot(ex, ex) < 1e-12f || glm::dot(ey, ey) < 1e-12f) continue;
+    mat4 local(1);
+    local[0] = vec4(ex, 0); local[1] = vec4(ey, 0); local[3] = vec4(a.p + 0.5f * ex + 0.5f * ey, 1);
+    float sh = a.sh / 255.f;
+    cd.picture(tex, model * local, vec4(d.uv.x, d.uv.y, b.uv.x, b.uv.y), vec4(sh, sh, sh, 1), light, true);
+    any = true;
+  }
+  return any;
+}
 } // namespace
 
 class SwingLayer : public RenderLayer {
@@ -71,6 +93,8 @@ public:
     // vertex colours and punched the relief holes, so the door changed texture for the whole swing.
     ContentDraw& cd = contentDraw();
     if (!cd.begin(f, f.cam.viewProj)) return;
+    std::shared_ptr<const MeshTiles> tilesHold = meshTilesSnapshot();
+    const MeshTiles* tiles = tilesHold.get();
     for (auto& o : live) {
       const BlockDef& d = R.block(o.id);
       const BlockTraits& T = traits(o.id);
@@ -88,12 +112,15 @@ public:
       m = glm::translate(m, vec3(-0.5f, 0, -0.5f));
       if (kind == ShapeKind::Door) {
         const bool right = o.to & 8;
-        // uvMode 1: both big faces share the picture, so the handle stays put as it shuts and when the mesh returns
-        drawTileBox(cd, m * aboutY(right ? 14.5f : 1.5f, 14.5f, (right ? -1 : 1) * PI / 2 * open), vec3(0, 0, 13), vec3(16, 16, 16), ts, tt, tb, light, vec3(1), true, true, vec3(1), 1);
+        const mat4 q = m * aboutY(right ? 14.5f : 1.5f, 14.5f, (right ? -1 : 1) * PI / 2 * open);
+        // The plate uses the tile's own texels. The box is only the fallback, and it keeps uvMode 1.
+        if (!drawPanel(cd, q, tiles, side, 0, ts, light))
+          drawTileBox(cd, q, vec3(0, 0, 13), vec3(16, 16, 16), ts, tt, tb, light, vec3(1), true, true, vec3(1), 1);
       } else if (kind == ShapeKind::Trapdoor) {
         const bool high = o.to & 8;
         const mat4 q = m * (high ? aboutX(14.5f, 1.5f, PI / 2 * open) : aboutX(1.5f, 1.5f, -PI / 2 * open));
-        drawTileBox(cd, q, vec3(0, high ? 13 : 0, 0), vec3(16, high ? 16 : 3, 16), ts, tt, tb, light, vec3(1), true, true, vec3(1), 2);
+        if (!drawPanel(cd, q, tiles, side, high ? 2 : 1, ts, light))
+          drawTileBox(cd, q, vec3(0, high ? 13 : 0, 0), vec3(16, high ? 16 : 3, 16), ts, tt, tb, light, vec3(1), true, true, vec3(1), 2);
       } else {   // a gate: two posts, and a wing on each turning about its post
         drawTileBox(cd, m, vec3(0, 5, 7), vec3(2, 16, 9), ts, tt, tb, light);
         drawTileBox(cd, m, vec3(14, 5, 7), vec3(16, 16, 9), ts, tt, tb, light);

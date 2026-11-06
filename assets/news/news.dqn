@@ -12,6 +12,7 @@
 - A torch in your hand lights the ground in front of you in that torch's own warm colour, even where the air is already some other colour.
 **Blocks:**
 - A door or a trapdoor shows the same print on both sides, handle on the same edge, and the picture stays put when it finishes opening or closing.
+- A door and a trapdoor are a real mesh, the same way a ladder is. Looking along the panel still shows the wood.
 - A ladder is a real mesh. Looking up or down the wall still shows the rungs.
 - Snow lands on each little column of a chiseled block, and water stands in the empty notches instead of floating over them.
 - A felled tree keeps each log's bark and end grain, and the leaves keep their holes.
