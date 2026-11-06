@@ -281,6 +281,7 @@ void voxelPlane(MeshCtx& c, std::vector<ChunkVertex>& d, const PlantTemplate& P,
       u8 sw = swayTop && (q.h > 0.001f || swayBase > 0) ? (u8)(16 + std::lround(15 * clampv(swayBase + q.h * swayScale, 0.f, 1.f))) : 0;
       v[k] = {vec3(X + dx * q.t + nx * q.s, y + h0 + H * q.h, Z + dz * q.t + nz * q.s), vec2(q.u, q.v), sk, bl, q.sh / 255.f, sw};
     }
+    if (c.opt.colourStep > 0 && bakeColourQuad(c, d, v, tile, NORMAL_NONE, PLANT_MAT, 0)) continue;
     c.quad(d, v, tile, NORMAL_NONE, PLANT_MAT);
   }
 }
@@ -289,6 +290,7 @@ void voxelPlane(MeshCtx& c, std::vector<ChunkVertex>& d, const PlantTemplate& P,
 void planeQuad(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, float y, float z, float ax, float az, float bx, float bz, float sk, float bl, float sh, u8 swayTop) {
   MV v[4] = {{vec3(x + ax, y, z + az), {0, 1}, sk, bl, sh, 0}, {vec3(x + bx, y, z + bz), {1, 1}, sk, bl, sh, 0},
              {vec3(x + bx, y + 1, z + bz), {1, 0}, sk, bl, sh, swayTop}, {vec3(x + ax, y + 1, z + az), {0, 0}, sk, bl, sh, swayTop}};
+  if (c.opt.colourStep > 0 && bakeColourQuad(c, d, v, tile, NORMAL_NONE, PLANT_MAT, 0, true, true)) return;
   c.quad2(d, v, tile, NORMAL_NONE, PLANT_MAT);
 }
 
@@ -302,6 +304,7 @@ struct Kit {
       if ((f == 2 && !(caps & 1)) || (f == 3 && !(caps & 2))) continue;
       MV v[4];
       for (int k = 0; k < 4; k++) { const int* cc = FACES[f].c[k]; V(v[k], vec3(cc[0] ? x1 : x0, cc[1] ? y1 : y0, cc[2] ? z1 : z0), P, SH[f]); }
+      if (c.opt.colourStep > 0 && bakeColourQuad(c, d, v, tile, NORMAL_NONE, PLANT_MAT, 0)) continue;
       c.quad(d, v, tile, NORMAL_NONE, PLANT_MAT);
     }
   }
@@ -315,7 +318,11 @@ struct Kit {
     float nl = glm::length(n); if (nl <= 0) nl = 1; n = n / nl * (t / 2);
     vec3 C[4] = {{p.x - sx, p.y, p.z - sz}, {q.x - sx * taper, q.y, q.z - sz * taper}, {q.x + sx * taper, q.y, q.z + sz * taper}, {p.x + sx, p.y, p.z + sz}};
     vec3 up[4], dn[4]; for (int k = 0; k < 4; k++) { up[k] = C[k] + n; dn[k] = C[k] - n; }
-    auto quad = [&](vec3 a, vec3 b, vec3 cc, vec3 dd, float sh) { MV v[4]; V(v[0], a, P, sh); V(v[1], b, P, sh); V(v[2], cc, P, sh); V(v[3], dd, P, sh); c.quad2(d, v, tile, NORMAL_NONE, PLANT_MAT); };
+    auto quad = [&](vec3 a, vec3 b, vec3 cc, vec3 dd, float sh) {
+      MV v[4]; V(v[0], a, P, sh); V(v[1], b, P, sh); V(v[2], cc, P, sh); V(v[3], dd, P, sh);
+      if (c.opt.colourStep > 0 && bakeColourQuad(c, d, v, tile, NORMAL_NONE, PLANT_MAT, 0, true)) return;
+      c.quad2(d, v, tile, NORMAL_NONE, PLANT_MAT);
+    };
     quad(up[0], up[1], up[2], up[3], 245); quad(dn[1], dn[0], dn[3], dn[2], 175);
     quad(up[0], dn[0], dn[1], up[1], 200); quad(up[2], dn[2], dn[3], up[3], 200); quad(up[1], dn[1], dn[2], up[2], 215);
   }
@@ -371,17 +378,21 @@ bool emitFlower3D(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, in
 
 // a blade of grass with real thickness (one micro-voxel): front, back and its two edges
 void blade(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, vec3 A, vec3 B, vec3 Cc, vec3 D, float u0, float u1, float v0, float v1, float sk, float bl, float sh, u8 swB, u8 swT) {
+  auto draw = [&](const MV v[4]) {
+    if (c.opt.colourStep > 0 && bakeColourQuad(c, d, v, tile, NORMAL_NONE, PLANT_MAT, 0, false, true)) return;
+    c.quad(d, v, tile, NORMAL_NONE, PLANT_MAT);
+  };
   vec3 dir = B - A; vec3 n(-dir.z, 0, dir.x); float nl = glm::length(n); n = nl > 0 ? n / nl * (0.5f / 32) : vec3(0);
   MV f[4] = {{A + n, {u0, v1}, sk, bl, sh, swB}, {B + n, {u1, v1}, sk, bl, sh, swB}, {Cc + n, {u1, v0}, sk, bl, sh, swT}, {D + n, {u0, v0}, sk, bl, sh, swT}};
-  c.quad(d, f, tile, NORMAL_NONE, PLANT_MAT);
+  draw(f);
   float sb = sh * 0.9f;
   MV b[4] = {{B - n, {u1, v1}, sk, bl, sb, swB}, {A - n, {u0, v1}, sk, bl, sb, swB}, {D - n, {u0, v0}, sk, bl, sb, swT}, {Cc - n, {u1, v0}, sk, bl, sb, swT}};
-  c.quad(d, b, tile, NORMAL_NONE, PLANT_MAT);
+  draw(b);
   float ue0 = u0 + 0.5f / 32, ue1 = u1 - 0.5f / 32, se = sh * 0.78f;
   MV e1[4] = {{A - n, {ue0, v1}, sk, bl, se, swB}, {A + n, {ue0, v1}, sk, bl, se, swB}, {D + n, {ue0, v0}, sk, bl, se, swT}, {D - n, {ue0, v0}, sk, bl, se, swT}};
-  c.quad(d, e1, tile, NORMAL_NONE, PLANT_MAT);
+  draw(e1);
   MV e2[4] = {{B + n, {ue1, v1}, sk, bl, se, swB}, {B - n, {ue1, v1}, sk, bl, se, swB}, {Cc - n, {ue1, v0}, sk, bl, se, swT}, {Cc + n, {ue1, v0}, sk, bl, se, swT}};
-  c.quad(d, e2, tile, NORMAL_NONE, PLANT_MAT);
+  draw(e2);
 }
 
 // short grass and ferns (and both halves of tall grass): a clump of blades, each a strip of the picture standing at its own angle and lean
@@ -430,6 +441,7 @@ bool emitCane3D(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int 
     auto side = [&](float ax, float az, float bx, float bz, float sh) {
       MV v[4] = {{vec3(ax, y, az), {u0, 1}, sk, bl, sh / 255.f, 0}, {vec3(bx, y, bz), {u1, 1}, sk, bl, sh / 255.f, 0},
                  {vec3(bx, y + 1, bz), {u1, 0}, sk, bl, sh / 255.f, 0}, {vec3(ax, y + 1, az), {u0, 0}, sk, bl, sh / 255.f, 0}};
+      if (c.opt.colourStep > 0 && bakeColourQuad(c, d, v, tile, NORMAL_NONE, PLANT_MAT, 0, false, true)) return;
       c.quad(d, v, tile, NORMAL_NONE, PLANT_MAT);
     };
     side(cx - hw, cz + hw, cx + hw, cz + hw, 225); side(cx + hw, cz - hw, cx - hw, cz - hw, 215);
@@ -883,6 +895,7 @@ bool emitVoxelLeafPlate(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int
       u8 sw = (!flat && T.tint) ? (u8)(Sway::Hang + 2) : 0;   // a vine sways; a ladder stays put
       v[k] = {p, vec2(q.u, q.v), sk, bl, q.sh / 255.f, sw};
     }
+    if (c.opt.colourStep > 0 && bakeColourQuad(c, d, v, tile, NORMAL_NONE, PLANT_MAT, 0, false, true)) continue;
     c.quad(d, v, tile, NORMAL_NONE, PLANT_MAT);
   }
   c.tint = 0xFFFFFF; c.tintKind = 0;
