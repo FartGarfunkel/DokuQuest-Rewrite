@@ -838,7 +838,7 @@ const VoxelMeshGL* leverStick(const TileSet& ts, int layer) {
 
 // A torchflower's cup, the same stem, leaves and five petals the chunk flower builds.
 // The hash is the plant's own, so each one leans and turns the way that flower does.
-const VoxelMeshGL* flowerCupMesh(const TileSet& ts, int layer, u32 hsh) {
+const VoxelMeshGL* flowerCupMesh(const TileSet& ts, int layer, u32 hsh, int kind) {
   struct Cache {
     const u8* px = nullptr; int count = -1, size = -1;
     std::unordered_map<u64, std::unique_ptr<VoxelMeshGL>> m;
@@ -847,7 +847,7 @@ const VoxelMeshGL* flowerCupMesh(const TileSet& ts, int layer, u32 hsh) {
   if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
     cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
   }
-  const u64 key = ((u64)(u32)std::max(layer, 0) << 32) | hsh;
+  const u64 key = ((u64)(kind & 3) << 62) | ((u64)(u32)std::max(layer, 0) << 32) | hsh;
   auto it = cache.m.find(key);
   if (it != cache.m.end()) return it->second.get();
   const int S = ts.size > 0 ? ts.size : 32;
@@ -903,12 +903,24 @@ const VoxelMeshGL* flowerCupMesh(const TileSet& ts, int layer, u32 hsh) {
       painter.rod(vec3(cx, lyy, cz), vec3(cx + std::cos(a) * len, lyy + 0.13f, cz + std::sin(a) * len),
                   vec2(0.075f, 0.02f), vec2(0.075f, 0.02f), paint(leaf.r, leaf.g, leaf.b));
     }
-    painter.box(vec3(hx - 0.04f, hy - 0.01f, hz - 0.04f), vec3(hx + 0.04f, hy + 0.06f, hz + 0.04f), paint(center.r, center.g, center.b));
-    for (int k = 0; k < 5; k++) {
-      float a = rot + k / 5.f * TAU;
-      painter.rod(vec3(hx + std::cos(a) * 0.03f, hy, hz + std::sin(a) * 0.03f),
-                  vec3(hx + std::cos(a) * 0.085f, hy + 0.15f, hz + std::sin(a) * 0.085f),
-                  vec2(0.075f, 0.025f), vec2(0.075f, 0.025f), paint(petal.r, petal.g, petal.b));
+    if (kind == 0) {
+      int n = 5 + (int)(hsh & 1);
+      float plen = 0.13f + r3 * 0.03f;
+      for (int k = 0; k < n; k++) {
+        float a = rot + (float)k / n * TAU;
+        painter.rod(vec3(hx + std::cos(a) * 0.025f, hy + 0.02f, hz + std::sin(a) * 0.025f),
+                    vec3(hx + std::cos(a) * plen, hy + 0.06f, hz + std::sin(a) * plen),
+                    vec2(0.085f, 0.022f), vec2(0.085f, 0.022f), paint(petal.r, petal.g, petal.b));
+      }
+      painter.box(vec3(hx - 0.04f, hy + 0.01f, hz - 0.04f), vec3(hx + 0.04f, hy + 0.07f, hz + 0.04f), paint(center.r, center.g, center.b));
+    } else {
+      painter.box(vec3(hx - 0.04f, hy - 0.01f, hz - 0.04f), vec3(hx + 0.04f, hy + 0.06f, hz + 0.04f), paint(center.r, center.g, center.b));
+      for (int k = 0; k < 5; k++) {
+        float a = rot + k / 5.f * TAU;
+        painter.rod(vec3(hx + std::cos(a) * 0.03f, hy, hz + std::sin(a) * 0.03f),
+                    vec3(hx + std::cos(a) * 0.085f, hy + 0.15f, hz + std::sin(a) * 0.085f),
+                    vec2(0.075f, 0.025f), vec2(0.075f, 0.025f), paint(petal.r, petal.g, petal.b));
+      }
     }
     VoxelMeshData md; buildVoxelMesh(painter.g, md);
     mesh->upload(md);
@@ -1051,13 +1063,14 @@ public:
           }
           continue;
         }
-        // -13 is a torchflower. The cup is coloured voxels, and the whole flower takes the plant's wind step.
+        // -13 is a torchflower cup, or a blue orchid fan when only is 0. The flower is coloured voxels and takes the plant's wind step.
         if (c.flame == -13) {
           int layer = c.tile < ts.count ? (int)c.tile : -1;
           if (layer >= 0 && anim[layer] >= 0) layer = anim[layer];
           const int wy = (int)origin.y + c.cy;
           const u32 hsh = hash32((i32)c.cx, (i32)wy, (i32)c.cz, 5);
-          const VoxelMeshGL* cup = layer >= 0 ? flowerCupMesh(ts, layer, hsh) : nullptr;
+          const int kind = c.only == 0 ? 0 : 1;
+          const VoxelMeshGL* cup = layer >= 0 ? flowerCupMesh(ts, layer, hsh, kind) : nullptr;
           if (!cup || !cup->ready()) continue;
           if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
           const int PS = ts.size > 0 ? ts.size : 32;
