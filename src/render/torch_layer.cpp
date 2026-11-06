@@ -926,6 +926,44 @@ public:
           cross(vec3(0.5f, 0.f, -0.5f), vec3(0.25f, 0.f, 0.75f));
           continue;
         }
+        // -12 is an amethyst cluster or bud. Two crossed pictures, shifted and turned like the chunk plant,
+        // and the whole crystal takes the same wind step a plant quad does.
+        if (c.flame == -12) {
+          int layer = c.tile < ts.count ? (int)c.tile : -1;
+          if (layer >= 0 && anim[layer] >= 0) layer = anim[layer];
+          const VoxelMeshGL* plate = layer >= 0 ? spritePlate(ts, layer, false) : nullptr;
+          if (!plate || !plate->ready()) continue;
+          if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+          const int PS = ts.size > 0 ? ts.size : 32;
+          const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
+          VoxelLight light{(lit >> 4) / 15.f, (lit & 15) / 15.f};
+          const float ang = c.y0, jx = c.x0, jz = c.z0, rad = 0.46f;
+          const float ca = std::cos(ang) * rad, sa = std::sin(ang) * rad;
+          const float cxp = 0.5f + jx, czp = 0.5f + jz;
+          const vec3 world = origin + vec3((float)c.cx + 0.5f, (float)c.cy, (float)c.cz + 0.5f);
+          const float t = (float)std::fmod(f.time, 3600.0);
+          const float gust = 0.6f + 0.4f * std::sin(t * 0.35f + world.x * 0.02f + world.z * 0.015f);
+          const vec3 wave(
+              (std::sin(t * 1.9f + world.x * 0.37f + world.z * 0.23f) + 0.4f * std::sin(t * 3.3f + world.x * 1.1f)) * 0.075f * f.wind * gust,
+              0.f,
+              std::cos(t * 1.5f + world.z * 0.31f + world.x * 0.11f) * 0.055f * f.wind * gust);
+          const float yBase = cell.y + c.sink / 16.f;
+          auto cross = [&](vec3 along, vec3 from) {
+            vec3 n = glm::cross(along, vec3(0, 1, 0));
+            float nl = glm::length(n);
+            if (nl < 1e-5f) return;
+            n = n / nl * (1.f / 32.f);
+            mat4 m(1.f);
+            m[0] = vec4(along / (float)PS, 0.f);
+            m[1] = vec4(0.f, 1.f / (float)PS, 0.f, 0.f);
+            m[2] = vec4(n, 0.f);
+            m[3] = vec4(vec3(cell.x, yBase, cell.z) + from + wave - n * 0.5f, 1.f);
+            VR.draw(*plate, m, light);
+          };
+          cross(vec3(2.f * ca, 0.f, 2.f * sa), vec3(cxp - ca, 0.f, czp - sa));
+          cross(vec3(-2.f * sa, 0.f, 2.f * ca), vec3(cxp + sa, 0.f, czp - ca));
+          continue;
+        }
         // -5 is a lit campfire: four walls inset the way the chunk plates were. -6 is a fire block: two crosses.
         if (c.flame == -5 || c.flame == -6) {
           int layer = c.tile < ts.count ? (int)c.tile : -1;

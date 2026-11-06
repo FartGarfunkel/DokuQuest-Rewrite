@@ -578,6 +578,25 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       return;
     }
   }
+  // A cluster or a bud in a geode is a few crystals, not a field. Near you the same crossed
+  // picture is coloured voxels, turned the way the chunk plant turns. Farther off it stays on the mesh.
+  if (key == "amethyst_cluster" || key == "small_amethyst_bud" || key == "medium_amethyst_bud" || key == "large_amethyst_bud") {
+    c.out.hasTorch = true;
+    if (c.opt.torchVoxels && tile >= 0) {
+      int ly = c.in.sy * 16 + y;
+      u32 hsh = hash32(x, ly, z, 5);
+      CandleSpot s;
+      s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+      s.tile = (u16)tile;
+      s.sink = (yy - (float)y) * 16.f;
+      s.x0 = ((hsh & 255) / 255.f - 0.5f) * 0.24f;
+      s.z0 = (((hsh >> 8) & 255) / 255.f - 0.5f) * 0.24f;
+      s.y0 = ((hsh >> 16) & 255) / 255.f * PI / 2.f + PI / 4.f;
+      s.flame = -12;
+      c.out.candles.push_back(s);
+      return;
+    }
+  }
   bool detail = c.opt.detail && c.tiles;
   if (!detail && !T.hangs && key != "kelp" && key != "sugar_cane") { emitCrossFlat(c, d, id, x, y, z, meta, tile, yy); return; }
   bool isGrass = T.tint && keyHas(key, {"grass", "fern"}) && key.find("sea") == std::string::npos;
