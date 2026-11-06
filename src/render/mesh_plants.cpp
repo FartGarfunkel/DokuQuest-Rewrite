@@ -692,6 +692,26 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       return;
     }
   }
+  // Hanging roots dangle where a cave comes up under the dirt, a few on that ceiling.
+  // Near you the three pictures are coloured voxels. Farther off they stay on the chunk mesh.
+  if (key == "hanging_roots") {
+    c.out.hasTorch = true;
+    if (c.opt.torchVoxels && tile >= 0) {
+      int ly = c.in.sy * 16 + y;
+      u32 hsh = hash32(x, ly, z, 5);
+      CandleSpot s;
+      s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+      s.tile = (u16)tile;
+      s.sink = (yy - (float)y) * 16.f;
+      s.x0 = ((hsh & 255) / 255.f - 0.5f) * 0.3f;
+      s.z0 = (((hsh >> 8) & 255) / 255.f - 0.5f) * 0.3f;
+      s.y0 = ((hsh >> 16) & 255) / 255.f * PI;
+      s.only = 3;
+      s.flame = -12;
+      c.out.candles.push_back(s);
+      return;
+    }
+  }
   bool detail = c.opt.detail && c.tiles;
   if (!detail && !T.hangs && key != "kelp" && key != "sugar_cane") { emitCrossFlat(c, d, id, x, y, z, meta, tile, yy); return; }
   bool isGrass = T.tint && keyHas(key, {"grass", "fern"}) && key.find("sea") == std::string::npos;
