@@ -767,10 +767,11 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
     }
   }
   // Sugar cane grows in a thin line where grass meets water. Near you the stalks are coloured voxels,
-  // and they keep the grass colour of that shore. Farther off the chunk picture stays.
-  if (key == "sugar_cane") {
+  // and they keep the grass colour of that shore. A picture with no stalk stays on the chunk path.
+  // Farther off the chunk picture stays.
+  if (key == "sugar_cane" && c.tiles && tile >= 0 && !caneLook(c.tiles, tile)->none) {
     c.out.hasTorch = true;
-    if (c.opt.torchVoxels && tile >= 0) {
+    if (c.opt.torchVoxels) {
       CandleSpot s;
       s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
       s.tile = (u16)tile;
