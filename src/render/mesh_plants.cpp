@@ -639,9 +639,9 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       return;
     }
   }
-  // A blue orchid stands in a swamp and a mossmire, a few among the moss. Near you the fan
-  // (stem, leaves, petals) is coloured voxels. Farther off the chunk flower stays.
-  if (key == "blue_orchid") {
+  // A blue orchid stands in a swamp, and lavender and heather on a mountain, a few in that grass.
+  // Near you the fan (stem, leaves, petals) is coloured voxels. Farther off the chunk flower stays.
+  if (key == "blue_orchid" || key == "lavender" || key == "heather") {
     c.out.hasTorch = true;
     if (c.opt.torchVoxels && tile >= 0) {
       CandleSpot s;
