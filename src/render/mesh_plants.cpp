@@ -766,6 +766,25 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       return;
     }
   }
+  // Sugar cane grows in a thin line where grass meets water. Near you the stalks are coloured voxels,
+  // and they keep the grass colour of that shore. Farther off the chunk picture stays.
+  if (key == "sugar_cane") {
+    c.out.hasTorch = true;
+    if (c.opt.torchVoxels && tile >= 0) {
+      CandleSpot s;
+      s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+      s.tile = (u16)tile;
+      s.only = (u8)((c.at(x, y + 1, z) != id ? 1 : 0) | (T.tint ? 2 : 0));
+      if (T.tint) {
+        const u32 col = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0);
+        s.nx = (u16)(col & 0xFFFF);
+        s.pz = (u16)((col >> 16) & 0xFFFF);
+      }
+      s.flame = -18;
+      c.out.candles.push_back(s);
+      return;
+    }
+  }
   bool detail = c.opt.detail && c.tiles;
   if (!detail && !T.hangs && key != "kelp" && key != "sugar_cane") { emitCrossFlat(c, d, id, x, y, z, meta, tile, yy); return; }
   bool isGrass = T.tint && keyHas(key, {"grass", "fern"}) && key.find("sea") == std::string::npos;
