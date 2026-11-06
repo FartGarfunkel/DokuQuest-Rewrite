@@ -44,9 +44,12 @@ void main() {
   bool soft = (vFlags & 2u) != 0u;
   float a = 1.0;
   if (soft) {
-    // a puff: soft at its rim (whatever the picture's edge), its own alpha, the fade
+    // a puff: soft at its rim (whatever the picture's edge), its own alpha, the fade.
+    // A voxel puff is one colour across the face, so there is no rim to fade.
     vec2 q = vUV * 2.0 - 1.0;
-    a = t.a * vAlpha * (1.0 - smoothstep(0.55, 1.0, length(q)));
+    float rim = 1.0 - smoothstep(0.55, 1.0, length(q));
+    if (abs(dFdx(vUV).x) + abs(dFdy(vUV).y) + abs(dFdx(vUV).y) + abs(dFdy(vUV).x) < 1e-4) rim = 1.0;
+    a = t.a * vAlpha * rim;
     if (a < 0.01) discard;
   } else if (t.a < 0.5) discard;
   vec3 lc = (vFlags & 1u) != 0u ? vec3(1.0) : lighting(vLight.x, vLight.y, false);

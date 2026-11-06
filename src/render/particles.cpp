@@ -343,7 +343,7 @@ void ParticleSystem::draw(const FrameCtx& f, const TileTextures& tex) {
   if (!shader.ok()) return;
   const Camera& cam = f.cam;
   vec3 right = cam.right(), fwd = cam.forward(), up = glm::cross(right, fwd);
-  verts.clear(); verts.reserve(list.size() * 4);
+  verts.clear(); verts.reserve(list.size() * 24);   // a voxel cube is 6 quads; rain and splats stay one quad
   glm::dvec3 o = cam.origin;
   const vec3 eye = vec3(cam.pos - o);
   auto quad = [&](const Particle& p, vec3 c, u8 alpha) {
@@ -361,6 +361,22 @@ void ParticleSystem::draw(const FrameCtx& f, const TileTextures& tex) {
     auto put = [&](vec3 q, u8 u, u8 vv) { v.x = q.x; v.y = q.y; v.z = q.z; v.u = u; v.v = vv; verts.push_back(v); };
     put(c - A - B, p.uv[0], p.uv[3]); put(c + A - B, p.uv[2], p.uv[3]); put(c + A + B, p.uv[2], p.uv[1]); put(c - A + B, p.uv[0], p.uv[1]);
   };
+  // A crumb, a spark, a puff: a little cube of one colour from the middle of its picture.
+  // Rain strokes and ground splats stay flat. Cull is off for this pass, so either winding shows.
+  auto cube = [&](const Particle& p, vec3 c, u8 alpha) {
+    float s = p.size;
+    u8 u = (u8)(((int)p.uv[0] + (int)p.uv[2]) / 2), vv = (u8)(((int)p.uv[1] + (int)p.uv[3]) / 2);
+    Vtx v{}; v.layer = p.tile; v.light = p.light; v.r = p.tint[0]; v.g = p.tint[1]; v.b = p.tint[2];
+    v.flags = (u8)((p.light == 0xFF || p.glow ? 1 : 0) | (p.soft ? 2 : 0)); v.a = alpha;
+    auto put = [&](vec3 q) { v.x = q.x; v.y = q.y; v.z = q.z; v.u = u; v.v = vv; verts.push_back(v); };
+    vec3 X(s, 0, 0), Y(0, s, 0), Z(0, 0, s);
+    auto face = [&](vec3 n, vec3 a, vec3 b) { vec3 o = c + n; put(o - a - b); put(o + a - b); put(o + a + b); put(o - a + b); };
+    face(X, Y, Z); face(-X, Y, Z); face(Y, X, Z); face(-Y, X, Z); face(Z, X, Y); face(-Z, X, Y);
+  };
+  auto shape = [&](const Particle& p, vec3 c, u8 alpha) {
+    if (p.streak > 0 || p.vert > 0 || p.flat) quad(p, c, alpha);
+    else cube(p, c, alpha);
+  };
   // the solid ones (crumbs, sparks, drops): alpha-tested, in any order; none right in your face
   softList.clear();
   for (const Particle& p : list) {
@@ -369,7 +385,7 @@ void ParticleSystem::draw(const FrameCtx& f, const TileTextures& tex) {
     float d = glm::length(c - eye);
     if (p.soft) { softList.push_back({d, &p}); continue; }
     if (d < p.size * 1.5f + 0.08f) continue;
-    quad(p, c, 255);
+    shape(p, c, 255);
   }
   const size_t hardQuads = verts.size() / 4;
   // the soft ones (smoke, breath, mist): see-through, back to front; each fades in, thins out as it ends, and fades away
@@ -380,7 +396,7 @@ void ParticleSystem::draw(const FrameCtx& f, const TileTextures& tex) {
     float k = p.max > 0 ? clampv(p.life / p.max, 0.f, 1.f) : 1.f;   // 1 new .. 0 gone
     float a = p.alpha * smoothstepf(1.f, 0.88f, k) * smoothstepf(0.f, 0.45f, k) * smoothstepf(0.25f + p.size, 0.9f + p.size * 2, d);
     if (a < 0.01f) continue;
-    quad(p, vec3(glm::dvec3(p.p) - o), (u8)clampv((int)(a * 255), 1, 255));
+    shape(p, vec3(glm::dvec3(p.p) - o), (u8)clampv((int)(a * 255), 1, 255));
   }
   if (verts.empty()) return;
   const size_t softQuads = verts.size() / 4 - hardQuads;

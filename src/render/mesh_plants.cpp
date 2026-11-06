@@ -27,10 +27,11 @@ std::mutex g_mx;
 u64 g_gen = ~0ull;
 std::unordered_map<int, std::shared_ptr<PlantTemplate>> g_tpl;
 std::unordered_map<int, std::shared_ptr<PlantTemplate>> g_panel;   // doors: keep the real thickness, own cache
+std::unordered_map<int, std::shared_ptr<PlantTemplate>> g_fire;    // flames: one thickness, own cache
 std::unordered_map<int, std::shared_ptr<FlowerLook>> g_flower;
 std::unordered_map<int, std::shared_ptr<CaneLook>> g_cane;
 std::unordered_map<int, std::shared_ptr<KelpLook>> g_kelp;
-void checkGen(const MeshTiles* t) { if (t && t->gen != g_gen) { g_gen = t->gen; g_tpl.clear(); g_panel.clear(); g_flower.clear(); g_cane.clear(); g_kelp.clear(); } }
+void checkGen(const MeshTiles* t) { if (t && t->gen != g_gen) { g_gen = t->gen; g_tpl.clear(); g_panel.clear(); g_fire.clear(); g_flower.clear(); g_cane.clear(); g_kelp.clear(); } }
 
 Sprite spriteInfo(const MeshTiles& T, int tile) {
   Sprite s; s.R = T.size;
@@ -152,6 +153,18 @@ std::shared_ptr<PlantTemplate> plantTemplate(const MeshTiles* T, int tile) {
   // roots were most of its terrain memory)
   if (p->q.size() / 4 > 160) { auto even = buildTemplate(*T, tile, true); if (even->q.size() < p->q.size()) p = even; }
   g_tpl[tile] = p;
+  return p;
+}
+
+// A flame is one silhouette, not a field of vines. One thickness all over, so the opaque texels
+// merge into a few plates and a nether full of fire does not become a pile of steps.
+std::shared_ptr<PlantTemplate> fireTemplate(const MeshTiles* T, int tile) {
+  std::lock_guard<std::mutex> lk(g_mx);
+  checkGen(T);
+  auto it = g_fire.find(tile);
+  if (it != g_fire.end()) return it->second;
+  auto p = buildTemplate(*T, tile, true);
+  g_fire[tile] = p;
   return p;
 }
 
@@ -521,6 +534,18 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   if (strand) {
     const BlockTraits& N = traits(c.at(x, T.hangs ? y - 1 : y + 1, z));
     if (N.stackPlant && N.bodyTile >= 0 && N.hangs == T.hangs) tile = T.bodyTile;
+  }
+  // Fire is a crossed pair of the flame picture, pushed out into plates. The atlas frame still
+  // plays, so the colour moves, and a steep look no longer marches through the holes.
+  if (T.fire && c.tiles) {
+    auto P = fireTemplate(c.tiles, tile);
+    if (P && !P->q.empty()) {
+      float sk = c.skyAt(x, y, z), bl = std::max<float>(c.blAt(x, y, z), c.R.tLight[id]);
+      float r = 0.42f;
+      voxelPlane(c, d, *P, tile, x, yy, z, 0.5f - r, 0.5f - r, 0.5f + r, 0.5f + r, 0, 1, sk, bl, false);
+      voxelPlane(c, d, *P, tile, x, yy, z, 0.5f + r, 0.5f - r, 0.5f - r, 0.5f + r, 0, 1, sk, bl, false);
+      return;
+    }
   }
   bool detail = c.opt.detail && c.tiles;
   if (!detail && !T.hangs && key != "kelp" && key != "sugar_cane") { emitCrossFlat(c, d, id, x, y, z, meta, tile, yy); return; }
