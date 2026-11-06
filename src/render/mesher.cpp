@@ -797,15 +797,17 @@ bool bakeColourQuad(MeshCtx& c, std::vector<ChunkVertex>& dst, const MV corn[4],
   if (!c.opt.colourStep || !c.tiles || tile < 0 || tile >= c.tiles->count || tile >= BAKED_TILE) return false;
   if (c.tiles->animated(tile)) return false;
   if ((mat & (Mat::Liquid | Mat::Lava | Mat::Flowing)) || (c.extraMat & Mat::TintAll) || c.tintKind >= Tint::Water) return false;
-  // A plant's tip waves and its root stays put (codes 0, 1 and 16..31). Cloth and a grass-tuft tip
-  // use other codes, and those quads keep their picture so the flap stays exact.
-  bool sameSway = true, plantSway = true;
+  // A plant's tip waves and its root stays put (codes 0, 1 and 16..31). A grass blade's tip is
+  // 80..95: a thin blade keeps each corner's code, so it still sinks as you walk away. Cloth uses
+  // other codes, and those quads keep their picture so the flap stays exact.
+  bool sameSway = true, plantSway = true, grassSway = true;
   for (int k = 0; k < 4; k++) {
     const u8 s = corn[k].sway;
     if (s != corn[0].sway) sameSway = false;
     if (!(s == 0 || s == 1 || (s >= 16 && s <= 31))) plantSway = false;
+    if (!(s == 0 || (s >= 80 && s <= 95))) grassSway = false;
   }
-  if (!sameSway && !plantSway) return false;
+  if (!sameSway && !plantSway && !grassSway) return false;
   const int S = c.tiles->size;
   if (S < 1) return false;
   vec2 lo = corn[0].uv, hi = corn[0].uv;
@@ -851,6 +853,8 @@ bool bakeColourQuad(MeshCtx& c, std::vector<ChunkVertex>& dst, const MV corn[4],
     c.tintKind = savedKind;
     return true;
   }
+  // A wide face whose tip sinks must not be split. Every new vertex above 79 would drop the whole way.
+  if (grassSway && !sameSway) return false;
   int ix[2][2] = {{-1, -1}, {-1, -1}};
   for (int k = 0; k < 4; k++) {
     const int ui = std::fabs(corn[k].uv.x - hi.x) <= std::fabs(corn[k].uv.x - lo.x) ? 1 : 0;
