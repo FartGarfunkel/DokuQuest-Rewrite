@@ -933,9 +933,9 @@ const VoxelMeshGL* flowerCupMesh(const TileSet& ts, int layer, u32 hsh, int kind
   return out;
 }
 
-// A flag, a banner, bunting or a washing line. The boxes are the ones the chunk mesh builds,
-// two voxels to a sixteenth, so the wool and the rope keep their picture. The spare byte on each
-// vertex is the same wind code, and the free edge still flaps.
+// A flag, a banner, bunting, a washing line or a shop sign. The boxes are the ones the chunk mesh builds,
+// two voxels to a sixteenth, so the wool and the rope keep their picture. A shop sign's chain is two
+// link strips. The spare byte on each vertex is the same wind code, and the free edge still flaps.
 const VoxelMeshGL* clothMesh(const TileSet& ts, BlockId id, u8 meta, float reachPx) {
   struct Key {
     u16 id; u8 meta; u8 reach;
@@ -962,6 +962,8 @@ const VoxelMeshGL* clothMesh(const TileSet& ts, BlockId id, u8 meta, float reach
   clothBoxes(id, meta, boxes);
   if (boxes.empty()) { cache.m.emplace(key, std::move(mesh)); return out; }
   const float reachF = (float)reach;
+  static int chainTile = -2;
+  if (chainTile == -2) chainTile = reg().tile("chain");
   const int BIAS = 32;
   auto gOf = [](float px) {
     int g = (int)std::lround(px * 2.f) + BIAS;
@@ -971,11 +973,13 @@ const VoxelMeshGL* clothMesh(const TileSet& ts, BlockId id, u8 meta, float reach
   };
   struct Span { ShapeBox geo; int x0, y0, z0, x1, y1, z1; };
   std::vector<Span> spans;
+  std::vector<ShapeBox> links;
   int xlo = 999, ylo = 999, zlo = 999, xhi = 0, yhi = 0, zhi = 0;
   for (auto& b0 : boxes) {
     ShapeBox b = b0;
     if (reachF > 0.f && b.kind == 1) { b.b[2] += reachF; b.b[5] += reachF; }
     rotBox(b, rf);
+    if (chainTile >= 0 && b.side == chainTile) { links.push_back(b); continue; }
     Span s;
     s.geo = b;
     s.x0 = gOf(b.b[0]); s.x1 = gOf(b.b[3]);
@@ -1081,6 +1085,61 @@ const VoxelMeshGL* clothMesh(const TileSet& ts, BlockId id, u8 meta, float reach
         vv.pad = cell.sway;
         vv.rgba = cell.col;
         md.verts.push_back(vv);
+      }
+    }
+  }
+  // A chain box is two crossed strips. A thin box of that picture shows only the empty middle.
+  for (const ShapeBox& link : links) {
+    float ext[3] = {link.b[3] - link.b[0], link.b[4] - link.b[1], link.b[5] - link.b[2]};
+    int ax = ext[1] >= ext[0] && ext[1] >= ext[2] ? 1 : ext[0] >= ext[2] ? 0 : 2;
+    int p = (ax + 1) % 3, q = (ax + 2) % 3;
+    float b0[3] = {link.b[0], link.b[1], link.b[2]}, b1[3] = {link.b[3], link.b[4], link.b[5]};
+    float cp = (b0[p] + b1[p]) * 0.5f, cq = (b0[q] + b1[q]) * 0.5f;
+    float a0 = b0[ax], a1 = b1[ax];
+    if (a1 < a0) std::swap(a0, a1);
+    if (a1 - a0 < 0.05f || chainTile < 0 || chainTile >= ts.count) continue;
+    const float hw = 1.5f;
+    const float vbase = std::floor(a0 / 16.f) * 16.f;
+    const int W = std::max(1, S * 3 / 16);
+    const int H = std::max(1, (int)std::lround((a1 - a0) * (float)S / 16.f));
+    for (int strip = 0; strip < 2; strip++) {
+      const float sq = strip ? -1.f : 1.f;
+      const float u0 = strip ? 3.f : 0.f;
+      const int face = strip ? 0 : 4;
+      for (int iy = 0; iy < H; iy++) for (int ix = 0; ix < W; ix++) {
+        const float along0 = a0 + (float)iy / H * (a1 - a0);
+        const float along1 = a0 + (float)(iy + 1) / H * (a1 - a0);
+        const float alongC = (along0 + along1) * 0.5f;
+        const float t0 = (float)ix / W * 2.f - 1.f;
+        const float t1 = (float)(ix + 1) / W * 2.f - 1.f;
+        float u = (u0 + (ix + 0.5f) / (float)W * 3.f) / 16.f;
+        float uvY = (16.f - (alongC - vbase)) / 16.f;
+        uvY -= std::floor(uvY);
+        int col = clampv((int)std::floor(clampv(u, 0.f, 1.f) * S), 0, S - 1);
+        int row = clampv((int)std::floor(clampv(uvY, 0.f, 0.999f) * S), 0, S - 1);
+        const u8* px = ts.tile(chainTile) + ((size_t)row * S + col) * 4;
+        if (px[3] < 128) continue;
+        const u32 rgba = voxRGBA(px[0], px[1], px[2]);
+        auto atP = [&](float along, float t, float* P) {
+          P[ax] = along;
+          P[p] = cp + t * hw;
+          P[q] = cq + t * hw * sq;
+        };
+        float P0[3], P1[3], P2[3], P3[3];
+        atP(along0, t0, P0); atP(along0, t1, P1); atP(along1, t1, P2); atP(along1, t0, P3);
+        float mid[3] = {(P0[0] + P2[0]) * 0.5f, (P0[1] + P2[1]) * 0.5f, (P0[2] + P2[2]) * 0.5f};
+        const u8 sway = swayOf(link.kind, mid[0] / 16.f, (mid[1] + link.lift) / 16.f, mid[2] / 16.f);
+        float* cs[4] = {P0, P1, P2, P3};
+        auto vert = [&](const float* c) {
+          VoxelVertex vv;
+          vv.x = (u16)gOf(c[0]); vv.y = (u16)gOf(c[1]); vv.z = (u16)gOf(c[2]);
+          vv.nao = (u8)(face | (3 << 3));
+          vv.pad = sway;
+          vv.rgba = rgba;
+          md.verts.push_back(vv);
+        };
+        for (int k = 0; k < 4; k++) vert(cs[k]);
+        for (int k = 3; k >= 0; k--) vert(cs[k]);
       }
     }
   }
@@ -1488,7 +1547,7 @@ public:
           }
           continue;
         }
-        // -16 is a flag, a banner, bunting or a washing line. tile is the block, only is its meta,
+        // -16 is a flag, a banner, bunting, a washing line or a shop sign. tile is the block, only is its meta,
         // x0 is how far a flag reaches to its pole. The wind is in the mesh.
         if (c.flame == -16) {
           const VoxelMeshGL* mesh = clothMesh(ts, (BlockId)c.tile, c.only, c.x0);
