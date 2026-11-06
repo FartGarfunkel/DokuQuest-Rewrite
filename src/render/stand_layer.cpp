@@ -4,12 +4,14 @@
 // Meta & 3 = the way the placer looked; the stand faces back at them.
 #include "render/item_layers.h"
 #include "render/be_scan.h"
-#include "render/tile_box.h"
 #include "client/app.h"
 #include "assets/char_model.h"
 #include "assets/item_models.h"
+#include "assets/voxel.h"
+#include "assets/tileset.h"
 #include "core/itemstack.h"
 #include "core/item_glint.h"
+#include <unordered_map>
 
 namespace dq {
 namespace {
@@ -33,6 +35,64 @@ const Pose POSES[5] = {
   {vec3(0.f, 0, 1.45f), vec3(0.f, 0, -1.45f), vec3(0)},                 // arms out to the sides
   {vec3(0.9f, 0, 0.1f), vec3(-0.25f, 0, -0.45f), vec3(0.1f, 0, 0.12f)}, // the hero: blade forward, chin up
 };
+
+// One stick or plate of the stand: the whole tile stretched across each face, two voxels per sixteenth.
+struct StandKey {
+  u16 tile = 0;
+  u8 n[3] = {};
+  bool operator==(const StandKey& o) const { return tile == o.tile && n[0] == o.n[0] && n[1] == o.n[1] && n[2] == o.n[2]; }
+};
+struct StandHash {
+  size_t operator()(const StandKey& k) const { return ((size_t)k.tile * 1315423911u) ^ k.n[0] ^ ((size_t)k.n[1] << 8) ^ ((size_t)k.n[2] << 16); }
+};
+static const VoxelMeshGL* standPartMesh(const TileSet& ts, StandKey key) {
+  struct Cache {
+    const u8* px = nullptr;
+    int count = -1, size = -1;
+    std::unordered_map<StandKey, std::unique_ptr<VoxelMeshGL>, StandHash> m;
+  };
+  static Cache cache;
+  if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
+    cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
+  }
+  for (int i = 0; i < 3; i++) if (!key.n[i]) key.n[i] = 1;
+  auto it = cache.m.find(key);
+  if (it != cache.m.end()) return it->second.get();
+  const int nx = key.n[0], ny = key.n[1], nz = key.n[2];
+  const int src = ts.size > 0 ? ts.size : 32;
+  VoxelGrid g(ivec3(nx, ny, nz));
+  auto sample = [&](float u, float v) -> u32 {
+    if (key.tile >= ts.count) return 0;
+    int sx = clampv((int)(u * src), 0, src - 1), sy = clampv((int)(v * src), 0, src - 1);
+    const u8* p = ts.tile(key.tile) + ((size_t)sy * src + sx) * 4;
+    if (p[3] < 128) return 0;
+    return voxRGBA(p[0], p[1], p[2]);
+  };
+  u32 fill = voxRGBA(1, 1, 1);
+  for (int z = 0; z < nz; z++) for (int y = 0; y < ny; y++) for (int x = 0; x < nx; x++) g.set(x, y, z, fill);
+  for (int z = 0; z < nz; z++) for (int y = 0; y < ny; y++) {
+    float v = 1.f - (y + 0.5f) / ny;
+    if (u32 c = sample(1.f - (z + 0.5f) / nz, v)) g.set(nx - 1, y, z, c);
+    if (u32 c = sample((z + 0.5f) / nz, v)) g.set(0, y, z, c);
+  }
+  for (int z = 0; z < nz; z++) for (int x = 0; x < nx; x++) {
+    float u = (x + 0.5f) / nx, v = (z + 0.5f) / nz;
+    if (u32 c = sample(u, v)) g.set(x, ny - 1, z, c);
+    if (u32 c = sample(1.f - u, v)) g.set(x, 0, z, c);
+  }
+  for (int y = 0; y < ny; y++) for (int x = 0; x < nx; x++) {
+    float v = 1.f - (y + 0.5f) / ny;
+    if (u32 c = sample((x + 0.5f) / nx, v)) g.set(x, y, nz - 1, c);
+    if (u32 c = sample(1.f - (x + 0.5f) / nx, v)) g.set(x, y, 0, c);
+  }
+  VoxelMeshData md;
+  buildVoxelMesh(g, md);
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  mesh->upload(md);
+  const VoxelMeshGL* out = mesh.get();
+  cache.m.emplace(key, std::move(mesh));
+  return out;
+}
 
 class StandLayer : public RenderLayer {
 public:
@@ -59,31 +119,39 @@ public:
       list.push_back(std::move(o));
     });
     if (list.empty()) return;
-    // ---- the wooden figure ----
-    ContentDraw& cd = contentDraw();
+    // ---- the wooden figure, then what it wears and holds ----
     static const BlockId PL = reg().blockId("planks"), ST = reg().blockId("smooth_stone");
-    GLuint wood = tileTexture(a, reg().block(PL).faces[0]), stone = tileTexture(a, ST ? reg().block(ST).faces[2] : reg().block(PL).faces[2]);
-    if (wood && cd.begin(f, f.cam.viewProj)) {
-      for (auto& o : list) {
-        const Pose& P = POSES[o.pose];
-        mat4 b = glm::scale(o.base, vec3(1.f / 16));
-        drawTileBox(cd, b, vec3(-6, 0, -6), vec3(6, 1, 6), stone, stone, stone, o.light, vec3(1), false);   // the plate
-        for (float sx : {-2.f, 2.f}) drawTileBox(cd, b, vec3(sx - 1, 1, -1), vec3(sx + 1, 12.5f, 1), wood, wood, wood, o.light, vec3(1), false);
-        drawTileBox(cd, b, vec3(-4, 12, -1), vec3(4, 14, 1), wood, wood, wood, o.light, vec3(1), false);    // hips
-        drawTileBox(cd, b, vec3(-1, 14, -1), vec3(1, 23, 1), wood, wood, wood, o.light, vec3(1), false);    // spine
-        drawTileBox(cd, b, vec3(-6, 22, -1.5f), vec3(6, 25, 1.5f), wood, wood, wood, o.light, vec3(1), false);   // shoulders
-        drawTileBox(cd, part(b, vec3(0, 25, 0), P.head), vec3(-1, 0, -1), vec3(1, 7, 1), wood, wood, wood, o.light, vec3(1), false);   // neck and head stick
-        drawTileBox(cd, part(b, vec3(6, 23, 0), P.armR), vec3(-1, -10, -1), vec3(1, 0, 1), wood, wood, wood, o.light, vec3(1), false);
-        drawTileBox(cd, part(b, vec3(-6, 23, 0), P.armL, true), vec3(-1, -10, -1), vec3(1, 0, 1), wood, wood, wood, o.light, vec3(1), false);
-      }
-      cd.end();
-    }
-    // ---- what it wears and holds ----
+    const u16 woodTile = PL ? reg().block(PL).faces[0] : 0;
+    const u16 stoneTile = ST ? reg().block(ST).faces[2] : woodTile;
+    const bool woodVox = woodTile < a.tiles.count;
     VoxelRenderer& VR = voxelRenderer();
     VR.begin(f, f.cam.viewProj);
+    auto stick = [&](const mat4& M, vec3 a0, vec3 b0, u16 tile, VoxelLight L) {
+      if (!woodVox || tile >= a.tiles.count) return;
+      vec3 d = b0 - a0;
+      int nx = std::max(1, (int)std::lround(std::fabs(d.x) * 2.f));
+      int ny = std::max(1, (int)std::lround(std::fabs(d.y) * 2.f));
+      int nz = std::max(1, (int)std::lround(std::fabs(d.z) * 2.f));
+      StandKey key; key.tile = tile; key.n[0] = (u8)std::min(nx, 255); key.n[1] = (u8)std::min(ny, 255); key.n[2] = (u8)std::min(nz, 255);
+      const VoxelMeshGL* mesh = standPartMesh(a.tiles, key);
+      if (!mesh || !mesh->ready()) return;
+      mat4 model = M * glm::translate(mat4(1), a0) * glm::scale(mat4(1), vec3(d.x / key.n[0], d.y / key.n[1], d.z / key.n[2]));
+      VR.draw(*mesh, model, L);
+    };
     for (auto& o : list) {
       const Pose& P = POSES[o.pose];
       mat4 b = glm::scale(o.base, vec3(1.f / 16));
+      VoxelLight L{o.light.x, o.light.y};
+      if (woodVox) {
+        stick(b, vec3(-6, 0, -6), vec3(6, 1, 6), stoneTile, L);
+        for (float sx : {-2.f, 2.f}) stick(b, vec3(sx - 1, 1, -1), vec3(sx + 1, 12.5f, 1), woodTile, L);
+        stick(b, vec3(-4, 12, -1), vec3(4, 14, 1), woodTile, L);
+        stick(b, vec3(-1, 14, -1), vec3(1, 23, 1), woodTile, L);
+        stick(b, vec3(-6, 22, -1.5f), vec3(6, 25, 1.5f), woodTile, L);
+        stick(part(b, vec3(0, 25, 0), P.head), vec3(-1, 0, -1), vec3(1, 7, 1), woodTile, L);
+        stick(part(b, vec3(6, 23, 0), P.armR), vec3(-1, -10, -1), vec3(1, 0, 1), woodTile, L);
+        stick(part(b, vec3(-6, 23, 0), P.armL, true), vec3(-1, -10, -1), vec3(1, 0, 1), woodTile, L);
+      }
       mat4 armR = part(b, vec3(6, 23, 0), P.armR), armL = part(b, vec3(-6, 23, 0), P.armL, true);
       auto partMat = [&](const std::string& pn) -> mat4 {
         if (pn == "head") return part(b, vec3(0, 25, 0), P.head);
@@ -98,7 +166,6 @@ public:
         if (pn == "legL_d") return glm::translate(b, vec3(-2, 7, 0));
         return mat4(0);
       };
-      VoxelLight L{o.light.x, o.light.y};
       for (int slot = 0; slot < 4; slot++) {
         const ItemStack& g = o.gear[slot];
         if (g.empty() || !reg().item(g.id)) continue;
