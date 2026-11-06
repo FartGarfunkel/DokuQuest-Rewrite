@@ -400,11 +400,30 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
       return;
     }
   }
+  // Scaffolding is poles and a plank. Near the player that is one coloured mesh (torch_layer.cpp
+  // treats flame -2 as that mesh). Farther off it stays on the chunk mesh.
+  if (kind == ShapeKind::Scaffold) {
+    c.out.hasTorch = true;
+    if (c.opt.torchVoxels) {
+      CandleSpot s;
+      s.x0 = 0; s.y0 = 0; s.z0 = 0; s.x1 = 16; s.y1 = 16; s.z1 = 16;
+      s.sink = sink;
+      s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+      s.tile = (u16)std::max(side, 0);
+      s.top = (u16)std::max(top, 0);
+      s.bot = (u16)std::max(bot, 0);
+      s.flame = -2;
+      c.out.candles.push_back(s);
+      c.tint = 0xFFFFFF; c.tintKind = 0;
+      return;
+    }
+  }
   // A cake's icing, a detector's face, a hopper's rim and a bed's pillow each keep the picture the
-  // box already used. Near the player those boxes are coloured voxels; farther off they stay on the chunk mesh.
+  // box already used. A tripwire and a chorus stem do too. Near the player those boxes are coloured
+  // voxels; farther off they stay on the chunk mesh.
   if (kind == ShapeKind::Cake || kind == ShapeKind::Daylight || kind == ShapeKind::Hopper
       || kind == ShapeKind::Composter || kind == ShapeKind::Frame || kind == ShapeKind::Hook
-      || kind == ShapeKind::Bed) {
+      || kind == ShapeKind::Bed || kind == ShapeKind::Tripwire || kind == ShapeKind::Chorus) {
     c.out.hasTorch = true;
     if (c.opt.torchVoxels) {
       for (auto& b0 : boxes) {
