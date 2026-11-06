@@ -248,8 +248,7 @@ private:
       return it->second;
     };
     const int sideId = tileId("spruce_log_side"), topId = tileId("spruce_log_top"), leafId = tileId("spruce_leaves");
-    const vec3 green(0.36f, 0.58f, 0.36f);
-    const u8 gt[3] = {(u8)std::lround(green.r * 255.f), (u8)std::lround(green.g * 255.f), (u8)std::lround(green.b * 255.f)};
+    // The spruce picture is already its green, and the block carries no foliage tint. The tree uses those texels as they are.
     float tierHw[5], tierY[5];
     for (int i = 0; i < 5; i++) { tierHw[i] = 2.2f - i * 0.43f; tierY[i] = 0.8f + i * 1.0f; }
     const float tierH = 1.25f;
@@ -274,7 +273,7 @@ private:
       if (!leafBox) {
         bool any = false;
         for (int i = 0; i < 5; i++)
-          any |= drawPiece(VR, vec3(-tierHw[i], tierY[i], -tierHw[i]), vec3(tierHw[i], tierY[i] + tierH, tierHw[i]), (u16)leafId, (u16)leafId, gt[0], gt[1], gt[2]);
+          any |= drawPiece(VR, vec3(-tierHw[i], tierY[i], -tierHw[i]), vec3(tierHw[i], tierY[i] + tierH, tierHw[i]), (u16)leafId, (u16)leafId, 255, 255, 255);
         leafBox = !any;
       }
     }
@@ -289,7 +288,7 @@ private:
       if (leafBox) {
         const GLuint leaves = tileTexture(s.app, "spruce_leaves");
         for (int i = 0; i < 5; i++)
-          drawTileBox(cd, m, vec3(-tierHw[i], tierY[i], -tierHw[i]), vec3(tierHw[i], tierY[i] + tierH, tierHw[i]), leaves, leaves, leaves, light, green, false);
+          drawTileBox(cd, m, vec3(-tierHw[i], tierY[i], -tierHw[i]), vec3(tierHw[i], tierY[i] + tierH, tierHw[i]), leaves, leaves, leaves, light, vec3(1), false);
       }
       cd.end();
     }
