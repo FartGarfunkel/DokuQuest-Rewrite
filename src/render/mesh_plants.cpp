@@ -560,6 +560,17 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   if (T.fire && c.tiles) {
     auto P = fireTemplate(c.tiles, tile);
     if (P && !P->q.empty()) {
+      c.out.hasTorch = true;
+      if (c.opt.torchVoxels && tile >= 0) {
+        // The same two crosses, coloured, so a flame near you does not sample the atlas. Far ones keep the picture.
+        CandleSpot s;
+        s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+        s.tile = (u16)tile;
+        s.sink = (yy - (float)y) * 16.f;
+        s.flame = -6;
+        c.out.candles.push_back(s);
+        return;
+      }
       float sk = c.skyAt(x, y, z), bl = std::max<float>(c.blAt(x, y, z), c.R.tLight[id]);
       float r = 0.42f;
       voxelPlane(c, d, *P, tile, x, yy, z, 0.5f - r, 0.5f - r, 0.5f + r, 0.5f + r, 0, 1, sk, bl, false);
