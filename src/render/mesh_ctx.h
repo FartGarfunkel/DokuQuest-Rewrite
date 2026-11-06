@@ -81,6 +81,12 @@ void emitSnowCaps(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, in
 void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
 void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
 bool emitVoxelLeafPlate(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);   // vines, lily pads
+// One corner of a door or trapdoor panel in the shut frame (block units, cell min at the origin), before
+// the hinge and the facing turn. Four in a row are one quad. sh is 0..255, the same shade the plate bakes.
+struct PanelVert { vec3 p; vec2 uv; float sh; };
+// which: 0 a door stood against +Z, 1 a trapdoor lying on the floor, 2 a trapdoor against the ceiling.
+bool doorPanelQuads(const MeshTiles* tiles, int tile, int which, std::vector<PanelVert>& out);
+bool emitVoxelDoor(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
 void emitPlanes(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, float y, float z, float inset, float scale, float sk, float bl, bool cross);
 
 // 3D grass (Lay of the Land style): short blades over the top of a grass block, swaying, faded out with

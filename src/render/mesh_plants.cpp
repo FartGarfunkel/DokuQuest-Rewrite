@@ -26,10 +26,11 @@ struct KelpLook { bool none = true; Px stem, leaf; };
 std::mutex g_mx;
 u64 g_gen = ~0ull;
 std::unordered_map<int, std::shared_ptr<PlantTemplate>> g_tpl;
+std::unordered_map<int, std::shared_ptr<PlantTemplate>> g_panel;   // doors: keep the real thickness, own cache
 std::unordered_map<int, std::shared_ptr<FlowerLook>> g_flower;
 std::unordered_map<int, std::shared_ptr<CaneLook>> g_cane;
 std::unordered_map<int, std::shared_ptr<KelpLook>> g_kelp;
-void checkGen(const MeshTiles* t) { if (t && t->gen != g_gen) { g_gen = t->gen; g_tpl.clear(); g_flower.clear(); g_cane.clear(); g_kelp.clear(); } }
+void checkGen(const MeshTiles* t) { if (t && t->gen != g_gen) { g_gen = t->gen; g_tpl.clear(); g_panel.clear(); g_flower.clear(); g_cane.clear(); g_kelp.clear(); } }
 
 Sprite spriteInfo(const MeshTiles& T, int tile) {
   Sprite s; s.R = T.size;
@@ -151,6 +152,19 @@ std::shared_ptr<PlantTemplate> plantTemplate(const MeshTiles* T, int tile) {
   // roots were most of its terrain memory)
   if (p->q.size() / 4 > 160) { auto even = buildTemplate(*T, tile, true); if (even->q.size() < p->q.size()) p = even; }
   g_tpl[tile] = p;
+  return p;
+}
+
+// A door is one block, not a field of vines, so it keeps the thick plate. Only a very noisy picture
+// falls back to one thickness, and that one still has the holes and the edge caps.
+std::shared_ptr<PlantTemplate> panelTemplate(const MeshTiles* T, int tile) {
+  std::lock_guard<std::mutex> lk(g_mx);
+  checkGen(T);
+  auto it = g_panel.find(tile);
+  if (it != g_panel.end()) return it->second;
+  auto p = buildTemplate(*T, tile);
+  if (p->q.size() / 4 > 480) { auto even = buildTemplate(*T, tile, true); if (even->q.size() < p->q.size()) p = even; }
+  g_panel[tile] = p;
   return p;
 }
 
@@ -608,6 +622,72 @@ bool emitVoxelLeafPlate(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int
     c.quad(d, v, tile, NORMAL_NONE, PLANT_MAT);
   }
   c.tint = 0xFFFFFF; c.tintKind = 0;
+  return true;
+}
+
+// The shut panel, before the hinge and the facing turn. A door stands against +Z, centred on the
+// 13..16 slab (half-thickness 3 is that whole slab). A trapdoor lies flat, on the floor or the ceiling,
+// and its picture runs with z the way the box's top face does. The texels are the tile's own.
+bool doorPanelQuads(const MeshTiles* tiles, int tile, int which, std::vector<PanelVert>& out) {
+  out.clear();
+  if (!tiles) return false;
+  auto P = panelTemplate(tiles, tile);
+  if (!P || P->q.empty()) return false;
+  const float mid = 14.5f / 16.f, low = 1.5f / 16.f;
+  out.reserve(P->q.size());
+  for (const PQ& q : P->q) {
+    vec3 p;
+    if (which == 0) p = vec3(q.t, q.h, mid + q.s / 32.f);
+    else if (which == 1) p = vec3(q.t, low + q.s / 32.f, 1.f - q.h);
+    else p = vec3(q.t, mid + q.s / 32.f, 1.f - q.h);
+    out.push_back({p, vec2(q.u, q.v), q.sh});
+  }
+  return true;
+}
+
+namespace {
+// Same turns as swing_layer's aboutY / aboutX and as rotBox. Hinge first, then facing about the cell centre.
+void hingeY(vec3& p, float px, float pz, float ang) {
+  float x = p.x - px, z = p.z - pz, c = std::cos(ang), s = std::sin(ang);
+  p.x = px + c * x + s * z; p.z = pz - s * x + c * z;
+}
+void hingeX(vec3& p, float py, float pz, float ang) {
+  float y = p.y - py, z = p.z - pz, c = std::cos(ang), s = std::sin(ang);
+  p.y = py + c * y - s * z; p.z = pz + s * y + c * z;
+}
+vec2 rotFace(float x, float z, int f) {
+  switch (f & 3) {
+    case 1: return {1.f - z, x};
+    case 2: return {1.f - x, 1.f - z};
+    case 3: return {z, 1.f - x};
+    default: return {x, z};
+  }
+}
+} // namespace
+
+bool emitVoxelDoor(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta) {
+  if (!c.tiles) return false;
+  const BlockTraits& T = traits(id);
+  const bool trap = c.R.tShape[id] == ShapeKind::Trapdoor;
+  int tile = c.R.block(id).faces[0];
+  if (!trap && (meta & 16) && T.upperTile >= 0) tile = T.upperTile;
+  const int which = !trap ? 0 : (meta & 8) ? 2 : 1;
+  std::vector<PanelVert> qs;
+  if (!doorPanelQuads(c.tiles, tile, which, qs)) return false;
+  const bool open = meta & 4, right = meta & 8;
+  const float ang = (open ? 1.f : 0.f) * (trap ? (right ? PI / 2 : -PI / 2) : (right ? -PI / 2 : PI / 2));
+  const float hx = (right ? 14.5f : 1.5f) / 16.f, hz = (trap ? 1.5f : 14.5f) / 16.f;
+  float sk = c.skyAt(x, y, z), bl = std::max<float>(c.blAt(x, y, z), c.R.tLight[id]);
+  for (size_t i = 0; i + 3 < qs.size(); i += 4) {
+    MV v[4];
+    for (int k = 0; k < 4; k++) {
+      vec3 p = qs[i + k].p;
+      if (ang != 0.f) { if (trap) hingeX(p, hx, hz, ang); else hingeY(p, hx, hz, ang); }
+      vec2 r = rotFace(p.x, p.z, meta & 3);
+      v[k] = {vec3(x + r.x, y + p.y, z + r.y), qs[i + k].uv, sk, bl, qs[i + k].sh / 255.f, 0};
+    }
+    c.quad(d, v, tile, NORMAL_NONE, PLANT_MAT);
+  }
   return true;
 }
 
