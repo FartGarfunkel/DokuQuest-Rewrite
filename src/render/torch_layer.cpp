@@ -76,10 +76,12 @@ vec2 shapeST(int f, float X, float Y, float Z) {
 
 struct WaxKey {
   u16 tile = 0, top = 0, bot = 0, nx = 0, pz = 0, nz = 0;
+  u16 faceRot = 0;
   i16 b[6] = {};
   u8 glow = 0, only = 63;
   bool operator==(const WaxKey& o) const {
-    return tile == o.tile && top == o.top && bot == o.bot && nx == o.nx && pz == o.pz && nz == o.nz && glow == o.glow && only == o.only
+    return tile == o.tile && top == o.top && bot == o.bot && nx == o.nx && pz == o.pz && nz == o.nz && faceRot == o.faceRot
+        && glow == o.glow && only == o.only
         && b[0] == o.b[0] && b[1] == o.b[1] && b[2] == o.b[2] && b[3] == o.b[3] && b[4] == o.b[4] && b[5] == o.b[5];
   }
 };
@@ -88,6 +90,7 @@ struct WaxHash {
     size_t h = k.tile * 131u + k.top;
     h = h * 131u + k.bot + (size_t)k.glow * 17u + (size_t)k.only;
     h = h * 131u + k.nx; h = h * 131u + k.pz; h = h * 131u + k.nz;
+    h = h * 131u + k.faceRot;
     for (int i = 0; i < 6; i++) h = h * 131u + (u16)k.b[i];
     return h;
   }
@@ -105,7 +108,7 @@ void waxCounts(const i16 b[6], int& nx, int& ny, int& nz) {
 
 // Two voxels per sixteenth. A see-through texel stays empty; a solid crop is filled so only the outside shows.
 // topL and botL are the top and bottom pictures (a cake's icing). They match layer when the box had one picture.
-const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int topL, int botL, bool glow = false, int nxL = -1, int pzL = -1, int nzL = -1, u8 only = 63) {
+const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int topL, int botL, bool glow = false, int nxL = -1, int pzL = -1, int nzL = -1, u8 only = 63, u16 faceRot = 0) {
   struct Cache {
     const u8* px = nullptr; int count = -1, size = -1;
     std::unordered_map<WaxKey, std::unique_ptr<VoxelMeshGL>, WaxHash> m;
@@ -118,7 +121,7 @@ const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int 
   if (pzL < 0) pzL = layer;
   if (nzL < 0) nzL = layer;
   WaxKey key; key.tile = (u16)layer; key.top = (u16)std::max(topL, 0); key.bot = (u16)std::max(botL, 0); key.glow = glow ? 1 : 0;
-  key.nx = (u16)std::max(nxL, 0); key.pz = (u16)std::max(pzL, 0); key.nz = (u16)std::max(nzL, 0); key.only = only;
+  key.nx = (u16)std::max(nxL, 0); key.pz = (u16)std::max(pzL, 0); key.nz = (u16)std::max(nzL, 0); key.only = only; key.faceRot = faceRot;
   for (int i = 0; i < 6; i++) key.b[i] = b[i];
   auto it = cache.m.find(key);
   if (it != cache.m.end()) return it->second.get();
@@ -131,6 +134,11 @@ const VoxelMeshGL* candleMesh(const TileSet& ts, int layer, const i16 b[6], int 
     int L = f == 2 ? topL : f == 3 ? botL : f == 1 ? nxL : f == 4 ? pzL : f == 5 ? nzL : layer;
     if (L < 0 || L >= ts.count) return 0;
     vec2 st = shapeST(f, X, Y, Z);
+    // The same quarter-turn emitCube applies with FACE_UV[(k + rot) & 3]. Rot 0 is the picture as shapeST sampled it.
+    int r = (faceRot >> (f * 2)) & 3;
+    if (r == 1) { float u = st.x; st.x = st.y; st.y = 16.f - u; }
+    else if (r == 2) { st.x = 16.f - st.x; st.y = 16.f - st.y; }
+    else if (r == 3) { float u = st.x; st.x = 16.f - st.y; st.y = u; }
     st.x = clampv(st.x, 0.f, 16.f); st.y = clampv(st.y, 0.f, 16.f);
     int col = (int)std::floor(st.x / 16.f * S), row = (int)std::floor(st.y / 16.f * S);
     col = clampv(col, 0, S - 1); row = clampv(row, 0, S - 1);
@@ -612,7 +620,7 @@ public:
         // flame <= -10 is a glowing crop (a lit repeater torch) with no flame plate. -2 is scaffolding.
         bool glow = c.flame <= -10;
         const VoxelMeshGL* mesh = c.flame == -2 ? (layer >= 0 ? scaffoldMesh(ts, layer, topL, botL) : nullptr)
-                                                 : (layer >= 0 ? candleMesh(ts, layer, box, topL, botL, glow, nxL, pzL, nzL, c.only) : nullptr);
+                                                 : (layer >= 0 ? candleMesh(ts, layer, box, topL, botL, glow, nxL, pzL, nzL, c.only, c.faceRot) : nullptr);
         const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
         VoxelLight light{(lit >> 4) / 15.f, (lit & 15) / 15.f};
         if (mesh && mesh->ready()) {

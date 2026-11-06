@@ -663,33 +663,53 @@ u16 sectionVisibility(const MeshInput& in) {
   return vis;
 }
 
-// A chest, a cold furnace, a hive, a workstation, a carved pumpkin or a monster cage.
+// A chest, a cold furnace, a hive, a workstation, a carved pumpkin, a monster cage,
+// or a six-faced machine (a piston, a dispenser, an observer).
 // Near the player that cube is coloured voxels. A lit furnace stays on the chunk picture so its fire keeps moving.
+// A machine's side picture is turned the same way the chunk mesh turns it.
 // Returns true when the cube was recorded and must not also be drawn on the chunk mesh.
 bool emitNearStation(MeshCtx& c, BlockId id, int x, int y, int z, u8 meta) {
   const BlockDef& self = c.R.block(id);
   const BlockTraits& T = traits(id);
-  if (T.f6 || T.axis || T.leaves || T.tint) return false;
+  if (T.axis || T.leaves || T.tint) return false;
   const std::string& k = self.key;
   auto ends = [&](const char* suf) {
     size_t n = std::char_traits<char>::length(suf);
     return k.size() >= n && k.compare(k.size() - n, n, suf) == 0;
   };
-  bool want = k == "monster_spawner";
-  if (!want && self.render == Render::Cube && T.hasFront && k.rfind("lit_", 0) != 0)
-    want = ends("chest") || ends("furnace") || ends("smoker") || k == "bee_nest" || k == "beehive"
-        || k == "smithing_table" || k == "loom" || k == "cartography_table" || k == "fletching_table"
-        || k == "tool_forge" || k == "quest_board"
-        || k == "carved_pumpkin" || k == "jack_o_lantern" || k == "redstone_pumpkin";
+  int tile[6];
+  u16 faceRot = 0;
+  bool want = false;
+  if (T.f6 && self.render == Render::Cube) {
+    want = true;
+    initF6Rot();
+    int dir6 = std::min(5, (int)(meta & 7));
+    for (int f = 0; f < 6; f++) {
+      int t, rot = 0;
+      if (f == D6_FACE[dir6]) t = dir6 < 2 ? T.f6t[0] : T.f6t[1];
+      else if (f == D6_FACE[OPP6[dir6]]) t = (meta & 8) ? T.f6t[3] : T.f6t[2];
+      else { t = !T.sideAll && dir6 >= 2 && (f == 2 || f == 3) ? T.f6t[4] : T.f6t[5]; rot = F6_ROT[dir6][f]; }
+      tile[f] = t;
+      faceRot = (u16)(faceRot | (u16)((rot & 3) << (f * 2)));
+    }
+  } else {
+    want = k == "monster_spawner";
+    if (!want && self.render == Render::Cube && T.hasFront && k.rfind("lit_", 0) != 0)
+      want = ends("chest") || ends("furnace") || ends("smoker") || k == "bee_nest" || k == "beehive"
+          || k == "smithing_table" || k == "loom" || k == "cartography_table" || k == "fletching_table"
+          || k == "tool_forge" || k == "quest_board"
+          || k == "carved_pumpkin" || k == "jack_o_lantern" || k == "redstone_pumpkin";
+    if (want) {
+      int frontFace = T.hasFront ? FACING_FACE[meta & 3] : -1;
+      for (int f = 0; f < 6; f++) {
+        tile[f] = self.faces[f];
+        if (T.hasFront && f != 2 && f != 3) tile[f] = f == frontFace ? self.faces[4] : self.faces[0];
+      }
+    }
+  }
   if (!want) return false;
   c.out.hasTorch = true;
   if (!c.opt.torchVoxels) return false;
-  int frontFace = T.hasFront ? FACING_FACE[meta & 3] : -1;
-  int tile[6];
-  for (int f = 0; f < 6; f++) {
-    tile[f] = self.faces[f];
-    if (T.hasFront && f != 2 && f != 3) tile[f] = f == frontFace ? self.faces[4] : self.faces[0];
-  }
   CandleSpot s;
   s.x0 = 0; s.y0 = 0; s.z0 = 0; s.x1 = 16; s.y1 = 16; s.z1 = 16;
   s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
@@ -699,6 +719,7 @@ bool emitNearStation(MeshCtx& c, BlockId id, int x, int y, int z, u8 meta) {
   s.bot = (u16)std::max(tile[3], 0);
   s.pz = (u16)std::max(tile[4], 0);
   s.nz = (u16)std::max(tile[5], 0);
+  s.faceRot = faceRot;
   c.out.candles.push_back(s);
   return true;
 }
