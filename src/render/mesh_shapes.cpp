@@ -357,6 +357,7 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
         s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
         int st = b.side >= 0 ? b.side : side;
         s.tile = s.top = s.bot = (u16)std::max(st, 0);
+        s.nx = s.pz = s.nz = s.tile;
         s.flame = (i16)ft;
         c.out.candles.push_back(s);
       }
@@ -419,27 +420,34 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
     }
   }
   // A cake's icing, a detector's face, a hopper's rim and a bed's pillow each keep the picture the
-  // box already used. A tripwire, a chorus stem and a repeater do too. Near the player those boxes
+  // box already used. A tripwire, a chorus stem, a repeater and a piston do too. Near the player those boxes
   // are coloured voxels; farther off they stay on the chunk mesh.
   if (kind == ShapeKind::Cake || kind == ShapeKind::Daylight || kind == ShapeKind::Hopper
       || kind == ShapeKind::Composter || kind == ShapeKind::Frame || kind == ShapeKind::Hook
       || kind == ShapeKind::Bed || kind == ShapeKind::Tripwire || kind == ShapeKind::Chorus
-      || kind == ShapeKind::Repeater || kind == ShapeKind::Comparator) {
+      || kind == ShapeKind::Repeater || kind == ShapeKind::Comparator
+      || kind == ShapeKind::PistonBase || kind == ShapeKind::PistonHead) {
     c.out.hasTorch = true;
     if (c.opt.torchVoxels) {
       for (auto& b0 : boxes) {
         ShapeBox b = b0;
         b.b[0] += sox; b.b[3] += sox; b.b[2] += soz; b.b[5] += soz;
         int st = b.hasFaces && b.faces[0] >= 0 ? b.faces[0] : b.side >= 0 ? b.side : side;
+        int nt = b.hasFaces && b.faces[1] >= 0 ? b.faces[1] : st;
         int tt = b.hasFaces && b.faces[2] >= 0 ? b.faces[2] : b.end >= 0 ? b.end : top;
         int bt = b.hasFaces && b.faces[3] >= 0 ? b.faces[3] : b.end >= 0 ? b.end : bot;
+        int pt = b.hasFaces && b.faces[4] >= 0 ? b.faces[4] : st;
+        int zt = b.hasFaces && b.faces[5] >= 0 ? b.faces[5] : st;
         CandleSpot s;
         s.x0 = b.b[0]; s.y0 = b.b[1]; s.z0 = b.b[2]; s.x1 = b.b[3]; s.y1 = b.b[4]; s.z1 = b.b[5];
         s.sink = sink;
         s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
         s.tile = (u16)std::max(st, 0);
+        s.nx = (u16)std::max(nt, 0);
         s.top = (u16)std::max(tt, 0);
         s.bot = (u16)std::max(bt, 0);
+        s.pz = (u16)std::max(pt, 0);
+        s.nz = (u16)std::max(zt, 0);
         s.flame = b.glow ? (i16)(-10 - b.glow) : (i16)-1;   // a lit torch glows; -2 is reserved for scaffolding
         c.out.candles.push_back(s);
       }

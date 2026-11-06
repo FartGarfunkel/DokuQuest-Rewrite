@@ -74,9 +74,10 @@ struct CandleSpot {
   float x0 = 0, y0 = 0, z0 = 0, x1 = 0, y1 = 0, z1 = 0;
   float sink = 0;
   u8 cx = 0, cy = 0, cz = 0;
-  u16 tile = 0;
+  u16 tile = 0;             // +X, and every side face when the box has one picture
+  u16 nx = 0, pz = 0, nz = 0; // -X, +Z, -Z when a box names them (a piston's front)
   u16 top = 0, bot = 0;
-  i16 flame = -1;     // candle_flame layer when it is lit, else -1
+  i16 flame = -1;     // candle_flame layer when it is lit, else -1. -2 is scaffolding. <= -10 glows.
 };
 // A lever handle. x,y,z is its centre in section-local blocks. The three axes are the stick's
 // (yy runs from the base toward the tip), the same ones the tilted box used.
