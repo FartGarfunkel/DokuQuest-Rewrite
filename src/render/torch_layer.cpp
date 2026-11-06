@@ -608,6 +608,70 @@ const VoxelMeshGL* dustMesh(const TileSet& ts, int line, int dot, u8 mask, int p
   return out;
 }
 
+// The voxel whose top sits on the rail quad. lift is one sixteenth, plus the slab drop.
+int railY0(float sink, int S) {
+  const float liftS = (sink / 16.f + 1.f / 16.f) * (float)S;
+  return (int)std::ceil(liftS - 1e-4f) - 1;
+}
+
+// A minecart rail. The same picture and the same turn as the flat quad. A slope climbs one block
+// across the cell. The sheet is one voxel thick, with its top on the quad, including a slab drop.
+const VoxelMeshGL* railMesh(const TileSet& ts, int layer, int shape, float sink) {
+  struct Key {
+    u16 layer; u8 shape; i8 sink;
+    bool operator==(const Key& o) const { return layer == o.layer && shape == o.shape && sink == o.sink; }
+  };
+  struct Hash {
+    size_t operator()(const Key& k) const {
+      return ((size_t)k.layer * 131u + k.shape) * 131u + (u8)k.sink;
+    }
+  };
+  struct Cache {
+    const u8* px = nullptr; int count = -1, size = -1;
+    std::unordered_map<Key, std::unique_ptr<VoxelMeshGL>, Hash> m;
+  };
+  static Cache cache;
+  if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
+    cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
+  }
+  if (shape < 0 || shape > 9) shape = 0;
+  Key key; key.layer = (u16)std::max(layer, 0); key.shape = (u8)shape; key.sink = (i8)std::lround(sink);
+  auto it = cache.m.find(key);
+  if (it != cache.m.end()) return it->second.get();
+  const int S = ts.size > 0 ? ts.size : 32;
+  const float liftS = (sink / 16.f + 1.f / 16.f) * (float)S;
+  const int y0 = railY0(sink, S);
+  const bool slope = shape >= 2 && shape <= 5;
+  VoxelGrid g(ivec3(S, slope ? S + 2 : 1, S));
+  if (layer >= 0 && layer < ts.count) {
+    for (int iz = 0; iz < S; iz++) for (int ix = 0; ix < S; ix++) {
+      float fx = (ix + 0.5f) / (float)S, fz = (iz + 0.5f) / (float)S;
+      float u, v, rise = 0.f;
+      if (shape == 1 || shape == 2 || shape == 3) { u = fz; v = 1.f - fx; }
+      else if (shape == 7) { u = 1.f - fx; v = fz; }
+      else if (shape == 8) { u = 1.f - fx; v = 1.f - fz; }
+      else if (shape == 9) { u = fx; v = 1.f - fz; }
+      else { u = fx; v = fz; }
+      if (shape == 2) rise = fx;
+      else if (shape == 3) rise = 1.f - fx;
+      else if (shape == 4) rise = 1.f - fz;
+      else if (shape == 5) rise = fz;
+      int col = clampv((int)std::floor(u * (float)S), 0, S - 1);
+      int row = clampv((int)std::floor(v * (float)S), 0, S - 1);
+      const u8* p = ts.tile(layer) + ((size_t)row * (size_t)S + col) * 4;
+      if (p[3] < 128) continue;
+      int iy = (int)std::ceil(liftS + rise * (float)S - 1e-4f) - 1 - y0;
+      g.set(ix, iy, iz, voxRGBA(p[0], p[1], p[2]));
+    }
+  }
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  mesh->upload(md);
+  const VoxelMeshGL* out = mesh.get();
+  cache.m.emplace(key, std::move(mesh));
+  return out;
+}
+
 // One voxel per texel of a picture, holes left empty. A flame glows. A pot plant does not.
 const VoxelMeshGL* spritePlate(const TileSet& ts, int layer, bool glow) {
   struct Cache {
@@ -817,7 +881,8 @@ public:
         vec3 cell = relO + vec3(c.cx, c.cy, c.cz);
         // A chain can sit on a corner and its top link can reach half a block higher.
         // A chain reaches above the cell. Redstone on a bottom slab drops half a block, and a link climbs the cell.
-        float reach = c.flame == -7 ? 1.25f : c.flame == -8 ? 1.35f : 0.9f;
+        // A rail on a bottom slab drops the same way, and a slope climbs the cell.
+        float reach = c.flame == -7 ? 1.25f : (c.flame == -8 || c.flame == -9) ? 1.35f : 0.9f;
         if (!f.cam.frustum.sphere(cell + vec3(0.5f), reach)) continue;
         // -4 is a ladder. only keeps the 0..3 turn rotBox uses. The picture stands against the same wall.
         if (c.flame == -4) {
@@ -941,6 +1006,23 @@ public:
             const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
             const mat4 model = glm::translate(mat4(1), cell + vec3(0.f, y0 / (float)PS, 0.f)) * glm::scale(mat4(1), vec3(1.f / PS));
             VR.draw(*mesh, model, VoxelLight{(lit >> 4) / 15.f, (lit & 15) / 15.f});
+          }
+          continue;
+        }
+        // -9 is a minecart rail. The sheet's top sits on the quad, and it climbs when the track does.
+        if (c.flame == -9) {
+          int layer = c.tile < ts.count ? (int)c.tile : -1;
+          if (layer >= 0 && anim[layer] >= 0) layer = anim[layer];
+          const VoxelMeshGL* mesh = layer >= 0 ? railMesh(ts, layer, c.only & 15, c.sink) : nullptr;
+          if (mesh && mesh->ready()) {
+            if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+            const int PS = ts.size > 0 ? ts.size : 32;
+            const int y0 = railY0(c.sink, PS);
+            const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
+            int bl = lit & 15;
+            if (c.faceRot) bl = std::max(bl, 4);
+            const mat4 model = glm::translate(mat4(1), cell + vec3(0.f, y0 / (float)PS, 0.f)) * glm::scale(mat4(1), vec3(1.f / PS));
+            VR.draw(*mesh, model, VoxelLight{(lit >> 4) / 15.f, bl / 15.f});
           }
           continue;
         }
