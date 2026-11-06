@@ -421,13 +421,16 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
     }
   }
   // A cake's icing, a detector's face, a hopper's rim and a bed's pillow each keep the picture the
-  // box already used. A tripwire, a chorus stem, a repeater, a piston and a cactus do too. Near the player those boxes
+  // box already used. A tripwire, a chorus stem, a repeater, a piston and a cactus do too.
+  // Clear glass and iron bars do too. Stained glass stays on the chunk picture: its colour is a see-through wash.
+  // Near the player those boxes
   // are coloured voxels; farther off they stay on the chunk mesh.
   if (kind == ShapeKind::Cake || kind == ShapeKind::Daylight || kind == ShapeKind::Hopper
       || kind == ShapeKind::Composter || kind == ShapeKind::Frame || kind == ShapeKind::Hook
       || kind == ShapeKind::Bed || kind == ShapeKind::Tripwire || kind == ShapeKind::Chorus
       || kind == ShapeKind::Repeater || kind == ShapeKind::Comparator
-      || kind == ShapeKind::PistonBase || kind == ShapeKind::PistonHead || kind == ShapeKind::Cactus) {
+      || kind == ShapeKind::PistonBase || kind == ShapeKind::PistonHead || kind == ShapeKind::Cactus
+      || (kind == ShapeKind::Pane && self.key.find("stained") == std::string::npos)) {
     c.out.hasTorch = true;
     if (c.opt.torchVoxels) {
       for (auto& b0 : boxes) {
