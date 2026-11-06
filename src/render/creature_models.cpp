@@ -229,6 +229,26 @@ static void tintImg(Img& im, const json& t) {
     im.px[i] = (u8)clampv((int)(rr * 255 + 0.5f), 0, 255); im.px[i + 1] = (u8)clampv((int)(gg * 255 + 0.5f), 0, 255); im.px[i + 2] = (u8)clampv((int)(bb * 255 + 0.5f), 0, 255);
   }
 }
+// The same shift as tintImg, on a voxel picture. A built-in look whose shell is a shared block tile (a shulker's purpur)
+// has no picture of its own, so the hue recorded for that look is applied here.
+static void tintPic(Pic& p, const json& t) {
+  if (p.empty() || !t.is_object()) return;
+  const float hue = t.value("hue", 0.f), sat = t.value("sat", 1.f), val = t.value("val", 1.f), colVal = t.value("colVal", 1.f);
+  vec4 mix(0); if (t.contains("mix") && t["mix"].is_array() && t["mix"].size() >= 4) for (int i = 0; i < 4; i++) mix[i] = t["mix"][i].get<float>();
+  for (u32& c : p) {
+    if ((c >> 24) < 8) continue;
+    float r = (c & 255) / 255.f, g = ((c >> 8) & 255) / 255.f, b = ((c >> 16) & 255) / 255.f;
+    float mx = std::max({r, g, b}), mn = std::min({r, g, b}), d = mx - mn, h = 0, s = mx > 0 ? d / mx : 0, v = mx;
+    if (d > 1e-5f) { h = mx == r ? std::fmod((g - b) / d, 6.f) : mx == g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if (h < 0) h += 360; }
+    const float s0 = s;
+    h = std::fmod(h + hue + 360, 360.f); s = clampv(s * sat, 0.f, 1.f); v = clampv(v * val * (1 + (colVal - 1) * std::min(1.f, s0 * 1.6f)), 0.f, 1.f);
+    float cc = v * s, x = cc * (1 - std::fabs(std::fmod(h / 60, 2.f) - 1)), m = v - cc, rr = 0, gg = 0, bb = 0;
+    if (h < 60) { rr = cc; gg = x; } else if (h < 120) { rr = x; gg = cc; } else if (h < 180) { gg = cc; bb = x; } else if (h < 240) { gg = x; bb = cc; } else if (h < 300) { rr = x; bb = cc; } else { rr = cc; bb = x; }
+    rr += m; gg += m; bb += m;
+    if (mix.w > 0) { rr += (mix.x - rr) * mix.w; gg += (mix.y - gg) * mix.w; bb += (mix.z - bb) * mix.w; }
+    c = voxRGBA((int)(rr * 255 + 0.5f), (int)(gg * 255 + 0.5f), (int)(bb * 255 + 0.5f), (u8)(c >> 24));
+  }
+}
 // The faces of every part the pack has a picture for; hidden = parts to put away.
 static bool packSkin(const RigModel& M, const std::string& key, std::vector<std::array<Pic, 6>>& faces, std::vector<u8>& hidden, std::string& used) {
   PackFS* pk = activePack();
@@ -385,9 +405,13 @@ static void partGrid(const TileSet& ts, const RigModel& M, const std::string& ke
                      VoxelGrid& g, vec3& lo, vec3& size) {
   const RigPart& p = M.parts[i];
   g = VoxelGrid();
-  std::array<Pic, 6> F = pack && std::any_of(faces[i].begin(), faces[i].end(), [](const Pic& x) { return !x.empty(); }) ? faces[i] : tilesOf(ts, p.tex);
+  const bool usePack = pack && std::any_of(faces[i].begin(), faces[i].end(), [](const Pic& x) { return !x.empty(); });
+  std::array<Pic, 6> F = usePack ? faces[i] : tilesOf(ts, p.tex);
+  // A violet or pale shulker's shell is the shared purpur tile. The look's hue stays on that shell; the end-stone head is left as it is.
+  if (!usePack && p.tex.is_string() && p.tex.get<std::string>() == "purpur_block" && M.packTint.is_object())
+    for (Pic& face : F) tintPic(face, M.packTint);
   lo = p.min; size = glm::max(p.max - p.min, vec3(1e-3f));
-  bool packed = pack && std::any_of(faces[i].begin(), faces[i].end(), [](const Pic& x) { return !x.empty(); });
+  const bool packed = usePack;
   // birds' feet: the rig's legs are 1 px sticks, which loses the toes. With a pack skin the leg takes
   // Minecraft's 3x5x3 box (its picture has the toes; the clear texels carve the rest away); with the
   // original's tiles a foot of three toes forward and one back is added under the stick.
