@@ -659,6 +659,7 @@ void emitLiquid(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, in
   bool falling = water && (meta & 8);
   u8 base = Mat::NoRelief | (isPortal ? Mat::Translucent : R.tLiquid[id] == 2 ? (Mat::Liquid | Mat::Lava) : (Mat::Liquid | Mat::Translucent));
   if (water) { c.tint = c.cornerTint((float)x + 1, (float)z + 1, 2); c.tintKind = Tint::Water; c.extraMat = Mat::TintAll; }
+  else if (R.tLiquid[id] == 3) c.tintKind = 20;   // acid: chunk.glsl kind 20 is the calm yellow-green of its picture
   for (int f = 0; f < 6; f++) {
     const FaceDef& F = FACES[f];
     int ox = x + F.n[0], oy = y + F.n[1], oz = z + F.n[2];
