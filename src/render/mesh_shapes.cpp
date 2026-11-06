@@ -383,25 +383,26 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
       return;
     }
   }
-  // A cake's icing and a daylight detector's face are their own pictures. Near the player the box is
-  // coloured voxels; farther off it stays on the chunk mesh.
-  if (kind == ShapeKind::Cake || kind == ShapeKind::Daylight) {
+  // A cake's icing, a detector's face, a hopper's rim and a bed's pillow each keep the picture the
+  // box already used. Near the player those boxes are coloured voxels; farther off they stay on the chunk mesh.
+  if (kind == ShapeKind::Cake || kind == ShapeKind::Daylight || kind == ShapeKind::Hopper
+      || kind == ShapeKind::Composter || kind == ShapeKind::Frame || kind == ShapeKind::Hook
+      || kind == ShapeKind::Bed) {
     c.out.hasTorch = true;
     if (c.opt.torchVoxels) {
       for (auto& b0 : boxes) {
         ShapeBox b = b0;
         b.b[0] += sox; b.b[3] += sox; b.b[2] += soz; b.b[5] += soz;
-        auto faceTile = [&](int f, int fallback) {
-          int t = b.hasFaces && b.faces[f] >= 0 ? b.faces[f] : fallback;
-          return (u16)std::max(t, 0);
-        };
+        int st = b.hasFaces && b.faces[0] >= 0 ? b.faces[0] : b.side >= 0 ? b.side : side;
+        int tt = b.hasFaces && b.faces[2] >= 0 ? b.faces[2] : b.end >= 0 ? b.end : top;
+        int bt = b.hasFaces && b.faces[3] >= 0 ? b.faces[3] : b.end >= 0 ? b.end : bot;
         CandleSpot s;
         s.x0 = b.b[0]; s.y0 = b.b[1]; s.z0 = b.b[2]; s.x1 = b.b[3]; s.y1 = b.b[4]; s.z1 = b.b[5];
         s.sink = sink;
         s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
-        s.tile = faceTile(0, side);
-        s.top = faceTile(2, top);
-        s.bot = faceTile(3, bot);
+        s.tile = (u16)std::max(st, 0);
+        s.top = (u16)std::max(tt, 0);
+        s.bot = (u16)std::max(bt, 0);
         s.flame = -1;
         c.out.candles.push_back(s);
       }
