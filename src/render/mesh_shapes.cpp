@@ -526,10 +526,14 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       || shapeName == "brewing_stand" || shapeName == "glass_jar" || shapeName == "weapon_rack"
       || shapeName == "wall_weapon_rack" || shapeName == "brazier" || shapeName == "loose_stones"
       || shapeName == "sleeping_bag" || shapeName == "sieve" || shapeName == "siphon"
-      || shapeName == "grapple_anchor" || shapeName == "end_portal_frame" || shapeName == "end_portal_frame_eye";
+      || shapeName == "grapple_anchor" || shapeName == "end_portal_frame" || shapeName == "end_portal_frame_eye"
+      || shapeName == "lantern";
   bool plain = nearProp;
+  static int chainTile = -2;
+  if (chainTile == -2) chainTile = R.tile("chain");
   if (plain) for (auto& b : *boxes) {
     if (b.fit || b.grain || b.tv != 0.f || b.tu != 0.f || b.uvT || b.xt >= 0 || b.zt >= 0 || b.only != 63) plain = false;
+    if (chainTile >= 0 && (b.side == chainTile || b.end == chainTile)) plain = false;
   }
   if (nearProp) c.out.hasTorch = true;
   if (plain && c.opt.torchVoxels) {
