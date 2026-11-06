@@ -380,19 +380,16 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   if (kind == ShapeKind::Rail) { emitRail(c, d, id, x, y, z, meta); return; }
   // vines and lily pads, and every ladder. The ladder's rungs are real geometry, so looking up or down
   // the wall still shows the whole mesh. Plant detail only decides the vines and pads.
-  // Near the player a ladder or glow lichen is coloured voxels on that wall. A vine keeps the
-  // chunk plate, so the climate still colours it and it can sway. Far ladders stay on the chunk picture.
+  // A ladder is coloured voxels at any distance. A vine keeps the chunk plate, so the climate still colours it and it can sway.
   if (kind == ShapeKind::Ladder && !T.tint) {
     c.out.hasTorch = true;
-    if (c.opt.torchVoxels) {
-      CandleSpot s;
-      s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
-      s.tile = self.faces[0];
-      s.only = (u8)(meta & 3);
-      s.flame = -4;
-      c.out.candles.push_back(s);
-      return;
-    }
+    CandleSpot s;
+    s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+    s.tile = self.faces[0];
+    s.only = (u8)(meta & 3);
+    s.flame = -4;
+    c.out.candles.push_back(s);
+    return;
   }
   if ((kind == ShapeKind::Ladder || (c.opt.detail && T.tint && kind == ShapeKind::Carpet)) && emitVoxelLeafPlate(c, d, id, x, y, z, meta)) return;
   // A door or a trapdoor is a thick coloured plate at any distance, the same one the swing turns.
@@ -423,12 +420,11 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   float L0 = R.metaLight(id, meta);
   Own own{(float)c.skyAt(x, y, z), std::max<float>(c.blAt(x, y, z), L0), L0};
   if (T.tint) { c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0); c.tintKind = (u8)(1 + (T.tint == 2 ? 1 : 0)); }
-  // Candles, buttons, plates and a lever's base are the same little crop of one picture. Near the
-  // player that crop is coloured voxels (torch_layer.cpp). A lit candle still carries its flame,
-  // and a lever still carries its tilted stick.
+  // Candles, buttons, plates and a lever's base are coloured voxels at any distance.
+  // A lit candle still carries its flame, and a lever still carries its tilted stick.
   if (kind == ShapeKind::Candle || kind == ShapeKind::Button || kind == ShapeKind::Plate || kind == ShapeKind::Lever) {
     c.out.hasTorch = true;
-    if (c.opt.torchVoxels) {
+    {
       int ft = (kind == ShapeKind::Candle && T.candle && (meta & 4)) ? R.tile("candle_flame") : -1;
       for (auto& b0 : boxes) {
         ShapeBox b = b0;
@@ -467,11 +463,11 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
       return;
     }
   }
-  // An end rod's picture is a strip. Near the player that strip is coloured voxels (the base too).
-  // A lightning rod's copper is the left of its picture. Near the player that stick is coloured voxels.
+  // An end rod is coloured voxels at any distance, the base and the strip together.
+  // A lightning rod is the same kind of stick.
   if (kind == ShapeKind::Rod && T.endRod) {
     c.out.hasTorch = true;
-    if (c.opt.torchVoxels) {
+    {
       RodSpot s;
       s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
       int ax = meta & 3;
@@ -486,7 +482,7 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   }
   if (kind == ShapeKind::Rod && !T.endRod) {
     c.out.hasTorch = true;
-    if (c.opt.torchVoxels) {
+    {
       RodSpot s;
       s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
       int ax = meta & 3;
@@ -499,11 +495,10 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
       return;
     }
   }
-  // Scaffolding is poles and a plank. Near the player that is one coloured mesh (torch_layer.cpp
-  // treats flame -2 as that mesh). Farther off it stays on the chunk mesh.
+  // Scaffolding is poles and a plank, one coloured mesh at any distance.
   if (kind == ShapeKind::Scaffold) {
     c.out.hasTorch = true;
-    if (c.opt.torchVoxels) {
+    {
       CandleSpot s;
       s.x0 = 0; s.y0 = 0; s.z0 = 0; s.x1 = 16; s.y1 = 16; s.z1 = 16;
       s.sink = sink;
@@ -523,10 +518,15 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   // A cocoa pod uses the picture of its age. A young pod is the green one, and it is smaller.
   // A fence gate's posts and rails do too. A wool carpet and a conveyor are a thin plate of their picture.
   // Moss, a puddle, a lily pad and algae stay on the chunk picture.
-  // Near the player those boxes are coloured voxels; farther off they stay on the chunk mesh.
-  // A composter, a bed, a hopper, a cake and a daylight detector are few, so they stay voxels at any distance.
+  // A composter, a bed, a hopper, a cake, a daylight detector, a frame, a hook, a tripwire,
+  // a chorus stem, a repeater, a comparator, a piston, a fence gate, a pane and a wool carpet
+  // stay voxels at any distance.
   const bool rareShape = kind == ShapeKind::Composter || kind == ShapeKind::Bed || kind == ShapeKind::Hopper
-      || kind == ShapeKind::Cake || kind == ShapeKind::Daylight;
+      || kind == ShapeKind::Cake || kind == ShapeKind::Daylight
+      || kind == ShapeKind::Frame || kind == ShapeKind::Hook || kind == ShapeKind::Tripwire
+      || kind == ShapeKind::Chorus || kind == ShapeKind::Repeater || kind == ShapeKind::Comparator
+      || kind == ShapeKind::PistonBase || kind == ShapeKind::PistonHead
+      || kind == ShapeKind::Gate || kind == ShapeKind::Pane || kind == ShapeKind::Carpet;
   if (kind == ShapeKind::Cake || kind == ShapeKind::Daylight || kind == ShapeKind::Hopper
       || kind == ShapeKind::Composter || kind == ShapeKind::Frame || kind == ShapeKind::Hook
       || kind == ShapeKind::Bed || kind == ShapeKind::Tripwire || kind == ShapeKind::Chorus
@@ -711,11 +711,11 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       int ps = R.tShape[c.at(x + PX[rf], y, z + PZ[rf])];
       reach = ps == ShapeKind::Fence ? 6.f : ps == ShapeKind::Wall ? 4.f : 0.f;
     }
-    // A flag, a banner, bunting, a washing line and a shop sign near you are coloured voxels.
+    // A flag, a banner, bunting, a washing line and a shop sign are coloured voxels at any distance.
     // The wind flaps them by the same measure the picture used.
     if (T.cloth <= 5) {
       c.out.hasTorch = true;
-      if (c.opt.torchVoxels) {
+      {
         CandleSpot s;
         s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
         s.tile = id;
@@ -776,10 +776,10 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   bool plain = nearProp;
   static int chainTile = -2;
   if (chainTile == -2) chainTile = R.tile("chain");
-  // The chain block only. A hanging lantern near you is its own mesh, and a far one stays in the box loop.
+  // The chain block is coloured voxels at any distance. A hanging lantern is its own mesh.
   if (shapeName == "chain") {
     c.out.hasTorch = true;
-    if (c.opt.torchVoxels && chainTile >= 0) {
+    if (chainTile >= 0) {
       CandleSpot s;
       s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
       s.tile = (u16)chainTile;
