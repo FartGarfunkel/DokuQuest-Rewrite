@@ -514,6 +514,49 @@ const VoxelMeshGL* flamePlate(const TileSet& ts, int layer) {
   return spritePlate(ts, layer, true);
 }
 
+// One link strip of the chain picture. Strip 0 is columns 0-3, strip 1 is columns 3-6.
+// A stretched chain repeats that picture through the extra half block above.
+const VoxelMeshGL* chainStrip(const TileSet& ts, int layer, int strip, bool stretch) {
+  struct Cache {
+    const u8* px = nullptr; int count = -1, size = -1;
+    std::unordered_map<u32, std::unique_ptr<VoxelMeshGL>> m;
+  };
+  static Cache cache;
+  if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
+    cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
+  }
+  u32 key = ((u32)std::max(layer, 0) << 2) | ((u32)(strip & 1) << 1) | (stretch ? 1u : 0u);
+  auto it = cache.m.find(key);
+  if (it != cache.m.end()) return it->second.get();
+  const int S = ts.size > 0 ? ts.size : 32;
+  const int W = std::max(1, S * 3 / 16);
+  const int H = stretch ? S + S / 2 : S;
+  VoxelGrid g(ivec3(W, H, 1));
+  if (layer >= 0 && layer < ts.count) {
+    const float u0 = (strip & 1) ? 3.f : 0.f;
+    const float span = stretch ? 24.f : 16.f;
+    for (int y = 0; y < H; y++) {
+      float f = (y + 0.5f) / (float)H;
+      float vw = (16.f - f * span) / 16.f;
+      vw -= std::floor(vw);
+      int row = clampv((int)std::floor(vw * S), 0, S - 1);
+      for (int x = 0; x < W; x++) {
+        float u = (u0 + (x + 0.5f) / (float)W * 3.f) / 16.f;
+        int col = clampv((int)std::floor(u * S), 0, S - 1);
+        const u8* p = ts.tile(layer) + ((size_t)row * S + col) * 4;
+        if (p[3] < 128) continue;
+        g.set(x, y, 0, voxRGBA(p[0], p[1], p[2]));
+      }
+    }
+  }
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  mesh->upload(md);
+  const VoxelMeshGL* out = mesh.get();
+  cache.m.emplace(key, std::move(mesh));
+  return out;
+}
+
 // A ladder's picture, one sixteenth thick, holes where the rungs are. Facing is a turn of this mesh.
 const VoxelMeshGL* ladderMesh(const TileSet& ts, int layer) {
   struct Cache {
@@ -642,7 +685,8 @@ public:
       if (!f.cam.frustum.sphere(relO + vec3(8), 14.f)) return;
       for (const CandleSpot& c : spots) {
         vec3 cell = relO + vec3(c.cx, c.cy, c.cz);
-        if (!f.cam.frustum.sphere(cell + vec3(0.5f), 0.9f)) continue;
+        // A chain can sit on a corner and its top link can reach half a block higher.
+        if (!f.cam.frustum.sphere(cell + vec3(0.5f), c.flame == -7 ? 1.25f : 0.9f)) continue;
         // -4 is a ladder. only keeps the 0..3 turn rotBox uses. The picture stands against the same wall.
         if (c.flame == -4) {
           int layer = c.tile < ts.count ? (int)c.tile : -1;
@@ -718,6 +762,37 @@ public:
             sheet(vec3(r * 2, 0, r * 2), vec3(0.5f - r, 0, 0.5f - r));
             sheet(vec3(-r * 2, 0, r * 2), vec3(0.5f + r, 0, 0.5f - r));
           }
+          continue;
+        }
+        // -7 is a chain block: two crossed strips of the link picture, not a box of its empty middle.
+        if (c.flame == -7) {
+          int layer = c.tile < ts.count ? (int)c.tile : -1;
+          if (layer >= 0 && anim[layer] >= 0) layer = anim[layer];
+          const bool stretch = (c.only & 1) != 0;
+          const VoxelMeshGL* a = layer >= 0 ? chainStrip(ts, layer, 0, stretch) : nullptr;
+          const VoxelMeshGL* b = layer >= 0 ? chainStrip(ts, layer, 1, stretch) : nullptr;
+          if ((!a || !a->ready()) && (!b || !b->ready())) continue;
+          if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+          const int PS = ts.size > 0 ? ts.size : 32;
+          const int W = std::max(1, PS * 3 / 16);
+          const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
+          VoxelLight light{(lit >> 4) / 15.f, (lit & 15) / 15.f};
+          const vec3 base = cell + vec3(c.x0, c.sink / 16.f, c.z0);
+          auto sheet = [&](const VoxelMeshGL* plate, vec3 along, vec3 from) {
+            if (!plate || !plate->ready()) return;
+            vec3 nrm = glm::cross(along, vec3(0, 1, 0));
+            float nl = glm::length(nrm);
+            if (nl < 1e-5f) return;
+            nrm = nrm / nl * (1.f / 32.f);
+            mat4 m(1.f);
+            m[0] = vec4(along / (float)W, 0.f);
+            m[1] = vec4(0.f, 1.f / (float)PS, 0.f, 0.f);
+            m[2] = vec4(nrm, 0.f);
+            m[3] = vec4(base + from - nrm * 0.5f, 1.f);
+            VR.draw(*plate, m, light);
+          };
+          sheet(a, vec3(3.f / 16.f, 0.f, 3.f / 16.f), vec3(6.5f / 16.f, 0.f, 6.5f / 16.f));
+          sheet(b, vec3(-3.f / 16.f, 0.f, 3.f / 16.f), vec3(9.5f / 16.f, 0.f, 6.5f / 16.f));
           continue;
         }
         int layer = c.tile < ts.count ? (int)c.tile : -1;
