@@ -561,9 +561,9 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   const std::vector<ShapeBox>* boxes = modelShape(mi);
   if (!boxes) return;
   // Pots, chairs, anvils and the other still props. A flag flaps, a hanging lantern swings, and a
-  // chain is two crossed pictures, so those stay on the chunk mesh. A turned grain stays there too.
-  // A grindstone's rim and a saw's picture shift are baked with the rest of the prop.
-  // A cold campfire is baked too. A lit one keeps its grain on the chunk picture, and its flame still draws.
+  // chain is two crossed pictures, so those stay on the chunk mesh.
+  // A grindstone's rim, a saw's shift and a campfire's end ring and grain are baked with the prop.
+  // A lit campfire's flame still draws above the logs.
   auto endsWith = [](const std::string& s, const char* suf) {
     size_t n = std::char_traits<char>::length(suf);
     return s.size() >= n && s.compare(s.size() - n, n, suf) == 0;
@@ -586,7 +586,7 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   static int chainTile = -2;
   if (chainTile == -2) chainTile = R.tile("chain");
   if (plain) for (auto& b : *boxes) {
-    if (b.fit || b.grain || b.tu != 0.f || b.uvT || b.zt >= 0 || b.only != 63) plain = false;
+    if (b.tu != 0.f || b.uvT || b.only != 63) plain = false;
     if (chainTile >= 0 && (b.side == chainTile || b.end == chainTile)) plain = false;
   }
   if (plain) c.out.hasTorch = true;

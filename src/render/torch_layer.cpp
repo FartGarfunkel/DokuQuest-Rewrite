@@ -250,8 +250,8 @@ const VoxelMeshGL* scaffoldMesh(const TileSet& ts, int side, int top, int bot) {
   return out;
 }
 
-// A pot, chair or anvil: every box of the model, two voxels per sixteenth, turned the way rotBox turns it.
-// One mesh per model and facing, so a room of chairs is one draw each.
+// A pot, chair, anvil or campfire: every box of the model, two voxels per sixteenth, turned the way rotBox turns it.
+// One mesh per model and facing, so a room of chairs is one draw each. A log end is stretched the way addShapeBox stretches it.
 const VoxelMeshGL* propMesh(const TileSet& ts, int model, int facing) {
   struct Key {
     u16 model; u8 facing;
@@ -283,17 +283,6 @@ const VoxelMeshGL* propMesh(const TileSet& ts, int model, int facing) {
   for (auto& b : boxes) { gx = std::max(gx, vox(b.b[3])); gy = std::max(gy, vox(b.b[4])); gz = std::max(gz, vox(b.b[5])); }
   VoxelGrid g(ivec3(gx, gy, gz));
   const int S = ts.size > 0 ? ts.size : 32;
-  auto sample = [&](int tile, int f, float X, float Y, float Z, float tv) -> u32 {
-    if (tile < 0 || tile >= ts.count) return 0;
-    vec2 st = shapeST(f, X, Y, Z);
-    if (tv != 0.f && f != 2 && f != 3) st.y += tv;   // the same shift addShapeBox applies (a saw blade)
-    st.x = clampv(st.x, 0.f, 16.f); st.y = clampv(st.y, 0.f, 16.f);
-    int col = (int)std::floor(st.x / 16.f * S), row = (int)std::floor(st.y / 16.f * S);
-    col = clampv(col, 0, S - 1); row = clampv(row, 0, S - 1);
-    const u8* p = ts.tile(tile) + ((size_t)row * S + col) * 4;
-    if (p[3] < 128) return 0;
-    return voxRGBA(p[0], p[1], p[2]);
-  };
   for (auto& b : boxes) {
     int x0 = vox(b.b[0]), y0 = vox(b.b[1]), z0 = vox(b.b[2]);
     int x1 = vox(b.b[3]), y1 = vox(b.b[4]), z1 = vox(b.b[5]);
@@ -305,28 +294,70 @@ const VoxelMeshGL* propMesh(const TileSet& ts, int model, int facing) {
     int side = b.side >= 0 ? b.side : 0;
     int end = b.end >= 0 ? b.end : side;
     int xt = b.xt >= 0 ? b.xt : side;
-    int xf = (facing & 1) ? 4 : 0;   // addShapeBox: an odd turn puts the side picture on z
-    auto tileOf = [&](int f) { return (f == 2 || f == 3) ? end : (f == xf || f == xf + 1) ? xt : side; };
+    int xf = (facing & 1) ? 4 : 0;   // addShapeBox: an odd turn puts the x picture on z
+    int zf = (facing & 1) ? 0 : 4;
+    const bool grainTurn = b.grain && ((b.grain == 2) != !!(facing & 1));
+    auto onX = [&](int f) { return f == xf || f == xf + 1; };
+    auto onZ = [&](int f) { return b.zt >= 0 && (f == zf || f == zf + 1); };
+    auto tileOf = [&](int f) {
+      if (f == 2 || f == 3) return end;
+      if (onX(f)) return xt;
+      if (onZ(f)) return b.zt;
+      return side;
+    };
+    // The same picture choice as addShapeBox: a saw still shifts, a log's top still runs along the log,
+    // and a log's small end still shows the whole ring.
+    auto styled = [&](int f, float X, float Y, float Z) {
+      vec2 st = shapeST(f, X, Y, Z);
+      if (b.tv != 0.f && f != 2 && f != 3) st.y += b.tv;
+      if (grainTurn && (f == 2 || f == 3)) std::swap(st.x, st.y);
+      return st;
+    };
+    const float X0 = b.b[0], Y0 = b.b[1], Z0 = b.b[2], X1 = b.b[3], Y1 = b.b[4], Z1 = b.b[5];
+    auto fitST = [&](int f, float X, float Y, float Z) {
+      vec2 st = styled(f, X, Y, Z);
+      const bool fitF = b.fit && f != 2 && f != 3 && ((onX(f) && b.xt >= 0) || onZ(f));
+      if (!fitF) return st;
+      vec2 corner[4];
+      auto putC = [&](int i, float cx, float cy, float cz) { corner[i] = styled(f, cx, cy, cz); };
+      if (f == 0) { putC(0, X1, Y0, Z0); putC(1, X1, Y0, Z1); putC(2, X1, Y1, Z0); putC(3, X1, Y1, Z1); }
+      else if (f == 1) { putC(0, X0, Y0, Z0); putC(1, X0, Y0, Z1); putC(2, X0, Y1, Z0); putC(3, X0, Y1, Z1); }
+      else if (f == 4) { putC(0, X0, Y0, Z1); putC(1, X1, Y0, Z1); putC(2, X0, Y1, Z1); putC(3, X1, Y1, Z1); }
+      else { putC(0, X0, Y0, Z0); putC(1, X1, Y0, Z0); putC(2, X0, Y1, Z0); putC(3, X1, Y1, Z0); }
+      vec2 mn(1e9f), mx(-1e9f);
+      for (auto& q : corner) { mn = glm::min(mn, q); mx = glm::max(mx, q); }
+      return (st - mn) / glm::max(mx - mn, vec2(1e-4f)) * 16.f;
+    };
+    auto sample = [&](int f, float X, float Y, float Z) -> u32 {
+      int tile = tileOf(f);
+      if (tile < 0 || tile >= ts.count) return 0;
+      vec2 st = fitST(f, X, Y, Z);
+      st.x = clampv(st.x, 0.f, 16.f); st.y = clampv(st.y, 0.f, 16.f);
+      int col = (int)std::floor(st.x / 16.f * S), row = (int)std::floor(st.y / 16.f * S);
+      col = clampv(col, 0, S - 1); row = clampv(row, 0, S - 1);
+      const u8* p = ts.tile(tile) + ((size_t)row * S + col) * 4;
+      if (p[3] < 128) return 0;
+      return voxRGBA(p[0], p[1], p[2]);
+    };
     bool hole = false;
     auto put = [&](int x, int y, int z, u32 c) {
       if (!c) { hole = true; return; }
       g.set(x, y, z, c);
     };
-    const float X0 = b.b[0], Y0 = b.b[1], Z0 = b.b[2], X1 = b.b[3], Y1 = b.b[4], Z1 = b.b[5];
     for (int iz = z0; iz < z1; iz++) for (int iy = y0; iy < y1; iy++) {
       float Y = Y0 + (iy - y0 + 0.5f) * 0.5f, Z = Z0 + (iz - z0 + 0.5f) * 0.5f;
-      put(x1 - 1, iy, iz, sample(tileOf(0), 0, X1, Y, Z, b.tv));
-      put(x0, iy, iz, sample(tileOf(1), 1, X0, Y, Z, b.tv));
+      put(x1 - 1, iy, iz, sample(0, X1, Y, Z));
+      put(x0, iy, iz, sample(1, X0, Y, Z));
     }
     for (int iz = z0; iz < z1; iz++) for (int ix = x0; ix < x1; ix++) {
       float X = X0 + (ix - x0 + 0.5f) * 0.5f, Z = Z0 + (iz - z0 + 0.5f) * 0.5f;
-      put(ix, y1 - 1, iz, sample(tileOf(2), 2, X, Y1, Z, b.tv));
-      put(ix, y0, iz, sample(tileOf(3), 3, X, Y0, Z, b.tv));
+      put(ix, y1 - 1, iz, sample(2, X, Y1, Z));
+      put(ix, y0, iz, sample(3, X, Y0, Z));
     }
     for (int iy = y0; iy < y1; iy++) for (int ix = x0; ix < x1; ix++) {
       float X = X0 + (ix - x0 + 0.5f) * 0.5f, Y = Y0 + (iy - y0 + 0.5f) * 0.5f;
-      put(ix, iy, z1 - 1, sample(tileOf(4), 4, X, Y, Z1, b.tv));
-      put(ix, iy, z0, sample(tileOf(5), 5, X, Y, Z0, b.tv));
+      put(ix, iy, z1 - 1, sample(4, X, Y, Z1));
+      put(ix, iy, z0, sample(5, X, Y, Z0));
     }
     if (!hole) {
       const u32 fill = voxRGBA(1, 1, 1);
