@@ -926,8 +926,8 @@ public:
           cross(vec3(0.5f, 0.f, -0.5f), vec3(0.25f, 0.f, 0.75f));
           continue;
         }
-        // -12 is an amethyst cluster or bud. Two crossed pictures, shifted and turned like the chunk plant,
-        // and the whole crystal takes the same wind step a plant quad does.
+        // -12 is an amethyst cluster, a bud, or a spore blossom. Crossed pictures, shifted and turned
+        // like the chunk plant, and the whole shape takes the same wind step a plant quad does.
         if (c.flame == -12) {
           int layer = c.tile < ts.count ? (int)c.tile : -1;
           if (layer >= 0 && anim[layer] >= 0) layer = anim[layer];
@@ -938,8 +938,9 @@ public:
           const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
           VoxelLight light{(lit >> 4) / 15.f, (lit & 15) / 15.f};
           const float ang = c.y0, jx = c.x0, jz = c.z0, rad = 0.46f;
-          const float ca = std::cos(ang) * rad, sa = std::sin(ang) * rad;
           const float cxp = 0.5f + jx, czp = 0.5f + jz;
+          const int planes = c.only == 3 ? 3 : 2;
+          const float step = planes == 3 ? 1.04719755f : 1.5707963f;
           const vec3 world = origin + vec3((float)c.cx + 0.5f, (float)c.cy, (float)c.cz + 0.5f);
           const float t = (float)std::fmod(f.time, 3600.0);
           const float gust = 0.6f + 0.4f * std::sin(t * 0.35f + world.x * 0.02f + world.z * 0.015f);
@@ -960,8 +961,10 @@ public:
             m[3] = vec4(vec3(cell.x, yBase, cell.z) + from + wave - n * 0.5f, 1.f);
             VR.draw(*plate, m, light);
           };
-          cross(vec3(2.f * ca, 0.f, 2.f * sa), vec3(cxp - ca, 0.f, czp - sa));
-          cross(vec3(-2.f * sa, 0.f, 2.f * ca), vec3(cxp + sa, 0.f, czp - ca));
+          for (int k = 0; k < planes; k++) {
+            float a = ang + k * step, ca = std::cos(a) * rad, sa = std::sin(a) * rad;
+            cross(vec3(2.f * ca, 0.f, 2.f * sa), vec3(cxp - ca, 0.f, czp - sa));
+          }
           continue;
         }
         // -5 is a lit campfire: four walls inset the way the chunk plates were. -6 is a fire block: two crosses.
