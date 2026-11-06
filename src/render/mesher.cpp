@@ -664,9 +664,11 @@ u16 sectionVisibility(const MeshInput& in) {
 }
 
 // A chest, a cold furnace, a hive, a workstation, a carved pumpkin, a monster cage,
+// a grate, a mesh, a steel frame, a dungeon gate, a gate barrier,
 // a six-faced machine (a piston, a dispenser, an observer), or a plain work block
 // (a crafting table, a barrel, a bookshelf, a machine).
-// Near the player that cube is coloured voxels. A lit furnace's front still changes frame.
+// Near the player that cube is coloured voxels. A hole in a grate's picture stays empty.
+// A lit furnace's front still changes frame.
 // A machine's side picture is turned the same way the chunk mesh turns it.
 // Returns true when the cube was recorded and must not also be drawn on the chunk mesh.
 bool emitNearStation(MeshCtx& c, BlockId id, int x, int y, int z, u8 meta) {
@@ -694,7 +696,8 @@ bool emitNearStation(MeshCtx& c, BlockId id, int x, int y, int z, u8 meta) {
       faceRot = (u16)(faceRot | (u16)((rot & 3) << (f * 2)));
     }
   } else {
-    want = k == "monster_spawner";
+    want = k == "monster_spawner" || k == "copper_grate" || k == "iron_mesh" || k == "gold_mesh"
+        || k == "steel_framed_glass" || k == "dungeon_gate" || k == "gate_barrier";
     if (!want && self.render == Render::Cube && T.hasFront)
       want = ends("chest") || ends("furnace") || ends("smoker") || k == "bee_nest" || k == "beehive"
           || k == "smithing_table" || k == "loom" || k == "cartography_table" || k == "fletching_table"
