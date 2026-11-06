@@ -38,22 +38,25 @@ file(GLOB_RECURSE DQ_CLIENT_SRC CONFIGURE_DEPENDS
 list(FILTER DQ_CLIENT_SRC EXCLUDE REGEX ".*/client/main\\.cpp$")
 add_library(dqclient STATIC ${DQ_CLIENT_SRC})
 target_compile_options(dqclient PRIVATE ${DQ_WARN})
+# glslang is compiled from the sources tools/fetch_deps.sh clones. The optimizer needs SPIRV-Tools,
+# which the game does not use (vk_backend asks glslang to skip it).
 set(DQ_GLSLANG "${CMAKE_SOURCE_DIR}/third_party/vulkan/glslang")
+set(ENABLE_OPT OFF CACHE BOOL "" FORCE)
+set(ENABLE_HLSL OFF CACHE BOOL "" FORCE)
+set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
+set(ENABLE_SPVREMAPPER OFF CACHE BOOL "" FORCE)
+set(GLSLANG_TESTS OFF CACHE BOOL "" FORCE)
+set(GLSLANG_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+set(ENABLE_PCH OFF CACHE BOOL "" FORCE)
+set(BUILD_EXTERNAL OFF CACHE BOOL "" FORCE)
+add_subdirectory("${DQ_GLSLANG}" "${CMAKE_BINARY_DIR}/glslang" EXCLUDE_FROM_ALL)
 target_include_directories(dqclient PRIVATE
   "${CMAKE_SOURCE_DIR}/third_party/vulkan/Vulkan-Headers/include"
+  "${CMAKE_SOURCE_DIR}/third_party/vulkan/volk"
   "${DQ_GLSLANG}")
-if(EXISTS "/usr/lib64/libvulkan.so.1")
-  set(DQ_VULKAN_LIB "/usr/lib64/libvulkan.so.1")
-elseif(EXISTS "/usr/lib/libvulkan.so.1")
-  set(DQ_VULKAN_LIB "/usr/lib/libvulkan.so.1")
-else()
-  find_library(DQ_VULKAN_LIB NAMES vulkan)
-endif()
-target_link_libraries(dqclient PUBLIC dqcore glad imgui SDL2::SDL2-static
-  "${DQ_GLSLANG}/build/glslang/libglslang.a"
-  "${DQ_GLSLANG}/build/glslang/libglslang-default-resource-limits.a"
-  "${DQ_GLSLANG}/build/glslang/OSDependent/Unix/libOSDependent.a"
-  "${DQ_VULKAN_LIB}")
+# The Vulkan loader is opened at runtime (volk). A build machine does not need libvulkan installed,
+# and a player without it keeps the OpenGL renderers.
+target_link_libraries(dqclient PUBLIC dqcore glad imgui SDL2::SDL2-static glslang glslang-default-resource-limits)
 
 add_executable(dokuquest src/client/main.cpp)
 target_link_libraries(dokuquest PRIVATE dqclient)

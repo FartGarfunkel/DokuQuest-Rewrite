@@ -7,7 +7,9 @@
 #include "render/gl.h"
 #include "common/common.h"
 
-#include <vulkan/vulkan.h>
+// volk loads libvulkan at runtime, so the game links without a Vulkan SDK (CI, and PCs that have none).
+#define VOLK_IMPLEMENTATION
+#include <volk.h>
 #include <SDL_vulkan.h>
 
 #include <glslang/Public/ShaderLang.h>
@@ -4569,6 +4571,7 @@ bool gfxIsVulkan() { return g_on; }
 
 bool gfxInitVulkan(SDL_Window* window) {
   if (g_on) return true;
+  if (volkInitialize() != VK_SUCCESS) { DQ_ERR("vulkan: loader not found"); return false; }
   g_window = window;
   bufs.clear(); texs.clear(); rbs.clear(); vaos.clear(); shaders.clear(); progs.clear(); fbos.clear();
   bufs.push_back({}); texs.push_back({}); rbs.push_back({}); shaders.push_back({}); progs.push_back({}); fbos.push_back({});
@@ -4585,6 +4588,7 @@ bool gfxInitVulkan(SDL_Window* window) {
   ici.enabledExtensionCount = (uint32_t)exts.size();
   ici.ppEnabledExtensionNames = exts.data();
   if (vkFail(vkCreateInstance(&ici, nullptr, &instance), "vkCreateInstance")) return false;
+  volkLoadInstance(instance);
   if (!SDL_Vulkan_CreateSurface(window, instance, &surface)) { DQ_ERR("vulkan: surface: %s", SDL_GetError()); shutdownDevice(); return false; }
   uint32_t nd = 0; vkEnumeratePhysicalDevices(instance, &nd, nullptr);
   if (!nd) { DQ_ERR("vulkan: no device"); shutdownDevice(); return false; }
@@ -4645,6 +4649,7 @@ bool gfxInitVulkan(SDL_Window* window) {
   di.queueCreateInfoCount = 1; di.pQueueCreateInfos = &qi;
   di.enabledExtensionCount = 1; di.ppEnabledExtensionNames = devExt;
   if (vkFail(vkCreateDevice(phys, &di, nullptr, &device), "vkCreateDevice")) { shutdownDevice(); return false; }
+  volkLoadDevice(device);
   vkGetDeviceQueue(device, queueFamily, 0, &queue);
   VkCommandPoolCreateInfo pi{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
   pi.queueFamilyIndex = queueFamily;

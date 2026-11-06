@@ -37,6 +37,7 @@ jobs:
             third_party/glm
             third_party/miniz
             third_party/json
+            third_party/vulkan
           key: deps-${{ runner.os }}-${{ hashFiles('tools/fetch_deps.sh') }}
       - name: Fetch dependencies
         run: bash tools/fetch_deps.sh

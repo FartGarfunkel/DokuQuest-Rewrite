@@ -13,6 +13,7 @@ c https://github.com/nlohmann/json.git json v3.11.3
 mkdir -p vulkan
 c https://github.com/KhronosGroup/Vulkan-Headers.git vulkan/Vulkan-Headers v1.3.296
 c https://github.com/KhronosGroup/glslang.git vulkan/glslang 15.3.0
+c https://github.com/zeux/volk.git vulkan/volk vulkan-sdk-1.3.296.0
 # nlohmann/json: keep only the single header as json/nlohmann/json.hpp
 if [ -d json/single_include ]; then mv json/single_include/nlohmann json_nl && rm -rf json && mkdir -p json && mv json_nl json/nlohmann; fi
 rm -rf SDL2/test glm/test imgui/examples quickjs/tests 2>/dev/null || true
