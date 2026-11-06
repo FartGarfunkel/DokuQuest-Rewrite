@@ -253,9 +253,9 @@ void WorldRenderer::submit(const SectionKey& k, ThreadPool& pool, float pri, boo
   if (in->empty) { secVis.erase(k); auto it = meshes.find(k); if (it != meshes.end()) { release(it->second->base, it->second->cap); meshes.erase(it); } return; }
   inFlight.insert(k);
   auto sh = shared; MesherOptions mo = mopt; mo.detail = detail; mo.torchVoxels = nearTorch(k);
-  // Near faces keep an 8×8 colour grid (4 texels a cell). Far faces are one colour. Both skip the tile sample.
-  // A pack's own chunk shader still gets real texture coordinates.
-  mo.colourStep = (colourCubes && !packGeom) ? (nearTorch(k) ? 4 : 32) : 0;
+  // Near faces are the 32×32 picture: one colour cell per texel. Farther faces average 2×2 texels,
+  // which is about a pixel once the block is small. A pack's chunk shader still gets real coordinates.
+  mo.colourStep = (colourCubes && !packGeom) ? (nearTorch(k) ? 1 : 2) : 0;
   u32 gen = generation;
   pool.submit([sh, in, k, mo, gen] {
     Result r; r.k = k; r.gen = gen;
@@ -485,7 +485,7 @@ void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs)
     for (size_t i = 0; i < come.size() && i < 6; i++) submit(come[i].second, pool, come[i].first - 8000, wantDetail(come[i].second, camPos));
     for (size_t i = 0; i < go.size() && i < 4; i++) submit(go[i].second, pool, 20000 - go[i].first, wantDetail(go[i].second, camPos));
   }
-  // The same ring for world cubes: inside it the exposed face is a colour grid, past it one colour.
+  // The same ring for world cubes: inside it every texel is its own cell, past it a 2×2 average.
   // Walking in rebuilds the section, the same way a torch becomes voxels as you arrive.
   colourT -= 1.0 / 60;
   if (colourCubes && !packGeom && colourT <= 0) {
