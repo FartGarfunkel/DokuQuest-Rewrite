@@ -2,8 +2,8 @@
 // each comes from the tile array (one layer per tile), its depth from the height array.
 //  MICRO_VOXELS 0: flat   1: shaded micro-voxels   2: relief — the face's height field is ray-marched one
 //  micro-voxel cell at a time (a voxel parallax), so each micro-voxel shows real depth, side walls and
-//  self-shadowing from the sun, fading to flat past uMicroDist. The Legacy (GL 3.3) build takes fewer steps
-//  and skips the shadow ray.
+//  self-shadowing from the sun, fading to flat past uMicroDist. Legacy does not march: each nearby cell
+//  is one colour from the tile plus a lip, which is the whole 32x32 grid without the ten texture steps.
 #include "common.glsl"
 
 #ifdef VERTEX
@@ -149,7 +149,10 @@ void main() {
     vec3 dp2perp = cross(dp2, N), dp1perp = cross(N, dp1);
     vec3 T = snapAxis(dp2perp * gdx.x + dp1perp * gdy.x);
     vec3 B = snapAxis(dp2perp * gdx.y + dp1perp * gdy.y);
-#if MICRO_VOXELS >= 2
+#if MICRO_VOXELS >= 2 && defined(DQ_MODERN)
+    // The 24-step height march stays on the modern renderer. Legacy skips it: ten dependent
+    // texture reads per nearby pixel is most of a frame on a small Intel GPU, and the shaded
+    // cell path below keeps the 32x32 colour grid.
     vec3 V = viewVec / max(dist, 1e-4);
     vec3 Vt = vec3(dot(V, T), dot(V, B), dot(V, N));
     float scale = fade * smoothstep(0.04, 0.22, -Vt.z);      // flatten at grazing angles
@@ -233,6 +236,18 @@ void main() {
   }
 #endif
 
+#ifndef DQ_MODERN
+#if MICRO_VOXELS >= 1
+  // One colour per micro-voxel, and a thin darker lip so the cell reads as a cube.
+  // No height march: that loop is the legacy frame cost inside uMicroDist.
+  if (n < 6 && (vMat & 16u) == 0u && dist < uMicroDist) {
+    vec2 edge = fract(uv * VOX);
+    float lip = min(min(edge.x, 1.0 - edge.x), min(edge.y, 1.0 - edge.y));
+    shade *= mix(0.86, 1.0, smoothstep(0.0, 0.12, lip));
+    uv = (floor(uv * VOX) + 0.5) / VOX;
+  }
+#endif
+#endif
   vec2 fuv = fract(uv);
   vec4 col = tileColorGrad(fuv, layer, gdx, gdy);
   if (uPass == 1) {
