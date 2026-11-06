@@ -560,6 +560,16 @@ void emitTorch(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, int
     bx = x + 0.5f - wx * (0.5f + back - 1.6f * P); bz = z + 0.5f - wz * (0.5f + back - 1.6f * P); by = y + 3.5f * P;
   } else if (!sh.micro) by += sinkOffset(id, nb) / 16.f;
   if (sh.micro) { bx += sh.x * P; by += sh.y * P; bz += sh.z * P; }
+  c.out.hasTorch = true;
+  if (c.opt.torchVoxels) {
+    TorchSpot s;
+    s.x = bx; s.y = by; s.z = bz;
+    s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+    s.lx = (i8)std::lround(wx); s.lz = (i8)std::lround(wz);
+    s.tile = (u16)std::max(tile, 0);
+    c.out.torches.push_back(s);
+    return;
+  }
   float ca = std::cos(m ? LEAN : 0.f), sa = std::sin(m ? LEAN : 0.f);
   auto V = [&](float lx, float ly, float lz) { return vec3(bx + lx + wx * ly * sa, by + ly * ca, bz + lz + wz * ly * sa); };
   LightRgb L = rgbAt(c, x, y, z);
@@ -655,6 +665,7 @@ u16 sectionVisibility(const MeshInput& in) {
 
 void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions& opt) {
   out.opaque.clear(); out.cutout.clear(); out.trans.clear(); out.fx = MeshFx(); out.detail = opt.detail;
+  out.torches.clear(); out.hasTorch = false; out.torchVox = false;
   out.vis = 0x7FFF;
   if (in.empty) return;
   out.vis = sectionVisibility(in);
@@ -738,6 +749,7 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
     }
   }
   if (gm) flushGreedy(c, *gm);
+  out.torchVox = opt.torchVoxels && out.hasTorch;
   out.ms = (nowSeconds() - t0) * 1000;
 }
 

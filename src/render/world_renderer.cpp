@@ -220,6 +220,12 @@ bool WorldRenderer::wantDetail(const SectionKey& k, const vec3& cam) const {
   float dx = k.cx * 16 + 8 - cam.x, dz = k.cz * 16 + 8 - cam.z;
   return std::sqrt(dx * dx + dz * dz) < PLANT_DETAIL_R + 12;
 }
+bool WorldRenderer::nearTorch(const SectionKey& k) const {
+  const float dx = k.cx * 16 + 8.f - camPos.x;
+  const float dy = dimBase(k.dim) + k.sy * 16 + 8.f - camPos.y;
+  const float dz = k.cz * 16 + 8.f - camPos.z;
+  return dx * dx + dy * dy + dz * dz < (32.f + 8.f) * (32.f + 8.f);
+}
 
 bool WorldRenderer::wanted(const SectionKey& k) const {
   if (budgetR < 1e8f) {   // over the memory budget: only this near
@@ -240,7 +246,7 @@ void WorldRenderer::submit(const SectionKey& k, ThreadPool& pool, float pri, boo
   if (!gatherMeshInput(*w, k, *in)) return;
   if (in->empty) { secVis.erase(k); auto it = meshes.find(k); if (it != meshes.end()) { release(it->second->base, it->second->cap); meshes.erase(it); } return; }
   inFlight.insert(k);
-  auto sh = shared; MesherOptions mo = mopt; mo.detail = detail; u32 gen = generation;
+  auto sh = shared; MesherOptions mo = mopt; mo.detail = detail; mo.torchVoxels = nearTorch(k); u32 gen = generation;
   pool.submit([sh, in, k, mo, gen] {
     Result r; r.k = k; r.gen = gen;
     buildSectionMesh(*in, r.out, mo);
@@ -343,8 +349,18 @@ void WorldRenderer::upload(Result& r) {
   inFlight.erase(r.k);
   auto it = meshes.find(r.k);
   if (w && w->chunk(r.k.dim, r.k.cx, r.k.cz)) { if (r.out.vis == 0x7FFF) secVis.erase(r.k); else secVis[r.k] = r.out.vis; } else secVis.erase(r.k);
-  if (!w || !w->chunk(r.k.dim, r.k.cx, r.k.cz) || r.out.empty()) {
+  if (!w || !w->chunk(r.k.dim, r.k.cx, r.k.cz) || (r.out.empty() && r.out.torches.empty())) {
     if (it != meshes.end()) { release(it->second->base, it->second->cap); meshes.erase(it); }
+    return;
+  }
+  if (r.out.empty()) {
+    auto& m = meshes[r.k];
+    if (!m) m = std::make_unique<SecMesh>();
+    else if (m->cap) { release(m->base, m->cap); m->base = m->cap = 0; }
+    m->nq[0] = m->nq[1] = m->nq[2] = 0;
+    m->origin = vec3(r.k.cx * 16, dimBase(r.k.dim) + r.k.sy * 16, r.k.cz * 16);
+    m->fx = std::move(r.out.fx); m->detail = r.out.detail;
+    m->torches = std::move(r.out.torches); m->hasTorch = r.out.hasTorch; m->torchVox = r.out.torchVox;
     return;
   }
   meshMsAvg = (meshMsAvg * meshCount + r.out.ms) / (meshCount + 1); meshCount = std::min(meshCount + 1, 500);
@@ -360,6 +376,7 @@ void WorldRenderer::upload(Result& r) {
   if (maxQuads > 16384) quadIndexBuffer(maxQuads);
   m->origin = vec3(r.k.cx * 16, dimBase(r.k.dim) + r.k.sy * 16, r.k.cz * 16);
   m->fx = std::move(r.out.fx); m->detail = r.out.detail;
+  m->torches = std::move(r.out.torches); m->hasTorch = r.out.hasTorch; m->torchVox = r.out.torchVox;
   if (m->base / PAGE_V >= pages.size()) return;
   glBindBuffer(GL_ARRAY_BUFFER, pages[m->base / PAGE_V].vbo);
   size_t off = (size_t)(m->base % PAGE_V) * sizeof(ChunkVertex);
@@ -435,6 +452,24 @@ void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs)
     }
     std::sort(far.begin(), far.end(), [](auto& a, auto& b) { return a.first < b.first; });
     for (size_t i = 0; i < far.size() && i < 4; i++) submit(far[i].second, pool, 20000 - far[i].first, false);
+  }
+  // torches inside this radius are rebuilt as coloured voxels; well past it they go back to cutout quads.
+  // Only a section that actually holds a torch is rebuilt, and not again until the player has moved clear of the edge.
+  torchT -= 1.0 / 60;
+  if (torchT <= 0) {
+    torchT = 0.25;
+    std::vector<std::pair<float, SectionKey>> come, go;
+    for (auto& [k, m] : meshes) {
+      if (!m || !m->hasTorch || inFlight.count(k)) continue;
+      const float dx = k.cx * 16 + 8.f - camPos.x, dy = dimBase(k.dim) + k.sy * 16 + 8.f - camPos.y, dz = k.cz * 16 + 8.f - camPos.z;
+      const float d2 = dx * dx + dy * dy + dz * dz;
+      if (!m->torchVox && d2 < (32.f + 8.f) * (32.f + 8.f)) come.push_back({std::sqrt(d2), k});
+      else if (m->torchVox && d2 > (32.f + 24.f) * (32.f + 24.f)) go.push_back({-std::sqrt(d2), k});
+    }
+    std::sort(come.begin(), come.end(), [](auto& a, auto& b) { return a.first < b.first; });
+    std::sort(go.begin(), go.end(), [](auto& a, auto& b) { return a.first < b.first; });
+    for (size_t i = 0; i < come.size() && i < 6; i++) submit(come[i].second, pool, come[i].first - 8000, wantDetail(come[i].second, camPos));
+    for (size_t i = 0; i < go.size() && i < 4; i++) submit(go[i].second, pool, 20000 - go[i].first, wantDetail(go[i].second, camPos));
   }
   double t0 = nowSeconds();
   std::vector<Result> done;
@@ -607,6 +642,9 @@ void WorldRenderer::drawTranslucent(const FrameCtx& f) {
 }
 
 void WorldRenderer::forEachFx(const std::function<void(const SectionKey&, const MeshFx&)>& fn) const { for (auto& [k, m] : meshes) fn(k, m->fx); }
+void WorldRenderer::forEachTorchSection(const std::function<void(vec3, const std::vector<TorchSpot>&)>& fn) const {
+  for (auto& [k, m] : meshes) if (m && !m->torches.empty()) fn(m->origin, m->torches);
+}
 std::vector<ivec3> WorldRenderer::waterfallBases(const vec3& near, float radius) const {
   std::vector<ivec3> out; float r2 = radius * radius;
   for (auto& [k, m] : meshes) {

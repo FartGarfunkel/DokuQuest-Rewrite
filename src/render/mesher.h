@@ -59,6 +59,15 @@ struct MeshFx {
   std::vector<std::pair<ivec3, BlockId>> emitters;   // fire, torches, campfires, candles, portals
 };
 
+// A torch the chunk mesh left out, drawn as coloured voxels (render/torch_layer.cpp).
+// x,y,z are the base of the stick in section-local blocks. cx,cy,cz is the cell, for its light.
+struct TorchSpot {
+  float x = 0, y = 0, z = 0;
+  u8 cx = 0, cy = 0, cz = 0;
+  i8 lx = 0, lz = 0;    // which way a wall torch leans (-1, 0, 1)
+  u16 tile = 0;
+};
+
 // cave culling: the bit for a pair of faces (0 +x, 1 -x, 2 +y, 3 -y, 4 +z, 5 -z), 15 pairs
 inline int sectionVisPair(int a, int b) { if (a > b) std::swap(a, b); static const int base[6] = {0, 5, 9, 12, 14, 15}; return base[a] + (b - a - 1); }
 u16 sectionVisibility(const MeshInput& in);   // flood fill of the open cells (mesher.cpp)
@@ -67,6 +76,9 @@ std::vector<ivec3>& meshHiddenBlocks();
 struct MeshOutput {
   std::vector<ChunkVertex> opaque, cutout, trans;   // quads (4 vertices each)
   MeshFx fx;
+  std::vector<TorchSpot> torches;   // filled only when torchVox: the cutout quads were left out
+  bool hasTorch = false;       // this section holds a torch, whether or not it was voxelised
+  bool torchVox = false;       // those torches are in `torches` instead of the cutout list
   bool detail = true;          // built with 3D plants
   u16 vis = 0x7FFF;            // cave culling: which pairs of the section's 6 faces see each other through it (sectionVisPair)
   double ms = 0;               // time spent meshing
@@ -78,6 +90,7 @@ struct MesherOptions {
   bool wavingPlants = true;
   bool detail = true;          // 3D voxel plants (settings.plantDetail near/all decides per section)
   bool greedy = true;          // merge flat, evenly lit faces
+  bool torchVoxels = false;    // near torches become coloured voxels instead of cutout quads
 };
 
 bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in);   // false if the chunk isn't loaded

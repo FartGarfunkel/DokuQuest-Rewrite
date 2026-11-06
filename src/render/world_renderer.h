@@ -50,6 +50,8 @@ public:
 
   // what meshing found, for other systems (particles: waterfall splashes, drips, emitters)
   void forEachFx(const std::function<void(const SectionKey&, const MeshFx&)>& fn) const;
+  // near torches left out of the cutout mesh (section origin in world blocks, spots are section-local)
+  void forEachTorchSection(const std::function<void(vec3 origin, const std::vector<TorchSpot>&)>& fn) const;
   std::vector<ivec3> waterfallBases(const vec3& near, float radius) const;
 
   // stats
@@ -69,7 +71,10 @@ public:
   static constexpr float PLANT_DETAIL_R = 36;   // (was 44: 3D plants are most of the terrain memory where they grow thick)
 
 private:
-  struct SecMesh { u32 base = 0, cap = 0; u32 nq[3] = {0, 0, 0}; vec3 origin{0}; MeshFx fx; bool detail = true; };
+  struct SecMesh {
+    u32 base = 0, cap = 0; u32 nq[3] = {0, 0, 0}; vec3 origin{0}; MeshFx fx; bool detail = true;
+    std::vector<TorchSpot> torches; bool hasTorch = false, torchVox = false;
+  };
   struct Result { SectionKey k; MeshOutput out; u32 gen = 0; };
   u32 generation = 0;   // bumped by setWorld: results from the world before are dropped
   struct Shared { std::mutex mx; std::vector<Result> done; };
@@ -79,6 +84,7 @@ private:
   void emitSections(const FrameCtx& f, int pass, GLint originLoc);
   void rebuildAtlas(const TileSet& ts);
   bool wantDetail(const SectionKey& k, const vec3& cam) const;
+  bool nearTorch(const SectionKey& k) const;   // this section's torches are drawn as voxels
   // arena (units: vertices)
   u32 alloc(u32 n);
   void release(u32 base, u32 n);
@@ -109,7 +115,7 @@ private:
   std::map<u32, u32> freeList;               // base -> count
   u32 maxQuads = 0;
   vec3 camPos{0};
-  double detailT = 0;
+  double detailT = 0, torchT = 0;
   GLuint tq[2] = {0, 0}; int tqi = 0; bool tqActive = false, tqUsed[2] = {false, false};
   // the tint the vertices no longer carry (mesher.h): each land's climate per column, 1024 x 1024 wrapping round the
   // camera (RG8 temperature/humidity, a layer per land), and the colour for a climate (256 x 256 by temperature and
