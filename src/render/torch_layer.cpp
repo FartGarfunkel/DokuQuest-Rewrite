@@ -12,6 +12,9 @@
 
 namespace dq {
 
+const VoxelMeshGL* doorPlateMesh(const TileSet& ts, int layer);
+mat4 doorPanelModel(vec3 cellMin, int facing, bool trap, bool right, float open, int grid);
+
 namespace {
 
 const VoxelMeshGL* torchMesh(const TileSet& ts, int layer) {
@@ -978,7 +981,7 @@ public:
         // A chain can sit on a corner and its top link can reach half a block higher.
         // A chain reaches above the cell. Redstone on a bottom slab drops half a block, and a link climbs the cell.
         // A rail on a bottom slab drops the same way, and a slope climbs the cell.
-        float reach = c.flame == -7 ? 1.25f : (c.flame == -8 || c.flame == -9) ? 1.35f : 0.9f;
+        float reach = c.flame == -7 ? 1.25f : (c.flame == -8 || c.flame == -9 || c.flame == -14 || c.flame == -15) ? 1.35f : 0.9f;
         if (!f.cam.frustum.sphere(cell + vec3(0.5f), reach)) continue;
         // -4 is a ladder. only keeps the 0..3 turn rotBox uses. The picture stands against the same wall.
         if (c.flame == -4) {
@@ -1090,6 +1093,22 @@ public:
           m[2] = vec4(0.f, 0.f, 1.f / (float)PS, 0.f);
           m[3] = vec4(vec3(cell.x, yBase, cell.z) + wave, 1.f);
           VR.draw(*cup, m, light);
+          continue;
+        }
+        // -14 is a door, -15 a trapdoor. The plate is coloured wood, and the swing turns this same plate.
+        if (c.flame == -14 || c.flame == -15) {
+          int layer = c.tile < ts.count ? (int)c.tile : -1;
+          const VoxelMeshGL* plate = layer >= 0 ? doorPlateMesh(ts, layer) : nullptr;
+          if (plate && plate->ready()) {
+            if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+            const int PS = ts.size > 0 ? ts.size : 32;
+            const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
+            const bool trap = c.flame == -15;
+            const bool right = (c.only & 8) != 0;
+            const float open = (c.only & 4) ? 1.f : 0.f;
+            const mat4 model = doorPanelModel(cell, c.only & 3, trap, right, open, PS);
+            VR.draw(*plate, model, VoxelLight{(lit >> 4) / 15.f, (lit & 15) / 15.f});
+          }
           continue;
         }
         // -5 is a lit campfire: four walls inset the way the chunk plates were. -6 is a fire block: two crosses.
@@ -1296,6 +1315,79 @@ public:
 };
 
 } // namespace
+
+// A door's picture as one plate, three sixteenths thick, with a hole where the picture is clear.
+// Shut, the wood stands on z 13..16. The swing turns this same plate.
+const VoxelMeshGL* doorPlateMesh(const TileSet& ts, int layer) {
+  struct Cache {
+    const u8* px = nullptr; int count = -1, size = -1;
+    std::unordered_map<int, std::unique_ptr<VoxelMeshGL>> m;
+  };
+  static Cache cache;
+  if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
+    cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
+  }
+  auto it = cache.m.find(layer);
+  if (it != cache.m.end()) return it->second.get();
+  const int S = ts.size > 0 ? ts.size : 32;
+  const int D = std::max(1, S * 3 / 16);
+  VoxelGrid g(ivec3(S, S, D));
+  if (layer >= 0 && layer < ts.count) {
+    for (int y = 0; y < S; y++) for (int x = 0; x < S; x++) {
+      const u8* p = ts.tile(layer) + ((size_t)(S - 1 - y) * S + x) * 4;
+      if (p[3] < 128) continue;
+      u32 c = voxRGBA(p[0], p[1], p[2]);
+      for (int z = 0; z < D; z++) g.set(x, y, z, c);
+    }
+  }
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  mesh->upload(md);
+  const VoxelMeshGL* out = mesh.get();
+  cache.m.emplace(layer, std::move(mesh));
+  return out;
+}
+
+// Shut pose in the cell, then the hinge, then the facing turn. `right` is meta bit 8:
+// a door hinged on the right, or a trapdoor on the ceiling. `open` runs from 0 shut to 1 open.
+mat4 doorPanelModel(vec3 cellMin, int facing, bool trap, bool right, float open, int grid) {
+  const float S = (float)(grid > 0 ? grid : 32);
+  auto aboutY = [](float px, float pz, float ang) {
+    mat4 q = glm::translate(mat4(1), vec3(px, 0, pz) / 16.f);
+    q = glm::rotate(q, ang, vec3(0, 1, 0));
+    return glm::translate(q, -vec3(px, 0, pz) / 16.f);
+  };
+  auto aboutX = [](float py, float pz, float ang) {
+    mat4 q = glm::translate(mat4(1), vec3(0, py, pz) / 16.f);
+    q = glm::rotate(q, ang, vec3(1, 0, 0));
+    return glm::translate(q, -vec3(0, py, pz) / 16.f);
+  };
+  mat4 pose(1.f);
+  if (!trap) {
+    pose[0] = vec4(1.f / S, 0, 0, 0);
+    pose[1] = vec4(0, 1.f / S, 0, 0);
+    pose[2] = vec4(0, 0, 1.f / S, 0);
+    pose[3] = vec4(0, 0, 13.f / 16.f, 1);
+  } else if (right) {
+    pose[0] = vec4(1.f / S, 0, 0, 0);
+    pose[1] = vec4(0, 0, -1.f / S, 0);
+    pose[2] = vec4(0, 1.f / S, 0, 0);
+    pose[3] = vec4(0, 13.f / 16.f, 1.f, 1);
+  } else {
+    pose[0] = vec4(1.f / S, 0, 0, 0);
+    pose[1] = vec4(0, 0, -1.f / S, 0);
+    pose[2] = vec4(0, 1.f / S, 0, 0);
+    pose[3] = vec4(0, 0, 1.f, 1);
+  }
+  mat4 hinge(1.f);
+  if (trap) hinge = right ? aboutX(14.5f, 1.5f, PI / 2 * open) : aboutX(1.5f, 1.5f, -PI / 2 * open);
+  else hinge = aboutY(right ? 14.5f : 1.5f, 14.5f, (right ? -1.f : 1.f) * PI / 2 * open);
+  const float turn = -(facing & 3) * PI / 2;
+  return glm::translate(mat4(1), cellMin + vec3(0.5f, 0, 0.5f))
+      * glm::rotate(mat4(1), turn, vec3(0, 1, 0))
+      * glm::translate(mat4(1), vec3(-0.5f, 0, -0.5f))
+      * hinge * pose;
+}
 
 void registerTorchLayer() { registerRenderLayer([](GameSession&) { return std::make_shared<TorchLayer>(); }); }
 

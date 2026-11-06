@@ -389,9 +389,25 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
     }
   }
   if ((kind == ShapeKind::Ladder || (c.opt.detail && T.tint && kind == ShapeKind::Carpet)) && emitVoxelLeafPlate(c, d, id, x, y, z, meta)) return;
-  // A door is the same kind of cutout as a ladder: the relief march walks into the window and the
-  // wood drops out when you look along it. The plate is real wood, and the swing turns this same plate.
-  if ((kind == ShapeKind::Door || kind == ShapeKind::Trapdoor) && emitVoxelDoor(c, d, id, x, y, z, meta)) return;
+  // A door or a trapdoor near you is a thick coloured plate, the same one the swing turns.
+  // Farther off the chunk plate stays, and the swing keeps that picture too.
+  if (kind == ShapeKind::Door || kind == ShapeKind::Trapdoor) {
+    c.out.hasTorch = true;
+    if (c.opt.torchVoxels) {
+      int tile = self.faces[0];
+      if (kind == ShapeKind::Door && (meta & 16) && T.upperTile >= 0) tile = T.upperTile;
+      if (tile >= 0) {
+        CandleSpot s;
+        s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+        s.tile = (u16)tile;
+        s.only = meta;
+        s.flame = kind == ShapeKind::Trapdoor ? (i16)-15 : (i16)-14;
+        c.out.candles.push_back(s);
+        return;
+      }
+    }
+    if (emitVoxelDoor(c, d, id, x, y, z, meta)) return;
+  }
   MeshShapeNb nb(c, x, y, z);
   thread_local std::vector<ShapeBox> boxes;
   if (!shapeBoxes(id, meta, nb, ShapePurpose::Draw, boxes)) return;

@@ -14,6 +14,9 @@
 
 namespace dq {
 
+const VoxelMeshGL* doorPlateMesh(const TileSet& ts, int layer);
+mat4 doorPanelModel(vec3 cellMin, int facing, bool trap, bool right, float open, int grid);
+
 namespace {
 const float SLOW = std::getenv("DQ_SWING_SLOW") ? 25.f : 1.f;   // tests: slow enough to see
 const float SWING = 0.22f * SLOW, HOLD = 0.2f;   // seconds turning, then drawn still while the mesh catches up
@@ -202,15 +205,16 @@ public:
     if (live.empty()) return;
     World& w = s.world();
     const Registry& R = reg();
-    // A door keeps the tile picture for the whole swing, so the plate does not change.
-    // A gate near you swings as the same coloured rails the resting gate uses.
-    auto gateNear = [&](const Swing& o) {
-      if (R.tShape[o.id] != ShapeKind::Gate) return false;
+    // A far door keeps the tile picture for the whole swing, so the plate does not change.
+    // Near you a gate swings as coloured rails, and a door or trapdoor as the same coloured plate it rests as.
+    auto plateNear = [&](const Swing& o) {
+      const int k = R.tShape[o.id];
+      if (k != ShapeKind::Gate && k != ShapeKind::Door && k != ShapeKind::Trapdoor) return false;
       vec3 rel = f.cam.rel(glm::dvec3(o.p));
       return glm::dot(rel, rel) < 40.f * 40.f;
     };
     bool anyPicture = false;
-    for (auto& o : live) if (!gateNear(o)) { anyPicture = true; break; }
+    for (auto& o : live) if (!plateNear(o)) { anyPicture = true; break; }
     ContentDraw& cd = contentDraw();
     bool cdOn = false;
     std::shared_ptr<const MeshTiles> tilesHold;
@@ -221,7 +225,7 @@ public:
       tiles = tilesHold.get();
     }
     for (auto& o : live) {
-      if (gateNear(o)) continue;
+      if (plateNear(o)) continue;
       if (!cdOn) continue;
       const BlockDef& d = R.block(o.id);
       const BlockTraits& T = traits(o.id);
@@ -265,18 +269,31 @@ public:
     VoxelRenderer& VR = voxelRenderer();
     const TileSet& tileSet = s.app.tiles;
     for (auto& o : live) {
-      if (!gateNear(o)) continue;
+      if (!plateNear(o)) continue;
       const BlockDef& d = R.block(o.id);
       const float a = std::min(1.f, o.t / SWING), e = a * a * (3 - 2 * a);
       const float open = (o.to & 4) ? e : 1 - e;
       const int fm = o.to & 3;
-      const int side = d.faces[0], top = d.faces[2], bot = d.faces[3];
       const u8 l = w.getLight(o.p.x, o.p.y, o.p.z);
       const VoxelLight light{(l >> 4) / 15.f, (l & 15) / 15.f};
       mat4 m = glm::translate(mat4(1), f.cam.rel(glm::dvec3(o.p)) + vec3(0.5f, 0, 0.5f));
       m = glm::rotate(m, -fm * PI / 2, vec3(0, 1, 0));
       m = glm::translate(m, vec3(-0.5f, 0, -0.5f));
       if (!voxOn) { VR.begin(f, f.cam.viewProj); voxOn = true; }
+      const int kind = R.tShape[o.id];
+      if (kind == ShapeKind::Door || kind == ShapeKind::Trapdoor) {
+        const BlockTraits& T = traits(o.id);
+        int doorTile = d.faces[0];
+        if (kind == ShapeKind::Door && (o.to & 16) && T.upperTile >= 0) doorTile = T.upperTile;
+        const int grid = tileSet.size > 0 ? tileSet.size : 32;
+        const VoxelMeshGL* plate = doorTile >= 0 ? doorPlateMesh(tileSet, doorTile) : nullptr;
+        if (plate && plate->ready()) {
+          const bool right = (o.to & 8) != 0;
+          VR.draw(*plate, doorPanelModel(f.cam.rel(glm::dvec3(o.p)), fm, kind == ShapeKind::Trapdoor, right, open, grid), light);
+        }
+        continue;
+      }
+      const int side = d.faces[0], top = d.faces[2], bot = d.faces[3];
       drawGateBox(VR, tileSet, m, side, top, bot, 0, 5, 7, 2, 16, 9, light);
       drawGateBox(VR, tileSet, m, side, top, bot, 14, 5, 7, 16, 16, 9, light);
       for (int k = 0; k < 2; k++) {
