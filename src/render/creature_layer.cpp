@@ -375,6 +375,20 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
       else m = glm::rotate(m, ip.age * 8, vec3(1, 0, 0));
       m = glm::scale(m, vec3(k == "rocket" ? 0.6f : 0.35f));
       D.draw(im.gl, m * im.matrix(), lightAt(w, ip.pos));
+    } else if (t == "firework") {
+      // The stick keeps the colour painted on it. The picture stands upright, so it tips to follow the climb.
+      std::string col = e.data.value("color", "");
+      std::string key = col.empty() ? std::string("firework_rocket") : col + "_firework_rocket";
+      if (!reg().item(key)) key = "firework_rocket";
+      const VoxelModel& im = itemModel(key);
+      if (!im.ready()) continue;
+      mat4 m = glm::translate(mat4(1), rel);
+      vec3 v = e.vel;
+      float horiz = std::hypot(v.x, v.z);
+      m = glm::rotate(m, -std::atan2(v.x, v.z), vec3(0, 1, 0));
+      m = glm::rotate(m, std::atan2(horiz, v.y), vec3(1, 0, 0));
+      m = glm::scale(m, vec3(0.4f));
+      D.draw(im.gl, m * im.matrix(), lightAt(w, ip.pos));
     } else if (t == "projectile") {
       std::string k = e.data.value("kind", "fireball");
       // The skull you place is the one that flies. It keeps the bone and the face.
