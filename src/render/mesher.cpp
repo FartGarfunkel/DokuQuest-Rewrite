@@ -1039,7 +1039,9 @@ u16 sectionVisibility(const MeshInput& in) {
 // a grate, a mesh, a steel frame, a dungeon gate, a gate barrier,
 // a six-faced machine (a piston, a dispenser, an observer), or a plain work block
 // (a crafting table, a barrel, a bookshelf, a machine).
-// Near the player that cube is coloured voxels. A hole in a grate's picture stays empty.
+// The cube is coloured voxels however far the section sits. Every block with the same
+// pictures shares one mesh, so a village's quest board, chests and pumpkins are not a
+// second copy of the chunk picture. A hole in a grate's picture stays empty.
 // A lit furnace's front still changes frame.
 // A machine's side picture is turned the same way the chunk mesh turns it.
 // Returns true when the cube was recorded and must not also be drawn on the chunk mesh.
@@ -1115,8 +1117,10 @@ bool emitNearStation(MeshCtx& c, BlockId id, int x, int y, int z, u8 meta) {
     }
   }
   if (!want) return false;
+  // hasTorch stays set so a section that also holds a plant still joins the near-torch rebuild.
+  // The station itself is recorded either way: past the old 40-block gate the chunk cube was
+  // the picture the player was still seeing on a quest board, a chest, a table, a furnace, a pumpkin.
   c.out.hasTorch = true;
-  if (!c.opt.torchVoxels) return false;
   CandleSpot s;
   s.x0 = 0; s.y0 = 0; s.z0 = 0; s.x1 = 16; s.y1 = 16; s.z1 = 16;
   s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
