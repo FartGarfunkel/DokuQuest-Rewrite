@@ -547,8 +547,8 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   const std::vector<ShapeBox>* boxes = modelShape(mi);
   if (!boxes) return;
   // Pots, chairs, anvils and the other still props. A flag flaps, a hanging lantern swings, and a
-  // chain is two crossed pictures, so those stay on the chunk mesh. A box with a turned grain or its
-  // own end-cap picture stays there too.
+  // chain is two crossed pictures, so those stay on the chunk mesh. A turned grain stays there too.
+  // A grindstone's rim and a saw's picture shift are baked with the rest of the prop.
   auto endsWith = [](const std::string& s, const char* suf) {
     size_t n = std::char_traits<char>::length(suf);
     return s.size() >= n && s.compare(s.size() - n, n, suf) == 0;
@@ -563,12 +563,14 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       || shapeName == "wall_weapon_rack" || shapeName == "brazier" || shapeName == "loose_stones"
       || shapeName == "sleeping_bag" || shapeName == "sieve" || shapeName == "siphon"
       || shapeName == "grapple_anchor" || shapeName == "end_portal_frame" || shapeName == "end_portal_frame_eye"
-      || shapeName == "lantern";
+      || shapeName == "lantern" || shapeName == "grindstone" || shapeName == "stonecutter"
+      || shapeName == "grave" || shapeName == "sculk_sensor" || shapeName == "sculk_shrieker"
+      || shapeName == "spike_trap";
   bool plain = nearProp;
   static int chainTile = -2;
   if (chainTile == -2) chainTile = R.tile("chain");
   if (plain) for (auto& b : *boxes) {
-    if (b.fit || b.grain || b.tv != 0.f || b.tu != 0.f || b.uvT || b.xt >= 0 || b.zt >= 0 || b.only != 63) plain = false;
+    if (b.fit || b.grain || b.tu != 0.f || b.uvT || b.zt >= 0 || b.only != 63) plain = false;
     if (chainTile >= 0 && (b.side == chainTile || b.end == chainTile)) plain = false;
   }
   if (nearProp) c.out.hasTorch = true;
