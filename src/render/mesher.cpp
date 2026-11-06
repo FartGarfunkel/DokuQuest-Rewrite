@@ -674,8 +674,12 @@ u16 sectionVisibility(const MeshInput& in) {
 bool emitNearStation(MeshCtx& c, BlockId id, int x, int y, int z, u8 meta) {
   const BlockDef& self = c.R.block(id);
   const BlockTraits& T = traits(id);
-  if (T.axis || T.leaves || T.tint) return false;
   const std::string& k = self.key;
+  // A hay bale, a bone block and a sugar-cane bundle turn on an axis, and a placed one is rare.
+  // Logs, pillars, basalt and froglights stay on the chunk mesh.
+  bool axisCube = k == "hay_bale" || k == "bone_block" || k == "sugar_cane_bundle"
+      || k == "dried_sugar_cane_bundle";
+  if ((T.axis && !axisCube) || T.leaves || T.tint) return false;
   auto ends = [&](const char* suf) {
     size_t n = std::char_traits<char>::length(suf);
     return k.size() >= n && k.compare(k.size() - n, n, suf) == 0;
@@ -710,8 +714,19 @@ bool emitNearStation(MeshCtx& c, BlockId id, int x, int y, int z, u8 meta) {
           || k == "dried_kelp_block" || k == "millstone" || k == "sawmill" || k == "crusher"
           || k == "harvester" || k == "jukebox" || k == "command_block" || k == "target"
           || k == "statue" || k == "steam_vent" || k == "waystone" || k == "sculk_catalyst"
-          || k == "pumpkin" || k == "melon" || k == "ancient_debris";
-    if (want) {
+          || k == "pumpkin" || k == "melon" || k == "ancient_debris"
+          || k == "hay_bale" || k == "bone_block" || k == "sugar_cane_bundle"
+          || k == "dried_sugar_cane_bundle";
+    if (want && T.axis) {
+      // Same end picture and quarter-turn emitCube uses when the block lies on its side.
+      int axis = std::min(2, (int)(meta & 3));
+      static const int AXIS_END[3][2] = {{2, 3}, {0, 1}, {4, 5}};
+      for (int f = 0; f < 6; f++) {
+        tile[f] = (f == AXIS_END[axis][0] || f == AXIS_END[axis][1]) ? self.faces[2] : self.faces[0];
+        int rot = (axis == 1 && f >= 2) || (axis == 2 && f <= 1) ? 1 : 0;
+        faceRot = (u16)(faceRot | (u16)((rot & 3) << (f * 2)));
+      }
+    } else if (want) {
       int frontFace = T.hasFront ? FACING_FACE[meta & 3] : -1;
       for (int f = 0; f < 6; f++) {
         tile[f] = self.faces[f];
