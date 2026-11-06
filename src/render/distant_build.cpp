@@ -287,10 +287,9 @@ void buildTile(const TileInput& in, TileOutput& out) {
   MeshOut M{out.verts, (float)size};
   out.verts.reserve((size_t)N * N * 12);
   auto faceOf = [&](BlockId id, int f) -> u16 { return R.block(id).faces[f]; };
-  // flags: 1 water, 2 glows (lava), 4 tint every pixel (ice), 8 a flat colour and no picture.
-  // Every far face is that colour. Ice keeps the sea-coloured picture it already had. Bits 8..10 are the face.
+  // flags: 1 water, 2 glows (lava), 8 a flat colour and no picture.
+  // Every far face is that colour, ice included (it is already the sea's blue). Bits 8..10 are the face.
   auto flagsOf = [&](BlockId id) -> u16 {
-    if (id == ct.ice) return (u16)(1 | 4);
     return (u16)(8 | (R.tLiquid[id] == 1 ? 1 : 0) | (R.tLiquid[id] == 2 ? 2 : 0));
   };
   // a face's colour: the tint (white if none); a flat-coloured block's own colour, tinted
