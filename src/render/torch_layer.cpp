@@ -707,6 +707,46 @@ const VoxelMeshGL* spritePlate(const TileSet& ts, int layer, bool glow) {
   return out;
 }
 
+// A pot plant whose picture is marked for the climate. Alpha 253 takes the grass or leaf colour,
+// then the season, the same mix the chunk picture uses. A stem stays its own colour. Holes stay empty.
+const VoxelMeshGL* tintedSpritePlate(const TileSet& ts, int layer, u32 tint, u16 season) {
+  struct Cache {
+    const u8* px = nullptr; int count = -1, size = -1;
+    std::unordered_map<u64, std::unique_ptr<VoxelMeshGL>> m;
+  };
+  static Cache cache;
+  if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
+    cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
+  }
+  const u64 key = (u64)std::max(layer, 0) | ((u64)(tint & 0xFFFFFFu) << 16) | ((u64)season << 40);
+  auto it = cache.m.find(key);
+  if (it != cache.m.end()) return it->second.get();
+  const int S = ts.size > 0 ? ts.size : 32;
+  VoxelGrid g(ivec3(S, S, 1));
+  vec3 tv((tint & 255) / 255.f, ((tint >> 8) & 255) / 255.f, ((tint >> 16) & 255) / 255.f);
+  tv *= 1.3f;
+  const float sa = (season & 15) / 8.f;
+  if (sa > 0.f) {
+    vec3 sc(((season >> 4) & 15) / 8.f, ((season >> 8) & 15) / 8.f, ((season >> 12) & 15) / 8.f);
+    tv = glm::mix(tv, sc * (glm::dot(tv, vec3(0.299f, 0.587f, 0.114f)) * 1.6f), sa);
+  }
+  if (layer >= 0 && layer < ts.count) {
+    for (int y = 0; y < S; y++) for (int x = 0; x < S; x++) {
+      const u8* p = ts.tile(layer) + ((size_t)(S - 1 - y) * S + x) * 4;
+      if (p[3] < 128) continue;
+      const float w = clampv((1.f - p[3] / 255.f) * 127.5f, 0.f, 1.f);
+      auto mix1 = [&](int c, float t) { return clampv((int)std::lround(c * (1.f + (t - 1.f) * w)), 0, 255); };
+      g.set(x, y, 0, voxRGBA(mix1(p[0], tv.r), mix1(p[1], tv.g), mix1(p[2], tv.b)));
+    }
+  }
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  auto mesh = std::make_unique<VoxelMeshGL>();
+  mesh->upload(md);
+  const VoxelMeshGL* out = mesh.get();
+  cache.m.emplace(key, std::move(mesh));
+  return out;
+}
+
 // The flame picture is a few texels inside the whole tile. One voxel per texel keeps that sprite;
 // a plate only as wide as the quad (about four voxels) samples the empty part and the flame vanishes.
 const VoxelMeshGL* flamePlate(const TileSet& ts, int layer) {
@@ -1436,11 +1476,22 @@ public:
           VR.draw(*plate, model, VoxelLight{(lit >> 4) / 15.f, (lit & 15) / 15.f});
           continue;
         }
-        // -3 is a flower in a pot: two crossed pictures, coloured, standing in the pot's mouth.
+        // -3 is a plant in a pot: two crossed pictures. Grass and ferns carry this place's climate (only is 1,
+        // nx and pz hold that colour) and take the season the chunk picture uses.
         if (c.flame == -3) {
           int layer = c.tile < ts.count ? (int)c.tile : -1;
           if (layer >= 0 && anim[layer] >= 0) layer = anim[layer];
-          const VoxelMeshGL* plate = layer >= 0 ? spritePlate(ts, layer, false) : nullptr;
+          const VoxelMeshGL* plate = nullptr;
+          if (layer >= 0 && c.only == 1) {
+            const u32 col = (u32)c.nx | ((u32)c.pz << 16);
+            const float sum = ((col & 255) + ((col >> 8) & 255) + ((col >> 16) & 255)) / 255.f;
+            if (sum < 2.99f) {
+              auto q8 = [](float v) { return (int)std::lround(clampv(v, 0.f, 1.f) * 8.f); };
+              const u16 season = (u16)(q8(f.season.a) | (q8(f.season.r) << 4) | (q8(f.season.g) << 8) | (q8(f.season.b) << 12));
+              plate = tintedSpritePlate(ts, layer, col, season);
+            }
+          }
+          if (!plate) plate = layer >= 0 ? spritePlate(ts, layer, false) : nullptr;
           if (!plate || !plate->ready()) continue;
           if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
           const int PS = ts.size > 0 ? ts.size : 32;
