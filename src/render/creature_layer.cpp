@@ -70,7 +70,7 @@ VoxelLight lightAt(const World& w, vec3 p) { u8 l = w.getLight(ifloor(p.x), iflo
 
 // ------------------------------------------------------------------ small meshes (shadow disc, square, glowing balls)
 struct SmallMeshes {
-  VoxelMeshGL disc, square, fireball, spit, snow;
+  VoxelMeshGL disc, square, fireball, spit, snow, egg, slime, shell;
   bool built = false;
   void build() {
     if (built) return;
@@ -90,7 +90,14 @@ struct SmallMeshes {
       for (int z = 0; z < n; z++) for (int y = 0; y < n; y++) for (int x = 0; x < n; x++) { vec3 q = vec3(x, y, z) + 0.5f - r; if (glm::dot(q, q) > r * r) g.set(x, y, z, 0); }
       VoxelMeshData m2; buildVoxelMesh(g, m2); out.upload(m2);
     };
+    // An egg and a slimeball are the picture itself, so the throw keeps that colour. A shulker's
+    // bolt is a bead of the shell's purpur.
+    auto picture = [&](VoxelMeshGL& out, int n, const char* tile) {
+      VoxelGrid g; buildTileBox(g, ivec3(n), tile, false);
+      VoxelMeshData m2; buildVoxelMesh(g, m2); out.upload(m2);
+    };
     ball(fireball, 8, "fireball", true); ball(spit, 4, "white", false); ball(snow, 6, "snow", false);
+    picture(egg, 10, "egg"); picture(slime, 10, "slime_ball"); ball(shell, 6, "purpur_block", false);
   }
 };
 static SmallMeshes& small() { static SmallMeshes* m = new SmallMeshes(); m->build(); return *m; }
@@ -370,11 +377,20 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
       D.draw(im.gl, m * im.matrix(), lightAt(w, ip.pos));
     } else if (t == "projectile") {
       std::string k = e.data.value("kind", "fireball");
+      // The skull you place is the one that flies. It keeps the bone and the face.
+      if (k == "wither_skull") {
+        const VoxelModel& im = itemModel("wither_skeleton_skull");
+        if (!im.ready()) continue;
+        mat4 m = glm::translate(mat4(1), rel);
+        m = glm::rotate(m, ip.age * 6, vec3(0.3f, 1, 0.2f));
+        D.draw(im.gl, glm::scale(m, vec3(0.42f)) * im.matrix(), lightAt(w, ip.pos));
+        continue;
+      }
       SmallMeshes& S = small();
       bool gust = k == "gust", big = k == "ghast";   // a zephyr's gust: a pale puff; a ghast's fireball: bigger
-      const VoxelMeshGL& mesh = k == "spit" ? S.spit : k == "snow" || gust ? S.snow : S.fireball;
-      float sz = k == "spit" ? 0.12f : k == "snow" ? 0.22f : gust ? 0.45f + std::sin(ip.age * 20) * 0.05f : big ? 0.7f : 0.35f;
-      int n = k == "spit" ? 4 : k == "snow" || gust ? 6 : 8;
+      const VoxelMeshGL& mesh = k == "spit" ? S.spit : k == "snow" || gust ? S.snow : k == "egg" ? S.egg : k == "slime" ? S.slime : k == "shulker" ? S.shell : S.fireball;
+      float sz = k == "spit" ? 0.12f : k == "snow" ? 0.22f : k == "egg" ? 0.46f : k == "slime" ? 0.40f : k == "shulker" ? 0.28f : gust ? 0.45f + std::sin(ip.age * 20) * 0.05f : big ? 0.7f : 0.35f;
+      int n = k == "spit" ? 4 : k == "snow" || gust || k == "shulker" ? 6 : k == "egg" || k == "slime" ? 10 : 8;
       mat4 m = glm::translate(mat4(1), rel);
       m = glm::rotate(m, ip.age * 6, vec3(0.3f, 1, 0.2f));
       m = glm::scale(glm::translate(m, vec3(-sz / 2)), vec3(sz / n));
