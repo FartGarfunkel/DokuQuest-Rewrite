@@ -549,6 +549,7 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   // Pots, chairs, anvils and the other still props. A flag flaps, a hanging lantern swings, and a
   // chain is two crossed pictures, so those stay on the chunk mesh. A turned grain stays there too.
   // A grindstone's rim and a saw's picture shift are baked with the rest of the prop.
+  // A cold campfire is baked too. A lit one keeps its grain on the chunk picture, and its flame still draws.
   auto endsWith = [](const std::string& s, const char* suf) {
     size_t n = std::char_traits<char>::length(suf);
     return s.size() >= n && s.compare(s.size() - n, n, suf) == 0;
@@ -565,7 +566,7 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       || shapeName == "grapple_anchor" || shapeName == "end_portal_frame" || shapeName == "end_portal_frame_eye"
       || shapeName == "lantern" || shapeName == "grindstone" || shapeName == "stonecutter"
       || shapeName == "grave" || shapeName == "sculk_sensor" || shapeName == "sculk_shrieker"
-      || shapeName == "spike_trap";
+      || shapeName == "spike_trap" || shapeName == "campfire" || shapeName == "soul_campfire";
   bool plain = nearProp;
   static int chainTile = -2;
   if (chainTile == -2) chainTile = R.tile("chain");
@@ -573,7 +574,7 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
     if (b.fit || b.grain || b.tu != 0.f || b.uvT || b.zt >= 0 || b.only != 63) plain = false;
     if (chainTile >= 0 && (b.side == chainTile || b.end == chainTile)) plain = false;
   }
-  if (nearProp) c.out.hasTorch = true;
+  if (plain) c.out.hasTorch = true;
   if (plain && c.opt.torchVoxels) {
     ModelSpot s;
     s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
