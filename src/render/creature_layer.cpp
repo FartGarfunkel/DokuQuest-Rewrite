@@ -472,7 +472,11 @@ static const VoxelMeshGL* fallingBlockMesh(const TileSet& ts, const FallKey& key
     }
     return voxRGBA(r, gg, b);
   };
-  for (int f = 0; f < 6; f++) {
+  // Top and bottom first. The four sides are written after them and keep the rim, so a log's
+  // bark runs the full height and the end grain stays in the middle of the cap.
+  static const int order[6] = {2, 3, 0, 1, 4, 5};
+  for (int oi = 0; oi < 6; oi++) {
+    int f = order[oi];
     for (int v = 0; v < S; v++) for (int u = 0; u < S; u++) {
       int x = 0, y = 0, z = 0;
       if (f == 0) { x = S - 1; z = u; y = v; }
@@ -481,8 +485,6 @@ static const VoxelMeshGL* fallingBlockMesh(const TileSet& ts, const FallKey& key
       else if (f == 3) { y = 0; x = u; z = v; }
       else if (f == 4) { z = S - 1; x = u; y = v; }
       else { z = 0; x = u; y = v; }
-      // The top and the bottom own their rim, so a log's end grain stays on the end.
-      if (f != 2 && f != 3 && (y == 0 || y == S - 1)) continue;
       if (u32 c = texel((int)key.tile[f], x, y, z, f)) g.set(x, y, z, c);
     }
   }
