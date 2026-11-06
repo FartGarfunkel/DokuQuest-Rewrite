@@ -828,14 +828,20 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
     for (auto& [i, plant] : c.in.potPlants) if (i == idx) {
       int pt = R.block(plant).faces[0];
       float py = y + (lift + 4) / 16;
-      // A flower near you is coloured voxels in the pot. Grass and ferns stay on the chunk picture so the climate still tints them.
+      // A plant near you is coloured voxels in the pot. Grass and ferns keep this place's climate, and the season.
       const BlockTraits& PT = traits(plant);
-      if (plain && c.opt.torchVoxels && pt >= 0 && !PT.tint) {
+      if (plain && c.opt.torchVoxels && pt >= 0) {
         CandleSpot s;
         s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
         s.tile = (u16)pt;
         s.sink = lift + 4.f;
         s.flame = -3;
+        if (PT.tint) {
+          const u32 col = c.cornerTint((float)x + 1, (float)z + 1, PT.tint == 2 ? 1 : 0);
+          s.nx = (u16)(col & 0xFFFF);
+          s.pz = (u16)((col >> 16) & 0xFFFF);
+          s.only = 1;
+        }
         c.out.candles.push_back(s);
       } else if (!emitVoxelPlates(c, d, pt, o.x, py, o.z, 0.25f, 0.75f, sk, bl, false))
         emitPlanes(c, d, pt, o.x, py, o.z, 0.25f, 0.75f, sk, bl, true);
