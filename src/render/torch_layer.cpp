@@ -1588,6 +1588,23 @@ const VoxelMeshGL* sugarCaneMesh(const TileSet& ts, int layer, int sx, int sz, b
   return meshOut();
 }
 
+// A solid block stores no light of its own. The air around a chest, a pumpkin, a furnace or a
+// crafting table is what lights it, the same sample an open chest takes from the space above.
+VoxelLight blockFaceLight(const World& w, int x, int y, int z) {
+  int sky = 0, blk = 0;
+  auto take = [&](int ax, int ay, int az) {
+    if (!w.isLoaded(ax, ay, az)) return;
+    const u8 l = w.getLight(ax, ay, az);
+    sky = std::max(sky, (int)(l >> 4));
+    blk = std::max(blk, (int)(l & 15));
+  };
+  take(x, y, z);
+  take(x + 1, y, z); take(x - 1, y, z);
+  take(x, y + 1, z); take(x, y - 1, z);
+  take(x, y, z + 1); take(x, y, z - 1);
+  return {sky / 15.f, blk / 15.f};
+}
+
 class TorchLayer : public RenderLayer {
 public:
   const char* name() const override { return "voxel-torches"; }
@@ -1988,8 +2005,7 @@ public:
         bool glow = c.flame <= -10;
         const VoxelMeshGL* mesh = c.flame == -2 ? (layer >= 0 ? scaffoldMesh(ts, layer, topL, botL) : nullptr)
                                                  : (layer >= 0 ? candleMesh(ts, layer, box, topL, botL, glow, nxL, pzL, nzL, c.only, c.faceRot) : nullptr);
-        const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
-        VoxelLight light{(lit >> 4) / 15.f, (lit & 15) / 15.f};
+        const VoxelLight light = blockFaceLight(w, (int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
         if (mesh && mesh->ready()) {
           if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
           float dx = std::max(c.x1 - c.x0, 0.01f), dy = std::max(c.y1 - c.y0, 0.01f), dz = std::max(c.z1 - c.z0, 0.01f);
@@ -2024,8 +2040,8 @@ public:
         if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
         vec3 corner = cell + vec3(m.ox, m.sink / 16.f, m.oz);
         const mat4 model = glm::translate(mat4(1), corner) * glm::scale(mat4(1), vec3(1.f / 32.f));
-        const u8 lit = w.getLight((int)origin.x + m.cx, (int)origin.y + m.cy, (int)origin.z + m.cz);
-        VR.draw(*mesh, model, VoxelLight{(lit >> 4) / 15.f, (lit & 15) / 15.f});
+        const VoxelLight light = blockFaceLight(w, (int)origin.x + m.cx, (int)origin.y + m.cy, (int)origin.z + m.cz);
+        VR.draw(*mesh, model, light);
       }
     });
     s.worldRenderer.forEachRodSection([&](vec3 origin, const std::vector<RodSpot>& spots) {

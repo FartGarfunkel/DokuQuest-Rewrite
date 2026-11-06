@@ -296,9 +296,10 @@ void buildTile(const TileInput& in, TileOutput& out) {
   auto colourOf = [&](BlockId id, int k, bool side) -> vec3 {
     // sea ice: near, it's see-through with the sea under it; far off it's drawn solid, so it takes the sea's blue
     if (id == ct.ice) return glm::min(unpack(climateWater(temp[k], humid[k])) * 1.15f, vec3(255.f));   // drawn as the near ice looks: sea under it
-    // The same calm colours the nearby chunks use. The 0.969 meets the far water's own darkening, so the sea matches.
-    if (R.tLiquid[id] == 1) return glm::min(unpack(climateWater(temp[k], humid[k])) * 0.969f, vec3(255.f));
-    if (R.tLiquid[id] == 2) return vec3(0.55f, 0.12f, 0.02f) * 255.f;
+    // The still water picture is a light grey the climate paints. 1.33 meets the far top's own
+    // darkening, so the horizon meets that near face. Lava is the still picture's own orange.
+    if (R.tLiquid[id] == 1) return glm::min(unpack(climateWater(temp[k], humid[k])) * 1.33f, vec3(255.f));
+    if (R.tLiquid[id] == 2) return vec3(222.f, 81.f, 0.f);
     if (R.tLiquid[id] == 3) return vec3(0.697f, 0.837f, 0.202f) * 255.f;
     vec3 t = tintOf(ct, id, temp[k], humid[k], stint[k]);
     if (side && ct.tint[id] == 1) t = vec3(1);   // grass sides: the picture marks which pixels take the tint
