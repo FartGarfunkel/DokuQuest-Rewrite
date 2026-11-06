@@ -545,6 +545,8 @@ void emitGrassTufts(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
     float sh0 = 0.62f + rnd() * 0.08f, sh1 = 0.95f + rnd() * 0.05f;
     MV v[4] = {{vec3(px - ca, top, pz - sa), uv, sk, bl, sh0, 0}, {vec3(px + ca, top, pz + sa), uv, sk, bl, sh0, 0},
                {vec3(px + ca * tw + lx, top + hh, pz + sa * tw + lz), uvT, sk, bl, sh1, tip}, {vec3(px - ca * tw + lx, top + hh, pz - sa * tw + lz), uvT, sk, bl, sh1, tip}};
+    // The foot stays put and the tip still sinks with distance. The colour is the grass under the blade.
+    if (c.opt.colourStep > 0 && bakeColourQuad(c, d, v, tile, NORMAL_NONE, Mat::Cutout | Mat::NoRelief, 0, true, true)) continue;
     c.quad2(d, v, tile, NORMAL_NONE, Mat::Cutout | Mat::NoRelief);
   }
   c.tint = 0xFFFFFF; c.tintKind = 0;
