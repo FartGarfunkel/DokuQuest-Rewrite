@@ -169,6 +169,14 @@ public:
     VR.begin(f, f.cam.viewProj);
     int realm = s.player->realm;
     std::unordered_map<std::string, Minecart*> byUid;
+    // A fuse and a redstone line both send up the same block. The pictures are the TNT tile: red sides, white top.
+    auto drawLitTnt = [&](vec3 at, float fuse, float age) {
+      const VoxelModel& im = itemModel("tnt");
+      if (!im.ready()) return;
+      float sc = 1 + std::max(0.f, 0.4f - fuse) * 0.4f;
+      bool flash = (int)std::floor(age * 5) % 2 == 0;
+      VR.draw(im.gl, T(at + vec3(0, 0.5f, 0)) * glm::scale(mat4(1), vec3(sc)) * im.matrix(), VoxelLight{1, 1}, flash ? vec4(1, 1, 1, 0.5f) : vec4(0));
+    };
     for (auto& e : s.level->entities()) if (auto* c = dynamic_cast<Minecart*>(e.get())) if (!c->removed && c->realm == realm) byUid[c->uid] = c;
     for (auto& e : s.level->entities()) {
       if (e->removed || e->realm != realm) continue;
@@ -177,13 +185,8 @@ public:
       if (auto* c = dynamic_cast<Minecart*>(e.get())) { if (f.cam.frustum.sphere(rel, 2)) drawCart(s, w, *c, rel, byUid); }
       else if (auto* b = dynamic_cast<Boat*>(e.get())) { if (f.cam.frustum.sphere(rel, b->ship() ? 10.f * b->scale() : 4.f)) drawBoat(s, w, *b, rel); }
       else if (auto* a = dynamic_cast<PistonAnim*>(e.get())) drawPiston(s, w, *a, f);
-      else if (auto* t = dynamic_cast<PrimedTnt*>(e.get())) {
-        const VoxelModel& im = itemModel("tnt");
-        if (!im.ready()) continue;
-        float sc = 1 + std::max(0.f, 0.4f - t->fuse) * 0.4f;
-        bool flash = (int)std::floor(t->age * 5) % 2 == 0;
-        VR.draw(im.gl, T(rel + vec3(0, 0.5f, 0)) * glm::scale(mat4(1), vec3(sc)) * im.matrix(), VoxelLight{1, 1}, flash ? vec4(1, 1, 1, 0.5f) : vec4(0));
-      }
+      else if (auto* t = dynamic_cast<PrimedTnt*>(e.get())) drawLitTnt(rel, t->fuse, t->age);
+      else if (e->type == "tnt") drawLitTnt(rel, e->data.value("fuse", 4.f), e->age);
     }
     drawMech(s, w, f);
     VR.end();
