@@ -312,6 +312,21 @@ void ParticleSystem::spawn(const std::string& kind, vec3 pos, int count, const j
     add(q);
     return;
   }
+  if (kind == "note") {   // the green note glyph rises. The pitch is carried by the sound.
+    Particle q; q.tile = (u16)tile("note_particle"); q.p = pos; q.v = vec3(0, 0.8f, 0);
+    q.life = q.max = 0.8f; q.size = 0.14f; q.light = 0xFF; q.grav = 0;
+    add(q);
+    return;
+  }
+  if (kind == "growth" || kind == "bonemeal") {   // bone meal: the same green glyph, smaller, across the block
+    u16 t = (u16)tile("note_particle");
+    for (int i = 0; i < count; i++) {
+      Particle q; q.tile = t; q.p = pos + vec3(rnd() - 0.5f, rnd() * 0.8f, rnd() - 0.5f); q.v = vec3(0, 0.4f, 0);
+      q.life = q.max = 0.9f; q.size = 0.06f; q.light = 0xFF; q.grav = 0;
+      add(q);
+    }
+    return;
+  }
   (void)few;
   // anything else: a burst of that tile or block, like the original's game.burst(x, y, z, name, n, speed)
   burst(pos, str("tile", kind), count, num("speed", 0.6f), num("grav", 14));
