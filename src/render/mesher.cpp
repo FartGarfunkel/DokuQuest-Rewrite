@@ -663,6 +663,46 @@ u16 sectionVisibility(const MeshInput& in) {
   return vis;
 }
 
+// A chest, a cold furnace, a hive, a workstation, a carved pumpkin or a monster cage.
+// Near the player that cube is coloured voxels. A lit furnace stays on the chunk picture so its fire keeps moving.
+// Returns true when the cube was recorded and must not also be drawn on the chunk mesh.
+bool emitNearStation(MeshCtx& c, BlockId id, int x, int y, int z, u8 meta) {
+  const BlockDef& self = c.R.block(id);
+  const BlockTraits& T = traits(id);
+  if (T.f6 || T.axis || T.leaves || T.tint) return false;
+  const std::string& k = self.key;
+  auto ends = [&](const char* suf) {
+    size_t n = std::char_traits<char>::length(suf);
+    return k.size() >= n && k.compare(k.size() - n, n, suf) == 0;
+  };
+  bool want = k == "monster_spawner";
+  if (!want && self.render == Render::Cube && T.hasFront && k.rfind("lit_", 0) != 0)
+    want = ends("chest") || ends("furnace") || ends("smoker") || k == "bee_nest" || k == "beehive"
+        || k == "smithing_table" || k == "loom" || k == "cartography_table" || k == "fletching_table"
+        || k == "tool_forge" || k == "quest_board"
+        || k == "carved_pumpkin" || k == "jack_o_lantern" || k == "redstone_pumpkin";
+  if (!want) return false;
+  c.out.hasTorch = true;
+  if (!c.opt.torchVoxels) return false;
+  int frontFace = T.hasFront ? FACING_FACE[meta & 3] : -1;
+  int tile[6];
+  for (int f = 0; f < 6; f++) {
+    tile[f] = self.faces[f];
+    if (T.hasFront && f != 2 && f != 3) tile[f] = f == frontFace ? self.faces[4] : self.faces[0];
+  }
+  CandleSpot s;
+  s.x0 = 0; s.y0 = 0; s.z0 = 0; s.x1 = 16; s.y1 = 16; s.z1 = 16;
+  s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+  s.tile = (u16)std::max(tile[0], 0);
+  s.nx = (u16)std::max(tile[1], 0);
+  s.top = (u16)std::max(tile[2], 0);
+  s.bot = (u16)std::max(tile[3], 0);
+  s.pz = (u16)std::max(tile[4], 0);
+  s.nz = (u16)std::max(tile[5], 0);
+  c.out.candles.push_back(s);
+  return true;
+}
+
 void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions& opt) {
   out.opaque.clear(); out.cutout.clear(); out.trans.clear(); out.fx = MeshFx(); out.detail = opt.detail;
   out.torches.clear(); out.candles.clear(); out.levers.clear(); out.models.clear(); out.rods.clear(); out.hasTorch = false; out.torchVox = false;
@@ -700,6 +740,7 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
           break;
         }
         if (surroundedCovered(c, x, y, z)) break;   // every opaque neighbour must itself be carved: a plain neighbour would leave the shared plane undrawn on both sides
+        if (emitNearStation(c, id, x, y, z, meta)) break;
         int pass = R.tTrans[id] ? 2 : rt == Render::Cutout ? 1 : 0;
         emitCube(c, gm, pass, pass == 2 ? out.trans : pass == 1 ? out.cutout : out.opaque, id, x, y, z, meta);
         if (tufts && id == grassBlock && c.at(x, y + 1, z) == AIR) emitGrassTufts(c, out.cutout, id, x, y, z);
