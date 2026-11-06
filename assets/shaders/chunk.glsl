@@ -7,7 +7,8 @@
 //  micro-voxel cell at a time (a voxel parallax), so each micro-voxel shows real depth, side walls and
 //  self-shadowing from the sun, fading to flat past uMicroDist. Legacy does not march: each nearby cell
 //  is one sharp colour from the tile plus a lip, on solid faces and on plates (a door, a ladder, a flame).
-//  Near water is the climate tint. Near lava is a hot crust, not the lava picture.
+//  Water is the climate tint on a calm grey. Lava is a hot crust near you and a calm hot colour farther off.
+//  Acid is the yellow-green of its picture. None of the three samples that picture.
 #include "common.glsl"
 
 #ifdef VERTEX
@@ -49,7 +50,8 @@ void main() {
   // the tint: the climate where the vertex stands (filtered: a corner takes the four columns round it), then its colour
   uint tk = (aV.y >> 26u) & 31u;
   vec3 tint = vec3(1.0);
-  if (tk >= 4u) {   // redstone dust by its power (mesh_shapes.cpp dustColor)
+  if (tk == 20u) tint = vec3(0.697, 0.837, 0.202);   // acid: the calm yellow-green of its picture
+  else if (tk >= 4u) {   // redstone dust by its power (mesh_shapes.cpp dustColor)
     float f = float(tk - 4u) / 15.0;
     tint = vec3(f * 0.6 + (f > 0.0 ? 0.4 : 0.3), clamp(f * f * 0.7 - 0.5, 0.0, 1.0), clamp(f * f * 0.6 - 0.7, 0.0, 1.0)) * (204.0 / 255.0);
   } else if (tk > 0u) {
@@ -74,7 +76,7 @@ void main() {
   vBlock = vec3(float((aLit >> 10u) & 31u), float((aLit >> 5u) & 31u), float(aLit & 31u));
   vNormal = int((aV.x >> 28u) & 7u);
   uint mat = ((aV.z >> 28u) & 15u) | (((aV.x >> 31u) & 1u) << 4u) | (((aV.y >> 31u) & 1u) << 5u) | (((aV.w >> 31u) & 1u) << 6u);
-  if (tk >= 3u) mat |= 128u;   // water and dust take the whole picture (Mat::TintAll)
+  if (tk >= 3u && tk != 20u) mat |= 128u;   // water and dust take the whole picture (Mat::TintAll). Acid keeps its own colour.
   vMat = mat;
   gl_Position = uViewProj * vec4(rel, 1.0);
 }
@@ -141,6 +143,7 @@ void main() {
   float dist = length(viewVec);
   int n = vNormal;
   bool liquid = (vMat & 2u) != 0u, lava = (vMat & 32u) != 0u;
+  bool acidCalm = false;   // acid's own colour; its see-through face is put back after the tint multiply
   vec3 N = faceNormal(n);
   float shade = (liquid && n == 2) ? 1.0 : vLight.z;
   float sunMod = 1.0;
@@ -272,11 +275,15 @@ void main() {
   float texel = max(length(gdx), length(gdy));
   bool crisp = cellSnap && texel * float(VOX) < 0.85;
   bool tintedWater = liquid && !lava && (vMat & 128u) != 0u;
-  bool sheet = !(liquid && (lava || tintedWater) && dist < 32.0);
-  if (!sheet && lava) col = vec4(1.0);
-  else if (!sheet) col = vec4(vec3(0.62), 175.0 / 255.0);
-  else col = crisp ? tileColorLod(fuv, layer, 0.0) : tileColorGrad(fuv, layer, gdx, gdy);
-  if (uPass == 1) {
+  // A liquid never reads the tile. Lava's far colour is the calm hot end of the crust. Water and a puddle
+  // are the same calm grey the near water already used, and the climate tint paints the water. Acid carries
+  // its own yellow-green (tint kind 20) and stays opaque here so that tint is not applied a second time.
+  if (lava) col = vec4(0.55, 0.12, 0.02, 1.0);
+  else if (liquid) {
+    acidCalm = (vMat & 128u) == 0u && (vTint.r + vTint.g + vTint.b) < 2.99;
+    col = acidCalm ? vec4(vTint, 1.0) : vec4(vec3(0.62), 175.0 / 255.0);
+  } else col = crisp ? tileColorLod(fuv, layer, 0.0) : tileColorGrad(fuv, layer, gdx, gdy);
+  if (uPass == 1 && !liquid) {
     // Looking along a cutout (a ladder, a leaf) the mip averages the holes into the solid texels and the
     // alpha test throws the rung away. The hole test stays on the sharp texel; the colour follows it when the mip has already gone clear.
     vec4 sharp = crisp ? col : tileColorLod(fuv, layer, 0.0);
@@ -284,8 +291,8 @@ void main() {
     if (col.a < 0.5) col.rgb = sharp.rgb;
   }
   // A liquid face near the camera is a grid of eighths. Each eighth is one cell, with a lip, and the
-  // grid drifts (downstream on a flowing face). Far water keeps the calm sheet. Water's colour is the
-  // climate tint (the picture is grey-blue and the tint paints it). Lava's cells are a hot crust.
+  // grid drifts (downstream on a flowing face). Past 64 blocks the calm colour is all that remains.
+  // Water's colour is the climate tint. Lava's cells are a hot crust. Acid's cells are its own colour.
   if (liquid && dist < 64.0) {
     float drift = lava ? uTime * 0.45 : (((vMat & 64u) != 0u) ? uTime * 0.55 : uTime * 0.07);
     vec2 u2 = fract(uv + vec2(drift, drift * 0.37));
@@ -322,12 +329,13 @@ void main() {
   }
   if (uPass != 2) col.a = 1.0;
   else if (baked) col.a = 160.0 / 255.0;
+  else if (acidCalm) col.a = 210.0 / 255.0;   // the acid picture's own see-through face
 
   vec3 block31 = vBlock;
   if (uDynN > 0) block31 = max(block31, dynBlock31(vRel + N * 0.25, N));
   vec3 lc = (vMat & 1u) != 0u ? vec3(1.0) : cubyzCombine(vSun, block31);
-  // Lava's light is the pulse below. The height map is a texture read a baked face does not use.
-  float emis = (!baked && !lava) ? tileHeightAt(fract(uv), layer).g : 0.0;
+  // Lava's light is the pulse below. A liquid and a baked face do not read the height map.
+  float emis = (!baked && !liquid) ? tileHeightAt(fract(uv), layer).g : 0.0;
   lc = max(lc, vec3(emis));
   if (lava) lc = vec3(1.0) * (0.92 + 0.16 * vnoise(vWorld.xz * 1.3 + vec2(uTime * 0.25, -uTime * 0.17)));
   vec3 c = col.rgb * lc * shade * sunMod;
