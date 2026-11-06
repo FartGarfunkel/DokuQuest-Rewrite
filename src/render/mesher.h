@@ -67,7 +67,8 @@ struct TorchSpot {
   i8 lx = 0, lz = 0;    // which way a wall torch leans (-1, 0, 1)
   u16 tile = 0;
 };
-// One candle or sea pickle in a cell, in sixteenths. The picture is the same crop the box used.
+// One small box the chunk mesh left out, in sixteenths: a candle, sea pickle, button or plate.
+// The picture is the same crop the box used.
 struct CandleSpot {
   float x0 = 0, y0 = 0, z0 = 0, x1 = 0, y1 = 0, z1 = 0;
   float sink = 0;

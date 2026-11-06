@@ -341,10 +341,12 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   float L0 = R.metaLight(id, meta);
   Own own{(float)c.skyAt(x, y, z), std::max<float>(c.blAt(x, y, z), L0), L0};
   if (T.tint) { c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0); c.tintKind = (u8)(1 + (T.tint == 2 ? 1 : 0)); }
-  if (kind == ShapeKind::Candle) {
+  // Candles, buttons and plates are the same little crop of one picture. Near the player that crop
+  // is coloured voxels (torch_layer.cpp). A lit candle still carries its flame.
+  if (kind == ShapeKind::Candle || kind == ShapeKind::Button || kind == ShapeKind::Plate) {
     c.out.hasTorch = true;
     if (c.opt.torchVoxels) {
-      int ft = (T.candle && (meta & 4)) ? R.tile("candle_flame") : -1;
+      int ft = (kind == ShapeKind::Candle && T.candle && (meta & 4)) ? R.tile("candle_flame") : -1;
       for (auto& b0 : boxes) {
         ShapeBox b = b0;
         b.b[0] += sox; b.b[3] += sox; b.b[2] += soz; b.b[5] += soz;
