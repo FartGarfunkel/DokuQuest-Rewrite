@@ -708,7 +708,8 @@ bool emitNearStation(MeshCtx& c, BlockId id, int x, int y, int z, u8 meta) {
           || k == "tool_forge" || k == "quest_board"
           || k == "carved_pumpkin" || k == "jack_o_lantern" || k == "redstone_pumpkin";
     // Top and sides differ, and the block is not a hillside or a field. A pumpkin, a melon and
-    // ancient debris are the same kind of cube. The picture is copied as the chunk mesh draws it.
+    // ancient debris are the same kind of cube. A note block, a sponge, a honeycomb, a redstone
+    // lamp and a copper bulb are one picture on every face. The picture is copied as the chunk mesh draws it.
     if (!want && self.render == Render::Cube)
       want = k == "crafting_table" || k == "bookshelf" || k == "barrel" || k == "tnt"
           || k == "dried_kelp_block" || k == "millstone" || k == "sawmill" || k == "crusher"
@@ -716,7 +717,10 @@ bool emitNearStation(MeshCtx& c, BlockId id, int x, int y, int z, u8 meta) {
           || k == "statue" || k == "steam_vent" || k == "waystone" || k == "sculk_catalyst"
           || k == "pumpkin" || k == "melon" || k == "ancient_debris"
           || k == "hay_bale" || k == "bone_block" || k == "sugar_cane_bundle"
-          || k == "dried_sugar_cane_bundle";
+          || k == "dried_sugar_cane_bundle"
+          || k == "note_block" || k == "sponge" || k == "wet_sponge" || k == "honeycomb_block"
+          || k == "redstone_lamp" || k == "redstone_lamp_on"
+          || k == "copper_bulb" || k == "copper_bulb_lit";
     if (want && T.axis) {
       // Same end picture and quarter-turn emitCube uses when the block lies on its side.
       int axis = std::min(2, (int)(meta & 3));
