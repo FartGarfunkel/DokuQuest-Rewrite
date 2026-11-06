@@ -136,7 +136,38 @@ void ParticleSystem::spawn(const std::string& kind, vec3 pos, int count, const j
     if (n) burst(pos + vec3(0, 0.08f, 0), key.empty() ? "dirt" : key, n, 0.18f, 9);
     return;
   }
-  if (kind == "burst") { burst(pos, str("tile", "white"), count, num("speed", 1), num("grav", 14)); return; }
+  if (kind == "burst") {   // the picture may arrive as tile, tex, block, or the item being ground
+    std::string name = str("tile", "");
+    if (name.empty()) name = str("tex", "");
+    if (name.empty()) name = str("block", "");
+    if (name.empty()) {
+      std::string item = str("item", "");
+      if (!item.empty()) {
+        if (const ItemDef* it = reg().item(item)) {
+          if (!it->block.empty()) name = it->block;
+          else if (it->icon.rfind("block:", 0) == 0) name = it->icon.substr(6);
+          else if (!it->icon.empty()) name = it->icon;
+        }
+        if (name.empty()) name = item;
+      }
+    }
+    if (name.empty()) name = "white";
+    size_t before = list.size();
+    burst(pos, name, count, num("speed", 1), num("grav", 14));
+    // extra.tint is three channels, 0..255, mixed onto that picture (a dyed portal's white crumbs)
+    if (extra.is_object() && extra.contains("tint") && extra["tint"].is_array() && extra["tint"].size() >= 3) {
+      auto chan = [](const json& v) -> u8 {
+        if (!v.is_number()) return 255;
+        float x = v.get<float>();
+        if (x < 0.f) x = 0.f;
+        if (x > 255.f) x = 255.f;
+        return (u8)x;
+      };
+      u8 r = chan(extra["tint"][0]), g = chan(extra["tint"][1]), b = chan(extra["tint"][2]);
+      for (size_t i = before; i < list.size(); ++i) { list[i].tint[0] = r; list[i].tint[1] = g; list[i].tint[2] = b; }
+    }
+    return;
+  }
   if (kind == "flame") { for (int i = 0; i < count; i++) flame(pos + vec3(rs(), rs(), rs()) * num("spread", 0.f)); return; }
   if (kind == "splash") { splash(pos, flag); return; }
   if (kind == "rain_splash") { rainSplash(pos, lightAt(pos), count); return; }
