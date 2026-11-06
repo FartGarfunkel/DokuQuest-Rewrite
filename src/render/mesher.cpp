@@ -763,7 +763,7 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
       case Render::Cube: case Render::Cutout: {
         if (chestHiddenAt(wp.x, wp.y, wp.z)) break;   // the open chest is drawn by render/chest_layer.cpp
         if (u8 cm = c.carveAt(x, y, z)) {
-          emitCarvedBlock(c, out.opaque, id, x, y, z, cm);
+          if (!emitNearCarve(c, id, x, y, z, cm)) emitCarvedBlock(c, out.opaque, id, x, y, z, cm);
           if (c.coatAt(x, y, z) & 0x0F) emitSnowCaps(c, out.cutout, id, x, y, z, cm);
           break;
         }
