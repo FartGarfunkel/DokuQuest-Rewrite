@@ -13,11 +13,13 @@ uniform vec4 uTint;          // rgb, amount (hurt flash)
 uniform vec2 uGlint;         // enchantment glint amount, time
 uniform float uNeutral;      // 1 = icon/preview lighting (fixed light, no fog)
 uniform float uAlpha;        // 1 = opaque
+uniform vec3 uWorldOrigin;   // kept in step with voxel.glsl; creature sway stays 0
 
 #ifdef VERTEX
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in uint aNA;
 layout(location = 2) in vec4 aCol;
+layout(location = 3) in uint aSway;
 
 out vec4 vCol;
 out vec3 vRel;
@@ -29,6 +31,8 @@ const vec3 NRM[6] = vec3[6](vec3(1, 0, 0), vec3(-1, 0, 0), vec3(0, 1, 0), vec3(0
 
 void main() {
   vec4 w = uModel * vec4(aPos, 1.0);
+  vec3 world = w.xyz + uWorldOrigin;
+  w.xyz += waveOffset(float(aSway), world);
   vRel = w.xyz;
   vN = normalize(mat3(uModel) * NRM[int(aNA & 7u)]);
   vAO = float((aNA >> 3) & 3u) / 3.0;

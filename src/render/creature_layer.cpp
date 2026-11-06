@@ -47,6 +47,7 @@ bool CreatureDraw::begin(const FrameCtx& f) {
   f.apply(*sh);
   sh->set("uViewProj", f.cam.viewProj);
   sh->set("uCamFrac", vec3(f.cam.pos - f.cam.origin));
+  sh->set("uWorldOrigin", vec3(glm::mod(f.cam.origin, glm::dvec3(4096.0))));
   sh->set("uNeutral", 0.f);
   sh->set("uGlint", vec2(0));
   return true;

@@ -661,15 +661,30 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   bool stretchTop = sh.micro && sh.hang && sh.hy == 1;
   if (!stretchTop && R.block(id).str("shape") == "chain" && fullSolid(c.at(x, y + 1, z)) && carveFaceDepth(c.carveAt(x, y + 1, z), 0, -1, 0) == 8) stretchTop = true;
   if (T.cloth) {
-    // flags, banners, bunting: each vertex learns how far it is from what holds it, and the shader flaps it
-    thread_local std::vector<ShapeBox> cb; clothBoxes(id, meta, cb);
-    // a flag reaches over to its pole: a fence post or wall post stands back from the cell's edge
+    // A flag reaches over to its pole: a fence post or wall post stands back from the cell's edge.
     float reach = 0;
     if (T.cloth == 1) {
       static const int PX[4] = {0, -1, 0, 1}, PZ[4] = {1, 0, -1, 0};
       int ps = R.tShape[c.at(x + PX[rf], y, z + PZ[rf])];
       reach = ps == ShapeKind::Fence ? 6.f : ps == ShapeKind::Wall ? 4.f : 0.f;
     }
+    // A flag, a banner, bunting and a washing line near you are coloured voxels.
+    // The wind flaps them by the same measure the picture used. A shop sign stays on this mesh.
+    if (T.cloth <= 4) {
+      c.out.hasTorch = true;
+      if (c.opt.torchVoxels) {
+        CandleSpot s;
+        s.cx = (u8)x; s.cy = (u8)y; s.cz = (u8)z;
+        s.tile = id;
+        s.only = meta;
+        s.x0 = reach;
+        s.flame = -16;
+        c.out.candles.push_back(s);
+        return;
+      }
+    }
+    // Farther off, each vertex learns how far it is from what holds it, and the chunk shader flaps it.
+    thread_local std::vector<ShapeBox> cb; clothBoxes(id, meta, cb);
     for (auto& box0 : cb) {
       ShapeBox box = box0;
       if (reach > 0 && box.kind == 1) { box.b[2] += reach; box.b[5] += reach; }
