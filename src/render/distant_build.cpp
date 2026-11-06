@@ -287,15 +287,20 @@ void buildTile(const TileInput& in, TileOutput& out) {
   MeshOut M{out.verts, (float)size};
   out.verts.reserve((size_t)N * N * 12);
   auto faceOf = [&](BlockId id, int f) -> u16 { return R.block(id).faces[f]; };
-  // flags: 1 water, 2 glows (lava), 4 tint every pixel (water), 8 drawn in its average colour (leaves and the like:
-  // their see-through pixels mean nothing from afar); bits 8..10 the face (for the texture's direction)
+  // flags: 1 water, 2 glows (lava), 4 tint every pixel (ice), 8 a flat colour and no picture.
+  // Every far face is that colour. Ice keeps the sea-coloured picture it already had. Bits 8..10 are the face.
   auto flagsOf = [&](BlockId id) -> u16 {
-    return (u16)((R.tLiquid[id] == 1 ? 1 | 4 : 0) | (R.tLiquid[id] == 2 ? 2 : 0) | (R.tLeaves[id] || R.tRender[id] == (u8)Render::Cutout ? 8 : 0) | (id == ct.ice ? 1 | 4 : 0));
+    if (id == ct.ice) return (u16)(1 | 4);
+    return (u16)(8 | (R.tLiquid[id] == 1 ? 1 : 0) | (R.tLiquid[id] == 2 ? 2 : 0));
   };
   // a face's colour: the tint (white if none); a flat-coloured block's own colour, tinted
   auto colourOf = [&](BlockId id, int k, bool side) -> vec3 {
     // sea ice: near, it's see-through with the sea under it; far off it's drawn solid, so it takes the sea's blue
     if (id == ct.ice) return glm::min(unpack(climateWater(temp[k], humid[k])) * 1.15f, vec3(255.f));   // drawn as the near ice looks: sea under it
+    // The same calm colours the nearby chunks use. The 0.969 meets the far water's own darkening, so the sea matches.
+    if (R.tLiquid[id] == 1) return glm::min(unpack(climateWater(temp[k], humid[k])) * 0.969f, vec3(255.f));
+    if (R.tLiquid[id] == 2) return vec3(0.55f, 0.12f, 0.02f) * 255.f;
+    if (R.tLiquid[id] == 3) return vec3(0.697f, 0.837f, 0.202f) * 255.f;
     vec3 t = tintOf(ct, id, temp[k], humid[k], stint[k]);
     if (side && ct.tint[id] == 1) t = vec3(1);   // grass sides: the picture marks which pixels take the tint
     if (flagsOf(id) & 8) return unpack(side ? ct.side[id] : ct.top[id]) * t;
