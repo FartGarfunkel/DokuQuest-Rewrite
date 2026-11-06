@@ -666,7 +666,7 @@ u16 sectionVisibility(const MeshInput& in) {
 // A chest, a cold furnace, a hive, a workstation, a carved pumpkin, a monster cage,
 // a six-faced machine (a piston, a dispenser, an observer), or a plain work block
 // (a crafting table, a barrel, a bookshelf, a machine).
-// Near the player that cube is coloured voxels. A lit furnace stays on the chunk picture so its fire keeps moving.
+// Near the player that cube is coloured voxels. A lit furnace's front still changes frame.
 // A machine's side picture is turned the same way the chunk mesh turns it.
 // Returns true when the cube was recorded and must not also be drawn on the chunk mesh.
 bool emitNearStation(MeshCtx& c, BlockId id, int x, int y, int z, u8 meta) {
@@ -695,7 +695,7 @@ bool emitNearStation(MeshCtx& c, BlockId id, int x, int y, int z, u8 meta) {
     }
   } else {
     want = k == "monster_spawner";
-    if (!want && self.render == Render::Cube && T.hasFront && k.rfind("lit_", 0) != 0)
+    if (!want && self.render == Render::Cube && T.hasFront)
       want = ends("chest") || ends("furnace") || ends("smoker") || k == "bee_nest" || k == "beehive"
           || k == "smithing_table" || k == "loom" || k == "cartography_table" || k == "fletching_table"
           || k == "tool_forge" || k == "quest_board"
