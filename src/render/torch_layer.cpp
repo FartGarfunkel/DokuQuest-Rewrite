@@ -1408,6 +1408,165 @@ const VoxelMeshGL* lanternHangMesh(const TileSet& ts, int model, u8 meta, bool s
   return out;
 }
 
+// Sugar cane near you: the same stalks and leaves the chunk picture builds, one voxel per step of that
+// picture. Alpha 253 keeps the grass colour of this shore, then the season. A hole in the picture stays a hole.
+const VoxelMeshGL* sugarCaneMesh(const TileSet& ts, int layer, int sx, int sz, bool top, bool tinted, u32 tint, u16 season) {
+  struct Cache {
+    const u8* px = nullptr; int count = -1, size = -1;
+    std::unordered_map<u64, std::unique_ptr<VoxelMeshGL>> m;
+  };
+  static Cache cache;
+  if (cache.px != ts.rgba.data() || cache.count != ts.count || cache.size != ts.size) {
+    cache.m.clear(); cache.px = ts.rgba.data(); cache.count = ts.count; cache.size = ts.size;
+  }
+  const u64 key = (u64)(sx & 15) | ((u64)(sz & 15) << 4) | ((u64)top << 8) | ((u64)tinted << 9)
+      | ((u64)std::max(layer, 0) << 10) | ((u64)(tint & 0xFFFFFFu) << 22) | ((u64)season << 46);
+  auto it = cache.m.find(key);
+  if (it != cache.m.end()) return it->second.get();
+  const int S = ts.size > 0 ? ts.size : 32;
+  const int BIAS = 12;
+  const int N = S + BIAS * 2;
+  VoxelGrid g(ivec3(N, S, N));
+  auto meshOut = [&]() {
+    VoxelMeshData md; buildVoxelMesh(g, md);
+    auto mesh = std::make_unique<VoxelMeshGL>();
+    mesh->upload(md);
+    const VoxelMeshGL* out = mesh.get();
+    cache.m.emplace(key, std::move(mesh));
+    return out;
+  };
+  if (layer < 0 || layer >= ts.count) return meshOut();
+  vec3 tv(1.f);
+  if (tinted) {
+    tv = vec3((tint & 255) / 255.f, ((tint >> 8) & 255) / 255.f, ((tint >> 16) & 255) / 255.f) * 1.3f;
+    const float sa = (season & 15) / 8.f;
+    if (sa > 0.f) {
+      vec3 sc(((season >> 4) & 15) / 8.f, ((season >> 8) & 15) / 8.f, ((season >> 12) & 15) / 8.f);
+      tv = glm::mix(tv, sc * (glm::dot(tv, vec3(0.299f, 0.587f, 0.114f)) * 1.6f), sa);
+    }
+  }
+  auto colour = [&](int r, int gg, int b, int a) -> u32 {
+    if (a < 128) return 0;
+    if (tinted) {
+      const float w = clampv((1.f - a / 255.f) * 127.5f, 0.f, 1.f);
+      auto mix1 = [&](int c, float t) { return clampv((int)std::lround(c * (1.f + (t - 1.f) * w)), 0, 255); };
+      r = mix1(r, tv.r); gg = mix1(gg, tv.g); b = mix1(b, tv.b);
+    }
+    return voxRGBA(r, gg, b);
+  };
+  const u8* base = ts.tile(layer);
+  const int R = S;
+  std::vector<int> colCount(R, 0);
+  struct Pix { int i, j, r, g, b, a; };
+  std::vector<Pix> px;
+  px.reserve(R);
+  for (int j = 0; j < R; j++) for (int i = 0; i < R; i++) {
+    const u8* p = base + ((size_t)j * R + i) * 4;
+    if (p[3] < 128) continue;
+    colCount[i]++;
+    px.push_back({i, j, p[0], p[1], p[2], p[3]});
+  }
+  std::vector<std::pair<int, int>> stalks;
+  for (int i = 0; i < R; i++) {
+    if (colCount[i] < R * 0.6f) continue;
+    if (!stalks.empty() && stalks.back().second == i - 1) stalks.back().second = i;
+    else stalks.push_back({i, i});
+  }
+  struct Leaf { int j, r, g, b, a, k, side, out; };
+  std::vector<Leaf> leaves;
+  const int near = 3 * R / 16;
+  auto inStalk = [&](int i) {
+    for (size_t n = 0; n < stalks.size(); n++) if (i >= stalks[n].first && i <= stalks[n].second) return (int)n;
+    return -1;
+  };
+  for (const Pix& p : px) {
+    if (inStalk(p.i) >= 0 || stalks.empty()) continue;
+    int k = 0, bd = 99;
+    for (size_t n = 0; n < stalks.size(); n++) {
+      int d = std::min(std::abs(p.i - stalks[n].first), std::abs(p.i - stalks[n].second));
+      if (d < bd) { bd = d; k = (int)n; }
+    }
+    if (bd <= near) leaves.push_back({p.j, p.r, p.g, p.b, p.a, k, p.i > stalks[k].second ? 1 : -1, bd});
+  }
+  struct Cap { int r, g, b, a; bool ok = false; };
+  std::vector<Cap> caps;
+  for (auto& s : stalks) {
+    const Pix* cap = nullptr;
+    for (const Pix& p : px) if (p.i == s.first && p.j == R / 2) { cap = &p; break; }
+    if (!cap) for (const Pix& p : px) if (p.i == s.first) { cap = &p; break; }
+    if (!cap && !px.empty()) cap = &px[0];
+    caps.push_back(cap ? Cap{cap->r, cap->g, cap->b, cap->a, true} : Cap{});
+  }
+  if (stalks.size() > 4) stalks.resize(4);
+  const u32 h = hash32((i32)(sx & 15), 0, (i32)(sz & 15), 23);
+  const float turn = (h & 3) * 3.14159265f / 2.f;
+  static const float spots[4][2] = {{0.3f, 0.3f}, {0.7f, 0.38f}, {0.46f, 0.72f}, {0.74f, 0.76f}};
+  const float Rf = (float)R;
+  for (size_t k = 0; k < stalks.size(); k++) {
+    const int c0 = stalks[k].first, c1 = stalks[k].second;
+    const float* sp = spots[k % 4];
+    const float jx = (((h >> (8 + k * 4)) & 15) / 15.f - 0.5f) * 0.08f;
+    const float jz = (((h >> (10 + k * 4)) & 15) / 15.f - 0.5f) * 0.08f;
+    const float ox = sp[0] - 0.5f + jx, oz = sp[1] - 0.5f + jz;
+    const float rx = ox * std::cos(turn) - oz * std::sin(turn);
+    const float rz = ox * std::sin(turn) + oz * std::cos(turn);
+    const float cx = 0.5f + rx, cz = 0.5f + rz;
+    const float hw = (c1 - c0 + 1) / Rf / 2.f;
+    const float u0 = c0 / Rf, u1 = (c1 + 1) / Rf;
+    const float span = std::max(hw * 2.f, 1e-4f);
+    int x0 = (int)std::floor((cx - hw) * S) + BIAS;
+    int x1 = (int)std::ceil((cx + hw) * S) + BIAS;
+    int z0 = (int)std::floor((cz - hw) * S) + BIAS;
+    int z1 = (int)std::ceil((cz + hw) * S) + BIAS;
+    if (x1 <= x0) x1 = x0 + 1;
+    if (z1 <= z0) z1 = z0 + 1;
+    auto sample = [&](int row, float f) -> u32 {
+      f = clampv(f, 0.f, 1.f);
+      const int col = clampv((int)std::floor((u0 + f * (u1 - u0)) * R), 0, R - 1);
+      const u8* p = base + ((size_t)row * R + col) * 4;
+      return colour(p[0], p[1], p[2], p[3]);
+    };
+    for (int gy = 0; gy < S; gy++) {
+      const float py = (gy + 0.5f) / (float)S;
+      const int row = clampv((int)std::floor((1.f - py) * R), 0, R - 1);
+      for (int gx = x0; gx < x1; gx++) {
+        const float px = (gx - BIAS + 0.5f) / (float)S;
+        if (u32 c = sample(row, (px - (cx - hw)) / span)) g.set(gx, gy, z1 - 1, c);
+        if (u32 c = sample(row, ((cx + hw) - px) / span)) g.set(gx, gy, z0, c);
+      }
+      for (int gz = z0; gz < z1; gz++) {
+        const float pz = (gz - BIAS + 0.5f) / (float)S;
+        if (u32 c = sample(row, ((cz + hw) - pz) / span)) g.set(x1 - 1, gy, gz, c);
+        if (u32 c = sample(row, (pz - (cz - hw)) / span)) g.set(x0, gy, gz, c);
+      }
+    }
+    if (top && k < caps.size() && caps[k].ok) {
+      const u32 cap = colour(caps[k].r, caps[k].g, caps[k].b, caps[k].a);
+      if (cap) for (int gz = z0; gz < z1; gz++) for (int gx = x0; gx < x1; gx++) if (!g.at(gx, S - 1, gz)) g.set(gx, S - 1, gz, cap);
+    }
+    const float a = turn + k * 1.9f, dx = std::cos(a), dz = std::sin(a);
+    for (const Leaf& lf : leaves) {
+      if (lf.k != (int)k) continue;
+      const u32 col = colour(lf.r, lf.g, lf.b, lf.a);
+      if (!col) continue;
+      const float yy = 1.f - (lf.j + 1) / Rf;
+      const float o0 = hw + (lf.out - 1) / Rf, o1 = o0 + 1.2f / Rf, s = (float)lf.side, t = 0.6f / Rf;
+      const float lx0 = cx + dx * s * o0, lz0 = cz + dz * s * o0;
+      const float lx1 = cx + dx * s * o1, lz1 = cz + dz * s * o1;
+      const float xa = std::min(lx0, lx1) - std::fabs(dz) * t, xb = std::max(lx0, lx1) + std::fabs(dz) * t;
+      const float za = std::min(lz0, lz1) - std::fabs(dx) * t, zb = std::max(lz0, lz1) + std::fabs(dx) * t;
+      int ix0 = (int)std::floor(std::min(xa, xb) * S) + BIAS, ix1 = (int)std::ceil(std::max(xa, xb) * S) + BIAS;
+      int iy0 = (int)std::floor(yy * S), iy1 = (int)std::ceil((yy + 1.f / Rf) * S);
+      int iz0 = (int)std::floor(std::min(za, zb) * S) + BIAS, iz1 = (int)std::ceil(std::max(za, zb) * S) + BIAS;
+      if (ix1 <= ix0) ix1 = ix0 + 1;
+      if (iy1 <= iy0) iy1 = iy0 + 1;
+      if (iz1 <= iz0) iz1 = iz0 + 1;
+      for (int z = iz0; z < iz1; z++) for (int y = iy0; y < iy1; y++) for (int x = ix0; x < ix1; x++) g.set(x, y, z, col);
+    }
+  }
+  return meshOut();
+}
+
 class TorchLayer : public RenderLayer {
 public:
   const char* name() const override { return "voxel-torches"; }
@@ -1458,6 +1617,7 @@ public:
         // A rail on a bottom slab drops the same way, and a slope climbs the cell.
         float reach = c.flame == -7 ? 1.25f : (c.flame == -8 || c.flame == -9 || c.flame == -14 || c.flame == -15 || c.flame == -16) ? 1.35f : 0.9f;
         if (c.flame == -17) reach = 1.35f + ((c.only >> 2) & 31) * 0.5f + ((c.faceRot & 1) ? 0.5f : 0.f);
+        if (c.flame == -18) reach = 1.2f;
         if (!f.cam.frustum.sphere(cell + vec3(0.5f), reach)) continue;
         // -4 is a ladder. only keeps the 0..3 turn rotBox uses. The picture stands against the same wall.
         if (c.flame == -4) {
@@ -1721,6 +1881,32 @@ public:
             if (c.faceRot) bl = std::max(bl, 4);
             const mat4 model = glm::translate(mat4(1), cell + vec3(0.f, y0 / (float)PS, 0.f)) * glm::scale(mat4(1), vec3(1.f / PS));
             VR.draw(*mesh, model, VoxelLight{(lit >> 4) / 15.f, bl / 15.f});
+          }
+          continue;
+        }
+        // -18 is sugar cane. The stalks share a turn down the column. only bit 0 is the top of the plant,
+        // and bit 1 carries this shore's grass colour in nx and pz.
+        if (c.flame == -18) {
+          int layer = c.tile < ts.count ? (int)c.tile : -1;
+          if (layer >= 0 && anim[layer] >= 0) layer = anim[layer];
+          bool tinted = (c.only & 2) != 0;
+          u32 col = tinted ? ((u32)c.nx | ((u32)c.pz << 16)) : 0u;
+          u16 season = 0;
+          if (tinted) {
+            const float sum = ((col & 255) + ((col >> 8) & 255) + ((col >> 16) & 255)) / 255.f;
+            if (sum >= 2.99f) tinted = false;
+            else {
+              auto q8 = [](float v) { return (int)std::lround(clampv(v, 0.f, 1.f) * 8.f); };
+              season = (u16)(q8(f.season.a) | (q8(f.season.r) << 4) | (q8(f.season.g) << 8) | (q8(f.season.b) << 12));
+            }
+          }
+          const VoxelMeshGL* mesh = layer >= 0 ? sugarCaneMesh(ts, layer, c.cx, c.cz, (c.only & 1) != 0, tinted, col, season) : nullptr;
+          if (mesh && mesh->ready()) {
+            if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+            const int PS = ts.size > 0 ? ts.size : 32;
+            const u8 lit = w.getLight((int)origin.x + c.cx, (int)origin.y + c.cy, (int)origin.z + c.cz);
+            const mat4 model = glm::translate(mat4(1), cell + vec3(-12.f / PS, 0.f, -12.f / PS)) * glm::scale(mat4(1), vec3(1.f / PS));
+            VR.draw(*mesh, model, VoxelLight{(lit >> 4) / 15.f, (lit & 15) / 15.f});
           }
           continue;
         }
