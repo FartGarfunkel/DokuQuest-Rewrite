@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #ifdef BTA_RANDOM_DEBUG
 #include <cstdio>
 #endif
@@ -64,8 +65,8 @@ inline double fdlibm_log(double x) {
   int32_t hx = (int32_t)(bits >> 32); uint32_t lx = (uint32_t)bits;
   int32_t k = 0;
   if (hx < 0x00100000) {
-    if (((hx & 0x7fffffff) | (int32_t)lx) == 0) return -two54 / 0.0;
-    if (hx < 0) return (x - x) / 0.0;
+    if (((hx & 0x7fffffff) | (int32_t)lx) == 0) return -std::numeric_limits<double>::infinity();   // (fdlibm: -two54 / 0; MSVC refuses a constant / 0)
+    if (hx < 0) return std::numeric_limits<double>::quiet_NaN();                                // (fdlibm: (x - x) / 0)
     k -= 54; x *= two54;
     std::memcpy(&bits, &x, 8); hx = (int32_t)(bits >> 32);
   }
