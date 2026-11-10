@@ -1,4 +1,5 @@
 // sim/explosion.cpp — game/blockfx.js explode: blow a round hole, knock everyone back.
+#include "sim/villagers.h"
 #include "sim/explosion.h"
 #include "sim/creature.h"
 #include "sim/mob_combat.h"
@@ -13,6 +14,7 @@ void explode(Level& lv, int realm, vec3 c, float power, const ExplodeOpts& o) {
   lv.fx->sound("explode", c, 64);
   for (Entity* q : pawnsOf(lv, realm)) if (glm::distance(q->pos, c) < 32) lv.fx->shake(q->id, 0.8f);
   if (!o.noBlocks) {
+    const VillageRef vil = villageForDamage(lv, realm, c);   // in a village: its builders will put it back
     for (int dy = -r; dy <= r; dy++) for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) {
       float d = std::sqrt((float)(dx * dx + dy * dy + dz * dz));
       if (d > power * (0.75f + frand() * 0.3f)) continue;
@@ -20,9 +22,10 @@ void explode(Level& lv, int realm, vec3 c, float power, const ExplodeOpts& o) {
       if (by < 0 || by >= WORLD_H) continue;
       BlockId id = w.getBlock(bx, by, bz);
       const BlockDef& b = R.block(id);
-      if (!id || R.tLiquid[id] || b.hardness < 0 || b.hardness >= 20 || b.str("mech") == "none" || b.has("blastproof")) continue;
+      if (!id || R.tLiquid[id] || b.hardness < 0 || b.str("mech") == "none" || (o.tough ? b.hardness >= 50 : (b.hardness >= 20 || b.has("blastproof")))) continue;   // (bedrock is 50)
       if (o.onBlock && !o.onBlock(bx, by, bz, id)) continue;
-      if (json* be = w.blockEntity(bx, by, bz)) {   // spill what a chest held
+      const bool kept = vil && villageDamage(lv, *vil, bx, by, bz, id, w.getMeta(bx, by, bz));   // (a village's shelf keeps its goods for the builder)
+      if (json* be = !kept ? w.blockEntity(bx, by, bz) : nullptr) {   // spill what a chest held
         if (be->contains("items") && (*be)["items"].is_array()) for (auto& s : (*be)["items"]) { ItemStack st = ItemStack::fromJson(s); if (!st.empty()) dropItem(lv, realm, st, vec3(bx + 0.5f, by + 0.5f, bz + 0.5f), true); }
         w.setBlockEntity(bx, by, bz, nullptr);
       }

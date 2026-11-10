@@ -338,7 +338,7 @@ int main(int argc, char** argv) {
     ItemStack h = helm.ok ? helm.result() : ItemStack();
     check(h.id == "mixed_helmet" && isPartArmor(h) && armorPointsOf(h) >= 2 && toolMaxDurability(h) > 77 && stackName(h) == "Golden, Diamond & Iron Helmet",
           "gold, diamond and iron in a helmet's pattern make a mixed helmet: " + stackName(h) + " (" + std::to_string(armorPointsOf(h)) + " armour, " + std::to_string(toolMaxDurability(h)) + ")");
-    check(partArmorWornLook(h) == "gold_helmet" || partArmorWornLook(h) == "iron_helmet", "worn, it looks like its main metal's: " + partArmorWornLook(h));
+    check(partArmorWornLook(h).rfind("pa:helmet:", 0) == 0, "worn, it shows its own mix of metals: " + partArmorWornLook(h));
     StationResult gem = stationResult("forge", ItemStack("iron_pickaxe", 1), ItemStack("diamond", 1));
     check(gem.ok && gem.out.tag.value("gem", "") == "diamond" && toolOf(gem.out).durability > iron.durability && stackName(gem.out) == "Iron Pickaxe (Diamond)",
           "the Tool Forge sets a diamond in an iron pickaxe: tougher (" + std::to_string(toolOf(gem.out).durability) + ")");

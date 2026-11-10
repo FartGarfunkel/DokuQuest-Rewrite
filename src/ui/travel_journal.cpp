@@ -4,6 +4,7 @@
 #include "ui/content_screens.h"
 #include "ui/ui.h"
 #include "ui/theme.h"
+#include "ui/book.h"
 #include "client/app.h"
 #include "client/session.h"
 #include "core/registry.h"
@@ -43,19 +44,19 @@ public:
     sel = clampv(sel, 0, std::max(0, (int)keys.size() - 1));
     auto known = [&](const std::string& k) { return found && found->contains(k); };
 
-    ImGui::SetNextWindowPos(ImVec2(a.width * 0.5f, a.height * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-    ImGui::SetNextWindowSize(ImVec2(std::min(760.f, a.width - 30.f), std::min(540.f, a.height - 30.f)));
-    ImGui::Begin("##travel_journal", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-    ImGui::Text("Travel Journal");
+    // written in the book, like the inventory: the list of things found on the left page, the one picked on the right
+    ui::bookPagesBegin(a, "##travel_journal");
+    ui::bookPageTitle(a, "Travel Journal");
     size_t total = 0; for (auto& d : R.items) if (!d.key.empty()) total++;
-    ImGui::SameLine(ImGui::GetWindowWidth() - 200); ImGui::TextDisabled("%d of %d things found", (int)keys.size(), (int)total);
-    ImGui::Separator();
+    ImGui::TextDisabled("%d of %d things found", (int)keys.size(), (int)total);
     const float footH = ImGui::GetTextLineHeightWithSpacing() * 1.6f;
     if (keys.empty()) {
       ImGui::TextWrapped("Nothing yet. Everything you pick up, make or find is written in here, with how it's made.");
-    } else {
+    }
+    if (!keys.empty()) {
       // the list
-      ImGui::BeginChild("##tj_list", ImVec2(ImGui::GetContentRegionAvail().x * 0.4f, -footH), ImGuiChildFlags_Borders);
+      ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.55f, 0.38f, 0.16f, 0.30f)); ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.55f, 0.38f, 0.16f, 0.20f));
+      ImGui::BeginChild("##tj_list", ImVec2(0, -footH), 0, ImGuiWindowFlags_NoBackground);
       ui::padScrollHere();
       for (int i = 0; i < (int)keys.size(); i++) {
         const ItemDef* d = R.item(keys[i]);
@@ -68,9 +69,11 @@ public:
         ImGui::PopID();
       }
       ImGui::EndChild();
-      ImGui::SameLine();
+      ImGui::PopStyleColor(2);
+      ImGui::TextDisabled("Up/down to turn the pages \xC2\xB7 faded: not found yet");
+      ui::bookPagesRight("##travel_journal-r");
       // the page: what it is, and how it's made
-      ImGui::BeginChild("##tj_page", ImVec2(0, -footH), ImGuiChildFlags_Borders);
+      ImGui::BeginChild("##tj_page", ImVec2(0, -footH), 0, ImGuiWindowFlags_NoBackground);
       const std::string& key = keys[sel];
       const ItemDef* d = R.item(key);
       ImDrawList* dl = ImGui::GetWindowDrawList();
@@ -129,8 +132,9 @@ public:
       if (uses) { ImGui::Spacing(); ImGui::TextDisabled("Goes into %d recipe%s.", uses, uses == 1 ? "" : "s"); }
       ImGui::EndChild();
     }
-    ImGui::TextDisabled("Up/down to turn the pages \xC2\xB7 E or Esc to close \xC2\xB7 faded: not found yet");
-    ImGui::End();
+    else ui::bookPagesRight("##travel_journal-r");
+    ImGui::TextDisabled("E or Esc to close");
+    ui::bookPagesEnd();
   }
 private:
   std::vector<std::string> keys;

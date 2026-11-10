@@ -17,8 +17,16 @@ constexpr int G = 22;   // grid spacing (node centre to node centre)
 int halfOf(u8 k) { return k == F_WART ? 7 : k == F_END ? 2 : 4; }
 }
 
-bool fortressPlanMC(const TerrainQuery&, int x, int z, Mulberry32& rnd, StructurePlan& S) {
-  const int y = DepthsGen::LAVA_Y + 46 + jsFloor(rnd() * 30);   // the middle of the band, high over the lava sea
+bool fortressPlanMC(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) {
+  int y = DepthsGen::LAVA_Y + 46 + jsFloor(rnd() * 30);   // the middle of the band, high over the lava sea
+  if (t.openNether()) {
+    int sea = -1;
+    for (auto [dx, dz] : {std::pair{0, 0}, {16, 0}, {-16, 0}, {0, 16}, {0, -16}}) {
+      const TerrainColumn c = t.terrainColumn(x + dx, z + dz);
+      if (c.water > c.y) sea = std::max(sea, c.water);
+    }
+    if (sea >= 0 && y < sea + 6) y = sea + 6;   // the cave sea (y 96) would otherwise flood the lowest bridges
+  }
   auto E = std::make_shared<FortExt>();
   auto& N = E->nodes; auto& Ed = E->edges;
   const int castleDir = jsFloor(rnd() * 4);

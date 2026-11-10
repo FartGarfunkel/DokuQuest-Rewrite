@@ -5,6 +5,9 @@
 #include <map>
 #include "sim/inventory.h"
 #include "ui/ui.h"
+#include "sim/weather.h"
+#include "sim/magic.h"
+#include "sim/magic_data.h"
 #include "ui/theme.h"
 #include "client/app.h"
 #include "client/session.h"
@@ -55,6 +58,7 @@ struct HudState {
   std::string dimName; double dimAt = -100;
   bool saving = false; double savingOff = -100;
   std::string heldId; double heldAt = -100; int lastSel = -1;
+  std::string spellSeen; double spellAt = -100; float manaSeen = -1;   // the spell label shows a while after a change or a cast
   double dbgT = 0; std::string dbgText;
   bool deathShown_[4] = {false, false, false, false};   // per split-screen person
 };
@@ -369,6 +373,13 @@ public:
     if (hurt > 0.01f) vignette(dl, W, H0, IM_COL32(200, 0, 0, (int)(140 * std::min(1.f, hurt))));
     float portal = p.data.value("portalTime", 0.0f);
     if (portal > 0) vignette(dl, W, H0, IM_COL32(120, 40, 160, (int)(153 * std::min(1.f, portal / 1.6f))));
+    if (p.scoping && s.viewMode == 0 && !p.dead) {   // through the spyglass: the world in a round glass, black round it, a brass rim
+      const float r = std::min(W, H0) * 0.45f, T = std::hypot(W, H0);
+      const ImVec2 c(W * 0.5f, H0 * 0.5f);
+      dl->AddCircle(c, r + T * 0.5f, IM_COL32(0, 0, 0, 255), 128, T);
+      dl->AddCircle(c, r + 3, IM_COL32(150, 110, 40, 255), 128, 6);
+      dl->AddCircle(c, r - 2, IM_COL32(0, 0, 0, 90), 128, 4);
+    }
     // ---- floaters and name tags ----
     Camera& cam = s.frame.cam;
     auto project = [&](vec3 wp, ImVec2& out) {
@@ -441,6 +452,7 @@ public:
     for (auto& e : s.level->entities()) {
       if (e->removed || e->hp <= 0 || e->realm != p.realm || !mobs.contains(e->type) || !mobs[e->type].value("boss", false)) continue;
       vec3 d = e->pos - p.pos; float d2 = glm::dot(d, d);
+      if (e->type == "wither_storm") d2 = std::max(0.f, d2 - (200 * 200 - 48 * 48));   // (seen from far off: its bar shows within 200)
       if (d2 < bd) { bd = d2; boss = e.get(); }
     }
     if (!boss) return;
@@ -490,6 +502,19 @@ public:
       SlotLook lk; lk.inv = false; drawSlot(dl, o0 + ImVec2(2, 2) * z, slot, lk); drawItem(dl, p.offhand[0], o0 + ImVec2(2, 2) * z, slot);
     }
     hudPieceEnd(a, dl, hb0v, "hotbar");
+    {   // BTA's rotary calendar, held: the season and the day, beside the hotbar
+      auto cal = [](const ItemStack& s) { return !s.empty() && s.id == "rotary_calendar"; };
+      if (cal(p.held()) || (!p.offhand.empty() && cal(p.offhand[0]))) {
+        const int se = p.realm == REALM_DRIFT ? -1 : seasonOf(*s.level);
+        std::string t = (se >= 0 ? std::string(seasonName(se)) + "  \xC2\xB7  " : std::string()) + "Day " + std::to_string((long long)s.level->info.day + 1);
+        if (p.realm == REALM_DRIFT) { const int d = (int)(s.level->info.day % 56); t = std::string(d < 28 ? "Gold" : "Silver") + "  \xC2\xB7  " + t + "  \xC2\xB7  " + std::to_string(28 - d % 28) + " days to " + (d < 28 ? "Silver" : "Gold"); }
+        if (se >= 0) { const int left = 7 - ((int)s.level->info.day % 7); t += "  \xC2\xB7  " + std::to_string(left) + (left == 1 ? " day" : " days") + " to " + seasonName((se + 1) & 3); }
+        ImVec2 ts = textSize(F_MID, t.c_str());
+        ImVec2 c0(hb1.x + 10 * z, hb1.y - ts.y - 14 * z), c1 = c0 + ImVec2(ts.x + 14 * z, ts.y + 8 * z);
+        dl->AddRectFilled(c0, c1, IM_COL32(8, 12, 10, 179), 4 * z); dl->AddRect(c0, c1, IM_COL32(0, 0, 0, 153), 4 * z, 0, 2 * z);
+        text(dl, F_MID, c0 + ImVec2(7, 4) * z, col::rgb(0xf0e0b8), t.c_str());
+      }
+    }
     int bars0 = hudPieceBegin(dl);
     y = hb0.y - 4 * z;
     // XP row (height 10: bar inset 2px, level number above its middle)
@@ -514,13 +539,48 @@ public:
       int spr = tint + (hp >= i * 2 + 2 ? SP_HEART : hp >= i * 2 + 1 ? SP_HEART_HALF : SP_HEART_EMPTY);
       drawSprite(dl, spr, ImVec2(x0 + c * (sp + 1 * z), y - (r + 1) * sp - r * 1 * z + shake), sp);
     }
-    int ap = armorPoints(p);
-    if (ap) for (int i = 0; i < 10; i++) {
-      // reversed: the first point is the rightmost shield
-      ImVec2 q(x0 + rowW - (i + 1) * sp - i * 1 * z, y - sp);
-      drawSprite(dl, ap - 20 > i ? SP_SHIELD_GLOW : SP_SHIELD, q, sp, ap >= i * 2 + 1 ? 1.f : 0.25f);
+    // mana, in the place Minecraft keeps its food: ten crystals right of the hearts, emptying from the left as you cast
+    // (once you know a spell or hold a staff). The spell in hand shows over them a moment when it changes or is cast.
+    if (!knownSpells(p).empty() || heldStaff(p)) {
+      MagicState& m = magicState(*s.level, p);
+      const float max = std::max(1.f, manaMax(p)), mana = m.mana < 0 ? max : m.mana, per = max / 10;
+      const float al = 1.f;
+      for (int i = 0; i < 10; i++) {
+        const float x = x0 + rowW - (i + 1) * sp - i * 1 * z, yy = y - sp;
+        const float fill = clampv((mana - i * per) / per, 0.f, 1.f);   // the rightmost crystal is the last to empty
+        const ImVec2 c(x + sp * 0.5f, yy + sp * 0.5f); const float r = sp * 0.46f, ri = sp * 0.30f;
+        const ImVec2 o[4] = {ImVec2(c.x, c.y - r), ImVec2(c.x + r * 0.78f, c.y), ImVec2(c.x, c.y + r), ImVec2(c.x - r * 0.78f, c.y)};
+        const ImVec2 n[4] = {ImVec2(c.x, c.y - ri), ImVec2(c.x + ri * 0.78f, c.y), ImVec2(c.x, c.y + ri), ImVec2(c.x - ri * 0.78f, c.y)};
+        dl->AddConvexPolyFilled(o, 4, IM_COL32(12, 16, 46, (int)(230 * al)));          // the socket (the crystal's dark rim)
+        dl->AddConvexPolyFilled(n, 4, IM_COL32(40, 48, 92, (int)(200 * al)));          // empty
+        if (fill > 0) {
+          dl->PushClipRect(ImVec2(c.x - r, c.y + r - 2 * r * fill), ImVec2(c.x + r, c.y + r), true);   // fills from the bottom up
+          dl->AddConvexPolyFilled(n, 4, IM_COL32(72, 128, 255, (int)(255 * al)));
+          const ImVec2 hi[3] = {n[0], ImVec2(c.x - ri * 0.4f, c.y - ri * 0.1f), n[3]};
+          dl->AddConvexPolyFilled(hi, 3, IM_COL32(150, 200, 255, (int)(255 * al)));   // the light on its upper face
+          dl->PopClipRect();
+        }
+      }
+      std::string k = activeSpell(p);
+      const std::string L = offSpell(p);
+      if (k != h.spellSeen || (h.manaSeen >= 0 && mana < h.manaSeen - 0.5f)) h.spellAt = now();
+      h.spellSeen = k; h.manaSeen = mana;
+      const double age = now() - h.spellAt;
+      if (!k.empty() && (age < 2.6 || m.ward > 0)) {
+        const SpellDef* S = magicData().spell(k);
+        std::string t = spellTitle(p, k) + (L.empty() ? "" : L == k ? " \xC3\x97 2" : " + " + spellTitle(p, L)) + (m.ward > 0 ? "  \xC2\xB7  ward " + std::to_string((int)std::round(m.ward)) : "");
+        const u32 c = S ? hexColor(S->col) : 0x90b4ff; const int a = (int)(255 * clampv((float)(2.6 - age) / 0.5f, m.ward > 0 ? 1.f : 0.f, 1.f));
+        ImVec2 ts = textSize(F_SMALL, t.c_str());
+        ImVec2 q(x0 + rowW - ts.x, y - sp - ts.y - 3 * z);
+        textOutline(dl, F_SMALL, q, IM_COL32((c >> 16) & 255, (c >> 8) & 255, c & 255, a), t.c_str(), 1 * z, IM_COL32(0, 0, 0, a));
+      }
     }
     y -= std::max(rows, 1) * (sp + 1 * z) + 4 * z;
+    // armour over the hearts (where Minecraft has it)
+    if (int ap = armorPoints(p)) {
+      for (int i = 0; i < 10; i++) drawSprite(dl, ap - 20 > i ? SP_SHIELD_GLOW : SP_SHIELD, ImVec2(x0 + i * (sp + 1 * z), y - sp), sp, ap >= i * 2 + 1 ? 1.f : 0.25f);
+      y -= sp + 4 * z;
+    }
     // air bubbles while your head is under water (and for a moment after)
     float airMax = std::max(0.01f, p.maxAir), air = p.air;
     if (air < airMax - 0.05f || (eyeWater && !p.creative())) {

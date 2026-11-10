@@ -2,6 +2,7 @@
 #include "core/tool_parts.h"
 #include "common/ui_scale.h"
 #include "ui/theme.h"
+#include "ui/paged.h"
 #include "client/app.h"
 #include "client/session.h"
 #include "assets/icons.h"
@@ -164,21 +165,22 @@ void init(App& a) {
   buildFonts(a, g_zoom);
   buildSprites();
   ImGuiStyle& s = ImGui::GetStyle();
-  s.WindowRounding = 6; s.ChildRounding = 0; s.FrameRounding = 4; s.PopupRounding = 4; s.GrabRounding = 3; s.ScrollbarRounding = 3;
+  // square and grey like BTA's screens and the launcher's Options tab (black fields with a grey frame, white checks)
+  s.WindowRounding = 0; s.ChildRounding = 0; s.FrameRounding = 0; s.PopupRounding = 0; s.GrabRounding = 0; s.ScrollbarRounding = 0;
   s.WindowBorderSize = 0; s.FrameBorderSize = 2; s.PopupBorderSize = 2; s.ChildBorderSize = 0;
   s.ItemSpacing = ImVec2(8, 8); s.ScrollbarSize = 10; s.GrabMinSize = 14;
   ImVec4* c = s.Colors;
   auto C = [](u32 hex, float a = 1) { return ImVec4(((hex >> 16) & 255) / 255.f, ((hex >> 8) & 255) / 255.f, (hex & 255) / 255.f, a); };
-  c[ImGuiCol_Text] = C(0xefe4cc); c[ImGuiCol_TextDisabled] = C(0xb3a48c);
-  c[ImGuiCol_WindowBg] = C(0x1b1612, 0.95f); c[ImGuiCol_ChildBg] = C(0, 0); c[ImGuiCol_PopupBg] = C(0x1b1612, 0.98f);
-  c[ImGuiCol_Border] = C(0x4d3f33); c[ImGuiCol_BorderShadow] = C(0, 0);
-  c[ImGuiCol_FrameBg] = C(0x120e0b); c[ImGuiCol_FrameBgHovered] = C(0x1a1410); c[ImGuiCol_FrameBgActive] = C(0x1a1410);
-  c[ImGuiCol_CheckMark] = C(0xff8a3d); c[ImGuiCol_SliderGrab] = C(0xff8a3d); c[ImGuiCol_SliderGrabActive] = C(0xffa060);
-  c[ImGuiCol_Button] = C(0x3a3027); c[ImGuiCol_ButtonHovered] = C(0x4a3c2f); c[ImGuiCol_ButtonActive] = C(0x2a221b);
-  c[ImGuiCol_Header] = C(0x3a3027); c[ImGuiCol_HeaderHovered] = C(0x4a3c2f); c[ImGuiCol_HeaderActive] = C(0x5a4a3a);
-  c[ImGuiCol_ScrollbarBg] = C(0x120e0b, 0.6f); c[ImGuiCol_ScrollbarGrab] = C(0x6d5a47); c[ImGuiCol_ScrollbarGrabHovered] = C(0x7c6650); c[ImGuiCol_ScrollbarGrabActive] = C(0x8c7660);
-  c[ImGuiCol_Separator] = C(0x4d3f33); c[ImGuiCol_NavCursor] = C(0xff8a3d); c[ImGuiCol_TextSelectedBg] = C(0xff8a3d, 0.35f);
-  c[ImGuiCol_ModalWindowDimBg] = C(0x080604, 0.55f);
+  c[ImGuiCol_Text] = C(0xe0e0e0); c[ImGuiCol_TextDisabled] = C(0xa0a0a0);
+  c[ImGuiCol_WindowBg] = C(0x101010, 0.94f); c[ImGuiCol_ChildBg] = C(0, 0); c[ImGuiCol_PopupBg] = C(0x101010, 0.98f);
+  c[ImGuiCol_Border] = C(0xa0a0a0); c[ImGuiCol_BorderShadow] = C(0, 0);
+  c[ImGuiCol_FrameBg] = C(0x000000); c[ImGuiCol_FrameBgHovered] = C(0x141414); c[ImGuiCol_FrameBgActive] = C(0x1c1c1c);
+  c[ImGuiCol_CheckMark] = C(0xffffff); c[ImGuiCol_SliderGrab] = C(0xc6c6c6); c[ImGuiCol_SliderGrabActive] = C(0xffffff);
+  c[ImGuiCol_Button] = C(0x6f6f6f); c[ImGuiCol_ButtonHovered] = C(0x7e88bf); c[ImGuiCol_ButtonActive] = C(0x5a5a5a);
+  c[ImGuiCol_Header] = C(0x404040); c[ImGuiCol_HeaderHovered] = C(0x5a5f80); c[ImGuiCol_HeaderActive] = C(0x6e6e8e);
+  c[ImGuiCol_ScrollbarBg] = C(0x000000, 0.6f); c[ImGuiCol_ScrollbarGrab] = C(0x808080); c[ImGuiCol_ScrollbarGrabHovered] = C(0xa0a0a0); c[ImGuiCol_ScrollbarGrabActive] = C(0xc0c0c0);
+  c[ImGuiCol_Separator] = C(0x000000); c[ImGuiCol_NavCursor] = C(0xffffff); c[ImGuiCol_TextSelectedBg] = C(0x3050ff, 0.45f);
+  c[ImGuiCol_ModalWindowDimBg] = C(0x101010, 0.6f);
   // pads are fed by beginFrame (standard layout, pad maps, Nintendo swap)
   ImGui_ImplSDL2_SetGamepadMode(ImGui_ImplSDL2_GamepadMode_Manual, nullptr, 0);
 }
@@ -336,78 +338,19 @@ float baselineOf(FontId f, float scale) { ImFont* fo = font(f); return fo->Ascen
 // ---- buttons --------------------------------------------------------------------------------------------
 static bool itemHot() { return ImGui::IsItemHovered() || (ImGui::IsItemFocused() && navVisible()); }
 
-bool mcButton(const char* lbl, ImVec2 size, bool disabled) {
-  ImVec2 p = ImGui::GetCursorScreenPos();
-  ImGui::BeginDisabled(disabled);
-  bool clicked = ImGui::InvisibleButton(lbl, size, ImGuiButtonFlags_EnableNav);
-  ImGui::EndDisabled();
-  bool hot = !disabled && itemHot(), held = !disabled && ImGui::IsItemActive();
-  ImDrawList* dl = ImGui::GetWindowDrawList();
-  float z = Z(), oy = held ? 1 : 0;
-  ImVec2 a(p.x, p.y + oy), b(p.x + size.x, p.y + size.y + oy);
-  // a resource pack's own button pictures, stretched like .pack-buttons .mcbtn
-  GuiSprite ps = disabled ? GuiSprite() : guiSprite(hot ? "widget/button_highlighted" : "widget/button");
-  if (disabled) dl->AddRectFilled(a, b, col::rgb(0x2c2c2c));
-  else if (ps.valid()) dl->AddImage((ImTextureID)ps.id(), a, b, ImVec2(ps.uv0.x, ps.uv0.y), ImVec2(ps.uv1.x, ps.uv1.y));
-  else {
-    dl->AddRectFilled(a, b, hot ? col::rgb(0x7d87c4) : col::rgb(0x6e6e6e));
-    drawTiled(dl, "gui_button", a, b, 64 * z, hot ? IM_COL32(227, 247, 255, 255) : IM_COL32(217, 217, 217, 255));
-    if (hot) dl->AddRectFilled(a, b, col::rgb(0x7d87c4, 70));
-    // inset 2px 2px light, inset -2px -4px dark
-    dl->AddRectFilled(a, ImVec2(b.x, a.y + 2 * z), IM_COL32(255, 255, 255, hot ? 89 : 82));
-    dl->AddRectFilled(a, ImVec2(a.x + 2 * z, b.y), IM_COL32(255, 255, 255, hot ? 89 : 82));
-    ImU32 dk = hot ? IM_COL32(10, 10, 60, 89) : IM_COL32(0, 0, 0, 82);
-    dl->AddRectFilled(ImVec2(a.x, b.y - 4 * z), b, dk); dl->AddRectFilled(ImVec2(b.x - 2 * z, a.y), b, dk);
-  }
-  dl->AddRect(a, b, hot && !ps.valid() ? IM_COL32_WHITE : IM_COL32_BLACK, 0, 0, 2 * z);
-  // label without the ##id part
-  std::string t = lbl; size_t h = t.find("##"); if (h != std::string::npos) t.resize(h);
-  t = ellipsize(F_BTN, t, size.x - 16 * z);
-  ImU32 tc = disabled ? col::rgb(0xa0a0a0) : hot ? col::rgb(0xffffa0) : col::rgb(0xe0e0e0);
-  textCentered(dl, F_BTN, ImVec2((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f), tc, t.c_str(), disabled ? 0 : col::rgb(0x383838));
-  if (clicked) playClick();
-  return clicked;
-}
+// every menu button is the launcher's grey button (ui/paged.cpp classicButton), so the game's menus match the
+// launcher's Options tab and BTA's screens
+bool mcButton(const char* lbl, ImVec2 size, bool disabled) { return classicButton(lbl, size, disabled, F_MID); }
 
 bool button(const char* lbl, BtnStyle st, bool tiny, float width, bool disabled) {
+  (void)st;   // BTA has one kind of button: the grey one (the style only ever changed its colour)
   float z = Z();
   std::string t = lbl; size_t hh = t.find("##"); if (hh != std::string::npos) t.resize(hh);
-  FontId f = tiny ? F_MID : F_BODY;
+  const FontId f = F_MID;
   ImVec2 ts = textSize(f, t.c_str());
-  float h = (tiny ? 30 : 44) * z, padX = (tiny ? 10 : 18) * z;
+  float h = (tiny ? 30 : 40) * z, padX = (tiny ? 12 : 20) * z;
   float w = width > 0 ? width : width < 0 ? ImGui::GetContentRegionAvail().x : ts.x + padX * 2 + 4 * z;
-  ImVec2 p = ImGui::GetCursorScreenPos();
-  ImGui::BeginDisabled(disabled);
-  bool clicked = ImGui::InvisibleButton(lbl, ImVec2(w, h), ImGuiButtonFlags_EnableNav);
-  ImGui::EndDisabled();
-  bool hot = !disabled && itemHot(), held = !disabled && ImGui::IsItemActive(), focus = ImGui::IsItemFocused() && navVisible();
-  ImDrawList* dl = ImGui::GetWindowDrawList();
-  float al = disabled ? 0.45f : 1;
-  ImVec2 a(p.x, p.y + (held ? 1 : 0)), b(p.x + w, p.y + h + (held ? 1 : 0));
-  float r = 4 * z;
-  ImU32 border = col::line, tc = col::text;
-  if (st == BTN_PRIMARY) {
-    dl->AddRectFilledMultiColor(a, b, withAlpha(col::rgb(0xff9a52), al), withAlpha(col::rgb(0xff9a52), al), withAlpha(col::emberDeep, al), withAlpha(col::emberDeep, al));
-    border = col::rgb(0xffb07a); tc = col::rgb(0x1a0d05);
-  } else if (st == BTN_GHOST) {
-    border = hot ? col::line : 0; tc = hot ? col::text : col::muted;
-  } else {
-    dl->AddRectFilledMultiColor(a, b, withAlpha(col::slotHi, al), withAlpha(col::slotHi, al), withAlpha(col::slot, al), withAlpha(col::slot, al));
-    if (st == BTN_DANGER) { border = col::rgb(0x7a3a33); tc = col::rgb(0xffb3a9); }
-    else if (hot) border = col::lineHi;
-  }
-  if (st != BTN_GHOST) {
-    dl->AddRectFilled(ImVec2(a.x, b.y - (held ? 1 : 3) * z), b, IM_COL32(0, 0, 0, (int)(89 * al)));
-    dl->AddRectFilled(a, ImVec2(b.x, a.y + 2 * z), IM_COL32(255, 255, 255, (int)(15 * al)));
-    if (st == BTN_DANGER && hot) border = col::rgb(0xa8402e);
-  }
-  if (border) dl->AddRect(a, b, withAlpha(border, al), r, 0, 2 * z);
-  if (focus) dl->AddRect(a - ImVec2(4, 4) * z, b + ImVec2(4, 4) * z, col::ember, r + 2 * z, 0, 2 * z);
-  ImVec2 c((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f);
-  if (st == BTN_PRIMARY) text(dl, f, ImVec2(c.x - ts.x * 0.5f, c.y - ts.y * 0.5f + 1 * z), withAlpha(col::rgb(0xffdcbe, 102), al), t.c_str());
-  text(dl, f, ImVec2(c.x - ts.x * 0.5f, c.y - ts.y * 0.5f), withAlpha(tc, al), t.c_str());
-  if (clicked) playClick();
-  return clicked;
+  return classicButton(lbl, ImVec2(w, h), disabled, f);
 }
 
 bool checkbox(const char* lbl, bool* v, const char* desc) {
@@ -420,33 +363,9 @@ bool checkbox(const char* lbl, bool* v, const char* desc) {
 }
 
 bool slider(const char* id, float* v, float mn, float mx, float step, const char* shown, float width) {
-  // input[type=range] with accent-color ember: a thin light track, ember to the left of the round knob
-  float z = Z(), w = width > 0 ? width : ImGui::GetContentRegionAvail().x, h = 20 * z;
-  ImVec2 p = ImGui::GetCursorScreenPos();
-  ImGui::InvisibleButton(id, ImVec2(w, h), ImGuiButtonFlags_EnableNav);
-  bool ch = false;
-  float r = 7 * z, x0 = p.x + r, x1 = p.x + w - r;
-  if (ImGui::IsItemActive()) {
-    float t = clampv((ImGui::GetIO().MousePos.x - x0) / std::max(1.f, x1 - x0), 0.f, 1.f);
-    float nv = mn + t * (mx - mn);
-    if (step > 0) nv = clampv(std::round((nv - mn) / step) * step + mn, mn, mx);
-    if (nv != *v) { *v = nv; ch = true; }
-  }
-  // controller / arrows: left and right change a focused slider straight away (ui.js menuNav)
-  bool focus = ImGui::IsItemFocused() && navVisible();
-  if (focus && !ImGui::IsItemActive()) {
-    int dx = app().input.navStep().x;
-    if (dx) { *v = clampv(*v + step * dx, mn, mx); if (step > 0) *v = std::round((*v - mn) / step) * step + mn; ch = true; }
-  }
-  ImDrawList* dl = ImGui::GetWindowDrawList();
-  float t = mx > mn ? clampv((*v - mn) / (mx - mn), 0.f, 1.f) : 0, kx = x0 + (x1 - x0) * t, cy = p.y + h * 0.5f;
-  dl->AddRectFilled(ImVec2(p.x + 2 * z, cy - 3 * z), ImVec2(p.x + w - 2 * z, cy + 3 * z), IM_COL32(220, 220, 220, 235), 3 * z);
-  dl->AddRect(ImVec2(p.x + 2 * z, cy - 3 * z), ImVec2(p.x + w - 2 * z, cy + 3 * z), IM_COL32(120, 120, 120, 200), 3 * z);
-  dl->AddRectFilled(ImVec2(p.x + 2 * z, cy - 3 * z), ImVec2(kx, cy + 3 * z), col::ember, 3 * z);
-  dl->AddCircleFilled(ImVec2(kx, cy), r, ImGui::IsItemHovered() || ImGui::IsItemActive() ? col::rgb(0xff9d5c) : col::ember, 20);
-  if (focus) dl->AddRect(p - ImVec2(2, 0) * z, p + ImVec2(w + 2 * z, h), col::ember, 4 * z, 0, 2 * z);
-  (void)shown;
-  return ch;
+  // BTA's slider (ui/paged.cpp mcSlider): a dark track, a button-faced handle, the value written on it
+  const float z = Z(), w = width > 0 ? width : ImGui::GetContentRegionAvail().x;
+  return mcSlider(id, v, mn, mx, step, shown ? std::string(shown) : std::string(), ImVec2(w, 20 * z), nullptr);
 }
 
 bool combo(const char* id, int* cur, const std::vector<std::string>& items, float width) {
@@ -470,7 +389,7 @@ bool inputText(const char* id, std::string* s, const char* hint, size_t maxLen, 
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10 * Z(), 10 * Z()));
   bool ch = hint ? ImGui::InputTextWithHint(id, hint, s, flags) : ImGui::InputText(id, s, flags);
   ImGui::PopStyleVar();
-  if (ImGui::IsItemActive()) ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), col::ember, 4 * Z(), 0, 2 * Z());
+  if (ImGui::IsItemActive()) ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), IM_COL32(255, 255, 255, 255), 0, 0, 2 * Z());
   if (maxLen && s->size() > maxLen) s->resize(maxLen);
   return ch;
 }
@@ -489,7 +408,7 @@ bool Panel::begin(const char* id, const char* title, float maxW, const char* clo
   float z = Z(), pad = 16 * z;
   closed = false;
   // backdrop (.panel-screen)
-  ImGui::GetBackgroundDrawList()->AddRectFilled(ImVec2(0, 0), ImVec2((float)a.width, (float)a.height), IM_COL32(8, 6, 4, 140));
+  ImGui::GetBackgroundDrawList()->AddRectFilled(ImVec2(0, 0), ImVec2((float)a.width, (float)a.height), IM_COL32(16, 16, 16, 160));   // BTA's dim over the world
   width = std::min(maxW * z, a.width - pad * 2);
   float maxH = a.height - pad * 2;
   ImGui::SetNextWindowPos(ImVec2(a.width * 0.5f, a.height * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
@@ -505,19 +424,18 @@ bool Panel::begin(const char* id, const char* title, float maxW, const char* clo
   dl = ImGui::GetWindowDrawList();
   pos = ImGui::GetWindowPos(); size = ImGui::GetWindowSize();
   hasFooter = false; footH = 0;
-  // body background first (drawn under everything): dirt at 30%, 2px border, header in planks at 42%
+  // the launcher's look (its Options tab, BTA's screens): the darker brown dirt for the body, a lighter dirt band for
+  // the title with the name centred in white, black lines between, a black frame
+  const float U = 2 * z, tile = 32 * U;
   ImVec2 b0 = pos, b1 = pos + ImVec2(width, std::max(size.y, 60 * z));
-  dl->AddRectFilled(b0, b1, col::rgb(0x1b1612, 242), 6 * z);
-  drawTiled(dl, "dirt", b0 + ImVec2(2, 2) * z, b1 - ImVec2(2, 2) * z, 64 * z, IM_COL32(77, 77, 77, 120));
-  // header
+  classicDirt(dl, b0, b1, tile, 0.62f);
   headH = 32 * z + 24 * z;
   ImVec2 h1 = b0 + ImVec2(width, headH);
-  dl->AddRectFilled(b0, h1, col::panel2, 6 * z, ImDrawFlags_RoundCornersTop);
-  drawTiled(dl, "planks", b0 + ImVec2(2, 2) * z, h1, 64 * z, IM_COL32(107, 107, 107, 200));
-  dl->AddRectFilled(ImVec2(b0.x, h1.y - 2 * z), h1, col::rgb(0x1a120c));
-  dl->AddRectFilled(ImVec2(b0.x, h1.y - 4 * z), ImVec2(h1.x, h1.y - 2 * z), IM_COL32(255, 220, 160, 20));
-  ImVec2 ts = textSize(F_DISP, title);
-  textShadow(dl, F_DISP, ImVec2(b0.x + 16 * z, b0.y + (headH - ts.y) * 0.5f), col::rgb(0xf6e2a8), title, ImVec2(2, 2) * z, col::rgb(0x2a1608));
+  classicDirt(dl, b0, h1, tile, 0.3f);
+  dl->AddLine(ImVec2(b0.x, h1.y), ImVec2(h1.x, h1.y), IM_COL32(0, 0, 0, 255), U);
+  dl->AddRect(b0, b1, IM_COL32(0, 0, 0, 255), 0, 0, U);
+  ImVec2 ts = textSize(F_BIG, title);
+  textShadow(dl, F_BIG, ImVec2(std::floor(b0.x + (width - ts.x) * 0.5f), std::floor(b0.y + (headH - ts.y) * 0.5f)), IM_COL32(255, 255, 255, 255), title, ImVec2(2, 2) * z, IM_COL32(63, 63, 63, 255));
   if (closeLabel) {
     float bw = textSize(F_BODY, closeLabel).x + 40 * z;
     ImGui::SetCursorScreenPos(ImVec2(b0.x + width - 16 * z - bw, b0.y + (headH - 44 * z) * 0.5f));
@@ -543,7 +461,7 @@ void Panel::beginFooter() {
   float z = Z();
   hasFooter = true;
   ImVec2 p = ImGui::GetCursorScreenPos();
-  dl->AddRectFilled(ImVec2(pos.x, p.y - 8 * z), ImVec2(pos.x + width, p.y - 6 * z), col::line);
+  dl->AddRectFilled(ImVec2(pos.x, p.y - 8 * z), ImVec2(pos.x + width, p.y - 6 * z), IM_COL32(0, 0, 0, 255));   // BTA's black line over the button band
   ImGui::SetCursorScreenPos(ImVec2(p.x + 16 * z, p.y + 4 * z));
   ImGui::BeginGroup();
 }
@@ -551,7 +469,7 @@ void Panel::endFooter() { ImGui::EndGroup(); ImGui::Dummy(ImVec2(1, 8 * Z())); }
 void Panel::end() {
   float z = Z();
   ImVec2 sz = ImGui::GetWindowSize();
-  ImGui::GetWindowDrawList()->AddRect(pos, pos + ImVec2(width, sz.y), col::rgb(0x4a3c2c), 6 * z, 0, 2 * z);
+  ImGui::GetWindowDrawList()->AddRect(pos, pos + ImVec2(width, sz.y), IM_COL32(0, 0, 0, 255), 0, 0, 2 * z);
   ImGui::PopFont();
   ImGui::End();
   ImGui::PopStyleVar(2);

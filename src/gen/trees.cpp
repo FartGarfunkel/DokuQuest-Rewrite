@@ -5,7 +5,7 @@
 namespace dq {
 
 static const char* TREE_NAMES[TREE_KIND_COUNT] = {"none", "oak", "birch", "spruce", "pine", "jungle", "aspen", "azalea",
-  "acacia", "dark_oak", "cherry", "mangrove", "crimson", "warped", "thorn", "palm"};
+  "acacia", "dark_oak", "cherry", "mangrove", "crimson", "warped", "thorn", "palm", "shrub"};
 const char* treeKindName(u8 k) { return k < TREE_KIND_COUNT ? TREE_NAMES[k] : "none"; }
 u8 treeKindFromName(const std::string& s) { for (u8 k = 1; k < TREE_KIND_COUNT; k++) if (s == TREE_NAMES[k]) return k; return TREE_OAK; }
 
@@ -155,12 +155,20 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
     }
     case TREE_THORN: {   // low and crooked, a flat ragged crown of thorn leaves
       int H = 2 + jsFloor(t.h * 2), d = jsFloor(rnd() * 4), tx = x, tz = z;
-      for (int k = 0; k < H; k++) { if (k == H - 1) { tx += DIRX[d]; tz += DIRZ[d]; } put(tx, y + k, tz, B.acacia_log); }
+      const BlockId tl = B.thorn_log ? B.thorn_log : B.acacia_log;   // (BTA's thorn log)
+      for (int k = 0; k < H; k++) { if (k == H - 1) { tx += DIRX[d]; tz += DIRZ[d]; } put(tx, y + k, tz, tl); }
       if (t.bare) return;
       BlockId lf = B.thorn_leaves ? B.thorn_leaves : B.acacia_leaves;
       for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++)
         if (std::abs(dx) + std::abs(dz) <= 3 && rnd() < 0.8) put(tx + dx, y + H, tz + dz, lf, true);
       put(tx, y + H + 1, tz, lf, true);
+      return;
+    }
+    case TREE_SHRUB: {   // BTA's shrub: a stub of trunk in a low round bush
+      const BlockId lf = B.shrub_leaves ? B.shrub_leaves : B.leaves;
+      const int H = 1 + (t.h > 0.6 ? 1 : 0);
+      for (int k = 0; k < H; k++) put(x, y + k, z, B.log);
+      leafBall(x, y + H - 0.5, z, 1.7 + t.h * 0.6, lf, 0.65);
       return;
     }
     case TREE_PALM: {   // a ringed trunk leaning one way, a crown of fronds drooping all round
@@ -196,7 +204,8 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
       if (t.bare) return;
       for (int b = 0, nb = 2 + jsFloor(rnd() * 2), d0 = jsFloor(rnd() * 8); b < nb; b++)
         branch(x, y + H - 2 + (b & 1), z, d0 + b * (8 / nb), 3 + jsFloor(rnd() * 2), B.cherry_log, B.cherry_leaves, 2.0, true);
-      leafBall(x, y + H + 1, z, 2.2, B.cherry_leaves, 0.6);
+      // the Seasonal Forest's cherries flower (BTA's flowering cherry leaves: they drop cherries)
+      leafBall(x, y + H + 1, z, 2.2, t.seasonal && B.flowering_cherry_leaves && rnd() < 0.7 ? B.flowering_cherry_leaves : B.cherry_leaves, 0.6);
       return;
     }
     case TREE_MANGROVE: {
@@ -315,16 +324,18 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
     }
     if (c.biome == BIOME_MOUNTAINS && c.h > 82) continue;
     const BtaVariant bv = btaVariant(c);
-    if (bv == BV_GLACIER || (bv == BV_REDLANDS && r > 0.45) || (bv == BV_MEADOW && r > 0.3) || (bv == BV_TUNDRA && r > 0.08)) continue;   // open country
+    if (bv == BV_GLACIER || (bv == BV_REDLANDS && r > 0.65) || (bv == BV_MEADOW && r > 0.3) || (bv == BV_TUNDRA && r > 0.08)) continue;   // open country
     u8 type = TREE_OAK;
     if (c.biome == BIOME_TAIGA || (c.biome == BIOME_MOUNTAINS && r < 0.7)) type = c.biome == BIOME_MOUNTAINS && c.humid > 0.15 && c.h < 78 && r < 0.25 ? TREE_CHERRY : r < 0.45 ? TREE_PINE : TREE_SPRUCE;
     else if (jungle) type = r < 0.7 ? TREE_JUNGLE : TREE_OAK;
     else if (savanna) type = TREE_ACACIA;
     else if (c.biome == BIOME_FOREST) type = r < 0.2 ? TREE_BIRCH : c.temp < 0 && r < 0.42 ? TREE_ASPEN : c.humid > 0.25 && r < 0.55 ? TREE_DARK_OAK : c.humid > 0.15 && r > 0.97 ? TREE_AZALEA : TREE_OAK;
     else if (c.biome == BIOME_PLAINS && c.temp < -0.05 && r < 0.4) type = TREE_ASPEN;
-    if (bv == BV_REDLANDS) type = TREE_BIRCH;                              // pale-barked gums standing alone
+    if (savanna && r < 0.22) type = TREE_SHRUB;                            // (BTA's shrubs in the dry lands)
+    else if (c.biome == BIOME_PLAINS && r > 0.93) type = TREE_SHRUB;
+    if (bv == BV_REDLANDS) type = r > 0.45 ? TREE_SHRUB : TREE_BIRCH;      // pale-barked gums (eucalyptus) standing alone, shrubs between
     else if (bv == BV_MOSSMIRE) type = r < 0.6 ? TREE_DARK_OAK : TREE_MANGROVE;   // dark, mossy swamp trees
-    else if (bv == BV_THORNSCRUB) type = r < 0.72 ? TREE_THORN : r < 0.86 ? TREE_PALM : TREE_ACACIA;   // dry thorn country, a palm here and there
+    else if (bv == BV_THORNSCRUB) type = r < 0.6 ? TREE_THORN : r < 0.76 ? TREE_SHRUB : r < 0.88 ? TREE_PALM : TREE_ACACIA;   // dry thorn country, shrubs, a palm here and there
     else if (bv == BV_HIGHLANDS) type = r < 0.85 ? TREE_SPRUCE : TREE_PINE;   // the boreal hills
     else if (bv == BV_TUNDRA) type = TREE_SPRUCE;                             // a lone stunted spruce
     else if (bv == BV_SEASONAL) type = r < 0.62 ? TREE_CHERRY : r < 0.85 ? TREE_OAK : TREE_BIRCH;   // the Seasonal Forest's cherry groves

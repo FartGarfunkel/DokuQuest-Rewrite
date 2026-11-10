@@ -13,6 +13,7 @@
 #include "sim/commands.h"
 #include "gen/dimgens.h"
 
+namespace dq { bool tryWitherSummon(Level& lv, int realm, ivec3 at); }   // sim/wither.cpp
 namespace dq::es {
 
 static constexpr int HALL = RealmGen::HALL, HALLS = RealmGen::HALLS;
@@ -347,6 +348,55 @@ public:
   void burst(Level& lv) { removed = true; sfx::burst(lv, pos, "mana_arcane", 30, 2.4f, json{{"life", 0.5f}, {"size", 0.1f}}); lv.fx->sound("spell_hit", pos); }
 };
 
+// ---- the end of his realm: half beaten, he falls back and raises the Wither Storm the way Story Mode's was made (a T of
+// soul sand, a command block at its heart, three wither skeleton skulls, the last one set on the command block). While it
+// lives he only watches, warded and out of reach; once it's broken he fights on, and beaten he tears his way out.
+static void heroRaiseStorm(Level& lv, EndStory& S, Creature& m) {
+  json& R = riftRec(lv); R["storm"] = 1; S.mem(m).stormScene = true;
+  World& w = lv.world(m.realm);
+  const int F = (int)realmFloor(), X = (HALLS - 1) * HALL + 48, Z = 0, realm = m.realm; const u32 hid = m.id;
+  for (int y = F + 1; y <= F + 6; y++) for (int dz = -2; dz <= 3; dz++) for (int dx = -2; dx <= 2; dx++) w.setBlock(X + dx, y, Z + dz, AIR, 0);
+  sfx::burst(lv, m.pos + vec3(0, 1, 0), "mana_arcane", 30, 1.6f, json{{"life", 0.6f}, {"spread", 0.8f}});
+  m.pos = vec3(X + 0.5f, F + 1, Z + 2.5f); m.vel = vec3(0); m.yaw = 0; m.data["faceYaw"] = 0.f;   // before the T, facing it
+  sfx::burst(lv, m.pos + vec3(0, 1, 0), "mana_arcane", 30, 1.6f, json{{"life", 0.6f}, {"spread", 0.8f}});
+  for (Player* q : livePlayers(lv, realm)) lv.fx->soundUi(q->id, "rift_boom");
+  riftSay(lv, "Herobrine falls back from you, and the floor of his hall answers him.", "warn");
+  struct Put { double t; int dx, dy; const char* key; };
+  static const Put PUTS[] = {{1.0, 0, 1, "soul_sand"}, {1.6, -1, 2, "soul_sand"}, {2.2, 1, 2, "soul_sand"}, {3.0, 0, 2, "command_block"},
+                             {4.4, -1, 3, "mob_head"}, {5.0, 1, 3, "mob_head"}};
+  auto swing = [hid](Level& l) { if (auto* h = dynamic_cast<Creature*>(l.entity(hid)); h && !h->removed) { h->swingT = 0.3f; h->yaw = 0; } };
+  for (const Put& u : PUTS) S.later(u.t, [u, X, Z, F, realm, swing](Level& l) {
+    World& w = l.world(realm); const ivec3 b(X + u.dx, F + u.dy, Z);
+    w.setBlock(b.x, b.y, b.z, reg().blockId(u.key), 0);
+    if (std::string(u.key) == "mob_head") if (json* be = w.blockEntity(b.x, b.y, b.z, true)) { *be = {{"type", "head"}, {"mob", "wither_skeleton"}, {"rot", 8}}; w.blockEntityChanged(b.x, b.y, b.z); }
+    sfx::burst(l, vec3(b) + vec3(0.5f), "mana_arcane", 14, 0.8f, json{{"life", 0.5f}, {"size", 0.08f}});
+    l.fx->sound(std::string(u.key) == "command_block" ? "command_block_summon" : "stone.place", vec3(b) + vec3(0.5f), 40);
+    swing(l);
+  });
+  S.later(6.4, [](Level& l) { riftSay(l, "He sets the last skull on the command block.", "boss"); });
+  S.later(7.2, [X, Z, F, realm, hid, swing](Level& l) {
+    World& w = l.world(realm); const ivec3 top(X, F + 3, Z);
+    w.setBlock(top.x, top.y, top.z, reg().blockId("mob_head"), 0);
+    if (json* be = w.blockEntity(top.x, top.y, top.z, true)) { *be = {{"type", "head"}, {"mob", "wither_skeleton"}, {"rot", 8}}; w.blockEntityChanged(top.x, top.y, top.z); }
+    swing(l);
+    l.fx->sound("command_block_activates", vec3(top), 160);
+    json& R = riftRec(l);
+    if (EndStory* S2 = endStory(l)) if (auto* h = dynamic_cast<Creature*>(l.entity(hid))) S2->mem(*h).stormScene = false;
+    if (!tryWitherSummon(l, realm, top)) { R["storm"] = 0; return; }
+    for (auto& e : l.entities()) if (auto* c = dynamic_cast<Creature*>(e.get()); c && c->type == "wither_storm" && c->realm == realm && !c->removed && glm::distance(c->pos, vec3(X, F + 1, Z)) < 6) {
+      c->data["finale"] = true;
+      c->kept = true; c->persistent = true;
+    }
+    R["storm"] = 2;
+    // he steps back to the far end of his hall to watch it
+    if (auto* h = dynamic_cast<Creature*>(l.entity(hid)); h && !h->removed) {
+      sfx::burst(l, h->pos + vec3(0, 1, 0), "mana_arcane", 30, 1.6f, json{{"life", 0.6f}, {"spread", 0.8f}});
+      h->pos = vec3(X + 0.5f, F + 1, Z + 40.5f); h->vel = vec3(0);
+      sfx::burst(l, h->pos + vec3(0, 1, 0), "mana_arcane", 30, 1.6f, json{{"life", 0.6f}, {"spread", 0.8f}});
+    }
+  });
+}
+
 static OptMove herobrineAI(Level& lv, Creature& m, Entity* p, float dist, float dyp, float toPlayer, float dt) {
   EndStory* S = endStory(lv); if (!S) return std::nullopt;
   Mem& M = S->mem(m);
@@ -355,6 +405,35 @@ static OptMove herobrineAI(Level& lv, Creature& m, Entity* p, float dist, float 
   float frac = m.hp / m.maxHp;
   riftRec(lv)["heroHp"] = m.hp;
   M.hbTp -= dt; M.hbBolt -= dt; M.hbFreeze -= dt;
+  {
+    json& R = riftRec(lv);
+    int storm = jint(R, "storm");
+    if (storm == 1 && !M.stormScene) { R["storm"] = 0; storm = 0; }   // (a scene cut short by a reload: he raises it again)
+    if (storm == 2) {   // is it still there? (gone some other way than broken: he raises another)
+      bool alive = false;
+      for (auto& u : lv.entities()) if (auto* c = dynamic_cast<Creature*>(u.get()); c && c->type == "wither_storm" && c->realm == m.realm && !c->removed && c->alive()) alive = true;
+      if (!alive) { R["storm"] = 0; storm = 0; }
+    }
+    if (m.realm == REALM_HIS && storm == 0 && frac < 0.5f) { heroRaiseStorm(lv, *S, m); storm = 1; }
+    if (storm == 1) { m.vel.x = m.vel.z = 0; return Move{0, 0.f}; }
+    if (storm == 2) {   // watching it, warded: come near and he's somewhere else
+      if (rnd() < dt * 12) sfx::spark(lv, m.pos + vec3((rnd() - 0.5f) * 1.2f, rnd() * 2.f, (rnd() - 0.5f) * 1.2f), "mana_arcane", json{{"vy", 0.3f}, {"life", 0.6f}, {"size", 0.07f}});
+      if (dist < 10 && M.hbTp <= 0) {
+        M.hbTp = 1.5f;
+        World& w = lv.world(m.realm);
+        for (int k = 0; k < 8; k++) {
+          const float a = rnd() * TAU, d = 18 + rnd() * 10, x = p->pos.x + std::cos(a) * d, z = p->pos.z + std::sin(a) * d;
+          if (solid(w.getBlock(ifloor(x), ifloor(m.pos.y), ifloor(z))) || !solid(w.getBlock(ifloor(x), ifloor(m.pos.y) - 1, ifloor(z)))) continue;
+          sfx::burst(lv, m.pos + vec3(0, 1, 0), "mana_arcane", 30, 1.6f, json{{"life", 0.6f}, {"spread", 0.8f}});
+          m.pos.x = x; m.pos.z = z; m.vel.x = m.vel.z = 0;
+          sfx::burst(lv, m.pos + vec3(0, 1, 0), "mana_arcane", 30, 1.6f, json{{"life", 0.6f}, {"spread", 0.8f}});
+          lv.fx->sound("spell_blink", m.pos + vec3(0, 1, 0));
+          break;
+        }
+      }
+      return Move{0, toPlayer};
+    }
+  }
   if (rnd() < dt * 10) sfx::spark(lv, m.pos + vec3(rnd() - 0.5f, rnd() * 1.8f, rnd() - 0.5f) * vec3(0.5f, 1, 0.5f), "mana_arcane", json{{"vy", 0.5f}, {"life", 0.5f}, {"size", 0.05f}});
   // calls his corrupted at two thirds and one third
   if ((frac < 0.66f && M.calls < 1) || (frac < 0.33f && M.calls < 2)) {
@@ -406,9 +485,26 @@ static void riftSeal(Level& lv, Creature& boss) {
     for (auto [id, n] : std::vector<std::pair<const char*, int>>{{"watcher_blade", 1}, {"rift_staff", 1}, {"heart_crystal", 2}, {"emerald", 32}, {"rift_crystal", 16}})
       if (reg().item(id)) dropItem(l, realm, ItemStack(id, n), at, true);
   });
-  riftSay(lv, "Herobrine is defeated. The rift is sealed, and the watching is over.", "epic");
+  // he doesn't fall: he tears a way out of his own realm and is through it before you can strike again. For a moment the
+  // tear shows somewhere you know (the first player's home), then it closes, and the rift seals behind him
+  {
+    Player* first = nullptr; for (Player* q : levelPlayers(lv)) { first = q; break; }
+    const vec3 home = first && first->spawnPoint.y >= 0 ? first->spawnPoint : lv.info.spawn.y >= 0 ? lv.info.spawn : vec3(0, dimBase(DIM_OVERWORLD) + 80, 0);
+    const vec3 tear = boss.pos;
+    if (PortalSystem* ps = portalSystem(lv)) {
+      VirtualPortal v; v.realm = boss.realm; v.bottom = glm::dvec3(tear); v.yaw = boss.yaw;
+      v.w = 1.1f; v.h = 2.6f; v.walk = false; v.torn = true; v.destRealm = REALM_MAIN; v.destBottom = glm::dvec3(home); v.destYaw = 0;
+      ps->setVirtual("hero_escape", v);
+    }
+    lv.fx->sound("rift_open", tear + vec3(0, 1, 0), 60);
+    boss.removed = true;   // (no body: he's gone through)
+    if (EndStory* S = endStory(lv)) S->later(2.4, [tear](Level& l) {
+      if (PortalSystem* q = portalSystem(l)) q->removeVirtual("hero_escape");
+      l.fx->sound("rift_boom", tear + vec3(0, 1, 0), 80);
+    });
+  }
+  riftSay(lv, "Herobrine is beaten. Before you can strike again he tears his way out, and the rift seals shut behind him.", "epic");
   if (EndStory* S = endStory(lv)) S->later(3.5, [](Level& l) { riftSay(l, "The villages will hear of this. A way home has opened in the arena.", "good"); });
-  if (EndStory* S = endStory(lv)) S->later(90, [](Level& l) { riftSay(l, "In the quiet you hear it, far off past the seal: a storm still gathering out of everything he pulled through. (Your Travel Journal: The Storm)", "warn"); });
   for (Player* l : levelPlayers(lv)) {
     grantXP(lv, *l, 400, at);
     if (R.contains("village") && lv.events) lv.events->emit("villageRep", json::array({l->name, R["village"], 60}));
@@ -787,7 +883,8 @@ void registerRift() {
     }
     if (c == "frag") { if (p) giveOrDrop(lv, *p, ItemStack("realm_fragment", 1)); return "A Realm Fragment, not yet given. The rift has taken " + std::to_string(jint(R, "frags")) + " of " + std::to_string(RIFT_NEED) + "."; }
     if (c == "gate") { if (!jint(R, "stage")) return "Open it first"; riftOpenGate(lv); return "The gateway is open"; }
-    if (c == "go") { if (p) travel(lv, *p, p->realm != REALM_HIS); if (p && p->realm == REALM_HIS) enteredRealm(lv, *p); return "Through the rift"; }
+    if (c == "go") { if (p && p->realm != REALM_HIS && jint(R, "stage") < 3) { R["stage"] = 3; riftChanged(lv); }   // (a debug command: through, gateway or not)
+      if (p) travel(lv, *p, p->realm != REALM_HIS); if (p && p->realm == REALM_HIS) enteredRealm(lv, *p); return "Through the rift"; }
     if (c == "seal") { R["sealed"] = 1; R["stage"] = 5; riftChanged(lv); return "Sealed"; }
     if (c == "reset") { lv.info.data["rift"] = json{{"stage", 0}, {"frags", 0}}; riftChanged(lv); return "The story starts over"; }
     return "Stage " + std::to_string(jint(R, "stage")) + " \xC2\xB7 fragments " + std::to_string(jint(R, "frags")) + " \xC2\xB7 stability " + std::to_string(riftStability(lv)) + (truthy(R, "sealed") ? " \xC2\xB7 sealed" : "");
@@ -798,6 +895,7 @@ void registerRift() {
 
 // ------------------------------------------------------------------ the public side (sim/endstory.h)
 namespace dq {
+bool riftHeroWarded(Level& lv) { const int s = es::jint(riftRec(lv), "storm"); return s == 1 || s == 2; }   // Herobrine while his Storm lives (creature_monsters.cpp)
 using namespace es;
 
 void riftOpenAt(Level& lv, const std::string& villageId, const std::string& name, vec3 at, float yaw) {

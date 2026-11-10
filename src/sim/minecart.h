@@ -14,7 +14,7 @@ namespace dq {
 struct CartType { const char* key; const char* item; const char* block; int slots; bool seat; };
 const CartType& cartType(const std::string& kind);
 constexpr float CART_MAX = 8;        // top speed on rails, blocks a second
-constexpr float RAIL_Y = 1.f / 16;   // carts ride a sixteenth above the rail block's floor
+constexpr float RAIL_Y = 5.f / 32;   // carts ride on the rails' heads, 5/32 above the rail block's floor (render/mesh_plants.cpp railPlate)
 
 class Minecart : public Vehicle {
 public:

@@ -280,6 +280,11 @@ void CloudRenderer::drawGroups(const std::vector<std::pair<int, int>>& groups, b
 }
 
 void CloudRenderer::drawOpaque(const FrameCtx& f, const SkyEnv& env) { drawSet(f, env, false); }
+void CloudRenderer::drawWispsOnly(const FrameCtx& f, const SkyEnv& env) {
+  glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); glDepthMask(GL_FALSE);
+  drawSet(f, env, true);
+  glDepthMask(GL_TRUE); glDisable(GL_BLEND);
+}
 void CloudRenderer::drawWisps(const FrameCtx& f, const SkyEnv& env) {
   glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); glDepthMask(GL_FALSE);
   // the soft halo round the near heaps (the opaque pass's instances, grown a little and see-through)

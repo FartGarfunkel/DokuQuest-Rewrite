@@ -45,8 +45,8 @@ public:
   std::string skin;                 // skin id (file or creator model)
   std::string mode = "survival";    // survival | creative | adventure | spectator
   // inventory (game/inventory.js PlayerInventory): main 36 (0-8 hotbar), armour 4, backpack slot,
-  // off hand, belt hook, charm, cape, and the ender chest's 27
-  std::vector<ItemStack> inv, armor, offhand, back, hook, charm, cape, ender;
+  // off hand, belt hook, charm, cape, the quiver (worn beside the backpack: sim/quiver.h), and the ender chest's 27
+  std::vector<ItemStack> inv, armor, offhand, back, hook, charm, cape, quiver, ender;
   ItemStack cursor;                 // stack held by the mouse in inventory screens
   int selected = 0;                 // hotbar slot
   bool flying = false, sneaking = false, sprinting = false, swimming = false, crawling = false, crawlWant = false;
@@ -58,6 +58,7 @@ public:
   float invuln = 0, hurtFlash = 0, hurtTilt = 0, burn = 0, slow = 0;
   float foodCd = 0, foodPool = 0, eatAnim = 0, attackCd = 0;
   float swingT = 0, eatT = 0, bowPull = 0;
+  bool scoping = false;   // looking through a spyglass (use held): the view narrows (client/play.cpp), the arm up to the eye
   bool sleeping = false;            // in bed (until morning or getting up)
   float regenTimer = 0, drownT = 0, burnT = 0, hotT = 0, cactusT = 0, acidT = 0;
   double lastHurtT = -100;          // level clock (Level::info.time is wrapped; we use a running clock, see sim/gameplay)

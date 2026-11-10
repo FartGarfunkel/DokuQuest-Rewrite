@@ -3,9 +3,12 @@
 #include "assets/cape_tex.h"
 #include "client/app.h"
 #include "ui/screen.h"
+#include "client/photo_mode.h"
 #include <random>
 
 namespace dq {
+
+std::unique_ptr<Screen> makePhotoModeScreen();   // ui/photo_mode.cpp
 
 struct LocalState {
   std::unique_ptr<PlayerController> ctl;
@@ -18,6 +21,7 @@ struct LocalState {
   float ey = 0, camY = 0, fov = 70, tpDist = 4;
   glm::dvec3 shoulder{0};
   int shoulderSide = 1;
+  bool zoomKey = false;   // the Zoom key held (a quarter of the view, like OptiFine's)
   u64 menuFrame = 0;   // the last frame a menu was open (a key that just closed / switched one must not act in the world)
 };
 static std::unordered_map<GameSession*, std::array<LocalState, 4>>& states() { static std::unordered_map<GameSession*, std::array<LocalState, 4>> m; return m; }
@@ -50,6 +54,8 @@ void clientTickLocalPlayer(GameSession& s, double dt) {
   PlayerInput pi;
   if (!menu) {
     vec2 mv = in.moveAxis(), look = in.lookDelta();
+    st.zoomKey = in.down(Act::Zoom);
+    if (st.hasFov && app.settings.fov > 1) look *= clampv(st.fov / app.settings.fov, 0.05f, 1.f);   // zoomed in, the view turns as much slower
     pi.mx = mv.x; pi.mz = -mv.y; pi.lookX = look.x; pi.lookY = look.y;
     pi.jump = in.down(Act::Jump); pi.sneak = in.down(Act::Sneak); pi.sprint = in.down(Act::Sprint);
     pi.attack = in.down(Act::Attack); pi.attackPressed = in.pressed(Act::Attack);
@@ -67,6 +73,7 @@ void clientTickLocalPlayer(GameSession& s, double dt) {
     if (in.pressed(Act::HideHud)) s.hudHidden = !s.hudHidden;
     if (in.pressed(Act::View)) s.viewMode = (s.viewMode + 1) % 4;   // first person, over the shoulder, behind, in front
     if (in.pressed(Act::Screenshot)) app.takeScreenshot();
+    if (in.pressed(Act::PhotoMode) && !s.split() && !p.dead) app.pushScreen(makePhotoModeScreen());
   }
   // death: the UI's death screen calls localController(s)->respawn(); until one is open, jump/use respawns
   if (p.dead) {
@@ -90,6 +97,12 @@ void clientPlayerCamera(GameSession& s, Camera& cam, double dtd) {
   World& w = s.world();
   const Settings& set = s.app.settings;
   float dt = (float)dtd;
+  cam.realm = p.realm;   // the side realms' own skies (His realm, the pocket, the Drift: render/sky.cpp) read it
+  if (const PhotoMode& ph = photoMode(); ph.active && !s.split()) {   // photo mode's own camera (ui/photo_mode.cpp)
+    cam.pos = ph.pos; cam.yaw = ph.yaw; cam.pitch = ph.pitch; cam.roll = ph.tilt * (float)(PI / 180.0);
+    cam.fov = clampv(set.fov + ph.fovAdd, 20.f, 120.f);
+    return;
+  }
   static thread_local std::mt19937 rng{1234};
   std::uniform_real_distribution<float> U(-0.5f, 0.5f);
   // view bobbing: one gentle dip with each step, a sway from side to side, a touch of roll and a little nod
@@ -104,6 +117,8 @@ void clientPlayerCamera(GameSession& s, Camera& cam, double dtd) {
   float rx = std::cos(p.yaw), rz = -std::sin(p.yaw);
   float fov = set.fov + (p.sprinting ? 6.f : 0.f);
   if (c.bowPull > 0) fov -= std::min(1.f, c.bowPull) * 10;
+  if (p.scoping) fov = set.fov * 0.1f;                       // through a spyglass: a tenth (Minecraft's)
+  else if (st.zoomKey && !s.app.topScreen()) fov = set.fov * 0.25f;
   if (!st.hasFov) { st.fov = fov; st.hasFov = true; }
   st.fov += (fov - st.fov) * std::min(1.f, dt * 8);
   bool seated = p.riding != 0;

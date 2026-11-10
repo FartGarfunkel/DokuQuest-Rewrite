@@ -1,6 +1,7 @@
 // render/mesher.cpp — the section mesher: gathering, climate tints, cubes (with greedy merging of
 // flat, evenly lit faces), liquids, torches and the per-section loop. Port of world/mesher.js.
 #include "render/mesh_ctx.h"
+#include "world/rug.h"
 #include "world/light_color.h"
 #include "render/chest_layer.h"
 #include "assets/tileset.h"
@@ -50,6 +51,8 @@ static u64 g_tilesGen = 0;
 void setMeshTiles(const TileSet& ts) {
   auto t = std::make_shared<MeshTiles>();
   t->size = ts.size; t->count = ts.count; t->rgba = ts.rgba;
+  t->anim.assign((size_t)std::max(0, ts.count), 0);
+  for (auto& a : ts.anims) if (a.layer >= 0 && a.layer < ts.count && a.frames.size() > 1) t->anim[a.layer] = 1;
   std::lock_guard<std::mutex> lk(g_tilesMx);
   t->gen = ++g_tilesGen;
   g_tiles = t;
@@ -136,6 +139,8 @@ void MeshCtx::put(std::vector<ChunkVertex>& d, const MV& v, int tile, int normal
     u32 qs = sky >> 3, qb = blk >> 3;
     lit = (qs << 25) | (qs << 20) | (qs << 15) | (qb << 10) | (qb << 5) | qb;
   }
+  if (tiles && (size_t)tile < tiles->anim.size() && tiles->anim[tile]) lit |= 1u << 30;   // an animated tile (chunk.glsl)
+  if (wet) lit |= 1u << 31;   // (water in front of the face: the caustics, chunk.glsl)
   ChunkVertex cv;
   cv.a = fx14(v.p.x) | fx14(v.p.y) << 14 | (u32)(normal & 7) << 28 | ((m >> 4) & 1u) << 31;
   cv.b = fx14(v.p.z) | (u32)(tile & 0xFFF) << 14 | (u32)(tintKind & 31) << 26 | ((m >> 5) & 1u) << 31;
@@ -294,6 +299,33 @@ bool surroundedCovered(const MeshCtx& c, int x, int y, int z) {
   return true;
 }
 
+// does the (solid, opaque-looking) shaped block at x, y, z stand on the whole of its floor: one of its boxes from the
+// floor across all of it (a stair, a bottom slab, a path, a snow layer)? Then the face under it can't be seen.
+static bool shapeStandsOnAll(const MeshCtx& c, BlockId id, int x, int y, int z) {
+  const Registry& R = c.R;
+  // see-through ones; and a shut trapdoor, whose picture has a window in it (the floor under it went, and through the
+  // window you saw out of the world)
+  if (R.tTrans[id] || R.tShape[id] == ShapeKind::Scaffold || R.tShape[id] == ShapeKind::Rail || R.tShape[id] == ShapeKind::Trapdoor) return false;
+  thread_local std::vector<ShapeBox> boxes;
+  MeshShapeNb nb(c, x, y, z);
+  if (!shapeBoxes(id, c.metaAt(x, y, z), nb, ShapePurpose::Draw, boxes)) return false;
+  for (const ShapeBox& b : boxes) if (b.b[1] <= 0 && b.b[0] <= 0 && b.b[2] <= 0 && b.b[3] >= 16 && b.b[5] >= 16) return true;
+  return false;
+}
+
+// Fancy leaves: a face between two leaf blocks shows only through the holes of the leaves in front of it. Two more
+// layers of leaves (or rock) behind the neighbour and it is as good as never seen, so it isn't drawn: a canopy keeps
+// its look but loses most of its inner faces (they were most of the leaves pass, the GPU's biggest).
+static bool leafHidden(const MeshCtx& c, int x, int y, int z, const int* n) {
+  for (int k = 2; k <= 3; k++) {
+    const int ax = x + n[0] * k, ay = y + n[1] * k, az = z + n[2] * k;
+    if (ax < -1 || ax > 16 || az < -1 || az > 16 || !c.inside(ay)) return false;   // past what the mesher sees: draw it
+    const BlockId b = c.at(ax, ay, az);
+    if (!(traits(b).leaves || (c.R.tOpaque[b] && !c.carveAt(ax, ay, az)))) return false;
+  }
+  return true;
+}
+
 void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& dst, BlockId id, int x, int y, int z, u8 meta) {
   const Registry& R = c.R;
   const BlockDef& self = R.block(id);
@@ -313,7 +345,12 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
     BlockId nb = c.at(x + F.n[0], y + F.n[1], z + F.n[2]);
     u8 nmeta = c.metaAt(x + F.n[0], y + F.n[1], z + F.n[2]);
     if (R.tOpaque[nb] && !c.carveAt(x + F.n[0], y + F.n[1], z + F.n[2])) continue;   // carved neighbour: face exposed, draw it
+    // a top under a shaped block standing on all of it (a stair, a bottom slab, a path, a carpet): out of sight, and its
+    // relief poked out round the shape's foot (teal grass bumps along the bottom of every path stair)
+    if (f == 2 && R.tShape[nb] && R.tSolid[nb] && !R.tLiquid[nb] && shapeStandsOnAll(c, nb, x, y + 1, z)) continue;
     if (nb == id && (T.selfCull || (!c.opt.fancyLeaves && T.leaves))) continue;
+    if (T.cullGroup && T.selfCull && traits(nb).cullGroup == T.cullGroup) continue;   // one body of glass (the rubyglass)
+    if (T.leaves && traits(nb).leaves && leafHidden(c, x, y, z, F.n)) continue;
     int tile = faces[f], rot = 0;
     if (T.hasFront && f != 2 && f != 3) tile = f == frontFace ? faces[4] : faces[0];
     if (axis) {
@@ -325,7 +362,15 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
       else if (f == D6_FACE[OPP6[dir6]]) tile = (meta & 8) ? T.f6t[3] : T.f6t[2];
       else { tile = !T.sideAll && dir6 >= 2 && (f == 2 || f == 3) ? T.f6t[4] : T.f6t[5]; rot = F6_ROT[dir6][f]; }
     }
+    // a grassy block's side against a path (or farmland, a path stair or slab), a sixteenth lower: only the side's top edge shows above it, and
+    // the grass's (or the snow's) band there read as a crack, a green or white line along every street and under every
+    // path stair. Its dirt instead, as the path's own side is.
+    if (f != 2 && f != 3 && !T.hasFront && !axis && !T.f6 && (R.tShape[nb] == ShapeKind::Path || isPathTopped(nb)) && faces[3] != faces[0]) {
+      static const int dirtTile = R.tile("dirt");
+      if (faces[3] == dirtTile) tile = dirtTile;
+    }
     FaceCorners fc; faceCorners(c, x, y, z, f, fc);
+    const bool wet = R.tLiquid[nb] == 1 && !(mat & Mat::Liquid);   // under water (or a wall of the pool): the light through it plays on it
     u32 tints[4];
     for (int k = 0; k < 4; k++) tints[k] = T.tint ? c.cornerTint((float)(x + F.c[k][0]), (float)(z + F.c[k][2]), tintKind) : 0xFFFFFF;
     bool uniform = rot == 0 && sway == 0;
@@ -336,7 +381,7 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
       // The RGB word is what stops two colours merging.
       u8 sk = (u8)std::lround(fc.sky[0] * 17), bl = (u8)std::lround(fc.bl[0] * 17);
       u8 sh = (u8)std::lround(FACES[f].shade * AO_CURVE[fc.aoi[0]] * 255.f);
-      key.a = (u64)(tile & 0xFFFF) | (u64)sk << 16 | (u64)bl << 24 | (u64)sh << 32 | (u64)mat << 40 | (u64)1 << 63;
+      key.a = (u64)(tile & 0xFFFF) | (u64)sk << 16 | (u64)bl << 24 | (u64)sh << 32 | (u64)mat << 40 | (u64)(wet ? 1 : 0) << 48 | (u64)1 << 63;
       key.b = tints[0] | (T.tint ? (u32)(tintKind + 1) << 24 : 0u);   // the colour (one climate merges) and which tint
       key.lit = fc.lit[0];
       int pos[3] = {x, y, z};
@@ -362,14 +407,14 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
         for (int k = 0; k < 4; k++) v[k].uv -= base;
       }
     }
-    c.tint = tints[0]; c.tintKind = T.tint ? (u8)(tintKind + 1) : 0;
+    c.tint = tints[0]; c.tintKind = T.tint ? (u8)(tintKind + 1) : 0; c.wet = wet;
     // per-corner tints: emit with each vertex's own colour
     if (T.tint) {
       bool flip = fc.aoi[0] + fc.aoi[2] < fc.aoi[1] + fc.aoi[3];
       int order[4] = {0, 1, 2, 3}; if (flip) { order[0] = 1; order[1] = 2; order[2] = 3; order[3] = 0; }
       for (int k = 0; k < 4; k++) { c.tint = tints[order[k]]; c.put(dst, v[order[k]], tile, f, mat); }
     } else c.quad(dst, v, tile, f, mat, fc.aoi[0] + fc.aoi[2] < fc.aoi[1] + fc.aoi[3]);
-    c.tint = 0xFFFFFF; c.tintKind = 0;
+    c.tint = 0xFFFFFF; c.tintKind = 0; c.wet = false;
   }
 }
 
@@ -399,9 +444,9 @@ void flushGreedy(MeshCtx& c, GreedyMasks& gm) {
           vec3 p(F.c[q][0] ? hi.x : lo.x, F.c[q][1] ? hi.y : lo.y, F.c[q][2] ? hi.z : lo.z);
           v[q] = {p, faceUV(f, p), sk, bl, sh, 0, k.lit};
         }
-        c.tint = k.b & 0xFFFFFF; c.tintKind = (u8)((k.b >> 24) & 31);
+        c.tint = k.b & 0xFFFFFF; c.tintKind = (u8)((k.b >> 24) & 31); c.wet = (k.a >> 48) & 1;
         c.quad(*passes[gm.pass[f][s][b][a]], v, tile, f, mat);
-        c.tint = 0xFFFFFF; c.tintKind = 0;
+        c.tint = 0xFFFFFF; c.tintKind = 0; c.wet = false;
         a += w;
       }
     }
@@ -671,6 +716,8 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
   bool tufts = opt.detail && meshGrassTufts() > 0 && grassBlock;
   for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
     BlockId id = c.at(x, y, z);
+    if (const u8 under = c.coatAt(x, y - 1, z); isRugCoat(under) && !c.carveAt(x, y - 1, z) && !R.tOpaque[id])   // a rug on the floor under this cell
+      if (const BlockId rug = rugBlockOf(under)) emitShapeBlock(c, out.cutout, rug, x, y, z, 0);
     if (!id) continue;
     // portal blocks (Ember, Skylands, the End's pool) are drawn by the portal layer (render/portal_view.cpp):
     // a live window to the far side, or the portal's own picture while it isn't one. Meshing their tile
@@ -716,7 +763,8 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
         if (!deep) emitLiquid(c, R.tLiquid[id] == 2 ? out.opaque : out.trans, id, x, y, z, meta);
         if (R.tLiquid[id] == 1 && (meta & 8)) {
           bool belowFalls = c.water(x, y - 1, z) && (c.metaAt(x, y - 1, z) & 8) && R.tLiquid[c.at(x, y - 1, z)] == 1;
-          if (!belowFalls && c.at(x, y - 1, z) != AIR) out.fx.waterfalls.push_back(wp);
+          // where the falls land, and where they end at a land's floor (the Skylands' falls at the cloud layer): spray
+          if (!belowFalls && (c.at(x, y - 1, z) != AIR || (wp.y & 255) == 0)) out.fx.waterfalls.push_back(wp);
         }
         break;
       }

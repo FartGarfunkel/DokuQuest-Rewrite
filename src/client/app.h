@@ -59,6 +59,7 @@ public:
   // tiles (micro-voxel colours) shared by every renderer
   TileSet tiles;
   TileTextures tileTex;
+  void applyTextureFiltering();   // Settings > Texture Filtering (anisotropic, extra["anisotropic"]) on the block pictures
   void reloadTiles();       // after a resource pack change
 
   // fonts (Pixelify Sans for UI text, Jersey 15 for titles) at a few sizes

@@ -120,6 +120,8 @@ void main() {
       c += mc * (lit ? 1.0 : 0.07) * uSunFade;
     }
   }
+  // a whisper of noise (half a step of the 8-bit picture) so the long gradients don't band
+  c += (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) + fract(sin(dot(gl_FragCoord.xy, vec2(39.346, 11.135))) * 24634.6345) - 1.0) / 255.0;
   fragColor = vec4(DQ_GRADE(c), 1.0);
 }
 #endif

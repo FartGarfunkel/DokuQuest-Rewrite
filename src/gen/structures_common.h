@@ -60,6 +60,7 @@ public:
   int put(int x, int y, int z, std::string_view key, u8 meta = 0) { BlockId id = bid(key); return id == NOBLOCK ? -1 : w.put(x, y, z, id, meta); }
   int putId(int x, int y, int z, BlockId id, u8 meta = 0) { return id == NOBLOCK ? -1 : w.put(x, y, z, id, meta); }
   BlockId get(int x, int y, int z) const { return w.get(x, y, z); }     // NOBLOCK outside the chunk
+  void rug(int x, int y, int z, BlockId carpet) { w.rug(x, y, z, carpet); }   // a rug on the floor block there (world/rug.h)
   void fill(int x0, int y0, int z0, int x1, int y1, int z1, std::string_view key, u8 meta = 0);
   template <class F> void fillf(int x0, int y0, int z0, int x1, int y1, int z1, F f, u8 meta = 0) {
     const int ax = std::max(x0, bx), ex = std::min(x1, bx + 15), az = std::max(z0, bz), ez = std::min(z1, bz + 15);

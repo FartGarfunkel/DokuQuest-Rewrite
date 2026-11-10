@@ -447,10 +447,10 @@ static Site homeSite(Level& lv, const Village& v) {
 // the default builders: a plain little house of the village's wood (the structures' house template replaces it)
 static HeroHouse plainHouse(Level& lv, const Village& v, int r, int ox, int oz, int Y, const json& gifts) {
   World& w = lv.world(REALM_MAIN);
-  const std::string wood = v.style == "savanna" ? "acacia" : v.style == "taiga" || v.style == "snowy" ? "spruce" : v.style == "desert" ? "" : "oak";
+  const std::string wood = v.base == "savanna" ? "acacia" : v.base == "taiga" || v.base == "snowy" ? "spruce" : v.base == "desert" ? "" : "oak";
   BlockId planks = wood.empty() ? B("smooth_sandstone") : B((wood + "_planks").c_str()), log = wood.empty() ? B("sandstone") : B((wood + "_log").c_str());
   if (!planks) planks = B("oak_planks"); if (!log) log = planks;
-  BlockId stone = v.style == "desert" ? B("sandstone") : B("cobblestone"), ground = v.style == "desert" ? B("sand") : B("grass");
+  BlockId stone = v.base == "desert" ? B("sandstone") : B("cobblestone"), ground = v.base == "desert" ? B("sand") : B("grass");
   BlockId door = B((wood.empty() ? "oak" : wood + "_door").c_str()); if (!door) door = B("oak_door");
   BlockId slab = B((wood.empty() ? std::string("sandstone_slab") : wood + "_slab").c_str()); if (!slab) slab = planks;
   auto at = [&](int lx, int ly, int lz) { auto [a, c] = vRot(r, lx, lz); return ivec3(ox + a, Y + ly, oz + c); };
@@ -546,10 +546,10 @@ bool houseFrame(Level& lv, const Village& v, const std::string& key, HouseFrame&
   F.r = -1;
   for (int r = 0; r < 4; r++) { auto [a, c] = vRot(r, 3, -1); if (F.ox + a == door.x && F.oz + c == door.z) F.r = r; }
   if (F.r < 0) return false;
-  const std::string wood = v.style == "savanna" ? "acacia" : v.style == "taiga" || v.style == "snowy" ? "spruce" : v.style == "desert" ? "" : "oak";
+  const std::string wood = v.base == "savanna" ? "acacia" : v.base == "taiga" || v.base == "snowy" ? "spruce" : v.base == "desert" ? "" : "oak";
   F.planks = wood.empty() ? B("smooth_sandstone") : B((wood + "_planks").c_str()); if (!F.planks) F.planks = B("oak_planks");
   F.log = wood.empty() ? B("sandstone") : B((wood + "_log").c_str()); if (!F.log) F.log = F.planks;
-  F.stone = v.style == "desert" ? B("sandstone") : B("cobblestone");
+  F.stone = v.base == "desert" ? B("sandstone") : B("cobblestone");
   F.slab = B((wood.empty() ? std::string("sandstone_slab") : wood + "_slab").c_str()); if (!F.slab) F.slab = F.planks;
   F.glass = B("glass_pane");
   return true;

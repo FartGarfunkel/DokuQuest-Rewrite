@@ -15,11 +15,12 @@ namespace ui {
 // ---- palette (:root and .inv variables) ----
 namespace col {
 constexpr ImU32 rgb(u32 hex, u8 a = 255) { return IM_COL32((hex >> 16) & 255, (hex >> 8) & 255, hex & 255, a); }
-constexpr ImU32 ink = rgb(0x0f0c0a), panel2 = rgb(0x2a221b), slot = rgb(0x221c17), slotHi = rgb(0x3a3027), line = rgb(0x4d3f33),
-  lineHi = rgb(0x7c6650), text = rgb(0xefe4cc), muted = rgb(0xb3a48c), ember = rgb(0xff8a3d), emberDeep = rgb(0xc4521b), heart = rgb(0xe5484d),
+// menus in BTA's greys (the launcher's Options tab): white-grey text, grey labels, black lines, its yellow highlight
+constexpr ImU32 ink = rgb(0x0f0f0f), panel2 = rgb(0x2a2a2a), slot = rgb(0x221c17), slotHi = rgb(0x3a3027), line = rgb(0x3f3f3f),
+  lineHi = rgb(0x8a8a8a), text = rgb(0xe0e0e0), muted = rgb(0xa0a0a0), ember = rgb(0xffffa0), emberDeep = rgb(0xa0a040), heart = rgb(0xe5484d),
   xp = rgb(0x9bd34a), frost = rgb(0x8fe3ff), gold = rgb(0xe2b84f), epic = rgb(0xc88cff), bad = rgb(0xff6b5e),
   pn = rgb(0x2b2520), pnHi = rgb(0x6d5a47), pnLo = rgb(0x0c0907), sl = rgb(0x17130f), slHi = rgb(0x3c3128), slLo = rgb(0x050403),
-  ink2 = rgb(0xe9dcc0), dim = rgb(0xa8987e), white = IM_COL32_WHITE, black = IM_COL32_BLACK;
+  ink2 = rgb(0xe0e0e0), dim = rgb(0x909090), white = IM_COL32_WHITE, black = IM_COL32_BLACK;
 }
 
 enum FontId { F_SMALL, F_BODY, F_MID, F_BTN, F_BIG, F_H3, F_DISP, F_TITLE, F_HUGE, F_MONO, F_COUNT };

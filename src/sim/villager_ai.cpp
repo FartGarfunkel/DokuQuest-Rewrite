@@ -6,6 +6,7 @@
 #include "core/registry.h"
 #include "world/dims.h"
 #include <queue>
+#include <unordered_set>
 
 namespace dq {
 
@@ -46,6 +47,7 @@ static std::vector<ivec3> npcPath(const World& w, int sx, int sy, int sz, int tx
   std::unordered_map<i64, int> seen;
   using QE = std::pair<float, int>;
   std::priority_queue<QE, std::vector<QE>, std::greater<QE>> open;
+  const bool startWet = R.tLiquid[w.getBlock(sx, sy, sz)] || R.tLiquid[w.getBlock(sx, sy - 1, sz)];
   nodes.push_back({sx, sy, sz, 0, hfn(sx, sy, sz), -1, false});
   seen[key(sx, sy, sz)] = 0; open.push({nodes[0].f, 0});
   int best = 0; float bestH = nodes[0].f; int n = 0;
@@ -70,7 +72,7 @@ static std::vector<ivec3> npcPath(const World& w, int sx, int sy, int sz, int tx
       }
       if (ny < 0) continue;
       if (farmland && w.getBlock(nx, ny - 1, nz) == farmland) cost += 4;   // keep off the crops
-      if (R.tLiquid[w.getBlock(nx, ny, nz)] || R.tLiquid[w.getBlock(nx, ny - 1, nz)]) cost += 14;   // round a well or a pond, not through it: water only when there is no dry way
+      if (R.tLiquid[w.getBlock(nx, ny, nz)] || R.tLiquid[w.getBlock(nx, ny - 1, nz)]) { if (!startWet) continue; cost += 14; }   // never into a fountain or a pond (only out of one)
       i64 k = key(nx, ny, nz); float g2 = c.g + cost;
       auto it = seen.find(k);
       if (it != seen.end() && (nodes[it->second].closed || nodes[it->second].g <= g2)) continue;
@@ -127,7 +129,7 @@ void npcShutDoors(Level& lv, Creature& e, NpcMind& M, bool all) {
 }
 
 // walk to a spot: a path that goes through doors (opening them, and shutting them behind). nullopt = there.
-static OptMove npcGo(Level& lv, Creature& e, NpcMind& M, vec3 t, float dt, float speed) {
+OptMove npcGo(Level& lv, Creature& e, NpcMind& M, vec3 t, float dt, float speed) {
   float d = std::hypot(t.x - e.pos.x, t.z - e.pos.z);
   if (d < 0.45f && std::fabs(t.y - e.pos.y) < 1.5f) { M.hasPath = false; return std::nullopt; }
   M.navT -= dt;
@@ -166,9 +168,20 @@ static OptMove npcGo(Level& lv, Creature& e, NpcMind& M, vec3 t, float dt, float
 // ------------------------------------------------------------------ guards and golems
 static vec3 npcPickSpot(Level& lv, const Village& v, bool plaza) {
   if (plaza || v.roads.empty()) {
-    float lo = v.tierN() ? (v.fr ? v.fr : 1) + 2.f : 3.f, a = rnd() * TAU;
-    float d = v.tierN() ? lo + rnd() * std::max(1.5f, (v.P ? v.P : 7) - 2 - lo) : 3 + rnd() * 3.5f;
-    return vec3(v.x + 0.5f + std::cos(a) * d, v.y + 1, v.z + 0.5f + std::sin(a) * d);
+    // somewhere in the square to stand: dry ground with room (not in the fountain's basin or the well)
+    World& w = lv.world(REALM_MAIN); const Registry& R = reg();
+    for (int tries = 0; tries < 12; tries++) {
+      float lo = v.tierN() ? (v.fr ? v.fr : 1) + 2.f : 3.f, a = rnd() * TAU;
+      float d = v.tierN() ? lo + rnd() * std::max(1.5f, (v.P ? v.P : 7) - 2 - lo) : 3 + rnd() * 3.5f;
+      const int x = ifloor(v.x + 0.5f + std::cos(a) * d), z = ifloor(v.z + 0.5f + std::sin(a) * d);
+      for (int y = v.y + 4; y >= v.y - 3; y--) {
+        const BlockId g = w.getBlock(x, y - 1, z);
+        if (!R.tSolid[g] && !R.tLiquid[g]) continue;
+        if (R.tLiquid[g] || R.tLiquid[w.getBlock(x, y, z)] || R.tSolid[w.getBlock(x, y, z)] || R.tSolid[w.getBlock(x, y + 1, z)]) break;
+        return vec3(x + 0.5f, (float)y, z + 0.5f);
+      }
+    }
+    if (v.roads.empty()) return vec3(v.x + 0.5f, v.y + 1, v.z + 0.5f);
   }
   // somewhere along a road
   const VRoad& road = v.roads[(size_t)std::floor(rnd() * v.roads.size())];
@@ -305,6 +318,36 @@ static void npcWorkSound(Level& lv, Creature& e, const std::string& j) {
   else if (j == "farmer") lv.fx->sound("dig_gravel", e.pos + vec3(0, 0.5f, 0));
 }
 
+// a stop on the trade's round (gen/structures_jigsaw_village.cpp tradeRound; data/villagers.json jobs.*.tasks): the tool for it
+// in hand and the work done the way it's done there: the smith beats the iron out on the anvil, the armourer dyes and
+// quenches at the tub and fits what's made on a stand, the cleric minds the brewing stand...
+static void npcTaskWork(Level& lv, Creature& e, NpcMind& M, const json& J, const VTask& t, float dt) {
+  const json& TT = J.contains("tasks") && J["tasks"].is_object() ? J["tasks"] : json::object();
+  const json T = TT.contains(t.kind) && TT[t.kind].is_object() ? TT[t.kind] : json::object();
+  const std::string doing = T.value("do", std::string("work")), held = T.value("held", std::string());
+  if (!held.empty() && reg().item(held) && e.heldItem != held) { e.heldItem = held; M.taskHeld = true; }
+  const vec3 st = vec3(t.at) + vec3(0.5f + DXL[t.f] * 0.85f, 1.05f, 0.5f + DZL[t.f] * 0.85f);   // the station, in front of them
+  if (doing == "read" || doing == "draw") {
+    M.pose |= NP_READ;
+    if ((M.workT -= dt) <= 0) { M.workT = 5 + rnd() * 4; lv.fx->sound(doing == "draw" ? "map_paper" : "book_page", st, 8, 0.5f); }
+    return;
+  }
+  struct Act { const char* name; float a, b; const char* sound; const char* fx; int n; };
+  static const Act ACTS[] = {
+    {"hammer", 0.8f, 1.2f, "anvil", "spark", 4}, {"tend", 2.4f, 3.4f, "fire_crackle", "smoke", 3}, {"dip", 2.2f, 3.0f, "splash_small", "splash", 5},
+    {"fit", 1.6f, 2.4f, "equip", nullptr, 0}, {"grind", 0.45f, 0.7f, "grind", "crit", 3}, {"brew", 2.4f, 3.2f, "brew_bubble", "white", 3},
+    {"shelve", 2.0f, 3.0f, "book_page", nullptr, 0}, {"sort", 2.0f, 3.0f, "chest", nullptr, 0}, {"chop", 0.9f, 1.3f, "hit", "crumbs", 2},
+    {"knead", 1.0f, 1.4f, "craft", nullptr, 0}, {"cut", 1.0f, 1.4f, "saw", "dust", 3}, {"weave", 1.4f, 2.0f, "craft", nullptr, 0},
+    {"work", 1.4f, 2.0f, "craft", nullptr, 0}};
+  const Act* A = &ACTS[sizeof ACTS / sizeof ACTS[0] - 1];
+  for (const Act& a : ACTS) if (doing == a.name) { A = &a; break; }
+  if ((M.workT -= dt) > 0) return;
+  M.workT = A->a + rnd() * (A->b - A->a); e.swingT = 0.3f;
+  lv.fx->sound(A->sound, st, 10, 0.6f);
+  if (A->fx) lv.fx->particles(A->fx, st, A->n);
+  if (doing == "tend" && rnd() < 0.5f) lv.fx->particles("flame", st, 2);
+}
+
 // towns3.js: a townsperson who ends up inside a wall or under the ground finds their way back to the surface
 void npcStuckCheck(Level& lv, Creature& m, NpcMind& M) {
   World& w = lv.world(m.realm);
@@ -313,6 +356,24 @@ void npcStuckCheck(Level& lv, Creature& m, NpcMind& M) {
   if (!w.isLoaded(fx, fy, fz)) return;
   bool inWall = R.tSolid[w.getBlock(fx, hy, fz)] && R.tSolid[w.getBlock(fx, fy, fz)];
   bool voidFall = (fy & 255) < 2;
+  // in a fountain or a well a few seconds: out onto the nearest dry ground beside it (they climbed in after a spot to
+  // stand in the square, and the basin's rim was too high to step back over)
+  if (R.tLiquid[w.getBlock(fx, fy, fz)] || R.tLiquid[w.getBlock(fx, hy, fz)]) {
+    if (++M.wetN >= 3) {
+      M.wetN = 0;
+      float bd = 1e9f; ivec3 best(0); bool found = false;
+      for (int dz = -6; dz <= 6; dz++) for (int dx = -6; dx <= 6; dx++) for (int dy = -1; dy <= 4; dy++) {
+        const int x = fx + dx, y = fy + dy, z = fz + dz;
+        const BlockId g = w.getBlock(x, y - 1, z), a0 = w.getBlock(x, y, z), a1 = w.getBlock(x, y + 1, z);
+        if (!R.tSolid[g] || R.tLiquid[g] || R.tSolid[a0] || R.tSolid[a1] || R.tLiquid[a0] || R.tLiquid[a1]) continue;
+        const float d = (float)(dx * dx + dz * dz) + dy * dy * 0.5f;
+        if (d < bd) { bd = d; best = ivec3(x, y, z); found = true; }
+      }
+      if (found) { m.pos = vec3(best.x + 0.5f, best.y + 0.02f, best.z + 0.5f); m.vel = vec3(0); m.fallDist = 0; M.hasPath = false; }
+    }
+    return;
+  }
+  M.wetN = 0;
   if (!inWall && !voidFall) { M.stuckN = 0; return; }
   if (++M.stuckN < 2) return;   // twice in a row (two seconds): a moment's squeeze through a doorway doesn't count
   M.stuckN = 0;
@@ -467,7 +528,8 @@ static Move brainInner(Level& lv, Creature& e, NpcMind& M, json& N, const Villag
       else {
         const VRoad& rd = v.roads[(size_t)std::floor(rnd() * v.roads.size())];
         int t = std::min(rd.L, 6 + (int)std::floor(rnd() * rd.L));
-        M.goal = rnd() < 0.35f ? npcPickSpot(lv, v, true) : vec3(v.x + DXL[rd.d] * t + 0.5f, v.y + 1, v.z + DZL[rd.d] * t + 0.5f);
+        if (!rd.cells.empty() && rnd() >= 0.35f) { const ivec3& c = rd.cells[(size_t)std::floor(rnd() * rd.cells.size())]; M.goal = vec3(c.x + 0.5f, c.y + 1, c.z + 0.5f); }   // a jigsaw town's streets
+        else M.goal = rnd() < 0.35f ? npcPickSpot(lv, v, true) : vec3(v.x + DXL[rd.d] * t + 0.5f, v.y + 1, v.z + DZL[rd.d] * t + 0.5f);
       }
       M.hasGoal = true; M.goalT = 40; M.goalSerial++;
     }
@@ -481,6 +543,7 @@ static Move brainInner(Level& lv, Creature& e, NpcMind& M, json& N, const Villag
   const json& JJ = VD()["jobs"]; const json J = JJ.contains(job) ? JJ[job] : JJ.value("none", json::object());
   const bool shop = hasShop(job);
   enum { NONE, SLEEP, IDLE, WORK, SIT, SOCIAL } act = NONE;
+  const VTask* task = nullptr;   // a stop on the trade's round, while working it
   bool hasGoal = false; vec3 goal(0);
   // the village's own seats, then any chair, stool or bench a player put down there (villagers.cpp records them)
   static thread_local std::vector<VSeatSpot> seats; seats.assign(v.seats.begin(), v.seats.end());
@@ -500,9 +563,25 @@ static Move brainInner(Level& lv, Creature& e, NpcMind& M, json& N, const Villag
     const VBld* ch = nullptr; for (auto& b : v.blds) if (b.type == "chapel") { ch = &b; break; }
     if (ch) if (OptMove m = npcService(lv, e, M, v, *ch, idx, ph, dt)) return *m;
   }
-  if (night && folk) { goal = vec3(folk->home); hasGoal = true; act = SLEEP; }
+  // the outdoor trades (the builder, lumberjack, miner, fisherman, rancher, shepherd) work on till noon
+  static const std::unordered_set<std::string> LONG = {"builder", "lumberjack", "miner", "fisherman", "rancher", "shepherd"};
+  const bool longDay = folk && LONG.count(folk->job);
+  if (night && folk && folk->noBed) { goal = vec3(folk->home); hasGoal = true; act = IDLE; }   // no bed of their own: the night at the hall
+  else if (night && folk) { goal = vec3(folk->home); hasGoal = true; act = SLEEP; }
   else if (ph < 0.04) act = IDLE;
-  else if (folk && folk->hasWork && (ph < 0.3 || (shop && ph < 0.46))) { goal = vec3(folk->work); hasGoal = true; act = WORK; }
+  else if (folk && folk->hasWork && (ph < 0.3 || (shop && ph < 0.46) || (longDay && ph < 0.42))) {
+    if (!lv.isRemote() && (ph < 0.3 || longDay)) if (OptMove m = npcChore(lv, e, M, v, *folk, (float)ph, dt)) return *m;   // the day's real work
+    if (longDay && M.choreIdle) act = SOCIAL;   // nothing for them just now: about the streets (they stood swinging at the hall door)
+    else {
+      goal = vec3(folk->work); hasGoal = true; act = WORK;
+      if (!folk->tasks.empty() && ph < 0.3) {   // the morning's work goes round the trade's stations (the counter is kept after)
+        const int n = (int)folk->tasks.size();
+        if (M.taskI < 0 || M.taskI >= n) { M.taskI = (int)(rnd() * n) % n; M.taskT = 10 + rnd() * 10; }
+        if ((M.taskT -= dt) <= 0) { M.taskI = (M.taskI + 1) % n; M.taskT = 16 + rnd() * 14; M.workT = 0.6f; }
+        task = &folk->tasks[M.taskI]; goal = vec3(task->at);
+      }
+    }
+  }
   else if (ph >= 0.43 && seat) {
     goal = seat->walk ? vec3(seat->ax, seat->at.y, seat->az) : vec3(seat->at.x + DXL[seat->f], seat->at.y, seat->at.z + DZL[seat->f]); hasGoal = true; act = SIT;   // walk up to the bench, then sit
     if (!seat->walk) {   // its front blocked (a bench against a wall, one set down the wrong way round): come up from a side that's open
@@ -513,6 +592,11 @@ static Move brainInner(Level& lv, Creature& e, NpcMind& M, json& N, const Villag
     }
     if (idx >= (int)seats.size()) { act = SOCIAL; hasGoal = false; }
   } else act = SOCIAL;
+  if (M.taskHeld && !task) {   // (the round's tool put down: their own back in hand, or what they're carrying)
+    e.heldItem = !M.carry.empty() && M.carryN > 0 ? M.carry : J.contains("held") && J["held"].is_string() ? J["held"].get<std::string>() : std::string();
+    if (!e.heldItem.empty() && !reg().item(e.heldItem)) e.heldItem.clear();
+    M.taskHeld = false;
+  }
   if (act == SOCIAL) {
     if (!M.hasGoal || M.goalT <= 0) { M.goal = npcPickSpot(lv, v, rnd() < 0.55f); M.hasGoal = true; M.goalT = 25 + rnd() * 25; M.goalSerial++; }
     M.goalT -= dt; goal = M.goal; hasGoal = true;
@@ -553,7 +637,8 @@ static Move brainInner(Level& lv, Creature& e, NpcMind& M, json& N, const Villag
       return Move{0, e.yaw};
     }
     if (act == WORK) {
-      int f = folk->workF & 3; e.yaw = turnTo(e.yaw, std::atan2((float)-DXL[f], (float)-DZL[f]), dt * 6);
+      int f = (task ? task->f : folk->workF) & 3; e.yaw = turnTo(e.yaw, std::atan2((float)-DXL[f], (float)-DZL[f]), dt * 6);
+      if (task) { npcTaskWork(lv, e, M, J, *task, dt); return Move{0, e.yaw}; }
       std::string wk = J.value("work", std::string("idle"));
       if (wk == "read") M.pose |= NP_READ;
       else if (wk == "hammer" || wk == "hoe") { M.workT -= dt; if (M.workT <= 0) { M.workT = 1.1f + rnd() * 0.8f; e.swingT = 0.3f; npcWorkSound(lv, e, job); } }

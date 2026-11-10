@@ -109,7 +109,11 @@ public:
     if ((placeT -= dt) <= 0) {
       placeT = 2; place = placeMood(*s.level, p.pos);
       land = -1;
-      if (sc.dim == DIM_NETHER && p.realm == REALM_MAIN && s.level->info.genVersion >= 5) { u8 a, b; float m; netherBiomeMix(s.level->info.seed, (int)std::floor(p.pos.x), (int)std::floor(p.pos.z), a, b, m); land = a; }
+      if (sc.dim == DIM_NETHER && p.realm == REALM_MAIN && s.level->info.genVersion >= 5) {
+        u8 a, b; float m;
+        netherLandAt(s.level->info.seed, s.level->info.genVersion, (int)std::floor(p.pos.x), (int)std::floor(p.pos.y), (int)std::floor(p.pos.z), a, b, m);
+        land = a;
+      }
     }
     sc.place = place;
     sc.netherLand = sc.dim == DIM_NETHER ? land : -1;

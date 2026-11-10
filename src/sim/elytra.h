@@ -18,8 +18,8 @@ inline bool g_elytraByController = false;      // gameplay sets this once its co
 bool hasElytra(const Player& p);
 bool elytraJump(Level& lv, Player& p);                  // the jump edge: spread the wings if falling (true = started)
 void elytraMove(Level& lv, Player& p, double dt);       // a glide step (moves p; ends the glide when it must)
-// the wing panels in the cape's frame (x right, y down from the shoulders, z back; pixels of 1/16 block):
-// each a W 9 x L 21 x T 1.2 box turned about its top inner corner by `side * (0.16 + spread)`, tipped back by spread * 0.35
+// the wing panels in the cape's frame (x right, y down from the shoulder blades, z back; pixels of 1/16 block):
+// each hung from its top inner corner, rolled out by `side * (0.22 + spread)` and swept back by spread * 0.55 when open
 struct ElytraWing { float side, ang, tilt; vec3 min, max; };
 std::array<ElytraWing, 2> elytraWings(bool open);
 

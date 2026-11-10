@@ -23,7 +23,7 @@ void blockBoxes(const World& w, int x, int y, int z, std::vector<AABB>& out);
 
 // Move an entity by its velocity for dt, sliding along walls and stepping up onto slabs and
 // stairs (stepHeight; airStep = the little lip a body just off the ground may still step over).
-struct MoveParams { float stepHeight = 0.6f, airStep = 0; bool sneaking = false, item = false; const std::string* itemId = nullptr; };   // item: a dropped item (falls through mesh; a gold mesh lets through only the item it is set to)
+struct MoveParams { float stepHeight = 0.6f, airStep = 0; bool sneaking = false, item = false; const std::string* itemId = nullptr; int itemD = 0; };   // item: a dropped item (falls through mesh; a gold mesh lets through only the item and damage it is set to)
 struct MoveOut { bool hitWall = false, hitX = false, hitZ = false, hitCeiling = false, landed = false; };
 MoveOut moveEntity(const World& w, Entity& e, float dt, const MoveParams& mp = {});
 
@@ -38,6 +38,8 @@ struct Contacts {
   int portal = 0;
 };
 Contacts sampleContacts(const World& w, const Entity& e, float eye = -1);
+// True when the entity's body overlaps an extended spike trap (retracted spikes and dropped items do not).
+bool spikeOverlap(const World& w, const Entity& e);
 
 // Voxel DDA ray cast against the blocks' real shapes. pickLiquid: still liquid sources count.
 struct RayHit { bool hit = false; ivec3 block{0}; ivec3 normal{0}; float dist = 0; BlockId id = 0; vec3 point{0}; };

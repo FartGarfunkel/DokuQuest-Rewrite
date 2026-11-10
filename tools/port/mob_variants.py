@@ -384,7 +384,7 @@ def entity_tiles(m):
             for v in t.values(): walk(v)
         elif isinstance(t, list):
             for v in t: walk(v)
-    for p in m['parts']: walk(p['tex'])
+    for p in m['parts']: walk(p.get('tex'))   # (a voxel part, a bird's foot, has no picture)
     return out
 
 
@@ -435,7 +435,8 @@ def look(mob, suffix, label, w=1.0, *, tint=None, only=None, skip=(), pattern=No
             if isinstance(t, dict): return {k: re(v) for k, v in t.items()}
             if isinstance(t, list): return [re(v) for v in t]
             return t
-        for p in m['parts']: p['tex'] = re(p['tex'])
+        for p in m['parts']:
+            if 'tex' in p: p['tex'] = re(p['tex'])
     if edit: edit(m)
     if build:
         k = Kit(m, seed)
@@ -706,7 +707,7 @@ def catalogue():
     def wool_edit(col):
         def e(m):
             for p in m['parts']:
-                if p['tex'] == 'sheep_wool': p['tex'] = col
+                if p.get('tex') == 'sheep_wool': p['tex'] = col
         return e
     look('sheep', 'patched', 'a patched sheep', 1.0, ptint=True, tint={'sat': 0.4, 'val': 0.35}, only={'sheep_face', 'sheep_skin'}, pattern=pat_speckle((220, 220, 214), 0.18), pattern_on={'sheep_skin'})
     look('sheep', 'rocky', 'a rocky sheep', 0.8, lands=['mountains', 'snowy_peaks'], pattern=pat_speckle(BLACK, 0.22), only={'sheep_skin'},
@@ -770,18 +771,21 @@ def catalogue():
          build=lambda k, m, r: (k.eyepatch(), k.add('ruff', 'body', (0, 0.5, -3), (-4.6, -4.2, -4.0, 4.6, 4.2, 4.0), 'gray_wool')))
 
     # ===== the wild =====
-    def feathered(k, m, r):
+    def feathered(k, m, r):   # the long hair over a draft horse's hooves, its mane's colour (white wool read as leg wraps)
         legs = [s for s in ('shinFR', 'shinFL', 'shinBR', 'shinBL') if has(m, s)] or [s for s in ('legFR', 'legFL', 'legBR', 'legBL') if has(m, s)]
-        for s in legs: k.band('wool', s, 0.0, 0.45, pad=0.6)
+        hair = P(m, 'mane').get('tex') if has(m, 'mane') else None
+        for s in legs: k.band(hair if isinstance(hair, str) else 'wool', s, 0.0, 0.45, pad=0.6)
     look('horse', 'draft', 'a draft horse', 0.8, village=True, scale=1.1, build=feathered)
     look('horse', 'painted', 'a painted horse', 1.0, lands=['savanna', 'plains'], pattern=pat_patches(WHITE, cover=0.42), skip=('face',))
-    look('horse', 'warhorse', 'a lost warhorse', 0.25, build=lambda k, m, r: (k.ring_z('iron_block', 'body', 0.0, 0.3, pad=0.4), k.helmet('iron_block', pad=0.3, depth=2.0)), drops=[['iron_nugget', 2, 5, 0.8]])
-    look('donkey', 'packed', 'a runaway pack donkey', 0.6, build=lambda k, m, r: k.saddlebags('barrel_side'), drops=[['bread', 1, 2, 0.5], ['emerald', 1, 1, 0.2], ['string', 1, 2, 0.4]])
+    # (wild mounts wear nothing: a saddle, armour, bags or a chest is what you put on your own. These looks were a lost
+    #  warhorse in iron barding and a runaway pack donkey with its saddlebags; their keys stay for the saves)
+    look('horse', 'warhorse', 'a big stallion', 0.25, scale=1.15, tint={'sat': 0.8, 'val': 0.55})
+    look('donkey', 'packed', 'a dusty donkey', 0.6, tint={'sat': 0.55, 'val': 1.12})
     look('donkey', 'grey', 'a grey donkey', 1.0, tint={'sat': 0.15, 'val': 1.05})
-    look('llama', 'caravan', 'a caravan llama', 0.6, build=lambda k, m, r: k.saddlebags('barrel_side'), drops=[['emerald', 1, 1, 0.2]])
+    look('llama', 'caravan', 'a shaggy brown llama', 0.6, tint={'mix': [0.55, 0.38, 0.22, 0.45]})   # (was a caravan llama with saddlebags)
     look('llama', 'tasseled', 'a tasseled llama', 0.8, village=True, build=lambda k, m, r: (k.add('rug', 'body', (0, P(m, 'body')['box'][4], 0), (-5.6, -2.5, -6, 5.6, 0.4, 6), 'red_wool'),
                                                                                          k.drape('yellow_wool', 'body', 'left', h=3, w=1.0, u=0.3), k.drape('yellow_wool', 'body', 'right', h=3, w=1.0, u=0.7)))
-    look('camel', 'trader', 'a trader camel', 0.8, build=lambda k, m, r: k.saddlebags('barrel_side'), drops=[['emerald', 1, 2, 0.25]])
+    look('camel', 'trader', 'a pale camel', 0.8, tint={'sat': 0.6, 'val': 1.12})   # (was a trader camel with saddlebags)
     look('camel', 'pale', 'a pale camel', 1.0, tint={'sat': 0.5, 'val': 1.2})
     look('goat', 'longhorn', 'a longhorn goat', 1.0, build=lambda k, m, r: k.horns_curl('bone_block_side', size=1.3), drops=[['goat_horn', 1, 1, 0.1]])
     look('goat', 'frostbeard', 'a frost-bearded goat', 1.0, lands=SNOW, build=lambda k, m, r: (k.beard('wool', h=3.5), k.lumps(spots_on(m, [('body', 'top', 2)], r), 'snow', size=(2.0, 1.6), thick=0.6)))

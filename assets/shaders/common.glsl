@@ -17,6 +17,10 @@ uniform float uDaylight;      // sky light multiplier (original env.day)
 uniform vec3 uSunDir;
 uniform vec3 uSkyColor;
 uniform vec3 uFogColor;
+// the open sky (render/world_renderer.cpp FrameCtx::apply): its horizon and the sun's glow, as sky.glsl paints them, and how far
+// the far fog turns to the sky behind the land (0: the fog colour only: the Nether, the End, under water, a thick mist)
+uniform vec3 uSkyHorizon, uSkyGlow;
+uniform float uFogSky;
 uniform float uFogStart;
 uniform float uFogEnd;
 uniform vec3 uNearFog;
@@ -38,6 +42,10 @@ uniform sampler2DArray uHeights2;
 uniform sampler2DArray uNormals;      // baked smooth normal maps: xy = tangent-space normal, z = crevice darkening, w = blurred depth
 uniform sampler2DArray uNormals2;
 uniform float uPageSize;
+// animated tiles: which layer each tile shows now (render/tile_anim.cpp; 64 x 64, one entry per layer). The frames
+// are layers of their own, so an animation is this little table changing, not pictures copied into the array.
+uniform usampler2D uAnimMap;
+float animLayer(float layer) { int l = int(layer); return float(texelFetch(uAnimMap, ivec2(l & 63, l >> 6), 0).r); }
 vec4 tileColorGrad(vec2 uv, float layer, vec2 dx, vec2 dy) {
   return layer < uPageSize ? textureGrad(uTiles, vec3(uv, layer), dx, dy) : textureGrad(uTiles2, vec3(uv, layer - uPageSize), dx, dy);
 }
@@ -146,10 +154,19 @@ vec3 lightingAt(float sky, float block, bool emissive, vec3 rel, vec3 n) {
   if (uDynN > 0) block31 = max(block31, dynBlock31(rel, n));
   return cubyzCombine(vec3(sky * 31.0), block31);
 }
+// the sky behind something seen along dir (sky.glsl's zenith-horizon gradient and the sun's glow round a low sun; looking down,
+// the horizon): far land fades into exactly the sky behind it, no band of fog colour between them at sunset
+vec3 fogSkyColour(vec3 dir) {
+  vec3 d = normalize(dir);
+  vec3 c = mix(uSkyHorizon, uSkyColor, pow(clamp(d.y, 0.0, 1.0), 0.45));
+  c += uSkyGlow * pow(max(dot(d, uSunDir), 0.0), 6.0) * clamp(1.0 - abs(d.y) * 2.0, 0.0, 1.0);
+  return c;
+}
 vec3 applyFog(vec3 c, float dist, vec3 dir) {
-  float f = smoothstep(uFogStart, uFogEnd, dist);
+  float far = smoothstep(uFogStart, uFogEnd, dist), f = far;
   if (uNearFog.z > 0.0) f = max(f, smoothstep(uNearFog.x, uNearFog.y, dist) * uNearFog.z);
-  return mix(c, uFogColor, f);
+  vec3 fc = uFogSky > 0.0 ? mix(uFogColor, fogSkyColour(dir), far * uFogSky) : uFogColor;   // (the thicker, the more it's the sky)
+  return mix(c, fc, f);
 }
 
 // Wind sway and waves — the original sway codes (render/gl.js terrainVS):

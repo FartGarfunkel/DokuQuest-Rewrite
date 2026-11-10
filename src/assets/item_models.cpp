@@ -145,7 +145,11 @@ inline vec2 shapeST(int f, float X, float Y, float Z) {
     default: return {16 - X, 16 - Y};
   }
 }
-struct PxBox { float b[6]; int tile[6]; float tv; };
+struct PxBox {
+  float b[6]; int tile[6]; float tv;
+  float fu[6] = {0, 0, 0, 0, 0, 0}, fv[6] = {0, 0, 0, 0, 0, 0};   // per face: the picture shifted (a shape's tu/tv: rods' sheets)
+  u8 swapUV = 0;                                                  // per face (bit): the picture's axes swapped (uvT)
+};
 
 // Boxes in block pixels -> a voxel grid at 2 voxels per pixel. Opaque boxes are filled; a box whose
 // faces show see-through pixels (glass, leaves, panes) keeps only the shell voxels under opaque
@@ -161,6 +165,8 @@ void buildBoxes(const TileSet& ts, const std::vector<PxBox>& boxes, VoxelGrid& g
   const int S = ts.size;
   auto pix = [&ts, S](const PxBox& b, int f, vec3 p) -> u32 {   // p in block pixels, on face f
     vec2 st = shapeST(f, p.x, p.y, p.z);
+    if ((b.swapUV >> f) & 1) std::swap(st.x, st.y);
+    st += vec2(b.fu[f], b.fv[f]);
     if (f != 2 && f != 3) st.y += b.tv;
     return tileVoxel(ts, b.tile[f], clampv((int)std::floor(st.x * S / 16), 0, S - 1), clampv((int)std::floor(st.y * S / 16), 0, S - 1));
   };
@@ -341,6 +347,7 @@ bool shapedBlockBoxes(const ItemDef& def, std::vector<PxBox>& out) {
   if (bd.render == Render::Cross || bd.render == Render::Torch || bd.render == Render::Liquid || bd.render == Render::None) return false;
   const BlockTraits& T = traits(id);
   if (T.crop || T.flower || T.stackPlant || T.tripwire || T.chorus || T.rail || T.rs == RsRole::Wire || T.rs == RsRole::Hook || joinsPane(id)) return false;
+  if (bd.has("door")) return false;   // a door's own picture (the item sprite), not its block: one thin panel, it looked broken
   AloneNb nb;
   auto gather = [&](u8 meta, float dy, int side, int top, int bot) -> bool {
     std::vector<ShapeBox> sb;
@@ -350,7 +357,16 @@ bool shapedBlockBoxes(const ItemDef& def, std::vector<PxBox>& out) {
       p.b[1] += dy; p.b[4] += dy;
       int st = b.side >= 0 ? b.side : side, tt = b.end >= 0 ? b.end : top, bt = b.end >= 0 ? b.end : bot;
       for (int f = 0; f < 6; f++) p.tile[f] = b.hasFaces && b.faces[f] >= 0 ? b.faces[f] : f == 2 ? tt : f == 3 ? bt : st;
-      out.push_back(p);
+      if (b.only == 63 && !b.tu && !b.uvT) { out.push_back(p); continue; }
+      // a part drawing some faces only, its picture shifted (the rods: one box, its sides and ends from different
+      // corners of the sheet): its faces go onto the box of the same size, made once
+      PxBox* q = nullptr;
+      for (auto& o : out) if (std::equal(o.b, o.b + 6, p.b)) { q = &o; break; }
+      if (!q) { out.push_back(p); q = &out.back(); }
+      for (int f = 0; f < 6; f++) if ((b.only >> f) & 1) {
+        q->tile[f] = p.tile[f]; q->fu[f] = b.tu; q->fv[f] = b.tv;
+        if (b.uvT) q->swapUV |= (u8)(1 << f); else q->swapUV &= (u8)~(1 << f);
+      }
     }
     return true;
   };
@@ -440,7 +456,9 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
     }
     {   // furniture and other shaped blocks that only had a flat picture: build them from their real shape
       std::vector<PxBox> sbx;
-      if (k == "sprite" && shapedBlockBoxes(*def, sbx)) {
+      const BlockId rb = reg().blockId(def->block);
+      const bool rod = rb && reg().tShape[rb] == ShapeKind::Rod;   // (their pictures are sheets: itemshapes.json's boxes read the wrong part)
+      if ((k == "sprite" || rod) && shapedBlockBoxes(*def, sbx)) {
         buildBoxes(ts, sbx, g, fc);
         ivec3 lo(0);
         for (auto& b : sbx) lo = glm::min(lo, ivec3(glm::floor(vec3(b.b[0], b.b[1], b.b[2]) * 2.f)));

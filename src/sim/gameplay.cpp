@@ -54,6 +54,8 @@ const std::vector<BlockId>& soilIds() {
     v.clear();
     for (BlockId id : {B.grass, B.dirt, B.snowy_grass, B.sky_grass, B.podzol, B.coarse_dirt, B.moss_block, B.rooted_dirt, B.mycelium, B.farmland, B.mud,
                        B.dirt_with_dry_grass, B.dry_dirt_with_dry_grass, B.dirt_with_coniferous_litter, B.dirt_with_rainforest_litter, B.dry_dirt, B.peat}) if (id) v.push_back(id);
+    for (const char* k : {"aether_grass_block", "aether_dirt", "end_moss", "end_mycelium", "chorus_nylium", "jungle_moss", "pink_moss", "shadow_grass", "amber_moss", "crystal_moss", "rutiscus", "sangnum", "cave_moss"})
+      if (BlockId id = reg().blockId(k)) v.push_back(id);   // the Aether's soil and Better End's turf grow things too
     built = reg().blocks.size();
   }
   return v;
@@ -162,7 +164,7 @@ public:
         }
       }
     }
-    { MoveParams mp{0.6f, 0, false, true}; mp.itemId = &stack.id; moveEntity(w, *this, dt, mp); }
+    { MoveParams mp{0.6f, 0, false, true}; mp.itemId = &stack.id; mp.itemD = stack.d; moveEntity(w, *this, dt, mp); }
     // a sapling left lying on soil takes root, so forests grow back by themselves
     if (onGround && !floating) {
       if (plantT < 0) plantT = 10 + (float)rnd() * 25;
@@ -315,7 +317,13 @@ public:
       }
     }
     // random ticks near every player, once a second
-    if ((randT += dt) > 1) { randT = 0; for (auto& e : lv.entities()) if (e->isPlayer() && !e->removed) randomTicks(lv, lv.world(e->realm), e->pos.x, e->pos.z); }
+    // (the players first: a random tick can add an entity, and the list it grows mustn't be the one being walked)
+    if ((randT += dt) > 1) {
+      randT = 0;
+      std::vector<Entity*> players;
+      for (auto& e : lv.entities()) if (e && e->isPlayer() && !e->removed) players.push_back(e.get());
+      for (Entity* e : players) randomTicks(lv, lv.world(e->realm), e->pos.x, e->pos.z);
+    }
     tickFurnaces(lv, dt);
     tickSleep(lv, dt);
     crowdPush(lv, (float)dt);

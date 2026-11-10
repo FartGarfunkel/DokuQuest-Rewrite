@@ -7,6 +7,7 @@
 // resource pack's sprite shows on the 3D model. Round things (balls, rings, discs) are true voxel circles
 // where the original stacked octagons.
 #include "assets/item_build.h"
+#include "assets/quiver3d.h"
 #include <regex>
 
 namespace dq {
@@ -634,6 +635,22 @@ bool buildItems3d(ItemBuild& b) {
     for (float sx : {-2.6f, 2.6f}) box({sx - 0.35f, top + 0.3f, 2.4f}, {sx + 0.35f, top + 2.2f, 4.7f}, all(strap));
     if (big) for (float yy : {3.2f, 8.0f}) box({-w - 0.12f, yy, 1.95f}, {w + 0.12f, yy + 0.6f, d + 0.1f}, all(iron));   // iron bands
     for (float sx : {-2.3f, 2.3f}) box({sx - 0.6f, 3.0f, 1.6f}, {sx + 0.6f, 11.0f, 2.0f}, all(strap));   // the straps, loose
+    b.kind = VoxelModel::Block;
+    b.depth = 0.3f;
+    return true;
+  }
+  if (key == "quiver" || key == "golden_quiver") {
+    // a round leather case (assets/quiver3d.h), as it is held and dropped: empty (the worn one shows its arrows), the
+    // golden one full, standing on its base
+    const bool gold = key == "golden_quiver";
+    QuiverTiles t{b.tile(gold ? "gold_block" : "pack_body_l"), b.tile(gold ? "pack_brass" : "pack_flap_l"), b.tile("pack_strap"),
+                  b.tile(gold ? "pack_iron" : "pack_brass"), b.tile("stripped_oak_log_side"), b.tile("wool"), b.tile("black_wool")};
+    auto box = [&](vec3 a, vec3 c, std::array<int, 6> tt) {
+      const float k = gold ? 0.06f : 0.07f, cy = gold ? 8.4f : 6.3f;   // about a block tall, centred
+      const vec3 lo = vec3(a.x, a.y - cy, a.z) * k, hi = vec3(c.x, c.y - cy, c.z) * k;
+      b.P.box(lo, hi, tileBox(b, lo, hi, tt));
+    };
+    quiverShape(box, t, gold ? 4 : 0);
     b.kind = VoxelModel::Block;
     b.depth = 0.3f;
     return true;

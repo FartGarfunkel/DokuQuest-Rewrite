@@ -9,6 +9,8 @@
 #include "core/item_glint.h"
 #include <cmath>
 #include <cstdio>
+#include "sim/quiver.h"
+#include <map>
 
 namespace dq {
 
@@ -41,9 +43,11 @@ void tooltipEffectLines(const ItemStack& s, std::vector<std::pair<std::string, u
 
 void tooltipGearLines(const ItemStack& s, std::vector<std::pair<std::string, u32>>& out) {
   const ItemDef* d = s.def();
-  if (s.id == "quiver") {   // sim/quiver.cpp
-    const int n = s.tag.is_object() ? s.tag.value("arrows", 0) : 0;
-    out.push_back({n ? std::to_string(n) + " of 192 arrows" : "Empty: use it to gather your arrows", TS});
+  if (s.id == "quiver") {   // sim/quiver.cpp: what's in it, kind by kind
+    std::map<std::string, int> kinds; int n = 0;
+    for (auto& a : quiverLoad(s)) if (!a.empty()) { kinds[a.def() ? a.def()->name : a.id] += a.n; n += a.n; }
+    if (!n) out.push_back({"Empty: wear it beside your backpack, or use it to gather your arrows", TS});
+    for (auto& [k, c] : kinds) out.push_back({std::to_string(c) + " " + k + (c == 1 ? "" : "s"), TS});
     return;
   }
   if (!d || !(d->hasTool || d->has("armor") || d->has("bow"))) return;

@@ -1,5 +1,6 @@
 // sim/stable.cpp — the book of companions, summoning, dismissing, resting (game/stable.js).
 #include "sim/stable.h"
+#include "sim/mount_gear.h"
 #include "sim/travel.h"
 
 namespace dq {
@@ -40,6 +41,7 @@ void stableSync(json& r, const Entity& m) {
   r["dim"] = jsDimOf(m); r["realm"] = m.realm;
   r["x"] = (int)std::lround(m.pos.x); r["y"] = (int)std::lround(m.pos.y); r["z"] = (int)std::lround(m.pos.z);
   if (m.data.contains("hs")) r["hs"] = m.data["hs"];
+  for (const char* k : MOUNT_GEAR_KEYS) { if (m.data.contains(k)) r[k] = m.data[k]; else r.erase(k); }   // its armour, chest or bags (sim/mount_gear.h)
 }
 void poof(Level& lv, const Entity& e) {
   vec3 c = e.pos + vec3(0, e.h * 0.5f, 0);
@@ -147,6 +149,7 @@ std::string stableSummon(Level& lv, Player& p, const std::string& uid) {
   if (r.value("name", json()).is_string()) D["petName"] = r["name"];
   if (r.value("saddled", false)) D["saddled"] = true;
   for (const char* k : {"color", "variant", "size"}) if (r.contains(k) && !r[k].is_null()) D[k] = r[k];
+  for (const char* k : MOUNT_GEAR_KEYS) if (r.contains(k) && !r[k].is_null()) D[k] = r[k];
   if (baby) { D["baby"] = true; D["growT"] = r["baby"]; }
   if (r.contains("hs") && r["hs"].is_array()) { D["hs"] = r["hs"]; e->hp = e->maxHp; hsApplyHp(*e); }
   e->hp = std::min(e->maxHp, r.value("hp", e->maxHp) > 0 ? r.value("hp", e->maxHp) : e->maxHp);

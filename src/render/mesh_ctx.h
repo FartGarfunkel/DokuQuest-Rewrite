@@ -6,6 +6,7 @@
 namespace dq {
 
 struct MeshTiles { int size = 32, count = 0; std::vector<u8> rgba; u64 gen = 0;
+  std::vector<u8> anim;   // 1 for an animated tile: its vertices are marked so only they look up the frame (tile_anim.cpp)
   const u8* px(int tile, int i, int j) const { return rgba.data() + (((size_t)tile * size + j) * size + i) * 4; } };
 std::shared_ptr<const MeshTiles> meshTilesSnapshot();
 
@@ -28,6 +29,7 @@ struct MeshCtx {
   u32 tint = 0xFFFFFF;        // current tint colour (0xBBGGRR; 0xFFFFFF none): only for merging faces of one climate now
   u8 tintKind = 0;            // what each vertex carries: Tint::None/Grass/Foliage/Water, Tint::Dust + power (mesher.h)
   u8 extraMat = 0;            // OR-ed into every vertex (TintAll for water and dust)
+  bool wet = false;           // the face has water in front of it: sunlight through the water dances on it (chunk.glsl caustics)
   MeshCtx(const MeshInput& in, MeshOutput& out, const MesherOptions& opt, const Registry& R, const MeshTiles* t);
 
   int I(int x, int y, int z) const { return MeshInput::idx(x, y, z); }
@@ -87,6 +89,11 @@ struct PanelVert { vec3 p; vec2 uv; float sh; };
 // which: 0 a door stood against +Z, 1 a trapdoor lying on the floor, 2 a trapdoor against the ceiling.
 bool doorPanelQuads(const MeshTiles* tiles, int tile, int which, std::vector<PanelVert>& out);
 bool emitVoxelDoor(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
+// A rail's picture as a height field (ties, the rails' feet and heads standing up off the ground), in the picture's frame:
+// x along its u, z along its v, y up, block units. straight: the plain straight rail's tile (a curve borrows its colours to
+// tell rail from tie). top: what's seen; under: the bottom (a rail on a slope).
+struct RailPlate { std::vector<PanelVert> top, under; };
+std::shared_ptr<const RailPlate> railPlate(const MeshTiles* tiles, int tile, int straight);
 void emitPlanes(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, float y, float z, float inset, float scale, float sk, float bl, bool cross);
 
 // 3D grass (Lay of the Land style): short blades over the top of a grass block, swaying, faded out with

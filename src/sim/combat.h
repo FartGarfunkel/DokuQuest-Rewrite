@@ -25,6 +25,7 @@ struct DamageSource {
   bool bypassArmor = false;
   float raw = 0;             // the blow before anything softened it (set by damagePlayer)
   bool hasRay = false; vec3 rayO{0}, rayD{0};   // where the blow came from (creatures: which limb it lands on)
+  int ench = 0;              // an arrow: the enchantment levels of the bow it left (the Wither Storm takes only those)
 };
 
 // LocalPlayer.hurt + Player.hurt: rules (fall/drown/fire damage), creative, invulnerability,

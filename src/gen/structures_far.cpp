@@ -132,13 +132,15 @@ static void moaBuild(ChunkWriter& w, const StructurePlan& S) {
 // BTA's open Nether: the ground under a structure, from the middle and four points round it (the lowest dry one; over
 // the lava sea, just over the lava as in the old Nether)
 static int netherGround(const TerrainQuery& t, int x, int z, int r, int overLava) {
-  int best = 1 << 20;
+  int best = 1 << 20, sea = -1;
   for (auto [dx, dz] : {std::pair{0, 0}, {r, 0}, {-r, 0}, {0, r}, {0, -r}}) {
     const TerrainColumn c = t.terrainColumn(x + dx, z + dz);
-    const int g = c.water > c.y ? DepthsGen::LAVA_Y + overLava : c.y + 1;
-    best = std::min(best, g);
+    if (c.water > c.y) { sea = std::max(sea, c.water); best = std::min(best, c.water + overLava); }
+    else if (c.y >= 0) best = std::min(best, c.y + 1);
   }
-  return std::max(best, DepthsGen::LAVA_Y + overLava);
+  // Under a sea, stand just above it. Dry ground keeps its own height, but never sinks under the old lava line.
+  if (sea < 0) sea = DepthsGen::LAVA_Y;
+  return std::max(best, sea + overLava);
 }
 static bool bastionPlan(const TerrainQuery& t, int x, int z, Mulberry32&, StructurePlan& S) {
   const int y = t.openNether() ? netherGround(t, x, z, 12, 8) : DepthsGen::LAVA_Y + 8;   // just over the lava sea, as in the original (row 31 over the sea's 28)

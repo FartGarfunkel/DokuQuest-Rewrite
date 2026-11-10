@@ -424,6 +424,21 @@ struct PW {
 static void animDragon(Creature& m, const RigModel& d, RigAnimOut& R) {
   PW P{d, R};
   float t = m.age, seed = m.id * 0.37f;
+  if (m.type == "ender_dragon" && m.state == "dying") {
+    // wings locked open, head up, while it rises in the beam over the fountain
+    for (int side = 0; side < 2; side++) {
+      std::string S = side ? "L" : "R"; float s = side ? -1.f : 1.f;
+      P.set("wing" + S, 0.05f, -s * 0.05f, s * 1.25f);
+      P.set("wing" + S + "2", 0, -s * 0.08f, s * 0.45f);
+      for (int k = 0; k < 3; k++) P.set("wing" + S + "f" + std::to_string(k), 0, -s * 0.15f, s * 0.2f);
+    }
+    P.set("jaw", -0.55f, 0, 0);
+    P.add("neck1", -0.35f, 0, 0); P.add("head", -0.2f, 0, 0);
+    R.pitch = -0.55f;
+    R.roll = std::sin(t * 16.f) * 0.05f;
+    R.lift = std::sin(t * 11.f) * 0.06f;
+    return;
+  }
   float dt = m.life.sqAge < 0 ? 0 : clampf(t - m.life.sqAge, 0, 0.1f); m.life.sqAge = t;
   bool fly = m.noGravity && !m.onGround; float a = m.walkAmt, ph = m.walk;
   // banking into turns

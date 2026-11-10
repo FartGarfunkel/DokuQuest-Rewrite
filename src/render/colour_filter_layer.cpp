@@ -1,8 +1,11 @@
 // render/colour_filter_layer.cpp — the colour-blind filters (assets/shaders/colour_filter.glsl): last of all the world's
 // drawing (after the hand), the picture is copied out and drawn back through the filter. Settings::colorFilter.
+// Photo mode's shaders go through the same pass (client/photo_mode.h: none, black & white, sepia, vivid, faded film,
+// warm, cool, retro, dreamy, vignette), at its intensity.
 #include "client/session.h"
 #include "client/app.h"
 #include "render/gl.h"
+#include "client/photo_mode.h"
 
 namespace dq {
 
@@ -11,8 +14,11 @@ public:
   const char* name() const override { return "colour-filter"; }
   int order() const override { return 5000; }
   void drawOverlay(GameSession& s, const FrameCtx& f) override {
-    const int kind = s.app.settings.colorFilter;
-    if (kind < 1 || kind > 3) return;
+    int kind = s.app.settings.colorFilter;
+    if (kind < 1 || kind > 3) kind = 0;
+    const PhotoMode& ph = photoMode();
+    const int photo = ph.active && !s.split() ? ph.shader : 0;
+    if (!kind && !photo) return;
     if (!tried) { tried = true; sh = std::make_unique<Shader>(); if (!sh->load("colour_filter.glsl", "colour_filter.glsl")) sh.reset(); glGenVertexArrays(1, &vao); }
     if (!sh) return;
     GLint vp[4]; glGetIntegerv(GL_VIEWPORT, vp);
@@ -28,7 +34,7 @@ public:
     glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, tex);
     glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, vp[0], vp[1], vp[2], vp[3]);
     glDisable(GL_DEPTH_TEST); glDisable(GL_BLEND); glDisable(GL_CULL_FACE);
-    sh->use(); sh->set("uTex", 0); sh->set("uKind", kind);
+    sh->use(); sh->set("uTex", 0); sh->set("uKind", kind); sh->set("uPhoto", photo); sh->set("uAmt", ph.intensity);
     glBindVertexArray(vao); glDrawArrays(GL_TRIANGLES, 0, 3); glBindVertexArray(0);
     glEnable(GL_CULL_FACE);
   }

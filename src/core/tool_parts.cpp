@@ -49,6 +49,12 @@ const std::vector<ToolMaterial>& toolMaterials() {
       ToolMaterial t; t.key = k; t.name = m.value("name", k); t.prefix = m.value("prefix", k); t.element = m.value("element", std::string());
       if (m["items"].is_array()) for (auto& i : m["items"]) t.items.push_back(i.get<std::string>());
       if (m["rgb"].is_array() && m["rgb"].size() >= 3) t.rgb = vec3(m["rgb"][0].get<float>(), m["rgb"][1].get<float>(), m["rgb"][2].get<float>()) / 255.f;
+      if (m.contains("stats") && m["stats"].is_object()) {
+        const json& S = m["stats"];
+        t.stats = true; t.tools = S.value("tools", true);
+        t.sTier = S.value("tier", 2); t.sSpeed = S.value("speed", 6.f); t.sDamage = S.value("damage", 3.f); t.sDur = S.value("durability", 200.f);
+        t.armorK = S.value("armor", 0.f); t.armorDurK = S.value("armorDur", 0.f); t.fireResist = S.value("fireResist", 0.f);
+      }
       v.push_back(std::move(t));
     }
   });
@@ -81,12 +87,17 @@ bool makePartArmor(const std::string& piece, const std::vector<std::string>& mat
   const ArmorPattern* P = armorPattern(piece);
   if (!P || mats.size() != P->cells.size() || !reg().item("mixed_" + piece)) return false;
   float pts = 0, dur = 0, fr = 0; std::vector<std::string> distinct;
-  for (auto& k : mats) {
+  const ItemDef* iron = reg().item("iron_" + piece);
+  for (auto& k : mats) {   // each cell gives its share: more of a material, more of what it is
     const ToolMaterial* m = toolMaterial(k);
     const ItemDef* a = m ? reg().item(m->prefix + "_" + piece) : nullptr;
-    if (!a || !a->props.contains("armor") || !a->props["armor"].is_object()) return false;
-    const json& A = a->props["armor"];
-    pts += A.value("points", 0.f); dur += A.value("durability", 0.f); fr = std::max(fr, A.value("fireResist", 0.f));
+    if (a && a->props.contains("armor") && a->props["armor"].is_object()) {
+      const json& A = a->props["armor"];
+      pts += A.value("points", 0.f); dur += A.value("durability", 0.f); fr = std::max(fr, A.value("fireResist", 0.f));
+    } else if (m && m->armorK > 0 && iron && iron->props.contains("armor") && iron->props["armor"].is_object()) {   // no piece of its own: iron's, scaled
+      const json& A = iron->props["armor"];
+      pts += A.value("points", 0.f) * m->armorK; dur += A.value("durability", 0.f) * (m->armorDurK > 0 ? m->armorDurK : m->armorK); fr = std::max(fr, m->fireResist);
+    } else return false;
     if (std::find(distinct.begin(), distinct.end(), k) == distinct.end()) distinct.push_back(k);
   }
   const float n = (float)mats.size();
@@ -105,14 +116,9 @@ float armorFireResistOf(const ItemStack& s) {
   const ItemDef* d = s.empty() ? nullptr : s.def();
   return d && d->props.contains("armor") && d->props["armor"].is_object() ? d->props["armor"].value("fireResist", 0.f) : 0.f;
 }
-std::string partArmorWornLook(const ItemStack& s) {
-  if (!isPartArmor(s)) return s.id;
-  std::map<std::string, int> n; std::string best; int bn = 0;
-  for (auto& m : s.tag["pa"]["m"]) if (m.is_string() && ++n[m.get<std::string>()] > bn) { bn = n[m.get<std::string>()]; best = m.get<std::string>(); }
-  const ToolMaterial* tm = toolMaterial(best);
-  const std::string id = tm ? tm->prefix + "_" + s.tag["pa"].value("p", std::string()) : "";
-  return reg().item(id) ? id : s.id;
-}
+// worn, a mixed piece is drawn with each crafting cell's material over the part of the body it lies on (assets/char_model.cpp
+// armorMeshes reads the "pa:<piece>:<m1,...>" key)
+std::string partArmorWornLook(const ItemStack& s) { return isPartArmor(s) ? partToolModelKey(s) : s.id; }
 
 ToolInfo toolOf(const ItemStack& s) {
   const ItemDef* d = s.empty() ? nullptr : s.def();
@@ -140,6 +146,10 @@ int toolMaxDurability(const ItemStack& s) {
 std::string stackName(const ItemStack& s) {
   const ItemDef* d = s.empty() ? nullptr : s.def();
   std::string base = d ? d->name : s.id;
+  if (s.tag.is_object() && s.tag.contains("name") && s.tag["name"].is_string() && !isPartTool(s)) {   // a written label, a filled steel bucket
+    const std::string n = s.tag["name"].get<std::string>();
+    return d && d->has("label") ? base + " \xC2\xB7 \xE2\x80\x9C" + n + "\xE2\x80\x9D" : n;
+  }
   if (isPartTool(s)) {
     const json& p = s.tag["pt"];
     std::vector<std::string> names;
@@ -196,16 +206,24 @@ bool makePartTool(const std::string& kind, const std::vector<std::string>& mats,
   if (!W || !H || mats.empty() || mats.size() != W->speed.size() || !reg().item("mixed_" + kind)) return false;
   float sp = 0, du = 0, dm = 0, ti = 0; std::string el = H->element;
   std::vector<std::string> distinct;
-  for (size_t i = 0; i < mats.size(); i++) {
+  const ItemDef* base = reg().item("iron_" + kind), *ironPick = reg().item("iron_pickaxe");
+  for (size_t i = 0; i < mats.size(); i++) {   // each head section gives its share, weighted by the work that part does
     const ToolMaterial* m = toolMaterial(mats[i]);
-    if (!m) return false;
+    if (!m || !m->tools) return false;
     const ItemDef* t = reg().item(m->prefix + "_" + kind);
     if (!t || !t->hasTool) t = reg().item(m->prefix + "_pickaxe");   // a material with no tool of this kind: its pickaxe's
-    if (!t || !t->hasTool) return false;
-    const ItemDef* base = reg().item("iron_" + kind);
-    const float dmgK = base && base->hasTool ? base->tool.damage / 4.f : 1.f;   // (a pickaxe's damage, brought to this kind's)
-    const float dmg = t->key == m->prefix + "_" + kind ? t->tool.damage : t->tool.damage * dmgK;
-    sp += W->speed[i] * t->tool.speed; du += W->dur[i] * t->tool.durability; dm += W->dmg[i] * dmg; ti += W->tier[i] * t->tool.tier;
+    float tsp, tdu, tdm, tti;
+    if (t && t->hasTool) {
+      const float dmgK = base && base->hasTool ? base->tool.damage / 4.f : 1.f;   // (a pickaxe's damage, brought to this kind's)
+      tdm = t->key == m->prefix + "_" + kind ? t->tool.damage : t->tool.damage * dmgK;
+      tsp = t->tool.speed; tdu = (float)t->tool.durability; tti = (float)t->tool.tier;
+    } else if (m->stats && base && base->hasTool && ironPick && ironPick->hasTool) {   // no tools of its own: its stats, as iron's are for this kind
+      tsp = base->tool.speed * m->sSpeed / std::max(0.1f, ironPick->tool.speed);
+      tdu = m->sDur * (float)base->tool.durability / (float)std::max(1, ironPick->tool.durability);
+      tdm = base->tool.damage + (m->sDamage - ironPick->tool.damage);
+      tti = (float)m->sTier;
+    } else return false;
+    sp += W->speed[i] * tsp; du += W->dur[i] * tdu; dm += W->dmg[i] * tdm; ti += W->tier[i] * tti;
     if (el.empty()) el = m->element;
     if (std::find(distinct.begin(), distinct.end(), mats[i]) == distinct.end()) distinct.push_back(mats[i]);
   }

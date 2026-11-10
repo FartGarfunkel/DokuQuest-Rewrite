@@ -6,6 +6,7 @@
 #include "sim/villagers.h"
 #include "ui/ui.h"
 #include "ui/theme.h"
+#include "ui/book.h"
 #include "sim/crafting.h"
 #include "ui/char_preview.h"
 #include "render/char_layer.h"
@@ -142,16 +143,18 @@ std::string itemInfoText(const ItemStack& s, const Player* p, std::vector<std::p
 }
 
 // the character sheet (sheet.js sheetHTML), drawn into a box at p of width w; returns its height
-float drawSheet(ImDrawList* dl, ImVec2 p, float w, float is, const Player& pl) {
+float drawSheet(ImDrawList* dl, ImVec2 p, float w, float is, const Player& pl, bool paper) {
+  // paper: written in the book's ink (the book inventory) instead of light on the dark panel
+  const ImU32 DIM = paper ? ink::muted : col::dim, BRIGHT = paper ? ink::text : col::rgb(0xfff3d8);
   float fs = is * 0.24f / Z() / fontPx(F_BODY);
   float lh = textSize(F_BODY, "Ag", 0, fs).y;
   int total = 0; for (auto& s : SKILLS) total += skillLevel(skillXpOf(pl, s[0]));
   float y = p.y;
   // sh-head: Combat N · Total N (numbers bright)
   { std::string c = std::to_string(combatLevel(pl)), t = std::to_string(total);
-    float cw = textSize(F_BODY, "Combat ", 0, fs).x; text(dl, F_BODY, ImVec2(p.x, y), col::dim, "Combat ", 0, fs); text(dl, F_BODY, ImVec2(p.x + cw, y), col::rgb(0xfff3d8), c.c_str(), 0, fs);
+    float cw = textSize(F_BODY, "Combat ", 0, fs).x; text(dl, F_BODY, ImVec2(p.x, y), DIM, "Combat ", 0, fs); text(dl, F_BODY, ImVec2(p.x + cw, y), BRIGHT, c.c_str(), 0, fs);
     float tw = textSize(F_BODY, t.c_str(), 0, fs).x, tl = textSize(F_BODY, "Total ", 0, fs).x;
-    text(dl, F_BODY, ImVec2(p.x + w - tw - tl, y), col::dim, "Total ", 0, fs); text(dl, F_BODY, ImVec2(p.x + w - tw, y), col::rgb(0xfff3d8), t.c_str(), 0, fs); }
+    text(dl, F_BODY, ImVec2(p.x + w - tw - tl, y), DIM, "Total ", 0, fs); text(dl, F_BODY, ImVec2(p.x + w - tw, y), BRIGHT, t.c_str(), 0, fs); }
   y += lh + is * 0.08f;
   // sh-grid: two columns of skills with a progress line under each
   float gap = 6 * Z() * is / 40, cw = (w - gap) / 2, rh = lh + 4 * Z() * is / 40;
@@ -160,11 +163,11 @@ float drawSheet(ImDrawList* dl, ImVec2 p, float w, float is, const Player& pl) {
     float x = p.x + (i % 2) * (cw + gap), yy = y + (i / 2) * (rh + 2 * Z() * is / 40);
     double xp = skillXpOf(pl, SKILLS[i][0]); int L = skillLevel(xp);
     double pr = L >= 99 ? 1 : (xp - T[L]) / std::max(1.0, T[std::min(99, L + 1)] - T[L]);
-    dl->AddRectFilled(ImVec2(x, yy), ImVec2(x + cw, yy + rh), IM_COL32(0, 0, 0, 71), 2 * Z());
-    ImU32 c = col::rgb(hexCol(SKILLS[i][3]));
-    text(dl, F_BODY, ImVec2(x + 3 * Z(), yy + 1 * Z()), c, SKILLS[i][2], 0, fs);
+    dl->AddRectFilled(ImVec2(x, yy), ImVec2(x + cw, yy + rh), paper ? ink::faint : IM_COL32(0, 0, 0, 71), 2 * Z());
+    ImU32 c = paper ? inkOf(col::rgb(hexCol(SKILLS[i][3]))) : col::rgb(hexCol(SKILLS[i][3]));
+    text(dl, F_BODY, ImVec2(x + 3 * Z(), yy + 1 * Z()), c, paper ? SKILLS[i][1] : SKILLS[i][2], 0, fs);
     std::string lv = std::to_string(L); ImVec2 ls = textSize(F_BODY, lv.c_str(), 0, fs);
-    text(dl, F_BODY, ImVec2(x + cw - 3 * Z() - ls.x, yy + 1 * Z()), col::rgb(0xfff3d8), lv.c_str(), 0, fs);
+    text(dl, F_BODY, ImVec2(x + cw - 3 * Z() - ls.x, yy + 1 * Z()), BRIGHT, lv.c_str(), 0, fs);
     dl->AddRectFilled(ImVec2(x, yy + rh - 2 * Z()), ImVec2(x + cw * (float)clampv(pr, 0.0, 1.0), yy + rh), withAlpha(c, 0.85f));
     if (ImGui::IsMouseHoveringRect(ImVec2(x, yy), ImVec2(x + cw, yy + rh))) {
       std::string tip = std::string(SKILLS[i][1]) + " level " + lv + " \xC2\xB7 " + std::to_string((long long)xp) + " xp";
@@ -177,10 +180,10 @@ float drawSheet(ImDrawList* dl, ImVec2 p, float w, float is, const Player& pl) {
   double mana = manaMax(pl);
   std::string blow = "\xE2\x9A\x94 " + fmt1(blowOf(pl, pl.inv[clampv(pl.selected, 0, 8)])), prot = std::to_string((int)std::lround(protection(pl) * 100)) + "%";
   float fx = p.x, sp = lh * 0.8f, gapx = 8 * Z() * is / 40;
-  text(dl, F_BODY, ImVec2(fx, y), col::dim, blow.c_str(), 0, fs); fx += textSize(F_BODY, blow.c_str(), 0, fs).x + gapx;
+  text(dl, F_BODY, ImVec2(fx, y), DIM, blow.c_str(), 0, fs); fx += textSize(F_BODY, blow.c_str(), 0, fs).x + gapx;
   drawSprite(dl, SP_SHIELD, ImVec2(fx, y + (lh - sp) * 0.5f), sp, 0.8f); fx += sp + 2 * Z();
-  text(dl, F_BODY, ImVec2(fx, y), col::dim, prot.c_str(), 0, fs); fx += textSize(F_BODY, prot.c_str(), 0, fs).x + gapx;
-  if (mana > 0) text(dl, F_BODY, ImVec2(fx, y), col::dim, ("\xE2\x9C\xA6 " + std::to_string((int)std::lround(mana))).c_str(), 0, fs);
+  text(dl, F_BODY, ImVec2(fx, y), DIM, prot.c_str(), 0, fs); fx += textSize(F_BODY, prot.c_str(), 0, fs).x + gapx;
+  if (mana > 0) text(dl, F_BODY, ImVec2(fx, y), DIM, ("\xE2\x9C\xA6 " + std::to_string((int)std::lround(mana))).c_str(), 0, fs);
   y += lh;
   return y - p.y;
 }
@@ -222,17 +225,17 @@ void drawDoll(ImDrawList* dl, ImVec2 a, ImVec2 b, const Player& pl, double t) {
 }
 
 // charparts.js GEAR_VIS: show or hide each thing you wear (hidden gear still protects you and still works)
-static const char* GEAR_VIS[6][2] = {{"Helmet", "iron_helmet"}, {"Chestplate", "iron_chestplate"}, {"Leggings", "iron_leggings"}, {"Boots", "iron_boots"}, {"Backpack", "leather_backpack"}, {"Cape", "ember_cape"}};
+static const char* GEAR_VIS[7][2] = {{"Helmet", "iron_helmet"}, {"Chestplate", "iron_chestplate"}, {"Leggings", "iron_leggings"}, {"Boots", "iron_boots"}, {"Backpack", "leather_backpack"}, {"Cape", "ember_cape"}, {"Quiver", "quiver"}};
 void toggleGearVis(Player& p, int k) {
-  if (k < 0 || k >= 6) return;
+  if (k < 0 || k >= 7) return;
   json h = p.data.contains("hideGear") && p.data["hideGear"].is_array() ? p.data["hideGear"] : json::array();
-  while (h.size() < 6) h.push_back(0);
+  while (h.size() < 7) h.push_back(0);
   h[k] = (h[k].is_number() && h[k].get<int>() != 0) ? 0 : 1;
   p.data["hideGear"] = h;
   playClick();
 }
 void drawGearVis(ImDrawList* dl, ImVec2 a, ImVec2 b, const Player& p, int k, bool focus, bool hover) {
-  if (k < 0 || k >= 6) return;
+  if (k < 0 || k >= 7) return;
   bool off = gearHidden(p, k);
   float z = Z(), w = b.x - a.x, h = b.y - a.y;
   // .eqvis: rgba(0,0,0,.35) with a --sl-lo border; .off: the icon greyed, a red stroke across

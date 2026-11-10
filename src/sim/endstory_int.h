@@ -18,7 +18,7 @@ struct Mem {
   // endermen
   float stareT = 0, lookT = 0, tpT = 2, wetCd = 0;
   // dragons
-  float stT = 4, orbit = 0, flapT = 0, pbT = 2, breathHitT = 0, stuckT = 0, ringT = 0; int node = 0; bool hasOrbit = false, breathed = false, perched = false, hasBreathPt = false;
+  float stT = 4, orbit = 0, flapT = 0, pbT = 2, breathHitT = 0, stuckT = 0, ringT = 0, beamT = 0; int node = 0; bool hasOrbit = false, breathed = false, perched = false, hasBreathPt = false;
   vec3 breathPt{0};
   // the Warden
   std::unordered_map<u32, float> anger;
@@ -27,7 +27,7 @@ struct Mem {
   double heardT = 0; bool hasTarget = false, hasAim = false; vec3 target{0}, aim{0};
   float calmT = 0, beatT = 0, boomCd = 3, boomCharge = 0, emergeT = 0, digT = 0, y0 = 0;
   // him
-  float hbTp = 3, hbBolt = 2, hbFreeze = 12; int calls = 0;
+  float hbTp = 3, hbBolt = 2, hbFreeze = 12; int calls = 0; bool stormScene = false;
   bool init = false;
 };
 struct PlayerMem {
@@ -62,7 +62,7 @@ public:
   std::vector<u32> frozenCalm;          // creatures held still while time stands still
   std::string tearSig;                  // the rift tears last handed to the portal system
   // the watcher (haunt.js Haunt), per player on this machine: one state for the level (the original kept one per game)
-  struct Haunt { double next = 600, traceT = 900; u32 active = 0; bool noticed = false, force = false, init = false; } haunt;
+  struct Haunt { double next = 600, traceT = 900, homeT = 0, roamT = 0; u32 active = 0; bool noticed = false, force = false, init = false, after = false, away = false; } haunt;
   std::vector<int> handlers;
 
 private:

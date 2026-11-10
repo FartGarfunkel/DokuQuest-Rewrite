@@ -294,7 +294,10 @@ void LightEngine::unpropagate(int ch) {
   Q.clear();
 }
 
-void LightEngine::onBlockChanged(World& world, int x, int y, int z, BlockId o, BlockId n) { (void)world; (void)o; (void)n; changes.push_back({x, y, z}); }
+void LightEngine::onBlockChanged(World& world, int x, int y, int z, BlockId o, BlockId n) {
+  (void)world; (void)o; (void)n;
+  if (queued.insert(posKey({x, y, z})).second) changes.push_back({x, y, z});   // (once while it waits: it reads the block as it is then)
+}
 void LightEngine::onChunkLoaded(World& world, Chunk& c) { (void)world; arrivals.push_back(c.key()); }
 
 void LightEngine::applyChange(const ivec3& p) {
@@ -356,15 +359,29 @@ void LightEngine::flush(World& world) {
   double t0 = nowSeconds();
   w = &world; cells = 0;
   for (auto& e : cache) e = CacheEnt();
+  // Both kinds of work get a few milliseconds a call, the rest waits for the next (the main thread runs this every
+  // frame). Block changes go first, so a torch you place lights up at once. In an old Nether land, fire and the
+  // decoration of chunks coming in changed ~50 blocks a frame, each re-flooding a light-15 ball (~6000 cells): 150-300 ms
+  // frames on an i5-6300U. A chunk's lava sea meeting its neighbours' was as bad.
+  std::vector<ivec3> ch; ch.swap(changes);
+  size_t ci = 0;
+  for (; ci < ch.size(); ci++) {
+    if (ci > 0 && (nowSeconds() - t0) * 1000 > 4.0) break;
+    queued.erase(posKey(ch[ci]));
+    applyChange(ch[ci]);
+  }
+  if (ci < ch.size()) changes.insert(changes.begin(), ch.begin() + (std::ptrdiff_t)ci, ch.end());
   std::vector<ChunkKey> arr; arr.swap(arrivals);
-  for (auto& k : arr) {
-    Chunk* c = w->chunk(k.dim, k.cx, k.cz);
+  size_t ai = 0;
+  const double t1 = nowSeconds();
+  for (; ai < arr.size(); ai++) {
+    if (ai > 0 && (nowSeconds() - t1) * 1000 > 3.0) break;
+    Chunk* c = w->chunk(arr[ai].dim, arr[ai].cx, arr[ai].cz);
     if (!c) continue;
     mergeBorders(*c);
     propagate(0); propagate(1);
   }
-  std::vector<ivec3> ch; ch.swap(changes);
-  for (auto& p : ch) applyChange(p);
+  if (ai < arr.size()) arrivals.insert(arrivals.begin(), arr.begin() + (std::ptrdiff_t)ai, arr.end());
   for (auto& k : touched) w->markSectionDirty(k.dim, k.cx, k.sy, k.cz);
   touched.clear(); lastTouched = {-1, 0, 0, 0};
   lastCells = cells; lastMs = (nowSeconds() - t0) * 1000;

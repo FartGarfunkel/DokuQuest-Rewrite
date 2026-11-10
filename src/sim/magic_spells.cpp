@@ -67,7 +67,9 @@ static void thriftAndArchmage(Level& lv, Player& p, MagicState& m, float spent) 
 static const std::unordered_set<std::string> ARCANA = {"missiles", "regrowth", "haste", "fireball", "icenova", "guardian"};
 static const std::unordered_set<std::string> OLD = {"firebolt", "frost", "light", "heal", "levitate", "stoneskin", "blink", "familiar", "ward", "lightning"};
 
-bool spellNeedsStaff(const std::string& k) { return OLD.count(k) || ARCANA.count(k); }
+// Every spell can be cast with bare hands now (at 0.7 power); a staff makes it stronger and quickens the mana. (They all
+// needed one: a new player who'd learned Firebolt couldn't cast it, so never gained the Magic to learn anything else.)
+bool spellNeedsStaff(const std::string&) { return false; }
 HandMods& handMods() { static thread_local HandMods h; return h; }
 
 // one hand's cast of spell k (sim/magic_hands.cpp decides the hands and sets handMods: power, mana, no staff)
@@ -78,7 +80,7 @@ bool castSpellKey(Level& lv, Player& p, const std::string& k) {
   HM.ok = false;
   const json* staff = HM.noStaff ? nullptr : heldStaff(p);
   bool newer = !k.empty() && !OLD.count(k) && !ARCANA.count(k);
-  if (!staff && !(newer && m.bare)) return false;
+  if (!staff && !m.bare) return false;
   if (k.empty()) { toast(lv, p, "You know no spells yet \xE2\x80\x94 read a spell tome"); return true; }
   const SpellDef* S = md.spell(k);
   if (!S || m.castCd > 0) return true;
@@ -132,9 +134,9 @@ bool castSpellKey(Level& lv, Player& p, const std::string& k) {
   if (!c.ok) { m.castCd = 0.3f; return true; }
   if (!cr) m.mana -= cost;
   m.castCd = ARCANA.count(k) ? c.cd : k == "lightning" ? 2.2f : 0.45f;
-  wearHeld(lv, p, 1);
+  if (staff) wearHeld(lv, p, 1);   // (only a staff wears: bare-handed, what's in the hand isn't the focus)
   skillGain(lv, p, "magic", S->mana * 6.0);
-  if (!held.empty()) gearGain(lv, p, held, 2);
+  if (staff && !held.empty()) gearGain(lv, p, held, 2);
   thriftAndArchmage(lv, p, m, cr ? 0.f : cost);
   spellPractice(lv, p, k, S->mana * 6.0);
   HM.ok = true;

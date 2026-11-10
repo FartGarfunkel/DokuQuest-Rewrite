@@ -28,7 +28,7 @@ void main() {
 
 #ifdef FRAGMENT
 uniform int uMode;
-uniform int uKind;       // 0 ember, 1 sky, 2 end, 3 rift
+uniform int uKind;       // 0 ember, 1 sky, 2 end, 3 rift, 4 drift (BTA: silver)
 uniform vec3 uRim;
 uniform int uDyed;        // a tuned (dyed) portal: its swirl in uRim's colour
 uniform float uFade;
@@ -93,6 +93,7 @@ void main() {
     vec3 a, b, c;
     if (uKind == 1) { a = hexc(42.0, 90.0, 200.0); b = hexc(90.0, 200.0, 240.0); c = hexc(230.0, 247.0, 255.0); }
     else if (uKind == 3) { a = hexc(42.0, 10.0, 72.0); b = hexc(138.0, 58.0, 208.0); c = hexc(224.0, 176.0, 255.0); }
+    else if (uKind == 4) { a = hexc(78.0, 82.0, 104.0); b = hexc(176.0, 182.0, 204.0); c = hexc(244.0, 246.0, 255.0); }
     else { a = hexc(106.0, 20.0, 48.0); b = hexc(232.0, 100.0, 28.0); c = hexc(255.0, 211.0, 74.0); }
     if (uDyed == 1 && uKind != 2 && uKind != 3) { a = uRim * 0.32; b = uRim; c = mix(uRim, vec3(1.0), 0.55); }
     col = v > 1.1 ? c : v > 0.0 ? b : a;

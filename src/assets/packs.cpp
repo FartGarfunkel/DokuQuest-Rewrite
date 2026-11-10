@@ -166,19 +166,47 @@ static fs::path packPath(const std::string& name) {
 }
 
 static const char* DEFAULT_PACK = "DokuQuest Base";
+// Animation frames no animation uses any more (the game's own water, lava, fire... once a pack's picture took the tile,
+// or stilled it) are dropped, the rest moved down: every layer counts, as a GPU with 2048-layer arrays holds 4096 tiles
+// in all. Only frames live from `base` on (the built-in set's own tiles come first), and only the animations name them.
+static void dropUnusedFrames(TileSet& ts, int base) {
+  if (base >= ts.count) return;
+  const size_t S2 = (size_t)ts.size * ts.size;
+  std::vector<int> to(ts.count - base, -1);
+  for (auto& a : ts.anims) for (int f : a.frames) if (f >= base && f < ts.count) to[f - base] = 0;
+  int next = base;
+  for (int i = base; i < ts.count; i++) {
+    if (to[i - base] < 0) continue;
+    if (next != i) {
+      std::memmove(ts.rgba.data() + (size_t)next * S2 * 4, ts.rgba.data() + (size_t)i * S2 * 4, S2 * 4);
+      for (std::vector<u8>* v : {&ts.height, &ts.emissive, &ts.relief})
+        if (v->size() >= (size_t)(i + 1) * S2) std::memmove(v->data() + (size_t)next * S2, v->data() + (size_t)i * S2, S2);
+      if (ts.normal.size() >= (size_t)(i + 1) * S2 * 4) std::memmove(ts.normal.data() + (size_t)next * S2 * 4, ts.normal.data() + (size_t)i * S2 * 4, S2 * 4);
+      if (ts.res.size() > (size_t)i) ts.res[next] = ts.res[i];
+    }
+    to[i - base] = next++;
+  }
+  if (next == ts.count) return;
+  for (auto& a : ts.anims) for (int& f : a.frames) if (f >= base && f < ts.count) f = to[f - base];
+  DQ_LOG("tiles: %d animation frames no longer used, dropped", ts.count - next);
+  ts.count = next;
+  ts.rgba.resize((size_t)next * S2 * 4);
+  for (std::vector<u8>* v : {&ts.height, &ts.emissive, &ts.relief}) if (v->size() > (size_t)next * S2) v->resize((size_t)next * S2);
+  if (ts.normal.size() > (size_t)next * S2 * 4) ts.normal.resize((size_t)next * S2 * 4);
+  if (ts.res.size() > (size_t)next) ts.res.resize(next);
+}
+
 std::string applyResourcePack(TileSet& ts, const std::string& choice) {
   static std::mutex mu; std::lock_guard<std::mutex> lock(mu);   // the launcher loads tiles on two threads (map, Texture Studio)
+  int frameBase = ts.count;   // where the animation frames start (dropUnusedFrames)
+  for (auto& a : ts.anims) for (int f : a.frames) frameBase = std::min(frameBase, f);
   setActivePack(nullptr);
   std::atomic_store(&g_colormaps, std::shared_ptr<const Colormaps>());
   resetPackArmor();
   resetGuiTextures();
   std::string name = choice;
-  if (name == "auto") {
-    name.clear();
-    name = DEFAULT_PACK;   // the game's own art (data/resourcepacks); "none" = the generated pictures
-    if (packPath(name).empty()) for (auto& n : listResourcePacks()) if (toLower(n).find("gerudoku") != std::string::npos) { name = n; break; }
-  }
-  if (name.empty() || name == "none") return "";
+  // DokuQuest Base is the game's own art. Empty, and the old automatic / built-in / none choices, all mean that pack.
+  if (name.empty() || name == "auto" || name == "none" || name == "builtin") name = DEFAULT_PACK;
   fs::path path = packPath(name);
   auto P = path.empty() ? nullptr : PackFS::open(path);
   if (!P) { DQ_WARN("resource pack '%s' not found in resourcepacks/", name.c_str()); return ""; }
@@ -193,8 +221,19 @@ std::string applyResourcePack(TileSet& ts, const std::string& choice) {
   const std::string R = P->texRoot;
   std::vector<std::string> blockDirs = P->legacy ? std::vector<std::string>{"blocks/"} : std::vector<std::string>{"block/", "blocks/"};
   std::vector<std::string> itemDirs = P->legacy ? std::vector<std::string>{"items/"} : std::vector<std::string>{"item/", "items/"};
+  // "Mod Art (local)" (tools/port/local_mod_art.py: the mods' own pictures restyled to the base pack, made on this
+  // computer from the player's own copies of the mods and never shipped) lies over whichever pack is chosen, for the
+  // blocks only it draws. Its paths carry a "@ov/" prefix so the two packs never mix them up.
+  static const std::string OVERLAY = "Mod Art (local)", OVP = "@ov/";
+  std::unique_ptr<PackFS> OV;
+  if (name != OVERLAY) { fs::path op = packPath(OVERLAY); if (!op.empty()) OV = PackFS::open(op); if (OV && !OV->hasTextures()) OV.reset(); }
   struct Hit { std::string path, base; };
   auto find = [&](const std::vector<std::string>& dirs, const std::string& base) -> std::optional<Hit> {
+    if (OV) for (auto& d : {std::string("block/"), std::string("item/")}) {
+      if ((&dirs == &blockDirs) != (d == "block/")) continue;
+      std::string p = OV->texRoot + d + base + ".png";
+      if (OV->exists(p)) return Hit{OVP + p, base};
+    }
     for (auto& d : dirs) {
       std::string p = R + d + base + ".png";
       if (P->exists(p)) return Hit{p, base};
@@ -207,7 +246,7 @@ std::string applyResourcePack(TileSet& ts, const std::string& choice) {
   auto load = [&](const std::string& path) -> std::shared_ptr<Img> {
     auto it = cache.find(path);
     if (it != cache.end()) return it->second;
-    auto im = loadImg(*P, path);
+    auto im = path.rfind(OVP, 0) == 0 ? loadImg(*OV, path.substr(OVP.size())) : loadImg(*P, path);
     auto sp = im ? std::make_shared<Img>(std::move(*im)) : nullptr;
     cache[path] = sp;
     return sp;
@@ -268,16 +307,27 @@ std::string applyResourcePack(TileSet& ts, const std::string& choice) {
       if (hadAnim) ts.anims.erase(ai);
       if (nFrames > 1) {
         json an = json::object();
-        if (auto mm = P->readJson(hit->path + ".mcmeta")) if ((*mm)["animation"].is_object()) an = (*mm)["animation"];
+        const bool ovh = hit->path.rfind(OVP, 0) == 0;
+        if (auto mm = ovh ? OV->readJson(hit->path.substr(OVP.size()) + ".mcmeta") : P->readJson(hit->path + ".mcmeta")) if ((*mm)["animation"].is_object()) an = (*mm)["animation"];
         std::vector<int> order;
         if (an.contains("frames") && an["frames"].is_array()) {
           for (auto& f : an["frames"]) { int fi = f.is_number() ? f.get<int>() : f.is_object() ? f.value("index", 0) : -1; if (fi >= 0 && fi < nFrames) order.push_back(fi); }
         } else for (int f = 0; f < nFrames; f++) order.push_back(f);
         TileAnim A{idx, {}, std::max(1, an.value("frametime", 1)) * 50};   // .mcmeta ticks -> ms
+        // at most 24 frames of an animation (every k-th, each shown k times as long): every frame is a layer of the tile
+        // arrays, and a GPU with 2048 layers a page holds 4096 tiles in all. Packs' 40- to 64-frame water and lava
+        // would otherwise crowd the game's own blocks out (the speed stays, the motion is a little less fine). (32 until
+        // the Aether's and Better End's tool sets came in.)
+        if (order.size() > 24) {
+          const size_t k = (order.size() + 23) / 24;
+          std::vector<int> o2; for (size_t i = 0; i < order.size(); i += k) o2.push_back(order[i]);
+          order.swap(o2); A.frameTime *= (int)k;
+        }
         std::unordered_map<int, int> layerOf;
         std::vector<u8> full((size_t)T * T * 4);
         for (int f : order) {
           auto it = layerOf.find(f);
+          if (it == layerOf.end() && f == 0 && tname != "grass_side") it = layerOf.emplace(0, idx).first;   // frame 0 is the tile itself
           if (it == layerOf.end()) {
             auto fp = packFrame(*img, f, res, crop); fix(fp);
             toTile(fp, res, T, full.data());
@@ -299,6 +349,7 @@ std::string applyResourcePack(TileSet& ts, const std::string& choice) {
     if (cm->grass.w || cm->foliage.w) std::atomic_store(&g_colormaps, std::shared_ptr<const Colormaps>(cm));
   }
   int armor = loadPackArmor(*P);
+  dropUnusedFrames(ts, frameBase);
   deriveMicroVoxelHeights(ts);
   DQ_LOG("resource pack '%s': %d pictures (%d items, %d animated, %dpx), %d chests, %d armour sets", P->name().c_str(), used, nItems, animated, resSeen, chests, armor);
   std::string nm = P->name();

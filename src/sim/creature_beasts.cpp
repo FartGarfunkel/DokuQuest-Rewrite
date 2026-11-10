@@ -4,6 +4,7 @@
 // game/pets.js (taming, follow/stay, defending, riding with saddles) and monsters.js's stalking big cats.
 #include "sim/leads.h"
 #include "sim/creature.h"
+#include "sim/mount_gear.h"
 #include "sim/creature_entities.h"
 #include "sim/mob_combat.h"
 #include "sim/physics.h"
@@ -792,17 +793,37 @@ bool useOnCreature(Level& lv, Player& p, Creature& e, bool sneaking) {
     if (e.saddled) { toast("It already has a saddle"); return true; }
     e.saddled = true; use1(p, held); lv.fx->soundUi(p.id, "equip"); toast("Saddled \xE2\x80\x94 use it to ride", "good"); return true;
   }
-  // saddle bags: 18 slots kept on the mount (data "bags"), opened with sneak-use (the vehicles' entity container screen)
+  // saddle bags: 18 slots kept on the mount (data "bags", "pack" "bags"), a chest on a pack animal 27 (sim/mount_gear.cpp)
   if (mine && !held.empty() && held.id == "saddle_bags") {
     if (!mountable || e.baby || !e.saddled) { toast(e.saddled || !mountable ? "Saddle bags won't fit that" : "Saddle it first"); return true; }
-    if (e.data.contains("bags")) { toast("It already carries saddle bags"); return true; }
-    json b = json::array(); for (int i = 0; i < 18; i++) b.push_back(nullptr);
-    e.data["bags"] = b; e.kept = true; use1(p, held); lv.fx->soundUi(p.id, "equip");
-    toast("Saddle bags on \xE2\x80\x94 sneak and use it to open them", "good"); return true;
+    if (e.data.contains("bags")) { toast(mountPack(e) == "chest" ? "It already carries a chest" : "It already carries saddle bags"); return true; }
+    json b = json::array(); for (int i = 0; i < mountPackSlots("bags"); i++) b.push_back(nullptr);
+    e.data["bags"] = b; e.data["pack"] = "bags"; e.kept = true; use1(p, held); lv.fx->soundUi(p.id, "equip");
+    toast("Saddle bags on \xE2\x80\x94 sneak and use it with an empty hand to open its gear", "good"); return true;
   }
-  if (mine && held.empty() && sneaking && e.data.contains("bags") && e.data["bags"].is_array()) {
-    if (lv.events) lv.events->emit("screenOpen", json::array({p.name, "container", {{"entity", e.id}, {"name", "Saddle Bags"}}}));
-    lv.fx->soundUi(p.id, "chest");
+  if (mine && !held.empty() && held.id == "chest" && mountable && (mountTakesChest(e) || e.baby)) {
+    if (e.baby) { toast("It's too young to carry a chest"); return true; }
+    if (e.data.contains("bags")) { toast(mountPack(e) == "chest" ? "It already carries a chest" : "It already carries saddle bags"); return true; }
+    json b = json::array(); for (int i = 0; i < mountPackSlots("chest"); i++) b.push_back(nullptr);
+    e.data["bags"] = b; e.data["pack"] = "chest"; e.kept = true; use1(p, held); lv.fx->soundUi(p.id, "equip");
+    toast("A chest on its back \xE2\x80\x94 sneak and use it with an empty hand to open its gear", "good"); return true;
+  }
+  // horse armour: on a horse of yours (what it wore comes back to you)
+  if (def && def->props.contains("horseArmor")) {
+    if (!mine) { toast(e.type == "horse" && e.owner.empty() ? "Tame it first" : "Horse armour goes on a horse you've tamed"); return true; }
+    if (!mountTakesArmour(e)) { toast(e.type == "horse" ? "It's too young for armour" : "Horse armour only fits a horse"); return true; }
+    std::vector<ItemStack> g = mountGear(e);
+    ItemStack old = g.size() > 1 ? g[1] : ItemStack();
+    g.resize(2); g[1] = ItemStack(held.id, 1, held.d);
+    setMountGear(lv, e, g); use1(p, held); lv.fx->soundUi(p.id, "equip");
+    if (!old.empty() && p.give(old) > 0) dropItem(lv, p.realm, old, p.pos + vec3(0, 1, 0), false);
+    return true;
+  }
+  // its gear: the saddle and armour slots and what it carries (sneak and use it with an empty hand)
+  if (mine && held.empty() && sneaking && mountable && !e.baby && (e.saddled || e.data.contains("bags") || mountTakesArmour(e) || mountTakesChest(e))) {
+    std::string title = e.petName.empty() ? "Your " + name : name;
+    if (!title.empty()) title[0] = (char)std::toupper((unsigned char)title[0]);
+    openMountScreen(lv, p, e, title);
     return true;
   }
   if (mine && !held.empty() && tameFood(e.type, held.id) && e.hp < e.maxHp) {

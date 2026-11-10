@@ -138,12 +138,15 @@ void updateInstruments(GameSession& s, double dtd) {
 void drawInstrumentFace(const FrameCtx& f, const mat4& proj, bool fog, const std::string& id, const VoxelModel& im, const mat4& m, vec2 light) {
   GLuint tex; vec4 uv;
   if (!instrumentIcon(id, tex, uv) || im.kind == VoxelModel::Block) return;
-  float sz = itemSize(id) * 0.9f, z = im.depth + 0.012f;
+  // on the model's own faces, measured from its grid (the 3D dial, render/item_parts.cpp, is thicker than `depth` says:
+  // the live face went inside it and you saw the dial's painted needle, never moving, in your hand)
+  float sz = itemSize(id) * 0.9f, zf = im.depth + 0.012f, zb = -zf;
+  if (im.size.z > 0) { zf = im.frame.origin.z + im.size.z * im.frame.voxel + 0.004f; zb = im.frame.origin.z - 0.004f; }
   ContentDraw& cd = contentDraw();
   if (!cd.begin(f, proj, fog)) return;
   glEnable(GL_POLYGON_OFFSET_FILL); glPolygonOffset(-1, -1);
-  cd.picture(tex, glm::scale(glm::translate(m, vec3(0, 0, z)), vec3(sz, sz, 1)), uv, vec4(1), light);
-  mat4 back = glm::rotate(glm::translate(m, vec3(0, 0, -z)), PI, vec3(0, 1, 0));
+  cd.picture(tex, glm::scale(glm::translate(m, vec3(0, 0, zf)), vec3(sz, sz, 1)), uv, vec4(1), light);
+  mat4 back = glm::rotate(glm::translate(m, vec3(0, 0, zb)), PI, vec3(0, 1, 0));
   cd.picture(tex, glm::scale(back, vec3(sz, sz, 1)), vec4(uv.z, uv.y, uv.x, uv.w), vec4(1), light);
   glDisable(GL_POLYGON_OFFSET_FILL);
   cd.end();

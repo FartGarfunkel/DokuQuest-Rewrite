@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
     check(fx.heard("The last crystal shatters"), "the last crystal");
     int xp0 = P->xp, lv0 = P->level;
     kill(*dragons[0], P);
-    tick(1.2);
+    tick(8.5);   // the rise and the beam finish, then the portal, the egg and the experience arrive
     const json& E = L->info.data["end"];
     check(E.value("slain", 0) == 1 && E.value("gates", 0) == 1, "slain once, one gateway");
     check(w.getBlock(1, fy, 0) == B("end_portal") && w.getBlock(-2, fy, 1) == B("end_portal"), "the exit portal opens");
@@ -176,8 +176,12 @@ int main(int argc, char** argv) {
     tick(0.5);
     check(d->state == "takeoff" || d->state == "circle", "it wakes when you come close");
     check(fx.heard("The Frost Dragon wakes!"), "the waking toast");
+    // On the breath perch, facing you. The approach used to be whatever the shared random sequence did after the
+    // End fight; the death show ticks longer now, so this check stands on its own.
+    d->pos = P->pos + vec3(9.f, 6.f, 0.f);
+    d->vel = vec3(0); d->state = "breath"; d->noGravity = true; d->breathT = 0;
     bool chilled = false;
-    for (int i = 0; i < 90 && !chilled; i++) { tick(0.5); chilled = playerEffect(*P, "chill") > 0 || playerEffect(*P, "slow") > 0; }
+    for (int i = 0; i < 40 && !chilled; i++) { tick(0.25); chilled = playerEffect(*P, "chill") > 0 || playerEffect(*P, "slow") > 0; }
     check(chilled, "its frost breath chills you (state " + d->state + ")");
     int xp0 = P->xp, lv0 = P->level;
     kill(*d, P); tick(1.2);

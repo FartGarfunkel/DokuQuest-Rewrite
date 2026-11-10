@@ -178,11 +178,15 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
       return m;
     }
   }
-  for (const ArmorPattern& P : armorPatterns()) {   // mixed armour: every cell a material with a piece of its own, not all the same
+  for (const ArmorPattern& P : armorPatterns()) {   // mixed armour: any materials; all one only for a material with no piece of its own (tin, quartz...)
     if (P.w != bw || P.h != bh || (int)P.cells.size() != count) continue;
     std::vector<std::string> mats; bool ok = true;
     for (ivec2 c : P.cells) { const ItemStack& s = at(c.x, c.y); const ToolMaterial* tm = s.empty() ? nullptr : toolMaterialOfItem(s.id); if (!tm) { ok = false; break; } mats.push_back(tm->key); }
-    if (!ok || std::all_of(mats.begin(), mats.end(), [&](const std::string& m) { return m == mats[0]; })) continue;
+    if (!ok) continue;
+    if (std::all_of(mats.begin(), mats.end(), [&](const std::string& m) { return m == mats[0]; })) {
+      const ToolMaterial* m0 = toolMaterial(mats[0]);
+      if (!m0 || reg().item(m0->prefix + "_" + P.piece)) continue;   // its own piece: the ordinary recipe
+    }
     ItemStack out;
     if (!makePartArmor(P.piece, mats, out)) continue;
     CraftMatch m = special(out.id, 1, P.w, P.h); m.extra = out.tag;

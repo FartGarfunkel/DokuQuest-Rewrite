@@ -23,7 +23,7 @@ struct TileSet;
 // the column from a texture and looks the colour up: render/world_renderer.cpp climate + tint table), 4..19 redstone
 // dust at power 0..15. Water and dust take the whole picture (Mat::TintAll, set by the shader).
 #pragma pack(push, 1)
-struct ChunkVertex { u32 a = 0, b = 0, c = 0, d = 0, e = 0; };
+struct ChunkVertex { u32 a = 0, b = 0, c = 0, d = 0, e = 0; };   // e: sun RGB, block RGB (5 bits each), bit 30 animated tile
 #pragma pack(pop)
 static_assert(sizeof(ChunkVertex) == 20, "vertex must be 20 bytes");
 namespace Tint { enum : u8 { None = 0, Grass = 1, Foliage = 2, Water = 3, Dust = 4 }; }

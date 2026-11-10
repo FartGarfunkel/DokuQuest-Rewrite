@@ -3,6 +3,8 @@
 // quarrels.js, pets.js (hurt), nightmobs.js (jockeys, slime split), husbandry.js (kept animals).
 #include <cstdlib>
 #include "sim/creature.h"
+#include "sim/mount_gear.h"
+#include "sim/endstory.h"
 #include "sim/creature_rig.h"
 #include "sim/vehicles.h"
 #include "common/holiday.h"
@@ -10,6 +12,7 @@
 #include "sim/mob_combat.h"
 #include "sim/physics.h"
 #include "sim/player.h"
+#include "sim/skills.h"
 #include "core/registry.h"
 #include "gen/structures.h"
 #include "gen/structures_api.h"
@@ -262,6 +265,15 @@ Creature* spawnCreature(Level& lv, int realm, const std::string& type, vec3 p) {
   if (!c) return nullptr;
   c->realm = realm; c->pos = p; c->prevPos = p;
   placeVariant(lv, *c);
+  // the resource pack's climate looks (a pig, cow or chicken born in the snow is the cold one, in the desert or the
+  // jungle the warm one: render/creature_layer.cpp picks "<model>#cold" / "#warm"), by the land it's born on
+  if (type == "pig" || type == "cow" || type == "chicken") {
+    const int x = ifloor(p.x), z = ifloor(p.z);
+    if (const Chunk* ch = lv.world(realm).chunk(dimOfY(ifloor(p.y)), x >> 4, z >> 4)) {
+      const int t = ch->climate[((z & 15) * 16 + (x & 15)) * 2];   // 128 +- 127: the land's temperature
+      c->data["climate"] = t < 90 ? "cold" : t > 185 ? "warm" : "temperate";
+    }
+  }
   const CreatureType& T = *c->T;
   // husbandry.js: a land animal, once it exists, is here to stay
   if (!T.hostile && !T.water && !T.ambient && T.ai != "swimmer" && !T.roosts && type != "bee") c->kept = true;
@@ -314,7 +326,7 @@ void Creature::rollArmour() {
   static const bool all = std::getenv("DQ_ARMOUR") != nullptr;   // tests: every one dressed
   if (!wears || frand() >= (all ? 2.f : 0.11f)) return;
   float r = frand();
-  const char* mat = r < 0.36f ? "leather" : r < 0.62f ? "copper" : r < 0.80f ? "gold" : r < 0.97f ? "iron" : "diamond";
+  const char* mat = r < 0.28f ? "leather" : r < 0.50f ? "chainmail" : r < 0.66f ? "copper" : r < 0.80f ? "gold" : r < 0.97f ? "iron" : "diamond";   // (BTA's: chainmail is only found on them)
   static const char* PIECE[] = {"helmet", "chestplate", "leggings", "boots"};
   json a = json::array({"", "", "", ""});
   for (int i = 0; i < 4; i++) {
@@ -329,8 +341,10 @@ const std::string& Creature::armourPiece(int slot) const {
   if (!data.contains("armor") || !data["armor"].is_array() || slot >= (int)data["armor"].size() || !data["armor"][slot].is_string()) return none;
   return data["armor"][slot].get_ref<const std::string&>();
 }
+float wolfArmourPoints(const Creature& c);   // sim/bta_items.cpp
+void wolfArmourWear(Creature& c, Level& lv);
 float Creature::armourPoints() const {
-  float pts = 0;
+  float pts = wolfArmourPoints(*this) + horseArmourPoints(*this);   // (sim/mount_gear.cpp)
   for (int i = 0; i < 4; i++) {
     const std::string& k = armourPiece(i);
     const ItemDef* d = k.empty() ? nullptr : reg().item(k);
@@ -375,6 +389,14 @@ void Creature::wander(float dt) {
   if (wanderT <= 0) { wanderT = 2 + frand() * 5; wanderOn = frand() < 0.55f; wanderDir = frand() * TAU; }
 }
 Move Creature::wanderMove() const { return wanderOn ? Move{T->speed * 0.6f, wanderDir} : Move{0, yaw}; }
+int Creature::temper() {   // (ourCraft's animal personalities) rolled once and kept with it
+  if (data.is_object() && data.contains("tp") && data["tp"].is_number_integer()) return data["tp"].get<int>();
+  const float r = frand();
+  const int t = r < 0.2f ? 2 : r < 0.45f ? 1 : 0;
+  if (!data.is_object()) data = json::object();
+  data["tp"] = t;
+  return t;
+}
 int Creature::groundY(Level& lv) const {
   World& w = lv.world(realm);
   int y = ifloor(pos.y);
@@ -407,8 +429,6 @@ static MobContacts contacts(World& w, const Entity& e) {
   // cactus: touching the sides
   if (cactus) for (int z = ifloor(e.pos.z - e.w - 0.05f); z <= ifloor(e.pos.z + e.w + 0.05f); z++) for (int x = ifloor(e.pos.x - e.w - 0.05f); x <= ifloor(e.pos.x + e.w + 0.05f); x++)
     if (w.getBlock(x, y0, z) == cactus || w.getBlock(x, y0 - 1, z) == cactus) c.cactus = true;
-  static const BlockId spikes = reg().blockId("spike_trap");
-  if (spikes && w.getBlock(ifloor(e.pos.x), y0, ifloor(e.pos.z)) == spikes) c.cactus = true;   // walked into a spike trap
   return c;
 }
 
@@ -423,14 +443,18 @@ CreatureGlobalHooks& globalCreatureHooks() { static CreatureGlobalHooks h; retur
 
 float Creature::hurt(Level& lv, float amount, const DamageSrc& src) {
   const CreatureHooks* HK = creatureHooks(type);
-  if (HK && HK->beforeHurt && !HK->beforeHurt(lv, *this, amount, src)) return 0;
+  // the void (falling out of the world, /kill) takes anything: no creature's own turning-aside applies (the Wither
+  // Storm's "only worthy blows", a Wither gathering itself, a ward)
+  const bool absolute = src.type == "void";
+  if (!absolute && HK && HK->beforeHurt && !HK->beforeHurt(lv, *this, amount, src)) return 0;
   float dealt = hurtBase(lv, amount, src);
   if (HK && HK->afterHurt) HK->afterHurt(lv, *this, dealt, src);
   return dealt;
 }
 float Creature::hurtBase(Level& lv, float amount, const DamageSrc& srcIn) {
   DamageSrc src = srcIn;
-  if (alive() && !ghost && realmPreHurt(lv, *this, src)) return 0;
+  const bool absolute = src.type == "void";
+  if (!absolute && alive() && !ghost && realmPreHurt(lv, *this, src)) return 0;
   Entity* a = ent(lv, src.attacker);
   auto* ac = dynamic_cast<Creature*>(a);
   // pets.js: pets don't take your blows by accident
@@ -439,15 +463,15 @@ float Creature::hurtBase(Level& lv, float amount, const DamageSrc& srcIn) {
     if (ac && ac->owner == owner) return 0;
   }
   if (riddenBy && a && a->id == riddenBy) return 0;
-  if (globalCreatureHooks().beforeHurt && !globalCreatureHooks().beforeHurt(lv, *this, amount, src)) return 0;
+  if (!absolute && globalCreatureHooks().beforeHurt && !globalCreatureHooks().beforeHurt(lv, *this, amount, src)) return 0;
   // entities.js base
-  if (!alive() || invulnT > 0) return 0;
+  if (!alive() || (invulnT > 0 && !absolute)) return 0;
   float dmg = amount;
   if (src.element == "fire" && T->fireImmune && !src.weapon) dmg = 0;
   if (src.element == "frost" && type == "cinder_golem") dmg *= 2;
   if (src.type == "lava" && T->fireImmune) dmg = 0;
   if (dmg <= 0) { if (a && a->isPlayer()) floatText(lv, a->id, pos + vec3(0, h + 0.3f, 0), "Immune", "#ffb070"); return 0; }
-  if (!src.bypassArmor) if (float ap = armourPoints(); ap > 0) dmg *= 1 - std::min(20.f, ap) * 0.04f;   // as a player's armour: 4% a point
+  if (!src.bypassArmor) if (float ap = armourPoints(); ap > 0) { dmg *= 1 - std::min(20.f, ap) * 0.04f; wolfArmourWear(*this, lv); horseArmourWear(*this, lv); }   // as a player's armour: 4% a point (wolf and horse armour wear down)
   // Minecraft's ender dragon: the head takes the blow, every other part takes a quarter plus at most 1
   if (type == "ender_dragon" && src.hasRay && dmg > 0) {
     const RigModel* RM = rigModel(modelKey());
@@ -470,7 +494,7 @@ float Creature::hurtBase(Level& lv, float amount, const DamageSrc& srcIn) {
   }
   if (src.element == "fire" && !T->fireImmune) burn = std::max(burn, 3.f);
   if (src.element == "frost") slowT = 3;
-  if (auto fl = data.find("hpFloor"); fl != data.end() && fl->is_number() && hp < fl->get<float>()) hp = fl->get<float>();   // a boss that can't be worn below this yet (the Storm's heart)
+  if (auto fl = data.find("hpFloor"); !absolute && fl != data.end() && fl->is_number() && hp < fl->get<float>()) hp = fl->get<float>();   // a boss that can't be worn below this yet (the Storm's heart)
   if (hp <= 0) die(lv, src);
   float dealt = dmg;
   // dismember.js
@@ -536,10 +560,7 @@ void Creature::die(Level& lv, const DamageSrc& src) {
     if (reg().item(hk) && frand() < (type == "wither_skeleton" ? 0.025f : 0.01f)) dropItem(lv, realm, ItemStack(hk, 1), at, true);
   }
   if (!noDrops) for (int i = 0; i < 4; i++) if (!armourPiece(i).empty() && frand() < 0.085f) dropItem(lv, realm, ItemStack(armourPiece(i), 1), at, true);
-  if (data.contains("bags") && data["bags"].is_array()) {   // saddle bags: everything in them, and the bags
-    for (auto& s : data["bags"]) { ItemStack st = ItemStack::fromJson(s); if (!st.empty()) dropItem(lv, realm, st, at, true); }
-    dropItem(lv, realm, ItemStack("saddle_bags", 1), at, true); data.erase("bags");
-  }
+  mountGearDrops(lv, *this);   // its saddle, horse armour, chest or saddle bags and what's in them (sim/mount_gear.cpp)
   if (T->woolly && !sheared && !baby) dropItem(lv, realm, ItemStack(color == "white" || color.empty() ? "wool" : color + "_wool", 1), at, true);
   if (type == "cinder_golem") {
     json& flags = lv.info.data["flags"]; if (!flags.is_object()) flags = json::object();
@@ -553,6 +574,7 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   if (a && a->isPlayer()) {
     grantXP(lv, *a, T->xp, pos + vec3(0, h, 0));
     auto* p = static_cast<Player*>(a);
+    if (src.type == "magic") skillGain(lv, *p, "magic", 6.0 + T->xp * 3.0);   // brought down by a spell: Magic grows too
     p->stats["mobsKilled"] = p->stats.value("mobsKilled", 0) + 1;
   }
   // death cries (bestiary.js / sounds2.js)
@@ -649,6 +671,11 @@ void Creature::tick(Level& lv, double dtd) {
     poisonT -= dt; poisonTick += dt;
     if (poisonTick >= 1.25f) { poisonTick = 0; if (hp > 1) { DamageSrc s; s.type = "poison"; s.knock = 0; hurt(lv, 1, s); } }
   }
+  // a Wither's skull (Wither II): a heart a second, and unlike venom it kills
+  if (witherT > 0 && alive()) {
+    witherT -= dt; witherTick += dt;
+    if (witherTick >= 1.f) { witherTick = 0; DamageSrc s; s.type = "wither"; s.knock = 0; hurt(lv, 1, s); }
+  }
   // nightmobs.js: jockeys
   Creature* mnt = jockeyOf ? dynamic_cast<Creature*>(ent(lv, jockeyOf)) : nullptr;
   if (jockeyOf && (!mnt || !mnt->alive() || !alive())) { if (mnt && mnt->jockeyRider == id) mnt->jockeyRider = 0; jockeyOf = 0; mnt = nullptr; }
@@ -687,6 +714,8 @@ void Creature::update(Level& lv, float dt) {
   const Registry& R = reg();
   if (deathTime > 0) {
     deathTime += dt;
+    // the ender dragon's rise and beam own the body until the portal opens; other deaths keep the short topple
+    if (type == "ender_dragon" && enderDragonDeathStep(lv, *this, dt)) return;
     // the topple (creatureBase) is over by 0.64 s; it lies there a moment, then goes in a puff (the original
     // left after 0.95 s — a little longer here so the fall can be seen)
     if (deathTime > DEATH_LINGER) {
@@ -724,6 +753,11 @@ void Creature::update(Level& lv, float dt) {
     if (frand() < dt * 12) flame(lv, pos + vec3((frand() - 0.5f) * w * 2, frand() * h, (frand() - 0.5f) * w * 2));
   }
   if (c.cactus) { hurt(lv, 1, DamageSrc{}); if (!alive()) return; }
+  if (spikeOverlap(wd, *this)) {
+    float st = data.value("spikeT", 0.f) + dt;
+    if (st >= 0.5f) { st = 0; DamageSrc s; s.type = "cactus"; hurt(lv, 2, s); if (!alive()) return; }
+    data["spikeT"] = st;
+  } else if (data.contains("spikeT")) data["spikeT"] = 0;
   if (pos.y < -20) { removed = true; return; }
   int dim = dimAt(*this);
   float day = envDay(lv, dim);
@@ -784,11 +818,18 @@ void Creature::update(Level& lv, float dt) {
     } else { wander(dt); Move m = wanderMove(); if (m.want > 0 && !safeAhead(lv, *this, m.dir)) { wanderDir += PI * (0.7f + frand() * 0.6f); m = Move{0, yaw}; } want = m.want; dir = m.dir; }
     if (dist > 72) removed = true;
   } else {
-    // passive animals: skittish ones bolt when someone comes close (sneaking helps)
-    bool spooked = T->skittish > 0 && p && dist < T->skittish * (pawnSneaking(p) ? 0.45f : 1);
-    if (spooked && panicT <= 0) { panicT = 2.5f + frand() * 2; fleeFrom = p->id; }
+    // passive animals: skittish ones bolt when someone comes close (sneaking helps). Each has its own temper too: a shy one
+    // keeps further off (one of a calm kind just steps out of your way), a curious one comes over to have a look at you
+    const int tp = kept ? 0 : temper();
+    const float skitR = tp == 1 ? (T->skittish > 0 ? T->skittish * 1.5f : 3.5f) : T->skittish;
+    bool spooked = skitR > 0 && p && dist < skitR * (pawnSneaking(p) ? 0.45f : 1);
+    if (spooked && panicT <= 0) { shyStep = T->skittish <= 0; panicT = shyStep ? 1.0f + frand() * 0.8f : 2.5f + frand() * 2; fleeFrom = p->id; }
+    if (!p || dist > 14) curiousT = 10 + frand() * 8;   // (it'll want another look next time)
+    const bool curious = tp == 2 && p && p->isPlayer() && dist < 9 && curiousT > 0 && panicT <= 0 && !T->farm;
+    if (curious) curiousT -= dt;
     OptMove farm; if (T->farm && panicT <= 0) farm = farmAI(lv, p, dist, toPlayer, dt);
     if (farm) { want = farm->want; dir = farm->dir; }
+    else if (curious) { dir = toPlayer; want = dist > 2.8f ? T->speed * 0.5f : 0; }   // up to you, then a long look
     else if (panicT > 0) {
       panicT -= dt;
       Entity* f = ent(lv, fleeFrom); if (!f) f = p;
@@ -796,7 +837,7 @@ void Creature::update(Level& lv, float dt) {
       if (f) away = std::atan2(-(pos.x - f->pos.x), -(pos.z - f->pos.z));
       if (hitWall) { if (!fleeTurn) fleeTurn = frand() < 0.5f ? -1 : 1; }
       else if (fleeTurn && frand() < dt * 0.8f) fleeTurn = 0;
-      dir = away + fleeTurn * 0.9f + std::sin(age * 1.7f) * 0.18f; want = T->run > 0 ? T->run : T->speed * 2;
+      dir = away + fleeTurn * 0.9f + std::sin(age * 1.7f) * 0.18f; want = shyStep ? T->speed * 0.8f : T->run > 0 ? T->run : T->speed * 2;
     } else { wander(dt); Move m = wanderMove(); if (m.want > 0 && !safeAhead(lv, *this, m.dir)) { wanderDir += PI * (0.7f + frand() * 0.6f); m = Move{0, yaw}; } want = m.want; dir = m.dir; }
     soundT -= dt;
     if (soundT < 0) { soundT = 6 + frand() * 10; if (dist < 14 && (type == "boar" || !T->sound.empty())) lv.fx->voice(T->sound.empty() ? "boar" : T->sound, "say", pos); }
@@ -852,10 +893,11 @@ void Creature::update(Level& lv, float dt) {
   if (T->farm) farmTick(lv, dt);
   bool wasGround = onGround;
   if (wantJump) { if (onGround && !noGravity) vel.y = T->hopper ? 6 : 7.8f; wantJump = false; }
+  if (spikeOverlap(wd, *this)) vel = vec3(0);
   {
     vec3 before = pos;
     // a creature hiding inside a block (the October pumpkin creature) stays put: no move, no push out of the block
-    MoveResult r = data.value("inBlock", false) ? MoveResult{} : T->phase ? phaseMove(wd, pos, w, h, vel * dt) : moveBox(wd, pos, w, h, vel * dt, onGround || wasGround ? (riddenBy ? 1.05f : 0.6f) : 0.f);   // (ridden: up stairs and slabs at a run, as BTA's pigs keep their momentum)
+    MoveResult r = data.value("inBlock", false) ? MoveResult{} : type == "wither_storm" ? (pos += vel * dt, MoveResult{}) : T->phase ? phaseMove(wd, pos, w, h, vel * dt) : moveBox(wd, pos, w, h, vel * dt, onGround || wasGround ? (riddenBy ? 1.05f : 0.6f) : 0.f);   // (ridden: up stairs and slabs at a run, as BTA's pigs keep their momentum)
     hitWall = r.hitX || r.hitZ; hitCeiling = r.hitY && vel.y > 0;
     if (r.hitX) vel.x = 0;
     if (r.hitZ) vel.z = 0;
@@ -949,6 +991,10 @@ json Creature::snap() const {
   if (data.contains("hat")) o["hd"] = data["hat"];
   if (data.contains("hw")) o["hw"] = data["hw"];
   if (data.contains("armor")) o["ar"] = data["armor"];
+  // what a pet wears and carries (sim/mount_gear.cpp, sim/bta_items.cpp), for the barding, chests and bags drawn on it
+  if (data.contains("horseArmor")) o["ha"] = data["horseArmor"];
+  if (data.contains("wolfArmor")) o["wa"] = data["wolfArmor"];
+  if (std::string pk = mountPack(*this); !pk.empty()) o["pk"] = pk;
   if (!lost.empty()) o["ls"] = lost;
   if (hasTilt) o["sf"] = {r2(surfaceTilt.x), r2(surfaceTilt.y)};
   // (more than the original sent: pets, riders, a dragon's wings, a limp)
@@ -994,6 +1040,9 @@ void Creature::applySnap(const json& o) {
   if (o.contains("hd")) data["hat"] = o["hd"];
   if (o.contains("hw")) data["hw"] = o["hw"];
   if (o.contains("ar")) data["armor"] = o["ar"]; else if (data.is_object()) data.erase("armor");
+  for (auto [sk, dk] : {std::pair<const char*, const char*>{"ha", "horseArmor"}, {"wa", "wolfArmor"}, {"pk", "pack"}}) {
+    if (o.contains(sk)) data[dk] = o[sk]; else if (data.is_object()) data.erase(dk);
+  }
   lost.clear(); if (o.contains("ls")) for (auto& n : o["ls"]) lost.insert(n.get<std::string>());
   hasTilt = o.contains("sf"); if (hasTilt) surfaceTilt = vec2(o["sf"][0], o["sf"][1]);
   owner = o.value("ow", std::string()); petName = o.value("pn", std::string()); riddenBy = o.value("rb", 0u);

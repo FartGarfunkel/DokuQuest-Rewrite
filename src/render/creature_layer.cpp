@@ -30,11 +30,35 @@ static const CreatureModelGL* modelFor(const Creature& m) {
     const std::string k = m.modelKey() + (m.angryT > 0 && m.pollen ? "#angry_nectar" : m.angryT > 0 ? "#angry" : "#nectar");
     if (auto* v = creatureModel(k)) return v;
   }
+  // a pig, cow or chicken of a cold or warm land: the pack's own picture of that one (sim/creature.cpp spawnCreature)
+  if (auto it = m.data.find("climate"); it != m.data.end() && it->is_string() && *it != "temperate" && (m.type == "pig" || m.type == "cow" || m.type == "chicken"))
+    if (auto* v = creatureModel(m.modelKey() + "#" + it->get<std::string>())) return v;
   return creatureModel(m.modelKey());
 }
 
 
 static constexpr float RPX = 1.f / 16;
+
+// a mount's gear (sim/mount_gear.h) as boxes of a picture, 32 voxels to the block, kept per picture and size
+struct GearBox { VoxelMeshGL gl; vec3 n{1}; };
+static const GearBox& gearBox(const std::string& tile, vec3 size) {
+  static auto& cache = *new std::unordered_map<std::string, std::unique_ptr<GearBox>>();   // (never freed: GL is gone by exit)
+  const ivec3 n = glm::max(ivec3(glm::round(size * 32.f)), ivec3(1));
+  const std::string key = tile + "|" + std::to_string(n.x) + "," + std::to_string(n.y) + "," + std::to_string(n.z);
+  auto& slot = cache[key];
+  if (!slot) {
+    slot = std::make_unique<GearBox>(); slot->n = vec3(n);
+    VoxelGrid g; buildTileBox(g, n, tile); VoxelMeshData md; buildVoxelMesh(g, md); slot->gl.upload(md);
+  }
+  return *slot;
+}
+// the box lo..hi (part space, blocks) of a rig part's frame, from that picture
+static void drawGearBox(CreatureDraw& D, const mat4& partM, vec3 lo, vec3 hi, const std::string& tile, VoxelLight L, vec4 tint) {
+  const vec3 size = glm::max(hi - lo, vec3(0.01f));
+  const GearBox& B = gearBox(tile, size);
+  if (!B.gl.ready()) return;
+  D.draw(B.gl, partM * glm::scale(glm::translate(mat4(1), lo), size / B.n), L, tint);
+}
 
 // ------------------------------------------------------------------ the shader
 CreatureDraw& creatureDraw() { static CreatureDraw* d = new CreatureDraw(); return *d; }   // kept past exit (no GL calls after the context is gone)
@@ -128,16 +152,29 @@ static mat4 heldMatrix(float tilt, float s, vec2 grip, bool upright) {
   vec3 Z(s, 0, 0), t = -(grip.x * X + grip.y * Y);
   return mat4(vec4(X, 0), vec4(Y, 0), vec4(Z, 0), vec4(t, 1));
 }
-// a bow stands upright in the fist, its belly (the stave's curve, the sprite's upper left) away from you and the string
-// toward you, gripped at the middle of the stave (the sprite's chord, bottom left to top right, made vertical)
+// a bow carried by its grip at the side, as archers walk with one: level, its limbs fore and aft, held as it's shot with
+// the arm lowered: its belly (the stave's curve, the sprite's upper left) down and the string on top, the fist round the
+// middle of the stave.
+// (The player's matrix, turned half round about the upright: in a creature's arm frame that one held it string out, the
+// fletcher's and the skeletons' bows backwards.)
 static mat4 bowHeldMatrix(float s, vec2 grip) {
   const float r2 = std::sqrt(0.5f);
-  const vec3 X(0, r2 * s, r2 * s), Y(0, r2 * s, -r2 * s), Z(-s, 0, 0), t = -(grip.x * X + grip.y * Y);
+  const vec3 X(0, r2 * s, r2 * s), Y(0, -r2 * s, r2 * s), Z(s, 0, 0), t = -(grip.x * X + grip.y * Y);
   return mat4(vec4(X, 0), vec4(Y, 0), vec4(Z, 0), vec4(t, 1));
 }
 static bool isBowKey(const std::string& id) { return id == "bow" || id.rfind("bow_pulling", 0) == 0 || id.rfind("bow_pq", 0) == 0; }
+// the bow drawn, the arm out at the target: upright across the arm (the chord along the arm's z, which the raised arm
+// points up), its belly out along the arm toward the target and the string back toward the archer, the fist round the
+// middle of the stave however far it's bent (it lay flat along the arm)
+static mat4 bowDrawnMatrix(const std::string& id) {
+  const float s = 0.8f, r2 = std::sqrt(0.5f);
+  const float pull = id == "bow_pulling_0" ? 0.35f : id == "bow_pulling_1" ? 0.65f : id == "bow_pulling_2" ? 1.f : 0.f;
+  const vec3 X(0, r2 * s, r2 * s), Y(0, -r2 * s, r2 * s), Z(s, 0, 0);
+  const vec2 g = vec2(-0.235f, 0.235f) * (1 + 0.3f * pull);
+  return mat4(vec4(X, 0), vec4(Y, 0), vec4(Z, 0), vec4(-(g.x * X + g.y * Y), 1));
+}
 static const mat4& heldMat(const std::string& id) {
-  static const mat4 BOW = bowHeldMatrix(0.8f, {-0.2f, 0.15f});
+  static const mat4 BOW = bowHeldMatrix(0.8f, {-0.235f, 0.235f});   // (the fist round the middle of the stave: it was 1.5 px off it)
   if (isBowKey(id)) return BOW;
   static const mat4 TOOL = heldMatrix(0.25f, 0.85f, vec2(-0.34f, -0.24f), false), ITEM = heldMatrix(0.2f, 0.55f, vec2(0, -0.25f), true), ROD = heldMatrix(0.75f, 0.85f, vec2(-0.34f, -0.24f), false);
   if (id == "fishing_rod" || id == "fishing_rod_cast") return ROD;
@@ -240,7 +277,7 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
     if (e.removed || e.realm != s.player->realm) continue;
     Interp ip = interp(e, a);
     vec3 rel = f.cam.rel(glm::dvec3(ip.pos));
-    if (glm::dot(rel, rel) > maxD * maxD) continue;
+    if (glm::dot(rel, rel) > maxD * maxD && !(e.type == "wither_storm" && glm::dot(rel, rel) < 480.f * 480.f)) continue;   // (a Storm is seen from afar)
     if (auto* m = dynamic_cast<Creature*>(&e)) {
       if (m->T->npc) continue;   // villagers are voxel people (render/villager_layer)
       // a mob whose mobs.json says "skin": "<file>.png" is drawn as a voxel character from that player skin,
@@ -276,6 +313,16 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
         if (p.glow) { D.draw(pm.gl, model, {1, 1}, m->hurtTime > 0 ? tint : vec4(0)); continue; }
         D.draw(pm.gl, model, L, (p.wool || p.undercoat) && wool.a > 0 && tint.a == 0 ? wool : tint);
       }
+      // parts that are a real block (the Wither Storm's command block in its cage of ribs): the block itself, as it is in
+      // the world (its own pictures, the pack's when there is one), filling the part's box
+      for (size_t i = 0; i < RM->parts.size(); i++) {
+        const RigPart& p = RM->parts[i];
+        if (p.item.empty() || !rigPartPosed(*m, (int)i) || !rigPartShown(*m, p)) continue;
+        const VoxelModel& im = itemModel(p.item);
+        if (!im.ready()) continue;
+        const vec3 ctr = (p.min + p.max) * 0.5f, ext = glm::max(p.max - p.min, vec3(0.01f));
+        D.draw(im.gl, glm::scale(glm::translate(T0 * m->mats[i], ctr), ext) * im.matrix(), L, tint);
+      }
       if (corrupt) {
         int hi = RM->find("head");
         const VoxelModel& eye = itemModel("white_concrete");
@@ -302,7 +349,7 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
         hm = glm::translate(hm, vec3(hand.x * RPX, hand.y * RPX, -0.5f * RPX));
         if (RM->heavy) hm = glm::scale(hm, vec3(2));
         if (im.kind == VoxelModel::Block) { hm = glm::translate(hm, vec3(0, 0, -1.5f * RPX)); hm = glm::rotate(hm, -0.3f, vec3(1, 0, 0)); hm = glm::scale(hm, vec3(0.375f)); }
-        else hm = hm * heldMat(id);
+        else hm = hm * (isBowKey(id) && m->aiming ? bowDrawnMatrix(id) : heldMat(id));
         D.draw(im.gl, hm * im.matrix(), L, tint);
       };
       drawHeld(held, held.rfind("bow", 0) == 0 && m->aiming ? "foreL" : "foreR");
@@ -345,17 +392,106 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
           }
         }
       }
+      // wolf armour (sim/bta_items.cpp): the material's helmet and chestplate plates stretched over the wolf's head and
+      // body, a little larger than them
+      if (m->data.contains("wolfArmor") && m->data["wolfArmor"].is_string()) {
+        const ItemDef* wd = reg().item(m->data["wolfArmor"].get<std::string>());
+        const std::string mat = wd && wd->props.contains("wolfArmor") ? wd->props["wolfArmor"].value("mat", std::string()) : std::string();
+        struct WP { int slot; const char* charPart; const char* rigPart; vec3 lo, hi; };
+        static const WP WMAP[] = {{0, "head", "head", {-4, 0, -4}, {4, 8, 4}}, {1, "body", "body", {-4, 0, -2}, {4, 12, 2}}};
+        for (const WP& q : WMAP) {
+          static const char* PIECE[] = {"helmet", "chestplate"};
+          const std::string key = mat + "_" + PIECE[q.slot];
+          if (mat.empty() || !reg().item(key)) continue;
+          const ArmorSet& A = armorMeshes(key, "", q.slot, false, false, app().tiles);
+          int ri = RM->find(q.rigPart);
+          if (ri < 0 || !rigPartPosed(*m, ri)) continue;
+          const RigPart& rp = RM->parts[ri];
+          for (auto& [pn, list] : A.byPart) {
+            if (pn != q.charPart) continue;
+            const vec3 ctr = (rp.min + rp.max) * 0.5f, ext = (rp.max - rp.min) * 1.12f;
+            vec3 kk = ext / glm::max(q.hi - q.lo, vec3(0.01f));
+            mat4 pm = glm::translate(T0 * m->mats[ri], ctr - ext * 0.5f) * glm::scale(mat4(1), kk) * glm::translate(mat4(1), -q.lo);
+            for (const CharMesh* cm : list) D.draw(cm->gl, pm * cm->local(), L, tint);
+          }
+        }
+      }
+      // a mount's gear (sim/mount_gear.h, synced as data "horseArmor" / "pack"): horse armour as barding over the body,
+      // the neck and the top of the face; a chest on each flank (its latch outward); saddle bags as leather pouches
+      if (!m->baby && m->data.is_object() && (m->data.contains("horseArmor") || m->data.contains("pack") || m->data.contains("bags"))) {
+        const int bi = RM->find("body");
+        const bool bodyOk = bi >= 0 && rigPartPosed(*m, bi) && rigPartShown(*m, RM->parts[bi]);
+        const float e = 0.6f * RPX;
+        if (m->data.contains("horseArmor") && m->data["horseArmor"].is_string()) {
+          const ItemDef* ad = reg().item(m->data["horseArmor"].get<std::string>());
+          const std::string mat = ad && ad->props.contains("horseArmor") ? ad->props["horseArmor"].value("mat", std::string()) : std::string();
+          const std::string tile = mat == "leather" ? "saddle_leather" : mat == "gold" ? "gold_block" : mat == "diamond" ? "diamond_block" : mat == "steel" ? "steel_block" : "iron_block";
+          const vec4 mt = tint.a > 0 ? tint : mat == "chainmail" ? vec4(0.42f, 0.45f, 0.5f, 0.45f) : mat == "leather" ? vec4(0.32f, 0.2f, 0.1f, 0.25f) : vec4(0);
+          if (bodyOk) {
+            const RigPart& b = RM->parts[bi]; const float h = b.max.y - b.min.y;
+            drawGearBox(D, T0 * m->mats[bi], vec3(b.min.x - e, b.min.y + 0.3f * h, b.min.z - e), vec3(b.max.x + e, b.max.y + e, b.max.z + e * 0.5f), tile, L, mt);
+          }
+          if (int ni = RM->find("neck"); ni >= 0 && rigPartPosed(*m, ni) && rigPartShown(*m, RM->parts[ni])) {
+            const RigPart& n = RM->parts[ni];
+            drawGearBox(D, T0 * m->mats[ni], vec3(n.min.x - e, n.min.y, n.min.z - e), vec3(n.max.x + e, n.min.y + 0.85f * (n.max.y - n.min.y), n.max.z + e * 0.5f), tile, L, mt);
+          }
+          if (int hi = RM->find("head"); hi >= 0 && rigPartPosed(*m, hi) && rigPartShown(*m, RM->parts[hi]) && !m->lost.count("head")) {
+            const RigPart& hp = RM->parts[hi]; const float hh = hp.max.y - hp.min.y, hd = hp.max.z - hp.min.z;
+            drawGearBox(D, T0 * m->mats[hi], vec3(hp.min.x - e * 0.5f, hp.max.y - 0.3f * hh, hp.min.z - e), vec3(hp.max.x + e * 0.5f, hp.max.y + e, hp.max.z - 0.35f * hd), tile, L, mt);
+          }
+        }
+        std::string pack = m->data.value("pack", std::string());
+        if (pack.empty() && m->data.contains("bags")) pack = "bags";
+        if (bodyOk && !pack.empty()) {
+          const RigPart& b = RM->parts[bi];
+          const mat4 PM = T0 * m->mats[bi];
+          const float zc = (b.min.z + b.max.z) * 0.5f;
+          for (float sx : {-1.f, 1.f}) {
+            const float x0 = sx > 0 ? b.max.x : b.min.x;
+            if (pack == "chest") {   // a chest, 8 long, 7 high, 3 thick, its front to the outside
+              const VoxelModel& im = itemModel("chest");
+              if (!im.ready()) continue;
+              const vec3 ctr(x0 + sx * 1.5f * RPX, b.max.y - 4.5f * RPX, zc + 1.5f * RPX);
+              mat4 cm = glm::rotate(glm::translate(PM, ctr), sx * PI * 0.5f, vec3(0, 1, 0));
+              D.draw(im.gl, glm::scale(cm, vec3(8, 7, 3) * RPX) * im.matrix(), L, tint);
+            } else {                 // a leather pouch with a brass buckle, behind the saddle
+              const float zb = zc + 1.f * RPX;
+              const vec3 lo(sx > 0 ? x0 : x0 - 2.5f * RPX, b.max.y - 7.5f * RPX, zb), hi(sx > 0 ? x0 + 2.5f * RPX : x0, b.max.y - 1.5f * RPX, zb + 6 * RPX);
+              drawGearBox(D, PM, lo, hi, "saddle_leather", L, tint.a > 0 ? tint : vec4(0.2f, 0.12f, 0.06f, 0.3f));
+              const float bx = sx > 0 ? hi.x : lo.x - 0.5f * RPX;
+              drawGearBox(D, PM, vec3(bx, hi.y - 2.5f * RPX, zb + 2.25f * RPX), vec3(bx + 0.5f * RPX, hi.y - 1 * RPX, zb + 3.75f * RPX), "gold_block", L, tint);
+            }
+          }
+        }
+      }
       continue;
     }
-    if (!f.cam.frustum.sphere(rel, 2.5f)) continue;
+    if (!f.cam.frustum.sphere(rel, e.type == "block_cluster" ? 5.f : 2.5f)) continue;
     const std::string& t = e.type;
     if (t == "arrow") {
-      const VoxelModel& im = itemModel("arrow");
+      const VoxelModel& im = itemModel(e.data.value("item", std::string("arrow")));   // (a golden, flaming or purple arrow shows as itself)
       if (!im.ready()) continue;
       mat4 m = glm::translate(mat4(1), rel);
       m = glm::rotate(m, e.yaw, vec3(0, 1, 0)); m = glm::rotate(m, e.pitch, vec3(1, 0, 0));
       m = glm::rotate(m, PI / 2, vec3(0, 1, 0)); m = glm::rotate(m, -PI / 4, vec3(0, 0, 1)); m = glm::scale(m, vec3(0.7f));
       D.draw(im.gl, m * im.matrix(), lightAt(w, ip.pos));
+    } else if (t == "falling_block" || t == "block_cluster") {   // blocks in flight: one falling, or a clump the Wither Storm
+      // tore out of the world (trembling a moment where it was, then turning as it flies into a maw)
+      const float spin = e.data.value("spin", 0.f), shake = e.data.value("shake", 0.f);
+      const vec3 jit = shake > 0 ? vec3(std::sin(ip.age * 53 + e.id), std::sin(ip.age * 61 + e.id * 3.f), std::cos(ip.age * 47 + e.id)) * 0.07f : vec3(0);
+      const bool cl = t == "block_cluster";
+      const vec3 base = rel + jit + (cl ? vec3(0) : vec3(0, 0.5f, 0));
+      const VoxelLight L = lightAt(w, ip.pos + vec3(0, 0.5f, 0));
+      auto one = [&](const std::string& key, vec3 off) {
+        const VoxelModel& im = itemModel(key); if (!im.ready()) return;
+        mat4 m = glm::translate(mat4(1), base);
+        if (cl && shake <= 0) m = glm::rotate(m, spin, glm::normalize(vec3(0.3f, 1, 0.2f)));
+        m = glm::translate(m, off);
+        D.draw(im.gl, m * im.matrix(), L);
+      };
+      if (!cl) one(e.data.value("block", std::string()), vec3(0));
+      else if (auto bl = e.data.find("blocks"); bl != e.data.end() && bl->is_array())
+        for (auto& b : *bl) if (b.is_array() && b.size() >= 4 && b[3].is_string()) one(b[3].get<std::string>(), vec3(b[0].get<float>(), b[1].get<float>(), b[2].get<float>()));
     } else if (t == "projectile" && (e.data.value("kind", "") == "cannonball" || e.data.value("kind", "") == "rocket")) {
       const std::string k = e.data.value("kind", "");
       const VoxelModel& im = itemModel(k);
@@ -365,6 +501,14 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
       else m = glm::rotate(m, ip.age * 8, vec3(1, 0, 0));
       m = glm::scale(m, vec3(k == "rocket" ? 0.6f : 0.35f));
       D.draw(im.gl, m * im.matrix(), lightAt(w, ip.pos));
+    } else if (t == "projectile" && e.data.value("kind", "") == "wither_skull") {   // a Wither's skull: a little wither
+      // skeleton's head, flying face first (a blue one lit from within)
+      const VoxelModel& im = itemModel("wither_skeleton_skull");
+      if (!im.ready()) continue;
+      const vec3 v = e.vel; const float yaw = std::atan2(-v.x, -v.z), pitch = std::atan2(v.y, std::max(0.001f, std::hypot(v.x, v.z)));
+      mat4 m = glm::translate(mat4(1), rel + vec3(0, 0.15f, 0));
+      m = glm::rotate(m, yaw, vec3(0, 1, 0)); m = glm::rotate(m, pitch, vec3(1, 0, 0)); m = glm::scale(m, vec3(0.5f));
+      D.draw(im.gl, m * im.matrix(), e.data.value("blue", false) ? VoxelLight{1, 1} : lightAt(w, ip.pos));
     } else if (t == "projectile") {
       std::string k = e.data.value("kind", "fireball");
       SmallMeshes& S = small();

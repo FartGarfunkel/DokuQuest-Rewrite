@@ -133,6 +133,7 @@ _s3 = _u.spec_from_file_location('nether_bta', pathlib.Path(__file__).with_name(
 _s4 = _u.spec_from_file_location('discs', pathlib.Path(__file__).with_name('discs.py')); _m4 = _u.module_from_spec(_s4); _s4.loader.exec_module(_m4); _m4.main(d)
 _s5 = _u.spec_from_file_location('bees', pathlib.Path(__file__).with_name('bees.py')); _m5 = _u.module_from_spec(_s5); _s5.loader.exec_module(_m5); _m5.main(d)
 _s7 = _u.spec_from_file_location('travel', pathlib.Path(__file__).with_name('travel.py')); _m7 = _u.module_from_spec(_s7); _s7.loader.exec_module(_m7); _m7.main(d)
+_sHG = _u.spec_from_file_location('horse_gear', pathlib.Path(__file__).with_name('horse_gear.py')); _mHG = _u.module_from_spec(_sHG); _sHG.loader.exec_module(_mHG); _mHG.main(d)   # horse armour
 
 # ---- forged tools: heads and hafts, the Tool Forge (tools/port/forging.py) ----
 _s = _u.spec_from_file_location('forging', pathlib.Path(__file__).with_name('forging.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
@@ -244,12 +245,12 @@ models['wither'] = {'rig': 'wither', 'scale': 1.5, 'parts': [
     _part('shoulders', [0, 21, 0], [-10, 0, -1.5, 10, 3, 1.5], 'wskel_bone'),
     _part('head', [0, 24, 0], [-4, 0, -4, 4, 8, 4], H_),
     _part('headL', [-8, 23, 0], [-3, 0, -3, 3, 6, 3], H_), _part('headR', [8, 23, 0], [-3, 0, -3, 3, 6, 3], H_)]}
-mobs['wither'] = {'model': 'wither', 'label': 'the Wither', 'hp': 300, 'w': 0.9, 'h': 3.0, 'speed': 1.4, 'fly': 6, 'xp': 50, 'hostile': True,
+mobs['wither'] = {'model': 'wither', 'label': 'the Wither', 'hp': 300, 'w': 0.9, 'h': 3.5, 'speed': 1.4, 'fly': 6, 'xp': 50, 'hostile': True,
                   'boss': True, 'special': True, 'flyer': True, 'undead': True, 'fireImmune': True, 'knockResist': 1, 'damage': 0,
                   'drops': [['nether_star', 1, 1, 1]]}
 mg['effects']['wither'] = {'name': 'Wither', 'col': '#3a3030', 'bad': True}
 # the Wither Storm: a Wither grown out of a rift core (sim/wither.cpp stormBrain): the same bones, huge and dark
-models['wither_storm'] = dict(models['wither']); models['wither_storm']['scale'] = 5.0
+if 'uvTex' not in models.get('wither_storm', {}): models['wither_storm'] = dict(models['wither']); models['wither_storm']['scale'] = 5.0   # (the mod's own looks once tools/port/wither_storm_models.py has run)
 mobs['wither_storm'] = {'model': 'wither_storm', 'label': 'the Wither Storm', 'hp': 900, 'w': 2.8, 'h': 9.5, 'speed': 1.1, 'fly': 5, 'xp': 500, 'hostile': True,
                         'boss': True, 'special': True, 'flyer': True, 'undead': True, 'fireImmune': True, 'knockResist': 1, 'damage': 0,
                         'tint': [0.22, 0.06, 0.32, 0.45], 'drops': [['nether_star', 3, 3, 1], ['rift_crystal', 6, 10, 1]]}
@@ -447,6 +448,10 @@ _s11 = _u.spec_from_file_location('mob_restyle', pathlib.Path(__file__).with_nam
 
 # ---- the Wither Storm as Story Mode has it (tools/port/wither_storm.py) ----
 _s13 = _u.spec_from_file_location('wither_storm', pathlib.Path(__file__).with_name('wither_storm.py')); _m13 = _u.module_from_spec(_s13); _s13.loader.exec_module(_m13); _m13.main(d)
+# ---- the Storm's own picture, and the Wither made in its likeness (tools/port/wither_storm_texture.py) ----
+_s15 = _u.spec_from_file_location('wither_storm_texture', pathlib.Path(__file__).with_name('wither_storm_texture.py')); _m15 = _u.module_from_spec(_s15); _s15.loader.exec_module(_m15); _m15.main(d)
+# ---- the Wither's own voice (tools/port/wither_sounds.py) ----
+_s14 = _u.spec_from_file_location('wither_sounds', pathlib.Path(__file__).with_name('wither_sounds.py')); _m14 = _u.module_from_spec(_s14); _s14.loader.exec_module(_m14); _m14.main(d)
 
 # ---- sheared sheep keep a short undercoat (tools/port/sheep_undercoat.py) ----
 _s12 = _u.spec_from_file_location('sheep_undercoat', pathlib.Path(__file__).with_name('sheep_undercoat.py')); _m12 = _u.module_from_spec(_s12); _s12.loader.exec_module(_m12); _m12.main(d)
@@ -469,3 +474,32 @@ def _match_family_tools(d):
     (pathlib.Path(d) / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     print('family tools: %d stairs/slabs/walls matched to their block' % n)
 _match_family_tools(d)
+
+# ---- Better End's blocks for the End band, its pictures fitted to the base pack (tools/port/betterend_blocks.py; MIT,
+# docs/CREDITS.md; only when the Better End jar is unpacked next to the project) ----
+_s14 = _u.spec_from_file_location('betterend_blocks', pathlib.Path(__file__).with_name('betterend_blocks.py')); _m14 = _u.module_from_spec(_s14); _s14.loader.exec_module(_m14)
+_m14.main(d, pathlib.Path(__file__).resolve().parents[3] / 'Better END')
+
+# ---- the blocks of BTA 8.0's Nether we lacked, drawn from the base pack in BTA's colours (tools/port/bta_nether_blocks.py) ----
+_s15 = _u.spec_from_file_location('bta_nether_blocks', pathlib.Path(__file__).with_name('bta_nether_blocks.py')); _m15 = _u.module_from_spec(_s15); _s15.loader.exec_module(_m15); _m15.main(d)
+
+# ---- The Aether's blocks, drawn from the base pack in the Aether's colours, and its clouds' behaviour (tools/port/aether_blocks.py) ----
+_s16 = _u.spec_from_file_location('aether_blocks', pathlib.Path(__file__).with_name('aether_blocks.py')); _m16 = _u.module_from_spec(_s16); _s16.loader.exec_module(_m16); _m16.main(d)
+
+# ---- Better End's creatures on the rigs of ours, recoloured (tools/port/end_mobs.py) ----
+_s17 = _u.spec_from_file_location('end_mobs', pathlib.Path(__file__).with_name('end_mobs.py')); _m17 = _u.module_from_spec(_s17); _s17.loader.exec_module(_m17); _m17.main(d)
+
+# ---- The Aether's dungeon keepers (Slider, Sun Spirit) and creatures it lacked, recoloured (tools/port/aether_mobs.py) ----
+_s18 = _u.spec_from_file_location('aether_mobs', pathlib.Path(__file__).with_name('aether_mobs.py')); _m18 = _u.module_from_spec(_s18); _s18.loader.exec_module(_m18); _m18.main(d)
+
+# ---- Better End's building blocks and its land structures (tools/port/be_building.py; after betterend_blocks.py) ----
+_s19 = _u.spec_from_file_location('be_building', pathlib.Path(__file__).with_name('be_building.py')); _m19 = _u.module_from_spec(_s19); _s19.loader.exec_module(_m19)
+_m19.main(d, pathlib.Path(__file__).resolve().parents[3] / 'Better END')
+
+# ---- the dragons' shape and scales (tools/port/dragon_shape.py: chest, haunches, thighs, clawed feet, frills, finer tail; membranes) ----
+_s20 = _u.spec_from_file_location('dragon_shape', pathlib.Path(__file__).with_name('dragon_shape.py')); _m20 = _u.module_from_spec(_s20); _s20.loader.exec_module(_m20); _m20.main(d)
+
+# ---- the Aether's and Better End's ores as materials, then the forge and mixed tools again so they take them up
+#      (tools/port/new_materials.py; forging.py and tool_parts.py are idempotent) ----
+for _n in ('new_materials', 'forging', 'tool_parts', 'armor_art', 'elytra_art', 'trommel', 'bta_extras', 'tool_parts', 'magic_rework', 'village_rework', 'village_builder', 'bird_feet'):   # (tool_parts again: chainlinks, olivine)
+    _s21 = _u.spec_from_file_location(_n, pathlib.Path(__file__).with_name(_n + '.py')); _m21 = _u.module_from_spec(_s21); _s21.loader.exec_module(_m21); _m21.main(d)

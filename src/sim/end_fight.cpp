@@ -123,10 +123,16 @@ static OptMove enderDragonAI(Level& lv, Creature& m, Entity*, float, float, floa
   m.kept = true; m.noGravity = true; m.hasFlyVy = true;
   if (m.hoverT > 0) m.hoverT -= dt;
   dragonUnstick(lv, m, M, dt);
-  // healed by the crystals: a beam of light from the nearest
+  // healed by the crystals: a beam from each one still standing, written here for this engine
   Creature* C = crystalFor(lv, m);
   if (C && m.hp < m.maxHp) m.hp = std::min(m.maxHp, m.hp + dt * 2.5f);
-  if (C && rnd() < dt * 18) {
+  if ((M.beamT -= dt) <= 0) {
+    M.beamT = 0.12f;
+    for (auto& u : lv.entities()) if (auto* c = dynamic_cast<Creature*>(u.get()))
+      if (c->type == "end_crystal" && c->alive() && !c->removed && c->realm == m.realm && glm::distance(c->pos, m.pos) < 90)
+        sfx::beam(lv, c->pos + vec3(0, 0.8f, 0), m.pos + vec3(0, 3.f, 0), "end_mote", 0.16f, 0.34f, 0.45f);
+  }
+  if (C && rnd() < dt * 8) {
     float k = rnd(); vec3 a = C->pos + vec3(0, 1.2f, 0), b = m.pos + vec3(0, 1.5f, 0);
     sfx::spark(lv, a + (b - a) * k, "end_mote", json{{"life", 0.5f}, {"size", 0.22f}});
   }
@@ -371,7 +377,15 @@ void endFightTick(Level& lv, EndStory& S, double dt) {
     for (auto& u : lv.entities()) if (u->type == "end_crystal" && !u->removed && jint(u->data, "crystalIdx", -1) == (int)i) { have = true; break; }
     if (have) continue;
     const auto& pl = pillars[i];
-    if (Creature* c = spawnMob(lv, REALM_MAIN, "end_crystal", vec3(pl.x + 0.5f, dimBase(DIM_END) + pl.h + 2, pl.z + 0.5f))) {
+    // it stands on the bedrock at the top of its pillar: the plain pillar's cap, or Better End's top piece (higher up,
+    // inside its cage). Not till the pillar is loaded to look at.
+    World& w = lv.world(REALM_MAIN);
+    const int base = dimBase(DIM_END);
+    if (!w.isLoaded(pl.x, base + pl.h, pl.z)) continue;
+    static const BlockId bedrock = reg().blockId("bedrock");
+    int cy = pl.h + 2;
+    for (int y = std::min(DIM_H - 2, pl.h + 48); y > pl.h - 40; y--) if (w.getBlock(pl.x, base + y, pl.z) == bedrock) { cy = y + 1; break; }
+    if (Creature* c = spawnMob(lv, REALM_MAIN, "end_crystal", vec3(pl.x + 0.5f, base + cy, pl.z + 0.5f))) {
       c->data["crystalIdx"] = (int)i; c->kept = true; c->persistent = true; c->noGravity = true;
     }
   }
@@ -400,7 +414,57 @@ void endOnDeath(Level& lv, EndStory& S, Creature& c, Entity*) {
     S.later(0, [at, realm](Level& l) { ExplodeOpts o; o.noBlocks = true; explode(l, realm, at + vec3(0, 1, 0), 3, o); });
     for (Player* l : livePlayers(lv, realm)) if (std::hypot(l->pos.x - at.x, l->pos.z - at.z) < 120)
       say(lv, l->id, left ? "A crystal shatters \xE2\x80\x94 " + std::to_string(left) + " left" : "The last crystal shatters! Nothing heals the dragon now", left ? "info" : "good");
-  } else if (c.type == "ender_dragon" && inEnd(c)) dragonSlain(lv, S, c);
+  } else if (c.type == "ender_dragon" && inEnd(c)) {
+    // the portal, the egg and the head wait until the rise and the beam are over (enderDragonDeathStep)
+    c.data["deathShow"] = true;
+    c.noGravity = true; c.hasFlyVy = true; c.kept = true; c.state = "dying";
+  }
+}
+
+// The slain dragon flies in over the fountain, then rises in a beam and bursts. dragonSlain runs at the end of that,
+// so the exit portal does not open under a dragon that is still in the air.
+static bool dragonDeathAnim(Level& lv, EndStory& S, Creature& e, float dt) {
+  if (!truthy(e.data, "deathShow")) return false;
+  if (e.removed || truthy(e.data, "deathDone")) { e.removed = true; return true; }
+  e.noGravity = true; e.hasFlyVy = true; e.kept = true; e.state = "dying"; e.vel = vec3(0);
+  const float t = e.deathTime;
+  const int fy = fountainY(lv);
+  const vec3 foot(0.5f, (float)fy + 0.5f, 0.5f);
+  if (t < 2.4f) {
+    vec3 to(0.5f, (float)fy + 18.f, 0.5f);
+    vec3 d = to - e.pos;
+    float dist = glm::length(d);
+    if (dist > 0.4f) e.pos += (d / dist) * std::min(dist, 16.f * dt);
+    e.yaw = headingTo(e.pos, 0.5f, 0.5f);
+  } else {
+    e.pos.x += (0.5f - e.pos.x) * std::min(1.f, dt * 4.f);
+    e.pos.z += (0.5f - e.pos.z) * std::min(1.f, dt * 4.f);
+    e.pos.y += 4.8f * dt;
+    e.vel = vec3(0, 4.8f, 0);
+    // A column up through the body, and beams radiating off the fountain. The random sparks below stay
+    // as they were, so the rest of the fight's rolls do not move.
+    sfx::beam(lv, foot, e.pos + vec3(0, 6.f, 0), "end_mote", 0.34f, 0.75f, 0.5f);
+    sfx::beam(lv, foot, e.pos + vec3(0, 10.f, 0), "mana_arcane", 0.18f, 0.4f, 0.45f);
+    for (int i = 0; i < 4; i++) {
+      float a = t * 0.55f + i * (TAU / 4.f);
+      vec3 tip = foot + vec3(std::cos(a) * 16.f, 8.f + (i % 2) * 10.f, std::sin(a) * 16.f);
+      sfx::beam(lv, foot, tip, (i & 1) ? "mana_arcane" : "end_mote", 0.14f, 0.32f, 0.4f);
+    }
+    if (rnd() < dt * 8.f) {
+      float a = rnd() * TAU;
+      vec3 tip = e.pos + vec3(std::cos(a) * 18.f, (rnd() - 0.15f) * 10.f, std::sin(a) * 18.f);
+      sfx::beam(lv, e.pos + vec3(0, 1.5f, 0), tip, rnd() < 0.5f ? "end_mote" : "mana_arcane");
+    }
+    if (rnd() < dt * 14.f) sfx::spark(lv, e.pos + vec3((rnd() - 0.5f) * 4.f, rnd() * 3.f, (rnd() - 0.5f) * 4.f), "end_mote", json{{"life", 0.6f}, {"size", 0.28f}, {"vy", 2.f}});
+  }
+  if (t >= 7.6f) {
+    e.data["deathDone"] = true;
+    sfx::burst(lv, e.pos + vec3(0, 1.5f, 0), "end_mote", 48, 9, json{{"life", 1.8f}, {"size", 0.32f}, {"vy", 6}});
+    sfx::burst(lv, e.pos + vec3(0, 1.5f, 0), "mana_arcane", 24, 7, json{{"life", 1.4f}, {"size", 0.28f}, {"vy", 4}});
+    dragonSlain(lv, S, e);
+    e.removed = true;
+  }
+  return true;
 }
 
 // ------------------------------------------------------------------ pearls and eyes in flight
@@ -476,6 +540,11 @@ public:
 // somewhere within eight blocks, on solid ground
 }  // namespace dq::es
 namespace dq {
+bool enderDragonDeathStep(Level& lv, Creature& e, float dt) {
+  es::EndStory* S = es::endStory(lv);
+  if (!S || !es::truthy(e.data, "deathShow")) return false;
+  return es::dragonDeathAnim(lv, *S, e, dt);
+}
 bool chorusTeleport(Level& lv, Player& p) {
   using namespace es;
   World& w = lv.world(p.realm);

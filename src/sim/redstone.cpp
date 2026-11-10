@@ -36,7 +36,7 @@ const Tables& T() {
   static const std::unordered_map<std::string, u8> ROLE = {{"wire", WIRE}, {"torch", TORCH}, {"torch_off", TORCH_OFF}, {"block", BLOCK},
     {"lever", LEVER}, {"button", BUTTON}, {"plate", PLATE}, {"repeater", REPEATER}, {"comparator", COMPARATOR}, {"observer", OBSERVER},
     {"lamp", LAMP}, {"piston", PISTON}, {"dispenser", DISPENSER}, {"dropper", DROPPER}, {"hopper", HOPPER}, {"daylight", DAYLIGHT},
-    {"target", TARGET}, {"prail", PRAIL}, {"drail", DRAIL}, {"bulb", BULB}, {"hook", HOOK}, {"conduit", CONDUIT}, {"matcher", MATCHER}};
+    {"target", TARGET}, {"prail", PRAIL}, {"drail", DRAIL}, {"bulb", BULB}, {"hook", HOOK}, {"conduit", CONDUIT}, {"matcher", MATCHER}, {"timer", TIMER}};
   for (size_t i = 0; i < R.blocks.size() && i < MAX_BLOCKS; i++) {
     const BlockDef& b = R.blocks[i];
     u8 r = 0;
@@ -51,7 +51,7 @@ const Tables& T() {
     else if (b.has("bellBlock") || b.has("cmdBlock")) r = BELL;
     t.role[i] = r;
     t.cond[i] = b.solid && b.opaque && !b.shapeKind && b.render == Render::Cube && r != BLOCK && r != OBSERVER && r != PISTON ? 1 : 0;
-    t.ticker[i] = r == HOPPER ? 1 : r == DAYLIGHT ? 2 : r == PLATE ? 3 : r == HOOK ? 4 : r == DRAIL ? 5 : b.has("siphon") ? 6 : r == MATCHER ? 7 : 0;
+    t.ticker[i] = r == HOPPER ? 1 : r == DAYLIGHT ? 2 : r == PLATE ? 3 : r == HOOK ? 4 : r == DRAIL ? 5 : b.has("siphon") ? 6 : r == TIMER ? 8 : b.has("mesh") ? 9 : 0;
     std::string rail = b.str("rail");
     t.rail[i] = rail == "normal" ? RAIL_NORMAL : rail == "powered" ? RAIL_POWERED : rail == "detector" ? RAIL_DETECTOR : rail == "activator" ? RAIL_ACTIVATOR : RAIL_NONE;
     t.mech[i] = b.has("mech") ? 1 : 0;
@@ -89,7 +89,7 @@ int railShape(BlockId id, int m) { return T().rail[id] == RAIL_NORMAL ? (m & 15)
 static bool rsAttracts(BlockId id, int m, int h) {
   switch (T().role[id]) {
     case WIRE: case TORCH: case TORCH_OFF: case BLOCK: case LEVER: case BUTTON: case PLATE:
-    case COMPARATOR: case DAYLIGHT: case TARGET: case DRAIL: case HOOK: return true;
+    case COMPARATOR: case DAYLIGHT: case TARGET: case DRAIL: case HOOK: case MATCHER: case TIMER: case CONDUIT: return true;
     case REPEATER: return ((m & 3) & 1) == (h & 1);
     case OBSERVER: return (m & 7) == H2D6[h];
   }
@@ -203,6 +203,23 @@ void Redstone::onBlockChanged(World&, int x, int y, int z, BlockId oldId, BlockI
   }
   // (game.js setBlock) levers, buttons and hooks lose what they were fixed to; pistons lose their other half
   if (!R.tSolid[newId] || R.tShape[newId]) dropAttached(x, y, z);
+  // spikes retract while powered (bit 0) and extend again when the power goes. They do not emit, so one pass settles.
+  {
+    static thread_local int spikeSync = 0;
+    static const BlockId spikes = reg().blockId("spike_trap");
+    if (spikes && !spikeSync) {
+      spikeSync++;
+      auto syncOne = [&](int sx, int sy, int sz) {
+        if (w.getBlock(sx, sy, sz) != spikes) return;
+        int sm = w.getMeta(sx, sy, sz);
+        bool powered = powerAt(sx, sy, sz) > 0, bit = (sm & 1) != 0;
+        if (powered != bit) w.setBlock(sx, sy, sz, spikes, sm ^ 1);
+      };
+      syncOne(x, y, z);
+      for (int d = 0; d < 6; d++) syncOne(x + D6X[d], y + D6Y[d], z + D6Z[d]);
+      spikeSync--;
+    }
+  }
   const BlockDef& ob = R.block(oldId);
   if (!pistonGuard && oldId != newId && (ob.has("pistonHead") || ob.has("extended"))) pistonPartBroken(x, y, z, oldId);
 }
@@ -248,8 +265,13 @@ int Redstone::emit(int x, int y, int z, BlockId id, int m, int d) {
     case COMPARATOR: return d == H2D6[m & 3] ? (m >> 4) & 15 : 0;
     case OBSERVER: return (m & 8) && d == OPP6[(m & 7) % 6] ? 15 : 0;
     case DRAIL: case HOOK: return m & 8 ? 15 : 0;
-    case CONDUIT: return T().conduitLit[id] ? 15 : 0;
-    case MATCHER: return d == H2D6[m & 3] ? (m & 8 ? 15 : 0) : 0;
+    case CONDUIT: {
+      if (!T().conduitLit[id]) return 0;
+      int p = m & 15;
+      return p ? p : 15;   // a lit conduit saved before levels were stored still reads as full
+    }
+    case MATCHER: return matcherPowersSide(m, d) ? 15 : 0;
+    case TIMER: return (m & 2) && d == timerSide(m) ? 15 : 0;
     case WIRE: {
       int p = m & 15;
       if (!p || d == 1) return 0;
@@ -265,7 +287,7 @@ int Redstone::strong(int x, int y, int z, BlockId id, int m, int d) {
     case LEVER: case BUTTON: return (m & 8) && d == leverSup(m) ? 15 : 0;
     case PLATE: return d == 0 ? m & 15 : 0;
     case TORCH: return d == 1 && TORCH_SUP[(m & 7) % 5] != 1 ? 15 : 0;
-    case REPEATER: case COMPARATOR: case OBSERVER: return emit(x, y, z, id, m, d);
+    case REPEATER: case COMPARATOR: case OBSERVER: case TIMER: return emit(x, y, z, id, m, d);
     case DRAIL: return d == 0 && (m & 8) ? 15 : 0;
     case HOOK: return (m & 8) && d == hookSup(m) ? 15 : 0;
     case MATCHER: return emit(x, y, z, id, m, d);
@@ -355,8 +377,11 @@ void Redstone::update(int x, int y, int z) {
       break;
     }
     case DISPENSER: case DROPPER: {
-      bool on = powerAt(x, y, z) > 0, trig = !!(m & 8);
-      if (on && !trig) { w.setBlock(x, y, z, id, m | 8); schedule(x, y, z, 4, "dispense"); }
+      const bool act = R.block(id).has("activator");
+      int skip = -1;
+      if (act) { int f = m & 7; if (f != 0) skip = f; }   // ignore the output face, never the bottom
+      bool on = powerAt(x, y, z, skip) > 0, trig = !!(m & 8);
+      if (on && !trig) { w.setBlock(x, y, z, id, m | 8); schedule(x, y, z, act ? 2 : 4, "dispense"); }
       else if (!on && trig) w.setBlock(x, y, z, id, m & ~8);
       break;
     }
@@ -400,7 +425,15 @@ void Redstone::update(int x, int y, int z) {
       break;
     }
     case CONDUIT: updateConduit(x, y, z); break;
-    case MATCHER: matcherTick(x, y, z, id, m); break;
+    case MATCHER: {
+      int axis = matcherAxis(m), delay = 2;
+      int d = axis == 0 ? 5 : axis == 1 ? 1 : 3;
+      BlockId a = w.getBlock(x + D6X[d], y + D6Y[d], z + D6Z[d]);
+      BlockId b = w.getBlock(x - D6X[d], y - D6Y[d], z - D6Z[d]);
+      if (a == t.moving || b == t.moving) delay = 4;
+      schedule(x, y, z, delay, "matcher");
+      break;
+    }
     case PRAIL: {
       bool on = railPowered(x, y, z, id, m);
       if (on != !!(m & 8)) w.setBlock(x, y, z, id, on ? m | 8 : m & ~8);
@@ -460,6 +493,8 @@ void Redstone::fire(const Sched& s) {
     if (r == PISTON) pistonMove(x, y, z);
   } else if (k == "dispense") {
     if (r == DISPENSER || r == DROPPER) dispense(x, y, z);
+  } else if (k == "matcher") {
+    if (r == MATCHER) matcherTick(x, y, z, id, m);
   } else if (k == "ore") {
     // redstone ore glows for a while after it's touched, then fades (the original faded on random ticks)
     if (id == t.oreLit) w.setBlock(x, y, z, t.ore, 0);
@@ -697,29 +732,57 @@ void Redstone::runTickers() {
     if (kind == 1) { if (now % 8 == 0) hopperTick(x, y, z, id, m); continue; }
     if (kind == 2) { if (now % 20 == 0) daylightTick(x, y, z, id, m); continue; }
     if (kind == 6) { if (now % 8 == 4) siphonTick(x, y, z, id, m); continue; }
-    if (kind == 7) { if (now % 8 == 2) matcherTick(x, y, z, id, m); continue; }
+    if (kind == 8) { timerTick(x, y, z, id, m); continue; }
+    if (kind == 9) { meshTick(x, y, z, id, m); continue; }
     if (kind == 3) plateTick(x, y, z, id, m);
     else if (kind == 4) hookTick(x, y, z, id, m);
     else if (kind == 5) detectorTick(x, y, z, id, m);
   }
 }
+void Redstone::timerTick(int x, int y, int z, BlockId id, int m) {
+  int interval = 2 * (1 + ((m >> 2) & 3));
+  if (interval <= 0 || (now % interval)) return;
+  int out = (now % (interval * 2) == 0) ? 0 : 2;
+  int nm = (m & ~2) | out;
+  if (nm == m) return;
+  w.setBlock(x, y, z, id, nm);
+  queue(x, y, z);
+  if (m & 1) { queue(x - 1, y, z); queue(x + 1, y, z); }
+  else { queue(x, y, z - 1); queue(x, y, z + 1); }
+}
 void Redstone::plateTick(int x, int y, int z, BlockId id, int m) {
   std::string kind = reg().block(id).str("plate");
-  if (kind == "motion") {   // the motion sensor: anything alive moving within 4 blocks (not you sneaking); off a second after
-    int n = 0;
-    vec3 c = vec3(x, y, z) + vec3(0.5f);
-    for (auto& e : lv.entities()) {
-      if (e->removed || e->realm != w.realm || (!e->isPlayer() && !isMob(*e))) continue;
-      if (glm::distance(e->pos, c) > 4.5f || std::hypot(e->vel.x, e->vel.z) < 0.4f) continue;
-      if (auto* pl = dynamic_cast<Player*>(e.get())) if (pl->sneaking || pl->dead) continue;
-      n++;
+  if (kind == "motion") {   // a facing beam: glass in front stretches it, any other solid cuts it, anything alive in it turns it on
+    int dir = (m >> 4) & 7;
+    if (dir > 5) dir = 2;
+    static const BlockId glass = reg().blockId("glass"), framed = reg().blockId("steel_framed_glass");
+    auto extends = [&](BlockId b) { return (glass && b == glass) || (framed && b == framed); };
+    int range = 4;
+    if (extends(w.getBlock(x + D6X[dir], y + D6Y[dir], z + D6Z[dir]))) range = 8;
+    int end = range;
+    for (int i = 1; i <= range; i++) {
+      BlockId b = w.getBlock(x + D6X[dir] * i, y + D6Y[dir] * i, z + D6Z[dir] * i);
+      if (extends(b)) continue;
+      if (reg().tSolid[b]) { end = i - 1; break; }
     }
-    int p = n ? 15 : 0, cur = m & 15;
-    u64 k = posKey(x, y, z);
-    if (p) plateSeen[k] = now;
-    auto it = plateSeen.find(k);
-    i64 seen = it == plateSeen.end() ? 0 : it->second;
-    if (p > cur || (p < cur && now - seen >= 20)) { w.setBlock(x, y, z, id, (m & ~15) | p); if (p) lv.fx->sound("click", c, 12); }
+    bool hit = false;
+    for (int i = 1; i <= end && !hit; i++) {
+      vec3 lo((float)(x + D6X[dir] * i), (float)(y + D6Y[dir] * i), (float)(z + D6Z[dir] * i));
+      vec3 hi = lo + vec3(1);
+      for (auto& e : lv.entities()) {
+        if (e->removed || e->realm != w.realm) continue;
+        if (e->isPlayer()) { if (static_cast<Player*>(e.get())->dead) continue; }
+        else if (!isMob(*e)) continue;
+        float hw = e->isPlayer() ? 0.3f : e->w, h = e->isPlayer() ? 1.8f : (e->h > 0 ? e->h : 0.5f);
+        vec3 elo = e->pos - vec3(hw, 0, hw), ehi = e->pos + vec3(hw, h, hw);
+        if (ehi.x > lo.x && elo.x < hi.x && ehi.y > lo.y && elo.y < hi.y && ehi.z > lo.z && elo.z < hi.z) { hit = true; break; }
+      }
+    }
+    int p = hit ? 15 : 0, cur = m & 15;
+    if (p != cur) {
+      w.setBlock(x, y, z, id, (m & ~15) | p);
+      lv.fx->sound(p ? "click" : "click_off", vec3(x, y, z) + vec3(0.5f), 12);
+    }
     return;
   }
   int n = countIn(vec3(x + 1 / 16.f, y, z + 1 / 16.f), vec3(x + 15 / 16.f, y + 0.3f, z + 15 / 16.f), kind == "mobs" ? 0 : -1);
@@ -943,11 +1006,31 @@ void Redstone::dispense(int x, int y, int z) {
   // never throws things out.
   const bool activator = R.block(id).has("activator");
   if (activator) {
+    json* be = w.blockEntity(x, y, z, true);
+    if (!be || !be->is_object()) { lv.fx->sound("dispense_fail", c, 20); return; }
+    int sel = be->value("selector", 0);
+    int locked = be->value("locked", 0);
+    if (sel < 0 || sel > 8) sel = 0;
+    auto nextOpen = [&](int from) {
+      for (int k = 1; k <= 9; k++) { int n = (from + k) % 9; if ((locked & (1 << n)) == 0) return n; }
+      return from;
+    };
+    if (locked & (1 << sel)) {
+      (*be)["selector"] = nextOpen(sel);
+      w.blockEntityChanged(x, y, z);
+      lv.fx->sound("dispense_fail", c, 20);
+      return;
+    }
+    if (sel >= me.size()) { lv.fx->sound("dispense_fail", c, 20); return; }
+    ItemStack as = me.get(sel);
+    (*be)["selector"] = nextOpen(sel);
+    w.blockEntityChanged(x, y, z);
     const int ax = x + D6X[dir], ay = y + D6Y[dir], az = z + D6Z[dir];
     const BlockId front = w.getBlock(ax, ay, az);
     const vec3 ac = vec3(ax, ay, az) + vec3(0.5f);
     const BlockDef& fb = R.block(front);
-    if (full.empty()) {
+    if (as.empty()) {
+      if (!front) { lv.fx->sound("dispense_fail", c, 20); return; }
       const int fm = w.getMeta(ax, ay, az);
       if (fb.has("door")) {
         const int lower = fm & 16 ? ay - 1 : ay, ml = w.getMeta(ax, lower, az);
@@ -956,17 +1039,33 @@ void Redstone::dispense(int x, int y, int z) {
       } else if (fb.has("trapdoor") || R.tShape[front] == ShapeKind::Gate) {
         w.setBlock(ax, ay, az, front, fm ^ 4);
         lv.fx->sound(doorSound(fb, !(fm & 4)), ac);
+      } else if (t.role[front] == TIMER) {
+        w.setBlock(ax, ay, az, front, (fm & ~12) | (((((fm >> 2) & 3) + 1) & 3) << 2));
+        lv.fx->sound("tick", ac, 12);
       } else lv.fx->sound("dispense_fail", c, 20);
       return;
     }
-    const int aslot = full[0];
-    ItemStack as = me.get(aslot);
+    if (fb.has("meshFilter")) {
+      json* fe = w.blockEntity(ax, ay, az, true);
+      if (fe) {
+        if (!fe->is_object()) *fe = json::object();
+        (*fe)["type"] = "mesh";
+        (*fe)["filter"] = as.id;
+        (*fe)["filterD"] = as.d;
+        w.blockEntityChanged(ax, ay, az);
+        as.n--; if (as.n <= 0) as.clear();
+        me.set(sel, as); changedInv(me);
+        sfxMaterial(lv, "metal", "place", ac);
+        return;
+      }
+    }
     const ItemDef* ad = as.def();
     const bool freeFront = front == AIR || (R.tReplaceable[front] && !R.tLiquid[front]);
     if (ad && !ad->block.empty() && freeFront) {
       if (BlockId nb = R.blockId(ad->block)) {
         w.setBlock(ax, ay, az, nb, 0);
-        as.n--; me.set(aslot, as); changedInv(me);
+        as.n--; if (as.n <= 0) as.clear();
+        me.set(sel, as); changedInv(me);
         sfxMaterial(lv, R.block(nb).sound, "place", ac);
         return;
       }
@@ -979,10 +1078,12 @@ void Redstone::dispense(int x, int y, int z) {
       lv.fx->particles("burst", ac, 8, {{"tile", fb.key}, {"speed", 1.5f}});
       as.d++;
       if (ad->tool.durability > 0 && as.d >= ad->tool.durability) as.clear();
-      me.set(aslot, as); changedInv(me);
+      me.set(sel, as); changedInv(me);
       sfxMaterial(lv, fb.sound, "break", ac);
       return;
     }
+    lv.fx->sound("dispense_fail", c, 20);
+    return;
   }
   if (full.empty()) { lv.fx->sound("dispense_fail", c, 20); return; }
   int slot = full[std::min((int)full.size() - 1, (int)(rnd() * full.size()))];

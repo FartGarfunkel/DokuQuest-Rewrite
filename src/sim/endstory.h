@@ -67,4 +67,8 @@ bool hauntLeaveTrace(Level& lv, Player& p);      // /herobrine trace
 
 void registerEndStory();   // entity factories, creature hooks, rig animations, commands, the system (initCore)
 
+// The Ender Dragon's death show (rise over the fountain, then the beam). True while that show owns the body,
+// so the usual topple does not run. Other creatures, and a dragon that is not in the show, return false.
+bool enderDragonDeathStep(Level& lv, Creature& e, float dt);
+
 } // namespace dq

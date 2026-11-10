@@ -34,7 +34,10 @@ u32 chunkHash(const Chunk& c) {
 } // namespace
 
 constexpr double FADE_S = 0.9;   // seconds a new tile takes to fade in
-static const double REFINE = [] { const char* e = std::getenv("DQ_LOD_REFINE"); double v = e ? std::atof(e) : 0; return v > 0.5 ? v : 4.5; }();
+// (Legacy: 3, a voxel about distance/100 across. The far land is nearly all vertex work on an iGPU; at 4.5 it was the
+// second-biggest pass on an HD 520, 3.9 ms of a 19 ms frame, and 2.5 ms at 3.)
+static double refineFactor() { static const double env = [] { const char* e = std::getenv("DQ_LOD_REFINE"); return e ? std::atof(e) : 0.0; }(); return env > 0.5 ? env : gfx.modern ? 4.5 : 3.0; }
+#define REFINE refineFactor()
 struct DistantTerrain::Tile {
   int L = 0, tx = 0, tz = 0;
   Mesh mesh; size_t quads = 0; size_t bytes = 0;
@@ -52,8 +55,10 @@ struct DistantTerrain::Band {
   struct Want { int L, tx, tz; float pri; };
   std::vector<Want> want;
   GLuint maskTex = 0; int maskN = 0, maskCx0 = 0, maskCz0 = 0; std::vector<u8> mask;
+  // sent only when it changes, into the other of two textures (a write into the one the GPU still reads waits for it)
+  GLuint maskRing[2] = {0, 0}; int maskI = 0, sentCx0 = INT32_MIN, sentCz0 = INT32_MIN; std::vector<u8> maskSent;
   bool active = false;
-  ~Band() { if (maskTex) glDeleteTextures(1, &maskTex); }
+  ~Band() { if (maskRing[0]) glDeleteTextures(2, maskRing); }
 };
 
 DistantTerrain::DistantTerrain() { for (int d = 0; d < DIM_COUNT; d++) { bands[d] = std::make_unique<Band>(); bands[d]->dim = d; } }
@@ -236,16 +241,17 @@ void DistantTerrain::updateMask(Band& b, const FrameCtx& f, int maskR) {
   b.maskCx0 = ccx - maskR; b.maskCz0 = ccz - maskR;
   b.mask.assign((size_t)M * M, 0);
   for (int j = 0; j < M; j++) for (int i = 0; i < M; i++) if (chunkReal(b.dim, b.maskCx0 + i, b.maskCz0 + j)) b.mask[j * M + i] = 255;
+  if (b.maskN == M && b.sentCx0 == b.maskCx0 && b.sentCz0 == b.maskCz0 && b.mask == b.maskSent) return;   // as it was
+  b.sentCx0 = b.maskCx0; b.sentCz0 = b.maskCz0; b.maskSent = b.mask;
   glActiveTexture(GL_TEXTURE4);
-  if (!b.maskTex) glGenTextures(1, &b.maskTex);
+  if (!b.maskRing[0]) glGenTextures(2, b.maskRing);
+  b.maskI ^= 1; b.maskTex = b.maskRing[b.maskI];
   glBindTexture(GL_TEXTURE_2D, b.maskTex);
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  if (b.maskN != M) {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, M, M, 0, GL_RED, GL_UNSIGNED_BYTE, b.mask.data());
-    b.maskN = M;
-  } else glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, M, M, GL_RED, GL_UNSIGNED_BYTE, b.mask.data());
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, M, M, 0, GL_RED, GL_UNSIGNED_BYTE, b.mask.data());
+  b.maskN = M;
   glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
   glActiveTexture(GL_TEXTURE0);
 }
@@ -358,7 +364,9 @@ void DistantTerrain::update(Level& lv, World& w, const FrameCtx& f, ThreadPool& 
     // the far land made last time, out of the world's folder (on a worker; nothing is generated again till it's in)
     if (!lv.folder.empty()) {
       cacheFile = lv.folder / "lod_far.bin";
-      cacheTag = std::string(DQ_VERSION) + "/" + std::to_string(lv.info.genVersion) + "/" + std::to_string(lv.info.seed);
+      // (the last part is the generators' own revision: bumped when land already made changes, so the cache is made again;
+      // 2 = the sky without aercloud blocks)
+      cacheTag = std::string(DQ_VERSION) + "/" + std::to_string(lv.info.genVersion) + "/" + std::to_string(lv.info.seed) + "/2";
       cacheLoaded = false;
       auto sh = shared; fs::path file = cacheFile; std::string tag = cacheTag;
       pool.submit([sh, file, tag] {

@@ -107,7 +107,7 @@ GLuint CharPreview::render(const CharacterSpec& spec, int w, int h, const CharPr
   static const std::map<std::string, int> PART = {{"head", CP_HEAD}, {"body", CP_BODY}, {"armR_u", CP_ARMR_U}, {"armR_d", CP_ARMR_D}, {"armL_u", CP_ARML_U},
                                                   {"armL_d", CP_ARML_D}, {"legR_u", CP_LEGR_U}, {"legR_d", CP_LEGR_D}, {"legL_u", CP_LEGL_U}, {"legL_d", CP_LEGL_D}};
   for (int slot = 0; slot < 4; slot++) {
-    if (AR[slot].empty() || !reg().item(AR[slot])) continue;
+    if (AR[slot].empty() || (!reg().item(AR[slot]) && AR[slot].rfind("pa:", 0) != 0)) continue;
     const ArmorSet& A = armorMeshes(AR[slot], "", slot, M.slim, L != nullptr, ts);
     for (auto& [pn, list] : A.byPart) { auto pit = PART.find(pn); if (pit == PART.end()) continue; int pi = pit->second; for (const CharMesh* cm : list) VR.draw(cm->gl, R.part[pi] * R.scale[pi] * cm->local(), light); }
   }

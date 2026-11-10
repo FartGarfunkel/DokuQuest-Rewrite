@@ -1,5 +1,8 @@
 #include "render/world_renderer.h"
 #include "render/mesh_ctx.h"
+#include "render/tile_anim.h"
+#include "render/sky.h"
+#include "render/world_fx.h"
 #include "world/light.h"
 #include "assets/tileset.h"
 #include <algorithm>
@@ -14,6 +17,11 @@ void FrameCtx::apply(Shader& s) const {
   s.set("uSunDir", sunDir);
   s.set("uSkyColor", skyColor);
   s.set("uFogColor", fogColor);
+  {   // far land fades into the sky behind it where there's an open sky (common.glsl fogSkyColour)
+    const bool open = sky && sky->showSun && !sky->underwater && !underwater && eyeFluid == 0 && portalDepth == 0;
+    s.set("uSkyHorizon", horizonColor); s.set("uSkyGlow", sky ? sky->sunGlow : vec3(0));
+    s.set("uFogSky", open ? clampv(1.f - sky->mist * 2.f - sky->cloud * 2.f, 0.f, 1.f) : 0.f);
+  }
   s.set("uFogStart", fogStart);
   s.set("uFogEnd", fogEnd);
   s.set("uNearFog", nearFog);
@@ -42,6 +50,7 @@ void TileTextures::bind(Shader& s, int u) const {
   GLuint ids[6] = {color[0], color[1], height[0], height[1], normal[0], normal[1]};
   for (int i = 0; i < 6; i++) { glActiveTexture(GL_TEXTURE0 + u + i); glBindTexture(GL_TEXTURE_2D_ARRAY, ids[i] ? ids[i] : ids[i & ~1]); s.set(names[i], u + i); }
   s.set("uPageSize", (float)page);
+  glActiveTexture(GL_TEXTURE0 + u + 6); glBindTexture(GL_TEXTURE_2D, tileAnimMap()); s.set("uAnimMap", u + 6);
   glActiveTexture(GL_TEXTURE0);
 }
 
@@ -78,7 +87,7 @@ void WorldRenderer::setWorld(World* nw) {
   ++generation;   // meshes still being built for the old world are dropped when they come back
   std::fill(climateOwner.begin(), climateOwner.end(), INT64_MIN);   // its climate goes in again as its sections come
   for (auto& [k, m] : meshes) release(m->base, m->cap);
-  meshes.clear(); inFlight.clear(); again.clear(); parked.clear();
+  meshes.clear(); inFlight.clear(); again.clear(); parked.clear(); dirtyQ.clear();
   std::lock_guard<std::mutex> lk(shared->mx); shared->done.clear();
 }
 void WorldRenderer::remeshAll() {
@@ -158,26 +167,20 @@ void WorldRenderer::setupVao(Page& pg) {
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 void WorldRenderer::grow(u32 need) {
-  // the last page grows by a quarter (at least 32 MB, from 64 MB) until it is full, then a new page starts: doubling
-  // left up to half of a big arena empty (the Nether at a long render distance ran to gigabytes)
-  const u32 first = (u32)(64u << 20) / sizeof(ChunkVertex), step = (u32)(32u << 20) / sizeof(ChunkVertex);
-  if (pages.empty() || pages.back().cap >= PAGE_V) pages.push_back({});
-  Page& pg = pages.back(); u32 pi = (u32)pages.size() - 1;
-  u32 ncap = std::min<u32>(PAGE_V, std::max<u32>(pg.cap ? pg.cap + std::max(step, pg.cap / 4) : first, pg.cap + need + 65536));
+  // a new page of its own each time (64 MB, more only for one huge mesh), never a bigger copy of the last one: on a
+  // laptop's shared graphics memory, copying a few hundred MB into a fresh buffer held the game for seconds (10 s at
+  // 391 MB on an HD 520). Pages are cheap to draw from: the opaque passes bind them as they come.
+  const u32 step = (u32)(64u << 20) / sizeof(ChunkVertex);
+  const u32 ncap = std::min<u32>(PAGE_V, std::max<u32>(step, need + 65536));
+  pages.push_back({});
+  Page& pg = pages.back(); const u32 pi = (u32)pages.size() - 1;
   while (glGetError() != GL_NO_ERROR) {}
-  GLuint nb; glGenBuffers(1, &nb);
-  glBindBuffer(GL_COPY_WRITE_BUFFER, nb);
-  glBufferData(GL_COPY_WRITE_BUFFER, (GLsizeiptr)ncap * sizeof(ChunkVertex), nullptr, GL_DYNAMIC_DRAW);
+  glGenBuffers(1, &pg.vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, pg.vbo);
+  glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)ncap * sizeof(ChunkVertex), nullptr, GL_DYNAMIC_DRAW);
   GLenum ge = glGetError();
-  if (pg.vbo && pg.cap) {
-    glBindBuffer(GL_COPY_READ_BUFFER, pg.vbo);
-    glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, (GLsizeiptr)pg.cap * sizeof(ChunkVertex));
-    glBindBuffer(GL_COPY_READ_BUFFER, 0);
-    glDeleteBuffers(1, &pg.vbo);
-  }
-  glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
-  pg.vbo = nb;
-  addFree(pi * PAGE_V + pg.cap, ncap - pg.cap);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  addFree(pi * PAGE_V, ncap);
   pg.cap = ncap;
   arenaBytes = 0; for (auto& p : pages) arenaBytes += (size_t)p.cap * sizeof(ChunkVertex);
   DQ_LOG("terrain arena: %.0f MB in %d page(s)%s", arenaBytes / 1048576.0, (int)pages.size(), ge == GL_OUT_OF_MEMORY ? " - OUT OF GPU MEMORY" : ge ? " - GL error" : "");
@@ -254,15 +257,20 @@ void WorldRenderer::submit(const SectionKey& k, ThreadPool& pool, float pri, boo
 // by, never turning back against a way already gone, only into what the frustum holds. What the walk can't reach is
 // shut away behind rock and isn't drawn.
 void WorldRenderer::caveWalk(const FrameCtx& f, int band) {
-  reach.clear();
+  reachAll = false; reachN = 0;
   const glm::dvec3 cp = f.cam.pos;
   const SectionKey start{band, (int)std::floor(cp.x / 16), (int)std::floor((std::floor(cp.y) - dimBase(band)) / 16), (int)std::floor(cp.z / 16)};
-  if (start.sy < 0 || start.sy >= SECS) { for (auto& [k, m] : meshes) reach.insert(k); return; }
+  if (start.sy < 0 || start.sy >= SECS) { reachAll = true; return; }
   static const int DX[6] = {1, -1, 0, 0, 0, 0}, DY[6] = {0, 0, 1, -1, 0, 0}, DZ[6] = {0, 0, 0, 0, 1, -1};
   struct Q { SectionKey k; int8_t from; u8 dirs; };
   static thread_local std::vector<Q> q; q.clear();
-  q.push_back({start, -1, 0}); reach.insert(start);
-  const int R = 40;   // sections out from the camera at most
+  // sections out from the camera at most: the loaded ring (render distance, +1 kept loaded) and the far land's mask
+  // edge (distant.cpp maskR = render distance + 3); past that the far land draws it
+  const int R = std::clamp((f.settings ? f.settings->renderDist : 16) + 3, 4, 40), W = 2 * R + 1;
+  reachAt = start; reachR = R;
+  reachGrid.assign((size_t)W * W * SECS, 0);
+  auto at = [&](const SectionKey& n) -> u8& { return reachGrid[((size_t)(n.cz - start.cz + R) * W + (n.cx - start.cx + R)) * SECS + n.sy]; };
+  q.push_back({start, -1, 0}); at(start) = 1; reachN = 1;
   for (size_t i = 0; i < q.size(); i++) {
     const Q cur = q[i];
     auto vi = secVis.find(cur.k);
@@ -271,10 +279,12 @@ void WorldRenderer::caveWalk(const FrameCtx& f, int band) {
       if (cur.dirs & (1 << (d ^ 1))) continue;   // never back against a way already gone
       if (cur.from >= 0 && !(vis & (1u << sectionVisPair(cur.from, d)))) continue;
       SectionKey n{band, cur.k.cx + DX[d], cur.k.sy + DY[d], cur.k.cz + DZ[d]};
-      if (n.sy < 0 || n.sy >= SECS || std::abs(n.cx - start.cx) > R || std::abs(n.cz - start.cz) > R || reach.count(n)) continue;
+      if (n.sy < 0 || n.sy >= SECS || std::abs(n.cx - start.cx) > R || std::abs(n.cz - start.cz) > R) continue;
+      u8& seen = at(n);
+      if (seen) continue;
       const vec3 rel = vec3(glm::dvec3(n.cx * 16.0, dimBase(band) + n.sy * 16.0, n.cz * 16.0) - f.cam.origin);
       if (!f.cam.frustum.box(rel, rel + vec3(16))) continue;
-      reach.insert(n);
+      seen = 1; reachN++;
       q.push_back({n, (int8_t)(d ^ 1), (u8)(cur.dirs | (1 << d))});
     }
   }
@@ -371,6 +381,7 @@ void WorldRenderer::upload(Result& r) {
 void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs) {
   if (!w) return;
   if (pages.empty()) grow(0);
+  int nSub = 0;
   if (auto* le = w->system<LightEngine>()) le->flush(*w);   // a placed torch lights up in this frame's meshes
   for (auto& k : w->drainUnloaded()) for (int sy = 0; sy < SECS; sy++) {
     parked.erase({k.dim, k.cx, sy, k.cz});
@@ -378,17 +389,27 @@ void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs)
     auto it = meshes.find({k.dim, k.cx, sy, k.cz});
     if (it != meshes.end()) { release(it->second->base, it->second->cap); meshes.erase(it); }
   }
-  auto dirty = w->drainDirtySections();
   camPos = vec3(cam.pos);
-  std::unordered_set<SectionKey, SectionKeyHash> seen;
-  for (auto& k : dirty) {
-    if (!seen.insert(k).second) continue;
-    if (!wanted(k)) { parked.insert(k); continue; }
-    vec3 c(k.cx * 16 + 8, dimBase(k.dim) + k.sy * 16 + 8, k.cz * 16 + 8);
-    float d = glm::distance(c, camPos);
-    submit(k, pool, d - 10000, wantDetail(k, camPos));   // meshing beats generation in the shared pool
+  // sections to mesh: nearest first, a few milliseconds of copying them out of the world a frame (streaming in new
+  // land marked hundreds at once, 20-90 ms on an i5-6300U); one dirtied again while it waits is meshed once
+  for (auto& k : w->drainDirtySections()) dirtyQ.insert(k);
+  for (auto it = again.begin(); it != again.end();) { if (!inFlight.count(*it)) { dirtyQ.insert(*it); it = again.erase(it); } else ++it; }
+  if (!dirtyQ.empty()) {
+    static std::vector<std::pair<float, SectionKey>> order; order.clear();
+    for (auto it = dirtyQ.begin(); it != dirtyQ.end();) {
+      if (!wanted(*it)) { parked.insert(*it); it = dirtyQ.erase(it); continue; }
+      vec3 c(it->cx * 16 + 8, dimBase(it->dim) + it->sy * 16 + 8, it->cz * 16 + 8);
+      order.push_back({glm::distance(c, camPos), *it}); ++it;
+    }
+    std::sort(order.begin(), order.end(), [](auto& a, auto& b) { return a.first < b.first; });
+    const double ts = nowSeconds();
+    for (auto& [d, k] : order) {
+      if (nSub > 0 && (nowSeconds() - ts) * 1000 > 2.5) break;
+      dirtyQ.erase(k);
+      submit(k, pool, d - 10000, wantDetail(k, camPos));   // meshing beats generation in the shared pool
+      nSub++;
+    }
   }
-  for (auto& k : std::vector<SectionKey>(again.begin(), again.end())) if (!inFlight.count(k)) { again.erase(k); submit(k, pool, -20000, wantDetail(k, camPos)); }
   // the land next door is only drawn once you cross into it: mesh its sections near the edge (and at the far end of a
   // portal window into it); the rest wait here, and meshes left behind are let go
   parkT -= 1.0 / 60;
@@ -446,7 +467,7 @@ void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs)
   }
   if (i < done.size()) { std::lock_guard<std::mutex> lk(shared->mx); for (; i < done.size(); i++) shared->done.push_back(std::move(done[i])); }
   uploadMs = (nowSeconds() - t0) * 1000;
-  pendingJobs = (int)inFlight.size();
+  pendingJobs = (int)(inFlight.size() + dirtyQ.size());
 }
 
 // ---------------------------------------------------------------- drawing
@@ -475,6 +496,7 @@ void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
   glActiveTexture(GL_TEXTURE0 + 14); glBindTexture(GL_TEXTURE_2D_ARRAY, tintLut);
   glActiveTexture(GL_TEXTURE0);
   shader.set("uClimate", 13); shader.set("uTintLut", 14);
+  worldFxBind(shader, f, pass);   // sun shadows, water you see into (render/world_fx.cpp)
   if (pass == 0) {
     visible.clear(); totalSections = (int)meshes.size();
     bool clip = clipPlane.x != 0 || clipPlane.y != 0 || clipPlane.z != 0 || clipPlane.w != 0;
@@ -489,7 +511,7 @@ void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
     for (auto& [k, m] : meshes) {
       vec3 rel = vec3(glm::dvec3(m->origin) - f.cam.origin);
       if (k.dim != band && band >= 0 && band < DIM_COUNT && std::abs(m->origin.y + 8 - (float)f.cam.pos.y) >= 56) continue;   // the land next door: only near its edge
-      if (cull && k.dim == band && !reach.count(k)) continue;   // shut away behind rock
+      if (cull && k.dim == band && !reached(k)) continue;   // shut away behind rock
       if (!f.cam.frustum.box(rel, rel + vec3(16))) continue;
       if (clip && glm::dot(vec3(clipPlane), rel + vec3(8)) + clipPlane.w < -14) continue;   // entirely behind the portal plane
       visible.push_back({glm::length(rel + vec3(8) - cf), m.get()});
@@ -507,6 +529,8 @@ void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
         for (auto& [k, c] : w->chunks()) if (k.dim >= 0 && k.dim < DIM_COUNT) chunks[k.dim]++;
         u64 q0 = 0, q1 = 0, q2 = 0, qd = 0; int nd = 0; for (auto& [kk, mm] : meshes) { q0 += mm->nq[0]; q1 += mm->nq[1]; q2 += mm->nq[2]; if (mm->detail) { nd++; qd += mm->nq[1]; } }
         DQ_LOG("bands: detailed sections %d with %llu cutout quads", nd, (unsigned long long)qd);
+        u64 v0 = 0, v1 = 0, v2 = 0; for (auto& v : visible) { v0 += v.second->nq[0]; v1 += v.second->nq[1]; v2 += v.second->nq[2]; }
+        DQ_LOG("bands: drawn quads %llu/%llu/%llu in %d sections", (unsigned long long)v0, (unsigned long long)v1, (unsigned long long)v2, (int)visible.size());
         DQ_LOG("bands: quads %llu/%llu/%llu | arena %.0f MB used %.0f MB | cam %.0f %.0f %.0f dim %d | chunks %d/%d/%d/%d meshes %d/%d/%d/%d visible %d/%d/%d/%d inFlight %d again %d", (unsigned long long)q0, (unsigned long long)q1, (unsigned long long)q2, arenaBytes / 1048576.0, usedBytes / 1048576.0, f.cam.pos.x, f.cam.pos.y, f.cam.pos.z, f.dim,
                chunks[0], chunks[1], chunks[2], chunks[3], per[0], per[1], per[2], per[3], vis[0], vis[1], vis[2], vis[3], (int)inFlight.size(), (int)again.size());
       }
@@ -518,7 +542,10 @@ void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
 void WorldRenderer::emitSections(const FrameCtx& f, int pass, GLint originLoc) {
   // in page runs: opaque passes page by page (nearest first within each), the translucent one far to near
   static std::vector<SecMesh*> order; order.clear();
-  if (pass == 2) { for (auto it = visible.rbegin(); it != visible.rend(); ++it) if (it->second->nq[pass]) order.push_back(it->second); }
+  // (water, glass and ice only in the camera's own land: from under the cloud layer the Skylands' falls, which end at
+  // its floor, must not hang in the sky; the solid land next door still shows near the edge)
+  if (pass == 2) { for (auto it = visible.rbegin(); it != visible.rend(); ++it) if (it->second->nq[pass] && (f.dim < 0 || f.dim >= DIM_COUNT || dimOfY((int)it->second->origin.y) == f.dim)) order.push_back(it->second); }
+  else if (!gfx.mdi) { for (auto& v : visible) if (v.second->nq[pass]) order.push_back(v.second); }   // nearest first, pages bound as they come
   else for (u32 p = 0; p < pages.size(); p++) for (auto& v : visible) if (v.second->nq[pass] && v.second->base / PAGE_V == p) order.push_back(v.second);
   if (order.empty()) return;
   auto passBase = [&](SecMesh* m) -> i32 { u32 o = m->base % PAGE_V; for (int i = 0; i < pass; i++) o += m->nq[i] * 4; return (i32)o; };
@@ -567,16 +594,16 @@ void WorldRenderer::drawSections(const FrameCtx& f, int pass) {
   emitSections(f, pass, loc);
 }
 
-void WorldRenderer::drawShadowSections(const FrameCtx& f, int pass, float radius) {
+void WorldRenderer::drawShadowSections(const FrameCtx& f, int pass, float radius, vec3 centre, bool aroundCentre) {
   if (!w || pages.empty()) return;
   auto saved = std::move(visible);
   visible.clear();
-  const float r = radius + 24.f;
+  const float r = aroundCentre ? radius + 12.f : radius + 24.f;   // (the built-in map: just its own square, and its height round you)
   const float r2 = r * r;
   for (auto& [k, m] : meshes) {
     if (k.dim != f.dim || !m->nq[pass]) continue;
-    vec3 rel = vec3(glm::dvec3(m->origin) - f.cam.origin) + vec3(8.f);
-    if (rel.x * rel.x + rel.z * rel.z > r2 || std::abs(rel.y) > r) continue;
+    vec3 rel = vec3(glm::dvec3(m->origin) - f.cam.origin) + vec3(8.f) - centre;
+    if (rel.x * rel.x + rel.z * rel.z > r2 || (aroundCentre ? (rel.y < -r * 0.6f || rel.y > r * 1.2f) : std::abs(rel.y) > r)) continue;
     visible.push_back({0.f, m.get()});
   }
   GLint loc = -1;
@@ -587,6 +614,23 @@ void WorldRenderer::drawShadowSections(const FrameCtx& f, int pass, float radius
   }
   emitSections(f, pass, loc);
   visible = std::move(saved);
+}
+
+void WorldRenderer::drawShadowMap(const FrameCtx& f, const mat4& lightVP, vec3 centre, float radius, bool cutout) {
+  if (!w || pages.empty()) return;
+  shader.use();
+  f.apply(shader);
+  shader.set("uViewProj", lightVP);
+  glm::dvec3 wo = glm::mod(f.cam.origin, glm::dvec3(4096.0));
+  shader.set("uWorldOrigin", vec3(wo));
+  shader.set("uCamFrac", vec3(f.cam.pos - f.cam.origin));
+  shader.set("uGrassFade", gfx.modern ? vec2(20, 34) : vec2(13, 22));
+  tex.bind(shader);
+  worldFxBind(shader, f, 0);
+  shader.set("uShadowPass", 1); shader.set("uShadowK", 0.f);
+  shader.set("uPass", 0); drawShadowSections(f, 0, radius, centre, true);
+  if (cutout) { shader.set("uPass", 1); drawShadowSections(f, 1, radius, centre, true); }
+  shader.set("uShadowPass", 0);
 }
 
 void WorldRenderer::drawOpaque(const FrameCtx& f) {
@@ -613,7 +657,7 @@ std::vector<ivec3> WorldRenderer::waterfallBases(const vec3& near, float radius)
     if (m->fx.waterfalls.empty()) continue;
     vec3 c = m->origin + vec3(8);
     if (glm::dot(c - near, c - near) > (radius + 14) * (radius + 14)) continue;
-    for (auto& p : m->fx.waterfalls) { vec3 d = vec3(p) - near; if (glm::dot(d, d) <= r2) out.push_back(p); }
+    for (auto& p : m->fx.waterfalls) { vec3 d = vec3(p) - near; if (glm::dot(d, d) <= r2 && dimOfY(p.y) == dimOfY((int)std::floor(near.y))) out.push_back(p); }   // (spray only in your own land)
   }
   return out;
 }

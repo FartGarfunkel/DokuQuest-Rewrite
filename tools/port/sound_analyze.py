@@ -14,6 +14,7 @@ result's own loudness is matched to `fine` block by block. Each render draws new
 varies pitch and level like the original's takes.
 
   python3 tools/port/sound_analyze.py analyze <pack assets/minecraft> data/sounds.json data/sounds.bin
+  python3 tools/port/sound_analyze.py merge <mod assets/<modid>> <prefix> data/sounds.json data/sounds.bin   # after analyze
   python3 tools/port/sound_analyze.py eval <pack assets/minecraft> [names...]   # resynth in Python + distances
   python3 tools/port/sound_analyze.py metric a.wav b.wav                        # distance between two renders
 
@@ -40,7 +41,14 @@ XO_BAND = int(np.argmin(np.abs(EDGES - 1000)))           # the loudness is follo
 XO = EDGES[XO_BAND]
 
 def decode(path):
-    r = subprocess.run(['ffmpeg', '-v', 'error', '-i', str(path), '-ac', '1', '-ar', str(SR), '-f', 'f32le', '-'], capture_output=True)
+    try:
+        r = subprocess.run(['ffmpeg', '-v', 'error', '-i', str(path), '-ac', '1', '-ar', str(SR), '-f', 'f32le', '-'], capture_output=True)
+    except FileNotFoundError:   # no ffmpeg here: libsndfile (pip install soundfile) reads the .ogg, numpy resamples it
+        import soundfile
+        x, sr = soundfile.read(str(path), dtype='float64', always_2d=True)
+        x = x.mean(axis=1)
+        if sr != SR and len(x): x = np.fft.irfft(np.fft.rfft(x), int(round(len(x) * SR / sr))) * (SR / sr)
+        return x
     if r.returncode: print('cannot decode', path, r.stderr.decode()[:120].strip(), file=sys.stderr); return np.zeros(0)
     raw = r.stdout
     return np.frombuffer(raw, dtype=np.float32).astype(np.float64)
@@ -321,6 +329,44 @@ def cmd_analyze(root, out_json, out_bin):
     pathlib.Path(out_json).write_text(json.dumps(meta, separators=(',', ':')))
     print('profiles', len(index), 'events', len(events), 'raw', len(blob), 'zlib', len(z), 'json', pathlib.Path(out_json).stat().st_size)
 
+# ---- another source's sounds merged in (a mod's assets/<modid>): its profiles under a prefix of their own, its events
+# as fx.<event> (game names that might clash get "ws_"); run after `analyze`, which rewrites the tables from the pack
+MERGE_KEEP = ('wither_storm', 'withered', 'command_block', 'formidi', 'bowels', 'block_cluster', 'tentacle', 'super_tnt',
+              'amulet', 'mob_infected', 'mob_cured', 'rib_bone')
+def cmd_merge(root, prefix, out_json, out_bin, skip=('music',)):
+    root = pathlib.Path(root)
+    meta = json.loads(pathlib.Path(out_json).read_text())
+    blob = bytearray(zlib.decompress(pathlib.Path(out_bin).read_bytes()))
+    # what was merged from this source before goes first (its bytes too), so running it again changes nothing
+    keep = {k: v for k, v in meta['sounds'].items() if not k.startswith(prefix + '/')}
+    nb = bytearray(); index = {}
+    for k, (o, n) in keep.items(): index[k] = [len(nb), n]; nb += blob[o:o + n]
+    events = {k: v for k, v in meta['events'].items() if not any(n.startswith(prefix + '/') for n, _, _ in v)}
+    files = sorted(p.relative_to(root / 'sounds').with_suffix('').as_posix() for p in (root / 'sounds').rglob('*.ogg'))
+    files = [f for f in files if f.split('/')[0] not in skip]
+    for i, name in enumerate(files):
+        x = decode(root / 'sounds' / (name + '.ogg'))
+        if len(x) < 64: continue
+        b = encode(analyze(x))
+        index[prefix + '/' + name] = [len(nb), len(b)]; nb += b
+        if i % 10 == 0: print(i, name, len(b), file=sys.stderr)
+    table = json.loads((root / 'sounds.json').read_text())
+    added = 0
+    for ev, t in table.items():
+        got = []
+        for x in t.get('sounds', []):
+            n, pt, vo = (x, 1.0, 1.0) if isinstance(x, str) else (x.get('name', ''), float(x.get('pitch', 1)), float(x.get('volume', 1)))
+            n = prefix + '/' + n.split(':', 1)[-1]
+            if n in index: got.append([n, round(pt, 3), round(vo, 3)])
+        if not got: continue
+        events['fx.' + (ev if ev.startswith(MERGE_KEEP) else 'ws_' + ev)] = got; added += 1
+    z = zlib.compress(bytes(nb), 9)
+    pathlib.Path(out_bin).write_bytes(z)
+    meta['sounds'] = index; meta['events'] = events; meta['raw'] = len(nb)
+    meta['about'] = meta['about'].split(' Merged:')[0] + ' Merged: %s (%s).' % (prefix, root.name)
+    pathlib.Path(out_json).write_text(json.dumps(meta, separators=(',', ':')))
+    print('merged', len([k for k in index if k.startswith(prefix + '/')]), 'profiles,', added, 'events; raw', len(nb), 'zlib', len(z))
+
 def cmd_eval(root, names, outdir=None):
     root = pathlib.Path(root)
     if not names: names = sorted(p.relative_to(root / 'sounds').with_suffix('').as_posix() for p in (root / 'sounds').rglob('*.ogg'))
@@ -359,6 +405,7 @@ def readwav(p):
 if __name__ == '__main__':
     c = sys.argv[1]
     if c == 'analyze': cmd_analyze(sys.argv[2], sys.argv[3], sys.argv[4])
+    elif c == 'merge': cmd_merge(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
     elif c == 'eval':
         od = None; a = sys.argv[3:]
         if a and a[0].startswith('--out='): od = a[0][6:]; a = a[1:]

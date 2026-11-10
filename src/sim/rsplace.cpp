@@ -151,7 +151,7 @@ static bool useRedstone(Level& lv, Player& p, World& w, ivec3 hp, const ItemDef*
     case BUTTON:
       if (!(m & 8)) { w.setBlock(hp.x, hp.y, hp.z, id, m | 8); if (rsys) rsys->schedule(hp.x, hp.y, hp.z, b.has("wooden") ? 30 : 20, "button"); lv.fx->sound("click", c, 16); }
       return true;
-    case REPEATER:
+    case REPEATER: case TIMER:
       w.setBlock(hp.x, hp.y, hp.z, id, (m & ~12) | (((((m >> 2) & 3) + 1) & 3) << 2));
       lv.fx->sound("tick", c, 12);
       return true;
@@ -192,7 +192,28 @@ static int placeRedstone(Level& lv, Player& p, World& w, ivec3 hit, int face, Bl
   else if (isTrip) { if (!floor()) return 0; meta = 0; }
   else if (isMech) meta = 0;
   else switch (r) {
-    case WIRE: case PLATE: if (!floor()) return 0; meta = 0; break;
+    case WIRE: if (!floor()) return 0; meta = 0; break;
+    case PLATE: {
+      if (!floor()) return 0;
+      meta = 0;
+      if (d.str("plate") == "motion") {
+        int dir;
+        if (n.y != 0) dir = rs::H2D6[look];
+        else if (n.x > 0) dir = 5;
+        else if (n.x < 0) dir = 4;
+        else if (n.z > 0) dir = 3;
+        else dir = 2;
+        meta = dir << 4;
+      }
+      break;
+    }
+    case MATCHER: {
+      if (!floor()) return 0;
+      int l6 = lookDir6(p);
+      meta = l6 <= 1 ? (64 | look) : look;
+      break;
+    }
+    case TIMER: if (!floor()) return 0; meta = look & 1; break;
     case REPEATER: case COMPARATOR: if (!floor()) return 0; meta = look; break;
     case LEVER: case BUTTON: {
       meta = n.y == 1 ? 0 : n.y == -1 ? 1 : 2 + dirOf((float)-n.x, (float)-n.z);

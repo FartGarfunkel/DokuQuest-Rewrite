@@ -50,6 +50,7 @@ public:
   void update(World* w, double dt, double time);
   void draw(const FrameCtx& f, const TileTextures& tex);
   void clear() { list.clear(); drops = 0; }
+  void releaseGl() { mesh.release(); }   // before the GL context goes (App::run's teardown)
   void removeDrops() { list.erase(std::remove_if(list.begin(), list.end(), [](const Particle& p) { return p.drop != 0; }), list.end()); drops = 0; }
   size_t count() const { return list.size(); }
   int dropCount() const { return drops; }

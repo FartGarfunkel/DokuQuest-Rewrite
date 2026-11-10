@@ -13,6 +13,10 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
     nFloor(o.seed ^ 0xbcde), nRiver(o.seed ^ 0x5eed11), nDeep(o.seed ^ 0xDEE9), nDeepC(o.seed ^ 0xDEEC) {
   climateScale = o.genVersion >= 4 ? 2.0 : 1.0;
   if (o.worldType == "large_biomes") climateScale *= 3;   // the "Bigger biomes" world: every land three times as wide
+  wtype = o.worldType;
+  jigsawVillages = o.genVersion >= 9;
+  villageStyles = o.genVersion >= 10;
+  villagePlan11 = o.genVersion >= 11;
   floes = o.genVersion >= 5;   // terrain version 5: BTA's ice floes in the seas round the glaciers   // terrain version 4 (BTA): biomes about twice as big
   B.resolve();
   initUnderground();
@@ -29,11 +33,16 @@ OverworldGen::BaseCol OverworldGen::baseColumn(int x, int z) const {
   double mMask = jsSmooth(0.18, 0.55, mRaw) * land;
   if (mMask > 0) { double r = 1 - std::fabs(nRidge.fbm2(x / 230.0, z / 230.0, 3)); h += mMask * (r * r * 58 + 6); }
   BaseCol c;
+  // BTA's world types: Amplified (the hills and mountains near twice as high), Islands (the land sunk: the seas risen)
+  if (wtype == "amplified" && h > JS_SEA) h = JS_SEA + (h - JS_SEA) * 1.85;
+  else if (wtype == "islands") h -= 11 + 4 * land;
   c.hc = jsClamp(h, 4, 120);
   c.h = jsFloor(c.hc);
   c.temp = nTemp.fbm2(x / (800.0 * climateScale), z / (800.0 * climateScale), 2) - (c.h > 90 ? (c.h - 90) / 40.0 : 0);
   c.humid = nHumid.fbm2(x / (650.0 * climateScale), z / (650.0 * climateScale), 2);
   if (climateScale > 1) c.temp -= 0.06;   // and the cold lands a little more common (BTA: more snow biomes)
+  if (wtype == "winter") c.temp = std::min(c.temp, -0.4) - 0.12;             // Endless Winter: everywhere snow-bound
+  else if (wtype == "hell") { c.temp = 0.08 + c.temp * 0.25; c.humid = 0.12 + c.humid * 0.3; }   // Hell: the green lands burnt (not desert: scorched earth)
   const int hh = c.h; const double t = c.temp, u = c.humid;
   u8 b;
   if (hh < JS_SEA - 1) b = BIOME_OCEAN;
@@ -107,6 +116,7 @@ bool OverworldGen::goodSpawn(int x, int z) const {
   OwColumn c = column(x, z);
   if (c.biome == BIOME_OCEAN || c.biome == BIOME_BEACH || c.h <= JS_SEA || c.h > JS_SEA + 28) return false;
   static const int D[4][2] = {{4, 0}, {-4, 0}, {0, 4}, {0, -4}};
+  if (wtype == "floating") for (auto& d : D) if (floatingBottom(x + d[0] * 2, z + d[1] * 2, c.H) < 0) return false;   // well inside an island
   for (auto& d : D) if (std::abs(column(x + d[0], z + d[1]).h - c.h) > 3) return false;
   return true;
 }
@@ -220,6 +230,7 @@ void OverworldGen::generate(Chunk& ch) {
   if (B.ember_crust) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) b.blocks[colIdx(x, 0, z)] = B.ember_crust;
   structures.build(b, ch);
   carveDeep(b, ch.cx, ch.cz);
+  if (!wtype.empty() && wtype != "default" && wtype != "large_biomes") worldTypePass(b, cols, ch.cx, ch.cz);
   b.store(ch);
 }
 
@@ -353,6 +364,16 @@ void OverworldGen::sample(int wx, int wz, ColumnSample& s) const {
   if (c.H < SEA_LEVEL) { s.water = SEA_LEVEL; s.fluid = c.temp < -0.38 ? B.ice : B.water; }
   s.temp = (u8)jsClamp(jsRound(c.temp * 127 + 128), 0, 255); s.humid = (u8)jsClamp(jsRound(c.humid * 127 + 128), 0, 255);
   s.biome = c.biome; s.variant = (u8)btaVariant(c); s.tree = 0; s.treeTop = 0; s.leaves = AIR; s.floatBottom = -1; s.tint = 0xFFFFFFFF;
+  if (wtype == "hell") {   // far off too: scorched ground, lava seas, no leaves
+    if (B.scorched_dirt && (s.top == B.grass || s.top == B.dirt || s.top == B.snowy_grass || s.top == B.podzol)) s.top = B.scorched_dirt;
+    if (s.water >= 0) s.fluid = B.lava;
+    return;
+  }
+  if (wtype == "floating") {
+    const int fb = floatingBottom(wx, wz, c.H);
+    if (fb < 0) { s.height = -1; s.water = -1; return; }
+    s.floatBottom = (i16)fb; s.water = -1;
+  }
   // far off, single trees can't be told apart: forest cover as tall as its trees (distant.js)
   if (c.h >= JS_SEA && c.biome != BIOME_DESERT && c.biome != BIOME_BEACH && !(c.biome == BIOME_MOUNTAINS && c.h > 82)) {
     bool jungle = c.temp > 0.25 && c.humid > 0.3, sav = c.biome == BIOME_PLAINS && c.temp > 0.28 && c.humid < 0.02;

@@ -11,6 +11,7 @@
 #include "core/registry.h"
 #include "core/item_glint.h"
 #include "render/rod_tip.h"
+#include "render/instruments.h"
 #include "sim/fishing.h"
 #include <cstdlib>
 #include <cstdio>
@@ -24,6 +25,7 @@ void registerStandLayer();
 void registerHeldLightFx();
 void registerWinterVillageLayer();
 void registerColourFilterLayer();
+void registerNetherGradeLayer();
 void registerPostLayer();   // render/post_layer.cpp
 void registerDreamlightLayer();
 void registerStatueLayer();
@@ -45,6 +47,7 @@ void registerItemLayers() {
   registerWinterVillageLayer();   // render/winter_village_layer.cpp (December)
   registerPostLayer();           // the built-in shader levels and Iris/OptiFine post passes
   registerColourFilterLayer();   // render/colour_filter_layer.cpp
+  registerNetherGradeLayer();    // render/nether_grade_layer.cpp
   registerDreamlightLayer();     // render/dreamlight_layer.cpp
   registerStatueLayer();   // render/statue_layer.cpp
   registerLecternLayer();   // books on lecterns (render/lectern_layer.cpp)
@@ -176,7 +179,8 @@ void HeldItemLayer::update(GameSession& s, double dt) {
 
 void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   Player* p = s.player;
-  if (!p || p->dead || s.viewMode != 0 || s.hudHidden) return;
+  handsTaken = 0;
+  if (!p || p->dead || s.viewMode != 0 || s.hudHidden || p->scoping) return;   // (the spyglass at your eye: just the glass)
   const Settings& st = s.app.settings;
   // what you hold lags a little behind when you turn, and swings back
   float sx0 = 0, sy0 = 0;
@@ -206,6 +210,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); glDepthMask(GL_TRUE);
   glEnable(GL_CULL_FACE); glCullFace(GL_BACK); glDisable(GL_BLEND);
   int taken = handsHook ? handsHook(*this, s, f, proj) : 0;
+  handsTaken = taken;
   std::vector<std::pair<ItemStack, mat4>> over;
   VoxelRenderer& VR = voxelRenderer();
   VR.begin(f, proj, false);
@@ -246,6 +251,13 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     } else if (im.kind == VoxelModel::Block) {
       m = glm::translate(m, vec3(-side * 0.03f, 0.1f, -0.06f));
       m = glm::rotate(m, side * 0.78f, vec3(0, 1, 0)); m = glm::scale(m, vec3(0.4f));
+    } else if (isInstrument(stack.id)) {
+      // a compass (or the death compass, or a clock) lies face-up in the palm, tipped toward your eyes: you can read
+      // where its needle points (render/instruments.cpp draws the live dial on it). Held like a tool it was edge-on.
+      m = glm::translate(m, vec3(-side * 0.07f, 0.17f, 0.f));
+      m = glm::rotate(m, -0.5f, vec3(1, 0, 0));
+      m = glm::rotate(m, side * 0.14f, vec3(0, 1, 0));
+      m = glm::scale(m, vec3(0.62f));
     } else {
       // tuning aid: DQ_DEV_FPHELD="dx,dy,dz,scale,yaw,roll" (the fist frame's offsets) for screenshots
       static float T[6] = {0, 0, 0, 0, 0, 0}; static bool tl = false;
@@ -253,7 +265,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       m = glm::translate(m, vec3(side * T[0], T[1], T[2]));
       m = glm::rotate(m, side * (-1.5f + 0.35f + T[4] + (tool || bowItem ? 0.22f : 0.f)), vec3(0, 1, 0));   // tools turn a little more face-on
       m = glm::rotate(m, side * (0.42f + T[5]), vec3(0, 0, 1));
-      m = glm::scale(m, vec3(bowItem ? 0.85f + T[3] : 0.68f + T[3] + (tool ? 0.26f : 0.f)));   // swords and tools are drawn big, like Minecraft's first person
+      m = glm::scale(m, vec3(bowItem ? 1.1f + T[3] : 0.68f + T[3] + (tool ? 0.26f : 0.f)));   // (a bow as big as it's drawn: render/fp_bow.cpp)   // swords and tools are drawn big, like Minecraft's first person
       if (rod) {   // a rod points out ahead with its tip (and the float hanging from it) in view, not up out of the picture
         static float RT[4] = {0.35f, -0.6f, 0.f, -0.08f}; static bool rl = false;
         if (!rl) { rl = true; if (const char* v = std::getenv("DQ_DEV_ROD")) std::sscanf(v, "%f,%f,%f,%f", &RT[0], &RT[1], &RT[2], &RT[3]); }

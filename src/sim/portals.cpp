@@ -8,6 +8,8 @@
 
 namespace dq {
 
+void driftLanding(Level& lv, double x, double z, int& outX, int& outZ);   // sim/drift.cpp: the nearest land in the Drift
+
 namespace {
 inline i64 packP(ivec3 p) { return ((i64)(p.x & 0x3FFFFF) << 42) | ((i64)(p.y & 0xFFFFF) << 22) | (i64)(p.z & 0x3FFFFF); }
 const u8* fireTable() {
@@ -19,6 +21,7 @@ struct KindDef { BlockId frame, portal; };
 KindDef kindDef(PortalKind k) {
   const Registry& R = reg();
   if (k == PortalKind::Sky) return {R.blockId("glowstone"), R.blockId("sky_portal")};
+  if (k == PortalKind::Drift) return {R.blockId("glowstone"), R.blockId("drift_portal")};
   return {R.blockId("obsidian"), R.blockId("ember_portal")};
 }
 float yawOf(vec3 n) { return std::atan2(-n.x, -n.z); }
@@ -29,6 +32,23 @@ int scaleOf(const Level& lv, int dim) {
   return s;
 }
 const ivec3 STEP[3][4] = {{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}}, {{0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}, {{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}}};
+// a standing portal's opening, from any of its cells: the box of that block joined in its plane
+struct Opening { ivec3 lo{0}, hi{0}; int axis = 0, ow = 0, oh = 0; };
+Opening openingAt(const World& w, ivec3 a) {
+  Opening o;
+  const BlockId id = w.getBlock(a.x, a.y, a.z);
+  o.axis = w.getMeta(a.x, a.y, a.z) & 1; o.lo = o.hi = a;
+  std::vector<ivec3> q{a};
+  std::unordered_set<i64> seen{packP(a)};
+  int n = 0;
+  while (!q.empty() && n < 450) {
+    const ivec3 c = q.back(); q.pop_back(); n++;
+    o.lo = glm::min(o.lo, c); o.hi = glm::max(o.hi, c);
+    for (auto& s : STEP[o.axis]) { const ivec3 b = c + s; if (w.getBlock(b.x, b.y, b.z) == id && seen.insert(packP(b)).second) q.push_back(b); }
+  }
+  o.ow = (o.axis ? o.hi.z - o.lo.z : o.hi.x - o.lo.x) + 1; o.oh = o.hi.y - o.lo.y + 1;
+  return o;
+}
 } // namespace
 
 // ---------------------------------------------------------------------------------------------------
@@ -174,17 +194,31 @@ int portalTargetDim(int fromDim, PortalKind k) {
 vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, PortalSystem* ps, int ow, int oh, int axis, const std::string& dye) {
   const Registry& R = reg();
   KindDef K = kindDef(kind);
-  // 1. an existing portal close by? (stand beside it) — a tuned portal only to one of its own colour
+  ow = clampv(ow, 1, 21); oh = clampv(oh, 2, 21); axis &= 1;
+  // 1. an existing portal close by, of the same size as the one you came through (its window only lines up with a twin
+  //    that size) — a tuned portal only to one of its own colour. Stand beside it.
   ivec3 c;
   if (ps && ps->nearestPortalCell(w.realm, K.portal, dim, x, z, 24, c, &dye)) {
-    int axis = w.getMeta(c.x, c.y, c.z) & 1;
-    return vec3(c.x + (axis ? 1.5f : 0.5f), (float)c.y, c.z + (axis ? 0.5f : 1.5f));
+    const Opening o = openingAt(w, c);
+    if (o.ow == ow && o.oh == oh) {
+      int ax = w.getMeta(c.x, c.y, c.z) & 1;
+      return vec3(c.x + (ax ? 1.5f : 0.5f), (float)c.y, c.z + (ax ? 0.5f : 1.5f));
+    }
   }
   // 2. build one, the same size and way round as the portal you came through (so its window lines up), on safe
   //    ground (the original's height ranges, doubled for the 256-tall band)
-  ow = clampv(ow, 1, 21); oh = clampv(oh, 2, 21); axis &= 1;
   const int fw = ow + 2, fh = oh + 2;
   int bx = ifloor(x), bz = ifloor(z), base = dimBase(dim), by = -1;
+  // not on top of a portal already standing here (one of another size): beside it, out across its face
+  auto clearOfPortals = [&](int cbx, int cbz) {
+    for (int db = -4; db <= 4; db++) for (int da = -2; da <= fw; da++) {
+      const ivec3 q = axis ? ivec3(cbx + db, 0, cbz + da) : ivec3(cbx + da, 0, cbz + db);
+      if (!w.isLoaded(q.x, base + 64, q.z)) continue;
+      for (int yy = base + 1; yy < base + DIM_H - 1; yy++) if (R.tPortal[w.getBlock(q.x, yy, q.z)]) return false;
+    }
+    return true;
+  };
+  for (int k = 1; k <= 8 && !clearOfPortals(bx, bz); k++) { const int step = (k + 1) / 2 * 8 * (k & 1 ? 1 : -1); if (axis) bx = ifloor(x) + step; else bz = ifloor(z) + step; }
   auto at = [&](int a, int dy, int b) { return axis ? ivec3(bx + b, dy, bz + a) : ivec3(bx + a, dy, bz + b); };   // a: along the portal, b: across
   auto solid = [&](int yy) { return R.tSolid[w.getBlock(bx, yy, bz)] != 0; };
   if (dim == DIM_NETHER) {
@@ -215,6 +249,14 @@ vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, Portal
     if (by < 0) by = base + SEA_LEVEL + 22;
   }
   by = clampv(by, base + 2, base + DIM_H - 8);
+  return PortalSystem::buildAt(w, ps, kind, dim, bx, by, bz, ow, oh, axis);
+}
+
+vec3 PortalSystem::buildAt(World& w, PortalSystem* ps, PortalKind kind, int dim, int bx, int by, int bz, int ow, int oh, int axis) {
+  const Registry& R = reg();
+  KindDef K = kindDef(kind);
+  const int fw = ow + 2, fh = oh + 2;
+  auto at = [&](int a, int dy, int b) { return axis ? ivec3(bx + b, dy, bz + a) : ivec3(bx + a, dy, bz + b); };   // a: along the portal, b: across
   BlockId floor = R.blockId(dim == DIM_AETHER ? "skystone" : (dim == DIM_NETHER || dim == DIM_END) ? "obsidian" : "cobblestone");
   if (ps) ps->guard++;
   // clear space + platform; past that, floor out to four blocks each side wherever there's nothing to stand on (you
@@ -239,6 +281,34 @@ vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, Portal
   return mid;
 }
 
+// a made twin rebuilt where it stands to its portal's size: the old frame and opening go, a new frame goes up from the
+// same corner (so its anchor, and the links, stay)
+void PortalSystem::reshape(const Reshape& rq) {
+  World* W = lv.worldIfOpen(rq.realm);
+  if (!W || !W->isLoaded(rq.anchor.x, rq.anchor.y, rq.anchor.z)) return;
+  const BlockId id = W->getBlock(rq.anchor.x, rq.anchor.y, rq.anchor.z);
+  if (!id || !isCell[id] || id == bEnd) return;
+  const Opening o = openingAt(*W, rq.anchor);
+  if ((o.ow == rq.ow && o.oh == rq.oh) || o.lo != rq.anchor) return;
+  const PortalKind kind = id == bSky ? PortalKind::Sky : id == bDrift ? PortalKind::Drift : PortalKind::Ember;
+  const KindDef K = kindDef(kind);
+  const int ax = o.axis, ow = clampv(rq.ow, 1, 21), oh = clampv(rq.oh, 2, 21);
+  auto at = [&](int da, int y, int db) { return ax ? ivec3(o.lo.x + db, y, o.lo.z - 1 + da) : ivec3(o.lo.x - 1 + da, y, o.lo.z + db); };
+  for (ivec3 q : {at(-2, o.lo.y, -4), at(std::max(ow, o.ow) + 3, o.lo.y, 4), at(-2, o.lo.y, 4), at(std::max(ow, o.ow) + 3, o.lo.y, -4)})
+    if (!W->isLoaded(q.x, q.y, q.z)) { reshapes[strFormat("%d:%d,%d,%d", rq.realm, rq.anchor.x, rq.anchor.y, rq.anchor.z)] = rq; return; }   // (later)
+  guard++;
+  for (int da = 0; da <= o.ow + 1; da++) for (int y = o.lo.y - 1; y <= o.hi.y + 1; y++) {
+    const ivec3 q = at(da, y, 0);
+    const BlockId b = W->getBlock(q.x, q.y, q.z);
+    if (b == id || b == K.frame) W->setBlock(q.x, q.y, q.z, AIR, 0, SetFlags::Urgent);
+  }
+  guard--;
+  const ivec3 b0 = at(0, o.lo.y, 0);
+  buildAt(*W, this, kind, dimOfY(o.lo.y), b0.x, o.lo.y, b0.z, ow, oh, ax);
+  DQ_LOG("portal %d:%d,%d,%d rebuilt %dx%d -> %dx%d to match its twin", rq.realm, rq.anchor.x, rq.anchor.y, rq.anchor.z, o.ow, o.oh, ow, oh);
+  epoch_++;
+}
+
 // ---------------------------------------------------------------------------------------------------
 // the per-World hook: keeps the portal-cell index and reacts to block changes
 namespace {
@@ -257,8 +327,8 @@ PortalSystem::PortalSystem(Level& l) : lv(l) {
   const Registry& R = reg();
   bEmber = R.blockId("ember_portal"); bSky = R.blockId("sky_portal"); bEnd = R.blockId("end_portal");
   bObsidian = R.blockId("obsidian"); bGlow = R.blockId("glowstone");
-  bFrame = R.blockId("end_portal_frame"); bFrameEye = R.blockId("end_portal_frame_eye");
-  for (BlockId b : {bEmber, bSky, bEnd}) if (b) isCell[b] = 1;
+  bFrame = R.blockId("end_portal_frame"); bFrameEye = R.blockId("end_portal_frame_eye"); bDrift = R.blockId("drift_portal");
+  for (BlockId b : {bEmber, bSky, bEnd, bDrift}) if (b) isCell[b] = 1;
   hurt = [](Entity& e, float amount, const char*) { e.hp = std::max(0.f, e.hp - amount); e.hurtTime = 0.5f; };
   if (lv.events) itemUseHandler = lv.events->on("itemUse", [this](const json& a) { return onItemUse(a); });
 }
@@ -401,10 +471,10 @@ void PortalSystem::rebuild(int realm, RealmIdx& r) {
       bool exit = dimOfY(an.y) == DIM_END;
       w.rim = exit ? vec3(0.55f, 0.85f, 1.0f) : vec3(0.25f, 0.95f, 0.75f);
     } else {
-      w.kind = w.id == bSky ? PortalKind::Sky : PortalKind::Ember;
+      w.kind = w.id == bSky ? PortalKind::Sky : w.id == bDrift && bDrift ? PortalKind::Drift : PortalKind::Ember;
       w.n = w.axis ? vec3(1, 0, 0) : vec3(0, 0, 1);
       w.along = w.axis ? vec3(0, 0, 1) : vec3(1, 0, 0);
-      w.rim = w.kind == PortalKind::Sky ? vec3(0.55f, 0.85f, 1.0f) : vec3(1.0f, 0.45f, 0.12f);
+      w.rim = w.kind == PortalKind::Sky ? vec3(0.55f, 0.85f, 1.0f) : w.kind == PortalKind::Drift ? vec3(0.86f, 0.88f, 0.98f) : vec3(1.0f, 0.45f, 0.12f);
       w.dye = dyeOf(realm, w.anchor);
       if (!w.dye.empty()) w.rim = dyeColour(w.dye);
     }
@@ -572,6 +642,18 @@ PortalDest PortalSystem::dest(const PortalWindow& w) {
         d.c = glm::dvec3((lo.x + hi.x + 1) * 0.5, (lo.y + hi.y + 1) * 0.5, (lo.z + hi.z + 1) * 0.5);
         d.y0 = lo.y; d.n = axis ? vec3(1, 0, 0) : vec3(0, 0, 1);
         d.ready = true;
+        // a twin of another size: if it was made for this one (its link says so; links from before that: the one away
+        // from the Overworld), it's rebuilt to this one's size (in tick(), not while windows are being drawn)
+        const int fow = (axis ? hi.z - lo.z : hi.x - lo.x) + 1, foh = hi.y - lo.y + 1;
+        const int now = (w.axis == 1 ? w.hi.z - w.lo.z : w.hi.x - w.lo.x) + 1, noh = w.hi.y - w.lo.y + 1;
+        if (!lv.isRemote() && (fow != now || foh != noh) && lo == a && (w.kind == PortalKind::Ember || w.kind == PortalKind::Sky || w.kind == PortalKind::Drift)) {
+          const std::string back = strFormat("%d:%d,%d,%d", r, a.x, a.y, a.z);
+          auto b = L.find(back);
+          const bool pair = b != L.end() && b->is_object() && b->value("realm", -1) == w.realm && b->contains("anchor") && (*b)["anchor"].is_array() &&
+                            (*b)["anchor"].size() == 3 && (*b)["anchor"][0] == w.anchor.x && (*b)["anchor"][1] == w.anchor.y && (*b)["anchor"][2] == w.anchor.z;
+          const bool homeHere = w.realm == REALM_MAIN && dimOfY(w.anchor.y) == DIM_OVERWORLD, homeThere = r == REALM_MAIN && dimOfY(a.y) == DIM_OVERWORLD;
+          if (pair && b->value("made", homeHere && !homeThere) && !j.value("made", false)) reshapes[back] = {r, a, now, noh};
+        }
       }
     }
   }
@@ -605,6 +687,7 @@ void PortalSystem::prelink(const PortalWindow& w, const Pending& p) {
   if (!w.dye.empty() && dyeOf(p.realm, there).empty()) setDye(p.realm, there, w.dye);   // a portal built for a tuned one takes its colour
   World& Here = lv.world(w.realm);
   link(w.realm, w.anchor, portalStand(Here, w.anchor), p.realm, there, pos);
+  links()[strFormat("%d:%d,%d,%d", p.realm, there.x, there.y, there.z)]["made"] = true;   // (made for this one: it follows its size)
   DQ_LOG("portal %s linked to %d:%d,%d,%d", w.key.c_str(), p.realm, there.x, there.y, there.z);
 }
 
@@ -723,6 +806,7 @@ bool PortalSystem::track(Entity& e, double dt, bool fromClient) {
 
 void PortalSystem::tick(Level& l, double dt) {
   for (auto& [r, w] : l.allRealms()) attach(*w);
+  if (!reshapes.empty() && !l.isRemote()) { auto q = std::move(reshapes); reshapes.clear(); for (auto& [k, rq] : q) reshape(rq); }
   // portals nobody has been through yet, near a player: find (or build) their far end now
   std::set<std::string> want;
   // (a snapshot: building the far end spawns drops, which can reallocate the entity list under a range-for)
@@ -732,7 +816,7 @@ void PortalSystem::tick(Level& l, double dt) {
     if (e->removed) continue;
     std::vector<PortalWindow> wins = windows(e->realm);
     for (auto& w : wins) {
-      if (w.kind != PortalKind::Ember && w.kind != PortalKind::Sky) continue;
+      if (w.kind != PortalKind::Ember && w.kind != PortalKind::Sky && w.kind != PortalKind::Drift) continue;
       if (glm::distance(vec3(w.c), e->pos) > 28 || failed.count(w.key) || want.count(w.key)) continue;
       if (dest(w).linked) continue;
       int src = w.realm == REALM_MAIN ? dimOfY(w.anchor.y) : DIM_OVERWORLD;
@@ -740,6 +824,21 @@ void PortalSystem::tick(Level& l, double dt) {
       p.realm = REALM_MAIN; p.dim = portalTargetDim(src, w.kind); p.kind = w.kind;
       double sc = (double)scaleOf(l, src) / scaleOf(l, p.dim);
       p.x = w.c.x * sc; p.z = w.c.z * sc;
+      if (w.kind == PortalKind::Drift) {
+        // BTA's Drift: out of the main world eight times as far out, onto the nearest land hanging there; back, an eighth
+        p.dim = DIM_OVERWORLD;
+        if (w.realm == REALM_DRIFT) { p.realm = REALM_MAIN; p.x = w.c.x / 8; p.z = w.c.z / 8; }
+        else if (w.realm == REALM_MAIN) {
+          p.realm = REALM_DRIFT;
+          auto li = driftLand.find(w.key);
+          if (li == driftLand.end()) {
+            int x = 0, z = 0;
+            driftLanding(l, w.c.x * 8, w.c.z * 8, x, z);
+            li = driftLand.emplace(w.key, ivec2(x, z)).first;
+          }
+          p.x = li->second.x + 0.5; p.z = li->second.y + 0.5;
+        } else continue;
+      }
       pending[w.key] = p;
       want.insert(w.key);
       prelink(w, p);

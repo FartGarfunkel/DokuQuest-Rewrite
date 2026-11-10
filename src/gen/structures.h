@@ -75,6 +75,7 @@ public:
   double h(int x, int y, int z, int s = 0) const { return hashFloat(x * 31 + s * 7919, y + s * 131, z, (i32)S.seed); }
   template <class V> const auto& pick(const V& list, int x, int y, int z, int s = 0) const { return list[(size_t)std::floor(h(x, y, z, s) * list.size())]; }
   void blockEntity(int x, int y, int z, json be);                     // chests, spawners, signs... (if in this chunk)
+  void rug(int x, int y, int z, BlockId carpet);                      // a rug laid on the block there (world/rug.h)
   int ground(int x, int z) const { return terrain.finalSurfaceY(x, z); }
 };
 

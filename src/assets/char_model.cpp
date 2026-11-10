@@ -5,8 +5,11 @@
 #include "assets/cape_tex.h"
 #include "assets/voxel_paint.h"
 #include "assets/pack_armor.h"
+#include "assets/quiver3d.h"
 #include "assets/tileset.h"
 #include "assets/pack_fs.h"
+#include "core/tool_parts.h"
+#include <cmath>
 #include <list>
 
 namespace dq {
@@ -296,6 +299,41 @@ vec3 hexDye(const std::string& h) {
   return vec3((v >> 16) & 255, (v >> 8) & 255, v & 255);
 }
 int tileOf(const TileSet& ts, const std::string& n) { auto it = ts.index.find(n); return it == ts.index.end() ? -1 : it->second; }
+
+// mixed armour worn (core/tool_parts.h): the piece's crafting pattern laid over the body as the piece is seen from the front
+// (the grid's left column on the wearer's right), each voxel in the colour of the cell it falls in (the nearest where the
+// pattern has a gap), its light and shade kept: a chestplate's side columns are its sleeves, a pair of leggings' top row the
+// waist and its columns the legs, a pair of boots one boot a column
+void recolourWorn(VoxelGrid& g, vec3 lo, const std::string& part, int slot, float aw, const ArmorPattern& P, const std::vector<std::string>& mats) {
+  const float ax = 4 + aw / 2;
+  const vec2 pv = part == "head" ? vec2(0, 24) : part == "body" ? vec2(0, 12) : part == "armR_u" ? vec2(ax, 22) : part == "armR_d" ? vec2(ax, 18)
+                : part == "armL_u" ? vec2(-ax, 22) : part == "armL_d" ? vec2(-ax, 18) : part == "legR_u" ? vec2(2, 12) : part == "legR_d" ? vec2(2, 6)
+                : part == "legL_u" ? vec2(-2, 12) : vec2(-2, 6);
+  auto cellAt = [&](float bx, float by) -> vec2 {   // body pixels -> the pattern's (column, row)
+    switch (slot) {
+      case 0: return vec2((5 - bx) / 10 * P.w, (33 - by) / 10 * P.h);
+      case 1: { const float X = ax + 3; return vec2((X - bx) / (2 * X) * P.w, (25 - by) / 14 * P.h); }
+      case 2: return vec2((4.5f - bx) / 9 * P.w, by >= 11.5f ? 0.5f : 1 + (11.5f - by) / 12 * 2);
+      default: return vec2((5 - bx) / 10 * P.w, (6 - by) / 7 * P.h);
+    }
+  };
+  auto lumOf = [](u32 c) { return ((c & 255) * 0.299f + ((c >> 8) & 255) * 0.587f + ((c >> 16) & 255) * 0.114f) / 255.f; };
+  float mean = 0; int n = 0;
+  for (u32 c : g.c) if (c) { mean += lumOf(c); n++; }
+  if (!n) return;
+  mean /= n;
+  for (int z = 0; z < g.size.z; z++) for (int y = 0; y < g.size.y; y++) for (int x = 0; x < g.size.x; x++) {
+    u32& c = g.c[g.idx(x, y, z)];
+    if (!c) continue;
+    const vec2 uv = cellAt(pv.x + lo.x + (x + 0.5f) / CHAR_VPP, pv.y + lo.y + (y + 0.5f) / CHAR_VPP);
+    int best = 0; float bd = 1e9f;
+    for (size_t i = 0; i < P.cells.size(); i++) { const float dx = P.cells[i].x + 0.5f - uv.x, dy = P.cells[i].y + 0.5f - uv.y, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = (int)i; } }
+    const ToolMaterial* m = toolMaterial(mats[best]);
+    if (!m) continue;
+    const float k = clampv(lumOf(c) / std::max(mean, 0.05f), 0.35f, 1.7f);
+    c = voxRGBA((int)std::min(255.f, m->rgb.x * 255 * k), (int)std::min(255.f, m->rgb.y * 255 * k), (int)std::min(255.f, m->rgb.z * 255 * k), (u8)(c >> 24));
+  }
+}
 }
 
 const ArmorSet& armorMeshes(const std::string& itemKey, const std::string& dye, int slot, bool slim, bool look3d, const TileSet& ts) {
@@ -304,7 +342,16 @@ const ArmorSet& armorMeshes(const std::string& itemKey, const std::string& dye, 
   auto it = c.armor.find(key);
   if (it != c.armor.end()) return *it->second;
   auto set = std::make_unique<ArmorSet>();
-  std::string mat = armorMatOf(itemKey);
+  // a mixed piece, "pa:<piece>:<m1,...>": iron's armour with its cells' materials over it (recolourWorn)
+  const ArmorPattern* paP = nullptr; std::vector<std::string> paMats;
+  if (itemKey.rfind("pa:", 0) == 0) {
+    const size_t c1 = itemKey.find(':', 3);
+    paP = armorPattern(itemKey.substr(3, c1 == std::string::npos ? std::string::npos : c1 - 3));
+    const std::string list = c1 == std::string::npos ? "" : itemKey.substr(c1 + 1);
+    for (size_t s = 0, e; !list.empty() && s <= list.size(); s = e + 1) { e = list.find(',', s); if (e == std::string::npos) e = list.size(); paMats.push_back(list.substr(s, e - s)); }
+    if (paP && paMats.size() != paP->cells.size()) paP = nullptr;
+  }
+  std::string mat = paP || itemKey.rfind("pa:", 0) == 0 ? "iron" : armorMatOf(itemKey);
   if (tileOf(ts, "armor_" + mat) < 0 && !packArmorHas(mat)) mat = "iron";
   bool pack = packArmorHas(mat), bare = pack && packArmorBareArms(mat);
   set->pack = pack;
@@ -330,6 +377,11 @@ const ArmorSet& armorMeshes(const std::string& itemKey, const std::string& dye, 
       tileShell(g, n, ts, tl, dyeC, p.name == "helmet" && tFace >= 0 ? tFace : -2);
     }
     if (!g.count()) continue;
+    if (p.name == "cuff" || p.name == "cuffL") {   // the sleeve ends at the wrist, open: the hand (the arm's last 2 px, y 12..14) is bare
+      const int cut = (int)std::lround((14.f - (18.f + lo.y)) * CHAR_VPP);   // (the lower arm's pivot is at y 18)
+      for (int z = 0; z < n.z; z++) for (int y = 0; y < std::min(cut, n.y); y++) for (int x = 0; x < n.x; x++) g.set(x, y, z, 0);
+    }
+    if (paP) recolourWorn(g, lo, pi->second.second, slot, aw, *paP, paMats);
     auto cm = std::make_unique<CharMesh>();
     VoxelMeshData md; buildVoxelMesh(g, md);
     upload(*cm, md, lo);
@@ -390,6 +442,7 @@ const CharMesh* capeMesh(const std::string& capeKey, int seg, const TileSet& ts)
   if (!custom && tOut < 0) { c.misc[key] = nullptr; return nullptr; }
   if (tIn < 0) tIn = tOut;
   int top = seg == 2 ? 11 : 0, bot = seg == 1 ? 11 : 16, thick = seg == 0 ? 2 : 1;   // rows; voxels
+  if (seg >= 10) { top = (seg - 10) * 2; bot = top + 2; thick = 2; }   // the eight strips the cape flies as (render/char_layer.cpp)
   const int V = CHAR_VPP;
   VoxelGrid g(ivec3(10 * V, (bot - top) * V, thick));
   for (int z = 0; z < thick; z++) for (int y = 0; y < g.size.y; y++) for (int x = 0; x < g.size.x; x++) g.set(x, y, z, VOXEL_SOLID << 24 | 1);
@@ -422,8 +475,12 @@ const CharMesh* elytraWingMesh(int side, const TileSet& ts) {
   Cache& c = C();
   auto it = c.misc.find(key);
   if (it != c.misc.end()) return it->second && it->second->ready() ? it->second.get() : nullptr;
-  // a resource pack's elytra picture (textures/entity/elytra.png, the vanilla 10 x 20 x 2 wing at u 22): cut up like a skin box
-  if (PackFS* P = activePack()) if (P->hasTextures()) if (auto b = P->read(P->texRoot + "entity/elytra.png")) {
+  // a resource pack's elytra picture (textures/entity/elytra.png, the vanilla 10 x 20 x 2 wing at u 22): cut up like a skin box.
+  // The local overlay pack (Mod Art (local), tools/port/elytra_art.py: the classic membrane-and-bone wing in the pack's
+  // style) comes first, then the chosen pack's own.
+  std::optional<std::vector<u8>> pic = readBinary(userDir() / "resourcepacks" / "Mod Art (local)" / "assets" / "minecraft" / "textures" / "entity" / "elytra.png");
+  if (!pic) if (PackFS* P = activePack()) if (P->hasTextures()) pic = P->read(P->texRoot + "entity/elytra.png");
+  if (auto& b = pic) {
     int w = 0, h = 0; std::vector<u8> rgba;
     if (loadPngMem(b->data(), b->size(), w, h, rgba) && w >= 64 && w == h * 2) {
       ArmorPiece ap{"elytra", 0, vec3(0), vec3(10, 20, 2), 22, 0, 10, 20, 2, side == 0};
@@ -442,16 +499,33 @@ const CharMesh* elytraWingMesh(int side, const TileSet& ts) {
   int tOut = tileOf(ts, "elytra"), tIn = tileOf(ts, "elytra_in");
   if (tOut < 0) { c.misc[key] = nullptr; return nullptr; }
   if (tIn < 0) tIn = tOut;
-  const int V = CHAR_VPP, W = 9 * V, L = 21 * V, T = 3;   // 3 voxels deep; the caller scales z by 0.8 (1.2 px)
+  const int V = CHAR_VPP, W = 9 * V, L = 21 * V, T = 3;   // 3 voxels deep; the caller scales z (a thin membrane)
+  // A framed wing: narrow at the shoulder, wide through the middle, pointed at the tip. Grid y 0 is the tip.
+  auto membrane = [&](int x, int y) {
+    if (x < 0 || y < 0 || x >= W || y >= L) return false;
+    float u = (x + 0.5f) / W, t = (y + 0.5f) / L;
+    float width = t < 0.20f ? 0.10f + (t / 0.20f) * 0.72f
+                : t < 0.72f ? 0.82f + 0.16f * std::sin((t - 0.20f) / 0.52f * 3.14159265f)
+                : 0.55f + (1.f - t) / 0.28f * 0.28f;
+    float lead = (1.f - width) * 0.42f;
+    return u >= lead && u <= lead + width;
+  };
   VoxelGrid g(ivec3(W, L, T));
-  for (int z = 0; z < T; z++) for (int y = 0; y < L; y++) for (int x = 0; x < W; x++) g.set(x, y, z, VOXEL_SOLID << 24 | 1);
+  for (int z = 0; z < T; z++) for (int y = 0; y < L; y++) for (int x = 0; x < W; x++)
+    if (membrane(x, y)) g.set(x, y, z, VOXEL_SOLID << 24 | 1);
   VoxelFaceColor fc = [&](int x, int y, int z, int face, u32) -> u32 {
     float u = (x + 0.5f) / W; if (side) u = 1 - u;   // how far out from the shoulder, either wing the same picture mirrored
     float row = 1 - (y + 0.5f) / L;
     float s = face == 5 ? 1 - u : face == 4 ? u : 0.5f;
-    float t = face == 2 ? 0.02f : face == 3 ? 0.98f : row;
-    u32 col = tileVoxel(ts, face == 5 ? tIn : tOut, clampv((int)(s * ts.size), 0, ts.size - 1), clampv((int)(t * ts.size), 0, ts.size - 1));
-    return col ? col | 0xFF000000u : voxRGBA(150, 150, 170);
+    float tv = face == 2 ? 0.02f : face == 3 ? 0.98f : row;
+    u32 col = tileVoxel(ts, face == 5 ? tIn : tOut, clampv((int)(s * ts.size), 0, ts.size - 1), clampv((int)(tv * ts.size), 0, ts.size - 1));
+    if (!col) col = voxRGBA(48, 44, 58);
+    bool frame = !membrane(x - 1, y) || !membrane(x + 1, y) || !membrane(x, y - 1) || !membrane(x, y + 1) || y > L - V * 2;
+    if (frame) {
+      int r = (col & 255), gch = (col >> 8) & 255, b = (col >> 16) & 255;
+      col = voxRGBA(std::min(255, r / 3 + 150), std::min(255, gch / 3 + 150), std::min(255, b / 3 + 158));
+    }
+    return col | 0xFF000000u;
   };
   VoxelMeshData md; buildVoxelMesh(g, md, &fc);
   auto cm = std::make_unique<CharMesh>();
@@ -536,6 +610,39 @@ const CharMesh* packWornMesh(const std::string& keyIn, bool straps, const PackOv
   auto cm = std::make_unique<CharMesh>();
   VoxelMeshData md; buildVoxelMesh(P.g, md);
   upload(*cm, md, o);
+  const CharMesh* r = cm->ready() ? cm.get() : nullptr;
+  c.misc[ck] = std::move(cm);
+  return r;
+}
+
+const CharMesh* quiverWornMesh(const std::string& key, int fill, const TileSet& ts) {
+  const bool gold = key == "golden_quiver";
+  fill = gold ? 4 : clampv(fill, 0, 4);
+  std::string ck = strFormat("quiver:%d:%d", gold ? 1 : 0, fill);
+  Cache& c = C();
+  auto it = c.misc.find(ck);
+  if (it != c.misc.end()) return it->second && it->second->ready() ? it->second.get() : nullptr;
+  const float v = 0.25f;   // finer than the body's voxels: the arrows are thin
+  const vec3 o(-2.6f, -0.5f, -2.6f);
+  VoxelPainter P(ivec3(glm::ceil(vec3(5.4f, 18.0f, 5.4f) / v)), o, v);
+  auto box = [&](vec3 lo, vec3 hi, std::array<int, 6> t) {
+    P.box(lo, hi, [&ts, lo, hi, t](const PaintPt& pt) -> u32 {
+      vec3 n = glm::clamp((pt.p - lo) / glm::max(hi - lo, vec3(1e-5f)), vec3(0), vec3(0.999f));
+      float d[6] = {hi.x - pt.p.x, pt.p.x - lo.x, hi.y - pt.p.y, pt.p.y - lo.y, hi.z - pt.p.z, pt.p.z - lo.z};
+      int f = 4; for (int i : {5, 0, 1, 2, 3}) if (d[i] < d[f] - 1e-5f) f = i;
+      float s = f == 0 ? 1 - n.z : f == 1 ? n.z : f == 2 ? n.x : f == 3 ? 1 - n.x : f == 4 ? n.x : 1 - n.x;
+      float tt = f == 2 || f == 3 ? n.z : 1 - n.y;
+      u32 col = t[f] >= 0 ? tileVoxel(ts, t[f], (int)(s * ts.size), (int)(tt * ts.size)) : 0;
+      return col ? col | 0xFF000000u : voxRGBA(110, 70, 40);
+    });
+  };
+  QuiverTiles t{tileOf(ts, gold ? "gold_block" : "pack_body_l"), tileOf(ts, gold ? "pack_brass" : "pack_flap_l"), tileOf(ts, "pack_strap"),
+                tileOf(ts, gold ? "pack_iron" : "pack_brass"), tileOf(ts, "stripped_oak_log_side"), tileOf(ts, "wool"), tileOf(ts, "black_wool")};
+  quiverShape(box, t, fill);
+  auto cm = std::make_unique<CharMesh>();
+  VoxelMeshData md; buildVoxelMesh(P.g, md);
+  upload(*cm, md, o);
+  cm->voxel = v;
   const CharMesh* r = cm->ready() ? cm.get() : nullptr;
   c.misc[ck] = std::move(cm);
   return r;

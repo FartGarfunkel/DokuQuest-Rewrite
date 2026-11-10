@@ -2,6 +2,7 @@
 // put on it (the players' own armour meshes, assets/char_model armorMeshes) and holding a weapon in its right hand.
 // The gear is the block entity's "items" (helmet, chest, legs, boots, hand; sim/build.cpp), "pose" 0..4.
 // Meta & 3 = the way the placer looked; the stand faces back at them.
+#include "core/tool_parts.h"
 #include "render/item_layers.h"
 #include "render/be_scan.h"
 #include "render/tile_box.h"
@@ -104,7 +105,7 @@ public:
         if (g.empty() || !reg().item(g.id)) continue;
         std::string dye;
         if (g.tag.is_object() && g.tag.contains("col") && g.tag["col"].is_string()) { std::string c = g.tag["col"]; dye = c.size() == 7 ? c.substr(1) : ""; }
-        const ArmorSet& A = armorMeshes(g.id, dye, slot, false, false, a.tiles);
+        const ArmorSet& A = armorMeshes(partArmorWornLook(g), dye, slot, false, false, a.tiles);   // (a mixed piece: its cells' materials)
         for (auto& [pn, meshes] : A.byPart) {
           mat4 pm = partMat(pn);
           if (pm[3][3] == 0) continue;

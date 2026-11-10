@@ -12,6 +12,9 @@
 #include "audio/audio.h"
 #include "render/chest_layer.h"
 #include "sim/machines.h"
+#include "sim/trommel.h"
+#include "ui/creative_catalogue.h"
+#include "ui/book.h"
 #include "sim/enchanting.h"
 #include <imgui.h>
 #include <imgui_stdlib.h>
@@ -19,14 +22,14 @@
 namespace dq {
 using namespace ui;
 
-float drawSheet(ImDrawList* dl, ImVec2 p, float w, float is, const Player& pl);
+float drawSheet(ImDrawList* dl, ImVec2 p, float w, float is, const Player& pl, bool paper = false);
 void drawDoll(ImDrawList* dl, ImVec2 a, ImVec2 b, const Player& pl, double t);                              // sheet.cpp: the 3D doll
 void drawGearVis(ImDrawList* dl, ImVec2 a, ImVec2 b, const Player& p, int k, bool focus, bool hover);   // show/hide what you wear
 void toggleGearVis(Player& p, int k);
 
 namespace {
 const std::pair<const char*, const char*> BOOK_CATS[] = {{"all", "All"}, {"blocks", "Blocks"}, {"redstone", "Redstone"}, {"tools", "Tools"}, {"armor", "Armor"}, {"food", "Food"}, {"eggs", "Spawn Eggs"}, {"forged", "Forged"}, {"misc", "Other"}};
-struct BookState { bool open = false; std::string cat = "all"; bool only = false; std::string query; std::string creativeWorld; };
+struct BookState { bool open = false; std::string cat = "all", ccat = "all"; bool only = false; std::string query; std::string creativeWorld; };   // ccat: the creative tab
 BookState& book() { static BookState b; return b; }
 
 enum HK { H_SLOT, H_BOOKR, H_CI, H_CAT, H_BOOKBTN, H_BOOKCLOSE, H_TRASH, H_VIS, H_CUT };
@@ -178,7 +181,7 @@ public:
       case H_SLOT: if (h.g == Grp::SOut) takeStation(a, shift); else sess->slotClick(h.g, h.i, right, shift); break;
       case H_BOOKR: sess->bookPick(h.i, shift, pad); break;
       case H_CI: sess->creativePick(h.s, shift); break;
-      case H_CAT: book().cat = h.s; playClick(); break;
+      case H_CAT: (creative ? book().ccat : book().cat) = h.s; bookScroll = 0; playClick(); break;
       case H_BOOKBTN: case H_BOOKCLOSE: toggleBook(a); break;
       case H_TRASH: sess->trashCursor(); break;
       case H_VIS: toggleGearVis(sess->p, h.i); break;
@@ -259,6 +262,7 @@ public:
 
   void draw(App& a) override {
     if (!sess || a.topScreen() != this) return;
+    if (a.settings.extra.value("bookInventory", true)) { drawBookInv(a); return; }   // (every screen: the inventory, chests, furnaces, stations...)
     Player& p = sess->p;
     float z = Z(), W = (float)a.width, H = (float)a.height, vw = W / z, vh = H / z;
     BookState& B = book();
@@ -266,7 +270,8 @@ public:
     // layout(): fit the panel into the screen
     int bpRows = (int)((sess->groupSize(Grp::Bp) + 8) / 9);
     int contN = o.mode == "container" ? sess->groupSize(Grp::Cont) : 0;
-    float topRows = o.mode == "inventory" ? 4.8f : o.mode == "table" ? 4.6f : o.mode == "furnace" ? 3.2f : o.mode == "machine" || o.mode == "station" ? 2.6f : o.mode == "stonecutter" ? 3.4f : std::ceil((contN ? contN : 27) / 9.f);
+    const bool trommel = o.mode == "furnace" && sess->furnaceKind == "trommel";
+    float topRows = o.mode == "inventory" ? 4.8f : o.mode == "table" ? 4.6f : trommel ? 4.2f : o.mode == "furnace" ? 3.2f : o.mode == "machine" || o.mode == "station" ? 2.6f : o.mode == "stonecutter" ? 3.4f : std::ceil((contN ? contN : 27) / 9.f);
     float rows = topRows + 6.1f + (bpRows ? bpRows + 0.65f : 0) + (o.mode != "inventory" ? 0.55f : 0);
     bool wide = vw > vh * 1.25f && vw > 640;
     float bookW = showBook ? (wide ? 6.4f : 0) : 0;
@@ -292,10 +297,11 @@ public:
     float topH = 0;
     if (o.mode == "inventory") topH = std::max({4 * is, is * 3.4f + 8 * z + is * 0.4f, 5 * is * 1.2f + is * 0.1f, labelH + 2 * is + is * 0.15f + is * 0.75f});
     else if (o.mode == "table") topH = is * 0.4f + 3 * is + is * 0.15f + is * 0.75f;
+    else if (trommel) topH = is * 0.3f + 3 * is + statusH();
     else if (o.mode == "furnace") topH = is * 0.3f + std::max(is * 2 + is * 0.6f + 4 * z, is * 1.3f);
     else if (o.mode == "machine" || o.mode == "station") topH = is * 0.3f + is * 1.3f + statusH();
     else if (o.mode == "stonecutter") topH = is * 0.24f + is * 2.6f + 8 * z;
-    else topH = ((contN + 8) / 9) * is;
+    else topH = o.gearGet ? mountH(labelH) : ((contN + 8) / 9) * is;
     float infoH = std::max(is * 0.45f, textSize(F_BODY, "Ag", 0, is * 0.3f / z / fontPx(F_BODY)).y * 2.6f);
     float innerH = titleH + topH + 2 * z + (bpRows ? labelH + is * 0.15f + bpRows * is + 2 * z : 0) + is * 0.15f + labelH + 2 * z + 3 * is + is * 0.15f + is + 3 * z + infoH;
     float panelW = contentW + pad * 2 + bord * 2, panelH = innerH + pad * 2 + bord * 2;
@@ -313,10 +319,12 @@ public:
     else if (o.mode == "table") {
       float gw = 3 * is + is * 0.2f + is * 0.9f + is * 0.2f + is * 1.3f, gx = c.x + (contentW - gw) * 0.5f, gy = y + is * 0.2f;
       craft(dl, ImVec2(gx, gy), 3);
-    } else if (o.mode == "furnace") drawFurnace(a, dl, ImVec2(c.x, y), contentW);
+    } else if (trommel) drawTrommel(a, dl, ImVec2(c.x, y), contentW);
+    else if (o.mode == "furnace") drawFurnace(a, dl, ImVec2(c.x, y), contentW);
     else if (o.mode == "machine") drawMachine(a, dl, ImVec2(c.x, y), contentW);
     else if (o.mode == "station") drawStation(a, dl, ImVec2(c.x, y), contentW);
     else if (o.mode == "stonecutter") drawCutter(a, dl, ImVec2(c.x, y), contentW);
+    else if (o.gearGet) drawMount(dl, ImVec2(c.x, y), false);
     else grid9(dl, Grp::Cont, 0, contN, ImVec2(c.x, y));
     y += topH + 2 * z;
     if (bpRows) {
@@ -347,6 +355,11 @@ public:
       else { float bw = std::min(is * 9.4f, W * 0.96f), bh = std::min(is * 11, H * 0.94f); bookA = ImVec2((W - bw) * 0.5f, (H - bh) * 0.5f); bookB = bookA + ImVec2(bw, bh); }
       drawBook(a, dl);
     }
+    finish(a);
+  }
+  // the end of a frame (both layouts): the mouse, the stack on the cursor, the tooltip, the menu tabs
+  void finish(App& a) {
+    Player& p = sess->p;
     // ---- input from the mouse ----
     mouse(a);
     prevHits = hits;
@@ -365,12 +378,233 @@ public:
     ImGui::PopStyleVar();
   }
 
-  void craft(ImDrawList* dl, ImVec2 p, int Wd) {
+  // ---- the book inventory (Options > User Interface > Book Inventory) ----------------------------------------
+  // The open book (ui/book.h): the left page is you — armour, the doll and what's shown of your gear, the gear
+  // slots, then your skills and stats; with the recipe book open, the recipe book. The right page is crafting and
+  // your bag; in Creative it's the item catalogue over your bag, its tabs the bookmarks down both edges (the first,
+  // a chest: back to crafting).
+  // a mount's gear screen (sim/mount_gear.h): its saddle and armour slots (named under them), then what it carries, or
+  // what would let it carry things. ink: on the book's parchment. Returns the height drawn (mountH: the same, unseen)
+  float mountH(float labelH) {
+    const int n = sess->groupSize(Grp::Cont);
+    return is + is * 0.5f + (n ? labelH + 2 * Z() + ((n + 8) / 9) * is : labelH);
+  }
+  float drawMount(ImDrawList* dl, ImVec2 p, bool onInk) {
+    const float z = Z();
+    const int ng = sess->groupSize(Grp::Mount), n = sess->groupSize(Grp::Cont);
+    static const char* NAMES[] = {"Saddle", "Armour"};
+    const float sc = is * 0.22f / z / fontPx(F_BODY);
+    for (int k = 0; k < ng; k++) {
+      ImVec2 q(p.x + k * is * 1.3f, p.y);
+      slot(dl, Grp::Mount, k, q, is, k < (int)o.gearHint.size() ? o.gearHint[k].c_str() : nullptr);
+      const char* nm = k < 2 ? NAMES[k] : "";
+      const ImVec2 tz = textSize(F_BODY, nm, 0, sc);
+      text(dl, F_BODY, ImVec2(q.x + (is - tz.x) * 0.5f, q.y + is + 1 * z), onInk ? ink::muted : col::dim, nm, 0, sc);
+    }
+    float y = p.y + is + is * 0.5f;
+    auto label = [&](const char* t) { return onInk ? inkLbl(dl, ImVec2(p.x, y), t) : lbl(dl, ImVec2(p.x, y), t, col::dim); };
+    if (n) { y += label(n >= 27 ? "Chest" : "Saddle Bags") + 2 * z; grid9(dl, Grp::Cont, 0, n, ImVec2(p.x, y)); y += ((n + 8) / 9) * is; }
+    else y += label("Saddle bags or a chest carry things");
+    return y - p.y;
+  }
+  float inkLbl(ImDrawList* dl, ImVec2 p, const char* t, ImU32 c = 0) {
+    float sc = is * 0.32f / Z() / fontPx(F_BODY);
+    text(dl, F_BODY, p, c ? c : ink::muted, t, 0, sc);
+    return textSize(F_BODY, t, 0, sc).y;
+  }
+  void drawBookInv(App& a) {
+    BookState& B = book();
+    const float z = Z(), W = (float)a.width, H = (float)a.height;
+    setBookTheme(a.settings.extra.value("bookDark", false));
+    float k = std::min({(H - 110 * z) / BOOK_H, (W - 170 * z) / BOOK_W, 4.6f * z});
+    k = std::max(1.f, std::floor(k * 4) / 4);
+    is = std::floor(BOOK_TW * k / 9.1f);
+    ImGui::GetBackgroundDrawList()->AddRectFilled(ImVec2(0, 0), ImVec2(W, H), IM_COL32(4, 3, 2, 153));
+    ImGui::SetNextWindowPos(ImVec2(0, 0)); ImGui::SetNextWindowSize(ImVec2(W, H));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::Begin("##inventory", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoBringToFrontOnFocus);
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    hits.clear();
+    const ImVec2 org(std::round((W - BOOK_W * k) * 0.5f), std::round(std::max(44 * z, (H - BOOK_H * k) * 0.5f - 4 * z)));
+    panelA = org; panelB = org + ImVec2(BOOK_W * k, BOOK_H * k);
+    dropShadow(dl, panelA, panelB, 6 * z, 22 * z, 0.55f);
+    // creative: the bookmarks (tabs) — "your inventory", then the catalogue's; half down each edge of the book
+    struct Mark { std::string key, name, icon; };
+    std::vector<Mark> marks;
+    if (creative) { marks.push_back({"inv", "Your inventory & crafting", "chest"}); for (auto& tb : creativeTabs()) marks.push_back({tb.key, tb.name, tb.icon}); }
+    const int nl = ((int)marks.size() + 1) / 2, nr = (int)marks.size() - nl;
+    const float ts = marks.empty() ? 0 : std::min(k * 0.62f, (BOOK_H - 14) * k / std::max(nl, nr) / 30.f);
+    auto markAt = [&](int i, bool& left, bool& first, bool& last) {
+      left = i < nl; int j = left ? i : i - nl, n = left ? nl : nr; first = j == 0; last = j == n - 1;
+      float x = left ? org.x - 32 * ts + 9 * ts : org.x + BOOK_W * k - 9 * ts;
+      return ImVec2(x, org.y + 7 * k + j * 30 * ts);
+    };
+    std::string tip;
+    auto drawMarks = [&](bool selected) {
+      for (int i = 0; i < (int)marks.size(); i++) {
+        const bool sel = B.ccat == marks[i].key || (marks[i].key == "inv" && B.ccat == "inv");
+        if (sel != selected) continue;
+        bool left, first, last; ImVec2 p0 = markAt(i, left, first, last);
+        if (sel) p0.x += left ? -3 * ts : 3 * ts;
+        ImVec2 p1 = p0 + ImVec2(32 * ts, 28 * ts);
+        const bool hot = isHover(p0, p1) || isFocus(H_CAT, Grp::Main, 0, marks[i].key);
+        drawBookTab(dl, p0, ts, i, sel, hot, marks[i].icon, left);
+        if (isFocus(H_CAT, Grp::Main, 0, marks[i].key)) { ImVec2 f0 = left ? p0 - ImVec2(2 * ts, 0) : ImVec2(p0.x + 9 * ts, p0.y), f1 = left ? ImVec2(p1.x - 9 * ts, p1.y) : p1 + ImVec2(2 * ts, 0);
+          ImGui::GetForegroundDrawList()->AddRect(f0 + ImVec2(0, 3 * ts), f1 - ImVec2(0, 3 * ts), col::gold, 3 * z, 0, 2 * z); }
+        if (hot) tip = marks[i].name;
+        // (the part past the page takes the click)
+        ImVec2 h0 = left ? p0 : ImVec2(p0.x + 9 * ts, p0.y), h1 = left ? ImVec2(p1.x - 9 * ts, p1.y) : p1;
+        addHit(H_CAT, Grp::Main, 0, marks[i].key, h0, h1);
+      }
+    };
+    drawMarks(false); drawMarks(true);   // (all under the pages: the ribbons come out from between them)
+    drawBookSpread(dl, org, k);
+    const ImVec2 L = bookTextOrigin(org, k, 0), R = bookTextOrigin(org, k, 1);
+    bookTextTop = L.y;
+    const float pw = BOOK_TW * k, ph = BOOK_TH * k;
+    bookShown = false;
+    if (o.mode == "inventory") {
+      bookPageLeft(a, dl, L, pw, ph);
+      if (creative && B.ccat != "inv") bookPageCreative(a, dl, R, pw, ph);
+      else bookPageCraft(a, dl, R, pw, ph);
+    } else {   // a chest, a furnace, a station...: the block on the left page, you on the right
+      bookPageBlock(a, dl, L, pw, ph);
+      bookPageBag(a, dl, R, pw, ph);
+    }
+    if (!tip.empty()) { ImVec2 m = ImGui::GetIO().MousePos, s = textSize(F_MID, tip.c_str()); ImDrawList* fg = ImGui::GetForegroundDrawList();
+      fg->AddRectFilled(ImVec2(m.x + 14 * z, m.y - 4 * z), ImVec2(m.x + 26 * z + s.x, m.y + 4 * z + s.y), col::rgb(0x1a120c, 235), 3 * z); text(fg, F_MID, ImVec2(m.x + 20 * z, m.y), col::rgb(0xf0e0b8), tip.c_str()); }
+    // the sun / moon under the book's corner
+    { const float s = std::round(18 * z);
+      if (bookThemeButton(a, dl, ImVec2(panelB.x - s, panelB.y + 6 * z), s)) { a.settings.extra["bookDark"] = !bookThemeDark(); a.settings.save(); playClick(); } }
+    finish(a);
+  }
+  void bookPageLeft(App& a, ImDrawList* dl, ImVec2 p, float w, float h) {
+    Player& pl = sess->p; const float z = Z();
+    if (book().open && !creative) {   // the recipe book takes the left page
+      onPage = true; bookA = p; bookB = p + ImVec2(w, h); bookShown = true; drawBook(a, dl); onPage = false;
+      return;
+    }
+    bookShown = false;
+    // a heading: your name and level
+    { float sc = is * 0.5f / z / fontPx(F_H3);
+      text(dl, F_H3, p, ink::head, pl.name.c_str(), 0, sc);
+      std::string lv = "Level " + std::to_string(pl.level) + " \xC2\xB7 " + strFormat("%g", pl.hp / 2) + " / " + strFormat("%g", pl.maxHp / 2) + " hearts";
+      float s2 = is * 0.28f / z / fontPx(F_BODY); ImVec2 ls = textSize(F_BODY, lv.c_str(), 0, s2);
+      text(dl, F_BODY, ImVec2(p.x + w - ls.x, p.y + is * 0.12f), ink::muted, lv.c_str(), 0, s2);
+      float hy = p.y + textSize(F_H3, "Ag", 0, sc).y + 2 * z;
+      dl->AddRectFilled(ImVec2(p.x, hy), ImVec2(p.x + w, hy + std::max(1.f, z)), ink::faint);
+      p.y = hy + is * 0.15f; }
+    // armour, the doll, what's shown, the gear
+    static const char* PH[] = {"iron_helmet", "iron_chestplate", "iron_leggings", "iron_boots"};
+    for (int i = 0; i < 4; i++) slot(dl, Grp::Armor, i, ImVec2(p.x, p.y + i * is), is, PH[i]);
+    const ImVec2 d0(p.x + is * 1.15f, p.y), d1 = d0 + ImVec2(is * 2.5f, is * 3.4f);
+    dl->AddRectFilled(d0, d1, IM_COL32(20, 14, 10, bookThemeDark() ? 90 : 40), 4 * z);
+    drawDoll(dl, d0, d1, pl, a.time);
+    {   // show / hide: helmet, chestplate, leggings, boots, backpack, cape (they still protect you)
+      const float bw = (is * 3.65f) / 7, bh = is * 0.52f;
+      for (int k2 = 0; k2 < 7; k2++) {
+        ImVec2 b0(p.x + k2 * bw, p.y + 4 * is + is * 0.1f), b1 = b0 + ImVec2(bw - 2 * z, bh);
+        drawGearVis(dl, b0, b1, pl, k2, isFocus(H_VIS, Grp::Main, k2), isHover(b0, b1));
+        addHit(H_VIS, Grp::Main, k2, "", b0, b1);
+      }
+    }
+    struct G { Grp g; const char* ph; const char* cap; };
+    const G gear[] = {{Grp::Off, nullptr, "Off hand"}, {Grp::Hook, "lantern", "Hook"}, {Grp::Back, "leather_backpack", "Pack"}, {Grp::Charm, "vigor_charm", "Charm"}, {Grp::Cape, "red_cape", "Cape"}, {Grp::Quiver, "quiver", "Quiver"}};
+    const float gx = d1.x + is * 0.3f, cs = is * 0.22f / z / fontPx(F_BODY);
+    for (int i = 0; i < 6; i++) {
+      const float x = gx + (i % 2) * is * 1.25f, y = p.y + (i / 2) * is * 1.42f;
+      slot(dl, gear[i].g, 0, ImVec2(x, y), is, gear[i].ph);
+      ImVec2 cz = textSize(F_BODY, gear[i].cap, 0, cs);
+      text(dl, F_BODY, ImVec2(x + (is - cz.x) * 0.5f, y + is + 1 * z), ink::muted, gear[i].cap, 0, cs);
+    }
+    // your skills and stats
+    float y = p.y + 4 * is + is * 0.75f;
+    y += inkLbl(dl, ImVec2(p.x, y), "Skills & stats", ink::head) + 2 * z;
+    drawSheet(dl, ImVec2(p.x, y), w, is * 1.25f, pl, true);
+  }
+  void bookPageCraft(App& a, ImDrawList* dl, ImVec2 p, float w, float h) {
+    (void)a; (void)h;
+    const float z = Z();
+    float y = p.y;
+    const float lblH = inkLbl(dl, ImVec2(p.x, y), "Crafting", ink::head);
+    y += lblH + 3 * z;
+    const float craftW = 2 * is + is * 0.2f + is * 0.9f + is * 0.2f + is * 1.3f;
+    const int bpRows = (sess->groupSize(Grp::Bp) + 8) / 9, qn = sess->groupSize(Grp::Qv);
+    // the quiver's four slots stand 2x2 left of the crafting grid (they add no height); and if the pack is so big the
+    // page would still run over, the recipe book's button moves up beside the result
+    float cx = p.x + (w - craftW) * 0.5f;
+    if (qn) {
+      cx = std::max(cx, p.x + 2 * is + is * 0.45f);
+      for (int k = 0; k < qn; k++) slot(dl, Grp::Qv, k, ImVec2(p.x + (k % 2) * is, y + (k / 2) * is), is);
+      const float sc = is * 0.22f / z / fontPx(F_BODY); const ImVec2 cz = textSize(F_BODY, "Quiver", 0, sc);
+      text(dl, F_BODY, ImVec2(p.x + (2 * is - cz.x) * 0.5f, y + 2 * is + 1 * z), ink::muted, "Quiver", 0, sc);
+    }
+    const float below = (lblH + 2 * z) * (bpRows ? 2 : 1) + bpRows * is + is * 0.2f + 4 * is + is * 0.15f;
+    const bool tight = y + 2 * is + is * 1.15f + below > p.y + h && cx + craftW + is * 1.05f <= p.x + w;
+    craft(dl, ImVec2(cx, y), 2, tight ? ImVec2(cx + craftW + is * 0.15f, y + is * 0.15f) : ImVec2(-1, -1));
+    y += tight ? 2 * is + is * (qn ? 0.38f : 0.25f) : 2 * is + is * 0.15f + is * 0.75f + is * 0.25f;
+    if (bpRows) { y += inkLbl(dl, ImVec2(p.x, y), "Backpack") + 2 * z; grid9(dl, Grp::Bp, 0, sess->groupSize(Grp::Bp), ImVec2(p.x, y)); y += bpRows * is + is * 0.2f; }
+    y += inkLbl(dl, ImVec2(p.x, y), "Inventory") + 2 * z;
+    grid9(dl, Grp::Main, 9, 36, ImVec2(p.x, y)); y += 3 * is + is * 0.15f;
+    grid9(dl, Grp::Main, 0, 9, ImVec2(p.x, y));
+  }
+  // the left page for a block's screen: its name, then its slots (a chest's grid, the furnace, the trommel, a machine,
+  // a station, the stonecutter or forge, or the crafting table's 3x3 with the recipe book under it when it's open)
+  void bookPageBlock(App& a, ImDrawList* dl, ImVec2 p, float w, float h) {
+    const float z = Z();
+    std::string title = sess->title.empty() ? std::string("Crafting") : sess->title;
+    { float sc = is * 0.5f / z / fontPx(F_H3);
+      text(dl, F_H3, p, ink::head, title.c_str(), 0, sc);
+      float hy = p.y + textSize(F_H3, "Ag", 0, sc).y + 2 * z;
+      dl->AddRectFilled(ImVec2(p.x, hy), ImVec2(p.x + w, hy + std::max(1.f, z)), ink::faint);
+      p.y = hy + is * 0.25f; }
+    paper = true;
+    const bool trommel = o.mode == "furnace" && sess->furnaceKind == "trommel";
+    if (o.mode == "table") {
+      const float gw = 3 * is + is * 0.2f + is * 0.9f + is * 0.2f + is * 1.3f;
+      craft(dl, ImVec2(p.x + (w - gw) * 0.5f, p.y), 3);
+      const float y = p.y + 3 * is + is * 0.15f + is * 0.75f + is * 0.3f;
+      if (book().open) { onPage = true; bookA = ImVec2(p.x, y); bookB = ImVec2(p.x + w, p.y + h - (p.y - bookTextTop)); bookShown = true; drawBook(a, dl); onPage = false; }
+    } else if (trommel) drawTrommel(a, dl, p, w);
+    else if (o.mode == "furnace") drawFurnace(a, dl, p, w);
+    else if (o.mode == "machine") drawMachine(a, dl, p, w);
+    else if (o.mode == "station") drawStation(a, dl, p, w);
+    else if (o.mode == "stonecutter") drawCutter(a, dl, p, w);
+    else if (o.gearGet) drawMount(dl, p, true);
+    else grid9(dl, Grp::Cont, 0, sess->groupSize(Grp::Cont), p);
+    paper = false;
+  }
+  // the right page for a block's screen: your backpack, bag and hotbar
+  void bookPageBag(App& a, ImDrawList* dl, ImVec2 p, float w, float h) {
+    (void)a; (void)h; (void)w;
+    const float z = Z();
+    float y = p.y;
+    const int bpRows = (sess->groupSize(Grp::Bp) + 8) / 9;
+    if (bpRows) { y += inkLbl(dl, ImVec2(p.x, y), "Backpack") + 2 * z; grid9(dl, Grp::Bp, 0, sess->groupSize(Grp::Bp), ImVec2(p.x, y)); y += bpRows * is + is * 0.3f; }
+    if (const int qn = sess->groupSize(Grp::Qv)) { y += inkLbl(dl, ImVec2(p.x, y), "Quiver") + 2 * z; grid9(dl, Grp::Qv, 0, qn, ImVec2(p.x, y)); y += is + is * 0.3f; }   // (this page has room: no crafting grid)
+    y += inkLbl(dl, ImVec2(p.x, y), "Inventory") + 2 * z;
+    grid9(dl, Grp::Main, 9, 36, ImVec2(p.x, y)); y += 3 * is + is * 0.15f;
+    grid9(dl, Grp::Main, 0, 9, ImVec2(p.x, y));
+  }
+  void bookPageCreative(App& a, ImDrawList* dl, ImVec2 p, float w, float h) {
+    const float z = Z();
+    const float labelH = textSize(F_BODY, "Ag", 0, is * 0.32f / z / fontPx(F_BODY)).y;
+    const float invH = labelH + 2 * z + 3 * is + is * 0.15f + is;
+    onPage = true; bookA = p; bookB = ImVec2(p.x + w, p.y + h - invH - is * 0.25f); bookShown = true;
+    drawBook(a, dl);
+    onPage = false;
+    float y = bookB.y + is * 0.25f;
+    y += inkLbl(dl, ImVec2(p.x, y), "Inventory") + 2 * z;
+    grid9(dl, Grp::Main, 9, 36, ImVec2(p.x, y)); y += 3 * is + is * 0.15f;
+    grid9(dl, Grp::Main, 0, 9, ImVec2(p.x, y));
+  }
+
+  void craft(ImDrawList* dl, ImVec2 p, int Wd, ImVec2 bookAt = ImVec2(-1, -1)) {   // bookAt: the recipe book's button elsewhere (default: under the grid)
     for (int i = 0; i < Wd * Wd; i++) slot(dl, Grp::Grid, i, ImVec2(p.x + (i % Wd) * is, p.y + (i / Wd) * is), is);
     float gx = p.x + Wd * is + is * 0.2f, mid = p.y + Wd * is * 0.5f;
     arrow(dl, ImVec2(gx, mid - is * 0.3f));
     slot(dl, Grp::Out, 0, ImVec2(gx + is * 0.9f + is * 0.2f, mid - is * 0.65f), is * 1.3f, nullptr, true);
-    bookButton(dl, ImVec2(p.x, p.y + Wd * is + is * 0.15f));
+    bookButton(dl, bookAt.x >= 0 ? bookAt : ImVec2(p.x, p.y + Wd * is + is * 0.15f));
   }
 
   void drawInvTop(App& a, ImDrawList* dl, ImVec2 p, float w, float h, float labelH) {
@@ -385,9 +619,9 @@ public:
     float sc = is * 0.26f / z / fontPx(F_BODY); ImVec2 ss = textSize(F_BODY, st.c_str(), 0, sc);
     text(dl, F_BODY, ImVec2(x + is - ss.x * 0.5f, d1.y + 2 * z), col::dim, st.c_str(), 0, sc);
     {   // .eqvis-row: show or hide your helmet, chestplate, leggings, boots, backpack and cape (they still protect you)
-      float ew = is * 1.9f, bw = ew / 3, bh = is * 0.56f, ex = x + is - ew * 0.5f, ey = d1.y + 4 * z + ss.y;
-      for (int k = 0; k < 6; k++) {
-        ImVec2 b0(ex + (k % 3) * bw, ey + (k / 3) * (bh + 2 * z)), b1 = b0 + ImVec2(bw - 2 * z, bh);
+      float ew = is * 1.9f, bw = ew / 4, bh = is * 0.5f, ex = x + is - ew * 0.5f, ey = d1.y + 4 * z + ss.y;
+      for (int k = 0; k < 7; k++) {
+        ImVec2 b0(ex + (k % 4) * bw, ey + (k / 4) * (bh + 2 * z)), b1 = b0 + ImVec2(bw - 2 * z, bh);
         drawGearVis(dl, b0, b1, pl, k, isFocus(H_VIS, Grp::Main, k), isHover(b0, b1));
         addHit(H_VIS, Grp::Main, k, "", b0, b1);
       }
@@ -411,6 +645,13 @@ public:
     float cx = p.x + w - craftW;
     lbl(dl, ImVec2(cx, p.y), "Crafting", col::ink2);
     craft(dl, ImVec2(cx, p.y + labelH + 2 * z), 2);
+    // the quiver at the foot of it all, under the sheet: its slot, then its four slots of arrows once one is worn
+    {
+      const float qy = p.y + h - is - labelH - 2 * z;
+      lbl(dl, ImVec2(x, qy), "Quiver", col::ink2);
+      slot(dl, Grp::Quiver, 0, ImVec2(x, qy + labelH + 2 * z), is, "quiver");
+      for (int k = 0, n = sess->groupSize(Grp::Qv); k < n; k++) slot(dl, Grp::Qv, k, ImVec2(x + is * 1.2f + k * is, qy + labelH + 2 * z), is);
+    }
   }
 
   void drawFurnace(App& a, ImDrawList* dl, ImVec2 p, float w) {
@@ -439,12 +680,63 @@ public:
     slot(dl, Grp::Furn, 2, ImVec2(x, mid - is * 0.65f), is * 1.3f, nullptr, true);
   }
 
+  // BTA's trommel screen: the fuel under its flame on the left, the four inputs round the drum (it turns while it
+  // sifts), and what the next input can give with its chances on the right; the finds pop out of the block's side
+  void drawTrommel(App& a, ImDrawList* dl, ImVec2 p, float w) {
+    float z = Z();
+    json* e = o.hasPos ? a.session->world().blockEntity(o.pos.x, o.pos.y, o.pos.z) : nullptr;
+    const double burn = e ? e->value("burn", 0.0) : 0, burnMax = e ? e->value("burnMax", 0.0) : 0, cook = e ? e->value("cook", 0.0) : 0;
+    const int next = e ? e->value("next", 0) % 4 : 0;
+    const float gap = is * 0.45f, yw = is * 3.2f, totalW = is + gap + 3 * is + gap + yw;
+    float x = p.x + (w - totalW) * 0.5f, y = p.y + is * 0.15f;
+    // fuel and its flame
+    ImVec2 f0(x + is * 0.2f, y + is * 0.25f); float fs = is * 0.6f;
+    auto P = [&](float u, float v) { return ImVec2(f0.x + u * fs, f0.y + v * fs); };
+    ImVec2 poly[] = {P(0.5f, 0), P(0.85f, 0.45f), P(0.8f, 0.85f), P(0.5f, 1), P(0.2f, 0.85f), P(0.15f, 0.45f)};
+    dl->AddConvexPolyFilled(poly, 6, col::rgb(0x3a2f25));
+    float fl = burn > 0 && burnMax > 0 ? (float)std::max(0.04, burn / burnMax) : 0;
+    if (fl > 0) { dl->PushClipRect(ImVec2(f0.x, f0.y + fs * (1 - fl)), ImVec2(f0.x + fs, f0.y + fs), true); dl->AddConvexPolyFilled(poly, 6, col::rgb(0xff9a3c)); dl->PopClipRect(); }
+    slot(dl, Grp::Furn, 4, ImVec2(x, y + is), is, "coal");
+    // the diamond of inputs round the drum
+    const float cx = x + is + gap;
+    const ImVec2 at[4] = {ImVec2(cx + is, y), ImVec2(cx, y + is), ImVec2(cx + 2 * is, y + is), ImVec2(cx + is, y + 2 * is)};
+    static const char* PH[4] = {"dirt", "gravel", "sand", "clay"};
+    for (int i = 0; i < 4; i++) slot(dl, Grp::Furn, i, at[i], is, PH[i]);
+    {
+      ImVec2 c(cx + is * 1.5f, y + is * 1.5f); float r = is * 0.36f, ang = burn > 0 ? (float)a.time * 3.f : 0.f;
+      dl->AddCircleFilled(c, r, col::rgb(0x2a2219)); dl->AddCircle(c, r, col::rgb(0x8a8a90), 0, 2 * z);
+      for (int k = 0; k < 6; k++) { float an = ang + k * 1.0471976f; dl->AddLine(c, ImVec2(c.x + std::cos(an) * r, c.y + std::sin(an) * r), col::rgb(0x6a6a70), 1.5f * z); }
+      if (burn > 0) dl->PathArcTo(c, r + 3 * z, -1.5708f, -1.5708f + 6.2832f * (float)std::min(1.0, cook / TROMMEL_POP), 24), dl->PathStroke(col::gold, 0, 2 * z);
+    }
+    // what the next input can give
+    const ItemStack* in = sess->at(Grp::Furn, next);
+    std::string key = in && !in->empty() ? in->id : "";
+    for (int k = 0; k < 4 && key.empty(); k++) if (const ItemStack* s2 = sess->at(Grp::Furn, k); s2 && !s2->empty()) key = s2->id;
+    float yx = cx + 3 * is + gap, yy = y, ic = is * 0.42f, sc = is * 0.26f / z / fontPx(F_BODY);
+    if (!key.empty()) {
+      auto ys = trommelYields(key);
+      for (size_t i = 0; i < ys.size() && i < 6; i++) {
+        drawIcon(dl, ys[i].second, ImVec2(yx, yy), ic);
+        std::string pc = ys[i].first >= 0.1f ? std::to_string((int)std::lround(ys[i].first * 100)) + "%" : strFormat("%.1f%%", ys[i].first * 100);
+        const ItemDef* d = reg().item(ys[i].second);
+        std::string t = pc + "  " + (d ? d->name : ys[i].second);
+        text(dl, F_BODY, ImVec2(yx + ic + 4 * z, yy + (ic - textSize(F_BODY, "A", 0, sc).y) * 0.5f), paper ? ink::text : col::ink2, ellipsize(F_BODY, t, yw - ic - 4 * z).c_str(), 0, sc);
+        yy += ic + 2 * z;
+      }
+    }
+    std::string st = burn > 0 ? "Sifting \xE2\x80\x94 what it finds pops out of its left side (into a chest there, if there is one)"
+                   : key.empty() ? "Put in dirt, gravel, sand, clay, mud, soul sand, brimsand or sulphur, and fuel"
+                   : "Needs fuel: anything that burns in a furnace (it lasts twice as long here)";
+    status(dl, ImVec2(p.x, y + 3 * is + is * 0.15f), w, st, burn > 0 ? col::gold : col::dim);
+  }
+
   // .mach-status: one or two lines of dim text under the machine / station row
   float statusH() const { return textSize(F_BODY, "Ag", 0, is * 0.3f / Z() / fontPx(F_BODY)).y * 2.4f; }
   void status(ImDrawList* dl, ImVec2 p, float w, const std::string& t, ImU32 c = col::dim) {
     float sc = is * 0.3f / Z() / fontPx(F_BODY);
     ImVec2 ts = textSize(F_BODY, t.c_str(), w, sc);
     float x = p.x + std::max(0.f, (w - ts.x) * 0.5f);
+    if (paper) { text(dl, F_BODY, ImVec2(x, p.y), c == col::gold ? ink::key : c == col::dim ? ink::muted : c, t.c_str(), w, sc); return; }   // in the book's ink
     text(dl, F_BODY, ImVec2(x, p.y) + ImVec2(1, 1) * Z(), col::black, t.c_str(), w, sc);
     text(dl, F_BODY, ImVec2(x, p.y), c, t.c_str(), w, sc);
   }
@@ -475,7 +767,7 @@ public:
     slot(dl, Grp::Sta, 0, ImVec2(x, mid - is * 0.5f), is, ph.first);
     x += is + is * 0.4f;
     float sc = is * 0.6f / z / fontPx(F_DISP); ImVec2 ts = textSize(F_DISP, "+", 0, sc);
-    text(dl, F_DISP, ImVec2(x + (plusW - ts.x) * 0.5f, mid - ts.y * 0.5f), col::dim, "+", 0, sc);
+    text(dl, F_DISP, ImVec2(x + (plusW - ts.x) * 0.5f, mid - ts.y * 0.5f), paper ? ink::muted : col::dim, "+", 0, sc);
     x += plusW + is * 0.4f;
     slot(dl, Grp::Sta, 1, ImVec2(x, mid - is * 0.5f), is, ph.second);
     x += is + is * 0.4f;
@@ -495,8 +787,8 @@ public:
     arrow(dl, ImVec2(x, mid - is * 0.3f));
     x += is * 0.9f + is * 0.3f;
     ImVec2 l0(x, y), l1(x + listW, y + listH);
-    dl->AddRectFilled(l0, l1, IM_COL32(0, 0, 0, 89));
-    bevel(dl, l0, l1, col::slLo, col::slHi, 2 * z);
+    dl->AddRectFilled(l0, l1, paper ? IM_COL32(26, 20, 15, 238) : IM_COL32(0, 0, 0, 89), paper ? 4 * z : 0);   // (on the paper: a dark card, as the recipe book)
+    if (!paper) bevel(dl, l0, l1, col::slLo, col::slHi, 2 * z);
     const auto& opts = sess->cutOpts;
     if (opts.empty()) { text(dl, F_SMALL, l0 + ImVec2(6, 6) * z, col::dim, o.kind == "forge" ? "Put in a material (flint, an ingot, a gem, obsidian...) to forge a tool head (a pickaxe or axe head takes 3, a sword or hoe head 2, a shovel head 1). A head and a haft (a stick, bone, cinder rod or steel ingot) make the tool." : "Put a stone block in to see what it cuts into.", listW - 12 * z); return; }
     int rows = ((int)opts.size() + 4) / 5;
@@ -581,8 +873,10 @@ public:
   // ---- recipe book / creative catalogue ------------------------------------------------------------------
   void drawBook(App& a, ImDrawList* dl) {
     BookState& B = book(); float z = Z();
-    panelBg(dl, bookA, bookB);
-    float pad = is * 0.22f + 3 * z;
+    // on a page of the book inventory: a dark card on the paper; the creative tabs are the book's bookmarks there
+    if (onPage) dl->AddRectFilled(bookA, bookB, IM_COL32(26, 20, 15, 238), 6 * z), dl->AddRect(bookA, bookB, col::rgb(0x6b5a3a), 6 * z, 0, std::max(1.f, z));
+    else panelBg(dl, bookA, bookB);
+    float pad = onPage ? is * 0.15f : is * 0.22f + 3 * z;
     ImVec2 c = bookA + ImVec2(pad, pad); float w = bookB.x - bookA.x - pad * 2;
     // head: search · Craftable · ✕
     float hh = is * 0.7f;
@@ -603,6 +897,16 @@ public:
     }
     ImGui::SetWindowFontScale(1);
     ImGui::PopFont();
+    if (onPage && creative) {   // the bin where the close button would be
+      ImVec2 t0(c.x + w - hh, c.y), t1 = t0 + ImVec2(hh, hh);
+      bool hot = isHover(t0, t1) || isFocus(H_TRASH, Grp::Main, 0);
+      dl->AddRectFilled(t0, t1, hot ? col::rgb(0x8a3333) : col::rgb(0x5a2626)); dl->AddRect(t0, t1, col::rgb(0x2a0f0f), 0, 0, 2 * z);
+      float u = hh / 10; ImVec2 q0 = t0 + ImVec2(3 * u, 3 * u);
+      dl->AddRectFilled(q0 + ImVec2(-0.6f * u, 0), q0 + ImVec2(4.6f * u, 0.8f * u), col::white); dl->AddRectFilled(q0 + ImVec2(1.4f * u, -0.8f * u), q0 + ImVec2(2.6f * u, 0), col::white);
+      dl->AddRectFilled(q0 + ImVec2(0, 1.2f * u), q0 + ImVec2(4 * u, 5 * u), col::white);
+      if (isFocus(H_TRASH, Grp::Main, 0)) dl->AddRect(t0 - ImVec2(1, 1) * z, t1 + ImVec2(1, 1) * z, col::gold, 0, 0, 3 * z);
+      addHit(H_TRASH, Grp::Main, 0, "", t0, t1);
+    } else
     { ImVec2 x0(c.x + w - hh, c.y), x1 = x0 + ImVec2(hh, hh);
       dl->AddRectFilled(x0, x1, col::rgb(0x3a3027)); bevel(dl, x0, x1, col::pnHi, col::pnLo, 2 * z);
       float u = hh * 0.3f; ImVec2 m = (x0 + x1) * 0.5f;
@@ -613,7 +917,34 @@ public:
     // tabs
     float tsc = is * 0.28f / z / fontPx(F_BODY), tx = c.x;
     float tabH = textSize(F_BODY, "Ag", 0, tsc).y + 8 * z;
+    if (creative && onPage) {   // (the bookmarks are the tabs): the tab's name
+      std::string nm; for (auto& tb : creativeTabs()) if (B.ccat == tb.key) nm = tb.name;
+      if (!B.query.empty()) nm = "Searching everything";
+      text(dl, F_BODY, ImVec2(c.x, y), col::gold, nm.c_str(), 0, tsc); y += textSize(F_BODY, "Ag", 0, tsc).y + 1 * z;
+      tabH = -4 * z;
+    } else if (creative) {   // the creative tabs: an icon each (ui/creative_catalogue.cpp), the name under the pointer
+      const auto& T = creativeTabs();
+      const float ts = std::floor(std::min(is * 0.78f, (w + 2 * z) / 8.f - 2 * z));
+      for (auto& tb : T) {
+        if (tx + ts > c.x + w + 1) { tx = c.x; y += ts + 2 * z; }
+        ImVec2 t0(tx, y), t1 = t0 + ImVec2(ts, ts);
+        bool on = B.ccat == tb.key, hot = isHover(t0, t1);
+        dl->AddRectFilled(t0, t1, on ? col::rgb(0x5a4632) : hot ? col::rgb(0x3a2e24) : col::rgb(0x241c16));
+        bevel(dl, t0, t1, on ? col::gold : col::pnHi, col::pnLo, 2 * z);
+        drawIcon(dl, tb.icon, t0 + ImVec2(ts * 0.14f, ts * 0.14f), ts * 0.72f, on || hot ? 1.f : 0.7f);
+        if (isFocus(H_CAT, Grp::Main, 0, tb.key)) dl->AddRect(t0 - ImVec2(2, 2) * z, t1 + ImVec2(2, 2) * z, col::gold, 0, 0, 3 * z);
+        if (hot || isFocus(H_CAT, Grp::Main, 0, tb.key)) catTip = tb.name;
+        addHit(H_CAT, Grp::Main, 0, tb.key, t0, t1);
+        tx += ts + 2 * z;
+      }
+      y += ts + 4 * z;
+      { std::string nm; for (auto& tb : T) if (B.ccat == tb.key) nm = tb.name;
+        text(dl, F_BODY, ImVec2(c.x, y), col::gold, (catTip.empty() ? nm : catTip).c_str(), 0, tsc); y += textSize(F_BODY, "Ag", 0, tsc).y + 3 * z; }
+      catTip.clear();
+      tabH = -4 * z;   // (the tabs are done)
+    }
     for (auto& [k, l] : BOOK_CATS) {
+      if (creative) break;
       if (!creative && std::string(k) == "eggs") continue;   // spawn eggs are creative-only: no recipe tab for them
       float tw = textSize(F_BODY, l, 0, tsc).x + 12 * z + 4 * z;
       if (tx + tw > c.x + w) { tx = c.x; y += tabH + 2 * z; }
@@ -628,7 +959,7 @@ public:
     }
     y += tabH + 4 * z;
     // list (scrolls) and detail
-    float detailH = is * 1.6f;
+    float detailH = onPage && creative ? -2 * z : is * 1.6f;
     ImVec2 l0(c.x, y), l1(c.x + w, bookB.y - pad - detailH - 4 * z);
     int perRow = std::max(1, (int)(w / is));
     std::string q = lower(B.query);
@@ -636,11 +967,11 @@ public:
     struct E { HK k; int idx; std::string key; ItemStack st; int look; };   // look: 0 dim, 1 ok, 2 table, 3 catalogue
     std::vector<E> list;
     if (creative) {
-      for (auto& d : reg().items) {
-        if (d.has("hidden") || d.key.empty()) continue;
-        if (B.cat != "all" && creativeCat(d) != B.cat) continue;
-        if (!q.empty() && lower(d.name).find(q) == std::string::npos) continue;
-        list.push_back({H_CI, 0, d.key, ItemStack(d.key, 1), 3});
+      // a search looks through everything; otherwise the tab's items, families together
+      for (auto& key : creativeItems(q.empty() && B.ccat != "inv" ? B.ccat : "all")) {
+        const ItemDef* d = reg().item(key); if (!d) continue;
+        if (!q.empty() && lower(d->name).find(q) == std::string::npos) continue;
+        list.push_back({H_CI, 0, key, ItemStack(key, 1), 3});
       }
     } else {
       const auto& R = reg().recipes;
@@ -685,7 +1016,8 @@ public:
     // detail
     ImVec2 d0(c.x, l1.y + 4 * z);
     float dsc = is * 0.28f / z / fontPx(F_BODY);
-    if (creative) text(dl, F_BODY, d0, col::dim, "Creative: click an item for a full stack (shift puts it straight in your bag). Drop things outside the panel to get rid of them.", w, dsc);
+    if (creative && onPage) {}
+    else if (creative) text(dl, F_BODY, d0, col::dim, "Creative: click an item for a full stack (shift puts it straight in your bag). Drop things outside the panel to get rid of them.", w, dsc);
     else if (sess->bookSel >= 0 && sess->bookSel < (int)reg().recipes.size()) {
       const Recipe& r = reg().recipes[sess->bookSel]; const ItemDef* d = reg().item(r.out);
       std::string rar = d ? d->str("rarity") : "";
@@ -707,6 +1039,10 @@ public:
     } else text(dl, F_BODY, d0, col::dim, "Pick a recipe to see what it needs. Ones you can make now are lit.", w, dsc);
   }
   float bookScroll = 0;
+  bool onPage = false;   // drawBook is drawing onto a page of the book inventory
+  float bookTextTop = 0; // the pages' writing starts here (this frame)
+  bool paper = false;    // a block's screen is being drawn onto a page: its words in the book's ink
+  std::string catTip;
 
   // ---- the mouse (invui.js pointer events) ----------------------------------------------------------------
   void mouse(App& a) {

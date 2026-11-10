@@ -5,6 +5,7 @@
 #include "net/server_host.h"
 #include "net/lan.h"
 #include "sim/creature.h"
+#include "sim/mount_gear.h"
 #include "sim/controller.h"
 #include "sim/vehicles.h"
 #include "net/net_internal.h"
@@ -115,8 +116,14 @@ bool ServerHost::start(std::string* err) {
       Peer* p = peerByName(a[0].get<std::string>());
       if (!p || !p->ready || !p->enet) return true;   // the host's own player: its own screens open here
       json args = a;   // a container on an entity (saddle bags, a cart's or boat's chest): what's in it goes along
-      if (name == "screenOpen" && args.size() > 2 && args[2].is_object() && args[2].contains("entity"))
+      if (name == "screenOpen" && args.size() > 2 && args[2].is_object() && args[2].contains("entity")) {
         if (json* it = entityContainer(level.entity(args[2].value("entity", 0u)))) args[2]["items"] = *it;
+        if (args[2].value("mount", false))   // a mount's gear screen: its saddle and armour slots too (sim/mount_gear.h)
+          if (auto* c = dynamic_cast<Creature*>(level.entity(args[2].value("entity", 0u)))) {
+            json g = json::array(); for (auto& s : mountGear(*c)) g.push_back(s.toJson());
+            args[2]["gear"] = g;
+          }
+      }
       send(p->enet, UIEV, {{"e", name}, {"a", args}});
       return false;
     }, 50));
@@ -523,6 +530,15 @@ void ServerHost::receive(Peer& p, u8 ty, json& m) {
       if ((m.value("n", "") == "use" || m.value("n", "") == "useEnt") && p.pl && m.contains("a") && m["a"].is_object()) {
         json a = m["a"]; if (m.value("n", "") == "useEnt") a["k"] = "ent";
         runGuestUse(level, *p.pl, a);
+        break;
+      }
+      if (m.value("n", "") == "entGear" && p.pl && m.contains("a") && m["a"].is_object()) {   // a guest changed their mount's gear
+        const json& a = m["a"];
+        auto* c = dynamic_cast<Creature*>(level.entity(a.value("id", 0u)));
+        if (c && c->alive() && c->owner == p.pl->name && c->realm == p.pl->realm && glm::distance(c->pos, p.pl->pos) < 8 && a.contains("gear") && a["gear"].is_array()) {
+          std::vector<ItemStack> g; for (auto& x : a["gear"]) g.push_back(ItemStack::fromJson(x));
+          setMountGear(level, *c, g);
+        }
         break;
       }
       if (m.value("n", "") == "entInv" && p.pl && m.contains("a") && m["a"].is_object()) {   // a guest changed a container on an entity

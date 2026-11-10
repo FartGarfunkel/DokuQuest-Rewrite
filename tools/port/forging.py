@@ -27,6 +27,10 @@ MATS = {
     'mithril': ('mithril_ingot', 'Mithril', (168, 222, 244), None),
     'obsidian': ('obsidian', 'Obsidian', (52, 36, 80), (4, 5, 6, 3000, None)),
     'emberglass': ('emberglass_cluster', 'Emberglass', (240, 96, 40), (3, 9.5, 5, 320, 'fire')),
+    # the Aether's and Better End's (tools/port/new_materials.py made their tool sets)
+    'zanite': ('zanite_gemstone', 'Zanite', (170, 118, 236), None),
+    'gravitite': ('gravitite_plate', 'Gravitite', (232, 120, 214), None),
+    'thallasium': ('thallasium_ingot', 'Thallasium', (92, 204, 194), None),
 }
 # haft: (item, adjective, colour or None = the stick's own, speed x, durability x, element)
 HAFTS = {

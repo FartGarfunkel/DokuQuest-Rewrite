@@ -171,7 +171,7 @@ public:
       if (age > (rocket ? 8 : 6)) { removed = true; return; }
       auto burst = [&]() {
         removed = true; ExplodeOpts o; o.source = data.value("owner", 0u); o.noBlocks = !rocket;
-        explode(lv, realm, pos, rocket ? 2.6f : 1.6f, o);
+        explode(lv, realm, pos, rocket ? 2.6f : data.value("power", 1.6f), o);   // (an explosive charge bursts bigger)
         if (owner && !owner->removed) {   // the blast flings whoever fired it too (rocket jumping), without the harm
           vec3 d = owner->pos + vec3(0, 0.9f, 0) - pos; float l = glm::length(d);
           if (l < 4.5f) knockback(*owner, d / std::max(0.3f, l) * (rocket ? 19.f : 15.f) * (1 - l / 4.5f));
@@ -187,28 +187,42 @@ public:
       if (frand() < dt * (rocket ? 40 : 14)) lv.fx->particles("smoke", pos - vel * 0.03f, 1);
       return;
     }
-    if (kind == "wither_skull") {   // the Wither's skull: flies straight, bursts on what it hits and withers whoever it catches
-      if (age > (data.value("deflected", false) ? 8 : 6)) { removed = true; return; }
+    if (kind == "wither_skull") {   // the Wither's skull (Minecraft's): flies straight, bursts on what it hits (power 1) and
+      // withers whatever living thing it strikes (8, Wither II for 10 s); every kill heals the Wither 5. A blue one (from a
+      // side head with nothing to aim at) is slower, and its burst takes obsidian too
+      const bool blue = data.value("blue", false), back = data.value("deflected", false);   // back: punched back, it flies for whoever hit it
+      if (age > (back ? 8 : blue ? 12 : 6)) { removed = true; return; }
       auto burst = [&]() {
-        removed = true; ExplodeOpts o; o.source = data.value("owner", 0u);
-        explode(lv, realm, pos, 1.2f, o);
-        for (Entity* p : pawnsOf(lv, realm)) if (glm::distance(p->pos + vec3(0, 0.9f, 0), pos) < 3.f) if (auto* pl = dynamic_cast<Player*>(p)) giveEffect(lv, *pl, "wither", 8);
+        removed = true; ExplodeOpts o; o.source = data.value("owner", 0u); o.tough = blue; o.noBlocks = !lv.info.rules.value("mobGriefing", true);
+        explode(lv, realm, pos, 1.0f, o);
       };
-      const bool back = data.value("deflected", false);   // punched back: it flies for whoever hit it, and bites the Wither
+      auto fed = [&](Entity& victim) {   // a kill heals the Wither that sent it
+        if (back || victim.hp > 0 || !owner || owner->removed || owner->hp <= 0) return;
+        owner->hp = std::min(owner->maxHp, owner->hp + 5);
+      };
+      static const auto witherproof = [](const Creature& c) { return c.type == "wither" || c.type == "wither_storm" || c.type == "wither_skeleton"; };
       for (int s = 0; s < 3; s++) {
         pos += vel * (dt / 3);
-        if (back) if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.9f)) {
+        if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, back ? 0.9f : 0.35f)) {
           DamageSrc d; d.knock = 2; aimRay(d, pos - vel * (dt / 3), pos);
           const bool boss = c->type == "wither" || c->type == "wither_storm";
-          damageEntity(lv, *c, boss ? 12.f : 8.f, owner, "skull", d);   // "skull", not "projectile": its hardened bones don't turn it
+          if (back) damageEntity(lv, *c, boss ? 12.f : 8.f, owner, "skull", d);   // "skull", not "projectile": its hardened bones don't turn it
+          else {
+            damageEntity(lv, *c, 8.f, owner, "projectile", d);
+            if (c->alive() && !witherproof(*c)) c->witherT = std::max(c->witherT, 10.f);
+            fed(*c);
+          }
           burst(); return;
         }
         for (Entity* p : pawnsOf(lv, realm)) if (!(back && p == owner) && std::fabs(p->pos.x - pos.x) < 0.5f && std::fabs(p->pos.z - pos.z) < 0.5f && pos.y > p->pos.y - 0.2f && pos.y < p->pos.y + 1.9f) {
-          DamageSrc d; d.knock = 2; damageEntity(lv, *p, 6, owner, "projectile", d); burst(); return;
+          DamageSrc d; d.knock = 2; damageEntity(lv, *p, 8, owner, "projectile", d);
+          if (auto* pl = dynamic_cast<Player*>(p); pl && pl->hp > 0) giveEffect(lv, *pl, "wither", 10, 1);
+          fed(*p);
+          burst(); return;
         }
         if (solidAt(wd, pos)) { burst(); return; }
       }
-      if (frand() < dt * 30) lv.fx->particles("smoke", pos, 1);
+      if (frand() < dt * 30) lv.fx->particles(blue ? "mana_arcane" : "smoke", pos, 1);
       return;
     }
     if (kind == "shulker") {   // a shulker's bolt: seeks its mark, and whoever it strikes floats up off the ground

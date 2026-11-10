@@ -12,7 +12,11 @@
     135,
     83
    ],
-   "element": ""
+   "element": "",
+   "stats": {
+    "armor": 0.3,
+    "armorDur": 0.35
+   }
   },
   "stone": {
    "items": [
@@ -25,7 +29,11 @@
     105,
     93
    ],
-   "element": ""
+   "element": "",
+   "stats": {
+    "armor": 0.45,
+    "armorDur": 0.55
+   }
   },
   "flint": {
    "items": [
@@ -38,7 +46,11 @@
     78,
     88
    ],
-   "element": ""
+   "element": "",
+   "stats": {
+    "armor": 0.45,
+    "armorDur": 0.5
+   }
   },
   "copper": {
    "items": [
@@ -155,7 +167,11 @@
     40,
     64
    ],
-   "element": ""
+   "element": "",
+   "stats": {
+    "armor": 1.3,
+    "armorDur": 2.0
+   }
   },
   "sapphire": {
    "items": [
@@ -168,7 +184,11 @@
     92,
     222
    ],
-   "element": ""
+   "element": "",
+   "stats": {
+    "armor": 1.3,
+    "armorDur": 2.1
+   }
   },
   "mithril": {
    "items": [
@@ -220,7 +240,11 @@
     36,
     80
    ],
-   "element": ""
+   "element": "",
+   "stats": {
+    "armor": 1.25,
+    "armorDur": 2.5
+   }
   },
   "emberglass": {
    "items": [
@@ -233,7 +257,12 @@
     96,
     40
    ],
-   "element": "fire"
+   "element": "fire",
+   "stats": {
+    "armor": 0.9,
+    "armorDur": 1.0,
+    "fireResist": 0.15
+   }
   },
   "leather": {
    "items": [
@@ -246,7 +275,512 @@
     101,
     64
    ],
+   "element": "",
+   "stats": {
+    "tier": 0,
+    "speed": 1.5,
+    "damage": 1.5,
+    "durability": 40
+   }
+  },
+  "zanite": {
+   "items": [
+    "zanite_gemstone"
+   ],
+   "name": "Zanite",
+   "prefix": "zanite",
+   "rgb": [
+    87,
+    59,
+    135
+   ],
    "element": ""
+  },
+  "gravitite": {
+   "items": [
+    "gravitite_plate"
+   ],
+   "name": "Gravitite",
+   "prefix": "gravitite",
+   "rgb": [
+    127,
+    61,
+    121
+   ],
+   "element": ""
+  },
+  "thallasium": {
+   "items": [
+    "thallasium_ingot"
+   ],
+   "name": "Thallasium",
+   "prefix": "thallasium",
+   "rgb": [
+    66,
+    122,
+    119
+   ],
+   "element": ""
+  },
+  "tin": {
+   "items": [
+    "tin_ingot"
+   ],
+   "name": "Tin",
+   "prefix": "tin",
+   "rgb": [
+    196,
+    200,
+    205
+   ],
+   "element": "",
+   "stats": {
+    "tier": 2,
+    "speed": 5,
+    "damage": 3,
+    "durability": 150,
+    "armor": 0.6,
+    "armorDur": 0.6
+   }
+  },
+  "lapis": {
+   "items": [
+    "lapis_lazuli"
+   ],
+   "name": "Lapis",
+   "prefix": "lapis",
+   "rgb": [
+    83,
+    117,
+    162
+   ],
+   "element": "",
+   "stats": {
+    "tier": 2,
+    "speed": 6,
+    "damage": 3,
+    "durability": 160,
+    "armor": 0.65,
+    "armorDur": 0.7
+   }
+  },
+  "amber": {
+   "items": [
+    "amber_gem"
+   ],
+   "name": "Amber",
+   "prefix": "amber",
+   "rgb": [
+    169,
+    124,
+    63
+   ],
+   "element": "",
+   "stats": {
+    "tier": 2,
+    "speed": 6.5,
+    "damage": 3,
+    "durability": 220,
+    "armor": 0.7,
+    "armorDur": 0.8
+   }
+  },
+  "quartz": {
+   "items": [
+    "quartz"
+   ],
+   "name": "Quartz",
+   "prefix": "quartz",
+   "rgb": [
+    186,
+    174,
+    165
+   ],
+   "element": "",
+   "stats": {
+    "tier": 3,
+    "speed": 7,
+    "damage": 4,
+    "durability": 200,
+    "armor": 0.8,
+    "armorDur": 0.8
+   }
+  },
+  "amethyst": {
+   "items": [
+    "amethyst_shard"
+   ],
+   "name": "Amethyst",
+   "prefix": "amethyst",
+   "rgb": [
+    115,
+    90,
+    156
+   ],
+   "element": "",
+   "stats": {
+    "tier": 3,
+    "speed": 9,
+    "damage": 4,
+    "durability": 170,
+    "armor": 0.75,
+    "armorDur": 0.7
+   }
+  },
+  "olivine": {
+   "items": [
+    "olivine"
+   ],
+   "name": "Olivine",
+   "prefix": "olivine",
+   "rgb": [
+    123,
+    150,
+    57
+   ],
+   "element": "",
+   "stats": {
+    "tier": 3,
+    "speed": 6.5,
+    "damage": 4,
+    "durability": 320,
+    "armor": 0.9,
+    "armorDur": 0.95
+   }
+  },
+  "aether_crystal": {
+   "items": [
+    "aether_crystal"
+   ],
+   "name": "Aether Crystal",
+   "prefix": "aether_crystal",
+   "rgb": [
+    155,
+    213,
+    243
+   ],
+   "element": "",
+   "stats": {
+    "tier": 3,
+    "speed": 8,
+    "damage": 4,
+    "durability": 450,
+    "armor": 0.9,
+    "armorDur": 1.0
+   }
+  },
+  "ender": {
+   "items": [
+    "ender_shard"
+   ],
+   "name": "Ender",
+   "prefix": "ender",
+   "rgb": [
+    84,
+    150,
+    139
+   ],
+   "element": "",
+   "stats": {
+    "tier": 4,
+    "speed": 8.5,
+    "damage": 5,
+    "durability": 900,
+    "armor": 1.05,
+    "armorDur": 1.2
+   }
+  },
+  "mese": {
+   "items": [
+    "mese_crystal"
+   ],
+   "name": "Mese",
+   "prefix": "mese",
+   "rgb": [
+    226,
+    213,
+    60
+   ],
+   "element": "",
+   "stats": {
+    "tier": 4,
+    "speed": 9,
+    "damage": 5.5,
+    "durability": 1100,
+    "armor": 1.15,
+    "armorDur": 1.4
+   }
+  },
+  "crude_steel": {
+   "items": [
+    "crude_steel"
+   ],
+   "name": "Crude Steel",
+   "prefix": "crude_steel",
+   "rgb": [
+    130,
+    138,
+    150
+   ],
+   "element": "",
+   "stats": {
+    "tier": 3,
+    "speed": 6.5,
+    "damage": 4,
+    "durability": 600,
+    "armor": 1.08,
+    "armorDur": 1.4
+   }
+  },
+  "frost": {
+   "items": [
+    "frost_shard"
+   ],
+   "name": "Frost",
+   "prefix": "frost",
+   "rgb": [
+    130,
+    203,
+    232
+   ],
+   "element": "frost",
+   "stats": {
+    "tier": 3,
+    "speed": 7,
+    "damage": 4,
+    "durability": 400,
+    "armor": 0.9,
+    "armorDur": 1.0
+   }
+  },
+  "red_crystal": {
+   "items": [
+    "red_crystal"
+   ],
+   "name": "Red Crystal",
+   "prefix": "red_crystal",
+   "rgb": [
+    218,
+    49,
+    60
+   ],
+   "element": "",
+   "stats": {
+    "tier": 3,
+    "speed": 7.5,
+    "damage": 4.5,
+    "durability": 380,
+    "armor": 0.95,
+    "armorDur": 1.1
+   }
+  },
+  "rubyglass": {
+   "items": [
+    "rubyglass_crystal"
+   ],
+   "name": "Rubyglass",
+   "prefix": "rubyglass",
+   "rgb": [
+    150,
+    6,
+    19
+   ],
+   "element": "fire",
+   "stats": {
+    "tier": 3,
+    "speed": 9,
+    "damage": 4.5,
+    "durability": 360,
+    "armor": 0.95,
+    "armorDur": 1.0,
+    "fireResist": 0.1
+   }
+  },
+  "charged_crystal": {
+   "items": [
+    "charged_crystal"
+   ],
+   "name": "Charged Crystal",
+   "prefix": "charged_crystal",
+   "rgb": [
+    245,
+    114,
+    83
+   ],
+   "element": "",
+   "stats": {
+    "tier": 4,
+    "speed": 10,
+    "damage": 5,
+    "durability": 700,
+    "armor": 1.1,
+    "armorDur": 1.5
+   }
+  },
+  "aurora": {
+   "items": [
+    "aurora_crystal"
+   ],
+   "name": "Aurora",
+   "prefix": "aurora",
+   "rgb": [
+    150,
+    120,
+    240
+   ],
+   "element": "",
+   "stats": {
+    "tier": 4,
+    "speed": 9,
+    "damage": 5,
+    "durability": 1000,
+    "armor": 1.15,
+    "armorDur": 1.8
+   }
+  },
+  "smaragdant": {
+   "items": [
+    "smaragdant_crystal",
+    "smaragdant_crystal_shard"
+   ],
+   "name": "Smaragdant",
+   "prefix": "smaragdant",
+   "rgb": [
+    60,
+    220,
+    140
+   ],
+   "element": "",
+   "stats": {
+    "tier": 4,
+    "speed": 8,
+    "damage": 5,
+    "durability": 900,
+    "armor": 1.2,
+    "armorDur": 1.9
+   }
+  },
+  "echo": {
+   "items": [
+    "echo_shard"
+   ],
+   "name": "Echo",
+   "prefix": "echo",
+   "rgb": [
+    20,
+    70,
+    90
+   ],
+   "element": "",
+   "stats": {
+    "tier": 5,
+    "speed": 10,
+    "damage": 6,
+    "durability": 1800,
+    "armor": 1.45,
+    "armorDur": 2.5
+   }
+  },
+  "rift": {
+   "items": [
+    "rift_crystal"
+   ],
+   "name": "Rift",
+   "prefix": "rift",
+   "rgb": [
+    215,
+    136,
+    239
+   ],
+   "element": "",
+   "stats": {
+    "tier": 5,
+    "speed": 10.5,
+    "damage": 6,
+    "durability": 2000,
+    "armor": 1.45,
+    "armorDur": 2.6
+   }
+  },
+  "ambrosium": {
+   "items": [
+    "ambrosium_shard"
+   ],
+   "name": "Ambrosium",
+   "prefix": "ambrosium",
+   "rgb": [
+    180,
+    169,
+    87
+   ],
+   "element": "",
+   "stats": {
+    "tier": 1,
+    "speed": 10,
+    "damage": 2,
+    "durability": 80,
+    "armor": 0.55,
+    "armorDur": 0.5
+   }
+  },
+  "croc": {
+   "items": [
+    "croc_scale"
+   ],
+   "name": "Crocodile Scale",
+   "prefix": "croc",
+   "rgb": [
+    123,
+    150,
+    83
+   ],
+   "element": "",
+   "stats": {
+    "tier": 2,
+    "speed": 4,
+    "damage": 3,
+    "durability": 160,
+    "armor": 0.8,
+    "armorDur": 1.1
+   }
+  },
+  "dragonscale": {
+   "items": [
+    "dragon_scale"
+   ],
+   "name": "Dragonscale",
+   "prefix": "dragonscale",
+   "rgb": [
+    71,
+    150,
+    102
+   ],
+   "element": "fire",
+   "stats": {
+    "tier": 5,
+    "speed": 9,
+    "damage": 6.5,
+    "durability": 2400
+   }
+  },
+  "chainmail": {
+   "items": [
+    "chainlink"
+   ],
+   "name": "Chainmail",
+   "prefix": "chainmail",
+   "rgb": [
+    160,
+    165,
+    172
+   ],
+   "element": "",
+   "stats": {
+    "tier": 2,
+    "speed": 4.5,
+    "damage": 3,
+    "durability": 200
+   }
   }
  }
 }

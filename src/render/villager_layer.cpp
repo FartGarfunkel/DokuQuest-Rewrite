@@ -33,8 +33,18 @@ mat4 heldMatrix(float tilt, float s, vec2 grip, bool upright) {   // render/char
   vec3 Z(s, 0, 0), t = -(grip.x * X + grip.y * Y);
   return mat4(vec4(X, 0), vec4(Y, 0), vec4(Z, 0), vec4(t, 1));
 }
+// a bow carried level at the side by its grip, the limbs fore and aft, the belly down and the string on top
+// (render/char_layer.cpp's: the same arm frame).
+// (It fell to TOOL, held like a sword, tip first: the fletcher held his bow backwards.)
+mat4 bowHeldMatrix(float s, vec2 grip) {
+  const float r2 = std::sqrt(0.5f);
+  const vec3 X(0, r2 * s, -r2 * s), Y(0, -r2 * s, -r2 * s), Z(-s, 0, 0), t = -(grip.x * X + grip.y * Y);
+  return mat4(vec4(X, 0), vec4(Y, 0), vec4(Z, 0), vec4(t, 1));
+}
 const mat4& heldMat(const std::string& id) {
   static const mat4 TOOL = heldMatrix(0.25f, 0.85f, {-0.34f, -0.24f}, false), ITEM = heldMatrix(0.2f, 0.55f, {0, -0.25f}, true), ROD = heldMatrix(0.75f, 0.85f, {-0.34f, -0.24f}, false);
+  static const mat4 BOW = bowHeldMatrix(BOW_SCALE, {-0.235f, 0.235f});   // the fist round the middle of the stave (it was 1.5 px off it)
+  if (id == "bow" || id.rfind("bow_pulling", 0) == 0) return BOW;
   return id == "fishing_rod" || id == "fishing_rod_tp" ? ROD : isHandheld(id) ? TOOL : ITEM;
 }
 // a villager's skin, registered once as "npc:<seed>:<job>" (villagers.js NPC_SKINS)
@@ -137,7 +147,7 @@ public:
       std::string held = c->heldItem;
       if (sleep || ((P & NP_READ) && job != "librarian")) held.clear();
       else if (sit && N && N->contains("sh") && reg().item(N->value("sh", std::string()))) held = N->value("sh", std::string());
-      ps.held = !held.empty();
+      ps.held = !held.empty(); ps.bowArm = held == "bow";
       mat4 base = glm::translate(mat4(1), rel);
       if (sit) base = glm::translate(base, vec3(0, -0.45f, 0));
       if (sleep) base = glm::translate(base, vec3(0, -0.2f, 0));
@@ -248,10 +258,11 @@ public:
           int s2 = along ? c.x - G.cx : c.z - G.cz;
           mat4 place = glm::translate(mat4(1), cc);
           if (G.stone) place = glm::translate(mat4(1), cc + vec3(0, ease * hgt, 0));   // the portcullis rises
-          else if (std::abs(s2) <= G.hw) {
-            // a leaf: the cells left of the middle (and the middle) swing on the left hinge, the rest on the right
+          else {
+            // a leaf: the cells left of the middle (and the middle) swing on the left hinge, the rest on the right. The
+            // outermost column (the posts) swings with its leaf too: it stood on alone in the open gateway, a ghost panel.
             float side = s2 <= 0 ? -1.f : 1.f;
-            float hingeOff = side * (G.hw + 0.5f) - (float)s2;   // from this cell's centre to its hinge, across
+            float hingeOff = side * (G.hw + 1.5f) - (float)s2;   // from this cell's centre to its hinge, across
             vec3 across = along ? vec3(1, 0, 0) : vec3(0, 0, 1), in(G.inX, 0, G.inZ);
             vec3 hinge = cc + across * hingeOff;
             float ang = ease * 1.75f * side * ((across.x * in.z - across.z * in.x) >= 0 ? 1.f : -1.f);   // swing in, towards the village

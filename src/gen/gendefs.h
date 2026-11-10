@@ -107,11 +107,33 @@ const char* biomeName(int b);
   X(amethyst_block) X(large_amethyst_bud) X(small_amethyst_bud) X(glowstone) X(obsidian) X(blackstone) X(basalt) \
   X(netherrack) X(emberstone) X(magma_block) X(gilded_blackstone) X(soul_sand) X(soul_soil) X(bone_block) X(soul_fire) \
   X(crimson_nylium) X(crimson_fungus) X(crimson_roots) X(warped_nylium) X(twisting_vines) X(warped_fungus) X(warped_roots) \
-  X(nether_sprouts) X(ash) X(pumice) X(cinder_sand) X(emberglass_cluster) X(emberglass_block) X(sulphur_block) X(steam_vent) X(igneous_emberstone) X(thorn_leaves) X(null_stone) X(end_moss) X(cloud_puff) X(bounce_cloud) X(sun_cloud) X(glimmersand) X(sunwood_log) X(sunwood_leaves) X(palm_log) X(palm_leaves) X(oak_branch) X(birch_branch) X(dark_oak_branch) X(jungle_branch) X(cherry_branch) X(acacia_branch) X(mangrove_branch) X(sky_bloom) X(bluebells) X(marigold) X(spinifex) X(scorched_dirt) X(rich_scorched_dirt) X(perma_ice) X(permafrost) X(ember_coal_ore) X(mossy_dark_oak_log) X(mossy_mangrove_log) X(algae) X(soul_schist) X(bone_shale) X(ashen_trunk) X(gum_log) X(gum_leaves) X(cinderite_ore) X(quartz_ore) X(nether_gold_ore) X(ancient_debris) X(skystone) X(sky_grass) \
+  X(nether_sprouts) X(ash) X(pumice) X(cinder_sand) X(emberglass_cluster) X(emberglass_block) X(sulphur_block) X(steam_vent) X(igneous_emberstone) X(thorn_leaves) X(thorn_log) X(shrub_leaves) X(flowering_cherry_leaves) X(null_stone) X(end_moss) X(cloud_puff) X(bounce_cloud) X(sun_cloud) X(glimmersand) X(sunwood_log) X(sunwood_leaves) X(palm_log) X(palm_leaves) X(oak_branch) X(birch_branch) X(dark_oak_branch) X(jungle_branch) X(cherry_branch) X(acacia_branch) X(mangrove_branch) X(sky_bloom) X(bluebells) X(marigold) X(spinifex) X(scorched_dirt) X(rich_scorched_dirt) X(perma_ice) X(permafrost) X(ember_coal_ore) X(mossy_dark_oak_log) X(mossy_mangrove_log) X(algae) X(soul_schist) X(bone_shale) X(ashen_trunk) X(gum_log) X(gum_leaves) X(cinderite_ore) X(quartz_ore) X(nether_gold_ore) X(ancient_debris) X(skystone) X(sky_grass) \
   X(aether_crystal_ore) X(driftstone) X(cloud_leaves) X(pocket_wall) X(ember_crust) X(void_crust) X(end_stone) X(chorus_plant) \
   X(chorus_flower) X(iron_bars) X(rift_wall) X(rift_glass) X(rift_crystal) X(sculk) X(sculk_vein) X(sculk_sensor) \
   X(sculk_shrieker) X(sculk_catalyst) X(cobbled_slate) \
-  X(fire) X(acid) X(red_crystal) X(charged_crystal) X(red_crystal_cluster) X(smouldering_ash) X(scorched_bricks) X(cracked_scorched_bricks)
+  X(orange_terracotta) X(yellow_terracotta) X(white_terracotta) X(brown_terracotta) X(cyan_terracotta) X(purple_terracotta) X(magenta_terracotta) X(light_blue_terracotta) \
+  X(purpur_block) X(purpur_pillar) X(end_rod) X(gold_block) X(sea_lantern) X(medium_amethyst_bud) \
+  X(holystone) X(quicksoil) X(skyroot_log) X(skyroot_leaves) X(ambrosium_ore) X(zanite_ore) X(gravitite_ore) \
+  X(golden_oak_log) X(golden_oak_leaves) X(cold_aercloud) X(blue_aercloud) X(golden_aercloud) \
+  X(gloomstone) X(nether_coal_ore) X(basalt_coal_ore) X(gloom_coal_ore) X(granite_gold_ore) X(limestone_coal_ore) \
+  X(dragon_log) X(dragon_leaves) X(umbrella_cap) X(glowshroom_stem) X(glowshroom_cap) X(amber_block) X(neon_moss) X(shadow_soil) X(lantern_log) \
+  X(chorus_turf) X(glow_turf) X(umbrella_turf) X(lantern_turf) X(crystal_turf) X(blossom_cap) \
+  X(fire) X(acid) X(red_crystal) X(charged_crystal) X(red_crystal_cluster) X(smouldering_ash) X(scorched_bricks) X(cracked_scorched_bricks) \
+  /* Better End (gen/theend_be.cpp) */ \
+  X(endstone_dust) X(chorus_nylium) X(end_mycelium) X(crystal_moss) X(shadow_grass) X(pink_moss) X(amber_moss) X(jungle_moss) X(sangnum) X(rutiscus) \
+  X(cave_moss) X(pallidium_full) X(pallidium_heavy) X(pallidium_thin) X(pallidium_tiny) X(flavolite) X(violecite) X(sulphuric_rock) X(brimstone) X(umbralith) \
+  X(virid_jadestone) X(azure_jadestone) X(sandy_jadestone) X(dragon_bone_block) X(dense_snow) X(emerald_ice) X(dense_emerald_ice) X(ancient_emerald_ice) X(amber_ore) X(ender_ore) \
+  X(thallasium_ore) X(aurora_crystal) X(smaragdant_crystal) X(smaragdant_crystal_shard) X(mossy_glowshroom_log) X(mossy_glowshroom_cap) X(mossy_glowshroom_hymenophore) X(mossy_glowshroom_fur) X(pythadendron_log) X(pythadendron_leaves) \
+  X(lacugrove_log) X(lacugrove_leaves) X(dragon_tree_log) X(dragon_tree_leaves) X(tenanea_log) X(tenanea_leaves) X(tenanea_flowers) X(helix_tree_log) X(helix_tree_leaves) X(umbrella_tree_log) \
+  X(umbrella_tree_membrane) X(umbrella_tree_cluster) X(jellyshroom_log) X(jellyshroom_cap_purple) X(lucernia_log) X(lucernia_leaves) X(filalux) X(amaranita_hyphae) X(amaranita_cap) X(amaranita_lantern) \
+  X(amaranita_fur) X(umbrella_moss) X(twisted_umbrella_moss) X(creeping_moss) X(chorus_grass) X(crystal_grass) X(shadow_plant) X(bushy_grass) X(amber_grass) X(jungle_grass_be) \
+  X(blooming_cooksonia) X(salteago) X(vaiolush_fern) X(fracturn) X(clawfern) X(globulagus) X(orango) X(aeridium) X(lutebus) X(lamellarium) \
+  X(inflexia) X(needlegrass) X(murkweed) X(cave_grass) X(charnia_cyan) X(charnia_purple) X(charnia_red) X(charnia_orange) X(charnia_green) X(end_lily) \
+  X(glowing_pillar_luminophor) X(dense_vine) X(twisted_vine) X(jungle_vine) X(blue_vine_lantern) X(blue_vine) X(neon_cactus) X(tail_moss) X(cyan_moss) X(twisted_moss) \
+  X(end_stone_stalactite) X(red_mushroom_block) \
+  /* BTA 8.0's Nether (gen/nether_bta.cpp, terrain version 7) */ \
+  X(brimsand) X(nether_brimstone) X(brimthaw) X(cobbled_netherrack) X(crystalline_netherrack) X(cobbled_gloomstone) X(ember) X(ash_layer) \
+  X(rubyglass_column) X(rubyglass_node) X(rubyglass_crystal) X(rubyglass_growth) X(magmatic_boulder) X(sulfuric_boulder) X(bone_pile) X(soul_catcher)
 
 struct GenBlocks {
 #define DQ_GB_FIELD(k) BlockId k = 0;
@@ -129,7 +151,8 @@ struct GenBlocks {
 struct GenBuf {
   BlockId blocks[DIM_H * 256];
   u8 meta[DIM_H * 256];
-  void clear() { std::memset(blocks, 0, sizeof blocks); std::memset(meta, 0, sizeof meta); }
+  u8 coat[DIM_H * 256];   // (a rug laid on a floor: world/rug.h)
+  void clear() { std::memset(blocks, 0, sizeof blocks); std::memset(meta, 0, sizeof meta); std::memset(coat, 0, sizeof coat); }
   BlockId at(int x, int y, int z) const { return (x < 0 || x > 15 || z < 0 || z > 15 || y < 0 || y >= DIM_H) ? (BlockId)0xFFFF : blocks[colIdx(x, y, z)]; }
   void store(Chunk& c) const;           // copy into the chunk (sections allocated as needed)
   static GenBuf& local();               // this thread's buffer, cleared

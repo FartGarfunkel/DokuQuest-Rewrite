@@ -48,7 +48,11 @@ public:
 
 struct WorldGenOptions {
   i32 seed = 0;
-  int genVersion = 5;                  // C++ terrain generation version (4: BTA's bigger biomes, 5: BTA 8.0's Nether)
+  int genVersion = 11;                 // 4: bigger biomes, 5: heightfield Nether, 6: cave Nether (climate, sea, spawns), 7: BTA's Nether as BTA makes it, 8: BTA's Nether on the open land of 5,
+                                       // 9: villages of jigsaw pieces (data/villages: ours, tools/port/village_builder.py),
+                                       // 10: villages in every style, chosen by the land (gen/structures_villages.cpp villageStyle10),
+                                       // 11: the village plan's fixes: real water for the streets' levels, the deep town mine
+                                       //     (gen/town_mine.h), every trade staffed before a second of one
   std::string worldType = "default";   // default | flat | amplified | ... (from the create-world screen)
   json extra;                          // structures on/off, bonus chest, etc.
 };

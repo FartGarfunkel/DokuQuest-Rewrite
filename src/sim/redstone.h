@@ -23,7 +23,16 @@ class Player;
 namespace rs {
 // circuit roles (core/blocks.js T_RS)
 enum Role : u8 { NONE = 0, WIRE = 1, TORCH, TORCH_OFF, BLOCK, LEVER, BUTTON, PLATE, REPEATER, COMPARATOR, OBSERVER, LAMP, PISTON,
-  DISPENSER, DROPPER, HOPPER, NOTE, TNT, DOOR, TRAPDOOR, GATE, DAYLIGHT, TARGET, PRAIL, DRAIL, BELL, BULB, HOOK, CONDUIT, MATCHER };
+  DISPENSER, DROPPER, HOPPER, NOTE, TNT, DOOR, TRAPDOOR, GATE, DAYLIGHT, TARGET, PRAIL, DRAIL, BELL, BULB, HOOK, CONDUIT, MATCHER, TIMER };
+// matcher: bit 6 (64) is the Y axis, else bits 0-1 are a horizontal facing (1 or 3 = X, 0 or 2 = Z). Bit 3 (8) means on.
+inline int matcherAxis(int m) { if (m & 64) return 1; int f = m & 3; return (f == 1 || f == 3) ? 0 : 2; }   // 0 X, 1 Y, 2 Z
+inline bool matcherPowersSide(int m, int d) {
+  if (!(m & 8) || d < 0 || d > 5) return false;
+  int da = d < 2 ? 1 : d >= 4 ? 0 : 2;
+  return da != matcherAxis(m);
+}
+// timer: bits 0-1 pick the powered end (0 south, 1 west, 2 north, 3 east). Bit 1 is also the output.
+inline int timerSide(int m) { static const int SIDE[4] = {3, 4, 2, 5}; return SIDE[m & 3]; }
 // six-way directions (pistons, observers, dispensers): 0 down, 1 up, 2 north, 3 south, 4 west, 5 east (world/shapes.js)
 constexpr int D6X[6] = {0, 0, 0, 0, -1, 1}, D6Y[6] = {-1, 1, 0, 0, 0, 0}, D6Z[6] = {0, 0, -1, 1, 0, 0};
 constexpr int OPP6[6] = {1, 0, 3, 2, 5, 4};
@@ -159,10 +168,12 @@ private:
   struct Plan { std::vector<std::array<int, 5>> move; std::vector<std::array<int, 4>> breaks; };   // move: x,y,z,id,meta
   void pistonMove(int x, int y, int z);
   bool gather(int sx, int sy, int sz, int mv, ivec3 piston, Plan& out);
-  int pushLimit = 12;   // blocks a piston can shove (16 for the reinforced one, set around its gather)
+  int pushLimit = 12;   // blocks a piston can shove (24 for the reinforced one, set around its gather)
   void siphonTick(int x, int y, int z, BlockId id, int m);   // sim/basket.cpp
-  void updateConduit(int x, int y, int z);                  // sim/bta_more.cpp: a run of Emberglass conduits lights as one
-  void matcherTick(int x, int y, int z, BlockId id, int m);  // sim/bta_more.cpp: the matcher looks behind it
+  void updateConduit(int x, int y, int z);                  // sim/bta_more.cpp: an Emberglass run carries a fading level
+  void matcherTick(int x, int y, int z, BlockId id, int m);  // sim/bta_more.cpp: the two blocks on the matcher's axis
+  void timerTick(int x, int y, int z, BlockId id, int m);    // a redstone timer flips its output every interval
+  void meshTick(int x, int y, int z, BlockId id, int m);     // sim/bta_more.cpp: iron and gold mesh siphon items through water
   void extend(int x, int y, int z, BlockId id, int dir);
   void retract(int x, int y, int z, BlockId id, int dir);
   void carry(const Plan& plan, int mv, const std::function<void()>& then, std::vector<std::array<int, 9>> extra, u64 key);

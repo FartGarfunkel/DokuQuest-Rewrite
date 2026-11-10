@@ -12,6 +12,8 @@
 #include "assets/tileset.h"
 #include "sim/minecart.h"
 #include "sim/vehicles.h"
+#include "sim/creature.h"
+#include "sim/mount_gear.h"
 #include "sim/machines.h"
 #include "sim/redstone.h"
 #include "sim/redstone_entities.h"
@@ -111,6 +113,35 @@ public:
           op.entItems = [box]() -> json* { return box.get(); };
           op.entSaved = [lv, sp, id](const json& items) { if (lv->net && sp->player) lv->net->action(*sp->player, "entInv", json{{"id", id}, {"items", items}}); };
         } else op.entItems = [lv, id]() -> json* { return entityContainer(lv->entity(id)); };
+        if (o.value("mount", false)) {   // a mount's gear screen (sim/mount_gear.h): its saddle and armour over what it carries
+          auto none = std::make_shared<json>(json::array());   // (carrying nothing: the gear slots are the screen)
+          if (lv->isRemote()) {
+            if (!o.contains("items") || !o["items"].is_array()) { op.entItems = [none]() -> json* { return none.get(); }; op.entSaved = nullptr; }
+            auto gear = std::make_shared<std::vector<ItemStack>>();
+            if (o.contains("gear") && o["gear"].is_array()) for (auto& g : o["gear"]) gear->push_back(ItemStack::fromJson(g));
+            auto sent = std::make_shared<std::string>();
+            op.gearGet = [gear]() { return *gear; };
+            op.gearSet = [gear, sent, lv, sp, id](const std::vector<ItemStack>& g) {
+              *gear = g;
+              json a = json::array(); for (auto& s : g) a.push_back(s.toJson());
+              if (a.dump() == *sent) return;   // (every change in the screen stores every group: only what changed goes)
+              *sent = a.dump();
+              if (lv->net && sp->player) lv->net->action(*sp->player, "entGear", json{{"id", id}, {"gear", a}});
+            };
+            *sent = [&] { json a = json::array(); for (auto& s : *gear) a.push_back(s.toJson()); return a.dump(); }();
+          } else {
+            op.entItems = [lv, id, none]() -> json* {
+              Entity* e = lv->entity(id);
+              if (!e || e->removed || e->hp <= 0) return nullptr;
+              if (json* it = entityContainer(e)) return it;
+              return none.get();
+            };
+            op.gearGet = [lv, id]() { auto* c = dynamic_cast<Creature*>(lv->entity(id)); return c ? mountGear(*c) : std::vector<ItemStack>(); };
+            op.gearSet = [lv, id](const std::vector<ItemStack>& g) { if (auto* c = dynamic_cast<Creature*>(lv->entity(id))) setMountGear(*lv, *c, g); };
+          }
+          op.gearFits = [lv, id](int slot, const ItemStack& s) { auto* c = dynamic_cast<Creature*>(lv->entity(id)); return c && mountGearFits(*c, slot, s); };
+          op.gearHint = {"saddle", "iron_horse_armor"};
+        }
       } else return true;
       uiDefer([op](App& ap) { openInventory(ap, op); });
       return true;
@@ -230,7 +261,7 @@ private:
     auto oneCart = [&](float z) {
       mat4 m = T(vec3(0, 0, z));
       draw(body, base * m, L);
-      for (int sx : {-1, 1}) for (int sz : {-1, 1}) draw(wheelM, base * m * RX(T(vec3(sx * 0.42f, 0.09f, sz * 0.4f)), wa), L);
+      for (int sx : {-1, 1}) for (int sz : {-1, 1}) draw(wheelM, base * m * RX(T(vec3(sx * 0.3f, 0.09f, sz * 0.4f)), wa), L);   // (over the rails)
     };
     VoxelLight glow = c.fuel > 0 ? VoxelLight{L.sky, 13 / 15.f} : L;
     if (c.kind == "furnace") {
@@ -422,12 +453,23 @@ private:
     const TileSet& ts = s.app.tiles;
     Model& axle = model("m_axle", 1.f / 32, [] { return std::vector<Part>{boxEnds({-0.13f, -0.13f, -0.5f}, {0.13f, 0.13f, 0.5f}, "axle", "axle_end", 2)}; }, ts);
     Model& sails = model("m_windmill", 1.f / 16, [] {
-      std::vector<Part> v{box({-0.22f, -0.22f, -0.32f}, {0.22f, 0.22f, 0.25f}, "axle_end")};
+      std::vector<Part> v{box({-0.22f, -0.22f, -0.5f}, {0.22f, 0.22f, 0.5f}, "axle_end")};   // the hub the whole block long: it meets the axle (it stopped a quarter short)
       for (int k = 0; k < 4; k++) { v.push_back(turned(box({-0.07f, 0.2f, -0.05f}, {0.07f, 4.2f, 0.05f}, "axle"), k * PI / 2, {0, 0, 1})); v.push_back(turned(box({0.07f, 0.9f, -0.02f}, {1.05f, 4.1f, 0.02f}, "sail"), k * PI / 2, {0, 0, 1})); }
       return v;
     }, ts);
+    // Better Village's windmills, made to work (meta bit 4): their sails at their own scale, seven blocks out
+    Model& sailsBig = model("m_windmill_big", 1.f / 16, [] {
+      std::vector<Part> v{box({-0.32f, -0.32f, -0.5f}, {0.32f, 0.32f, 0.5f}, "axle_end")};
+      for (int k = 0; k < 4; k++) {
+        v.push_back(turned(box({-0.1f, 0.25f, -0.07f}, {0.1f, 7.4f, 0.07f}, "axle"), k * PI / 2, {0, 0, 1}));
+        v.push_back(turned(box({0.1f, 1.3f, -0.03f}, {1.95f, 7.3f, 0.03f}, "sail"), k * PI / 2, {0, 0, 1}));
+        v.push_back(turned(box({0.1f, 1.3f, -0.06f}, {1.95f, 1.42f, 0.06f}, "axle"), k * PI / 2, {0, 0, 1}));   // a spar across each sail
+        v.push_back(turned(box({0.1f, 4.3f, -0.06f}, {1.95f, 4.42f, 0.06f}, "axle"), k * PI / 2, {0, 0, 1}));
+      }
+      return v;
+    }, ts);
     Model& wheelM = model("m_waterwheel", 1.f / 32, [] {
-      std::vector<Part> v{box({-0.25f, -0.25f, -0.45f}, {0.25f, 0.25f, 0.45f}, "axle_end")};
+      std::vector<Part> v{box({-0.25f, -0.25f, -0.5f}, {0.25f, 0.25f, 0.5f}, "axle_end")};
       for (int k = 0; k < 8; k++) for (Part p : {box({-0.06f, 0.2f, -0.06f}, {0.06f, 1.35f, 0.06f}, "axle"), box({-0.32f, 1.25f, -0.42f}, {0.32f, 1.5f, 0.42f}, "planks"),
                                                  box({-0.5f, 1.32f, -0.45f}, {0.5f, 1.42f, -0.37f}, "axle"), box({-0.5f, 1.32f, 0.37f}, {0.5f, 1.42f, 0.45f}, "axle")})
         v.push_back(turned(p, k * PI / 4, {0, 0, 1}));
@@ -441,14 +483,15 @@ private:
     static const int DIR4[4][2] = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
     for (auto& [k, n] : mech->nodes()) {
       vec3 rel = f.cam.rel(glm::dvec3(vec3(n.p)));
-      if (std::fabs(rel.x) > 64 || std::fabs(rel.z) > 64 || !f.cam.frustum.sphere(rel + vec3(0.5f), n.kind == "windmill" ? 4.5f : 1.8f)) continue;
+      const bool big = n.kind == "windmill" && (w.getMeta(n.p.x, n.p.y, n.p.z) & 4);
+      if (std::fabs(rel.x) > 64 || std::fabs(rel.z) > 64 || !f.cam.frustum.sphere(rel + vec3(0.5f), big ? 8.f : n.kind == "windmill" ? 4.5f : 1.8f)) continue;
       float ang = mech->angleOf(n);
       bool solid = n.kind != "axle" && n.kind != "windmill" && n.kind != "waterwheel" && n.kind != "belt";
       VoxelLight L = lightAt(w, vec3(n.p) + vec3(0.5f, solid ? 1.5f : 0.5f, 0.5f));
       mat4 base = T(rel + vec3(0.5f));
       if (n.axis == 1) base = RY(base, PI / 2); else if (n.axis == 0) base = RX(base, PI / 2);
       if (n.kind == "axle") draw(axle, RZ(base, ang), L);
-      else if (n.kind == "windmill") draw(sails, RZ(base, ang), L);
+      else if (n.kind == "windmill") draw(big ? sailsBig : sails, RZ(base, ang), L);
       else if (n.kind == "waterwheel") draw(wheelM, RZ(base, -ang), L);
       else if (n.kind == "millstone") draw(runner, RY(T(rel + vec3(0.5f, 1, 0.5f)), ang * 0.6f), L);
       else if (n.kind == "sawmill") draw(blade, RY(T(rel + vec3(0.5f, 1.02f, 0.5f)), ang * 3), L);

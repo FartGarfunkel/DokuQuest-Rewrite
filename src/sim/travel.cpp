@@ -97,7 +97,7 @@ std::string wayGo(Level& lv, Player& p, const std::string& id) {
 std::optional<ivec3> waySiteFor(Level& lv, const VillageInfo& v) {
   World& w = lv.world(REALM_MAIN);
   const json R = lv.info.data.value("rift", json());
-  for (int r = 4; r <= 10; r++) for (int k = 0; k < 16; k++) {
+  for (int r = 4; r <= 22; r++) for (int k = 0; k < 16; k++) {
     float a = k / 16.f * TAU + r;
     int x = ifloor(v.x + std::cos(a) * r), z = ifloor(v.z + std::sin(a) * r);
     if (!w.isLoaded(x, v.y, z) || !w.isLoaded(x + 1, v.y, z + 1)) return std::nullopt;
@@ -106,9 +106,17 @@ std::optional<ivec3> waySiteFor(Level& lv, const VillageInfo& v) {
     if (inB) continue;
     if (R.is_object() && R.contains("at") && R.value("village", "") == v.id && std::hypot(R["at"][0].get<float>() - x - 0.5f, R["at"][2].get<float>() - z - 0.5f) < 4) continue;
     int y = findSafeY(w, x, z, dimOfY(v.y));
-    if (y < 1 || std::abs(y - (v.y + 1)) > 3) continue;
+    if (y < 1 || std::abs(y - (v.y + 1)) > 1) continue;   // (3 let it stand on a market stall's awning)
     BlockId below = w.getBlock(x, y - 1, z);
-    if (reg().tLiquid[below] || !reg().tSolid[below]) continue;
+    if (reg().tLiquid[below] || !reg().tSolid[below] || !reg().tOpaque[below] || reg().tShape[below]) continue;
+    {   // ground, not something built: no wool, planks, logs, leaves, hay or furniture under it
+      const std::string& bk = reg().block(below).key;
+      bool built = false; for (const char* s : {"wool", "planks", "log", "leaves", "hay", "table", "barrel", "crate"}) if (bk.find(s) != std::string::npos) built = true;
+      if (built) continue;
+    }
+    bool roofed = false;   // nothing over it (a stall's cloth, a porch, a tree)
+    for (int up = 0; up <= 5 && !roofed; up++) for (int dx = -1; dx <= 1 && !roofed; dx++) for (int dz = -1; dz <= 1; dz++) if (w.getBlock(x + dx, y + up, z + dz) && reg().tSolid[w.getBlock(x + dx, y + up, z + dz)]) { roofed = true; break; }
+    if (roofed) continue;
     if (w.getBlock(x, y, z) || w.getBlock(x, y + 1, z)) continue;
     bool crowd = false;
     for (int dx = -1; dx <= 1 && !crowd; dx++) for (int dz = -1; dz <= 1; dz++) { BlockId id = w.getBlock(x + dx, y, z + dz); if (id && reg().tSolid[id]) { crowd = true; break; } }

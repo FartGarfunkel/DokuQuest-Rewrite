@@ -443,7 +443,7 @@ static bool meltsNow(WeatherSystem& ws, Level& lv, World& w, int x, int y, int z
 static void meltCoatAt(WeatherSystem& ws, Level& lv, World& w, int x, int y, int z) {
   if (!inWorldY(y) || !w.chunk(dimOfY(y), x >> 4, z >> 4)) return;
   u8 coat = w.getCoat(x, y, z);
-  if (!(coat & 0x0F)) return;
+  if (!(coat & 0x0F) || (coat & 0x80)) return;   // (bit 7: a rug, world/rug.h)
   if (!meltsNow(ws, lv, w, x, y, z, true, false) || rnd() >= 0.4f) return;
   w.setCoat(x, y, z, (coat & 0x10) ? (u8)(coat & ~0x10) : 0);
 }
@@ -458,6 +458,7 @@ void WeatherSystem::settleCarvedCover(World& w, int x, int y, int z) {
   const Ids& I = ids();
   BlockId id = w.getBlock(x, y, z);
   u8 coat = w.getCoat(x, y, z);
+  if (coat & 0x80) return;   // a rug on the floor (world/rug.h), not snow
   if (!fullSolid(id)) {
     if (coat) w.setCoat(x, y, z, 0);
     return;

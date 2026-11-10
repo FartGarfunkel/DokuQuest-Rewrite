@@ -1,6 +1,8 @@
+#include "render/world_fx.h"
 #include <map>
 #include <algorithm>
 #include <cstdlib>
+#include "render/gl.h"
 #include "client/session.h"
 #include "client/app.h"
 #include "common/holiday.h"
@@ -18,6 +20,7 @@
 #include "render/endstory_layer.h"
 #include "render/villager_layer.h"
 #include "client/play.h"
+#include "client/photo_mode.h"
 #include "gen/structures_api.h"
 #include "sim/rules.h"
 #include <imgui.h>
@@ -28,13 +31,31 @@ namespace dq {
 namespace {
 struct Prof {
   bool on = std::getenv("DQ_PROFILE") != nullptr;
-  std::map<std::string, double> ms; u64 frames = 0;
+  bool finish = on && std::atoi(std::getenv("DQ_PROFILE")) == 2;   // DQ_PROFILE=2: glFinish after each scope (GPU time)
+  bool gpu = on && std::atoi(std::getenv("DQ_PROFILE")) == 3;      // DQ_PROFILE=3: GPU timestamps round each scope (pipelined)
+  struct GpuQ { std::string k; GLuint a, b; };
+  std::vector<GpuQ> pend[4]; int slot = 0; GLuint64 lastGpu = 0;
+  std::map<std::string, double> ms; u64 frames = 0; double lastT = 0;
+  int every = std::getenv("DQ_PROFILE_FRAMES") ? std::max(10, std::atoi(std::getenv("DQ_PROFILE_FRAMES"))) : 600;
   void add(const std::string& k, double t) { ms[k] += t; }
   void frame() {
-    if (!on || ++frames % 600) return;
-    std::vector<std::pair<double, std::string>> v; for (auto& [k, t] : ms) v.push_back({t / 600.0, k});
+    if (gpu) {
+      slot = (slot + 1) % 4;
+      for (auto& g : pend[slot]) {
+        GLuint64 ta = 0, tb = 0; glGetQueryObjectui64v(g.a, GL_QUERY_RESULT, &ta); glGetQueryObjectui64v(g.b, GL_QUERY_RESULT, &tb);
+        ms["gpu " + g.k] += (double)(tb - ta) / 1e6; GLuint q[2] = {g.a, g.b}; glDeleteQueries(2, q);
+        // a long time on the GPU inside one scope is ours; a long gap between two of ours is the GPU busy elsewhere
+        if (tb - ta > 100000000ull) DQ_LOG("profile: gpu hitch %s %.0f ms", g.k.c_str(), (tb - ta) / 1e6);
+        if (lastGpu && ta > lastGpu && ta - lastGpu > 100000000ull) DQ_LOG("profile: gpu idle for us %.0f ms before %s", (ta - lastGpu) / 1e6, g.k.c_str());
+        lastGpu = tb;
+      }
+      pend[slot].clear();
+    }
+    if (!on || ++frames % every) return;
+    std::vector<std::pair<double, std::string>> v; for (auto& [k, t] : ms) v.push_back({t / every, k});
     std::sort(v.rbegin(), v.rend());
-    std::string out; for (size_t i = 0; i < v.size() && i < 16; i++) { char b[96]; snprintf(b, sizeof b, "%s %.2f | ", v[i].second.c_str(), v[i].first); out += b; }
+    const double now = nowSeconds(); const double fps = lastT > 0 ? every / (now - lastT) : 0; lastT = now;
+    std::string out = "fps " + std::to_string((int)fps) + " | "; for (size_t i = 0; i < v.size() && i < 24; i++) { char b[96]; snprintf(b, sizeof b, "%s %.2f | ", v[i].second.c_str(), v[i].first); out += b; }
     DQ_LOG("profile (ms/frame): %s", out.c_str());
     ms.clear();
   }
@@ -42,8 +63,16 @@ struct Prof {
 Prof& prof() { static Prof p; return p; }
 struct ProfScope {
   const char* a; const char* b; double t0;
-  ProfScope(const char* a_, const char* b_ = "") : a(a_), b(b_), t0(prof().on ? nowSeconds() : 0) {}
-  ~ProfScope() { if (prof().on) prof().add(std::string(a) + b, (nowSeconds() - t0) * 1000.0); }
+  GLuint qa = 0;
+  ProfScope(const char* a_, const char* b_ = "") : a(a_), b(b_), t0(prof().on ? nowSeconds() : 0) { if (prof().gpu) { glGenQueries(1, &qa); glQueryCounter(qa, GL_TIMESTAMP); } }
+  ~ProfScope() {
+    if (prof().finish) glFinish();
+    if (prof().gpu) { GLuint qb; glGenQueries(1, &qb); glQueryCounter(qb, GL_TIMESTAMP); prof().pend[prof().slot].push_back({std::string(a) + b, qa, qb}); }
+    if (!prof().on) return;
+    const double ms = (nowSeconds() - t0) * 1000.0;
+    prof().add(std::string(a) + b, ms);
+    if (ms > 100) DQ_LOG("profile: hitch %s%s %.0f ms (frame %llu)", a, b, ms, (unsigned long long)prof().frames);
+  }
 };
 }
 
@@ -96,7 +125,7 @@ void GameSession::spawnPlayer() {
     float yaw = 0;
     const char* at = std::getenv("DQ_SPAWN_AT");   // tests: "x,y,z" or a structure kind (gen/structures_api.h)
     if (at && level->gen && debugSpawnPoint(*level->gen, at, sp, yaw)) p->yaw = yaw;
-    else if (sp.y < 0 && level->gen && !rule(*level, "startInWild") && villageStartPoint(*level->gen, sp, yaw)) { level->info.spawn = sp; p->yaw = yaw; }   // villages.js: a new world starts at a village's edge
+    else if (sp.y < 0 && level->gen && !rule(*level, "startInWild") && level->info.worldType != "floating" && villageStartPoint(*level->gen, sp, yaw)) { level->info.spawn = sp; p->yaw = yaw; }   // villages.js: a new world starts at a village's edge (not over the void: Floating Islands looks for an island below)
     if (sp.y < 0 && level->gen && rule(*level, "startInWild") && wildStartPoint(*level->gen, sp)) level->info.spawn = sp;   // World setting "Start in the wild"
     if (sp.y < 0) {
       DimGenerator* g = level->gen->forDim(DIM_OVERWORLD);
@@ -105,6 +134,15 @@ void GameSession::spawnPlayer() {
       for (int r = 0; r < 400 && g; r += 16) {
         ColumnSample s; g->sample(r, r / 2, s);
         if (s.height > 0 && s.water < 0) { sx = r; sz = r / 2; h = s.height + 1; break; }
+      }
+      if (level->info.worldType == "floating" && g) {   // the middle of an island: every way round has ground under it
+        bool found = false;
+        for (int r = 0; r < 1600 && !found; r += 24) for (int a = 0; a < 8 && !found; a++) {
+          const int x = (int)(std::cos(a * 0.785f) * r), z = (int)(std::sin(a * 0.785f) * r);
+          ColumnSample s; g->sample(x, z, s); if (s.height <= 0 || s.floatBottom < 0) continue;
+          bool ok = true; for (int d = 0; d < 4 && ok; d++) { ColumnSample q; g->sample(x + (d == 0 ? 8 : d == 1 ? -8 : 0), z + (d == 2 ? 8 : d == 3 ? -8 : 0), q); ok = q.height > 0 && q.floatBottom >= 0; }
+          if (ok) { sx = x; sz = z; h = s.height + 1; found = true; }
+        }
       }
       sp = vec3(sx + 0.5f, dimBase(DIM_OVERWORLD) + h + 1, sz + 0.5f);
       level->info.spawn = sp;
@@ -141,6 +179,7 @@ static bool perViewerLayer(const char* n) { return !std::strcmp(n, "hud") || !st
 
 void GameSession::update(double dt) {
   if (!player) return;
+  level->autosaveEvery = (double)std::max(0, app.settings.autosaveSec);   // a live change in Settings applies on the next tick
   setHolidayEventsEnabled(app.settings.extra.value("holidayEvents", true));
   selectLocal(0);
   if (level->net) level->net->update(*level, dt);   // multiplayer (net/): a joined world, or one open to LAN
@@ -191,7 +230,12 @@ void GameSession::update(double dt) {
     cam.farZ = std::max(1024.f, (float)app.settings.farTerrain + 512.f);
     cam.update();
     frame.time = app.time; frame.width = vw; frame.height = vh;
+    const bool photo = photoMode().active && !split();
+    const double realTime = level->info.time;
+    if (photo && photoMode().setTime) level->info.time = photoDayTime();   // photo mode's hour: only for the sky's picture
     sky->computeFrame(*level, frame, app.settings.renderDist);
+    level->info.time = realTime;
+    if (photo) photoFrame(frame);
     cam.update();
     { ProfScope ps("world.meshUpdate"); worldRenderer.update(cam, *app.pool, 4.0 / n); }
   }
@@ -210,13 +254,16 @@ void GameSession::render() {
   glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL);
   glEnable(GL_CULL_FACE); glCullFace(GL_BACK); glFrontFace(GL_CCW);
   prof().frame();
+  { ProfScope ps("world.fx"); worldFxBegin(*this, frame); }   // the built-in shaders' sun shadow map (render/world_fx.cpp)
   { ProfScope ps("sky"); sky->draw(frame); }
   { ProfScope ps("world.opaque"); worldRenderer.drawOpaque(frame); }
   { ProfScope ps("world.cutout"); worldRenderer.drawCutout(frame); }
   for (auto& l : layers) { ProfScope ps(l->name(), ".opaque"); l->drawOpaque(*this, frame); }
+  { ProfScope ps("world.fxCopy"); worldFxAfterOpaque(*this, frame); }   // corner shading, then the scene copied for the water
   { ProfScope ps("world.translucent"); worldRenderer.drawTranslucent(frame); }
   for (auto& l : layers) { ProfScope ps(l->name(), ".translucent"); l->drawTranslucent(*this, frame); }
   for (auto& l : layers) { ProfScope ps(l->name(), ".overlay"); l->drawOverlay(*this, frame); }
+  worldFxEnd();
   glDisable(GL_DEPTH_TEST);
 }
 

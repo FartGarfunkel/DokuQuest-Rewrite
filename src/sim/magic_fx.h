@@ -23,7 +23,9 @@ inline void burst(Level& lv, vec3 p, const std::string& tile, int n, float speed
 inline void spark(Level& lv, vec3 p, const std::string& tile, json o = json::object()) { lv.fx->particles(tile, p, 1, opt(o, "spark")); }
 inline void ring(Level& lv, vec3 p, const std::string& tile, float r, int n, json o = json::object()) { o = opt(o, "ring"); o["r"] = r; lv.fx->particles(tile, p, n, o); }
 inline void spiral(Level& lv, vec3 p, const std::string& tile, int n, json o = json::object()) { lv.fx->particles(tile, p, n, opt(o, "spiral")); }
-inline void beam(Level& lv, vec3 a, vec3 b, const std::string& tile) { lv.fx->particles(tile, a, 1, json{{"m", "beam"}, {"to", {b.x, b.y, b.z}}}); }
+inline void beam(Level& lv, vec3 a, vec3 b, const std::string& tile, float size = 0.07f, float width = 0.15f, float life = 0.35f) {
+  lv.fx->particles(tile, a, 1, json{{"m", "beam"}, {"to", {b.x, b.y, b.z}}, {"size", size}, {"width", width}, {"life", life}});
+}
 inline void circle(Level& lv, vec3 p, const std::string& fxTile) { lv.fx->particles(fxTile, p, 1, json{{"m", "circle"}}); }
 inline void flame(Level& lv, vec3 p, int n = 1) { lv.fx->particles("flame", p, n); }
 inline void blockBurst(Level& lv, vec3 p, const std::string& block, int n, float speed) { lv.fx->particles("burst", p, n, json{{"tile", block}, {"speed", speed}}); }

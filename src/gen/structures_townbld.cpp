@@ -2,7 +2,9 @@
 // frame: x across the front, z from the front wall back, y up from the floor; the door in the middle of the front
 // wall, the street in front) with towns.js's furnishing helpers, vHouse (half-timbered houses: stone ground floor,
 // plastered storeys jettied out over the street, steep tiled or thatched roofs) and every TOWN_VT building.
+#include "gen/town_mine.h"
 #include "gen/structures_town.h"
+#include "common/fs.h"
 #include "common/holiday.h"
 #include <optional>
 
@@ -11,30 +13,45 @@ namespace dq {
 static const int* DXL = DIRX;
 static const int* DZL = DIRZ;
 
-const VStyle& vstyle(int style) {
-  static const std::array<VStyle, 5> S = [] {
-    std::array<VStyle, 5> r;
+static const std::vector<VStyle>& allStyles() {
+  static const std::vector<VStyle> S = [] {
+    std::vector<VStyle> r(5);
     const char* names[5] = {"plains", "savanna", "taiga", "snowy", "desert"};
     auto str = [](const json& j, const char* k) { return j.contains(k) && j[k].is_string() ? j[k].get<std::string>() : std::string(); };
-    for (int i = 0; i < 5; i++) {
-      const json& j = SD()["VSTYLE"][names[i]];
-      VStyle& s = r[i]; s.key = names[i];
-      s.planks = str(j, "planks"); s.log = str(j, "log"); s.beam = str(j, "beam"); s.base = str(j, "base"); s.floor = str(j, "floor");
-      s.stairs = str(j, "stairs"); s.slab = str(j, "slab"); s.fence = str(j, "fence"); s.gate = str(j, "gate"); s.door = str(j, "door");
-      s.trapdoor = str(j, "trapdoor"); s.wood = str(j, "wood"); s.stone = str(j, "stone"); s.stoneSlab = str(j, "stoneSlab");
-      s.stoneStairs = str(j, "stoneStairs"); s.lampPost = str(j, "lampPost"); s.roof = str(j, "roof"); s.rim = str(j, "rim");
-      s.plaster = str(j, "plaster"); s.frame = str(j, "frame"); s.beamH = str(j, "beamH"); s.base2 = str(j, "base2"); s.base3 = str(j, "base3");
-      s.leaves = str(j, "leaves"); s.fwood = str(j, "fwood");
-      s.path = strList(j["path"]); s.bed = strList(j["bed"]); s.awning = strList(j["awning"]); s.awning2 = strList(j["awning2"]);
-      s.timber = strList(j["timber"]); s.banner = strList(j["banner"]);
-      for (auto& rr : j["roofs"]) s.roofs.push_back({rr[0].get<std::string>(), rr[1].get<std::string>()});
-      s.thatch = {j["thatch"][0].get<std::string>(), j["thatch"][1].get<std::string>()};
-      s.flat = j.contains("flat") && j["flat"].is_boolean() && j["flat"].get<bool>();
-    }
+    auto fill = [&](VStyle& s, const json& j, bool over) {
+      const std::pair<const char*, std::string VStyle::*> STR[] = {{"planks", &VStyle::planks}, {"log", &VStyle::log}, {"beam", &VStyle::beam},
+        {"base", &VStyle::base}, {"floor", &VStyle::floor}, {"stairs", &VStyle::stairs}, {"slab", &VStyle::slab}, {"fence", &VStyle::fence},
+        {"gate", &VStyle::gate}, {"door", &VStyle::door}, {"trapdoor", &VStyle::trapdoor}, {"wood", &VStyle::wood}, {"stone", &VStyle::stone},
+        {"stoneSlab", &VStyle::stoneSlab}, {"stoneStairs", &VStyle::stoneStairs}, {"lampPost", &VStyle::lampPost}, {"roof", &VStyle::roof},
+        {"rim", &VStyle::rim}, {"plaster", &VStyle::plaster}, {"frame", &VStyle::frame}, {"beamH", &VStyle::beamH}, {"base2", &VStyle::base2},
+        {"base3", &VStyle::base3}, {"leaves", &VStyle::leaves}, {"fwood", &VStyle::fwood}};
+      for (auto& [k, m] : STR) if (!over || (j.contains(k) && j[k].is_string())) s.*m = str(j, k);
+      const std::pair<const char*, std::vector<std::string> VStyle::*> LST[] = {{"path", &VStyle::path}, {"bed", &VStyle::bed}, {"awning", &VStyle::awning},
+        {"awning2", &VStyle::awning2}, {"timber", &VStyle::timber}, {"banner", &VStyle::banner}};
+      for (auto& [k, m] : LST) if (!over || (j.contains(k) && j[k].is_array())) s.*m = strList(j[k]);
+      if (!over || j.contains("roofs")) { s.roofs.clear(); for (auto& rr : j["roofs"]) s.roofs.push_back({rr[0].get<std::string>(), rr[1].get<std::string>()}); }
+      if (!over || j.contains("thatch")) s.thatch = {j["thatch"][0].get<std::string>(), j["thatch"][1].get<std::string>()};
+      if (!over || j.contains("flat")) s.flat = j.contains("flat") && j["flat"].is_boolean() && j["flat"].get<bool>();
+    };
+    for (int i = 0; i < 5; i++) { VStyle& s = r[i]; s.key = names[i]; s.baseStyle = i; fill(s, SD()["VSTYLE"][names[i]], false); }
+    // the village pieces' own styles: each one a base style's look with its own materials over it
+    const auto oj = readJson(dataDir() / "villages" / "styles.json"); const json j = oj ? *oj : json();
+    if (j.is_object() && j.contains("styles") && j["styles"].is_array())
+      for (const json& e : j["styles"]) {
+        const std::string key = str(e, "key"), base = str(e, "base");
+        int b = 0; for (int i = 0; i < 5; i++) if (base == names[i]) b = i;
+        if (key.empty()) continue;
+        VStyle s = r[b]; s.key = key; s.baseStyle = b;
+        if (e.contains("set") && e["set"].is_object()) fill(s, e["set"], true);
+        r.push_back(std::move(s));
+      }
     return r;
   }();
-  return S[style];
+  return S;
 }
+const VStyle& vstyle(int style) { const auto& S = allStyles(); return S[style >= 0 && style < (int)S.size() ? style : 0]; }
+int vstyleCount() { return (int)allStyles().size(); }
+int vstyleIndex(const std::string& key) { const auto& S = allStyles(); for (int i = 0; i < (int)S.size(); i++) if (S[i].key == key) return i; return -1; }
 
 const std::vector<std::string>& townDecor(const std::string& kind) {
   static const std::unordered_map<std::string, std::vector<std::string>> M = [] {
@@ -61,6 +78,7 @@ bool softBlock(BlockId id) {
 
 int townTemplateSize(const std::string& type, int& W, int& D, int& H) {
   const json& t = SD()["TOWN_VT"];
+  if (type == "mine") { W = 7; D = 12; H = 6; return 1; }   // (ours, not the original's: the jigsaw villages' mine)
   if (!t.contains(type)) return 0;
   W = t[type][0]; D = t[type][1]; H = t[type][2];
   return 1;
@@ -304,6 +322,12 @@ void townBuildingPlan(Bld& b, Mulberry32& rnd, const VStyle& st) {
     static const char* C[4] = {"wheat_crop", "carrot_crop", "potato_crop", "beetroot_crop"};
     b.job = "farmer"; work(4, -1, 2); b.crop = C[jsFloor(rnd() * 4)]; b.crop2 = rnd() < 0.5 ? "wheat_crop" : b.crop;
   }
+  else if (t == "windmill") { b.job = "miller"; work(3, 2, 0); }   // (sim/villager_chores.cpp: the miller tends the stones)
+  else if (t == "mine" && b.planV < 11) { b.job = "miner"; auto w = vWorld(b, 3, -6, 10); b.work = {w[0], w[1], w[2], (2 + b.r) & 3}; b.hasWork = true; }   // at the face, down the drift
+  else if (t == "mine") {   // at the far face of the main gallery (gen/town_mine.h)
+    int lx, lz; townmine::galleryCell(0, townmine::GAL[0].len - 1, 0, lx, lz);
+    b.job = "miner"; auto w = vWorld(b, lx, townmine::FLOOR + 1, lz); b.work = {w[0], w[1], w[2], (2 + b.r) & 3}; b.hasWork = true;
+  }
   else if (t == "pen") { static const char* A[4] = {"sheep", "cow", "pig", "chicken"}; b.animals = A[jsFloor(rnd() * 4)]; auto w = vWorld(b, 4, 1, 2); b.mid = {w[0], w[1], w[2], 0}; b.hasMid = true; }
   (void)st;
 }
@@ -539,7 +563,7 @@ static void bChapel(VS& S) {
   auto bannerOf = [](const std::string& wool) { std::string c = wool == "wool" ? "white" : wool.substr(0, wool.rfind("_wool")); return c + "_banner"; };
   for (auto [x, i] : {std::pair{2, 0}, {6, 1}}) {
     const std::string& w = ban[i == 0 ? 0 : ban.size() - 1];
-    if (std::string b = bannerOf(w); hasBlock(b)) S.face(x, 1, 11, b, 0);
+    if (std::string b = bannerOf(w); hasBlock(b)) { const int m = (S.d(0) + 2) & 3; S.set(x, 1, 11, b, m | 4); S.set(x, 2, 11, b, m); }   // both halves (one made half a banner)
     else for (int ly = 2; ly <= 5; ly++) S.set(x, ly, 11, w);
   }
   for (auto [x, z, wl] : {std::tuple{1, 3, 3}, {7, 3, 1}, {1, 9, 3}, {7, 9, 1}}) S.torch(x, 4, z, wl);
@@ -706,13 +730,178 @@ static void bWindmill(VS& S) {
   for (int ly = 1; ly <= 5; ly++) S.set(3, ly, 5, "ladder", S.d(2));
   S.win(0, 3, 3, 3); S.win(6, 3, 3, 1); S.win(3, 8, 0, 0);
   const auto& roof = st.thatch; S.hipRoof(3, 3, 4, 11, roof[0], roof[1], "");
-  // the sails: a hub on the front, four arms with their cloth
-  S.log(3, 9, -1, st.log, 2);
-  for (int k = 1; k <= 3; k++) { S.set(3, 9 + k, -1, st.fence); S.set(3, 9 - k, -1, st.fence); S.set(3 + k, 9, -1, st.fence); S.set(3 - k, 9, -1, st.fence); }
-  for (int k = 1; k <= 3; k++) { S.set(4, 9 + k, -1, "wool"); S.set(2, 9 - k, -1, "wool"); S.set(3 - k, 10, -1, "wool"); S.set(3 + k, 8, -1, "wool"); }
-  S.set(2, 1, 2, "hay_bale"); S.set(4, 1, 2, "barrel"); S.set(2, 1, 4, "barrel"); S.set(3, 1, 3, VS::VB("stonecutter", "barrel"));
+  // the mill itself (sim/machines.cpp, drawn turning by render/vehicle_layer.cpp): the sails out on the front, clear of
+  // the eaves so the wind reaches them; the axle through the wall to the millstone on a loft up inside, under the roof;
+  // the ladder on up to it. The miller feeds it the village's wheat (sim/villager_chores.cpp).
+  if (hasBlock("windmill") && hasBlock("axle") && hasBlock("millstone")) {
+    S.log(3, 9, -2, "windmill", 2);
+    for (int lz = -1; lz <= 1; lz++) S.log(3, 9, lz, "axle", 2);
+    S.fill(2, 8, 1, 4, 8, 4, st.planks);
+    S.set(3, 9, 2, "millstone");
+    for (int ly = 6; ly <= 8; ly++) S.set(3, ly, 5, "ladder", S.d(2));
+  } else {   // (no machines: the old cloth sails)
+    S.log(3, 9, -1, st.log, 2);
+    for (int k = 1; k <= 3; k++) { S.set(3, 9 + k, -1, st.fence); S.set(3, 9 - k, -1, st.fence); S.set(3 + k, 9, -1, st.fence); S.set(3 - k, 9, -1, st.fence); }
+    for (int k = 1; k <= 3; k++) { S.set(4, 9 + k, -1, "wool"); S.set(2, 9 - k, -1, "wool"); S.set(3 - k, 10, -1, "wool"); S.set(3 + k, 8, -1, "wool"); }
+  }
+  S.set(2, 1, 2, "hay_bale"); S.set(4, 1, 2, "barrel"); S.set(2, 1, 4, "barrel"); S.set(3, 1, 3, "barrel");
   S.pile(4, 1, 4, {"wheat", "bread", "wheat", ""});
   S.frontPath(3);
+}
+// the town mine of plan 10 (worlds made before the deep mine keep it): a timber headframe over a drift of steps down to a
+// short tunnel, timbered, lit, a rail line along it, and the face at its end that the miner works
+static void bMineV10(VS& S) {
+  const VStyle& st = S.st; const Bld& b = S.b;
+  const std::string cob = VS::VB("cobblestone", st.stone), stairs = VS::VB("cobblestone_stairs", st.stoneStairs);
+  const std::string ground = vbase(S.v.style) == VS_DESERT ? std::string("sand") : VS::VB(vbase(S.v.style) == VS_SNOWY ? "snowy_grass" : "grass", "grass");
+  for (int lz = 5; lz < 12; lz++) for (int lx = 0; lx < 7; lx++) S.set(lx, 0, lz, ground);   // the land over the workings
+  auto soft = [&](int lx, int ly, int lz) { const BlockId g = S.get(lx, ly, lz); return g == AIR || g == NOBLOCK || softBlock(g); };
+  auto line = [&](int lx, int ly, int lz, const std::string& k) { if (soft(lx, ly, lz)) S.set(lx, ly, lz, k); };   // shore up only what's open
+  for (int lz = 1; lz <= 10; lz++) {
+    const int fl = lz <= 6 ? -lz : -7;   // the floor block's layer (a step on the drift)
+    for (int lx = 1; lx <= 5; lx++) {
+      const bool side = lx == 1 || lx == 5;
+      for (int ly = fl; ly <= fl + 4; ly++) {
+        if (ly == fl) { if (side) line(lx, ly, lz, cob); else if (lz <= 6) S.stairs(lx, ly, lz, stairs, 0); else S.set(lx, ly, lz, cob); }
+        else if (ly == fl + 4) { if (ly < 0) line(lx, ly, lz, side ? cob : st.planks); }
+        else if (side) { if (ly < 0) line(lx, ly, lz, cob); }
+        else S.set(lx, ly, lz, "air");
+      }
+      line(lx, fl - 1, lz, cob);
+    }
+  }
+  for (int lz : {4, 7, 10}) {
+    const int fl = lz <= 6 ? -lz : -7;
+    for (int ly = fl + 1; ly <= fl + 3; ly++) { S.log(1, ly, lz, st.log, 0); S.log(5, ly, lz, st.log, 0); }
+    for (int lx = 1; lx <= 5; lx++) if (fl + 4 < 0) S.log(lx, fl + 4, lz, st.log, 1);
+    S.torch(2, fl + 2, lz, 3); S.torch(4, fl + 2, lz, 1);
+  }
+  for (int lx = 2; lx <= 4; lx++) { S.stairs(lx, 0, 0, stairs, 0); S.set(lx, 1, 0, "air"); S.set(lx, 2, 0, "air"); }
+  for (int lz = 7; lz <= 10; lz++) S.set(3, -6, lz, "rail", (b.r & 1) ? 1 : 0);
+  S.chest(4, -6, 7, 3, "house");
+  static const char* ORE[6] = {"coal_ore", "stone", "iron_ore", "stone", "coal_ore", "copper_ore"};
+  for (int lx = 1; lx <= 5; lx++) for (int ly = -7; ly <= -3; ly++) {
+    const bool face = lx >= 2 && lx <= 4 && ly >= -6 && ly <= -4;
+    const std::string k = face ? VS::VB(ORE[hash32((i32)b.seed, lx, ly, 11) % 6], "stone") : std::string("stone");
+    if (face || soft(lx, ly, 11)) S.set(lx, ly, 11, k);
+  }
+  for (auto [x, z] : {std::pair{1, 0}, {5, 0}, {1, 4}, {5, 4}}) for (int ly = 1; ly <= 3; ly++) S.log(x, ly, z, st.log, 0);
+  S.fill(1, 4, 0, 5, 4, 4, st.planks);
+  for (int lx = 1; lx <= 5; lx++) for (int lz = 0; lz <= 4; lz++) if (lx == 1 || lx == 5 || lz == 0 || lz == 4) S.set(lx, 5, lz, st.slab);
+  for (int lz = 1; lz <= 3; lz++) { S.set(1, 1, lz, st.fence); S.set(5, 1, lz, st.fence); }
+  for (int lx = 2; lx <= 4; lx++) S.set(lx, 1, 4, st.fence);
+  S.set(3, 3, 2, "lantern", 1);
+  S.set(6, 1, 1, "barrel"); S.set(0, 1, 1, "barrel");
+  S.pile(6, 2, 1, {"coal", "iron_ore", "", "coal"});
+}
+// the town mine (the jigsaw villages'; its plan is gen/town_mine.h): a timber headframe over a drift of steps down to a
+// timbered chamber, and from it three galleries out under the town, mineshaft-fashion: fence posts and a plank cap every
+// four blocks, a rail down the middle, torches, ore showing in the walls, a side cut halfway, an ore face at each end
+// that the miner works (sim/villager_chores.cpp: what he cuts goes to the stores, and a face cut out is made good)
+static void bMine(VS& S) {
+  if (S.b.planV < 11) { bMineV10(S); return; }
+  using namespace townmine;
+  const VStyle& st = S.st; const Bld& b = S.b;
+  const std::string cob = VS::VB("cobblestone", st.stone), stairs = VS::VB("cobblestone_stairs", st.stoneStairs);
+  const std::string ground = vbase(S.v.style) == VS_DESERT ? std::string("sand") : VS::VB(vbase(S.v.style) == VS_SNOWY ? "snowy_grass" : "grass", "grass");
+  for (int lz = 5; lz < 12; lz++) for (int lx = 0; lx < 7; lx++) S.set(lx, 0, lz, ground);   // the land over the workings
+  auto soft = [&](int lx, int ly, int lz) { const BlockId g = S.get(lx, ly, lz); return g == AIR || g == NOBLOCK || softBlock(g) || reg().tLiquid[g]; };
+  // what's dug: the drift (a step down a block in), the chamber, the galleries and their side cuts
+  auto inDrift = [&](int lx, int ly, int lz) { return lx >= 2 && lx <= 4 && lz >= 1 && lz <= 12 && ly >= -lz + 1 && ly <= -lz + 3; };
+  auto inHub = [&](int lx, int ly, int lz) { return lx >= HUB_X0 && lx <= HUB_X1 && lz >= HUB_Z0 && lz <= HUB_Z1 && ly >= FLOOR + 1 && ly <= FLOOR + 4; };
+  auto inGallery = [&](int g, int lx, int ly, int lz, bool cut) {
+    const Gallery& G = GAL[g];
+    const int along = G.dx ? (lx - G.x) * G.dx : (lz - G.z) * G.dz, across = G.dx ? lz - G.z : lx - G.x;
+    if (cut) return along == G.len / 2 && across >= 2 && across <= 6 && ly >= FLOOR + 1 && ly <= FLOOR + 2;   // the side cut
+    return along >= 0 && along < G.len && std::abs(across) <= 1 && ly >= FLOOR + 1 && ly <= FLOOR + 3;
+  };
+  auto dug = [&](int lx, int ly, int lz) {
+    if (inDrift(lx, ly, lz) || inHub(lx, ly, lz)) return true;
+    for (int g = 0; g < 3; g++) if (inGallery(g, lx, ly, lz, false) || inGallery(g, lx, ly, lz, true)) return true;
+    return false;
+  };
+  // the land must lie well over it: a gallery stops short where a slope comes down near its roof (it would break out)
+  auto deep = [&](int lx, int lz) { auto [a, c] = vRot(b.r, lx, lz); return S.P.ground(b.ox + a, b.oz + c) >= b.y + FLOOR + 7; };
+  int len[3];
+  for (int g = 0; g < 3; g++) { len[g] = 0; while (len[g] < GAL[g].len) { int lx, lz; galleryCell(g, len[g], 0, lx, lz); if (!deep(lx, lz)) break; len[g]++; } }
+  auto open = [&](int lx, int ly, int lz) {   // dug, within the galleries' reach on this land
+    if (!dug(lx, ly, lz)) return false;
+    for (int g = 0; g < 3; g++) if (inGallery(g, lx, ly, lz, false) || inGallery(g, lx, ly, lz, true)) {
+      const Gallery& G = GAL[g]; const int along = G.dx ? (lx - G.x) * G.dx : (lz - G.z) * G.dz;
+      return along < len[g] && (!inGallery(g, lx, ly, lz, true) || len[g] == G.len);
+    }
+    return true;
+  };
+  // dig it all out, then shore up whatever round it is open (a cave, the water of one) with stone, the roofs with planks
+  for (int lz = REACH_Z0; lz <= REACH_Z1; lz++) for (int lx = REACH_X0; lx <= REACH_X1; lx++) for (int ly = FLOOR; ly <= 0; ly++)
+    if (open(lx, ly, lz)) S.set(lx, ly, lz, "air");
+  for (int lz = REACH_Z0; lz <= REACH_Z1; lz++) for (int lx = REACH_X0; lx <= REACH_X1; lx++) for (int ly = FLOOR - 1; ly <= 1; ly++) {
+    if (open(lx, ly, lz) || !soft(lx, ly, lz)) continue;
+    bool by = false;
+    for (int k = 0; k < 6 && !by; k++) { static const int D6[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}; if (open(lx + D6[k][0], ly + D6[k][1], lz + D6[k][2])) by = true; }
+    if (by && ly < 0) S.set(lx, ly, lz, open(lx, ly - 1, lz) ? st.planks : cob);
+  }
+  // ore showing in the galleries' walls
+  static const char* SPECK[5] = {"coal_ore", "coal_ore", "iron_ore", "copper_ore", "gold_ore"};
+  for (int g = 0; g < 3; g++) for (int s = 0; s < len[g]; s++) for (int side : {-2, 2}) for (int ly = FLOOR + 1; ly <= FLOOR + 3; ly++) {
+    int lx, lz; galleryCell(g, s, side, lx, lz);
+    if (open(lx, ly, lz) || soft(lx, ly, lz) || hash32((i32)b.seed, lx * 7 + g, ly, lz) % 100 >= 7) continue;
+    S.set(lx, ly, lz, VS::VB(SPECK[hash32((i32)b.seed, lx, ly * 3, lz) % 5], "stone"));
+  }
+  // the drift: its steps, timber sets and torches
+  for (int lz = 1; lz <= 12; lz++) for (int lx = 2; lx <= 4; lx++) S.stairs(lx, -lz, lz, stairs, 0);
+  for (int lz : {3, 6, 9, 12}) {
+    const int fl = -lz;
+    for (int ly = fl + 1; ly <= fl + 3; ly++) { S.log(1, ly, lz, st.log, 0); S.log(5, ly, lz, st.log, 0); }
+    for (int lx = 1; lx <= 5; lx++) S.log(lx, fl + 4, lz, st.log, 1);
+  }
+  for (int lz : {2, 5, 8, 11}) { S.torch(2, -lz + 2, lz, 3); S.torch(4, -lz + 2, lz, 1); }
+  for (int lx = 2; lx <= 4; lx++) { S.stairs(lx, 0, 0, stairs, 0); S.set(lx, 1, 0, "air"); S.set(lx, 2, 0, "air"); }   // up out of it under the headframe
+  // the chamber: posts and beams of timber, lanterns, the stores, the tools
+  for (int lx : {HUB_X0, 3, HUB_X1}) for (int lz : {HUB_Z0, HUB_Z1}) for (int ly = FLOOR + 1; ly <= FLOOR + 4; ly++) if (lx != 3) S.log(lx, ly, lz, st.log, 0);
+  for (int lz : {HUB_Z0, 16, HUB_Z1}) for (int lx = HUB_X0; lx <= HUB_X1; lx++) S.log(lx, FLOOR + 5, lz, st.log, 1);
+  for (auto [lx, lz] : {std::pair{0, 14}, {6, 14}, {0, 18}, {6, 18}, {3, 16}}) S.set(lx, FLOOR + 4, lz, "lantern", 1);
+  S.chest(HUB_X0, FLOOR + 1, HUB_Z0 + 1, 1, "house");
+  S.set(HUB_X0, FLOOR + 1, HUB_Z1 - 1, "barrel"); S.set(HUB_X1, FLOOR + 1, HUB_Z1 - 1, "barrel"); S.face(HUB_X1, FLOOR + 1, HUB_Z0 + 1, "crafting_table", 3);
+  S.pile(0, FLOOR + 1, HUB_Z1, {"coal", "iron_ore", "coal", "copper_ore"}); S.pile(6, FLOOR + 1, HUB_Z1, {"cobblestone", "coal", "", "iron_ore"});
+  S.set(HUB_X1 - 1, FLOOR + 1, HUB_Z0, "grindstone");
+  // the galleries: a rail down the middle, posts and caps every four blocks, torches between, the face at the end
+  static const char* ORE[6] = {"coal_ore", "stone", "iron_ore", "stone", "coal_ore", "copper_ore"};
+  for (int g = 0; g < 3; g++) {
+    const Gallery& G = GAL[g];
+    const int railMeta = G.dz ? ((b.r & 1) ? 1 : 0) : ((b.r & 1) ? 0 : 1), wallSide = G.dz ? 1 : 2;
+    for (int s = 0; s < len[g]; s++) {
+      int lx, lz; galleryCell(g, s, 0, lx, lz);
+      S.set(lx, FLOOR + 1, lz, "rail", railMeta);
+      if (s % 4 == 1) {
+        for (int side : {-1, 1}) { int px, pz; galleryCell(g, s, side, px, pz); S.set(px, FLOOR + 1, pz, st.fence); S.set(px, FLOOR + 2, pz, st.fence); }
+        for (int side = -1; side <= 1; side++) { int px, pz; galleryCell(g, s, side, px, pz); S.set(px, FLOOR + 3, pz, st.planks); }
+      } else if (s % 4 == 3) { int px, pz; galleryCell(g, s, 1, px, pz); S.torch(px, FLOOR + 2, pz, wallSide); }
+    }
+    if (len[g] == G.len) {   // the face, and the side cut's own small one
+      for (int side = -1; side <= 1; side++) for (int ly = FLOOR + 1; ly <= FLOOR + 3; ly++) {
+        int lx, lz; galleryCell(g, G.len, side, lx, lz);
+        S.set(lx, ly, lz, VS::VB(ORE[hash32((i32)b.seed, lx, ly, lz + g) % 6], "stone"));
+      }
+      for (int ly = FLOOR + 1; ly <= FLOOR + 2; ly++) {
+        int lx, lz; galleryCell(g, G.len / 2, 7, lx, lz);
+        S.set(lx, ly, lz, VS::VB(ORE[hash32((i32)b.seed, lx, ly, lz + 5) % 6], "stone"));
+      }
+    }
+  }
+  // the headframe over the way down: posts up to a winding wheel's frame, a slab roof, a lantern over the shaft
+  for (auto [x, z] : {std::pair{1, 0}, {5, 0}, {1, 4}, {5, 4}}) for (int ly = 1; ly <= 4; ly++) S.log(x, ly, z, st.log, 0);
+  S.fill(1, 5, 0, 5, 5, 4, st.planks);
+  for (int lx = 1; lx <= 5; lx++) for (int lz = 0; lz <= 4; lz++) if (lx == 1 || lx == 5 || lz == 0 || lz == 4) S.set(lx, 6, lz, st.slab);
+  for (int ly = 6; ly <= 7; ly++) S.log(3, ly, 2, st.log, 0);
+  S.set(3, 8, 2, st.slab);
+  for (int lz = 1; lz <= 3; lz++) { S.set(1, 1, lz, st.fence); S.set(5, 1, lz, st.fence); }
+  for (int lx = 2; lx <= 4; lx++) S.set(lx, 1, 4, st.fence);
+  S.set(3, 4, 2, "lantern", 1);
+  S.set(6, 1, 1, "barrel"); S.set(0, 1, 1, "barrel");
+  S.pile(6, 2, 1, {"coal", "iron_ore", "", "coal"});
+  for (int lz = 5; lz <= 9; lz++) S.set(0, 1, lz, "gravel");   // the spoil heap beside the drift
+  S.set(0, 2, 6, "gravel"); S.set(0, 2, 7, "gravel");
 }
 static void bMarket(VS& S) {
   const VStyle& st = S.st; const Bld& b = S.b;
@@ -740,7 +929,7 @@ void townBuildingBuild(SP& P, const Town& v, const Bld& b) {
   else if (t == "hall") bHall(S); else if (t == "tavern") bTavern(S); else if (t == "store") bStore(S); else if (t == "library") bLibrary(S);
   else if (t == "smithy") bSmithy(S); else if (t == "chapel") bChapel(S); else if (t == "council") bCouncil(S); else if (t == "tower") bTower(S);
   else if (t == "sage") bSage(S); else if (t == "farm") bFarm(S); else if (t == "pen") bPen(S); else if (t == "stable") bStable(S);
-  else if (t == "windmill") bWindmill(S); else if (t == "market") bMarket(S);
+  else if (t == "windmill") bWindmill(S); else if (t == "market") bMarket(S); else if (t == "mine") bMine(S);
 }
 
 } // namespace dq

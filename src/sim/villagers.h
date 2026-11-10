@@ -21,7 +21,9 @@
 namespace dq {
 
 // ---- a village (villages.js / towns.js plan) ----
-struct VFolk { ivec3 home{0}; int homeF = 0; std::string job = "none"; bool hasWork = false; ivec3 work{0}; int workF = 0; };
+struct VTask { ivec3 at{0}; int f = 0; std::string kind; };   // a stop on a trade's round: where to stand, facing what kind of station
+struct VFolk { ivec3 home{0}; int homeF = 0; std::string job = "none"; bool hasWork = false; ivec3 work{0}; int workF = 0; bool noBed = false;
+               std::vector<VTask> tasks; };   // tasks: the trade's round about its building (data/villagers.json jobs.*.tasks)
 struct VSeatSpot { ivec3 at{0}; int f = 0; bool walk = false; int ax = 0, az = 0; std::string held; };
 struct VRoad { int d = 0, L = 0, hw = 0; std::vector<ivec3> cells; };   // cells: x, global y of the ground, z (may be empty)
 struct VGate {
@@ -29,9 +31,10 @@ struct VGate {
   std::vector<ivec3> cells; vec3 center{0}; int h0 = 0, inX = 0, inZ = 0, hw = 0, span = 0, cx = 0, cz = 0;
   vec3 posts[2]{}; ivec3 lever{0};
 };
-struct VBld { std::string type, job, animals; int r = 0, ox = 0, oz = 0, W = 0, D = 0, H = 0, y = 0, x0 = 0, z0 = 0, x1 = 0, z1 = 0; bool hasMid = false; ivec3 mid{0}, door{0}; };
+struct VBld { std::string type, job, animals; int planV = 10; int r = 0, ox = 0, oz = 0, W = 0, D = 0, H = 0, y = 0, x0 = 0, z0 = 0, x1 = 0, z1 = 0; bool hasMid = false, hasWork = false; ivec3 mid{0}, door{0}, work{0}; };
 struct Village {
   std::string id, name, style, tier;   // tier: village | town | city
+  std::string base;                    // the base style its style is a kind of (plains, savanna, taiga, snowy, desert)
   int rx = 0, rz = 0;                  // the region (id "t<rx>_<rz>")
   int x = 0, y = 0, z = 0;             // the square (y = its ground, global)
   int P = 7, hw = 1, fr = 0, r = 24, guards = 0, golems = 0;
@@ -52,6 +55,12 @@ std::vector<VillageRef> villagesNear(Level& lv, float x, float z, float pad);   
 VillageRef villageById(Level& lv, const std::string& id);
 VillageRef villageAtPos(Level& lv, int realm, vec3 p, float pad);              // only in the Overworld band
 VillageRef villageNeighbour(Level& lv, const Village& v, float* dist = nullptr); // the nearest other village (news, word quests)
+// harm to a village (an explosion's blocks: sim/explosion.cpp, blockfx.cpp, redstone_parts.cpp): remembered with the
+// village, and its builders put it back (sim/villager_chores.cpp)
+VillageRef villageForDamage(Level& lv, int realm, vec3 at);
+// remembered for its builders, as it was (its chiselling, a rug on it, a shelf's or a stand's goods); true when it kept
+// the block's goods with it (the caller doesn't scatter them: the builder puts them back. A chest's spill, and comes back empty)
+bool villageDamage(Level& lv, const Village& v, int x, int y, int z, BlockId id, u8 meta);
 
 // ---- who they are (data/villagers.json, extracted from the original) ----
 const json& VD();                                     // NPC_JOBS, NPC_SHOPS, NPC_ERRANDS, NPC_TALK, RIFT_LORE ...

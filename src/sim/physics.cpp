@@ -11,6 +11,7 @@ static thread_local std::vector<PixBox> t_pix;
 
 static thread_local bool t_itemMove = false;   // moveEntity for a dropped item: mesh blocks let it through
 static thread_local const std::string* t_itemId = nullptr;   // ... and which item it is (the gold mesh's filter)
+static thread_local int t_itemD = 0;                         // ... and that item's damage (filterD)
 static int meshBlock(BlockId id) {
   static std::vector<u8> T; const Registry& R = reg();
   if (T.size() != R.blocks.size()) { T.assign(R.blocks.size(), 0); for (size_t i = 0; i < R.blocks.size(); i++) T[i] = R.blocks[i].has("mesh") ? (R.blocks[i].has("meshFilter") ? 2 : 1) : 0; }
@@ -22,7 +23,33 @@ static bool meshLets(const World& w, int x, int y, int z, BlockId id) {
   if (k == 1) return true;
   if (k != 2 || !t_itemId) return false;
   const json* e = const_cast<World&>(w).blockEntity(x, y, z);
-  return e && e->is_object() && e->contains("filter") && (*e)["filter"].is_string() && (*e)["filter"].get<std::string>() == *t_itemId;
+  if (!e || !e->is_object() || !e->contains("filter") || !(*e)["filter"].is_string()) return false;
+  if ((*e)["filter"].get<std::string>() != *t_itemId) return false;
+  return e->value("filterD", 0) == t_itemD;
+}
+// Extended spikes are a 3/16 slab on the face they attach to. Retracted (bit 0) and dropped items do not collide.
+static DBox spikeDBox(int meta, int x, int y, int z) {
+  int dir = (meta >> 1) & 7;
+  if (dir > 5) dir = 0;
+  const double t = 0.1875;
+  double x0 = x, y0 = y, z0 = z, x1 = x + 1.0, y1 = y + 1.0, z1 = z + 1.0;
+  switch (dir) {
+    case 1: y0 = y + 1.0 - t; break;
+    case 2: z1 = z + t; break;
+    case 3: z0 = z + 1.0 - t; break;
+    case 4: x1 = x + t; break;
+    case 5: x0 = x + 1.0 - t; break;
+    default: y1 = y + t; break;
+  }
+  return {x0, y0, z0, x1, y1, z1};
+}
+static bool takeSpike(const World& w, int x, int y, int z, BlockId id, double minX, double minY, double minZ, double maxX, double maxY, double maxZ, std::vector<DBox>* out) {
+  static const BlockId sp = reg().blockId("spike_trap");
+  if (!sp || id != sp) return false;
+  if (t_itemMove || (w.getMeta(x, y, z) & 1)) return true;
+  DBox d = spikeDBox(w.getMeta(x, y, z), x, y, z);
+  if (out && !(d.x1 <= minX || d.x0 >= maxX || d.y1 <= minY || d.y0 >= maxY || d.z1 <= minZ || d.z0 >= maxZ)) out->push_back(d);
+  return true;
 }
 void gatherBoxes(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ,
                  std::vector<DBox>& out, double feet, bool sneak) {
@@ -33,6 +60,7 @@ void gatherBoxes(const World& w, double minX, double minY, double minZ, double m
   int z0 = (int)std::floor(minZ), z1 = (int)std::floor(maxZ - 1e-7);
   for (int y = y0; y <= y1; y++) for (int z = z0; z <= z1; z++) for (int x = x0; x <= x1; x++) {
     BlockId id = w.getBlockPhys(x, y, z);
+    if (takeSpike(w, x, y, z, id, minX, minY, minZ, maxX, maxY, maxZ, &out)) continue;
     if (!R.tSolid[id] || (t_itemMove && meshBlock(id) && meshLets(w, x, y, z, id))) continue;
     bool carved = fullSolid(id) && w.getCarve(x, y, z);   // carve flag lives in its own byte now
     if (!hasShapeBoxes(id) && !carved) { if (y >= yb) out.push_back({(double)x, (double)y, (double)z, x + 1.0, y + 1.0, z + 1.0}); continue; }
@@ -55,6 +83,12 @@ bool collides(const World& w, double minX, double minY, double minZ, double maxX
 
 void blockBoxes(const World& w, int x, int y, int z, std::vector<AABB>& out) {
   BlockId id = w.getBlockPhys(x, y, z);
+  if (static const BlockId sp = reg().blockId("spike_trap"); sp && id == sp) {
+    if (t_itemMove || (w.getMeta(x, y, z) & 1)) return;
+    DBox d = spikeDBox(w.getMeta(x, y, z), x, y, z);
+    out.push_back({vec3((float)d.x0, (float)d.y0, (float)d.z0), vec3((float)d.x1, (float)d.y1, (float)d.z1)});
+    return;
+  }
   if (!reg().tSolid[id]) return;
   vec3 b(x, y, z);
   bool carved = fullSolid(id) && w.getCarve(x, y, z);
@@ -119,8 +153,8 @@ static void pushOut(const World& w, double& ex, double& ey, double& ez, double e
 
 MoveOut moveEntity(const World& w, Entity& e, float dt, const MoveParams& mp) {
   MoveOut res;
-  struct ItemScope { bool old; const std::string* oldId; ~ItemScope() { t_itemMove = old; t_itemId = oldId; } } itemScope{t_itemMove, t_itemId};
-  t_itemMove = mp.item; t_itemId = mp.itemId;
+  struct ItemScope { bool old; const std::string* oldId; int oldD; ~ItemScope() { t_itemMove = old; t_itemId = oldId; t_itemD = oldD; } } itemScope{t_itemMove, t_itemId, t_itemD};
+  t_itemMove = mp.item; t_itemId = mp.itemId; t_itemD = mp.itemD;
   double ex = e.pos.x, ey = e.pos.y, ez = e.pos.z, ew = e.w, eh = e.h;
   pushOut(w, ex, ey, ez, ew, eh, mp.sneaking);
   double dx = (double)e.vel.x * dt, dy = (double)e.vel.y * dt, dz = (double)e.vel.z * dt;
@@ -219,9 +253,6 @@ Contacts sampleContacts(const World& w, const Entity& e, float eye) {
   }
   BlockId under = w.getBlock(ifloor(e.pos.x), ifloor(e.pos.y - 0.05f), ifloor(e.pos.z));
   if (bhas(under, BF::Hot)) r.hot = true;
-  // spikes underfoot hurt like cactus (the spike trap)
-  static const BlockId spikes = reg().blockId("spike_trap");
-  if (spikes && w.getBlock(ifloor(e.pos.x), ifloor(e.pos.y + 0.05f), ifloor(e.pos.z)) == spikes) r.cactus = true;
   // cactus (and thorn leaves) are touched from the sides
   BlockId cactus = KB().cactus;
   static const BlockId thorns = reg().blockId("thorn_leaves");
@@ -242,6 +273,23 @@ Contacts sampleContacts(const World& w, const Entity& e, float eye) {
     if (R.tLiquid[id] == 2) r.eyeLava = true;
   }
   return r;
+}
+
+bool spikeOverlap(const World& w, const Entity& e) {
+  static const BlockId sp = reg().blockId("spike_trap");
+  if (!sp || e.w <= 0) return false;
+  float hw = e.w, h = e.h > 0 ? e.h : 0.5f;
+  AABB eb{e.pos - vec3(hw, 0, hw), e.pos + vec3(hw, h, hw)};
+  int x0 = ifloor(eb.lo.x), x1 = ifloor(eb.hi.x - 1e-4f);
+  int y0 = ifloor(eb.lo.y), y1 = ifloor(eb.hi.y - 1e-4f);
+  int z0 = ifloor(eb.lo.z), z1 = ifloor(eb.hi.z - 1e-4f);
+  for (int y = y0; y <= y1; y++) for (int z = z0; z <= z1; z++) for (int x = x0; x <= x1; x++) {
+    if (w.getBlock(x, y, z) != sp || (w.getMeta(x, y, z) & 1)) continue;
+    DBox d = spikeDBox(w.getMeta(x, y, z), x, y, z);
+    AABB sb{vec3((float)d.x0, (float)d.y0, (float)d.z0), vec3((float)d.x1, (float)d.y1, (float)d.z1)};
+    if (eb.overlaps(sb)) return true;
+  }
+  return false;
 }
 
 // Ray vs box with the normal of the face hit: t (or -1) and the normal.

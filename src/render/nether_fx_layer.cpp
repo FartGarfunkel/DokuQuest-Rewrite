@@ -40,8 +40,11 @@ public:
     steamVents(s, P, p, amount, dt);   // (in every Nether: the old one has vents too)
     if (s.level->info.genVersion < 5) { vols.clear(); scanT = 0; return; }
     const i32 seed = s.level->info.seed;
-    if ((scanT -= dt) <= 0 || glm::distance(vec2(p.x, p.z), vec2(scanAt.x, scanAt.z)) > 32) { scanT = 2; scanAt = p; netherVolcanoes(seed, (int)std::floor(p.x), (int)std::floor(p.z), 220, vols); }
-    volcanoes(s, P, p, amount, dt);
+    // The heightfield's volcano cones exist only on version 5. The cave Nether has no cones to erupt.
+    if (s.level->info.genVersion < 6) {
+      if ((scanT -= dt) <= 0 || glm::distance(vec2(p.x, p.z), vec2(scanAt.x, scanAt.z)) > 32) { scanT = 2; scanAt = p; netherVolcanoes(seed, (int)std::floor(p.x), (int)std::floor(p.z), 220, vols); }
+      volcanoes(s, P, p, amount, dt);
+    } else { vols.clear(); }
     lands(s, P, p, amount, dt);
   }
 
@@ -162,7 +165,11 @@ private:
 
   // the small life of each land round the player
   void lands(GameSession& s, ParticleSystem& P, vec3 p, float amount, float dt) {
-    if ((landT -= dt) <= 0) { landT = 1; u8 a, b; float m; netherBiomeMix(s.level->info.seed, (int)std::floor(p.x), (int)std::floor(p.z), a, b, m); land = a; }
+    if ((landT -= dt) <= 0) {
+      landT = 1; u8 a, b; float m;
+      netherLandAt(s.level->info.seed, s.level->info.genVersion, (int)std::floor(p.x), (int)std::floor(p.y), (int)std::floor(p.z), a, b, m);
+      land = a;
+    }
     World& w = s.world();
     const Registry& R = reg();
     static const BlockId acid = R.blockId("acid"), lava = R.blockId("lava");
@@ -191,13 +198,33 @@ private:
         q.tint[0] = 214; q.tint[1] = 222; q.tint[2] = 90;
         P.add(q);
       }
-    } else if (land == NB_CRYSTAL) {   // red glints drifting among the spires
-      for (int n = (int)std::floor(6 * dt * amount + rnd()); n > 0; n--) {
+    } else if (land == NB_CRYSTAL || land == NB_CRYSTAL_PLAINS) {   // red glints drifting among the spires
+      const float k = land == NB_CRYSTAL_PLAINS ? 0.45f : 1.f;
+      for (int n = (int)std::floor(6 * dt * amount * k + rnd()); n > 0; n--) {
         const vec3 q0 = p + vec3(rs() * 12, rs() * 5 + 1.5f, rs() * 12);
         if (w.getBlock((int)std::floor(q0.x), (int)std::floor(q0.y), (int)std::floor(q0.z)) != AIR) continue;
         Particle q; q.tile = (u16)P.tile("white"); q.light = 0xFF; q.glow = true; q.p = q0; q.v = vec3(rs() * 0.15f, 0.08f + rnd() * 0.1f, rs() * 0.15f);
         q.life = q.max = 3 + rnd() * 3; q.size = q.size0 = 0.03f; q.flutter = 0.25f; q.ph = rnd() * 6; q.blink = 4 + rnd() * 3;
         q.tint[0] = 255; q.tint[1] = (u8)(70 + rnd() * 70); q.tint[2] = (u8)(80 + rnd() * 50);
+        P.add(q);
+      }
+    } else if (land == NB_OLDWORLD || land == NB_OLD_DESERT) {   // ash motes on the wind
+      for (int n = (int)std::floor(8 * dt * amount + rnd()); n > 0; n--) {
+        const vec3 q0 = p + vec3(rs() * 14, rs() * 3 + 0.5f, rs() * 14);
+        if (w.getBlock((int)std::floor(q0.x), (int)std::floor(q0.y), (int)std::floor(q0.z)) != AIR) continue;
+        Particle q; q.tile = (u16)P.tile("smoke"); q.rise = true; q.light = 0xF0 | 8; q.p = q0;
+        q.v = vec3(rs() * 0.4f, 0.15f + rnd() * 0.25f, rs() * 0.4f);
+        q.life = q.max = 3 + rnd() * 3; q.size = q.size0 = 0.12f + rnd() * 0.1f; q.grow = 1.4f; q.grav = -0.02f; q.wind = P.windDrift;
+        const u8 g = (u8)(140 + rnd() * 50); q.tint[0] = g; q.tint[1] = (u8)(g * 0.9f); q.tint[2] = (u8)(g * 0.8f);
+        P.add(q);
+      }
+    } else if (land == NB_SHELF) {   // a little dust, the same dry rock as the Crag
+      for (int n = (int)std::floor(3 * dt * amount + rnd()); n > 0; n--) {
+        const vec3 q0 = p + vec3(rs() * 10, rs() * 2, rs() * 10);
+        if (w.getBlock((int)std::floor(q0.x), (int)std::floor(q0.y), (int)std::floor(q0.z)) != AIR) continue;
+        Particle q; q.tile = (u16)P.tile("smoke"); q.light = 0xF0 | 6; q.p = q0; q.v = vec3(rs() * 0.1f, -0.2f, rs() * 0.1f);
+        q.life = q.max = 1.5f + rnd(); q.size = q.size0 = 0.08f; q.grav = 0.4f;
+        q.tint[0] = 120; q.tint[1] = 90; q.tint[2] = 70;
         P.add(q);
       }
     }

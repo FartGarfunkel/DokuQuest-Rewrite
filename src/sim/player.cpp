@@ -12,7 +12,7 @@ namespace dq {
 Player::Player() {
   type = "player"; w = PLAYER_W; h = PLAYER_H; hp = maxHp = 20;
   inv.resize(INV_MAIN); armor.resize(INV_ARMOR); offhand.resize(INV_OFFHAND);
-  back.resize(1); hook.resize(1); charm.resize(1); cape.resize(1); ender.resize(INV_ENDER);
+  back.resize(1); hook.resize(1); charm.resize(1); cape.resize(1); quiver.resize(1); ender.resize(INV_ENDER);
   stats = {{"blocksMined", 0}, {"mobsKilled", 0}, {"bossesKilled", 0}, {"deaths", 0}};
 }
 
@@ -145,7 +145,10 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
   float fx = -s, fz = -co, rx = co, rz = -s;
   float tx = (rx * inp.mx - fx * inp.mz) * speed, tz = (rz * inp.mx - fz * inp.mz) * speed;
   bool slippery = onGround && bhas(under, BF::Slippery);
-  float accel = flying ? 8.f : onGround ? (slippery ? 2.f : 14.f) : (inWater || inLava ? 6.f : 3.f);
+  // BTA's ice skates: on ice you glide fast and still steer
+  const bool skating = slippery && armor.size() > 3 && !armor[3].empty() && armor[3].id == "ice_skates";
+  if (skating) { tx *= 1.75f; tz *= 1.75f; }
+  float accel = flying ? 8.f : onGround ? (slippery ? (skating ? 5.f : 2.f) : 14.f) : (inWater || inLava ? 6.f : 3.f);
   float k = std::min(1.f, accel * dt);
   vel.x += (tx - vel.x) * k; vel.z += (tz - vel.z) * k;
   // vertical
@@ -194,6 +197,7 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
     if (R.tSolid[wd.getBlockPhys(ifloor(nx), fy, ifloor(nz))] && !R.tSolid[wd.getBlockPhys(ifloor(nx), fy + 1, ifloor(nz))] && !R.tSolid[wd.getBlockPhys(ifloor(nx), fy + 2, ifloor(nz))]
         && !R.tSolid[wd.getBlockPhys(ifloor(pos.x), fy + 2, ifloor(pos.z))]) vel.y = JUMP_V;
   }
+  if (spikeOverlap(wd, *this)) { if (sneaking) vel.y = 0; else vel = vec3(0); }
   float ox = pos.x, oz = pos.z, vyBefore = vel.y;
   bool wasGround = onGround;
   // a moment after stepping off a little lip you can still step over the next one
@@ -302,7 +306,7 @@ json Player::save() const {
   j["x"] = pos.x; j["y"] = pos.y; j["z"] = pos.z; j["dim"] = jsFromDim(dimOfY(ifloor(pos.y)));
   j["health"] = hp; j["maxHealth"] = maxHp; j["xp"] = xp; j["level"] = level; j["hv"] = 2; j["heartCrystals"] = heartCrystals; j["air"] = air;
   j["inv"] = {{"main", slotsToJson(inv)}, {"armor", slotsToJson(armor)}, {"back", slotsToJson(back)}, {"off", slotsToJson(offhand)},
-              {"hook", slotsToJson(hook)}, {"charm", slotsToJson(charm)}, {"cape", slotsToJson(cape)}, {"ender", slotsToJson(ender)}, {"selected", selected}};
+              {"hook", slotsToJson(hook)}, {"charm", slotsToJson(charm)}, {"cape", slotsToJson(cape)}, {"quiver", slotsToJson(quiver)}, {"ender", slotsToJson(ender)}, {"selected", selected}};
   j["fuel"] = fuel;
   j["spawn"] = spawnPoint.y < 0 ? json() : json::array({spawnPoint.x, spawnPoint.y, spawnPoint.z});
   j["spawnDim"] = spawnPoint.y < 0 ? 0 : jsFromDim(dimOfY(ifloor(spawnPoint.y)));
@@ -324,7 +328,7 @@ void Player::load(const json& j) {
     const json& o = j["inv"];
     slotsFromJson(o.value("main", json()), inv); slotsFromJson(o.value("armor", json()), armor); slotsFromJson(o.value("back", json()), back);
     slotsFromJson(o.value("off", json()), offhand); slotsFromJson(o.value("hook", json()), hook); slotsFromJson(o.value("charm", json()), charm);
-    slotsFromJson(o.value("cape", json()), cape); slotsFromJson(o.value("ender", json()), ender);
+    slotsFromJson(o.value("cape", json()), cape); slotsFromJson(o.value("quiver", json()), quiver); slotsFromJson(o.value("ender", json()), ender);
     selected = clampv(o.value("selected", 0), 0, 8);
   } else {   // the engine foundation's first format
     if (j.contains("inv")) slotsFromJson(j["inv"], inv);

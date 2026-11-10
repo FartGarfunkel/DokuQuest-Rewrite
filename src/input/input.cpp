@@ -38,6 +38,7 @@ std::vector<ActInfo> buildTable() {
     {Act::HideHud, "hideHud", "Hide the HUD", V{"F1"}, {}, true, false},
     {Act::Screenshot, "screenshot", "Screenshot", V{"F2"}, {}, true, false},
     {Act::Debug, "debug", "Debug info", V{"F3"}, {}, true, false},
+    {Act::PhotoMode, "photoMode", "Photo mode", V{"F6"}, {}, true, false},
   };
   for (int i = 0; i < 9; i++) {
     static const char* ids[] = {"slot1", "slot2", "slot3", "slot4", "slot5", "slot6", "slot7", "slot8", "slot9"};
@@ -126,7 +127,7 @@ void Input::saveBinds() {}
 void Input::beginFrame() {
   for (auto& x : fr) { x.prev = x.cur; x.kprev = x.kcur; x.pulse.fill(false); }
   mouseDelta = vec2(0); wheelY = 0; typed.clear(); lastCode.clear(); lastPadButton = -1; dropAllFlag = false;
-  std::memcpy(prevKeys, keys, sizeof keys);
+  std::memcpy(prevKeys, keys, sizeof keys); std::memset(keyHit, 0, sizeof keyHit); std::memset(mouseHit, 0, sizeof mouseHit);
   for (auto& p : padList) p.prevB = p.b;
 }
 
@@ -149,7 +150,7 @@ void Input::handle(const SDL_Event& e) {
   switch (e.type) {
     case SDL_KEYDOWN:
       if (e.key.keysym.scancode < SDL_NUM_SCANCODES) {
-        keys[e.key.keysym.scancode] = true;
+        keys[e.key.keysym.scancode] = true; keyHit[e.key.keysym.scancode] = true;
         if (!e.key.repeat) {
           lastCode = scancodeToCode(e.key.keysym.scancode);
           // one-shot latches (input.js pressCode)
@@ -160,7 +161,7 @@ void Input::handle(const SDL_Event& e) {
       }
       lastWasPad = false; break;
     case SDL_KEYUP: if (e.key.keysym.scancode < SDL_NUM_SCANCODES) keys[e.key.keysym.scancode] = false; break;
-    case SDL_MOUSEBUTTONDOWN: if (e.button.button < 8) { mouseBtn[e.button.button] = true; lastCode = "Mouse" + std::to_string(e.button.button - 1); } lastWasPad = false; break;
+    case SDL_MOUSEBUTTONDOWN: if (e.button.button < 8) { mouseBtn[e.button.button] = true; mouseHit[e.button.button] = true; lastCode = "Mouse" + std::to_string(e.button.button - 1); } lastWasPad = false; break;
     case SDL_MOUSEBUTTONUP: if (e.button.button < 8) mouseBtn[e.button.button] = false; break;
     case SDL_MOUSEMOTION: if (capture) mouseDelta += vec2((float)e.motion.xrel, (float)e.motion.yrel); break;
     case SDL_MOUSEWHEEL: wheelY += e.wheel.preciseY != 0 ? e.wheel.preciseY : (float)e.wheel.y; break;
@@ -259,15 +260,15 @@ void Input::readPad(PadState& p) {
 }
 
 void Input::releaseAll() {
-  std::memset(keys, 0, sizeof keys); std::memset(mouseBtn, 0, sizeof mouseBtn);
+  std::memset(keys, 0, sizeof keys); std::memset(mouseBtn, 0, sizeof mouseBtn); std::memset(keyHit, 0, sizeof keyHit); std::memset(mouseHit, 0, sizeof mouseHit);
   sneakLatch = false; sprintLatch = false; doubleW = false; lastW = -1;
   for (auto& p : padList) { p.sprintLatch = false; p.navDir = ivec2(0); p.viewHold = 0; }
 }
 
 bool Input::codeDown(const std::string& c) const {
-  if (startsWith(c, "Mouse")) { int m = std::atoi(c.c_str() + 5) + 1; return m > 0 && m < 8 && mouseBtn[m]; }
+  if (startsWith(c, "Mouse")) { int m = std::atoi(c.c_str() + 5) + 1; return m > 0 && m < 8 && (mouseBtn[m] || mouseHit[m]); }
   SDL_Scancode sc = codeToScancode(c);
-  return sc != SDL_SCANCODE_UNKNOWN && keys[sc];
+  return sc != SDL_SCANCODE_UNKNOWN && (keys[sc] || keyHit[sc]);
 }
 
 void Input::endFrame() {
@@ -391,7 +392,13 @@ vec2 Input::lookDelta() const {
   }
   return d;
 }
-void Input::setCapture(SDL_Window* w, bool on) { (void)w; capture = on; SDL_SetRelativeMouseMode(on ? SDL_TRUE : SDL_FALSE); }
+void Input::setCapture(SDL_Window* w, bool on) {
+  (void)w;
+  // "0" is raw input, "1" warps the pointer. SDL reads the hint when relative mode turns on.
+  if (settings) SDL_SetHint(SDL_HINT_MOUSE_RELATIVE_MODE_WARP, settings->rawMouse ? "0" : "1");
+  capture = on;
+  SDL_SetRelativeMouseMode(on ? SDL_TRUE : SDL_FALSE);
+}
 int Input::padCount() const { return (int)padList.size(); }
 
 } // namespace dq

@@ -56,7 +56,10 @@ public:
     FrameCtx& f = s.frame;
     // the original env: a light floor lifted by the brightness option (more in the Depths and the End), wind
     f.minLight = 0.025f + a.settings.brightness * 0.07f;
-    if (f.dim == DIM_NETHER) f.minLight = std::max(f.minLight, s.level->info.genVersion >= 5 ? 0.27f : 0.07f);   // BTA 8.0's Nether: light enough to cross
+    if (f.dim == DIM_NETHER) {   // version 5's open lands stay brighter; the cave Nether sits nearer BTA's 0.15 floor
+      const int gv = s.level->info.genVersion;
+      f.minLight = std::max(f.minLight, gv >= 6 ? 0.16f : gv >= 5 ? 0.27f : 0.07f);
+    }
     if (f.dim == DIM_END) f.minLight = std::max(f.minLight, 0.12f);
     f.wind = a.settings.wavingPlants ? 0.45f + 0.5f * 0.9f : 0.f;
     s.worldRenderer.plantDetail = a.settings.plantDetail == "off" || a.settings.plantDetail == "flat" ? 0 : a.settings.plantDetail == "all" ? 2 : 1;

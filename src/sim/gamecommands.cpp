@@ -19,6 +19,7 @@ bool setCreatureLook(Entity& e, const std::string& look);   // sim/creature.cpp 
 void keepSummoned(Entity& e);
 int spawnLookRow(Level& lv, int realm, vec3 at, float yaw, const std::string& type);
 std::string spawnLineup(Level& lv, int realm, vec3 at, float yaw, int page, int per);
+std::string driftTravel(Level& lv, Player& p);   // sim/drift.cpp
 
 static double rnd() { static thread_local std::mt19937 g{std::random_device{}()}; return std::uniform_real_distribution<double>(0, 1)(g); }
 
@@ -269,23 +270,27 @@ static void registerBuiltinCommands() {
     else { static const std::regex yes("^(true|on|1|yes)$", std::regex::icase); r[a[0]] = std::regex_match(a[1], yes); }
     return a[0] + " = " + show(r[a[0]]);
   });
-  C("tp", "<x y z> | spawn | <player> | <overworld|skylands|nether|end> [x z]", "Teleport", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
+  C("tp", "<x y z> | spawn | <player> | <overworld|skylands|nether|end|drift> [x z]", "Teleport", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
     Player& p = c.p;
     if (!a.empty() && a[0] == "spawn") { placeAtSpawn(c.lv, p, false); return "To spawn"; }
+    // BTA's Drift (sim/drift.cpp): in as its portal takes you; from there any dimension's name brings you back
+    if (!a.empty() && toLower(a[0]) == "drift") return p.realm == REALM_DRIFT ? "You're in the Drift already (/tp overworld to go back)" : driftTravel(c.lv, p);
     // BTA: /tp to a dimension (here a band of the stacked world): onto its ground above x, z
     if (!a.empty()) {
       const std::string d = toLower(a[0]);
       const int dim = d == "overworld" || d == "world" ? DIM_OVERWORLD : d == "skylands" || d == "aether" || d == "sky" ? DIM_AETHER
                     : d == "nether" || d == "depths" || d == "ember" ? DIM_NETHER : d == "end" || d == "the_end" ? DIM_END : -1;
       if (dim >= 0) {
+        if (p.realm == REALM_DRIFT) return driftTravel(c.lv, p);
         if (p.realm != REALM_MAIN) return "Only from the main world";
         int x = a.size() >= 3 ? coord(p, a, 1, 0) : ifloor(p.pos.x), z = a.size() >= 3 ? coord(p, a, 2, 2) : ifloor(p.pos.z);
         const DimGenerator* g = c.lv.gen ? c.lv.gen->forDim(dim) : nullptr;
         int y = g ? g->spawnHeight(x, z) : -1;
-        // no ground just there (the End's void, a gap between Skylands islands) and no place asked for: the nearest
-        // ground out to 640 blocks, rings of 8, instead of dropping you into the void
-        if (g && !(y > 0 && y < DIM_H - 2) && a.size() < 3)
-          for (int r = 8; r <= 640 && !(y > 0 && y < DIM_H - 2); r += 8)
+        // no ground just there (the End's void, a gap between Skylands islands, the Nether's lava sea): the nearest
+        // ground out to 640 blocks, rings of 8 (96 when a place was asked for), instead of dropping you from high up
+        const int reachR = a.size() < 3 ? 640 : 96;
+        if (g && !(y > 0 && y < DIM_H - 2))
+          for (int r = 8; r <= reachR && !(y > 0 && y < DIM_H - 2); r += 8)
             for (int i = 0; i < 8 * r / 8 && !(y > 0 && y < DIM_H - 2); i++) {
               const double ang = i * 6.2831853 / (8 * r / 8);
               const int tx = x + (int)std::lround(std::cos(ang) * r), tz = z + (int)std::lround(std::sin(ang) * r);

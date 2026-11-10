@@ -138,13 +138,25 @@ bool learnTome(Level& lv, Player& p, ItemStack& tome) {
   auto ks = knownSpells(p);
   if (std::find(ks.begin(), ks.end(), k) != ks.end()) { lv.fx->message(p.id, "You already know " + S->name, ""); return true; }
   int lvl = skillLv(p, "magic");
-  if (lvl < S->lvl) { lv.fx->message(p.id, "The words swim on the page. You need Magic " + std::to_string(S->lvl) + " to learn " + S->name, "warn"); return true; }
+  if (lvl < S->lvl && !p.creative()) {
+    // too deep to learn yet, but not wasted: studying it the first time teaches you something (Magic XP, the tome kept)
+    json& st = p.stats["studied"];
+    if (!st.is_object()) st = json::object();
+    if (!st.value(k, false)) {
+      st[k] = true;
+      const double xp = 15.0 * S->lvl;
+      skillGain(lv, p, "magic", xp);
+      lv.fx->message(p.id, "Too deep to learn yet (Magic " + std::to_string(S->lvl) + "), but studying " + S->name + " taught you something: +" + std::to_string((int)xp) + " Magic XP", "good");
+      lv.fx->soundUi(p.id, "page");
+    } else lv.fx->message(p.id, "You need Magic " + std::to_string(S->lvl) + " to learn " + S->name + ". Cast your spells to grow your Magic", "warn");
+    return true;
+  }
   json& sp = p.stats["spells"];
   if (!sp.is_array()) sp = json::array();
   sp.push_back(k);
   p.stats["spell"] = (int)sp.size() - 1;
   if (!p.creative() && --tome.n <= 0) tome.clear();
-  lv.fx->message(p.id, "You have learned " + S->name + "!" + (sp.size() == 1 ? " Hold a staff and use it to cast" : ""), "epic");
+  lv.fx->message(p.id, "You have learned " + S->name + "! Press Z to cast it (a staff makes it stronger)", "epic");
   lv.fx->soundUi(p.id, "levelup");
   skillGain(lv, p, "magic", 40.0 * S->lvl);
   sfx::spiral(lv, p.pos, S->fx, 70, json{{"r", 0.9}, {"h", 2.6}, {"turns", 4}, {"life", 1.3}});
@@ -160,10 +172,7 @@ void castQuick(Level& lv, Player& p) {
   std::string k = activeSpell(p);
   if (k.empty()) { lv.fx->message(p.id, "You know no spells yet \xE2\x80\x94 read a spell tome", ""); return; }
   if (heldStaff(p)) { castSpell(lv, p); return; }
-  const SpellDef* S = magicData().spell(k);
-  static const std::unordered_set<std::string> old = {"firebolt", "frost", "light", "heal", "levitate", "stoneskin", "blink", "familiar", "ward", "lightning", "missiles", "regrowth", "haste", "fireball", "icenova", "guardian"};
-  if (old.count(k)) { lv.fx->message(p.id, "Hold a staff to cast " + (S ? S->name : k), ""); return; }
-  MagicState& m = magicState(lv, p);
+  MagicState& m = magicState(lv, p);   // every spell casts bare-handed (weaker than with a staff)
   m.bare = true;
   castSpell(lv, p);
   m.bare = false;
@@ -347,6 +356,17 @@ void MagicSystem::tick(Level& l, double dt) {
 
 void MagicSystem::tickPlayer(Player& p, double dt) {
   MagicState& m = state(p);
+  // everyone starts knowing two spells (Firebolt to fight with, Home Teleport to get back): casting is what grows Magic,
+  // so with none there was no way in. Once per player (older saves get them too).
+  if (!p.stats.value("magicStart", false) && !lv.isRemote()) {
+    p.stats["magicStart"] = true;
+    json& sp = p.stats["spells"];
+    if (!sp.is_array()) sp = json::array();
+    bool any = !sp.empty();
+    for (const char* k : {"firebolt", "homeport"})
+      if (magicData().spell(k) && std::find(sp.begin(), sp.end(), json(k)) == sp.end()) sp.push_back(k);
+    if (!any) { p.stats["spell"] = 0; lv.fx->message(p.id, "You know Firebolt: press Z to cast it (G changes spell, B opens your Spellbook)", "epic"); }
+  }
   if (m.castCd > 0) m.castCd -= (float)dt;
   float max = manaMax(p);
   if (m.mana < 0) m.mana = max;

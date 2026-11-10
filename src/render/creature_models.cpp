@@ -103,6 +103,10 @@ static const std::unordered_map<std::string, PMSpec>& packMobs() {
   { PMSpec s; s.tex = {"entity/zombie/drowned"}; s.overlay = "entity/zombie/drowned_outer_layer"; s.hide = {"eyes"}; s.parts = pmBiped(zh, zhat, zb, za, PM{32, 48, 4, 12, 4}, zl, PM{16, 48, 4, 12, 4}); M["drowned"] = s; }
   PM sa{40, 16, 2, 12, 2}, sl{0, 16, 2, 12, 2};
   { PMSpec s; s.tex = {"entity/skeleton/skeleton"}; s.hide = {"spine"}; s.parts = pmBiped(zh, std::nullopt, zb, sa, std::nullopt, sl, std::nullopt); M["skeleton"] = s; }
+  { PMSpec s; s.tex = {"entity/skeleton/wither_skeleton", "entity/wither_skeleton"}; s.hide = {"spine"}; s.parts = pmBiped(zh, std::nullopt, zb, sa, std::nullopt, sl, std::nullopt); M["wither_skeleton"] = s; }
+  // the zombie pigman: the pack's classic zombie_pigman picture (the zombie's layout; its left arm and leg are left blank in
+  // the picture and mirror the right ones, as in Minecraft before 1.8) before the newer piglin-shaped one
+  { PMSpec s; s.tex = {"entity/zombie_pigman", "entity/piglin/zombie_pigman"}; s.parts = pmBiped(zh, zhat, zb, za, std::nullopt, zl, std::nullopt); M["zombie_pigman"] = s; }
   { PMSpec s; s.tex = {"entity/skeleton/stray"}; s.overlay = "entity/skeleton/stray_overlay"; s.hide = {"spine", "cloak"}; s.parts = pmBiped(zh, std::nullopt, zb, sa, std::nullopt, sl, std::nullopt); M["stray"] = s; }
   auto illager = [&](PM head, PM body, PM arm, PM leg, std::vector<PMPart> extra) {
     std::vector<PMPart> v = {P("head", head), P("body", body), P("armR", arm, up), P("foreR", arm, lo), P("armL", arm, upM), P("foreL", arm, loM),
@@ -119,6 +123,7 @@ static const std::unordered_map<std::string, PMSpec>& packMobs() {
              {"body", {-4, 6, -2, 8, 12, 4}}, {"head", {-4, 18, -4, 8, 8, 8}}};
     M["fuseling"] = s; }
   { PMSpec s; s.tex = {"entity/enderman/enderman", "entity/enderman"};   // Minecraft's 64x32 enderman; the jaw is its headwear box
+    s.eyes = "entity/enderman/enderman_eyes";   // its glow, drawn for the pack's own face (the glow plane takes it)
     s.parts = {P("head", {0, 0, 8, 8, 8}), P("jaw", {0, 16, 8, 8, 8}), P("body", {32, 16, 8, 12, 4}),
                P("armR", {56, 0, 2, 30, 2}, up), P("foreR", {56, 0, 2, 30, 2}, lo), P("armL", {56, 0, 2, 30, 2}, upM), P("foreL", {56, 0, 2, 30, 2}, loM),
                P("legR", {56, 0, 2, 30, 2}, up), P("shinR", {56, 0, 2, 30, 2}, lo), P("legL", {56, 0, 2, 30, 2}, upM), P("shinL", {56, 0, 2, 30, 2}, loM)};
@@ -130,7 +135,7 @@ static const std::unordered_map<std::string, PMSpec>& packMobs() {
   { PMSpec s; s.tex = {"entity/spider/spider"}; s.eyes = "entity/spider_eyes"; s.parts = pmSpider(); M["spider"] = s; }
   { PMSpec s; s.tex = {"entity/spider/cave_spider"}; s.eyes = "entity/spider_eyes"; s.parts = pmSpider(); M["cave_spider"] = s; }
   { PMSpec s; s.tex = {"entity/slime/slime"}; PMo sf; sf.slimeFace = true; s.parts = {P("cube", {0, 0, 8, 8, 8}), P("core", {0, 16, 6, 6, 6}, sf)}; M["slime"] = s; }
-  { PMSpec s; s.tex = {"entity/blaze"}; s.parts = {P("core", {0, 0, 8, 8, 8})}; for (int i = 0; i < 6; i++) s.parts.push_back(P("rod" + std::to_string(i), {0, 16, 2, 8, 2})); M["cinder_wisp"] = s; }
+  { PMSpec s; s.tex = {"entity/blaze"}; s.parts = {P("core", {0, 0, 8, 8, 8})}; for (int i = 0; i < 12; i++) s.parts.push_back(P("rod" + std::to_string(i), {0, 16, 2, 8, 2})); M["cinder_wisp"] = s; }
   { // the bee (the pack's entity/bee: Minecraft's 64x64 layout), plain, angry and carrying nectar
     PMSpec s; s.tex = {"entity/bee/bee", "entity/bee"};
     PMo wl; wl.mirror = true;
@@ -141,11 +146,16 @@ static const std::unordered_map<std::string, PMSpec>& packMobs() {
     s.tex = {"entity/bee/bee_nectar", "entity/bee/bee", "entity/bee"}; M["bee#nectar"] = s;
     s.tex = {"entity/bee/bee_angry_nectar", "entity/bee/bee_angry", "entity/bee/bee", "entity/bee"}; M["bee#angry_nectar"] = s; }
   { PMSpec s; s.tex = {"entity/silverfish"}; s.parts = {P("head", {0, 0, 3, 2, 2}), P("seg1", {0, 4, 4, 3, 2}), P("seg2", {0, 9, 6, 4, 3}), P("seg3", {0, 16, 3, 3, 3}), P("seg4", {0, 22, 2, 2, 3}), P("seg5", {11, 0, 2, 1, 2})}; M["stone_mite"] = s; }
-  { PMSpec s; s.tex = {"entity/cow/temperate_cow", "entity/cow/cow"}; s.parts = pmQuad({0, 0, 8, 8, 6}, {18, 4, 12, 18, 10}, {0, 16, 4, 12, 4});
+  { PMSpec s; s.tex = {"entity/cow/temperate_cow", "entity/cow_temperate", "entity/cow/cow", "entity/cow"}; s.parts = pmQuad({0, 0, 8, 8, 6}, {18, 4, 12, 18, 10}, {0, 16, 4, 12, 4});
     s.parts.push_back(P("hornR", {22, 0, 1, 3, 1})); s.parts.push_back(P("hornL", {22, 0, 1, 3, 1}, mir)); s.parts.push_back(P("udder", {52, 0, 4, 6, 1}, ly)); s.parts.push_back(P("tail", {0, 16, 4, 12, 4}));
-    M["cow"] = s; }
-  { PMSpec s; s.tex = {"entity/pig/temperate_pig", "entity/pig/pig"}; s.parts = pmQuad({0, 0, 8, 8, 8}, {28, 8, 10, 16, 8}, {0, 16, 4, 6, 4});
-    s.parts.push_back(P("snout", {16, 16, 4, 3, 1})); s.parts.push_back(P("tail", {0, 16, 4, 6, 4})); M["pig"] = s; }
+    M["cow"] = s;
+    // the climate looks (the pack's cold and warm cows; a pack without them keeps the temperate one)
+    s.tex = {"entity/cow/cold_cow", "entity/cow_cold", "entity/cow/temperate_cow", "entity/cow_temperate", "entity/cow/cow", "entity/cow"}; M["cow#cold"] = s;
+    s.tex = {"entity/cow/warm_cow", "entity/cow_warm", "entity/cow/temperate_cow", "entity/cow_temperate", "entity/cow/cow", "entity/cow"}; M["cow#warm"] = s; }
+  { PMSpec s; s.tex = {"entity/pig/temperate_pig", "entity/pig_temperate", "entity/pig/pig", "entity/pig"}; s.parts = pmQuad({0, 0, 8, 8, 8}, {28, 8, 10, 16, 8}, {0, 16, 4, 6, 4});
+    s.parts.push_back(P("snout", {16, 16, 4, 3, 1})); s.parts.push_back(P("tail", {0, 16, 4, 6, 4})); M["pig"] = s;
+    s.tex = {"entity/pig/cold_pig", "entity/pig_cold", "entity/pig/temperate_pig", "entity/pig_temperate", "entity/pig/pig", "entity/pig"}; M["pig#cold"] = s;
+    s.tex = {"entity/pig/warm_pig", "entity/pig_warm", "entity/pig/temperate_pig", "entity/pig_temperate", "entity/pig/pig", "entity/pig"}; M["pig#warm"] = s; }
   { PMSpec s; s.tex = {"entity/sheep/sheep", "entity/sheep"};
     s.wool = {"entity/sheep/sheep_fur", "entity/sheep/sheep_wool", "entity/sheep_wool"};   // Minecraft's old name, 1.21.5's, a pack's own place
     s.under = {"entity/sheep/sheep_wool_undercoat", "entity/sheep_wool_undercoat"};          // 1.21.5's undercoat: what a sheared sheep keeps
@@ -159,7 +169,9 @@ static const std::unordered_map<std::string, PMSpec>& packMobs() {
     M["sheep"] = s; }
   { PMSpec s; s.tex = {"entity/chicken/temperate_chicken", "entity/chicken"};
     s.parts = {P("head", {0, 0, 4, 6, 3}), P("beak", {14, 0, 4, 2, 2}), P("wattle", {14, 4, 2, 2, 2}), P("body", {0, 9, 6, 8, 6}, ly), P("legR", {26, 0, 3, 5, 3}), P("legL", {26, 0, 3, 5, 3}, mir), P("wingR", {24, 13, 1, 4, 6}), P("wingL", {24, 13, 1, 4, 6}, mir)};
-    M["chicken"] = s; }
+    M["chicken"] = s;
+    s.tex = {"entity/chicken/cold_chicken", "entity/chicken_cold", "entity/chicken/temperate_chicken", "entity/chicken_temperate", "entity/chicken"}; M["chicken#cold"] = s;
+    s.tex = {"entity/chicken/warm_chicken", "entity/chicken_warm", "entity/chicken/temperate_chicken", "entity/chicken_temperate", "entity/chicken"}; M["chicken#warm"] = s; }
   { PMSpec s; s.tex = {"entity/wolf/wolf"}; s.parts = pmQuad({0, 0, 6, 6, 4}, {18, 14, 6, 9, 6}, {0, 18, 2, 8, 2});
     s.parts.push_back(P("mane", {21, 0, 8, 6, 7}, ly)); s.parts.push_back(P("snout", {0, 10, 3, 3, 4})); s.parts.push_back(P("earR", {16, 14, 2, 2, 1})); s.parts.push_back(P("earL", {16, 14, 2, 2, 1}, mir)); s.parts.push_back(P("tail", {9, 18, 2, 8, 2}));
     M["wolf"] = s; }
@@ -294,6 +306,16 @@ static bool packSkin(const RigModel& M, const std::string& key, std::vector<std:
       faces[eyesPart] = std::array<Pic, 6>{}; faces[eyesPart][5] = px;
     } else empty.insert("eyes");
   }
+  // The enderman's glowing eyes: the pack's eye picture on the glow plane in front of the face, so they sit where the
+  // pack's face has them (the built-in picture was drawn for the original's face). No picture: the pack's face shows its own.
+  if (int eg = M.find("eyeglow"); eg >= 0 && M.key == "enderman") {
+    if (eyes.ok()) {
+      const auto HF = pmFaces(PM{0, 0, 8, 8, 8}, PMo{});   // exactly the head's front, as its skin face is cut
+      Pic px; pmPatch(eyes, eyes.w / 64.f, HF[5].reg, HF[5].xf, px, false, HF[5].slice);
+      for (u32& c : px) { int mx = std::max({(int)(c & 255), (int)((c >> 8) & 255), (int)((c >> 16) & 255)}); if (mx < 40 || (c >> 24) < 128) c = 0; }
+      faces[eg] = std::array<Pic, 6>{}; faces[eg][5] = px;
+    } else empty.insert("eyeglow");
+  }
   for (size_t i = 0; i < M.parts.size(); i++) {
     const RigPart& p = M.parts[i];
     bool h = empty.count(p.name) || std::find(spec.hide.begin(), spec.hide.end(), p.name) != spec.hide.end() || (p.parent >= 0 && hidden[p.parent]);
@@ -385,20 +407,36 @@ static void partGrid(const TileSet& ts, const RigModel& M, const std::string& ke
                      VoxelGrid& g, vec3& lo, vec3& size) {
   const RigPart& p = M.parts[i];
   g = VoxelGrid();
+  if (p.vox.is_object() || p.vox.is_array()) {   // straight from a voxel list (or nothing at all: a pivot)
+    lo = p.min; size = glm::max(p.max - p.min, vec3(1e-3f));
+    const json& n = p.vox.is_object() ? p.vox.value("n", json()) : json();
+    if (!n.is_array() || n.size() != 3) { g.resize(ivec3(1)); return; }
+    const ivec3 dim(n[0].get<int>(), n[1].get<int>(), n[2].get<int>());
+    g.resize(glm::max(dim, ivec3(1)));
+    if (p.vox.contains("c")) for (auto& c : p.vox["c"]) {
+      if (!c.is_array() || c.size() < 7) continue;
+      const int x0 = c[0], y0 = c[1], z0 = c[2], w = c[3], h = c[4], d = c[5]; const u32 rgb = c[6].get<u32>();
+      const u32 v = voxRGBA((int)((rgb >> 16) & 255), (int)((rgb >> 8) & 255), (int)(rgb & 255), VOXEL_SOLID);
+      for (int z = std::max(0, z0); z < std::min(dim.z, z0 + d); z++) for (int y = std::max(0, y0); y < std::min(dim.y, y0 + h); y++)
+        for (int x = std::max(0, x0); x < std::min(dim.x, x0 + w); x++) g.set(x, y, z, v);
+    }
+    return;
+  }
   std::array<Pic, 6> F = pack && std::any_of(faces[i].begin(), faces[i].end(), [](const Pic& x) { return !x.empty(); }) ? faces[i] : tilesOf(ts, p.tex);
   lo = p.min; size = glm::max(p.max - p.min, vec3(1e-3f));
   bool packed = pack && std::any_of(faces[i].begin(), faces[i].end(), [](const Pic& x) { return !x.empty(); });
   // birds' feet: the rig's legs are 1 px sticks, which loses the toes. With a pack skin the leg takes
   // Minecraft's 3x5x3 box (its picture has the toes; the clear texels carve the rest away); with the
   // original's tiles a foot of three toes forward and one back is added under the stick.
-  bool bird = p.role == "bleg" && size.x <= 1.6f / 16;
+  // (a model with feet of its own, tools/port/bird_feet.py's: none of that, the leg stays a leg)
+  bool bird = p.role == "bleg" && size.x <= 1.6f / 16 && M.find(p.name == "legL" ? "footL" : "footR") < 0;
   if (bird && packed) { lo = vec3(-1.5f, p.min.y * 16, -2.5f) / 16.f; size = vec3(3, size.y * 16, 3) / 16.f; }
   if (packed) if (auto si = packMobs().find(packMobs().count(key) || M.packBase.empty() ? key : M.packBase); si != packMobs().end())
     if (auto bi = si->second.box.find(p.name); bi != si->second.box.end()) {   // model space -> this part's own space (whatever rig the creature has)
       const auto& b = bi->second; vec3 piv(0); for (int q = (int)i; q >= 0; q = M.parts[q].parent) piv += M.parts[q].pivot;
       lo = vec3(b[0], b[1], b[2]) / 16.f - piv; size = vec3(b[3], b[4], b[5]) / 16.f;
     }
-  ivec3 n = glm::max(ivec3(glm::round(size * 32.f)), ivec3(1));
+  ivec3 n = glm::max(ivec3(glm::round(size * (p.res > 0 ? p.res : 32.f))), ivec3(1));
   bool faceRelief = p.tex.is_object() && p.tex.contains("front") && !pack;
   voxelPart(g, n, F, p.glow || p.unlit, faceRelief);
   if (p.name == "jaw" && M.key == "enderman") toothCrown(g, n);
@@ -446,6 +484,19 @@ const CreatureModelGL* creatureModel(const std::string& key) {
   std::vector<std::array<Pic, 6>> faces(M->parts.size());
   std::vector<u8> hidden(M->parts.size(), 0);
   bool pack = packSkin(*M, key, faces, hidden, out->packSkin);
+  if (!M->uvTex.empty()) {   // the model's own picture: its parts' faces cut out of it Minecraft-fashion (box uv)
+    Img img; int w = 0, h = 0;
+    if (loadPng(dataDir() / M->uvTex, w, h, img.px) && w > 0) { img.w = w; img.h = h; }
+    if (img.ok()) for (size_t i = 0; i < M->parts.size(); i++) {
+      const RigPart& rp = M->parts[i];
+      if (!rp.uv.is_array() || rp.uv.size() < 5) continue;
+      PM b{rp.uv[0].get<int>(), rp.uv[1].get<int>(), rp.uv[2].get<int>(), rp.uv[3].get<int>(), rp.uv[4].get<int>()};
+      PMo o; o.mirror = rp.uvMirror;
+      auto F = pmFaces(b, o);
+      for (int f = 0; f < 6; f++) { Pic px; pmPatch(img, img.w / (float)M->uvTexW, F[f].reg, F[f].xf, px, false, F[f].slice); faces[i][f] = std::move(px); }
+      pack = true;
+    }
+  }
   for (size_t i = 0; i < M->parts.size(); i++) out->parts.push_back(std::make_unique<CreaturePartMesh>());
   for (size_t i = 0; i < M->parts.size(); i++) {
     CreaturePartMesh& pm = *out->parts[i];

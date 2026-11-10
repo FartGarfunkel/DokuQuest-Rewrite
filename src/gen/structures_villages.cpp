@@ -6,10 +6,13 @@
 // Buildings are in structures_townbld.cpp. One structure type, "village" (the tier — village, town or city — is
 // in the plan), placed one per 352-block region exactly like the original (hash32(seed, rx, rz, 4242)).
 #include "gen/structures_town.h"
+#include "gen/village_pieces.h"
 #include "gen/structures_api.h"
 #include "gen/generator.h"
+#include "gen/overworld.h"
 #include "common/holiday.h"
 #include <map>
+#include <cstdlib>
 #include <set>
 
 namespace dq {
@@ -20,7 +23,7 @@ constexpr int VREG = 352, VF_R = 10;
 static const char* TIER_NAMES[3] = {"village", "town", "city"};
 static const char* GATE_NAMES[4] = {"North Gate", "East Gate", "South Gate", "West Gate"};
 
-struct TownExt { Town v; json gates; };
+struct TownExt { Town v; json gates; std::shared_ptr<JigsawTown> jig; };   // jig: the village pieces, jigsaw-fashion (terrain version 9)
 struct GateCells { int d; std::vector<std::array<int, 3>> cells; int h0, inX, inZ, hw, cx, cz; std::string name; };
 
 static std::array<int, 4> rectOf(const Street& S, int pad = 0) {
@@ -36,11 +39,12 @@ static std::vector<GateCells> gatesOf(const Town& v) {
   if (!v.hasWall) return out;
   const TownWall& W = v.wall;
   for (const Street& r : v.roads) {
+    if (!r.gate) continue;
     const int g = r.hw + 1, d = r.d; const bool along = d == 0 || d == 2;
     const int line = d == 0 ? W.z0 : d == 2 ? W.z1 : d == 1 ? W.x1 : W.x0;
-    const int cx = along ? v.x : line, cz = along ? line : v.z, h0 = std::max(v.y, SEA_LEVEL);   // level ground (the wall's rects)
+    const int cx = along ? r.ox : line, cz = along ? line : r.oz, h0 = r.gy >= 0 ? r.gy : std::max(v.y, SEA_LEVEL);   // level ground (the wall's rects)
     GateCells G; G.d = d; G.h0 = h0; G.cx = cx; G.cz = cz; G.hw = r.hw; G.name = GATE_NAMES[d];
-    for (int s = -g; s <= g; s++) { const int x = along ? v.x + s : line, z = along ? line : v.z + s; for (int k = 1; k <= 5; k++) G.cells.push_back({x, h0 + k, z}); }
+    for (int s = -g; s <= g; s++) { const int x = along ? r.ox + s : line, z = along ? line : r.oz + s; for (int k = 1; k <= 5; k++) G.cells.push_back({x, h0 + k, z}); }
     G.inX = d == 1 ? -1 : d == 3 ? 1 : 0; G.inZ = d == 0 ? 1 : d == 2 ? -1 : 0;
     out.push_back(std::move(G));
   }
@@ -48,6 +52,101 @@ static std::vector<GateCells> gatesOf(const Town& v) {
 }
 
 // ---- the plan (towns.js planVillage, townlife.js townLifePlan, villageflat.js vFlatten) ----
+// the plan, and what the villagers need from it (the original's plan fields; y band-local): S.data from the town
+static void townPlanData(StructurePlan& S, const std::shared_ptr<TownExt>& e, int X0, int Z0, int X1, int Z1, int y0js, bool hasWay, std::array<int, 2> waySpot) {
+  const Town& v = e->v; const VStyle& st = vstyle(v.style); const int tier = v.tier; const json& TT = SD()["TOWN_TIERS"][TIER_NAMES[tier]];
+  const int cx = v.x, cz = v.z, y0 = v.y, P = v.P, hw = v.hw; const std::string& name = v.name;
+  S.x0 = X0; S.z0 = Z0; S.x1 = X1; S.z1 = Z1; S.cx = cx; S.cz = cz; S.y = y0; S.hashDy = y0js - y0;
+  S.id = v.id; S.seed = v.seed; S.name = name; S.surface = true;
+  auto spot = [](const VSpot& s, const char* f) { return json{{"at", jat(s.x, s.y, s.z)}, {f, s.f}}; };
+  auto workOf = [&](const Bld& b) {   // the workplace, and the trade's round about the building (sim/villager_ai.cpp)
+    json w = spot(b.work, "face");
+    if (!b.tasks.empty()) { json t = json::array(); for (auto& [s, k] : b.tasks) t.push_back(json::array({s.x, s.y, s.z, s.f, k})); w["tasks"] = t; }
+    return w;
+  };
+  json blds = json::array(), folk = json::array(), seats = json::array(), stalls = json::array(), roads = json::array();
+  std::vector<json> beds; std::vector<std::pair<std::string, json>> jobs;
+  const Bld* hall = nullptr; for (const Bld& b : v.blds) if (b.type == "hall") { hall = &b; break; }
+  if (hall) { jobs.push_back({"elder", spot(hall->elderAt, "face")}); jobs.push_back({"innkeeper", spot(hall->work, "face")}); }
+  for (const Stall& s : v.stalls) if (!s.deco) jobs.push_back({s.wares, json{{"at", jat(s.x, y0 + 1, s.z + 1)}, {"face", 0}}});
+  for (const Bld& b : v.blds) {
+    json jb{{"type", b.type}, {"r", b.r}, {"ox", b.ox}, {"oz", b.oz}, {"W", b.W}, {"D", b.D}, {"H", b.H}, {"y", b.y}, {"x0", b.x0}, {"z0", b.z0}, {"x1", b.x1}, {"z1", b.z1},
+            {"door", jat(vWorld(b, (b.W - 1) / 2, 1, 0)[0], b.y + 1, vWorld(b, (b.W - 1) / 2, 1, 0)[2])}, {"job", b.job.empty() ? json(nullptr) : json(b.job)},
+            {"work", b.hasWork ? workOf(b) : json(nullptr)}, {"beds", json::array()}};
+    for (const VSpot& bd : b.beds) { jb["beds"].push_back(spot(bd, "f")); beds.push_back(spot(bd, "f")); }
+    if (!b.animals.empty()) { jb["animals"] = b.animals; jb["mid"] = jat(b.mid.x, b.mid.y, b.mid.z); }
+    if (!b.station.empty()) jb["station"] = b.station;
+    if (b.type == "mine" && b.planV >= 11) jb["v"] = b.planV;   // (the deep mine: its miner works its galleries, gen/town_mine.h)
+    blds.push_back(jb);
+    if (!b.job.empty() && b.type != "hall") jobs.push_back({b.job, b.hasWork ? workOf(b) : json(nullptr)});
+  }
+  if (v.planV >= 11) {   // every trade staffed before a second of one (two bakers and two clerics left the armourer's shop empty)
+    std::set<std::string> seen; std::vector<std::pair<std::string, json>> first, more;
+    for (auto& j : jobs) (seen.insert(j.first).second ? first : more).push_back(j);
+    jobs = first; jobs.insert(jobs.end(), more.begin(), more.end());
+  }
+  const int nfolk = TT["folk"];
+  for (int i = 0; i < (int)beds.size() && i < nfolk; i++) folk.push_back({{"home", beds[i]}, {"job", i < (int)jobs.size() ? jobs[i].first : "none"}, {"work", i < (int)jobs.size() ? jobs[i].second : json(nullptr)}});
+  if (!hall && !folk.empty()) folk.back()["job"] = "elder";
+  for (const VSeat& s : v.seats) {
+    json j = json::array({s.x, s.y, s.z, s.f});
+    if (s.walk) { j.push_back(json::array({s.ax, s.az})); j.push_back(s.held.empty() ? json(nullptr) : json(s.held)); }
+    seats.push_back(j);
+  }
+  for (const Stall& s : v.stalls) { json j{{"x", s.x}, {"z", s.z}, {"f", s.f}}; if (s.deco) j["deco"] = true; else j["wares"] = s.wares; stalls.push_back(j); }
+  for (const Street& r : v.roads) {
+    json j{{"d", r.d}, {"L", r.L}, {"hw", r.hw}};
+    if (e->jig && !r.cells.empty()) { json c = json::array(); for (auto& k : r.cells) c.push_back(json::array({k[0], k[1], k[2]})); j["cells"] = c; }   // [x, z, ground]
+    roads.push_back(j);
+  }
+  json gates = json::array();
+  for (const GateCells& G : gatesOf(v)) {
+    json cells = json::array(); for (auto& c2 : G.cells) cells.push_back(jat(c2[0], c2[1], c2[2]));
+    const bool along = G.d == 0 || G.d == 2;
+    json posts = json::array();
+    for (int sd : {-1, 1}) {
+      const double px = G.cx + (along ? sd * (G.hw + 1.5) : 0) + G.inX * 2.5, pz = G.cz + (along ? 0 : sd * (G.hw + 1.5)) + G.inZ * 2.5;
+      posts.push_back({px + 0.5, std::max(y0, SEA_LEVEL) + 1, pz + 0.5});
+    }
+    const int s = G.hw + 1;
+    gates.push_back({{"key", v.id + ":" + std::to_string(G.d)}, {"d", G.d}, {"stone", v.wall.kind == "stone"}, {"name", G.name}, {"cells", cells},
+                     {"center", {G.cx + 0.5, G.h0 + 1, G.cz + 0.5}}, {"h0", G.h0}, {"inX", G.inX}, {"inZ", G.inZ}, {"hw", G.hw}, {"span", 2 * (G.hw + 1) + 1},
+                     {"cx", G.cx}, {"cz", G.cz}, {"posts", posts}, {"lever", jat(G.cx + (along ? s : 0) + G.inX, G.h0 + 1, G.cz + (along ? 0 : s) + G.inZ)}});
+  }
+  S.data = {{"kind", "village"}, {"id", v.id}, {"name", name}, {"style", st.key}, {"base", vstyle(st.baseStyle).key}, {"tier", TIER_NAMES[tier]}, {"x", cx}, {"z", cz}, {"y", y0}, {"P", P}, {"hw", hw},
+            {"r", std::max({X1 - cx, cx - X0, Z1 - cz, cz - Z0})}, {"board", jat(v.board[0], v.board[1], v.board[2])}, {"bell", jat(v.bell[0], v.bell[1], v.bell[2])},
+            {"stalls", stalls}, {"seats", seats}, {"folk", folk}, {"guards", (int)TT["guards"]}, {"golems", blds.size() >= 7 ? 1 : 0},   /* villages.js: a village of seven houses or more keeps an iron golem */ {"blds", blds}, {"roads", roads}, {"gates", gates}};
+  if (hasWay) S.data["waySpot"] = json::array({waySpot[0], waySpot[1]});
+  if (v.hasWall) S.data["wall"] = {{"kind", v.wall.kind}, {"x0", v.wall.x0}, {"z0", v.wall.z0}, {"x1", v.wall.x1}, {"z1", v.wall.z1}, {"h", v.wall.h}};
+  S.ext = e;
+}
+
+// terrain version 10: a village's style from the land it stands on (the climate's biome variants, gen/overworld.h) and,
+// for the rarer kinds (a festive village, a mushroom village, treehouses, an oasis...), a roll of its own
+static int villageStyle10(const TerrainColumn& c, u32 h, int wet) {
+  OwColumn oc; oc.h = c.jsY; oc.biome = (u8)c.biome; oc.temp = c.temp; oc.humid = c.humid;
+  const BtaVariant bv = btaVariant(oc);
+  const double u = (h & 0xFFFFF) / (double)0x100000;
+  auto S = [](const char* k, int fallback) { const int i = vstyleIndex(k); return i >= 0 ? i : fallback; };
+  if (const char* f = std::getenv("DQ_VILLAGE_STYLE")) { const int i = vstyleIndex(f); if (i >= 0) return i; }   // (test aid: every village this style)
+  if (c.biome == BIOME_BEACH) return S("beach", VS_PLAINS);
+  if (c.biome == BIOME_DESERT) return wet > 0 || u < 0.25 ? S("oasis", VS_DESERT) : VS_DESERT;
+  if (bv == BV_REDLANDS) return S("mesa", VS_SAVANNA);
+  if (bv == BV_GLACIER) return S("igloo", VS_SNOWY);
+  if (bv == BV_MOSSMIRE) return S("swamp", VS_PLAINS);
+  if (bv == BV_HIGHLANDS) return S("alpine", VS_TAIGA);
+  if (c.biome == BIOME_MOUNTAINS) return c.temp < -0.3 ? S("alpine", VS_TAIGA) : S("mountain", VS_TAIGA);
+  if (c.biome == BIOME_TAIGA || bv == BV_TUNDRA) {
+    if (c.temp < -0.38 || bv == BV_TUNDRA) return u < 0.14 ? S("christmas", VS_SNOWY) : u < 0.34 ? S("igloo", VS_SNOWY) : VS_SNOWY;
+    return u < 0.08 ? S("halloween", VS_TAIGA) : VS_TAIGA;
+  }
+  if (c.temp > 0.28 && c.humid > 0.12) return u < 0.35 ? S("jungle_tree", VS_PLAINS) : S("jungle", VS_PLAINS);
+  if (c.temp > 0.28 && c.humid < 0.02) return u < 0.35 ? S("savanna_hut", VS_SAVANNA) : VS_SAVANNA;
+  if (c.biome == BIOME_FOREST && u < 0.12) return S("halloween", VS_PLAINS);
+  if (u < 0.05) return S("mushroom", VS_PLAINS);
+  return VS_PLAINS;
+}
+
 static bool townPlace(const StructureIndex&, const TerrainQuery& t, int rx, int rz, StructurePlan& S) {
   const i32 seed = t.seed();
   Mulberry32 rnd(hash32(seed, rx, rz, 4242));
@@ -59,18 +158,25 @@ static bool townPlace(const StructureIndex&, const TerrainQuery& t, int rx, int 
   const int m = tier == TIER_CITY ? 140 : tier == TIER_TOWN ? 112 : 84;
   const int cx = rx * VREG + m + jsFloor(rnd() * (VREG - 2 * m)), cz = rz * VREG + m + jsFloor(rnd() * (VREG - 2 * m));
   const TerrainColumn c = t.terrainColumn(cx, cz);
-  if (c.biome != BIOME_PLAINS && c.biome != BIOME_FOREST && c.biome != BIOME_TAIGA && c.biome != BIOME_DESERT) return false;
-  if (c.jsY <= JS_SEA || c.jsY > JS_SEA + 30) return false;
+  const OverworldGen* owg = owOf(t);
+  const bool styles10 = owg && owg->villageStyles && villagePieces();
+  const bool beachy = styles10 && c.biome == BIOME_BEACH, hilly = styles10 && c.biome == BIOME_MOUNTAINS;
+  bool marshy = false;
+  if (styles10) { OwColumn oc; oc.h = c.jsY; oc.biome = (u8)c.biome; oc.temp = c.temp; oc.humid = c.humid; marshy = btaVariant(oc) == BV_MOSSMIRE; }
+  if (c.biome != BIOME_PLAINS && c.biome != BIOME_FOREST && c.biome != BIOME_TAIGA && c.biome != BIOME_DESERT && !beachy && !hilly) return false;
+  if (c.jsY <= JS_SEA || c.jsY > JS_SEA + (hilly ? 54 : 30)) return false;
+  int wet = 0;
   {
-    int lo = c.jsY, hi = c.jsY, wet = 0;
+    int lo = c.jsY, hi = c.jsY;
     const std::vector<int> rings = tier == TIER_VILLAGE ? std::vector<int>{14, 28} : std::vector<int>{16, 32, 48};
     for (int a = 0; a < 12; a++) for (int d : rings) {
       const int h = t.terrainColumn(cx + jsRound(std::cos(a / 12.0 * JTAU) * d), cz + jsRound(std::sin(a / 12.0 * JTAU) * d)).jsY;
       lo = std::min(lo, h); hi = std::max(hi, h); if (h <= JS_SEA) wet++;
     }
-    if (hi - lo > (tier == TIER_VILLAGE ? 11 : 14) || wet > (tier == TIER_VILLAGE ? 4 : 6)) return false;
+    if (hi - lo > (tier == TIER_VILLAGE ? 11 : 14) + (hilly ? 5 : 0) || wet > (tier == TIER_VILLAGE ? 4 : 6) + (beachy || marshy ? 8 : 0)) return false;
   }
-  const int style = c.biome == BIOME_DESERT ? VS_DESERT : c.biome == BIOME_TAIGA ? (c.temp < -0.38 ? VS_SNOWY : VS_TAIGA) : (c.temp > 0.28 && c.humid < 0.02 ? VS_SAVANNA : VS_PLAINS);
+  const int style = styles10 ? villageStyle10(c, hash32(seed, rx, rz, 4246), wet)
+                             : c.biome == BIOME_DESERT ? VS_DESERT : c.biome == BIOME_TAIGA ? (c.temp < -0.38 ? VS_SNOWY : VS_TAIGA) : (c.temp > 0.28 && c.humid < 0.02 ? VS_SAVANNA : VS_PLAINS);
   const VStyle& st = vstyle(style);
   static const std::vector<std::string> SY0 = strList(SD()["VSYL"][0]), SY1 = strList(SD()["VSYL"][1]);
   std::string name = SY0[jsFloor(rnd() * SY0.size())]; name += SY1[jsFloor(rnd() * SY1.size())];
@@ -80,6 +186,19 @@ static bool townPlace(const StructureIndex&, const TerrainQuery& t, int rx, int 
   v.x = cx; v.z = cz; v.y = y0; v.seed = hash32(seed, rx, rz, 4244);
   { const u32 r = hash32(seed, 91, 7, 3) % 10; v.wind = r < 6 ? 1 : r < 8 ? 2 : r < 9 ? 0 : 3; }   // towns3.js townWindOf
   int X0 = cx - P - 1, Z0 = cz - P - 1, X1 = cx + P + 1, Z1 = cz + P + 1;
+  // terrain version 9: the town of the village pieces, put together jigsaw-fashion (gen/structures_jigsaw_village.cpp)
+  if (const OverworldGen* ow = owOf(t); ow && ow->jigsawVillages)
+    if (const VillagePieces* pk = villagePieces()) {
+      v.planV = ow->villagePlan11 ? 11 : 10;
+      Mulberry32 jr(hash32(seed, rx, rz, 4250));
+      if (jigsawTownPlan(t, *pk, v, jr, e->jig)) {
+        jigsawTownBounds(*e->jig, X0, Z0, X1, Z1);
+        if (v.hasWall) { X0 = std::min(X0, v.wall.x0 - 10); Z0 = std::min(Z0, v.wall.z0 - 10); X1 = std::max(X1, v.wall.x1 + 10); Z1 = std::max(Z1, v.wall.z1 + 10); }   // (the ways out run 8 past it)
+        townPlanData(S, e, X0, Z0, X1, Z1, y0js, false, {0, 0});
+        return true;
+      }
+      e->jig.reset();   // (no pieces for this land's style, or no room: the classic town)
+    }
   std::vector<std::array<int, 4>> taken{{cx - P - 1, cz - P - 1, cx + P + 1, cz + P + 1}};
   auto freeR = [&](const std::array<int, 4>& a) { for (auto& r : taken) if (a[0] <= r[2] && a[2] >= r[0] && a[1] <= r[3] && a[3] >= r[1]) return false; return true; };
   auto grow = [&](const std::array<int, 4>& a) { X0 = std::min(X0, a[0]); Z0 = std::min(Z0, a[1]); X1 = std::max(X1, a[2]); Z1 = std::max(Z1, a[3]); };
@@ -302,60 +421,13 @@ static bool townPlace(const StructureIndex&, const TerrainQuery& t, int rx, int 
     for (auto& r : v.flatRects) { fx0 = std::min(fx0, r[0]); fz0 = std::min(fz0, r[1]); fx1 = std::max(fx1, r[2]); fz1 = std::max(fz1, r[3]); }
     v.fb = {fx0 - VF_R - 1, fz0 - VF_R - 1, fx1 + VF_R + 1, fz1 + VF_R + 1};
   }
-  // ---- the plan, and what the villagers need from it (the original's plan fields; y band-local) ----
-  S.x0 = X0; S.z0 = Z0; S.x1 = X1; S.z1 = Z1; S.cx = cx; S.cz = cz; S.y = y0; S.hashDy = y0js - y0;
-  S.id = v.id; S.seed = v.seed; S.name = name; S.surface = true;
-  auto spot = [](const VSpot& s, const char* f) { return json{{"at", jat(s.x, s.y, s.z)}, {f, s.f}}; };
-  json blds = json::array(), folk = json::array(), seats = json::array(), stalls = json::array(), roads = json::array();
-  std::vector<json> beds; std::vector<std::pair<std::string, json>> jobs;
-  const Bld* hall = nullptr; for (const Bld& b : v.blds) if (b.type == "hall") { hall = &b; break; }
-  if (hall) { jobs.push_back({"elder", spot(hall->elderAt, "face")}); jobs.push_back({"innkeeper", spot(hall->work, "face")}); }
-  for (const Stall& s : v.stalls) if (!s.deco) jobs.push_back({s.wares, json{{"at", jat(s.x, y0 + 1, s.z + 1)}, {"face", 0}}});
-  for (const Bld& b : v.blds) {
-    json jb{{"type", b.type}, {"r", b.r}, {"ox", b.ox}, {"oz", b.oz}, {"W", b.W}, {"D", b.D}, {"H", b.H}, {"y", b.y}, {"x0", b.x0}, {"z0", b.z0}, {"x1", b.x1}, {"z1", b.z1},
-            {"door", jat(vWorld(b, (b.W - 1) / 2, 1, 0)[0], b.y + 1, vWorld(b, (b.W - 1) / 2, 1, 0)[2])}, {"job", b.job.empty() ? json(nullptr) : json(b.job)},
-            {"work", b.hasWork ? spot(b.work, "face") : json(nullptr)}, {"beds", json::array()}};
-    for (const VSpot& bd : b.beds) { jb["beds"].push_back(spot(bd, "f")); beds.push_back(spot(bd, "f")); }
-    if (!b.animals.empty()) { jb["animals"] = b.animals; jb["mid"] = jat(b.mid.x, b.mid.y, b.mid.z); }
-    if (!b.station.empty()) jb["station"] = b.station;
-    blds.push_back(jb);
-    if (!b.job.empty() && b.type != "hall") jobs.push_back({b.job, b.hasWork ? spot(b.work, "face") : json(nullptr)});
-  }
-  const int nfolk = TT["folk"];
-  for (int i = 0; i < (int)beds.size() && i < nfolk; i++) folk.push_back({{"home", beds[i]}, {"job", i < (int)jobs.size() ? jobs[i].first : "none"}, {"work", i < (int)jobs.size() ? jobs[i].second : json(nullptr)}});
-  if (!hall && !folk.empty()) folk.back()["job"] = "elder";
-  for (const VSeat& s : v.seats) {
-    json j = json::array({s.x, s.y, s.z, s.f});
-    if (s.walk) { j.push_back(json::array({s.ax, s.az})); j.push_back(s.held.empty() ? json(nullptr) : json(s.held)); }
-    seats.push_back(j);
-  }
-  for (const Stall& s : v.stalls) { json j{{"x", s.x}, {"z", s.z}, {"f", s.f}}; if (s.deco) j["deco"] = true; else j["wares"] = s.wares; stalls.push_back(j); }
-  for (const Street& r : v.roads) roads.push_back({{"d", r.d}, {"L", r.L}, {"hw", r.hw}});
-  json gates = json::array();
-  for (const GateCells& G : gatesOf(v)) {
-    json cells = json::array(); for (auto& c2 : G.cells) cells.push_back(jat(c2[0], c2[1], c2[2]));
-    const bool along = G.d == 0 || G.d == 2;
-    json posts = json::array();
-    for (int sd : {-1, 1}) {
-      const double px = G.cx + (along ? sd * (G.hw + 1.5) : 0) + G.inX * 2.5, pz = G.cz + (along ? 0 : sd * (G.hw + 1.5)) + G.inZ * 2.5;
-      posts.push_back({px + 0.5, std::max(y0, SEA_LEVEL) + 1, pz + 0.5});
-    }
-    const int s = G.hw + 1;
-    gates.push_back({{"key", v.id + ":" + std::to_string(G.d)}, {"d", G.d}, {"stone", v.wall.kind == "stone"}, {"name", G.name}, {"cells", cells},
-                     {"center", {G.cx + 0.5, G.h0 + 1, G.cz + 0.5}}, {"h0", G.h0}, {"inX", G.inX}, {"inZ", G.inZ}, {"hw", G.hw}, {"span", 2 * (G.hw + 1) + 1},
-                     {"cx", G.cx}, {"cz", G.cz}, {"posts", posts}, {"lever", jat(G.cx + (along ? s : 0) + G.inX, G.h0 + 1, G.cz + (along ? 0 : s) + G.inZ)}});
-  }
-  S.data = {{"kind", "village"}, {"id", v.id}, {"name", name}, {"style", st.key}, {"tier", TIER_NAMES[tier]}, {"x", cx}, {"z", cz}, {"y", y0}, {"P", P}, {"hw", hw},
-            {"r", std::max({X1 - cx, cx - X0, Z1 - cz, cz - Z0})}, {"board", jat(v.board[0], v.board[1], v.board[2])}, {"bell", jat(v.bell[0], v.bell[1], v.bell[2])},
-            {"stalls", stalls}, {"seats", seats}, {"folk", folk}, {"guards", (int)TT["guards"]}, {"golems", blds.size() >= 7 ? 1 : 0},   /* villages.js: a village of seven houses or more keeps an iron golem */ {"blds", blds}, {"roads", roads}, {"gates", gates}};
-  if (hasWay) S.data["waySpot"] = json::array({waySpot[0], waySpot[1]});
-  if (v.hasWall) S.data["wall"] = {{"kind", v.wall.kind}, {"x0", v.wall.x0}, {"z0", v.wall.z0}, {"x1", v.wall.x1}, {"z1", v.wall.z1}, {"h", v.wall.h}};
-  S.ext = e;
+  townPlanData(S, e, X0, Z0, X1, Z1, y0js, hasWay, waySpot);
   return true;
 }
 
 // how strongly a column is pulled to the town's level (villageflat.js vFlatWeight)
 static bool townFlatten(const StructurePlan& S, int x, int z, double& weight, int& targetY) {
+  if (const auto& jg = extOf<TownExt>(S).jig) return jigsawTownFlatten(*jg, x, z, weight, targetY);
   const Town& v = extOf<TownExt>(S).v;
   const auto& f = v.fb;
   if (x < f[0] || x > f[2] || z < f[1] || z > f[3]) return false;
@@ -384,6 +456,7 @@ static void townLife(SP& P, const Town& v, const VStyle& st);
 
 static void townBuild(ChunkWriter& w, const StructurePlan& S) {
   SP P(w); const Town& v = extOf<TownExt>(S).v; const VStyle& st = vstyle(v.style);
+  if (const auto& jg = extOf<TownExt>(S).jig) { jigsawTownBuild(P, v, *jg); if (v.hasWall) { townWall(P, v, st); townGates(P, v, st); } return; }
   const int bx = P.bx, bz = P.bz;
   auto inC = [&](int x, int z) { return P.in(x, z); };
   auto get = [&](int x, int y, int z) { return P.get(x, y, z); };
@@ -407,8 +480,8 @@ static void townBuild(ChunkWriter& w, const StructurePlan& S) {
     return faceMeta(fx, fz);
   };
   static const json& PAVE = SD()["TOWN_PAVE"];
-  const std::vector<std::string> pave = v.style == VS_DESERT ? strList(PAVE["desert"]) : v.tier == TIER_VILLAGE ? st.path : strList(PAVE[TIER_NAMES[v.tier]]);
-  const std::vector<std::string> lanePave = v.style == VS_DESERT ? strList(PAVE["desert"]) : v.tier == TIER_CITY ? strList(PAVE["town"]) : st.path;
+  const std::vector<std::string> pave = vbase(v.style) == VS_DESERT ? strList(PAVE["desert"]) : v.tier == TIER_VILLAGE ? st.path : strList(PAVE[TIER_NAMES[v.tier]]);
+  const std::vector<std::string> lanePave = vbase(v.style) == VS_DESERT ? strList(PAVE["desert"]) : v.tier == TIER_CITY ? strList(PAVE["town"]) : st.path;
   auto paveAt = [&](int x, int z, const std::vector<std::string>& list) -> const std::string& {
     if (list.empty()) return st.path[0];
     return list[jsFloor(hashFloat(x, z, (i32)v.seed, 7) * list.size())];
@@ -528,7 +601,7 @@ static void townBuild(ChunkWriter& w, const StructurePlan& S) {
     else if (k <= 3) { put(x, y + 1, z, "barrel"); if (k == 2) put(x, y + 2, z, "barrel"); }
     else if (k == 4) put(x, y + 1, z, v.tier == TIER_VILLAGE ? std::string("composter") : PLK("azalea", "barrel"));
     else if (k == 5) { put(x, y + 1, z, st.fence); put(x, y + 2, z, PLK(st.fwood + "_slab", st.slab)); }
-    else { put(x, y, z, v.style == VS_DESERT ? "sand" : "grass"); put(x, y + 1, z, v.style == VS_DESERT ? std::string("dead_bush") : k == 8 ? std::string("rose_bush") : VFL[(x * 7 + z) & 7]); }
+    else { put(x, y, z, vbase(v.style) == VS_DESERT ? "sand" : "grass"); put(x, y + 1, z, vbase(v.style) == VS_DESERT ? std::string("dead_bush") : k == 8 ? std::string("rose_bush") : VFL[(x * 7 + z) & 7]); }
   }
   // the buildings: ground cleared, a foundation, the building
   for (const Bld& b : v.blds) {
@@ -551,12 +624,15 @@ static void townBuild(ChunkWriter& w, const StructurePlan& S) {
 static std::vector<std::array<int, 2>> wallTowers(const Town& v) {
   const TownWall& W = v.wall; const bool stone = W.kind == "stone";
   std::vector<std::array<int, 2>> towers{{W.x0, W.z0}, {W.x1, W.z0}, {W.x0, W.z1}, {W.x1, W.z1}};
+  // either side of each gate, where its street meets the wall (a jigsaw town's gates aren't on the square's lines, and
+  // its walks are roads too, not gates: they stood pairs of towers over plain wall on the north side)
   for (const Street& r : v.roads) {
+    if (!r.gate) continue;
     const int g = r.hw + (stone ? 4 : 3);
-    if (r.d == 0) { towers.push_back({v.x - g, W.z0}); towers.push_back({v.x + g, W.z0}); }
-    else if (r.d == 2) { towers.push_back({v.x - g, W.z1}); towers.push_back({v.x + g, W.z1}); }
-    else if (r.d == 1) { towers.push_back({W.x1, v.z - g}); towers.push_back({W.x1, v.z + g}); }
-    else { towers.push_back({W.x0, v.z - g}); towers.push_back({W.x0, v.z + g}); }
+    if (r.d == 0) { towers.push_back({r.ox - g, W.z0}); towers.push_back({r.ox + g, W.z0}); }
+    else if (r.d == 2) { towers.push_back({r.ox - g, W.z1}); towers.push_back({r.ox + g, W.z1}); }
+    else if (r.d == 1) { towers.push_back({W.x1, r.oz - g}); towers.push_back({W.x1, r.oz + g}); }
+    else { towers.push_back({W.x0, r.oz - g}); towers.push_back({W.x0, r.oz + g}); }
   }
   return towers;
 }
@@ -569,11 +645,12 @@ static void townWall(SP& P, const Town& v, const VStyle& st) {
   auto ground = [&](int x, int z) { return std::max(P.ground(x, z), SEA_LEVEL); };
   auto gate = [&](int x, int z) {
     for (const Street& r : v.roads) {
+      if (!r.gate) continue;
       const int g = r.hw + 1;
-      if (r.d == 0) { if (z == W.z0 && std::abs(x - v.x) <= g) return true; }
-      else if (r.d == 2) { if (z == W.z1 && std::abs(x - v.x) <= g) return true; }
-      else if (r.d == 1) { if (x == W.x1 && std::abs(z - v.z) <= g) return true; }
-      else if (x == W.x0 && std::abs(z - v.z) <= g) return true;
+      if (r.d == 0) { if (z == W.z0 && std::abs(x - r.ox) <= g) return true; }
+      else if (r.d == 2) { if (z == W.z1 && std::abs(x - r.ox) <= g) return true; }
+      else if (r.d == 1) { if (x == W.x1 && std::abs(z - r.oz) <= g) return true; }
+      else if (x == W.x0 && std::abs(z - r.oz) <= g) return true;
     }
     return false;
   };
@@ -585,7 +662,7 @@ static void townWall(SP& P, const Town& v, const VStyle& st) {
     if (gate(x, z)) {
       // the gateway: an arch over the road
       if (stone) { for (int y = h + 6; y <= h + H + 1; y++) P.put(x, y, z, wb(x, y, z)); if ((x + z) % 2 == 0) P.put(x, h + H + 2, z, sb); }
-      else P.put(x, h + 6, z, log, (W.x0 == x || W.x1 == x) ? 0 : 1);
+      else P.put(x, h + 6, z, log, (W.x0 == x || W.x1 == x) ? 2 : 1);   // the lintel runs along the wall (east and west: along z)
       return;
     }
     if (stone) {
@@ -615,13 +692,17 @@ static void townWall(SP& P, const Town& v, const VStyle& st) {
         if (edge && (dx == 0 || dz == 0) && dx != dz) P.put(x, h + H - 2, z, PLK("iron_bars", "glass_pane"));
       } else {
         const bool post = std::abs(dx) == R && std::abs(dz) == R;
-        for (int y = h + 1; y <= h + TH + 2; y++) P.put(x, y, z, post ? log : y == h + TH - 1 ? planks : std::string("air"));
+        // the palisade runs on under the platform (it was open there: a way in three blocks wide under every tower)
+        const bool onWall = ((tz == W.z0 || tz == W.z1) && dz == 0) || ((tx == W.x0 || tx == W.x1) && dx == 0);
+        for (int y = h + 1; y <= h + TH + 2; y++) P.put(x, y, z, post || (onWall && y <= h + H) ? log : y == h + TH - 1 ? planks : std::string("air"));
         if (edge && !post) P.put(x, h + TH, z, fence);
         P.put(x, h + TH + 3, z, PLK("spruce_slab", st.slab));
       }
     }
     // a way in from the town side, a ladder up to the top
-    const int ix = tx < v.x ? 1 : -1, iz = tz < v.z ? 1 : -1; const bool sideX = std::abs(tx - v.x) > std::abs(tz - v.z);
+    // (which wall it's on from the wall itself: a jigsaw town's square is off its middle)
+    const int ix = tx == W.x0 ? 1 : tx == W.x1 ? -1 : tx < v.x ? 1 : -1, iz = tz == W.z0 ? 1 : tz == W.z1 ? -1 : tz < v.z ? 1 : -1;
+    const bool sideX = (tx == W.x0 || tx == W.x1) && tz != W.z0 && tz != W.z1;
     const int dx0 = sideX ? ix * R : 0, dz0 = sideX ? 0 : iz * R;
     if (P.in(tx + dx0, tz + dz0)) { P.put(tx + dx0, h + 1, tz + dz0, "air"); P.put(tx + dx0, h + 2, tz + dz0, "air"); }
     if (stone && P.in(tx, tz)) {
@@ -731,11 +812,12 @@ static void townLife(SP& P, const Town& v, const VStyle& st) {
       if (P.in(fx, fz) && air(fx, top + 2, fz)) P.put(fx, top + 2, fz, flagKey, (u8)wind);
     }
     for (const Street& r : v.roads) {
+      if (!r.gate) continue;
       const int g = r.hw + (stone ? 4 : 3), R = stone ? 2 : 1, d = r.d; const bool along = d == 0 || d == 2;
       const int line = d == 0 ? W.z0 : d == 2 ? W.z1 : d == 1 ? W.x1 : W.x0;
       const int outX = d == 1 ? 1 : d == 3 ? -1 : 0, outZ = d == 0 ? -1 : d == 2 ? 1 : 0;
       for (int sd : {-1, 1}) {
-        const int tx = along ? v.x + sd * g : line, tz = along ? line : v.z + sd * g;
+        const int tx = along ? r.ox + sd * g : line, tz = along ? line : r.oz + sd * g;
         const int x = tx + outX * (R + 1), z = tz + outZ * (R + 1), h = ground(tx, tz);
         if (!P.in(x, z)) continue;
         const std::string key = clothKey(cols[((sd + 1) / 2) % cols.size()], "banner"); const int rf = along ? 0 : 1;
@@ -776,8 +858,15 @@ bool villageStartPoint(const WorldGen& wg, vec3& pos, float& yaw) {
   if (!best) return false;
   const Town& v = extOf<TownExt>(*best).v;
   const Street* road = nullptr; for (const Street& r : v.roads) if (!road || r.L > road->L) road = &r;
-  if (!road) return false;
-  const int t = road->L + 3, x = v.x + DXL[road->d] * t, z = v.z + DZL[road->d] * t;
+  int x = 0, z = 0;
+  if (extOf<TownExt>(*best).jig) {   // a jigsaw village: at the end of its farthest street (outside its gate when walled), looking back in
+    const auto ends = townStreetEnds(*best);
+    if (ends.empty()) return false;
+    x = ends[0][0] + DXL[ends[0][2]] * 2; z = ends[0][1] + DZL[ends[0][2]] * 2;
+  } else {
+    if (!road) return false;
+    const int t = road->L + 3; x = v.x + DXL[road->d] * t; z = v.z + DZL[road->d] * t;
+  }
   const int y = idx->terrain().finalSurfaceY(x, z);
   pos = vec3(x + 0.5f, dimBase(DIM_OVERWORLD) + y + 1, z + 0.5f);
   yaw = (float)std::atan2(-(double)(v.x - x), -(double)(v.z - z));
@@ -787,6 +876,13 @@ bool villageStartPoint(const WorldGen& wg, vec3& pos, float& yaw) {
 std::vector<std::array<int, 3>> townStreetEnds(const StructurePlan& S) {
   std::vector<std::array<int, 3>> out;
   if (!S.ext) return out;
+  if (const auto& jg = extOf<TownExt>(S).jig) {   // where its streets open out (through a gate, when it's walled)
+    const Town& v = extOf<TownExt>(S).v;
+    if (v.hasWall) { for (const Street& r : v.roads) if (r.gate && !r.cells.empty()) { auto& c = r.cells.back(); out.push_back({c[0], c[1], r.d}); } }
+    else { out = jigsawTownEnds(*jg); if (out.size() > 6) out.resize(6); }
+    if (out.empty()) out.push_back({v.x, v.z, 0});
+    return out;
+  }
   const Town& v = extOf<TownExt>(S).v;
   for (const Street& r : v.roads) { const int t = r.L + 2; out.push_back({v.x + DXL[r.d] * t, v.z + DZL[r.d] * t, r.d}); }
   if (out.empty()) out.push_back({v.x, v.z, 0});
@@ -797,7 +893,7 @@ int townStyleOf(const StructurePlan& S) { return S.ext ? extOf<TownExt>(S).v.sty
 void registerStructureVillages() {
   StructureType t; t.key = "village"; t.name = "a village"; t.region = VREG; t.clearance = 24; t.dims = 1u << DIM_OVERWORLD;
   t.place = townPlace; t.build = townBuild; t.flatten = townFlatten; t.flattenPad = VF_R + 2;
-  t.treeOff = [](const StructurePlan&, int, int) { return true; }; t.treePad = 4;   // villages.js: no trees within 4 of a village
+  t.treeOff = [](const StructurePlan& s, int x, int z) { if (s.ext) if (const auto& jg = extOf<TownExt>(s).jig) return jigsawTownTreeOff(*jg, x, z); return true; }; t.treePad = 4;   // villages.js: no trees within 4 of a village
   registerStructure(std::move(t));
 }
 

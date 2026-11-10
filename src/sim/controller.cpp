@@ -12,10 +12,11 @@
 #include "sim/gamecommands.h"
 #include <random>
 #include <unordered_set>
+#include "sim/quiver.h"
+#include "world/rug.h"
 
 namespace dq {
 // (declared out here: MSVC gives a function declared inside a block the global namespace, so these never linked on Windows)
-int quiverArrows(Player& p); bool quiverTake(Player& p); bool goldenQuiver(Player& p);   // sim/quiver.cpp
 // the paths' talents (sim/villager_quests.cpp) and a poisoned arrow (sim/mob_combat.cpp)
 float pathArrowFactor(const Player& p, float distance); bool pathArrowPoisons(const Player& p); bool pathQuiverSaves(const Player& p);
 void poisonCreature(Entity& e, float secs);
@@ -133,7 +134,7 @@ void PlayerController::update(float dt, const PlayerInput& in) {
   flyToggle(); hotbar();
   p.contacts = sampleContacts(w, p, p.eye);
   bool wasHang = (bool)p.hang, wasClimb = (bool)p.climb;
-  MoveOpts mo; mo.slow = p.carrying.is_null() ? 1.f : CARRY_SLOW; mo.noLedge = !p.carrying.is_null(); mo.noSprint = !rule(lv, "allowSprinting");
+  MoveOpts mo; mo.slow = (p.carrying.is_null() ? 1.f : CARRY_SLOW) * (p.scoping ? 0.25f : 1.f);   // (a spyglass to your eye: you edge along) mo.noLedge = !p.carrying.is_null(); mo.noSprint = !rule(lv, "allowSprinting");
   MoveInfo mv = p.move(w, in, dt, mo);
   if (in.crawl) toastMsg(p.crawlWant ? "Crawling" : "Standing up");
   if (p.hang && !wasHang) { sfxMaterial(lv, "stone", "step", p.pos); if (!ledgeTip) { ledgeTip = true; toastMsg("Hanging on \xE2\x80\x94 move left or right along the ledge, jump to climb up, sneak to drop"); } }
@@ -227,8 +228,48 @@ void PlayerController::tickSurvival(float dt, const MoveInfo& mv) {
     if ((p.burnT += dt) > 1) { p.burnT = 0; DamageSource s; s.type = "burn"; hurt(1, s); }
   }
   if (c.cactus) { DamageSource s; s.type = "cactus"; hurt(1, s); }
+  if (spikeOverlap(w, p)) {
+    float st = p.data.value("spikeT", 0.f) + dt;
+    float need = p.sneaking ? 1.f : 0.5f;
+    if (st >= need) {
+      st = 0;
+      DamageSource s; s.type = "cactus"; s.bypass = true;
+      hurt(p.sneaking ? 1.f : 2.f, s);
+    }
+    p.data["spikeT"] = st;
+  } else if (p.data.contains("spikeT")) p.data["spikeT"] = 0;
   if (c.fire && !c.water) p.burn = std::max(p.burn, 3.f);
   if (c.hot && !p.sneaking) { if ((p.hotT += dt) > 1) { p.hotT = 0; DamageSource s; s.type = "burn"; hurt(1, s); } }
+  // BTA 8.0's Nether: an ember (buried under the Old World's ash) goes off when it is stepped on: a blast with fire that
+  // flings you up; the rubyglass crust over the crystal seas cracks under you, a stage every quarter second, and shatters
+  {
+    static const BlockId ember = reg().blockId("ember"), ruby = reg().blockId("rubyglass_crystal");
+    const int fx = ifloor(p.pos.x), fy = ifloor(p.pos.y - 0.05f), fz = ifloor(p.pos.z);
+    const BlockId below = (ember || ruby) && p.onGround ? w.getBlock(fx, fy, fz) : AIR;
+    if (ember && below == ember && p.mode != "spectator") {
+      w.setBlock(fx, fy, fz, AIR, 0);
+      explode(lv, p.realm, vec3(fx + 0.5f, fy + 0.5f, fz + 0.5f), 3.0f);
+      p.burn = std::max(p.burn, 5.f);
+      p.vel.y = std::max(p.vel.y, 13.f);
+    }
+    if (ruby && below == ruby && p.mode != "spectator") {
+      float t = p.data.value("rubyT", 0.f) + dt;
+      if (t >= 0.25f) {
+        t = 0;
+        const u8 m = w.getMeta(fx, fy, fz);
+        const vec3 at(fx + 0.5f, fy + 0.9f, fz + 0.5f);
+        if (m >= 3) {
+          w.setBlock(fx, fy, fz, AIR, 0);
+          lv.fx->sound("glass_break", at, 20);
+          lv.fx->particles("crumbs", at, 16, {{"block", "rubyglass_crystal"}, {"speed", 1.4f}, {"grav", 12}});
+        } else {
+          w.setBlock(fx, fy, fz, ruby, (u8)(m + 1));
+          lv.fx->particles("crumbs", at, 3, {{"block", "rubyglass_crystal"}, {"speed", 0.5f}, {"grav", 12}});
+        }
+      }
+      p.data["rubyT"] = t;
+    } else if (p.data.contains("rubyT")) p.data.erase("rubyT");
+  }
   if (c.acid && !p.creative()) {   // the Sulfur Pools' acid: it eats at bare skin (one hurt a second per piece of armour not worn), and at the armour
     if ((p.acidT += dt) > 1) {
       p.acidT = 0;
@@ -357,7 +398,15 @@ void PlayerController::interact(float dt, const PlayerInput& in) {
   // a held swing that hit a creature never digs into the ground behind it; in creative a sword never breaks blocks (Minecraft)
   const ToolInfo* ti = heldTool(p);
   bool noDig = fightHold || (p.creative() && ti && ti->type == "sword") || p.mode == "adventure";   // adventure: the world stays as it is
-  if (in.attack && target.hit && !te && !noDig) {
+  // creative: every fresh click breaks the block it's on at once, however short the click and however soon after the
+  // last one (Minecraft's startDestroyBlock); holding repeats every quarter second
+  if (p.creative() && in.attackPressed && target.hit && !te && !noDig) {
+    const RayHit& tg = target;
+    if (mining.active) rememberDamage(lv, mining);
+    p.swinging = true; if (p.swing == 0) p.swing = 0.0001f;
+    breakBlock(tg.block.x, tg.block.y, tg.block.z); forgetDamage(lv, tg.block.x, tg.block.y, tg.block.z);
+    mining.active = false; breakCd = 0.25f;
+  } else if (in.attack && target.hit && !te && !noDig) {
     const RayHit& tg = target;
     if (!mining.active || mining.x != tg.block.x || mining.y != tg.block.y || mining.z != tg.block.z || mining.id != tg.id) {
       if (mining.active) rememberDamage(lv, mining);   // a block you gave up on keeps its cracks for a while
@@ -380,6 +429,7 @@ void PlayerController::interact(float dt, const PlayerInput& in) {
 }
 
 float PlayerController::breakTime(BlockId id, const RayHit* hit) {
+  if (hit) if (const BlockId rug = rugBlockOf(world().getCoat(hit->block.x, hit->block.y, hit->block.z))) id = rug;   // (a rug on it: that comes up first, as quick as carpet)
   const BlockDef& b = reg().block(id);
   if (p.creative()) return 0.05f;   // creative breaks anything, bedrock and command blocks too (Minecraft)
   if (b.hardness < 0) return INFINITY;
@@ -412,6 +462,14 @@ void PlayerController::breakBlock(int x, int y, int z) {
   if (!id) return;
   const BlockDef& b = reg().block(id);
   if (lv.events && !lv.events->emit("blockBreak", json::array({p.name, x, y, z, b.key}))) return;   // a mod said no
+  if (const BlockId rug = rugBlockOf(w.getCoat(x, y, z))) {   // a rug on it comes up first (world/rug.h); the floor stays
+    w.setCoat(x, y, z, 0, SetFlags::Urgent);
+    const BlockDef& rd = reg().block(rug);
+    const vec3 at = vec3(x, y, z) + vec3(0.5f, 1.1f, 0.5f);
+    if (!p.creative()) dropItem(lv, p.realm, ItemStack(rd.drop.empty() ? rd.key : rd.drop, 1), at, true, (const vec3*)nullptr);
+    sfxMaterial(lv, rd.sound, "break", at); burst(lv, at, rd.key, 8, 0.8f);
+    return;
+  }
   if (bhas(id, BF::IsLog) && !p.sneaking && rule(lv, "treeFelling")) {
     std::vector<std::array<int, 4>> logs, leaves; bool ok;
     scanTree(x, y, z, logs, leaves, ok);
@@ -426,6 +484,7 @@ void PlayerController::breakBlock(int x, int y, int z) {
   sfxMaterial(lv, b.sound, "break", c);
   burst(lv, c, b.key, 14, 1.2f);
   if (harvest && !p.creative()) dropBlockItems(lv, w, x, y, z, id, false, meta, heldTool(p));
+  if (!p.creative()) if (const std::string fr = b.str("fruit"); !fr.empty() && rnd() < 0.15) dropItem(lv, p.realm, ItemStack(fr, 1), c, true, (const vec3*)nullptr);   // fruit from leaves (cherries)
   if (harvest && b.num("xp") > 0) { vec3 at(x + 0.5f, y + 0.8f, z + 0.5f); grantXP(lv, p, (int)b.num("xp"), &at); }
   wearHeld(lv, p, b.hardness > 0 ? 1 : 0);
   p.stats["blocksMined"] = p.stats.value("blocksMined", 0) + 1;
@@ -485,6 +544,7 @@ void PlayerController::fellTree(int x, int y, int z, const std::vector<std::arra
     // the sapling of the tree it came from, so every kind can be grown back
     if (rnd() < 0.05) extras[R.block((BlockId)l[3]).str("sapling", "sapling")]++;
     if (l[3] == KB().leaves && rnd() < 0.02) extras["apple"]++;
+    if (const std::string fr = R.block((BlockId)l[3]).str("fruit"); !fr.empty() && rnd() < 0.12) extras[fr]++;   // BTA's flowering cherry leaves: cherries
     { static const BlockId palmLeaves = R.blockId("palm_leaves"); if (palmLeaves && l[3] == palmLeaves && rnd() < 0.06) extras["coconut"]++; }   // a felled palm drops its coconuts
     if (rnd() < 0.015) extras["stick"]++;
   }
@@ -712,6 +772,7 @@ int enchArrowPunch(const ItemStack& bow);
 bool enchArrowFlame(const ItemStack& bow);
 bool enchInfinity(const ItemStack& bow);
 void igniteEntity(Entity& e, float t);
+void primeTNT(Level& lv, World& w, int x, int y, int z, float fuse);   // sim/blockfx.cpp
 
 // ---- bow and arrows (blocks2.js) ----------------------------------------------------------------
 class ArrowEntity : public Entity {
@@ -727,16 +788,19 @@ public:
       if (!reg().tSolid[w.getBlock(data.value("bx", 0), data.value("by", 0), data.value("bz", 0))]) { data["stuck"] = false; vel = vec3(0); return; }
       if (data.value("pickup", false)) for (Player* pl : playersIn(lv, realm)) {
         if (!pl->dead && std::fabs(pl->pos.x - pos.x) < 1.6f && std::fabs(pl->pos.z - pos.z) < 1.6f && pos.y > pl->pos.y - 1.2f && pos.y < pl->pos.y + 2.8f) {   // Minecraft: the player box grown by 1
-          if (pl->give(ItemStack("arrow", 1)) <= 0) { removed = true; sfxUi(lv, *pl, "pop"); if (lv.events) lv.events->emit("pickup", json::array({pl->name, "arrow", 1})); return; }
+          const std::string kind = data.value("item", std::string("arrow"));   // the arrow you shot comes back (golden, flaming...)
+          if (pl->give(ItemStack(kind, 1)) <= 0) { removed = true; sfxUi(lv, *pl, "pop"); if (lv.events) lv.events->emit("pickup", json::array({pl->name, kind, 1})); return; }
         }
       }
       return;
     }
     if (age > 30) { removed = true; return; }
     u32 owner = data.value("owner", 0u);
+    const float grav = data.value("grav", 1.0f);   // BTA's golden arrow barely drops
+    if (data.value("fire", false) && (int)(age * 20) % 2 == 0) lv.fx->particles("flame", pos, 1);   // the flaming arrow
     for (int s = 0; s < 4; s++) {
       float h2 = dt / 4;
-      vel.y -= 20 * h2;
+      vel.y -= 20 * grav * h2;
       float drag = std::max(0.f, 1 - h2 * 0.25f);
       vel *= drag;
       vec3 n = pos + vel * h2;
@@ -750,6 +814,7 @@ public:
         if (n.x > e->pos.x - e->w - 0.1f && n.x < e->pos.x + e->w + 0.1f && n.z > e->pos.z - e->w - 0.1f && n.z < e->pos.z + e->w + 0.1f && n.y > e->pos.y && n.y < e->pos.y + e->h) {
           float speed = glm::length(vel);
           DamageSource src; src.attacker = owner; src.knock = 3 * (1 + 1.2f * data.value("punch", 0)); src.tool = "arrow"; src.type = "arrow";   // Punch (enchanting.js)
+          src.ench = data.value("ench", 0);
           Entity* o = owner ? lv.entity(owner) : nullptr;
           // the Ranger's path (Eagle Eye, Deadeye at range, Poisoned Tips: sim/villager_quests.cpp)
           float pk = o && o->isPlayer() ? pathArrowFactor(*static_cast<Player*>(o), glm::distance(o->pos, e->pos)) : 1.f;
@@ -767,7 +832,7 @@ public:
             return;
           }
           if (dealt > 0 && o && o->isPlayer() && !e->isPlayer() && pathArrowPoisons(*static_cast<Player*>(o))) poisonCreature(*e, 4);
-          if (data.value("flame", false) && !e->isPlayer()) igniteEntity(*e, 5);
+          if ((data.value("flame", false) || data.value("fire", false)) && !e->isPlayer()) igniteEntity(*e, data.value("fire", false) ? 8 : 5);
           if (dealt > 0 && o && o->isPlayer()) { char buf[16]; snprintf(buf, sizeof buf, "%g", std::round(dealt * 10) / 10); floatText(lv, *static_cast<Player*>(o), e->pos + vec3(0, e->h + 0.2f, 0), buf, "#ffffff"); }
           sfxAt(lv, "hit", e->pos);
           removed = true; return;
@@ -784,6 +849,13 @@ public:
         }
         if (hitIt) {
           if (data.value("golden", false)) { removed = true; lv.fx->particles("burst", pos, 6, {{"tile", "gold_block"}, {"speed", 1.2f}}); return; }   // a golden quiver's arrow breaks where it lands
+          if (data.value("breaks", false)) { removed = true; lv.fx->particles("burst", pos, 4, {{"tile", "amethyst_block"}, {"speed", 1.f}}); sfxAt(lv, "glass_break", n); return; }   // BTA's purple arrow shatters
+          if (data.value("fire", false)) {   // BTA's flaming arrow lights what it strikes: TNT, a brazier, a candle, a campfire
+            const BlockDef& hb = reg().block(id);
+            if (hb.key == "tnt") { w.setBlock(bx, by, bz, 0, 0); primeTNT(lv, w, bx, by, bz, 4.f); }
+            else if (hb.has("lightMeta") || hb.key == "brazier" || hb.has("campfire")) { w.setBlock(bx, by, bz, id, (u8)(w.getMeta(bx, by, bz) | 4)); }
+            else if (w.getBlock(bx, by + 1, bz) == 0 && reg().blockId("fire")) w.setBlock(bx, by + 1, bz, reg().blockId("fire"), 0);
+          }
           aim(); data["stuck"] = true; data["bx"] = bx; data["by"] = by; data["bz"] = bz; age = 0; vel = vec3(0);
           sfxAt(lv, "arrow_hit", n);
           return;
@@ -799,9 +871,17 @@ void PlayerController::updateHeldTools(float dt, const PlayerInput& in) {
   const ItemStack& held = p.held();
   const ItemDef* def = held.empty() ? nullptr : reg().item(held.id);
   bool playing = !p.dead && p.carrying.is_null();
+  // the spyglass: up to your eye while use is held (client/play.cpp narrows the view to a tenth, ui/hud.cpp the round glass)
+  const bool scope = playing && def && def->has("spyglass") && in.use;
+  if (scope && !p.scoping) sfxUi(lv, p, "click");
+  p.scoping = scope;
   if (playing && def && def->has("bow")) {
     const bool golden = goldenQuiver(p);
-    bool hasArrow = (!p.offhand[0].empty() && p.offhand[0].id == "arrow") || playerCount(p, "arrow") > 0 || quiverArrows(p) > 0 || golden;
+    // the arrows: the off hand's first, then the quiver's (the worn one, then one in the bag: whatever kind it holds),
+    // then the first arrows in the bag (BTA's golden, flaming and purple arrows too)
+    auto isArrow = [](const ItemStack& s) { return isArrowItem(s); };
+    auto bagArrow = [&]() -> ItemStack* { for (auto& s : p.inv) if (isArrow(s)) return &s; return nullptr; };
+    bool hasArrow = isArrow(p.offhand[0]) || bagArrow() || quiverArrows(p) > 0 || golden;
     if (in.use) {
       if (!hasArrow && !p.creative()) { if (in.usePressed) toastMsg("You need arrows"); bowPull = 0; }
       else { if (bowPull <= 0) sfxUi(lv, p, "bow_draw"); bowPull = std::min(1.25f, bowPull + dt); }   // a creak as you draw (bows.js)
@@ -809,18 +889,33 @@ void PlayerController::updateHeldTools(float dt, const PlayerInput& in) {
       if (bowPull > 0.12f) {
         float power = std::min(1.f, bowPull);
         bool goldShot = false;
-        if (!p.creative()) { if (!p.offhand[0].empty() && p.offhand[0].id == "arrow") { if (--p.offhand[0].n <= 0) p.offhand[0].clear(); } else if (!quiverTake(p)) { if (playerCount(p, "arrow") > 0) playerRemove(p, "arrow", 1); else goldShot = golden; } }
-        vec3 L = lookVector(p.yaw, p.pitch); float sp = 8 + power * 30;
+        std::string kind = "arrow";
+        if (isArrow(p.offhand[0])) { kind = p.offhand[0].id; if (!p.creative() && --p.offhand[0].n <= 0) p.offhand[0].clear(); }
+        else if (std::string q = p.creative() ? std::string() : quiverTake(p); !q.empty()) kind = q;
+        else if (ItemStack* b = bagArrow()) { kind = b->id; if (!p.creative() && --b->n <= 0) b->clear(); }
+        else goldShot = golden && !p.creative();
+        const ItemDef* ad = reg().item(kind);
+        const json arrowProps = ad && ad->props.contains("arrow") && ad->props["arrow"].is_object() ? ad->props["arrow"] : json::object();
+        vec3 L = lookVector(p.yaw, p.pitch); float sp = (8 + power * 30) * arrowProps.value("speed", 1.0f);
         auto a = std::make_unique<ArrowEntity>();
         a->realm = p.realm; a->pos = p.pos + vec3(L.x * 0.4f, p.eye - 0.1f + L.y * 0.4f, L.z * 0.4f); a->vel = L * sp;
-        a->data = {{"owner", p.id}, {"damage", (3 + power * 6) * enchArrowDamageFactor(held) * (goldShot ? 0.8f : 1.f)}, {"pickup", !p.creative() && !enchInfinity(held) && !goldShot}};
+        a->data = {{"owner", p.id}, {"damage", (3 + power * 6) * enchArrowDamageFactor(held) * (goldShot ? 0.8f : 1.f) * arrowProps.value("damage", 4.0f) / 4.f},
+                   {"pickup", !p.creative() && !enchInfinity(held) && !goldShot && !arrowProps.value("breaks", false)}, {"item", kind}};
+        if (arrowProps.value("gravity", 1.0f) != 1.0f) a->data["grav"] = arrowProps.value("gravity", 1.0f);
+        if (arrowProps.value("fire", false)) a->data["fire"] = true;
+        if (arrowProps.value("breaks", false)) a->data["breaks"] = true;
         if (goldShot) a->data["golden"] = true;
         if (int pu = enchArrowPunch(held)) a->data["punch"] = pu;
         if (enchArrowFlame(held)) a->data["flame"] = true;
+        {   // the bow's enchantment levels, all told (a Wither Storm feels only an enchanted bow's arrows)
+          int lv_ = 0;
+          for (const char* k : {"en", "ench"}) if (auto it = held.tag.find(k); it != held.tag.end() && it->is_object()) for (auto& [n, v] : it->items()) lv_ += v.is_number() ? v.get<int>() : 1;
+          if (lv_) a->data["ench"] = lv_;
+        }
         a->aim();
         lv.spawn(std::move(a));
-        if (enchInfinity(held) && !p.creative()) p.give(ItemStack("arrow", 1));   // Infinity: the arrow isn't used up
-        else if (!p.creative() && !goldShot && pathQuiverSaves(p)) p.give(ItemStack("arrow", 1));   // Quiver Master
+        if (enchInfinity(held) && !p.creative()) p.give(ItemStack(kind, 1));   // Infinity: the arrow isn't used up
+        else if (!p.creative() && !goldShot && pathQuiverSaves(p)) p.give(ItemStack(kind, 1));   // Quiver Master
         sfxUi(lv, p, "bow");
         wearHeld(lv, p, 1);
       }

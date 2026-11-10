@@ -1,7 +1,7 @@
 // assets/tileset.h — the colour of every micro-voxel. Each tile is a 32x32 grid: one colour per
 // micro-voxel on a block face (blocks are 32x32x32 micro-voxels). The built-in set is the original
-// game's code-painted Doku tiles (data/tiles.png); a resource pack (GeruDoku etc., dropped in
-// userDir()/resourcepacks) replaces tiles pixel-for-voxel. `height` gives each micro-voxel its
+// game's code-painted Doku tiles (data/tiles.png). DokuQuest Base (data/resourcepacks) is the art the
+// game starts with; another pack dropped in userDir()/resourcepacks replaces tiles pixel-for-voxel. `height` gives each micro-voxel its
 // relief (0 = flush with the block surface, up to 255 = deepest recess) for the voxel shading.
 #pragma once
 #include "common/fs.h"
@@ -25,7 +25,7 @@ struct TileSet {
   std::vector<u8> emissive;      // count * size*size (glowing micro-voxels: lava, ores, torch flames), 0..255
   std::vector<u8> res;           // count: pixels across the source picture (16 = code-painted at 16 and doubled, 32 = full)
   std::unordered_map<std::string, int> index;   // tile name -> layer
-  std::string packName;          // resource pack applied ("" = built-in)
+  std::string packName;          // resource pack applied ("" only if DokuQuest Base could not be opened)
   u8* tile(int i) { return rgba.data() + (size_t)i * size * size * 4; }
   const u8* tile(int i) const { return rgba.data() + (size_t)i * size * size * 4; }
   u32 avgColor(int i) const;     // 0xAABBGGRR, for LOD and particles
@@ -36,7 +36,7 @@ inline void dropTileAnim(TileSet& ts, int layer) { for (size_t i = ts.anims.size
 bool loadBuiltinTiles(TileSet& ts);          // data/tiles.png + data/tiles.json
 void deriveMicroVoxelHeights(TileSet& ts);   // relief from colour (mortar/cracks recess, bevels raise)
 void bakeTileRelief(TileSet& ts);            // once per finished tile set: whole-voxel geometry + smooth normals (assets/tile_relief.cpp)
-// resolves settings.resourcePack ("auto" = GeruDoku if present) and applies it (assets/packs.cpp)
+// resolves settings.resourcePack (empty / auto / none / builtin = DokuQuest Base) and applies it (assets/packs.cpp)
 std::string applyResourcePack(TileSet& ts, const std::string& choice);
 std::vector<std::string> listResourcePacks();
 int appendTile(TileSet& ts, const u8* rgba32x32);   // adds a tile (animation frames), returns its layer

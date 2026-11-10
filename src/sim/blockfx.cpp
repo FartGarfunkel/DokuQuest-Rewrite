@@ -9,10 +9,16 @@
 #include "sim/rules.h"
 #include "sim/weather.h"
 #include "sim/worldsys.h"
+#include <cmath>
 #include <random>
 #include <unordered_set>
 
 namespace dq {
+
+struct Village; using VillageRef = std::shared_ptr<const Village>;
+VillageRef villageForDamage(Level& lv, int realm, vec3 at);                                  // sim/villager_chores.cpp
+bool villageDamage(Level& lv, const Village& v, int x, int y, int z, BlockId id, u8 meta);
+
 
 void villageSeatChanged(Level& lv, World& w, int x, int y, int z, BlockId oldId, BlockId newId);   // sim/villagers.cpp
 
@@ -31,7 +37,8 @@ public:
       Entity* st = lv.entity(by);
       if (st && !st->removed && st->realm == realm) {
         const float s = st->data.value("growS", 1.f);
-        const vec3 maw = st->pos + vec3(-std::sin(st->yaw), 0, -std::cos(st->yaw)) * (3.0f * s) + vec3(0, 6.6f * s, 0);   // (sim/wither.cpp stormMaw)
+        vec3 maw = st->pos + vec3(0, 6.6f * s, 0);   // (sim/wither_storm.cpp keeps its mouths in data mouth0..2)
+        if (auto mm = st->data.find("mouth0"); mm != st->data.end() && mm->is_array() && mm->size() == 3) maw = vec3((*mm)[0].get<float>(), (*mm)[1].get<float>(), (*mm)[2].get<float>());
         const vec3 to = maw - (pos + vec3(0, 0.5f, 0)); const float l = glm::length(to);
         if (l < 1.5f + s || age > 12) { removed = true; return; }
         vel += (to / std::max(0.3f, l) * (6.f + age * 6.f) - vel) * std::min(1.f, dt * 2.f);
@@ -46,9 +53,11 @@ public:
       const bool stopped = mo.hitCeiling || pos.y > WORLD_H - 2;   // met something above
       if (!stopped && age <= 20) return;
     } else {
+      const bool flung = data.value("fling", false);
       vel.y = std::max(-40.f, vel.y - 28 * dt);
+      if (flung) { vel.x *= std::exp(-1.5f * dt); vel.z *= std::exp(-1.5f * dt); }
       moveEntity(w, *this, dt, {0, 0, false});
-      if (!onGround && age <= 20) return;
+      if (!onGround && age <= (flung ? 2.f : 20.f)) return;
     }
     removed = true;
     BlockId block = reg().blockId(data.value("block", std::string()));
@@ -147,6 +156,7 @@ void explode(Level& lv, int realm, vec3 at, float power, bool noBlocks, u32 sour
   for (Player* p : playersIn(lv, realm)) if (glm::distance(p->pos, at) < 32) lv.fx->shake(p->id, 0.8f);
   const Registry& R = reg();
   if (!noBlocks) {
+    const VillageRef vil = villageForDamage(lv, realm, at);
     int ri = (int)std::ceil(r);
     for (int dy = -ri; dy <= ri; dy++) for (int dz = -ri; dz <= ri; dz++) for (int dx = -ri; dx <= ri; dx++) {
       float d = std::sqrt((float)(dx * dx + dy * dy + dz * dz));
@@ -156,8 +166,9 @@ void explode(Level& lv, int realm, vec3 at, float power, bool noBlocks, u32 sour
       const BlockDef& b = R.block(id);
       if (!id || R.tLiquid[id] || b.hardness < 0 || b.hardness >= 20 || b.str("mech") == "none") continue;
       if (bhas(id, BF::Tnt)) { w.setBlock(bx, by, bz, AIR); primeTNT(lv, w, bx, by, bz, 0.5f + (float)rnd()); continue; }
-      if (json* ent = w.blockEntity(bx, by, bz)) { json copy = *ent; spillEntity(lv, w, copy, bx, by, bz); }
       u8 meta = w.getMeta(bx, by, bz);
+      const bool kept = vil && villageDamage(lv, *vil, bx, by, bz, id, meta);   // in a village: its builders will put it back (with its goods)
+      if (!kept) if (json* ent = w.blockEntity(bx, by, bz)) { json copy = *ent; spillEntity(lv, w, copy, bx, by, bz); }
       w.setBlock(bx, by, bz, AIR, 0, SetFlags::Urgent);
       if (rnd() < 0.3) dropBlockItems(lv, w, bx, by, bz, id, true, meta);
     }

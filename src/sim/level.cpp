@@ -63,7 +63,7 @@ World& Level::world(int realm) {
   if (it != realms.end()) return *it->second;
   // side realms get their own generator set (their worldType is chosen by the realm's system)
   WorldGenOptions o; o.seed = info.seed + realm * 1013; o.genVersion = info.genVersion;
-  o.worldType = realm == REALM_POCKET ? "pocket" : realm == REALM_HIS ? "realm" : info.worldType;
+  o.worldType = realm == REALM_POCKET ? "pocket" : realm == REALM_HIS ? "realm" : realm == REALM_DRIFT ? "drift" : info.worldType;
   auto g = std::make_shared<WorldGen>(o);
   auto w = std::make_unique<World>(realm, g, folder / ("realm" + std::to_string(realm)), pool);
   World& ref = *w;
@@ -114,8 +114,17 @@ bool Level::isNight() const { double f = dayFraction(); return f > 0.5 && f < 0.
 
 void Level::tick(double dt) {
   advanceDayTime(*this, dt);   // sim/rules: day and night lengths from the world's rules
-  for (auto& [r, w] : realms) w->tickSystems(dt);
-  for (auto& s : systems) s->tick(*this, dt);
+  // DQ_PROFILE_SIM=1: the slowest systems and the entities, in the log every 600 ticks
+  static const bool prof = std::getenv("DQ_PROFILE_SIM") != nullptr;
+  static std::map<std::string, double> pms; static int pticks = 0;
+  if (prof) {
+    for (auto& [r, w] : realms) for (auto& s : w->systems) { double t = nowSeconds(); s->tick(*w, dt); pms[std::string("world.") + s->name()] += nowSeconds() - t; }
+    for (auto& s : systems) { double t = nowSeconds(); s->tick(*this, dt); pms[s->name()] += nowSeconds() - t; }
+  } else {
+    for (auto& [r, w] : realms) w->tickSystems(dt);
+    for (auto& s : systems) s->tick(*this, dt);
+  }
+  const double tEnt = prof ? nowSeconds() : 0;
   for (size_t i = 0; i < ents.size(); i++) {   // entities may spawn others while ticking
     Entity* e = ents[i].get();
     if (e->removed) continue;
@@ -126,9 +135,21 @@ void Level::tick(double dt) {
   }
   ents.erase(std::remove_if(ents.begin(), ents.end(), [&](const std::unique_ptr<Entity>& e) {
     if (e->removed) { entityIndex.erase(e->id); return true; } return false; }), ents.end());
+  if (prof) {
+    pms["entities (" + std::to_string(ents.size() / 50 * 50) + "+)"] += nowSeconds() - tEnt;
+    if (++pticks == 600) {
+      std::vector<std::pair<double, std::string>> v; for (auto& [k, t] : pms) v.push_back({t / 600 * 1000, k});
+      std::sort(v.rbegin(), v.rend()); std::string o;
+      for (size_t i = 0; i < v.size() && i < 12; i++) { char b[96]; snprintf(b, sizeof b, "%s %.2f | ", v[i].second.c_str(), v[i].first); o += b; }
+      DQ_LOG("sim profile (ms/tick): %s", o.c_str()); pms.clear(); pticks = 0;
+    }
+  }
   if (events) events->emit("tick", json::array({dt}));
-  autosaveTimer += dt;
-  if (autosaveTimer > 60) { autosaveTimer = 0; save(false); }
+  if (autosaveEvery <= 0) autosaveTimer = 0;
+  else {
+    autosaveTimer += dt;
+    if (autosaveTimer >= autosaveEvery) { autosaveTimer = 0; save(false); }
+  }
 }
 
 void Level::save(bool all) {

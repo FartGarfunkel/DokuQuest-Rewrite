@@ -14,13 +14,16 @@ namespace dq::es {
 static const std::vector<std::vector<std::string>> SIGNS = {{"", "STOP", "", ""}, {"I see you", "", "", ""}, {"", "Wake up", "", ""}, {"Go back", "", "", ""}, {"", "", "Nobody is", "here"}, {"Too far", "", "", ""},
   {"", "It is too late", "", ""}, {"Leave the", "tunnels alone", "", ""}, {"", "Behind you", "", ""}, {"Do not dig", "down", "", ""}, {"", "Still here", "", ""}, {"He was here", "first", "", ""}};
 // (riftarc.js) once the boundary thins, his signs say other things
+// after the seal: beaten, not gone
+static const std::vector<std::vector<std::string>> AFTER_SIGNS = {{"I'm still", "here", "", ""}, {"I was here", "first", "", ""}, {"", "This isn't", "over", ""},
+  {"", "Did you", "miss me?", ""}, {"You shut a", "door.", "Not me.", ""}, {"", "Welcome", "home", ""}, {"", "Still here", "", ""}, {"", "", "I can wait", ""}};
 static const std::vector<std::vector<std::string>> RIFT_SIGNS = {{"WE ARE", "WATCHING", "", ""}, {"", "IT BREAKS", "", ""}, {"The keys", "are mine", "", ""}, {"", "Do not", "open it", ""}};
 
 // what his tunnels may cut through (never anything built)
 static bool hauntRock(BlockId id) {
   static std::vector<BlockId> R;
   if (R.empty()) for (const char* k : {"stone", "dirt", "grass", "gravel", "andesite", "diorite", "granite", "slate", "tuff", "deepslate", "coarse_dirt", "sandstone", "clay", "coal_ore", "iron_ore", "copper_ore", "tin_ore",
-      "snowy_grass", "podzol", "calcite", "limestone", "marble", "dripstone_block", "mud", "red_sandstone", "terracotta", "emberstone", "basalt", "blackstone", "ash", "skystone", "sky_grass", "end_stone", "desert_stone", "desert_sandstone"})
+      "snowy_grass", "podzol", "calcite", "limestone", "marble", "dripstone_block", "mud", "red_sandstone", "terracotta", "emberstone", "basalt", "blackstone", "ash", "skystone", "sky_grass", "aether_grass_block", "aether_dirt", "holystone", "end_stone", "desert_stone", "desert_sandstone"})
     if (BlockId b = B(k)) R.push_back(b);
   return id && std::find(R.begin(), R.end(), id) != R.end();
 }
@@ -268,7 +271,7 @@ static void writeSign(Level& lv, World& w, ivec3 at, const Player& p) {
   float yaw = std::atan2(p.pos.x - at.x, p.pos.z - at.z);                 // turned toward where you are
   int rot = (int)std::round(((PI - yaw) / TAU) * 16) & 15;
   w.setBlock(at.x, at.y, at.z, sign, (u8)rot);
-  const auto& L = riftStability(lv) < 75 ? RIFT_SIGNS : SIGNS;
+  const auto& L = truthy(riftRec(lv), "sealed") ? AFTER_SIGNS : riftStability(lv) < 75 ? RIFT_SIGNS : SIGNS;
   const auto& lines = L[(size_t)(rnd() * L.size()) % L.size()];
   w.setBlockEntity(at.x, at.y, at.z, json{{"type", "sign"}, {"lines", lines}});
 }
@@ -439,10 +442,40 @@ static void hauntUpdate(Level& lv, EndStory& S, double dt) {
   if (p->realm == REALM_POCKET && rnd() < 0.5f) lv.fx->sound("portal", w->pos + vec3(0, 1, 0), 24);
 }
 
+// After the seal he's beaten, but not gone. No more sightings, no tunnels: only now and then a sign, mostly by your
+// home as you come back to it (a bed's spot, else where the world began), never where anyone can see it go up, and
+// never often: one by home at most every 20-40 min of play, one out in the world every 40-80 min.
+static void afterSealTick(Level& lv, EndStory& S, double dt) {
+  auto& H = S.haunt;
+  if (lv.isRemote() || !rulesHaunting(lv)) return;
+  if (!H.after) { H.after = true; H.homeT = 600 + rnd() * 600; H.roamT = 2400 + rnd() * 2400; H.away = false; }
+  H.homeT -= dt; H.roamT -= dt;
+  Player* p = hauntPlayer(lv);
+  if (!p || p->dead || p->realm != REALM_MAIN || dimHere(*p) != DIM_OVERWORLD || playTime(lv) < 120) return;
+  const vec3 home = p->spawnPoint.y >= 0 ? p->spawnPoint : lv.info.spawn;
+  if (home.y < 0) return;
+  const float d = std::hypot(p->pos.x - home.x, p->pos.z - home.z);
+  if (d > 96) H.away = true;
+  if (H.away && d < 24) {   // home again
+    H.away = false;
+    if (H.homeT <= 0 && rnd() < 0.5f) {
+      World& w = lv.world(p->realm); ivec3 s;
+      for (int i = 0; i < 6; i++) {
+        if (!unseenSpot(lv, *p, 8, 22, s)) break;
+        if (w.getBlock(s.x, s.y, s.z) != AIR || !solid(w.getBlock(s.x, s.y - 1, s.z)) || liquid(w.getBlock(s.x, s.y - 1, s.z))) continue;
+        writeSign(lv, w, s, *p); H.homeT = 1200 + rnd() * 1200;
+        sub(lv.info.data, "flags")["afterSigns"] = jint(sub(lv.info.data, "flags"), "afterSigns") + 1;
+        break;
+      }
+    }
+  }
+  if (H.roamT <= 0) H.roamT = placeSign(lv, *p) ? 2400 + rnd() * 2400 : 120 + rnd() * 120;
+}
+
 void hauntTick(Level& lv, EndStory& S, double dt) {
-  // the haunting grows bolder as the boundary thins; once sealed, he's gone (riftarc.js)
+  // the haunting grows bolder as the boundary thins (riftarc.js); once sealed, only the odd sign
   const json& R = riftRec(lv);
-  if (truthy(R, "sealed")) return;
+  if (truthy(R, "sealed")) { afterSealTick(lv, S, dt); return; }
   int st = riftStability(lv);
   hauntUpdate(lv, S, dt * (st < 15 ? 3 : st < 40 ? 2.2 : st < 75 ? 1.6 : 1));
 }

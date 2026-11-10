@@ -1,4 +1,5 @@
 #include "world/world.h"
+#include <algorithm>
 #include "world/carve_forms.h"
 #include "world/region.h"
 #include "world/light.h"
@@ -178,6 +179,9 @@ void World::requestChunk(int dim, int cx, int cz, float priority) {
     if (!loaded) {
       if (DimGenerator* g = sh->gen ? sh->gen->forDim(k.dim) : nullptr) g->generate(*c);
       c->modified = false;
+    } else if (std::all_of(c->climate.begin(), c->climate.end(), [](u8 v) { return v == 0; })) {
+      // saved before chunks kept their climate: it comes from the generator again (once: it's saved with it from now on)
+      if (DimGenerator* g = sh->gen ? sh->gen->forDim(k.dim) : nullptr) { auto tmp = std::make_unique<Chunk>(k.dim, k.cx, k.cz); g->generate(*tmp); c->climate = tmp->climate; }
     }
     convertSlabsStairs(*c);   // slabs and stairs arrive as chiseled blocks (generation and old saves)
     c->recomputeMaxY();
@@ -280,7 +284,13 @@ void World::stream(const std::vector<StreamAnchor>& anchors, double budgetMs) {
     }
     if (!nearAny) drop.push_back(k);
   }
-  for (auto& k : drop) unloadChunk(k, true);
+  // a couple of milliseconds of it a frame: a changed chunk is packed and saved as it goes, and a row of them left
+  // behind at once held a frame for 150-220 ms (the rest go next frame; they're still out of reach)
+  const double tu = nowSeconds();
+  for (size_t i = 0; i < drop.size(); i++) {
+    if (i > 0 && (nowSeconds() - tu) * 1000 > 2.0) break;
+    unloadChunk(drop[i], true);
+  }
 }
 
 void World::pumpMain(double budgetMs) {

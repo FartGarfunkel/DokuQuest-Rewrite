@@ -10,6 +10,7 @@ const json& ruleDefaults() {
     {"daylightCycle", true}, {"keepInventory", false}, {"graves", true}, {"mobSpawning", true}, {"mobGriefing", true}, {"tntExplodes", true},
     {"fireSpread", true}, {"blockDrops", true}, {"fallDamage", true}, {"drowning", true}, {"fireDamage", true}, {"naturalRegen", true},
     {"grassSpread", true}, {"randomTickSpeed", 1}, {"hardcore", false}, {"nightmares", true}, {"seasons", false}, {"startInWild", false}, {"treeFelling", true}, {"saplingsPlant", true}, {"showCoords", false}, {"commands", false}, {"downed", true}, {"haunting", true}, {"allowSprinting", true}, {"allowSleeping", true}, {"weatherCycle", true},
+    {"hostileSpawns", true}, {"passiveSpawns", true},
   };
   return d;
 }
@@ -42,8 +43,8 @@ const std::vector<std::array<std::string, 3>>& ruleToggles() {
 
 json& rules(Level& lv) {
   json& r = lv.info.rules;
-  if (!r.is_object() || r.empty()) { r = ruleDefaults(); r["commands"] = lv.info.mode == "creative"; r["_v"] = 1; r["_v2"] = 2; }
-  else if (r.value("_v2", 0) != 2) { for (auto& [k, v] : ruleDefaults().items()) if (!r.contains(k)) r[k] = v; r["_v"] = 1; r["_v2"] = 2; }
+  if (!r.is_object() || r.empty()) { r = ruleDefaults(); r["commands"] = lv.info.mode == "creative"; r["_v"] = 1; r["_v2"] = 3; }
+  else if (r.value("_v2", 0) != 3) { for (auto& [k, v] : ruleDefaults().items()) if (!r.contains(k)) r[k] = v; r["_v"] = 1; r["_v2"] = 3; }
   return r;
 }
 bool rule(Level& lv, const std::string& key) {

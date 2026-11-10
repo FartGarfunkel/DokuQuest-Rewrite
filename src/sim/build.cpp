@@ -1,3 +1,4 @@
+#include "world/rug.h"
 // sim/build.cpp — building rules (port of game/build.js, the player side of game/blocks2.js,
 // blockfx.js flint and steel, furniture.js sitting and shelves, local.js Carry On / ground storage).
 #include "sim/controller.h"
@@ -12,6 +13,7 @@
 namespace dq {
 // (declared out here: MSVC gives a function declared inside a block the global namespace, so these never linked on Windows)
 bool tryWitherSummon(Level& lv, int realm, ivec3 at);   // sim/wither.cpp
+void primeFormidi(Level& lv, World& w, int x, int y, int z, const std::string& key);   // sim/wither_storm.cpp: Super TNT, the Formidibomb
 
 static double rnd() { static thread_local std::mt19937 g{std::random_device{}()}; return std::uniform_real_distribution<double>(0, 1)(g); }
 
@@ -77,6 +79,15 @@ bool PlayerController::placement(const RayHit& hit, BlockId bid, Placement& out)
     if (ny != 0) { toastMsg("Hang item frames on a wall"); return false; }
     int f = dirOf((float)-nx, (float)-nz);
     if (!R.tSolid[w.getBlock(x + DIRX[f], y, z + DIRZ[f])]) return false;
+    return set(x, y, z, (u8)f);
+  }
+  if (d.str("cloth") == "banner") {   // two blocks (the top one has the crossbar): standing up from a floor, or hung down from a wall or a ceiling
+    auto freeAt = [&](int yy) { BlockId id = w.getBlock(x, yy, z); return inWorldY(yy) && (id == AIR || R.tReplaceable[id]); };
+    const int look = lookDir(p);
+    if (ny == 1) { if (!freeAt(y + 1)) return false; out.also.push_back({x, y + 1, z, bid, look}); return set(x, y, z, (u8)(look | 4)); }
+    const int f = ny == 0 ? (dirOf((float)nx, (float)nz) | 8) : look;   // on a wall: facing out from it, flat against it
+    if (!freeAt(y - 1)) { toastMsg("Not enough room for the banner"); return false; }
+    out.also.push_back({x, y - 1, z, bid, f | 4});
     return set(x, y, z, (u8)f);
   }
   if (d.has("facingModel")) return set(x, y, z, (u8)(d.str("station") == "anvil" ? (lookDir(p) + 1) & 3 : lookDir(p)));
@@ -219,6 +230,21 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
     consumeHeld(); swingArm(); sfxMaterial(lv, "grass", "place", vec3(h.block));
     return;
   }
+  if (const u8 rc = rugCodeOf(bid)) {
+    // a carpet is laid as a rug, on the floor (world/rug.h): on the top clicked, under the cell it would go in, or under
+    // the table, chair, bed... clicked (they stay standing on it). Where there's no whole floor it's a carpet as before.
+    ivec3 f(0, -999, 0);
+    const ivec3 hb = hit.block;
+    if (hit.normal.y == 1 && rugFloor(hit.id, w.getCarve(hb.x, hb.y, hb.z))) f = hb;
+    else if (!fullSolid(hit.id) && rugFloor(w.getBlock(hb.x, hb.y - 1, hb.z), w.getCarve(hb.x, hb.y - 1, hb.z))) f = hb - ivec3(0, 1, 0);
+    else { const ivec3 t0 = placeTarget(hit); if (rugFloor(w.getBlock(t0.x, t0.y - 1, t0.z), w.getCarve(t0.x, t0.y - 1, t0.z))) f = t0 - ivec3(0, 1, 0); }
+    if (f.y != -999 && inWorldY(f.y) && !R.tOpaque[w.getBlock(f.x, f.y + 1, f.z)]) {
+      if (isRugCoat(w.getCoat(f.x, f.y, f.z))) { toastMsg("There's a rug there already"); return; }
+      w.setCoat(f.x, f.y, f.z, rc, SetFlags::Urgent);
+      consumeHeld(); swingArm(); sfxMaterial(lv, bdef.sound.empty() ? "cloth" : bdef.sound, "place", vec3(f) + vec3(0.5f, 1.05f, 0.5f));
+      return;
+    }
+  }
   ivec3 t = placeTarget(hit);
   int x = t.x, y = t.y, z = t.z;
   if (!inWorldY(y)) return;
@@ -298,6 +324,11 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
   for (auto& a : also) { BlockId c2 = w.getBlock(a[0], a[1], a[2]); if (c2 != AIR && !R.tReplaceable[c2]) return; if (R.tSolid[bid] && !door && blockedByBody(a[0], a[1], a[2])) return; }
   u8 seat = seatForPlace(w, hit, bid, x, y, z, meta);
   if (seat == 0xFF) { toastMsg("Look at the part of the block you want it on"); return; }
+  if (bdef.key == "spike_trap" || bdef.has("spikes")) {
+    const int nx = hit.normal.x, ny = hit.normal.y, nz = hit.normal.z;
+    const int face = ny > 0 ? 1 : ny < 0 ? 0 : nx > 0 ? 5 : nx < 0 ? 4 : nz > 0 ? 3 : 2;
+    meta = (u8)((face ^ 1) << 1);   // the side they grow out of; a floor click is meta 0
+  }
   if (lv.events && !lv.events->emit("blockPlace", json::array({p.name, x, y, z, bdef.key}))) return;
   ItemStack placed = held;   // (contents travel with chests and barrels)
   w.setBlock(x, y, z, bid, meta, SetFlags::Urgent);
@@ -445,6 +476,7 @@ void PlayerController::useFlint(const RayHit* hit, ItemStack& held) {
   World& w = world();
   const Registry& R = reg(); const KnownBlocks& B = KB();
   if (!hit) return;
+  if (const std::string& bk = reg().block(hit->id).key; bk == "super_tnt" || bk == "formidibomb") { w.setBlock(hit->block.x, hit->block.y, hit->block.z, AIR); primeFormidi(lv, w, hit->block.x, hit->block.y, hit->block.z, bk); wearHeld(lv, p, 1); return; }
   if (bhas(hit->id, BF::Tnt)) { w.setBlock(hit->block.x, hit->block.y, hit->block.z, AIR); primeTNT(lv, w, hit->block.x, hit->block.y, hit->block.z, 4); wearHeld(lv, p, 1); return; }
   const std::string& hk = R.block(hit->id).key;
   if (hk == "campfire" || hk == "soul_campfire") return;
@@ -809,7 +841,7 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
     }
     return false;
   }
-  static const std::unordered_set<std::string> HOE = {"grass", "dirt", "coarse_dirt", "rooted_dirt", "snowy_grass", "sky_grass", "podzol", "mycelium", "dirt_path", "dirt_with_dry_grass", "dirt_with_coniferous_litter", "dirt_with_rainforest_litter"};
+  static const std::unordered_set<std::string> HOE = {"grass", "dirt", "coarse_dirt", "rooted_dirt", "snowy_grass", "sky_grass", "aether_grass_block", "aether_dirt", "podzol", "mycelium", "dirt_path", "dirt_with_dry_grass", "dirt_with_coniferous_litter", "dirt_with_rainforest_litter"};
   if (tool == "hoe" && HOE.count(b.key) && w.getBlock(x, y + 1, z) == AIR && B.farmland) { w.setBlock(x, y, z, B.farmland, 0); sfxMaterial(lv, "gravel", "dig", c); wearHeld(lv, p, 1); swingArm(); return true; }
   if ((tool == "sword" || (def && def->has("shears"))) && id == B.pumpkin && id) {
     w.setBlock(x, y, z, B.carved_pumpkin, (u8)facingMeta(p));
@@ -833,6 +865,10 @@ void PlayerController::afterBreak(int x, int y, int z, BlockId id, u8 meta) {
   if ((R.tWlog[id] || (R.tOpaque[id] && !R.tShape[id])) && (meta & WLOG)) w.setBlock(x, y, z, KB().water, 0);   // (a chiseled block's water stays)
   if (bhas(id, BF::Door)) { int oy = (meta & 16) ? y - 1 : y + 1; if (w.getBlock(x, oy, z) == id) w.setBlock(x, oy, z, AIR, 0, SetFlags::Urgent); }
   if (bhas(id, BF::Double)) { int oy = (meta & 1) ? y - 1 : y + 1; if (w.getBlock(x, oy, z) == id) w.setBlock(x, oy, z, AIR, 0, SetFlags::Urgent); }
+  if (R.block(id).str("cloth") == "banner") {   // a banner's other half (the lower one has bit 4)
+    const int oy = (meta & 4) ? y + 1 : y - 1;
+    if (w.getBlock(x, oy, z) == id && ((w.getMeta(x, oy, z) & 4) != 0) != ((meta & 4) != 0)) w.setBlock(x, oy, z, AIR, 0, SetFlags::Urgent);
+  }
   if (bhas(id, BF::Bed) && !R.block(id).has("bag")) {
     int f = meta & 3, s = (meta & 4) ? -1 : 1, ox = x + DIRX[f] * s, oz = z + DIRZ[f] * s;
     if (w.getBlock(ox, y, oz) == id) w.setBlock(ox, y, oz, AIR, 0, SetFlags::Urgent);

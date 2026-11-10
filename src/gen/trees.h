@@ -6,7 +6,7 @@
 namespace dq {
 
 enum TreeKind : u8 { TREE_NONE = 0, TREE_OAK, TREE_BIRCH, TREE_SPRUCE, TREE_PINE, TREE_JUNGLE, TREE_ASPEN, TREE_AZALEA,
-  TREE_ACACIA, TREE_DARK_OAK, TREE_CHERRY, TREE_MANGROVE, TREE_CRIMSON, TREE_WARPED, TREE_THORN, TREE_PALM, TREE_KIND_COUNT };
+  TREE_ACACIA, TREE_DARK_OAK, TREE_CHERRY, TREE_MANGROVE, TREE_CRIMSON, TREE_WARPED, TREE_THORN, TREE_PALM, TREE_SHRUB, TREE_KIND_COUNT };
 const char* treeKindName(u8 kind);       // "oak", "dark_oak", ... (the original's type strings)
 u8 treeKindFromName(const std::string& s);
 

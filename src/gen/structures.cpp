@@ -1,4 +1,5 @@
 #include "gen/structures.h"
+#include "world/rug.h"
 #include <algorithm>
 #include <atomic>
 
@@ -12,9 +13,14 @@ const std::vector<StructureType>& structureTypes() { return typeList(); }
 int ChunkWriter::put(int x, int y, int z, BlockId id, u8 meta) {
   if (!in(x, z) || y < 1 || y >= DIM_H) return -1;
   int i = colIdx(x - bx, y, z - bz);
-  buf.blocks[i] = id; buf.meta[i] = meta;
+  buf.blocks[i] = id; buf.meta[i] = meta; buf.coat[i] = 0;
   ch.blockEntities.erase(i);
   return i;
+}
+void ChunkWriter::rug(int x, int y, int z, BlockId carpet) {
+  if (!in(x, z) || y < 1 || y >= DIM_H) return;
+  const int i = colIdx(x - bx, y, z - bz);
+  if (rugFloor(buf.blocks[i], 0)) buf.coat[i] = rugCodeOf(carpet);
 }
 BlockId ChunkWriter::get(int x, int y, int z) const {
   return in(x, z) && y >= 0 && y < DIM_H ? buf.blocks[colIdx(x - bx, y, z - bz)] : (BlockId)0xFFFF;

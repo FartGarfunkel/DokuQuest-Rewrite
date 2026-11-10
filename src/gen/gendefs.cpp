@@ -28,6 +28,7 @@ void GenBuf::store(Chunk& c) const {
     Section* s = c.ensure(sy);
     std::memcpy(s->blocks, src, sizeof(s->blocks));
     std::memcpy(s->meta, msrc, sizeof(s->meta));
+    std::memcpy(s->coat, coat + sy * 4096, sizeof(s->coat));
     s->solidCount = n;
   }
   c.recomputeMaxY();

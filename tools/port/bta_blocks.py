@@ -544,7 +544,7 @@ def main(d):
     items['golden_quiver'] = {'key': 'golden_quiver', 'name': 'Golden Quiver', 'maxStack': 1, 'icon': 'golden_quiver', 'rarity': 'rare',
                               'desc': 'Never runs dry. Its arrows hit a little softer and break where they land.'}
     recipe('golden_quiver', 1, ['GQG', 'GAG', 'GGG'], {'G': 'gold_ingot', 'Q': 'quiver', 'A': 'arrow'})
-    items['quiver'] = {'key': 'quiver', 'name': 'Quiver', 'maxStack': 1, 'icon': 'quiver', 'desc': 'Holds up to 192 arrows. Use it to gather them; crouch and use it to tip them out.'}
+    items['quiver'] = {'key': 'quiver', 'name': 'Quiver', 'maxStack': 1, 'icon': 'quiver', 'desc': 'Wear it in the quiver slot beside your backpack: four stacks of arrows, the first your bow draws from, and arrows you pick up go into it. In the hand, use it to gather your arrows; crouch and use it to tip them out.'}
     recipe('quiver', 1, ['LS', 'LL', 'LL'], {'L': 'leather', 'S': 'string'})
     # thorn leaves: the Thornscrub's thorn trees (BTA's Caatinga); they prick like cactus
     if 'thorn_leaves' not in tiles:

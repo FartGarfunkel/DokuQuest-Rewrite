@@ -1,5 +1,6 @@
 // sim/redstone_parts.cpp — pistons and sticky pistons (game/redstone.js), what falls off when its support
 // goes, lit TNT and explosions (game/blockfx.js), targets (game/rsplace.js).
+#include "sim/villagers.h"
 #include "sim/redstone.h"
 #include "sim/redstone_entities.h"
 #include "sim/vehicles.h"
@@ -93,24 +94,41 @@ void Redstone::extend(int x, int y, int z, BlockId id, int dir) {
   int hx = x + D6X[dir], hy = y + D6Y[dir], hz = z + D6Z[dir];
   if (!inWorldY(hy) || dimOfY(hy) != dimOfY(y)) return;
   Plan plan;
-  pushLimit = launcher ? 16 : 12;
+  pushLimit = launcher ? 24 : 12;
   bool can = gather(hx, hy, hz, dir, ivec3(x, y, z), plan);
   pushLimit = 12;
   if (!can) return;
+  // one block sitting in the head cell is thrown, not slid. Spawn it after the head animation so the head does not carry it.
+  std::string flungKey;
+  int flungMeta = 0;
+  if (launcher && plan.move.size() == 1 && plan.move[0][0] == hx && plan.move[0][1] == hy && plan.move[0][2] == hz) {
+    flungKey = reg().block((BlockId)plan.move[0][3]).key;
+    flungMeta = plan.move[0][4];
+    plan.move.clear();
+    w.setBlock(hx, hy, hz, AIR, 0);
+  }
   carry(plan, dir, [&] { w.setBlock(x, y, z, sticky ? t.stickyExt : launcher ? t.reinfExt : t.pistonExt, dir); },
         {{x, y, z, hx, hy, hz, (int)t.head, dir | (sticky ? 8 : 0), 0}}, posKey(x, y, z));
   lv.fx->sound("piston_out", vec3(x, y, z) + vec3(0.5f), 24);
+  vec3 d((float)D6X[dir], (float)D6Y[dir], (float)D6Z[dir]);
+  if (!flungKey.empty()) {
+    auto fb = createEntity("falling_block");
+    if (fb) {
+      fb->realm = w.realm;
+      fb->pos = vec3(hx + 0.5f, (float)hy, hz + 0.5f) + d * 0.55f;
+      fb->vel = d * 40.f;
+      fb->data = {{"block", flungKey}, {"meta", flungMeta}, {"fling", true}};
+      lv.spawn(std::move(fb));
+    } else dropStack(lv, w.realm, ItemStack(flungKey, 1), vec3(hx + 0.5f, hy + 0.5f, hz + 0.5f));
+  }
   if (launcher) {
-    // BTA's reinforced piston: whatever stands in front of the head (or on the blocks it shoves) is flung along
-    vec3 d((float)D6X[dir], (float)D6Y[dir], (float)D6Z[dir]);
-    int reach = (int)plan.move.size() + 2;
-    vec3 lo(std::min(hx, hx + D6X[dir] * reach), std::min(hy, hy + D6Y[dir] * reach), std::min(hz, hz + D6Z[dir] * reach));
-    vec3 hi = vec3(std::max(hx, hx + D6X[dir] * reach), std::max(hy, hy + D6Y[dir] * reach), std::max(hz, hz + D6Z[dir] * reach)) + vec3(1, 1.6f, 1);
+    AABB head{vec3((float)hx, (float)hy, (float)hz), vec3((float)hx + 1, (float)hy + 1, (float)hz + 1)};
     for (auto& e : lv.entities()) {
-      if (e->removed || e->realm != w.realm || e->type == "piston_anim") continue;
-      if (e->pos.x < lo.x - 0.3f || e->pos.x > hi.x + 0.3f || e->pos.y < lo.y - 0.2f || e->pos.y > hi.y || e->pos.z < lo.z - 0.3f || e->pos.z > hi.z + 0.3f) continue;
-      vec3 v = d * 16.f + vec3(0, D6Y[dir] ? 0.f : 7.f, 0);
-      e->vel += v;
+      if (e->removed || e->realm != w.realm || e->type == "piston_anim" || e->type == "falling_block") continue;
+      float hw = e->isPlayer() ? 0.3f : e->w, h = e->isPlayer() ? 1.8f : (e->h > 0 ? e->h : 0.5f);
+      AABB eb{e->pos - vec3(hw, 0, hw), e->pos + vec3(hw, h, hw)};
+      if (!head.overlaps(eb)) continue;
+      e->vel = d * 40.f;
     }
     lv.fx->sound("explode", vec3(hx, hy, hz) + vec3(0.5f), 20, 0.35f, 1.6f);
     lv.fx->particles("poof", vec3(hx, hy, hz) + vec3(0.5f), 6);
@@ -301,6 +319,7 @@ void explode(Level& lv, int realm, vec3 at, float power, bool noBlocks) {
   lv.fx->sound("explode", at, 64);
   for (auto& e : lv.entities()) if (!e->removed && e->isPlayer() && e->realm == realm && glm::distance(e->pos, at) < 24) lv.fx->shake(e->id, 0.8f);
   Redstone* rsys = redstoneOf(lv, realm);
+  const VillageRef vil = noBlocks ? nullptr : villageForDamage(lv, realm, at);   // in a village: its builders will put it back
   if (!noBlocks && lv.info.rules.value("mobGriefing", true) != false)
     for (int dy = -r; dy <= r; dy++) for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) {
       float d = std::sqrt((float)(dx * dx + dy * dy + dz * dz));
@@ -311,11 +330,11 @@ void explode(Level& lv, int realm, vec3 at, float power, bool noBlocks) {
       if (!id || R.tLiquid[id] || b.hardness < 0 || b.hardness >= 20 || b.str("mech") == "none") continue;
       if (b.has("tnt")) { w.setBlock(bx, by, bz, AIR, 0); if (rsys) rsys->primeTnt(bx, by, bz, 0.5f + rnd()); continue; }
       int meta = w.getMeta(bx, by, bz);
-      if (json* ent = w.blockEntity(bx, by, bz)) {   // spill what it held
+      const bool kept = vil && villageDamage(lv, *vil, bx, by, bz, id, (u8)meta);   // (a village's shelf keeps its goods for the builder)
+      if (json* ent = !kept ? w.blockEntity(bx, by, bz) : nullptr) {   // spill what it held
         if ((*ent)["items"].is_array()) for (auto& it : (*ent)["items"]) { ItemStack s = ItemStack::fromJson(it); if (!s.empty()) dropStack(lv, realm, s, vec3(bx + 0.5f, by + 0.5f, bz + 0.5f), vec3((rnd() - 0.5f) * 3, 3, (rnd() - 0.5f) * 3)); }
       }
       w.setBlock(bx, by, bz, AIR, 0, SetFlags::Urgent);
-      (void)meta;
       if (rnd() < 0.3f) dropBlockItems(lv, realm, bx, by, bz, id);
     }
   lv.fx->particles("explosion", at, 40, json{{"radius", power}});

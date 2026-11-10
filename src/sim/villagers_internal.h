@@ -22,6 +22,7 @@ struct NpcMind {
   // npcGo
   std::vector<ivec3> path; size_t pathI = 0; bool hasPath = false; float navT = 0; bool hasNavGoal = false; vec3 navGoal{0};
   int stuckGo = 0; float stuckT = 0, sideStepT = 0; bool hasNav = false; vec2 navXZ{0};
+  int wetN = 0;   // seconds in a row in water (a fountain, a well): climbs out after a few
   float stuckCheckT = 0; int stuckN = 0;   // towns3.js npcStuckCheck
   ivec3 badSeat{INT32_MIN}; double badSeatUntil = 0;   // a seat it couldn't reach: left alone for a while
   // towns3.js: the watch at the gates
@@ -30,6 +31,14 @@ struct NpcMind {
   std::string lostQ; u32 follow = 0;
   bool pinned = false; std::string sitHeld;
   int pose = 0;
+  // the day's chores (sim/villager_chores.cpp): what they carry (an armful of wheat, a sack of flour), the crop they're
+  // going to, a pause between jobs
+  std::string carry; int carryN = 0; float choreT = 0; bool hasCrop = false; ivec3 crop{0};
+  float jobT = 0;   // how long they've been at the job in hand (chopping, mining, fishing...)
+  vec3 choreAt{0};  // where they stand to do it
+  bool choreIdle = false;   // the day's work has nothing for them just now (they go about the streets, not stand at the door)
+  // the trade's round (sim/villager_ai.cpp): which stop they're at, how long left there, and whether they hold its tool
+  int taskI = -1; float taskT = 0; bool taskHeld = false;
 };
 
 struct Offence { int strikes = 0; double warnT = -1e9; bool hostile = false, forgiven = false; std::string victim; bool victimGuard = false; };
@@ -76,6 +85,13 @@ void later(Level& lv, double secs, const Player& p, const std::string& text);
 
 // villager_ai.cpp
 OptMove npcBrain(Level& lv, Creature& e, Entity* p, float dist, float dt);
+OptMove npcGo(Level& lv, Creature& e, NpcMind& M, vec3 t, float dt, float speed);   // walk there (its own A*)
+// the working village (sim/villager_chores.cpp): farmers reap their farms and carry the wheat to the mill, the miller
+// feeds the millstone and bags the flour, the baker fetches it and bakes bread. A move while they're about it, or none.
+OptMove npcChore(Level& lv, Creature& e, NpcMind& M, const Village& v, const VFolk& f, float ph, float dt);
+json& villageStock(Level& lv, const Village& v);   // {"wheat": n, "flour": n, "bread": n, ...} kept with the village
+bool villageMakes(const std::string& item);        // its shops sell only what the village has made of it
+bool villageUses(const std::string& item);         // sold to its shopkeepers, it goes into the village's stores
 OptMove lostAI(Level& lv, Creature& e, NpcMind& M, float dt);
 OptMove travellerAI(Level& lv, Creature& e, NpcMind& M, Entity* p, float dist, float dt);
 void npcOffend(Level& lv, Player& who, const std::string& vid, Creature& victim, bool killed);

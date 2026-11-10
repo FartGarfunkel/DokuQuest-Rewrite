@@ -27,6 +27,9 @@ public:
   // hands it took (1 = main, 2 = off); or draw over the item in a hand (the live compass and clock dials,
   // render/instruments.cpp): m maps the item model's space (before VoxelModel::matrix()) to view space
   inline static std::function<int(HeldItemLayer&, GameSession&, const FrameCtx&, const mat4& proj)> handsHook;
+  // the hands the hook took last frame: the first-person body (render/char_layer.cpp) leaves that arm out, so a map held
+  // up in both hands doesn't have your own left arm hanging beside it as a third
+  inline static int handsTaken = 0;
   inline static std::function<void(GameSession&, const FrameCtx&, const mat4& proj, const ItemStack&, const mat4& m, const VoxelModel&)> itemHook;
   // where the flame of a torch held in each hand was last drawn (world space; render/held_light_fx.cpp)
   inline static glm::dvec3 torchTip[2]{}; inline static bool torchTipOn[2]{};

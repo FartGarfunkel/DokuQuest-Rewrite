@@ -23,7 +23,8 @@ const std::vector<VertexAttrib> P_ATTRS = {
 bool solidAt(World* w, vec3 p) { return w && reg().tSolid[w->getBlock(ifloor(p.x), ifloor(p.y), ifloor(p.z))]; }
 } // namespace
 
-ParticleSystem& particles() { static ParticleSystem ps; return ps; }
+// never destroyed: its GL objects must not be freed after the GL context is gone (App::run releases the mesh first)
+ParticleSystem& particles() { static ParticleSystem* ps = new ParticleSystem; return *ps; }
 void addWaterfallSplash(vec3 pos) { particles().addWaterfallSplash(pos); }
 
 int ParticleSystem::tile(const std::string& name) const {

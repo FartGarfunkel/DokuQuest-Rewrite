@@ -541,23 +541,8 @@ void MagicLayer::drawHud(GameSession& gs) {
   if (!p || p->dead) return;
   App& app = s.app;
   ImDrawList* dl = ImGui::GetForegroundDrawList();
-  float W = (float)app.width, H = (float)app.height, sc = app.uiScale > 0 ? app.uiScale : 1;
-  MagicState& m = magicState(*s.level, *p);
-  // the mana bar, shown once you know magic (under the experience row)
-  if (!knownSpells(*p).empty() || heldStaff(*p)) {
-    float max = manaMax(*p), mana = m.mana < 0 ? max : m.mana;
-    std::string k = activeSpell(*p);
-    const SpellDef* S = magicData().spell(k);
-    const std::string L = offSpell(*p);
-    std::string txt = (S ? spellTitle(*p, k) : std::string("No spells")) + (L.empty() ? "" : L == k ? " \xC3\x97 2" : " + " + spellTitle(*p, L)) + " \xC2\xB7 " + std::to_string((int)std::floor(mana)) + "/" + std::to_string((int)max) + (m.ward > 0 ? " \xC2\xB7 ward " + std::to_string((int)std::round(m.ward)) : "");
-    float bw = 364 * sc, bh = 6 * sc, x0 = W / 2 - bw / 2, y0 = H - 104 * sc;
-    dl->AddRectFilled(ImVec2(x0, y0), ImVec2(x0 + bw, y0 + bh), IM_COL32(10, 14, 40, 200), 3);
-    dl->AddRectFilled(ImVec2(x0, y0), ImVec2(x0 + bw * clampv(mana / std::max(1.f, max), 0.f, 1.f), y0 + bh), IM_COL32(70, 120, 255, 255), 3);
-    ImVec2 ts = ImGui::CalcTextSize(txt.c_str());
-    u32 c = S ? hexColor(S->col) : 0xcccccc;
-    dl->AddText(ImVec2(W / 2 - ts.x / 2 + 1, y0 - ts.y - 1), IM_COL32(0, 0, 0, 200), txt.c_str());
-    dl->AddText(ImVec2(W / 2 - ts.x / 2, y0 - ts.y - 2), IM_COL32((c >> 16) & 255, (c >> 8) & 255, c & 255, 255), txt.c_str());
-  }
+  float W = (float)app.width, H = (float)app.height;
+  // (the mana is the HUD's: ui/hud.cpp, crystals beside the hearts, drawn under the windows, not over them)
   // what you're under, top right
   float y = 8;
   for (auto& e : effectsOn(*p)) {

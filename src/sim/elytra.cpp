@@ -107,7 +107,7 @@ std::array<ElytraWing, 2> elytraWings(bool open) {
   float spread = open ? ELYTRA_SPAN : 0;
   for (int i = 0; i < 2; i++) {
     float side = i == 0 ? 1.f : -1.f;
-    out[i].side = side; out[i].ang = side * (0.16f + spread); out[i].tilt = spread * 0.35f;
+    out[i].side = side; out[i].ang = side * (0.18f + (open ? 1.40f : 0.f)); out[i].tilt = open ? 0.28f : 0.f;
     out[i].min = vec3(side > 0 ? 0 : -9, -21, 0); out[i].max = vec3(side > 0 ? 9 : 0, 0, 1.2f);
   }
   return out;

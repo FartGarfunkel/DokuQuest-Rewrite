@@ -21,7 +21,7 @@ namespace dq {
 
 class World;
 
-enum class Grp : u8 { Main, Armor, Off, Back, Hook, Charm, Cape, Bp, Grid, Cont, Furn, Out, Mach, Sta, SOut, Cut, Count };
+enum class Grp : u8 { Main, Armor, Off, Back, Hook, Charm, Cape, Bp, Grid, Cont, Furn, Out, Mach, Sta, SOut, Cut, Quiver, Qv, Mount, Count };   // Quiver: the worn quiver; Qv: its arrows; Mount: a mount's gear
 const char* grpName(Grp g);
 bool stacksMerge(const ItemStack& a, const ItemStack& b);   // the original's canMerge
 
@@ -38,6 +38,12 @@ struct InvOpen {
   std::function<json*()> entItems;  // a container on an entity (chest/hopper carts, boat chests): its items array, null when gone
   std::function<void(const json&)> entSaved;   // after its items change (a joined world: they go to the host)
   std::string entTitle;
+  // a mount's gear over what it carries (sim/mount_gear.h): its slots as they are, putting them back, what fits a slot,
+  // and the outline shown in an empty one
+  std::function<std::vector<ItemStack>()> gearGet;
+  std::function<void(const std::vector<ItemStack>&)> gearSet;
+  std::function<bool(int, const ItemStack&)> gearFits;
+  std::vector<std::string> gearHint;
 };
 
 class InvSession {
@@ -99,7 +105,7 @@ public:
 
 private:
   bool ok = true;
-  std::vector<ItemStack> cont, furn, back, hook, charm, cape, bp, ender, mach, sta, cut;
+  std::vector<ItemStack> cont, furn, back, hook, charm, cape, bp, ender, mach, sta, cut, quiver, qv, mgear;
   int contN = 0; bool dbl = false; ivec3 posA{0}, posB{0}; int nA = 0;
   struct Drag { bool active = false, right = false; ItemStack orig; std::vector<std::pair<Grp, int>> slots; std::vector<ItemStack> base; } drag;
   void store(Grp g);

@@ -1,5 +1,6 @@
 // sim/worldsys.cpp — fluids, random ticks, plant growth, furnaces, crowding.
 #include "sim/worldsys.h"
+#include "sim/trommel.h"
 #include "sim/gameplay.h"
 #include "sim/blockfx.h"
 #include "sim/rules.h"
@@ -11,6 +12,7 @@
 #include <random>
 #include <regex>
 #include <unordered_set>
+#include <map>
 
 namespace dq {
 
@@ -40,7 +42,11 @@ public:
   Level* lv;
   u64 tickNo = 0; double acc = 0;
   std::unordered_map<PosKey, u64, PosKeyHash> q;
-  std::vector<PosKey> order;      // insertion order, like the original's Map
+  // what's due when: a list per tick, each in the order it came (like the original's Map). One list a tick is looked
+  // at, not every waiting cell: fluid at the loaded area's edge waits there for its neighbours, and scanning all of it
+  // each tick was 2.5 ms of a 33 ms tick on an i5-6300U
+  std::map<u64, std::vector<PosKey>> buckets;
+  void enqueue(const PosKey& k, u64 due) { if (q.emplace(k, due).second) buckets[due].push_back(k); }
 
   static int fluidMax(int kind, int y) { return kind == 1 ? 7 : kind == 3 ? 4 : dimOfY(y) == DIM_NETHER ? 6 : 3; }
   static int fluidRate(int kind, int y) { return kind == 1 ? 5 : kind == 3 ? 12 : dimOfY(y) == DIM_NETHER ? 10 : 28; }
@@ -52,7 +58,7 @@ public:
     int kind = R.tLiquid[id] ? R.tLiquid[id] : (waterloggedCell(R, w, x, y, z) ? 1 : 0);
     if (!kind) return;
     PosKey k{x, y, z};
-    if (q.emplace(k, tickNo + fluidRate(kind, y)).second) order.push_back(k);
+    enqueue(k, tickNo + fluidRate(kind, y));
   }
   void scheduleAround(World& w, int x, int y, int z) {
     schedule(w, x, y, z); schedule(w, x + 1, y, z); schedule(w, x - 1, y, z);
@@ -68,7 +74,8 @@ public:
     int bx = c.worldX(), bz = c.worldZ(), base = c.baseY();
     auto at = [&](int x, int y, int z) -> BlockId {   // band-local y, x/z may step one outside
       if (x >= 0 && x < 16 && z >= 0 && z < 16) return c.get(x, y, z);
-      return w.isLoaded(bx + x, base + y, bz + z) ? w.getBlock(bx + x, base + y, bz + z) : R.blockId("stone");
+      static const BlockId stone = reg().blockId("stone");
+      return w.isLoaded(bx + x, base + y, bz + z) ? w.getBlock(bx + x, base + y, bz + z) : stone;
     };
     for (int sy = 0; sy < SECS; sy++) {
       const Section* s = c.section(sy);
@@ -168,7 +175,7 @@ public:
     if (!isSource) {
       // recompute this cell's level from its feeders
       int expected = 99; bool falling = false;
-      if (same(x, y + 1, z)) falling = true;
+      if ((y & 255) != 255 && same(x, y + 1, z)) falling = true;   // (the land above never feeds this one: see below)
       else {
         int sources = 0, best = 99;
         for (auto [dx, dz] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
@@ -189,15 +196,22 @@ public:
       else if (expected > max) { w.setBlock(x, y, z, AIR, 0); return; }
       else if (expected != (meta & 7) || (meta & 8)) { w.setBlock(x, y, z, id, (u8)expected); meta = (u8)expected; }
     }
-    // spread: a carved neighbour takes water into its empty octants. Down first, otherwise sideways.
-    if (kind == 1) {
+    // a land's floor: liquid never runs out of its land into the one below. The Skylands' waterfalls end in the cloud
+    // layer (their spray shows there) instead of pouring on through and flooding the Overworld; the Depths' lava stays
+    // out of the End. It doesn't spread along the floor either: the falls just end.
+    if ((y & 255) == 0) return;
+    // spread: a carved neighbour takes water into its empty octants. Down first, otherwise sideways. Only from still water
+    // in its own block, like Minecraft's waterlogging: running water (and water a block holds) filled them too, and each
+    // one filled became a spring of its own, so a slab floor beside a waterfall flooded on and on.
+    const bool fills = kind == 1 && isSource && !logged;
+    if (fills) {
       for (auto [dx, dz] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
         BlockId nid = w.getBlock(x + dx, y, z + dz);
         u8 ncv = w.getCarve(x + dx, y, z + dz), nm = w.getMeta(x + dx, y, z + dz);
         if (fullSolid(nid) && ncv && !(nm & WLOG)) { w.setBlock(x + dx, y, z + dz, nid, (u8)(nm | WLOG)); w.setCarve(x + dx, y, z + dz, ncv); }
       }
     }
-    if (kind == 1 && inWorldY(y - 1)) {
+    if (fills && inWorldY(y - 1)) {
       BlockId bel = w.getBlock(x, y - 1, z);
       u8 bcv = w.getCarve(x, y - 1, z), bm = w.getMeta(x, y - 1, z);
       if (fullSolid(bel) && bcv && !(bm & WLOG)) {
@@ -228,21 +242,24 @@ public:
     if (acc > 0.2) acc = 0;
   }
   void tickFluids(World& w) {
-    if (q.empty()) { order.clear(); return; }
-    std::vector<PosKey> due; int n = 0;
-    std::vector<PosKey> keep; keep.reserve(order.size());
-    for (auto& k : order) {
-      auto it = q.find(k);
-      if (it == q.end()) continue;
-      if (it->second <= tickNo && n < 300) { due.push_back(k); n++; q.erase(it); }
-      else keep.push_back(k);
+    if (q.empty()) { buckets.clear(); return; }
+    std::vector<PosKey> due;
+    while (!buckets.empty() && buckets.begin()->first <= tickNo && due.size() < 300) {
+      const u64 at = buckets.begin()->first; auto& list = buckets.begin()->second;
+      size_t i = 0;
+      for (; i < list.size() && due.size() < 300; i++) {
+        auto it = q.find(list[i]);
+        if (it == q.end() || it->second != at) continue;   // (gone, or waiting again for a later tick)
+        due.push_back(list[i]); q.erase(it);
+      }
+      if (i < list.size()) { list.erase(list.begin(), list.begin() + (std::ptrdiff_t)i); break; }
+      buckets.erase(buckets.begin());
     }
-    order.swap(keep);
     for (auto& k : due) {
       if (!w.isLoaded(k.x, k.y, k.z)) continue;
       // wait for the chunks around before deciding how it runs
       if (!w.isLoaded(k.x + 1, k.y, k.z) || !w.isLoaded(k.x - 1, k.y, k.z) || !w.isLoaded(k.x, k.y, k.z + 1) || !w.isLoaded(k.x, k.y, k.z - 1)) {
-        if (q.emplace(k, tickNo + 20).second) order.push_back(k);
+        enqueue(k, tickNo + 20);
         continue;
       }
       update(w, k.x, k.y, k.z);
@@ -605,7 +622,7 @@ void tickFurnaces(Level& lv, double dt) {
         const BlockInfo& bi = binfo(id);
         if (bi.furnace.empty()) continue;
         int x = c->worldX() + lx, y = c->baseY() + ly, z = c->worldZ() + lz;
-        if (tickFurnace(e, step, bi.furnace)) changed.push_back({x, y, z});
+        if (bi.furnace == "trommel" ? tickTrommel(lv, w, r, e, step, ivec3(x, y, z), c->getMeta(lx, ly, lz)) : tickFurnace(e, step, bi.furnace)) changed.push_back({x, y, z});
         bool lit = e.value("burn", 0.0) > 0;
         const BlockDef& d = R.block(id);
         std::string unlitKey = d.str("unlit", d.key == "lit_furnace" ? "furnace" : d.key);

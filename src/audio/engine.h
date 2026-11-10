@@ -53,6 +53,7 @@ struct AudioEngine::Impl {
   void* device = nullptr;          // ma_device*
   bool ok = false, offline = false;
   std::atomic<float> vMaster{0.6f}, vSfx{1}, vMobs{1}, vMusic{0.5f}, vAmb{0.7f};
+  std::atomic<bool> muted{false};   // focus mute: zeros the mix without writing over the saved volumes
   std::atomic<int> musicFreq{1};   // Settings::musicFreq: how soon the quiet between pieces ends
   std::atomic<u64> frames{0};      // samples mixed: the audio clock
   AudioQueue q;

@@ -16,6 +16,11 @@ struct RigPart {
   float alpha = 1;
   vec3 pivot{0}, min{0}, max{0}, rest{0}, hand{0};
   json tex;                       // tile name, per-face object/array (models.js tilesOf)
+  // a part cut from the model's own picture (uvTex), Minecraft-fashion: uv = [u, v, w, h, d] texels, mirror; or built
+  // straight from a voxel list (vox = {"n": [nx, ny, nz], "c": [[x, y, z, w, h, d, 0xRRGGBB]...]}; an empty list: a pivot
+  // only, nothing drawn); res: voxels per block (default 32) for big parts (the Wither Storm's)
+  json uv, vox; bool uvMirror = false; float res = 0;
+  std::string item;               // a real block or item drawn filling the part's box (the Storm's command block: render/creature_layer.cpp)
   // old (pre-rig) models: animation flags
   float swing = 0, look = 0, hop = 0, flap = 0, reach = 0, slam = 0;
 };
@@ -27,6 +32,7 @@ struct RigModel {
   // a variant's model (tools/port/mob_variants.py): with a resource pack it wears its base's pack skin (packBase), the
   // pack's own picture for it when there is one (packTex), else the base's tinted (packTint {hue, sat, val, colVal, mix})
   std::string packBase; std::vector<std::string> packTex; json packTint;
+  std::string uvTex; int uvTexW = 64;   // the model's own picture under data/ (its parts' uv), and how wide its uv count
   std::unordered_map<std::string, int> index;
   int find(const std::string& n) const { auto it = index.find(n); return it == index.end() ? -1 : it->second; }
 };

@@ -64,7 +64,7 @@ static ivec3 jv3(const json& a, int dy) { return a.is_array() && a.size() >= 3 ?
 Village parseVillage(const json& d) {
   Village v; const int B = dimBase(DIM_OVERWORLD);
   v.id = d.value("id", std::string()); v.name = d.value("name", std::string("the village"));
-  v.style = d.value("style", std::string("plains")); v.tier = d.value("tier", std::string("village"));
+  v.style = d.value("style", std::string("plains")); v.tier = d.value("tier", std::string("village")); v.base = d.value("base", v.style);
   v.x = d.value("x", 0); v.z = d.value("z", 0); v.y = d.value("y", 64) + B;
   v.P = d.value("P", 7); v.hw = d.value("hw", 1); v.fr = d.value("fr", 0); v.r = d.value("r", 24);
   v.guards = d.value("guards", 0); v.golems = d.value("golems", 0); v.seed = d.value("seed", 0u);
@@ -74,7 +74,11 @@ Village parseVillage(const json& d) {
   for (auto& f : jarr(d, "folk")) {
     VFolk o; o.job = f.value("job", std::string("none"));
     if (f.contains("home") && f["home"].is_object()) { o.home = jv3(f["home"]["at"], B); o.homeF = f["home"].value("f", 0); }
-    if (f.contains("work") && f["work"].is_object()) { o.hasWork = true; o.work = jv3(f["work"]["at"], B); o.workF = f["work"].value("face", 0); }
+    if (f.contains("work") && f["work"].is_object()) {
+      o.hasWork = true; o.work = jv3(f["work"]["at"], B); o.workF = f["work"].value("face", 0);
+      for (auto& t : jarr(f["work"], "tasks"))
+        if (t.is_array() && t.size() >= 5 && t[4].is_string()) o.tasks.push_back({ivec3(t[0].get<int>(), t[1].get<int>() + B, t[2].get<int>()), t[3].get<int>() & 3, t[4].get<std::string>()});
+    }
     v.folk.push_back(o);
   }
   for (auto& s : jarr(d, "seats")) {
@@ -104,14 +108,64 @@ Village parseVillage(const json& d) {
     o.W = b.value("W", 0); o.D = b.value("D", 0); o.H = b.value("H", 0); o.y = b.value("y", 0) + B;
     o.x0 = b.value("x0", 0); o.z0 = b.value("z0", 0); o.x1 = b.value("x1", 0); o.z1 = b.value("z1", 0);
     if (b.contains("job") && b["job"].is_string()) o.job = b["job"];
+    o.planV = b.value("v", 10);
     if (b.contains("animals") && b["animals"].is_string()) o.animals = b["animals"];
     if (b.contains("mid")) { o.hasMid = true; o.mid = jv3(b["mid"], B); }
     if (b.contains("door")) o.door = jv3(b["door"], B);
+    if (b.contains("work") && b["work"].is_object() && b["work"].contains("at")) { o.hasWork = true; o.work = jv3(b["work"]["at"], B); }
     v.blds.push_back(o);
   }
   if (d.contains("wall") && d["wall"].is_object()) {
     auto& w = d["wall"]; v.hasWall = true; v.wallKind = w.value("kind", std::string("palisade"));
     v.wx0 = w.value("x0", 0); v.wz0 = w.value("z0", 0); v.wx1 = w.value("x1", 0); v.wz1 = w.value("z1", 0); v.wallH = w.value("h", 5);
+  }
+  // the working village's other hands (sim/villager_chores.cpp): a builder, a lumberjack, a miner and a fisherman in
+  // every village that hasn't one, a rancher (or a shepherd, for sheep) working each pen and a butcher where there's
+  // livestock; the miner at the mine. They sleep in the beds nobody planned uses (else at the hall, the inn). Added after
+  // the planned folk, so those keep their faces.
+  {
+    const VBld* hall = nullptr; for (auto& b : v.blds) if (b.type == "hall") { hall = &b; break; }
+    // out in front of the hall's door (beside it is the hall's own wall: they stood in it, and came out on the roof)
+    ivec3 out(0, 0, 1), lat(1, 0, 0);
+    if (hall) {
+      const float dx = hall->door.x + 0.5f - (hall->x0 + hall->x1 + 1) * 0.5f, dz = hall->door.z + 0.5f - (hall->z0 + hall->z1 + 1) * 0.5f;
+      if (std::fabs(dx) > std::fabs(dz)) { out = ivec3(dx > 0 ? 1 : -1, 0, 0); lat = ivec3(0, 0, 1); } else { out = ivec3(0, 0, dz > 0 ? 1 : -1); lat = ivec3(1, 0, 0); }
+    }
+    const ivec3 base = hall ? hall->door + out * 2 : ivec3(v.x, v.y + 1, v.z);
+    // the hands the village still lacks (a big village's houses may already have its fisherman, butcher, shepherd...)
+    std::map<std::string, int> have; for (auto& f : v.folk) have[f.job]++;
+    std::vector<std::pair<std::string, ivec3>> extra;   // job, where they work
+    for (const char* j : {"builder", "lumberjack", "miner", "fisherman"}) if (!have[j]) {
+      ivec3 at = base;
+      if (std::string(j) == "miner") for (auto& b : v.blds) if (b.type == "mine" && b.hasWork) { at = b.work; break; }
+      extra.push_back({j, at});
+    }
+    bool stock = false;
+    for (auto& b : v.blds) if (b.type == "pen") {   // a hand at each pen, working it (from its middle)
+      const std::string j = b.animals == "sheep" ? "shepherd" : "rancher";
+      if (b.animals != "sheep") stock = true;
+      if (have[j] > 0) { have[j]--; continue; }
+      extra.push_back({j, b.hasMid ? b.mid : b.door});
+    }
+    if (stock && !have["butcher"]) { ivec3 at = base; for (auto& b : v.blds) if (b.type == "pen" && b.animals != "sheep") { at = b.hasMid ? b.mid : b.door; break; } extra.push_back({"butcher", at}); }
+    for (auto& f : v.folk) if (f.job == "none" && !extra.empty()) { f.job = extra.back().first; f.hasWork = true; f.work = extra.back().second; extra.pop_back(); }
+    // beds nobody planned sleeps in (a jigsaw village's houses have more than its folk): theirs, so they live in the
+    // village, not stand all night at the hall door
+    std::vector<std::pair<ivec3, int>> spare;
+    for (auto& b : jarr(d, "blds")) for (auto& bd : jarr(b, "beds")) {
+      if (!bd.is_object() || !bd.contains("at")) continue;
+      const ivec3 at = jv3(bd["at"], B);
+      if (at.y > b.value("y", 0) + B + 2) continue;   // ground-floor beds only (they don't climb the ladders to the upstairs ones)
+      bool used = false; for (auto& f : v.folk) if (!f.noBed && f.home == at) { used = true; break; }
+      if (!used) spare.push_back({at, bd.value("f", 0)});
+    }
+    int k = 0;
+    for (auto& [j, at] : extra) {
+      VFolk o; o.job = j; o.hasWork = true; o.work = at;
+      if (!spare.empty()) { o.home = spare.front().first; o.homeF = spare.front().second; spare.erase(spare.begin()); }
+      else { o.noBed = true; o.home = base + lat * (k % 3 - 1) + out * (k / 3); k++; }
+      v.folk.push_back(o);
+    }
   }
   return v;
 }
@@ -240,7 +294,7 @@ Creature* npcSpawn(Level& lv, const Village& v, int i, const std::string& kind) 
   else if (f->hasWork) at = vec3(f->work) + vec3(0.5f, 0, 0.5f);
   else at = vec3(f->home) + vec3(0.5f, 0, 0.5f);
   // a village's golem takes after its land
-  const char* golem = v.style == "desert" ? "sandstone_golem" : v.style == "snowy" ? "frost_golem" : v.style == "taiga" ? "moss_golem" : v.style == "savanna" ? "savanna_golem" : "iron_golem";
+  const char* golem = v.base == "desert" ? "sandstone_golem" : v.base == "snowy" ? "frost_golem" : v.base == "taiga" ? "moss_golem" : v.base == "savanna" ? "savanna_golem" : "iron_golem";
   const char* type = kind == "golem" ? (isCreatureType(golem) ? golem : "iron_golem") : kind == "guard" ? "village_guard" : "villager";
   Creature* e = spawnCreature(lv, REALM_MAIN, type, at);
   if (!e) return nullptr;

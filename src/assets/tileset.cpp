@@ -33,6 +33,36 @@ u32 TileSet::avgColor(int i) const {
 }
 
 void unpackCampfireLog(TileSet& ts);
+
+// Bright pixels of the realm tiles glow on their own, the way a lamp block does.
+// The terrain shader already reads this channel. Nothing here is taken from another project.
+static void markRealmGlow(TileSet& ts) {
+  if (ts.emissive.size() < (size_t)ts.count * ts.size * ts.size) return;
+  const int S = ts.size;
+  auto mark = [&](const char* name, int minLum, int amount) {
+    auto it = ts.index.find(name);
+    if (it == ts.index.end() || it->second < 0 || it->second >= ts.count) return;
+    const u8* p = ts.tile(it->second);
+    u8* e = ts.emissive.data() + (size_t)it->second * S * S;
+    for (int i = 0; i < S * S; i++) {
+      const u8* c = p + i * 4;
+      if (c[3] < 16) { e[i] = 0; continue; }
+      int lum = (c[0] * 3 + c[1] * 6 + c[2]) / 10;
+      e[i] = lum >= minLum ? (u8)amount : 0;
+    }
+  };
+  mark("glowshroom_cap", 120, 255);
+  mark("amber_block", 0, 190);
+  mark("neon_moss", 110, 255);
+  mark("glow_turf", 90, 230);
+  mark("lantern_turf", 80, 200);
+  mark("crystal_turf", 70, 160);
+  mark("blossom_cap", 60, 120);
+  mark("gravitite_ore", 150, 210);
+  mark("umbrella_cap", 140, 80);
+  mark("golden_aercloud", 140, 70);
+}
+
 bool loadBuiltinTiles(TileSet& ts) {
   auto tj = readJson(dataDir() / "tiles.json");
   if (!tj) { DQ_ERR("data/tiles.json missing"); return false; }
@@ -59,6 +89,7 @@ bool loadBuiltinTiles(TileSet& ts) {
     }
   }
   ts.emissive.assign((size_t)ts.count * S * S, 0);
+  markRealmGlow(ts);
   ts.res.assign(ts.count, (u8)S);
   if (tj->contains("res") && (*tj)["res"].is_array()) for (int t = 0; t < ts.count && t < (int)(*tj)["res"].size(); t++) ts.res[t] = (u8)(*tj)["res"][t].get<int>();
   unpackCampfireLog(ts);

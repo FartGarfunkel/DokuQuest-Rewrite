@@ -39,3 +39,33 @@ SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
 
 <https://www.betterthanadventure.net>. No code, art or music is taken from BTA. Its features (the Nether's five lands,
 the blocks of the BTA list) are our own designs and pictures made after its changelogs.
+
+## Better End (MIT)
+
+<https://github.com/quiqueck/BetterEnd>, Better End 3.2.5 by Quiqueck, paulevs, Bulldog83, Edos, Yuki, Seaward and Firel
+(fabric.mod.json: "MIT (CC BY-NC-SA 4.0 for some Assets)"; the upstream LICENSE.ASSETS names only gui/infusion.png,
+icon_updater.png and lang/de_de.json as CC BY-NC-SA, and none of those is used here). The End band follows it:
+
+- the End's sky (`render/be_sky.cpp`, `assets/shaders/be_sky.glsl`): BetterEndSkyRenderer's layers, colours, rotation
+  axes and star sets, with its sky pictures `assets/sky/betterend/{nebula_1,nebula_2,nebula_3,stars,fog}.png`;
+- the End's fog (`render/sky.cpp`): each biome's fog colour and density, and BCLib's fog distances;
+- the outer End's lands, surface rules, trees and plants (`gen/theend_be.cpp`), rebuilt from its biome and feature data;
+- its blocks (`tools/port/betterend_blocks.py`): Better End's block pictures, doubled to 32 px and given the fine grain of
+  the DokuQuest Base pack's nearest picture (`data/textures/block/be_*.png`).
+
+Music and sounds are not used. MIT License (Better End): Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following
+conditions: The above copyright notice and this permission notice shall be included in all copies or substantial
+portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
+
+## Better than Adventure! and The Aether — numbers only, no art
+
+BTA 8.0's Nether (terrain version 7: `gen/nether_bta*.cpp`, `render/nether_grade_layer.cpp`) and The Aether's sky
+dimension (terrain version 7: `gen/skylands_aether.cpp`, `gen/aether_noise.*`) are rebuilt from their generators'
+numbers and algorithms (The Aether's code is LGPL-3.0). Their art is not licensed for sharing (BTA: no licence; The
+Aether: "Assets: All Rights Reserved"), so the shipped pictures of their blocks are the DokuQuest Base pack's own,
+recoloured to the mods' average colours (`tools/port/bta_nether_blocks.py`, `tools/port/aether_blocks.py`).
+`tools/port/local_mod_art.py` makes a resource pack of the mods' real pictures, fitted to the base pack, from the player's
+own copies of the mods, into their game folder only: it must never be committed, shipped or shared.

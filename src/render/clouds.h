@@ -21,6 +21,7 @@ public:
   void update(Level& lv, const FrameCtx& f, const SkyEnv& env);   // which clouds are where this frame
   void drawOpaque(const FrameCtx& f, const SkyEnv& env);
   void drawWisps(const FrameCtx& f, const SkyEnv& env);
+  void drawWispsOnly(const FrameCtx& f, const SkyEnv& env);   // the high wisps without the heaps' halos (volumetric clouds on)
   int drawn = 0;
   float reach = 680;
 private:

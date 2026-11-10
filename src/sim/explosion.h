@@ -10,6 +10,7 @@ namespace dq {
 struct ExplodeOpts {
   bool noBlocks = false;
   u32 source = 0;   // entity that went off (not hurt by its own blast)
+  bool tough = false;   // a Wither's blue skull: takes obsidian and the like too (never what can't be broken at all)
   // called for each block the blast takes before it is removed; return false to keep it (TNT priming etc.)
   std::function<bool(int x, int y, int z, BlockId id)> onBlock;
 };

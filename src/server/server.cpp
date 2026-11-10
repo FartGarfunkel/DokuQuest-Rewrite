@@ -5,6 +5,7 @@
 #include "mod/modloader.h"
 #include "sim/commands.h"
 #include "net/lan.h"
+#include "common/settings.h"
 
 namespace dq {
 
@@ -45,6 +46,7 @@ bool DedicatedServer::start(std::string* err) {
     level = Level::create(userSub("servers"), info, pool.get(), events.get());
   }
   if (!level) { if (err) *err = "The world could not be opened"; DQ_ERR("server: could not open world %s", cfg.world.c_str()); return false; }
+  { int sec = Settings::load().autosaveSec; level->autosaveEvery = sec < 0 ? 0 : sec; }   // once at start; the launcher's later edits wait for the next launch
   if (cfg.plugins) {
     mods = std::make_unique<ModLoader>();
     mods->scan();

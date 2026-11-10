@@ -2,6 +2,7 @@
 // game/monsters.js (0.8.3 monsters), game/quarrels.js (infighting, calling for help, noticing then
 // remembering, shade-seeking, wariness), game/skymobs.js (the cockatrice) and the Cinder Golem's
 // telegraphed attacks (game/entities.js bossAI).
+#include "sim/rules.h"
 #include "sim/creature.h"
 #include "sim/creature_entities.h"
 #include "sim/explosion.h"
@@ -9,6 +10,7 @@
 #include "sim/physics.h"
 #include "sim/player.h"
 #include "sim/effects.h"
+#include "sim/magic_fx.h"
 #include "core/registry.h"
 
 namespace dq {
@@ -56,11 +58,31 @@ bool Creature::lineOfSight(Level& lv, Entity& p) const {
   RayHit hit = raycastBlocks(lv.world(realm), glm::dvec3(e), t / l, l, false);
   return !hit.hit || hit.dist >= l - 0.5f;
 }
+bool Creature::unaware(const Entity& p) const {
+  if (huntT > 0 || alertT > 0 || quarrel == p.id || panicT > 0) return false;
+  const vec3 d = p.pos - pos; const float l = std::hypot(d.x, d.z);
+  if (l < 1e-3f) return false;
+  return (-std::sin(yaw) * d.x - std::cos(yaw) * d.z) / l < 0.3f;   // (its back, or its side, to you)
+}
+bool creatureUnaware(const Entity& e, const Entity& p) {
+  const Creature* cr = dynamic_cast<const Creature*>(&e);
+  return cr && cr->alive() && cr->unaware(p);
+}
+
+bool Creature::notices(Level& lv, const Entity& p, float dist) const {
+  if (huntT > 0 || alertT > 0 || quarrel == p.id || !p.isPlayer() || dist < 4) return true;   // (already onto someone, or close)
+  if (!static_cast<const Player&>(p).sneaking) return true;   // footsteps: heard whichever way it faces
+  const vec3 d = p.pos - pos; const float l = std::max(1e-3f, std::hypot(d.x, d.z));
+  if ((-std::sin(yaw) * d.x - std::cos(yaw) * d.z) / l < 0.5f) return false;   // out of its sight (a 120 degree view)
+  const u8 L = lv.world(p.realm).getLight(ifloor(p.pos.x), ifloor(p.pos.y + 1), ifloor(p.pos.z));
+  const float seen = std::max((float)(L & 15), (float)(L >> 4) * daylight(lv));
+  return !(seen < 5 && dist > 7);   // a sneaking shape in the dark: not past a few blocks
+}
 Creature::Senses Creature::senses(Level& lv, Entity* p, float dist, float dyp, float dt, float range) {
   Senses s;
   s.near = p && dist < range && std::fabs(dyp) < 12;
   losT -= dt;
-  if (losT <= 0) { losT = 0.2f + frand() * 0.12f; sees = s.near && lineOfSight(lv, *p); }
+  if (losT <= 0) { losT = 0.2f + frand() * 0.12f; sees = s.near && lineOfSight(lv, *p) && notices(lv, *p, dist); }
   s.sees = s.near && sees;
   if (s.sees) huntT = 10; else if (huntT > 0) huntT -= dt;
   s.hunting = s.near && (s.sees || huntT > 0 || dist < 3.5f || alertT > 0 || (p && quarrel == p->id));
@@ -577,8 +599,6 @@ static bool enderBlink(Level& lv, Creature& e, float cx, float cz, float r, bool
 }
 
 std::optional<Move> witherBrain(Level& lv, Creature& m, Entity* p, float dist, float dyp, float toPlayer, float dt);   // sim/wither.cpp
-std::optional<Move> stormBrain(Level& lv, Creature& m, Entity* p, float dist, float dyp, float toPlayer, float dt);
-bool stormPreHurt(Creature& m, const std::string& type, const std::string& tool);
 bool witherPreHurt(Creature& m, const std::string& type, const std::string& tool);
 static OptMove realmAI(Level& lv, Creature& m, Entity* p, float dist, float dyp, float toPlayer, float dt) {
   const std::string& t = m.type;
@@ -737,7 +757,6 @@ static OptMove realmAI(Level& lv, Creature& m, Entity* p, float dist, float dyp,
     return nightBase(lv, m, "slime", p, dist, dyp, toPlayer, dt);
   }
   if (t == "wither") return witherBrain(lv, m, p, dist, dyp, toPlayer, dt);   // sim/wither.cpp
-  if (t == "wither_storm") return stormBrain(lv, m, p, dist, dyp, toPlayer, dt);
   if (t == "shulker") {   // clamped to its wall: the shell opens, and a seeking bolt comes out after you
     m.vel.x = m.vel.z = 0;
     auto s = m.senses(lv, p, dist, dyp, dt, 16);
@@ -772,12 +791,13 @@ static OptMove realmAI(Level& lv, Creature& m, Entity* p, float dist, float dyp,
 }
 
 // nether2.js / endmobs.js / aether.js hurt hooks: true = the blow is turned aside entirely
+bool riftHeroWarded(Level& lv);   // sim/rift.cpp: Herobrine while the Storm he raised still lives
 bool realmPreHurt(Level& lv, Creature& m, DamageSrc& src) {
+  if (m.type == "herobrine" && m.realm == REALM_HIS && riftHeroWarded(lv)) { sfx::burst(lv, m.pos + vec3(0, 1.2f, 0), "mana_arcane", 12, 1.f, json{{"life", 0.4f}, {"size", 0.08f}}); return true; }
   if (m.type == "enderman" && !creatureHooks("enderman") && !m.ghost && (src.tool == "arrow" || src.type == "arrow" || src.type == "projectile")) { enderBlink(lv, m, m.pos.x, m.pos.z, 12, false); return true; }   // nothing you shoot ever reaches it
   if (m.type == "golden_swet" && src.attacker) m.angryT = 30;
   if (m.type == "aechor_plant") src.knock = 0;
   if (m.type == "wither" && witherPreHurt(m, src.type, src.tool)) return true;
-  if (m.type == "wither_storm" && stormPreHurt(m, src.type, src.tool)) return true;
   return false;
 }
 void realmAfterHurt(Level& lv, Creature& m, const DamageSrc& src, float dealt) {

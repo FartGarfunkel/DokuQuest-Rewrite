@@ -88,6 +88,9 @@ std::vector<u8> encodeChunk(const Chunk& c) {
   rle([&](int i) { int z = i / (16 * DIM_H), x = (i / DIM_H) & 15, y = i % DIM_H; return (int)c.getMeta(x, y, z); }, false);
   rle([&](int i) { int z = i / (16 * DIM_H), x = (i / DIM_H) & 15, y = i % DIM_H; return (int)c.getCarve(x, y, z); }, false);
   rle([&](int i) { int z = i / (16 * DIM_H), x = (i / DIM_H) & 15, y = i % DIM_H; return (int)c.getCoat(x, y, z); }, false);   // trailing: old readers stop after carve
+  // the columns' climate (the grass, leaves and water colours): 'C' and 512 bytes, after the coat (old readers stop
+  // before it; saves from before it had none, and a loaded chunk came back with every column at its coldest)
+  raw.push_back('C'); raw.insert(raw.end(), c.climate.begin(), c.climate.end());
   auto z = zCompress(raw.data(), raw.size(), 6);
   std::vector<u8> out = {'D', 'Q', 'C', '1'};
   u32 rs = (u32)raw.size();
@@ -128,6 +131,7 @@ bool decodeChunk(Chunk& c, const u8* data, size_t n) {
   if (!unrle([&](int k, int v) { meta[k] = (u8)v; }, false)) return false;
   if (!unrle([&](int k, int v) { carve[k] = (u8)v; }, false)) return false;
   if (p < e && !unrle([&](int k, int v) { coat[k] = (u8)v; }, false)) std::fill(coat.begin(), coat.end(), 0);   // a short old save has no coat
+  if (p < e && *p == 'C' && (size_t)(e - p) >= 1 + c.climate.size()) { std::memcpy(c.climate.data(), p + 1, c.climate.size()); p += 1 + c.climate.size(); }
   int k = 0;
   for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) for (int y = 0; y < DIM_H; y++, k++) {
     BlockId id = pal[k] < ids.size() ? ids[pal[k]] : AIR;

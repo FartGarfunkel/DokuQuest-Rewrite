@@ -89,10 +89,19 @@ void emitBox(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, u8 meta, int x
       bool ncarved = nbid && c.carveAt(nx, ny, nz);   // neighbour carved (dedicated carve byte)
       if (!forced && R.tOpaque[nbid]) {
         if (ncarved) {
-          int hx = F.n[0] ? (F.n[0] > 0 ? 1 : 0) : (b.b[0] >= 8 ? 1 : 0);
-          int hy = F.n[1] ? (F.n[1] > 0 ? 1 : 0) : (b.b[1] >= 8 ? 1 : 0);
-          int hz = F.n[2] ? (F.n[2] > 0 ? 1 : 0) : (b.b[5] >= 8 ? 1 : 0);
-          if ((c.carveAt(nx, ny, nz) >> ((hx << 2) | (hy << 1) | hz)) & 1) continue;   // neighbour has material at our exact octant: cull
+          // a chiseled neighbour covers this face only if every one of its octants touching the face is still there: its
+          // near half across the face's axis, and the halves of the other two axes the face reaches into. (This tested
+          // one octant on the far side, and culled when it was carved AWAY: faces beside notches went missing.)
+          const u8 cm = c.carveAt(nx, ny, nz);
+          const int ax = FACE_AXIS[f], t0 = ax == 0 ? 1 : 0, t1 = ax == 2 ? 1 : 2;
+          const float lo[3] = {b.b[0], b.b[1] + sink, b.b[2]}, hi[3] = {b.b[3], b.b[4] + sink, b.b[5]};
+          bool covered = true;
+          for (int h0 = 0; h0 < 2 && covered; h0++) for (int h1 = 0; h1 < 2 && covered; h1++) {
+            if ((h0 == 0 && lo[t0] >= 8) || (h0 == 1 && hi[t0] <= 8) || (h1 == 0 && lo[t1] >= 8) || (h1 == 1 && hi[t1] <= 8)) continue;   // not under this face
+            int h[3]; h[ax] = F.n[ax] > 0 ? 0 : 1; h[t0] = h0; h[t1] = h1;
+            if ((cm >> ((h[0] << 2) | (h[1] << 1) | h[2])) & 1) covered = false;   // carved away there: the face shows
+          }
+          if (covered) continue;
         } else continue;   // plain opaque neighbour: cull
       }
       // joined panes, walls and fences, and matching slabs, hide the faces they share
@@ -211,6 +220,34 @@ void emitRail(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y,
   auto hgt = [&](float a, float b, float) { return y + lift + (sh == 2 ? a : sh == 3 ? 1 - a : sh == 4 ? 1 - b : sh == 5 ? b : 0); };
   float sk = c.skyAt(x, y, z), bl = std::max<float>(c.blAt(x, y, z), on && def.str("rail") == "powered" ? 4 : 0);
   u8 mat = Mat::Cutout | Mat::NoRelief;
+  // in 3D, as ladders are: the ties, and the rails standing on them (render/mesh_plants.cpp railPlate), turned and
+  // tilted the way the flat picture is; the flat picture only without the tiles
+  const int plainRail = c.R.tile("rail");
+  if (auto P = railPlate(c.tiles, tile, curve ? plainRail : tile)) {
+    const bool mirror = curve && ((sh - 6) & 1);   // (curves 1 and 3 are mirror images: their quads turn over)
+    const float base = y + 0.002f + sinkOffset(id, nb) / 16.f;
+    auto cell = [&](float u, float v) -> vec2 {   // the picture's point -> the cell's (map's inverse)
+      if (curve) { switch (sh - 6) { case 0: return vec2(u, v); case 1: return vec2(1 - u, v); case 2: return vec2(1 - u, 1 - v); default: return vec2(u, 1 - v); } }
+      return (sh == 1 || sh == 2 || sh == 3) ? vec2(1 - v, u) : vec2(u, v);
+    };
+    auto rise = [&](float a, float b) { return sh == 2 ? a : sh == 3 ? 1 - a : sh == 4 ? 1 - b : sh == 5 ? b : 0.f; };
+    auto emit = [&](const std::vector<PanelVert>& L) {
+      for (size_t i = 0; i + 3 < L.size(); i += 4) {
+        MV v[4];
+        for (int k = 0; k < 4; k++) {
+          const PanelVert& q = L[i + (mirror ? 3 - k : k)];
+          vec2 ab = cell(q.p.x, q.p.z);
+          v[k] = {vec3(x + ab.x, base + rise(ab.x, ab.y) + q.p.y, z + ab.y), q.uv, sk, bl, q.sh / 255.f, 0};
+        }
+        c.quad(d, v, tile, NORMAL_NONE, mat);
+      }
+    };
+    if (!P->top.empty()) {
+      emit(P->top);
+      if (sh >= 2 && sh <= 5) emit(P->under);
+      return;
+    }
+  }
   flatPiece(c, d, x, y, z, 0, 0, 1, 1, map, tile, sk, bl, hgt, mat);
   if (sh >= 2 && sh <= 5) flatPiece(c, d, x, y, z, 0, 0, 1, 1, map, tile, sk, bl, [&](float a, float b, float yy) { return hgt(a, b, yy) - 0.02f; }, mat);
 }
@@ -288,7 +325,11 @@ void addShapeBox(MeshCtx& c, std::vector<ChunkVertex>& d, const ShapeBox& box, v
     for (int k = 0; k < 4; k++) {
       const int* cc = F.c[k];
       float X = cc[0] ? box.b[3] : box.b[0], Y = cc[1] ? box.b[4] : box.b[1], Z = cc[2] ? box.b[5] : box.b[2];
-      vec2 st = shapeST(f, X, Y, Z);
+      // a turned model's top and bottom turn their picture with it (Minecraft's y-rotation): an anvil's top is painted down
+      // its middle only, and turned east or west it showed the clear margins, holes in the top
+      float sX = X, sZ = Z;
+      if ((f == 2 || f == 3) && (rot & 3) && !box.grain) unrotDoor(sX, sZ, rot & 3);
+      vec2 st = shapeST(f, sX, Y, sZ);
       if (box.tv && f != 2 && f != 3) st.y += box.tv;
       if (turn) std::swap(st.x, st.y);
       vec3 p = o + vec3(X, Y + lift, Z) * unit;
@@ -324,8 +365,10 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   if (kind == ShapeKind::Wire) { emitWire(c, d, id, x, y, z, meta); return; }
   if (kind == ShapeKind::Rail) { emitRail(c, d, id, x, y, z, meta); return; }
   // vines and lily pads, and every ladder. The ladder's rungs are real geometry, so looking up or down
-  // the wall still shows the whole mesh. Plant detail only decides the vines and pads.
-  if ((kind == ShapeKind::Ladder || (c.opt.detail && T.tint && kind == ShapeKind::Carpet)) && emitVoxelLeafPlate(c, d, id, x, y, z, meta)) return;
+  // the wall still shows the whole mesh. Plant detail only decides the vines, wall plants (glow lichen) and pads:
+  // past the detail ring they are flat pictures (as voxel plates, a jungle's vines were most of the terrain's quads).
+  const bool rungs = kind == ShapeKind::Ladder && self.key.find("ladder") != std::string::npos;
+  if (((kind == ShapeKind::Ladder && (rungs || c.opt.detail)) || (c.opt.detail && T.tint && kind == ShapeKind::Carpet)) && emitVoxelLeafPlate(c, d, id, x, y, z, meta)) return;
   // A door is the same kind of cutout as a ladder: the relief march walks into the window and the
   // wood drops out when you look along it. The plate is real wood, and the swing turns this same plate.
   if ((kind == ShapeKind::Door || kind == ShapeKind::Trapdoor) && emitVoxelDoor(c, d, id, x, y, z, meta)) return;
@@ -443,7 +486,11 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   if (!boxes) return;
   // a hanging lantern swings gently: the further below the hook, the more it moves
   std::function<u8(vec3)> hangFn = [&](vec3 p) -> u8 { return (u8)(Sway::Hang + std::lround(clampv(y + 1 - p.y, 0.f, 1.f) * 11)); };
-  const int extra = hang ? (meta >> 2) & 31 : 0;   // a chain up to a ceiling further up (half blocks beyond its own block)
+  int extra = hang ? (meta >> 2) & 31 : 0;   // a chain up to a ceiling further up (half blocks beyond its own block)
+  if (hang && !extra && !stretchTop) {   // hung under a half slab (its underside half a block up): the chain reaches it
+    const BlockId up = c.at(x, y + 1, z);
+    if ((R.tShape[up] == ShapeKind::Slab && (c.metaAt(x, y + 1, z) & 7) == 1) || (fullSolid(up) && carveFaceDepth(c.carveAt(x, y + 1, z), 0, -1, 0) == 8)) extra = 1;
+  }
   static int chainTile = -2; if (chainTile == -2) chainTile = R.tile("chain");
   for (auto& b0 : *boxes) {
     if (!b0.only) continue;   // a box that collides and picks but a render layer draws (a placed mob head: its stone box

@@ -83,6 +83,8 @@ PackOver gearPackOver(const GearLook* L, const std::string& chestKey, const std:
 // the backpack as worn (body part space: x across the shoulders, y up from the waist pivot, z out from the back);
 // straps = only the straps down your chest (first person)
 const CharMesh* packWornMesh(const std::string& key, bool straps, const PackOver& ov, const TileSet& ts);
+// the worn quiver (assets/quiver3d.h), in its own px space (tube up y from 0, mouth at 12.6); fill 0 (empty) .. 4 (full)
+const CharMesh* quiverWornMesh(const std::string& key, int fill, const TileSet& ts);
 
 // the right arm of a skin as a voxel model in the first-person arm's frame (render/item_layers firstPersonArm)
 const VoxelModel* skinArmModel(const CharacterSpec& spec);

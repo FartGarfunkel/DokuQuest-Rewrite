@@ -140,6 +140,7 @@ void initBlockTraits() {
       for (int i = 0; i < 6; i++) t.f6t[i] = f.contains(k[i]) && f[k[i]].is_number() ? f[k[i]].get<int>() : b.faces[0];
     }
     t.sideAll = b.has("sideAll"); t.selfCull = b.has("selfCull"); t.leaves = b.has("isLeaves");
+    if (b.has("cullWith")) { static std::vector<std::string> groups; const std::string g = b.str("cullWith"); auto it = std::find(groups.begin(), groups.end(), g); if (it == groups.end()) { groups.push_back(g); it = groups.end() - 1; } t.cullGroup = (u8)(it - groups.begin() + 1); }
     t.crop = b.has("crop"); t.dbl = b.has("double"); t.altTile = b.has("altTile"); t.hash = b.has("hash"); t.fire = b.has("fire");
     t.flower = b.has("flower"); t.hangs = b.has("hangs"); t.stackPlant = b.has("stackPlant");
     t.upperTile = b.props.contains("upperTile") && b.props["upperTile"].is_number() ? b.props["upperTile"].get<int>() : -1;
@@ -391,6 +392,22 @@ const TileNames& tn() {
 }
 } // namespace
 
+// path stairs and slabs top out a sixteenth low, as the path does: level with the path beside them, and their sides
+// never reach the clear top rows of the path's side picture (a lip and a see-through slot at the top of every path stair)
+bool isPathTopped(BlockId id) {
+  static const std::vector<u8> LOW = [] {
+    const Registry& R = reg();
+    std::vector<u8> v(R.blocks.size(), 0);
+    for (size_t i = 0; i < R.blocks.size(); i++) v[i] = R.blocks[i].key.rfind("dirt_path", 0) == 0 && R.tShape[i] != ShapeKind::Path;
+    return v;
+  }();
+  return id < LOW.size() && LOW[id];
+}
+static void pathTopped(BlockId id, std::vector<ShapeBox>& out) {
+  if (!isPathTopped(id)) return;
+  for (auto& b : out) if (b.b[4] > 15) b.b[4] = 15;
+}
+
 bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector<ShapeBox>& out) {
   out.clear();
   const Registry& R = reg();
@@ -407,6 +424,7 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
       else if (k == 0) push(ShapeBox(0, 0, 0, 16, 8, 16));
       else if (k == 1) push(ShapeBox(0, 8, 0, 16, 16, 16));
       else pushRot(ShapeBox(0, 0, 0, 16, 16, 8), k - 2);
+      pathTopped(id, out);
       return true;
     }
     case ShapeKind::Stairs: {
@@ -414,6 +432,7 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
       push(ShapeBox(0, 0, 0, 16, 8, 16));
       for (int i = 0; i < (sh >= 3 ? 2 : 1); i++) pushRot(B6(STAIR_BOXES[sh][i]), f);
       if (top) for (auto& b : out) flipBox(b);
+      pathTopped(id, out);
       return true;
     }
     case ShapeKind::Fence: {
@@ -488,6 +507,18 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
         else {
           ShapeBox r(7, 1, 7, 9, 16, 9), base(6, 0, 6, 10, 1, 10);
           part(r, FX | FZ, -7, 0, false); part(r, FY, -5, -7, false); part(base, FX | FZ, -4, -9, false); part(base, FY, -4, -4, false);
+        }
+        return true;
+      }
+      static const BlockId LROD = reg().blockId("lightning_rod");
+      if (purpose == ShapePurpose::Draw && id == LROD && LROD) {   // Minecraft's picture too: a 4 x 4 tip at the top left, the 2 px rod under it
+        auto part = [&](ShapeBox b, u8 only, float tu, float tv, bool t) { b.only = only; b.tu = tu; b.tv = tv; b.uvT = t; push(b); };
+        const u8 FX = 1 | 2, FY = 4 | 8, FZ = 16 | 32;
+        if (ax == 1) { ShapeBox r(0, 7, 7, 16, 9, 9); part(r, FY | FZ, -7, 0, true); part(r, FX, -7, -7, false); }
+        else if (ax == 2) { ShapeBox r(7, 7, 0, 9, 9, 16); part(r, FX, -7, 0, true); part(r, FY, -7, 0, false); part(r, FZ, -7, -7, false); }
+        else {
+          ShapeBox r(7, 0, 7, 9, 12, 9), tip(6, 12, 6, 10, 16, 10);
+          part(r, FX | FZ, -7, 0, false); part(r, FY, -7, -7, false); part(tip, FX | FZ, -6, 0, false); part(tip, FY, -6, -6, false);
         }
         return true;
       }
@@ -793,6 +824,7 @@ void clothBoxes(BlockId id, u8 meta, std::vector<ShapeBox>& out) {
     float top = low ? 16.f : 14.5f, bot = low ? 3.f : 0.f; int n = 6; float h = (top - bot) / n;
     for (int i = 0; i < n; i++) out.push_back(K(ShapeBox(2, top - (i + 1) * h, 7.6f, 14, top - i * h, 8.4f), t, t, 2));
     if (low) { out.push_back(K(ShapeBox(3, 1.5f, 7.6f, 13, 3, 8.4f), t, t, 2)); out.push_back(K(ShapeBox(5, 0, 7.6f, 11, 1.5f, 8.4f), t, t, 2)); }
+    if (meta & 8) for (size_t i = out.size() - (size_t)(n + (low ? 2 : 1)); i < out.size(); i++) { out[i].b[2] += 6.5f; out[i].b[5] += 6.5f; }   // on a wall: flat against it (behind = +z before the turn)
   } else if (T.cloth == 3 || T.cloth == 4) {
     float sag = -((meta >> 2) & 15) * 0.5f;
     int rope = tile("rope");

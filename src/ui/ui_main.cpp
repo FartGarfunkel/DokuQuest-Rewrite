@@ -193,7 +193,8 @@ json ruleDefaults(bool creative) {
   return {{"dayMinutes", 10}, {"nightMinutes", 10}, {"daylightCycle", true}, {"keepInventory", false}, {"graves", true}, {"mobSpawning", true},
     {"mobGriefing", true}, {"tntExplodes", true}, {"fireSpread", true}, {"blockDrops", true}, {"fallDamage", true}, {"drowning", true},
     {"fireDamage", true}, {"naturalRegen", false}, {"grassSpread", true}, {"saplingsPlant", true}, {"showCoords", false}, {"commands", creative},
-    {"downed", true}, {"_v", 1}};
+    {"downed", true}, {"treeFelling", true}, {"allowSprinting", true}, {"allowSleeping", true}, {"nightmares", true}, {"weatherCycle", true},
+    {"hostileSpawns", true}, {"passiveSpawns", true}, {"_v", 1}};
 }
 
 void throwStackFromPlayer(App& a, const ItemStack& s) {

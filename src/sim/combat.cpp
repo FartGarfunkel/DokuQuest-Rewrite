@@ -6,10 +6,12 @@
 #include "sim/gameplay.h"
 #include "sim/rules.h"
 #include "sim/physics.h"
+#include "gen/generator.h"
 #include <random>
 
 namespace dq {
 std::string creatureLabelOf(Entity& e);   // sim/creature.cpp (creature.h clashes with gameplay.h here)
+bool creatureUnaware(const Entity& e, const Entity& p);   // sim/creature_monsters.cpp: a living creature that hasn't caught on to p
 float pathMeleeFactor(const Player& p); bool pathCheatDeath(Level& lv, Player& p);   // sim/villager_quests.cpp (the paths' talents)
 
 bool creatureTakesHit(Level& lv, Entity& e, float amount, const DamageSource& src, float& dealt);   // sim/mob_combat.cpp
@@ -179,6 +181,9 @@ float attackEntity(Level& lv, Player& p, Entity& e) {
   float dmg = tool ? tool->damage : 1;
   bool crit = !p.onGround && p.vel.y < 0;
   if (crit) dmg = std::ceil(dmg * 1.5f);
+  // a sneak attack: a creature that hasn't caught on to you (its back to you, after nobody), struck before it turns
+  const bool sneakHit = creatureUnaware(e, p);
+  if (sneakHit) dmg = std::ceil(dmg * 1.75f);
   DamageSource src; src.attacker = p.id; src.element = heldToolElement(p); src.knock = 5;
   if (tool) src.tool = tool->type;
   if (!p.inv[p.selected].empty()) src.weapon = p.inv[p.selected].id;
@@ -200,6 +205,7 @@ float attackEntity(Level& lv, Player& p, Entity& e) {
   if (dealt > 0) {
     sfxUi(lv, p, crit ? "crit" : "hit");
     if (crit) lv.fx->particles("crit", e.pos + vec3(0, e.h * 0.6f, 0), 10);   // a burst of stars on a critical blow
+    if (sneakHit) { lv.fx->particles("crit", e.pos + vec3(0, e.h * 0.7f, 0), 8); floatText(lv, p, e.pos + vec3(0, e.h + 0.55f, 0), "Sneak attack!", "#c8a0ff"); }
     char buf[32]; snprintf(buf, sizeof buf, "%s%g", crit ? "\xE2\x9C\xA6" : "", std::round(dealt * 10) / 10);
     floatText(lv, p, e.pos + vec3(0, e.h + 0.2f, 0), buf, src.element == "fire" ? "#ffb070" : src.element == "frost" ? "#9fe8ff" : crit ? "#ffe07a" : "#ffffff");
     if (src.element == "frost") sfxUi(lv, p, "frost");
@@ -285,8 +291,16 @@ void placeAtSpawn(Level& lv, Player& p, bool initial) {
   if (w.isLoaded(bx, dimBase(DIM_OVERWORLD), bz)) {
     int y = findSafeY(w, bx, bz, dimBase(DIM_OVERWORLD) + DIM_H - 3, dimBase(DIM_OVERWORLD) + 1);
     if (y > 0) p.pos.y = (float)y;
+  } else {
+    // not loaded (from a side realm: the Drift, the pocket): ask for it now and stand on the land's own height meanwhile,
+    // or you fell through the unloaded ground and out of the world
+    for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) w.requestChunk(DIM_OVERWORLD, (bx >> 4) + dx, (bz >> 4) + dz, 1000);
+    if (const DimGenerator* g = lv.gen ? lv.gen->forDim(DIM_OVERWORLD) : nullptr) {
+      const int h = g->spawnHeight(bx, bz);
+      if (h > 0 && h < DIM_H - 2) p.pos.y = std::max(p.pos.y, (float)(dimBase(DIM_OVERWORLD) + h + 1));
+    }
   }
-  p.vel = vec3(0); p.hasFallStart = false;
+  p.vel = vec3(0); p.hasFallStart = false; p.fallDist = 0;
   if (initial) { p.yaw = (float)rnd() * TAU; p.pitch = -0.1f; }
 }
 

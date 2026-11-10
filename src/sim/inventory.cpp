@@ -1,6 +1,7 @@
 #include "core/tool_parts.h"
 #include "sim/inventory.h"
 #include "sim/player.h"
+#include "sim/quiver.h"
 
 namespace dq {
 
@@ -87,6 +88,7 @@ static void storeBackpack(Player& p, const Slots& s) { if (!p.back[0].empty() &&
 
 int Player::give(ItemStack s) {
   if (s.empty()) return 0;
+  if (isArrowItem(s)) { const int q = quiverStow(*this, s); if (q <= 0) return 0; s.n = q; }   // arrows into the worn quiver first
   int left = addToSlots(inv, s);
   if (left > 0) if (Slots* bp = backpackSlots(*this)) { left = addToSlots(*bp, s); storeBackpack(*this, *bp); }
   return left;

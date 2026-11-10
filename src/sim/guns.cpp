@@ -23,14 +23,17 @@ void registerGuns() {
     const i64 now = unixMillis();
     if (next[p.id] > now) return true;
     const char* ammo = cannon ? "cannonball" : "rocket";
+    // BTA's explosive charge: the handcannon's heavier load (a bigger burst), used before plain cannonballs
+    const bool charge = cannon && playerCount(p, "explosive_charge") > 0;
     if (!p.creative()) {
-      if (playerCount(p, ammo) <= 0) { pc.toastMsg(cannon ? "You need cannonballs (an iron ingot and gunpowder)" : "You need rockets"); return true; }
-      playerRemove(p, ammo, 1);
+      if (charge) playerRemove(p, "explosive_charge", 1);
+      else if (playerCount(p, ammo) <= 0) { pc.toastMsg(cannon ? "You need cannonballs (an iron ingot and gunpowder) or explosive charges" : "You need rockets"); return true; }
+      else playerRemove(p, ammo, 1);
     }
     next[p.id] = now + (cannon ? 900 : 1600);
     const vec3 L = lookVector(p.yaw, p.pitch);
     const vec3 from = p.pos + vec3(0, p.eye - 0.15f, 0) + L * 0.6f;
-    spawnProjectile(lv, p.realm, from, L * (cannon ? 26.f : 22.f) + (cannon ? vec3(0, 1.5f, 0) : vec3(0)), ammo, &p);
+    if (Entity* pr = spawnProjectile(lv, p.realm, from, L * (cannon ? 26.f : 22.f) + (cannon ? vec3(0, 1.5f, 0) : vec3(0)), ammo, &p); pr && charge) pr->data["power"] = 2.4f;
     p.vel -= L * (cannon ? 3.5f : 5.f);   // the kick
     lv.fx->sound("explode", from, cannon ? 18 : 24);
     lv.fx->particles("smoke", from + L * 0.4f, cannon ? 6 : 10);

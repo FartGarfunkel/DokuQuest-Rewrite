@@ -306,6 +306,8 @@ std::vector<ShopLine> shopLines(Level& lv, Player& p, const Village& v, int npcI
     double base = l[2].get<double>();
     o.price = std::max(1, (int)std::floor(base * (tab == "buy" ? disc : 1) + 0.5));
     o.locked = o.tier > st.tier; o.left = 12 - rec["u"].value(o.key, 0);
+    // the village makes these itself (sim/villager_chores.cpp): only what's been baked or ground is for sale
+    if (tab == "buy" && villageMakes(o.id)) o.left = std::min(o.left, villageStock(lv, v).value(o.id, 0) / std::max(1, o.n));
     o.can = !o.locked && o.left > 0 && (tab == "buy" ? em >= o.price : countOf(p, o.id) >= o.n);
     out.push_back(o); i++;
   }
@@ -317,14 +319,22 @@ bool shopTrade(Level& lv, Player& p, const Village& v, int npcIndex, const std::
   const ShopLine& l = L[line];
   const json& TN = VD()["tierName"];
   if (l.locked) { say = "I keep that for my " + lower(TN[l.tier].get<std::string>()) + "s. Help the village and we'll see."; return false; }
-  if (l.left <= 0) { say = "All gone for today. Come back tomorrow!"; return false; }
+  if (l.left <= 0) {
+    if (tab == "buy" && job == "baker" && l.id == "bread") say = "The ovens are cold: we're waiting on flour from the mill. Bring wheat, and the farmers' harvest gets milled!";
+    else if (tab == "buy" && job == "miller" && l.id == "flour") say = "Nothing ground yet. The stones need wheat (and a wind to turn them).";
+    else if (tab == "buy" && villageMakes(l.id)) say = "None made yet. We sell what the village makes: come back when there's more!";
+    else say = "All gone for today. Come back tomorrow!";
+    return false;
+  }
   if (tab == "buy") {
     if (!payCoins(lv, p, l.price)) { say = "That's " + plural(l.price, "gold coin") + ". You haven't enough."; sfxUi(lv, p, "click_off"); return false; }
     vGive(lv, p, ItemStack(l.id, l.n));
+    if (villageMakes(l.id)) { json& VS = villageStock(lv, v); VS[l.id] = std::max(0, VS.value(l.id, 0) - l.n); }
   } else {
     if (countOf(p, l.id) < l.n) { say = "I need " + std::to_string(l.n) + " of those."; sfxUi(lv, p, "click_off"); return false; }
     removeOf(p, l.id, l.n);
     vGive(lv, p, ItemStack(COIN, l.price));
+    if (villageUses(l.id)) { json& VS = villageStock(lv, v); VS[l.id] = VS.value(l.id, 0) + l.n; }   // to the village's stores (the mill, the ovens, the forge...)
   }
   json& S = npcStats(p); std::string k = shopKey(v, npcIndex); const i64 day = npcDay(lv);
   if (!S["vstock"].contains(k) || S["vstock"][k].value("d", (i64)-1) != day) S["vstock"][k] = {{"d", day}, {"u", json::object()}};
@@ -625,8 +635,7 @@ void talkChoose(Level& lv, Player& p, Talk& t, int i) {
   if (a == "riftElder") {
     const json R = lv.info.data.value("rift", json::object());
     int n = std::min(RIFT_NEED, R.value("frags", 0));
-    std::string lines = jflag(R, "stormBroken") ? "The storm too. The sky over the square is just sky. Sit with us a while; there's nothing left to watch for."
-                      : jflag(R, "sealed") ? "You did it. The square is quiet, the nights are only nights again. We will sing of this for a hundred winters. Only, the old ones say a storm still gathers from what he took. If it ever wakes, it wakes from a heart of the rift's own crystal."
+    std::string lines = jflag(R, "sealed") ? "You did it. The square is quiet, the nights are only nights again. We will sing of this for a hundred winters. And the storm he raised, broken in his own hall! Rest now. You've earned it."
                       : R.value("stage", 0) >= 3 ? "The gateway stands open. He waits beyond it, at the end of his halls. Go together, go ready, and end this."
                       : "It opened when you came. Something old is pressing on our world from the other side. The old tales say the keepers of the deep places hold the keys of time. Find the dungeons, defeat their keepers, bring their Realm Fragments to the rift. Ten of them. " + (n ? "The rift has taken " + std::to_string(n) + " so far. Each one opens it a little wider." : "Hold one up to the tear and use it. One at a time.");
     say(lv, p, t, lines);

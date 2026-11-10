@@ -5,6 +5,7 @@
 //   dq-gentool structs <request.json> <out.json>        structure plans and blocks for tools/port/struct_compare.py
 //   dq-gentool stats <seed> <dim> <cx0> <cz0> <n>       block counts per 8-row band of y over n x n chunks (ores, caves...)
 //   dq-gentool slice <seed> <dim> <x0> <z> <w> [y0 y1]  ASCII cutaway along x at z (one char per block)
+#include "gen/bta/bta_nether.h"
 #include "gen/nether_bta.h"
 #include "core/init.h"
 #include "gen/overworld.h"
@@ -276,11 +277,45 @@ int main(int argc, char** argv) {
       }
       printf("%s\n", row.c_str());
     }
-    for (int b = 0; b < NB_COUNT; b++) printf("%s: %d %d floor %d\n", netherBiomeName(b), found[b][0], found[b][1], found[b][2]);
+    for (int b = 0; b <= NB_OLDWORLD; b++) printf("%s: %d %d floor %d\n", netherBiomeName(b), found[b][0], found[b][1], found[b][2]);
     for (int k = 1; k <= 2; k++) {   // a crater's lava, a pool's acid
       bool done = false;
       for (int z = -1500; z <= 1500 && !done; z += 4) for (int x = -1500; x <= 1500 && !done; x += 4) { NetherCol c = S.column(x, z); if (c.pool == k) { printf("%s at %d %d top %d floor %d\n", k == 1 ? "crater" : "acid pool", x, z, c.poolTop, c.floor); done = true; } }
     }
+    return 0;
+  }
+  if (m == "end" && argc >= 3) {   // dq-gentool end <seed>: where each outer End land (Better End's biomes) first lies, near the origin
+    const i32 seed = seedFromString(argv[2]);
+    WorldGenOptions o; o.seed = seed; WorldGen wg(o);
+    auto* eg = dynamic_cast<EndGen*>(wg.forDim(DIM_END));
+    int fx[19], fz[19], ft[19]; for (int i = 0; i < 19; i++) fx[i] = INT32_MIN;
+    for (int r = 400; r <= 3000; r += 40) for (int a = 0; a < 64; a++) {
+      const int x = (int)std::lround(std::cos(a / 64.0 * 6.2832) * r), z = (int)std::lround(std::sin(a / 64.0 * 6.2832) * r);
+      const int l = endLandAt(seed, x, z);
+      if (l < 0 || l > 18 || fx[l] != INT32_MIN) continue;
+      EndGen::Isle c; if (!eg || !eg->island(x, z, c)) continue;
+      fx[l] = x; fz[l] = z; ft[l] = c.top;
+    }
+    for (int i = 0; i < 19; i++) printf("land %2d: %d %d top %d\n", i, fx[i], fz[i], fx[i] == INT32_MIN ? 0 : ft[i]);
+    return 0;
+  }
+  if (m == "ncol" && argc >= 5) {   // dq-gentool ncol <seed> <x> <z>: the Nether's landing there and its real column
+    WorldGenOptions o; o.seed = seedFromString(argv[2]);
+    DepthsGen g(o); const int x = atoi(argv[3]), z = atoi(argv[4]);
+    printf("spawnHeight %d\n", g.spawnHeight(x, z));
+    Chunk c(DIM_NETHER, floordiv(x, 16), floordiv(z, 16)); g.generate(c);
+    for (int y = 175; y >= 90; y--) { BlockId b = c.get(x & 15, y, z & 15); if (b) printf("%d %s\n", y, reg().block(b).key.c_str()); }
+    return 0;
+  }
+  if (m == "nether8" && argc >= 3) {   // dq-gentool nether8 <seed>: BTA's Nether lands across 4096 blocks (the terrain 8 map)
+    bta::NetherGen g((int64_t)seedFromString(argv[2]));
+    int cnt[bta::NBIO_COUNT] = {0}, tot = 0;
+    for (int z = -2048; z <= 2048; z += 64) {
+      std::string row;
+      for (int x = -2048; x <= 2048; x += 32) { const int b = g.biomeAt(x, 100, z); row += "OPFSCUVD"[b]; cnt[b]++; tot++; }
+      printf("%s\n", row.c_str());
+    }
+    for (int b = 0; b < bta::NBIO_COUNT; b++) printf("%-20s %5.1f%%\n", bta::netherBiomeName(b), 100.0 * cnt[b] / tot);
     return 0;
   }
   if (m == "map" && argc >= 8) return map(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]));

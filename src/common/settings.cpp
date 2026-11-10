@@ -13,7 +13,8 @@ const char* rendererName(RendererKind k) {
   X(particles) X(guiScale) X(toggleSneak) X(toggleSprint) X(screenShake) X(hurtTilt) X(fpsLimit) X(padLayout) \
   X(heldSway) X(clouds) X(portalViews) X(farTerrain) X(preset) X(microVoxels) X(microVoxelDist) X(waterQuality) \
   X(shadows) X(vsync) X(fullscreen) X(windowW) X(windowH) X(workerThreads) X(resourcePack) X(shaderPack) \
-  X(playerName) X(skin) X(autoUpdate) X(keyBinds) X(padBinds) X(padMaps)
+  X(playerName) X(skin) X(autoUpdate) X(pauseOnLostFocus) X(muteOnLostFocus) X(rawMouse) X(autosaveSec) \
+  X(keyBinds) X(padBinds) X(padMaps)
 
 json Settings::toJson() const {
   json j = extra;
@@ -41,6 +42,8 @@ void Settings::fromJson(const json& j) {
   for (auto& [k, v] : j.items()) if (std::find_if(std::begin(known), std::end(known), [&](const char* s) { return k == s; }) == std::end(known)) extra[k] = v;
   renderDist = clampv(renderDist, 2, 32);
   farTerrain = clampv(farTerrain, 0, 16384);
+  autosaveSec = clampv(autosaveSec, 0, 115);
+  autosaveSec = (autosaveSec / 5) * 5;   // Off, 5, 10, ... 115 seconds
 }
 Settings Settings::load() {
   Settings s;

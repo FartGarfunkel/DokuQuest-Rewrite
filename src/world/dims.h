@@ -35,6 +35,6 @@ inline const char* dimName(int d) {
 }
 
 // Realms: 0 = the stacked main world; others are side worlds with one band each (stored as dim 2 band).
-enum Realm : int { REALM_MAIN = 0, REALM_POCKET = 1, REALM_HIS = 2 };
+enum Realm : int { REALM_MAIN = 0, REALM_POCKET = 1, REALM_HIS = 2, REALM_DRIFT = 3 };   // REALM_DRIFT: BTA's Drift (gen/drift.cpp, sim/drift.cpp)
 
 } // namespace dq

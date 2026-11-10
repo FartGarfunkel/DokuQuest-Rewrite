@@ -3429,53 +3429,101 @@ private:
   GLuint vao = 0;
   bool tried = false;
   std::unique_ptr<Shader> post;
-  Target scene, bloomA, bloomB;
+  static constexpr int NB = 5;   // the bloom chain: half, quarter, ... a thirty-second of the screen
+  Target scene, bloom[NB], lum, expA, expB;
+  bool expFlip = false, expFresh = true; double lastT = -1;
   void tri() { glBindVertexArray(vao); glDrawArrays(GL_TRIANGLES, 0, 3); }
   void run(GameSession& s, const FrameCtx& f, int level, const GLint* vp, GLint outFbo) {
     if (!tried) { tried = true; post = std::make_unique<Shader>(); if (!post->load("post.glsl", "post.glsl")) post.reset(); }
     if (!post) return;
-    const int W = vp[2], H = vp[3], qw = std::max(1, W / 4), qh = std::max(1, H / 4);
-    scene.make(W, H, true); bloomA.make(qw, qh, true); bloomB.make(qw, qh, true);
+    const int W = vp[2], H = vp[3];
+    scene.make(W, H, true);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint)outFbo);
     glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, scene.tex);
     glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, vp[0], vp[1], vp[2], vp[3]);
-    static const float BLOOM[5] = {0, 0, 0.32f, 0.42f, 0.55f}, RAYS[5] = {0, 0, 0, 0.55f, 0.75f}, SHARP[5] = {0, 0, 0.08f, 0.15f, 0.22f};
-    static const int STEPS[5] = {0, 0, 0, 24, 40};
+    // per level: off, low, medium, high, ultra
+    static const float BLOOM[5] = {0, 0, 0.3f, 0.36f, 0.44f}, RAYS[5] = {0, 0, 0, 0.5f, 0.68f}, SHARP[5] = {0, 0, 0.08f, 0.15f, 0.22f}, FLARE[5] = {0, 0, 0, 0.8f, 1.f};
+    static const int STEPS[5] = {0, 0, 0, 24, 40}, CHAIN[5] = {0, 0, 3, 5, 5};
+    static const float EXPMAX[5] = {1, 1, 1.3f, 1.4f, 1.45f};
     post->use();
-    post->set("uSrc", 0); post->set("uBloom", 1);
-    glActiveTexture(GL_TEXTURE0);
-    const bool needBloom = BLOOM[level] > 0 || RAYS[level] > 0;
+    post->set("uSrc", 0); post->set("uBloom", 1); post->set("uExp", 2);
+    const float dt = lastT < 0 ? 1.f : (float)clampv(f.time - lastT, 0.0, 1.0); lastT = f.time;
+    // ---- the bloom: the bright parts at half size, then down the chain and back up, each level added onto the one above ----
+    const int nb = CHAIN[level];
+    const bool needBloom = nb > 0 && (BLOOM[level] > 0 || RAYS[level] > 0 || FLARE[level] > 0);
     if (needBloom) {
-      glBindFramebuffer(GL_FRAMEBUFFER, bloomA.fbo); glViewport(0, 0, qw, qh);
-      glBindTexture(GL_TEXTURE_2D, scene.tex);
-      post->set("uStep", 0); post->set("uTexel", vec2(1.f / W, 1.f / H)); post->set("uThreshold", 0.72f);
+      for (int i = 0; i < nb; i++) bloom[i].make(std::max(1, W >> (i + 1)), std::max(1, H >> (i + 1)), true);
+      glBindFramebuffer(GL_FRAMEBUFFER, bloom[0].fbo); glViewport(0, 0, bloom[0].w, bloom[0].h);
+      glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, scene.tex);
+      post->set("uStep", 0); post->set("uTexel", vec2(1.f / W, 1.f / H)); post->set("uThreshold", 0.76f);
       tri();
-      for (int it = 0; it < (level >= 4 ? 2 : 1); it++) {
-        glBindFramebuffer(GL_FRAMEBUFFER, bloomB.fbo); glBindTexture(GL_TEXTURE_2D, bloomA.tex);
-        post->set("uStep", 1); post->set("uTexel", vec2(1.f / qw, 1.f / qh)); tri();
-        glBindFramebuffer(GL_FRAMEBUFFER, bloomA.fbo); glBindTexture(GL_TEXTURE_2D, bloomB.tex);
-        post->set("uStep", 2); tri();
+      post->set("uStep", 4);
+      for (int i = 1; i < nb; i++) {
+        glBindFramebuffer(GL_FRAMEBUFFER, bloom[i].fbo); glViewport(0, 0, bloom[i].w, bloom[i].h);
+        glBindTexture(GL_TEXTURE_2D, bloom[i - 1].tex); post->set("uTexel", vec2(1.f / bloom[i - 1].w, 1.f / bloom[i - 1].h));
+        tri();
       }
+      post->set("uStep", 5);
+      glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE);
+      for (int i = nb - 2; i >= 0; i--) {
+        glBindFramebuffer(GL_FRAMEBUFFER, bloom[i].fbo); glViewport(0, 0, bloom[i].w, bloom[i].h);
+        glBindTexture(GL_TEXTURE_2D, bloom[i + 1].tex); post->set("uTexel", vec2(1.f / bloom[i + 1].w, 1.f / bloom[i + 1].h));
+        tri();
+      }
+      glDisable(GL_BLEND);
     }
-    float rays = 0; vec2 sunUV(0.5f);
+    // ---- the eyes (medium and up): how bright the picture is, then the exposure easing toward what it wants ----
+    const bool eyes = level >= 2;
+    if (eyes) {
+      const int L = 64;
+      const bool fresh = !lum.tex;
+      lum.make(L, L, true, true); expA.make(1, 1, false, true); expB.make(1, 1, false, true);
+      if (fresh || expFresh) {   // (a new exposure starts where the brightness puts it)
+        for (Target* t : {&expA, &expB}) { glBindFramebuffer(GL_FRAMEBUFFER, t->fbo); glViewport(0, 0, 1, 1); glClearColor(0, 0, 0, 1); glClear(GL_COLOR_BUFFER_BIT); }
+        expFresh = false;
+      }
+      glBindFramebuffer(GL_FRAMEBUFFER, lum.fbo); glViewport(0, 0, L, L);
+      glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, scene.tex);
+      post->set("uStep", 6); tri();
+      glBindTexture(GL_TEXTURE_2D, lum.tex);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+      glGenerateMipmap(GL_TEXTURE_2D);
+      Target& from = expFlip ? expB : expA; Target& to = expFlip ? expA : expB; expFlip = !expFlip;
+      glBindFramebuffer(GL_FRAMEBUFFER, to.fbo); glViewport(0, 0, 1, 1);
+      glActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, lum.tex);
+      glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, from.tex);
+      post->set("uStep", 7); post->set("uLumLod", 6.f); post->set("uExpMax", EXPMAX[level]);
+      post->set("uAdapt", 1.f - std::exp(-dt * 1.4f));
+      tri();
+      glActiveTexture(GL_TEXTURE2); glBindTexture(GL_TEXTURE_2D, to.tex);
+    } else expFresh = true;
+    // ---- where the sun is on the screen (sun rays, the lens flare) ----
+    float rays = 0, flare = 0; vec2 sunUV(0.5f);
     const SkyEnv& env = skyOf(f);
-    if (RAYS[level] > 0 && env.showSun && f.cam.realm == REALM_MAIN && f.portalDepth == 0) {
+    if ((RAYS[level] > 0 || FLARE[level] > 0) && env.showSun && f.cam.realm == REALM_MAIN && f.portalDepth == 0 && f.eyeFluid == 0) {
       vec3 eye = vec3(f.cam.pos - f.cam.origin);
       vec4 c = f.cam.viewProj * vec4(eye + f.sunDir * 1000.f, 1.f);
       if (c.w > 0 && f.sunDir.y > -0.05f) {
         sunUV = vec2(c.x / c.w, c.y / c.w) * 0.5f + 0.5f;
         float off = std::max(std::abs(sunUV.x - 0.5f), std::abs(sunUV.y - 0.5f));
-        rays = RAYS[level] * smoothstepf(1.1f, 0.5f, off) * smoothstepf(-0.05f, 0.12f, f.sunDir.y) * clampv(f.daylight, 0.f, 1.f) * (1 - f.rain * 0.8f);
+        const float sky = smoothstepf(-0.05f, 0.12f, f.sunDir.y) * clampv(f.daylight, 0.f, 1.f) * (1 - f.rain * 0.8f);
+        rays = RAYS[level] * smoothstepf(1.1f, 0.5f, off) * sky;
+        flare = FLARE[level] * smoothstepf(0.62f, 0.45f, off) * sky;   // (only with the sun itself on the screen)
       }
     }
+    // ---- all of it together, into the frame ----
     glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)outFbo); glViewport(vp[0], vp[1], vp[2], vp[3]);
-    glActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, bloomA.tex);
+    glActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_2D, needBloom ? bloom[0].tex : scene.tex);
     glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, scene.tex);
     post->set("uStep", 3); post->set("uTexel", vec2(1.f / W, 1.f / H));
-    post->set("uBloomK", BLOOM[level]); post->set("uRaysK", rays); post->set("uRaySteps", rays > 0 ? STEPS[level] : 0);
+    post->set("uBloomK", needBloom ? BLOOM[level] / (float)nb : 0.f); post->set("uRaysK", needBloom ? rays : 0.f); post->set("uRaySteps", rays > 0 && needBloom ? STEPS[level] : 0);
+    post->set("uFlareK", needBloom ? flare : 0.f); post->set("uAspect", (float)W / (float)std::max(1, H));
     post->set("uSunUV", sunUV); post->set("uSunTint", vec3(1.0f, 0.92f, 0.78f) + env.sunGlow * 0.3f);
     post->set("uSharpK", SHARP[level]); post->set("uGradeK", level >= 1 ? 1.f : 0.f); post->set("uVignetteK", level >= 1 ? 0.22f : 0.f);
+    post->set("uExpOn", eyes ? 1.f : 0.f);
+    post->set("uWarp", f.eyeFluid == 1 ? 1.f : f.eyeFluid == 2 ? 0.7f : 0.f); post->set("uTime", (float)std::fmod(f.time, 3600.0));
     tri();
+    glActiveTexture(GL_TEXTURE2); glBindTexture(GL_TEXTURE_2D, 0); glActiveTexture(GL_TEXTURE0);
     (void)s;
   }
 };

@@ -17,6 +17,7 @@ void registerStructureDeepA();        // structures_deep.cpp: stronghold (7), an
 void registerStructureFarA();         // structures_far.cpp: places.js (9..16)
 void registerStructureDeepB();        // structures_deep.cpp: deep halls (17), twin vault (18), pirate cove (19)
 void registerStructureFarB();         // structures_far.cpp: nether fortress (20), floating sanctum (21)
+void registerStructureAether();       // structures_aether.cpp: the Aether's bronze, silver and gold dungeons (terrain 7)
 void registerStructureRoads();        // structures_roads.cpp: roads and bridges between neighbouring villages
 
 const StructureIndex* structureIndexOf(const DimGenerator* g) {
@@ -128,7 +129,8 @@ void registerStructures() {
   registerStructureFarA();
   registerStructureDeepB();
   registerStructureFarB();
-  registerStructureRoads();   // last: nothing keeps clear of a road
+  registerStructureRoads();   // nothing keeps clear of a road
+  registerStructureAether();  // after the roads: their indices stay as they were
   registerLocate();
 }
 

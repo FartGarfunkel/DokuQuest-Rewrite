@@ -1,4 +1,7 @@
 #include "client/app.h"
+#include <algorithm>
+#include <cstring>
+#include "render/particles.h"
 #include "common/ui_scale.h"
 #include "ui/profiles.h"
 #include "client/test_script.h"
@@ -54,6 +57,7 @@ bool App::initWindow() {
   SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");   // physical pixels, so we scale the UI ourselves
 #endif
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) != 0) { DQ_ERR("SDL: %s", SDL_GetError()); return false; }
+  SDL_SetHint(SDL_HINT_MOUSE_RELATIVE_MODE_WARP, settings.rawMouse ? "0" : "1");   // raw look, unless Settings asks for warping
   if (auto db = readFile(assetsDir() / "gamecontrollerdb.txt")) SDL_GameControllerAddMappingsFromRW(SDL_RWFromConstMem(db->data(), (int)db->size()), 1);
   // a 1280×720 window is tiny on a 2K/3K/4K monitor; grow the untouched default so Auto has room
   {
@@ -154,6 +158,32 @@ void App::reloadTiles() {
     u8* px = tiles.rgba.data() + (size_t)it->second * tiles.size * tiles.size * 4;
     for (int i = 0; i < tiles.size * tiles.size; i++) if (px[i * 4 + 3] > 8 && px[i * 4 + 3] != 253) px[i * 4 + 3] = (u8)std::min(155, px[i * 4 + 3] * 3 / 4);
   }
+  // Better than Adventure's rubyglass, whichever pack painted it: the crystal is see-through (BTA's is 80 % cover, a
+  // little more open here so it reads as glass in the Nether's glow), and the whole family shines from within the way
+  // BTA's emissive layers make it: the brightest half of each picture glows fully, the rest a little
+  for (const char* k : {"rubyglass_crystal", "rubyglass_column", "rubyglass_node", "rubyglass_growth", "rubyglass_block", "rubyglass_bricks", "red_crystal", "red_crystal_cluster"}) {
+    auto it = tiles.index.find(k);
+    if (it == tiles.index.end() || it->second < 0 || it->second >= tiles.count) continue;
+    const int S = tiles.size; u8* px = tiles.rgba.data() + (size_t)it->second * S * S * 4;
+    const bool glass = std::string(k) == "rubyglass_crystal" || std::string(k) == "red_crystal";
+    const bool giant = std::string(k) == "rubyglass_column" || std::string(k) == "rubyglass_node";   // the big crystals: see-through too
+    std::vector<int> lums;
+    for (int i = 0; i < S * S; i++) if (px[i * 4 + 3] > 8) lums.push_back(px[i * 4] * 3 + px[i * 4 + 1] * 6 + px[i * 4 + 2]);
+    if (lums.empty()) continue;
+    std::nth_element(lums.begin(), lums.begin() + lums.size() / 2, lums.end());
+    const int mid = lums[lums.size() / 2];
+    if (tiles.emissive.size() < (size_t)tiles.count * S * S) tiles.emissive.resize((size_t)tiles.count * S * S, 0);
+    u8* e = tiles.emissive.data() + (size_t)it->second * S * S;
+    for (int i = 0; i < S * S; i++) {
+      if (px[i * 4 + 3] <= 8) { e[i] = 0; continue; }
+      // the crystal: clear red glass (about 45 % cover, its edges a little more) with only a soft glow, so what's behind
+      // it shows; the opaque rubyglass (column, node, bricks) glows the way BTA's emissive layers do
+      if (glass && px[i * 4 + 3] != 253) px[i * 4 + 3] = (u8)std::min<int>(px[i * 4 + 3], 115);
+      if (giant && px[i * 4 + 3] != 253) px[i * 4 + 3] = (u8)std::min<int>(px[i * 4 + 3], 150);
+      const bool bright = px[i * 4] * 3 + px[i * 4 + 1] * 6 + px[i * 4 + 2] >= mid;
+      e[i] = glass ? (bright ? 120 : 25) : giant ? (bright ? 210 : 45) : (bright ? 225 : 70);
+    }
+  }
   bakeTileRelief(tiles);   // once per tile set: whole-voxel geometry + smooth normal maps (assets/tile_relief.cpp)
   for (int p = 0; p < 2; p++) {
     for (GLuint* t : {&tileTex.color[p], &tileTex.height[p], &tileTex.normal[p]}) { if (*t) glDeleteTextures(1, t); *t = 0; }
@@ -165,15 +195,46 @@ void App::reloadTiles() {
   std::vector<u8> h4((size_t)tiles.count * tsz * 4);
   // r = geometry (whole micro-voxel steps, scaled to 0..255), g = glow; the smooth normals/crevices are their own array
   for (size_t i = 0; i < tiles.relief.size(); i++) { h4[i * 4] = (u8)((tiles.relief[i] * 255 + TileSet::RELIEF_STEPS / 2) / TileSet::RELIEF_STEPS); h4[i * 4 + 1] = tiles.emissive.empty() ? 0 : tiles.emissive[i]; h4[i * 4 + 3] = 255; }
+  // The clear texels of a cutout (leaves, glass, flowers) carry the colour of their nearest painted neighbour (the alpha stays
+  // clear). Mipmaps average a tile down, and clear black texels there gave every far leaf and pane a dark rim.
+  std::vector<u8> bled(tiles.rgba);
+  {
+    const int S = tiles.size; std::vector<int> q; std::vector<u8> seen((size_t)S * S);
+    for (int t = 0; t < tiles.count; t++) {
+      u8* px = bled.data() + (size_t)t * tsz * 4;
+      q.clear(); std::fill(seen.begin(), seen.end(), 0);
+      for (int i = 0; i < S * S; i++) if (px[i * 4 + 3]) { seen[i] = 1; q.push_back(i); }
+      if (q.empty() || (int)q.size() == S * S) continue;
+      for (size_t h = 0; h < q.size(); h++) {   // outward from the painted texels, a ring at a time
+        const int i = q[h], x = i % S, y = i / S;
+        const int nb[4] = {x > 0 ? i - 1 : -1, x < S - 1 ? i + 1 : -1, y > 0 ? i - S : -1, y < S - 1 ? i + S : -1};
+        for (int j : nb) if (j >= 0 && !seen[j]) { seen[j] = 1; std::memcpy(px + j * 4, px + i * 4, 3); q.push_back(j); }
+      }
+    }
+  }
   for (int p = 0; p < 2; p++) {
     int first = p * page, n = std::min(page, tiles.count - first);
     if (n <= 0) { n = 1; first = 0; }   // keep a valid (unused) second page
-    tileTex.color[p] = makeTextureArray(tiles.size, tiles.size, n, tiles.rgba.data() + first * tsz * 4, true);
+    tileTex.color[p] = makeTextureArray(tiles.size, tiles.size, n, bled.data() + first * tsz * 4, true);
     tileTex.height[p] = makeTextureArray(tiles.size, tiles.size, n, h4.data() + first * tsz * 4, false);
     tileTex.normal[p] = makeTextureArray(tiles.size, tiles.size, n, tiles.normal.data() + first * tsz * 4, false, true);
   }
+  applyTextureFiltering();
   itemIcons().build(tiles);
   DQ_LOG("tiles: %d micro-voxel tiles (%s)", tiles.count, tiles.packName.empty() ? "built-in Doku" : tiles.packName.c_str());
+}
+
+// anisotropic filtering on the block pictures: ground and walls seen at a slant stay sharp into the distance (the
+// mipmaps alone blur them; 4x costs next to nothing, even on a laptop's own graphics)
+void App::applyTextureFiltering() {
+  if (!gfx.anisotropic) return;
+  const int want = std::clamp(settings.extra.value("anisotropic", 4), 1, 16);
+  const int a = std::max(1, std::min(want, (int)gfx.maxAniso));
+  for (int p = 0; p < 2; p++) if (tileTex.color[p]) {
+    glBindTexture(GL_TEXTURE_2D_ARRAY, tileTex.color[p]);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_ANISOTROPY, a);
+  }
+  glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 }
 
 void App::pushScreen(std::unique_ptr<Screen> s) { Screen* raw = s.get(); screens.push_back(std::move(s)); raw->onOpen(*this); }
@@ -221,6 +282,8 @@ void App::takeScreenshot(const fs::path& path) {
 
 void App::applySettings() {
   settings.save();
+  SDL_SetHint(SDL_HINT_MOUSE_RELATIVE_MODE_WARP, settings.rawMouse ? "0" : "1");
+  if (input.captured()) { input.setCapture(window, false); input.setCapture(window, true); }   // the hint is read when capture turns on
   if (gfx.vulkan) gfxVulkanSetVsync(settings.vsync != 0);
   else SDL_GL_SetSwapInterval(settings.vsync ? 1 : 0);
   if (audio) audio->setVolumes(settings);
@@ -266,6 +329,8 @@ int App::run(int argc, char** argv) {
   settings.save();
   pool.reset();
   audio.reset();
+  screens.clear();   // screens own GL objects (shaders, textures): free them while the GL context still exists
+  particles().releaseGl();   // the particle engine is a static, destroyed after main returns
   ImGui_ImplOpenGL3_Shutdown(); ImGui_ImplSDL2_Shutdown(); ImGui::DestroyContext();
   if (gfx.vulkan) gfxShutdownVulkan();
   else SDL_GL_DeleteContext(glctx);
@@ -277,6 +342,7 @@ void engineBridgeFrame(App& app, int port);   // client/engine_bridge.cpp
 
 void App::frameLoop() {
   double last = nowSeconds();
+  double focusAt = last;   // losing focus waits 250 ms, and the first moments of a run do not count
   while (!quit) {
     double now = nowSeconds();
     dt = std::min(0.1, now - last); last = now; time += dt;
@@ -337,6 +403,14 @@ void App::frameLoop() {
       if (Screen* s = topScreen()) { if (!s->onBack(*this) && s->id() != std::string("title")) popScreen(); }
       else if (session && input.pressed(Act::Pause)) pushScreen(makePauseScreen());
     }
+    // BTA 8.0: pause and mute when the window is not in front, written for this engine.
+    // After the Escape handler, so the menu this opens is not closed on the same press.
+    // A shared world still runs (GameSession only pauses a world that is not on the network).
+    bool focused = window && (SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS) != 0;
+    if (focused) focusAt = now;
+    else if (args.smokeFrames == 0 && settings.pauseOnLostFocus && session && !topScreen() && now > focusAt + 0.25)
+      pushScreen(makePauseScreen());
+    if (audio) audio->setMuted(settings.muteOnLostFocus && !focused);
     ImGui::PopFont();
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -350,7 +424,15 @@ void App::frameLoop() {
       screenshotPending = false;
     }
     if (gfx.vulkan) gfxVulkanPresent(window);
-    else SDL_GL_SwapWindow(window);
+    else {
+      SDL_GL_SwapWindow(window);
+      // at most three frames queued on the GPU: wait for the oldest. Where the driver throttles at the swap this
+      // is already done; where it doesn't (an offscreen surface, some drivers with vsync off) the CPU ran ahead until
+      // the driver's queue filled and then a frame stood still for ~450 ms (HD 520).
+      static GLsync fence[3] = {nullptr, nullptr, nullptr}; static int fi = 0;
+      if (fence[fi]) { glClientWaitSync(fence[fi], GL_SYNC_FLUSH_COMMANDS_BIT, 100000000ull); glDeleteSync(fence[fi]); }
+      fence[fi] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0); fi = (fi + 1) % 3;
+    }
     frame++;
     if (audio) audio->update(dt);
     // smoke test: run N frames, screenshot, quit

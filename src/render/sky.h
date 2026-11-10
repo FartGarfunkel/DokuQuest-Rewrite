@@ -4,6 +4,7 @@
 // bands; it also fills the frame's light/fog/wind values (FrameCtx) the other renderers use.
 #pragma once
 #include "render/frame.h"
+#include "render/be_sky.h"
 
 namespace dq {
 
@@ -18,6 +19,9 @@ struct SkyEnv {
   vec4 storm{0, 1, 1000, 0}; vec3 stormCol{0.3f, 0.3f, 0.35f}; bool hasStorm = false;
   float aurora = 0, rainbow = 0, mist = 0, cloud = 0, sea = 0, raining = 0, wind = 0;
   int moonPhase = 0;
+  float beDensity = 0;      // the End: Better End's fog density here (0 elsewhere); the fog closes in to view/density
+  double beTicks = 0;       // the End: the world's time in ticks, for Better End's turning sky
+  int btaFog = 0;           // the Nether (BTA 8.0): 1 flat fog from the camera out, 2 the Old World's closer fog
   vec2 fogRange{64, 128};   // blocks (worked out by computeFrame)
 };
 
@@ -40,6 +44,7 @@ private:
   Shader shader;
   GLuint vao = 0;
   double skyT = 0;
+  BeSky beSky;              // Better End's End sky (render/be_sky.cpp)
 };
 const SkyEnv& currentSkyEnv();   // the last computed sky (prefer skyOf(frame))
 inline const SkyEnv& skyOf(const FrameCtx& f) { return f.sky ? *f.sky : currentSkyEnv(); }

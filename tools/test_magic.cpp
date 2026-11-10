@@ -108,13 +108,18 @@ int main(int argc, char** argv) {
   check(near(protectionFactor(p, "fall"), 1 - 12 * 0.025f), "Feather Falling IV: three points a level on falls");
   for (auto& s : p.armor) s.clear();
 
+  // everyone starts knowing Firebolt and Home Teleport (the way in: casting grows Magic)
+  check(knownSpells(p).size() == 2 && knownSpells(p)[0] == "firebolt" && knownSpells(p)[1] == "homeport" && fx.heard("You know Firebolt"), "starter spells: Firebolt and Home Teleport");
   // tomes
   ItemStack tome("tome_fireball", 1);
   learnTome(*lv, p, tome);
-  check(fx.heard("You need Magic 28 to learn Fireball") && tome.n == 1, "a tome too deep for you: the words swim");
-  ItemStack t1("tome_firebolt", 1);
+  check(fx.heard("Too deep to learn yet (Magic 28), but studying Fireball taught you something: +420 Magic XP") && tome.n == 1 && skillXp(p, "magic") == 420, "a tome too deep for you: studied once (+15 xp a level), kept");
+  learnTome(*lv, p, tome);
+  check(fx.heard("You need Magic 28 to learn Fireball") && skillXp(p, "magic") == 420, "...and only the first time");
+  ItemStack t1("tome_frost", 1);
   learnTome(*lv, p, t1);
-  check(fx.heard("You have learned Firebolt! Hold a staff and use it to cast") && t1.empty() && knownSpells(p).size() == 1 && skillXp(p, "magic") == 40, "learning Firebolt (+40 Magic xp)");
+  check(fx.heard("You have learned Frost Shard! Press Z to cast it") && t1.empty() && knownSpells(p).size() == 3 && skillXp(p, "magic") == 460, "learning Frost Shard (+40 Magic xp)");
+  p.stats["spell"] = 0;   // Firebolt in the right hand again
 
   // casting a firebolt at a skeleton
   p.inv[0] = ItemStack("apprentice_staff", 1); p.selected = 0;
@@ -129,7 +134,7 @@ int main(int argc, char** argv) {
   for (int i = 0; i < 15; i++) lv->tick(TICK_DT);
   // power = 1 * (1 + (lv-1)/98*0.6): Magic is level 1 here -> 6 damage
   check(sk && near(sk->hp, hp0 - 6) && mobStatus(*sk, "burnT") > 0, "the bolt hits: 6 damage and burning");
-  check(skillXp(p, "magic") == 40 + 24 && gearLevel(p.inv[0]) == 1 && p.inv[0].tag.value("gx", 0) == 2 && p.inv[0].d == 1, "Magic +24 xp, the staff wears and grows");
+  check(skillXp(p, "magic") == 460 + 24 && gearLevel(p.inv[0]) == 1 && p.inv[0].tag.value("gx", 0) == 2 && p.inv[0].d == 1, "Magic +24 xp, the staff wears and grows");
   check(p.stats["schools"].value("fire", 0) == 24, "the Fire school grows with the cast");
 
   // not enough mana, the cooldown
@@ -137,7 +142,7 @@ int main(int argc, char** argv) {
   castSpell(*lv, p);
   check(fx.heard("Not enough mana") && near(m.mana, 2), "not enough mana: a fizzle");
   // Mend at full health
-  p.stats["spells"].push_back("heal"); p.stats["spells"].push_back("ward"); p.stats["spells"].push_back("homeport"); p.stats["spells"].push_back("flames");
+  p.stats["spells"].push_back("heal"); p.stats["spells"].push_back("ward"); p.stats["spells"].push_back("flames");   // (Home Teleport is a starter)
   pickSpell(*lv, p, "heal");
   m.castCd = 0; m.mana = 20;
   castSpell(*lv, p);
@@ -161,8 +166,13 @@ int main(int argc, char** argv) {
   sk->pos = p.pos + vec3(0, 0, -2.5f); sk->hp = sk->maxHp; sk->data.erase("burnT");
   pickSpell(*lv, p, "flames"); m.castCd = 0; m.mana = 20;
   castQuick(*lv, p);
-  // bare: power 0.7 -> max(1, round(3.5 * 0.7)) = 2
-  check(near(sk->hp, sk->maxHp - 2) && near(m.mana, 15), "Flames without a staff (Z): weaker (2), 5 mana");
+  // bare: power 0.7 -> max(1, round(3.5 * 0.7 * skill)) = 2 or 3 (Magic is a few levels up by now: the studied tome)
+  check((near(sk->hp, sk->maxHp - 2) || near(sk->hp, sk->maxHp - 3)) && near(m.mana, 15), "Flames without a staff (Z): weaker (2-3), 5 mana");
+  // the old spells cast bare-handed too now (Firebolt needed a staff, so a new player could never start)
+  pickSpell(*lv, p, "firebolt"); m.castCd = 0; m.mana = 20;
+  castQuick(*lv, p);
+  bool bolt2 = false; for (auto& e : lv->entities()) bolt2 |= e->type == "spell_bolt" && !e->removed;
+  check(bolt2 && near(m.mana, 16, 0.05), "Firebolt without a staff (Z): a bolt, 4 mana");
   // Home Teleport has its own ten-minute cooldown
   pickSpell(*lv, p, "homeport"); m.castCd = 0;
   lv->info.spawn = vec3(10.5f, 600, 10.5f);

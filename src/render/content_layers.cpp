@@ -98,6 +98,7 @@ public:
       else if (id == "stable") app.pushScreen(makeStableScreen());
       else if (id == "places") app.pushScreen(makePlacesScreen());
       else if (id == "travel_journal") app.pushScreen(makeTravelJournalScreen());
+      else if (id == "label") app.pushScreen(makeLabelScreen(args.value("slot", 0)));
       return true;
     });
   }
@@ -286,13 +287,15 @@ private:
       bool soul = w.getBlock(q.x, q.y, q.z) == reg().blockId("soul_campfire");
       bool signal = w.getBlock(q.x, q.y - 1, q.z) == reg().blockId("hay_bale");
       auto flue = campFlue(w, q.x, q.y, q.z);
-      vec3 sp = flue ? *flue : vec3((float)q.x, q.y + 0.55f, (float)q.z);
-      // a column of smoke, rising and spreading
-      for (int n = 0; n < 3; n++) if (R() < step * (signal ? 6 : 4.5f) / 3) {
-        float life = signal ? 11 + R() * 4 : 6 + R() * 3, sz = (flue ? 0.3f : 0.26f) + R() * 0.12f;
-        lv.fx->particles("campfire_smoke", vec3(sp.x + 0.5f + frand2() * 0.4f, sp.y, sp.z + 0.5f + frand2() * 0.4f), 1,
-          {{"vel", {frand2() * 0.12f, (signal ? 1.9f : 1.25f) + R() * 0.4f, frand2() * 0.12f}}, {"life", life}, {"size", sz}, {"grow", 2.8}, {"grav", -0.03}, {"rise", true},
-           {"wind", {wx * (signal ? 1.2f : 2.f), wz * (signal ? 1.2f : 2.f)}}, {"light", flue ? 3 : 8}});
+      // (from just over the fire: begun inside the campfire's own block, the smoke took it for a ceiling and pooled there)
+      vec3 sp = flue ? *flue : vec3((float)q.x, q.y + 0.98f, (float)q.z);
+      // a column of smoke, rising and spreading; out of a chimney a steady, fuller plume of grey that leans with the wind
+      // (it was a thin trail of little puffs from the stack's top)
+      for (int n = 0; n < 3; n++) if (R() < step * (signal ? 6 : flue ? 9 : 4.5f) / 3) {
+        float life = signal ? 11 + R() * 4 : flue ? 8 + R() * 4 : 6 + R() * 3, sz = (flue ? 0.42f : 0.26f) + R() * (flue ? 0.2f : 0.12f);
+        lv.fx->particles("campfire_smoke", vec3(sp.x + 0.5f + frand2() * (flue ? 0.25f : 0.4f), sp.y, sp.z + 0.5f + frand2() * (flue ? 0.25f : 0.4f)), 1,
+          {{"vel", {frand2() * 0.1f, (signal ? 1.9f : flue ? 1.0f : 1.25f) + R() * 0.35f, frand2() * 0.1f}}, {"life", life}, {"size", sz}, {"grow", flue ? 3.4 : 2.8}, {"grav", -0.03}, {"rise", true},
+           {"wind", {wx * (signal ? 1.2f : 2.f), wz * (signal ? 1.2f : 2.f)}}, {"light", flue ? 7 : 8}});
       }
       // in a hearth only thin wisps curl up into the flue
       if (flue && R() < step * 2) lv.fx->particles("smoke_puff", vec3(q.x + 0.3f + R() * 0.4f, q.y + 0.5f, q.z + 0.3f + R() * 0.4f), 1, {{"vel", {0, 0.45, 0}}, {"life", 0.8f + R() * 0.5f}, {"size", 0.1}, {"grow", 0.8}, {"grav", -0.02}, {"rise", true}});
@@ -322,7 +325,7 @@ private:
       bool signal = w.getBlock(q.x, q.y - 1, q.z) == reg().blockId("hay_bale");
       if (R() > farStep * (signal ? 1.6f : 1.1f)) continue;
       auto flue = campFlue(w, q.x, q.y, q.z);
-      vec3 sp = flue ? *flue : vec3((float)q.x, q.y + 0.6f, (float)q.z);
+      vec3 sp = flue ? *flue : vec3((float)q.x, q.y + 0.98f, (float)q.z);
       lv.fx->particles("campfire_smoke", vec3(sp.x + 0.5f + frand2() * 0.3f, sp.y, sp.z + 0.5f + frand2() * 0.3f), 1,
         {{"vel", {frand2() * 0.1f, (signal ? 2.0f : 1.4f) + R() * 0.4f, frand2() * 0.1f}}, {"life", signal ? 16 + R() * 5 : 11 + R() * 4}, {"size", 0.42f + R() * 0.18f}, {"grow", 3.4},
          {"grav", -0.02}, {"rise", true}, {"wind", {wx * 1.6f, wz * 1.6f}}, {"light", 6}});

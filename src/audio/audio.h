@@ -20,7 +20,7 @@ struct AudioScene {
   double time = 0;                // world clock in seconds (the wind's slow wobble)
   float gust = 0;                 // weather: how hard the wind gusts, 0..1
   float rain = 0;                 // weather: the rain hiss level (WeatherSystem::rainLevel)
-  int netherLand = -1;            // BTA 8.0's Nether: which of its five lands (gen/nether_bta.h NetherBiome), -1 elsewhere
+  int netherLand = -1;            // Nether land (gen/nether_bta.h NetherBiome), -1 elsewhere
   std::string place;              // the music of the place: plains forest jungle desert savanna frost peaks swamp ocean village
   bool jukebox = false;           // a jukebox is playing nearby: the music keeps quiet
   std::string jukeboxDisc;        // ...its disc ("sun", "tide"...) and how loud it is here (0..1, by distance)
@@ -40,6 +40,7 @@ public:
   void shutdown();
   void setListener(vec3 pos, vec3 forward, vec3 up);
   void setVolumes(const Settings& s);
+  void setMuted(bool on);   // silence the mix until cleared; the volume sliders are left alone
   // The same calls the original game makes on its `sfx` object (game/audio.js), so ported code keeps
   // its sound names: sfx.play('click') -> play("click"), sfx.playAt('chest', x, y, z) -> playAt("chest", pos),
   // sfx.material('stone', 'dig') -> material("stone", "dig"), sfx.note(...) -> note(...).

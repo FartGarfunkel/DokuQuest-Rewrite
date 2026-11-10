@@ -32,6 +32,7 @@ const RigModel* rigModel(const std::string& key) {
   M.legH = num(d, "legH", 6); M.pitch0 = num(d, "pitch0", 0); M.seatY = num(d, "seatY", 0);
   M.packBase = d.value("packBase", std::string()); M.packTint = d.value("packTint", json());
   if (d.contains("packTex") && d["packTex"].is_array()) for (auto& t : d["packTex"]) if (t.is_string()) M.packTex.push_back(t.get<std::string>());
+  M.uvTex = d.value("uvTex", std::string()); M.uvTexW = (int)num(d, "uvTexW", 64);
   M.gallop = flag(d, "gallop"); M.armsReach = flag(d, "armsReach"); M.heavy = flag(d, "heavy"); M.flukes = flag(d, "flukes");
   for (auto& pj : d["parts"]) {
     RigPart p;
@@ -44,6 +45,8 @@ const RigModel* rigModel(const std::string& key) {
     p.pivot = v3(pj["pivot"]); p.min = v3(pj["min"]); p.max = v3(pj["max"]); p.rest = v3(pj.value("rest", json()));
     p.hasHand = pj.contains("hand"); p.hand = v3(pj.value("hand", json()));
     p.tex = pj.value("tex", json());
+    p.uv = pj.value("uv", json()); p.vox = pj.value("vox", json()); p.uvMirror = flag(pj, "mirror"); p.res = num(pj, "res", 0);
+    if (pj.contains("item") && pj["item"].is_string()) p.item = pj["item"].get<std::string>();
     p.swing = num(pj, "swing", 0); p.look = pj.contains("look") ? (pj["look"].is_number() ? pj["look"].get<float>() : 1.f) : 0; p.hop = num(pj, "hop", 0);
     p.flap = num(pj, "flap", 0); p.reach = num(pj, "reach", 0); p.slam = num(pj, "slam", 0);
     std::string par = pj.contains("parent") && pj["parent"].is_string() ? pj["parent"].get<std::string>() : "";
@@ -532,7 +535,7 @@ static void rigLife(Creature& m, const RigModel& d, Pose& P) {
 mat4 creatureBase(const Creature& m, bool full) {
   mat4 b(1);
   if (m.baby) b = glm::scale(b, vec3(0.55f));
-  if (m.type == "wither_storm") if (auto g = m.data.find("growS"); g != m.data.end() && g->is_number()) b = glm::scale(b, vec3(g->get<float>()));   // it grows (sim/wither.cpp stormScale)
+  if (m.type == "wither_storm" || m.type == "wither") if (auto g = m.data.find("growS"); g != m.data.end() && g->is_number()) b = glm::scale(b, vec3(g->get<float>()));   // it grows (sim/wither.cpp stormScale)
   if (full) {
     if (m.type == "slime" || m.T->slimy) {
       float s = m.size == 1 ? 0.5f : 1, sq = m.onGround ? 1 : 1 + std::min(0.25f, std::fabs(m.vel.y) * 0.04f);
@@ -541,7 +544,7 @@ mat4 creatureBase(const Creature& m, bool full) {
     if (m.fuse > 0) { float s = 1 + m.fuse * 0.12f + std::sin(m.fuse * 40) * 0.015f; b = glm::scale(b, vec3(s, 1 + m.fuse * 0.05f, s)); }
   }
   b = glm::rotate(b, m.yaw, vec3(0, 1, 0));
-  if (full && m.deathTime > 0) {
+  if (full && m.deathTime > 0 && m.state != "dying") {   // the ender dragon rises in its beam instead of toppling
     float k = clampv((m.deathTime - 0.12f) / 0.36f, 0.f, 1.f), fall = k * k;
     float bounce = m.deathTime > 0.48f ? std::sin(clampv((m.deathTime - 0.48f) / 0.16f, 0.f, 1.f) * PI) * 0.07f : 0;
     float px = -(m.w > 0 ? m.w : 0.3f);
@@ -605,14 +608,17 @@ void rigPose(Creature& m, const RigModel& M, const mat4& base) {
     if (rz) mm = glm::rotate(mm, rz, vec3(0, 0, 1));
     m.mats[i] = mm;
   }
-  // the cinder wisp (a blaze): its rods circle the burning heart in two rings turning opposite ways, each
-  // bobbing on its own, like Minecraft's blaze (the original only spun them where they stood)
+  // the cinder wisp (a blaze): twelve rods in three rings, each ring turning as one group and the next
+  // ring the other way. A whirlwind keeps the old rod-by-rod spin so it stays a column, not a blaze.
   if (M.post == "orbit") {
+    int rods = 0;
+    for (const RigPart& p : M.parts) if (p.role == "rod") rods++;
+    const bool rings = rods >= 12;
     float tt = m.age + m.id * 0.37f;
     for (size_t i = 0; i < M.parts.size(); i++) {
       const RigPart& part = M.parts[i];
       if (part.role != "rod" || m.lost.count(part.name)) continue;
-      bool upper = part.idx % 2;
+      bool upper = rings ? ((part.idx / 4) % 2 != 0) : (part.idx % 2 != 0);
       float a0 = std::atan2(part.pivot.z, part.pivot.x), r = std::hypot(part.pivot.x, part.pivot.z) * 1.25f;
       float a = a0 + (upper ? -1.f : 1.f) * tt * 1.8f;
       float bob = std::sin(tt * 2.6f + part.idx * 1.3f) * 0.08f + (upper ? 0.05f : -0.1f);

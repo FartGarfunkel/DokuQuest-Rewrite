@@ -15,7 +15,14 @@
 
 namespace dq {
 
-struct ToolMaterial { std::string key, name, prefix, element; std::vector<std::string> items; vec3 rgb{1}; };
+// A material with no tool or armour set of its own (tin, quartz, amethyst, mese...) brings its own stats ("stats" in
+// data/tool_materials.json): a pickaxe's tier, speed, damage and wear, which the other kinds take in proportion to iron's;
+// and its armour against iron's (armorK points, armorDurK wear). Such a material makes a tool or a piece all of itself too.
+struct ToolMaterial {
+  std::string key, name, prefix, element; std::vector<std::string> items; vec3 rgb{1};
+  bool stats = false, tools = true;
+  int sTier = 0; float sSpeed = 0, sDamage = 0, sDur = 0, armorK = 0, armorDurK = 0, fireResist = 0;
+};
 const std::vector<ToolMaterial>& toolMaterials();                       // data/tool_materials.json
 const ToolMaterial* toolMaterial(const std::string& key);
 const ToolMaterial* toolMaterialOfItem(const std::string& itemKey);     // which material an item is (tags too)
@@ -41,7 +48,7 @@ bool isPartArmor(const ItemStack& s);
 bool makePartArmor(const std::string& piece, const std::vector<std::string>& mats, ItemStack& out);
 float armorPointsOf(const ItemStack& s);                                // worn: what it turns aside
 float armorFireResistOf(const ItemStack& s);
-std::string partArmorWornLook(const ItemStack& s);                      // the piece worn looks like: its main material's own
+std::string partArmorWornLook(const ItemStack& s);                      // what armorMeshes draws: its id, or a mixed piece's "pa:..." key
 
 // Set a gem in a tool (the Tool Forge): what each gem does, and the tool with it (false: not a gem, or it already has one)
 const char* gemEffect(const std::string& gemItem);

@@ -2,6 +2,7 @@
 #include "assets/pack_armor.h"
 #include "assets/pack_fs.h"
 #include "assets/tileset.h"
+#include "common/fs.h"
 #include <map>
 
 namespace dq {
@@ -10,8 +11,11 @@ namespace {
 struct ArmorSet { std::optional<ArmorLayer> l1, l2, o1, o2; int bare = -1; };
 std::map<std::string, ArmorSet> g_sets;
 std::map<std::string, ArmorLayer> g_dyed;
+// the game's own materials last: no pack paints those, the local overlay pack does (tools/port/armor_art.py)
 const std::vector<std::pair<std::string, std::vector<std::string>>> NAMES = {
-  {"leather", {"leather"}}, {"iron", {"iron"}}, {"gold", {"gold", "golden"}}, {"diamond", {"diamond"}}, {"cinderite", {"netherite"}}, {"copper", {"copper"}}};
+  {"leather", {"leather"}}, {"iron", {"iron"}}, {"gold", {"gold", "golden"}}, {"diamond", {"diamond"}}, {"cinderite", {"netherite"}}, {"copper", {"copper"}},
+  {"bronze", {"bronze"}}, {"silver", {"silver"}}, {"steel", {"steel"}}, {"mithril", {"mithril"}}, {"adamantite", {"adamantite"}}, {"emerald", {"emerald"}},
+  {"zanite", {"zanite"}}, {"gravitite", {"gravitite"}}, {"thallasium", {"thallasium"}}};
 const int LEATHER_UNDYED[3] = {160, 101, 64};
 }
 
@@ -19,24 +23,31 @@ void resetPackArmor() { g_sets.clear(); g_dyed.clear(); }
 
 int loadPackArmor(const PackFS& P) {
   resetPackArmor();
-  const std::string& root = P.texRoot;
-  auto first = [&](const std::vector<std::string>& paths) -> std::optional<ArmorLayer> {
-    for (auto& p : paths) {
-      auto b = P.read(p); if (!b) continue;
+  // the chosen pack first, then the local overlay pack (Mod Art (local): the armour of the pack's style for the
+  // materials it has no picture of, tools/port/armor_art.py)
+  const std::unique_ptr<PackFS> ov = PackFS::open(userDir() / "resourcepacks" / "Mod Art (local)");
+  auto firstIn = [&](const PackFS& Q, const std::vector<std::string>& rels) -> std::optional<ArmorLayer> {
+    if (!Q.hasTextures()) return std::nullopt;
+    for (auto& r : rels) {
+      auto b = Q.read(Q.texRoot + r); if (!b) continue;
       ArmorLayer L;
       if (loadPngMem(b->data(), b->size(), L.w, L.h, L.rgba) && L.w >= 64 && L.w == L.h * 2) return L;
     }
     return std::nullopt;
   };
+  auto first = [&](const std::vector<std::string>& rels) -> std::optional<ArmorLayer> {
+    if (auto L = firstIn(P, rels)) return L;
+    return ov ? firstIn(*ov, rels) : std::nullopt;
+  };
   int n = 0;
   for (auto& [mat, names] : NAMES) {
     ArmorSet S;
     for (auto& nm : names) {
-      if (!S.l1) S.l1 = first({root + "entity/equipment/humanoid/" + nm + ".png", root + "models/armor/" + nm + "_layer_1.png"});
-      if (!S.l2) S.l2 = first({root + "entity/equipment/humanoid_leggings/" + nm + ".png", root + "models/armor/" + nm + "_layer_2.png"});
+      if (!S.l1) S.l1 = first({"entity/equipment/humanoid/" + nm + ".png", "models/armor/" + nm + "_layer_1.png"});
+      if (!S.l2) S.l2 = first({"entity/equipment/humanoid_leggings/" + nm + ".png", "models/armor/" + nm + "_layer_2.png"});
       if (mat == "leather") {
-        if (!S.o1) S.o1 = first({root + "entity/equipment/humanoid/" + nm + "_overlay.png", root + "models/armor/" + nm + "_layer_1_overlay.png"});
-        if (!S.o2) S.o2 = first({root + "entity/equipment/humanoid_leggings/" + nm + "_overlay.png", root + "models/armor/" + nm + "_layer_2_overlay.png"});
+        if (!S.o1) S.o1 = first({"entity/equipment/humanoid/" + nm + "_overlay.png", "models/armor/" + nm + "_layer_1_overlay.png"});
+        if (!S.o2) S.o2 = first({"entity/equipment/humanoid_leggings/" + nm + "_overlay.png", "models/armor/" + nm + "_layer_2_overlay.png"});
       }
     }
     if (S.l1 || S.l2) { g_sets[mat] = std::move(S); n++; }

@@ -11,7 +11,10 @@ namespace dq {
 struct CharPose {
   float yaw = 0, headPitch = 0, walk = 0, walkAmt = 0, swing = 0, time = 0, vy = 0, land = 0, landAmt = 1, bow = 0, eat = 0;   // landAmt: how hard (0.3 a hop .. 1.6 a long drop)
   float swimPh = 0, swimMv = 0, swimPitch = 0, climb = 0, deathT = 0, lean = 0, castWind = 0;
+  bool crawl = false; float crawlPh = 0, crawlMv = 0;   // on your belly in a low gap: a commando crawl (charRig crawlLimbs), not the swim
   bool sneak = false, sit = false, sleep = false, swim = false, hang = false, air = false, sprint = false;
+  bool bowArm = false;   // a bow carried in the right hand: that arm hangs at the side, still (no gestures turn the bow over)
+  bool scope = false;    // a spyglass up to the eye: the arm raised, the elbow out, the glass level before the eye
   bool held = false, off = false, carry = false, paddle = false, fp = false, fpLeftArm = false;
   // anim.js: the body turned its own way, leans
   bool hasBodyYaw = false; float bodyYaw = 0, headTurn = 0, legTurn = 0, accLean = 0, turnLean = 0;
@@ -38,6 +41,9 @@ struct CharPose {
 // part angles (x, y, z; applied as rotY, rotX, rotZ) and the lift of the whole body (blocks)
 struct CharAngles { vec3 body{0}, head{0}, armR{0}, foreR{0}, armL{0}, foreL{0}, legR{0}, shinR{0}, legL{0}, shinL{0}; float lift = 0; };
 CharAngles charAnimate(const CharPose& pose);
+// a bow in the hand (render/char_layer.cpp, render/villager_layer.cpp): its size (item units to blocks) and where the
+// fist's middle is down the forearm (model px from the elbow)
+constexpr float BOW_SCALE = 0.85f, BOW_FIST = 6.3f;
 
 // every part's matrix for one frame: part space (model pixels about the part's pivot) -> render space.
 // draw a skin part with part[i] * scale[i] * mesh.local().

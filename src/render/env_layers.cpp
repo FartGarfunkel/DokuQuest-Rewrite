@@ -6,12 +6,14 @@
 #include "render/env_layers.h"
 #include "render/distant.h"
 #include "render/clouds.h"
+#include "render/clouds_volume.h"
 #include "render/pack_geom.h"
 #include "render/particles.h"
 #include "render/sky.h"
 #include "client/session.h"
 #include "client/app.h"
 #include "sim/weather.h"
+#include "gen/dimgens.h"
 #include <imgui.h>
 
 namespace dq {
@@ -62,9 +64,10 @@ public:
 class CloudLayer : public RenderLayer {
 public:
   CloudRenderer clouds;
+  VolumetricClouds vol;   // (render/clouds_volume.cpp: the heaps' place when it's on)
   const char* name() const override { return "clouds"; }
   int order() const override { return -10; }
-  void update(GameSession& s, double) override { clouds.update(*s.level, s.frame, skyOf(s.frame)); }
+  void update(GameSession& s, double dt) override { clouds.update(*s.level, s.frame, skyOf(s.frame)); vol.update(*s.level, s.frame, skyOf(s.frame), dt); }
   void drawOpaque(GameSession&, const FrameCtx& f) override {
     // One line when the flag changes, so a sky shot can show whether these planes were drawn.
     bool skip = packSkipGameClouds();
@@ -74,10 +77,12 @@ public:
       prev = (int)skip;
     }
     if (skip) return;
+    if (vol.active && f.portalDepth == 0) return;   // the volumetric layer goes over the land in the translucent pass
     clouds.drawOpaque(f, skyOf(f));
   }
   void drawTranslucent(GameSession&, const FrameCtx& f) override {
     if (packSkipGameClouds()) return;
+    if (vol.active && f.portalDepth == 0) { vol.draw(f, skyOf(f)); return; }   // (the voxel wisps were hard strips against it)
     clouds.drawWisps(f, skyOf(f));
   }
 };
@@ -315,10 +320,14 @@ void WeatherFxLayer::particleWeather(GameSession& s, WeatherSystem* W, double dt
       flies++;
     }
   }
-  // the Skylands: soft white motes and wisps drifting along on the breeze
-  if (d == DIM_AETHER) {
-    float n = 6 * amount * (float)dt;
+  // the Skylands: white motes on the meadows, golden leaves falling in the woods
+  if (d == DIM_AETHER && s.level) {
+    int land = skyLandAt(s.level->info.seed, ifloor(p.x), ifloor(p.z));
+    float n = (land == 0 ? 10.f : 6.f) * amount * (float)dt;
     u16 tMote = (u16)P.tile("sparkle");
+    u8 mr = 255, mg = 250, mb = 235;
+    if (land == 2) { mr = 210; mg = 230; mb = 255; }
+    else if (land == 1 || land == 3) { mr = 255; mg = 220; mb = 140; }
     while (n > rnd()) {
       n -= 1;
       float x = p.x + (rnd() - 0.5f) * 28, z = p.z + (rnd() - 0.5f) * 28, y = p.y - 2 + rnd() * 10;
@@ -326,38 +335,91 @@ void WeatherFxLayer::particleWeather(GameSession& s, WeatherSystem* W, double dt
       Particle q; q.p = vec3(x, y, z); q.life = q.max = 5 + rnd() * 4;
       q.v = vec3(0.35f + rnd() * 0.25f, (rnd() - 0.4f) * 0.1f, 0.1f + (rnd() - 0.5f) * 0.2f);
       q.size = q.size0 = 0.022f + rnd() * 0.015f; q.tile = tMote; q.light = 0xFF; q.flutter = 0.25f; q.ph = rnd() * 6;
-      q.tint[0] = 255; q.tint[1] = 250; q.tint[2] = 235;
+      q.tint[0] = mr; q.tint[1] = mg; q.tint[2] = mb;
       P.add(q);
     }
+    if (land == 1 || land == 3) {
+      float leaves = (land == 3 ? 4.f : 2.f) * amount * (float)dt;
+      u16 tLeaf = (u16)P.tile("leaf_light");
+      while (leaves > rnd()) {
+        leaves -= 1;
+        float x = p.x + (rnd() - 0.5f) * 22, z = p.z + (rnd() - 0.5f) * 22, y = p.y + 1 + rnd() * 8;
+        if (R.tSolid[w.getBlock(ifloor(x), ifloor(y), ifloor(z))]) continue;
+        Particle q; q.p = vec3(x, y, z); q.life = q.max = 6 + rnd() * 4;
+        q.v = vec3(0.4f + rnd() * 0.3f, -0.35f - rnd() * 0.25f, (rnd() - 0.5f) * 0.3f);
+        q.size = q.size0 = 0.07f; q.tile = tLeaf; q.light = 0xFF; q.flutter = 1.1f; q.ph = rnd() * 6; q.grav = 0.04f;
+        q.tint[0] = 230; q.tint[1] = 190; q.tint[2] = 60;
+        P.add(q);
+      }
+    }
   }
-  // the End: violet motes drifting slowly up out of the void, and now and then a pale glint
-  if (d == DIM_END) {
-    float n = 5 * amount * (float)dt;
-    u16 tMote = (u16)P.tile("sparkle");
+  // the End: the dragon island keeps violet motes. Each outer land sheds its own.
+  if (d == DIM_END && s.level) {
+    const float reach = std::hypot(p.x, p.z);
+    const int land = reach > 220.f ? endLandAt(s.level->info.seed, s.level->info.genVersion, ifloor(p.x), ifloor(p.z)) : -1;
+    const char* tileName = "sparkle";
+    u8 tr = 170, tg = 110, tb = 255;
+    float vy = 0.16f, flutter = 0.3f, blinkP = 0.15f, grav = 0.f;
+    if (land == 0) { tr = 150; tg = 50; tb = 170; vy = 0.2f; }
+    else if (land == 1) { tileName = "leaf_pink"; tr = 241; tg = 146; tb = 229; vy = -0.1f; flutter = 0.9f; blinkP = 0; grav = 0.02f; }
+    else if (land == 2) { tr = 99; tg = 205; tb = 255; vy = 0.05f; flutter = 0.35f; blinkP = 0.6f; }   // foggy mushroomland: glowing spheres
+    else if (land == 3) { tr = 99; tg = 228; tb = 247; vy = 0.08f; blinkP = 0.55f; }
+    else if (land == 4) { tr = 210; tg = 170; tb = 230; vy = 0.06f; blinkP = 0.7f; }
+    else if (land == 5) { tileName = "spore"; tr = 220; tg = 200; tb = 60; vy = -0.08f; flutter = 0.35f; blinkP = 0; }
+    else if (land == 6) { tileName = "spore"; tr = 80; tg = 220; tb = 200; vy = -0.06f; flutter = 0.8f; blinkP = 0; }
+    else if (land == 7) { tr = 50; tg = 30; tb = 70; vy = 0.04f; flutter = 0.15f; blinkP = 0; }
+    else if (land == 8) { tileName = "leaf_white"; tr = 230; tg = 245; tb = 255; vy = -0.18f; flutter = 0.7f; blinkP = 0; }
+    else if (land == 9) { tr = 255; tg = 170; tb = 50; vy = 0.22f; blinkP = 0.2f; }
+    else if (land == 10) { tr = 178; tg = 210; tb = 248; vy = 0.05f; blinkP = 0.35f; }
+    else if (land == 11) { tr = 220; tg = 90; tb = 60; vy = 0.1f; blinkP = 0.4f; }
+    else if (land == 12) { tileName = "spore"; tr = 226; tg = 230; tb = 150; vy = -0.05f; blinkP = 0; }
+    else if (land == 13) { tr = 170; tg = 255; tb = 90; vy = 0.12f; blinkP = 0.45f; }
+    else if (land == 14) { tr = 244; tg = 60; tb = 80; vy = 0.06f; blinkP = 0.6f; }
+    else if (land == 15) { tileName = "ash_flake"; tr = 140; tg = 50; tb = 30; vy = -0.16f; flutter = 0.5f; blinkP = 0; }
+    else if (land == 16) { tileName = "ash_flake"; tr = 236; tg = 236; tb = 226; vy = -0.12f; flutter = 0.6f; blinkP = 0; }   // dust wastelands: white ash
+    else if (land == 17) { tr = 255; tg = 184; tb = 71; vy = 0.04f; blinkP = 0.3f; }                                    // umbra valley: amber spheres
+    else if (land == 18) { tr = 99; tg = 205; tb = 255; vy = 0.05f; blinkP = 0.6f; }                                     // megalake grove: glowing spheres
+    float n = (land < 0 ? 5.f : 9.f) * amount * (float)dt;
+    u16 tMote = (u16)P.tile(tileName);
     while (n > rnd()) {
       n -= 1;
       float x = p.x + (rnd() - 0.5f) * 26, z = p.z + (rnd() - 0.5f) * 26, y = p.y - 4 + rnd() * 12;
       if (R.tSolid[w.getBlock(ifloor(x), ifloor(y), ifloor(z))]) continue;
-      bool glint = rnd() < 0.15f;
+      bool glint = blinkP > 0 && rnd() < blinkP;
       Particle q; q.p = vec3(x, y, z); q.life = q.max = 4 + rnd() * 4;
-      q.v = vec3((rnd() - 0.5f) * 0.15f, 0.12f + rnd() * 0.2f, (rnd() - 0.5f) * 0.15f);
-      q.size = q.size0 = glint ? 0.035f : 0.025f; q.tile = tMote; q.light = 0xFF; q.flutter = 0.3f; q.ph = rnd() * 6; q.blink = glint ? 2 + rnd() * 2 : 0;
-      q.tint[0] = glint ? 240 : 170; q.tint[1] = glint ? 225 : 110; q.tint[2] = 255;
+      q.v = vec3((rnd() - 0.5f) * 0.15f, vy + (rnd() - 0.5f) * 0.08f, (rnd() - 0.5f) * 0.15f);
+      q.size = q.size0 = glint ? 0.04f : 0.028f; q.tile = tMote; q.light = 0xFF; q.flutter = flutter; q.ph = rnd() * 6;
+      q.blink = glint ? 2 + rnd() * 2 : 0; q.grav = grav;
+      q.tint[0] = tr; q.tint[1] = tg; q.tint[2] = tb;
       P.add(q);
     }
   }
-  // the Ember Depths: ash drifting down, embers drifting up
-  if (d == DIM_NETHER) {
-    float n = 7 * amount * (float)dt;
-    u16 tAsh = (u16)P.tile("ash_flake"), tEmb = (u16)P.tile("ember_spark");
+  // the Ember Depths: each land's own ash, ember, flake or spark
+  if (d == DIM_NETHER && s.level) {
+    u8 na = NB_CRAG, nb = NB_CRAG; float nm = 1.f;
+    netherLandAt(s.level->info.seed, s.level->info.genVersion, ifloor(p.x), ifloor(p.y), ifloor(p.z), na, nb, nm);
+    const char* tileName = "ash_flake";
+    u8 tr = 160, tg = 70, tb = 50;
+    float vy = -0.28f, emberP = 0.22f, flutter = 0.5f;
+    if (na == NB_VOLCANIC) { emberP = 0.72f; tr = 255; tg = 90; tb = 30; }
+    else if (na == NB_SULFUR) { tileName = "spore"; tr = 210; tg = 210; tb = 70; vy = -0.08f; emberP = 0.05f; flutter = 0.3f; }
+    else if (na == NB_CRYSTAL) { tileName = "sparkle"; tr = 220; tg = 80; tb = 180; vy = 0.16f; emberP = 0.15f; flutter = 0.25f; }
+    else if (na == NB_CRYSTAL_PLAINS) { tileName = "sparkle"; tr = 210; tg = 160; tb = 220; vy = 0.1f; emberP = 0.08f; }
+    else if (na == NB_SHELF) { tileName = "leaf_white"; tr = 180; tg = 210; tb = 230; vy = -0.2f; emberP = 0.02f; flutter = 0.7f; }
+    else if (na == NB_OLDWORLD) { tileName = "spore"; tr = 140; tg = 100; tb = 70; vy = -0.1f; emberP = 0.08f; }
+    else if (na == NB_OLD_DESERT) { tileName = "spore"; tr = 190; tg = 150; tb = 90; vy = -0.14f; emberP = 0.04f; flutter = 0.6f; }
+    float n = 8 * amount * (float)dt;
+    u16 tMain = (u16)P.tile(tileName), tEmb = (u16)P.tile("ember_spark");
     while (n > rnd()) {
       n -= 1;
-      bool ember = rnd() < 0.25f; float x = p.x + (rnd() - 0.5f) * 18, z = p.z + (rnd() - 0.5f) * 18, y = p.y + (ember ? -3 : 1) + rnd() * 7;
+      bool ember = rnd() < emberP; float x = p.x + (rnd() - 0.5f) * 18, z = p.z + (rnd() - 0.5f) * 18, y = p.y + (ember ? -3 : 1) + rnd() * 7;
       if (R.tSolid[w.getBlock(ifloor(x), ifloor(y), ifloor(z))]) continue;
       Particle q; q.p = vec3(x, y, z); q.life = q.max = ember ? 1.5f + rnd() * 1.5f : 4 + rnd() * 3;
-      q.v = vec3((rnd() - 0.5f) * 0.3f, ember ? 0.5f + rnd() * 0.5f : -0.25f - rnd() * 0.2f, (rnd() - 0.5f) * 0.3f);
-      q.size = q.size0 = ember ? 0.02f : 0.03f; q.shrink = ember; q.tile = ember ? tEmb : tAsh; q.light = ember ? 0xFF : w.getLight(ifloor(x), ifloor(y), ifloor(z));
-      q.flutter = ember ? 0.2f : 0.5f; q.ph = rnd() * 6;
+      q.v = vec3((rnd() - 0.5f) * 0.3f, ember ? 0.55f + rnd() * 0.5f : vy - rnd() * 0.1f, (rnd() - 0.5f) * 0.3f);
+      q.size = q.size0 = ember ? 0.02f : 0.032f; q.shrink = ember; q.tile = ember ? tEmb : tMain;
+      q.light = ember || na == NB_CRYSTAL || na == NB_CRYSTAL_PLAINS ? 0xFF : w.getLight(ifloor(x), ifloor(y), ifloor(z));
+      q.flutter = ember ? 0.2f : flutter; q.ph = rnd() * 6;
+      if (!ember) { q.tint[0] = tr; q.tint[1] = tg; q.tint[2] = tb; }
       P.add(q);
     }
   }
@@ -508,7 +570,8 @@ void WeatherFxLayer::emitters(GameSession& s, double dt, double step) {
             break;
           }
           case EM_CAMPFIRE:
-            if (rnd() < step * 3) P.spawn("campfire_smoke", vec3(x + 0.5f, y + 0.6f, z + 0.5f), 1);
+            // (the smoke is content_layers' campfireFx: up the chimney when it's a hearth. This one puffed it out at the
+            // fire itself, inside the house and up through its roof)
             if (rnd() < step * 2) P.spawn("flame", vec3(x + 0.3f + rnd() * 0.4f, y + 0.3f, z + 0.3f + rnd() * 0.4f), 1);
             break;
           case EM_DRIP_WATER: case EM_DRIP_LAVA: case EM_DRIP_LEAF: {

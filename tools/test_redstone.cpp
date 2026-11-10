@@ -160,7 +160,7 @@ int main(int argc, char** argv) {
   check(det == 8, "detector rail saw the cart");
   for (int i = 0; i < 160; i++) { run(1); det |= w.getMeta(X + 27, Y, Z + 8) & 8; }
   check(cart && std::fabs(cart->pos.x - (X + 30)) < 0.05f && std::fabs(cart->vel.x) < 0.01f && cart->onRail, "the cart rolls to the wall and stops (x " + std::to_string(cart ? cart->pos.x - X : 0) + ")");
-  check(cart && std::fabs(cart->pos.y - (Y + 1 / 16.f)) < 0.01f, "the cart rides a sixteenth above the rail");
+  check(cart && std::fabs(cart->pos.y - (Y + RAIL_Y)) < 0.01f, "the cart rides on the rails' heads (RAIL_Y above the floor)");
   check((w.getMeta(X + 27, Y, Z + 8) & 8) == 0, "detector rail off again");
   // 13. daylight detector at noon
   lv->info.time = DAY_LEN * 0.25;

@@ -7,6 +7,8 @@
 //                 even with water already standing in it.
 //   The End:      twelve Eyes of Ender in a stronghold's ring of frames open a 3x3 pool (a flat window).
 //   Rifts:        free-standing tears (riftarc.js) registered as virtual portals, with a ragged edge.
+//   The Drift:    BTA's: a glowstone frame with bedrock set on its bottom inside (sim/drift.cpp lights it); it leads
+//                 to the side realm REALM_DRIFT, eight times as far out (BTA's worldScale 8), and back.
 //
 // The stacked dimensions are bands of ONE World (world/dims.h), so a portal pair joins two places in
 // the same World; side realms (pocket, his realm) are other Worlds (Level::world(realm)). A portal is a
@@ -29,7 +31,7 @@ constexpr int NETHER_SCALE = 1;         // Ember Depths distances: 1:1 like the 
 constexpr int END_PLAT_X = 100, END_PLAT_LY = 96, END_PLAT_Z = 0;
 inline ivec3 endPlatform() { return ivec3(END_PLAT_X, dimBase(DIM_END) + END_PLAT_LY, END_PLAT_Z); }
 
-enum class PortalKind : u8 { Ember = 0, Sky = 1, End = 2, Rift = 3 };
+enum class PortalKind : u8 { Ember = 0, Sky = 1, End = 2, Rift = 3, Drift = 4 };
 
 // One portal as a window: a connected set of portal cells in one plane (or a virtual rift).
 struct PortalWindow {
@@ -176,7 +178,8 @@ private:
   std::unordered_set<std::string> failed;
   u64 epoch_ = 1;
   int guard = 0;                              // re-entrancy (setBlock inside block-change hooks)
-  BlockId bEmber = 0, bSky = 0, bEnd = 0, bObsidian = 0, bGlow = 0, bFrame = 0, bFrameEye = 0;
+  BlockId bEmber = 0, bSky = 0, bEnd = 0, bObsidian = 0, bGlow = 0, bFrame = 0, bFrameEye = 0, bDrift = 0;
+  std::unordered_map<std::string, ivec2> driftLand;   // where a Drift portal's far end goes: land near eight times out
   u8 isCell[MAX_BLOCKS]{};
 
   void rebuild(int realm, RealmIdx& r);
@@ -187,6 +190,13 @@ private:
   void prelink(const PortalWindow& w, const Pending& p);
   void swap(Entity& e, const PortalWindow& w, const PortalDest& d, bool mirror);
   void ensureEndPlatform(World& w);
+  // twins: a portal made for another is rebuilt where it stands to that one's size, so each window shows the other's
+  // whole opening (a smaller twin let you see into the ground round it). Queued by dest(), done in tick().
+  struct Reshape { int realm; ivec3 anchor; int ow, oh; };
+  std::map<std::string, Reshape> reshapes;
+  void reshape(const Reshape& r);
+  // a frame and its opening: frame corner column (bx, bz), the opening's floor `by` (arrivePortal's way)
+  static vec3 buildAt(World& w, PortalSystem* ps, PortalKind kind, int dim, int bx, int by, int bz, int ow, int oh, int axis);
   bool flatDest(const PortalWindow& w, PortalDest& d);
   friend vec3 arrivePortal(World&, int, double, double, PortalKind, PortalSystem*, int, int, int, const std::string&);
 };

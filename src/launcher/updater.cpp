@@ -173,6 +173,10 @@ std::string Updater::activeVersion() const { return loadState().value("active", 
 
 fs::path Updater::executable(const std::string& base, std::string* version) const {
   json s = loadState();
+  // a development build (the launcher in a CMake build folder): always its own game beside it, whatever version the
+  // build was stamped with — otherwise a stale DQ_VERSION in the CMake cache runs a downloaded release instead
+  { std::error_code ec;
+    if (fs::exists(installDir() / "CMakeCache.txt", ec) && fs::exists(installDir() / exeName(base), ec)) { if (version) *version = DQ_VERSION; return installDir() / exeName(base); } }
   // a version the player picked (Options > Updates: rolled back, or kept on one): that one, whatever its number
   const std::string pin = s.value("pinned", "");
   if (pin == DQ_VERSION) { if (version) *version = DQ_VERSION; return installDir() / exeName(base); }

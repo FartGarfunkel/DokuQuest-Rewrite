@@ -12,6 +12,8 @@
 #include "sim/rpg.h"
 #include "core/item_glint.h"
 #include "ui/theme.h"
+#include "ui/book.h"
+#include "core/registry.h"
 #include "world/world.h"
 #include "common/noise.h"
 #include <imgui.h>
@@ -28,16 +30,9 @@ static std::string thousands(double v) {
 }
 
 // A dark panel in the middle of the screen; returns false if the window is collapsed/hidden.
-static bool panel(App& a, const char* id, float wFrac, float hFrac) {
-  ImGui::SetNextWindowPos(ImVec2(a.width * 0.5f, a.height * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-  ImGui::SetNextWindowSize(ImVec2(a.width * wFrac, a.height * hFrac), ImGuiCond_Always);
-  ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(18 / 255.f, 10 / 255.f, 30 / 255.f, 0.94f));
-  ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.54f, 0.42f, 0.82f, 1));
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10); ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2);
-  bool open = ImGui::Begin(id, nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings);
-  return open;
-}
-static void endPanel() { ImGui::End(); ImGui::PopStyleVar(2); ImGui::PopStyleColor(2); }
+// (the station screens were a dark panel of their own: they're written in the book now, below)
+
+// (bookBegin / bookPageRight / bookEnd / bookTitle: ui/book.h, the pages every station screen is written on)
 static void bar(float frac, ImU32 col, float w, float h = 6) {
   ImVec2 p = ImGui::GetCursorScreenPos();
   ImDrawList* dl = ImGui::GetWindowDrawList();
@@ -78,7 +73,7 @@ static bool slotButton(const char* id, const ItemStack& s, float size, const cha
     if (ic.valid()) dl->AddImage((ImTextureID)ic.tex, ImVec2(p.x + 3, p.y + 3), ImVec2(p.x + size - 3, p.y + size - 3), ImVec2(ic.uv0.x, ic.uv0.y), ImVec2(ic.uv1.x, ic.uv1.y), s.empty() ? IM_COL32(255, 255, 255, 60) : IM_COL32_WHITE);
     else if (!s.empty()) dl->AddText(ImVec2(p.x + 4, p.y + 4), IM_COL32_WHITE, key.substr(0, 4).c_str());
   }
-  if (!s.empty() && s.n > 1) { std::string n = std::to_string(s.n); ImVec2 ts = ImGui::CalcTextSize(n.c_str()); dl->AddText(ImVec2(p.x + size - ts.x - 3, p.y + size - ts.y - 1), IM_COL32_WHITE, n.c_str()); }
+  if (!s.empty() && s.n > 1) { std::string n = std::to_string(s.n); ImVec2 ts = ImGui::CalcTextSize(n.c_str()); const ImVec2 q(p.x + size - ts.x - 3, p.y + size - ts.y - 1); dl->AddText(ImVec2(q.x + 1, q.y + 1), IM_COL32(20, 12, 6, 230), n.c_str()); dl->AddText(q, IM_COL32_WHITE, n.c_str()); }
   if (itemGlints(s)) ui::drawGlint(dl, s.id, ImVec2(p.x + 3, p.y + 3), size - 6);
   if (!s.empty() && ImGui::IsItemHovered()) {
     const ItemDef* d = s.def();
@@ -95,6 +90,7 @@ static bool slotButton(const char* id, const ItemStack& s, float size, const cha
 // the player's bag under a station panel: click (A) sends a stack to the station
 template <class F> static void bagGrid(Player& p, float size, F onClick) {
   ImGui::TextDisabled("Inventory");
+  ImGui::Dummy(ImVec2(1, 2));
   for (int row = 0; row < 4; row++) {
     for (int c = 0; c < 9; c++) {
       int i = row == 3 ? c : 9 + row * 9 + c;   // backpack rows, then the hotbar
@@ -119,7 +115,30 @@ public:
   int frames = 0;
 };
 
-// ---- the spellbook (spellcraft.js) --------------------------------------------------------------------------
+// ---- the books: spellbook, skills, journal (ui/book.h) ----------------------------------------------------------------
+// a colour picked for the dark panels, deepened to read as ink on the paper
+static ImU32 inkOf(const std::string& hex, float a = 1) { vec3 c = hexRGBf(hex); return ui::withAlpha(ui::inkOf(IM_COL32((int)(c.r * 255), (int)(c.g * 255), (int)(c.b * 255), 255)), a); }
+// a whole row that takes clicks: returns 1 left, 2 right; hot when the pointer is on it
+static int rowHit(ImVec2 p, float w, float h, bool* hot = nullptr) {
+  ImGui::SetCursorScreenPos(p);
+  bool l = ImGui::InvisibleButton("##row", ImVec2(std::max(1.f, w), std::max(1.f, h)), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+  if (hot) *hot = ImGui::IsItemHovered();
+  if (!l) return 0;
+  return ImGui::IsMouseReleased(ImGuiMouseButton_Right) ? 2 : 1;
+}
+// a line of the record: name on the left, value on the right
+static void recordRow(ui::Book& b, ui::BookRows& r, const std::string& k, const std::string& v) {
+  ui::BookRow row; row.h = ui::textSize(ui::F_BODY, "Ag").y + 4 * ui::Z();
+  row.draw = [k, v](ImDrawList* dl, ImVec2 p, float w) {
+    ui::text(dl, ui::F_BODY, p, ui::ink::text, k.c_str());
+    ImVec2 s = ui::textSize(ui::F_BODY, v.c_str());
+    float x0 = p.x + ui::textSize(ui::F_BODY, k.c_str()).x + 6 * ui::Z(), x1 = p.x + w - s.x - 6 * ui::Z(), y = p.y + s.y * 0.8f;
+    for (float x = x0; x < x1; x += 4 * ui::Z()) dl->AddRectFilled(ImVec2(x, y), ImVec2(x + 1.5f * ui::Z(), y + 1.5f * ui::Z()), ui::ink::faint);   // the dotted leader
+    ui::text(dl, ui::F_BODY, ImVec2(p.x + w - s.x, p.y), ui::ink::key, v.c_str());
+  };
+  (void)b; r.push_back(std::move(row));
+}
+
 class SpellbookScreen : public MagicScreenBase {
 public:
   const char* id() const override { return "spellbook"; }
@@ -129,106 +148,157 @@ public:
     if (!p || !lv) return;
     closeOn(a, Act::Spellbook);
     const MagicData& md = magicData();
-    if (!panel(a, "##spellbook", 0.84f, 0.88f)) { endPanel(); return; }
     MagicState& m = magicState(*lv, *p);
     auto known = knownSpells(*p);
-    int lvl = skillLv(*p, "magic");
-    ImGui::PushFont(a.fontUiBig);
-    ImGui::TextColored(ImVec4(0.85f, 0.75f, 1, 1), "Spellbook \xC2\xB7 Magic %d \xC2\xB7 %d/%d mana", lvl, (int)std::floor(m.mana < 0 ? manaMax(*p) : m.mana), (int)manaMax(*p));
-    ImGui::PopFont();
-    ImGui::BeginChild("##sbl", ImVec2(0, -ImGui::GetFrameHeightWithSpacing() - 4), ImGuiChildFlags_NavFlattened); ui::padScrollHere();
-    std::string active = activeSpell(*p), left = offSpell(*p);
+    auto knows = [&](const std::string& k) { return std::find(known.begin(), known.end(), k) != known.end(); };
+    const int lvl = skillLv(*p, "magic");
+    const std::string active = activeSpell(*p), left = offSpell(*p);
+    // a bookmark per school (its first tome on the ribbon)
+    std::vector<ui::BookTab> tabs; std::vector<std::vector<std::string>> lists; std::vector<const std::array<std::string, 3>*> sch;
+    flat.clear();
     for (auto& sc : md.schools) {
       std::vector<std::string> ks;
       for (auto& k : md.spellOrder) if (md.spells.at(k).school == sc[0]) ks.push_back(k);
       if (ks.empty()) continue;
-      ImGui::Dummy(ImVec2(1, 4));
-      ImGui::TextColored(col4(sc[2]), "%s \xC2\xB7 level %d", sc[1].c_str(), schoolLv(*p, sc[0]));
-      for (auto& k : ks) {
-        const SpellDef& S = md.spells.at(k);
-        bool kn = std::find(known.begin(), known.end(), k) != known.end();
-        ImGui::PushID(k.c_str());
-        if (!kn) ImGui::BeginDisabled();
-        bool sel = k == active;
-        if (ImGui::Selectable("##row", sel, 0, ImVec2(0, ImGui::GetTextLineHeight())) && kn) pickSpell(*lv, *p, k);
-        if (sel && ImGui::IsWindowAppearing()) ImGui::SetItemDefaultFocus();
-        // the left hand: right-click, or X / L on the chosen row
-        if (kn && (ImGui::IsItemClicked(ImGuiMouseButton_Right) || (ImGui::IsItemFocused() && (ImGui::IsKeyPressed(ImGuiKey_GamepadFaceLeft, false) || ImGui::IsKeyPressed(ImGuiKey_L, false))))) setOffSpell(*lv, *p, k);
-        const bool inLeft = kn && k == left;
-        ImGui::SameLine(12); ImGui::TextColored(col4(S.col), "%s%s%s", sel ? "R " : inLeft ? "L " : "", kn ? spellTitle(*p, k).c_str() : S.name.c_str(), sel && inLeft ? " (both hands)" : "");
-        if (kn && ImGui::IsItemHovered()) ImGui::SetTooltip("Rank %d of 10 \xC2\xB7 %d%% to the next", spellRank(*p, k), (int)(spellRankProgress(*p, k) * 100));
-        ImGui::SameLine(190); ImGui::TextColored(ImVec4(0.6f, 0.82f, 1, 1), "Magic %d \xC2\xB7 %d mana", S.lvl, S.mana);
-        ImGui::SameLine(330);
-        ImGui::TextColored(ImVec4(0.73f, 0.73f, 0.73f, 1), "%s%s", kn ? "" : (lvl >= S.lvl ? "(find its tome) " : "(locked) "), S.desc.c_str());
-        if (!kn) ImGui::EndDisabled();
-        ImGui::PopID();
-      }
+      std::string icon = "book";
+      for (auto& k : ks) if (reg().item("tome_" + k)) { icon = "tome_" + k; break; }
+      tabs.push_back({sc[1], icon}); lists.push_back(ks); sch.push_back(&sc);
+      for (auto& k : ks) flat.push_back(k);
     }
-    ImGui::EndChild();
-    ImGui::TextDisabled("\xE2\x86\x91/\xE2\x86\x93 or d-pad: choose \xC2\xB7 Enter / A / click: right hand \xC2\xB7 L / X / right-click: left hand \xC2\xB7 Esc / B: close \xC2\xB7 Z casts without a staff");
-    endPanel();
+    book.keysTab = false;   // X is the left hand here
+    book.begin(a, "##spellbook", tabs);
+    const int n = (int)flat.size();
+    if (n) {
+      Input& in = a.input;
+      if (cur < 0) { cur = 0; for (int i = 0; i < n; i++) if (flat[i] == active) cur = i; book.showSel(cur); }
+      if (in.pressed(Act::MenuDown)) { cur = (cur + 1) % n; book.showSel(cur); }
+      if (in.pressed(Act::MenuUp)) { cur = (cur + n - 1) % n; book.showSel(cur); }
+      cur = std::clamp(cur, 0, n - 1);
+      if (in.pressed(Act::MenuOk) && knows(flat[cur])) pickSpell(*lv, *p, flat[cur]);
+      if (in.pressed(Act::MenuX) && knows(flat[cur])) setOffSpell(*lv, *p, flat[cur]);
+    }
+    const float z = ui::Z(), lh = ui::textSize(ui::F_BODY, "Ag").y + 2 * z, sh = ui::textSize(ui::F_SMALL, "Ag").y + 2 * z;
+    std::vector<ui::BookRows> secs;
+    int idx = 0;
+    for (size_t s = 0; s < lists.size(); s++) {
+      ui::BookRows r;
+      book.heading(r, (*sch[s])[1], inkOf((*sch[s])[2]));
+      book.para(r, "School level " + std::to_string(schoolLv(*p, (*sch[s])[0])) + " \xC2\xB7 Magic " + std::to_string(lvl) + " \xC2\xB7 " +
+        std::to_string((int)std::floor(m.mana < 0 ? manaMax(*p) : m.mana)) + " / " + std::to_string((int)manaMax(*p)) + " mana", ui::ink::muted, ui::F_SMALL);
+      for (auto& k : lists[s]) {
+        const SpellDef& S = md.spells.at(k);
+        const bool kn = knows(k), R = k == active, Lh = kn && k == left;
+        const std::string name = kn ? spellTitle(*p, k) : S.name;
+        const std::string note = kn ? S.desc : std::string(lvl >= S.lvl ? "Find or craft its tome to learn it. " : "Needs Magic " + std::to_string(S.lvl) + ": cast spells to grow your Magic. ") + S.desc;
+        auto lines = ui::Book::wrap(ui::F_SMALL, note, book.pageW() - 26 * z);
+        const int me = idx++;
+        ui::BookRow row; row.sel = me; row.h = lh + lines.size() * sh + 7 * z;
+        row.draw = [this, a = &a, lv, p, k, kn, R, Lh, name, lines, lh, sh, z, me, col = S.col, lvlNeed = S.lvl, mana = S.mana](ImDrawList* dl, ImVec2 q, float w) {
+          bool hot = false;
+          const int c = rowHit(q, w, lh + lines.size() * sh + 4 * z, &hot);
+          if (c == 1) cur = me;
+          if (kn && c == 1) pickSpell(*lv, *p, k);
+          if (kn && c == 2) { cur = me; setOffSpell(*lv, *p, k); }
+          if (me == cur || hot) dl->AddRectFilled(ImVec2(q.x - 4 * z, q.y - 1 * z), ImVec2(q.x + w + 2 * z, q.y + lh + lines.size() * sh + 3 * z), me == cur ? ui::ink::hilite : ui::col::rgb(0xc8a050, 45), 3 * z);
+          // which hand holds it: R, L, or both
+          const char* hand = R && Lh ? "RL" : R ? "R" : Lh ? "L" : "";
+          if (*hand) { ImVec2 hs = ui::textSize(ui::F_SMALL, hand); dl->AddRectFilled(q, ImVec2(q.x + hs.x + 6 * z, q.y + lh - 2 * z), ui::ink::head, 2 * z); ui::text(dl, ui::F_SMALL, ImVec2(q.x + 3 * z, q.y + (lh - 2 * z - hs.y) * 0.5f), ui::col::rgb(0xf3ead6), hand); }
+          const float nx = q.x + 26 * z;
+          ui::text(dl, ui::F_BODY, ImVec2(nx, q.y), kn ? inkOf(col) : ui::ink::muted, name.c_str());
+          std::string cost = "Magic " + std::to_string(lvlNeed) + " \xC2\xB7 " + std::to_string(mana) + " mana";
+          ImVec2 cs = ui::textSize(ui::F_SMALL, cost.c_str());
+          ui::text(dl, ui::F_SMALL, ImVec2(q.x + w - cs.x, q.y + (lh - cs.y) * 0.5f), ui::ink::muted, cost.c_str());
+          for (size_t i = 0; i < lines.size(); i++) ui::text(dl, ui::F_SMALL, ImVec2(nx, q.y + lh + i * sh), kn ? ui::ink::text : ui::ink::muted, lines[i].c_str());
+          if (kn && hot) ImGui::SetTooltip("Rank %d of 10 \xC2\xB7 %d%% to the next", spellRank(*p, k), (int)(spellRankProgress(*p, k) * 100));
+          (void)a;
+        };
+        r.push_back(std::move(row));
+      }
+      secs.push_back(std::move(r));
+    }
+    book.draw(secs);
+    // turning the pages with the arrows: the choice moves onto the open pages
+    if (book.turned && !book.shownSel.empty() && std::find(book.shownSel.begin(), book.shownSel.end(), cur) == book.shownSel.end()) cur = book.shownSel.front();
+    book.hint(a.input.usingPad() ? "\xE2\x86\x91 \xE2\x86\x93 choose \xC2\xB7 A: right hand \xC2\xB7 X: left hand \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 turn the pages \xC2\xB7 B: close"
+                                 : "Click: right hand \xC2\xB7 right-click: left hand \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 or the wheel: pages \xC2\xB7 B / Esc: close \xC2\xB7 Z / N cast (a staff makes it stronger)");
+    book.end();
   }
   std::string lv0;
+  ui::Book book;
+  std::vector<std::string> flat;
+  int cur = -1;
 };
 
 // ---- skills and perks (skills.js + rpg.js) ------------------------------------------------------------------------
 class SkillsScreen : public MagicScreenBase {
 public:
   const char* id() const override { return "skills"; }
-  void onOpen(App& a) override { (void)a; }
   void draw(App& a) override {
     Player* p = player(a);
     if (!p) return;
     closeOn(a, Act::Skills);
     if (a.input.pressed(Act::Journal) && frames > 1) { want = true; swapTo = 1; }
     const MagicData& md = magicData();
-    if (!panel(a, "##skills", 0.62f, 0.86f)) { endPanel(); return; }
-    ImGui::PushFont(a.fontUiBig); ImGui::Text("Skills"); ImGui::PopFont();
-    ImGui::SameLine(ImGui::GetWindowWidth() - 170); ImGui::TextDisabled("Total level %d", totalLevel(*p));
-    float colW = (ImGui::GetContentRegionAvail().x - 16) / 2;
-    if (ImGui::BeginTable("##sk", 2)) {
-      for (auto& s : md.skills) {
-        ImGui::TableNextColumn();
-        double xp = skillXp(*p, s.key);
-        int L = skillLevel(xp);
-        double lo = skillXpFor(L), hi = skillXpFor(std::min(99, L + 1));
-        float pr = L >= 99 ? 1.f : (float)((xp - lo) / std::max(1.0, hi - lo));
-        ImGui::BeginGroup();
-        ImGui::TextColored(col4(s.col), "%s", s.name.c_str()); ImGui::SameLine(colW - 40); ImGui::Text("%d", L);
-        bar(pr, col32(s.col), colW - 12);
-        ImGui::EndGroup();
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s xp%s", thousands(xp).c_str(), L < 99 ? (" \xC2\xB7 " + thousands(std::ceil(hi - xp)) + " to level " + std::to_string(L + 1)).c_str() : "");
-      }
-      ImGui::EndTable();
+    book.begin(a, "##skills", {{"Skills", "iron_pickaxe"}, {"Perks", "experience_bottle"}});
+    const float z = ui::Z(), lh = ui::textSize(ui::F_BODY, "Ag").y + 2 * z;
+    ui::BookRows sk, pk;
+    book.heading(sk, "Skills");
+    book.para(sk, "Total level " + std::to_string(totalLevel(*p)) + ". Skills grow by doing (Magic: casting spells, beating foes with them, learning tomes); each one's perks come as it levels.", ui::ink::muted, ui::F_SMALL);
+    for (auto& s : md.skills) {
+      const double xp = skillXp(*p, s.key);
+      const int L = skillLevel(xp);
+      const double lo = skillXpFor(L), hi = skillXpFor(std::min(99, L + 1));
+      const float pr = L >= 99 ? 1.f : (float)((xp - lo) / std::max(1.0, hi - lo));
+      std::string tip = thousands(xp) + " xp" + (L < 99 ? " \xC2\xB7 " + thousands(std::ceil(hi - xp)) + " to level " + std::to_string(L + 1) : std::string());
+      ui::BookRow row; row.h = lh + 10 * z;
+      row.draw = [name = s.name, col = s.col, L, pr, tip, lh, z](ImDrawList* dl, ImVec2 q, float w) {
+        bool hot = false; rowHit(q, w, lh + 8 * z, &hot);
+        ui::text(dl, ui::F_BODY, q, inkOf(col), name.c_str());
+        std::string lv = std::to_string(L); ImVec2 ls = ui::textSize(ui::F_BODY, lv.c_str());
+        ui::text(dl, ui::F_BODY, ImVec2(q.x + w - ls.x, q.y), ui::ink::text, lv.c_str());
+        ImVec2 b0(q.x, q.y + lh + 1 * z), b1(q.x + w, q.y + lh + 6 * z);
+        dl->AddRectFilled(b0, b1, ui::ink::faint);
+        dl->AddRectFilled(b0, ImVec2(b0.x + (b1.x - b0.x) * std::clamp(pr, 0.f, 1.f), b1.y), inkOf(col));
+        dl->AddRect(b0, b1, ui::withAlpha(ui::ink::text, 0.5f), 0, 0, std::max(1.f, z));
+        if (hot) ImGui::SetTooltip("%s", tip.c_str());
+      };
+      sk.push_back(std::move(row));
     }
-    // perks
+    // perks: the ones you have, then the nearest few to come
     struct P { std::string k, name, col, pn, desc; int lv; };
     std::vector<P> have, next;
     for (auto& s : md.skills) {
       int L = skillLv(*p, s.key);
       auto it = md.perks.find(s.key);
       if (it == md.perks.end()) continue;
-      for (auto& pk : it->second) (L >= pk.lvl ? have : next).push_back({s.key, s.name, s.col, pk.name, pk.desc, pk.lvl});
+      for (auto& q : it->second) (L >= q.lvl ? have : next).push_back({s.key, s.name, s.col, q.name, q.desc, q.lvl});
     }
     std::stable_sort(next.begin(), next.end(), [&](const P& x, const P& y) { return x.lv - skillLv(*p, x.k) < y.lv - skillLv(*p, y.k); });
-    ImGui::Separator();
-    if (have.empty()) ImGui::Text("Perks"); else ImGui::Text("Perks \xC2\xB7 %d of %d", (int)have.size(), (int)(have.size() + next.size()));
-    ImGui::BeginChild("##pk", ImVec2(0, -ImGui::GetFrameHeightWithSpacing() - 4), ImGuiChildFlags_NavFlattened); ui::padScrollHere();
-    auto row = [&](const P& o, bool got) {
-      ImGui::TextColored(col4(o.col, got ? 1.f : 0.55f), "%s", o.pn.c_str()); ImGui::SameLine(); ImGui::TextDisabled("%s %d", o.name.c_str(), o.lv);
-      ImGui::TextColored(ImVec4(0.75f, 0.75f, 0.75f, got ? 1.f : 0.55f), "  %s", o.desc.c_str());
+    book.heading(pk, "Perks \xC2\xB7 " + std::to_string(have.size()) + " of " + std::to_string(have.size() + next.size()));
+    auto perk = [&](const P& o, bool got) {
+      ui::BookRow row; row.h = lh; row.keep = true;
+      row.draw = [o, got](ImDrawList* dl, ImVec2 q, float) {
+        ui::text(dl, ui::F_BODY, q, inkOf(o.col, got ? 1.f : 0.6f), o.pn.c_str());
+        std::string t = "  " + o.name + " " + std::to_string(o.lv);
+        ui::text(dl, ui::F_SMALL, ImVec2(q.x + ui::textSize(ui::F_BODY, o.pn.c_str()).x, q.y + 2 * ui::Z()), ui::ink::muted, t.c_str());
+      };
+      pk.push_back(std::move(row));
+      book.para(pk, o.desc, got ? ui::ink::text : ui::ink::muted, ui::F_SMALL, 10 * z);
     };
-    for (auto& o : have) row(o, true);
-    for (size_t i = 0; i < next.size() && i < (have.empty() ? 6u : 4u); i++) row(next[i], false);
-    ImGui::EndChild();
-    ImGui::TextDisabled("Skills grow by doing. Hover for experience \xC2\xB7 K to close \xC2\xB7 J for your journal");
-    endPanel();
+    if (have.empty()) book.para(pk, "None yet. Each skill earns its perks as it levels up.", ui::ink::muted);
+    for (auto& o : have) perk(o, true);
+    if (!next.empty()) { book.gap(pk, 4 * z); book.sub(pk, "Coming next"); }
+    for (size_t i = 0; i < next.size() && i < 8u; i++) perk(next[i], false);
+    book.draw({sk, pk});
+    book.hint("K: close \xC2\xB7 J: your journal \xC2\xB7 point at a skill for its experience");
+    book.end();
   }
   void update(App& a, double dt) override {
     if (want && swapTo == 1) { want = false; swapTo = 0; a.popScreen(); a.pushScreen(makeJournalScreen()); return; }
     MagicScreenBase::update(a, dt);
   }
   int swapTo = 0;
+  ui::Book book;
 };
 
 // ---- the journal (rpg.js) ------------------------------------------------------------------------------------------
@@ -240,47 +310,49 @@ public:
     if (!p || !lv) return;
     closeOn(a, Act::Journal);
     if (a.input.pressed(Act::Skills) && frames > 1) { want = true; swapTo = 1; }
-    if (!panel(a, "##journal", 0.8f, 0.88f)) { endPanel(); return; }
     Story s = storyOf(*lv, *p);
-    ImGui::PushFont(a.fontUiBig); ImGui::Text("Journal"); ImGui::PopFont();
-    ImGui::SameLine(ImGui::GetWindowWidth() - 200); ImGui::TextDisabled("%s", p->name.c_str());
-    if (ImGui::BeginTable("##jn", 2, ImGuiTableFlags_SizingStretchProp, ImVec2(0, -ImGui::GetFrameHeightWithSpacing() - 4))) {
-      ImGui::TableSetupColumn("story", 0, 2.f); ImGui::TableSetupColumn("records", 0, 1.f);
-      ImGui::TableNextColumn();
-      ImGui::BeginChild("##story"); ui::padScrollHere();
-      for (int i = 0; i < (int)s.ch.size(); i++) {
-        auto& c = s.ch[i];
-        bool cur = i == s.cur;
-        ImVec4 tc = c.done ? ImVec4(0.55f, 0.85f, 0.55f, 1) : cur ? ImVec4(1, 0.85f, 0.45f, 1) : ImVec4(0.8f, 0.8f, 0.8f, 1);
-        ImGui::TextColored(tc, "%s %s", c.done ? "\xE2\x9C\x93" : cur ? "\xE2\x9E\xA4" : "\xC2\xB7", c.t.c_str());
-        if (c.side || c.epi) { ImGui::SameLine(); ImGui::TextDisabled("%s", c.side ? "(the long way round)" : "(after)"); }
-        ImGui::PushTextWrapPos(0);
-        ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.85f, c.done ? 0.6f : 1), "   %s", c.goal.c_str());
-        if (cur || (!c.done && (c.side || c.epi))) ImGui::TextColored(ImVec4(0.65f, 0.7f, 0.8f, 1), "   %s", c.hint.c_str());
-        ImGui::PopTextWrapPos();
-        if (c.prog >= 0 && !c.done) { ImGui::Indent(14); bar(c.prog, IM_COL32(220, 180, 90, 255), 220); ImGui::Unindent(14); }
-        ImGui::Dummy(ImVec2(1, 3));
-      }
-      ImGui::EndChild();
-      ImGui::TableNextColumn();
-      ImGui::Text("Records");
-      for (auto& [k, v] : journalRecords(*lv, *p)) { ImGui::TextDisabled("%s", k.c_str()); ImGui::SameLine(ImGui::GetColumnWidth() - ImGui::CalcTextSize(v.c_str()).x - 6); ImGui::Text("%s", v.c_str()); }
-      auto foes = greatFoesBeaten(*lv);
-      if (!foes.empty()) {
-        ImGui::Dummy(ImVec2(1, 8)); ImGui::Text("Great foes beaten");
-        std::string f; for (auto& x : foes) f += (f.empty() ? "" : " \xC2\xB7 ") + x;
-        ImGui::PushTextWrapPos(0); ImGui::TextDisabled("%s", f.c_str()); ImGui::PopTextWrapPos();
-      }
-      ImGui::EndTable();
+    book.begin(a, "##journal", {{"Your story", "book"}, {"Records", "clock"}});
+    const float z = ui::Z(), lh = ui::textSize(ui::F_BODY, "Ag").y + 2 * z;
+    ui::BookRows st, rec;
+    book.heading(st, p->name + "'s journal");
+    for (int i = 0; i < (int)s.ch.size(); i++) {
+      auto& c = s.ch[i];
+      const bool cur = i == s.cur;
+      ui::BookRow row; row.h = lh + 2 * z; row.keep = true;
+      const ImU32 tc = c.done ? ui::ink::good : cur ? ui::ink::head : ui::ink::text;
+      const int mark = c.done ? 2 : cur ? 1 : 0;   // a tick, a pointer, a dot (drawn: the pixel font has no tick)
+      std::string tag = c.side ? "  (the long way round)" : c.epi ? "  (after)" : "";
+      row.draw = [mark, t = c.t, tag, tc, cur, z, lh](ImDrawList* dl, ImVec2 q, float w) {
+        if (cur) dl->AddRectFilled(ImVec2(q.x - 4 * z, q.y - 1 * z), ImVec2(q.x + w + 2 * z, q.y + lh + 1 * z), ui::ink::hilite, 3 * z);
+        const float s = lh * 0.55f; const ImVec2 m(q.x + 1 * z, q.y + (lh - s) * 0.5f - 1 * z);
+        if (mark == 2) ui::drawTick(dl, m, s, tc);
+        else if (mark == 1) dl->AddTriangleFilled(m, ImVec2(m.x + s * 0.8f, m.y + s * 0.5f), ImVec2(m.x, m.y + s), tc);
+        else dl->AddRectFilled(ImVec2(m.x + s * 0.3f, m.y + s * 0.4f), ImVec2(m.x + s * 0.5f, m.y + s * 0.6f), tc);
+        ui::text(dl, ui::F_BODY, ImVec2(q.x + 16 * z, q.y), tc, t.c_str());
+        if (!tag.empty()) ui::text(dl, ui::F_SMALL, ImVec2(q.x + 16 * z + ui::textSize(ui::F_BODY, t.c_str()).x, q.y + 2 * z), ui::ink::muted, tag.c_str());
+      };
+      st.push_back(std::move(row));
+      book.para(st, c.goal, c.done ? ui::ink::muted : ui::ink::text, ui::F_SMALL, 16 * z);
+      if (cur || (!c.done && (c.side || c.epi))) book.para(st, c.hint, ui::ink::key, ui::F_SMALL, 16 * z);
+      if (c.prog >= 0 && !c.done) book.bar(st, c.prog, ui::ink::key, 16 * z);
+      book.gap(st, 4 * z);
     }
-    ImGui::TextDisabled("J to close \xC2\xB7 K for your skills and perks");
-    endPanel();
+    book.heading(rec, "Records");
+    for (auto& [k, v] : journalRecords(*lv, *p)) recordRow(book, rec, k, v);
+    auto foes = greatFoesBeaten(*lv);
+    book.gap(rec, 6 * z); book.sub(rec, "Great foes beaten");
+    if (foes.empty()) book.para(rec, "None yet.", ui::ink::muted);
+    for (auto& f : foes) book.bullet(rec, f);
+    book.draw({st, rec});
+    book.hint("J: close \xC2\xB7 K: your skills and perks \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 or the wheel: turn the pages");
+    book.end();
   }
   void update(App& a, double dt) override {
     if (want && swapTo == 1) { want = false; swapTo = 0; a.popScreen(); a.pushScreen(makeSkillsScreen()); return; }
     MagicScreenBase::update(a, dt);
   }
   int swapTo = 0;
+  ui::Book book;
 };
 
 // rune glyphs drawn as strokes (no font has the runic block): each index is a little stave
@@ -321,9 +393,8 @@ public:
     if (!p || !lv) return;
     World& w = lv->world(p->realm);
     if (reg().block(w.getBlock(pos.x, pos.y, pos.z)).key != "enchanting_table") { want = true; return; }
-    if (!panel(a, "##enchant", 0.5f, 0.82f)) { endPanel(); return; }
-    float sz = std::min(44.f, ImGui::GetContentRegionAvail().x / 10.5f);
-    ImGui::PushFont(a.fontUiBig); ImGui::Text("Enchant"); ImGui::PopFont();
+    float sz = ui::bookPagesBegin(a, "##enchant");
+    ui::bookPageTitle(a, "Enchanting Table");
     int shelves = enchShelves(w, pos.x, pos.y, pos.z);
     std::array<EnchOffer, 3> offers;
     bool has = !item.empty() && enchOffers(item, shelves, enchSeed(*p), offers);
@@ -352,13 +423,13 @@ public:
       if (has) {
         const EnchOffer& o = offers[i];
         std::string dots; for (int c = 0; c < o.cost; c++) dots += "\xE2\x97\x8F";
-        dl->AddText(ImVec2(p0.x + 6, p0.y + 4), can ? IM_COL32(90, 200, 255, 255) : IM_COL32(120, 120, 140, 255), dots.c_str());
-        drawRunes(dl, ImVec2(p0.x + 50, p0.y + 5), enchRunes((u32)(p->stats.value("enchSeed", 0u) + i * 131 + o.level), 9 + i * 3), rh * 0.4f, can ? IM_COL32(220, 210, 255, 220) : IM_COL32(140, 130, 160, 160));
+        dl->AddText(ImVec2(p0.x + 6, p0.y + 4), can ? ui::inkOf(IM_COL32(90, 200, 255, 255)) : ui::ink::muted, dots.c_str());
+        drawRunes(dl, ImVec2(p0.x + 50, p0.y + 5), enchRunes((u32)(p->stats.value("enchSeed", 0u) + i * 131 + o.level), 9 + i * 3), rh * 0.4f, can ? ui::inkOf(IM_COL32(220, 210, 255, 220)) : ui::ink::faint);
         std::string hint = o.order.empty() ? "" : enchName(o.order[0], o.en[o.order[0]].get<int>()) + (o.order.size() > 1 ? " \xE2\x80\xA6" : "");
-        dl->AddText(ImVec2(p0.x + 50, p0.y + rh * 0.55f), can ? IM_COL32(200, 200, 200, 255) : IM_COL32(130, 130, 130, 255), hint.c_str());
+        dl->AddText(ImVec2(p0.x + 50, p0.y + rh * 0.55f), can ? ui::ink::text : ui::ink::muted, hint.c_str());
         std::string L = std::to_string(o.level);
         ImVec2 ts = ImGui::CalcTextSize(L.c_str());
-        dl->AddText(ImVec2(p0.x + rw - ts.x - 8, p0.y + (rh - ts.y) / 2), p->level >= o.level || cr ? IM_COL32(128, 255, 32, 255) : IM_COL32(255, 80, 80, 255), L.c_str());
+        dl->AddText(ImVec2(p0.x + rw - ts.x - 8, p0.y + (rh - ts.y) / 2), p->level >= o.level || cr ? ui::ink::good : ui::ink::bad, L.c_str());
       }
       ImGui::PopID();
     }
@@ -368,7 +439,7 @@ public:
       : "Costs the levels shown on the right, and 1-3 lapis \xC2\xB7 you have " + std::to_string(p->level) + " level" + (p->level == 1 ? "" : "s");
     if (!item.empty() && !has && !enchKind(item.id).empty() && item.tag.is_object() && item.tag.contains("en")) status = "Already enchanted \xE2\x80\x94 use books at an anvil to add more";
     ImGui::PushTextWrapPos(0); ImGui::TextDisabled("%s", status.c_str()); ImGui::PopTextWrapPos();
-    ImGui::Separator();
+    ui::bookPagesRight("##enchant-bag");
     bagGrid(*p, sz, [&](int i) {
       ItemStack& s = p->inv[i];
       if (s.empty()) return;
@@ -377,7 +448,7 @@ public:
         else { int mv = std::min(64 - lapis.n, s.n); lapis.n += mv; s.n -= mv; if (s.n <= 0) s.clear(); }
       } else if (item.empty() && !enchKind(s.id).empty() && enchKind(s.id) != "ebook") { item = s; item.n = 1; if (--s.n <= 0) s.clear(); }
     });
-    endPanel();
+    ui::bookPagesEnd();
   }
 };
 
@@ -393,9 +464,8 @@ public:
     World& w = lv->world(p->realm);
     if (reg().block(w.getBlock(pos.x, pos.y, pos.z)).key != "brewing_stand") { want = true; return; }
     json& e = brewEntity(w, pos.x, pos.y, pos.z);
-    if (!panel(a, "##brew", 0.5f, 0.82f)) { endPanel(); return; }
-    float sz = std::min(44.f, ImGui::GetContentRegionAvail().x / 10.5f);
-    ImGui::PushFont(a.fontUiBig); ImGui::Text("Brewing Stand"); ImGui::PopFont();
+    float sz = ui::bookPagesBegin(a, "##brew");
+    ui::bookPageTitle(a, "Brewing Stand");
     auto at = [&](int i) { return ItemStack::fromJson(e["items"][i]); };
     bool changed = false;
     auto take = [&](int i) { ItemStack s = at(i); if (s.empty()) return; giveOrDrop(*lv, *p, s); e["items"][i] = nullptr; changed = true; };
@@ -411,13 +481,13 @@ public:
     ImVec2 tube = ImGui::GetCursorScreenPos(); tube.x += sz * 0.4f;
     ImDrawList* dl = ImGui::GetWindowDrawList();
     float th = sz * 0.9f;
-    dl->AddRectFilled(tube, ImVec2(tube.x + sz * 0.2f, tube.y + th), IM_COL32(0, 0, 0, 120), 2);
-    dl->AddRectFilled(tube, ImVec2(tube.x + sz * 0.2f, tube.y + th * brewProgress(e)), IM_COL32(230, 240, 255, 220), 2);
+    dl->AddRectFilled(tube, ImVec2(tube.x + sz * 0.2f, tube.y + th), IM_COL32(60, 40, 20, 90), 2);
+    dl->AddRectFilled(tube, ImVec2(tube.x + sz * 0.2f, tube.y + th * brewProgress(e)), IM_COL32(90, 140, 210, 230), 2);
     ImGui::SetCursorPos(ImVec2(cx - sz * 1.2f, y0 + sz + th + 6));
     for (int i = 0; i < 3; i++) { if (i) ImGui::SameLine(0, sz * 0.2f); if (slotButton(("b" + std::to_string(i)).c_str(), at(i), sz, ghosts[i])) take(i); }
     std::string st = brewStatus(e);
     ImGui::PushTextWrapPos(0); ImGui::TextDisabled("%s", st.empty() ? " " : st.c_str()); ImGui::PopTextWrapPos();
-    ImGui::Separator();
+    ui::bookPagesRight("##brew-bag");
     bagGrid(*p, sz, [&](int i) {
       ItemStack& s = p->inv[i];
       if (s.empty()) return;
@@ -433,7 +503,7 @@ public:
       }
     });
     if (changed) w.blockEntityChanged(pos.x, pos.y, pos.z);
-    endPanel();
+    ui::bookPagesEnd();
   }
 };
 

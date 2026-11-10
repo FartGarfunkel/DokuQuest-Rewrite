@@ -5,6 +5,8 @@
 // Both are placed per region with the original's own seeds; the dragons and keepers themselves are the creatures
 // workstream's (the plan's data: boss, spawners, lair type).
 #include "gen/structures_common.h"
+#include "core/registry.h"
+#include <algorithm>
 
 namespace dq {
 using namespace vmap;
@@ -24,6 +26,9 @@ static const DTheme& dtheme(int k) {
       r[i].key = names[i]; r[i].name = j["name"]; r[i].pillar = j["pillar"]; r[i].stairs = j["stairs"]; r[i].slab = j["slab"]; r[i].light = j["light"];
       r[i].wall = strList(j["wall"]); r[i].floor = strList(j["floor"]); r[i].mobs = strList(j["mobs"]); r[i].bosses = strList(j["bosses"]);
       r[i].webs = j.contains("webs") && j["webs"].is_boolean() && j["webs"].get<bool>();
+      // bosses added since (mobs.json "dungeonBoss": the theme they keep, e.g. BTA's Giant in the crypts: tools/port/bta_extras.py)
+      if (reg().mobs.is_object()) for (auto& [k, v] : reg().mobs.items())
+        if (v.is_object() && v.value("dungeonBoss", std::string()) == names[i] && std::find(r[i].bosses.begin(), r[i].bosses.end(), k) == r[i].bosses.end()) r[i].bosses.push_back(k);
     }
     return r;
   }();

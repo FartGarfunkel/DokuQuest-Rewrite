@@ -1,8 +1,11 @@
 // gen/structures_places.cpp — game/structures.js: ruins, mage towers, desert temples, sunken temples, shipwrecks,
-// mineshafts and the Labyrinth (STRUCTS 0..6), built block for block as the original builds them.
+// mineshafts and the Labyrinth (STRUCTS 0..6). The labyrinth's rooms follow BTA 8.0's trap dungeon, written
+// for this engine. The other places are built block for block as the original builds them.
 // Plans decide with the original's heights (jsY) and build at band heights; underground depths go through
 // vmap::owUnder. The residents/boss/spawners lists go in StructurePlan::data in the original's shape.
 #include "gen/structures_common.h"
+#include "core/itemstack.h"
+#include <unordered_map>
 
 namespace dq {
 using namespace vmap;
@@ -451,123 +454,443 @@ static void mineBuild(ChunkWriter& w, const StructurePlan& S) {
 }
 
 // ==== The Labyrinth ==================================================================================================
-constexpr int MAZE_N = 13, MAZE_C = 3, MAZE_SIZE = MAZE_N * MAZE_C + 1;
-struct MazeExt { std::vector<u8> open; std::vector<std::pair<int, int>> dead; int mx0, mz0, hx, hz, ex, ez, stairK; };
+// Buried trap rooms and corridors. No surface stair. A walk stops after 32 corridor segments, 64 calls deep,
+// 30000 cells, or 72 blocks from that network's origin. Three BTA mistakes are not repeated: the saved room's
+// z uses dz, the library and trophy test the z bound against z, and shaft spikes are placed after the carve.
+// Stand-ins this game does not have: no armoured zombie, ice skates, gold arrows, sandstone or permafrost
+// plate, mossy log, or permafrost slab.
+enum LabKind : u8 {
+  LK_AIR = 1, LK_A, LK_B, LK_BA, LK_BB, LK_SLAB, LK_PLATE, LK_SENSOR, LK_DISP,
+  LK_CHEST, LK_TCHEST, LK_SPAWN, LK_BOOK, LK_LOG, LK_WEB, LK_SPIKE, LK_LAVA, LK_OBSIDIAN, LK_PLANK
+};
+constexpr int LD_UP = 1, LD_SOUTH = 3, LD_EAST = 5;
+
+struct LabPos {
+  int x, y, z;
+  bool operator==(const LabPos& o) const { return x == o.x && y == o.y && z == o.z; }
+};
+struct LabPosHash { size_t operator()(const LabPos& p) const { return (size_t)hash32(p.x, p.y, p.z, 0x4C4142); } };
+struct LabCell { u8 kind = 0, meta = 0, mob = 0; u32 salt = 0; };
+
+struct LabExt {
+  std::unordered_map<LabPos, LabCell, LabPosHash> cells;
+  std::string wallA, wallB, brickA, brickB, slab, plate, plank, log;
+  bool cold = false, hasBoss = false;
+  int bossX = 0, bossY = 0, bossZ = 0;
+};
+
+struct LabGen {
+  LabExt& e;
+  Mulberry32& rnd;
+  int ox = 0, oz = 0;
+  int dungeonSize = 0, dungeonLimit = 1, dungeonCount = 0, depth = 0;
+  bool treasure = false, library = false, hasLast = false, hasPlatform = false;
+  int lastRot = 0, lastX = 0, lastY = 0, lastZ = 0;
+  int platRot = 0, platX = 0, platY = 0, platZ = 0;
+  struct Pop { int& d; explicit Pop(int& d) : d(d) { ++d; } ~Pop() { --d; } Pop(const Pop&) = delete; };
+
+  LabGen(LabExt& e, Mulberry32& r) : e(e), rnd(r) {}
+  int nextInt(int n) { return n <= 0 ? 0 : jsFloor(rnd() * n); }
+  bool far(int x, int z) const { return std::max(std::abs(x - ox), std::abs(z - oz)) > 72; }
+  bool kept(u8 k) const { return k == LK_BA || k == LK_BB || k == LK_PLANK || k == LK_WEB || k == LK_BOOK || k == LK_SPAWN; }
+  bool isKind(int x, int y, int z, u8 k) const {
+    auto it = e.cells.find(LabPos{x, y, z});
+    return it != e.cells.end() && it->second.kind == k;
+  }
+  // Unplaced stone is replaceable. Air is only a cell we already opened.
+  bool canReplace(int x, int y, int z) {
+    if (y <= 11 || y >= 248 || e.cells.size() > 30000) return false;
+    auto it = e.cells.find(LabPos{x, y, z});
+    if (it == e.cells.end()) return true;
+    const u8 k = it->second.kind;
+    if (kept(k)) return false;
+    if (k == LK_SENSOR || k == LK_DISP || k == LK_A || k == LK_B || k == LK_AIR || k == LK_SLAB) {
+      if (k == LK_DISP && (it->second.meta & 7) == LD_UP) {
+        LabPos up{x, y + 1, z};
+        auto a = e.cells.find(up);
+        if (a != e.cells.end() && a->second.kind == LK_PLATE) e.cells[up] = LabCell{LK_AIR, 0, 0, 0};
+      }
+      return true;
+    }
+    return false;
+  }
+  void place(int x, int y, int z, u8 kind, u8 meta = 0, u8 mob = 0, u32 salt = 0) {
+    if (y < 0 || y >= 248) return;
+    e.cells[LabPos{x, y, z}] = LabCell{kind, meta, mob, salt};
+  }
+  void placeWallTrap(int x, int y, int z, int dir) {
+    place(x, y, z, LK_SENSOR, (u8)((dir & 7) << 4));
+    place(x, y - 1, z, LK_DISP, (u8)(dir & 7), 0, hash32(x, y - 1, z, 0xD15B));
+  }
+  void placeFloorTrap(int x, int y, int z) {
+    place(x, y - 1, z, LK_DISP, LD_UP, 0, hash32(x, y - 1, z, 0xD15B));
+    place(x, y, z, LK_PLATE);
+  }
+  void generateBranch(int blockX, int blockY, int blockZ) {
+    if (far(blockX, blockZ) || e.cells.size() > 30000 || depth > 64) return;
+    Pop pop(depth);
+    int xDir = LD_EAST;
+    for (int x = blockX - 2; x <= blockX + 2; ++x) {
+      const bool xWall = x == blockX - 2 || x == blockX + 2;
+      if (x == blockX) xDir ^= 1;   // flips once at the centre and stays flipped for the rest of this sweep
+      for (int y = blockY - 2; y <= blockY + 1; ++y) {
+        const bool yWall = y == blockY - 2;
+        int zDir = LD_SOUTH;        // reset every row; the x facing is not
+        for (int z = blockZ - 2; z <= blockZ + 2; ++z) {
+          const bool zWall = z == blockZ - 2 || z == blockZ + 2;
+          if (z == blockZ) zDir ^= 1;
+          if (!canReplace(x, y, z)) continue;
+          u8 kind = LK_AIR;
+          if (xWall && zWall) kind = nextInt(4) == 0 ? LK_BB : LK_BA;
+          else if (xWall || zWall || yWall) kind = LK_B;
+          place(x, y, z, kind);
+          if (y == blockY) {
+            if (kind != LK_AIR && nextInt(32) == 0) placeWallTrap(x, y, z, xWall ? xDir : zDir);
+          } else if (y == blockY - 1) {
+            if (kind == LK_AIR && nextInt(64) == 0) placeFloorTrap(x, y, z);
+          }
+        }
+      }
+    }
+    if (dungeonSize < 10) {
+      ++dungeonSize;
+      const int n = nextInt(4);                 // 0..3, and the loop is inclusive: 1 to 4 corridors
+      for (int i = 0; i <= n; ++i) createCorridor(blockX, blockY, blockZ, nextInt(4), 0);
+    }
+  }
+
+  void generateDrop(int blockX, int blockY, int blockZ) {
+    if (far(blockX, blockZ) || e.cells.size() > 30000 || depth > 64) return;
+    Pop pop(depth);
+    if (rnd() < 0.5) generateDungeon(blockX, blockY, blockZ, false);
+    const int dropHeight = nextInt(10) + 10;
+    for (int x = blockX - 2; x <= blockX + 2; ++x)
+      for (int y = blockY - dropHeight; y <= blockY + 1; ++y)
+        for (int z = blockZ - 2; z <= blockZ + 2; ++z) {
+          const bool xWall = x == blockX - 2 || x == blockX + 2;
+          const bool zWall = z == blockZ - 2 || z == blockZ + 2;
+          const bool yWall = y == blockY - dropHeight;
+          if (!canReplace(x, y, z)) continue;
+          if (xWall || zWall || yWall) { place(x, y, z, LK_B); continue; }
+          if (x != blockX && z != blockZ && nextInt(20) == 0 && !isKind(x, y + 1, z, LK_SLAB)) {
+            place(x, y, z, LK_SLAB, 0);
+            continue;
+          }
+          place(x, y, z, LK_AIR);
+        }
+    // Spikes go on after the shaft. Placing them in the loop lets the next row carve them back out.
+    if (dungeonSize >= 10) {
+      const int fy = blockY - dropHeight + 1;
+      for (int x = blockX - 1; x <= blockX + 1; ++x)
+        for (int z = blockZ - 1; z <= blockZ + 1; ++z) {
+          if (fy <= 11 || fy >= 248) continue;
+          auto it = e.cells.find(LabPos{x, fy, z});
+          if (it != e.cells.end() && kept(it->second.kind)) continue;
+          place(x, fy, z, LK_SPIKE, 0);
+        }
+    }
+    if (dungeonSize < 10) {
+      ++dungeonSize;
+      const int n = nextInt(4) + 1;
+      const int y0 = blockY - (dropHeight - 2);
+      for (int i = 1; i <= n; ++i) createCorridor(blockX, y0, blockZ, nextInt(4), 0);
+    }
+  }
+
+  void generateCorridor(int blockX, int blockY, int blockZ, int rot, int corridorIteration) {
+    if (corridorIteration > 32 || far(blockX, blockZ) || e.cells.size() > 30000 || depth > 64) return;
+    Pop pop(depth);
+    const int xOrZ = rot & 1;
+    int xzWidth = 0;
+    if (rot == 0) xzWidth = 2;
+    else if (rot == 1 || rot == 2) xzWidth = -2;
+    else if (rot == 3) xzWidth = 2;
+    const int center = xOrZ ? blockX : blockZ;
+    int xDir = LD_EAST;
+    for (int x = blockX - 2; x <= blockX + 2; ++x) {
+      if (x == blockX) xDir ^= 1;
+      const bool xWall = std::abs(x - blockX) == 2;
+      for (int y = blockY - 2; y <= blockY + 1; ++y) {
+        const bool yWall = y == blockY - 2;
+        int zDir = LD_SOUTH;
+        for (int z = blockZ - 2; z <= blockZ + 2; ++z) {
+          if (z == blockZ) zDir ^= 1;
+          const bool zWall = std::abs(z - blockZ) == 2;
+          if (!canReplace(x, y, z)) continue;
+          if ((xWall || zWall || yWall) && isKind(x, y + 1, z, LK_AIR) && nextInt(3) > 0) continue;
+          const bool sideWall = xOrZ ? zWall : xWall;
+          const int along = xOrZ ? x : z;
+          u8 kind = LK_AIR;
+          if (yWall) kind = nextInt(3) == 0 ? LK_B : LK_A;
+          else if (sideWall || along == center + xzWidth) kind = LK_A;
+          const bool hollow = kind == LK_AIR;
+          if (hollow && !xWall && !zWall && y == blockY + 1 && nextInt(20) == 0) kind = LK_WEB;
+          place(x, y, z, kind);
+          if (y == blockY) {
+            if (!hollow && nextInt(32) == 0) placeWallTrap(x, y, z, xOrZ ? zDir : xDir);
+          } else if (y == blockY - 1) {
+            if (hollow && nextInt(64) == 0) placeFloorTrap(x, y, z);
+          }
+        }
+      }
+    }
+    // && binds tighter than ||. The left-hand nextInt runs whenever this test is reached.
+    if (nextInt(2) == 0 && corridorIteration > 1) {
+      if (nextInt(2) == 0) generateBranch(blockX, blockY, blockZ);
+      else generateDrop(blockX, blockY, blockZ);
+    } else if ((nextInt(2) == 0 && corridorIteration > 1 && dungeonSize > 3) || (dungeonSize >= 10 && dungeonCount < dungeonLimit)) {
+      createDungeon(blockX, blockY, blockZ, rot);
+      ++dungeonCount;
+    } else {
+      if (nextInt(10) == 0 && corridorIteration > 1 && dungeonSize > 5) return;
+      createCorridor(blockX, blockY, blockZ, rot, corridorIteration + 1);
+    }
+  }
+
+  void createCorridor(int blockX, int blockY, int blockZ, int rot, int iteration) {
+    if (rot == 0) generateCorridor(blockX, blockY, blockZ + 4, 0, iteration);
+    else if (rot == 1) generateCorridor(blockX - 4, blockY, blockZ, 1, iteration);
+    else if (rot == 2) generateCorridor(blockX, blockY, blockZ - 4, 2, iteration);
+    else if (rot == 3) generateCorridor(blockX + 4, blockY, blockZ, 3, iteration);
+  }
+
+  void generateDungeon(int blockX, int blockY, int blockZ, bool doSpawner) {
+    if (blockY < 10 || far(blockX, blockZ)) return;
+    const int size = 4;
+    for (int x = blockX - size; x <= blockX + size; ++x)
+      for (int y = blockY - 2; y <= blockY + 2; ++y)
+        for (int z = blockZ - size; z <= blockZ + size; ++z) {
+          const bool xWall = x == blockX - size || x == blockX + size;
+          const bool zWall = z == blockZ - size || z == blockZ + size;
+          if (!canReplace(x, y, z)) continue;
+          if (xWall || zWall) { place(x, y, z, LK_B); continue; }
+          if (y == blockY - 2) { place(x, y, z, nextInt(5) == 0 ? LK_B : LK_A); continue; }
+          place(x, y, z, LK_AIR);
+        }
+    const int chestX = blockX + nextInt(3) - 3, chestZ = blockZ + nextInt(3) - 3;
+    if (canReplace(chestX, blockY - 2, chestZ)) place(chestX, blockY - 1, chestZ, LK_CHEST);
+    if (doSpawner) {
+      // Warm: skeleton and ghoul, even. Cold adds a stray. No armoured zombie (this game has no such mob).
+      const u8 mob = (u8)nextInt(e.cold ? 3 : 2);
+      place(blockX, blockY - 1, blockZ, LK_SPAWN, 0, mob);
+    }
+  }
+
+  void cornerPost(int x, int y, int z, int blockX, int blockZ, int zRoom) {
+    if (zRoom % 2 == 0 && (x == blockX - 2 || x == blockX + 2) && (z == blockZ - 2 || z == blockZ + 2))
+      place(x, y, z, LK_BA);
+  }
+
+  void generateLibrary(int blockX, int blockY, int blockZ) {
+    if (blockY < 10 || far(blockX, blockZ)) return;
+    const int size = 10;
+    for (int x = blockX - size; x <= blockX + size; ++x)
+      for (int y = blockY - 2; y <= blockY + 3; ++y)
+        for (int z = blockZ - size; z <= blockZ + size; ++z) {
+          const int xRoom = x - blockX + size, zRoom = z - blockZ + size;
+          const bool xWall = x == blockX - size || x == blockX + size;
+          const bool zWall = z == blockZ - size || z == blockZ + size;
+          if (!canReplace(x, y, z)) continue;
+          if (xWall) place(x, y, z, zRoom % 4 != 0 ? LK_B : LK_BA);
+          else if (zWall) place(x, y, z, xRoom % 4 != 0 ? LK_B : LK_BA);
+          else if (y == blockY - 2) {
+            if ((x > blockX - 2 && x < blockX + 2) || (z > blockZ - 2 && z < blockZ + 2)) place(x, y, z, LK_PLANK);
+            else place(x, y, z, nextInt(5) == 0 ? LK_B : LK_A);
+            if (x > blockX - 3 && x < blockX + 3 && z > blockZ - 3 && z < blockZ + 3) place(x, y, z, LK_B);
+          } else if (y == blockY + 3) {
+            place(x, y, z, nextInt(5) == 0 ? LK_B : LK_A);
+          } else if ((x > blockX - size && x < blockX + size) || (z > blockZ - size && z < blockZ + size)) {
+            const bool aisle = xRoom % 4 == 0 || zRoom % 2 != 0 || (x > blockX - 2 && x < blockX + 2) ||
+                               (z > blockZ - 1 && z < blockZ + 1) || y >= blockY + 2;
+            if (!aisle) {
+              if (xRoom % 2 == 0) place(x, y, z, LK_BOOK);
+              else { nextInt(5); place(x, y, z, LK_LOG); }   // mossy log and plain log are both this game's log
+            } else if (y == blockY - 1 && std::min(std::abs(x - blockX), std::abs(z - blockZ)) >= 2 && nextInt(64) == 0) {
+              placeFloorTrap(x, y, z);
+            } else place(x, y, z, LK_AIR);
+          } else place(x, y, z, LK_AIR);
+          cornerPost(x, y, z, blockX, blockZ, zRoom);
+        }
+    generateDrop(blockX, blockY, blockZ);
+  }
+
+  void generateTrophy(int blockX, int blockY, int blockZ, int rot) {
+    if (blockY < 10 || far(blockX, blockZ)) return;
+    const int size = 8;
+    for (int x = blockX - size; x <= blockX + size; ++x)
+      for (int y = blockY - 2; y <= blockY + 6; ++y)
+        for (int z = blockZ - size; z <= blockZ + size; ++z) {
+          const int xRoom = x - blockX + size, zRoom = z - blockZ + size;
+          const bool xWall = x == blockX - size || x == blockX + size;
+          const bool zWall = z == blockZ - size || z == blockZ + size;
+          if (!canReplace(x, y, z)) continue;
+          if (xWall) place(x, y, z, zRoom % 4 != 0 ? LK_B : LK_BA);
+          else if (zWall) place(x, y, z, xRoom % 4 != 0 ? LK_B : LK_BA);
+          else if (y == blockY - 2) {
+            if ((x > blockX - 2 && x < blockX + 2) || (z > blockZ - 2 && z < blockZ + 2)) {
+              if (x == blockX || z == blockZ) place(x, y, z, e.cold ? LK_OBSIDIAN : LK_LAVA);
+              else place(x, y, z, LK_SLAB, 1);
+            } else place(x, y, z, nextInt(5) == 0 ? LK_B : LK_A);
+            if (x > blockX - 3 && x < blockX + 3 && z > blockZ - 3 && z < blockZ + 3) place(x, y, z, LK_B);
+          } else if (y == blockY + 6) {
+            place(x, y, z, nextInt(5) == 0 ? LK_B : LK_A);
+          } else place(x, y, z, LK_AIR);
+          cornerPost(x, y, z, blockX, blockZ, zRoom);
+        }
+    hasPlatform = true;
+    platRot = rot; platX = blockX; platY = blockY; platZ = blockZ;
+  }
+
+  void generateStatue(int rot, int blockX, int blockY, int blockZ) {
+    (void)rot;   // BTA turned a statue with this. The minotaur has no facing block.
+    if (e.hasBoss) return;
+    for (int x = blockX - 1; x <= blockX + 1; ++x)
+      for (int z = blockZ - 1; z <= blockZ + 1; ++z)
+        place(x, blockY - 1, z, LK_SLAB, (x == blockX && z == blockZ) ? 1 : 0);
+    // The east slab becomes the chest. Nothing is placed in the centre at the boss's feet.
+    place(blockX + 1, blockY - 1, blockZ, e.cold ? LK_CHEST : LK_TCHEST);
+    e.hasBoss = true;
+    e.bossX = blockX; e.bossY = blockY; e.bossZ = blockZ;
+  }
+
+  void createDungeon(int blockX, int blockY, int blockZ, int rot) {
+    int dx = 0, dz = 0;
+    if (rot == 0) dz = 1;
+    else if (rot == 1) dx = -1;
+    else if (rot == 2) dz = -1;
+    else if (rot == 3) dx = 1;
+    const int rx = blockX + dx * 4, rz = blockZ + dz * 4;
+    if (!canReplace(blockX + dx * 5, blockY, blockZ + dz * 5) || far(rx, rz)) return;
+    if (!treasure && dungeonSize == 10) {
+      treasure = true;
+      generateTrophy(rx, blockY, rz, rot);
+    } else if (!library && nextInt(3) == 0) {
+      library = true;
+      generateLibrary(rx, blockY, rz);
+    } else {
+      generateDungeon(rx, blockY, rz, true);
+      hasLast = true; lastRot = rot; lastX = rx; lastY = blockY; lastZ = rz;
+    }
+  }
+
+  void run(int x, int y, int z) {
+    ox = x; oz = z;
+    dungeonSize = 0; dungeonCount = 0; dungeonLimit = 1; depth = 0;
+    treasure = library = hasLast = hasPlatform = false;
+    if (y <= 11 || y >= 248 || !canReplace(x, y, z)) return;
+    generateBranch(x, y, z);
+    if (!treasure && hasLast) generateTrophy(lastX, lastY, lastZ, lastRot);   // does not set treasure first
+    if (hasPlatform) generateStatue(platRot, platX, platY, platZ);
+  }
+};
 
 static bool mazePlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) {
-  TerrainColumn c = t.terrainColumn(x, z); if (!sLandy(c)) return false;
-  const int x0 = x - (MAZE_SIZE >> 1), z0 = z - (MAZE_SIZE >> 1), x1 = x0 + MAZE_SIZE - 1, z1 = z0 + MAZE_SIZE - 1;
-  Land L = sLand(t, x0, z0, x1, z1);
+  TerrainColumn c = t.terrainColumn(x, z);
+  if (!sLandy(c)) return false;
+  Land L = sLand(t, x - 16, z - 16, x + 16, z + 16);
   const int yo = std::max(10, std::min(30, L.jlo - 16));
-  if (L.jlo - yo < 12) return false;
   const int y = owUnder(yo);
-  // carve the maze: cells are open, walls between them are knocked through as it wanders
-  auto e = std::make_shared<MazeExt>();
-  std::vector<u8>& open = e->open; open.assign(MAZE_SIZE * MAZE_SIZE, 0);
-  auto O = [](int gx, int gz) { return gx * MAZE_SIZE + gz; };
-  auto cellOpen = [&](int cx, int cz) { for (int a = 0; a < MAZE_C - 1; a++) for (int b = 0; b < MAZE_C - 1; b++) open[O(cx * MAZE_C + 1 + a, cz * MAZE_C + 1 + b)] = 1; };
-  std::vector<u8> seen(MAZE_N * MAZE_N, 0); auto S0 = [](int cx, int cz) { return cx * MAZE_N + cz; };
-  const int mid = MAZE_N >> 1;
-  auto heart = [&](int cx, int cz) { return std::abs(cx - mid) <= 1 && std::abs(cz - mid) <= 1; };
-  for (int cx = 0; cx < MAZE_N; cx++) for (int cz = 0; cz < MAZE_N; cz++) if (heart(cx, cz)) seen[S0(cx, cz)] = 1;
-  auto knock = [&](int ax, int az, int bx, int bz) {
-    cellOpen(bx, bz);
-    const int wx = ax == bx ? ax * MAZE_C + 1 : std::max(ax, bx) * MAZE_C, wz = az == bz ? az * MAZE_C + 1 : std::max(az, bz) * MAZE_C;
-    for (int t2 = 0; t2 < MAZE_C - 1; t2++) open[O(ax == bx ? wx + t2 : wx, az == bz ? wz + t2 : wz)] = 1;
-  };
-  const int st0 = mid, st1 = MAZE_N - 1;
-  cellOpen(st0, st1); seen[S0(st0, st1)] = 1;
-  std::vector<std::pair<int, int>> stack{{st0, st1}};
-  while (!stack.empty()) {
-    auto [cx, cz] = stack.back();
-    std::vector<std::pair<int, int>> opts;
-    for (int d = 0; d < 4; d++) { const int nx = cx + DXL[d], nz = cz + DZL[d]; if (nx >= 0 && nz >= 0 && nx < MAZE_N && nz < MAZE_N && !seen[S0(nx, nz)]) opts.push_back({nx, nz}); }
-    if (opts.empty()) { stack.pop_back(); continue; }
-    auto [nx, nz] = opts[jsFloor(rnd() * opts.size())]; seen[S0(nx, nz)] = 1; knock(cx, cz, nx, nz); stack.push_back({nx, nz});
+  if (y <= 11) return false;
+  auto e = std::make_shared<LabExt>();
+  OwColumn oc; oc.h = c.jsY; oc.temp = c.temp; oc.humid = c.humid;
+  if (c.biome >= 0 && c.biome < BIOME_COUNT) oc.biome = (u8)c.biome;
+  const BtaVariant bv = btaVariant(oc);
+  const bool desert = c.biome == BIOME_DESERT;
+  const bool cold = c.biome == BIOME_TAIGA || bv == BV_GLACIER || bv == BV_TUNDRA;
+  if (desert) {
+    e->wallA = e->wallB = "sandstone";
+    e->brickA = e->brickB = PLK("desert_sandstone_bricks", "cut_sandstone");
+    e->slab = "sandstone_slab";
+  } else if (cold) {
+    e->wallA = "permafrost"; e->wallB = "cobbled_permafrost";
+    e->brickA = e->brickB = "permafrost_bricks";
+    e->slab = hasBlock("polished_permafrost_slab") ? "polished_permafrost_slab" : PLK("stone_slab", "smooth_stone_slab");
+    e->cold = true;
+  } else {
+    e->wallA = "cobblestone"; e->wallB = "mossy_cobblestone";
+    e->brickA = "stone_bricks"; e->brickB = "mossy_stone_bricks";
+    e->slab = "smooth_stone_slab";
   }
-  // the heart: one great room, open on all four sides
-  for (int gx = (mid - 1) * MAZE_C + 1; gx < (mid + 2) * MAZE_C; gx++) for (int gz = (mid - 1) * MAZE_C + 1; gz < (mid + 2) * MAZE_C; gz++) open[O(gx, gz)] = 1;
-  for (auto [dx, dz] : {std::pair{0, -2}, {0, 2}, {-2, 0}, {2, 0}}) { const int cx = mid + dx, cz = mid + dz; cellOpen(cx, cz); knock(cx, cz, mid + jsign(dx), mid + jsign(dz)); }
-  // dead ends get a chest or an old skeleton
-  for (int cx = 0; cx < MAZE_N; cx++) for (int cz = 0; cz < MAZE_N; cz++) {
-    if (heart(cx, cz) || (cx == st0 && cz == st1)) continue;
-    const int gx = cx * MAZE_C + 1, gz = cz * MAZE_C + 1; int exits = 0;
-    exits += open[O(gx - 1, gz)] + open[O(gx + MAZE_C - 1, gz)] + open[O(gx, gz - 1)] + open[O(gx, gz + MAZE_C - 1)];
-    if (exits == 1) e->dead.push_back({x0 + gx, z0 + gz});
+  e->plate = "stone_pressure_plate";   // no sandstone or permafrost plate in this game
+  e->plank = "planks"; e->log = "log";
+  LabGen g(*e, rnd);
+  g.run(x, y, z);
+  if (rnd() < 0.2) {
+    const int y2 = y - (30 + jsFloor(rnd() * 10));
+    if (y2 > 11) g.run(x, y2, z);       // its own origin for the 72-block cap; the boss flag is kept
   }
-  json res = json::array();
-  for (auto [dx, dz] : e->dead) if (rnd() < 0.18) { const bool sk = rnd() < 0.5; res.push_back(mobAt(dx, y + 1, dz, sk ? "skeleton" : "ghoul")); }
-  const int hx = x0 + mid * MAZE_C + 1, hz = z0 + mid * MAZE_C + 1, ex = x0 + st0 * MAZE_C + 1;
-  // the stair climbs one step for each block south until it comes out on the land (in band heights: it is longer
-  // than the original's where the underground is stretched)
-  int stairK = 0; while (stairK < 60 && y + stairK <= t.terrainColumn(ex, z1 + 1 + stairK).y) stairK++;
-  e->mx0 = x0; e->mz0 = z0; e->hx = hx; e->hz = hz; e->ex = ex; e->ez = z1; e->stairK = stairK;
-  S.x0 = x0 - 1; S.z0 = z0 - 1; S.x1 = x1 + 1; S.z1 = z1 + stairK + 6; S.cx = hx; S.cz = hz; S.y = y; S.hashDy = yo - y;
+  if (e->cells.empty()) return false;
+  int x0 = 0, x1 = 0, z0 = 0, z1 = 0; bool any = false;
+  for (const auto& [p, cell] : e->cells) {
+    (void)cell;
+    if (!any) { x0 = x1 = p.x; z0 = z1 = p.z; any = true; }
+    else { x0 = std::min(x0, p.x); x1 = std::max(x1, p.x); z0 = std::min(z0, p.z); z1 = std::max(z1, p.z); }
+  }
+  S.x0 = x0; S.z0 = z0; S.x1 = x1; S.z1 = z1; S.cx = x; S.cz = z; S.y = y; S.hashDy = yo - y;
   S.name = "The Labyrinth";
-  S.data = {{"residents", res}, {"boss", {{"at", jat(hx, y + 1, hz)}, {"type", "minotaur"}, {"box", {hx - 3, y, hz - 3, hx + 4, y + 5, hz + 4}}}}};
+  if (e->hasBoss)
+    S.data = {{"boss", {{"at", jat(e->bossX, e->bossY, e->bossZ)}, {"type", "minotaur"},
+                        {"box", {e->bossX - 8, e->bossY, e->bossZ - 8, e->bossX + 8, e->bossY + 8, e->bossZ + 8}}}}};
   S.ext = e;
   return true;
 }
 
-static void mazeBuild(ChunkWriter& w, const StructurePlan& S) {
-  SP P(w); const MazeExt& M = extOf<MazeExt>(S);
-  const int y = S.y;
-  // now and then the darker labyrinth (BTA): blackstone halls with no light but the glow of crystals, spikes in the
-  // floor, iron mesh windows onto the next corridor, and ceiling lamps that wake when something moves under the
-  // motion sensors beside them
-  const bool dark = hash32(M.mx0, y, M.mz0, 0x1AB) % 100 < 40;
-  static const std::vector<const char*> walls = {"stone_bricks", "stone_bricks", "mossy_stone_bricks", "cracked_stone_bricks", "stone_bricks", "mossy_stone_bricks"};
-  static const std::vector<const char*> darkWalls = {"blackstone_bricks", "blackstone_bricks", "cracked_blackstone_bricks", "polished_blackstone", "blackstone_bricks", "cobbled_slate"};
-  auto wall = [&](int x, int yy, int z) { return P.pickw(dark ? darkWalls : walls, x, yy, z, 1); };
-  const char* floorA = dark ? "polished_blackstone" : "stone_bricks";
-  const char* floorB = dark ? "cracked_blackstone_bricks" : "cracked_stone_bricks";
-  const char* carved = dark ? "chiseled_polished_blackstone" : "chiseled_stone_bricks";
-  for (int gz = 0; gz < MAZE_SIZE; gz++) for (int gx = 0; gx < MAZE_SIZE; gx++) {
-    const int x = M.mx0 + gx, z = M.mz0 + gz; if (!P.in(x, z)) continue;
-    P.put(x, y, z, P.h(x, 0, z, 2) < 0.25 ? floorB : floorA);
-    P.put(x, y + 5, z, dark ? "blackstone_bricks" : "stone_bricks");
-    const bool o = M.open[gx * MAZE_SIZE + gz];
-    for (int yy = y + 1; yy <= y + 4; yy++) P.put(x, yy, z, o ? "air" : (yy == y + 4 && (gx + gz) % 6 == 0 ? carved : wall(x, yy, z)));
-    if (o && P.h(x, 3, z, 3) < 0.04) P.put(x, y + 4, z, "cobweb");
-    if (o && P.h(x, 4, z, 4) < 0.012) P.put(x, y + 1, z, "bone_block");
-    if (!dark) continue;
-    const auto openAt = [&](int ax, int az) { return ax >= 0 && az >= 0 && ax < MAZE_SIZE && az < MAZE_SIZE && M.open[ax * MAZE_SIZE + az]; };
-    if (o && P.h(x, 5, z, 7) < 0.035) P.put(x, y + 1, z, "spike_trap");                       // spikes in the floor
-    else if (o && P.h(x, 6, z, 8) < 0.025) P.put(x, y + 1, z, "emberglass_cluster");          // the only light: crystals
-    else if (o && P.h(x, 8, z, 9) < 0.02) P.put(x, y + 1, z, "amethyst_cluster");
-    // a ceiling lamp over the corridor with a motion sensor in the ceiling beside it, over the wall
-    if (o && P.h(x, 9, z, 10) < 0.02) for (auto [dx, dz] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}})
-      if (!openAt(gx + dx, gz + dz) && P.in(x + dx, z + dz)) { P.put(x, y + 5, z, "redstone_lamp"); P.put(x + dx, y + 5, z + dz, "motion_sensor"); break; }
-    // a mesh window through a thin wall into the next corridor
-    if (!o && P.h(x, 10, z, 11) < 0.05 && ((openAt(gx - 1, gz) && openAt(gx + 1, gz)) || (openAt(gx, gz - 1) && openAt(gx, gz + 1))))
-      for (int yy = y + 2; yy <= y + 3; yy++) P.put(x, yy, z, "iron_mesh");
+static json labyrinthDispenser(u32 salt) {
+  json items = json::array();
+  for (int s = 0; s < 9; s++) items.push_back(nullptr);
+  Mulberry32 r(salt);
+  for (int n = 0; n < 3; n++) {
+    const double w = r() * 600.0;
+    ItemStack st;
+    if (w < 300.0) st = ItemStack("arrow", 5 + jsFloor(r() * 3));
+    else if (w < 310.0) st = ItemStack("arrow", 1);     // BTA's gold arrow
+    else if (w < 310.5) st = ItemStack("tnt", 1);       // BTA's explosive charge
+    else continue;
+    items[jsFloor(r() * 9)] = st.toJson();
   }
-  // lamps in the heart (crystals in the dark one), chests at its back
-  const int hx = M.hx, hz = M.hz;
-  for (auto [a, b] : {std::pair{-3, -3}, {4, -3}, {-3, 4}, {4, 4}}) { P.put(hx + a, y + 1, hz + b, carved); P.put(hx + a, y + 2, hz + b, dark ? "emberglass_cluster" : "soul_lantern"); }
-  P.chest(hx - 1, y + 1, hz - 3, 2, "maze_heart"); P.chest(hx + 2, y + 1, hz - 3, 2, "maze_heart");
-  P.lectern(hx, y + 1, hz + 4, 0, "labyrinth");
-  // the dead ends
-  for (auto [x, z] : M.dead) if (P.in(x, z)) { const double q = P.h(x, 7, z, 5); if (q < 0.22) P.chest(x, y + 1, z, 2, "maze"); else if (q < 0.4) P.put(x, y + 1, z, "old_torch", 0); }
-  // the way down: a stair under a broken gate, south of the maze
-  const int ex = M.ex, ez = M.ez;
-  for (int k = 0; k <= M.stairK; k++) {
-    const int z = ez + 1 + k, floor = y + k;   // one step up for every step south
-    for (int dx = -1; dx <= 2; dx++) {
-      const int x = ex + dx; if (!P.in(x, z)) continue;
-      const bool side = dx == -1 || dx == 2; const int g = P.ground(x, z);
-      for (int yy = floor - 1; yy <= floor + 4; yy++) {
-        if (yy > g + 1 && side) continue;
-        P.put(x, yy, z, side || yy == floor - 1 ? wall(x, yy, z) : yy == floor + 4 ? (floor + 4 > g ? "air" : "stone_bricks") : "air");
-      }
-      if (!side) P.put(x, floor, z, "stone_brick_stairs", 2);
+  return items;
+}
+
+static void mazeBuild(ChunkWriter& w, const StructurePlan& S) {
+  SP P(w);
+  const LabExt& M = extOf<LabExt>(S);
+  for (const auto& [pos, cell] : M.cells) {
+    if (!P.in(pos.x, pos.z)) continue;
+    const int x = pos.x, y = pos.y, z = pos.z;
+    switch (cell.kind) {
+    case LK_AIR: P.put(x, y, z, "air"); break;
+    case LK_A: P.put(x, y, z, M.wallA); break;
+    case LK_B: P.put(x, y, z, M.wallB); break;
+    case LK_BA: P.put(x, y, z, M.brickA); break;
+    case LK_BB: P.put(x, y, z, M.brickB); break;
+    case LK_SLAB: P.put(x, y, z, M.slab, cell.meta); break;
+    case LK_PLATE: P.put(x, y, z, M.plate); break;
+    case LK_SENSOR: P.put(x, y, z, "motion_sensor", cell.meta); break;
+    case LK_DISP: {
+      const int i = P.put(x, y, z, "dispenser", cell.meta);
+      if (i >= 0) P.setEntity(i, json{{"type", "dispenser"}, {"items", labyrinthDispenser(cell.salt)}});
+      break;
+    }
+    case LK_CHEST: P.chest(x, y, z, 2, "maze"); break;
+    case LK_TCHEST: {
+      const int i = P.chest(x, y, z, 2, "maze");
+      if (i >= 0 && hasItem("golden_quiver"))
+        if (json* be = P.entity(i))
+          if (be->contains("items") && (*be)["items"].is_array() && !(*be)["items"].empty())
+            (*be)["items"][0] = ItemStack("golden_quiver", 1).toJson();
+      break;
+    }
+    case LK_SPAWN: P.spawner(x, y, z, cell.mob == 2 ? "stray" : cell.mob == 1 ? "ghoul" : "skeleton"); break;
+    case LK_BOOK: P.put(x, y, z, "bookshelf"); break;
+    case LK_LOG: P.put(x, y, z, M.log); break;
+    case LK_WEB: P.put(x, y, z, "cobweb"); break;
+    case LK_SPIKE: P.put(x, y, z, "spike_trap", 0); break;
+    case LK_LAVA: P.put(x, y, z, "lava"); break;
+    case LK_OBSIDIAN: P.put(x, y, z, "obsidian"); break;
+    case LK_PLANK: P.put(x, y, z, M.plank); break;
+    default: break;
     }
   }
-  for (int dx = 0; dx <= 1; dx++) if (P.in(ex + dx, ez)) for (int yy = y + 1; yy <= y + 4; yy++) P.put(ex + dx, yy, ez, "air");
-  // the gate: two worn pillars and a fallen lintel
-  const int gz = ez + 1 + M.stairK + 2;
-  for (int dx : {-2, 3}) { const int x = ex + dx; if (!P.in(x, gz)) continue; const int gy = P.ground(x, gz); for (int yy = gy + 1; yy <= gy + 4; yy++) P.put(x, yy, gz, yy == gy + 4 ? "chiseled_stone_bricks" : wall(x, yy, gz)); }
-  for (int dx = -1; dx <= 2; dx++) { const int x = ex + dx; if (P.in(x, gz + 1) && P.h(x, 9, gz, 6) < 0.6) P.put(x, P.ground(x, gz + 1) + 1, gz + 1, "stone_brick_slab"); }
 }
 
 // ---- registration (the original's STRUCTS 0..6, in its order) ----

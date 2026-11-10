@@ -1,6 +1,8 @@
 // render/char_anim.cpp — avatarAnim (render/skins.js) with game/anim.js's livelier bodies, and the part matrices
 // of avatarDraws / gearDraws.
 #include "render/char_anim.h"
+#include <cstdio>
+#include <cstdlib>
 
 namespace dq {
 
@@ -13,6 +15,86 @@ inline mat4 rot(mat4 m, vec3 r) {
   if (r.z) m = glm::rotate(m, r.z, vec3(0, 0, 1));
   return m;
 }
+inline glm::mat3 rotM(vec3 r) { return glm::mat3(rot(mat4(1), r)); }
+// the angles (x, then y; no z) that point a limb's -y along the unit vector d, as rot() turns it
+vec3 aimAngles(vec3 d) {
+  const float x = std::acos(clampf(-d.y, -1, 1));
+  return vec3(x, std::sin(x) > 1e-4f ? std::atan2(-d.x, -d.z) : 0.f, 0);
+}
+// two bones from the shoulder S (l1 to the elbow, l2 on to the fist) reaching for T, the elbow bent toward pole: the
+// upper arm's angles and the forearm's (in the upper arm's frame). Out of reach, the arm points straight at it.
+void reachArm(vec3 S, vec3 T, float l1, float l2, vec3 pole, vec3& up, vec3& fore) {
+  vec3 v = T - S; float d = glm::length(v);
+  const vec3 vn = d > 1e-4f ? v / d : vec3(0, -1, 0);
+  d = clampf(d, std::fabs(l1 - l2) + 0.01f, l1 + l2 - 0.01f);
+  const float ca = clampf((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1), sa = std::sqrt(1 - ca * ca);
+  vec3 pp = pole - vn * glm::dot(pole, vn); const float pl = glm::length(pp);
+  pp = pl > 1e-4f ? pp / pl : vec3(0, 0, 0);
+  const vec3 u = vn * ca + pp * sa;
+  up = aimAngles(u);
+  const vec3 w = glm::normalize(S + vn * d - (S + u * l1));
+  fore = aimAngles(glm::transpose(rotM(up)) * w);
+}
+}
+
+// a commando crawl (charRig lays the body flat on its chest: from here "up" the body, +y, is forward along the ground and
+// -z is the ground, 2 px below the middle). Each forearm in turn reaches out beside the head and pulls the body up to it,
+// the elbows out to the sides; the knee across from the reaching arm draws up to the side and pushes. Still, both
+// forearms rest in front and the legs lie straight. The hands and feet are put where they go (reachArm, as the bow's).
+static void crawlLimbs(CharAngles& A, const CharPose& pose, const CharModel& M, float b, float kl, float hip) {
+  const float mv = clampf(pose.crawlMv, 0, 1), ph = pose.crawlPh, s = std::sin(ph), c = std::cos(ph);
+  const float rR = 0.5f + 0.5f * s * mv, rL = 0.5f - 0.5f * s * mv;                         // reach: 0 pulled back .. 1 out front
+  const float upR = std::max(0.f, c) * 1.5f * mv, upL = std::max(0.f, -c) * 1.5f * mv;      // the arm going forward lifts clear
+  A.body = vec3(0, s * 0.08f * mv, s * 0.05f * mv);   // the hips and shoulders wriggle with it
+  A.lift = 0;
+  const glm::mat3 Rb = rotM(A.body);
+  const vec3 hipP(0, hip, 0);
+  auto toBody = [&](vec3 r) { return glm::transpose(Rb) * (r - hipP); };
+  const vec3 pR = M.pivot[CP_ARMR_U], pL = M.pivot[CP_ARML_U];
+  const vec3 sR(pR.x * b, pR.y - 12, pR.z), sL(pL.x * b, pL.y - 12, pL.z);
+  const float l1 = glm::length(M.pivot[CP_ARMR_D] - pR), l2 = BOW_FIST;
+  // the hands beside the head (it is 8 wide), from the chin (pulled) to the brow (reached), resting on the ground
+  auto hand = [&](float side, float r, float up) { return vec3(side * (5.6f * b), hip + 13.f + 6.f * r, 0.3f + up); };
+  reachArm(sR, toBody(hand(1, rR, upR)), l1, l2, vec3(1, -0.5f, 0), A.armR, A.foreR);
+  reachArm(sL, toBody(hand(-1, rL, upL)), l1, l2, vec3(-1, -0.5f, 0), A.armL, A.foreL);
+  // the legs (the root's children, not the body's): the knee across from the reaching hand draws up and out
+  auto leg = [&](int up, float side, float k, vec3& legA, vec3& shinA) {
+    const vec3 pv = M.pivot[up], hipJ(pv.x * b, hip, pv.z);
+    const float m1 = glm::length(M.pivot[up + 1] - pv) * kl, m2 = 5.6f * kl;
+    const vec3 foot(side * (2.2f + 1.0f * k) * b, hip - (m1 + m2) + 0.4f + 5.0f * k * kl, 0.f);
+    reachArm(hipJ, foot, m1, m2, vec3(side, 0.15f, 0), legA, shinA);
+  };
+  leg(CP_LEGR_U, 1, rL * mv, A.legR, A.shinR);
+  leg(CP_LEGL_U, -1, rR * mv, A.legL, A.shinL);
+}
+
+// the bow drawn (third person): the stave's grip in the bow hand (the left), its string pulled back to the right hand
+// just in front of the chin, the arrow along the aim. The arms reach for the places (render/char_layer.cpp then hangs
+// the bow on the hands where they are, bent as far as they're apart). Body space is the arms' parent frame.
+static void crawlLimbs(CharAngles& A, const CharPose& pose, const CharModel& M, float b, float kl, float hip);
+static void bowDrawArms(CharAngles& A, const CharPose& pose, const CharModel& M, float b, float hip) {
+  const float k = std::min(1.f, pose.bow), ease = k * k * (3 - 2 * k);
+  const glm::mat3 Rb = rotM(A.body);
+  const vec3 hipP(0, hip, 0);
+  auto toBody = [&](vec3 r) { return glm::transpose(Rb) * (r - hipP); };
+  const vec3 pR = M.pivot[CP_ARMR_U], pL = M.pivot[CP_ARML_U];
+  const vec3 sR(pR.x * b, pR.y - 12, pR.z), sL(pL.x * b, pL.y - 12, pL.z);   // the shoulders (body space)
+  const float l1 = glm::length(M.pivot[CP_ARMR_D] - pR), l2 = BOW_FIST;
+  // the aim: straight ahead, up or down as they look
+  const float pitch = clampf(pose.headPitch, -1.2f, 1.2f), cp = std::cos(pitch), sp = std::sin(pitch);
+  auto pitched = [&](vec3 v) { return vec3(v.x, v.y * cp - v.z * sp, v.y * sp + v.z * cp); };
+  const vec3 aim = pitched(vec3(0, 0, -1));
+  const vec3 neck = hipP + Rb * vec3(0, 12, 0);
+  const vec3 D = neck + pitched(vec3(0.6f, -0.6f, -4.6f));   // the draw hand, at the chin
+  // the bow hand out along the aim, as far as the string is drawn (and as the arm reaches)
+  const vec3 SL = hipP + Rb * sL, w = D - SL;
+  const float L = l1 + l2 - 0.05f, aw = glm::dot(aim, w), disc = aw * aw - glm::dot(w, w) + L * L;
+  const float tMax = disc > 0 ? -aw + std::sqrt(disc) : -aw;
+  const float want = 1.41421f * (0.235f + 0.3405f * ease) * BOW_SCALE / CHAR_PX;
+  const float tr = k >= 0.95f ? std::sin(pose.time * 47) * 0.12f : 0;
+  const vec3 F = D + aim * std::min(want, tMax) + vec3(tr, tr * 0.5f, 0);
+  reachArm(sL, toBody(F), l1, l2, vec3(-0.6f, -1, 0), A.armL, A.foreL);
+  reachArm(sR, toBody(D), l1, l2, vec3(1, -0.25f, 0.6f), A.armR, A.foreR);
 }
 
 CharAngles charAnimate(const CharPose& pose) {
@@ -36,7 +118,7 @@ CharAngles charAnimate(const CharPose& pose) {
   if (pose.held && !pose.carry) A.armR.x = A.armR.x * 0.5f + 0.31f;
   if (pose.off && !pose.carry) A.armL.x = A.armL.x * 0.5f + 0.31f;
   // off the ground: knees up; falling hard: arms up
-  if (pose.air && !pose.swim && !pose.sit) {
+  if (pose.air && !pose.swim && !pose.crawl && !pose.sit) {
     // Story Mode weight: pushing off (legs straight under you, arms swung up), tucked at the top, then reaching down for
     // the ground as you fall (and arms going up with a long fall)
     const float fall = clampf(-pose.vy / 12, 0, 1), rise = clampf(pose.vy / 6, 0, 1), apex = 1 - clampf(std::fabs(pose.vy) / 4, 0, 1);
@@ -64,13 +146,20 @@ CharAngles charAnimate(const CharPose& pose) {
     A.armL.y -= tw; A.armL.x -= tw;
     A.foreR.x += f2 * 0.25f;
   }
-  if (pose.bow > 0) {   // the bow arm straight out at the target; the drawing hand pulls back to the cheek
+  if (pose.bow > 0) {   // the bow arm straight out at the target; the drawing hand pulls back to the chin (third person:
+                        // charRig's bowDrawArms puts the hands on the bow); the body turns its bow shoulder to the target
     float k = std::min(1.f, pose.bow), tr = k >= 0.95f ? std::sin(t * 47) * 0.012f : 0;
     A.armL = vec3(1.52f + tr, 0.1f + 0.08f * k, 0); A.foreL = vec3(0.04f, 0, 0);
     A.armR = vec3(1.45f, -0.45f - 0.25f * k, 0); A.foreR = vec3(0.1f + 0.15f * k, 0, -1.1f * k);
-    A.body = vec3(A.body.x, A.body.y + 0.18f * k, 0);
+    const float turn = 0.5f + 0.5f * k;   // side-on, like an archer (the feet turned half as far): the bow arm reaches further
+    A.body = vec3(A.body.x, A.body.y - turn, 0); A.legR.y -= turn * 0.5f; A.legL.y -= turn * 0.5f;
   }
   if (pose.eat > 0) { A.armR = vec3(1.15f + std::sin(t * 22) * 0.12f, -0.35f, 0); A.foreR = vec3(0.9f, 0, 0); }
+  if (pose.scope) {   // like the bow's drawing hand to the chin, a little higher: the forearm folded in to the eye (DQ_DEV_SCOPE="ax,ay,az,fx,fy,fz")
+    static float S[6] = {2.3f, -0.25f, 0.f, 0.25f, 0.f, -1.6f}; static bool sl = false;
+    if (!sl) { sl = true; if (const char* v = std::getenv("DQ_DEV_SCOPE")) std::sscanf(v, "%f,%f,%f,%f,%f,%f", &S[0], &S[1], &S[2], &S[3], &S[4], &S[5]); }
+    A.armR = vec3(S[0] + pose.headPitch, S[1], S[2]); A.foreR = vec3(S[3], S[4], S[5]);
+  }
   if (pose.carry) { A.armR = vec3(1.25f, 0, 0.05f); A.armL = vec3(1.25f, 0, -0.05f); A.foreR = A.foreL = vec3(0.3f, 0, 0); }
   if (pose.castWind > 0) { float k = std::sin(pose.castWind * PI / 2); A.armR = vec3(0.6f + 2.3f * k, -0.15f, 0.12f); A.foreR = vec3(0.35f * k, 0, 0); A.body.y -= 0.2f * k; }
   if (pose.sneak) { A.body.x = -0.45f; A.legR.x += 0.2f; A.legL.x += 0.2f; A.shinR.x -= 0.4f; A.shinL.x -= 0.4f; A.lift -= 0.12f; }
@@ -124,13 +213,13 @@ CharAngles charAnimate(const CharPose& pose) {
     A.lift = std::sin(sp * (1 + mv)) * 0.035f;
   }
   // the head keeps looking where the player looks, whatever the body does
-  A.head = vec3((pose.swim ? 0.9f : pose.headPitch) - A.body.x, -A.body.y, 0);
+  A.head = vec3((pose.swim ? 0.9f : pose.crawl ? 1.2f + clampf(pose.headPitch, -0.6f, 0.6f) * 0.4f : pose.headPitch) - A.body.x, -A.body.y, 0);
 
   // ---- game/anim.js: livelier bodies ----
   float b0 = A.body.x, b1 = A.body.y;
-  bool special = pose.swim || pose.sleep || pose.hang || pose.climb > 0 || pose.ladder || pose.sit || pose.deathT > 0 || pose.carry || pose.bow > 0 || pose.paddle || pose.fly;
+  bool special = pose.swim || pose.crawl || pose.sleep || pose.hang || pose.climb > 0 || pose.ladder || pose.sit || pose.deathT > 0 || pose.carry || pose.bow > 0 || pose.paddle || pose.fly;
   if (!special) {
-    bool busyR = pose.held || pose.swing > 0 || pose.eat > 0 || pose.castWind > 0;
+    bool busyR = pose.held || pose.swing > 0 || pose.eat > 0 || pose.castWind > 0 || pose.scope;
     if (!pose.air) {
       // a looser walk: hips swing, shoulders counter-twist, arms swing wider and elbows bend, the head nods
       A.body.y += sL * 0.07f * a;
@@ -191,7 +280,7 @@ CharAngles charAnimate(const CharPose& pose) {
     }
   }
   // maps.js: a map held up in front of the chest, in both hands (or one, when the other holds something)
-  if (!(pose.fp || pose.carry || pose.sleep || pose.swim || pose.hang || pose.climb > 0 || pose.deathT > 0 || pose.swing > 0) && (pose.mapMain || pose.mapOff)) {
+  if (!(pose.fp || pose.carry || pose.sleep || pose.swim || pose.crawl || pose.hang || pose.climb > 0 || pose.deathT > 0 || pose.swing > 0) && (pose.mapMain || pose.mapOff)) {
     if (pose.mapMain && !pose.off) { A.armR = vec3(0.95f, 0, -0.3f); A.armL = vec3(0.95f, 0, 0.3f); A.foreR = A.foreL = vec3(0.2f, 0, 0); }
     else { if (pose.mapMain) A.armR = vec3(0.9f, 0, -0.1f); if (pose.mapOff) A.armL = vec3(0.9f, 0, 0.1f); }
   }
@@ -213,18 +302,20 @@ CharAngles charAnimate(const CharPose& pose) {
     A.legR = vec3(0, 0, 0.04f); A.legL = vec3(0, 0, -0.04f); A.shinR = A.shinL = vec3(0); A.body = vec3(0); A.lift = 0;
   }
   // game/villagers.js avatarAnim: new moves for the shared body
+  const vec3 bowR = A.armR, bowF = A.foreR;   // (the bow arm as it walks or stands, before the gestures)
   if (pose.headYaw != 0) A.head.y += pose.headYaw;
   if (pose.wave > 0) { float k = std::min(1.f, pose.wave * 3); A.armR = vec3(2.7f * k, 0, 0.35f * k + std::sin(t * 14) * 0.35f * k); A.foreR = vec3(0.2f, 0, 0); }
   else if (pose.talk) { A.armR.x += 0.5f + std::sin(t * 3.1f) * 0.25f; A.foreR.x += 0.6f + std::sin(t * 2.3f) * 0.3f; A.armL.x += 0.35f + std::sin(t * 2.7f + 1) * 0.2f; A.foreL.x += 0.5f; A.head.x += std::sin(t * 4.3f) * 0.06f; }
   else if (pose.fold && pose.walkAmt < 1e-3f) { A.armR = vec3(0.95f, 0.35f, -0.55f); A.foreR = vec3(1.25f, 0, 0); A.armL = vec3(0.95f, -0.35f, 0.55f); A.foreL = vec3(1.25f, 0, 0); }
   if (pose.read) { A.armR = vec3(0.85f, -0.25f, 0); A.foreR = vec3(0.7f, 0, 0); A.armL = vec3(0.85f, 0.25f, 0); A.foreL = vec3(0.7f, 0, 0); A.head.x += 0.35f; }
   if (pose.hoe > 0) { float k = std::sin(pose.hoe * PI); A.armR = vec3(0.6f + k * 1.2f, 0, 0); A.armL = vec3(0.6f + k * 1.1f, 0, 0); A.body.x -= k * 0.25f; }
+  if (pose.bowArm && pose.bow <= 0 && pose.swing <= 0) { A.armR = vec3(std::min(bowR.x, 0.1f), 0, bowR.z); A.foreR = vec3(std::min(bowF.x, 0.06f), 0, 0); }   // the arm hangs nearly straight: the bow it carries lies level at the side
   return A;
 }
 
 void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, bool cloak, bool underPack) {
   // anim.js: the body turned its own way (third person), the head where you look
-  if (!pose.fp && pose.hasBodyYaw && !pose.swim && !pose.sleep) { pose.yaw = pose.bodyYaw; pose.turned = true; }
+  if (!pose.fp && pose.hasBodyYaw && !pose.swim && !pose.crawl && !pose.sleep) { pose.yaw = pose.bodyYaw; pose.turned = true; }
   // the peoples stand at their own heights (gearScaleDraws): scaled about the feet (the hips when seated)
   float sy = M.stature.x, sx = M.stature.y;
   const float EYE_CAP = 1.72f;
@@ -239,14 +330,19 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
   if (pose.lean > 0 && !pose.fp) { base = glm::translate(base, vec3(0, 0.9f, 0)); base = glm::rotate(base, -pose.lean, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0)); }
   if (pose.deathT > 0) base = glm::rotate(base, std::min(1.f, pose.deathT * 3) * PI / 2, vec3(0, 0, 1));
   if (pose.swim) { base = glm::translate(base, vec3(0, 0.32f, 0.55f)); base = glm::rotate(base, -PI / 2 + pose.swimPitch * 0.8f, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0)); }
+  else if (pose.crawl && !pose.fp) {   // flat on the ground, the chest on it (its plane 2 px in front of the middle)
+    base = glm::translate(base, vec3(0, 2.3f * CHAR_PX, 0.5f)); base = glm::rotate(base, -PI / 2, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0));
+  }
   if (pose.sleep) { base = glm::rotate(base, PI, vec3(0, 1, 0)); base = glm::translate(base, vec3(0, 0.3f, 0)); base = glm::rotate(base, PI / 2, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0)); }
   if (pose.fp) base = glm::translate(base, vec3(0, 0, 0.25f));   // FP_BODY: just behind the eyes
   CharAngles A = charAnimate(pose);
   if (pose.fp) { A.body.x *= 0.25f; A.body.y *= 0.5f; A.armL = vec3(A.armL.x * 0.45f, A.armL.y, A.armL.z - 0.06f); A.foreL.x *= 0.5f; }
-  R.fpTorso = pose.fp && !pose.swim && !pose.sleep && pose.deathT <= 0;
+  R.fpTorso = pose.fp && !pose.swim && !pose.crawl && !pose.sleep && pose.deathT <= 0;
   // the body shape: leg length lifts everything above the hips, build widens, the head its own size
   const BodyShape& S = M.body;
   float kl = S.legs, b = S.build, hip = 12 * kl;
+  if (pose.crawl && !pose.fp && !pose.swim && pose.deathT <= 0) crawlLimbs(A, pose, M, b, kl, hip);
+  else if (pose.bow > 0 && !pose.fp && !pose.swim && !pose.sleep && pose.deathT <= 0) bowDrawArms(A, pose, M, b, hip);
   vec3 hs = vec3(S.head);
   if (S.headShape == "long") hs.y *= 1.12f; else if (S.headShape == "wide") { hs.x *= 1.12f; hs.z *= 1.05f; }
   mat4 root = glm::translate(base, vec3(0, A.lift, 0));
