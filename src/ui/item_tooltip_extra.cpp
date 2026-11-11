@@ -46,7 +46,7 @@ void tooltipGearLines(const ItemStack& s, std::vector<std::pair<std::string, u32
   const ItemDef* d = s.def();
   if (const float h = itemHeat(s); h > 25) {   // sim/heat.h: TFC's names for the heat
     const std::string n = heatName(h);
-    out.push_back({(n.empty() ? std::string("Warm") : n) + " (" + std::to_string((int)h) + "\xC2\xB0C)", heatGlow(h) ? 0xFF000000u | ((heatGlow(h) & 0xFF) << 16) | (heatGlow(h) & 0xFF00) | (heatGlow(h) >> 16) : TS});
+    out.push_back({(n.empty() ? std::string("Warm") : n) + " (" + std::to_string((int)h) + "\xC2\xB0" "C)", heatGlow(h) ? 0xFF000000u | ((heatGlow(h) & 0xFF) << 16) | (heatGlow(h) & 0xFF00) | (heatGlow(h) >> 16) : TS});
   }
   if (s.id == "quiver") {   // sim/quiver.cpp: what's in it, kind by kind
     std::map<std::string, int> kinds; int n = 0;

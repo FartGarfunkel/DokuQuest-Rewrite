@@ -61,6 +61,10 @@ jobs:
         run: |
           bad=$(grep -rnE '\{ (void|bool|int|float) [A-Za-z_]+\([^)]*\); |\{ std::[A-Za-z_:<>]+ [A-Za-z_]+\(\); ' src tools | grep -vE ':[0-9]+:\s*namespace ' || true)
           if [ -n "$bad" ]; then echo "$bad" | while IFS= read -r l; do echo "::error::declare it at namespace scope: $l"; done; exit 1; fi
+      - name: No hex escape followed by a hex letter ("\xB0C" builds with GCC but MSVC fails with C7744; write "\xB0" "C")
+        run: |
+          bad=$(grep -rnE '\\x[0-9A-Fa-f]{2}[0-9A-Fa-f]' src tools --include='*.cpp' --include='*.h' || true)
+          if [ -n "$bad" ]; then echo "$bad" | while IFS= read -r l; do echo "::error::split the string after the escape: $l"; done; exit 1; fi
       - name: Smoke test
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
