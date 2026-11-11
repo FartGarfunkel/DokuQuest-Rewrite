@@ -697,6 +697,13 @@ def main(d):
             if 'items' in r: r['items'] = ['#' + lit if i == lit else i for i in r['items']]
             if 'key' in r: r['key'] = {k: ('#' + lit if v == lit else v) for k, v in r['key'].items()}
 
+    # TFC's equipment is an immersive world's: a classic world crafts as it did before (its new rocks and metals aside)
+    IMM_ONLY = {'bellows', 'bloomery', 'burlap', 'fire_clay', 'firestarter', 'flint_hammer', 'flint_javelin', 'flint_knife', 'flint_saw',
+                'flint_scythe', 'stone_hammer', 'stone_javelin', 'stone_knife', 'stone_scythe', 'crude_pickaxe', 'flux', 'gearbox', 'handstone',
+                'lumber', 'quern', 'sealed_barrel', 'sluice', 'spindle', 'support_beam', 'tongs', 'wool_cloth'}
+    for r in rj['recipes']:
+        if (r.get('out') in IMM_ONLY or (r.get('out') == 'planks' and 'lumber' in json.dumps(r.get('key', {})))) and not r.get('classicOnly'): r['immersiveOnly'] = True
+
     # classic worlds (no vessels): every metal's ore smelts in the furnace, and every alloy crafts from whole ingots in its mix
     mj2 = json.loads((d / 'metals.json').read_text())
     for ob, m in mj2.get('oreBlocks', {}).items():

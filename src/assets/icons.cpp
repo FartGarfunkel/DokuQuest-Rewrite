@@ -87,7 +87,7 @@ void ItemIcons::build(const TileSet& ts) {
   // (keyed by the tiles' pixels, the items and the builders' version)
   u64 h = 1469598103934665603ull;
   auto mix = [&](const void* p, size_t k) { const u8* b = (const u8*)p; for (size_t q = 0; q < k; q++) { h ^= b[q]; h *= 1099511628211ull; } };
-  const char* VERSION = "dq-item-icons-13";   // 8: rods drawn from their sheets; 11: the modelled pottery, molds and hammers (assets/pottery3d)
+  const char* VERSION = "dq-item-icons-17";   // 8: rods drawn from their sheets; 11: the modelled pottery, molds and hammers (assets/pottery3d)
   mix(VERSION, std::strlen(VERSION)); mix(&size, sizeof size); mix(ts.rgba.data(), ts.rgba.size()); mix(ts.res.data(), ts.res.size());
   for (auto& it : R.items) { mix(it.key.data(), it.key.size()); mix(it.icon.data(), it.icon.size()); mix(it.block.data(), it.block.size()); h ^= 0xFF; }
   fs::path cacheDir = userSub("cache"), cacheFile = cacheDir / strFormat("icons-%016llx.png", (unsigned long long)h);

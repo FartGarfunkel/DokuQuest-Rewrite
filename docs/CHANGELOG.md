@@ -33,6 +33,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 **Everywhere:**
 - **Crouch and use to set anything down** on top of what you're looking at: the ground, a furnace, a crafting table, a chest.
 - **Stained glass and its panes show their colour** in the inventory and in your hand.
+- **No more flat items where a solid one belongs:** candles (soul wax ones too) stand as wax candles, crystal blocks are clusters of crystals, walls show a post and its arms, and the Tool Forge's loose heads are their tools' heads.
 - **The controller shows the full item tooltip** beside the slot you're on in the inventory.
 - **Mixed tools set down on the ground** show their own metals.
 - **The ground under an ingot pile, a log pile or a pit kiln** no longer vanishes.

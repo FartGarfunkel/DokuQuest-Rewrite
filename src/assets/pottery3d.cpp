@@ -7,6 +7,8 @@
 #include "sim/knapping.h"
 #include "core/registry.h"
 #include <cmath>
+#include <algorithm>
+#include <vector>
 
 namespace dq {
 namespace {
@@ -112,6 +114,17 @@ bool buildPotteryGrid(const std::string& keyIn, VoxelGrid& g, VoxelFrame& fr, fl
     buildMold(g, col, "unfired_" + shape, metal); depth = 0.12f; return true;
   }
   if (!unfired && !ceramic && shape != "crucible") {
+    if (key == "candle" || (key.size() > 7 && key.compare(key.size() - 7, 7, "_candle") == 0)) {   // a wax candle and its wick
+      static const std::pair<const char*, vec3> DYE[] = {{"white", {233, 236, 236}}, {"orange", {240, 118, 19}}, {"magenta", {189, 68, 179}}, {"light_blue", {58, 175, 217}},
+        {"yellow", {248, 197, 39}}, {"lime", {112, 185, 25}}, {"pink", {237, 141, 172}}, {"gray", {72, 78, 82}}, {"light_gray", {150, 150, 142}}, {"cyan", {21, 137, 145}},
+        {"purple", {121, 42, 172}}, {"blue", {53, 57, 157}}, {"brown", {114, 71, 40}}, {"green", {84, 109, 27}}, {"red", {160, 39, 34}}, {"black", {32, 32, 38}}, {"soul_wax", {168, 214, 226}}};
+      vec3 wax(232, 212, 162);
+      for (auto& [n, c] : DYE) if (key == std::string(n) + "_candle") wax = c;
+      Lathe L{g, wax};
+      for (int y = 0; y < 13; y++) L.ring(y, 2.6f, -1.f, y == 12 ? 1.1f : 1.f);
+      for (int y = 13; y < 15; y++) g.set(N / 2, y, N / 2, voxRGBA(40, 34, 30));
+      depth = 0.1f; return true;
+    }
     if (key == "firestarter") {   // a hearth board with the drill stick standing in its notch
       const vec3 wood(150, 112, 70), dark(96, 70, 44);
       for (int z = 12; z < 20; z++) for (int x = 6; x < 26; x++) for (int y = 0; y < 3; y++) g.set(x, y, z, tone(wood, x, y, z, y == 2 ? 1.06f : 0.92f));

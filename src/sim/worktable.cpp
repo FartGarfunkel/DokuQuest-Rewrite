@@ -6,6 +6,7 @@
 #include "sim/events.h"
 #include "core/registry.h"
 #include <cmath>
+#include <algorithm>
 #include <array>
 
 namespace dq {
@@ -75,11 +76,14 @@ bool worktableUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& 
   CraftMatch r = matchGrid(rg, 3);
   if (!r) { toast(lv, p, "Those make nothing yet"); return true; }
   ItemStack out = r.result();
+  // as the crafting screen (sim/inv_ops.cpp takeOutput): an upgraded backpack keeps what was in it; a mod may cancel it
+  const ItemDef* od = out.def();
+  for (auto& s : rg) if (!s.empty() && s.tag.is_object() && s.tag.contains("c") && s.def() && s.def()->has("backpack") && od && od->has("backpack")) { if (!out.tag.is_object()) out.tag = json::object(); out.tag["c"] = s.tag["c"]; break; }
+  if (lv.events && !lv.events->emit("craft", json::array({p.name, out.id, out.n}))) return true;
   consumeCraft(rg, r, [&](const ItemStack& b) { giveOrDropHere(lv, p, b); });
   for (int i = 0; i < 9; i++) g[ord[i]] = rg[i];
   save();
   giveOrDropHere(lv, p, out);
-  if (lv.events) lv.events->emit("craft", json::array({p.name, out.id, out.n}));
   sfxUi(lv, p, "craft");
   return true;
 }

@@ -35,6 +35,7 @@
 #include "world/rug.h"
 
 namespace dq {
+bool isCampfire(BlockId id);   // sim/camping.h (its header clashes with sim/gameplay.h here)
 // (declared out here: MSVC gives a function declared inside a block the global namespace, so these never linked on Windows)
 // the paths' talents (sim/villager_quests.cpp) and a poisoned arrow (sim/mob_combat.cpp)
 float pathArrowFactor(const Player& p, float distance); bool pathArrowPoisons(const Player& p); bool pathQuiverSaves(const Player& p);
@@ -734,9 +735,15 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   }
   // crouched, any item that isn't a block is set down on top of what you look at: the ground, a furnace, a table, a chest
   // (Vintage Story's way) -- before the item's own use or the block's. Items whose crouched use is aimed at the block keep it.
-  if (!fromOff && !repeat && p.sneaking && hit && hit->normal.y == 1 && def && def->block.empty() && !te && !R.block(hit->id).has("pile")) {
+  if (!fromOff && !repeat && p.sneaking && hit && hit->normal.y == 1 && def && def->block.empty() && !te && !R.block(hit->id).has("pile")
+      && !isCampfire(hit->id) && !(R.block(hit->id).has("table") && immersive(lv))) {   // (food on a campfire cooks; an immersive table's top is its grid)
+    // tools (tilling, stripping, carving...) and items whose crouched use is their own keep it; a tool with nothing to act on is
+    // still set down further on, as ever
     bool aimed = false;
-    for (const char* k : {"bucket", "igniter", "plants", "bonemeal", "summon", "paintbrush", "cart", "boat", "disc", "backpack"}) if (def->has(k)) aimed = true;
+    if (def->hasTool) for (const char* t : {"hoe", "axe", "shovel", "chisel", "shears", "igniter"}) if (def->tool.type == t) aimed = true;   // (tilling, stripping, paths, carving)
+    if (def->has("hammer") && immersive(lv)) aimed = true;   // (a stone anvil, smithing)
+    for (const char* k : {"bucket", "igniter", "plants", "bonemeal", "summon", "summonWand", "paintbrush", "cart", "boat", "disc", "backpack", "bottle", "quiver", "lead", "enderEye"}) if (def->has(k)) aimed = true;
+    if (held.id == "glass_bottle" || held.id == "ender_eye" || held.id == "lead" || held.id == "quiver" || held.id == "golden_quiver") aimed = true;
     if (!aimed && held.id != "firestarter" && putDown(*hit, held)) return;
   }
   if (!fromOff && !repeat && te) for (auto& h : hooks().useEntity) if (h(*this, *te, held.empty() ? nullptr : &held, def)) return;

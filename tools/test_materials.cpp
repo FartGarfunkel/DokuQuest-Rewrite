@@ -76,6 +76,7 @@ int main(int argc, char** argv) {
     recipeGate().immersive = false;
     p = matchGrid(l, 2);
     check(p && p.out == "planks" && p.n == 4, "classic: four, as ever");
+    recipeGate().immersive = true;   // (lumber is an immersive world's)
     std::vector<ItemStack> lu(4); for (int i = 0; i < 4; i++) lu[i] = ItemStack("lumber", 1);
     CraftMatch pl = matchGrid(lu, 2);
     check(pl && pl.out == "planks", "four lumber make planks");
@@ -208,6 +209,9 @@ int main(int argc, char** argv) {
     std::vector<ItemStack> l(4); l[0] = ItemStack("log", 1);
     CraftMatch pl = matchGrid(l, 2);
     check(pl && pl.out == "planks" && pl.n == 4, "classic: a log is four planks");
+    std::vector<ItemStack> bw(9); for (int i : {0, 1, 2, 6, 7, 8}) bw[i] = ItemStack("planks", 1); for (int i : {3, 4, 5}) bw[i] = ItemStack("leather", 1);
+    CraftMatch bm = matchGrid(bw, 3);
+    check(!(bm && bm.out == "bellows"), "classic: TFC's bellows aren't crafted (immersive worlds only)");
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);

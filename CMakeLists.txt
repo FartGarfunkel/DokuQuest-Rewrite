@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
 project(DokuQuest VERSION 1.0.0 LANGUAGES C CXX)
 # DokuQuest C++ — game client, launcher (with dedicated server + Mod Studio) and headless server.
-set(DQ_VERSION "1.0.0-alpha.20" CACHE STRING "Full game version shown in game and launcher")
+set(DQ_VERSION "1.0.0-alpha.21" CACHE STRING "Full game version shown in game and launcher")
 # the launcher's own version: raised only when the launcher itself changes. Updates install just the game (the "-game"
 # packages); the whole package, launcher and all, only when this is newer than the running launcher's (launcher/updater.cpp)
-set(DQ_LAUNCHER_VERSION "1.0.0-alpha.20")
+set(DQ_LAUNCHER_VERSION "1.0.0-alpha.21")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -177,6 +177,11 @@ add_test(NAME materials COMMAND test_materials)
 add_executable(test_world tools/test_world.cpp)
 target_link_libraries(test_world PRIVATE dqcore)
 add_test(NAME world COMMAND test_world)
+# Full legitimate playthroughs, classic and immersive, from an empty inventory (headless). Run: build/test_progression
+add_executable(test_progression tools/test_progression.cpp)
+target_link_libraries(test_progression PRIVATE dqcore)
+add_test(NAME progression COMMAND test_progression)
+set_tests_properties(progression PROPERTIES RUN_SERIAL TRUE)   # (heavy: run on its own, so it doesn't slow the timing-sensitive tests beside it)
 # The End, dragons, the Deep Dark's guardian, the watcher and the story (headless). Run: build/test_endstory
 add_executable(test_endstory tools/test_endstory.cpp)
 target_link_libraries(test_endstory PRIVATE dqcore)
@@ -191,7 +196,7 @@ add_executable(test_redstone tools/test_redstone.cpp)
 target_link_libraries(test_redstone PRIVATE dqcore)
 
 # every program finds data/ and assets/ next to it
-foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_piles test_immersive test_fire test_metal test_materials test_world test_anim test_weather)
+foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_piles test_immersive test_fire test_metal test_materials test_world test_progression test_anim test_weather)
   if(TARGET ${t})
     add_dependencies(${t} dq_runtime_data)
   endif()

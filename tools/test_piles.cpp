@@ -153,11 +153,18 @@ int main(int argc, char** argv) {
     const BlockId PILE = reg().blockId("item_pile");
     struct Case { const char* block; const char* item; };
     int i = 0;
-    for (Case c : {Case{"furnace", "iron_pickaxe"}, Case{"crafting_table", "bread"}, Case{"chest", "apple"}, Case{"stone", "ceramic_jug"}, Case{"stone", "stick"}}) {
+    for (Case c : {Case{"furnace", "iron_pickaxe"}, Case{"bookshelf", "bread"}, Case{"chest", "apple"}, Case{"stone", "ceramic_jug"}, Case{"stone", "stick"}}) {
       const int X = UX + i * 2, Z = UZ + 4; i++;
       w.setBlock(X, Y, Z, reg().blockId(c.block)); w.setBlock(X, Y + 1, Z, AIR);
       P->inv[0] = ItemStack(c.item, 2); aim(X, Y, Z); pc.use(false, sneak);
       check(w.getBlock(X, Y + 1, Z) == PILE && P->inv[0].empty(), std::string("crouched: ") + c.item + " set down on top of a " + c.block);
+    }
+    // a tool's crouched use is still the tool's: a hoe tills, it isn't set down
+    {
+      const int X = UX + 2, Z = UZ + 6;
+      w.setBlock(X, Y, Z, reg().blockId("grass")); w.setBlock(X, Y + 1, Z, AIR);
+      P->inv[0] = ItemStack("iron_hoe", 1); aim(X, Y, Z); pc.use(false, sneak);
+      check(w.getBlock(X, Y + 1, Z) != PILE && w.getBlock(X, Y, Z) == reg().blockId("farmland"), "crouched with a hoe: the grass is tilled, the hoe isn't set down");
     }
     // the crafting table worked in the world (immersive): planks on two squares, one above the other as you look, make sticks
     {

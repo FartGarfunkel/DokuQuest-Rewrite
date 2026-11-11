@@ -8,9 +8,9 @@ namespace dq {
 using namespace vmap;
 
 void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) const {
-  // terrain version 12: TFC's berry bushes by climate in place of the one wild bush (sim/... data: <berry>_bush)
+  // terrain version 12, immersive worlds: TFC's berry bushes by climate in place of the one wild bush (sim/... data: <berry>_bush)
   auto bushFor = [&](const OwColumn& c, double r2) -> BlockId {
-    if (!rockLayers) return B.berry_bush;
+    if (!rockLayers || !looseGround) return B.berry_bush;   // (a classic world: the one wild bush, as ever)
     const BlockId cold[] = {B.snowberry_bush, B.cloudberry_bush, B.cranberry_bush, B.wintergreen_bush, B.bunchberry_bush};
     const BlockId mild[] = {B.blueberry_bush, B.raspberry_bush, B.blackberry_bush, B.gooseberry_bush, B.elderberry_bush};
     const BlockId k = c.temp < -0.1 ? cold[jsFloor(r2 * 5)] : mild[jsFloor(r2 * 5)];
@@ -131,7 +131,7 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
     if ((below == B.grass || below == B.mud || below == B.sand) && c.h <= JS_SEA + 1 && waterBeside(x, y - 1, z) && r < 0.25 && at(x, y + 1, z) == 0) { set(x, y, z, B.cattail, 0); set(x, y + 1, z, B.cattail, 1); continue; }
     if ((below == B.sand || below == B.silver_sand) && c.biome == BIOME_BEACH && r < 0.08) { set(x, y, z, B.marram_grass); continue; }
     // terrain version 12: now and then a little fruit tree in the warmer woods and fields (TFC's fruit trees)
-    if (rockLayers && below == B.grass && (c.biome == BIOME_FOREST || c.biome == BIOME_PLAINS) && c.temp > 0.25 && r < 0.0015 && x >= 2 && x <= 13 && z >= 2 && z <= 13) {
+    if (rockLayers && looseGround && below == B.grass && (c.biome == BIOME_FOREST || c.biome == BIOME_PLAINS) && c.temp > 0.25 && r < 0.0015 && x >= 2 && x <= 13 && z >= 2 && z <= 13) {
       const BlockId hotWet[] = {B.banana_leaves, B.orange_leaves}, hotDry[] = {B.olive_leaves, B.lemon_leaves}, mild[] = {B.peach_leaves, B.plum_leaves};
       const BlockId lf = c.temp > 0.55 ? (c.humid > 0.2 ? hotWet[jsFloor(r2 * 2)] : hotDry[jsFloor(r2 * 2)]) : mild[jsFloor(r2 * 2)];
       if (lf && B.log) {

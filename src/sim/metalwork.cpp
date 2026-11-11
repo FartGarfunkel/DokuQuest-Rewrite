@@ -128,6 +128,9 @@ bool metalworkPourOnGround(Level& lv, Player& p, World& w, int x, int y, int z) 
   json* e = w.blockEntity(x, y, z);
   if (!e || !e->is_object() || e->value("type", "") != "pile" || !(*e)["items"].is_array()) return false;
   json& items = (*e)["items"];
+  while (items.size() < 4) items.push_back(nullptr);   // (an older pile's shorter list: its quarters all there)
+  if (!(*e)["rot"].is_array()) (*e)["rot"] = json::array({0, 0, 0, 0});
+  while ((*e)["rot"].size() < 4) (*e)["rot"].push_back(0);
   int at = -1, free = -1;
   for (int i = 0; i < (int)items.size(); i++) {
     if (items[i].is_null()) { if (free < 0) free = i; continue; }
@@ -140,7 +143,7 @@ bool metalworkPourOnGround(Level& lv, Player& p, World& w, int x, int y, int z) 
   ItemStack stack = ItemStack::fromJson(items[at]), one = stack; one.n = 1;
   if (stack.n > 1 && free < 0) { toast(lv, p, "Set the molds down one to a spot to pour into them"); return true; }
   if (!pourInto(held, one, &why)) { toast(lv, p, why); return true; }
-  if (stack.n > 1) { stack.n -= 1; items[at] = stack.toJson(); items[free] = one.toJson(); (*e)["rot"][free] = (*e)["rot"].is_array() && at < (int)(*e)["rot"].size() ? (*e)["rot"][at] : json(0); }
+  if (stack.n > 1) { stack.n -= 1; items[at] = stack.toJson(); items[free] = one.toJson(); (*e)["rot"][free] = (*e)["rot"][at]; }
   else items[at] = one.toJson();
   w.blockEntityChanged(x, y, z);
   lv.fx->sound("lava_pop", vec3(x + 0.5f, y + 0.3f, z + 0.5f), 12);

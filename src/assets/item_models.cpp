@@ -2,6 +2,8 @@
 // (the original's itemMesh chain: models3d.js -> sculpt.js -> items3d.js -> models.js).
 #include "assets/item_build.h"
 #include "assets/pottery3d.h"
+#include <cstring>
+#include <cstdlib>
 #include "core/tool_parts.h"
 #include "render/creature_models.h"
 #include "common/threadpool.h"
@@ -360,6 +362,13 @@ bool shapedBlockBoxes(const ItemDef& def, std::vector<PxBox>& out) {
   if (!id) return false;
   const BlockDef& bd = R.block(id);
   if (bd.render == Render::Cross || bd.render == Render::Torch || bd.render == Render::Liquid || bd.render == Render::None) return false;
+  if (R.tShape[id] == ShapeKind::Wall) {   // a wall on its own: a post and an arm through it, as it stands between two others
+    const int side = bd.faces[0], top = bd.faces[2], bot = bd.faces[3];
+    for (const PxBox& b0 : {PxBox{{4, 0, 4, 12, 16, 12}, {}, 0}, PxBox{{0, 0, 5, 16, 13, 11}, {}, 0}}) {
+      PxBox b = b0; for (int f = 0; f < 6; f++) b.tile[f] = f == 2 ? top : f == 3 ? bot : side; out.push_back(b);
+    }
+    return true;
+  }
   const BlockTraits& T = traits(id);
   if (T.crop || T.flower || T.stackPlant || T.tripwire || T.chorus || T.rail || T.rs == RsRole::Wire || T.rs == RsRole::Hook || joinsPane(id)) return false;
   if (bd.has("door")) return false;   // a door's own picture (the item sprite), not its block: one thin panel, it looked broken
@@ -454,17 +463,24 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
   }
   // a loose tool head (knapped, cast or forged): its tool's own model with the wooden haft taken off
   {
-    std::string tool;
+    std::string tool, headMat;
     auto ends = [&](const char* e) { const size_t n = std::strlen(e); return key.size() > n && key.compare(key.size() - n, n, e) == 0; };
     if (key == "crude_pickaxe_head") tool = "crude_pickaxe";
     else if (ends("_head") && (startsWith(key, "stone_") || startsWith(key, "flint_") || startsWith(key, "metal_"))) {
       const std::string mat = key.substr(0, key.find('_')), kind = key.substr(mat.size() + 1, key.size() - mat.size() - 1 - 5);
       tool = mat == "metal" ? partToolBaseItem(kind) : mat + "_" + kind;
       if (!reg().item(tool)) tool = partToolBaseItem(kind);
+    } else if (ends("_head") && reg().item(key.substr(0, key.size() - 5)) && reg().item(key.substr(0, key.size() - 5))->hasTool) {
+      // the Tool Forge's heads (copper_pickaxe_head...): the iron tool's head (grey, so it can't be taken for the wooden haft),
+      // coloured as the material's own (core/tool_parts.h materials)
+      const std::string t = key.substr(0, key.size() - 5), kind = t.substr(t.rfind('_') + 1), mat = t.substr(0, t.rfind('_'));
+      tool = partToolBaseItem(kind);
+      if (!reg().item(tool)) tool = t;
+      else if (toolMaterial(mat)) headMat = mat;
     }
     if (!tool.empty() && reg().item(tool)) {
       const auto* prev = g_recolour;
-      const std::function<void(VoxelGrid&)> fn = [&](VoxelGrid& g) { stripHaft(g); if (prev) (*prev)(g); };
+      const std::function<void(VoxelGrid&)> fn = [&](VoxelGrid& g) { stripHaft(g); if (!headMat.empty()) recolourPartTool(g, "", {headMat}, "", ""); if (prev) (*prev)(g); };
       g_recolour = &fn;
       const bool ok = buildItemModel(tool, out);
       g_recolour = prev;
@@ -502,6 +518,20 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
     }
   }
   // ---- block items
+  if (def && !def->block.empty()) {
+    const BlockId cb = reg().blockId(def->block);
+    if (cb && reg().block(cb).render == Render::Cutout && key.find("crystal") != std::string::npos && !reg().tLeaves[cb]) {   // crystal blocks: a cluster of crystals, not a see-through cube
+      struct GlassOn { bool prev; GlassOn() : prev(g_tileVoxelGlass) { g_tileVoxelGlass = true; } ~GlassOn() { g_tileVoxelGlass = prev; } } glassOn;   // (their pictures are mostly see-through glass)
+      SpriteInfo I = SpriteInfo::of(ts, reg().block(cb).faces[0]);
+      VoxelPainter P(ivec3(52, 52, 52), vec3(-26.f / 32), 1.f / 32);
+      ItemBuild b{ts, P, I, key, def};
+      if (!I.empty() && buildModel3d("crystal", b)) {
+        out.kind = b.kind; out.stand = b.stand; out.depth = b.depth;
+        finishGrid(out, P.g, P.frame, nullptr);
+        return true;
+      }
+    }
+  }
   if (def && !def->block.empty()) {
     const BlockId gb = reg().blockId(def->block);
     struct GlassOn { bool prev; GlassOn(bool on) : prev(g_tileVoxelGlass) { g_tileVoxelGlass = on; } ~GlassOn() { g_tileVoxelGlass = prev; } } glassOn(gb && reg().tTrans[gb] && reg().block(gb).has("color"));   // stained glass (and its panes): the tint shows
@@ -570,6 +600,7 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
       return true;
     }
     // a flat block item (saplings, flowers, doors): sculpted thin from its picture
+    if (std::getenv("DQ_DEV_FLAT")) DQ_LOG("flat item: %s (block)", key.c_str());
     int t = it != bi.end() && (*it)["tile"].is_string() ? tileOf((*it)["tile"]) : tileOf(def->icon);
     SpriteInfo I = SpriteInfo::of(ts, t);
     VoxelPainter P(ivec3(34, 34, 16), vec3(-17.f / 32, -17.f / 32, -0.25f), 1.f / 32);
@@ -596,6 +627,8 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
   if (!done) {
     // sculpted (sculpt.js): the picture, each pixel as thick as its part of the picture is wide
     sz = def ? itemSize(base) : 1;
+    static const bool devFlat = std::getenv("DQ_DEV_FLAT") != nullptr;   // dev: list the items drawn as a flat picture
+    if (devFlat) DQ_LOG("flat item: %s (%s)", key.c_str(), sculptKind(base, def).c_str());
     b.depth = std::max(sculpt(I, sculptKind(base, def), P), 0.02f);
     b.kind = VoxelModel::Flat;
   }
