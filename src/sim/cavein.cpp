@@ -50,7 +50,7 @@ int caveIn(Level& lv, World& w, int x, int y, int z, float roll) {
     spawnFallingBlock(lv, w.realm, vec3(ax + 0.5f, roofY, az + 0.5f), reg().block(cobble).key);
     fell++;
   }
-  if (fell) lv.fx->sound("stone_break", vec3(x + 0.5f, roofY, z + 0.5f), 24);
+  if (fell) lv.fx->sound("break_stone", vec3(x + 0.5f, roofY, z + 0.5f), 24);
   return fell;
 }
 

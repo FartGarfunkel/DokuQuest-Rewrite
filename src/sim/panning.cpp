@@ -68,7 +68,7 @@ bool panUse(Level& lv, Player& p, const RayHit& hit, bool repeat, float step) {
   ItemStack f = panFind(roll(), roll2());
   if (!f.empty()) giveItem(lv, p, f);
   if (roll2() < 0.25f) w.setBlock(b.x, b.y, b.z, AIR);
-  lv.fx->sound("water_splash", vec3(b) + vec3(0.5f, 1, 0.5f), 12);
+  lv.fx->sound("splash", vec3(b) + vec3(0.5f, 1, 0.5f), 12);
   return true;
 }
 

@@ -147,7 +147,7 @@ bool learnTome(Level& lv, Player& p, ItemStack& tome) {
       const double xp = 15.0 * S->lvl;
       skillGain(lv, p, "magic", xp);
       lv.fx->message(p.id, "Too deep to learn yet (Magic " + std::to_string(S->lvl) + "), but studying " + S->name + " taught you something: +" + std::to_string((int)xp) + " Magic XP", "good");
-      lv.fx->soundUi(p.id, "page");
+      lv.fx->soundUi(p.id, "book_page");
     } else lv.fx->message(p.id, "You need Magic " + std::to_string(S->lvl) + " to learn " + S->name + ". Cast your spells to grow your Magic", "warn");
     return true;
   }

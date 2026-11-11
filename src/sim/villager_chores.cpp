@@ -340,7 +340,7 @@ OptMove npcChore(Level& lv, Creature& e, NpcMind& M, const Village& v, const VFo
       if (!by(e, at, 1.2f)) return go(at);
       if (M.choreT <= 0) {
         M.choreT = 6; M.carryN--; stockAdd(S, "bread", 1);
-        lv.fx->particles("smoke", at + vec3(0, 1.6f, 0), 6); lv.fx->sound("fire", at + vec3(0, 1, 0), 10); e.swingT = 0.3f;
+        lv.fx->particles("smoke", at + vec3(0, 1.6f, 0), 6); lv.fx->sound("fire_crackle", at + vec3(0, 1, 0), 10); e.swingT = 0.3f;
         if (M.carryN <= 0) { M.carry.clear(); M.carryN = 0; holding(e, M, job); npcSay(lv, e, "Fresh bread!", 0.4f); }
       }
       return Move{0, e.yaw};
@@ -561,14 +561,14 @@ OptMove npcChore(Level& lv, Creature& e, NpcMind& M, const Village& v, const VFo
     {"armorer", {{"iron_ore", 1}, {"coal", 1}}, {"iron_ingot", 1}, 12, "anvil"},
     {"weaponsmith", {{"iron_ore", 1}, {"coal", 1}}, {"iron_ingot", 1}, 12, "anvil"},
     {"toolsmith", {{"iron_ore", 1}, {"coal", 1}}, {"iron_ingot", 1}, 12, "anvil"},
-    {"butcher", {{"beef", 1}}, {"cooked_beef", 1}, 10, "fire"},
-    {"butcher", {{"porkchop", 1}}, {"cooked_porkchop", 1}, 10, "fire"},
-    {"butcher", {{"chicken", 1}}, {"cooked_chicken", 1}, 10, "fire"},
-    {"butcher", {{"mutton", 1}}, {"cooked_mutton", 1}, 10, "fire"},
+    {"butcher", {{"beef", 1}}, {"cooked_beef", 1}, 10, "fire_crackle"},
+    {"butcher", {{"porkchop", 1}}, {"cooked_porkchop", 1}, 10, "fire_crackle"},
+    {"butcher", {{"chicken", 1}}, {"cooked_chicken", 1}, 10, "fire_crackle"},
+    {"butcher", {{"mutton", 1}}, {"cooked_mutton", 1}, 10, "fire_crackle"},
     {"fletcher", {{"stick", 1}, {"flint", 1}, {"feather", 1}}, {"arrow", 4}, 8, "bow"},
     {"fletcher", {{"*log", 1}}, {"stick", 4}, 6, "wood"},
-    {"innkeeper", {{"carrot", 1}, {"potato", 1}}, {"vegetable_stew", 1}, 12, "fire"},
-    {"innkeeper", {{"beetroot", 2}}, {"vegetable_stew", 1}, 12, "fire"},
+    {"innkeeper", {{"carrot", 1}, {"potato", 1}}, {"vegetable_stew", 1}, 12, "fire_crackle"},
+    {"innkeeper", {{"beetroot", 2}}, {"vegetable_stew", 1}, 12, "fire_crackle"},
   };
   bool any = false; for (auto& c : CRAFTS) if (job == c.job) any = true;
   if (!any || M.choreT > 0) return std::nullopt;
@@ -583,7 +583,7 @@ OptMove npcChore(Level& lv, Creature& e, NpcMind& M, const Village& v, const VFo
     stockAdd(S, c.out.first, c.out.second);
     e.swingT = 0.3f;
     lv.fx->sound(c.sound, e.pos + vec3(0, 1, 0), 12);
-    lv.fx->particles(std::string(c.sound) == "fire" ? "smoke" : "burst", vec3(f.work) + vec3(0.5f, 1.4f, 0.5f), 4, json{{"item", c.out.first}, {"speed", 0.3}});
+    lv.fx->particles(std::string(c.sound) == "fire_crackle" ? "smoke" : "burst", vec3(f.work) + vec3(0.5f, 1.4f, 0.5f), 4, json{{"item", c.out.first}, {"speed", 0.3}});
     M.choreT = c.every;
     return std::nullopt;
   }

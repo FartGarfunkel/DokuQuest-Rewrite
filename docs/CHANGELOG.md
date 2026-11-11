@@ -100,6 +100,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Gearboxes:** a gearbox carries a windmill's or water wheel's turning round a corner to an axle at 90°. Power it with redstone and it disengages, stopping everything past it.
 - **Powered querns and bellows:** run an axle into a quern and it grinds by itself; run one into bellows and they keep a forge at full heat. You can also pump the bellows by hand (use them with an empty hand).
 - **Villages:** smiths' yards have a proper forge with bellows. Bakeries have a quern, and butchers and tanneries keep sealable barrels. Toolsmiths, weaponsmiths and armourers sell tongs, flux, metals and bellows. Masons sell vessels, molds, crucibles, fire clay, support beams and ore. Farmers sell the new seeds. Bakers sell flour, querns and gearboxes. Butchers sell hides and barrels. Merchants sell lumber, saws, pans and fruit.
+- **Missing sounds:** cave-ins, sluices, turning spell pages and villagers cooking at a fire now make a sound; they played nothing before.
 
 Removed Herobrine.
 

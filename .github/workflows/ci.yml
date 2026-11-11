@@ -24,7 +24,7 @@ jobs:
             libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxinerama-dev libxxf86vm-dev libxss-dev libxfixes-dev libxkbcommon-dev \
             libwayland-dev wayland-protocols libdecor-0-dev libegl1-mesa-dev libgl1-mesa-dev libgles2-mesa-dev libdrm-dev libgbm-dev \
             libasound2-dev libpulse-dev libudev-dev libdbus-1-dev \
-            xvfb xauth mesa-utils libgl1-mesa-dri
+            xvfb xauth mesa-utils libgl1-mesa-dri ccache
       - uses: actions/cache@v4
         with:
           path: |
@@ -39,14 +39,22 @@ jobs:
             third_party/json
             third_party/vulkan
           key: deps-${{ runner.os }}-${{ hashFiles('tools/fetch_deps.sh') }}
+      # compiler cache: a push that touches a few files rebuilds only those (the cold build is ~12 min)
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ runner.os }}-${{ github.sha }}
+          restore-keys: ccache-${{ runner.os }}-
       - name: Fetch dependencies
         run: bash tools/fetch_deps.sh
       - name: Build
         run: |
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          ccache -M 2G; ccache -z
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           # -k 0: report every broken file; errors also become annotations (readable through the API)
           set +e; cmake --build build --parallel -- -k 0 2>&1 | tee build.log; rc=${PIPESTATUS[0]}; set -e
           grep -E "error:|undefined reference|multiple definition" build.log | sort -u | head -40 | while IFS= read -r l; do echo "::error::$l"; done
+          ccache -s | head -8
           exit $rc
       - name: No functions declared inside a block (MSVC puts those in the global namespace and the Windows release fails to link)
         run: |
@@ -57,7 +65,10 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: '1'
         run: |
           set -o pipefail
-          ud="$RUNNER_TEMP/ud"; mkdir -p shots
+          ud="$RUNNER_TEMP/ud"; mkdir -p shots "$ud"
+          # Mesa software GL draws about one frame a second at default settings, so the playtests ran into their
+          # 15-minute timeouts. Low settings keep the modern renderer but draw a short view at half resolution.
+          echo '{"preset":"custom","renderDist":4,"farTerrain":256,"shadows":0,"waterQuality":0,"clouds":false,"portalViews":false,"scale":0.5,"particles":1,"weatherParticles":0,"microVoxels":0}' > "$ud/settings.json"
           run() { echo "::group::$*"; timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" "$@" 2>&1 | tee -a smoke.log; local c=${PIPESTATUS[0]}; echo "::endgroup::"; return $c; }
           run ./build/dokuquest --userdir "$ud" --create Test --seed hello --smoke-frames 300 --smoke-shot shots/game.png
           # scripted playtests: leave and reopen the world twice; fell a tree, save, reopen (tools/playtests, client/test_script)
