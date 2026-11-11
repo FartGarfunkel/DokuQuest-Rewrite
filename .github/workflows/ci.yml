@@ -13,8 +13,9 @@ permissions:
 
 jobs:
   linux:
-    # 22.04: an older glibc, so the builds run on older distros too
-    runs-on: ubuntu-22.04
+    # 24.04: its newer Mesa draws the smoke test about ten times faster than 22.04's. CI publishes nothing;
+    # release.yml still builds on 22.04 so the released binaries run on older distros.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Packages (SDL backends, GL/EGL, audio; Xvfb + Mesa for the smoke test)
@@ -22,7 +23,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ninja-build \
             libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxinerama-dev libxxf86vm-dev libxss-dev libxfixes-dev libxkbcommon-dev \
-            libwayland-dev wayland-protocols libdecor-0-dev libegl1-mesa-dev libgl1-mesa-dev libgles2-mesa-dev libdrm-dev libgbm-dev \
+            libwayland-dev wayland-protocols libdecor-0-dev libegl-dev libgl-dev libgles-dev libgl1-mesa-dev libdrm-dev libgbm-dev \
             libasound2-dev libpulse-dev libudev-dev libdbus-1-dev \
             xvfb xauth mesa-utils libgl1-mesa-dri ccache
       - uses: actions/cache@v4
