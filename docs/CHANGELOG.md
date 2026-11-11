@@ -102,7 +102,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Villages:** smiths' yards have a proper forge with bellows. Bakeries have a quern, and butchers and tanneries keep sealable barrels. Toolsmiths, weaponsmiths and armourers sell tongs, flux, metals and bellows. Masons sell vessels, molds, crucibles, fire clay, support beams and ore. Farmers sell the new seeds. Bakers sell flour, querns and gearboxes. Butchers sell hides and barrels. Merchants sell lumber, saws, pans and fruit.
 - **Missing sounds:** cave-ins, sluices, turning spell pages and villagers cooking at a fire now make a sound; they played nothing before.
 
-Removed Herobrine.
+- Removed Herobrine.
 
 ## 1.0.0-alpha.19 — High and Low (November 2026)
 
