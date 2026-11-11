@@ -131,6 +131,18 @@
    ]
   },
   {
+   "key": "chisel",
+   "name": "Chisel Head",
+   "in": "ingot",
+   "n": 1,
+   "out": "metal_chisel_head",
+   "plan": [
+    "hit:last",
+    "hit:notlast",
+    "draw:notlast"
+   ]
+  },
+  {
    "key": "tongs",
    "name": "Tongs",
    "in": "ingot",

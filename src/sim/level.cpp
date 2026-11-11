@@ -1,6 +1,7 @@
 #include "sim/level.h"
 #include "common/noise.h"
 #include "sim/rules.h"
+#include "sim/crafting.h"
 #include <map>
 
 namespace dq {
@@ -49,6 +50,7 @@ void registerLevelSystem(LevelSystemFactory f) { lsFactories().push_back(std::mo
 Level::Level(LevelInfo i, const fs::path& folder, ThreadPool* pool, EventBus* events)
   : info(std::move(i)), folder(folder), pool(pool), events(events) {
   WorldGenOptions o; o.seed = info.seed; o.genVersion = info.genVersion; o.worldType = info.worldType;
+  o.looseGround = info.rules.is_object() && info.rules.value("immersive", false);
   gen = std::make_shared<WorldGen>(o);
   realms[REALM_MAIN] = std::make_unique<World>(REALM_MAIN, gen, folder, pool);
   if (auto ej = readJson(folder / "entities.json")) for (auto& e : *ej) {
@@ -117,7 +119,7 @@ void Level::tick(double dt) {
   // DQ_PROFILE_SIM=1: the slowest systems and the entities, in the log every 600 ticks
   static const bool prof = std::getenv("DQ_PROFILE_SIM") != nullptr;
   static std::map<std::string, double> pms; static int pticks = 0;
-  { const bool im = rule(*this, "immersive"); for (auto& [r, w] : realms) w->immersive = im; }
+  { const bool im = rule(*this, "immersive"); for (auto& [r, w] : realms) w->immersive = im; recipeGate().immersive = im; }   // (the gate: sim/crafting.h, for every recipe and smelt this tick)
   if (prof) {
     for (auto& [r, w] : realms) for (auto& s : w->systems) { double t = nowSeconds(); s->tick(*w, dt); pms[std::string("world.") + s->name()] += nowSeconds() - t; }
     for (auto& s : systems) { double t = nowSeconds(); s->tick(*this, dt); pms[s->name()] += nowSeconds() - t; }

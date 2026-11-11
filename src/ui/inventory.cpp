@@ -373,6 +373,7 @@ public:
       if (a.input.usingPad()) if (const Hit* f = hasFocus ? findHit(focus) : nullptr) at = ImVec2(f->a.x + (f->b.x - f->a.x) * 0.75f, f->a.y + (f->b.y - f->a.y) * 0.75f);
       drawItem(ImGui::GetForegroundDrawList(), p.cursor, at - ImVec2(is, is) * 0.5f, is);
     } else if (!a.input.usingPad()) tooltip(a);
+    else if (hasFocus) if (const Hit* f = findHit(focus)) tooltip(a, f, ImVec2(f->b.x, f->a.y));   // the pad: the same tooltip, by the focused slot
     if (o.mode == "inventory") menuTabsDraw(a, "inventory");
     ImGui::End();
     ImGui::PopStyleVar();
@@ -819,9 +820,7 @@ public:
     std::string t;
     std::vector<std::pair<std::string, u32>> lines;
     if (f && f->k == H_SLOT) {
-      const ItemStack* s = sess->at(f->g, f->i);
-      if (s && !s->empty()) itemInfoText(*s, &sess->p, &lines);
-      else t = std::string("A take/place \xC2\xB7 X split \xC2\xB7 Y quick move \xC2\xB7 ") + (o.mode == "table" ? "LB recipe book" : "LB/RB menus") + " \xC2\xB7 B close";
+      t = std::string("A take/place \xC2\xB7 X split \xC2\xB7 Y quick move \xC2\xB7 ") + (o.mode == "table" ? "LB recipe book" : "LB/RB menus") + " \xC2\xB7 B close";
     } else if (f && f->k == H_CI) { if (const ItemDef* d = reg().item(f->s)) itemInfoText(ItemStack(d->key, 1), &sess->p, &lines); }
     else if (f && f->k == H_CUT && f->i < (int)sess->cutOpts.size()) { itemInfoText(ItemStack(sess->cutOpts[f->i].first, sess->cutOpts[f->i].second), &sess->p, &lines); lines.push_back({"  A one \xC2\xB7 Y all", 0xa8987e}); }
     float x = p.x;
@@ -834,9 +833,8 @@ public:
     if (!t.empty()) text(dl, F_BODY, p, col::dim, t.c_str(), w, sc);
   }
 
-  void tooltip(App& a) {
-    const Hit* h = nullptr; ImVec2 m = ImGui::GetIO().MousePos;
-    for (auto& x : hits) if (x.contains(m)) h = &x;
+  void tooltip(App& a, const Hit* h = nullptr, ImVec2 m = ImVec2(-1, -1)) {
+    if (!h) { m = ImGui::GetIO().MousePos; for (auto& x : hits) if (x.contains(m)) h = &x; }
     if (!h) return;
     ItemStack s;
     if (h->k == H_SLOT) { const ItemStack* st = sess->at(h->g, h->i); if (st) { if (st->id == "enchanted_book") enchOf(*const_cast<ItemStack*>(st)); s = *st; } }   // a treasure book settles what it holds the first time it is looked at
@@ -978,7 +976,7 @@ public:
       for (size_t i = 0; i < R.size(); i++) {
         const Recipe& r = R[i];
         if (B.cat != "all" && recipeCategory(r) != B.cat) continue;
-        if (sess->w && sess->w->immersive && r.props.is_object() && r.props.value("classicOnly", false)) continue;   // off in an immersive world
+        if (sess->w && r.props.is_object() && r.props.value(sess->w->immersive ? "classicOnly" : "immersiveOnly", false)) continue;   // not this kind of world's
         const ItemDef* d = reg().item(r.out); if (!d) continue;
         if (!q.empty() && lower(d->name).find(q) == std::string::npos) continue;
         bool ok = canCraft(bags, r, &sess->grid); int rw, rh; recipeDims(r, rw, rh); bool fits = rw <= sess->W && rh <= sess->W;

@@ -18,6 +18,7 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
   villageStyles = o.genVersion >= 10;
   villagePlan11 = o.genVersion >= 11;
   rockLayers = o.genVersion >= 12;
+  looseGround = o.looseGround;
   floes = o.genVersion >= 5;   // terrain version 5: BTA's ice floes in the seas round the glaciers   // terrain version 4 (BTA): biomes about twice as big
   B.resolve();
   initUnderground();

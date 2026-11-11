@@ -215,8 +215,8 @@ int main(int argc, char** argv) {
       chunks += 16;
     }
     const float perChunk = land ? rocks * 256.f / land : 0;
-    check(perChunk >= 5, "loose rocks lie about (" + std::to_string(rocks) + " on " + std::to_string(land) + " land columns: " + std::to_string(perChunk) + " a chunk of land)");
-    check(twigs >= chunks / 2, "twigs in the woods and on beaches (" + std::to_string(twigs) + ")");
+    check(perChunk >= 1.5f && perChunk <= 6, "loose rocks lie about, not too thick (" + std::to_string(rocks) + " on " + std::to_string(land) + " land columns: " + std::to_string(perChunk) + " a chunk of land)");
+    check(twigs >= chunks / 8, "twigs in the woods and on beaches (" + std::to_string(twigs) + ")");
     check(grounded == total, "every one lies on solid ground");
     printf("  (flint: %d)\n", flint);
   }

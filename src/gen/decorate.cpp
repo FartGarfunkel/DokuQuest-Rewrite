@@ -143,12 +143,14 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
         continue;
       }
     }
-    // TerraFirmaCraft's loose rocks and sticks (the stone age's first tools come from these): rocks on most land, about 8 to
-    // a chunk; flint on gravel and on sand by the water; twigs in the woods and along the beaches, about 5 to a chunk
-    if (below >= 0 && B.solid[below] && below != B.water) {
+    // a classic world: loose stones on hills, beaches and mountain meadows, as ever
+    if (!looseGround && below >= 0 && B.solid[below] && below != B.water && (c.biome == BIOME_MOUNTAINS || c.biome == BIOME_BEACH || (c.h > JS_SEA + 14 && c.biome != BIOME_DESERT)) && r > 0.988) { set(x, y, z, B.loose_stones); continue; }
+    // TerraFirmaCraft's loose rocks and sticks (the stone age's first tools come from these), in immersive worlds only:
+    // rocks on most land, about 4 to a chunk; flint on gravel and on sand by the water; twigs in the woods and along the beaches
+    if (looseGround && below >= 0 && B.solid[below] && below != B.water) {
       const bool earth = below == B.grass || below == B.dirt || below == B.podzol || below == B.snowy_grass || below == B.stone || below == B.mud || below == B.gravel;
       const bool shore = below == B.gravel || ((below == B.sand) && (c.biome == BIOME_BEACH || waterBeside(x, y - 1, z)));
-      if (earth && c.biome != BIOME_DESERT && r > 0.952) {
+      if (earth && c.biome != BIOME_DESERT && r > 0.985) {
         // TFC: one loose rock in three over an ore body is a small piece of that ore (looking 35 blocks down)
         BlockId sample = 0;
         if (r2 < 0.34) for (int yy = y - 2; yy > y - 36 && yy > 0 && !sample; yy--) {
@@ -160,9 +162,9 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
         set(x, y, z, sample ? sample : B.loose_stones);
         continue;
       }
-      if (B.loose_flint && shore && r > 0.94 && r <= 0.952) { set(x, y, z, B.loose_flint); continue; }
+      if (B.loose_flint && shore && r > 0.978 && r <= 0.985) { set(x, y, z, B.loose_flint); continue; }
       const bool woods = (c.biome == BIOME_FOREST || c.biome == BIOME_TAIGA) && (below == B.grass || below == B.podzol || below == B.dirt || below == B.snowy_grass);
-      if (B.twigs && (woods || c.biome == BIOME_BEACH) && r > 0.932 && r <= 0.952) { set(x, y, z, B.twigs); continue; }
+      if (B.twigs && (woods || c.biome == BIOME_BEACH) && r > 0.975 && r <= 0.985) { set(x, y, z, B.twigs); continue; }
     }
     // the BTA-inspired variants: spinifex and dead bushes on the Redlands, ice spires on the Glacier, moss and orchids in the
     // Mossmire, flowers all over the Meadow

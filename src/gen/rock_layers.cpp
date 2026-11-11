@@ -41,7 +41,7 @@ void OverworldGen::initRockLayers() {
 }
 
 const u8* OverworldGen::oreHost(BlockId ore) const {
-  if (!rockLayers) return nullptr;
+  if (!rockLayers || !looseGround) return nullptr;   // a classic world: every ore where it always was, whatever the rock (immersive: TFC's hosts)
   if (ore == B.zinc_ore) return zincRep_.data();
   if (ore == B.bismuth_ore) return bismuthRep_.data();
   if (ore == B.tin_ore) return tinRep_.data();

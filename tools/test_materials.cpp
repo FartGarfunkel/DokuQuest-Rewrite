@@ -9,6 +9,7 @@
 #include "sim/rules.h"
 #include "sim/events.h"
 #include "sim/crafting.h"
+#include "sim/worldsys.h"
 #include "sim/quern.h"
 #include "sim/barrel.h"
 #include "sim/panning.h"
@@ -71,7 +72,7 @@ int main(int argc, char** argv) {
     check(g[0].n == 2 && g[1].id == "flint_saw" && g[1].d == 1, "  ...the log used, the saw kept and worn");
     std::vector<ItemStack> l(4); l[0] = ItemStack("log", 1);
     CraftMatch p = matchGrid(l, 2);
-    check(p && p.out == "planks" && p.n == 2, "immersive: a log by hand is only two planks");
+    check(!p, "immersive: no planks from a log by hand (a saw makes lumber)");
     recipeGate().immersive = false;
     p = matchGrid(l, 2);
     check(p && p.out == "planks" && p.n == 4, "classic: four, as ever");
@@ -191,6 +192,22 @@ int main(int argc, char** argv) {
     recipeGate().immersive = true;
     CraftMatch m = matchGrid(g, 2);
     check(m && m.out == "wool_cloth", "four yarn weave wool cloth");
+  }
+
+  printf("[classic crafting and smelting]\n");
+  {
+    recipeGate().immersive = false;
+    std::vector<ItemStack> g(9); g[1] = ItemStack("stick", 1); g[4] = ItemStack("iron_ingot", 1);
+    CraftMatch m = matchGrid(g, 3);
+    printf("  (stick over iron ingot -> %s)\n", m ? m.out.c_str() : "nothing");
+    check(m && m.out.find("chisel") != std::string::npos, "classic: a stick over an iron ingot is a chisel");
+    check(smeltResult("bismuth_ore", "furnace") == "bismuth_ingot" && smeltResult("zinc_ore", "furnace") == "zinc_ingot", "classic: bismuth and zinc ore smelt in the furnace");
+    std::vector<ItemStack> a(9); a[0] = ItemStack("copper_ingot", 1); a[1] = ItemStack("copper_ingot", 1); a[2] = ItemStack("copper_ingot", 1); a[3] = ItemStack("zinc_ingot", 1); a[4] = ItemStack("bismuth_ingot", 1);
+    CraftMatch al = matchGrid(a, 3);
+    check(al && al.out == "bismuth_bronze_ingot", "classic: bismuth bronze from its ingots");
+    std::vector<ItemStack> l(4); l[0] = ItemStack("log", 1);
+    CraftMatch pl = matchGrid(l, 2);
+    check(pl && pl.out == "planks" && pl.n == 4, "classic: a log is four planks");
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);

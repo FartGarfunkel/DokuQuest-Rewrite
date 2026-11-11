@@ -15,6 +15,7 @@
 #include "sim/quiver.h"
 #include "sim/piles.h"
 #include "sim/immersive.h"
+#include "sim/worktable.h"
 #include "sim/knapping.h"
 #include "sim/firestarter.h"
 #include "sim/straw.h"
@@ -641,7 +642,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   if (!fromOff && !repeat && hit && def && def->has("propick")) { toastMsg(prospect(w, hit->block.x, hit->block.y, hit->block.z)); wearHeld(lv, p, 1); swingArm(); return; }
   // smithing (sim/anvil.h): use an anvil with a hammer in hand (the hot piece in the other) opens the anvil's work; a hammer
   // used on the top of raw stone makes a stone anvil there
-  if (!fromOff && !repeat && hit && def && def->has("hammer")) {
+  if (!fromOff && !repeat && hit && def && def->has("hammer") && immersive(lv)) {   // (immersive worlds: a classic anvil repairs as ever)
     const ivec3 b = hit->block;
     const int tier = anvilTierOfBlock(reg().block(hit->id).key);
     if (tier >= 0) { openScreen(lv, p, "anvil_smith", {{"pos", {b.x, b.y, b.z}}, {"tier", tier}}); swingArm(); return; }
@@ -679,7 +680,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
       if (!held.empty() && heatable(held.id)) { if (!forgePut(w, b.x, b.y, b.z, held)) toastMsg("There's no more room in the forge"); else swingArm(); return; }
       if (held.empty()) { ItemStack s = forgeTake(w, b.x, b.y, b.z); if (!s.empty()) { takeOut(s); swingArm(); } return; }
     }
-    if (p.sneaking && hit->normal.y == 1 && !held.empty() && held.id == "charcoal" && forgeBuild(w, b.x, b.y + 1, b.z, held)) { swingArm(); sfxMaterial(lv, "stone", "place", vec3(b) + vec3(0.5f, 1.1f, 0.5f)); return; }
+    if (immersive(lv) && p.sneaking && hit->normal.y == 1 && !held.empty() && held.id == "charcoal" && forgeBuild(w, b.x, b.y + 1, b.z, held)) { swingArm(); sfxMaterial(lv, "stone", "place", vec3(b) + vec3(0.5f, 1.1f, 0.5f)); return; }
   }
   // the pit kiln (sim/pit_kiln.h): sneak + use with unfired pottery on the ground sets it down; on a kiln straw, then logs,
   // go on; an empty hand takes a piece back
@@ -721,7 +722,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
       swingArm();
       return;
     }
-    if (p.sneaking && hit->normal.y == 1 && !held.empty() && pileKindOfItem(held.id) != PileKind::None) {
+    if (immersive(lv) && p.sneaking && hit->normal.y == 1 && !held.empty() && pileKindOfItem(held.id) != PileKind::None) {   // (a classic world places a log as ever)
       const bool ingots = pileKindOfItem(held.id) == PileKind::Ingots;
       if (pilePlace(w, b.x, b.y + 1, b.z, held, &why)) { swingArm(); sfxMaterial(lv, ingots ? "metal" : "wood", "place", vec3(b) + vec3(0.5f, 1.1f, 0.5f)); return; }
       if (ingots) { if (!why.empty()) toastMsg(why); return; }   // (a log that can't make a pile is placed as a block below)
@@ -730,6 +731,13 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   // furnish.js: crouched, a block in hand goes against a chest, door, table... instead of opening it
   if (!fromOff && !repeat && p.sneaking && hit && def && !def->block.empty() && R.blockId(def->block) && !def->has("backpack") && !te) {
     if (interactable(hit->id) && !R.block(hit->id).has("pile")) { placeBlock(*hit, *def, held); return; }
+  }
+  // crouched, any item that isn't a block is set down on top of what you look at: the ground, a furnace, a table, a chest
+  // (Vintage Story's way) -- before the item's own use or the block's. Items whose crouched use is aimed at the block keep it.
+  if (!fromOff && !repeat && p.sneaking && hit && hit->normal.y == 1 && def && def->block.empty() && !te && !R.block(hit->id).has("pile")) {
+    bool aimed = false;
+    for (const char* k : {"bucket", "igniter", "plants", "bonemeal", "summon", "paintbrush", "cart", "boat", "disc", "backpack"}) if (def->has(k)) aimed = true;
+    if (!aimed && held.id != "firestarter" && putDown(*hit, held)) return;
   }
   if (!fromOff && !repeat && te) for (auto& h : hooks().useEntity) if (h(*this, *te, held.empty() ? nullptr : &held, def)) return;
   // Carry On: sneak + use with an empty hand picks up containers, stations and animals
@@ -745,6 +753,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   if (hit && repeat && !fromOff && R.block(hit->id).has("sieve") && useBlockAt(*hit, held.empty() ? nullptr : &held, def)) return;   // hold use to keep sifting
   if (hit && !repeat && !fromOff) {
     const BlockDef& b = R.block(hit->id);
+    if (b.has("pile") && !fromOff && !repeat && metalworkPourOnGround(lv, p, w, hit->block.x, hit->block.y, hit->block.z)) { swingArm(); return; }   // a molten vessel into molds set down there (sim/metalwork.h)
     if (b.has("pile")) { usePile(*hit, held.empty() ? nullptr : &held); return; }
     if (b.has("placedBackpack")) {
       if (p.sneaking && held.empty()) {
@@ -763,6 +772,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
       if (uba) return;
       json pos = {hit->block.x, hit->block.y, hit->block.z};
       if (bhas(hit->id, BF::Container)) { swingArm(); sfxAt(lv, "chest", vec3(hit->block) + vec3(0.5f)); containerEntity(w, hit->block.x, hit->block.y, hit->block.z); openScreen(lv, p, "container", {{"pos", pos}}); return; }
+      if (b.has("table") && immersive(lv) && worktableUse(lv, p, w, *hit, held)) { swingArm(); return; }   // sim/worktable.h: the top worked in the world
       if (b.has("table")) { swingArm(); openScreen(lv, p, "table"); return; }
       if (bhas(hit->id, BF::Furnace)) { swingArm(); containerEntity(w, hit->block.x, hit->block.y, hit->block.z); openScreen(lv, p, "furnace", {{"pos", pos}, {"kind", binfo(hit->id).furnace}}); return; }
       if (b.has("harvest")) {
@@ -786,9 +796,9 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   if (!fromOff && spindleUse(lv, p, repeat)) return;   // hold use: sim/spinning.h
   if (!fromOff && !repeat && metalworkUse(lv, p)) { swingArm(); return; }   // sim/metalwork.h: vessels and molds (on a fire the camping code sets them on it first)
   if (repeat && def->block.empty()) return;
-  // knapping (sim/knapping.h): use in the air with stones, flint (2 or more) or clay (5) in hand; sneak + use keeps the old
-  // ways (a pebble thrown)
-  if (!repeat && !fromOff && !hit && !te && !p.sneaking) if (const std::string km = knapMaterialOf(held.id); !km.empty()) {
+  // knapping (sim/knapping.h), immersive worlds: use in the air with stones, flint (2 or more) or clay (5) in hand; sneak + use
+  // keeps the old ways (a pebble thrown)
+  if (!repeat && !fromOff && !hit && !te && !p.sneaking && immersive(lv)) if (const std::string km = knapMaterialOf(held.id); !km.empty()) {   // (classic: a pebble is thrown as ever)
     int have = 0; for (auto& s : p.inv) if (s.id == held.id) have += s.n;
     if (have >= knapNeeds(km)) { openScreen(lv, p, "knapping", {{"material", km}, {"item", held.id}}); return; }
   }

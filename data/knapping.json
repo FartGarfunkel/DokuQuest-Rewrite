@@ -10,48 +10,8 @@
     "#####",
     "#### ",
     " #   "
-   ]
-  },
-  {
-   "out": "stone_shovel_head",
-   "n": 1,
-   "rows": [
-    "###",
-    "###",
-    "###",
-    "###",
-    " # "
-   ]
-  },
-  {
-   "out": "stone_hoe_head",
-   "n": 1,
-   "rows": [
-    "#####",
-    "   ##"
-   ]
-  },
-  {
-   "out": "stone_knife_head",
-   "n": 1,
-   "rows": [
-    " #",
-    "##",
-    "##",
-    "##",
-    "##"
-   ]
-  },
-  {
-   "out": "stone_knife_head",
-   "n": 2,
-   "rows": [
-    "#  # ",
-    "## ##",
-    "## ##",
-    "## ##",
-    "## ##"
-   ]
+   ],
+   "defOn": true
   },
   {
    "out": "stone_hammer_head",
@@ -60,7 +20,41 @@
     "#####",
     "#####",
     "  #  "
-   ]
+   ],
+   "defOn": false
+  },
+  {
+   "out": "stone_hoe_head",
+   "n": 1,
+   "rows": [
+    "#####",
+    "   ##"
+   ],
+   "defOn": false
+  },
+  {
+   "out": "stone_hoe_head",
+   "n": 2,
+   "rows": [
+    "#####",
+    "##   ",
+    "     ",
+    "#####",
+    "##   "
+   ],
+   "defOn": true
+  },
+  {
+   "out": "stone_hoe_head",
+   "n": 2,
+   "rows": [
+    "#####",
+    "##   ",
+    "     ",
+    "#####",
+    "   ##"
+   ],
+   "defOn": true
   },
   {
    "out": "stone_javelin_head",
@@ -71,7 +65,68 @@
     "#####",
     " ### ",
     "  #  "
-   ]
+   ],
+   "defOn": true
+  },
+  {
+   "out": "stone_knife_head",
+   "n": 1,
+   "rows": [
+    "# ",
+    "##",
+    "##",
+    "##",
+    "##"
+   ],
+   "defOn": false
+  },
+  {
+   "out": "stone_knife_head",
+   "n": 2,
+   "rows": [
+    "#  # ",
+    "## ##",
+    "## ##",
+    "## ##",
+    "## ##"
+   ],
+   "defOn": true
+  },
+  {
+   "out": "stone_knife_head",
+   "n": 2,
+   "rows": [
+    "#   #",
+    "## ##",
+    "## ##",
+    "## ##",
+    "## ##"
+   ],
+   "defOn": true
+  },
+  {
+   "out": "stone_knife_head",
+   "n": 2,
+   "rows": [
+    " # # ",
+    "## ##",
+    "## ##",
+    "## ##",
+    "## ##"
+   ],
+   "defOn": true
+  },
+  {
+   "out": "stone_shovel_head",
+   "n": 1,
+   "rows": [
+    "###",
+    "###",
+    "###",
+    "###",
+    " # "
+   ],
+   "defOn": false
   },
   {
    "out": "crude_pickaxe_head",
@@ -102,48 +157,8 @@
     "#####",
     "#### ",
     " #   "
-   ]
-  },
-  {
-   "out": "flint_shovel_head",
-   "n": 1,
-   "rows": [
-    "###",
-    "###",
-    "###",
-    "###",
-    " # "
-   ]
-  },
-  {
-   "out": "flint_hoe_head",
-   "n": 1,
-   "rows": [
-    "#####",
-    "   ##"
-   ]
-  },
-  {
-   "out": "flint_knife_head",
-   "n": 1,
-   "rows": [
-    " #",
-    "##",
-    "##",
-    "##",
-    "##"
-   ]
-  },
-  {
-   "out": "flint_knife_head",
-   "n": 2,
-   "rows": [
-    "#  # ",
-    "## ##",
-    "## ##",
-    "## ##",
-    "## ##"
-   ]
+   ],
+   "defOn": true
   },
   {
    "out": "flint_hammer_head",
@@ -152,7 +167,41 @@
     "#####",
     "#####",
     "  #  "
-   ]
+   ],
+   "defOn": false
+  },
+  {
+   "out": "flint_hoe_head",
+   "n": 1,
+   "rows": [
+    "#####",
+    "   ##"
+   ],
+   "defOn": false
+  },
+  {
+   "out": "flint_hoe_head",
+   "n": 2,
+   "rows": [
+    "#####",
+    "##   ",
+    "     ",
+    "#####",
+    "##   "
+   ],
+   "defOn": true
+  },
+  {
+   "out": "flint_hoe_head",
+   "n": 2,
+   "rows": [
+    "#####",
+    "##   ",
+    "     ",
+    "#####",
+    "   ##"
+   ],
+   "defOn": true
   },
   {
    "out": "flint_javelin_head",
@@ -163,7 +212,68 @@
     "#####",
     " ### ",
     "  #  "
-   ]
+   ],
+   "defOn": true
+  },
+  {
+   "out": "flint_knife_head",
+   "n": 1,
+   "rows": [
+    "# ",
+    "##",
+    "##",
+    "##",
+    "##"
+   ],
+   "defOn": false
+  },
+  {
+   "out": "flint_knife_head",
+   "n": 2,
+   "rows": [
+    "#  # ",
+    "## ##",
+    "## ##",
+    "## ##",
+    "## ##"
+   ],
+   "defOn": true
+  },
+  {
+   "out": "flint_knife_head",
+   "n": 2,
+   "rows": [
+    "#   #",
+    "## ##",
+    "## ##",
+    "## ##",
+    "## ##"
+   ],
+   "defOn": true
+  },
+  {
+   "out": "flint_knife_head",
+   "n": 2,
+   "rows": [
+    " # # ",
+    "## ##",
+    "## ##",
+    "## ##",
+    "## ##"
+   ],
+   "defOn": true
+  },
+  {
+   "out": "flint_shovel_head",
+   "n": 1,
+   "rows": [
+    "###",
+    "###",
+    "###",
+    "###",
+    " # "
+   ],
+   "defOn": false
   },
   {
    "out": "flint_pickaxe_head",
@@ -204,18 +314,20 @@
     "#####",
     "#####",
     " ### "
-   ]
+   ],
+   "defOn": true
   },
   {
    "out": "unfired_jug",
    "n": 1,
    "rows": [
-    "  #  ",
-    " ### ",
-    "#####",
-    "#####",
-    " ### "
-   ]
+    " #   ",
+    "#### ",
+    "### #",
+    "#### ",
+    "###  "
+   ],
+   "defOn": true
   },
   {
    "out": "unfired_pot",
@@ -224,27 +336,43 @@
     "#   #",
     "#   #",
     "#   #",
-    "#   #",
-    "#####"
-   ]
+    "#####",
+    " ### "
+   ],
+   "defOn": true
   },
   {
    "out": "unfired_bowl",
-   "n": 1,
+   "n": 4,
    "rows": [
     "#   #",
+    " ### ",
+    "     ",
     "#   #",
     " ### "
-   ]
+   ],
+   "defOn": true
+  },
+  {
+   "out": "unfired_bowl",
+   "n": 2,
+   "rows": [
+    "#   #",
+    " ### "
+   ],
+   "defOn": false
   },
   {
    "out": "unfired_ingot_mold",
-   "n": 1,
+   "n": 2,
    "rows": [
-    "#####",
-    "#   #",
-    "#####"
-   ]
+    "####",
+    "#  #",
+    "#  #",
+    "#  #",
+    "####"
+   ],
+   "defOn": true
   },
   {
    "out": "unfired_axe_mold",
@@ -255,29 +383,43 @@
     "     ",
     "    #",
     "# ###"
-   ]
+   ],
+   "defOn": true
+  },
+  {
+   "out": "unfired_chisel_mold",
+   "n": 1,
+   "rows": [
+    "## ##",
+    "## ##",
+    "## ##",
+    "## ##",
+    "## ##"
+   ],
+   "defOn": true
   },
   {
    "out": "unfired_hammer_mold",
    "n": 1,
    "rows": [
+    "#####",
     "     ",
     "     ",
     "## ##",
-    "#####",
     "#####"
-   ]
+   ],
+   "defOn": true
   },
   {
    "out": "unfired_hoe_mold",
    "n": 1,
    "rows": [
+    "#####",
     "     ",
-    "###  ",
-    "#####",
-    "#####",
+    "  ###",
     "#####"
-   ]
+   ],
+   "defOn": true
   },
   {
    "out": "unfired_javelin_mold",
@@ -288,101 +430,111 @@
     "     ",
     "#   #",
     "## ##"
-   ]
+   ],
+   "defOn": true
   },
   {
    "out": "unfired_knife_mold",
    "n": 1,
    "rows": [
-    "# ###",
-    "  ###",
-    "  ###",
-    "  ###",
-    "  ###"
-   ]
+    "## #",
+    "#  #",
+    "#  #",
+    "#  #",
+    "#  #"
+   ],
+   "defOn": true
   },
   {
    "out": "unfired_pickaxe_mold",
    "n": 1,
    "rows": [
-    "#   #",
-    "  #  ",
-    " ### ",
     "#####",
+    "#   #",
+    " ### ",
     "#####"
-   ]
+   ],
+   "defOn": true
   },
   {
    "out": "unfired_propick_mold",
    "n": 1,
    "rows": [
-    "##   ",
-    "     ",
-    "##   ",
     "#####",
+    "    #",
+    " ### ",
+    " ####",
     "#####"
-   ]
+   ],
+   "defOn": true
   },
   {
    "out": "unfired_saw_mold",
    "n": 1,
    "rows": [
-    " ####",
     "  ###",
     "   ##",
-    "    #",
-    "     "
-   ]
+    "#   #",
+    "#    ",
+    "###  "
+   ],
+   "defOn": true
   },
   {
    "out": "unfired_scythe_mold",
    "n": 1,
    "rows": [
-    "    #",
-    "     ",
-    "###  ",
     "#####",
+    "#    ",
+    "    #",
+    "  ###",
     "#####"
-   ]
+   ],
+   "defOn": true
   },
   {
    "out": "unfired_shovel_mold",
    "n": 1,
    "rows": [
-    "   ##",
-    "   ##",
-    "   ##",
-    "   ##",
-    "# ###"
-   ]
+    "#   #",
+    "#   #",
+    "#   #",
+    "#   #",
+    "## ##"
+   ],
+   "defOn": true
   },
   {
    "out": "unfired_sword_mold",
    "n": 1,
    "rows": [
-    "###  ",
-    "##   ",
-    "#   #",
+    "  ###",
     "   ##",
-    "  ###"
-   ]
+    "#   #",
+    "##  #",
+    "#### "
+   ],
+   "defOn": true
   },
   {
    "out": "unfired_pan",
    "n": 1,
    "rows": [
     "#   #",
+    "#####",
     " ### "
-   ]
+   ],
+   "defOn": false
   },
   {
    "out": "unfired_spindle_head",
    "n": 1,
    "rows": [
-    " # ",
-    "###",
-    " # "
-   ]
+    "  #  ",
+    "#####",
+    "  #  "
+   ],
+   "defOn": false
   }
  ],
  "fireclay": [
@@ -394,8 +546,9 @@
     "#   #",
     "#   #",
     "#   #",
-    " ### "
-   ]
+    "#####"
+   ],
+   "defOn": true
   }
  ]
 }

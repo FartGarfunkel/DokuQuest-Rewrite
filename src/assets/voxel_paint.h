@@ -38,6 +38,7 @@ struct SpriteInfo {
 // colour of a tile pixel as a voxel: alpha < 128 -> 0; the 253 "tint me" marker takes the original's
 // default item tint (TINT_GRASS * 1.3); emissive pixels glow
 u32 tileVoxel(const TileSet& ts, int tile, int x, int y);   // x, y in 0..size-1
+extern thread_local bool g_tileVoxelGlass;   // set while building a translucent block's item: its see-through pixels kept, tinted (stained glass shows its colour)
 
 struct PaintPt { vec3 p; float t = 0, s = 0; };   // model-space point; along (0..1) / across (-1..1) a segment
 using PaintFn = std::function<u32(const PaintPt&)>;

@@ -24,7 +24,7 @@ const Weights* weightsOf(const std::string& kind) {
   static const Weights S{{0.5f, 0.5f}, {0.4f, 0.6f}, {0.6f, 0.4f}, {0.5f, 0.5f}};                                 // sword: tip, base
   static const Weights H{{0.5f, 0.5f}, {0.5f, 0.5f}, {0.5f, 0.5f}, {0.5f, 0.5f}};                                 // hoe
   static const Weights V{{1.f}, {1.f}, {1.f}, {1.f}};                                                               // shovel
-  if (kind == "knife" || kind == "hammer" || kind == "saw" || kind == "scythe" || kind == "javelin" || kind == "propick") return &V;   // (one-piece heads)
+  if (kind == "knife" || kind == "hammer" || kind == "saw" || kind == "scythe" || kind == "javelin" || kind == "propick" || kind == "chisel") return &V;   // (one-piece heads)
   return kind == "pickaxe" ? &P : kind == "axe" ? &A : kind == "sword" ? &S : kind == "hoe" ? &H : kind == "shovel" ? &V : nullptr;
 }
 struct Gem { const char* item; const char* name; const char* effect; float speed, dur, dmg; int tier; const char* element; };
@@ -122,8 +122,7 @@ std::string partToolBaseKind(const std::string& k) {
   return k;
 }
 std::string partToolBaseItem(const std::string& k) {
-  if (k == "knife" || k == "hammer" || k == "scythe" || k == "javelin") return "flint_" + k;
-  if (k == "saw") return "iron_sword";
+  if (k == "knife" || k == "hammer" || k == "scythe" || k == "javelin" || k == "saw") return "flint_" + k;   // (their models: assets/item_parts.cpp)
   if (k == "propick") return "iron_pickaxe";
   return "iron_" + k;
 }
@@ -300,6 +299,11 @@ std::string partToolModelKey(const ItemStack& s) {
     const json& m = s.tag["pa"]["m"];
     for (size_t i = 0; i < m.size(); i++) k += (i ? ";" : "") + m[i].get<std::string>();
     return k;
+  }
+  if (!s.empty() && s.tag.is_object() && s.tag.contains("metal") && s.tag["metal"].is_object() && s.def() && !s.def()->str("mold").empty()) {   // a filled mold: "mf:<item>:<material>"
+    ItemStack m(s.id, 1); m.tag = json{{"comp", s.tag["metal"].value("comp", json::object())}};
+    const ToolMaterial* tm = toolMaterialOfStack(m);
+    return tm ? "mf:" + s.id + ":" + tm->key : "";
   }
   const bool pt = isPartTool(s), gem = !s.empty() && s.tag.is_object() && s.tag.contains("gem") && s.tag["gem"].is_string();
   if (!pt && !gem && s.tag.is_object() && s.tag.contains("comp")) {   // a head or an ingot of some makeup: "mc:<item>:<material>"

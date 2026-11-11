@@ -32,7 +32,9 @@ void strawOnBreak(Level& lv, PlayerController& pc, Player& p, int x, int y, int 
   for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) {
     if (!dx && !dz) continue;
     const BlockId b = w.getBlock(x + dx, y, z + dz);
-    if (isGrassPlant(b) || bhas(b, BF::Crop)) pc.breakBlock(x + dx, y, z + dz);
+    const BlockDef& bd = reg().block(b);   // grass, and only ripe crops (a scythe doesn't cut the green ones)
+    const bool ripeCrop = bhas(b, BF::Crop) && bd.props.contains("crop") && bd.props["crop"].is_object() && w.getMeta(x + dx, y, z + dz) >= bd.props["crop"].value("stages", 8) - 1;
+    if (isGrassPlant(b) || ripeCrop) pc.breakBlock(x + dx, y, z + dz);
   }
   sweeping = false;
 }

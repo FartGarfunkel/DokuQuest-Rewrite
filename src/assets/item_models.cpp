@@ -1,6 +1,7 @@
 // assets/item_models.cpp — the item model cache, block items, the sculpt, and which builder each item gets
 // (the original's itemMesh chain: models3d.js -> sculpt.js -> items3d.js -> models.js).
 #include "assets/item_build.h"
+#include "assets/pottery3d.h"
 #include "core/tool_parts.h"
 #include "render/creature_models.h"
 #include "common/threadpool.h"
@@ -294,6 +295,17 @@ static void recolourPartTool(VoxelGrid& g, const std::string& kind, const std::v
 
 // mixed armour: the piece's pattern laid over its model (front view), each voxel in the colour of the cell it falls in (the
 // nearest cell of the pattern where the pattern has a gap), its light and shade kept
+// the wooden haft's voxels (the browns recolourPartTool leaves as the handle) taken away: a loose head
+static void stripHaft(VoxelGrid& g) {
+  for (int z = 0; z < g.size.z; z++) for (int y = 0; y < g.size.y; y++) for (int x = 0; x < g.size.x; x++) {
+    const u32 c = g.at(x, y, z); if (!c) continue;
+    const float r = (c & 255) / 255.f, gg = ((c >> 8) & 255) / 255.f, b = ((c >> 16) & 255) / 255.f;
+    const float mx = std::max({r, gg, b}), mn = std::min({r, gg, b}), sat = mx > 0 ? (mx - mn) / mx : 0;
+    float hue = 0;
+    if (mx > mn) { if (mx == r) hue = std::fmod((gg - b) / (mx - mn), 6.f) / 6.f; else if (mx == gg) hue = ((b - r) / (mx - mn) + 2) / 6.f; else hue = ((r - gg) / (mx - mn) + 4) / 6.f; if (hue < 0) hue += 1; }
+    if (hue > 0.02f && hue < 0.16f && sat > 0.22f && mx < 0.85f) g.set(x, y, z, 0);
+  }
+}
 static void recolourPartArmor(VoxelGrid& g, const std::string& piece, const std::vector<std::string>& mats) {
   const ArmorPattern* P = armorPattern(piece);
   if (!P || mats.size() != P->cells.size()) return;
@@ -427,6 +439,47 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
     out.key = key;
     return ok;
   }
+  if (startsWith(key, "mf:")) {   // a filled mold: "mf:<item>:<material>", its metal recoloured to that makeup (assets/pottery3d.h)
+    const size_t a = key.find(':', 3);
+    if (a == std::string::npos) return false;
+    const std::string item = key.substr(3, a - 3), mat = key.substr(a + 1);
+    VoxelGrid g; VoxelFrame fr; float depth; bool stand; const vec3 grey(186, 186, 192);
+    if (!buildPotteryGrid(item, g, fr, depth, stand, &grey)) return false;
+    recolourPartTool(g, "", {mat}, "", "");   // (the fired clay's browns read as a haft: only the metal takes the colour)
+    out.key = key; out.built = true; out.kind = VoxelModel::Flat; out.stand = stand; out.depth = depth;
+    const auto* prev = g_recolour; g_recolour = nullptr;
+    finishGrid(out, g, fr, nullptr);
+    g_recolour = prev;
+    return true;
+  }
+  // a loose tool head (knapped, cast or forged): its tool's own model with the wooden haft taken off
+  {
+    std::string tool;
+    auto ends = [&](const char* e) { const size_t n = std::strlen(e); return key.size() > n && key.compare(key.size() - n, n, e) == 0; };
+    if (key == "crude_pickaxe_head") tool = "crude_pickaxe";
+    else if (ends("_head") && (startsWith(key, "stone_") || startsWith(key, "flint_") || startsWith(key, "metal_"))) {
+      const std::string mat = key.substr(0, key.find('_')), kind = key.substr(mat.size() + 1, key.size() - mat.size() - 1 - 5);
+      tool = mat == "metal" ? partToolBaseItem(kind) : mat + "_" + kind;
+      if (!reg().item(tool)) tool = partToolBaseItem(kind);
+    }
+    if (!tool.empty() && reg().item(tool)) {
+      const auto* prev = g_recolour;
+      const std::function<void(VoxelGrid&)> fn = [&](VoxelGrid& g) { stripHaft(g); if (prev) (*prev)(g); };
+      g_recolour = &fn;
+      const bool ok = buildItemModel(tool, out);
+      g_recolour = prev;
+      out.key = key;
+      return ok;
+    }
+  }
+  {   // the immersive pottery, molds and firestarter: modelled (assets/pottery3d.h), not sculpted from a picture
+    VoxelGrid g; VoxelFrame fr; float depth; bool stand;
+    if (buildPotteryGrid(key, g, fr, depth, stand)) {
+      out.key = key; out.built = true; out.kind = VoxelModel::Flat; out.stand = stand; out.depth = depth;
+      finishGrid(out, g, fr, nullptr);
+      return true;
+    }
+  }
   std::shared_ptr<const TileSet> tsp;
   { std::lock_guard<std::mutex> lk(g_snapMx); tsp = tilesSnap(); }
   if (!tsp) return false;
@@ -450,6 +503,8 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
   }
   // ---- block items
   if (def && !def->block.empty()) {
+    const BlockId gb = reg().blockId(def->block);
+    struct GlassOn { bool prev; GlassOn(bool on) : prev(g_tileVoxelGlass) { g_tileVoxelGlass = on; } ~GlassOn() { g_tileVoxelGlass = prev; } } glassOn(gb && reg().tTrans[gb] && reg().block(gb).has("color"));   // stained glass (and its panes): the tint shows
     const json& bi = blockItems();
     auto it = bi.find(key);
     std::string k = it != bi.end() ? (*it)["k"].get<std::string>() : "sprite";

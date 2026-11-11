@@ -349,7 +349,8 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
     if (R.tOpaque[nb] && !c.carveAt(x + F.n[0], y + F.n[1], z + F.n[2])) continue;   // carved neighbour: face exposed, draw it
     // a top under a shaped block standing on all of it (a stair, a bottom slab, a path, a carpet): out of sight, and its
     // relief poked out round the shape's foot (teal grass bumps along the bottom of every path stair)
-    if (f == 2 && R.tShape[nb] && R.tSolid[nb] && !R.tLiquid[nb] && shapeStandsOnAll(c, nb, x, y + 1, z)) continue;
+    // (not under a shape that's never meshed: piles and pit kilns draw their own contents, so the ground must show)
+    if (f == 2 && R.tShape[nb] && R.tSolid[nb] && !R.tLiquid[nb] && R.tRender[nb] != (u8)Render::None && shapeStandsOnAll(c, nb, x, y + 1, z)) continue;
     if (nb == id && (T.selfCull || (!c.opt.fancyLeaves && T.leaves))) continue;
     if (T.cullGroup && T.selfCull && traits(nb).cullGroup == T.cullGroup) continue;   // one body of glass (the rubyglass)
     if (T.leaves && traits(nb).leaves && leafHidden(c, x, y, z, F.n)) continue;

@@ -55,6 +55,7 @@ struct WorldGenOptions {
                                        //     (gen/town_mine.h), every trade staffed before a second of one
                                        // 12: rock layers (TerraFirmaCraft's: sedimentary over metamorphic over igneous, each
                                        //     region its own rocks) and the ores in their own rocks (gen/rock_layers.cpp)
+  bool looseGround = false;            // immersive worlds (sim/immersive.h): TFC's loose rocks, flint and twigs on the ground
   std::string worldType = "default";   // default | flat | amplified | ... (from the create-world screen)
   json extra;                          // structures on/off, bonus chest, etc.
 };

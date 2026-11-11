@@ -5,12 +5,17 @@
 
 namespace dq {
 
+thread_local bool g_tileVoxelGlass = false;
 u32 tileVoxel(const TileSet& ts, int tile, int x, int y) {
   if (tile < 0 || tile >= ts.count) return 0;
   int S = ts.size;
   x = clampv(x, 0, S - 1); y = clampv(y, 0, S - 1);
   const u8* p = ts.tile(tile) + ((size_t)y * S + x) * 4;
-  if (p[3] < 128) return 0;
+  if (p[3] < 128) {
+    if (!g_tileVoxelGlass || p[3] < 8) return 0;
+    const float a = p[3] / 255.f, k = 0.55f + 0.45f * a;   // see-through glass: its tint, as light shows through it
+    return voxRGBA((int)(p[0] * k + 255 * (1 - k) * 0.6f), (int)(p[1] * k + 255 * (1 - k) * 0.6f), (int)(p[2] * k + 255 * (1 - k) * 0.6f), VOXEL_SOLID);
+  }
   int r = p[0], g = p[1], b = p[2];
   if (p[3] == 253) { r = r * 124 * 13 / 2550; g = g * 191 * 13 / 2550; b = b * 72 * 13 / 2550; }   // TINT_GRASS * 1.3 (models' default tint)
   bool glow = !ts.emissive.empty() && ts.emissive[(size_t)tile * S * S + (size_t)y * S + x] > 127;
@@ -27,7 +32,7 @@ SpriteInfo SpriteInfo::of(const TileSet& ts, int tile) {
   I.grid.assign(R * R, 0); I.raw.assign(R * R, 0); I.fill.assign(R * R, 0);
   for (int j = 0; j < R; j++) for (int i = 0; i < R; i++) {
     const u8* p = ts.tile(tile) + ((size_t)(j * st) * ts.size + i * st) * 4;
-    if (p[3] < 128) continue;
+    if (p[3] < (g_tileVoxelGlass ? 8 : 128)) continue;   // (see-through glass kept while building a stained glass item)
     SpritePx q; q.i = i; q.j = j; q.r = p[0]; q.g = p[1]; q.b = p[2];
     int mx = std::max({q.r, q.g, q.b}), mn = std::min({q.r, q.g, q.b});
     q.lum = 0.3f * q.r + 0.59f * q.g + 0.11f * q.b; q.sat = mx ? (float)(mx - mn) / mx : 0;

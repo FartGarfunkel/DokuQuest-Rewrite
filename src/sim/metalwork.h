@@ -19,9 +19,10 @@ void vesselMeltStep(ItemStack& vessel);                       // after heating: 
 bool pourInto(ItemStack& vessel, ItemStack& mold, std::string* why = nullptr);   // mold: one fired mold (n = 1)
 std::pair<ItemStack, bool> breakMold(ItemStack& mold, ItemStack* opened = nullptr);   // a stack: one opened, the rest stay filled; the opened mold (if it held) in *opened        // the piece, and whether the mold survived (mold emptied, or cleared)
 bool moldFilled(const ItemStack& mold);
-class Level; class Player;
+class Level; class Player; class World;
 // use with a vessel or a filled mold in hand (sim/controller.cpp): fill from the other hand, empty (sneak), pour into a mold
 // in the other hand, break a cooled mold open. true if it took the click.
 bool metalworkUse(Level& lv, Player& p);
+bool metalworkPourOnGround(Level& lv, Player& p, World& w, int x, int y, int z);   // a molten vessel used on molds set down on the ground (an item pile)
 
 } // namespace dq

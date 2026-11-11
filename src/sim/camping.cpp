@@ -1,5 +1,6 @@
 // sim/camping.cpp — campfires, the kit, rope, the grappling hook, the sleeping bag (game/camping.js).
 #include "sim/firepit.h"
+#include "sim/immersive.h"
 #include "sim/heat.h"
 #include "sim/camping.h"
 #include "sim/physics.h"
@@ -296,13 +297,13 @@ bool campingUse(UseCtx& u) {
       return true;
     }
     // fuel on the fire (sim/firepit.h)
-    if (def && fuelOf(held.id).secs > 0 && !def->has("food")) {
+    if (immersive(lv) && def && fuelOf(held.id).secs > 0 && !def->has("food")) {   // (immersive worlds: a classic campfire burns as ever)
       if (!firepitAddFuel(w, x, y, z, held)) toast(lv, p, "The fire has all the fuel it can take");
       else lv.fx->material("wood", "place", C(x, y, z));
       return true;
     }
     // metal, ore or pottery set on it to heat (sim/heat.h)
-    if (def && heatable(held.id)) {
+    if (immersive(lv) && def && heatable(held.id)) {
       json& e = campEntity(w, x, y, z);
       int k = -1;
       for (int i = 0; i < 4; i++) if (e["items"][i].is_null()) { k = i; break; }
@@ -314,7 +315,7 @@ bool campingUse(UseCtx& u) {
       return true;
     }
     // an empty hand takes back what's heating on it
-    if (held.empty()) {
+    if (held.empty() && immersive(lv)) {
       json& e = campEntity(w, x, y, z);
       for (int i = 3; i >= 0; i--) {
         if (e["items"][i].is_null()) continue;
@@ -428,7 +429,8 @@ void campingTick(Level& lv, double dt) {
       World* w = lv.worldIfOpen(realm);
       if (!w) continue;
       for (const ivec3& c : *set) {
-        if (w->getBlock(c.x, c.y, c.z) == ids().campfire) firepitTick(lv, *w, c.x, c.y, c.z, dt);   // sim/firepit.h: fuel, heat, rain
+        const bool imm = immersive(lv);
+        if (imm && w->getBlock(c.x, c.y, c.z) == ids().campfire) firepitTick(lv, *w, c.x, c.y, c.z, dt);   // sim/firepit.h (immersive worlds): fuel, heat, rain
         json* e = w->blockEntity(c.x, c.y, c.z);
         if (!e || !e->is_object() || e->value("type", "") != "campfire" || !(*e)["items"].is_array() || (w->getMeta(c.x, c.y, c.z) & CAMPFIRE_OUT)) continue;
         json& items = (*e)["items"];
@@ -436,7 +438,7 @@ void campingTick(Level& lv, double dt) {
         for (int k = 0; k < 4 && k < (int)items.size(); k++) {
           if (items[k].is_null()) continue;
           if (const ItemDef* fd = reg().item(items[k].value("id", "")); !fd || !fd->has("food")) continue;   // (metal and pottery heat, they don't cook)
-          if (e->value("temp", 650.f) < FIREPIT_COOK_MIN) continue;   // not hot enough yet
+          if (imm && e->value("temp", 650.f) < FIREPIT_COOK_MIN) continue;   // not hot enough yet
           float t = (*e)["t"][k].get<float>() + (float)dt;
           (*e)["t"][k] = t;
           if (t < CAMP_COOK) continue;

@@ -1,6 +1,39 @@
 # DokuQuest patch notes for the C++ versions, newest first (shown in the launcher's news panel).
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
+## Alpha 1.0.0.21 — Back on Track | November 2026
+**Classic worlds are classic again:**
+- **New worlds start with the classic crafting.** Immersive Progression (the TerraFirmaCraft-style start) is now a choice in Create World, marked experimental. A world you made with it keeps it, and you can switch it off in the world's settings.
+- **Campfires** burn and cook as they always did in a classic world. Fuel, heat, rain putting them out and setting metal on them are for immersive worlds.
+- **Pebbles are thrown again,** and crouching with a log places the log. Knapping, ingot and log piles, smithing with a hammer and building a forge are for immersive worlds.
+- **The miller and the miner keep shop again.**
+- **Bismuth and zinc ore smelt in the furnace,** and every alloy (brass, bismuth bronze, black bronze, rose gold, sterling silver) can be crafted from its ingots, so the new metals have a use without vessels.
+- **Ores are found where they always were** in a classic world. Their particular home rocks are an immersive world's.
+- **Levers, pistons, dispensers, droppers, observers, repeaters, comparators, buttons, pressure plates and the stonecutter** take any rock's cobble or any rock, so the rock layers don't leave you short of plain stone.
+- **The old loose stones** lie on hills, beaches and mountain meadows again.
+- **The recipe book** only lists recipes your kind of world can make.
+
+**The rock layers:**
+- **Every new rock breaks to its own cobble** (chalk to cobbled chalk, gneiss to cobbled gneiss...), which smelts back to the rock. Each rock and each cobble has a slab, stairs and a wall, every cobble a mossy one (with a vine), and the chisel works them like any other stone.
+
+**Immersive Progression, done properly:**
+- **TerraFirmaCraft's own knapping patterns** for every clay shape and every stone tool head. Every mold can be made, the pickaxe mold included.
+- **The chisel:** knap a chisel mold, or work a chisel head on the anvil, and put it on a stick.
+- **Pouring metal:** carry a fired mold anywhere in your bag and use the molten vessel, or set molds down on the ground and pour into them. The vessel tells you how hot it is and how hot it needs to be (copper needs a charcoal fire or a forge).
+- **No planks without a saw:** log and saw make lumber, four lumber make planks.
+- **Loose rocks, flint and twigs** lie about a third as thick, so the land doesn't look cluttered, and only in immersive worlds.
+- **Work the crafting table in the world:** look at a square of its top and use an item to set it down there, use an empty hand on a piece to take it back, and use an empty hand on an empty square to make what the pieces make. What they make hovers over the table. The grid reads from where you stand. The sides, or an empty table, open the crafting screen as ever.
+- **Pottery and tools as real 3D models:** round vessels, jugs, pots, bowls, pans and crucibles; molds with the tool's shape cut in their top, showing the metal poured into them; the firestarter; hammers, saws, scythes, javelins and knives with their own shapes; loose tool heads as their tool's head; berries, fruit, grain, ore pieces, blooms and pig iron like the rest of the game's food and metal.
+
+**Everywhere:**
+- **Crouch and use to set anything down** on top of what you're looking at: the ground, a furnace, a crafting table, a chest.
+- **Stained glass and its panes show their colour** in the inventory and in your hand.
+- **The controller shows the full item tooltip** beside the slot you're on in the inventory.
+- **Mixed tools set down on the ground** show their own metals.
+- **The ground under an ingot pile, a log pile or a pit kiln** no longer vanishes.
+
+- Removed Herobrine.
+
 ## Alpha 1.0.0.20 — Forge and Fire | November 2026
 **Weather (after the Particle Rain mod by pigcart, MIT):**
 - **Rain falls round you, not in a ring at your feet:** drops come from a sphere around you, lean and stretch with the wind and with how you move, and are see-through like real rain. Thunderstorms add heavy rain. Rain and snow no longer blow through walls or into houses.

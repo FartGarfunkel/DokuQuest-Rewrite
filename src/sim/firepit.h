@@ -1,4 +1,4 @@
-// sim/firepit.h — the campfire as TerraFirmaCraft's firepit, in every world: a fuel store of up to four (logs, planks,
+// sim/firepit.h — the campfire as TerraFirmaCraft's firepit, in immersive worlds (a classic campfire burns on as ever): a fuel store of up to four (logs, planks,
 // sticks, charcoal, coal), each fuel burning so long at so hot; the fire's temperature climbs toward its fuel's and falls
 // without; out of fuel and cool, it goes out; rain on an open fire puts it out. Food cooks on it as before (once it's hot
 // enough); metal, ore and pottery set on it heat up (sim/heat.h). Ticked from sim/camping.cpp's campingTick; its block

@@ -122,6 +122,31 @@ std::pair<ItemStack, bool> breakMold(ItemStack& mold, ItemStack* opened) {
   return {piece, survives};
 }
 
+bool metalworkPourOnGround(Level& lv, Player& p, World& w, int x, int y, int z) {
+  ItemStack& held = p.held();
+  if (!isVessel(held)) return false;
+  json* e = w.blockEntity(x, y, z);
+  if (!e || !e->is_object() || e->value("type", "") != "pile" || !(*e)["items"].is_array()) return false;
+  json& items = (*e)["items"];
+  int at = -1, free = -1;
+  for (int i = 0; i < (int)items.size(); i++) {
+    if (items[i].is_null()) { if (free < 0) free = i; continue; }
+    const ItemStack s = ItemStack::fromJson(items[i]);
+    if (at < 0 && s.def() && !s.def()->str("mold").empty() && !moldFilled(s)) at = i;
+  }
+  if (at < 0) return false;
+  std::string why;
+  if (!vesselMolten(held)) { toast(lv, p, vesselUnits(held) > 0 ? "The metal has to be molten to pour: heat the vessel on a charcoal fire or in a forge" : "The vessel is empty"); return true; }
+  ItemStack stack = ItemStack::fromJson(items[at]), one = stack; one.n = 1;
+  if (stack.n > 1 && free < 0) { toast(lv, p, "Set the molds down one to a spot to pour into them"); return true; }
+  if (!pourInto(held, one, &why)) { toast(lv, p, why); return true; }
+  if (stack.n > 1) { stack.n -= 1; items[at] = stack.toJson(); items[free] = one.toJson(); (*e)["rot"][free] = (*e)["rot"].is_array() && at < (int)(*e)["rot"].size() ? (*e)["rot"][at] : json(0); }
+  else items[at] = one.toJson();
+  w.blockEntityChanged(x, y, z);
+  lv.fx->sound("lava_pop", vec3(x + 0.5f, y + 0.3f, z + 0.5f), 12);
+  return true;
+}
+
 bool metalworkUse(Level& lv, Player& p) {
   auto toastMsg = [&](const std::string& m, const std::string& kind = "") { toast(lv, p, m, kind); };
   ItemStack& held = p.held();
@@ -135,17 +160,26 @@ bool metalworkUse(Level& lv, Player& p) {
       if (!vesselAdd(held, off)) toastMsg("The vessel is full");
       return true;
     }
-    if (!off.empty() && off.def() && !off.def()->str("mold").empty()) {
-      ItemStack one = off; one.n = 1; std::string why;
+    // pour: into the fired mold in the other hand, else the first empty fired mold in the bag (TFC pours from the vessel's
+    // screen into any mold you carry)
+    auto emptyMold = [](const ItemStack& s) { return !s.empty() && s.def() && !s.def()->str("mold").empty() && !moldFilled(s); };
+    ItemStack* src = emptyMold(off) ? &off : nullptr;
+    if (!src && vesselMolten(held)) for (auto& s : p.inv) if (emptyMold(s)) { src = &s; break; }
+    if (src) {
+      ItemStack one = *src; one.n = 1; std::string why;
       if (!pourInto(held, one, &why)) { toastMsg(why); return true; }
-      if (--off.n <= 0) off = ItemStack();
+      if (--src->n <= 0) *src = ItemStack();
       if (int left = giveItem(lv, p, one); left > 0) dropItem(lv, p.realm, one, p.pos + vec3(0, 1, 0), true);
       lv.fx->sound("lava_pop", p.pos + vec3(0, 1, 0), 12);
+      toastMsg("Poured into a " + one.def()->name + ": let it cool, then use it to take the piece out");
       return true;
     }
     const int u = vesselUnits(held);
-    if (u > 0) toastMsg(std::to_string(u) + " units of " + compName(vesselComp(held)) + (vesselMolten(held) ? ", molten" : held.tag.contains("metal") ? ", set solid: heat it to pour" : ""));
-    else toastMsg("Hold ore in your other hand and use the vessel to fill it");
+    const Comp c = vesselComp(held);
+    const int melt = (int)blendMetal(c).melt, now = (int)itemHeat(held);
+    if (u > 0 && vesselMolten(held)) toastMsg(std::to_string(u) + " units of molten " + compName(c) + ": carry a fired mold (or use it on one set on the ground) to pour");
+    else if (u > 0) toastMsg(std::to_string(u) + " units of " + compName(c) + ": it melts at " + std::to_string(melt) + "\xC2\xB0" "C (now " + std::to_string(now) + "\xC2\xB0" "C). Heat it on a charcoal fire or in a forge");
+    else toastMsg("Hold ore or metal in your other hand and use the vessel to fill it");
     return true;
   }
   if (moldFilled(held)) {

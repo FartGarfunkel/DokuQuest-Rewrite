@@ -3,6 +3,9 @@
 // the rest in a little heap) and placed backpacks. The blocks themselves are invisible (render NONE); their
 // block entities carry the stacks. Item frames show their item the same way.
 #include "sim/piles.h"
+#include "sim/worktable.h"
+#include "sim/crafting.h"
+#include "core/tool_parts.h"
 #include "sim/weapon_rack.h"
 #include "render/item_layers.h"
 #include "render/be_scan.h"
@@ -15,6 +18,9 @@
 
 namespace dq {
 namespace {
+
+// a stack's model: a mixed tool, a cast head, a filled mold... by its makeup (core/tool_parts.h), else its item's
+std::string stackModelKey(const ItemStack& s) { const std::string k = partToolModelKey(s); return k.empty() ? s.id : k; }
 
 // furniture.js bookMesh: a small book standing on a bookcase shelf, 0.22 x 0.38 x 0.4 blocks; cover colour per index
 // (0-3 the shop's colours, 4 purple for an enchanted book), gold bands across the spine (front, +z), page edges
@@ -59,7 +65,7 @@ public:
     auto begin = [&] { if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; } };
     forBlockEntities(w, f, 48.f, [&](const Chunk&, json& e, int x, int y, int z) {
       const std::string type = e.value("type", "");
-      if (type != "pile" && type != "backpack" && type != "frame" && type != "shelf" && type != "bookcase" && type != "rack" && type != "ingots" && type != "logs" && type != "kiln") return;
+      if (type != "pile" && type != "backpack" && type != "frame" && type != "shelf" && type != "bookcase" && type != "rack" && type != "ingots" && type != "logs" && type != "kiln" && type != "worktable") return;
       vec3 rel = f.cam.rel(glm::dvec3(x, y, z));
       if (glm::dot(rel - vec3(0.5f), rel - vec3(0.5f)) > 48.f * 48.f || !f.cam.frustum.sphere(rel + vec3(0.5f), 1.2f)) return;
       u8 l = w.getLight(x, y, z);
@@ -71,12 +77,41 @@ public:
         if (bl && reg().tShape[bl] == ShapeKind::Slab && !(w.getMeta(x, y - 1, z) & 7)) yOff = -0.5f;
       }
       mat4 base = glm::translate(mat4(1), rel + vec3(0, yOff, 0));
+      if (type == "worktable") {   // sim/worktable.h: the pieces on their squares of the table's top; what they make, over it
+        begin();
+        const std::vector<ItemStack> g = worktableGrid(e);
+        for (int k = 0; k < 9; k++) {
+          if (g[k].empty()) continue;
+          const VoxelModel& im = itemModel(stackModelKey(g[k]));
+          if (!im.ready()) continue;
+          const float cx = (k % 3 + 0.5f) / 3.f, cz = (k / 3 + 0.5f) / 3.f;
+          mat4 m = glm::translate(base, vec3(cx, 1.f, cz));
+          if (im.kind == VoxelModel::Block) m = glm::scale(glm::translate(m, vec3(0, 0.1f, 0)), vec3(0.2f));
+          else if (im.stand) m = glm::scale(glm::translate(m, vec3(0, 0.11f, 0)), vec3(0.28f));
+          else { m = glm::translate(m, vec3(0, (im.depth > 0 ? im.depth : 0.03f) * 0.3f + 0.004f, 0)); m = glm::rotate(m, -PI / 2, vec3(1, 0, 0)); m = glm::scale(m, vec3(0.3f)); }
+          VR.draw(im.gl, m * im.matrix(), L, vec4(0), itemGlints(g[k]) ? 1.f : 0.f);
+        }
+        recipeGate().immersive = w.immersive;
+        const std::array<int, 9> ord = worktableOrder(s.player->yaw);
+        std::vector<ItemStack> rg(9); for (int i = 0; i < 9; i++) rg[i] = g[ord[i]];
+        if (const CraftMatch r = matchGrid(rg, 3)) {
+          const ItemStack out = r.result();
+          const VoxelModel& om = itemModel(stackModelKey(out));
+          if (om.ready()) {
+            mat4 m = glm::translate(base, vec3(0.5f, 1.38f + 0.04f * std::sin((float)f.time * 2.f), 0.5f));
+            m = glm::rotate(m, (float)f.time * 1.2f, vec3(0, 1, 0));
+            m = glm::scale(m, vec3(om.kind == VoxelModel::Block ? 0.3f : 0.42f));
+            VR.draw(om.gl, m * om.matrix(), L, vec4(0), itemGlints(out) ? 1.f : 0.f);
+          }
+        }
+        return;
+      }
       if (type == "kiln") {   // sim/pit_kiln.h: the pottery in its quarters, a bed of straw over it, the logs on that
         begin();
         if (e.contains("items") && e["items"].is_array()) for (int k = 0; k < 4 && k < (int)e["items"].size(); k++) {
           if (e["items"][k].is_null()) continue;
           const ItemStack st = ItemStack::fromJson(e["items"][k]);
-          const VoxelModel& im = itemModel(st.id);
+          const VoxelModel& im = itemModel(stackModelKey(st));
           if (!im.ready()) continue;
           mat4 m = glm::translate(base, vec3((k % 2) * 0.5f + 0.25f, 0.2f, (k / 2) * 0.5f + 0.25f));
           m = glm::rotate(m, k * 0.9f, vec3(0, 1, 0)); m = glm::scale(m, vec3(0.42f));
@@ -102,7 +137,7 @@ public:
         if (!e.contains("item")) return;
         const ItemStack st = ItemStack::fromJson(e["item"]);
         if (st.empty() || !st.def()) return;
-        const VoxelModel& im = itemModel(st.id);
+        const VoxelModel& im = itemModel(stackModelKey(st));
         if (!im.ready()) return;
         begin();
         const bool logs = type == "logs";
@@ -136,7 +171,7 @@ public:
         for (size_t k = 0; k < R.size() && k < 3; k++) {
           ItemStack st = ItemStack::fromJson(R[k]);
           if (st.empty() || !st.def()) continue;
-          const VoxelModel& im = itemModel(st.id);
+          const VoxelModel& im = itemModel(stackModelKey(st));
           if (!im.ready()) continue;
           begin();
           mat4 m = glm::translate(mat4(1), rel) * rackSlotMat(f, rk == 2, (int)k);
@@ -149,7 +184,7 @@ public:
         if (!e.contains("item") || !e["item"].is_object()) return;
         ItemStack st = ItemStack::fromJson(e["item"]);
         if (st.empty() || !st.def()) return;
-        const VoxelModel& im = itemModel(st.id);
+        const VoxelModel& im = itemModel(stackModelKey(st));
         if (!im.ready()) return;
         begin();
         static const float TURN[4] = {0, -PI / 2, PI, PI / 2};
@@ -193,7 +228,7 @@ public:
             VR.draw(bm.gl, m * bm.matrix(), SL, vec4(0), itemGlints(st) ? 1.f : 0.f);
             continue;
           }
-          const VoxelModel& im = itemModel(st.id);
+          const VoxelModel& im = itemModel(stackModelKey(st));
           if (!im.ready()) continue;
           begin();
           float top = wall ? 8.f / 16 : row ? 8.f / 16 : 1.f / 16, depth = wall ? 4.f / 16 : 5.5f / 16;
@@ -208,7 +243,7 @@ public:
         if (!e.contains("stack")) return;
         ItemStack st = ItemStack::fromJson(e["stack"]);
         if (st.empty() || !st.def()) return;
-        const VoxelModel& im = itemModel(st.id);
+        const VoxelModel& im = itemModel(stackModelKey(st));
         if (!im.ready()) return;
         begin();
         float yaw = e.value("yaw", 0.f);
@@ -225,13 +260,13 @@ public:
         if (!items[k].is_object()) continue;
         ItemStack st = ItemStack::fromJson(items[k]);
         if (st.empty() || !st.def()) continue;
-        const VoxelModel& im = itemModel(st.id);
+        const VoxelModel& im = itemModel(stackModelKey(st));
         if (!im.ready()) continue;
         begin();
         float r0 = e.contains("rot") && e["rot"].is_array() && k < e["rot"].size() && e["rot"][k].is_number() && e["rot"][k].get<float>() != 0 ? e["rot"][k].get<float>() : (float)k * 0.7f;
         float ox = (float)(k % 2) * 0.5f + 0.25f, oz = (float)(k / 2) * 0.5f + 0.25f;
         static const std::regex BAR("ingot|brick|nugget|bar$");
-        bool bar = std::regex_search(st.id, BAR), tool = im.kind != VoxelModel::Block && isHandheld(st.id);
+        bool bar = std::regex_search(st.id, BAR) && !im.stand, tool = im.kind != VoxelModel::Block && isHandheld(st.id) && !im.stand;   // (a mold or a pot stands, whatever its name)
         bool block = im.kind == VoxelModel::Block;
         int n = st.n;
         // a stack of bars on its own (Vintage Story's ingot piles): four across the whole block, each layer turned

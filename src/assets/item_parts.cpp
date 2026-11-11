@@ -99,6 +99,12 @@ std::string model3dKind(const std::string& key, const ItemDef* def) {
   if (!def || !def->block.empty()) return "";
   const std::string t = def->hasTool ? def->tool.type : "";
   auto re = [&](const char* r) { return rxSearch(key, r); };
+  // the immersive tools (TerraFirmaCraft's kinds), modelled like the rest rather than as a pickaxe, axe, hoe or sword
+  if (def->hasTool && (def->has("hammer") || t == "hammer")) return "hammer";
+  if (def->hasTool && def->has("saw")) return "saw";
+  if (def->hasTool && def->has("scythe")) return "scythe";
+  if (def->hasTool && def->has("javelin")) return "javelin";
+  if (def->hasTool && def->has("knife")) return "dagger";
   if (t == "pickaxe") return "pickaxe";
   if (t == "axe") return "axe";
   if (t == "shovel") return "shovel";
@@ -126,6 +132,12 @@ std::string model3dKind(const std::string& key, const ItemDef* def) {
   if (re("shard$|^quartz$")) return "crystal";
   if (re("^(coal|charcoal|flint|raw_\\w+|crushed_\\w+)$")) return "lump";
   if (re("nugget$")) return "nugget";
+  if (re("berry$")) return "berries";                                  // the TFC berries (blackberry, cranberry...)
+  if (re("^(orange|lemon|lime|peach|plum|squash)$")) return "apple";   // round fruit
+  if (key == "garlic") return "potato";
+  if (re("^(barley|oat|rye)$")) return "wheat";
+  if (re("_ore_piece$|_ore_sample$|^raw_bloom$|^refined_bloom$|^fire_clay$")) return "lump";
+  if (key == "yarn") return "ball";
   if (re("dust$|powder$|^sugar$|^flour$|^bone_meal$|^gunpowder$|^redstone$")) return "heap";
   if (re("seeds$|^cocoa_beans$|^nether_wart_item$")) return "seeds";
   if (re("_dye$")) return "pouch";
@@ -183,6 +195,31 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
     m.sseg(diag(0.84f, 0), diag(0.84f, 0.3f), 0.09f, 0.08f, 0.08f, 0.07f, 1, 0.1f);       // the arm
     m.sseg(diag(0.86f, 0.3f), diag(0.6f, 0.34f), 0.17f, 0.18f, 0.065f, 0.045f, 1.08f, 0.08f);   // the blade, turned down (Just 3D: broad)
     depth = 0.06f;
+  } else if (k == "hammer") {   // TFC's hammer: a squared head across the top of the haft, its faces bright
+    handle(m, 0.84f);
+    m.sseg(diag(0.84f, -0.24f), diag(0.84f, 0.24f), 0.17f, 0.17f, 0.15f, 0.15f, 1.0f, 0.05f, 0.02f);
+    m.sseg(diag(0.84f, -0.26f), diag(0.84f, -0.22f), 0.17f, 0.17f, 0.15f, 0.15f, 1.12f, 0.03f);
+    m.sseg(diag(0.84f, 0.22f), diag(0.84f, 0.26f), 0.17f, 0.17f, 0.15f, 0.15f, 1.12f, 0.03f);
+    depth = 0.08f;
+  } else if (k == "saw") {   // a short grip and a long straight blade, its teeth along the lower edge
+    handle(m, 0.34f);
+    m.sseg(diag(0.3f), diag(0.36f), 0.1f, 0.1f, 0.07f, 0.07f, 0.8f);
+    m.sseg(diag(0.36f, 0.02f), diag(1.08f, 0.0f), 0.2f, 0.12f, 0.025f, 0.02f, 1.05f, 0.05f);
+    for (int i = 0; i < 10; i++) { const float u = 0.4f + i * 0.068f; m.sseg(diag(u, -0.09f), diag(u + 0.03f, -0.13f), 0.04f, 0.01f, 0.02f, 0.015f, 0.9f, 0.03f); }
+    depth = 0.04f;
+  } else if (k == "scythe") {   // a long snath, the blade sweeping back from its top
+    handle(m, 1.0f);
+    for (int i = 0; i < 6; i++) {
+      const float a0 = i / 6.f, a1 = (i + 1) / 6.f;
+      auto at = [](float a) { return diag(0.98f - 0.12f * a * a, 0.04f + 0.5f * a); };
+      m.sseg(at(a0), at(a1), 0.11f - 0.07f * a0, 0.11f - 0.07f * a1, 0.03f, 0.02f, i == 0 ? 0.95f : 1.08f, 0.04f);
+    }
+    depth = 0.04f;
+  } else if (k == "javelin") {   // a long shaft and a leaf-shaped head
+    handle(m, 0.86f);
+    m.sseg(diag(0.84f), diag(0.98f), 0.07f, 0.16f, 0.05f, 0.06f, 1.02f, 0.04f);
+    m.sseg(diag(0.98f), diag(1.14f), 0.16f, 0.02f, 0.06f, 0.02f, 1.1f, 0.04f);
+    depth = 0.05f;
   } else if (k == "sword") depth = sword(m);
   else if (k == "dagger") depth = sword(m, 0.92f, 0.13f, 0.16f);
   else if (k == "club") {
@@ -584,7 +621,7 @@ bool buildItems3d(ItemBuild& b) {
   const std::string& key = b.key;
   const ItemDef* def = b.def;
   Parts P{b};
-  static const std::regex barRe("_ingot$|^brick$|^nether_brick$|_bar$|^netherite_scrap$");
+  static const std::regex barRe("_ingot$|^brick$|^nether_brick$|_bar$|^netherite_scrap$|^pig_iron$|^high_carbon_steel$");
   if (def && def->block.empty() && std::regex_search(key, barRe)) {
     // a bar: Vintage Story's ingot, cast in a mould (narrower on top)
     int t = b.I.tile >= 0 ? b.I.tile : 0;

@@ -58,6 +58,7 @@ public:
   bool floes = false;
   bool jigsawVillages = false;   // terrain version 9: villages of our jigsaw pieces (gen/structures_jigsaw_village.cpp)
   bool villageStyles = false;    // terrain version 10: villages in every style (beach, jungle, swamp, mesa, igloo, festive...) by the land
+  bool looseGround = false;      // immersive worlds only: loose rocks, flint and twigs (gen/decorate.cpp)
   bool rockLayers = false;       // terrain version 12: rock layers and ores in their rocks (gen/rock_layers.cpp)
   std::vector<u8> zincRep_, bismuthRep_, tinRep_, silverRep_, goldRep_;
   BlockId layerRock(int wx, int y, int wz, int H) const;

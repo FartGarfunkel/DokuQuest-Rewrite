@@ -208,7 +208,7 @@ def main(d):
     METAL = (190, 190, 196)
     KIND_SRC = {'pickaxe': ('iron_pickaxe', 1.0), 'axe': ('iron_axe', 1.0), 'shovel': ('iron_shovel', 1.0), 'hoe': ('iron_hoe', 1.0),
                 'sword': ('iron_sword', 1.0), 'knife': ('iron_sword', 0.6), 'saw': ('iron_sword', 0.85), 'scythe': ('iron_hoe', 1.0),
-                'javelin': ('iron_sword', 1.0), 'propick': ('iron_pickaxe', 0.8), 'hammer': None}
+                'javelin': ('iron_sword', 1.0), 'propick': ('iron_pickaxe', 0.8), 'hammer': None, 'chisel': ('chisel', 1.0)}
     for kind, src in KIND_SRC.items():
         im = hammer(METAL, False) if src is None else recolour(src[0], METAL, False, src[1])
         item('metal_%s_head' % kind, '%s Head' % kind.capitalize(), {'maxStack': 16, 'metalHead': kind}, im)
@@ -217,7 +217,8 @@ def main(d):
            'saw': ({'type': 'axe', 'tier': 2, 'speed': 3, 'damage': 3, 'durability': 220}, {'saw': True}),
            'scythe': ({'type': 'hoe', 'tier': 2, 'speed': 2.5, 'damage': 3, 'durability': 220}, {'knife': True, 'scythe': True}),
            'javelin': ({'type': 'sword', 'tier': 2, 'speed': 1, 'damage': 5, 'durability': 180}, {'javelin': True}),
-           'propick': ({'type': 'pickaxe', 'tier': 1, 'speed': 2, 'damage': 2, 'durability': 120}, {'propick': True})}
+           'propick': ({'type': 'pickaxe', 'tier': 1, 'speed': 2, 'damage': 2, 'durability': 120}, {'propick': True}),
+           'chisel': ({'type': 'chisel', 'tier': 2, 'speed': 4, 'damage': 1, 'durability': 180}, {})}
     for kind, (tool, props) in NEW.items():
         src = KIND_SRC[kind]
         im = hammer(METAL, True) if src is None else recolour(src[0], METAL, True, src[1])
@@ -364,7 +365,8 @@ def main(d):
     for r in list(rj['recipes']):
         if r.get('out', '').endswith('planks') and r.get('n') == 4 and 'items' in r and len(r['items']) == 1 and r['items'][0].startswith('#logs_') and not r.get('classicOnly'):
             r['classicOnly'] = True
-            rj['recipes'].append({'out': r['out'], 'n': 2, 'items': list(r['items']), 'immersiveOnly': True, 'w': 1, 'h': 1})
+    # as in TFC, no planks without a saw: log + saw -> lumber, four lumber -> planks (no log -> planks in the grid)
+    rj['recipes'] = [r for r in rj['recipes'] if not (r.get('immersiveOnly') and r.get('out', '').endswith('planks') and r.get('items') and r['items'][0].startswith('#logs_'))]
     kj = json.loads((d / 'knapping.json').read_text())
     if not any(x['out'] == 'flint_saw_head' for x in kj['flint']): kj['flint'].append({'out': 'flint_saw_head', 'n': 1, 'rows': ['#    ', '##   ', '###  ', '#### ']})
     (d / 'knapping.json').write_text(json.dumps(kj, indent=1))
@@ -458,6 +460,58 @@ def main(d):
         b = dict(bkeys['stone']); b.update({'key': key, 'name': key.capitalize(), 'tex': key, 'drop': 'cobblestone', 'id': len(bj['blocks'])})
         bj['blocks'].append(b); bj['faces'].append([tiles[key]] * 6); bkeys[key] = b
         if key not in items: items[key] = {'key': key, 'name': key.capitalize(), 'maxStack': 64, 'icon': 'block:' + key, 'block': key}
+    # each breaks to a cobble of its own (the cobblestone's picture in the rock's colour), which smelts back to the rock
+    cob_tile = files[tiles['cobblestone']]
+    for key, rgb in ROCKS.items():
+        ck = 'cobbled_' + key
+        if ck not in bkeys:
+            im = Image.open(d / cob_tile).convert('RGBA').resize((32, 32), Image.NEAREST); o2 = im.load()
+            for y in range(32):
+                for x in range(32):
+                    r, g, b, a = o2[x, y]; k = (0.3 * r + 0.59 * g + 0.11 * b) / 125.0
+                    o2[x, y] = (min(255, int(rgb[0] * k)), min(255, int(rgb[1] * k)), min(255, int(rgb[2] * k)), a)
+            rel = 'textures/block/%s.png' % ck; im.save(d / rel)
+            if ck not in tiles: tiles[ck] = tj['count']; files.append(rel); tj['res'].append(32); tj['count'] += 1
+            b = dict(bkeys['cobblestone']); b.update({'key': ck, 'name': 'Cobbled ' + key.capitalize(), 'tex': ck, 'drop': ck, 'id': len(bj['blocks'])})
+            bj['blocks'].append(b); bj['faces'].append([tiles[ck]] * 6); bkeys[ck] = b
+        if ck not in items: items[ck] = {'key': ck, 'name': 'Cobbled ' + key.capitalize(), 'maxStack': 64, 'icon': 'block:' + ck, 'block': ck}
+        bkeys[key]['drop'] = ck
+        rj['smelting'][ck] = key
+        if ck not in rj['tags']['#stone_tool']: rj['tags']['#stone_tool'].append(ck)
+    # the same family as granite's (gen bta_extras.py): the rock and its cobble each with a slab, stairs and a wall (the
+    # chisel makes slabs and stairs of them too, world/carve_forms), and a mossy cobble (cobble + vine)
+    def rock_shape(base, suffix, kind, fam, name):
+        k = base + '_' + suffix
+        if k not in bkeys:
+            bb = bkeys[base]
+            nb = {'render': 7, 'solid': True, 'opaque': False, 'replaceable': False, 'hardness': bb.get('hardness', 1.5), 'tool': bb.get('tool', 'pickaxe'),
+                  'tier': bb.get('tier', 0), 'drop': k, 'light': 0, 'lightAtt': 0, 'sound': bb.get('sound', 'stone'), 'key': k, 'name': name,
+                  'base': base, 'shapeKind': kind, 'wlog': True, 'family': fam, 'tex': bb['tex'], 'id': len(bj['blocks'])}
+            bj['blocks'].append(nb); bj['faces'].append(list(bj['faces'][bb['id']])); bkeys[k] = nb
+        if k not in items: items[k] = {'key': k, 'name': name, 'maxStack': 64, 'icon': 'block:' + k, 'block': k}
+        shape = {'slab': (['XXX'], 6), 'stairs': (['X  ', 'XX ', 'XXX'], 4), 'wall': (['XXX', 'XXX'], 6)}[suffix]
+        if not any(r.get('out') == k for r in rj['recipes']):
+            rj['recipes'].append({'out': k, 'n': shape[1], 'shape': shape[0], 'key': {'X': base}, 'w': len(shape[0][0]), 'h': len(shape[0]), 'group': 'shapes'})
+    mcob_tile = files[tiles['mossy_cobblestone']]
+    for key, rgb in ROCKS.items():
+        ck = 'cobbled_' + key
+        for base, nm in ((key, key.capitalize()), (ck, 'Cobbled ' + key.capitalize())):
+            rock_shape(base, 'slab', 1, 'slab', nm + ' Slab'); rock_shape(base, 'stairs', 2, 'stairs', nm + ' Stairs'); rock_shape(base, 'wall', 5, 'wall', nm + ' Wall')
+        mk = 'mossy_' + ck
+        if mk not in bkeys:
+            im = Image.open(d / mcob_tile).convert('RGBA').resize((32, 32), Image.NEAREST); o2 = im.load()
+            for y in range(32):
+                for x in range(32):
+                    r, g, b, a = o2[x, y]
+                    if g > r * 1.12: continue   # the moss stays green
+                    k2 = (0.3 * r + 0.59 * g + 0.11 * b) / 125.0
+                    o2[x, y] = (min(255, int(rgb[0] * k2)), min(255, int(rgb[1] * k2)), min(255, int(rgb[2] * k2)), a)
+            rel = 'textures/block/%s.png' % mk; im.save(d / rel)
+            if mk not in tiles: tiles[mk] = tj['count']; files.append(rel); tj['res'].append(32); tj['count'] += 1
+            b = dict(bkeys[ck]); b.update({'key': mk, 'name': 'Mossy Cobbled ' + key.capitalize(), 'tex': mk, 'drop': mk, 'id': len(bj['blocks'])})
+            bj['blocks'].append(b); bj['faces'].append([tiles[mk]] * 6); bkeys[mk] = b
+        if mk not in items: items[mk] = {'key': mk, 'name': 'Mossy Cobbled ' + key.capitalize(), 'maxStack': 64, 'icon': 'block:' + mk, 'block': mk}
+        if not any(r.get('out') == mk for r in rj['recipes']): rj['recipes'].append({'out': mk, 'n': 1, 'items': [ck, 'vine'], 'w': 2, 'h': 2})
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
 
     # Part 6: TFC's crops, berry bushes and fruit trees that we hadn't (pictures recoloured from our own: wheat's stages for
@@ -576,6 +630,91 @@ def main(d):
     for r in rj['recipes']:   # (metal tools and armour come off the anvil now, or are cast)
         if 'shape' in r and (r.get('out') in early or metal_gear.match(r.get('out', ''))): r['classicOnly'] = True
 
+    # TerraFirmaCraft's own knapping patterns (its data: recipe/knapping/ceramic and stone, 1.21.x; '#' kept, defOn = TFC's
+    # default_on: the cells round a smaller pattern stay kept). Ours that TFC hasn't (the flint saw, the crude pickaxe, the
+    # stone scythe...) keep their patterns.
+    TFC_CLAY = {
+        'vessel': [([' ### ', '#####', '#####', '#####', ' ### '], 1, True)],
+        'jug': [([' #   ', '#### ', '### #', '#### ', '###  '], 1, True)],
+        'pot': [(['#   #', '#   #', '#   #', '#####', ' ### '], 1, True)],
+        'bowl': [(['#   #', ' ### ', '     ', '#   #', ' ### '], 4, True), (['#   #', ' ### '], 2, False)],
+        'ingot_mold': [(['####', '#  #', '#  #', '#  #', '####'], 2, True)],
+        'axe_mold': [(['# ###', '    #', '     ', '    #', '# ###'], 1, True)],
+        'chisel_mold': [(['## ##', '## ##', '## ##', '## ##', '## ##'], 1, True)],
+        'hammer_mold': [(['#####', '     ', '     ', '## ##', '#####'], 1, True)],
+        'hoe_mold': [(['#####', '     ', '  ###', '#####'], 1, True)],
+        'javelin_mold': [(['   ##', '    #', '     ', '#   #', '## ##'], 1, True)],
+        'knife_mold': [(['## #', '#  #', '#  #', '#  #', '#  #'], 1, True)],
+        'pickaxe_mold': [(['#####', '#   #', ' ### ', '#####'], 1, True)],
+        'propick_mold': [(['#####', '    #', ' ### ', ' ####', '#####'], 1, True)],
+        'saw_mold': [(['  ###', '   ##', '#   #', '#    ', '###  '], 1, True)],
+        'scythe_mold': [(['#####', '#    ', '    #', '  ###', '#####'], 1, True)],
+        'shovel_mold': [(['#   #', '#   #', '#   #', '#   #', '## ##'], 1, True)],
+        'sword_mold': [(['  ###', '   ##', '#   #', '##  #', '#### '], 1, True)],
+        'pan': [(['#   #', '#####', ' ### '], 1, False)],
+        'spindle_head': [(['  #  ', '#####', '  #  '], 1, False)],
+    }
+    TFC_ROCK = {
+        'axe_head': [([' #   ', '#### ', '#####', '#### ', ' #   '], 1, True)],
+        'hammer_head': [(['#####', '#####', '  #  '], 1, False)],
+        'hoe_head': [(['#####', '   ##'], 1, False), (['#####', '##   ', '     ', '#####', '##   '], 2, True), (['#####', '##   ', '     ', '#####', '   ##'], 2, True)],
+        'javelin_head': [(['###  ', '#### ', '#####', ' ### ', '  #  '], 1, True)],
+        'knife_head': [(['# ', '##', '##', '##', '##'], 1, False), (['#  # ', '## ##', '## ##', '## ##', '## ##'], 2, True),
+                       (['#   #', '## ##', '## ##', '## ##', '## ##'], 2, True), ([' # # ', '## ##', '## ##', '## ##', '## ##'], 2, True)],
+        'shovel_head': [(['###', '###', '###', '###', ' # '], 1, False)],
+    }
+    kj = json.loads((d / 'knapping.json').read_text())
+    if 'unfired_chisel_mold' not in items or 'ceramic_chisel_mold' not in items:
+        rows = TFC_CLAY['chisel_mold'][0][0]
+        item('unfired_chisel_mold', 'Unfired Chisel Mold', {'maxStack': 16, 'fires': 'ceramic_chisel_mold', 'pottery': True}, pattern_icon(rows, CLAY, True))
+        item('ceramic_chisel_mold', 'Fired Chisel Mold', {'maxStack': 16, 'pottery': True, 'mold': 'chisel'}, pattern_icon(rows, FIRED, True))
+    def tfc_list(old, table, prefix):
+        out, done = [], set()
+        for key, pats in table.items():
+            ok = prefix + key
+            if ok not in items: continue
+            done.add(ok)
+            for rows, n, on in pats: out.append({'out': ok, 'n': n, 'rows': rows, 'defOn': on})
+        return out + [p for p in old if p['out'] not in done]
+    kj['clay'] = tfc_list(kj['clay'], TFC_CLAY, 'unfired_')
+    kj['stone'] = tfc_list(kj['stone'], TFC_ROCK, 'stone_')
+    kj['flint'] = tfc_list(kj['flint'], TFC_ROCK, 'flint_')
+    kj['fireclay'] = [{'out': 'unfired_crucible', 'n': 1, 'rows': ['#   #', '#   #', '#   #', '#   #', '#####'], 'defOn': True}]
+    (d / 'knapping.json').write_text(json.dumps(kj, indent=1))
+    for r in rj['recipes']:   # a chisel is smithed (or cast) in an immersive world, crafted from an ingot in a classic one
+        if r.get('out') == 'iron_chisel': r['classicOnly'] = True
+    # the rock layers left little plain stone or cobblestone underground: the working things made of it (levers, pistons,
+    # repeaters, buttons...) take any rock's cobble or any rock. (Decorative blocks keep their own stone.)
+    LAYER = ['limestone', 'chalk', 'shale', 'claystone', 'conglomerate', 'sandstone', 'marble', 'slate', 'gneiss', 'schist', 'quartzite',
+             'granite', 'diorite', 'gabbro', 'basalt', 'andesite', 'rhyolite', 'dacite']
+    rj['tags']['#cobblestone'] = ['cobblestone'] + sorted(k for k in items if k.startswith('cobbled_') and k in bkeys and not bkeys[k].get('family'))
+    rj['tags']['#stone'] = ['stone'] + [k for k in LAYER if k in items]
+    FUNC = {'cobblestone': {'activator', 'dispenser', 'dropper', 'lever', 'motion_sensor', 'observer', 'piston'},
+            'stone': {'comparator', 'matcher', 'millstone', 'redstone_timer', 'repeater', 'stone_button', 'stone_pressure_plate', 'stonecutter'}}
+    for r in rj['recipes']:
+        for lit, outs in FUNC.items():
+            if r.get('out') not in outs: continue
+            if 'items' in r: r['items'] = ['#' + lit if i == lit else i for i in r['items']]
+            if 'key' in r: r['key'] = {k: ('#' + lit if v == lit else v) for k, v in r['key'].items()}
+
+    # classic worlds (no vessels): every metal's ore smelts in the furnace, and every alloy crafts from whole ingots in its mix
+    mj2 = json.loads((d / 'metals.json').read_text())
+    for ob, m in mj2.get('oreBlocks', {}).items():
+        if m + '_ingot' in items and ob in items and ob not in rj['smelting']: rj['smelting'][ob] = m + '_ingot'
+    for ak, a in mj2.get('alloys', {}).items():
+        out, rg = a.get('ingot'), a.get('ranges', {})
+        if not out or out not in items or any(m + '_ingot' not in items for m in rg): continue
+        if any(r.get('out') == out and len(r.get('items', [])) > 1 and not r.get('immersiveOnly') for r in rj['recipes']): continue   # (bronze has its own)
+        best = None
+        for n in range(2, 10):   # the fewest ingots whose shares all sit in the ranges (bronze: 3 copper + 1 tin)
+            ms = list(rg); import itertools
+            for combo in itertools.product(range(1, n), repeat=len(ms)):
+                if sum(combo) != n: continue
+                if all(rg[m][0] - 1e-9 <= c / n <= rg[m][1] + 1e-9 for m, c in zip(ms, combo)): best = (n, combo, ms); break
+            if best: break
+        if not best: continue
+        n, combo, ms = best
+        rj['recipes'].append({'out': out, 'n': n, 'items': [m + '_ingot' for m, c in zip(ms, combo) for _ in range(c)], 'classicOnly': True, 'w': 3, 'h': 3})
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':')))
     (d / 'recipes.json').write_text(json.dumps(rj, separators=(',', ':'), ensure_ascii=False))
     (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':'), ensure_ascii=False))

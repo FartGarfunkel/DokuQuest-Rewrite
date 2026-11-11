@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
   CoreOptions co; co.server = true; co.userDirOverride = ud;
   if (!initCore(co)) { printf("FAIL initCore\n"); return 1; }
   ThreadPool pool(2); EventBus bus;
-  LevelInfo li; li.name = "PileTest"; li.seedText = "piles";
+  LevelInfo li; li.name = "PileTest"; li.seedText = "piles"; li.rules = json{{"immersive", true}, {"_v", 1}};   // (piles are immersive)
   auto lvp = Level::create(userSub("saves"), li, &pool, &bus);
   Level* L = lvp.get();
   World& w = L->world();
@@ -149,6 +149,37 @@ int main(int argc, char** argv) {
     P->inv[0] = ItemStack(); aim(UX, Y + 1, UZ); pc.use(false, plain);
     int back = 0; for (auto& st : P->inv) if (st.id == "iron_ingot") back += st.n;
     check(back == 1, "use on the pile takes one back");
+    // crouched, anything is set down on top of what you look at: a furnace, a crafting table, a chest (Vintage Story's way)
+    const BlockId PILE = reg().blockId("item_pile");
+    struct Case { const char* block; const char* item; };
+    int i = 0;
+    for (Case c : {Case{"furnace", "iron_pickaxe"}, Case{"crafting_table", "bread"}, Case{"chest", "apple"}, Case{"stone", "ceramic_jug"}, Case{"stone", "stick"}}) {
+      const int X = UX + i * 2, Z = UZ + 4; i++;
+      w.setBlock(X, Y, Z, reg().blockId(c.block)); w.setBlock(X, Y + 1, Z, AIR);
+      P->inv[0] = ItemStack(c.item, 2); aim(X, Y, Z); pc.use(false, sneak);
+      check(w.getBlock(X, Y + 1, Z) == PILE && P->inv[0].empty(), std::string("crouched: ") + c.item + " set down on top of a " + c.block);
+    }
+    // the crafting table worked in the world (immersive): planks on two squares, one above the other as you look, make sticks
+    {
+      const int X = UX, Z = UZ + 8;
+      w.setBlock(X, Y, Z, reg().blockId("crafting_table")); w.setBlock(X, Y + 1, Z, AIR);
+      P->yaw = 0;   // looking north: the far row is the north one
+      auto top = [&](float fx, float fz) { aim(X, Y, Z); pc.target.point = vec3(X + fx, Y + 1.f, Z + fz); pc.targetPoint = pc.target.point; };
+      for (auto& st : P->inv) st = ItemStack();
+      P->inv[0] = ItemStack("planks", 2);
+      top(0.5f, 0.2f); pc.use(false, plain);
+      top(0.5f, 0.5f); pc.use(false, plain);
+      const json* te = w.blockEntity(X, Y, Z);
+      int on = 0; if (te) for (auto& it : (*te)["items"]) if (!it.is_null()) on++;
+      check(on == 2 && P->inv[0].empty(), "two planks set on the table's top, one square each");
+      top(0.15f, 0.85f); pc.use(false, plain);   // an empty hand on an empty square: make it
+      int sticks = 0; for (auto& st : P->inv) if (st.id == "stick") sticks += st.n;
+      check(sticks == 4 && !w.blockEntity(X, Y, Z), "...an empty hand makes four sticks, and the table is clear (" + std::to_string(sticks) + ")");
+      P->inv[0] = ItemStack("planks", 1); top(0.5f, 0.5f); pc.use(false, plain);
+      P->inv[0] = ItemStack(); top(0.5f, 0.5f); pc.use(false, plain);
+      int back = 0; for (auto& st : P->inv) if (st.id == "planks") back += st.n;
+      check(back == 1 && !w.blockEntity(X, Y, Z), "a piece set down and taken back");
+    }
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);

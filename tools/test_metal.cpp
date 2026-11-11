@@ -264,6 +264,28 @@ int main(int argc, char** argv) {
     pc.use(false, PlayerInput{});
     int heads = 0; for (auto& st : rg.P->inv) if (st.id == "metal_shovel_head") heads++;
     check(heads == 1, "use the cooled mold: a copper shovel head");
+    // the mold needn't be in the other hand: the first empty fired mold in the bag
+    for (auto& st : rg.P->inv) st = ItemStack();
+    rg.P->inv[0] = ItemStack("ceramic_vessel", 1); rg.P->offhand[0] = ItemStack("copper_ore_piece", 8);
+    pc.use(false, PlayerInput{}); setItemHeat(rg.P->inv[0], 1200); vesselMeltStep(rg.P->inv[0]);
+    rg.P->inv[5] = ItemStack("ceramic_ingot_mold", 1);
+    pc.use(false, PlayerInput{});
+    check(moldFilled(rg.P->inv[5]) || [&] { for (auto& st : rg.P->inv) if (st.id == "ceramic_ingot_mold" && moldFilled(st)) return true; return false; }(), "a molten vessel pours into a mold carried in the bag");
+    // and into a mold set down on the ground (an item pile)
+    const BlockId PILE = reg().blockId("item_pile");
+    const int PX = 6, PY = rg.Y + 1, PZ = 6;
+    w.setBlock(PX, PY - 1, PZ, reg().blockId("stone")); w.setBlock(PX, PY, PZ, PILE);
+    w.setBlockEntity(PX, PY, PZ, {{"type", "pile"}, {"items", {ItemStack("ceramic_axe_mold", 2).toJson(), nullptr, nullptr, nullptr}}, {"rot", {0, 0, 0, 0}}});
+    for (auto& st : rg.P->inv) if (st.id == "ceramic_ingot_mold") st = ItemStack();
+    const int before = vesselUnits(rg.P->inv[0]);
+    RayHit h; h.hit = true; h.block = ivec3(PX, PY, PZ); h.normal = ivec3(0, 1, 0); h.id = PILE; h.point = vec3(PX + 0.3f, PY + 0.1f, PZ + 0.3f);
+    pc.target = h;
+    pc.use(false, PlayerInput{});
+    pc.target = RayHit{};
+    const json* pe = w.blockEntity(PX, PY, PZ);
+    int filledOnGround = 0, emptyOnGround = 0;
+    if (pe) for (auto& it : (*pe)["items"]) if (!it.is_null()) { ItemStack s = ItemStack::fromJson(it); if (moldFilled(s)) filledOnGround += s.n; else emptyOnGround += s.n; }
+    check(filledOnGround == 1 && emptyOnGround == 1 && vesselUnits(rg.P->inv[0]) == before - 100, "a molten vessel used on molds on the ground fills one of them (" + std::to_string(filledOnGround) + " filled, " + std::to_string(emptyOnGround) + " empty)");
   }
 
   printf("[forge]\n");

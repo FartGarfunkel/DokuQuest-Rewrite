@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
     check(fires, "every unfired piece fires into something");
     bool distinct = true; for (size_t i = 0; i < clay.size(); i++) for (size_t j = 0; j < i; j++) if (clay[i].rows == clay[j].rows) distinct = false;
     check(distinct, "no two clay shapes alike");
-    auto shapeOf = [&](const std::string& out) { for (auto& p : clay) if (p.out == out) { KnapGrid g; g.kept.fill(false); for (int y = 0; y < (int)p.rows.size(); y++) for (int x = 0; x < (int)p.rows[y].size(); x++) g.kept[y * 5 + x] = p.rows[y][x] == '#'; return g; } return KnapGrid(); };
+    auto shapeOf = [&](const std::string& out) { for (auto& p : clay) if (p.out == out) { KnapGrid g; g.kept.fill(p.defOn); for (int y = 0; y < (int)p.rows.size(); y++) for (int x = 0; x < (int)p.rows[y].size(); x++) g.kept[y * 5 + x] = p.rows[y][x] == '#'; return g; } return KnapGrid(); };
     const KnapPattern* v = knapMatch("clay", shapeOf("unfired_vessel"));
     check(v && v->out == "unfired_vessel", "shaping a vessel");
     const KnapPattern* pm = knapMatch("clay", shapeOf("unfired_pickaxe_mold"));

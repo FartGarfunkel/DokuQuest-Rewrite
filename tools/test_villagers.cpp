@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
   if (!initCore(co)) { printf("FAIL initCore\n"); return 1; }
 
   // ------------------------------------------------------------ the data and the original's numbers
-  check(VD().contains("jobs") && VD()["shops"].size() == 16 && VD()["riftLore"].size() > 30, "data/villagers.json: jobs, 16 shops, the rift lore");
+  check(VD().contains("jobs") && VD()["shops"].size() == 18 && VD()["riftLore"].size() > 30, "data/villagers.json: jobs, 18 shops (the miller and the miner too), the rift lore");
   check(VD()["shops"]["librarian"]["buy"].size() > 20, "the shops carry the other modules' wares (tomes, robes, potions...)");
   { Village vv; vv.seed = 12345; check(npcSeedOf(vv, 2) == 45406 && npcName(45406) == "Bram", "npcSeedOf / npcName match the original"); }
   { Standing s = standingOf(36); check(s.k == 4 && s.name == "Trusted" && s.tier == 2 && s.next == 70, "standingOf(36) = Trusted, tier 2, next 70"); }
