@@ -20,6 +20,9 @@ struct AudioScene {
   double time = 0;                // world clock in seconds (the wind's slow wobble)
   float gust = 0;                 // weather: how hard the wind gusts, 0..1
   float rain = 0;                 // weather: the rain hiss level (WeatherSystem::rainLevel)
+  float roof = 0;                 // weather: rain heard on the roof over you (0 in the open): the hiss is muffled, not lost
+  float snowK = 0, sandK = 0;     // weather: how hard it snows / blows sand round you (Particle Rain's ambience)
+  bool above = false;             // weather: you're high above it (its sounds come up from below, lower and softer)
   int netherLand = -1;            // Nether land (gen/nether_bta.h NetherBiome), -1 elsewhere
   std::string place;              // the music of the place: plains forest jungle desert savanna frost peaks swamp ocean village
   bool jukebox = false;           // a jukebox is playing nearby: the music keeps quiet

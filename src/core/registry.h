@@ -11,7 +11,7 @@ namespace dq {
 enum class Render : u8 { None = 0, Cube = 1, Cutout = 2, Cross = 3, Liquid = 4, Torch = 5, Model = 6, Shape = 7 };
 namespace ShapeKind { enum : u8 { None = 0, Slab = 1, Stairs, Fence, Gate, Wall, Pane, Door, Trapdoor, Ladder, Carpet, Bed, Layer, Candle, Cake, Rod,
   Scaffold, Path, Frame, Composter, Cocoa, Petals, Wire, Lever, Button, Plate, Repeater, Comparator, Rail, PistonBase, PistonHead, Hopper,
-  Daylight, Hook, Tripwire, Cactus, Chorus, Branch, Count }; }
+  Daylight, Hook, Tripwire, Cactus, Chorus, Branch, Pile, Count }; }
 enum Face : u8 { FACE_PX = 0, FACE_NX = 1, FACE_PY = 2, FACE_NY = 3, FACE_PZ = 4, FACE_NZ = 5 };  // +x -x +y -y +z -z (JS BLOCK_FACES order)
 
 constexpr int MAX_BLOCKS = 4096;

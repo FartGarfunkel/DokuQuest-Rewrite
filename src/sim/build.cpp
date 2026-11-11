@@ -1040,6 +1040,7 @@ void PlayerController::pickUpBlock(int x, int y, int z) {
   u8 meta = w.getMeta(x, y, z);
   json* e = w.blockEntity(x, y, z);
   json ent = e ? *e : json();
+  if (ent.is_object() && ent.value("lit", false)) ent["lit"] = false;   // a fire goes out when carried (the bloomery, forge, kiln: light it again)
   BlockId keep = id == KB().lit_furnace && id ? KB().furnace : id;
   p.carrying = {{"kind", "block"}, {"key", R.block(keep).key}, {"meta", meta}, {"ent", ent}};
   w.setBlock(x, y, z, AIR, 0, SetFlags::Urgent);

@@ -101,7 +101,7 @@ const char* biomeName(int b);
   X(fire_coral_block) X(horn_coral_block) X(seagrass) X(kelp) X(lily_pad) X(tall_grass_double) X(sunflower) X(pumpkin) \
   X(berry_bush) X(brown_mushroom) X(red_mushroom) X(melon) X(lavender) X(heather) X(sugar_cane) X(large_fern) X(snow_layer) \
   X(blue_orchid) X(dead_bush) X(cactus) X(amethyst_cluster) X(sea_pickle) X(tube_coral_fan) X(brain_coral_fan) \
-  X(bubble_coral_fan) X(fire_coral_fan) X(horn_coral_fan) X(cattail) X(marram_grass) X(loose_stones) X(dry_grass) X(bamboo) \
+  X(bubble_coral_fan) X(fire_coral_fan) X(horn_coral_fan) X(cattail) X(marram_grass) X(loose_stones) X(loose_flint) X(twigs) X(chalk) X(shale) X(claystone) X(conglomerate) X(gneiss) X(schist) X(quartzite) X(gabbro) X(rhyolite) X(dacite) X(wintergreen_bush) X(blueberry_bush) X(raspberry_bush) X(blackberry_bush) X(bunchberry_bush) X(cranberry_bush) X(snowberry_bush) X(elderberry_bush) X(gooseberry_bush) X(cloudberry_bush) X(banana_leaves) X(lemon_leaves) X(olive_leaves) X(orange_leaves) X(peach_leaves) X(plum_leaves) X(zinc_ore) X(bismuth_ore) X(copper_sample) X(tin_sample) X(zinc_sample) X(bismuth_sample) X(iron_sample) X(gold_sample) X(silver_sample) X(dry_grass) X(bamboo) \
   X(jungle_grass) X(pink_petals) X(torchflower) X(pitcher_plant) X(moss_block) X(moss_carpet) X(azalea) X(cave_vines_lit) \
   X(cave_vines) X(spore_blossom) X(pointed_dripstone) X(hanging_roots) X(glow_lichen) X(smooth_basalt) X(budding_amethyst) \
   X(amethyst_block) X(large_amethyst_bud) X(small_amethyst_bud) X(glowstone) X(obsidian) X(blackstone) X(basalt) \

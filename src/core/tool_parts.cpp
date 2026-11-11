@@ -1,5 +1,8 @@
 // core/tool_parts.cpp — see tool_parts.h.
 #include "core/tool_parts.h"
+#include "core/metals.h"
+#include <mutex>
+#include <map>
 #include "common/fs.h"
 #include <algorithm>
 #include <cmath>
@@ -21,6 +24,7 @@ const Weights* weightsOf(const std::string& kind) {
   static const Weights S{{0.5f, 0.5f}, {0.4f, 0.6f}, {0.6f, 0.4f}, {0.5f, 0.5f}};                                 // sword: tip, base
   static const Weights H{{0.5f, 0.5f}, {0.5f, 0.5f}, {0.5f, 0.5f}, {0.5f, 0.5f}};                                 // hoe
   static const Weights V{{1.f}, {1.f}, {1.f}, {1.f}};                                                               // shovel
+  if (kind == "knife" || kind == "hammer" || kind == "saw" || kind == "scythe" || kind == "javelin" || kind == "propick") return &V;   // (one-piece heads)
   return kind == "pickaxe" ? &P : kind == "axe" ? &A : kind == "sword" ? &S : kind == "hoe" ? &H : kind == "shovel" ? &V : nullptr;
 }
 struct Gem { const char* item; const char* name; const char* effect; float speed, dur, dmg; int tier; const char* element; };
@@ -60,7 +64,70 @@ const std::vector<ToolMaterial>& toolMaterials() {
   });
   return v;
 }
-const ToolMaterial* toolMaterial(const std::string& key) { for (auto& m : toolMaterials()) if (m.key == key) return &m; return nullptr; }
+const ToolMaterial* toolMaterial(const std::string& key) {
+  if (!key.empty() && key[0] == '@') {   // a makeup (core/metals.h): made up once, kept
+    static std::mutex mx; static std::map<std::string, ToolMaterial> made;
+    std::lock_guard<std::mutex> lk(mx);
+    auto it = made.find(key);
+    if (it != made.end()) return &it->second;
+    const Comp c = parseCompKey(key);
+    if (c.empty()) return nullptr;
+    const Metal m = blendMetal(c);
+    ToolMaterial t; t.key = key; t.name = compName(c); t.prefix = ""; t.rgb = m.rgb;
+    t.stats = true; t.tools = true; t.sTier = m.tier; t.sSpeed = m.speed; t.sDamage = m.damage; t.sDur = m.durability;
+    // armour follows the blend smoothly: the share-weighted tier of its metals (a copper-iron mix between the two)
+    float tierF = 0; for (auto& [mk, f] : c) if (const Metal* md = metalDef(mk)) tierF += f * md->tier;
+    t.armorK = 0.4f + 0.15f * (tierF > 0 ? tierF : (float)m.tier); t.armorDurK = std::min(2.f, m.durability / 250.f);
+    // a named alloy (bronze, brass...): its own material's stats and pieces, better the nearer its ideal mix (the middle
+    // of its ranges), and its colour leaning a little toward its metals' own blend; so 90/10 and 86/14 bronze differ
+    const std::string named = namedAlloy(c);
+    const Metal* al = named.empty() ? nullptr : metalDef(named);
+    if (al && !al->ranges.empty()) {
+      float off = 0; int n = 0;
+      for (auto& [mk, lohi] : al->ranges) { const float f = c.count(mk) ? c.at(mk) : 0.f, mid = (lohi.first + lohi.second) / 2, half = std::max(1e-3f, (lohi.second - lohi.first) / 2); off += std::min(1.f, std::fabs(f - mid) / half); n++; }
+      const float q = 1 - off / std::max(1, n);   // 1 at the ideal, 0 at the edge of the range
+      if (const ToolMaterial* base = toolMaterial(named)) {
+        t.prefix = base->prefix;   // its own pieces (bronze_chestplate...) for armour
+        if (base->stats) {
+          t.sTier = base->sTier; t.sSpeed = base->sSpeed; t.sDamage = base->sDamage; t.sDur = base->sDur;
+          t.armorK = base->armorK > 0 ? base->armorK : t.armorK; t.armorDurK = base->armorDurK > 0 ? base->armorDurK : t.armorDurK; t.fireResist = base->fireResist;
+        }
+      }
+      t.sDur *= 0.9f + 0.2f * q; t.sSpeed *= 0.96f + 0.08f * q; t.sDamage *= 0.97f + 0.06f * q; t.armorQ = 0.9f + 0.2f * q;
+      vec3 own(0); float tot = 0; for (auto& [mk, f] : c) if (const Metal* md = metalDef(mk)) { own += md->rgb * f; tot += f; }
+      if (tot > 0) t.rgb = glm::mix(al->rgb, own / tot, 0.3f);
+      t.name = al->name;
+    }
+    return &(made[key] = t);
+  }
+  for (auto& m : toolMaterials()) if (m.key == key) return &m;
+  return nullptr;
+}
+const ToolMaterial* toolMaterialOfStack(const ItemStack& s) {
+  if (s.empty()) return nullptr;
+  const bool tagged = s.tag.is_object() && s.tag.contains("comp");
+  if (tagged || (s.def() && s.def()->has("metalHead"))) {
+    const Comp c = compOfStack(s);
+    if (c.empty()) return nullptr;
+    // one metal (98%+): that metal's own material; a named alloy or a free mix: its makeup's (the ratio shows)
+    if (const std::string n = namedAlloy(c); !n.empty()) if (const Metal* md = metalDef(n); md && md->ranges.empty()) if (const ToolMaterial* tm = toolMaterial(n)) return tm;
+    return toolMaterial(compKey(c));
+  }
+  return toolMaterialOfItem(s.id);
+}
+std::string partToolBaseKind(const std::string& k) {
+  if (k == "knife" || k == "javelin" || k == "saw") return "sword";
+  if (k == "hammer" || k == "propick") return "pickaxe";
+  if (k == "scythe") return "hoe";
+  return k;
+}
+std::string partToolBaseItem(const std::string& k) {
+  if (k == "knife" || k == "hammer" || k == "scythe" || k == "javelin") return "flint_" + k;
+  if (k == "saw") return "iron_sword";
+  if (k == "propick") return "iron_pickaxe";
+  return "iron_" + k;
+}
+int partToolSections(const std::string& k) { const Weights* W = weightsOf(k); return W ? (int)W->speed.size() : 0; }
 const ToolMaterial* toolMaterialOfItem(const std::string& item) {
   for (auto& m : toolMaterials()) for (auto& want : m.items) {
     if (want == item) return &m;
@@ -93,10 +160,10 @@ bool makePartArmor(const std::string& piece, const std::vector<std::string>& mat
     const ItemDef* a = m ? reg().item(m->prefix + "_" + piece) : nullptr;
     if (a && a->props.contains("armor") && a->props["armor"].is_object()) {
       const json& A = a->props["armor"];
-      pts += A.value("points", 0.f); dur += A.value("durability", 0.f); fr = std::max(fr, A.value("fireResist", 0.f));
+      pts += A.value("points", 0.f) * m->armorQ; dur += A.value("durability", 0.f) * m->armorQ; fr = std::max(fr, A.value("fireResist", 0.f));
     } else if (m && m->armorK > 0 && iron && iron->props.contains("armor") && iron->props["armor"].is_object()) {   // no piece of its own: iron's, scaled
       const json& A = iron->props["armor"];
-      pts += A.value("points", 0.f) * m->armorK; dur += A.value("durability", 0.f) * (m->armorDurK > 0 ? m->armorDurK : m->armorK); fr = std::max(fr, m->fireResist);
+      pts += A.value("points", 0.f) * m->armorK * m->armorQ; dur += A.value("durability", 0.f) * (m->armorDurK > 0 ? m->armorDurK : m->armorK) * m->armorQ; fr = std::max(fr, m->fireResist);
     } else return false;
     if (std::find(distinct.begin(), distinct.end(), k) == distinct.end()) distinct.push_back(k);
   }
@@ -150,6 +217,10 @@ std::string stackName(const ItemStack& s) {
     const std::string n = s.tag["name"].get<std::string>();
     return d && d->has("label") ? base + " \xC2\xB7 \xE2\x80\x9C" + n + "\xE2\x80\x9D" : n;
   }
+  if (!isPartTool(s) && d && (d->has("metalHead") || s.id == "alloy_ingot") && s.tag.is_object() && s.tag.contains("comp")) {   // cast or forged: named by its makeup
+    const std::string mk = compName(compOfStack(s));
+    return d->has("metalHead") ? mk + " " + cap(d->str("metalHead")) + " Head" : mk + " Ingot";
+  }
   if (isPartTool(s)) {
     const json& p = s.tag["pt"];
     std::vector<std::string> names;
@@ -164,25 +235,83 @@ std::string stackName(const ItemStack& s) {
     std::string mats;
     for (size_t i = 0; i < names.size(); i++) mats += (i ? (i + 1 == names.size() ? " & " : ", ") : "") + names[i];
     base = mats + " " + cap(s.tag["pa"].value("p", std::string("armor")));
+    if (s.id.rfind("unfinished_", 0) == 0) base = "Unfinished " + base;
   }
   if (s.tag.is_object() && s.tag.contains("gem") && s.tag["gem"].is_string()) if (const Gem* g = gemOf(s.tag["gem"].get<std::string>())) base += std::string(" (") + g->name + ")";
   return base;
 }
 
+std::vector<std::string> modelKeyMaterials(const std::string& list) {
+  std::vector<std::string> out;
+  for (size_t a = 0, b; !list.empty() && a <= list.size(); a = b + 1) { b = list.find(';', a); if (b == std::string::npos) b = list.size(); out.push_back(list.substr(a, b - a)); }
+  return out;
+}
+vec3 MaterialPaint::at(u32 h) const {
+  if (flecks.empty()) return base;
+  h ^= h >> 15; h *= 0x2c1b3c6du; h ^= h >> 12; h *= 0x297a2d39u; h ^= h >> 15;
+  const float r = (h & 0xFFFF) / 65536.f;
+  constexpr float FLECKED = 0.4f;   // the share of the surface showing a metal of its own; the rest is the blend
+  if (r >= FLECKED) return base;
+  float acc = 0; const float pick = r / FLECKED;
+  for (auto& [f, c] : flecks) { acc += f; if (pick < acc) return c; }
+  return flecks.back().second;
+}
+MaterialPaint materialPaint(const std::string& key) {
+  MaterialPaint mp;
+  const ToolMaterial* tm = toolMaterial(key);
+  if (tm) mp.base = tm->rgb;
+  if (key.empty() || key[0] != '@') return mp;
+  const Comp c = parseCompKey(key);
+  if (c.size() < 2 || !namedAlloy(c).empty()) return mp;   // a named alloy (or one metal): its own colour
+  for (auto& [m, f] : c) if (const Metal* md = metalDef(m)) mp.flecks.push_back({f, md->rgb});
+  return mp;
+}
+
+bool gearIsHoly(const ItemStack& s) {
+  const ItemDef* d = s.empty() ? nullptr : s.def();
+  if (d && d->has("holy")) return true;
+  if (!isPartTool(s)) return false;
+  float silver = 0; int n = 0;   // a procedural blade: the share of silver in its sections
+  for (auto& m : s.tag["pt"]["m"]) if (m.is_string()) {
+    const std::string k = m.get<std::string>(); n++;
+    if (k == "silver") silver += 1; else if (!k.empty() && k[0] == '@') { const Comp c = parseCompKey(k); auto it = c.find("silver"); if (it != c.end()) silver += it->second; }
+  }
+  return n > 0 && silver / n >= 0.5f;
+}
+ItemStack proceduralOf(const std::string& id, int n) {
+  ItemStack plain(id, n);
+  const size_t u = id.rfind('_');
+  if (u == std::string::npos || u == 0) return plain;
+  const std::string prefix = id.substr(0, u), kind = id.substr(u + 1);
+  const bool armour = armorPattern(kind) != nullptr, tool = !armour && partToolSections(kind) > 0;
+  if (!armour && !tool) return plain;
+  const ToolMaterial* mat = nullptr;
+  for (auto& m : toolMaterials()) if (m.prefix == prefix && metalDef(m.key)) { mat = &m; break; }   // metals only
+  if (!mat) return plain;
+  ItemStack out;
+  if (armour ? makePartArmor(kind, std::vector<std::string>(armorPattern(kind)->cells.size(), mat->key), out)
+             : makePartTool(kind, std::vector<std::string>(partToolSections(kind), mat->key), "stick", out)) return out;
+  return plain;
+}
+
 std::string partToolModelKey(const ItemStack& s) {
-  if (isPartArmor(s)) {   // "pa:<piece>:<m1,m2,...>" (one per cell)
+  if (isPartArmor(s)) {   // "pa:<piece>:<m1;m2;...>" (one per cell)
     std::string k = "pa:" + s.tag["pa"].value("p", std::string("helmet")) + ":";
     const json& m = s.tag["pa"]["m"];
-    for (size_t i = 0; i < m.size(); i++) k += (i ? "," : "") + m[i].get<std::string>();
+    for (size_t i = 0; i < m.size(); i++) k += (i ? ";" : "") + m[i].get<std::string>();
     return k;
   }
   const bool pt = isPartTool(s), gem = !s.empty() && s.tag.is_object() && s.tag.contains("gem") && s.tag["gem"].is_string();
+  if (!pt && !gem && s.tag.is_object() && s.tag.contains("comp")) {   // a head or an ingot of some makeup: "mc:<item>:<material>"
+    const ToolMaterial* tm = toolMaterialOfStack(s);
+    return tm ? "mc:" + s.id + ":" + tm->key : "";
+  }
   if (!pt && !gem) return "";
   std::string k = "pt:";
   if (pt) {
     const json& p = s.tag["pt"];
     k += p.value("t", std::string("pickaxe")) + ":";
-    if (p["m"].is_array()) for (size_t i = 0; i < p["m"].size(); i++) k += (i ? "," : "") + p["m"][i].get<std::string>();
+    if (p["m"].is_array()) for (size_t i = 0; i < p["m"].size(); i++) k += (i ? ";" : "") + p["m"][i].get<std::string>();
     k += ":" + p.value("h", std::string("stick"));
   } else k += "=" + s.id + "::";   // a plain tool with a gem set in it
   k += ":" + (gem ? s.tag["gem"].get<std::string>() : std::string());
@@ -206,17 +335,20 @@ bool makePartTool(const std::string& kind, const std::vector<std::string>& mats,
   if (!W || !H || mats.empty() || mats.size() != W->speed.size() || !reg().item("mixed_" + kind)) return false;
   float sp = 0, du = 0, dm = 0, ti = 0; std::string el = H->element;
   std::vector<std::string> distinct;
-  const ItemDef* base = reg().item("iron_" + kind), *ironPick = reg().item("iron_pickaxe");
+  const std::string bk = partToolBaseKind(kind);   // (a knife is reckoned from a sword, a scythe from a hoe...)
+  const ItemDef* base = reg().item("iron_" + bk), *ironPick = reg().item("iron_pickaxe");
   for (size_t i = 0; i < mats.size(); i++) {   // each head section gives its share, weighted by the work that part does
     const ToolMaterial* m = toolMaterial(mats[i]);
     if (!m || !m->tools) return false;
-    const ItemDef* t = reg().item(m->prefix + "_" + kind);
-    if (!t || !t->hasTool) t = reg().item(m->prefix + "_pickaxe");   // a material with no tool of this kind: its pickaxe's
+    const ItemDef* t = m->prefix.empty() ? nullptr : reg().item(m->prefix + "_" + bk);
+    if ((!t || !t->hasTool) && !m->prefix.empty()) t = reg().item(m->prefix + "_pickaxe");   // a material with no tool of this kind: its pickaxe's
     float tsp, tdu, tdm, tti;
     if (t && t->hasTool) {
       const float dmgK = base && base->hasTool ? base->tool.damage / 4.f : 1.f;   // (a pickaxe's damage, brought to this kind's)
-      tdm = t->key == m->prefix + "_" + kind ? t->tool.damage : t->tool.damage * dmgK;
+      tdm = t->key == m->prefix + "_" + bk ? t->tool.damage : t->tool.damage * dmgK;
       tsp = t->tool.speed; tdu = (float)t->tool.durability; tti = (float)t->tool.tier;
+      // a named alloy's own tools, by how near its ideal mix it is (armorQ 0.9..1.1; 1 for anything else)
+      tdu *= m->armorQ; tsp *= 1 + (m->armorQ - 1) * 0.4f; tdm *= 1 + (m->armorQ - 1) * 0.3f;
     } else if (m->stats && base && base->hasTool && ironPick && ironPick->hasTool) {   // no tools of its own: its stats, as iron's are for this kind
       tsp = base->tool.speed * m->sSpeed / std::max(0.1f, ironPick->tool.speed);
       tdu = m->sDur * (float)base->tool.durability / (float)std::max(1, ironPick->tool.durability);

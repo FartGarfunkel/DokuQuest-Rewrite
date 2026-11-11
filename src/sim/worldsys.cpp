@@ -1,4 +1,6 @@
 // sim/worldsys.cpp — fluids, random ticks, plant growth, furnaces, crowding.
+#include "sim/crafting.h"
+#include "core/metals.h"
 #include "sim/worldsys.h"
 #include "sim/trommel.h"
 #include "sim/gameplay.h"
@@ -513,8 +515,17 @@ void randomTicks(Level& lv, World& w, float px, float pz) {
       u8 meta = c->getMeta(lx, ly, lz);
       const BlockDef& d = R.block(id);
       if (bhas(id, BF::Tree)) {   // saplings: two stages, each a 1 in 7 chance per random tick
-        if (rnd() < 1 / (RT * 7)) { if (meta & 8) growTree(lv, w, x, y, z, rnd()); else w.setBlock(x, y, z, id, meta | 8); }
+        if (rnd() < 1 / (RT * 7)) {
+          if (meta & 8) {
+            const std::string fl = d.str("fruitLeaves");
+            if (growTree(lv, w, x, y, z, rnd()) && !fl.empty()) if (BlockId f = R.blockId(fl)) {   // a fruit tree: its leaves bear fruit
+              const BlockId oak = R.blockId("leaves");
+              for (int dy = 1; dy <= 9; dy++) for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) if (w.getBlock(x + dx, y + dy, z + dz) == oak) w.setBlock(x + dx, y + dy, z + dz, f, w.getMeta(x + dx, y + dy, z + dz));
+            }
+          } else w.setBlock(x, y, z, id, meta | 8);
+        }
       } else if (id == B.berry_bush_empty) { if (rnd() < 1 / (RT * 5)) w.setBlock(x, y, z, B.berry_bush); }
+      else if (d.has("refill")) { if (rnd() < 1 / (RT * 5)) if (BlockId f = R.blockId(d.str("refill"))) w.setBlock(x, y, z, f); }   // a picked berry bush of TFC's kinds bears again
       else if (bhas(id, BF::Crop)) {
         int m = meta & 15, stages = d.props["crop"].value("stages", 1);
         if (m >= stages - 1) { if (d.props["crop"].contains("fruit")) growExtra(lv, w, x, y, z, id, meta); continue; }
@@ -558,6 +569,10 @@ static bool oreLike(const std::string& k, const std::string& out) {
   return std::regex_search(k, a) || std::regex_search(out, b);
 }
 std::string smeltResult(const std::string& in, const std::string& kind) {
+  if (recipeGate().immersive) {   // sim/immersive.h: metal comes from vessels, the forge and the bloomery, not the furnace
+    if (in == "steel_blend") return kind == "blast" ? "pig_iron" : "";   // pig iron, and only from the blast furnace
+    if (!metalOfOreBlock(in).empty() || unitsOf(in) > 0) return "";
+  }
   auto it = reg().smelting.find(in);
   if (it == reg().smelting.end()) return "";
   const std::string& out = it->second;
@@ -622,6 +637,7 @@ void tickFurnaces(Level& lv, double dt) {
         const BlockInfo& bi = binfo(id);
         if (bi.furnace.empty()) continue;
         int x = c->worldX() + lx, y = c->baseY() + ly, z = c->worldZ() + lz;
+        recipeGate().immersive = w.immersive;
         if (bi.furnace == "trommel" ? tickTrommel(lv, w, r, e, step, ivec3(x, y, z), c->getMeta(lx, ly, lz)) : tickFurnace(e, step, bi.furnace)) changed.push_back({x, y, z});
         bool lit = e.value("burn", 0.0) > 0;
         const BlockDef& d = R.block(id);

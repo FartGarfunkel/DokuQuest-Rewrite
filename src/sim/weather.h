@@ -44,6 +44,7 @@ public:
   float rain = 0, thunderK = 0;        // smoothed 0..1
   float flashT = 0, bankFlash = 0, belowFlash = 0;
   float showerT = 0, showerK = 0, sand = 0, bliz = 0, ash = 0.2f, ashT = 0, mistNow = 0;
+  float afterRainT = 0;                // seconds of fog lying on the land after rain (Particle Rain: up to 5 minutes)
   float dens = 1, windDX = 1, windDZ = 0, windTilt = 0, snowDrift = 0, approach = 0, windUp = 0, over = 0;
   std::string zone = "temperate", showerZone, lastStorm = "rain";
   vec2 anchor{0};                      // the lead player's x,z (fronts are measured from here)
@@ -74,6 +75,18 @@ public:
   void settleCarvedCover(World& w, int x, int y, int z);
   json toJson() const;
   void fromJson(const json& j);
+  // Multiplayer: the host sends its weather cycle (the save's fields without the ice, plus gust and showers) every
+  // second; a guest that gets it stops running a cycle of its own and follows (its rain, sand and blizzard are still
+  // worked out where its own player stands).
+  json netState() const;
+  // where the host works the weather on the ground (snow cover, ice, puddles, strikes): every player in the
+  // Overworld of the main realm (it used to be only the first player, so a guest elsewhere got none once guests
+  // stopped running weather of their own)
+  std::vector<vec3> groundAnchors(Level& lv) const;
+  // the rain heard on a roof over you (0..rain): rain falling on your column (precip 1), little sky light at your head,
+  // the roof (top: the column's top) above you; full under a few blocks, fading out over the next twelve
+  static float roofRain(float rain, int precip, int skyAtHead, float top, float headY);
+  void applyNet(const json& j);
 
 private:
   void updateWind(double dt);

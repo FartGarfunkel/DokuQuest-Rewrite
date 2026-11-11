@@ -3,6 +3,7 @@
 #include "common/holiday.h"
 #include "sim/endstory.h"
 #include "render/sky.h"
+#include "render/height_fog.h"
 #include "sim/level.h"
 #include "sim/weather.h"
 #include "core/registry.h"
@@ -433,6 +434,17 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd, bool prima
   f.rain = e.raining; f.thunder = W && d == DIM_OVERWORLD ? W->thunderK : 0.f;
   f.flash = W && W->flashT > 0 ? std::min(1.f, W->flashT / 0.2f) : 0.f;
   f.mist = e.mist; f.sea = e.sea; f.cloudBank = e.cloud; f.underwater = e.underwater;
+  {   // fog lying low in the valleys (not under water, not with a shader pack: it draws its own air)
+    const bool hf = f.settings && f.settings->heightFog && f.settings->shaderPack.empty() && !e.underwater;
+    // only under the open sky: in a cave or a closed room it fades away (eased, like the weather's fog above)
+    float hfOpen = 1;
+    if (realm == REALM_MAIN) if (World* w = lv.worldIfOpen(realm)) {
+      const int sky = w->getLight(ifloor(f.cam.pos.x), ifloor(f.cam.pos.y), ifloor(f.cam.pos.z)) >> 4;
+      static float eased = 1; const float want = std::clamp((sky - 3) / 9.f, 0.f, 1.f);
+      if (primary) { eased += (want - eased) * 0.05f; hfOpen = eased; } else hfOpen = want;
+    }
+    f.heightFog = heightFogParams((float)f.cam.pos.y, d, e.mist, f.rain, hf, hfOpen);
+  }
   if (primary && W && f.settings) W->farRange = (float)std::max(f.settings->farTerrain, rd * 16);
   if (primary) skyT = f.time;
 }
@@ -452,7 +464,7 @@ void SkyRenderer::draw(const FrameCtx& f) {
   shader.set("uStorm", e.hasStorm ? e.storm : vec4(0, 1, 1000, 0)); shader.set("uStormCol", e.stormCol);
   shader.set("uAurora", e.aurora); shader.set("uRainbow", e.rainbow); shader.set("uSkyT", (float)std::fmod(skyT, 10000.0));
   shader.set("uShowSun", e.showSun && !e.underwater ? 1.f : 0.f); shader.set("uSunFade", 1.f - e.cloud);
-  { const int dl = g_settings ? g_settings->extra.value("dreamLight", 1) : 1; shader.set("uDream", dl <= 0 ? 0.f : dl >= 2 ? 1.6f : 1.f); }   // dreamlight.glsl's sky
+  { const int dl = g_settings ? g_settings->extra.value("dreamLight", 0) : 0; shader.set("uDream", dl <= 0 ? 0.f : dl >= 2 ? 1.6f : 1.f); }   // dreamlight.glsl's sky
   shader.set("uMoonPhase", e.moonPhase);
   shader.set("uHarvest", halloween() && f.dim == DIM_OVERWORLD && e.moonPhase == 0 ? 1.f : 0.f);
   shader.set("uSunDir", e.sunDir);

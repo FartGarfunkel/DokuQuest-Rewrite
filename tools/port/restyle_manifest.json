@@ -108,7 +108,7 @@
 "file": "item/bamboo_door_item.png"
 },
 "beehive_top": {
-"donor": "wet_sponge (grain)",
+"donor": "bronze_block (grain)",
 "file": "block/beehive_top.png"
 },
 "berry_bush": {
@@ -304,7 +304,7 @@
 "file": "block/coniferous_litter_side.png"
 },
 "conveyor_side": {
-"donor": "gray_concrete (grain)",
+"donor": "stone_block (grain)",
 "file": "block/conveyor_side.png"
 },
 "conveyor_top": {
@@ -332,7 +332,7 @@
 "file": "block/cracked_slate_tiles.png"
 },
 "crimson_nylium_top": {
-"donor": "red_wool (grain)",
+"donor": "crimson_nylium_top (alike)",
 "file": "block/crimson_nylium_top.png"
 },
 "crushed_adamantite": {
@@ -392,7 +392,7 @@
 "file": "block/daub.png"
 },
 "dead_coral_block": {
-"donor": "light_gray_wool (grain)",
+"donor": "dead_coral_block (alike)",
 "file": "block/dead_coral_block.png"
 },
 "death_compass": {
@@ -404,7 +404,7 @@
 "file": "block/decorated_pot_side.png"
 },
 "desert_cobble": {
-"donor": "poplar_log (grain)",
+"donor": "desert_cobble (alike)",
 "file": "block/desert_cobble.png"
 },
 "desert_sand": {
@@ -416,7 +416,7 @@
 "file": "block/desert_sandstone.png"
 },
 "desert_sandstone_block": {
-"donor": "birch_planks (grain)",
+"donor": "desert_sandstone_block (alike)",
 "file": "block/desert_sandstone_block.png"
 },
 "desert_sandstone_bricks": {
@@ -424,7 +424,7 @@
 "file": "block/desert_sandstone_bricks.png"
 },
 "desert_sandstone_top": {
-"donor": "stripped_birch_log (grain)",
+"donor": "desert_sandstone_top (alike)",
 "file": "block/desert_sandstone_top.png"
 },
 "desert_stone": {
@@ -432,7 +432,7 @@
 "file": "block/desert_stone.png"
 },
 "desert_stone_block": {
-"donor": "brick_slab_double (grain)",
+"donor": "desert_stone_block (alike)",
 "file": "block/desert_stone_block.png"
 },
 "desert_stone_bricks": {
@@ -592,7 +592,7 @@
 "file": "item/emerald_sword.png"
 },
 "ench_bottom": {
-"donor": "polished_blackstone (grain)",
+"donor": "obsidian_bricks (grain)",
 "file": "block/ench_bottom.png"
 },
 "ench_side": {
@@ -600,7 +600,7 @@
 "file": "block/ench_side.png"
 },
 "ench_top": {
-"donor": "red_concrete_powder (grain)",
+"donor": "crimson_nylium_top (grain)",
 "file": "block/ench_top.png"
 },
 "end_portal": {
@@ -616,7 +616,7 @@
 "file": "item/feather_charm.png"
 },
 "fireball": {
-"donor": "lily_pad_flower_red (grain)",
+"donor": "sunwood_leaves (grain)",
 "file": "block/fireball.png"
 },
 "flag": {
@@ -1084,7 +1084,7 @@
 "file": "block/green_firework_rocket.png"
 },
 "grindstone_side": {
-"donor": "smooth_stone_slab_side (grain)",
+"donor": "grindstone_side (alike)",
 "file": "block/grindstone_side.png"
 },
 "gust_puff": {
@@ -1092,11 +1092,11 @@
 "file": "item/gust_puff.png"
 },
 "harvester_side": {
-"donor": "brick_slab_double (grain)",
+"donor": "desert_stone_bricks (grain)",
 "file": "block/harvester_side.png"
 },
 "harvester_top": {
-"donor": "stripped_jungle_log (grain)",
+"donor": "desert_stone_bricks (grain)",
 "file": "block/harvester_top.png"
 },
 "heart_crystal": {
@@ -1236,11 +1236,11 @@
 "file": "block/mese_ore.png"
 },
 "millstone_side": {
-"donor": "stone (grain)",
+"donor": "millstone_side (alike)",
 "file": "block/millstone_side.png"
 },
 "millstone_top": {
-"donor": "smooth_stone_slab_side (grain)",
+"donor": "millstone_top (alike)",
 "file": "block/millstone_top.png"
 },
 "minotaur_horn": {
@@ -1296,7 +1296,7 @@
 "file": "item/mithril_sword.png"
 },
 "monster_spawner": {
-"donor": "acacia_sapling (grain)",
+"donor": "obsidian_glass (grain)",
 "file": "block/monster_spawner.png"
 },
 "mud": {
@@ -1320,7 +1320,7 @@
 "file": "item/music_disc_tide.png"
 },
 "obsidian_block": {
-"donor": "polished_blackstone (grain)",
+"donor": "obsidian_block (grain)",
 "file": "block/obsidian_block.png"
 },
 "obsidian_bricks": {
@@ -1344,7 +1344,7 @@
 "file": "item/orange_cape_icon.png"
 },
 "orange_firework_rocket": {
-"donor": "lily_pad_flower_red (grain)",
+"donor": "sunwood_leaves (grain)",
 "file": "block/orange_firework_rocket.png"
 },
 "paper_wall": {
@@ -1420,7 +1420,7 @@
 "file": "block/pointed_dripstone.png"
 },
 "pointed_dripstone_down": {
-"donor": "dirt_path_side (grain)",
+"donor": "pointed_dripstone_down (alike)",
 "file": "block/pointed_dripstone_down.png"
 },
 "polished_basalt": {
@@ -1576,11 +1576,11 @@
 "file": "block/red_firework_rocket.png"
 },
 "redstone_dust_line": {
-"donor": "redstone_dust_line0 (alike)",
+"donor": "redstone_dust_line (alike)",
 "file": "block/redstone_dust_line.png"
 },
 "redstone_ore_lit": {
-"donor": "dripstone_block (grain)",
+"donor": "dead_coral_block (grain)",
 "file": "block/redstone_ore_lit.png"
 },
 "reinforced_backpack": {
@@ -1724,7 +1724,7 @@
 "file": "block/silver_sandstone.png"
 },
 "silver_sandstone_block": {
-"donor": "stripped_pale_oak_log (grain)",
+"donor": "silver_sandstone_block (alike)",
 "file": "block/silver_sandstone_block.png"
 },
 "silver_sandstone_bricks": {
@@ -1732,7 +1732,7 @@
 "file": "block/silver_sandstone_bricks.png"
 },
 "silver_sandstone_top": {
-"donor": "light_gray_concrete_powder (grain)",
+"donor": "silver_sandstone_top (alike)",
 "file": "block/silver_sandstone_top.png"
 },
 "silver_shovel": {
@@ -1764,7 +1764,7 @@
 "file": "item/sleeping_bag.png"
 },
 "smooth_quartz": {
-"donor": "white_terracotta (grain)",
+"donor": "silver_sandstone_bricks (grain)",
 "file": "block/smooth_quartz.png"
 },
 "splash_ico_awkward": {
@@ -1900,7 +1900,7 @@
 "file": "item/steel_sword.png"
 },
 "stone_block": {
-"donor": "tuff (grain)",
+"donor": "stone_block (alike)",
 "file": "block/stone_block.png"
 },
 "stormcaller_boots": {
@@ -1952,7 +1952,7 @@
 "file": "item/tide_charm.png"
 },
 "timber_frame": {
-"donor": "smooth_stone (grain)",
+"donor": "limestone (grain)",
 "file": "block/timber_frame.png"
 },
 "timber_frame_cross": {
@@ -1960,7 +1960,7 @@
 "file": "block/timber_frame_cross.png"
 },
 "timber_frame_diagonal": {
-"donor": "poplar_planks (grain)",
+"donor": "poplar_planks_double (grain)",
 "file": "block/timber_frame_diagonal.png"
 },
 "tin_block": {
@@ -2140,7 +2140,7 @@
 "file": "item/warped_door_item.png"
 },
 "warped_nylium_top": {
-"donor": "cyan_concrete (grain)",
+"donor": "warped_nylium_top (alike)",
 "file": "block/warped_nylium_top.png"
 },
 "watcher_blade": {
@@ -2152,11 +2152,11 @@
 "file": "item/watering_can.png"
 },
 "waystone_side": {
-"donor": "iron_block (grain)",
+"donor": "waystone_side (alike)",
 "file": "block/waystone_side.png"
 },
 "waystone_top": {
-"donor": "chiseled_stone_bricks (grain)",
+"donor": "waystone_top (alike)",
 "file": "block/waystone_top.png"
 },
 "we_wand": {
@@ -2168,7 +2168,7 @@
 "file": "item/whistle.png"
 },
 "white": {
-"donor": "white_wool (grain)",
+"donor": "cloud_puff_block (grain)",
 "file": "block/white.png"
 },
 "white_cape": {
@@ -2180,7 +2180,7 @@
 "file": "item/white_cape_icon.png"
 },
 "white_firework_rocket": {
-"donor": "short_grass (grain)",
+"donor": "lily_pad_flower_white (grain)",
 "file": "block/white_firework_rocket.png"
 },
 "yellow_cape": {
@@ -2192,7 +2192,7 @@
 "file": "item/yellow_cape_icon.png"
 },
 "yellow_firework_rocket": {
-"donor": "lily_pad_flower_red (grain)",
+"donor": "sunwood_leaves (grain)",
 "file": "block/yellow_firework_rocket.png"
 }
 }

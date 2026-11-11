@@ -130,6 +130,7 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
   else if (inWater) speed *= 0.46f;
   if (inLava) speed *= 0.4f;
   if (c.web) speed *= 0.2f;
+  if (c.leaves) speed *= 0.5f;   // immersive: pushing through leaves
   if (data.is_object() && data.contains("goo")) {   // sim/slime_goo.cpp: a slime's puddle sticks to your feet
     float g = data.value("goo", 0.f) - dt;
     if (g <= 0) data.erase("goo"); else data["goo"] = g;
@@ -186,6 +187,7 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
     vel.y -= GRAVITY * dt;
     if (vel.y < -60) vel.y = -60;
     if (c.web) vel.y = std::max(vel.y, -1.f);
+    if (c.leaves) { vel.y = std::max(vel.y, -5.f); hasFallStart = false; }   // the branches break your fall
     if (inp.jump && onGround) { vel.y = JUMP_V * (bhas(under, BF::Sticky) ? 0.55f : 1.f); if (sprinting) { vel.x *= 1.15f; vel.z *= 1.15f; } }
   }
   if (mode == "spectator") flying = true;   // a spectator always flies, through anything

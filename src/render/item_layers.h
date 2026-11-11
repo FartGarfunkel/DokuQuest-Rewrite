@@ -8,6 +8,7 @@
 #pragma once
 #include "client/session.h"
 #include "assets/item_models.h"
+#include "render/fp_motion.h"
 
 namespace dq {
 
@@ -36,6 +37,9 @@ public:
 private:
   bool swinging = false;
   std::string lastHeld = "\x01";
+  // render/fp_motion.h: the swap (the old thing going down), and the hand's place by what you're doing
+  ItemStack lastStack, swapOld; float swapT = 1;
+  FpState fps; bool wasGround = true; float lastVy = 0;
   float hy = 0, hp = 0, hsx = 0, hsy = 0; bool haveLook = false;
   double time = 0;
   vec2 light{1, 0};

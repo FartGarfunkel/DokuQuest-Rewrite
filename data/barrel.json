@@ -1,0 +1,9 @@
+{
+ "_comment": "The sealable barrel (sim/barrel.h; after TerraFirmaCraft's barrel recipes): liquid + item; instant ones mix at once, the rest only sealed, in in-game hours. out: what each item becomes; outLiquid: what the liquid becomes; use: items used up.",
+ "recipes": [
+  {"liquid": "water", "item": "lime", "outLiquid": "limewater", "use": 1, "instant": true},
+  {"liquid": "water", "item": "#log", "outLiquid": "tannin", "use": 1, "hours": 1},
+  {"liquid": "limewater", "item": "raw_hide", "out": "soaked_hide", "hours": 3},
+  {"liquid": "tannin", "item": "scraped_hide", "out": "prepared_hide", "hours": 3}
+ ]
+}

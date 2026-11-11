@@ -1,5 +1,7 @@
 // audio/ambience.cpp — see ambience.h. Ports of game/ambience.js (Ambience.update) and game/sound3.js
 // (snd3Field, snd3Wall, snd3Reach, snd3Tick).
+#include <set>
+#include <cstdlib>
 #include "audio/ambience.h"
 #include "world/world.h"
 #include "core/registry.h"
@@ -109,6 +111,22 @@ void Ambience::at(const AudioScene& s, const char* name, float dist) {
   e.start(r, c, 1);
 }
 
+// snow and sand storms (Particle Rain's weather.snow / weather.sandstorm, resynthesised from its recordings: merged as
+// pack events fx.ws_weather_*): somewhere round you, softer and lower when you're high above the weather
+void Ambience::weatherAt(const AudioScene& s, const char* name, float dist, float vol, float pitch) {
+  float a = e.rnd() * TAU, d = dist * (0.3f + e.rnd() * 0.7f);
+  vec3 p = s.player + vec3(std::cos(a) * d, s.above ? -6.f : 1.f, std::sin(a) * d);
+  SoundRef r = e.lib.resolve(name);
+  if (!r) return;
+  AudioCmd c;
+  if (!e.place(p, 40, vol, c)) return;
+  c.cat = CAT_AMB; c.rate *= pitch;
+  e.start(r, c, 1);
+  static const bool stats = std::getenv("DQ_FRAME_STATS") != nullptr;
+  static std::set<std::string> heard;
+  if (stats && heard.insert(name).second) DQ_LOG("audio: weather sound %s (volume %.2f, pitch %.1f)", name, vol, pitch);
+}
+
 void Ambience::update(double dtIn, const AudioScene& s) {
   float dt = (float)std::min(dtIn, 0.1);
   auto wind = [&](float g, float fr) { AudioCmd c; c.t = AudioCmd::Wind; c.a = g; c.b = fr; e.send(c); };
@@ -145,7 +163,12 @@ void Ambience::update(double dtIn, const AudioScene& s) {
     windG += (want - windG) * std::min(1.f, dt * 1.5f);
     wind(windG, (land ? LAND_FR[s.netherLand] : 300 + high * 400) + (float)std::sin(s.time * 0.21) * 80);
   } else if (windG > 0) { windG = 0; wind(0, 420); }
-  { AudioCmd c; c.t = AudioCmd::Rain; c.a = level * s.rain * 1.6f; e.send(c); }   // weather.js: ambience volume × rain × (0.08 + 0.22 open)
+  {   // weather.js: ambience volume x rain x (0.08 + 0.22 open); under a roof the patter stays, muffled (b: how much)
+    AudioCmd c; c.t = AudioCmd::Rain; c.a = std::max(level * s.rain * 1.6f, level * s.roof * 0.29f); c.b = s.roof > 0.01f ? 1.f : 0.f; e.send(c);
+  }
+  tSnow -= dt; tSand -= dt;
+  if (s.snowK > 0.02f && tSnow <= 0) { tSnow = 0.7 + e.rnd() * 0.8; weatherAt(s, s.above ? "ws_weather_snow_above" : "ws_weather_snow", 8, level * s.snowK * (s.above ? 0.5f : 1.f), s.above ? 0.5f : 1.f); }
+  if (s.sandK > 0.02f && tSand <= 0) { tSand = 0.6 + e.rnd() * 0.7; weatherAt(s, s.above ? "ws_weather_sandstorm_above" : "ws_weather_sandstorm", 8, level * s.sandK * (s.above ? 0.5f : 1.f), s.above ? 0.5f : 1.f); }
   { AudioCmd c; c.t = AudioCmd::Drone; c.a = s.dim == DIM_END && !s.dead ? level * 0.55f : 0.f; e.send(c); }   // the End's drone
   tBird -= dt; tCricket -= dt; tDrip -= dt; tRumble -= dt; tLand -= dt;
   float vol = level;

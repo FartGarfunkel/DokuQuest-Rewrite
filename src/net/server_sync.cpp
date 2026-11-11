@@ -4,6 +4,7 @@
 #include "sim/creature.h"
 #include "sim/commands.h"
 #include "sim/quiver.h"
+#include "sim/weather.h"
 #include "world/region.h"
 #include <enet/enet.h>
 #ifdef _WIN32
@@ -224,7 +225,9 @@ void ServerHost::sendEntities(Peer& p, const std::unordered_map<u32, Snap>& snap
 // ---- time & weather ----
 void ServerHost::sendEnv() {
   const json& D = level.info.data;
+  // the weather as it is now (the saved copy in info.data is only refreshed at autosave)
   json w = D.is_object() && D.contains("weather") ? D["weather"] : json();
+  if (WeatherSystem* W = weatherOf(level)) w = W->netState();
   json m = {{"time", level.info.time}, {"day", level.info.day}, {"w", w}, {"rules", level.info.rules}};
   // the story and the world's shared happenings, for friends' games to show as the host's does: the rift (fragments,
   // stage, sealed: the quest line, the fog, the sky going wrong), the dragon eggs' countdowns, the End's state, tuned

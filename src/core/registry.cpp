@@ -159,7 +159,7 @@ void Registry::finalize() {
     tPortal[i] = (u8)b.num("portal", 0);
     tShape[i] = b.shapeKind; tWlog[i] = b.has("wlog"); tSink[i] = b.has("sink"); tTrans[i] = b.has("translucent") || b.key == "ice";   // ice is see-through too (its tile carries the alpha); the JS data only flags the glass family
     tLMeta[i] = b.has("lightMeta"); tLeaves[i] = b.has("isLeaves");
-    bool tick = b.has("tree") || b.has("crop") || b.has("fire") || b.has("oxidizes") || b.has("hive") || b.has("randomTick");
+    bool tick = b.has("tree") || b.has("crop") || b.has("fire") || b.has("oxidizes") || b.has("hive") || b.has("randomTick") || b.has("refill");
     for (auto* k : tickKeys) if (b.key == k) tick = true;
     tTick[i] = tick;
   }

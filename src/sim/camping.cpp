@@ -1,4 +1,6 @@
 // sim/camping.cpp — campfires, the kit, rope, the grappling hook, the sleeping bag (game/camping.js).
+#include "sim/firepit.h"
+#include "sim/heat.h"
 #include "sim/camping.h"
 #include "sim/physics.h"
 
@@ -293,6 +295,36 @@ bool campingUse(UseCtx& u) {
       lv.fx->material("wood", "break", C(x, y, z));
       return true;
     }
+    // fuel on the fire (sim/firepit.h)
+    if (def && fuelOf(held.id).secs > 0 && !def->has("food")) {
+      if (!firepitAddFuel(w, x, y, z, held)) toast(lv, p, "The fire has all the fuel it can take");
+      else lv.fx->material("wood", "place", C(x, y, z));
+      return true;
+    }
+    // metal, ore or pottery set on it to heat (sim/heat.h)
+    if (def && heatable(held.id)) {
+      json& e = campEntity(w, x, y, z);
+      int k = -1;
+      for (int i = 0; i < 4; i++) if (e["items"][i].is_null()) { k = i; break; }
+      if (k < 0) { toast(lv, p, "There's no more room on the fire"); return true; }
+      ItemStack one = held; one.n = 1;
+      e["items"][k] = one.toJson(); e["t"][k] = 0;
+      useUpHeld(p);
+      w.blockEntityChanged(x, y, z);
+      return true;
+    }
+    // an empty hand takes back what's heating on it
+    if (held.empty()) {
+      json& e = campEntity(w, x, y, z);
+      for (int i = 3; i >= 0; i--) {
+        if (e["items"][i].is_null()) continue;
+        ItemStack s = ItemStack::fromJson(e["items"][i]);
+        if (!heatable(s.id)) continue;
+        e["items"][i] = nullptr; w.blockEntityChanged(x, y, z);
+        giveOrDrop(lv, p, s);
+        return true;
+      }
+    }
     // food on to cook
     auto sm = def ? reg().smelting.find(held.id) : reg().smelting.end();
     const ItemDef* cdef = sm != reg().smelting.end() ? reg().item(sm->second) : nullptr;
@@ -396,12 +428,15 @@ void campingTick(Level& lv, double dt) {
       World* w = lv.worldIfOpen(realm);
       if (!w) continue;
       for (const ivec3& c : *set) {
+        if (w->getBlock(c.x, c.y, c.z) == ids().campfire) firepitTick(lv, *w, c.x, c.y, c.z, dt);   // sim/firepit.h: fuel, heat, rain
         json* e = w->blockEntity(c.x, c.y, c.z);
         if (!e || !e->is_object() || e->value("type", "") != "campfire" || !(*e)["items"].is_array() || (w->getMeta(c.x, c.y, c.z) & CAMPFIRE_OUT)) continue;
         json& items = (*e)["items"];
         if (!(*e)["t"].is_array() || (*e)["t"].size() != 4) (*e)["t"] = json::array({0, 0, 0, 0});
         for (int k = 0; k < 4 && k < (int)items.size(); k++) {
           if (items[k].is_null()) continue;
+          if (const ItemDef* fd = reg().item(items[k].value("id", "")); !fd || !fd->has("food")) continue;   // (metal and pottery heat, they don't cook)
+          if (e->value("temp", 650.f) < FIREPIT_COOK_MIN) continue;   // not hot enough yet
           float t = (*e)["t"][k].get<float>() + (float)dt;
           (*e)["t"][k] = t;
           if (t < CAMP_COOK) continue;

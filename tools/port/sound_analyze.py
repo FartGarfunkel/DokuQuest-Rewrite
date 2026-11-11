@@ -287,6 +287,16 @@ for m in ['deepslate', 'cobweb', 'vine', 'rooted_dirt', 'iron', 'cherry_wood', '
     for k, ev, n in [('step', 'step', 6), ('dig', 'hit', 6), ('break', 'break', 4), ('place', 'place', 4)]:
         EXTRA['%s.%s' % (m, k)] = ('block.%s.%s' % (m, ev), ['block/%s/%s%d' % (m, ev, i) for i in range(1, n + 1)])
 
+# Our sounds a pack's own event table must not redefine: GeruDoku points entity.wolf.ambient at grunts and growls,
+# so every wild wolf growled the whole time (the game plays mob.wolf for an idle wolf, mob.wolf_angry when it attacks).
+# The same check over every event found the dolphin below.
+# These take the files listed here (the first that exist), the way the original's render/packs.js chose them.
+KEEP_FILES = {
+    'mob.wolf': ['mob/wolf/bark1', 'mob/wolf/bark2', 'mob/wolf/bark3', 'mob/wolf/classic/bark1', 'mob/wolf/classic/bark2', 'mob/wolf/classic/bark3'],
+    # the pack's dolphin ambient also lists its dying and hurt cries: an idle dolphin played its death
+    'mob.dolphin': ['dolphin%d' % i for i in range(1, 7)],
+}
+
 def resolve(table, root, event, defaults):
     """The files (with the event's own pitch and volume) a pack plays for an event, like render/packs.js does
     (sounds.json first, falling back to the vanilla file names), plus Minecraft's per-entry pitch/volume."""
@@ -319,7 +329,8 @@ def cmd_analyze(root, out_json, out_bin):
         if i % 50 == 0: print(i, name, len(b), file=sys.stderr)
     events = {}
     for ours, (ev, defaults) in sorted(pe.items()):
-        got = [[n, round(p, 3), round(v, 3)] for n, p, v in resolve(table, root, ev, defaults or []) if n in index]
+        if ours in KEEP_FILES: got = [[n, 1.0, 1.0] for n in KEEP_FILES[ours] if n in index]
+        else: got = [[n, round(p, 3), round(v, 3)] for n, p, v in resolve(table, root, ev, defaults or []) if n in index]
         if got: events[ours] = got
     z = zlib.compress(bytes(blob), 9)
     pathlib.Path(out_bin).write_bytes(z)
@@ -359,7 +370,8 @@ def cmd_merge(root, prefix, out_json, out_bin, skip=('music',)):
             n = prefix + '/' + n.split(':', 1)[-1]
             if n in index: got.append([n, round(pt, 3), round(vo, 3)])
         if not got: continue
-        events['fx.' + (ev if ev.startswith(MERGE_KEEP) else 'ws_' + ev)] = got; added += 1
+        # (no dots in our names: one dot reads as material.kind, e.g. 'weather.snow' would play as a block sound)
+        events['fx.' + (ev if ev.startswith(MERGE_KEEP) else 'ws_' + ev.replace('.', '_'))] = got; added += 1
     z = zlib.compress(bytes(nb), 9)
     pathlib.Path(out_bin).write_bytes(z)
     meta['sounds'] = index; meta['events'] = events; meta['raw'] = len(nb)

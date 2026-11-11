@@ -490,6 +490,11 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
       push(ends); push(ns); push(ew);
       return true;
     }
+    case ShapeKind::Pile: {   // ingot / log piles (sim/piles.h): as high as they're stacked (meta: layers of 2 px, courses of 4)
+      const int k = std::max(1, (int)m);
+      push(ShapeBox(0, 0, 0, 16, std::min(16.f, def.has("logPile") ? 4.f * k : 2.f * k), 16));
+      return true;
+    }
     case ShapeKind::Candle: {
       int n = m & 3;
       if (purpose == ShapePurpose::Collide) { push(T.pickle ? ShapeBox(2, 0, 2, 14, 6, 14) : ShapeBox(5, 0, 5, 11, 6, 11)); return true; }

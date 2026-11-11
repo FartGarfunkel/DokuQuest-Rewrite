@@ -1,6 +1,7 @@
 // sim/crafting.cpp — see crafting.h. Ported from core/items.js (matchGrid, recipeIngredients, recipeLayout,
 // SMELTING rules), game/inventory.js (recipeMissing, ingredientLabel), game/dyeing.js, game/maps.js,
 // game/blocks2.js (recolorKey), game/game.js (tickFurnace) and game/itemfix.js (smoker/blast classes).
+#include "core/metals.h"
 #include "core/tool_parts.h"
 #include <algorithm>
 #include "sim/crafting.h"
@@ -106,6 +107,7 @@ static CraftMatch matchBase(const std::vector<ItemStack>& slots, int W) {
   const auto& R = reg().recipes;
   for (size_t ri = 0; ri < R.size(); ri++) {
     const Recipe& r = R[ri];
+    if (!recipeOpen(r)) continue;
     if (r.shaped()) {
       if (r.w != bw || r.h != bh) continue;
       for (int mirror = 0; mirror < 2; mirror++) {
@@ -161,17 +163,56 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
   }
   const int bw = x1 - x0 + 1, bh = y1 - y0 + 1;
   auto at = [&](int x, int y) -> const ItemStack& { return slots[(y0 + y) * W + x0 + x]; };
+  if (count == 2) {   // a cast or forged head (any makeup, core/metals.h) and a haft: the tool, its whole head that metal
+    const ItemStack* h = nullptr; const ItemStack* hf = nullptr;
+    {   // an unfinished piece of armour (off the anvil) and padding: the finished piece, its makeup and wear kept (TFC)
+      const ItemStack* un = nullptr; const ItemStack* pad = nullptr;
+      for (const ItemStack& s : slots) { if (s.empty()) continue; if (s.id.rfind("unfinished_", 0) == 0 && isPartArmor(s)) un = &s; else pad = &s; }
+      if (un && pad && (pad->id == "leather" || pad->id == "wool_cloth" || pad->id == "burlap") && reg().item("mixed_" + un->id.substr(11))) {
+        CraftMatch m = special("mixed_" + un->id.substr(11), 1, bw, bh); m.extra = un->tag;
+        if (m.extra.is_object()) m.extra.erase("heat");
+        return m;
+      }
+    }
+    const ItemStack* fh = nullptr;   // a Tool Forge head ("forgeHead": {mat, tool}) of a metal: the procedural tool too
+    for (const ItemStack& s : slots) { if (s.empty()) continue; const ItemDef* d = s.def(); if (d && d->has("metalHead")) h = &s; else if (d && d->props.contains("forgeHead") && d->props["forgeHead"].is_object()) fh = &s; else hf = &s; }
+    if (fh && hf && !h) {
+      const json& F = fh->def()->props["forgeHead"];
+      const ToolMaterial* tm = toolMaterialOfItem(F.value("mat", std::string()));
+      const std::string kind = F.value("tool", std::string());
+      ItemStack out;
+      if (tm && metalDef(tm->key) && makePartTool(kind, std::vector<std::string>(partToolSections(kind), tm->key), hf->id, out)) {
+        CraftMatch m = special(out.id, 1, bw, bh); m.extra = out.tag;
+        return m;
+      }
+    }
+    if (h && hf) {
+      const std::string kind = h->def()->str("metalHead");
+      const ToolMaterial* tm = toolMaterialOfStack(*h);
+      ItemStack out;
+      if (tm && makePartTool(kind, std::vector<std::string>(partToolSections(kind), tm->key), hf->id, out)) {
+        if (h->tag.is_object() && h->tag.value("q", 0) > 0) out.tag["pt"]["dur"] = (int)std::lround(out.tag["pt"].value("dur", 0) * 1.05);   // quenched (sim/heat)
+        if (h->tag.is_object() && h->tag.contains("ql")) out.tag["pt"]["dur"] = (int)std::lround(out.tag["pt"].value("dur", 0) * h->tag.value("ql", 1.0));   // the smith's work (sim/anvil)
+        CraftMatch m = special(out.id, 1, bw, bh); m.extra = out.tag;
+        return m;
+      }
+    }
+  }
+  // an immersive world: tools come from heads (knapped, cast, smithed) and armour from the anvil, never the grid's patterns
+  if (recipeGate().immersive) return {};
   for (const ToolPattern& P : toolPatterns()) {
     if (P.w != bw || P.h != bh || (int)(P.head.size() + P.haft.size()) != count) continue;
     for (int mirror = 0; mirror < (P.w > 1 ? 2 : 1); mirror++) {
       auto cell = [&](ivec2 c) -> const ItemStack& { return at(mirror ? bw - 1 - c.x : c.x, c.y); };
       std::vector<std::string> mats; std::string haft; bool ok = true;
-      for (ivec2 c : P.head) { const ItemStack& s = cell(c); const ToolMaterial* tm = s.empty() ? nullptr : toolMaterialOfItem(s.id); if (!tm) { ok = false; break; } mats.push_back(tm->key); }
+      for (ivec2 c : P.head) { const ItemStack& s = cell(c); const ToolMaterial* tm = s.empty() ? nullptr : toolMaterialOfStack(s); if (!tm) { ok = false; break; } mats.push_back(tm->key); }
       for (ivec2 c : P.haft) { if (!ok) break; const ItemStack& s = cell(c); if (s.empty() || (!haft.empty() && s.id != haft)) ok = false; else haft = s.id; }
       if (!ok) continue;
       bool same = std::all_of(mats.begin(), mats.end(), [&](const std::string& m) { return m == mats[0]; });
       const ToolMaterial* m0 = toolMaterial(mats[0]);
-      if (same && haft == "stick" && m0 && reg().item(m0->prefix + "_" + P.kind)) return {};   // all one material: the ordinary tool's own recipe
+      // all one material: the ordinary tool's own recipe, unless it's a metal (every metal tool is procedural: its stats,
+      // name and colour from what it's made of)
+      if (same && haft == "stick" && m0 && reg().item(m0->prefix + "_" + P.kind) && !metalDef(m0->key) && !(m0->key.size() && m0->key[0] == '@')) return {};
       ItemStack out;
       if (!makePartTool(P.kind, mats, haft, out)) continue;
       CraftMatch m = special(out.id, 1, P.w, P.h); m.extra = out.tag;
@@ -181,11 +222,11 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
   for (const ArmorPattern& P : armorPatterns()) {   // mixed armour: any materials; all one only for a material with no piece of its own (tin, quartz...)
     if (P.w != bw || P.h != bh || (int)P.cells.size() != count) continue;
     std::vector<std::string> mats; bool ok = true;
-    for (ivec2 c : P.cells) { const ItemStack& s = at(c.x, c.y); const ToolMaterial* tm = s.empty() ? nullptr : toolMaterialOfItem(s.id); if (!tm) { ok = false; break; } mats.push_back(tm->key); }
+    for (ivec2 c : P.cells) { const ItemStack& s = at(c.x, c.y); const ToolMaterial* tm = s.empty() ? nullptr : toolMaterialOfStack(s); if (!tm) { ok = false; break; } mats.push_back(tm->key); }
     if (!ok) continue;
     if (std::all_of(mats.begin(), mats.end(), [&](const std::string& m) { return m == mats[0]; })) {
       const ToolMaterial* m0 = toolMaterial(mats[0]);
-      if (!m0 || reg().item(m0->prefix + "_" + P.piece)) continue;   // its own piece: the ordinary recipe
+      if (!m0 || (reg().item(m0->prefix + "_" + P.piece) && !metalDef(m0->key))) continue;   // its own piece (not a metal): the ordinary recipe
     }
     ItemStack out;
     if (!makePartArmor(P.piece, mats, out)) continue;
@@ -220,6 +261,30 @@ static CraftMatch matchDye(const std::vector<ItemStack>& slots, int W) {
 }
 
 // game/maps.js: copies of a map, or a map ringed with paper zoomed out
+RecipeGate& recipeGate() { thread_local RecipeGate g; return g; }
+bool recipeOpen(const Recipe& r) {
+  if (!r.props.is_object()) return true;
+  if (recipeGate().immersive && r.props.value("classicOnly", false)) return false;
+  if (!recipeGate().immersive && r.props.value("immersiveOnly", false)) return false;
+  return true;
+}
+void consumeCraft(std::vector<ItemStack>& grid, const CraftMatch& r, const std::function<void(const ItemStack&)>& giveBack) {
+  const json* keep = r.recipe && r.recipe->props.contains("keep") ? &r.recipe->props["keep"] : nullptr;
+  const std::string tool = r.recipe && r.recipe->props.is_object() ? r.recipe->props.value("keepTool", std::string()) : std::string();
+  for (auto& s : grid) {
+    if (s.empty()) continue;
+    if (!tool.empty() && s.def() && s.def()->has(tool.c_str())) {   // the saw stays, a little more worn
+      s.d++;
+      if (const int mx = s.def()->hasTool ? s.def()->tool.durability : 0; mx > 0 && s.d >= mx) s.clear();
+      continue;
+    }
+    // buckets and bottles come back empty (milk for a cake, honey for a honey block)
+    std::string back = keep && keep->contains(s.id) && (*keep)[s.id].is_string() ? (*keep)[s.id].get<std::string>() : "";
+    if (--s.n <= 0) { if (!back.empty()) s = ItemStack(back, 1); else s.clear(); }
+    else if (!back.empty()) giveBack(ItemStack(back, 1));
+  }
+}
+
 CraftMatch matchGrid(const std::vector<ItemStack>& slots, int W) {
   const ItemStack* fm = nullptr; int nf = 0, ne = 0, np = 0, other = 0, fi = -1;
   for (int i = 0; i < (int)slots.size(); i++) {

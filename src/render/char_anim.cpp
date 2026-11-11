@@ -100,8 +100,9 @@ static void bowDrawArms(CharAngles& A, const CharPose& pose, const CharModel& M,
 CharAngles charAnimate(const CharPose& pose) {
   CharAngles A;
   if (pose.still) return A;
-  float a = pose.walkAmt, ph = pose.walk, t = pose.time, run = pose.sprint ? 1.f : 0.f, idle = 1 - a;
-  float sL = std::sin(ph), cL = std::cos(ph), amp = (0.75f + 0.3f * run) * a;
+  float a = pose.walkAmt, ph = pose.walk, t = pose.time, run = pose.sprint ? 1.f : 0.f, idle = 1 - a, swimBreath = 0;
+  float sL = std::sin(ph), cL = std::cos(ph), amp = (0.75f + 0.3f * run) * a * (pose.backward ? 0.8f : 1.f);
+  if (pose.backward) cL = -cL;   // backing off: each knee bends as its foot reaches back
   // ---- skins.js avatarAnim: Mo' Bends-style movement, knees, elbows, a twist in the body ----
   A.legR.x = sL * amp; A.legL.x = -sL * amp;
   A.shinR.x = -a * (0.08f + (0.8f + 0.4f * run) * std::max(0.f, cL));
@@ -111,6 +112,7 @@ CharAngles charAnimate(const CharPose& pose) {
   A.foreR.x = A.foreL.x = 0.1f + 0.45f * run * a + 0.06f * idle;
   A.body = vec3(-0.2f * run * a, sL * 0.1f * a, 0);
   A.lift = (1 - std::fabs(sL)) * (0.045f + 0.035f * run) * a + std::sin(t * 1.9f) * 0.004f * idle;   // (running: a bigger bounce, more weight)
+  if (pose.backward) A.body.x += 0.08f * a;
   A.head.x += std::fabs(sL) * 0.06f * run * a;   // the head nods into each running footfall
   // standing about: a slow shift of weight from foot to foot, the shoulders rising with each breath
   A.body.z += std::sin(t * 0.55f) * 0.025f * idle; A.body.x += std::sin(t * 1.9f) * 0.012f * idle;
@@ -128,6 +130,7 @@ CharAngles charAnimate(const CharPose& pose) {
     if (!pose.held) A.armR = vec3(0.3f + fall * 2.2f + rise * 0.5f, 0, 0.3f + fall * 0.5f);
     if (!pose.off) A.armL = vec3(0.3f + fall * 2.2f + rise * 0.5f, 0, -0.3f - fall * 0.5f);
     A.body.x += 0.1f * rise - 0.08f * reach;
+    if (pose.airLeft) { std::swap(A.legR, A.legL); std::swap(A.shinR, A.shinL); A.legR.z = -A.legR.z; A.legL.z = -A.legL.z; }   // the other leg leads this jump
   }
   if (pose.land > 0) {   // the landing: knees give, hips drop, the body folds forward — as deep as the drop was hard
     const float dur = 0.2f * std::max(1.f, pose.landAmt), u = clampf(pose.land / dur, 0, 1), k = (u * u * (3 - 2 * u)) * pose.landAmt;
@@ -154,7 +157,8 @@ CharAngles charAnimate(const CharPose& pose) {
     const float turn = 0.5f + 0.5f * k;   // side-on, like an archer (the feet turned half as far): the bow arm reaches further
     A.body = vec3(A.body.x, A.body.y - turn, 0); A.legR.y -= turn * 0.5f; A.legL.y -= turn * 0.5f;
   }
-  if (pose.eat > 0) { A.armR = vec3(1.15f + std::sin(t * 22) * 0.12f, -0.35f, 0); A.foreR = vec3(0.9f, 0, 0); }
+  if (pose.eat > 0 && pose.drink) { const float up = std::min(1.f, (1 - pose.eat) * 4); A.armR = vec3(1.55f + 0.5f * up, -0.4f, 0); A.foreR = vec3(1.0f - 0.2f * up, 0, 0); }   // a bottle tipped up
+  else if (pose.eat > 0) { A.armR = vec3(1.15f + std::sin(t * 22) * 0.12f, -0.35f, 0); A.foreR = vec3(0.9f, 0, 0); }
   if (pose.scope) {   // like the bow's drawing hand to the chin, a little higher: the forearm folded in to the eye (DQ_DEV_SCOPE="ax,ay,az,fx,fy,fz")
     static float S[6] = {2.3f, -0.25f, 0.f, 0.25f, 0.f, -1.6f}; static bool sl = false;
     if (!sl) { sl = true; if (const char* v = std::getenv("DQ_DEV_SCOPE")) std::sscanf(v, "%f,%f,%f,%f,%f,%f", &S[0], &S[1], &S[2], &S[3], &S[4], &S[5]); }
@@ -186,17 +190,31 @@ CharAngles charAnimate(const CharPose& pose) {
   }
   if (pose.sit) { A.legR = vec3(1.4f, 0, 0.1f); A.legL = vec3(1.4f, 0, -0.1f); A.shinR = A.shinL = vec3(-1.4f, 0, 0); }
   if (pose.swim) {
-    // the fast swim, lying flat: a front crawl, each arm going round in turn, the body rolling, legs fluttering
+    // the fast swim, lying flat: a breaststroke (not a windmill). The arms glide out ahead together, sweep out wide and
+    // pull in under the chest with the elbows bent, then shoot forward again; the legs frog-kick as the arms go forward,
+    // and the head comes up for a breath on the pull. Keyframes through one stroke (u 0..1), eased between.
     float sp = pose.swimPh != 0 ? pose.swimPh : ph * 0.9f;
-    auto arm = [](float th, float side, vec3& ar, vec3& fo) {
-      float u = std::fmod(std::fmod(th, TAU) + TAU, TAU), rec = u > PI ? std::sin(u - PI) : 0;
-      ar = vec3(PI - u, 0, side * (0.18f + 0.32f * rec)); fo = vec3(0.12f + 1.0f * rec, 0, 0);
+    const float u = std::fmod(std::fmod(sp, TAU) + TAU, TAU) / TAU;
+    struct Key { float u, ax, az, fx, leg, legZ, shin, head; };
+    static const Key K[] = {
+      {0.00f, 3.10f, 0.10f, 0.05f, 0.00f, 0.04f, -0.05f, 0.0f},   // the glide: arms out ahead, legs together
+      {0.18f, 3.05f, 0.18f, 0.10f, 0.00f, 0.04f, -0.08f, 0.0f},
+      {0.42f, 2.55f, 1.10f, 0.40f, 0.05f, 0.06f, -0.15f, 0.35f},  // the out-sweep and pull: wide, the head up to breathe
+      {0.60f, 1.75f, 0.35f, 1.55f, 0.55f, 0.35f, -1.45f, 0.25f},  // hands in under the chest, knees drawn up and out
+      {0.80f, 2.80f, 0.12f, 0.45f, 0.10f, 0.30f, -0.50f, 0.05f},  // shooting forward as the legs kick round
+      {1.00f, 3.10f, 0.10f, 0.05f, 0.00f, 0.04f, -0.05f, 0.0f},
     };
-    arm(sp, 1, A.armR, A.foreR); arm(sp + PI, -1, A.armL, A.foreL);
-    float k = std::sin(sp * 3) * 0.32f;
-    A.legR = vec3(k, 0, 0.04f); A.legL = vec3(-k, 0, -0.04f);
-    A.shinR = vec3(-0.18f - std::max(0.f, std::cos(sp * 3)) * 0.2f, 0, 0); A.shinL = vec3(-0.18f - std::max(0.f, -std::cos(sp * 3)) * 0.2f, 0, 0);
-    A.body = vec3(0, std::sin(sp) * 0.28f, 0);
+    int i = 0; while (i < 4 && u > K[i + 1].u) i++;
+    const Key &a0 = K[i], &a1 = K[i + 1];
+    float w = clampf((u - a0.u) / (a1.u - a0.u), 0, 1); w = w * w * (3 - 2 * w);
+    auto L = [&](float Key::*f) { return a0.*f + (a1.*f - a0.*f) * w; };
+    A.armR = vec3(L(&Key::ax), 0, L(&Key::az)); A.armL = vec3(A.armR.x, 0, -A.armR.z);
+    A.foreR = A.foreL = vec3(L(&Key::fx), 0, 0);
+    A.legR = vec3(L(&Key::leg), 0, L(&Key::legZ)); A.legL = vec3(A.legR.x, 0, -A.legR.z);
+    A.shinR = A.shinL = vec3(L(&Key::shin), 0, 0);
+    A.body = vec3(L(&Key::head) * 0.25f, 0, 0);   // the chest lifts a little with the breath
+    A.lift = 0;
+    swimBreath = L(&Key::head);
   } else if (pose.paddle && !pose.sit) {
     // out of your depth: treading water when still, a breaststroke when you swim along
     float sp = pose.swimPh, mv = clampf(pose.swimMv, 0, 1), u = std::fmod(std::fmod(sp, TAU) + TAU, TAU);
@@ -213,7 +231,7 @@ CharAngles charAnimate(const CharPose& pose) {
     A.lift = std::sin(sp * (1 + mv)) * 0.035f;
   }
   // the head keeps looking where the player looks, whatever the body does
-  A.head = vec3((pose.swim ? 0.9f : pose.crawl ? 1.2f + clampf(pose.headPitch, -0.6f, 0.6f) * 0.4f : pose.headPitch) - A.body.x, -A.body.y, 0);
+  A.head = vec3((pose.swim ? 0.9f + (pose.glide ? 0.f : swimBreath) : pose.crawl ? 1.2f + clampf(pose.headPitch, -0.6f, 0.6f) * 0.4f : pose.headPitch) - A.body.x, -A.body.y, 0);
 
   // ---- game/anim.js: livelier bodies ----
   float b0 = A.body.x, b1 = A.body.y;
@@ -310,6 +328,7 @@ CharAngles charAnimate(const CharPose& pose) {
   if (pose.read) { A.armR = vec3(0.85f, -0.25f, 0); A.foreR = vec3(0.7f, 0, 0); A.armL = vec3(0.85f, 0.25f, 0); A.foreL = vec3(0.7f, 0, 0); A.head.x += 0.35f; }
   if (pose.hoe > 0) { float k = std::sin(pose.hoe * PI); A.armR = vec3(0.6f + k * 1.2f, 0, 0); A.armL = vec3(0.6f + k * 1.1f, 0, 0); A.body.x -= k * 0.25f; }
   if (pose.bowArm && pose.bow <= 0 && pose.swing <= 0) { A.armR = vec3(std::min(bowR.x, 0.1f), 0, bowR.z); A.foreR = vec3(std::min(bowF.x, 0.06f), 0, 0); }   // the arm hangs nearly straight: the bow it carries lies level at the side
+  charMorePoses(A, pose);
   return A;
 }
 
@@ -328,7 +347,7 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
   }
   base = glm::rotate(base, pose.yaw, vec3(0, 1, 0));
   if (pose.lean > 0 && !pose.fp) { base = glm::translate(base, vec3(0, 0.9f, 0)); base = glm::rotate(base, -pose.lean, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0)); }
-  if (pose.deathT > 0) base = glm::rotate(base, std::min(1.f, pose.deathT * 3) * PI / 2, vec3(0, 0, 1));
+  if (pose.deathT > 0) { const float u = clampf((pose.deathT - 0.1f) / 0.38f, 0, 1); base = glm::rotate(base, u * u * PI / 2, vec3(0, 0, 1)); }
   if (pose.swim) { base = glm::translate(base, vec3(0, 0.32f, 0.55f)); base = glm::rotate(base, -PI / 2 + pose.swimPitch * 0.8f, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0)); }
   else if (pose.crawl && !pose.fp) {   // flat on the ground, the chest on it (its plane 2 px in front of the middle)
     base = glm::translate(base, vec3(0, 2.3f * CHAR_PX, 0.5f)); base = glm::rotate(base, -PI / 2, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0));

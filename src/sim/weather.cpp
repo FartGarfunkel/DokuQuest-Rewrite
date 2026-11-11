@@ -102,6 +102,34 @@ void WeatherSystem::fromJson(const json& j) {
   ice.clear();
   if (j.contains("ice") && j["ice"].is_array()) for (auto& p : j["ice"]) if (p.is_array() && p.size() == 3) ice.push_back({p[0].get<int>(), p[1].get<int>(), p[2].get<int>()});
 }
+float WeatherSystem::roofRain(float rain, int precip, int skyAtHead, float top, float headY) {
+  if (rain <= 0 || precip != 1 || skyAtHead >= 8 || top <= headY) return 0;
+  return rain * std::clamp(1.f - (top - headY - 5.f) / 12.f, 0.f, 1.f);
+}
+
+std::vector<vec3> WeatherSystem::groundAnchors(Level& lv) const {
+  std::vector<vec3> out;
+  for (auto& e : lv.entities()) {
+    if (e->removed || !e->isPlayer() || e->realm != REALM_MAIN) continue;
+    if (dimOfY(clampv(ifloor(e->pos.y), 0, WORLD_H - 1)) == DIM_OVERWORLD) out.push_back(e->pos);
+  }
+  return out;
+}
+
+json WeatherSystem::netState() const {
+  json j = toJson();
+  j.erase("ice");
+  j["g"] = gust; j["st"] = showerT; j["sz"] = showerZone; j["ar"] = afterRainT;
+  return j;
+}
+void WeatherSystem::applyNet(const json& j) {
+  if (!j.is_object()) return;
+  hostRules = false;
+  std::vector<ivec3> keepIce = std::move(ice);   // (the host's thawing list isn't sent)
+  fromJson(j);
+  ice = std::move(keepIce);
+  gust = j.value("g", gust); showerT = j.value("st", showerT); showerZone = j.value("sz", showerZone); afterRainT = j.value("ar", afterRainT);
+}
 void WeatherSystem::load(Level& lv) {
   lvl = &lv; loaded = true;
   g_rng ^= (u32)lv.info.seed * 2654435761u + (u32)unixMillis();
@@ -274,7 +302,13 @@ void WeatherSystem::tick(Level& lv, double dt) {
   thunderK += (wantThunder - thunderK) * std::min(1.f, (float)dt * 0.08f);
   if (rain < 0.002f) rain = 0;
   if (flashT > 0) flashT -= (float)dt;
-  if ((groundT -= (float)dt) <= 0) { groundT = 0.5f; groundTick(lv, w); }
+  if ((groundT -= (float)dt) <= 0) {
+    groundT = 0.5f;
+    // round each Overworld player in turn (groundTick works round leadPos); the lead's own values are put back after
+    const vec3 lp = leadPos; const int ld = leadDim, lr = leadRealm;
+    for (vec3 a : groundAnchors(lv)) { leadPos = a; leadDim = DIM_OVERWORLD; leadRealm = REALM_MAIN; groundTick(lv, w); }
+    leadPos = lp; leadDim = ld; leadRealm = lr;
+  }
   // the rain's hiss (the audio engine reads rainLevel / rainOpen) and the rumble of far thunder
   if (lead && overworld) {
     float sky = (w.getLight(ifloor(leadPos.x), ifloor(leadPos.y + 1.5f), ifloor(leadPos.z)) >> 4) / 15.f;
@@ -289,10 +323,13 @@ void WeatherSystem::tick(Level& lv, double dt) {
   if (lead && thunderK > 0.5f && rnd() < dt / 25) lv.fx->soundUi(lead->id, "thunder_far");
   if (thunderK > 0.6f && host && lead) {
     boltT -= (float)dt;
-    if (boltT <= 0) { boltT = 6 + rnd() * 22; strikeNear(lv, w); }
+    if (boltT <= 0) { boltT = 6 + rnd() * 22; strikeNear(lv, w); }   // (strikeNear picks any Overworld player)
   }
   // ---- skies.js ----
+  if (kind != "clear") afterRainT = 0;
+  else if (afterRainT > 0) afterRainT = std::max(0.f, afterRainT - (float)dt);
   if (!was.empty() && was != "clear" && kind == "clear") {
+    afterRainT = 30 + rnd() * 270;   // fog lies on the land for a while (render/weather_sim.cpp ground fog)
     mist = std::max(mist, was == "thunder" ? 0.85f : 0.62f);
     float sy = sunY(lv.info.time);
     if (sy > 0.05f && sy < 0.72f) rainbowT = 110;
@@ -328,7 +365,7 @@ void WeatherSystem::localWeather(Level& lv, World& w, double dt) {
   std::string sk = stormKind();
   float storm = kind != "clear" ? here : 0.f;
   // showers in the jungle and drizzle in the swamp, between the storms
-  if (kind == "clear" && !front.on && (zn == "jungle" || zn == "swamp") && !(showerT > 0) && rnd() < dt / (zn == "jungle" ? 260 : 340)) {
+  if (hostRules && kind == "clear" && !front.on && (zn == "jungle" || zn == "swamp") && !(showerT > 0) && rnd() < dt / (zn == "jungle" ? 260 : 340)) {
     showerT = zn == "jungle" ? 40 + rnd() * 60 : 60 + rnd() * 100; showerZone = zn;
   }
   if (showerT > 0) { showerT -= fdt; if (kind != "clear") showerT = 0; }

@@ -1,0 +1,289 @@
+{
+ "_comment": "Anvil work (sim/anvil.h; after TerraFirmaCraft's AnvilManager plans): in = what the piece must be (ingot | double_ingot | sheet | double_sheet | bloom | pig_iron), n = how many of it, out = what it makes (metal_* items carry the makeup), plan = the last three steps' rules (hit/draw/punch/bend/upset/shrink : last | second | third | notlast | any), weld = needs welding heat and flux.",
+ "recipes": [
+  {
+   "key": "pickaxe",
+   "name": "Pickaxe Head",
+   "in": "ingot",
+   "n": 1,
+   "out": "metal_pickaxe_head",
+   "plan": [
+    "punch:last",
+    "bend:notlast",
+    "draw:notlast"
+   ]
+  },
+  {
+   "key": "axe",
+   "name": "Axe Head",
+   "in": "ingot",
+   "n": 1,
+   "out": "metal_axe_head",
+   "plan": [
+    "punch:last",
+    "hit:second",
+    "upset:third"
+   ]
+  },
+  {
+   "key": "shovel",
+   "name": "Shovel Head",
+   "in": "ingot",
+   "n": 1,
+   "out": "metal_shovel_head",
+   "plan": [
+    "punch:last",
+    "hit:notlast"
+   ]
+  },
+  {
+   "key": "hoe",
+   "name": "Hoe Head",
+   "in": "ingot",
+   "n": 1,
+   "out": "metal_hoe_head",
+   "plan": [
+    "punch:last",
+    "hit:notlast",
+    "bend:notlast"
+   ]
+  },
+  {
+   "key": "sword",
+   "name": "Sword Blade",
+   "in": "double_ingot",
+   "n": 1,
+   "out": "metal_sword_head",
+   "plan": [
+    "hit:last",
+    "bend:second",
+    "bend:third"
+   ]
+  },
+  {
+   "key": "knife",
+   "name": "Knife Blade",
+   "in": "ingot",
+   "n": 1,
+   "out": "metal_knife_head",
+   "plan": [
+    "hit:last",
+    "draw:second",
+    "draw:third"
+   ]
+  },
+  {
+   "key": "hammer",
+   "name": "Hammer Head",
+   "in": "ingot",
+   "n": 1,
+   "out": "metal_hammer_head",
+   "plan": [
+    "punch:last",
+    "shrink:notlast"
+   ]
+  },
+  {
+   "key": "saw",
+   "name": "Saw Blade",
+   "in": "ingot",
+   "n": 1,
+   "out": "metal_saw_head",
+   "plan": [
+    "hit:last",
+    "hit:second"
+   ]
+  },
+  {
+   "key": "scythe",
+   "name": "Scythe Blade",
+   "in": "ingot",
+   "n": 1,
+   "out": "metal_scythe_head",
+   "plan": [
+    "hit:last",
+    "draw:second",
+    "bend:third"
+   ]
+  },
+  {
+   "key": "javelin",
+   "name": "Javelin Head",
+   "in": "ingot",
+   "n": 1,
+   "out": "metal_javelin_head",
+   "plan": [
+    "hit:last",
+    "hit:second",
+    "draw:third"
+   ]
+  },
+  {
+   "key": "propick",
+   "name": "Prospector's Pick Head",
+   "in": "ingot",
+   "n": 1,
+   "out": "metal_propick_head",
+   "plan": [
+    "punch:last",
+    "draw:notlast",
+    "draw:any"
+   ]
+  },
+  {
+   "key": "tongs",
+   "name": "Tongs",
+   "in": "ingot",
+   "n": 1,
+   "out": "tongs",
+   "plan": [
+    "hit:last",
+    "bend:second"
+   ]
+  },
+  {
+   "key": "double_ingot",
+   "name": "Double Ingot (weld)",
+   "in": "ingot",
+   "n": 2,
+   "out": "metal_double_ingot",
+   "plan": [
+    "hit:last",
+    "hit:second"
+   ],
+   "weld": true
+  },
+  {
+   "key": "sheet",
+   "name": "Sheet",
+   "in": "double_ingot",
+   "n": 1,
+   "out": "metal_sheet",
+   "plan": [
+    "hit:last",
+    "hit:second",
+    "hit:third"
+   ]
+  },
+  {
+   "key": "double_sheet",
+   "name": "Double Sheet (weld)",
+   "in": "sheet",
+   "n": 2,
+   "out": "metal_double_sheet",
+   "plan": [
+    "hit:last",
+    "hit:second"
+   ],
+   "weld": true
+  },
+  {
+   "key": "helmet",
+   "name": "Helmet",
+   "in": "double_sheet",
+   "n": 1,
+   "out": "armor:helmet",
+   "plan": [
+    "bend:last",
+    "bend:second",
+    "hit:third"
+   ]
+  },
+  {
+   "key": "chestplate",
+   "name": "Chestplate",
+   "in": "double_sheet",
+   "n": 2,
+   "out": "armor:chestplate",
+   "plan": [
+    "hit:last",
+    "hit:second",
+    "upset:third"
+   ]
+  },
+  {
+   "key": "leggings",
+   "name": "Greaves",
+   "in": "double_sheet",
+   "n": 2,
+   "out": "armor:leggings",
+   "plan": [
+    "bend:last",
+    "draw:second",
+    "hit:third"
+   ]
+  },
+  {
+   "key": "boots",
+   "name": "Sabatons",
+   "in": "double_sheet",
+   "n": 1,
+   "out": "armor:boots",
+   "plan": [
+    "bend:last",
+    "bend:second",
+    "shrink:third"
+   ]
+  },
+  {
+   "key": "anvil",
+   "name": "Anvil",
+   "in": "double_ingot",
+   "n": 4,
+   "out": "anvil",
+   "plan": [
+    "hit:last",
+    "hit:second",
+    "upset:third"
+   ]
+  },
+  {
+   "key": "bloom",
+   "name": "Refine the bloom",
+   "in": "bloom",
+   "n": 1,
+   "out": "refined_bloom",
+   "plan": [
+    "hit:last",
+    "hit:second",
+    "hit:third"
+   ]
+  },
+  {
+   "key": "steel",
+   "name": "Work the pig iron",
+   "in": "pig_iron",
+   "n": 1,
+   "out": "high_carbon_steel",
+   "plan": [
+    "hit:last",
+    "hit:second",
+    "hit:third"
+   ]
+  },
+  {
+   "key": "wrought",
+   "name": "Work into wrought iron",
+   "in": "refined_bloom",
+   "n": 1,
+   "out": "iron_ingot",
+   "plan": [
+    "hit:last",
+    "draw:second",
+    "hit:third"
+   ]
+  },
+  {
+   "key": "hcsteel",
+   "name": "Work into steel",
+   "in": "high_carbon_steel",
+   "n": 1,
+   "out": "steel_ingot",
+   "plan": [
+    "hit:last",
+    "bend:second",
+    "draw:third"
+   ]
+  }
+ ]
+}

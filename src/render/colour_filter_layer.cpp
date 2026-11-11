@@ -18,7 +18,10 @@ public:
     if (kind < 1 || kind > 3) kind = 0;
     const PhotoMode& ph = photoMode();
     const int photo = ph.active && !s.split() ? ph.shader : 0;
-    if (!kind && !photo) return;
+    const Settings& st = s.app.settings;
+    const float sat = std::clamp(st.saturation, 0.f, 1.5f), con = std::clamp(st.contrast, 0.5f, 1.5f);
+    const bool grade = std::fabs(sat - 1.f) > 0.005f || std::fabs(con - 1.f) > 0.005f;   // Vibrant: no pass at all
+    if (!kind && !photo && !grade) return;
     if (!tried) { tried = true; sh = std::make_unique<Shader>(); if (!sh->load("colour_filter.glsl", "colour_filter.glsl")) sh.reset(); glGenVertexArrays(1, &vao); }
     if (!sh) return;
     GLint vp[4]; glGetIntegerv(GL_VIEWPORT, vp);
@@ -35,6 +38,7 @@ public:
     glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, vp[0], vp[1], vp[2], vp[3]);
     glDisable(GL_DEPTH_TEST); glDisable(GL_BLEND); glDisable(GL_CULL_FACE);
     sh->use(); sh->set("uTex", 0); sh->set("uKind", kind); sh->set("uPhoto", photo); sh->set("uAmt", ph.intensity);
+    sh->set("uGrade", grade ? vec2(sat, con) : vec2(1.f));
     glBindVertexArray(vao); glDrawArrays(GL_TRIANGLES, 0, 3); glBindVertexArray(0);
     glEnable(GL_CULL_FACE);
   }

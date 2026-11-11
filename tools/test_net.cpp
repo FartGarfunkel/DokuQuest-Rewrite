@@ -14,7 +14,9 @@
 #include "gen/generator.h"
 #include "sim/creature.h"
 #include "sim/gameplay.h"
+#include "sim/weather.h"
 #include <atomic>
+#include "sim/forge.h"
 #include <thread>
 #include <cstdio>
 
@@ -34,6 +36,8 @@ struct RecFx : LevelFx {
   void material(const std::string&, const std::string&, vec3) override { sounds++; }
 };
 
+struct StationProbe { std::atomic<bool> armed{false}, listed{false}; std::atomic<int> x{0}, y{0}, z{0}, fuel{-1}; std::atomic<double> pump{0}; };
+static StationProbe g_st;
 struct Client {
   std::string name;
   EventBus bus;
@@ -134,6 +138,22 @@ int main(int argc, char** argv) {
 
   ServerConfig cfg; cfg.world = "NetTest"; cfg.seed = "multiplayer"; cfg.port = port; cfg.motd = "Hello from the test server"; cfg.viewDistance = 4;
   DedicatedServer srv(cfg);
+  // the host's weather, read on the server thread (weather sync checks below)
+  static std::atomic<int> hostKind{0}; static std::atomic<float> hostWind{0};
+  srv.onTick = [](Level& lv) {
+    if (g_st.armed) {   // a station a guest built and lit, as the host sees it (the immersive stations' sync checks below)
+      World& w = lv.world(REALM_MAIN);
+      const int x = g_st.x, y = g_st.y, z = g_st.z;
+      const json* e = w.blockEntity(x, y, z);
+      g_st.fuel = e && e->is_object() ? e->value("fuel", 0) : -1;
+      bool listed = false; const json& l = lv.info.data.value("forges", json::array());
+      for (auto& q : l) if (q.is_array() && q.size() >= 4 && q[1] == x && q[2] == y && q[3] == z) listed = true;
+      g_st.listed = listed;
+      const json* b = w.blockEntity(x, y, z + 1);
+      g_st.pump = b && b->is_object() ? b->value("pump", 0.0) : 0.0;
+    }
+    if (WeatherSystem* W = weatherOf(lv)) { const std::string k = W->stormKind(); hostKind = k == "thunder" ? 2 : k == "rain" ? 1 : 0; hostWind = W->windDir; }
+  };
   std::string err;
   net::netSkinHook() = [](const std::string& ref, const json&) { g_skinsSeen.insert(ref); };
   check(srv.start(&err), "server starts " + err);
@@ -286,6 +306,15 @@ int main(int argc, char** argv) {
   pumpFor(0.3);
   bool listed = false; for (auto& l : srv.logSince(0)) if (l.text.find("Playing: ") != std::string::npos && l.text.find("Bob") != std::string::npos) listed = true;
   check(listed, "console list");
+  // ---- weather: guests follow the host's (they used to run a cycle of their own) ----
+  srv.command("weather thunder 600");
+  auto kindOf = [](Client& c) { WeatherSystem* W = c.lv ? weatherOf(*c.lv) : nullptr; return W ? W->stormKind() : std::string("?"); };
+  { bool ok = pump(4, [&] { return hostKind == 2 && kindOf(A) == "thunder" && kindOf(B) == "thunder"; });
+    check(ok, "guest weather follows the host (Alice: " + kindOf(A) + ", Bob: " + kindOf(B) + ")"); }
+  { WeatherSystem* W = weatherOf(*A.lv); check(W && !W->hostRules, "a guest doesn't run its own weather"); }
+  pumpFor(3);
+  { WeatherSystem* W = weatherOf(*A.lv); float d = W ? std::abs(std::remainder(W->windDir - hostWind.load(), 6.2831853f)) : 9.f;
+    check(d < 0.05f, strFormat("a guest's wind is the host's (%.3f rad apart)", d)); }
   auto st = srv.status();
   check(st.running && st.players == 2 && st.tps > 10, strFormat("status: %d players, %.0f ticks/s", st.players, st.tps));
   check(A.nc->stats.records + A.nc->stats.sums > 0, strFormat("chunks came as records/checksums (%llu records, %llu sums in, %llu compared, %zu waiting, %llu asked again)",
@@ -301,6 +330,22 @@ int main(int argc, char** argv) {
   }
 
   // ---- kick, coming back, the server stopping ----
+  // ---- the immersive stations: one a guest builds reaches the host whole, and burns there; a guest's bellows pumps it ----
+  {
+    World& aw = A.lv->world(A.me->realm);
+    const ivec3 at = ivec3(glm::floor(A.me->pos)) + ivec3(3, 0, 0);
+    g_st.x = at.x; g_st.y = at.y; g_st.z = at.z; g_st.armed = true;
+    aw.setBlock(at.x, at.y, at.z, reg().blockId("forge"));
+    *aw.blockEntity(at.x, at.y, at.z, true) = json{{"type", "forge"}, {"fuel", 6}, {"burn", 0.0}, {"temp", 20.0}, {"lit", true}, {"items", json::array({nullptr, nullptr, nullptr, nullptr, nullptr})}};
+    aw.blockEntityChanged(at.x, at.y, at.z);   // (the block and its contents in the same frame, as forgeBuild does)
+    aw.setBlock(at.x, at.y, at.z + 1, reg().blockId("bellows"));
+    check(bellowsPump(aw, at.x, at.y, at.z + 1), "a guest pumps bellows");
+    check(pump(5, [&] { return g_st.fuel > 0; }), "a forge a guest built reaches the host with its charcoal (" + std::to_string(g_st.fuel.load()) + ")");
+    check(pump(5, [&] { return g_st.listed.load(); }), "and, lit by the guest, it burns on the host");
+    check(pump(5, [&] { return g_st.pump > 0; }), "the guest's pumping reaches the host's bellows");
+    g_st.armed = false;
+  }
+
   srv.command("kick Bob Testing kicks");
   check(pump(4, [&] { return B.nc && B.nc->lost(); }), "kick: Bob's game is let go");
   check(B.nc && B.nc->lostReason.find("Testing kicks") != std::string::npos, "with the reason: " + (B.nc ? B.nc->lostReason : ""));
@@ -313,6 +358,7 @@ int main(int argc, char** argv) {
   g_clients = {&A, &B2};
   bool kept = false; if (B2.me) for (auto& s : B2.me->inv) if (s.id == "dirt" && s.n >= 5) kept = true;
   check(kept, "with what he carried (the server saved his player)");
+  { bool ok = pump(3, [&] { return kindOf(B2) == "thunder"; }); check(ok, "late joiner sees the storm (" + kindOf(B2) + ")"); }
   pumpFor(0.5);
   srv.stop();
   check(pump(4, [&] { return A.nc && A.nc->lost(); }) && A.nc->lostReason.find("closed") != std::string::npos, "the server stopping lets everyone go: " + (A.nc ? A.nc->lostReason : ""));

@@ -62,6 +62,7 @@ void gatherBoxes(const World& w, double minX, double minY, double minZ, double m
     BlockId id = w.getBlockPhys(x, y, z);
     if (takeSpike(w, x, y, z, id, minX, minY, minZ, maxX, maxY, maxZ, &out)) continue;
     if (!R.tSolid[id] || (t_itemMove && meshBlock(id) && meshLets(w, x, y, z, id))) continue;
+    if (w.immersive && bhas(id, BF::IsLeaves)) continue;   // immersive: you push through leaves (sampleContacts slows you)
     bool carved = fullSolid(id) && w.getCarve(x, y, z);   // carve flag lives in its own byte now
     if (!hasShapeBoxes(id) && !carved) { if (y >= yb) out.push_back({(double)x, (double)y, (double)z, x + 1.0, y + 1.0, z + 1.0}); continue; }
     if (bhas(id, BF::Scaffold) && !std::isnan(feet) && (sneak || feet < y + 1 - 0.05)) continue;
@@ -249,6 +250,7 @@ Contacts sampleContacts(const World& w, const Entity& e, float eye) {
     const BlockInfo& bi = binfo(id);
     if (bi.f & BF::Climb) { r.ladder = true; if (bi.f & BF::Scaffold) r.scaffold = true; }
     if (bi.f & BF::Sticky) r.web = true;
+    if (w.immersive && (bi.f & BF::IsLeaves)) r.leaves = true;
     if (bi.f & BF::Fire) r.fire = true;
   }
   BlockId under = w.getBlock(ifloor(e.pos.x), ifloor(e.pos.y - 0.05f), ifloor(e.pos.z));

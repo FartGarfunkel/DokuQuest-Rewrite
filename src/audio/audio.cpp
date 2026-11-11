@@ -47,7 +47,7 @@ void AudioEngine::Impl::mix(float* out, int n) {
       case AudioCmd::Play: startVoice(c); break;
       case AudioCmd::Stop: for (auto& v : voices) if (v.on && v.handle == c.handle) v.fadeStep = 1.f / (0.01f * SR); break;
       case AudioCmd::Wind: wind.target = c.a; wind.ft = c.b; break;
-      case AudioCmd::Rain: rain.target = c.a; break;
+      case AudioCmd::Rain: rain.target = c.a; rain.ft = 1400 - 800 * std::clamp(c.b, 0.f, 1.f); break;
       case AudioCmd::Drone: drone.target = c.a; break;
       case AudioCmd::Verb: roomT = c.a; under = c.b < 0; caveT = std::max(0.f, c.b); break;   // b < 0: under water
       default: if (music) music->command(c); break;
@@ -87,6 +87,7 @@ void AudioEngine::Impl::mix(float* out, int n) {
   if (rain.g > 1e-5f || rain.target > 1e-5f) {
     if (!rain.init) { rain.lp.setWA("lowpass", 1400, 0.5); rain.hp.setWA("highpass", 5200, 0.6); rain.init = true; }
     for (int i = 0; i < n; i++) {
+      if ((i & 63) == 0 && std::abs(rain.ft - rain.f) > 1) { rain.f += (rain.ft - rain.f) * 0.05f; rain.lp.setWA("lowpass", rain.f, 0.5); }
       rain.g += (rain.target - rain.g) * 0.0004f;
       float nz = rain.r.pm(), s = (rain.lp.run(nz) * 0.9f + rain.hp.run(rain.r.pm()) * 0.25f) * rain.g * master;
       bus[2 * i] += s; bus[2 * i + 1] += s * 0.97f;

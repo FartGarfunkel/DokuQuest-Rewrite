@@ -50,6 +50,22 @@ int main(int argc, char** argv) {
   CHECK(rigged == types, "%d have a rig", rigged);
   CHECK(nan == 0, "poses are finite");
   CHECK(!isCreatureType("phantom"), "no phantoms, ever");
+  {   // state changes ease (sim/creature_rig.cpp rigBlend): a wolf sitting down doesn't snap
+    auto e = createEntity("wolf"); auto* c = dynamic_cast<Creature*>(e.get());
+    const RigModel* M = c ? rigModel(c->modelKey()) : nullptr;
+    if (M) {
+      c->onGround = true;
+      auto pose = [&](float t) { c->age = t; rigPose(*c, *M, creatureBase(*c, true)); return c->mats; };
+      auto far = [](const std::vector<mat4>& a, const std::vector<mat4>& b) { float d = 0; for (size_t i = 0; i < a.size() && i < b.size(); i++) for (int x = 0; x < 4; x++) for (int y = 0; y < 4; y++) d = std::max(d, std::fabs(a[i][x][y] - b[i][x][y])); return d; };
+      pose(1.0f); auto stand = pose(1.02f);
+      c->sitting = true;
+      auto first = pose(1.04f);
+      CHECK(far(first, stand) < 0.05f, "a wolf sitting down starts from where it stood (%.3f)", far(first, stand));
+      for (float t = 1.06f; t < 1.6f; t += 0.02f) pose(t);
+      auto later = pose(1.6f);
+      CHECK(far(later, stand) > 0.1f, "and ends up sitting");
+    }
+  }
 
   ThreadPool pool(1);
   EventBus events;

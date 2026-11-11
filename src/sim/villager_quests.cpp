@@ -2,6 +2,7 @@
 // with the board's additions from dungeons.js, rpg.js scout/word, livingworld.js named foes and hearth.js the
 // missing; fairplay.js lapses; together.js shared jobs), the shops, the conversation (NpcTalk and everything that
 // adds to it: riftarc.js, riftlore.js, hearth.js, paths.js, rpg.js) and paths.js's path choice and talents.
+#include "core/tool_parts.h"
 #include "sim/villagers_internal.h"
 #include "sim/skills.h"
 #include "sim/rpg.h"
@@ -328,7 +329,7 @@ bool shopTrade(Level& lv, Player& p, const Village& v, int npcIndex, const std::
   }
   if (tab == "buy") {
     if (!payCoins(lv, p, l.price)) { say = "That's " + plural(l.price, "gold coin") + ". You haven't enough."; sfxUi(lv, p, "click_off"); return false; }
-    vGive(lv, p, ItemStack(l.id, l.n));
+    vGive(lv, p, proceduralOf(l.id, l.n));   // metal gear comes procedural (core/tool_parts.h)
     if (villageMakes(l.id)) { json& VS = villageStock(lv, v); VS[l.id] = std::max(0, VS.value(l.id, 0) - l.n); }
   } else {
     if (countOf(p, l.id) < l.n) { say = "I need " + std::to_string(l.n) + " of those."; sfxUi(lv, p, "click_off"); return false; }

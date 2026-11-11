@@ -9,6 +9,7 @@
 #include "core/init.h"
 #include "mod/modloader.h"
 #include "render/gl.h"
+#include "render/gpu_select.h"
 #include "assets/tileset.h"
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
@@ -17,6 +18,15 @@
 #include <thread>
 #include <cstring>
 #include <cmath>
+
+#ifdef _WIN32
+// Windows laptops: ask the NVIDIA (Optimus) and AMD (PowerXpress) drivers for the dedicated card. They only look for
+// these in the .exe itself, so they live here and not in a library. (render/gpu_select.cpp does the same on Linux.)
+extern "C" {
+__declspec(dllexport) unsigned long NvOptimusEnablement = 1;
+__declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
+#endif
 
 namespace dq {
 namespace {
@@ -285,6 +295,7 @@ int main(int argc, char** argv) {
   L.mods = std::make_unique<ModLoader>();
   L.mods->scan();
   L.mods->loadData();   // data packs, so server worlds have the mods' blocks and items
+  applyGpuChoice(L.settings.gpu);   // render/gpu_select.cpp: the launcher's own GL (its GPU suggestion) and the game it starts
   if (!initWindow(L)) return 2;
   if (L.settings.preset == "auto") {   // first start: take the suggestion for this computer
     L.settings.applyPreset(L.gpu.preset); L.settings.renderer = L.gpu.kind; L.saveSettings();

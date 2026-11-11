@@ -67,7 +67,7 @@ struct AudioEngine::Impl {
   float roomG = 0, caveG = 0, roomT = 0, caveT = 0;
   bool under = false; float uwG = 0, uwL = 0, uwR = 0;   // under water: everything muffled (no cave ring)
   struct Wind { float g = 0, target = 0, f = 420, ft = 420; snd::Biquad bp; snd::Rng r{77}; } wind;
-  struct Rain { float g = 0, target = 0; bool init = false; snd::Biquad lp, hp; snd::Rng r{91}; } rain;   // weather.js rain hiss (looping noise)
+  struct Rain { float g = 0, target = 0, f = 1400, ft = 1400; bool init = false; snd::Biquad lp, hp; snd::Rng r{91}; } rain;   // (f: the low-pass, lower under a roof)   // weather.js rain hiss (looping noise)
   struct Drone { float g = 0, target = 0; double t = 0; bool init = false; snd::Biquad bp; snd::Rng r{57}; } drone;   // the End: a low breathing drone and a hollow wind (ambience.cpp)
   std::unique_ptr<snd::MusicSynth> music;
   void mix(float* out, int frames);

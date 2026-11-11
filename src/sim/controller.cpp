@@ -13,6 +13,24 @@
 #include <random>
 #include <unordered_set>
 #include "sim/quiver.h"
+#include "sim/piles.h"
+#include "sim/immersive.h"
+#include "sim/knapping.h"
+#include "sim/firestarter.h"
+#include "sim/straw.h"
+#include "sim/pit_kiln.h"
+#include "core/metals.h"
+#include "sim/metalwork.h"
+#include "sim/forge.h"
+#include "sim/heat.h"
+#include "sim/anvil.h"
+#include "sim/bloomery.h"
+#include "sim/prospect.h"
+#include "sim/quern.h"
+#include "sim/barrel.h"
+#include "sim/panning.h"
+#include "sim/cavein.h"
+#include "sim/spinning.h"
 #include "world/rug.h"
 
 namespace dq {
@@ -78,7 +96,7 @@ void PlayerController::consumeHeld(int n) {
 }
 
 static bool itemHasUse(const ItemDef& d) {
-  for (const char* k : {"cape", "block", "heartCrystal", "cart", "boat", "food", "backpack", "bucket", "igniter", "pocketKey", "summon", "armor", "bow", "spyglass", "bonemeal", "plants", "disc", "bottle", "drink", "summonWand", "paintbrush"})
+  for (const char* k : {"cape", "block", "heartCrystal", "cart", "boat", "food", "backpack", "bucket", "igniter", "pocketKey", "summon", "armor", "bow", "spyglass", "bonemeal", "plants", "disc", "bottle", "drink", "summonWand", "paintbrush", "pottery"})
     if (d.has(k)) return true;
   return false;
 }
@@ -435,6 +453,11 @@ float PlayerController::breakTime(BlockId id, const RayHit* hit) {
   if (b.hardness < 0) return INFINITY;
   if (b.hardness == 0) return 0;
   const ToolInfo* tool = heldTool(p);
+  if (needsAxe(lv, id) && !(tool && tool->type == "axe")) {   // immersive: no punching trees (TFC)
+    static double hintAt = -10;
+    if (nowSeconds() - hintAt > 4) { hintAt = nowSeconds(); toastMsg("You need an axe"); }
+    return INFINITY;
+  }
   bool right = tool && !b.tool.empty() && tool->type == b.tool;
   bool harvest = !b.tier || (right && tool->tier >= b.tier);
   if (b.has("needTier") && (!harvest || (p.realm == REALM_MAIN && dimOfY(ifloor(p.pos.y)) == DIM_END))) return INFINITY;
@@ -483,8 +506,13 @@ void PlayerController::breakBlock(int x, int y, int z) {
   vec3 c = vec3(x, y, z) + vec3(0.5f);
   sfxMaterial(lv, b.sound, "break", c);
   burst(lv, c, b.key, 14, 1.2f);
-  if (harvest && !p.creative()) dropBlockItems(lv, w, x, y, z, id, false, meta, heldTool(p));
+  const std::string oreMetal = immersive(lv) ? metalOfOreBlock(b.key) : std::string();
+  if (harvest && !p.creative() && !oreMetal.empty()) dropItem(lv, p.realm, ItemStack(oreMetal + "_ore_piece", 1 + (rnd() < 0.5 ? 1 : 0)), c, true, (const vec3*)nullptr);   // immersive: ore pieces (core/metals.h)
+  else if (harvest && !p.creative()) dropBlockItems(lv, w, x, y, z, id, false, meta, heldTool(p));
   if (!p.creative()) if (const std::string fr = b.str("fruit"); !fr.empty() && rnd() < 0.15) dropItem(lv, p.realm, ItemStack(fr, 1), c, true, (const vec3*)nullptr);   // fruit from leaves (cherries)
+  strawOnBreak(lv, *this, p, x, y, z, id);   // sim/straw.h: straw from grass cut with a knife or scythe
+  if (!p.creative() && immersive(lv) && isRock(id)) caveIn(lv, w, x, y, z, (float)rnd());   // sim/cavein.h: now and then a little rubble from an unsupported roof
+  if (!p.creative() && bhas(id, BF::IsLeaves) && immersive(lv) && rnd() < LEAF_STICK_CHANCE) dropItem(lv, p.realm, ItemStack("stick", 1), c, true, (const vec3*)nullptr);   // immersive: sticks from leaves
   if (harvest && b.num("xp") > 0) { vec3 at(x + 0.5f, y + 0.8f, z + 0.5f); grantXP(lv, p, (int)b.num("xp"), &at); }
   wearHeld(lv, p, b.hardness > 0 ? 1 : 0);
   p.stats["blocksMined"] = p.stats.value("blocksMined", 0) + 1;
@@ -597,6 +625,108 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     if (!lv.events->emit("itemUse", a)) { swingArm(); return; }
     def = held.empty() ? nullptr : R.item(held.id);   // a handler may have changed the stack
   }
+  // quenching (sim/heat.h): something hot used on water (a source, a cauldron) or held in it is cooled at once
+  if (!fromOff && !repeat && !held.empty() && itemHeat(held) > 100) {
+    bool water = p.inWater || p.contacts.water;
+    if (hit) { const ivec3 n = hit->block + hit->normal; water = water || reg().tLiquid[w.getBlock(n.x, n.y, n.z)] == 1 || reg().tLiquid[hit->id] == 1 || (reg().block(hit->id).has("cauldron") && (w.getMeta(hit->block.x, hit->block.y, hit->block.z) & 3)); }
+    if (water && quench(held)) {
+      const vec3 at = hit ? vec3(hit->block) + vec3(0.5f, 1, 0.5f) : p.pos + vec3(0, 1, 0);
+      lv.fx->sound("fizz", at, 16); lv.fx->particles("campfire_smoke", at, 10, {{"spread", 0.3}, {"vel", {0, 1.4, 0}}, {"life", 1.2}, {"size", 0.14}, {"rise", true}});
+      swingArm(); return;
+    }
+  }
+  // scraping a soaked hide (in the other hand) with a knife (sim/barrel.h)
+  if (!fromOff && !repeat && def && def->has("knife") && p.offhand[0].id == "soaked_hide" && scrapeHide(p.offhand[0], held)) { swingArm(); return; }
+  // the prospector's pick (sim/prospect.h): tapped on rock, what ore is near
+  if (!fromOff && !repeat && hit && def && def->has("propick")) { toastMsg(prospect(w, hit->block.x, hit->block.y, hit->block.z)); wearHeld(lv, p, 1); swingArm(); return; }
+  // smithing (sim/anvil.h): use an anvil with a hammer in hand (the hot piece in the other) opens the anvil's work; a hammer
+  // used on the top of raw stone makes a stone anvil there
+  if (!fromOff && !repeat && hit && def && def->has("hammer")) {
+    const ivec3 b = hit->block;
+    const int tier = anvilTierOfBlock(reg().block(hit->id).key);
+    if (tier >= 0) { openScreen(lv, p, "anvil_smith", {{"pos", {b.x, b.y, b.z}}, {"tier", tier}}); swingArm(); return; }
+    static const std::unordered_set<std::string> RAW = {"stone", "granite", "diorite", "andesite", "basalt", "deepslate", "limestone", "marble", "tuff", "blackstone"};
+    if (hit->normal.y == 1 && RAW.count(reg().block(hit->id).key) && reg().blockId("stone_anvil")) {
+      w.setBlock(b.x, b.y, b.z, reg().blockId("stone_anvil")); wearHeld(lv, p, 1); swingArm(); sfxMaterial(lv, "stone", "hit", vec3(b) + vec3(0.5f));
+      toastMsg("A stone anvil: use it with your hammer, hot metal in your other hand");
+      return;
+    }
+  }
+  // the forge (sim/forge.h): sneak + use charcoal into a stone-ringed pit makes one; on it charcoal feeds it, metal and
+  // vessels go in to heat, an empty hand takes the last one out
+  // what a station hands back goes in the bag, or at your feet when the bag is full (never lost)
+  auto takeOut = [&](ItemStack s) { if (int left = giveItem(lv, p, s); left > 0) { s.n = left; dropItem(lv, p.realm, s, p.pos + vec3(0, 1, 0), true, (const vec3*)nullptr); } };
+  if (!fromOff && !repeat && hit) {
+    const ivec3 b = hit->block;
+    if (reg().block(hit->id).key == "sluice" && held.empty()) { ItemStack f = sluiceTake(w, b.x, b.y, b.z); if (!f.empty()) { takeOut(f); swingArm(); } return; }   // sim/panning.h
+    if (reg().block(hit->id).key == "sealed_barrel") {   // sim/barrel.h: water by the bucket, things in, sneak seals
+      if (p.sneaking) { if (!barrelSeal(lv, w, b.x, b.y, b.z, true)) barrelSeal(lv, w, b.x, b.y, b.z, false); swingArm(); toastMsg(barrelLiquid(w, b.x, b.y, b.z).empty() ? "Empty" : "Holding " + barrelLiquid(w, b.x, b.y, b.z)); return; }
+      if (!held.empty() && (held.id == "water_bucket" || held.id == "bucket")) { if (barrelPour(w, b.x, b.y, b.z, held)) swingArm(); return; }
+      if (!held.empty()) { if (barrelPut(w, b.x, b.y, b.z, held)) swingArm(); else toastMsg("It's sealed, or full"); return; }
+      ItemStack s = barrelTake(w, b.x, b.y, b.z); if (!s.empty()) { takeOut(s); swingArm(); }
+      return;
+    }
+    if (reg().block(hit->id).key == "bloomery") {   // sim/bloomery.h: iron ore and charcoal in; an empty hand takes a bloom
+      std::string why;
+      if (!held.empty()) { if (bloomeryLoad(w, b.x, b.y, b.z, held, &why)) swingArm(); else if (!why.empty()) toastMsg(why); return; }
+      ItemStack bl = bloomeryTake(w, b.x, b.y, b.z);
+      if (!bl.empty()) { takeOut(bl); swingArm(); } else toastMsg("Iron ore and as much charcoal; light it with a firestarter");
+      return;
+    }
+    if (reg().block(hit->id).key == "bellows" && held.empty() && bellowsPump(w, b.x, b.y, b.z)) { swingArm(); sfxMaterial(lv, "wool", "step", vec3(b) + vec3(0.5f)); return; }   // pumped by hand
+    if (reg().block(hit->id).key == "forge") {
+      if (!held.empty() && held.id == "charcoal") { if (!forgeAddFuel(w, b.x, b.y, b.z, held)) toastMsg("The forge is full of charcoal"); else swingArm(); return; }
+      if (!held.empty() && heatable(held.id)) { if (!forgePut(w, b.x, b.y, b.z, held)) toastMsg("There's no more room in the forge"); else swingArm(); return; }
+      if (held.empty()) { ItemStack s = forgeTake(w, b.x, b.y, b.z); if (!s.empty()) { takeOut(s); swingArm(); } return; }
+    }
+    if (p.sneaking && hit->normal.y == 1 && !held.empty() && held.id == "charcoal" && forgeBuild(w, b.x, b.y + 1, b.z, held)) { swingArm(); sfxMaterial(lv, "stone", "place", vec3(b) + vec3(0.5f, 1.1f, 0.5f)); return; }
+  }
+  // the pit kiln (sim/pit_kiln.h): sneak + use with unfired pottery on the ground sets it down; on a kiln straw, then logs,
+  // go on; an empty hand takes a piece back
+  if (!fromOff && !repeat && hit) {
+    const ivec3 b = hit->block;
+    if (hit->id && reg().block(hit->id).has("kiln")) {
+      std::string why;
+      if (!held.empty() && isUnfired(held.id) && p.sneaking) { if (kilnPlace(w, b.x, b.y, b.z, std::max(0, targetQuarter()), held)) swingArm(); return; }
+      if (!held.empty() && (held.id == "straw" || reg().itemMatches(held.id, "#log"))) {
+        if (kilnAdd(w, b.x, b.y, b.z, held, &why)) { swingArm(); sfxMaterial(lv, held.id == "straw" ? "grass" : "wood", "place", vec3(b) + vec3(0.5f)); }
+        else if (!why.empty()) toastMsg(why);
+        return;
+      }
+      if (held.empty()) { ItemStack s = kilnTake(w, b.x, b.y, b.z, targetQuarter()); if (!s.empty()) { takeOut(s); swingArm(); } return; }
+    }
+    if (p.sneaking && hit->normal.y == 1 && !held.empty() && isUnfired(held.id)) {
+      if (kilnPlace(w, b.x, b.y + 1, b.z, std::max(0, targetQuarter()), held)) { swingArm(); sfxMaterial(lv, "gravel", "place", vec3(b) + vec3(0.5f, 1.1f, 0.5f)); }
+      return;
+    }
+  }
+  // ingot and log piles (sim/piles.h): sneak + use with an ingot or a log on the ground sets one down, on a pile adds one;
+  // use on a pile takes one back
+  if (!fromOff && !repeat && hit) {
+    const PileKind pk = pileKindOfBlock(hit->id);
+    const ivec3 b = hit->block;
+    std::string why;
+    if (pk != PileKind::None) {
+      const char* mat = pk == PileKind::Ingots ? "metal" : "wood";
+      if (p.sneaking && !held.empty() && pileKindOfItem(held.id) == pk) {
+        if (pileAdd(w, b.x, b.y, b.z, held, &why)) { swingArm(); sfxMaterial(lv, mat, "place", vec3(b) + vec3(0.5f)); }
+        else if (!why.empty()) toastMsg(why);
+        return;
+      }
+      ItemStack one = pileTake(w, b.x, b.y, b.z);
+      if (!one.empty() && giveItem(lv, p, one) > 0) {   // no room: back on the pile
+        if (w.getBlock(b.x, b.y, b.z) == AIR) pilePlace(w, b.x, b.y, b.z, one); else pileAdd(w, b.x, b.y, b.z, one);
+        toastMsg("No room to pick that up", "warn");
+      }
+      swingArm();
+      return;
+    }
+    if (p.sneaking && hit->normal.y == 1 && !held.empty() && pileKindOfItem(held.id) != PileKind::None) {
+      const bool ingots = pileKindOfItem(held.id) == PileKind::Ingots;
+      if (pilePlace(w, b.x, b.y + 1, b.z, held, &why)) { swingArm(); sfxMaterial(lv, ingots ? "metal" : "wood", "place", vec3(b) + vec3(0.5f, 1.1f, 0.5f)); return; }
+      if (ingots) { if (!why.empty()) toastMsg(why); return; }   // (a log that can't make a pile is placed as a block below)
+    }
+  }
   // furnish.js: crouched, a block in hand goes against a chest, door, table... instead of opening it
   if (!fromOff && !repeat && p.sneaking && hit && def && !def->block.empty() && R.blockId(def->block) && !def->has("backpack") && !te) {
     if (interactable(hit->id) && !R.block(hit->id).has("pile")) { placeBlock(*hit, *def, held); return; }
@@ -650,7 +780,18 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   // nothing useful in the main hand: the off hand acts (a torch while holding a pickaxe)
   if ((held.empty() || (def && !itemHasUse(*def))) && !p.offhand[0].empty() && !fromOff) { useOffhand(repeat, in); return; }
   if (held.empty() || !def) return;
+  if (!fromOff && held.id == "firestarter" && firestarterUse(lv, p, hit, repeat)) { if (!repeat) swingArm(); return; }   // hold use: sim/firestarter.h
+  if (!fromOff && hit && quernUse(lv, p, *hit, repeat)) { swingArm(); return; }   // hold use: sim/quern.h
+  if (!fromOff && hit && panUse(lv, p, *hit, repeat)) { if (!repeat) swingArm(); return; }   // hold use: sim/panning.h
+  if (!fromOff && spindleUse(lv, p, repeat)) return;   // hold use: sim/spinning.h
+  if (!fromOff && !repeat && metalworkUse(lv, p)) { swingArm(); return; }   // sim/metalwork.h: vessels and molds (on a fire the camping code sets them on it first)
   if (repeat && def->block.empty()) return;
+  // knapping (sim/knapping.h): use in the air with stones, flint (2 or more) or clay (5) in hand; sneak + use keeps the old
+  // ways (a pebble thrown)
+  if (!repeat && !fromOff && !hit && !te && !p.sneaking) if (const std::string km = knapMaterialOf(held.id); !km.empty()) {
+    int have = 0; for (auto& s : p.inv) if (s.id == held.id) have += s.n;
+    if (have >= knapNeeds(km)) { openScreen(lv, p, "knapping", {{"material", km}, {"item", held.id}}); return; }
+  }
   for (auto& h : hooks().useItem) if (h(*this, held, *def, repeat)) return;
   // sneak + use with an item that isn't a block sets it down on the ground
   if (!repeat && p.sneaking && hit && hit->normal.y == 1 && def->block.empty()) {

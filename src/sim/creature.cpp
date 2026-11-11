@@ -1,8 +1,11 @@
 // sim/creature.cpp — the creature core (game/entities.js Mob: update, hurt, die, drawing state) with the
 // layers the later modules wrapped round it: dismember.js, bestiary.js, sounds2.js, monsters.js,
 // quarrels.js, pets.js (hurt), nightmobs.js (jockeys, slime split), husbandry.js (kept animals).
+#include "core/tool_parts.h"
 #include <cstdlib>
 #include "sim/creature.h"
+#include "sim/barrel.h"
+#include "sim/rules.h"
 #include "sim/mount_gear.h"
 #include "sim/endstory.h"
 #include "sim/creature_rig.h"
@@ -551,15 +554,16 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   auto roll = [](int a, int b) { return a + (int)std::floor(frand() * (b - a + 1)); };
   vec3 at = pos + vec3(0, 0.5f, 0);
   bool noDrops = data.contains("noDrops") && data["noDrops"] == true;   // summons, a called-back dragon (its own table)
-  if (!baby && !noDrops) for (auto& d : T->drops) if (frand() < d.chance) { int n = roll(d.lo, d.hi); if (n > 0) dropItem(lv, realm, ItemStack(d.id, n), at, true); }
+  const bool imm = rule(lv, "immersive");
+  if (!baby && !noDrops) for (auto& d : T->drops) if (frand() < d.chance) { int n = roll(d.lo, d.hi); if (n > 0) dropItem(lv, realm, proceduralOf(hideFor(d.id, imm), n), at, true); }   // (metal gear procedural; immersive: raw hide for leather, sim/barrel.h)
   if (!baby && !noDrops && !variant.empty()) if (const auto* vd = T->vdef(variant))   // what its story left on it
-    for (auto& d : vd->drops) if (frand() < d.chance) { int n = roll(d.lo, d.hi); if (n > 0) dropItem(lv, realm, ItemStack(d.id, n), at, true); }
+    for (auto& d : vd->drops) if (frand() < d.chance) { int n = roll(d.lo, d.hi); if (n > 0) dropItem(lv, realm, proceduralOf(d.id, n), at, true); }
   // mob heads, only to a player's blow: a wither skeleton's skull 2.5 % of the time (Minecraft), any other head 1 %
   if (!baby && !noDrops && src.attacker && dynamic_cast<Player*>(ent(lv, src.attacker))) {
     std::string hk = type + "_skull"; if (!reg().item(hk)) hk = type + "_head";
     if (reg().item(hk) && frand() < (type == "wither_skeleton" ? 0.025f : 0.01f)) dropItem(lv, realm, ItemStack(hk, 1), at, true);
   }
-  if (!noDrops) for (int i = 0; i < 4; i++) if (!armourPiece(i).empty() && frand() < 0.085f) dropItem(lv, realm, ItemStack(armourPiece(i), 1), at, true);
+  if (!noDrops) for (int i = 0; i < 4; i++) if (!armourPiece(i).empty() && frand() < 0.085f) dropItem(lv, realm, proceduralOf(armourPiece(i)), at, true);
   mountGearDrops(lv, *this);   // its saddle, horse armour, chest or saddle bags and what's in them (sim/mount_gear.cpp)
   if (T->woolly && !sheared && !baby) dropItem(lv, realm, ItemStack(color == "white" || color.empty() ? "wool" : color + "_wool", 1), at, true);
   if (type == "cinder_golem") {

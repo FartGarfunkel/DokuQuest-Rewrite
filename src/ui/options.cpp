@@ -219,8 +219,19 @@ private:
         if (kit.range("Render Scale", &s.scale, 0.4f, 1, 0.05f, pct(s.scale), D.scale, "Render fewer pixels for smoother play.", &rel)) applyLight = true;
       }
       if (kit.category("Visuals")) {
-        { int cur = clampv(s.extra.value("dreamLight", 1), 0, 2); if (kit.cycle("Lighting", &cur, {"Classic", "Dreamlike", "Dreamlike (Strong)"}, 1, "Dreamlike: a soft glow round bright things, golden light when the sun is low, soft focus (after Horizon's shaders).", 120)) { s.extra["dreamLight"] = cur; applyNow = true; } }
-        if (kit.range("Brightness", &s.brightness, 0, 1, 0.05f, s.brightness <= 0 ? "Moody" : s.brightness >= 1 ? "Bright" : pct(s.brightness), D.brightness, "How much you can see in the dark.", &rel)) applyLight = true;
+        { int cur = clampv(s.extra.value("dreamLight", 0), 0, 2); if (kit.cycle("Lighting", &cur, {"Classic", "Dreamlike", "Dreamlike (Strong)"}, 0, "Dreamlike: a soft glow round bright things, golden light when the sun is low, soft focus (after Horizon's shaders).", 120)) { s.extra["dreamLight"] = cur; applyNow = true; } }
+        if (kit.range("Brightness", &s.brightness, 0, 1, 0.05f, s.brightness <= 0 ? "Moody" : s.brightness >= 1 ? "Bright" : pct(s.brightness), D.brightness, "Lights up caves and the night, like Minecraft's Brightness. Full daylight stays the same.", &rel)) applyLight = true;
+        {   // Settings::applyColourStyle; moving a slider makes it Custom (render/colour_filter_layer.cpp draws it)
+          static const char* styles[] = {"vibrant", "natural", "classic", "custom"};
+          int cur = 3; for (int i = 0; i < 4; i++) if (s.colourStyle == styles[i]) cur = i;
+          int pick = cur;
+          if (kit.cycle("Colour Style", &pick, {"Vibrant", "Natural", "Classic", "Custom"}, 1, "Vibrant: the colours as drawn. Natural: a little softer. Classic: muted and flatter, like Minecraft Alpha and Beta (blacks less deep on an OLED).", 120) && pick != cur) {
+            if (pick < 3) s.applyColourStyle(styles[pick]); else s.colourStyle = "custom";
+            applyLight = true;
+          }
+          if (kit.range("Saturation", &s.saturation, 0, 1.5f, 0.05f, pct(s.saturation), D.saturation, "How colourful the world is. 100% is the colours as drawn.", &rel)) { s.colourStyle = "custom"; applyLight = true; }
+          if (kit.range("Contrast", &s.contrast, 0.5f, 1.5f, 0.05f, pct(s.contrast), D.contrast, "How far apart the darks and lights are. Lower is flatter and softer.", &rel)) { s.colourStyle = "custom"; applyLight = true; }
+        }
         { bool cl = s.extra.value("colouredLight", true); if (kit.toggle("Coloured Light", &cl, true, "Redstone glows red, soul fire blue, sea lanterns cyan, the coloured lamps their colour (BTA).")) { s.extra["colouredLight"] = cl; applyNow = true; } }
         { int cur = clampv(s.microVoxels, 0, 2); if (kit.cycle("Block Detail", &cur, {"Flat", "Shaded", "Raised"}, D.microVoxels, "Every block is 32\xC3\x97" "32\xC3\x97" "32 little voxels coloured from its texture. Flat is fastest; Raised gives the voxels depth.")) { s.microVoxels = cur; applyNow = true; } }
         { int cur = clampv(s.waterQuality, 0, 2); if (kit.cycle("Water", &cur, {"Flat", "Waves", "Reflections"}, D.waterQuality, "Reflections are waves and reflections.")) { s.waterQuality = cur; applyNow = true; } }
@@ -234,6 +245,15 @@ private:
         { bool g = s.extra.value("grass3d", s.preset != "potato"); if (kit.toggle("3D Grass", &g, s.preset != "potato", "Blades of grass waving near you.")) { s.extra["grass3d"] = g; applyNow = true; } }
         if (kit.toggle("Waving Plants", &s.wavingPlants, D.wavingPlants, "Grass, leaves and water move in the wind.")) applyNow = true;
         if (kit.toggle("See Through Portals", &s.portalViews, D.portalViews, "Portals show the other side; you step straight through.")) applyNow = true;
+      }
+      if (kit.category("Weather")) {   // render/weather_layer.cpp (after Particle Rain)
+        { static const int amounts[] = {0, 600, 1500, 3000}; int cur = 2; for (int i = 0; i < 4; i++) if (s.weatherParticles == amounts[i]) cur = i;
+          int pick = cur;
+          if (kit.cycle("Weather Particles", &pick, {"Off", "Low", "Normal", "High"}, 2, "Rain, snow, dust and fog around you. Fewer is faster.") && pick != cur) { s.weatherParticles = amounts[pick]; applyNow = true; } }
+        { float d = (float)s.weatherDist; if (kit.range("Weather Distance", &d, 12, 32, 2, std::to_string((int)d) + " blocks", (float)D.weatherDist, "How far around you rain and snow fall.", &rel)) { s.weatherDist = (int)d; applyNow = true; } }
+        if (kit.toggle("Splashes & Ripples", &s.weatherSurfaceFx, D.weatherSurfaceFx, "Rain splashing, rings on water, drops running down walls.")) { applyNow = true; }
+        if (kit.toggle("Ground Fog", &s.groundFog, D.groundFog, "Banks of fog in swamps and jungles, and after the rain.")) { applyNow = true; }
+        if (kit.toggle("Height Fog", &s.heightFog, D.heightFog, "Fog lying in the valleys, thinning as you climb.")) { applyNow = true; }
       }
       if (kit.category("Post-Processing")) {
         std::vector<std::string> sps = listShaderPacks();

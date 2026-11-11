@@ -82,6 +82,14 @@ enable_testing()
 add_executable(dq-creature-test tools/test/creature_test.cpp)
 target_link_libraries(dq-creature-test PRIVATE dqcore)
 add_test(NAME creatures COMMAND dq-creature-test)
+# weather particles, sprites, collision (tools/test/weather_test.cpp): pure parts of render/weather_*, no GL context
+add_executable(test_weather tools/test/weather_test.cpp)
+target_link_libraries(test_weather PRIVATE dqclient)
+add_test(NAME weather COMMAND test_weather)
+# player animation: blending between states, the poses (tools/test/anim_test.cpp): pure parts of render/char_*, no GL
+add_executable(test_anim tools/test/anim_test.cpp)
+target_link_libraries(test_anim PRIVATE dqclient)
+add_test(NAME anim COMMAND test_anim)
 
 # every item used and every block placed/used/broken through the player controller; prints anything odd (tools/sweep.cpp)
 add_executable(dq-sweep tools/sweep.cpp)
@@ -145,6 +153,30 @@ target_link_libraries(test_song PRIVATE dqclient)
 # Content features test (headless): maps, fishing, camping, travel, elytra, the stable, places, farming. Run: build/test_content
 add_executable(test_content tools/test_content.cpp)
 target_link_libraries(test_content PRIVATE dqcore)
+# Ingot and log piles (headless, sim/piles.h). Run: build/test_piles
+add_executable(test_piles tools/test_piles.cpp)
+target_link_libraries(test_piles PRIVATE dqcore)
+add_test(NAME piles COMMAND test_piles)
+# The immersive progression (headless: the rule, trees, leaves, ground items, knapping, recipes). Run: build/test_immersive
+add_executable(test_immersive tools/test_immersive.cpp)
+target_link_libraries(test_immersive PRIVATE dqcore)
+add_test(NAME immersive COMMAND test_immersive)
+# Fire and clay (headless: heat, firepit, firestarter, straw, pottery, pit kiln, charcoal pit). Run: build/test_fire
+add_executable(test_fire tools/test_fire.cpp)
+target_link_libraries(test_fire PRIVATE dqcore)
+add_test(NAME fire COMMAND test_fire)
+# Metallurgy (headless: metals, alloys, part tools of any makeup, ores, casting, forge, anvil, bloomery). Run: build/test_metal
+add_executable(test_metal tools/test_metal.cpp)
+target_link_libraries(test_metal PRIVATE dqcore)
+add_test(NAME metal COMMAND test_metal)
+# Crafting and materials (headless: saw and lumber, quern, barrel and leather, panning). Run: build/test_materials
+add_executable(test_materials tools/test_materials.cpp)
+target_link_libraries(test_materials PRIVATE dqcore)
+add_test(NAME materials COMMAND test_materials)
+# The world (headless: rock layers and ores, cave-ins, crops and plants). Run: build/test_world
+add_executable(test_world tools/test_world.cpp)
+target_link_libraries(test_world PRIVATE dqcore)
+add_test(NAME world COMMAND test_world)
 # The End, dragons, the Deep Dark's guardian, the watcher and the story (headless). Run: build/test_endstory
 add_executable(test_endstory tools/test_endstory.cpp)
 target_link_libraries(test_endstory PRIVATE dqcore)
@@ -159,7 +191,7 @@ add_executable(test_redstone tools/test_redstone.cpp)
 target_link_libraries(test_redstone PRIVATE dqcore)
 
 # every program finds data/ and assets/ next to it
-foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone)
+foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_piles test_immersive test_fire test_metal test_materials test_world test_anim test_weather)
   if(TARGET ${t})
     add_dependencies(${t} dq_runtime_data)
   endif()

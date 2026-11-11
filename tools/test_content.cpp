@@ -321,9 +321,11 @@ int main(int argc, char** argv) {
     check(ti.type == "pickaxe" && ti.durability > iron.durability && ti.durability < dia.durability && ti.tier == 3 && ti.speed > iron.speed * 0.8f,
           "its stats are the three's, mixed (dur " + std::to_string(ti.durability) + ", speed " + std::to_string(ti.speed) + ", tier " + std::to_string(ti.tier) + ")");
     check(stackName(t) == "Iron, Diamond & Copper Pickaxe", "and its name says so: " + stackName(t));
-    check(partToolModelKey(t) == "pt:pickaxe:iron,diamond,copper:stick:", "its model key: " + partToolModelKey(t));
+    check(partToolModelKey(t) == "pt:pickaxe:iron;diamond;copper:stick:", "its model key: " + partToolModelKey(t));
     CraftMatch plain = matchGrid(grid({"iron_ingot", "iron_ingot", "iron_ingot", "", "stick", "", "", "stick", ""}), 3);
-    check(plain.ok && plain.out == "iron_pickaxe", "all iron is still the ordinary iron pickaxe");
+    check(plain.ok && plain.out == "mixed_pickaxe" && stackName(plain.result()) == "Iron Pickaxe", "all iron: the procedural iron pickaxe (every metal tool is)");
+    CraftMatch woody = matchGrid(grid({"planks", "planks", "planks", "", "stick", "", "", "stick", ""}), 3);
+    check(woody.ok && woody.out == "wood_pickaxe", "all wood is still the ordinary wooden pickaxe");
     CraftMatch sw = matchGrid(grid({"", "gold_ingot", "", "", "steel_ingot", "", "", "bone", ""}), 3);
     ItemStack swt = sw.ok ? sw.result() : ItemStack();
     check(swt.id == "mixed_sword" && stackName(swt) == "Bone-Hafted Golden & Steel Sword", "a gold-tipped steel sword on a bone haft: " + stackName(swt));

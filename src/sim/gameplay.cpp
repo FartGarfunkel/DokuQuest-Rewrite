@@ -266,6 +266,7 @@ void spillEntity(Level& lv, World& w, const json& ent, int x, int y, int z) {
   if (ent.contains("stack")) { ItemStack is = ItemStack::fromJson(ent["stack"]); if (!is.empty()) st.push_back(is); }
   if (ent.contains("item")) { ItemStack is = ItemStack::fromJson(ent["item"]); if (!is.empty()) st.push_back(is); }
   if (ent.contains("rack") && ent["rack"].is_array()) for (auto& s : ent["rack"]) { ItemStack is = ItemStack::fromJson(s); if (!is.empty()) st.push_back(is); }   // weapon racks
+  if (ent.contains("out") && ent["out"].is_array()) for (auto& s : ent["out"]) { ItemStack is = ItemStack::fromJson(s); if (!is.empty()) st.push_back(is); }   // a sluice's finds
   if (ent.contains("disc") && ent["disc"].is_string()) st.push_back(ItemStack(ent["disc"], 1));
   if (ent.value("book", false)) st.push_back(ItemStack("book", 1));
   for (auto& s : st) dropItem(lv, w.realm, s, vec3(x + 0.5f, y + 0.5f, z + 0.5f), true);

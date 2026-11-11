@@ -21,4 +21,7 @@ void onCarveChangedRules(Level& lv, World& w, int x, int y, int z);
 
 void registerBlockFxEntities();
 
+// a block falling (sim/cavein.cpp: rubble from a roof): at = the bottom middle of where it starts
+void spawnFallingBlock(Level& lv, int realm, vec3 at, const std::string& key, u8 meta = 0);
+
 } // namespace dq

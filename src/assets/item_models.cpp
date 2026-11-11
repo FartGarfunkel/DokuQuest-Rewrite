@@ -241,8 +241,10 @@ void buildTorch(const TileSet& ts, int tile, VoxelGrid& g, VoxelFaceColor& fc) {
 // middle and right; a sword's tip, then the base), the light and shade of each voxel kept; a haft other than a stick in its
 // colour; and a gem set in the middle of the head.
 static thread_local const std::function<void(VoxelGrid&)>* g_recolour = nullptr;
+// a mix's flecks come in clumps of 2x2x2 voxels (streaks of each metal, not single-voxel noise)
+static u32 clumpHash(int x, int y, int z) { return (u32)(x >> 1) * 73856093u ^ (u32)(y >> 1) * 19349663u ^ (u32)(z >> 1) * 83492791u; }
 static void recolourPartTool(VoxelGrid& g, const std::string& kind, const std::vector<std::string>& mats, const std::string& haft, const std::string& gem) {
-  struct V { size_t i; vec2 p; float lum; bool head; };
+  struct V { size_t i; vec2 p; float lum; bool head; u32 clump; };
   std::vector<V> vs; vs.reserve(4096);
   auto lumOf = [](u32 c) { return ((c & 255) * 0.299f + ((c >> 8) & 255) * 0.587f + ((c >> 16) & 255) * 0.114f) / 255.f; };
   vec2 hm(0), sm(0); int nh = 0, ns = 0; float lh = 0, ls = 0;
@@ -253,7 +255,7 @@ static void recolourPartTool(VoxelGrid& g, const std::string& kind, const std::v
     float hue = 0;
     if (mx > mn) { if (mx == r) hue = std::fmod((gg - b) / (mx - mn), 6.f) / 6.f; else if (mx == gg) hue = ((b - r) / (mx - mn) + 2) / 6.f; else hue = ((r - gg) / (mx - mn) + 4) / 6.f; if (hue < 0) hue += 1; }
     const bool handle = hue > 0.02f && hue < 0.16f && sat > 0.22f && mx < 0.85f;   // the wooden stick's browns
-    V v{g.idx(x, y, z), vec2((float)x, (float)y), lumOf(c), !handle};
+    V v{g.idx(x, y, z), vec2((float)x, (float)y), lumOf(c), !handle, clumpHash(x, y, z)};
     if (v.head) { hm += v.p; nh++; lh += v.lum; } else { sm += v.p; ns++; ls += v.lum; }
     vs.push_back(v);
   }
@@ -270,11 +272,11 @@ static void recolourPartTool(VoxelGrid& g, const std::string& kind, const std::v
   for (auto& v : vs) if (v.head) { float t = glm::dot(v.p - hm, e); t0 = std::min(t0, t); t1 = std::max(t1, t); }
   const int n = (int)mats.size();
   auto colour = [](vec3 rgb, float k, u32 old) { return voxRGBA((int)(rgb.x * 255 * k), (int)(rgb.y * 255 * k), (int)(rgb.z * 255 * k), (u8)(old >> 24)); };
+  std::vector<MaterialPaint> paint; for (auto& m : mats) paint.push_back(materialPaint(m));
   if (n) for (auto& v : vs) if (v.head) {
     int sec = (int)((glm::dot(v.p - hm, e) - t0) / std::max(1e-3f, t1 - t0) * n); sec = clampv(sec, 0, n - 1);
     if (kind == "sword") sec = n - 1 - sec;   // the grid's first is the sword's tip, the far end from the hilt
-    const ToolMaterial* m = toolMaterial(mats[sec]);
-    if (m) g.c[v.i] = colour(m->rgb, clampv(v.lum / std::max(lh, 0.05f), 0.35f, 1.7f), g.c[v.i]);
+    if (toolMaterial(mats[sec])) g.c[v.i] = colour(paint[sec].at(v.clump), clampv(v.lum / std::max(lh, 0.05f), 0.35f, 1.7f), g.c[v.i]);
   }
   static const std::map<std::string, vec3> HAFT = {{"bone", vec3(0.91f, 0.89f, 0.8f)}, {"cinder_rod", vec3(0.82f, 0.36f, 0.16f)}, {"steel_ingot", vec3(0.59f, 0.63f, 0.7f)}};
   if (auto hi = HAFT.find(haft); hi != HAFT.end() && ns) for (auto& v : vs) if (!v.head) g.c[v.i] = colour(hi->second, clampv(v.lum / std::max(ls, 0.05f), 0.4f, 1.6f), g.c[v.i]);
@@ -301,15 +303,16 @@ static void recolourPartArmor(VoxelGrid& g, const std::string& piece, const std:
   for (u32 c : g.c) if (c) { mean += lumOf(c); n++; }
   if (!n) return;
   mean /= n;
+  std::vector<MaterialPaint> paint; for (auto& m : mats) paint.push_back(materialPaint(m));
   for (int z = lo.z; z < hi.z; z++) for (int y = lo.y; y < hi.y; y++) for (int x = lo.x; x < hi.x; x++) {
     u32& c = g.c[g.idx(x, y, z)]; if (!c) continue;
     const float u = (x - lo.x + 0.5f) / (hi.x - lo.x) * P->w, v = (1 - (y - lo.y + 0.5f) / (hi.y - lo.y)) * P->h;
     int best = 0; float bd = 1e9f;
     for (size_t i = 0; i < P->cells.size(); i++) { const float dx = P->cells[i].x + 0.5f - u, dy = P->cells[i].y + 0.5f - v, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = (int)i; } }
-    const ToolMaterial* m = toolMaterial(mats[best]);
-    if (!m) continue;
+    if (!toolMaterial(mats[best])) continue;
+    const vec3 rgb = paint[best].at(clumpHash(x, y, z));
     const float k = clampv(lumOf(c) / std::max(mean, 0.05f), 0.35f, 1.7f);
-    c = voxRGBA((int)(m->rgb.x * 255 * k), (int)(m->rgb.y * 255 * k), (int)(m->rgb.z * 255 * k), (u8)(c >> 24));
+    c = voxRGBA((int)std::min(255.f, rgb.x * 255 * k), (int)std::min(255.f, rgb.y * 255 * k), (int)std::min(255.f, rgb.z * 255 * k), (u8)(c >> 24));
   }
 }
 
@@ -387,10 +390,10 @@ bool shapedBlockBoxes(const ItemDef& def, std::vector<PxBox>& out) {
 namespace { std::shared_ptr<const TileSet>& tilesSnap() { static std::shared_ptr<const TileSet> t; return t; } std::mutex g_snapMx; }
 
 bool buildItemModel(const std::string& key, VoxelModel& out) {
-  if (startsWith(key, "pa:")) {   // mixed armour: "pa:<piece>:<m1,m2,...>"
+  if (startsWith(key, "pa:")) {   // mixed armour: "pa:<piece>:<m1;m2;...>"
     const size_t c1 = key.find(':', 3);
     const std::string piece = key.substr(3, c1 == std::string::npos ? std::string::npos : c1 - 3), list = c1 == std::string::npos ? "" : key.substr(c1 + 1);
-    std::vector<std::string> mats; for (size_t s = 0, e; !list.empty() && s <= list.size(); s = e + 1) { e = list.find(',', s); if (e == std::string::npos) e = list.size(); mats.push_back(list.substr(s, e - s)); }
+    const std::vector<std::string> mats = modelKeyMaterials(list);
     const std::function<void(VoxelGrid&)> fn = [&](VoxelGrid& g) { recolourPartArmor(g, piece, mats); };
     const auto* prev = g_recolour; g_recolour = &fn;
     const bool ok = buildItemModel("iron_" + piece, out);
@@ -398,14 +401,25 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
     out.key = key;
     return ok;
   }
-  if (startsWith(key, "pt:")) {   // a mixed tool, or a tool with a gem: "pt:<kind>:<m1,m2,..>:<haft>:<gem>" / "pt:=<item>:::<gem>"
+  if (startsWith(key, "mc:")) {   // a cast or forged head, or an ingot, of some makeup: "mc:<item>:<material>" (core/metals.h), its metal recoloured
+    const size_t a = key.find(':', 3);
+    if (a == std::string::npos) return false;
+    const std::string item = key.substr(3, a - 3), mat = key.substr(a + 1);
+    const std::function<void(VoxelGrid&)> fn = [&](VoxelGrid& g) { recolourPartTool(g, "", {mat}, "", ""); };
+    const auto* prev = g_recolour; g_recolour = &fn;
+    const bool ok = buildItemModel(item, out);
+    g_recolour = prev;
+    out.key = key;
+    return ok;
+  }
+  if (startsWith(key, "pt:")) {   // a mixed tool, or a tool with a gem: "pt:<kind>:<m1;m2;..>:<haft>:<gem>" / "pt:=<item>:::<gem>"
     std::vector<std::string> f; size_t a = 3;
     for (size_t b; (b = key.find(':', a)) != std::string::npos; a = b + 1) f.push_back(key.substr(a, b - a));
     f.push_back(key.substr(a));
     while (f.size() < 4) f.push_back("");
-    std::vector<std::string> mats; for (size_t s = 0, e; !f[1].empty() && s <= f[1].size(); s = e + 1) { e = f[1].find(',', s); if (e == std::string::npos) e = f[1].size(); mats.push_back(f[1].substr(s, e - s)); }
+    const std::vector<std::string> mats = modelKeyMaterials(f[1]);
     const bool plain = !f[0].empty() && f[0][0] == '=';
-    const std::string baseKey = plain ? f[0].substr(1) : "iron_" + f[0], kind = plain ? (reg().item(baseKey) && reg().item(baseKey)->hasTool ? reg().item(baseKey)->tool.type : "") : f[0];
+    const std::string baseKey = plain ? f[0].substr(1) : partToolBaseItem(f[0]), kind = plain ? (reg().item(baseKey) && reg().item(baseKey)->hasTool ? reg().item(baseKey)->tool.type : "") : partToolBaseKind(f[0]);
     const std::function<void(VoxelGrid&)> fn = [&](VoxelGrid& g) { recolourPartTool(g, kind, mats, f[2], f[3]); };
     const auto* prev = g_recolour; g_recolour = &fn;
     const bool ok = buildItemModel(baseKey, out);

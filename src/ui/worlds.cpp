@@ -112,6 +112,7 @@ const std::vector<RuleRow>& ruleRows() {
     {"showCoords", "Show Coordinates", "Your position, shown in the corner", 0},
     {"commands", "Allow Commands", "Chat commands and WorldEdit (press T or /)", 0},
     {"downed", "Downed, Not Dead", "With someone else playing, you go down instead of dying, and they can help you back up", 0},
+    {"immersive", "Immersive Progression", "TerraFirmaCraft-style beginnings: no punching trees, gather stones and sticks, knap your first tools, fire clay, smelt and smith metal. Off: the classic crafting", 1},
     {"startInWild", "Start in the Wild", "Begin out in the wilds, well away from any village, instead of at a village's edge", 1},
     {"seasons", "Seasons", "Spring, summer, autumn and winter, seven days each: snow in the winter, colour in the autumn", 1},
     {"mobSpawning", "Mob Spawning", "Master switch. Off stops animals and monsters alike", 2},
@@ -139,6 +140,7 @@ struct WorldForm {
   void init(const json& r, bool creative, const std::string* nm, const std::string* md) {
     rules = ruleDefaults(creative);
     if (r.is_object()) for (auto& [k, v] : r.items()) rules[k] = v;
+    if (!r.is_object() || r.empty()) rules["immersive"] = true;   // a new world starts immersive; an existing one keeps what it had
     rules["_v"] = 1;
     named = nm != nullptr; moded = md != nullptr;
     if (nm) name = *nm;

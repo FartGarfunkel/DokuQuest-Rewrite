@@ -1,6 +1,6 @@
 // render/dreamlight_layer.cpp — Horizon-style dreamlike light (assets/shaders/dreamlight.glsl): after the world and the
 // hand are drawn, the picture is copied out and drawn back through the shader. Options → Graphics → Lighting
-// (Settings::extra "dreamLight": 0 classic, 1 dreamlike, 2 strong; dreamlike unless set).
+// (Settings::extra "dreamLight": 0 classic, 1 dreamlike, 2 strong; classic unless set).
 #include "client/session.h"
 #include "client/app.h"
 #include "render/gl.h"
@@ -13,7 +13,7 @@ public:
   const char* name() const override { return "dreamlight"; }
   int order() const override { return 4900; }   // after the hand, before the colour-blind filter (5000)
   void drawOverlay(GameSession& s, const FrameCtx& f) override {
-    const int mode = s.app.settings.extra.value("dreamLight", 1);
+    const int mode = s.app.settings.extra.value("dreamLight", 0);
     if (mode < 1) return;
     if (!tried) { tried = true; sh = std::make_unique<Shader>(); if (!sh->load("dreamlight.glsl", "dreamlight.glsl")) sh.reset(); glGenVertexArrays(1, &vao); }
     if (!sh) return;

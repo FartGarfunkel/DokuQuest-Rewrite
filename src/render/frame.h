@@ -50,6 +50,7 @@ struct FrameCtx {
   vec3 horizonColor{0.7f, 0.8f, 1.f};
   float rain = 0, thunder = 0, flash = 0;   // rain/snow 0..1 where the camera is (wet look), thunderstorm, lightning flash
   float mist = 0;            // mist, fog bank, sandstorm, blizzard 0..1
+  vec4 heightFog{0};         // fog lying low (render/height_fog.h): density at the camera, falloff height, on
   float cloudBank = 0;       // inside the cloud bank between the Overworld and the Skylands
   vec2 windDir{1, 0};        // the way the wind blows (x, z); strength is `wind`
   bool underwater = false;

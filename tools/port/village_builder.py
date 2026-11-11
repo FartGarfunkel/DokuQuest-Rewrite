@@ -1119,17 +1119,17 @@ def show_goods(p, P, B, rnd, key, frames=3, table=True, shelves=3):
 
 
 JOBS = {   # name keyword -> its workstation and what else it keeps
-    'armorer_house': ('blast_furnace', ['anvil', ('barrel', {'facing': 'up'})]),
-    'weaponsmith': ('grindstone', ['anvil', ('barrel', {'facing': 'up'})]),
-    'tool_smith': ('smithing_table', ['anvil', 'furnace']),
-    'butcher_shop': ('smoker', [('barrel', {'facing': 'up'}), 'furnace']),
+    'armorer_house': ('blast_furnace', ['anvil', 'bellows', ('barrel', {'facing': 'up'})]),
+    'weaponsmith': ('grindstone', ['anvil', 'bellows', ('barrel', {'facing': 'up'})]),
+    'tool_smith': ('smithing_table', ['anvil', 'bellows', 'furnace']),
+    'butcher_shop': ('smoker', [('barrel', {'facing': 'up'}), 'sealed_barrel', 'furnace']),   # (the sealable barrel: hides soaking)
     'fletcher_house': ('fletching_table', [('barrel', {'facing': 'up'})]),
     'shepherds_house': ('loom', ['white_wool', 'white_wool']),
     'masons_house': ('stonecutter', ['furnace']),
     'cartographer_house': ('cartography_table', ['bookshelf']),
     'fisher_cottage': ('barrel', ['cauldron', ('barrel', {'facing': 'up'})]),
-    'tannery': ('cauldron', ['brown_wool', ('barrel', {'facing': 'up'})]),
-    'bakery': ('smoker', ['furnace', 'hay_block', ('barrel', {'facing': 'up'})]),
+    'tannery': ('cauldron', ['brown_wool', 'sealed_barrel', 'sealed_barrel', ('barrel', {'facing': 'up'})]),
+    'bakery': ('smoker', ['furnace', 'quern', 'hay_block', ('barrel', {'facing': 'up'})]),
 }
 
 
@@ -1173,7 +1173,9 @@ def side_work(p, P, B, rnd, key):
         for x in range(B.x0, B.x0 + 6):
             for zz in range(z - 1, z + 2): p.set(x, 4, zz, P.S['stone_slab'], type='bottom')
         p.set(B.x0 + 2, 1, z, 'anvil', facing='north'); p.set(B.x0 + 3, 1, z, 'water_cauldron', level=3)
-        p.set(B.x0 + 5, 1, z, 'blast_furnace' if key == 'armorer_house' else 'furnace', facing='north')
+        # a TFC forge: charcoal in a pit walled with stone, the bellows beside it (sim/forge.h)
+        p.set(B.x0 + 5, 1, z, 'forge'); p.set(B.x0 + 4, 1, z, 'bellows')
+        p.set(B.x0 + 6, 1, z, 'cobblestone'); p.set(B.x0 + 5, 1, z - 1, 'cobblestone'); p.set(B.x0 + 5, 1, z + 1, 'cobblestone'); p.set(B.x0 + 5, 0, z, 'cobblestone')
     elif key == 'fletcher_house':   # targets
         for x in range(B.x0 + 1, B.x1, 3): p.set(x, 1, z + 1, 'hay_block', axis='y'); p.set(x, 2, z + 1, 'target')
     elif key == 'masons_house':   # stone set out to be cut

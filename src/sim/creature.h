@@ -81,6 +81,8 @@ struct RigLife {
   int earSide = 1; bool wet = false; float lookT = 0, look = 0, cock = 0;
   float anT = -1, anYaw = 0, anLean = 0;
   float sqAge = -1, tilt = -1, sqYaw = 0, sqRoll = 0;
+  // sim/creature_rig.cpp rigBlend: easing from one state's pose to the next (sitting down, lying down, a jump, swimming)
+  u32 bKey = 0; float bT = 0, bDur = 0, bLast = -1; std::vector<vec3> bFrom, bShown; vec3 bFrom3{0}, bShown3{0};
 };
 
 constexpr float DEATH_LINGER = 1.6f;   // seconds from the killing blow to the puff (the body topples, then lies there)

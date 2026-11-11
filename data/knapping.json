@@ -1,0 +1,401 @@
+{
+ "_comment": "Knapping patterns (sim/knapping.h), after TerraFirmaCraft's Recipes.registerKnapping: '#' is a cell kept, ' ' one chipped away. A pattern matches anywhere on the 5x5 grid, mirrored too; every cell outside it must be chipped. stone: pebbles (2 or more in hand, the first chip spends one); flint: the same; clay: 5 clay balls, spent when a shape is made.",
+ "stone": [
+  {
+   "out": "stone_axe_head",
+   "n": 1,
+   "rows": [
+    " #   ",
+    "#### ",
+    "#####",
+    "#### ",
+    " #   "
+   ]
+  },
+  {
+   "out": "stone_shovel_head",
+   "n": 1,
+   "rows": [
+    "###",
+    "###",
+    "###",
+    "###",
+    " # "
+   ]
+  },
+  {
+   "out": "stone_hoe_head",
+   "n": 1,
+   "rows": [
+    "#####",
+    "   ##"
+   ]
+  },
+  {
+   "out": "stone_knife_head",
+   "n": 1,
+   "rows": [
+    " #",
+    "##",
+    "##",
+    "##",
+    "##"
+   ]
+  },
+  {
+   "out": "stone_knife_head",
+   "n": 2,
+   "rows": [
+    "#  # ",
+    "## ##",
+    "## ##",
+    "## ##",
+    "## ##"
+   ]
+  },
+  {
+   "out": "stone_hammer_head",
+   "n": 1,
+   "rows": [
+    "#####",
+    "#####",
+    "  #  "
+   ]
+  },
+  {
+   "out": "stone_javelin_head",
+   "n": 1,
+   "rows": [
+    "###  ",
+    "#### ",
+    "#####",
+    " ### ",
+    "  #  "
+   ]
+  },
+  {
+   "out": "crude_pickaxe_head",
+   "n": 1,
+   "rows": [
+    " ### ",
+    "## ##",
+    "#   #"
+   ]
+  },
+  {
+   "out": "stone_scythe_head",
+   "n": 1,
+   "rows": [
+    "#### ",
+    "#####",
+    "   ##"
+   ]
+  }
+ ],
+ "flint": [
+  {
+   "out": "flint_axe_head",
+   "n": 1,
+   "rows": [
+    " #   ",
+    "#### ",
+    "#####",
+    "#### ",
+    " #   "
+   ]
+  },
+  {
+   "out": "flint_shovel_head",
+   "n": 1,
+   "rows": [
+    "###",
+    "###",
+    "###",
+    "###",
+    " # "
+   ]
+  },
+  {
+   "out": "flint_hoe_head",
+   "n": 1,
+   "rows": [
+    "#####",
+    "   ##"
+   ]
+  },
+  {
+   "out": "flint_knife_head",
+   "n": 1,
+   "rows": [
+    " #",
+    "##",
+    "##",
+    "##",
+    "##"
+   ]
+  },
+  {
+   "out": "flint_knife_head",
+   "n": 2,
+   "rows": [
+    "#  # ",
+    "## ##",
+    "## ##",
+    "## ##",
+    "## ##"
+   ]
+  },
+  {
+   "out": "flint_hammer_head",
+   "n": 1,
+   "rows": [
+    "#####",
+    "#####",
+    "  #  "
+   ]
+  },
+  {
+   "out": "flint_javelin_head",
+   "n": 1,
+   "rows": [
+    "###  ",
+    "#### ",
+    "#####",
+    " ### ",
+    "  #  "
+   ]
+  },
+  {
+   "out": "flint_pickaxe_head",
+   "n": 1,
+   "rows": [
+    " ### ",
+    "## ##",
+    "#   #"
+   ]
+  },
+  {
+   "out": "flint_scythe_head",
+   "n": 1,
+   "rows": [
+    "#### ",
+    "#####",
+    "   ##"
+   ]
+  },
+  {
+   "out": "flint_saw_head",
+   "n": 1,
+   "rows": [
+    "#    ",
+    "##   ",
+    "###  ",
+    "#### "
+   ]
+  }
+ ],
+ "clay": [
+  {
+   "out": "unfired_vessel",
+   "n": 1,
+   "rows": [
+    " ### ",
+    "#####",
+    "#####",
+    "#####",
+    " ### "
+   ]
+  },
+  {
+   "out": "unfired_jug",
+   "n": 1,
+   "rows": [
+    "  #  ",
+    " ### ",
+    "#####",
+    "#####",
+    " ### "
+   ]
+  },
+  {
+   "out": "unfired_pot",
+   "n": 1,
+   "rows": [
+    "#   #",
+    "#   #",
+    "#   #",
+    "#   #",
+    "#####"
+   ]
+  },
+  {
+   "out": "unfired_bowl",
+   "n": 1,
+   "rows": [
+    "#   #",
+    "#   #",
+    " ### "
+   ]
+  },
+  {
+   "out": "unfired_ingot_mold",
+   "n": 1,
+   "rows": [
+    "#####",
+    "#   #",
+    "#####"
+   ]
+  },
+  {
+   "out": "unfired_axe_mold",
+   "n": 1,
+   "rows": [
+    "# ###",
+    "    #",
+    "     ",
+    "    #",
+    "# ###"
+   ]
+  },
+  {
+   "out": "unfired_hammer_mold",
+   "n": 1,
+   "rows": [
+    "     ",
+    "     ",
+    "## ##",
+    "#####",
+    "#####"
+   ]
+  },
+  {
+   "out": "unfired_hoe_mold",
+   "n": 1,
+   "rows": [
+    "     ",
+    "###  ",
+    "#####",
+    "#####",
+    "#####"
+   ]
+  },
+  {
+   "out": "unfired_javelin_mold",
+   "n": 1,
+   "rows": [
+    "   ##",
+    "    #",
+    "     ",
+    "#   #",
+    "## ##"
+   ]
+  },
+  {
+   "out": "unfired_knife_mold",
+   "n": 1,
+   "rows": [
+    "# ###",
+    "  ###",
+    "  ###",
+    "  ###",
+    "  ###"
+   ]
+  },
+  {
+   "out": "unfired_pickaxe_mold",
+   "n": 1,
+   "rows": [
+    "#   #",
+    "  #  ",
+    " ### ",
+    "#####",
+    "#####"
+   ]
+  },
+  {
+   "out": "unfired_propick_mold",
+   "n": 1,
+   "rows": [
+    "##   ",
+    "     ",
+    "##   ",
+    "#####",
+    "#####"
+   ]
+  },
+  {
+   "out": "unfired_saw_mold",
+   "n": 1,
+   "rows": [
+    " ####",
+    "  ###",
+    "   ##",
+    "    #",
+    "     "
+   ]
+  },
+  {
+   "out": "unfired_scythe_mold",
+   "n": 1,
+   "rows": [
+    "    #",
+    "     ",
+    "###  ",
+    "#####",
+    "#####"
+   ]
+  },
+  {
+   "out": "unfired_shovel_mold",
+   "n": 1,
+   "rows": [
+    "   ##",
+    "   ##",
+    "   ##",
+    "   ##",
+    "# ###"
+   ]
+  },
+  {
+   "out": "unfired_sword_mold",
+   "n": 1,
+   "rows": [
+    "###  ",
+    "##   ",
+    "#   #",
+    "   ##",
+    "  ###"
+   ]
+  },
+  {
+   "out": "unfired_pan",
+   "n": 1,
+   "rows": [
+    "#   #",
+    " ### "
+   ]
+  },
+  {
+   "out": "unfired_spindle_head",
+   "n": 1,
+   "rows": [
+    " # ",
+    "###",
+    " # "
+   ]
+  }
+ ],
+ "fireclay": [
+  {
+   "out": "unfired_crucible",
+   "n": 1,
+   "rows": [
+    "#   #",
+    "#   #",
+    "#   #",
+    "#   #",
+    " ### "
+   ]
+  }
+ ]
+}

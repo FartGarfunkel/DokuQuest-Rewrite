@@ -5,6 +5,7 @@ uniform sampler2D uTex;
 uniform int uKind;   // 1 protanopia (red), 2 deuteranopia (green), 3 tritanopia (blue); 0 none
 uniform int uPhoto;  // photo mode's shader (ui/photo_mode.cpp): 1 black & white .. 9 vignette; 0 none
 uniform float uAmt;  // its intensity
+uniform vec2 uGrade; // Options → Colour Style: saturation, contrast (1, 1 = the picture as drawn)
 
 #ifdef VERTEX
 out vec2 vUV;
@@ -43,6 +44,11 @@ vec3 photo(vec3 c) {
 
 void main() {
   vec3 c = texture(uTex, vUV).rgb;
+  if (uGrade != vec2(1.0)) {   // the colour style first: saturation against Rec. 709 luma, then contrast about mid-grey
+    float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    c = mix(vec3(l), c, uGrade.x);
+    c = clamp((c - 0.5) * uGrade.y + 0.5, 0.0, 1.0);
+  }
   if (uPhoto > 0) c = photo(c);
   if (uKind == 0) { fragColor = vec4(c, 1.0); return; }
   mat3 sim;   // column-major: these are the rows of Machado's matrices, transposed

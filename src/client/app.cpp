@@ -1,5 +1,8 @@
 #include "client/app.h"
+#include "render/gpu_select.h"
+#include "render/weather_sprites.h"
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 #include "render/particles.h"
 #include "common/ui_scale.h"
@@ -75,6 +78,7 @@ bool App::initWindow() {
     Uint32 flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | (settings.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
     window = SDL_CreateWindow(("DokuQuest " DQ_VERSION), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, settings.windowW, settings.windowH, flags);
     if (!window) { DQ_ERR("window: %s", SDL_GetError()); return false; }
+    gfxVulkanSetVsync(settings.vsync != 0);   // before the swapchain is made (it was only applied on a later Options change, so Vulkan stayed at the screen's refresh rate)
     if (!gfxInitVulkan(window)) {
       SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "DokuQuest", "Vulkan couldn't be started on this graphics driver.\nPick Modern or Legacy OpenGL in the launcher.", window);
       return false;
@@ -151,6 +155,7 @@ void App::reloadTiles() {
   tiles.packName = applyResourcePack(tiles, settings.resourcePack);
   applyUserTiles(tiles);   // the Texture Studio's pictures, over any pack
   holidayTiles(tiles);     // December's wrapped chests
+  buildWeatherSprites(tiles);   // render/weather_sprites.h: rain and snow from the pack, or drawn
   // ice you can see through like Minecraft's (about 60 % cover), whichever pack painted it
   for (const char* k : {"ice", "frosted_ice"}) {
     auto it = tiles.index.find(k);
@@ -309,6 +314,7 @@ int App::run(int argc, char** argv) {
   mods->scan();
   mods->loadData();
   pool = std::make_unique<ThreadPool>(settings.workerThreads);
+  applyGpuChoice(settings.gpu);   // render/gpu_select.cpp: before the GL context, so the driver uses that card
   registerTerrainLayers();     // render/terrain_fx.cpp: outline, cracks, tile animation, underwater fog
   if (!initWindow()) return 2;
   initImGui();
@@ -434,6 +440,17 @@ void App::frameLoop() {
       fence[fi] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0); fi = (fi + 1) % 3;
     }
     frame++;
+    // DQ_FRAME_STATS=1: average and worst frame time every 120 frames, to compare renderers
+    static const bool frameStats = std::getenv("DQ_FRAME_STATS") != nullptr;
+    if (frameStats) {
+      static double winStart = nowSeconds(), worst = 0, prev = nowSeconds();
+      const double t = nowSeconds(); worst = std::max(worst, t - prev); prev = t;
+      if (frame % 120 == 0) {
+        const double avg = (t - winStart) / 120.0;
+        DQ_LOG("frame stats: %.2f ms avg (%.0f fps), worst %.2f ms", avg * 1000, 1.0 / avg, worst * 1000);
+        winStart = t; worst = 0;
+      }
+    }
     if (audio) audio->update(dt);
     // smoke test: run N frames, screenshot, quit
     if (args.smokeFrames > 0) {

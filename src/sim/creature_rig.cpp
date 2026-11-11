@@ -558,6 +558,43 @@ mat4 creatureBase(const Creature& m, bool full) {
   return b;
 }
 
+// AnimatedPlayer-style blending for creatures: when the state changes, the part turns (and the root's lift, pitch,
+// roll) ease from the pose last shown to the new one; settled in a state the pose is exactly as computed
+static u32 rigStateKey(const Creature& m) {
+  u32 k = 0;
+  if (m.sitting) k |= 1; if (m.sleeping) k |= 2; if (m.inWater) k |= 4; if (inAir(m)) k |= 8; if (m.ramming) k |= 16; if (m.rearT > 0) k |= 32;
+  if (m.striking > 0) k |= 64; if (m.coiled) k |= 128; if (m.playDead) k |= 256; if (m.curled) k |= 512; if (m.roosting) k |= 1024;
+  if (m.perched) k |= 2048; if (m.dancing) k |= 4096; if (m.puffed) k |= 8192; if (m.grazeT > 0) k |= 16384;
+  return k;
+}
+static void rigBlend(Creature& m, Pose& P) {
+  RigLife& L = m.life;
+  const size_t n = P.P.size();
+  thread_local std::vector<vec3> cur; cur.assign(n, vec3(0));   // (no allocation per creature per frame)
+  for (size_t i = 0; i < n; i++) cur[i] = P.has[i] ? P.P[i] : vec3(0);
+  const vec3 cur3(P.lift, P.pitch, P.roll);
+  const u32 key = rigStateKey(m);
+  const bool first = L.bLast < 0 || L.bShown.size() != n || m.deathTime > 0;
+  const float dt = first ? 0.f : clampv(m.age - L.bLast, 0.f, 0.1f);
+  L.bLast = m.age;
+  if (first) { L.bKey = key; L.bT = L.bDur = 0; L.bShown.assign(cur.begin(), cur.end()); L.bShown3 = cur3; return; }
+  if (key != L.bKey) {
+    const u32 ch = key ^ L.bKey;
+    L.bDur = (ch & (1 | 2 | 4 | 256 | 512 | 1024)) ? 0.3f : (ch & 8) ? 0.12f : 0.18f;
+    L.bKey = key; L.bT = 0; L.bFrom = L.bShown; L.bFrom3 = L.bShown3;
+  } else L.bT += dt;
+  if (L.bT >= L.bDur) { L.bShown.assign(cur.begin(), cur.end()); L.bShown3 = cur3; return; }
+  const float u = L.bT / L.bDur, w = u * u * (3 - 2 * u);
+  for (size_t i = 0; i < n; i++) {
+    const vec3 v = L.bFrom[i] + (cur[i] - L.bFrom[i]) * w;
+    if (v != vec3(0) || P.has[i]) { P.has[i] = 1; P.P[i] = v; }
+    cur[i] = v;
+  }
+  const vec3 r3 = L.bFrom3 + (cur3 - L.bFrom3) * w;
+  P.lift = r3.x; P.pitch = r3.y; P.roll = r3.z;
+  L.bShown.assign(cur.begin(), cur.end()); L.bShown3 = r3;
+}
+
 static std::unordered_map<std::string, RigAnimFn>& rigAnims() { static std::unordered_map<std::string, RigAnimFn> m; return m; }
 void registerRigAnim(const std::string& rig, RigAnimFn f) { rigAnims()[rig] = f; }
 
@@ -586,6 +623,7 @@ void rigPose(Creature& m, const RigModel& M, const mat4& base) {
     if (m.angryT > 0) P.headLift = 6.f / 16;   // a pixel of dark mouth between the head and the jaw's teeth
   }
   if (!k.empty()) rigLife(m, M, P);
+  rigBlend(m, P);
   mat4 root = base;
   if (P.lift) root = glm::translate(root, vec3(0, P.lift, 0));
   if (M.scale != 1) root = glm::scale(root, vec3(M.scale));

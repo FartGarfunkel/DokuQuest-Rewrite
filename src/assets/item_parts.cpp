@@ -73,18 +73,23 @@ struct M {
 const SpritePx* gemPx(const SpriteInfo& I) { return I.best([](const SpritePx& p) { return p.sat * 255 + p.lum * 0.3f; }); }
 
 // ------------------------------------------------------------------ models3d.js T3D
-void handle(M& m, float to, float w = 0.075f) {
+// a tool's handle (after Just 3D Tools' proportions, used with permission): a little stouter than the sprite's line, a
+// butt cap, and a grip wrapped over its lower half (a band, its edges standing proud) where the old three rings were
+void handle(M& m, float to, float w = 0.09f) {
   m.sseg(diag(-0.04f), diag(0.03f), w + 0.025f, w + 0.025f, w + 0.025f, w + 0.025f, 0.85f);
   m.sseg(diag(0.03f), diag(to), w, w * 0.92f, w, w * 0.92f);
-  for (float u : {0.1f, 0.18f, 0.26f}) m.sseg(diag(u), diag(u + 0.025f), w + 0.012f, w + 0.012f, w + 0.012f, w + 0.012f, 0.72f);
+  m.sseg(diag(0.1f), diag(0.36f), w + 0.018f, w + 0.018f, w + 0.018f, w + 0.018f, 0.8f, 0.05f);   // the wrap
+  for (float u : {0.09f, 0.35f}) m.sseg(diag(u), diag(u + 0.025f), w + 0.03f, w + 0.03f, w + 0.03f, w + 0.03f, 0.72f);
 }
 float sword(M& m, float L = 1.22f, float bw = 0.15f, float guard = 0.22f) {
   m.sseg(diag(-0.04f), diag(0.04f), 0.11f, 0.11f, 0.11f, 0.11f, 0.9f);                  // the pommel
   m.sseg(diag(0.04f), diag(0.25f), 0.07f, 0.07f, 0.07f, 0.07f);                         // the grip
   for (float u : {0.09f, 0.15f, 0.21f}) m.sseg(diag(u), diag(u + 0.022f), 0.082f, 0.082f, 0.082f, 0.082f, 0.72f);
-  m.sseg(diag(0.27f, -guard), diag(0.27f, guard), 0.075f, 0.075f, 0.11f, 0.11f, 0.85f, 0.11f);   // the crossguard
-  m.sseg(diag(0.31f), diag(L - 0.14f), bw, bw * 0.8f, 0.045f, 0.04f, 1, 0.08f, 0.65f);   // the blade, bevelled to its edges
-  m.sseg(diag(L - 0.14f), diag(L), bw * 0.8f, 0.02f, 0.04f, 0.02f, 1.05f, 0.05f, 0.65f); // its point
+  // the crossguard, its quillons turned up a touch toward the blade (Just 3D's ±2.5°)
+  m.sseg(diag(0.27f), diag(0.29f, -guard), 0.075f, 0.065f, 0.11f, 0.1f, 0.85f, 0.11f);
+  m.sseg(diag(0.27f), diag(0.29f, guard), 0.075f, 0.065f, 0.11f, 0.1f, 0.85f, 0.11f);
+  m.sseg(diag(0.31f), diag(L - 0.14f), bw * 1.2f, bw * 0.95f, 0.045f, 0.04f, 1, 0.08f, 0.65f);   // the blade, bevelled to its edges (broader, after Just 3D)
+  m.sseg(diag(L - 0.14f), diag(L), bw * 0.95f, 0.02f, 0.04f, 0.02f, 1.05f, 0.05f, 0.65f); // its point
   for (float z : {0.022f, -0.022f}) m.sseg(diag(0.34f, 0, z), diag(L - 0.22f, 0, z), 0.035f, 0.03f, 0.012f, 0.012f, 0.78f);   // the fuller
   return 0.055f;
 }
@@ -142,10 +147,11 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
     // the head: a curved bar across the top of the handle, thick in the middle, tapering to points
     std::vector<std::pair<float, vec3>> pts;
     for (float s = -1; s <= 1.0001f; s += 0.25f) pts.push_back({s, diag(0.86f - 0.2f * s * s + 0.04f, s * 0.47f, 0)});
-    for (size_t i = 0; i + 1 < pts.size(); i++) {
-      float mm = (std::abs(pts[i].first) + std::abs(pts[i + 1].first)) / 2, w = 0.14f - mm * 0.085f, d = 0.12f - mm * 0.06f;
+    for (size_t i = 0; i + 1 < pts.size(); i++) {   // (Just 3D: the head taller than it is thick, the handle's eye the thickest)
+      float mm = (std::abs(pts[i].first) + std::abs(pts[i + 1].first)) / 2, w = 0.17f - mm * 0.11f, d = 0.1f - mm * 0.045f;
       m.sseg(pts[i].second, pts[i + 1].second, w, w, d, d, 1, 0.2f);
     }
+    for (float s : {-1.f, 1.f}) m.sseg(pts[s < 0 ? 0 : pts.size() - 1].second, diag(0.86f - 0.2f - 0.1f + 0.04f, s * 0.5f, 0), 0.06f, 0.025f, 0.05f, 0.03f, 1.08f, 0.05f);   // the points hook down
     depth = 0.07f;
   } else if (k == "axe") {
     handle(m, 0.93f);
@@ -154,14 +160,20 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
       float v0 = 0.04f + i * 0.065f, v1 = v0 + 0.065f, wd = 0.17f + i * 0.055f, dd = 0.09f - i * 0.012f;
       m.sseg(diag(0.75f, v0), diag(0.75f, v1), wd, wd + 0.055f, dd, dd - 0.012f, i == 4 ? 1.12f : 1, 0.2f);
     }
-    m.sseg(diag(0.75f, 0.365f), diag(0.75f, 0.39f), 0.43f, 0.45f, 0.025f, 0.02f, 1.25f, 0.2f);   // the bright edge
+    // the bright edge, a shallow crescent bellying out, its heel and toe swept back (Just 3D's bearded head)
+    for (int i = 0; i < 6; i++) {
+      const float a0 = -1 + i / 3.f, a1 = a0 + 1 / 3.f, b0 = 0.365f + 0.03f * (1 - a0 * a0), b1 = 0.365f + 0.03f * (1 - a1 * a1);
+      m.sseg(diag(0.75f + a0 * 0.225f, b0 - 0.03f * a0 * a0), diag(0.75f + a1 * 0.225f, b1 - 0.03f * a1 * a1), 0.1f, 0.1f, 0.025f, 0.02f, 1.25f, 0.05f);
+    }
+    m.sseg(diag(0.52f, 0.3f), diag(0.47f, 0.24f), 0.06f, 0.03f, 0.05f, 0.03f, 1.1f, 0.05f);     // the beard
     m.sseg(diag(0.75f, -0.02f), diag(0.75f, -0.13f), 0.12f, 0.1f, 0.1f, 0.09f, 0.85f, 0.2f);     // the poll
     depth = 0.06f;
   } else if (k == "shovel") {
     handle(m, 0.8f);
     m.sseg(diag(-0.02f, -0.11f), diag(-0.02f, 0.11f), 0.06f, 0.06f, 0.08f, 0.08f, 0.8f);  // a crossbar grip
     m.sseg(diag(0.74f), diag(0.88f), 0.09f, 0.12f, 0.09f, 0.07f, 0.85f);                  // the socket
-    m.sseg(diag(0.88f), diag(1.12f), 0.27f, 0.27f, 0.05f, 0.045f, 1, 0.06f);              // the blade
+    m.sseg(diag(0.88f), diag(1.12f), 0.3f, 0.3f, 0.05f, 0.045f, 1, 0.06f);                // the blade
+    for (float v : {-0.14f, 0.14f}) m.sseg(diag(0.89f, v, 0.02f), diag(1.1f, v, 0.02f), 0.035f, 0.03f, 0.05f, 0.045f, 0.92f);   // its sides turned up: a dished blade
     m.sseg(diag(1.12f), diag(1.18f), 0.21f, 0.12f, 0.04f, 0.035f, 1.1f);                  // rounded off at the tip
     m.sseg(diag(0.9f, 0, 0.03f), diag(1.08f, 0, 0.03f), 0.03f, 0.03f, 0.02f, 0.02f, 0.75f);   // a rib
     depth = 0.05f;
@@ -169,7 +181,7 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
     handle(m, 0.9f);
     m.sseg(diag(0.76f), diag(0.9f), 0.1f, 0.1f, 0.1f, 0.1f, 0.8f);
     m.sseg(diag(0.84f, 0), diag(0.84f, 0.3f), 0.09f, 0.08f, 0.08f, 0.07f, 1, 0.1f);       // the arm
-    m.sseg(diag(0.86f, 0.3f), diag(0.6f, 0.34f), 0.14f, 0.15f, 0.055f, 0.04f, 1.08f, 0.08f);   // the blade, turned down
+    m.sseg(diag(0.86f, 0.3f), diag(0.6f, 0.34f), 0.17f, 0.18f, 0.065f, 0.045f, 1.08f, 0.08f);   // the blade, turned down (Just 3D: broad)
     depth = 0.06f;
   } else if (k == "sword") depth = sword(m);
   else if (k == "dagger") depth = sword(m, 0.92f, 0.13f, 0.16f);

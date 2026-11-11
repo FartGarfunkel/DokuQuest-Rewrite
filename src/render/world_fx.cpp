@@ -103,7 +103,7 @@ void worldFxBegin(GameSession& s, const FrameCtx& f) {
   F.on = F.shadow = F.copy = F.ssr = F.ao = F.copied = false;   // (the shadow map itself is kept: shValid)
   const Settings& S = s.app.settings;
   F.level = std::clamp(S.extra.value("shaderLevel", 0), 0, 4);
-  if (F.level < 3 || gfx.vulkan || !S.shaderPack.empty() || s.split() || f.portalDepth > 0) return;
+  if (F.level < 3 || !S.shaderPack.empty() || s.split() || f.portalDepth > 0) return;
   F.on = true;
   standIns(F);
   F.copy = !F.copyBroken; F.ssr = F.copy && F.level >= 4; F.ao = F.copy && F.level >= 4;

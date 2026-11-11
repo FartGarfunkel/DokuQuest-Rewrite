@@ -23,6 +23,7 @@ void FrameCtx::apply(Shader& s) const {
     s.set("uFogSky", open ? clampv(1.f - sky->mist * 2.f - sky->cloud * 2.f, 0.f, 1.f) : 0.f);
   }
   s.set("uFogStart", fogStart);
+  s.set("uHeightFog", heightFog);
   s.set("uFogEnd", fogEnd);
   s.set("uNearFog", nearFog);
   s.set("uSeason", season);

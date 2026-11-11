@@ -29,6 +29,8 @@ private:
   void computeField(const AudioScene& s);
   float wallCount(const World& w, vec3 a, vec3 b) const;
   void at(const AudioScene& s, const char* name, float dist);
+  void weatherAt(const AudioScene& s, const char* name, float dist, float vol, float pitch);
+  double tSnow = 0.5, tSand = 0.5;
 };
 
 } // namespace dq::snd

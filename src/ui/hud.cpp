@@ -2,6 +2,7 @@
 // armour, air bubbles, XP bar and level, held-item name, toasts and pick-ups, boss bar, dimension name,
 // F3 debug / FPS / coordinates, screen effects, damage numbers, name tags; the chat log and chat line
 // (game/commands.js chatEls/openChat/submitChat), the death screen. Also the in-game keys that open menus.
+#include "core/tool_parts.h"
 #include <map>
 #include "sim/inventory.h"
 #include "ui/ui.h"
@@ -57,7 +58,7 @@ struct HudState {
   bool chatOpen = false;
   std::string dimName; double dimAt = -100;
   bool saving = false; double savingOff = -100;
-  std::string heldId; double heldAt = -100; int lastSel = -1;
+  std::string heldId, heldName; double heldAt = -100; int lastSel = -1;
   std::string spellSeen; double spellAt = -100; float manaSeen = -1;   // the spell label shows a while after a change or a cast
   double dbgT = 0; std::string dbgText;
   bool deathShown_[4] = {false, false, false, false};   // per split-screen person
@@ -330,6 +331,7 @@ public:
     const ItemStack& held = p.inv[clampv(p.selected, 0, 8)];
     std::string hid = held.empty() ? "" : held.id;
     if (hid != h.heldId) { if (!hid.empty()) h.heldAt = now(); h.heldId = hid; }
+    if (!held.empty() && now() - h.heldAt < 1.6) h.heldName = stackName(held);   // its own name: "Bronze Pickaxe", not "Pickaxe"
     // death
     if (p.dead && !h.deathShown_[who()]) {
       h.deathShown_[who()] = true;
@@ -592,7 +594,7 @@ public:
     // held-item name (shown 1.6 s after a change)
     if (!h.heldId.empty() && now() - h.heldAt < 1.6) {
       const ItemDef* d = reg().item(h.heldId);
-      std::string nm = d ? d->name : h.heldId; std::string rar = d ? d->str("rarity") : "";
+      std::string nm = !h.heldName.empty() ? h.heldName : d ? d->name : h.heldId; std::string rar = d ? d->str("rarity") : "";
       ImU32 c = rar == "rare" ? col::frost : rar == "epic" ? col::epic : col::text;
       ImVec2 ts = textSize(F_BODY, nm.c_str());
       ImVec2 q(W * 0.5f - ts.x * 0.5f, y - ts.y - 4 * z);

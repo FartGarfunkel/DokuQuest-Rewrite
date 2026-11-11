@@ -20,6 +20,28 @@ Software, and to permit persons to whom the Software is furnished to do so, subj
 copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE
 SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
 
+## Particle Rain (MIT)
+
+<https://github.com/PigCart/particle-rain> (version 4.0.3), by pigcart, Copyright (c) 2025, MIT License.
+
+The weather particles follow Particle Rain: how rain, snow and dust spawn on a sphere round the camera and on the ground
+(`ParticleSpawner`), the gust field of the wind (`ParticleRain.getWind` → `sim/wind_field.cpp`), the particles' motion,
+fading, collision and bouncing (`CustomParticle`, `WeatherParticle`, `StreakParticle` → `render/weather_sim.cpp`), the way
+rain is stretched along its motion and fog sheets fade at grazing angles (`assets/shaders/weather.glsl`), the slicing of a
+pack's `environment/rain.png` / `snow.png` and the ripple rings (`TextureUtil` → `render/weather_sprites.cpp`), and the
+numbers in its `particles.json`. Rewritten in C++/GLSL for this engine. Its snow and sandstorm recordings were analysed into
+synthesis profiles (`data/sounds.json`, events `fx.ws_weather_*`); no audio files are shipped.
+
+MIT License text (as in Particle Rain's LICENSE): Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The
+above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 ## Cubyz (GPL-3.0) — ideas only
 
 <https://github.com/PixelGuys/Cubyz>. No code is taken from Cubyz (its licence is GPL). Ideas only:
@@ -69,3 +91,14 @@ Aether: "Assets: All Rights Reserved"), so the shipped pictures of their blocks 
 recoloured to the mods' average colours (`tools/port/bta_nether_blocks.py`, `tools/port/aether_blocks.py`).
 `tools/port/local_mod_art.py` makes a resource pack of the mods' real pictures, fitted to the base pack, from the player's
 own copies of the mods, into their game folder only: it must never be committed, shipped or shared.
+
+## Animation and 3D item references (used with permission)
+The animation and item work was guided by these, studied with the permission the project owner obtained; no files from them
+are shipped:
+- **AnimatedPlayer** (thehippomaster): the per-state blend timers and the sprint, walk and face numbers (render/char_blend.cpp,
+  render/char_poses.cpp, render/char_anim.cpp).
+- **Punched Stuffs** (modpack, MIT): Just 3D Tools / Just 3D Stuffs (WinterS_) model proportions for our procedural tools
+  (assets/item_parts.cpp); the Hold My Items animation scripts in those packs and Punchy's per-kind animation sets for the
+  first-person hand (render/fp_motion.cpp).
+- **Animations n' Stuff** (modpack, MIT): Not Enough Animations' moves (eating, drinking, ladders, the item swap) and the
+  A Good Place sample pack's pop_in placement animation (render/place_pop.cpp).

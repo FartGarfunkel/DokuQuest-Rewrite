@@ -309,7 +309,9 @@ static bool shapeStandsOnAll(const MeshCtx& c, BlockId id, int x, int y, int z) 
   thread_local std::vector<ShapeBox> boxes;
   MeshShapeNb nb(c, x, y, z);
   if (!shapeBoxes(id, c.metaAt(x, y, z), nb, ShapePurpose::Draw, boxes)) return false;
-  for (const ShapeBox& b : boxes) if (b.b[1] <= 0 && b.b[0] <= 0 && b.b[2] <= 0 && b.b[3] >= 16 && b.b[5] >= 16) return true;
+  // (only a solid box covers it: a lone cap drawn the block's full width over a thinner body — the cactus's ends — leaves
+  // a ring of the floor open round the body, and with the floor's top gone you saw out of the world through it)
+  for (const ShapeBox& b : boxes) if ((b.only & 0x33) == 0x33 && b.b[1] <= 0 && b.b[0] <= 0 && b.b[2] <= 0 && b.b[3] >= 16 && b.b[5] >= 16) return true;
   return false;
 }
 

@@ -28,6 +28,8 @@ void uiDefer(std::function<void(App&)> f) { g_deferred.push_back(std::move(f)); 
 // chests, barrels, shulker boxes, hoppers, the ender chest, backpacks -> container; crafting table -> table;
 // furnaces; anvil / grindstone / smithing table / loom / fletching table -> station {kind}; the stonecutter;
 // millstone / sawmill / crusher -> machine; signs. (Cart and boat chests, opts.entity, are the vehicles' own.)
+std::unique_ptr<Screen> makeKnappingScreen(const std::string& material, const std::string& item);   // ui/knapping_screen.cpp
+std::unique_ptr<Screen> makeAnvilScreen(ivec3 at, int tier);   // ui/anvil_screen.cpp
 static void onScreenOpen(App& a, const json& args) {
   if (!args.is_array() || args.size() < 2 || !args[1].is_string() || !a.session || !a.session->player) return;
   if (args[0].is_string() && args[0].get<std::string>() != a.session->player->name) return;
@@ -59,6 +61,8 @@ static void onScreenOpen(App& a, const json& args) {
   else if (kind == "stonecutter") { io.mode = "stonecutter"; io.kind = o.value("kind", ""); }   // kind "forge": the Tool Forge
   else if (kind == "machine") { io.mode = "machine"; if (!io.hasPos) return; }
   else if (kind == "sign") { if (!io.hasPos) return; ivec3 p = io.pos; make = [p] { return makeSignScreen(p); }; }
+  else if (kind == "anvil_smith") { if (!io.hasPos) return; ivec3 p = io.pos; const int tier = o.value("tier", 0); make = [p, tier] { return makeAnvilScreen(p, tier); }; }
+  else if (kind == "knapping") { std::string m = o.value("material", ""), it = o.value("item", ""); if (m.empty() || it.empty()) return; make = [m, it] { return makeKnappingScreen(m, it); }; }
   else if (kind == "lectern") { if (!io.hasPos) return; ivec3 p = io.pos; make = [p] { return makeLecternScreen(p); }; }
   else { hudToast("That screen isn't in this build yet", "warn"); return; }
   if (io.mode == "container" && !io.hasPos && !io.ender && !io.heldPack && !io.entItems) { if (!o.contains("entity")) hudToast("That screen isn't in this build yet", "warn"); return; }

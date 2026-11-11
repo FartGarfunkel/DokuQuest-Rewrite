@@ -25,7 +25,7 @@ uniform float uFogStart;
 uniform float uFogEnd;
 uniform vec3 uNearFog;
 uniform vec4 uSeason;    // seasons: grass and leaves turn toward rgb by a (0 = summer green)   // the old fog: start, end, how thick (0 = none); the far lands stay faint beyond it
-uniform float uBrightness;    // settings.brightness
+uniform float uBrightness;    // settings.brightness: Minecraft's brightness curve (mcBrightness), 0 moody .. 1 bright
 uniform float uMicroDist;     // micro-voxel relief distance
 uniform float uWind;          // wind strength (original env.wind: 0.45 + strength * 0.9, 0 when waving is off)
 uniform float uSea;           // storm swell on open water
@@ -112,11 +112,17 @@ vec3 dynLightRgb(vec3 pos, vec3 n) {
   }
   return acc;
 }
-// sun31 and block31 are Cubyz's 0..31 channels. sqrt(sun^2 + block^2), then the brightness floor.
+// Minecraft's brightness option (LightTexture: 1 - (1 - l)^4, mixed in by the gamma setting): dark places open up,
+// full light stays as it is. Options → Brightness 0 (Moody) leaves the light as it was.
+vec3 mcBrightness(vec3 l) {
+  vec3 inv = 1.0 - clamp(l, 0.0, 1.0);
+  return mix(l, 1.0 - inv * inv * inv * inv, clamp(uBrightness, 0.0, 1.0));
+}
+// sun31 and block31 are Cubyz's 0..31 channels. sqrt(sun^2 + block^2), the brightness curve, then the floor.
 vec3 cubyzCombine(vec3 sun31, vec3 block31) {
   vec3 amb = sun31 * uAmbient;
   vec3 q = sqrt(amb * amb + block31 * block31);
-  return max(min(q, vec3(31.0)) / 31.0, vec3(uMinLight));
+  return max(mcBrightness(min(q, vec3(31.0)) / 31.0), vec3(uMinLight));
 }
 // A carried light, in the same 0..31 units: level*17 is the byte, one step of 8 per block.
 vec3 dynBlock31(vec3 pos, vec3 n) {
@@ -162,9 +168,22 @@ vec3 fogSkyColour(vec3 dir) {
   c += uSkyGlow * pow(max(dot(d, uSunDir), 0.0), 6.0) * clamp(1.0 - abs(d.y) * 2.0, 0.0, 1.0);
   return c;
 }
+// fog lying low (render/height_fog.h): x density at the camera, y falloff height, z on
+uniform vec4 uHeightFog;
 vec3 applyFog(vec3 c, float dist, vec3 dir) {
   float far = smoothstep(uFogStart, uFogEnd, dist), f = far;
   if (uNearFog.z > 0.0) f = max(f, smoothstep(uNearFog.x, uNearFog.y, dist) * uNearFog.z);
+  if (uHeightFog.z > 0.0 && dot(dir, dir) > 1e-8) {
+    // the fog met along the ray through an exponential layer: x * H * (1 - e^-k) / dy, k = dist * dy / H
+    // going down it thickens only to the floor's cap (w): past that point the rest of the ray is at the cap
+    float dy = normalize(dir).y, k = dist * dy / uHeightFog.y, depth;
+    if (abs(k) < 1e-3) depth = uHeightFog.x * dist;
+    else if (k < -uHeightFog.w) {
+      float tc = -uHeightFog.w * uHeightFog.y / dy;   // where the cap is reached
+      depth = uHeightFog.x * uHeightFog.y * (1.0 - exp(uHeightFog.w)) / dy + (dist - tc) * uHeightFog.x * exp(uHeightFog.w);
+    } else depth = uHeightFog.x * uHeightFog.y * (1.0 - exp(-k)) / dy;
+    f = max(f, 1.0 - exp(-max(depth, 0.0)));
+  }
   vec3 fc = uFogSky > 0.0 ? mix(uFogColor, fogSkyColour(dir), far * uFogSky) : uFogColor;   // (the thicker, the more it's the sky)
   return mix(c, fc, f);
 }

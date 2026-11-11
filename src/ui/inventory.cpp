@@ -978,6 +978,7 @@ public:
       for (size_t i = 0; i < R.size(); i++) {
         const Recipe& r = R[i];
         if (B.cat != "all" && recipeCategory(r) != B.cat) continue;
+        if (sess->w && sess->w->immersive && r.props.is_object() && r.props.value("classicOnly", false)) continue;   // off in an immersive world
         const ItemDef* d = reg().item(r.out); if (!d) continue;
         if (!q.empty() && lower(d->name).find(q) == std::string::npos) continue;
         bool ok = canCraft(bags, r, &sess->grid); int rw, rh; recipeDims(r, rw, rh); bool fits = rw <= sess->W && rh <= sess->W;

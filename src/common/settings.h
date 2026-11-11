@@ -20,7 +20,11 @@ struct Settings {
   int colorFilter = 0;           // colour-blind filter: 0 off, 1 protanopia, 2 deuteranopia, 3 tritanopia (render/colour_filter_layer.cpp)
   int musicFreq = 1;             // how often music plays: 0 rarely, 1 now and then, 2 often, 3 nearly always
   bool invertY = false, showFps = false, fpBody = true, viewBob = true;
-  float brightness = 0.35f;
+  float brightness = 0.35f;      // Minecraft's brightness curve: 0 moody (dark stays dark) .. 1 bright (common.glsl mcBrightness)
+  // the picture's colour (render/colour_filter_layer.cpp): a style, or "custom" once a slider is moved
+  std::string colourStyle = "natural";   // vibrant | natural | classic | custom
+  float saturation = 0.85f;      // 0 grey .. 1 as drawn .. 1.5
+  float contrast = 0.94f;        // 0.5 flat .. 1 as drawn .. 1.5
   std::string split = "auto";
   int particles = 2;             // 0 off, 1 few, 2 all
   std::string guiScale = "auto";
@@ -32,15 +36,20 @@ struct Settings {
   // ---- C++ engine additions ----
   RendererKind renderer = RendererKind::Modern;
   std::string preset = "auto";   // potato | low | medium | high | ultra | custom | auto
-  int microVoxels = 2;           // 0 flat faces, 1 shaded micro-voxels, 2 relief micro-voxels (parallax)
+  int microVoxels = 0;           // 0 flat faces, 1 shaded micro-voxels, 2 relief micro-voxels (parallax; still being worked on, so off by default)
   int microVoxelDist = 48;       // blocks: micro-voxel relief fades out past this
   int waterQuality = 2;          // 0 flat, 1 waves, 2 waves + reflections
   int shadows = 1;               // 0 off, 1 soft sun shadows (modern only)
+  // weather (render/weather_layer.cpp; after Particle Rain): how many weather particles at most (0 off, 600 low, 1500
+  // normal, 3000 high), how far round you they fall (blocks), splashes/ripples/streaks, ground fog sheets, height fog
+  int weatherParticles = 1500, weatherDist = 16;
+  bool weatherSurfaceFx = true, groundFog = true, heightFog = true;
   bool vsync = true, fullscreen = false;
   int windowW = 1280, windowH = 720;
   int workerThreads = 0;         // 0 = auto
   std::string resourcePack = "DokuQuest Base";   // the game's own art. Older "auto", "none" and "builtin" mean this too.
-  std::string shaderPack = "";
+  std::string shaderPack = "";   // off
+  std::string gpu = "auto";      // graphics card: "auto" (the dedicated one) or "vendor:device" in hex, e.g. "1002:73bf" (render/gpu_select.h)
   std::string playerName = "Wanderer";
   std::string skin = "";         // file in skins/ or "creator:<name>"
   bool autoUpdate = true;
@@ -55,6 +64,7 @@ struct Settings {
   static Settings load();
   void save() const;
   void applyPreset(const std::string& p);
+  void applyColourStyle(const std::string& style);   // sets saturation and contrast for vibrant / natural / classic
   json toJson() const;
   void fromJson(const json& j);
 };

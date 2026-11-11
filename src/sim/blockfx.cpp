@@ -95,6 +95,13 @@ void spawnPulledBlock(Level& lv, int realm, vec3 at, const std::string& key, u8 
   lv.spawn(std::move(e));
 }
 
+void spawnFallingBlock(Level& lv, int realm, vec3 at, const std::string& key, u8 meta) {
+  auto e = std::make_unique<FallingBlock>();
+  e->realm = realm; e->pos = at;
+  e->data = {{"block", key}, {"meta", meta}};
+  lv.spawn(std::move(e));
+}
+
 void registerBlockFxEntities() {
   registerEntityFactory("falling_block", [](const std::string&) { return std::unique_ptr<Entity>(new FallingBlock()); });
   registerEntityFactory("tnt", [](const std::string&) { return std::unique_ptr<Entity>(new PrimedTNT()); });

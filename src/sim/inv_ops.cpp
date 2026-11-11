@@ -131,6 +131,7 @@ void InvSession::refresh() {
     } else ok = false;
   } else if (o.mode == "stonecutter") {
     title = o.kind == "forge" ? "Tool Forge" : "Stonecutter";
+    recipeGate().immersive = w && w->immersive;   // (the Tool Forge cuts no metal heads in an immersive world)
     cutOpts = cutterOptions(o.kind, cut[0].empty() ? std::string() : cut[0].id);
   } else if (o.mode == "station") {
     const BlockDef* b = o.hasPos && w ? &reg().block(w->getBlock(o.pos.x, o.pos.y, o.pos.z)) : nullptr;
@@ -139,6 +140,7 @@ void InvSession::refresh() {
     enchOf(sta[0]); enchOf(sta[1]);   // a treasure book settles what it holds once, not every frame
     staRes = stationResult(o.kind, sta[0], sta[1]);
   } else if (o.mode == "table") title = "Crafting";
+  recipeGate().immersive = w && w->immersive;
   match = matchGrid(grid, W);
 }
 
@@ -447,6 +449,7 @@ int InvSession::takeOutput(bool shift) {
   refresh();
   int made = 0; std::string rare;
   for (int k = 0; k < (shift ? 64 : 1); k++) {
+    recipeGate().immersive = w && w->immersive;
     CraftMatch r = matchGrid(grid, W);
     if (!r) break;
     ItemStack out = r.result();
@@ -455,14 +458,7 @@ int InvSession::takeOutput(bool shift) {
     for (auto& s : grid) if (!s.empty() && hasContents(s) && s.def() && s.def()->has("backpack") && od && od->has("backpack")) { if (!out.tag.is_object()) out.tag = json::object(); out.tag["c"] = s.tag["c"]; break; }
     if (!shift && !p.cursor.empty() && !(stacksMerge(p.cursor, out) && p.cursor.n + out.n <= maxStackOf(out.id))) break;
     if (onCraft && !onCraft(out)) break;
-    const json* keep = r.recipe && r.recipe->props.contains("keep") ? &r.recipe->props["keep"] : nullptr;
-    for (auto& s : grid) {
-      if (s.empty()) continue;
-      // buckets and bottles come back empty (milk for a cake, honey for a honey block)
-      std::string back = keep && keep->contains(s.id) && (*keep)[s.id].is_string() ? (*keep)[s.id].get<std::string>() : "";
-      if (--s.n <= 0) { if (!back.empty()) s = ItemStack(back, 1); else s.clear(); }
-      else if (!back.empty()) giveBack(ItemStack(back, 1));
-    }
+    consumeCraft(grid, r, [&](const ItemStack& b) { giveBack(b); });
     if (shift) { ItemStack o2 = out; int left = bagAdd(o2); if (left > 0 && onThrow) { ItemStack t = out; t.n = left; onThrow(t); } }
     else if (!p.cursor.empty()) p.cursor.n += out.n; else p.cursor = out;
     made += out.n;

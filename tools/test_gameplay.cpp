@@ -2,6 +2,8 @@
 // in a temporary user dir, a test arena is built in the Overworld band, and a Player is driven
 // through PlayerController with scripted input. Prints PASS/FAIL per check; exit code = failures.
 //   ./build/dq-test-gameplay [--userdir DIR] [-v]
+#include "sim/weather.h"
+#include "sim/wind_field.h"
 #include "core/init.h"
 #include "sim/controller.h"
 #include "sim/gamecommands.h"
@@ -88,6 +90,59 @@ int main(int argc, char** argv) {
   const KnownBlocks& KBk = KB();
   BlockId stone = r.B("stone"), dirt = r.B("dirt"), sand = r.B("sand"), water = r.B("water");
 
+  printf("[wind field]\n");
+  {   // sim/wind_field.h: Particle Rain's gust field on our wind (the same on every machine)
+    WindParams wp{1.1f, 0.8f, 0.2f, 1234.5};
+    const double ob = dimBase(DIM_OVERWORLD);
+    vec3 a = windAt(wp, 37.5, ob + 100, -12.25), b = windAt(wp, 37.5, ob + 100, -12.25);
+    CHECK(a == b, "windAt is a pure function of its inputs");
+    CHECK(windAt(wp, 37.5, ob + 40, -12.25) == vec3(0), "no wind below band-local y 50");
+    CHECK(a.y == 0, "wind is horizontal");
+    const float cap = 0.03f * 2 * (0.5f + wp.strength) * (1 + wp.gust);
+    bool inCap = true, gustOk = true; vec2 sum(0);
+    for (int i = 0; i < 64; i++) for (int k = 0; k < 64; k++) {
+      vec3 v = windAt(wp, i * 7.3, ob + 100, k * 5.9);
+      if (glm::length(v) > cap + 1e-5f || v.y != 0) inCap = false;
+      sum += vec2(v.x, v.z);
+      float g = gustAt(wp, i * 7.3, k * 5.9); if (!(g >= 0 && g <= 1)) gustOk = false;
+    }
+    CHECK(inCap, "wind stays within 0.03 x 2 x (0.5 + strength) x (1 + gust)");
+    CHECK(gustOk, "gustAt stays in 0..1");
+    // the mean blows along dir (the convention of WeatherSystem: clouds move by -sin(dir), -cos(dir))
+    vec2 want(-std::sin(wp.dir), -std::cos(wp.dir));
+    float ang = std::acos(std::clamp(glm::dot(glm::normalize(sum), want), -1.f, 1.f));
+    CHECK(glm::length(sum) > 0 && ang < 0.5236f, "mean wind follows the wind direction (%.0f degrees off)", ang * 57.3f);
+  }
+  printf("[after-rain fog]\n");
+  if (WeatherSystem* W = weatherOf(*r.lv)) {   // particles.json fog_after_rain: up to 5 minutes once the rain stops
+    W->set("rain", 600); r.lv->tick(0.05);
+    CHECK(W->afterRainT == 0, "no after-rain fog while it rains (%.1f)", W->afterRainT);
+    W->set("clear", 900); r.lv->tick(0.05);
+    CHECK(W->afterRainT > 0 && W->afterRainT <= 300, "rain stopping starts the after-rain fog (%.1f s)", W->afterRainT);
+    CHECK(W->netState().contains("ar"), "a guest is sent the after-rain fog");
+  }
+  printf("[rain on the roof]\n");
+  {   // heard through a house's roof, fading out under a thicker one, gone deep in a mine
+    CHECK(WeatherSystem::roofRain(1, 1, 2, 104, 100) > 0.9f, "a roof just over you: the rain's patter (%.2f)", WeatherSystem::roofRain(1, 1, 2, 104, 100));
+    const float mid = WeatherSystem::roofRain(1, 1, 0, 110, 100);
+    CHECK(mid > 0.05f && mid < 0.9f, "under ten blocks of rock: fainter (%.2f)", mid);
+    CHECK(WeatherSystem::roofRain(1, 1, 0, 180, 100) == 0, "deep in a mine: none");
+    CHECK(WeatherSystem::roofRain(1, 1, 12, 104, 100) == 0, "out in the open: it's the open rain, not a roof");
+    CHECK(WeatherSystem::roofRain(1, 2, 0, 104, 100) == 0 && WeatherSystem::roofRain(0, 1, 0, 104, 100) == 0, "snow or no rain: no patter");
+  }
+  printf("[weather round every player]\n");
+  if (WeatherSystem* W = weatherOf(*r.lv)) {   // snow cover, ice, puddles and strikes happen round each Overworld player
+    auto far = std::make_unique<Player>(); far->name = "Far"; far->pos = vec3(900.5f, r.p->pos.y, 0.5f);
+    Player* fp = static_cast<Player*>(r.lv->spawn(std::move(far)));
+    auto deep = std::make_unique<Player>(); deep->name = "Deep"; deep->pos = vec3(0.5f, (float)dimBase(DIM_NETHER) + 60, 0.5f);
+    Player* dp = static_cast<Player*>(r.lv->spawn(std::move(deep)));
+    std::vector<vec3> a = W->groundAnchors(*r.lv);
+    bool hasFar = false, hasDeep = false, hasMe = false;
+    for (vec3 v : a) { if (std::abs(v.x - 900.5f) < 0.01f) hasFar = true; if (dimOfY((int)v.y) == DIM_NETHER) hasDeep = true; if (std::abs(v.x - r.p->pos.x) < 0.01f && std::abs(v.z - r.p->pos.z) < 0.01f) hasMe = true; }
+    CHECK(hasMe && hasFar, "ground weather works round every Overworld player, not only the first (%zu anchors)", a.size());
+    CHECK(!hasDeep, "and not round a player in the Nether");
+    fp->removed = true; dp->removed = true; r.lv->tick(0.05);
+  }
   printf("[movement]\n");
   {
     r.put(0.5f, Y + 5.5f, 0.5f);

@@ -117,6 +117,7 @@ void Level::tick(double dt) {
   // DQ_PROFILE_SIM=1: the slowest systems and the entities, in the log every 600 ticks
   static const bool prof = std::getenv("DQ_PROFILE_SIM") != nullptr;
   static std::map<std::string, double> pms; static int pticks = 0;
+  { const bool im = rule(*this, "immersive"); for (auto& [r, w] : realms) w->immersive = im; }
   if (prof) {
     for (auto& [r, w] : realms) for (auto& s : w->systems) { double t = nowSeconds(); s->tick(*w, dt); pms[std::string("world.") + s->name()] += nowSeconds() - t; }
     for (auto& s : systems) { double t = nowSeconds(); s->tick(*this, dt); pms[s->name()] += nowSeconds() - t; }

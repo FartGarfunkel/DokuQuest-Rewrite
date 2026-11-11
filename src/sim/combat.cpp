@@ -190,7 +190,7 @@ float attackEntity(Level& lv, Player& p, Entity& e) {
   dmg = spellbladeHit(lv, p, e, dmg, src.element);   // a spell carried on the blade (sim/magic_hands.cpp)
   dmg *= pathMeleeFactor(p);                          // the Knight's Heavy Blows (sim/villager_quests.cpp)
   // silver (items.json "holy"): bites the undead and the cursed half as hard again
-  if (const ItemDef* wd = src.weapon.empty() ? nullptr : reg().item(src.weapon); wd && wd->has("holy"))
+  if (!p.inv[p.selected].empty() && gearIsHoly(p.inv[p.selected]))   // (a procedural blade of silver too, core/tool_parts.h)
     if (creatureIsCursed(e)) {
       dmg *= 1.5f;
       lv.fx->particles("end_mote", e.pos + vec3(0, e.h * 0.6f, 0), 6);

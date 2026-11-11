@@ -7,6 +7,7 @@
 #include "render/rod_tip.h"
 #include "assets/cape_tex.h"
 #include "render/item_layers.h"
+#include "render/fp_motion.h"
 #include "client/app.h"
 #include "render/creature_models.h"
 #include "ui/screen.h"
@@ -21,6 +22,8 @@
 #include "sim/quiver.h"
 
 namespace dq {
+std::unique_ptr<Screen> makeKnappingScreen(const std::string& material, const std::string& item);   // ui/knapping_screen.cpp
+std::unique_ptr<Screen> makeAnvilScreen(ivec3 at, int tier);   // ui/anvil_screen.cpp
 
 void registerCharacterLayers() {
   static bool done = false;
@@ -175,6 +178,8 @@ void CharacterLayer::devSwitches(GameSession& s) {
     std::string w = v;
     if (w == "creator") s.app.pushScreen(makeCreatorScreen());
     else if (w == "skineditor") s.app.pushScreen(makeSkinEditorScreen());
+    else if (w == "anvil" && s.player) { s.player->held() = ItemStack("stone_hammer", 1); s.player->offhand[0] = ItemStack("copper_ingot", 1); s.player->offhand[0].tag = json{{"heat", 800}}; s.app.pushScreen(makeAnvilScreen(ivec3(0), 1)); }
+    else if (w == "knapping" && s.player) { s.player->held() = ItemStack("pebble", 6); s.app.pushScreen(makeKnappingScreen("stone", "pebble")); }
   }
 }
 
@@ -219,7 +224,11 @@ void CharacterLayer::update(GameSession& s, double dt) {
     float hs = std::hypot(v.x, v.z);
     bool ground = e->onGround || (!devPose.empty() && p == s.player && devPose != "fly");
     st.bobAmt += ((ground ? std::min(1.f, hs / 4.3f) : 0.f) - st.bobAmt) * std::min(1.f, fdt * 8);
-    st.bob += hs * fdt * 1.6f;
+    {   // backing off (the body still facing ahead): the step runs the other way
+      const float fw = -(v.x * std::sin(st.bodyYaw) + v.z * std::cos(st.bodyYaw));
+      st.backward = hs > 0.5f && fw < -0.3f * hs;
+    }
+    st.bob += hs * fdt * 1.6f * (st.backward ? -1.f : 1.f);
     st.swimPh = std::fmod(st.swimPh + fdt * (e->inWater ? 2.4f + hs * 0.5f : 1.2f), 628.3f);
     st.crawlPh = std::fmod(st.crawlPh + hs * fdt * 2.2f, 628.3f);   // a pull of the elbows to every ~1.4 blocks
     st.ladderPh = std::fmod(st.ladderPh + std::fabs(v.y) * fdt * 4.2f, 628.3f);   // hand over hand up a ladder
@@ -233,6 +242,14 @@ void CharacterLayer::update(GameSession& s, double dt) {
       st.falling = false;
     }
     st.deathT = p->dead ? st.deathT + fdt : 0;
+    // AnimatedPlayer: the look eased (a remote player's comes in steps), a hit's flinch timed from the hit, a lead leg per jump
+    st.pitch += wrapAngle(p->pitch - st.pitch) * std::min(1.f, fdt * (p == s.player ? 30.f : 14.f));
+    if (p->hurtTime > st.lastHurt + 0.01f) st.hurtT = 0.0001f; else if (st.hurtT > 0) st.hurtT += fdt;
+    if (st.hurtT > 1) st.hurtT = 0;
+    st.lastHurt = p->hurtTime;
+    const bool inAir = !e->onGround && !e->inWater && !p->flying;
+    if (inAir && !st.wasAir) st.airLeft = !st.airLeft;
+    st.wasAir = inAir;
     // standing about (for the idles), and the ground under each foot a few times a second (a step or a slab under one), eased
     {
       const bool calm = ground && hs < 0.25f && p->swingT <= 0 && p->eatT <= 0 && p->bowPull <= 0 && !p->riding && !p->sleeping && !p->swimming && !p->dead;
@@ -399,7 +416,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   // ---- the pose (local.js LocalPlayer.pose) ----
   CharPose ps;
   static const float devTurn = [] { const char* v = std::getenv("DQ_DEV_TURN"); return v ? (float)std::atof(v) : 0.f; }();   // test aid: turn the model (radians) to see it from the side
-  ps.yaw = p.yaw + devTurn; ps.headPitch = p.pitch * 0.8f; ps.walk = st.bob * 1.4f; ps.walkAmt = st.bobAmt; ps.swing = p.swingT; ps.time = (float)time;
+  ps.yaw = p.yaw + devTurn; ps.headPitch = st.pitch * 0.8f; ps.walk = st.bob * 1.4f; ps.walkAmt = st.bobAmt; ps.swing = p.swingT; ps.time = (float)time;
   ps.sneak = p.sneaking && !p.swimming; ps.sit = p.riding != 0; ps.sleep = sleeping; ps.swim = p.swimming;
   ps.crawl = p.crawling && !p.swimming;   // on the belly (it was the swim on dry land)
   ps.swimPitch = p.swimming ? p.pitch : 0;
@@ -414,6 +431,10 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   ps.bowArm = wear.held == "bow";
   ps.air = !p.onGround && !p.flying && !p.inWater && !p.riding && !ps.ladder && !ps.hang && ps.climb <= 0; ps.vy = st.vel.y; ps.sprint = p.sprinting; ps.land = std::max(0.f, st.landT); ps.landAmt = st.landAmt;
   ps.bow = p.bowPull; ps.eat = p.eatT; ps.scope = p.scoping;
+  ps.hurt = st.hurtT; ps.airLeft = st.airLeft; ps.backward = st.backward && !p.sneaking;
+  if (ps.eat > 0) {   // a potion, a bottle, a mug, milk: drunk, not eaten
+    ps.drink = isDrinkItem(wear.held);
+  }
   {   // local.js paddling(): treading water or swimming along upright in water deeper than about a block
     auto liquidAt = [&](float dy) { return reg().tLiquid[w.getBlock(ifloor(p.pos.x), ifloor(p.pos.y + dy), ifloor(p.pos.z))] == 1; };
     bool deep = p.contacts.eyeWater || liquidAt(1.1f) || (!p.onGround && liquidAt(0.5f));
@@ -434,6 +455,15 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
     if (devPose == "ladder") { ps.ladder = true; ps.ladderPh = (float)time * 5; ps.ladderMv = 1; ps.air = false; }
     if (devPose == "paddle") { ps.paddle = true; ps.swimMv = 0; ps.air = false; }
     if (devPose == "eat") ps.eat = 0.3f;
+    if (devPose == "drink") { ps.eat = 0.3f; ps.drink = true; ps.held = true; }
+    if (devPose == "hurt") ps.hurt = std::fmod((float)time, 1.2f) + 0.0001f;
+    if (devPose == "die") ps.deathT = std::fmod((float)time, 2.f) + 0.0001f;
+    if (devPose == "block") { ps.block = 1; ps.off = true; }
+    if (devPose == "xbow") { ps.xbowCharge = std::fmod((float)time * 0.8f, 1.f) + 0.0001f; ps.held = true; }
+    if (devPose == "xbowaim") { ps.xbowAim = true; ps.held = true; }
+    if (devPose == "trident") { ps.throwCharge = std::min(1.f, std::fmod((float)time, 2.f)) + 0.0001f; ps.held = true; }
+    if (devPose == "spear") { ps.spearCharge = 1; ps.held = true; }
+    if (devPose == "back") ps.backward = true;
   }
   ps.capeA = st.capeA; ps.capeSway = st.capeSway;
   ps.fp = fp;
@@ -480,7 +510,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   CharDrawOpts o;
   o.light = VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f};
   o.tint = p.hurtTime > 0 ? vec4(1, 0.15f, 0.1f, 0.4f) : vec4(0);
-  o.fp = fp; o.time = f.time; o.camPos = f.cam.origin;
+  o.fp = fp; o.time = f.time; o.camPos = f.cam.origin; o.blend = &st.blend;
   o.detail = fp || glm::dot(rel, rel) < 56.f * 56.f;   // far off, the detail is lost anyway: past 56 blocks only the skin
   drawCharacter(*spec, ps, wear, base, o);
   if (carrying && !fp && !ps.sleep && ps.deathT <= 0) {   // skins.js: it sits against the chest, in front of the arms
@@ -496,7 +526,12 @@ void drawCharFace(const CharModel& M, const CharPose& ps, const mat4& head, Voxe
   VoxelRenderer& VR = voxelRenderer();
   float t = ps.time, ph = std::fmod(t + F.seed, F.period);
   if (ps.sleep || ph < 0.13f || (ph > 1.6f && ph < 1.7f && F.period > 4.5f)) VR.draw(F.lid.gl, head * F.lid.local(), light, tint);   // a blink (now and then a double one)
-  if (ps.talk && F.mouth.ready() && std::sin(t * 13 + F.seed * 3) + std::sin(t * 7.7f) * 0.7f > 0.25f) VR.draw(F.mouth.gl, head * F.mouth.local(), light, tint);
+  // the mouth: talking; a gasp when hit; chewing; open to drink; puffing on a long run (AnimatedPlayer's face)
+  bool open = ps.talk && std::sin(t * 13 + F.seed * 3) + std::sin(t * 7.7f) * 0.7f > 0.25f;
+  if (ps.hurt > 0 && ps.hurt < 0.35f) open = true;
+  if (ps.eat > 0) open = ps.drink || std::sin(t * 22) > 0.2f;
+  if (ps.sprint && ps.walkAmt > 0.5f && std::sin(t * 5 + F.seed) > 0.55f) open = true;
+  if (open && F.mouth.ready() && !ps.sleep) VR.draw(F.mouth.gl, head * F.mouth.local(), light, tint);
 }
 
 void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear& wear, const mat4& base, const CharDrawOpts& o) {
@@ -515,6 +550,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   bool cloak = L && L->cloak && cape.empty();
   CharRig R;
   charRig(M, ps, base, R, cloak, !back.empty());
+  if (o.blend) charBlendStep(*o.blend, R, base, charStateKey(ps), o.time);
   // the 3D outer layer goes under armour: whatever a piece covers isn't drawn
   bool hid[CP_COUNT] = {};
   hid[CP_HEAD] = !AR[0].empty() && !hatItem;

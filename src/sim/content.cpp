@@ -1,4 +1,13 @@
 // sim/content.cpp — the content features' shared helpers and the ContentSystem that drives them.
+#include "sim/heat.h"
+#include "sim/pit_kiln.h"
+#include "sim/charcoal_pit.h"
+#include "sim/forge.h"
+#include "sim/bloomery.h"
+#include "sim/barrel.h"
+#include "sim/panning.h"
+#include "sim/station_sync.h"
+#include "sim/firepit.h"
 #include "sim/content.h"
 #include "sim/maps.h"
 #include <random>
@@ -138,6 +147,13 @@ public:
       if (!p) return true;
       const json& args = a[2];
       if (args.is_object() && args.value("k", "") == "stable") stableAction(lv, *p, args);
+      if (args.is_object() && args.value("k", "") == "firepitSticks") {   // a guest's firestarter on sticks (sim/firestarter.cpp)
+        auto num = [&](const char* k) { return args.contains(k) && args[k].is_number_integer(); };
+        if (!num("x") || !num("y") || !num("z")) return false;   // (a guest's message: checked, never trusted)
+        const ivec3 at(args["x"].get<int>(), args["y"].get<int>(), args["z"].get<int>());
+        if (glm::distance(vec3(at) + vec3(0.5f), p->pos) > REACH + 2) return false;   // within their reach
+        if (firepitFromSticks(lv, lv.world(p->realm), at.x, at.y, at.z) && lv.fx) lv.fx->sound("ignite", vec3(at) + vec3(0.5f), 16);
+      }
       return false;
     });
   }
@@ -148,6 +164,14 @@ public:
     mapsTick(l, dt);
     fishingTick(l, dt);
     campingTick(l, dt);
+    heatTick(l, dt);   // sim/heat.h: hot things in your bag cool
+    pitKilnTick(l, dt);   // sim/pit_kiln.h
+    charcoalTick(l, dt);  // sim/charcoal_pit.h
+    forgeTick(l, dt);     // sim/forge.h
+    bloomeryTick(l, dt);  // sim/bloomery.h
+    barrelTick(l, dt);    // sim/barrel.h
+    sluiceTick(l, dt);    // sim/panning.h
+    stationSyncTick(l);   // sim/station_sync.h: stations a guest lit or sealed join the host's lists
     travelTick(l, dt);
     elytraTick(l, dt);
     stableTick(l, dt);

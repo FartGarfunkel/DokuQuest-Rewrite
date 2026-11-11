@@ -2,6 +2,7 @@
 // chunkLoaded (checksums and stale chunks), plus what netsync.js does on a guest (block changes reported, things
 // made here handed to the server).
 #include "net/client.h"
+#include "sim/weather.h"
 #include "sim/creature.h"
 #include "net/server_host.h"
 #include "world/region.h"
@@ -36,6 +37,9 @@ public:
   }
   void onBlockEntityChanged(World& w, int x, int y, int z) override {
     if (cl.applyingBE) return;
+    // the blocks changed this frame go first: a station built and filled at once (a forge, a kiln, a pile) would reach the
+    // host as contents for a block it hasn't got yet, and the block landing after them would wipe them
+    if (const std::string r = std::to_string(w.realm); cl.blkOut.contains(r)) { cl.sendTo(BLK, {{"rl", w.realm}, {"l", cl.blkOut[r]}}); cl.blkOut.erase(r); }
     json* e = w.blockEntity(x, y, z);
     int q = ++cl.beSeq;   // numbered: until the server's copy includes this change, its older news of it is ignored
     cl.bePend[strFormat("%d,%d,%d,%d", w.realm, x, y, z)] = q;
@@ -549,7 +553,11 @@ void NetClient::applyEnv(const json& m) {
   if (I.time < 0) I.time += DAY_LEN;
   if (I.time >= DAY_LEN) I.time -= DAY_LEN;
   I.day = m.value("day", I.day);
-  if (m.contains("w") && !m["w"].is_null()) { if (!I.data.is_object()) I.data = json::object(); I.data["weather"] = m["w"]; }
+  if (m.contains("w") && m["w"].is_object()) {
+    if (!I.data.is_object()) I.data = json::object();
+    I.data["weather"] = m["w"];
+    if (WeatherSystem* W = weatherOf(*lv)) W->applyNet(m["w"]);   // follow the host's weather (it used to be read once, at joining)
+  }
   if (m.contains("rules") && m["rules"].is_object()) I.rules = m["rules"];
   if (m.contains("st") && m["st"].is_object()) {   // the story's state, as the host has it (server_sync.cpp sendEnv)
     if (!I.data.is_object()) I.data = json::object();

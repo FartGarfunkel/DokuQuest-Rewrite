@@ -36,11 +36,19 @@ struct CharPose {
   // scratch of the head, a look at its hands, a tap of the foot), who it is (picks its idles), and the ground under each
   // foot relative to where it stands (blocks, + higher): the feet plant on steps and slabs, the hips drop, a knee bends
   float idleT = 0; u32 seed = 0; float footL = 0, footR = 0;
+  // render/char_poses.cpp (after AnimatedPlayer, Not Enough Animations and Hold My Items): drinking rather than eating (a
+  // bottle tipped up, the head back), seconds since a hit (the flinch; 0: none), the jump's lead leg, walking backwards
+  bool drink = false, airLeft = false, backward = false; float hurt = 0;
+  // poses ready for the shield, crossbow, trident and spear (0..1 how far in): a shield raised across the body in the
+  // off hand, a crossbow being wound / levelled to shoot, a trident drawn back over the shoulder, a spear couched for a charge
+  float block = 0, xbowCharge = 0, throwCharge = 0, spearCharge = 0; bool xbowAim = false;
 };
 
 // part angles (x, y, z; applied as rotY, rotX, rotZ) and the lift of the whole body (blocks)
 struct CharAngles { vec3 body{0}, head{0}, armR{0}, foreR{0}, armL{0}, foreL{0}, legR{0}, shinR{0}, legL{0}, shinL{0}; float lift = 0; };
 CharAngles charAnimate(const CharPose& pose);
+// the newer poses on top of charAnimate's (render/char_poses.cpp; charAnimate calls it last)
+void charMorePoses(CharAngles& A, const CharPose& pose);
 // a bow in the hand (render/char_layer.cpp, render/villager_layer.cpp): its size (item units to blocks) and where the
 // fist's middle is down the forearm (model px from the elbow)
 constexpr float BOW_SCALE = 0.85f, BOW_FIST = 6.3f;

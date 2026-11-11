@@ -2,6 +2,7 @@
 // game/skies.js extraParticles, the LightningBolt), the ambient effects (game/particles2.js
 // particleWeather + torch flames + drips, game/ambientfx.js leaves, game/blockfx.js emitters) and the
 // layers that draw distant terrain, clouds and particles.
+#include "render/weather_draw.h"
 #include "common/holiday.h"
 #include "render/env_layers.h"
 #include "render/distant.h"
@@ -53,9 +54,9 @@ public:
   void drawHud(GameSession& s) override {
     if (!s.debugOverlay) return;
     WeatherSystem* W = weatherOf(*s.level);
-    std::string t = strFormat("LOD %d drawn / %d tiles, %d building, %.1f MB GPU, %zu summaries, range %.0f, avg build %.1f ms\nparticles %zu (%d rain)  weather %s %.0fs  rain %.2f mist %.2f wind %.2f",
+    std::string t = strFormat("LOD %d drawn / %d tiles, %d building, %.1f MB GPU, %zu summaries, range %.0f, avg build %.1f ms\nparticles %zu  weather fx %d  weather %s %.0fs  rain %.2f mist %.2f wind %.2f",
       lod.drawn, lod.tilesHeld, lod.building, lod.gpuBytes / 1048576.0, lod.summaries, lod.range, lod.built ? lod.buildMsTotal / lod.built : 0.0,
-      particles().count(), particles().dropCount(), W ? W->kind.c_str() : "-", W ? W->left : 0.0, W ? W->rain : 0.f, W ? W->mistNow : 0.f, W ? W->windStrength : 0.f);
+      particles().count(), weatherSimNow() ? weatherSimNow()->count() : 0, W ? W->kind.c_str() : "-", W ? W->left : 0.0, W ? W->rain : 0.f, W ? W->mistNow : 0.f, W ? W->windStrength : 0.f);
     ImGui::GetForegroundDrawList()->AddText(ImVec2(8, (float)s.app.height - 44), IM_COL32(255, 255, 255, 220), t.c_str());
   }
 };
@@ -110,7 +111,6 @@ private:
   int dim = -1;
   void buildKinds();
   void scanChunk(const World& w, const Chunk& c, ChunkEm& out);
-  void drops(GameSession& s, WeatherSystem& W, double dt);
   void extra(GameSession& s, WeatherSystem& W, double dt);
   void particleWeather(GameSession& s, WeatherSystem* W, double dt);
   void ambient(GameSession& s, WeatherSystem* W, double step);
@@ -182,46 +182,11 @@ void WeatherFxLayer::update(GameSession& s, double dt) {
   if (W) { bolts(s, *W); }
   if (!P.level) return;
   float fdt = (float)std::min(dt, 0.1);
-  if (W) { drops(s, *W, fdt); extra(s, *W, fdt); }
+  if (W) extra(s, *W, fdt);   // (rain and snow are render/weather_layer.cpp's now)
   particleWeather(s, W, fdt);
   ambAcc += dt;
   if (ambAcc >= 0.05) { double step = ambAcc; ambAcc = 0; ambient(s, W, step); emitters(s, dt, step); }
   else emitters(s, dt, 0);
-}
-
-// rain and snow round each player (game/weather.js updateDrops): what falls is decided where each drop falls
-void WeatherFxLayer::drops(GameSession& s, WeatherSystem& W, double dt) {
-  ParticleSystem& P = particles();
-  if (s.frame.dim != DIM_OVERWORLD || s.player->realm != REALM_MAIN || W.rain <= 0) return;
-  World& w = s.world();
-  int want = (int)std::floor((P.level == 1 ? 420 : 1100) * W.rain * (0.6f + 0.4f * W.thunderK) * W.dens);
-  int n = std::min(want - P.dropCount(), 90), tries = n * 2;
-  float tilt = W.thunderK * 2.2f + W.windTilt, wdx = W.windDX, wdz = W.windDZ, drift = W.snowDrift;
-  vec3 p = s.player->pos, pv = s.player->vel;
-  u16 tRain = (u16)P.tile("rain_streak"), tSnow = (u16)P.tile("snowflake");
-  while (n > 0 && tries-- > 0) {
-    float a = rnd() * TAU, r = std::pow(rnd(), 0.8f) * 30;
-    float x = p.x + std::cos(a) * r + pv.x * 0.6f, z = p.z + std::sin(a) * r + pv.z * 0.6f;
-    if (!w.chunk(DIM_OVERWORLD, ifloor(x) >> 4, ifloor(z) >> 4)) continue;
-    int kind = W.precipAt(w, x, p.y, z);
-    if (!kind) continue;
-    n--;
-    float floorY = (float)W.topAt(w, ifloor(x), ifloor(z));
-    float y = std::max(floorY, p.y + 6 + rnd() * (8 + r * 0.4f));
-    if (floorY > p.y + 14) continue;   // under a roof: it's raining on the roof, not here
-    u8 lt = w.getLight(ifloor(x), std::min(WORLD_H - 1, (int)floorY + 1), ifloor(z));
-    bool snow = kind == 2; float far = 1 + std::max(0.f, r - 9) / 6;   // far off they're drawn bigger, so a shower reads as a shower
-    Particle q;
-    float sx = snow ? drift * wdx : tilt * wdx, sz = snow ? drift * wdz : tilt * wdz;
-    q.p = vec3(x - sx * 0.8f, y, z - sz * 0.8f);
-    q.v = vec3(sx, snow ? -1.6f - rnd() * 0.6f - drift * 0.15f : -16 - rnd() * 4, sz);
-    q.floorY = floorY; q.drop = snow ? 2 : 1; q.ph = rnd() * 6; q.life = q.max = 12;
-    q.size = (snow ? 0.05f : 0.016f) * far; q.vert = snow ? 0 : 0.5f * std::min(2.f, far);
-    q.tile = snow ? tSnow : tRain;
-    q.light = (u8)((std::max(lt >> 4, 12) << 4) | (lt & 15));
-    P.add(q);
-  }
-  (void)dt;
 }
 
 // sand, dust and ash (game/skies.js extraParticles)
@@ -235,17 +200,7 @@ void WeatherFxLayer::extra(GameSession& s, WeatherSystem& W, double dt) {
     if ((lt >> 4) < 8 && s.frame.dim == DIM_OVERWORLD) return;
     q.tile = white; q.light = (u8)((std::max(lt >> 4, 10) << 4) | (lt & 15)); P.add(q);
   };
-  if (s.frame.dim == DIM_OVERWORLD && W.sand > 0.05f) {
-    int n = (int)std::ceil(W.sand * 160 * dt * amount);
-    for (int k = 0; k < n; k++) {
-      float a = rnd() * TAU, r = 2 + rnd() * 18, sp = 9 + rnd() * 7; bool big = rnd() < 0.25f;
-      Particle q; q.p = vec3(p.x + std::cos(a) * r - wdx * 6, p.y + rnd() * 4 - 0.5f, p.z + std::sin(a) * r - wdz * 6);
-      q.v = vec3(wdx * sp, (rnd() - 0.5f) * 0.6f, wdz * sp); q.life = q.max = 1.2f + rnd(); q.size = big ? 0.07f : 0.02f;
-      if (!big) { q.streak = 0.35f; q.sd = vec3(wdx, 0, wdz); }
-      u8 c[3] = {(u8)(big ? 150 : 178), (u8)(big ? 118 : 140), (u8)(big ? 78 : 92)}; std::copy(c, c + 3, q.tint);
-      put(q);
-    }
-  }
+  // (desert sand and dust: render/weather_sim.cpp spawnDust)
   if (s.frame.dim == DIM_NETHER) {
     int n = (int)std::ceil(W.ash * 70 * dt * amount);
     for (int k = 0; k < n; k++) {
@@ -635,6 +590,7 @@ public:
 } // namespace
 
 void registerLightColourLayer();   // render/light_colour_layer.cpp
+void registerWeatherLayer();   // render/weather_layer.cpp
 void registerEnvironmentLayers() {
   static bool done = false;
   if (done) return;
@@ -642,6 +598,7 @@ void registerEnvironmentLayers() {
   registerRenderLayer([](GameSession&) { return std::make_shared<DistantLayer>(); });
   registerRenderLayer([](GameSession&) { return std::make_shared<CloudLayer>(); });
   registerRenderLayer([](GameSession&) { return std::make_shared<WeatherFxLayer>(); });
+  registerWeatherLayer();   // rain, snow, splashes, dust, ground fog (render/weather_layer.cpp)
   registerRenderLayer([](GameSession&) { return std::make_shared<ParticleLayer>(); });
   registerDynLights();
   registerLightColourLayer();   // coloured block light (render/light_colour_layer.cpp)

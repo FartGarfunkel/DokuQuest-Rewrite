@@ -322,16 +322,17 @@ void recolourWorn(VoxelGrid& g, vec3 lo, const std::string& part, int slot, floa
   for (u32 c : g.c) if (c) { mean += lumOf(c); n++; }
   if (!n) return;
   mean /= n;
+  std::vector<MaterialPaint> paint; for (auto& m : mats) paint.push_back(materialPaint(m));
   for (int z = 0; z < g.size.z; z++) for (int y = 0; y < g.size.y; y++) for (int x = 0; x < g.size.x; x++) {
     u32& c = g.c[g.idx(x, y, z)];
     if (!c) continue;
     const vec2 uv = cellAt(pv.x + lo.x + (x + 0.5f) / CHAR_VPP, pv.y + lo.y + (y + 0.5f) / CHAR_VPP);
     int best = 0; float bd = 1e9f;
     for (size_t i = 0; i < P.cells.size(); i++) { const float dx = P.cells[i].x + 0.5f - uv.x, dy = P.cells[i].y + 0.5f - uv.y, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = (int)i; } }
-    const ToolMaterial* m = toolMaterial(mats[best]);
-    if (!m) continue;
+    if (!toolMaterial(mats[best])) continue;
+    const vec3 rgb = paint[best].at((u32)(x >> 1) * 73856093u ^ (u32)(y >> 1) * 19349663u ^ (u32)(z >> 1) * 83492791u);   // a mix's flecks in 2x2x2 clumps
     const float k = clampv(lumOf(c) / std::max(mean, 0.05f), 0.35f, 1.7f);
-    c = voxRGBA((int)std::min(255.f, m->rgb.x * 255 * k), (int)std::min(255.f, m->rgb.y * 255 * k), (int)std::min(255.f, m->rgb.z * 255 * k), (u8)(c >> 24));
+    c = voxRGBA((int)std::min(255.f, rgb.x * 255 * k), (int)std::min(255.f, rgb.y * 255 * k), (int)std::min(255.f, rgb.z * 255 * k), (u8)(c >> 24));
   }
 }
 }
@@ -348,7 +349,7 @@ const ArmorSet& armorMeshes(const std::string& itemKey, const std::string& dye, 
     const size_t c1 = itemKey.find(':', 3);
     paP = armorPattern(itemKey.substr(3, c1 == std::string::npos ? std::string::npos : c1 - 3));
     const std::string list = c1 == std::string::npos ? "" : itemKey.substr(c1 + 1);
-    for (size_t s = 0, e; !list.empty() && s <= list.size(); s = e + 1) { e = list.find(',', s); if (e == std::string::npos) e = list.size(); paMats.push_back(list.substr(s, e - s)); }
+    paMats = modelKeyMaterials(list);
     if (paP && paMats.size() != paP->cells.size()) paP = nullptr;
   }
   std::string mat = paP || itemKey.rfind("pa:", 0) == 0 ? "iron" : armorMatOf(itemKey);

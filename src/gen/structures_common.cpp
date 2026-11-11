@@ -1,4 +1,5 @@
 // gen/structures_common.cpp — shared structure helpers (see structures_common.h).
+#include "core/tool_parts.h"
 #include "gen/structures_common.h"
 #include <mutex>
 
@@ -63,6 +64,10 @@ json structLoot(const std::string& kind, Mulberry32& rnd) {
   json items = emptySlots();
   const json& L = SD()["STRUCT_LOOT"];
   rollTable(items, L.contains(kind) ? L[kind] : L["ruin"], rnd);
+  for (auto& s : items) if (s.is_object() && s.contains("id") && s["id"].is_string()) {   // metal gear: procedural (core/tool_parts.h)
+    const ItemStack p = proceduralOf(s["id"].get<std::string>(), s.value("n", 1));
+    if (p.id != s["id"].get<std::string>()) s = p.toJson();
+  }
   // a chest is never quite empty
   bool any = false; for (auto& s : items) if (!s.is_null()) { any = true; break; }
   if (!any) { int k = jsFloor(rnd() * 27); items[k] = json{{"id", hasItem("emerald") ? "emerald" : "coal"}, {"n", 1 + jsFloor(rnd() * 3)}}; }

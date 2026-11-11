@@ -5,6 +5,8 @@
 // Vertex shaders get a clip-space Z fix so OpenGL's -1..1 depth lands on Vulkan's 0..1.
 #include "render/vk_backend.h"
 #include "render/gl.h"
+#include "render/gpu_select.h"
+#include "common/fs.h"
 #include "common/common.h"
 
 // volk loads libvulkan at runtime, so the game links without a Vulkan SDK (CI, and PCs that have none).
@@ -18,6 +20,7 @@
 
 #include <array>
 #include <cctype>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <functional>
@@ -42,7 +45,7 @@ struct GpuBuf {
 
 struct Buf {
   bool alive = false;
-  bool referenced = false;
+  uint64_t useSerial = 0;   // the frame that last used it; still in use while that frame has not finished on the GPU
   bool dirty = false;
   GpuBuf gpu;
 };
@@ -220,7 +223,66 @@ static int bumpIndex = 0;
 static std::vector<VkDescriptorPool> descPools;
 static int descPoolCur = -1;
 
+// ---- frames in flight ----
+// Two frames: the CPU records one while the GPU draws the other (one frame used to wait for the last to finish
+// before it began: the CPU's time and the GPU's added up). The globals above (retired lists, bump blocks,
+// descriptor pools, cmd, frameFence) always hold the slot being recorded; gfxVulkanNewFrame swaps them.
+// The GPU still runs the frames in order (a full barrier opens each one), so only the CPU's writes into memory an
+// unfinished frame reads need care: buffers in use go through stagedBufWrite, the rest are per slot.
+constexpr int kFramesInFlight = 2;
+struct FrameSlot {
+  VkCommandBuffer cmd = VK_NULL_HANDLE;
+  VkFence fence = VK_NULL_HANDLE;
+  VkSemaphore acquire = VK_NULL_HANDLE, done = VK_NULL_HANDLE;
+  uint64_t serial = 0;
+  std::vector<GpuBuf> retiredBuf;
+  std::vector<VkImage> retiredImg;
+  std::vector<VkDeviceMemory> retiredMem;
+  std::vector<VkImageView> retiredView;
+  std::vector<VkSampler> retiredSamp;
+  std::vector<RetiredGpu> retiredGpu;
+  std::vector<Block> bumps;
+  int bumpIndex = 0;
+  std::vector<VkDescriptorPool> descPools;
+  int descPoolCur = -1;
+};
+static FrameSlot slots[kFramesInFlight];
+static int slotCur = 0;
+static VkCommandBuffer oneShotCmd = VK_NULL_HANDLE;   // uploads outside a frame (a slot's buffer may still be running)
+static uint64_t curSerial = 0;    // the frame being recorded (or last presented)
+static uint64_t doneSerial = 0;   // every frame up to this one has finished on the GPU
+static void swapSlotState(FrameSlot& f) {
+  std::swap(retiredBuf, f.retiredBuf); std::swap(retiredImg, f.retiredImg); std::swap(retiredMem, f.retiredMem);
+  std::swap(retiredView, f.retiredView); std::swap(retiredSamp, f.retiredSamp); std::swap(retiredGpu, f.retiredGpu);
+  std::swap(bumps, f.bumps); std::swap(bumpIndex, f.bumpIndex);
+  std::swap(descPools, f.descPools); std::swap(descPoolCur, f.descPoolCur);
+}
+
 static std::map<PipeKey, VkPipeline> pipelines;
+// Compiled pipelines kept between runs (userDir()/vulkan_pipelines.bin), so a state seen before is not compiled
+// again mid-game (the 16-24 ms frames when something new first comes into view). The driver checks the file's
+// header itself and ignores a cache from another GPU or driver version.
+static VkPipelineCache pipeCache = VK_NULL_HANDLE;
+static fs::path pipeCachePath() { return userDir() / "vulkan_pipelines.bin"; }
+static void loadPipeCache() {
+  VkPipelineCacheCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO};
+  auto data = readFile(pipeCachePath());
+  if (data && !data->empty()) { ci.initialDataSize = data->size(); ci.pInitialData = data->data(); }
+  if (vkCreatePipelineCache(device, &ci, nullptr, &pipeCache) != VK_SUCCESS) {
+    ci.initialDataSize = 0; ci.pInitialData = nullptr;   // a damaged file: start empty
+    if (vkCreatePipelineCache(device, &ci, nullptr, &pipeCache) != VK_SUCCESS) pipeCache = VK_NULL_HANDLE;
+  }
+}
+static void savePipeCache() {
+  if (!pipeCache) return;
+  size_t n = 0;
+  if (vkGetPipelineCacheData(device, pipeCache, &n, nullptr) == VK_SUCCESS && n > 0) {
+    std::string buf(n, '\0');
+    if (vkGetPipelineCacheData(device, pipeCache, &n, buf.data()) == VK_SUCCESS) { buf.resize(n); writeFileAtomic(pipeCachePath(), buf); }
+  }
+  vkDestroyPipelineCache(device, pipeCache, nullptr);
+  pipeCache = VK_NULL_HANDLE;
+}
 static std::unordered_map<uint32_t, VkSampler> samplers;
 
 static GLuint arrayBuf = 0, copyRead = 0, copyWrite = 0, indirectBuf = 0, pixelUnpack = 0, ssboBuf = 0;
@@ -268,6 +330,17 @@ static uint32_t findMem(uint32_t bits, VkMemoryPropertyFlags want) {
   return 0xFFFFFFFFu;
 }
 
+// DQ_FRAME_STATS=1: how often a frame stops to wait for the GPU, and for how long (logged every 120 frames)
+static const bool g_vkStats = std::getenv("DQ_FRAME_STATS") != nullptr;
+static int g_statSync = 0, g_statOneShot = 0, g_statFrames = 0;
+static int g_statAlloc = 0; static double g_statAllocMB = 0;
+static int g_statStaged = 0; static double g_statStagedMB = 0;
+static double g_statCapsMs = 0, g_statAcqMs = 0, g_statSubmitMs = 0, g_statPresentMs = 0;
+static int g_statPasses = 0, g_statTransitions = 0;
+static int g_statDraws = 0; static double g_statDrawMs = 0, g_statPipeMs = 0, g_statDescMs = 0;
+static double g_statFenceMs = 0, g_statSyncMs = 0;
+static double statNow() { return (double)SDL_GetPerformanceCounter() / (double)SDL_GetPerformanceFrequency(); }
+
 static void destroyGpuBuf(GpuBuf& b) {
   if (b.buffer) vkDestroyBuffer(device, b.buffer, nullptr);
   if (b.mem) vkFreeMemory(device, b.mem, nullptr);
@@ -277,6 +350,7 @@ static void destroyGpuBuf(GpuBuf& b) {
 static bool allocHostBuf(VkDeviceSize size, VkBufferUsageFlags usage, GpuBuf& out) {
   out = {};
   if (size == 0) return true;
+  if (g_vkStats) { g_statAlloc++; g_statAllocMB += size / 1048576.0; }
   VkBufferCreateInfo bi{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
   bi.size = size;
   bi.usage = usage;
@@ -284,13 +358,25 @@ static bool allocHostBuf(VkDeviceSize size, VkBufferUsageFlags usage, GpuBuf& ou
   if (vkFail(vkCreateBuffer(device, &bi, nullptr, &out.buffer), "vkCreateBuffer")) return false;
   VkMemoryRequirements req{};
   vkGetBufferMemoryRequirements(device, out.buffer, &req);
-  uint32_t mt = findMem(req.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-  if (mt == 0xFFFFFFFFu) mt = findMem(req.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-  if (mt == 0xFFFFFFFFu) { destroyGpuBuf(out); setErr(GL_OUT_OF_MEMORY); return false; }
   VkMemoryAllocateInfo ai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
   ai.allocationSize = req.size;
-  ai.memoryTypeIndex = mt;
-  if (vkFail(vkAllocateMemory(device, &ai, nullptr, &out.mem), "vkAllocateMemory")) { destroyGpuBuf(out); return false; }
+  // Video memory the CPU can write (Resizable BAR / SAM, or the 256 MB window without it) first. Plain host memory
+  // came first before, so on a dedicated card every vertex was read across PCIe each frame: an RX 6950 XT spent
+  // ~8 ms a frame on that (88 fps against Modern GL's ~550). Nothing reads these buffers back on the CPU (a CPU read
+  // of video memory is very slow). DQ_VK_HOSTBUF=1 keeps the old placement.
+  static const bool hostOnly = std::getenv("DQ_VK_HOSTBUF") != nullptr;
+  uint32_t mt = hostOnly ? 0xFFFFFFFFu : findMem(req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  if (mt != 0xFFFFFFFFu) {
+    ai.memoryTypeIndex = mt;
+    if (vkAllocateMemory(device, &ai, nullptr, &out.mem) != VK_SUCCESS) out.mem = VK_NULL_HANDLE;   // window full: host memory below
+  }
+  if (!out.mem) {
+    mt = findMem(req.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (mt == 0xFFFFFFFFu) mt = findMem(req.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    if (mt == 0xFFFFFFFFu) { destroyGpuBuf(out); setErr(GL_OUT_OF_MEMORY); return false; }
+    ai.memoryTypeIndex = mt;
+    if (vkFail(vkAllocateMemory(device, &ai, nullptr, &out.mem), "vkAllocateMemory")) { destroyGpuBuf(out); return false; }
+  }
   vkBindBufferMemory(device, out.buffer, out.mem, 0);
   vkMapMemory(device, out.mem, 0, req.size, 0, &out.map);
   out.size = size;
@@ -332,6 +418,8 @@ static bool addBump(VkDeviceSize cap) {
   if (vkFail(vkCreateBuffer(device, &bi, nullptr, &b.buf), "bump buffer")) return false;
   VkMemoryRequirements req{};
   vkGetBufferMemoryRequirements(device, b.buf, &req);
+  // (System memory on purpose: uniforms and uploads written here every draw. Video memory shortened the GPU's part
+  // but slowed the CPU's writes as much, on an RX 6950 XT.)
   uint32_t mt = findMem(req.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   if (mt == 0xFFFFFFFFu) return false;
   VkMemoryAllocateInfo ai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
@@ -379,6 +467,7 @@ static GLuint allocId(std::vector<T>& tab, std::vector<GLuint>& freeIds) {
 }
 
 static void beginOneShot() {
+  if (oneShotCmd) cmd = oneShotCmd;
   vkResetCommandBuffer(cmd, 0);
   VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
   bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -391,9 +480,13 @@ static void submitOneShot() {
   VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
   si.commandBufferCount = 1;
   si.pCommandBuffers = &cmd;
+  const double t0 = g_vkStats ? statNow() : 0;
   vkQueueSubmit(queue, 1, &si, VK_NULL_HANDLE);
   vkQueueWaitIdle(queue);
+  if (g_vkStats) { g_statOneShot++; g_statSyncMs += (statNow() - t0) * 1000; }
   recording = false;
+  doneSerial = curSerial;   // the queue is idle: nothing submitted is still running
+  if (slots[slotCur].cmd) cmd = slots[slotCur].cmd;
   freeRetired();
   resetBumps();
 }
@@ -408,16 +501,10 @@ struct GpuScope {
   ~GpuScope() { if (outer && recording) submitOneShot(); }
 };
 
-static void hostBarrier(VkBuffer buffer, VkAccessFlags dstAccess, VkPipelineStageFlags dstStage) {
-  VkBufferMemoryBarrier b{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
-  b.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
-  b.dstAccessMask = dstAccess;
-  b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  b.buffer = buffer;
-  b.size = VK_WHOLE_SIZE;
-  vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_HOST_BIT, dstStage, 0, 0, nullptr, 1, &b, 0, nullptr);
-}
+// Host writes need no barrier here: every CPU write lands before the vkQueueSubmit of the commands that read it,
+// and a submit makes earlier host writes visible to the device (Vulkan's host write ordering guarantee). This used
+// to record a pipeline barrier per draw (its uniforms) and per buffer upload, ~800 a frame, some inside a pass.
+static void hostBarrier(VkBuffer, VkAccessFlags, VkPipelineStageFlags) {}
 
 static bool depthHasStencil(VkFormat f) {
   return f == VK_FORMAT_D24_UNORM_S8_UINT || f == VK_FORMAT_D32_SFLOAT_S8_UINT || f == VK_FORMAT_D16_UNORM_S8_UINT;
@@ -448,7 +535,7 @@ static void transitionRaw(Tex& t, VkImageLayout next, VkImageAspectFlags aspect,
       case VK_IMAGE_LAYOUT_UNDEFINED: st = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT; ac = 0; break;
       case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL: st = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; ac = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT; break;
       case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL: st = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT; ac = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT; break;
-      case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: st = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; ac = VK_ACCESS_SHADER_READ_BIT; break;
+      case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: st = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; ac = VK_ACCESS_SHADER_READ_BIT; break;
       case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL: st = VK_PIPELINE_STAGE_TRANSFER_BIT; ac = VK_ACCESS_TRANSFER_READ_BIT; break;
       case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: st = VK_PIPELINE_STAGE_TRANSFER_BIT; ac = VK_ACCESS_TRANSFER_WRITE_BIT; break;
       default: st = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT; ac = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT; break;
@@ -459,6 +546,7 @@ static void transitionRaw(Tex& t, VkImageLayout next, VkImageAspectFlags aspect,
   if (t.layout == VK_IMAGE_LAYOUT_UNDEFINED) sa = 0;
   b.srcAccessMask = sa; b.dstAccessMask = da;
   vkCmdPipelineBarrier(cmd, ss, ds, 0, 0, nullptr, 0, nullptr, 1, &b);
+  if (g_vkStats) g_statTransitions++;
   if (baseMip == 0 && mipCount >= t.mips) t.layout = next;
 }
 
@@ -575,6 +663,7 @@ static void beginRendering(const Prog* p) {
     depth->defined = true;
   }
   vkCmdBeginRendering(cmd, &ri);
+  if (g_vkStats) g_statPasses++;
   rendering = true;
   renderTarget = drawFbo;
   renderColors = nCol;
@@ -588,8 +677,10 @@ static void syncGpu() {
   VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
   si.commandBufferCount = 1;
   si.pCommandBuffers = &cmd;
+  const double t0 = g_vkStats ? statNow() : 0;
   vkQueueSubmit(queue, 1, &si, VK_NULL_HANDLE);
   vkQueueWaitIdle(queue);
+  if (g_vkStats) { g_statSync++; g_statSyncMs += (statNow() - t0) * 1000; }
   recording = false;
   freeRetired();
   if (!frameOpen) { resetBumps(); return; }
@@ -718,6 +809,11 @@ static VkFormat glFormat(GLenum internal, GLenum format) {
   if (f == GL_R8 || f == GL_RED) return VK_FORMAT_R8_UNORM;
   if (f == GL_RG8 || f == GL_RG) return VK_FORMAT_R8G8_UNORM;
   if (f == GL_R32F) return VK_FORMAT_R32_SFLOAT;
+  // Volumetric clouds write their distance into an R16F target. As RGBA8 it clamped to 0..1, so the cloud
+  // layer sat one block from the camera and covered the world.
+  if (f == GL_R16F) return colorFmtOk(VK_FORMAT_R16_SFLOAT) ? VK_FORMAT_R16_SFLOAT : VK_FORMAT_R32_SFLOAT;
+  // The animated-tile table (tile_anim.cpp) is read through a usampler2D, which needs an integer image.
+  if (f == GL_R16UI) return VK_FORMAT_R16_UINT;
   if (f == GL_DEPTH_COMPONENT || f == GL_DEPTH_COMPONENT16 || f == GL_DEPTH_COMPONENT24 || f == GL_DEPTH_COMPONENT32) return depthFmt;
   // Pack colortex are RGBA16F. Storing them as unorm clamps the lighting before the tonemap.
   if (f == GL_RGBA16F || f == GL_RGB16F || f == GL_RGBA32F) {
@@ -729,7 +825,7 @@ static VkFormat glFormat(GLenum internal, GLenum format) {
   return VK_FORMAT_R8G8B8A8_UNORM;
 }
 static int compOf(VkFormat f) {
-  if (f == VK_FORMAT_R8_UNORM || f == VK_FORMAT_R32_SFLOAT || f == VK_FORMAT_R16_SFLOAT) return 1;
+  if (f == VK_FORMAT_R8_UNORM || f == VK_FORMAT_R32_SFLOAT || f == VK_FORMAT_R16_SFLOAT || f == VK_FORMAT_R16_UINT) return 1;
   if (f == VK_FORMAT_R8G8_UNORM || f == VK_FORMAT_R16G16_SFLOAT) return 2;
   return 4;
 }
@@ -738,7 +834,7 @@ static bool halfFmt(VkFormat f) {
 }
 static int bppOf(VkFormat f) {
   if (f == VK_FORMAT_R8_UNORM) return 1;
-  if (f == VK_FORMAT_R8G8_UNORM || f == VK_FORMAT_R16_SFLOAT) return 2;
+  if (f == VK_FORMAT_R8G8_UNORM || f == VK_FORMAT_R16_SFLOAT || f == VK_FORMAT_R16_UINT) return 2;
   if (f == VK_FORMAT_R16G16_SFLOAT || f == VK_FORMAT_R8G8B8A8_UNORM || f == VK_FORMAT_B8G8R8A8_UNORM || f == VK_FORMAT_R32_SFLOAT) return 4;
   if (f == VK_FORMAT_R16G16B16A16_SFLOAT) return 8;
   if (f == VK_FORMAT_R32G32B32A32_SFLOAT) return 16;
@@ -1008,18 +1104,38 @@ static VkFormat attribFormat(const Attrib& a) {
   return VK_FORMAT_R32G32B32A32_SFLOAT;
 }
 
-static void clearReferenced() {
-  for (auto& b : bufs) b.referenced = false;
-}
+// Read by a frame the GPU has not finished (or by the one being recorded): the CPU must not write its memory now.
+static bool bufInUse(const Buf& b) { return b.useSerial > doneSerial; }
 
-static void reallocBuf(Buf& b, VkDeviceSize n, bool keep) {
+// New storage for glBufferData (the old one is freed once no unfinished frame reads it). Writes into a buffer that
+// is still in use go through stagedBufWrite: nothing reads these buffers back on the CPU (they live in video memory).
+static void reallocBuf(Buf& b, VkDeviceSize n) {
   GpuBuf old = b.gpu;
   bool had = old.buffer != VK_NULL_HANDLE;
   allocHostBuf(n, kBufUse, b.gpu);
-  if (keep && had && old.map && b.gpu.map) memcpy(b.gpu.map, old.map, (size_t)std::min(old.size, n));
-  if (had) { if (b.referenced) retireGpuBuf(old); else destroyGpuBuf(old); }
-  b.referenced = false;
+  if (had) { if (bufInUse(b)) retireGpuBuf(old); else destroyGpuBuf(old); }
+  b.useSerial = 0;   // fresh memory: nothing has read it
   b.dirty = true;
+}
+// Write into a buffer a frame still reads: the bytes go through upload memory and a copy recorded in this frame's
+// commands, so draws recorded before it still see the old contents and the GPU copies only once the frames before
+// have finished (it used to copy the whole buffer to a new one on the CPU instead).
+static bool stagedBufWrite(Buf& b, VkDeviceSize off, const void* data, VkDeviceSize n) {
+  if (!recording || !b.gpu.buffer || off + n > b.gpu.size) return false;
+  auto a = bumpAlloc(n, 16);
+  if (!a.ptr) return false;
+  memcpy(a.ptr, data, (size_t)n);
+  if (rendering) endRendering();
+  VkMemoryBarrier mb{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+  mb.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT; mb.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+  vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &mb, 0, nullptr, 0, nullptr);
+  VkBufferCopy c{a.off, off, n};
+  vkCmdCopyBuffer(cmd, a.buf, b.gpu.buffer, 1, &c);
+  mb.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; mb.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+  vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 1, &mb, 0, nullptr, 0, nullptr);
+  b.useSerial = curSerial;   // a copy is now pending in this frame: later CPU writes wait for it too
+  if (g_vkStats) { g_statStaged++; g_statStagedMB += n / 1048576.0; }
+  return true;
 }
 
 // ---------------------------------------------------------------- shaders
@@ -1149,7 +1265,56 @@ static GLenum samplerEnum(const std::string& t) {
   if (t == "sampler3D") return GL_SAMPLER_3D;
   if (t == "samplerCube") return GL_SAMPLER_CUBE;
   if (t == "sampler2DShadow") return GL_SAMPLER_2D_SHADOW;
+  if (t == "usampler2D") return GL_UNSIGNED_INT_SAMPLER_2D;
+  if (t == "usampler3D") return GL_UNSIGNED_INT_SAMPLER_3D;
+  if (t == "usampler2DArray") return GL_UNSIGNED_INT_SAMPLER_2D_ARRAY;
+  if (t == "isampler2D") return GL_INT_SAMPLER_2D;
+  if (t == "isampler3D") return GL_INT_SAMPLER_3D;
   return GL_SAMPLER_2D;
+}
+// `sampler2D`, `usampler2D` and `isampler2D` all count as sampler types. Returns the length of the
+// prefix before "sampler" (0 or 1), or -1 when s at j is not a sampler type.
+static int samplerTypeAt(const std::string& s, size_t j) {
+  if (s.compare(j, 7, "sampler") == 0) return 0;
+  if ((s[j] == 'u' || s[j] == 'i') && s.compare(j + 1, 7, "sampler") == 0) return 1;
+  return -1;
+}
+// `uniform sampler2D uCol, uDist;` declares two samplers, but the binding pass below only sees the first
+// name, so the second fell to glslang's default binding (the same as the first sampler) and read the
+// wrong texture (clouds_comp.glsl sampled the cloud distance as its colour). Split such lists into one
+// declaration per name. A list with its own layout() is left alone.
+static void splitSamplerLists(std::string& s) {
+  std::string out; size_t i = 0;
+  while (i < s.size()) {
+    size_t p = s.find("uniform", i);
+    if (p == std::string::npos) { out.append(s, i, std::string::npos); break; }
+    size_t j = p + 7;
+    while (j < s.size() && isspace((unsigned char)s[j])) j++;
+    size_t semi = s.find(';', j);
+    bool laid = false;
+    if (p > 0) {
+      size_t b = s.rfind("layout", p);
+      if (b != std::string::npos && p - b < 64 && s.find(';', b) > p) laid = true;
+    }
+    if (j >= s.size() || samplerTypeAt(s, j) < 0 || semi == std::string::npos || laid ||
+        s.find(',', j) > semi || s.find('[', j) < semi || s.find("//", j) < semi) {
+      out.append(s, i, p + 7 - i); i = p + 7; continue;
+    }
+    size_t k = j;
+    while (k < semi && (isalnum((unsigned char)s[k]) || s[k] == '_')) k++;
+    const std::string ty = s.substr(j, k - j);
+    out.append(s, i, p - i);
+    size_t a = k;
+    while (a < semi) {
+      size_t c = std::min(s.find(',', a), semi);
+      std::string name = s.substr(a, c - a);
+      size_t b0 = name.find_first_not_of(" \t\r\n"), b1 = name.find_last_not_of(" \t\r\n");
+      if (b0 != std::string::npos) out += "uniform " + ty + " " + name.substr(b0, b1 - b0 + 1) + ";" + (c < semi ? " " : "");
+      a = c + 1;
+    }
+    i = semi + 1;
+  }
+  s.swap(out);
 }
 static std::vector<SampDecl> collectSamplers(const std::string& src) {
   std::vector<SampDecl> out;
@@ -1158,7 +1323,7 @@ static std::vector<SampDecl> collectSamplers(const std::string& src) {
     if (p == std::string::npos) break;
     size_t j = p + 7;
     while (j < src.size() && isspace((unsigned char)src[j])) j++;
-    if (src.compare(j, 7, "sampler") != 0) { i = p + 7; continue; }
+    if (samplerTypeAt(src, j) < 0) { i = p + 7; continue; }
     size_t k = j;
     while (k < src.size() && (isalnum((unsigned char)src[k]) || src[k] == '_')) k++;
     std::string ty = src.substr(j, k - j);
@@ -1181,7 +1346,7 @@ static void rewriteSamplers(std::string& s, const std::vector<SampDecl>& decls) 
     if (p == std::string::npos) { out += s.substr(i); break; }
     size_t j = p + 7;
     while (j < s.size() && isspace((unsigned char)s[j])) j++;
-    if (s.compare(j, 7, "sampler") != 0) { out.append(s, i, p + 7 - i); i = p + 7; continue; }
+    if (samplerTypeAt(s, j) < 0) { out.append(s, i, p + 7 - i); i = p + 7; continue; }
     size_t k = j;
     while (k < s.size() && (isalnum((unsigned char)s[k]) || s[k] == '_')) k++;
     while (k < s.size() && isspace((unsigned char)s[k])) k++;
@@ -2573,6 +2738,7 @@ static bool linkProg(Prog& p) {
   }
   std::unordered_map<std::string, UniInit> uniDefaults = collectUniformDefaults(vsrc);
   for (auto& kv : collectUniformDefaults(fsrc)) uniDefaults.emplace(kv.first, kv.second);
+  splitSamplerLists(vsrc); splitSamplerLists(fsrc);
   std::vector<SampDecl> decls = collectSamplers(vsrc);
   for (auto& d : collectSamplers(fsrc)) {
     bool seen = false; for (auto& e : decls) if (e.name == d.name) seen = true;
@@ -2800,7 +2966,7 @@ static bool linkProg(Prog& p) {
 // ---------------------------------------------------------------- draw
 
 static void markBuf(GLuint id) {
-  if (Buf* b = bufOf(id)) { b->referenced = true; if (b->dirty && b->gpu.buffer && recording) { hostBarrier(b->gpu.buffer, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT); b->dirty = false; } }
+  if (Buf* b = bufOf(id)) { b->useSerial = curSerial; if (b->dirty && b->gpu.buffer && recording) { hostBarrier(b->gpu.buffer, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT); b->dirty = false; } }
 }
 
 static VkShaderModule tinyModule(bool vertex) {
@@ -2903,7 +3069,7 @@ static VkPipeline pipelineFor(Prog& p, const PipeKey& key, const std::vector<VkV
   }
   pi.layout = tiny ? emptyLayout : p.pipeLayout;
   VkPipeline pipe = VK_NULL_HANDLE;
-  if (vkFail(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pi, nullptr, &pipe), "pipeline")) return VK_NULL_HANDLE;
+  if (vkFail(vkCreateGraphicsPipelines(device, pipeCache, 1, &pi, nullptr, &pipe), "pipeline")) return VK_NULL_HANDLE;
   pipelines[key] = pipe;
   return pipe;
 }
@@ -3068,7 +3234,7 @@ static bool ensureDepthCopyPipe(VkFormat fmt) {
   pi.pRasterizationState = &rs; pi.pMultisampleState = &ms; pi.pDepthStencilState = &ds;
   pi.pColorBlendState = &cbs; pi.pDynamicState = &dy;
   pi.layout = g_depthCopy.layout;
-  if (vkFail(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pi, nullptr, &g_depthCopy.pipe), "depth copy pipeline")) {
+  if (vkFail(vkCreateGraphicsPipelines(device, pipeCache, 1, &pi, nullptr, &g_depthCopy.pipe), "depth copy pipeline")) {
     g_depthCopy.failed = true; return false;
   }
   return true;
@@ -3087,7 +3253,7 @@ static void imageBarrier(VkImage image, VkImageLayout& layout, VkImageLayout nex
       case VK_IMAGE_LAYOUT_UNDEFINED: st = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT; ac = 0; break;
       case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL: st = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; ac = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT; break;
       case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL: st = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT; ac = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT; break;
-      case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: st = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; ac = VK_ACCESS_SHADER_READ_BIT; break;
+      case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: st = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; ac = VK_ACCESS_SHADER_READ_BIT; break;
       case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL: st = VK_PIPELINE_STAGE_TRANSFER_BIT; ac = VK_ACCESS_TRANSFER_READ_BIT; break;
       case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: st = VK_PIPELINE_STAGE_TRANSFER_BIT; ac = VK_ACCESS_TRANSFER_WRITE_BIT; break;
       default: st = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT; ac = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT; break;
@@ -3364,8 +3530,8 @@ static void bindDescriptors(Prog& p) {
       bi.buffer = uboAlloc.buf; bi.offset = uboAlloc.off; bi.range = (VkDeviceSize)p.uboSize;
     }
   }
-  std::vector<VkDescriptorImageInfo> iis(p.samplers.size());
-  std::vector<VkWriteDescriptorSet> writes;
+  static std::vector<VkDescriptorImageInfo> iis; iis.assign(p.samplers.size(), {});
+  static std::vector<VkWriteDescriptorSet> writes; writes.clear();
   if (p.uboSize > 0 && uboAlloc.buf) {
     VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
     w.dstSet = set; w.dstBinding = (uint32_t)p.uboBinding; w.descriptorCount = 1;
@@ -3398,7 +3564,7 @@ static void bindDescriptors(Prog& p) {
   }
   static GpuBuf dummyStorage;
   static bool dummyBarried = false;
-  std::vector<VkDescriptorBufferInfo> sbi(p.ssbos.size());
+  static std::vector<VkDescriptorBufferInfo> sbi; sbi.assign(p.ssbos.size(), {});
   for (size_t i = 0; i < p.ssbos.size(); i++) {
     int gi = p.ssbos[i].glIndex;
     Buf* b = (gi >= 0 && gi < 16) ? bufOf(ssboBase[gi]) : nullptr;
@@ -3410,7 +3576,7 @@ static void bindDescriptors(Prog& p) {
         hostBarrier(b->gpu.buffer, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
         b->dirty = false;
       }
-      b->referenced = true;
+      b->useSerial = curSerial;
       buf = b->gpu.buffer;
       range = b->gpu.size;
     } else {
@@ -3437,7 +3603,8 @@ static void bindDescriptors(Prog& p) {
   }
   if (!writes.empty()) vkUpdateDescriptorSets(device, (uint32_t)writes.size(), writes.data(), 0, nullptr);
   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, p.pipeLayout, 0, 1, &set, 0, nullptr);
-  if (std::getenv("DQ_UBO_DUMP")) {
+  static const bool uboDump = std::getenv("DQ_UBO_DUMP") != nullptr;
+  if (uboDump) {
     static std::set<GLuint> dumped;
     bool want = false;
     for (auto& u : p.unis) if (u.name == "gbufferProjectionInverse") want = true;
@@ -3462,11 +3629,21 @@ static void bindDescriptors(Prog& p) {
   }
 }
 
+static void drawCommonImpl(GLenum mode, bool indexed, GLsizei count, GLenum indexType, const void* indices, GLint baseVertex, GLsizei instanceCount, GLuint indirect, GLsizei indirectCount, GLsizei indirectStride);
 static void drawCommon(GLenum mode, bool indexed, GLsizei count, GLenum indexType, const void* indices, GLint baseVertex, GLsizei instanceCount, GLuint indirect, GLsizei indirectCount, GLsizei indirectStride) {
-  if (std::getenv("DQ_VK_NODRAW")) return;
+  if (!g_vkStats) { drawCommonImpl(mode, indexed, count, indexType, indices, baseVertex, instanceCount, indirect, indirectCount, indirectStride); return; }
+  const double t0 = statNow();
+  drawCommonImpl(mode, indexed, count, indexType, indices, baseVertex, instanceCount, indirect, indirectCount, indirectStride);
+  g_statDraws++; g_statDrawMs += (statNow() - t0) * 1000;
+}
+static const bool g_envNoDraw = std::getenv("DQ_VK_NODRAW") != nullptr;
+static const bool g_envUboDump = std::getenv("DQ_UBO_DUMP") != nullptr;
+static const bool g_envPipeOnly = std::getenv("DQ_VK_PIPEONLY") != nullptr;
+static void drawCommonImpl(GLenum mode, bool indexed, GLsizei count, GLenum indexType, const void* indices, GLint baseVertex, GLsizei instanceCount, GLuint indirect, GLsizei indirectCount, GLsizei indirectStride) {
+  if (g_envNoDraw) return;
   if (skipFrame || !frameOpen || !recording || count < 0) return;
   Prog* p = progOf(curProg);
-  if (std::getenv("DQ_UBO_DUMP")) {
+  if (g_envUboDump) {
     static std::set<GLuint> reached;
     if (reached.insert(curProg).second && reached.size() <= 40)
       DQ_LOG("draw reach prog %u linked %d vao %u outs %d indirect %u", (unsigned)curProg, p && p->linked ? 1 : 0, (unsigned)curVao, p ? p->colorOuts : -1, (unsigned)indirect);
@@ -3495,18 +3672,19 @@ static void drawCommon(GLenum mode, bool indexed, GLsizei count, GLenum indexTyp
   if (!rendering) return;
 
   struct Bnd { GLuint buf; VkDeviceSize off; uint32_t stride; VkVertexInputRate rate; bool konst; };
-  std::vector<Bnd> bnds;
-  std::vector<VkVertexInputAttributeDescription> attrs;
+  // kept between draws (cleared, not freed): these were six heap allocations a draw
+  static std::vector<Bnd> bnds; bnds.clear();
+  static std::vector<VkVertexInputAttributeDescription> attrs; attrs.clear();
   auto bindingFor = [&](GLuint buffer, VkDeviceSize off, uint32_t stride, uint32_t div, bool konst) -> uint32_t {
     for (uint32_t i = 0; i < bnds.size(); i++)
       if (bnds[i].buf == buffer && bnds[i].off == off && bnds[i].stride == stride && bnds[i].konst == konst && ((bnds[i].rate == VK_VERTEX_INPUT_RATE_INSTANCE) == (div > 0))) return i;
     bnds.push_back({buffer, off, stride, div ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX, konst});
     return (uint32_t)bnds.size() - 1;
   };
-  std::set<int> seen;
+  uint32_t seen = 0;
   for (int loc : p->inputs) {
-    if (loc < 0 || loc >= 16 || seen.count(loc)) continue;
-    seen.insert(loc);
+    if (loc < 0 || loc >= 16 || (seen & (1u << loc))) continue;
+    seen |= 1u << loc;
     Attrib* a = &vao->a[loc];
     VkVertexInputAttributeDescription ad{};
     ad.location = (uint32_t)loc;
@@ -3534,9 +3712,9 @@ static void drawCommon(GLenum mode, bool indexed, GLsizei count, GLenum indexTyp
       hostBarrier(konst.buf, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
     }
   }
-  std::vector<VkVertexInputBindingDescription> vb(bnds.size());
-  std::vector<VkBuffer> vbuf(bnds.size());
-  std::vector<VkDeviceSize> voff(bnds.size());
+  static std::vector<VkVertexInputBindingDescription> vb; vb.assign(bnds.size(), {});
+  static std::vector<VkBuffer> vbuf; vbuf.assign(bnds.size(), VK_NULL_HANDLE);
+  static std::vector<VkDeviceSize> voff; voff.assign(bnds.size(), 0);
   for (size_t i = 0; i < bnds.size(); i++) {
     vb[i].binding = (uint32_t)i;
     vb[i].stride = bnds[i].konst ? 0 : bnds[i].stride;
@@ -3581,10 +3759,14 @@ static void drawCommon(GLenum mode, bool indexed, GLsizei count, GLenum indexTyp
   // dynamic, and the pipeline's static depth test is off, so they have to be set
   // again inside the pass that records the draw. Otherwise a gbuffer's GL_EQUAL
   // test is dropped and every face is painted over the scene.
+  const double tp = g_vkStats ? statNow() : 0;
   VkPipeline pipe = pipelineFor(*p, key, vb, attrs);
+  if (g_vkStats) g_statPipeMs += (statNow() - tp) * 1000;
   if (!pipe) return;
-  if (std::getenv("DQ_VK_PIPEONLY")) return;
+  if (g_envPipeOnly) return;
+  const double td = g_vkStats ? statNow() : 0;
   bindDescriptors(*p);
+  if (g_vkStats) g_statDescMs += (statNow() - td) * 1000;
   if (!rendering) beginRendering(p);
   if (!rendering) return;
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
@@ -3687,7 +3869,9 @@ static bool createSwapchain(SDL_Window* window) {
   if (caps.currentExtent.width != 0xFFFFFFFFu) { swapW = (int)caps.currentExtent.width; swapH = (int)caps.currentExtent.height; }
   else { swapW = std::clamp(dw, (int)caps.minImageExtent.width, (int)caps.maxImageExtent.width); swapH = std::clamp(dh, (int)caps.minImageExtent.height, (int)caps.maxImageExtent.height); }
   if (swapW <= 0 || swapH <= 0) return false;
-  uint32_t count = std::max(2u, caps.minImageCount);
+  // One image more than the driver's least, and at least three: with two frames in flight and only the minimum, the
+  // acquire stood waiting for the display to hand an image back (~1.1 ms a frame on an RX 6950 XT).
+  uint32_t count = std::max(3u, caps.minImageCount + 1);
   if (caps.maxImageCount) count = std::min(count, caps.maxImageCount);
   VkSwapchainCreateInfoKHR sci{VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
   sci.surface = surface;
@@ -3704,6 +3888,10 @@ static bool createSwapchain(SDL_Window* window) {
     if (caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) sci.compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
   }
   sci.presentMode = presentMode;
+  if (g_vkStats) {
+    std::string avail; for (auto m : modes) avail += std::to_string((int)m) + " ";
+    DQ_LOG("vulkan swapchain: %u images (driver least %u), present mode %d (available: %s), vsync %d", count, caps.minImageCount, (int)presentMode, avail.c_str(), wantVsync ? 1 : 0);
+  }
   sci.clipped = VK_TRUE;
   if (vkFail(vkCreateSwapchainKHR(device, &sci, nullptr, &swapchain), "swapchain")) return false;
   uint32_t ni = 0; vkGetSwapchainImagesKHR(device, swapchain, &ni, nullptr);
@@ -4125,7 +4313,7 @@ static void GLAD_API_PTR dq_glGenBuffers(GLsizei n, GLuint* out) { for (GLsizei 
 static void GLAD_API_PTR dq_glDeleteBuffers(GLsizei n, const GLuint* ids) {
   for (GLsizei i = 0; i < n; i++) {
     if (Buf* b = bufOf(ids[i])) {
-      if (b->gpu.buffer) { if (b->referenced) retireGpuBuf(b->gpu); else destroyGpuBuf(b->gpu); }
+      if (b->gpu.buffer) { if (bufInUse(*b)) retireGpuBuf(b->gpu); else destroyGpuBuf(b->gpu); }
       *b = {}; freeBuf.push_back(ids[i]);
     }
     if (ssboBuf == ids[i]) ssboBuf = 0;
@@ -4158,20 +4346,39 @@ static GLuint boundBuf(GLenum target) {
 }
 static void GLAD_API_PTR dq_glBufferData(GLenum target, GLsizeiptr size, const void* data, GLenum) {
   Buf* b = bufOf(boundBuf(target)); if (!b) return;
-  reallocBuf(*b, (VkDeviceSize)std::max<GLsizeiptr>(0, size), false);
+  reallocBuf(*b, (VkDeviceSize)std::max<GLsizeiptr>(0, size));
   if (data && b->gpu.map && size > 0) memcpy(b->gpu.map, data, (size_t)size);
 }
 static void GLAD_API_PTR dq_glBufferSubData(GLenum target, GLintptr off, GLsizeiptr size, const void* data) {
   Buf* b = bufOf(boundBuf(target)); if (!b || !data || size <= 0) return;
-  if (b->referenced) reallocBuf(*b, b->gpu.size, true);
-  if (b->gpu.map && (VkDeviceSize)off + (VkDeviceSize)size <= b->gpu.size) memcpy((uint8_t*)b->gpu.map + off, data, (size_t)size);
+  if (!b->gpu.map || (VkDeviceSize)off + (VkDeviceSize)size > b->gpu.size) return;
+  if (bufInUse(*b)) {
+    if (stagedBufWrite(*b, (VkDeviceSize)off, data, (VkDeviceSize)size)) return;
+    vkQueueWaitIdle(queue); doneSerial = curSerial;   // not recording: let the GPU finish, then write directly
+    if (g_vkStats) g_statSync++;
+  }
+  memcpy((uint8_t*)b->gpu.map + off, data, (size_t)size);
   b->dirty = true;
 }
 static void GLAD_API_PTR dq_glCopyBufferSubData(GLenum readT, GLenum writeT, GLintptr roff, GLintptr woff, GLsizeiptr size) {
   Buf* r = bufOf(boundBuf(readT)); Buf* w = bufOf(boundBuf(writeT));
-  if (!r || !w || !r->gpu.map || size <= 0) return;
-  if (w->referenced) reallocBuf(*w, w->gpu.size, true);
-  if (w->gpu.map) memcpy((uint8_t*)w->gpu.map + woff, (uint8_t*)r->gpu.map + roff, (size_t)size);
+  if (!r || !w || !r->gpu.buffer || !w->gpu.buffer || size <= 0) return;
+  if ((VkDeviceSize)roff + (VkDeviceSize)size > r->gpu.size || (VkDeviceSize)woff + (VkDeviceSize)size > w->gpu.size) return;
+  if (recording) {   // on the GPU, in order with the draws around it (no CPU read of video memory)
+    if (rendering) endRendering();
+    VkMemoryBarrier mb{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+    mb.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT; mb.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT | VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &mb, 0, nullptr, 0, nullptr);
+    VkBufferCopy c{(VkDeviceSize)roff, (VkDeviceSize)woff, (VkDeviceSize)size};
+    vkCmdCopyBuffer(cmd, r->gpu.buffer, w->gpu.buffer, 1, &c);
+    mb.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; mb.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 1, &mb, 0, nullptr, 0, nullptr);
+    r->useSerial = w->useSerial = curSerial;
+    r->dirty = false;   // (the barrier above made earlier host writes visible to the copy)
+    return;
+  }
+  if (bufInUse(*r) || bufInUse(*w)) { vkQueueWaitIdle(queue); doneSerial = curSerial; }
+  if (r->gpu.map && w->gpu.map) memcpy((uint8_t*)w->gpu.map + woff, (uint8_t*)r->gpu.map + roff, (size_t)size);
   w->dirty = true;
 }
 static void GLAD_API_PTR dq_glGenVertexArrays(GLsizei n, GLuint* out) { for (GLsizei i = 0; i < n; i++) out[i] = allocId(vaos, freeVao); }
@@ -4334,6 +4541,7 @@ static void GLAD_API_PTR dq_glUniformMatrix4fv(GLint loc, GLsizei n, GLboolean, 
 static void GLAD_API_PTR dq_glDrawArrays(GLenum mode, GLint first, GLsizei count) { drawCommon(mode, false, count, 0, nullptr, first, 1, 0, 0, 0); }
 static void GLAD_API_PTR dq_glDrawElements(GLenum mode, GLsizei count, GLenum type, const void* indices) { drawCommon(mode, true, count, type, indices, 0, 1, 0, 0, 0); }
 static void GLAD_API_PTR dq_glDrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type, const void* indices, GLint base) { drawCommon(mode, true, count, type, indices, base, 1, 0, 0, 0); }
+static void GLAD_API_PTR dq_glDrawArraysInstanced(GLenum mode, GLint first, GLsizei count, GLsizei prim) { drawCommon(mode, false, count, 0, nullptr, first, prim, 0, 0, 0); }   // (weather particles)
 static void GLAD_API_PTR dq_glDrawElementsInstanced(GLenum mode, GLsizei count, GLenum type, const void* indices, GLsizei prim) { drawCommon(mode, true, count, type, indices, 0, prim, 0, 0, 0); }
 static void GLAD_API_PTR dq_glMultiDrawElementsIndirect(GLenum mode, GLenum type, const void* indirect, GLsizei drawCount, GLsizei stride) {
   drawCommon(mode, false, 0, type, indirect, 0, 1, indirectBuf, drawCount, stride);
@@ -4503,6 +4711,7 @@ static void installHooks() {
   glad_glDrawElements = dq_glDrawElements;
   glad_glDrawElementsBaseVertex = dq_glDrawElementsBaseVertex;
   glad_glDrawElementsInstanced = dq_glDrawElementsInstanced;
+  glad_glDrawArraysInstanced = dq_glDrawArraysInstanced;
   glad_glMultiDrawElementsIndirect = dq_glMultiDrawElementsIndirect;
   glad_glGetError = dq_glGetError;
   glad_glGetString = dq_glGetString;
@@ -4540,6 +4749,7 @@ static void shutdownDevice() {
   recording = false; frameOpen = false; rendering = false;
   for (auto& kv : pipelines) vkDestroyPipeline(device, kv.second, nullptr);
   pipelines.clear();
+  if (device) savePipeCache();
   for (auto& kv : samplers) vkDestroySampler(device, kv.second, nullptr);
   samplers.clear();
   for (auto& p : progs) if (p.alive) destroyProgGpu(p);
@@ -4547,18 +4757,25 @@ static void shutdownDevice() {
   for (auto& t : rbs) if (t.alive) destroyTexGpu(t);
   if (fbColor) { destroyTexGpu(*fbColor); delete fbColor; fbColor = nullptr; }
   if (fbDepth) { destroyTexGpu(*fbDepth); delete fbDepth; fbDepth = nullptr; }
-  freeRetired();
+  for (int i = 0; i <= kFramesInFlight; i++) {   // the slot being recorded (in the globals), then every other slot's
+    if (i > 0) { if (i - 1 == slotCur) continue; swapSlotState(slots[i - 1]); }
+    freeRetired();
+    for (auto& b : bumps) { if (b.buf) vkDestroyBuffer(device, b.buf, nullptr); if (b.mem) vkFreeMemory(device, b.mem, nullptr); }
+    bumps.clear(); bumpIndex = 0;
+    for (auto p : descPools) vkDestroyDescriptorPool(device, p, nullptr);
+    descPools.clear(); descPoolCur = -1;
+    if (i > 0) swapSlotState(slots[i - 1]);
+  }
   for (auto& b : bufs) if (b.alive) destroyGpuBuf(b.gpu);
-  for (auto& b : bumps) { if (b.buf) vkDestroyBuffer(device, b.buf, nullptr); if (b.mem) vkFreeMemory(device, b.mem, nullptr); }
-  bumps.clear();
-  for (auto p : descPools) vkDestroyDescriptorPool(device, p, nullptr);
-  descPools.clear(); descPoolCur = -1;
   destroySwapchain();
   if (cmdPool) vkDestroyCommandPool(device, cmdPool, nullptr);
-  if (imageReady) vkDestroySemaphore(device, imageReady, nullptr);
-  if (renderDone) vkDestroySemaphore(device, renderDone, nullptr);
-  if (frameFence) vkDestroyFence(device, frameFence, nullptr);
-  cmdPool = VK_NULL_HANDLE; cmd = VK_NULL_HANDLE; imageReady = renderDone = VK_NULL_HANDLE; frameFence = VK_NULL_HANDLE;
+  for (auto& f : slots) {
+    if (f.acquire) vkDestroySemaphore(device, f.acquire, nullptr);
+    if (f.done) vkDestroySemaphore(device, f.done, nullptr);
+    if (f.fence) vkDestroyFence(device, f.fence, nullptr);
+    f = FrameSlot{};
+  }
+  cmdPool = VK_NULL_HANDLE; cmd = VK_NULL_HANDLE; oneShotCmd = VK_NULL_HANDLE; imageReady = renderDone = VK_NULL_HANDLE; frameFence = VK_NULL_HANDLE;
   if (device) vkDestroyDevice(device, nullptr);
   if (surface) vkDestroySurfaceKHR(instance, surface, nullptr);
   if (instance) vkDestroyInstance(instance, nullptr);
@@ -4607,6 +4824,9 @@ bool gfxInitVulkan(SDL_Window* window) {
       vkGetPhysicalDeviceSurfaceSupportKHR(d, i, surface, &present);
       if (!present) continue;
       int score = props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? 3 : props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? 2 : props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU ? 1 : 0;
+      // the card picked in Options → Graphics Card (render/gpu_select.cpp) comes first
+      char id[24]; std::snprintf(id, sizeof id, "%04x:%04x", props.vendorID & 0xffffu, props.deviceID & 0xffffu);
+      if (!chosenGpuId().empty() && chosenGpuId() == id) score = 10;
       if (score > bestScore) { bestScore = score; phys = d; queueFamily = i; }
     }
   }
@@ -4651,19 +4871,26 @@ bool gfxInitVulkan(SDL_Window* window) {
   if (vkFail(vkCreateDevice(phys, &di, nullptr, &device), "vkCreateDevice")) { shutdownDevice(); return false; }
   volkLoadDevice(device);
   vkGetDeviceQueue(device, queueFamily, 0, &queue);
+  loadPipeCache();
   VkCommandPoolCreateInfo pi{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
   pi.queueFamilyIndex = queueFamily;
   pi.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
   if (vkFail(vkCreateCommandPool(device, &pi, nullptr, &cmdPool), "command pool")) { shutdownDevice(); return false; }
   VkCommandBufferAllocateInfo cai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
   cai.commandPool = cmdPool; cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
-  if (vkFail(vkAllocateCommandBuffers(device, &cai, &cmd), "command buffer")) { shutdownDevice(); return false; }
+  if (vkFail(vkAllocateCommandBuffers(device, &cai, &oneShotCmd), "command buffer")) { shutdownDevice(); return false; }
   VkSemaphoreCreateInfo semi{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-  vkCreateSemaphore(device, &semi, nullptr, &imageReady);
-  vkCreateSemaphore(device, &semi, nullptr, &renderDone);
   VkFenceCreateInfo fi{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
   fi.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-  vkCreateFence(device, &fi, nullptr, &frameFence);
+  for (auto& f : slots) {
+    f = FrameSlot{};
+    if (vkFail(vkAllocateCommandBuffers(device, &cai, &f.cmd), "command buffer")) { shutdownDevice(); return false; }
+    vkCreateSemaphore(device, &semi, nullptr, &f.acquire);
+    vkCreateSemaphore(device, &semi, nullptr, &f.done);
+    vkCreateFence(device, &fi, nullptr, &f.fence);
+  }
+  slotCur = 0; curSerial = doneSerial = 0;
+  cmd = slots[0].cmd; frameFence = slots[0].fence; imageReady = slots[0].acquire; renderDone = slots[0].done;
   if (!createSwapchain(window)) { DQ_ERR("vulkan: swapchain"); shutdownDevice(); return false; }
   gfx.major = 4; gfx.minor = 6;
   gfx.modern = true;
@@ -4723,17 +4950,42 @@ static bool recreateSwapchain() {
 
 void gfxVulkanNewFrame() {
   if (!g_on) return;
-  vkWaitForFences(device, 1, &frameFence, VK_TRUE, UINT64_MAX);
+  // The frame just presented keeps running: its state goes back into its slot. The next slot is taken once the
+  // frame it carried last has finished (with two slots, the one before the frame just presented).
+  swapSlotState(slots[slotCur]);
+  slotCur = (slotCur + 1) % kFramesInFlight;
+  FrameSlot& S = slots[slotCur];
+  const double tf = g_vkStats ? statNow() : 0;
+  vkWaitForFences(device, 1, &S.fence, VK_TRUE, UINT64_MAX);
+  if (g_vkStats) {
+    g_statFenceMs += (statNow() - tf) * 1000;
+    if (++g_statFrames == 120) {
+      DQ_LOG("vulkan draws per frame: %.0f, %.2f ms in them (pipeline lookup %.2f, descriptors %.2f); %.0f passes, %.0f layout transitions", g_statDraws / 120.0, g_statDrawMs / 120.0, g_statPipeMs / 120.0, g_statDescMs / 120.0, g_statPasses / 120.0, g_statTransitions / 120.0);
+      g_statPasses = g_statTransitions = 0;
+      g_statDraws = 0; g_statDrawMs = g_statPipeMs = g_statDescMs = 0;
+      DQ_LOG("vulkan frame edges per frame: surface query %.2f ms, acquire %.2f ms, submit %.2f ms, present %.2f ms", g_statCapsMs / 120.0, g_statAcqMs / 120.0, g_statSubmitMs / 120.0, g_statPresentMs / 120.0);
+      g_statCapsMs = g_statAcqMs = g_statSubmitMs = g_statPresentMs = 0;
+      DQ_LOG("vulkan stats per frame: %.2f mid-frame syncs, %.2f one-shot submits, %.2f ms in them, %.2f ms waiting for the GPU, %.1f staged writes (%.2f MB), %.1f buffer allocations (%.2f MB)",
+             g_statSync / 120.0, g_statOneShot / 120.0, g_statSyncMs / 120.0, g_statFenceMs / 120.0, g_statStaged / 120.0, g_statStagedMB / 120.0, g_statAlloc / 120.0, g_statAllocMB / 120.0);
+      g_statAlloc = 0; g_statAllocMB = 0; g_statStaged = 0; g_statStagedMB = 0;
+      g_statSync = g_statOneShot = g_statFrames = 0; g_statFenceMs = g_statSyncMs = 0;
+    }
+  }
+  swapSlotState(S);
+  if (S.serial > doneSerial) doneSerial = S.serial;
+  S.serial = ++curSerial;
+  cmd = S.cmd; frameFence = S.fence; imageReady = S.acquire; renderDone = S.done;
   vkResetFences(device, 1, &frameFence);
   freeRetired();
   resetBumps();
-  clearReferenced();
   rendering = false;
   skipFrame = false;
   frameOpen = false;
   recording = false;
   VkSurfaceCapabilitiesKHR caps{};
+  const double tc = g_vkStats ? statNow() : 0;
   vkGetPhysicalDeviceSurfaceCapabilitiesKHR(phys, surface, &caps);
+  if (g_vkStats) g_statCapsMs += (statNow() - tc) * 1000;
   int nw = swapW, nh = swapH;
   if (caps.currentExtent.width != 0xFFFFFFFFu) { nw = (int)caps.currentExtent.width; nh = (int)caps.currentExtent.height; }
   else if (g_window) SDL_GL_GetDrawableSize(g_window, &nw, &nh);
@@ -4741,7 +4993,9 @@ void gfxVulkanNewFrame() {
   if (nw != swapW || nh != swapH || !swapchain) {
     if (!recreateSwapchain()) { skipFrame = true; frameOpen = true; submitEmpty(); return; }
   }
+  const double ta = g_vkStats ? statNow() : 0;
   VkResult ar = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageReady, VK_NULL_HANDLE, &swapIndex);
+  if (g_vkStats) g_statAcqMs += (statNow() - ta) * 1000;
   if (ar == VK_ERROR_OUT_OF_DATE_KHR) {
     if (!recreateSwapchain()) { skipFrame = true; frameOpen = true; submitEmpty(); return; }
     ar = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageReady, VK_NULL_HANDLE, &swapIndex);
@@ -4754,6 +5008,11 @@ void gfxVulkanNewFrame() {
   VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
   bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
   vkBeginCommandBuffer(cmd, &bi);
+  // Everything the frame before did (still running on the GPU when this one is recorded) finishes first: render
+  // targets, textures and buffers are shared between frames.
+  VkMemoryBarrier mb{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+  mb.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT; mb.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+  vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 1, &mb, 0, nullptr, 0, nullptr);
   recording = true;
   frameOpen = true;
 }
@@ -4800,14 +5059,18 @@ void gfxVulkanPresent(SDL_Window* window) {
   }
   vkEndCommandBuffer(cmd);
   recording = false;
+  const double ts = g_vkStats ? statNow() : 0;
   submitFence(imageReady, renderDone);
+  if (g_vkStats) g_statSubmitMs += (statNow() - ts) * 1000;
   VkPresentInfoKHR pi{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
   pi.waitSemaphoreCount = 1;
   pi.pWaitSemaphores = &renderDone;
   pi.swapchainCount = 1;
   pi.pSwapchains = &swapchain;
   pi.pImageIndices = &swapIndex;
+  const double tq = g_vkStats ? statNow() : 0;
   VkResult pr = vkQueuePresentKHR(queue, &pi);
+  if (g_vkStats) g_statPresentMs += (statNow() - tq) * 1000;
   if (pr == VK_ERROR_OUT_OF_DATE_KHR || pr == VK_SUBOPTIMAL_KHR) swapW = 0;
   frameOpen = false;
 }

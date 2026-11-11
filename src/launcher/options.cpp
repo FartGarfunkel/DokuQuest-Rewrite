@@ -7,6 +7,7 @@
 #include "common/ui_scale.h"
 #include "assets/tileset.h"
 #include "render/gl.h"
+#include "render/gpu_select.h"
 #include <imgui_internal.h>
 #include <map>
 #include <set>
@@ -373,6 +374,21 @@ void drawOptions(Launcher& L) {
         { static const char* rl[] = {"Legacy", "Modern", "Vulkan"}; int cur = clampv((int)s.renderer, 0, 2);
           std::string why = strFormat("Modern needs OpenGL 4.5+ (this computer: OpenGL %d.%d). Legacy (OpenGL 3.3) runs on almost any PC since 2010. Vulkan uses the Vulkan driver.", L.gpu.major, L.gpu.minor);
           if (k.cycle("Renderer", &cur, {rl[0], rl[1], rl[2]}, (int)D.renderer, why.c_str())) { s.renderer = (RendererKind)cur; changed = true; } }
+        {   // render/gpu_select.cpp: "auto" or a card's vendor:device id
+          const auto& gpus = listGpus();
+          std::vector<std::string> items = {"Automatic (dedicated)"};
+          int cur = 0;
+          for (size_t i = 0; i < gpus.size(); i++) {
+            items.push_back(gpus[i].name + (gpus[i].integrated ? " (built in)" : ""));
+            if (gpus[i].id == s.gpu) cur = (int)i + 1;
+          }
+          int c = cur;
+          if (k.cycle("Graphics Card", &c, items, 0, "Which graphics card draws the game. Automatic picks the dedicated card over the one built into the processor. The launcher itself switches when you restart it.", 160) && c != cur) {
+            s.gpu = c == 0 ? "auto" : gpus[(size_t)c - 1].id;
+            applyGpuChoice(s.gpu);   // the game the launcher starts next gets this card
+            changed = true;
+          }
+        }
         { int cur = 5; for (int i = 0; i < 6; i++) if (s.preset == presetNames[i]) cur = i;
           int pick = cur;
           std::string sug = std::string("Sets the options below at once; changing one makes it Custom. Your graphics: ") + (L.gpu.renderer.empty() ? "unknown" : L.gpu.renderer) + ". Suggested: " +
@@ -390,8 +406,19 @@ void drawOptions(Launcher& L) {
         if (k.range("Render Scale", &s.scale, 0.4f, 1, 0.05f, pct(s.scale), D.scale, "Render fewer pixels for smoother play.")) custom();
       }
       if (k.category("Visuals")) {
-        { int cur = clampv(s.extra.value("dreamLight", 1), 0, 2); if (k.cycle("Lighting", &cur, {"Classic", "Dreamlike", "Dreamlike (Strong)"}, 1, "Dreamlike: a soft glow round bright things, golden light when the sun is low.", 120)) { s.extra["dreamLight"] = cur; changed = true; } }
-        if (k.range("Brightness", &s.brightness, 0, 1, 0.05f, s.brightness <= 0 ? "Moody" : s.brightness >= 1 ? "Bright" : pct(s.brightness), D.brightness, "How much you can see in the dark.")) custom();
+        { int cur = clampv(s.extra.value("dreamLight", 0), 0, 2); if (k.cycle("Lighting", &cur, {"Classic", "Dreamlike", "Dreamlike (Strong)"}, 0, "Dreamlike: a soft glow round bright things, golden light when the sun is low.", 120)) { s.extra["dreamLight"] = cur; changed = true; } }
+        if (k.range("Brightness", &s.brightness, 0, 1, 0.05f, s.brightness <= 0 ? "Moody" : s.brightness >= 1 ? "Bright" : pct(s.brightness), D.brightness, "Lights up caves and the night, like Minecraft's Brightness. Full daylight stays the same.")) custom();
+        {   // Settings::applyColourStyle; moving a slider makes it Custom (render/colour_filter_layer.cpp draws it)
+          static const char* styles[] = {"vibrant", "natural", "classic", "custom"};
+          int cur = 3; for (int i = 0; i < 4; i++) if (s.colourStyle == styles[i]) cur = i;
+          int pick = cur;
+          if (k.cycle("Colour Style", &pick, {"Vibrant", "Natural", "Classic", "Custom"}, 1, "Vibrant: the colours as drawn. Natural: a little softer. Classic: muted and flatter, like Minecraft Alpha and Beta (blacks less deep on an OLED).", 120) && pick != cur) {
+            if (pick < 3) s.applyColourStyle(styles[pick]); else s.colourStyle = "custom";
+            changed = true;
+          }
+          if (k.range("Saturation", &s.saturation, 0, 1.5f, 0.05f, pct(s.saturation), D.saturation, "How colourful the world is. 100% is the colours as drawn.")) { s.colourStyle = "custom"; changed = true; }
+          if (k.range("Contrast", &s.contrast, 0.5f, 1.5f, 0.05f, pct(s.contrast), D.contrast, "How far apart the darks and lights are. Lower is flatter and softer.")) { s.colourStyle = "custom"; changed = true; }
+        }
         { bool cl = s.extra.value("colouredLight", true); if (k.toggle("Coloured Light", &cl, true, "Redstone glows red, soul fire blue, the coloured lamps their colour.")) { s.extra["colouredLight"] = cl; changed = true; } }
         if (k.cycle("Block Detail", &s.microVoxels, {"Flat", "Shaded", "Raised"}, D.microVoxels, "Blocks are 32x32x32 little voxels: how much of that depth is drawn.")) custom();
         if (s.microVoxels == 2) { float f = (float)s.microVoxelDist; if (k.range("Relief Distance", &f, 16, 128, 8, std::to_string((int)f) + " blocks", (float)D.microVoxelDist, "Past this the relief fades to shaded faces.")) { s.microVoxelDist = (int)f; custom(); } }
@@ -406,6 +433,15 @@ void drawOptions(Launcher& L) {
         { bool g = s.extra.value("grass3d", s.preset != "potato"); if (k.toggle("3D Grass", &g, s.preset != "potato", "Blades of grass waving near you.")) { s.extra["grass3d"] = g; custom(); } }
         if (k.toggle("Waving Plants", &s.wavingPlants, D.wavingPlants, "Grass, leaves and water move in the wind.")) custom();
         if (k.toggle("See Through Portals", &s.portalViews, D.portalViews, "Portals show the other side.")) custom();
+      }
+      if (k.category("Weather")) {   // render/weather_layer.cpp (after Particle Rain)
+        { static const int amounts[] = {0, 600, 1500, 3000}; int cur = 2; for (int i = 0; i < 4; i++) if (s.weatherParticles == amounts[i]) cur = i;
+          int pick = cur;
+          if (k.cycle("Weather Particles", &pick, {"Off", "Low", "Normal", "High"}, 2, "Rain, snow, dust and fog around you. Fewer is faster.") && pick != cur) { s.weatherParticles = amounts[pick]; custom(); } }
+        { float d = (float)s.weatherDist; if (k.range("Weather Distance", &d, 12, 32, 2, std::to_string((int)d) + " blocks", (float)D.weatherDist, "How far around you rain and snow fall.")) { s.weatherDist = (int)d; custom(); } }
+        if (k.toggle("Splashes & Ripples", &s.weatherSurfaceFx, D.weatherSurfaceFx, "Rain splashing, rings on water, drops running down walls.")) { custom(); }
+        if (k.toggle("Ground Fog", &s.groundFog, D.groundFog, "Banks of fog in swamps and jungles, and after the rain.")) { custom(); }
+        if (k.toggle("Height Fog", &s.heightFog, D.heightFog, "Fog lying in the valleys, thinning as you climb.")) { custom(); }
       }
       if (k.category("Post-Processing")) {
         static std::vector<std::string> sps; static double at = -100;

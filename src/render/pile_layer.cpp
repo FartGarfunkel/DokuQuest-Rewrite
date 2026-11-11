@@ -2,6 +2,7 @@
 // (sneak + use with an item: blocks stack up, ingots lie in criss-crossed layers, tools lie flat, bottles stand,
 // the rest in a little heap) and placed backpacks. The blocks themselves are invisible (render NONE); their
 // block entities carry the stacks. Item frames show their item the same way.
+#include "sim/piles.h"
 #include "sim/weapon_rack.h"
 #include "render/item_layers.h"
 #include "render/be_scan.h"
@@ -58,7 +59,7 @@ public:
     auto begin = [&] { if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; } };
     forBlockEntities(w, f, 48.f, [&](const Chunk&, json& e, int x, int y, int z) {
       const std::string type = e.value("type", "");
-      if (type != "pile" && type != "backpack" && type != "frame" && type != "shelf" && type != "bookcase" && type != "rack") return;
+      if (type != "pile" && type != "backpack" && type != "frame" && type != "shelf" && type != "bookcase" && type != "rack" && type != "ingots" && type != "logs" && type != "kiln") return;
       vec3 rel = f.cam.rel(glm::dvec3(x, y, z));
       if (glm::dot(rel - vec3(0.5f), rel - vec3(0.5f)) > 48.f * 48.f || !f.cam.frustum.sphere(rel + vec3(0.5f), 1.2f)) return;
       u8 l = w.getLight(x, y, z);
@@ -70,6 +71,61 @@ public:
         if (bl && reg().tShape[bl] == ShapeKind::Slab && !(w.getMeta(x, y - 1, z) & 7)) yOff = -0.5f;
       }
       mat4 base = glm::translate(mat4(1), rel + vec3(0, yOff, 0));
+      if (type == "kiln") {   // sim/pit_kiln.h: the pottery in its quarters, a bed of straw over it, the logs on that
+        begin();
+        if (e.contains("items") && e["items"].is_array()) for (int k = 0; k < 4 && k < (int)e["items"].size(); k++) {
+          if (e["items"][k].is_null()) continue;
+          const ItemStack st = ItemStack::fromJson(e["items"][k]);
+          const VoxelModel& im = itemModel(st.id);
+          if (!im.ready()) continue;
+          mat4 m = glm::translate(base, vec3((k % 2) * 0.5f + 0.25f, 0.2f, (k / 2) * 0.5f + 0.25f));
+          m = glm::rotate(m, k * 0.9f, vec3(0, 1, 0)); m = glm::scale(m, vec3(0.42f));
+          VR.draw(im.gl, m * im.matrix(), L);
+        }
+        const int straw = e.value("straw", 0), logs = e.value("logs", 0);
+        if (straw > 0) if (const VoxelModel& sm = itemModel("thatch"); sm.ready()) {
+          const float h = 0.04f + 0.08f * straw / 8.f;
+          mat4 m = glm::translate(base, vec3(0.5f, 0.3f + h * 0.5f, 0.5f)); m = glm::scale(m, vec3(0.98f, h, 0.98f));
+          VR.draw(sm.gl, m * sm.matrix(), L);
+        }
+        if (logs > 0) if (const VoxelModel& lm = itemModel("log"); lm.ready()) for (int i = 0; i < logs; i++) {
+          const int course = i / 4, j = i % 4;
+          const float a = 0.125f + j * 0.25f, y = 0.42f + 0.11f + course * 0.22f;
+          mat4 m = glm::translate(base, course % 2 ? vec3(0.5f, y, a) : vec3(a, y, 0.5f));
+          m = glm::rotate(m, course % 2 ? PI / 2 : 0.f, vec3(0, 1, 0));
+          m = glm::rotate(m, PI / 2, vec3(1, 0, 0)); m = glm::scale(m, vec3(0.22f, 0.98f, 0.22f));
+          VR.draw(lm.gl, m * lm.matrix(), L);
+        }
+        return;
+      }
+      if (type == "ingots" || type == "logs") {   // sim/piles.h: TFC's ingot piles (brickwork courses) and log piles (a crib)
+        if (!e.contains("item")) return;
+        const ItemStack st = ItemStack::fromJson(e["item"]);
+        if (st.empty() || !st.def()) return;
+        const VoxelModel& im = itemModel(st.id);
+        if (!im.ready()) return;
+        begin();
+        const bool logs = type == "logs";
+        const int n = std::min(st.n, logs ? LOG_PILE_MAX : INGOT_PILE_MAX);
+        const float gl = itemGlints(st) ? 1.f : 0.f;
+        for (int i = 0; i < n; i++) {
+          const PileSlot sl = logs ? logSlot(i) : ingotSlot(i);
+          mat4 m = glm::translate(base, sl.pos);
+          m = glm::rotate(m, sl.yaw, vec3(0, 1, 0));
+          if (logs) {   // the log's rings at its ends: its up turned to lie along the slot
+            m = glm::rotate(m, PI / 2, vec3(1, 0, 0));
+            m = glm::scale(m, vec3(0.245f, 0.99f, 0.245f));
+          } else {      // an ingot fitted to its slot as TFC's: half a block long (along the slot), a quarter wide, an eighth high
+            m = glm::rotate(m, PI / 2, vec3(0, 1, 0));   // (the ingot's model is a bar already lying down, its length along x)
+            const vec3 ext = vec3(im.size) * im.frame.voxel, mid = im.frame.origin + ext * 0.5f;
+            m = glm::translate(m, vec3(0, 0.0625f, 0));
+            m = glm::scale(m, vec3(0.47f / std::max(ext.x, 1e-3f), 0.118f / std::max(ext.y, 1e-3f), 0.235f / std::max(ext.z, 1e-3f)));
+            m = glm::translate(m, -mid);
+          }
+          VR.draw(im.gl, m * im.matrix(), L, vec4(0), gl);
+        }
+        return;
+      }
       if (type == "rack") {
         // batche.js blockEntityDraws: up to three weapons, tools or shields resting on a weapon rack (floor or wall)
         if (!e.contains("rack") || !e["rack"].is_array()) return;

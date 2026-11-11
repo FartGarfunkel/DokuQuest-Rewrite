@@ -23,6 +23,7 @@ void OverworldGen::initUnderground() {
   rockRep_.assign(MAX_BLOCKS, 0); oreRep_.assign(MAX_BLOCKS, 0);
   for (BlockId id : {B.stone, B.slate}) if (id) rockRep_[id] = oreRep_[id] = 1;
   for (BlockId id : {B.granite, B.diorite, B.andesite, B.tuff}) if (id) oreRep_[id] = 1;
+  initRockLayers();
 }
 
 void OverworldGen::carve(GenBuf& b, const OwColumn* cols, int cx, int cz) const {
@@ -56,6 +57,7 @@ void OverworldGen::placeOres(GenBuf& b, int cx, int cz, Mulberry32&) const {
     {B.diamond_ore, 1, 8, 1, 16, true}, {B.silver_ore, 3, 8, 1, 44, true}, {B.ruby_ore, 0.8, 5, 1, 30, true},
     {B.sapphire_ore, 0.8, 5, 1, 30, true}, {B.mithril_ore, 0.7, 5, 1, 22, true}, {B.mese_ore, 0.5, 5, 1, 15, true},
     {B.adamantite_ore, 0.3, 4, 1, 12, true},
+    {B.zinc_ore, 6, 8, 20, 80, true}, {B.bismuth_ore, 5, 8, 24, 90, true},   // (last, so the ores above fall where they always did)
   };
   for (int ncz = cz - 1; ncz <= cz + 1; ncz++) for (int ncx = cx - 1; ncx <= cx + 1; ncx++) {
     JRandom rnd(chunkSeed(seed_, ncx, ncz, 0x0E5));
@@ -63,7 +65,8 @@ void OverworldGen::placeOres(GenBuf& b, int cx, int cz, Mulberry32&) const {
       int n = (int)o.tries; if (rnd.nextFloat() < o.tries - n) n++;
       for (int k = 0; k < n; k++) {
         const int x = ncx * 16 + rnd.nextInt(16), y = o.lo + rnd.nextInt(o.hi - o.lo), z = ncz * 16 + rnd.nextInt(16);
-        oreVein(b, cx, cz, rnd, x, y, z, o.size, o.id, o.ore ? oreRep_.data() : rockRep_.data());
+        const u8* host = o.ore ? oreHost(o.id) : nullptr;
+        oreVein(b, cx, cz, rnd, x, y, z, o.size, o.id, host ? host : o.ore ? oreRep_.data() : rockRep_.data());
       }
     }
     // lapis: Minecraft's triangle round 16

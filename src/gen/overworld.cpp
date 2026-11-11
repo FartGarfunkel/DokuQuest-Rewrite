@@ -17,6 +17,7 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
   jigsawVillages = o.genVersion >= 9;
   villageStyles = o.genVersion >= 10;
   villagePlan11 = o.genVersion >= 11;
+  rockLayers = o.genVersion >= 12;
   floes = o.genVersion >= 5;   // terrain version 5: BTA's ice floes in the seas round the glaciers   // terrain version 4 (BTA): biomes about twice as big
   B.resolve();
   initUnderground();
@@ -203,7 +204,7 @@ void OverworldGen::generate(Chunk& ch) {
       else if (y > H - fd - 3 && m.under == B.sandstone) id = B.sandstone;
       else if (y > H - fd - 6 && m.under == B.desert_stone) id = y > H - fd - 2 ? B.desert_sandstone : B.desert_stone;
       else if (y > H - fd - 2 && m.under == B.peat) id = B.peat;
-      else id = yo < slateTop ? B.slate : B.stone;
+      else id = rockLayers ? layerRock(wx, y, wz, H) : yo < slateTop ? B.slate : B.stone;
       b.blocks[colIdx(x, y, z)] = id;
     }
     const bool cold = c.temp < -0.38;

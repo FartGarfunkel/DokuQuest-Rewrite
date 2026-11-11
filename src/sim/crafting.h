@@ -25,6 +25,14 @@ struct CraftMatch {
 };
 
 bool tagMatch(const std::string& want, const std::string& id);          // want = key or #tag
+// the recipes the crafting being done can use: an immersive world (sim/immersive.h) turns the "classicOnly" ones off. Set by
+// whoever matches (sim/inv_ops.cpp, from its World's flag); per thread, so a server's worlds don't mix.
+struct RecipeGate { bool immersive = false; };
+RecipeGate& recipeGate();
+bool recipeOpen(const Recipe& r);                                        // not switched off by the gate ("classicOnly" / "immersiveOnly")
+// take what a craft uses from the grid: one of each; a recipe's "keep" gives containers back (buckets...), its "keepTool"
+// (an item property, "saw") leaves that tool in the grid worn by one instead of using it up
+void consumeCraft(std::vector<ItemStack>& grid, const CraftMatch& r, const std::function<void(const ItemStack&)>& giveBack);
 CraftMatch matchGrid(const std::vector<ItemStack>& slots, int W);       // W×W grid (2 or 3)
 void recipeDims(const Recipe& r, int& w, int& h);                        // shapeless recipes carry their own w/h
 std::vector<std::pair<std::string, int>> recipeIngredients(const Recipe& r);   // [[keyOrTag, count]] in order

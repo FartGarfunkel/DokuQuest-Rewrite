@@ -40,6 +40,7 @@ namespace SetFlags { enum : u32 { None = 0, NoNotify = 1, NoRemesh = 2, NoModify
 
 class World {
 public:
+  bool immersive = false;   // sim/immersive.h: the level's rule, copied every tick (leaves don't hold you up, classic-only recipes are off)
   World(int realm, std::shared_ptr<WorldGen> gen, const fs::path& saveDir, ThreadPool* pool);
   ~World();
   const int realm;

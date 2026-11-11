@@ -6,8 +6,10 @@
 namespace dq {
 
 std::string wildSeed() {
-  static const char* pool[] = {"tomato_seeds", "cabbage_seeds", "corn_seeds", "pepper_seeds", "onion", "strawberry", "rice"};
-  std::string k = pool[std::min(6, (int)(frand() * 7))];
+  static const char* pool[] = {"tomato_seeds", "cabbage_seeds", "corn_seeds", "pepper_seeds", "onion", "strawberry", "rice",
+                               "barley_seeds", "oat_seeds", "rye_seeds", "jute_seeds", "garlic", "soybean", "green_beans_seeds", "squash_seeds"};   // (TFC's crops too)
+  constexpr int N = (int)(sizeof(pool) / sizeof(pool[0]));
+  std::string k = pool[std::min(N - 1, (int)(frand() * N))];
   return reg().item(k) ? k : "";
 }
 

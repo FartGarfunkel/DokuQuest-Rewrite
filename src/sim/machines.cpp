@@ -12,8 +12,8 @@ namespace {
 constexpr float MILL_TIME = 3.5f, CRUSH_TIME = 2.0f, BELT_SPEED = 1.7f;
 constexpr int DIR4[4][2] = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};   // 0 north (-z), 1 east, 2 south, 3 west
 const int AXES[3][3] = {{0, 1, 0}, {1, 0, 0}, {0, 0, 1}};
-bool isUser(const std::string& k) { return k == "millstone" || k == "sawmill" || k == "crusher" || k == "harvester"; }
-float loadOf(const std::string& k) { return k == "crusher" ? 2.f : 1.f; }
+bool isUser(const std::string& k) { return k == "millstone" || k == "sawmill" || k == "crusher" || k == "harvester" || k == "quern" || k == "bellows"; }
+float loadOf(const std::string& k) { return k == "crusher" ? 2.f : k == "bellows" ? 0.5f : 1.f; }
 const json& tables() {
   static json t = [] { auto j = readJson(dataDir() / "machines.json"); return j ? *j : json::object(); }();
   return t;
@@ -22,6 +22,10 @@ const json& tables() {
 
 const json* machineTable(const std::string& k) {
   const json& t = tables();
+  if (k == "quern") {   // a quern turned by a shaft grinds what sim/quern.h grinds by hand
+    static json q = [] { auto j = readJson(dataDir() / "quern.json"); return j && (*j)["grind"].is_object() ? (*j)["grind"] : json::object(); }();
+    return &q;
+  }
   const char* n = k == "millstone" ? "milling" : k == "sawmill" ? "sawing" : k == "crusher" ? "crushing" : nullptr;
   if (!n || !t.contains(n)) return nullptr;
   return &t[n];
@@ -72,7 +76,9 @@ void Mechanics::rebuild() {
   std::vector<MechComp> old; old.swap(comps);
   std::unordered_map<u64, int> oldComp;
   for (auto& [k, n] : nodeMap) { if (n.comp >= 0) oldComp[k] = n.comp; n.comp = -1; }
-  auto conn = [](const MechNode& n, int dx, int dy, int dz) {
+  Redstone* rs = redstoneOf(lv, w.realm);
+  auto conn = [&](const MechNode& n, int dx, int dy, int dz) {
+    if (n.kind == "gearbox") return !(rs && rs->powerAt(n.p.x, n.p.y, n.p.z) > 0);   // turns the shaft through any side; redstone power disengages it
     if (isUser(n.kind) || n.kind == "belt") return true;
     const int* a = AXES[n.axis];
     return std::abs(a[0]) == std::abs(dx) && std::abs(a[1]) == std::abs(dy) && std::abs(a[2]) == std::abs(dz);

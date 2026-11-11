@@ -58,6 +58,11 @@ public:
   bool floes = false;
   bool jigsawVillages = false;   // terrain version 9: villages of our jigsaw pieces (gen/structures_jigsaw_village.cpp)
   bool villageStyles = false;    // terrain version 10: villages in every style (beach, jungle, swamp, mesa, igloo, festive...) by the land
+  bool rockLayers = false;       // terrain version 12: rock layers and ores in their rocks (gen/rock_layers.cpp)
+  std::vector<u8> zincRep_, bismuthRep_, tinRep_, silverRep_, goldRep_;
+  BlockId layerRock(int wx, int y, int wz, int H) const;
+  void initRockLayers();
+  const u8* oreHost(BlockId ore) const;   // where this ore may lie (nullptr: wherever ores do)
   bool villagePlan11 = false;    // terrain version 11: the village plan's fixes (gen/generator.h); older worlds keep their plans
   OwColumn rawColumn(int x, int z) const;       // terrain and rivers only
   int biomeAt(int x, int z) const { return column(x, z).biome; }

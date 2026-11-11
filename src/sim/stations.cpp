@@ -1,6 +1,8 @@
 // sim/stations.cpp — see stations.h. Line-by-line ports of stationResult (game/blocks2.js), its enchanting.js
 // wrapper (books onto gear, the grindstone taking enchantments off, joins keeping both enchantments) and
 // stonecutterOptions (core/items.js).
+#include "core/metals.h"
+#include "sim/crafting.h"
 #include "core/tool_parts.h"
 #include "sim/stations.h"
 
@@ -52,7 +54,13 @@ static StationResult baseResult(const std::string& kind, const ItemStack& a, con
     if (kind == "anvil") {
       std::string mat = repairMaterial(a.id);
       bool own = false;   // a mixed tool mends with any of its own materials
-      if (isPartTool(a)) if (const ToolMaterial* tm = toolMaterialOfItem(b.id)) for (auto& m : a.tag["pt"]["m"]) if (m == tm->key) own = true;
+      if (isPartTool(a) || isPartArmor(a)) if (const ToolMaterial* tm = toolMaterialOfStack(b)) {
+        auto same = [&](const std::string& k) {   // the material itself, or a makeup that's that metal or alloy
+          if (k == tm->key) return true;
+          if (!k.empty() && k[0] == '@') { const std::string n = namedAlloy(parseCompKey(k)); return !n.empty() && n == tm->key; }
+          return false; };
+        for (auto& m : (isPartTool(a) ? a.tag["pt"]["m"] : a.tag["pa"]["m"])) if (m.is_string() && same(m.get<std::string>())) own = true;
+      }
       if (!own && (mat.empty() || !tagMatch(mat, b.id))) return r;
       int per = (int)std::ceil(max / 4.0), need = std::min(b.n, (int)std::ceil(a.d / (double)per));
       if (need <= 0) return r;
@@ -64,15 +72,29 @@ static StationResult baseResult(const std::string& kind, const ItemStack& a, con
   }
   if (kind == "smithing") {
     if (a.empty() || b.empty()) return r;
+    if (b.id == "tin_ingot" && (isPartTool(a) || isPartArmor(a))) {   // a procedural copper piece: tin makes it bronze
+      const bool tool = isPartTool(a);
+      const json& P = tool ? a.tag["pt"] : a.tag["pa"];
+      std::vector<std::string> mats; for (auto& m : P["m"]) mats.push_back(m.get<std::string>());
+      if (mats.empty() || std::any_of(mats.begin(), mats.end(), [](const std::string& m) { return m != "copper"; })) return r;
+      for (auto& m : mats) m = "bronze";
+      ItemStack out;
+      if (!(tool ? makePartTool(P.value("t", std::string("pickaxe")), mats, P.value("h", std::string("stick")), out) : makePartArmor(P.value("p", std::string("helmet")), mats, out))) return r;
+      out.d = a.d;
+      if (a.tag.is_object()) for (const char* k : {"gx", "en"}) if (a.tag.contains(k)) out.tag[k] = a.tag[k];
+      r.out = out; r.useA = 1; r.useB = 1; r.note = "Upgraded, wear and all"; r.ok = true;
+      return r;
+    }
     std::string to;
     if (startsWith(a.id, "diamond_") && b.id == "cinderite_shard") to = "cinderite_" + a.id.substr(8);
     else if (startsWith(a.id, "copper_") && b.id == "tin_ingot") to = "bronze_" + a.id.substr(7);
     const ItemDef* dt = to.empty() ? nullptr : reg().item(to);
     if (!dt) return r;
     int maxA = maxDurabilityOf(da), maxT = maxDurabilityOf(dt);
-    r.out = ItemStack(to, 1);
+    r.out = proceduralOf(to);   // (metal gear procedural)
     if (a.d && maxA) r.out.d = (int)std::lround(a.d / (double)maxA * maxT);
-    if (a.tag.is_object() && a.tag.contains("gx")) r.out.tag = json{{"gx", a.tag["gx"]}};
+    if (!r.out.tag.is_object()) r.out.tag = json::object();   // (its procedural makeup kept; its marks and enchantments carried over)
+    if (a.tag.is_object()) for (const char* k : {"gx", "en"}) if (a.tag.contains(k)) r.out.tag[k] = a.tag[k];
     r.useA = 1; r.useB = 1; r.note = "Upgraded, wear and all"; r.ok = true;
     return r;
   }
@@ -155,6 +177,7 @@ std::vector<std::pair<std::string, int>> stonecutterOptions(const std::string& i
 std::vector<std::pair<std::string, int>> forgeOptions(const std::string& id) {
   std::vector<std::pair<std::string, int>> out;
   if (id.empty()) return out;
+  if (recipeGate().immersive && !metalOfItem(id).empty()) return out;   // immersive: metal heads are cast or smithed (sim/metalwork, sim/anvil)
   static const char* ORDER[] = {"pickaxe", "axe", "shovel", "sword", "hoe"};
   for (const char* t : ORDER)
     for (auto& d : reg().items) {

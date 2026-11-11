@@ -8,6 +8,14 @@ namespace dq {
 using namespace vmap;
 
 void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) const {
+  // terrain version 12: TFC's berry bushes by climate in place of the one wild bush (sim/... data: <berry>_bush)
+  auto bushFor = [&](const OwColumn& c, double r2) -> BlockId {
+    if (!rockLayers) return B.berry_bush;
+    const BlockId cold[] = {B.snowberry_bush, B.cloudberry_bush, B.cranberry_bush, B.wintergreen_bush, B.bunchberry_bush};
+    const BlockId mild[] = {B.blueberry_bush, B.raspberry_bush, B.blackberry_bush, B.gooseberry_bush, B.elderberry_bush};
+    const BlockId k = c.temp < -0.1 ? cold[jsFloor(r2 * 5)] : mild[jsFloor(r2 * 5)];
+    return k ? k : B.berry_bush;
+  };
   const int bx = cx * 16, bz = cz * 16;
   const bool hw = halloween();   // October: three times the pumpkins
   const BlockId PLAIN_FLOWERS[] = {B.flower_yellow, B.flower_red, B.azure_bluet, B.oxeye_daisy, B.cornflower, B.red_tulip, B.orange_tulip, B.white_tulip, B.pink_tulip};
@@ -51,7 +59,7 @@ void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) con
       } else if (c.biome == BIOME_FOREST) {
         if (r < 0.08) set(x, y, z, B.tall_grass);
         else if (r < 0.095) set(x, y, z, B.fern);
-        else if (r < 0.105) set(x, y, z, B.berry_bush);
+        else if (r < 0.105) set(x, y, z, bushFor(c, r2));
         else if (r < 0.115) { BlockId f = FOREST_FLOWERS[jsFloor(r2 * 6)]; if (B.dbl[f]) tall(x, y, z, f); else set(x, y, z, f); }
         else if (r < 0.12) set(x, y, z, r2 < 0.5 ? B.brown_mushroom : B.red_mushroom);
         else if (r < 0.1205 && c.temp > 0.2) set(x, y, z, B.melon);
@@ -67,7 +75,7 @@ void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) con
         if (wet) for (int k = 0; k < 1 + jsFloor(r2 * 3); k++) set(x, y + k, z, B.sugar_cane);
       }
     } else if (below == B.snowy_grass || below == B.podzol) {
-      if (r < 0.012) set(x, y, z, B.berry_bush);
+      if (r < 0.012) set(x, y, z, bushFor(c, r2));
       else if (r < 0.07) set(x, y, z, B.fern);
       else if (r < 0.08) tall(x, y, z, B.large_fern);
       else if (below == B.snowy_grass && r < 0.38) set(x, y, z, B.snow_layer, (u8)jsFloor(r2 * 2));
@@ -122,8 +130,40 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
     // shore plants: cattails at the shallows' edge, marram grass on dunes
     if ((below == B.grass || below == B.mud || below == B.sand) && c.h <= JS_SEA + 1 && waterBeside(x, y - 1, z) && r < 0.25 && at(x, y + 1, z) == 0) { set(x, y, z, B.cattail, 0); set(x, y + 1, z, B.cattail, 1); continue; }
     if ((below == B.sand || below == B.silver_sand) && c.biome == BIOME_BEACH && r < 0.08) { set(x, y, z, B.marram_grass); continue; }
-    // loose stones on hills, beaches and mountain meadows
-    if (below >= 0 && B.solid[below] && below != B.water && (c.biome == BIOME_MOUNTAINS || c.biome == BIOME_BEACH || (c.h > JS_SEA + 14 && c.biome != BIOME_DESERT)) && r > 0.988) { set(x, y, z, B.loose_stones); continue; }
+    // terrain version 12: now and then a little fruit tree in the warmer woods and fields (TFC's fruit trees)
+    if (rockLayers && below == B.grass && (c.biome == BIOME_FOREST || c.biome == BIOME_PLAINS) && c.temp > 0.25 && r < 0.0015 && x >= 2 && x <= 13 && z >= 2 && z <= 13) {
+      const BlockId hotWet[] = {B.banana_leaves, B.orange_leaves}, hotDry[] = {B.olive_leaves, B.lemon_leaves}, mild[] = {B.peach_leaves, B.plum_leaves};
+      const BlockId lf = c.temp > 0.55 ? (c.humid > 0.2 ? hotWet[jsFloor(r2 * 2)] : hotDry[jsFloor(r2 * 2)]) : mild[jsFloor(r2 * 2)];
+      if (lf && B.log) {
+        for (int k = 0; k < 4; k++) set(x, y + k, z, B.log);
+        for (int dy = 3; dy <= 5; dy++) for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++) {
+          if ((std::abs(dx) == 2 && std::abs(dz) == 2) || (dy == 5 && (std::abs(dx) == 2 || std::abs(dz) == 2))) continue;
+          if (at(x + dx, y + dy, z + dz) == 0) set(x + dx, y + dy, z + dz, lf);
+        }
+        continue;
+      }
+    }
+    // TerraFirmaCraft's loose rocks and sticks (the stone age's first tools come from these): rocks on most land, about 8 to
+    // a chunk; flint on gravel and on sand by the water; twigs in the woods and along the beaches, about 5 to a chunk
+    if (below >= 0 && B.solid[below] && below != B.water) {
+      const bool earth = below == B.grass || below == B.dirt || below == B.podzol || below == B.snowy_grass || below == B.stone || below == B.mud || below == B.gravel;
+      const bool shore = below == B.gravel || ((below == B.sand) && (c.biome == BIOME_BEACH || waterBeside(x, y - 1, z)));
+      if (earth && c.biome != BIOME_DESERT && r > 0.952) {
+        // TFC: one loose rock in three over an ore body is a small piece of that ore (looking 35 blocks down)
+        BlockId sample = 0;
+        if (r2 < 0.34) for (int yy = y - 2; yy > y - 36 && yy > 0 && !sample; yy--) {
+          const BlockId o = at(x, yy, z);
+          if (!o) continue;
+          sample = o == B.copper_ore ? B.copper_sample : o == B.tin_ore ? B.tin_sample : o == B.zinc_ore ? B.zinc_sample : o == B.bismuth_ore ? B.bismuth_sample
+                 : o == B.iron_ore ? B.iron_sample : o == B.gold_ore ? B.gold_sample : o == B.silver_ore ? B.silver_sample : 0;
+        }
+        set(x, y, z, sample ? sample : B.loose_stones);
+        continue;
+      }
+      if (B.loose_flint && shore && r > 0.94 && r <= 0.952) { set(x, y, z, B.loose_flint); continue; }
+      const bool woods = (c.biome == BIOME_FOREST || c.biome == BIOME_TAIGA) && (below == B.grass || below == B.podzol || below == B.dirt || below == B.snowy_grass);
+      if (B.twigs && (woods || c.biome == BIOME_BEACH) && r > 0.932 && r <= 0.952) { set(x, y, z, B.twigs); continue; }
+    }
     // the BTA-inspired variants: spinifex and dead bushes on the Redlands, ice spires on the Glacier, moss and orchids in the
     // Mossmire, flowers all over the Meadow
     if (below == B.red_sand && btaVariant(c) == BV_REDLANDS) { if (r < 0.08 && B.spinifex) set(x, y, z, B.spinifex); else if (r < 0.12) set(x, y, z, B.dry_grass); else if (r < 0.14) set(x, y, z, B.dead_bush); continue; }

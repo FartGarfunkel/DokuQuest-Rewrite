@@ -22,16 +22,41 @@ struct ToolMaterial {
   std::string key, name, prefix, element; std::vector<std::string> items; vec3 rgb{1};
   bool stats = false, tools = true;
   int sTier = 0; float sSpeed = 0, sDamage = 0, sDur = 0, armorK = 0, armorDurK = 0, fireResist = 0;
+  float armorQ = 1;   // a named alloy's makeup: near its ideal mix a little better armour and tools (×0.9..1.1 of its own)
 };
 const std::vector<ToolMaterial>& toolMaterials();                       // data/tool_materials.json
 const ToolMaterial* toolMaterial(const std::string& key);
 const ToolMaterial* toolMaterialOfItem(const std::string& itemKey);     // which material an item is (tags too)
+// a stack's material: metal carrying its makeup (core/metals.h: an alloy ingot, a cast or forged head) is the material of
+// that makeup — the existing one when it names one (bronze, copper...), else a made-up one, key "@<comp>" (stats, colour
+// and name blended by proportion); anything else as toolMaterialOfItem
+const ToolMaterial* toolMaterialOfStack(const ItemStack& s);
+// the iron tool a part-tool kind is scaled from and drawn as (knife: a sword's, scythe: a hoe's...)
+std::string partToolBaseKind(const std::string& kind);
+std::string partToolBaseItem(const std::string& kind);
+int partToolSections(const std::string& kind);                         // head sections (pickaxe 3 ... knife 1)
 
 bool isPartTool(const ItemStack& s);                                    // a mixed tool (tag "pt")
 ToolInfo toolOf(const ItemStack& s);                                    // its stats: the item's own, or the mix's (+ its gem)
 int toolMaxDurability(const ItemStack& s);                              // 0 for things that don't wear
 std::string stackName(const ItemStack& s);                              // "Iron, Diamond & Copper Pickaxe"
-std::string partToolModelKey(const ItemStack& s);                       // "pt:pickaxe:iron,diamond,copper:stick:" ("" if plain)
+// a model key's list of materials, one per section or cell, split on ';' (an unnamed mix's own key "@copper=0.70,zinc=0.30"
+// has commas in it)
+std::vector<std::string> modelKeyMaterials(const std::string& list);
+// how a material is painted on a model: its colour, and for an unnamed mix of metals flecks of each metal by its share
+// (a 70/30 copper-zinc tool: copper with streaks of zinc). at(h): the colour of the voxel (clump) hashed to h.
+struct MaterialPaint {
+  vec3 base{1};
+  std::vector<std::pair<float, vec3>> flecks;   // (share, colour) of each metal in an unnamed mix
+  vec3 at(u32 h) const;
+};
+MaterialPaint materialPaint(const std::string& key);
+// the procedural form of a fixed metal tool, weapon or armour piece ("iron_pickaxe" -> a mixed_pickaxe of iron, the same
+// stats; "bronze_helmet" -> a mixed_helmet of bronze); anything else (wood, stone, gems, not gear) as it is. Trades, loot,
+// mob drops and the smithing table hand out gear through it.
+ItemStack proceduralOf(const std::string& id, int n = 1);
+bool gearIsHoly(const ItemStack& s);   // silver bites the undead: a silver item ("holy"), or gear made mostly of silver
+std::string partToolModelKey(const ItemStack& s);                       // "pt:pickaxe:iron;diamond;copper:stick:" ("" if plain; materials split by modelKeyMaterials)
 
 // The heads' patterns: for a kind, the grid cells (x, y in a w x h box) of its head sections and of its haft.
 struct ToolPattern { std::string kind; int w, h; std::vector<ivec2> head, haft; };
