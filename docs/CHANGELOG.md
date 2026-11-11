@@ -5,7 +5,7 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
-## Unreleased
+## 1.0.0-alpha.20 — Forge and Fire (November 2026)
 
 **Weather (after the Particle Rain mod by pigcart, MIT):**
 - **Rain falls round you, not in a ring at your feet:** drops come from a sphere around you, lean and stretch with the wind and with how you move, and are see-through like real rain. Thunderstorms add heavy rain. Rain and snow no longer blow through walls or into houses.

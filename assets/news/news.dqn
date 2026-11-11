@@ -1,6 +1,104 @@
 # DokuQuest patch notes for the C++ versions, newest first (shown in the launcher's news panel).
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
+## Alpha 1.0.0.20 — Forge and Fire | November 2026
+**Weather (after the Particle Rain mod by pigcart, MIT):**
+- **Rain falls round you, not in a ring at your feet:** drops come from a sphere around you, lean and stretch with the wind and with how you move, and are see-through like real rain. Thunderstorms add heavy rain. Rain and snow no longer blow through walls or into houses.
+- **Snow** drifts down slowly, turning as it falls, with heavy snow in a blizzard.
+- **Where the rain lands:** splashes on the ground, rings on water, drops running down stone and glass walls, steam where it hits lava or fire.
+- **Sandstorms** blow dust the colour of the sand under it (red sand gives red dust), dust skittering along the ground, now and then a dead bush tumbling past, and a dusty haze.
+- **Ground fog:** soft banks of fog lie in swamps and jungles, rise for a while after the rain, and come up the valleys on misty mornings. Fog also settles low in the valleys, thinning as you climb.
+- **Wind** gusts differently from place to place and blows harder the higher you are; the wind's sound now follows the gusts.
+- **Sounds:** snow and sandstorms have their own sound, softer and lower when you're high above them. Rain on the roof over you is a muffled patter now instead of fading away.
+- **Multiplayer:** everyone in a world now has the host's weather. Players joining someone else's world used to run weather of their own.
+- New **Options → Video → Weather**: Weather Particles (Off, Low, Normal, High), Weather Distance, Splashes & Ripples, Ground Fog and Height Fog. The graphics presets set them too.
+
+**Look and feel:**
+- **Brightness** works: it lights up caves and the night like Minecraft's, leaving full daylight alone.
+- **Colour Style** (Options → Video): Vibrant, Natural (the new default), Classic (muted and flatter, like Minecraft Alpha and Beta) or your own Saturation and Contrast. Handy on bright OLED screens.
+- New worlds start with Flat blocks and Classic lighting.
+
+**Graphics cards and Vulkan:**
+- **Graphics Card** option in the launcher: the game uses your dedicated graphics card by default instead of the one built into the processor.
+- Vulkan: the sky, the land and the volumetric clouds draw properly again, the shader levels' shadows, reflections and corner shading work, and it runs over three times as fast as before. Vulkan also follows your VSync setting now.
+
+**Creatures:**
+- Wolves bark when they're wandering about and only growl when they're angry or hunting. Dolphins no longer let out their dying cry while swimming.
+
+**Animation:**
+- **Smooth changes between moves:** players no longer snap between standing, sneaking, sprinting, jumping, swimming, crawling, sitting, sleeping, climbing ladders, eating and flying; each move eases into the next. Animals and monsters ease between their moves too (sitting down, lying down, taking off, swimming).
+- **New moves:** drinking tips the bottle up and the head back; a hit makes you flinch; a dying player's knees give before they fall; sleepers lie slack with the head turned; each jump leads with either leg; walking backwards looks like walking backwards; the head follows other players' looks smoothly. Mouths gasp when hit, chew, and puff on a long sprint.
+- **First person:** changing items lowers the old one and brings the new one up; axes swing heavier, daggers quicker; mining chops straight down into the block; drinking tips the bottle up; the item dips when you land and lowers while you sprint, climb a ladder or swim.
+- **Placing a block** gives it a little pop (Particles Off turns it off).
+
+**Tools and weapons:** pickaxes, axes, shovels, hoes and swords have new 3D shapes: wrapped grips on sturdier handles, pickaxe points that hook down, a curved axe edge with a beard, a dished shovel blade, a broader hoe blade, wider sword blades with an upturned guard. They still show their material (wood, stone, iron, gold, diamond...) from the item's picture.
+- **Swimming** is a breaststroke now: arms out ahead, a wide sweep and a pull under the chest, a frog kick, the head coming up to breathe. No more arms windmilling round.
+
+**Placing things (after TerraFirmaCraft):**
+- **Ingot piles:** sneak + use with an ingot on the ground sets it down; keep adding and they stack like TFC's, eight to a layer in two rows of four, each layer laid across the one below, 64 to a block. A full pile takes another on top. One metal to a pile; use takes one back.
+- **Log piles:** sneak + use with a log on the ground starts a log pile, a crib of 16 logs. Placing logs normally (not sneaking) is unchanged.
+- Fixed the see-through gap round the bottom of cacti.
+
+**Immersive Progression (new worlds; after TerraFirmaCraft):** a new world option, on by default (Create World → Game Rules). Worlds made before it stay classic.
+- **No punching trees:** logs need an axe. Leaves don't hold you up any more: you push through them, slowed, and they break your fall. Broken leaves drop sticks now and then.
+- **On the ground:** loose rocks lie about everywhere, flint by the water on gravel and sand, twigs in the woods and on beaches.
+- **Knapping:** hold two or more pebbles or flint and use them in the air. Chip away at the 5×5 grid until it's the shape you want: an axe, shovel, hoe, knife, hammer or javelin head, or a crude pickaxe (flint makes a proper flint pickaxe). Works with a controller.
+- **Stone tools:** a head and a stick make the tool. Flint tools are better than stone ones.
+- The wooden tools and the cobblestone tools can't be crafted in an immersive world.
+
+**Fire and clay (after TerraFirmaCraft):**
+- **Firestarter:** two sticks. Hold use on three sticks lying on the ground to make a firepit (straw helps it catch), or on an out fire, a pit kiln or a log pile. It takes a moment, and a few tries.
+- **Campfires are firepits now:** feed them logs, planks, sticks, charcoal or coal (up to four). Each fuel burns so long at so hot; a fire with nothing to burn dies down and goes out, and rain puts out one in the open. Food cooks once the fire's hot. Set metal, ore or pottery on it to heat it; an empty hand takes it back.
+- **Hot things:** metal and pottery carry their heat, glow, and cool in your bag; the tooltip says how hot ("Faint Red", "Orange"...).
+- **Straw:** cut tall grass with a knife or a scythe; a scythe cuts all the grass and crops round it. Four straw make thatch.
+- **Clay:** hold five clay balls and use them in the air to shape vessels, jugs, pots, bowls, an ingot mold and molds for tool heads. Fire clay (clay and gravel) shapes a crucible.
+- **Pit kiln:** sneak + use to set unfired pottery down in a pit, then add eight straw and eight logs, wall it in and light it. Three in-game hours later it's fired.
+- **Charcoal pit:** pack log piles together, cover every side with earth or stone, and light one: six in-game hours later they're heaps of charcoal. A pile left open burns away.
+
+**Metal (after TerraFirmaCraft):**
+- **New ores:** zinc and bismuth. In an immersive world ore breaks into ore pieces, and now and then a loose rock on the surface is a small piece of the ore below it. The furnace no longer smelts ore there.
+- **Any metal, any mix:** everything metal carries what it's made of. Copper and tin in the right measure is bronze; so too brass, bismuth bronze, black bronze, rose gold and sterling silver. Any other mix works as well: its strength, its name ("Copper-Zinc-Tin Alloy") and its colour come from what's in it, all the way to the finished tool.
+- **Casting:** fill a fired vessel with ore (hold the ore in your other hand and use the vessel), melt it on a charcoal fire, then use it with a fired mold in your other hand to pour. When the mold's cooled, use it to break it open: a tool head, or an ingot.
+- **The forge:** charcoal in a pit walled in with stone, lit with the firestarter. Bellows beside it make it hotter. A crucible melts big batches and the hardest metals.
+- **The anvil:** use an anvil with a hammer, hot metal in your other hand. Pick what to make, then work the metal to the mark with hits, draws, punches, bends, upsets and shrinks, finishing the way its plan asks. Close is good enough; spot on makes a sturdier tool. A hammer on raw stone makes a stone anvil; anvils of copper, bronze, iron, steel, mithril and adamantite work harder metals. Weld ingots into double ingots and sheets (with flux) and make armour of any metal.
+- **Iron:** a bloomery under a stone-brick chimney turns iron ore and charcoal into blooms; refine them on the anvil. Steel: pig iron from the blast furnace, worked on the anvil.
+- **Hot metal:** dip it in water to cool it (a quenched head makes a slightly tougher tool); hold it bare-handed and it burns you, unless you carry tongs. A prospector's pick tells you what ore is near. Hot things cool wherever they are: in your bag, on the ground, in a chest or on a pile. Drop them in water, a water cauldron or a barrel of water and they go cold at once.
+- **Alloy colours:** a tool or piece of armour made of a mix of metals shows its blend, flecked with each metal by how much of it is in the mix (a 70/30 copper-zinc tool is copper with streaks of zinc). Named alloys like bronze keep their own colour. The name above the hotbar shows what it's made of ("Copper-Zinc Alloy Pickaxe").
+- In an immersive world metal tools and armour are made this way, not at the crafting table.
+
+**Crafting and materials (after TerraFirmaCraft):**
+- **Saws and lumber:** a log and a saw at the crafting table make eight lumber (the saw stays, a little worn). Lumber makes planks, support beams, barrels and sluices. In an immersive world a log by hand gives only two planks.
+- **The quern:** hold use on it with grain (flour), ore (powder, which holds more metal), limestone (flux), bone, cobblestone, gravel or flowers (dye).
+- **Barrels and leather:** a sealable barrel holds water by the bucket and four stacks; sneak + use seals it. Lime in water makes limewater, logs steep into tannin. Raw hide (animals drop it in an immersive world) soaks in limewater, is scraped with a knife (the hide in your other hand), tans in tannin, and becomes leather.
+- **Panning:** a clay pan used on gravel or sand by the water washes out ore samples now and then, and rarely a gem. A sluice in the water does it on its own.
+
+**More like TerraFirmaCraft:**
+- **Every metal tool, weapon and armour piece is procedural:** made at the crafting table (in every world), from a Tool Forge head, bought from a villager, found in a chest or dropped by a mob, its stats, name and colour come from what it's made of. Named alloys vary with their mix too: bronze near 90/10 outlasts an off-ratio bronze, and its colour shifts a little. Armour protection follows the blend, and mixed armour now counts its fire resistance.
+- **No shortcuts:** in an immersive world steel blend only makes pig iron, in the blast furnace; iron ore can't be melted down (the bloomery makes iron); mithril, adamantite, thallasium and cinderite ore melt in the crucible, not the furnace; the anvil is smithed, not crafted from iron blocks; pelts are raw hide to tan, not leather; the Tool Forge cuts no metal heads.
+- **Two-step refining:** a raw bloom is refined, then worked into wrought iron; pig iron becomes high-carbon steel, then steel.
+- **Padded armour:** the anvil makes unfinished armour; pad it with leather, wool cloth or burlap at the crafting table to finish it.
+- **A wooden bucket** from lumber, so a barrel can be filled before the iron age.
+- **Knapping** is a flat slab of the stone, clay or flint, and you can hold the mouse button and drag across it to chip away every piece you pass.
+- **Multiplayer:** stations a guest builds, lights or seals now work on the server (forges, kilns, bloomeries, charcoal pits, barrels), bellows pumped by a guest reach it, and lighting a firepit from sticks no longer copies the sticks.
+
+**The world:**
+- **Rock layers:** new worlds are built in layers of rock: chalk, shale, claystone, conglomerate, gneiss, schist, quartzite, gabbro, rhyolite and dacite join the stones we had, and each ore turns up in the rocks it belongs in.
+- **Cave-ins:** mining out rock with nothing holding the roof up can bring it down on you. Support beams (from lumber) hold it.
+- **Crops and plants:** barley, oats, rye, jute, garlic, soybeans, green beans and squash; ten berry bushes that fill again after you pick them; and fruit trees (plum, orange and more) whose leaves bear fruit.
+
+**Life:**
+- **Husbandry:** animals are male or female. Feed one each day and it grows familiar with you. Familiar animals breed more readily and familiar sheep give more wool.
+- **Straw and thatch:** cut grass with a scythe or knife for straw; straw makes thatch.
+- **Spinning:** hold use with a spindle and wool to spin yarn, then weave yarn into wool cloth, or jute into burlap.
+
+**Machines and villages:**
+- **Gearboxes:** a gearbox carries a windmill's or water wheel's turning round a corner to an axle at 90°. Power it with redstone and it disengages, stopping everything past it.
+- **Powered querns and bellows:** run an axle into a quern and it grinds by itself; run one into bellows and they keep a forge at full heat. You can also pump the bellows by hand (use them with an empty hand).
+- **Villages:** smiths' yards have a proper forge with bellows. Bakeries have a quern, and butchers and tanneries keep sealable barrels. Toolsmiths, weaponsmiths and armourers sell tongs, flux, metals and bellows. Masons sell vessels, molds, crucibles, fire clay, support beams and ore. Farmers sell the new seeds. Bakers sell flour, querns and gearboxes. Butchers sell hides and barrels. Merchants sell lumber, saws, pans and fruit.
+- **Missing sounds:** cave-ins, sluices, turning spell pages and villagers cooking at a fire now make a sound; they played nothing before.
+
+Removed Herobrine.
+
 ## Alpha 1.0.0.19 — High and Low | November 2026
 **Worlds:**
 - **New land comes with new worlds:** the new Nether, End, Skylands and villages below are made in worlds you start now. A world you already have keeps its land; World Settings → Upgrade brings them to every place you haven't been yet (there can be seams where old land meets new, so make a backup first).
