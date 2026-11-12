@@ -8,6 +8,7 @@
 #include "render/place_pop.h"
 #include "assets/item_models.h"
 #include "render/cape_sim.h"
+#include "sim/shield_shape.h"
 #include <cstdio>
 #include <string>
 #include <cmath>
@@ -266,6 +267,22 @@ int main(int argc, char** argv) {
     }
     CapeSim pack; run(pack, vec3(0, 70, 0), vec3(0, 0, -5.6f), vec3(0), 1.5); for (int i = 0; i <= 30; i++) capeStep(pack, bodyAt(vec3(0, 70, -8.4f) + vec3(0, 0, -5.6f) * (i / 60.f)), anchor, vec3(0), 1.6 + i / 60.0, 0.22f);
     CHECK(maxAbs(pack.lift) <= 0.221f, "under a backpack it only stirs (%.3f)", maxAbs(pack.lift));
+  }
+  {   // the shield is a real box where it is drawn (sim/shield_shape.h): on guard before the chest, carried at the side
+    const vec3 feet(10, 64, -5);
+    const ShieldBox g = shieldBoxAt(feet, 0, 0, true, false, false);
+    float tf = -1;
+    CHECK(shieldRayHit(g, feet + vec3(-0.1f, 1.2f, -4), vec3(0, 0, 1), 8, &tf) && tf < 4 - 0.3f, "an arrow from the front meets the raised shield before the chest");
+    CHECK(!shieldRayHit(g, feet + vec3(0, 0.3f, -4), vec3(0, 0, 1), 8), "the raised shield leaves the legs open");
+    const ShieldBox c = shieldBoxAt(feet, 0, 0, false, false, false);
+    CHECK(shieldRayHit(c, feet + vec3(-4, 1.07f, -0.17f), vec3(1, 0, 0), 8) && !shieldRayHit(c, feet + vec3(0.1f, 1.2f, -4), vec3(0, 0, 1), 8),
+          "carried, it covers the left side, not the front");
+    const ShieldBox r = shieldBoxAt(feet, 0, 0, false, false, true);
+    CHECK(r.c.x > feet.x + 0.4f && c.c.x < feet.x - 0.4f, "a shield in the main hand is carried on the right");
+    const ShieldBox t90 = shieldBoxAt(feet, 1.5707963f, 0, true, false, false);   // facing -x
+    CHECK(shieldRayHit(t90, feet + vec3(-4, 1.2f, 0.1f), vec3(1, 0, 0), 8) && glm::dot(t90.az, vec3(-1, 0, 0)) > 0.7f, "it turns with the body");
+    const ShieldBox up = shieldBoxAt(feet, 0, 0.9f, true, false, false), dn = shieldBoxAt(feet, 0, -0.9f, true, false, false);
+    CHECK(up.c.y > g.c.y + 0.08f && dn.c.y < g.c.y - 0.08f, "on guard it follows the look up and down");
   }
   printf("\n%d passed, %d failed\n", passes, fails);
   return fails;

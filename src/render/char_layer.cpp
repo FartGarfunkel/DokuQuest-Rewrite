@@ -14,6 +14,7 @@
 #include "sim/weather.h"
 #include "render/char_layer.h"
 #include "assets/shield3d.h"
+#include "sim/shield_shape.h"
 #include "core/item_glint.h"
 #include "render/rod_tip.h"
 #include "assets/cape_tex.h"
@@ -1051,6 +1052,18 @@ bool fpGuardFrames(const Player& p, bool shieldLeft, const std::string& weapon, 
   CharPose ps; ps.block = k; ps.blockMain = !shieldLeft; ps.shieldArm = shieldLeft ? 1 : -1; ps.held = shieldLeft ? !weapon.empty() : true; ps.off = shieldLeft ? true : !weapon.empty();
   CharRig R;
   charRig(M, ps, mat4(1), R, false, false);
+  if (std::getenv("DQ_DEV_SHBOX")) {   // dev aid: the shield box the rig makes (to re-measure sim/shield_shape.cpp's table) and the sim's
+    static int once = 0;
+    if (once++ == 30) for (float kk : {0.f, 1.f}) for (float hp : {-0.8f, 0.f, 0.8f}) for (bool sn : {false, true}) {
+      CharPose q = ps; q.block = kk; q.headPitch = hp; q.sneak = sn; CharRig RR; charRig(M, q, mat4(1), RR, false, false);
+      const mat4 Mb = shieldPlacement(RR, shieldLeft ? CP_ARML_D : CP_ARMR_D, shieldLeft ? -1.f : 1.f, kk);
+      const vec3 c = vec3(Mb * vec4(0, 0, 0.0625f, 1)), ax = vec3(Mb[0]), ay = vec3(Mb[1]), az = vec3(Mb[2]);
+      const vec3 hd = vec3(RR.part[CP_HEAD][3]);
+      const ShieldBox sb = shieldBoxAt(vec3(0), 0, hp / 0.8f, kk > 0.5f, sn, !shieldLeft);
+      DQ_LOG("shield box: sim c %.3f %.3f %.3f az %.3f %.3f %.3f", sb.c.x, sb.c.y, sb.c.z, sb.az.x, sb.az.y, sb.az.z);
+      DQ_LOG("shield box: rig k %.0f hp %.1f sn %d c %.3f %.3f %.3f ax %.3f %.3f %.3f ay %.3f %.3f %.3f az %.3f %.3f %.3f len %.3f head %.2f %.2f %.2f", kk, hp, (int)sn, c.x, c.y, c.z, ax.x, ax.y, ax.z, ay.x, ay.y, ay.z, az.x, az.y, az.z, glm::length(ax), hd.x, hd.y, hd.z);
+    }
+  }
   // the eye: the head's middle, looking where the head looks (level; the hand view turns with the camera's pitch)
   const mat4& hm = R.part[CP_HEAD];
   vec3 hz = vec3(hm[2]); hz.y = 0;
