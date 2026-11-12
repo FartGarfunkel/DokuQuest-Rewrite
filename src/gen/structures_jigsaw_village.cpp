@@ -692,21 +692,24 @@ static bool genFree(const SP& P, int x, int y, int z) {
   if (a == NOBLOCK || b == NOBLOCK || g == NOBLOCK) return false;
   return (a == AIR || R.tReplaceable[a]) && (b == AIR || R.tReplaceable[b]) && R.tSolid[g] && R.tOpaque[g];
 }
-static int genIntoRoom(const SP& P, int x, int y, int z) {
-  const Registry& R = reg();
-  int best = 0, bn = -1;
+static int genFaceRoom(const SP& P, const std::vector<ivec3>& room, int x, int y, int z) {
+  long sx = 0, sz = 0, n = 0;
+  for (const ivec3& c : room) if (c.y == y) { sx += c.x; sz += c.z; n++; }
+  if (!n) return 2;
+  const long dx = sx - (long)x * n, dz = sz - (long)z * n;
+  long ddx = 0, ddz = 0; bool gotDoor = false;
+  for (const ivec3& c : room) if (c.y == y) for (int k = 0; k < 4 && !gotDoor; k++) {
+    const int dx0 = c.x + DIRX[k], dz0 = c.z + DIRZ[k];
+    const BlockId a = P.get(dx0, c.y, dz0), b = P.get(dx0, c.y + 1, dz0);
+    const bool door = (a != NOBLOCK && a != AIR && reg().block(a).has("door")) || (b != NOBLOCK && b != AIR && reg().block(b).has("door"));
+    if (!door) continue;
+    ddx = dx0 - x; ddz = dz0 - z; gotDoor = true;
+  }
+  int best = 2; long bestScore = LONG_MIN, bestDoor = LONG_MIN;
   for (int k = 0; k < 4; k++) {
-    int n = 0;
-    for (int i = 1; i <= 4; i++) {
-      const int nx = x + DIRX[k] * i, nz = z + DIRZ[k] * i;
-      if (!P.in(nx, nz)) break;
-      const BlockId a = P.get(nx, y, nz), b = P.get(nx, y + 1, nz);
-      if (a == NOBLOCK || b == NOBLOCK) break;
-      if (!(a == AIR || R.tReplaceable[a]) || !(b == AIR || R.tReplaceable[b])) break;
-      if (reg().block(a).has("door") || reg().block(b).has("door")) break;
-      n++;
-    }
-    if (n > bn) { bn = n; best = k; }
+    const long score = dx * DIRX[k] + dz * DIRZ[k];
+    const long ds = gotDoor ? ddx * DIRX[k] + ddz * DIRZ[k] : 0;
+    if (score > bestScore || (score == bestScore && ds > bestDoor)) { bestScore = score; bestDoor = ds; best = k; }
   }
   return best;
 }
@@ -755,7 +758,7 @@ static void fixGeneratedStand(SP& P, int x, int y, int z) {
         nx = c.x; ny = c.y; nz = c.z; found = true; break;
       }
   }
-  const int face = (genIntoRoom(P, nx, ny, nz) + 2) & 3;
+  const int face = (genFaceRoom(P, room, nx, ny, nz) + 2) & 3;
   const int oldIdx = colIdx(x - P.bx, y, z - P.bz);
   json ent = nullptr;
   if (json* e = P.entity(oldIdx)) ent = *e;

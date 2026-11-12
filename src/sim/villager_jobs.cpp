@@ -93,23 +93,38 @@ bool wallBeside(World& w, int x, int y, int z) {
   }
   return false;
 }
-// the way into the room: the longest run of open floor, up to 4. Facing-model meta is the way the placer looked, and the
-// front points the other way, so the stand's front along k is meta (k + 2) & 3.
-int intoRoom(World& w, ivec3 c) {
-  const Registry& R = reg();
-  int best = 0, bn = -1;
+// a stand counts as in the room if it stands on reachable floor, or any of its four neighbours does
+// (the fill skips a cell whose head space isn't clear, and a stand often isn't)
+bool touchesRoom(const std::vector<ivec3>& room, ivec3 c) {
+  for (const ivec3& p : room) {
+    if (p.y != c.y) continue;
+    if (std::abs(p.x - c.x) + std::abs(p.z - c.z) <= 1) return true;
+  }
+  return false;
+}
+// face the middle of the reachable floor. The front points along k with meta (k + 2) & 3. An exact tie goes toward the door.
+int faceRoom(World& w, const std::vector<ivec3>& room, ivec3 stand) {
+  long sx = 0, sz = 0, n = 0;
+  for (const ivec3& c : room) if (c.y == stand.y) { sx += c.x; sz += c.z; n++; }
+  if (!n) return 2;
+  const long dx = sx - stand.x * n, dz = sz - stand.z * n;
+  long ddx = 0, ddz = 0; bool gotDoor = false;
+  for (const ivec3& c : room) if (c.y == stand.y) for (int k = 0; k < 4 && !gotDoor; k++) {
+    const int x = c.x + DIRX[k], z = c.z + DIRZ[k];
+    if (!doorCell(w, x, c.y, z)) continue;
+    ddx = x - stand.x; ddz = z - stand.z; gotDoor = true;
+  }
+  int best = 2; long bestScore = LONG_MIN, bestDoor = LONG_MIN;
   for (int k = 0; k < 4; k++) {
-    int n = 0;
-    for (int i = 1; i <= 4; i++) {
-      const int x = c.x + DIRX[k] * i, z = c.z + DIRZ[k] * i;
-      const BlockId a = w.getBlock(x, c.y, z), b = w.getBlock(x, c.y + 1, z);
-      if (!(a == AIR || R.tReplaceable[a]) || !(b == AIR || R.tReplaceable[b])) break;
-      if (R.block(a).has("door") || R.block(b).has("door")) break;
-      n++;
-    }
-    if (n > bn) { bn = n; best = k; }
+    const long score = dx * DIRX[k] + dz * DIRZ[k];
+    const long ds = gotDoor ? ddx * DIRX[k] + ddz * DIRZ[k] : 0;
+    if (score > bestScore || (score == bestScore && ds > bestDoor)) { bestScore = score; bestDoor = ds; best = k; }
   }
   return best;
+}
+u8 standMeta(World& w, ivec3 work, ivec3 at) {
+  std::vector<ivec3> room; fillRoom(w, work, 4, room);
+  return (u8)((faceRoom(w, room, at) + 2) & 3);
 }
 // a free cell by the workplace (not the work itself, not in front of it where they stand), on the ground
 bool spotBy(World& w, ivec3 work, int workF, int r, ivec3& out, int skip = 0) {
@@ -133,11 +148,14 @@ bool findStand(World& w, ivec3 work, int r, ivec3& out) {
   if (!id) return false;
   std::vector<ivec3> room; fillRoom(w, work, r, room);
   bool got = false; int best = 1 << 30;
-  for (const ivec3& c : room) {
-    if (w.getBlock(c.x, c.y, c.z) != id || doorBeside(w, c.x, c.y, c.z)) continue;
-    const int d = std::abs(c.x - work.x) + std::abs(c.z - work.z) + (wallBeside(w, c.x, c.y, c.z) ? 0 : 8);
-    if (d < best) { best = d; out = c; got = true; }
-  }
+  for (int y = work.y - 1; y <= work.y + 1; y++)
+    for (int z = work.z - r - 1; z <= work.z + r + 1; z++)
+      for (int x = work.x - r - 1; x <= work.x + r + 1; x++) {
+        const ivec3 c(x, y, z);
+        if (!w.isLoaded(x, y, z) || w.getBlock(x, y, z) != id || !touchesRoom(room, c) || doorBeside(w, x, y, z)) continue;
+        const int d = std::abs(x - work.x) + std::abs(z - work.z) + (wallBeside(w, x, y, z) ? 0 : 8);
+        if (d < best) { best = d; out = c; got = true; }
+      }
   return got;
 }
 void tidyStands(World& w, ivec3 work, int workF, json& rec) {
@@ -150,14 +168,17 @@ void tidyStands(World& w, ivec3 work, int workF, json& rec) {
     hasRec = true;
   }
   std::vector<ivec3> bad;
-  for (const ivec3& c : room) {
-    if (w.getBlock(c.x, c.y, c.z) != id) continue;
-    if (doorBeside(w, c.x, c.y, c.z)) bad.push_back(c);   // inside, and in the doorway: move it
-    else {
-      const u8 face = (u8)((intoRoom(w, c) + 2) & 3);
-      if ((w.getMeta(c.x, c.y, c.z) & 3) != face) w.setBlock(c.x, c.y, c.z, id, face);
-    }
-  }
+  for (int y = work.y - 1; y <= work.y + 1; y++)
+    for (int z = work.z - 5; z <= work.z + 5; z++)
+      for (int x = work.x - 5; x <= work.x + 5; x++) {
+        const ivec3 c(x, y, z);
+        if (!w.isLoaded(x, y, z) || w.getBlock(x, y, z) != id || !touchesRoom(room, c)) continue;
+        if (doorBeside(w, x, y, z)) bad.push_back(c);
+        else {
+          const u8 face = (u8)((faceRoom(w, room, c) + 2) & 3);
+          if ((w.getMeta(x, y, z) & 3) != face) w.setBlock(x, y, z, id, face);
+        }
+      }
   for (const ivec3& c : bad) {
     ivec3 spot;
     if (!standSpot(w, work, workF, 4, spot)) continue;
@@ -165,7 +186,7 @@ void tidyStands(World& w, ivec3 work, int workF, json& rec) {
     if (json* e = w.blockEntity(c.x, c.y, c.z)) ent = *e;
     w.setBlockEntity(c.x, c.y, c.z, nullptr);
     w.setBlock(c.x, c.y, c.z, AIR, 0);
-    w.setBlock(spot.x, spot.y, spot.z, id, (u8)((intoRoom(w, spot) + 2) & 3));
+    w.setBlock(spot.x, spot.y, spot.z, id, (u8)((faceRoom(w, room, spot) + 2) & 3));
     if (ent.is_object()) w.setBlockEntity(spot.x, spot.y, spot.z, ent);
     if (hasRec && c == recAt) { rec["stand"] = {spot.x, spot.y, spot.z}; recAt = spot; }
   }
@@ -220,7 +241,7 @@ bool piece(Level& lv, World& w, json& rec, const char* key, const char* block, i
         rec.erase(key);
       } else {
         if (stand) {
-          const u8 face = (u8)((intoRoom(w, at) + 2) & 3);
+          const u8 face = standMeta(w, work, at);
           if ((w.getMeta(at.x, at.y, at.z) & 3) != face) w.setBlock(at.x, at.y, at.z, id, face);
         }
         return true;
@@ -232,13 +253,13 @@ bool piece(Level& lv, World& w, json& rec, const char* key, const char* block, i
     ivec3 existing;
     if (findStand(w, work, 3, existing)) {   // a generated stand already in the room: use it, don't add another
       at = existing;
-      const u8 face = (u8)((intoRoom(w, at) + 2) & 3);
+      const u8 face = standMeta(w, work, at);
       if ((w.getMeta(at.x, at.y, at.z) & 3) != face) w.setBlock(at.x, at.y, at.z, id, face);
       rec[key] = {at.x, at.y, at.z};
       return true;
     }
     if (!standSpot(w, work, workF, 3, at)) return false;
-    f = (intoRoom(w, at) + 2) & 3;
+    f = standMeta(w, work, at);
   } else if (wall) {
     if (!wallBy(w, work, 3, at, f)) return false;
   } else {
