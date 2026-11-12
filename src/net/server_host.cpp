@@ -628,7 +628,8 @@ void ServerHost::applyMe(Peer& p, const json& m) {
   pl.onGround = f & 1; pl.inWater = f & 2; pl.sneaking = f & 4; pl.sprinting = f & 8; pl.flying = f & 16; pl.swimming = f & 32; pl.crawling = f & 64;
   pl.hp = m.value("hp", pl.hp); pl.dead = dead;
   pl.activity = (u8)(m.value("ac", 0) & 7); pl.typeRate = clampv(m.value("tr", 0.f), 0.f, 40.f);
-  if (m.contains("bp") && m["bp"].is_string() && m["bp"].get_ref<const std::string&>().size() < 200000) { pl.bookPic = m["bp"]; pl.bookPicV++; pl.bookLay = m.value("bl", std::string()).substr(0, 2000); pl.bookPicAt = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
+  // (the guest sends its picture again now and then, in case one was lost: only a new one is news)
+  if (m.contains("bp") && m["bp"].is_string() && m["bp"].get_ref<const std::string&>().size() < 200000 && m["bp"].get_ref<const std::string&>() != pl.bookPic) { pl.bookPic = m["bp"]; pl.bookPicV++; pl.bookLay = m.value("bl", std::string()).substr(0, 2000); pl.bookPicAt = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
   pl.stationKind = (i8)m.value("wk", -1);
   if (m.contains("wa") && m["wa"].is_array() && m["wa"].size() == 3) pl.workAt = vec3(m["wa"][0].get<float>(), m["wa"][1].get<float>(), m["wa"][2].get<float>());
   pl.workTap = (u8)m.value("wt", (int)pl.workTap);

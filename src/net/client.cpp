@@ -401,7 +401,7 @@ void NetClient::sendMe() {
   if (p.eatAnim > 0) { m["ea"] = r3(p.eatAnim); if (!p.eatId.empty()) m["ei"] = p.eatId; }   // a bite: the others see the food bitten down
   if (p.activity) { m["ac"] = p.activity; if (p.typeRate > 0) m["tr"] = r3(p.typeRate); m["bf"] = p.bookFlip; m["bd"] = p.bookDir; }
   if (p.stationKind >= 0) { m["wk"] = p.stationKind; m["wa"] = json::array({r3(p.workAt.x), r3(p.workAt.y), r3(p.workAt.z)}); m["wt"] = p.workTap; }   // at a station
-  if (p.bookPicV != sentBookV) { sentBookV = p.bookPicV; m["bp"] = p.bookPic; m["bl"] = p.bookLay; }   // (their open book's pages, when they change)   // typing, in a menu, dozing (render/activity_layer.cpp)
+  if (p.bookPicV != sentBookV || (!p.bookPic.empty() && t - sentBookAt > 2.0)) { sentBookV = p.bookPicV; sentBookAt = t; m["bp"] = p.bookPic; m["bl"] = p.bookLay; }   // (their open book's pages, when they change)   // typing, in a menu, dozing (render/activity_layer.cpp)
   sendTo(ME, m, 1, false);
 }
 

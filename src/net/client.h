@@ -72,6 +72,7 @@ public:
 
 private:
   u32 sentBookV = 0;   // the last of our book pictures sent (Player::bookPicV)
+  double sentBookAt = -10;   // (and when: it goes again every 2 s while the book is open — ME is unreliable, one lost and the host kept the old pages)
   friend class ClientWatch;
   struct _ENetHost* host = nullptr;
   struct _ENetPeer* peer = nullptr;
