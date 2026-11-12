@@ -46,6 +46,40 @@ bool freeCell(World& w, int x, int y, int z) {
   const BlockId a = w.getBlock(x, y, z), b = w.getBlock(x, y + 1, z), g = w.getBlock(x, y - 1, z);
   return (a == AIR || R.tReplaceable[a]) && (b == AIR || R.tReplaceable[b]) && R.tSolid[g] && R.tOpaque[g] && !w.blockEntity(x, y, z);
 }
+// a door in the eight neighbours, at this height or one above (the floor just inside a door is free, and a stand was landing there)
+bool doorBeside(World& w, int x, int y, int z) {
+  for (int dy = 0; dy <= 1; dy++) for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) {
+    if (!dx && !dz) continue;
+    if (reg().block(w.getBlock(x + dx, y + dy, z + dz)).has("door")) return true;
+  }
+  return false;
+}
+bool wallBeside(World& w, int x, int y, int z) {
+  const Registry& R = reg();
+  for (int k = 0; k < 4; k++) {
+    const BlockId wl = w.getBlock(x + DIRX[k], y, z + DIRZ[k]);
+    if (R.tSolid[wl] && R.tOpaque[wl] && !R.block(wl).has("door")) return true;
+  }
+  return false;
+}
+// the way into the room: the longest run of open floor, up to 4. Facing-model meta is the way the placer looked, and the
+// front points the other way, so the stand's front along k is meta (k + 2) & 3.
+int intoRoom(World& w, ivec3 c) {
+  const Registry& R = reg();
+  int best = 0, bn = -1;
+  for (int k = 0; k < 4; k++) {
+    int n = 0;
+    for (int i = 1; i <= 4; i++) {
+      const int x = c.x + DIRX[k] * i, z = c.z + DIRZ[k] * i;
+      const BlockId a = w.getBlock(x, c.y, z), b = w.getBlock(x, c.y + 1, z);
+      if (!(a == AIR || R.tReplaceable[a]) || !(b == AIR || R.tReplaceable[b])) break;
+      if (R.block(a).has("door") || R.block(b).has("door")) break;
+      n++;
+    }
+    if (n > bn) { bn = n; best = k; }
+  }
+  return best;
+}
 // a free cell by the workplace (not the work itself, not in front of it where they stand), on the ground
 bool spotBy(World& w, ivec3 work, int workF, int r, ivec3& out, int skip = 0) {
   const ivec3 stand = work + ivec3(DIRX[workF & 3], 0, DIRZ[workF & 3]);
@@ -61,6 +95,21 @@ bool spotBy(World& w, ivec3 work, int workF, int r, ivec3& out, int skip = 0) {
   }
   return false;
 }
+// an armour stand: not in a doorway; against a wall if any such cell is free, otherwise any open floor
+bool standSpot(World& w, ivec3 work, int workF, int r, ivec3& out) {
+  const ivec3 stand = work + ivec3(DIRX[workF & 3], 0, DIRZ[workF & 3]);
+  for (int pass = 0; pass < 2; pass++)
+    for (int d = 1; d <= r; d++) for (int dz = -d; dz <= d; dz++) for (int dx = -d; dx <= d; dx++) {
+      if (std::max(std::abs(dx), std::abs(dz)) != d) continue;
+      for (int dy = -1; dy <= 1; dy++) {
+        const ivec3 c = work + ivec3(dx, dy, dz);
+        if (c == stand || c == work || !freeCell(w, c.x, c.y, c.z) || doorBeside(w, c.x, c.y, c.z)) continue;
+        if (pass == 0 && !wallBeside(w, c.x, c.y, c.z)) continue;
+        out = c; return true;
+      }
+    }
+  return false;
+}
 // a wall cell by the workplace to hang something on: air with a solid wall beside it; f: the way to the wall
 bool wallBy(World& w, ivec3 work, int r, ivec3& out, int& f) {
   const Registry& R = reg();
@@ -69,7 +118,8 @@ bool wallBy(World& w, ivec3 work, int r, ivec3& out, int& f) {
     for (int dy = 0; dy <= 1; dy++) {
       const ivec3 c = work + ivec3(dx, dy, dz);
       const BlockId a = w.getBlock(c.x, c.y, c.z);
-      if (a != AIR || w.blockEntity(c.x, c.y, c.z)) continue;
+      if (a != AIR || w.blockEntity(c.x, c.y, c.z) || doorBeside(w, c.x, c.y, c.z)) continue;
+      if (reg().block(w.getBlock(c.x, c.y - 1, c.z)).has("door")) continue;   // not hanging over a doorway
       for (int k = 0; k < 4; k++) {
         const BlockId wl = w.getBlock(c.x + DIRX[k], c.y, c.z + DIRZ[k]);
         if (R.tSolid[wl] && R.tOpaque[wl]) { out = c; f = k; return true; }
@@ -89,14 +139,34 @@ json& showRec(Level& lv, const Village& v, int idx) {
 bool piece(Level& lv, World& w, json& rec, const char* key, const char* block, ivec3 work, int workF, ivec3& at, bool wall = false) {
   const BlockId id = B(block);
   if (!id) return false;
+  const bool stand = std::string(block) == "armor_stand";
   if (rec.contains(key) && rec[key].is_array()) {
     at = ivec3(rec[key][0].get<int>(), rec[key][1].get<int>(), rec[key][2].get<int>());
-    if (w.isLoaded(at.x, at.y, at.z) && w.getBlock(at.x, at.y, at.z) == id) return true;
-    if (!w.isLoaded(at.x, at.y, at.z)) return false;
+    if (w.isLoaded(at.x, at.y, at.z) && w.getBlock(at.x, at.y, at.z) == id) {
+      if (stand && doorBeside(w, at.x, at.y, at.z)) {   // already in a doorway: take it down and place it again
+        w.setBlockEntity(at.x, at.y, at.z, nullptr);
+        w.setBlock(at.x, at.y, at.z, AIR, 0);
+        rec.erase(key);
+      } else {
+        if (stand) {
+          const u8 face = (u8)((intoRoom(w, at) + 2) & 3);
+          if ((w.getMeta(at.x, at.y, at.z) & 3) != face) w.setBlock(at.x, at.y, at.z, id, face);
+        }
+        return true;
+      }
+    } else if (!w.isLoaded(at.x, at.y, at.z)) return false;
   }
   int f = 0;
-  if (wall ? !wallBy(w, work, 3, at, f) : !spotBy(w, work, workF, 3, at, (int)rec.size())) return false;
-  w.setBlock(at.x, at.y, at.z, id, (u8)(wall ? f : (workF & 3)));
+  if (stand) {
+    if (!standSpot(w, work, workF, 3, at)) return false;
+    f = (intoRoom(w, at) + 2) & 3;
+  } else if (wall) {
+    if (!wallBy(w, work, 3, at, f)) return false;
+  } else {
+    if (!spotBy(w, work, workF, 3, at, (int)rec.size())) return false;
+    f = workF & 3;
+  }
+  w.setBlock(at.x, at.y, at.z, id, (u8)f);
   rec[key] = {at.x, at.y, at.z};
   lv.fx->material("wood", "place", vec3(at) + vec3(0.5f));
   return true;
