@@ -370,7 +370,7 @@ int mapBestSlot(Level& lv, Player& p) {
 }
 namespace {
 bool blockUsable(const BlockDef& b) {   // the block you look at has its own use (maps.js: pile, container, table...)
-  static const char* K[] = {"pile", "placedBackpack", "container", "table", "furnace", "harvest", "door", "bed", "waystone", "frame", "lever", "button", "sign", "lectern", "anvil", "chest", "trapdoor", "gate", "seat", "furniture"};
+  static const char* K[] = {"pile", "placedBackpack", "container", "table", "furnace", "harvest", "door", "bed", "waystone", "frame", "lever", "button", "sign", "lectern", "anvil", "chest", "trapdoor", "gate", "seat", "furniture", "station", "stonecutter", "jukebox"};
   for (const char* k : K) if (b.has(k)) return true;
   using namespace ShapeKind;
   u8 s = b.shapeKind;

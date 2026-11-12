@@ -5,6 +5,7 @@
 #include "common/common.h"
 #include "core/itemstack.h"
 #include <functional>
+#include <string>
 
 namespace dq {
 
@@ -38,20 +39,33 @@ std::unique_ptr<Screen> makeCinematicBrewScreen(ivec3 at);
 std::unique_ptr<Screen> makeCinematicFurnaceScreen(ivec3 at);
 // a chest worked by hand (sim/chest_work.h): its lid up, its slots lying inside in rows, put into and taken out of (kind 5)
 std::unique_ptr<Screen> makeCinematicChestScreen(ivec3 at);
-// the grindstone worked in the world (sim/station_work.h, kind 6): two pieces on its top, held to the wheel and ground
-std::unique_ptr<Screen> makeCinematicGrindScreen(ivec3 at);
+// the grindstone (kind 6), smithing table (8), loom (9), fletching table (10) and cartography table (11) worked in the
+// world (sim/station_work.h pairWork*, ui/cinematic_work.cpp): what's worked and what goes into it lie on top; the
+// work takes them up, makes the thing (at its contact time) and hands it to you
+std::unique_ptr<Screen> makeCinematicPairScreen(ivec3 at, const std::string& station);
+int pairSceneKind(const std::string& station);   // 6, 8.. 11; 0 none
 // the stonecutter worked in the world (kind 7): the stone on its table, the shapes it cuts into on a dial over the saw
 std::unique_ptr<Screen> makeCinematicCutScreen(ivec3 at);
-// what those two scenes show (render/station_work_layer.cpp draws it): t the seconds into the grinding / the cut, -1 none
-struct GrindView { ivec3 at{0}; float viewYaw = 0; int hover = -1; double t = -1; ItemStack before[2], after; };
-bool cinematicGrindView(GrindView& v);
+// what those scenes show (render/station_work_layer.cpp draws it): t the seconds into the work / the cut, -1 none
+struct PairView { int kind = 0; ivec3 at{0}; float viewYaw = 0; int hover = -1; double t = -1; ItemStack before[2], after; };
+bool cinematicPairView(PairView& v);
 struct CutView { ivec3 at{0}; float viewYaw = 0; int hover = -1; double t = -1; bool all = false; float scroll = 0; ItemStack input, piece; };
 bool cinematicCutView(CutView& v);
-// GrindstoneStation's pieces in the grinding (heldPos: lifted 0.28..0.6 s to the wheel, stroked to and fro till 1.9 s);
-// StonecutterStation's dial (shapePoint: up to 9 shapes on a half ring over the saw, 0.72 wide, 0.5 high)
-constexpr double GRIND_LENGTH = 2.4, GRIND_CONTACT = 0.6, GRIND_CLEAN = 1.5, GRIND_LET_GO = 1.9;
+// each work's beats: length; contact, when the thing is made (and given); letGo, when it's lifted off toward you.
+//  the grindstone (GrindstoneStation): lifted to the wheel by 0.6, stroked to and fro, let go at 1.9, of 2.4
+//  the smithing table (SmithingStation): the material up by 0.5 and down on the gear by 0.76, pressed at 0.95 (glowing
+//    to PEAK 1.35, cooled by 2.15), of 2.6
+//  the loom (LoomStation): the dye taken up, six passes of the shuttle 0.2..1.85, of 2.4
+//  the fletching table: flint and feather brought together by 0.6, the arrows fanned out, of 1.8
+//  the cartography table (CartographyStation): the paper laid on the map by 0.6, of 2.1
+struct PairBeats { double length, contact, letGo; };
+PairBeats pairBeats(int kind);
+constexpr double GRIND_CLEAN = 1.5, SMITH_PEAK = 1.35, SMITH_COOLED = 2.15, LOOM_FROM = 0.2, LOOM_TO = 1.85;
+constexpr int LOOM_PASSES = 6;
 constexpr double CUT_LENGTH = 1.05, CUT_ALL_LENGTH = 1.5, CUT_BITE = 0.26;
-vec3 grindHeldPos(ivec3 at, float viewYaw, int k, double t, vec3 lying);   // lying: where it lay (sim/station_work.h grindLiePos)
+// where piece k is at t into the work (lying: where it lay, sim/station_work.h pairLiePos)
+vec3 pairHeldPos(const PairView& v, int k, const vec3 lying[2]);
+// StonecutterStation's dial (shapePoint: up to 9 shapes on a half ring over the saw, 0.72 wide, 0.5 high)
 vec3 cutDialPoint(ivec3 at, float viewYaw, int k, int count, float scroll, double clock);
 float cutDialShown(int k, int count, float scroll);   // 0..1: on the dial (fading at its ends)
 // a point the working hand reaches for (a station without the table's squares: the chest's slots); false: none

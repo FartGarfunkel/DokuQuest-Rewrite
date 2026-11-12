@@ -3,6 +3,7 @@
 // gliding back to the eyes), its crafting table worked on the table's own top. Ours sets the pieces on the in-world grid
 // of sim/worktable.h (one at a time, read from where you stand, synced like any block entity).
 #include "ui/cinematic.h"
+#include "ui/cinematic_internal.h"
 #include "ui/book_ui.h"
 #include "ui/screen.h"
 #include "ui/theme.h"
@@ -30,24 +31,9 @@
 #include <cmath>
 
 namespace dq {
-namespace {
+namespace cine {
 
-constexpr double INTRO = 0.6, OUTRO = 0.45;
 
-struct Scene {
-  int phase = 0;   // 0 off, 1 the approach, 2 at work, 3 leaving
-  double t = 0, clock = 0;
-  ivec3 at{0};
-  glm::dvec3 viewPos{0}; float viewYaw = 0, viewPitch = 0;   // the lean over the table
-  glm::dvec3 lastPos{0}; float lastYaw = 0, lastPitch = 0;    // the pose shown last frame (the leave sets off from it)
-  int kind = 0;    // 0 the crafting table, 1 an anvil, 2 the enchanting table, 3 a brewing stand, 4 a furnace
-  float fov = 66, roll = 0;
-  vec3 rest[2]{};  // where the hands lie at rest (right, left)
-  vec3 front{0};   // a station with a front of its own (a furnace): lean in there, wherever you stand
-  vec3 viewOff{0};     // the eye's offset from bending (cinematicViewOffset)
-  float bend = 0;      // seamless first person: how far bent toward the work (0..1, eased)
-  bool lean = false;   // the camera leans over the station (Options "Lean the camera over stations"); off: seamless first person
-};
 Scene& scene() { static Scene s; return s; }
 EnchantView g_ev; AnvilView g_av; bool g_evOn = false, g_avOn = false;   // (what the scenes show in the world: cinematicEnchantView / cinematicAnvilView)
 
@@ -101,8 +87,9 @@ void leanPose(Scene& S, vec3 eye) {
     aimAt(top + d * 1.f + vec3(0, 0.95f, 0), top - d * 0.05f + vec3(0, 0.25f, 0));
     for (int k = 0; k < 2; k++) S.rest[k] = top + d * 0.36f + right * (k ? -0.38f : 0.26f) + vec3(0, 0.062f, 0);
     S.roll = -1.5f * PI / 180;
-  } else {                    // TableStation: LEAN_BACK 0.86, LEAN_UP 0.72, the pitch atan2(LEAN_UP, LEAN_BACK - LOOK_BACK)
-    constexpr float LEAN_BACK = 0.86f, LEAN_UP = 0.72f, LOOK_BACK = -0.04f;
+  } else {                    // TableStation: LEAN_BACK 0.86, LEAN_UP 0.72, the pitch atan2(LEAN_UP, LEAN_BACK - LOOK_BACK);
+    // the smithing table (SmithingStation) 0.7 and 0.62, the cartography table (CartographyStation) 0.7 and 0.64
+    const float LEAN_BACK = S.kind == 8 || S.kind == 11 ? 0.7f : 0.86f, LEAN_UP = S.kind == 8 ? 0.62f : S.kind == 11 ? 0.64f : 0.72f, LOOK_BACK = -0.04f;
     S.viewPos = glm::dvec3(c + d * LEAN_BACK + vec3(0, LEAN_UP, 0));
     S.viewYaw = std::atan2(d.x, d.z);   // facing the table (lookVector: yaw 0 looks toward -z)
     S.viewPitch = -std::atan2(LEAN_UP, LEAN_BACK - LOOK_BACK);
@@ -112,7 +99,6 @@ void leanPose(Scene& S, vec3 eye) {
 
 // the bag on a pad (a console's way): LB / RB go between the station and the bag, the d-pad walks the bag, A takes a
 // stack into your hand, B (or LB / RB) back to the station
-struct BagPad { bool on = false; int cur = 27; };
 int bagSlotAt(int i) { return i < 27 ? 9 + i : i - 27; }   // the panel's order: the bag's rows, then the hotbar
 bool bagPadUpdate(Input& in, Player& p, BagPad& b) {
   if (in.padButtonPressed(4) || in.padButtonPressed(5)) { b.on = !b.on; if (b.on) b.cur = 27 + p.selected; return true; }
@@ -122,8 +108,11 @@ bool bagPadUpdate(Input& in, Player& p, BagPad& b) {
   if (in.pressed(Act::MenuOk)) { const int slot = bagSlotAt(b.cur); if (slot < 9) p.selected = slot; else std::swap(p.inv[slot], p.inv[p.selected]); }
   return true;
 }
-void drawBag(App& a, Player& p, int padCur);
 
+}  // namespace cine
+using namespace cine;
+
+namespace {
 class CinematicTableScreen : public Screen {
 public:
   explicit CinematicTableScreen(ivec3 at) : at(at) {}
@@ -343,6 +332,8 @@ private:
 
 namespace {
 double g_forgeAt = -1;   // when the hammer started (the scene's clock), -1: not forging
+}  // namespace
+namespace cine {
 // your bag beside the station (the same as the table's): click a stack to work with it
 void drawBag(App& a, Player& p, int padCur) {
   bookUiStationBag(padCur);   // (seamless first person: the journal in your off hand, open at the bag: ui/station_bag.cpp)
@@ -371,6 +362,8 @@ void drawBag(App& a, Player& p, int padCur) {
   ImGui::End();
 }
 std::string nameOf(const ItemStack& s) { return s.empty() ? std::string("nothing") : (s.def() ? s.def()->name : s.id) + (s.n > 1 ? " x" + std::to_string(s.n) : ""); }
+}  // namespace cine
+namespace {
 
 // the anvil as a scene (Cinematic Interactions' AnvilStation): the work on its face, what goes into it to the right, and
 // the hammer: three blows (0.7, 1.02, 1.3 s), the forging on the first
@@ -488,317 +481,6 @@ private:
 };
 }  // namespace
 
-namespace {
-// ---- the grindstone and the stonecutter as scenes (Cinematic Interactions' GrindstoneStation / StonecutterStation) ----
-GrindView g_gv; CutView g_cv; bool g_gvOn = false, g_cvOn = false;
-double win(double t, double a, double b) { return clampv((t - a) / (b - a), 0.0, 1.0); }
-double smoother(double x) { x = clampv(x, 0.0, 1.0); return x * x * x * (x * (x * 6 - 15) + 10); }
-vec3 sideOf(float viewYaw) { return vec3(std::sin(viewYaw), 0, std::cos(viewYaw)); }   // from the station toward you
-vec3 rightOf(float viewYaw) { return vec3(std::cos(viewYaw), 0, -std::sin(viewYaw)); }
-// the screen point of a world point (false: behind the camera)
-bool toScreen(App& a, vec3 wp, ImVec2& out) {
-  Camera& cam = a.session->frame.cam;
-  const vec4 q = cam.viewProj * vec4(cam.rel(glm::dvec3(wp)), 1);
-  if (q.w <= 0.01f) return false;
-  out = ImVec2((q.x / q.w * 0.5f + 0.5f) * a.width, (1 - (q.y / q.w * 0.5f + 0.5f)) * a.height);
-  return true;
-}
-// GrindstoneStation.under: the mouse within a world radius of a point, as it shows on screen (at least 9 px)
-bool under(App& a, vec3 c, float r) {
-  ImVec2 p, e;
-  if (!toScreen(a, c, p) || !toScreen(a, c + vec3(0, r, 0), e)) return false;
-  const ImVec2 m = ImGui::GetIO().MousePos;
-  return std::hypot(m.x - p.x, m.y - p.y) < std::max(9.f, std::hypot(p.x - e.x, p.y - e.y));
-}
-// the common part of the two scenes' updates: false when the scene must end
-bool sceneKeys(App& a, ivec3 at, bool working, bool& showBag) {
-  GameSession* s = a.session.get();
-  Player& p = *s->player; Input& in = a.input;
-  const bool walk = sceneWalkOff(in);
-  if ((walk && !working) || p.dead || glm::distance(p.pos, vec3(at) + vec3(0.5f)) > 5.f) return false;
-  if (in.pressed(Act::Inventory) && !in.pressed(Act::MenuY)) showBag = !showBag;
-  for (int k = 0; k < 9; k++) if (in.pressed((Act)((int)Act::Hot1 + k))) p.selected = k;
-  return true;
-}
-}  // namespace
-
-vec3 grindHeldPos(ivec3 at, float viewYaw, int k, double t, vec3 lying) {
-  const vec3 d = sideOf(viewYaw), right = rightOf(viewYaw);
-  const vec3 top = vec3(at) + vec3(0.5f, 1.f, 0.5f);
-  const double s = win(t, GRIND_CONTACT, GRIND_LET_GO), fade = smoother(s * 8) * smoother((1 - s) * 8);
-  const double stroke = 0.075 * std::sin(PI * (t - GRIND_CONTACT) / 0.433) * fade;   // (STROKE 0.433 s each way)
-  const float sideways = (float)((k == 0 ? 0.08 : -0.08) + stroke * (k == 0 ? 1 : -1));
-  const vec3 grinding = top + d * 0.04f + vec3(0, 0.03f, 0) + right * sideways;
-  const float lift = (float)inOutCubic(win(t, 0.28, GRIND_CONTACT));
-  vec3 p = lying + vec3(0, 0.008f, 0) + (grinding - lying) * lift + vec3(0, 0.09f * std::sin(lift * PI), 0);
-  p.y -= 0.008f * std::fabs(std::sin(PI * (t - GRIND_CONTACT) / 0.433)) * (float)win(t, GRIND_CONTACT, 0.7);
-  return p;
-}
-namespace { int dialVisible(int n) { return std::min(9, n); } float dialStep(int n) { const int v = dialVisible(n); return v <= 1 ? 0.f : std::min(22.f, 144.f / (v - 1)); } }
-static float dialAngle(int k, int n, float scroll) { return 90.f + ((dialVisible(n) - 1) / 2.f - (k - scroll)) * dialStep(n); }
-float cutDialShown(int k, int count, float scroll) {
-  const float a = dialAngle(k, count, scroll);
-  return (float)(smoother(win(a, 4, 18)) * smoother(win(176 - a, 0, 14)));
-}
-vec3 cutDialPoint(ivec3 at, float viewYaw, int k, int count, float scroll, double clock) {
-  const float a = dialAngle(k, count, scroll) * PI / 180.f;
-  const float bob = 0.008f * std::sin((float)clock * 1.7f + k * 1.3f);
-  const vec3 top = vec3(at) + vec3(0.5f, 0.5625f, 0.5f);
-  return top - sideOf(viewYaw) * 0.06f + rightOf(viewYaw) * (std::cos(a) * 0.72f) + vec3(0, 0.04f + std::sin(a) * 0.5f + bob, 0);
-}
-bool cinematicGrindView(GrindView& v) { if (!g_gvOn || scene().phase == 0) return false; v = g_gv; return true; }
-bool cinematicCutView(CutView& v) { if (!g_cvOn || scene().phase == 0) return false; v = g_cv; return true; }
-
-namespace {
-// the grindstone: two pieces lie on its top; with something in hand, a click on the stone sets one piece of it down (the
-// other side if this one's taken); an empty hand on a piece grinds when there's a result (else takes it back); right
-// click takes back. The grinding (GRIND_LENGTH 2.4 s): lifted to the wheel by 0.6 s, the result made then, stroked to and
-// fro till 1.9 s, sparks at each stroke
-class CinematicGrindScreen : public Screen {
-public:
-  explicit CinematicGrindScreen(ivec3 at) : at(at) {}
-  const char* id() const override { return "cinematic_grind"; }
-  bool pausesGame() const override { return false; }
-  bool wantsMouse() const override { return true; }
-  void onOpen(App& a) override {
-    Scene& S = scene();
-    if (!a.session || !a.session->player) return;
-    Player& p = *a.session->player;
-    if (S.phase == 0) { S.lastPos = a.session->frame.cam.pos; S.lastYaw = a.session->frame.cam.yaw; S.lastPitch = a.session->frame.cam.pitch; }
-    S.at = at; S.t = 0; S.phase = 1; S.kind = 6; S.front = vec3(0);
-    leanPose(S, p.pos + vec3(0, p.eye, 0));
-    g_gv = GrindView{}; g_gv.at = at; g_gvOn = true;
-  }
-  void onClose(App&) override { Scene& S = scene(); if (S.phase == 1 || S.phase == 2) { S.phase = 3; S.t = 0; } g_gvOn = false; cinematicSetAimPoint(false); }
-  bool onBack(App&) override { if (bag.on) { bag.on = false; return true; } return false; }
-  void update(App& a, double) override {
-    GameSession* s = a.session.get();
-    if (!s || !s->player) { a.popScreen(); return; }
-    Player& p = *s->player; World& w = s->world(); Input& in = a.input;
-    const bool here = reg().block(w.getBlock(at.x, at.y, at.z)).str("station") == "grindstone";
-    if ((!here && grindAt < 0) || !sceneKeys(a, at, grindAt >= 0, showBag)) { a.popScreen(); return; }
-    const bool inBag = bagPadUpdate(in, p, bag);
-    if (grindAt >= 0) {
-      const double t = scene().clock - grindAt;
-      if (!ground && t >= GRIND_CONTACT) { ground = true; if (!grindWorkDo(*s->level, p, w, at)) grindAt = -1; }
-      // a shower of sparks off the wheel at each stroke's turn (and the stone's grind sound with it)
-      if (grindAt >= 0 && t >= GRIND_CONTACT && t < GRIND_LET_GO) {
-        const int stroke = (int)((t - GRIND_CONTACT) / 0.433);
-        if (stroke != lastStroke) {
-          lastStroke = stroke;
-          const vec3 c = vec3(at) + vec3(0.5f, 1.02f, 0.5f) + sideOf(scene().viewYaw) * 0.06f;
-          if (s->level->fx) s->level->fx->particles("spark", c, 6);
-          if (a.audio && stroke > 0) a.audio->play("grind");
-          cinematicTap();
-        }
-      }
-      if (grindAt >= 0 && t >= GRIND_LENGTH) grindAt = -1;
-    }
-    if (inBag) return;
-    if (in.pressed(Act::MenuY) || in.pressed(Act::MenuStart)) grind(a);
-    const ivec2 nav = in.navStep();
-    if (nav.x) { pad = true; zone = nav.x > 0 ? 1 : 0; }
-    if (pad && in.pressed(Act::MenuOk)) put(a, zone);
-    if (pad && in.pressed(Act::MenuX)) take(a, zone);
-  }
-  void draw(App& a) override {
-    GameSession* s = a.session.get();
-    if (!s || !s->player) return;
-    Player& p = *s->player; World& w = s->world();
-    const float W = (float)a.width, z = ui::Z();
-    ImDrawList* dl = ImGui::GetBackgroundDrawList();
-    const bool overUi = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook();
-    const std::vector<ItemStack> v = grindWorkItems(w, at);
-    const StationResult r = grindWorkResult(w, at);
-    if (glm::length(vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y)) > 0.5f) pad = false;
-    // what the mouse is on: a piece lying there (empty hand), or the stone (something in hand)
-    int hover = -1; bool onStone = false;
-    if (!pad && !overUi && scene().phase == 2 && grindAt < 0) {
-      for (int k = 0; k < 2 && hover < 0; k++) if (!v[k].empty() && under(a, grindLiePos(w, at, k), 0.13f)) hover = k;
-      onStone = under(a, vec3(at) + vec3(0.5f, 0.9f, 0.5f), 0.4f);
-    } else if (pad) hover = zone;
-    const vec3 aimAt = hover >= 0 ? grindLiePos(w, at, hover) : vec3(at) + vec3(0.5f, 1.f, 0.5f);
-    cinematicSetAimPoint(scene().phase == 2 && (hover >= 0 || onStone || grindAt >= 0), grindAt >= 0 ? vec3(at) + vec3(0.5f, 1.05f, 0.5f) : aimAt);
-    if (scene().phase == 2 && grindAt < 0 && (hover >= 0 || (onStone && !p.held().empty()))) {
-      ImVec2 sp; if (toScreen(a, aimAt, sp)) dl->AddCircle(sp, 30 * z, IM_COL32(255, 236, 160, 220), 28, 2 * z);
-    }
-    if (!overUi && !pad && scene().phase == 2 && grindAt < 0) {
-      if (ImGui::IsMouseClicked(0)) {
-        if (!p.held().empty() && (onStone || hover >= 0)) put(a, hover >= 0 ? hover : (v[0].empty() ? 0 : 1));
-        else if (hover >= 0) { if (r.ok) grind(a); else take(a, hover); }
-      } else if (ImGui::IsMouseClicked(1) && hover >= 0) take(a, hover);
-    }
-    g_gv.at = at; g_gv.viewYaw = scene().viewYaw; g_gv.hover = hover; g_gv.t = grindAt < 0 ? -1 : scene().clock - grindAt;
-    if (showBag || bag.on) drawBag(a, p, bag.on ? bag.cur : -1);
-    ImGui::SetNextWindowPos(ImVec2(W * 0.5f, 14 * z), ImGuiCond_Always, ImVec2(0.5f, 0));
-    ImGui::SetNextWindowBgAlpha(0.72f);
-    ImGui::Begin("##cine_grind", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav);
-    ImGui::Text("In hand: %s   \xC2\xB7   On the stone: %s, %s", nameOf(p.held()).c_str(), nameOf(v[0]).c_str(), nameOf(v[1]).c_str());
-    if (grindAt >= 0) ImGui::Text("Grinding: %s", nameOf(g_gv.after).c_str());
-    else if (r.ok) ImGui::Text("Grinds into: %s%s%s", nameOf(r.out).c_str(), r.note.empty() ? "" : "   \xC2\xB7   ", r.note.c_str());
-    else ImGui::TextDisabled(v[0].empty() && v[1].empty() ? "Lay an enchanted piece on the stone (or two worn ones of a kind) to grind" : "Nothing to grind off that");
-    ImGui::TextDisabled(bag.on ? "Bag: D-pad choose \xC2\xB7 A take into hand \xC2\xB7 B / LB / RB back to the grindstone"
-                      : pad ? "D-pad left / right the side \xC2\xB7 A set it down \xC2\xB7 X take back \xC2\xB7 Y grind \xC2\xB7 LB / RB your bag \xC2\xB7 B leave" : "Left click the stone: set down \xC2\xB7 empty hand on a piece: grind it (or take it back) \xC2\xB7 Right click: take back");
-    ImGui::BeginDisabled(!r.ok || grindAt >= 0);
-    if (ImGui::Button("Grind")) grind(a);
-    ImGui::EndDisabled();
-    ImGui::SameLine();
-    if (ImGui::Button("Grindstone screen")) {
-      const ivec3 pos = at;
-      uiDefer([pos](App& a2) { if (a2.session && a2.session->player) a2.events.emit("screenOpen", json::array({a2.session->player->name, "station", json{{"kind", "grindstone"}, {"pos", {pos.x, pos.y, pos.z}}, {"classic", true}}})); });
-      a.popScreen(); ImGui::End(); return;
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Leave")) { a.popScreen(); ImGui::End(); return; }
-    ImGui::End();
-  }
-private:
-  ivec3 at; int zone = 0, lastStroke = -1; bool pad = false, showBag = true, ground = false; double grindAt = -1;
-  BagPad bag;
-  void put(App& a, int slot) { GameSession* s = a.session.get(); if (!s || grindAt >= 0 || scene().phase != 2) return; cinematicTap(); grindWorkPut(*s->level, *s->player, s->world(), at, slot, s->player->held()); }
-  void take(App& a, int slot) { GameSession* s = a.session.get(); if (!s || grindAt >= 0 || scene().phase != 2) return; cinematicTap(); grindWorkTake(*s->level, *s->player, s->world(), at, slot); }
-  void grind(App& a) {
-    GameSession* s = a.session.get();
-    if (!s || grindAt >= 0 || scene().phase != 2) return;
-    World& w = s->world();
-    const StationResult r = grindWorkResult(w, at);
-    if (!r.ok) return;
-    const std::vector<ItemStack> v = grindWorkItems(w, at);
-    g_gv.before[0] = v[0]; g_gv.before[1] = v[1]; g_gv.after = r.out;
-    grindAt = scene().clock; ground = false; lastStroke = -1;
-    if (a.audio) a.audio->play("grind");
-  }
-};
-
-// the stonecutter: the stone lies on its table beside the saw; the shapes it cuts into float on a dial over the saw
-// (scroll it when there are more than nine); a click on a shape cuts one (right click or X: all of it). The cut
-// (CUT_LENGTH 1.05 s, all 1.5): a block slides into the blade, the cut made at 0.26 s, the pieces out toward you
-class CinematicCutScreen : public Screen {
-public:
-  explicit CinematicCutScreen(ivec3 at) : at(at) {}
-  const char* id() const override { return "cinematic_cut"; }
-  bool pausesGame() const override { return false; }
-  bool wantsMouse() const override { return true; }
-  void onOpen(App& a) override {
-    Scene& S = scene();
-    if (!a.session || !a.session->player) return;
-    Player& p = *a.session->player;
-    if (S.phase == 0) { S.lastPos = a.session->frame.cam.pos; S.lastYaw = a.session->frame.cam.yaw; S.lastPitch = a.session->frame.cam.pitch; }
-    S.at = at; S.t = 0; S.phase = 1; S.kind = 7; S.front = vec3(0);
-    leanPose(S, p.pos + vec3(0, p.eye, 0));
-    g_cv = CutView{}; g_cv.at = at; g_cvOn = true;
-  }
-  void onClose(App&) override { Scene& S = scene(); if (S.phase == 1 || S.phase == 2) { S.phase = 3; S.t = 0; } g_cvOn = false; cinematicSetAimPoint(false); }
-  bool onBack(App&) override { if (bag.on) { bag.on = false; return true; } return false; }
-  void update(App& a, double dt) override {
-    GameSession* s = a.session.get();
-    if (!s || !s->player) { a.popScreen(); return; }
-    Player& p = *s->player; World& w = s->world(); Input& in = a.input;
-    const bool here = reg().block(w.getBlock(at.x, at.y, at.z)).has("stonecutter");
-    if ((!here && cutAt < 0) || !sceneKeys(a, at, cutAt >= 0, showBag)) { a.popScreen(); return; }
-    const bool inBag = bagPadUpdate(in, p, bag);
-    const int n = (int)cutWorkOptions(w, at).size();
-    if (n != lastCount) { lastCount = n; scrollTo = 0; scroll = 0; padPick = 0; }
-    scroll += (scrollTo - scroll) * std::min(1.f, (float)dt * 12.f);
-    if (cutAt >= 0) {
-      const double t = scene().clock - cutAt;
-      if (!cut && t >= CUT_BITE) {
-        cut = true;
-        if (!cutWorkDo(*s->level, p, w, at, pick, g_cv.all)) cutAt = -1;
-        else if (s->level->fx) s->level->fx->particles("block", vec3(at) + vec3(0.5f, 0.75f, 0.5f), 10, json{{"tile", g_cv.input.id}});
-      }
-      if (cutAt >= 0 && t >= (g_cv.all ? CUT_ALL_LENGTH : CUT_LENGTH)) cutAt = -1;
-    }
-    if (inBag) return;
-    const ivec2 nav = in.navStep();
-    if (nav.x && n > 0) { pad = true; padPick = std::clamp(padPick + nav.x, 0, n - 1); scrollTo = (float)std::clamp(padPick - 4, 0, std::max(0, n - 9)); }
-    // (A cuts one, X all; with nothing on the saw A sets down what's in hand. Y: what's in hand onto the saw, or the stone back)
-    if (pad && in.pressed(Act::MenuOk)) { if (n == 0 && !p.held().empty()) put(a); else cutShape(a, padPick, false); }
-    if (pad && in.pressed(Act::MenuX)) cutShape(a, padPick, true);
-    if (in.pressed(Act::MenuY)) { if (!p.held().empty() && !stonecutterOptions(p.held().id).empty()) put(a); else take(a); }
-  }
-  void draw(App& a) override {
-    GameSession* s = a.session.get();
-    if (!s || !s->player) return;
-    Player& p = *s->player; World& w = s->world();
-    const float W = (float)a.width, z = ui::Z();
-    ImDrawList* dl = ImGui::GetBackgroundDrawList();
-    const bool overUi = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook();
-    const ItemStack stone = cutWorkItem(w, at);
-    const auto opts = cutWorkOptions(w, at);
-    const int n = (int)opts.size();
-    if (glm::length(vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y)) > 0.5f) pad = false;
-    int hover = -1; bool onStone = false, onTable = false;
-    if (!pad && !overUi && scene().phase == 2 && cutAt < 0) {
-      for (int k = 0; k < n && hover < 0; k++) if (cutDialShown(k, n, scroll) > 0.5f && under(a, cutDialPoint(at, scene().viewYaw, k, n, scroll, scene().clock), 0.075f)) hover = k;
-      if (hover < 0) { onStone = !stone.empty() && under(a, cutLiePos(w, at) + vec3(0, 0.08f, 0), 0.12f); onTable = under(a, vec3(at) + vec3(0.5f, 0.56f, 0.5f), 0.45f); }
-      if (const float wh = ImGui::GetIO().MouseWheel; wh != 0 && n > 9) scrollTo = std::clamp(scrollTo - (wh > 0 ? 1.f : -1.f), 0.f, (float)(n - 9));
-      else if (wh != 0) p.selected = ((p.selected - (wh > 0 ? 1 : -1)) % 9 + 9) % 9;
-    } else if (pad && n > 0) hover = std::min(padPick, n - 1);
-    const vec3 aimPt = hover >= 0 ? cutDialPoint(at, scene().viewYaw, hover, n, scroll, scene().clock) - vec3(0, 0.1f, 0) + sideOf(scene().viewYaw) * 0.12f
-                     : onStone || onTable ? cutLiePos(w, at) : vec3(at) + vec3(0.5f, 0.6f, 0.5f);
-    cinematicSetAimPoint(scene().phase == 2 && (hover >= 0 || onStone || onTable || cutAt >= 0), cutAt >= 0 ? vec3(at) + vec3(0.5f, 0.62f, 0.5f) : aimPt);
-    if (scene().phase == 2 && cutAt < 0) {
-      ImVec2 sp;
-      if (hover >= 0 && toScreen(a, cutDialPoint(at, scene().viewYaw, hover, n, scroll, scene().clock), sp)) {
-        dl->AddCircle(sp, 26 * z, IM_COL32(255, 236, 160, 230), 28, 2 * z);
-        const ItemStack out(opts[hover].first, opts[hover].second);
-        const std::string label = nameOf(out) + (stone.n > 1 ? std::string(pad ? "   (X: all " : "   (right click: all ") + std::to_string(stone.n) + ")" : "");
-        const ImVec2 ts = ImGui::CalcTextSize(label.c_str());
-        dl->AddRectFilled(ImVec2(sp.x - ts.x * 0.5f - 6 * z, sp.y - 46 * z), ImVec2(sp.x + ts.x * 0.5f + 6 * z, sp.y - 46 * z + ts.y + 6 * z), IM_COL32(20, 16, 12, 200), 4 * z);
-        dl->AddText(ImVec2(sp.x - ts.x * 0.5f, sp.y - 43 * z), IM_COL32(255, 240, 210, 255), label.c_str());
-      } else if ((onStone || (onTable && !p.held().empty())) && toScreen(a, cutLiePos(w, at), sp)) dl->AddCircle(sp, 30 * z, IM_COL32(255, 236, 160, 220), 28, 2 * z);
-    }
-    if (!overUi && !pad && scene().phase == 2 && cutAt < 0) {
-      if (ImGui::IsMouseClicked(0)) {
-        if (hover >= 0) cutShape(a, hover, ImGui::GetIO().KeyShift);
-        else if (!p.held().empty() && (onTable || onStone)) put(a);
-        else if (onStone) take(a);
-      } else if (ImGui::IsMouseClicked(1)) { if (hover >= 0) cutShape(a, hover, true); else if (onStone) take(a); }
-    }
-    g_cv.at = at; g_cv.viewYaw = scene().viewYaw; g_cv.hover = hover; g_cv.scroll = scroll; g_cv.t = cutAt < 0 ? -1 : scene().clock - cutAt;
-    if (cutAt < 0) g_cv.input = stone;
-    if (showBag || bag.on) drawBag(a, p, bag.on ? bag.cur : -1);
-    ImGui::SetNextWindowPos(ImVec2(W * 0.5f, 14 * z), ImGuiCond_Always, ImVec2(0.5f, 0));
-    ImGui::SetNextWindowBgAlpha(0.72f);
-    ImGui::Begin("##cine_cut", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav);
-    ImGui::Text("In hand: %s   \xC2\xB7   On the saw: %s", nameOf(p.held()).c_str(), nameOf(stone).c_str());
-    if (stone.empty()) ImGui::TextDisabled("Lay stone on the table by the saw: what it cuts into rises over the blade");
-    else ImGui::TextDisabled("%d shape%s%s", n, n == 1 ? "" : "s", n > 9 ? "  \xC2\xB7  the wheel turns the dial" : "");
-    ImGui::TextDisabled(bag.on ? "Bag: D-pad choose \xC2\xB7 A take into hand \xC2\xB7 B / LB / RB back to the stonecutter"
-                      : pad ? "D-pad left / right a shape \xC2\xB7 A cut one \xC2\xB7 X cut all \xC2\xB7 Y set down what's in hand (empty hand: take the stone back) \xC2\xB7 LB / RB your bag \xC2\xB7 B leave"
-                            : "Left click the table: set the stone down \xC2\xB7 left click a shape: cut one (shift / right click: all) \xC2\xB7 empty hand on the stone: take it back");
-    if (ImGui::Button("Stonecutter screen")) {
-      uiDefer([](App& a2) { if (a2.session && a2.session->player) a2.events.emit("screenOpen", json::array({a2.session->player->name, "stonecutter", json{{"classic", true}}})); });
-      a.popScreen(); ImGui::End(); return;
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Leave")) { a.popScreen(); ImGui::End(); return; }
-    ImGui::End();
-  }
-private:
-  ivec3 at; bool pad = false, showBag = true, cut = false; int padPick = 0, pick = 0, lastCount = -1; float scroll = 0, scrollTo = 0; double cutAt = -1;
-  BagPad bag;
-  void put(App& a) { GameSession* s = a.session.get(); if (!s || cutAt >= 0 || scene().phase != 2) return; cinematicTap(); cutWorkPut(*s->level, *s->player, s->world(), at, s->player->held()); }
-  void take(App& a) { GameSession* s = a.session.get(); if (!s || cutAt >= 0 || scene().phase != 2) return; cinematicTap(); cutWorkTake(*s->level, *s->player, s->world(), at); }
-  void cutShape(App& a, int k, bool all) {
-    GameSession* s = a.session.get();
-    if (!s || cutAt >= 0 || scene().phase != 2) return;
-    World& w = s->world();
-    const auto opts = cutWorkOptions(w, at);
-    const ItemStack stone = cutWorkItem(w, at);
-    if (k < 0 || k >= (int)opts.size() || stone.empty()) return;
-    pick = k; cut = false; cutAt = scene().clock;
-    g_cv.all = all && stone.n > 1; g_cv.input = stone;
-    g_cv.piece = ItemStack(opts[k].first, opts[k].second * (g_cv.all ? stone.n : 1));
-    cinematicTap();
-    if (a.audio) a.audio->play("click");
-  }
-};
-}  // namespace
-
-std::unique_ptr<Screen> makeCinematicGrindScreen(ivec3 at) { return std::make_unique<CinematicGrindScreen>(at); }
-std::unique_ptr<Screen> makeCinematicCutScreen(ivec3 at) { return std::make_unique<CinematicCutScreen>(at); }
 
 namespace {
 double g_ritualAt = -1;   // the enchanting rite (the scene's clock), -1: none
@@ -1330,7 +1012,7 @@ double cinematicRitualT() { return g_ritualAt < 0 ? -1 : scene().clock - g_ritua
 std::unique_ptr<Screen> makeCinematicEnchantScreen(ivec3 at) { return std::make_unique<CinematicEnchantScreen>(at); }
 
 double cinematicForgeT() { return g_forgeAt < 0 ? -1 : scene().clock - g_forgeAt; }
-namespace { double g_forgeAtShared() { return g_forgeAt; } }
+namespace cine { double g_forgeAtShared() { return g_forgeAt; } }
 int cinematicKind() { return scene().phase == 0 ? -1 : scene().kind; }
 std::unique_ptr<Screen> makeCinematicAnvilScreen(ivec3 at) { return std::make_unique<CinematicAnvilScreen>(at); }
 

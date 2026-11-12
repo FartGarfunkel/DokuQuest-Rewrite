@@ -702,7 +702,7 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   if (b.has("enderChest")) { swingArm(); sfxUi(lv, p, "chest"); openScreen(lv, p, "container", {{"ender", true}, {"pos", {x, y, z}}}); return true; }
   if (b.has("station")) {
     swingArm();
-    if (b.str("station") == "cartography") { openScreen(lv, p, "table"); toastMsg("Map table: a map ringed with 8 paper zooms out \xC2\xB7 a map with empty maps makes copies"); return true; }
+    if (b.str("station") == "cartography") { openScreen(lv, p, "table", {{"pos", {x, y, z}}, {"cartography", true}}); return true; }   // (pos: its scene, ui/cinematic.h; the classic grid: a map ringed with 8 paper zooms out, with empty maps copies)
     openScreen(lv, p, "station", {{"kind", b.str("station")}, {"pos", {x, y, z}}});
     return true;
   }

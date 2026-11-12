@@ -11,6 +11,9 @@
 #include "core/tool_parts.h"
 #include "core/item_glint.h"
 #include "core/registry.h"
+#include "render/content_draw.h"
+#include "render/map_render.h"
+#include "sim/maps.h"
 
 namespace dq {
 std::string stackModelKey(const ItemStack& s);   // render/pile_layer.cpp
@@ -18,6 +21,7 @@ std::string stackModelKey(const ItemStack& s);   // render/pile_layer.cpp
 namespace {
 
 double win(double t, double a, double b) { return clampv((t - a) / (b - a), 0.0, 1.0); }
+double smoother(double x) { x = clampv(x, 0.0, 1.0); return x * x * x * (x * (x * 6 - 15) + 10); }
 
 // an item lying flat (or a block standing) at p, turned yaw about +y; size: a flat item's width (a block 0.6 of it)
 void drawLying(VoxelRenderer& VR, const FrameCtx& f, const ItemStack& s, vec3 p, float yaw, float size, VoxelLight L) {
@@ -54,6 +58,8 @@ void drawCutHeap(VoxelRenderer& VR, const FrameCtx& f, const ItemStack& st, vec3
 }
 
 class StationWorkLayer : public RenderLayer {
+  struct Sheet { const PaperMap* map; mat4 M; float S; vec2 light; };
+  std::vector<Sheet> sheets;   // maps lying on the cartography table: drawn after the voxels, with the content shader
 public:
   const char* name() const override { return "station-work"; }
   int order() const override { return 111; }
@@ -63,67 +69,59 @@ public:
     VoxelRenderer& VR = voxelRenderer();
     bool begun = false;
     auto begin = [&] { if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; } };
-    GrindView gv; CutView cv;
-    const bool grindOn = cinematicGrindView(gv), cutOn = cinematicCutView(cv);
+    PairView pv; CutView cv;
+    const bool pairOn = cinematicPairView(pv), cutOn = cinematicCutView(cv);
     const float t = (float)f.time;
+    // one thing laid flat at p: a map with its picture as a sheet, anything else its voxel model
+    auto lay = [&](const ItemStack& st, vec3 p, float yaw, float size, VoxelLight L, vec4 tint = vec4(0)) {
+      if (st.empty()) return;
+      if (isMapStack(st) && !stackMapId(st).empty()) if (const PaperMap* pm = mapStore(*s.level).get(stackMapId(st))) {
+        mat4 m = glm::translate(mat4(1), f.cam.rel(glm::dvec3(p + vec3(0, 0.004f, 0))));
+        m = glm::rotate(m, yaw, vec3(0, 1, 0)); m = glm::rotate(m, -PI / 2, vec3(1, 0, 0));
+        sheets.push_back({pm, m, size * 0.89f, vec2(L.sky, L.block)});
+        return;
+      }
+      begin();
+      const VoxelModel& im = itemModel(stackModelKey(st));
+      if (!im.ready()) return;
+      mat4 m = glm::translate(mat4(1), f.cam.rel(glm::dvec3(p)));
+      m = glm::rotate(m, yaw, vec3(0, 1, 0));
+      if (im.kind == VoxelModel::Block) m = glm::scale(glm::translate(m, vec3(0, 0.3f * size, 0)), vec3(0.6f * size));
+      else if (im.stand) m = glm::scale(glm::translate(m, vec3(0, 0.36f * size, 0)), vec3(0.9f * size));
+      else { m = glm::translate(m, vec3(0, (im.depth > 0 ? im.depth : 0.03f) * size + 0.004f, 0)); m = glm::rotate(m, -PI / 2, vec3(1, 0, 0)); m = glm::scale(m, vec3(size)); }
+      VR.draw(im.gl, m * im.matrix(), L, tint, itemGlints(st) ? 1.f : 0.f);
+    };
+    // a stack lying: up to three of it, a little heap (blocks: two side by side, the third on them; a map: the top sheet)
+    auto heap = [&](const ItemStack& st, vec3 p, float yaw, float size, VoxelLight L, vec3 right) {
+      if (st.empty()) return;
+      const int n = isMapStack(st) ? 1 : std::min(st.n, 3);
+      ItemStack one = st; one.n = 1;
+      const bool block = itemModel(stackModelKey(one)).kind == VoxelModel::Block;
+      const float bs = 0.6f * size;
+      for (int i = 0; i < n; i++) {
+        const vec3 o = block ? (i == 0 ? vec3(0) : i == 1 ? -right * (bs * 1.05f) : -right * (bs * 0.52f) + vec3(0, bs, 0))
+                             : right * (i == 1 ? 0.05f : i == 2 ? -0.03f : 0.f) + vec3(0, i * 0.03f, 0);
+        lay(one, p + o, yaw + (block ? i * 0.12f : i * 0.5f), size, L);
+      }
+    };
     forBlockEntities(w, f, 32.f, [&](const Chunk&, json& e, int x, int y, int z) {
       const std::string type = e.value("type", "");
-      if (type != "grindwork" && type != "cutwork") return;
+      const bool cutwork = type == "cutwork";
+      if (!cutwork && type != "grindwork" && type != "smithwork" && type != "loomwork" && type != "fletchwork" && type != "mapwork") return;
       const ivec3 at(x, y, z);
-      if ((grindOn && gv.at == at) || (cutOn && cv.at == at)) return;   // (the scene draws it, below)
+      if ((pairOn && pv.at == at) || (cutOn && cv.at == at)) return;   // (the scene draws it, below)
       const vec3 rel = f.cam.rel(glm::dvec3(x, y, z));
       if (!f.cam.frustum.sphere(rel + vec3(0.5f), 1.2f)) return;
-      const u8 l = w.getLight(x, y, z);
+      const u8 l = cutwork || type == "grindwork" ? w.getLight(x, y, z) : w.getLight(x, y + 1, z);   // (a full block holds no light: the air over it)
       const VoxelLight L{(l >> 4) / 15.f, (l & 15) / 15.f};
       vec3 out, right; stationWorkFrame(w, at, out, right);
       const float yaw = std::atan2(out.x, out.z);
-      begin();
-      if (type == "grindwork") {
-        const std::vector<ItemStack> v = grindWorkItems(w, at);
-        for (int k = 0; k < 2; k++) drawLying(VR, f, v[k], grindLiePos(w, at, k), yaw + (k ? -0.35f : 0.35f), 0.34f, L);
-      } else {
-        const ItemStack st = cutWorkItem(w, at);
-        drawCutHeap(VR, f, st, cutLiePos(w, at), right, out, yaw, L);
-      }
+      if (cutwork) { begin(); drawCutHeap(VR, f, cutWorkItem(w, at), cutLiePos(w, at), right, out, yaw, L); return; }
+      const std::string st = pairStationAt(w, at);
+      const std::vector<ItemStack> v = pairWorkItems(w, at);
+      for (int k = 0; k < 2; k++) heap(v[k], pairLiePos(w, at, k), yaw + (k ? -0.35f : 0.35f) * (st == "cartography" && k == 0 ? 0.f : 1.f), pairLieSize(st, k), L, right);
     });
-    if (grindOn && w.getBlock(gv.at.x, gv.at.y, gv.at.z)) {
-      begin();
-      const ivec3 at = gv.at;
-      const u8 l = w.getLight(at.x, at.y, at.z);
-      const VoxelLight L{(l >> 4) / 15.f, (l & 15) / 15.f};
-      vec3 out, right; stationWorkFrame(w, at, out, right);
-      const float yaw = std::atan2(out.x, out.z);
-      if (gv.t < 0) {
-        const std::vector<ItemStack> v = grindWorkItems(w, at);
-        for (int k = 0; k < 2; k++) {
-          const float lift = gv.hover == k ? 0.02f + 0.006f * std::sin(t * 4.f) : 0.f;   // (the one under the mouse rises a little)
-          drawLying(VR, f, v[k], grindLiePos(w, at, k) + vec3(0, lift, 0), yaw + (k ? -0.35f : 0.35f), 0.34f, L);
-        }
-      } else if (gv.t < GRIND_LENGTH) {
-        // both pieces up on the wheel; once the grinding has cleaned it (GRIND_CLEAN) the first is what it became, the second
-        // gone if it went into it; let go (GRIND_LET_GO): the result back off the wheel toward you, smaller, into the bag
-        const bool clean = gv.t >= GRIND_CLEAN;
-        const float away = (float)win(gv.t, GRIND_LET_GO, GRIND_LENGTH);
-        const vec3 toYou = vec3(std::sin(gv.viewYaw), 0, std::cos(gv.viewYaw));
-        for (int k = 0; k < 2; k++) {
-          const int resultSide = gv.before[0].empty() ? 1 : 0;   // (the result where the first piece was)
-          const ItemStack st = !clean ? gv.before[k] : k == resultSide ? gv.after : ItemStack();
-          if (st.empty()) continue;
-          vec3 p = grindHeldPos(at, gv.viewYaw, k, std::min(gv.t, GRIND_LET_GO), grindLiePos(w, at, k));
-          p += toYou * (0.45f * away) + vec3(0, 0.15f * away, 0);
-          // stood up on its edge against the wheel while grinding (a flat piece), laid back down as it's let go
-          const float stand = (float)(win(gv.t, 0.28, GRIND_CONTACT) * (1 - win(gv.t, GRIND_LET_GO - 0.1, GRIND_LET_GO + 0.2)));
-          const VoxelModel& im = itemModel(stackModelKey(st));
-          if (!im.ready()) continue;
-          const float size = 0.34f * (1 - 0.6f * away);
-          mat4 m = glm::translate(mat4(1), f.cam.rel(glm::dvec3(p)));
-          m = glm::rotate(m, gv.viewYaw + (k ? -0.25f : 0.25f), vec3(0, 1, 0));
-          if (im.kind == VoxelModel::Block) m = glm::scale(glm::translate(m, vec3(0, 0.3f * size, 0)), vec3(0.6f * size));
-          else { m = glm::translate(m, vec3(0, 0.5f * size * stand + 0.01f, 0)); m = glm::rotate(m, -PI / 2 * (1 - stand), vec3(1, 0, 0)); m = glm::translate(m, vec3(0, -0.5f * size * stand, 0)); m = glm::scale(m, vec3(size)); }
-          VR.draw(im.gl, m * im.matrix(), VoxelLight{L.sky, std::max(L.block, clean ? 0.f : 0.35f)}, vec4(0), itemGlints(st) && !clean ? 1.f : 0.f);
-        }
-      }
-    }
+    if (pairOn && !pairStationAt(w, pv.at).empty()) { begin(); drawPairScene(w, f, pv, t, lay, heap); }
     if (cutOn && w.getBlock(cv.at.x, cv.at.y, cv.at.z)) {
       begin();
       const ivec3 at = cv.at;
@@ -174,6 +172,103 @@ public:
       }
     }
     if (begun) VR.end();
+    if (!sheets.empty()) {
+      ContentDraw& cd = contentDraw();
+      if (cd.begin(f, f.cam.viewProj)) { for (auto& sh : sheets) drawMapSheet(cd, *s.level, sh.map, s.player, sh.M, sh.S, sh.light); cd.end(); }
+      sheets.clear();
+    }
+  }
+
+  // the work at a pair station, as the scene has it (pairBeats): before contact the pieces taken up and carried; then
+  // what was made, where the work was, till it's lifted off toward you (into the bag); what's left over lies on
+  template <class Lay, class Heap> void drawPairScene(World& w, const FrameCtx& f, const PairView& v, float clock, Lay& lay, Heap& heap) {
+    const ivec3 at = v.at;
+    const std::string st = pairStationAt(w, at);
+    const u8 l = st == "grindstone" ? w.getLight(at.x, at.y, at.z) : w.getLight(at.x, at.y + 1, at.z);
+    const VoxelLight L{(l >> 4) / 15.f, (l & 15) / 15.f};
+    vec3 out, right; stationWorkFrame(w, at, out, right);
+    const float yaw = std::atan2(out.x, out.z);
+    const vec3 lying[2] = {pairLiePos(w, at, 0), pairLiePos(w, at, 1)};
+    const float sz[2] = {pairLieSize(st, 0), pairLieSize(st, 1)};
+    const float tilt[2] = {st == "cartography" ? 0.f : 0.35f, -0.35f};
+    if (v.t < 0) {   // at rest: the one under the mouse rises a little
+      const std::vector<ItemStack> now = pairWorkItems(w, at);
+      for (int k = 0; k < 2; k++) heap(now[k], lying[k] + vec3(0, v.hover == k ? 0.02f + 0.006f * std::sin(clock * 4.f) : 0.f, 0), yaw + tilt[k], sz[k], L, right);
+      return;
+    }
+    const PairBeats B = pairBeats(v.kind);
+    if (v.t >= B.length) return;
+    const bool made = v.t >= B.contact;
+    const std::vector<ItemStack> now = pairWorkItems(w, at);
+    const float away = (float)win(v.t, B.letGo, B.length);
+    const vec3 toYou = vec3(std::sin(v.viewYaw), 0, std::cos(v.viewYaw)), vright = vec3(std::cos(v.viewYaw), 0, -std::sin(v.viewYaw));
+    auto flyOff = [&](vec3 p) { return p + toYou * (0.45f * away) + vec3(0, 0.15f * away, 0); };
+    const float shrink = 1 - 0.6f * away;
+    auto one = [](ItemStack s) { if (!s.empty()) s.n = 1; return s; };
+    auto less = [](ItemStack s) { if (!s.empty() && --s.n <= 0) s = ItemStack(); return s; };
+    // the leftovers lying still: before contact all but the one taken up (moves[k]); after it, what the block holds now
+    auto leftovers = [&](bool m0, bool m1) {
+      for (int k = 0; k < 2; k++) heap(made ? now[k] : (k == 0 ? m0 : m1) ? less(v.before[k]) : v.before[k], lying[k], yaw + tilt[k], sz[k], L, right);
+    };
+    switch (v.kind) {
+      case 6: {   // the grindstone: both up on the wheel; clean at GRIND_CLEAN (the result where the first piece was); let go
+        const bool clean = v.t >= GRIND_CLEAN;
+        for (int k = 0; k < 2; k++) {
+          const int resultSide = v.before[0].empty() ? 1 : 0;
+          const ItemStack s = !clean ? v.before[k] : k == resultSide ? v.after : ItemStack();
+          if (s.empty()) continue;
+          PairView at2 = v; at2.t = std::min(v.t, B.letGo);
+          const vec3 p = flyOff(pairHeldPos(at2, k, lying));
+          // stood up on its edge against the wheel while grinding (a flat piece), laid back down as it's let go
+          const float stand = (float)(win(v.t, 0.28, B.contact) * (1 - win(v.t, B.letGo - 0.1, B.letGo + 0.2)));
+          const VoxelModel& im = itemModel(stackModelKey(s));
+          if (!im.ready()) continue;
+          const float size = 0.34f * shrink;
+          mat4 m = glm::translate(mat4(1), f.cam.rel(glm::dvec3(p)));
+          m = glm::rotate(m, v.viewYaw + (k ? -0.25f : 0.25f), vec3(0, 1, 0));
+          if (im.kind == VoxelModel::Block) m = glm::scale(glm::translate(m, vec3(0, 0.3f * size, 0)), vec3(0.6f * size));
+          else { m = glm::translate(m, vec3(0, 0.5f * size * stand + 0.01f, 0)); m = glm::rotate(m, -PI / 2 * (1 - stand), vec3(1, 0, 0)); m = glm::translate(m, vec3(0, -0.5f * size * stand, 0)); m = glm::scale(m, vec3(size)); }
+          voxelRenderer().draw(im.gl, m * im.matrix(), VoxelLight{L.sky, std::max(L.block, clean ? 0.f : 0.35f)}, vec4(0), itemGlints(s) && !clean ? 1.f : 0.f);
+        }
+        break;
+      }
+      case 8: {   // the smithing table: the material onto the gear; pressed, it glows (PEAK) and cools (COOLED); then off
+        if (!made) { heap(v.before[0], lying[0], yaw + tilt[0], sz[0], L, right); lay(one(v.before[1]), pairHeldPos(v, 1, lying), yaw, sz[1], L); }
+        else {
+          const float heat = (float)(win(v.t, B.contact, SMITH_PEAK) * (1 - win(v.t, SMITH_PEAK, SMITH_COOLED)));
+          lay(v.after, flyOff(lying[0]), yaw + tilt[0], sz[0] * shrink, VoxelLight{L.sky, std::max(L.block, heat)}, vec4(1.f, 0.42f, 0.08f, 0.75f * heat));
+        }
+        heap(made ? now[1] : less(v.before[1]), lying[1], yaw + tilt[1], sz[1], L, right);
+        break;
+      }
+      case 9: {   // the loom: the dye as the shuttle; halfway through the weave the cloth shows its new colour
+        const bool dyed = v.t >= (LOOM_FROM + LOOM_TO) * 0.5;
+        if (!dyed) heap(v.before[0], lying[0], yaw + tilt[0], sz[0], L, right);
+        else { heap(v.after, flyOff(lying[0]), yaw + tilt[0], sz[0] * shrink, L, right); if (away > 0) heap(now[0], lying[0], yaw + tilt[0], sz[0], L, right); }
+        if (v.t < LOOM_TO) lay(one(v.before[1]), pairHeldPos(v, 1, lying), v.viewYaw + clock * 3.f, sz[1] * 1.3f, L);
+        heap(made ? now[1] : less(v.before[1]), lying[1], yaw + tilt[1], sz[1], L, right);
+        break;
+      }
+      case 10: {   // the fletching table: flint and feather together; the arrows fanned out over the middle
+        if (!made) { for (int k = 0; k < 2; k++) lay(one(v.before[k]), pairHeldPos(v, k, lying), yaw + tilt[k], sz[k], L); leftovers(true, true); break; }
+        const vec3 mid = flyOff((lying[0] + lying[1]) * 0.5f + vec3(0, 0.02f, 0));
+        const int n = std::min(std::max(1, v.after.n), 6);
+        const float fan = (float)smoother(win(v.t, B.contact, B.contact + 0.35));
+        for (int i = 0; i < n; i++) lay(one(v.after), mid + vec3(0, i * 0.004f, 0), v.viewYaw + PI / 4 + (i - (n - 1) * 0.5f) * 0.22f * fan, 0.34f * shrink, L);
+        leftovers(true, true);
+        break;
+      }
+      case 11: {   // the cartography table: the paper laid on the map; the new map (copies: a second sheet slid out) lifted off
+        if (!made) { lay(v.before[0], lying[0], yaw, sz[0], L); lay(one(v.before[1]), pairHeldPos(v, 1, lying), yaw + tilt[1], sz[1], L); }
+        else {
+          const float slide = (float)smoother(win(v.t, B.contact, B.contact + 0.4));
+          if (v.after.n > 1) lay(one(v.after), flyOff(lying[0] + vright * (0.16f * slide) + vec3(0, 0.002f, 0)), yaw + 0.12f * slide, sz[0] * shrink, L);
+          lay(one(v.after), flyOff(lying[0] + vec3(0, 0.004f, 0)), yaw, sz[0] * shrink, L);
+        }
+        heap(made ? now[1] : less(v.before[1]), lying[1], yaw + tilt[1], sz[1], L, right);
+        break;
+      }
+    }
   }
 };
 

@@ -79,6 +79,10 @@ public:
     if (glm::length(working - shoulder[w]) > MAX_REACH) working = shoulder[w] + glm::normalize(working - shoulder[w]) * MAX_REACH;
     vec3 target[2] = {w == 0 ? working : rest[0], w == 1 ? working : rest[1]};
     forging = cinematicKind() == 1 ? cinematicForgeT() : -1;
+    if (cinematicKind() == 8) {   // the smithing table: the anvil's three blows, the first landing as it's pressed (SmithingStation PRESS)
+      PairView pv;
+      if (cinematicPairView(pv) && pv.t >= 0) { const double f = pv.t - (pairBeats(8).contact - 0.7); if (f >= 0.45 && f < 1.62) forging = f; }
+    }
     if (forging >= 0) {   // the anvil's hammer (AnvilStation: BLOWS 0.7, 1.02, 1.3; put away 0.32 after): raised, then down on each
       static const double BLOWS[3] = {0.7, 1.02, 1.3};
       const vec3 strike = top + side * 0.02f + right * 0.03f + vec3(0, 0.14f, 0);
@@ -97,15 +101,16 @@ public:
       const vec3 item = vec3(at) + vec3(0.5f, 0.75f + 0.42f, 0.5f);
       for (int k = 0; k < 2; k++) target[k] = rest[k] + (item + right * (k ? -0.17f : 0.17f) + side * 0.06f - rest[k]) * up;
     }
-    if (cinematicKind() == 6) {   // the grindstone: a hand on each piece, held to the wheel, back to rest as they're let go
-      GrindView gv;
-      if (cinematicGrindView(gv) && gv.t >= 0 && gv.t < GRIND_LENGTH) {
-        const float back = (float)std::clamp((gv.t - GRIND_LET_GO) / (GRIND_LENGTH - GRIND_LET_GO), 0.0, 1.0);
-        for (int k = 0; k < 2; k++) {
-          const vec3 p = grindHeldPos(gv.at, gv.viewYaw, k, std::min(gv.t, GRIND_LET_GO), grindLiePos(s.world(), gv.at, k));
-          const vec3 holding = p + side * 0.07f + right * (k ? -0.05f : 0.05f) + vec3(0, HAND_Y + 0.03f, 0);
-          target[k] = holding + (rest[k] - holding) * back;
-        }
+    {   // the grindstone, smithing table, loom, fletching and cartography tables: the hands carry the pieces in the work
+      PairView pv;
+      if (cinematicPairView(pv) && pv.t >= 0 && pv.t < pairBeats(pv.kind).length) {
+        const PairBeats B = pairBeats(pv.kind);
+        const vec3 lying[2] = {pairLiePos(s.world(), pv.at, 0), pairLiePos(s.world(), pv.at, 1)};
+        auto hold = [&](int k) { return pairHeldPos(pv, k, lying) + side * 0.07f + right * (k ? -0.05f : 0.05f) + vec3(0, HAND_Y + 0.03f, 0); };
+        const float back = (float)std::clamp((pv.t - B.letGo) / std::max(0.05, B.length - B.letGo), 0.0, 1.0);
+        if (pv.kind == 6 || (pv.kind == 10 && pv.t < B.contact + 0.1)) for (int k = 0; k < 2; k++) { const vec3 h = hold(k); target[k] = h + (rest[k] - h) * back; }   // (both)
+        else if ((pv.kind == 8 && pv.t < 0.76) || (pv.kind == 11 && pv.t < B.contact + 0.05)) target[0] = hold(1);   // (the material, the paper)
+        else if (pv.kind == 9 && pv.t < LOOM_TO) target[0] = hold(1);                                 // (the shuttle)
       }
     }
     if (cinematicKind() == 7) {   // the stonecutter: the working hand pushes the stone into the saw, then gathers the pieces
