@@ -169,6 +169,32 @@ def main():
             pm.append([tname, [tname], [tname]]); inpm[tname] = pm[-1]; added_pm += 1
     print('by alike names:', n2, '(name table +%d)' % added_pm)
     if not a.dry and added_pm: json.dump(pm, open(os.path.join(ROOT, 'data', 'packmap.json'), 'w'), separators=(',', ':'))
+    # ---- block models the game draws from its pack (assets/pack_models.h) and the pictures they name
+    MODELS = ['torch', 'wall_torch', 'soul_torch', 'soul_wall_torch', 'redstone_torch', 'redstone_wall_torch', 'redstone_torch_off', 'redstone_wall_torch_off', 'copper_torch', 'copper_wall_torch']
+    nm = 0
+    for mname in MODELS:
+        to = 'assets/minecraft/models/block/%s.json' % mname
+        if os.path.exists(os.path.join(PACK, to)) or to in done: continue
+        for s2 in srcs:
+            if not s2.name.lower().startswith('excalibur_v'): continue
+            data = s2.read(to)
+            if not data: continue
+            mj = json.loads(data)
+            for ref in (mj.get('textures') or {}).values():
+                if not isinstance(ref, str) or ref.startswith('#'): continue
+                ref = ref.replace('minecraft:', '')
+                tto = 'assets/minecraft/textures/%s.png' % ref
+                if os.path.exists(os.path.join(PACK, tto)) or tto in done: continue
+                td = s2.read(tto)
+                if td and not a.dry:
+                    dst = os.path.join(PACK, tto); os.makedirs(os.path.dirname(dst), exist_ok=True); open(dst, 'wb').write(td)
+                    rec.append({'to': tto, 'from': s2.name + ':' + tto, 'tile': 'model:' + mname}); done.add(tto)
+            if not a.dry:
+                dst = os.path.join(PACK, to); os.makedirs(os.path.dirname(dst), exist_ok=True); open(dst, 'wb').write(data)
+                rec.append({'to': to, 'from': s2.name + ':' + to, 'tile': 'model:' + mname}); done.add(to)
+            nm += 1
+            break
+    print('block models:', nm)
     if not a.dry: json.dump(rec, open(REC, 'w'), indent=0)
     print('brought in', n, 'pictures;', len(missing), "of the game's pictures still have none anywhere")
     for k, v in sorted(bySrc.items(), key=lambda x: -x[1])[:15]: print('  ', v, k)

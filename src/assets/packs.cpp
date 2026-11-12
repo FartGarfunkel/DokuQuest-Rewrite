@@ -8,6 +8,7 @@
 // their own modules through activePack().
 #include "assets/tileset.h"
 #include "assets/pack_fs.h"
+#include "assets/pack_models.h"
 #include "assets/pack_armor.h"
 #include "assets/gui_textures.h"
 #include <unordered_set>
@@ -350,6 +351,10 @@ std::string applyResourcePack(TileSet& ts, const std::string& choice) {
   }
   int armor = loadPackArmor(*P);
   dropUnusedFrames(ts, frameBase);
+  // the pack's own block models for the blocks drawn from them (assets/pack_models.h) — after the frames are moved down,
+  // so the tiles their textures add keep their places
+  loadPackModels(ts, *P, {"torch", "wall_torch", "soul_torch", "soul_wall_torch", "redstone_torch", "redstone_wall_torch",
+                          "redstone_torch_off", "redstone_wall_torch_off", "copper_torch", "copper_wall_torch"});
   deriveMicroVoxelHeights(ts);
   DQ_LOG("resource pack '%s': %d pictures (%d items, %d animated, %dpx), %d chests, %d armour sets", P->name().c_str(), used, nItems, animated, resSeen, chests, armor);
   std::string nm = P->name();

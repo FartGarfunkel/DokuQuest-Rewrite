@@ -63,10 +63,10 @@ void main() {
   rel += wo;
   vRel = rel;
   vWorld = world;
-  vUV = vec3(float(aV.z & 16383u) / 256.0 - 16.0, float((aV.z >> 14u) & 16383u) / 256.0 - 16.0, float((aV.y >> 14u) & 4095u));
+  vUV = vec3(float(aV.z & 16383u) / 256.0 - 16.0, float((aV.z >> 14u) & 16383u) / 256.0 - 16.0, float(((aV.y >> 14u) & 4095u) | (((aV.w >> 16u) & 1u) << 12u)));   // (13 bits: the 13th rides in the shade byte)
   if ((aLit & 0x40000000u) != 0u) vUV.z = animLayer(vUV.z);   // an animated tile: the frame it shows now
   vTint = tint;
-  vLight = vec4(float(aV.w & 255u) / 255.0, float((aV.w >> 8u) & 255u) / 255.0, float((aV.w >> 16u) & 255u) / 255.0, float(aLit >> 31u));
+  vLight = vec4(float(aV.w & 255u) / 255.0, float((aV.w >> 8u) & 255u) / 255.0, float((aV.w >> 16u) & 254u) / 254.0, float(aLit >> 31u));
   vSun = vec3(float((aLit >> 25u) & 31u), float((aLit >> 20u) & 31u), float((aLit >> 15u) & 31u));
   vBlock = vec3(float((aLit >> 10u) & 31u), float((aLit >> 5u) & 31u), float(aLit & 31u));
   vNormal = int((aV.x >> 28u) & 7u);

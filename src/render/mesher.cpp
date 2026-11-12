@@ -5,6 +5,7 @@
 #include "world/light_color.h"
 #include "render/chest_layer.h"
 #include "assets/tileset.h"
+#include "assets/pack_models.h"
 #include "common/noise.h"
 #include <cstring>
 #include <mutex>
@@ -145,7 +146,8 @@ void MeshCtx::put(std::vector<ChunkVertex>& d, const MV& v, int tile, int normal
   cv.a = fx14(v.p.x) | fx14(v.p.y) << 14 | (u32)(normal & 7) << 28 | ((m >> 4) & 1u) << 31;
   cv.b = fx14(v.p.z) | (u32)(tile & 0xFFF) << 14 | (u32)(tintKind & 31) << 26 | ((m >> 5) & 1u) << 31;
   cv.c = fx14(v.uv.x) | fx14(v.uv.y) << 14 | (m & 15u) << 28;
-  cv.d = sky | blk << 8 | shade << 16 | (sw & 127u) << 24 | ((m >> 6) & 1u) << 31;
+  // (the tile layer's 13th bit rides in the shade's lowest: 4096+ tiles — the packs' blocks — would wrap to others)
+  cv.d = sky | blk << 8 | (((shade >> 1) << 1) | ((u32)(tile >> 12) & 1u)) << 16 | (sw & 127u) << 24 | ((m >> 6) & 1u) << 31;
   cv.e = lit;
   d.push_back(cv);
 }
@@ -595,7 +597,69 @@ void emitLiquid(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, in
 }
 
 // ---------------------------------------------------------------- torches
+// a pack's block model (assets/pack_models.h) at a block: its boxes, each turned by its own rotation, the whole turned a
+// quarter `quarters` times about the block's middle (a wall torch to its wall), placed at `at` (the block's corner, plus
+// any shift), with the light given
+static void emitPackModel(MeshCtx& c, std::vector<ChunkVertex>& dst, const PackModel& M, vec3 at, int quarters, float sk, float bl, u32 lit, u8 mat) {
+  const float P = 1 / 16.f;
+  auto turn = [&](vec3 p) {   // (Minecraft's y rotation: clockwise seen from above, about 8,8)
+    for (int q = 0; q < (quarters & 3); q++) { const float dx = p.x - 8, dz = p.z - 8; p.x = 8 - dz; p.z = 8 + dx; }
+    return p;
+  };
+  for (const PackModelBox& b : M.boxes) {
+    const vec3 a = b.from, z = b.to;
+    auto rot = [&](vec3 p) {
+      if (b.rotAxis < 0 || b.rotAngle == 0) return p;
+      const float r = glm::radians(b.rotAngle), cs = std::cos(r), sn = std::sin(r);
+      vec3 d = p - b.rotOrigin;
+      if (b.rotAxis == 0) d = vec3(d.x, d.y * cs - d.z * sn, d.y * sn + d.z * cs);
+      else if (b.rotAxis == 1) d = vec3(d.x * cs + d.z * sn, d.y, -d.x * sn + d.z * cs);
+      else d = vec3(d.x * cs - d.y * sn, d.x * sn + d.y * cs, d.z);
+      return b.rotOrigin + d;
+    };
+    auto W = [&](float px, float py, float pz) { return at + turn(rot(vec3(px, py, pz))) * P; };
+    // corners seen from outside: bottom-left, bottom-right, top-right, top-left
+    const vec3 F[6][4] = {
+      {W(z.x, a.y, a.z), W(a.x, a.y, a.z), W(a.x, z.y, a.z), W(z.x, z.y, a.z)},   // north
+      {W(a.x, a.y, z.z), W(z.x, a.y, z.z), W(z.x, z.y, z.z), W(a.x, z.y, z.z)},   // south
+      {W(a.x, a.y, a.z), W(a.x, a.y, z.z), W(a.x, z.y, z.z), W(a.x, z.y, a.z)},   // west
+      {W(z.x, a.y, z.z), W(z.x, a.y, a.z), W(z.x, z.y, a.z), W(z.x, z.y, z.z)},   // east
+      {W(a.x, z.y, z.z), W(z.x, z.y, z.z), W(z.x, z.y, a.z), W(a.x, z.y, a.z)},   // up
+      {W(a.x, a.y, a.z), W(z.x, a.y, a.z), W(z.x, a.y, z.z), W(a.x, a.y, z.z)}};  // down
+    static const float SHADE[6] = {0.8f, 0.8f, 0.6f, 0.6f, 1.f, 0.5f};
+    for (int f = 0; f < 6; f++) {
+      const PackModelFace& fc = b.face[f];
+      if (fc.tile < 0) continue;
+      const float u0 = fc.uv.x / 16, v0 = fc.uv.y / 16, u1 = fc.uv.z / 16, v1 = fc.uv.w / 16;
+      const float sh = b.shade ? SHADE[f] : 1.f;
+      MV v[4] = {{F[f][0], {u0, v1}, sk, bl, sh, 0, lit}, {F[f][1], {u1, v1}, sk, bl, sh, 0, lit}, {F[f][2], {u1, v0}, sk, bl, sh, 0, lit}, {F[f][3], {u0, v0}, sk, bl, sh, 0, lit}};
+      c.quad(dst, v, fc.tile, NORMAL_NONE, mat);
+    }
+  }
+}
+
 void emitTorch(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, int y, int z, u8 meta) {
+  {   // the pack's own torch model (a stick with its iron grip, tray and cage, the flame crossed in it): placed, or on its wall
+    const std::string& key = c.R.block(id).key;
+    const int m = meta & 7;
+    std::string name = key == "old_torch" ? "torch" : key;
+    if (key == "redstone_torch_off") name = m ? "redstone_wall_torch_off" : "redstone_torch_off";
+    else if (m) { const size_t t = name.rfind("torch"); if (t != std::string::npos) name = name.substr(0, t) + "wall_torch"; }
+    if (const PackModel* PM = packModel(name)) {
+      MeshShapeNb nb(c, x, y, z);
+      SeatShift sh = seatShiftOf(id, (u8)meta, c.carveAt(x, y, z), nb);
+      vec3 at((float)x, (float)y, (float)z);
+      if (sh.micro) at += vec3(sh.x, sh.y, sh.z) / 16.f;
+      else if (!m) at.y += sinkOffset(id, nb) / 16.f;
+      // the wall model leans out from a wall on its west (facing east): meta 1 east, 2 west, 3 south, 4 north
+      static const int Q[5] = {0, 0, 2, 1, 3};
+      LightRgb L = rgbAt(c, x, y, z);
+      { u8 em[3]; blockLightRgb(id, c.R.metaLight(id, meta), em); for (int i = 0; i < 3; i++) if (em[i] > L.b[i]) L.b[i] = em[i]; }
+      const u32 lit = markCubyz(packCubyzLight(L));
+      emitPackModel(c, dst, *PM, at, Q[m <= 4 ? m : 0], (float)(max3u(L.s[0], L.s[1], L.s[2]) >> 4), (float)(max3u(L.b[0], L.b[1], L.b[2]) >> 4), lit, Mat::Cutout | Mat::NoRelief);
+      return;
+    }
+  }
   int tile = c.R.block(id).faces[0];
   const float P = 1 / 16.f, hgt = 10 * P, w = P, LEAN = 0.4f;
   int m = meta & 7;

@@ -16,7 +16,7 @@ struct TileSet;
 //   a: x (14 bits) | y (14) << 14 | face normal (3) << 28 | Mat::NoRelief << 31   position: section-relative, 1/256 block, +16 blocks
 //   b: z (14)      | tile layer (12) << 14 | tint (5) << 26 | Mat::Lava << 31
 //   c: u (14)      | v (14) << 14 | Mat bits 0-3 << 28                         uv: tile units, 1/256, +16 tiles (a merged face spans 16)
-//   d: sky light (8) | block light (8) << 8 | shade (8) << 16 | sway (7) << 24 | Mat::Flowing << 31
+//   d: sky light (8) | block light (8) << 8 | shade (7, its lowest bit the tile layer's 13th) << 16 | sway (7) << 24 | Mat::Flowing << 31
 //   e: sun R,G,B then block R,G,B, 5 bits each (0..31). Shader packs do not read this word; d's two bytes stay
 //      the 0..255 lightmap (31 -> 255) so eye brightness keeps a full sun.
 // The tint isn't a colour any more but which one: 0 none, 1 grass, 2 foliage, 3 water (the shader reads the climate of
