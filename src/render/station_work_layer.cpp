@@ -44,7 +44,6 @@ void drawFloating(VoxelRenderer& VR, const FrameCtx& f, const ItemStack& s, vec3
   mat4 m = glm::translate(mat4(1), f.cam.rel(glm::dvec3(p)));
   m = glm::rotate(m, yaw, vec3(0, 1, 0));
   m = glm::scale(m, vec3(im.kind == VoxelModel::Block ? size * 0.62f : size));
-  if (im.kind != VoxelModel::Block) m = glm::translate(m, vec3(0, -0.5f, 0));   // (a flat item's origin is its foot)
   VR.draw(im.gl, m * im.matrix(), L, vec4(0), itemGlints(s) ? 1.f : 0.f);
 }
 
@@ -69,8 +68,18 @@ public:
     VoxelRenderer& VR = voxelRenderer();
     bool begun = false;
     auto begin = [&] { if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; } };
-    PairView pv; CutView cv;
-    const bool pairOn = cinematicPairView(pv), cutOn = cinematicCutView(cv);
+    PairView pv; CutView cv; JukeView jv;
+    const bool pairOn = cinematicPairView(pv), cutOn = cinematicCutView(cv), jukeOn = cinematicJukeView(jv);
+    // a record standing up (in a jukebox's slot, on the dial): centred at c, facing along yaw, turned spin about its face
+    auto record = [&](const std::string& id, vec3 c, float yaw, float spin, float size, VoxelLight L) {
+      const VoxelModel& im = itemModel(id);
+      if (!im.ready() || size <= 0.001f) return;
+      begin();
+      mat4 m = glm::translate(mat4(1), f.cam.rel(glm::dvec3(c)));
+      m = glm::rotate(m, yaw, vec3(0, 1, 0)); m = glm::rotate(m, spin, vec3(0, 0, 1));
+      m = glm::scale(m, vec3(size));   // (item models are centred on their origin)
+      VR.draw(im.gl, m * im.matrix(), L);
+    };
     const float t = (float)f.time;
     // one thing laid flat at p: a map with its picture as a sheet, anything else its voxel model
     auto lay = [&](const ItemStack& st, vec3 p, float yaw, float size, VoxelLight L, vec4 tint = vec4(0)) {
@@ -107,6 +116,14 @@ public:
     forBlockEntities(w, f, 32.f, [&](const Chunk&, json& e, int x, int y, int z) {
       const std::string type = e.value("type", "");
       const bool cutwork = type == "cutwork";
+      if (type == "jukebox") {   // the record playing: standing in the slot, half out, turning slowly
+        if (jukeOn && jv.at == ivec3(x, y, z)) return;
+        const vec3 rel = f.cam.rel(glm::dvec3(x, y, z));
+        if (!f.cam.frustum.sphere(rel + vec3(0.5f), 1.2f) || !e.contains("disc") || !e["disc"].is_string()) return;
+        const u8 l = w.getLight(x, y + 1, z);
+        record(e["disc"].get<std::string>(), vec3(x, y, z) + vec3(0.5f, 1.06f, 0.5f), 0, -t * 1.6f, 0.5f, VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f});
+        return;
+      }
       if (!cutwork && type != "grindwork" && type != "smithwork" && type != "loomwork" && type != "fletchwork" && type != "mapwork") return;
       const ivec3 at(x, y, z);
       if ((pairOn && pv.at == at) || (cutOn && cv.at == at)) return;   // (the scene draws it, below)
@@ -122,6 +139,28 @@ public:
       for (int k = 0; k < 2; k++) heap(v[k], pairLiePos(w, at, k), yaw + (k ? -0.35f : 0.35f) * (st == "cartography" && k == 0 ? 0.f : 1.f), pairLieSize(st, k), L, right);
     });
     if (pairOn && !pairStationAt(w, pv.at).empty()) { begin(); drawPairScene(w, f, pv, t, lay, heap); }
+    if (jukeOn && reg().block(w.getBlock(jv.at.x, jv.at.y, jv.at.z)).has("jukebox")) {   // the jukebox's scene: the dial of records, the one moving
+      const u8 l = w.getLight(jv.at.x, jv.at.y + 1, jv.at.z);
+      const VoxelLight L{(l >> 4) / 15.f, (l & 15) / 15.f}, Lb{L.sky, std::max(L.block, 0.45f)};
+      const int n = (int)jv.dial.size();
+      const std::string playing = jukeboxDisc(w, jv.at);
+      if (jv.t < 0 && !playing.empty()) record(playing, vec3(jv.at) + vec3(0.5f, 1.06f, 0.5f), 0, -t * 1.6f, 0.5f, L);
+      for (int k = 0; k < n; k++) {
+        if (jv.t >= 0 && !jv.eject && k == jv.hover) continue;   // (that one's on its way in)
+        if (!playing.empty() && jv.t < 0) break;                  // (one playing: the dial put away)
+        const float shown = cutDialShown(k, n, jv.scroll) * (jv.t >= 0 ? 0.6f : 1.f);
+        const float size = 0.26f * shown * (jv.hover == k && jv.t < 0 ? 1.25f : 1.f);
+        record(jv.dial[k], jukeDialPoint(jv.at, jv.viewYaw, k, n, jv.scroll, t), jv.viewYaw, jv.hover == k ? -t * 2.f : 0.f, size, Lb);
+      }
+      if (jv.t >= 0 && !jv.disc.empty()) {
+        const vec3 from = jv.hover >= 0 && jv.hover < n ? jukeDialPoint(jv.at, jv.viewYaw, jv.hover, n, jv.scroll, t) : vec3(jv.at) + vec3(0.5f, 1.5f, 0.5f);
+        const vec3 c = jukeDiscPos(jv, from);
+        const float turn = (float)smoother(win(jv.t, 0.2, 0.6));   // (turned from facing you to along the slot)
+        const float yaw = jv.eject ? jv.viewYaw * (float)smoother(win(jv.t, 0.4, 0.8)) : jv.viewYaw * (1 - turn);
+        const float size = jv.eject ? 0.5f - 0.3f * (float)win(jv.t, 0.4, JUKE_EJECT) : 0.26f + 0.24f * turn;
+        record(jv.disc, c, yaw, -t * 3.f, size, L);
+      }
+    }
     if (cutOn && w.getBlock(cv.at.x, cv.at.y, cv.at.z)) {
       begin();
       const ivec3 at = cv.at;

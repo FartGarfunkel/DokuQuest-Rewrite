@@ -125,6 +125,14 @@ public:
         target[w] = push + (gather - push) * g;
       }
     }
+    if (cinematicKind() == 12) {   // the jukebox: the working hand carries the record in, or takes it out
+      JukeView jv;
+      if (cinematicJukeView(jv) && jv.t >= 0) {
+        const int n = (int)jv.dial.size();
+        const vec3 from = jv.hover >= 0 && jv.hover < n ? jukeDialPoint(jv.at, jv.viewYaw, jv.hover, n, jv.scroll, s.frame.time) : vec3(jv.at) + vec3(0.5f, 1.5f, 0.5f);
+        if (jv.eject ? (jv.t > 0.05 && jv.t < 0.9) : jv.t < 1.05) target[0] = jukeDiscPos(jv, from) + side * 0.08f + vec3(0, 0.02f, 0);
+      }
+    }
     if (phase == 3) { target[0] = shoulder[0] + vec3(0, -0.3f, 0); target[1] = shoulder[1] + vec3(0, -0.3f, 0); }   // leaving: down out of sight
     if (!placed) { for (int k = 0; k < 2; k++) hand[k] = shoulder[k] + vec3(0, -0.25f, 0); placed = true; }   // (they come up into view)
     for (int k = 0; k < 2; k++) {

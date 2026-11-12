@@ -185,6 +185,35 @@ int cutWorkDo(Level& lv, Player& p, World& w, ivec3 at, int k, bool all) {
   return blocks;
 }
 
+// ---- the jukebox ----
+std::string jukeboxDisc(World& w, ivec3 at) {
+  const json* e = w.blockEntity(at.x, at.y, at.z);
+  return e && e->is_object() && e->contains("disc") && (*e)["disc"].is_string() ? (*e)["disc"].get<std::string>() : std::string();
+}
+bool jukeboxInsert(Level& lv, Player& p, World& w, ivec3 at, ItemStack& held) {
+  const ItemDef* def = held.empty() ? nullptr : reg().item(held.id);
+  if (!def || !def->has("disc") || !jukeboxDisc(w, at).empty() || !reg().block(w.getBlock(at.x, at.y, at.z)).has("jukebox")) return false;
+  w.setBlockEntity(at.x, at.y, at.z, {{"type", "jukebox"}, {"disc", held.id}});
+  if (lv.events) lv.events->emit("jukebox", json::array({at.x, at.y, at.z, def->str("disc")}));
+  std::string nm = def->name; const std::string pre = "Music Disc \xE2\x80\x94 "; if (startsWith(nm, pre)) nm = nm.substr(pre.size());
+  if (--held.n <= 0) held.clear();
+  toast(lv, p, "Now playing: " + nm, "good");
+  return true;
+}
+bool jukeboxEject(Level& lv, Player& p, World& w, ivec3 at, bool toBag) {
+  const std::string disc = jukeboxDisc(w, at);
+  if (disc.empty()) return false;
+  if (lv.events) lv.events->emit("jukebox", json::array({at.x, at.y, at.z, nullptr}));
+  w.setBlockEntity(at.x, at.y, at.z, nullptr);
+  if (toBag) give(lv, p, ItemStack(disc, 1));
+  else dropItem(lv, p.realm, ItemStack(disc, 1), vec3(at) + vec3(0.5f, 1.1f, 0.5f), true);
+  return true;
+}
+bool jukeboxUse(Level& lv, Player& p, World& w, ivec3 at) {
+  if (!jukeboxDisc(w, at).empty()) return jukeboxEject(lv, p, w, at, false);
+  return jukeboxInsert(lv, p, w, at, p.held());
+}
+
 // ---- where things lie ----
 void stationWorkFrame(World& w, ivec3 at, vec3& out, vec3& right) {
   // (a facing model: the way its placer looked, its front toward them; a plain block: the side the work was laid from)

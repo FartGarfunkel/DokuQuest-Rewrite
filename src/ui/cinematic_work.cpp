@@ -19,12 +19,13 @@
 #include "core/registry.h"
 #include <imgui.h>
 #include <cmath>
+#include <algorithm>
 
 namespace dq {
 using namespace cine;
 
 namespace {
-PairView g_pv; CutView g_cv; bool g_pvOn = false, g_cvOn = false;
+PairView g_pv; CutView g_cv; JukeView g_jv; bool g_pvOn = false, g_cvOn = false, g_jvOn = false;
 double win(double t, double a, double b) { return clampv((t - a) / (b - a), 0.0, 1.0); }
 double smoother(double x) { x = clampv(x, 0.0, 1.0); return x * x * x * (x * (x * 6 - 15) + 10); }
 vec3 sideOf(float viewYaw) { return vec3(std::sin(viewYaw), 0, std::cos(viewYaw)); }   // from the station toward you
@@ -131,6 +132,25 @@ vec3 cutDialPoint(ivec3 at, float viewYaw, int k, int count, float scroll, doubl
 }
 bool cinematicPairView(PairView& v) { if (!g_pvOn || scene().phase == 0) return false; v = g_pv; return true; }
 bool cinematicCutView(CutView& v) { if (!g_cvOn || scene().phase == 0) return false; v = g_cv; return true; }
+bool cinematicJukeView(JukeView& v) { if (!g_jvOn || scene().phase == 0) return false; v = g_jv; return true; }
+vec3 jukeDialPoint(ivec3 at, float viewYaw, int k, int count, float scroll, double clock) {
+  const float a = dialAngle(k, count, scroll) * PI / 180.f;
+  const float bob = 0.008f * std::sin((float)clock * 1.5f + k * 1.1f);
+  const vec3 top = vec3(at) + vec3(0.5f, 1.f, 0.5f);
+  return top - sideOf(viewYaw) * 0.05f + rightOf(viewYaw) * (std::cos(a) * 0.62f) + vec3(0, 0.12f + std::sin(a) * 0.42f + bob, 0);
+}
+vec3 jukeDiscPos(const JukeView& v, vec3 from) {
+  const vec3 top = vec3(v.at) + vec3(0.5f, 1.f, 0.5f), playing = top + vec3(0, 0.06f, 0), over = top + vec3(0, 0.46f, 0);
+  auto mixv = [](vec3 a, vec3 b, double u) { return a + (b - a) * (float)u; };
+  if (!v.eject) {   // over the slot by 0.5, then down into it (JukeboxStation INSERT)
+    if (v.t < 0.5) return mixv(from, over, smoother(win(v.t, 0, 0.5)));
+    return mixv(over, playing, smoother(win(v.t, 0.5, JUKE_INSERT - 0.15)));
+  }
+  // out of the slot by 0.4 (EJECT), then off toward you
+  const vec3 you = top + sideOf(v.viewYaw) * 0.7f + vec3(0, 0.3f, 0);
+  if (v.t < 0.4) return mixv(playing, over, smoother(win(v.t, 0, 0.4)));
+  return mixv(over, you, smoother(win(v.t, 0.4, JUKE_EJECT)));
+}
 
 namespace {
 // the grindstone, smithing table, loom, fletching and cartography tables: what's worked and what goes into it lie on top.
@@ -413,9 +433,138 @@ private:
     if (a.audio) a.audio->play("click");
   }
 };
+
+// the jukebox as a scene (JukeboxStation): your records float on a dial over it; click one (A on a pad) and it goes over
+// the slot and down in, playing; click the jukebox (X) and the one playing rises out and comes back to your bag
+class CinematicJukeboxScreen : public Screen {
+public:
+  explicit CinematicJukeboxScreen(ivec3 at) : at(at) {}
+  const char* id() const override { return "cinematic_jukebox"; }
+  bool pausesGame() const override { return false; }
+  bool wantsMouse() const override { return true; }
+  void onOpen(App& a) override {
+    Scene& S = scene();
+    if (!a.session || !a.session->player) return;
+    Player& p = *a.session->player;
+    if (S.phase == 0) { S.lastPos = a.session->frame.cam.pos; S.lastYaw = a.session->frame.cam.yaw; S.lastPitch = a.session->frame.cam.pitch; }
+    S.at = at; S.t = 0; S.phase = 1; S.kind = 12; S.front = vec3(0);
+    leanPose(S, p.pos + vec3(0, p.eye, 0));
+    g_jv = JukeView{}; g_jv.at = at; g_jvOn = true;
+    // a record in hand when you came: straight in
+    if (const ItemDef* d = p.held().empty() ? nullptr : reg().item(p.held().id); d && d->has("disc") && jukeboxDisc(a.session->world(), at).empty()) pending = p.held().id;
+  }
+  void onClose(App&) override { Scene& S = scene(); if (S.phase == 1 || S.phase == 2) { S.phase = 3; S.t = 0; } g_jvOn = false; cinematicSetAimPoint(false); }
+  bool onBack(App&) override { if (bag.on) { bag.on = false; return true; } return false; }
+  void update(App& a, double dt) override {
+    GameSession* s = a.session.get();
+    if (!s || !s->player) { a.popScreen(); return; }
+    Player& p = *s->player; World& w = s->world(); Input& in = a.input;
+    const bool here = reg().block(w.getBlock(at.x, at.y, at.z)).has("jukebox");
+    if ((!here && animAt < 0) || !sceneKeys(a, at, animAt >= 0, showBag)) { a.popScreen(); return; }
+    const bool inBag = bagPadUpdate(in, p, bag);
+    // your records (one of each), the dial's
+    std::vector<std::string> discs;
+    for (auto& it : p.inv) if (!it.empty()) if (const ItemDef* d = reg().item(it.id); d && d->has("disc") && std::find(discs.begin(), discs.end(), it.id) == discs.end()) discs.push_back(it.id);
+    if (animAt < 0) g_jv.dial = discs;
+    const int n = (int)g_jv.dial.size();
+    scroll += (scrollTo - scroll) * std::min(1.f, (float)dt * 12.f);
+    if (!pending.empty() && scene().phase == 2 && animAt < 0) { const std::string d = pending; pending.clear(); insert(a, d); }
+    if (animAt >= 0) {
+      const double t = scene().clock - animAt;
+      if (!sent && t >= (g_jv.eject ? JUKE_EJECT_SEND : JUKE_INSERT_SEND)) {
+        sent = true;
+        if (g_jv.eject) jukeboxEject(*s->level, p, w, at, true);
+        else for (auto& it : p.inv) if (it.id == g_jv.disc) { jukeboxInsert(*s->level, p, w, at, it); break; }
+        cinematicTap();
+      }
+      if (t >= (g_jv.eject ? JUKE_EJECT : JUKE_INSERT)) animAt = -1;
+    }
+    if (inBag) return;
+    const ivec2 nav = in.navStep();
+    if (nav.x && n > 0) { pad = true; padPick = std::clamp(padPick + nav.x, 0, n - 1); scrollTo = (float)std::clamp(padPick - 4, 0, std::max(0, n - 9)); }
+    if (pad && in.pressed(Act::MenuOk) && n > 0) insert(a, g_jv.dial[std::min(padPick, n - 1)]);
+    if (in.pressed(Act::MenuX) || in.pressed(Act::MenuY)) eject(a);
+  }
+  void draw(App& a) override {
+    GameSession* s = a.session.get();
+    if (!s || !s->player) return;
+    Player& p = *s->player; World& w = s->world();
+    const float W = (float)a.width, z = ui::Z();
+    ImDrawList* dl = ImGui::GetBackgroundDrawList();
+    const bool overUi = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook();
+    const std::string playing = jukeboxDisc(w, at);
+    const int n = (int)g_jv.dial.size();
+    if (glm::length(vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y)) > 0.5f) pad = false;
+    int hover = -1; bool onBox = false;
+    if (!pad && !overUi && scene().phase == 2 && animAt < 0) {
+      if (playing.empty()) for (int k = 0; k < n && hover < 0; k++) if (cutDialShown(k, n, scroll) > 0.5f && under(a, jukeDialPoint(at, scene().viewYaw, k, n, scroll, scene().clock), 0.1f)) hover = k;
+      onBox = under(a, vec3(at) + vec3(0.5f, 0.85f, 0.5f), 0.4f);
+      if (const float wh = ImGui::GetIO().MouseWheel; wh != 0 && n > 9) scrollTo = std::clamp(scrollTo - (wh > 0 ? 1.f : -1.f), 0.f, (float)(n - 9));
+    } else if (pad && n > 0 && playing.empty()) hover = std::min(padPick, n - 1);
+    const vec3 aimPt = hover >= 0 ? jukeDialPoint(at, scene().viewYaw, hover, n, scroll, scene().clock) - vec3(0, 0.1f, 0) : vec3(at) + vec3(0.5f, 1.f, 0.5f);
+    cinematicSetAimPoint(scene().phase == 2 && (hover >= 0 || (onBox && !playing.empty())), aimPt);
+    if (scene().phase == 2 && animAt < 0) {
+      ImVec2 sp;
+      if (hover >= 0 && toScreen(a, jukeDialPoint(at, scene().viewYaw, hover, n, scroll, scene().clock), sp)) {
+        dl->AddCircle(sp, 30 * z, IM_COL32(255, 236, 160, 230), 28, 2 * z);
+        const std::string label = discName(g_jv.dial[hover]);
+        const ImVec2 ts = ImGui::CalcTextSize(label.c_str());
+        dl->AddRectFilled(ImVec2(sp.x - ts.x * 0.5f - 6 * z, sp.y - 52 * z), ImVec2(sp.x + ts.x * 0.5f + 6 * z, sp.y - 52 * z + ts.y + 6 * z), IM_COL32(20, 16, 12, 200), 4 * z);
+        dl->AddText(ImVec2(sp.x - ts.x * 0.5f, sp.y - 49 * z), IM_COL32(255, 240, 210, 255), label.c_str());
+      } else if (onBox && !playing.empty() && toScreen(a, vec3(at) + vec3(0.5f, 1.12f, 0.5f), sp)) dl->AddCircle(sp, 34 * z, IM_COL32(255, 236, 160, 220), 28, 2 * z);
+    }
+    if (!overUi && !pad && scene().phase == 2 && animAt < 0 && ImGui::IsMouseClicked(0)) {
+      if (hover >= 0) insert(a, g_jv.dial[hover]);
+      else if (onBox && !playing.empty()) eject(a);
+    }
+    g_jv.at = at; g_jv.viewYaw = scene().viewYaw; g_jv.hover = hover; g_jv.scroll = scroll; g_jv.t = animAt < 0 ? -1 : scene().clock - animAt;
+    if (showBag || bag.on) drawBag(a, p, bag.on ? bag.cur : -1);
+    ImGui::SetNextWindowPos(ImVec2(W * 0.5f, 14 * z), ImGuiCond_Always, ImVec2(0.5f, 0));
+    ImGui::SetNextWindowBgAlpha(0.72f);
+    ImGui::Begin("##cine_juke", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav);
+    if (!playing.empty()) ImGui::Text("Now playing: %s", discName(playing).c_str());
+    else ImGui::Text(n ? "Choose a record" : "You have no records with you");
+    ImGui::TextDisabled(bag.on ? "Bag: D-pad choose \xC2\xB7 A take into hand \xC2\xB7 B / LB / RB back to the jukebox"
+                      : pad ? "D-pad left / right a record \xC2\xB7 A play it \xC2\xB7 X take the record out \xC2\xB7 LB / RB your bag \xC2\xB7 B leave"
+                            : "Click a record to play it \xC2\xB7 click the jukebox to take the record out");
+    ImGui::BeginDisabled(playing.empty() || animAt >= 0);
+    if (ImGui::Button("Take it out")) eject(a);
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Leave")) { a.popScreen(); ImGui::End(); return; }
+    ImGui::End();
+  }
+private:
+  ivec3 at; bool pad = false, showBag = false, sent = false; int padPick = 0; float scroll = 0, scrollTo = 0; double animAt = -1;
+  std::string pending;
+  BagPad bag;
+  static std::string discName(const std::string& id) {
+    const ItemDef* d = reg().item(id);
+    std::string nm = d ? d->name : id; const std::string pre = "Music Disc \xE2\x80\x94 ";
+    return nm.rfind(pre, 0) == 0 ? nm.substr(pre.size()) : nm;
+  }
+  void insert(App& a, const std::string& disc) {
+    GameSession* s = a.session.get();
+    if (!s || animAt >= 0 || scene().phase != 2) return;
+    if (!jukeboxDisc(s->world(), at).empty()) { hudToast("Take the record out first", "warn"); return; }
+    g_jv.disc = disc; g_jv.eject = false; sent = false; animAt = scene().clock;
+    const auto it = std::find(g_jv.dial.begin(), g_jv.dial.end(), disc);
+    g_jv.hover = it == g_jv.dial.end() ? -1 : (int)(it - g_jv.dial.begin());
+    cinematicTap();
+  }
+  void eject(App& a) {
+    GameSession* s = a.session.get();
+    if (!s || animAt >= 0 || scene().phase != 2) return;
+    const std::string d = jukeboxDisc(s->world(), at);
+    if (d.empty()) return;
+    g_jv.disc = d; g_jv.eject = true; sent = false; animAt = scene().clock;
+    cinematicTap();
+  }
+};
 }  // namespace
 
 std::unique_ptr<Screen> makeCinematicPairScreen(ivec3 at, const std::string& station) { return std::make_unique<CinematicPairScreen>(at, station); }
 std::unique_ptr<Screen> makeCinematicCutScreen(ivec3 at) { return std::make_unique<CinematicCutScreen>(at); }
+std::unique_ptr<Screen> makeCinematicJukeboxScreen(ivec3 at) { return std::make_unique<CinematicJukeboxScreen>(at); }
 
 }  // namespace dq

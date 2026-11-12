@@ -39,6 +39,12 @@ std::vector<std::pair<std::string, int>> cutWorkOptions(World& w, ivec3 at);    
 // one block cut into option k (all: every block on the table); the pieces into the bag. Returns how many blocks went
 int cutWorkDo(Level& lv, Player& p, World& w, ivec3 at, int k, bool all);
 
+// the jukebox {type:"jukebox", disc}: a record in its slot plays (the "jukebox" event; the classic use and its scene)
+std::string jukeboxDisc(World& w, ivec3 at);                                                // "" none
+bool jukeboxInsert(Level& lv, Player& p, World& w, ivec3 at, ItemStack& held);             // one record from what's held
+bool jukeboxEject(Level& lv, Player& p, World& w, ivec3 at, bool toBag);                   // toBag: into the bag, else popped out
+bool jukeboxUse(Level& lv, Player& p, World& w, ivec3 at);                                 // the classic use: in, or out
+
 // where the pieces lie, in the block's own frame (out toward the side its placer stood, or for a plain block the side
 // the first piece was laid from, kept in the entity as "f"; right across it), so everyone sees them in the same places
 // (Cinematic Interactions' RemainingLayouts / the stations' LAYOUTs)

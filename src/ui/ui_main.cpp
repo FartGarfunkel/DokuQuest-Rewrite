@@ -3,6 +3,7 @@
 #include "sim/chest_work.h"
 #include "ui/book_ui.h"
 #include "ui/cinematic.h"
+#include "sim/station_work.h"
 #include "ui/screen.h"
 #include <imgui_internal.h>
 #include "ui/ui.h"
@@ -72,6 +73,16 @@ static void onScreenOpen(App& a, const json& args) {
   else if (kind == "knapping") { std::string m = o.value("material", ""), it = o.value("item", ""); if (m.empty() || it.empty()) return; make = [m, it] { return makeKnappingScreen(m, it); }; }
   else if (kind == "lectern") { if (!io.hasPos) return; ivec3 p = io.pos; make = [p] { return makeLecternScreen(p); }; }
   else if (kind == "book") { const int slot = o.value("slot", 0); make = [slot] { return makeHeldBookScreen(slot); }; }   // ui/held_book.cpp
+  else if (kind == "jukebox") {   // its scene (ui/cinematic_work.cpp); the classic use: a record in, or out
+    if (!io.hasPos) return;
+    const ivec3 p = io.pos;
+    if (!a.settings.extra.value("cinematicStations", true) || o.value("classic", false)) {
+      GameSession* s = a.session.get();
+      if (s->level) jukeboxUse(*s->level, *s->player, s->world(), p);
+      return;
+    }
+    make = [p] { return makeCinematicJukeboxScreen(p); };
+  }
   else { hudToast("That screen isn't in this build yet", "warn"); return; }
   // a chest (not a barrel, not the ender chest, not a pack): worked by hand in the world (ui/cinematic.h)
   // (chests, painted chests, barrels, the ender chest — yours — and the party chest)

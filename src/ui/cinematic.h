@@ -6,6 +6,7 @@
 #include "core/itemstack.h"
 #include <functional>
 #include <string>
+#include <vector>
 
 namespace dq {
 
@@ -46,6 +47,14 @@ std::unique_ptr<Screen> makeCinematicPairScreen(ivec3 at, const std::string& sta
 int pairSceneKind(const std::string& station);   // 6, 8.. 11; 0 none
 // the stonecutter worked in the world (kind 7): the stone on its table, the shapes it cuts into on a dial over the saw
 std::unique_ptr<Screen> makeCinematicCutScreen(ivec3 at);
+// the jukebox (kind 12, JukeboxStation): your records on a dial over it; one put in sinks into the slot and plays, the one
+// playing rises out and comes back to you. INSERT 1.3 s (in at INSERT_SEND 0.62), EJECT 1.15 s (out at EJECT_SEND 0.16)
+std::unique_ptr<Screen> makeCinematicJukeboxScreen(ivec3 at);
+struct JukeView { ivec3 at{0}; float viewYaw = 0; int hover = -1; double t = -1; bool eject = false; float scroll = 0; std::string disc; std::vector<std::string> dial; };
+bool cinematicJukeView(JukeView& v);
+constexpr double JUKE_INSERT = 1.3, JUKE_INSERT_SEND = 0.62, JUKE_EJECT = 1.15, JUKE_EJECT_SEND = 0.16;
+vec3 jukeDialPoint(ivec3 at, float viewYaw, int k, int count, float scroll, double clock);   // a record's place on the dial
+vec3 jukeDiscPos(const JukeView& v, vec3 from);   // the record moving in (from its place on the dial) or out (to you)
 // what those scenes show (render/station_work_layer.cpp draws it): t the seconds into the work / the cut, -1 none
 struct PairView { int kind = 0; ivec3 at{0}; float viewYaw = 0; int hover = -1; double t = -1; ItemStack before[2], after; };
 bool cinematicPairView(PairView& v);

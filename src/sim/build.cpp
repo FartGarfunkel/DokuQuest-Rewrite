@@ -681,8 +681,9 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
     }
     return true;
   }
-  if (b.has("jukebox")) {
+  if (b.has("jukebox")) {   // (its scene, ui/cinematic.h; the classic use: sim/station_work.h jukeboxUse)
     json* e = w.blockEntity(x, y, z);
+    if ((e && e->contains("disc")) || (def && def->has("disc"))) { swingArm(); openScreen(lv, p, "jukebox", {{"pos", {x, y, z}}}); return true; }
     if (e && e->contains("disc")) {
       std::string disc = (*e)["disc"];
       if (lv.events) lv.events->emit("jukebox", json::array({x, y, z, nullptr}));
