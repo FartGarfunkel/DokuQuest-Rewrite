@@ -12,6 +12,8 @@ namespace dq {
 u32 charStateKey(const CharPose& p);
 // how long a change from one state to another blends (seconds; 0 snaps: first person in or out)
 float charBlendDuration(u32 from, u32 to);
+// a change only the arms and upper body make (the legs needn't blend: render/char_blend.cpp)
+bool charBlendArmsOnly(u32 from, u32 to);
 // a then b by w (0..1): rotation slerped, the rest (size, squash, position) lerped
 mat4 blendMat(const mat4& a, const mat4& b, float w);
 
@@ -19,6 +21,7 @@ struct CharBlend {
   bool has = false;
   u32 key = 0;
   float t = 0, dur = 0;
+  bool legsLive = false;   // an arms-only change (eating, a shield, a map...): the legs show live, still walking
   double last = 0;
   CharRig from, shown;   // about the feet (base's inverse applied)
 };

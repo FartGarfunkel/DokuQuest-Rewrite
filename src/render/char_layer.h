@@ -39,7 +39,10 @@ public:
     float idleT = 0, footL = 0, footR = 0, footT = 0, footTL = 0, footTR = 0;   // Story Mode-style life: standing about, the ground under each foot (eased, sampled)
     float pitch = 0, hurtT = 0, lastHurt = 0; bool airLeft = false, wasAir = false, backward = false;   // the look eased, seconds since a hit, the jump's lead leg
     float block = 0, rollU = 0, rollYaw = 0, lastDodge = 0; bool rollBack = false;
-    float guardHit = 0, lastParry = 0, lastGuard = 0;   // a blow taken on the shield (1 -> 0 over GUARD_HIT_T)   // the shield's raise (eased), a dodge roll's progress (sim/combat_rpg.h)
+    float guardHit = 0, lastParry = 0, lastGuard = 0;   // a blow taken on the shield (1 -> 0), the shield's raise (eased), a dodge roll's progress (sim/combat_rpg.h)
+    float runAmt = 0, sneakAmt = 0;                    // sprinting / sneaking eased in and out (Epic Fight keeps both cycles running while it blends)
+    vec2 hurtDir{0};                                   // where the last blow came from: x their right, y their front (-1..1)
+    float lastSwing = 0, swingU = 0; double swingAt = -10; u8 swingN = 0;   // weapon combos: the cut in the chain and how far through it (its own clock: render/char_anim.cpp)
     CharBlend blend;   // render/char_blend.h: gliding between states
     CapeSim cape;      // render/cape_sim.h: their cape as cloth
     u64 seen = 0;

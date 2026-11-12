@@ -28,9 +28,16 @@ void charMorePoses(CharAngles& A, const CharPose& pose) {
   if (pose.gui && !lying) A.head.x += 0.18f;
   if (pose.doze && !lying) A.head.x += 0.55f + std::sin(t * 1.3f) * 0.04f;
   // ---- a hit: a sharp flinch back, the arms jerking up and out, then easing off ----
+  // (after Epic Fight's hit: snapped into in 0.06 s, held a moment, then let go; away from where the blow came from)
   if (pose.hurt > 0 && pose.hurt < 0.45f && pose.deathT <= 0 && !pose.sleep) {
-    const float u = pose.hurt / 0.45f, f = u < 0.15f ? ease(u / 0.15f) : 1 - ease((u - 0.15f) / 0.85f);
-    if (!lying && !pose.sit) { A.body.x += 0.2f * f; A.head.x -= 0.22f * f; A.shinR.x -= 0.18f * f; A.shinL.x -= 0.18f * f; A.legR.x += 0.08f * f; A.legL.x += 0.08f * f; A.lift -= 0.03f * f; }
+    const float h = pose.hurt, f = h < 0.06f ? ease(h / 0.06f) : h < 0.16f ? 1.f : 1 - ease((h - 0.16f) / 0.29f);
+    const float fr = clampf(pose.hurtDir.y, -1, 1), sd = clampf(pose.hurtDir.x, -1, 1);   // (from the front: rocked back; from behind: thrown forward)
+    if (!lying && !pose.sit) {
+      A.body.x += (0.22f * fr - 0.05f) * f; A.body.z -= 0.16f * sd * f; A.body.y += 0.12f * sd * f;
+      A.head.x -= (0.24f * fr - 0.08f) * f; A.head.z += 0.1f * sd * f;
+      A.shinR.x -= 0.2f * f; A.shinL.x -= 0.2f * f; A.legR.x += 0.09f * f; A.legL.x += 0.09f * f; A.lift -= 0.035f * f;
+      if (fr < -0.3f) { A.legR.x -= 0.25f * -fr * f; A.legL.x += 0.2f * -fr * f; }   // (a stumbling step forward)
+    }
     if (!pose.held) A.armR += vec3(0.35f, 0, 0.3f) * f;
     if (!pose.off) A.armL += vec3(0.35f, 0, -0.3f) * f;
     A.foreR.x += 0.3f * f; A.foreL.x += 0.3f * f;

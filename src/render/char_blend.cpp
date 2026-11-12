@@ -23,14 +23,22 @@ glm::mat3 polar(glm::mat3 m) {
 
 u32 charStateKey(const CharPose& p) {
   u32 k = 0;
-  if (p.sneak) k |= K_SNEAK; if (p.sit) k |= K_SIT; if (p.sleep) k |= K_SLEEP; if (p.swim) k |= K_SWIM; if (p.crawl) k |= K_CRAWL;
+  // (sneaking and sprinting eased by amounts blend by themselves: no state for them then)
+  if (p.sneak && p.sneakAmt < 0) k |= K_SNEAK; if (p.sit) k |= K_SIT; if (p.sleep) k |= K_SLEEP; if (p.swim) k |= K_SWIM; if (p.crawl) k |= K_CRAWL;
   if (p.hang || p.climb > 0) k |= K_HANG; if (p.ladder) k |= K_LADDER; if (p.fly) k |= K_FLY; if (p.glide) k |= K_GLIDE;
   if (p.paddle) k |= K_PADDLE; if (p.carry) k |= K_CARRY; if (p.eat > 0) k |= K_EAT; if (p.eat > 0 && p.drink) k |= K_DRINK;
-  if (p.bow > 0) k |= K_BOW; if (p.scope) k |= K_SCOPE; if (p.air) k |= K_AIR; if (p.deathT > 0) k |= K_DEAD; if (p.sprint) k |= K_SPRINT;
+  if (p.bow > 0) k |= K_BOW; if (p.scope) k |= K_SCOPE; if (p.air) k |= K_AIR; if (p.deathT > 0) k |= K_DEAD; if (p.sprint && p.runAmt < 0) k |= K_SPRINT;
   if (p.mapMain || p.mapOff) k |= K_MAP; if (p.castWind > 0) k |= K_CAST; if (p.block > 0) k |= K_BLOCK;
   if (p.xbowCharge > 0 || p.xbowAim) k |= K_XBOW; if (p.throwCharge > 0) k |= K_THROW; if (p.spearCharge > 0) k |= K_SPEAR;
   if (p.held) k |= K_HELD; if (p.fp) k |= K_FP; if (p.roll > 0) k |= K_ROLL;
   return k;
+}
+
+bool charBlendArmsOnly(u32 from, u32 to) {
+  // what only the arms (and the body above the hips) do: the legs keep walking through the blend (Epic Fight's joint masks)
+  constexpr u32 ARMS = K_EAT | K_DRINK | K_BLOCK | K_HELD | K_MAP | K_SCOPE | K_CAST | K_XBOW | K_THROW | K_SPEAR | K_CARRY;
+  const u32 ch = from ^ to;
+  return ch && (ch & ~ARMS) == 0;
 }
 
 float charBlendDuration(u32 from, u32 to) {
@@ -66,14 +74,17 @@ void charBlendStep(CharBlend& b, CharRig& R, const mat4& base, u32 key, double n
   b.last = now;
   if (key != b.key) {
     b.dur = charBlendDuration(b.key, key);
+    b.legsLive = charBlendArmsOnly(b.key, key) && (b.t >= b.dur || b.legsLive);
     b.key = key; b.t = 0;
     b.from = b.shown;
   } else b.t += dt;
   if (b.t >= b.dur) { b.shown = std::move(L); return; }
   const float u = b.t / b.dur, w = u * u * (3 - 2 * u);
-  for (int i = 0; i < CP_COUNT; i++) L.part[i] = blendMat(b.from.part[i], L.part[i], w);
+  auto legPart = [](int i) { return i == CP_LEGR_U || i == CP_LEGR_D || i == CP_LEGL_U || i == CP_LEGL_D; };
+  auto legGear = [](const std::string& n) { return n.rfind("leg", 0) == 0 || n.rfind("shin", 0) == 0 || n.rfind("skirt", 0) == 0 || n.rfind("boot", 0) == 0; };
+  for (int i = 0; i < CP_COUNT; i++) if (!(b.legsLive && legPart(i))) L.part[i] = blendMat(b.from.part[i], L.part[i], w);
   L.body = blendMat(b.from.body, L.body, w); L.bodyRaw = blendMat(b.from.bodyRaw, L.bodyRaw, w);
-  for (auto& [n, m] : L.gear) { auto it = b.from.gear.find(n); if (it != b.from.gear.end()) m = blendMat(it->second, m, w); }
+  for (auto& [n, m] : L.gear) { if (b.legsLive && legGear(n)) continue; auto it = b.from.gear.find(n); if (it != b.from.gear.end()) m = blendMat(it->second, m, w); }
   for (int i = 0; i < CP_COUNT; i++) R.part[i] = base * L.part[i];
   R.body = base * L.body; R.bodyRaw = base * L.bodyRaw;
   for (auto& [n, m] : R.gear) m = base * L.gear[n];

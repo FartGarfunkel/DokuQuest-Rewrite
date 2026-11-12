@@ -48,10 +48,14 @@ int main(int argc, char** argv) {
     return 0;
   }
   printf("[state keys]\n");
+  auto c0swim = [] { CharPose c; c.swim = true; return c; };
   {
     CharPose a, b = a; b.walk = 3; b.time = 9; b.headPitch = 0.4f;
     CHECK(charStateKey(a) == charStateKey(b), "walk phase, time and look don't change the state");
     b.sneak = true; CHECK(charStateKey(a) != charStateKey(b), "sneaking is a state");
+    { CharPose e1 = b; e1.sneakAmt = 0.5f; CharPose e2 = a; e2.sneakAmt = 0.f; CHECK(charStateKey(e1) == charStateKey(e2), "sneaking eased by an amount isn't a state (it blends by itself)"); }
+    { CharPose w0; w0.walkAmt = 1; w0.walk = 1.1f; CharPose w1 = w0; w1.held = true; w1.eat = 0.5f;
+      CHECK(charBlendArmsOnly(charStateKey(w0), charStateKey(w1)) && !charBlendArmsOnly(charStateKey(w0), charStateKey(c0swim())), "eating while walking blends only the arms; lying down to swim, everything"); }
     CharPose c; c.swim = true; CharPose d; d.sleep = true; CharPose e; e.eat = 0.5f; CharPose f; f.air = true;
     CHECK(charStateKey(c) != charStateKey(a) && charStateKey(d) != charStateKey(a) && charStateKey(e) != charStateKey(a) && charStateKey(f) != charStateKey(a), "swim, sleep, eat and air are states");
     CHECK(charBlendDuration(charStateKey(a), charStateKey(c)) > charBlendDuration(charStateKey(a), charStateKey(f)), "lying down to swim takes longer than a hop");

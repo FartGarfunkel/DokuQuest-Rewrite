@@ -370,7 +370,27 @@ void CharacterLayer::update(GameSession& s, double dt) {
     st.deathT = p->dead ? st.deathT + fdt : 0;
     // AnimatedPlayer: the look eased (a remote player's comes in steps), a hit's flinch timed from the hit, a lead leg per jump
     st.pitch += wrapAngle(p->pitch - st.pitch) * std::min(1.f, fdt * (p == s.player ? 30.f : 14.f));
-    if (p->hurtTime > st.lastHurt + 0.01f) st.hurtT = 0.0001f; else if (st.hurtT > 0) st.hurtT += fdt;
+    if (p->hurtTime > st.lastHurt + 0.01f) {
+      st.hurtT = 0.0001f;
+      // where it came from: the knock pushes away from the blow (the velocity they've just been given, about their facing)
+      const vec2 kb(st.vel.x, st.vel.z);
+      if (glm::length(kb) > 1.5f) {
+        const float sy = std::sin(p->yaw), cy = std::cos(p->yaw);
+        const vec2 n = glm::normalize(kb), fwd(-sy, -cy), right(cy, -sy);
+        st.hurtDir = vec2(-glm::dot(n, right), -glm::dot(n, fwd));
+      } else st.hurtDir = vec2(0, 1);
+    } else if (st.hurtT > 0) st.hurtT += fdt;
+    // sprinting and sneaking come and go over a moment, the legs never stopping (render/char_anim.cpp)
+    st.runAmt += ((p->sprinting ? 1.f : 0.f) - st.runAmt) * std::min(1.f, fdt / 0.15f);
+    st.sneakAmt += ((p->sneaking && !p->swimming ? 1.f : 0.f) - st.sneakAmt) * std::min(1.f, fdt / 0.12f);
+    // weapon combos: a swing begun within 0.8 s of the last is the next of the chain (Epic Fight's combo window)
+    if (p->swingT > 0 && (st.lastSwing <= 0 || p->swingT < st.lastSwing - 0.05f)) {
+      st.swingN = time - st.swingAt < 0.8 ? (u8)((st.swingN + 1) % 3) : 0; st.swingAt = time; st.swingU = 0.0001f;
+    }
+    st.lastSwing = p->swingT;
+    // a cut runs on its own clock (WEAPON_SWING_T): the blow lands as fast as the arm's swing, the follow-through is held
+    // a moment and the pose given back after, as Epic Fight's do (the game's swing timer is shorter)
+    if (st.swingU > 0 && (st.swingU += fdt / 0.5f) >= 1) st.swingU = 0;
     if (st.hurtT > 1) st.hurtT = 0;
     st.lastHurt = p->hurtTime;
     const bool inAir = !e->onGround && !e->inWater && !p->flying;
@@ -702,6 +722,9 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   }
   mat4 base = glm::translate(mat4(1), rel + (fp && cinematicActive() ? cinematicViewOffset() : vec3(0)));   // (bent to a station: the body goes down and in with the eye)
   if (ps.sit) base = glm::translate(base, vec3(0, -0.45f, 0));
+  // continuous amounts (a station's crouch is a sneak outright)
+  ps.runAmt = st.runAmt; ps.sneakAmt = ps.sneak && !p.sneaking ? 1.f : st.sneakAmt; ps.hurtDir = st.hurtDir;
+  if (st.swingU > 0 && ps.armed && !isShieldItem(wear.held) && !p.swinging) { ps.swingKind = (u8)(1 + st.swingN); ps.swing = st.swingU; }
   CharDrawOpts o;
   o.light = VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f};
   o.tint = p.hurtTime > 0 ? vec4(1, 0.15f, 0.1f, 0.4f) : vec4(0);

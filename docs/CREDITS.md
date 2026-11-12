@@ -150,3 +150,5 @@ in terrain-13 worlds grow as it grows them (`sim/dyntree.cpp`): rooty soil whose
 (BasicBranchBlock.growSignal, GrowthLogicKit's direction weights, DynamicLeavesBlock.branchOut), branches thickened by its
 pipe model (sqrt of the joining areas + its tapering 0.3, radius 1..8), the soil's life spent as Species.grow spends it,
 and a felled tree's wood measured as NetVolumeNode measures it (r^2 * 64 of a log's 4096, the rest as sticks). No art is used.
+
+- Animation study: Epic Fight (Yesman & Epic Fight Team; code GPL-3, assets all rights reserved) and Fresh Animations (FreshLX) were studied for technique and measured for timings only; no code or asset from either is included. See docs/ANIMATION_STUDY.md.

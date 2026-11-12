@@ -55,7 +55,10 @@ struct CharPose {
   // a dodge roll (sim/combat_rpg.h): 0..1 through it (0: none), tucked and over once about the middle; backwards when it
   // goes away from where they face (a step back), else forwards with the body turned the way it goes
   float roll = 0; bool rollBack = false;
-  bool armed = false;       // a weapon or a shield in hand: standing, they keep a fighter's stance (render/char_anim.cpp)
+  bool armed = false;
+  float runAmt = -1, sneakAmt = -1;   // eased amounts (-1: from sprint / sneak as they are)
+  vec2 hurtDir{0, 1};             // the blow came from: x their right, y their front
+  u8 swingKind = 0;               // 0 the Minecraft swing; 1-3 a weapon combo's cuts (render/char_anim.cpp weaponSwing)       // a weapon or a shield in hand: standing, they keep a fighter's stance (render/char_anim.cpp)
   float guardHit = 0;       // a blow taken on the shield: 1 when it lands, down to 0 (render/char_poses.cpp knocks the guard back)
   bool sitGround = false;   // sat on the ground (by a campfire: ui/cinematic_work.cpp), knees up, the seat down on it
 };
