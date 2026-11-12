@@ -6,6 +6,7 @@
 #pragma once
 #include "common/common.h"
 #include <memory>
+#include <unordered_map>
 
 namespace dq {
 class TileSet; class PackFS;
@@ -22,5 +23,11 @@ struct PackModel { std::vector<PackModelBox> boxes; };
 // the pack's models for these blocks (by model name, e.g. "torch", "wall_torch"); their textures added to the tiles
 void loadPackModels(TileSet& ts, const PackFS& P, const std::vector<std::string>& names);
 const PackModel* packModel(const std::string& name);   // null: none (draw the block the game's own way)
+
+// random looks of a block's picture (the pack's assets/dokuquest/variants.json: picture -> [[picture, weight]...], the
+// picture itself among them): the mesher picks one per block by where it is. baseTiles: the pack picture -> our tile.
+void loadTileVariants(TileSet& ts, const PackFS& P, const std::unordered_map<std::string, int>& baseTiles);
+struct TileVariants { std::vector<int> tiles; std::vector<u32> cum; u32 total = 0; };
+const TileVariants* tileVariants(int tile);
 
 } // namespace dq

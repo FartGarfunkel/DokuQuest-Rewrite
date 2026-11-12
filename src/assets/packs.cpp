@@ -256,6 +256,7 @@ std::string applyResourcePack(TileSet& ts, const std::string& choice) {
   const int T = ts.size;
   auto tintedTile = [&](int idx) { const u8* p = ts.tile(idx); for (int i = 0; i < T * T; i++) if (p[i * 4 + 3] == 253) return true; return false; };
   int used = 0, nItems = 0, animated = 0, resSeen = 0;
+  std::unordered_map<std::string, int> baseTiles;   // the pack's picture -> our tile (assets/pack_models.h variants)
   if (pm && pm->is_array()) for (auto& e : *pm) {
     if (!e.is_array() || e.size() < 3) continue;
     std::string tname = e[0];
@@ -299,6 +300,7 @@ std::string applyResourcePack(TileSet& ts, const std::string& choice) {
     }
     toTile(px, res, T, ts.tile(idx));
     ts.res[idx] = (u8)res;
+    if (!isItem && hit->path.rfind(OVP, 0) != 0) baseTiles.emplace(hit->base, idx);
     used++; if (isItem) nItems++;
     if (tname == "stone" || (!resSeen && !flow && nFrames == 1)) resSeen = img->w;
     // animation: the pack's frames replace the game's own (or stop it, if the pack's picture is still)
@@ -355,6 +357,7 @@ std::string applyResourcePack(TileSet& ts, const std::string& choice) {
   // so the tiles their textures add keep their places
   loadPackModels(ts, *P, {"torch", "wall_torch", "soul_torch", "soul_wall_torch", "redstone_torch", "redstone_wall_torch",
                           "redstone_torch_off", "redstone_wall_torch_off", "copper_torch", "copper_wall_torch"});
+  loadTileVariants(ts, *P, baseTiles);
   deriveMicroVoxelHeights(ts);
   DQ_LOG("resource pack '%s': %d pictures (%d items, %d animated, %dpx), %d chests, %d armour sets", P->name().c_str(), used, nItems, animated, resSeen, chests, armor);
   std::string nm = P->name();

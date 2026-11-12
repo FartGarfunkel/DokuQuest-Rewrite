@@ -368,12 +368,13 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
       else if (f == D6_FACE[OPP6[dir6]]) tile = (meta & 8) ? T.f6t[3] : T.f6t[2];
       else { tile = !T.sideAll && dir6 >= 2 && (f == 2 || f == 3) ? T.f6t[4] : T.f6t[5]; rot = F6_ROT[dir6][f]; }
     }
-    // a grassy block's side against a path (or farmland, a path stair or slab), a sixteenth lower: only the side's top edge shows above it, and
-    // the grass's (or the snow's) band there read as a crack, a green or white line along every street and under every
-    // path stair. Its dirt instead, as the path's own side is.
-    if (f != 2 && f != 3 && !T.hasFront && !axis && !T.f6 && (R.tShape[nb] == ShapeKind::Path || isPathTopped(nb)) && faces[3] != faces[0]) {
-      static const int dirtTile = R.tile("dirt");
-      if (faces[3] == dirtTile) tile = dirtTile;
+    // (a grassy block's side against a path shows its grass side, the green edge over the path, as asked: it used to be
+    // turned to dirt there)
+    if (const TileVariants* TV = tileVariants(tile)) {   // the pack's random looks of this picture: one per block, by where it is
+      u32 h = (u32)(x + c.wx0) * 73856093u ^ (u32)(y + c.wy0) * 19349663u ^ (u32)(z + c.wz0) * 83492791u;
+      h ^= h >> 13; h *= 0x5bd1e995u; h ^= h >> 15;
+      const u32 r = h % TV->total;
+      for (size_t k = 0; k < TV->tiles.size(); k++) if (r < TV->cum[k]) { tile = TV->tiles[k]; break; }
     }
     FaceCorners fc; faceCorners(c, x, y, z, f, fc);
     const bool wet = R.tLiquid[nb] == 1 && !(mat & Mat::Liquid);   // under water (or a wall of the pool): the light through it plays on it

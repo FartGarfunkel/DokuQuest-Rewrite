@@ -48,6 +48,17 @@ def dirSrc(path, name=None):
         return open(p, 'rb').read() if os.path.isfile(p) else None
     return Src(name or os.path.basename(path), files, rd)
 
+def sameLook(a, b):
+    """two pictures alike (the same art, perhaps saved differently or at another size)"""
+    if a == b: return True
+    try:
+        from PIL import Image
+        A = Image.open(io.BytesIO(a)).convert('RGBA'); B = Image.open(io.BytesIO(b)).convert('RGBA')
+        n = min(A.size[0], B.size[0]); A = A.crop((0, 0, A.size[0], A.size[0])).resize((n, n)); B = B.crop((0, 0, B.size[0], B.size[0])).resize((n, n))
+        d = sum(abs(x - y) for p, q in zip(A.getdata(), B.getdata()) for x, y in zip(p, q)) / (n * n * 4)
+        return d < 12
+    except Exception: return False
+
 def sources(inst, mods):
     out = []
     rp = os.path.join(inst, 'config', 'paxi', 'resourcepacks')
@@ -195,6 +206,68 @@ def main():
             nm += 1
             break
     print('block models:', nm)
+    # ---- random looks (Excalibur's blockstates: a block's variants, each a model with one texture): the alternates
+    # copied in, and assets/dokuquest/variants.json (picture -> [[picture, weight]...]) for the game's mesher
+    exc = next((s2 for s2 in srcs if s2.name.lower().startswith('excalibur_v')), None)
+    variants = {}
+    if exc:
+        z = None
+        for st in [f for f in exc.block.values()][:0]: pass
+        names = []
+        try:
+            import zipfile as _z
+            zz = _z.ZipFile(os.path.join(a.soulrend, 'config', 'paxi', 'resourcepacks', exc.name))
+            root = next((n[:n.find('assets/')] for n in zz.namelist() if 'assets/' in n), '')
+            names = [n[len(root):] for n in zz.namelist() if n.startswith(root + 'assets/minecraft/blockstates/')]
+        except Exception as ex: print('  (variants:', ex, ')')
+        def model(ref):
+            ref = ref.replace('minecraft:', '')
+            d = exc.read('assets/minecraft/models/%s.json' % ref)
+            return json.loads(d) if d else None
+        for bs in names:
+            j = json.loads(exc.read(bs) or b'{}')
+            vs = j.get('variants') or {}
+            if len(vs) != 1: continue   # (one state only: stone, planks, dirt...)
+            lst = list(vs.values())[0]
+            if not isinstance(lst, list) or len(lst) < 2: continue
+            texw = {}
+            ok = True
+            for v in lst:
+                ref = v.get('model', '').replace('minecraft:', '')
+                m = model(ref)
+                if not m:   # (Minecraft's own model, not in the pack: a plain cube of the picture of its name)
+                    if ref.count('/') == 1 and ref.startswith('block/'): m = {'parent': 'block/cube_all', 'textures': {'all': ref}}
+                    else: ok = False; break
+                tx = dict(m.get('textures') or {})
+                par = (m.get('parent') or '').replace('minecraft:', '')
+                if par not in ('block/cube_all', 'block/cube_mirrored_all') and par:   # (one more level up)
+                    pm2 = model(par)
+                    if pm2: tx = {**(pm2.get('textures') or {}), **tx}; par = (pm2.get('parent') or '').replace('minecraft:', '')
+                if par not in ('block/cube_all', 'block/cube_mirrored_all') or 'all' not in tx: ok = False; break
+                t = tx['all'].replace('minecraft:', '').replace('block/', '')
+                if t.startswith('#'): ok = False; break
+                texw[t] = texw.get(t, 0) + int(v.get('weight', 1))
+            if not ok or len(texw) < 2: continue
+            block = bs.rsplit('/', 1)[1][:-5]
+            base = block if block in texw else list(texw.keys())[0]
+            # (only where our pack's picture is Excalibur's own look: its alternates beside another style read as patches)
+            ours = os.path.join(PACK, 'assets/minecraft/textures/block/%s.png' % base)
+            theirs = exc.read('assets/minecraft/textures/block/%s.png' % base)
+            if os.path.exists(ours) and theirs and not sameLook(open(ours, 'rb').read(), theirs): continue
+            variants[base] = [[t, w] for t, w in texw.items()]
+            for t in texw:
+                tto = 'assets/minecraft/textures/block/%s.png' % t
+                if os.path.exists(os.path.join(PACK, tto)) or tto in done: continue
+                td = exc.read(tto)
+                if td and not a.dry:
+                    dst = os.path.join(PACK, tto); os.makedirs(os.path.dirname(dst), exist_ok=True); open(dst, 'wb').write(td)
+                    rec.append({'to': tto, 'from': exc.name + ':' + tto, 'tile': 'variant:' + base}); done.add(tto)
+        vto = 'assets/dokuquest/variants.json'
+        if variants and not a.dry:
+            dst = os.path.join(PACK, vto); os.makedirs(os.path.dirname(dst), exist_ok=True)
+            json.dump(variants, open(dst, 'w'), indent=0)
+            if vto not in done: rec.append({'to': vto, 'from': exc.name + ':blockstates', 'tile': 'variants'}); done.add(vto)
+    print('random looks:', len(variants), 'blocks:', ' '.join(sorted(variants)))
     if not a.dry: json.dump(rec, open(REC, 'w'), indent=0)
     print('brought in', n, 'pictures;', len(missing), "of the game's pictures still have none anywhere")
     for k, v in sorted(bySrc.items(), key=lambda x: -x[1])[:15]: print('  ', v, k)

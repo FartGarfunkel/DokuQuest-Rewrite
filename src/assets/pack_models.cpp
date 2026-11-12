@@ -4,6 +4,7 @@
 #include "assets/tileset.h"
 #include <atomic>
 #include <map>
+#include <unordered_map>
 #include <stb_image.h>
 
 namespace dq {
@@ -77,6 +78,33 @@ void loadPackModels(TileSet& ts, const PackFS& P, const std::vector<std::string>
   }
   std::atomic_store(&g_models, std::shared_ptr<const std::map<std::string, PackModel>>(M));
   if (!M->empty()) DQ_LOG("pack models: %zu block models", M->size());
+}
+
+namespace { std::shared_ptr<const std::unordered_map<int, TileVariants>> g_vars; }
+void loadTileVariants(TileSet& ts, const PackFS& P, const std::unordered_map<std::string, int>& baseTiles) {
+  auto V = std::make_shared<std::unordered_map<int, TileVariants>>();
+  const std::string root = P.texRoot.substr(0, P.texRoot.size() - std::string("minecraft/textures/").size());   // assets/
+  if (auto j = P.readJson(root + "dokuquest/variants.json"); j && j->is_object()) for (auto& [base, list] : j->items()) {
+    auto bt = baseTiles.find(base);
+    if (bt == baseTiles.end() || !list.is_array()) continue;
+    TileVariants tv;
+    for (auto& e : list) {
+      if (!e.is_array() || e.size() < 2) continue;
+      const std::string nm = e[0].get<std::string>();
+      const int t = nm == base ? bt->second : tileFor(ts, P, "block/" + nm);
+      if (t < 0) continue;
+      tv.total += std::max(1, e[1].get<int>()); tv.tiles.push_back(t); tv.cum.push_back(tv.total);
+    }
+    if (tv.tiles.size() > 1) (*V)[bt->second] = std::move(tv);
+  }
+  std::atomic_store(&g_vars, std::shared_ptr<const std::unordered_map<int, TileVariants>>(V));
+  if (!V->empty()) DQ_LOG("pack variants: %zu pictures with random looks", V->size());
+}
+const TileVariants* tileVariants(int tile) {
+  auto v = std::atomic_load(&g_vars);
+  if (!v) return nullptr;
+  auto it = v->find(tile);
+  return it == v->end() ? nullptr : &it->second;
 }
 
 const PackModel* packModel(const std::string& name) {
