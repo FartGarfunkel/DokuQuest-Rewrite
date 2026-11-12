@@ -635,7 +635,8 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
     const float tap = f.time - st.workTapAt < 0.22 ? std::sin((float)((f.time - st.workTapAt) / 0.22) * 3.14159f) : 0.f;
     const float yaw = p.yaw; const vec3 right(std::cos(yaw), 0, -std::sin(yaw));
     const vec3 hand = p.workAt + vec3(0, -0.06f * tap, 0);
-    ps.reach = true;
+    // (sat by a campfire the hands rest on the knees, out only to set food on or take it off)
+    ps.reach = p.stationKind != 13 || f.time - st.workTapAt < 0.7;
     ps.reachR = f.cam.rel(glm::dvec3(hand));
     ps.reachL = f.cam.rel(glm::dvec3(hand - right * 0.42f + vec3(0, -0.04f, 0)));   // (the other hand on the station beside it)
     if (p.stationKind == 3 || p.stationKind == 4) ps.sneak = true;   // (down to the brewing stand, the furnace)

@@ -57,12 +57,18 @@ void charMorePoses(CharAngles& A, const CharPose& pose) {
   const float pitch = clampf(pose.headPitch, -1.f, 1.f);
   // ---- sat on the ground (by a campfire): the seat down on it, knees up, leant forward a touch over them ----
   if (pose.sitGround) {
-    static float G[4] = {0, 0, 0, 0}; static bool gl = false;   // tuning aid: DQ_DEV_SITG="thigh,shin,lift,lean" (added)
-    if (!gl) { gl = true; if (const char* v = std::getenv("DQ_DEV_SITG")) std::sscanf(v, "%f,%f,%f,%f", &G[0], &G[1], &G[2], &G[3]); }
-    A.legR = vec3(2.25f + G[0], 0, 0.16f); A.legL = vec3(2.25f + G[0], 0, -0.16f);
-    A.shinR = A.shinL = vec3(-2.3f + G[1], 0, 0);
-    A.lift = -0.57f + G[2]; A.body.x = 0.22f + G[3];
-    if (!pose.reach) { A.armR = vec3(0.75f, 0.1f, 0.1f); A.foreR = vec3(0.6f, 0, 0); A.armL = vec3(0.75f, -0.1f, -0.1f); A.foreL = vec3(0.6f, 0, 0); }   // (forearms on the knees)
+    // (like sitting by a fire: the knees up a little apart, the feet flat out before them, the back upright and leant in
+    // a touch, the hands resting on the knees, fingers over them)
+    static float G[10] = {0}; static bool gl = false;   // tuning aid: DQ_DEV_SITG="thigh,shin,lift,lean,armX,armY,armZ,fore,spread,head" (added)
+    if (!gl) { gl = true; if (const char* v = std::getenv("DQ_DEV_SITG")) std::sscanf(v, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f", &G[0], &G[1], &G[2], &G[3], &G[4], &G[5], &G[6], &G[7], &G[8], &G[9]); }
+    A.legR = vec3(2.18f + G[0], 0, 0.36f + G[8]); A.legL = vec3(2.18f + G[0], 0, -0.36f - G[8]);   // (the knees close, the feet a little in)   // (35 degrees up from the hip)
+    A.shinR = A.shinL = vec3(-1.61f + G[1], 0, 0);   // (down and forward to the feet flat on the ground)
+    A.lift = -0.60f + G[2]; A.body = vec3(-0.05f + G[3], 0, 0);   // (- leans in)
+    A.head.x += 0.05f + G[9];   // (looking down at the fire)
+    if (!pose.reach) {
+      A.armR = vec3(-0.35f + G[4], G[5], 0.08f + G[6]); A.foreR = vec3(1.90f + G[7], 0, 0);   // (the elbows back at the sides, the forearms forward over the knees)
+      A.armL = vec3(-0.35f + G[4], -G[5], -0.08f - G[6]); A.foreL = vec3(1.90f + G[7], 0, 0);
+    }
   }
   // ---- a dodge roll: curled up tight, knees to the chest, arms round them, the chin tucked (in fast, out at the end) ----
   if (pose.roll > 0) {

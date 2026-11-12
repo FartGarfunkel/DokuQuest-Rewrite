@@ -49,7 +49,7 @@ public:
     if (const char* ds = std::getenv("DQ_DEV_STATION")) {   // (screenshots: you as the others see you working a station, in F5)
       const float yaw = me->yaw; me->stationKind = (i8)std::atoi(ds);
       me->workAt = me->pos + vec3(-std::sin(yaw), 0, -std::cos(yaw)) * 0.65f + vec3(std::cos(yaw), 0, -std::sin(yaw)) * 0.12f + vec3(0, me->stationKind >= 3 ? 0.45f : 0.95f, 0);
-      static double tapT = 0; if ((tapT += dt) > 0.9) { tapT = 0; me->workTap++; }
+      static double tapT = 0; if ((tapT += dt) > 0.9 && !std::getenv("DQ_DEV_NOTAP")) { tapT = 0; me->workTap++; }
     }
     if (const char* dev = std::getenv("DQ_DEV_ACTIVITY")) { me->activity = (u8)std::atoi(dev); me->typeRate = 6; return; }   // (screenshots)
     me->activity = (u8)((typing ? Player::ACT_TYPING : 0) | (menu ? Player::ACT_SCREEN : 0) | (!top && idle > DOZE_AFTER ? Player::ACT_DOZE : 0));
