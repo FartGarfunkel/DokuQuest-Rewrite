@@ -3,7 +3,7 @@
 // in front of you (hitFrom..hitTo), and it lands on whatever it passes through there; the next press is taken from
 // `recovery`; chains of cuts, a lunging thrust when sprinting, a chop from the air.
 // Owner: claude for the timings and the blade's path (both come from the drawn poses, render/char_anim.cpp
-// weaponSwing; tools/test/anim_test.cpp checks that the path here is where the drawn blade is). The rules that use
+// attackPose, sampled into sim/attack_blades_data.inc; tools/test/anim_test.cpp checks the two agree). The rules that use
 // them (starting moves, hits, damage, lunges, stuns; sim/combat*.cpp, sim/controller.cpp): grok.
 #pragma once
 #include "common/common.h"

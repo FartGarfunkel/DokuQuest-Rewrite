@@ -9,7 +9,7 @@
 namespace dq {
 namespace {
 struct AtkKey { float t, bx, by, lift, legR, legL, shinR, shinL, ax, ay, az, fx, gx, gz, ox, oy, oz, ofx; };
-struct AtkClip { const AtkKey* k; int n; bool left; float pre; };
+struct AtkClip { const AtkKey* k; int n; bool left; float pre, blend; };   // blend: in from the stance (the clip's own, at most 0.1 s)
 #include "render/attack_poses_data.inc"
 float sm(float u) { u = std::clamp(u, 0.f, 1.f); return u * u * (3 - 2 * u); }
 }  // namespace
@@ -26,7 +26,8 @@ void attackPose(CharAngles& A, const CharPose& pose) {
   if (id == MV_NONE || id >= MV_COUNT) return;
   const AttackMove& M = attackMove(id);
   const AtkClip& C = CLIPS[id - 1];
-  const float blend = std::max(0.02f, M.hitFrom - C.pre);   // (the keys' own time starts after the blend in)
+  // the keys' own time starts after the blend in; the move's live window is blend + the clip's contact (sim/attack_moves.cpp)
+  const float blend = C.blend;
   const float t = pose.atkT, kt = t - blend;
   // the keys at kt (before the first: the first, being blended in)
   const AtkKey* K = C.k;

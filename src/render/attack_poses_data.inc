@@ -173,19 +173,19 @@ static const AtkKey K_14[] = {   // tool1
   {0.625f, -0.124f, -0.308f, -0.053f, 0.033f, 0.508f, -0.527f, -0.565f, 3.648f, -3.751f, -2.084f, 0.605f, -1.115f, -0.000f, 0.260f, -0.100f, 0.017f, 1.518f},
 };
 static const AtkClip CLIPS[] = {
-  {K_0, 9, false, 0.000f},   // sword1
-  {K_1, 10, false, 0.050f},   // sword2
-  {K_2, 9, false, 0.050f},   // sword3
-  {K_3, 9, false, 0.150f},   // sword_dash
-  {K_4, 10, false, 0.150f},   // sword_air
-  {K_5, 9, false, 0.050f},   // dagger1
-  {K_6, 9, false, 0.000f},   // dagger2
-  {K_7, 10, false, 0.200f},   // dagger3
-  {K_8, 10, false, 0.050f},   // axe1
-  {K_9, 10, false, 0.050f},   // axe2
-  {K_10, 9, true, 0.050f},   // fist1
-  {K_11, 9, false, 0.050f},   // fist2
-  {K_12, 9, true, 0.050f},   // fist3
-  {K_13, 10, false, 0.050f},   // tool1
-  {K_14, 10, false, 0.050f},   // tool1
+  {K_0, 9, false, 0.000f, 0.100f},   // sword1
+  {K_1, 10, false, 0.050f, 0.100f},   // sword2
+  {K_2, 9, false, 0.050f, 0.100f},   // sword3
+  {K_3, 9, false, 0.150f, 0.100f},   // sword_dash
+  {K_4, 10, false, 0.150f, 0.100f},   // sword_air
+  {K_5, 9, false, 0.050f, 0.050f},   // dagger1
+  {K_6, 9, false, 0.000f, 0.050f},   // dagger2
+  {K_7, 10, false, 0.200f, 0.050f},   // dagger3
+  {K_8, 10, false, 0.050f, 0.100f},   // axe1
+  {K_9, 10, false, 0.050f, 0.100f},   // axe2
+  {K_10, 9, true, 0.050f, 0.080f},   // fist1
+  {K_11, 9, false, 0.050f, 0.080f},   // fist2
+  {K_12, 9, true, 0.050f, 0.080f},   // fist3
+  {K_13, 10, false, 0.050f, 0.100f},   // tool1
+  {K_14, 10, false, 0.050f, 0.100f},   // tool1
 };

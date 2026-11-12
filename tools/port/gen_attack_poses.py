@@ -21,7 +21,7 @@ for i, name in enumerate(ORDER):
 lines.append('static const AtkClip CLIPS[] = {')
 for i, name in enumerate(ORDER):
     m = D[name]
-    lines.append('  {K_%d, %d, %s, %s},   // %s' % (i, len(m['rows']), 'true' if m['left'] else 'false', r(m['pre']), name))
+    lines.append('  {K_%d, %d, %s, %s, %s},   // %s' % (i, len(m['rows']), 'true' if m['left'] else 'false', r(m['pre']), r(min(m['conv'], 0.1)), name))
 lines.append('};')
 open(OUT, 'w').write('\n'.join(lines) + '\n')
 print('wrote', OUT, len(ORDER), 'moves')
