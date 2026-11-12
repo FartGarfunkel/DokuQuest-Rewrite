@@ -7,6 +7,7 @@
 #include "client/app.h"
 #include "client/session.h"
 #include "sim/player.h"
+#include "sim/level.h"
 #include "audio/audio.h"
 #include <SDL.h>
 #include <imgui.h>
@@ -24,7 +25,7 @@ public:
   bool showsWorld() const override { return true; }
   bool wantsMouse() const override { return true; }
   void onOpen(App& a) override { g_view = View{}; g_view.on = true; if (a.audio) a.audio->play("map_paper"); reload(a); }
-  void onClose(App&) override { g_view.on = false; }
+  void onClose(App& a) override { g_view.on = false; flushEdit(a); }
   bool onBack(App&) override { if (signing) { signing = false; return true; } return false; }
 
   ItemStack* stack(App& a) {
@@ -56,6 +57,19 @@ public:
     if (!s->tag.is_object()) s->tag = json::object();
     json pg = json::array(); for (auto& t : g_view.b.pages) pg.push_back(t);
     s->tag["pages"] = pg;
+    editDue = true; flushEdit(a, false);
+  }
+  // a guest's writing goes to the host as it is written (net/server_host.cpp "bookEdit"): the host's copy of your bag is
+  // the one that lasts, and its own changes to your bag (a thing picked up) would otherwise bring the old pages back
+  void flushEdit(App& a, bool now = true, const std::string& signAs = "") {
+    if (!a.session || !a.session->player || !a.session->level || !a.session->level->net) { editDue = false; return; }
+    if (!editDue && signAs.empty()) return;
+    if (!now && nowS() - editSentAt < 0.25) return;   // (at most four a second while typing; update() sends the rest)
+    json pg = json::array(); for (auto& t : g_view.b.pages) pg.push_back(t);
+    json args = {{"slot", slot}, {"pages", pg}};
+    if (!signAs.empty()) args["sign"] = signAs;
+    a.session->level->net->action(*a.session->player, "bookEdit", args);
+    editDue = false; editSentAt = nowS();
   }
   void write(App& a) {
     Input& in = a.input;
@@ -87,6 +101,7 @@ public:
     if (!s || !a.session || !a.session->player) return;
     std::string title = signTitle; while (!title.empty() && title.back() == ' ') title.pop_back();
     if (title.empty()) return;
+    flushEdit(a, true, title);   // (a guest: the host signs its copy too, with the name it knows you by)
     json pg = json::array(); for (auto& t : g_view.b.pages) pg.push_back(t);
     ItemStack w("written_book", 1); w.tag = json{{"title", title}, {"author", a.session->player->name}, {"pages", pg}};
     *s = w;
@@ -101,6 +116,7 @@ public:
     if (a.session && a.session->player) a.session->player->selected = slot < 9 ? slot : a.session->player->selected;
     Input& in = a.input;
     if (g_view.b.writable && !signing) { write(a); a.session->uiWantsText = true; }   // (the keys write: they don't walk you about)
+    if (editDue) flushEdit(a, false);
     const bool typing = g_view.b.writable || signing;
     if (in.pressed(Act::MenuTabRight) || ImGui::IsKeyPressed(ImGuiKey_RightArrow, false) || ImGui::IsKeyPressed(ImGuiKey_PageDown, false) || (!typing && (ImGui::IsKeyPressed(ImGuiKey_D, false) || ImGui::IsKeyPressed(ImGuiKey_E, false)))) turn(a, 1);
     if (in.pressed(Act::MenuTabLeft) || ImGui::IsKeyPressed(ImGuiKey_LeftArrow, false) || ImGui::IsKeyPressed(ImGuiKey_PageUp, false) || (!typing && (ImGui::IsKeyPressed(ImGuiKey_A, false) || ImGui::IsKeyPressed(ImGuiKey_Q, false)))) turn(a, -1);
@@ -154,6 +170,7 @@ private:
   int slot;
   bool signing = false;
   std::string signTitle;
+  bool editDue = false; double editSentAt = -10;   // (a guest's pages not yet sent to the host)
 };
 }  // namespace
 

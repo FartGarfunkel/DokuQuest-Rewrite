@@ -546,6 +546,21 @@ void ServerHost::receive(Peer& p, u8 ty, json& m) {
         }
         break;
       }
+      if (m.value("n", "") == "bookEdit" && p.pl && m.contains("a") && m["a"].is_object()) {   // a guest wrote in a book and quill (ui/held_book.cpp)
+        // the host's copy takes the pages (its push of their bag then carries them, so nothing it sends brings old pages back);
+        // signed, it becomes a written book by the name the host knows them by
+        const json& a = m["a"];
+        const int slot = a.contains("slot") && a["slot"].is_number_integer() ? a["slot"].get<int>() : -1;
+        if (slot < 0 || slot >= (int)p.pl->inv.size() || p.pl->inv[slot].id != "writable_book" || !a.contains("pages") || !a["pages"].is_array()) break;
+        json pg = json::array();
+        for (auto& x : a["pages"]) { if (pg.size() >= 100) break; pg.push_back(x.is_string() ? x.get<std::string>().substr(0, 1024) : std::string()); }
+        ItemStack& s = p.pl->inv[slot];
+        if (a.contains("sign") && a["sign"].is_string() && !a["sign"].get<std::string>().empty()) {
+          ItemStack w("written_book", 1); w.tag = json{{"title", a["sign"].get<std::string>().substr(0, 32)}, {"author", p.pl->name}, {"pages", pg}};
+          s = w;
+        } else { if (!s.tag.is_object()) s.tag = json::object(); s.tag["pages"] = pg; }
+        break;
+      }
       if (m.value("n", "") == "entInv" && p.pl && m.contains("a") && m["a"].is_object()) {   // a guest changed a container on an entity
         const json& a = m["a"]; Entity* e = level.entity(a.value("id", 0u));
         json* it = entityContainer(e);
