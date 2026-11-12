@@ -55,8 +55,23 @@ void charMorePoses(CharAngles& A, const CharPose& pose) {
   }
   if (lying || pose.deathT > 0 || pose.hang || pose.climb > 0 || pose.ladder) return;
   const float pitch = clampf(pose.headPitch, -1.f, 1.f);
+  // ---- a dodge roll: curled up tight, knees to the chest, arms round them, the chin tucked (in fast, out at the end) ----
+  if (pose.roll > 0) {
+    const float u = clampf(pose.roll, 0, 1), k = std::sin(std::min(1.f, u * 4) * PI * 0.5f) * (u < 0.8f ? 1.f : (1 - u) / 0.2f);
+    A.legR = mixv(A.legR, vec3(2.0f, 0, 0.12f), k); A.legL = mixv(A.legL, vec3(2.0f, 0, -0.12f), k);
+    A.shinR = mixv(A.shinR, vec3(-2.6f, 0, 0), k); A.shinL = mixv(A.shinL, vec3(-2.6f, 0, 0), k);   // (heels to the seat)
+    A.armR = mixv(A.armR, vec3(1.25f, 0.35f, 0), k); A.armL = mixv(A.armL, vec3(1.25f, -0.35f, 0), k);
+    A.foreR = mixv(A.foreR, vec3(1.2f, 0, 0), k); A.foreL = mixv(A.foreL, vec3(1.2f, 0, 0), k);
+    A.head = mixv(A.head, vec3(0.55f, 0, 0), k); A.body.x += 0.35f * k;
+    return;
+  }
   // ---- a shield raised across the body in the off hand (the elbow out, the forearm across the chest) ----
-  if (pose.block > 0) {
+  if (pose.block > 0 && pose.blockMain) {   // (in the main hand: the right arm, mirrored)
+    const float k = ease(pose.block);
+    A.armR = mixv(A.armR, vec3(1.05f + pitch * 0.3f, 0.55f, -0.1f), k); A.foreR = mixv(A.foreR, vec3(0.75f, 0, 0), k);
+    A.body.x -= 0.08f * k; A.body.y -= 0.12f * k;
+    A.shinR.x -= 0.15f * k; A.shinL.x -= 0.15f * k; A.legR.x += 0.06f * k; A.legL.x += 0.06f * k; A.lift -= 0.02f * k;
+  } else if (pose.block > 0) {
     const float k = ease(pose.block);
     A.armL = mixv(A.armL, vec3(1.05f + pitch * 0.3f, -0.55f, 0.1f), k); A.foreL = mixv(A.foreL, vec3(0.75f, 0, 0), k);
     A.body.x -= 0.08f * k; A.body.y += 0.12f * k;

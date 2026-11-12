@@ -441,6 +441,12 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
   base = glm::rotate(base, pose.yaw, vec3(0, 1, 0));
   if (pose.lean > 0 && !pose.fp) { base = glm::translate(base, vec3(0, 0.9f, 0)); base = glm::rotate(base, -pose.lean, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0)); }
   if (pose.deathT > 0) { const float u = clampf((pose.deathT - 0.1f) / 0.38f, 0, 1); base = glm::rotate(base, u * u * PI / 2, vec3(0, 0, 1)); }
+  if (pose.roll > 0 && !pose.fp && pose.deathT <= 0) {   // the dodge roll: over once about the tucked body's middle
+    const float u = clampf(pose.roll, 0, 1), e = u * u * (3 - 2 * u), a = (pose.rollBack ? 1.f : -1.f) * TAU * e;
+    static float RP[2] = {1.0f, 0.3f}; static bool rl = false;   // tuning aid: DQ_DEV_ROLL="pivot,drop"
+    if (!rl) { rl = true; if (const char* v = std::getenv("DQ_DEV_ROLL")) std::sscanf(v, "%f,%f", &RP[0], &RP[1]); }
+    base = glm::translate(base, vec3(0, RP[0] - RP[1] * std::sin(u * PI), 0)); base = glm::rotate(base, a, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -RP[0], 0));
+  }
   if (pose.swim) { base = glm::translate(base, vec3(0, 0.32f, 0.55f)); base = glm::rotate(base, -PI / 2 + pose.swimPitch * 0.8f, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0)); }
   else if (pose.crawl && !pose.fp) {   // flat on the ground, the chest on it (its plane 2 px in front of the middle)
     base = glm::translate(base, vec3(0, 2.3f * CHAR_PX, 0.5f)); base = glm::rotate(base, -PI / 2, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0));

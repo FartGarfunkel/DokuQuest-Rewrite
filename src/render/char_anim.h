@@ -50,6 +50,10 @@ struct CharPose {
   // poses ready for the shield, crossbow, trident and spear (0..1 how far in): a shield raised across the body in the
   // off hand, a crossbow being wound / levelled to shoot, a trident drawn back over the shoulder, a spear couched for a charge
   float block = 0, xbowCharge = 0, throwCharge = 0, spearCharge = 0; bool xbowAim = false;
+  bool blockMain = false;   // the shield in the main hand: the right arm raises it (block above is how far up)
+  // a dodge roll (sim/combat_rpg.h): 0..1 through it (0: none), tucked and over once about the middle; backwards when it
+  // goes away from where they face (a step back), else forwards with the body turned the way it goes
+  float roll = 0; bool rollBack = false;
 };
 
 // part angles (x, y, z; applied as rotY, rotX, rotZ) and the lift of the whole body (blocks)

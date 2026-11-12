@@ -120,6 +120,31 @@ BookPicTex& bookPicTex(u64 key, const std::string& pic, const std::string& lay, 
   return t;
 }
 std::vector<Dial>* g_dials = nullptr;
+bool isShieldItem(const std::string& id) {   // (sim/combat_rpg.cpp holdingShield)
+  if (id == "shield") return true;
+  const ItemDef* d = reg().item(id);
+  return d && d->has("shield");
+}
+// a shield in a fist (third person): strapped on the forearm, carried at the side face out; raised (k 0..1) it turns to
+// face the way the body faces, held out before the chest — in body terms, not the forearm's (that one twists through
+// the raise and would show the shield edge-on)
+void shieldInHand(const CharRig& R, int part, const std::string& id, float side, float k, VoxelLight light, vec4 tint, bool glint) {
+  const VoxelModel& im = itemModel(id);
+  if (!im.ready()) return;
+  static float T[4] = {0, 0, 0, 0}; static bool tl = false;   // tuning aid: DQ_DEV_TPSHIELD="out,fwd,up,scale"
+  if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_TPSHIELD")) std::sscanf(v, "%f,%f,%f,%f", &T[0], &T[1], &T[2], &T[3]); }
+  const vec3 fist = vec3(R.part[part] * vec4(0, -5, 0, 1));
+  const vec3 bx = glm::normalize(vec3(R.bodyRaw[0])), by = glm::normalize(vec3(R.bodyRaw[1])), fwd = -glm::normalize(vec3(R.bodyRaw[2]));   // (the body faces -z)
+  const vec3 out = bx * (side > 0 ? -1.f : 1.f);   // (the body's own right is -x: CP_ARMR sits at -x)
+  const float a = k * k * (3 - 2 * k);
+  // face: out at the side -> forward; its width: along the body's forward -> across it
+  const vec3 face = glm::normalize(glm::mix(out, fwd, a)), up = by, across = glm::normalize(glm::cross(up, face));
+  const vec3 at = fist + out * (0.07f + T[0]) * (1 - a) + fwd * ((0.20f + T[1]) * a) + up * (0.06f + T[2]);
+  const float sc = 0.78f + T[3];
+  mat4 M(1); M[0] = vec4(across * sc, 0); M[1] = vec4(up * sc, 0); M[2] = vec4(face * sc, 0); M[3] = vec4(at, 1);
+  if (side < 0) M = glm::scale(M, vec3(-1, 1, 1));
+  voxelRenderer().draw(im.gl, M * im.matrix(), light, tint, glint ? 1.f : 0.f);
+}
 // skins.js held(): an item in a fist (fore = the forearm's frame, model pixels about the elbow; side -1 = the left hand)
 void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0), const std::string& modelKey = "") {
   if (id == "fishing_rod") id = "fishing_rod_tp";
@@ -284,6 +309,18 @@ void CharacterLayer::update(GameSession& s, double dt) {
     if (p != s.player) v = glm::mix(st.vel, v, std::min(1.f, fdt * 12));
     if (glm::length(e->pos - st.lastPos) > 8) v = vec3(0);   // a teleport
     st.vel = v; st.lastPos = e->pos;
+    {   // the shield raised (eased), a dodge roll begun (sim/combat_rpg.h: the guest's own, or sent: net/server_sync.cpp)
+      const bool up = p->blockT > 0;
+      st.block += ((up ? 1.f : 0.f) - st.block) * std::min(1.f, fdt * (up ? 16.f : 8.f));
+      if (p->dodgeT > st.lastDodge + 0.05f) { st.rollU = 0.0001f; st.rollYaw = p->dodgeYaw; st.rollBack = std::fabs(wrapAngle(p->dodgeYaw - p->yaw)) > 2.0f; }
+      st.lastDodge = p->dodgeT;
+      if (st.rollU > 0 && (st.rollU += fdt / 0.40f) >= 1) st.rollU = 0;   // (DODGE_TIME)
+      if (!devPose.empty() && p == s.player && (devPose == "roll" || devPose == "rollback")) {
+        if (st.rollU <= 0) { st.rollU = 0.0001f; st.rollBack = devPose == "rollback"; st.rollYaw = p->yaw + (st.rollBack ? PI : 0.f); }
+        static const float devU = [] { const char* v = std::getenv("DQ_DEV_ROLLU"); return v ? (float)std::atof(v) : 0.f; }();   // (held at one point of it)
+        if (devU > 0) { st.rollU = devU; st.rollYaw = p->yaw + (st.rollBack ? PI : 0.f); }
+      }
+    }
     if (!devPose.empty() && p == s.player) {   // DQ_DEV_POSE: walk / run look for the screenshots
       if (devPose == "walk" || devPose == "run" || devPose == "sneak") v = vec3(0, 0, -(devPose == "run" ? 5.6f : devPose == "sneak" ? 1.3f : 4.3f));
       if (devPose == "run") p->sprinting = true;
@@ -547,6 +584,12 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   ps.swimPh = st.swimPh; ps.swimMv = std::min(1.f, std::hypot(st.vel.x, st.vel.z) / 2.2f);
   ps.crawlPh = st.crawlPh; ps.crawlMv = std::min(1.f, std::hypot(st.vel.x, st.vel.z) / 0.8f);
   ps.hasBodyYaw = true; ps.bodyYaw = st.bodyYaw + devTurn; ps.headTurn = wrapAngle(p.yaw - st.bodyYaw); ps.legTurn = st.legTurn;
+  // the shield up, a dodge roll (sim/combat_rpg.h): the roll turns the body the way it goes (back to it on a step back)
+  ps.block = st.block; ps.blockMain = isShieldItem(wear.held);
+  if (st.rollU > 0 && !fp && !p.dead && !p.riding && !p.swimming) {
+    ps.roll = st.rollU; ps.rollBack = st.rollBack;
+    ps.bodyYaw = st.rollYaw + (st.rollBack ? PI : 0.f) + devTurn; ps.headTurn = 0; ps.legTurn = 0; ps.air = false;
+  }
   ps.accLean = p.onGround ? st.accLean : 0; ps.turnLean = st.turnLean;
   ps.idleT = st.idleT; ps.seed = p.id * 7919u + (u32)std::hash<std::string>()(p.name); ps.footL = st.footL; ps.footR = st.footR;
   if (p.flying && !p.riding) { ps.fly = true; ps.flySpeed = std::min(1.f, std::hypot(st.vel.x, st.vel.z) / 14); ps.flyVy = st.vel.y; ps.air = false; ps.lean = 0.85f * ps.flySpeed; }
@@ -563,6 +606,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
     if (devPose == "hurt") ps.hurt = std::fmod((float)time, 1.2f) + 0.0001f;
     if (devPose == "die") ps.deathT = std::fmod((float)time, 2.f) + 0.0001f;
     if (devPose == "block") { ps.block = 1; ps.off = true; }
+    if (devPose == "blockmain") { ps.block = 1; ps.blockMain = true; }
     if (devPose == "xbow") { ps.xbowCharge = std::fmod((float)time * 0.8f, 1.f) + 0.0001f; ps.held = true; }
     if (devPose == "xbowaim") { ps.xbowAim = true; ps.held = true; }
     if (devPose == "trident") { ps.throwCharge = std::min(1.f, std::fmod((float)time, 2.f)) + 0.0001f; ps.held = true; }
@@ -851,8 +895,10 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     bool bowDraw = ps.bow > 0 && wear.held.rfind("bow", 0) == 0;
     if (bowDraw) drawnBow(R, light, tint, wear.heldGlint);
     else if (ps.scope && wear.held == "spyglass") spyglassAtEye(R.part[CP_HEAD], light, tint);
+    else if (isShieldItem(wear.held)) shieldInHand(R, CP_ARMR_D, wear.held, 1.f, ps.blockMain ? ps.block : 0.f, light, tint, wear.heldGlint);
     else if (!wear.held.empty()) heldInHand(R.part[CP_ARMR_D], wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel);
-    if (!wear.off.empty() && !bowDraw) heldInHand(R.part[CP_ARML_D], wear.off, -1.f, light, tint, wear.offGlint);
+    if (!wear.off.empty() && !bowDraw && isShieldItem(wear.off)) shieldInHand(R, CP_ARML_D, wear.off, -1.f, ps.blockMain ? 0.f : ps.block, light, tint, wear.offGlint);
+    else if (!wear.off.empty() && !bowDraw) heldInHand(R.part[CP_ARML_D], wear.off, -1.f, light, tint, wear.offGlint);
   }
   // ---- the journal (render/book_model.h): on the belt at the left hip, or held open before them in both hands ----
   if (!o.headOnly && o.detail) {

@@ -539,6 +539,11 @@ void NetClient::applyEntities(const json& m) {
       }
       p->bookFlip = (u8)s.value("bf", (int)p->bookFlip); p->bookDir = (i8)(s.value("bd", 1) < 0 ? -1 : 1);
       p->eatT = clampv(s.value("et", 0.f), 0.f, 1.f); p->eatId = p->eatT > 0 ? s.value("ei", std::string()) : std::string();
+      if (p != me) {   // their shield, roll and parry (sim/combat_rpg.h): ours are our own game's
+        p->blockT = s.value("sb", 0.f); p->parryFlash = s.value("py", 0.f);
+        p->dodgeT = s.value("dg", 0.f);   // (render/char_layer.cpp plays the roll through from its start)
+        if (p->dodgeT > 0) p->dodgeYaw = s.value("dy", p->dodgeYaw);
+      }
     }
   }
   if (m.contains("g")) for (auto& id : m["g"]) if (Entity* e = L.entity(id.get<u32>())) if (e->ghost) e->removed = true;

@@ -83,6 +83,9 @@ json entitySnapshot(const Entity& e) {
     if (p->stationKind >= 0) { s["wk"] = p->stationKind; s["wa"] = json::array({r3(p->workAt.x), r3(p->workAt.y), r3(p->workAt.z)}); s["wt"] = p->workTap; }   // working a station   // what's on their open book's pages
     if (p->activity) { s["ac"] = p->activity; if (p->typeRate > 0) s["tr"] = r3(p->typeRate); s["bf"] = p->bookFlip; s["bd"] = p->bookDir; }   // what they're up to
     if (p->eatT > 0) { s["et"] = r3(p->eatT); if (!p->eatId.empty()) s["ei"] = p->eatId; }   // a bite in progress (the food bitten down in their hand)
+    if (p->blockT > 0) s["sb"] = r3(p->blockT);   // their shield up, their roll, a parry's knock (sim/combat_rpg.h; render/char_poses.cpp)
+    if (p->dodgeT > 0) { s["dg"] = r3(p->dodgeT); s["dy"] = r3(p->dodgeYaw); }
+    if (p->parryFlash > 0) s["py"] = r3(p->parryFlash);   // ("bk" is their back slot, "pf" their flags)
   }
   // a creature's look and state, in the original's own mob snapshot (netsync.js netSnap: sim/creature.cpp Creature::snap)
   // less what the entity snapshot already has: size, coat, held things, what it's doing, pets and riders, lost limbs

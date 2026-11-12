@@ -9,7 +9,7 @@ enum : u32 {
   K_SNEAK = 1u << 0, K_SIT = 1u << 1, K_SLEEP = 1u << 2, K_SWIM = 1u << 3, K_CRAWL = 1u << 4, K_HANG = 1u << 5, K_LADDER = 1u << 6,
   K_FLY = 1u << 7, K_GLIDE = 1u << 8, K_PADDLE = 1u << 9, K_CARRY = 1u << 10, K_EAT = 1u << 11, K_BOW = 1u << 12, K_SCOPE = 1u << 13,
   K_AIR = 1u << 14, K_DEAD = 1u << 15, K_SPRINT = 1u << 16, K_MAP = 1u << 17, K_CAST = 1u << 18, K_BLOCK = 1u << 19, K_XBOW = 1u << 20,
-  K_THROW = 1u << 21, K_SPEAR = 1u << 22, K_HELD = 1u << 23, K_FP = 1u << 24, K_DRINK = 1u << 25,
+  K_THROW = 1u << 21, K_SPEAR = 1u << 22, K_HELD = 1u << 23, K_FP = 1u << 24, K_DRINK = 1u << 25, K_ROLL = 1u << 26,
 };
 // a rotation's polar part (the nearest rotation): the frames carry a people's stature as a squash, so not pure rotations
 glm::mat3 polar(glm::mat3 m) {
@@ -29,13 +29,13 @@ u32 charStateKey(const CharPose& p) {
   if (p.bow > 0) k |= K_BOW; if (p.scope) k |= K_SCOPE; if (p.air) k |= K_AIR; if (p.deathT > 0) k |= K_DEAD; if (p.sprint) k |= K_SPRINT;
   if (p.mapMain || p.mapOff) k |= K_MAP; if (p.castWind > 0) k |= K_CAST; if (p.block > 0) k |= K_BLOCK;
   if (p.xbowCharge > 0 || p.xbowAim) k |= K_XBOW; if (p.throwCharge > 0) k |= K_THROW; if (p.spearCharge > 0) k |= K_SPEAR;
-  if (p.held) k |= K_HELD; if (p.fp) k |= K_FP;
+  if (p.held) k |= K_HELD; if (p.fp) k |= K_FP; if (p.roll > 0) k |= K_ROLL;
   return k;
 }
 
 float charBlendDuration(u32 from, u32 to) {
   const u32 ch = from ^ to;
-  if (ch & K_FP) return 0;
+  if (ch & (K_FP | K_ROLL)) return 0;   // (a roll goes over in 0.4 s: a glide into or out of it would turn the wrong way)
   if (ch & (K_SWIM | K_SLEEP | K_CRAWL | K_GLIDE)) return 0.32f;    // the whole body turning over
   if (ch & (K_SIT | K_HANG | K_LADDER | K_FLY | K_PADDLE | K_DEAD)) return 0.24f;
   if (ch & ~(K_AIR | K_SPRINT | K_HELD)) return 0.18f;               // the arms: eating, a bow, a shield...
