@@ -1,5 +1,7 @@
 # DokuQuest — session handoff (2026-11-02, night)
 
+**Newest: `docs/HANDOFF_2026-11-12.md`** (combat moves, animation, immersive first person; where it stands and what's left).
+
 Start here in a new session. Read this file, `CLAUDE.md` (the code map), and only the files a task needs.
 The full feature list is `docs/MASTER_PLAN.md` (the user's master doc, V2); the BTA detail is `docs/BTA_GAP.md`; the
 Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`. Third-party credits: `docs/CREDITS.md` (Horizon MIT; Cubyz and
