@@ -371,14 +371,15 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       if (!fpGuardFrames(*p, side < 0, std::string(), G, r)) return;
       // carried, the eye sits right over that arm, so the view holds it a little out and turned so you see its back, the
       // forearm through the straps (eased away as it rises)
-      static float FI[4] = {0.2f, -0.06f, 0.05f, 0.55f}; static bool fil = false;   // tuning aid: DQ_DEV_FPSHIELD="dx,dy,dz,yaw" (added)
+      static float FI[4] = {0.7f, -0.14f, 0.05f, 0.8f}; static bool fil = false;   // tuning aid: DQ_DEV_FPSHIELD="dx,dy,dz,yaw" (added)
       if (!fil) { fil = true; if (const char* v = std::getenv("DQ_DEV_FPSHIELD")) { std::sscanf(v, "%f,%f,%f,%f", &FI[0], &FI[1], &FI[2], &FI[3]); } }
       const float lo = 1 - r;
       mat4 m = glm::translate(mat4(1), vec3((side > 0 ? bx : -bx * 0.6f) + side * FI[0] * lo, by - (side > 0 ? eqMain : eq) * 0.35f + FI[1] * lo +
                                              (side < 0 ? std::sin((float)time * 1.3f) * 0.004f : 0.f), knock * 0.06f + FI[2] * lo));
       if (FI[3] != 0) m = glm::rotate(m, side * FI[3] * lo, vec3(0, 1, 0));
       if (knock > 0) m = glm::rotate(m, knock * 0.12f, vec3(1, 0, 0));   // (a parry knocks it back)
-      drawFpLimb(*p, G.forePart, m * G.fore, L);   // (your own forearm through the straps, as third person has it; the upper arm is behind the eye)
+      drawFpLimb(*p, G.upperPart, m * G.upper, L);   // your own arm, whole from the shoulder (as third person has it)
+      drawFpLimb(*p, G.forePart, m * G.fore, L);     // and the forearm through the straps
       m = m * G.shield;
       if (im.ready()) VR.draw(im.gl, m * im.matrix(), L, vec4(0), itemGlints(stack) ? 1.f : 0.f);
       if (itemHook && im.ready()) over.push_back({stack, m});

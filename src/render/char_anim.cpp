@@ -530,10 +530,10 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
     base = glm::translate(base, vec3(0, 2.3f * CHAR_PX, 0.5f)); base = glm::rotate(base, -PI / 2, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0));
   }
   if (pose.sleep && pose.bed < 0) { base = glm::rotate(base, PI, vec3(0, 1, 0)); base = glm::translate(base, vec3(0, 0.3f, 0)); base = glm::rotate(base, PI / 2, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0)); }
-  // an attack move in first person is the third-person body exactly (the arms on their shoulders doing the cut): the
-  // first-person settling below eases away while it shows
+  // an attack move in first person is the third-person body's twist and arms (on their shoulders doing the cut): the
+  // first-person damping below eases away while it shows (the body stays just behind the eyes)
   const float fpK = pose.fp && pose.bed < 0 ? 1 - attackWeight(pose) : 0.f;
-  if (pose.fp && pose.bed < 0) base = glm::translate(base, vec3(0, 0, 0.25f * fpK));   // FP_BODY: just behind the eyes (in bed the view is the head's own: client/play.cpp)
+  if (pose.fp && pose.bed < 0) base = glm::translate(base, vec3(0, 0, 0.25f));   // FP_BODY: just behind the eyes (in bed the view is the head's own: client/play.cpp); kept in a swing (else looking down you look into your own neck)
   CharAngles A = charAnimate(pose);
   R.toolR = A.toolR; R.toolL = A.toolL;
   if (pose.fp && pose.bed < 0) {
