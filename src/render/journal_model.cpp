@@ -145,6 +145,14 @@ void drawJournalLeaf(ContentDraw& cd, const mat4& frame, float w, float h, float
   const float lift = g.z(0) + h * 0.004f;                      // (just over the pages)
   const float eps = h * 0.0025f;
   vec3 P(0, 0, lift);
+  // (never under the pages it lies on: in someone's hands the halves rise from the spine, and a leaf just lifting or just
+  // landing would sink into them, the page under it showing through)
+  auto over = [&](vec3 V) {   // (each half is tipped up by tilt about the spine: its surface in this frame)
+    const float s = std::min(1.f, std::fabs(V.x) / hw);
+    const float pz = g.z(s) * std::cos(g.tilt) + s * hw * std::sin(g.tilt) + h * 0.004f;
+    if (V.z < pz) V.z = pz;
+    return V;
+  };
   for (int i = 0; i < STRIPS; i++) {
     const float s0 = (float)i / STRIPS, s1 = (float)(i + 1) / STRIPS;
     const float a = std::max(0.f, phi - curl * (s0 + s1) * 0.5f);
@@ -155,10 +163,10 @@ void drawJournalLeaf(ContentDraw& cd, const mat4& frame, float w, float h, float
     // the face (the old page, up as it starts) or the back (the new one, up as it lands): whichever faces the reader
     if (std::cos(a) >= 0) {
       const vec4 sp = o.spread; const float du = sp.z - sp.x;
-      strip(cd, o, frame, P + nrm * eps, Q + nrm * eps, -hh, hh, sp.x + du * (0.5f + sg * s0 * 0.5f), sp.x + du * (0.5f + sg * s1 * 0.5f), sp.y, sp.w, light, lit);
+      strip(cd, o, frame, over(P) + nrm * eps, over(Q) + nrm * eps, -hh, hh, sp.x + du * (0.5f + sg * s0 * 0.5f), sp.x + du * (0.5f + sg * s1 * 0.5f), sp.y, sp.w, light, lit);
     } else {
       const vec4 sp = n.spread; const float du = sp.z - sp.x;
-      strip(cd, n, frame, P - nrm * eps, Q - nrm * eps, -hh, hh, sp.x + du * (0.5f - sg * s0 * 0.5f), sp.x + du * (0.5f - sg * s1 * 0.5f), sp.y, sp.w, light, lit);
+      strip(cd, n, frame, over(P) - nrm * eps, over(Q) - nrm * eps, -hh, hh, sp.x + du * (0.5f - sg * s0 * 0.5f), sp.x + du * (0.5f - sg * s1 * 0.5f), sp.y, sp.w, light, lit);
     }
     P = Q;
   }

@@ -85,18 +85,21 @@ float st0yaw(const CharPose& ps) { return ps.hasBodyYaw && !ps.fp ? ps.bodyYaw :
 // held compasses and clocks in the bodies being drawn: their live dial goes on after the voxel pass (null = nobody is collecting)
 struct Dial { std::string id; mat4 m; vec2 light; };
 // the open books held in the bodies being drawn, the picture of their pages (Player::bookPic) to go on after the voxel pass
-struct BookPage { mat4 M; std::string pic, lay; u64 key; vec2 light; float w, h, bend; };
+// (leaf 0..1: a page turning over, as they turned it — Player::bookFlip — dir its way, flipAt when it lifted)
+struct BookPage { mat4 M; std::string pic, lay; u64 key; vec2 light; float w, h, bend; float leaf = -1; int dir = 1; double flipAt = -10; };
 std::vector<BookPage> g_bookPages;
-GLuint bookPicTexture(u64 key, const std::string& pic) {
-  struct T { GLuint tex = 0; size_t hash = 0; };
-  static auto& cache = *new std::unordered_map<u64, T>();
-  T& t = cache[key];
+// a player's book picture, and the two before it (newest first, each with when it came): the page turning over shows
+// the one they had when it lifted. (A menu switch can send two pictures in a turn: the first caught mid-change.)
+struct BookPicTex { struct Pic { GLuint tex = 0; std::string lay; double at = -10; }; Pic h[3]; size_t hash = 0; };
+BookPicTex& bookPicTex(u64 key, const std::string& pic, const std::string& lay, double now) {
+  static auto& cache = *new std::unordered_map<u64, BookPicTex>();
+  BookPicTex& t = cache[key];
   const size_t h = std::hash<std::string>()(pic);
-  if (t.tex && t.hash == h) return t.tex;
+  if (t.h[0].tex && t.hash == h) { t.h[0].lay = lay; return t; }
   const std::vector<u8> jpg = base64Decode(pic);
   int w = 0, hh = 0, n = 0;
   u8* px = jpg.empty() ? nullptr : stbi_load_from_memory(jpg.data(), (int)jpg.size(), &w, &hh, &n, 4);
-  if (!px) return t.tex;
+  if (!px) return t;
   // (the key colour round the book, cut away: the ribbons' swallowtails and the air about them)
   // (the picture is squeezed: the key bleeds a pixel or two into what's next to it — those go too, and nothing pink is left)
   std::vector<u8> cut((size_t)w * hh, 0);
@@ -110,10 +113,11 @@ GLuint bookPicTexture(u64 key, const std::string& pic) {
     }
     if (near) q[3] = 0;
   }
-  if (t.tex) glDeleteTextures(1, &t.tex);
-  t.tex = makeTexture2D(w, hh, px, false, false, false); t.hash = h;
+  if (t.h[2].tex) glDeleteTextures(1, &t.h[2].tex);
+  t.h[2] = std::move(t.h[1]); t.h[1] = std::move(t.h[0]);
+  t.h[0] = {makeTexture2D(w, hh, px, false, false, false), lay, now}; t.hash = h;
   stbi_image_free(px);
-  return t.tex;
+  return t;
 }
 std::vector<Dial>* g_dials = nullptr;
 // skins.js held(): an item in a fist (fore = the forearm's frame, model pixels about the elbow; side -1 = the left hand)
@@ -427,9 +431,22 @@ void CharacterLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
     ContentDraw& cd = contentDraw();
     if (cd.begin(f, f.cam.viewProj)) {
       for (auto& b : g_bookPages) {
-        JournalPic jp; jp.tex = bookPicTexture(b.key, b.pic);
-        journalLayoutParse(b.lay, jp);
-        drawJournalPages(cd, b.M, b.w, b.h, b.bend, jp, f.time, b.light, true);
+        BookPicTex& bt = bookPicTex(b.key, b.pic, b.lay, f.time);
+        JournalPic jp; jp.tex = bt.h[0].tex;
+        journalLayoutParse(bt.h[0].lay, jp);
+        // a page turning over (as in your own hands, render/item_layers.cpp): its face the pages as they were when it
+        // lifted (the newest picture that came before the turn: one that came with it is already the new page), its back
+        // the new ones (until the new picture comes, the same page both sides)
+        const bool turning = b.leaf >= 0 && b.leaf <= 1;
+        JournalPic old;
+        if (turning) {
+          const BookPicTex::Pic* was = nullptr;
+          for (const auto& q : bt.h) if (q.tex) { was = &q; if (q.at < b.flipAt - 0.05) break; }   // (else the oldest kept)
+          old.tex = was->tex;
+          journalLayoutParse(was->lay, old);
+        }
+        drawJournalPages(cd, b.M, b.w, b.h, b.bend, jp, f.time, b.light, true, turning ? &old : nullptr, b.dir);
+        if (turning) drawJournalLeaf(cd, b.M, b.w, b.h, b.bend, old, jp, b.leaf, b.dir, b.light, true);
       }
       cd.end();
     }
@@ -865,7 +882,8 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
         const float jw = 0.75f * sc * 1.25f, jh = jw * (180.f / 292.f), bend = 1.f;
         mat4 J(1); J[0] = vec4(xb, 0); J[1] = vec4(yb, 0); J[2] = vec4(zb, 0); J[3] = vec4(c - zb * (jh * 0.03f), 1);
         drawJournalBody(VR, J, jw, jh, bend, light, false);
-        g_bookPages.push_back({J, *o.bookPic, o.bookLay ? *o.bookLay : std::string(), o.bookKey, vec2(light.sky, light.block), jw, jh, bend});   // (drawn after the voxels)
+        g_bookPages.push_back({J, *o.bookPic, o.bookLay ? *o.bookLay : std::string(), o.bookKey, vec2(light.sky, light.block), jw, jh, bend,
+                               o.bookLeaf, o.bookDir, o.time - std::max(0.f, o.bookLeaf) * 0.45});   // (drawn after the voxels)
       }
     }
   }
