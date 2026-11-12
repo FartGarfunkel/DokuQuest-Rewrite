@@ -3,6 +3,7 @@
 // render/char_layer.cpp — players drawn as voxel characters (render/skins.js avatarDraws, game/anim.js,
 // game/capes.js, game/carried.js, game/charparts.js, render/gear3d.js gearDraws).
 #include "ui/cinematic.h"
+#include "sim/attack_moves.h"
 #include "render/book_model.h"
 #include "render/journal_model.h"
 #include "ui/book_ui.h"
@@ -814,7 +815,10 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   if (ps.sit) base = glm::translate(base, vec3(0, -0.45f, 0));
   // continuous amounts (a station's crouch is a sneak outright)
   ps.runAmt = st.runAmt; ps.sneakAmt = ps.sneak && !p.sneaking ? 1.f : st.sneakAmt; ps.hurtDir = st.hurtDir;
-  if (st.swingU > 0 && ps.armed && !isShieldItem(wear.held) && !p.swinging) { ps.swingKind = (u8)(1 + st.swingN); ps.swing = st.swingU; }
+  if (p.atkMove && p.atkT < attackMove(p.atkMove).len) {   // an attack move (sim/attack_moves.h, the rules' own clock): drawn from its keys, the body turned to the blow
+    ps.atkMove = p.atkMove; ps.atkT = p.atkT; ps.swing = 0; ps.swingKind = 0;
+    if (!fp) { ps.bodyYaw = p.atkYaw; ps.hasBodyYaw = true; }
+  } else if (st.swingU > 0 && ps.armed && !isShieldItem(wear.held) && !p.swinging) { ps.swingKind = (u8)(1 + st.swingN); ps.swing = st.swingU; }
   CharDrawOpts o;
   o.light = VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f};
   o.tint = p.hurtTime > 0 ? vec4(1, 0.15f, 0.1f, 0.4f) : vec4(0);
@@ -1038,9 +1042,9 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     if (bowDraw) drawnBow(R, light, tint, wear.heldGlint);
     else if (ps.scope && wear.held == "spyglass") spyglassAtEye(R.part[CP_HEAD], light, tint);
     else if (isShieldItem(wear.held)) shieldInHand(R, CP_ARMR_D, wear.held, 1.f, ps.blockMain ? ps.block : 0.f, light, tint, wear.heldGlint);
-    else if (!wear.held.empty()) heldInHand(R.part[CP_ARMR_D], wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel);
+    else if (!wear.held.empty()) heldInHand(gripTurn(R.part[CP_ARMR_D], R.toolR), wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel);
     if (!wear.off.empty() && !bowDraw && isShieldItem(wear.off)) shieldInHand(R, CP_ARML_D, wear.off, -1.f, ps.blockMain ? 0.f : ps.block, light, tint, wear.offGlint);
-    else if (!wear.off.empty() && !bowDraw) heldInHand(R.part[CP_ARML_D], wear.off, -1.f, light, tint, wear.offGlint);
+    else if (!wear.off.empty() && !bowDraw) heldInHand(gripTurn(R.part[CP_ARML_D], R.toolL), wear.off, -1.f, light, tint, wear.offGlint);
   }
   // ---- the journal (render/book_model.h): on the belt at the left hip, or held open before them in both hands ----
   if (!o.headOnly && o.detail) {

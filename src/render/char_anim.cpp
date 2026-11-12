@@ -283,7 +283,8 @@ CharAngles charAnimate(const CharPose& pose) {
   // swinging a tool: Minecraft's attack swing, a quick chop that eases out, the body twisting with it; a weapon cuts its
   // combo instead (weaponSwing: Epic Fight's sword chain, measured, our own keys; render/char_layer.cpp runs its 0.5 s clock)
   float at = pose.swing;
-  if (at > 0 && pose.swingKind > 0) weaponSwing(A, pose);
+  if (pose.atkMove) attackPose(A, pose);   // an attack move (sim/attack_moves.h) drawn from its fitted keys, in step with its hits
+  else if (at > 0 && pose.swingKind > 0) weaponSwing(A, pose);
   else if (at > 0) {
     float tw = std::sin(std::sqrt(at) * TAU) * 0.2f;
     float f = 1 - at; f *= f; f *= f; f = 1 - f;
@@ -531,6 +532,7 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
   if (pose.sleep && pose.bed < 0) { base = glm::rotate(base, PI, vec3(0, 1, 0)); base = glm::translate(base, vec3(0, 0.3f, 0)); base = glm::rotate(base, PI / 2, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0)); }
   if (pose.fp && pose.bed < 0) base = glm::translate(base, vec3(0, 0, 0.25f));   // FP_BODY: just behind the eyes (in bed the view is the head's own: client/play.cpp)
   CharAngles A = charAnimate(pose);
+  R.toolR = A.toolR; R.toolL = A.toolL;
   if (pose.fp && pose.bed < 0) { A.body.x *= 0.25f; A.body.y *= 0.5f; A.armL = vec3(A.armL.x * 0.45f, A.armL.y, A.armL.z - 0.06f); A.foreL.x *= 0.5f; }
   R.fpTorso = pose.fp && !pose.swim && !pose.crawl && (!pose.sleep || pose.bed >= 0) && pose.deathT <= 0;
   // the body shape: leg length lifts everything above the hips, build widens, the head its own size
