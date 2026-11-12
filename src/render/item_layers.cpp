@@ -405,30 +405,6 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       if (itemHook && im.ready()) over.push_back({stack, m});
       return;
     }
-    // the weapon on guard (a shield up in the other hand): drawn back over the shoulder as in third person
-    // (render/char_layer.cpp fpGuardFrames), eased in and out with the shield
-    float gk = 0; mat4 gItem(1);
-    if (side > 0 && !bowItem && !rod) {
-      const bool offSh = !p->offhand.empty() && !p->offhand[0].empty() && (p->offhand[0].id == "shield" || (p->offhand[0].def() && p->offhand[0].def()->has("shield")));
-      static float guard = 0; static double gt = -1;
-      const float gdt = gt < 0 ? 0.f : (float)std::clamp(f.time - gt, 0.0, 0.05); gt = f.time;
-      const bool on = offSh && p->blockT > 0 && swing <= 0;
-      guard += ((on ? 1.f : 0.f) - guard) * std::min(1.f, gdt * (on ? 16.f : 9.f));
-      FpGuard G;
-      if (guard > 0.001f && fpGuardFrames(*p, true, stack.id, G) && G.weapon) {
-        gk = guard * guard * (3 - 2 * guard);
-        // the blade as third person holds it (back and up over the shoulder), the fist brought in to the right of the view
-        // and the forearm up from its lower corner (seen from behind, the third-person arm stood up the middle of the view)
-        static float W[6] = {0, 0, 0, 0, 0, 0}; static bool wl = false;   // tuning aid: DQ_DEV_FPGUARDW="fx,fy,fz,ax,ay,az" (added)
-        if (!wl) { wl = true; if (const char* v = std::getenv("DQ_DEV_FPGUARDW")) std::sscanf(v, "%f,%f,%f,%f,%f,%f", &W[0], &W[1], &W[2], &W[3], &W[4], &W[5]); }
-        const vec3 fist(0.36f + W[0], -0.14f + W[1], -0.92f + W[2]);
-        const vec3 Y = glm::normalize(vec3(0.75f + W[3], -0.75f + W[4], 0.35f + W[5]));
-        const vec3 Z = glm::normalize(vec3(0, 0, 1) - Y * Y.z), X = glm::cross(Y, Z);
-        mat4 ga(1); ga[0] = vec4(X, 0); ga[1] = vec4(Y, 0); ga[2] = vec4(Z, 0); ga[3] = vec4(fist + Y * 0.3f, 1);
-        am = blendMat(am, ga, gk);
-        gItem = glm::translate(mat4(1), fist - G.weaponFist) * G.weaponItem;
-      }
-    }
     if (side > 0 && swing > 0) am = mcSwing(am, 1, swing, false, s.breaking);
     if (side > 0 && wind > 0) { am = glm::translate(am, vec3(0, 0.1f * wind, 0.05f * wind)); am = glm::rotate(am, -0.75f * std::sin(wind * PI / 2), vec3(1, 0, 0)); }   // the rod comes back over the shoulder before the cast
     drawArm(am);
@@ -490,7 +466,6 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       if (glint) {}   // (an enchanted book: its cover's colour says it)
       return;
     }
-    if (gk > 0) m = blendMat(m, gItem, gk);   // (on guard: the blade where third person has it)
     VR.slosh = slosh;
     if (im.ready()) VR.draw(im.gl, m * im.matrix(), L, vec4(0), glint ? 1.f : 0.f);
     VR.slosh = vec2(0);

@@ -76,9 +76,9 @@ void charMorePoses(CharAngles& A, const CharPose& pose) {
   }
   // ---- a shield raised across the body in the off hand (the elbow out, the forearm across the chest) ----
   // ---- on guard behind a shield (Epic Fight's guard): turned shield side on, feet apart (the shield side's ahead, both
-  // knees bent), the shield arm out before the chest with the forearm across it; a weapon in the other hand drawn back
-  // over that shoulder, the elbow up, ready to come down over the shield. Written for the shield in the left hand and
-  // mirrored for the right (y and z of an arm flip side to side). Walking keeps its stride: the stance is for standing.
+  // knees bent), the shield arm out before the chest with the forearm across it. The weapon hand stays as it was (raised
+  // back over the shoulder it read as a wind-up, not a guard). Written for the shield in the left hand and mirrored for
+  // the right (y and z of an arm flip side to side). Walking keeps its stride: the stance is for standing.
   if (pose.block > 0) {
     const float k = ease(pose.block), sd = pose.blockMain ? -1.f : 1.f;
     static float G[16] = {0}; static bool gl = false;   // tuning aid: DQ_DEV_GUARD="turn,sx,sy,sz,sf,wx,wy,wz,wf,lead,back,knee,crouch,head" (added)
@@ -91,11 +91,6 @@ void charMorePoses(CharAngles& A, const CharPose& pose) {
     // the shield arm: up before the chest, the forearm bent across it
     const vec3 sh = side(vec3(0.80f + G[1] + pitch * 0.35f, -0.45f + G[2], 0.18f + G[3]), shLeft), sf(1.30f + G[4], 0, 0);
     if (shLeft) { A.armL = mixv(A.armL, sh, k); A.foreL = mixv(A.foreL, sf, k); } else { A.armR = mixv(A.armR, sh, k); A.foreR = mixv(A.foreR, sf, k); }
-    // the weapon arm (when it holds something): the elbow up and out, the blade back over the shoulder
-    if (shLeft ? pose.held : pose.off) {
-      const vec3 w = side(vec3(1.90f + G[5], G[6], -0.90f + G[7]), !shLeft), wf(0.90f + G[8], 0, 0);
-      if (shLeft) { A.armR = mixv(A.armR, w, k); A.foreR = mixv(A.foreR, wf, k); } else { A.armL = mixv(A.armL, w, k); A.foreL = mixv(A.foreL, wf, k); }
-    }
     // the feet: the shield side's leg ahead, the other back, both knees bent, sunk a little (standing only)
     const float still = k * (1 - clampf(pose.walkAmt * 1.6f, 0, 1));
     vec3& legF = shLeft ? A.legL : A.legR; vec3& legB = shLeft ? A.legR : A.legL;

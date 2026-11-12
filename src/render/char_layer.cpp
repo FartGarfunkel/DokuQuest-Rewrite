@@ -120,10 +120,6 @@ BookPicTex& bookPicTex(u64 key, const std::string& pic, const std::string& lay, 
   return t;
 }
 std::vector<Dial>* g_dials = nullptr;
-float guardCock() {   // on guard: how far the blade tips up in the fist, back over the shoulder (tuning aid: DQ_DEV_COCK)
-  static const float k = [] { const char* v = std::getenv("DQ_DEV_COCK"); return v ? (float)std::atof(v) : -0.7f; }();
-  return k;
-}
 bool isShieldItem(const std::string& id) {   // (sim/combat_rpg.cpp holdingShield)
   if (id == "shield") return true;
   const ItemDef* d = reg().item(id);
@@ -161,7 +157,7 @@ void shieldInHand(const CharRig& R, int part, const std::string& id, float side,
   voxelRenderer().draw(im.gl, shieldPlacement(R, part, side, k) * im.matrix(), light, tint, glint ? 1.f : 0.f);
 }
 // skins.js held(): an item in a fist (fore = the forearm's frame, model pixels about the elbow; side -1 = the left hand)
-void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0), const std::string& modelKey = "", float cock = 0) {
+void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0), const std::string& modelKey = "") {
   if (id == "fishing_rod") id = "fishing_rod_tp";
   const VoxelModel& im = itemModel(modelKey.empty() ? id : modelKey);
   if (!im.ready()) return;
@@ -169,7 +165,6 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
   static float T[3] = {0, 0, 0}; static bool tl = false;
   if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_TPHELD")) std::sscanf(v, "%f,%f,%f", &T[0], &T[1], &T[2]); }
   mat4 hm = glm::translate(fore, vec3(0, -6 + T[0], -1 + T[1]));
-  if (cock != 0) hm = glm::rotate(hm, cock, vec3(1, 0, 0));   // (on guard: the blade tipped up in the fist, back over the shoulder)
   if (im.kind == VoxelModel::Block) {
     hm = glm::translate(hm, vec3(0, 0, -1.5f));
     hm = glm::scale(hm, vec3(1 / CHAR_PX));
@@ -913,10 +908,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     if (bowDraw) drawnBow(R, light, tint, wear.heldGlint);
     else if (ps.scope && wear.held == "spyglass") spyglassAtEye(R.part[CP_HEAD], light, tint);
     else if (isShieldItem(wear.held)) shieldInHand(R, CP_ARMR_D, wear.held, 1.f, ps.blockMain ? ps.block : 0.f, light, tint, wear.heldGlint);
-    else if (!wear.held.empty()) {
-      const float cock = !ps.blockMain && isShieldItem(wear.off) ? ps.block * ps.block * (3 - 2 * ps.block) * guardCock() : 0.f;
-      heldInHand(R.part[CP_ARMR_D], wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel, cock);
-    }
+    else if (!wear.held.empty()) heldInHand(R.part[CP_ARMR_D], wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel);
     if (!wear.off.empty() && !bowDraw && isShieldItem(wear.off)) shieldInHand(R, CP_ARML_D, wear.off, -1.f, ps.blockMain ? 0.f : ps.block, light, tint, wear.offGlint);
     else if (!wear.off.empty() && !bowDraw) heldInHand(R.part[CP_ARML_D], wear.off, -1.f, light, tint, wear.offGlint);
   }
@@ -1053,7 +1045,7 @@ void drawFirstPersonSleeve(const mat4& arm, VoxelLight light) {
 }
 
 
-// first person on guard (render/item_layers.cpp): the third-person guard's own shield, its arm and the weapon, as the eye
+// first person on guard (render/item_layers.cpp): the third-person guard's own shield and its arm, as the eye
 // sees them — the same rig, the same sizes, so the two views match. View space: x right, y up, -z ahead, blocks.
 bool fpGuardFrames(const Player& p, bool shieldLeft, const std::string& weapon, FpGuard& out, float k) {
   const CharModel& M = charModel(*resolveCharacter(p.skin));
@@ -1071,18 +1063,10 @@ bool fpGuardFrames(const Player& p, bool shieldLeft, const std::string& weapon, 
   // fills the view; a step back shows what third person shows, the shield up before the chest, its top under the aim)
   const vec3 eye = vec3(hm[3]) + vec3(0, 0.10f + E[1], 0) + rh * E[0] + fh * (-0.55f + E[2]);
   const mat4 V = glm::transpose(mat4(vec4(rh, 0), vec4(0, 1, 0, 0), vec4(-fh, 0), vec4(0, 0, 0, 1))) * glm::translate(mat4(1), -eye);
-  const int sp = shieldLeft ? CP_ARML_D : CP_ARMR_D, wp = shieldLeft ? CP_ARMR_D : CP_ARML_D;
+  const int sp = shieldLeft ? CP_ARML_D : CP_ARMR_D;
   out.shield = V * shieldPlacement(R, sp, shieldLeft ? -1.f : 1.f, k);
   out.shieldFist = vec3(V * (R.part[sp] * vec4(0, -5, 0, 1)));
   out.shieldElbow = vec3(V * R.part[sp][3]);
-  out.weapon = !weapon.empty();
-  if (out.weapon) {
-    out.weaponFist = vec3(V * (R.part[wp] * vec4(0, -5, 0, 1)));
-    out.weaponElbow = vec3(V * R.part[wp][3]);
-    mat4 h = glm::translate(R.part[wp], vec3(0, -6, -1));
-    h = glm::rotate(h, guardCock(), vec3(1, 0, 0));
-    out.weaponItem = V * (glm::scale(h, vec3(1 / CHAR_PX)) * heldMat(weapon));
-  }
   return true;
 }
 } // namespace dq

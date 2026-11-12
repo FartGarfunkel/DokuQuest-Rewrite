@@ -127,8 +127,8 @@ int main(int argc, char** argv) {
     CharPose b = p; b.block = 1; b.off = true;
     const CharAngles B = charAnimate(b);
     CHECK(B.armL.x > 0.6f && B.foreL.x > 1.0f && B.body.y > 0.2f, "a shield raised across the body (the forearm across it, turned shield side on)");
-    CharPose bg = b; bg.held = true;
-    CHECK(charAnimate(bg).armR.x > 1.5f, "on guard, the weapon drawn back over the other shoulder");
+    CharPose bg = b; bg.held = true; CharPose hg = p; hg.held = true;
+    CHECK(glm::length(charAnimate(bg).armR - charAnimate(hg).armR) < 1e-4f, "on guard, the weapon hand stays as it was (no wind-up)");
     CharPose bm = p; bm.block = 1; bm.blockMain = true; bm.held = true;
     const CharAngles BM = charAnimate(bm);
     CHECK(std::fabs(BM.armR.x - B.armL.x) < 1e-4f && std::fabs(BM.armR.y + B.armL.y) < 1e-4f && BM.body.y < -0.2f, "a shield in the right hand: the same guard, mirrored");
