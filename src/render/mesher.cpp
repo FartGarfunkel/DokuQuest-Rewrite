@@ -349,16 +349,8 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
   const DoubleChestTiles* DC = T.hasFront ? doubleChestFor(faces[4]) : nullptr;
   int dcHalf = -1;
   if (DC) {
-    static const int FX[4] = {0, 1, 0, -1}, FZ[4] = {1, 0, -1, 0};
     const int fd = meta & 3;
-    // your right as you face its front: front (0,0,1) -> right (1,0,0), front (1,0,0) -> right (0,0,-1)
-    const int rgx = FZ[fd], rgz = -FX[fd];
-    auto same = [&](int dx, int dz) { return c.at(x + dx, y, z + dz) == id && (c.metaAt(x + dx, y, z + dz) & 3) == fd; };
-    const bool R1 = same(rgx, rgz), L1 = same(-rgx, -rgz);
-    if (R1 && L1) {   // (a row of three or more: pairs from the row's world position)
-      const int along = rgx ? x + c.wx0 : z + c.wz0, sgn = rgx ? rgx : rgz;
-      dcHalf = ((along * sgn) & 1) ? 1 : 0;
-    } else if (R1) dcHalf = 0; else if (L1) dcHalf = 1;
+    dcHalf = doubleChestHalf(fd, x + c.wx0, z + c.wz0, [&](int dx, int dz) { return c.at(x + dx, y, z + dz) == id && (c.metaAt(x + dx, y, z + dz) & 3) == fd; });
   }
   for (int f = 0; f < 6; f++) {
     const FaceDef& F = FACES[f];

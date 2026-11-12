@@ -8,6 +8,7 @@
 #include "client/app.h"
 #include "client/session.h"
 #include "assets/tileset.h"
+#include "assets/pack_models.h"
 #include "assets/voxel_paint.h"
 #include "core/registry.h"
 #include "core/item_glint.h"
@@ -35,7 +36,11 @@ const int FACING_FACE[4] = {4, 0, 5, 1};   // as in the mesher: meta & 3 -> the 
 struct ChestModels { VoxelModel base, lid; };
 
 // one part of the chest (rows y0..y1-1 of the cube), every voxel taking the tile pixel of the face it lies on
-void buildPart(VoxelModel& out, const BlockDef& b, int frontFace, int y0, int y1, bool inside) {
+// a large chest's half (DC, half 0/1: assets/pack_models.h) takes its front, back, lid top and underside and its inside
+// floor from the pack's large-chest pictures, so the open pair reads as one chest
+void buildPart(VoxelModel& out, const BlockDef& b, int frontFace, int y0, int y1, bool inside, const DoubleChestTiles* DC = nullptr, int half = -1, int facing = 0) {
+  static const int OPP[6] = {1, 0, 3, 2, 5, 4};
+  const bool dbl = DC && half >= 0;
   const TileSet& ts = app().tiles;
   VoxelGrid g(ivec3(32, y1 - y0, 32));
   const int S = ts.size;
@@ -44,11 +49,19 @@ void buildPart(VoxelModel& out, const BlockDef& b, int frontFace, int y0, int y1
     int d[6] = {31 - x, x, y1 - 1 - y, y - y0, 31 - z, z};
     int f = 2; for (int i : {0, 1, 4, 5, 3}) if (d[i] < d[f]) f = i;
     int tile = f == 2 ? b.faces[2] : f == 3 ? b.faces[3] : f == frontFace ? b.faces[4] : b.faces[0];
+    bool floor = false;
+    if (dbl) {
+      if (f == frontFace) tile = DC->front[half];
+      else if (f == OPP[frontFace]) tile = DC->back[half];
+      else if (f == 2) { floor = inside; tile = inside ? DC->floor[half][facing & 3] : DC->top[half][facing & 3]; }
+      else if (f == 3 && !inside) tile = DC->under[half][facing & 3];
+    }
     float u = f == 0 || f == 1 ? (f == 0 ? 1 - (z + 0.5f) / 32 : (z + 0.5f) / 32) : (f == 5 ? 1 - (x + 0.5f) / 32 : (x + 0.5f) / 32);
     float v = f == 2 || f == 3 ? (z + 0.5f) / 32 : 1 - (y + 0.5f) / 32;
     u32 c = tileVoxel(ts, tile, std::min(S - 1, (int)(u * S)), std::min(S - 1, (int)(v * S)));
     if (!c) c = voxRGBA(138, 90, 42);
-    if (inside && f == 2 && y == y1 - 1) {   // looking into the open chest: its dark floor, the boards' rim left light
+    if (floor && y == y1 - 1) c = voxShade(c, 0.7f);   // (the large chest's own inside, in the shade of its walls)
+    else if (inside && f == 2 && y == y1 - 1) {   // looking into the open chest: its dark floor, the boards' rim left light
       const bool rim = x < 2 || x > 29 || z < 2 || z > 29;
       if (!rim) c = voxShade(c, 0.32f);
     }
@@ -60,17 +73,18 @@ void buildPart(VoxelModel& out, const BlockDef& b, int frontFace, int y0, int y1
   out.size = g.size; out.kind = VoxelModel::Block; out.built = true; out.key = "chest_part";
 }
 
-ChestModels& modelsFor(BlockId id, int facing, int lidRow) {
+ChestModels& modelsFor(BlockId id, int facing, int lidRow, int half = -1) {
   static auto& cache = *new std::map<std::string, std::unique_ptr<ChestModels>>();
   const TileSet& ts = app().tiles;
-  std::string k = std::to_string(id) + "/" + std::to_string(facing) + "/" + std::to_string(lidRow) + "/" + ts.packName + "#" + std::to_string(ts.count);
+  std::string k = std::to_string(id) + "/" + std::to_string(facing) + "/" + std::to_string(lidRow) + "/" + std::to_string(half) + "/" + ts.packName + "#" + std::to_string(ts.count);
   auto it = cache.find(k);
   if (it != cache.end()) return *it->second;
   if (cache.size() > 24) cache.clear();
   auto m = std::make_unique<ChestModels>();
   const BlockDef& b = reg().block(id);
-  buildPart(m->base, b, FACING_FACE[facing & 3], 0, lidRow, true);
-  buildPart(m->lid, b, FACING_FACE[facing & 3], lidRow, 32, false);
+  const DoubleChestTiles* DC = half >= 0 ? doubleChestFor(b.faces[4]) : nullptr;
+  buildPart(m->base, b, FACING_FACE[facing & 3], 0, lidRow, true, DC, half, facing);
+  buildPart(m->lid, b, FACING_FACE[facing & 3], lidRow, 32, false, DC, half, facing);
   return *(cache[k] = std::move(m));
 }
 
@@ -152,7 +166,9 @@ public:
     static const vec3 FRONT[4] = {vec3(0, 0, 1), vec3(1, 0, 0), vec3(0, 0, -1), vec3(-1, 0, 0)};
     for (auto& [k, o] : open) {
       const ivec3 pos(std::get<0>(k), std::get<1>(k), std::get<2>(k));
-      ChestModels& cm = modelsFor(o.id, o.facing, o.lidRow);
+      const int half = reg().block(o.id).str("shape").empty() && doubleChestFor(reg().block(o.id).faces[4])
+        ? doubleChestHalf(o.facing, pos.x, pos.z, [&](int dx, int dz) { return w.getBlock(pos.x + dx, pos.y, pos.z + dz) == o.id && (w.getMeta(pos.x + dx, pos.y, pos.z + dz) & 3) == o.facing; }) : -1;
+      ChestModels& cm = modelsFor(o.id, o.facing, o.lidRow, half);
       if (!cm.base.ready()) continue;
       const vec3 rel = f.cam.rel(glm::dvec3(pos));
       if (!f.cam.frustum.sphere(rel + vec3(0.5f), 1.2f)) continue;

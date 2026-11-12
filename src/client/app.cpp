@@ -1,3 +1,4 @@
+#include "assets/pack_models.h"
 #include "client/app.h"
 #include "ui/book_ui.h"
 #include "render/gpu_select.h"
@@ -155,6 +156,7 @@ void App::reloadTiles() {
   addBuiltinTileAnims(tiles);   // render/tile_anim.h (before a pack replaces tiles)
   tiles.packName = applyResourcePack(tiles, settings.resourcePack);
   applyUserTiles(tiles);   // the Texture Studio's pictures, over any pack
+  paintChestTiles(tiles);  // painted chests and the party chest from the chest's own pictures (assets/pack_models.h)
   holidayTiles(tiles);     // December's wrapped chests
   buildWeatherSprites(tiles);   // render/weather_sprites.h: rain and snow from the pack, or drawn
   // ice you can see through like Minecraft's (about 60 % cover), whichever pack painted it
