@@ -676,6 +676,71 @@ bool jigsawTownTreeOff(const JigsawTown& J, int x, int z) {
   return J.board && std::abs(x - J.bx) <= 4 && std::abs(z - J.bz) <= 4;
 }
 
+// an armour stand the piece brought with it: not in a doorway, and facing into the room (the front is the other way from meta)
+static bool genDoorBeside(const SP& P, int x, int y, int z) {
+  for (int dy = 0; dy <= 1; dy++) for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) {
+    if (!dx && !dz) continue;
+    const BlockId id = P.get(x + dx, y + dy, z + dz);
+    if (id != NOBLOCK && id != AIR && reg().block(id).has("door")) return true;
+  }
+  return false;
+}
+static bool genFree(const SP& P, int x, int y, int z) {
+  if (!P.in(x, z) || y < 2 || y >= DIM_H - 1) return false;
+  const Registry& R = reg();
+  const BlockId a = P.get(x, y, z), b = P.get(x, y + 1, z), g = P.get(x, y - 1, z);
+  if (a == NOBLOCK || b == NOBLOCK || g == NOBLOCK) return false;
+  return (a == AIR || R.tReplaceable[a]) && (b == AIR || R.tReplaceable[b]) && R.tSolid[g] && R.tOpaque[g];
+}
+static int genIntoRoom(const SP& P, int x, int y, int z) {
+  const Registry& R = reg();
+  int best = 0, bn = -1;
+  for (int k = 0; k < 4; k++) {
+    int n = 0;
+    for (int i = 1; i <= 4; i++) {
+      const int nx = x + DIRX[k] * i, nz = z + DIRZ[k] * i;
+      if (!P.in(nx, nz)) break;
+      const BlockId a = P.get(nx, y, nz), b = P.get(nx, y + 1, nz);
+      if (a == NOBLOCK || b == NOBLOCK) break;
+      if (!(a == AIR || R.tReplaceable[a]) || !(b == AIR || R.tReplaceable[b])) break;
+      if (reg().block(a).has("door") || reg().block(b).has("door")) break;
+      n++;
+    }
+    if (n > bn) { bn = n; best = k; }
+  }
+  return best;
+}
+static void fixGeneratedStand(SP& P, int x, int y, int z) {
+  const BlockId STAND = bid("armor_stand");
+  if (STAND == NOBLOCK || STAND == AIR || P.get(x, y, z) != STAND) return;
+  int nx = x, ny = y, nz = z;
+  if (genDoorBeside(P, x, y, z)) {
+    bool found = false;
+    for (int pass = 0; pass < 2 && !found; pass++)
+      for (int d = 1; d <= 3 && !found; d++) for (int dz = -d; dz <= d && !found; dz++) for (int dx = -d; dx <= d && !found; dx++) {
+        if (std::max(std::abs(dx), std::abs(dz)) != d) continue;
+        for (int dy = -1; dy <= 1; dy++) {
+          const int cx = x + dx, cy = y + dy, cz = z + dz;
+          if (!genFree(P, cx, cy, cz) || genDoorBeside(P, cx, cy, cz)) continue;
+          bool wall = false;
+          for (int k = 0; k < 4; k++) {
+            const BlockId wl = P.get(cx + DIRX[k], cy, cz + DIRZ[k]);
+            if (wl != NOBLOCK && reg().tSolid[wl] && reg().tOpaque[wl] && !reg().block(wl).has("door")) wall = true;
+          }
+          if (pass == 0 && !wall) continue;
+          nx = cx; ny = cy; nz = cz; found = true; break;
+        }
+      }
+  }
+  const int face = (genIntoRoom(P, nx, ny, nz) + 2) & 3;
+  const int oldIdx = colIdx(x - P.bx, y, z - P.bz);
+  json ent = nullptr;
+  if (json* e = P.entity(oldIdx)) ent = *e;
+  if (nx != x || ny != y || nz != z) P.put(x, y, z, "air");
+  const int ni = P.putId(nx, ny, nz, STAND, (u8)face);
+  if (ent.is_object() && ni >= 0) P.setEntity(ni, ent);
+}
+
 void jigsawTownBuild(SP& P, const Town& v, const JigsawTown& J) {
   const VStyle& st = vstyle(v.style);
   const int bx = P.bx, bz = P.bz;
@@ -786,6 +851,23 @@ void jigsawTownBuild(SP& P, const Town& v, const JigsawTown& J) {
           const int n = (int)reg().block(id).num("container", 9); while ((int)items.size() < n) items.push_back(nullptr);
           P.setEntity(idx, json{{"type", "chest"}, {"items", items}});
         } else P.setEntity(idx, json{{"type", et}, {"items", items}});   // shelf, bookcase
+      }
+    }
+    {   // armour stands the piece brought: out of the doorway, facing into the room
+      const BlockId STAND = bid("armor_stand");
+      if (STAND != NOBLOCK && STAND != AIR) for (const VPBlock& k : p.blocks) {
+        if (p.states[k.s].id != STAND) continue;
+        auto [tx, tz] = vpTurn(p, q.r, k.x, k.z);
+        const int x = q.x0 + tx, z = q.z0 + tz;
+        if (!P.in(x, z)) continue;
+        int y;
+        if (p.terrain) {
+          int g = P.ground(x, z);
+          if (g < SEA_LEVEL && tLiquid(P.get(x, g + 1, z))) g = SEA_LEVEL;
+          y = g + k.y;
+        } else y = q.y0 + k.y;
+        if (y < 1 || y >= DIM_H - 1 || P.get(x, y, z) != STAND) continue;
+        fixGeneratedStand(P, x, y, z);
       }
     }
   }

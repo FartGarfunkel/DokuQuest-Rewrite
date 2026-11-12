@@ -95,7 +95,51 @@ bool spotBy(World& w, ivec3 work, int workF, int r, ivec3& out, int skip = 0) {
   }
   return false;
 }
-// an armour stand: not in a doorway; against a wall if any such cell is free, otherwise any open floor
+bool standSpot(World& w, ivec3 work, int workF, int r, ivec3& out);
+// an armour stand already in the world, within r of the workplace, not in a doorway (a generated fitting)
+bool findStand(World& w, ivec3 work, int r, ivec3& out) {
+  const BlockId id = B("armor_stand");
+  if (!id) return false;
+  bool got = false; int best = 1 << 30;
+  for (int dy = -1; dy <= 2; dy++) for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) {
+    const ivec3 c = work + ivec3(dx, dy, dz);
+    if (!w.isLoaded(c.x, c.y, c.z) || w.getBlock(c.x, c.y, c.z) != id || doorBeside(w, c.x, c.y, c.z)) continue;
+    const int d = std::abs(dx) + std::abs(dz) + (wallBeside(w, c.x, c.y, c.z) ? 0 : 8);
+    if (d < best) { best = d; out = c; got = true; }
+  }
+  return got;
+}
+// stands the building placed in the doorway: move them, keep what they wear, and turn every stand near the workplace into the room
+void tidyStands(World& w, ivec3 work, int workF, json& rec) {
+  const BlockId id = B("armor_stand");
+  if (!id) return;
+  ivec3 recAt{0}; bool hasRec = false;
+  if (rec.contains("stand") && rec["stand"].is_array() && rec["stand"].size() >= 3) {
+    recAt = ivec3(rec["stand"][0].get<int>(), rec["stand"][1].get<int>(), rec["stand"][2].get<int>());
+    hasRec = true;
+  }
+  std::vector<ivec3> bad;
+  for (int dy = -1; dy <= 2; dy++) for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) {
+    const ivec3 c = work + ivec3(dx, dy, dz);
+    if (!w.isLoaded(c.x, c.y, c.z) || w.getBlock(c.x, c.y, c.z) != id) continue;
+    if (doorBeside(w, c.x, c.y, c.z)) bad.push_back(c);
+    else {
+      const u8 face = (u8)((intoRoom(w, c) + 2) & 3);
+      if ((w.getMeta(c.x, c.y, c.z) & 3) != face) w.setBlock(c.x, c.y, c.z, id, face);
+    }
+  }
+  for (const ivec3& c : bad) {
+    ivec3 spot;
+    if (!standSpot(w, work, workF, 3, spot)) continue;
+    json ent = nullptr;
+    if (json* e = w.blockEntity(c.x, c.y, c.z)) ent = *e;
+    w.setBlockEntity(c.x, c.y, c.z, nullptr);
+    w.setBlock(c.x, c.y, c.z, AIR, 0);
+    w.setBlock(spot.x, spot.y, spot.z, id, (u8)((intoRoom(w, spot) + 2) & 3));
+    if (ent.is_object()) w.setBlockEntity(spot.x, spot.y, spot.z, ent);
+    if (hasRec && c == recAt) { rec["stand"] = {spot.x, spot.y, spot.z}; recAt = spot; }
+  }
+}
 bool standSpot(World& w, ivec3 work, int workF, int r, ivec3& out) {
   const ivec3 stand = work + ivec3(DIRX[workF & 3], 0, DIRZ[workF & 3]);
   for (int pass = 0; pass < 2; pass++)
@@ -158,6 +202,14 @@ bool piece(Level& lv, World& w, json& rec, const char* key, const char* block, i
   }
   int f = 0;
   if (stand) {
+    ivec3 existing;
+    if (findStand(w, work, 3, existing)) {   // a generated stand already in the room: use it, don't add another
+      at = existing;
+      const u8 face = (u8)((intoRoom(w, at) + 2) & 3);
+      if ((w.getMeta(at.x, at.y, at.z) & 3) != face) w.setBlock(at.x, at.y, at.z, id, face);
+      rec[key] = {at.x, at.y, at.z};
+      return true;
+    }
     if (!standSpot(w, work, workF, 3, at)) return false;
     f = (intoRoom(w, at) + 2) & 3;
   } else if (wall) {
@@ -388,6 +440,7 @@ OptMove npcJobWork(Level& lv, Creature& e, NpcMind& M, const Village& v, const V
   // ---- the smiths and the leatherworker: an armour stand dressed in their work; the rack
   if (job == "armorer" || job == "weaponsmith" || job == "toolsmith" || job == "leatherworker") {
     if (T > 0) { T -= dt; return std::nullopt; }
+    tidyStands(w, f.work, f.workF, rec);
     ivec3 sp; if (!piece(lv, w, rec, "stand", "armor_stand", f.work, f.workF, sp)) return std::nullopt;
     if (!atPiece(sp, mv)) return mv;
     static const char* MAT[] = {"iron", "chainmail", "gold", "diamond", "copper"};
