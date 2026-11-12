@@ -1,8 +1,8 @@
 // sim/villager_jobs.cpp — each trade's work shown in the world, round its workplace (in their working hours, before the
 // trade's ordinary chores: sim/villager_chores.cpp npcChore):
 //   fisherman     brings the catch to a barrel by the workplace and puts it in
-//   cartographer  walks out past the houses to look at the land, comes back, hangs a map in a frame by the table;
-//                 each trip a newer map takes its place
+//   cartographer  walks out past the houses to look at the land, comes back, hangs a real filled map
+//                 (tag.map -> PaperMap of the village, painted from loaded land, wider every third trip) in a frame;
 //   librarian     a book and quill on the lectern; writes in it (a page a visit) about the village's days, and when it's
 //                 full signs it and shelves it in the bookcase, and starts the next
 //   butcher       takes one of a pen's grown animals when the pen has plenty of that kind (meat and leather to the
@@ -16,6 +16,7 @@
 //   fletcher      a target set out before the workplace and a frame of arrows on the wall; shoots at the target
 // What they set out is remembered with the village (villageRec(...)["show"][i]) so it's the same pieces each day.
 #include "sim/villagers_internal.h"
+#include "sim/maps.h"
 #include "sim/creature.h"
 #include "sim/creature_entities.h"
 #include "sim/brewing.h"
@@ -148,8 +149,24 @@ OptMove npcJobWork(Level& lv, Creature& e, NpcMind& M, const Village& v, const V
     return Move{0, e.yaw};
   }
 
-  // ---- the cartographer: out to look at the land, back, a map in the frame
+  // ---- the cartographer: out to look at the land, back, a real map in the frame (tag.map -> PaperMap; the frame draws it)
   if (job == "cartographer") {
+    MapStore& maps = mapStore(lv);
+    auto survey = [&]() -> PaperMap* {
+      std::string id = rec.value("map", "");
+      PaperMap* m = id.empty() ? nullptr : maps.get(id);
+      if (!m) {
+        id = newId("vm");
+        m = maps.create(id, jsDimOf(e), (double)v.x + 0.5, (double)v.z + 0.5, 0);
+        rec["map"] = id;
+        rec["mc"] = 0;
+      }
+      int cursor = rec.value("mc", 0);
+      mapPaintLoaded(lv, *m, cursor, std::max(8, (int)(dt * 1600)));
+      rec["mc"] = cursor;
+      return m;
+    };
+    PaperMap* m = survey();
     int stage = rec.value("st", 0);
     if (stage == 0) {   // out
       if (!rec.contains("out")) { const float a = rnd01() * 6.2831853f; rec["out"] = {v.x + std::cos(a) * (v.r + 10), v.z + std::sin(a) * (v.r + 10)}; }
@@ -163,8 +180,21 @@ OptMove npcJobWork(Level& lv, Creature& e, NpcMind& M, const Village& v, const V
     ivec3 fp; if (!piece(lv, w, rec, "frame", "item_frame", f.work, f.workF, fp, true)) { rec["st"] = 0; return std::nullopt; }
     if (!atPiece(fp, mv)) return mv;
     const int n = rec.value("maps", 0) + 1; rec["maps"] = n;
-    ItemStack m("filled_map", 1); m.tag = json{{"name", "Map of " + v.name + " (" + std::to_string(n) + ")"}, {"scale", std::min(4, n / 3)}};
-    w.setBlockEntity(fp.x, fp.y, fp.z, {{"type", "frame"}, {"item", m.toJson()}, {"rot", 0}});
+    if (m && n % 3 == 0 && m->scale < MAP_MAX_SCALE && m->explored() > 0.08f) {
+      PaperMap* z = maps.zoomed(*m);   // twice the land; the old sheet stays, the frame takes the wider one
+      rec["map"] = z->id; rec["mc"] = 0;
+      int cursor = 0;
+      mapPaintLoaded(lv, *z, cursor, 400);
+      rec["mc"] = cursor;
+      m = z;
+    } else if (m) {
+      int cursor = rec.value("mc", 0);
+      mapPaintLoaded(lv, *m, cursor, 400);
+      rec["mc"] = cursor;
+    }
+    ItemStack stack("filled_map", 1);
+    stack.tag = json{{"map", m ? m->id : ""}, {"name", "Map of " + v.name + " (" + std::to_string(n) + ")"}};
+    w.setBlockEntity(fp.x, fp.y, fp.z, {{"type", "frame"}, {"item", stack.toJson()}, {"rot", 0}});
     lv.fx->sound("map_paper", vec3(fp) + vec3(0.5f), 10); e.swingT = 0.3f;
     npcSay(lv, e, n == 1 ? "There. Our corner of the world." : "A little more of the world on it.", 0.35f);
     rec["st"] = 0;

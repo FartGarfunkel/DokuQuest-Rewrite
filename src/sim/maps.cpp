@@ -212,6 +212,27 @@ void mapExplore(Level& lv, Player& p, PaperMap& m, int columns) {
     }
   }
 }
+int mapPaintLoaded(Level& lv, PaperMap& m, int& cursor, int budget) {
+  if (budget <= 0 || m.dim == JS_DEPTHS || m.dim == JS_POCKET) return 0;   // under a roof the floor isn't known without a walker
+  int realm, dim; mapWorldOf(m.dim, realm, dim);
+  World* wp = lv.worldIfOpen(realm);
+  if (!wp) return 0;
+  const int s = 1 << m.scale;
+  const u32 v0 = m.ver;
+  if (cursor < 0 || cursor >= MAP_PIX) cursor = 0;
+  int painted = 0;
+  for (int scanned = 0; painted < budget && scanned < MAP_PIX; scanned++, cursor++) {
+    if (cursor >= MAP_PIX) cursor = 0;
+    const int px = cursor % MAP_N, pz = cursor / MAP_N;
+    const int bx = m.x0 + px * s + (s >> 1), bz = m.z0 + pz * s + (s >> 1);
+    const Chunk* ch = wp->chunk(dim, bx >> 4, bz >> 4);
+    if (!ch) continue;
+    mapSample(m, pz * MAP_N + px, *ch, bx & 15, bz & 15, DIM_H - 1);
+    painted++;
+  }
+  if (m.ver != v0) mapStore(lv).dirty.insert(m.id);
+  return painted;
+}
 void mapsTick(Level& lv, double dt) {
   MapStore& st = mapStore(lv);
   for (Player* p : levelPlayers(lv)) {

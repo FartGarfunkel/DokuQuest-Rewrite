@@ -90,7 +90,8 @@ static const std::vector<std::string>* tradeRound(const std::string& job) {
     {"librarian", {"lectern", "books", "table"}}, {"cartographer", {"maps", "books", "lectern"}},
     {"cleric", {"brew", "tub", "books", "lectern"}}, {"mason", {"cutter", "forge", "table"}}, {"shepherd", {"loom", "stores"}},
     {"jeweller", {"grindstone", "smithing", "table"}}, {"merchant", {"stores", "shelf", "table"}},
-    {"fisherman", {"stores", "tub"}}, {"innkeeper", {"stores", "table", "shelf"}}};
+    {"fisherman", {"stores", "tub"}}, {"innkeeper", {"stores", "table", "shelf"}},
+    {"leatherworker", {"tub", "table", "stores", "stand"}}};
   auto it = R.find(job); return it == R.end() ? nullptr : &it->second;
 }
 
@@ -114,7 +115,7 @@ static void pieceRole(const VPPiece& p, std::string& type, std::string& job) {
   static const std::vector<std::pair<const char*, const char*>> J = {
     {"armorer", "armorer"}, {"weaponsmith", "weaponsmith"}, {"weapon_smith", "weaponsmith"}, {"tool_smith", "toolsmith"}, {"toolsmith", "toolsmith"}, {"butcher", "butcher"},
     {"fletcher", "fletcher"}, {"shepherd", "shepherd"}, {"mason", "mason"}, {"cartographer", "cartographer"}, {"library", "librarian"},
-    {"fisher", "fisherman"}, {"tannery", "merchant"}, {"jeweller", "jeweller"}, {"bakery", "baker"}, {"tavern", "innkeeper"},
+    {"fisher", "fisherman"}, {"tannery", "leatherworker"}, {"jeweller", "jeweller"}, {"bakery", "baker"}, {"tavern", "innkeeper"},
     {"sawmill", "lumberjack"}, {"builders_yard", "builder"}, {"alchemist", "cleric"}, {"general_store", "merchant"}};
   for (auto& [k, j] : J) if (has(k)) { job = j; return; }
 }
@@ -407,7 +408,8 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
       {"armorer", {"blast_furnace", "anvil", "smithing_table"}}, {"weaponsmith", {"anvil", "smithing_table", "grindstone"}},
       {"toolsmith", {"smithing_table", "anvil"}}, {"butcher", {"smoker"}}, {"fletcher", {"fletching_table"}}, {"librarian", {"lectern"}},
       {"cartographer", {"cartography_table"}}, {"cleric", {"brewing_stand"}}, {"mason", {"stonecutter"}}, {"farmer", {"composter"}},
-      {"fisherman", {"barrel"}}, {"shepherd", {"loom"}}, {"merchant", {"cauldron", "barrel"}}, {"baker", {"smoker", "furnace"}},
+      {"fisherman", {"barrel"}}, {"shepherd", {"loom"}}, {"leatherworker", {"cauldron", "water_cauldron", "crafting_table"}},
+      {"merchant", {"cauldron", "barrel"}}, {"baker", {"smoker", "furnace"}},
       {"jeweller", {"grindstone", "smithing_table"}}, {"lumberjack", {"stonecutter"}}, {"builder", {"crafting_table", "stonecutter"}}};
     int bestScore = 1 << 30;
     for (const VPBlock& k : p.blocks) {

@@ -62,6 +62,9 @@ MapStore& mapStore(Level& lv);
 
 // exploring: a few columns of the map under you each tick
 void mapExplore(Level& lv, Player& p, PaperMap& m, int columns = 6);
+// a survey with no player (the cartographer): paint up to `budget` loaded columns, continuing from `cursor`
+// (a pixel index, wrapping). Unloaded land stays blank. Marks the record dirty when a pixel changes.
+int mapPaintLoaded(Level& lv, PaperMap& m, int& cursor, int budget);
 // mapSkipTable: per block id, 1 = seen through from above (air, plants, torches, rails...), 2 = water (server map too)
 const std::vector<u8>& mapSkipTable();
 // the world and band a map draws (realm, C++ dim) from its original dimension number
