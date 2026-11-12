@@ -75,6 +75,10 @@ def sources(inst, mods):
         for n in sorted(os.listdir(mods)): out.append(dirSrc(os.path.join(mods, n), 'mod:' + n))
     return [s for s in out if s.block or s.item]
 
+# pictures our own block models cut pieces out of by fixed spots (the vanilla layout): another pack's sheet for them is laid
+# out its own way, so the pieces come out wrong (Excalibur's grindstone); those blocks keep the game's own painted ones
+SKIP = {'grindstone_round', 'grindstone_side', 'grindstone_leg', 'grindstone_pivot', 'bell_frame', 'lever', 'crafter_side'}
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--soulrend', required=True); ap.add_argument('--mods'); ap.add_argument('--dry', action='store_true'); ap.add_argument('--undo', action='store_true')
@@ -101,6 +105,7 @@ def main():
     for e in pm:
         if not isinstance(e, list) or len(e) < 3: continue
         tname = e[0]; isItem = tname in items
+        if tname in SKIP: continue
         names = e[2] if isItem else e[1]
         kind = 'item' if isItem else 'block'
         if any((kind, c) in have for c in names): continue
@@ -157,6 +162,7 @@ def main():
                 if (k, kind) not in alike: alike[(k, kind)] = (s2, path, base)
     added_pm = 0; n2 = 0
     for tname in tnames:
+        if tname in SKIP: continue
         isItem = tname in items; kind = 'item' if isItem else 'block'
         e = inpm.get(tname)
         names = ((e[2] if isItem else e[1]) if e else []) or [tname]
