@@ -125,7 +125,13 @@ int main(int argc, char** argv) {
     const CharAngles J = charAnimate(j), JL = charAnimate(jl);
     CHECK(std::fabs(J.legR.x - JL.legL.x) < 1e-5f && std::fabs(J.shinR.x - JL.shinL.x) < 1e-5f, "jumps lead with either leg");
     CharPose b = p; b.block = 1; b.off = true;
-    CHECK(charAnimate(b).armL.x > 0.9f, "a shield raised across the body");
+    const CharAngles B = charAnimate(b);
+    CHECK(B.armL.x > 0.6f && B.foreL.x > 1.0f && B.body.y > 0.2f, "a shield raised across the body (the forearm across it, turned shield side on)");
+    CharPose bg = b; bg.held = true;
+    CHECK(charAnimate(bg).armR.x > 1.5f, "on guard, the weapon drawn back over the other shoulder");
+    CharPose bm = p; bm.block = 1; bm.blockMain = true; bm.held = true;
+    const CharAngles BM = charAnimate(bm);
+    CHECK(std::fabs(BM.armR.x - B.armL.x) < 1e-4f && std::fabs(BM.armR.y + B.armL.y) < 1e-4f && BM.body.y < -0.2f, "a shield in the right hand: the same guard, mirrored");
     CharPose x = p; x.xbowAim = true; x.held = true;
     const CharAngles X = charAnimate(x);
     CHECK(X.armR.x > 1.2f && X.armL.x > 1.2f, "a crossbow levelled in both hands");

@@ -131,24 +131,30 @@ bool isShieldItem(const std::string& id) {   // (sim/combat_rpg.cpp holdingShiel
 void shieldInHand(const CharRig& R, int part, const std::string& id, float side, float k, VoxelLight light, vec4 tint, bool glint) {
   const VoxelModel& im = itemModel(id);
   if (!im.ready()) return;
-  static float T[4] = {0, 0, 0, 0}; static bool tl = false;   // tuning aid: DQ_DEV_TPSHIELD="out,fwd,up,scale"
-  if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_TPSHIELD")) std::sscanf(v, "%f,%f,%f,%f", &T[0], &T[1], &T[2], &T[3]); }
+  static float T[7] = {0, 0, 0, 0, 0, 0, 0}; static bool tl = false;   // tuning aid: DQ_DEV_TPSHIELD="restOut,upFwd,restUp,scale,upOut,upTilt,upUp"
+  if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_TPSHIELD")) std::sscanf(v, "%f,%f,%f,%f,%f,%f,%f", &T[0], &T[1], &T[2], &T[3], &T[4], &T[5], &T[6]); }
   const vec3 fist = vec3(R.part[part] * vec4(0, -5, 0, 1));
   const vec3 bx = glm::normalize(vec3(R.bodyRaw[0])), by = glm::normalize(vec3(R.bodyRaw[1])), fwd = -glm::normalize(vec3(R.bodyRaw[2]));   // (the body faces -z)
   const vec3 out = bx * (side > 0 ? 1.f : -1.f);   // (away from the body on the hand's side)
   const float a = k * k * (3 - 2 * k);
   // face: out at the side -> forward; its width: along the body's forward -> across it
-  // (at rest strapped on the outside of the forearm, its face out and a little forward, clear of the arm: at 0.07 it
-  // stood inside the arm)
-  const vec3 face = glm::normalize(glm::mix(glm::normalize(out + fwd * 0.18f), fwd, a)), up = by, across = glm::normalize(glm::cross(up, face));
-  const vec3 at = fist + out * (0.20f + T[0]) * (1 - a) + fwd * ((0.20f + T[1]) * a) + up * (0.10f + T[2]) * (1 - a) + up * 0.06f * a;
+  // at rest: strapped on the outside of the forearm, its face out and a little forward, clear of the arm. On guard: the
+  // fist on the grip behind its middle, the face to the front and a little out to its side (the body's turned shield
+  // side on), leant back a touch at the top
+  const vec3 faceRest = glm::normalize(out + fwd * 0.18f);
+  const vec3 faceUp = glm::normalize(fwd + out * (0.35f + T[4]) + by * (0.12f + T[5]));
+  const vec3 face = glm::normalize(glm::mix(faceRest, faceUp, a));
+  const vec3 up = glm::normalize(by - face * glm::dot(by, face)), across = glm::normalize(glm::cross(up, face));
+  const vec3 atRest = fist + out * (0.20f + T[0]) + by * (0.10f + T[2]);
+  const vec3 atUp = fist + faceUp * (0.09f + T[1]) + up * (0.01f + T[6]);
+  const vec3 at = glm::mix(atRest, atUp, a);
   const float sc = 0.78f + T[3];
   mat4 M(1); M[0] = vec4(across * sc, 0); M[1] = vec4(up * sc, 0); M[2] = vec4(face * sc, 0); M[3] = vec4(at, 1);
   if (side < 0) M = glm::scale(M, vec3(-1, 1, 1));
   voxelRenderer().draw(im.gl, M * im.matrix(), light, tint, glint ? 1.f : 0.f);
 }
 // skins.js held(): an item in a fist (fore = the forearm's frame, model pixels about the elbow; side -1 = the left hand)
-void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0), const std::string& modelKey = "") {
+void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0), const std::string& modelKey = "", float cock = 0) {
   if (id == "fishing_rod") id = "fishing_rod_tp";
   const VoxelModel& im = itemModel(modelKey.empty() ? id : modelKey);
   if (!im.ready()) return;
@@ -156,6 +162,7 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
   static float T[3] = {0, 0, 0}; static bool tl = false;
   if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_TPHELD")) std::sscanf(v, "%f,%f,%f", &T[0], &T[1], &T[2]); }
   mat4 hm = glm::translate(fore, vec3(0, -6 + T[0], -1 + T[1]));
+  if (cock != 0) hm = glm::rotate(hm, cock, vec3(1, 0, 0));   // (on guard: the blade tipped up in the fist, back over the shoulder)
   if (im.kind == VoxelModel::Block) {
     hm = glm::translate(hm, vec3(0, 0, -1.5f));
     hm = glm::scale(hm, vec3(1 / CHAR_PX));
@@ -899,7 +906,11 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     if (bowDraw) drawnBow(R, light, tint, wear.heldGlint);
     else if (ps.scope && wear.held == "spyglass") spyglassAtEye(R.part[CP_HEAD], light, tint);
     else if (isShieldItem(wear.held)) shieldInHand(R, CP_ARMR_D, wear.held, 1.f, ps.blockMain ? ps.block : 0.f, light, tint, wear.heldGlint);
-    else if (!wear.held.empty()) heldInHand(R.part[CP_ARMR_D], wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel);
+    else if (!wear.held.empty()) {
+      static const float cockK = [] { const char* v = std::getenv("DQ_DEV_COCK"); return v ? (float)std::atof(v) : -0.7f; }();   // (tuning aid: DQ_DEV_COCK)
+      const float cock = !ps.blockMain && isShieldItem(wear.off) ? ps.block * ps.block * (3 - 2 * ps.block) * cockK : 0.f;
+      heldInHand(R.part[CP_ARMR_D], wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel, cock);
+    }
     if (!wear.off.empty() && !bowDraw && isShieldItem(wear.off)) shieldInHand(R, CP_ARML_D, wear.off, -1.f, ps.blockMain ? 0.f : ps.block, light, tint, wear.offGlint);
     else if (!wear.off.empty() && !bowDraw) heldInHand(R.part[CP_ARML_D], wear.off, -1.f, light, tint, wear.offGlint);
   }
