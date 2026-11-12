@@ -11,6 +11,7 @@
 #include "sim/weapon_rack.h"
 #include "render/item_layers.h"
 #include "render/be_scan.h"
+#include "render/map_render.h"
 #include "client/app.h"
 #include "assets/voxel_paint.h"
 #include "world/shapes.h"
@@ -92,6 +93,8 @@ const VoxelModel& shelfBook(int i) {
 }
 
 class PileLayer : public RenderLayer {
+  struct FramedMap { const PaperMap* map; mat4 M; vec2 light; };
+  std::vector<FramedMap> framedMaps;   // drawn after the voxels, with the content shader
 public:
   const char* name() const override { return "item-piles"; }
   int order() const override { return 110; }
@@ -292,12 +295,23 @@ public:
         if (!e.contains("item") || !e["item"].is_object()) return;
         ItemStack st = ItemStack::fromJson(e["item"]);
         if (st.empty() || !st.def()) return;
-        const VoxelModel& im = itemModel(stackModelKey(st));
-        if (!im.ready()) return;
-        begin();
         static const float TURN[4] = {0, -PI / 2, PI, PI / 2};
         int f = w.getMeta(x, y, z) & 3;
         bool glow = reg().block(w.getBlock(x, y, z)).num("frame") == 2;
+        // a filled map: the sheet itself across the face, its picture and markers (turned in quarters, as maps are)
+        if (isMapStack(st) && !stackMapId(st).empty()) {
+          if (const PaperMap* pm = mapStore(*s.level).get(stackMapId(st))) {
+            mat4 m = glm::translate(mat4(1), rel + vec3(0.5f));
+            m = glm::rotate(m, TURN[f], vec3(0, 1, 0));
+            m = glm::translate(m, vec3(0, 0, -0.5f + 0.07f));
+            m = glm::rotate(m, -(float)(e.value("rot", 0) % 4) * PI / 2, vec3(0, 0, 1));
+            framedMaps.push_back({pm, m, glow ? vec2(1, 1) : vec2(L.sky, L.block)});
+            return;
+          }
+        }
+        const VoxelModel& im = itemModel(stackModelKey(st));
+        if (!im.ready()) return;
+        begin();
         mat4 m = glm::translate(mat4(1), rel + vec3(0.5f));
         m = glm::rotate(m, TURN[f], vec3(0, 1, 0));
         m = glm::translate(m, vec3(0, 0, -0.5f + std::max(0.09f, im.depth * 0.55f + 0.07f)));   // thick things stand out from the frame
@@ -410,6 +424,14 @@ public:
       }
     });
     if (begun) VR.end();
+    if (!framedMaps.empty()) {
+      ContentDraw& cd = contentDraw();
+      if (cd.begin(f, f.cam.viewProj)) {
+        for (auto& fm : framedMaps) drawMapSheet(cd, *s.level, fm.map, s.player, fm.M, 0.86f, fm.light);
+        cd.end();
+      }
+      framedMaps.clear();
+    }
   }
 };
 
