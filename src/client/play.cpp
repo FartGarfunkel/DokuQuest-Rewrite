@@ -34,6 +34,7 @@ struct LocalState {
   // a menu opened in third person (the journal): the view mode it was in (-1: none), how far behind the eye the camera
   // still is as it comes in to read it
   int bookView = -1; float bookIn = 0;
+  bool inBed = false; float bedPitch0 = 0;   // in bed (render/char_layer.cpp bedEyeWorld): your look when you lay down
 };
 static std::unordered_map<GameSession*, std::array<LocalState, 4>>& states() { static std::unordered_map<GameSession*, std::array<LocalState, 4>> m; return m; }
 static LocalState& stateOf(GameSession& s) {
@@ -171,10 +172,15 @@ void clientPlayerCamera(GameSession& s, Camera& cam, double dtd) {
   cam.fov = st.fov;
   // getting into bed and lying in it (render/char_layer.cpp bedEyeWorld): the view from your own head as your body sits
   // on its edge, turns and lies down, and gets up again (immersive first person: what the others see, from your eyes)
+  bool inBedView = false;
   if (vec3 be; s.viewMode == 0 && !s.split()) if (float byaw, brec; bedEyeWorld(be, byaw, brec)) {
-    const float r = brec / (PI / 2);   // (lying back, the eyes look up past the foot of the bed)
-    cam.pos = glm::dvec3(be); cam.yaw = byaw; cam.pitch = p.pitch * (1 - r) + 1.15f * r; cam.roll = 0; st.hasCamY = false;
+    // (lying back, the eyes look up toward the foot of the bed; the mouse still looks about from there, down along your
+    // body or up at the ceiling)
+    if (!st.inBed) { st.inBed = true; st.bedPitch0 = p.pitch; }
+    const float r = brec / (PI / 2), lying = std::clamp(0.85f + (p.pitch - st.bedPitch0), -0.1f, 1.5f);
+    cam.pos = glm::dvec3(be); cam.yaw = byaw; cam.pitch = p.pitch * (1 - r) + lying * r; cam.roll = 0; st.hasCamY = false; inBedView = true;
   }
+  if (!inBedView) st.inBed = false;
   if (st.bookIn > 0.01f) {   // coming in from behind to read the book (above): never through a wall
     const vec3 back = -lookVector(p.yaw, p.pitch);
     RayHit bh = raycastBlocks(w, cam.pos, back, st.bookIn + 0.25f);

@@ -439,6 +439,10 @@ void CharacterLayer::update(GameSession& s, double dt) {
           const vec3 mid = st.bedHead - st.bedDir * 0.5f, side(-st.bedDir.z, 0, st.bedDir.x);
           st.bedSide = glm::dot(vec3(p->pos.x - mid.x, 0, p->pos.z - mid.z), side) >= 0 ? side : -side;
           if (st.bedU <= 0) { st.standPos = p->pos; st.standYaw = p->yaw; }
+          if (st.bedU <= 0 && p->pos.y > st.bedTop - 0.1f) {   // (already on it, sim/blockfx.cpp parkOnBed: someone who came in
+            st.bedU = 1;                                       //  or looked round once they'd lain down sees them lying there)
+            st.standPos = vec3(mid.x, st.bedTop - 0.5625f, mid.z) + st.bedSide * 0.9f; st.standYaw = yawFacing(-st.bedSide);
+          }
         }
       }
       if (asleep && st.bedFound) st.bedU = std::min(1.f, st.bedU + fdt / BED_IN_T);
@@ -451,7 +455,7 @@ void CharacterLayer::update(GameSession& s, double dt) {
         if (st.bedU > 0 && st.bedFound) {
           const BedFrame bf = bedFrame(st);
           const mat4 M = glm::rotate(glm::translate(mat4(1), bf.feet + vec3(0, 12 * CHAR_PX, 0)), bf.yaw, vec3(0, 1, 0));
-          g_bedEye = vec3(glm::rotate(M, bf.recline, vec3(1, 0, 0)) * vec4(0, 0.92f, -0.06f, 1)); g_bedEyeAt = time;
+          g_bedEye = vec3(glm::rotate(M, bf.recline, vec3(1, 0, 0)) * vec4(0, 0.95f, -0.2f, 1)); g_bedEyeAt = time;   // (the eyes at the face's front)
           g_bedYaw = bf.yaw + wrapAngle(p->yaw - st.standYaw); g_bedRecline = bf.recline;   // (the look turns with the body; the mouse still looks about)
         } else g_bedEyeAt = -1;
       }
