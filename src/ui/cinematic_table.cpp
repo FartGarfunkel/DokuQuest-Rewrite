@@ -1039,7 +1039,8 @@ void cinematicCamera(GameSession& s, Camera& cam, double dt) {
     const bool low = S.kind == 3 || S.kind == 4 || S.kind == 7 || S.kind == 13;   // the brewing stand, the furnace, the stonecutter, the campfire (sat by it): down to them (the mod's LOW lean)
     glm::dvec3 to = glm::dvec3(S.at) + glm::dvec3(0.5, 0, 0.5) - cam.pos; to.y = 0;
     const double tl = glm::length(to); if (tl > 1e-4) to /= tl;
-    S.viewOff = vec3(glm::dvec3(0, -(low ? 0.34 : 0.0) * b, 0) + to * (0.14 * b));
+    const bool sat = S.kind == 13;   // (the campfire: sat on the ground by it, the eye down where a seated one's is, not leant in)
+    S.viewOff = vec3(glm::dvec3(0, -(sat ? 0.66 : low ? 0.34 : 0.0) * b, 0) + to * ((sat ? 0.02 : 0.14) * b));
     cam.pos += glm::dvec3(S.viewOff);   // (as low as a crouch, a lean in toward it)
     S.lastPos = cam.pos; S.lastYaw = cam.yaw; S.lastPitch = cam.pitch;
     return;

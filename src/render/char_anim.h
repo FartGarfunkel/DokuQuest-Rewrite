@@ -54,6 +54,7 @@ struct CharPose {
   // a dodge roll (sim/combat_rpg.h): 0..1 through it (0: none), tucked and over once about the middle; backwards when it
   // goes away from where they face (a step back), else forwards with the body turned the way it goes
   float roll = 0; bool rollBack = false;
+  bool sitGround = false;   // sat on the ground (by a campfire: ui/cinematic_work.cpp), knees up, the seat down on it
 };
 
 // part angles (x, y, z; applied as rotY, rotX, rotZ) and the lift of the whole body (blocks)

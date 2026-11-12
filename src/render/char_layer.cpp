@@ -135,11 +135,13 @@ void shieldInHand(const CharRig& R, int part, const std::string& id, float side,
   if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_TPSHIELD")) std::sscanf(v, "%f,%f,%f,%f", &T[0], &T[1], &T[2], &T[3]); }
   const vec3 fist = vec3(R.part[part] * vec4(0, -5, 0, 1));
   const vec3 bx = glm::normalize(vec3(R.bodyRaw[0])), by = glm::normalize(vec3(R.bodyRaw[1])), fwd = -glm::normalize(vec3(R.bodyRaw[2]));   // (the body faces -z)
-  const vec3 out = bx * (side > 0 ? -1.f : 1.f);   // (the body's own right is -x: CP_ARMR sits at -x)
+  const vec3 out = bx * (side > 0 ? 1.f : -1.f);   // (away from the body on the hand's side)
   const float a = k * k * (3 - 2 * k);
   // face: out at the side -> forward; its width: along the body's forward -> across it
-  const vec3 face = glm::normalize(glm::mix(out, fwd, a)), up = by, across = glm::normalize(glm::cross(up, face));
-  const vec3 at = fist + out * (0.07f + T[0]) * (1 - a) + fwd * ((0.20f + T[1]) * a) + up * (0.06f + T[2]);
+  // (at rest strapped on the outside of the forearm, its face out and a little forward, clear of the arm: at 0.07 it
+  // stood inside the arm)
+  const vec3 face = glm::normalize(glm::mix(glm::normalize(out + fwd * 0.18f), fwd, a)), up = by, across = glm::normalize(glm::cross(up, face));
+  const vec3 at = fist + out * (0.20f + T[0]) * (1 - a) + fwd * ((0.20f + T[1]) * a) + up * (0.10f + T[2]) * (1 - a) + up * 0.06f * a;
   const float sc = 0.78f + T[3];
   mat4 M(1); M[0] = vec4(across * sc, 0); M[1] = vec4(up * sc, 0); M[2] = vec4(face * sc, 0); M[3] = vec4(at, 1);
   if (side < 0) M = glm::scale(M, vec3(-1, 1, 1));
@@ -628,6 +630,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
     ps.reachR = f.cam.rel(glm::dvec3(hand));
     ps.reachL = f.cam.rel(glm::dvec3(hand - right * 0.42f + vec3(0, -0.04f, 0)));   // (the other hand on the station beside it)
     if (p.stationKind == 3 || p.stationKind == 4) ps.sneak = true;   // (down to the brewing stand, the furnace)
+    if (p.stationKind == 13) ps.sitGround = true;   // (sat down by a campfire)
     if (p.stationKind == 1 && f.time - st.workTapAt < 1.4) { wear.held = "smith_hammer"; wear.heldModel.clear(); ps.held = true; }   // (the hammer while the blows land)
   }
   if (fp && cinematicActive()) {
@@ -636,7 +639,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
     vec3 hw[2];
     if (!cinematicLeaning() && cinematicHandsWorld(hw)) {
       // (the arms are the hand view's, render/cinematic_hands.cpp: the body's own, by the eye, swelled and broke at the elbow)
-      if (cinematicCrouch() > 0.5f) ps.sneak = true;
+      if (cinematicCrouch() > 0.5f) { if (cinematicKind() == 13) ps.sitGround = true; else ps.sneak = true; }   // (the campfire: sat down by it)
     }
   }
   if (fp && (p.activity & Player::ACT_SCREEN)) ps.fpLeftArm = false;

@@ -348,15 +348,39 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       raise[h] += ((up ? 1.f : 0.f) - raise[h]) * std::min(1.f, sdt * (up ? 22.f : 9.f));
       const float r = raise[h] * raise[h] * (3 - 2 * raise[h]);
       const float knock = up ? std::clamp(p->parryFlash / 0.35f, 0.f, 1.f) : 0.f;
-      const float lowY = -0.44f + by - (side > 0 ? eqMain * 0.55f : eq * 0.3f) + (side < 0 ? std::sin((float)time * 1.3f) * 0.006f : 0.f);
-      const vec3 rest(side * (0.50f + (side > 0 ? bx : -bx * 0.6f)), lowY, -0.72f), raised(side * 0.31f, -0.25f, -0.52f + knock * 0.06f);
+      // tuning aid: DQ_DEV_FPSHIELD="rx,ry,rz,rs,ux,uy,uz,us" (rest place + scale, raised place + scale, added)
+      static float T[8] = {0, 0, 0, 0, 0, 0, 0, 0}; static bool tl = false;
+      if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_FPSHIELD")) std::sscanf(v, "%f,%f,%f,%f,%f,%f,%f,%f", &T[0], &T[1], &T[2], &T[3], &T[4], &T[5], &T[6], &T[7]); }
+      const float lowY = -0.50f + T[1] + by - (side > 0 ? eqMain * 0.55f : eq * 0.3f) + (side < 0 ? std::sin((float)time * 1.3f) * 0.006f : 0.f);
+      const vec3 rest(side * (0.58f + T[0] + (side > 0 ? bx : -bx * 0.6f)), lowY, -0.78f + T[2]);
+      const vec3 raised(side * (0.40f + T[4]), -0.26f + T[5], -0.60f + T[6] + knock * 0.06f);
       const vec3 at = glm::mix(rest, raised, r);
-      // (no arm: the forearm is behind the boards, and drawn it came through their face)
+      const float sc = glm::mix(0.46f + T[3], 0.47f + T[7], r);
+      const float turnY = side * glm::mix(0.30f, 0.12f, r), tipX = glm::mix(-0.22f, -0.05f, r) + knock * 0.22f, rollZ = side * glm::mix(-0.12f, 0.f, r);
       mat4 m = glm::translate(mat4(1), at);
-      m = glm::rotate(m, side * glm::mix(0.42f, 0.10f, r), vec3(0, 1, 0));    // (turned out at the side, square on when up)
-      m = glm::rotate(m, glm::mix(-0.18f, -0.04f, r) + knock * 0.22f, vec3(1, 0, 0));
-      m = glm::rotate(m, side * glm::mix(-0.10f, 0.f, r), vec3(0, 0, 1));
-      m = glm::scale(m, vec3(glm::mix(0.58f, 0.64f, r)));
+      m = glm::rotate(m, turnY, vec3(0, 1, 0));    // (turned out at the side, square on when up)
+      m = glm::rotate(m, tipX, vec3(1, 0, 0));
+      m = glm::rotate(m, rollZ, vec3(0, 0, 1));
+      m = glm::scale(m, vec3(sc));
+      {   // the arm holding it: strapped on, the forearm lies flat along the back of the boards, from the grip behind their
+        // middle out past the lower outer edge, where it shows going off toward the shoulder (an arm pointed at the eye
+        // from behind the middle came across the face)
+        static float T2[4] = {0, 0, 0, 0}, T3[4] = {0, 0, 0, 0}; static bool t2 = false;   // tuning aid: DQ_DEV_FPSHIELDARM="out,down,toEye,back" raised, DQ_DEV_FPSHIELDARM0 at rest (added)
+        if (!t2) {
+          t2 = true;
+          if (const char* v = std::getenv("DQ_DEV_FPSHIELDARM")) std::sscanf(v, "%f,%f,%f,%f", &T2[0], &T2[1], &T2[2], &T2[3]);
+          if (const char* v = std::getenv("DQ_DEV_FPSHIELDARM0")) std::sscanf(v, "%f,%f,%f,%f", &T3[0], &T3[1], &T3[2], &T3[3]);
+        }
+        const mat3 B(m);
+        // (raised: out past the boards' outer edge to the corner of the view; at rest: down past their foot)
+        const vec3 dirRest(side * (0.32f + T3[0]), -(0.98f + T3[1]), T3[2]), dirUp(side * (1.42f + T2[0]), -(0.33f + T2[1]), T2[2]);
+        const vec3 grip = vec3(m * vec4(side * 0.14f * (1 - r), -0.04f, glm::mix(-0.30f + T3[3], -0.42f + T2[3], r), 1));   // (at rest off the middle to the outside: seen past the near edge, the fist showed)
+        const vec3 Y = glm::normalize(B * glm::mix(dirRest, dirUp, r));   // (to the elbow)
+        const vec3 face = glm::normalize(B * vec3(0, 0, 1));
+        const vec3 Z = glm::normalize(face - Y * glm::dot(face, Y)), X = glm::cross(Y, Z);
+        mat4 a(1); a[0] = vec4(X, 0); a[1] = vec4(Y, 0); a[2] = vec4(Z, 0); a[3] = vec4(grip + Y * 0.3f + Z * 0.02f, 1);   // (holdIn's fist: 0.3 down the arm)
+        drawArm(a);
+      }
       if (side < 0) m = glm::scale(m, vec3(-1, 1, 1));
       if (im.ready()) VR.draw(im.gl, m * im.matrix(), L, vec4(0), itemGlints(stack) ? 1.f : 0.f);
       if (itemHook && im.ready()) over.push_back({stack, m});

@@ -55,6 +55,15 @@ void charMorePoses(CharAngles& A, const CharPose& pose) {
   }
   if (lying || pose.deathT > 0 || pose.hang || pose.climb > 0 || pose.ladder) return;
   const float pitch = clampf(pose.headPitch, -1.f, 1.f);
+  // ---- sat on the ground (by a campfire): the seat down on it, knees up, leant forward a touch over them ----
+  if (pose.sitGround) {
+    static float G[4] = {0, 0, 0, 0}; static bool gl = false;   // tuning aid: DQ_DEV_SITG="thigh,shin,lift,lean" (added)
+    if (!gl) { gl = true; if (const char* v = std::getenv("DQ_DEV_SITG")) std::sscanf(v, "%f,%f,%f,%f", &G[0], &G[1], &G[2], &G[3]); }
+    A.legR = vec3(2.25f + G[0], 0, 0.16f); A.legL = vec3(2.25f + G[0], 0, -0.16f);
+    A.shinR = A.shinL = vec3(-2.3f + G[1], 0, 0);
+    A.lift = -0.57f + G[2]; A.body.x = 0.22f + G[3];
+    if (!pose.reach) { A.armR = vec3(0.75f, 0.1f, 0.1f); A.foreR = vec3(0.6f, 0, 0); A.armL = vec3(0.75f, -0.1f, -0.1f); A.foreL = vec3(0.6f, 0, 0); }   // (forearms on the knees)
+  }
   // ---- a dodge roll: curled up tight, knees to the chest, arms round them, the chin tucked (in fast, out at the end) ----
   if (pose.roll > 0) {
     const float u = clampf(pose.roll, 0, 1), k = std::sin(std::min(1.f, u * 4) * PI * 0.5f) * (u < 0.8f ? 1.f : (1 - u) / 0.2f);

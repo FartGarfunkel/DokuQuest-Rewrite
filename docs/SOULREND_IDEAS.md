@@ -58,3 +58,35 @@ posture, and **no shield item**.
   source of weapon and armour power. Affixes and gems add at most about 30 % on top.
 - Stamina gates defence (rolls, blocks), not walking. Regeneration pauses for 1 s after you spend stamina.
 - Every new combat input has a pad binding and shows in the HUD's pad hints (user rule: controller support everywhere).
+
+## The combat layer (Epic Fight and its add-ons): what the pack really plays like
+Read from `overrides/datapacks/BEF_Weapon_Patch.zip` (667 weapon files, 13 weapon types) and the configs `epicfight-*`,
+`wom*`, `indestructible-*`, `mobs_epicfied-*`, `combat_evolution-*`, `betterlockon_client`, `damageindicator-client`,
+`enhanced_boss_bars-common`, `souls_like_bosses-common`. The animation files themselves live in the mod jars, which are
+not in the folder. So this is ideas and numbers only. We write our own moves.
+- **Every weapon type has a moveset, not one swing:** 3–4 basic attacks chained by timed clicks, a dash attack (attack
+  while sprinting), an air attack (attack while falling), and one "innate" special on its own button. Its idle, walk, run
+  and guard stances change with it, and so do one-handed and two-handed use (what is in the off hand).
+  | Type | Basic chain | Extras | Special (example) | Hitbox w×h×reach |
+  |---|---|---|---|---|
+  | Sword | 3 | dash, air | sweeping slash | 0.4×0.4×0.8 |
+  | Longsword | 4 | comet slam | plunder (lunge) | 0.4×0.4×0.8 |
+  | Greatsword | 3 + charge | dash, air slash | wind slash (wave) | 0.4×0.6×1.2 |
+  | Dagger | 3 | dash, air | sweeping edge / dancing edge (two daggers) | 0.4×0.4×0.6 |
+  | Spear / polearm | 4 + charged | dash | plunge | 0.6×0.6×2.0 |
+  | Axe / hammer | 4 | dash, air | wind slash | 0.4×0.4×0.55 |
+  | Heavy weapon | 3 + 2 charged | dash, air | steel whirlwind (spin) | 0.5×0.8×1.0 |
+  | Staff | 3 | dash, ground slam | charybdis (spell whirl) | 0.4×0.4×0.8 |
+  | Fists | 2 + kick | execute | relentless combo | 0.4×0.4×0.4 |
+- **Hits land on a swept hitbox** that follows the swing's arc (the "collider", sampled 5 times along it), not on a
+  ray, so a wide swing hits two zombies.
+- **Stiff combos** (`stiffComboAttacks`): you are committed to a swing, so you cannot walk at full speed through it.
+  **Global stun:** a heavy hit staggers anything, the player too.
+- **Mobs fight with movesets too** (`mobs_epicfied`, `indestructible`): zombies and skeletons get wind-up animations you
+  can read, combos, guard breaks ("neutralize" animations) and knockdowns. That is what makes parrying worth doing.
+- **Lock-on** (`betterlockon`): up to 40 blocks, camera pitch held between -30° and 40°, an RPG-style marker on the
+  target, and the next target picked by flicking the stick.
+- **Damage numbers** rise from what you hit. **Boss bars** are styled per boss, and while a boss fight is on, no other
+  mobs spawn (`noMobsInBossfight`).
+- **Executions:** a finishing move (with its own animation) on a staggered or guard-broken enemy.
+- **Weight:** heavy armour slows attacks and rolls (`weightPenalty`).

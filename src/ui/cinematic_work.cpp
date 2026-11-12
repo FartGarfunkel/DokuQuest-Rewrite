@@ -631,12 +631,12 @@ public:
     else ImGui::Text("Warm by the fire");
     ImGui::TextDisabled(bag.on ? "Bag: D-pad choose \xC2\xB7 A take into hand \xC2\xB7 B / LB / RB back to the fire"
                       : pad ? "D-pad a spot \xC2\xB7 A set it on (empty hand: take it back) \xC2\xB7 Y on the first free spot \xC2\xB7 LB / RB your bag \xC2\xB7 B leave"
-                            : cooks ? "Click a spot to set it on the fire" : "Take raw food from your bag to cook it \xC2\xB7 click food on the fire to take it back");
+                            : cooks ? "Click a spot to set it on the fire \xC2\xB7 E your bag" : "E your bag: take raw food from it to cook \xC2\xB7 click food on the fire to take it back");
     if (ImGui::Button("Leave")) { a.popScreen(); ImGui::End(); return; }
     ImGui::End();
   }
 private:
-  ivec3 at; bool pad = false, showBag = true; int padSpot = 0;
+  ivec3 at; bool pad = false, showBag = false; int padSpot = 0;   // (sat down, not into the bag: E / LB / RB opens it)
   BagPad bag;
   void act(App& a, int k) {
     GameSession* s = a.session.get();
