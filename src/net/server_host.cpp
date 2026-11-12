@@ -630,6 +630,7 @@ void ServerHost::applyMe(Peer& p, const json& m) {
   // their roll and shield (sim/combat_rpg.h): what our hits are checked against
   pl.dodgeT = m.value("dg", 0.f); if (pl.dodgeT > 0) pl.dodgeYaw = m.value("dy", pl.dodgeYaw);
   pl.blockT = m.value("bk", 0.f);
+  netAttack(pl, m);   // their swing, for drawing (the hits are the host's: sim/combat.cpp)
   if (m.contains("st")) { pl.stamina = p.aStam = m["st"].get<float>(); }
   pl.activity = (u8)(m.value("ac", 0) & 7); pl.typeRate = clampv(m.value("tr", 0.f), 0.f, 40.f);
   // (the guest sends its picture again now and then, in case one was lost: only a new one is news)

@@ -10,6 +10,7 @@ struct _ENetPacket;
 struct _ENetPeer;
 struct _ENetHost;
 
+namespace dq { class Player; }
 namespace dq::net {
 
 constexpr int PROTO = 1;
@@ -60,5 +61,8 @@ bool replaceChunk(World& w, Chunk& c, const std::vector<u8>& record);   // a loa
 inline json v3(vec3 v) { return json::array({v.x, v.y, v.z}); }
 inline vec3 v3(const json& j, vec3 def = vec3(0)) { return j.is_array() && j.size() >= 3 ? vec3(j[0].get<float>(), j[1].get<float>(), j[2].get<float>()) : def; }
 inline float r3(float v) { return std::round(v * 1000.f) / 1000.f; }
+// another player's swing from a message ("am" move, "at" its time, "ay" its facing; none: no swing): a new or different
+// move starts there; the same one keeps its own smooth clock (Level::tick plays it on) unless the message is well apart
+void netAttack(dq::Player& p, const json& m);
 
 } // namespace dq::net

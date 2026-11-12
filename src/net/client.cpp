@@ -397,6 +397,7 @@ void NetClient::sendMe() {
   m["st"] = std::round(p.stamina * 10) / 10;
   if (p.dodgeT > 0) { m["dg"] = r3(p.dodgeT); m["dy"] = r3(p.dodgeYaw); }
   if (p.blockT > 0) m["bk"] = r3(p.blockT);
+  if (p.atkMove) { m["am"] = p.atkMove; m["at"] = r3(p.atkT); m["ay"] = r3(p.atkYaw); }   // a swing (sim/attack_moves.h): drawn on the others' screens
   if (p.riding) {
     m["rd"] = p.riding;
     // what we steer it with goes to the host, whose game moves the mount (and us on it)
@@ -542,6 +543,7 @@ void NetClient::applyEntities(const json& m) {
       if (p != me) {   // their shield, roll and parry (sim/combat_rpg.h): ours are our own game's
         p->blockT = s.value("sb", 0.f); p->parryFlash = s.value("py", 0.f); p->guardFlash = s.value("gf", 0.f);
         p->dodgeT = s.value("dg", 0.f);   // (render/char_layer.cpp plays the roll through from its start)
+        netAttack(*p, s);
         if (p->dodgeT > 0) p->dodgeYaw = s.value("dy", p->dodgeYaw);
       }
     }

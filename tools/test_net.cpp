@@ -3,6 +3,7 @@
 // block-entity sync, entities as ghosts, chat, mod and plugin commands/events, server console commands
 // (give, tp, kick), movement checks, saved players and the server going away.
 //   test_net [--userdir DIR] [--port N]       exit code 0 = everything passed
+#include "sim/attack_moves.h"
 #include <set>
 #include "core/init.h"
 #include "server/server.h"
@@ -220,6 +221,12 @@ int main(int argc, char** argv) {
     check(pump(4, [&] { A.me->eatAnim = EAT_ANIM; return ga() && ga()->eatT > 0 && ga()->eatId == "apple"; }), "Alice's bite of an apple reaches Bob");
     A.me->eatAnim = 0; A.me->eatId.clear();
     check(pump(4, [&] { A.me->eatAnim = 0; return ga() && ga()->eatT == 0 && ga()->eatId.empty(); }), "...and ends");
+    // a swing (sim/attack_moves.h): Bob draws Alice's move at its time and facing, played on between the messages
+    check(pump(4, [&] { A.me->atkMove = MV_SWORD2; A.me->atkT = 0.05f; A.me->atkYaw = 1.25f;
+                        return ga() && ga()->atkMove == MV_SWORD2 && std::fabs(ga()->atkYaw - 1.25f) < 0.01f && ga()->atkT >= 0.04f; }),
+          "Alice's swing reaches Bob (move, time, facing)");
+    A.me->atkMove = MV_NONE; A.me->atkT = 0;
+    check(pump(4, [&] { A.me->atkMove = MV_NONE; return ga() && ga()->atkMove == MV_NONE; }), "...and ends");
     // what she's up to (render/activity_layer.cpp): typing, then in a menu, then dozing, then nothing
     for (u8 act : {(u8)Player::ACT_TYPING, (u8)Player::ACT_SCREEN, (u8)Player::ACT_DOZE, (u8)0}) {
       A.me->activity = act; A.me->typeRate = act == Player::ACT_TYPING ? 7.f : 0.f;

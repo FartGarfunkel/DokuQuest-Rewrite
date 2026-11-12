@@ -1,6 +1,8 @@
 // net/protocol.cpp — packets, addresses and chunk helpers shared by the server and the client.
 #include "net/protocol.h"
 #include "world/light.h"
+#include "sim/player.h"
+#include "sim/attack_moves.h"
 #include <enet/enet.h>
 #ifdef _WIN32
 #undef near   // windows.h (through enet) defines near and far as nothing
@@ -132,6 +134,14 @@ bool replaceChunk(World& w, Chunk& c, const std::vector<u8>& record) {
   for (int sy = 0; sy < SECS; sy++) w.markSectionDirty(c.dim, c.cx, sy, c.cz, true);
   for (auto& s : w.systems) s->onChunkLoaded(w, c);   // light engine & friends see it as new
   return true;
+}
+
+void netAttack(dq::Player& p, const json& m) {
+  const int id = m.value("am", 0);
+  if (id <= 0 || id >= MV_COUNT) { if (m.contains("am") || p.atkMove) { p.atkMove = MV_NONE; p.atkT = 0; } return; }
+  const float t = m.value("at", 0.f);
+  if (p.atkMove != id || std::fabs(p.atkT - t) > 0.12f) { p.atkMove = (u8)id; p.atkT = t; }
+  p.atkYaw = m.value("ay", p.atkYaw);
 }
 
 } // namespace dq::net

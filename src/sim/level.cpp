@@ -1,4 +1,6 @@
 #include "sim/level.h"
+#include "sim/attack_moves.h"
+#include "sim/player.h"
 #include "common/noise.h"
 #include "sim/rules.h"
 #include "sim/crafting.h"
@@ -134,7 +136,15 @@ void Level::tick(double dt) {
     if (e->removed) continue;
     e->prevPos = e->pos; e->prevYaw = e->yaw;
     e->age += (float)dt;
-    if (e->ghost) { if (info.remote) e->glide(dt); continue; }   // net replica: simulated elsewhere
+    if (e->ghost) {   // net replica: simulated elsewhere
+      if (info.remote) e->glide(dt);
+      // a swing in progress plays on between the snapshots (its owner's game runs it; net/ sends move, time and facing)
+      if (e->isPlayer()) if (auto* pl = static_cast<Player*>(e); pl->atkMove) {
+        pl->atkT += (float)dt;
+        if (pl->atkMove >= MV_COUNT || pl->atkT >= attackMove(pl->atkMove).len) { pl->atkMove = MV_NONE; pl->atkT = 0; }
+      }
+      continue;
+    }
     e->tick(*this, dt);
   }
   ents.erase(std::remove_if(ents.begin(), ents.end(), [&](const std::unique_ptr<Entity>& e) {
