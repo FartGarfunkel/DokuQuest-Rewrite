@@ -389,6 +389,12 @@ void runStep(App& a, const json& st) {
     for (auto& e : s->level->entities()) if (e && !e->removed && e.get() != p && e->type == t && glm::distance(e->pos, p->pos) < bd) { bd = glm::distance(e->pos, p->pos); best = e.get(); }
     if (!best) { result(false, "mob: no " + t + " near"); return; }
     if (st.contains("hp")) best->hp = st["hp"].get<float>();
+    if (st.contains("posture")) best->posture = st["posture"].get<float>();   // (sim/combat_rpg.h)
+    if (st.contains("at") && st["at"].is_array() && st["at"].size() == 3) {   // put it somewhere (relative to the anchor), standing still
+      best->pos = vec3(st["at"][0].get<float>(), st["at"][1].get<float>(), st["at"][2].get<float>()) + vec3(R.anchor) + vec3(0.5f, 0, 0.5f);
+      best->vel = vec3(0);
+    }
+    if (st.contains("stagger")) best->staggerT = st["stagger"].get<float>();
     std::string d = best->data.dump(); if (d.size() > 600) d = d.substr(0, 600) + "...";
     DQ_LOG("test: mob %s hp %.1f/%.1f at %.1f,%.1f,%.1f yaw %.2f | %s", t.c_str(), best->hp, best->maxHp, best->pos.x, best->pos.y, best->pos.z, best->yaw, d.c_str());
   } else if (op == "formidi" && s && p) {   // light a Formidibomb (or "key":"super_tnt") at x,y,z as flint and steel would

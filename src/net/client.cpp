@@ -506,6 +506,7 @@ void NetClient::applyEntities(const json& m) {
     e->onGround = f & 1; e->inWater = f & 2; e->inLava = f & 4; e->noGravity = f & 16;
     if (f & 8) e->hurtTime = std::max(e->hurtTime, 0.3f);
     e->riding = s.value("rd", 0u);
+    e->posture = s.value("po", 0.f); e->maxPosture = s.value("pm", e->maxPosture); e->staggerT = s.value("sg", 0.f); e->mobLevel = s.value("ml", 1);   // (sim/combat_rpg.h)
     if (s.contains("d")) e->data = s["d"];
     if (auto* c = dynamic_cast<Creature*>(e)) if (s.contains("cs") && s["cs"].is_object()) {   // its look and state (Creature::snap)
       json cs = s["cs"]; cs["x"] = c->pos.x; cs["y"] = c->pos.y; cs["z"] = c->pos.z; cs["r"] = c->yaw; cs["h"] = e->hp;   // (the glide moves it)

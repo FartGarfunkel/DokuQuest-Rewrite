@@ -52,6 +52,9 @@ json entitySnapshot(const Entity& e) {
   int f = (e.onGround ? 1 : 0) | (e.inWater ? 2 : 0) | (e.inLava ? 4 : 0) | (e.hurtTime > 0 ? 8 : 0) | (e.noGravity ? 16 : 0);
   if (f) s["f"] = f;
   if (e.riding) s["rd"] = e.riding;
+  // the combat batch (sim/combat_rpg.h): posture filling, staggered, the mob's level (only when they say something)
+  if (e.posture > 0 || e.staggerT > 0) { s["po"] = std::round(e.posture * 10) / 10; s["pm"] = e.maxPosture; if (e.staggerT > 0) s["sg"] = std::round(e.staggerT * 100) / 100; }
+  if (e.mobLevel > 1) s["ml"] = e.mobLevel;
   if (auto* p = dynamic_cast<const Player*>(&e)) {
     s["n"] = p->name; s["md"] = p->mode;
     { auto& A = netSkinAliases(); auto a = A.find(p->skin); s["sk"] = a != A.end() ? a->second : p->skin; }   // the host's own skins by their net names

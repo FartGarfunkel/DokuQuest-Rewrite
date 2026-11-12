@@ -16,6 +16,7 @@ std::vector<ActInfo> buildTable() {
     {Act::Sneak, "sneak", "Sneak", V{"ShiftLeft", "ShiftRight"}, {1}, true, true},
     {Act::Sprint, "sprint", "Sprint", V{"ControlLeft", "ControlRight"}, {10}, true, true},
     {Act::Crawl, "crawl", "Crawl", V{"KeyC"}, {}, true, false},
+    {Act::Dodge, "dodge", "Dodge roll", V{"AltLeft"}, {14}, true, true},   // (pad: D-pad left; the hotbar keeps LB / RB)
     {Act::Attack, "attack", "Attack / mine", V{"Mouse0"}, {7}, true, true},
     {Act::Use, "use", "Use / place", V{"Mouse2"}, {6}, true, true},
     {Act::PickBlock, "pick", "Pick block", V{"Mouse1"}, {11}, true, true},
@@ -47,7 +48,7 @@ std::vector<ActInfo> buildTable() {
     t.push_back({(Act)((int)Act::Hot1 + i), ids[i], labels[i], V{digits[i]}, {}, true, false});
   }
   // controller-only rows (PAD_ACTIONS that have no key row)
-  t.push_back({Act::HotPrev, "prev", "Hotbar left", V{}, {4, 14}, false, true});
+  t.push_back({Act::HotPrev, "prev", "Hotbar left", V{}, {4}, false, true});   // (D-pad left: the dodge)
   t.push_back({Act::HotNext, "next", "Hotbar right", V{}, {5, 15}, false, true});
   t.push_back({Act::Pause, "pause", "Pause", V{"Escape"}, {9}, false, true});
   // C++ additions (multiplayer list, zoom): bindable keys, no defaults for zoom

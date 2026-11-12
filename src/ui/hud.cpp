@@ -10,6 +10,7 @@
 #include "sim/magic.h"
 #include "sim/magic_data.h"
 #include "ui/theme.h"
+#include "ui/hud_combat.h"
 #include "client/app.h"
 #include "client/session.h"
 #include "sim/commands.h"
@@ -416,6 +417,7 @@ public:
       dl->AddRectFilled(ImVec2(c.x - t, c.y - r), ImVec2(c.x + t, c.y + r), IM_COL32(255, 255, 255, 230));
       dl->AddRectFilled(ImVec2(c.x - r, c.y - t), ImVec2(c.x + r, c.y + t), IM_COL32(255, 255, 255, 230));
     }
+    if (!hidden && !a.topScreen()) drawCombatHud(s, dl, z, W, H0);   // stamina, shield and parry, the creature plate (ui/hud_combat.cpp)
     if (!hidden) {
       int b0 = hudPieceBegin(dl); drawBoss(s, dl, z, W); hudPieceEnd(a, dl, b0, "boss");
       drawBottom(s, dl, z, W, H0, vw, vh, eyeWater); drawDebug(s, dl, z);

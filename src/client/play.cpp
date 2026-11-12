@@ -69,6 +69,7 @@ void clientTickLocalPlayer(GameSession& s, double dt) {
     if (st.hasFov && app.settings.fov > 1) look *= clampv(st.fov / app.settings.fov, 0.05f, 1.f);   // zoomed in, the view turns as much slower
     pi.mx = mv.x; pi.mz = -mv.y; pi.lookX = look.x; pi.lookY = look.y;
     pi.jump = in.down(Act::Jump); pi.sneak = in.down(Act::Sneak); pi.sprint = in.down(Act::Sprint);
+    pi.dodge = in.pressed(Act::Dodge);   // (sim/combat_rpg.cpp: stamina, a moment untouchable)
     pi.attack = in.down(Act::Attack); pi.attackPressed = in.pressed(Act::Attack);
     pi.use = in.down(Act::Use); pi.usePressed = in.pressed(Act::Use);
     pi.drop = in.pressed(Act::Drop) && !justMenu && !in.down(Act::Sprint); pi.dropAll = in.pressed(Act::Drop) && !justMenu && in.down(Act::Sprint);
