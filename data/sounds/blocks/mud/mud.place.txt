@@ -1,0 +1,2 @@
+Block sound: place on mud blocks
+Replace this file with mud.place.wav (or mud.place.mp3 / mud.place.flac) to use your own recording.

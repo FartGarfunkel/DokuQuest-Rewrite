@@ -1,0 +1,2 @@
+Block sound: goat on vx blocks
+Replace this file with vx.goat.wav (or vx.goat.mp3 / vx.goat.flac) to use your own recording.

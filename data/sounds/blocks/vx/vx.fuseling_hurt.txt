@@ -1,0 +1,2 @@
+Block sound: fuseling_hurt on vx blocks
+Replace this file with vx.fuseling_hurt.wav (or vx.fuseling_hurt.mp3 / vx.fuseling_hurt.flac) to use your own recording.

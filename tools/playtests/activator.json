@@ -1,0 +1,119 @@
+{
+"steps": [
+{
+"wait": 200,
+"do": "anchor"
+},
+{
+"do": "cmd",
+"text": "/time set noon"
+},
+{
+"do": "fill",
+"rel": true,
+"from": [
+-3,
+0,
+-6
+],
+"to": [
+3,
+3,
+0
+],
+"key": "air"
+},
+{
+"do": "fill",
+"rel": true,
+"from": [
+-3,
+-1,
+-6
+],
+"to": [
+3,
+-1,
+0
+],
+"key": "stone"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -3,
+"key": "activator",
+"meta": 2
+},
+{
+"do": "be",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -3,
+"data": {
+"type": "chest",
+"items": [
+{
+"id": "stone_pickaxe",
+"n": 1
+},
+null,
+null,
+null,
+null,
+null,
+null,
+null,
+null
+]
+}
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -4,
+"key": "cobblestone"
+},
+{
+"wait": 5,
+"do": "expect",
+"block": [
+0,
+0,
+-4
+],
+"rel": true,
+"is": "cobblestone"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 1,
+"y": 0,
+"z": -3,
+"key": "redstone_block"
+},
+{
+"wait": 30,
+"do": "expect",
+"block": [
+0,
+0,
+-4
+],
+"rel": true,
+"is": "air"
+},
+{
+"do": "report"
+},
+{
+"do": "quit"
+}
+]
+}

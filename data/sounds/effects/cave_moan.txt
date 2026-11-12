@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with cave_moan.wav (or cave_moan.mp3 / cave_moan.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Creature sound: warden
+Replace this file with warden_dig.wav (or warden_dig.mp3 / warden_dig.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with fuse.wav (or fuse.mp3 / fuse.flac) to use your own recording.

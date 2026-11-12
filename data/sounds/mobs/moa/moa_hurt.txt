@@ -1,0 +1,2 @@
+Creature sound: moa
+Replace this file with moa_hurt.wav (or moa_hurt.mp3 / moa_hurt.flac) to use your own recording.

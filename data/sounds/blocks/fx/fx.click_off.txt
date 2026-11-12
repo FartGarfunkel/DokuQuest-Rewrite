@@ -1,0 +1,2 @@
+Block sound: click_off on fx blocks
+Replace this file with fx.click_off.wav (or fx.click_off.mp3 / fx.click_off.flac) to use your own recording.

@@ -1,0 +1,13 @@
+{"steps":[
+ {"wait":200,"do":"anchor"},
+ {"do":"cmd","text":"/time set 18000"},
+ {"do":"fill","rel":true,"from":[-3,-1,-6],"to":[3,4,-2],"key":"air"},
+ {"do":"fill","rel":true,"from":[-3,-1,-6],"to":[3,-1,-2],"key":"stone"},
+ {"do":"setBlock","rel":true,"x":-1,"y":0,"z":-4,"key":"torch"},
+ {"do":"setBlock","rel":true,"x":1,"y":0,"z":-4,"key":"torch"},
+ {"do":"setBlock","rel":true,"x":0,"y":0,"z":-5,"key":"campfire"},
+ {"do":"lookAt","rel":true,"x":0,"y":0,"z":-4},
+ {"wait":240,"do":"shot","path":"/tmp/torches.png"},
+ {"do":"report"},
+ {"wait":5,"do":"quit"}
+]}

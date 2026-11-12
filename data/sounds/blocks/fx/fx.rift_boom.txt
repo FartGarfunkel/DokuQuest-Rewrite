@@ -1,0 +1,2 @@
+Block sound: rift_boom on fx blocks
+Replace this file with fx.rift_boom.wav (or fx.rift_boom.mp3 / fx.rift_boom.flac) to use your own recording.

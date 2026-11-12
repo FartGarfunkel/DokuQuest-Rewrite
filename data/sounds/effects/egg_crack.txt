@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with egg_crack.wav (or egg_crack.mp3 / egg_crack.flac) to use your own recording.

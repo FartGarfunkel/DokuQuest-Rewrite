@@ -1,0 +1,2 @@
+Creature sound: dolphin
+Replace this file with dolphin_hurt.wav (or dolphin_hurt.mp3 / dolphin_hurt.flac) to use your own recording.

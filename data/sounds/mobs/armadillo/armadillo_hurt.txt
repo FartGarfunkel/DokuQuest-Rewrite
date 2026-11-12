@@ -1,0 +1,2 @@
+Creature sound: armadillo
+Replace this file with armadillo_hurt.wav (or armadillo_hurt.mp3 / armadillo_hurt.flac) to use your own recording.

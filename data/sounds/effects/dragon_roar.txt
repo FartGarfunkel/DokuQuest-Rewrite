@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with dragon_roar.wav (or dragon_roar.mp3 / dragon_roar.flac) to use your own recording.

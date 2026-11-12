@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with squish_hurt.wav (or squish_hurt.mp3 / squish_hurt.flac) to use your own recording.

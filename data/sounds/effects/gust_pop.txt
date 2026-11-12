@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with gust_pop.wav (or gust_pop.mp3 / gust_pop.flac) to use your own recording.

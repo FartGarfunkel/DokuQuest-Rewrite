@@ -1,0 +1,2 @@
+Block sound: rift_static on fx blocks
+Replace this file with fx.rift_static.wav (or fx.rift_static.mp3 / fx.rift_static.flac) to use your own recording.

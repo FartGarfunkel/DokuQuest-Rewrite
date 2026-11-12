@@ -1,0 +1,2 @@
+Creature sound: frog
+Replace this file with frog_angry.wav (or frog_angry.mp3 / frog_angry.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with click_off.wav (or click_off.mp3 / click_off.flac) to use your own recording.

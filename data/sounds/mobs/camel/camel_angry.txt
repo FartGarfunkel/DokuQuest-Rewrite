@@ -1,0 +1,2 @@
+Creature sound: camel
+Replace this file with camel_angry.wav (or camel_angry.mp3 / camel_angry.flac) to use your own recording.

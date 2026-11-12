@@ -1,0 +1,2 @@
+Block sound: dragon_breath on fx blocks
+Replace this file with fx.dragon_breath.wav (or fx.dragon_breath.mp3 / fx.dragon_breath.flac) to use your own recording.

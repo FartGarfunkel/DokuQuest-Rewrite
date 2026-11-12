@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with bigcat_death.wav (or bigcat_death.mp3 / bigcat_death.flac) to use your own recording.

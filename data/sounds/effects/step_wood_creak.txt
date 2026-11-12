@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with step_wood_creak.wav (or step_wood_creak.mp3 / step_wood_creak.flac) to use your own recording.

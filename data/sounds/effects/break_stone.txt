@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with break_stone.wav (or break_stone.mp3 / break_stone.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: donkey on vx blocks
+Replace this file with vx.donkey.wav (or vx.donkey.mp3 / vx.donkey.flac) to use your own recording.

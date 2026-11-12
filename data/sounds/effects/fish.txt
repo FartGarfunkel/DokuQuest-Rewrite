@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with fish.wav (or fish.mp3 / fish.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with swim.wav (or swim.mp3 / swim.flac) to use your own recording.

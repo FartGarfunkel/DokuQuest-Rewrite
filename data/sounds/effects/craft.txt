@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with craft.wav (or craft.mp3 / craft.flac) to use your own recording.

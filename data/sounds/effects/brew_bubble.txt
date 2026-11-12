@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with brew_bubble.wav (or brew_bubble.mp3 / brew_bubble.flac) to use your own recording.

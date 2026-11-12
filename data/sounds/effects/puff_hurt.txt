@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with puff_hurt.wav (or puff_hurt.mp3 / puff_hurt.flac) to use your own recording.

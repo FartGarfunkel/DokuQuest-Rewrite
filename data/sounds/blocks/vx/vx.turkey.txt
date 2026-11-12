@@ -1,0 +1,2 @@
+Block sound: turkey on vx blocks
+Replace this file with vx.turkey.wav (or vx.turkey.mp3 / vx.turkey.flac) to use your own recording.

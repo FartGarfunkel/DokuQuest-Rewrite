@@ -1,0 +1,2 @@
+Block sound: raider_death on vx blocks
+Replace this file with vx.raider_death.wav (or vx.raider_death.mp3 / vx.raider_death.flac) to use your own recording.

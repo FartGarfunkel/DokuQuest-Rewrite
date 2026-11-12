@@ -1,0 +1,2 @@
+Block sound: tick on fx blocks
+Replace this file with fx.tick.wav (or fx.tick.mp3 / fx.tick.flac) to use your own recording.

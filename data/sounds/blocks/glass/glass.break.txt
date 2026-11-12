@@ -1,0 +1,2 @@
+Block sound: break on glass blocks
+Replace this file with glass.break.wav (or glass.break.mp3 / glass.break.flac) to use your own recording.

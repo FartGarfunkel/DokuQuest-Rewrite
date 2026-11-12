@@ -1,0 +1,2 @@
+Creature sound: lion
+Replace this file with lion_angry.wav (or lion_angry.mp3 / lion_angry.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Creature sound: wolf
+Replace this file with wolf_angry_angry.wav (or wolf_angry_angry.mp3 / wolf_angry_angry.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: end_gate on fx blocks
+Replace this file with fx.end_gate.wav (or fx.end_gate.mp3 / fx.end_gate.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: dig on snow blocks
+Replace this file with snow.dig.wav (or snow.dig.mp3 / snow.dig.flac) to use your own recording.

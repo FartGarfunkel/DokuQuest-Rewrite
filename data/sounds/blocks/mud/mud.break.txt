@@ -1,0 +1,2 @@
+Block sound: break on mud blocks
+Replace this file with mud.break.wav (or mud.break.mp3 / mud.break.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Creature sound: llama
+Replace this file with llama_death.wav (or llama_death.mp3 / llama_death.flac) to use your own recording.

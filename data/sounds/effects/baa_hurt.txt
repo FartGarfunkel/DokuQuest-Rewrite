@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with baa_hurt.wav (or baa_hurt.mp3 / baa_hurt.flac) to use your own recording.

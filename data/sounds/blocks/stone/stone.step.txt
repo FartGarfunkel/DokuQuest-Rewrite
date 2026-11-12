@@ -1,0 +1,2 @@
+Block sound: step on stone blocks
+Replace this file with stone.step.wav (or stone.step.mp3 / stone.step.flac) to use your own recording.

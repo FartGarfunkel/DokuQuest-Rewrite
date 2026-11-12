@@ -1,0 +1,2 @@
+Block sound: bigcat on vx blocks
+Replace this file with vx.bigcat.wav (or vx.bigcat.mp3 / vx.bigcat.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: bear on vx blocks
+Replace this file with vx.bear.wav (or vx.bear.mp3 / vx.bear.flac) to use your own recording.

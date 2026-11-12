@@ -1,0 +1,2 @@
+Block sound: ghast_shoot on fx blocks
+Replace this file with fx.ghast_shoot.wav (or fx.ghast_shoot.mp3 / fx.ghast_shoot.flac) to use your own recording.

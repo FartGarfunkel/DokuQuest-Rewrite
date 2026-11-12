@@ -1,0 +1,2 @@
+Block sound: wraith on vx blocks
+Replace this file with vx.wraith.wav (or vx.wraith.mp3 / vx.wraith.flac) to use your own recording.

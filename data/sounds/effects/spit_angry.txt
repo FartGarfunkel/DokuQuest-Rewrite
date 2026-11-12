@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with spit_angry.wav (or spit_angry.mp3 / spit_angry.flac) to use your own recording.

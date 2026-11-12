@@ -1,0 +1,2 @@
+Block sound: eat on fx blocks
+Replace this file with fx.eat.wav (or fx.eat.mp3 / fx.eat.flac) to use your own recording.

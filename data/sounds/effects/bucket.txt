@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with bucket.wav (or bucket.mp3 / bucket.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: hiss on vx blocks
+Replace this file with vx.hiss.wav (or vx.hiss.mp3 / vx.hiss.flac) to use your own recording.

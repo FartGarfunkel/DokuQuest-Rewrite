@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with crit.wav (or crit.mp3 / crit.flac) to use your own recording.

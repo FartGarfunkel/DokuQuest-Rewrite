@@ -1,0 +1,2 @@
+Creature sound: scorpion
+Replace this file with scorpion_hurt.wav (or scorpion_hurt.mp3 / scorpion_hurt.flac) to use your own recording.

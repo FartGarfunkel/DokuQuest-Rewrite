@@ -1,0 +1,2 @@
+Block sound: warden_roar on fx blocks
+Replace this file with fx.warden_roar.wav (or fx.warden_roar.mp3 / fx.warden_roar.flac) to use your own recording.

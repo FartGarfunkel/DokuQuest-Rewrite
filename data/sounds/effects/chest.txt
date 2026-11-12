@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with chest.wav (or chest.mp3 / chest.flac) to use your own recording.

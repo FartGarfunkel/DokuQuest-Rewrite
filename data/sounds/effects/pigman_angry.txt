@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with pigman_angry.wav (or pigman_angry.mp3 / pigman_angry.flac) to use your own recording.

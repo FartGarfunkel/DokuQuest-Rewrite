@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with hiss.wav (or hiss.mp3 / hiss.flac) to use your own recording.

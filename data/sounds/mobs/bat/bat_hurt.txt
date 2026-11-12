@@ -1,0 +1,2 @@
+Creature sound: bat
+Replace this file with bat_hurt.wav (or bat_hurt.mp3 / bat_hurt.flac) to use your own recording.

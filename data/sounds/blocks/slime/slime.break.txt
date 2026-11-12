@@ -1,0 +1,2 @@
+Block sound: break on slime blocks
+Replace this file with slime.break.wav (or slime.break.mp3 / slime.break.flac) to use your own recording.

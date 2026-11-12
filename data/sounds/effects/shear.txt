@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with shear.wav (or shear.mp3 / shear.flac) to use your own recording.

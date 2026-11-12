@@ -1,0 +1,496 @@
+{
+ "_comment": "Metals, alloys and ore units (core/metals.h; after TerraFirmaCraft). stats are a pickaxe's: tier, speed, damage, durability; anvil: the anvil tier needed to work it; cast: can be poured into tool molds; ranges: a named alloy's makeup (fractions).",
+ "metals": {
+  "copper": {
+   "name": "Copper",
+   "melt": 1080,
+   "rgb": [
+    214,
+    124,
+    82
+   ],
+   "tier": 2,
+   "speed": 4.5,
+   "damage": 3,
+   "durability": 180,
+   "anvil": 1,
+   "cast": true,
+   "ingot": "copper_ingot"
+  },
+  "tin": {
+   "name": "Tin",
+   "melt": 230,
+   "rgb": [
+    200,
+    204,
+    210
+   ],
+   "tier": 1,
+   "speed": 3,
+   "damage": 2,
+   "durability": 90,
+   "anvil": 0,
+   "cast": true,
+   "ingot": "tin_ingot"
+  },
+  "zinc": {
+   "name": "Zinc",
+   "melt": 420,
+   "rgb": [
+    176,
+    186,
+    196
+   ],
+   "tier": 1,
+   "speed": 3.2,
+   "damage": 2,
+   "durability": 110,
+   "anvil": 0,
+   "cast": true,
+   "ingot": "zinc_ingot"
+  },
+  "bismuth": {
+   "name": "Bismuth",
+   "melt": 270,
+   "rgb": [
+    150,
+    170,
+    160
+   ],
+   "tier": 1,
+   "speed": 3,
+   "damage": 2,
+   "durability": 80,
+   "anvil": 0,
+   "cast": true,
+   "ingot": "bismuth_ingot"
+  },
+  "gold": {
+   "name": "Gold",
+   "melt": 1060,
+   "rgb": [
+    250,
+    210,
+    70
+   ],
+   "tier": 1,
+   "speed": 12,
+   "damage": 2,
+   "durability": 33,
+   "anvil": 1,
+   "cast": true,
+   "ingot": "gold_ingot"
+  },
+  "silver": {
+   "name": "Silver",
+   "melt": 961,
+   "rgb": [
+    228,
+    234,
+    244
+   ],
+   "tier": 3,
+   "speed": 7,
+   "damage": 4,
+   "durability": 280,
+   "anvil": 1,
+   "cast": true,
+   "ingot": "silver_ingot"
+  },
+  "iron": {
+   "name": "Iron",
+   "melt": 1535,
+   "rgb": [
+    214,
+    214,
+    218
+   ],
+   "tier": 3,
+   "speed": 6,
+   "damage": 4,
+   "durability": 251,
+   "anvil": 3,
+   "cast": false,
+   "ingot": "iron_ingot"
+  },
+  "pig_iron": {
+   "name": "Pig Iron",
+   "melt": 1535,
+   "rgb": [
+    110,
+    108,
+    112
+   ],
+   "tier": 2,
+   "speed": 4,
+   "damage": 3,
+   "durability": 150,
+   "anvil": 3,
+   "cast": false,
+   "ingot": "pig_iron"
+  },
+  "steel": {
+   "name": "Steel",
+   "melt": 1540,
+   "rgb": [
+    150,
+    160,
+    178
+   ],
+   "tier": 4,
+   "speed": 7.5,
+   "damage": 5,
+   "durability": 1100,
+   "anvil": 4,
+   "cast": false,
+   "ingot": "steel_ingot"
+  },
+  "mithril": {
+   "name": "Mithril",
+   "melt": 1700,
+   "rgb": [
+    168,
+    222,
+    244
+   ],
+   "tier": 5,
+   "speed": 11,
+   "damage": 6,
+   "durability": 2600,
+   "anvil": 5,
+   "cast": false,
+   "ingot": "mithril_ingot"
+  },
+  "adamantite": {
+   "name": "Adamantite",
+   "melt": 1900,
+   "rgb": [
+    150,
+    52,
+    62
+   ],
+   "tier": 6,
+   "speed": 12,
+   "damage": 7,
+   "durability": 3800,
+   "anvil": 6,
+   "cast": false,
+   "ingot": "adamantite_ingot"
+  },
+  "thallasium": {
+   "name": "Thallasium",
+   "melt": 1600,
+   "rgb": [
+    92,
+    204,
+    194
+   ],
+   "tier": 2,
+   "speed": 6.5,
+   "damage": 3,
+   "durability": 320,
+   "anvil": 5,
+   "cast": false,
+   "ingot": "thallasium_ingot"
+  },
+  "cinderite": {
+   "name": "Cinderite",
+   "melt": 1800,
+   "rgb": [
+    96,
+    44,
+    40
+   ],
+   "tier": 5,
+   "speed": 10,
+   "damage": 6,
+   "durability": 2031,
+   "anvil": 6,
+   "cast": false,
+   "ingot": "cinderite_ingot"
+  }
+ },
+ "alloys": {
+  "bronze": {
+   "name": "Bronze",
+   "melt": 950,
+   "rgb": [
+    205,
+    127,
+    50
+   ],
+   "tier": 3,
+   "speed": 5.5,
+   "damage": 4,
+   "durability": 220,
+   "anvil": 2,
+   "cast": true,
+   "ingot": "bronze_ingot",
+   "ranges": {
+    "copper": [
+     0.85,
+     0.95
+    ],
+    "tin": [
+     0.05,
+     0.15
+    ]
+   }
+  },
+  "brass": {
+   "name": "Brass",
+   "melt": 930,
+   "rgb": [
+    222,
+    186,
+    90
+   ],
+   "tier": 2,
+   "speed": 5,
+   "damage": 3.3,
+   "durability": 170,
+   "anvil": 2,
+   "cast": true,
+   "ingot": "brass_ingot",
+   "ranges": {
+    "copper": [
+     0.85,
+     0.95
+    ],
+    "zinc": [
+     0.05,
+     0.15
+    ]
+   }
+  },
+  "bismuth_bronze": {
+   "name": "Bismuth Bronze",
+   "melt": 985,
+   "rgb": [
+    176,
+    130,
+    96
+   ],
+   "tier": 2,
+   "speed": 5.2,
+   "damage": 3.6,
+   "durability": 210,
+   "anvil": 2,
+   "cast": true,
+   "ingot": "bismuth_bronze_ingot",
+   "ranges": {
+    "zinc": [
+     0.2,
+     0.3
+    ],
+    "copper": [
+     0.5,
+     0.65
+    ],
+    "bismuth": [
+     0.1,
+     0.2
+    ]
+   }
+  },
+  "black_bronze": {
+   "name": "Black Bronze",
+   "melt": 1070,
+   "rgb": [
+    96,
+    72,
+    64
+   ],
+   "tier": 3,
+   "speed": 5.4,
+   "damage": 4,
+   "durability": 230,
+   "anvil": 2,
+   "cast": true,
+   "ingot": "black_bronze_ingot",
+   "ranges": {
+    "gold": [
+     0.1,
+     0.25
+    ],
+    "copper": [
+     0.5,
+     0.7
+    ],
+    "silver": [
+     0.1,
+     0.25
+    ]
+   }
+  },
+  "rose_gold": {
+   "name": "Rose Gold",
+   "melt": 960,
+   "rgb": [
+    236,
+    150,
+    130
+   ],
+   "tier": 2,
+   "speed": 6,
+   "damage": 3,
+   "durability": 150,
+   "anvil": 2,
+   "cast": true,
+   "ingot": "rose_gold_ingot",
+   "ranges": {
+    "gold": [
+     0.7,
+     0.85
+    ],
+    "copper": [
+     0.15,
+     0.3
+    ]
+   }
+  },
+  "sterling_silver": {
+   "name": "Sterling Silver",
+   "melt": 950,
+   "rgb": [
+    214,
+    220,
+    232
+   ],
+   "tier": 2,
+   "speed": 6.5,
+   "damage": 3,
+   "durability": 160,
+   "anvil": 2,
+   "cast": true,
+   "ingot": "sterling_silver_ingot",
+   "ranges": {
+    "silver": [
+     0.6,
+     0.8
+    ],
+    "copper": [
+     0.2,
+     0.4
+    ]
+   }
+  }
+ },
+ "ores": {
+  "copper_ore_piece": {
+   "metal": "copper",
+   "u": 25
+  },
+  "copper_ore_sample": {
+   "metal": "copper",
+   "u": 10
+  },
+  "copper_ore_powder": {
+   "metal": "copper",
+   "u": 30
+  },
+  "tin_ore_piece": {
+   "metal": "tin",
+   "u": 25
+  },
+  "tin_ore_sample": {
+   "metal": "tin",
+   "u": 10
+  },
+  "tin_ore_powder": {
+   "metal": "tin",
+   "u": 30
+  },
+  "zinc_ore_piece": {
+   "metal": "zinc",
+   "u": 25
+  },
+  "zinc_ore_sample": {
+   "metal": "zinc",
+   "u": 10
+  },
+  "zinc_ore_powder": {
+   "metal": "zinc",
+   "u": 30
+  },
+  "bismuth_ore_piece": {
+   "metal": "bismuth",
+   "u": 25
+  },
+  "bismuth_ore_sample": {
+   "metal": "bismuth",
+   "u": 10
+  },
+  "bismuth_ore_powder": {
+   "metal": "bismuth",
+   "u": 30
+  },
+  "iron_ore_piece": {
+   "metal": "iron",
+   "u": 25
+  },
+  "iron_ore_sample": {
+   "metal": "iron",
+   "u": 10
+  },
+  "iron_ore_powder": {
+   "metal": "iron",
+   "u": 30
+  },
+  "gold_ore_piece": {
+   "metal": "gold",
+   "u": 25
+  },
+  "gold_ore_sample": {
+   "metal": "gold",
+   "u": 10
+  },
+  "gold_ore_powder": {
+   "metal": "gold",
+   "u": 30
+  },
+  "silver_ore_piece": {
+   "metal": "silver",
+   "u": 25
+  },
+  "silver_ore_sample": {
+   "metal": "silver",
+   "u": 10
+  },
+  "silver_ore_powder": {
+   "metal": "silver",
+   "u": 30
+  },
+  "raw_bloom": {
+   "metal": "iron",
+   "u": 100
+  },
+  "mithril_ore": {
+   "metal": "mithril",
+   "u": 100
+  },
+  "adamantite_ore": {
+   "metal": "adamantite",
+   "u": 100
+  },
+  "thallasium_ore": {
+   "metal": "thallasium",
+   "u": 100
+  },
+  "cinderite_ore": {
+   "metal": "cinderite",
+   "u": 100
+  }
+ },
+ "oreBlocks": {
+  "copper_ore": "copper",
+  "tin_ore": "tin",
+  "zinc_ore": "zinc",
+  "bismuth_ore": "bismuth",
+  "iron_ore": "iron",
+  "gold_ore": "gold",
+  "granite_gold_ore": "gold",
+  "nether_gold_ore": "gold",
+  "silver_ore": "silver"
+ }
+}

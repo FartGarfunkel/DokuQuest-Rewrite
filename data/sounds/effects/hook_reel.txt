@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with hook_reel.wav (or hook_reel.mp3 / hook_reel.flac) to use your own recording.

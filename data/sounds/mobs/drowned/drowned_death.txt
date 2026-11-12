@@ -1,0 +1,2 @@
+Creature sound: drowned
+Replace this file with drowned_death.wav (or drowned_death.mp3 / drowned_death.flac) to use your own recording.

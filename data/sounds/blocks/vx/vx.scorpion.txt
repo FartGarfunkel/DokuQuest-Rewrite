@@ -1,0 +1,2 @@
+Block sound: scorpion on vx blocks
+Replace this file with vx.scorpion.wav (or vx.scorpion.mp3 / vx.scorpion.flac) to use your own recording.

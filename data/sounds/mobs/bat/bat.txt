@@ -1,0 +1,2 @@
+Creature sound: bat
+Replace this file with bat.wav (or bat.mp3 / bat.flac) to use your own recording.

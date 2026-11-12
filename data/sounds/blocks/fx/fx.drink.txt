@@ -1,0 +1,2 @@
+Block sound: drink on fx blocks
+Replace this file with fx.drink.wav (or fx.drink.mp3 / fx.drink.flac) to use your own recording.

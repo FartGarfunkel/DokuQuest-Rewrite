@@ -1,0 +1,2 @@
+Block sound: burn on fx blocks
+Replace this file with fx.burn.wav (or fx.burn.mp3 / fx.burn.flac) to use your own recording.

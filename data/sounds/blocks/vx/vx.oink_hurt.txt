@@ -1,0 +1,2 @@
+Block sound: oink_hurt on vx blocks
+Replace this file with vx.oink_hurt.wav (or vx.oink_hurt.mp3 / vx.oink_hurt.flac) to use your own recording.

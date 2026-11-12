@@ -1,0 +1,2 @@
+Block sound: place on log blocks
+Replace this file with log.place.wav (or log.place.mp3 / log.place.flac) to use your own recording.

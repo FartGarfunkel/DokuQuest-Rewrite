@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with mite.wav (or mite.mp3 / mite.flac) to use your own recording.

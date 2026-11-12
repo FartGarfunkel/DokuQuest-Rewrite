@@ -1,0 +1,2 @@
+Block sound: ogre on vx blocks
+Replace this file with vx.ogre.wav (or vx.ogre.mp3 / vx.ogre.flac) to use your own recording.

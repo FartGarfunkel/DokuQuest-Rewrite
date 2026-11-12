@@ -1,0 +1,2 @@
+Block sound: craft on fx blocks
+Replace this file with fx.craft.wav (or fx.craft.mp3 / fx.craft.flac) to use your own recording.

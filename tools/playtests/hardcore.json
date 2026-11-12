@@ -1,0 +1,1 @@
+{"steps": [{"wait": 200, "do": "anchor"}, {"do": "cmd", "text": "/gamerule hardcore true"}, {"do": "cmd", "text": "/kill"}, {"wait": 40, "do": "expect", "screen": "death"}, {"do": "shot", "path": "/tmp/hc0.png"}, {"do": "pad", "button": "a"}, {"wait": 120, "do": "expect", "screen": null}, {"do": "report"}, {"do": "quit"}]}

@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with chest_close.wav (or chest_close.mp3 / chest_close.flac) to use your own recording.

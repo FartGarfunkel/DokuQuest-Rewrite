@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with dragon_bite.wav (or dragon_bite.mp3 / dragon_bite.flac) to use your own recording.

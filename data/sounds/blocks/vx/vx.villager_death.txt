@@ -1,0 +1,2 @@
+Block sound: villager_death on vx blocks
+Replace this file with vx.villager_death.wav (or vx.villager_death.mp3 / vx.villager_death.flac) to use your own recording.

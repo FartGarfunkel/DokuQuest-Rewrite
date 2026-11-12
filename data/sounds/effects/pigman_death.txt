@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with pigman_death.wav (or pigman_death.mp3 / pigman_death.flac) to use your own recording.

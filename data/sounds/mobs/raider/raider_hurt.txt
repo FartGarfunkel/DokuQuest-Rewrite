@@ -1,0 +1,2 @@
+Creature sound: raider
+Replace this file with raider_hurt.wav (or raider_hurt.mp3 / raider_hurt.flac) to use your own recording.

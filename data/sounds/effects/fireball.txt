@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with fireball.wav (or fireball.mp3 / fireball.flac) to use your own recording.

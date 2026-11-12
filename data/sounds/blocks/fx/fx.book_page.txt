@@ -1,0 +1,2 @@
+Block sound: book_page on fx blocks
+Replace this file with fx.book_page.wav (or fx.book_page.mp3 / fx.book_page.flac) to use your own recording.

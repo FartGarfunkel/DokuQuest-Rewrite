@@ -1,0 +1,2 @@
+Block sound: dig on metal blocks
+Replace this file with metal.dig.wav (or metal.dig.mp3 / metal.dig.flac) to use your own recording.

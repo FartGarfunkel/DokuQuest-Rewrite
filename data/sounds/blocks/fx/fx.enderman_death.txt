@@ -1,0 +1,2 @@
+Block sound: enderman_death on fx blocks
+Replace this file with fx.enderman_death.wav (or fx.enderman_death.mp3 / fx.enderman_death.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: villager_hurt on vx blocks
+Replace this file with vx.villager_hurt.wav (or vx.villager_hurt.mp3 / vx.villager_hurt.flac) to use your own recording.

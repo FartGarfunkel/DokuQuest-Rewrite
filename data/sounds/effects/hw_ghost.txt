@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with hw_ghost.wav (or hw_ghost.mp3 / hw_ghost.flac) to use your own recording.

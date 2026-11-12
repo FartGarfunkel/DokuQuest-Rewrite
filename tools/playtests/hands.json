@@ -1,0 +1,159 @@
+{
+"steps": [
+{
+"wait": 200,
+"do": "anchor"
+},
+{
+"do": "tp",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": 0
+},
+{
+"do": "cmd",
+"text": "/time set noon"
+},
+{
+"do": "fill",
+"rel": true,
+"from": [
+-4,
+0,
+-8
+],
+"to": [
+4,
+5,
+2
+],
+"key": "air"
+},
+{
+"do": "fill",
+"rel": true,
+"from": [
+-4,
+-1,
+-8
+],
+"to": [
+4,
+-1,
+2
+],
+"key": "stone"
+},
+{
+"wait": 30,
+"do": "cmd",
+"text": "/clear"
+},
+{
+"do": "cmd",
+"text": "/gamemode creative"
+},
+{
+"do": "cmd",
+"text": "/spell learn all"
+},
+{
+"do": "cmd",
+"text": "/spell right firebolt"
+},
+{
+"do": "cmd",
+"text": "/spell left chainlight"
+},
+{
+"do": "give",
+"item": "ruby_staff",
+"n": 1
+},
+{
+"do": "select",
+"slot": 0
+},
+{
+"do": "look",
+"yaw": 0,
+"pitch": 0
+},
+{
+"do": "cmd",
+"text": "/summon cow 2"
+},
+{
+"wait": 10,
+"do": "mouse",
+"button": "right",
+"hold": 1
+},
+{
+"wait": 60,
+"do": "mouse",
+"button": "right",
+"hold": 1
+},
+{
+"wait": 60,
+"do": "report"
+},
+{
+"do": "cmd",
+"text": "/spell left frost"
+},
+{
+"do": "wear",
+"item": "sapphire_staff",
+"slot": "off"
+},
+{
+"wait": 5,
+"do": "mouse",
+"button": "right",
+"hold": 1
+},
+{
+"wait": 60,
+"do": "mouse",
+"button": "right",
+"hold": 1
+},
+{
+"wait": 60,
+"do": "report"
+},
+{
+"do": "cmd",
+"text": "/clear"
+},
+{
+"do": "cmd",
+"text": "/spell left flames"
+},
+{
+"do": "give",
+"item": "iron_sword",
+"n": 1
+},
+{
+"do": "select",
+"slot": 0
+},
+{
+"wait": 150,
+"do": "mouse",
+"button": "right",
+"hold": 1
+},
+{
+"wait": 20,
+"do": "report"
+},
+{
+"do": "quit"
+}
+]
+}

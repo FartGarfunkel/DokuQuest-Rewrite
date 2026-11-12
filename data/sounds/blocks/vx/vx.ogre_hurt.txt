@@ -1,0 +1,2 @@
+Block sound: ogre_hurt on vx blocks
+Replace this file with vx.ogre_hurt.wav (or vx.ogre_hurt.mp3 / vx.ogre_hurt.flac) to use your own recording.

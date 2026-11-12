@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with arrow_hit.wav (or arrow_hit.mp3 / arrow_hit.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with dispense_fail.wav (or dispense_fail.mp3 / dispense_fail.flac) to use your own recording.

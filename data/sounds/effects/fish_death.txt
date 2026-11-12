@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with fish_death.wav (or fish_death.mp3 / fish_death.flac) to use your own recording.

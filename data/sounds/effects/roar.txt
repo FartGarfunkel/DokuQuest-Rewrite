@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with roar.wav (or roar.mp3 / roar.flac) to use your own recording.

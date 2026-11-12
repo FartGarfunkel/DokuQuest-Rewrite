@@ -1,0 +1,2 @@
+Creature sound: dolphin
+Replace this file with dolphin_angry.wav (or dolphin_angry.mp3 / dolphin_angry.flac) to use your own recording.

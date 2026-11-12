@@ -1,0 +1,2 @@
+// Windows resources for dokuquest.exe and dokuquest-launcher.exe: the app icon (from the original launcher/icons/icon.ico).
+IDI_ICON1 ICON "../../assets/icon.ico"

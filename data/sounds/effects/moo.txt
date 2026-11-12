@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with moo.wav (or moo.mp3 / moo.flac) to use your own recording.

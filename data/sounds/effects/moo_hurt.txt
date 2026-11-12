@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with moo_hurt.wav (or moo_hurt.mp3 / moo_hurt.flac) to use your own recording.

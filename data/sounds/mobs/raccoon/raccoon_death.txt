@@ -1,0 +1,2 @@
+Creature sound: raccoon
+Replace this file with raccoon_death.wav (or raccoon_death.mp3 / raccoon_death.flac) to use your own recording.

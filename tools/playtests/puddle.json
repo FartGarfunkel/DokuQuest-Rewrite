@@ -1,0 +1,14 @@
+{"steps":[
+ {"wait":150,"do":"anchor"},
+ {"do":"cmd","text":"/weather clear"},
+ {"do":"cmd","text":"/time set noon"},
+ {"do":"fill","rel":true,"from":[-3,0,-8],"to":[4,6,-2],"key":"air"},
+ {"do":"fill","rel":true,"from":[-3,-1,-8],"to":[4,-1,-2],"key":"stone"},
+ {"do":"fill","rel":true,"from":[-2,0,-6],"to":[3,0,-4],"key":"puddle"},
+ {"wait":5,"do":"expect","block":[-2,0,-6],"rel":true,"is":"puddle"},
+ {"wait":4000,"do":"report"},
+ {"do":"expect","block":[-2,0,-6],"rel":true,"is":"air"},
+ {"do":"expect","block":[0,0,-5],"rel":true,"is":"air"},
+ {"do":"expect","block":[3,0,-4],"rel":true,"is":"air"},
+ {"wait":5,"do":"quit"}
+]}

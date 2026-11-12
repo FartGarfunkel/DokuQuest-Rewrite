@@ -1,0 +1,2 @@
+Creature sound: donkey
+Replace this file with donkey_death.wav (or donkey_death.mp3 / donkey_death.flac) to use your own recording.

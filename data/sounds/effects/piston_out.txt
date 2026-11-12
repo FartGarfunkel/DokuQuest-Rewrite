@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with piston_out.wav (or piston_out.mp3 / piston_out.flac) to use your own recording.

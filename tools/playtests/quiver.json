@@ -1,0 +1,19 @@
+{"steps":[
+ {"wait":200,"do":"cmd","text":"/time set noon"},
+ {"do":"cmd","text":"/clear"},
+ {"do":"give","item":"quiver","n":1},
+ {"do":"give","item":"bow","n":1},
+ {"do":"give","item":"arrow","n":20},
+ {"do":"look","yaw":0,"pitch":20},
+ {"do":"select","slot":0},
+ {"wait":5,"do":"mouse","button":"right","hold":1},
+ {"wait":10,"do":"expect","count":"arrow","n":0},
+ {"do":"select","slot":1},
+ {"wait":5,"do":"mouse","button":"right","hold":50},
+ {"wait":60,"do":"select","slot":0},
+ {"do":"key","key":"Left Shift","hold":20},
+ {"wait":2,"do":"mouse","button":"right","hold":1},
+ {"wait":20,"do":"expect","count":"arrow","n":19},
+ {"do":"report"},
+ {"do":"quit"}
+]}

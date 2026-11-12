@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with spit_death.wav (or spit_death.mp3 / spit_death.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: step on mud blocks
+Replace this file with mud.step.wav (or mud.step.mp3 / mud.step.flac) to use your own recording.

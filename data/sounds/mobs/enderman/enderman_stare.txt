@@ -1,0 +1,2 @@
+Creature sound: enderman
+Replace this file with enderman_stare.wav (or enderman_stare.mp3 / enderman_stare.flac) to use your own recording.

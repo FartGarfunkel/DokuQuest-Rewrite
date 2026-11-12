@@ -1,0 +1,2 @@
+Creature sound: adder
+Replace this file with adder_death.wav (or adder_death.mp3 / adder_death.flac) to use your own recording.

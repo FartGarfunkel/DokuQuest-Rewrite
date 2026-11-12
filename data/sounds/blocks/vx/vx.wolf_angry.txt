@@ -1,0 +1,2 @@
+Block sound: wolf_angry on vx blocks
+Replace this file with vx.wolf_angry.wav (or vx.wolf_angry.mp3 / vx.wolf_angry.flac) to use your own recording.

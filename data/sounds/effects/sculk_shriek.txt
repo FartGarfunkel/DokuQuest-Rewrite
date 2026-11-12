@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with sculk_shriek.wav (or sculk_shriek.mp3 / sculk_shriek.flac) to use your own recording.

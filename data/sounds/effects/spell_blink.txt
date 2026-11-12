@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with spell_blink.wav (or spell_blink.mp3 / spell_blink.flac) to use your own recording.

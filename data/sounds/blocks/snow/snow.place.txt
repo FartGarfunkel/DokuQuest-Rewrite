@@ -1,0 +1,2 @@
+Block sound: place on snow blocks
+Replace this file with snow.place.wav (or snow.place.mp3 / snow.place.flac) to use your own recording.

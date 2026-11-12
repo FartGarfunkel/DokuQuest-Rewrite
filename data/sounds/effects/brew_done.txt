@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with brew_done.wav (or brew_done.mp3 / brew_done.flac) to use your own recording.

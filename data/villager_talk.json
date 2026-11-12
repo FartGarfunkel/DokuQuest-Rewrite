@@ -1,0 +1,794 @@
+{
+"threads": [
+{
+"kind": "raid",
+"n": 2,
+"lines": [
+[
+0,
+"Did you hear the horns last night?"
+],
+[
+1,
+"I did. I hid under the bed till the bell stopped."
+],
+[
+0,
+"The watch says they came from the east road."
+],
+[
+1,
+"Then I'm not taking the east road to market."
+]
+]
+},
+{
+"kind": "raid",
+"n": 3,
+"lines": [
+[
+0,
+"If the raiders come again, I'm ready."
+],
+[
+1,
+"Ready? You were behind the well, {0}."
+],
+[
+2,
+"We were all behind the well."
+],
+[
+0,
+"It's a very good well."
+],
+[
+1,
+"Ha! That it is."
+]
+]
+},
+{
+"kind": "raid",
+"n": 4,
+"lines": [
+[
+0,
+"We should build the walls higher."
+],
+[
+1,
+"With what stone? The mason's still on the chapel steps."
+],
+[
+2,
+"Then the chapel can wait. Walls first."
+],
+[
+3,
+"Tell that to the cleric."
+],
+[
+0,
+"You tell him. I'll hold the ladder."
+]
+]
+},
+{
+"kind": "raid",
+"n": 2,
+"lines": [
+[
+0,
+"My cousin in the next village lost two sheep to raiders."
+],
+[
+1,
+"Only two? They took the whole barn at Millbrook."
+],
+[
+0,
+"Barns don't walk, {1}."
+],
+[
+1,
+"These ones did."
+]
+]
+},
+{
+"kind": "golem",
+"n": 2,
+"lines": [
+[
+0,
+"Have you seen {golem} this morning?"
+],
+[
+1,
+"Walking the wall again. Round and round."
+],
+[
+0,
+"Does it ever sleep?"
+],
+[
+1,
+"I asked. It just looked at me."
+],
+[
+0,
+"It gave me a flower once."
+]
+]
+},
+{
+"kind": "golem",
+"n": 3,
+"lines": [
+[
+0,
+"Is it me, or is {golem} following me?"
+],
+[
+1,
+"It follows everyone who drops bread."
+],
+[
+0,
+"I do drop a lot of bread."
+],
+[
+2,
+"We know."
+]
+]
+},
+{
+"kind": "golem",
+"n": 3,
+"lines": [
+[
+0,
+"The children climb on {golem} again."
+],
+[
+1,
+"It lets them. Gentle as a lamb."
+],
+[
+2,
+"Gentle till a zombie shows up."
+],
+[
+1,
+"Then it's not gentle at all. Good."
+]
+]
+},
+{
+"kind": "trades",
+"n": 2,
+"lines": [
+[
+0,
+"A traveller paid me in buttons today."
+],
+[
+1,
+"Buttons? For what?"
+],
+[
+0,
+"Three loaves."
+],
+[
+1,
+"And you took them?"
+],
+[
+0,
+"They were very nice buttons."
+],
+[
+1,
+"{0}..."
+]
+]
+},
+{
+"kind": "trades",
+"n": 3,
+"lines": [
+[
+0,
+"Eight emeralds for a stone pickaxe. Can you believe it?"
+],
+[
+1,
+"Who sold you that?"
+],
+[
+0,
+"The smith. He said it was a lucky one."
+],
+[
+2,
+"Was it?"
+],
+[
+0,
+"It broke on the first block."
+]
+]
+},
+{
+"kind": "trades",
+"n": 4,
+"lines": [
+[
+0,
+"The prices at the stall went up again."
+],
+[
+1,
+"Flour's short. The mill's been slow."
+],
+[
+2,
+"Then pray for wind."
+],
+[
+0,
+"I'll pray for cheaper bread."
+],
+[
+3,
+"Pray for both. It's free."
+]
+]
+},
+{
+"kind": "trades",
+"n": 2,
+"lines": [
+[
+0,
+"That stranger bought every arrow I had."
+],
+[
+1,
+"Good trade!"
+],
+[
+0,
+"Then he sold them back to me cheaper."
+],
+[
+1,
+"...that's still a good trade, somehow."
+]
+]
+},
+{
+"kind": "life",
+"n": 2,
+"lines": [
+[
+0,
+"Lovely morning."
+],
+[
+1,
+"It is. The bread smells good from here."
+],
+[
+0,
+"Kit's up early again."
+],
+[
+1,
+"Kit's always up early."
+]
+]
+},
+{
+"kind": "life",
+"n": 3,
+"lines": [
+[
+0,
+"The well's water tastes funny."
+],
+[
+1,
+"Funny how?"
+],
+[
+0,
+"Like copper."
+],
+[
+2,
+"That's my bucket. Sorry."
+],
+[
+1,
+"Get a new bucket, {2}."
+]
+]
+},
+{
+"kind": "life",
+"n": 2,
+"lines": [
+[
+0,
+"Are you going to the service on market day?"
+],
+[
+1,
+"Wouldn't miss it. The cleric does the voices."
+],
+[
+0,
+"The voices?"
+],
+[
+1,
+"For the old stories. Very dramatic."
+]
+]
+},
+{
+"kind": "life",
+"n": 4,
+"lines": [
+[
+0,
+"The new folk at the end of the road seem nice."
+],
+[
+1,
+"They waved at me."
+],
+[
+2,
+"They waved at me too."
+],
+[
+3,
+"They didn't wave at me."
+],
+[
+0,
+"You were facing the wrong way, {3}."
+]
+]
+},
+{
+"kind": "life",
+"n": 2,
+"lines": [
+[
+0,
+"Rain's coming."
+],
+[
+1,
+"How do you know?"
+],
+[
+0,
+"My knee says so."
+],
+[
+1,
+"Your knee was wrong last week."
+],
+[
+0,
+"My knee is never wrong. The sky was."
+]
+]
+},
+{
+"kind": "gossip",
+"n": 3,
+"lines": [
+[
+0,
+"Did you see who walked {2} home last night?"
+],
+[
+1,
+"No! Who?"
+],
+[
+0,
+"I'm not saying."
+],
+[
+1,
+"You can't say that and not say!"
+],
+[
+2,
+"I'm right here, you two."
+]
+]
+},
+{
+"kind": "gossip",
+"n": 3,
+"lines": [
+[
+0,
+"I think the miller's sweet on someone."
+],
+[
+1,
+"He's been whistling all week."
+],
+[
+2,
+"Whistling is serious."
+],
+[
+0,
+"Very serious."
+]
+]
+},
+{
+"kind": "joke",
+"n": 3,
+"lines": [
+[
+0,
+"Why did the creeper cross the road?"
+],
+[
+1,
+"Why?"
+],
+[
+0,
+"To get to the other... ssssside."
+],
+[
+1,
+"Ha! That's terrible."
+],
+[
+2,
+"I laughed. Don't tell anyone."
+]
+]
+},
+{
+"kind": "joke",
+"n": 2,
+"lines": [
+[
+0,
+"What do you call a sheep with no legs?"
+],
+[
+1,
+"What?"
+],
+[
+0,
+"A cloud."
+],
+[
+1,
+"Hahaha!"
+]
+]
+},
+{
+"kind": "joke",
+"n": 3,
+"lines": [
+[
+0,
+"I told the golem a joke."
+],
+[
+1,
+"Did it laugh?"
+],
+[
+0,
+"It stood very still."
+],
+[
+2,
+"That's how golems laugh."
+],
+[
+0,
+"Then it loved it."
+]
+]
+},
+{
+"kind": "joke",
+"n": 3,
+"lines": [
+[
+0,
+"How does a skeleton call its friends?"
+],
+[
+1,
+"I don't know."
+],
+[
+0,
+"On the tele-bone."
+],
+[
+1,
+"Oh no."
+],
+[
+2,
+"Oh yes."
+]
+]
+},
+{
+"kind": "drink",
+"n": 2,
+"lines": [
+[
+0,
+"To a good harvest!"
+],
+[
+1,
+"To a good harvest!"
+],
+[
+0,
+"And to no raids!"
+],
+[
+1,
+"I'll drink twice to that."
+]
+]
+},
+{
+"kind": "drink",
+"n": 3,
+"lines": [
+[
+0,
+"The innkeeper's cider is strong tonight."
+],
+[
+1,
+"Is that why the bench is moving?"
+],
+[
+2,
+"The bench isn't moving, {1}."
+],
+[
+1,
+"Then it's me. Good cider."
+],
+[
+0,
+"Cheers to that!"
+]
+]
+},
+{
+"kind": "drink",
+"n": 3,
+"lines": [
+[
+0,
+"One more round?"
+],
+[
+1,
+"Just one."
+],
+[
+2,
+"You said that two rounds ago."
+],
+[
+1,
+"And I meant it every time."
+]
+]
+},
+{
+"kind": "argue",
+"n": 2,
+"lines": [
+[
+0,
+"You let your goats into my garden again!"
+],
+[
+1,
+"They're not my goats!"
+],
+[
+0,
+"They had your bell on!"
+],
+[
+1,
+"Anyone can buy a bell!"
+],
+[
+0,
+"Hmph."
+]
+]
+},
+{
+"kind": "argue",
+"n": 2,
+"lines": [
+[
+0,
+"You owe me three coins, {1}."
+],
+[
+1,
+"I paid you back!"
+],
+[
+0,
+"In buttons!"
+],
+[
+1,
+"Buttons are money somewhere."
+],
+[
+0,
+"Not here!"
+]
+]
+},
+{
+"kind": "argue",
+"n": 2,
+"lines": [
+[
+0,
+"Your hammering kept me up all night."
+],
+[
+1,
+"Work is work."
+],
+[
+0,
+"At midnight?"
+],
+[
+1,
+"The iron doesn't wait for you."
+],
+[
+0,
+"Neither does my patience."
+]
+]
+},
+{
+"kind": "argue",
+"n": 2,
+"lines": [
+[
+0,
+"That was my seat."
+],
+[
+1,
+"It's a bench. For everyone."
+],
+[
+0,
+"I've sat here ten years!"
+],
+[
+1,
+"Then you've had it long enough."
+]
+]
+},
+{
+"kind": "love",
+"n": 2,
+"lines": [
+[
+0,
+"I saved you the last apple."
+],
+[
+1,
+"You didn't have to."
+],
+[
+0,
+"I wanted to."
+],
+[
+1,
+"...thank you, {0}."
+]
+]
+},
+{
+"kind": "love",
+"n": 2,
+"lines": [
+[
+0,
+"Walk with me to the well later?"
+],
+[
+1,
+"I'd like that."
+],
+[
+0,
+"Good. I mean - good. Yes."
+],
+[
+1,
+"You're blushing."
+]
+]
+},
+{
+"kind": "love",
+"n": 2,
+"lines": [
+[
+0,
+"I made you something."
+],
+[
+1,
+"A flower crown? For me?"
+],
+[
+0,
+"It's a bit crooked."
+],
+[
+1,
+"It's perfect."
+]
+]
+}
+],
+"clans": [
+"Oakhart",
+"Brightwater",
+"Thornfield",
+"Ashford",
+"Millstone",
+"Greenhollow",
+"Ravensworth",
+"Fairweather",
+"Ironvale",
+"Stonebrook",
+"Willowmere",
+"Hearthgold"
+]
+}

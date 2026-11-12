@@ -1,0 +1,2 @@
+Block sound: enderman_stare on fx blocks
+Replace this file with fx.enderman_stare.wav (or fx.enderman_stare.mp3 / fx.enderman_stare.flac) to use your own recording.

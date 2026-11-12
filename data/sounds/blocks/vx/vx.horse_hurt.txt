@@ -1,0 +1,2 @@
+Block sound: horse_hurt on vx blocks
+Replace this file with vx.horse_hurt.wav (or vx.horse_hurt.mp3 / vx.horse_hurt.flac) to use your own recording.

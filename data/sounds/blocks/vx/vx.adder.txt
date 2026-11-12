@@ -1,0 +1,2 @@
+Block sound: adder on vx blocks
+Replace this file with vx.adder.wav (or vx.adder.mp3 / vx.adder.flac) to use your own recording.

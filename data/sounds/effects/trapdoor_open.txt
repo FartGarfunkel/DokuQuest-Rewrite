@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with trapdoor_open.wav (or trapdoor_open.mp3 / trapdoor_open.flac) to use your own recording.

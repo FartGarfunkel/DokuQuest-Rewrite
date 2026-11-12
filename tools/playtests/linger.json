@@ -1,0 +1,9 @@
+{"steps":[
+ {"wait":120,"do":"cmd","text":"/gamemode creative"},
+ {"wait":3,"do":"give","item":"lingering_potion_regen","n":3,"clear":true,"hand":true},
+ {"wait":3,"do":"look","yaw":0,"pitch":-50},
+ {"wait":3,"do":"mouse","button":"right"},
+ {"wait":40,"do":"expect","entity":"potion_cloud","near":8},
+ {"wait":3,"do":"shot","path":"/tmp/pt/linger.png"},
+ {"wait":3,"do":"report"},
+ {"do":"quit"}]}

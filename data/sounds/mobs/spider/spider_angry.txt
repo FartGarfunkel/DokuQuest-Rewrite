@@ -1,0 +1,2 @@
+Creature sound: spider
+Replace this file with spider_angry.wav (or spider_angry.mp3 / spider_angry.flac) to use your own recording.

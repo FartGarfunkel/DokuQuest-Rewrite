@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with dragon_flap.wav (or dragon_flap.mp3 / dragon_flap.flac) to use your own recording.

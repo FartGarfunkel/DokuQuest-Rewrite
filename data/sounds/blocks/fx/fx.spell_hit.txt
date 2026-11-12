@@ -1,0 +1,2 @@
+Block sound: spell_hit on fx blocks
+Replace this file with fx.spell_hit.wav (or fx.spell_hit.mp3 / fx.spell_hit.flac) to use your own recording.

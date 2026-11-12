@@ -1,0 +1,2 @@
+Creature sound: squid
+Replace this file with squid_death.wav (or squid_death.mp3 / squid_death.flac) to use your own recording.

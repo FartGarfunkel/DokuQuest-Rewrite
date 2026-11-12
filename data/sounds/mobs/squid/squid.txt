@@ -1,0 +1,2 @@
+Creature sound: squid
+Replace this file with squid.wav (or squid.mp3 / squid.flac) to use your own recording.

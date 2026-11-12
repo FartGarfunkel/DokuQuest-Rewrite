@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with wisp.wav (or wisp.mp3 / wisp.flac) to use your own recording.

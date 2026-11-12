@@ -1,0 +1,2 @@
+Block sound: dig on sand blocks
+Replace this file with sand.dig.wav (or sand.dig.mp3 / sand.dig.flac) to use your own recording.

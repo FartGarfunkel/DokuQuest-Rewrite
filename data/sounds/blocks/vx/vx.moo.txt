@@ -1,0 +1,2 @@
+Block sound: moo on vx blocks
+Replace this file with vx.moo.wav (or vx.moo.mp3 / vx.moo.flac) to use your own recording.

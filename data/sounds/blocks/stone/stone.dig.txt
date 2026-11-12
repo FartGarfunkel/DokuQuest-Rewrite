@@ -1,0 +1,2 @@
+Block sound: dig on stone blocks
+Replace this file with stone.dig.wav (or stone.dig.mp3 / stone.dig.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: thud on fx blocks
+Replace this file with fx.thud.wav (or fx.thud.mp3 / fx.thud.flac) to use your own recording.

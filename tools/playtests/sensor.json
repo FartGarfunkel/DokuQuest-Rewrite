@@ -1,0 +1,18 @@
+{"steps":[
+ {"wait":200,"do":"anchor"},
+ {"do":"tp","rel":true,"x":0,"y":0,"z":0},
+ {"do":"cmd","text":"/time set 6000"},
+ {"do":"fill","rel":true,"from":[-3,0,-6],"to":[3,4,3],"key":"air"},
+ {"do":"fill","rel":true,"from":[-3,-1,-6],"to":[3,-1,3],"key":"stone"},
+ {"do":"setBlock","rel":true,"x":2,"y":0,"z":-3,"key":"motion_sensor"},
+ {"do":"setBlock","rel":true,"x":3,"y":0,"z":-3,"key":"redstone_lamp"},
+ {"do":"setBlock","rel":true,"x":0,"y":0,"z":-5,"key":"iron_mesh"},
+ {"wait":40,"do":"expect","rel":true,"block":[3,0,-3],"is":"redstone_lamp"},
+ {"do":"look","yaw":0,"pitch":0},
+ {"do":"key","key":"W","hold":12},
+ {"wait":4,"do":"expect","rel":true,"block":[3,0,-3],"is":"redstone_lamp_on"},
+ {"wait":80,"do":"expect","rel":true,"block":[3,0,-3],"is":"redstone_lamp"},
+ {"do":"key","key":"W","hold":40},
+ {"wait":10,"do":"report"},
+ {"do":"quit"}
+]}

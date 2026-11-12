@@ -1,0 +1,2 @@
+Creature sound: horse
+Replace this file with horse.wav (or horse.mp3 / horse.flac) to use your own recording.

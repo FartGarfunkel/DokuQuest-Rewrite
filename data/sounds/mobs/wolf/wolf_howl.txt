@@ -1,0 +1,2 @@
+Creature sound: wolf
+Replace this file with wolf_howl.wav (or wolf_howl.mp3 / wolf_howl.flac) to use your own recording.

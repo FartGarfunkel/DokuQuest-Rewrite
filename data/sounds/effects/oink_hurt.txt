@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with oink_hurt.wav (or oink_hurt.mp3 / oink_hurt.flac) to use your own recording.

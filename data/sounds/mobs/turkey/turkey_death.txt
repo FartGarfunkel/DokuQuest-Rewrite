@@ -1,0 +1,2 @@
+Creature sound: turkey
+Replace this file with turkey_death.wav (or turkey_death.mp3 / turkey_death.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: step on log blocks
+Replace this file with log.step.wav (or log.step.mp3 / log.step.flac) to use your own recording.

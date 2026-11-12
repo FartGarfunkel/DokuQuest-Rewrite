@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with wisp_death.wav (or wisp_death.mp3 / wisp_death.flac) to use your own recording.

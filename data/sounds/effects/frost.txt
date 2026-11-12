@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with frost.wav (or frost.mp3 / frost.flac) to use your own recording.

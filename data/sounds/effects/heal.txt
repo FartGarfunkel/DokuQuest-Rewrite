@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with heal.wav (or heal.mp3 / heal.flac) to use your own recording.

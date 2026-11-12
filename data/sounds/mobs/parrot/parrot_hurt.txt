@@ -1,0 +1,2 @@
+Creature sound: parrot
+Replace this file with parrot_hurt.wav (or parrot_hurt.mp3 / parrot_hurt.flac) to use your own recording.

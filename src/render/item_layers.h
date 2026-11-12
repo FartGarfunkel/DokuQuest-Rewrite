@@ -1,0 +1,70 @@
+// render/item_layers.h — items in the world as voxel models:
+//  * HeldItemLayer: the first-person arm and what it holds (game/local.js hand(): Minecraft's swing turned
+//    about the fist, the step bob, the lag when you turn (settings.heldSway), the equip dip, eating, the
+//    off hand; the 3D torch held upright, blocks held as blocks, tools by the handle);
+//  * DroppedItemLayer: entities of type "item" (data["stack"] = ItemStack json) hover, bob and spin
+//    (game/entities.js ItemEntity.draws), bigger stacks showing more copies.
+// Both register through registerItemLayers() (called once from GameSession's constructor).
+#pragma once
+#include "client/session.h"
+#include "assets/item_models.h"
+#include "render/fp_motion.h"
+
+namespace dq {
+
+class HeldItemLayer : public RenderLayer {
+public:
+  const char* name() const override { return "held-item"; }
+  int order() const override { return 900; }
+  void update(GameSession& s, double dt) override;
+  void drawOverlay(GameSession& s, const FrameCtx& f) override;
+  // gameplay hooks (local.js): swing the arm (attack, place, use), start the eating/drinking motion
+  void swingArm() { if (swing == 0 || swing > 0.6f) swing = 0.0001f; }
+  float simSwing = 0;   // the player's own swing last frame (a placement while Use is held restarts it)
+  void eat() { eatAnim = 0.45f; }
+  void setSwinging(bool on) { swinging = on; }   // held swing while mining (set every frame)
+  float swing = 0, equip = 1, eatAnim = 0, bob = 0, bobAmt = 0;
+  // other areas may take over a hand (a map held up, render/map_render.cpp): the hook draws it and returns the
+  // hands it took (1 = main, 2 = off); or draw over the item in a hand (the live compass and clock dials,
+  // render/instruments.cpp): m maps the item model's space (before VoxelModel::matrix()) to view space
+  inline static std::function<int(HeldItemLayer&, GameSession&, const FrameCtx&, const mat4& proj)> handsHook;
+  // the hands the hook took last frame: the first-person body (render/char_layer.cpp) leaves that arm out, so a map held
+  // up in both hands doesn't have your own left arm hanging beside it as a third
+  inline static int handsTaken = 0;
+  inline static std::function<void(GameSession&, const FrameCtx&, const mat4& proj, const ItemStack&, const mat4& m, const VoxelModel&)> itemHook;
+  // where the flame of a torch held in each hand was last drawn (world space; render/held_light_fx.cpp)
+  inline static glm::dvec3 torchTip[2]{}; inline static bool torchTipOn[2]{};
+private:
+  bool swinging = false;
+  std::string lastHeld = "\x01";
+  // render/fp_motion.h: the swap (the old thing going down), and the hand's place by what you're doing
+  ItemStack lastStack, swapOld; float swapT = 1;
+  FpState fps; bool wasGround = true; float lastVy = 0;
+  float hy = 0, hp = 0, hsx = 0, hsy = 0; bool haveLook = false;
+  double time = 0;
+  vec2 light{1, 0};
+};
+
+class DroppedItemLayer : public RenderLayer {
+public:
+  const char* name() const override { return "dropped-items"; }
+  int order() const override { return 100; }
+  void drawOpaque(GameSession& s, const FrameCtx& f) override;
+};
+
+// the first-person arm (models.js MODELS.player_arm: a sleeve and a hand), as a voxel model
+const VoxelModel& firstPersonArm();
+
+void registerItemLayers();   // idempotent
+void registerPileLayer();    // render/pile_layer.cpp (called from registerItemLayers)
+void registerLecternLayer(); // render/lectern_layer.cpp (called from registerItemLayers)
+void registerFpBow();        // render/fp_bow.cpp (called from registerItemLayers)
+void registerSpawnerLayer(); // render/spawner_layer.cpp (called from registerItemLayers)
+void registerStationCards();   // render/station_cards.cpp: the enchanting offers and the anvil's card in the world (called from registerItemLayers)
+void registerCinematicHands();   // render/cinematic_hands.cpp (called from registerItemLayers)
+void registerActivityLayer();   // render/activity_layer.cpp (called from registerItemLayers)
+void registerTroughLayer();   // render/trough_layer.cpp (called from registerItemLayers)
+void registerFurnaceLayer();  // render/furnace_layer.cpp: what's in a furnace, seen (called from registerItemLayers)
+void registerWaystoneLayer(); // render/waystone_layer.cpp (called from registerItemLayers)
+
+} // namespace dq

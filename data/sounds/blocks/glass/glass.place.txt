@@ -1,0 +1,2 @@
+Block sound: place on glass blocks
+Replace this file with glass.place.wav (or glass.place.mp3 / glass.place.flac) to use your own recording.

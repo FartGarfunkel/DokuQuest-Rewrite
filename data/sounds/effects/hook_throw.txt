@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with hook_throw.wav (or hook_throw.mp3 / hook_throw.flac) to use your own recording.

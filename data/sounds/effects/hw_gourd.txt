@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with hw_gourd.wav (or hw_gourd.mp3 / hw_gourd.flac) to use your own recording.

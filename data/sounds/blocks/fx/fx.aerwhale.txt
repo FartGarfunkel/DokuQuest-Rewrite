@@ -1,0 +1,2 @@
+Block sound: aerwhale on fx blocks
+Replace this file with fx.aerwhale.wav (or fx.aerwhale.mp3 / fx.aerwhale.flac) to use your own recording.

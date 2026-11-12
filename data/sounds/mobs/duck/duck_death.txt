@@ -1,0 +1,2 @@
+Creature sound: duck
+Replace this file with duck_death.wav (or duck_death.mp3 / duck_death.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: lion on vx blocks
+Replace this file with vx.lion.wav (or vx.lion.mp3 / vx.lion.flac) to use your own recording.

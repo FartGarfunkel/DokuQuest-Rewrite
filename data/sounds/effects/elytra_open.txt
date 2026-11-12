@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with elytra_open.wav (or elytra_open.mp3 / elytra_open.flac) to use your own recording.

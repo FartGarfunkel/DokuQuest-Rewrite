@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with firework_twinkle.wav (or firework_twinkle.mp3 / firework_twinkle.flac) to use your own recording.

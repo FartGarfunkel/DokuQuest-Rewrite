@@ -1,0 +1,2 @@
+Block sound: bear_angry on vx blocks
+Replace this file with vx.bear_angry.wav (or vx.bear_angry.mp3 / vx.bear_angry.flac) to use your own recording.

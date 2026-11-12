@@ -1,0 +1,2 @@
+Block sound: bigcat_hurt on vx blocks
+Replace this file with vx.bigcat_hurt.wav (or vx.bigcat_hurt.mp3 / vx.bigcat_hurt.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: sculk_shriek on fx blocks
+Replace this file with fx.sculk_shriek.wav (or fx.sculk_shriek.mp3 / fx.sculk_shriek.flac) to use your own recording.

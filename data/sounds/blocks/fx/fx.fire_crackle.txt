@@ -1,0 +1,2 @@
+Block sound: fire_crackle on fx blocks
+Replace this file with fx.fire_crackle.wav (or fx.fire_crackle.mp3 / fx.fire_crackle.flac) to use your own recording.

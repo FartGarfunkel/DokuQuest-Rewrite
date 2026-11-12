@@ -1,0 +1,2 @@
+Block sound: wraith_hurt on vx blocks
+Replace this file with vx.wraith_hurt.wav (or vx.wraith_hurt.mp3 / vx.wraith_hurt.flac) to use your own recording.

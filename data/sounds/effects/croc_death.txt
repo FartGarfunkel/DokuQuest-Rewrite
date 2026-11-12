@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with croc_death.wav (or croc_death.mp3 / croc_death.flac) to use your own recording.

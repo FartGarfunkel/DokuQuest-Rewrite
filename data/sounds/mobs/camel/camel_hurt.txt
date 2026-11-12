@@ -1,0 +1,2 @@
+Creature sound: camel
+Replace this file with camel_hurt.wav (or camel_hurt.mp3 / camel_hurt.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Creature sound: frog
+Replace this file with frog_death.wav (or frog_death.mp3 / frog_death.flac) to use your own recording.

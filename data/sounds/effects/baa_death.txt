@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with baa_death.wav (or baa_death.mp3 / baa_death.flac) to use your own recording.

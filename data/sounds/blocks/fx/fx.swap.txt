@@ -1,0 +1,2 @@
+Block sound: swap on fx blocks
+Replace this file with fx.swap.wav (or fx.swap.mp3 / fx.swap.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Creature sound: enderman
+Replace this file with enderman_death.wav (or enderman_death.mp3 / enderman_death.flac) to use your own recording.

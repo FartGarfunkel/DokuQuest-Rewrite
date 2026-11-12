@@ -1,0 +1,99 @@
+# CI: build DokuQuest on Linux and Windows for every push and pull request, and smoke-test it on Linux
+# (Xvfb + Mesa software GL): create a world and play 300 frames, open every launcher tab, run the server.
+# Nothing is published here — releases come only from release.yml (a pushed v* tag or a manual run).
+name: CI
+on:
+  push:
+  pull_request:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    # 24.04: its newer Mesa draws the smoke test about ten times faster than 22.04's. CI publishes nothing;
+    # release.yml still builds on 22.04 so the released binaries run on older distros.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Packages (SDL backends, GL/EGL, audio; Xvfb + Mesa for the smoke test)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxinerama-dev libxxf86vm-dev libxss-dev libxfixes-dev libxkbcommon-dev \
+            libwayland-dev wayland-protocols libdecor-0-dev libegl-dev libgl-dev libgles-dev libgl1-mesa-dev libdrm-dev libgbm-dev \
+            libasound2-dev libpulse-dev libudev-dev libdbus-1-dev \
+            xvfb xauth mesa-utils libgl1-mesa-dri ccache
+      - uses: actions/cache@v4
+        with:
+          path: |
+            third_party/SDL2
+            third_party/imgui
+            third_party/miniaudio
+            third_party/enet
+            third_party/quickjs
+            third_party/stb
+            third_party/glm
+            third_party/miniz
+            third_party/json
+            third_party/vulkan
+          key: deps-${{ runner.os }}-${{ hashFiles('tools/fetch_deps.sh') }}
+      # compiler cache: a push that touches a few files rebuilds only those (the cold build is ~12 min)
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ runner.os }}-${{ github.sha }}
+          restore-keys: ccache-${{ runner.os }}-
+      - name: Fetch dependencies
+        run: bash tools/fetch_deps.sh
+      - name: Build
+        run: |
+          ccache -M 2G; ccache -z
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          # -k 0: report every broken file; errors also become annotations (readable through the API)
+          set +e; cmake --build build --parallel -- -k 0 2>&1 | tee build.log; rc=${PIPESTATUS[0]}; set -e
+          grep -E "error:|undefined reference|multiple definition" build.log | sort -u | head -40 | while IFS= read -r l; do echo "::error::$l"; done
+          ccache -s | head -8
+          exit $rc
+      - name: No functions declared inside a block (MSVC puts those in the global namespace and the Windows release fails to link)
+        run: |
+          bad=$(grep -rnE '\{ (void|bool|int|float) [A-Za-z_]+\([^)]*\); |\{ std::[A-Za-z_:<>]+ [A-Za-z_]+\(\); ' src tools | grep -vE ':[0-9]+:\s*namespace ' || true)
+          if [ -n "$bad" ]; then echo "$bad" | while IFS= read -r l; do echo "::error::declare it at namespace scope: $l"; done; exit 1; fi
+      - name: No hex escape followed by a hex letter ("\xB0C" builds with GCC but MSVC fails with C7744; write "\xB0" "C")
+        run: |
+          bad=$(grep -rnE '\\x[0-9A-Fa-f]{2}[0-9A-Fa-f]' src tools --include='*.cpp' --include='*.h' || true)
+          if [ -n "$bad" ]; then echo "$bad" | while IFS= read -r l; do echo "::error::split the string after the escape: $l"; done; exit 1; fi
+      - name: Village buildings can be walked (ladders clear at the foot, igloo tunnels sealed and two high)
+        run: python3 tools/check_village_pieces.py data
+      - name: Smoke test
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -o pipefail
+          ud="$RUNNER_TEMP/ud"; mkdir -p shots "$ud"
+          # Mesa software GL draws about one frame a second at default settings, so the playtests ran into their
+          # 15-minute timeouts. Low settings keep the modern renderer but draw a short view at half resolution.
+          echo '{"preset":"custom","renderDist":4,"farTerrain":256,"shadows":0,"waterQuality":0,"clouds":false,"portalViews":false,"scale":0.5,"particles":1,"weatherParticles":0,"microVoxels":0}' > "$ud/settings.json"
+          run() { echo "::group::$*"; timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" "$@" 2>&1 | tee -a smoke.log; local c=${PIPESTATUS[0]}; echo "::endgroup::"; return $c; }
+          run ./build/dokuquest --userdir "$ud" --create Test --seed hello --smoke-frames 300 --smoke-shot shots/game.png
+          # scripted playtests: leave and reopen the world twice; fell a tree, save, reopen (tools/playtests, client/test_script)
+          for t in reopen tree menu_keys; do run ./build/dokuquest --userdir "$ud" --world Test --smoke-frames 4000 --smoke-script tools/playtests/$t.json || echo "::error::playtest $t exited with an error"; done
+          (grep -E "TEST (PASS|FAIL|DONE)" smoke.log || true) | while IFS= read -r l; do echo "::notice::$l"; done
+          (grep -E -A24 "crashed|uncaught exception" smoke.log || true) | head -50 | while IFS= read -r l; do echo "::error::$l"; done
+          for t in news server studio:editor studio:engine options; do run ./build/dokuquest-launcher --userdir "$ud" --tab "$t" --smoke-frames 30 --smoke-shot "shots/launcher-${t/:/-}.png"; done
+          ./build/dq-sweep --items > sweep.txt || true; tail -1 sweep.txt; (grep -E "^(EXCEPTION|TURNS INTO|NO SCREEN|CRASH)" sweep.txt || true) | head -30 | while IFS= read -r l; do echo "::warning::sweep: $l"; done
+          python3 tools/check_sounds.py | while IFS= read -r l; do case "$l" in SILENT*) echo "::warning::$l";; *) echo "$l";; esac; done
+          ./build/dq-sweep --drops > drops.txt || true; grep "^drops:" drops.txt || true; (grep -E "^(NO DROP|HAND DROP|EXCEPTION)" drops.txt || true) | head -30 | while IFS= read -r l; do echo "::warning::drops: $l"; done
+          (sleep 10; echo save; echo stop) | timeout 120 ./build/dokuquest-server --userdir "$ud" --world CI 2>&1 | tee -a smoke.log
+          if grep -n '^\[error\]' smoke.log; then grep '^\[error\]' smoke.log | sort -u | head -20 | while IFS= read -r l; do echo "::error::$l"; done; exit 1; fi
+          test -s shots/game.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-linux
+          path: |
+            shots/
+            smoke.log
+          if-no-files-found: ignore

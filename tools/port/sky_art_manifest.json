@@ -1,0 +1,18 @@
+{
+ "sky_grass_top": "grass_block_top",
+ "sky_grass_side": "grass_block_side",
+ "skystone": "stone",
+ "skystone_bricks": "stone_bricks",
+ "sunwood_log": "birch_log",
+ "sunwood_leaves": "oak_leaves",
+ "cloud_leaves": "oak_leaves",
+ "glimmersand": "sand",
+ "sky_bloom": "allium",
+ "aether_crystal_ore": "diamond_ore",
+ "cloud_puff_block": "powder_snow",
+ "bounce_cloud": "powder_snow",
+ "sun_cloud": "powder_snow",
+ "bluebells": "lily_of_the_valley",
+ "marigold": "oxeye_daisy",
+ "spinifex": "short_grass"
+}

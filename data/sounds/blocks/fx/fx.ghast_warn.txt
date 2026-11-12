@@ -1,0 +1,2 @@
+Block sound: ghast_warn on fx blocks
+Replace this file with fx.ghast_warn.wav (or fx.ghast_warn.mp3 / fx.ghast_warn.flac) to use your own recording.

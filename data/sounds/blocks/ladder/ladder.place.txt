@@ -1,0 +1,2 @@
+Block sound: place on ladder blocks
+Replace this file with ladder.place.wav (or ladder.place.mp3 / ladder.place.flac) to use your own recording.

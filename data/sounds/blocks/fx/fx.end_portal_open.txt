@@ -1,0 +1,2 @@
+Block sound: end_portal_open on fx blocks
+Replace this file with fx.end_portal_open.wav (or fx.end_portal_open.mp3 / fx.end_portal_open.flac) to use your own recording.

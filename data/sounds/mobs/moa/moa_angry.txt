@@ -1,0 +1,2 @@
+Creature sound: moa
+Replace this file with moa_angry.wav (or moa_angry.mp3 / moa_angry.flac) to use your own recording.

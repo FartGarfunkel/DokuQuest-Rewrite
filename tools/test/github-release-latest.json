@@ -1,0 +1,105 @@
+{
+  "url": "https://api.github.com/repos/FartGarfunkel/DokuQuest-Rewrite/releases/1",
+  "assets_url": "https://api.github.com/repos/FartGarfunkel/DokuQuest-Rewrite/releases/1/assets",
+  "upload_url": "https://uploads.github.com/repos/FartGarfunkel/DokuQuest-Rewrite/releases/1/assets{?name,label}",
+  "html_url": "https://github.com/FartGarfunkel/DokuQuest-Rewrite/releases/tag/v1.0.0-alpha.2",
+  "id": 1,
+  "author": {
+    "login": "github-actions[bot]",
+    "id": 41898282,
+    "type": "Bot"
+  },
+  "node_id": "RE_kwDOExample",
+  "tag_name": "v1.0.0-alpha.2",
+  "target_commitish": "main",
+  "name": "DokuQuest 1.0.0-alpha.2",
+  "draft": false,
+  "prerelease": true,
+  "created_at": "2026-10-24T11:58:00Z",
+  "published_at": "2026-10-24T12:01:00Z",
+  "assets": [
+    {
+      "url": "https://api.github.com/repos/FartGarfunkel/DokuQuest-Rewrite/releases/assets/11",
+      "id": 11,
+      "node_id": "RA_kwDOExample",
+      "name": "DokuQuest-1.0.0-alpha.2-x86_64.AppImage",
+      "label": "",
+      "uploader": {
+        "login": "github-actions[bot]",
+        "id": 41898282,
+        "type": "Bot"
+      },
+      "content_type": "application/octet-stream",
+      "state": "uploaded",
+      "size": 48123456,
+      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "download_count": 0,
+      "created_at": "2026-10-24T12:00:00Z",
+      "updated_at": "2026-10-24T12:00:05Z",
+      "browser_download_url": "https://github.com/FartGarfunkel/DokuQuest-Rewrite/releases/download/v1.0.0-alpha.2/DokuQuest-1.0.0-alpha.2-x86_64.AppImage"
+    },
+    {
+      "url": "https://api.github.com/repos/FartGarfunkel/DokuQuest-Rewrite/releases/assets/12",
+      "id": 12,
+      "node_id": "RA_kwDOExample",
+      "name": "DokuQuest-1.0.0-alpha.2-linux-x64.tar.gz",
+      "label": "",
+      "uploader": {
+        "login": "github-actions[bot]",
+        "id": 41898282,
+        "type": "Bot"
+      },
+      "content_type": "application/gzip",
+      "state": "uploaded",
+      "size": 278,
+      "digest": "sha256:85ad8b0e5eda458288cb6214d8890abca9701ce55d8e78c8a4591caa6507af98",
+      "download_count": 0,
+      "created_at": "2026-10-24T12:00:00Z",
+      "updated_at": "2026-10-24T12:00:05Z",
+      "browser_download_url": "https://github.com/FartGarfunkel/DokuQuest-Rewrite/releases/download/v1.0.0-alpha.2/DokuQuest-1.0.0-alpha.2-linux-x64.tar.gz"
+    },
+    {
+      "url": "https://api.github.com/repos/FartGarfunkel/DokuQuest-Rewrite/releases/assets/13",
+      "id": 13,
+      "node_id": "RA_kwDOExample",
+      "name": "DokuQuest-1.0.0-alpha.2-windows-x64.zip",
+      "label": "",
+      "uploader": {
+        "login": "github-actions[bot]",
+        "id": 41898282,
+        "type": "Bot"
+      },
+      "content_type": "application/zip",
+      "state": "uploaded",
+      "size": 40111222,
+      "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "download_count": 0,
+      "created_at": "2026-10-24T12:00:00Z",
+      "updated_at": "2026-10-24T12:00:05Z",
+      "browser_download_url": "https://github.com/FartGarfunkel/DokuQuest-Rewrite/releases/download/v1.0.0-alpha.2/DokuQuest-1.0.0-alpha.2-windows-x64.zip"
+    },
+    {
+      "url": "https://api.github.com/repos/FartGarfunkel/DokuQuest-Rewrite/releases/assets/14",
+      "id": 14,
+      "node_id": "RA_kwDOExample",
+      "name": "SHA256SUMS.txt",
+      "label": "",
+      "uploader": {
+        "login": "github-actions[bot]",
+        "id": 41898282,
+        "type": "Bot"
+      },
+      "content_type": "text/plain",
+      "state": "uploaded",
+      "size": 321,
+      "digest": null,
+      "download_count": 0,
+      "created_at": "2026-10-24T12:00:00Z",
+      "updated_at": "2026-10-24T12:00:05Z",
+      "browser_download_url": "https://github.com/FartGarfunkel/DokuQuest-Rewrite/releases/download/v1.0.0-alpha.2/SHA256SUMS.txt"
+    }
+  ],
+  "tarball_url": "https://api.github.com/repos/FartGarfunkel/DokuQuest-Rewrite/tarball/v1.0.0-alpha.2",
+  "zipball_url": "https://api.github.com/repos/FartGarfunkel/DokuQuest-Rewrite/zipball/v1.0.0-alpha.2",
+  "body": "## 1.0.0-alpha.2\n- Things.\n- Removed Herobrine."
+}

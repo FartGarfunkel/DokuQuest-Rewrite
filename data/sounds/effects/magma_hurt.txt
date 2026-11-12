@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with magma_hurt.wav (or magma_hurt.mp3 / magma_hurt.flac) to use your own recording.

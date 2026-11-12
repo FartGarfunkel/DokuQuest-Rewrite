@@ -1,0 +1,16 @@
+{"steps":[
+ {"wait":200,"do":"anchor"},
+ {"do":"cmd","text":"/time set noon"},
+ {"do":"cmd","text":"/clear"},
+ {"do":"give","item":"mixed_pickaxe","n":1,"tag":{"pt":{"t":"pickaxe","m":["iron","diamond","copper"],"h":"stick","tier":3,"speed":5.8,"dmg":4,"dur":1031}}},
+ {"do":"give","item":"mixed_sword","n":1,"tag":{"pt":{"t":"sword","m":["gold","steel"],"h":"bone","tier":3,"speed":5,"dmg":5,"dur":500}}},
+ {"do":"give","item":"mixed_axe","n":1,"tag":{"pt":{"t":"axe","m":["ruby","emerald","sapphire"],"h":"stick","tier":4,"speed":8,"dmg":6,"dur":1500}}},
+ {"do":"give","item":"iron_pickaxe","n":1,"tag":{"gem":"diamond"}},
+ {"do":"give","item":"mixed_pickaxe","n":1,"tag":{"pt":{"t":"pickaxe","m":["gold","obsidian","gold"],"h":"cinder_rod","tier":3,"speed":7,"dmg":4,"dur":900},"gem":"charged_crystal"}},
+ {"do":"select","slot":0},
+ {"do":"look","pitch":-10},
+ {"wait":80,"do":"shot","path":"/tmp/pt/mixed_hand.png"},
+ {"do":"key","key":"e"},
+ {"wait":40,"do":"shot","path":"/tmp/pt/mixed_inv.png"},
+ {"do":"report"}
+]}

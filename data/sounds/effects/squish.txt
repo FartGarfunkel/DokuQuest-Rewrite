@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with squish.wav (or squish.mp3 / squish.flac) to use your own recording.

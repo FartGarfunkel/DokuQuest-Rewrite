@@ -1,0 +1,2 @@
+Block sound: brew_done on fx blocks
+Replace this file with fx.brew_done.wav (or fx.brew_done.mp3 / fx.brew_done.flac) to use your own recording.

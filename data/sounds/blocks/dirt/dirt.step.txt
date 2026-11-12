@@ -1,0 +1,2 @@
+Block sound: step on dirt blocks
+Replace this file with dirt.step.wav (or dirt.step.mp3 / dirt.step.flac) to use your own recording.

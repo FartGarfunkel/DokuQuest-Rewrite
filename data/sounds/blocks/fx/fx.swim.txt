@@ -1,0 +1,2 @@
+Block sound: swim on fx blocks
+Replace this file with fx.swim.wav (or fx.swim.mp3 / fx.swim.flac) to use your own recording.

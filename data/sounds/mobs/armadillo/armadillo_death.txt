@@ -1,0 +1,2 @@
+Creature sound: armadillo
+Replace this file with armadillo_death.wav (or armadillo_death.mp3 / armadillo_death.flac) to use your own recording.

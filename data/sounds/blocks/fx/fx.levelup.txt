@@ -1,0 +1,2 @@
+Block sound: levelup on fx blocks
+Replace this file with fx.levelup.wav (or fx.levelup.mp3 / fx.levelup.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: enderman_hurt on fx blocks
+Replace this file with fx.enderman_hurt.wav (or fx.enderman_hurt.mp3 / fx.enderman_hurt.flac) to use your own recording.

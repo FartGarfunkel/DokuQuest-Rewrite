@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with rift_whisper.wav (or rift_whisper.mp3 / rift_whisper.flac) to use your own recording.

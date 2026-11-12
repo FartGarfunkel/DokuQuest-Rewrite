@@ -1,0 +1,2 @@
+Creature sound: witch
+Replace this file with witch_death.wav (or witch_death.mp3 / witch_death.flac) to use your own recording.

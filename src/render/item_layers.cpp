@@ -1,0 +1,649 @@
+// render/item_layers.cpp — the first-person hand with the held item, and dropped items (voxel models).
+#include "ui/book_ui.h"
+#include "render/content_draw.h"
+#include "ui/cinematic.h"
+#include "render/book_model.h"
+#include "render/journal_model.h"
+#include "ui/held_book.h"
+#include "render/content_draw.h"
+#include "core/tool_parts.h"
+#include "render/item_layers.h"
+#include "render/place_pop.h"
+#include "sim/piles.h"
+#include "render/pack_geom.h"
+#include "render/char_layer.h"
+#include "render/chest_layer.h"
+#include "client/app.h"
+#include "assets/tileset.h"
+#include "assets/voxel_paint.h"
+#include "assets/gui_textures.h"
+#include "core/registry.h"
+#include "core/item_glint.h"
+#include "render/rod_tip.h"
+#include "render/instruments.h"
+#include "sim/fishing.h"
+#include <cstdlib>
+#include <cstdio>
+
+namespace dq {
+// a book's cover colour (0: not a book drawn as one): the plain book, the old books, written, being written, enchanted
+u32 bookCoverOf(const std::string& id) {
+  if (id == "book") return 0x7A4A24;
+  if (id == "written_book") return 0x3A2E6A;
+  if (id == "writable_book") return 0x6A4A2A;
+  if (id == "enchanted_book") return 0x5A2A8A;
+  if (id.rfind("lore_", 0) == 0) return 0x5A3418;
+  return 0;
+}
+// (declared out here: MSVC gives a function declared inside a block the global namespace, so these never linked on Windows)
+void registerPaintingLayer();
+void registerSwingLayer();
+void registerSignLayer();
+void registerStandLayer();
+void registerHeldLightFx();
+void registerWinterVillageLayer();
+void registerColourFilterLayer();
+void registerNetherGradeLayer();
+void registerPostLayer();   // render/post_layer.cpp
+void registerDreamlightLayer();
+void registerStatueLayer();
+void registerHeadLayer();   // render/head_layer.cpp
+void registerNetherFxLayer();   // render/nether_fx_layer.cpp
+
+void registerItemLayers() {
+  static bool done = false;
+  if (done) return;
+  done = true;
+  registerRenderLayer([](GameSession&) { return std::make_shared<HeldItemLayer>(); });
+  registerRenderLayer([](GameSession&) { return std::make_shared<DroppedItemLayer>(); });
+  registerPileLayer();   // piles and placed backpacks (render/pile_layer.cpp)
+  registerPlacePopLayer();   // a placed block pops (render/place_pop.cpp)
+  registerPaintingLayer();   // render/painting_layer.cpp
+  registerSwingLayer();
+  registerSignLayer();           // render/sign_layer.cpp
+  registerStandLayer();         // render/stand_layer.cpp         // render/swing_layer.cpp
+  registerHeldLightFx();       // render/held_light_fx.cpp
+  registerWinterVillageLayer();   // render/winter_village_layer.cpp (December)
+  registerPostLayer();           // the built-in shader levels and Iris/OptiFine post passes
+  registerColourFilterLayer();   // render/colour_filter_layer.cpp
+  registerNetherGradeLayer();    // render/nether_grade_layer.cpp
+  registerDreamlightLayer();     // render/dreamlight_layer.cpp
+  registerStatueLayer();   // render/statue_layer.cpp
+  registerLecternLayer();   // books on lecterns (render/lectern_layer.cpp)
+  registerChestLayer();     // chest lids that open with the chest's screen (render/chest_layer.cpp)
+  registerFpBow();          // the bow drawn in first person (render/fp_bow.cpp)
+  registerSpawnerLayer();   // the spinning monster inside a monster cage (render/spawner_layer.cpp)
+  registerStationCards(); registerCinematicHands(); // your arms at the crafting table scene (render/cinematic_hands.cpp)
+  registerActivityLayer();  // what the others are up to: typing, in a menu, dozing (render/activity_layer.cpp)
+  registerTroughLayer();    // the food lying in a feeding trough (render/trough_layer.cpp)
+  registerFurnaceLayer();   // the fuel, the cooking pan or mould, the smelted (render/furnace_layer.cpp)
+  registerWaystoneLayer();  // the waystones' runes lit for the ones you know, motes, their names (render/waystone_layer.cpp)
+  registerHeadLayer();      // placed mob heads (render/head_layer.cpp)
+  registerNetherFxLayer();  // the Nether lands' eruptions, embers, fumes and glints (render/nether_fx_layer.cpp)
+}
+
+// ------------------------------------------------------------------ the arm
+const VoxelModel& firstPersonArm() {
+  if (const VoxelModel* skinArm = localPlayerArm()) return *skinArm;   // the skin's own arm and sleeve (render/char_layer)
+  static VoxelModel& arm = *new VoxelModel();   // kept past exit (no GL calls after the context is gone)
+  static std::string builtFor;
+  const TileSet& ts = app().tiles;
+  std::string stamp = ts.packName + "#" + std::to_string(ts.count);
+  if (builtFor == stamp && arm.ready()) return arm;
+  builtFor = stamp;
+  // a hand 8 x 11 x 8 voxels under a sleeve 8 x 13 x 8 (the original's boxes: hand -0.33..0, sleeve 0..0.42)
+  VoxelGrid g(ivec3(8, 24, 8));
+  auto tileOf = [&](const char* n) { auto it = ts.index.find(n); return it == ts.index.end() ? -1 : it->second; };
+  int skin = tileOf("skin"), sleeve = tileOf("sleeve");
+  for (int z = 0; z < 8; z++) for (int y = 0; y < 24; y++) for (int x = 0; x < 8; x++) {
+    bool hand = y < 11; int y0 = hand ? 0 : 11, h = hand ? 11 : 13, t = hand ? skin : sleeve;
+    // the whole tile on each face of the part (models.js addBox); a voxel takes the face it lies on
+    vec3 n((x + 0.5f) / 8, (y - y0 + 0.5f) / h, (z + 0.5f) / 8);
+    float d[6] = {1 - n.x, n.x, 1 - n.y, n.y, 1 - n.z, n.z};
+    int f = 4; for (int i : {5, 0, 1, 2, 3}) if (d[i] < d[f] - 1e-4f) f = i;
+    float s = f == 0 ? 1 - n.z : f == 1 ? n.z : f == 2 ? n.x : f == 3 ? 1 - n.x : f == 4 ? n.x : 1 - n.x;
+    float tt = f == 2 || f == 3 ? n.z : 1 - n.y;
+    u32 c = t >= 0 ? tileVoxel(ts, t, (int)(s * ts.size), (int)(tt * ts.size)) : 0;
+    if (!c) c = hand ? voxRGBA(214, 168, 128) : voxRGBA(70, 110, 160);
+    g.set(x, y, z, c | 0xFF000000u);
+  }
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  arm.gl.upload(md);
+  arm.frame.voxel = 1.f / 32; arm.frame.origin = vec3(-0.125f, -0.34375f, -0.125f);
+  arm.size = g.size; arm.kind = VoxelModel::Block; arm.built = true; arm.key = "player_arm";
+  return arm;
+}
+
+// ------------------------------------------------------------------ held item (local.js hand())
+namespace {
+const vec3 FP_HAND(0.56f, -0.5f, -0.72f);   // where the first-person arms sit (x right, y up, -z ahead)
+inline float wrapA(float a) { return std::fmod(std::fmod(a + PI * 3, TAU) + TAU, TAU) - PI; }
+// Minecraft's first-person swing, turned about the fist: the item chops forward and down and eases back
+// (an empty hand punches instead)
+mat4 mcSwing(const mat4& am, float side, float sp, bool empty, bool mining = false) {
+  float r = std::sqrt(sp), f = std::sin(sp * sp * PI), f1 = std::sin(r * PI), D = PI / 180;
+  float k = empty ? -0.3f : 0.35f;
+  vec3 pv = vec3(am[1]) * k + vec3(am[3]);   // turn about the shoulder end
+  mat4 S(1);
+  if (empty) S = glm::translate(S, vec3(side * -0.3f * f1, 0.1f * std::sin(r * TAU) + 0.05f * f1, -0.38f * std::sin(sp * PI)));
+  else {
+    S = glm::translate(S, vec3(side * -0.4f * f1, 0.2f * std::sin(r * TAU), -0.2f * std::sin(sp * PI)));
+    S = glm::translate(S, pv);
+    const float sideK = mining ? 0.45f : 1.f;   // mining (Punchy's mining_v2): a straighter chop down into the block
+    S = glm::rotate(S, side * f * -20 * D * sideK, vec3(0, 1, 0));
+    S = glm::rotate(S, side * f1 * -20 * D * sideK, vec3(0, 0, 1));
+    S = glm::rotate(S, f1 * (mining ? -68.f : -58.f) * D, vec3(1, 0, 0));
+    S = glm::translate(S, -pv);
+  }
+  return S * am;
+}
+}
+
+void HeldItemLayer::update(GameSession& s, double dt) {
+  time += dt;
+  Player* p = s.player;
+  if (!p) return;
+  // development aid: DQ_DEV_ITEMS="held,offhand,drop1,drop2..." puts items in the hands and drops the rest
+  // in front of you (to look at the voxel models in a smoke test)
+  static bool devDone = false;
+  static int devBlockFrames = 0;
+  if (++devBlockFrames == 60) {
+    if (const char* db = std::getenv("DQ_DEV_BLOCKS")) {   // "dx,dy,dz,key;..." set blocks about your feet once the land is in (screenshots)
+      for (auto& one : splitStr(db, ';')) {
+        auto f = splitStr(one, ',');
+        if (f.size() < 4) continue;
+        const BlockId id = reg().blockId(f[3]);
+        if (!id && f[3] != "air") continue;
+        s.world().setBlock(ifloor(p->pos.x) + std::atoi(f[0].c_str()), ifloor(p->pos.y) + std::atoi(f[1].c_str()), ifloor(p->pos.z) + std::atoi(f[2].c_str()), id, 0, SetFlags::Urgent);
+      }
+    }
+    if (const char* dp = std::getenv("DQ_DEV_PILES")) {   // "dx,dy,dz,item,n;..." an ingot or log pile of n about your feet
+      for (auto& one : splitStr(dp, ';')) {
+        auto f = splitStr(one, ',');
+        if (f.size() < 5) continue;
+        const int x = ifloor(p->pos.x) + std::atoi(f[0].c_str()), y = ifloor(p->pos.y) + std::atoi(f[1].c_str()), z = ifloor(p->pos.z) + std::atoi(f[2].c_str());
+        ItemStack st(f[3], std::atoi(f[4].c_str()));
+        if (pilePlace(s.world(), x, y, z, st)) while (!st.empty() && pileAdd(s.world(), x, y, z, st)) {}
+      }
+    }
+  }
+  if (!devDone) {
+    devDone = true;
+    if (const char* dm = std::getenv("DQ_DEV_MIX")) {   // "kind;material": a part tool of that makeup in hand ("pickaxe;@copper=0.60,zinc=0.40")
+      const std::string v = dm; const size_t sc = v.find(';');
+      ItemStack t;
+      if (sc != std::string::npos && makePartTool(v.substr(0, sc), std::vector<std::string>(partToolSections(v.substr(0, sc)), v.substr(sc + 1)), "stick", t)) p->held() = t;
+    }
+    if (const char* dv = std::getenv("DQ_DEV_ITEMS")) {
+      for (const char* g : {"widget/button", "hud/hotbar", "hud/heart/full", "container/inventory"}) { GuiSprite gs = guiSprite(g); DQ_LOG("dev: gui sprite %s: %s %dx%d", g, gs.valid() ? "pack" : "none", gs.w, gs.h); }
+      auto keys = splitStr(dv, ',');
+      for (size_t i = 0; i < keys.size(); i++) {
+        if (!reg().item(keys[i])) continue;
+        if (i == 0) p->held() = ItemStack(keys[i], 1);
+        else if (i == 1) { if (!p->offhand.empty()) p->offhand[0] = ItemStack(keys[i], 1); }
+        else {
+          auto e = std::make_unique<Entity>();
+          e->type = "item"; e->realm = p->realm; e->noGravity = true;
+          float a = p->yaw + (float)(i - 2) * 0.45f - 0.9f;
+          e->pos = p->pos + vec3(-std::sin(a) * 2.2f, 0.4f, -std::cos(a) * 2.2f);
+          e->data["stack"] = ItemStack(keys[i], (int)i * 9).toJson();
+          s.level->spawn(std::move(e));
+        }
+      }
+    }
+  }
+  float fdt = (float)std::min(dt, 0.1);
+  bool menu = s.app.topScreen() != nullptr;
+  // the step bob (player.js): its amount follows how fast you walk on the ground
+  float hs = std::hypot(p->vel.x, p->vel.z);
+  bobAmt += ((p->onGround && !p->flying ? std::min(1.f, hs / 4.3f) : 0.f) - bobAmt) * std::min(1.f, fdt * 8);
+  bob += hs * fdt * 1.6f;
+  // what's in hand: a new thing comes up from below
+  std::string key = p->carrying.is_object() ? std::string("carry") : p->held().empty() ? std::string() : p->held().id;   // picking something up: the arms rise
+  if (key != lastHeld) {
+    if (lastHeld != "\x01" && key != "carry" && lastHeld != "carry") {   // Hold My Items: the old thing goes down, then the new one comes up
+      if (swapT >= 1) { swapOld = lastStack; swapT = 0; }
+      else if (swapT >= 0.4f) { swapOld = lastStack; swapT = 0.4f * std::sqrt(std::max(0.f, fpSwapLower(swapT))); }   // swapped again as it came up: down from where it is
+      // (still going down: the old one keeps going; the newest comes up after it)
+      equip = 1;
+    } else equip = 0;
+    lastHeld = key;
+  }
+  lastStack = p->held();
+  if (swapT < 1) swapT = std::min(1.f, swapT + fdt / FP_SWAP_TIME);
+  if (equip < 1) equip = std::min(1.f, equip + fdt * 5);
+  {   // the hand's place by what you're doing (sprinting, landing, a ladder, swimming, drinking), eased
+    auto ease = [&](float& v, float want, float k) { v += (want - v) * std::min(1.f, fdt * k); };
+    ease(fps.sprint, p->sprinting && p->onGround && hs > 2 ? 1.f : 0.f, 6);
+    ease(fps.climb, p->contacts.ladder && !p->onGround && !p->flying ? 1.f : 0.f, 8);
+    ease(fps.swim, p->swimming || (p->inWater && !p->onGround) ? 1.f : 0.f, 5);
+    ease(fps.drink, eatAnim > 0 && isDrinkItem(p->held().id) ? 1.f : 0.f, 10);
+    if (p->onGround && !wasGround && lastVy < -4) fps.land = clampv(-lastVy / 14, 0.3f, 1.f);
+    fps.land = std::max(0.f, fps.land - fdt * 4);
+    wasGround = p->onGround; lastVy = p->vel.y;
+  }
+  eatAnim = p->eatAnim;   // (the sim's bite: sim/controller.cpp eatFood)
+  static const std::string devPose = [] { const char* v = std::getenv("DQ_DEV_POSE"); return std::string(v ? v : ""); }();
+  if (devPose == "drink" || devPose == "eat") eatAnim = 0.3f;   // (screenshots: the hand held mid-drink / mid-bite)
+  if (devPose == "run") p->sprinting = true;
+  // swings: attacking the air, placing and using, mining (held)
+  if (!menu) {
+    Input& in = s.app.input;
+    if (in.pressed(Act::Attack)) swingArm();   // every attack swings: the air, a creature in front of a wall, a block (mining keeps it going)
+    if (in.pressed(Act::Use) && s.target.hit) swingArm();
+    else if (in.pressed(Act::Use) && p->held().id == "fishing_rod") swingArm();   // cast / reel in
+    if (s.breaking) { swinging = true; if (swing == 0) swing = 0.0001f; }
+    // holding Use places again and again: each placement restarts the player's swing, so the arm keeps looping (Minecraft)
+    if (p->swing > 0 && (simSwing == 0 || p->swing < simSwing)) swingArm();
+  }
+  simSwing = p->swing;
+  { static double lastTap = -1; const double t = cinematicTapTime(); if (t != lastTap) { if (lastTap >= 0 || t > 0) swingArm(); lastTap = t; } }   // (setting a thing down at a station: your arm's own swing)
+  if (swinging || swing > 0) { swing += fdt * fpSwingRate(p->held().id, s.breaking); if (swing >= 1) swing = 0; }
+  swinging = false;
+  // a light for the hand: where your eyes are, and what you carry
+  World& w = s.world();
+  u8 l = w.getLight(ifloor(p->pos.x), ifloor(p->pos.y + 1.62f), ifloor(p->pos.z));
+  int carried = 0;
+  for (const ItemStack* st : {&p->held(), p->offhand.empty() ? nullptr : &p->offhand[0]}) {
+    if (!st || st->empty()) continue;
+    const ItemDef* d = st->def();
+    if (d && !d->block.empty()) carried = std::max<int>(carried, reg().block(reg().blockId(d->block)).light);
+  }
+  light = vec2((l >> 4) / 15.f, std::max<int>(l & 15, carried) / 15.f);
+}
+
+void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
+  if (cinematicActive() && cinematicLeaning()) return;   // (leaning over a station: the hands are the scene's; seamless: your own, as ever)
+  Player* p = s.player;
+  handsTaken = 0;
+  if (!p || p->dead || s.viewMode != 0 || s.hudHidden || p->scoping) return;   // (the spyglass at your eye: just the glass)
+  const Settings& st = s.app.settings;
+  // what you hold lags a little behind when you turn, and swings back
+  float sx0 = 0, sy0 = 0;
+  if (st.heldSway) {
+    if (!haveLook) { hy = p->yaw; hp = p->pitch; haveLook = true; }
+    float dyaw = wrapA(p->yaw - hy), dpit = p->pitch - hp;
+    hy = p->yaw; hp = p->pitch;
+    hsx = (hsx + clampv(dyaw, -0.2f, 0.2f) * 0.5f) * 0.85f; hsy = (hsy - clampv(dpit, -0.2f, 0.2f) * 0.5f) * 0.85f;
+    sx0 = clampv(hsx, -0.08f, 0.08f); sy0 = clampv(hsy, -0.06f, 0.06f);
+  }
+  // a vessel's liquid (a potion) sloshes: its surface leans away from how you turn and speed up, springs back and settles
+  vec2 slosh(0);
+  {
+    static vec2 sl(0), slv(0); static float ly = 0, lp = 0; static vec3 lv(0); static double lt = -1;
+    const double now = f.time; const float dt = lt < 0 ? 0.f : (float)clampv(now - lt, 0.0, 0.05); lt = now;
+    if (dt > 0) {
+      const float yawRate = wrapA(p->yaw - ly) / dt, pitchRate = (p->pitch - lp) / dt;
+      const vec3 acc = (p->vel - lv) / dt;
+      const vec3 fwd(-std::sin(p->yaw), 0, -std::cos(p->yaw)), right(std::cos(p->yaw), 0, -std::sin(p->yaw));
+      const vec2 want = vec2(clampv(-glm::dot(acc, right) * 0.012f + yawRate * 0.05f, -0.35f, 0.35f),
+                             clampv(glm::dot(acc, fwd) * 0.012f - pitchRate * 0.03f, -0.35f, 0.35f));
+      slv += ((want - sl) * 70.f - slv * 6.f) * dt;   // a spring, a little underdamped
+      sl += slv * dt;
+      sl = glm::clamp(sl, vec2(-0.35f), vec2(0.35f));
+    }
+    ly = p->yaw; lp = p->pitch; lv = p->vel;
+    slosh = sl;
+  }
+  float bobK = st.viewBob ? bobAmt : 0;
+  float hsn = std::sin(bob * 1.4f), bx = hsn * 0.025f * bobK + sx0, by = -hsn * hsn * 0.03f * bobK + sy0;
+  const float swapLow = fpSwapLower(swapT);
+  float eq = 1 - equip, eqMain = eq + swapLow * 1.1f;
+  const FpOffset fo = fpStateOffset(fps, (float)time);
+  float eat = eatAnim > 0 ? std::sin(std::min(1.f, eatAnim / EAT_ANIM) * PI) : 0;
+  if (fps.drink > 0) eat *= 1 - 0.6f * fps.drink;   // a drink is tipped up (fo.pitch), not brought in and out
+  else if (eat > 0) eat += std::max(0.f, std::sin((float)time * 22)) * 0.06f;   // a bite now and then
+
+  // The depth clear stays when the game draws the arm: its projection is not the world's.
+  // A pack with gbuffers_hand records the pose and draws it itself, into its own depth
+  // image, before the tonemap. Clearing the window depth here would not feed that pass.
+  float aspect = f.height > 0 ? (float)f.width / f.height : 1.f;
+  mat4 proj = glm::perspective(70 * PI / 180, aspect, 0.01f, 10.f);
+  struct HandCap {
+    bool on;
+    explicit HandCap(const mat4& p) : on(packHandSuppress()) { if (on) packHandBegin(p); }
+    ~HandCap() { if (on) packHandEnd(); }
+  } cap(proj);
+  if (!cap.on) glClear(GL_DEPTH_BUFFER_BIT);
+  glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); glDepthMask(GL_TRUE);
+  glEnable(GL_CULL_FACE); glCullFace(GL_BACK); glDisable(GL_BLEND);
+  int taken = handsHook ? handsHook(*this, s, f, proj) : 0;
+  handsTaken = taken;
+  std::vector<std::pair<ItemStack, mat4>> over;
+  VoxelRenderer& VR = voxelRenderer();
+  VR.begin(f, proj, false);
+  VoxelLight L{light.x, light.y};
+  const VoxelModel& arm = firstPersonArm();
+  // the arm, and the sleeve of a worn chestplate over it (the rest of your armour shows on the first-person body)
+  auto drawArm = [&](const mat4& m) { VR.draw(arm.gl, m * arm.matrix(), L); drawFirstPersonSleeve(m, L); };
+
+  auto holdIn = [&](float side, const ItemStack& stack, float lift, const std::string& modelOver = std::string()) {
+    // a fishing rod with its float out has no line hanging from the tip (fishing.js: fishing_rod_cast)
+    bool rod = stack.id == "fishing_rod";
+    float wind = rod ? castWindOf(*p) : 0.f;
+    const std::string pk = partToolModelKey(stack);
+    const VoxelModel& im = itemModel(!modelOver.empty() ? modelOver : rod ? std::string("fishing_rod_cast") : !pk.empty() ? pk : stack.id);   // (the hanging float is drawn live from the tip)
+    bool tool = im.kind != VoxelModel::Block && isHandheld(stack.id);
+    const bool bowItem = im.kind != VoxelModel::Block && (stack.id == "bow" || stack.id == "crossbow");   // at rest the size it is drawn (render/fp_bow.cpp)
+    float e = side > 0 ? eat : 0, pitch = 1.62f + e * 0.35f, yaw = side * 0.32f;
+    mat4 am = glm::translate(mat4(1), vec3(side * (FP_HAND.x + (side > 0 ? bx - e * 0.32f : -bx * 0.6f)),
+      FP_HAND.y + by - (side > 0 ? eqMain * 0.55f : eq * 0.3f) + lift + (side > 0 ? e * 0.13f : std::sin((float)time * 1.3f) * 0.006f), FP_HAND.z + e * 0.12f));
+    if (side > 0) {
+      am = glm::translate(am, vec3(0, fo.dy, fo.dz));
+      if (fo.pitch) am = glm::rotate(am, fo.pitch, vec3(1, 0, 0));
+      if (fo.roll) am = glm::rotate(am, fo.roll, vec3(0, 0, 1));
+    } else am = glm::translate(am, vec3(0, fo.dy * 0.8f, 0));
+    am = glm::rotate(am, yaw, vec3(0, 1, 0));
+    am = glm::rotate(am, pitch, vec3(1, 0, 0));
+    if (side > 0 && swing > 0) am = mcSwing(am, 1, swing, false, s.breaking);
+    if (side > 0 && wind > 0) { am = glm::translate(am, vec3(0, 0.1f * wind, 0.05f * wind)); am = glm::rotate(am, -0.75f * std::sin(wind * PI / 2), vec3(1, 0, 0)); }   // the rod comes back over the shoulder before the cast
+    drawArm(am);
+    // the fist, turned back to face the way you look
+    mat4 m = glm::translate(am, vec3(0, 0.3f - 0.6f, -0.02f));
+    m = glm::rotate(m, -pitch, vec3(1, 0, 0)); m = glm::rotate(m, -yaw, vec3(0, 1, 0));
+    if (im.torch3d) {   // held upright in the fist like the ones on the wall, leaning a little away
+      m = glm::translate(m, vec3(-side * 0.02f, 0.05f, -0.05f));
+      m = glm::rotate(m, -0.3f, vec3(1, 0, 0)); m = glm::rotate(m, side * 0.2f, vec3(0, 0, 1)); m = glm::rotate(m, side * 0.6f, vec3(0, 1, 0));
+      m = glm::scale(m, vec3(0.46f)); m = glm::translate(m, vec3(0, 0.6f, 0));
+      {   // the flame's place, for the held-light particles: view space back to the world
+        const vec4 tv = m * vec4(0, 0.16f, 0, 1);
+        const vec4 rs = glm::inverse(f.cam.view) * vec4(vec3(tv), 1);
+        const int h = side > 0 ? 0 : 1;
+        torchTip[h] = f.cam.origin + glm::dvec3(vec3(rs)); torchTipOn[h] = true;
+      }
+    } else if (im.kind == VoxelModel::Block) {
+      m = glm::translate(m, vec3(-side * 0.03f, 0.1f, -0.06f));
+      m = glm::rotate(m, side * 0.78f, vec3(0, 1, 0)); m = glm::scale(m, vec3(0.4f));
+    } else if (isInstrument(stack.id)) {
+      // a compass (or the death compass, or a clock) lies face-up in the palm, tipped toward your eyes: you can read
+      // where its needle points (render/instruments.cpp draws the live dial on it). Held like a tool it was edge-on.
+      m = glm::translate(m, vec3(-side * 0.07f, 0.17f, 0.f));
+      m = glm::rotate(m, -0.5f, vec3(1, 0, 0));
+      m = glm::rotate(m, side * 0.14f, vec3(0, 1, 0));
+      m = glm::scale(m, vec3(0.62f));
+    } else {
+      // tuning aid: DQ_DEV_FPHELD="dx,dy,dz,scale,yaw,roll" (the fist frame's offsets) for screenshots
+      static float T[6] = {0, 0, 0, 0, 0, 0}; static bool tl = false;
+      if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_FPHELD")) std::sscanf(v, "%f,%f,%f,%f,%f,%f", &T[0], &T[1], &T[2], &T[3], &T[4], &T[5]); }
+      m = glm::translate(m, vec3(side * T[0], T[1], T[2]));
+      m = glm::rotate(m, side * (-1.5f + 0.35f + T[4] + (tool || bowItem ? 0.22f : 0.f)), vec3(0, 1, 0));   // tools turn a little more face-on
+      m = glm::rotate(m, side * (0.42f + T[5]), vec3(0, 0, 1));
+      m = glm::scale(m, vec3(bowItem ? 1.1f + T[3] : 0.68f + T[3] + (tool ? 0.26f : 0.f)));   // (a bow as big as it's drawn: render/fp_bow.cpp)   // swords and tools are drawn big, like Minecraft's first person
+      if (rod) {   // a rod points out ahead with its tip (and the float hanging from it) in view, not up out of the picture
+        static float RT[4] = {0.35f, -0.6f, 0.f, -0.08f}; static bool rl = false;
+        if (!rl) { rl = true; if (const char* v = std::getenv("DQ_DEV_ROD")) std::sscanf(v, "%f,%f,%f,%f", &RT[0], &RT[1], &RT[2], &RT[3]); }
+        m = glm::rotate(m, side * RT[2], vec3(0, 1, 0)); m = glm::rotate(m, side * RT[0], vec3(0, 0, 1)); m = glm::rotate(m, RT[1], vec3(1, 0, 0));
+        m = glm::scale(m, vec3(1 + RT[3]));
+      }
+      // the grip goes in the fist: the handle end of a tool, the bottom of anything else
+      // (a potion is held by its foot, its belly of liquid above the fist where you see it slosh)
+      m = glm::translate(m, bowItem ? vec3(0.2f * side, -0.15f, 0) : tool ? vec3(0.3f * side, 0.28f, 0) : im.ready() && im.gl.liquidY.y > im.gl.liquidY.x && im.gl.glass ? vec3(0, 0.5f, 0) : vec3(0, 0.3f, 0));
+      if (side < 0) m = glm::scale(m, vec3(-1, 1, 1));
+    }
+    bool glint = itemGlints(stack);
+    if (const u32 cover = bookCoverOf(stack.id)) {   // a book: a real one, shut, held upright in the fist (render/book_model.h)
+      static float BT[5] = {0, 0, 0, 0, 0}; static bool bl = false;
+      if (!bl) { bl = true; if (const char* v = std::getenv("DQ_DEV_FPBOOK")) std::sscanf(v, "%f,%f,%f,%f,%f", &BT[0], &BT[1], &BT[2], &BT[3], &BT[4]); }
+      // in view space: the spine in the palm, the book's length up, its width across toward the middle, its cover to you
+      // (book_model.h's frame: the spine along local z, the halves along +y shut, the pages' thickness along x)
+      const vec3 pos(side * (0.47f + BT[0]) + (side > 0 ? bx : -bx * 0.6f), -0.33f + BT[1] + by - (side > 0 ? eqMain * 0.55f : eq * 0.3f), -0.70f + BT[2]);
+      mat4 b(1); b[0] = vec4(0, 0, -1, 0); b[1] = vec4(-side, 0, 0, 0); b[2] = vec4(0, 1, 0, 0); b[3] = vec4(pos, 1);
+      if (side < 0) b[0] = vec4(0, 0, 1, 0);   // (still right-handed, mirrored)
+      b = glm::rotate(mat4(1), side * (0.5f + BT[3]), vec3(0, 1, 0)) * glm::translate(mat4(1), -pos) * b;   // turned in toward you about the hand
+      b = glm::translate(mat4(1), pos) * b;
+      if (side > 0 && swing > 0) b = mcSwing(glm::translate(mat4(1), vec3(0)), 1, swing, false, s.breaking) * b;
+      drawBook(VR, b, L, 0.f, -1.f, 1, 0.38f + BT[4], cover);
+      if (glint) {}   // (an enchanted book: its cover's colour says it)
+      return;
+    }
+    VR.slosh = slosh;
+    if (im.ready()) VR.draw(im.gl, m * im.matrix(), L, vec4(0), glint ? 1.f : 0.f);
+    VR.slosh = vec2(0);
+    if (itemHook && im.ready()) over.push_back({stack, m});
+    if (rod && im.ready() && side > 0) {   // the line leaves the tip of the rod: view space -> world
+      vec3 v = vec3(m * vec4(0.47f, 0.47f, 0, 1));
+      vec3 R = f.cam.right(), Fw = f.cam.forward(), Up = glm::cross(R, Fw);
+      setRodTip(p->id, f.cam.pos + glm::dvec3(R * v.x + Up * v.y - Fw * v.z), f.time);
+    }
+  };
+
+  if (p->hang || p->climb) {
+    // local.js handState: hanging from a ledge (or hauling yourself up): both hands up on the edge just above your
+    // eyes, coming up from the lower corners; hand over hand while you shimmy along it
+    float k = p->climb ? std::min(1.f, p->climb->t / 0.55f) : 0.f;
+    float sh = p->hang && p->hang->shimT > 0 ? 1.f : 0.f, ss = std::sin(p->hang ? p->hang->shimPh : 0.f), sc = std::cos(p->hang ? p->hang->shimPh : 0.f);
+    for (float side : {-1.f, 1.f}) {
+      float reach = sh * (side * ss * 0.06f + std::max(0.f, side * sc) * 0.05f);
+      mat4 a = glm::translate(mat4(1), vec3(side * 0.42f, -0.2f - k * 0.35f + std::sin((float)f.time * 2 + side) * 0.008f + reach, -0.38f));
+      a = glm::rotate(a, -side * (0.35f - k * 0.2f), vec3(0, 0, 1)); a = glm::rotate(a, PI - 0.15f - k * 0.9f, vec3(1, 0, 0));
+      drawArm(a);
+    }
+    VR.end();
+    return;
+  }
+  if (p->carrying.is_object()) {   // Carry On (local.js handState): whatever you hold sits in both arms in front of you
+    drawCarriedThing(p->carrying, glm::translate(mat4(1), vec3(bx, -0.62f + by - eq * 0.5f, -0.95f)), true, L, vec4(0));
+    for (float side : {-1.f, 1.f}) {
+      mat4 a = glm::translate(mat4(1), vec3(side * 0.5f + bx, -0.5f + by - eq * 0.5f, -0.62f));
+      a = glm::rotate(a, side * 0.28f, vec3(0, 1, 0)); a = glm::rotate(a, 1.72f, vec3(1, 0, 0));
+      drawArm(a);
+    }
+    VR.end();
+    return;
+  }
+  const bool old = swapT < 0.4f;
+  const ItemStack& held = old ? swapOld : p->held();
+  // Eating Animation: the food you are eating is in your hand, bitten down as the bite goes on (even the last one)
+  const bool biting = eatAnim > 0 && !p->eatId.empty() && !isDrinkItem(p->eatId) && reg().item(p->eatId);
+  {   // a book you read (or write in): held open in both hands before you, its pages turning (ui/held_book.h)
+    JournalPic hc, hp; float hleaf = -1; int hdir = 1;
+    if (heldBookView(hc, hp, hleaf, hdir)) {
+      const float D = 0.5f, tanH = 1.f / std::max(0.1f, proj[1][1]);
+      const float jh = 2 * D * tanH * 0.5f, jw = jh * 1.6f, bend = 0.3f;
+      const vec3 c(0, -0.08f, -D);
+      const mat4 F = glm::translate(mat4(1), c - vec3(0, 0, jh * 0.045f));
+      drawJournalBody(VR, F, jw, jh, bend, L, false);
+      for (int sd : {1, -1}) {   // your two hands at its lower corners
+        const vec3 fist = c + vec3(sd * (jw * 0.46f), -jh * 0.5f + 0.02f, 0.03f);
+        const vec3 shoulder = fist + vec3(sd * 0.1f, -0.55f, 0.32f);
+        const vec3 y = glm::normalize(shoulder - fist);
+        const vec3 x = glm::normalize(glm::cross(y, vec3(0, 0, 1))), zz = glm::cross(x, y);
+        mat4 m(1); m[0] = vec4(x, 0); m[1] = vec4(y, 0); m[2] = vec4(zz, 0); m[3] = vec4(fist, 1);
+        m = glm::translate(m, vec3(0, 0.30f, 0));
+        if (sd < 0) m = glm::scale(m, vec3(-1, 1, 1));
+        drawArm(m);
+      }
+      VR.end();
+      ContentDraw& cd = contentDraw();
+      if (cd.begin(f, proj, false)) {
+        drawJournalPages(cd, F, jw, jh, bend, hc, f.time, vec2(L.sky, L.block) * 0.5f + vec2(0.5f, 0.5f), false, hleaf >= 0 ? &hp : nullptr, hdir);
+        if (hleaf >= 0) drawJournalLeaf(cd, F, jw, jh, bend, hp, hc, hleaf, hdir, vec2(1, 1), false);
+        cd.end();
+      }
+      return;
+    }
+  }
+  // at a menu: your journal off the belt, open in both hands before you (others see the same: render/char_layer.cpp)
+  static float open = 0;
+  if (!(p->activity & Player::ACT_SCREEN)) open = 0;
+  else {
+    static double bookT = -1, flipAt = -10; static u8 lastFlip = 0;
+    const float dtb = bookT < 0 ? 0.f : (float)std::clamp(f.time - bookT, 0.0, 0.1); bookT = f.time;
+    open = std::min(1.f, open + dtb * 3.f);
+    static JournalPic turnFrom; static bool hasTurn = false;
+    if (p->bookFlip != lastFlip) { lastFlip = p->bookFlip; flipAt = f.time; hasTurn = open >= 1 && bookUiSnapshot(turnFrom); }   // (the pages as they were: the page turned over carries them)
+    const float lift = (1 - open) * 0.6f;   // (it comes up from the belt)
+    setBookPagesDark(bookUiDark(s.app));
+    // held up to read, close: the pages square to your view and as tall as most of it, the menus on them (ui/book_ui.h)
+    const bool ui = bookUiOn(s.app);
+    const float D = 0.5f, tanH = 1.f / std::max(0.1f, proj[1][1]);
+    const float scale = (2 * D * tanH * 0.86f) / (10 / 16.f);   // (the page length 86 % of the view's height)
+    float hw, hl, top; bookPageArea(scale, hw, hl, top);
+    const vec3 c(0, -0.02f * D - lift, -D);
+    vec4 crop(0, 0, 1, 1);
+    const bool drawn = ui && open >= 1 && bookUiTexture() && bookUiCrop(crop);   // a menu with its drawn book: that book IS the journal
+    float SX = 1.3f;
+    if (drawn) { const vec2 ts = bookUiSize(); SX = (crop.z - crop.x) * ts.x / std::max(1.f, (crop.w - crop.y) * ts.y) * hl / std::max(1e-4f, hw); }
+    hw *= SX;
+    mat4 F(1); F[0] = vec4(SX, 0, 0, 0); F[1] = vec4(0, 0, 1, 0); F[2] = vec4(0, 1, 0, 0); F[3] = vec4(c - vec3(0, 0, top), 1);
+    for (int sd : {1, -1}) {   // your own two hands holding its lower corners, the arms up from below the view
+      const vec3 fist = c + vec3(sd * (hw * 0.93f - 0.01f), -hl + 0.02f, 0.03f);
+      const vec3 shoulder = fist + vec3(sd * 0.1f, -0.55f, 0.32f);
+      const vec3 y = glm::normalize(shoulder - fist);
+      vec3 x = glm::normalize(glm::cross(y, vec3(0, 0, 1))); const vec3 z = glm::cross(x, y);
+      mat4 m(1); m[0] = vec4(x, 0); m[1] = vec4(y, 0); m[2] = vec4(z, 0); m[3] = vec4(fist, 1);
+      m = glm::translate(m, vec3(0, 0.30f, 0));
+      if (sd < 0) m = glm::scale(m, vec3(-1, 1, 1));
+      drawArm(m);
+    }
+    const float leaf = f.time - flipAt < 0.6 ? (float)((f.time - flipAt) / 0.6) : -1.f;
+    // the drawn book as a real one: its spread on the pages, the boards, page block and spine under them, the ribbons cloth
+    JournalPic jp;
+    const bool jr = drawn && bookUiJournal(jp);
+    vec3 jc(0); float jw = 0, jh = 0;
+    if (jr) {
+      const vec4 sp = jp.spread;
+      jw = (sp.z - sp.x) * hw * 2; jh = (sp.w - sp.y) * hl * 2;
+      jc = c + vec3(((sp.x + sp.z) * 0.5f - 0.5f) * hw * 2, (0.5f - (sp.y + sp.w) * 0.5f) * hl * 2, -jh * 0.045f);
+    }
+    const float JB = 0.1f;   // (held up to read: nearly flat, so where you point is where it is)
+    if (jr) drawJournalBody(VR, glm::translate(mat4(1), jc), jw, jh, JB, L, bookUiDark(s.app));
+    if (!drawn) drawBook(VR, F, L, ui && open >= 1 ? 2.f : std::clamp((open - 0.3f) / 0.7f, 0.f, 1.f), leaf, p->bookDir, scale, 0x5A3418);
+    VR.end();
+    if (ui && open >= 1 && bookUiTexture()) {
+      // the menus on the pages, and where they are on the window (for the mouse)
+      ContentDraw& cd = contentDraw();
+      float qw = hw, qh = hl;
+      if (!drawn) { qw *= 0.94f; qh *= 0.93f; }   // (the cover's rim round the pages)
+      if (cd.begin(f, proj, false)) {
+        mat4 Q = glm::translate(mat4(1), c + vec3(0, 0, 0.002f));
+        Q = glm::scale(Q, vec3(qw * 2, qh * 2, 1));
+        const bool turning = jr && hasTurn && leaf >= 0;
+        if (jr) drawJournalPages(cd, glm::translate(mat4(1), jc), jw, jh, JB, jp, f.time, vec2(1, 1), false, turning ? &turnFrom : nullptr, p->bookDir);
+        if (turning) drawJournalLeaf(cd, glm::translate(mat4(1), jc), jw, jh, JB, turnFrom, jp, leaf, p->bookDir, vec2(1, 1), false);
+        else cd.picture(bookUiTexture(), Q, vec4(crop.x, 1 - crop.y, crop.z, 1 - crop.w), vec4(1), vec2(1, 1), false);
+        if (drawn && !jr && leaf >= 0) {   // a page turning over the spine, the way the menus went
+          const float u = leaf * leaf * (3 - 2 * leaf), ang = (p->bookDir >= 0 ? 1 : -1) * u * 3.14159f;
+          const int side = p->bookDir >= 0 ? 1 : -1;
+          mat4 T = glm::translate(mat4(1), c + vec3(0, 0, 0.004f));
+          T = glm::rotate(T, -ang, vec3(0, 1, 0));
+          T = glm::translate(T, vec3(side * qw * 0.43f, 0, 0));
+          T = glm::scale(T, vec3(qw * 0.86f, qh * 1.85f, 1));
+          const bool dk = bookUiDark(s.app);
+          cd.picture(0, T, vec4(0, 0, 1, 1), dk ? vec4(0.16f, 0.13f, 0.11f, 1) : vec4(0.95f, 0.92f, 0.83f, 1), vec2(1, 1), true);
+        }
+        cd.end();
+      }
+      vec2 lo(1e9f), hi(-1e9f);
+      for (vec3 k : {c + vec3(-qw, qh, 0), c + vec3(qw, -qh, 0)}) {
+        const vec4 q = proj * vec4(k, 1);
+        const vec2 n = vec2(q) / q.w;
+        const vec2 px((n.x * 0.5f + 0.5f) * s.app.width, (1 - (n.y * 0.5f + 0.5f)) * s.app.height);
+        lo = glm::min(lo, px); hi = glm::max(hi, px);
+      }
+      // (the whole picture's place, of which the book shown is the crop: the mouse maps through it)
+      const vec2 cs(crop.z - crop.x, crop.w - crop.y), sz = hi - lo;
+      bookUiSetRect(lo - sz * vec2(crop.x, crop.y) / cs, lo + sz * (vec2(1) - vec2(crop.x, crop.y)) / cs);
+    }
+    return;
+  }
+  // at a station (seamless first person): your journal in your off hand, open at your bag, held out to the left and
+  // turned in toward you — the other hand free to work the station (ui/station_bag.cpp draws its pages)
+  JournalPic offJ; mat4 offJM(1); float offW = 0, offH = 0; bool offBook = false;
+  if (bookUiStationOn(s.app) && bookUiJournal(offJ)) {
+    vec4 crop; bookUiCrop(crop);
+    const vec2 ts = bookUiSize();
+    const vec4 sp = offJ.spread;
+    const float cw = (crop.z - crop.x) * ts.x, ch = (crop.w - crop.y) * ts.y;
+    offW = 0.44f; offH = offW * ((sp.w - sp.y) * ch) / std::max(1e-3f, (sp.z - sp.x) * cw);
+    offJM = glm::translate(mat4(1), vec3(-0.30f, -0.13f, -0.68f));   // (held steady: the page under the pointer mustn't swim)
+    offJM = glm::rotate(offJM, 0.55f, vec3(0, 1, 0));    // (turned in toward you)
+    offJM = glm::rotate(offJM, -0.42f, vec3(1, 0, 0));   // (its top tipped away, as a book held low)
+    offJM = glm::rotate(offJM, 0.06f, vec3(0, 0, 1));
+    drawJournalBody(VR, offJM, offW, offH, 0.35f, L, bookUiDark(s.app));
+    {   // the off hand under its spine side, the arm up from below the view
+      const vec3 fist = vec3(offJM * vec4(-offW * 0.44f, -offH * 0.5f + 0.02f, -0.02f, 1));   // (its lower outer corner, as the journal at a menu)
+      const vec3 shoulder = fist + vec3(-0.1f, -0.55f, 0.32f);
+      const vec3 y = glm::normalize(shoulder - fist);
+      const vec3 x = glm::normalize(glm::cross(y, vec3(0, 0, 1))), zz = glm::cross(x, y);
+      mat4 m(1); m[0] = vec4(x, 0); m[1] = vec4(y, 0); m[2] = vec4(zz, 0); m[3] = vec4(fist, 1);
+      m = glm::translate(m, vec3(0, 0.30f, 0));
+      m = glm::scale(m, vec3(-1, 1, 1));
+      drawArm(m);
+    }
+    offBook = true;
+  }
+  if (taken & 1) {}
+  else if (biting) holdIn(1, ItemStack(p->eatId, 1), 0, eatModelKey(p->eatId, 1 - eatAnim / EAT_ANIM));
+  else if (cinematicForgeT() >= 0 && !cinematicLeaning()) holdIn(1, ItemStack("smith_hammer", 1), 0);   // forging at the anvil: the hammer in your own hand, a swing on each blow
+  else if (!held.empty() && held.def()) holdIn(1, held, 0);
+  else {
+    // empty hand: the forearm reaches in from the lower right, like the classic game
+    mat4 m = glm::translate(mat4(1), vec3(0.5f + bx, -0.39f + by - eqMain * 0.55f - eat * 0.1f + fo.dy, -0.5f));
+    m = glm::rotate(m, 0.33f, vec3(0, 1, 0));
+    m = glm::rotate(m, 1.9f, vec3(1, 0, 0));
+    if (swing > 0) m = mcSwing(m, 1, swing, true);
+    drawArm(m);
+  }
+  // the off hand, mirrored on the left
+  if (!(taken & 2) && !offBook && !p->offhand.empty() && !p->offhand[0].empty() && p->offhand[0].def()) holdIn(-1, p->offhand[0], -0.02f);
+  VR.end();
+  if (offBook) {   // its pages, and where they are on the window (the mouse goes through them: ui/book_ui.h)
+    ContentDraw& cd = contentDraw();
+    if (cd.begin(f, proj, false)) { drawJournalPages(cd, offJM, offW, offH, 0.35f, offJ, f.time, vec2(1, 1), false); cd.end(); }
+    const vec4 sp = offJ.spread;
+    const float top = offH * 0.045f;
+    vec2 q[4];
+    const vec2 uvs[4] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+    for (int k = 0; k < 4; k++) {
+      const float X = (uvs[k].x - (sp.x + sp.z) * 0.5f) / (sp.z - sp.x) * offW, Y = ((sp.y + sp.w) * 0.5f - uvs[k].y) / (sp.w - sp.y) * offH;
+      const vec4 c = proj * (offJM * vec4(X, Y, top, 1));
+      const vec2 n = vec2(c) / std::max(1e-4f, c.w);
+      q[k] = vec2((n.x * 0.5f + 0.5f) * s.app.width, (1 - (n.y * 0.5f + 0.5f)) * s.app.height);
+    }
+    bookUiSetQuad(q);
+    bookUiSetBook(proj, offJM, offW, offH, top, 0.35f * 0.16f);   // (the mouse cast onto the pages exactly: render/journal_model.cpp geo's tilt)
+  }
+  for (auto& [st2, m2] : over) itemHook(s, f, proj, st2, m2, itemModel(st2.id));
+}
+
+// ------------------------------------------------------------------ dropped items (entities.js ItemEntity.draws)
+void DroppedItemLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
+  if (!s.player) return;
+  World& w = s.world();
+  VoxelRenderer& VR = voxelRenderer();
+  bool begun = false;
+  for (auto& e : s.level->entities()) {
+    if (!e || e->removed || e->type != "item" || e->realm != s.player->realm) continue;
+    const json& sj = e->data.contains("stack") ? e->data["stack"] : json();
+    ItemStack st = ItemStack::fromJson(sj);
+    if (st.empty()) continue;
+    vec3 rel = f.cam.rel(glm::dvec3(e->pos));
+    if (glm::dot(rel, rel) > 96.f * 96.f || !f.cam.frustum.sphere(rel + vec3(0, 0.25f, 0), 0.8f)) continue;
+    const std::string pk = partToolModelKey(st); const VoxelModel& im = itemModel(pk.empty() ? st.id : pk);
+    if (!im.ready()) continue;
+    if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+    u8 l = w.getLight(ifloor(e->pos.x), ifloor(e->pos.y + 0.2f), ifloor(e->pos.z));
+    VoxelLight L{(l >> 4) / 15.f, (l & 15) / 15.f};
+    float age = e->age, spin = (float)((e->id * 2654435761u) % 6283) / 1000.f;
+    bool floating = e->inWater || e->data.value("floating", false);
+    // items hover and bob a little above whatever they rest on, turning slowly
+    mat4 m = glm::translate(mat4(1), rel + vec3(0, (floating ? 0.05f : 0.22f) + std::sin(age * 2.5f) * 0.07f, 0));
+    m = glm::rotate(m, spin + age * 1.8f, vec3(0, 1, 0));
+    // the original's sizes: a quarter-block cube, a half-block picture
+    float sc = im.kind == VoxelModel::Block ? 0.25f : 0.5f;
+    m = glm::scale(m, vec3(sc));
+    float gl = itemGlints(st) ? 1.f : 0.f;   // enchanted things shimmer on the ground too
+    VR.draw(im.gl, m * im.matrix(), L, vec4(0), gl);
+    // bigger stacks show more copies (2, 3, 4 or 5), a little scattered
+    int n = st.n, copies = n > 48 ? 5 : n > 32 ? 4 : n > 16 ? 3 : n > 1 ? 2 : 1;
+    for (int c = 1; c < copies; c++) {
+      mat4 m2 = im.kind == VoxelModel::Block ? glm::translate(m, vec3(std::sin(c * 2.4f) * 0.45f, c * 0.35f, std::cos(c * 2.4f) * 0.45f))
+                                             : glm::translate(m, vec3(std::sin(c * 2.4f) * 0.12f, std::cos(c * 1.7f) * 0.1f, -c * 0.12f));
+      VR.draw(im.gl, m2 * im.matrix(), L, vec4(0), gl);
+    }
+  }
+  if (begun) VR.end();
+}
+
+} // namespace dq

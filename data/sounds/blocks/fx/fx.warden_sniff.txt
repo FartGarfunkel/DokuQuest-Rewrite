@@ -1,0 +1,2 @@
+Block sound: warden_sniff on fx blocks
+Replace this file with fx.warden_sniff.wav (or fx.warden_sniff.mp3 / fx.warden_sniff.flac) to use your own recording.

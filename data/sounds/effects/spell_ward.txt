@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with spell_ward.wav (or spell_ward.mp3 / spell_ward.flac) to use your own recording.

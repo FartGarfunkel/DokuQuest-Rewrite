@@ -1,0 +1,2 @@
+Creature sound: villager
+Replace this file with villager_death.wav (or villager_death.mp3 / villager_death.flac) to use your own recording.

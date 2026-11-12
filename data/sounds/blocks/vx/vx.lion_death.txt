@@ -1,0 +1,2 @@
+Block sound: lion_death on vx blocks
+Replace this file with vx.lion_death.wav (or vx.lion_death.mp3 / vx.lion_death.flac) to use your own recording.

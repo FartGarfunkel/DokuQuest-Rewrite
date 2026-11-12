@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with mstep_bone.wav (or mstep_bone.mp3 / mstep_bone.flac) to use your own recording.

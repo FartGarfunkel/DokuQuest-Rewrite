@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with equip.wav (or equip.mp3 / equip.flac) to use your own recording.

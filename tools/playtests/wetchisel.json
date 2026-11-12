@@ -1,0 +1,19 @@
+{"steps":[
+ {"wait":200,"do":"anchor"},
+ {"do":"tp","rel":true,"x":0,"y":0,"z":0},
+ {"do":"fill","rel":true,"from":[-3,0,-4],"to":[3,4,2],"key":"air"},
+ {"do":"fill","rel":true,"from":[-3,-1,-4],"to":[3,-1,2],"key":"stone"},
+ {"do":"setBlock","rel":true,"x":0,"y":0,"z":-2,"key":"stone_slab","meta":0},
+ {"wait":40,"do":"cmd","text":"/clear"},
+ {"do":"give","item":"water_bucket"},
+ {"do":"select","slot":0},
+ {"do":"lookAt","rel":true,"x":0,"y":0,"z":-2,"fy":0.45,"fz":0.45},
+ {"wait":3,"do":"mouse","button":"right","hold":1},
+ {"wait":10,"do":"expect","rel":true,"block":[0,0,-2],"is":"stone"},
+ {"do":"report"},
+ {"do":"cmd","text":"/gamemode creative"},
+ {"do":"lookAt","rel":true,"x":0,"y":0,"z":-2,"fy":0.3,"fz":0.6},
+ {"wait":3,"do":"mouse","button":"left","hold":2},
+ {"wait":10,"do":"expect","rel":true,"block":[0,0,-2],"is":"water"},
+ {"do":"quit"}
+]}

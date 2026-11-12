@@ -1,0 +1,2 @@
+Block sound: dragon_flap on fx blocks
+Replace this file with fx.dragon_flap.wav (or fx.dragon_flap.mp3 / fx.dragon_flap.flac) to use your own recording.

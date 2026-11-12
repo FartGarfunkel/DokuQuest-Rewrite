@@ -1,0 +1,2 @@
+Creature sound: parrot
+Replace this file with parrot.wav (or parrot.mp3 / parrot.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: break on snow blocks
+Replace this file with snow.break.wav (or snow.break.mp3 / snow.break.flac) to use your own recording.

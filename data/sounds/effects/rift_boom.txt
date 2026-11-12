@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with rift_boom.wav (or rift_boom.mp3 / rift_boom.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with death.wav (or death.mp3 / death.flac) to use your own recording.

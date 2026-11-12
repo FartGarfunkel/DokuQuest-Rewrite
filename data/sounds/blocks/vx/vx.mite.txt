@@ -1,0 +1,2 @@
+Block sound: mite on vx blocks
+Replace this file with vx.mite.wav (or vx.mite.mp3 / vx.mite.flac) to use your own recording.

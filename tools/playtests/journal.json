@@ -1,0 +1,19 @@
+{"steps":[
+ {"wait":200,"do":"anchor"},
+ {"do":"cmd","text":"/clear"},
+ {"do":"give","item":"travel_journal"},
+ {"do":"give","item":"crafting_table"},
+ {"do":"give","item":"sieve"},
+ {"do":"give","item":"lead"},
+ {"do":"give","item":"stick","n":4},
+ {"do":"select","slot":0},
+ {"do":"look","yaw":0,"pitch":80},
+ {"wait":60,"do":"mouse","button":"right","hold":1},
+ {"wait":10,"do":"expect","screen":"travel_journal"},
+ {"do":"key","key":"Down","hold":2},
+ {"wait":5,"do":"key","key":"Down","hold":2},
+ {"wait":10,"do":"shot","path":"/tmp/claude-0/-home-claude/79a07b8c-e4c3-5af6-a928-3d4083caf1be/scratchpad/journal.png"},
+ {"do":"key","key":"E","hold":2},
+ {"wait":10,"do":"report"},
+ {"do":"quit"}
+]}

@@ -1,0 +1,22 @@
+{"steps":[
+ {"wait":200,"do":"anchor"},
+ {"do":"tp","rel":true,"x":0,"y":0,"z":0},
+ {"do":"cmd","text":"/time set midnight"},
+ {"do":"fill","rel":true,"from":[-3,0,-4],"to":[3,4,2],"key":"air"},
+ {"do":"fill","rel":true,"from":[-3,-1,-4],"to":[3,-1,2],"key":"grass"},
+ {"do":"setBlock","rel":true,"x":0,"y":0,"z":-2,"key":"stone"},
+ {"do":"cmd","text":"/clear","wait":40},
+ {"do":"give","item":"glass_jar","n":2},
+ {"do":"select","slot":0},
+ {"do":"look","yaw":0,"pitch":80},
+ {"wait":5,"do":"mouse","button":"right","hold":1},
+ {"wait":10,"do":"expect","count":"firefly_jar","n":1},
+ {"do":"select","slot":1},
+ {"do":"lookAt","rel":true,"x":0,"y":0,"z":-2,"fy":0.95,"fz":0.5},
+ {"wait":5,"do":"mouse","button":"right","hold":1},
+ {"wait":10,"do":"expect","rel":true,"block":[0,1,-2],"is":"firefly_jar"},
+ {"do":"lookAt","rel":true,"x":0,"y":1,"z":-2,"fy":0.3},
+ {"wait":5,"do":"mouse","button":"right","hold":1},
+ {"wait":10,"do":"expect","rel":true,"block":[0,1,-2],"is":"glass_jar"},
+ {"do":"quit"}
+]}

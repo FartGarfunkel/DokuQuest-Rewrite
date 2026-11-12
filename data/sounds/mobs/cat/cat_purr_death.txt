@@ -1,0 +1,2 @@
+Creature sound: cat
+Replace this file with cat_purr_death.wav (or cat_purr_death.mp3 / cat_purr_death.flac) to use your own recording.

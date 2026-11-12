@@ -1,0 +1,2 @@
+Creature sound: fuseling
+Replace this file with fuseling.wav (or fuseling.mp3 / fuseling.flac) to use your own recording.

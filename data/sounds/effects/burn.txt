@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with burn.wav (or burn.mp3 / burn.flac) to use your own recording.

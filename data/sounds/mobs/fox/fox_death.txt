@@ -1,0 +1,2 @@
+Creature sound: fox
+Replace this file with fox_death.wav (or fox_death.mp3 / fox_death.flac) to use your own recording.

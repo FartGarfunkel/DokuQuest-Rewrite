@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with hw_straw.wav (or hw_straw.mp3 / hw_straw.flac) to use your own recording.

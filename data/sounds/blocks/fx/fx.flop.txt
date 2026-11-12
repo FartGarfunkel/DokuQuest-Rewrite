@@ -1,0 +1,2 @@
+Block sound: flop on fx blocks
+Replace this file with fx.flop.wav (or fx.flop.mp3 / fx.flop.flac) to use your own recording.

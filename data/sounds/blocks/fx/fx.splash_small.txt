@@ -1,0 +1,2 @@
+Block sound: splash_small on fx blocks
+Replace this file with fx.splash_small.wav (or fx.splash_small.mp3 / fx.splash_small.flac) to use your own recording.

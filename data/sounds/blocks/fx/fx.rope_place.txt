@@ -1,0 +1,2 @@
+Block sound: rope_place on fx blocks
+Replace this file with fx.rope_place.wav (or fx.rope_place.mp3 / fx.rope_place.flac) to use your own recording.

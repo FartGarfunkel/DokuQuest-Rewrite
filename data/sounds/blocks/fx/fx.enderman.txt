@@ -1,0 +1,2 @@
+Block sound: enderman on fx blocks
+Replace this file with fx.enderman.wav (or fx.enderman.mp3 / fx.enderman.flac) to use your own recording.

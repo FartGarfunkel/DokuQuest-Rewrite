@@ -1,0 +1,682 @@
+{
+"source": "DokuQuest's own (tools/port/village_builder.py)",
+"styles": [
+{
+"key": "beach",
+"base": "plains",
+"set": {
+"planks": "birch_planks",
+"log": "stripped_birch_log",
+"floor": "birch_planks",
+"stairs": "birch_stairs",
+"slab": "birch_slab",
+"fence": "birch_fence",
+"gate": "birch_fence_gate",
+"door": "birch_door",
+"trapdoor": "birch_trapdoor",
+"wood": "birch",
+"fwood": "birch",
+"stone": "smooth_sandstone",
+"stoneSlab": "smooth_sandstone_slab",
+"stoneStairs": "smooth_sandstone_stairs",
+"lampPost": "birch_fence",
+"leaves": "jungle_leaves",
+"base": "stripped_birch_log",
+"base2": "stripped_birch_log",
+"base3": "stripped_birch_log",
+"plaster": "birch_planks",
+"frame": "stripped_birch_log",
+"path": [
+"sand",
+"sand",
+"smooth_sandstone",
+"dirt_path"
+],
+"bed": [
+"light_blue_bed",
+"white_bed",
+"cyan_bed",
+"yellow_bed"
+],
+"banner": [
+"light_blue_wool",
+"white_wool"
+],
+"roofs": [
+[
+"thatch_stairs",
+"thatch_slab"
+]
+]
+}
+},
+{
+"key": "jungle",
+"base": "plains",
+"set": {
+"planks": "jungle_planks",
+"log": "jungle_log",
+"floor": "jungle_planks",
+"stairs": "jungle_stairs",
+"slab": "jungle_slab",
+"fence": "jungle_fence",
+"gate": "jungle_fence_gate",
+"door": "jungle_door",
+"trapdoor": "jungle_trapdoor",
+"wood": "jungle",
+"fwood": "jungle",
+"stone": "mossy_cobblestone",
+"stoneSlab": "cobblestone_slab",
+"stoneStairs": "mossy_cobblestone_stairs",
+"lampPost": "jungle_fence",
+"leaves": "jungle_leaves",
+"base": "mossy_cobblestone",
+"base2": "mossy_cobblestone",
+"base3": "cobblestone",
+"plaster": "jungle_planks",
+"frame": "jungle_log",
+"path": [
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"coarse_dirt",
+"mossy_cobblestone"
+],
+"bed": [
+"green_bed",
+"lime_bed",
+"yellow_bed",
+"brown_bed"
+],
+"banner": [
+"lime_wool",
+"white_wool"
+],
+"roofs": [
+[
+"thatch_stairs",
+"thatch_slab"
+],
+[
+"jungle_stairs",
+"jungle_slab"
+]
+]
+}
+},
+{
+"key": "swamp",
+"base": "plains",
+"set": {
+"planks": "mangrove_planks",
+"log": "dark_oak_log",
+"floor": "mangrove_planks",
+"stairs": "mangrove_stairs",
+"slab": "mangrove_slab",
+"fence": "mangrove_fence",
+"gate": "mangrove_fence_gate",
+"door": "mangrove_door",
+"trapdoor": "mangrove_trapdoor",
+"wood": "mangrove",
+"fwood": "mangrove",
+"stone": "mud_bricks",
+"stoneSlab": "mud_brick_slab",
+"stoneStairs": "mud_brick_stairs",
+"lampPost": "mangrove_fence",
+"leaves": "mangrove_leaves",
+"base": "mossy_cobblestone",
+"base2": "mossy_cobblestone",
+"base3": "mud_bricks",
+"plaster": "dark_oak_planks",
+"frame": "dark_oak_log",
+"path": [
+"dirt_path",
+"dirt_path",
+"packed_mud",
+"mud_bricks",
+"coarse_dirt"
+],
+"bed": [
+"brown_bed",
+"green_bed",
+"gray_bed",
+"black_bed"
+],
+"banner": [
+"green_wool",
+"white_wool"
+],
+"roofs": [
+[
+"dark_oak_stairs",
+"dark_oak_slab"
+],
+[
+"mangrove_stairs",
+"mangrove_slab"
+]
+]
+}
+},
+{
+"key": "mountain",
+"base": "taiga",
+"set": {
+"planks": "spruce_planks",
+"log": "spruce_log",
+"floor": "spruce_planks",
+"stairs": "spruce_stairs",
+"slab": "spruce_slab",
+"fence": "spruce_fence",
+"gate": "spruce_fence_gate",
+"door": "spruce_door",
+"trapdoor": "spruce_trapdoor",
+"wood": "spruce",
+"fwood": "spruce",
+"stone": "stone_bricks",
+"stoneSlab": "stone_brick_slab",
+"stoneStairs": "stone_brick_stairs",
+"lampPost": "spruce_fence",
+"leaves": "spruce_leaves",
+"base": "stone_bricks",
+"base2": "stone_bricks",
+"base3": "cobblestone",
+"plaster": "spruce_planks",
+"frame": "spruce_log",
+"path": [
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"coarse_dirt",
+"podzol"
+],
+"bed": [
+"red_bed",
+"gray_bed",
+"white_bed"
+],
+"banner": [
+"red_wool",
+"white_wool"
+],
+"roofs": [
+[
+"slate_tile_stairs",
+"slate_tile_slab"
+]
+]
+}
+},
+{
+"key": "alpine",
+"base": "taiga",
+"set": {
+"planks": "spruce_planks",
+"log": "spruce_log",
+"floor": "spruce_planks",
+"stairs": "spruce_stairs",
+"slab": "spruce_slab",
+"fence": "spruce_fence",
+"gate": "spruce_fence_gate",
+"door": "spruce_door",
+"trapdoor": "spruce_trapdoor",
+"wood": "spruce",
+"fwood": "spruce",
+"stone": "cobblestone",
+"stoneSlab": "cobblestone_slab",
+"stoneStairs": "cobblestone_stairs",
+"lampPost": "spruce_fence",
+"leaves": "spruce_leaves",
+"base": "cobblestone",
+"base2": "cobblestone",
+"base3": "stone_bricks",
+"plaster": "white_terracotta",
+"frame": "dark_oak_log",
+"path": [
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"coarse_dirt",
+"podzol"
+],
+"bed": [
+"red_bed",
+"white_bed",
+"green_bed"
+],
+"banner": [
+"red_wool",
+"white_wool"
+],
+"roofs": [
+[
+"dark_oak_stairs",
+"dark_oak_slab"
+],
+[
+"spruce_stairs",
+"spruce_slab"
+]
+]
+}
+},
+{
+"key": "mesa",
+"base": "desert",
+"set": {
+"planks": "acacia_planks",
+"log": "acacia_log",
+"floor": "smooth_red_sandstone",
+"stairs": "acacia_stairs",
+"slab": "acacia_slab",
+"fence": "acacia_fence",
+"gate": "acacia_fence_gate",
+"door": "acacia_door",
+"trapdoor": "acacia_trapdoor",
+"wood": "acacia",
+"fwood": "acacia",
+"stone": "smooth_red_sandstone",
+"stoneSlab": "cut_red_sandstone_slab",
+"stoneStairs": "red_sandstone_stairs",
+"lampPost": "acacia_fence",
+"leaves": "acacia_leaves",
+"base": "terracotta",
+"base2": "terracotta",
+"base3": "cut_red_sandstone",
+"plaster": "orange_terracotta",
+"frame": "acacia_log",
+"path": [
+"red_sand",
+"smooth_red_sandstone",
+"cut_red_sandstone",
+"terracotta",
+"coarse_dirt"
+],
+"bed": [
+"orange_bed",
+"red_bed",
+"brown_bed",
+"yellow_bed"
+],
+"banner": [
+"orange_wool",
+"white_wool"
+],
+"roofs": [
+[
+"red_sandstone_stairs",
+"cut_red_sandstone_slab"
+]
+]
+}
+},
+{
+"key": "oasis",
+"base": "desert",
+"set": {
+"planks": "birch_planks",
+"log": "jungle_log",
+"floor": "smooth_sandstone",
+"stairs": "birch_stairs",
+"slab": "birch_slab",
+"fence": "birch_fence",
+"gate": "birch_fence_gate",
+"door": "birch_door",
+"trapdoor": "birch_trapdoor",
+"wood": "birch",
+"fwood": "birch",
+"stone": "smooth_sandstone",
+"stoneSlab": "cut_sandstone_slab",
+"stoneStairs": "smooth_sandstone_stairs",
+"lampPost": "birch_fence",
+"leaves": "jungle_leaves",
+"base": "cut_sandstone",
+"base2": "cut_sandstone",
+"base3": "smooth_sandstone",
+"plaster": "sandstone",
+"frame": "jungle_log",
+"path": [
+"smooth_sandstone",
+"smooth_sandstone",
+"sandstone",
+"cut_sandstone",
+"sand"
+],
+"bed": [
+"orange_bed",
+"yellow_bed",
+"cyan_bed",
+"red_bed"
+],
+"banner": [
+"yellow_wool",
+"white_wool"
+],
+"roofs": [
+[
+"sandstone_stairs",
+"sandstone_slab"
+]
+]
+}
+},
+{
+"key": "savanna_hut",
+"base": "savanna",
+"set": {
+"planks": "acacia_planks",
+"log": "acacia_log",
+"floor": "packed_mud",
+"stairs": "acacia_stairs",
+"slab": "acacia_slab",
+"fence": "acacia_fence",
+"gate": "acacia_fence_gate",
+"door": "acacia_door",
+"trapdoor": "acacia_trapdoor",
+"wood": "acacia",
+"fwood": "acacia",
+"stone": "smooth_stone",
+"stoneSlab": "smooth_stone_slab",
+"stoneStairs": "cobblestone_stairs",
+"lampPost": "acacia_fence",
+"leaves": "acacia_leaves",
+"base": "packed_mud",
+"base2": "packed_mud",
+"base3": "terracotta",
+"plaster": "packed_mud",
+"frame": "acacia_log",
+"path": [
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"coarse_dirt",
+"red_sand"
+],
+"bed": [
+"orange_bed",
+"yellow_bed",
+"red_bed",
+"brown_bed"
+],
+"banner": [
+"orange_wool",
+"white_wool"
+],
+"roofs": [
+[
+"thatch_stairs",
+"thatch_slab"
+]
+]
+}
+},
+{
+"key": "mushroom",
+"base": "plains",
+"set": {
+"planks": "spruce_planks",
+"log": "mushroom_stem",
+"floor": "spruce_planks",
+"stairs": "spruce_stairs",
+"slab": "spruce_slab",
+"fence": "spruce_fence",
+"gate": "spruce_fence_gate",
+"door": "spruce_door",
+"trapdoor": "spruce_trapdoor",
+"wood": "spruce",
+"fwood": "spruce",
+"stone": "mycelium",
+"stoneSlab": "stone_brick_slab",
+"stoneStairs": "stone_brick_stairs",
+"lampPost": "spruce_fence",
+"leaves": "red_mushroom_block",
+"base": "mushroom_stem",
+"base2": "mushroom_stem",
+"base3": "mushroom_stem",
+"plaster": "mushroom_stem",
+"frame": "mushroom_stem",
+"path": [
+"dirt_path",
+"dirt_path",
+"coarse_dirt",
+"mycelium"
+],
+"bed": [
+"red_bed",
+"white_bed",
+"brown_bed"
+],
+"banner": [
+"red_wool",
+"white_wool"
+],
+"roofs": [
+[
+"dark_oak_stairs",
+"dark_oak_slab"
+]
+]
+}
+},
+{
+"key": "igloo",
+"base": "snowy",
+"set": {
+"planks": "spruce_planks",
+"log": "spruce_log",
+"floor": "snow_block",
+"stairs": "spruce_stairs",
+"slab": "spruce_slab",
+"fence": "spruce_fence",
+"gate": "spruce_fence_gate",
+"door": "spruce_door",
+"trapdoor": "spruce_trapdoor",
+"wood": "spruce",
+"fwood": "spruce",
+"stone": "polished_diorite",
+"stoneSlab": "polished_diorite_slab",
+"stoneStairs": "polished_diorite_stairs",
+"lampPost": "spruce_fence",
+"leaves": "spruce_leaves",
+"base": "snow_block",
+"base2": "snow_block",
+"base3": "snow_block",
+"plaster": "snow_block",
+"frame": "spruce_log",
+"path": [
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"gravel",
+"snow_block"
+],
+"bed": [
+"light_blue_bed",
+"white_bed",
+"blue_bed",
+"cyan_bed"
+],
+"banner": [
+"blue_wool",
+"white_wool"
+],
+"roofs": [
+[
+"dark_oak_stairs",
+"dark_oak_slab"
+]
+]
+}
+},
+{
+"key": "christmas",
+"base": "snowy",
+"set": {
+"planks": "dark_oak_planks",
+"log": "spruce_log",
+"floor": "spruce_planks",
+"stairs": "dark_oak_stairs",
+"slab": "dark_oak_slab",
+"fence": "spruce_fence",
+"gate": "spruce_fence_gate",
+"door": "dark_oak_door",
+"trapdoor": "spruce_trapdoor",
+"wood": "dark_oak",
+"fwood": "dark_oak",
+"stone": "polished_diorite",
+"stoneSlab": "polished_diorite_slab",
+"stoneStairs": "polished_diorite_stairs",
+"lampPost": "spruce_fence",
+"leaves": "spruce_leaves",
+"base": "polished_diorite",
+"base2": "polished_diorite",
+"base3": "polished_diorite",
+"plaster": "spruce_planks",
+"frame": "spruce_log",
+"path": [
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"gravel",
+"snow_block"
+],
+"bed": [
+"red_bed",
+"green_bed",
+"white_bed"
+],
+"banner": [
+"red_wool",
+"white_wool"
+],
+"roofs": [
+[
+"dark_oak_stairs",
+"dark_oak_slab"
+]
+]
+}
+},
+{
+"key": "halloween",
+"base": "plains",
+"set": {
+"planks": "dark_oak_planks",
+"log": "dark_oak_log",
+"floor": "dark_oak_planks",
+"stairs": "dark_oak_stairs",
+"slab": "dark_oak_slab",
+"fence": "dark_oak_fence",
+"gate": "dark_oak_fence_gate",
+"door": "dark_oak_door",
+"trapdoor": "dark_oak_trapdoor",
+"wood": "dark_oak",
+"fwood": "dark_oak",
+"stone": "cobblestone",
+"stoneSlab": "stone_brick_slab",
+"stoneStairs": "stone_brick_stairs",
+"lampPost": "dark_oak_fence",
+"leaves": "dark_oak_leaves",
+"base": "cobblestone",
+"base2": "cobblestone",
+"base3": "mossy_cobblestone",
+"plaster": "dark_oak_planks",
+"frame": "dark_oak_log",
+"path": [
+"dirt_path",
+"coarse_dirt",
+"gravel",
+"dirt_path",
+"podzol"
+],
+"bed": [
+"black_bed",
+"purple_bed",
+"orange_bed",
+"gray_bed"
+],
+"banner": [
+"orange_wool",
+"white_wool"
+],
+"roofs": [
+[
+"slate_tile_stairs",
+"slate_tile_slab"
+],
+[
+"dark_oak_stairs",
+"dark_oak_slab"
+]
+]
+}
+},
+{
+"key": "jungle_tree",
+"base": "plains",
+"set": {
+"planks": "jungle_planks",
+"log": "jungle_log",
+"floor": "jungle_planks",
+"stairs": "jungle_stairs",
+"slab": "jungle_slab",
+"fence": "jungle_fence",
+"gate": "jungle_fence_gate",
+"door": "jungle_door",
+"trapdoor": "jungle_trapdoor",
+"wood": "jungle",
+"fwood": "jungle",
+"stone": "mossy_cobblestone",
+"stoneSlab": "cobblestone_slab",
+"stoneStairs": "mossy_cobblestone_stairs",
+"lampPost": "jungle_fence",
+"leaves": "jungle_leaves",
+"base": "mossy_cobblestone",
+"base2": "mossy_cobblestone",
+"base3": "cobblestone",
+"plaster": "jungle_planks",
+"frame": "jungle_log",
+"path": [
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"dirt_path",
+"coarse_dirt",
+"mossy_cobblestone"
+],
+"bed": [
+"green_bed",
+"lime_bed",
+"yellow_bed",
+"brown_bed"
+],
+"banner": [
+"lime_wool",
+"white_wool"
+],
+"roofs": [
+[
+"thatch_stairs",
+"thatch_slab"
+],
+[
+"jungle_stairs",
+"jungle_slab"
+]
+]
+}
+}
+]
+}

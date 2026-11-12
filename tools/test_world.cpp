@@ -1,0 +1,299 @@
+// tools/test_world.cpp — headless checks for the world (after TerraFirmaCraft): rock layers and where the ores lie,
+// cave-ins and support beams, the new crops and plants. Run: build/test_world (exit code = failures)
+#include "core/init.h"
+#include "core/registry.h"
+#include "sim/level.h"
+#include "sim/player.h"
+#include "sim/rules.h"
+#include "sim/events.h"
+#include "sim/cavein.h"
+#include "sim/husbandry.h"
+#include "sim/machines.h"
+#include "sim/creature.h"
+#include "sim/creature_entities.h"
+#include "common/threadpool.h"
+#include "world/world.h"
+#include "world/dims.h"
+#include "gen/generator.h"
+#include "gen/nether_bn.h"
+#include "sim/dyntree.h"
+#include "sim/blockinfo.h"
+#include "sim/worldsys.h"
+#include "world/chunk.h"
+#include <thread>
+#include <map>
+#include <set>
+#include <cstdio>
+#include <cmath>
+
+using namespace dq;
+static int fails = 0, passes = 0;
+static void check(bool ok, const std::string& what) { printf("%s %s\n", ok ? "ok  " : "FAIL", what.c_str()); (ok ? passes : fails)++; }
+
+struct Rig {
+  ThreadPool pool{2}; EventBus bus; std::unique_ptr<Level> lv; Player* P = nullptr; int Y = 0;
+  Rig(const std::string& name, bool immersiveOn, bool setRule) {
+    LevelInfo li; li.name = name; li.seedText = "immersive";
+    if (setRule) li.rules = json{{"immersive", immersiveOn}, {"_v", 1}};
+    lv = Level::create(userSub("saves"), li, &pool, &bus);
+    World& w = lv->world();
+    Y = dimBase(DIM_OVERWORLD) + 200;
+    auto p = std::make_unique<Player>(); p->name = "Tester"; p->pos = vec3(8.5f, Y + 1, 8.5f); P = static_cast<Player*>(lv->spawn(std::move(p)));
+    double t0 = nowSeconds();
+    while (nowSeconds() - t0 < 60) {
+      w.stream({{P->pos, 2, false}}, 20);
+      bool all = true;
+      for (int cx = -1; cx <= 1; cx++) for (int cz = -1; cz <= 1; cz++) if (!w.chunk(DIM_OVERWORLD, cx, cz)) all = false;
+      if (all) break;
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    const BlockId stone = reg().blockId("stone");
+    for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) { w.setBlock(x, Y, z, stone); for (int y = Y + 1; y < Y + 12; y++) w.setBlock(x, y, z, AIR); }
+    P->onGround = true;
+  }
+  void tick(double secs) {   // (keeps the test's chunks streamed in, or a long wait could see them unloaded and made afresh)
+    double since = 1;
+    for (double t = 0; t < secs; t += TICK_DT) { lv->tick(TICK_DT); if ((since += TICK_DT) >= 1) { since = 0; lv->world().stream({{P->pos, 2, false}}, 20); } }
+  }
+  void fall(double secs) { lv->tick(TICK_DT); for (double t = 0; t < secs; t += 1 / 60.0) P->move(lv->world(), PlayerInput{}, 1 / 60.f, MoveOpts{}); }
+};
+
+int main(int argc, char** argv) {
+  std::string ud = (fs::temp_directory_path() / "dq-test-world").string();
+  for (int i = 1; i < argc; i++) if (std::string(argv[i]) == "--userdir" && i + 1 < argc) ud = argv[++i];
+  std::error_code ec; fs::remove_all(ud, ec);
+  CoreOptions co; co.server = true; co.userDirOverride = ud;
+  if (!initCore(co)) { printf("FAIL initCore\n"); return 1; }
+  Rig rg("World", true, true);
+  World& w = rg.lv->world();
+
+  printf("[cave-ins]\n");
+  {
+    const BlockId STONE = reg().blockId("stone"), BEAM = reg().blockId("support_beam");
+    check(isRock(STONE) && !isRock(reg().blockId("stone_bricks")) && !isRock(reg().blockId("log")), "raw rock is rock; bricks and logs aren't");
+    // a cave 9 wide, its roof of stone
+    const int Y0 = rg.Y + 2;
+    for (int x = -2; x <= 12; x++) for (int z = -2; z <= 12; z++) { w.setBlock(x, Y0 + 3, z, STONE); w.setBlock(x, Y0 + 4, z, STONE); for (int y = Y0; y < Y0 + 3; y++) w.setBlock(x, y, z, AIR); }
+    check(caveInRisk(w, 5, Y0 + 2, 5), "a wide open cave with no supports is at risk");
+    w.setBlock(3, Y0, 5, BEAM); w.setBlock(3, Y0 + 1, 5, BEAM); w.setBlock(3, Y0 + 2, 5, BEAM);
+    check(!caveInRisk(w, 5, Y0 + 2, 5), "a support beam within four blocks makes it safe");
+    for (int y = Y0; y < Y0 + 3; y++) w.setBlock(3, y, 5, AIR);
+    const int fell = caveIn(*rg.lv, w, 5, Y0 + 2, 5, 0.0f);
+    check(fell >= 1 && fell <= 3, "an unlucky blow: a little rubble falls (" + std::to_string(fell) + ")");
+    check(caveIn(*rg.lv, w, 5, Y0 + 2, 5, 0.5f) == 0, "mostly nothing happens");
+    // a narrow tunnel: no risk
+    for (int x = 18; x <= 32; x++) for (int z = 15; z <= 29; z++) for (int y = Y0 - 1; y <= Y0 + 4; y++) w.setBlock(x, y, z, (z == 22 && y >= Y0 && y < Y0 + 3) ? AIR : STONE);   // (solid rock all round)
+    check(!caveInRisk(w, 25, Y0 + 2, 22), "a one-wide tunnel holds itself up");
+  }
+
+  printf("[rock layers]\n");
+  {
+    check(rg.lv->info.genVersion >= 12, "a new world is made with rock layers (generation " + std::to_string(rg.lv->info.genVersion) + ")");
+    std::map<std::string, int> rocks; int zinc = 0, zincHosted = 0;
+    const std::set<std::string> META = {"marble", "slate", "gneiss", "schist", "quartzite"};
+    for (int ox : {3000, 6000}) {
+      const vec3 at(ox + 8, dimBase(DIM_OVERWORLD) + 100, ox + 8);
+      for (int k = 0; k < 600; k++) { w.stream({{at, 2, false}, {rg.P->pos, 2, false}}, 40); bool all = true; for (int cx = -1; cx <= 0; cx++) for (int cz = -1; cz <= 0; cz++) if (!w.chunk(DIM_OVERWORLD, (ox >> 4) + cx, (ox >> 4) + cz)) all = false; if (all) break; std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
+      for (int x = ox - 16; x < ox + 16; x++) for (int z = ox - 16; z < ox + 16; z++) for (int y = dimBase(DIM_OVERWORLD) + 1; y < dimBase(DIM_OVERWORLD) + 200; y++) {
+        const BlockId b = w.getBlock(x, y, z);
+        if (!b) continue;
+        const std::string& k = reg().block(b).key;
+        if (isRock(b)) rocks[k]++;
+        if (k == "zinc_ore") {
+          zinc++;
+          for (auto& n : {ivec3(1, 0, 0), ivec3(-1, 0, 0), ivec3(0, 1, 0), ivec3(0, -1, 0), ivec3(0, 0, 1), ivec3(0, 0, -1)}) if (META.count(reg().block(w.getBlock(x + n.x, y + n.y, z + n.z)).key)) { zincHosted++; break; }
+        }
+      }
+    }
+    std::string list; int kinds = 0; for (auto& [k, n] : rocks) if (n > 200) { kinds++; list += k + " "; }
+    check(kinds >= 4, "several kinds of rock in layers: " + list);
+    check(rocks["stone"] < 2000, "hardly any plain stone left (" + std::to_string(rocks["stone"]) + ")");
+    check(zinc == 0 || zincHosted * 10 >= zinc * 8, "zinc lies in metamorphic rock (" + std::to_string(zincHosted) + " of " + std::to_string(zinc) + ")");
+  }
+
+  printf("[crops and plants]\n");
+  {
+    bool crops = true;
+    for (const char* c : {"barley", "oat", "rye", "jute", "garlic", "soybean", "green_beans", "squash"}) {
+      const BlockId b = reg().blockId(std::string(c) + "_crop");
+      const json& cp = b ? reg().block(b).props["crop"] : json();
+      const std::string seed = cp.is_object() ? cp.value("seed", "") : "";
+      const ItemDef* sd = reg().item(seed);
+      if (!b || !sd || (sd->block != std::string(c) + "_crop" && sd->str("plants") != std::string(c) + "_crop") || !reg().item(cp.value("drop", ""))) { crops = false; printf("    %s\n", c); }
+    }
+    check(crops, "TFC's crops: barley, oat, rye, jute, garlic, soybean, green beans, squash, each planted from its seed");
+    bool bushes = true;
+    for (const char* b : {"blueberry", "raspberry", "blackberry", "snowberry", "cloudberry", "cranberry", "elderberry", "gooseberry", "bunchberry", "wintergreen"}) {
+      const BlockId full = reg().blockId(std::string(b) + "_bush"), empty = reg().blockId(std::string(b) + "_bush_empty");
+      if (!full || !empty || reg().block(empty).str("refill") != std::string(b) + "_bush" || !reg().item(reg().block(full).str("harvest")) || !reg().tTick[empty]) { bushes = false; printf("    %s\n", b); }
+    }
+    check(bushes, "ten berry bushes, picked and bearing again");
+    check(reg().blockId("plum_leaves") && reg().block(reg().blockId("plum_leaves")).str("fruit") == "plum" && reg().blockId("plum_sapling"), "fruit trees: plum leaves bear plums, from a plum sapling");
+    int newBush = 0, fruit = 0;
+    for (int ox : {3000, 6000}) for (int x = ox - 16; x < ox + 16; x++) for (int z = ox - 16; z < ox + 16; z++) for (int y = dimBase(DIM_OVERWORLD) + 40; y < dimBase(DIM_OVERWORLD) + 200; y++) {
+      const std::string& k = reg().block(w.getBlock(x, y, z)).key;
+      if (k.size() > 5 && k.compare(k.size() - 5, 5, "_bush") == 0 && k != "berry_bush" && k != "dead_bush") newBush++;
+      if (k == "banana_leaves" || k == "lemon_leaves" || k == "olive_leaves" || k == "orange_leaves" || k == "peach_leaves" || k == "plum_leaves") fruit++;
+    }
+    printf("    (in the generated land: %d of the new bushes, %d fruit leaves)\n", newBush, fruit);
+  }
+
+  printf("[husbandry]\n");
+  {
+    Creature* a = spawnCreature(*rg.lv, 0, "cow", vec3(4.5f, rg.Y + 1, 4.5f));
+    Creature* b = spawnCreature(*rg.lv, 0, "cow", vec3(5.5f, rg.Y + 1, 4.5f));
+    check(a && b, "two cows");
+    if (a && b) {
+      setMale(*a, true); setMale(*b, false);
+      check(isMale(*a) && !isMale(*b), "a bull and a cow");
+      check(familiarity(*a) == 0 && !canBreed(*rg.lv, *a, *b), "strangers to you: no calves");
+      check(husbandryFeed(*rg.lv, *a) && !husbandryFeed(*rg.lv, *a), "fed once a day (not twice)");
+      for (int d = 1; d <= 3; d++) { rg.lv->info.day += 1; husbandryFeed(*rg.lv, *a); husbandryFeed(*rg.lv, *b); }
+      check(familiarity(*a) > 0.5f && canBreed(*rg.lv, *a, *b), "fed day after day they come to know you, and breed");
+      setMale(*b, true);
+      check(!canBreed(*rg.lv, *a, *b), "two bulls don't");
+      setMale(*b, false);
+      rg.lv->info.day += 6; husbandryDaily(*rg.lv, *a);
+      check(familiarity(*a) < 0.6f, "left alone a week, it forgets a little (" + std::to_string(familiarity(*a)) + ")");
+      check(husbandryLabel(*a).find("Bull") != std::string::npos || husbandryLabel(*a).find("Male") != std::string::npos, "on look: " + husbandryLabel(*a));
+    }
+  }
+
+  printf("[machines]\n");
+  {
+    const BlockId WM = reg().blockId("windmill"), AX = reg().blockId("axle"), GB = reg().blockId("gearbox"), Q = reg().blockId("quern"), RB = reg().blockId("redstone_block");
+    check(GB && Q && reg().block(Q).str("mech") == "quern", "the gearbox; the quern is a machine");
+    const int X = 60, Y = rg.Y + 12, Z = 60;
+    for (int k = 0; k < 600; k++) { w.stream({{vec3(X, Y, Z), 2, false}, {rg.P->pos, 2, false}}, 40); if (w.isLoaded(X + 4, Y, Z + 4) && w.isLoaded(X - 4, Y, Z - 4)) break; std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
+    for (int x = X - 6; x <= X + 6; x++) for (int y = Y - 6; y <= Y + 6; y++) for (int z = Z - 6; z <= Z + 6; z++) w.setBlock(x, y, z, AIR);
+    w.setBlock(X, Y, Z, WM, 1);            // sails facing east-west, high in the open air
+    w.setBlock(X + 1, Y, Z, AX, 1);        // an axle east
+    w.setBlock(X + 2, Y, Z, GB);           // a gearbox turning it...
+    w.setBlock(X + 2, Y, Z + 1, AX, 2);    // ...south through a right angle
+    w.setBlock(X + 2, Y, Z + 2, Q);        // into a quern
+    json* e = w.blockEntity(X + 2, Y, Z + 2, true); *e = json{{"type", "machine"}, {"items", {ItemStack("wheat", 8).toJson(), nullptr}}, {"progress", 0}};
+    rg.tick(60);
+    e = w.blockEntity(X + 2, Y, Z + 2);
+    const ItemStack out = e ? ItemStack::fromJson((*e)["items"][1]) : ItemStack();
+    Mechanics* M = mechanicsOf(*rg.lv, 0);
+    check(M && M->speedAt(X + 2, Y, Z + 2) > 0.05f, "the windmill turns the quern through the gearbox (speed " + std::to_string(M ? M->speedAt(X + 2, Y, Z + 2) : 0.f) + ")");
+    check(out.id == "flour" && out.n >= 1, "  ...and it grinds the wheat on its own (" + std::to_string(out.n) + " flour)");
+    w.setBlock(X + 2, Y + 1, Z, RB);       // a redstone signal on the gearbox
+    rg.tick(25);
+    check(M && M->speedAt(X + 2, Y, Z + 2) < 0.05f, "a powered gearbox lets go: the quern stops");
+  }
+
+  printf("[BetterNether's lands (terrain 13)]\n");
+  {
+    const i32 seed = 12345;
+    // a chunk all BetterNether land and one all BTA's, found on the map
+    ivec2 bnC(INT32_MIN, 0), btaC(INT32_MIN, 0); std::set<int> lands;
+    for (int cz = -40; cz < 40 && (bnC.x == INT32_MIN || btaC.x == INT32_MIN || lands.size() < 3); cz += 3) for (int cx = -40; cx < 40; cx += 3) {
+      int any = 0, none = 0;
+      for (int k = 0; k < 16; k++) { const u8 l = netherBnLand(seed, 13, cx * 16 + (k & 3) * 5, cz * 16 + (k >> 2) * 5); l ? any++ : none++; if (l) lands.insert(l); }
+      if (any == 16 && bnC.x == INT32_MIN) bnC = ivec2(cx, cz);
+      if (none == 16 && btaC.x == INT32_MIN) btaC = ivec2(cx, cz);
+    }
+    check(bnC.x != INT32_MIN && btaC.x != INT32_MIN, "the map has both BetterNether's lands and BTA's");
+    check(lands.size() >= 2, "more than one of BetterNether's lands nearby (" + std::to_string(lands.size()) + ")");
+    check(netherBnLand(seed, 12, bnC.x * 16, bnC.y * 16) == BN_NONE, "terrain 12 has none of them");
+    auto gen = [&](int ver, ivec2 c) {
+      WorldGenOptions o; o.seed = seed; o.genVersion = ver; WorldGen g(o);
+      auto ch = std::make_unique<Chunk>(DIM_NETHER, c.x, c.y); g.forDim(DIM_NETHER)->generate(*ch); return ch;
+    };
+    auto bnBlocks = [&](const Chunk& ch) { int n = 0; for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) if (reg().block(ch.get(x, y, z)).has("betternether")) n++; return n; };
+    auto same = [&](const Chunk& a, const Chunk& b) { for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) if (a.get(x, y, z) != b.get(x, y, z)) return false; return true; };
+    auto a12 = gen(12, bnC), a13 = gen(13, bnC), b13 = gen(13, bnC);
+    check(bnBlocks(*a12) == 0, "terrain 12: BTA's Nether as it was (no BetterNether blocks)");
+    int diff = 0; for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) if (a12->get(x, y, z) != a13->get(x, y, z)) diff++;
+    printf("     (land %s: %d blocks differ from terrain 12)\n", bnLandName(netherBnLand(seed, 13, bnC.x * 16 + 8, bnC.y * 16 + 8)), diff);
+    check(diff > 60, "terrain 13 repaints BetterNether's land (" + std::to_string(diff) + " blocks)");
+    check(bnBlocks(*a13) > 20 || netherBnLand(seed, 13, bnC.x * 16 + 8, bnC.y * 16 + 8) != BN_JUNGLE, "terrain 13: BetterNether's ground and plants there (" + std::to_string(bnBlocks(*a13)) + " blocks)");
+    check(same(*a13, *b13), "the same chunk generates the same twice");
+    // each land found within 1500 blocks: up to three chunks of it (one may be a fortress), the best repainted
+    std::map<int, std::vector<ivec2>> some;
+    for (int cz = -90; cz < 90; cz += 2) for (int cx = -90; cx < 90; cx += 2) {
+      const u8 l = netherBnLand(seed, 13, cx * 16, cz * 16);
+      if (!l || some[l].size() >= 3) continue;
+      bool all = true; for (int k = 0; k < 16 && all; k++) all = netherBnLand(seed, 13, cx * 16 + (k & 3) * 5, cz * 16 + (k >> 2) * 5) == l;
+      if (all) some[l].push_back(ivec2(cx, cz));
+    }
+    for (auto& [l, cs] : some) {
+      if (cs.empty()) continue;
+      int best = 0, bn = 0;
+      for (ivec2 c : cs) {
+        auto x12 = gen(12, c), x13 = gen(13, c);
+        int diff = 0; for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) if (x12->get(x, y, z) != x13->get(x, y, z)) diff++;
+        if (diff > best) { best = diff; bn = bnBlocks(*x13); }
+      }
+      check(best > 40, std::string("  ") + bnLandName(l) + ": repainted (" + std::to_string(best) + " blocks, " + std::to_string(bn) + " of BetterNether's)");
+    }
+    check(same(*gen(12, btaC), *gen(13, btaC)), "outside BetterNether's lands terrain 13 is terrain 12, block for block");
+  }
+
+  printf("[growing trees (Dynamic Trees, terrain 13)]\n");
+  {
+    const Registry& R = reg();
+    const BlockId DIRT = R.blockId("dirt"), SAP = R.blockId("sapling"), BR = R.blockId("oak_branch"), ROOTY = R.blockId("rooty_dirt"), LEAVES = R.blockId("leaves");
+    const int X = 8, Y = rg.Y, Z = 8;
+    for (int x = -2; x <= 18; x++) for (int z = -2; z <= 18; z++) for (int y = Y + 1; y < Y + 40; y++) w.setBlock(x, y, z, AIR);
+    w.setBlock(X, Y, Z, DIRT); w.setBlock(X, Y + 1, Z, SAP);
+    check(dynTreesOn(*rg.lv), "a new world grows its trees (terrain " + std::to_string(rg.lv->info.genVersion) + ")");
+    check(growTree(*rg.lv, w, X, Y + 1, Z, 0.5), "a sapling takes root");
+    check(w.getBlock(X, Y, Z) == ROOTY && (w.getMeta(X, Y, Z) & 15) == 15, "  rooty soil under it, full of life");
+    check(w.getBlock(X, Y + 1, Z) == BR && branchRadius(BR, w.getMeta(X, Y + 1, Z)) == 1, "  a twig of oak where it stood");
+    check(w.getBlock(X, Y + 2, Z) == LEAVES, "  a leaf on top");
+    int grew = 0;
+    for (u32 k = 0; k < 400; k++) { w.setBlock(X, Y, Z, ROOTY, 15); if (growDynTree(*rg.lv, w, X, Y, Z, k * 2654435761u)) grew++; }
+    int parts = 0, maxUp = 0; bool taper = true;
+    for (int x = -2; x <= 18; x++) for (int z = -2; z <= 18; z++) for (int y = Y + 1; y < Y + 40; y++) if (w.getBlock(x, y, z) == BR) { parts++; maxUp = std::max(maxUp, y - Y); }
+    const int base = branchRadius(BR, w.getMeta(X, Y + 1, Z));
+    for (int y = Y + 1; y < Y + 8; y++) {
+      const int r0 = branchRadius(w.getBlock(X, y, Z), w.getMeta(X, y, Z)), r1 = branchRadius(w.getBlock(X, y + 1, Z), w.getMeta(X, y + 1, Z));
+      if (r1 > r0) taper = false;
+    }
+    check(grew > 30 && parts > 20 && maxUp >= 6, "400 growth signals grow it to a grown tree (" + std::to_string(grew) + " grew, " + std::to_string(parts) + " branch blocks, " + std::to_string(maxUp) + " tall)");
+    check(base >= 4, "  its trunk thickens at the foot (radius " + std::to_string(base) + " of 8)");
+    check(taper, "  and thins upward (no branch thicker than the one under it)");
+    // the soil spends its life; dead soil grows nothing
+    int life = 15; for (u32 k = 0; k < 200; k++) growDynTree(*rg.lv, w, X, Y, Z, 77 + k * 31u); life = w.getMeta(X, Y, Z) & 15;
+    check(life < 15, "  growing spends the soil's life (" + std::to_string(life) + " of 15 left)");
+    w.setBlock(X, Y, Z, ROOTY, 0);
+    check(!growDynTree(*rg.lv, w, X, Y, Z, 5), "  dead soil grows no more");
+    // felled: by volume
+    std::vector<std::pair<BlockId, u8>> wood;
+    for (int x = -2; x <= 18; x++) for (int z = -2; z <= 18; z++) for (int y = Y + 1; y < Y + 40; y++) if (w.getBlock(x, y, z) == BR) wood.push_back({BR, w.getMeta(x, y, z)});
+    std::map<std::string, int> logs; int sticks = 0; dynTreeYield(wood, logs, sticks);
+    check(logs["log"] >= 1 && logs["log"] < (int)wood.size(), "felled, it gives oak logs by its wood's volume (" + std::to_string(logs["log"]) + " logs, " + std::to_string(sticks) + " sticks from " + std::to_string(wood.size()) + " blocks)");
+    std::map<std::string, int> one; int st1 = 0; dynTreeYield({{BR, branchMeta(8)}}, one, st1);
+    check(one["log"] == 1 && st1 == 0, "  a whole-block branch is one log");
+    check(branchRadius(BR, 0) == 4 && branchRadius(BR, 1) == 3 && branchRadius(R.blockId("log"), 0) == 8, "the old generated branches keep their size");
+    // the trunk gone: the soil turns back to dirt
+    w.setBlock(X, Y, Z, ROOTY, 10); w.setBlock(X, Y + 1, Z, AIR);
+    growDynTree(*rg.lv, w, X, Y, Z, 9);
+    check(w.getBlock(X, Y, Z) == DIRT, "rooty soil with no tree is dirt again");
+    for (int x = -2; x <= 18; x++) for (int z = -2; z <= 18; z++) for (int y = Y + 1; y < Y + 40; y++) w.setBlock(x, y, z, AIR);
+    // new land: grown trees (gen/dyntree_gen.cpp)
+    {
+      auto gen = [&](int ver, int cx, int cz) { WorldGenOptions o; o.seed = 4242; o.genVersion = ver; WorldGen g(o);
+        auto ch = std::make_unique<Chunk>(DIM_OVERWORLD, cx, cz); g.forDim(DIM_OVERWORLD)->generate(*ch); return ch; };
+      int rooty13 = 0, rooty12 = 0, thick = 0, thin = 0, floating = 0;
+      for (int c = 0; c < 60 && rooty13 < 8; c++) {
+        auto a = gen(13, c * 5, c * 3), o = gen(12, c * 5, c * 3);
+        for (int y = 1; y < DIM_H - 1; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+          if (a->get(x, y, z) == ROOTY) { rooty13++; const BlockId t = a->get(x, y + 1, z); if (R.block(t).has("dynTree")) { const int r = branchRadius(t, a->getMeta(x, y + 1, z)); r >= 3 ? thick++ : thin++; } else floating++; }
+          if (o->get(x, y, z) == ROOTY) rooty12++;
+        }
+      }
+      check(rooty13 > 3 && rooty12 == 0, "new land's trees stand in rooty soil (" + std::to_string(rooty13) + "; terrain 12: " + std::to_string(rooty12) + ")");
+      check(thick > thin && floating == 0, "  with trunks thick at the foot (" + std::to_string(thick) + " thick, " + std::to_string(thin) + " thin, " + std::to_string(floating) + " without a trunk)");
+    }
+    rg.lv->info.genVersion = 12;
+    check(!dynTreesOn(*rg.lv), "terrain 12 worlds keep their trees as they were");
+    rg.lv->info.genVersion = 13;
+  }
+
+  printf("\n%d passed, %d failed\n", passes, fails);
+  rg.lv->close();
+  return fails;
+}

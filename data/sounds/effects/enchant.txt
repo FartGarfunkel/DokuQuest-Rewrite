@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with enchant.wav (or enchant.mp3 / enchant.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: wind_charge on fx blocks
+Replace this file with fx.wind_charge.wav (or fx.wind_charge.mp3 / fx.wind_charge.flac) to use your own recording.

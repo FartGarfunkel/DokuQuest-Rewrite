@@ -1,0 +1,2 @@
+Creature sound: cat
+Replace this file with cat_angry_angry.wav (or cat_angry_angry.mp3 / cat_angry_angry.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: firework_twinkle on fx blocks
+Replace this file with fx.firework_twinkle.wav (or fx.firework_twinkle.mp3 / fx.firework_twinkle.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with oink_angry.wav (or oink_angry.mp3 / oink_angry.flac) to use your own recording.

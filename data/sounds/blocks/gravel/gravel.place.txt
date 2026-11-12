@@ -1,0 +1,2 @@
+Block sound: place on gravel blocks
+Replace this file with gravel.place.wav (or gravel.place.mp3 / gravel.place.flac) to use your own recording.

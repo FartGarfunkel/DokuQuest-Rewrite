@@ -1,0 +1,2 @@
+Creature sound: mouse
+Replace this file with mouse_hurt.wav (or mouse_hurt.mp3 / mouse_hurt.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: spell_frost on fx blocks
+Replace this file with fx.spell_frost.wav (or fx.spell_frost.mp3 / fx.spell_frost.flac) to use your own recording.

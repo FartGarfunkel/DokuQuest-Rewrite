@@ -1,0 +1,2 @@
+Creature sound: zephyr
+Replace this file with zephyr.wav (or zephyr.mp3 / zephyr.flac) to use your own recording.

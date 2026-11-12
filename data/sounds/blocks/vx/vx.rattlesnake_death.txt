@@ -1,0 +1,2 @@
+Block sound: rattlesnake_death on vx blocks
+Replace this file with vx.rattlesnake_death.wav (or vx.rattlesnake_death.mp3 / vx.rattlesnake_death.flac) to use your own recording.

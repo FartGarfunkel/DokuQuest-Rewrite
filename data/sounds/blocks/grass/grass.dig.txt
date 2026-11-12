@@ -1,0 +1,2 @@
+Block sound: dig on grass blocks
+Replace this file with grass.dig.wav (or grass.dig.mp3 / grass.dig.flac) to use your own recording.

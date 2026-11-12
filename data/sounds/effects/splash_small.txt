@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with splash_small.wav (or splash_small.mp3 / splash_small.flac) to use your own recording.

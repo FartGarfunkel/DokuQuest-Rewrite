@@ -1,0 +1,2 @@
+Block sound: step on wood blocks
+Replace this file with wood.step.wav (or wood.step.mp3 / wood.step.flac) to use your own recording.

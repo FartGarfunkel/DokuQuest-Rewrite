@@ -1,0 +1,2 @@
+Creature sound: wolf
+Replace this file with wolf_death.wav (or wolf_death.mp3 / wolf_death.flac) to use your own recording.

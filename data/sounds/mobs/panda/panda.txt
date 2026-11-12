@@ -1,0 +1,2 @@
+Creature sound: panda
+Replace this file with panda.wav (or panda.mp3 / panda.flac) to use your own recording.

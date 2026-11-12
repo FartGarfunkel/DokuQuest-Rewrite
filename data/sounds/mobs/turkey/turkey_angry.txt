@@ -1,0 +1,2 @@
+Creature sound: turkey
+Replace this file with turkey_angry.wav (or turkey_angry.mp3 / turkey_angry.flac) to use your own recording.

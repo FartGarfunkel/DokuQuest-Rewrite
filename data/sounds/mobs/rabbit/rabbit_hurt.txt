@@ -1,0 +1,2 @@
+Creature sound: rabbit
+Replace this file with rabbit_hurt.wav (or rabbit_hurt.mp3 / rabbit_hurt.flac) to use your own recording.

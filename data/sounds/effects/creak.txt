@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with creak.wav (or creak.mp3 / creak.flac) to use your own recording.

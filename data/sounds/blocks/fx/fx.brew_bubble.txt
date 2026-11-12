@@ -1,0 +1,2 @@
+Block sound: brew_bubble on fx blocks
+Replace this file with fx.brew_bubble.wav (or fx.brew_bubble.mp3 / fx.brew_bubble.flac) to use your own recording.

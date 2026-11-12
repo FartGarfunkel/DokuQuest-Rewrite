@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with cluck_angry.wav (or cluck_angry.mp3 / cluck_angry.flac) to use your own recording.

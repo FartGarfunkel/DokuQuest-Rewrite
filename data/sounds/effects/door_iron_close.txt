@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with door_iron_close.wav (or door_iron_close.mp3 / door_iron_close.flac) to use your own recording.

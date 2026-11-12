@@ -1,0 +1,2 @@
+Creature sound: panda
+Replace this file with panda_death.wav (or panda_death.mp3 / panda_death.flac) to use your own recording.

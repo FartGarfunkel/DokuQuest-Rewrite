@@ -1,0 +1,2 @@
+Block sound: witch on vx blocks
+Replace this file with vx.witch.wav (or vx.witch.mp3 / vx.witch.flac) to use your own recording.

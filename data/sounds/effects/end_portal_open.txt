@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with end_portal_open.wav (or end_portal_open.mp3 / end_portal_open.flac) to use your own recording.

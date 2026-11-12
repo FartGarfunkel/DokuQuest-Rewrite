@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with snake_hurt.wav (or snake_hurt.mp3 / snake_hurt.flac) to use your own recording.

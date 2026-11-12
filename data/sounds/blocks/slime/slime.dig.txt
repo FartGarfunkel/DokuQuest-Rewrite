@@ -1,0 +1,2 @@
+Block sound: dig on slime blocks
+Replace this file with slime.dig.wav (or slime.dig.mp3 / slime.dig.flac) to use your own recording.

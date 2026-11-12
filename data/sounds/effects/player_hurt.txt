@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with player_hurt.wav (or player_hurt.mp3 / player_hurt.flac) to use your own recording.

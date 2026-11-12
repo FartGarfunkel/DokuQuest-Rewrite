@@ -1,0 +1,113 @@
+{
+ "_comment": "The quern (sim/quern.h; after TerraFirmaCraft): what grinding one of a thing gives.",
+ "grind": {
+  "wheat": [
+   "flour",
+   1
+  ],
+  "copper_ore_piece": [
+   "copper_ore_powder",
+   1
+  ],
+  "tin_ore_piece": [
+   "tin_ore_powder",
+   1
+  ],
+  "zinc_ore_piece": [
+   "zinc_ore_powder",
+   1
+  ],
+  "bismuth_ore_piece": [
+   "bismuth_ore_powder",
+   1
+  ],
+  "iron_ore_piece": [
+   "iron_ore_powder",
+   1
+  ],
+  "gold_ore_piece": [
+   "gold_ore_powder",
+   1
+  ],
+  "silver_ore_piece": [
+   "silver_ore_powder",
+   1
+  ],
+  "limestone": [
+   "flux",
+   2
+  ],
+  "calcite": [
+   "flux",
+   2
+  ],
+  "bone": [
+   "bone_meal",
+   4
+  ],
+  "cobblestone": [
+   "gravel",
+   1
+  ],
+  "gravel": [
+   "sand",
+   1
+  ],
+  "chalk": [
+   "lime",
+   2
+  ],
+  "dandelion": [
+   "yellow_dye",
+   2
+  ],
+  "poppy": [
+   "red_dye",
+   2
+  ],
+  "cornflower": [
+   "blue_dye",
+   2
+  ],
+  "blue_orchid": [
+   "light_blue_dye",
+   2
+  ],
+  "allium": [
+   "magenta_dye",
+   2
+  ],
+  "oxeye_daisy": [
+   "white_dye",
+   2
+  ],
+  "lily_of_the_valley": [
+   "white_dye",
+   2
+  ],
+  "cactus": [
+   "green_dye",
+   2
+  ],
+  "charcoal": [
+   "black_dye",
+   1
+  ],
+  "sugar_cane": [
+   "sugar",
+   2
+  ],
+  "barley": [
+   "flour",
+   1
+  ],
+  "oat": [
+   "flour",
+   1
+  ],
+  "rye": [
+   "flour",
+   1
+  ]
+ }
+}

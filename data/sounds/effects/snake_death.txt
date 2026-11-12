@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with snake_death.wav (or snake_death.mp3 / snake_death.flac) to use your own recording.

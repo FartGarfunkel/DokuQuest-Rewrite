@@ -1,0 +1,2 @@
+Block sound: glass_break on fx blocks
+Replace this file with fx.glass_break.wav (or fx.glass_break.mp3 / fx.glass_break.flac) to use your own recording.

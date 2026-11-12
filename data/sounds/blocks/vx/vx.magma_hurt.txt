@@ -1,0 +1,2 @@
+Block sound: magma_hurt on vx blocks
+Replace this file with vx.magma_hurt.wav (or vx.magma_hurt.mp3 / vx.magma_hurt.flac) to use your own recording.

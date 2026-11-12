@@ -1,0 +1,2 @@
+Block sound: explode on fx blocks
+Replace this file with fx.explode.wav (or fx.explode.mp3 / fx.explode.flac) to use your own recording.

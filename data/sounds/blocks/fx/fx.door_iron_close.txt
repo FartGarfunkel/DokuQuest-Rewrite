@@ -1,0 +1,2 @@
+Block sound: door_iron_close on fx blocks
+Replace this file with fx.door_iron_close.wav (or fx.door_iron_close.mp3 / fx.door_iron_close.flac) to use your own recording.

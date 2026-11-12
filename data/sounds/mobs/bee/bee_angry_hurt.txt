@@ -1,0 +1,2 @@
+Creature sound: bee
+Replace this file with bee_angry_hurt.wav (or bee_angry_hurt.mp3 / bee_angry_hurt.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Creature sound: witch
+Replace this file with witch_hurt.wav (or witch_hurt.mp3 / witch_hurt.flac) to use your own recording.

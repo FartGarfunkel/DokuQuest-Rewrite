@@ -1,0 +1,2 @@
+Block sound: arrow_hit on fx blocks
+Replace this file with fx.arrow_hit.wav (or fx.arrow_hit.mp3 / fx.arrow_hit.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Creature sound: aerwhale
+Replace this file with aerwhale.wav (or aerwhale.mp3 / aerwhale.flac) to use your own recording.

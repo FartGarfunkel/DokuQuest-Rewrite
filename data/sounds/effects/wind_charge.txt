@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with wind_charge.wav (or wind_charge.mp3 / wind_charge.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: elytra_open on fx blocks
+Replace this file with fx.elytra_open.wav (or fx.elytra_open.mp3 / fx.elytra_open.flac) to use your own recording.

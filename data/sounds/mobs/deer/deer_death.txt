@@ -1,0 +1,2 @@
+Creature sound: deer
+Replace this file with deer_death.wav (or deer_death.mp3 / deer_death.flac) to use your own recording.

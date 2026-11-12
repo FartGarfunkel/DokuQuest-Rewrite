@@ -1,0 +1,2 @@
+Block sound: werewolf on vx blocks
+Replace this file with vx.werewolf.wav (or vx.werewolf.mp3 / vx.werewolf.flac) to use your own recording.

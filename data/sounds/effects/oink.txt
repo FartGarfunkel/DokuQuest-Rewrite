@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with oink.wav (or oink.mp3 / oink.flac) to use your own recording.

@@ -1,0 +1,2 @@
+Block sound: break on gravel blocks
+Replace this file with gravel.break.wav (or gravel.break.mp3 / gravel.break.flac) to use your own recording.

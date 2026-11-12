@@ -1,0 +1,96 @@
+{
+"steps": [
+{
+"wait": 200,
+"do": "cmd",
+"text": "/time set noon"
+},
+{
+"do": "cmd",
+"text": "/clear"
+},
+{
+"do": "give",
+"item": "handcannon",
+"n": 1
+},
+{
+"do": "give",
+"item": "cannonball",
+"n": 4
+},
+{
+"do": "give",
+"item": "rocket_launcher",
+"n": 1
+},
+{
+"do": "give",
+"item": "rocket",
+"n": 2
+},
+{
+"do": "select",
+"slot": 0
+},
+{
+"do": "look",
+"yaw": 0,
+"pitch": -85
+},
+{
+"do": "report"
+},
+{
+"wait": 3,
+"do": "mouse",
+"button": "right",
+"hold": 1
+},
+{
+"wait": 4,
+"do": "report"
+},
+{
+"wait": 4,
+"do": "report"
+},
+{
+"wait": 8,
+"do": "report"
+},
+{
+"wait": 40,
+"do": "expect",
+"count": "cannonball",
+"n": 3
+},
+{
+"do": "select",
+"slot": 2
+},
+{
+"do": "look",
+"yaw": 0,
+"pitch": 0
+},
+{
+"wait": 3,
+"do": "mouse",
+"button": "right",
+"hold": 1
+},
+{
+"wait": 60,
+"do": "expect",
+"count": "rocket",
+"n": 1
+},
+{
+"do": "report"
+},
+{
+"do": "quit"
+}
+]
+}

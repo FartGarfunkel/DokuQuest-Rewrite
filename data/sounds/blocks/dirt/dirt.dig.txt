@@ -1,0 +1,2 @@
+Block sound: dig on dirt blocks
+Replace this file with dirt.dig.wav (or dirt.dig.mp3 / dirt.dig.flac) to use your own recording.

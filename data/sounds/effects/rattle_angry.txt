@@ -1,0 +1,2 @@
+Sound effect
+Replace this file with rattle_angry.wav (or rattle_angry.mp3 / rattle_angry.flac) to use your own recording.

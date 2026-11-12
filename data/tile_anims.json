@@ -1,0 +1,114 @@
+{
+"_comment": "Built-in animated tiles (ANIMS in the original render/doku.js): row r holds the frames of one tile, 32x32 each.",
+"size": 32,
+"anims": [
+{
+"tile": "smoker_front_lit",
+"fps": 6,
+"frames": 4,
+"row": 0
+},
+{
+"tile": "blast_furnace_front_lit",
+"fps": 8,
+"frames": 4,
+"row": 1
+},
+{
+"tile": "fire",
+"fps": 10,
+"frames": 8,
+"row": 2
+},
+{
+"tile": "soul_fire",
+"fps": 10,
+"frames": 8,
+"row": 3
+},
+{
+"tile": "campfire_fire",
+"fps": 10,
+"frames": 8,
+"row": 4
+},
+{
+"tile": "soul_campfire_fire",
+"fps": 10,
+"frames": 8,
+"row": 5
+},
+{
+"tile": "ember_portal",
+"fps": 8,
+"frames": 8,
+"row": 6
+},
+{
+"tile": "sky_portal",
+"fps": 8,
+"frames": 8,
+"row": 7
+},
+{
+"tile": "magma_block",
+"fps": 3,
+"frames": 4,
+"row": 8
+},
+{
+"tile": "sea_lantern",
+"fps": 4,
+"frames": 5,
+"row": 9
+},
+{
+"tile": "candle_flame",
+"fps": 6,
+"frames": 4,
+"row": 10
+},
+{
+"tile": "furnace_front_lit",
+"fps": 6,
+"frames": 4,
+"row": 11
+},
+{
+"tile": "torch",
+"fps": 7,
+"frames": 4,
+"row": 12
+},
+{
+"tile": "soul_torch",
+"fps": 7,
+"frames": 4,
+"row": 13
+},
+{
+"tile": "water",
+"fps": 8,
+"frames": 16,
+"row": 14
+},
+{
+"tile": "water_flow",
+"fps": 20,
+"frames": 32,
+"row": 15
+},
+{
+"tile": "lava",
+"fps": 4,
+"frames": 16,
+"row": 16
+},
+{
+"tile": "lava_flow",
+"fps": 8,
+"frames": 32,
+"row": 17
+}
+]
+}

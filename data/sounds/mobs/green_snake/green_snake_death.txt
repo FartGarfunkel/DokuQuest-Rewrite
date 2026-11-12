@@ -1,0 +1,2 @@
+Creature sound: green_snake
+Replace this file with green_snake_death.wav (or green_snake_death.mp3 / green_snake_death.flac) to use your own recording.

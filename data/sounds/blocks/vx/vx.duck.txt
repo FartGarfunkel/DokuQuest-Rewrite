@@ -1,0 +1,2 @@
+Block sound: duck on vx blocks
+Replace this file with vx.duck.wav (or vx.duck.mp3 / vx.duck.flac) to use your own recording.

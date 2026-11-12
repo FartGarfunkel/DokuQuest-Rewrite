@@ -1,0 +1,2 @@
+Block sound: ender_tp on fx blocks
+Replace this file with fx.ender_tp.wav (or fx.ender_tp.mp3 / fx.ender_tp.flac) to use your own recording.

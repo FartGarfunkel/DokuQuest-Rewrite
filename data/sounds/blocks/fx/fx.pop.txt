@@ -1,0 +1,2 @@
+Block sound: pop on fx blocks
+Replace this file with fx.pop.wav (or fx.pop.mp3 / fx.pop.flac) to use your own recording.

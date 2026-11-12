@@ -1,0 +1,13 @@
+{"steps":[
+ {"wait":5,"do":"cmd","text":"/gamemode creative"},
+ {"wait":100,"do":"tp","x":114.5,"y":137,"z":-524.5},
+ {"wait":30,"do":"tp","x":114.5,"y":137,"z":-524.5},
+ {"wait":30,"do":"tp","x":114.5,"y":137,"z":-524.5},
+ {"wait":30,"do":"tp","x":114.5,"y":137,"z":-524.5},
+ {"wait":30,"do":"tp","x":114.5,"y":137,"z":-524.5},
+ {"wait":30,"do":"tp","x":114.5,"y":137,"z":-524.5},
+ {"wait":20,"do":"report"},
+ {"wait":60,"do":"expect","entity":"shulker","near":30},
+ {"do":"report"},
+ {"do":"quit"}
+]}

@@ -1,0 +1,2 @@
+Block sound: drowned on vx blocks
+Replace this file with vx.drowned.wav (or vx.drowned.mp3 / vx.drowned.flac) to use your own recording.

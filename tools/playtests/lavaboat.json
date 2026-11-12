@@ -1,0 +1,19 @@
+{"steps":[
+ {"wait":200,"do":"anchor"},
+ {"do":"tp","rel":true,"x":0,"y":0,"z":0},
+ {"do":"cmd","text":"/time set 6000"},
+ {"do":"fill","rel":true,"from":[-4,-2,-8],"to":[4,4,-1],"key":"air"},
+ {"do":"fill","rel":true,"from":[-4,-3,-8],"to":[4,-3,-1],"key":"stone"},
+ {"do":"fill","rel":true,"from":[-4,-2,-8],"to":[4,-2,-2],"key":"lava"},
+ {"do":"fill","rel":true,"from":[-4,-1,-8],"to":[4,-1,-1],"key":"air"},
+ {"do":"give","item":"lava_rowboat"},
+ {"do":"select","slot":0},
+ {"wait":20,"do":"lookAt","rel":true,"x":0,"y":-2,"z":-2},
+ {"wait":5,"do":"mouse","button":"right","hold":1},
+ {"wait":20,"do":"expect","entity":"boat","near":8},
+ {"do":"lookAt","entity":"boat"},
+ {"wait":5,"do":"mouse","button":"right","hold":1},
+ {"wait":200,"do":"report"},
+ {"do":"shot","path":"/tmp/lavaboat.png"},
+ {"do":"quit"}
+]}
