@@ -11,6 +11,9 @@ namespace {
 inline float clampf(float v, float a, float b) { return v < a ? a : v > b ? b : v; }
 inline vec3 mixv(vec3 a, vec3 b, float t) { return a + (b - a) * t; }
 inline float ease(float u) { u = clampf(u, 0, 1); return u * u * (3 - 2 * u); }
+// the shield guard's shield arm (left; mirrored for the right): the upper arm, the forearm. Fitted so the shield strapped
+// on the forearm (render/char_layer.cpp shieldPlacement) stands square before the chest; sim/shield_shape.cpp measures it
+constexpr float SH_X = 0.88f, SH_Y = 0.72f, SH_Z = 0.01f, SF_X = 0.74f, SF_Y = 0.13f, SF_Z = 1.84f;
 }
 
 void charMorePoses(CharAngles& A, const CharPose& pose) {
@@ -96,27 +99,32 @@ void charMorePoses(CharAngles& A, const CharPose& pose) {
     fore = vec3(1.5f + CG[3], o * CG[4], o * CG[5]);
   }
   if (pose.block > 0) {
+    // (after Epic Fight's shield guard, which is a pose for the upper body laid over whatever the legs do: the body turned
+    // shield shoulder forward about half a right angle, the head turned back to keep looking ahead, the shield arm's
+    // elbow forward and low and the forearm level across the front of the chest, so the shield strapped on it stands
+    // square before the body; the other arm as it was)
     const float k = ease(pose.block), sd = pose.blockMain ? -1.f : 1.f;
     static float G[16] = {0}; static bool gl = false;   // tuning aid: DQ_DEV_GUARD="turn,sx,sy,sz,sf,wx,wy,wz,wf,lead,back,knee,crouch,head,twist,froll" (added)
     if (!gl) { gl = true; if (const char* v = std::getenv("DQ_DEV_GUARD")) std::sscanf(v, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f", &G[0], &G[1], &G[2], &G[3], &G[4], &G[5], &G[6], &G[7], &G[8], &G[9], &G[10], &G[11], &G[12], &G[13], &G[14], &G[15]); }
     auto side = [&](vec3 v, bool left) { return left ? v : vec3(v.x, -v.y, -v.z); };   // (an angle for the left arm, for either)
     const bool shLeft = sd > 0;
-    const float turn = (0.42f + G[0]) * k;
-    A.body.y += sd * turn; A.head.y -= sd * turn * (0.85f + G[13]);   // (the head keeps looking where you aim)
-    A.body.x -= 0.05f * k;
-    // the shield arm: up before the chest, the forearm bent across it
-    // (the upper arm forward and in, the forearm across before the chest, turned over: render/char_layer.cpp's shield on
-    // it faces the front, upright, its top tipped back a little)
-    const vec3 sh = side(vec3(1.44f + G[1] + pitch * 0.35f, -0.74f + G[2], 0.03f + G[3]), shLeft), sf = side(vec3(0.74f + G[4], -0.96f + G[14], 0.24f + G[15]), shLeft);
+    // a blocked blow (pose.guardHit 1 -> 0): the shield is knocked in, the body twisted further round, the back foot braced
+    const float gh = pose.guardHit > 0 ? (pose.guardHit > 0.8f ? ease((1 - pose.guardHit) / 0.2f) : ease(pose.guardHit / 0.8f)) : 0.f;
+    const float turn = (0.50f + G[0] + 0.30f * gh) * k;
+    A.body.y -= sd * turn; A.head.y += sd * turn * (1.f + G[13]);   // (the head keeps looking where you aim)
+    A.body.x -= (0.05f + 0.06f * gh) * k;
+    const vec3 sh = side(vec3(SH_X + G[1] + pitch * 0.35f + 0.12f * gh, SH_Y + G[2], SH_Z + G[3] - 0.25f * gh), shLeft);
+    const vec3 sf = side(vec3(SF_X + G[4], SF_Y + G[14], SF_Z + G[15]), shLeft);
     if (shLeft) { A.armL = mixv(A.armL, sh, k); A.foreL = mixv(A.foreL, sf, k); } else { A.armR = mixv(A.armR, sh, k); A.foreR = mixv(A.foreR, sf, k); }
-    // the feet: the shield side's leg ahead, the other back, both knees bent, sunk a little (standing only)
+    // the legs, standing: both knees give a little, the shield side's foot ahead and pointing on, the back foot turned out
+    // (walking keeps its stride: the guard is the upper body's)
     const float still = k * (1 - clampf(pose.walkAmt * 1.6f, 0, 1));
     vec3& legF = shLeft ? A.legL : A.legR; vec3& legB = shLeft ? A.legR : A.legL;
     vec3& shinF = shLeft ? A.shinL : A.shinR; vec3& shinB = shLeft ? A.shinR : A.shinL;
-    legF.x += (0.38f + G[9]) * still; shinF.x -= (0.42f + G[11]) * still;
-    legB.x -= (0.30f + G[10]) * still; shinB.x -= (0.30f + G[11]) * still;
-    legF.y += sd * turn * 0.6f * still; legB.y += sd * turn * 0.6f * still;   // (the feet turned with the hips)
-    A.lift -= (0.07f + G[12]) * still;
+    legF.x += (0.24f + G[9]) * still; shinF.x -= (0.22f + G[11]) * still;
+    legB.x += (-0.06f + G[10] - 0.2f * gh) * still; shinB.x -= (0.24f + G[11]) * still;
+    legB.y -= sd * (0.48f + 0.1f * gh) * still;
+    A.lift -= (0.02f + G[12] + 0.02f * gh) * still;
   }
   // ---- a crossbow: wound back against the hip (the foot in the stirrup), then levelled in both hands to the eye ----
   if (pose.xbowCharge > 0) {

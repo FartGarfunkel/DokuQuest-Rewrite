@@ -130,7 +130,7 @@ bool isShieldItem(const std::string& id) {   // (sim/combat_rpg.cpp holdingShiel
 // a shield in a fist (third person): strapped on the forearm, carried at the side face out; raised (k 0..1) it turns to
 // face the way the body faces, held out before the chest — in body terms, not the forearm's (that one twists through
 // the raise and would show the shield edge-on)
-constexpr float SHIELD_GUARD_ROLL = -0.8f;   // (the forearm turned over on guard: char_poses.cpp's guard is fitted with it)
+constexpr float SHIELD_GUARD_ROLL = 0.08f;   // (on guard the forearm lies level across the chest: the shield square ahead, its top back a touch)
 mat4 shieldPlacement(const CharRig& R, int part, float side, float k) {
   // strapped on the forearm (assets/shield3d.h): the forearm through its straps, along its width; its face out on the
   // arm's outer side (the right arm's +x, the left's -x). It goes wherever the forearm goes: raised on guard because
@@ -317,6 +317,15 @@ void CharacterLayer::update(GameSession& s, double dt) {
       st.block += ((up ? 1.f : 0.f) - st.block) * std::min(1.f, fdt * (up ? 16.f : 8.f));
       if (p->dodgeT > st.lastDodge + 0.05f) { st.rollU = 0.0001f; st.rollYaw = p->dodgeYaw; st.rollBack = std::fabs(wrapAngle(p->dodgeYaw - p->yaw)) > 2.0f; }
       st.lastDodge = p->dodgeT;
+      // a blow on the shield: a parry, a hit taken while it's up, an arrow stopped on it (its stamina cost: sim/combat_rpg.cpp
+      // arrowStrikeShield) — the guard is knocked in and comes back (render/char_poses.cpp)
+      {
+        const bool parry = p->parryFlash > st.lastParry + 0.05f, hurt = up && p->hurtTime > st.lastGuardHurt + 0.01f;
+        const bool knock = up && p->stamina < st.lastStam - 4.5f && p->dodgeT <= 0;
+        if (parry || hurt || knock) st.guardHit = 1;
+        else if (st.guardHit > 0) st.guardHit = std::max(0.f, st.guardHit - fdt / 0.45f);
+        st.lastParry = p->parryFlash; st.lastStam = p->stamina; st.lastGuardHurt = p->hurtTime;
+      }
       if (st.rollU > 0 && (st.rollU += fdt / 0.40f) >= 1) st.rollU = 0;   // (DODGE_TIME)
       if (!devPose.empty() && p == s.player && (devPose == "roll" || devPose == "rollback")) {
         if (st.rollU <= 0) { st.rollU = 0.0001f; st.rollBack = devPose == "rollback"; st.rollYaw = p->yaw + (st.rollBack ? PI : 0.f); }
@@ -572,6 +581,16 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   if (ps.ladder) ps.ladderPh = st.ladderPh, ps.ladderMv = std::min(1.f, std::fabs(st.vel.y) / 2.f);
   ps.held = !wear.held.empty(); ps.off = !wear.off.empty(); ps.deathT = p.dead ? std::max(st.deathT, 0.01f) : 0;
   ps.bowArm = wear.held == "bow";
+  {   // armed: a weapon or a shield in hand (the fighter's stance standing: render/char_anim.cpp)
+    auto weapon = [](const std::string& id) {
+      if (id.empty()) return false;
+      if (isShieldItem(id)) return true;
+      const ItemDef* d = reg().item(id);
+      if (d && (d->has("weapon") || (d->hasTool && (d->tool.type == "sword" || d->tool.type == "axe" || d->tool.type == "mace" || d->tool.type == "spear" || d->tool.type == "dagger")))) return true;
+      return id.find("sword") != std::string::npos || id.find("dagger") != std::string::npos || id.find("spear") != std::string::npos;
+    };
+    ps.armed = weapon(wear.held) || weapon(wear.off);
+  }
   ps.air = !p.onGround && !p.flying && !p.inWater && !p.riding && !ps.ladder && !ps.hang && ps.climb <= 0; ps.vy = st.vel.y; ps.sprint = p.sprinting; ps.land = std::max(0.f, st.landT); ps.landAmt = st.landAmt;
   ps.bow = p.bowPull; ps.eat = p.eatT; ps.scope = p.scoping;
   ps.gui = (p.activity & (Player::ACT_SCREEN | Player::ACT_TYPING)) && !p.riding && !p.sleeping; ps.doze = (p.activity & Player::ACT_DOZE) && !ps.gui && !p.sleeping;   // render/activity_layer.cpp
@@ -588,7 +607,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   ps.crawlPh = st.crawlPh; ps.crawlMv = std::min(1.f, std::hypot(st.vel.x, st.vel.z) / 0.8f);
   ps.hasBodyYaw = true; ps.bodyYaw = st.bodyYaw + devTurn; ps.headTurn = wrapAngle(p.yaw - st.bodyYaw); ps.legTurn = st.legTurn;
   // the shield up, a dodge roll (sim/combat_rpg.h): the roll turns the body the way it goes (back to it on a step back)
-  ps.block = st.block; ps.blockMain = isShieldItem(wear.held);
+  ps.block = st.block; ps.blockMain = isShieldItem(wear.held); ps.guardHit = st.guardHit;
   ps.shieldArm = ps.blockMain ? -1 : isShieldItem(wear.off) ? 1 : 0;
   if (st.rollU > 0 && !fp && !p.dead && !p.riding && !p.swimming) {
     ps.roll = st.rollU; ps.rollBack = st.rollBack;
@@ -1059,6 +1078,8 @@ bool fpGuardFrames(const Player& p, bool shieldLeft, const std::string& weapon, 
       const mat4 Mb = shieldPlacement(RR, shieldLeft ? CP_ARML_D : CP_ARMR_D, shieldLeft ? -1.f : 1.f, kk);
       const vec3 c = vec3(Mb * vec4(0, 0, 0.0625f, 1)), ax = vec3(Mb[0]), ay = vec3(Mb[1]), az = vec3(Mb[2]);
       const vec3 hd = vec3(RR.part[CP_HEAD][3]);
+      { const int fp_ = shieldLeft ? CP_ARML_D : CP_ARMR_D; const vec3 el = vec3(RR.part[fp_][3]), fd = -glm::normalize(vec3(RR.part[fp_][1]));
+        DQ_LOG("shield box: arm k %.0f hp %.1f sn %d elbow %.3f %.3f %.3f fore %.3f %.3f %.3f", kk, hp, (int)sn, el.x, el.y, el.z, fd.x, fd.y, fd.z); }
       const ShieldBox sb = shieldBoxAt(vec3(0), 0, hp / 0.8f, kk > 0.5f, sn, !shieldLeft);
       DQ_LOG("shield box: sim c %.3f %.3f %.3f az %.3f %.3f %.3f", sb.c.x, sb.c.y, sb.c.z, sb.az.x, sb.az.y, sb.az.z);
       DQ_LOG("shield box: rig k %.0f hp %.1f sn %d c %.3f %.3f %.3f ax %.3f %.3f %.3f ay %.3f %.3f %.3f az %.3f %.3f %.3f len %.3f head %.2f %.2f %.2f", kk, hp, (int)sn, c.x, c.y, c.z, ax.x, ax.y, ax.z, ay.x, ay.y, ay.z, az.x, az.y, az.z, glm::length(ax), hd.x, hd.y, hd.z);

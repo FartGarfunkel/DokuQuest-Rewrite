@@ -182,17 +182,23 @@ CharAngles charAnimate(const CharPose& pose) {
   CharAngles A;
   if (pose.still) return A;
   float a = pose.walkAmt, ph = pose.walk, t = pose.time, run = pose.sprint ? 1.f : 0.f, idle = 1 - a, swimBreath = 0;
-  float sL = std::sin(ph), cL = std::cos(ph), amp = (0.75f + 0.3f * run) * a * (pose.backward ? 0.8f : 1.f);
-  if (pose.backward) cL = -cL;   // backing off: each knee bends as its foot reaches back
+  float sL = std::sin(ph), cL = std::cos(ph), amp = (0.62f + 0.43f * run) * a * (pose.backward ? 0.8f : 1.f);
+  // (the knee folds most just after the foot leaves the ground behind, a little before the leg passes under the body)
+  float cK = std::cos(ph + 0.45f);
+  if (pose.backward) cL = -cL, cK = -std::cos(ph - 0.45f);   // backing off: each knee bends as its foot reaches back
   // ---- skins.js avatarAnim: Mo' Bends-style movement, knees, elbows, a twist in the body ----
   A.legR.x = sL * amp; A.legL.x = -sL * amp;
-  A.shinR.x = -a * (0.08f + (0.8f + 0.4f * run) * std::max(0.f, cL));
-  A.shinL.x = -a * (0.08f + (0.8f + 0.4f * run) * std::max(0.f, -cL));
-  A.armR = vec3(-sL * amp * 0.8f, 0, (0.05f + std::sin(t * 1.3f) * 0.03f) * idle);
-  A.armL = vec3(sL * amp * 0.8f, 0, -(0.05f + std::sin(t * 1.3f) * 0.03f) * idle);
+  // (after Epic Fight's walk and run: the knee folds well up as the leg swings through and gives a little as the foot
+  // takes the weight; the arms swing less than the legs at a walk, more and bent at a run)
+  A.shinR.x = -a * (0.12f + (0.95f + 0.3f * run) * std::max(0.f, cK));
+  A.shinL.x = -a * (0.12f + (0.95f + 0.3f * run) * std::max(0.f, -cK));
+  const float armAmp = amp * (0.42f + 0.38f * run);
+  A.armR = vec3(-sL * armAmp, 0, (0.05f + std::sin(t * 1.3f) * 0.03f) * idle);
+  A.armL = vec3(sL * armAmp, 0, -(0.05f + std::sin(t * 1.3f) * 0.03f) * idle);
   A.foreR.x = A.foreL.x = 0.1f + 0.45f * run * a + 0.06f * idle;
-  A.body = vec3(-0.2f * run * a, sL * 0.1f * a, 0);
-  A.lift = (1 - std::fabs(sL)) * (0.045f + 0.035f * run) * a + std::sin(t * 1.9f) * 0.004f * idle;   // (running: a bigger bounce, more weight)
+  // (the walk leans a touch into it, more on each push off; a run leans well in and runs lower, the hips bouncing)
+  A.body = vec3(-(0.05f + 0.03f * std::fabs(sL)) * a * (1 - run) - 0.3f * run * a, sL * 0.13f * a, 0);
+  A.lift = (1 - std::fabs(sL)) * (0.05f + 0.035f * run) * a - 0.05f * run * a + std::sin(t * 1.9f) * 0.004f * idle;   // (running: a bigger bounce, more weight)
   if (pose.backward) A.body.x += 0.08f * a;
   A.head.x += std::fabs(sL) * 0.06f * run * a;   // the head nods into each running footfall
   // standing about: a slow shift of weight from foot to foot, the shoulders rising with each breath
@@ -258,7 +264,7 @@ CharAngles charAnimate(const CharPose& pose) {
   }
   if (pose.carry) { A.armR = vec3(1.25f, 0, 0.05f); A.armL = vec3(1.25f, 0, -0.05f); A.foreR = A.foreL = vec3(0.3f, 0, 0); }
   if (pose.castWind > 0) { float k = std::sin(pose.castWind * PI / 2); A.armR = vec3(0.6f + 2.3f * k, -0.15f, 0.12f); A.foreR = vec3(0.35f * k, 0, 0); A.body.y -= 0.2f * k; }
-  if (pose.sneak) { A.body.x = -0.45f; A.legR.x += 0.2f; A.legL.x += 0.2f; A.shinR.x -= 0.4f; A.shinL.x -= 0.4f; A.lift -= 0.12f; }
+  if (pose.sneak) { A.body.x = -0.6f; A.legR.x += 0.3f; A.legL.x += 0.3f; A.shinR.x -= 0.58f; A.shinL.x -= 0.58f; A.lift -= 0.15f; A.armR.x += 0.15f; A.armL.x += 0.15f; A.foreR.x += 0.25f; A.foreL.x += 0.25f; }   // (low and leant well in, the knees deep, the arms forward a little: Epic Fight's sneak goes further still)
   if (pose.hang || pose.climb > 0) {   // up on a ledge: arms reaching up, legs hanging (swinging up as you pull over)
     float k = pose.climb;
     A.armR = vec3(2.9f - k * 1.6f, 0, 0.18f); A.armL = vec3(2.9f - k * 1.6f, 0, -0.18f); A.foreR = A.foreL = vec3(0.15f, 0, 0);
@@ -332,7 +338,7 @@ CharAngles charAnimate(const CharPose& pose) {
     bool busyR = pose.held || pose.swing > 0 || pose.eat > 0 || pose.castWind > 0 || pose.scope || pose.gui || pose.doze;
     if (!pose.air) {
       // a looser walk: hips swing, shoulders counter-twist, arms swing wider and elbows bend, the head nods
-      A.body.y += sL * 0.07f * a;
+      A.body.y += sL * 0.08f * a;   // (the shoulders counter the hips: Epic Fight's walk turns them about 0.2-0.3 each way)
       A.body.z += sL * 0.035f * a;
       if (!busyR) A.armR.x *= 1.25f;
       if (!pose.off) A.armL.x *= 1.25f;
@@ -340,7 +346,7 @@ CharAngles charAnimate(const CharPose& pose) {
       A.armL.z -= 0.06f * a;
       if (!busyR) A.foreR.x += (0.18f + 0.3f * run) * a * (0.6f + 0.4f * std::max(0.f, -sL));
       A.foreL.x += (0.18f + 0.3f * run) * a * (0.6f + 0.4f * std::max(0.f, sL));
-      A.body.x -= 0.1f * run * a;
+      A.body.x -= 0.12f * run * a;
       A.body.x -= pose.accLean;
       if (!busyR) A.foreR.x += 0.08f * idle;
       A.foreL.x += 0.08f * idle;
@@ -352,6 +358,16 @@ CharAngles charAnimate(const CharPose& pose) {
   A.head.x -= A.body.x - b0; A.head.y -= A.body.y - b1;
   if (!special && !pose.air) { A.head.x += std::fabs(std::cos(ph)) * 0.04f * a + std::sin(t * 0.53f) * 0.02f * idle; A.head.y += std::sin(t * 0.37f) * 0.04f * idle; }
   if (pose.turned && pose.headTurn) A.head.y += clampf(pose.headTurn, -1.25f, 1.25f);
+  // ---- a fighter's stance (after Epic Fight's idle): weapon or shield in hand and standing, the left shoulder leads by
+  // a third of a right angle, the head still ahead, the right foot turned out behind, the knees soft ----
+  if (pose.armed && !pose.fp && !special && !pose.air && !pose.sneak && pose.block <= 0 && pose.deathT <= 0) {
+    const float k = clampf(1 - a * 2.5f, 0, 1);
+    if (k > 0) {
+      A.body.y -= 0.35f * k; A.head.y += 0.35f * k;
+      A.legR.y -= 0.38f * k; A.legR.x -= 0.04f * k; A.legL.x += 0.14f * k;
+      A.shinR.x -= 0.14f * k; A.shinL.x -= 0.16f * k; A.lift -= 0.012f * k;
+    }
+  }
   // ---- Story Mode-style life ----
   if (!special && !pose.air && !pose.fp && pose.deathT <= 0) {
     // feet planted on uneven ground: the hips drop to the lower foot and the other knee bends up to its step

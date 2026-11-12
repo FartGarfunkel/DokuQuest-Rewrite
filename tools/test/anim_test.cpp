@@ -127,12 +127,12 @@ int main(int argc, char** argv) {
     CHECK(std::fabs(J.legR.x - JL.legL.x) < 1e-5f && std::fabs(J.shinR.x - JL.shinL.x) < 1e-5f, "jumps lead with either leg");
     CharPose b = p; b.block = 1; b.off = true;
     const CharAngles B = charAnimate(b);
-    CHECK(B.armL.x > 1.0f && B.foreL.x > 0.5f && B.body.y > 0.2f, "a shield raised across the body (the forearm across it, turned shield side on)");
+    CHECK(B.armL.x > 0.6f && B.foreL.z > 1.5f && B.body.y < -0.3f && B.head.y > 0.3f, "a shield raised before the body (the forearm level across the chest, the shield shoulder turned forward, the head still ahead)");
     CharPose bg = b; bg.held = true; CharPose hg = p; hg.held = true;
     CHECK(glm::length(charAnimate(bg).armR - charAnimate(hg).armR) < 1e-4f, "on guard, the weapon hand stays as it was (no wind-up)");
     CharPose bm = p; bm.block = 1; bm.blockMain = true; bm.held = true;
     const CharAngles BM = charAnimate(bm);
-    CHECK(std::fabs(BM.armR.x - B.armL.x) < 1e-4f && std::fabs(BM.armR.y + B.armL.y) < 1e-4f && BM.body.y < -0.2f, "a shield in the right hand: the same guard, mirrored");
+    CHECK(std::fabs(BM.armR.x - B.armL.x) < 1e-4f && std::fabs(BM.armR.y + B.armL.y) < 1e-4f && BM.body.y > 0.3f, "a shield in the right hand: the same guard, mirrored");
     CharPose x = p; x.xbowAim = true; x.held = true;
     const CharAngles X = charAnimate(x);
     CHECK(X.armR.x > 1.2f && X.armL.x > 1.2f, "a crossbow levelled in both hands");
@@ -282,7 +282,7 @@ int main(int argc, char** argv) {
     const ShieldBox t90 = shieldBoxAt(feet, 1.5707963f, 0, true, false, false);   // facing -x
     CHECK(shieldRayHit(t90, feet + vec3(-4, 1.2f, 0.1f), vec3(1, 0, 0), 8) && glm::dot(t90.az, vec3(-1, 0, 0)) > 0.7f, "it turns with the body");
     const ShieldBox up = shieldBoxAt(feet, 0, 0.9f, true, false, false), dn = shieldBoxAt(feet, 0, -0.9f, true, false, false);
-    CHECK(up.c.y > g.c.y + 0.08f && dn.c.y < g.c.y - 0.08f, "on guard it follows the look up and down");
+    CHECK(up.c.y > g.c.y + 0.05f && dn.c.y < g.c.y - 0.05f, "on guard it follows the look up and down");
   }
   printf("\n%d passed, %d failed\n", passes, fails);
   return fails;
