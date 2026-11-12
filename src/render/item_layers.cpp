@@ -337,6 +337,31 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     } else am = glm::translate(am, vec3(0, fo.dy * 0.8f, 0));
     am = glm::rotate(am, yaw, vec3(0, 1, 0));
     am = glm::rotate(am, pitch, vec3(1, 0, 0));
+    if (const ItemDef* sd = stack.def(); stack.id == "shield" || (sd && sd->has("shield"))) {
+      // a shield (sim/combat_rpg.h): carried low at the side, face to you; raised across the lower half of the view while
+      // you block (the hand it's in, the main hand's first), its top edge just under the crosshair; a parry knocks it back
+      const bool mainSh = p->held().id == "shield" || (p->held().def() && p->held().def()->has("shield"));
+      const bool up = p->blockT > 0 && (side > 0 || !mainSh);
+      static float raise[2] = {0, 0}; static double rt[2] = {-1, -1};
+      const int h = side > 0 ? 0 : 1;
+      const float sdt = rt[h] < 0 ? 0.f : (float)std::clamp(f.time - rt[h], 0.0, 0.05); rt[h] = f.time;
+      raise[h] += ((up ? 1.f : 0.f) - raise[h]) * std::min(1.f, sdt * (up ? 22.f : 9.f));
+      const float r = raise[h] * raise[h] * (3 - 2 * raise[h]);
+      const float knock = up ? std::clamp(p->parryFlash / 0.35f, 0.f, 1.f) : 0.f;
+      const float lowY = -0.44f + by - (side > 0 ? eqMain * 0.55f : eq * 0.3f) + (side < 0 ? std::sin((float)time * 1.3f) * 0.006f : 0.f);
+      const vec3 rest(side * (0.50f + (side > 0 ? bx : -bx * 0.6f)), lowY, -0.72f), raised(side * 0.31f, -0.25f, -0.52f + knock * 0.06f);
+      const vec3 at = glm::mix(rest, raised, r);
+      // (no arm: the forearm is behind the boards, and drawn it came through their face)
+      mat4 m = glm::translate(mat4(1), at);
+      m = glm::rotate(m, side * glm::mix(0.42f, 0.10f, r), vec3(0, 1, 0));    // (turned out at the side, square on when up)
+      m = glm::rotate(m, glm::mix(-0.18f, -0.04f, r) + knock * 0.22f, vec3(1, 0, 0));
+      m = glm::rotate(m, side * glm::mix(-0.10f, 0.f, r), vec3(0, 0, 1));
+      m = glm::scale(m, vec3(glm::mix(0.58f, 0.64f, r)));
+      if (side < 0) m = glm::scale(m, vec3(-1, 1, 1));
+      if (im.ready()) VR.draw(im.gl, m * im.matrix(), L, vec4(0), itemGlints(stack) ? 1.f : 0.f);
+      if (itemHook && im.ready()) over.push_back({stack, m});
+      return;
+    }
     if (side > 0 && swing > 0) am = mcSwing(am, 1, swing, false, s.breaking);
     if (side > 0 && wind > 0) { am = glm::translate(am, vec3(0, 0.1f * wind, 0.05f * wind)); am = glm::rotate(am, -0.75f * std::sin(wind * PI / 2), vec3(1, 0, 0)); }   // the rod comes back over the shoulder before the cast
     drawArm(am);

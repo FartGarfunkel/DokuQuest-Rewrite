@@ -55,6 +55,7 @@ struct Runner {
   SDL_Joystick* vjoy = nullptr;               // virtual pad 0 (the one every step used before)
   std::vector<SDL_Joystick*> vjoys;           // virtual pads 0..3 (split screen: a step's "id" picks one)
   int passes = 0, fails = 0;
+  float cParry = 0, cHp = -1, cDodge = 0;   // the combat watcher (testScriptFrame): logs each parry, roll and hit taken
   ivec3 anchor{0};           // "anchor": the player's block; steps with "rel": true are relative to it
   ivec3 lastFound{0};        // the first block the last "find" found (explode "at": "rug")
 };
@@ -396,7 +397,8 @@ void runStep(App& a, const json& st) {
     }
     if (st.contains("stagger")) best->staggerT = st["stagger"].get<float>();
     std::string d = best->data.dump(); if (d.size() > 600) d = d.substr(0, 600) + "...";
-    DQ_LOG("test: mob %s hp %.1f/%.1f at %.1f,%.1f,%.1f yaw %.2f | %s", t.c_str(), best->hp, best->maxHp, best->pos.x, best->pos.y, best->pos.z, best->yaw, d.c_str());
+    DQ_LOG("test: mob %s hp %.1f/%.1f at %.1f,%.1f,%.1f yaw %.2f posture %.1f/%.0f stagger %.2f lv %d | %s", t.c_str(), best->hp, best->maxHp, best->pos.x, best->pos.y, best->pos.z, best->yaw,
+           best->posture, best->maxPosture, best->staggerT, best->mobLevel, d.c_str());
   } else if (op == "formidi" && s && p) {   // light a Formidibomb (or "key":"super_tnt") at x,y,z as flint and steel would
     const ivec3 b = at(st); primeFormidi(*s->level, s->world(), b.x, b.y, b.z, st.value("key", std::string("formidibomb")));
   } else if (op == "health" && p) {   // set your health ("hp", half hearts): hurt, so food can be eaten
@@ -623,6 +625,13 @@ void testScriptFrame(App& a) {
   for (size_t i = 0; i < R.later.size();) {
     if (R.later[i].frame <= a.frame) { auto fn = std::move(R.later[i].fn); R.later.erase(R.later.begin() + i); fn(); }
     else i++;
+  }
+  if (GameSession* s = a.session.get(); s && s->player) {   // (sim/combat_rpg.h) "test: combat ..." lines to grep for
+    Player& p = *s->player;
+    if (p.parryFlash > R.cParry + 0.01f) DQ_LOG("test: combat parry (stamina %.0f)", p.stamina);
+    if (p.dodgeT > R.cDodge + 0.01f) DQ_LOG("test: combat roll (stamina %.0f)", p.stamina);
+    if (R.cHp >= 0 && p.hp < R.cHp - 0.01f) DQ_LOG("test: combat hit -%.1f hp (shield %s, block %.2f, stamina %.0f)", R.cHp - p.hp, p.blockT > 0 ? "up" : "down", p.blockT, p.stamina);
+    R.cParry = p.parryFlash; R.cDodge = p.dodgeT; R.cHp = p.hp;
   }
   while (R.next < R.steps.size() && a.frame >= R.due) {
     const json st = R.steps[R.next++];
