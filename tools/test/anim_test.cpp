@@ -9,6 +9,7 @@
 #include "assets/item_models.h"
 #include "render/cape_sim.h"
 #include "sim/shield_shape.h"
+#include "sim/attack_moves.h"
 #include <cstdio>
 #include <string>
 #include <cmath>
@@ -287,6 +288,49 @@ int main(int argc, char** argv) {
     CHECK(shieldRayHit(t90, feet + vec3(-4, 1.2f, 0.1f), vec3(1, 0, 0), 8) && glm::dot(t90.az, vec3(-1, 0, 0)) > 0.7f, "it turns with the body");
     const ShieldBox up = shieldBoxAt(feet, 0, 0.9f, true, false, false), dn = shieldBoxAt(feet, 0, -0.9f, true, false, false);
     CHECK(up.c.y > g.c.y + 0.05f && dn.c.y < g.c.y - 0.05f, "on guard it follows the look up and down");
+  }
+  {   // attacks are moves: the blade lands where it passes, in its live window only (sim/attack_moves.h)
+    const vec3 feet(10, 64, -5);
+    auto box = [&](vec3 c, vec3 half) { return std::make_pair(c - half, c + half); };
+    const auto zAhead = box(feet + vec3(0, 0.95f, -1.5f), vec3(0.3f, 0.95f, 0.3f));   // a zombie 1.5 ahead (facing yaw 0 is -z)
+    const auto zBehind = box(feet + vec3(0, 0.95f, 1.5f), vec3(0.3f, 0.95f, 0.3f));
+    const auto zFar = box(feet + vec3(0, 0.95f, -3.6f), vec3(0.3f, 0.95f, 0.3f));
+    float when = -1;
+    const AttackMove& s1 = attackMove(MV_SWORD1);
+    CHECK(bladeSweepHits(MV_SWORD1, 0, s1.len, feet, 0, 0, zAhead.first, zAhead.second, 1, &when) && when >= s1.hitFrom && when <= s1.hitTo,
+          "the first cut lands on a foe ahead, inside its live window (%.3f s)", when);
+    CHECK(!bladeSweepHits(MV_SWORD1, 0, s1.hitFrom - 0.01f, feet, 0, 0, zAhead.first, zAhead.second), "not during the wind-up");
+    bool anyBehind = false, anyFar = false;
+    for (u8 id = MV_SWORD1; id < MV_COUNT; id++) {
+      anyBehind |= bladeSweepHits(id, 0, attackMove(id).len, feet, 0, 0, zBehind.first, zBehind.second);
+      anyFar |= bladeSweepHits(id, 0, attackMove(id).len, feet, 0, 0, zFar.first, zFar.second);
+    }
+    CHECK(!anyBehind && !anyFar, "no move strikes behind you, or out of reach without its lunge");
+    // (with its lunge, as the game moves you: the feet carried forward by lungeAt)
+    auto withLunge = [&](u8 id, std::pair<vec3, vec3> b, float yaw, float pitch) {
+      const vec3 fwd(-std::sin(yaw), 0, -std::cos(yaw));
+      for (float t0 = 0; t0 < attackMove(id).len; t0 += 1 / 60.f)
+        if (bladeSweepHits(id, t0, t0 + 1 / 60.f, feet + fwd * lungeAt(id, t0), yaw, pitch, b.first, b.second)) return true;
+      return false;
+    };
+    int ahead = 0;
+    for (u8 id = MV_SWORD1; id < MV_COUNT; id++) ahead += withLunge(id, zAhead, 0, 0);
+    CHECK(ahead == MV_COUNT - 1, "every move strikes a foe straight ahead (%d of %d)", ahead, MV_COUNT - 1);
+    if (ahead != MV_COUNT - 1) for (u8 id = MV_SWORD1; id < MV_COUNT; id++) if (!withLunge(id, zAhead, 0, 0)) { vec3 h, tp; bladeAt(id, attackMove(id).hitTo, h, tp); printf("    misses: %s (end hilt %.2f %.2f %.2f tip %.2f %.2f %.2f)\n", attackMove(id).name, h.x, h.y, h.z, tp.x, tp.y, tp.z); }
+    const auto zTurned = box(feet + vec3(-1.5f, 0.95f, 0), vec3(0.3f, 0.95f, 0.3f));   // ahead when facing yaw +90 deg (-x)
+    CHECK(bladeSweepHits(MV_SWORD2, 0, 1, feet, 1.5707963f, 0, zTurned.first, zTurned.second), "the blow turns with the body");
+    const auto chick = box(feet + vec3(0, 0.2f, -1.2f), vec3(0.2f, 0.2f, 0.2f));
+    CHECK(!bladeSweepHits(MV_SWORD2, 0, 1, feet, 0, 0, chick.first, chick.second) && bladeSweepHits(MV_SWORD2, 0, 1, feet, 0, -0.8f, chick.first, chick.second),
+          "a level cut passes over a chicken; looking down at it, it lands");
+    CHECK(attackMoveFor(Moveset::Sword, 0, false, false) == MV_SWORD1 && attackMoveFor(Moveset::Sword, 4, false, false) == MV_SWORD2 &&
+          attackMoveFor(Moveset::Sword, 1, true, false) == MV_SWORD_DASH && attackMoveFor(Moveset::Sword, 1, true, true) == MV_SWORD_AIR,
+          "the chain wraps; sprinting thrusts, from the air a chop");
+    CHECK(movesetOf("sword", "frostbite_dagger") == Moveset::Dagger && movesetOf("", "") == Moveset::Fist && movesetOf("pickaxe", "iron_pickaxe") == Moveset::Tool,
+          "weapons and hands find their moves");
+    CHECK(std::fabs(lungeAt(MV_SWORD_DASH, 1) - attackMove(MV_SWORD_DASH).lunge) < 1e-4f && lungeAt(MV_SWORD_DASH, 0) == 0, "the lunge runs 0 .. its length");
+    bool sane = true;
+    for (u8 id = MV_SWORD1; id < MV_COUNT; id++) { const AttackMove& m = attackMove(id); sane &= m.turnLock <= m.hitFrom && m.hitFrom < m.hitTo && m.hitTo <= m.recovery && m.recovery <= m.len; }
+    CHECK(sane, "every move: lock <= hitFrom < hitTo <= recovery <= len");
   }
   printf("\n%d passed, %d failed\n", passes, fails);
   return fails;
