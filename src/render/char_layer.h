@@ -83,7 +83,7 @@ CharWear charWearOf(const Player& p, const CharacterSpec& spec, bool carried = t
 // base: render space at the feet (translation only). fp = the first-person body; detail = the look's shapes.
 struct CapeSim;
 struct CharDrawOpts { float book = -1, bookLeaf = -1; int bookDir = 1; const std::string* bookPic = nullptr; const std::string* bookLay = nullptr; u64 bookKey = 0;   // bookPic: what's on its pages (Player::bookPic)   // the journal: < 0 on the belt, 0..1 held open in both hands (render/book_model.h); a page turning
-  VoxelLight light{1, 0}; vec4 tint{0}; bool fp = false, detail = true, headOnly = false; double time = 0; glm::dvec3 camPos{0}; CharBlend* blend = nullptr; CapeSim* cape = nullptr; };   // cape: the cloth of this one's cape (render/cape_sim.h; nullptr: drawn from the pose alone)   // blend: ease between states (nullptr: snap)   // time / camPos: for the rod tip record
+  VoxelLight light{1, 0}; vec4 tint{0}; bool fp = false, detail = true, headOnly = false, fpNoArms = false; double time = 0; glm::dvec3 camPos{0}; CharBlend* blend = nullptr; CapeSim* cape = nullptr; };   // cape: the cloth of this one's cape (render/cape_sim.h; nullptr: drawn from the pose alone)   // blend: ease between states (nullptr: snap)   // time / camPos: for the rod tip record
 void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear& w, const mat4& base, const CharDrawOpts& o);
 // skins.js skinFace: the lid down over the eyes now and then (always in sleep) and, while ps.talk, the mouth opening and closing.
 // head = the head's matrix (part * scale); VoxelRenderer already begun.

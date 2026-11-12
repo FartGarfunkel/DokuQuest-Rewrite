@@ -256,9 +256,13 @@ void HeldItemLayer::update(GameSession& s, double dt) {
 }
 
 void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
-  if (cinematicActive() && cinematicLeaning()) return;   // (leaning over a station: the hands are the scene's; seamless: your own, as ever)
+  // leaning over a station: the hands are the scene's. Sat by the campfire in seamless (immersive) first person: your own
+  // body's arms, as the others see them (render/char_layer.cpp), so no hand view; it stays when the body isn't drawn
+  // (fpBody off) or your bag is open there
+  if (cinematicActive() && cinematicLeaning()) return;
   Player* p = s.player;
   handsTaken = 0;
+  if (vec3 hw[2]; cinematicActive() && cinematicKind() == 13 && s.app.settings.fpBody && cinematicHandsWorld(hw) && !bookUiStationOn(s.app)) return;
   if (!p || p->dead || s.viewMode != 0 || s.hudHidden || p->scoping) return;   // (the spyglass at your eye: just the glass)
   const Settings& st = s.app.settings;
   // what you hold lags a little behind when you turn, and swings back

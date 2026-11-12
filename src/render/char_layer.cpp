@@ -662,7 +662,14 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   // a map held up in both hands (or anything else the hand view takes the left hand for) has its own two arms: yours
   // stays out of it, so there are never three (render/item_layers.h handsTaken; a map in the main hand with the other
   // hand free is held in both)
-  if (!fp && p.stationKind >= 0 && !p.dead && !p.riding) {   // working a station (theirs, or yours seen in F5): the arm reaching to the work
+  // working a station (theirs, or yours seen in F5): the arm reaching to the work. Yours in seamless first person too:
+  // your own body works it exactly as the others see it (immersive first person), the hand view standing aside
+  vec3 fpHands[2];
+  // (for now the campfire, sat down: at the standing stations the hands rest just before the eyes and the body's own
+  // forearms from there filled the view; the hand view's arms stay there until those rests sit out on the work)
+  const bool fpStation = fp && &p == s.player && cinematicActive() && !cinematicLeaning() && cinematicKind() == 13 && cinematicHandsWorld(fpHands);
+  const bool settled = !fpStation || cinematicCrouch() > 0.5f;   // (first person: sat or crouched once the view has come down)
+  if ((!fp || fpStation) && p.stationKind >= 0 && !p.dead && !p.riding) {
     if (p.workTap != st.workTapSeen) { st.workTapSeen = p.workTap; st.workTapAt = f.time; }
     const float tap = f.time - st.workTapAt < 0.22 ? std::sin((float)((f.time - st.workTapAt) / 0.22) * 3.14159f) : 0.f;
     const float yaw = p.yaw; const vec3 right(std::cos(yaw), 0, -std::sin(yaw));
@@ -671,18 +678,15 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
     ps.reach = p.stationKind != 13 || f.time - st.workTapAt < 0.7;
     ps.reachR = f.cam.rel(glm::dvec3(hand));
     ps.reachL = f.cam.rel(glm::dvec3(hand - right * 0.42f + vec3(0, -0.04f, 0)));   // (the other hand on the station beside it)
-    if (p.stationKind == 3 || p.stationKind == 4) ps.sneak = true;   // (down to the brewing stand, the furnace)
-    if (p.stationKind == 13) ps.sitGround = true;   // (sat down by a campfire)
+    if (fpStation) { ps.reachR = f.cam.rel(glm::dvec3(fpHands[0])); ps.reachL = f.cam.rel(glm::dvec3(fpHands[1])); }   // (both your hands where the scene puts them)
+    if ((p.stationKind == 3 || p.stationKind == 4) && settled) ps.sneak = true;   // (down to the brewing stand, the furnace)
+    if (p.stationKind == 13 && settled) ps.sitGround = true;   // (sat down by a campfire)
     if (p.stationKind == 1 && f.time - st.workTapAt < 1.4) { wear.held = "smith_hammer"; wear.heldModel.clear(); ps.held = true; }   // (the hammer while the blows land)
   }
   if (fp && cinematicActive()) {
     if (cinematicLeaning()) ps.fpLeftArm = false;   // (leaning over a station: both hands are the scene's; seamless: your own arms stay)
     // seamless first person: your own body works it, the arms reaching to where the hands go, crouched at a low station
-    vec3 hw[2];
-    if (!cinematicLeaning() && cinematicHandsWorld(hw)) {
-      // (the arms are the hand view's, render/cinematic_hands.cpp: the body's own, by the eye, swelled and broke at the elbow)
-      if (cinematicCrouch() > 0.5f) { if (cinematicKind() == 13) ps.sitGround = true; else ps.sneak = true; }   // (the campfire: sat down by it)
-    }
+    if (!fpStation && !cinematicLeaning() && cinematicCrouch() > 0.5f) { if (cinematicKind() == 13) ps.sitGround = true; else ps.sneak = true; }   // (the campfire: sat down by it)
   }
   if (fp && (p.activity & Player::ACT_SCREEN)) ps.fpLeftArm = false;
   if (fp && &p == s.player && (bookUiStationOn(s.app) || heldBookOpen())) ps.fpLeftArm = false;   // (a book read in both hands: the hand view's)   // (your journal in your off hand at a station: that arm is the one holding it, no second)   // (your journal held in both your hands: the hand view's two arms, no third)
@@ -720,7 +724,11 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
       if (offMap) wear.off.clear();
     }
   }
-  mat4 base = glm::translate(mat4(1), rel + (fp && cinematicActive() ? cinematicViewOffset() : vec3(0)));   // (bent to a station: the body goes down and in with the eye)
+  // (bent to a station: the body goes down and in with the eye; sat by the campfire the pose itself sits it down, so only
+  // the in: it stayed on the ground as the others see it, not sunk under it)
+  vec3 viewOff = fp && cinematicActive() ? cinematicViewOffset() : vec3(0);
+  if (ps.sitGround) viewOff.y = 0;
+  mat4 base = glm::translate(mat4(1), rel + viewOff);
   if (ps.sit) base = glm::translate(base, vec3(0, -0.45f, 0));
   // continuous amounts (a station's crouch is a sneak outright)
   ps.runAmt = st.runAmt; ps.sneakAmt = ps.sneak && !p.sneaking ? 1.f : st.sneakAmt; ps.hurtDir = st.hurtDir;
@@ -728,6 +736,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   CharDrawOpts o;
   o.light = VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f};
   o.tint = p.hurtTime > 0 ? vec4(1, 0.15f, 0.1f, 0.4f) : vec4(0);
+  o.fpNoArms = fp && ps.sitGround && &p == s.player && bookUiStationOn(s.app);   // (your bag open by the fire: the hand view holds it)
   o.fp = fp; o.time = f.time; o.camPos = f.cam.origin; o.blend = &st.blend; o.cape = &st.cape;
   o.detail = fp || glm::dot(rel, rel) < 56.f * 56.f;   // far off, the detail is lost anyway: past 56 blocks only the skin
   {   // the journal: off the belt into both hands at a menu, its pages turned as they turn them (synced: Player::bookFlip)
@@ -787,7 +796,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   hid[CP_LEGR_U] = hid[CP_LEGL_U] = !AR[2].empty();
   hid[CP_LEGR_D] = hid[CP_LEGL_D] = !AR[2].empty() || !AR[3].empty();
   bool fpArmL = fp && R.fpTorso && ps.fpLeftArm && !ps.paddle;
-  if (fp && ps.reach) for (int i : {CP_ARMR_U, CP_ARMR_D, CP_ARML_U, CP_ARML_D}) hid[i] = true;   // (no sleeve layer over them so close to the eye)
+  if (fp && (ps.reach || ps.sitGround)) for (int i : {CP_ARMR_U, CP_ARMR_D, CP_ARML_U, CP_ARML_D}) hid[i] = true;   // (no sleeve layer over them so close to the eye)
   // which parts show: in first person only what you see looking down (the head and the right arm are the view's own)
   auto shows = [&](int i) {
     if (o.headOnly) return i == CP_HEAD;
@@ -796,6 +805,9 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     // reaching to the work at a station: your forearms only (the upper arms, right by the eye, filled the view: an arm in an arm)
     if (ps.reach && (i == CP_ARMR_U || i == CP_ARML_U)) return false;
     if (ps.reach && (i == CP_ARMR_D || i == CP_ARML_D)) return true;
+    // sat on the ground: your forearms over your knees, as the others see them (the upper arms are by the eye)
+    if (ps.sitGround && (i == CP_ARMR_U || i == CP_ARML_U)) return false;
+    if (ps.sitGround && (i == CP_ARMR_D || i == CP_ARML_D)) return !o.fpNoArms;
     if (i == CP_ARMR_U || i == CP_ARMR_D) return false;
     if (i == CP_ARML_U || i == CP_ARML_D) return fpArmL;
     if (i == CP_BODY) return R.fpTorso;

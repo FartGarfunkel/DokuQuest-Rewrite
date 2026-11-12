@@ -24,7 +24,7 @@ glm::mat3 polar(glm::mat3 m) {
 u32 charStateKey(const CharPose& p) {
   u32 k = 0;
   // (sneaking and sprinting eased by amounts blend by themselves: no state for them then)
-  if (p.sneak && p.sneakAmt < 0) k |= K_SNEAK; if (p.sit) k |= K_SIT; if (p.sleep) k |= K_SLEEP; if (p.swim) k |= K_SWIM; if (p.crawl) k |= K_CRAWL;
+  if (p.sneak && p.sneakAmt < 0) k |= K_SNEAK; if (p.sit || p.sitGround) k |= K_SIT; if (p.sleep) k |= K_SLEEP; if (p.swim) k |= K_SWIM; if (p.crawl) k |= K_CRAWL;
   if (p.hang || p.climb > 0) k |= K_HANG; if (p.ladder) k |= K_LADDER; if (p.fly) k |= K_FLY; if (p.glide) k |= K_GLIDE;
   if (p.paddle) k |= K_PADDLE; if (p.carry) k |= K_CARRY; if (p.eat > 0) k |= K_EAT; if (p.eat > 0 && p.drink) k |= K_DRINK;
   if (p.bow > 0) k |= K_BOW; if (p.scope) k |= K_SCOPE; if (p.air) k |= K_AIR; if (p.deathT > 0) k |= K_DEAD; if (p.sprint && p.runAmt < 0) k |= K_SPRINT;
