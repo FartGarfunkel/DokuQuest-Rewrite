@@ -413,8 +413,12 @@ void emitCarvedBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x,
   int side = self.faces[0], top = self.faces[2], bot = self.faces[3];
   Own own{(float)c.skyAt(x, y, z), std::max<float>((float)c.blAt(x, y, z), (float)R.tLight[id]), (float)R.metaLight(id, c.metaAt(x, y, z))};
   u8 mat = Mat::Cutout | (R.tTrans[id] ? Mat::Translucent : 0);
+  // grass and leaves keep their climate colour when carved (the grey picture is tinted, as the plain cube's)
+  const BlockTraits& T = traits(id);
+  if (T.tint) { c.tint = c.cornerTint((float)x + 1, (float)z + 1, T.tint == 2 ? 1 : 0); c.tintKind = (u8)(1 + (T.tint == 2 ? 1 : 0)); }
   for (auto& b : boxes)
     emitBox(c, d, id, c.metaAt(x, y, z), x, y, z, b, side, top, bot, 0, /*shape=*/0, own, mat, b.only);
+  c.tint = 0xFFFFFF; c.tintKind = 0;
 }
 
 // Thin snow on each column that still has a micro-block. It sits on that column's top and grows upward.

@@ -38,7 +38,17 @@ int ParticleSystem::blockTile(const std::string& key, int face) const {
   if (!it->second) return -1;
   return reg().block(it->second).faces[face];
 }
-u8 ParticleSystem::lightAt(vec3 p) const { return world ? world->getLight(ifloor(p.x), ifloor(p.y), ifloor(p.z)) : 0xF0; }
+// inside a solid block (a block's break crumbs start at its middle) its own light is none: the brightest open side's
+u8 ParticleSystem::lightAt(vec3 p) const {
+  if (!world) return 0xF0;
+  const int x = ifloor(p.x), y = ifloor(p.y), z = ifloor(p.z);
+  u8 l = world->getLight(x, y, z);
+  if (l) return l;
+  static const int N[6][3] = {{0, 1, 0}, {1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, -1, 0}};
+  int sk = 0, bl = 0;
+  for (auto& n : N) { const u8 m = world->getLight(x + n[0], y + n[1], z + n[2]); sk = std::max(sk, m >> 4); bl = std::max(bl, m & 15); }
+  return (u8)(sk << 4 | bl);
+}
 
 void ParticleSystem::add(const Particle& p) {
   size_t cap = level >= 2 ? 6000 : 2400;
