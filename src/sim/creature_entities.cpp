@@ -377,10 +377,10 @@ public:
     lv.fx->sound("fell", pos);
     for (Entity* q : pawnsOf(lv, realm)) if (glm::distance(q->pos, pos) < 24) lv.fx->shake(q->id, 0.25f);
     float fx = -std::sin(dirYaw), fz = -std::cos(dirYaw);
+    // the drops come down where you chopped it (the stump), not out where the crown landed
     for (auto& sj : data["drops"]) {
       ItemStack st = ItemStack::fromJson(sj);
-      float d = 1 + frand() * std::max(1.f, height - 1);
-      float x = pos.x + 0.5f + fx * d + (frand() - 0.5f), z = pos.z + 0.5f + fz * d + (frand() - 0.5f);
+      float x = pos.x + 0.5f + (frand() - 0.5f) * 0.7f, z = pos.z + 0.5f + (frand() - 0.5f) * 0.7f;
       dropItem(lv, realm, st, vec3(x, landingY(wd, x, z, height), z), false);
     }
     for (int i = 0; i < 24 && bl.size(); i++) {
