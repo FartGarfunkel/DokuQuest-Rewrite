@@ -85,17 +85,29 @@ void charMorePoses(CharAngles& A, const CharPose& pose) {
   // knees bent), the shield arm out before the chest with the forearm across it. The weapon hand stays as it was (raised
   // back over the shoulder it read as a wind-up, not a guard). Written for the shield in the left hand and mirrored for
   // the right (y and z of an arm flip side to side). Walking keeps its stride: the stance is for standing.
+  // ---- a shield strapped on a forearm, carried: the elbow at the side, the forearm level ahead, so the shield stands
+  // upright on its outside, face out (render/char_layer.cpp shieldPlacement: it goes wherever the forearm goes) ----
+  static float CG[6] = {0}; static bool cgl = false;   // tuning aid: DQ_DEV_SHCARRY="ax,ay,az,fx,fy,fz" (added)
+  if (!cgl) { cgl = true; if (const char* v = std::getenv("DQ_DEV_SHCARRY")) std::sscanf(v, "%f,%f,%f,%f,%f,%f", &CG[0], &CG[1], &CG[2], &CG[3], &CG[4], &CG[5]); }
+  if (pose.shieldArm != 0 && !pose.sit && !pose.swim && !pose.crawl && !pose.paddle && pose.roll <= 0) {
+    const bool L = pose.shieldArm > 0; const float o = L ? -1.f : 1.f;   // (z: out from the body on that side)
+    vec3& arm = L ? A.armL : A.armR; vec3& fore = L ? A.foreL : A.foreR;
+    arm = vec3(arm.x * 0.25f + 0.05f + CG[0], o * CG[1], o * (0.16f + CG[2]));
+    fore = vec3(1.5f + CG[3], o * CG[4], o * CG[5]);
+  }
   if (pose.block > 0) {
     const float k = ease(pose.block), sd = pose.blockMain ? -1.f : 1.f;
-    static float G[16] = {0}; static bool gl = false;   // tuning aid: DQ_DEV_GUARD="turn,sx,sy,sz,sf,wx,wy,wz,wf,lead,back,knee,crouch,head" (added)
-    if (!gl) { gl = true; if (const char* v = std::getenv("DQ_DEV_GUARD")) std::sscanf(v, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f", &G[0], &G[1], &G[2], &G[3], &G[4], &G[5], &G[6], &G[7], &G[8], &G[9], &G[10], &G[11], &G[12], &G[13]); }
+    static float G[16] = {0}; static bool gl = false;   // tuning aid: DQ_DEV_GUARD="turn,sx,sy,sz,sf,wx,wy,wz,wf,lead,back,knee,crouch,head,twist,froll" (added)
+    if (!gl) { gl = true; if (const char* v = std::getenv("DQ_DEV_GUARD")) std::sscanf(v, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f", &G[0], &G[1], &G[2], &G[3], &G[4], &G[5], &G[6], &G[7], &G[8], &G[9], &G[10], &G[11], &G[12], &G[13], &G[14], &G[15]); }
     auto side = [&](vec3 v, bool left) { return left ? v : vec3(v.x, -v.y, -v.z); };   // (an angle for the left arm, for either)
     const bool shLeft = sd > 0;
     const float turn = (0.42f + G[0]) * k;
     A.body.y += sd * turn; A.head.y -= sd * turn * (0.85f + G[13]);   // (the head keeps looking where you aim)
     A.body.x -= 0.05f * k;
     // the shield arm: up before the chest, the forearm bent across it
-    const vec3 sh = side(vec3(0.80f + G[1] + pitch * 0.35f, -0.45f + G[2], 0.18f + G[3]), shLeft), sf(1.30f + G[4], 0, 0);
+    // (the upper arm forward and in, the forearm across before the chest, turned over: render/char_layer.cpp's shield on
+    // it faces the front, upright, its top tipped back a little)
+    const vec3 sh = side(vec3(1.44f + G[1] + pitch * 0.35f, -0.74f + G[2], 0.03f + G[3]), shLeft), sf = side(vec3(0.74f + G[4], -0.96f + G[14], 0.24f + G[15]), shLeft);
     if (shLeft) { A.armL = mixv(A.armL, sh, k); A.foreL = mixv(A.foreL, sf, k); } else { A.armR = mixv(A.armR, sh, k); A.foreR = mixv(A.foreR, sf, k); }
     // the feet: the shield side's leg ahead, the other back, both knees bent, sunk a little (standing only)
     const float still = k * (1 - clampf(pose.walkAmt * 1.6f, 0, 1));

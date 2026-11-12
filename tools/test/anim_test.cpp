@@ -126,7 +126,7 @@ int main(int argc, char** argv) {
     CHECK(std::fabs(J.legR.x - JL.legL.x) < 1e-5f && std::fabs(J.shinR.x - JL.shinL.x) < 1e-5f, "jumps lead with either leg");
     CharPose b = p; b.block = 1; b.off = true;
     const CharAngles B = charAnimate(b);
-    CHECK(B.armL.x > 0.6f && B.foreL.x > 1.0f && B.body.y > 0.2f, "a shield raised across the body (the forearm across it, turned shield side on)");
+    CHECK(B.armL.x > 1.0f && B.foreL.x > 0.5f && B.body.y > 0.2f, "a shield raised across the body (the forearm across it, turned shield side on)");
     CharPose bg = b; bg.held = true; CharPose hg = p; hg.held = true;
     CHECK(glm::length(charAnimate(bg).armR - charAnimate(hg).armR) < 1e-4f, "on guard, the weapon hand stays as it was (no wind-up)");
     CharPose bm = p; bm.block = 1; bm.blockMain = true; bm.held = true;

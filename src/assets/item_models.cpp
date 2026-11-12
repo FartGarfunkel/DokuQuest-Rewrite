@@ -2,6 +2,7 @@
 // (the original's itemMesh chain: models3d.js -> sculpt.js -> items3d.js -> models.js).
 #include "assets/item_build.h"
 #include "assets/pottery3d.h"
+#include "assets/shield3d.h"
 #include <cstring>
 #include <cstdlib>
 #include "core/tool_parts.h"
@@ -542,6 +543,14 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
       g_recolour = prev;
       out.key = key;
       return ok;
+    }
+  }
+  if (const ItemDef* sd = reg().item(key); key == "shield" || (sd && sd->has("shield"))) {   // modelled, straps and all (assets/shield3d.h)
+    VoxelGrid g; VoxelFrame fr; float depth;
+    if (buildShieldGrid(g, fr, depth)) {
+      out.key = key; out.built = true; out.kind = VoxelModel::Flat; out.stand = false; out.depth = depth;
+      finishGrid(out, g, fr, nullptr);
+      return true;
     }
   }
   {   // the immersive pottery, molds and firestarter: modelled (assets/pottery3d.h), not sculpted from a picture

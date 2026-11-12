@@ -92,7 +92,9 @@ void drawFirstPersonSleeve(const mat4& arm, VoxelLight light);
 // first person on guard behind a shield (render/item_layers.cpp): where the third-person guard puts the shield (its model
 // placement, before matrix()), its fist and elbow, in view space (x right, y up, -z ahead; blocks) from the eye — so
 // first person matches third person
-struct FpGuard { mat4 shield{1}; vec3 shieldFist{0}, shieldElbow{0}; };
+struct FpGuard { mat4 shield{1}, upper{1}, fore{1}; vec3 shieldFist{0}, shieldElbow{0}; int upperPart = 0, forePart = 0; };   // upper / fore: the skin's own limb parts (part * scale)
+// draw one of the local player's own skin limb parts (CP_*) at m (part * scale, view space), the voxel renderer begun
+void drawFpLimb(const Player& p, int part, const mat4& m, VoxelLight light);
 bool fpGuardFrames(const Player& p, bool shieldLeft, const std::string& weapon, FpGuard& out, float k = 1);   // k: how far on guard (0: carried at the side)
 
 } // namespace dq

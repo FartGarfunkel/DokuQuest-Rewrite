@@ -13,6 +13,7 @@
 #include "core/tool_parts.h"
 #include "sim/weather.h"
 #include "render/char_layer.h"
+#include "assets/shield3d.h"
 #include "core/item_glint.h"
 #include "render/rod_tip.h"
 #include "assets/cape_tex.h"
@@ -128,28 +129,18 @@ bool isShieldItem(const std::string& id) {   // (sim/combat_rpg.cpp holdingShiel
 // a shield in a fist (third person): strapped on the forearm, carried at the side face out; raised (k 0..1) it turns to
 // face the way the body faces, held out before the chest — in body terms, not the forearm's (that one twists through
 // the raise and would show the shield edge-on)
+constexpr float SHIELD_GUARD_ROLL = -0.8f;   // (the forearm turned over on guard: char_poses.cpp's guard is fitted with it)
 mat4 shieldPlacement(const CharRig& R, int part, float side, float k) {
-  static float T[7] = {0, 0, 0, 0, 0, 0, 0}; static bool tl = false;   // tuning aid: DQ_DEV_TPSHIELD="restOut,upFwd,restUp,scale,upOut,upTilt,upUp"
-  if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_TPSHIELD")) std::sscanf(v, "%f,%f,%f,%f,%f,%f,%f", &T[0], &T[1], &T[2], &T[3], &T[4], &T[5], &T[6]); }
-  const vec3 fist = vec3(R.part[part] * vec4(0, -5, 0, 1));
-  const vec3 bx = glm::normalize(vec3(R.bodyRaw[0])), by = glm::normalize(vec3(R.bodyRaw[1])), fwd = -glm::normalize(vec3(R.bodyRaw[2]));   // (the body faces -z)
-  const vec3 out = bx * (side > 0 ? 1.f : -1.f);   // (away from the body on the hand's side)
-  const float a = k * k * (3 - 2 * k);
-  // face: out at the side -> forward; its width: along the body's forward -> across it
-  // at rest: strapped on the outside of the forearm, its face out and a little forward, clear of the arm. On guard: the
-  // fist on the grip behind its middle, the face to the front and a little out to its side (the body's turned shield
-  // side on), leant back a touch at the top
-  const vec3 faceRest = glm::normalize(out + fwd * 0.18f);
-  const vec3 faceUp = glm::normalize(fwd + out * (0.35f + T[4]) + by * (0.12f + T[5]));
-  const vec3 face = glm::normalize(glm::mix(faceRest, faceUp, a));
-  const vec3 up = glm::normalize(by - face * glm::dot(by, face)), across = glm::normalize(glm::cross(up, face));
-  const vec3 atRest = fist + out * (0.20f + T[0]) + by * (0.10f + T[2]);
-  const vec3 atUp = fist + faceUp * (0.09f + T[1]) + up * (0.01f + T[6]);
-  const vec3 at = glm::mix(atRest, atUp, a);
-  const float sc = 0.78f + T[3];
-  mat4 M(1); M[0] = vec4(across * sc, 0); M[1] = vec4(up * sc, 0); M[2] = vec4(face * sc, 0); M[3] = vec4(at, 1);
-  if (side < 0) M = glm::scale(M, vec3(-1, 1, 1));
-  return M;
+  // strapped on the forearm (assets/shield3d.h): the forearm through its straps, along its width; its face out on the
+  // arm's outer side (the right arm's +x, the left's -x). It goes wherever the forearm goes: raised on guard because
+  // the arm raises it, nothing else turns it
+  static float T[4] = {0, 0, 0, 0}; static bool tl = false;   // tuning aid: DQ_DEV_TPSHIELD="along,out,up,roll" (pixels / radians, added)
+  if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_TPSHIELD")) std::sscanf(v, "%f,%f,%f,%f", &T[0], &T[1], &T[2], &T[3]); }
+  mat4 B(1); B[0] = vec4(0, -side, 0, 0); B[1] = vec4(0, 0, -1, 0); B[2] = vec4(side, 0, 0, 0);   // (x along, y up, z out)
+  // on guard the forearm turns over (the palm down), so the shield's face comes round to the front with it
+  const float roll = (SHIELD_GUARD_ROLL + T[3]) * k * k * (3 - 2 * k);
+  return R.part[part] * glm::translate(mat4(1), vec3(side * T[1], -2.5f + T[0], -T[2])) * glm::rotate(mat4(1), side * roll, vec3(0, 1, 0)) * B *
+         glm::scale(mat4(1), vec3(1.f / CHAR_PX)) * glm::translate(mat4(1), -shieldArmChannel());
 }
 void shieldInHand(const CharRig& R, int part, const std::string& id, float side, float k, VoxelLight light, vec4 tint, bool glint) {
   const VoxelModel& im = itemModel(id);
@@ -597,6 +588,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   ps.hasBodyYaw = true; ps.bodyYaw = st.bodyYaw + devTurn; ps.headTurn = wrapAngle(p.yaw - st.bodyYaw); ps.legTurn = st.legTurn;
   // the shield up, a dodge roll (sim/combat_rpg.h): the roll turns the body the way it goes (back to it on a step back)
   ps.block = st.block; ps.blockMain = isShieldItem(wear.held);
+  ps.shieldArm = ps.blockMain ? -1 : isShieldItem(wear.off) ? 1 : 0;
   if (st.rollU > 0 && !fp && !p.dead && !p.riding && !p.swimming) {
     ps.roll = st.rollU; ps.rollBack = st.rollBack;
     ps.bodyYaw = st.rollYaw + (st.rollBack ? PI : 0.f) + devTurn; ps.headTurn = 0; ps.legTurn = 0; ps.air = false;
@@ -1048,9 +1040,15 @@ void drawFirstPersonSleeve(const mat4& arm, VoxelLight light) {
 
 // first person on guard (render/item_layers.cpp): the third-person guard's own shield and its arm, as the eye
 // sees them — the same rig, the same sizes, so the two views match. View space: x right, y up, -z ahead, blocks.
+void drawFpLimb(const Player& p, int part, const mat4& m, VoxelLight light) {
+  const CharModel& M = charModel(*resolveCharacter(p.skin));
+  if (part < 0 || part >= CP_COUNT) return;
+  if (M.base[part].ready()) voxelRenderer().draw(M.base[part].gl, m * M.base[part].local(), light);
+  if (M.ovl[part].ready()) voxelRenderer().draw(M.ovl[part].gl, m * M.ovl[part].local(), light);
+}
 bool fpGuardFrames(const Player& p, bool shieldLeft, const std::string& weapon, FpGuard& out, float k) {
   const CharModel& M = charModel(*resolveCharacter(p.skin));
-  CharPose ps; ps.block = k; ps.blockMain = !shieldLeft; ps.held = shieldLeft ? !weapon.empty() : true; ps.off = shieldLeft ? true : !weapon.empty();
+  CharPose ps; ps.block = k; ps.blockMain = !shieldLeft; ps.shieldArm = shieldLeft ? 1 : -1; ps.held = shieldLeft ? !weapon.empty() : true; ps.off = shieldLeft ? true : !weapon.empty();
   CharRig R;
   charRig(M, ps, mat4(1), R, false, false);
   // the eye: the head's middle, looking where the head looks (level; the hand view turns with the camera's pitch)
@@ -1068,6 +1066,7 @@ bool fpGuardFrames(const Player& p, bool shieldLeft, const std::string& weapon, 
   out.shield = V * shieldPlacement(R, sp, shieldLeft ? -1.f : 1.f, k);
   out.shieldFist = vec3(V * (R.part[sp] * vec4(0, -5, 0, 1)));
   out.shieldElbow = vec3(V * R.part[sp][3]);
+  out.upper = V * R.part[sp - 1] * R.scale[sp - 1]; out.fore = V * R.part[sp] * R.scale[sp]; out.upperPart = sp - 1; out.forePart = sp;
   return true;
 }
 } // namespace dq
