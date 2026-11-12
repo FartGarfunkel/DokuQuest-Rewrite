@@ -825,7 +825,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   o.light = VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f};
   o.tint = p.hurtTime > 0 ? vec4(1, 0.15f, 0.1f, 0.4f) : vec4(0);
   o.fpNoArms = fp && ps.sitGround && &p == s.player && bookUiStationOn(s.app);   // (your bag open by the fire: the hand view holds it)
-  o.fp = fp; o.eye = p.eye; o.time = f.time; o.camPos = f.cam.origin; o.blend = &st.blend; o.cape = &st.cape;
+  o.fp = fp; o.time = f.time; o.camPos = f.cam.origin; o.blend = &st.blend; o.cape = &st.cape;
   o.detail = fp || glm::dot(rel, rel) < 56.f * 56.f;   // far off, the detail is lost anyway: past 56 blocks only the skin
   {   // the journal: off the belt into both hands at a menu, its pages turned as they turn them (synced: Player::bookFlip)
     const bool want = (p.activity & Player::ACT_SCREEN) && !p.riding && !p.sleeping;
@@ -877,21 +877,6 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   CharRig R;
   charRig(M, ps, base, R, cloak, !back.empty());
   if (o.blend) charBlendStep(*o.blend, R, base, charStateKey(ps), o.time);
-  // an attack move in first person: the striking forearm (all of the arm that shows) and its weapon where the others see
-  // them, and where the blow lands (sim/attack_moves.h): the first-person body sits behind the eyes and twists less, which
-  // carried the blade past the side of your head
-  if (fp && ps.atkMove && ps.atkMove < MV_COUNT) {
-    CharPose q = ps; q.fp = false; q.hasBodyYaw = false;
-    CharRig R3; charRig(M, q, base, R3, cloak, !back.empty());
-    const bool lh = attackMove(ps.atkMove).leftHand;
-    const int fi = lh ? CP_ARML_D : CP_ARMR_D;
-    R.part[fi] = R3.part[fi]; R.scale[fi] = R3.scale[fi];
-    if (auto g = R3.gear.find(lh ? "foreL" : "foreR"); g != R3.gear.end()) R.gear[g->first] = g->second;
-    if (lh) R.toolL = R3.toolL; else R.toolR = R3.toolR;
-    const mat4 lift = fpCutLift(vec3(base[3]) + vec3(0, o.eye, 0), ps.yaw);   // (up into the view: render/char_anim.h)
-    R.part[fi] = lift * R.part[fi];
-    if (auto g = R.gear.find(lh ? "foreL" : "foreR"); g != R.gear.end()) g->second = lift * g->second;
-  }
   // the 3D outer layer goes under armour: whatever a piece covers isn't drawn
   bool hid[CP_COUNT] = {};
   hid[CP_HEAD] = !AR[0].empty() && !hatItem;
@@ -912,8 +897,8 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     // sat on the ground: your forearms over your knees, as the others see them (the upper arms are by the eye)
     if ((ps.sitGround || ps.bed >= 0) && (i == CP_ARMR_U || i == CP_ARML_U)) return false;
     if ((ps.sitGround || ps.bed >= 0) && (i == CP_ARMR_D || i == CP_ARML_D)) return !o.fpNoArms;
-    // an attack move: the striking arm's forearm and what it holds do the cut before you (the upper arm is by the eye)
-    if (fpAtk && i == (fpAtkLeft ? CP_ARML_D : CP_ARMR_D)) return true;
+    // an attack move: the striking arm, whole on its shoulder, and what it holds do the cut as the others see it
+    if (fpAtk && (fpAtkLeft ? (i == CP_ARML_U || i == CP_ARML_D) : (i == CP_ARMR_U || i == CP_ARMR_D))) return true;
     if (i == CP_ARMR_U || i == CP_ARMR_D) return false;
     if (i == CP_ARML_U || i == CP_ARML_D) return fpArmL;
     if (i == CP_BODY) return R.fpTorso;
@@ -957,7 +942,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     for (auto& [part, mesh] : G) {
       if (o.headOnly && part != "head" && part != "neck") continue;
       if (fp && (part == "head" || part == "neck" || part == "cape" || part == "capeLo" || part == "tail")) continue;
-      const bool atkFore = fpAtk && part == (fpAtkLeft ? "foreL" : "foreR");   // (an attack move: the striking forearm)
+      const bool atkFore = fpAtk && (fpAtkLeft ? (part == "armL" || part == "foreL") : (part == "armR" || part == "foreR"));   // (an attack move: the striking arm)
       if (fp && !atkFore && !R.fpTorso && part != "legR" && part != "legL" && part != "shinR" && part != "shinL") continue;
       if (fp && !atkFore && !fpArmL && (part == "armL" || part == "foreL")) continue;
       if (fp && !atkFore && (part == "armR" || part == "foreR")) continue;

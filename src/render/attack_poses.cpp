@@ -16,13 +16,13 @@ struct AtkClip { const AtkKey* k; int n; bool left; float pre, blend; };   // bl
 float sm(float u) { u = std::clamp(u, 0.f, 1.f); return u * u * (3 - 2 * u); }
 }  // namespace
 
-mat4 fpCutLift(const vec3& eye, float yaw) {
-  static float T[2] = {18.f, 0.35f}; static bool read = false;
-  if (!read) { read = true; if (const char* v = std::getenv("DQ_DEV_FPCUT")) std::sscanf(v, "%f,%f", &T[0], &T[1]); }
-  const vec3 right(std::cos(yaw), 0, -std::sin(yaw)), fwd(-std::sin(yaw), 0, -std::cos(yaw));
-  mat4 m = glm::translate(mat4(1), eye + fwd * T[1]);
-  m = glm::rotate(m, T[0] * 0.0174533f, right);   // (about the right axis: + tips what is ahead upward)
-  return glm::translate(m, -eye);
+float attackWeight(const CharPose& pose) {
+  const u8 id = pose.atkMove;
+  if (id == MV_NONE || id >= MV_COUNT) return 0;
+  const AttackMove& M = attackMove(id);
+  const float t = pose.atkT, blend = CLIPS[id - 1].blend;
+  const float out = M.len > M.recovery ? 1 - sm((t - M.recovery) / (M.len - M.recovery)) : 1.f;
+  return std::max(0.f, std::min(sm(t / blend), out));
 }
 
 bool devAttackPose(u8& move, float& t) {
@@ -54,8 +54,7 @@ void attackPose(CharAngles& A, const CharPose& pose) {
   const float w = b.t > a.t ? std::clamp((kt - a.t) / (b.t - a.t), 0.f, 1.f) : 1.f;
   auto L = [&](float AtkKey::*f) { return a.*f + (b.*f - a.*f) * w; };
   // how much of the move shows: in over the blend, out after the recovery
-  const float out = M.len > M.recovery ? 1 - sm((t - M.recovery) / (M.len - M.recovery)) : 1.f;
-  const float k = std::min(sm(t / blend), out);
+  const float k = attackWeight(pose);
   if (k <= 0) return;
   auto mixv = [](vec3 x, vec3 y, float u) { return x + (y - x) * u; };
   const float walk = std::clamp(pose.walkAmt * 1.5f, 0.f, 1.f), st = k * (1 - walk);   // (walking keeps its stride)

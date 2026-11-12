@@ -73,10 +73,8 @@ struct CharAngles { vec3 body{0}, head{0}, armR{0}, foreR{0}, armL{0}, foreL{0},
 // an attack move's pose over the stance (render/attack_poses.cpp): the move's keys at its time, blended in from the stance
 // and back out to it
 void attackPose(CharAngles& A, const CharPose& pose);
-// first person: an attack move's striking forearm and weapon (and its trail) are tipped up about the eye toward the middle
-// of the view (a cut passes close before the chest, below a 70-degree view) and a little forward. eye: render space;
-// yaw: the view's. DQ_DEV_FPCUT="degrees,forward" tunes it.
-mat4 fpCutLift(const vec3& eye, float yaw);
+// how much of an attack move shows now (0..1: in over its blend, out after its recovery)
+float attackWeight(const CharPose& pose);
 // tuning aid: DQ_DEV_ATK="move,t" draws your own player held in that attack move at that time (screenshots of a cut)
 bool devAttackPose(u8& move, float& t);
 // the held thing's frame from the forearm's, turned by the grip (the fist at 0,-6,-1 of the forearm)

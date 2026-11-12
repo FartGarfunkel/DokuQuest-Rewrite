@@ -530,10 +530,22 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
     base = glm::translate(base, vec3(0, 2.3f * CHAR_PX, 0.5f)); base = glm::rotate(base, -PI / 2, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0));
   }
   if (pose.sleep && pose.bed < 0) { base = glm::rotate(base, PI, vec3(0, 1, 0)); base = glm::translate(base, vec3(0, 0.3f, 0)); base = glm::rotate(base, PI / 2, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0)); }
-  if (pose.fp && pose.bed < 0) base = glm::translate(base, vec3(0, 0, 0.25f));   // FP_BODY: just behind the eyes (in bed the view is the head's own: client/play.cpp)
+  // an attack move in first person is the third-person body exactly (the arms on their shoulders doing the cut): the
+  // first-person settling below eases away while it shows
+  const float fpK = pose.fp && pose.bed < 0 ? 1 - attackWeight(pose) : 0.f;
+  if (pose.fp && pose.bed < 0) base = glm::translate(base, vec3(0, 0, 0.25f * fpK));   // FP_BODY: just behind the eyes (in bed the view is the head's own: client/play.cpp)
   CharAngles A = charAnimate(pose);
   R.toolR = A.toolR; R.toolL = A.toolL;
-  if (pose.fp && pose.bed < 0) { A.body.x *= 0.25f; A.body.y *= 0.5f; A.armL = vec3(A.armL.x * 0.45f, A.armL.y, A.armL.z - 0.06f); A.foreL.x *= 0.5f; }
+  if (pose.fp && pose.bed < 0) {
+    const CharAngles A0 = A;
+    A.body.x *= 0.25f; A.body.y *= 0.5f; A.armL = vec3(A.armL.x * 0.45f, A.armL.y, A.armL.z - 0.06f); A.foreL.x *= 0.5f;
+    if (fpK < 1) { A.body = A0.body + (A.body - A0.body) * fpK; A.armL = A0.armL + (A.armL - A0.armL) * fpK; A.foreL = A0.foreL + (A.foreL - A0.foreL) * fpK; }
+    // a cut passes close before the chest, under a 70-degree view: in first person the chest leans back a little through
+    // the swing, so the arms (on their shoulders) bring it up before your eyes. DQ_DEV_FPLEAN tunes it (radians)
+    static float lean = -0.5f; static bool read = false;
+    if (!read) { read = true; if (const char* v = std::getenv("DQ_DEV_FPLEAN")) lean = (float)std::atof(v); }
+    A.body.x += lean * (1 - fpK);
+  }
   R.fpTorso = pose.fp && !pose.swim && !pose.crawl && (!pose.sleep || pose.bed >= 0) && pose.deathT <= 0;
   // the body shape: leg length lifts everything above the hips, build widens, the head its own size
   const BodyShape& S = M.body;
@@ -567,7 +579,7 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
     vec3 armA = side ? A.armL : A.armR, foreA = side ? A.foreL : A.foreR, legA = side ? A.legL : A.legR, shinA = side ? A.shinL : A.shinR;
     vec3 pu = M.pivot[up], pl = M.pivot[lu];
     vec3 armOff(pu.x * b, pu.y - 12, pu.z);
-    if (pose.fp && side == 1) armOff.z -= 0.2f / CHAR_PX, armA.x += 0.32f;   // an empty left hand, a little forward so it shows
+    if (pose.fp && side == 1) armOff.z -= 0.2f / CHAR_PX * fpK, armA.x += 0.32f * fpK;   // an empty left hand, a little forward so it shows (not in a swing: there the body is the third-person one)
     R.part[up] = child(bodyM, armOff, armA);
     R.part[dn] = child(R.part[up], M.pivot[dn] - pu, foreA);
     R.part[lu] = child(root, vec3(pl.x * b, hip, pl.z), legA);
