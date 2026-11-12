@@ -89,5 +89,10 @@ void drawCharFace(const CharModel& M, const CharPose& ps, const mat4& head, Voxe
 void drawCarriedThing(const json& carrying, const mat4& at, bool fp, VoxelLight light, vec4 tint);
 // the local player's chestplate sleeve over the first-person arm (arm = the arm model's placement, before matrix())
 void drawFirstPersonSleeve(const mat4& arm, VoxelLight light);
+// first person on guard behind a shield (render/item_layers.cpp): where the third-person guard puts the shield (its model
+// placement, before matrix()), the fists and elbows, and the weapon's placement (cocked back over the shoulder), in view
+// space (x right, y up, -z ahead; blocks) from the eye — so first person matches third person
+struct FpGuard { mat4 shield{1}, weaponItem{1}; vec3 shieldFist{0}, shieldElbow{0}, weaponFist{0}, weaponElbow{0}; bool weapon = false; };
+bool fpGuardFrames(const Player& p, bool shieldLeft, const std::string& weapon, FpGuard& out, float k = 1);   // k: how far on guard (0: carried at the side)
 
 } // namespace dq

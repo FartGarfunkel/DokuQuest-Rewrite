@@ -12,6 +12,7 @@
 #include "sim/piles.h"
 #include "render/pack_geom.h"
 #include "render/char_layer.h"
+#include "render/char_blend.h"
 #include "render/chest_layer.h"
 #include "client/app.h"
 #include "assets/tileset.h"
@@ -351,26 +352,27 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       // tuning aid: DQ_DEV_FPSHIELD="rx,ry,rz,rs,ux,uy,uz,us" (rest place + scale, raised place + scale, added)
       static float T[8] = {0, 0, 0, 0, 0, 0, 0, 0}; static bool tl = false;
       if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_FPSHIELD")) std::sscanf(v, "%f,%f,%f,%f,%f,%f,%f,%f", &T[0], &T[1], &T[2], &T[3], &T[4], &T[5], &T[6], &T[7]); }
-      const float lowY = -0.50f + T[1] + by - (side > 0 ? eqMain * 0.55f : eq * 0.3f) + (side < 0 ? std::sin((float)time * 1.3f) * 0.006f : 0.f);
-      const vec3 rest(side * (0.58f + T[0] + (side > 0 ? bx : -bx * 0.6f)), lowY, -0.78f + T[2]);
+      const float lowY = -0.42f + T[1] + by - (side > 0 ? eqMain * 0.55f : eq * 0.3f) + (side < 0 ? std::sin((float)time * 1.3f) * 0.006f : 0.f);
+      const vec3 rest(side * (0.52f + T[0] + (side > 0 ? bx : -bx * 0.6f)), lowY, -0.88f + T[2]);   // (as big on the screen as on guard)
       const vec3 raised(side * (0.40f + T[4]), -0.26f + T[5], -0.60f + T[6] + knock * 0.06f);
       const vec3 at = glm::mix(rest, raised, r);
-      const float sc = glm::mix(0.46f + T[3], 0.47f + T[7], r);
+      const float sc = glm::mix(0.70f + T[3], 0.47f + T[7], r);
       const float turnY = side * glm::mix(0.30f, 0.12f, r), tipX = glm::mix(-0.22f, -0.05f, r) + knock * 0.22f, rollZ = side * glm::mix(-0.12f, 0.f, r);
       mat4 m = glm::translate(mat4(1), at);
       m = glm::rotate(m, turnY, vec3(0, 1, 0));    // (turned out at the side, square on when up)
       m = glm::rotate(m, tipX, vec3(1, 0, 0));
       m = glm::rotate(m, rollZ, vec3(0, 0, 1));
       m = glm::scale(m, vec3(sc));
+      mat4 restArm(1);
+      static float T2[4] = {0, 0, 0, 0}, T3[4] = {0, 0, 0, 0}; static bool t2 = false;   // tuning aid: DQ_DEV_FPSHIELDARM="out,down,toEye,back" raised, DQ_DEV_FPSHIELDARM0 at rest (added)
+      if (!t2) {
+        t2 = true;
+        if (const char* v = std::getenv("DQ_DEV_FPSHIELDARM")) std::sscanf(v, "%f,%f,%f,%f", &T2[0], &T2[1], &T2[2], &T2[3]);
+        if (const char* v = std::getenv("DQ_DEV_FPSHIELDARM0")) std::sscanf(v, "%f,%f,%f,%f", &T3[0], &T3[1], &T3[2], &T3[3]);
+      }
       {   // the arm holding it: strapped on, the forearm lies flat along the back of the boards, from the grip behind their
         // middle out past the lower outer edge, where it shows going off toward the shoulder (an arm pointed at the eye
         // from behind the middle came across the face)
-        static float T2[4] = {0, 0, 0, 0}, T3[4] = {0, 0, 0, 0}; static bool t2 = false;   // tuning aid: DQ_DEV_FPSHIELDARM="out,down,toEye,back" raised, DQ_DEV_FPSHIELDARM0 at rest (added)
-        if (!t2) {
-          t2 = true;
-          if (const char* v = std::getenv("DQ_DEV_FPSHIELDARM")) std::sscanf(v, "%f,%f,%f,%f", &T2[0], &T2[1], &T2[2], &T2[3]);
-          if (const char* v = std::getenv("DQ_DEV_FPSHIELDARM0")) std::sscanf(v, "%f,%f,%f,%f", &T3[0], &T3[1], &T3[2], &T3[3]);
-        }
         const mat3 B(m);
         // (raised: out past the boards' outer edge to the corner of the view; at rest: down past their foot)
         const vec3 dirRest(side * (0.32f + T3[0]), -(0.98f + T3[1]), T3[2]), dirUp(side * (1.42f + T2[0]), -(0.33f + T2[1]), T2[2]);
@@ -379,12 +381,53 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
         const vec3 face = glm::normalize(B * vec3(0, 0, 1));
         const vec3 Z = glm::normalize(face - Y * glm::dot(face, Y)), X = glm::cross(Y, Z);
         mat4 a(1); a[0] = vec4(X, 0); a[1] = vec4(Y, 0); a[2] = vec4(Z, 0); a[3] = vec4(grip + Y * 0.3f + Z * 0.02f, 1);   // (holdIn's fist: 0.3 down the arm)
-        drawArm(a);
+        restArm = a;
       }
       if (side < 0) m = glm::scale(m, vec3(-1, 1, 1));
+      // on guard: the third-person guard's own shield and arm as the eye sees them (render/char_layer.cpp fpGuardFrames),
+      // so first person matches third person; eased in from the low carry above
+      if (r > 0.001f) {
+        FpGuard G;
+        const std::string other = side > 0 ? (p->offhand.empty() ? std::string() : p->offhand[0].id) : p->held().id;
+        if (fpGuardFrames(*p, side < 0, other, G)) {
+          mat4 gs = G.shield;
+          // its arm: the fist on the grip (on this side of the boards: you see the back of what you hold), the forearm out
+          // to the lower outer corner of the view (the third-person forearm, seen from behind, came down the middle)
+          const vec3 gy = glm::normalize(vec3(side * (0.75f + T2[0]), -(0.62f + T2[1]), 0.38f + T2[2]));
+          const vec3 gz = glm::normalize(vec3(0, 0, 1) - gy * gy.z), gx = glm::cross(gy, gz);
+          mat4 ga(1); ga[0] = vec4(gx, 0); ga[1] = vec4(gy, 0); ga[2] = vec4(gz, 0); ga[3] = vec4(G.shieldFist + gy * (0.3f + T2[3]), 1);
+          if (knock > 0) gs = glm::translate(mat4(1), vec3(0, 0, knock * 0.06f)) * glm::rotate(mat4(1), knock * 0.22f, vec3(1, 0, 0)) * gs;   // (a parry knocks it back)
+          m = blendMat(m, gs, r); restArm = blendMat(restArm, ga, r);
+        }
+      }
+      drawArm(restArm);
       if (im.ready()) VR.draw(im.gl, m * im.matrix(), L, vec4(0), itemGlints(stack) ? 1.f : 0.f);
       if (itemHook && im.ready()) over.push_back({stack, m});
       return;
+    }
+    // the weapon on guard (a shield up in the other hand): drawn back over the shoulder as in third person
+    // (render/char_layer.cpp fpGuardFrames), eased in and out with the shield
+    float gk = 0; mat4 gItem(1);
+    if (side > 0 && !bowItem && !rod) {
+      const bool offSh = !p->offhand.empty() && !p->offhand[0].empty() && (p->offhand[0].id == "shield" || (p->offhand[0].def() && p->offhand[0].def()->has("shield")));
+      static float guard = 0; static double gt = -1;
+      const float gdt = gt < 0 ? 0.f : (float)std::clamp(f.time - gt, 0.0, 0.05); gt = f.time;
+      const bool on = offSh && p->blockT > 0 && swing <= 0;
+      guard += ((on ? 1.f : 0.f) - guard) * std::min(1.f, gdt * (on ? 16.f : 9.f));
+      FpGuard G;
+      if (guard > 0.001f && fpGuardFrames(*p, true, stack.id, G) && G.weapon) {
+        gk = guard * guard * (3 - 2 * guard);
+        // the blade as third person holds it (back and up over the shoulder), the fist brought in to the right of the view
+        // and the forearm up from its lower corner (seen from behind, the third-person arm stood up the middle of the view)
+        static float W[6] = {0, 0, 0, 0, 0, 0}; static bool wl = false;   // tuning aid: DQ_DEV_FPGUARDW="fx,fy,fz,ax,ay,az" (added)
+        if (!wl) { wl = true; if (const char* v = std::getenv("DQ_DEV_FPGUARDW")) std::sscanf(v, "%f,%f,%f,%f,%f,%f", &W[0], &W[1], &W[2], &W[3], &W[4], &W[5]); }
+        const vec3 fist(0.36f + W[0], -0.14f + W[1], -0.92f + W[2]);
+        const vec3 Y = glm::normalize(vec3(0.75f + W[3], -0.75f + W[4], 0.35f + W[5]));
+        const vec3 Z = glm::normalize(vec3(0, 0, 1) - Y * Y.z), X = glm::cross(Y, Z);
+        mat4 ga(1); ga[0] = vec4(X, 0); ga[1] = vec4(Y, 0); ga[2] = vec4(Z, 0); ga[3] = vec4(fist + Y * 0.3f, 1);
+        am = blendMat(am, ga, gk);
+        gItem = glm::translate(mat4(1), fist - G.weaponFist) * G.weaponItem;
+      }
     }
     if (side > 0 && swing > 0) am = mcSwing(am, 1, swing, false, s.breaking);
     if (side > 0 && wind > 0) { am = glm::translate(am, vec3(0, 0.1f * wind, 0.05f * wind)); am = glm::rotate(am, -0.75f * std::sin(wind * PI / 2), vec3(1, 0, 0)); }   // the rod comes back over the shoulder before the cast
@@ -447,6 +490,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       if (glint) {}   // (an enchanted book: its cover's colour says it)
       return;
     }
+    if (gk > 0) m = blendMat(m, gItem, gk);   // (on guard: the blade where third person has it)
     VR.slosh = slosh;
     if (im.ready()) VR.draw(im.gl, m * im.matrix(), L, vec4(0), glint ? 1.f : 0.f);
     VR.slosh = vec2(0);

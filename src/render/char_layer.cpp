@@ -120,6 +120,10 @@ BookPicTex& bookPicTex(u64 key, const std::string& pic, const std::string& lay, 
   return t;
 }
 std::vector<Dial>* g_dials = nullptr;
+float guardCock() {   // on guard: how far the blade tips up in the fist, back over the shoulder (tuning aid: DQ_DEV_COCK)
+  static const float k = [] { const char* v = std::getenv("DQ_DEV_COCK"); return v ? (float)std::atof(v) : -0.7f; }();
+  return k;
+}
 bool isShieldItem(const std::string& id) {   // (sim/combat_rpg.cpp holdingShield)
   if (id == "shield") return true;
   const ItemDef* d = reg().item(id);
@@ -128,9 +132,7 @@ bool isShieldItem(const std::string& id) {   // (sim/combat_rpg.cpp holdingShiel
 // a shield in a fist (third person): strapped on the forearm, carried at the side face out; raised (k 0..1) it turns to
 // face the way the body faces, held out before the chest — in body terms, not the forearm's (that one twists through
 // the raise and would show the shield edge-on)
-void shieldInHand(const CharRig& R, int part, const std::string& id, float side, float k, VoxelLight light, vec4 tint, bool glint) {
-  const VoxelModel& im = itemModel(id);
-  if (!im.ready()) return;
+mat4 shieldPlacement(const CharRig& R, int part, float side, float k) {
   static float T[7] = {0, 0, 0, 0, 0, 0, 0}; static bool tl = false;   // tuning aid: DQ_DEV_TPSHIELD="restOut,upFwd,restUp,scale,upOut,upTilt,upUp"
   if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_TPSHIELD")) std::sscanf(v, "%f,%f,%f,%f,%f,%f,%f", &T[0], &T[1], &T[2], &T[3], &T[4], &T[5], &T[6]); }
   const vec3 fist = vec3(R.part[part] * vec4(0, -5, 0, 1));
@@ -151,7 +153,12 @@ void shieldInHand(const CharRig& R, int part, const std::string& id, float side,
   const float sc = 0.78f + T[3];
   mat4 M(1); M[0] = vec4(across * sc, 0); M[1] = vec4(up * sc, 0); M[2] = vec4(face * sc, 0); M[3] = vec4(at, 1);
   if (side < 0) M = glm::scale(M, vec3(-1, 1, 1));
-  voxelRenderer().draw(im.gl, M * im.matrix(), light, tint, glint ? 1.f : 0.f);
+  return M;
+}
+void shieldInHand(const CharRig& R, int part, const std::string& id, float side, float k, VoxelLight light, vec4 tint, bool glint) {
+  const VoxelModel& im = itemModel(id);
+  if (!im.ready()) return;
+  voxelRenderer().draw(im.gl, shieldPlacement(R, part, side, k) * im.matrix(), light, tint, glint ? 1.f : 0.f);
 }
 // skins.js held(): an item in a fist (fore = the forearm's frame, model pixels about the elbow; side -1 = the left hand)
 void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0), const std::string& modelKey = "", float cock = 0) {
@@ -907,8 +914,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     else if (ps.scope && wear.held == "spyglass") spyglassAtEye(R.part[CP_HEAD], light, tint);
     else if (isShieldItem(wear.held)) shieldInHand(R, CP_ARMR_D, wear.held, 1.f, ps.blockMain ? ps.block : 0.f, light, tint, wear.heldGlint);
     else if (!wear.held.empty()) {
-      static const float cockK = [] { const char* v = std::getenv("DQ_DEV_COCK"); return v ? (float)std::atof(v) : -0.7f; }();   // (tuning aid: DQ_DEV_COCK)
-      const float cock = !ps.blockMain && isShieldItem(wear.off) ? ps.block * ps.block * (3 - 2 * ps.block) * cockK : 0.f;
+      const float cock = !ps.blockMain && isShieldItem(wear.off) ? ps.block * ps.block * (3 - 2 * ps.block) * guardCock() : 0.f;
       heldInHand(R.part[CP_ARMR_D], wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel, cock);
     }
     if (!wear.off.empty() && !bowDraw && isShieldItem(wear.off)) shieldInHand(R, CP_ARML_D, wear.off, -1.f, ps.blockMain ? 0.f : ps.block, light, tint, wear.offGlint);
@@ -1046,4 +1052,37 @@ void drawFirstPersonSleeve(const mat4& arm, VoxelLight light) {
   }
 }
 
+
+// first person on guard (render/item_layers.cpp): the third-person guard's own shield, its arm and the weapon, as the eye
+// sees them — the same rig, the same sizes, so the two views match. View space: x right, y up, -z ahead, blocks.
+bool fpGuardFrames(const Player& p, bool shieldLeft, const std::string& weapon, FpGuard& out, float k) {
+  const CharModel& M = charModel(*resolveCharacter(p.skin));
+  CharPose ps; ps.block = k; ps.blockMain = !shieldLeft; ps.held = shieldLeft ? !weapon.empty() : true; ps.off = shieldLeft ? true : !weapon.empty();
+  CharRig R;
+  charRig(M, ps, mat4(1), R, false, false);
+  // the eye: the head's middle, looking where the head looks (level; the hand view turns with the camera's pitch)
+  const mat4& hm = R.part[CP_HEAD];
+  vec3 hz = vec3(hm[2]); hz.y = 0;
+  if (glm::length(hz) < 1e-5f) return false;
+  const vec3 fh = -glm::normalize(hz), rh = glm::normalize(glm::cross(fh, vec3(0, 1, 0)));
+  static float E[3] = {0, 0, 0}; static bool el = false;   // tuning aid: DQ_DEV_FPEYE="x,y,z" (the eye's place, added)
+  if (!el) { el = true; if (const char* v = std::getenv("DQ_DEV_FPEYE")) std::sscanf(v, "%f,%f,%f", &E[0], &E[1], &E[2]); }
+  // (the eye a little behind and below the head's middle: from the head itself the shield is a hand's breadth away and
+  // fills the view; a step back shows what third person shows, the shield up before the chest, its top under the aim)
+  const vec3 eye = vec3(hm[3]) + vec3(0, 0.10f + E[1], 0) + rh * E[0] + fh * (-0.55f + E[2]);
+  const mat4 V = glm::transpose(mat4(vec4(rh, 0), vec4(0, 1, 0, 0), vec4(-fh, 0), vec4(0, 0, 0, 1))) * glm::translate(mat4(1), -eye);
+  const int sp = shieldLeft ? CP_ARML_D : CP_ARMR_D, wp = shieldLeft ? CP_ARMR_D : CP_ARML_D;
+  out.shield = V * shieldPlacement(R, sp, shieldLeft ? -1.f : 1.f, k);
+  out.shieldFist = vec3(V * (R.part[sp] * vec4(0, -5, 0, 1)));
+  out.shieldElbow = vec3(V * R.part[sp][3]);
+  out.weapon = !weapon.empty();
+  if (out.weapon) {
+    out.weaponFist = vec3(V * (R.part[wp] * vec4(0, -5, 0, 1)));
+    out.weaponElbow = vec3(V * R.part[wp][3]);
+    mat4 h = glm::translate(R.part[wp], vec3(0, -6, -1));
+    h = glm::rotate(h, guardCock(), vec3(1, 0, 0));
+    out.weaponItem = V * (glm::scale(h, vec3(1 / CHAR_PX)) * heldMat(weapon));
+  }
+  return true;
+}
 } // namespace dq
