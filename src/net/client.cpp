@@ -540,7 +540,7 @@ void NetClient::applyEntities(const json& m) {
       p->bookFlip = (u8)s.value("bf", (int)p->bookFlip); p->bookDir = (i8)(s.value("bd", 1) < 0 ? -1 : 1);
       p->eatT = clampv(s.value("et", 0.f), 0.f, 1.f); p->eatId = p->eatT > 0 ? s.value("ei", std::string()) : std::string();
       if (p != me) {   // their shield, roll and parry (sim/combat_rpg.h): ours are our own game's
-        p->blockT = s.value("sb", 0.f); p->parryFlash = s.value("py", 0.f);
+        p->blockT = s.value("sb", 0.f); p->parryFlash = s.value("py", 0.f); p->guardFlash = s.value("gf", 0.f);
         p->dodgeT = s.value("dg", 0.f);   // (render/char_layer.cpp plays the roll through from its start)
         if (p->dodgeT > 0) p->dodgeYaw = s.value("dy", p->dodgeYaw);
       }
@@ -564,6 +564,7 @@ void NetClient::applySelf(const json& m) {
   if (m.contains("hp")) p.hp = m["hp"].get<float>();
   if (m.contains("sp")) p.stamina = std::max(0.f, p.stamina - m["sp"].get<float>());   // a parry the host saw us make (sim/combat_rpg.cpp)
   if (m.contains("pf")) { p.parryFlash = m["pf"].get<float>(); p.blockT = std::max(p.blockT, 0.18f); }   // (past PARRY_WINDOW: one parry per raise)
+  if (m.contains("gfl")) p.guardFlash = m["gfl"].get<float>();   // a blow the host saw land on our shield
   if (m.contains("inv")) { applyPlayerInv(p, m["inv"]); invSeq = m.value("seq", invSeq); invSig = playerInvSig(p); }
   if (m.contains("md")) p.mode = m["md"].get<std::string>();
   if (m.contains("fl")) p.flying = m["fl"].get<bool>();

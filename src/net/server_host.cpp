@@ -711,6 +711,8 @@ void ServerHost::diffMirrors() {
     p.aStam = pl.stamina;
     if (pl.parryFlash > p.aParry + 0.01f) s["pf"] = pl.parryFlash;
     p.aParry = pl.parryFlash;
+    if (pl.guardFlash > p.aGuard + 0.01f) s["gfl"] = pl.guardFlash;   // a blow on their shield (their guard is knocked in)
+    p.aGuard = pl.guardFlash;
     if (pl.hp < p.aHp - 0.01f) s["hurt"] = p.aHp - pl.hp;
     else if (pl.hp > p.aHp + 0.01f) s["hp"] = pl.hp;
     p.aHp = pl.hp;

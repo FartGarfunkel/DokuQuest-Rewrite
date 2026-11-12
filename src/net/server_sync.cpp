@@ -86,6 +86,7 @@ json entitySnapshot(const Entity& e) {
     if (p->blockT > 0) s["sb"] = r3(p->blockT);   // their shield up, their roll, a parry's knock (sim/combat_rpg.h; render/char_poses.cpp)
     if (p->dodgeT > 0) { s["dg"] = r3(p->dodgeT); s["dy"] = r3(p->dodgeYaw); }
     if (p->parryFlash > 0) s["py"] = r3(p->parryFlash);   // ("bk" is their back slot, "pf" their flags)
+    if (p->guardFlash > 0) s["gf"] = r3(p->guardFlash);   // a blow taken on their shield (the guard knocked in)
   }
   // a creature's look and state, in the original's own mob snapshot (netsync.js netSnap: sim/creature.cpp Creature::snap)
   // less what the entity snapshot already has: size, coat, held things, what it's doing, pets and riders, lost limbs

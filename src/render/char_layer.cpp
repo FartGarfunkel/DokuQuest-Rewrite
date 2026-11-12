@@ -317,14 +317,14 @@ void CharacterLayer::update(GameSession& s, double dt) {
       st.block += ((up ? 1.f : 0.f) - st.block) * std::min(1.f, fdt * (up ? 16.f : 8.f));
       if (p->dodgeT > st.lastDodge + 0.05f) { st.rollU = 0.0001f; st.rollYaw = p->dodgeYaw; st.rollBack = std::fabs(wrapAngle(p->dodgeYaw - p->yaw)) > 2.0f; }
       st.lastDodge = p->dodgeT;
-      // a blow on the shield: a parry, a hit taken while it's up, an arrow stopped on it (its stamina cost: sim/combat_rpg.cpp
-      // arrowStrikeShield) — the guard is knocked in and comes back (render/char_poses.cpp)
-      {
-        const bool parry = p->parryFlash > st.lastParry + 0.05f, hurt = up && p->hurtTime > st.lastGuardHurt + 0.01f;
-        const bool knock = up && p->stamina < st.lastStam - 4.5f && p->dodgeT <= 0;
-        if (parry || hurt || knock) st.guardHit = 1;
+      // a blow on the shield: a parry, a hit taken on it, an arrow stopped on it — the guard is knocked in and comes back
+      // (render/char_poses.cpp)
+      {   // (sim/combat_rpg.h guardFlash: any blow the shield took that wasn't a parry, an arrow stopped on it too; sent to
+          // guests by net/server_host.cpp and net/server_sync.cpp)
+        const bool parry = p->parryFlash > st.lastParry + 0.05f, guard = p->guardFlash > st.lastGuard + 0.05f;
+        if (parry || guard) st.guardHit = 1;
         else if (st.guardHit > 0) st.guardHit = std::max(0.f, st.guardHit - fdt / 0.45f);
-        st.lastParry = p->parryFlash; st.lastStam = p->stamina; st.lastGuardHurt = p->hurtTime;
+        st.lastParry = p->parryFlash; st.lastGuard = p->guardFlash;
       }
       if (st.rollU > 0 && (st.rollU += fdt / 0.40f) >= 1) st.rollU = 0;   // (DODGE_TIME)
       if (!devPose.empty() && p == s.player && (devPose == "roll" || devPose == "rollback")) {
