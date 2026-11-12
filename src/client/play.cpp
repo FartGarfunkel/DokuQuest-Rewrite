@@ -5,6 +5,7 @@
 #include "assets/cape_tex.h"
 #include "client/app.h"
 #include "ui/screen.h"
+#include "ui/book_ui.h"
 #include "client/photo_mode.h"
 #include <random>
 
@@ -29,6 +30,9 @@ struct LocalState {
   glm::dvec3 leanTgt{0};
   float leanKeep = 0.9f, leanW = 0;
   u64 leanFrame = 0;
+  // a menu opened in third person (the journal): the view mode it was in (-1: none), how far behind the eye the camera
+  // still is as it comes in to read it
+  int bookView = -1; float bookIn = 0;
 };
 static std::unordered_map<GameSession*, std::array<LocalState, 4>>& states() { static std::unordered_map<GameSession*, std::array<LocalState, 4>> m; return m; }
 static LocalState& stateOf(GameSession& s) {
@@ -122,6 +126,19 @@ void clientPlayerCamera(GameSession& s, Camera& cam, double dtd) {
       return;
     }
   }
+  // a menu (the journal) opened in third person: the view comes in to your eyes and you read it in your hands, the
+  // physical book as in first person (ui/book_ui.h; flat on the screen it was a different book); shut, it goes back out
+  {
+    const bool book = !s.split() && !p.dead && set.extra.value("bookMenus", true) && isBookScreen(s.app.topScreen());
+    if (book && s.viewMode != 0 && st.bookView < 0) {
+      st.bookView = s.viewMode;
+      st.bookIn = s.viewMode == 3 ? 0.f : s.viewMode == 1 ? 2.6f : st.hasTp ? st.tpDist : 4.f;   // (from in front: straight in)
+      s.viewMode = 0;
+    } else if (!book && st.bookView >= 0) {
+      if (s.viewMode == 0) { s.viewMode = st.bookView; st.hasTp = true; st.tpDist = 0.6f; st.hasShoulder = false; }   // (eases back out)
+      st.bookView = -1; st.bookIn = 0;
+    }
+  }
   static thread_local std::mt19937 rng{1234};
   std::uniform_real_distribution<float> U(-0.5f, 0.5f);
   // view bobbing: one gentle dip with each step, a sway from side to side, a touch of roll and a little nod
@@ -151,6 +168,12 @@ void clientPlayerCamera(GameSession& s, Camera& cam, double dtd) {
   cam.pos = glm::dvec3(p.pos.x + rx * bx + sx, baseY + by + sy, p.pos.z + rz * bx);
   cam.yaw = p.yaw; cam.pitch = p.pitch - nod; cam.roll = p.dead ? 0.6f : roll;
   cam.fov = st.fov;
+  if (st.bookIn > 0.01f) {   // coming in from behind to read the book (above): never through a wall
+    const vec3 back = -lookVector(p.yaw, p.pitch);
+    RayHit bh = raycastBlocks(w, cam.pos, back, st.bookIn + 0.25f);
+    cam.pos += glm::dvec3(back) * (double)std::min(st.bookIn, bh.hit ? std::max(0.f, bh.dist - 0.25f) : st.bookIn);
+    st.bookIn *= std::exp(-dt * 9.f);
+  } else st.bookIn = 0;
   // leaning in over something (a lectern's book): along the line from your eyes to it, never through a wall
   {
     const float want = s.app.frame - st.leanFrame <= 1 && s.viewMode == 0 && !p.dead ? 1.f : 0.f;
