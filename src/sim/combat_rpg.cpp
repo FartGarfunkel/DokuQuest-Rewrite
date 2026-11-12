@@ -1,5 +1,6 @@
 // sim/combat_rpg.cpp — the combat batch's rules. Bars and animations read the fields; they are not drawn here.
 #include "sim/combat_rpg.h"
+#include "sim/shield_shape.h"
 #include "sim/skills.h"
 #include "sim/gameplay.h"
 #include "core/registry.h"
@@ -163,6 +164,53 @@ float combatRpgBossCap(Level& lv, Entity& e, float dmg) {
 float combatRpgMobScale(const Entity& attacker, float amount) {
   if (attacker.mobLevel <= 1) return amount;
   return amount * (1.f + 0.03f * (attacker.mobLevel - 1));
+}
+
+bool arrowStrikeShield(Level& lv, Entity& arrow, const vec3& from, const vec3& to) {
+  const vec3 step = to - from;
+  if (glm::dot(step, step) < 1e-8f) return false;
+  const u32 owner = arrow.data.value("owner", 0u);
+  Player* hit = nullptr;
+  float best = 2.f;
+  for (auto& up : lv.entities()) {
+    auto* p = dynamic_cast<Player*>(up.get());
+    if (!p || p->removed || p->dead || p->realm != arrow.realm || p->id == owner) continue;
+    ShieldBox box;
+    if (!playerShieldBox(*p, box)) continue;
+    float t = 0;
+    if (!shieldRayHit(box, from, step, 1.f, &t) || t >= best) continue;
+    best = t; hit = p;
+  }
+  if (!hit) return false;
+  const vec3 at = from + step * best;
+  const bool parry = hit->blockT > 0 && hit->blockT < PARRY_WINDOW && hit->stamina >= PARRY_COST;
+  if (parry) {
+    hit->stamina = std::max(0.f, hit->stamina - PARRY_COST);
+    hit->data["stamIdle"] = 0;
+    hit->parryFlash = 0.35f;
+    hit->blockT = PARRY_WINDOW;
+    vec3 back = -arrow.vel;
+    float sp = glm::length(back);
+    if (sp < 0.5f) back = -step;
+    sp = glm::length(back);
+    if (sp > 1e-4f) back /= sp;
+    arrow.pos = at + back * 0.2f;
+    arrow.vel = back * std::max(8.f, glm::length(arrow.vel) * 0.85f);
+    arrow.data["owner"] = hit->id;
+    toast(lv, *hit, "Parry", "good");
+    sfxUi(lv, *hit, "crit");
+    sfxAt(lv, "arrow_hit", at);
+    return true;
+  }
+  if (hit->blockT > 0) {
+    hit->stamina = std::max(0.f, hit->stamina - 8.f);
+    hit->data["stamIdle"] = 0;
+  }
+  const std::string kind = arrow.data.value("item", std::string("arrow"));
+  dropItem(lv, arrow.realm, ItemStack(kind.empty() ? "arrow" : kind, 1), at, false);
+  sfxAt(lv, "arrow_hit", at);
+  arrow.removed = true;
+  return true;
 }
 
 } // namespace dq

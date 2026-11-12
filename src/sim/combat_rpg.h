@@ -22,5 +22,7 @@ bool combatRpgSecondChance(Level& lv, Player& p);
 float combatRpgOutgoing(Level& lv, Player& p, Entity& e, float dmg, bool& finishing);
 float combatRpgBossCap(Level& lv, Entity& e, float dmg);
 float combatRpgMobScale(const Entity& attacker, float amount);
+// an arrow's step from->to. true: it struck a shield and this tick is finished (absorbed, or sent back).
+bool arrowStrikeShield(Level& lv, Entity& arrow, const vec3& from, const vec3& to);
 
 } // namespace dq

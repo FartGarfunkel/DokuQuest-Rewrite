@@ -991,6 +991,7 @@ public:
       float drag = std::max(0.f, 1 - h2 * 0.25f);
       vel *= drag;
       vec3 n = pos + vel * h2;
+      if (arrowStrikeShield(lv, *this, pos, n)) return;
       const bool glanced = data.value("glanced", false);
       for (auto& e : lv.entities()) {
         if (glanced) break;   // turned aside by a Wither's hardened bones: it only falls now

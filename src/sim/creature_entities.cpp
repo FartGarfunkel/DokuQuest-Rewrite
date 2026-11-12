@@ -2,6 +2,7 @@
 // (game/entities.js DroppedItem / Projectile / FallingTree, game/blocks2.js Arrow, game/monsters.js HexFlask,
 // game/bestiary.js llama spit, game/dismember.js Gib, game/theend.js snowballs' landing puff).
 #include "sim/creature_entities.h"
+#include "sim/combat_rpg.h"
 #include "sim/creature_rig.h"
 #include "sim/slime_goo.h"
 #include "sim/mob_combat.h"
@@ -111,6 +112,7 @@ public:
       vel.y -= 20 * hh;
       float drag = std::max(0.f, 1 - hh * 0.25f); vel *= drag;
       vec3 n = pos + vel * hh;
+      if (arrowStrikeShield(lv, *this, pos, n)) return;
       if (arrowHitsPawn(lv, *this, n, owner)) { removed = true; return; }
       if (Creature* c = creatureHit(lv, realm, n, owner ? owner->id : 0, 0.1f, &pos)) {
         float speed = glm::length(vel), sl = speed > 0 ? speed : 1;
