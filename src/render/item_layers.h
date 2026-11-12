@@ -31,6 +31,9 @@ public:
   // the hands the hook took last frame: the first-person body (render/char_layer.cpp) leaves that arm out, so a map held
   // up in both hands doesn't have your own left arm hanging beside it as a third
   inline static int handsTaken = 0;
+  // which hands the hand view drew last frame (1 the main, 2 the other): in seamless first person the body's own arms
+  // (render/char_layer.cpp) are the rest, so there are never two of one arm
+  inline static int armsDrawn = 0;
   inline static std::function<void(GameSession&, const FrameCtx&, const mat4& proj, const ItemStack&, const mat4& m, const VoxelModel&)> itemHook;
   // where the flame of a torch held in each hand was last drawn (world space; render/held_light_fx.cpp)
   inline static glm::dvec3 torchTip[2]{}; inline static bool torchTipOn[2]{};

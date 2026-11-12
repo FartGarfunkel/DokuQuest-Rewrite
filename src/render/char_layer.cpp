@@ -180,7 +180,7 @@ void shieldInHand(const CharRig& R, int part, const std::string& id, float side,
   voxelRenderer().draw(im.gl, shieldPlacement(R, part, side, k) * im.matrix(), light, tint, glint ? 1.f : 0.f);
 }
 // skins.js held(): an item in a fist (fore = the forearm's frame, model pixels about the elbow; side -1 = the left hand)
-void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0), const std::string& modelKey = "") {
+void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0), const std::string& modelKey = "", vec3* headOut = nullptr) {
   if (id == "fishing_rod") id = "fishing_rod_tp";
   const VoxelModel& im = itemModel(modelKey.empty() ? id : modelKey);
   if (!im.ready()) return;
@@ -228,6 +228,7 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
     hm = glm::scale(hm, vec3((1 + T[2]) / CHAR_PX)) * heldMat(id);
   }
   (void)side;
+  if (headOut) *headOut = vec3(hm * vec4(0, 0.15f, 0, 1));   // (a torch's head, where its flame burns: render/held_light_fx.cpp)
   if (rodOwner && (id == "fishing_rod_tp" || id == "fishing_rod_cast")) setRodTip(rodOwner, camPos + glm::dvec3(hm * vec4(0.47f, 0.47f, 0, 1)), now);
   if (g_dials && isInstrument(id) && im.kind != VoxelModel::Block) g_dials->push_back({id, hm, vec2(light.sky, light.block)});
   voxelRenderer().draw(im.gl, hm * im.matrix(), light, tint, glint ? 1.f : 0.f);
@@ -732,7 +733,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   }
   ps.capeA = st.capeA; ps.capeSway = st.capeSway;
   ps.fp = fp;
-  ps.fpLeftArm = fp && wear.off.empty() && !ps.hang && !(ps.climb > 0) && !(p.bowPull > 0);
+  ps.fpLeftArm = fp && !(p.bowPull > 0);   // (a drawn bow: render/fp_bow.cpp has both hands)
   // a map held up in both hands (or anything else the hand view takes the left hand for) has its own two arms: yours
   // stays out of it, so there are never three (render/item_layers.h handsTaken; a map in the main hand with the other
   // hand free is held in both)
@@ -883,8 +884,11 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   for (int i : {CP_BODY, CP_ARMR_U, CP_ARMR_D, CP_ARML_U, CP_ARML_D}) hid[i] = !AR[1].empty();
   hid[CP_LEGR_U] = hid[CP_LEGL_U] = !AR[2].empty();
   hid[CP_LEGR_D] = hid[CP_LEGL_D] = !AR[2].empty() || !AR[3].empty();
-  bool fpArmL = fp && R.fpTorso && ps.fpLeftArm && !ps.paddle;
-  const bool fpAtk = fp && ps.atkMove && ps.atkMove < MV_COUNT, fpAtkLeft = fpAtk && attackMove(ps.atkMove).leftHand;
+  // seamless first person: your own arms, as the others see them, except a hand the hand view drew (a book or map held up
+  // to read, what you carry: render/item_layers.h armsDrawn)
+  const int hv = fp ? HeldItemLayer::armsDrawn : 0;
+  const bool fpArmL = fp && R.fpTorso && ps.fpLeftArm && !ps.paddle && !(hv & 2);
+  const bool fpArmR = fp && R.fpTorso && !ps.paddle && !(hv & 1) && !ps.carry;
   if (fp && (ps.reach || ps.sitGround || ps.bed >= 0)) for (int i : {CP_ARMR_U, CP_ARMR_D, CP_ARML_U, CP_ARML_D}) hid[i] = true;   // (no sleeve layer over them so close to the eye)
   // which parts show: in first person only what you see looking down (the head and the right arm are the view's own)
   auto shows = [&](int i) {
@@ -897,9 +901,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     // sat on the ground: your forearms over your knees, as the others see them (the upper arms are by the eye)
     if ((ps.sitGround || ps.bed >= 0) && (i == CP_ARMR_U || i == CP_ARML_U)) return false;
     if ((ps.sitGround || ps.bed >= 0) && (i == CP_ARMR_D || i == CP_ARML_D)) return !o.fpNoArms;
-    // an attack move: the striking arm, whole on its shoulder, and what it holds do the cut as the others see it
-    if (fpAtk && (fpAtkLeft ? (i == CP_ARML_U || i == CP_ARML_D) : (i == CP_ARMR_U || i == CP_ARMR_D))) return true;
-    if (i == CP_ARMR_U || i == CP_ARMR_D) return false;
+    if (i == CP_ARMR_U || i == CP_ARMR_D) return fpArmR;
     if (i == CP_ARML_U || i == CP_ARML_D) return fpArmL;
     if (i == CP_BODY) return R.fpTorso;
     return true;
@@ -942,10 +944,9 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     for (auto& [part, mesh] : G) {
       if (o.headOnly && part != "head" && part != "neck") continue;
       if (fp && (part == "head" || part == "neck" || part == "cape" || part == "capeLo" || part == "tail")) continue;
-      const bool atkFore = fpAtk && (fpAtkLeft ? (part == "armL" || part == "foreL") : (part == "armR" || part == "foreR"));   // (an attack move: the striking arm)
-      if (fp && !atkFore && !R.fpTorso && part != "legR" && part != "legL" && part != "shinR" && part != "shinL") continue;
-      if (fp && !atkFore && !fpArmL && (part == "armL" || part == "foreL")) continue;
-      if (fp && !atkFore && (part == "armR" || part == "foreR")) continue;
+      if (fp && !R.fpTorso && part != "legR" && part != "legL" && part != "shinR" && part != "shinL") continue;
+      if (fp && !fpArmL && (part == "armL" || part == "foreL")) continue;
+      if (fp && !fpArmR && (part == "armR" || part == "foreR")) continue;
       auto fm = R.gear.find(part);
       if (fm == R.gear.end() || !mesh.ready()) continue;
       VR.draw(mesh.gl, fm->second * mesh.local(), light, tint);
@@ -1042,18 +1043,27 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     }
     }
   }
-  // ---- an attack move in first person: the weapon in the striking hand, doing the cut (the hand view is down meanwhile)
-  if (fpAtk && !fpAtkLeft && !wear.held.empty() && !isShieldItem(wear.held))
-    heldInHand(gripTurn(R.part[CP_ARMR_D], R.toolR), wear.held, 1.f, light, tint, wear.heldGlint, 0, o.time, o.camPos, wear.heldModel);
-  // ---- what's in their hands (third person): Minecraft's thirdperson_righthand / lefthand ----
-  if (!fp) {
+  // ---- what's in their hands (third person: Minecraft's thirdperson_righthand / lefthand; seamless first person: the
+  // same, in your own hands, for each hand that is your body's)
+  if (!fp || fpArmR || fpArmL) {
+    const bool mainOn = !fp || fpArmR, offOn = !fp || fpArmL;
     bool bowDraw = ps.bow > 0 && wear.held.rfind("bow", 0) == 0;
-    if (bowDraw) drawnBow(R, light, tint, wear.heldGlint);
-    else if (ps.scope && wear.held == "spyglass") spyglassAtEye(R.part[CP_HEAD], light, tint);
+    if (bowDraw) { if (!fp) drawnBow(R, light, tint, wear.heldGlint); }   // (first person: render/fp_bow.cpp)
+    else if (!mainOn) {}
+    else if (ps.scope && wear.held == "spyglass") { if (!fp) spyglassAtEye(R.part[CP_HEAD], light, tint); }
     else if (isShieldItem(wear.held)) shieldInHand(R, CP_ARMR_D, wear.held, 1.f, ps.blockMain ? ps.block : 0.f, light, tint, wear.heldGlint);
-    else if (!wear.held.empty()) heldInHand(gripTurn(R.part[CP_ARMR_D], R.toolR), wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel);
-    if (!wear.off.empty() && !bowDraw && isShieldItem(wear.off)) shieldInHand(R, CP_ARML_D, wear.off, -1.f, ps.blockMain ? 0.f : ps.block, light, tint, wear.offGlint);
-    else if (!wear.off.empty() && !bowDraw) heldInHand(gripTurn(R.part[CP_ARML_D], R.toolL), wear.off, -1.f, light, tint, wear.offGlint);
+    else if (!wear.held.empty()) {
+      vec3 head;
+      heldInHand(gripTurn(R.part[CP_ARMR_D], R.toolR), wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel, fp ? &head : nullptr);
+      if (fp) { HeldItemLayer::torchTip[0] = o.camPos + glm::dvec3(head); HeldItemLayer::torchTipOn[0] = true; }   // (your own torch's flame, at its head)
+    }
+    if (!offOn || bowDraw) {}
+    else if (!wear.off.empty() && isShieldItem(wear.off)) shieldInHand(R, CP_ARML_D, wear.off, -1.f, ps.blockMain ? 0.f : ps.block, light, tint, wear.offGlint);
+    else if (!wear.off.empty()) {
+      vec3 head;
+      heldInHand(gripTurn(R.part[CP_ARML_D], R.toolL), wear.off, -1.f, light, tint, wear.offGlint, 0, 0, glm::dvec3(0), "", fp ? &head : nullptr);
+      if (fp) { HeldItemLayer::torchTip[1] = o.camPos + glm::dvec3(head); HeldItemLayer::torchTipOn[1] = true; }
+    }
   }
   // ---- the journal (render/book_model.h): on the belt at the left hip, or held open before them in both hands ----
   if (!o.headOnly && o.detail) {

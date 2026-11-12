@@ -1,5 +1,6 @@
 // render/item_layers.cpp — the first-person hand with the held item, and dropped items (voxel models).
 #include "sim/attack_moves.h"
+#include "sim/maps.h"
 #include "render/char_anim.h"
 #include "ui/book_ui.h"
 #include "render/content_draw.h"
@@ -266,6 +267,7 @@ void HeldItemLayer::update(GameSession& s, double dt) {
 }
 
 void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
+  armsDrawn = 0;   // (set again below for the hands this view draws)
   // leaning over a station: the hands are the scene's. Sat by the campfire in seamless (immersive) first person: your own
   // body's arms, as the others see them (render/char_layer.cpp), so no hand view; it stays when the body isn't drawn
   // (fpBody off) or your bag is open there
@@ -327,6 +329,12 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   glEnable(GL_CULL_FACE); glCullFace(GL_BACK); glDisable(GL_BLEND);
   int taken = handsHook ? handsHook(*this, s, f, proj) : 0;
   handsTaken = taken;
+  // seamless first person (settings.fpBody): your hands are your body's own, as the others see them (render/char_layer.cpp),
+  // not a hand view; this view keeps only what you hold up to read (a book, your journal, a map, your bag at a station),
+  // what you carry in both arms, and a station's own scene
+  const bool bodyHands = s.app.settings.fpBody && !p->swimming && !p->crawling && !p->sleeping;
+  int drew = taken & 3;
+  struct ArmsOut { int& d; ~ArmsOut() { HeldItemLayer::armsDrawn = d; } } armsOut{drew};
   std::vector<std::pair<ItemStack, mat4>> over;
   VoxelRenderer& VR = voxelRenderer();
   VR.begin(f, proj, false);
@@ -457,7 +465,8 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     }
   };
 
-  if (p->hang || p->climb) {
+  if ((p->hang || p->climb) && !bodyHands) {
+    drew = 3;
     // local.js handState: hanging from a ledge (or hauling yourself up): both hands up on the edge just above your
     // eyes, coming up from the lower corners; hand over hand while you shimmy along it
     float k = p->climb ? std::min(1.f, p->climb->t / 0.55f) : 0.f;
@@ -472,6 +481,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     return;
   }
   if (p->carrying.is_object()) {   // Carry On (local.js handState): whatever you hold sits in both arms in front of you
+    drew = 3;
     drawCarriedThing(p->carrying, glm::translate(mat4(1), vec3(bx, -0.62f + by - eq * 0.5f, -0.95f)), true, L, vec4(0));
     for (float side : {-1.f, 1.f}) {
       mat4 a = glm::translate(mat4(1), vec3(side * 0.5f + bx, -0.5f + by - eq * 0.5f, -0.62f));
@@ -488,6 +498,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   {   // a book you read (or write in): held open in both hands before you, its pages turning (ui/held_book.h)
     JournalPic hc, hp; float hleaf = -1; int hdir = 1;
     if (heldBookView(hc, hp, hleaf, hdir)) {
+      drew = 3;
       const float D = 0.5f, tanH = 1.f / std::max(0.1f, proj[1][1]);
       const float jh = 2 * D * tanH * 0.5f, jw = jh * 1.6f, bend = 0.3f;
       const vec3 c(0, -0.08f, -D);
@@ -517,6 +528,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   static float open = 0;
   if (!(p->activity & Player::ACT_SCREEN)) open = 0;
   else {
+    drew = 3;
     static double bookT = -1, flipAt = -10; static u8 lastFlip = 0;
     const float dtb = bookT < 0 ? 0.f : (float)std::clamp(f.time - bookT, 0.0, 0.1); bookT = f.time;
     open = std::min(1.f, open + dtb * 3.f);
@@ -622,12 +634,16 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       drawArm(m);
     }
     offBook = true;
+    drew |= 2;
   }
+  const bool mapHeld = isMapStack(held);   // (a map is held up to read in the hand view)
   if (taken & 1) {}
-  else if (biting) holdIn(1, ItemStack(p->eatId, 1), 0, eatModelKey(p->eatId, 1 - eatAnim / EAT_ANIM));
-  else if (cinematicForgeT() >= 0 && !cinematicLeaning()) holdIn(1, ItemStack("smith_hammer", 1), 0);   // forging at the anvil: the hammer in your own hand, a swing on each blow
-  else if (!held.empty() && held.def()) holdIn(1, held, 0);
+  else if (cinematicForgeT() >= 0 && !cinematicLeaning()) { drew |= 1; holdIn(1, ItemStack("smith_hammer", 1), 0); }   // forging at the anvil: the hammer in your own hand, a swing on each blow
+  else if (bodyHands && !mapHeld) {}   // (your body's own right hand: render/char_layer.cpp)
+  else if (biting) { drew |= 1; holdIn(1, ItemStack(p->eatId, 1), 0, eatModelKey(p->eatId, 1 - eatAnim / EAT_ANIM)); }
+  else if (!held.empty() && held.def()) { drew |= 1; holdIn(1, held, 0); }
   else {
+    drew |= 1;
     // empty hand: the forearm reaches in from the lower right, like the classic game
     mat4 m = glm::translate(mat4(1), vec3(0.5f + bx, -0.39f + by - eqMain * 0.55f - eat * 0.1f + fo.dy, -0.5f));
     m = glm::rotate(m, 0.33f, vec3(0, 1, 0));
@@ -636,7 +652,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     drawArm(m);
   }
   // the off hand, mirrored on the left
-  if (!(taken & 2) && !offBook && !p->offhand.empty() && !p->offhand[0].empty() && p->offhand[0].def()) holdIn(-1, p->offhand[0], -0.02f);
+  if (!(taken & 2) && !offBook && !p->offhand.empty() && !p->offhand[0].empty() && p->offhand[0].def() && (!bodyHands || isMapStack(p->offhand[0]))) { drew |= 2; holdIn(-1, p->offhand[0], -0.02f); }
   VR.end();
   if (offBook) {   // its pages, and where they are on the window (the mouse goes through them: ui/book_ui.h)
     ContentDraw& cd = contentDraw();

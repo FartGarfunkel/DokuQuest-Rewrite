@@ -41,7 +41,7 @@ public:
         const Kind k = kindOf(h == 0 ? p->held() : (p->offhand.empty() ? ItemStack() : p->offhand[0]));
         if (k == NONE) continue;
         glm::dvec3 tip;
-        if (fp) { if (!HeldItemLayer::torchTipOn[h]) continue; tip = HeldItemLayer::torchTip[h]; }
+        if (fp) { if (!HeldItemLayer::torchTipOn[h]) continue; tip = HeldItemLayer::torchTip[h]; }   // (the hand view's torch, or your body's own)
         else {   // at the hand: a little to the side, forward, the head of the torch above the fist
           const float side = h == 0 ? 1.f : -1.f, c = std::cos(p->yaw), sn = std::sin(p->yaw);
           const vec3 rt(c, 0, -sn), fw(-sn, 0, -c);

@@ -538,13 +538,8 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
   R.toolR = A.toolR; R.toolL = A.toolL;
   if (pose.fp && pose.bed < 0) {
     const CharAngles A0 = A;
-    A.body.x *= 0.25f; A.body.y *= 0.5f; A.armL = vec3(A.armL.x * 0.45f, A.armL.y, A.armL.z - 0.06f); A.foreL.x *= 0.5f;
-    if (fpK < 1) { A.body = A0.body + (A.body - A0.body) * fpK; A.armL = A0.armL + (A.armL - A0.armL) * fpK; A.foreL = A0.foreL + (A.foreL - A0.foreL) * fpK; }
-    // a cut passes close before the chest, under a 70-degree view: in first person the chest leans back a little through
-    // the swing, so the arms (on their shoulders) bring it up before your eyes. DQ_DEV_FPLEAN tunes it (radians)
-    static float lean = -0.5f; static bool read = false;
-    if (!read) { read = true; if (const char* v = std::getenv("DQ_DEV_FPLEAN")) lean = (float)std::atof(v); }
-    A.body.x += lean * (1 - fpK);
+    A.body.x *= 0.25f; A.body.y *= 0.5f;   // (the chest's lean and turn held down: the eyes don't ride them. The arms are the third person's)
+    if (fpK < 1) A.body = A0.body + (A.body - A0.body) * fpK;
   }
   R.fpTorso = pose.fp && !pose.swim && !pose.crawl && (!pose.sleep || pose.bed >= 0) && pose.deathT <= 0;
   // the body shape: leg length lifts everything above the hips, build widens, the head its own size
@@ -579,7 +574,6 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
     vec3 armA = side ? A.armL : A.armR, foreA = side ? A.foreL : A.foreR, legA = side ? A.legL : A.legR, shinA = side ? A.shinL : A.shinR;
     vec3 pu = M.pivot[up], pl = M.pivot[lu];
     vec3 armOff(pu.x * b, pu.y - 12, pu.z);
-    if (pose.fp && side == 1) armOff.z -= 0.2f / CHAR_PX * fpK, armA.x += 0.32f * fpK;   // an empty left hand, a little forward so it shows (not in a swing: there the body is the third-person one)
     R.part[up] = child(bodyM, armOff, armA);
     R.part[dn] = child(R.part[up], M.pivot[dn] - pu, foreA);
     R.part[lu] = child(root, vec3(pl.x * b, hip, pl.z), legA);
