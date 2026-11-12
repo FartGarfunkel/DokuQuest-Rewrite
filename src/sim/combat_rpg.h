@@ -10,7 +10,7 @@ class Entity;
 class Player;
 struct PlayerInput;
 
-// Player: stamina, maxStamina, dodgeT, dodgeYaw, blockT, parryFlash,
+// Player: stamina, maxStamina, dodgeT, dodgeYaw, blockT, parryFlash, guardFlash,
 //         statCon, statStr, statAgi, statInt, statLck, statFoc, statPoints, secondChanceCd
 // Entity: posture, maxPosture, staggerT, mobLevel
 // A boss's per-second damage window stays in entity data (bossDmg, bossDmgT). It is not a HUD field.

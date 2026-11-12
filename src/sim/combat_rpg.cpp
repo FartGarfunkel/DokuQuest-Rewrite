@@ -49,6 +49,7 @@ void combatRpgTick(Level& lv, Player& p, float dt) {
   p.data["stamIdle"] = idle;
   if (p.dodgeT > 0) p.dodgeT = std::max(0.f, p.dodgeT - dt);
   if (p.parryFlash > 0) p.parryFlash = std::max(0.f, p.parryFlash - dt);
+  if (p.guardFlash > 0) p.guardFlash = std::max(0.f, p.guardFlash - dt);
   if (p.staggerT > 0) p.staggerT = std::max(0.f, p.staggerT - dt);
   if (p.posture > 0 && p.staggerT <= 0) p.posture = std::max(0.f, p.posture - 8.f * dt);
   if (p.secondChanceCd > 0) p.secondChanceCd = std::max(0.f, p.secondChanceCd - dt);
@@ -119,7 +120,7 @@ float combatRpgIncoming(Level& lv, Player& p, float amount, DamageSource& src) {
     sfxUi(lv, p, "crit");
     return 0;
   }
-  if (p.blockT > 0) return amount * BLOCK_KEEP;
+  if (p.blockT > 0) { p.guardFlash = 0.35f; return amount * BLOCK_KEEP; }
   return amount;
 }
 
@@ -206,6 +207,7 @@ bool arrowStrikeShield(Level& lv, Entity& arrow, const vec3& from, const vec3& t
     hit->stamina = std::max(0.f, hit->stamina - 8.f);
     hit->data["stamIdle"] = 0;
   }
+  hit->guardFlash = 0.35f;
   const std::string kind = arrow.data.value("item", std::string("arrow"));
   dropItem(lv, arrow.realm, ItemStack(kind.empty() ? "arrow" : kind, 1), at, false);
   sfxAt(lv, "arrow_hit", at);

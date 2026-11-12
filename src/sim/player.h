@@ -56,7 +56,7 @@ public:
   float eye = EYE;
   float air = AIR_MAX;
   int xp = 0, level = 0, heartCrystals = 0;
-  float stamina = 100, maxStamina = 100, dodgeT = 0, dodgeYaw = 0, blockT = 0, parryFlash = 0, secondChanceCd = 0;
+  float stamina = 100, maxStamina = 100, dodgeT = 0, dodgeYaw = 0, blockT = 0, parryFlash = 0, guardFlash = 0, secondChanceCd = 0;
   int statCon = 0, statStr = 0, statAgi = 0, statInt = 0, statLck = 0, statFoc = 0, statPoints = 0;
   float fuel = 0;
   float invuln = 0, hurtFlash = 0, hurtTilt = 0, burn = 0, slow = 0;
