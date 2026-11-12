@@ -30,4 +30,11 @@ void loadTileVariants(TileSet& ts, const PackFS& P, const std::unordered_map<std
 struct TileVariants { std::vector<int> tiles; std::vector<u32> cum; u32 total = 0; };
 const TileVariants* tileVariants(int tile);
 
+// a large chest drawn as one (the pack's entity/chest/<kind>_left / _right halves): per half (0 = the one on your left
+// as you face it) its front, its back, and its lid's top turned for each facing (meta & 3); keyed by the single chest's
+// front tile
+struct DoubleChestTiles { int front[2] = {-1, -1}, back[2] = {-1, -1}, top[2][4] = {{-1, -1, -1, -1}, {-1, -1, -1, -1}}; };
+void loadDoubleChests(TileSet& ts, const PackFS& P);
+const DoubleChestTiles* doubleChestFor(int singleFrontTile);
+
 } // namespace dq

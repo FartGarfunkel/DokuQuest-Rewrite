@@ -358,6 +358,7 @@ std::string applyResourcePack(TileSet& ts, const std::string& choice) {
   loadPackModels(ts, *P, {"torch", "wall_torch", "soul_torch", "soul_wall_torch", "redstone_torch", "redstone_wall_torch",
                           "redstone_torch_off", "redstone_wall_torch_off", "copper_torch", "copper_wall_torch"});
   loadTileVariants(ts, *P, baseTiles);
+  loadDoubleChests(ts, *P);
   deriveMicroVoxelHeights(ts);
   DQ_LOG("resource pack '%s': %d pictures (%d items, %d animated, %dpx), %d chests, %d armour sets", P->name().c_str(), used, nItems, animated, resSeen, chests, armor);
   std::string nm = P->name();

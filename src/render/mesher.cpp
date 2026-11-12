@@ -345,6 +345,21 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
   if (self.render == Render::Cutout) mat |= Mat::Cutout | Mat::NoRelief;
   if (R.tTrans[id]) mat |= Mat::Translucent | Mat::NoRelief;
   static const int AXIS_END[3][2] = {{2, 3}, {0, 1}, {4, 5}};
+  // a large chest: two of the same, side by side, facing the same way — each drawn as its half of one (assets/pack_models.h)
+  const DoubleChestTiles* DC = T.hasFront ? doubleChestFor(faces[4]) : nullptr;
+  int dcHalf = -1;
+  if (DC) {
+    static const int FX[4] = {0, 1, 0, -1}, FZ[4] = {1, 0, -1, 0};
+    const int fd = meta & 3;
+    // your right as you face its front: front (0,0,1) -> right (1,0,0), front (1,0,0) -> right (0,0,-1)
+    const int rgx = FZ[fd], rgz = -FX[fd];
+    auto same = [&](int dx, int dz) { return c.at(x + dx, y, z + dz) == id && (c.metaAt(x + dx, y, z + dz) & 3) == fd; };
+    const bool R1 = same(rgx, rgz), L1 = same(-rgx, -rgz);
+    if (R1 && L1) {   // (a row of three or more: pairs from the row's world position)
+      const int along = rgx ? x + c.wx0 : z + c.wz0, sgn = rgx ? rgx : rgz;
+      dcHalf = ((along * sgn) & 1) ? 1 : 0;
+    } else if (R1) dcHalf = 0; else if (L1) dcHalf = 1;
+  }
   for (int f = 0; f < 6; f++) {
     const FaceDef& F = FACES[f];
     BlockId nb = c.at(x + F.n[0], y + F.n[1], z + F.n[2]);
@@ -359,6 +374,12 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
     if (T.leaves && traits(nb).leaves && leafHidden(c, x, y, z, F.n)) continue;
     int tile = faces[f], rot = 0;
     if (T.hasFront && f != 2 && f != 3) tile = f == frontFace ? faces[4] : faces[0];
+    if (dcHalf >= 0) {
+      static const int OPP[6] = {1, 0, 3, 2, 5, 4};
+      if (f == frontFace) tile = DC->front[dcHalf];
+      else if (f == OPP[frontFace]) tile = DC->back[dcHalf];
+      else if (f == 2) tile = DC->top[dcHalf][meta & 3];
+    }
     if (axis) {
       tile = (f == AXIS_END[axis][0] || f == AXIS_END[axis][1]) ? faces[2] : faces[0];
       rot = (axis == 1 && f >= 2) || (axis == 2 && f <= 1) ? 1 : 0;

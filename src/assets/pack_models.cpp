@@ -3,6 +3,7 @@
 #include "assets/pack_fs.h"
 #include "assets/tileset.h"
 #include <atomic>
+#include <array>
 #include <map>
 #include <unordered_map>
 #include <stb_image.h>
@@ -105,6 +106,59 @@ const TileVariants* tileVariants(int tile) {
   if (!v) return nullptr;
   auto it = v->find(tile);
   return it == v->end() ? nullptr : &it->second;
+}
+
+namespace { std::shared_ptr<const std::unordered_map<int, DoubleChestTiles>> g_dchest; }
+void loadDoubleChests(TileSet& ts, const PackFS& P) {
+  auto D = std::make_shared<std::unordered_map<int, DoubleChestTiles>>();
+  const bool flip = !P.legacy && (P.packFormat == 0 || P.packFormat >= 5);   // (as packs.cpp packChests: the boxes' sides upside down)
+  const int T = ts.size;
+  static const vec3 FRONT[4] = {{0, 0, 1}, {1, 0, 0}, {0, 0, -1}, {-1, 0, 0}};
+  const char* kinds[2][2] = {{"normal", "chest"}, {"trapped", "trapped_chest"}};
+  for (auto& k : kinds) {
+    auto fi = ts.index.find(std::string(k[1]) + "_front");
+    if (fi == ts.index.end()) continue;
+    DoubleChestTiles dc;
+    bool ok = true;
+    for (int half = 0; half < 2 && ok; half++) {
+      auto bytes = P.read(P.texRoot + "entity/chest/" + k[0] + (half ? "_right" : "_left") + ".png");
+      int w = 0, h = 0, n = 0;
+      u8* px = bytes ? stbi_load_from_memory(bytes->data(), (int)bytes->size(), &w, &h, &n, 4) : nullptr;
+      if (!px || w < 64 || h < 64) { if (px) stbi_image_free(px); ok = false; break; }
+      const double s = w / 64.0;
+      auto get = [&](double u, double v) { const int sx = std::clamp((int)std::floor(u * s), 0, w - 1), sy = std::clamp((int)std::floor(v * s), 0, h - 1); const u8* p = px + ((size_t)sy * w + sx) * 4; return std::array<u8, 4>{p[0], p[1], p[2], p[3]}; };
+      auto strip = [&](double u, double v, double sw, double sh, double fx, double fy) { return get(u + fx * sw, v + (flip ? 1 - fy : fy) * sh); };
+      // a side of the half (front at u 14, back at u 43): the lid's 5 rows over the base's 10
+      auto side = [&](double u0, double fx, double fy) { return fy < 5.0 / 15 ? strip(u0, 14, 15, 5, fx, fy * 3) : strip(u0, 33, 15, 10, fx, (fy - 5.0 / 15) * 1.5); };
+      std::vector<u8> t((size_t)T * T * 4);
+      auto make = [&](auto fn) {
+        for (int y = 0; y < T; y++) for (int x = 0; x < T; x++) { auto c = fn((x + 0.5) / T, (y + 0.5) / T); u8* o = &t[((size_t)y * T + x) * 4]; o[0] = c[0]; o[1] = c[1]; o[2] = c[2]; o[3] = 255; }
+        const int idx = appendTile(ts, t.data()); ts.res.back() = (u8)T; return idx;
+      };
+      // (the halves' rows: an end at u 0, the back at u 14, the end the two meet at 29, the front — its lock split between the
+      // halves at their meeting edges — at u 43)
+      dc.front[half] = make([&](double fx, double fy) { return side(43, fx, fy); });
+      dc.back[half] = make([&](double fx, double fy) { return side(14, fx, fy); });
+      for (int f = 0; f < 4; f++) {   // the lid's top, for each facing: across it (left to right as you face the front) and from its back to its front
+        const vec3 d = FRONT[f], r = glm::cross(-d, vec3(0, 1, 0));
+        dc.top[half][f] = make([&](double fx, double fz) {
+          const vec3 p((float)fx - 0.5f, 0, (float)fz - 0.5f);
+          const double a = glm::dot(p, r) + 0.5, b = glm::dot(p, d) + 0.5;
+          return get(14 + a * 15, (1 - b) * 14);
+        });
+      }
+      stbi_image_free(px);
+    }
+    if (ok) (*D)[fi->second] = dc;
+  }
+  std::atomic_store(&g_dchest, std::shared_ptr<const std::unordered_map<int, DoubleChestTiles>>(D));
+  if (!D->empty()) DQ_LOG("pack large chests: %zu kinds drawn as one", D->size());
+}
+const DoubleChestTiles* doubleChestFor(int t) {
+  auto d = std::atomic_load(&g_dchest);
+  if (!d) return nullptr;
+  auto it = d->find(t);
+  return it == d->end() ? nullptr : &it->second;
 }
 
 const PackModel* packModel(const std::string& name) {
