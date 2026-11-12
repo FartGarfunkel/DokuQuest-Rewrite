@@ -713,23 +713,46 @@ static int genIntoRoom(const SP& P, int x, int y, int z) {
 static void fixGeneratedStand(SP& P, int x, int y, int z) {
   const BlockId STAND = bid("armor_stand");
   if (STAND == NOBLOCK || STAND == AIR || P.get(x, y, z) != STAND) return;
+  const Registry& R = reg();
+  auto doorAt = [&](int cx, int cy, int cz) {
+    const BlockId a = P.get(cx, cy, cz), b = P.get(cx, cy + 1, cz);
+    return (a != NOBLOCK && a != AIR && R.block(a).has("door")) || (b != NOBLOCK && b != AIR && R.block(b).has("door"));
+  };
+  auto step = [&](int cx, int cy, int cz) {
+    if (!P.in(cx, cz) || doorAt(cx, cy, cz)) return false;
+    const BlockId a = P.get(cx, cy, cz), b = P.get(cx, cy + 1, cz), g = P.get(cx, cy - 1, cz);
+    if (a == NOBLOCK || b == NOBLOCK || g == NOBLOCK) return false;
+    const bool feet = a == AIR || R.tReplaceable[a] || a == STAND;
+    return feet && (b == AIR || R.tReplaceable[b]) && R.tSolid[g] && R.tOpaque[g];
+  };
+  std::vector<ivec3> room, q;
+  auto add = [&](ivec3 c) {
+    if (std::max(std::abs(c.x - x), std::max(std::abs(c.y - y), std::abs(c.z - z))) > 4) return;
+    for (const ivec3& p : room) if (p.x == c.x && p.y == c.y && p.z == c.z) return;
+    if (!step(c.x, c.y, c.z)) return;
+    room.push_back(c); q.push_back(c);
+  };
+  add(ivec3(x, y, z));
+  for (size_t i = 0; i < q.size(); i++)
+    for (int k = 0; k < 4; k++) for (int dy : {0, -1, 1}) {
+      const ivec3 n = q[i] + ivec3(DIRX[k], dy, DIRZ[k]);
+      if (doorAt(n.x, n.y, n.z)) continue;
+      add(n);
+    }
   int nx = x, ny = y, nz = z;
   if (genDoorBeside(P, x, y, z)) {
     bool found = false;
     for (int pass = 0; pass < 2 && !found; pass++)
-      for (int d = 1; d <= 3 && !found; d++) for (int dz = -d; dz <= d && !found; dz++) for (int dx = -d; dx <= d && !found; dx++) {
-        if (std::max(std::abs(dx), std::abs(dz)) != d) continue;
-        for (int dy = -1; dy <= 1; dy++) {
-          const int cx = x + dx, cy = y + dy, cz = z + dz;
-          if (!genFree(P, cx, cy, cz) || genDoorBeside(P, cx, cy, cz)) continue;
-          bool wall = false;
-          for (int k = 0; k < 4; k++) {
-            const BlockId wl = P.get(cx + DIRX[k], cy, cz + DIRZ[k]);
-            if (wl != NOBLOCK && reg().tSolid[wl] && reg().tOpaque[wl] && !reg().block(wl).has("door")) wall = true;
-          }
-          if (pass == 0 && !wall) continue;
-          nx = cx; ny = cy; nz = cz; found = true; break;
+      for (const ivec3& c : room) {
+        if (c.x == x && c.y == y && c.z == z) continue;
+        if (!genFree(P, c.x, c.y, c.z) || genDoorBeside(P, c.x, c.y, c.z)) continue;
+        bool wall = false;
+        for (int k = 0; k < 4; k++) {
+          const BlockId wl = P.get(c.x + DIRX[k], c.y, c.z + DIRZ[k]);
+          if (wl != NOBLOCK && R.tSolid[wl] && R.tOpaque[wl] && !R.block(wl).has("door")) wall = true;
         }
+        if (pass == 0 && !wall) continue;
+        nx = c.x; ny = c.y; nz = c.z; found = true; break;
       }
   }
   const int face = (genIntoRoom(P, nx, ny, nz) + 2) & 3;

@@ -46,7 +46,38 @@ bool freeCell(World& w, int x, int y, int z) {
   const BlockId a = w.getBlock(x, y, z), b = w.getBlock(x, y + 1, z), g = w.getBlock(x, y - 1, z);
   return (a == AIR || R.tReplaceable[a]) && (b == AIR || R.tReplaceable[b]) && R.tSolid[g] && R.tOpaque[g] && !w.blockEntity(x, y, z);
 }
-// a door in the eight neighbours, at this height or one above (the floor just inside a door is free, and a stand was landing there)
+// the room the workplace is in: free floor you can walk to, up to r away, never stepping onto a door cell
+// (so the fill cannot leave through the doorway). A stand already there still counts as inside.
+bool doorCell(World& w, int x, int y, int z) {
+  return reg().block(w.getBlock(x, y, z)).has("door") || reg().block(w.getBlock(x, y + 1, z)).has("door");
+}
+bool stepCell(World& w, ivec3 c) {
+  if (!w.isLoaded(c.x, c.y, c.z) || doorCell(w, c.x, c.y, c.z)) return false;
+  const Registry& R = reg();
+  const BlockId a = w.getBlock(c.x, c.y, c.z), b = w.getBlock(c.x, c.y + 1, c.z), g = w.getBlock(c.x, c.y - 1, c.z);
+  const bool feet = a == AIR || R.tReplaceable[a] || a == B("armor_stand");
+  const bool head = b == AIR || R.tReplaceable[b];
+  return feet && head && R.tSolid[g] && R.tOpaque[g];
+}
+void fillRoom(World& w, ivec3 work, int r, std::vector<ivec3>& room) {
+  room.clear();
+  std::vector<ivec3> q;
+  auto add = [&](ivec3 c) {
+    if (std::max(std::abs(c.x - work.x), std::max(std::abs(c.y - work.y), std::abs(c.z - work.z))) > r) return;
+    for (const ivec3& p : room) if (p == c) return;
+    if (doorCell(w, c.x, c.y, c.z) || !stepCell(w, c)) return;
+    room.push_back(c);
+    q.push_back(c);
+  };
+  if (stepCell(w, work)) add(work);
+  else for (int k = 0; k < 4; k++) add(work + ivec3(DIRX[k], 0, DIRZ[k]));
+  for (size_t i = 0; i < q.size(); i++)
+    for (int k = 0; k < 4; k++) for (int dy : {0, -1, 1}) {
+      const ivec3 n = q[i] + ivec3(DIRX[k], dy, DIRZ[k]);
+      if (doorCell(w, n.x, n.y, n.z)) continue;
+      add(n);
+    }
+}
 bool doorBeside(World& w, int x, int y, int z) {
   for (int dy = 0; dy <= 1; dy++) for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) {
     if (!dx && !dz) continue;
@@ -100,29 +131,28 @@ bool standSpot(World& w, ivec3 work, int workF, int r, ivec3& out);
 bool findStand(World& w, ivec3 work, int r, ivec3& out) {
   const BlockId id = B("armor_stand");
   if (!id) return false;
+  std::vector<ivec3> room; fillRoom(w, work, r, room);
   bool got = false; int best = 1 << 30;
-  for (int dy = -1; dy <= 2; dy++) for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) {
-    const ivec3 c = work + ivec3(dx, dy, dz);
-    if (!w.isLoaded(c.x, c.y, c.z) || w.getBlock(c.x, c.y, c.z) != id || doorBeside(w, c.x, c.y, c.z)) continue;
-    const int d = std::abs(dx) + std::abs(dz) + (wallBeside(w, c.x, c.y, c.z) ? 0 : 8);
+  for (const ivec3& c : room) {
+    if (w.getBlock(c.x, c.y, c.z) != id || doorBeside(w, c.x, c.y, c.z)) continue;
+    const int d = std::abs(c.x - work.x) + std::abs(c.z - work.z) + (wallBeside(w, c.x, c.y, c.z) ? 0 : 8);
     if (d < best) { best = d; out = c; got = true; }
   }
   return got;
 }
-// stands the building placed in the doorway: move them, keep what they wear, and turn every stand near the workplace into the room
 void tidyStands(World& w, ivec3 work, int workF, json& rec) {
   const BlockId id = B("armor_stand");
   if (!id) return;
+  std::vector<ivec3> room; fillRoom(w, work, 4, room);
   ivec3 recAt{0}; bool hasRec = false;
   if (rec.contains("stand") && rec["stand"].is_array() && rec["stand"].size() >= 3) {
     recAt = ivec3(rec["stand"][0].get<int>(), rec["stand"][1].get<int>(), rec["stand"][2].get<int>());
     hasRec = true;
   }
   std::vector<ivec3> bad;
-  for (int dy = -1; dy <= 2; dy++) for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) {
-    const ivec3 c = work + ivec3(dx, dy, dz);
-    if (!w.isLoaded(c.x, c.y, c.z) || w.getBlock(c.x, c.y, c.z) != id) continue;
-    if (doorBeside(w, c.x, c.y, c.z)) bad.push_back(c);
+  for (const ivec3& c : room) {
+    if (w.getBlock(c.x, c.y, c.z) != id) continue;
+    if (doorBeside(w, c.x, c.y, c.z)) bad.push_back(c);   // inside, and in the doorway: move it
     else {
       const u8 face = (u8)((intoRoom(w, c) + 2) & 3);
       if ((w.getMeta(c.x, c.y, c.z) & 3) != face) w.setBlock(c.x, c.y, c.z, id, face);
@@ -130,7 +160,7 @@ void tidyStands(World& w, ivec3 work, int workF, json& rec) {
   }
   for (const ivec3& c : bad) {
     ivec3 spot;
-    if (!standSpot(w, work, workF, 3, spot)) continue;
+    if (!standSpot(w, work, workF, 4, spot)) continue;
     json ent = nullptr;
     if (json* e = w.blockEntity(c.x, c.y, c.z)) ent = *e;
     w.setBlockEntity(c.x, c.y, c.z, nullptr);
@@ -141,16 +171,13 @@ void tidyStands(World& w, ivec3 work, int workF, json& rec) {
   }
 }
 bool standSpot(World& w, ivec3 work, int workF, int r, ivec3& out) {
+  std::vector<ivec3> room; fillRoom(w, work, r, room);
   const ivec3 stand = work + ivec3(DIRX[workF & 3], 0, DIRZ[workF & 3]);
   for (int pass = 0; pass < 2; pass++)
-    for (int d = 1; d <= r; d++) for (int dz = -d; dz <= d; dz++) for (int dx = -d; dx <= d; dx++) {
-      if (std::max(std::abs(dx), std::abs(dz)) != d) continue;
-      for (int dy = -1; dy <= 1; dy++) {
-        const ivec3 c = work + ivec3(dx, dy, dz);
-        if (c == stand || c == work || !freeCell(w, c.x, c.y, c.z) || doorBeside(w, c.x, c.y, c.z)) continue;
-        if (pass == 0 && !wallBeside(w, c.x, c.y, c.z)) continue;
-        out = c; return true;
-      }
+    for (const ivec3& c : room) {
+      if (c == stand || c == work || !freeCell(w, c.x, c.y, c.z) || doorBeside(w, c.x, c.y, c.z)) continue;
+      if (pass == 0 && !wallBeside(w, c.x, c.y, c.z)) continue;
+      out = c; return true;
     }
   return false;
 }
