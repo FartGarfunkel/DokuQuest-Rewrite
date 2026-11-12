@@ -2,6 +2,7 @@
 // Player side follows game/local.js hurt + game/player.js hurt (armour 3.2% a point, at most 80%;
 // half-second hurt time; knockback away from the attacker) and game/monsters.js (venom, frost, fire).
 #include "sim/mob_combat.h"
+#include "sim/combat_rpg.h"
 #include "sim/combat.h"
 #include "sim/magic_combat.h"
 #include "sim/player.h"
@@ -86,6 +87,7 @@ void igniteEntity(Entity& e, float t) {
 
 void tickPlayerEffects(Level& lv, Player& p, float dt) {
   if (p.dead) { if (p.data.contains("fx")) p.data.erase("fx"); return; }
+  combatRpgTick(lv, p, dt);
   if (p.hurtTime > 0) p.hurtTime = std::max(0.f, p.hurtTime - dt);
   float poison = playerEffect(p, "poison");
   if (poison > 0) {

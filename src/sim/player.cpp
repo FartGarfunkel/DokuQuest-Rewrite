@@ -306,7 +306,9 @@ json Player::save() const {
   json j = Entity::save();
   j["name"] = name; j["skin"] = skin; j["mode"] = mode; j["flying"] = flying;
   j["x"] = pos.x; j["y"] = pos.y; j["z"] = pos.z; j["dim"] = jsFromDim(dimOfY(ifloor(pos.y)));
-  j["health"] = hp; j["maxHealth"] = maxHp; j["xp"] = xp; j["level"] = level; j["hv"] = 2; j["heartCrystals"] = heartCrystals; j["air"] = air;
+  j["health"] = hp; j["maxHealth"] = maxHp; j["xp"] = xp; j["level"] = level; j["hv"] = 2;  j["heartCrystals"] = heartCrystals; j["air"] = air;
+  j["stamina"] = stamina; j["secondChance"] = secondChanceCd;
+  j["rpg"] = {{"con", statCon}, {"str", statStr}, {"agi", statAgi}, {"int", statInt}, {"lck", statLck}, {"foc", statFoc}};
   j["inv"] = {{"main", slotsToJson(inv)}, {"armor", slotsToJson(armor)}, {"back", slotsToJson(back)}, {"off", slotsToJson(offhand)},
               {"hook", slotsToJson(hook)}, {"charm", slotsToJson(charm)}, {"cape", slotsToJson(cape)}, {"quiver", slotsToJson(quiver)}, {"ender", slotsToJson(ender)}, {"selected", selected}};
   j["fuel"] = fuel;
@@ -347,6 +349,14 @@ void Player::load(const json& j) {
   carrying = j.value("carrying", json());
   grave = j.value("grave", json());
   heartCrystals = clampv(j.value("heartCrystals", 0), 0, 10);
+  if (j.contains("stamina") && j["stamina"].is_number()) stamina = j["stamina"].get<float>();
+  if (j.contains("secondChance") && j["secondChance"].is_number()) secondChanceCd = j["secondChance"].get<float>();
+  if (j.contains("rpg") && j["rpg"].is_object()) {
+    const json& r = j["rpg"];
+    statCon = clampv(r.value("con", 0), 0, 15); statStr = clampv(r.value("str", 0), 0, 15);
+    statAgi = clampv(r.value("agi", 0), 0, 15); statInt = clampv(r.value("int", 0), 0, 15);
+    statLck = clampv(r.value("lck", 0), 0, 15); statFoc = clampv(r.value("foc", 0), 0, 15);
+  }
   air = j.contains("air") && j["air"].is_number() ? clampv(j["air"].get<float>(), 0.f, AIR_MAX) : AIR_MAX;
   // before 0.7, levels raised max health: those hearts come back as Heart Crystals
   if (j.value("hv", 0) != 2 && j.contains("health") && maxHp > 20) stats["refundHearts"] = (int)std::round((std::min(40.f, maxHp) - 20) / 2);

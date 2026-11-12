@@ -30,7 +30,7 @@ inline int xpForLevel(int level) { return 12 + level * 6; }
 struct PlayerInput {
   float mx = 0, mz = 0, lookX = 0, lookY = 0;
   bool jump = false, sneak = false, sprint = false, attack = false, attackPressed = false, use = false, usePressed = false;
-  bool drop = false, dropAll = false, pick = false, swap = false, place = false, crawl = false, crawlHeld = false;
+  bool drop = false, dropAll = false, pick = false, swap = false, place = false, crawl = false, crawlHeld = false, dodge = false;
   bool hotRow = false;   // BTA: the hotbar swaps with the next row of the bag (the rows turn round like pages)
   int slot = -1, wheel = 0;
 };
@@ -56,6 +56,8 @@ public:
   float eye = EYE;
   float air = AIR_MAX;
   int xp = 0, level = 0, heartCrystals = 0;
+  float stamina = 100, maxStamina = 100, dodgeT = 0, dodgeYaw = 0, blockT = 0, parryFlash = 0, secondChanceCd = 0;
+  int statCon = 0, statStr = 0, statAgi = 0, statInt = 0, statLck = 0, statFoc = 0, statPoints = 0;
   float fuel = 0;
   float invuln = 0, hurtFlash = 0, hurtTilt = 0, burn = 0, slow = 0;
   float foodCd = 0, foodPool = 0, eatAnim = 0, attackCd = 0;

@@ -18,6 +18,8 @@ public:
   float yaw = 0, pitch = 0, bodyYaw = 0, prevYaw = 0;
   float w = 0.3f, h = 1.8f;  // half-width, height
   float hp = 20, maxHp = 20;
+  float posture = 0, maxPosture = 40, staggerT = 0;
+  int mobLevel = 1;
   bool onGround = false, inWater = false, inLava = false, removed = false, noGravity = false, persistent = false;
   float age = 0, hurtTime = 0, fallDist = 0;
   u32 riding = 0;            // id of the entity this one rides

@@ -2,6 +2,7 @@
 // entities.js Mob.hurt/die, fairplay.js raw-blow floor).
 #include "core/tool_parts.h"
 #include "sim/combat.h"
+#include "sim/combat_rpg.h"
 #include "sim/magic.h"
 #include "sim/gameplay.h"
 #include "sim/rules.h"
@@ -98,6 +99,8 @@ float damagePlayer(Level& lv, Player& p, float amount, DamageSource src) {
   if ((src.type == "fall" && !rule(lv, "fallDamage")) || (src.type == "drown" && !rule(lv, "drowning")) ||
       ((src.type == "lava" || src.type == "burn") && !rule(lv, "fireDamage"))) return 0;
   src.raw = amount;
+  if (Entity* a = src.attacker ? lv.entity(src.attacker) : nullptr) amount = combatRpgMobScale(*a, amount);
+  amount = combatRpgIncoming(lv, p, amount, src);
   p.lastHurtT = gameClock(lv);
   if (p.sleeping) p.sleeping = false;
   float dealt = playerHurtRaw(p, amount, src);
@@ -107,7 +110,7 @@ float damagePlayer(Level& lv, Player& p, float amount, DamageSource src) {
   if (lv.events) lv.events->emit("rumble", json::array({p.name, std::min(1.f, 0.25f + dealt * 0.08f), 140}));
   if (src.attacker && src.knock != 0) if (Entity* a = lv.entity(src.attacker)) knockback(p, a->pos, src.knock < 0 ? 5.f : src.knock, 4);
   if (src.element == "fire" && src.type != "burn") p.burn = std::max(p.burn, 2.f);
-  if (p.hp <= 0 && !pathCheatDeath(lv, p)) playerDie(lv, p, src);   // Unbreakable: once in two minutes, half a heart instead
+  if (p.hp <= 0 && !pathCheatDeath(lv, p) && !combatRpgSecondChance(lv, p)) playerDie(lv, p, src);
   return dealt;
 }
 
@@ -164,7 +167,7 @@ static float mobHurtDefault(Level& lv, Entity& e, float amount, const DamageSour
 
 float damageEntity(Level& lv, Entity& e, float amount, const DamageSource& src) {
   if (e.isPlayer()) return damagePlayer(lv, static_cast<Player&>(e), amount, src);
-  // creatures have their own hurt (entities.js Mob.hurt with dismember.js, sounds, the death topple and drops)
+  amount = combatRpgBossCap(lv, e, amount);
   float dealt = 0;
   if (creatureTakesHit(lv, e, amount, src, dealt)) return dealt;
   if (auto* h = handlerFor(e.type)) return (*h)(lv, e, amount, src);
@@ -189,6 +192,8 @@ float attackEntity(Level& lv, Player& p, Entity& e) {
   if (!p.inv[p.selected].empty()) src.weapon = p.inv[p.selected].id;
   dmg = spellbladeHit(lv, p, e, dmg, src.element);   // a spell carried on the blade (sim/magic_hands.cpp)
   dmg *= pathMeleeFactor(p);                          // the Knight's Heavy Blows (sim/villager_quests.cpp)
+  bool finishing = false;
+  dmg = combatRpgOutgoing(lv, p, e, dmg, finishing);
   // silver (items.json "holy"): bites the undead and the cursed half as hard again
   if (!p.inv[p.selected].empty() && gearIsHoly(p.inv[p.selected]))   // (a procedural blade of silver too, core/tool_parts.h)
     if (creatureIsCursed(e)) {
@@ -206,6 +211,7 @@ float attackEntity(Level& lv, Player& p, Entity& e) {
     sfxUi(lv, p, crit ? "crit" : "hit");
     if (crit) lv.fx->particles("crit", e.pos + vec3(0, e.h * 0.6f, 0), 10);   // a burst of stars on a critical blow
     if (sneakHit) { lv.fx->particles("crit", e.pos + vec3(0, e.h * 0.7f, 0), 8); floatText(lv, p, e.pos + vec3(0, e.h + 0.55f, 0), "Sneak attack!", "#c8a0ff"); }
+    if (finishing) floatText(lv, p, e.pos + vec3(0, e.h + 0.7f, 0), "Finisher", "#ffd0a0");
     char buf[32]; snprintf(buf, sizeof buf, "%s%g", crit ? "\xE2\x9C\xA6" : "", std::round(dealt * 10) / 10);
     floatText(lv, p, e.pos + vec3(0, e.h + 0.2f, 0), buf, src.element == "fire" ? "#ffb070" : src.element == "frost" ? "#9fe8ff" : crit ? "#ffe07a" : "#ffffff");
     if (src.element == "frost") sfxUi(lv, p, "frost");

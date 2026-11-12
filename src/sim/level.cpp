@@ -9,13 +9,14 @@ namespace dq {
 // ---- entities ----
 json Entity::save() const {
   return {{"type", type}, {"realm", realm}, {"pos", {pos.x, pos.y, pos.z}}, {"vel", {vel.x, vel.y, vel.z}}, {"yaw", yaw}, {"pitch", pitch},
-          {"hp", hp}, {"maxHp", maxHp}, {"age", age}, {"persistent", persistent}, {"data", data}};
+          {"hp", hp}, {"maxHp", maxHp}, {"posture", posture}, {"mobLevel", mobLevel}, {"age", age}, {"persistent", persistent}, {"data", data}};
 }
 void Entity::load(const json& j) {
   type = j.value("type", type); realm = j.value("realm", 0);
   if (j.contains("pos")) pos = {j["pos"][0], j["pos"][1], j["pos"][2]};
   if (j.contains("vel")) vel = {j["vel"][0], j["vel"][1], j["vel"][2]};
   yaw = j.value("yaw", 0.0f); pitch = j.value("pitch", 0.0f); hp = j.value("hp", hp); maxHp = j.value("maxHp", maxHp);
+  posture = j.value("posture", 0.0f); mobLevel = j.value("mobLevel", 1);
   age = j.value("age", 0.0f); persistent = j.value("persistent", false);
   if (j.contains("data")) data = j["data"];
   prevPos = pos;

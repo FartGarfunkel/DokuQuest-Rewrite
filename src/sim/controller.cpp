@@ -4,6 +4,7 @@
 #include "sim/dyntree.h"
 #include "sim/weather.h"
 #include "sim/controller.h"
+#include "sim/combat_rpg.h"
 #include "sim/creature_rig.h"
 #include "sim/vehicles.h"
 #include "sim/effects.h"
@@ -115,6 +116,7 @@ void PlayerController::update(float dt, const PlayerInput& in) {
   t += dt;
   World& w = world();
   if (p.dead) { mining.active = false; return; }
+  combatRpgInput(lv, p, in, dt);
   p.yaw -= in.lookX; p.pitch = clampv(p.pitch - in.lookY, -1.55f, 1.55f);
   if (in.place) {
     placeMode ^= 1;
