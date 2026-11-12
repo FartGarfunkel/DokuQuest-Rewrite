@@ -17,7 +17,7 @@ float fpSwapLower(float t);
 // is the old thing still the one in the hand at t?
 bool fpSwapShowsOld(float t);
 
-struct FpState { float sprint = 0, land = 0, climb = 0, swim = 0, drink = 0; };   // each 0..1, eased by the caller
+struct FpState { float sprint = 0, land = 0, climb = 0, swim = 0, drink = 0, read = 0; };   // each 0..1, eased by the caller (read: over a lectern's book)
 struct FpOffset { float dy = 0, dz = 0, pitch = 0, roll = 0; };                   // blocks (view space), radians
 FpOffset fpStateOffset(const FpState& s, float time);
 // drunk rather than eaten: potions, bottles, mugs, flasks, milk (render/char_layer.cpp and the hand view)

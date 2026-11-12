@@ -218,6 +218,7 @@ void HeldItemLayer::update(GameSession& s, double dt) {
     ease(fps.climb, p->contacts.ladder && !p->onGround && !p->flying ? 1.f : 0.f, 8);
     ease(fps.swim, p->swimming || (p->inWater && !p->onGround) ? 1.f : 0.f, 5);
     ease(fps.drink, eatAnim > 0 && isDrinkItem(p->held().id) ? 1.f : 0.f, 10);
+    ease(fps.read, s.app.topScreen() && std::string(s.app.topScreen()->id()) == "lectern_scene" ? 1.f : 0.f, 6);
     if (p->onGround && !wasGround && lastVy < -4) fps.land = clampv(-lastVy / 14, 0.3f, 1.f);
     fps.land = std::max(0.f, fps.land - fdt * 4);
     wasGround = p->onGround; lastVy = p->vel.y;

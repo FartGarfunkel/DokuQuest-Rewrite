@@ -29,6 +29,7 @@ FpOffset fpStateOffset(const FpState& s, float t) {
   if (s.climb > 0) { o.dy -= 0.35f * s.climb; o.pitch -= 0.3f * s.climb; }
   if (s.swim > 0) { o.dy -= (0.12f + std::sin(t * 2) * 0.02f) * s.swim; o.roll += std::sin(t * 1.5f) * 0.05f * s.swim; }
   if (s.drink > 0) { o.pitch += 0.55f * s.drink; o.dy += 0.06f * s.drink; o.dz += 0.05f * s.drink; }
+  if (s.read > 0) { o.dy -= 0.5f * s.read; o.pitch -= 0.25f * s.read; }   // reading at a lectern: what you hold goes down out of the way
   return o;
 }
 

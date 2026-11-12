@@ -8,6 +8,7 @@
 #include "ui/theme.h"
 #include "client/app.h"
 #include "client/session.h"
+#include "client/play.h"
 #include "sim/player.h"
 #include "audio/audio.h"
 #include <imgui.h>
@@ -69,6 +70,7 @@ public:
     const float k = lookT * lookT * (3 - 2 * lookT);
     float dy = wy - yaw0; while (dy > PI) dy -= TAU; while (dy < -PI) dy += TAU;
     p.yaw = yaw0 + dy * k; p.pitch = pitch0 + (wp - pitch0) * k;
+    cameraLeanTo(*a.session, glm::dvec3(tgt), 0.62f);   // and you lean in over it, so its writing can be read (client/play.cpp)
     Input& in = a.input;
     const bool walk = in.down(Act::Forward) || in.down(Act::Back) || in.down(Act::Jump);   // (A / D turn the pages here: only forward, back or a jump walks off)
     if (walk || glm::distance(p.pos, vec3(at) + vec3(0.5f)) > 5.f || in.pressed(Act::Inventory)) { a.popScreen(); return; }

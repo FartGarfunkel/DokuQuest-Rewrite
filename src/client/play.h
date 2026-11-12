@@ -10,5 +10,9 @@ namespace dq {
 PlayerController* localController(GameSession& s);   // the local player's controller (null before spawn)
 void clientTickLocalPlayer(GameSession& s, double dt);
 void clientPlayerCamera(GameSession& s, Camera& cam, double dt);
+// a screen leans your eyes in toward a point, this frame (first person only; ui/lectern_screen.cpp): up to 0.85 of a
+// block along your line of sight, stopping `keep` short of it and short of any wall, the view narrowing a little more
+// if that isn't near enough; it eases in, and back out once nothing asks for it
+void cameraLeanTo(GameSession& s, glm::dvec3 target, float keep = 0.9f);
 
 } // namespace dq

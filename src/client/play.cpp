@@ -25,6 +25,10 @@ struct LocalState {
   int shoulderSide = 1;
   bool zoomKey = false;   // the Zoom key held (a quarter of the view, like OptiFine's)
   u64 menuFrame = 0;   // the last frame a menu was open (a key that just closed / switched one must not act in the world)
+  // leaning in (cameraLeanTo): where to, how far short, the last frame it was asked for, how far in it is now (0..1)
+  glm::dvec3 leanTgt{0};
+  float leanKeep = 0.9f, leanW = 0;
+  u64 leanFrame = 0;
 };
 static std::unordered_map<GameSession*, std::array<LocalState, 4>>& states() { static std::unordered_map<GameSession*, std::array<LocalState, 4>> m; return m; }
 static LocalState& stateOf(GameSession& s) {
@@ -37,6 +41,11 @@ static LocalState& stateOf(GameSession& s) {
 }
 float& controllerShake(PlayerController& c) { return c.shakeAmt; }
 PlayerController* localController(GameSession& s) { return s.player ? stateOf(s).ctl.get() : nullptr; }
+void cameraLeanTo(GameSession& s, glm::dvec3 target, float keep) {
+  if (!s.player) return;
+  LocalState& st = stateOf(s);
+  st.leanTgt = target; st.leanKeep = keep; st.leanFrame = s.app.frame;
+}
 
 void clientTickLocalPlayer(GameSession& s, double dt) {
   if (!s.player) return;
@@ -141,6 +150,23 @@ void clientPlayerCamera(GameSession& s, Camera& cam, double dtd) {
   cam.pos = glm::dvec3(p.pos.x + rx * bx + sx, baseY + by + sy, p.pos.z + rz * bx);
   cam.yaw = p.yaw; cam.pitch = p.pitch - nod; cam.roll = p.dead ? 0.6f : roll;
   cam.fov = st.fov;
+  // leaning in over something (a lectern's book): along the line from your eyes to it, never through a wall
+  {
+    const float want = s.app.frame - st.leanFrame <= 1 && s.viewMode == 0 && !p.dead ? 1.f : 0.f;
+    st.leanW += (want - st.leanW) * std::min(1.f, dt * 4.f);
+    if (st.leanW < 0.002f) st.leanW = 0;
+    const glm::dvec3 d = st.leanTgt - cam.pos;
+    const double dist = glm::length(d);
+    if (st.leanW > 0 && s.viewMode == 0 && dist > 0.05 && dist < 8) {
+      const vec3 dir = vec3(d / dist);
+      double lean = std::clamp(dist - st.leanKeep, 0.0, 0.85);
+      if (lean > 0) { RayHit h = raycastBlocks(w, cam.pos, dir, (float)lean + 0.25f); if (h.hit) lean = std::max(0.0, std::min(lean, (double)h.dist - 0.25)); }
+      const float k = st.leanW * st.leanW * (3 - 2 * st.leanW);
+      cam.pos += glm::dvec3(dir) * (lean * k);
+      const double rest = dist - lean;   // still far off: the view narrows (to 0.6 at most) as if you were near
+      cam.fov *= 1.f - (1.f - (float)std::clamp((st.leanKeep + 0.15) / rest, 0.6, 1.0)) * k;
+    }
+  }
   vec3 L = lookVector(p.yaw, p.pitch);
   if (s.viewMode == 1 && !p.dead) {
     // over the shoulder: behind and off to one side, smoothly following
