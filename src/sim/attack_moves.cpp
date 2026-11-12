@@ -10,7 +10,8 @@ namespace dq {
 namespace {
 // Epic Fight's clips start cocked and blend into that from whatever you were doing (its "convert" time is the
 // wind-up), strike in about a tenth of a second, hold the follow-through and take the next press at recovery. Our
-// times count from the press, so the wind-up is in them. Rounded from the measurements (docs/ANIMATION_STUDY.md).
+// times count from the press, so the wind-up is in them. Rounded from the measurements (docs/ANIMATION_STUDY.md);
+// targets per blow as Soulrend's weapon patch has them (swords 2, daggers and fists 1).
 //                 name           len   lock  hitFrom hitTo recov lunge dmg  impact strikes left
 const AttackMove MOVES[MV_COUNT] = {
   {"none",         0,    0,    0,    0,    0,    0,    0,   0,   0, false},
@@ -20,7 +21,7 @@ const AttackMove MOVES[MV_COUNT] = {
   {"sword_dash",   0.75f, 0.10f, 0.17f, 0.27f, 0.60f, 1.30f, 1.1f, 1.4f, 2, false},
   {"sword_air",    0.70f, 0.10f, 0.20f, 0.31f, 0.52f, 0.20f, 1.5f, 1.2f, 2, false},
   {"dagger_1",     0.42f, 0.03f, 0.05f, 0.11f, 0.24f, 0.45f, 0.8f, 0.6f, 1, false},
-  {"dagger_2",     0.45f, 0.04f, 0.08f, 0.15f, 0.26f, 0.40f, 0.8f, 0.6f, 2, false},
+  {"dagger_2",     0.45f, 0.04f, 0.08f, 0.15f, 0.26f, 0.40f, 0.8f, 0.6f, 1, false},
   {"dagger_3",     0.70f, 0.08f, 0.16f, 0.26f, 0.45f, 0.90f, 1.2f, 1.0f, 1, false},
   {"axe_1",        0.85f, 0.08f, 0.13f, 0.26f, 0.70f, 0.45f, 1.0f, 1.4f, 2, false},
   {"axe_2",        0.90f, 0.10f, 0.16f, 0.30f, 0.78f, 0.45f, 1.1f, 1.5f, 2, false},
@@ -165,7 +166,8 @@ bool bladeSweepHits(u8 id, float t0, float t1, const vec3& feet, float yaw, floa
     // (from the shoulder out: the arm is in the blow too, so a foe close in is struck by the hilt end of it)
     const vec3 sh(h.x < 0 ? -SHOULDER_X : SHOULDER_X, SHOULDER_Y, 0);
     const vec3 S = attackFrameToWorld(sh + (h - sh) * 0.4f, feet, yaw, pitch), T = attackFrameToWorld(tp, feet, yaw, pitch);
-    if (segBox(S, T, lo, hi, 0.12f)) { if (when) *when = t; return true; }
+    // (Soulrend's blades: 0.3-0.4 thick boxes)
+    if (segBox(S, T, lo, hi, 0.15f)) { if (when) *when = t; return true; }
   }
   return false;
 }
