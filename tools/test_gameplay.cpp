@@ -84,6 +84,26 @@ int main(int argc, char** argv) {
   r.p = static_cast<Player*>(r.lv->spawn(std::move(pl)));
   r.c = std::make_unique<PlayerController>(*r.lv, *r.p);
   r.lv->info.spawn = vec3(0.5f, Y, 0.5f);
+  printf("[melee swing]\n");
+  {
+    r.put(0.5f, (float)Y, 0.5f, 0, 0);
+    r.p->onGround = true;
+    r.hold(0, "iron_sword");
+    Creature* z = spawnCreature(*r.lv, REALM_MAIN, "ghoul", vec3(0.5f, (float)Y, 0.5f - 1.0f));
+    CHECK(z != nullptr, "a ghoul stands in front of the sword");
+    if (z) {
+      const float hp0 = z->hp;
+      PlayerInput atk; atk.attack = true; atk.attackPressed = true;
+      r.step(0.05, atk);
+      CHECK(z->hp == hp0, "the click does not land; the blade is still winding up (hp %.1f)", z->hp);
+      r.step(0.20);
+      CHECK(z->hp < hp0, "the blow lands inside the swing, not on the click (hp %.1f -> %.1f)", hp0, z->hp);
+      z->removed = true;
+    }
+    r.p->inv[0].clear();
+    for (int i = 0; i < 40 && r.p->atkMove; i++) r.step(0.05);
+    r.p->atkMove = 0; r.p->atkT = 0;
+  }
   std::vector<std::string> events;
   bus.on("blockBreak", [&](const json& a) { events.push_back("break " + a[4].get<std::string>()); return true; });
   bus.on("screenOpen", [&](const json& a) { events.push_back("screen " + a[1].get<std::string>()); return true; });

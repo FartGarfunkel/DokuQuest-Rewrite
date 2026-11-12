@@ -3,11 +3,13 @@
 #include "core/tool_parts.h"
 #include "sim/combat.h"
 #include "sim/combat_rpg.h"
+#include "sim/attack_moves.h"
 #include "sim/magic.h"
 #include "sim/gameplay.h"
 #include "sim/rules.h"
 #include "sim/physics.h"
 #include "gen/generator.h"
+#include <algorithm>
 #include <random>
 
 namespace dq {
@@ -178,16 +180,19 @@ float damageEntity(Level& lv, Entity& e, float amount, const DamageSource& src) 
 bool creatureIsCursed(const Entity& e);   // sim/mob_combat.cpp: undead, ghouls, werewolves, wraiths
 
 float attackEntity(Level& lv, Player& p, Entity& e) {
-  if (p.swing == 0 || p.swing > 0.6f) p.swing = 0.0001f;
   if (p.attackCd > 0) return 0;
+  return attackEntity(lv, p, e, 1.f, 1.f, !p.onGround && p.vel.y < 0, true);
+}
+float attackEntity(Level& lv, Player& p, Entity& e, float dmgMul, float knockMul, bool forceCrit, bool setCd) {
+  if (p.swing == 0 || p.swing > 0.6f) p.swing = 0.0001f;
   const ToolInfo* tool = heldTool(p);
-  float dmg = tool ? tool->damage : 1;
-  bool crit = !p.onGround && p.vel.y < 0;
+  float dmg = (tool ? tool->damage : 1) * dmgMul;
+  bool crit = forceCrit;
   if (crit) dmg = std::ceil(dmg * 1.5f);
   // a sneak attack: a creature that hasn't caught on to you (its back to you, after nobody), struck before it turns
   const bool sneakHit = creatureUnaware(e, p);
   if (sneakHit) dmg = std::ceil(dmg * 1.75f);
-  DamageSource src; src.attacker = p.id; src.element = heldToolElement(p); src.knock = 5;
+  DamageSource src; src.attacker = p.id; src.element = heldToolElement(p); src.knock = 5 * knockMul;
   if (tool) src.tool = tool->type;
   if (!p.inv[p.selected].empty()) src.weapon = p.inv[p.selected].id;
   dmg = spellbladeHit(lv, p, e, dmg, src.element);   // a spell carried on the blade (sim/magic_hands.cpp)
@@ -206,7 +211,7 @@ float attackEntity(Level& lv, Player& p, Entity& e) {
     lv.net->hitEntity(p, e.id, dmg, {{"element", src.element}, {"knock", src.knock}, {"tool", src.tool}, {"weapon", src.weapon}, {"crit", crit}});
     dealt = dmg;
   } else dealt = damageEntity(lv, e, dmg, src);
-  p.attackCd = tool && tool->type == "sword" ? 0.45f : 0.6f;
+  if (setCd) p.attackCd = tool && tool->type == "sword" ? 0.45f : 0.6f;
   if (dealt > 0) {
     sfxUi(lv, p, crit ? "crit" : "hit");
     if (crit) lv.fx->particles("crit", e.pos + vec3(0, e.h * 0.6f, 0), 10);   // a burst of stars on a critical blow
@@ -219,6 +224,76 @@ float attackEntity(Level& lv, Player& p, Entity& e) {
     burst(lv, e.pos + vec3(0, e.h * 0.6f, 0), src.element == "fire" ? "fireball" : src.element == "frost" ? "frost_bolt" : "white", crit ? 8 : 4, 0.8f);
   }
   return dealt;
+}
+
+static void beginSwing(Player& p, bool sprint, bool air) {
+  const ToolInfo* tool = heldTool(p);
+  const std::string type = tool ? tool->type : "";
+  const std::string key = p.inv[p.selected].empty() ? "" : p.inv[p.selected].id;
+  const Moveset ms = movesetOf(type, key);
+  const int n = p.atkGap < COMBO_WINDOW ? (int)p.atkCombo : 0;
+  const u8 id = attackMoveFor(ms, n, sprint && p.onGround, air);
+  if (id == MV_NONE) return;
+  p.atkMove = id;
+  p.atkT = 0.0001f;
+  p.atkYaw = p.yaw;
+  p.atkCombo = (u8)((n + 1) % std::max(1, comboLength(ms)));
+  p.atkHit.clear();
+  p.atkGap = 0;
+  p.data.erase("atkQueue");
+  p.swing = 0.0001f;
+  p.swinging = true;
+}
+void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allowStart) {
+  const ToolInfo* tool = heldTool(p);
+  (void)tool;
+  if (in.attackPressed && allowStart) {
+    if (p.atkMove != MV_NONE && p.atkT < attackMove(p.atkMove).recovery) p.data["atkQueue"] = true;
+    else beginSwing(p, p.sprinting, !p.onGround);
+  }
+  if (p.atkMove == MV_NONE) { p.atkGap += dt; if (p.data.value("atkQueue", false)) beginSwing(p, p.sprinting, !p.onGround); return; }
+  const AttackMove& m = attackMove(p.atkMove);
+  if ((p.dodgeT > 0 || p.blockT > 0.001f) && p.atkT < m.hitFrom) {
+    p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear(); p.atkGap = COMBO_WINDOW; p.data.erase("atkQueue");
+    return;
+  }
+  if (p.atkT < m.turnLock) p.atkYaw = p.yaw;
+  const float t0 = p.atkT;
+  p.atkT += dt;
+  const float dl = lungeAt(p.atkMove, p.atkT) - lungeAt(p.atkMove, t0);
+  if (dl > 0.0001f) {
+    bool close = false;
+    for (auto& e : lv.entities()) {
+      if (e->removed || e->id == p.id || e->realm != p.realm || e->hp <= 0 || (!isMob(*e) && !e->isPlayer())) continue;
+      const vec3 d = e->pos - p.pos;
+      const float dist = std::hypot(d.x, d.z);
+      if (dist < 1.35f && dist > 0.15f && std::fabs(std::remainder(std::atan2(-d.x, -d.z) - p.atkYaw, 6.283185f)) < 1.1f) close = true;
+    }
+    if (!close) {
+      const vec3 fwd(-std::sin(p.atkYaw), 0, -std::cos(p.atkYaw));
+      moveBox(lv.world(p.realm), p.pos, p.w, p.h, fwd * dl, 0.6f);
+    }
+  }
+  if ((int)p.atkHit.size() < (int)m.strikes) {
+    for (auto& e : lv.entities()) {
+      if ((int)p.atkHit.size() >= (int)m.strikes) break;
+      if (e->removed || e->id == p.id || e->realm != p.realm || e->hp <= 0 || (!isMob(*e) && !e->isPlayer())) continue;
+      if (std::find(p.atkHit.begin(), p.atkHit.end(), e->id) != p.atkHit.end()) continue;
+      const vec3 lo = e->pos - vec3(e->w, 0.05f, e->w), hi = e->pos + vec3(e->w, e->h, e->w);
+      if (!bladeSweepHits(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.pitch, lo, hi)) continue;
+      attackEntity(lv, p, *e, m.dmg, m.impact, p.atkMove == MV_SWORD_AIR, false);
+      p.atkHit.push_back(e->id);
+      if (isMob(*e)) {
+        if (!e->data.is_object()) e->data = json::object();
+        e->data["hitStun"] = std::max(e->data.value("hitStun", 0.f), std::clamp(0.22f * m.impact, 0.15f, 0.35f));
+      }
+    }
+  }
+  if (in.attackPressed && p.atkT < m.recovery) p.data["atkQueue"] = true;
+  if (p.atkT >= m.len) {
+    p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear(); p.atkGap = 0;
+    if (p.data.value("atkQueue", false)) beginSwing(p, p.sprinting, !p.onGround);
+  }
 }
 
 void dropCarried(Level& lv, Player& p) {

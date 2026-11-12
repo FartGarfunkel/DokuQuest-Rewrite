@@ -854,6 +854,7 @@ void Creature::update(Level& lv, float dt) {
   if (removed) return;
   // a dropped weapon is worth going back for
   if (regrab.on && alive()) if (OptMove fw = fetchWeapon(lv, dt)) { want = fw->want; dir = fw->dir; }
+  if (float stun = data.value("hitStun", 0.f); stun > 0) { data["hitStun"] = std::max(0.f, stun - dt); want = 0; }
   if (slowT > 0) want *= 0.5f;
   if (crawling) want *= 0.35f;
   if (limp) want *= std::max(0.3f, 1 - limp * 0.25f);

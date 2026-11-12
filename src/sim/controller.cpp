@@ -424,7 +424,11 @@ void PlayerController::interact(float dt, const PlayerInput& in) {
   Entity* te = targetEnt ? lv.entity(targetEnt) : nullptr;
   // a ghast's fireball can be punched back (Minecraft): it flies for you then, and finishes off a ghast it hits
   if (in.attackPressed && deflectFireball(lv, p, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch), 4.5f)) { swingArm(); mining.active = false; fightHold = true; return; }
-  if (in.attackPressed && te) { swingArm(); attackEntity(lv, p, *te); mining.active = false; fightHold = true; return; }
+  const ToolInfo* tiEarly = heldTool(p);
+  const bool toolDig = tiEarly && (tiEarly->type == "pickaxe" || tiEarly->type == "axe" || tiEarly->type == "shovel" || tiEarly->type == "hoe");
+  const bool allowSwing = !toolDig || !target.hit || te;
+  tickMelee(lv, p, dt, in, allowSwing);
+  if (p.atkMove) { mining.active = false; fightHold = true; if (in.attackPressed) return; }
   if (!in.attack) fightHold = false;
   if (in.attackPressed && !target.hit) swingArm();
   // a held swing that hit a creature never digs into the ground behind it; in creative a sword never breaks blocks (Minecraft)

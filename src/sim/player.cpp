@@ -1,6 +1,7 @@
 // sim/player.cpp — port of game/player.js (Player.move, climbStep, health, XP, save) and
 // game/movement.js (ledge shimmy, coyote time, jump buffering).
 #include "sim/player.h"
+#include "sim/attack_moves.h"
 #include "sim/inventory.h"
 #include "sim/blockinfo.h"
 #include "world/shapes.h"
@@ -137,6 +138,7 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
     if (!flying) speed *= 0.35f;
   }
   if (slow > 0) speed *= 0.55f;
+  if (atkMove && atkT < attackMove(atkMove).recovery) speed *= 0.35f;
   speed *= pathSpeedFactor(*this);   // Fleet Foot (sim/villager_quests.cpp)
   speed *= opts.slow;
   BlockId under = wd.getBlock(ifloor(pos.x), ifloor(pos.y - 0.1f), ifloor(pos.z));

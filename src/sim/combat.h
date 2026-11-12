@@ -44,6 +44,8 @@ std::string heldToolElement(const Player& p);          // tool.element ("fire", 
 bool wearHeld(Level& lv, Player& p, int n = 1);            // tool durability
 void wearArmor(Player& p);                             // each worn piece takes one wear
 float attackEntity(Level& lv, Player& p, Entity& target);   // a melee blow (crits when falling); returns damage dealt
+float attackEntity(Level& lv, Player& p, Entity& target, float dmgMul, float knockMul, bool forceCrit, bool setCd);
+void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allowStart);
 void playerDie(Level& lv, Player& p, const DamageSource& src);
 void respawnPlayer(Level& lv, Player& p);              // to the bed if it's still there, else the world spawn
 void placeAtSpawn(Level& lv, Player& p, bool initial);
