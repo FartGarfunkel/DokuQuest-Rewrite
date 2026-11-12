@@ -528,11 +528,11 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
   else if (pose.crawl && !pose.fp) {   // flat on the ground, the chest on it (its plane 2 px in front of the middle)
     base = glm::translate(base, vec3(0, 2.3f * CHAR_PX, 0.5f)); base = glm::rotate(base, -PI / 2, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0));
   }
-  if (pose.sleep) { base = glm::rotate(base, PI, vec3(0, 1, 0)); base = glm::translate(base, vec3(0, 0.3f, 0)); base = glm::rotate(base, PI / 2, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0)); }
-  if (pose.fp) base = glm::translate(base, vec3(0, 0, 0.25f));   // FP_BODY: just behind the eyes
+  if (pose.sleep && pose.bed < 0) { base = glm::rotate(base, PI, vec3(0, 1, 0)); base = glm::translate(base, vec3(0, 0.3f, 0)); base = glm::rotate(base, PI / 2, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0)); }
+  if (pose.fp && pose.bed < 0) base = glm::translate(base, vec3(0, 0, 0.25f));   // FP_BODY: just behind the eyes (in bed the view is the head's own: client/play.cpp)
   CharAngles A = charAnimate(pose);
-  if (pose.fp) { A.body.x *= 0.25f; A.body.y *= 0.5f; A.armL = vec3(A.armL.x * 0.45f, A.armL.y, A.armL.z - 0.06f); A.foreL.x *= 0.5f; }
-  R.fpTorso = pose.fp && !pose.swim && !pose.crawl && !pose.sleep && pose.deathT <= 0;
+  if (pose.fp && pose.bed < 0) { A.body.x *= 0.25f; A.body.y *= 0.5f; A.armL = vec3(A.armL.x * 0.45f, A.armL.y, A.armL.z - 0.06f); A.foreL.x *= 0.5f; }
+  R.fpTorso = pose.fp && !pose.swim && !pose.crawl && (!pose.sleep || pose.bed >= 0) && pose.deathT <= 0;
   // the body shape: leg length lifts everything above the hips, build widens, the head its own size
   const BodyShape& S = M.body;
   float kl = S.legs, b = S.build, hip = 12 * kl;

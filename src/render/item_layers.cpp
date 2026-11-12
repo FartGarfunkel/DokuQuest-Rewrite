@@ -264,6 +264,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   handsTaken = 0;
   if (vec3 hw[2]; cinematicActive() && cinematicKind() == 13 && s.app.settings.fpBody && cinematicHandsWorld(hw) && !bookUiStationOn(s.app)) return;
   if (!p || p->dead || s.viewMode != 0 || s.hudHidden || p->scoping) return;   // (the spyglass at your eye: just the glass)
+  { vec3 be; float by, br; if (s.app.settings.fpBody && bedEyeWorld(be, by, br)) return; }   // (getting into bed: your own body's arms, render/char_layer.cpp)
   const Settings& st = s.app.settings;
   // what you hold lags a little behind when you turn, and swings back
   float sx0 = 0, sy0 = 0;

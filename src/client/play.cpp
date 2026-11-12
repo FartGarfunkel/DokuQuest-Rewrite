@@ -6,6 +6,7 @@
 #include "client/app.h"
 #include "ui/screen.h"
 #include "ui/book_ui.h"
+#include "render/char_layer.h"
 #include "client/photo_mode.h"
 #include <random>
 
@@ -168,6 +169,12 @@ void clientPlayerCamera(GameSession& s, Camera& cam, double dtd) {
   cam.pos = glm::dvec3(p.pos.x + rx * bx + sx, baseY + by + sy, p.pos.z + rz * bx);
   cam.yaw = p.yaw; cam.pitch = p.pitch - nod; cam.roll = p.dead ? 0.6f : roll;
   cam.fov = st.fov;
+  // getting into bed and lying in it (render/char_layer.cpp bedEyeWorld): the view from your own head as your body sits
+  // on its edge, turns and lies down, and gets up again (immersive first person: what the others see, from your eyes)
+  if (vec3 be; s.viewMode == 0 && !s.split()) if (float byaw, brec; bedEyeWorld(be, byaw, brec)) {
+    const float r = brec / (PI / 2);   // (lying back, the eyes look up past the foot of the bed)
+    cam.pos = glm::dvec3(be); cam.yaw = byaw; cam.pitch = p.pitch * (1 - r) + 1.15f * r; cam.roll = 0; st.hasCamY = false;
+  }
   if (st.bookIn > 0.01f) {   // coming in from behind to read the book (above): never through a wall
     const vec3 back = -lookVector(p.yaw, p.pitch);
     RayHit bh = raycastBlocks(w, cam.pos, back, st.bookIn + 0.25f);

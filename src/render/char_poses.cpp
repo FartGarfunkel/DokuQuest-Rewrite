@@ -18,6 +18,24 @@ constexpr float SH_X = 0.88f, SH_Y = 0.72f, SH_Z = 0.01f, SF_X = 0.74f, SF_Y = 0
 
 void charMorePoses(CharAngles& A, const CharPose& pose) {
   const float t = pose.time;
+  // ---- getting into bed (render/char_layer.cpp bedFrame turns and moves the body, laying it back by bedRecline): sat
+  // down on the edge, the hands on the blanket beside; the legs swung up straight along it; lying back, the arms at the
+  // sides, the head on the pillow turned a little (asleep: slow breathing) ----
+  if (pose.bed >= 0) {
+    auto E = [&](float a, float b) { const float u = clampf((pose.bed - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
+    const float sat = E(0.f, 0.24f), up = E(0.32f, 0.6f), lie = E(0.6f, 0.95f), br = pose.sleep ? std::sin(t * 1.4f) * 0.025f : 0.f;
+    const vec3 legSat(1.45f, 0, 0.06f), shinSat(-1.45f, 0, 0), legUp(1.57f, 0, 0.05f);
+    const vec3 armSat(-0.38f, 0, 0.30f), armUp(-0.55f, 0, 0.32f), armLie(0.06f, 0, 0.14f + br);
+    A.legR = mixv(mixv(A.legR, legSat, sat), legUp, up); A.legL = mixv(mixv(A.legL, vec3(legSat.x, 0, -legSat.z), sat), vec3(legUp.x, 0, -legUp.z), up);
+    A.shinR = mixv(mixv(A.shinR, shinSat, sat), vec3(-0.04f, 0, 0), up); A.shinL = mixv(mixv(A.shinL, shinSat, sat), vec3(-0.08f, 0, 0), up);
+    const vec3 aR = mixv(mixv(mixv(A.armR, armSat, sat), armUp, up), armLie, lie);
+    A.armR = aR; A.armL = vec3(aR.x, -aR.y, -aR.z);
+    A.foreR = mixv(mixv(A.foreR, vec3(0.08f, 0, 0), sat), vec3(0.22f, 0, 0), lie); A.foreL = mixv(mixv(A.foreL, vec3(0.08f, 0, 0), sat), vec3(0.3f, 0, 0), lie);
+    A.body = vec3(pose.bedRecline + (-0.06f * sat * (1 - up)) + br, 0, 0); A.lift = 0;
+    const float look = 1 - lie;   // (the head looks about as they sit; laid down it rests on the pillow)
+    A.head = vec3((pose.headPitch - A.body.x) * look - 0.1f * lie, A.head.y * look + ((pose.seed & 1) ? 0.3f : -0.3f) * lie * (pose.sleep ? 1.f : 0.4f), 0);
+    return;
+  }
   const bool lying = pose.swim || pose.crawl || pose.sleep || pose.glide;
   // ---- drinking: the bottle tipped up to the lips and the head back with it, a swallow now and then ----
   if (pose.eat > 0 && pose.drink && !lying) {

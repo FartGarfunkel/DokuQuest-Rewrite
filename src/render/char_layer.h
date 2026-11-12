@@ -42,7 +42,10 @@ public:
     float guardHit = 0, lastParry = 0, lastGuard = 0;   // a blow taken on the shield (1 -> 0), the shield's raise (eased), a dodge roll's progress (sim/combat_rpg.h)
     float runAmt = 0, sneakAmt = 0;                    // sprinting / sneaking eased in and out (Epic Fight keeps both cycles running while it blends)
     vec2 hurtDir{0};                                   // where the last blow came from: x their right, y their front (-1..1)
-    float lastSwing = 0, swingU = 0; double swingAt = -10; u8 swingN = 0;   // weapon combos: the cut in the chain and how far through it (its own clock: render/char_anim.cpp)
+    float lastSwing = 0, swingU = 0; double swingAt = -10; u8 swingN = 0;
+    // getting into bed (render/char_layer.cpp bedFrame): 0 standing beside it .. 1 lying in it; the bed found under them,
+    // where they stood, which side they sat on
+    float bedU = 0; bool bedFound = false; vec3 bedHead{0}, bedDir{0}, bedSide{0}, standPos{0}; float standYaw = 0, bedTop = 0;   // weapon combos: the cut in the chain and how far through it (its own clock: render/char_anim.cpp)
     CharBlend blend;   // render/char_blend.h: gliding between states
     CapeSim cape;      // render/cape_sim.h: their cape as cloth
     u64 seen = 0;
@@ -82,6 +85,9 @@ CharWear charWearOf(const Player& p, const CharacterSpec& spec, bool carried = t
 // Draw a whole voxel character with the voxel renderer already begun (the world, a menu preview, the doll).
 // base: render space at the feet (translation only). fp = the first-person body; detail = the look's shapes.
 struct CapeSim;
+// immersive first person in bed: where your eyes are as you sit on its edge, turn and lie down (render/char_layer.cpp;
+// client/play.cpp puts the view there). false: not getting into or out of a bed
+bool bedEyeWorld(vec3& eye, float& yaw, float& recline);   // yaw: the body's facing (+ your look about); recline: 0 up .. PI/2 lying
 struct CharDrawOpts { float book = -1, bookLeaf = -1; int bookDir = 1; const std::string* bookPic = nullptr; const std::string* bookLay = nullptr; u64 bookKey = 0;   // bookPic: what's on its pages (Player::bookPic)   // the journal: < 0 on the belt, 0..1 held open in both hands (render/book_model.h); a page turning
   VoxelLight light{1, 0}; vec4 tint{0}; bool fp = false, detail = true, headOnly = false, fpNoArms = false; double time = 0; glm::dvec3 camPos{0}; CharBlend* blend = nullptr; CapeSim* cape = nullptr; };   // cape: the cloth of this one's cape (render/cape_sim.h; nullptr: drawn from the pose alone)   // blend: ease between states (nullptr: snap)   // time / camPos: for the rod tip record
 void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear& w, const mat4& base, const CharDrawOpts& o);

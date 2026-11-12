@@ -15,6 +15,8 @@
 #include "render/char_layer.h"
 #include "assets/shield3d.h"
 #include "sim/shield_shape.h"
+#include "sim/blockinfo.h"
+#include "world/dirs.h"
 #include "core/item_glint.h"
 #include "render/rod_tip.h"
 #include "assets/cape_tex.h"
@@ -34,6 +36,34 @@
 #include "sim/quiver.h"
 
 namespace dq {
+
+namespace {
+// ---- getting into bed (after the user's ask: sit on its edge, turn, lie down; seen the same in first person) ----
+// the sequence over u 0..1 (BED_IN_T s in, BED_OUT_T s out): standing beside it -> sat on the near edge facing out ->
+// the legs swung up onto it as the body turns to face its foot -> lying back, the head on the pillow
+constexpr float BED_IN_T = 1.5f, BED_OUT_T = 1.2f;   // (in before the night's 1.8 s fade to morning: sim/blockfx.cpp tickSleep)
+constexpr float U_SAT = 0.24f, U_SETTLED = 0.32f, U_UP = 0.6f, U_LAID = 0.95f;
+inline float bedEase(float a, float b, float u) { const float t = std::clamp((u - a) / (b - a), 0.f, 1.f); return t * t * (3 - 2 * t); }
+inline float yawFacing(vec3 v) { return std::atan2(-v.x, -v.z); }
+inline float lerpAngle(float a, float b, float t) { return a + wrapAngle(b - a) * t; }
+struct BedFrame { vec3 feet; float yaw, recline; };
+// where the body's feet (its root) are, which way it faces, how far back it lies (0 upright .. PI/2 flat)
+BedFrame bedFrame(const CharacterLayer::Anim& st) {
+  const vec3 D = st.bedDir, top(0, st.bedTop + 0.12f, 0);
+  const vec3 mid = st.bedHead - D * 0.5f, edgeHips = vec3(mid.x, 0, mid.z) + st.bedSide * 0.30f + top;
+  const vec3 upHips = vec3(st.bedHead.x, 0, st.bedHead.z) - D * 0.72f + top;
+  const vec3 hipUp(0, 12 * CHAR_PX, 0);
+  const float u = st.bedU, a = bedEase(0, U_SAT, u), b = bedEase(U_SETTLED, U_UP, u), c = bedEase(U_UP, U_LAID, u);
+  BedFrame f;
+  f.feet = glm::mix(glm::mix(st.standPos, edgeHips - hipUp, a), upHips - hipUp, b);
+  f.yaw = lerpAngle(lerpAngle(st.standYaw, yawFacing(st.bedSide), a), yawFacing(-D), b);
+  f.recline = c * (PI / 2);
+  return f;
+}
+vec3 g_bedEye{0}; float g_bedYaw = 0, g_bedRecline = 0; double g_bedEyeAt = -1;
+}  // namespace
+bool bedEyeWorld(vec3& eye, float& yaw, float& recline) { if (g_bedEyeAt < 0) return false; eye = g_bedEye; yaw = g_bedYaw; recline = g_bedRecline; return true; }
+
 std::unique_ptr<Screen> makeKnappingScreen(const std::string& material, const std::string& item);   // ui/knapping_screen.cpp
 std::unique_ptr<Screen> makeAnvilScreen(ivec3 at, int tier);   // ui/anvil_screen.cpp
 
@@ -388,6 +418,44 @@ void CharacterLayer::update(GameSession& s, double dt) {
       st.swingN = time - st.swingAt < 0.8 ? (u8)((st.swingN + 1) % 3) : 0; st.swingAt = time; st.swingU = 0.0001f;
     }
     st.lastSwing = p->swingT;
+    {   // getting into bed and out again (bedFrame above): the bed found under them when they lie down
+      const bool asleep = p->sleeping || p->data.value("sleeping", false);
+      if (asleep && !st.bedFound && !p->dead) {
+        World& bw = s.level->world(p->realm);
+        const ivec3 c0(ifloor(p->pos.x), ifloor(p->pos.y), ifloor(p->pos.z));
+        float best = 99;
+        for (int dy = -1; dy <= 1; dy++) for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++) {
+          const int x = c0.x + dx, y = c0.y + dy, z = c0.z + dz;
+          const BlockId id = bw.getBlock(x, y, z);
+          if (!bhas(id, BF::Bed) || reg().block(id).has("bag")) continue;
+          const u8 m = bw.getMeta(x, y, z); const int f = m & 3;
+          const ivec3 head = (m & 4) ? ivec3(x, y, z) : ivec3(x + DIRX[f], y, z + DIRZ[f]);
+          if (!bhas(bw.getBlock(head.x, head.y, head.z), BF::Bed)) continue;
+          const vec3 H = vec3(head) + vec3(0.5f, 0, 0.5f), Dd((float)DIRX[f], 0, (float)DIRZ[f]);
+          const float d = glm::distance(vec3(p->pos.x, 0, p->pos.z), vec3(H.x, 0, H.z) - Dd * 0.5f);
+          if (d < best) { best = d; st.bedHead = H; st.bedDir = Dd; st.bedTop = (float)head.y + 0.5625f; st.bedFound = true; }
+        }
+        if (st.bedFound) {   // the near side: they sit on the edge they came to it from
+          const vec3 mid = st.bedHead - st.bedDir * 0.5f, side(-st.bedDir.z, 0, st.bedDir.x);
+          st.bedSide = glm::dot(vec3(p->pos.x - mid.x, 0, p->pos.z - mid.z), side) >= 0 ? side : -side;
+          if (st.bedU <= 0) { st.standPos = p->pos; st.standYaw = p->yaw; }
+        }
+      }
+      if (asleep && st.bedFound) st.bedU = std::min(1.f, st.bedU + fdt / BED_IN_T);
+      else if (st.bedU > 0) {   // up again: back out of it the way they got in (walking off cuts it short)
+        st.standPos = p->pos; st.standYaw = p->yaw;
+        st.bedU = glm::length(vec2(p->vel.x, p->vel.z)) > 1.5f || p->dead ? 0.f : std::max(0.f, st.bedU - fdt / BED_OUT_T);
+      }
+      if (st.bedU <= 0 && !asleep) st.bedFound = false;
+      if (p == s.player) {   // your eyes there (client/play.cpp: immersive first person sees it all from them)
+        if (st.bedU > 0 && st.bedFound) {
+          const BedFrame bf = bedFrame(st);
+          const mat4 M = glm::rotate(glm::translate(mat4(1), bf.feet + vec3(0, 12 * CHAR_PX, 0)), bf.yaw, vec3(0, 1, 0));
+          g_bedEye = vec3(glm::rotate(M, bf.recline, vec3(1, 0, 0)) * vec4(0, 0.92f, -0.06f, 1)); g_bedEyeAt = time;
+          g_bedYaw = bf.yaw + wrapAngle(p->yaw - st.standYaw); g_bedRecline = bf.recline;   // (the look turns with the body; the mouse still looks about)
+        } else g_bedEyeAt = -1;
+      }
+    }
     // a cut runs on its own clock (WEAPON_SWING_T): the blow lands as fast as the arm's swing, the follow-through is held
     // a moment and the pose given back after, as Epic Fight's do (the game's swing timer is shorter)
     if (st.swingU > 0 && (st.swingU += fdt / 0.5f) >= 1) st.swingU = 0;
@@ -483,7 +551,8 @@ void CharacterLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
     bool local = p == s.player, fp = false;
     if (local && photoMode().active && !s.split()) { if (!photoMode().showPlayer) continue; }   // photo mode: the camera is elsewhere
     else if (local && s.viewMode == 0) {
-      if (!s.app.settings.fpBody || p->dead || p->sleeping || p->data.value("sleeping", false)) continue;
+      const bool inBed = anims.count(p->id) && anims[p->id].bedFound && anims[p->id].bedU > 0;   // (getting into bed: your body, seen as the others see it)
+      if (!s.app.settings.fpBody || p->dead || ((p->sleeping || p->data.value("sleeping", false)) && !inBed)) continue;
       fp = true;
     }
     vec3 rel = f.cam.rel(glm::dvec3(e->pos));
@@ -700,6 +769,14 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   if (carrying) { ps.carry = true; ps.held = ps.off = false; wear.held.clear(); wear.off.clear(); wear.carried.clear(); ps.fpLeftArm = false; }
   if (p.data.value("invisible", false)) return;
   vec3 rel = f.cam.rel(glm::dvec3(p.pos));
+  // getting into bed (bedFrame): the body on it, turned and laid back by the sequence (render/char_poses.cpp bedPose)
+  vec3 bedFeet(0); bool inBed = false;
+  if (st.bedFound && st.bedU > 0 && !p.dead) {
+    const BedFrame bf = bedFrame(st);
+    inBed = true; bedFeet = bf.feet;
+    ps.bed = st.bedU; ps.bedRecline = bf.recline; ps.yaw = bf.yaw; ps.hasBodyYaw = false;
+    ps.sleep = st.bedU >= 1 && sleeping; ps.walkAmt = 0; ps.air = false; ps.sneak = false; ps.sit = false; ps.swing = 0;
+  }
   // maps.js: a map in the hand is held up in front of the chest (both hands when the other is free)
   vec2 lt((l >> 4) / 15.f, (l & 15) / 15.f);
   if (!fp && !ps.sleep && !ps.swim && !ps.crawl && !ps.hang && ps.climb <= 0 && ps.deathT <= 0 && !ps.ladder && !carrying) {
@@ -728,6 +805,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   // the in: it stayed on the ground as the others see it, not sunk under it)
   vec3 viewOff = fp && cinematicActive() ? cinematicViewOffset() : vec3(0);
   if (ps.sitGround) viewOff.y = 0;
+  if (inBed) { rel = f.cam.rel(glm::dvec3(bedFeet)); viewOff = vec3(0); }
   mat4 base = glm::translate(mat4(1), rel + viewOff);
   if (ps.sit) base = glm::translate(base, vec3(0, -0.45f, 0));
   // continuous amounts (a station's crouch is a sneak outright)
@@ -796,7 +874,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   hid[CP_LEGR_U] = hid[CP_LEGL_U] = !AR[2].empty();
   hid[CP_LEGR_D] = hid[CP_LEGL_D] = !AR[2].empty() || !AR[3].empty();
   bool fpArmL = fp && R.fpTorso && ps.fpLeftArm && !ps.paddle;
-  if (fp && (ps.reach || ps.sitGround)) for (int i : {CP_ARMR_U, CP_ARMR_D, CP_ARML_U, CP_ARML_D}) hid[i] = true;   // (no sleeve layer over them so close to the eye)
+  if (fp && (ps.reach || ps.sitGround || ps.bed >= 0)) for (int i : {CP_ARMR_U, CP_ARMR_D, CP_ARML_U, CP_ARML_D}) hid[i] = true;   // (no sleeve layer over them so close to the eye)
   // which parts show: in first person only what you see looking down (the head and the right arm are the view's own)
   auto shows = [&](int i) {
     if (o.headOnly) return i == CP_HEAD;
@@ -806,8 +884,8 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     if (ps.reach && (i == CP_ARMR_U || i == CP_ARML_U)) return false;
     if (ps.reach && (i == CP_ARMR_D || i == CP_ARML_D)) return true;
     // sat on the ground: your forearms over your knees, as the others see them (the upper arms are by the eye)
-    if (ps.sitGround && (i == CP_ARMR_U || i == CP_ARML_U)) return false;
-    if (ps.sitGround && (i == CP_ARMR_D || i == CP_ARML_D)) return !o.fpNoArms;
+    if ((ps.sitGround || ps.bed >= 0) && (i == CP_ARMR_U || i == CP_ARML_U)) return false;
+    if ((ps.sitGround || ps.bed >= 0) && (i == CP_ARMR_D || i == CP_ARML_D)) return !o.fpNoArms;
     if (i == CP_ARMR_U || i == CP_ARMR_D) return false;
     if (i == CP_ARML_U || i == CP_ARML_D) return fpArmL;
     if (i == CP_BODY) return R.fpTorso;
