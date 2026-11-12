@@ -117,7 +117,7 @@ void drawCombatHud(GameSession& s, ImDrawList* dl, float z, float W, float H) {
   if (hf > 0) dl->AddRectFilled(ImVec2(h0.x + 1 * z, h0.y + 1 * z), ImVec2(h0.x + 1 * z + (bw - 2 * z) * hf, h1.y - 1 * z), IM_COL32(210, 52, 40, (int)(240 * al)), 1 * z);
   // posture: fills from both ends toward the middle (it breaks when they meet)
   const ImVec2 q0(sp.x - bw * 0.5f, sp.y - 2 * z), q1(sp.x + bw * 0.5f, sp.y + 2 * z);
-  const float mp = e->maxPosture > 0 ? e->maxPosture : 40.f + std::max(1, e->mobLevel) * 2.f;   // (not hit yet: sim/combat_rpg.cpp's number)
+  const float mp = std::max(1.f, e->maxPosture);   // (set when it's born: sim/combat_rpg.cpp)
   const float pf = e->staggerT > 0 ? 1.f : std::clamp(e->posture / mp, 0.f, 1.f);
   if (pf > 0.01f || e->staggerT > 0) {
     dl->AddRectFilled(q0, q1, IM_COL32(20, 16, 6, (int)(170 * al)), 1 * z);

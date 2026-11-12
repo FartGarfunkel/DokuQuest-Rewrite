@@ -249,7 +249,10 @@ int main(int argc, char** argv) {
     p.give(ItemStack("stone", 5));
     p.hp = 2; p.invuln = 0; p.mode = "survival";
     Creature* g = spawnCreature(*lv, 0, "ghoul", p.pos + vec3(1, 0, 0));
-    damageEntity(*lv, p, 20, g, "mob");
+    damageEntity(*lv, p, 20, g, "mob");   // the first killing blow: second chance (sim/combat_rpg.cpp) keeps you up
+    CHECK(!p.dead && p.hp == 1 && p.secondChanceCd > 0, "second chance: the first killing blow leaves half a heart (hp %.1f)", p.hp);
+    p.invuln = 0;
+    damageEntity(*lv, p, 20, g, "mob");   // ...and while it's waiting to come back, the next one kills
     CHECK(p.dead, "a ghoul's blow kills");
     CHECK(p.grave.is_object() && p.inv[0].id == "death_compass", "grave made, death compass given (as when anything else kills)");
   }

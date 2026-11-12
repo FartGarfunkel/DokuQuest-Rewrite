@@ -627,6 +627,10 @@ void ServerHost::applyMe(Peer& p, const json& m) {
   int f = m.value("f", 0);
   pl.onGround = f & 1; pl.inWater = f & 2; pl.sneaking = f & 4; pl.sprinting = f & 8; pl.flying = f & 16; pl.swimming = f & 32; pl.crawling = f & 64;
   pl.hp = m.value("hp", pl.hp); pl.dead = dead;
+  // their roll and shield (sim/combat_rpg.h): what our hits are checked against
+  pl.dodgeT = m.value("dg", 0.f); if (pl.dodgeT > 0) pl.dodgeYaw = m.value("dy", pl.dodgeYaw);
+  pl.blockT = m.value("bk", 0.f);
+  if (m.contains("st")) { pl.stamina = p.aStam = m["st"].get<float>(); }
   pl.activity = (u8)(m.value("ac", 0) & 7); pl.typeRate = clampv(m.value("tr", 0.f), 0.f, 40.f);
   // (the guest sends its picture again now and then, in case one was lost: only a new one is news)
   if (m.contains("bp") && m["bp"].is_string() && m["bp"].get_ref<const std::string&>().size() < 200000 && m["bp"].get_ref<const std::string&>() != pl.bookPic) { pl.bookPic = m["bp"]; pl.bookPicV++; pl.bookLay = m.value("bl", std::string()).substr(0, 2000); pl.bookPicAt = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
@@ -703,6 +707,10 @@ void ServerHost::diffMirrors() {
     }
     vec3 dv = pl.vel - p.aVel;
     if (std::hypot(dv.x, dv.z) > 1.0f) { s["kb"] = v3(dv); p.aVel = pl.vel; }
+    if (pl.stamina < p.aStam - 0.5f) s["sp"] = std::round((p.aStam - pl.stamina) * 10) / 10;   // a parry here cost them stamina
+    p.aStam = pl.stamina;
+    if (pl.parryFlash > p.aParry + 0.01f) s["pf"] = pl.parryFlash;
+    p.aParry = pl.parryFlash;
     if (pl.hp < p.aHp - 0.01f) s["hurt"] = p.aHp - pl.hp;
     else if (pl.hp > p.aHp + 0.01f) s["hp"] = pl.hp;
     p.aHp = pl.hp;

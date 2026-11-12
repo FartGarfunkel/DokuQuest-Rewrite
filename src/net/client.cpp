@@ -393,6 +393,10 @@ void NetClient::sendMe() {
   json m = {{"x", r3(p.pos.x)}, {"y", r3(p.pos.y)}, {"z", r3(p.pos.z)}, {"vx", r3(p.vel.x)}, {"vy", r3(p.vel.y)}, {"vz", r3(p.vel.z)},
             {"r", r3(p.yaw)}, {"p", r3(p.pitch)}, {"b", r3(p.bodyYaw)}, {"rl", p.realm}, {"f", f}, {"hp", std::round(p.hp * 10) / 10},
             {"dead", p.dead ? 1 : 0}, {"sel", p.selected}};
+  // the combat batch (sim/combat_rpg.h): our game rolls and raises the shield, the host's decides the hits, so it has to know
+  m["st"] = std::round(p.stamina * 10) / 10;
+  if (p.dodgeT > 0) { m["dg"] = r3(p.dodgeT); m["dy"] = r3(p.dodgeYaw); }
+  if (p.blockT > 0) m["bk"] = r3(p.blockT);
   if (p.riding) {
     m["rd"] = p.riding;
     // what we steer it with goes to the host, whose game moves the mount (and us on it)
@@ -553,6 +557,8 @@ void NetClient::applySelf(const json& m) {
     if (lv->events) lv->events->emit("netHurt", json::array({a}));
   }
   if (m.contains("hp")) p.hp = m["hp"].get<float>();
+  if (m.contains("sp")) p.stamina = std::max(0.f, p.stamina - m["sp"].get<float>());   // a parry the host saw us make (sim/combat_rpg.cpp)
+  if (m.contains("pf")) { p.parryFlash = m["pf"].get<float>(); p.blockT = std::max(p.blockT, 0.18f); }   // (past PARRY_WINDOW: one parry per raise)
   if (m.contains("inv")) { applyPlayerInv(p, m["inv"]); invSeq = m.value("seq", invSeq); invSig = playerInvSig(p); }
   if (m.contains("md")) p.mode = m["md"].get<std::string>();
   if (m.contains("fl")) p.flying = m["fl"].get<bool>();
