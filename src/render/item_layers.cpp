@@ -73,6 +73,7 @@ void registerItemLayers() {
   registerChestLayer();     // chest lids that open with the chest's screen (render/chest_layer.cpp)
   registerFpBow();          // the bow drawn in first person (render/fp_bow.cpp)
   registerSpawnerLayer();   // the spinning monster inside a monster cage (render/spawner_layer.cpp)
+  registerStationWorkLayer();
   registerStationCards(); registerCinematicHands(); // your arms at the crafting table scene (render/cinematic_hands.cpp)
   registerActivityLayer();  // what the others are up to: typing, in a menu, dozing (render/activity_layer.cpp)
   registerTroughLayer();    // the food lying in a feeding trough (render/trough_layer.cpp)

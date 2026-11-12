@@ -12,6 +12,7 @@
 #include "assets/voxel.h"
 #include "core/tool_parts.h"
 #include "sim/worktable.h"
+#include "sim/station_work.h"
 #include "sim/player.h"
 #include "ui/cinematic.h"
 #include "ui/book_ui.h"
@@ -95,6 +96,29 @@ public:
       const float up = (float)std::sin(std::min(1.0, rt / 0.5) * PI / 2) * (float)std::max(0.0, std::min(1.0, (1.5 - rt) / 0.4));
       const vec3 item = vec3(at) + vec3(0.5f, 0.75f + 0.42f, 0.5f);
       for (int k = 0; k < 2; k++) target[k] = rest[k] + (item + right * (k ? -0.17f : 0.17f) + side * 0.06f - rest[k]) * up;
+    }
+    if (cinematicKind() == 6) {   // the grindstone: a hand on each piece, held to the wheel, back to rest as they're let go
+      GrindView gv;
+      if (cinematicGrindView(gv) && gv.t >= 0 && gv.t < GRIND_LENGTH) {
+        const float back = (float)std::clamp((gv.t - GRIND_LET_GO) / (GRIND_LENGTH - GRIND_LET_GO), 0.0, 1.0);
+        for (int k = 0; k < 2; k++) {
+          const vec3 p = grindHeldPos(gv.at, gv.viewYaw, k, std::min(gv.t, GRIND_LET_GO), grindLiePos(s.world(), gv.at, k));
+          const vec3 holding = p + side * 0.07f + right * (k ? -0.05f : 0.05f) + vec3(0, HAND_Y + 0.03f, 0);
+          target[k] = holding + (rest[k] - holding) * back;
+        }
+      }
+    }
+    if (cinematicKind() == 7) {   // the stonecutter: the working hand pushes the stone into the saw, then gathers the pieces
+      CutView cv;
+      if (cinematicCutView(cv) && cv.t >= 0) {
+        vec3 out, rt; stationWorkFrame(s.world(), cv.at, out, rt);
+        const vec3 lie = cutLiePos(s.world(), cv.at), blade = vec3(cv.at) + vec3(0.5f, 0.5625f, 0.5f) - rt * 0.25f;
+        const float u = (float)std::clamp(cv.t / CUT_BITE, 0.0, 1.0);
+        const vec3 push = lie + (blade - lie) * (u * u) + side * 0.09f + vec3(0, HAND_Y + 0.07f, 0);
+        const vec3 gather = blade + rt * 0.24f + side * 0.12f + vec3(0, HAND_Y + 0.06f, 0);
+        const float g = (float)std::clamp((cv.t - CUT_BITE) / 0.3, 0.0, 1.0);
+        target[w] = push + (gather - push) * g;
+      }
     }
     if (phase == 3) { target[0] = shoulder[0] + vec3(0, -0.3f, 0); target[1] = shoulder[1] + vec3(0, -0.3f, 0); }   // leaving: down out of sight
     if (!placed) { for (int k = 0; k < 2; k++) hand[k] = shoulder[k] + vec3(0, -0.25f, 0); placed = true; }   // (they come up into view)

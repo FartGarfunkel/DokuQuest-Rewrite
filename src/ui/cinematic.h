@@ -3,6 +3,7 @@
 // leaving it glides back to wherever your eyes are by then, so you take over again without a cut.
 #pragma once
 #include "common/common.h"
+#include "core/itemstack.h"
 #include <functional>
 
 namespace dq {
@@ -37,6 +38,22 @@ std::unique_ptr<Screen> makeCinematicBrewScreen(ivec3 at);
 std::unique_ptr<Screen> makeCinematicFurnaceScreen(ivec3 at);
 // a chest worked by hand (sim/chest_work.h): its lid up, its slots lying inside in rows, put into and taken out of (kind 5)
 std::unique_ptr<Screen> makeCinematicChestScreen(ivec3 at);
+// the grindstone worked in the world (sim/station_work.h, kind 6): two pieces on its top, held to the wheel and ground
+std::unique_ptr<Screen> makeCinematicGrindScreen(ivec3 at);
+// the stonecutter worked in the world (kind 7): the stone on its table, the shapes it cuts into on a dial over the saw
+std::unique_ptr<Screen> makeCinematicCutScreen(ivec3 at);
+// what those two scenes show (render/station_work_layer.cpp draws it): t the seconds into the grinding / the cut, -1 none
+struct GrindView { ivec3 at{0}; float viewYaw = 0; int hover = -1; double t = -1; ItemStack before[2], after; };
+bool cinematicGrindView(GrindView& v);
+struct CutView { ivec3 at{0}; float viewYaw = 0; int hover = -1; double t = -1; bool all = false; float scroll = 0; ItemStack input, piece; };
+bool cinematicCutView(CutView& v);
+// GrindstoneStation's pieces in the grinding (heldPos: lifted 0.28..0.6 s to the wheel, stroked to and fro till 1.9 s);
+// StonecutterStation's dial (shapePoint: up to 9 shapes on a half ring over the saw, 0.72 wide, 0.5 high)
+constexpr double GRIND_LENGTH = 2.4, GRIND_CONTACT = 0.6, GRIND_CLEAN = 1.5, GRIND_LET_GO = 1.9;
+constexpr double CUT_LENGTH = 1.05, CUT_ALL_LENGTH = 1.5, CUT_BITE = 0.26;
+vec3 grindHeldPos(ivec3 at, float viewYaw, int k, double t, vec3 lying);   // lying: where it lay (sim/station_work.h grindLiePos)
+vec3 cutDialPoint(ivec3 at, float viewYaw, int k, int count, float scroll, double clock);
+float cutDialShown(int k, int count, float scroll);   // 0..1: on the dial (fading at its ends)
 // a point the working hand reaches for (a station without the table's squares: the chest's slots); false: none
 void cinematicSetAimPoint(bool on, vec3 p = vec3(0));
 bool cinematicAimPoint(vec3& p);

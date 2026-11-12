@@ -811,7 +811,7 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
     }
     editSign(x, y, z); return true;
   }
-  if (b.has("stonecutter")) { openScreen(lv, p, "stonecutter"); return true; }
+  if (b.has("stonecutter")) { openScreen(lv, p, "stonecutter", {{"pos", {x, y, z}}}); return true; }   // (pos: its scene, ui/cinematic.h)
   if (b.has("forge")) { openScreen(lv, p, "stonecutter", {{"kind", "forge"}}); return true; }
   if (b.has("machine")) { openScreen(lv, p, "machine", {{"pos", {x, y, z}}}); return true; }
   if (b.has("cauldron")) {
