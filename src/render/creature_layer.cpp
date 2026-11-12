@@ -203,6 +203,17 @@ void CreatureLayer::update(GameSession& s, double dt) {
 }
 
 struct Interp { vec3 pos; float yaw, age; };
+
+// a blow's stagger (sim/combat.cpp sets data["hitStun"], the AI holds still for it): the whole body snaps back about its
+// feet as the blow lands, holds, and comes back over the stun's last 0.15 s; a heavier blow (a longer stun) leans further
+static mat4 staggerOf(const Creature& m, float yaw) {
+  const float stun = m.data.is_object() ? m.data.value("hitStun", 0.f) : 0.f;
+  if (stun <= 0 || m.deathTime > 0) return mat4(1);
+  const float u = std::clamp(stun / 0.15f, 0.f, 1.f), k = u * u * (3 - 2 * u);
+  const float lean = (0.16f + std::min(stun, 0.35f) * 0.6f) * k;   // radians
+  const vec3 right(std::cos(yaw), 0, -std::sin(yaw)), back(std::sin(yaw), 0, std::cos(yaw));
+  return glm::rotate(glm::translate(mat4(1), back * (0.08f * k)), lean, right);   // (about right: + tips the top back)
+}
 static Interp interp(const Entity& e, float a) {
   return {glm::mix(e.prevPos, e.pos, a), e.prevYaw + wrapAngle(e.yaw - e.prevYaw) * a, e.age + a * (float)TICK_DT};
 }
@@ -236,7 +247,7 @@ static void drawSkinMob(const Creature& m, const Interp& ip, World& w, const Fra
   VoxelRenderer& VR = voxelRenderer();
   if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
   vec3 rel = f.cam.rel(glm::dvec3(ip.pos));
-  mat4 base = glm::translate(mat4(1), rel);
+  mat4 base = glm::translate(mat4(1), rel) * staggerOf(m, ip.yaw);
   CharRig R;
   charRig(charModel(*spec), ps, base, R, false, !wear.back.empty());
   const CharModel& M = charModel(*spec);
@@ -304,7 +315,7 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
       const bool corrupt = m->data.is_object() && m->data.value("corrupt", false);
       if (corrupt && tint.a == 0) { float fl = 0.5f + 0.5f * std::sin(m->age * 23.f + (float)(m->id % 97)); tint = vec4(0.42f, 0.08f, 0.62f, fl > 0.92f ? 0.6f : 0.28f + 0.12f * fl); }
       vec4 wool = m->T->woolly && !m->color.empty() && m->color != "white" ? dyeTint(m->color) : vec4(0);
-      mat4 T0 = glm::translate(mat4(1), rel);
+      mat4 T0 = glm::translate(mat4(1), rel) * staggerOf(*m, ip.yaw);
       for (size_t i = 0; i < RM->parts.size(); i++) {
         const RigPart& p = RM->parts[i];
         const CreaturePartMesh& pm = *CM->parts[i];
