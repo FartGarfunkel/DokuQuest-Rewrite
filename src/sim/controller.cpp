@@ -125,7 +125,7 @@ void PlayerController::update(float dt, const PlayerInput& in) {
   }
   if (in.pick && target.hit && p.carrying.is_null()) pickBlock(target);
   if (p.sleeping) {
-    if (in.jump || in.sneak || in.attackPressed) { p.sleeping = false; toastMsg("You got out of bed"); }
+    if (in.jump || in.sneak || in.attackPressed) { riseFromBed(p); p.sleeping = false; toastMsg("You got out of bed"); }
     else { p.vel.x = p.vel.z = 0; updateTarget(); return; }
   }
   // creative: double-tap jump to fly

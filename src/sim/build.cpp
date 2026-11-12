@@ -927,11 +927,14 @@ void PlayerController::sleep(int x, int y, int z, u8 meta) {
   }
   p.sleeping = true;
   p.vel.x = p.vel.z = 0;
+  p.data["bedFrom"] = {p.pos.x, p.pos.y, p.pos.z};
+  p.data["bedHead"] = {x, y, z, (int)meta};
+  p.data["sleepT"] = 0.0;
+  p.data["bedMoved"] = false;
   toastMsg("Sleeping\xE2\x80\xA6 spawn point set", "good");
   int awake = 0;
   for (auto& e : lv.entities()) if (e->isPlayer() && !e->removed && e.get() != &p && !static_cast<Player*>(e.get())->sleeping && !static_cast<Player*>(e.get())->dead) awake++;
   if (awake) toastAll(lv, "Everyone must sleep to skip the night");
-  (void)meta;
 }
 
 // ---- sitting (furniture.js) ----

@@ -14,6 +14,9 @@ void primeTNT(Level& lv, World& w, int x, int y, int z, float fuse);
 void explode(Level& lv, int realm, vec3 at, float power, bool noBlocks = false, u32 source = 0);
 // Everyone in bed: skip to morning (called every tick by the gameplay system).
 void tickSleep(Level& lv, double dt);
+// Put the sleeper back beside the bed (the spot they clicked from) when they get up.
+class Player;
+void riseFromBed(Player& p);
 // Game.onBlockChanged: supports, hanging things, attached torches/ladders/signs, falling, hardening.
 void onBlockChangedRules(Level& lv, World& w, int x, int y, int z, BlockId oldId, BlockId newId);
 // After a chisel changes a block's octants: things on a face that is no longer whole drop off.

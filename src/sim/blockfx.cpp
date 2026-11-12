@@ -199,14 +199,41 @@ void explode(Level& lv, int realm, vec3 at, float power, bool noBlocks, u32 sour
 
 class Creature; Creature* spawnCreature(Level& lv, int realm, const std::string& type, vec3 p);   // sim/creature.h (it clashes with gameplay.h here)
 
-// Everyone in bed: skip to morning (1.8 s of fade first, like the original).
+void riseFromBed(Player& p) {
+  if (p.data.value("bedMoved", false) && p.data.contains("bedFrom") && p.data["bedFrom"].is_array() && p.data["bedFrom"].size() >= 3) {
+    const json& a = p.data["bedFrom"];
+    p.pos = vec3(a[0].get<float>(), a[1].get<float>(), a[2].get<float>());
+    p.vel = vec3(0);
+  }
+  p.data.erase("bedFrom"); p.data.erase("bedHead"); p.data.erase("bedMoved"); p.data.erase("sleepT");
+}
+static void parkOnBed(Player& p) {
+  if (p.data.value("bedMoved", false) || !p.data.contains("bedHead") || !p.data["bedHead"].is_array() || p.data["bedHead"].size() < 4) return;
+  const json& h = p.data["bedHead"];
+  int x = h[0].get<int>(), y = h[1].get<int>(), z = h[2].get<int>(), meta = h[3].get<int>();
+  const int f = meta & 3;
+  if (!(meta & 4)) { x += DIRX[f]; z += DIRZ[f]; }   // the pillow half
+  p.pos = vec3(x + 0.5f - DIRX[f] * 0.4f, y + 0.56f, z + 0.5f - DIRZ[f] * 0.4f);
+  p.vel = vec3(0);
+  p.data["bedMoved"] = true;
+}
+
+// Everyone in bed: skip to morning (1.8 s of fade first, like the original, once they have lain down).
 void tickSleep(Level& lv, double dt) {
   std::vector<Player*> all;
   for (auto& e : lv.entities()) if (e->isPlayer() && !e->removed) all.push_back(static_cast<Player*>(e.get()));
-  bool anyAsleep = false, allAsleep = !all.empty();
-  for (Player* p : all) { if (p->sleeping) anyAsleep = true; else if (!p->dead) allAsleep = false; }
+  bool anyAsleep = false, allAsleep = !all.empty(), laid = true;
+  for (Player* p : all) {
+    if (p->sleeping) {
+      anyAsleep = true;
+      float st = p->data.value("sleepT", 0.f) + (float)dt;
+      p->data["sleepT"] = st;
+      if (st >= 1.5f) parkOnBed(*p);   // on the pillow, so a nightmare strikes the sleeper, not the spot they clicked
+      else laid = false;
+    } else if (!p->dead) allAsleep = false;
+  }
   double& t = levelSlot<double>(lv, "sleepFade");
-  if (!anyAsleep || !allAsleep) { t = 0; return; }
+  if (!anyAsleep || !allAsleep || !laid) { t = 0; return; }
   t += dt;
   if (t < 1.8) return;
   t = 0;
@@ -229,7 +256,7 @@ void tickSleep(Level& lv, double dt) {
           static const char* KIND[3] = {"zombie", "skeleton", "spider"};
           if (spawnCreature(lv, p->realm, KIND[(int)(rnd() * 3) % 3], vec3(x + 0.5f, (float)y, z + 0.5f))) {
             woken = true;
-            for (Player* q : all) q->sleeping = false;
+            for (Player* q : all) { riseFromBed(*q); q->sleeping = false; }
             lv.fx->message(p->id, "You were woken by something at your bedside", "bad");
             lv.fx->sound("nightmare", p->pos, 12);   // a sting: a jolt and a dread swell (audio/nether_sfx.cpp)
           }
@@ -242,7 +269,7 @@ void tickSleep(Level& lv, double dt) {
   }
   lv.info.time = DAY_LEN * 0.02;
   lv.info.day++;
-  for (Player* p : all) p->sleeping = false;
+  for (Player* p : all) { riseFromBed(*p); p->sleeping = false; }
   toastAll(lv, "Good morning", "good");
   // dreams: as the world wears thin the sleepers dream of the same place (the story; riftDream says what, "" = none)
   for (Player* p : all) { const std::string dr = riftDream(lv); if (!dr.empty()) lv.fx->message(p->id, dr, "dream"); }
