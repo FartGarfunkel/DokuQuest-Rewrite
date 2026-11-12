@@ -89,7 +89,7 @@ struct CapeSim;
 // client/play.cpp puts the view there). false: not getting into or out of a bed
 bool bedEyeWorld(vec3& eye, float& yaw, float& recline);   // yaw: the body's facing (+ your look about); recline: 0 up .. PI/2 lying
 struct CharDrawOpts { float book = -1, bookLeaf = -1; int bookDir = 1; const std::string* bookPic = nullptr; const std::string* bookLay = nullptr; u64 bookKey = 0;   // bookPic: what's on its pages (Player::bookPic)   // the journal: < 0 on the belt, 0..1 held open in both hands (render/book_model.h); a page turning
-  VoxelLight light{1, 0}; vec4 tint{0}; bool fp = false, detail = true, headOnly = false, fpNoArms = false; double time = 0; glm::dvec3 camPos{0}; CharBlend* blend = nullptr; CapeSim* cape = nullptr; };   // cape: the cloth of this one's cape (render/cape_sim.h; nullptr: drawn from the pose alone)   // blend: ease between states (nullptr: snap)   // time / camPos: for the rod tip record
+  VoxelLight light{1, 0}; vec4 tint{0}; bool fp = false, detail = true, headOnly = false, fpNoArms = false; float eye = 1.62f; double time = 0; glm::dvec3 camPos{0}; CharBlend* blend = nullptr; CapeSim* cape = nullptr; };   // cape: the cloth of this one's cape (render/cape_sim.h; nullptr: drawn from the pose alone)   // blend: ease between states (nullptr: snap)   // time / camPos: for the rod tip record
 void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear& w, const mat4& base, const CharDrawOpts& o);
 // skins.js skinFace: the lid down over the eyes now and then (always in sleep) and, while ps.talk, the mouth opening and closing.
 // head = the head's matrix (part * scale); VoxelRenderer already begun.

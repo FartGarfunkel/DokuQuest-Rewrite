@@ -1,4 +1,6 @@
 // render/item_layers.cpp — the first-person hand with the held item, and dropped items (voxel models).
+#include "sim/attack_moves.h"
+#include "render/char_anim.h"
 #include "ui/book_ui.h"
 #include "render/content_draw.h"
 #include "ui/cinematic.h"
@@ -215,6 +217,12 @@ void HeldItemLayer::update(GameSession& s, double dt) {
   }
   lastStack = p->held();
   if (swapT < 1) swapT = std::min(1.f, swapT + fdt / FP_SWAP_TIME);
+  // an attack move in seamless first person: your own body's arm does the cut with the weapon in it (render/char_layer.cpp),
+  // so the hand view goes down out of the way quickly, and comes back up once the move is over
+  // (at once: the hand view's weapon and the body's would be two); the other hand's (a shield, a torch) stays
+  u8 dm; float dt0;
+  if (s.app.settings.fpBody && s.viewMode == 0 && ((p->atkMove && p->atkT < attackMove(p->atkMove).len) || devAttackPose(dm, dt0))) atkDown = 1;
+  else if (atkDown > 0) atkDown = std::max(0.f, atkDown - fdt * 5);
   if (equip < 1) equip = std::min(1.f, equip + fdt * 5);
   {   // the hand's place by what you're doing (sprinting, landing, a ladder, swimming, drinking), eased
     auto ease = [&](float& v, float want, float k) { v += (want - v) * std::min(1.f, fdt * k); };
@@ -298,7 +306,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   float bobK = st.viewBob ? bobAmt : 0;
   float hsn = std::sin(bob * 1.4f), bx = hsn * 0.025f * bobK + sx0, by = -hsn * hsn * 0.03f * bobK + sy0;
   const float swapLow = fpSwapLower(swapT);
-  float eq = 1 - equip, eqMain = eq + swapLow * 1.1f;
+  float eq = 1 - equip, eqMain = eq + swapLow * 1.1f + atkDown * atkDown * 2.5f;
   const FpOffset fo = fpStateOffset(fps, (float)time);
   float eat = eatAnim > 0 ? std::sin(std::min(1.f, eatAnim / EAT_ANIM) * PI) : 0;
   if (fps.drink > 0) eat *= 1 - 0.6f * fps.drink;   // a drink is tipped up (fo.pitch), not brought in and out

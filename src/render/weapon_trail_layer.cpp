@@ -6,6 +6,8 @@
 #include "render/gl.h"
 #include "sim/attack_moves.h"
 #include "sim/player.h"
+#include "render/char_anim.h"
+#include "client/app.h"
 
 namespace dq {
 
@@ -33,6 +35,9 @@ public:
       // the whole trail fades once the blade has gone past its live part
       const float tail = t > m.hitTo ? std::clamp(1 - (t - m.hitTo) / (FADE_AFTER + TRAIL_LEN), 0.f, 1.f) : 1.f;
       const bool fist = p.atkMove >= MV_FIST1 && p.atkMove <= MV_FIST3;
+      // your own, in seamless first person: lifted into the view with the arm that draws it (render/char_anim.h fpCutLift)
+      const bool fpOwn = &p == s.player && s.viewMode == 0 && s.app.settings.fpBody;
+      const mat4 lift = fpOwn ? fpCutLift(f.cam.rel(glm::dvec3(p.pos + vec3(0, p.eye, 0))), p.yaw) : mat4(1);
       const int n = std::max(2, (int)std::ceil((a1 - a0) * 240));
       vec3 pi0, po0; float al0 = 0;
       for (int i = 0; i <= n; i++) {
@@ -40,7 +45,7 @@ public:
         vec3 h, tp; bladeAt(p.atkMove, u, h, tp);
         const vec3 inner = h + (tp - h) * (fist ? 0.f : 0.35f), outer = fist ? tp + (tp - h) * 0.6f : tp;
         const vec3 wi = attackFrameToWorld(inner, p.pos, p.atkYaw, p.pitch), wo = attackFrameToWorld(outer, p.pos, p.atkYaw, p.pitch);
-        const vec3 ri = f.cam.rel(glm::dvec3(wi)), ro = f.cam.rel(glm::dvec3(wo));
+        const vec3 ri = vec3(lift * vec4(f.cam.rel(glm::dvec3(wi)), 1)), ro = vec3(lift * vec4(f.cam.rel(glm::dvec3(wo)), 1));
         const float age = (t - u) / TRAIL_LEN, al = std::clamp(1 - age, 0.f, 1.f) * tail * (fist ? 0.35f : 0.55f);
         if (i > 0) quad(pi0, po0, ro, ri, al0, al);
         pi0 = ri; po0 = ro; al0 = al;

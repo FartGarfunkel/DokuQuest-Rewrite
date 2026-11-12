@@ -5,6 +5,8 @@
 #include "render/char_anim.h"
 #include "sim/attack_moves.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include <cstdio>
+#include <cstdlib>
 
 namespace dq {
 namespace {
@@ -13,6 +15,22 @@ struct AtkClip { const AtkKey* k; int n; bool left; float pre, blend; };   // bl
 #include "render/attack_poses_data.inc"
 float sm(float u) { u = std::clamp(u, 0.f, 1.f); return u * u * (3 - 2 * u); }
 }  // namespace
+
+mat4 fpCutLift(const vec3& eye, float yaw) {
+  static float T[2] = {18.f, 0.35f}; static bool read = false;
+  if (!read) { read = true; if (const char* v = std::getenv("DQ_DEV_FPCUT")) std::sscanf(v, "%f,%f", &T[0], &T[1]); }
+  const vec3 right(std::cos(yaw), 0, -std::sin(yaw)), fwd(-std::sin(yaw), 0, -std::cos(yaw));
+  mat4 m = glm::translate(mat4(1), eye + fwd * T[1]);
+  m = glm::rotate(m, T[0] * 0.0174533f, right);   // (about the right axis: + tips what is ahead upward)
+  return glm::translate(m, -eye);
+}
+
+bool devAttackPose(u8& move, float& t) {
+  static int id = -1; static float at = 0; static bool read = false;
+  if (!read) { read = true; if (const char* v = std::getenv("DQ_DEV_ATK")) std::sscanf(v, "%d,%f", &id, &at); }
+  if (id <= 0 || id >= MV_COUNT) return false;
+  move = (u8)id; t = at; return true;
+}
 
 mat4 gripTurn(const mat4& fore, vec2 turn) {
   if (turn.x == 0 && turn.y == 0) return fore;
