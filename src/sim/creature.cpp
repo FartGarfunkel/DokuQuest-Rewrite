@@ -297,6 +297,7 @@ Creature::Creature(const std::string& type) {
   const CreatureType* t = creatureType(type);
   T = t ? t : &stubType();
   w = T->w; h = T->h; hp = maxHp = T->hp;
+  maxPosture = 40.f + mobLevel * 2.f;
   yaw = frand() * TAU;
   wanderT = frand() * 3; wanderDir = frand() * TAU;
   soundT = 3 + frand() * 8;

@@ -151,7 +151,13 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
   if (skating) { tx *= 1.75f; tz *= 1.75f; }
   float accel = flying ? 8.f : onGround ? (slippery ? (skating ? 5.f : 2.f) : 14.f) : (inWater || inLava ? 6.f : 3.f);
   float k = std::min(1.f, accel * dt);
-  vel.x += (tx - vel.x) * k; vel.z += (tz - vel.z) * k;
+  if (dodgeT > 0 && !flying) {   // the roll: carry the heading set when it started, don't steer back to a walk
+    const float ds = std::sin(dodgeYaw), dc = std::cos(dodgeYaw);
+    vel.x = -ds * 9.f; vel.z = -dc * 9.f;
+    if (onGround && dodgeT > 0.28f) vel.y = std::max(vel.y, 2.2f);
+  } else {
+    vel.x += (tx - vel.x) * k; vel.z += (tz - vel.z) * k;
+  }
   // vertical
   if (swimming) {
     vec3 L = lookVector(yaw, pitch);

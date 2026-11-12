@@ -62,9 +62,11 @@ void combatRpgTick(Level& lv, Player& p, float dt) {
       Entity* e = up.get();
       if (!e || e->isPlayer() || e->removed || e->realm != p.realm) continue;
       if (std::hypot(e->pos.x - p.pos.x, e->pos.z - p.pos.z) > 48) continue;
+      e->maxPosture = 40.f + std::max(1, e->mobLevel) * 2.f;
       if (e->mobLevel >= lvl && e->data.value("lvlHp", false)) continue;
       const int was = std::max(1, e->mobLevel);
       e->mobLevel = std::max(e->mobLevel, lvl);
+      e->maxPosture = 40.f + e->mobLevel * 2.f;
       if (!e->data.value("lvlHp", false)) {
         const float k = 1.f + 0.03f * (e->mobLevel - 1);
         e->maxHp *= k; e->hp = std::min(e->maxHp, e->hp * k);
@@ -80,10 +82,16 @@ void combatRpgTick(Level& lv, Player& p, float dt) {
 
 void combatRpgInput(Level& lv, Player& p, const PlayerInput& in, float dt) {
   if (p.dead) return;
-  if (in.dodge && p.dodgeT <= 0 && p.stamina >= DODGE_COST && !p.hang && !p.climb) {
+  if (in.dodge && p.dodgeT <= 0 && p.stamina >= DODGE_COST && !p.hang && !p.climb && !p.riding) {
     spend(p, DODGE_COST);
     p.dodgeT = DODGE_TIME;
-    p.dodgeYaw = p.yaw;
+    const float s = std::sin(p.yaw), co = std::cos(p.yaw);
+    const float fx = -s, fz = -co, rx = co, rz = -s;
+    float tx = rx * in.mx - fx * in.mz, tz = rz * in.mx - fz * in.mz;
+    const float len = std::hypot(tx, tz);
+    if (len < 0.2f) { tx = -fx; tz = -fz; }   // standing still: back away
+    else { tx /= len; tz /= len; }
+    p.dodgeYaw = std::atan2(-tx, -tz);        // the heading whose front is that way
     sfxUi(lv, p, "step");
   }
   const bool block = holdingShield(p) && in.use && p.stamina > 0 && p.dodgeT <= 0;
