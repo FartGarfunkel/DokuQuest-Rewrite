@@ -45,6 +45,15 @@ bool jukeboxInsert(Level& lv, Player& p, World& w, ivec3 at, ItemStack& held);  
 bool jukeboxEject(Level& lv, Player& p, World& w, ivec3 at, bool toBag);                   // toBag: into the bag, else popped out
 bool jukeboxUse(Level& lv, Player& p, World& w, ivec3 at);                                 // the classic use: in, or out
 
+// the campfire's food (sim/camping.h {type:"campfire", items[4], t[4]}; the cooking and the food popping off when it's
+// done: sim/camping.cpp): its scene sets raw food on the four spots by hand and takes it back
+std::vector<ItemStack> campfireFood(World& w, ivec3 at);                                    // the four spots
+float campfireCooked(World& w, ivec3 at, int k);                                            // 0..1 of the way cooked
+bool campfireCooks(const ItemStack& s);                                                     // raw food that cooks into food
+bool campfirePut(Level& lv, Player& p, World& w, ivec3 at, int k, ItemStack& held);         // one of it on spot k (-1: the first free)
+bool campfireTake(Level& lv, Player& p, World& w, ivec3 at, int k);                         // back into the bag
+vec3 campfireSpot(ivec3 at, int k);                                                         // where food k lies on the logs
+
 // where the pieces lie, in the block's own frame (out toward the side its placer stood, or for a plain block the side
 // the first piece was laid from, kept in the entity as "f"; right across it), so everyone sees them in the same places
 // (Cinematic Interactions' RemainingLayouts / the stations' LAYOUTs)

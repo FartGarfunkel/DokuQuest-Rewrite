@@ -50,6 +50,10 @@ std::unique_ptr<Screen> makeCinematicCutScreen(ivec3 at);
 // the jukebox (kind 12, JukeboxStation): your records on a dial over it; one put in sinks into the slot and plays, the one
 // playing rises out and comes back to you. INSERT 1.3 s (in at INSERT_SEND 0.62), EJECT 1.15 s (out at EJECT_SEND 0.16)
 std::unique_ptr<Screen> makeCinematicJukeboxScreen(ivec3 at);
+// the campfire (kind 13, CampfireStation): sat down by it, your food set on its four spots by hand and taken back
+std::unique_ptr<Screen> makeCinematicCampfireScreen(ivec3 at);
+struct FireView { ivec3 at{0}; int hover = -1; bool placing = false; };
+bool cinematicFireView(FireView& v);
 struct JukeView { ivec3 at{0}; float viewYaw = 0; int hover = -1; double t = -1; bool eject = false; float scroll = 0; std::string disc; std::vector<std::string> dial; };
 bool cinematicJukeView(JukeView& v);
 constexpr double JUKE_INSERT = 1.3, JUKE_INSERT_SEND = 0.62, JUKE_EJECT = 1.15, JUKE_EJECT_SEND = 0.16;

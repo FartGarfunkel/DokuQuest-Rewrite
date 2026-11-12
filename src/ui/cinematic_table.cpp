@@ -82,6 +82,11 @@ void leanPose(Scene& S, vec3 eye) {
     aimAt(wheel + d * 0.95f + vec3(0, 1.f, 0), wheel + vec3(0, 0.32f, 0));
     for (int k = 0; k < 2; k++) S.rest[k] = wheel + right * (k ? -0.31f : 0.31f) + d * 0.1f + vec3(0, 0.2495f, 0);
     S.fov = 64; S.roll = 1.5f * PI / 180;
+  } else if (S.kind == 13) {  // CampfireStation: sat 1.1 back (SEAT, leant in), the eye 0.8 up, looking at the fire 0.18 over it; fov 68
+    const vec3 fire = base + vec3(0, 0.18f, 0);
+    aimAt(base + d * 1.1f + vec3(0, 0.8f, 0), fire);
+    for (int k = 0; k < 2; k++) S.rest[k] = base + d * 0.62f + right * (k ? -0.24f : 0.24f) + vec3(0, 0.3f, 0);
+    S.fov = 68;
   } else if (S.kind == 7) {   // StonecutterStation: 1 back from the table and 0.95 up, looking 0.25 over it just past the saw
     const vec3 top = base + vec3(0, 0.5625f, 0);
     aimAt(top + d * 1.f + vec3(0, 0.95f, 0), top - d * 0.05f + vec3(0, 0.25f, 0));
@@ -278,7 +283,7 @@ void CinematicTableScreen::openClassic(App& a, ivec3 pos) {
 } // namespace
 
 vec3 cinematicViewOffset() { const Scene& S = scene(); return S.lean || S.phase == 0 ? vec3(0) : S.viewOff; }
-float cinematicCrouch() { const Scene& S = scene(); return !S.lean && (S.kind == 3 || S.kind == 4 || S.kind == 7) ? S.bend : 0.f; }
+float cinematicCrouch() { const Scene& S = scene(); return !S.lean && (S.kind == 3 || S.kind == 4 || S.kind == 7 || S.kind == 13) ? S.bend : 0.f; }
 bool cinematicLeaning() { return scene().lean; }
 bool cinematicActive() { return scene().phase != 0; }
 namespace { int g_aim = -1; double g_tapAt = -10, g_tapN = -1; }
@@ -1031,7 +1036,7 @@ void cinematicCamera(GameSession& s, Camera& cam, double dt) {
     const float want = S.phase == 3 || S.phase == 0 ? 0.f : 1.f;
     S.bend += (want - S.bend) * (float)std::min(1.0, dt * 6.0);
     const float b = S.bend * S.bend * (3 - 2 * S.bend);
-    const bool low = S.kind == 3 || S.kind == 4 || S.kind == 7;   // the brewing stand, the furnace, the stonecutter: crouched down to them (the mod's LOW lean)
+    const bool low = S.kind == 3 || S.kind == 4 || S.kind == 7 || S.kind == 13;   // the brewing stand, the furnace, the stonecutter, the campfire (sat by it): down to them (the mod's LOW lean)
     glm::dvec3 to = glm::dvec3(S.at) + glm::dvec3(0.5, 0, 0.5) - cam.pos; to.y = 0;
     const double tl = glm::length(to); if (tl > 1e-4) to /= tl;
     S.viewOff = vec3(glm::dvec3(0, -(low ? 0.34 : 0.0) * b, 0) + to * (0.14 * b));

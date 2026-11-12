@@ -69,7 +69,8 @@ public:
     bool begun = false;
     auto begin = [&] { if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; } };
     PairView pv; CutView cv; JukeView jv;
-    const bool pairOn = cinematicPairView(pv), cutOn = cinematicCutView(cv), jukeOn = cinematicJukeView(jv);
+    FireView fv;
+    const bool pairOn = cinematicPairView(pv), cutOn = cinematicCutView(cv), jukeOn = cinematicJukeView(jv), fireOn = cinematicFireView(fv);
     // a record standing up (in a jukebox's slot, on the dial): centred at c, facing along yaw, turned spin about its face
     auto record = [&](const std::string& id, vec3 c, float yaw, float spin, float size, VoxelLight L) {
       const VoxelModel& im = itemModel(id);
@@ -116,6 +117,20 @@ public:
     forBlockEntities(w, f, 32.f, [&](const Chunk&, json& e, int x, int y, int z) {
       const std::string type = e.value("type", "");
       const bool cutwork = type == "cutwork";
+      if (type == "campfire") {   // the food on a campfire's four spots, browning as it cooks (sim/camping.cpp)
+        const vec3 rel = f.cam.rel(glm::dvec3(x, y, z));
+        if (!f.cam.frustum.sphere(rel + vec3(0.5f), 1.f)) return;
+        const ivec3 at(x, y, z);
+        const u8 l = w.getLight(x, y, z);
+        const VoxelLight L{(l >> 4) / 15.f, std::max(l & 15, 10) / 15.f};   // (lit by the fire under it)
+        const std::vector<ItemStack> food = campfireFood(w, at);
+        for (int k = 0; k < 4; k++) {
+          if (food[k].empty()) continue;
+          const float done = campfireCooked(w, at, k), lift = fireOn && fv.at == at && fv.hover == k ? 0.02f + 0.006f * std::sin(t * 4.f) : 0.f;
+          lay(food[k], campfireSpot(at, k) + vec3(0, lift, 0), k * PI / 2 + 0.4f, 0.3f, L, vec4(0.22f, 0.1f, 0.03f, 0.6f * done));
+        }
+        return;
+      }
       if (type == "jukebox") {   // the record playing: standing in the slot, half out, turning slowly
         if (jukeOn && jv.at == ivec3(x, y, z)) return;
         const vec3 rel = f.cam.rel(glm::dvec3(x, y, z));

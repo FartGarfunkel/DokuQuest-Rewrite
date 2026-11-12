@@ -25,7 +25,7 @@ namespace dq {
 using namespace cine;
 
 namespace {
-PairView g_pv; CutView g_cv; JukeView g_jv; bool g_pvOn = false, g_cvOn = false, g_jvOn = false;
+PairView g_pv; CutView g_cv; JukeView g_jv; FireView g_fv; bool g_pvOn = false, g_cvOn = false, g_jvOn = false, g_fvOn = false;
 double win(double t, double a, double b) { return clampv((t - a) / (b - a), 0.0, 1.0); }
 double smoother(double x) { x = clampv(x, 0.0, 1.0); return x * x * x * (x * (x * 6 - 15) + 10); }
 vec3 sideOf(float viewYaw) { return vec3(std::sin(viewYaw), 0, std::cos(viewYaw)); }   // from the station toward you
@@ -132,6 +132,7 @@ vec3 cutDialPoint(ivec3 at, float viewYaw, int k, int count, float scroll, doubl
 }
 bool cinematicPairView(PairView& v) { if (!g_pvOn || scene().phase == 0) return false; v = g_pv; return true; }
 bool cinematicCutView(CutView& v) { if (!g_cvOn || scene().phase == 0) return false; v = g_cv; return true; }
+bool cinematicFireView(FireView& v) { if (!g_fvOn || scene().phase == 0) return false; v = g_fv; return true; }
 bool cinematicJukeView(JukeView& v) { if (!g_jvOn || scene().phase == 0) return false; v = g_jv; return true; }
 vec3 jukeDialPoint(ivec3 at, float viewYaw, int k, int count, float scroll, double clock) {
   const float a = dialAngle(k, count, scroll) * PI / 180.f;
@@ -561,10 +562,97 @@ private:
     cinematicTap();
   }
 };
+
+// the campfire as a scene (CampfireStation): sat down by it; raw food in hand goes on the spot you click (the first free one
+// with A), an empty hand on food takes it back; the rings show how done each is (it pops off when it's cooked)
+class CinematicCampfireScreen : public Screen {
+public:
+  explicit CinematicCampfireScreen(ivec3 at) : at(at) {}
+  const char* id() const override { return "cinematic_campfire"; }
+  bool pausesGame() const override { return false; }
+  bool wantsMouse() const override { return true; }
+  void onOpen(App& a) override {
+    Scene& S = scene();
+    if (!a.session || !a.session->player) return;
+    Player& p = *a.session->player;
+    if (S.phase == 0) { S.lastPos = a.session->frame.cam.pos; S.lastYaw = a.session->frame.cam.yaw; S.lastPitch = a.session->frame.cam.pitch; }
+    S.at = at; S.t = 0; S.phase = 1; S.kind = 13; S.front = vec3(0);
+    leanPose(S, p.pos + vec3(0, p.eye, 0));
+    g_fv = FireView{}; g_fv.at = at; g_fvOn = true;
+  }
+  void onClose(App&) override { Scene& S = scene(); if (S.phase == 1 || S.phase == 2) { S.phase = 3; S.t = 0; } g_fvOn = false; cinematicSetAimPoint(false); }
+  bool onBack(App&) override { if (bag.on) { bag.on = false; return true; } return false; }
+  void update(App& a, double) override {
+    GameSession* s = a.session.get();
+    if (!s || !s->player) { a.popScreen(); return; }
+    Player& p = *s->player; World& w = s->world(); Input& in = a.input;
+    const std::string sh = reg().block(w.getBlock(at.x, at.y, at.z)).str("shape");
+    if ((sh != "campfire" && sh != "soul_campfire") || !sceneKeys(a, at, false, showBag)) { a.popScreen(); return; }
+    if (bagPadUpdate(in, p, bag)) return;
+    const ivec2 nav = in.navStep();
+    if (nav.x || nav.y) { pad = true; padSpot = ((padSpot + (nav.x ? nav.x : nav.y * 2)) % 4 + 4) % 4; }
+    if (pad && in.pressed(Act::MenuOk)) act(a, padSpot);
+    if (in.pressed(Act::MenuY)) act(a, -1);   // (the first free spot)
+  }
+  void draw(App& a) override {
+    GameSession* s = a.session.get();
+    if (!s || !s->player) return;
+    Player& p = *s->player; World& w = s->world();
+    const float W = (float)a.width, z = ui::Z();
+    ImDrawList* dl = ImGui::GetBackgroundDrawList();
+    const bool overUi = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook();
+    const std::vector<ItemStack> food = campfireFood(w, at);
+    const bool cooks = campfireCooks(p.held()), lit = !(w.getMeta(at.x, at.y, at.z) & 8);
+    if (glm::length(vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y)) > 0.5f) pad = false;
+    int hover = -1;
+    if (!pad && !overUi && scene().phase == 2) { for (int k = 0; k < 4 && hover < 0; k++) if (under(a, campfireSpot(at, k), 0.14f)) hover = k; }
+    else if (pad) hover = padSpot;
+    cinematicSetAimPoint(scene().phase == 2 && hover >= 0, hover >= 0 ? campfireSpot(at, hover) : vec3(at) + vec3(0.5f));
+    // the rings: how done each piece is; the spot under the mouse
+    for (int k = 0; k < 4 && scene().phase == 2; k++) {
+      ImVec2 sp;
+      if (!toScreen(a, campfireSpot(at, k), sp)) continue;
+      if (!food[k].empty()) {
+        const float done = campfireCooked(w, at, k), r = 18 * z;
+        dl->PathArcTo(sp, r, -PI / 2, -PI / 2 + TAU * std::max(0.02f, done), 24);
+        dl->PathStroke(IM_COL32(255, (int)(200 - 90 * done), 80, 220), 0, 3 * z);
+      }
+      if (k == hover && (cooks ? food[k].empty() : !food[k].empty())) dl->AddCircle(sp, 26 * z, IM_COL32(255, 236, 160, 230), 28, 2 * z);
+    }
+    if (!overUi && !pad && scene().phase == 2 && ImGui::IsMouseClicked(0) && hover >= 0) act(a, hover);
+    g_fv.at = at; g_fv.hover = hover; g_fv.placing = cooks;
+    if (showBag || bag.on) drawBag(a, p, bag.on ? bag.cur : -1);
+    ImGui::SetNextWindowPos(ImVec2(W * 0.5f, 14 * z), ImGuiCond_Always, ImVec2(0.5f, 0));
+    ImGui::SetNextWindowBgAlpha(0.72f);
+    ImGui::Begin("##cine_fire", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav);
+    int n = 0; for (auto& f : food) n += !f.empty();
+    if (!lit) ImGui::Text("The fire's out (flint and steel lights it again)");
+    else if (n) ImGui::Text("On the fire: %d of 4%s", n, hover >= 0 && !food[hover].empty() ? ("   \xC2\xB7   " + nameOf(food[hover]) + strFormat(", %d%% done", (int)(campfireCooked(w, at, hover) * 100))).c_str() : "");
+    else ImGui::Text("Warm by the fire");
+    ImGui::TextDisabled(bag.on ? "Bag: D-pad choose \xC2\xB7 A take into hand \xC2\xB7 B / LB / RB back to the fire"
+                      : pad ? "D-pad a spot \xC2\xB7 A set it on (empty hand: take it back) \xC2\xB7 Y on the first free spot \xC2\xB7 LB / RB your bag \xC2\xB7 B leave"
+                            : cooks ? "Click a spot to set it on the fire" : "Take raw food from your bag to cook it \xC2\xB7 click food on the fire to take it back");
+    if (ImGui::Button("Leave")) { a.popScreen(); ImGui::End(); return; }
+    ImGui::End();
+  }
+private:
+  ivec3 at; bool pad = false, showBag = true; int padSpot = 0;
+  BagPad bag;
+  void act(App& a, int k) {
+    GameSession* s = a.session.get();
+    if (!s || scene().phase != 2) return;
+    Player& p = *s->player; World& w = s->world();
+    const std::vector<ItemStack> food = campfireFood(w, at);
+    cinematicTap();
+    if (campfireCooks(p.held())) { if (k < 0 || food[k].empty()) campfirePut(*s->level, p, w, at, k, p.held()); }
+    else if (k >= 0 && !food[k].empty()) campfireTake(*s->level, p, w, at, k);
+  }
+};
 }  // namespace
 
 std::unique_ptr<Screen> makeCinematicPairScreen(ivec3 at, const std::string& station) { return std::make_unique<CinematicPairScreen>(at, station); }
 std::unique_ptr<Screen> makeCinematicCutScreen(ivec3 at) { return std::make_unique<CinematicCutScreen>(at); }
 std::unique_ptr<Screen> makeCinematicJukeboxScreen(ivec3 at) { return std::make_unique<CinematicJukeboxScreen>(at); }
+std::unique_ptr<Screen> makeCinematicCampfireScreen(ivec3 at) { return std::make_unique<CinematicCampfireScreen>(at); }
 
 }  // namespace dq

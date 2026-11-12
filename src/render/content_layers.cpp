@@ -18,6 +18,7 @@
 #include "sim/camping.h"
 #include "sim/elytra.h"
 #include "sim/stable.h"
+#include "ui/cinematic.h"
 #include <SDL.h>
 
 namespace dq {
@@ -100,6 +101,8 @@ public:
       else if (id == "places") app.pushScreen(makePlacesScreen());
       else if (id == "travel_journal") app.pushScreen(makeTravelJournalScreen());
       else if (id == "label") app.pushScreen(makeLabelScreen(args.value("slot", 0)));
+      else if (id == "campfire" && args.contains("pos") && args["pos"].is_array() && args["pos"].size() == 3 && app.settings.extra.value("cinematicStations", true))
+        app.pushScreen(makeCinematicCampfireScreen(ivec3(args["pos"][0].get<int>(), args["pos"][1].get<int>(), args["pos"][2].get<int>())));   // (sat by the fire)
       return true;
     });
   }

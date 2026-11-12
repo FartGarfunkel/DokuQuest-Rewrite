@@ -214,6 +214,63 @@ bool jukeboxUse(Level& lv, Player& p, World& w, ivec3 at) {
   return jukeboxInsert(lv, p, w, at, p.held());
 }
 
+// ---- the campfire ----
+namespace {
+const vec2 SPOTS[4] = {{0.28f, 0.2f}, {0.72f, 0.2f}, {0.72f, 0.8f}, {0.28f, 0.8f}};   // (sim/camping.cpp CAMP_SPOTS)
+constexpr float COOK = 24;                                                             // (CAMP_COOK)
+bool isFire(World& w, ivec3 at) { const std::string s = reg().block(w.getBlock(at.x, at.y, at.z)).str("shape"); return s == "campfire" || s == "soul_campfire"; }
+json fireEntity(World& w, ivec3 at) {   // a copy, in camping.cpp's campEntity form (its other fields kept: the firepit's fuel)
+  const json* e0 = w.blockEntity(at.x, at.y, at.z);
+  json e = e0 && e0->is_object() ? *e0 : json::object();
+  if (!e.contains("type")) e["type"] = "campfire";
+  if (!e["items"].is_array() || e["items"].size() != 4) e["items"] = json::array({nullptr, nullptr, nullptr, nullptr});
+  if (!e["t"].is_array() || e["t"].size() != 4) e["t"] = json::array({0, 0, 0, 0});
+  return e;
+}
+}  // namespace
+std::vector<ItemStack> campfireFood(World& w, ivec3 at) {
+  std::vector<ItemStack> v(4);
+  const json* e = w.blockEntity(at.x, at.y, at.z);
+  if (e && e->is_object() && e->value("type", "") == "campfire" && (*e)["items"].is_array())
+    for (int k = 0; k < 4 && k < (int)(*e)["items"].size(); k++) v[k] = ItemStack::fromJson((*e)["items"][k]);
+  return v;
+}
+float campfireCooked(World& w, ivec3 at, int k) {
+  const json* e = w.blockEntity(at.x, at.y, at.z);
+  if (!e || !e->is_object() || !(*e)["t"].is_array() || k < 0 || k >= (int)(*e)["t"].size() || !(*e)["t"][k].is_number()) return 0;
+  return std::clamp((*e)["t"][k].get<float>() / COOK, 0.f, 1.f);
+}
+bool campfireCooks(const ItemStack& s) {
+  if (s.empty()) return false;
+  const ItemDef* d = reg().item(s.id);
+  auto sm = reg().smelting.find(s.id);
+  const ItemDef* c = sm != reg().smelting.end() ? reg().item(sm->second) : nullptr;
+  return d && c && d->has("food") && c->has("food");
+}
+bool campfirePut(Level& lv, Player& p, World& w, ivec3 at, int k, ItemStack& held) {
+  if (!isFire(w, at) || !campfireCooks(held)) return false;
+  if (w.getMeta(at.x, at.y, at.z) & 8) { toast(lv, p, "The fire's out"); return false; }   // (CAMPFIRE_OUT)
+  json e = fireEntity(w, at);
+  if (k < 0) for (int i = 0; i < 4 && k < 0; i++) if (e["items"][i].is_null()) k = i;
+  if (k < 0 || k > 3 || !e["items"][k].is_null()) { toast(lv, p, "There's no more room on the fire"); return false; }
+  e["items"][k] = ItemStack(held.id, 1).toJson(); e["t"][k] = 0;
+  if (--held.n <= 0) held = ItemStack();
+  w.setBlockEntity(at.x, at.y, at.z, e);
+  sfxAt(lv, "fizz", vec3(at) + vec3(0.5f, 0.6f, 0.5f), 10);
+  return true;
+}
+bool campfireTake(Level& lv, Player& p, World& w, ivec3 at, int k) {
+  if (!isFire(w, at) || k < 0 || k > 3) return false;
+  json e = fireEntity(w, at);
+  if (e["items"][k].is_null()) return false;
+  const ItemStack s = ItemStack::fromJson(e["items"][k]);
+  e["items"][k] = nullptr; e["t"][k] = 0;
+  w.setBlockEntity(at.x, at.y, at.z, e);
+  give(lv, p, s);
+  return true;
+}
+vec3 campfireSpot(ivec3 at, int k) { return vec3(at) + vec3(SPOTS[k & 3].x, 0.46f, SPOTS[k & 3].y); }
+
 // ---- where things lie ----
 void stationWorkFrame(World& w, ivec3 at, vec3& out, vec3& right) {
   // (a facing model: the way its placer looked, its front toward them; a plain block: the side the work was laid from)

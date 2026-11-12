@@ -340,6 +340,8 @@ bool campingUse(UseCtx& u) {
       sfxAt(lv, "fizz", vec3(x + 0.5f, y + 0.6f, z + 0.5f), 10);
       return true;
     }
+    // an empty hand: sit down by it (its scene, ui/cinematic.h: food set on and taken off by hand)
+    if (held.empty() && !p.sneaking) { openContentScreen(lv, p, "campfire", {{"pos", {x, y, z}}}); return true; }
   }
   // rope: hang it down from here
   if (!held.empty() && held.id == "rope" && u.hasHit() && hangRope(u)) return true;
