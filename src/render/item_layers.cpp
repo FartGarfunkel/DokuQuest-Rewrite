@@ -50,6 +50,7 @@ void registerDreamlightLayer();
 void registerStatueLayer();
 void registerHeadLayer();   // render/head_layer.cpp
 void registerNetherFxLayer();   // render/nether_fx_layer.cpp
+void registerWeaponTrailLayer();   // render/weapon_trail_layer.cpp
 
 void registerItemLayers() {
   static bool done = false;
@@ -73,6 +74,7 @@ void registerItemLayers() {
   registerLecternLayer();   // books on lecterns (render/lectern_layer.cpp)
   registerChestLayer();     // chest lids that open with the chest's screen (render/chest_layer.cpp)
   registerFpBow();          // the bow drawn in first person (render/fp_bow.cpp)
+  registerWeaponTrailLayer();   // a swing's trail while it is live (render/weapon_trail_layer.cpp)
   registerSpawnerLayer();   // the spinning monster inside a monster cage (render/spawner_layer.cpp)
   registerStationWorkLayer();
   registerStationCards(); registerCinematicHands(); // your arms at the crafting table scene (render/cinematic_hands.cpp)
