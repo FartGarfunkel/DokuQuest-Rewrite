@@ -41,6 +41,7 @@
 #include <SDL.h>
 #include <map>
 #include "sim/quiver.h"
+#include "sim/creature_entities.h"
 #include "gen/structures_api.h"
 #include "gen/structures.h"
 
@@ -320,6 +321,15 @@ void runStep(App& a, const json& st) {
       result(dump.find(want) != std::string::npos, "block entity " + st["blockEntity"].dump() + " has '" + want + "' (got " + dump.substr(0, 200) + ")");
     }
     if (st.contains("held") && p) result(p->held().id == st["held"].get<std::string>(), "held " + st["held"].get<std::string>() + " (got " + p->held().id + ")");
+  } else if (op == "arrow" && s && p) {   // a skeleton's arrow at the player: from [right, up, ahead] of the feet (the body's frame), aimed at
+    // "at" [right, up, ahead] (default the chest), "speed" blocks/s; logs the player's hp and stamina, the arrow's id
+    const float sn = std::sin(p->yaw), cs = std::cos(p->yaw);
+    const vec3 right(cs, 0, -sn), fwd(-sn, 0, -cs), up(0, 1, 0);
+    auto body = [&](const json& v, vec3 d) { if (v.is_array() && v.size() == 3) d = vec3(v[0].get<float>(), v[1].get<float>(), v[2].get<float>()); return p->pos + right * d.x + up * d.y + fwd * d.z; };
+    const vec3 from = body(st.value("from", json()), vec3(0, 1.2f, 4)), to = body(st.value("at", json()), vec3(0, 1.2f, 0));
+    Entity* ar = spawnArrow(*s->level, p->realm, from, glm::normalize(to - from) * st.value("speed", 30.f), nullptr, st.value("damage", 5.f), false);
+    char b[160]; std::snprintf(b, sizeof b, "arrow %u shot: hp %.1f stamina %.1f blockT %.3f", ar ? ar->id : 0u, p->hp, p->stamina, p->blockT);
+    DQ_LOG("test: %s", b);
   } else if (op == "hurt" && s && p) {   // strike the nearest creature of a type as the player would (tool kind, the ray from the eyes)
     std::string t = st.value("entity", ""); Entity* best = nullptr; float bd = st.value("near", 24.f);
     for (auto& e : s->level->entities()) if (e && !e->removed && e.get() != p && e->type == t && e->hp > 0 && glm::distance(e->pos, p->pos) < bd) { bd = glm::distance(e->pos, p->pos); best = e.get(); }
