@@ -270,7 +270,11 @@ static Move nightBase(Level& lv, Creature& m, const std::string& as, Entity* p, 
     if (m.shootT < -0.5f) m.shootT = 1 + frand();
     m.shootT -= dt;
     m.aiming = sees && dist < 16 && m.heldItem == "bow";
-    if (m.heldItem.empty()) { m.meleeAt(lv, *p, dist, dyp); return {dist < 0.9f ? 0 : T.speed, toPlayer}; }   // lost its bow: comes at you
+    if (m.heldItem != "bow") {   // no bow (lost it, or a sword in hand): comes at you and fights hand to hand
+      m.meleeAt(lv, *p, dist, dyp);
+      std::optional<float> nd; if (dist > 2.2f) nd = m.navDir(lv, p->pos, dt);
+      return {dist < 0.9f ? 0 : T.speed * 1.1f, nd ? *nd : toPlayer};
+    }
     if (m.aiming && m.shootT <= 0) { m.shootT = 1.6f + frand() * 1.2f; shootAt(lv, m, *p); }
     m.strafeT -= dt;
     if (m.strafeT <= 0) { m.strafeT = 1.5f + frand() * 2; m.strafe = frand() < 0.5f ? -1 : 1; }

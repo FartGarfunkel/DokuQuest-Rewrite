@@ -321,9 +321,15 @@ Creature::Creature(const std::string& type) {
     float q = frand() * tot;
     for (auto& v : T->vdefs) if (v.open() && (q -= v.w) <= 0) { variant = v.model == T->model ? "" : v.model; break; }
   } else if (!T->variants.empty()) variant = T->variants[(size_t)(frand() * T->variants.size()) % T->variants.size()];
-  if ((type == "ghoul" || type == "charred_ghoul" || type == "husk") && frand() < 0.1f) {
+  // Soulrend's Improved Mobs: the undead walkers come armed more often (a quarter of them), and a skeleton now and then
+  // carries a sword instead of its bow (it comes at you then: creature_monsters.cpp)
+  if ((type == "ghoul" || type == "charred_ghoul" || type == "husk" || type == "drowned") && heldItem.empty() && frand() < 0.25f) {
     const char* W[] = {"iron_sword", "iron_shovel", "stone_axe", "gold_sword", "copper_sword", "stone_sword", "iron_axe", "wooden_sword"};
     heldItem = W[(int)(frand() * 8) & 7];
+  }
+  if ((type == "skeleton" || type == "stray" || type == "scorched_skeleton" || type == "jungle_skeleton") && frand() < 0.15f) {
+    const char* W[] = {"stone_sword", "iron_sword", "stone_axe", "copper_sword", "iron_axe"};
+    heldItem = W[(int)(frand() * 5) % 5];
   }
   rollArmour();
   if (type == "slime" || type == "magma_slime" || type == "sulfur_slime") setSize(2);
