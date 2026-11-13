@@ -14,6 +14,7 @@
 #include <regex>
 #include <set>
 
+namespace dq { class Level; class Entity; bool mountJockeyOn(Level& lv, Entity* spider); }
 namespace dq {
 bool setCreatureLook(Entity& e, const std::string& look);   // sim/creature.cpp (creature.h clashes with gameplay.h here)
 void keepSummoned(Entity& e);
@@ -395,9 +396,10 @@ static void registerBuiltinCommands() {
       e->hp = e->maxHp = T.value("hp", 10.0f); e->w = T.value("w", e->w); e->h = T.value("h", e->h);
       if (a.size() >= 3) setCreatureLook(*e, toLower(a[2]));   // a look by name: "miner" or "skeleton_miner"
       keepSummoned(*e);
-      c.lv.spawn(std::move(e));
+      Entity* se = c.lv.spawn(std::move(e));
+      if (!a.empty() && toLower(a[0]) == "spider_jockey") mountJockeyOn(c.lv, se);   // (with its skeleton: sim/creature.cpp)
     }
-    return "Summoned " + std::to_string(n) + " " + t;
+    return "Summoned " + std::to_string(n) + " " + (!a.empty() && toLower(a[0]) == "spider_jockey" ? std::string("spider jockey") : t);
   });
   C("looks", "<creature>", "Every look a creature comes in, side by side", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
     if (a.empty()) throw CommandUsage{};

@@ -683,6 +683,7 @@ public:
       Creature* m = spawnCreature(lv, realm, t, vec3(x + 0.5f, y, z + 0.5f));
       if (!m) return;
       if (t == "slime" || t == "magma_slime") m->setSize(frand() < 0.6f ? 2 : 1);
+      if (t == "spider" && frand() < 0.01f) mountJockey(lv, *m);   // (Minecraft: one spider in a hundred carries a skeleton)
       if (t == "raider") {   // a band: a leader and two to four more
         for (int i = 0, n = 2 + (int)(frand() * 3); i < n; i++)
           if (Creature* o = spawnCreature(lv, realm, "raider", vec3(x + 0.5f + (frand() - 0.5f) * 3, y, z + 0.5f + (frand() - 0.5f) * 3))) { o->leader = m->id; if (frand() < 0.35f) o->heldItem = "stone_axe"; }

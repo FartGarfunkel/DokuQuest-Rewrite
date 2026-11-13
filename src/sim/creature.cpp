@@ -262,6 +262,17 @@ std::string Creature::label() const {
   return T->label;
 }
 
+// a spider jockey (Minecraft's): a skeleton riding the spider (Creature::tick carries it along: jockeyOf / jockeyRider)
+Creature* mountJockey(Level& lv, Creature& spider) {
+  Creature* r = spawnCreature(lv, spider.realm, "skeleton", spider.pos + vec3(0, spider.h * 0.8f, 0));
+  if (!r) return nullptr;
+  r->jockeyOf = spider.id; spider.jockeyRider = r->id;
+  r->kept = spider.kept; r->persistent = spider.persistent;
+  return r;
+}
+
+bool mountJockeyOn(Level& lv, Entity* e) { auto* c = dynamic_cast<Creature*>(e); return c && mountJockey(lv, *c); }
+
 Creature* spawnCreature(Level& lv, int realm, const std::string& type, vec3 p) {
   if (!isCreatureType(type)) return nullptr;
   auto e = createEntity(type);
