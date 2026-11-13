@@ -276,6 +276,12 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
                 if (wet(sx, sz)) steep = true;
               }
               for (auto [px, pz] : {std::pair{q.x0, q.z0}, {q.x1(), q.z0}, {q.x0, q.z1()}, {q.x1(), q.z1()}}) if (!steep && std::abs(top(px, pz) - q.y0) > 7) steep = true;
+              // nor sunk into a rise: the land over most of it well above its floor (a pit dug round it, only its roof showing)
+              if (!steep) {
+                int above = 0, n = 0;
+                for (int pz = q.z0; pz <= q.z1(); pz += 2) for (int px = q.x0; px <= q.x1(); px += 2) { n++; if (top(px, pz) - q.y0 > 3) above++; }
+                if (above * 3 > n) steep = true;
+              }
               if (steep) { rej[4]++; continue; }
             }
             q.parent = (int)qi; q.jx = ax; q.jz = az; q.dy = A.y - B.y;
@@ -364,6 +370,10 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
       if (par.p->terrain) { auto t = T.find(colKey(q.jx, q.jz)); if (t != T.end()) q.y0 = t->second + q.dy; }   // (the joint stands on the street: y0 = its level + A.y - B.y)
       else q.y0 = par.y0 + q.dy;
     }
+  }
+  if (std::getenv("DQ_VSINK")) for (auto& q : J->pcs) if (!q.p->terrain) {   // (a building well below the land it stands on)
+    const int c = top(q.x0 + q.w / 2, q.z0 + q.d / 2);
+    if (c - q.y0 > 4) DQ_LOG("vsink %s (%s) y%d land %d: %d below; parent %s", q.p->name.c_str(), q.p->style.c_str(), q.y0, c, c - q.y0, q.parent >= 0 ? J->pcs[q.parent].p->name.c_str() : "-");
   }
   if (std::getenv("DQ_VDEBUG"))   // (every piece of the plan, logged: where a street or a house went)
     for (auto& q : J->pcs) DQ_LOG("vplan %s %d,%d..%d,%d y%d r%d%s", q.p->name.c_str(), q.x0, q.z0, q.x1(), q.z1(), q.y0, q.r, q.p->terrain ? " street" : "");
