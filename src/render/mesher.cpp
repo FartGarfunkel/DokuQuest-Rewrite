@@ -331,6 +331,7 @@ static bool leafHidden(const MeshCtx& c, int x, int y, int z, const int* n) {
   return true;
 }
 
+static void emitPackModel(MeshCtx& c, std::vector<ChunkVertex>& dst, const PackModel& M, vec3 at, int quarters, float sk, float bl, u32 lit, u8 mat);
 void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& dst, BlockId id, int x, int y, int z, u8 meta) {
   const Registry& R = c.R;
   const BlockDef& self = R.block(id);
@@ -345,6 +346,22 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
   if (self.render == Render::Cutout) mat |= Mat::Cutout | Mat::NoRelief;
   if (R.tTrans[id]) mat |= Mat::Translucent | Mat::NoRelief;
   static const int AXIS_END[3][2] = {{2, 3}, {0, 1}, {4, 5}};
+  // a furnace, smoker or blast furnace: its opening hollowed (assets/pack_models.h buildFurnaceModels), the fire behind it
+  // bright while it burns; lit by the air in front of it
+  if (T.hasFront) if (const FurnaceModel* FM = furnaceModelFor(faces[4])) {
+    static const int Q[4] = {2, 1, 0, 3}, DX[4] = {0, 1, 0, -1}, DZ[4] = {1, 0, -1, 0};   // meta & 3: facing south, east, north, west
+    const int fd = meta & 3;
+    LightRgb L = rgbAt(c, x + DX[fd], y, z + DZ[fd]);
+    { const LightRgb Lu = rgbAt(c, x, y + 1, z); for (int i = 0; i < 3; i++) { L.s[i] = std::max(L.s[i], Lu.s[i]); L.b[i] = std::max(L.b[i], Lu.b[i]); } }
+    { u8 em[3]; blockLightRgb(id, R.metaLight(id, meta), em); for (int i = 0; i < 3; i++) if (em[i] > L.b[i]) L.b[i] = em[i]; }
+    const vec3 at((float)x, (float)y, (float)z);
+    const float sk = (float)(max3u(L.s[0], L.s[1], L.s[2]) >> 4), bl = (float)(max3u(L.b[0], L.b[1], L.b[2]) >> 4);
+    emitPackModel(c, dst, FM->body, at, Q[fd], sk, bl, markCubyz(packCubyzLight(L)), Mat::NoRelief);
+    const bool burning = R.tLight[id] > 0;
+    LightRgb G = L; if (burning) for (int i = 0; i < 3; i++) G.b[i] = 255;
+    emitPackModel(c, dst, FM->back, at, Q[fd], sk, burning ? 15.f : bl, markCubyz(packCubyzLight(G)), Mat::NoRelief);
+    return;
+  }
   // a large chest: two of the same, side by side, facing the same way — each drawn as its half of one (assets/pack_models.h)
   const DoubleChestTiles* DC = T.hasFront ? doubleChestFor(faces[4]) : nullptr;
   int dcHalf = -1;

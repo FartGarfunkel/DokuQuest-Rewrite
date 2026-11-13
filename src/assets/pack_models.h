@@ -48,4 +48,13 @@ const DoubleChestTiles* doubleChestFor(int singleFrontTile);
 // player's own tiles are in (client/app.cpp reloadTiles).
 void paintChestTiles(TileSet& ts);
 
+// furnaces, smokers and blast furnaces with their openings hollowed: every dark pixel of the unlit front picture is a hole
+// FURNACE_DEPTH (of 16) deep into the block; through the holes, the front picture itself on the back wall (the lit one's fire
+// when it burns). body: the block (front, the holes' walls, floors and ceilings, sides, top, bottom); back: the back wall,
+// drawn bright when the furnace is lit. Facing north (-z); keyed by the block's front tile. After the tiles are final.
+constexpr float FURNACE_DEPTH = 5.f;
+struct FurnaceModel { PackModel body, back; float floorY = 0, floorX0 = 6, floorX1 = 10; };   // the main opening's floor (of 16: its height, from x0 to x1, model x), where the fuel lies
+void buildFurnaceModels(TileSet& ts);
+const FurnaceModel* furnaceModelFor(int frontTile);
+
 } // namespace dq

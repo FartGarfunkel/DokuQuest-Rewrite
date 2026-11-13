@@ -157,6 +157,7 @@ void App::reloadTiles() {
   tiles.packName = applyResourcePack(tiles, settings.resourcePack);
   applyUserTiles(tiles);   // the Texture Studio's pictures, over any pack
   paintChestTiles(tiles);  // painted chests and the party chest from the chest's own pictures (assets/pack_models.h)
+  buildFurnaceModels(tiles);   // furnaces, smokers, blast furnaces with their openings hollowed (assets/pack_models.h)
   holidayTiles(tiles);     // December's wrapped chests
   buildWeatherSprites(tiles);   // render/weather_sprites.h: rain and snow from the pack, or drawn
   // ice you can see through like Minecraft's (about 60 % cover), whichever pack painted it

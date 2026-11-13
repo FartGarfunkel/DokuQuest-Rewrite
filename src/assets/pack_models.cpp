@@ -233,6 +233,93 @@ void paintChestTiles(TileSet& ts) {
   std::atomic_store(&g_dchest, std::shared_ptr<const std::unordered_map<int, DoubleChestTiles>>(D));
 }
 
+// ---- furnaces with hollow openings ----
+namespace { std::shared_ptr<const std::unordered_map<int, FurnaceModel>> g_furnace; }
+void buildFurnaceModels(TileSet& ts) {
+  auto D = std::make_shared<std::unordered_map<int, FurnaceModel>>();
+  auto at = [&](const std::string& k) { auto it = ts.index.find(k); return it == ts.index.end() || it->second < 0 || it->second >= ts.count ? -1 : it->second; };
+  const char* kinds[3] = {"furnace", "smoker", "blast_furnace"};
+  for (const char* k : kinds) {
+    const int front = at(std::string(k) + "_front"), lit = at(std::string(k) + "_front_lit"), side = at(std::string(k) + "_side"), top = at(std::string(k) + "_top");
+    if (front < 0 || side < 0 || top < 0) continue;
+    // the mask, at the picture's own resolution (a 16-pixel picture's pixels are a 16th of the block)
+    const int TS = ts.size, N = std::clamp((int)(ts.res.size() > (size_t)front && ts.res[front] ? ts.res[front] : TS), 8, TS), st = TS / N;
+    const u8* px = ts.tile(front);
+    std::vector<u8> hole((size_t)N * N, 0);
+    int holes = 0;
+    for (int y = 0; y < N; y++) for (int x = 0; x < N; x++) {
+      const u8* p = px + ((size_t)(y * st) * TS + x * st) * 4;
+      const float lum = 0.3f * p[0] + 0.59f * p[1] + 0.11f * p[2];
+      // dark (the opening, the grille's gaps), not on the block's own edge rows, and not a lone dark speck
+      if (p[3] > 128 && lum < 42 && x > 0 && y > 0 && x < N - 1 && y < N - 1) { hole[(size_t)y * N + x] = 1; }
+    }
+    for (int y = 1; y < N - 1; y++) for (int x = 1; x < N - 1; x++) if (hole[(size_t)y * N + x]) {
+      const int nb = hole[(size_t)(y - 1) * N + x] + hole[(size_t)(y + 1) * N + x] + hole[(size_t)y * N + x - 1] + hole[(size_t)y * N + x + 1];
+      if (nb == 0) hole[(size_t)y * N + x] = 2;   // (lone: not a hole)
+    }
+    for (auto& h : hole) { if (h == 2) h = 0; holes += h; }
+    if (holes < 4) continue;
+    const float U = 16.f / N, Dp = FURNACE_DEPTH;
+    auto isHole = [&](int x, int y) { return x >= 0 && y >= 0 && x < N && y < N && hole[(size_t)y * N + x]; };
+    // model x runs right to left as the front is seen (the north face's left is high x): pixel x -> [16-(x+1)U, 16-xU]
+    auto X0 = [&](int x) { return 16 - (x + 1) * U; }; auto Y0 = [&](int y) { return 16 - (y + 1) * U; };
+    auto face = [&](int tile, float u0, float v0, float u1, float v1) { PackModelFace f; f.tile = tile; f.uv = vec4(u0, v0, u1, v1); return f; };
+    auto pixUV = [&](int tile, int x, int y) { return face(tile, x * U + U * 0.25f, y * U + U * 0.25f, x * U + U * 0.75f, y * U + U * 0.75f); };   // (one pixel's colour, stretched)
+    FurnaceModel fm;
+    {   // the block behind the holes (its front face only seen through them)
+      PackModelBox b; b.from = vec3(0, 0, Dp); b.to = vec3(16, 16, 16);
+      b.face[1] = face(side, 0, 0, 16, 16);                         // south (the back of the block)
+      b.face[2] = face(side, Dp, 0, 16, 16); b.face[3] = face(side, 0, 0, 16 - Dp, 16);   // west, east
+      b.face[4] = face(top, 0, Dp, 16, 16); b.face[5] = face(top, 0, Dp, 16, 16);         // up, down
+      fm.body.boxes.push_back(b);
+      PackModelBox w; w.from = vec3(0, 0, Dp); w.to = vec3(16, 16, Dp + 0.01f); w.shade = false;
+      w.face[0] = face(front, 0, 0, 16, 16);
+      fm.back.boxes.push_back(w);
+    }
+    // the front slab: each row's runs of solid pixels
+    for (int y = 0; y < N; y++) {
+      for (int x = 0; x < N;) {
+        if (isHole(x, y)) { x++; continue; }
+        int e = x; while (e + 1 < N && !isHole(e + 1, y)) e++;
+        PackModelBox b; b.from = vec3(X0(e), Y0(y), 0); b.to = vec3(X0(x) + U, Y0(y) + U, Dp);
+        b.face[0] = face(front, x * U, y * U, (e + 1) * U, (y + 1) * U);              // north: the picture
+        // its ends: the block's own side at the edges, a hole's wall where a hole is
+        if (e == N - 1) b.face[2] = face(side, 16 - Dp, y * U, 16, (y + 1) * U); else b.face[2] = pixUV(front, e + 1, y);   // west (the picture's right)
+        if (x == 0) b.face[3] = face(side, 0, y * U, Dp, (y + 1) * U); else b.face[3] = pixUV(front, x - 1, y);              // east (the picture's left)
+        if (y == 0) b.face[4] = face(top, 0, 0, 16, Dp);
+        if (y == N - 1) b.face[5] = face(top, 0, 0, 16, Dp);
+        fm.body.boxes.push_back(b);
+        x = e + 1;
+      }
+    }
+    // the holes' floors and ceilings (where a hole has solid picture under or over it)
+    int floorRow = -1;
+    for (int y = 0; y < N; y++) for (int x = 0; x < N; x++) {
+      if (!isHole(x, y)) continue;
+      if (!isHole(x, y + 1)) {
+        PackModelBox b; b.from = vec3(X0(x), Y0(y), 0); b.to = vec3(X0(x) + U, Y0(y), Dp); b.face[4] = pixUV(front, x, y); fm.body.boxes.push_back(b);
+        floorRow = std::max(floorRow, y);
+      }
+      if (!isHole(x, y - 1)) { PackModelBox b; b.from = vec3(X0(x), Y0(y) + U, 0); b.to = vec3(X0(x) + U, Y0(y) + U, Dp); b.face[5] = pixUV(front, x, y); fm.body.boxes.push_back(b); }
+    }
+    fm.floorY = floorRow >= 0 ? Y0(floorRow) : 0;
+    if (floorRow >= 0) {   // across the lowest floor
+      int lo = N, hi = -1; for (int x = 0; x < N; x++) if (isHole(x, floorRow) && !isHole(x, floorRow + 1)) { lo = std::min(lo, x); hi = std::max(hi, x); }
+      if (hi >= lo) { fm.floorX0 = X0(hi); fm.floorX1 = X0(lo) + U; }
+    }
+    (*D)[front] = fm;
+    if (lit >= 0) { FurnaceModel fl = fm; fl.back.boxes[0].face[0].tile = lit; (*D)[lit] = fl; }   // (lit: the same holes, its fire behind them)
+  }
+  std::atomic_store(&g_furnace, std::shared_ptr<const std::unordered_map<int, FurnaceModel>>(D));
+  if (!D->empty()) DQ_LOG("furnaces hollowed: %zu fronts", D->size());
+}
+const FurnaceModel* furnaceModelFor(int t) {
+  auto d = std::atomic_load(&g_furnace);
+  if (!d) return nullptr;
+  auto it = d->find(t);
+  return it == d->end() ? nullptr : &it->second;
+}
+
 int doubleChestHalf(int fd, int wx, int wz, const std::function<bool(int, int)>& same) {
   static const int FX[4] = {0, 1, 0, -1}, FZ[4] = {1, 0, -1, 0};
   fd &= 3;
