@@ -143,6 +143,8 @@ private:
   bool anyFlatten = false;
   mutable std::mutex mx;
   mutable std::unordered_map<u64, std::unique_ptr<StructurePlan>> cache;   // null = no structure there
+  mutable std::unordered_map<u64, std::unique_ptr<StructurePlan>> rawCache;   // the plans before they're kept clear of each other
+  const StructurePlan* raw(int type, int rx, int rz) const;
   mutable std::unordered_map<int, std::unique_ptr<std::vector<StructurePlan>>> globalCache;
   u64 serial;
 };

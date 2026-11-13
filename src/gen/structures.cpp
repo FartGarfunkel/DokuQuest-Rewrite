@@ -74,14 +74,15 @@ const std::vector<StructurePlan>& StructureIndex::globals(int k) const {
   return *it->second;
 }
 
-const StructurePlan* StructureIndex::at(int k, int rx, int rz) const {
+// a region's plan as its placer makes it, not yet kept clear of the others (cached)
+const StructurePlan* StructureIndex::raw(int k, int rx, int rz) const {
   const StructureType& T = structureTypes()[k];
   if (T.global) return nullptr;
   u64 key = ((u64)(u32)k << 56) ^ ((u64)(u32)(rx & 0x0FFFFFFF) << 28) ^ (u64)(u32)(rz & 0x0FFFFFFF);
   {
     std::lock_guard<std::mutex> lk(mx);
-    auto it = cache.find(key);
-    if (it != cache.end()) return it->second.get();
+    auto it = rawCache.find(key);
+    if (it != rawCache.end()) return it->second.get();
   }
   // worked out without the lock: plan() may ask about other structures (earlier types) itself
   std::unique_ptr<StructurePlan> S;
@@ -100,22 +101,48 @@ const StructurePlan* StructureIndex::at(int k, int rx, int rz) const {
         p->id = "s" + std::to_string(ji) + "_" + std::to_string(jd) + "_" + std::to_string(rx) + "_" + std::to_string(rz);
         p->seed = lairSeed(seed, rx, rz, 9200 + ji);
         if (p->name.empty()) p->name = T.name;
-        // keep clear of everything registered before it (structures.js structAt, in the original's float maths)
-        const double cx = (p->x0 + p->x1) / 2.0, cz = (p->z0 + p->z1) / 2.0, rad = std::max(p->x1 - p->x0, p->z1 - p->z0) / 2.0;
-        bool clear = true;
-        for (int j : types) {
-          if (j >= k || !clear) break;
-          const StructureType& J = structureTypes()[j];
-          const double pad = rad + J.clearance;
-          auto hit = [&](const StructurePlan* o) { return o && cx >= o->x0 - pad && cx <= o->x1 + pad && cz >= o->z0 - pad && cz <= o->z1 + pad; };
-          if (J.global) { for (const auto& o : globals(j)) if (hit(&o)) { clear = false; break; } continue; }
-          const int qx = jsFloor(cx / J.region), qz = jsFloor(cz / J.region);
-          for (int dz = -1; dz <= 1 && clear; dz++) for (int dx = -1; dx <= 1; dx++) if (hit(at(j, qx + dx, qz + dz))) { clear = false; break; }
-        }
-        if (clear) S = std::move(p);
+        S = std::move(p);
       }
     }
   }
+  std::lock_guard<std::mutex> lk(mx);
+  auto [it, fresh] = rawCache.emplace(key, std::move(S));
+  return it->second.get();
+}
+
+const StructurePlan* StructureIndex::at(int k, int rx, int rz) const {
+  const StructureType& T = structureTypes()[k];
+  if (T.global) return nullptr;
+  u64 key = ((u64)(u32)k << 56) ^ ((u64)(u32)(rx & 0x0FFFFFFF) << 28) ^ (u64)(u32)(rz & 0x0FFFFFFF);
+  {
+    std::lock_guard<std::mutex> lk(mx);
+    auto it = cache.find(key);
+    if (it != cache.end()) return it->second.get();
+  }
+  const StructurePlan* p = raw(k, rx, rz);
+  bool clear = p != nullptr;
+  if (p && !T.place) {
+    // keep clear of everything registered before it (structures.js structAt, in the original's float maths)
+    const double cx = (p->x0 + p->x1) / 2.0, cz = (p->z0 + p->z1) / 2.0, rad = std::max(p->x1 - p->x0, p->z1 - p->z0) / 2.0;
+    for (int j : types) {
+      if (j >= k || !clear) break;
+      const StructureType& J = structureTypes()[j];
+      const double pad = rad + J.clearance;
+      auto hit = [&](const StructurePlan* o) { return o && cx >= o->x0 - pad && cx <= o->x1 + pad && cz >= o->z0 - pad && cz <= o->z1 + pad; };
+      if (J.global) { for (const auto& o : globals(j)) if (hit(&o)) { clear = false; break; } continue; }
+      const int qx = jsFloor(cx / J.region), qz = jsFloor(cz / J.region);
+      for (int dz = -1; dz <= 1 && clear; dz++) for (int dx = -1; dx <= 1; dx++) if (hit(at(j, qx + dx, qz + dz))) { clear = false; break; }
+    }
+    // and of a neighbour of its own kind that comes first (row by row): a plan wider than its region (the Soulrend places)
+    // was built over by the one next door
+    if (clear) for (int dz = -2; dz <= 2 && clear; dz++) for (int dx = -2; dx <= 2; dx++) {
+      if (dz > 0 || (dz == 0 && dx >= 0)) continue;
+      const StructurePlan* o = raw(k, rx + dx, rz + dz);
+      if (o && p->x0 - T.clearance <= o->x1 && p->x1 + T.clearance >= o->x0 && p->z0 - T.clearance <= o->z1 && p->z1 + T.clearance >= o->z0) { clear = false; break; }
+    }
+  }
+  std::unique_ptr<StructurePlan> S;
+  if (clear) S = std::make_unique<StructurePlan>(*p);
   std::lock_guard<std::mutex> lk(mx);
   auto [it, fresh] = cache.emplace(key, std::move(S));
   return it->second.get();
@@ -131,7 +158,8 @@ void StructureIndex::near(int x, int z, int pad, std::vector<const StructurePlan
       continue;
     }
     int rx = floordiv(x, T.region), rz = floordiv(z, T.region);
-    for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) {
+    const int R = T.region < 160 ? 2 : 1;   // (a small region's plans can reach two regions out: the Soulrend places)
+    for (int dz = -R; dz <= R; dz++) for (int dx = -R; dx <= R; dx++) {
       const StructurePlan* S = at(k, rx + dx, rz + dz);
       if (S && x >= S->x0 - pad && x <= S->x1 + pad && z >= S->z0 - pad && z <= S->z1 + pad) out.push_back(S);
     }

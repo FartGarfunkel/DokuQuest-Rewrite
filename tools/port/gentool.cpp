@@ -15,6 +15,9 @@
 #include <cstdio>
 #include <fstream>
 #include <set>
+#include <unordered_map>
+#include <functional>
+#include <algorithm>
 
 using namespace dq;
 #include <ctime>
@@ -255,10 +258,72 @@ static int slice(const std::string& seedText, int dim, int x0, int z, int w, int
   return 0;
 }
 
+
+// dq-gentool poi <seed> <out.bin> [regions]: with DQ_POI_ONLY=<key> set, the nearest such Soulrend place generated with the land
+// round it (8 blocks), dumped for tools/port/poi_check.py: a JSON header line {x0,y0,z0,sx,sy,sz,palette,name,y,...} then sx*sy*sz u16
+// block indices (x fastest, then z, then y)
+namespace dq { void poiExpected(const StructurePlan& S, const std::function<void(int, int, int, BlockId)>& fn); }
+static int poiDump(const std::string& seedText, const char* outPath, int regions) {
+  WorldGenOptions o; o.seed = seedFromString(seedText);
+  WorldGen wg(o); DimGenerator* g = wg.forDim(DIM_OVERWORLD);
+  const StructurePlan* S = locateStructure(wg, DIM_OVERWORLD, "poi", 0, 0, regions);
+  if (!S) { fprintf(stderr, "none\n"); return 2; }
+  const int M = 8, X0 = S->x0 - M, Z0 = S->z0 - M, X1 = S->x1 + M, Z1 = S->z1 + M;
+  std::map<long long, std::unique_ptr<Chunk>> cs;
+  for (int cz = floordiv(Z0, 16); cz <= floordiv(Z1, 16); cz++) for (int cx = floordiv(X0, 16); cx <= floordiv(X1, 16); cx++) {
+    auto c = std::make_unique<Chunk>(DIM_OVERWORLD, cx, cz); g->generate(*c); cs[((long long)cx << 32) ^ (u32)cz] = std::move(c);
+  }
+  // the same chunks with no structures: a cell the structure didn't change is the land's own
+  setStructuresEnabled(false);
+  std::map<long long, std::unique_ptr<Chunk>> ns;
+  { WorldGen wg0(o); DimGenerator* g0 = wg0.forDim(DIM_OVERWORLD);
+    for (auto& [k, c] : cs) { auto n = std::make_unique<Chunk>(DIM_OVERWORLD, c->cx, c->cz); g0->generate(*n); ns[k] = std::move(n); } }
+  setStructuresEnabled(true);
+  auto nat = [&](int x, int y, int z) -> BlockId { auto it = ns.find(((long long)floordiv(x, 16) << 32) ^ (u32)floordiv(z, 16)); return it == ns.end() ? AIR : it->second->get(floormod(x, 16), y, floormod(z, 16)); };
+  auto at = [&](int x, int y, int z) -> BlockId { auto it = cs.find(((long long)floordiv(x, 16) << 32) ^ (u32)floordiv(z, 16)); return it == cs.end() ? AIR : it->second->get(floormod(x, 16), y, floormod(z, 16)); };
+  int top = 0;
+  for (int x = X0; x <= X1; x++) for (int z = Z0; z <= Z1; z++) for (int y = DIM_H - 1; y > top; y--) if (at(x, y, z) != AIR) { top = y; break; }
+  const int Y0 = std::max(1, S->y - 16), Y1 = std::min(DIM_H - 1, top + 2);
+  const int sx = X1 - X0 + 1, sy = Y1 - Y0 + 1, sz = Z1 - Z0 + 1;
+  std::map<BlockId, int> pal; json pl = json::array();
+  std::vector<u16> v((size_t)sx * sy * sz); std::vector<u8> landm((size_t)sx * sy * sz);
+  for (int y = 0; y < sy; y++) for (int z = 0; z < sz; z++) for (int x = 0; x < sx; x++) {
+    const BlockId b = at(X0 + x, Y0 + y, Z0 + z);
+    auto it = pal.find(b); if (it == pal.end()) { it = pal.emplace(b, (int)pl.size()).first; pl.push_back(key(b)); }
+    v[((size_t)y * sz + z) * sx + x] = (u16)it->second;
+    landm[((size_t)y * sz + z) * sx + x] = b != AIR && b == nat(X0 + x, Y0 + y, Z0 + z);
+  }
+  // what its pieces put down that isn't there now (overwritten by a later piece, a tree, the land...): 2 in the mask
+  int lost = 0, expected = 0; std::map<std::string, int> lostAs;
+  // the last write to each cell as the pieces are built in order (one piece's air over another's blocks is the builder's own)
+  std::unordered_map<long long, BlockId> want;
+  poiExpected(*S, [&](int x, int y, int z, BlockId id) {
+    if (x < X0 || x > X1 || z < Z0 || z > Z1 || y < Y0 || y > Y1) return;
+    want[((long long)(y - Y0) * sz + (z - Z0)) * sx + (x - X0)] = id;
+  });
+  for (auto& [i, id] : want) {
+    if (id == AIR) continue;
+    expected++;
+    const int x = (int)(i % sx), z = (int)(i / sx % sz), y = (int)(i / sx / sz);
+    const BlockId got = at(X0 + x, Y0 + y, Z0 + z);
+    if (got == id) continue;
+    lost++; lostAs[key(id) + "->" + key(got)]++;
+    landm[i] = 2;
+  }
+  std::vector<std::pair<int, std::string>> la; for (auto& [k, n] : lostAs) la.push_back({n, k}); std::sort(la.rbegin(), la.rend());
+  json lj = json::array(); for (size_t i = 0; i < la.size() && i < 12; i++) lj.push_back({la[i].second, la[i].first});
+  json h{{"expected", expected}, {"lost", lost}, {"lostAs", lj}, {"x0", X0}, {"y0", Y0}, {"z0", Z0}, {"sx", sx}, {"sy", sy}, {"sz", sz}, {"palette", pl}, {"name", S->name}, {"y", S->y},
+         {"box", {S->x0, S->z0, S->x1, S->z1}}, {"data", S->data}};
+  std::ofstream f(outPath, std::ios::binary); const std::string hs = h.dump() + "\n";
+  f.write(hs.data(), hs.size()); f.write((const char*)v.data(), v.size() * 2); f.write((const char*)landm.data(), landm.size());
+  return 0;
+}
+
 int main(int argc, char** argv) {
   CoreOptions co; co.server = true; co.userDirOverride = "/tmp/dq-gentool";
   if (!initCore(co)) { fprintf(stderr, "initCore failed (run from the build dir: data/ next to the exe)\n"); return 1; }
   std::string m = argc > 1 ? argv[1] : "";
+  if (m == "poi" && argc >= 4) return poiDump(argv[2], argv[3], argc > 4 ? atoi(argv[4]) : 48);
   if (m == "dump" && argc >= 4) return dump(argv[2], argv[3]);
   if (m == "stats" && argc >= 7) return stats(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]));
   if (m == "slice" && argc >= 7) return slice(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argc > 7 ? atoi(argv[7]) : 0, argc > 8 ? atoi(argv[8]) : 120);

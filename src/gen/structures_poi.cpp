@@ -10,6 +10,7 @@
 #include "common/fs.h"
 #include "core/registry.h"
 #include <map>
+#include <functional>
 #include <set>
 
 namespace dq {
@@ -93,6 +94,10 @@ const PoiPack* poiPack() {
         char best = 0; int bn = 0, tot = 0;
         for (auto& [g, c] : n) { tot += c; if (c > bn) { bn = c; best = g; } }
         if (bn >= 24 && bn * 3 >= tot * 2) d.ground = best;
+        // its own lands say first when they all agree: a desert palace with a garden lawn is still the desert's
+        auto all = [&](std::initializer_list<const char*> L) { for (auto& l : d.lands) if (std::find_if(L.begin(), L.end(), [&](const char* x) { return l == x; }) == L.end()) return false; return !d.lands.empty(); };
+        if (all({"desert", "badlands", "beach"})) d.ground = 's';
+        else if (all({"snowy"})) d.ground = 'n';
       }
     }
     DQ_LOG("points of interest: %zu structures, %d pieces, %zu pools; left out: %s", pk->defs.size(), n, pk->pools.size(), piecesMissing().c_str());
@@ -156,7 +161,7 @@ bool expand(const PoiPack& pk, const PoiDef& d, const TerrainQuery& t, int cx, i
     // start (the lowest of the samples sank every building on a slope into the hill)
     s.y0 = (d.beard ? hs[4] : t.surfaceY(s.x0 + s.w / 2, s.z0 + s.d / 2)) + 1 + d.y;
   } else s.y0 = std::clamp(d.y + 1, 6, DIM_H - s0->sy - 2);
-  if (s.y0 < SEA_LEVEL && d.surface) return false;   // (not under the sea)
+  if (d.surface && s.y0 - d.y - 1 < SEA_LEVEL) return false;   // (not where the land is under the sea; a start set into the ground on purpose is fine)
   out.push_back(s);
   for (size_t qi = 0; qi < out.size() && out.size() < 160; qi++) {
     const Placed Q = out[qi];
@@ -206,7 +211,8 @@ void buildPoi(ChunkWriter& w, const StructurePlan& S) {
   SP P(w);
   // Minecraft's beardifier: the land inside every piece's box above its floor is taken away before anything is built (a
   // sunken courtyard, a bowl, a cellar stair open to the sky: all were left full of earth). First, so no piece's blocks go.
-  if (E->beard) for (const Placed& q : E->pcs) {
+  static const bool noClear = std::getenv("DQ_POI_NOCLEAR") != nullptr;
+  if (E->beard && !noClear) for (const Placed& q : E->pcs) {
     if (q.p->terrain) continue;
     const int x1 = q.x0 + q.w - 1, z1 = q.z0 + q.d - 1, top = q.y0 + q.p->sy - 1;
     for (int x = std::max(q.x0, w.bx); x <= std::min(x1, w.bx + 15); x++) for (int z = std::max(q.z0, w.bz); z <= std::min(z1, w.bz + 15); z++)
@@ -280,6 +286,26 @@ void buildPoi(ChunkWriter& w, const StructurePlan& S) {
 }
 }  // namespace
 
+// (the checker, tools/port/gentool.cpp poi) every block a Soulrend place's pieces put down, where and what
+void poiExpected(const StructurePlan& S, const std::function<void(int, int, int, BlockId)>& fn) {
+  auto E = std::static_pointer_cast<const PoiExt>(S.ext);
+  if (!E) return;
+  for (const Placed& q : E->pcs) {   // (in build order: a piece's air, then its blocks, as buildPoi does)
+    if (q.p->terrain) continue;
+    const VPPiece& p = *q.p;
+    if (p.placeAir && !p.air.empty())
+      for (int ly = 0; ly < p.sy; ly++) for (int lz = 0; lz < p.sz; lz++) for (int lx = 0; lx < p.sx; lx++) {
+        if (!p.airAt(lx, ly, lz)) continue;
+        auto [tx, tz] = vpTurn(p, q.r, lx, lz);
+        fn(q.x0 + tx, q.y0 + ly, q.z0 + tz, AIR);
+      }
+    for (const VPBlock& k : p.blocks) {
+      auto [tx, tz] = vpTurn(p, q.r, k.x, k.z);
+      fn(q.x0 + tx, q.y0 + k.y, q.z0 + tz, p.states[k.s].id);
+    }
+  }
+}
+
 void registerStructurePois() {
   StructureType t;
   t.key = "poi"; t.name = "a place of note";
@@ -302,7 +328,7 @@ void registerStructurePois() {
     double u = rnd() * tot; const PoiDef* d = cand.back().second;
     for (auto& e : cand) { u -= e.first; if (u <= 0) { d = e.second; break; } }
     auto E = std::make_shared<PoiExt>(); E->key = d->key; E->flatR = d->flatR; E->beard = d->beard && d->surface;
-    if (!expand(*pk, *d, tq, x, z, rnd, E->pcs) || E->pcs.empty()) return false;
+    if (!expand(*pk, *d, tq, x, z, rnd, E->pcs) || E->pcs.empty()) { if (std::getenv("DQ_POI_WHY")) DQ_LOG("poi why %s: expand failed", d->key.c_str()); return false; }
     // the land under each rigid piece standing on it (not one buried well below the ground: a crypt keeps its hill)
     if (d->surface && d->beard) for (auto& q : E->pcs) {
       if (q.p->terrain) continue;
@@ -328,16 +354,19 @@ void registerStructurePois() {
         if (cc.water >= 0) wet++;
         lo = std::min(lo, cc.y); hi = std::max(hi, cc.y);
       }
-      if (hi - lo > std::max(8, (X1 - X0 + Z1 - Z0) / 8) || wet * 5 > n) return false;
+      static const bool why = std::getenv("DQ_POI_WHY") != nullptr;
+      if (hi - lo > std::max(8, (X1 - X0 + Z1 - Z0) / 8) || wet * 5 > n) { if (why) DQ_LOG("poi why %s: uneven %d (allowed %d) wet %d/%d", d->key.c_str(), hi - lo, std::max(8, (X1 - X0 + Z1 - Z0) / 8), wet, n); return false; }
       // its own ground matches the land's all over its footprint (sand in the desert and on the beach, snow in the snow, grass
       // in the green lands), not a courtyard of sand in a meadow half over the desert's edge
+      int gOk = 0, gN = 0;
       if (d->ground) for (int zz = Z0; zz <= Z1; zz += 6) for (int xx = X0; xx <= X1; xx += 6) {
         const TerrainColumn cc = tq.terrainColumn(xx, zz);
         const std::vector<std::string> L = landsAt(tq, cc);
         auto has = [&](const char* l) { return std::find(L.begin(), L.end(), l) != L.end(); };
         const bool sandy = cc.biome == BIOME_DESERT || cc.biome == BIOME_BEACH || has("badlands"), snowy = has("snowy");
-        if (d->ground == 's' ? !sandy : d->ground == 'n' ? !snowy : (sandy || snowy)) return false;
+        gN++; if (!(d->ground == 's' ? !sandy : d->ground == 'n' ? !snowy : (sandy || snowy))) gOk++;
       }
+      if (gN && gOk * 5 < gN * 4) { if (why) DQ_LOG("poi why %s: ground %c %d/%d", d->key.c_str(), d->ground, gOk, gN); return false; }   // (four in five of it on its own ground)
     }
     out.x0 = X0; out.z0 = Z0; out.x1 = X1; out.z1 = Z1; out.cx = x; out.cz = z; out.y = E->pcs[0].y0;
     out.surface = d->surface;

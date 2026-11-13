@@ -231,8 +231,8 @@ void OverworldGen::generate(Chunk& ch) {
   placeDungeons(b, ch, cols);
   // the Ember Crust at the bottom of the Overworld (worldupdate.js), then the structures, then the Deep Dark
   if (B.ember_crust) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) b.blocks[colIdx(x, 0, z)] = B.ember_crust;
+  carveDeep(b, ch.cx, ch.cz);   // (before the structures: run after, it ate into anything built down there — stone to slate, sculk and caves)
   structures.build(b, ch);
-  carveDeep(b, ch.cx, ch.cz);
   if (!wtype.empty() && wtype != "default" && wtype != "large_biomes") worldTypePass(b, cols, ch.cx, ch.cz);
   b.store(ch);
 }
