@@ -35,12 +35,13 @@ std::unique_ptr<Entity> createEntity(const std::string& type) {
 // ---- level info ----
 json LevelInfo::toJson() const {
   return {{"name", name}, {"seed", seed}, {"seedText", seedText}, {"mode", mode}, {"difficulty", difficulty}, {"worldType", worldType},
-          {"genVersion", genVersion}, {"time", time}, {"day", day}, {"created", created}, {"lastPlayed", lastPlayed},
+          {"genVersion", genVersion}, {"layout", layout}, {"underDepth", underDepth}, {"time", time}, {"day", day}, {"created", created}, {"lastPlayed", lastPlayed},
           {"spawn", {spawn.x, spawn.y, spawn.z}}, {"rules", rules}, {"data", data}, {"format", 1}, {"gameVersion", DQ_VERSION}};
 }
 void LevelInfo::fromJson(const json& j) {
   name = j.value("name", name); seed = j.value("seed", 0); seedText = j.value("seedText", ""); mode = j.value("mode", mode);
   difficulty = j.value("difficulty", difficulty); worldType = j.value("worldType", worldType); genVersion = j.value("genVersion", 3);
+  layout = j.value("layout", 1); underDepth = j.value("underDepth", 4);   // (a world from before the deep world: layout 1)
   time = j.value("time", 300.0); day = j.value("day", (i64)0); created = j.value("created", (i64)0); lastPlayed = j.value("lastPlayed", (i64)0);
   if (j.contains("spawn")) spawn = {j["spawn"][0], j["spawn"][1], j["spawn"][2]};
   if (j.contains("rules")) rules = j["rules"];
@@ -52,6 +53,7 @@ void registerLevelSystem(LevelSystemFactory f) { lsFactories().push_back(std::mo
 
 Level::Level(LevelInfo i, const fs::path& folder, ThreadPool* pool, EventBus* events)
   : info(std::move(i)), folder(folder), pool(pool), events(events) {
+  setWorldLayout(info.layout, info.underDepth);   // (before anything asks where a dimension is)
   WorldGenOptions o; o.seed = info.seed; o.genVersion = info.genVersion; o.worldType = info.worldType;
   if (const char* gv = std::getenv("DQ_FORCE_GENVER")) o.genVersion = std::atoi(gv);   // (tests: compare terrain versions)
   o.looseGround = info.rules.is_object() && info.rules.value("immersive", false);

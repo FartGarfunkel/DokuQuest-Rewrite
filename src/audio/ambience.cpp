@@ -29,12 +29,12 @@ void Ambience::computeField(const AudioScene& s) {
   const ivec3 o(hx - R, hy - R, hz - R); f.o = o;
   // the chunks around, for both bands the box may touch
   int cx0 = (hx - R) >> 4, cz0 = (hz - R) >> 4, cw = ((hx + R) >> 4) - cx0 + 1, cd = ((hz + R) >> 4) - cz0 + 1;
-  int d0 = dimOfY(std::max(0, hy - R)), d1 = dimOfY(std::min(DIM_COUNT * DIM_H - 1, hy + R));
+  int d0 = dimOfY(std::max(0, hy - R)), d1 = dimOfY(std::min(WORLD_H - 1, hy + R));
   std::vector<const Chunk*> chs((size_t)cw * cd * 2, nullptr);
-  for (int k = 0; k < (d1 > d0 ? 2 : 1); k++) for (int a = 0; a < cw; a++) for (int b = 0; b < cd; b++) chs[((size_t)k * cw + a) * cd + b] = w.chunk(d0 + k, cx0 + a, cz0 + b);
+  for (int k = 0; k < (d1 != d0 ? 2 : 1); k++) for (int a = 0; a < cw; a++) for (int b = 0; b < cd; b++) chs[((size_t)k * cw + a) * cd + b] = w.chunk(k ? d1 : d0, cx0 + a, cz0 + b);
   auto chunkOf = [&](int x, int y, int z) -> const Chunk* {
-    if (y < 0 || y >= DIM_COUNT * DIM_H) return nullptr;
-    int k = dimOfY(y) - d0; if (k < 0 || k > 1) return nullptr;
+    if (y < 0 || y >= WORLD_H) return nullptr;
+    const int dy = dimOfY(y); const int k = dy == d0 ? 0 : dy == d1 ? 1 : -1; if (k < 0) return nullptr;
     return chs[((size_t)k * cw + ((x >> 4) - cx0)) * cd + ((z >> 4) - cz0)];
   };
   dist.assign((size_t)N * N * N, 255); queue.resize((size_t)N * N * N);

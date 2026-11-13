@@ -221,7 +221,7 @@ bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in) {
         in.carve[i] = 0;
         in.coat[i] = 0;
         if (!inWorldY(gy)) { in.ids[i] = AIR; in.light[i] = gy < 0 ? 0 : 0xF0; in.rgb[i] = gy < 0 ? LightRgb{} : fullSunRgb(); continue; }
-        int d = gy >> 8;
+        int d = dimOfY(gy);
         const Chunk* vc = c;
         if (d != k.dim) { if (!otherDone[d]) { other[d] = w.chunk(d, k.cx + dx, k.cz + dz); otherDone[d] = true; } vc = other[d]; }
         if (!vc) { in.ids[i] = AIR; in.light[i] = 0xF0; in.rgb[i] = fullSunRgb(); continue; }

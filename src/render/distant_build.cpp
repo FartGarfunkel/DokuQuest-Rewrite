@@ -78,7 +78,8 @@ std::shared_ptr<ChunkSummary> summarizeChunk(const Chunk& c, const ColorTable& c
   auto S = std::make_shared<ChunkSummary>();
   const Registry& R = reg();
   const int top = std::min(DIM_H - 1, c.maxY + 1);
-  static const BlockId DEEP[DIM_COUNT] = {R.blockId("end_stone"), R.blockId("netherrack"), R.blockId("stone"), R.blockId("skystone") ? R.blockId("skystone") : R.blockId("stone")};
+  static const BlockId DEEP[DIM_COUNT] = {R.blockId("end_stone"), R.blockId("netherrack"), R.blockId("stone"), R.blockId("skystone") ? R.blockId("skystone") : R.blockId("stone"),
+    R.blockId("deepslate") ? R.blockId("deepslate") : R.blockId("stone"), R.blockId("deepslate") ? R.blockId("deepslate") : R.blockId("stone"), R.blockId("deepslate") ? R.blockId("deepslate") : R.blockId("stone"), R.blockId("deepslate") ? R.blockId("deepslate") : R.blockId("stone"), AIR, AIR};
   const BlockId deep = c.dim >= 0 && c.dim < DIM_COUNT ? DEEP[c.dim] : AIR;
   // where daylight gets in: the chunk's sky light, or (a chunk just generated, not lit) the air the open sky reaches
   static thread_local std::vector<u8> sky;
@@ -191,7 +192,8 @@ void buildTile(const TileInput& in, TileOutput& out) {
   const ColorTable& ct = *in.colors;
   const Registry& R = reg();
   DimGenerator* gen = in.gen ? in.gen->forDim(in.dim) : nullptr;
-  static const BlockId DEEP[DIM_COUNT] = {R.blockId("end_stone"), R.blockId("netherrack"), R.blockId("stone"), R.blockId("skystone") ? R.blockId("skystone") : R.blockId("stone")};
+  static const BlockId DEEP[DIM_COUNT] = {R.blockId("end_stone"), R.blockId("netherrack"), R.blockId("stone"), R.blockId("skystone") ? R.blockId("skystone") : R.blockId("stone"),
+    R.blockId("deepslate") ? R.blockId("deepslate") : R.blockId("stone"), R.blockId("deepslate") ? R.blockId("deepslate") : R.blockId("stone"), R.blockId("deepslate") ? R.blockId("deepslate") : R.blockId("stone"), R.blockId("deepslate") ? R.blockId("deepslate") : R.blockId("stone"), AIR, AIR};
   const BlockId deep = in.dim >= 0 && in.dim < DIM_COUNT && DEEP[in.dim] ? DEEP[in.dim] : ct.dirt;
 
   // trees where the generator plants them (near tiles): their crowns and trunks as voxels too

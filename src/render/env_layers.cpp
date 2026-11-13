@@ -444,7 +444,8 @@ void WeatherFxLayer::emitters(GameSession& s, double dt, double step) {
   int rescans = 2, leafBudget = 12;
   // forget chunks that are gone
   if ((int)(clock * 10) % 20 == 0) for (auto it = emit.begin(); it != emit.end();) { if (!w.chunk(it->first.dim, it->first.cx, it->first.cz)) it = emit.erase(it); else ++it; }
-  for (int bd = std::max(0, pd - 1); bd <= std::min(DIM_COUNT - 1, pd + 1); bd++) {
+  for (int bd : {dimBelow(pd), pd, dimAbove(pd)}) {
+    if (bd < 0) continue;
     if (std::abs(pp.y - (dimBase(bd) + DIM_H / 2)) > DIM_H / 2 + 24) continue;
     for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++) {
       const Chunk* c = w.chunk(bd, pcx + dx, pcz + dz); if (!c) continue;

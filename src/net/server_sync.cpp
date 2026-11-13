@@ -169,8 +169,8 @@ void ServerHost::updateRange(Peer& p, bool first) {
   int y = clampv(ifloor(pl.pos.y), 0, WORLD_H - 1), d = dimOfY(y), ly = y - dimBase(d);
   int pcx = ifloor(pl.pos.x) >> 4, pcz = ifloor(pl.pos.z) >> 4;
   std::vector<std::pair<int, int>> bands = {{d, R}};
-  if (ly > DIM_H - 64 && d + 1 < DIM_COUNT) bands.push_back({d + 1, std::max(2, R / 2)});
-  if (ly < 48 && d > 0) bands.push_back({d - 1, std::max(2, R / 2)});
+  if (ly > DIM_H - 64 && dimAbove(d) >= 0) bands.push_back({dimAbove(d), std::max(2, R / 2)});
+  if (ly < 48 && dimBelow(d) >= 0) bands.push_back({dimBelow(d), std::max(2, R / 2)});
   std::unordered_set<RCKey, RCKeyHash> now;
   for (auto& [bd, r] : bands)
     for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) {

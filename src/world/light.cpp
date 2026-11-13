@@ -5,7 +5,7 @@
 
 namespace dq {
 
-u8 skyTopLevel(int dim) { return dim == DIM_NETHER ? 0 : 15; }
+u8 skyTopLevel(int dim) { return dim == DIM_NETHER || isUnderworld(dim) ? 0 : 15; }   // (the Underworld: under the land, no sky)
 
 // A chiseled (carved) block of an opaque material takes light in, so its open octants and the faces beside them are
 // lit, but passes none on: light doesn't leak through walls of slabs, stairs and carved blocks.
@@ -165,7 +165,7 @@ void initialChunkLight(Chunk& c) {
 // ---------------------------------------------------------------- incremental engine (main thread)
 Chunk* LightEngine::chunkAt(int x, int y, int z) {
   if (!inWorldY(y)) return nullptr;
-  int dim = y >> 8, cx = x >> 4, cz = z >> 4;
+  int dim = dimOfY(y), cx = x >> 4, cz = z >> 4;
   CacheEnt& e = cache[((cx & 7) | ((cz & 7) << 3))];
   if (e.c && e.dim == dim && e.cx == cx && e.cz == cz) return e.c;
   Chunk* c = w->chunk(dim, cx, cz);
@@ -193,7 +193,7 @@ void LightEngine::setC(int x, int y, int z, int ch, const R3& v) {
   touch(x, y, z);
 }
 void LightEngine::touch(int x, int y, int z) {
-  int d = y >> 8, cx = x >> 4, cz = z >> 4, sy = (y & 255) >> 4;
+  int d = dimOfY(y), cx = x >> 4, cz = z >> 4, sy = (y & 255) >> 4;
   SectionKey k{d, cx, sy, cz};
   if (!(k == lastTouched)) { touched.insert(k); lastTouched = k; }
   int lx = x & 15, ly = y & 15, lz = z & 15;
@@ -209,7 +209,7 @@ LightEngine::R3 LightEngine::emission(int x, int y, int z, int ch, BlockId id, u
   R3 e;
   const Registry& R = reg();
   if (ch == 0) {
-    if ((y & 255) != 255 || R.tOpaque[id]) return e;
+    if ((y & 255) != 255 || R.tOpaque[id] || isUnderworld(dimOfY(y))) return e;   // (an Underworld band's top is under the land)
     e.c[0] = e.c[1] = e.c[2] = 255;
     absorb(e.c, R, id);
     return e;
@@ -347,8 +347,8 @@ void LightEngine::mergeBorders(Chunk& c) {
   }
   // the bands above and below (the stacked world is one column). Full sun crosses the border undiminished.
   for (int s = -1; s <= 1; s += 2) {
-    int dd = c.dim + s;
-    if (dd < 0 || dd >= DIM_COUNT || !w->chunk(dd, c.cx, c.cz)) continue;
+    int dd = s < 0 ? dimBelow(c.dim) : dimAbove(c.dim);
+    if (dd < 0 || !w->chunk(dd, c.cx, c.cz)) continue;
     int ay = s < 0 ? base : base + DIM_H - 1, by = ay + s;
     for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) pair(x0 + x, ay, z0 + z, x0 + x, by, z0 + z);
   }

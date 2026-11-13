@@ -1,4 +1,4 @@
-// world/dims.h — the stacked world. One continuous column, 1024 blocks tall, no loading screens:
+// world/dims.h — the stacked world. One continuous column, no loading screens (layout 1, 1024 blocks tall):
 //
 //   y 768..1023  Aether (the Skylands)      dim 3
 //   y 512..767   Overworld                  dim 2
@@ -12,26 +12,54 @@
 
 namespace dq {
 
-enum Dim : int { DIM_END = 0, DIM_NETHER = 1, DIM_OVERWORLD = 2, DIM_AETHER = 3, DIM_COUNT = 4 };
+// Dimension ids are stable (saves, region folders d<id>, the net). Where each sits in the column is the world's
+// LAYOUT (docs/WORLD_DEPTH.md), chosen when it is made:
+//   layout 1 (every world made before it): End 0, Nether 1, Overworld 2, Skylands 3 (y 0..1023), as above
+//   layout 2 (the deep world): End, Nether, the Underworld (1..4 bands, deepest first), Overworld, two bands of open
+//            sky, Skylands — y 0 .. 256 * bands
+// Each dimension is still one 256-tall band: dimBase(d) is its band's floor, dimOfY(y) the dimension there. Global y
+// is never negative (the display shows a layout-2 world's y the Minecraft way: hud.cpp displayY).
+enum Dim : int { DIM_END = 0, DIM_NETHER = 1, DIM_OVERWORLD = 2, DIM_AETHER = 3,
+                 DIM_UNDER1 = 4, DIM_UNDER2 = 5, DIM_UNDER3 = 6, DIM_UNDER4 = 7,   // the Underworld: 1 just under the Overworld
+                 DIM_SKY1 = 8, DIM_SKY2 = 9,                                       // open air over the Overworld (1 the lower)
+                 DIM_COUNT = 10 };
 constexpr int DIM_H = 256;
-constexpr int WORLD_H = DIM_H * DIM_COUNT;   // 1024
+constexpr int MAX_BANDS = 16;
 constexpr int CS = 16;                        // chunk width
 constexpr int SEC = 16;                       // section height
 constexpr int SECS = DIM_H / SEC;             // sections per chunk band (16)
 constexpr int SEA_LEVEL = 64;                 // overworld sea level, band-local
 
-inline int dimOfY(int y) { return clampv(y >> 8, 0, DIM_COUNT - 1); }
-inline int dimBase(int d) { return d * DIM_H; }
+struct WorldLayout {
+  int id = 1, bands = 4, underDepth = 0;
+  int dimAt[MAX_BANDS];   // band -> dim (-1 none)
+  int posOf[DIM_COUNT];   // dim -> band (-1: not in this world)
+};
+WorldLayout makeLayout(int id, int underDepth = 4);
+inline WorldLayout& worldLayout() { static WorldLayout L = makeLayout(1); return L; }
+void setWorldLayout(int id, int underDepth = 4);   // when a world is opened (sim/level.cpp; a guest: from the host)
+
+inline int WORLD_H = 1024;                    // the column's height in this world (set with the layout)
+inline int dimOfY(int y) { const WorldLayout& L = worldLayout(); const int b = clampv(y >> 8, 0, L.bands - 1); return L.dimAt[b]; }
+inline bool dimInWorld(int d) { return d >= 0 && d < DIM_COUNT && worldLayout().posOf[d] >= 0; }
+inline int dimBase(int d) { const WorldLayout& L = worldLayout(); return (d >= 0 && d < DIM_COUNT && L.posOf[d] >= 0 ? L.posOf[d] : 0) * DIM_H; }
 inline int localY(int y) { return y & 255; }
 inline bool inWorldY(int y) { return y >= 0 && y < WORLD_H; }
+inline int dimAbove(int d) { const WorldLayout& L = worldLayout(); const int p = dimInWorld(d) ? L.posOf[d] + 1 : -1; return p > 0 && p < L.bands ? L.dimAt[p] : -1; }
+inline int dimBelow(int d) { const WorldLayout& L = worldLayout(); const int p = dimInWorld(d) ? L.posOf[d] - 1 : -1; return p >= 0 ? L.dimAt[p] : -1; }
+inline bool isUnderworld(int d) { return d >= DIM_UNDER1 && d <= DIM_UNDER4; }
+inline bool isOverSky(int d) { return d == DIM_SKY1 || d == DIM_SKY2; }
+// whose land it is: the Underworld and the open sky above are the Overworld's (its day, its weather above ground, its
+// creatures); the rest are their own
+inline int landOf(int d) { return isUnderworld(d) || isOverSky(d) ? DIM_OVERWORLD : d; }
 
 // Original JS dimension numbers (game/portals.js DIM) for porting reference
 enum JsDim : int { JS_OVERWORLD = 0, JS_DEPTHS = 1, JS_SKYLANDS = 2, JS_POCKET = 3, JS_REALM = 4, JS_END = 5 };
 inline int dimFromJs(int js) { switch (js) { case JS_DEPTHS: return DIM_NETHER; case JS_SKYLANDS: return DIM_AETHER; case JS_END: return DIM_END; default: return DIM_OVERWORLD; } }
-inline int jsFromDim(int d) { switch (d) { case DIM_NETHER: return JS_DEPTHS; case DIM_AETHER: return JS_SKYLANDS; case DIM_END: return JS_END; default: return JS_OVERWORLD; } }
+inline int jsFromDim(int d) { d = landOf(d); switch (d) { case DIM_NETHER: return JS_DEPTHS; case DIM_AETHER: return JS_SKYLANDS; case DIM_END: return JS_END; default: return JS_OVERWORLD; } }
 inline const char* dimName(int d) {
-  static const char* n[] = {"The End", "Ember Depths", "Overworld", "Skylands"};
-  return d >= 0 && d < 4 ? n[d] : "Somewhere";
+  static const char* n[] = {"The End", "Ember Depths", "Overworld", "Skylands", "Underworld", "Underworld", "Underworld", "Underworld", "Overworld", "Overworld"};
+  return d >= 0 && d < DIM_COUNT ? n[d] : "Somewhere";
 }
 
 // Realms: 0 = the stacked main world; others are side worlds with one band each (stored as dim 2 band).

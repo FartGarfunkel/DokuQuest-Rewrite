@@ -27,29 +27,29 @@ Chunk* World::chunk(int dim, int cx, int cz) const {
 
 BlockId World::getBlock(int x, int y, int z) const {
   if (!inWorldY(y)) return AIR;
-  Chunk* c = chunk(y >> 8, x >> 4, z >> 4);
+  Chunk* c = chunk(dimOfY(y), x >> 4, z >> 4);
   return c ? c->get(x & 15, y & 255, z & 15) : AIR;
 }
 BlockId World::getBlockPhys(int x, int y, int z) const {
   if (y < 0) return AIR;            // the void under the End
   if (y >= WORLD_H) return AIR;
-  Chunk* c = chunk(y >> 8, x >> 4, z >> 4);
+  Chunk* c = chunk(dimOfY(y), x >> 4, z >> 4);
   if (!c) return reg().blockId("stone");
   return c->get(x & 15, y & 255, z & 15);
 }
 u8 World::getMeta(int x, int y, int z) const {
   if (!inWorldY(y)) return 0;
-  Chunk* c = chunk(y >> 8, x >> 4, z >> 4);
+  Chunk* c = chunk(dimOfY(y), x >> 4, z >> 4);
   return c ? c->getMeta(x & 15, y & 255, z & 15) : 0;
 }
 u8 World::getCarve(int x, int y, int z) const {
   if (!inWorldY(y)) return 0;
-  Chunk* c = chunk(y >> 8, x >> 4, z >> 4);
+  Chunk* c = chunk(dimOfY(y), x >> 4, z >> 4);
   return c ? c->getCarve(x & 15, y & 255, z & 15) : 0;
 }
 bool World::setCarve(int x, int y, int z, u8 carve, u32 flags) {
   if (!inWorldY(y)) return false;
-  Chunk* c = chunk(y >> 8, x >> 4, z >> 4);
+  Chunk* c = chunk(dimOfY(y), x >> 4, z >> 4);
   if (!c) return false;
   c->setCarve(x & 15, y & 255, z & 15, carve);
   markBlockDirty(x, y, z, flags & SetFlags::Urgent);
@@ -59,12 +59,12 @@ bool World::setCarve(int x, int y, int z, u8 carve, u32 flags) {
 }
 u8 World::getCoat(int x, int y, int z) const {
   if (!inWorldY(y)) return 0;
-  Chunk* c = chunk(y >> 8, x >> 4, z >> 4);
+  Chunk* c = chunk(dimOfY(y), x >> 4, z >> 4);
   return c ? c->getCoat(x & 15, y & 255, z & 15) : 0;
 }
 bool World::setCoat(int x, int y, int z, u8 coat, u32 flags) {
   if (!inWorldY(y)) return false;
-  Chunk* c = chunk(y >> 8, x >> 4, z >> 4);
+  Chunk* c = chunk(dimOfY(y), x >> 4, z >> 4);
   if (!c) return false;
   c->setCoat(x & 15, y & 255, z & 15, coat);
   if (!(flags & SetFlags::NoModify)) { c->modified = true; c->dirty = true; }
@@ -73,7 +73,7 @@ bool World::setCoat(int x, int y, int z, u8 coat, u32 flags) {
 }
 u8 World::getLight(int x, int y, int z) const {
   if (!inWorldY(y)) return 0xF0;
-  Chunk* c = chunk(y >> 8, x >> 4, z >> 4);
+  Chunk* c = chunk(dimOfY(y), x >> 4, z >> 4);
   return c ? c->getLight(x & 15, y & 255, z & 15) : 0xF0;
 }
 int World::surfaceY(int x, int z, int dim) const {
@@ -86,7 +86,7 @@ int World::surfaceY(int x, int z, int dim) const {
 
 bool World::setBlock(int x, int y, int z, BlockId id, u8 meta, u32 flags) {
   if (!inWorldY(y)) return false;
-  Chunk* c = chunk(y >> 8, x >> 4, z >> 4);
+  Chunk* c = chunk(dimOfY(y), x >> 4, z >> 4);
   if (!c) return false;
   int lx = x & 15, ly = y & 255, lz = z & 15;
   BlockId old = c->get(lx, ly, lz);
@@ -136,13 +136,13 @@ void World::blockEntityChanged(int x, int y, int z) {
 void World::markModified(int x, int y, int z) { if (Chunk* c = chunkAtBlock(x, y, z)) c->modified = c->dirty = true; }
 
 void World::markSectionDirty(int dim, int cx, int sy, int cz, bool urgent) {
-  if (sy < 0) { if (dim == 0) return; dim--; sy += SECS; }
-  if (sy >= SECS) { if (dim >= DIM_COUNT - 1) return; dim++; sy -= SECS; }
+  if (sy < 0) { dim = dimBelow(dim); if (dim < 0) return; sy += SECS; }
+  if (sy >= SECS) { dim = dimAbove(dim); if (dim < 0) return; sy -= SECS; }
   SectionKey k{dim, cx, sy, cz};
   if (urgent) urgentSecs.push_back(k); else dirtySecs.insert(k);
 }
 void World::markBlockDirty(int x, int y, int z, bool urgent) {
-  int d = y >> 8, cx = x >> 4, cz = z >> 4, sy = (y & 255) >> 4;
+  int d = dimOfY(y), cx = x >> 4, cz = z >> 4, sy = (y & 255) >> 4;
   markSectionDirty(d, cx, sy, cz, urgent);
   int lx = x & 15, ly = y & 15, lz = z & 15;
   if (lx == 0) markSectionDirty(d, cx - 1, sy, cz, urgent);
@@ -253,8 +253,8 @@ void World::stream(const std::vector<StreamAnchor>& anchors, double budgetMs) {
     std::vector<std::pair<int, int>> bands = {{d, a.radius}};
     if (a.nearDims) {
       int ly = y - dimBase(d);
-      if (ly > DIM_H - 64 && d + 1 < DIM_COUNT) bands.push_back({d + 1, std::max(2, a.radius / 2)});
-      if (ly < 48 && d > 0) bands.push_back({d - 1, std::max(2, a.radius / 2)});
+      if (ly > DIM_H - 64 && dimAbove(d) >= 0) bands.push_back({dimAbove(d), std::max(2, a.radius / 2)});
+      if (ly < 48 && dimBelow(d) >= 0) bands.push_back({dimBelow(d), std::max(2, a.radius / 2)});
     }
     for (auto& [bd, R] : bands) {
       for (int dz = -R - 1; dz <= R + 1; dz++) for (int dx = -R - 1; dx <= R + 1; dx++) {
@@ -280,7 +280,7 @@ void World::stream(const std::vector<StreamAnchor>& anchors, double budgetMs) {
     for (auto& a : anchors) {
       int pcx = ifloor(a.pos.x) >> 4, pcz = ifloor(a.pos.z) >> 4;
       int dx = k.cx - pcx, dz = k.cz - pcz;
-      if (dx * dx + dz * dz <= (a.radius + 3) * (a.radius + 3) && std::abs(k.dim - dimOfY((int)a.pos.y)) <= 1) { nearAny = true; break; }
+      if (dx * dx + dz * dz <= (a.radius + 3) * (a.radius + 3) && std::abs(worldLayout().posOf[k.dim] - worldLayout().posOf[dimOfY((int)a.pos.y)]) <= 1) { nearAny = true; break; }
     }
     if (!nearAny) drop.push_back(k);
   }

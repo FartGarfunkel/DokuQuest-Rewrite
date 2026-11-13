@@ -37,7 +37,7 @@ private:
   struct Node { int x, y, z; u8 c[3]; };
   std::vector<ivec3> changes;
   std::unordered_set<u64> queued;   // positions in `changes`
-  static u64 posKey(const ivec3& p) { return ((u64)((u32)p.x & 0x1FFFFFFu) << 35) | ((u64)((u32)p.z & 0x1FFFFFFu) << 10) | (u64)(p.y & 1023); }
+  static u64 posKey(const ivec3& p) { return ((u64)((u32)p.x & 0x1FFFFFFu) << 37) | ((u64)((u32)p.z & 0x1FFFFFFu) << 12) | (u64)(p.y & 4095); }   // (y: 12 bits, the deep world's 2560)
   std::vector<ChunkKey> arrivals;
   std::vector<Node> inc[2], rem[2];
   struct CacheEnt { int dim = -1, cx = 0, cz = 0; Chunk* c = nullptr; };

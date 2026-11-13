@@ -303,7 +303,7 @@ static void registerBuiltinCommands() {
         World& w = c.lv.world(p.realm);
         for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) w.requestChunk(dim, (x >> 4) + dx, (z >> 4) + dz, 1000);
         p.pos = vec3(x + 0.5f, y, z + 0.5f); p.vel = vec3(0); p.hasFallStart = false; p.prevPos = p.pos; p.fallDist = 0;
-        static const char* N[DIM_COUNT] = {"the End", "the Nether", "the Overworld", "the Skylands"};
+        static const char* N[DIM_COUNT] = {"the End", "the Nether", "the Overworld", "the Skylands", "the Underworld", "the Underworld", "the Underworld", "the Underworld", "the open sky", "the open sky"};
         return std::string("To ") + N[dim] + " at " + std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(z);
       }
     }
