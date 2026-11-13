@@ -92,6 +92,38 @@ const VoxelModel& shelfBook(int i) {
   return *(cache[i] = std::move(m));
 }
 
+// a piled ingot (TFC's): a bar 16 x 4 x 8 voxels (half a block long, an eighth high, a quarter wide), its top narrower like a
+// cast bar, in the colour of the ingot's own picture (the item model is carved from a diagonal sprite: it doesn't stack)
+const VoxelModel& ingotBar(const ItemStack& st) {
+  static auto& cache = *new std::map<std::string, std::unique_ptr<VoxelModel>>();
+  const TileSet& ts = app().tiles;
+  const std::string key = st.id + "#" + ts.packName + std::to_string(ts.count);
+  auto it = cache.find(key);
+  if (it != cache.end()) return *it->second;
+  u32 avg = voxRGBA(170, 172, 178);
+  if (const ItemDef* d = st.def()) { auto ti = ts.index.find(d->icon); if (ti != ts.index.end() && ti->second >= 0) avg = ts.avgColor(ti->second); }
+  const vec3 c(avg & 255, (avg >> 8) & 255, (avg >> 16) & 255);
+  const float lum = std::max(1.f, 0.3f * c.r + 0.59f * c.g + 0.11f * c.b), k = std::clamp(150.f / lum, 0.9f, 1.6f);   // (the sprite's dark outline brightened out)
+  const vec3 m = glm::min(c * k, vec3(255));
+  const int L = 16, H = 4, W = 8;
+  VoxelGrid g(ivec3(L, H, W));
+  for (int y = 0; y < H; y++) {
+    const int inset = y >= H - 1 ? 1 : 0;   // (the top a voxel in all round: a cast bar's taper)
+    for (int z = inset; z < W - inset; z++) for (int x = inset; x < L - inset; x++) {
+      const bool top = y == H - 1, edge = x == inset || x == L - 1 - inset || z == inset || z == W - 1 - inset;
+      const float sh = top ? (edge ? 1.05f : 1.15f) : (y == 0 ? 0.7f : 0.88f);
+      const float n = ((x * 7 + z * 13 + y * 5) % 5) * 0.02f;   // (a little hammered texture)
+      g.set(x, y, z, voxRGBA((int)(m.r * (sh - n)), (int)(m.g * (sh - n)), (int)(m.b * (sh - n))));
+    }
+  }
+  auto mdl = std::make_unique<VoxelModel>();
+  VoxelMeshData md; buildVoxelMesh(g, md);
+  mdl->gl.upload(md);
+  mdl->frame.voxel = 1.f / 32; mdl->frame.origin = vec3(-L * 0.5f, 0, -W * 0.5f) / 32.f;
+  mdl->size = g.size; mdl->kind = VoxelModel::Flat; mdl->built = true; mdl->key = "ingot_bar";
+  return *(cache[key] = std::move(mdl));
+}
+
 class PileLayer : public RenderLayer {
   struct FramedMap { const PaperMap* map; mat4 M; vec2 light; };
   std::vector<FramedMap> framedMaps;   // drawn after the voxels, with the content shader
@@ -261,12 +293,11 @@ public:
           if (logs) {   // the log's rings at its ends: its up turned to lie along the slot
             m = glm::rotate(m, PI / 2, vec3(1, 0, 0));
             m = glm::scale(m, vec3(0.245f, 0.99f, 0.245f));
-          } else {      // an ingot fitted to its slot as TFC's: half a block long (along the slot), a quarter wide, an eighth high
-            m = glm::rotate(m, PI / 2, vec3(0, 1, 0));   // (the ingot's model is a bar already lying down, its length along x)
-            const vec3 ext = vec3(im.size) * im.frame.voxel, mid = im.frame.origin + ext * 0.5f;
-            m = glm::translate(m, vec3(0, 0.0625f, 0));
-            m = glm::scale(m, vec3(0.47f / std::max(ext.x, 1e-3f), 0.118f / std::max(ext.y, 1e-3f), 0.235f / std::max(ext.z, 1e-3f)));
-            m = glm::translate(m, -mid);
+          } else {      // an ingot as TFC's: a bar half a block long along the slot, a quarter wide, an eighth high
+            const VoxelModel& bar = ingotBar(st);
+            m = glm::rotate(m, PI / 2, vec3(0, 1, 0));   // (the bar's length along x: along the slot)
+            VR.draw(bar.gl, m * bar.matrix(), L, vec4(0), gl);
+            continue;
           }
           VR.draw(im.gl, m * im.matrix(), L, vec4(0), gl);
         }

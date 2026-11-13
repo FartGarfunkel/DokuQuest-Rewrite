@@ -9,6 +9,7 @@ in (soulrend_import.json) so `--undo` takes exactly those out again.
 
   python3 tools/port/soulrend_import.py --soulrend "<instance>/minecraft" [--mods <unpacked mods dir>] [--dry] [--undo]
 """
+import shutil
 import argparse, io, json, os, sys, zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -274,9 +275,30 @@ def main():
             json.dump(variants, open(dst, 'w'), indent=0)
             if vto not in done: rec.append({'to': vto, 'from': exc.name + ':blockstates', 'tile': 'variants'}); done.add(vto)
     print('random looks:', len(variants), 'blocks:', ' '.join(sorted(variants)))
+    if a.mods: print('armour sets (3D):', import_armor3d(a.mods, rec, a.dry))
     if not a.dry: json.dump(rec, open(REC, 'w'), indent=0)
     print('brought in', n, 'pictures;', len(missing), "of the game's pictures still have none anywhere")
     for k, v in sorted(bySrc.items(), key=lambda x: -x[1])[:15]: print('  ', v, k)
     open('/tmp/soulrend_missing.txt', 'w').write(chr(10).join(missing))
+
+def import_armor3d(mods, rec, dry):
+    """Soulrend's Fantasy Armor 3D sets (GeckoLib .geo.json + their pictures) into the pack's assets/dokuquest/armor3d/:
+    the game's armour drawn from them (src/assets/armor3d.cpp)."""
+    src = os.path.join(mods, 'fantasy_armor-forge-1.2.4-1.20.1', 'assets', 'fantasy_armor')
+    if not os.path.isdir(src): return 0
+    n = 0
+    done = {r['to'] for r in rec}
+    for f in sorted(os.listdir(os.path.join(src, 'geo'))):
+        if not f.endswith('.geo.json'): continue
+        name = f[:-len('.geo.json')]
+        for frm, to in ((os.path.join(src, 'geo', f), 'assets/dokuquest/armor3d/%s.geo.json' % name),
+                        (os.path.join(src, 'textures', 'armor', name + '.png'), 'assets/dokuquest/armor3d/%s.png' % name)):
+            if not os.path.exists(frm) or to in done: continue
+            n += 1
+            if dry: continue
+            dst = os.path.join(PACK, to); os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.copyfile(frm, dst)
+            rec.append({'to': to, 'from': 'fantasy_armor:' + os.path.relpath(frm, src), 'tile': 'armor3d:' + name})
+    return n
 
 if __name__ == '__main__': main()
