@@ -17,6 +17,7 @@
 #include "gen/town_mine.h"
 #include "sim/villagers_internal.h"
 #include "sim/creature.h"
+#include "sim/felled.h"
 #include "sim/player.h"
 #include "core/registry.h"
 #include "world/world.h"
@@ -217,10 +218,27 @@ bool findSurface(World& w, const Village& v, vec3 from, bool water, ivec3& spot,
   return false;
 }
 // fell a tree from its lowest log: every log of it, a sapling in the stump's place
-int fell(Level& lv, World& w, ivec3 base, std::string& logKey) {
+int fell(Level& lv, World& w, ivec3 base, std::string& logKey, vec3 from) {
   const BlockId log = w.getBlock(base.x, base.y, base.z);
   if (!isLog(log)) return 0;
   logKey = reg().block(log).key;
+  std::string sap = logKey == "log" ? "sapling" : logKey.substr(0, logKey.size() - 4) + "_sapling";
+  const BlockId sid = reg().blockId(sap);
+  // as a player fells one (sim/controller.cpp fellTree): the whole tree, its leaves with it, topples away from him;
+  // its logs go to the stores (no drops along its fall)
+  std::vector<std::array<int, 4>> logs, leaves;
+  if (scanTreeAt(w, w.realm, base.x, base.y, base.z, logs, leaves)) {
+    std::vector<std::array<int, 4>> blocks;
+    for (auto& l : logs) blocks.push_back(l);
+    for (auto& l : leaves) if (blocks.size() < 360) blocks.push_back(l);
+    for (auto& l : logs) w.setBlock(l[0], l[1], l[2], AIR, 0, SetFlags::Urgent);
+    for (auto& l : leaves) w.setBlock(l[0], l[1], l[2], AIR, 0, SetFlags::Urgent);
+    const float dirYaw = std::atan2(-(base.x + 0.5f - from.x), -(base.z + 0.5f - from.z));
+    spawnFallingTree(lv, w.realm, blocks, base, dirYaw, {});
+    if (sid && isSoil(w.getBlock(base.x, base.y - 1, base.z))) w.setBlock(base.x, base.y, base.z, sid, 0);
+    lv.fx->material("wood", "break", vec3(base) + vec3(0.5f, 1, 0.5f));
+    return (int)logs.size();
+  }
   std::vector<ivec3> q{base}; std::vector<ivec3> got;
   auto seen = [&](ivec3 p) { for (auto& g : got) if (g == p) return true; return false; };
   while (!q.empty() && got.size() < 48) {
@@ -230,14 +248,13 @@ int fell(Level& lv, World& w, ivec3 base, std::string& logKey) {
     for (int dy = 0; dy <= 1; dy++) for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) if (dx || dy || dz) q.push_back(p + ivec3(dx, dy, dz));
   }
   for (auto& p : got) w.setBlock(p.x, p.y, p.z, AIR, 0);
-  std::string sap = logKey == "log" ? "sapling" : logKey.substr(0, logKey.size() - 4) + "_sapling";
-  const BlockId sid = reg().blockId(sap);
   if (sid && isSoil(w.getBlock(base.x, base.y - 1, base.z))) w.setBlock(base.x, base.y, base.z, sid, 0);
   lv.fx->material("wood", "break", vec3(base) + vec3(0.5f, 1, 0.5f));
   lv.fx->particles("burst", vec3(base) + vec3(0.5f, 1.5f, 0.5f), 12, json{{"block", logKey}, {"speed", 0.6}});
   return (int)got.size();
 }
 }
+int npcFellTree(Level& lv, World& w, ivec3 base, std::string& logKey, vec3 from) { return fell(lv, w, base, logKey, from); }
 
 OptMove npcChore(Level& lv, Creature& e, NpcMind& M, const Village& v, const VFolk& f, float ph, float dt) {
   World& w = lv.world(e.realm);
@@ -445,7 +462,7 @@ OptMove npcChore(Level& lv, Creature& e, NpcMind& M, const Village& v, const VFo
   };
   if (job == "lumberjack") {
     return gather(7.f, [&](ivec3& spot, ivec3& stand) { return findTree(w, v, e.pos, spot) && standBeside(w, spot.x, spot.y, spot.z, stand); },
-      [&]() { std::string k; const int n = fell(lv, w, M.crop, k); if (n > 0) { stockAdd(S, k, n); npcSay(lv, e, "Timber!", 0.5f); } });
+      [&]() { std::string k; const int n = fell(lv, w, M.crop, k, e.pos); if (n > 0) { stockAdd(S, k, n); npcSay(lv, e, "Timber!", 0.5f); } });
   }
   if (job == "miner") {
     // the town mine (gen/town_mine.h, built by gen/structures_townbld.cpp bMine): down the drift and out along one of its

@@ -536,9 +536,9 @@ void PlayerController::breakBlock(int x, int y, int z) {
 }
 
 // ---- tree felling (Tree Capitator) ----
-void PlayerController::scanTree(int x, int y, int z, std::vector<std::array<int, 4>>& logs, std::vector<std::array<int, 4>>& leaves, bool& ok) {
-  World& w = world();
-  ok = false; logs.clear(); leaves.clear();
+// The whole tree a log belongs to (its logs, then the leaves round them); false = not a tree that falls (sim/gameplay.h)
+bool scanTreeAt(const World& w, int realm, int x, int y, int z, std::vector<std::array<int, 4>>& logs, std::vector<std::array<int, 4>>& leaves) {
+  logs.clear(); leaves.clear();
   auto key = [](int a, int b, int c) { return ((u64)(u32)a * 73856093ull) ^ ((u64)(u32)b << 40) ^ ((u64)(u32)c * 19349663ull) ^ ((u64)(u32)c << 20); };
   std::unordered_set<u64> seen;
   std::vector<std::array<int, 3>> q = {{x, y, z}};
@@ -555,7 +555,7 @@ void PlayerController::scanTree(int x, int y, int z, std::vector<std::array<int,
       q.push_back({nx, ny, nz});
     }
   }
-  if (logs.size() < 2) return;
+  if (logs.size() < 2) return false;
   std::unordered_set<u64> ls;
   for (auto& l : logs) for (int dy = -1; dy <= 3; dy++) for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) {
     int nx = l[0] + dx, ny = l[1] + dy, nz = l[2] + dz;
@@ -567,16 +567,19 @@ void PlayerController::scanTree(int x, int y, int z, std::vector<std::array<int,
   if (leaves.size() < 4) {
     // leafless "watcher" trees still fall as trees: a single straight trunk on soil
     bool bare = false;
-    if (logs.size() >= 3 && leaves.empty() && p.realm == REALM_MAIN && dimOfY(y) == DIM_OVERWORLD) {
+    if (logs.size() >= 3 && leaves.empty() && realm == REALM_MAIN && dimOfY(y) == DIM_OVERWORLD) {
       bool one = true; int minY = logs[0][1];
       for (auto& l : logs) { if (l[0] != logs[0][0] || l[2] != logs[0][2]) one = false; minY = std::min(minY, l[1]); }
       BlockId g = w.getBlock(logs[0][0], minY - 1, logs[0][2]);
       const KnownBlocks& B = KB();
       bare = one && g && (g == B.grass || g == B.dirt || g == B.snowy_grass);
     }
-    if (!bare) return;
+    if (!bare) return false;
   }
-  ok = true;
+  return true;
+}
+void PlayerController::scanTree(int x, int y, int z, std::vector<std::array<int, 4>>& logs, std::vector<std::array<int, 4>>& leaves, bool& ok) {
+  ok = scanTreeAt(world(), p.realm, x, y, z, logs, leaves);
 }
 void PlayerController::fellTree(int x, int y, int z, const std::vector<std::array<int, 4>>& logs, const std::vector<std::array<int, 4>>& leaves) {
   World& w = world();

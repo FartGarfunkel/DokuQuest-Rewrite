@@ -55,6 +55,9 @@ void spillEntity(Level& lv, World& w, const json& ent, int x, int y, int z);   /
 #define DQ_GRANTXP_DECLARED
 void grantXP(Level& lv, Player& p, int n, const vec3* at = nullptr);
 #endif
+// The whole tree a log belongs to: its logs, then the leaves round them (x,y,z,id); false = not one that falls (the
+// player's felling, sim/controller.cpp, and the village lumberjack, sim/villager_chores.cpp)
+bool scanTreeAt(const World& w, int realm, int x, int y, int z, std::vector<std::array<int, 4>>& logs, std::vector<std::array<int, 4>>& leaves);
 // A felled tree toppling away from the chopper (blocks: x,y,z,id); drops land along its fall.
 Entity* spawnFallingTree(Level& lv, int realm, const std::vector<std::array<int, 4>>& blocks, ivec3 pivot, float dirYaw, const std::vector<ItemStack>& drops);
 std::vector<Player*> playersIn(Level& lv, int realm);   // live players in a realm (the original's pawns())

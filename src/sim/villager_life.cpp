@@ -730,7 +730,8 @@ void playerLifeTick(Level& lv, VillagerSystem& S, Player& p, double dt) {
           if (c->alive() && N->value("v", "") == v->id && N->value("j", "") != "golem") { float d = std::hypot(c->pos.x - p.pos.x, c->pos.z - p.pos.z); if (d < bd) { bd = d; best = c; } }
         if (best) {
           done[key] = 1;
-          std::string line = pickStr(VD()["riftCall"][std::to_string(tier)], rnd());
+          const std::string away = riftElsewhere(lv, v->id);   // (sim/villager_quests.cpp: another village hears of it)
+          std::string line = withRiftVillage(pickStr(riftLines("riftCall", away)[std::to_string(tier)], rnd()), away);
           if (size_t i = line.find("{p}"); i != std::string::npos) line.replace(i, 3, p.name.empty() ? "friend" : p.name);
           toast(lv, p, npcOf(*best)->value("n", std::string()) + ": \xE2\x80\x9C" + line + "\xE2\x80\x9D", tier >= 5 ? "good" : tier >= 3 ? "warn" : "");
           npcSay(lv, *best, line);

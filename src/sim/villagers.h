@@ -63,7 +63,10 @@ VillageRef villageForDamage(Level& lv, int realm, vec3 at);
 bool villageDamage(Level& lv, const Village& v, int x, int y, int z, BlockId id, u8 meta);
 
 // ---- who they are (data/villagers.json, extracted from the original) ----
-const json& VD();                                     // NPC_JOBS, NPC_SHOPS, NPC_ERRANDS, NPC_TALK, RIFT_LORE ...
+const json& VD();
+std::string riftElsewhere(Level& lv, const std::string& villageId);   // the rift's village's name if it isn't this one ("" = it is, or none)
+const json& riftLines(const char* key, const std::string& away);       // VD()[key], or its "...Away" set (sim/villager_quests.cpp)
+std::string withRiftVillage(std::string s, const std::string& away);  // {rv} -> that village's name                                     // NPC_JOBS, NPC_SHOPS, NPC_ERRANDS, NPC_TALK, RIFT_LORE ...
 std::string npcName(u32 seed);
 std::string jobTitle(const std::string& job);
 u32 npcSeedOf(const Village& v, int i);

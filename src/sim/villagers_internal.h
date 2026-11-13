@@ -82,6 +82,9 @@ std::string dirWord(double ang);                                 // 'east' ... '
 int roundTo(double v, int step);
 int riftStability(Level& lv);      // sim/endstory.cpp
 int riftTier(Level& lv);
+// the lumberjack fells a tree as a player does (the whole of it falls, its leaves with it); returns the logs for the
+// stores (sim/villager_chores.cpp)
+int npcFellTree(Level& lv, World& w, ivec3 base, std::string& logKey, vec3 from);
 json& villageRec(Level& lv, const std::string& vid);
 void later(Level& lv, double secs, const Player& p, const std::string& text);
 

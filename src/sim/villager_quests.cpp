@@ -427,6 +427,22 @@ static std::string fill(std::string s, Level& lv, const Talk& t, const Player& p
   rep("{v}", v ? v->name : "the village"); rep("{p}", p.name.empty() ? "friend" : p.name);
   return s;
 }
+// The rift opens in one village (the first one you found): everywhere else it's news from there. "" = this is that
+// village (or no rift yet); else the rift's village's name, for the {rv} of the "...Away" lines.
+std::string riftElsewhere(Level& lv, const std::string& vid) {
+  const json R = lv.info.data.value("rift", json::object());
+  if (!R.is_object() || !R.contains("village") || !R["village"].is_string() || vid.empty() || R["village"].get<std::string>() == vid) return "";
+  const std::string n = R.value("vname", std::string());
+  return n.empty() ? "another village" : n;
+}
+const json& riftLines(const char* key, const std::string& away) {   // VD()[key], or its "...Away" set for another village
+  const json& D = VD(); const std::string k2 = std::string(key) + "Away";
+  return !away.empty() && D.contains(k2) ? D[k2] : D[key];
+}
+std::string withRiftVillage(std::string s, const std::string& away) {
+  size_t i; while ((i = s.find("{rv}")) != std::string::npos) s.replace(i, 4, away.empty() ? "the village" : away);
+  return s;
+}
 static void say(Level& lv, Player& p, Talk& t, std::string text) {
   // riftarc.js: when the boundary is paper-thin, sometimes something else speaks
   if (riftStability(lv) < 15 && rnd() < 0.18f && t.job != "elder") {
@@ -462,7 +478,8 @@ static void home(Level& lv, Player& p, Talk& t, const std::string& text0 = "") {
   const int tier = riftTier(lv);
   // riftlore.js: their greeting carries it
   t.greetLine = false;
-  if (text.empty() && tier >= 1 && rnd() < 0.45f && standOf(lv, p, t).k > 0) { const json& L = VD()["riftGreet"].value(std::to_string(tier), json::array()); if (!L.empty()) { text = pickStr(L, rnd()); t.greetLine = true; } }
+  const std::string away = riftElsewhere(lv, t.vid);
+  if (text.empty() && tier >= 1 && rnd() < 0.45f && standOf(lv, p, t).k > 0) { const json& L = riftLines("riftGreet", away).value(std::to_string(tier), json::array()); if (!L.empty()) { text = withRiftVillage(pickStr(L, rnd()), away); t.greetLine = true; } }
   say(lv, p, t, text.empty() ? greeting(lv, p, t) : text);
   auto& O = t.opts; O.clear();
   if (hasShop(t.job)) O.push_back({"Let me see your wares", "", "shop", nullptr});
@@ -481,7 +498,7 @@ static void home(Level& lv, Player& p, Talk& t, const std::string& text0 = "") {
   // riftarc.js: the elder knows the tale
   const json R = lv.info.data.value("rift", json::object());
   if (t.job == "elder" && R.is_object() && R.value("stage", 0) && (text0.empty() || t.greetLine))
-    O.push_back({jflag(R, "sealed") ? "About the rift\xE2\x80\xA6" : R.value("stage", 0) >= 3 ? "The gateway\xE2\x80\xA6" : "The rift in the square\xE2\x80\xA6", "\xE2\x98\x85", "riftElder", nullptr});
+    O.push_back({jflag(R, "sealed") ? "About the rift\xE2\x80\xA6" : R.value("stage", 0) >= 3 ? "The gateway\xE2\x80\xA6" : away.empty() ? "The rift in the square\xE2\x80\xA6" : "The rift in " + away + "\xE2\x80\xA6", "\xE2\x98\x85", "riftElder", nullptr});
   // riftlore.js: seen anything strange?
   if (tier >= 0) O.push_back({tier == 0 ? "Seen anything strange lately?" : tier >= 5 ? "About what happened\xE2\x80\xA6" : "What do you make of the rift?", "?", "rift", nullptr});
   // hearth.js: the elder and a Hero's house
@@ -503,8 +520,9 @@ static void home(Level& lv, Player& p, Talk& t, const std::string& text0 = "") {
 
 static void news(Level& lv, Player& p, Talk& t) {
   const int tier = riftTier(lv);
-  const json& RN = VD()["riftNews"];
-  if (RN.contains(std::to_string(tier)) && rnd() < 0.55f) { home(lv, p, t, pickStr(RN[std::to_string(tier)], rnd())); return; }
+  const std::string away = riftElsewhere(lv, t.vid);
+  const json& RN = riftLines("riftNews", away);
+  if (RN.contains(std::to_string(tier)) && rnd() < 0.55f) { home(lv, p, t, withRiftVillage(pickStr(RN[std::to_string(tier)], rnd()), away)); return; }
   json list = json::array();
   const json& TK = VD()["talk"];
   if (TK.contains(t.job)) for (auto& x : TK[t.job]) list.push_back(x);
@@ -521,8 +539,11 @@ static void riftAsk(Level& lv, Player& p, Talk& t) {
   const int tier = riftTier(lv);
   json& heard = p.stats["riftClues"]; if (!heard.is_object()) heard = json::object();
   const json& LORE = VD()["riftLore"];
+  const std::string away = riftElsewhere(lv, t.vid);
+  // (in another village, nobody saw it with their own eyes: no tales of "the square" here)
+  auto local = [&](const json& c) { return !away.empty() && c.value("text", std::string()).find("square") != std::string::npos; };
   std::vector<const json*> mine;
-  for (auto& c : LORE) if (riftClueFits(c, tier) && !heard.contains(c.value("id", "")) && (hasJob(c, t.job) || hasJob(c, "any"))) mine.push_back(&c);
+  for (auto& c : LORE) if (riftClueFits(c, tier) && !local(c) && !heard.contains(c.value("id", "")) && (hasJob(c, t.job) || hasJob(c, "any"))) mine.push_back(&c);
   std::stable_sort(mine.begin(), mine.end(), [&](const json* a, const json* b) {
     int d = (*b)["t"].get<int>() - (*a)["t"].get<int>();
     if (d) return d < 0;
@@ -533,7 +554,9 @@ static void riftAsk(Level& lv, Player& p, Talk& t) {
   if (!c && !mine.empty()) c = mine[0];
   if (c) {
     heard[c->value("id", "")] = 1; p.stats["riftCluesN"] = heard.size();
-    home(lv, p, t, c->value("text", std::string()));
+    std::string tx = c->value("text", std::string());
+    if (!away.empty() && tx.find("opened") != std::string::npos) { size_t i; while ((i = tx.find("{v}")) != std::string::npos) tx.replace(i, 3, away); }   // (it opened there, not here)
+    home(lv, p, t, tx);
     toast(lv, p, tier >= 1 ? "You learn something about the rift\xE2\x80\xA6" : "You hear something strange\xE2\x80\xA6", "rare");
     sfxUi(lv, p, tier >= 2 ? "rift_whisper" : "click");
     return;
@@ -544,13 +567,14 @@ static void riftAsk(Level& lv, Player& p, Talk& t) {
   if (v) for (auto& f : v->folk) here.insert(f.job);
   std::vector<const json*> others;
   for (auto& x : LORE) {
-    if (!riftClueFits(x, tier) || heard.contains(x.value("id", "")) || hasJob(x, "any")) continue;
+    if (!riftClueFits(x, tier) || local(x) || heard.contains(x.value("id", "")) || hasJob(x, "any")) continue;
     bool ok = false; for (auto& j : x["jobs"]) if (j != t.job && here.count(j.get<std::string>())) ok = true;
     if (ok) others.push_back(&x);
   }
-  const json& RR = VD()["riftReact"];
+  const std::string awayR = tier >= 1 ? away : std::string();   // (before it opens, nobody knows where it will)
+  const json& RR = riftLines("riftReact", awayR);
   std::string key = std::to_string(std::max(0, tier));
-  std::string line = pickStr(RR.contains(key) ? RR[key] : RR["1"], rnd());
+  std::string line = withRiftVillage(pickStr(RR.contains(key) ? RR[key] : RR["1"], rnd()), away);
   if (!others.empty() && rnd() < 0.7f) {
     const json& o = *others[(size_t)std::floor(rnd() * others.size())];
     std::string j; for (auto& x : o["jobs"]) if (x != t.job && here.count(x.get<std::string>())) { j = x; break; }
@@ -662,7 +686,11 @@ void talkChoose(Level& lv, Player& p, Talk& t, int i) {
   if (a == "riftElder") {
     const json R = lv.info.data.value("rift", json::object());
     int n = std::min(RIFT_NEED, R.value("frags", 0));
-    std::string lines = jflag(R, "sealed") ? "You did it. The square is quiet, the nights are only nights again. We will sing of this for a hundred winters. And the storm he raised, broken in his own hall! Rest now. You've earned it."
+    const std::string away = riftElsewhere(lv, t.vid);
+    std::string lines = !away.empty() ? (jflag(R, "sealed") ? "You did it. They say " + away + "'s square is quiet now, and the nights are only nights again, even here. We will sing of this for a hundred winters."
+                      : R.value("stage", 0) >= 3 ? "The rift in " + away + " is a gateway now. He waits beyond it, at the end of his halls. Go together, go ready, and end this."
+                      : "A rift opened in " + away + "'s square, the day you first came there. Something old is pressing on our world from the other side. The old tales say the keepers of the deep places hold the keys of time. Find the dungeons, defeat their keepers, bring their Realm Fragments to the rift in " + away + ". Ten of them.")
+                      : jflag(R, "sealed") ? "You did it. The square is quiet, the nights are only nights again. We will sing of this for a hundred winters. And the storm he raised, broken in his own hall! Rest now. You've earned it."
                       : R.value("stage", 0) >= 3 ? "The gateway stands open. He waits beyond it, at the end of his halls. Go together, go ready, and end this."
                       : "It opened when you came. Something old is pressing on our world from the other side. The old tales say the keepers of the deep places hold the keys of time. Find the dungeons, defeat their keepers, bring their Realm Fragments to the rift. Ten of them. " + (n ? "The rift has taken " + std::to_string(n) + " so far. Each one opens it a little wider." : "Hold one up to the tear and use it. One at a time.");
     say(lv, p, t, lines);

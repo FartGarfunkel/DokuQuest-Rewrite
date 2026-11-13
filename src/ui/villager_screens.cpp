@@ -2,6 +2,7 @@
 // (QuestBoard) and the paths window (paths.js PathUI). The dialogue itself is worked out in sim (sim/villagers.h
 // Talk): these draw it the way styles.css drew .npc-talk, .npc-shop, .quest-board and .path-view.
 #include "ui/book_ui.h"
+#include "ui/book.h"
 #include "ui/villager_screens.h"
 #include "ui/theme.h"
 #include "ui/ui.h"
@@ -348,12 +349,16 @@ public:
     const float z = Z(), W = (float)a.width, H = (float)a.height;
     ImDrawList* bg = ImGui::GetBackgroundDrawList();
     if (!bookUiDrawing()) bg->AddRectFilled(ImVec2(0, 0), ImVec2(W, H), IM_COL32(6, 4, 2, 140));
-    const float bd = 3 * z, padX = 14 * z, padY = 12 * z;
-    const float cw = std::min(720.f, W / z - 16.f) * z, ch = std::min(H - 16 * z, lastH > 0 ? lastH : 520 * z);
-    const ImVec2 w0((W - cw) / 2, (H - ch) / 2);
+    // in the journal in your hands (ui/book_ui.h) the board is written on its two pages: the notes in a column on each,
+    // ink for its headings, no wooden card
+    ImVec2 bpos, bsz; float pageW = 0, gutter = 0;
+    const bool bk = ui::bookSpreadWindow(bpos, bsz, pageW, gutter);
+    const float bd = bk ? 0 : 3 * z, padX = bk ? 0 : 14 * z, padY = bk ? 0 : 12 * z;
+    const float cw = bk ? bsz.x : std::min(720.f, W / z - 16.f) * z, ch = bk ? bsz.y : std::min(H - 16 * z, lastH > 0 ? lastH : 520 * z);
+    const ImVec2 w0 = bk ? bpos : ImVec2((W - cw) / 2, (H - ch) / 2);
     cardR = ImVec4(w0.x, w0.y, w0.x + cw, w0.y + ch);
-    woodCard(bg, w0, w0 + ImVec2(cw, ch), 0x5a4028, 0x46321e, 0x8a6a44, 0x2a1a0a);
-    ImGui::SetNextWindowPos(w0); ImGui::SetNextWindowSize(ImVec2(cw, ch));
+    if (!bk) { woodCard(bg, w0, w0 + ImVec2(cw, ch), 0x5a4028, 0x46321e, 0x8a6a44, 0x2a1a0a); ImGui::SetNextWindowPos(w0); ImGui::SetNextWindowSize(ImVec2(cw, ch)); }
+    const ImU32 headC = bk ? ui::inkOf(col::rgb(0xfff3d6)) : col::rgb(0xfff3d6), goldC = bk ? ui::inkOf(col::gold) : col::gold, hintC = bk ? ui::inkOf(col::rgb(0xe8d8b8)) : col::rgb(0xe8d8b8, 204);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::Begin("##quest-board", nullptr, CARD);   // its own pad highlight (padStep)
     ImGui::PopStyleVar();
@@ -370,13 +375,18 @@ public:
     std::string sub = "You are a " + st.name + " here (" + std::to_string((int)repOf(p, v->id)) + (st.hasNext ? " / " + std::to_string((int)st.next) : std::string()) + ")";
     float y = bd + padY;
     const ImVec2 hsz = textSize(F_H3, head.c_str()), ssz = textSize(F_MID, sub.c_str());
-    textShadow(dl, F_H3, scr(ox, y), col::rgb(0xfff3d6), head.c_str(), ImVec2(2, 2) * z, col::rgb(0x1a0f06));
-    if (hsz.x + 10 * z + ssz.x <= iw) { text(dl, F_MID, scr(ox + iw - ssz.x, y + baselineOf(F_H3) - baselineOf(F_MID)), col::gold, sub.c_str()); y += hsz.y; }
-    else { text(dl, F_MID, scr(ox, y + hsz.y), col::gold, sub.c_str()); y += hsz.y + ssz.y; }
+    if (bk) text(dl, F_H3, scr(ox, y), headC, fitText(F_H3, head, pageW).c_str());
+    else textShadow(dl, F_H3, scr(ox, y), headC, head.c_str(), ImVec2(2, 2) * z, col::rgb(0x1a0f06));
+    if (bk) { text(dl, F_MID, scr(ox + iw - std::min(ssz.x, pageW), y + baselineOf(F_H3) - baselineOf(F_MID)), goldC, fitText(F_MID, sub, pageW).c_str()); y += hsz.y; }   // (the standing on the right page)
+    else if (hsz.x + 10 * z + ssz.x <= iw) { text(dl, F_MID, scr(ox + iw - ssz.x, y + baselineOf(F_H3) - baselineOf(F_MID)), goldC, sub.c_str()); y += hsz.y; }
+    else { text(dl, F_MID, scr(ox, y + hsz.y), goldC, sub.c_str()); y += hsz.y + ssz.y; }
     y += 8 * z;
     int btn = 0; std::string take, fin;
-    const int cols = std::max(1, (int)((iw + 8 * z) / (208 * z)));
-    const float nw = (iw - (cols - 1) * 8 * z) / cols, nwi = nw - 20 * z;
+    // the notes' columns: across the card; in the book, a page's worth on each page (none across the gutter)
+    const int perPage = bk ? std::max(1, (int)((pageW + 8 * z) / (208 * z))) : 0;
+    const int cols = bk ? 2 * perPage : std::max(1, (int)((iw + 8 * z) / (208 * z)));
+    const float nw = bk ? (pageW - (perPage - 1) * 8 * z) / perPage : (iw - (cols - 1) * 8 * z) / cols, nwi = nw - 20 * z;
+    auto colX = [&](int c) { return bk ? ox + (float)(c / perPage) * (pageW + gutter) + (float)(c % perPage) * (nw + 8 * z) : ox + (float)c * (nw + 8 * z); };
     const float tsz = css(F_H3, 18), tlh = 18 * z, plh = 13 * 1.3f * z;   // note title: display 18px; text 13px / 1.3
     auto notes = [&](const std::vector<std::pair<json, bool>>& list) {
       // heights first: the notes of a row stretch to the tallest (grid items)
@@ -396,7 +406,7 @@ public:
         float rowH = 0; for (size_t k = r0; k < ns.size() && k < r0 + cols; k++) rowH = std::max(rowH, ns[k].h);
         for (size_t k = r0; k < ns.size() && k < r0 + cols; k++) {
           const N& n = ns[k]; const json& q = n.q;
-          const float nx = ox + (float)(k - r0) * (nw + 8 * z);
+          const float nx = colX((int)(k - r0));
           const ImVec2 n0 = scr(nx, y), n1 = n0 + ImVec2(nw, rowH);
           const bool hunt = q.value("kind", "") == "hunt";
           const float al = n.done ? 0.55f : 1.f;
@@ -443,7 +453,7 @@ public:
       const float osz = css(F_MID, 14);
       y += 10 * z;
       std::string sb = "Errands for the folk of " + v->name;
-      text(dl, F_MID, scr(ox, y), col::gold, sb.c_str(), 0, osz);
+      text(dl, F_MID, scr(ox, y), goldC, sb.c_str(), 0, osz);
       y += textSize(F_MID, sb.c_str(), 0, osz).y + 6 * z;
       notes(errands);
     }
@@ -451,8 +461,8 @@ public:
     const std::string hint = "New bounties every morning \xC2\xB7 villagers with a ! over their heads have errands \xC2\xB7 E to close";
     const float hsz2 = css(F_SMALL, 12); const ImVec2 hs = textSize(F_SMALL, hint.c_str(), 0, hsz2);
     y += 10 * z;
-    text(dl, F_SMALL, scr(ox + (iw - hs.x) / 2, y), col::rgb(0xe8d8b8, 204), hint.c_str(), 0, hsz2);
-    y += hs.y;
+    if (bk) y += textLines(dl, F_SMALL, scr(ox, y), hintC, hint.c_str(), pageW, hs.y, hsz2);   // (on the left page, wrapped)
+    else { text(dl, F_SMALL, scr(ox + (iw - hs.x) / 2, y), hintC, hint.c_str(), 0, hsz2); y += hs.y; }
     lastH = y + padY + bd;
     ImGui::SetCursorPos(ImVec2(0, lastH - 1)); ImGui::Dummy(ImVec2(1, 1));   // the scrollable height
     nButtons = btn; pressA = false;

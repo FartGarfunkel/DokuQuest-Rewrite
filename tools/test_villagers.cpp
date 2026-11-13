@@ -295,6 +295,46 @@ int main(int argc, char** argv) {
     (void)d0;
   }
 
+  // ------------------------------------------------------------ the lumberjack fells a tree as a player does
+  {
+    const BlockId logB = reg().blockId("log"), leafB = reg().blockId("leaves"), dirtB = reg().blockId("dirt");
+    const int tx = 40, tz = 40;
+    for (int dx = -3; dx <= 3; dx++) for (int dz = -3; dz <= 3; dz++) { w.setBlock(tx + dx, Y, tz + dz, dirtB); for (int k = 1; k <= 9; k++) w.setBlock(tx + dx, Y + k, tz + dz, AIR); }
+    for (int k = 1; k <= 5; k++) w.setBlock(tx, Y + k, tz, logB);
+    for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) for (int k = 4; k <= 6; k++) if ((dx || dz || k == 6) && std::abs(dx) + std::abs(dz) < 4) w.setBlock(tx + dx, Y + k, tz + dz, leafB);
+    std::string key; const int n = npcFellTree(*L, w, ivec3(tx, Y + 1, tz), key, vec3(tx + 2.5f, Y + 1, tz + 0.5f));
+    int logsLeft = 0, leavesLeft = 0;
+    for (int dx = -3; dx <= 3; dx++) for (int dz = -3; dz <= 3; dz++) for (int k = 1; k <= 9; k++) { const BlockId b = w.getBlock(tx + dx, Y + k, tz + dz); logsLeft += b == logB; leavesLeft += b == leafB; }
+    bool falling = false; for (auto& e : L->entities()) if (!e->removed && e->type == "falling_tree") falling = true;
+    check(n == 5 && key == "log" && logsLeft == 0 && leavesLeft == 0, strFormat("the lumberjack's tree comes down whole: 5 logs to the stores, its leaves with it (%d logs, %d logs and %d leaves left)", n, logsLeft, leavesLeft));
+    check(falling, "and it topples, as a player's does (a falling tree)");
+    check(reg().block(w.getBlock(tx, Y + 1, tz)).key.find("sapling") != std::string::npos, "a sapling in its place");
+  }
+
+  // ------------------------------------------------------------ the rift opened in another village: here it's news from there
+  elder = byJob(v->id, "elder");
+  check(elder != nullptr, "Testbury's elder is about");
+  if (elder) {
+    const json saved = L->info.data.value("rift", json());
+    L->info.data["rift"] = {{"stage", 1}, {"frags", 0}, {"village", "t9999_9999"}, {"vname", "Farbrook"}, {"at", json::array({9999, 600, 9999})}};
+    P->pos = elder->pos + vec3(0, 0, 2);
+    int square = 0, named = 0, said = 0; std::string label;
+    for (int k = 0; k < 60; k++) {
+      Talk tk; if (!talkOpen(*L, *P, *elder, tk)) continue;
+      for (auto& o : tk.opts) if (o.act == "riftElder") label = o.label;
+      for (int i = 0; i < (int)tk.opts.size(); i++) if (tk.opts[i].act == (k % 3 == 0 ? "news" : k % 3 == 1 ? "rift" : "riftElder")) { talkChoose(*L, *P, tk, i); break; }
+      said++; if (tk.text.find("square") != std::string::npos && tk.text.find("Farbrook") == std::string::npos) square++;
+      if (tk.text.find("Farbrook") != std::string::npos) named++;
+      talkClosed(*L, *P, tk);
+    }
+    check(said > 50 && square == 0 && named > 0, strFormat("in another village nobody speaks of \"the square\" as theirs, and they name the rift's village (%d of %d named it, %d spoke of a square)", named, said, square));
+    check(label.find("Farbrook") != std::string::npos, "the elder's option names it: " + label);
+    L->info.data["rift"]["village"] = v->id; label.clear();
+    { Talk tk; if (talkOpen(*L, *P, *elder, tk)) for (auto& o : tk.opts) if (o.act == "riftElder") label = o.label; talkClosed(*L, *P, tk); }
+    check(label.find("square") != std::string::npos, "in the rift's own village it's still the rift in the square: " + label);
+    if (saved.is_null()) L->info.data.erase("rift"); else L->info.data["rift"] = saved;
+  }
+
   // ------------------------------------------------------------ going when everyone has left
   P->pos = vec3(8.5f, Y + 1, 400.5f);
   tick(3);
