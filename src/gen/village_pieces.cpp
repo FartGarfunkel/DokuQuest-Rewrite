@@ -127,6 +127,16 @@ const std::unordered_map<std::string, std::string>& NAMES() {
     {"attached_pumpkin_stem", "pumpkin_stem"}, {"attached_melon_stem", "melon_stem"}, {"tall_seagrass", "seagrass"},
     {"ice", "packed_ice"},   // (ours melts by lamplight and in rain: the snowy houses' ice walls flooded them)
     {"deepslate", "slate"}, {"cobbled_deepslate", "cobbled_slate"}, {"sweet_berry_bush", "berry_bush"},
+    // (Towns and Towers' pieces: Minecraft's newer names)
+    {"deepslate_bricks", "slate_bricks"}, {"deepslate_brick_stairs", "slate_brick_stairs"}, {"deepslate_brick_slab", "slate_brick_slab"},
+    {"deepslate_brick_wall", "slate_brick_wall"}, {"deepslate_tiles", "slate_tiles"}, {"deepslate_tile_stairs", "slate_tile_stairs"},
+    {"deepslate_tile_slab", "slate_tile_slab"}, {"deepslate_tile_wall", "slate_tile_wall"}, {"cracked_deepslate_tiles", "cracked_slate_tiles"},
+    {"cobbled_deepslate_wall", "cobbled_slate_wall"}, {"cobbled_deepslate_stairs", "cobbled_slate_stairs"}, {"cobbled_deepslate_slab", "cobbled_slate_slab"},
+    {"polished_deepslate", "polished_slate"}, {"deepslate_coal_ore", "coal_ore"}, {"deepslate_iron_ore", "iron_ore"}, {"deepslate_copper_ore", "copper_ore"},
+    {"grass_path", "dirt_path"}, {"raw_iron_block", "iron_block"}, {"raw_gold_block", "gold_block"}, {"mangrove_roots", "mangrove_wood"},
+    {"lava_cauldron", "cauldron"}, {"twisting_vines_plant", "twisting_vines"}, {"trapped_chest", "chest"}, {"candle_cake", "cake"},
+    {"dead_bubble_coral_block", "dead_coral_block"}, {"waxed_copper_block", "copper_block"}, {"waxed_exposed_copper", "exposed_copper"},
+    {"waxed_weathered_copper", "weathered_copper"}, {"waxed_exposed_cut_copper", "exposed_cut_copper"}, {"waxed_exposed_cut_copper_slab", "exposed_cut_copper_slab"},
   };
   return M;
 }
@@ -778,8 +788,9 @@ std::unique_ptr<VillagePieces> loadPieces() {
 
 const std::vector<VPPiece>* VillagePieces::pool(const std::string& name) const {
   std::string n = name;
-  if (n.rfind("minecraft:", 0) == 0) n = n.substr(10);
+  if (const size_t c = n.find(':'); c != std::string::npos) n = n.substr(c + 1);   // (any namespace: minecraft:, kaisyn: (Towns and Towers))
   if (n.rfind("village/", 0) == 0) n = n.substr(8);
+  if (n.rfind("exclusives/", 0) == 0) n = n.substr(11);   // (Towns and Towers' exclusive styles: their own folder)
   auto it = pools.find(n);
   return it == pools.end() || it->second.empty() ? nullptr : &it->second;
 }

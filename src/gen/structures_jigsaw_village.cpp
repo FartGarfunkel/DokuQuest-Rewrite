@@ -153,8 +153,8 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
   // band: dry shore at the sea's level and a block above counted, the streets there had no level of their own, and a
   // house's levelled ground beside one raised a ridge across it with the street sunk in a trench)
   auto wet = [&](int x, int z) { const TerrainColumn c = t.terrainColumn(x, z); return v.planV >= 11 ? c.water >= 0 : c.jsY <= JS_SEA; };
-  auto overlaps = [&](int x0, int z0, int x1, int z1) {
-    for (auto& q : J->pcs) if (x0 <= q.x1() && x1 >= q.x0 && z0 <= q.z1() && z1 >= q.z0) return true;
+  auto overlaps = [&](int x0, int z0, int x1, int z1, int skip = -1) {
+    for (int i = 0; i < (int)J->pcs.size(); i++) { if (i == skip) continue; const auto& q = J->pcs[i]; if (x0 <= q.x1() && x1 >= q.x0 && z0 <= q.z1() && z1 >= q.z0) return true; }
     return false;
   };
   auto inside = [&](int x, int z) { return overlaps(x, z, x, z); };
@@ -184,7 +184,13 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
       const int ax = Q.x0 + tx, az = Q.z0 + tz, af = (A.front + Q.r) & 3;
       const int ay = Q.p->terrain ? top(ax, az) + A.y : Q.y0 + A.y;
       const int Tx = ax + DXJ[af], Tz = az + DZJ[af];
-      if (inside(Tx, Tz)) continue;
+      // Minecraft's jigsaw: a joint whose spot is inside its own piece's box puts the next piece inside that box (Towns and
+      // Towers' streets are plots with the houses' lots in them); anywhere else, the spot must be free
+      static const std::set<std::string> TNT = {"meadow_swiss", "birch_forest_romanian", "flower_forest_japanese", "forest_ruins", "mushroom_fields_fantasy",
+        "swamp_boat", "jungle_tribal", "sparse_jungle_polynesian", "badlands_pueblo", "old_growth_taiga_polish", "snowy_taiga_viking", "tudor", "classic",
+        "rustic", "swedish", "iberian"};   // (tools/port/tnt_village_import.py: theirs build that way; ours never did)
+      const bool inParent = TNT.count(Q.p->style) && Tx >= Q.x0 && Tx <= Q.x1() && Tz >= Q.z0 && Tz <= Q.z1();
+      if (inParent ? overlaps(Tx, Tz, Tx, Tz, (int)qi) : inside(Tx, Tz)) continue;
       const bool streets = A.pool.find("/streets") != std::string::npos, houses = A.pool.find("/houses") != std::string::npos;
       std::vector<const VPPiece*> cands;
       if (Q.depth + 1 <= maxDepth) {
@@ -218,7 +224,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
             };
             std::vector<const VPPiece*> keep; for (const VPPiece* p : cands) if (fits(p)) keep.push_back(p);
             if (keep.empty()) for (const VPPiece* p : cands) if (quarterOf(*p) == Q_HOME) keep.push_back(p);   // (that quarter's full: homes)
-            cands.swap(keep);
+            if (!keep.empty()) cands.swap(keep);   // (a style whose every house has its trade (Towns and Towers' Vikings): any of them)
           }
           // the trades it hasn't got come first (most of the time: a plain house now and then between them)
           if (rnd() < 0.7) std::stable_partition(cands.begin(), cands.end(), [&](const VPPiece* p) { const std::string t = tradeOf(p); return !t.empty() && !J->trades.count(t) && t.rfind("stall", 0) != 0; });
@@ -230,16 +236,18 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
       }
       if (streets) if (const auto* tl = pack.pool(sk + "/terminators")) for (auto* p : pickWeighted(*tl)) cands.push_back(p);
       bool placed = false;
+      static const bool dbgJ = std::getenv("DQ_VILLAGE_LOG2") != nullptr;
+      int rej[6] = {0, 0, 0, 0, 0, 0};
       for (const VPPiece* C : cands) {
         int rs[4] = {0, 1, 2, 3}; for (int i = 3; i > 0; i--) std::swap(rs[i], rs[jsFloor(rnd() * (i + 1))]);
         for (int r : rs) {
           for (const VPJoint& B : C->joints) {
-            if (B.front > 3 || B.name != A.target || ((B.front + r) & 3) != ((af + 2) & 3)) continue;
+            if (B.front > 3 || B.name != A.target || ((B.front + r) & 3) != ((af + 2) & 3)) { rej[0]++; continue; }
             auto [cx2, cz2] = vpTurn(*C, r, B.x, B.z);
             JPlaced q; q.p = C; q.r = r; q.w = r & 1 ? C->sz : C->sx; q.d = r & 1 ? C->sx : C->sz;
             q.x0 = Tx - cx2; q.z0 = Tz - cz2; q.depth = Q.depth + 1;
-            if (std::max({std::abs(q.x0 - v.x), std::abs(q.x1() - v.x), std::abs(q.z0 - v.z), std::abs(q.z1() - v.z)}) > R) continue;
-            if (overlaps(q.x0, q.z0, q.x1(), q.z1())) continue;
+            if (std::max({std::abs(q.x0 - v.x), std::abs(q.x1() - v.x), std::abs(q.z0 - v.z), std::abs(q.z1() - v.z)}) > R) { rej[1]++; continue; }
+            if (inParent ? (q.x0 < Q.x0 || q.x1() > Q.x1() || q.z0 < Q.z0 || q.z1() > Q.z1() || overlaps(q.x0, q.z0, q.x1(), q.z1(), (int)qi)) : overlaps(q.x0, q.z0, q.x1(), q.z1())) { rej[2]++; continue; }
             const int climb = v.tier == TIER_VILLAGE ? 8 : v.tier == TIER_TOWN ? 10 : 12;
             if (C->terrain) {   // a street may bridge a stream, not run out across a lake
               // and not steep along itself: a street climbs or falls a block in four at most (sampled every few blocks along
@@ -258,7 +266,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
               if (wetN > 2) continue;
             } else {
               q.y0 = ay - B.y;
-              if (std::abs(q.y0 - v.y) > climb) continue;
+              if (std::abs(q.y0 - v.y) > climb) { rej[3]++; continue; }
               // not out over water, nor hung off a slope it would have to stand far above or below
               // (the whole footprint, every few blocks: a lake under one side of it got through when only the middle and
               // the corners were looked at, and the farm stood half in it)
@@ -268,7 +276,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
                 if (wet(sx, sz)) steep = true;
               }
               for (auto [px, pz] : {std::pair{q.x0, q.z0}, {q.x1(), q.z0}, {q.x0, q.z1()}, {q.x1(), q.z1()}}) if (!steep && std::abs(top(px, pz) - q.y0) > 7) steep = true;
-              if (steep) continue;
+              if (steep) { rej[4]++; continue; }
             }
             q.parent = (int)qi; q.jx = ax; q.jz = az; q.dy = A.y - B.y;
             J->pcs.push_back(q);
@@ -280,12 +288,18 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
         }
         if (placed) break;
       }
+      if (dbgJ && houses && !placed) DQ_LOG("house joint %s: %zu cands, rejected joint %d range %d overlap %d climb %d steep %d", A.pool.c_str(), cands.size(), rej[0], rej[1], rej[2], rej[3], rej[4]);
       if (!placed && streets) J->ends.push_back({Tx, Tz, af});
     }
   }
   std::sort(J->ends.begin(), J->ends.end(), [&](const std::array<int, 3>& a, const std::array<int, 3>& b) {
     return std::hypot(a[0] - v.x, a[1] - v.z) > std::hypot(b[0] - v.x, b[1] - v.z); });   // the farthest first: where roads leave
   int nb = 0; for (auto& q : J->pcs) if (!q.p->terrain && q.p->kind != "town_centers") nb++;
+  if (std::getenv("DQ_VILLAGE_LOG")) {
+    std::map<std::string, int> k; for (auto& q : J->pcs) k[q.p->kind]++;
+    std::string s; for (auto& [a2, n] : k) s += " " + a2 + " " + std::to_string(n);
+    DQ_LOG("jigsaw %s (%s):%s; ends %zu", v.name.c_str(), sk.c_str(), s.c_str(), J->ends.size());
+  }
   if (nb < 3) return false;
   // ---- the streets' own level ----
   // Each street column at the land's height, smoothed, then eased until no column is more than a block off a

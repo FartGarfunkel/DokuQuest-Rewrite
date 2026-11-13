@@ -129,6 +129,27 @@ static int villageStyle10(const TerrainColumn& c, u32 h, int wet) {
   const double u = (h & 0xFFFFF) / (double)0x100000;
   auto S = [](const char* k, int fallback) { const int i = vstyleIndex(k); return i >= 0 ? i : fallback; };
   if (const char* f = std::getenv("DQ_VILLAGE_STYLE")) { const int i = vstyleIndex(f); if (i >= 0) return i; }   // (test aid: every village this style)
+  // Towns and Towers' styles (tools/port/tnt_village_import.py), about half the villages, by the land: each style its own
+  {
+    const double v = ((h >> 20) & 0xFFF) / 4096.0;
+    auto pick = [&](std::initializer_list<const char*> L) -> int {
+      std::vector<int> ok; for (const char* k : L) { const int i = vstyleIndex(k); if (i >= 0) ok.push_back(i); }
+      return ok.empty() ? -1 : ok[(size_t)(u * 997) % ok.size()];
+    };
+    int t = -1;
+    if (v < 0.5) {
+      if (c.biome == BIOME_DESERT) t = pick({"badlands_pueblo"});
+      else if (bv == BV_REDLANDS) t = pick({"badlands_pueblo"});
+      else if (bv == BV_MOSSMIRE) t = pick({"swamp_boat"});
+      else if (bv == BV_HIGHLANDS || c.biome == BIOME_MOUNTAINS) t = pick({"meadow_swiss", "swedish"});
+      else if (c.biome == BIOME_TAIGA || bv == BV_TUNDRA) t = c.temp < -0.38 || bv == BV_TUNDRA ? pick({"snowy_taiga_viking"}) : pick({"old_growth_taiga_polish", "swedish"});
+      else if (c.temp > 0.28 && c.humid > 0.12) t = pick({"jungle_tribal", "sparse_jungle_polynesian"});
+      else if (c.temp > 0.28 && c.humid < 0.02) t = pick({"iberian", "sparse_jungle_polynesian"});
+      else if (c.biome == BIOME_FOREST) t = pick({"birch_forest_romanian", "flower_forest_japanese", "forest_ruins", "tudor", "rustic"});
+      else if (c.biome != BIOME_BEACH) t = u < 0.04 ? pick({"mushroom_fields_fantasy"}) : pick({"classic", "tudor", "rustic", "meadow_swiss", "birch_forest_romanian"});
+    }
+    if (t >= 0) return t;
+  }
   if (c.biome == BIOME_BEACH) return S("beach", VS_PLAINS);
   if (c.biome == BIOME_DESERT) return wet > 0 || u < 0.25 ? S("oasis", VS_DESERT) : VS_DESERT;
   if (bv == BV_REDLANDS) return S("mesa", VS_SAVANNA);
@@ -195,8 +216,10 @@ static bool townPlace(const StructureIndex&, const TerrainQuery& t, int rx, int 
         jigsawTownBounds(*e->jig, X0, Z0, X1, Z1);
         if (v.hasWall) { X0 = std::min(X0, v.wall.x0 - 10); Z0 = std::min(Z0, v.wall.z0 - 10); X1 = std::max(X1, v.wall.x1 + 10); Z1 = std::max(Z1, v.wall.z1 + 10); }   // (the ways out run 8 past it)
         townPlanData(S, e, X0, Z0, X1, Z1, y0js, false, {0, 0});
+        if (std::getenv("DQ_VILLAGE_LOG")) DQ_LOG("village %s style %s at %d %d", v.name.c_str(), vstyle(v.style).key.c_str(), cx, cz);
         return true;
       }
+      if (std::getenv("DQ_VILLAGE_LOG")) DQ_LOG("village %s style %s: jigsaw plan failed, the classic town", v.name.c_str(), vstyle(v.style).key.c_str());
       e->jig.reset();   // (no pieces for this land's style, or no room: the classic town)
     }
   std::vector<std::array<int, 4>> taken{{cx - P - 1, cz - P - 1, cx + P + 1, cz + P + 1}};
