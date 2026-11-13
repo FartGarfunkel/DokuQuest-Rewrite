@@ -45,15 +45,19 @@ const Kind* kindOf(const std::string& k) {
 
 // one posed skeleton per kind (they lie still: posed once)
 struct Shown { std::unique_ptr<Creature> c; const RigModel* RM = nullptr; const CreatureModelGL* CM = nullptr; const Kind* K = nullptr; };
-Shown* shownFor(const std::string& kind) {
+Shown* shownFor(const std::string& kind, int dim) {
   static std::unordered_map<std::string, std::unique_ptr<Shown>> cache;
-  auto it = cache.find(kind);
+  const std::string ck = kind + "#" + std::to_string(dim);
+  auto it = cache.find(ck);
   if (it != cache.end()) return it->second.get();
   auto s = std::make_unique<Shown>();
   s->K = kindOf(kind);
   if (s->K && reg().mobs.contains("skeleton")) {
     s->c = std::make_unique<Creature>("skeleton");
-    if (rigModel(s->K->model) && creatureModel(s->K->model)) s->c->variant = s->K->model;
+    // the realm's own dead: scorched bones in the Nether
+    const char* model = dim == DIM_NETHER ? "scorched_skeleton_chained" : s->K->model;
+    if (!rigModel(model) || !creatureModel(model)) model = s->K->model;
+    if (rigModel(model) && creatureModel(model)) s->c->variant = model;
     s->RM = rigModel(s->c->modelKey());
     s->CM = creatureModel(s->c->modelKey());
   }
@@ -95,7 +99,7 @@ Shown* shownFor(const std::string& kind) {
       m.mats[i] = mm;
     }
   }
-  return (cache[kind] = std::move(s)).get();
+  return (cache[ck] = std::move(s)).get();
 }
 
 class FallenLayer : public RenderLayer {
@@ -138,7 +142,7 @@ public:
     bool begun = false;
     for (auto& [cc, list] : found) for (auto& [at, id] : list) {
       if (w.getBlock(at.x, at.y, at.z) != id) continue;   // (taken since the scan)
-      Shown* sh = shownFor(reg().block(id).str("remains"));
+      Shown* sh = shownFor(reg().block(id).str("remains"), dimOfY(at.y));
       if (!sh || !sh->c) continue;
       vec3 rel = f.cam.rel(glm::dvec3(at.x + 0.5, at.y, at.z + 0.5));
       if (glm::dot(rel, rel) > 64.f * 64.f || !f.cam.frustum.sphere(rel + vec3(0, 0.5f, 0), 1.6f)) continue;

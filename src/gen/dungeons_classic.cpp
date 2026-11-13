@@ -2,6 +2,7 @@
 // mossy floor carved where a cave passes, a monster cage in the middle (block entity {type:'spawner', mob}, the same
 // shape structure cages use) and one or two chests against the walls with Beta's loot plus a few of the original's
 // things. Each room lies wholly inside one chunk, so the opening test sees exactly the blocks it changes.
+#include "gen/structures.h"
 #include "gen/overworld.h"
 #include "gen/structures_common.h"
 
@@ -89,6 +90,7 @@ void OverworldGen::placeDungeons(GenBuf& b, Chunk& ch, const OwColumn* cols) con
     ch.blockEntities[i] = json{{"type", "spawner"}, {"mob", MOBS[rnd.nextInt(4)]}, {"dungeon", true}};
     built++;
   }
+  if (built) fallenInPlace(b, ch, "classic_dungeon", ch.cx * 16, ch.cz * 16, ch.cx * 16 + 15, ch.cz * 16 + 15, hash32(seed_, ch.cx, ch.cz, 0xFA11));
 }
 
 } // namespace dq

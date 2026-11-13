@@ -112,6 +112,8 @@ struct StructureType {
   int treePad = 3;                 // how far beyond the footprint treeOff may answer yes
 };
 
+// gen/structures_fallen.cpp: a fallen adventurer by a chest or cage of an abandoned place (structure key) in this chunk
+void fallenInPlace(struct GenBuf& b, Chunk& ch, const std::string& structureKey, int wx0, int wz0, int wx1, int wz1, u32 seed);
 int registerStructure(StructureType t);              // returns the type index (registration order = priority)
 const std::vector<StructureType>& structureTypes();
 int structureTypeIndex(const std::string& key);       // -1 = none

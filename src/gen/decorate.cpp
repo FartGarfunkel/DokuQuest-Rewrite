@@ -101,16 +101,6 @@ void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) con
     if (b.blocks[colIdx(x, y, z)] == AIR && B.solid[bl] && bl != B.water)
       set(x, y, z, k < 4 ? (rr() < 0.5 ? B.brown_mushroom : B.red_mushroom) : (yo < 30 && rr() < 0.3 ? B.amethyst_cluster : B.brown_mushroom));
   }
-  // a fallen miner on a cave floor now and then (sim/fallen.h; its own draw, so the rest stays as it was)
-  static const BlockId miner = reg().blockId("remains_miner");
-  if (miner) {
-    Mulberry32 rm(hash32(seed_, cx, cz, 92));
-    if (rm() < 0.05) {
-      const int x = jsFloor(rm() * 14) + 1, z = jsFloor(rm() * 14) + 1, y = owUnder(10 + jsFloor(rm() * 44));
-      const BlockId bl = b.blocks[colIdx(x, y - 1, z)];
-      if (b.blocks[colIdx(x, y, z)] == AIR && b.blocks[colIdx(x, y + 1, z)] == AIR && B.solid[bl] && bl != B.water) set(x, y, z, miner, (u8)jsFloor(rm() * 4));
-    }
-  }
 }
 
 void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) const {
@@ -151,18 +141,6 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
           if ((std::abs(dx) == 2 && std::abs(dz) == 2) || (dy == 5 && (std::abs(dx) == 2 || std::abs(dz) == 2))) continue;
           if (at(x + dx, y + dy, z + dz) == 0) set(x + dx, y + dy, z + dz, lf);
         }
-        continue;
-      }
-    }
-    // a fallen adventurer where they lay down for the last time, dressed for the land (sim/fallen.h): rare, about one in 16 chunks
-    {
-      static const BlockId RT = reg().blockId("remains_traveller"), RD = reg().blockId("remains_desert"), RS = reg().blockId("remains_snowy"),
-                           RJ = reg().blockId("remains_jungle"), RW = reg().blockId("remains_swamp");
-      if (RT && below >= 0 && B.solid[below] && below != B.water && at(x, y + 1, z) == 0 && c.h > JS_SEA && hashFloat(wx, wz, seed_, 43) < 0.00025) {
-        const bool snowy = c.temp < -0.2 || (c.biome == BIOME_TAIGA && c.temp < 0.05);
-        const bool swampy = c.humid > 0.45 && c.h <= JS_SEA + 3 && (c.biome == BIOME_FOREST || c.biome == BIOME_PLAINS);
-        const BlockId rid = c.biome == BIOME_DESERT ? RD : snowy ? RS : jungle ? RJ : swampy ? RW : RT;
-        set(x, y, z, rid ? rid : RT, (u8)jsFloor(r2 * 4));
         continue;
       }
     }

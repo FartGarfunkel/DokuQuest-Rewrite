@@ -159,6 +159,7 @@ void StructureIndex::build(GenBuf& buf, Chunk& c) const {
     if (S->x1 < bx || S->x0 > bx + 15 || S->z1 < bz || S->z0 > bz + 15) continue;
     ChunkWriter w(buf, c, *S, t);
     structureTypes()[S->type].build(w, *S);
+    fallenInPlace(buf, c, structureTypes()[S->type].key, S->x0, S->z0, S->x1, S->z1, S->seed);   // (abandoned places only)
   }
 }
 
