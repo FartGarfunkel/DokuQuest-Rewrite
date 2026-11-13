@@ -109,7 +109,7 @@ const PoiPack* poiPack() {
 
 // our lands at a column (the mods' biome tags were turned into these: tools/port/poi_import.py LAND)
 std::vector<std::string> landsAt(const TerrainQuery& t, const TerrainColumn& c) {
-  OwColumn oc; oc.h = c.jsY; oc.biome = (u8)std::max(0, c.biome); oc.temp = c.temp; oc.humid = c.humid;
+  OwColumn oc; oc.h = c.jsY; oc.biome = (u8)std::max(0, c.biome); oc.temp = c.temp; oc.humid = c.humid; oc.mc = c.mc;
   const BtaVariant bv = btaVariant(oc);
   std::vector<std::string> L;
   if (c.special == 1) { L.push_back("mushroom"); return L; }   // (a mushroom island: its own)

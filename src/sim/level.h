@@ -20,7 +20,7 @@ struct LevelInfo {
   std::string mode = "survival";       // survival | creative | adventure | spectator
   std::string difficulty = "normal";   // peaceful | easy | normal | hard
   std::string worldType = "default";
-  int genVersion = 15;  // new worlds: the newest terrain (15: Soulrend's world, tools/port/soulrend_worldgen; 14: Minecraft 1.20's land, docs/WORLDGEN_MERGE.md) (old saves keep theirs: fromJson defaults to 3)
+  int genVersion = 16;  // new worlds: the newest terrain (16: Soulrend's plants and features; 15: Soulrend's world, tools/port/soulrend_worldgen; 14: Minecraft 1.20's land, docs/WORLDGEN_MERGE.md) (old saves keep theirs: fromJson defaults to 3)
   double time = 300;           // seconds into the day (0 = sunrise in the original's clock)
   i64 day = 0;
   i64 created = 0, lastPlayed = 0;

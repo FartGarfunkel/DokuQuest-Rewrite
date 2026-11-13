@@ -3,6 +3,7 @@
 // exactly as in the original; positions are band-local.
 #include "core/registry.h"
 #include "gen/overworld.h"
+#include "gen/mc_features.h"
 #include "common/holiday.h"
 
 namespace dq {
@@ -23,6 +24,14 @@ void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) con
   const BlockId FOREST_FLOWERS[] = {B.lily_of_the_valley, B.allium, B.flower_red, B.lilac, B.rose_bush, B.peony};
   auto set = [&](int x, int y, int z, BlockId id, u8 meta = 0) { int i = colIdx(x, y, z); b.blocks[i] = id; b.meta[i] = meta; };
   auto tall = [&](int x, int y, int z, BlockId id) { if (y + 1 < DIM_H && b.blocks[colIdx(x, y + 1, z)] == AIR) { set(x, y, z, id, 0); set(x, y + 1, z, id, 1); } };
+  // terrain version 15: Soulrend's biomes grow their own plants (gen/mc_features.h); ours below only add what theirs
+  // haven't: the warm seas' coral, TFC's berry bushes in the woods
+  const bool sr = mcf_ && mcf_->ok();
+  if (sr) {
+    u16 bio[256];
+    for (int i = 0; i < 256; i++) bio[i] = cols[i].mc == 0xFFFF ? 0 : cols[i].mc;
+    mcf_->decorate(b, cx, cz, bio, [&](int wx, int wz) { return structures.active() && structures.flagged(wx, wz, 0, SF_SURFACE); });
+  }
   for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
     const OwColumn& c = cols[z * 16 + x];
     const int y = c.H + 1, wx = bx + x, wz = bz + z;
@@ -37,6 +46,7 @@ void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) con
         const BlockId blocksC[] = {B.tube_coral_block, B.brain_coral_block, B.bubble_coral_block, B.fire_coral_block, B.horn_coral_block};
         if (r < 0.04) set(x, y - 1, z, blocksC[jsFloor(r2 * 5)]);
         else set(x, y, z, corals[jsFloor(r2 * 5)], WLOG);
+      } else if (sr) {
       } else if (r < 0.18) set(x, y, z, B.seagrass, WLOG);
       else if (r < 0.24 && depth > 4) {
         int kh = 1 + jsFloor(r2 * std::min(8, depthB - 2));
@@ -45,9 +55,13 @@ void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) con
       continue;
     }
     // lily pads on calm, shallow water near land
-    if (here == B.water && y == SEA_LEVEL && c.h >= JS_SEA - 2 && c.humid > 0.2 && r < 0.05) { set(x, y + 1, z, B.lily_pad); continue; }
+    if (!sr && here == B.water && y == SEA_LEVEL && c.h >= JS_SEA - 2 && c.humid > 0.2 && r < 0.05) { set(x, y + 1, z, B.lily_pad); continue; }
     if (here == B.water && y == SEA_LEVEL && B.algae && btaVariant(c) == BV_MOSSMIRE && r < 0.3) { set(x, y + 1, z, B.algae); continue; }   // the Mossmire's still water grows algae
     if (here != AIR) continue;
+    if (sr) {
+      if ((below == B.grass || below == B.podzol || below == B.snowy_grass) && (c.biome == BIOME_FOREST || c.biome == BIOME_TAIGA) && r < 0.006) set(x, y, z, bushFor(c, r2));
+      continue;
+    }
     const double patch = nDetail.noise2(wx / 14.0, wz / 14.0);
     if (below == B.grass) {
       if (c.biome == BIOME_PLAINS) {
@@ -149,9 +163,10 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
       if (r < 0.05) { set(x, y, z, r2 < 0.5 ? B.red_mushroom : B.brown_mushroom); continue; }
       continue;   // (no grass, flowers or stones on the mycelium)
     }
+    const bool sr = mcf_ && mcf_->ok();   // (terrain version 15: Soulrend's own plants instead of ours, gen/mc_features.h)
     // shore plants: cattails at the shallows' edge, marram grass on dunes
-    if ((below == B.grass || below == B.mud || below == B.sand) && c.h <= JS_SEA + 1 && waterBeside(x, y - 1, z) && r < 0.25 && at(x, y + 1, z) == 0) { set(x, y, z, B.cattail, 0); set(x, y + 1, z, B.cattail, 1); continue; }
-    if ((below == B.sand || below == B.silver_sand) && c.biome == BIOME_BEACH && r < 0.08) { set(x, y, z, B.marram_grass); continue; }
+    if (!sr && (below == B.grass || below == B.mud || below == B.sand) && c.h <= JS_SEA + 1 && waterBeside(x, y - 1, z) && r < 0.25 && at(x, y + 1, z) == 0) { set(x, y, z, B.cattail, 0); set(x, y + 1, z, B.cattail, 1); continue; }
+    if (!sr && (below == B.sand || below == B.silver_sand) && c.biome == BIOME_BEACH && r < 0.08) { set(x, y, z, B.marram_grass); continue; }
     // terrain version 12: now and then a little fruit tree in the warmer woods and fields (TFC's fruit trees)
     if (rockLayers && looseGround && below == B.grass && (c.biome == BIOME_FOREST || c.biome == BIOME_PLAINS) && c.temp > 0.25 && r < 0.0015 && x >= 2 && x <= 13 && z >= 2 && z <= 13) {
       const BlockId hotWet[] = {B.banana_leaves, B.orange_leaves}, hotDry[] = {B.olive_leaves, B.lemon_leaves}, mild[] = {B.peach_leaves, B.plum_leaves};
@@ -188,6 +203,7 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
       const bool woods = (c.biome == BIOME_FOREST || c.biome == BIOME_TAIGA) && (below == B.grass || below == B.podzol || below == B.dirt || below == B.snowy_grass);
       if (B.twigs && (woods || c.biome == BIOME_BEACH) && r > 0.975 && r <= 0.985) { set(x, y, z, B.twigs); continue; }
     }
+    if (sr) continue;
     // the BTA-inspired variants: spinifex and dead bushes on the Redlands, ice spires on the Glacier, moss and orchids in the
     // Mossmire, flowers all over the Meadow
     if (below == B.red_sand && btaVariant(c) == BV_REDLANDS) { if (r < 0.08 && B.spinifex) set(x, y, z, B.spinifex); else if (r < 0.12) set(x, y, z, B.dry_grass); else if (r < 0.14) set(x, y, z, B.dead_bush); continue; }

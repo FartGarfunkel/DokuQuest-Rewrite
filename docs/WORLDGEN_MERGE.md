@@ -48,9 +48,18 @@ our climate. Reading its mods and configs (the Prism instance), Soulrend's Overw
 - Surface: TerraBlender's namespaced rules (Nature's Spirit's for its biomes, Minecraft's for `minecraft:`), falling
   back to Expanded Ecosphere's rule. **Climate Rivers** registers rules and rivers but only patches vanilla's biome
   builder, which nothing runs here: it has no effect in Soulrend.
-- Not yet: the biomes' features (trees, plants: the mods' configured/placed features, data in `data/soulrend_worldgen/`),
-  Nature's Spirit's sugi / stratified-desert pillars, frozen-ocean icebergs and eroded-badlands spires (SurfaceSystem
-  extensions), Alex's Caves' cave biomes.
+- The biomes' features (`gen/mc_features`): each biome's placed features run as Minecraft runs them (the steps' order, a
+  chunk's neighbours' features reaching into it), the placement modifiers and the plant and ground kinds ported:
+  random_patch / flower, simple_block, the selectors, block_column, vegetation_patch, disk, seagrass, kelp, sea pickles,
+  bamboo, vines, forest_rock, iceberg, blue_ice, freeze_top_layer, Nature's Spirit's leveled patches, ponds, big blocks.
+  Left to ours: trees (ours stay, and any feature with a tree in it), ores, lakes, springs, caves, dungeons, fossils,
+  geodes, corals. Block tags (`block_tags.json`) come from every jar.
+- Nature's Spirit's plants and ground as blocks of ours (`tools/port/soulrend_worldgen/ns_blocks.py`): 66 blocks, their
+  built-in pictures our own recoloured, the mod's own in the DokuQuest Base pack.
+- The land's extras before its surface (`OverworldGen::surfaceExtras`): eroded badlands spires and frozen-ocean icebergs
+  (SurfaceSystem's extensions), Nature's Spirit's sugi and stratified-desert pillars (its SurfaceBuilderMixin).
+- Our land kinds (villages, structures, our trees) from Soulrend's biomes by name; snowy exactly where it snows.
+- Not yet: Alex's Caves' cave biomes, Quark's underground biomes.
 
 How: `tools/port/soulrend_worldgen/import.py` (needs the instance, Minecraft's jar and mappings, CFR, node) writes
 `data/soulrend_worldgen/` (git-ignored). Nature's Spirit's region builders and surface rules are code, so they are

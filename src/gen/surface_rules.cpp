@@ -63,7 +63,9 @@ int McSurface::parseRule(const json& j) {
   if (t == "block") {
     r.t = R_BLOCK;
     const std::string nm = j["result_state"].value("Name", std::string());
-    if (auto it = subs_.find(nm); it != subs_.end()) r.block = mcBlockState(json{{"Name", it->second}});   // (a mod's ground: ours that looks like it)
+    const std::string bare = nm.substr(nm.find(':') + 1);
+    if (nm.rfind("minecraft:", 0) != 0 && reg().blockIds.count(bare)) r.block = reg().blockId(bare);   // (a mod's ground we have as a block of ours: tools/port/soulrend_worldgen/ns_blocks.py)
+    else if (auto it = subs_.find(nm); it != subs_.end()) r.block = mcBlockState(json{{"Name", it->second}});   // (else ours that looks like it)
     else r.block = mcBlockState(j["result_state"]);
     if (r.block == NONE) DQ_LOG("surface rules: no block for %s", j["result_state"].value("Name", std::string("?")).c_str());
   } else if (t == "sequence") { r.t = R_SEQ; for (auto& s : j["sequence"]) r.seq.push_back(parseRule(s)); }

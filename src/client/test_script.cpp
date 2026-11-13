@@ -447,6 +447,10 @@ void runStep(App& a, const json& st) {
       p->vel = vec3(0); p->prevPos = p->pos; p->hasFallStart = false;
       const vec3 d = vec3(first) + vec3(0.5f, 1.f, 0.5f) - (p->pos + vec3(0, 1.62f, 0)); p->yaw = std::atan2(-d.x, -d.z); p->pitch = std::atan2(d.y, std::hypot(d.x, d.z));
     }
+  } else if (op == "ground" && p && s) {   // ground{dy}: just over the land (or the water) here, "dy" above it
+    World& w = s->world(); const int x = ifloor(p->pos.x), z = ifloor(p->pos.z), base = dimBase(dimOfY(ifloor(p->pos.y)));
+    for (int y = base + DIM_H - 1; y > base; y--) if (w.isLoaded(x, y, z) && reg().tSolid[w.getBlock(x, y, z)] | reg().tLiquid[w.getBlock(x, y, z)]) { p->pos.y = (float)(y + 1 + st.value("dy", 2)); break; }
+    p->vel = vec3(0);
   } else if (op == "lanterns" && s) {   // hanging lanterns in a box and what's over them (logged): where a chain falls short
     ivec3 a0 = at(st, "from"), a1 = at(st, "to"); World& w = s->world(); std::map<std::string, int> kinds; std::string eg;
     static const BlockId L = reg().blockId("lantern"), CH = reg().blockId("chain");

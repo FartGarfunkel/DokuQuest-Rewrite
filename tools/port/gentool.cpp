@@ -406,14 +406,15 @@ static int biomemap(const std::string& seedText, int x0, int z0, int n, int step
   WorldGenOptions o; o.seed = seedText.size() > 1 && seedText[0] == '#' ? (i32)std::stoll(seedText.substr(1)) : seedFromString(seedText);
   o.genVersion = 15;
   WorldGen wg(o); auto* g = dynamic_cast<OverworldGen*>(wg.forDim(DIM_OVERWORLD));
-  std::vector<u8> img((size_t)n * n * 3); std::map<std::string, int> count;
+  std::vector<u8> img((size_t)n * n * 3); std::map<std::string, int> count; std::map<std::string, std::pair<int, int>> where;
   for (int j = 0; j < n; j++) for (int i = 0; i < n; i++) {
     const std::string b = g->mcBiomeName(x0 + i * step, z0 + j * step); count[b]++;
+    if (!where.count(b)) where[b] = {x0 + i * step, z0 + j * step};
     u32 h = 2166136261u; for (char c : b) h = (h ^ (u8)c) * 16777619u;
     u8* px = &img[((size_t)j * n + i) * 3]; px[0] = 60 + (h & 0xBF); px[1] = 60 + ((h >> 8) & 0xBF); px[2] = 60 + ((h >> 16) & 0xBF);
   }
   std::vector<std::pair<int, std::string>> v; for (auto& [k, c] : count) v.push_back({c, k}); std::sort(v.rbegin(), v.rend());
-  for (auto& [c, k] : v) printf("%5.1f%% %s\n", 100.0 * c / (n * n), k.c_str());
+  for (auto& [c, k] : v) printf("%5.1f%% %s (at %d %d)\n", 100.0 * c / (n * n), k.c_str(), where[k].first, where[k].second);
   FILE* f = fopen(out, "wb"); fprintf(f, "P6 %d %d 255\n", n, n); fwrite(img.data(), 1, img.size(), f); fclose(f);
   return 0;
 }

@@ -145,6 +145,17 @@ def main(inst=INSTANCE, d='data'):
             for name in sorted({p.split('/')[1] for p in z.namelist() if p.startswith('data/') and p.count('/') > 2}):
                 n += copy_tree(z, 'data/%s/worldgen/%s/' % (name, k), out / k / name)
         n += copy_tree(cr, 'data/climaterivers/worldgen/%s/' % k, out / k / 'climaterivers')
+    # ---- the block tags the features test (#minecraft:dirt...): every jar's, merged as Forge merges them (a later one
+    # with "replace" starts the tag over)
+    tags = {}
+    for z in (mc, ee, ns, ww):
+        for name in sorted(z.namelist()):
+            m = re.match(r'data/([^/]+)/tags/blocks/(.+)\.json$', name)
+            if not m: continue
+            j = json.loads(z.read(name)); key = m[1] + ':' + m[2]
+            vals = [v if isinstance(v, str) else v.get('id', '') for v in j.get('values', [])]
+            tags[key] = vals if j.get('replace') or key not in tags else tags[key] + [v for v in vals if v not in tags[key]]
+    (out / 'block_tags.json').write_text(json.dumps(tags, separators=(',', ':')))
 
     with tempfile.TemporaryDirectory() as tmp:
         work = pathlib.Path(tmp); (work / 'src').mkdir()

@@ -23,9 +23,12 @@ struct OwColumn {
 // savanna turns to Redlands (red sand, spinifex, pale gum trees), the coldest taiga and peaks to Glacier (packed and
 // blue ice, ice spires), mild damp plains to Meadow (flowers everywhere), wet lowland to Mossmire (moss, mud, dark trees).
 enum BtaVariant : u8 { BV_NONE = 0, BV_REDLANDS, BV_GLACIER, BV_MEADOW, BV_MOSSMIRE, BV_THORNSCRUB, BV_HIGHLANDS, BV_TUNDRA, BV_SEASONAL, BV_MUSHROOM };
+// terrain version 15: each of Soulrend's biomes as one of our land kinds, by its name (OverworldGen fills it once; the same
+// data gives every world the same list)
+inline std::vector<u8>& mcLandKinds() { static std::vector<u8> v; return v; }
 inline BtaVariant btaVariant(const OwColumn& c) {
   if (c.special == 1) return BV_MUSHROOM;   // (terrain version 14: Minecraft's mushroom fields, out in the deep sea)
-  if (c.mc != 0xFFFF) return BV_NONE;       // (terrain version 15: Soulrend's own biomes instead)
+  if (c.mc != 0xFFFF) return c.mc < mcLandKinds().size() ? (BtaVariant)mcLandKinds()[c.mc] : BV_NONE;   // (terrain version 15: by Soulrend's biome)
   if (c.biome == BIOME_PLAINS && c.temp > 0.5 && c.humid < -0.18) return BV_REDLANDS;
   if (c.biome == BIOME_PLAINS && c.temp > 0.32 && c.humid >= -0.16 && c.humid < -0.04) return BV_THORNSCRUB;   // BTA's Caatinga
   if ((c.biome == BIOME_TAIGA || c.biome == BIOME_MOUNTAINS) && c.temp < -0.58) return BV_GLACIER;
@@ -95,10 +98,16 @@ private:
   int v14Corner(int x, int z) const;   // (the exact surface at a cell corner)
   struct BaseCol { int h; double hc; u8 biome; double temp, humid; int H = -1; u8 special = 0; u16 mc = 0xFFFF; };
   // terrain version 15: Soulrend's world (gen/mc_biomes.h, gen/surface_rules.h; data/soulrend_worldgen)
-  bool v15 = false;
+  bool v15 = false, v16 = false;
   std::shared_ptr<class McBiomes> mcb_;
   std::shared_ptr<class McSurface> mcs_;
+  std::shared_ptr<class McFeatures> mcf_;   // (Soulrend's biome features: its plants, disks, rocks, icebergs, snow)
   int vTemp = -1, vVeg = -1, vDepth = -1, vRidges = -1, vInit = -1;
+  // the land's extras before its surface: Minecraft's eroded badlands spires and frozen-ocean icebergs (SurfaceSystem's
+  // extensions), Nature's Spirit's sugi and stratified-desert pillars (its SurfaceBuilderMixin): their noises and biomes
+  int nX_[12] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+  int bEroded_ = -1, bFrozen_ = -1, bDeepFrozen_ = -1, bSugi_ = -1, bSugi2_ = -1, bStrat_ = -1, bLively_ = -1, bBlooming_ = -1;
+  void surfaceExtras(GenBuf& b, int x, int z, int wx, int wz, int top, int prelim) const;
   std::vector<u8> mcCat_;                 // per biome: ours (BIOME_*)
   std::vector<float> mcTemp_, mcHumid_;   // per biome: our climate numbers for it (tints, snow, our systems)
   int mcNoiseBiome(int qx, int qy, int qz) const;   // the biome at a quart (y Minecraft's)

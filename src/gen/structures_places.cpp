@@ -792,7 +792,7 @@ static bool mazePlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Struc
   const int y = owUnder(yo);
   if (y <= 11) return false;
   auto e = std::make_shared<LabExt>();
-  OwColumn oc; oc.h = c.jsY; oc.temp = c.temp; oc.humid = c.humid;
+  OwColumn oc; oc.h = c.jsY; oc.temp = c.temp; oc.humid = c.humid; oc.mc = c.mc;
   if (c.biome >= 0 && c.biome < BIOME_COUNT) oc.biome = (u8)c.biome;
   const BtaVariant bv = btaVariant(oc);
   const bool desert = c.biome == BIOME_DESERT;

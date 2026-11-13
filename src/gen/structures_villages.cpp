@@ -124,7 +124,7 @@ static void townPlanData(StructurePlan& S, const std::shared_ptr<TownExt>& e, in
 // terrain version 10: a village's style from the land it stands on (the climate's biome variants, gen/overworld.h) and,
 // for the rarer kinds (a festive village, a mushroom village, treehouses, an oasis...), a roll of its own
 static int villageStyle10(const TerrainColumn& c, u32 h, int wet) {
-  OwColumn oc; oc.h = c.jsY; oc.biome = (u8)c.biome; oc.temp = c.temp; oc.humid = c.humid;
+  OwColumn oc; oc.h = c.jsY; oc.biome = (u8)c.biome; oc.temp = c.temp; oc.humid = c.humid; oc.mc = c.mc;
   const BtaVariant bv = btaVariant(oc);
   const double u = (h & 0xFFFFF) / (double)0x100000;
   auto S = [](const char* k, int fallback) { const int i = vstyleIndex(k); return i >= 0 ? i : fallback; };
@@ -184,7 +184,7 @@ static bool townPlace(const StructureIndex&, const TerrainQuery& t, int rx, int 
   const bool styles10 = owg && owg->villageStyles && villagePieces();
   const bool beachy = styles10 && c.biome == BIOME_BEACH, hilly = styles10 && c.biome == BIOME_MOUNTAINS;
   bool marshy = false;
-  if (styles10) { OwColumn oc; oc.h = c.jsY; oc.biome = (u8)c.biome; oc.temp = c.temp; oc.humid = c.humid; marshy = btaVariant(oc) == BV_MOSSMIRE; }
+  if (styles10) { OwColumn oc; oc.h = c.jsY; oc.biome = (u8)c.biome; oc.temp = c.temp; oc.humid = c.humid; oc.mc = c.mc; marshy = btaVariant(oc) == BV_MOSSMIRE; }
   if (c.biome != BIOME_PLAINS && c.biome != BIOME_FOREST && c.biome != BIOME_TAIGA && c.biome != BIOME_DESERT && !beachy && !hilly) return false;
   if (c.jsY <= JS_SEA || c.jsY > JS_SEA + (hilly ? 54 : 30)) return false;
   int wet = 0;
