@@ -553,7 +553,14 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
       if (purpose == ShapePurpose::Collide) { push(ShapeBox(0, 0, 0, 16, 16, 16)); return true; }
       const TileNames& t = tn();
       push(BT(0, 0, 0, 16, 2, 16, t.composter_side, t.composter_bottom));
-      push(ShapeBox(0, 2, 0, 2, 16, 16)); push(ShapeBox(14, 2, 0, 16, 16, 16)); push(ShapeBox(2, 2, 0, 14, 16, 2)); push(ShapeBox(2, 2, 14, 14, 16, 16));
+      // the corner posts full height; between them boards with slits where the picture's dark lines are (Minecraft's
+      // composter shows through them), a pixel each at 4, 8 and 12
+      for (float cx : {0.f, 14.f}) for (float cz : {0.f, 14.f}) push(ShapeBox(cx, 2, cz, cx + 2, 16, cz + 2));
+      static const float BOARD[4][2] = {{2, 3.5f}, {4.5f, 7.5f}, {8.5f, 11.5f}, {12.5f, 16}};
+      for (auto& bd : BOARD) {
+        push(ShapeBox(0, bd[0], 2, 2, bd[1], 14)); push(ShapeBox(14, bd[0], 2, 16, bd[1], 14));
+        push(ShapeBox(2, bd[0], 0, 14, bd[1], 2)); push(ShapeBox(2, bd[0], 14, 14, bd[1], 16));
+      }
       if (lvl) push(BT(2, 2, 2, 14, 2 + std::min(13.f, lvl * 1.75f), 14, t.composter_side, lvl >= 8 ? t.compost_ready : t.compost));
       return true;
     }
