@@ -188,7 +188,9 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
   static float T[3] = {0, 0, 0}; static bool tl = false;
   if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_TPHELD")) std::sscanf(v, "%f,%f,%f", &T[0], &T[1], &T[2]); }
   mat4 hm = glm::translate(fore, vec3(0, -6 + T[0], -1 + T[1]));
-  if (fpYaw && !im.stand && !isBowKey(id) && id.rfind("fishing_rod", 0) != 0) {   // seamless first person: the old hand view's grip, at your own fist, turned with you
+  const ItemDef* fd = reg().item(id);
+  const bool armTool = isHandheld(id) || (fd && fd->hasTool);   // (swords and tools: along the arm, full size, as third person holds them)
+  if (fpYaw && !armTool && !im.stand && !isBowKey(id) && id.rfind("fishing_rod", 0) != 0) {   // seamless first person: the old hand view's grip, at your own fist, turned with you
     // (turned with you and tipped with your look, as the old hand view held things; the fist is nearer the eye than that
     // view's was, so all a little smaller: DQ_DEV_FPGRIPK)
     static float K = 0.6f; static bool kl = false;
@@ -488,11 +490,21 @@ void CharacterLayer::update(GameSession& s, double dt) {
       const bool calm = ground && hs < 0.25f && p->swingT <= 0 && p->eatT <= 0 && p->bowPull <= 0 && !p->riding && !p->sleeping && !p->swimming && !p->dead;
       st.idleT = calm ? st.idleT + fdt : 0;
       float wl = 0, wr = 0;
-      if (e->onGround && hs < 1.5f && !p->swimming && !p->riding && !p->sleeping && !p->dead) {
+      // a step up the stairs (or down): the body rises over it as the leg carries it, not all at once
+      {
+        const float dy = st.haveY ? e->pos.y - st.lastY : 0.f;
+        if (e->onGround && !p->riding && !p->swimming && std::fabs(dy) > 0.01f && std::fabs(dy) <= 0.65f) st.climbY = std::clamp(st.climbY - dy, -0.65f, 0.65f);
+        else if (std::fabs(dy) > 0.65f) st.climbY = 0;
+        st.climbY *= std::exp(-fdt * (hs > 3.f ? 11.f : 8.f));
+        st.lastY = e->pos.y; st.haveY = true;
+      }
+      if (e->onGround && hs < 6.f && !p->swimming && !p->riding && !p->sleeping && !p->dead) {
         if ((st.footT -= fdt) <= 0) {
-          st.footT = 0.12f;
+          st.footT = hs > 0.5f ? 0.04f : 0.12f;
           const float c = std::cos(st.bodyYaw), sn = std::sin(st.bodyYaw);
-          const vec3 right(c, 0, -sn);
+          const vec3 right(c, 0, -sn), fwd(-sn, 0, -c);
+          // walking, each foot where its stride puts it (the leg forward reaches for the next step)
+          const float stride = std::sin(st.bob * 1.4f) * std::min(1.f, hs / 3.f) * 0.32f;
           auto groundAt = [&](vec3 at) -> float {
             thread_local std::vector<DBox> bx; bx.clear();
             gatherBoxes(s.world(), at.x - 0.07, e->pos.y - 0.65, at.z - 0.07, at.x + 0.07, e->pos.y + 0.6, at.z + 0.07, bx);
@@ -500,13 +512,13 @@ void CharacterLayer::update(GameSession& s, double dt) {
             for (auto& b : bx) if (b.y1 <= e->pos.y + 0.6 && (float)(b.y1 - e->pos.y) > top) top = (float)(b.y1 - e->pos.y);
             return std::clamp(top, -0.6f, 0.6f);
           };
-          st.footTL = groundAt(e->pos - right * 0.13f); st.footTR = groundAt(e->pos + right * 0.13f);
+          st.footTL = groundAt(e->pos - right * 0.13f - fwd * stride); st.footTR = groundAt(e->pos + right * 0.13f + fwd * stride);
           static const bool dbg = std::getenv("DQ_FOOT_LOG") != nullptr;
           if (dbg) DQ_LOG("feet %s: L %.2f R %.2f", p->name.c_str(), st.footTL, st.footTR);
         }
         wl = st.footTL; wr = st.footTR;
       } else st.footT = 0;
-      const float k = std::min(1.f, fdt * 10);
+      const float k = std::min(1.f, fdt * (hs > 0.5f ? 18.f : 10.f));
       st.footL += (wl - st.footL) * k; st.footR += (wr - st.footR) * k;
     }
     {   // the elytra's wings opening and folding; in a steep dive they fold back in (ElytraModel: 1 - (-dir.y)^1.5)
@@ -722,7 +734,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
     ps.bodyYaw = st.rollYaw + (st.rollBack ? PI : 0.f) + devTurn; ps.headTurn = 0; ps.legTurn = 0; ps.air = false;
   }
   ps.accLean = p.onGround ? st.accLean : 0; ps.turnLean = st.turnLean;
-  ps.idleT = st.idleT; ps.seed = p.id * 7919u + (u32)std::hash<std::string>()(p.name); ps.footL = st.footL; ps.footR = st.footR;
+  ps.idleT = st.idleT; ps.seed = p.id * 7919u + (u32)std::hash<std::string>()(p.name); ps.footL = st.footL - st.climbY; ps.footR = st.footR - st.climbY;
   if (p.flying && !p.riding) { ps.fly = true; ps.flySpeed = std::min(1.f, std::hypot(st.vel.x, st.vel.z) / 14); ps.flyVy = st.vel.y; ps.air = false; ps.lean = 0.85f * ps.flySpeed; }
   if (!devPose.empty() && &p == s.player) {
     if (devPose == "sit") ps.sit = true;
@@ -825,6 +837,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   vec3 viewOff = fp && cinematicActive() ? cinematicViewOffset() : vec3(0);
   if (ps.sitGround) viewOff.y = 0;
   if (inBed) { rel = f.cam.rel(glm::dvec3(bedFeet)); viewOff = vec3(0); }
+  if (!fp) rel.y += st.climbY;   // (the step eased: render/char_layer.h climbY)
   mat4 base = glm::translate(mat4(1), rel + viewOff);
   if (ps.sit) base = glm::translate(base, vec3(0, -0.45f, 0));
   // continuous amounts (a station's crouch is a sneak outright)
