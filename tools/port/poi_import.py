@@ -51,6 +51,13 @@ def nbt(b):
     t = f.read(1)[0]; rd(8); return rd(t)
 
 
+def adapt_of(j):
+    # Minecraft's terrain_adaptation, or Integrated API's own (IDAS): {carves, beards, kernel_size} -> 'beard:<kernel>'
+    e = j.get('enhanced_terrain_adaptation')
+    if isinstance(e, dict) and (e.get('beards') or e.get('carves')): return 'beard:%d' % int(e.get('kernel_size', 12))
+    return j.get('terrain_adaptation', 'none')
+
+
 def split(rl): ns, _, p = rl.partition(':'); return (ns, p) if p else ('minecraft', ns)
 
 
@@ -141,7 +148,7 @@ def main(mods, d='data'):
             if j['start_pool'] not in index['pools']: continue
             sp = spacing.get(key, (40, 12))
             index['structures'].append({'key': key, 'start': j['start_pool'], 'depth': min(int(j.get('size', 6)), 10), 'surface': 'project_start_to_heightmap' in j,
-                                        'y': y, 'adapt': j.get('terrain_adaptation', 'none'), 'lands': lands, 'spacing': sp[0], 'separation': sp[1], 'reach': j.get('max_distance_from_center', 80)})
+                                        'y': y, 'adapt': adapt_of(j), 'lands': lands, 'spacing': sp[0], 'separation': sp[1], 'reach': j.get('max_distance_from_center', 80)})
     index['pieces'] = sorted(pieces)
     index['placeAir'] = sorted(index.get('placeAir', {}))
     (out / 'index.json').write_text(json.dumps(index, indent=0))

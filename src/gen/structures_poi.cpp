@@ -15,7 +15,7 @@ namespace dq {
 
 namespace {
 struct PoiPool { std::vector<std::pair<const VPPiece*, int>> els; };
-struct PoiDef { std::string key, start; int depth = 4, y = 0, spacing = 32, reach = 80; bool surface = true, beard = false; std::vector<std::string> lands; };
+struct PoiDef { std::string key, start; int depth = 4, y = 0, spacing = 32, reach = 80; bool surface = true, beard = false; int flatR = 6; std::vector<std::string> lands; };
 struct PoiPack {
   std::map<std::string, VPPiece> pieces;   // by location "ns:path"
   std::map<std::string, PoiPool> pools;
@@ -59,7 +59,9 @@ const PoiPack* poiPack() {
       for (auto& l : s["lands"]) d.lands.push_back(l.get<std::string>());
       // Minecraft's terrain adaptation: beard_thin / beard_box ease the land up to and down to the pieces' floors (no
       // pillars of dirt under them, no hillside through them); bury and none leave the land as it is
-      { const std::string a = s.value("adapt", std::string("none")); d.beard = a == "beard_thin" || a == "beard_box"; }
+      { const std::string a = s.value("adapt", std::string("none")); d.beard = a == "beard_thin" || a == "beard_box" || a.rfind("beard:", 0) == 0;
+        // Integrated API's (IDAS) blend reaches as far as its kernel says; Minecraft's beard_box a little further than its thin one
+        if (a.rfind("beard:", 0) == 0) d.flatR = std::clamp(std::atoi(a.c_str() + 6) / 2, 6, 16); else if (a == "beard_box") d.flatR = 8; }
       // no ships and blimps floating in the sky (Dungeons Arise's heavenly ones): they don't belong in our world
       if (!d.surface && d.y > 90) continue;
       if (d.key.find("heavenly") != std::string::npos || d.key.find("blimp") != std::string::npos) continue;
@@ -92,9 +94,8 @@ std::vector<std::string> landsAt(const TerrainQuery& t, const TerrainColumn& c) 
 struct Placed { const VPPiece* p; int r, x0, y0, z0, w, d; int depth; };
 struct PoiExt {
   std::vector<Placed> pcs; std::string key;
-  std::vector<std::array<int, 5>> flat;   // x0, z0, x1, z1, ground y: the land under each rigid piece that stands on it (beard)
+  std::vector<std::array<int, 5>> flat; int flatR = 6;   // x0, z0, x1, z1, ground y: the land under each rigid piece that stands on it (beard)
 };
-constexpr int POI_FLAT_R = 6;   // how far the land eases back to its own height around a piece
 
 const int DXJ[4] = {0, 1, 0, -1}, DZJ[4] = {-1, 0, 1, 0};   // north, east, south, west (VPJoint.front)
 
@@ -123,7 +124,9 @@ bool expand(const PoiPack& pk, const PoiDef& d, const TerrainQuery& t, int cx, i
   if (d.surface) {
     int hs[9]; for (int k = 0; k < 9; k++) hs[k] = t.surfaceY(s.x0 + s.w * (k % 3) / 2, s.z0 + s.d * (k / 3) / 2);
     std::nth_element(hs, hs + 4, hs + 9);
-    s.y0 = (d.beard ? hs[4] : *std::min_element(hs, hs + 9)) + 1 + d.y;   // (without a beard: on the lowest, as before)
+    // with a beard: the median (the land is eased to the floor anyway). Without one: Minecraft's own rule, the ground at the
+    // start (the lowest of the samples sank every building on a slope into the hill)
+    s.y0 = (d.beard ? hs[4] : t.surfaceY(s.x0 + s.w / 2, s.z0 + s.d / 2)) + 1 + d.y;
   } else s.y0 = std::clamp(d.y + 1, 6, DIM_H - s0->sy - 2);
   if (s.y0 < SEA_LEVEL && d.surface) return false;   // (not under the sea)
   out.push_back(s);
@@ -227,7 +230,7 @@ void registerStructurePois() {
     double tot = 0; for (auto& e : cand) tot += e.first;
     double u = rnd() * tot; const PoiDef* d = cand.back().second;
     for (auto& e : cand) { u -= e.first; if (u <= 0) { d = e.second; break; } }
-    auto E = std::make_shared<PoiExt>(); E->key = d->key;
+    auto E = std::make_shared<PoiExt>(); E->key = d->key; E->flatR = d->flatR;
     if (!expand(*pk, *d, tq, x, z, rnd, E->pcs) || E->pcs.empty()) return false;
     // the land under each rigid piece standing on it (not one buried well below the ground: a crypt keeps its hill)
     if (d->surface && d->beard) for (auto& q : E->pcs) {
@@ -265,15 +268,15 @@ void registerStructurePois() {
       const int dx = std::max({r[0] - x, 0, x - r[2]}), dz = std::max({r[1] - z, 0, z - r[3]});
       if (dx == 0 && dz == 0) { if (best < 1 || r[4] > by) { best = 1; by = r[4]; } continue; }   // (under two: the higher floor)
       const double dd = std::hypot((double)dx, (double)dz);
-      if (dd >= POI_FLAT_R) continue;
-      const double wv = 1 - jsSmooth(0, POI_FLAT_R, dd);
+      if (dd >= E->flatR) continue;
+      const double wv = 1 - jsSmooth(0, E->flatR, dd);
       if (wv > best) { best = wv; by = r[4]; }
     }
     if (best <= 0) return false;
     weight = best; targetY = by;
     return true;
   };
-  t.flattenPad = POI_FLAT_R + 1;
+  t.flattenPad = 17;   // (the widest blend: IDAS's kernels)
   registerStructure(std::move(t));
 }
 
