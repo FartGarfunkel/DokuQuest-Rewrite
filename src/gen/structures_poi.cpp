@@ -127,7 +127,7 @@ std::vector<std::string> landsAt(const TerrainQuery& t, const TerrainColumn& c) 
 struct Placed { const VPPiece* p; int r, x0, y0, z0, w, d; int depth; };
 struct PoiExt {
   std::vector<Placed> pcs; std::string key;
-  std::vector<std::array<int, 6>> flat; int flatR = 6; bool beard = false;   // x0, z0, x1, z1, floor y, its skirt   // x0, z0, x1, z1, ground y: the land under each rigid piece that stands on it (beard)
+  std::vector<std::array<int, 6>> flat; int flatR = 6; bool beard = false; char ground = 0;   // x0, z0, x1, z1, floor y, its skirt   // x0, z0, x1, z1, ground y: the land under each rigid piece that stands on it (beard)
 };
 
 const int DXJ[4] = {0, 1, 0, -1}, DZJ[4] = {-1, 0, 1, 0};   // north, east, south, west (VPJoint.front)
@@ -209,6 +209,35 @@ void buildPoi(ChunkWriter& w, const StructurePlan& S) {
   if (!E) return;
   const BlockId DIRT = reg().blockId("dirt");
   SP P(w);
+  // the land's own ground in each column of this chunk, as it lay before anything was built: what the structure's own grass,
+  // sand or snow becomes (a lawn of grass in the snow, a sand yard in a meadow: the builder's ground was for their own land)
+  const Registry& RG = reg();
+  static const std::vector<u8> isGround = [] {
+    std::vector<u8> v(reg().blocks.size() + 1, 0);
+    for (const char* k : {"grass", "snowy_grass", "sand", "red_sand"}) if (BlockId id = reg().blockId(k)) v[id] = 2;   // (the builder's plain ground: swapped)
+    for (const char* k : {"podzol", "mycelium", "coarse_dirt", "mud", "moss_block", "snow_block", "silver_sand",
+                          "desert_sand", "dirt_with_dry_grass", "dirt_with_coniferous_litter", "dirt_with_rainforest_litter", "scorched_dirt", "rooted_dirt", "packed_ice"})
+      if (BlockId id = reg().blockId(k)) if (!v[id]) v[id] = 1;   // (the land's: what it may become)
+    return v;
+  }();
+  static const BlockId SNOW = reg().blockId("snow_layer"), DIRTB = reg().blockId("dirt");
+  BlockId landTop[256]; bool landSnow[256];
+  for (int lz = 0; lz < 16; lz++) for (int lx = 0; lx < 16; lx++) {
+    const int x = w.bx + lx, z = w.bz + lz, gy = w.ground(x, z);
+    BlockId b = gy > 0 ? w.get(x, gy, z) : AIR;
+    landTop[lz * 16 + lx] = b < isGround.size() && isGround[b] ? b : 0;
+    landSnow[lz * 16 + lx] = SNOW && gy > 0 && gy + 1 < DIM_H && w.get(x, gy + 1, z) == SNOW;
+  }
+  auto groundAt = [&](int x, int z, BlockId own) -> BlockId {
+    if (own >= isGround.size() || isGround[own] != 2) return own;   // (their moss, coarse dirt and snow walls are their design)
+    const BlockId t = landTop[(z - w.bz) * 16 + (x - w.bx)];
+    if (!t) return own;
+    // on its own kind of land (a desert palace in the desert, its garden lawn and all) it stays as it was made
+    const std::string& tk = RG.block(t).key;
+    const char land = tk.find("sand") != std::string::npos ? 's' : (tk.find("snow") != std::string::npos || tk == "packed_ice") ? 'n' : 'g';
+    if (E->ground && land == E->ground) return own;
+    return t;
+  };
   for (const Placed& q : E->pcs) {
     const VPPiece& p = *q.p;
     if (q.x0 > w.bx + 15 || q.x0 + q.w - 1 < w.bx || q.z0 > w.bz + 15 || q.z0 + q.d - 1 < w.bz) continue;
@@ -234,8 +263,10 @@ void buildPoi(ChunkWriter& w, const StructurePlan& S) {
       if (!w.in(x, z) || y < 1 || y >= DIM_H) continue;
       const VPState& s = p.states[k.s];
       // the ground under a surface structure's floor: filled down to the land (no floating corners)
-      if (k.y == 0 && S.surface && !p.terrain && reg().tSolid[s.id]) for (int yy = y - 1; yy > y - 10 && yy > 1; yy--) { const BlockId g = w.get(x, yy, z); if (g != AIR && !reg().tLiquid[g]) break; w.put(x, yy, z, DIRT); }
-      const int idx = w.put(x, y, z, s.id, s.meta[q.r]);
+      if (k.y == 0 && S.surface && !p.terrain && reg().tSolid[s.id]) for (int yy = y - 1; yy > y - 10 && yy > 1; yy--) { const BlockId g = w.get(x, yy, z); if (g != AIR && (!reg().tLiquid[g] || yy > w.ground(x, z))) break; w.put(x, yy, z, DIRT); }   // (not the structure's own pools above the land)
+      const BlockId sid = k.y <= 3 && !p.terrain ? groundAt(x, z, s.id) : p.terrain ? groundAt(x, z, s.id) : s.id;
+      const int idx = w.put(x, y, z, sid, sid == s.id ? s.meta[q.r] : 0);
+      if (sid != s.id && landSnow[(z - w.bz) * 16 + (x - w.bx)] && y + 1 < DIM_H && w.get(x, y + 1, z) == AIR) w.put(x, y + 1, z, SNOW);   // (and its snow)
       if (idx < 0) continue;
       if (s.rug) w.rug(x, y, z, s.rug);
       if (s.kind == VPK_SPAWNER) {
@@ -318,7 +349,7 @@ void registerStructurePois() {
     double tot = 0; for (auto& e : cand) tot += e.first;
     double u = rnd() * tot; const PoiDef* d = cand.back().second;
     for (auto& e : cand) { u -= e.first; if (u <= 0) { d = e.second; break; } }
-    auto E = std::make_shared<PoiExt>(); E->key = d->key; E->flatR = d->flatR; E->beard = d->beard && d->surface;
+    auto E = std::make_shared<PoiExt>(); E->key = d->key; E->flatR = d->flatR; E->beard = d->beard && d->surface; E->ground = d->ground;
     if (!expand(*pk, *d, tq, x, z, rnd, E->pcs) || E->pcs.empty()) { if (std::getenv("DQ_POI_WHY")) DQ_LOG("poi why %s: expand failed", d->key.c_str()); return false; }
     // the land under each rigid piece standing on it (not one buried well below the ground: a crypt keeps its hill)
     if (d->surface && d->beard) for (auto& q : E->pcs) {
@@ -335,8 +366,9 @@ void registerStructurePois() {
       if (under) continue;
       // the skirt: wide enough that the land never climbs more than about a block in two to the floor (Minecraft's beard_box
       // reaches 12 blocks; a floor raised well above the land had a sheer wall of earth under it)
-      const int rise = std::abs(q.y0 - 1 - g);
-      E->flat.push_back({q.x0, q.z0, qx1, qz1, q.y0 - 1, std::max(E->flatR, std::min(28, rise * 2 + 2))});
+      // (a floor below the land: the land comes down only on the piece itself and a step round it, never in a wide funnel)
+      const int rise = q.y0 - 1 - g;
+      E->flat.push_back({q.x0, q.z0, qx1, qz1, q.y0 - 1, rise < 0 ? std::min(14, -rise * 2 + 2) : std::max(E->flatR, std::min(28, rise * 2 + 2))});
     }
     int X0 = 1 << 30, Z0 = 1 << 30, X1 = -(1 << 30), Z1 = -(1 << 30);
     for (auto& q : E->pcs) { X0 = std::min(X0, q.x0); Z0 = std::min(Z0, q.z0); X1 = std::max(X1, q.x0 + q.w - 1); Z1 = std::max(Z1, q.z0 + q.d - 1); }
@@ -349,7 +381,10 @@ void registerStructurePois() {
         lo = std::min(lo, cc.y); hi = std::max(hi, cc.y);
       }
       static const bool why = std::getenv("DQ_POI_WHY") != nullptr;
-      if (hi - lo > std::max(8, (X1 - X0 + Z1 - Z0) / 8) || wet * 5 > n) { if (why) DQ_LOG("poi why %s: uneven %d (allowed %d) wet %d/%d", d->key.c_str(), hi - lo, std::max(8, (X1 - X0 + Z1 - Z0) / 8), wet, n); return false; }
+      // level enough: a small place on nearly level land (a well on a hillside sat in a cut or a crater), a big one where the
+      // land varies by no more than about a tenth of its size
+      const int allowed = std::max(4, (X1 - X0 + Z1 - Z0) / 10);
+      if (hi - lo > allowed || wet * 5 > n) { if (why) DQ_LOG("poi why %s: uneven %d (allowed %d) wet %d/%d", d->key.c_str(), hi - lo, allowed, wet, n); return false; }
       // its own ground matches the land's all over its footprint (sand in the desert and on the beach, snow in the snow, grass
       // in the green lands), not a courtyard of sand in a meadow half over the desert's edge
       int gOk = 0, gN = 0;
