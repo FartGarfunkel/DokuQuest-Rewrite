@@ -22,6 +22,13 @@ struct Mulberry32 {
 // hash32(a,b,c,d) — per-position determinism (matches JS Math.imul semantics).
 u32 hash32(i32 a, i32 b, i32 c, i32 d);
 inline double hashFloat(i32 a, i32 b, i32 c, i32 d) { return hash32(a, b, c, d) / 4294967296.0; }
+// posHashF(a,b,c,d) — the same use, well mixed (splitmix64 rounds): hashFloat is the original game's and gives stripes
+// along a coordinate passed third (its multiplier is 2^31-1); terrain version 18 on uses this one where that showed
+inline double posHashF(i32 a, i32 b, i32 c, i32 d) {
+  auto mx = [](u64 z) { z += 0x9E3779B97F4A7C15ull; z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull; z = (z ^ (z >> 27)) * 0x94D049BB133111EBull; return z ^ (z >> 31); };
+  const u64 h = mx(mx(mx(mx((u64)(u32)a) ^ (u32)b) ^ (u32)c) ^ (u32)d);
+  return (double)(h >> 11) / 9007199254740992.0;
+}
 i32 seedFromString(const std::string& s);
 
 class SimplexNoise {

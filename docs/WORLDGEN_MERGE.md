@@ -68,3 +68,12 @@ Its ground blocks we lack are matched to our nearest natural ground by look (`bl
 In the game: `gen/mc_biomes` (TerraBlender's region layers, ported exactly; the nearest climate box as Climate.RTree;
 BiomeManager's zoom), `gen/surface_rules` (the rule interpreter and SurfaceSystem.buildSurface's column walk), and
 `OverworldGen` v15 (`surfaceV15`). Our seeds are not Minecraft's: the same kind of world, not the same world.
+
+# Terrain version 18: no stripes
+The original game's position hash (`hash32`: a weighted sum, then one xorshift-multiply) barely mixes its third input
+(its weight is 2^31-1, so z and z+2 come out almost the same): bedrock came out in straight rows, villages two regions
+apart got the same name, and the snow-line and frozen-sea noise (one murmur round) drew ruler-straight ice edges.
+Version 18 uses `posHashF` (splitmix rounds) for the bedrock floor, icebergs, deep slate and rock, cave plants, and a
+whole murmur mix for the snow line; village names come from a per-tile bijection (no two alike in 24 x 24 regions).
+Wythers' "thermal" taiga (white, orange and yellow terracotta round its hot springs, `wythers:terrain/local/
+thermal_taiga_*` in WWOO's taiga) is genuine Soulrend and stays.

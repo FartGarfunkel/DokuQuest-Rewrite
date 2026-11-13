@@ -25,7 +25,7 @@ public:
   };
   // dir: data/soulrend_worldgen. False when the data isn't there.
   // withQuark (terrain version 17): Quark's TerraBlender region too (its Glimmering Weald; and the regions' weights with it)
-  bool load(const fs::path& dir, i64 worldSeed, bool withQuark = true);
+  bool load(const fs::path& dir, i64 worldSeed, bool withQuark = true, bool strongHash = true);   // strongHash (18): unstriped snow lines
   bool ok() const { return !regions_.empty(); }
   int count() const { return (int)info_.size(); }
   const Info& info(int b) const { return info_[b]; }
@@ -54,6 +54,7 @@ private:
   int regionSize_ = 3;
   i64 worldSeed_ = 0;
   u64 zoomSeed_ = 0;
+  bool strong_ = true;
   std::vector<i64> layerSeed_;   // (each layer's AreaContext seed)
 };
 

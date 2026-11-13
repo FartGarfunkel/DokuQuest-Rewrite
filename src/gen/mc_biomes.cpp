@@ -41,7 +41,8 @@ int modeOrRandom(Ctx& c, int a, int b, int cc, int d) {
 }
 } // namespace
 
-bool McBiomes::load(const fs::path& dir, i64 worldSeed, bool withQuark) {
+bool McBiomes::load(const fs::path& dir, i64 worldSeed, bool withQuark, bool strongHash) {
+  strong_ = strongHash;
   auto j = readJson(dir / "biome_regions.json");
   if (!j || !j->contains("regions")) return false;
   worldSeed_ = worldSeed;
@@ -231,7 +232,9 @@ bool McBiomes::coldEnoughToSnow(int b, int x, int y, int z) const {
   // (Minecraft's frozen modifier and height chill use its own simplex noises; a hash-smooth stand-in here)
   auto vn = [&](double fx, double fz, u64 salt) {
     const int ix = (int)std::floor(fx), iz = (int)std::floor(fz); const double ux = fx - ix, uz = fz - iz;
-    auto h = [&](int a, int c) { u64 k = ((u64)(u32)a << 32 | (u32)c) ^ (zoomSeed_ + salt); k ^= k >> 33; k *= 0xff51afd7ed558ccdull; k ^= k >> 33; return (double)(k >> 11) / (double)(1ull << 53) * 2 - 1; };
+    auto h = [&](int a, int c) { u64 k = ((u64)(u32)a << 32 | (u32)c) ^ (zoomSeed_ + salt); k ^= k >> 33; k *= 0xff51afd7ed558ccdull; k ^= k >> 33;
+      if (strong_) { k *= 0xc4ceb9fe1a85ec53ull; k ^= k >> 33; k = (k ^ (k >> 29)) * 0xBF58476D1CE4E5B9ull; k ^= k >> 32; }   // (18: the whole of murmur's mix and more: no stripes)
+      return (double)(k >> 11) / (double)(1ull << 53) * 2 - 1; };
     const double sx = ux * ux * (3 - 2 * ux), sz = uz * uz * (3 - 2 * uz);
     return (h(ix, iz) * (1 - sx) + h(ix + 1, iz) * sx) * (1 - sz) + (h(ix, iz + 1) * (1 - sx) + h(ix + 1, iz + 1) * sx) * sz;
   };

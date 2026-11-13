@@ -48,7 +48,7 @@ public:
 
 struct WorldGenOptions {
   i32 seed = 0;
-  int genVersion = 17;                 // 4: bigger biomes, 5: heightfield Nether, 6: cave Nether (climate, sea, spawns), 7: BTA's Nether as BTA makes it, 8: BTA's Nether on the open land of 5,
+  int genVersion = 18;                 // 4: bigger biomes, 5: heightfield Nether, 6: cave Nether (climate, sea, spawns), 7: BTA's Nether as BTA makes it, 8: BTA's Nether on the open land of 5,
                                        // 9: villages of jigsaw pieces (data/villages: ours, tools/port/village_builder.py),
                                        // 10: villages in every style, chosen by the land (gen/structures_villages.cpp villageStyle10),
                                        // 11: the village plan's fixes: real water for the streets' levels, the deep town mine
@@ -63,6 +63,8 @@ struct WorldGenOptions {
                                        //     and icebergs (OverworldGen::surfaceExtras)
                                        // 17: the land levelled round villages and structures blended between their
                                        //     levels; no lone columns or tree-less plugs by the water; pillars of plain stone
+                                       // 18: well-mixed position randoms (posHashF) where the old hash made stripes: the
+                                       //     bedrock floor, icebergs, deep rock, cave plants, frozen seas and snow lines
   bool looseGround = false;            // immersive worlds (sim/immersive.h): TFC's loose rocks, flint and twigs on the ground
   std::string worldType = "default";   // default | flat | amplified | ... (from the create-world screen)
   json extra;                          // structures on/off, bonus chest, etc.

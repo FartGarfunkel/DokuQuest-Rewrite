@@ -20,6 +20,14 @@ constexpr int INV_ENDER = 27;
 
 constexpr float PLAYER_W = 0.3f, PLAYER_H = 1.8f, EYE = 1.62f, EYE_SNEAK = 1.45f;
 constexpr float GRAVITY = 28, JUMP_V = 8.6f;
+// The view's height going up a step (stairs, slabs, a block's step-up): it rises at a steady rate matched to the walk,
+// not an easing that starts and stops at each step (client/play.cpp; your body goes with it). Only a step: in the air
+// (a jump) the view keeps up with you, catching up any step it was still climbing.
+inline float viewRise(float want, float prev, float horizSpeed, float velY, bool onGround, float dt) {
+  if (want <= prev || want - prev >= 1.05f) return want;
+  const float rate = onGround ? 0.9f + 1.1f * horizSpeed : std::max(0.f, velY) + 6.f;
+  return std::min(want, prev + rate * dt);
+}
 constexpr float WALK = 4.3f, SPRINT = 5.7f, SNEAK = 1.4f, SWIM = 4.4f;
 constexpr float AIR_MAX = 15;    // seconds of breath (ten bubbles)
 constexpr float SWIM_H = 0.6f, SWIM_EYE = 0.42f;

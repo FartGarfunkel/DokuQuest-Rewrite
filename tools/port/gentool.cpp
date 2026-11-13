@@ -1,3 +1,4 @@
+#include "world/region.h"
 // tools/port/gentool.cpp — dq-gentool: terrain generator checks (not part of the game).
 //   dq-gentool dump <request.json> <out.json>   per-column dumps for tools/port/gen_compare.py
 //   dq-gentool bench <seed> [chunks]            time generate() per band and sample() per column
@@ -528,12 +529,35 @@ static int topview(const std::string& seedText, int x0, int z0, int nc, const ch
   return 0;
 }
 
+static int surfgrid(const std::string& seedText, int x0, int z0, int w) {
+  WorldGenOptions o; o.seed = seedText.size() > 1 && seedText[0] == '#' ? (i32)std::stoll(seedText.substr(1)) : seedFromString(seedText);
+  if (const char* v = std::getenv("DQ_GENVER")) o.genVersion = atoi(v);
+  WorldGen wg(o); DimGenerator* g = wg.forDim(DIM_OVERWORLD);
+  std::map<std::string, char> sym; const char* syms = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  std::map<std::pair<int,int>, Chunk*> cs; const char* save = std::getenv("DQ_SAVE"); RegionStore* rs = save ? new RegionStore(save) : nullptr; int fromSave = 0;
+  auto chunkAt = [&](int x, int z) { auto k = std::make_pair(x >> 4, z >> 4); auto it = cs.find(k); if (it != cs.end()) return it->second;
+    Chunk* c = new Chunk(DIM_OVERWORLD, k.first, k.second); std::vector<u8> d;
+    if (rs && rs->load({DIM_OVERWORLD, k.first, k.second}, d) && decodeChunk(*c, d.data(), d.size())) fromSave++; else g->generate(*c); return cs[k] = c; };
+  std::vector<std::string> rows;
+  for (int z = z0; z < z0 + w; z++) { std::string r;
+    for (int x = x0; x < x0 + w; x++) { Chunk* c = chunkAt(x, z); static const char* sy = std::getenv("DQ_SLICEY"); int y = sy ? atoi(sy) : DIM_H - 1; BlockId b = sy ? c->get(x & 15, y, z & 15) : AIR;
+      if (!sy) for (; y > 0; y--) { b = c->get(x & 15, y, z & 15); if (b != AIR && reg().block(b).render != Render::Cross && key(b).find("leaves") == std::string::npos && key(b).find("snow") != 0) break; }
+      std::string k = key(b); if (!sym.count(k)) sym[k] = syms[sym.size() % 62]; r += sym[k]; }
+    rows.push_back(r); }
+  for (auto& [k, c] : sym) printf("%c=%s ", c, k.c_str()); printf("\n(%d chunks from the save)\n", fromSave);
+  for (auto& r : rows) printf("%s\n", r.c_str());
+  if (const char* col = std::getenv("DQ_COLUMN")) { const int qx = atoi(col), qz = atoi(strchr(col, ',') + 1); Chunk* c = chunkAt(qx, qz);
+    for (int y = 100; y > 50; y--) printf("%d %s\n", y, key(c->get(qx & 15, y, qz & 15)).c_str()); }
+  return 0;
+}
+
 int main(int argc, char** argv) {
   CoreOptions co; co.server = true; co.userDirOverride = "/tmp/dq-gentool";
   if (!initCore(co)) { fprintf(stderr, "initCore failed (run from the build dir: data/ next to the exe)\n"); return 1; }
   std::string m = argc > 1 ? argv[1] : "";
   if (m == "biomemap" && argc >= 8) return biomemap(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argv[7]);
   if (m == "floaters" && argc >= 6) return floaters(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
+  if (m == "surfgrid" && argc >= 6) return surfgrid(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "topview" && argc >= 7) return topview(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), argv[6]);
   if (m == "owmap" && argc >= 9) return owmap(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]), argv[8]);
   if (m == "vstats" && argc >= 3) return vstats(argv[2]);

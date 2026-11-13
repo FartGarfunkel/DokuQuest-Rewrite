@@ -40,16 +40,16 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
     const bool sr = o.genVersion >= 15 && (wtype.empty() || wtype == "default" || wtype == "large_biomes") && fs::exists(dataDir() / "soulrend_worldgen" / "biome_regions.json");
     const std::string prefix = wtype == "amplified" ? "overworld_amplified" : wtype == "large_biomes" ? "overworld_large_biomes" : "overworld";
     struct Shared { std::shared_ptr<DensityGraph> g; std::shared_ptr<McBiomes> b; std::shared_ptr<McSurface> s; std::shared_ptr<McFeatures> f; };
-    static std::mutex mx; static std::map<std::tuple<i32, std::string, bool, bool>, Shared> worlds;
+    static std::mutex mx; static std::map<std::tuple<i32, std::string, bool, int>, Shared> worlds;
     std::lock_guard<std::mutex> lk(mx);
     const bool q17 = o.genVersion >= 17;
-    Shared& w = worlds[{o.seed, prefix, sr, q17}];
+    Shared& w = worlds[{o.seed, prefix, sr, (int)q17 + (o.genVersion >= 18)}];
     if (!w.g) {
       auto ng = std::make_shared<DensityGraph>();
       if (ng->load(dataDir() / (sr ? "soulrend_worldgen" : "vanilla_worldgen"), (u64)(i64)o.seed * 0x9E3779B97F4A7C15ull + 14, prefix)) w.g = ng;
       if (w.g && sr) {
         auto nb = std::make_shared<McBiomes>(); auto nsu = std::make_shared<McSurface>();
-        if (nb->load(dataDir() / "soulrend_worldgen", (i64)o.seed, q17) && nsu->load(dataDir() / "soulrend_worldgen", *w.g, *nb, (u64)(i64)o.seed * 0x2545F4914F6CDD1Dull)) { w.b = nb; w.s = nsu; auto nf = std::make_shared<McFeatures>(); if (nf->load(dataDir() / "soulrend_worldgen", *nb, (u64)(i64)o.seed * 0xD1B54A32D192ED03ull)) w.f = nf; }
+        if (nb->load(dataDir() / "soulrend_worldgen", (i64)o.seed, q17, o.genVersion >= 18) && nsu->load(dataDir() / "soulrend_worldgen", *w.g, *nb, (u64)(i64)o.seed * 0x2545F4914F6CDD1Dull)) { w.b = nb; w.s = nsu; auto nf = std::make_shared<McFeatures>(); if (nf->load(dataDir() / "soulrend_worldgen", *nb, (u64)(i64)o.seed * 0xD1B54A32D192ED03ull)) w.f = nf; }
       }
     }
     if (w.g) {
@@ -60,7 +60,7 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
       vOff = g->find("overworld/offset"); vJag = g->find("overworld/jaggedness");
       if (vSloped < 0 || vFinal < 0) v14 = false;
       if (v14 && w.b) {
-        mcb_ = w.b; mcs_ = w.s; v15 = true; v16 = o.genVersion >= 16; v17 = o.genVersion >= 17; if (v16) mcf_ = w.f;   // (16: the biomes' own plants and the land's extras)
+        mcb_ = w.b; mcs_ = w.s; v15 = true; v16 = o.genVersion >= 16; v17 = o.genVersion >= 17; v18 = o.genVersion >= 18; if (v16) mcf_ = w.f;   // (16: the biomes' own plants and the land's extras)
         vTemp = g->find("temperature"); vVeg = g->find("vegetation"); vDepth = g->find("depth"); vRidges = g->find("ridges");
         vInit = g->find("initial_density_without_jaggedness");
         {   // (the extras' noises, registered here on this thread)
@@ -470,7 +470,7 @@ void OverworldGen::fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const {
     if (c.H < SEA_LEVEL && c.biome != BIOME_OCEAN && !c.special) c.biome = BIOME_OCEAN;
     else if (c.H >= SEA_LEVEL && c.biome == BIOME_OCEAN) c.biome = c.H <= SEA_LEVEL + 2 ? BIOME_BEACH : BIOME_PLAINS;
     if (v15) {   // (Soulrend's surface: surfaceV15, once the chunk's land is all here)
-      for (int y = 0; y < 5; y++) if (y == 0 || hashFloat(wx, y, wz, seed_) < (5 - y) / 5.0) b.blocks[colIdx(x, y, z)] = B.bedrock;
+      for (int y = 0; y < 5; y++) if (y == 0 || hf(wx, y, wz, seed_) < (5 - y) / 5.0) b.blocks[colIdx(x, y, z)] = B.bedrock;
       for (int y = top + 1; y <= SEA_LEVEL; y++) b.blocks[colIdx(x, y, z)] = B.water;
       continue;
     }
@@ -494,7 +494,7 @@ void OverworldGen::fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const {
       here = id;
     }
     // bedrock (row 0 becomes the Ember Crust)
-    for (int y = 0; y < 5; y++) if (y == 0 || hashFloat(wx, y, wz, seed_) < (5 - y) / 5.0) b.blocks[colIdx(x, y, z)] = B.bedrock;
+    for (int y = 0; y < 5; y++) if (y == 0 || hf(wx, y, wz, seed_) < (5 - y) / 5.0) b.blocks[colIdx(x, y, z)] = B.bedrock;
     // the sea and the lakes and rivers in the land's hollows at its level
     const bool cold = c.temp < -0.38;
     for (int y = top + 1; y <= SEA_LEVEL; y++) b.blocks[colIdx(x, y, z)] = (y == SEA_LEVEL && cold) ? B.ice : B.water;
@@ -613,7 +613,7 @@ void OverworldGen::surfaceExtras(GenBuf& b, int x, int z, int wx, int wz, int to
       double gg = std::min(e * e * 1.2, std::ceil(f * 40.0) + 14.0), h;
       const int sea = SEA_LEVEL - 1;
       if (gg > 2.0) { h = sea - gg - 7.0; gg += sea; } else { gg = 0; h = 0; }
-      u64 rs = (u64)hash32(seed_, wx, wz, 0x1CE) * 0x9E3779B97F4A7C15ull;
+      u64 rs = v18 ? (u64)(posHashF(seed_, wx, wz, 0x1CE) * 9007199254740992.0) * 0x9E3779B97F4A7C15ull : (u64)hash32(seed_, wx, wz, 0x1CE) * 0x9E3779B97F4A7C15ull;
       auto rnd = [&]() { rs = rs * 6364136223846793005ull + 1442695040888963407ull; return (double)(rs >> 11) / 9007199254740992.0; };
       const int j = 2 + (int)(rnd() * 4), kk = sea + 18 + (int)(rnd() * 10);
       int l = 0;
@@ -689,7 +689,7 @@ void OverworldGen::generate(Chunk& ch) {
       BlockId id;
       double yo = owCaveO(y, H, c.h);
       // a jagged bedrock floor (Minecraft: y 0 always, then 4/5, 3/5, 2/5, 1/5); row 0 becomes the Ember Crust
-      if (y == 0 || (y < 5 && hashFloat(wx, y, wz, seed_) < (5 - y) / 5.0)) id = B.bedrock;
+      if (y == 0 || (y < 5 && hf(wx, y, wz, seed_) < (5 - y) / 5.0)) id = B.bedrock;
       else if (y == H) id = m.top;
       else if (y > H - fd) id = m.filler;
       else if (y > H - fd - 3 && m.under == B.sandstone) id = B.sandstone;
@@ -822,7 +822,7 @@ void OverworldGen::carveDeep(GenBuf& b, int cx, int cz) const {
     for (int y = owUnder(12); y < yTop; y++) {
       const double yo = owUnderO(y);
       BlockId& id = b.blocks[colIdx(lx, y, lz)];
-      if (id == B.stone && yo < DEEP_TOP + jsTrunc(hashFloat(wx, y, wz, 31) * 4)) id = B.slate;
+      if (id == B.stone && yo < DEEP_TOP + jsTrunc(hf(wx, y, wz, 31) * 4)) id = B.slate;
       if (city || yo > DEEP_TOP - 2 || y >= H - 16) continue;
       double v = nDeepC.noise3(wx / 30.0, yo / 11, wz / 30.0) + nDeepC.noise3(wx / 11.0, yo / 7, wz / 11.0) * 0.25;
       if (v + (zone - 1) * 0.7 - std::max(0.0, yo - 26) * 0.06 > 0.2 && !B.liquid[id]) id = AIR;
@@ -833,7 +833,7 @@ void OverworldGen::carveDeep(GenBuf& b, int cx, int cz) const {
       if (b.blocks[i] != AIR) continue;
       const double yo = owUnderO(y);
       BlockId below = b.blocks[colIdx(lx, y - 1, lz)], above = b.blocks[colIdx(lx, y + 1, lz)];
-      double r = hashFloat(wx, y, wz, seed_ ^ 0x5c1);
+      double r = hf(wx, y, wz, seed_ ^ 0x5c1);
       bool patch = nDeepC.noise3(wx / 9.0, yo / 9, wz / 9.0) > -0.15 + (1 - zone) * 0.6;
       if (rockish(below) && patch) {
         b.blocks[colIdx(lx, y - 1, lz)] = B.sculk;

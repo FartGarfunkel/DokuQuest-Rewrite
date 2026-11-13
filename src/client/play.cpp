@@ -167,10 +167,8 @@ void clientPlayerCamera(GameSession& s, Camera& cam, double dtd) {
   float baseY = p.pos.y + st.ey;
   // up a step (stairs, slabs, a block's step-up): the view rises at a steady rate matched to the walk (about a stair's
   // slope), not an easing that starts and stops at each step; your own body goes with it (fpStepLag: render/char_layer.cpp)
-  if (st.hasCamY && !p.flying && baseY > st.camY && baseY - st.camY < 1.05f && !seated) {
-    const float hs = std::hypot(p.vel.x, p.vel.z), rate = 0.9f + 1.1f * hs;
-    baseY = std::min(baseY, st.camY + rate * dt);
-  }
+  // (only on the ground: in a jump the view keeps up; sim/player.h viewRise)
+  if (st.hasCamY && !p.flying && !seated) baseY = viewRise(baseY, st.camY, std::hypot(p.vel.x, p.vel.z), p.vel.y, p.onGround, dt);
   fpStepLag = baseY - (p.pos.y + st.ey);
   st.camY = baseY; st.hasCamY = true;
   cam.pos = glm::dvec3(p.pos.x + rx * bx + sx, baseY + by + sy, p.pos.z + rz * bx);

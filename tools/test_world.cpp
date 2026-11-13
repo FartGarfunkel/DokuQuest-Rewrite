@@ -67,6 +67,38 @@ int main(int argc, char** argv) {
   Rig rg("World", true, true);
   World& w = rg.lv->world();
 
+  printf("[movement]\n");
+  {   // a jump from right against a slab's side is a whole jump: the step up mustn't swallow its rise (the "slow, sticky"
+      // jump on stairs and roofs)
+    const BlockId slab = reg().blockId("oak_slab");
+    w.setBlock(8, rg.Y + 1, 7, slab, 0);
+    rg.P->pos = vec3(8.5f, rg.Y + 1, 8.0f + rg.P->w + 0.001f); rg.P->vel = vec3(0); rg.fall(0.3);
+    PlayerInput fw; fw.mz = -1; PlayerInput fj = fw; fj.jump = true;
+    float peak = 0;
+    for (int i = 0; i < 40; i++) { rg.P->move(w, i < 2 ? fj : fw, 1 / 60.f, MoveOpts{}); peak = std::max(peak, rg.P->pos.y - (rg.Y + 1)); }
+    check(peak > 1.2f, "a jump against a slab's side goes the whole way up (peak +" + std::to_string(peak) + ")");
+    w.setBlock(8, rg.Y + 1, 7, AIR);
+    // a block's height you can jump onto: no catching its edge to hang and pull up (the "slow, sticky" jump on roofs)
+    const BlockId stone = reg().blockId("stone");
+    for (int x = 6; x <= 10; x++) w.setBlock(x, rg.Y + 1, 7, stone);
+    rg.P->pos = vec3(8.5f, rg.Y + 1, 8.0f + rg.P->w + 0.001f); rg.P->vel = vec3(0); rg.fall(0.3);
+    bool hung = false; float onTop = -1;
+    for (int i = 0; i < 60; i++) {
+      rg.P->move(w, i < 20 ? fj : fw, 1 / 60.f, MoveOpts{});
+      hung |= (bool)rg.P->hang || (bool)rg.P->climb;
+      if (onTop < 0 && rg.P->onGround && rg.P->pos.y > rg.Y + 1.99f) onTop = i / 60.f;
+    }
+    check(!hung && onTop >= 0 && onTop < 0.5f, "a one-block step is jumped onto, not hung from (" + std::string(hung ? "hung" : "no hang") + ", on top at " + std::to_string(onTop) + " s)");
+    for (int x = 6; x <= 10; x++) w.setBlock(x, rg.Y + 1, 7, AIR);
+  }
+  {   // the view keeps up with a jump (the steady climb is for steps on the ground: the "slow, sticky" jump)
+    float y = 0, cam = 0, vy = JUMP_V, lag = 0;
+    for (int i = 0; i < 20; i++) { const float dt = 1 / 60.f; vy -= GRAVITY * dt; y += vy * dt; cam = viewRise(y, cam, 0, vy, false, dt); lag = std::max(lag, y - cam); }
+    check(lag < 0.05f, "the view rises with a jump (most behind: " + std::to_string(lag) + ")");
+    float c2 = 0; for (int i = 0; i < 3; i++) c2 = viewRise(0.5f, c2, 4.3f, 0, true, 1 / 60.f);
+    check(c2 > 0.2f && c2 < 0.35f, "a step's view still climbs steadily (" + std::to_string(c2) + " of 0.5 after 0.05 s)");
+  }
+
   printf("[cave-ins]\n");
   {
     const BlockId STONE = reg().blockId("stone"), BEAM = reg().blockId("support_beam");

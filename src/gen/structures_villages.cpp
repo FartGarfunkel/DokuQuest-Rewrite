@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <set>
 
+#include <numeric>
 namespace dq {
 
 static const int* DXL = DIRX;
@@ -202,6 +203,15 @@ static bool townPlace(const StructureIndex&, const TerrainQuery& t, int rx, int 
   const VStyle& st = vstyle(style);
   static const std::vector<std::string> SY0 = strList(SD()["VSYL"][0]), SY1 = strList(SD()["VSYL"][1]);
   std::string name = SY0[jsFloor(rnd() * SY0.size())]; name += SY1[jsFloor(rnd() * SY1.size())];
+  if (t.genVersion() >= 18) {   // (18: no two villages within a tile of 24 x 24 village regions share a name; the old pick
+                                //  repeated every other region, its hash's third input barely mixed)
+    const int N1 = (int)SY1.size(), N = (int)SY0.size() * N1, T = 24;
+    const int tx = floordiv(rx, T), tz = floordiv(rz, T), slot = (rz - tz * T) * T + (rx - tx * T);
+    const double th = posHashF(seed, tx, tz, 4247);
+    int stride = 1 + 2 * (int)(posHashF(seed, tx, tz, 4248) * N / 2);   // (odd, then on to one sharing no factor with N: a bijection)
+    while (std::gcd(stride, N) != 1) stride += 2;
+    if (slot < N) { const int idx = (int)(((i64)slot * stride + (i64)(th * N)) % N); name = SY0[idx / N1] + SY1[idx % N1]; }
+  }
   const int y0 = c.y, y0js = c.jsY, fr = TT["fr"];
   auto e = std::make_shared<TownExt>(); Town& v = e->v;
   v.id = "t" + std::to_string(rx) + "_" + std::to_string(rz); v.name = name; v.style = style; v.tier = tier; v.P = P; v.hw = hw; v.fr = fr;

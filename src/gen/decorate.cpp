@@ -257,13 +257,13 @@ void OverworldGen::decorateCaves(GenBuf& b, const OwColumn* cols, int cx, int cz
     for (int y = owUnder(6); y < top; y++) {
       if (b.blocks[colIdx(x, y, z)] != AIR) continue;
       const int above = at(x, y + 1, z), below = at(x, y - 1, z);
-      const double r = hashFloat(wx, y, wz, hs), yo = owUnderO(y);
+      const double r = hf(wx, y, wz, hs), yo = owUnderO(y);
       const bool lush = yo > 18 && y < c.H - 8 && nCave3.noise3(wx / 40.0, yo / 24, wz / 40.0) > 0.42;
       if (lush) {
         // lush caves: moss underfoot, azalea and glow berries hanging from the roof
         if (stony(below)) { set(x, y - 1, z, B.moss_block); if (r < 0.25) set(x, y, z, B.moss_carpet); else if (r < 0.3) set(x, y, z, B.azalea); else if (r < 0.34) set(x, y, z, B.tall_grass); continue; }
         if (stony(above)) {
-          if (r < 0.12) { int len = 1 + jsFloor(hashFloat(wx, y, wz, 7) * 5); for (int k = 0; k < len && at(x, y - k, z) == 0; k++) set(x, y - k, z, hashFloat(wx, y - k, wz, 8) < 0.25 ? B.cave_vines_lit : B.cave_vines); }
+          if (r < 0.12) { int len = 1 + jsFloor(hf(wx, y, wz, 7) * 5); for (int k = 0; k < len && at(x, y - k, z) == 0; k++) set(x, y - k, z, hf(wx, y - k, wz, 8) < 0.25 ? B.cave_vines_lit : B.cave_vines); }
           else if (r > 0.995) set(x, y, z, B.spore_blossom);
           else if (r > 0.9) set(x, y + 1, z, B.moss_block);
         }
