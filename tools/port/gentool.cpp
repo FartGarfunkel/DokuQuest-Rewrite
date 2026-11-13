@@ -144,6 +144,7 @@ static std::unique_ptr<DimGenerator> makeGen(int dim, const WorldGenOptions& o) 
 static int structs(const char* reqPath, const char* outPath) {
   json req = json::parse(std::ifstream(reqPath));
   WorldGenOptions o; o.seed = req["seed"].is_number() ? req["seed"].get<i32>() : seedFromString(req["seed"].get<std::string>());
+  if (const char* v = std::getenv("DQ_GENVER")) o.genVersion = atoi(v);
   const int R = req["R"];
   std::unique_ptr<DimGenerator> on[DIM_COUNT], off[DIM_COUNT];
   for (int d = 0; d < DIM_COUNT; d++) on[d] = makeGen(d, o);

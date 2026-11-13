@@ -124,9 +124,10 @@ static void townPlanData(StructurePlan& S, const std::shared_ptr<TownExt>& e, in
 
 // terrain version 10: a village's style from the land it stands on (the climate's biome variants, gen/overworld.h) and,
 // for the rarer kinds (a festive village, a mushroom village, treehouses, an oasis...), a roll of its own
-static int villageStyle10(const TerrainColumn& c, u32 h, int wet) {
+static int villageStyle10(const TerrainColumn& c, u32 h, int wet, bool v19 = false) {
   OwColumn oc; oc.h = c.jsY; oc.biome = (u8)c.biome; oc.temp = c.temp; oc.humid = c.humid; oc.mc = c.mc;
-  const BtaVariant bv = btaVariant(oc);
+  BtaVariant bv = btaVariant(oc);
+  if (v19 && bv == BV_TUNDRA && c.temp >= -0.38) bv = BV_NONE;   // (terrain 19: a "tundra" that doesn't snow, as the crimson tundra, gets green villages: no igloos on the grass)
   const double u = (h & 0xFFFFF) / (double)0x100000;
   auto S = [](const char* k, int fallback) { const int i = vstyleIndex(k); return i >= 0 ? i : fallback; };
   if (const char* f = std::getenv("DQ_VILLAGE_STYLE")) { const int i = vstyleIndex(f); if (i >= 0) return i; }   // (test aid: every village this style)
@@ -198,7 +199,7 @@ static bool townPlace(const StructureIndex&, const TerrainQuery& t, int rx, int 
     }
     if (hi - lo > (tier == TIER_VILLAGE ? 11 : 14) + (hilly ? 5 : 0) || wet > (tier == TIER_VILLAGE ? 4 : 6) + (beachy || marshy ? 8 : 0)) return false;
   }
-  const int style = styles10 ? villageStyle10(c, hash32(seed, rx, rz, 4246), wet)
+  const int style = styles10 ? villageStyle10(c, hash32(seed, rx, rz, 4246), wet, t.genVersion() >= 19)
                              : c.biome == BIOME_DESERT ? VS_DESERT : c.biome == BIOME_TAIGA ? (c.temp < -0.38 ? VS_SNOWY : VS_TAIGA) : (c.temp > 0.28 && c.humid < 0.02 ? VS_SAVANNA : VS_PLAINS);
   const VStyle& st = vstyle(style);
   static const std::vector<std::string> SY0 = strList(SD()["VSYL"][0]), SY1 = strList(SD()["VSYL"][1]);
@@ -227,7 +228,7 @@ static bool townPlace(const StructureIndex&, const TerrainQuery& t, int rx, int 
         jigsawTownBounds(*e->jig, X0, Z0, X1, Z1);
         if (v.hasWall) { X0 = std::min(X0, v.wall.x0 - 10); Z0 = std::min(Z0, v.wall.z0 - 10); X1 = std::max(X1, v.wall.x1 + 10); Z1 = std::max(Z1, v.wall.z1 + 10); }   // (the ways out run 8 past it)
         townPlanData(S, e, X0, Z0, X1, Z1, y0js, false, {0, 0});
-        if (std::getenv("DQ_VILLAGE_LOG")) DQ_LOG("village %s style %s at %d %d", v.name.c_str(), vstyle(v.style).key.c_str(), cx, cz);
+        if (std::getenv("DQ_VILLAGE_LOG")) DQ_LOG("village %s style %s at %d %d temp %.2f", v.name.c_str(), vstyle(v.style).key.c_str(), cx, cz, c.temp);
         return true;
       }
       if (std::getenv("DQ_VILLAGE_LOG")) DQ_LOG("village %s style %s: jigsaw plan failed, the classic town", v.name.c_str(), vstyle(v.style).key.c_str());

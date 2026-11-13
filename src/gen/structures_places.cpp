@@ -796,7 +796,7 @@ static bool mazePlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Struc
   if (c.biome >= 0 && c.biome < BIOME_COUNT) oc.biome = (u8)c.biome;
   const BtaVariant bv = btaVariant(oc);
   const bool desert = c.biome == BIOME_DESERT;
-  const bool cold = c.biome == BIOME_TAIGA || bv == BV_GLACIER || bv == BV_TUNDRA;
+  const bool cold = c.biome == BIOME_TAIGA || bv == BV_GLACIER || (bv == BV_TUNDRA && (t.genVersion() < 19 || c.temp < -0.38));
   if (desert) {
     e->wallA = e->wallB = "sandstone";
     e->brickA = e->brickB = PLK("desert_sandstone_bricks", "cut_sandstone");

@@ -117,7 +117,7 @@ std::vector<std::string> landsAt(const TerrainQuery& t, const TerrainColumn& c) 
   if (c.biome == BIOME_DESERT) L.push_back("desert");
   if (bv == BV_REDLANDS) L.push_back("badlands");
   if (bv == BV_MOSSMIRE) L.push_back("swamp");
-  if (bv == BV_GLACIER || bv == BV_TUNDRA || (c.biome == BIOME_TAIGA && c.temp < -0.38)) L.push_back("snowy");
+  if (bv == BV_GLACIER || (bv == BV_TUNDRA && (t.genVersion() < 19 || c.temp < -0.38)) || (c.biome == BIOME_TAIGA && c.temp < -0.38)) L.push_back("snowy");   // (19: only where it snows)
   if (c.biome == BIOME_MOUNTAINS || bv == BV_HIGHLANDS) L.push_back("mountains");
   if (c.biome == BIOME_TAIGA) L.push_back("taiga");
   if (c.biome == BIOME_FOREST) L.push_back(c.temp > 0.28 && c.humid > 0.12 ? "jungle" : "forest");
