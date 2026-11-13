@@ -11,6 +11,7 @@
 #include "assets/pack_fs.h"
 #include "core/tool_parts.h"
 #include <cmath>
+#include <algorithm>
 #include <list>
 
 namespace dq {
@@ -356,9 +357,25 @@ const ArmorSet& armorMeshes(const std::string& itemKey, const std::string& dye, 
   std::string mat = paP || itemKey.rfind("pa:", 0) == 0 ? "iron" : armorMatOf(itemKey);
   if (tileOf(ts, "armor_" + mat) < 0 && !packArmorHas(mat)) mat = "iron";
   // a 3D set for this metal (assets/armor3d.h): the pack's own pictures still win where it has them (leather, chainmail)
-  if (!paP && !packArmorHas(mat) && armor3dHas(mat)) {
-    for (auto& [part, A] : armor3dSlot(mat, slot, slim ? 3.f : 4.f, CHAR_VPP)) {
+  if ((paP || !packArmorHas(mat)) && armor3dHas(mat)) {
+    // the colour it shows in your bag: its icon's (a mixed piece: iron's, then each cell its own metal, recolourWorn)
+    vec3 tint(-1);
+    if (!paP) if (const ItemDef* d = reg().item(itemKey)) { const int t = tileOf(ts, d->icon); if (t >= 0) {
+      // the icon's own metal: the mean of its brighter half (its outline and shadows left out)
+      const u8* px = ts.tile(t); const int N = ts.size * ts.size;
+      std::vector<std::pair<float, vec3>> v;
+      for (int i = 0; i < N; i++) { const u8* q = px + i * 4; if (q[3] < 128) continue; v.push_back({0.3f * q[0] + 0.59f * q[1] + 0.11f * q[2], vec3(q[0], q[1], q[2])}); }
+      if (!v.empty()) {
+        std::sort(v.begin(), v.end(), [](auto& a2, auto& b2) { return a2.first > b2.first; });
+        vec3 sum(0); const size_t n = std::max<size_t>(1, v.size() / 2);
+        for (size_t i = 0; i < n; i++) sum += v[i].second;
+        tint = sum / (float)n;
+      }
+    } }
+    if (mat == "leather" && dye.size() == 6) tint = hexDye(dye);
+    for (auto& [part, A] : armor3dSlot(mat, slot, slim ? 3.f : 4.f, CHAR_VPP, tint)) {
       if (!A.g.count()) continue;
+      if (paP) recolourWorn(A.g, A.lo, part, slot, slim ? 3.f : 4.f, *paP, paMats);
       auto cm = std::make_unique<CharMesh>();
       VoxelMeshData md; buildVoxelMesh(A.g, md);
       upload(*cm, md, A.lo);

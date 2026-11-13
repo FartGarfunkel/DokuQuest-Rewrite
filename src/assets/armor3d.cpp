@@ -15,12 +15,13 @@ std::map<std::string, Set> g_sets;
 
 // each metal as one set, and the colour its grey metal is turned to (0: keep the set's own)
 struct Metal { const char* mat; const char* set; int r, g, b; };
+// (each its own helmet: a plain helm, a crown, horns, spikes and wings, a hood, a crest... few plumes)
 const Metal METALS[] = {
-  {"iron", "silver_knight_armor", 0, 0, 0}, {"gold", "golden_execution_armor", 232, 190, 70}, {"diamond", "hero_armor", 92, 214, 210},
-  {"cinderite", "dark_lord_armor", 0, 0, 0}, {"copper", "crucible_knight_armor", 196, 112, 70}, {"bronze", "old_knight_armor", 186, 128, 66},
-  {"silver", "ornstein_armor", 214, 220, 230}, {"steel", "grave_sentinel_armor", 140, 150, 162}, {"mithril", "sunset_wings_armor", 150, 196, 232},
-  {"adamantite", "redeemer_armor", 176, 58, 78}, {"emerald", "wind_worshipper_armor", 60, 196, 112}, {"zanite", "spark_of_dawn_armor", 140, 92, 220},
-  {"gravitite", "eclipse_soldier_armor", 204, 104, 204}, {"thallasium", "fog_guard_armor", 96, 200, 180}};
+  {"iron", "grave_sentinel_armor", 0, 0, 0}, {"gold", "golden_execution_armor", 0, 0, 0}, {"diamond", "dragonslayer_armor", 0, 0, 0},
+  {"cinderite", "dark_lord_armor", 0, 0, 0}, {"copper", "crucible_knight_armor", 0, 0, 0}, {"bronze", "old_knight_armor", 0, 0, 0},
+  {"silver", "silver_knight_armor", 0, 0, 0}, {"steel", "twinned_armor", 0, 0, 0}, {"mithril", "sunset_wings_armor", 0, 0, 0},
+  {"adamantite", "forgotten_trace_armor", 0, 0, 0}, {"emerald", "golden_horns_armor", 0, 0, 0}, {"zanite", "eclipse_soldier_armor", 0, 0, 0},
+  {"gravitite", "redeemer_armor", 0, 0, 0}, {"thallasium", "dark_cover_armor", 0, 0, 0}};
 const Metal* metalOf(const std::string& mat) { for (auto& m : METALS) if (mat == m.mat) return &m; return nullptr; }
 
 vec3 v3(const json& a, vec3 d = vec3(0)) { return a.is_array() && a.size() >= 3 ? vec3(a[0].get<float>(), a[1].get<float>(), a[2].get<float>()) : d; }
@@ -76,13 +77,18 @@ u32 boxTexel(const Set& S, const Cube& C, int f, float s, float t) {
   return voxRGBA(q[0], q[1], q[2]);
 }
 
-// the metal's colour over a grey (unsaturated) texel, its light and shade kept; coloured ones (cloth, gold trim) stay
-u32 recolour(u32 c, const Metal& M, float meanGrey) {
-  if (!M.r && !M.g && !M.b) return c;
+// the piece's own colour (its icon's) over the set: its grey metal turned to it, light and shade kept; coloured parts (cloth,
+// trims) pulled part way toward it so the whole reads as the item in your bag; the darkest lines kept
+u32 recolour(u32 c, vec3 tint, float meanGrey) {
+  if (tint.x < 0) return c;
   const int r = c & 255, g = (c >> 8) & 255, b = (c >> 16) & 255, mx = std::max({r, g, b}), mn = std::min({r, g, b});
-  if (mx > 24 && (mx - mn) > mx * 0.22f) return c;
-  const float k = std::clamp((0.3f * r + 0.59f * g + 0.11f * b) / std::max(meanGrey, 1.f), 0.25f, 1.7f);
-  return voxRGBA((int)(M.r * k), (int)(M.g * k), (int)(M.b * k));
+  const float lum = 0.3f * r + 0.59f * g + 0.11f * b;
+  if (lum < 30) return c;
+  const float k = std::clamp(lum / std::max(meanGrey, 1.f), 0.3f, 1.6f);
+  const vec3 t = glm::min(tint * k, vec3(255));
+  const bool grey = !(mx > 24 && (mx - mn) > mx * 0.22f);
+  const vec3 o = grey ? t : glm::mix(vec3(r, g, b), t, 0.5f);
+  return voxRGBA((int)o.r, (int)o.g, (int)o.b);
 }
 
 bool readSet(const PackFS& P, const std::string& name, Set& S) {
@@ -105,7 +111,7 @@ int loadArmor3d(const PackFS& P) {
 
 bool armor3dHas(const std::string& mat) { return g_sets.count(mat) > 0; }
 
-std::map<std::string, Armor3dPart> armor3dSlot(const std::string& mat, int slot, float armW, int vpp) {
+std::map<std::string, Armor3dPart> armor3dSlot(const std::string& mat, int slot, float armW, int vpp, vec3 tint) {
   std::map<std::string, Armor3dPart> out;
   auto it = g_sets.find(mat);
   const Metal* M = metalOf(mat);
@@ -116,7 +122,7 @@ std::map<std::string, Armor3dPart> armor3dSlot(const std::string& mat, int slot,
   for (size_t i = 0; i + 3 < S.rgba.size(); i += 4) {
     const u8* q = &S.rgba[i]; if (q[3] < 128) continue;
     const int mx = std::max({q[0], q[1], q[2]}), mn = std::min({q[0], q[1], q[2]});
-    if (mx > 24 && (mx - mn) > mx * 0.22f) continue;
+    (void)mx; (void)mn;
     greySum += 0.3f * q[0] + 0.59f * q[1] + 0.11f * q[2]; greyN++;
   }
   const float meanGrey = greyN ? greySum / greyN : 128.f;
@@ -186,7 +192,7 @@ std::map<std::string, Armor3dPart> armor3dSlot(const std::string& mat, int slot,
         }
         u32 col = boxTexel(S, C, f, s, t);
         if (!col) continue;
-        col = recolour(col, *M, meanGrey);
+        col = recolour(col, tint, meanGrey);
         vec3 q = vec3(M2 * vec4(p, 1));
         q.x = -q.x;   // (the set's right is -x; ours +x)
         // which of our parts, and its pivot

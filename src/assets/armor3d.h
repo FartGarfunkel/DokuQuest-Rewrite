@@ -16,6 +16,7 @@ bool armor3dHas(const std::string& mat);             // a 3D set for this metal?
 // the voxels of one slot (0 helmet .. 3 boots) for a metal, by our body part ("head", "body", "armR_u", "armR_d", "armL_u",
 // "armL_d", "legR_u", "legR_d", "legL_u", "legL_d"): a grid and its low corner in that part's frame (skin px from its pivot)
 struct Armor3dPart { VoxelGrid g; vec3 lo{0}; };
-std::map<std::string, Armor3dPart> armor3dSlot(const std::string& mat, int slot, float armW, int vpp);
+// tint: the piece's colour (its icon's average; x < 0 keeps the set's own)
+std::map<std::string, Armor3dPart> armor3dSlot(const std::string& mat, int slot, float armW, int vpp, vec3 tint = vec3(-1));
 
 } // namespace dq
