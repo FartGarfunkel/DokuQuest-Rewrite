@@ -779,7 +779,7 @@ static void sever(Level& lv, Creature& m, const RigModel& M, int pi, const Damag
   std::vector<int> gone = {pi};
   for (size_t i = 0; i < M.parts.size(); i++) if (M.parts[i].parent >= 0 && std::find(gone.begin(), gone.end(), M.parts[i].parent) != gone.end()) gone.push_back((int)i);
   for (int i : gone) {
-    if (rigPartPosed(m, i)) spawnGib(lv, m, M.parts[i].name, m.mats[i]);
+    if (rigPartPosed(m, i) && !M.parts[i].glow) spawnGib(lv, m, M.parts[i].name, m.mats[i]);   // (glowing eyes go with it: a gib would lie there glowing)
     m.lost.insert(M.parts[i].name);
   }
   static const std::unordered_map<std::string, std::string> GIB = {{"skeleton", "skel_bone"}, {"slime", "slime_skin"}, {"cinder_golem", "golem_rock"}, {"fuseling", "fuse_moss"}};
