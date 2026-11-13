@@ -106,6 +106,10 @@ OptMove bossBrain(Level& lv, Creature& m, Entity* p, float dist, float dt) {
       const json& A = (*K)[pick];
       m.data["atk"] = pick; m.data["atkT0"] = m.age; m.data["hitMask"] = 0;
       startClip(m, A.value("clip", std::string("idle")));
+      if (A.contains("summon") && A["summon"].is_array() && A["summon"].size() == 2) {   // its servants up out of the ground round it
+        const std::string st = A["summon"][0].get<std::string>(); const int n = A["summon"][1].get<int>();
+        for (int k = 0; k < n; k++) { const float a = TAU * k / n; if (Creature* c = spawnCreature(lv, m.realm, st, m.pos + vec3(std::cos(a) * 2.5f, 0.1f, std::sin(a) * 2.5f))) { c->data["noDrops"] = true; lv.fx->particles("poof", c->pos + vec3(0, 1, 0), 12); } }
+      }
       if (A.value("teleport", false)) {   // in from the dark beside the target
         lv.fx->particles("portal", m.pos + vec3(0, 1, 0), 30);
         const float a = frand() * TAU;

@@ -88,6 +88,19 @@ void geoAnim(Creature& m, const RigModel& M, RigAnimOut& o) {
     C = m.walkAmt > 0.15f ? find(run ? "running" : "walking") : nullptr;
     if (!C) C = find("idle");
     t = m.age;
+    // no walk of its own (Iron's walk their mobs in code): legs and arms swung by name
+    if (m.walkAmt > 0.15f && !find("walking")) {
+      const float sw = std::sin(m.walk) * 0.7f * std::min(1.f, m.walkAmt);
+      for (size_t i = 0; i < M.parts.size(); i++) {
+        const std::string& n = M.parts[i].name;
+        const bool leg = n.find("leg") != std::string::npos, arm = n.find("arm") != std::string::npos;
+        if ((!leg && !arm) || M.parts[i].parent < 0 || M.parts[M.parts[i].parent].name.find(leg ? "leg" : "arm") != std::string::npos) continue;
+        const bool left = n.find("left") != std::string::npos || n.find("Left") != std::string::npos;
+        const float a = (left ? sw : -sw) * (arm ? -0.8f : 1.f);
+        if (!o.has[i]) { o.has[i] = 1; o.rot[i] = vec3(0); }
+        o.rot[i].x += a;
+      }
+    }
   }
   if (!C) return;
   if (C->loop && C->len > 0) t = std::fmod(std::max(0.f, t), C->len);

@@ -21,6 +21,33 @@ BOSSES = {
         'attacks': S / 'src/souls_like_bosses-1.0.3/com/slb/nightlord/attack/NightLordAttacks.java',
         'hide': ['light_circle', 'kamehameha_beam', 'lightning_sword2', 'lightning'],   # (effects the mod draws at times: not the body)
     },
+    # The Graveyard's Lich ("corrupted champion"): a floating caster; its moves written here from its clips
+    'graveyard_lich': {
+        'geo': S / 'mods/The_Graveyard_3.1_(FORGE)_for_1.20.1/assets/graveyard/geo/lich.geo.json',
+        'tex': S / 'mods/The_Graveyard_3.1_(FORGE)_for_1.20.1/assets/graveyard/textures/entity/lich_texture.png',
+        'glow': S / 'mods/The_Graveyard_3.1_(FORGE)_for_1.20.1/assets/graveyard/textures/entity/lich_eye_texture.png',
+        'anim': S / 'mods/The_Graveyard_3.1_(FORGE)_for_1.20.1/assets/graveyard/animations/lich/lich.animation.json',
+        'alias': {'walking': 'idle', 'phase_change': 'phase_two'},
+        'kit': [
+            {'id': 'claw', 'clip': 'attack', 'len': 1.96, 'phases': [1], 'ranges': ['close'], 'weight': 3, 'hits': [[0.9, 1.1, 9, 3.2]]},
+            {'id': 'corpse_spell', 'clip': 'corpse_spell', 'len': 2, 'phases': [1, 2], 'ranges': ['mid', 'far'], 'weight': 2, 'hits': [[1.0, 1.3, 7, 12, 1]], 'lightning': True, 'cooldown': 3},
+            {'id': 'summon', 'clip': 'summon', 'len': 4, 'phases': [1, 2], 'ranges': ['mid', 'far'], 'weight': 1, 'summon': ['skeleton', 3], 'cooldown': 10},
+            {'id': 'p2_attack', 'clip': 'phase_two_attack', 'len': 4, 'phases': [2], 'ranges': ['close', 'mid'], 'weight': 3, 'hits': [[1.2, 1.5, 10, 3.5], [2.6, 2.9, 10, 3.5]]},
+        ],
+    },
+    # Iron's Spells' Dead King: a crowned skeleton king with a scythe (Iron's walks it in code: our limbs' walk)
+    'dead_king': {
+        'geo': S / 'mods/irons_spellbooks-1.20.1-3.15.6/assets/irons_spellbooks/geo/dead_king.geo.json',
+        'tex': S / 'mods/irons_spellbooks-1.20.1-3.15.6/assets/irons_spellbooks/textures/entity/dead_king/dead_king.png',
+        'glow': S / 'mods/irons_spellbooks-1.20.1-3.15.6/assets/irons_spellbooks/textures/entity/dead_king/dead_king_glowing.png',
+        'anim': S / 'mods/irons_spellbooks-1.20.1-3.15.6/assets/irons_spellbooks/animations/casting_animations.json',
+        'clipPrefix': 'dead_king_', 'hide': ['stage_2_Head'],
+        'kit': [
+            {'id': 'melee', 'clip': 'melee', 'len': 1.96, 'phases': [1, 2], 'ranges': ['close'], 'weight': 3, 'hits': [[0.85, 1.05, 10, 3.2]]},
+            {'id': 'double_swing', 'clip': 'double_swing', 'len': 2.56, 'phases': [1, 2], 'ranges': ['close'], 'weight': 2, 'hits': [[0.8, 1.0, 8, 3.4], [1.6, 1.8, 8, 3.4]]},
+            {'id': 'slam', 'clip': 'slam', 'len': 2.4, 'phases': [1, 2], 'ranges': ['close', 'mid'], 'weight': 2, 'hits': [[1.3, 1.5, 12, 4.5, 1]], 'leap': True, 'cooldown': 2},
+        ],
+    },
 }
 
 
@@ -95,8 +122,12 @@ def keyframes(ch):
     """{time: value} or a constant list -> [[t, [x, y, z], lerp]]"""
     if isinstance(ch, list): return [[0.0, [float(v) for v in ch], 'linear']]
     if isinstance(ch, (int, float)): return [[0.0, [float(ch)] * 3, 'linear']]
+    if isinstance(ch, dict) and 'vector' in ch:   # (a constant written as {"vector": [...]})
+        v = ch['vector']; return [[0.0, [float(x) if isinstance(x, (int, float)) else 0.0 for x in v], 'linear']]
     out = []
     for t, v in ch.items():
+        try: float(t)
+        except ValueError: continue   # ("vector": a channel's own settings, not a keyframe)
         lerp = 'linear'
         if isinstance(v, dict):
             lerp = v.get('lerp_mode', 'linear'); v = v.get('post') if v.get('post') is not None else v.get('pre')
@@ -173,7 +204,11 @@ def main(d='data'):
             parts.append(p)
         clips = {}
         if B.get('anim') and B['anim'].exists():
+            pre = B.get('clipPrefix', '')
             for name, c in json.loads(B['anim'].read_text())['animations'].items():
+                if pre:
+                    if not name.startswith(pre): continue
+                    name = name[len(pre):]
                 cb = {}
                 for bn, ch in c.get('bones', {}).items():
                     if bn not in byname: continue
@@ -182,7 +217,9 @@ def main(d='data'):
                     if 'position' in ch: e['p'] = keyframes(ch['position'])
                     if e: cb[bn] = e
                 clips[name] = {'len': float(c.get('animation_length', 0) or 0), 'loop': bool(c.get('loop', False)), 'bones': cb}
-        kit = attack_table(B['attacks']) if B.get('attacks') and B['attacks'].exists() else []
+        for a, src in B.get('alias', {}).items():
+            if a not in clips and src in clips: clips[a] = clips[src]
+        kit = attack_table(B['attacks']) if B.get('attacks') and B['attacks'].exists() else B.get('kit', [])
         out = {'models': {key: {'rig': 'geo', 'rotOrder': 'zyx', 'scale': 1, 'hipY': 12, 'parts': parts}}, 'clips': {key: clips}, 'kits': {key: kit}}
         (od / (key + '.json')).write_text(json.dumps(out, separators=(',', ':')))
         print('geo_boss_import: %s: %d parts, %d voxels, %d clips, %d attacks' % (key, len(parts), nvox, len(clips), len(kit)))
