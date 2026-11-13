@@ -180,7 +180,7 @@ void shieldInHand(const CharRig& R, int part, const std::string& id, float side,
   voxelRenderer().draw(im.gl, shieldPlacement(R, part, side, k) * im.matrix(), light, tint, glint ? 1.f : 0.f);
 }
 // skins.js held(): an item in a fist (fore = the forearm's frame, model pixels about the elbow; side -1 = the left hand)
-void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0), const std::string& modelKey = "", vec3* headOut = nullptr) {
+void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0), const std::string& modelKey = "", vec3* headOut = nullptr, const float* fpYaw = nullptr) {
   if (id == "fishing_rod") id = "fishing_rod_tp";
   const VoxelModel& im = itemModel(modelKey.empty() ? id : modelKey);
   if (!im.ready()) return;
@@ -188,6 +188,19 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
   static float T[3] = {0, 0, 0}; static bool tl = false;
   if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_TPHELD")) std::sscanf(v, "%f,%f,%f", &T[0], &T[1], &T[2]); }
   mat4 hm = glm::translate(fore, vec3(0, -6 + T[0], -1 + T[1]));
+  if (fpYaw && !im.stand && !isBowKey(id) && id.rfind("fishing_rod", 0) != 0) {   // seamless first person: the old hand view's grip, at your own fist, turned with you
+    // (turned with you and tipped with your look, as the old hand view held things; the fist is nearer the eye than that
+    // view's was, so all a little smaller: DQ_DEV_FPGRIPK)
+    static float K = 0.6f; static bool kl = false;
+    if (!kl) { kl = true; if (const char* v = std::getenv("DQ_DEV_FPGRIPK")) K = (float)std::atof(v); }
+    mat4 F = glm::rotate(glm::translate(mat4(1), vec3(hm[3])), fpYaw[0], vec3(0, 1, 0));
+    F = glm::rotate(F, fpYaw[1], vec3(1, 0, 0));
+    F = glm::scale(F, vec3(K)) * fpGripMatrix(id, side, im);
+    if (headOut) *headOut = vec3(F * vec4(0, 0.16f, 0, 1));
+    if (g_dials && isInstrument(id) && im.kind != VoxelModel::Block) g_dials->push_back({id, F, vec2(light.sky, light.block)});
+    voxelRenderer().draw(im.gl, F * im.matrix(), light, tint, glint ? 1.f : 0.f);
+    return;
+  }
   if (im.kind == VoxelModel::Block) {
     hm = glm::translate(hm, vec3(0, 0, -1.5f));
     hm = glm::scale(hm, vec3(1 / CHAR_PX));
@@ -1047,6 +1060,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   // same, in your own hands, for each hand that is your body's)
   if (!fp || fpArmR || fpArmL) {
     const bool mainOn = !fp || fpArmR, offOn = !fp || fpArmL;
+    const float fpYawV[2] = {ps.yaw, ps.headPitch / 0.8f};   // (the body's facing, as charRig's base turns, and the look's pitch)
     bool bowDraw = ps.bow > 0 && wear.held.rfind("bow", 0) == 0;
     if (bowDraw) { if (!fp) drawnBow(R, light, tint, wear.heldGlint); }   // (first person: render/fp_bow.cpp)
     else if (!mainOn) {}
@@ -1054,14 +1068,14 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     else if (isShieldItem(wear.held)) shieldInHand(R, CP_ARMR_D, wear.held, 1.f, ps.blockMain ? ps.block : 0.f, light, tint, wear.heldGlint);
     else if (!wear.held.empty()) {
       vec3 head;
-      heldInHand(gripTurn(R.part[CP_ARMR_D], R.toolR), wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel, fp ? &head : nullptr);
+      heldInHand(gripTurn(R.part[CP_ARMR_D], R.toolR), wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel, fp ? &head : nullptr, fp && !ps.atkMove ? fpYawV : nullptr);
       if (fp) { HeldItemLayer::torchTip[0] = o.camPos + glm::dvec3(head); HeldItemLayer::torchTipOn[0] = true; }   // (your own torch's flame, at its head)
     }
     if (!offOn || bowDraw) {}
     else if (!wear.off.empty() && isShieldItem(wear.off)) shieldInHand(R, CP_ARML_D, wear.off, -1.f, ps.blockMain ? 0.f : ps.block, light, tint, wear.offGlint);
     else if (!wear.off.empty()) {
       vec3 head;
-      heldInHand(gripTurn(R.part[CP_ARML_D], R.toolL), wear.off, -1.f, light, tint, wear.offGlint, 0, 0, glm::dvec3(0), "", fp ? &head : nullptr);
+      heldInHand(gripTurn(R.part[CP_ARML_D], R.toolL), wear.off, -1.f, light, tint, wear.offGlint, 0, 0, glm::dvec3(0), "", fp ? &head : nullptr, fp ? fpYawV : nullptr);
       if (fp) { HeldItemLayer::torchTip[1] = o.camPos + glm::dvec3(head); HeldItemLayer::torchTipOn[1] = true; }
     }
   }

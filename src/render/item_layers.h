@@ -71,4 +71,6 @@ void registerTroughLayer();   // render/trough_layer.cpp (called from registerIt
 void registerFurnaceLayer();  // render/furnace_layer.cpp: what's in a furnace, seen (called from registerItemLayers)
 void registerWaystoneLayer(); // render/waystone_layer.cpp (called from registerItemLayers)
 
+// the old hand view's grip for a held thing (fist frame: x right, y up, z toward you); side 1 right, -1 left
+mat4 fpGripMatrix(const std::string& id, float side, const struct VoxelModel& im);
 } // namespace dq

@@ -675,6 +675,33 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   for (auto& [st2, m2] : over) itemHook(s, f, proj, st2, m2, itemModel(st2.id));
 }
 
+// the old hand view's grips (holdIn above), for the body's own fist in seamless first person: in the fist's frame with x to
+// your right, y up and z toward you; side 1 the right hand, -1 the left
+mat4 fpGripMatrix(const std::string& id, float side, const VoxelModel& im) {
+  static float T[4] = {0, 0, 0, 0}; static bool tl = false;   // tuning aid: DQ_DEV_FPGRIP="dx,dy,dz,scale" (added)
+  if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_FPGRIP")) std::sscanf(v, "%f,%f,%f,%f", &T[0], &T[1], &T[2], &T[3]); }
+  mat4 m = glm::translate(mat4(1), vec3(side * T[0], T[1], T[2]));
+  const bool tool = im.kind != VoxelModel::Block && isHandheld(id);
+  if (im.torch3d) {   // upright in the fist, leaning a little away
+    m = glm::translate(m, vec3(-side * 0.02f, 0.05f, -0.05f));
+    m = glm::rotate(m, -0.3f, vec3(1, 0, 0)); m = glm::rotate(m, side * 0.2f, vec3(0, 0, 1)); m = glm::rotate(m, side * 0.6f, vec3(0, 1, 0));
+    m = glm::scale(m, vec3(0.46f + T[3])); m = glm::translate(m, vec3(0, 0.6f, 0));
+  } else if (im.kind == VoxelModel::Block) {
+    m = glm::translate(m, vec3(-side * 0.03f, 0.1f, -0.06f));
+    m = glm::rotate(m, side * 0.78f, vec3(0, 1, 0)); m = glm::scale(m, vec3(0.4f + T[3]));
+  } else if (isInstrument(id)) {   // face-up in the palm, tipped toward your eyes
+    m = glm::translate(m, vec3(-side * 0.07f, 0.17f, 0.f));
+    m = glm::rotate(m, -0.5f, vec3(1, 0, 0)); m = glm::rotate(m, side * 0.14f, vec3(0, 1, 0)); m = glm::scale(m, vec3(0.62f + T[3]));
+  } else {
+    m = glm::rotate(m, side * (-1.5f + 0.35f + (tool ? 0.22f : 0.f)), vec3(0, 1, 0));
+    m = glm::rotate(m, side * 0.42f, vec3(0, 0, 1));
+    m = glm::scale(m, vec3(0.68f + T[3] + (tool ? 0.26f : 0.f)));
+    m = glm::translate(m, tool ? vec3(0.3f * side, 0.28f, 0) : im.ready() && im.gl.liquidY.y > im.gl.liquidY.x && im.gl.glass ? vec3(0, 0.5f, 0) : vec3(0, 0.3f, 0));
+    if (side < 0) m = glm::scale(m, vec3(-1, 1, 1));
+  }
+  return m;
+}
+
 // ------------------------------------------------------------------ dropped items (entities.js ItemEntity.draws)
 void DroppedItemLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
   if (!s.player) return;
