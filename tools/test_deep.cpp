@@ -116,6 +116,14 @@ int main(int argc, char** argv) {
       check(crustN == 256, "the Ember Crust over the Nether at the bottom of the Underworld");
       check(lavaSea > 0 && open == 0, strFormat("a sea of lava fills the deepest caverns (%d lava, %d open)", lavaSea, open));
     }
+    // the caverns keep their plants: nothing washes them off and drops them (it piled up items until the game crawled)
+    {
+      const vec3 cav(40.5f, (float)dimBase(DIM_UNDER1) + 150, 40.5f);
+      streamUntil(w, cav, {{DIM_UNDER1, 0}, {DIM_UNDER2, 0}});
+      for (int i = 0; i < 1200; i++) { lv->tick(TICK_DT); if (i % 20 == 0) w.stream({{cav, 3, true}}, 5); }
+      int items = 0; for (auto& e : lv->entities()) if (!e->removed && e->type == "item") items++;
+      check(items < 20, strFormat("a minute in the Underworld drops next to nothing on its own (%d items)", items));
+    }
     // something built down there is kept
     const int ty = dimBase(DIM_UNDER2) + 100;
     streamUntil(w, vec3(8.5f, (float)ty, 8.5f), {{DIM_UNDER2, 0}});

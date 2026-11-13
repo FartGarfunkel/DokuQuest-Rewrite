@@ -370,6 +370,12 @@ void runStep(App& a, const json& st) {
         DQ_LOG("test report ent: %s #%u at %.1f %.1f %.1f p %d job %s", e->type.c_str(), e->id, e->pos.x, e->pos.y, e->pos.z, e->data.is_object() && e->data.contains("npc") ? e->data["npc"].value("p", 0) : -1,
                e->data.is_object() && e->data.contains("npc") && e->data["npc"].is_object() ? e->data["npc"].value("j", std::string()).c_str() : "-");
     }
+  } else if (op == "perf" && s) {   // perf: frame time, chunks, sections, entities, particles (watching for something that grows)
+    DQ_LOG("test perf: %.1f ms/frame (%.0f fps) | chunks %zu | sections drawn %d of %d | mesh jobs %d | entities %zu",
+           a.dt * 1000, 1.0 / std::max(1e-4, a.dt), s->world().chunks().size(), s->worldRenderer.drawnSections, s->worldRenderer.totalSections,
+           s->worldRenderer.pendingJobs, s->level->entities().size());
+    if (st.value("items", false)) { std::map<std::string, int> n; for (auto& e : s->level->entities()) if (e && !e->removed && e->type == "item") n[(e->data.is_object() && e->data.contains("stack") ? e->data["stack"].value("id", std::string("?")) : std::string("?")) + strFormat(" y%d", displayY(ifloor(e->pos.y)) / 50 * 50)]++;
+      for (auto& [k, c] : n) DQ_LOG("test perf item: %d %s", c, k.c_str()); }
   } else if (op == "shot") {
     if (p) DQ_LOG("test: shot pos %.2f %.2f %.2f yaw %.1f pitch %.1f", p->pos.x, p->pos.y, p->pos.z, p->yaw * 180.f / (float)PI, p->pitch * 180.f / (float)PI);
     a.takeScreenshot(st.value("path", "/tmp/dq_test.png"));

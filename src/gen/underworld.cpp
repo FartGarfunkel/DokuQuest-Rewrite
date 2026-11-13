@@ -147,7 +147,9 @@ void OverworldGen::generateDeep(Chunk& ch, int depth) const {
           if (roof) { setAbove(r > 0.7 ? K.amethyst : K.calcite); }
           break;
         case T_LUSH:
-          if (floor) { setBelow(r < 0.12 ? K.clay : K.moss); if (r < 0.3) put(K.mossCarpet); else if (r < 0.36) put(K.azalea); else if (r > 0.97) put(K.water); }
+          if (floor) { setBelow(r < 0.12 ? K.clay : K.moss); if (r < 0.3) put(K.mossCarpet); else if (r < 0.36) put(K.azalea); else if (r > 0.97) {   // a pool: only into a basin (rock all round and under it), never a source loose on an open floor
+              bool basin = true; for (int d = 0; d < 4 && basin; d++) { const int ax = x + DIRX[d], az = z + DIRZ[d]; basin = ax >= 0 && ax <= 15 && az >= 0 && az <= 15 && rock(b.blocks[colIdx(ax, y, az)]); }
+              if (basin) b.blocks[colIdx(x, y, z)] = K.water; } }
           if (roof) { setAbove(K.moss); if (r > 0.993) put(K.spore); else if (r > 0.9 && K.caveVines) { for (int k = 0; k < 4 && y - k > 5 && b.blocks[colIdx(x, y - k, z)] == AIR; k++) b.blocks[colIdx(x, y - k, z)] = K.caveVines; } else if (r > 0.86) put(K.roots); }
           break;
         case T_FUNGAL:
