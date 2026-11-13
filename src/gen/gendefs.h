@@ -75,7 +75,7 @@ constexpr int END_DY = 64;
 inline float cloudBank(int dim, double y) {
   double k = 0;
   if (dim == DIM_AETHER) k = jsSmooth(30, 0, y);
-  else if (dim == DIM_OVERWORLD) k = jsSmooth(DIM_H - 22, DIM_H, y);
+  else if (dim == dimBelow(DIM_AETHER)) k = jsSmooth(DIM_H - 22, DIM_H, y);   // (the deep world: the open sky's top band)
   return k > 0 ? (float)(jsSmooth(0.15, 0.85, k) * 0.93) : 0.f;
 }
 } // namespace vmap

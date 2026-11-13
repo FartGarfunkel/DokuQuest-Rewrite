@@ -44,3 +44,4 @@ generators fill one band. So new depth is added as NEW one-band dimensions, neve
 - The End: a lantern shown as a full block (hanging from a chain); the purple banner/cloth hangings, the chorus-like
   pillars' tops and other things drawn as plain blocks or wrong shapes.
 - Step 1 (layout tables): dims.h/dims.cpp layouts, dimOfY/dimBase by table, WORLD_H per world, dimAbove/dimBelow, light posKey 12-bit y, sky seeding off in the Underworld; layout 1 identical (12/12 tests).
+- Step 2 (the Underworld): gen/underworld.cpp, terrain version 19, new worlds layout 2; seams (light, water, the crust shaft, sky blend, clouds, weather, spawning, ropes, villagers), display y, /tp y; tools/test_deep (21 checks) + 12/12.

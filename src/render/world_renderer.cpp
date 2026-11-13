@@ -327,20 +327,21 @@ void WorldRenderer::buildTintLut() {
   glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 }
 void WorldRenderer::climateFor(int dim, int cx, int cz) {
-  if (!w || dim < 0 || dim >= DIM_COUNT) return;
+  if (!w || !dimInWorld(dim)) return;
+  const int layer = worldLayout().posOf[dim];   // (a layer per band of the column: the shader finds it by height)
   if (!climateTex) {
     glGenTextures(1, &climateTex);
     glBindTexture(GL_TEXTURE_2D_ARRAY, climateTex);
     std::vector<u8> mid((size_t)CLIM * CLIM * 2, 128);   // a mild climate where nothing's been seen yet
-    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RG8, CLIM, CLIM, DIM_COUNT, 0, GL_RG, GL_UNSIGNED_BYTE, nullptr);
-    for (int d = 0; d < DIM_COUNT; d++) glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, d, CLIM, CLIM, 1, GL_RG, GL_UNSIGNED_BYTE, mid.data());
+    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RG8, CLIM, CLIM, MAX_BANDS, 0, GL_RG, GL_UNSIGNED_BYTE, nullptr);
+    for (int d = 0; d < MAX_BANDS; d++) glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, d, CLIM, CLIM, 1, GL_RG, GL_UNSIGNED_BYTE, mid.data());
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR); glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT); glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-    climateOwner.assign((size_t)DIM_COUNT * CLIM_SLOTS * CLIM_SLOTS, INT64_MIN);
+    climateOwner.assign((size_t)MAX_BANDS * CLIM_SLOTS * CLIM_SLOTS, INT64_MIN);
   }
   const int sx = floormod(cx, CLIM_SLOTS), sz = floormod(cz, CLIM_SLOTS);
-  i64& own = climateOwner[((size_t)dim * CLIM_SLOTS + sz) * CLIM_SLOTS + sx];
+  i64& own = climateOwner[((size_t)layer * CLIM_SLOTS + sz) * CLIM_SLOTS + sx];
   const i64 me = ((i64)cx << 32) ^ (u32)cz;
   if (own == me) return;
   const Chunk* ch = w->chunk(dim, cx, cz);
@@ -349,7 +350,7 @@ void WorldRenderer::climateFor(int dim, int cx, int cz) {
   for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) { px[(z * 16 + x) * 2] = ch->climate[(z * 16 + x) * 2]; px[(z * 16 + x) * 2 + 1] = ch->climate[(z * 16 + x) * 2 + 1]; }
   glBindTexture(GL_TEXTURE_2D_ARRAY, climateTex);
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, sx * 16, sz * 16, dim, 16, 16, 1, GL_RG, GL_UNSIGNED_BYTE, px);
+  glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, sx * 16, sz * 16, layer, 16, 16, 1, GL_RG, GL_UNSIGNED_BYTE, px);
   glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
   glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
   own = me;

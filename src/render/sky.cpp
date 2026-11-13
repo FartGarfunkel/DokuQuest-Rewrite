@@ -251,18 +251,16 @@ const SkyEnv& currentSkyEnv() { return g_env; }
 
 SkyEnv computeSkyEnv(Level& lv, int dim, int realm, glm::dvec3 camPos, bool blend) {
   g_cam = camPos;
-  SkyEnv e = landEnv(lv, dim, realm, g_settings);
+  SkyEnv e = landEnv(lv, landOf(dim), realm, g_settings);   // (the Underworld and the open sky: the Overworld's)
   if (!blend || realm != REALM_MAIN) return e;
   // seamless.js: near the edge between two stacked lands their skies meet halfway, and between the
-  // Overworld and the Skylands lies a bank of cloud
+  // Overworld and the Skylands lies a bank of cloud (bands of the same land, the deep world's, meet without a seam)
   float ly = (float)(camPos.y - dimBase(dim));
   float k = 0; int other = -1; bool cloudy = false;
-  if (dim == DIM_AETHER) { k = smoothstepf(30, 0, ly); other = DIM_OVERWORLD; cloudy = true; }
-  else if (dim == DIM_OVERWORLD && ly > DIM_H - 22) { k = smoothstepf(DIM_H - 22, DIM_H, ly); other = DIM_AETHER; cloudy = true; }
-  else if (dim == DIM_OVERWORLD && ly < 16) { k = smoothstepf(16, 0, ly); other = DIM_NETHER; }
-  else if (dim == DIM_NETHER && ly > DIM_H - 16) { k = smoothstepf(DIM_H - 16, DIM_H, ly); other = DIM_OVERWORLD; }
-  else if (dim == DIM_NETHER && ly < 16) { k = smoothstepf(16, 0, ly); other = DIM_END; }
-  else if (dim == DIM_END && ly > DIM_H - 16) { k = smoothstepf(DIM_H - 16, DIM_H, ly); other = DIM_NETHER; }
+  const int up = dimAbove(dim), dn = dimBelow(dim);
+  const float topEdge = up == DIM_AETHER ? 22.f : 16.f, botEdge = dim == DIM_AETHER ? 30.f : 16.f;
+  if (up >= 0 && landOf(up) != landOf(dim) && ly > DIM_H - topEdge) { k = smoothstepf(DIM_H - topEdge, DIM_H, ly); other = landOf(up); cloudy = up == DIM_AETHER; }
+  else if (dn >= 0 && landOf(dn) != landOf(dim) && ly < botEdge) { k = smoothstepf(botEdge, 0, ly); other = landOf(dn); cloudy = dim == DIM_AETHER; }
   if (!(k > 0) || other < 0) return e;
   SkyEnv o = landEnv(lv, other, realm, g_settings);
   float h = k * 0.5f;   // halfway through, the two worlds' skies and light are the same on either side
@@ -416,7 +414,7 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd, bool prima
   if (primary) { env = e; g_env = e; }
   f.sky = std::make_shared<const SkyEnv>(e);
   WeatherSystem* W = weatherOf(lv);
-  f.dim = d;
+  f.dim = d; f.land = landOf(d);
   if (d == DIM_END) f.blockLightColor = vec3(0.90f, 0.84f, 1.0f);
   else if (d == DIM_NETHER) f.blockLightColor = vec3(1.0f, 0.62f, 0.38f);
   else if (d == DIM_AETHER) f.blockLightColor = vec3(1.0f, 0.97f, 0.88f);
@@ -447,7 +445,7 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd, bool prima
       static float eased = 1; const float want = std::clamp((sky - 3) / 9.f, 0.f, 1.f);
       if (primary) { eased += (want - eased) * 0.05f; hfOpen = eased; } else hfOpen = want;
     }
-    f.heightFog = heightFogParams((float)f.cam.pos.y, d, e.mist, f.rain, hf, hfOpen);
+    f.heightFog = heightFogParams((float)f.cam.pos.y, isOverSky(d) ? (int)DIM_OVERWORLD : d, e.mist, f.rain, hf, hfOpen);
   }
   if (primary && W && f.settings) W->farRange = (float)std::max(f.settings->farTerrain, rd * 16);
   if (primary) skyT = f.time;
@@ -470,7 +468,7 @@ void SkyRenderer::draw(const FrameCtx& f) {
   shader.set("uShowSun", e.showSun && !e.underwater ? 1.f : 0.f); shader.set("uSunFade", 1.f - e.cloud);
   { const int dl = g_settings ? g_settings->extra.value("dreamLight", 0) : 0; shader.set("uDream", dl <= 0 ? 0.f : dl >= 2 ? 1.6f : 1.f); }   // dreamlight.glsl's sky
   shader.set("uMoonPhase", e.moonPhase);
-  shader.set("uHarvest", halloween() && f.dim == DIM_OVERWORLD && e.moonPhase == 0 ? 1.f : 0.f);
+  shader.set("uHarvest", halloween() && f.land == DIM_OVERWORLD && e.moonPhase == 0 ? 1.f : 0.f);
   shader.set("uSunDir", e.sunDir);
   glBindVertexArray(vao);
   glDrawArrays(GL_TRIANGLES, 0, 3);

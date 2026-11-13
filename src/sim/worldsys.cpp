@@ -178,7 +178,7 @@ public:
     if (!isSource) {
       // recompute this cell's level from its feeders
       int expected = 99; bool falling = false;
-      if ((y & 255) != 255 && same(x, y + 1, z)) falling = true;   // (the land above never feeds this one: see below)
+      if (!landRoofAt(y) && same(x, y + 1, z)) falling = true;   // (the land above never feeds this one: see below)
       else {
         int sources = 0, best = 99;
         for (auto [dx, dz] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
@@ -202,7 +202,7 @@ public:
     // a land's floor: liquid never runs out of its land into the one below. The Skylands' waterfalls end in the cloud
     // layer (their spray shows there) instead of pouring on through and flooding the Overworld; the Depths' lava stays
     // out of the End. It doesn't spread along the floor either: the falls just end.
-    if ((y & 255) == 0) return;
+    if (landFloorAt(y)) return;
     // spread: a carved neighbour takes water into its empty octants. Down first, otherwise sideways. Only from still water
     // in its own block, like Minecraft's waterlogging: running water (and water a block holds) filled them too, and each
     // one filled became a spring of its own, so a slab floor beside a waterfall flooded on and on.

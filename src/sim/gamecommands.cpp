@@ -146,6 +146,7 @@ static int coord(Player& p, const std::vector<std::string>& a, size_t i, int axi
     if (!s.empty() && s[0] == '~') return (int)std::floor(base + (s.size() > 1 ? std::stod(s.substr(1)) : 0));
     size_t used = 0; double v = std::stod(s, &used);
     if (used != s.size() || !std::isfinite(v)) throw CommandUsage{};
+    if (axis == 1 && worldLayout().id >= 2) return fromDisplayY((int)std::floor(v), dimOfY(ifloor(p.pos.y)));   // (the deep world: y as the player sees it)
     return (int)std::floor(v);
   } catch (std::invalid_argument&) { throw CommandUsage{}; } catch (std::out_of_range&) { throw CommandUsage{}; }
 }
@@ -315,7 +316,7 @@ static void registerBuiltinCommands() {
     World& w = c.lv.world(p.realm);
     for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) if (inWorldY(y)) w.requestChunk(dimOfY(y), (x >> 4) + dx, (z >> 4) + dz, 1000);
     p.pos = vec3(x + 0.5f, y, z + 0.5f); p.vel = vec3(0); p.hasFallStart = false; p.prevPos = p.pos;
-    return "Teleported to " + std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(z);
+    return "Teleported to " + std::to_string(x) + " " + std::to_string(inWorldY(y) ? displayY(y) : y) + " " + std::to_string(z);
   });
   C("playsound", "<sound> [volume] [pitch] [x y z]", "Play one of the game's sounds (BTA)", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
     if (a.empty()) throw CommandUsage{};

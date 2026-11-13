@@ -219,6 +219,7 @@ static int spawns(const std::string& prefix, int n) {
 
 static int stats(const std::string& seedText, int dim, int cx0, int cz0, int n) {
   WorldGenOptions o; o.seed = seedFromString(seedText);
+  if (const char* v = std::getenv("DQ_GENVER")) o.genVersion = atoi(v);
   WorldGen wg(o); DimGenerator* g = wg.forDim(dim);
   std::map<std::string, std::vector<long>> per;   // key -> count per 8-row band
   std::map<std::string, long> be;
@@ -555,6 +556,7 @@ int main(int argc, char** argv) {
   CoreOptions co; co.server = true; co.userDirOverride = "/tmp/dq-gentool";
   if (!initCore(co)) { fprintf(stderr, "initCore failed (run from the build dir: data/ next to the exe)\n"); return 1; }
   std::string m = argc > 1 ? argv[1] : "";
+  if (const char* lay = std::getenv("DQ_LAYOUT")) setWorldLayout(atoi(lay));   // (the deep world: DQ_LAYOUT=2 DQ_GENVER=19)
   if (m == "biomemap" && argc >= 8) return biomemap(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argv[7]);
   if (m == "floaters" && argc >= 6) return floaters(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "surfgrid" && argc >= 6) return surfgrid(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));

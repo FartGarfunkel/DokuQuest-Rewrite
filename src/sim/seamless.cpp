@@ -16,7 +16,7 @@ float SeamlessSystem::cloudAt(double y) {
   int d = dimOfY(clampv((int)std::floor(y), 0, WORLD_H - 1));
   float ly = (float)(y - dimBase(d)), k = 0;
   if (d == DIM_AETHER) k = smoothstepf(30, 0, ly);
-  else if (d == DIM_OVERWORLD) k = smoothstepf(DIM_H - 22, DIM_H, ly);
+  else if (d == dimBelow(DIM_AETHER)) k = smoothstepf(DIM_H - 22, DIM_H, ly);   // (the band under the Skylands: the Overworld, or the deep world's open sky)
   return k > 0 ? smoothstepf(0.15f, 0.85f, k) * 0.93f : 0.f;
 }
 
@@ -89,15 +89,17 @@ void SeamlessSystem::startUpdraft(Player& p, State& s) {
 
 void SeamlessSystem::crossed(Player& p, State& s, int from, int to) {
   u32 id = p.id;
-  if (from == DIM_AETHER && to == DIM_OVERWORLD) {
+  // (the deep world: the Skylands' neighbour is the open sky over the Overworld, the Nether's the Underworld's floor)
+  const int underSky = dimBelow(DIM_AETHER), overNether = dimAbove(DIM_NETHER);
+  if (from == DIM_AETHER && to == underSky) {
     s.slowFallT = 40; s.cloudFall = true; p.vel.y = std::max(p.vel.y, -6.f);
     lv.fx->message(id, TOAST_FALL, "");
-  } else if (from == DIM_OVERWORLD && to == DIM_AETHER) {
+  } else if (from == underSky && to == DIM_AETHER) {
     p.vel.y = std::max(p.vel.y, 2.f);
     if (!p.flying && !p.riding) startUpdraft(p, s);
     firstVisit(p, "skyVisited", 40);
     lv.fx->message(id, s.updraft >= 0 ? TOAST_RISE_WIND : TOAST_RISE, "good");
-  } else if (from == DIM_OVERWORLD && to == DIM_NETHER) {
+  } else if (from == overNether && to == DIM_NETHER) {
     firstVisit(p, "depthsVisited", 40);
     lv.fx->message(id, TOAST_CRUST, "warn");
   } else if (from == DIM_NETHER && to == DIM_END) {
@@ -158,8 +160,9 @@ void SeamlessSystem::tick(Level& l, double dt) {
     if (main) {
       // down through the crust: standing on the Depths' roof where the Overworld's floor was broken,
       // a shaft opens through the roof to the first open cave below
-      int owBase = dimBase(DIM_OVERWORLD);
-      if (d1 == DIM_OVERWORLD && p.pos.y < owBase + 0.5f && p.onGround && R.tSolid[W.getBlock(ix, owBase - 1, iz)]) {
+      const int overNether = dimAbove(DIM_NETHER);   // (the Overworld; the deep world: the Underworld's floor)
+      int owBase = dimBase(overNether);
+      if (d1 == overNether && p.pos.y < owBase + 0.5f && p.onGround && R.tSolid[W.getBlock(ix, owBase - 1, iz)]) {
         int top = owBase - 1;
         for (int y = top; y > dimBase(DIM_NETHER) + 40; y--) {
           if (y < top - 2 && !R.tSolid[W.getBlock(ix, y, iz)] && !R.tSolid[W.getBlock(ix, y - 1, iz)] && !R.tLiquid[W.getBlock(ix, y, iz)]) break;

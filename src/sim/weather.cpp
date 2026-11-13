@@ -111,7 +111,7 @@ std::vector<vec3> WeatherSystem::groundAnchors(Level& lv) const {
   std::vector<vec3> out;
   for (auto& e : lv.entities()) {
     if (e->removed || !e->isPlayer() || e->realm != REALM_MAIN) continue;
-    if (dimOfY(clampv(ifloor(e->pos.y), 0, WORLD_H - 1)) == DIM_OVERWORLD) out.push_back(e->pos);
+    if (skyLandOf(dimOfY(clampv(ifloor(e->pos.y), 0, WORLD_H - 1))) == DIM_OVERWORLD) out.push_back(e->pos);   // (the open sky over it too; not the Underworld)
   }
   return out;
 }
@@ -217,7 +217,7 @@ int seasonOf(const Level& lv) { const float p = seasonPhase(lv); return p < 0 ? 
 const char* seasonName(int s) { static const char* N[4] = {"Spring", "Summer", "Autumn", "Winter"}; return s >= 0 && s < 4 ? N[s] : ""; }
 
 int WeatherSystem::precipAt(World& w, float x, float y, float z) {
-  if (w.realm != REALM_MAIN || dimOfY(clampv(ifloor(y), 0, WORLD_H - 1)) != DIM_OVERWORLD || !lvl) return 0;
+  if (w.realm != REALM_MAIN || skyLandOf(dimOfY(clampv(ifloor(y), 0, WORLD_H - 1))) != DIM_OVERWORLD || !lvl) return 0;
   bool shower = showerK > 0.01f && kind == "clear";
   std::string stamp = kind + (shower ? ":1" : ":0");
   if (pcache.stamp != stamp || clock - pcache.t > 4 || pcache.map.size() > 4000) { pcache.stamp = stamp; pcache.t = clock; pcache.map.clear(); }
@@ -276,7 +276,7 @@ void WeatherSystem::tick(Level& lv, double dt) {
   // the lead player: fronts are measured from them, and the local weather is theirs
   Player* lead = nullptr;
   for (auto& e : lv.entities()) if (!e->removed && e->isPlayer()) { lead = static_cast<Player*>(e.get()); break; }
-  if (lead) { anchor = vec2(lead->pos.x, lead->pos.z); leadPos = lead->pos; leadRealm = lead->realm; leadDim = dimOfY(clampv(ifloor(lead->pos.y), 0, WORLD_H - 1)); }
+  if (lead) { anchor = vec2(lead->pos.x, lead->pos.z); leadPos = lead->pos; leadRealm = lead->realm; leadDim = landOf(dimOfY(clampv(ifloor(lead->pos.y), 0, WORLD_H - 1))); }   // (under the land or above it: the Overworld's weather)
   World& w = lv.world(REALM_MAIN);
   bool host = hostRules;
   bool cycle = host && lv.info.rules.value("weatherCycle", true);
@@ -654,7 +654,7 @@ bool WeatherSystem::rodNear(World& w, int x, int y, int z, int R, ivec3& out) {
 void WeatherSystem::strikeNear(Level& lv, World& w) {
   // it goes for the high places: of a few spots in the storm near someone, the tallest
   std::vector<Player*> ps;
-  for (auto& e : lv.entities()) if (!e->removed && e->isPlayer() && e->realm == REALM_MAIN && dimOfY(clampv(ifloor(e->pos.y), 0, WORLD_H - 1)) == DIM_OVERWORLD) ps.push_back(static_cast<Player*>(e.get()));
+  for (auto& e : lv.entities()) if (!e->removed && e->isPlayer() && e->realm == REALM_MAIN && skyLandOf(dimOfY(clampv(ifloor(e->pos.y), 0, WORLD_H - 1))) == DIM_OVERWORLD) ps.push_back(static_cast<Player*>(e.get()));
   if (ps.empty()) return;
   Player* p = ps[std::min((size_t)(rnd() * ps.size()), ps.size() - 1)];
   bool have = false; ivec3 best{0}; float bestScore = 0;

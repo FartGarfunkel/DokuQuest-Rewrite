@@ -46,6 +46,7 @@ struct FrameCtx {
   int width = 1280, height = 720;
   const Settings* settings = nullptr;
   int dim = 2;               // band the camera is in
+  int land = 2;              // whose land that is (world/dims.h landOf: the Underworld and the open sky are the Overworld's)
   // sky & weather extras (render/sky.cpp fills them every frame)
   vec3 horizonColor{0.7f, 0.8f, 1.f};
   float rain = 0, thunder = 0, flash = 0;   // rain/snow 0..1 where the camera is (wet look), thunderstorm, lightning flash

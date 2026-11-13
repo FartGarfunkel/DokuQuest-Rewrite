@@ -179,7 +179,7 @@ void WeatherFxLayer::update(GameSession& s, double dt) {
   clock += dt;
   ParticleSystem& P = particles();
   WeatherSystem* W = weatherOf(*s.level);
-  int d = s.frame.dim;
+  int d = skyLandOf(s.frame.dim);
   if (d != dim) { dim = d; if (d != DIM_OVERWORLD) P.removeDrops(); }
   if (W) { bolts(s, *W); }
   if (!P.level) return;
@@ -199,7 +199,7 @@ void WeatherFxLayer::extra(GameSession& s, WeatherSystem& W, double dt) {
   u16 white = (u16)P.tile("white");
   auto put = [&](Particle& q) {
     u8 lt = w.getLight(ifloor(q.p.x), ifloor(q.p.y), ifloor(q.p.z));
-    if ((lt >> 4) < 8 && s.frame.dim == DIM_OVERWORLD) return;
+    if ((lt >> 4) < 8 && skyLandOf(s.frame.dim) == DIM_OVERWORLD) return;
     q.tile = white; q.light = (u8)((std::max(lt >> 4, 10) << 4) | (lt & 15)); P.add(q);
   };
   // (desert sand and dust: render/weather_sim.cpp spawnDust)
@@ -223,7 +223,7 @@ void WeatherFxLayer::particleWeather(GameSession& s, WeatherSystem* W, double dt
   bool gustSound = false;
   if (W) { if (gust > 0.6f && !gusting) { gusting = true; gustSound = true; } else if (gust < 0.3f) gusting = false; }
   int sky = w.getLight(ifloor(p.x), ifloor(p.y + 1.6f), ifloor(p.z)) >> 4;
-  int d = s.frame.dim;
+  int d = skyLandOf(s.frame.dim);
   bool open = (d == DIM_OVERWORLD || d == DIM_AETHER) && sky >= 13 && pl.realm == REALM_MAIN;
   if (gustSound && open) s.level->fx->soundUi(pl.id, "gust");
   if (W && open && gust > 0.05f) {

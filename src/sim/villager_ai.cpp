@@ -365,7 +365,7 @@ void npcStuckCheck(Level& lv, Creature& m, NpcMind& M) {
   int fx = ifloor(m.pos.x), fz = ifloor(m.pos.z), fy = ifloor(m.pos.y + 0.05f), hy = ifloor(m.pos.y + std::min(1.6f, m.h - 0.2f));
   if (!w.isLoaded(fx, fy, fz)) return;
   bool inWall = R.tSolid[w.getBlock(fx, hy, fz)] && R.tSolid[w.getBlock(fx, fy, fz)];
-  bool voidFall = (fy & 255) < 2;
+  bool voidFall = fy - landBottomY(fy) < 2;
   // in a fountain or a well a few seconds: out onto the nearest dry ground beside it (they climbed in after a spot to
   // stand in the square, and the basin's rim was too high to step back over)
   if (R.tLiquid[w.getBlock(fx, fy, fz)] || R.tLiquid[w.getBlock(fx, hy, fz)]) {

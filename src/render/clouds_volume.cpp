@@ -102,13 +102,13 @@ bool VolumetricClouds::init() {
 void VolumetricClouds::update(Level& lv, const FrameCtx& f, const SkyEnv& env, double dt) {
   active = false;
   if (!f.settings || !f.settings->clouds || !f.settings->extra.value("volumetricClouds", true) || f.cam.realm != REALM_MAIN) return;
-  if (f.dim != DIM_OVERWORLD && f.dim != DIM_AETHER) return;
+  if ((f.land != DIM_OVERWORLD && f.land != DIM_AETHER) || isUnderworld(f.dim)) return;
   if (!init()) return;
   active = true;
   WeatherSystem* W = weatherOf(lv);
   const std::string kind = W ? W->stormKind() : "clear";
   thunder = kind == "thunder" ? 1.f : 0.f;
-  flash = W ? std::max(W->flashT > 0 ? std::min(1.f, W->flashT / 0.2f) : 0.f, f.dim == DIM_AETHER && W->belowFlash > 0 ? W->belowFlash / 0.3f : 0.f) : 0.f;
+  flash = W ? std::max(W->flashT > 0 ? std::min(1.f, W->flashT / 0.2f) : 0.f, f.land == DIM_AETHER && W->belowFlash > 0 ? W->belowFlash / 0.3f : 0.f) : 0.f;
   mist = std::min(1.f, env.mist);
   wind = W ? glm::dvec2(W->cloudX, W->cloudZ) : glm::dvec2(0);
   // the coverage map, round you: the land's usual cover, thickening to full where a storm or a shower is
@@ -122,7 +122,7 @@ void VolumetricClouds::update(Level& lv, const FrameCtx& f, const SkyEnv& env, d
   if (mapT < 0.25 && origin == mapOrigin) return;
   mapT = 0; mapOrigin = origin;
   const float base = baseCov;
-  const float darkK = f.dim == DIM_OVERWORLD ? (kind == "thunder" ? 1.f : 0.8f) : 0.45f;
+  const float darkK = f.land == DIM_OVERWORLD ? (kind == "thunder" ? 1.f : 0.8f) : 0.45f;
   std::vector<u8> px((size_t)MAP_N * MAP_N * 2);
   for (int j = 0; j < MAP_N; j++) for (int i = 0; i < MAP_N; i++) {
     const float x = (float)(origin.x + (i + 0.5) * MAP_CELL), z = (float)(origin.y + (j + 0.5) * MAP_CELL);

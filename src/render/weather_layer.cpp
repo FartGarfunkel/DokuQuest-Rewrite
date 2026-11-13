@@ -32,7 +32,7 @@ public:
     in.wind = windParams(*s.level);
     in.cam = vec3(s.frame.cam.pos);
     in.camVel = s.player->vel;
-    in.band = s.player->realm == REALM_MAIN ? s.frame.dim : -1 - s.player->realm;
+    in.band = s.player->realm == REALM_MAIN ? skyLandOf(s.frame.dim) : -1 - s.player->realm;
     in.dist = (float)st.weatherDist;
     in.surfaceFx = st.weatherSurfaceFx;
     in.groundFog = st.groundFog;

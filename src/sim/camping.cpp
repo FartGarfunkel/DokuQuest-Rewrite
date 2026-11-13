@@ -83,7 +83,7 @@ std::optional<vec3> campFlue(World& w, int x, int y, int z) {
   if (it != cache.end() && now - it->second.t < 4) return it->second.f;
   auto solid = [&](int X, int Y, int Z) { BlockId id = w.getBlock(X, Y, Z); return id && reg().tSolid[id] && !reg().tLiquid[id]; };
   std::optional<vec3> f;
-  int bandTop = dimBase(dimOfY(y)) + DIM_H - 1;
+  int bandTop = landTopY(y);
   if (solid(x, y + 1, z)) {
     int best = y + 3;
     for (auto [dx, dz] : {std::pair{0, 0}, {1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
@@ -132,7 +132,7 @@ bool hangRope(UseCtx& u) {
   int ny = u.normal().y;
   // it needs something to hang from (or to stand on)
   if (hitId != I.rope && ny != -1 && !solidAt(w, x, y + 1, z) && !solidAt(w, x, y - 1, z) && ny != 0) return false;
-  int n = 0, have = creativeOf(p) ? 64 : p.held().n, floorY = dimBase(dimOfY(y));
+  int n = 0, have = creativeOf(p) ? 64 : p.held().n, floorY = landBottomY(y);
   while (n < have && n < 32 && y > floorY && isAirOrSoft(w.getBlock(x, y, z))) {
     w.setBlock(x, y, z, I.rope, 0); n++; y--;
     if (solidAt(w, x, y, z)) break;
@@ -205,7 +205,7 @@ bool grappleLodge(Level& lv, Player& p, const json& stack, int hx, int hy, int h
     f = n.x > 0 ? 3 : n.x < 0 ? 1 : n.z > 0 ? 0 : 2;   // facing the wall
   }
   w.setBlock(A.x, A.y, A.z, I.anchor, (u8)f);
-  int y = top, k = 0, floorY = dimBase(dimOfY(top));
+  int y = top, k = 0, floorY = landBottomY(top);
   while (y > floorY && k < 48 && air(rx, y, rz)) { w.setBlock(rx, y, rz, I.rope, HOOK_ROPE); y--; k++; }
   w.setBlockEntity(A.x, A.y, A.z, {{"type", "grapple"}, {"stack", stack}, {"col", {rx, rz, top, y + 1}}});
   sfxAt(lv, "rope_place", vec3(rx + 0.5f, (float)top, rz + 0.5f), 20);

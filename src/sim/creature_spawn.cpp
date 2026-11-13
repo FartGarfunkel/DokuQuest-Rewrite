@@ -367,7 +367,7 @@ public:
     spawnRealms(lv, realm, *p, dim, day, peaceful);
     if (peaceful) return;
     // the night crowd (monsters.js)
-    if (OVER && hostiles < capH) spawnMonsters(lv, realm, *p, ringFar, day, werewolf, ogre);
+    if ((OVER || isUnderworld(dim)) && hostiles < capH) spawnMonsters(lv, realm, *p, ringFar, day, werewolf, ogre);   // (the Underworld: its dark, below)
     // Terrain version 6 is the cave Nether: only pigmen and ghasts (below). The older crowd stays on
     // heightfield worlds.
     if (dim == DIM_NETHER && lv.info.genVersion < 6) spawnDepths(lv, realm, *p, ringFar, depthsHostile, wisps, golem);
@@ -690,8 +690,9 @@ public:
       }
       if (t == "drowned" && frand() < 0.2f) m->heldItem = "iron_sword";
     };
+    const bool deep = isUnderworld(dimOfY(ifloor(p.pos.y)));   // (the deep world's Underworld: only the dark below)
     // at night, out in the open: only where no torch or lamp reaches at all (light 0)
-    if (day < 0.42f && frand() < 0.3f) {
+    if (!deep && day < 0.42f && frand() < 0.3f) {
       ivec2 xz = ring(24, 64); int x = xz.x, z = xz.y;
       int y = surfaceY(w, x, z, DIM_OVERWORLD);
       if (y > 0 && (w.getLight(x, y, z) & 15) == 0) {
@@ -709,10 +710,10 @@ public:
       }
     }
     // underground, in the dark
-    if (frand() < 0.2f) {
+    if (frand() < (deep ? 0.45f : 0.2f)) {
       ivec2 xz = ring(24, 48); int x = xz.x, z = xz.y;
       int y0 = ifloor(p.pos.y) + (int)(frand() * 24) - 12;
-      if (w.isLoaded(x, y0, z)) for (int y = y0; y > y0 - 8 && y > dimBase(DIM_OVERWORLD) + 2; y--) {
+      if (w.isLoaded(x, y0, z)) for (int y = y0; y > y0 - 8 && y > (deep ? 2 : dimBase(DIM_OVERWORLD) + 2); y--) {
         if (R.tSolid[w.getBlock(x, y - 1, z)] && w.getBlock(x, y, z) == AIR && w.getBlock(x, y + 1, z) == AIR) {
           u8 l = w.getLight(x, y, z);
           if ((l >> 4) * day < 6 && (l & 15) == 0 && (l >> 4) < 12) {

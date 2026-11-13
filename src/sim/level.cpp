@@ -53,6 +53,7 @@ void registerLevelSystem(LevelSystemFactory f) { lsFactories().push_back(std::mo
 
 Level::Level(LevelInfo i, const fs::path& folder, ThreadPool* pool, EventBus* events)
   : info(std::move(i)), folder(folder), pool(pool), events(events) {
+  if (!info.layout) info.layout = 1;
   setWorldLayout(info.layout, info.underDepth);   // (before anything asks where a dimension is)
   WorldGenOptions o; o.seed = info.seed; o.genVersion = info.genVersion; o.worldType = info.worldType;
   if (const char* gv = std::getenv("DQ_FORCE_GENVER")) o.genVersion = std::atoi(gv);   // (tests: compare terrain versions)
@@ -97,6 +98,10 @@ std::unique_ptr<Level> Level::create(const fs::path& savesDir, LevelInfo info, T
   else info.seed = seedFromString(info.seedText);
   info.created = info.lastPlayed = unixMillis();
   info.folder = name;
+  if (!info.layout) {   // the deep world (docs/WORLD_DEPTH.md) for the land's own kinds; the made-up ones keep the old column
+    const std::string& t = info.worldType;
+    info.layout = info.genVersion >= 19 && (t.empty() || t == "default" || t == "large_biomes" || t == "amplified") ? 2 : 1;
+  }
   writeJson(savesDir / name / "level.json", info.toJson());
   return std::make_unique<Level>(info, savesDir / name, pool, events);
 }

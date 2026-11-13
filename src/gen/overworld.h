@@ -44,6 +44,7 @@ inline BtaVariant btaVariant(const OwColumn& c) {
 }
 struct SurfaceMat { BlockId top, filler, under; int fillDepth; };
 
+std::unique_ptr<DimGenerator> makeUnderworldGen(const class OverworldGen* ow, int depth);   // gen/underworld.cpp
 class OverworldGen : public DimGenerator, public TerrainQuery {
 public:
   explicit OverworldGen(const WorldGenOptions& o);
@@ -88,6 +89,10 @@ public:
   const GenBlocks& blocks() const { return B; }
 
   StructureIndex structures;
+  // the deep world (terrain version 19, layout 2: docs/WORLD_DEPTH.md): no floor under the land; the Underworld's
+  // bands below are generated here (gen/underworld.cpp), depth 1 just under it
+  bool deep_ = false;
+  void generateDeep(Chunk& ch, int depth) const;
 
   // terrain version 14 (docs/WORLDGEN_MERGE.md): the land shaped by Minecraft 1.20's noise router (gen/density.h)
   bool v14 = false;

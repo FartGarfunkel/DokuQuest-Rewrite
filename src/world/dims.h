@@ -52,6 +52,19 @@ inline bool isOverSky(int d) { return d == DIM_SKY1 || d == DIM_SKY2; }
 // whose land it is: the Underworld and the open sky above are the Overworld's (its day, its weather above ground, its
 // creatures); the rest are their own
 inline int landOf(int d) { return isUnderworld(d) || isOverSky(d) ? DIM_OVERWORLD : d; }
+// whose sky and weather it is: the open sky over the Overworld is the Overworld's; the Underworld has none (its own)
+inline int skyLandOf(int d) { return isOverSky(d) ? DIM_OVERWORLD : d; }
+// a block on its band's bottom (top) row with another land (or nothing) under (over) it: where water stops, the
+// seam between two worlds (the deep world's Underworld, Overworld and open sky run on into each other)
+inline bool landFloorAt(int y) { if ((y & 255) != 0) return false; const int d = dimOfY(y), b = dimBelow(d); return b < 0 || landOf(b) != landOf(d); }
+// the lowest and highest y of the land a y is in (the deep world: the Underworld, Overworld and open sky are one)
+inline int landBottomY(int y) { int d = dimOfY(y); for (int b = dimBelow(d); b >= 0 && landOf(b) == landOf(d); b = dimBelow(b)) d = b; return dimBase(d); }
+inline int landTopY(int y) { int d = dimOfY(y); for (int a = dimAbove(d); a >= 0 && landOf(a) == landOf(d); a = dimAbove(a)) d = a; return dimBase(d) + DIM_H - 1; }
+// the y a player sees (F3, coordinates, commands' read-outs): the band's own y as ever; in the deep world the
+// Overworld's land the Minecraft way (sea level 63, the Underworld below 0, the open sky over 255)
+inline int displayY(int y) { const int d = dimOfY(y); return worldLayout().id >= 2 && landOf(d) == DIM_OVERWORLD ? y - dimBase(DIM_OVERWORLD) - 1 : y - dimBase(d); }
+inline int fromDisplayY(int dy, int d) { return worldLayout().id >= 2 && landOf(d) == DIM_OVERWORLD ? dy + dimBase(DIM_OVERWORLD) + 1 : dy + dimBase(d); }
+inline bool landRoofAt(int y) { if ((y & 255) != 255) return false; const int d = dimOfY(y), a = dimAbove(d); return a < 0 || landOf(a) != landOf(d); }
 
 // Original JS dimension numbers (game/portals.js DIM) for porting reference
 enum JsDim : int { JS_OVERWORLD = 0, JS_DEPTHS = 1, JS_SKYLANDS = 2, JS_POCKET = 3, JS_REALM = 4, JS_END = 5 };

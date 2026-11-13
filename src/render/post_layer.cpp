@@ -1892,7 +1892,7 @@ public:
     auto armCapture = [&] { packVoxelSetCapture(gbuf.prog != 0); };
     if (f.portalDepth > 0) { packVoxelClear(); armCapture(); return; }
     const std::string& pack = s.app.settings.shaderPack;
-    if (pack != irisFor || f.dim != irisDim) loadIris(pack, f.dim);
+    if (pack != irisFor || f.land != irisDim) loadIris(pack, f.land);
     s.worldRenderer.setPackGeometry(gbuf.prog != 0);
     if (iris.empty() && !gbuf.prog) { packVoxelClear(); armCapture(); return; }
     GLint vp[4]; glGetIntegerv(GL_VIEWPORT, vp);
@@ -2676,7 +2676,7 @@ private:
     if (wt < 0) wt = 0;
     if (wt > 23999) wt = 23999;
     const mat4 ortho = glm::ortho(0.f, 1.f, 0.f, 1.f, -1.f, 1.f);
-    const vec3 camPos((float)std::fmod(cam.pos.x, 30000.0), (float)(cam.pos.y - dimBase(f.dim)), (float)std::fmod(cam.pos.z, 30000.0));
+    const vec3 camPos((float)std::fmod(cam.pos.x, 30000.0), (float)(cam.pos.y - dimBase(f.land)), (float)std::fmod(cam.pos.z, 30000.0));
     const vec3 prevPos = havePrev ? prevCam : camPos;
     const mat4& pMV = havePrev ? prevMV : mv;
     const mat4& pP = havePrev ? prevP : pr;
@@ -2723,7 +2723,7 @@ private:
         const double interval = (double)shInterval;
         const double halfI = interval * 0.5;
         auto cell = [&](double v) { return (float)(std::fmod(v, interval) - halfI); };
-        const double sy = cam.pos.y - dimBase(f.dim);
+        const double sy = cam.pos.y - dimBase(f.land);
         shadowMV = glm::translate(shadowMV, vec3(cell(cam.pos.x), cell(sy), cell(cam.pos.z)));
       }
       // Symmetric depth so a low sun still reaches terrain beside the camera. The pack scales z itself.
@@ -2746,7 +2746,7 @@ private:
         {"rainStrength", f.rain}, {"wetness", f.rain}, {"sunAngle", sunAngle},
         {"shadowAngle", shadowAngle}, {"worldTime", (double)wt}, {"worldDay", (double)s.level->info.day},
         {"moonPhase", (double)(s.level->info.day % 8)}, {"isEyeInWater", (double)f.eyeFluid},
-        {"screenBrightness", s.app.settings.brightness}, {"eyeAltitude", cam.pos.y - dimBase(f.dim)},
+        {"screenBrightness", s.app.settings.brightness}, {"eyeAltitude", cam.pos.y - dimBase(f.land)},
         {"blindness", 0}, {"darknessFactor", 0}, {"nightVision", 0},
         {"eyeBrightness.x", (double)eyeBlock}, {"eyeBrightness.y", (double)eyeSky},
         {"eyeBrightnessSmooth.x", (double)eyeBlockI}, {"eyeBrightnessSmooth.y", (double)eyeSkyI},
@@ -2866,7 +2866,7 @@ private:
         else if (n == "moonPhase") f1((float)(s.level->info.day % 8));
         else if (n == "isEyeInWater") f1((float)f.eyeFluid);
         else if (n == "screenBrightness") f1(s.app.settings.brightness);
-        else if (n == "eyeAltitude") f1((float)(cam.pos.y - dimBase(f.dim)));
+        else if (n == "eyeAltitude") f1((float)(cam.pos.y - dimBase(f.land)));
         else if (n == "nightVision" || n == "blindness" || n == "darknessFactor" || n == "centerDepthSmooth") f1(n == "centerDepthSmooth" ? 0.98f : 0.f);
         else if (n == "heldBlockLightValue") f1((float)heldLv);
         else if (n == "heldBlockLightValue2") f1((float)heldLv2);

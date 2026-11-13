@@ -49,7 +49,7 @@ void main() {
     float f = float(tk - 4u) / 15.0;
     tint = vec3(f * 0.6 + (f > 0.0 ? 0.4 : 0.3), clamp(f * f * 0.7 - 0.5, 0.0, 1.0), clamp(f * f * 0.6 - 0.7, 0.0, 1.0)) * (204.0 / 255.0);
   } else if (tk > 0u) {
-    float land = clamp(floor((origin.y + uWorldOrigin.y + 8.0) / 256.0), 0.0, 3.0);   // the section's own land
+    float land = clamp(floor((origin.y + uWorldOrigin.y + 8.0) / 256.0), 0.0, 15.0);   // the section's own band (a layer each: world_renderer.cpp climateFor)
     vec2 cl = textureLod(uClimate, vec3(world.xz / 1024.0, land), 0.0).rg;
     tint = textureLod(uTintLut, vec3((cl * 255.0 + 0.5) / 256.0, float(tk - 1u)), 0.0).rgb;
   }

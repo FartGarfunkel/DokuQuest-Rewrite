@@ -105,8 +105,12 @@ void RealmGen::sample(int wx, int wz, ColumnSample& s) const {
 // ---- registration -----------------------------------------------------------------------------------------
 void registerDefaultWorldGen() {
   WorldGen::registerType("default", [](int d, const WorldGenOptions& o) -> std::unique_ptr<DimGenerator> {
+    // (the Underworld's bands are the Overworld's own generator's: WorldGen asks for them after it, in order of id,
+    // and owns them all, the Overworld's outliving none of theirs)
+    thread_local OverworldGen* lastOw = nullptr;
+    if (isUnderworld(d)) return lastOw && lastOw->deep_ && dimInWorld(d) ? makeUnderworldGen(lastOw, d - DIM_UNDER1 + 1) : std::unique_ptr<DimGenerator>(std::make_unique<VoidGen>());
     switch (d) {
-      case DIM_OVERWORLD: return std::make_unique<OverworldGen>(o);
+      case DIM_OVERWORLD: { auto g = std::make_unique<OverworldGen>(o); lastOw = g.get(); return g; }
       case DIM_NETHER: return std::make_unique<DepthsGen>(o);
       case DIM_AETHER: return std::make_unique<SkylandsGen>(o);
       case DIM_END: return std::make_unique<EndGen>(o);

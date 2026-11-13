@@ -157,8 +157,8 @@ void CloudRenderer::build() {
 void CloudRenderer::update(Level& lv, const FrameCtx& f, const SkyEnv& env) {
   list.clear(); active = false;
   if (!f.settings || !f.settings->clouds || f.cam.realm != REALM_MAIN) return;
-  int d = f.dim;
-  if (d != DIM_OVERWORLD && d != DIM_AETHER) return;
+  int d = f.land;
+  if ((d != DIM_OVERWORLD && d != DIM_AETHER) || isUnderworld(f.dim)) return;
   WeatherSystem* W = weatherOf(lv);
   active = true;
   // cloudScene (clouds.js + skies.js)

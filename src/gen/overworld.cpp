@@ -24,6 +24,7 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
   if (o.worldType == "large_biomes") climateScale *= 3;   // the "Bigger biomes" world: every land three times as wide
   wtype = o.worldType;
   genVer_ = o.genVersion;
+  deep_ = o.genVersion >= 19 && worldLayout().id >= 2;
   jigsawVillages = o.genVersion >= 9;
   villageStyles = o.genVersion >= 10;
   villagePlan11 = o.genVersion >= 11;
@@ -453,7 +454,7 @@ void OverworldGen::fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const {
     };
     const int nTop = v17 ? v14Spike(wx, wz, Hc) : Hc;   // (a lone column planned over all round it by the water: theirs)
     const bool whole = !v17 || lev || Hc != Hs || (nTop == Hc && (Hc > SEA_LEVEL + 4 || Hc / 8 > jmax || latD(Hc) > 0));   // (terrain version 17)
-    for (int y = whole ? Hc : nTop; y >= 1; y--) {
+    for (int y = whole ? Hc : nTop; y >= (deep_ ? 0 : 1); y--) {   // (the deep world: row 0 too, Minecraft's y -1)
       if (whole && y >= Hc - 3) { b.blocks[colIdx(x, y, z)] = B.stone; if (!top) top = y; continue; }
       const int j0 = y >> 3; const double fy = (y & 7) / 8.0;
       auto L = [&](int di, int dj, int dk) { return lat[((k0 + dk) * 5 + (i0 + di)) * NY + std::min(NY - 1, j0 + dj)]; };
@@ -470,7 +471,7 @@ void OverworldGen::fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const {
     if (c.H < SEA_LEVEL && c.biome != BIOME_OCEAN && !c.special) c.biome = BIOME_OCEAN;
     else if (c.H >= SEA_LEVEL && c.biome == BIOME_OCEAN) c.biome = c.H <= SEA_LEVEL + 2 ? BIOME_BEACH : BIOME_PLAINS;
     if (v15) {   // (Soulrend's surface: surfaceV15, once the chunk's land is all here)
-      for (int y = 0; y < 5; y++) if (y == 0 || hf(wx, y, wz, seed_) < (5 - y) / 5.0) b.blocks[colIdx(x, y, z)] = B.bedrock;
+      if (!deep_) for (int y = 0; y < 5; y++) if (y == 0 || hf(wx, y, wz, seed_) < (5 - y) / 5.0) b.blocks[colIdx(x, y, z)] = B.bedrock;
       for (int y = top + 1; y <= SEA_LEVEL; y++) b.blocks[colIdx(x, y, z)] = B.water;
       continue;
     }
@@ -561,7 +562,7 @@ void OverworldGen::surfaceV15(GenBuf& b, OwColumn* cols, int cx, int cz) const {
     col.biomeAt = [&](int y) { return mcBiomeAt(wx, y, wz); };
     int stoneAbove = 0, waterHeight = INT32_MIN, stoneBelowY = INT32_MAX;
     const int top = hm[z * 16 + x] + 2;   // (band y: the air above the highest block)
-    for (int y = std::min(top, DIM_H - 1); y >= 1; y--) {
+    for (int y = std::min(top, DIM_H - 1); y >= (deep_ ? 0 : 1); y--) {
       const BlockId here = b.blocks[colIdx(x, y, z)];
       const int my = y - 1;
       if (here == AIR) { stoneAbove = 0; waterHeight = INT32_MIN; continue; }
@@ -719,7 +720,7 @@ void OverworldGen::generate(Chunk& ch) {
   placeOddities(b, ch.cx, ch.cz);
   placeDungeons(b, ch, cols);
   // the Ember Crust at the bottom of the Overworld (worldupdate.js), then the structures, then the Deep Dark
-  if (B.ember_crust) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) b.blocks[colIdx(x, 0, z)] = B.ember_crust;
+  if (B.ember_crust && !deep_) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) b.blocks[colIdx(x, 0, z)] = B.ember_crust;   // (the deep world: at the Underworld's floor)
   carveDeep(b, ch.cx, ch.cz);   // (before the structures: run after, it ate into anything built down there — stone to slate, sculk and caves)
   structures.build(b, ch);
   if (!wtype.empty() && wtype != "default" && wtype != "large_biomes") worldTypePass(b, cols, ch.cx, ch.cz);

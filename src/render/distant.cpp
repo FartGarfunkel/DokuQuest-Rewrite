@@ -484,7 +484,7 @@ void DistantTerrain::update(Level& lv, World& w, const FrameCtx& f, ThreadPool& 
   }
   // which lands: the one you're in (the only one drawn: game/seamless.js), and the one beyond the cloud bank
   // (Overworld <-> Skylands) made ready while you're in the bank, so it's there when you come out of it
-  int d = f.dim;
+  int d = f.land;   // (the deep world: under the land or up in its sky, the far land is the Overworld's)
   if (d != DIM_NETHER && cacheLoaded) genFar(w, d, f.cam.pos, pool);
   trimSummaries(f.cam.pos);
   for (auto& b : bands) b->active = false;
@@ -532,7 +532,7 @@ void DistantTerrain::update(Level& lv, World& w, const FrameCtx& f, ThreadPool& 
 }
 
 void DistantTerrain::draw(const FrameCtx& f, const SkyEnv& env, const TileTextures& tex) {
-  if (f.portalDepth > 0 && (f.cam.realm != REALM_MAIN || f.dim < 0 || f.dim >= DIM_COUNT || !bands[f.dim]->active)) return;   // a portal's view: only into a land drawn here
+  if (f.portalDepth > 0 && (f.cam.realm != REALM_MAIN || f.land < 0 || f.land >= DIM_COUNT || !bands[f.land]->active)) return;   // a portal's view: only into a land drawn here
   if (f.portalDepth == 0) drawn = 0;
   bool any = false;
   for (auto& b : bands) if (b->active && !b->draw.empty()) any = true;
@@ -566,7 +566,7 @@ void DistantTerrain::draw(const FrameCtx& f, const SkyEnv& env, const TileTextur
   GLint locO = shader.loc("uTileOrigin"), locS = shader.loc("uTileScale"), locC = shader.loc("uCell"), locW = shader.loc("uTileWorld");
   for (auto& bp : bands) {
     Band& b = *bp;
-    if (!b.active || b.draw.empty() || b.dim != f.dim) continue;   // only the camera's own land
+    if (!b.active || b.draw.empty() || b.dim != f.land) continue;   // only the camera's own land
     glBindTexture(GL_TEXTURE_2D, b.maskTex);
     glm::dvec3 o = f.cam.origin;
     shader.set("uMaskO", vec3((float)(b.maskCx0 * 16.0 - o.x), (float)(b.maskCz0 * 16.0 - o.z), (float)(b.maskN * 16)));

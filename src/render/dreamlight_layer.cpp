@@ -31,7 +31,7 @@ public:
     glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, vp[0], vp[1], vp[2], vp[3]);
     glDisable(GL_DEPTH_TEST); glDisable(GL_BLEND); glDisable(GL_CULL_FACE);
     const float sy = f.sunDir.y;
-    const float day = f.dim == DIM_OVERWORLD ? smoothstepf(-0.1f, 0.1f, sy) : 0.f;
+    const float day = f.land == DIM_OVERWORLD ? smoothstepf(-0.1f, 0.1f, sy) : 0.f;
     const float low = 1 - smoothstepf(0.f, 0.35f, std::fabs(sy));
     sh->use(); sh->set("uTex", 0); sh->set("uRes", vec2((float)vp[2], (float)vp[3]));
     sh->set("uStrength", mode >= 2 ? 1.6f : 1.f); sh->set("uDaylight", day); sh->set("uSunLow", low);

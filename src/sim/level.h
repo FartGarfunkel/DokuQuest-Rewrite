@@ -20,9 +20,10 @@ struct LevelInfo {
   std::string mode = "survival";       // survival | creative | adventure | spectator
   std::string difficulty = "normal";   // peaceful | easy | normal | hard
   std::string worldType = "default";
-  int genVersion = 18;  // new worlds: the newest terrain (18: no stripes in bedrock, ice and rock; 17: blended levelling, shore fixes; 16: Soulrend's plants and features; 15: Soulrend's world, tools/port/soulrend_worldgen; 14: Minecraft 1.20's land, docs/WORLDGEN_MERGE.md) (old saves keep theirs: fromJson defaults to 3)
-  int layout = 1;              // the column's layout (world/dims.h): 1 the four bands of old, 2 the deep world (the
-  int underDepth = 4;          //   Underworld under the Overworld, underDepth bands of it, and open sky over it)
+  int genVersion = 19;  // new worlds: the newest terrain (19: the deep world, docs/WORLD_DEPTH.md; 18: no stripes in bedrock, ice and rock; 17: blended levelling, shore fixes; 16: Soulrend's plants and features; 15: Soulrend's world, tools/port/soulrend_worldgen; 14: Minecraft 1.20's land, docs/WORLDGEN_MERGE.md) (old saves keep theirs: fromJson defaults to 3)
+  int layout = 0;              // the column's layout (world/dims.h): 1 the four bands of old, 2 the deep world (the
+  int underDepth = 4;          //   Underworld under the Overworld, underDepth bands of it, and open sky over it);
+                               //   0 = a new world's: Level::create picks (the deep world for the land's own world types)
   double time = 300;           // seconds into the day (0 = sunrise in the original's clock)
   i64 day = 0;
   i64 created = 0, lastPlayed = 0;
