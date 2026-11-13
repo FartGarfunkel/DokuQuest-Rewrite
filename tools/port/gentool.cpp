@@ -399,10 +399,63 @@ static int owmap(const std::string& seedText, int ver, int x0, int z0, int step,
   return 0;
 }
 
+// dq-gentool topview <#seed|text> <x0> <z0> <chunks> <out.ppm>: real chunks generated, each column's top block's colour from
+// above (shaded by height): what the land actually looks like
+// terrain version 15: Soulrend's biomes over an area, as a picture (a colour per biome) and a count
+static int biomemap(const std::string& seedText, int x0, int z0, int n, int step, const char* out) {
+  WorldGenOptions o; o.seed = seedText.size() > 1 && seedText[0] == '#' ? (i32)std::stoll(seedText.substr(1)) : seedFromString(seedText);
+  o.genVersion = 15;
+  WorldGen wg(o); auto* g = dynamic_cast<OverworldGen*>(wg.forDim(DIM_OVERWORLD));
+  std::vector<u8> img((size_t)n * n * 3); std::map<std::string, int> count;
+  for (int j = 0; j < n; j++) for (int i = 0; i < n; i++) {
+    const std::string b = g->mcBiomeName(x0 + i * step, z0 + j * step); count[b]++;
+    u32 h = 2166136261u; for (char c : b) h = (h ^ (u8)c) * 16777619u;
+    u8* px = &img[((size_t)j * n + i) * 3]; px[0] = 60 + (h & 0xBF); px[1] = 60 + ((h >> 8) & 0xBF); px[2] = 60 + ((h >> 16) & 0xBF);
+  }
+  std::vector<std::pair<int, std::string>> v; for (auto& [k, c] : count) v.push_back({c, k}); std::sort(v.rbegin(), v.rend());
+  for (auto& [c, k] : v) printf("%5.1f%% %s\n", 100.0 * c / (n * n), k.c_str());
+  FILE* f = fopen(out, "wb"); fprintf(f, "P6 %d %d 255\n", n, n); fwrite(img.data(), 1, img.size(), f); fclose(f);
+  return 0;
+}
+
+static int topview(const std::string& seedText, int x0, int z0, int nc, const char* out) {
+  WorldGenOptions o; o.seed = seedText.size() > 1 && seedText[0] == '#' ? (i32)std::stoll(seedText.substr(1)) : seedFromString(seedText);
+  if (const char* v = std::getenv("DQ_GENVER")) o.genVersion = atoi(v);
+  WorldGen wg(o); DimGenerator* g = wg.forDim(DIM_OVERWORLD);
+  const int n = nc * 16; std::vector<u8> img((size_t)n * n * 3); std::map<std::string, int> tops;
+  std::map<BlockId, u32> colCache;
+  auto colour = [&](BlockId b) -> u32 {
+    auto it = colCache.find(b); if (it != colCache.end()) return it->second;
+    const std::string k = key(b); u32 c = 0x808080;
+    struct { const char* w; u32 c; } T[] = {{"water", 0x3060c0}, {"ice", 0xa0c0f0}, {"leaves", 0x2f7a2a}, {"grass", 0x5aa040}, {"sand", 0xdccf90}, {"stone", 0x8a8a8a},
+      {"gravel", 0x9a9088}, {"dirt", 0x7a5a3a}, {"snow", 0xf0f0f0}, {"log", 0x6b4a2a}, {"clay", 0xa0a8b8}, {"mud", 0x4a3a30}, {"podzol", 0x6a4a28},
+      {"terracotta", 0xb06a40}, {"mycelium", 0x806878}, {"moss", 0x507a30}, {"andesite", 0x888888}, {"granite", 0x9a6a5a}, {"diorite", 0xc8c8c8}};
+    for (auto& t : T) if (k.find(t.w) != std::string::npos) { c = t.c; break; }
+    return colCache[b] = c;
+  };
+  for (int cz = 0; cz < nc; cz++) for (int cx = 0; cx < nc; cx++) {
+    Chunk c(DIM_OVERWORLD, (x0 >> 4) + cx, (z0 >> 4) + cz); g->generate(c);
+    for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+      int y = DIM_H - 1; BlockId b = AIR;
+      for (; y > 0; y--) { b = c.get(x, y, z); if (b != AIR && reg().block(b).render != Render::Cross) break; }
+      tops[key(b)]++;
+      const u32 col = colour(b); const float k = 0.55f + std::clamp((y - 50) / 120.f, 0.f, 1.f) * 0.6f;
+      u8* px = &img[(((size_t)cz * 16 + z) * n + cx * 16 + x) * 3];
+      px[0] = (u8)std::min(255.f, ((col >> 16) & 255) * k); px[1] = (u8)std::min(255.f, ((col >> 8) & 255) * k); px[2] = (u8)std::min(255.f, (col & 255) * k);
+    }
+  }
+  std::vector<std::pair<int, std::string>> v; for (auto& [k2, c2] : tops) v.push_back({c2, k2}); std::sort(v.rbegin(), v.rend());
+  for (size_t i = 0; i < v.size() && i < 14; i++) printf("%s %.1f%%  ", v[i].second.c_str(), 100.0 * v[i].first / (n * n)); printf("\n");
+  FILE* f = fopen(out, "wb"); fprintf(f, "P6 %d %d 255\n", n, n); fwrite(img.data(), 1, img.size(), f); fclose(f);
+  return 0;
+}
+
 int main(int argc, char** argv) {
   CoreOptions co; co.server = true; co.userDirOverride = "/tmp/dq-gentool";
   if (!initCore(co)) { fprintf(stderr, "initCore failed (run from the build dir: data/ next to the exe)\n"); return 1; }
   std::string m = argc > 1 ? argv[1] : "";
+  if (m == "biomemap" && argc >= 8) return biomemap(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argv[7]);
+  if (m == "topview" && argc >= 7) return topview(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), argv[6]);
   if (m == "owmap" && argc >= 9) return owmap(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]), argv[8]);
   if (m == "vstats" && argc >= 3) return vstats(argv[2]);
   if (m == "vterrain" && argc >= 8) return vterrain(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argv[7]);

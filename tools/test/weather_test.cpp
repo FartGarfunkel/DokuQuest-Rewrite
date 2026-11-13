@@ -162,7 +162,12 @@ int main(int argc, char** argv) {
         sim.update(in, 0.05);
         for (const WParticle& p : sim.all()) {
           if (p.kind == WKind::Ripple) { ripples++; if (std::abs(p.pos.y - (FY + 1)) > 0.02) rippleOff++; }
-          if (p.kind == WKind::Streak) { streaks++; const double fx0 = std::min(std::abs(p.pos.x - (bx + 20)), std::abs(p.pos.x - (bx + 21))); if (fx0 > 0.02) streakOff++; }
+          if (p.kind == WKind::Streak) {   // (on a wall's face: any wall, the hut's too, as the wind takes the rain)
+            streaks++;
+            const double fx = std::round(p.pos.x); const int y = (int)std::floor(p.pos.y), z = (int)std::floor(p.pos.z);
+            const bool face = std::abs(p.pos.x - fx) <= 0.02 && (w.getBlock((int)fx - 1, y, z) == stone || w.getBlock((int)fx, y, z) == stone);
+            if (!face) streakOff++;
+          }
           if (p.kind >= WKind::Ripple) surface++;
         }
       }
@@ -173,7 +178,7 @@ int main(int argc, char** argv) {
     CHECK(r[1] == 0, "ripples lie on the water's surface (%d off it)", r[1]);
     auto w2 = run(vec3(bx + 18.5f, FY + 2.6f, 0.5f), true, 200);
     CHECK(w2[2] > 0, "rain beside a stone wall makes streaks down it (%d seen)", w2[2]);
-    CHECK(w2[3] == 0, "streaks hug the wall's face (%d off it)", w2[3]);
+    CHECK(w2[3] == 0, "streaks hug a wall's face (%d off one)", w2[3]);
     auto off = run(vec3(bx + 2.5f, FY + 2.6f, 21.5f), false, 200);
     CHECK(off[4] == 0, "Splashes & Ripples off: no surface effects (%d)", off[4]);
   }

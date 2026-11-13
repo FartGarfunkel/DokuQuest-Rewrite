@@ -84,7 +84,7 @@ struct Panorama {
   std::unique_ptr<SkyRenderer> sky;
   FrameCtx frame;
   fs::path folder;
-  float yaw = 0.6f; double y = 0;
+  float yaw = 0.6f; double y = 0, cx = 8, cz = 8;   // (cx, cz: the spot it circles)
   bool ok = false;
   bool start(App& a) {
     folder = userSub("cache") / "title-panorama";
@@ -97,8 +97,24 @@ struct Panorama {
     sky = std::make_unique<SkyRenderer>(); sky->init();
     wr.setWorld(&lv->world());
     int top = 0;
-    if (DimGenerator* g = lv->gen->forDim(DIM_OVERWORLD))
-      for (int dz = -40; dz <= 40; dz += 8) for (int dx = -40; dx <= 40; dx += 8) { ColumnSample s; g->sample(8 + dx, 8 + dz, s); top = std::max(top, std::max((int)s.height, 64)); }
+    if (DimGenerator* g = lv->gen->forDim(DIM_OVERWORLD)) {
+      // somewhere worth looking at: out from the middle, the first stretch that's mostly dry land, not frozen, not a peak
+      auto good = [&](int x, int z) {
+        int land = 0, n = 0;
+        for (int dz = -48; dz <= 48; dz += 24) for (int dx = -48; dx <= 48; dx += 24) {
+          ColumnSample s; g->sample(x + dx, z + dz, s); n++;
+          if (s.water < 0 && s.height >= 66 && s.height < 150 && s.temp > 100) land++;
+        }
+        return land * 10 >= n * 8;
+      };
+      bool found = false;
+      for (int r = 0; r <= 4096 && !found; r += 160)
+        for (int k = 0; k < (r ? 12 : 1) && !found; k++) {
+          const int x = (int)std::lround(r * std::cos(k * PI / 6)), z = (int)std::lround(r * std::sin(k * PI / 6));
+          if (good(x, z)) { cx = x + 0.5; cz = z + 0.5; found = true; }
+        }
+      for (int dz = -40; dz <= 40; dz += 8) for (int dx = -40; dx <= 40; dx += 8) { ColumnSample s; g->sample((int)cx + dx, (int)cz + dz, s); top = std::max(top, std::max((int)s.height, 64)); }
+    }
     y = dimBase(DIM_OVERWORLD) + top + 10;
     ok = true;
     return true;
@@ -116,7 +132,7 @@ struct Panorama {
     int R = std::min(a.settings.renderDist, 4);
     World& w = lv->world();
     Camera& cam = frame.cam;
-    cam.pos = glm::dvec3(8 + std::sin(yaw) * 6, y, 8 + std::cos(yaw) * 6);
+    cam.pos = glm::dvec3(cx + std::sin(yaw) * 6, y, cz + std::cos(yaw) * 6);
     cam.yaw = yaw + PI; cam.pitch = -0.28f; cam.fov = 70;
     std::vector<StreamAnchor> anchors = {{vec3(cam.pos), R, false}};
     w.stream(anchors, 3.0);

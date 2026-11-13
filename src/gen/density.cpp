@@ -153,10 +153,11 @@ bool DensityGraph::load(const fs::path& dir, u64 seed, const std::string& prefix
   for (auto& [k, v] : ns["noise_router"].items()) router[k] = v;
   // the router's entries, parsed on demand by find()
   nodes.reserve(4096);
-  // more land than Minecraft's: its continents raised a little (half our world was sea, in islands; DQ_CONT_BIAS to try others)
+  // terrain version 14 only: more land than Minecraft's, its continents raised a little (half our world was sea, in islands;
+  // DQ_CONT_BIAS to try others). Soulrend's world (data/soulrend_worldgen) is as its mods make it
   {
     const char* eb = std::getenv("DQ_CONT_BIAS");
-    const double bias = eb ? std::atof(eb) : 0.1;
+    const double bias = eb ? std::atof(eb) : dir.filename() == "vanilla_worldgen" ? 0.1 : 0.0;
     const int c = find("minecraft:overworld/continents");
     if (c >= 0 && bias != 0) {
       Node k; k.op = O_CONST; k.c = bias; nodes.push_back(k);
@@ -189,11 +190,14 @@ int DensityGraph::find(const std::string& name) const {
   return idx;
 }
 
+double DensityGraph::noiseValue(int n, double x, double y, double z) const { return n < 0 ? 0 : noises[n]->value(x, y, z); }
+
 int DensityGraph::noiseRef(const std::string& id) {
   std::string rel = id.rfind("minecraft:", 0) == 0 ? id.substr(10) : id;
   if (auto it = noiseIdx.find(rel); it != noiseIdx.end()) return it->second;
   json j; int first = -7; std::vector<double> amps{1.0};
-  if (readJsonFile(dir_ / "noise" / (rel + ".json"), j)) { first = j.value("firstOctave", -7); amps = j["amplitudes"].get<std::vector<double>>(); }
+  std::string file = rel; if (const size_t c = file.find(':'); c != std::string::npos) file[c] = '/';
+  if (readJsonFile(dir_ / "noise" / (file + ".json"), j)) { first = j.value("firstOctave", -7); amps = j["amplitudes"].get<std::vector<double>>(); }
   noises.push_back(std::make_unique<Normal>(hashName(seed_, rel), first, amps));
   return noiseIdx[rel] = (int)noises.size() - 1;
 }

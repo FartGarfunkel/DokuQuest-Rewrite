@@ -17,6 +17,7 @@ struct OwColumn {
   double temp = 0, humid = 0;
   float river = 0;      // 1 mid-stream, 0.5 on the banks
   u8 special = 0;       // terrain version 14: 1 a mushroom island (gen/overworld.cpp)
+  u16 mc = 0xFFFF;      // terrain version 15: Soulrend's biome here (gen/mc_biomes.h index; 0xFFFF older terrain)
 };
 // Biome variants inspired by Better than Adventure (our own designs), carved out of the climate: the hottest, driest
 // savanna turns to Redlands (red sand, spinifex, pale gum trees), the coldest taiga and peaks to Glacier (packed and
@@ -24,6 +25,7 @@ struct OwColumn {
 enum BtaVariant : u8 { BV_NONE = 0, BV_REDLANDS, BV_GLACIER, BV_MEADOW, BV_MOSSMIRE, BV_THORNSCRUB, BV_HIGHLANDS, BV_TUNDRA, BV_SEASONAL, BV_MUSHROOM };
 inline BtaVariant btaVariant(const OwColumn& c) {
   if (c.special == 1) return BV_MUSHROOM;   // (terrain version 14: Minecraft's mushroom fields, out in the deep sea)
+  if (c.mc != 0xFFFF) return BV_NONE;       // (terrain version 15: Soulrend's own biomes instead)
   if (c.biome == BIOME_PLAINS && c.temp > 0.5 && c.humid < -0.18) return BV_REDLANDS;
   if (c.biome == BIOME_PLAINS && c.temp > 0.32 && c.humid >= -0.16 && c.humid < -0.04) return BV_THORNSCRUB;   // BTA's Caatinga
   if ((c.biome == BIOME_TAIGA || c.biome == BIOME_MOUNTAINS) && c.temp < -0.58) return BV_GLACIER;
@@ -53,6 +55,7 @@ public:
   int finalSurfaceY(int x, int z) const override { return column(x, z).H; }
 
   OwColumn column(int x, int z) const;          // the column as generated (structures' levelling applied)
+  std::string mcBiomeName(int x, int z) const;  // terrain version 15: Soulrend's biome at the ground here ("" before)
   double climateScale = 1;                      // how wide the climate (and so the biomes) spreads: 2 from terrain version 4
   // BTA's world types on this land (the create-world screen): amplified, islands, winter (Endless Winter), hell, floating
   std::string wtype;
@@ -90,7 +93,18 @@ private:
   int vSloped = -1, vFinal = -1, vCont = -1, vEro = -1, vOff = -1, vJag = -1;
   void fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const;
   int v14Corner(int x, int z) const;   // (the exact surface at a cell corner)
-  struct BaseCol { int h; double hc; u8 biome; double temp, humid; int H = -1; u8 special = 0; };
+  struct BaseCol { int h; double hc; u8 biome; double temp, humid; int H = -1; u8 special = 0; u16 mc = 0xFFFF; };
+  // terrain version 15: Soulrend's world (gen/mc_biomes.h, gen/surface_rules.h; data/soulrend_worldgen)
+  bool v15 = false;
+  std::shared_ptr<class McBiomes> mcb_;
+  std::shared_ptr<class McSurface> mcs_;
+  int vTemp = -1, vVeg = -1, vDepth = -1, vRidges = -1, vInit = -1;
+  std::vector<u8> mcCat_;                 // per biome: ours (BIOME_*)
+  std::vector<float> mcTemp_, mcHumid_;   // per biome: our climate numbers for it (tints, snow, our systems)
+  int mcNoiseBiome(int qx, int qy, int qz) const;   // the biome at a quart (y Minecraft's)
+  int mcBiomeAt(int x, int y, int z) const;         // at a block (BiomeManager's zoom; y Minecraft's)
+  int prelimSurface(int x, int z) const;            // Minecraft's preliminary surface level (y Minecraft's)
+  void surfaceV15(GenBuf& b, OwColumn* cols, int cx, int cz) const;
   BaseCol baseColumn(int x, int z) const;
   double riverNoise(int x, int z) const;
   // gen/underground.cpp: Minecraft Beta style underground (carvers, ore veins, lava lakes, springs)

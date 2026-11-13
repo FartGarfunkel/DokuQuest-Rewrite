@@ -322,7 +322,7 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
       if (c.h >= JS_SEA - 2 && c.h <= JS_SEA && c.temp > 0.2 && c.humid > 0.25 && c.biome != BIOME_DESERT && r < 0.5) { t.kind = TREE_MANGROVE; list.push_back(t); }
       continue;
     }
-    if (c.biome == BIOME_MOUNTAINS && c.h > 82) continue;
+    if (c.biome == BIOME_MOUNTAINS && (v14 ? c.H > SEA_LEVEL + 105 : c.h > 82)) continue;   // (terrain version 14: trees up its high meadows to the tree line)
     const BtaVariant bv = btaVariant(c);
     if (bv == BV_GLACIER || (bv == BV_REDLANDS && r > 0.65) || (bv == BV_MEADOW && r > 0.3) || (bv == BV_TUNDRA && r > 0.08)) continue;   // open country
     u8 type = TREE_OAK;

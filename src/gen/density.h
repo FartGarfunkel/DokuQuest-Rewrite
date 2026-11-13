@@ -24,6 +24,10 @@ public:
   // "ridges", "depth", "temperature", "vegetation"); -1 if unknown
   int find(const std::string& name) const;
   double eval(int node, double x, double y, double z) const;
+  // a named noise ("minecraft:surface", "natures_spirit:sugi_pillar": noise/<name>.json, a mod's under noise/<mod>/), made
+  // the first time it's asked for (on the main thread, as find()); its value (Minecraft's NormalNoise.getValue)
+  int noise(const std::string& id) { return noiseRef(id); }
+  double noiseValue(int n, double x, double y, double z) const;
 
   struct Perlin;     // Minecraft's PerlinNoise (octaves of ImprovedNoise)
   struct Normal;     // its NormalNoise (two Perlins, the second offset)

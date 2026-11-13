@@ -33,3 +33,29 @@ Goal (the user's): Soulrend's worlds "look nicer" — merge how they generate wi
 ## Next (after the terrain)
 - Nature's Spirit biomes as new lands (surface, trees, plants; their art via the local mod-art pack).
 - Climate rivers (river water tint/fish by temperature), Alex's Caves biomes.
+
+# Terrain version 15: Soulrend's world itself
+
+Version 14 above had the terrain right in kind but was wrong about what Soulrend is: its own biomes and surface came from
+our climate. Reading its mods and configs (the Prism instance), Soulrend's Overworld is:
+- **Expanded Ecosphere** in its DEFAULT mode (its `ee_default` pack): Minecraft's noise router with its own `offset`,
+  `factor` and `jaggedness` splines (the shape of the land), its own 4589-entry biome list for the dimension (vanilla
+  biomes and 189 `wythers:` ones), and its own surface rule.
+- **WWOO** (William Wythers' Overhauled Overworld): its versions of the vanilla biomes (loaded after Expanded Ecosphere's,
+  so they win; Nature's Spirit's `modified_*` packs load at the bottom, under both).
+- **TerraBlender** (`overworld_region_size` 3): per area, region 0 (weight 10: the dimension's list, i.e. Expanded
+  Ecosphere's) or one of **Nature's Spirit**'s five regions (weight 4 each), every Nature's Spirit biome on.
+- Surface: TerraBlender's namespaced rules (Nature's Spirit's for its biomes, Minecraft's for `minecraft:`), falling
+  back to Expanded Ecosphere's rule. **Climate Rivers** registers rules and rivers but only patches vanilla's biome
+  builder, which nothing runs here: it has no effect in Soulrend.
+- Not yet: the biomes' features (trees, plants: the mods' configured/placed features, data in `data/soulrend_worldgen/`),
+  Nature's Spirit's sugi / stratified-desert pillars, frozen-ocean icebergs and eroded-badlands spires (SurfaceSystem
+  extensions), Alex's Caves' cave biomes.
+
+How: `tools/port/soulrend_worldgen/import.py` (needs the instance, Minecraft's jar and mappings, CFR, node) writes
+`data/soulrend_worldgen/` (git-ignored). Nature's Spirit's region builders and surface rules are code, so they are
+decompiled, converted to JS (`j2js.py`) and run against stand-ins (`regions.js`, `rules.js`) to get their exact tables.
+Its ground blocks we lack are matched to our nearest natural ground by look (`block_substitutes.json`).
+In the game: `gen/mc_biomes` (TerraBlender's region layers, ported exactly; the nearest climate box as Climate.RTree;
+BiomeManager's zoom), `gen/surface_rules` (the rule interpreter and SurfaceSystem.buildSurface's column walk), and
+`OverworldGen` v15 (`surfaceV15`). Our seeds are not Minecraft's: the same kind of world, not the same world.

@@ -3,6 +3,8 @@
 // (deepdark.js) and the Ember Crust. Heights/depths go through gen/gendefs.h vmap.
 #include "gen/overworld.h"
 #include "gen/density.h"
+#include "gen/mc_biomes.h"
+#include "gen/surface_rules.h"
 #include "common/fs.h"
 #include <map>
 #include <atomic>
@@ -30,19 +32,52 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
   B.resolve();
   initUnderground();
   // terrain version 14: Minecraft 1.20's land (docs/WORLDGEN_MERGE.md), when its data is here (tools/port/vanilla_worldgen.py);
-  // the world types that reshape the land their own way keep the old terrain
+  // terrain version 15: Soulrend's world (its mods' land, biomes and surfaces: tools/port/soulrend_worldgen/import.py) for the
+  // default and bigger-biome worlds when its data is here. The world types that reshape the land their own way keep the old
   if (o.genVersion >= 14 && (wtype.empty() || wtype == "default" || wtype == "amplified" || wtype == "large_biomes" || wtype == "winter" || wtype == "hell")) {
+    const bool sr = o.genVersion >= 15 && (wtype.empty() || wtype == "default" || wtype == "large_biomes") && fs::exists(dataDir() / "soulrend_worldgen" / "biome_regions.json");
     const std::string prefix = wtype == "amplified" ? "overworld_amplified" : wtype == "large_biomes" ? "overworld_large_biomes" : "overworld";
-    static std::mutex mx; static std::map<std::pair<i32, std::string>, std::shared_ptr<DensityGraph>> graphs;
+    struct Shared { std::shared_ptr<DensityGraph> g; std::shared_ptr<McBiomes> b; std::shared_ptr<McSurface> s; };
+    static std::mutex mx; static std::map<std::tuple<i32, std::string, bool>, Shared> worlds;
     std::lock_guard<std::mutex> lk(mx);
-    auto& g = graphs[{o.seed, prefix}];
-    if (!g) { auto ng = std::make_shared<DensityGraph>(); if (ng->load(dataDir() / "vanilla_worldgen", (u64)(i64)o.seed * 0x9E3779B97F4A7C15ull + 14, prefix)) g = ng; }
-    if (g) {
-      vg_ = g; v14 = true;
+    Shared& w = worlds[{o.seed, prefix, sr}];
+    if (!w.g) {
+      auto ng = std::make_shared<DensityGraph>();
+      if (ng->load(dataDir() / (sr ? "soulrend_worldgen" : "vanilla_worldgen"), (u64)(i64)o.seed * 0x9E3779B97F4A7C15ull + 14, prefix)) w.g = ng;
+      if (w.g && sr) {
+        auto nb = std::make_shared<McBiomes>(); auto nsu = std::make_shared<McSurface>();
+        if (nb->load(dataDir() / "soulrend_worldgen", (i64)o.seed) && nsu->load(dataDir() / "soulrend_worldgen", *w.g, *nb, (u64)(i64)o.seed * 0x2545F4914F6CDD1Dull)) { w.b = nb; w.s = nsu; }
+      }
+    }
+    if (w.g) {
+      vg_ = w.g; v14 = true;
       // (every function it uses parsed now, on this thread: the generators' workers only read it)
+      const DensityGraph* g = w.g.get();
       vSloped = g->find("overworld/sloped_cheese"); vFinal = g->find("final_density"); vCont = g->find("continents"); vEro = g->find("erosion");
       vOff = g->find("overworld/offset"); vJag = g->find("overworld/jaggedness");
       if (vSloped < 0 || vFinal < 0) v14 = false;
+      if (v14 && w.b) {
+        mcb_ = w.b; mcs_ = w.s; v15 = true;
+        vTemp = g->find("temperature"); vVeg = g->find("vegetation"); vDepth = g->find("depth"); vRidges = g->find("ridges");
+        vInit = g->find("initial_density_without_jaggedness");
+        // each biome as ours: its kind (for our trees, villages, mobs...) and climate numbers (tints, ice)
+        for (int i = 0; i < mcb_->count(); i++) {
+          const McBiomes::Info& in = mcb_->info(i);
+          const std::string n = in.name.substr(in.name.find(':') + 1);
+          auto has = [&](std::initializer_list<const char*> w) { for (const char* k : w) if (n.find(k) != std::string::npos) return true; return false; };
+          u8 cat = BIOME_PLAINS;
+          if (has({"ocean"})) cat = BIOME_OCEAN;
+          else if (has({"beach", "shore", "coast"})) cat = BIOME_BEACH;
+          else if (has({"peaks", "slopes", "crags", "cliffs", "volcano", "mountains", "glacial", "ice_cap"})) cat = BIOME_MOUNTAINS;
+          else if (has({"desert", "dunes", "badlands", "mesa", "outback", "pinnacles", "salt_lakes", "danakil", "scorched", "ayers_rock", "red_rock"})) cat = BIOME_DESERT;
+          else if (has({"jungle", "bamboo", "tropical"})) cat = BIOME_FOREST;
+          else if (in.temperature < 0.3f) cat = BIOME_TAIGA;
+          else if (has({"forest", "wood", "jungle", "taiga", "grove", "thicket", "swamp", "rainforest", "bog", "covert", "redwood", "sequoia"})) cat = BIOME_FOREST;
+          mcCat_.push_back(cat);
+          mcTemp_.push_back((float)std::clamp((in.temperature - 0.8) / 1.25, -1.0, 1.0));
+          mcHumid_.push_back((float)std::clamp(in.downfall * 2.0 - 1.0, -1.0, 1.0));
+        }
+      }
     }
   }
 }
@@ -87,6 +122,54 @@ int OverworldGen::v14Corner(int x, int z) const {
   return top;
 }
 
+// ---- terrain version 15: Soulrend's biomes --------------------------------------------------------------
+// the biome at a quart: TerraBlender's region there, and the climate box nearest Minecraft's climate (its noise router's
+// temperature, vegetation, continents, erosion, depth, ridges at the quart's corner block, quantized as it does). The 2D
+// parts are kept per quart column (depth is the offset spline plus a straight gradient in y: worked from one value)
+int OverworldGen::mcNoiseBiome(int qx, int qy, int qz) const {
+  struct C2 { i64 k = INT64_MIN; int region = 0; i64 t, h, c, e, w; double depth0; };
+  struct C3 { i64 k = INT64_MIN; int y = 0; int b = 0; };
+  thread_local std::vector<C2> c2(1 << 12); thread_local std::vector<C3> c3(1 << 14);
+  thread_local const void* owner = nullptr;
+  if (owner != mcb_.get()) { std::fill(c2.begin(), c2.end(), C2{}); std::fill(c3.begin(), c3.end(), C3{}); owner = mcb_.get(); }
+  const i64 key = ((i64)qx << 32) ^ (u32)qz;
+  C3& e3 = c3[((u64)(key * 31 + qy) * 0x9E3779B97F4A7C15ull) >> 50];
+  if (e3.k == key && e3.y == qy) return e3.b;
+  C2& e2 = c2[((u64)key * 0x9E3779B97F4A7C15ull) >> 52];
+  const DensityGraph& g = *vg_;
+  const double bx = qx * 4.0, bz = qz * 4.0;
+  auto Q = [](double v) { return (i64)((float)v * 10000.0f); };
+  if (e2.k != key) {
+    e2.k = key; e2.region = mcb_->region(qx, qz);
+    e2.t = Q(g.eval(vTemp, bx, 0, bz)); e2.h = Q(g.eval(vVeg, bx, 0, bz)); e2.c = Q(g.eval(vCont, bx, 0, bz));
+    e2.e = Q(g.eval(vEro, bx, 0, bz)); e2.w = Q(g.eval(vRidges, bx, 0, bz)); e2.depth0 = g.eval(vDepth, bx, 0, bz);
+  }
+  const double depth = e2.depth0 - std::clamp(qy * 4.0, -64.0, 320.0) * (3.0 / 384.0);   // (y_clamped_gradient -64..320: 1.5..-1.5)
+  const i64 p[6] = {e2.t, e2.h, e2.c, e2.e, Q(depth), e2.w};
+  const int b = mcb_->lookup(e2.region, p);
+  e3 = {key, qy, b};
+  return b;
+}
+std::string OverworldGen::mcBiomeName(int x, int z) const { return v15 ? mcb_->info(rawColumn(x, z).mc).name : std::string(); }
+int OverworldGen::mcBiomeAt(int x, int y, int z) const {
+  int qx, qy, qz; mcb_->fuzzyQuart(x, y, z, qx, qy, qz);
+  return mcNoiseBiome(qx, qy, qz);
+}
+// NoiseChunk.preliminarySurfaceLevel: from the top, every cell height (8), the first where the land without its jaggedness
+// (initial_density_without_jaggedness) passes 0.390625; at 16-block corners, kept
+int OverworldGen::prelimSurface(int x, int z) const {
+  struct E { i64 k = INT64_MIN; int y = 0; };
+  thread_local std::vector<E> cache(1 << 12); thread_local const void* owner = nullptr;
+  if (owner != vg_.get()) { std::fill(cache.begin(), cache.end(), E{}); owner = vg_.get(); }
+  const i64 key = ((i64)x << 32) ^ (u32)z;
+  E& e = cache[((u64)key * 0x9E3779B97F4A7C15ull) >> 52];
+  if (e.k == key) return e.y;
+  int top = -64;
+  for (int y = (DIM_H - 8) & ~7; y >= -64; y -= 8) if (vg_->eval(vInit, x, y, z) > 0.390625) { top = y; break; }
+  e = {key, top};
+  return top;
+}
+
 // ---- columns ---------------------------------------------------------------------------------------------
 OverworldGen::BaseCol OverworldGen::baseColumn(int x, int z) const {
   if (v14) {
@@ -94,6 +177,12 @@ OverworldGen::BaseCol OverworldGen::baseColumn(int x, int z) const {
     BaseCol c;
     c.H = v14Surface(x, z);
     c.hc = owSurfaceInv(c.H + 0.5); c.h = jsFloor(c.hc);
+    if (v15) {   // Soulrend's biome at the ground here (Minecraft's y: ours less one)
+      const int b = mcBiomeAt(x, std::max(c.H, SEA_LEVEL) - 1, z);
+      c.mc = (u16)b; c.biome = mcCat_[b]; c.temp = mcTemp_[b]; c.humid = mcHumid_[b];
+      c.special = mcb_->info(b).name == "minecraft:mushroom_fields" ? 1 : 0;
+      return c;
+    }
     c.temp = nTemp.fbm2(x / (800.0 * climateScale), z / (800.0 * climateScale), 2) - (c.h > 90 ? (c.h - 90) / 40.0 : 0);
     c.humid = nHumid.fbm2(x / (650.0 * climateScale), z / (650.0 * climateScale), 2);
     if (climateScale > 1) c.temp -= 0.06;
@@ -155,7 +244,7 @@ double OverworldGen::riverNoise(int x, int z) const {
 OwColumn OverworldGen::rawColumn(int x, int z) const {
   BaseCol b = baseColumn(x, z);
   if (v14) {   // (its rivers are the land's own valleys)
-    OwColumn c; c.h = b.h; c.biome = b.biome; c.temp = b.temp; c.humid = b.humid; c.H = b.H; c.special = b.special;
+    OwColumn c; c.h = b.h; c.biome = b.biome; c.temp = b.temp; c.humid = b.humid; c.H = b.H; c.special = b.special; c.mc = b.mc;
     return c;
   }
   OwColumn c; c.h = b.h; c.biome = b.biome; c.temp = b.temp; c.humid = b.humid;
@@ -232,6 +321,24 @@ double OverworldGen::deepZone(int x, int z) const { return jsSmooth(0.32, 0.46, 
 
 // The column's surface materials (generateOverworld; distant.js distTop is the same choice).
 SurfaceMat OverworldGen::surface(const OwColumn& c, int wx, int wz) const {
+  if (v15) {   // Soulrend's rules for the top of the land here (the far land, the map: as the chunk will be)
+    McSurface::Column col;
+    const int x0 = wx & ~15, z0 = wz & ~15;
+    const double fx = (wx & 15) / 16.0, fz = (wz & 15) / 16.0;
+    const double l0 = prelimSurface(x0, z0) + fx * (prelimSurface(x0 + 16, z0) - prelimSurface(x0, z0));
+    const double l1 = prelimSurface(x0, z0 + 16) + fx * (prelimSurface(x0 + 16, z0 + 16) - prelimSurface(x0, z0 + 16));
+    mcs_->begin(col, wx, wz, (int)std::floor(l0 + fz * (l1 - l0)));
+    col.steep = std::abs(v14Surface(wx, wz + 1) - v14Surface(wx, wz - 1)) >= 4 || std::abs(v14Surface(wx - 1, wz) - v14Surface(wx + 1, wz)) >= 4;
+    col.biomeAt = [&](int y) { return mcBiomeAt(wx, y, wz); };
+    col.waterHeight = c.H < SEA_LEVEL ? SEA_LEVEL : INT32_MIN;
+    BlockId got[3];
+    for (int d = 0; d < 3; d++) {
+      col.y = c.H - 1 - d; col.stoneAbove = d + 1; col.stoneBelow = 64;
+      const BlockId r = mcs_->apply(col);
+      got[d] = r != 0xFFFF ? r : B.stone;
+    }
+    return {got[0], got[1], got[2], 2};
+  }
   const int h = c.h;
   double fr = hashFloat(wx, wz, seed_, 2);
   BlockId top = B.grass, filler = B.dirt, under = B.stone; int fillDepth = 3 + jsFloor(fr * 2);
@@ -244,6 +351,13 @@ SurfaceMat OverworldGen::surface(const OwColumn& c, int wx, int wz) const {
       top = f > 0.45 ? B.clay : f > 0.05 ? B.sand : B.gravel; filler = top == B.clay ? B.clay : B.sand; fillDepth = 2; break;
     }
     case BIOME_MOUNTAINS:
+      if (v14) {   // Minecraft's way on its land: bare stone where it's steep, snow on the heights, grass on the high meadows
+        const int H0 = c.H, dx = std::abs(v14Surface(wx + 2, wz) - v14Surface(wx - 2, wz)), dz = std::abs(v14Surface(wx, wz + 2) - v14Surface(wx, wz - 2));
+        const bool steep = std::max(dx, dz) >= 6;
+        top = H0 > SEA_LEVEL + 120 ? B.snow_block : steep ? B.stone : H0 > SEA_LEVEL + 95 && hashFloat(wx, wz, seed_, 17) < 0.5 ? B.snowy_grass : B.grass;
+        filler = steep || H0 > SEA_LEVEL + 120 ? B.stone : B.dirt;
+        break;
+      }
       top = h > 96 ? B.snow_block : h > 82 ? B.stone : B.grass; filler = h > 82 ? B.stone : B.dirt; break;
   }
   if ((c.biome == BIOME_PLAINS || c.biome == BIOME_FOREST) && h <= JS_SEA + 1 && c.humid > 0.38 && c.temp > -0.1) { top = B.mud; filler = B.mud; fillDepth = 2; }
@@ -312,6 +426,11 @@ void OverworldGen::fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const {
     c.H = top; c.h = jsFloor(owSurfaceInv(top + 0.5));
     if (c.H < SEA_LEVEL && c.biome != BIOME_OCEAN && !c.special) c.biome = BIOME_OCEAN;
     else if (c.H >= SEA_LEVEL && c.biome == BIOME_OCEAN) c.biome = c.H <= SEA_LEVEL + 2 ? BIOME_BEACH : BIOME_PLAINS;
+    if (v15) {   // (Soulrend's surface: surfaceV15, once the chunk's land is all here)
+      for (int y = 0; y < 5; y++) if (y == 0 || hashFloat(wx, y, wz, seed_) < (5 - y) / 5.0) b.blocks[colIdx(x, y, z)] = B.bedrock;
+      for (int y = top + 1; y <= SEA_LEVEL; y++) b.blocks[colIdx(x, y, z)] = B.water;
+      continue;
+    }
     const SurfaceMat m = surface(c, wx, wz);
     const int fd = m.fillDepth;
     // the ground's materials under every surface near the land's top that sees the sky (ledges, overhangs' tops)
@@ -344,6 +463,54 @@ void OverworldGen::fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const {
         if (f > 0.45 && B.snow_block) b.blocks[colIdx(x, SEA_LEVEL + 1, z)] = B.snow_block;
       } else b.blocks[colIdx(x, SEA_LEVEL, z)] = B.water;
     }
+  }
+  if (v15) surfaceV15(b, cols, cx, cz);
+}
+
+// terrain version 15: Soulrend's surface, as Minecraft's SurfaceSystem.buildSurface lays it: each column walked down from its
+// top, every stone block given to the surface rules with how deep it is under the open air or water above (and over the
+// air or water under it), the water's height, the slope (the chunk's heightmap), its biome there; what they don't change
+// stays rock (our layers). The sea's top freezes where its biome is cold enough to snow (Minecraft's freeze_top_layer).
+void OverworldGen::surfaceV15(GenBuf& b, OwColumn* cols, int cx, int cz) const {
+  const int bx = cx * CS, bz = cz * CS;
+  int hm[256];   // WORLD_SURFACE_WG: the highest block that isn't air (Minecraft's y)
+  for (int z = 0; z < CS; z++) for (int x = 0; x < CS; x++) {
+    int y = DIM_H - 1; while (y > 0 && b.blocks[colIdx(x, y, z)] == AIR) y--;
+    hm[z * 16 + x] = y - 1;
+  }
+  // the preliminary surface at the chunk's 16-block cell corners (a chunk is one cell)
+  const int p00 = prelimSurface(bx, bz), p10 = prelimSurface(bx + 16, bz), p01 = prelimSurface(bx, bz + 16), p11 = prelimSurface(bx + 16, bz + 16);
+  McSurface::Column col;
+  for (int z = 0; z < CS; z++) for (int x = 0; x < CS; x++) {
+    OwColumn& c = cols[z * 16 + x];
+    const int wx = bx + x, wz = bz + z;
+    const float fx = (x & 15) / 16.0f, fz = (z & 15) / 16.0f;
+    const double l0 = p00 + fx * (double)(p10 - p00), l1 = p01 + fx * (double)(p11 - p01);
+    mcs_->begin(col, wx, wz, (int)std::floor(l0 + fz * (l1 - l0)));
+    {   // SteepMaterialCondition (within the chunk, as Minecraft)
+      const int zN = std::max(z - 1, 0), zS = std::min(z + 1, 15), xW = std::max(x - 1, 0), xE = std::min(x + 1, 15);
+      col.steep = hm[zS * 16 + x] >= hm[zN * 16 + x] + 4 || hm[z * 16 + xW] >= hm[z * 16 + xE] + 4;
+    }
+    col.biomeAt = [&](int y) { return mcBiomeAt(wx, y, wz); };
+    int stoneAbove = 0, waterHeight = INT32_MIN, stoneBelowY = INT32_MAX;
+    const int top = hm[z * 16 + x] + 2;   // (band y: the air above the highest block)
+    for (int y = std::min(top, DIM_H - 1); y >= 1; y--) {
+      const BlockId here = b.blocks[colIdx(x, y, z)];
+      const int my = y - 1;
+      if (here == AIR) { stoneAbove = 0; waterHeight = INT32_MIN; continue; }
+      if (here == B.water || here == B.lava) { if (waterHeight == INT32_MIN) waterHeight = my + 1; continue; }
+      if (stoneBelowY >= my) {   // (the bottom of this run of solid ground)
+        stoneBelowY = -100000;
+        for (int k = y - 1; k >= 0; k--) { const BlockId u = b.blocks[colIdx(x, k, z)]; if (u == AIR || u == B.water || u == B.lava) { stoneBelowY = k; break; } }   // (Minecraft's y of the block above it)
+      }
+      col.y = my; col.stoneAbove = ++stoneAbove; col.stoneBelow = my - stoneBelowY + 1; col.waterHeight = waterHeight;
+      if (here != B.stone) continue;
+      const BlockId r = mcs_->apply(col);
+      b.blocks[colIdx(x, y, z)] = r != 0xFFFF ? r : (rockLayers ? layerRock(wx, y, wz, c.H) : B.stone);
+    }
+    // the sea's top, frozen where it's cold enough to snow
+    if (b.blocks[colIdx(x, SEA_LEVEL, z)] == B.water && b.blocks[colIdx(x, SEA_LEVEL + 1, z)] == AIR && mcb_->coldEnoughToSnow(mcBiomeAt(wx, SEA_LEVEL - 1, wz), wx, SEA_LEVEL - 1, wz))
+      b.blocks[colIdx(x, SEA_LEVEL, z)] = B.ice;
   }
 }
 
@@ -535,7 +702,10 @@ void OverworldGen::sample(int wx, int wz, ColumnSample& s) const {
   SurfaceMat m = surface(c, wx, wz);
   s.height = (i16)c.H; s.top = m.top; s.under = m.top == B.grass ? B.dirt : m.filler;
   s.water = -1; s.fluid = AIR;
-  if (c.H < SEA_LEVEL) { s.water = SEA_LEVEL; s.fluid = c.temp < -0.38 ? B.ice : B.water; }
+  if (c.H < SEA_LEVEL) {
+    s.water = SEA_LEVEL; s.fluid = c.temp < -0.38 ? B.ice : B.water;
+    if (v15) s.fluid = mcb_->coldEnoughToSnow(c.mc, wx, SEA_LEVEL - 1, wz) ? B.ice : B.water;
+  }
   s.temp = (u8)jsClamp(jsRound(c.temp * 127 + 128), 0, 255); s.humid = (u8)jsClamp(jsRound(c.humid * 127 + 128), 0, 255);
   s.biome = c.biome; s.variant = (u8)btaVariant(c); s.tree = 0; s.treeTop = 0; s.leaves = AIR; s.floatBottom = -1; s.tint = 0xFFFFFFFF;
   if (wtype == "hell") {   // far off too: scorched ground, lava seas, no leaves
