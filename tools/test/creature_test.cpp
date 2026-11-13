@@ -118,6 +118,7 @@ int main(int argc, char** argv) {
 
   printf("arrows\n");
   Creature* sk = spawnCreature(*lv, 0, "skeleton", vec3(4.5f, Y, 16.5f));
+  if (sk) sk->heldItem = "bow";   // (an archer: a skeleton may roll a sword or axe, or be the knight, and fight up close)
   int arrows = 0; hurt = 0;
   for (int i = 0; i < 300 && sk && !sk->removed; i++) { float before = p.hp; lv->tick(TICK_DT); hurt += std::max(0.f, before - p.hp); p.hp = p.maxHp; p.dead = false; p.hurtTime = 0; p.invuln = 0; arrows = std::max(arrows, countType(*lv, "arrow")); }
   CHECK(arrows > 0, "a skeleton shot arrows");
