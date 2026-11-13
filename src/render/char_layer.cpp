@@ -207,8 +207,8 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
     mat4 t = glm::scale(hm, vec3(1 / CHAR_PX));
     t = glm::rotate(t, 0.25f - 1.5708f, vec3(1, 0, 0));   // (its stick along the tool's handle: forward, tipped up 0.25)
     t = glm::scale(t, vec3(0.75f));
-    t = glm::translate(t, vec3(0, 0.66f, 0));             // (gripped 3 of its pixels up the stick)
-    if (headOut) *headOut = vec3(t * vec4(0, -0.15f, 0, 1));
+    t = glm::translate(t, vec3(0, 0.78f, 0));             // (held by the bottom of its stick, the rest up out of the fist)
+    if (headOut) *headOut = vec3(t * vec4(0, -0.18f, 0, 1));
     voxelRenderer().draw(im.gl, t * im.matrix(), light, tint, glint ? 1.f : 0.f);
     return;
   } else if (im.kind == VoxelModel::Block) {

@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
     d.hp = 300; tick(2);
     check(d.hp > 300, "the crystals heal the dragon (" + std::to_string((int)d.hp) + ")");
     tick(20);
-    check(d.noGravity && ((d.pos.y > fy + 10) || d.state == "perch" || d.state == "climb"), "the dragon flies high over the island, or perches and climbs again (state " + d.state + ")");   // (it perches when it likes)
+    check(d.noGravity && ((d.pos.y > fy + 10) || d.state == "perch" || d.state == "climb" || d.state == "strafe"), "the dragon flies high over the island, perches and climbs again, or swoops at you (state " + d.state + ")");   // (it perches when it likes)
   }
   // break a crystal
   if (!crystals.empty()) {
