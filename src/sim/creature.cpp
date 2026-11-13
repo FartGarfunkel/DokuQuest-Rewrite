@@ -637,6 +637,7 @@ void Creature::ghostStep(Level& lv, float dt) {
   pos += (tpos - pos) * k;
   yaw += wrapAngle(tyaw - yaw) * k;
   float hs = std::hypot(pos.x - o.x, pos.z - o.z) / std::max(dt, 1e-3f);
+  if (climbing || surf) hs = glm::length(pos - o) / std::max(dt, 1e-3f);   // (up a wall or along a ceiling: its legs keep walking)
   walkAmt += (std::min(1.f, hs / 2) - walkAmt) * std::min(1.f, dt * 6);
   walk += hs * dt * 3.2f;
   speedNow = hs;
@@ -945,6 +946,7 @@ void Creature::update(Level& lv, float dt) {
   idleHabits(lv, dt, want);
   fallV = vel.y;
   float hs = std::hypot(vel.x, vel.z);
+  if (climbing || surf) hs = glm::length(vel);   // (climbing: the legs keep walking)
   walkAmt += (std::min(1.f, hs / 2) - walkAmt) * std::min(1.f, dt * 6);
   walk += hs * dt * (type == "deer" ? 2.2f : 3.2f);
   if (swingT > 0) swingT -= dt;
@@ -1030,7 +1032,7 @@ json Creature::snap() const {
 void Creature::glide(double dt) {
   const vec3 o = pos;
   Entity::glide(dt);
-  const float fdt = std::max((float)dt, 1e-3f), hs = std::hypot(pos.x - o.x, pos.z - o.z) / fdt;
+  const float fdt = std::max((float)dt, 1e-3f), hs = (climbing || surf) ? glm::length(pos - o) / fdt : std::hypot(pos.x - o.x, pos.z - o.z) / fdt;   // (climbing: vertical counts too)
   walkAmt += (std::min(1.f, hs / 2) - walkAmt) * std::min(1.f, fdt * 6);
   walk += hs * fdt * 3.2f;
   speedNow = hs;
