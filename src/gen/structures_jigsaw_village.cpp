@@ -19,6 +19,7 @@
 #include <unordered_map>
 
 namespace dq {
+bool isTntStyle(const std::string& st);
 
 static const int* DXJ = DIRX;
 static const int* DZJ = DIRZ;
@@ -186,10 +187,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
       const int Tx = ax + DXJ[af], Tz = az + DZJ[af];
       // Minecraft's jigsaw: a joint whose spot is inside its own piece's box puts the next piece inside that box (Towns and
       // Towers' streets are plots with the houses' lots in them); anywhere else, the spot must be free
-      static const std::set<std::string> TNT = {"meadow_swiss", "birch_forest_romanian", "flower_forest_japanese", "forest_ruins", "mushroom_fields_fantasy",
-        "swamp_boat", "jungle_tribal", "sparse_jungle_polynesian", "badlands_pueblo", "old_growth_taiga_polish", "snowy_taiga_viking", "tudor", "classic",
-        "rustic", "swedish", "iberian"};   // (tools/port/tnt_village_import.py: theirs build that way; ours never did)
-      const bool inParent = TNT.count(Q.p->style) && Tx >= Q.x0 && Tx <= Q.x1() && Tz >= Q.z0 && Tz <= Q.z1();
+      const bool inParent = isTntStyle(Q.p->style) && Tx >= Q.x0 && Tx <= Q.x1() && Tz >= Q.z0 && Tz <= Q.z1();
       if (inParent ? overlaps(Tx, Tz, Tx, Tz, (int)qi) : inside(Tx, Tz)) continue;
       const bool streets = A.pool.find("/streets") != std::string::npos, houses = A.pool.find("/houses") != std::string::npos;
       std::vector<const VPPiece*> cands;
@@ -247,7 +245,12 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
             JPlaced q; q.p = C; q.r = r; q.w = r & 1 ? C->sz : C->sx; q.d = r & 1 ? C->sx : C->sz;
             q.x0 = Tx - cx2; q.z0 = Tz - cz2; q.depth = Q.depth + 1;
             if (std::max({std::abs(q.x0 - v.x), std::abs(q.x1() - v.x), std::abs(q.z0 - v.z), std::abs(q.z1() - v.z)}) > R) { rej[1]++; continue; }
-            if (inParent ? (q.x0 < Q.x0 || q.x1() > Q.x1() || q.z0 < Q.z0 || q.z1() > Q.z1() || overlaps(q.x0, q.z0, q.x1(), q.z1(), (int)qi)) : overlaps(q.x0, q.z0, q.x1(), q.z1())) { rej[2]++; continue; }
+            if (inParent && (q.x0 < Q.x0 || q.x1() > Q.x1() || q.z0 < Q.z0 || q.z1() > Q.z1())) { rej[5]++; continue; }
+            if (inParent ? overlaps(q.x0, q.z0, q.x1(), q.z1(), (int)qi) : overlaps(q.x0, q.z0, q.x1(), q.z1())) {
+              rej[2]++;
+              if (dbgJ && houses) for (int i = 0; i < (int)J->pcs.size(); i++) { const auto& o = J->pcs[i]; if (i != (int)qi && q.x0 <= o.x1() && q.x1() >= o.x0 && q.z0 <= o.z1() && q.z1() >= o.z0) { DQ_LOG("  %s (in %s, inParent %d) hits %s (%s)", C->name.c_str(), Q.p->name.c_str(), (int)inParent, o.p->name.c_str(), i == o.parent ? "?" : (o.parent == (int)qi ? "a sibling" : "other")); break; } }
+              continue;
+            }
             const int climb = v.tier == TIER_VILLAGE ? 8 : v.tier == TIER_TOWN ? 10 : 12;
             if (C->terrain) {   // a street may bridge a stream, not run out across a lake
               // and not steep along itself: a street climbs or falls a block in four at most (sampled every few blocks along
@@ -294,7 +297,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
         }
         if (placed) break;
       }
-      if (dbgJ && houses && !placed) DQ_LOG("house joint %s: %zu cands, rejected joint %d range %d overlap %d climb %d steep %d", A.pool.c_str(), cands.size(), rej[0], rej[1], rej[2], rej[3], rej[4]);
+      if (dbgJ && houses && !placed) DQ_LOG("house joint %s: %zu cands, rejected joint %d range %d overlap %d climb %d steep %d outOfLot %d", A.pool.c_str(), cands.size(), rej[0], rej[1], rej[2], rej[3], rej[4], rej[5]);
       if (!placed && streets) J->ends.push_back({Tx, Tz, af});
     }
   }
@@ -572,7 +575,11 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
   }
   // towns and cities keep their walls (stone for a city, a palisade for most towns), round the whole place, with a gate
   // on each side where a street can run straight out to it past no building; the way out paved through the gate
-  const std::string wallKind = v.tier == TIER_CITY ? "stone" : v.tier == TIER_TOWN && rnd() < 0.6 ? "wood" : "";
+  // Not round a Towns and Towers village: theirs are open (their streets run off in long lines; a box round them shut a bare
+  // hillside in a palisade with a few houses in it). (The draw is still made, so the rest of the plan stays as it was.)
+  const bool wallRoll = v.tier == TIER_TOWN && rnd() < 0.6;
+  const bool tntStyle = !J->pcs.empty() && isTntStyle(J->pcs[0].p->style);
+  const std::string wallKind = tntStyle ? "" : v.tier == TIER_CITY ? "stone" : wallRoll ? "wood" : "";
   if (!wallKind.empty()) {
     int bx0 = fx0, bz0 = fz0, bx1 = fx1, bz1 = fz1;
     if (J->board) { bx0 = std::min(bx0, J->bx - 4); bz0 = std::min(bz0, J->bz - 4); bx1 = std::max(bx1, J->bx + 4); bz1 = std::max(bz1, J->bz + 4); }
@@ -667,6 +674,15 @@ void jigsawTownBounds(const JigsawTown& J, int& x0, int& z0, int& x1, int& z1) {
   if (J.hasMine) { x0 = std::min(x0, J.mineBox[0]); z0 = std::min(z0, J.mineBox[1]); x1 = std::max(x1, J.mineBox[2]); z1 = std::max(z1, J.mineBox[3]); }
 }
 const std::vector<std::array<int, 3>>& jigsawTownEnds(const JigsawTown& J) { return J.ends; }
+
+// Towns and Towers' styles (tools/port/tnt_village_import.py): their streets are plots with the houses' lots in them, and
+// their villages have no wall
+bool isTntStyle(const std::string& st) {
+  static const std::set<std::string> TNT = {"meadow_swiss", "birch_forest_romanian", "flower_forest_japanese", "forest_ruins", "mushroom_fields_fantasy",
+    "swamp_boat", "jungle_tribal", "sparse_jungle_polynesian", "badlands_pueblo", "old_growth_taiga_polish", "snowy_taiga_viking", "tudor", "classic",
+    "rustic", "swedish", "iberian", "mediterranean", "nilotic"};
+  return TNT.count(st) > 0;
+}
 
 bool jigsawTownFlatten(const JigsawTown& J, int x, int z, double& weight, int& targetY) {
   if (x < J.fb[0] || x > J.fb[2] || z < J.fb[1] || z > J.fb[3]) return false;
