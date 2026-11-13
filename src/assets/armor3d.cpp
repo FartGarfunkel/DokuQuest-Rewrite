@@ -21,7 +21,7 @@ const Metal METALS[] = {
   {"cinderite", "dark_lord_armor", 0, 0, 0}, {"copper", "crucible_knight_armor", 0, 0, 0}, {"bronze", "old_knight_armor", 0, 0, 0},
   {"silver", "silver_knight_armor", 0, 0, 0}, {"steel", "twinned_armor", 0, 0, 0}, {"mithril", "sunset_wings_armor", 0, 0, 0},
   {"adamantite", "forgotten_trace_armor", 0, 0, 0}, {"emerald", "golden_horns_armor", 0, 0, 0}, {"zanite", "eclipse_soldier_armor", 0, 0, 0},
-  {"gravitite", "redeemer_armor", 0, 0, 0}, {"thallasium", "dark_cover_armor", 0, 0, 0}};
+  {"gravitite", "redeemer_armor", 0, 0, 0}, {"thallasium", "dark_cover_armor", 0, 0, 0}, {"leather", "thief_armor", 0, 0, 0}};
 const Metal* metalOf(const std::string& mat) { for (auto& m : METALS) if (mat == m.mat) return &m; return nullptr; }
 
 vec3 v3(const json& a, vec3 d = vec3(0)) { return a.is_array() && a.size() >= 3 ? vec3(a[0].get<float>(), a[1].get<float>(), a[2].get<float>()) : d; }
@@ -192,6 +192,8 @@ std::map<std::string, Armor3dPart> armor3dSlot(const std::string& mat, int slot,
         }
         u32 col = boxTexel(S, C, f, s, t);
         if (!col) continue;
+        // a helmet's black (the visor's slits, eye holes): open, the face shows through
+        if (slot == 0) { const int r0 = col & 255, g0 = (col >> 8) & 255, b0 = (col >> 16) & 255; if (0.3f * r0 + 0.59f * g0 + 0.11f * b0 < 34) continue; }
         col = recolour(col, tint, meanGrey);
         vec3 q = vec3(M2 * vec4(p, 1));
         q.x = -q.x;   // (the set's right is -x; ours +x)

@@ -357,7 +357,7 @@ const ArmorSet& armorMeshes(const std::string& itemKey, const std::string& dye, 
   std::string mat = paP || itemKey.rfind("pa:", 0) == 0 ? "iron" : armorMatOf(itemKey);
   if (tileOf(ts, "armor_" + mat) < 0 && !packArmorHas(mat)) mat = "iron";
   // a 3D set for this metal (assets/armor3d.h): the pack's own pictures still win where it has them (leather, chainmail)
-  if ((paP || !packArmorHas(mat)) && armor3dHas(mat)) {
+  if ((paP || !packArmorHas(mat) || mat == "leather") && armor3dHas(mat)) {   // (leather too: the pack's is a flat band)
     // the colour it shows in your bag: its icon's (a mixed piece: iron's, then each cell its own metal, recolourWorn)
     vec3 tint(-1);
     if (!paP) if (const ItemDef* d = reg().item(itemKey)) { const int t = tileOf(ts, d->icon); if (t >= 0) {
@@ -372,6 +372,12 @@ const ArmorSet& armorMeshes(const std::string& itemKey, const std::string& dye, 
         tint = sum / (float)n;
       }
     } }
+    // metals read as metal: the icon's hue only lightly (iron, steel, silver nearly none)
+    if (tint.x >= 0 && mat != "leather") {
+      const float l = 0.3f * tint.r + 0.59f * tint.g + 0.11f * tint.b;
+      const float keep = (mat == "iron" || mat == "steel" || mat == "silver") ? 0.15f : 0.7f;
+      tint = glm::mix(vec3(l), tint, keep);
+    }
     if (mat == "leather" && dye.size() == 6) tint = hexDye(dye);
     for (auto& [part, A] : armor3dSlot(mat, slot, slim ? 3.f : 4.f, CHAR_VPP, tint)) {
       if (!A.g.count()) continue;
