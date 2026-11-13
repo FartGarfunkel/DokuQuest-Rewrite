@@ -144,7 +144,7 @@ NOT_BUILDING = re.compile(r'soil|nylium|mycelium|podzol|dirt|grass|^sand$|_sand$
                           r'iron_block|mithril|sapphire|bronze|diamond|emerald_block|coal_block|lapis_block|netherite|copper_block|ice|snow|slime|honey|'
                           r'sponge|_glazed_terracotta|glazed|bone_block|amethyst|crystal|shale|skystone$|activator|conveyor|harvester|scaffold|quest|'
                           r'tinted|ward_stone|bulb|block_of|_block_of|magma|sculk|obsidian|crying|purpur_pillar|chiseled|cracked|infested|moss_block|clay$|terracotta_light')
-KIND = [('glass', r'glass|window'), ('wood', r'plank|wood|log|stem|hyphae|bamboo|cabinet|crate|shelf'), ('shingle', r'shingle|roof'),
+KIND = [('glass', r'glass|window'), ('wood', r'plank|wood|log|stem|hyphae|bamboo|cabinet|crate|shelf|board'), ('shingle', r'shingle|roof'),
         ('brick', r'brick'), ('tile', r'tile|checker'), ('cobble', r'cobble|rubble'), ('pillar', r'pillar'), ('thatch', r'thatch|straw|hay'),
         ('plaster', r'daub|plaster|calcite|limestone|chalk'), ('stone', r'.')]
 def kind_of(name):
@@ -221,7 +221,8 @@ def main(mods, d='data', out='.'):
     key = lambda n: n.split(':', 1)[1] if n.startswith('minecraft:') else n   # (the game drops only Minecraft's own prefix)
     for n in todo:
         p = n.split(':', 1)[1] if ':' in n else n
-        if n in explicit and not BS.is_material(n): res[key(n)] = explicit[n]; continue
+        # a hand-picked "nothing" for a full block is never right: builders lay anything as floor (the castle's 821 notice boards)
+        if n in explicit and not BS.is_material(n) and not (explicit[n] == 'air' and shape_of(p) == '' and n != 'quark:monster_box' and tex.is_cube(n)): res[key(n)] = explicit[n]; continue
         sh = shape_of(p)
         if sh == '' and not tex.is_cube(n):   # not a block of stuff: what it is, by name
             res[key(n)] = explicit[n] if n in explicit else by_kind(p, ours); continue

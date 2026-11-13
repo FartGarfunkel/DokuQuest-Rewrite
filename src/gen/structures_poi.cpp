@@ -165,7 +165,11 @@ bool expand(const PoiPack& pk, const PoiDef& d, const TerrainQuery& t, int cx, i
   out.push_back(s);
   for (size_t qi = 0; qi < out.size() && out.size() < 160; qi++) {
     const Placed Q = out[qi];
-    if (Q.depth >= d.depth) continue;
+    if (Q.depth >= d.depth) {
+      static const bool lj = std::getenv("DQ_POI_JOINTS") != nullptr;
+      if (lj) for (const VPJoint& A : Q.p->joints) if (!A.pool.empty() && A.pool != "minecraft:empty" && pk.pools.count(A.pool)) DQ_LOG("poi joint %s: %s in %s cut off by depth %d", d.key.c_str(), A.pool.c_str(), Q.p->name.c_str(), d.depth);
+      continue;
+    }
     for (const VPJoint& A : Q.p->joints) {
       if (A.pool.empty() || A.pool == "minecraft:empty") continue;
       auto pit = pk.pools.find(A.pool);
@@ -178,27 +182,37 @@ bool expand(const PoiPack& pk, const PoiDef& d, const TerrainQuery& t, int cx, i
       int qx1, qy1, qz1; box(Q, qx1, qy1, qz1);
       const bool inParent = Tx >= Q.x0 && Tx <= qx1 && Ty >= Q.y0 && Ty <= qy1 && Tz >= Q.z0 && Tz <= qz1;
       bool placed = false;
+      int rj[6] = {0, 0, 0, 0, 0, 0};   // why not: joint, reach, height, out of its parent, overlap, depth
       for (const VPPiece* C : weighted(pit->second)) {
         int rs[4] = {0, 1, 2, 3}; for (int i = 3; i > 0; i--) std::swap(rs[i], rs[(int)(rnd() * (i + 1)) % (i + 1)]);
         for (int r : rs) {
           for (const VPJoint& B : C->joints) {
-            if (B.name != A.target) continue;
-            if (up ? B.front != 5 : down ? B.front != 4 : (B.front > 3 || ((B.front + r) & 3) != ((af + 2) & 3))) continue;
+            if (B.name != A.target) { rj[0]++; continue; }
+            if (up ? B.front != 5 : down ? B.front != 4 : (B.front > 3 || ((B.front + r) & 3) != ((af + 2) & 3))) { rj[0]++; continue; }
+            // an aligned up/down joint: the child turned so its top faces the way its parent's does (else the upper storey sat
+            // across the one below, hanging out over the air)
+            if ((up || down) && A.aligned && A.top >= 0 && B.top >= 0 && ((B.top + r) & 3) != ((A.top + Q.r) & 3)) { rj[0]++; continue; }
             auto [bx, bz] = vpTurn(*C, r, B.x, B.z);
             Placed q{}; q.p = C; q.r = r; q.w = r & 1 ? C->sz : C->sx; q.d = r & 1 ? C->sx : C->sz; q.depth = Q.depth + 1;
             q.x0 = Tx - bx; q.z0 = Tz - bz; q.y0 = Ty - B.y;
             if (C->terrain) q.y0 = t.surfaceY(Tx, Tz) + 1 - B.y;
             int x1, y1, z1; box(q, x1, y1, z1);
-            if (std::max({std::abs(q.x0 - cx), std::abs(x1 - cx), std::abs(q.z0 - cz), std::abs(z1 - cz)}) > d.reach) continue;
-            if (q.y0 < 2 || y1 >= DIM_H - 1) continue;
-            if (inParent ? (q.x0 < Q.x0 || x1 > qx1 || q.y0 < Q.y0 || y1 > qy1 || q.z0 < Q.z0 || z1 > qz1 || overlaps(q.x0, q.y0, q.z0, x1, y1, z1, (int)qi))
-                         : overlaps(q.x0, q.y0, q.z0, x1, y1, z1, -1)) continue;
-            out.push_back(q); placed = true; break;
+            if (std::max({std::abs(q.x0 - cx), std::abs(x1 - cx), std::abs(q.z0 - cz), std::abs(z1 - cz)}) > d.reach) { rj[1]++; continue; }
+            if (q.y0 < 2 || y1 >= DIM_H - 1) { rj[2]++; continue; }
+            if (inParent && (q.x0 < Q.x0 || x1 > qx1 || q.y0 < Q.y0 || y1 > qy1 || q.z0 < Q.z0 || z1 > qz1)) { rj[3]++; continue; }
+            if (inParent ? overlaps(q.x0, q.y0, q.z0, x1, y1, z1, (int)qi) : overlaps(q.x0, q.y0, q.z0, x1, y1, z1, -1)) { rj[4]++; continue; }
+            out.push_back(q); placed = true;
+            if (std::getenv("DQ_POI_PIECES")) DQ_LOG("poi piece %s %s (%dx%dx%d) at %d,%d,%d from %s joint y%d %s", d.key.c_str(), C->name.c_str(), q.w, C->sy, q.d, q.x0, q.y0, q.z0,
+                                                  Q.p->name.c_str(), A.y, up ? "up" : down ? "down" : "side");
+            break;
           }
           if (placed) break;
         }
         if (placed) break;
       }
+      static const bool lj = std::getenv("DQ_POI_JOINTS") != nullptr;
+      if (lj && !placed) DQ_LOG("poi joint %s: %s in %s at y%d failed (joint %d reach %d height %d lot %d overlap %d)", d.key.c_str(), A.pool.c_str(),
+                                 Q.p->name.c_str(), Ty, rj[0], rj[1], rj[2], rj[3], rj[4]);
     }
   }
   return true;
@@ -263,7 +277,7 @@ void buildPoi(ChunkWriter& w, const StructurePlan& S) {
       if (!w.in(x, z) || y < 1 || y >= DIM_H) continue;
       const VPState& s = p.states[k.s];
       // the ground under a surface structure's floor: filled down to the land (no floating corners)
-      if (k.y == 0 && S.surface && !p.terrain && reg().tSolid[s.id]) for (int yy = y - 1; yy > y - 10 && yy > 1; yy--) { const BlockId g = w.get(x, yy, z); if (g != AIR && (!reg().tLiquid[g] || yy > w.ground(x, z))) break; w.put(x, yy, z, DIRT); }   // (not the structure's own pools above the land)
+      if (k.y == 0 && S.surface && !p.terrain && q.y0 <= w.ground(x, z) + 4 && reg().tSolid[s.id]) for (int yy = y - 1; yy > y - 10 && yy > 1; yy--) { const BlockId g = w.get(x, yy, z); if (g != AIR && (!reg().tLiquid[g] || yy > w.ground(x, z))) break; w.put(x, yy, z, DIRT); }   // (not the structure's own pools above the land)
       const BlockId sid = k.y <= 3 && !p.terrain ? groundAt(x, z, s.id) : p.terrain ? groundAt(x, z, s.id) : s.id;
       const int idx = w.put(x, y, z, sid, sid == s.id ? s.meta[q.r] : 0);
       if (sid != s.id && landSnow[(z - w.bz) * 16 + (x - w.bx)] && y + 1 < DIM_H && w.get(x, y + 1, z) == AIR) w.put(x, y + 1, z, SNOW);   // (and its snow)
@@ -352,7 +366,7 @@ void registerStructurePois() {
     auto E = std::make_shared<PoiExt>(); E->key = d->key; E->flatR = d->flatR; E->beard = d->beard && d->surface; E->ground = d->ground;
     if (!expand(*pk, *d, tq, x, z, rnd, E->pcs) || E->pcs.empty()) { if (std::getenv("DQ_POI_WHY")) DQ_LOG("poi why %s: expand failed", d->key.c_str()); return false; }
     // the land under each rigid piece standing on it (not one buried well below the ground: a crypt keeps its hill)
-    if (d->surface && d->beard) for (auto& q : E->pcs) {
+    if (d->surface) for (auto& q : E->pcs) {   // (every place on the land, whatever its mod asked: no house stood on a bare plinth of earth)
       if (q.p->terrain) continue;
       const int qx1 = q.x0 + q.w - 1, qz1 = q.z0 + q.d - 1;
       // only a piece standing at the ground: Minecraft's beard reaches about a dozen blocks, so a tower's upper floors and

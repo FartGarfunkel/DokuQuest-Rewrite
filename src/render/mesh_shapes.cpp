@@ -474,7 +474,7 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
         float vx = p.x - x, vy = p.y - y, vz = p.z - z;
         if (k == 0) return 0;
         if (k == 1) { float dd = (rf == 0 ? 1 - vz : rf == 1 ? vx : rf == 2 ? vz : 1 - vx) + reach / 16; return (u8)(((rf & 1) ? 48 : 64) + std::lround(clampv(dd, 0.f, 1.f) * 15)); }
-        if (k == 2) { float dd = (meta & 4) ? 0.45f + (1 - vy) * 0.55f : (1 - vy) * 0.8f; return (u8)(((rf & 1) ? 64 : 48) + std::lround(clampv(dd, 0.f, 1.f) * 15)); }
+        if (k == 2) { float dd = (meta & 4) ? 0.5f + (1 - vy) * 0.5f : (1 - vy) * 0.5f; return (u8)(((rf & 1) ? 64 : 48) + std::lround(clampv(dd, 0.f, 1.f) * 15)); }   // (one curve down both halves: the seam moves as one, not two banners)
         if (k == 3) { float dd = clampv((14 / 16.f - vy) / 0.55f, 0.f, 1.f) * 0.85f + 0.1f; return (u8)(((rf & 1) ? 64 : 48) + std::lround(dd * 15)); }
         if (k == 4) return Sway::Hang + 1;
         return (u8)(Sway::Hang + std::lround(clampv((1 - vy) * 1.1f, 0.f, 1.f) * 11));

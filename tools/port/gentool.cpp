@@ -139,7 +139,7 @@ static std::unique_ptr<DimGenerator> makeGen(int dim, const WorldGenOptions& o) 
 }
 static int structs(const char* reqPath, const char* outPath) {
   json req = json::parse(std::ifstream(reqPath));
-  WorldGenOptions o; o.seed = seedFromString(req["seed"].get<std::string>());
+  WorldGenOptions o; o.seed = req["seed"].is_number() ? req["seed"].get<i32>() : seedFromString(req["seed"].get<std::string>());
   const int R = req["R"];
   std::unique_ptr<DimGenerator> on[DIM_COUNT], off[DIM_COUNT];
   for (int d = 0; d < DIM_COUNT; d++) on[d] = makeGen(d, o);
@@ -160,7 +160,8 @@ static int structs(const char* reqPath, const char* outPath) {
       };
       if (T.global) { std::vector<const StructurePlan*> v; idx->near(0, 0, 1 << 20, v, k); for (auto* S : v) add(S); continue; }
       const int n = (R + T.region - 1) / T.region;
-      for (int rz = -n; rz < n; rz++) for (int rx = -n; rx < n; rx++) add(idx->at(k, rx, rz));
+      const int ox = req.value("cx", 0), oz = req.value("cz", 0);   // (round a point, not the origin)
+      for (int rz = -n; rz < n; rz++) for (int rx = -n; rx < n; rx++) add(idx->at(k, rx + floordiv(ox, T.region), rz + floordiv(oz, T.region)));
     }
     out["list"][std::to_string(d)] = L;
   }
@@ -264,9 +265,10 @@ static int slice(const std::string& seedText, int dim, int x0, int z, int w, int
 // block indices (x fastest, then z, then y)
 namespace dq { void poiExpected(const StructurePlan& S, const std::function<void(int, int, int, BlockId)>& fn); }
 static int poiDump(const std::string& seedText, const char* outPath, int regions) {
-  WorldGenOptions o; o.seed = seedFromString(seedText);
+  WorldGenOptions o; o.seed = seedText.size() > 1 && seedText[0] == '#' ? (i32)std::stoll(seedText.substr(1)) : seedFromString(seedText);   // (#<n>: a world's own seed)
   WorldGen wg(o); DimGenerator* g = wg.forDim(DIM_OVERWORLD);
-  const StructurePlan* S = locateStructure(wg, DIM_OVERWORLD, "poi", 0, 0, regions);
+  int ax = 0, az = 0; if (const char* at = std::getenv("DQ_POI_AT")) sscanf(at, "%d,%d", &ax, &az);   // (the nearest to there)
+  const StructurePlan* S = locateStructure(wg, DIM_OVERWORLD, "poi", ax, az, regions);
   if (!S) { fprintf(stderr, "none\n"); return 2; }
   const int M = 8, X0 = S->x0 - M, Z0 = S->z0 - M, X1 = S->x1 + M, Z1 = S->z1 + M;
   std::map<long long, std::unique_ptr<Chunk>> cs;

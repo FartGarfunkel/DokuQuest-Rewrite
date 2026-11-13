@@ -16,7 +16,7 @@ struct VPState { BlockId id = 0; std::array<u8, 4> meta{}; u8 kind = 0, banner =
 enum : u8 { VPK_BLOCK = 0, VPK_AIR = 1, VPK_CHEST = 2, VPK_BED_FOOT = 3, VPK_POT = 4, VPK_JOB = 5, VPK_BELL = 6, VPK_WARES = 7, VPK_SPAWNER = 8 };   // spawner: items = our mob
 struct VPBlock { u8 x, y, z; u16 s; };
 // a jigsaw block: where pieces join. front 0..3 = north, east, south, west (4 up, 5 down: villager and animal markers)
-struct VPJoint { int x = 0, y = 0, z = 0, front = 0; std::string name, target, pool; int fin = -1; };
+struct VPJoint { int x = 0, y = 0, z = 0, front = 0, top = -1; bool aligned = false; std::string name, target, pool; int fin = -1; };   // top: an up/down joint's turn (0..3), aligned: it must match its partner's
 struct VPPiece {
   std::string name, kind, style;          // "plains_small_house_1", "houses", "plains"
   int sx = 0, sy = 0, sz = 0, top = 0;     // size; top = the highest layer with anything in it

@@ -418,9 +418,14 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
         VPJoint J; J.x = rb.x; J.y = rb.y; J.z = rb.z;
         const std::string o = pe.contains("Properties") ? prop(pe["Properties"], "orientation") : std::string();
         J.front = dirOf(o.substr(0, o.find('_')));
+        if (o.find('_') != std::string::npos) J.top = dirOf(o.substr(o.find('_') + 1));
         if (rb.nbt >= 0) {
           const json& nb = T.nbts[rb.nbt];
           J.name = nb.value("name", std::string()); J.target = nb.value("target", std::string()); J.pool = nb.value("pool", std::string());
+          // Minecraft's joint: "aligned" (the pieces' tops must agree, so an upper floor sits square on the one below) or "rollable" (any turn);
+          // without one, a side joint is aligned and an up/down one rollable
+          const std::string jt = nb.value("joint", std::string());
+          J.aligned = jt.empty() ? J.front < 4 : jt == "aligned";
           std::string fs = nb.value("final_state", std::string("minecraft:air"));
           // "minecraft:oak_planks[axis=y]" -> a palette entry
           json fe{{"Name", fs.substr(0, fs.find('['))}};

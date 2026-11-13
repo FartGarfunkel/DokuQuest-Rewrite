@@ -595,6 +595,7 @@ class Room:
             if (x, z) not in self.free: continue
             wx, wz = x + DXZ[w][0], z + DXZ[w][1]
             if self.p.get(wx, self.y + 3, wz) in (None, self.P.glass): continue
+            if self.p.get(x, self.y + 3, z) is not None: continue   # (a dome's own shell there: an igloo's roof got a hole with a torch in it)
             self.p.set(x, self.y + 3, z, 'wall_torch', facing=OPP[w]); done += 1
 
     def lantern_hanging(self):
