@@ -1,5 +1,5 @@
 // sim/chest_work.h — a chest worked by hand in the world (the chest scene, ui/cinematic_table.cpp; after Immersive
-// Craft's chest): the lid up, its 27 slots lying inside in three rows of nine (a large chest's 54 across both halves, in
+// Craft's chest; a cabinet's doors open on its shelves): the lid up, its 27 slots lying inside in three rows of nine (a large chest's 54 across both halves, in
 // the container screen's order: the half nearer -x / -z first), put into from your hand and taken back out. Every
 // store with a lid: chests and painted chests, barrels (their top comes off), on their own block entities
 // {type:"chest", items[27]} like the container screen; the ender chest (your own 27, Player::ender) and the party chest
@@ -24,6 +24,13 @@ float chestFloorY(World& w, ivec3 at);                             // the floor 
 int chestLidRow(World& w, ivec3 at);                               // where its lid starts (of the block's 32 rows)
 // the slot under a point on the floor (-1 none)
 int chestSlotAt(World& w, ivec3 at, vec3 p);
+// the slot a ray (from o along dir) points at: onto the floor of a chest or barrel, onto the open front of a cabinet
+int chestSlotAtRay(World& w, ivec3 at, vec3 o, vec3 dir);
+// a cabinet (furniture "cabinet"): its doors swing open on three shelves of three (render/chest_layer.cpp draws them)
+bool isCabinet(World& w, ivec3 at);
+constexpr int CABINET_COLS = 3;
+constexpr float CABINET_SHELF[3] = {9.f, 5.5f, 1.5f};   // the shelves' tops (of 16), top shelf first
+constexpr float CABINET_TOP = 12.5f, CABINET_COL_W = 0.25f;
 // put what's in your hand into a slot (one: just one of it); false if it can't go there
 bool chestPut(Level& lv, Player& p, World& w, ivec3 at, int slot, bool one);
 // take a slot's stack (one: just one) — into your empty hand, or your bag (toBag, or the hand full of something else)

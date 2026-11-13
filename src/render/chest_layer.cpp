@@ -120,10 +120,65 @@ ChestModels& modelsFor(BlockId id, int facing, int lidRow, int half = -1) {
   return *(cache[k] = std::move(m));
 }
 
-// a chest (painted, ender, party) or a barrel: a store with a lid (a sealed barrel has none to lift)
+// a cabinet open (its model: data/shapes.json, the body 1..15 x 0..14 x 1..14.5, the top over it, the door on its front,
+// facing +z): the body hollow with three shelf boards (sim/chest_work.h CABINET_SHELF), and the door with its handles on its
+// own, to swing out about its left edge. In 32nds, the cabinet's own wood and door pictures.
+ChestModels& cabinetModels(BlockId id) {
+  static auto& cache = *new std::map<std::string, std::unique_ptr<ChestModels>>();
+  const TileSet& ts = app().tiles;
+  const std::string k = std::to_string(id) + "/" + ts.packName + "#" + std::to_string(ts.count);
+  auto it = cache.find(k);
+  if (it != cache.end()) return *it->second;
+  if (cache.size() > 24) cache.clear();
+  auto m = std::make_unique<ChestModels>();
+  const BlockDef& b = reg().block(id);
+  const int S = ts.size, wood = b.faces[0];
+  int door = reg().tile(b.str("wood", "oak") + "_trapdoor"); if (door < 0) door = reg().tile("oak_trapdoor"); if (door < 0) door = wood;
+  int iron = reg().tile("iron_block"); if (iron < 0) iron = wood;
+  auto px = [&](int tile, float u, float v) { u32 c = tileVoxel(ts, tile, std::clamp((int)(u * S), 0, S - 1), std::clamp((int)(v * S), 0, S - 1)); return c ? c : voxRGBA(150, 110, 60); };
+  auto finish = [&](VoxelModel& out, VoxelGrid& g) {
+    VoxelMeshData md; buildVoxelMesh(g, md); out.gl.upload(md);
+    out.frame.voxel = 1.f / 32; out.frame.origin = vec3(0);
+    out.size = g.size; out.kind = VoxelModel::Block; out.built = true; out.key = "cabinet_part";
+  };
+  {   // the body
+    VoxelGrid g(ivec3(32));
+    for (int z = 0; z < 32; z++) for (int y = 0; y < 32; y++) for (int x = 0; x < 32; x++) {
+      const bool top = y >= 28 && y <= 30 && x >= 1 && x <= 30 && z >= 1 && z <= 30;
+      const bool body = x >= 2 && x <= 29 && y <= 27 && z >= 2 && z <= 28;
+      if (!top && !body) continue;
+      const bool inside = body && x >= 4 && x <= 27 && y >= 3 && y <= 25 && z >= 4;   // (open to the front)
+      const bool shelf = inside && (y == 17 || y == 10);                               // (the boards under 9 and 5.5)
+      if (inside && !shelf) continue;
+      u32 c;
+      const bool face = z == 28 || z == 30, side = x == 2 || x == 29 || x == 1 || x == 30;
+      if (face) c = px(wood, x / 32.f, 1 - y / 32.f);
+      else if (side) c = px(wood, z / 32.f, 1 - y / 32.f);
+      else c = px(wood, x / 32.f, z / 32.f);
+      // the inside's faces in the shade
+      const bool nearIn = !top && ((x == 3 || x == 28) || (y == 2 || y == 26) || z == 3 || shelf) && y >= 2 && y <= 26 && x >= 3 && x <= 28;
+      if (shelf) c = voxShade(px(wood, x / 32.f, z / 32.f), 0.78f);
+      else if (nearIn) c = voxShade(c, 0.6f);
+      g.set(x, y, z, c | 0xFF000000u);
+    }
+    finish(m->base, g);
+  }
+  {   // the door (2..14 x 1.5..12.5, 14.5..15.2) and its two handles (x 7..7.8 and 8.2..9, y 6..8.5, out to 15.8)
+    VoxelGrid g(ivec3(32));
+    for (int z = 29; z <= 30; z++) for (int y = 3; y <= 24; y++) for (int x = 4; x <= 27; x++)
+      g.set(x, y, z, px(door, (x - 4) / 24.f, 1 - (y - 3) / 22.f) | 0xFF000000u);
+    for (int y = 12; y <= 16; y++) for (int x : {14, 15, 16, 17}) g.set(x, y, 31, px(iron, 0.5f, (y - 12) / 5.f) | 0xFF000000u);
+    finish(m->lid, g);
+  }
+  return *(cache[k] = std::move(m));
+}
+bool isCabinetBlock(BlockId id) { const BlockDef& b = reg().block(id); return id && b.str("furniture") == "cabinet" && b.has("container"); }
+
+// a chest (painted, ender, party) or a barrel: a store with a lid (a sealed barrel has none to lift); a cabinet (doors)
 bool isChest(BlockId id) {
   if (!id) return false;
   const BlockDef& b = reg().block(id);
+  if (isCabinetBlock(id)) return true;
   const std::string& k = b.key;
   auto ends = [&](const char* e) { const size_t n = std::strlen(e); return k.size() >= n && k.compare(k.size() - n, n, e) == 0; };
   return b.render == Render::Cube && (ends("chest") || (ends("barrel") && b.has("container")));
@@ -190,6 +245,29 @@ public:
     for (auto& [k, o] : open) if (!o.settling && n < CHEST_HIDE_MAX) { g_chestHidden[n][0] = std::get<0>(k); g_chestHidden[n][1] = std::get<1>(k); g_chestHidden[n][2] = std::get<2>(k); n++; }
     g_chestHiddenN = n;
   }
+  // what's inside, lying in its rows (or on a cabinet's shelves: sim/chest_work.h chestSlotCenter)
+  void drawInside(GameSession& s, World& w, VoxelRenderer& VR, const Open& o, ivec3 pos, const mat4& m, VoxelLight L) {
+    ivec3 hs[2]; const int nh = chestHalves(w, pos, hs);
+    if (!nh || !s.level) return;
+    const std::vector<ItemStack> items = chestHalfItems(*s.level, o.mine ? s.player : nullptr, w, pos);
+    const int per = (int)items.size(), h = nh == 2 && hs[1] == pos ? 1 : 0;
+    const float cs = chestSlotSize(w, pos);
+    for (int i = 0; i < per; i++) {
+      const ItemStack& st = items[i];
+      if (st.empty()) continue;
+      const VoxelModel& im = itemModel(stackModelKey(st));
+      if (!im.ready()) continue;
+      const vec3 c = chestSlotCenter(w, hs[0], h * per + i) - vec3(pos);
+      const int layers = st.n > 1 ? (st.n >= 16 ? 3 : 2) : 1;   // (a stack: a few of it piled)
+      for (int ly = 0; ly < layers; ly++) {
+        mat4 im4 = glm::translate(m, c + vec3((ly & 1) * cs * 0.08f, 0.002f, (ly == 2) * -cs * 0.08f));
+        im4 = glm::rotate(im4, (o.facing & 3) * PI / 2 + ly * 0.35f, vec3(0, 1, 0));
+        if (im.kind == VoxelModel::Block) im4 = glm::scale(glm::translate(im4, vec3(0, cs * 0.42f + ly * cs * 0.55f, 0)), vec3(cs * 0.8f));
+        else { im4 = glm::translate(im4, vec3(0, (im.depth > 0 ? im.depth : 0.03f) * cs + 0.003f + ly * cs * 0.12f, 0)); im4 = glm::rotate(im4, -PI / 2, vec3(1, 0, 0)); im4 = glm::scale(im4, vec3(cs * 1.05f)); }
+        VR.draw(im.gl, im4 * im.matrix(), L, vec4(0), itemGlints(st) ? 1.f : 0.f);
+      }
+    }
+  }
   void drawOpaque(GameSession& s, const FrameCtx& f) override {
     if (open.empty() || !s.player) return;
     World& w = s.world();
@@ -198,6 +276,26 @@ public:
     static const vec3 FRONT[4] = {vec3(0, 0, 1), vec3(1, 0, 0), vec3(0, 0, -1), vec3(-1, 0, 0)};
     for (auto& [k, o] : open) {
       const ivec3 pos(std::get<0>(k), std::get<1>(k), std::get<2>(k));
+      if (isCabinetBlock(o.id)) {   // its door swings out on its left edge (as you face it); the shelves inside
+        ChestModels& cab = cabinetModels(o.id);
+        if (!cab.base.ready()) continue;
+        const vec3 rel = f.cam.rel(glm::dvec3(pos));
+        if (!f.cam.frustum.sphere(rel + vec3(0.5f), 1.2f)) continue;
+        if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+        const u8 l = w.getLight(pos.x + (int)FRONT[o.facing & 3].x, pos.y, pos.z + (int)FRONT[o.facing & 3].z);
+        const VoxelLight L{(l >> 4) / 15.f, (l & 15) / 15.f};
+        mat4 m = glm::translate(mat4(1), rel + vec3(0.5f, 0, 0.5f));
+        m = glm::rotate(m, (o.facing & 3) * PI / 2, vec3(0, 1, 0));
+        m = glm::translate(m, vec3(-0.5f, 0, -0.5f));
+        VR.draw(cab.base.gl, m * cab.base.matrix(), L);
+        const float e = o.settling ? 0.f : 1 - (1 - o.t) * (1 - o.t);
+        const vec3 hinge(2 / 16.f, 0, 15.2f / 16.f);
+        mat4 dm = glm::translate(m, hinge); dm = glm::rotate(dm, -1.85f * e, vec3(0, 1, 0)); dm = glm::translate(dm, -hinge);
+        VR.draw(cab.lid.gl, dm * cab.lid.matrix(), L);
+        if (o.settling || o.t < 0.2f) continue;
+        drawInside(s, w, VR, o, pos, glm::translate(mat4(1), rel), L);
+        continue;
+      }
       const int half = reg().block(o.id).str("shape").empty() && doubleChestFor(reg().block(o.id).faces[4])
         ? doubleChestHalf(o.facing, pos.x, pos.z, [&](int dx, int dz) { return w.getBlock(pos.x + dx, pos.y, pos.z + dz) == o.id && (w.getMeta(pos.x + dx, pos.y, pos.z + dz) & 3) == o.facing; }) : -1;
       ChestModels& cm = modelsFor(o.id, o.facing, o.lidRow, half);
@@ -219,26 +317,7 @@ public:
       VR.draw(cm.lid.gl, lm * cm.lid.matrix(), L);
       // what's inside, lying in its rows (seen once the lid is up)
       if (o.settling || o.t < 0.2f) continue;
-      ivec3 hs[2]; const int nh = chestHalves(w, pos, hs);
-      if (!nh || !s.level) continue;
-      const std::vector<ItemStack> items = chestHalfItems(*s.level, o.mine ? s.player : nullptr, w, pos);
-      const int per = (int)items.size(), h = nh == 2 && hs[1] == pos ? 1 : 0;
-      const float cs = chestSlotSize(w, pos);
-      for (int i = 0; i < per; i++) {
-        const ItemStack& st = items[i];
-        if (st.empty()) continue;
-        const VoxelModel& im = itemModel(stackModelKey(st));
-        if (!im.ready()) continue;
-        const vec3 c = chestSlotCenter(w, hs[0], h * per + i) - vec3(pos);
-        const int layers = st.n > 1 ? (st.n >= 16 ? 3 : 2) : 1;   // (a stack: a few of it piled)
-        for (int ly = 0; ly < layers; ly++) {
-          mat4 im4 = glm::translate(m, c + vec3((ly & 1) * cs * 0.08f, 0.002f, (ly == 2) * -cs * 0.08f));
-          im4 = glm::rotate(im4, (o.facing & 3) * PI / 2 + ly * 0.35f, vec3(0, 1, 0));
-          if (im.kind == VoxelModel::Block) im4 = glm::scale(glm::translate(im4, vec3(0, cs * 0.42f + ly * cs * 0.55f, 0)), vec3(cs * 0.8f));
-          else { im4 = glm::translate(im4, vec3(0, (im.depth > 0 ? im.depth : 0.03f) * cs + 0.003f + ly * cs * 0.12f, 0)); im4 = glm::rotate(im4, -PI / 2, vec3(1, 0, 0)); im4 = glm::scale(im4, vec3(cs * 1.05f)); }
-          VR.draw(im.gl, im4 * im.matrix(), L, vec4(0), itemGlints(st) ? 1.f : 0.f);
-        }
-      }
+      drawInside(s, w, VR, o, pos, m, L);
     }
     if (begun) VR.end();
   }

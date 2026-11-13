@@ -14,6 +14,7 @@ bool endsWith(const std::string& k, const char* e) { const size_t n = std::strle
 bool isBarrel(const BlockDef& b) { return endsWith(b.key, "barrel"); }
 Kind kindAt(World& w, ivec3 at) {
   const BlockDef& b = reg().block(w.getBlock(at.x, at.y, at.z));
+  if (b.str("furniture") == "cabinet" && b.has("container")) return K_BLOCK;   // (its doors open on shelves: cabinetShelf)
   if (b.render != Render::Cube) return K_NONE;
   if (b.has("enderChest")) return K_ENDER;
   if (b.has("partyChest")) return K_PARTY;
@@ -84,7 +85,7 @@ int chestSlotsPerHalf(World& w, ivec3 at) { const Kind k = kindAt(w, at); return
 int chestLidRow(World& w, ivec3 at) { return isBarrel(reg().block(w.getBlock(at.x, at.y, at.z))) ? 27 : 20; }   // (a barrel's top board; a chest's lid at the tiles' seam)
 // chests and barrels are hollow inside (render/chest_layer.cpp CHEST_FLOOR_ROW): their things lie on the floor of the well
 float chestFloorY(World&, ivec3) { return 8 / 32.f; }
-float chestSlotSize(World& w, ivec3 at) { return (1 - 2 * margin(w, at)) / 9; }
+float chestSlotSize(World& w, ivec3 at) { return isCabinet(w, at) ? CABINET_COL_W : (1 - 2 * margin(w, at)) / 9; }
 
 std::vector<ItemStack> chestItems(Level& lv, Player& p, World& w, ivec3 at) {
   ivec3 hs[2]; const int n = chestHalves(w, at, hs), per = chestSlotsPerHalf(w, at);
@@ -103,10 +104,37 @@ vec3 chestSlotCenter(World& w, ivec3 at, int slot) {
   ivec3 half; int i;
   if (!locate(w, at, slot, half, i)) return vec3(at) + vec3(0.5f);
   const vec3 d = FRONT[w.getMeta(half.x, half.y, half.z) & 3], right(d.z, 0, -d.x);   // (the right of someone facing its front)
+  if (isCabinet(w, half)) {   // three shelves of three, top shelf first, left to right as you face it
+    const int r = i / CABINET_COLS, c = i % CABINET_COLS;
+    return vec3(half) + vec3(0.5f, CABINET_SHELF[std::min(r, 2)] / 16.f, 0.5f) + right * ((c - 1) * CABINET_COL_W) + d * 0.02f;
+  }
   const int cols = 9, rows = std::max(1, (chestSlotsPerHalf(w, at) + 8) / 9);
   const int c = i % cols, r = i / cols;
   const float span = 1 - 2 * margin(w, half);
   return vec3(half) + vec3(0.5f, chestFloorY(w, half), 0.5f) + right * (((c + 0.5f) / cols - 0.5f) * span) + d * (((r + 0.5f) / rows - 0.5f) * span);
+}
+
+bool isCabinet(World& w, ivec3 at) { return reg().block(w.getBlock(at.x, at.y, at.z)).str("furniture") == "cabinet"; }
+
+int chestSlotAtRay(World& w, ivec3 at, vec3 o, vec3 dir) {
+  if (isCabinet(w, at)) {   // onto its open front: which shelf (by height) and which third across
+    const vec3 d = FRONT[w.getMeta(at.x, at.y, at.z) & 3], right(d.z, 0, -d.x);
+    const vec3 c = vec3(at) + vec3(0.5f, 0, 0.5f) + d * 0.4f;
+    const float den = glm::dot(dir, d);
+    if (std::fabs(den) < 1e-5f) return -1;
+    const float t = glm::dot(c - o, d) / den;
+    if (t <= 0) return -1;
+    const vec3 p = o + dir * t;
+    const float u = glm::dot(p - c, right), h = (p.y - at.y) * 16;
+    if (std::fabs(u) > 1.5f * CABINET_COL_W || h < CABINET_SHELF[2] || h > CABINET_TOP) return -1;
+    const int col = std::clamp((int)std::floor(u / CABINET_COL_W + 1.5f), 0, CABINET_COLS - 1);
+    const int row = h >= CABINET_SHELF[0] ? 0 : h >= CABINET_SHELF[1] ? 1 : 2;
+    const int i = row * CABINET_COLS + col;
+    return i < chestSlotsPerHalf(w, at) ? i : -1;
+  }
+  if (std::fabs(dir.y) < 1e-5f) return -1;
+  const float t = (at.y + chestFloorY(w, at) - o.y) / dir.y;
+  return t > 0 ? chestSlotAt(w, at, o + dir * t) : -1;
 }
 
 int chestSlotAt(World& w, ivec3 at, vec3 p) {

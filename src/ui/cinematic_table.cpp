@@ -919,11 +919,7 @@ public:
       const mat4 inv = glm::inverse(cam.viewProj);
       const vec4 n0 = inv * vec4(ndc, -1, 1), n1 = inv * vec4(ndc, 1, 1);
       const vec3 a0 = vec3(n0) / n0.w, a1 = vec3(n1) / n1.w;
-      const float floorY = (float)(at.y + chestFloorY(w, at) - cam.origin.y);
-      if (std::fabs(a1.y - a0.y) > 1e-5f) {
-        const float u = (floorY - a0.y) / (a1.y - a0.y);
-        if (u > 0) hover = chestSlotAt(w, at, vec3(glm::dvec3(a0 + (a1 - a0) * u) + cam.origin));
-      }
+      hover = chestSlotAtRay(w, at, vec3(glm::dvec3(a0) + cam.origin), glm::normalize(a1 - a0));   // (a chest's floor, a cabinet's open front)
     }
     const int shown = pad ? cursor : hover;
     if (scene().phase == 2 && shown >= 0) cinematicSetAimPoint(true, chestSlotCenter(w, at, shown)); else cinematicSetAimPoint(false);
@@ -934,7 +930,7 @@ public:
       ivec3 half = halves[k / per];
       static const vec3 FRONT[4] = {{0, 0, 1}, {1, 0, 0}, {0, 0, -1}, {-1, 0, 0}};
       const vec3 d = FRONT[w.getMeta(half.x, half.y, half.z) & 3], r(d.z, 0, -d.x);
-      const float hw = cs * 0.46f, hd = (1 - 2 * 0.07f) / std::max(1, (per + 8) / 9) * 0.46f;
+      const float hw = cs * 0.46f, hd = isCabinet(w, half) ? 0.3f : (1 - 2 * 0.07f) / std::max(1, (per + 8) / 9) * 0.46f;   // (a cabinet's shelf: its depth)
       ImVec2 q[4];
       if (!project(c - r * hw - d * hd, q[0]) || !project(c + r * hw - d * hd, q[1]) || !project(c + r * hw + d * hd, q[2]) || !project(c - r * hw + d * hd, q[3])) continue;
       { ImVec2 mid; if (project(c, mid) && bookUiPointOverBook(vec2(mid.x, mid.y))) continue; }   // (behind the journal in your off hand)

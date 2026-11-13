@@ -868,7 +868,7 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
         break;
       }
       case Render::Torch: emitTorch(c, out.cutout, id, x, y, z, meta); break;
-      case Render::Model: emitModel(c, out.cutout, id, x, y, z, meta); break;
+      case Render::Model: if (!chestHiddenAt(wp.x, wp.y, wp.z)) emitModel(c, out.cutout, id, x, y, z, meta); break;   // (an open cabinet: render/chest_layer.cpp)
       case Render::Shape: emitShapeBlock(c, R.tTrans[id] || isPuddle(R, id) ? out.trans : out.cutout, id, x, y, z, meta); break;
       default: break;
     }
