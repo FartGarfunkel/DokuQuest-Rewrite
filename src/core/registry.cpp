@@ -75,6 +75,16 @@ bool Registry::loadBase(const fs::path& dir) {
   for (auto& [k, v] : (*rj)["tags"].items()) for (auto& s : v) tags[k].push_back(s.get<std::string>());
   if (auto m = readJson(dir / "mobs.json")) mobs = *m;
   if (auto m = readJson(dir / "models.json")) models = *m;
+  // imported models (tools/port/geo_boss_import.py: git-ignored, the mods' art): their rigs, clips and attack tables
+  clips = json::object(); kits = json::object();
+  { std::error_code ec;
+    for (auto& e : fs::directory_iterator(dir / "local_models", ec)) {
+      if (e.path().extension() != ".json") continue;
+      auto j = readJson(e.path()); if (!j || !j->is_object()) continue;
+      if (j->contains("models")) for (auto& [k, v] : (*j)["models"].items()) models[k] = v;
+      if (j->contains("clips")) for (auto& [k, v] : (*j)["clips"].items()) clips[k] = v;
+      if (j->contains("kits")) for (auto& [k, v] : (*j)["kits"].items()) kits[k] = v;
+    } }
   finalize();
   DQ_LOG("registry: %zu blocks, %zu items, %zu recipes, %zu tiles", blocks.size(), items.size(), recipes.size(), tileIndex.size());
   return true;

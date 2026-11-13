@@ -70,6 +70,8 @@ public:
   std::unordered_map<std::string, int> tileIndex;                  // tile name -> atlas layer
   json mobs;      // MOB_TYPES (data/mobs.json)
   json models;    // MODEL_DEFS (rigs)
+  json clips;     // imported animation clips by model (data/local_models/*.json "clips": sim/geo_anim.cpp)
+  json kits;      // imported bosses' attack tables by model (data/local_models/*.json "kits": sim/boss_kit.cpp)
 
   // hot-loop tables (indexed by block id)
   u8 tOpaque[MAX_BLOCKS]{}, tSolid[MAX_BLOCKS]{}, tRender[MAX_BLOCKS]{}, tLight[MAX_BLOCKS]{}, tAtt[MAX_BLOCKS]{},

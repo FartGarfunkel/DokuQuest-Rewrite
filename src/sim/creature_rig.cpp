@@ -33,6 +33,7 @@ const RigModel* rigModel(const std::string& key) {
   M.packBase = d.value("packBase", std::string()); M.packTint = d.value("packTint", json());
   if (d.contains("packTex") && d["packTex"].is_array()) for (auto& t : d["packTex"]) if (t.is_string()) M.packTex.push_back(t.get<std::string>());
   M.uvTex = d.value("uvTex", std::string()); M.uvTexW = (int)num(d, "uvTexW", 64);
+  M.zyx = d.value("rotOrder", std::string()) == "zyx";
   M.gallop = flag(d, "gallop"); M.armsReach = flag(d, "armsReach"); M.heavy = flag(d, "heavy"); M.flukes = flag(d, "flukes");
   for (auto& pj : d["parts"]) {
     RigPart p;
@@ -61,10 +62,10 @@ const RigModel* rigModel(const std::string& key) {
 // ------------------------------------------------------------------ pose buffers
 struct Pose {
   const RigModel& M;
-  std::vector<vec3> P; std::vector<u8> has;
+  std::vector<vec3> P; std::vector<u8> has; std::vector<vec3> T;   // T: parts moved off their pivots
   float lift = 0, pitch = 0, roll = 0, headShift = 0, headLift = 0;   // headLift: the head raised off its jaw (an angry enderman)
   vec3 scratch{0};
-  explicit Pose(const RigModel& m) : M(m), P(m.parts.size(), vec3(0)), has(m.parts.size(), 0) {}
+  explicit Pose(const RigModel& m) : M(m), P(m.parts.size(), vec3(0)), has(m.parts.size(), 0), T(m.parts.size(), vec3(0)) {}
   bool any(const char* n) const { int i = M.find(n); return i >= 0 && has[i]; }
   vec3& at(const std::string& n) { int i = M.find(n); if (i < 0) { scratch = vec3(0); return scratch; } if (!has[i]) { has[i] = 1; P[i] = vec3(0); } return P[i]; }
   void set(const std::string& n, vec3 v) { int i = M.find(n); if (i >= 0) { has[i] = 1; P[i] = v; } }
@@ -650,7 +651,7 @@ void rigPose(Creature& m, const RigModel& M, const mat4& base) {
   Pose P(M);
   const std::string& k = M.rig;
   auto custom = rigAnims().empty() ? rigAnims().end() : rigAnims().find(k);
-  if (custom != rigAnims().end()) { RigAnimOut o{P.P, P.has, P.lift, P.pitch, P.roll}; custom->second(m, M, o); }
+  if (custom != rigAnims().end()) { RigAnimOut o{P.P, P.has, P.lift, P.pitch, P.roll, &P.T}; custom->second(m, M, o); }
   else if (k == "biped") animBiped(m, M, P);
   else if (k == "quad") animQuad(m, M, P);
   else if (k == "spider") animSpider(m, M, P);
@@ -685,13 +686,19 @@ void rigPose(Creature& m, const RigModel& M, const mat4& base) {
     if (m.lost.count(part.name)) continue;
     const mat4* parent = part.parent >= 0 ? &m.mats[part.parent] : &root;
     if ((*parent)[3][3] == 0) continue;
-    mat4 mm = glm::translate(*parent, part.pivot + (part.name == "head" ? vec3(0, P.headLift, -P.headShift) : vec3(0)));
+    mat4 mm = glm::translate(*parent, part.pivot + P.T[i] + (part.name == "head" ? vec3(0, P.headLift, -P.headShift) : vec3(0)));
     vec3 r = P.has[i] ? P.P[i] : vec3(0);
     float rx = part.rest.x + r.x, ry = part.rest.y + r.y, rz = part.rest.z + r.z;
     if (k.empty()) { rx += part.swing * sw + part.look * clampv(m.headPitch, -0.6f, 0.6f); }
+    if (M.zyx) {   // (Minecraft's order, for the imported models)
+      if (rz) mm = glm::rotate(mm, rz, vec3(0, 0, 1));
+      if (ry) mm = glm::rotate(mm, ry, vec3(0, 1, 0));
+      if (rx) mm = glm::rotate(mm, rx, vec3(1, 0, 0));
+    } else {
     if (ry) mm = glm::rotate(mm, ry, vec3(0, 1, 0));
     if (rx) mm = glm::rotate(mm, rx, vec3(1, 0, 0));
     if (rz) mm = glm::rotate(mm, rz, vec3(0, 0, 1));
+    }
     m.mats[i] = mm;
   }
   // the cinder wisp (a blaze): twelve rods in three rings, each ring turning as one group and the next

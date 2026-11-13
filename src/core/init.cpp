@@ -1,6 +1,7 @@
 #include "core/init.h"
 #include "core/registry.h"
 #include "world/carve_forms.h"
+#include "sim/boss_kit.h"
 
 namespace dq {
 
@@ -21,6 +22,7 @@ bool initCore(const CoreOptions& o) {
   registerEndStory();
   registerVillagers();
   registerRedstone();
+  registerBossKits();   // imported bosses fight by their own attack tables (sim/boss_kit.cpp)
   return true;
 }
 void shutdownCore() {}
