@@ -356,46 +356,32 @@ int main(int argc, char** argv) {
     L->info.data = saved;
     check(bad == 0, strFormat("the Travel Journal reads right at every point of the story (%d tried)%s", combos, bad ? (": " + why).c_str() : ""));
   }
-  // the finale: with the rift sealed, a Wither Storm woken from a Rift Core is the story's last fight. It can't be worn
-  // below a quarter until its heart shows; then arrows glance off, blows up close land, and breaking it ends the story
+  // the finale (sim/rift.cpp): half beaten, Herobrine raises the Wither Storm in his last hall and hides behind it; while it
+  // lives his ward holds. Breaking it (sim/wither_storm.cpp stormFalls) breaks his ward: then he is the one to defeat
   {
     const json saved = L->info.data;
     json& D = L->info.data; if (!D.is_object()) D = json::object();
-    D["rift"] = {{"stage", 5}, {"frags", 10}, {"sealed", 1}};
+    D["rift"] = {{"stage", 5}, {"frags", 10}};
     for (auto* c : all("wither_storm")) c->removed = true;
     World& w = L->world(P->realm);
     const ivec3 m(ifloor(P->pos.x) + 6, ifloor(P->pos.y) + 3, ifloor(P->pos.z));
     load(vec3(m), 2);
-    for (int dx = -1; dx <= 1; dx++) w.setBlock(m.x + dx, m.y - 1, m.z, B("soul_sand"), 0);
-    w.setBlock(m.x, m.y - 2, m.z, B("soul_sand"), 0);
-    for (int dx : {-1, 1}) { w.setBlock(m.x + dx, m.y, m.z, B("mob_head"), 0); w.setBlockEntity(m.x + dx, m.y, m.z, json{{"mob", "wither_skeleton"}}); }
-    w.setBlock(m.x, m.y, m.z, B("rift_core"), 0);
-    fx.msgs.clear();
-    const bool summoned = tryWitherSummon(*L, P->realm, m);
-    if (!summoned) printf("  (no T: head %d core %d skull be %s, sand %d, player at %.0f %.0f %.0f realm %d)\n", (int)B("mob_head"), (int)w.getBlock(m.x, m.y, m.z),
-                          w.blockEntity(m.x - 1, m.y, m.z) ? w.blockEntity(m.x - 1, m.y, m.z)->dump().c_str() : "none", (int)w.getBlock(m.x, m.y - 2, m.z), P->pos.x, P->pos.y, P->pos.z, P->realm);
-    auto st = all("wither_storm");
-    Creature* c = st.empty() ? nullptr : st[0];
-    check(c && jflag(c->data, "finale") && fx.heard("comes back at once"), "the sealed rift's Rift Core wakes the story's Wither Storm");
+    Creature* c = spawnCreature(*L, P->realm, "wither_storm", vec3(m) + vec3(0.5f, 0, 0.5f));
+    if (c) { c->data["finale"] = true; c->kept = true; c->persistent = true; c->data["spawnT"] = 99.f; c->invulnT = 0; }   // (as his scene raises it)
+    check(c != nullptr, "the Storm he raises in his hall");
     if (c) {
-      c->data["spawnT"] = 99.f; c->invulnT = 0;
-      c->hp = c->maxHp * 0.3f;
-      DamageSrc hit; hit.type = "mob"; hit.attacker = P->id;
-      c->hurt(*L, c->maxHp * 0.5f, hit);
-      check(c->alive() && c->hp >= c->maxHp * 0.25f - 0.5f, strFormat("it can't be worn below a quarter before its heart shows (%.0f of %.0f)", c->hp, c->maxHp));
-      tick(0.3);
-      check(c->data.value("heartT", -1.f) >= 0 && fx.heard("heart shows"), "worn down, it sinks and its heart shows");
-      const float before = c->hp;
-      DamageSrc arrow; arrow.type = "arrow"; arrow.tool = "arrow"; arrow.attacker = P->id; c->invulnT = 0;
-      c->hurt(*L, 40, arrow);
-      check(c->hp == before, "arrows glance off its heart");
-      c->invulnT = 0;
-      kill(*c, P);
-      tick(0.2);
-      check(jflag(L->info.data["rift"], "stormBroken") && fx.heard("heart breaks"), "breaking its heart ends the story");
+      fx.msgs.clear();
+      DamageSrc plain; plain.type = "mob"; plain.attacker = P->id; c->invulnT = 0;
+      const float hp0 = c->hp; c->hurt(*L, 50, plain);
+      check(c->hp == hp0 && c->alive(), "ordinary blows glance off it");
+      { DamageSrc mg; mg.type = "magic"; mg.attacker = P->id; c->invulnT = 0; c->hurt(*L, 1e5f, mg); }   // (magic tells: worn to its last, it falls)
+      const u32 cid = c->id;
+      for (int i = 0; i < 100 && !jflag(L->info.data["rift"], "stormBroken"); i++) tick(0.2);   // (it falls, lies dying, and comes apart)
+      c = dynamic_cast<Creature*>(L->entity(cid));
+      check(jflag(L->info.data["rift"], "stormBroken") && fx.heard("ward round Herobrine breaks"), "breaking it breaks his ward");
       bool chapter = false; for (auto& ch : storyOf(*L, *P).ch) if (ch.t == "The Storm") chapter = ch.done;
-      check(chapter, "the Travel Journal's last chapter is done");
-      check(P->data.is_object() && P->data.contains("ach") && P->data["ach"].contains("storm"), "and the achievement for it");
+      check(chapter, "the Travel Journal's Storm chapter is done");
+      check(P->stats.is_object() && P->stats.contains("story") && P->stats["story"].value("storm", 0) == 1, "and it is in your story");
     }
     // without the seal (or from a command block) it's only a boss
     L->info.data["rift"] = {{"stage", 2}, {"frags", 3}};
