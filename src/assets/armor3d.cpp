@@ -197,6 +197,7 @@ std::map<std::string, Armor3dPart> armor3dSlot(const std::string& mat, int slot,
           const float sx2 = right ? 1.f : -1.f;
           q.x -= sx2 * (6 - ax);   // (a slim arm's middle)
           const bool up = q.y >= 18;
+          if (q.y < 14.5f) continue;   // (the sleeve ends at the wrist: the hand, the arm's last 2 px, is bare)
           part = std::string(right ? "armR" : "armL") + (up ? "_u" : "_d"); pv = vec3(sx2 * ax, up ? 22 : 18, 0);
         } else {
           const float sx2 = right ? 1.f : -1.f; (void)left;

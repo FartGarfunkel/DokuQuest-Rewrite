@@ -251,6 +251,7 @@ void runStep(App& a, const json& st) {
   } else if (op == "setBlock" && s) {
     BlockId id = reg().blockId(st.value("key", "air")); ivec3 b = at(st);
     s->world().setBlock(b.x, b.y, b.z, id, (u8)st.value("meta", 0));
+    if (st.contains("carve")) s->world().setCarve(b.x, b.y, b.z, (u8)st.value("carve", 0));   // octants cut away (bit (x<<2)|(y<<1)|z)
   } else if (op == "expect") {
     if (st.contains("screen")) {
       std::string want = st["screen"].is_null() ? "(none)" : st["screen"].get<std::string>();

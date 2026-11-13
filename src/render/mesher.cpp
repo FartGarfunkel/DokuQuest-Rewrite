@@ -682,6 +682,11 @@ void emitTorch(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, int
       vec3 at((float)x, (float)y, (float)z);
       if (sh.micro) at += vec3(sh.x, sh.y, sh.z) / 16.f;
       else if (!m) at.y += sinkOffset(id, nb) / 16.f;
+      else {   // on a wall that stands back (a vertical slab, a carved face): the torch steps back onto it
+        const float back = torchSetBack((u8)m, nb);
+        const float wx = m == 1 ? 1.f : m == 2 ? -1.f : 0.f, wz = m == 3 ? 1.f : m == 4 ? -1.f : 0.f;
+        at -= vec3(wx, 0, wz) * back;
+      }
       // the wall model leans out from a wall on its west (facing east): meta 1 east, 2 west, 3 south, 4 north
       static const int Q[5] = {0, 0, 2, 1, 3};
       LightRgb L = rgbAt(c, x, y, z);
