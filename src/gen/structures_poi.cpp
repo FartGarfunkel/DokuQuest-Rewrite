@@ -10,12 +10,13 @@
 #include "common/fs.h"
 #include "core/registry.h"
 #include <map>
+#include <set>
 
 namespace dq {
 
 namespace {
 struct PoiPool { std::vector<std::pair<const VPPiece*, int>> els; };
-struct PoiDef { std::string key, start; int depth = 4, y = 0, spacing = 32, reach = 80; bool surface = true, beard = false; int flatR = 6; std::vector<std::string> lands; };
+struct PoiDef { std::string key, start; int depth = 4, y = 0, spacing = 32, reach = 80; bool surface = true, beard = false; int flatR = 6; char ground = 0; std::vector<std::string> lands; };   // ground: 's' sand, 'g' grass, 'n' snow in its own pieces (0: none to speak of)
 struct PoiPack {
   std::map<std::string, VPPiece> pieces;   // by location "ns:path"
   std::map<std::string, PoiPool> pools;
@@ -66,6 +67,33 @@ const PoiPack* poiPack() {
       if (!d.surface && d.y > 90) continue;
       if (d.key.find("heavenly") != std::string::npos || d.key.find("blimp") != std::string::npos) continue;
       if (pk->pools.count(d.start)) pk->defs.push_back(std::move(d));
+    }
+    // each structure's own ground: what its pieces lay round themselves (sand, grass or snow), so it only stands where the land
+    // is that ground (a castle courtyard of sand in a meadow, a lawn in the desert)
+    {
+      const Registry& R = reg();
+      auto groundOf = [&](BlockId id) -> char {
+        const std::string& k = R.block(id).key;
+        if (k == "sand" || k == "red_sand") return 's';
+        if (k == "grass" || k == "podzol" || k == "mycelium" || k == "coarse_dirt" || k == "rooted_dirt") return 'g';
+        if (k == "snow_block" || k == "snow" || k == "snowy_grass" || k == "powder_snow") return 'n';
+        return 0;
+      };
+      for (PoiDef& d : pk->defs) {
+        std::map<char, int> n; std::set<std::string> seen; std::vector<std::string> todo{d.start};
+        while (!todo.empty() && seen.size() < 60) {
+          const std::string pn = todo.back(); todo.pop_back();
+          if (!seen.insert(pn).second) continue;
+          auto pit = pk->pools.find(pn); if (pit == pk->pools.end()) continue;
+          for (auto& [pc, w] : pit->second.els) {
+            for (const VPBlock& b : pc->blocks) if (char g = groundOf(pc->states[b.s].id)) n[g]++;
+            for (const VPJoint& j : pc->joints) if (!j.pool.empty()) todo.push_back(j.pool);
+          }
+        }
+        char best = 0; int bn = 0, tot = 0;
+        for (auto& [g, c] : n) { tot += c; if (c > bn) { bn = c; best = g; } }
+        if (bn >= 24 && bn * 3 >= tot * 2) d.ground = best;
+      }
     }
     DQ_LOG("points of interest: %zu structures, %d pieces, %zu pools; left out: %s", pk->defs.size(), n, pk->pools.size(), piecesMissing().c_str());
     return pk->defs.empty() ? nullptr : std::move(pk);
@@ -188,7 +216,11 @@ void buildPoi(ChunkWriter& w, const StructurePlan& S) {
         if (!w.in(x, z) || y < 1 || y >= DIM_H) continue;
         if (w.get(x, y, z) != AIR) w.put(x, y, z, AIR);
       }
+    static const bool audit = std::getenv("DQ_POI_AUDIT") != nullptr;
+    std::vector<u8> filled;
+    if (audit && !p.terrain) filled.assign((size_t)p.sx * p.sy * p.sz, 0);
     for (const VPBlock& k : p.blocks) {
+      if (!filled.empty()) filled[((size_t)k.y * p.sz + k.z) * p.sx + k.x] = 1;
       auto [tx, tz] = vpTurn(p, q.r, k.x, k.z);
       const int x = q.x0 + tx, z = q.z0 + tz;
       // a terrain-matching piece (a path) follows the land column by column, its layer 0 in place of the ground's top
@@ -210,6 +242,32 @@ void buildPoi(ChunkWriter& w, const StructurePlan& S) {
         P.setEntity(idx, json{{"type", "chest"}, {"items", structLoot("ruin", cr)}});
       }
     }
+    // (the audit) the land left standing inside the piece over its floor where its template has no block and no air: ground
+    // in the rooms
+    if (!filled.empty()) {
+      int ground = 0;
+      for (int ly = 1; ly < p.sy; ly++) for (int lz = 0; lz < p.sz; lz++) for (int lx = 0; lx < p.sx; lx++) {
+        if (filled[((size_t)ly * p.sz + lz) * p.sx + lx] || p.airAt(lx, ly, lz)) continue;
+        auto [tx, tz] = vpTurn(p, q.r, lx, lz);
+        const int x = q.x0 + tx, z = q.z0 + tz, y = q.y0 + ly;
+        if (!w.in(x, z) || y < 1 || y >= DIM_H) continue;
+        const BlockId g = w.get(x, y, z);
+        if (g != AIR && reg().tSolid[g] && !reg().tLiquid[g]) ground++;
+      }
+      if (ground) DQ_LOG("poi audit %s ground-in %d piece %s", E->key.c_str(), ground, p.name.c_str());
+      // standing on nothing: its lowest blocks over air or water (a structure that floats off the ground, or hangs over a drop)
+      int over = 0, base = 0;
+      for (const VPBlock& k : p.blocks) {
+        if (k.y != 0 || !reg().tSolid[p.states[k.s].id]) continue;
+        auto [tx, tz] = vpTurn(p, q.r, k.x, k.z);
+        const int x = q.x0 + tx, z = q.z0 + tz, y = q.y0 - 1;
+        if (!w.in(x, z) || y < 1) continue;
+        base++;
+        const BlockId g = w.get(x, y, z);
+        if (g == AIR || reg().tLiquid[g]) over++;
+      }
+      if (over * 5 > base && base > 8) DQ_LOG("poi audit %s floats %d of %d piece %s y%d", E->key.c_str(), over, base, p.name.c_str(), q.y0);
+    }
   }
 }
 }  // namespace
@@ -227,7 +285,8 @@ void registerStructurePois() {
     const std::vector<std::string> lands = landsAt(tq, c);
     // the structures this land may have, the rarer ones (a wider spacing in their mod) less often
     std::vector<std::pair<double, const PoiDef*>> cand;
-    for (const PoiDef& d : pk->defs) for (const std::string& l : d.lands) if (std::find(lands.begin(), lands.end(), l) != lands.end()) {
+    static const char* only = std::getenv("DQ_POI_ONLY");   // (the audit: this one structure wherever it may stand)
+    for (const PoiDef& d : pk->defs) if (!only || d.key == only) for (const std::string& l : d.lands) if (std::find(lands.begin(), lands.end(), l) != lands.end()) {
       cand.push_back({1.0 / d.spacing, &d}); break;
     }
     if (cand.empty()) return false;
@@ -240,7 +299,15 @@ void registerStructurePois() {
     if (d->surface && d->beard) for (auto& q : E->pcs) {
       if (q.p->terrain) continue;
       const int qx1 = q.x0 + q.w - 1, qz1 = q.z0 + q.d - 1;
-      if (q.y0 - 1 < tq.surfaceY((q.x0 + qx1) / 2, (q.z0 + qz1) / 2) - 4) continue;
+      // only a piece standing at the ground: Minecraft's beard reaches about a dozen blocks, so a tower's upper floors and
+      // the pieces stacked on others get no earth under them (raising the land to every floor grew the castles' towers
+      // of earth and put ground inside the rooms). Not one buried well below the ground either: a crypt keeps its hill
+      const int g = tq.surfaceY((q.x0 + qx1) / 2, (q.z0 + qz1) / 2);
+      if (q.y0 - 1 < g - 4 || q.y0 - 1 > g + 6) continue;
+      bool under = false;   // (a piece below it in the plan: it stands on that, not on the land)
+      for (auto& o : E->pcs) if (&o != &q && !o.p->terrain && o.y0 < q.y0 && o.y0 + o.p->sy >= q.y0 - 1 &&
+                                 o.x0 <= qx1 && o.x0 + o.w - 1 >= q.x0 && o.z0 <= qz1 && o.z0 + o.d - 1 >= q.z0) { under = true; break; }
+      if (under) continue;
       E->flat.push_back({q.x0, q.z0, qx1, qz1, q.y0 - 1});
     }
     int X0 = 1 << 30, Z0 = 1 << 30, X1 = -(1 << 30), Z1 = -(1 << 30);
@@ -254,6 +321,15 @@ void registerStructurePois() {
         lo = std::min(lo, cc.y); hi = std::max(hi, cc.y);
       }
       if (hi - lo > std::max(8, (X1 - X0 + Z1 - Z0) / 8) || wet * 5 > n) return false;
+      // its own ground matches the land's all over its footprint (sand in the desert and on the beach, snow in the snow, grass
+      // in the green lands), not a courtyard of sand in a meadow half over the desert's edge
+      if (d->ground) for (int zz = Z0; zz <= Z1; zz += 6) for (int xx = X0; xx <= X1; xx += 6) {
+        const TerrainColumn cc = tq.terrainColumn(xx, zz);
+        const std::vector<std::string> L = landsAt(tq, cc);
+        auto has = [&](const char* l) { return std::find(L.begin(), L.end(), l) != L.end(); };
+        const bool sandy = cc.biome == BIOME_DESERT || cc.biome == BIOME_BEACH || has("badlands"), snowy = has("snowy");
+        if (d->ground == 's' ? !sandy : d->ground == 'n' ? !snowy : (sandy || snowy)) return false;
+      }
     }
     out.x0 = X0; out.z0 = Z0; out.x1 = X1; out.z1 = Z1; out.cx = x; out.cz = z; out.y = E->pcs[0].y0;
     out.surface = d->surface;
@@ -270,7 +346,7 @@ void registerStructurePois() {
     double best = 0; int by = 0;
     for (const auto& r : E->flat) {
       const int dx = std::max({r[0] - x, 0, x - r[2]}), dz = std::max({r[1] - z, 0, z - r[3]});
-      if (dx == 0 && dz == 0) { if (best < 1 || r[4] > by) { best = 1; by = r[4]; } continue; }   // (under two: the higher floor)
+      if (dx == 0 && dz == 0) { if (best < 1 || r[4] < by) { best = 1; by = r[4]; } continue; }   // (under two: the lower floor; the land never rises into a room)
       const double dd = std::hypot((double)dx, (double)dz);
       if (dd >= E->flatR) continue;
       const double wv = 1 - jsSmooth(0, E->flatR, dd);

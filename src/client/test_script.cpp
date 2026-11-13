@@ -543,6 +543,23 @@ void runStep(App& a, const json& st) {
     p->pos = vec3(sp->cx + 0.5f, dimBase(DIM_OVERWORLD) + sp->y, sp->cz + 0.5f) + o; p->vel = vec3(0); p->prevPos = p->pos; p->hasFallStart = false;
     R.anchor = ivec3(sp->cx, dimBase(DIM_OVERWORLD) + sp->y, sp->cz);
     DQ_LOG("test: tpvillage %s (%s) at %d,%d,%d", sp->name.c_str(), sp->data.value("style", std::string("?")).c_str(), sp->cx, dimBase(DIM_OVERWORLD) + sp->y, sp->cz);
+  } else if (op == "tpstruct" && p && s && s->level->gen) {   // the nearest structure of a kind, seen from above on a diagonal ("side" 0..3), the whole footprint in view
+    const StructurePlan* sp = locateStructure(*s->level->gen, DIM_OVERWORLD, st.value("kind", std::string("poi")), ifloor(p->pos.x), ifloor(p->pos.z), 24);
+    if (!sp) { result(false, "tpstruct: none"); return; }
+    const float W = (float)std::max(sp->x1 - sp->x0, sp->z1 - sp->z0) + 8, k = st.value("dist", 0.75f);
+    const int side = st.value("side", 0);
+    const float sx = side == 1 || side == 2 ? 1.f : -1.f, sz = side >= 2 ? 1.f : -1.f;
+    const vec3 c((sp->x0 + sp->x1) * 0.5f + 0.5f, dimBase(DIM_OVERWORLD) + sp->y + 4, (sp->z0 + sp->z1) * 0.5f + 0.5f);
+    if (side == 4) {   // inside: on the start's floor at its middle, looking along it
+      p->pos = vec3(sp->cx + 0.5f, dimBase(DIM_OVERWORLD) + sp->y + 0.2f, sp->cz + 0.5f); p->yaw = 0.6f; p->pitch = -0.15f;
+    } else {
+      p->pos = c + vec3(sx * W * k, W * k * 0.9f + 6, sz * W * k);
+      const vec3 d = c - (p->pos + vec3(0, 1.6f, 0));
+      p->yaw = std::atan2(-d.x, -d.z); p->pitch = std::atan2(d.y, std::hypot(d.x, d.z));
+    }
+    p->vel = vec3(0); p->prevPos = p->pos; p->hasFallStart = false;
+    R.anchor = ivec3(sp->cx, dimBase(DIM_OVERWORLD) + sp->y, sp->cz);
+    DQ_LOG("test: tpstruct %s %s at %d,%d,%d size %dx%d", sp->name.c_str(), sp->data.value("poi", std::string("")).c_str(), sp->cx, sp->y, sp->cz, sp->x1 - sp->x0 + 1, sp->z1 - sp->z0 + 1);
   } else if (op == "village" && p && s) {   // the nearest village: its buildings, who works where, what it has in store
     auto vs = villagesNear(*s->level, p->pos.x, p->pos.z, 200);
     if (vs.empty()) { result(false, "village: none near"); return; }

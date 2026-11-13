@@ -227,9 +227,15 @@ VPState mapState(const json& e) {
   if (auto it = NAMES().find(key); it != NAMES().end()) key = it->second;
   if (key == "grass" && prop(P, "snowy") == "true" && findBlock("snowy_grass") != NONE) key = "snowy_grass";
   if (key == "cave_vines" && prop(P, "berries") == "true" && findBlock("cave_vines_lit") != NONE) key = "cave_vines_lit";   // (glow berries on it)
+  // another mod's block (or a newer Minecraft one): ours from the table (tools/port/block_substitutes.py), "air" leaving it empty
+  static const json SUBS = [] { auto j = readJson(dataDir() / "block_substitutes.json"); return j && j->is_object() ? *j : json::object(); }();
+  if (findBlock(key) == NONE) if (auto it = SUBS.find(key); it != SUBS.end() && it->is_string()) {
+    key = it->get<std::string>();
+    if (key == "air") { S.id = AIR; S.kind = VPK_AIR; return S; }
+  }
   BlockId id = findBlock(key);
   if (id == NONE) id = nearestBlock(key, key);   // (another mod's block, or a newer name: the nearest of ours)
-  if (id == NONE) { missing()[n]++; return S; }
+  if (id == NONE) { missing()[n]++; if (std::getenv("DQ_POI_AUDIT")) DQ_LOG("poi audit missing-block %s", n.c_str()); return S; }
   if (!S.plant.empty()) { auto it = NAMES().find(S.plant); if (it != NAMES().end()) S.plant = it->second; if (findBlock(S.plant) == NONE) S.plant.clear(); }
   S.id = id;
   const BlockDef& d = R.block(id);

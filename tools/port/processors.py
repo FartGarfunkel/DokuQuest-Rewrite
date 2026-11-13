@@ -19,6 +19,11 @@ def rules_of(roots, ref):
     else: return []
     out = []
     for pr in procs or []:
+        if pr.get('processor_type') == 'integrated_api:integrated_block_replace_processor':
+            # IDAS: a placeholder that becomes another mod's block, else its "otherwise" (that mod is never here)
+            if pr.get('input_block'):
+                out.append([pr['input_block'], 1.0, pr.get('otherwise_block', 'minecraft:air'), {}])
+            continue
         if pr.get('processor_type') != 'minecraft:rule': continue
         for r in pr.get('rules', []):
             if r.get('location_predicate', {}).get('predicate_type', 'minecraft:always_true') != 'minecraft:always_true': continue
