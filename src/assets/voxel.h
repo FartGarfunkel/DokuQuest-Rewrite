@@ -95,6 +95,7 @@ public:
   // how far a carried vessel's liquid leans (x, z of its surface's slope, about +-0.35): the hand layer sets it for what's
   // in your hand and puts it back to 0 (render/item_layers.cpp); a gentle idle wobble is added in the shader
   vec2 slosh{0};
+  vec4 clip{0, 0, 0, -1};   // draw only where dot(clip.xyz, p) + clip.w <= 0 (render space; the default cuts nothing)
 private:
   std::unique_ptr<Shader> sh;
   bool tried = false;

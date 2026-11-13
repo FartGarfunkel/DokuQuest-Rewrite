@@ -495,7 +495,7 @@ void CharacterLayer::update(GameSession& s, double dt) {
         const float dy = st.haveY ? e->pos.y - st.lastY : 0.f;
         if (e->onGround && !p->riding && !p->swimming && std::fabs(dy) > 0.01f && std::fabs(dy) <= 0.65f) st.climbY = std::clamp(st.climbY - dy, -0.65f, 0.65f);
         else if (std::fabs(dy) > 0.65f) st.climbY = 0;
-        st.climbY *= std::exp(-fdt * (hs > 3.f ? 11.f : 8.f));
+        { const float rate = 0.9f + 1.1f * hs, d = rate * fdt; st.climbY = st.climbY > 0 ? std::max(0.f, st.climbY - d) : std::min(0.f, st.climbY + d); }   // (a steady rise, as the view's)
         st.lastY = e->pos.y; st.haveY = true;
       }
       if (e->onGround && hs < 6.f && !p->swimming && !p->riding && !p->sleeping && !p->dead) {
@@ -838,6 +838,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   if (ps.sitGround) viewOff.y = 0;
   if (inBed) { rel = f.cam.rel(glm::dvec3(bedFeet)); viewOff = vec3(0); }
   if (!fp) rel.y += st.climbY;   // (the step eased: render/char_layer.h climbY)
+  else if (&p == s.player) rel.y += fpStepLag;   // (your own body rises with your view up a step)
   mat4 base = glm::translate(mat4(1), rel + viewOff);
   if (ps.sit) base = glm::translate(base, vec3(0, -0.45f, 0));
   // continuous amounts (a station's crouch is a sneak outright)
@@ -904,6 +905,16 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   CharRig R;
   charRig(M, ps, base, R, cloak, !back.empty());
   if (o.blend) charBlendStep(*o.blend, R, base, charStateKey(ps), o.time);
+  // first person: nothing of the body above the shoulders under your eyes (a cape's collar, a hood's rim, a ruff): cut level
+  // with the shoulders (the body's top, in its own frame turned to render space)
+  const vec4 NOCLIP(0, 0, 0, -1);
+  vec4 fpClip = NOCLIP;
+  if (fp) {
+    const vec3 top(R.part[CP_BODY] * vec4(0, 12.f - 0.5f, 0, 1)), up = glm::normalize(vec3(R.part[CP_BODY][1]));
+    fpClip = vec4(up, -glm::dot(up, top));
+  }
+  auto bodyClip = [&](bool on) { voxelRenderer().clip = on ? fpClip : NOCLIP; };   // (the torso's own pieces only: raised arms and what they hold stay whole)
+  struct ClipOff { ~ClipOff() { voxelRenderer().clip = vec4(0, 0, 0, -1); } } clipOff;
   // the 3D outer layer goes under armour: whatever a piece covers isn't drawn
   bool hid[CP_COUNT] = {};
   hid[CP_HEAD] = !AR[0].empty() && !hatItem;
@@ -945,8 +956,10 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
       int pi = pit->second;
       // in first person the chest's sleeves would sit right at the eye when you look down: only the torso's shell
       mat4 m = R.part[pi] * R.scale[pi];
+      bodyClip(pi == CP_BODY);
       for (const CharMesh* cm : list) VR.draw(cm->gl, m * cm->local(), light, tint);
     }
+    bodyClip(false);
   }
   // ---- a mob head worn in the helmet slot: the creature's own head, a little bigger than yours, over it ----
   if (!AR[0].empty() && !fp && shows(CP_HEAD)) if (const ItemDef* hdef = reg().item(AR[0]); hdef && hdef->has("mobHead")) {
@@ -960,8 +973,10 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   for (int i : {CP_HEAD, CP_BODY, CP_ARMR_U, CP_ARMR_D, CP_ARML_U, CP_ARML_D, CP_LEGR_U, CP_LEGR_D, CP_LEGL_U, CP_LEGL_D}) {
     if (!shows(i)) continue;
     mat4 m = R.part[i] * R.scale[i];
+    bodyClip(i == CP_BODY);
     if (M.base[i].ready()) VR.draw(M.base[i].gl, m * M.base[i].local(), light, tint);
     if (!hid[i] && M.ovl[i].ready()) VR.draw(M.ovl[i].gl, m * M.ovl[i].local(), light, tint);
+    bodyClip(false);
     if (i == CP_HEAD && !fp) drawCharFace(M, ps, m, light, tint);
   }
   // ---- the look's shapes ----
@@ -975,7 +990,9 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
       if (fp && !fpArmR && (part == "armR" || part == "foreR")) continue;
       auto fm = R.gear.find(part);
       if (fm == R.gear.end() || !mesh.ready()) continue;
+      bodyClip(part == "body" || part == "skirtF" || part == "skirtB");
       VR.draw(mesh.gl, fm->second * mesh.local(), light, tint);
+      bodyClip(false);
     }
   }
   if (o.headOnly) return;

@@ -13,7 +13,8 @@ uniform float uNeutral;      // 1 = icon/preview lighting (fixed light, no fog)
 uniform float uPass;         // 0 all, 1 all but glass, 2 only glass (assets/voxel.cpp VoxelRenderer::draw)
 uniform vec4 uLiquidXZ;      // a vessel's liquid: its box in grid units (x0, x1, z0, z1)
 uniform vec2 uLiquidY;       // (y0, y1); y1 == y0: no liquid
-uniform vec3 uSlosh;         // its surface's slope (x, z) as it's carried, time
+uniform vec3 uSlosh;
+uniform vec4 uClip;          // cut away where dot(uClip.xyz, p) + uClip.w > 0 (render space)         // its surface's slope (x, z) as it's carried, time
 
 #ifdef VERTEX
 layout(location = 0) in vec3 aPos;
@@ -61,6 +62,7 @@ void main() {
   float shade = n.x * n.x * 0.8 + n.z * n.z * 0.65 + n.y * n.y * (n.y > 0.0 ? 1.0 : 0.5);
   float a8 = vCol.a * 255.0;
   bool glass = abs(a8 - 253.0) < 0.5, liquid = abs(a8 - 252.0) < 0.5;
+  if (dot(uClip.xyz, vRel) + uClip.w > 0.0) discard;
   if ((uPass > 0.5 && uPass < 1.5 && glass) || (uPass > 1.5 && !glass)) discard;
   bool glow = a8 > 253.5 && a8 < 254.7;
   vec3 c = vCol.rgb;

@@ -16,6 +16,9 @@ class SkyRenderer;
 
 // Systems that draw things in the world (entities, particles, LOD, portals, held item, clouds...)
 // register with the session; each is called in the matching pass.
+// first person: how far the view lags below where it is going up a step (client/play.cpp); the body drawn with it
+inline float fpStepLag = 0;
+
 class RenderLayer {
 public:
   virtual ~RenderLayer() = default;

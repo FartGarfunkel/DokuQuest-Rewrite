@@ -182,7 +182,7 @@ void VoxelRenderer::draw(const VoxelMeshGL& m, const mat4& model, VoxelLight lig
   sh->set("uLight", vec2(light.sky, light.block));
   sh->set("uTint", tint);
   sh->set("uGlint", vec2(glint, (float)std::fmod(time, 1000.0)));
-  sh->set("uLiquidXZ", m.liquidXZ); sh->set("uLiquidY", m.liquidY); sh->set("uSlosh", vec3(slosh, (float)std::fmod(time, 1000.0)));
+  sh->set("uLiquidXZ", m.liquidXZ); sh->set("uLiquidY", m.liquidY); sh->set("uSlosh", vec3(slosh, (float)std::fmod(time, 1000.0))); sh->set("uClip", clip);
   bool mirrored = glm::determinant(mat3(model)) < 0;
   if (!handSuppress) {
     if (mirrored) glFrontFace(GL_CW);

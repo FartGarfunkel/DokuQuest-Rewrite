@@ -153,7 +153,9 @@ void ccPaintSkin(const CharLook& Lin, SkinImage& out, std::vector<u8>* accOut) {
   const std::string& ew = L.eyewear;
   auto F = [&](int x, int y, Px c) { G.put(8 + x, 8 + y, c, 0.02f); };
   if (ew == "glasses") { Px fr = A(P(vec3(60, 52, 44))); for (int x : {0, 3, 4, 7}) F(x, 3, fr); for (int x : {1, 2, 5, 6}) F(x, 2, fr); for (int x = 4; x < 8; x++) G.put(x, 11, fr, 0.02f); for (int x = 0; x < 4; x++) G.put(16 + x, 11, fr, 0.02f); }
-  if (ew == "monocle") { Px gd = A(P(vec3(216, 176, 64))); F(4, 3, gd); F(7, 3, gd); F(5, 2, gd); F(6, 2, gd); F(5, 4, gd); F(6, 4, gd); F(7, 5, gd); F(7, 6, gd); }
+  // (a thin dark brass rim round the one eye, the eye itself left showing, and its chain: bright gold over half an 8-pixel
+  // face read as a strange yellow eye)
+  if (ew == "monocle") { Px rim = A(P(vec3(112, 88, 44))), ch = A(P(vec3(150, 120, 60))); F(4, 3, rim); F(7, 3, rim); F(5, 2, rim); F(6, 2, rim); F(7, 4, ch); F(7, 5, ch); }
   if (ew == "eyepatch") {
     Px bk = A(P(vec3(26, 22, 20))), st = A(P(vec3(44, 34, 28)));
     F(5, 3, bk); F(6, 3, bk); F(5, 4, bk); F(6, 4, bk);

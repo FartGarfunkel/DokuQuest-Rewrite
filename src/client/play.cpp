@@ -165,7 +165,13 @@ void clientPlayerCamera(GameSession& s, Camera& cam, double dtd) {
   if (!st.hasEy || p.sleeping || seated || p.dead || std::fabs(ey - st.ey) > 1.5f) { st.ey = ey; st.hasEy = true; }
   else st.ey += (ey - st.ey) * std::min(1.f, dt * (ey < st.ey ? 18.f : 11.f));
   float baseY = p.pos.y + st.ey;
-  if (st.hasCamY && p.onGround && !p.flying && baseY > st.camY && baseY - st.camY < 1.05f && !seated) baseY = st.camY + (baseY - st.camY) * std::min(1.f, dt * 14);
+  // up a step (stairs, slabs, a block's step-up): the view rises at a steady rate matched to the walk (about a stair's
+  // slope), not an easing that starts and stops at each step; your own body goes with it (fpStepLag: render/char_layer.cpp)
+  if (st.hasCamY && !p.flying && baseY > st.camY && baseY - st.camY < 1.05f && !seated) {
+    const float hs = std::hypot(p.vel.x, p.vel.z), rate = 0.9f + 1.1f * hs;
+    baseY = std::min(baseY, st.camY + rate * dt);
+  }
+  fpStepLag = baseY - (p.pos.y + st.ey);
   st.camY = baseY; st.hasCamY = true;
   cam.pos = glm::dvec3(p.pos.x + rx * bx + sx, baseY + by + sy, p.pos.z + rz * bx);
   cam.yaw = p.yaw; cam.pitch = p.pitch - nod; cam.roll = p.dead ? 0.6f : roll;

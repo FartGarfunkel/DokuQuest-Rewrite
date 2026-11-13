@@ -8,6 +8,7 @@
 #include <cmath>
 #include <random>
 
+namespace dq { bool itemHasUse(const ItemDef& d); }   // sim/controller.cpp
 namespace dq {
 
 namespace {
@@ -96,7 +97,13 @@ void combatRpgInput(Level& lv, Player& p, const PlayerInput& in, float dt) {
     p.dodgeYaw = std::atan2(-tx, -tz);        // the heading whose front is that way
     sfxUi(lv, p, "step");
   }
-  const bool block = holdingShield(p) && in.use && p.stamina > 0 && p.dodgeT <= 0;
+  // the shield comes up only when the main hand has nothing of its own to do (Minecraft): a sapling, a block, food, a bow...
+  // in the main hand is used, the shield in the other hand waits
+  const ItemStack& mh = p.inv[p.selected];
+  const ItemDef* md = mh.empty() ? nullptr : reg().item(mh.id);
+  const bool mainShield = md && (mh.id == "shield" || md->has("shield"));
+  const bool mainBusy = md && !mainShield && itemHasUse(*md);
+  const bool block = holdingShield(p) && !mainBusy && in.use && p.stamina > 0 && p.dodgeT <= 0;
   if (block) {
     if (p.blockT <= 0) p.blockT = 0.001f;
     else p.blockT += dt;

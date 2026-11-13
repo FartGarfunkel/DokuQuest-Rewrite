@@ -105,7 +105,7 @@ void PlayerController::consumeHeld(int n) {
   h.n -= n; if (h.n <= 0) h.clear();
 }
 
-static bool itemHasUse(const ItemDef& d) {
+bool itemHasUse(const ItemDef& d) {   // (also sim/combat_rpg.cpp: a shield waits for a main hand that has a use)
   for (const char* k : {"cape", "block", "heartCrystal", "cart", "boat", "food", "backpack", "bucket", "igniter", "pocketKey", "summon", "armor", "bow", "spyglass", "bonemeal", "plants", "disc", "bottle", "drink", "summonWand", "paintbrush", "pottery"})
     if (d.has(k)) return true;
   return false;
