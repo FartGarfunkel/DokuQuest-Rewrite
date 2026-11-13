@@ -270,6 +270,7 @@ const std::map<std::string, int>& WEIGHTS() {   // roughly vanilla's pool weight
   return W;
 }
 
+std::unique_ptr<VillagePieces> finishPack(std::unique_ptr<VillagePieces> pack, int pieces);
 std::unique_ptr<VillagePieces> loadPieces() {
   auto pack = std::make_unique<VillagePieces>();
   int pieces = 0; missing().clear();
@@ -278,10 +279,23 @@ std::unique_ptr<VillagePieces> loadPieces() {
     if (b == std::string::npos) return;
     const std::string style = rel.substr(0, a), kind = rel.substr(a + 1, b - a - 1);
     if (kind.find("zombie") != std::string::npos || (kind != "houses" && kind != "streets" && kind != "town_centers" && kind != "terminators" && kind != "decor")) return;
+    VPPiece P;
+    if (!makePiece(style, kind, fs::path(rel).stem().string(), bytes, P)) { DQ_WARN("village pieces: %s isn't a structure template", rel.c_str()); return; }
+    pack->pools[style + "/" + kind].push_back(std::move(P));
+    pieces++;
+  });
+  return finishPack(std::move(pack), pieces);
+}
+
+}  // namespace
+
+// one structure template (.nbt bytes) as a piece: its blocks in our states, its joints, our furniture (village_pieces.h)
+bool makePiece(const std::string& style, const std::string& kind, const std::string& name, const std::vector<u8>& bytes, VPPiece& P) {
+  {
     Template T;
-    if (!readTemplate(bytes, T)) { DQ_WARN("village pieces: %s isn't a structure template", rel.c_str()); return; }
-    VPPiece P; P.style = style; P.kind = kind;
-    P.name = fs::path(rel).stem().string();
+    if (!readTemplate(bytes, T)) return false;
+    P.style = style; P.kind = kind;
+    P.name = name;
     P.sx = T.size[0]; P.sy = T.size[1]; P.sz = T.size[2];
     P.terrain = kind == "streets" || kind == "terminators";
     for (auto& [k, w] : WEIGHTS()) if (P.name.find(k) != std::string::npos) P.weight = std::max(P.weight, w);
@@ -379,6 +393,7 @@ std::unique_ptr<VillagePieces> loadPieces() {
         std::vector<int> g2((size_t)SX * SY * SZ, -1);
         for (int i = 0; i < (int)P.blocks.size(); i++) g2[((size_t)P.blocks[i].y * SZ + P.blocks[i].z) * SX + P.blocks[i].x] = i;
         auto at3 = [&](int x, int y, int z) { return x < 0 || y < 0 || z < 0 || x >= SX || y >= SY || z >= SZ ? -2 : g2[((size_t)y * SZ + z) * SX + x]; };
+        const int nB = (int)P.blocks.size();   // (indices past this are plugs made just now: filled, not blocks to look at)
         std::vector<VPBlock> plugs;
         for (int i = 0; i < (int)P.blocks.size(); i++) {
           const VPBlock& b = P.blocks[i]; const VPState& st = P.states[b.s];
@@ -387,13 +402,15 @@ std::unique_ptr<VillagePieces> loadPieces() {
           // open cell (it falls there), not running water resting on water (that only feeds what's below: a fountain's tiers)
           const int lvl = st.meta[0] & 7, bl = at3(b.x, b.y - 1, b.z);
           bool spreads = lvl < 7;
-          if (bl < 0) spreads = spreads && b.y == 1;   // (layer 0's empty cells are the ground)
+          if (bl >= nB) spreads = false;   // (a plug under it: held)
+          else if (bl < 0) spreads = spreads && b.y == 1;   // (layer 0's empty cells are the ground)
           else if (R.tLiquid[P.states[P.blocks[bl].s].id] == 1) spreads = spreads && lvl == 0 && (P.states[P.blocks[bl].s].meta[0] & 15) == 0;
           else spreads = spreads && R.tSolid[P.states[P.blocks[bl].s].id];
           if (!spreads) continue;
           auto plug = [&](int nx, int nz, int fx, int fz) {   // (fx,fz: the wet cell it closes)
             if (at3(nx, b.y, nz) != -1) return;   // a block there, or outside the piece
-            int under = at3(nx, b.y - 1, nz); if (under < 0 || R.tLiquid[P.states[P.blocks[under].s].id]) under = at3(fx, b.y - 1, fz);
+            int under = at3(nx, b.y - 1, nz); if (under >= nB) under = -1;
+            if (under < 0 || R.tLiquid[P.states[P.blocks[under].s].id]) { under = at3(fx, b.y - 1, fz); if (under >= nB) under = -1; }
             u16 s2 = under >= 0 && R.tSolid[P.states[P.blocks[under].s].id] && !R.tLiquid[P.states[P.blocks[under].s].id] ? P.blocks[under].s : (u16)0xFFFF;
             if (s2 == 0xFFFF) { VPState dirt; dirt.id = findBlock("dirt"); P.states.push_back(dirt); s2 = (u16)(P.states.size() - 1); }
             if (std::getenv("DQ_PLUG_DEBUG")) DQ_LOG("plug %s %d,%d,%d from %d,%d,%d water/%d", P.name.c_str(), nx, b.y, nz, b.x, b.y, b.z, st.meta[0]);
@@ -407,7 +424,7 @@ std::unique_ptr<VillagePieces> loadPieces() {
             // a slab or stair rim beside still water: Minecraft's stays dry and holds the pond, ours takes the water into its
             // empty half and runs it on out of its far side (taiga_small_farm_1's pond spilled 48 blocks over the grass)
             const int j = at3(nx, b.y, nz);
-            if (!source || j < 0) continue;
+            if (!source || j < 0 || j >= nB) continue;
             const VPState& ns = P.states[P.blocks[j].s];
             if (R.tLiquid[ns.id] || (ns.meta[0] & 0x80) || carveFormOf(ns.id, ns.meta[0]).base == 0) continue;
             for (int e = 0; e < 4; e++) plug(nx + ND[e][0], nz + ND[e][2], nx, nz);
@@ -772,9 +789,12 @@ std::unique_ptr<VillagePieces> loadPieces() {
         P.blocks.swap(kept2);
       }
     }
-    pack->pools[style + "/" + kind].push_back(std::move(P));
-    pieces++;
-  });
+  }
+  return true;
+}
+
+namespace {
+std::unique_ptr<VillagePieces> finishPack(std::unique_ptr<VillagePieces> pack, int pieces) {
   if (!pieces) return nullptr;
   for (auto& [k, v] : pack->pools) std::sort(v.begin(), v.end(), [](const VPPiece& a, const VPPiece& b) { return a.name < b.name; });   // the same order on every machine
   { std::string by; for (auto& [st, n] : furnBy) by += " " + st + " " + std::to_string(n[0]) + "/" + std::to_string(n[1]); DQ_LOG("village pieces: chairs/tables by style:%s", by.c_str()); }
