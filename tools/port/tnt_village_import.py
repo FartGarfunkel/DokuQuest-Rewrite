@@ -9,6 +9,8 @@ added to data/villages/index.json, and the style to data/villages/styles.json on
 "kaisyn:village/exclusives/<style>/houses") resolve to the same folders (gen/village_pieces.cpp VillagePieces::pool).
 The pieces are the mod's: local game data, git-ignored (data/villages/.gitignore)."""
 import json, pathlib, shutil, sys
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
+from processors import rules_of
 
 KINDS = ('town_centers', 'houses', 'streets', 'terminators', 'decor')
 # style -> (base style, its own materials for our own buildings in it: the hall, the mine)
@@ -56,6 +58,8 @@ def main(mod, d='data'):
                 to.parent.mkdir(parents=True, exist_ok=True)
                 if not to.exists() or to.stat().st_size != src.stat().st_size: shutil.copyfile(src, to)
                 if rel not in have: idx['pieces'].append(rel); have.add(rel); added += 1
+                rl = rules_of([mod], el.get('element', {}).get('processors'))
+                if rl: idx.setdefault('rules', {})[rel] = rl
         if added > n0 or any(p.startswith(style + '/') for p in have):
             done.append(style)
             if not any(e.get('key') == style for e in sty['styles']):

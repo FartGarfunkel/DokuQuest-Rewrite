@@ -1,6 +1,7 @@
 // gen/village_pieces.cpp — our villages' buildings: Better Village's structure pieces (gzip'd NBT templates in
 // data/villages, tools/port/village_import.py), read once on first use, each Minecraft block state turned into our
 // block and its meta for every quarter turn.
+#include <set>
 #include "world/rug.h"
 #include "gen/village_pieces.h"
 #include "common/fs.h"
@@ -101,9 +102,11 @@ bool readTemplate(const std::vector<u8>& gz, Template& T) {
 
 // ---- where the pieces are: data/villages/<style>/<kind>/<name>.nbt, listed in data/villages/index.json ----
 using PieceFn = std::function<void(const std::string& rel, const std::vector<u8>& bytes)>;   // rel: "plains/houses/x.nbt"
+json& pieceRules() { static json r = json::object(); return r; }   // index.json "rules": rel -> the builder's swaps
 bool eachPiece(const PieceFn& f) {
   auto idx = readJson(dataDir() / "villages" / "index.json");
   if (!idx || !idx->is_object() || !(*idx)["pieces"].is_array()) return false;
+  if ((*idx).contains("rules") && (*idx)["rules"].is_object()) pieceRules() = (*idx)["rules"];
   int n = 0;
   for (auto& r : (*idx)["pieces"]) {
     if (!r.is_string()) continue;
@@ -322,7 +325,8 @@ std::unique_ptr<VillagePieces> loadPieces() {
     const std::string style = rel.substr(0, a), kind = rel.substr(a + 1, b - a - 1);
     if (kind.find("zombie") != std::string::npos || (kind != "houses" && kind != "streets" && kind != "town_centers" && kind != "terminators" && kind != "decor")) return;
     VPPiece P;
-    if (!makePiece(style, kind, fs::path(rel).stem().string(), bytes, P)) { DQ_WARN("village pieces: %s isn't a structure template", rel.c_str()); return; }
+    const json* rl = pieceRules().contains(rel) ? &pieceRules()[rel] : nullptr;
+    if (!makePiece(style, kind, fs::path(rel).stem().string(), bytes, P, rl)) { DQ_WARN("village pieces: %s isn't a structure template", rel.c_str()); return; }
     pack->pools[style + "/" + kind].push_back(std::move(P));
     pieces++;
   });
@@ -334,10 +338,30 @@ std::unique_ptr<VillagePieces> loadPieces() {
 // one structure template (.nbt bytes) as a piece: its blocks in our states, its joints, our furniture (village_pieces.h)
 std::string piecesMissing() { std::vector<std::pair<int, std::string>> v; for (auto& [k, c] : missing()) v.push_back({c, k}); std::sort(v.rbegin(), v.rend()); std::string o; for (size_t i = 0; i < v.size() && i < 40; i++) o += (o.empty() ? "" : ", ") + v[i].second + " " + std::to_string(v[i].first); return o; }
 
-bool makePiece(const std::string& style, const std::string& kind, const std::string& name, const std::vector<u8>& bytes, VPPiece& P) {
+bool makePiece(const std::string& style, const std::string& kind, const std::string& name, const std::vector<u8>& bytes, VPPiece& P, const json* rules) {
   {
     Template T;
     if (!readTemplate(bytes, T)) return false;
+    // the builder's processors (tools/port/processors.py: [[input, probability, output, properties]...], tried in order):
+    // placeholder colours become paths, stone mossy... each block decided by its place (the same every time)
+    if (rules && rules->is_array() && !rules->empty()) {
+      std::vector<int> outIdx;
+      for (const json& r : *rules) {
+        json o = json{{"Name", r[2]}}; if (r.size() > 3 && r[3].is_object() && !r[3].empty()) o["Properties"] = r[3];
+        T.palette.push_back(o); outIdx.push_back((int)T.palette.size() - 1);
+      }
+      for (RawBlock& rb : T.blocks) {
+        if (rb.s >= T.palette.size()) continue;
+        const std::string nm = T.palette[rb.s].value("Name", std::string());
+        u32 h = (u32)rb.x * 73856093u ^ (u32)rb.y * 19349663u ^ (u32)rb.z * 83492791u ^ (u32)std::hash<std::string>()(name);
+        for (size_t k = 0; k < rules->size(); k++) {
+          const json& r = (*rules)[k];
+          if (!r[0].is_string() || r[0].get_ref<const std::string&>() != nm) continue;
+          h = h * 1103515245u + 12345u;
+          if (((h >> 8) & 0xFFFF) / 65536.0 < r[1].get<double>()) { rb.s = (decltype(rb.s))outIdx[k]; break; }
+        }
+      }
+    }
     P.style = style; P.kind = kind;
     P.name = name;
     P.sx = T.size[0]; P.sy = T.size[1]; P.sz = T.size[2];
@@ -494,8 +518,11 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
       }
       for (auto& m : more) P.blocks.push_back(m);
       // our furniture for the builders' stand-ins: a fence under a pressure plate or a carpet is a table (ours, of its wood),
-      // a wooden stair at a table, or with armrests (trapdoors, wall signs) both sides, is a chair (ours, facing out)
-      {
+      // a wooden stair at a table, or with armrests (trapdoors, wall signs) both sides, is a chair (ours, facing out).
+      // Only in our own villages' pieces (made for it: tools/port/village_builder.py): other builders' stairs are steps
+      static const std::set<std::string> OURS = {"plains", "savanna", "taiga", "snowy", "desert", "beach", "jungle", "swamp", "mountain", "alpine", "mesa",
+        "oasis", "savanna_hut", "mushroom", "igloo", "christmas", "halloween", "jungle_tree"};
+      if (OURS.count(P.style) && P.kind != "poi") {
         std::vector<int> grid2((size_t)SX * SY * SZ, -1);
         auto at2 = [&](int x, int y, int z) -> int { return x < 0 || y < 0 || z < 0 || x >= SX || y >= SY || z >= SZ ? -1 : grid2[((size_t)y * SZ + z) * SX + x]; };
         for (int i = 0; i < (int)P.blocks.size(); i++) grid2[((size_t)P.blocks[i].y * SZ + P.blocks[i].z) * SX + P.blocks[i].x] = i;

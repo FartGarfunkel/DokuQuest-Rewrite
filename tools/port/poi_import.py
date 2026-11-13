@@ -7,6 +7,8 @@ start height, biomes (resolved through the biome tags to our lands) and spacing 
 pool it reaches (following the pools named in the pieces' own jigsaw blocks too). Pieces go to data/pois/<ns>/<path>.nbt,
 the lot to data/pois/index.json; gen/structures_poi.cpp places them."""
 import gzip, io, json, pathlib, shutil, struct, sys
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
+from processors import rules_of
 
 MODS = ['DungeonsArise-1.20.x-2.1.58-release', 'MoogsVoyagerStructures-universal-1.20-5.1.3', 'The_Graveyard_3.1_(FORGE)_for_1.20.1',
         'idas_forge-1.13.0+1.20.1']
@@ -106,7 +108,8 @@ def main(mods, d='data'):
                         if n and 'pool' in n and 'jigsaw' in pal[b['state']]['Name']: todo.append(n['pool'])
                 except Exception as ex:
                     print('  (unreadable', rel, ex, ')')
-            els.append([ns + ':' + p, w, e.get('projection', 'rigid')])
+            rl = rules_of(roots, e.get('processors'))
+            els.append([ns + ':' + p, w, e.get('projection', 'rigid')] + ([rl] if rl else []))
         for el in j.get('elements', []): add(el.get('element', {}), el.get('weight', 1))
         index['pools'][name] = els
         fb = j.get('fallback')

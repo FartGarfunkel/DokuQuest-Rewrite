@@ -28,6 +28,8 @@ const PoiPack* poiPack() {
     if (!idx || !idx->is_object()) return nullptr;
     auto pk = std::make_unique<PoiPack>();
     int n = 0;
+    std::map<std::string, const json*> rulesOf;   // a piece's swaps: from the first pool that names it with some
+    for (auto& [name, els] : (*idx)["pools"].items()) for (auto& e : els) if (e.size() > 3 && !rulesOf.count(e[0].get<std::string>())) rulesOf[e[0].get<std::string>()] = &e[3];
     for (auto& r : (*idx)["pieces"]) {
       if (!r.is_string()) continue;
       const std::string rel = r.get<std::string>();   // "ns/path.nbt"
@@ -36,7 +38,8 @@ const PoiPack* poiPack() {
       const size_t sl = rel.find('/');
       const std::string ns = rel.substr(0, sl), path = rel.substr(sl + 1, rel.size() - sl - 5);
       VPPiece P;
-      if (!makePiece(ns, "poi", path, *b, P)) continue;
+      auto ri = rulesOf.find(ns + ":" + path);
+      if (!makePiece(ns, "poi", path, *b, P, ri == rulesOf.end() ? nullptr : ri->second)) continue;
       pk->pieces[ns + ":" + path] = std::move(P); n++;
     }
     for (auto& [name, els] : (*idx)["pools"].items()) {

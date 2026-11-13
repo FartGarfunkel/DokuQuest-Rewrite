@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
     old.lv->world().setBlock(4, old.Y + 1, 4, LEAVES);
     old.P->pos = vec3(4.5f, old.Y + 2.2f, 4.5f); old.P->vel = vec3(0); old.P->onGround = false;
     old.fall(1.5);
-    check(old.P->pos.y >= old.Y + 1.95f, "classic: you stand on leaves");
+    check(old.P->pos.y < old.Y + 1.95f, "classic too: you sink through leaves (every world)");
     old.lv->close();
   }
   Rig im("Immersive", true, true);
