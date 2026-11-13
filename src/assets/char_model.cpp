@@ -5,6 +5,7 @@
 #include "assets/cape_tex.h"
 #include "assets/voxel_paint.h"
 #include "assets/pack_armor.h"
+#include "assets/armor3d.h"
 #include "assets/quiver3d.h"
 #include "assets/tileset.h"
 #include "assets/pack_fs.h"
@@ -354,6 +355,20 @@ const ArmorSet& armorMeshes(const std::string& itemKey, const std::string& dye, 
   }
   std::string mat = paP || itemKey.rfind("pa:", 0) == 0 ? "iron" : armorMatOf(itemKey);
   if (tileOf(ts, "armor_" + mat) < 0 && !packArmorHas(mat)) mat = "iron";
+  // a 3D set for this metal (assets/armor3d.h): the pack's own pictures still win where it has them (leather, chainmail)
+  if (!paP && !packArmorHas(mat) && armor3dHas(mat)) {
+    for (auto& [part, A] : armor3dSlot(mat, slot, slim ? 3.f : 4.f, CHAR_VPP)) {
+      if (!A.g.count()) continue;
+      auto cm = std::make_unique<CharMesh>();
+      VoxelMeshData md; buildVoxelMesh(A.g, md);
+      upload(*cm, md, A.lo);
+      if (!cm->ready()) continue;
+      set->byPart[part].push_back(cm.get());
+      set->meshes.push_back(std::move(cm));
+    }
+    set->pack = true;
+    return *(c.armor[key] = std::move(set));
+  }
   bool pack = packArmorHas(mat), bare = pack && packArmorBareArms(mat);
   set->pack = pack;
   static const std::map<std::string, std::pair<int, std::string>> PIECE = {

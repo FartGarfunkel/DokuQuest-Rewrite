@@ -1,6 +1,7 @@
 // assets/pack_armor.cpp — the pack's armour pictures and boxes (render/packarmor.js).
 #include "assets/pack_armor.h"
 #include "assets/pack_fs.h"
+#include "assets/armor3d.h"
 #include "assets/tileset.h"
 #include "common/fs.h"
 #include <map>
@@ -52,6 +53,7 @@ int loadPackArmor(const PackFS& P) {
     }
     if (S.l1 || S.l2) { g_sets[mat] = std::move(S); n++; }
   }
+  loadArmor3d(P);   // the 3D sets (assets/armor3d.h)
   return n;
 }
 

@@ -916,10 +916,14 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   // first person: nothing of the body above the shoulders under your eyes (a cape's collar, a hood's rim, a ruff): cut level
   // with the shoulders (the body's top, in its own frame turned to render space)
   const vec4 NOCLIP(0, 0, 0, -1);
-  vec4 fpClip = NOCLIP;
+  vec4 fpClip = NOCLIP, fpClipLook = NOCLIP;
   if (fp) {
     const vec3 top(R.part[CP_BODY] * vec4(0, 12.f - 0.5f, 0, 1)), up = glm::normalize(vec3(R.part[CP_BODY][1]));
     fpClip = vec4(up, -glm::dot(up, top));
+    // the look's own torso pieces (a mantle's collar, a fur ruff lying over the shoulders) cut lower: they stand out
+    // from the chest just under the eyes (the torso's own top is behind the view anyway)
+    const vec3 top2(R.part[CP_BODY] * vec4(0, 12.f - 3.f, 0, 1));
+    fpClipLook = vec4(up, -glm::dot(up, top2));
   }
   auto bodyClip = [&](bool on) { voxelRenderer().clip = on ? fpClip : NOCLIP; };   // (the torso's own pieces only: raised arms and what they hold stay whole)
   struct ClipOff { ~ClipOff() { voxelRenderer().clip = vec4(0, 0, 0, -1); } } clipOff;
@@ -998,7 +1002,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
       if (fp && !fpArmR && (part == "armR" || part == "foreR")) continue;
       auto fm = R.gear.find(part);
       if (fm == R.gear.end() || !mesh.ready()) continue;
-      bodyClip(part == "body" || part == "skirtF" || part == "skirtB");
+      if (part == "body" || part == "skirtF" || part == "skirtB") voxelRenderer().clip = fpClipLook;
       VR.draw(mesh.gl, fm->second * mesh.local(), light, tint);
       bodyClip(false);
     }
