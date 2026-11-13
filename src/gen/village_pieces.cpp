@@ -338,6 +338,21 @@ std::unique_ptr<VillagePieces> loadPieces() {
 // one structure template (.nbt bytes) as a piece: its blocks in our states, its joints, our furniture (village_pieces.h)
 std::string piecesMissing() { std::vector<std::pair<int, std::string>> v; for (auto& [k, c] : missing()) v.push_back({c, k}); std::sort(v.rbegin(), v.rend()); std::string o; for (size_t i = 0; i < v.size() && i < 40; i++) o += (o.empty() ? "" : ", ") + v[i].second + " " + std::to_string(v[i].first); return o; }
 
+// a builder's spawner mob (Minecraft's or another mod's) as ours: the same where we have it, else the nearest kind. Never a
+// phantom (there are none); a skeleton when there's no telling
+static std::string spawnerMob(const std::string& id) {
+  static const std::map<std::string, std::string> NEAR = {
+    {"zombie", "ghoul"}, {"zombie_villager", "ghoul"}, {"pillager", "raider"}, {"vindicator", "raider"}, {"ravager", "raider"},
+    {"evoker", "warlock"}, {"acolyte", "warlock"}, {"blaze", "cinder_wisp"}, {"magma_cube", "magma_slime"},
+    {"piglin", "charred_ghoul"}, {"piglin_brute", "charred_ghoul"}, {"hoglin", "charred_ghoul"}, {"zombified_piglin", "charred_ghoul"},
+    {"skeleton_creeper", "fuseling"}, {"creeper", "fuseling"}, {"forgotten", "skeleton"}, {"skelewag", "skeleton"},
+    {"rocky_roller", "stone_mite"}, {"centipede_head", "scorpion"}, {"anaconda", "spider"}, {"silverfish", "stone_mite"}};
+  std::string n = id.substr(id.find(':') == std::string::npos ? 0 : id.find(':') + 1);
+  if (auto it = NEAR.find(n); it != NEAR.end()) n = it->second;
+  if (n == "phantom" || !reg().mobs.contains(n)) n = "skeleton";
+  return n;
+}
+
 bool makePiece(const std::string& style, const std::string& kind, const std::string& name, const std::vector<u8>& bytes, VPPiece& P, const json* rules) {
   {
     Template T;
@@ -382,6 +397,8 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
       const std::string nm = T.palette[i].value("Name", std::string());
       if (nm == "minecraft:jigsaw") { jig = true; jigIdx = i; }
       pal.push_back(addState(mapState(T.palette[i])));
+      if (static const char* dm = std::getenv("DQ_PIECE_MAP"); dm && name.find(dm) != std::string::npos && pal.back() >= 0)   // (what each of a piece's blocks became)
+        DQ_LOG("piece map %s: %s -> %s", name.c_str(), nm.c_str(), reg().block(P.states[pal.back()].id).key.c_str());
     }
     (void)jig;
     P.air.assign(((size_t)P.sx * P.sy * P.sz + 7) / 8, 0);
@@ -414,7 +431,18 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
         P.joints.push_back(std::move(J));
         continue;
       }
-      const int s = pal[rb.s];
+      int s = pal[rb.s];
+      // a monster cage: what its builder put in it (SpawnData), as our nearest mob (an empty cage spawns nothing)
+      if (s >= 0 && pe.value("Name", std::string()) == "minecraft:spawner") {
+        std::string mc;
+        if (rb.nbt >= 0 && T.nbts[rb.nbt].contains("SpawnData") && T.nbts[rb.nbt]["SpawnData"].is_object()) {
+          const json& sd = T.nbts[rb.nbt]["SpawnData"];
+          const json& en = sd.contains("entity") && sd["entity"].is_object() ? sd["entity"] : sd;
+          mc = en.value("id", std::string());
+        }
+        VPState sp = P.states[s]; sp.kind = VPK_SPAWNER; sp.items = spawnerMob(mc);
+        s = addState(std::move(sp));
+      }
       if (s >= 0 && P.states[s].kind == VPK_AIR) { markAir(rb); continue; }
       if (s < 0) continue;
       P.blocks.push_back({rb.x, rb.y, rb.z, (u16)s});

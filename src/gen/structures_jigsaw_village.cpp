@@ -882,6 +882,7 @@ void jigsawTownBuild(SP& P, const Town& v, const JigsawTown& J) {
         }
         P.setEntity(idx, json{{"type", "chest"}, {"items", loot}});
       } else if (s.kind == VPK_POT) P.setEntity(idx, json{{"type", "pot"}, {"plant", s.plant.empty() ? json(nullptr) : json(s.plant)}});
+      else if (s.kind == VPK_SPAWNER) P.setEntity(idx, json{{"type", "spawner"}, {"mob", s.items}});
       else if (s.kind == VPK_WARES) {   // the goods on show: "id" or "id*n", comma-separated, empty = a gap
         json items = json::array(); size_t a0 = 0;
         while (a0 <= s.items.size()) {

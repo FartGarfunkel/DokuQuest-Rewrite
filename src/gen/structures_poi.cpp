@@ -201,6 +201,10 @@ void buildPoi(ChunkWriter& w, const StructurePlan& S) {
       const int idx = w.put(x, y, z, s.id, s.meta[q.r]);
       if (idx < 0) continue;
       if (s.rug) w.rug(x, y, z, s.rug);
+      if (s.kind == VPK_SPAWNER) {
+        P.setEntity(idx, json{{"type", "spawner"}, {"mob", s.items}, {"structure", S.id}});
+        if (std::getenv("DQ_POI_LOG")) DQ_LOG("poi spawner %s at %d %d %d", s.items.c_str(), x, y, z);
+      }
       if (s.kind == VPK_CHEST) {
         Mulberry32 cr(hash32(x, y, z, (i32)S.seed));
         P.setEntity(idx, json{{"type", "chest"}, {"items", structLoot("ruin", cr)}});
