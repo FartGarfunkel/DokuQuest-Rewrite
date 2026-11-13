@@ -25,6 +25,10 @@ struct VPPiece {
   std::vector<VPState> states;
   std::vector<VPBlock> blocks;             // no air (Minecraft places none of a village piece's air either)
   std::vector<VPJoint> joints;
+  // the template's air, one bit a cell (x fastest, then z, then y): Minecraft's modern pool elements place it (the land and
+  // trees inside the building go), its legacy ones (vanilla's and Towns and Towers' villages) don't. placeAir: this one does.
+  std::vector<u8> air; bool placeAir = false;
+  bool airAt(int x, int y, int z) const { const size_t i = ((size_t)y * sz + z) * sx + x; return (i >> 3) < air.size() && (air[i >> 3] >> (i & 7) & 1); }
   std::string animals;                     // a pen's beasts ("sheep", "" = cows, pigs and chickens) from its markers
 };
 struct VillagePieces {

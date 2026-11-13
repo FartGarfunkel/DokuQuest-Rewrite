@@ -15,7 +15,7 @@ namespace dq {
 
 namespace {
 struct PoiPool { std::vector<std::pair<const VPPiece*, int>> els; };
-struct PoiDef { std::string key, start; int depth = 4, y = 0, spacing = 32, reach = 80; bool surface = true; std::vector<std::string> lands; };
+struct PoiDef { std::string key, start; int depth = 4, y = 0, spacing = 32, reach = 80; bool surface = true, beard = false; std::vector<std::string> lands; };
 struct PoiPack {
   std::map<std::string, VPPiece> pieces;   // by location "ns:path"
   std::map<std::string, PoiPool> pools;
@@ -42,6 +42,7 @@ const PoiPack* poiPack() {
       if (!makePiece(ns, "poi", path, *b, P, ri == rulesOf.end() ? nullptr : ri->second)) continue;
       pk->pieces[ns + ":" + path] = std::move(P); n++;
     }
+    if (idx->contains("placeAir")) for (auto& a : (*idx)["placeAir"]) if (a.is_string()) if (auto it = pk->pieces.find(a.get<std::string>()); it != pk->pieces.end()) it->second.placeAir = true;
     for (auto& [name, els] : (*idx)["pools"].items()) {
       PoiPool pl;
       for (auto& e : els) {
@@ -56,6 +57,9 @@ const PoiPack* poiPack() {
       PoiDef d; d.key = s.value("key", ""); d.start = s.value("start", ""); d.depth = s.value("depth", 4); d.y = s.value("y", 0);
       d.spacing = std::max(8, s.value("spacing", 32)); d.surface = s.value("surface", true); d.reach = s.value("reach", 80);
       for (auto& l : s["lands"]) d.lands.push_back(l.get<std::string>());
+      // Minecraft's terrain adaptation: beard_thin / beard_box ease the land up to and down to the pieces' floors (no
+      // pillars of dirt under them, no hillside through them); bury and none leave the land as it is
+      { const std::string a = s.value("adapt", std::string("none")); d.beard = a == "beard_thin" || a == "beard_box"; }
       // no ships and blimps floating in the sky (Dungeons Arise's heavenly ones): they don't belong in our world
       if (!d.surface && d.y > 90) continue;
       if (d.key.find("heavenly") != std::string::npos || d.key.find("blimp") != std::string::npos) continue;
@@ -86,7 +90,11 @@ std::vector<std::string> landsAt(const TerrainQuery& t, const TerrainColumn& c) 
 }
 
 struct Placed { const VPPiece* p; int r, x0, y0, z0, w, d; int depth; };
-struct PoiExt { std::vector<Placed> pcs; std::string key; };
+struct PoiExt {
+  std::vector<Placed> pcs; std::string key;
+  std::vector<std::array<int, 5>> flat;   // x0, z0, x1, z1, ground y: the land under each rigid piece that stands on it (beard)
+};
+constexpr int POI_FLAT_R = 6;   // how far the land eases back to its own height around a piece
 
 const int DXJ[4] = {0, 1, 0, -1}, DZJ[4] = {-1, 0, 1, 0};   // north, east, south, west (VPJoint.front)
 
@@ -113,8 +121,9 @@ bool expand(const PoiPack& pk, const PoiDef& d, const TerrainQuery& t, int cx, i
   // the start's height: on the ground (Minecraft's project_start_to_heightmap, plus its offset), else Minecraft's y in ours
   // (its sea at 63, ours at 64)
   if (d.surface) {
-    int lo = 1 << 20; for (int k = 0; k < 9; k++) lo = std::min(lo, t.surfaceY(s.x0 + s.w * (k % 3) / 2, s.z0 + s.d * (k / 3) / 2));
-    s.y0 = lo + 1 + d.y;
+    int hs[9]; for (int k = 0; k < 9; k++) hs[k] = t.surfaceY(s.x0 + s.w * (k % 3) / 2, s.z0 + s.d * (k / 3) / 2);
+    std::nth_element(hs, hs + 4, hs + 9);
+    s.y0 = (d.beard ? hs[4] : *std::min_element(hs, hs + 9)) + 1 + d.y;   // (without a beard: on the lowest, as before)
   } else s.y0 = std::clamp(d.y + 1, 6, DIM_H - s0->sy - 2);
   if (s.y0 < SEA_LEVEL && d.surface) return false;   // (not under the sea)
   out.push_back(s);
@@ -167,13 +176,25 @@ void buildPoi(ChunkWriter& w, const StructurePlan& S) {
   for (const Placed& q : E->pcs) {
     const VPPiece& p = *q.p;
     if (q.x0 > w.bx + 15 || q.x0 + q.w - 1 < w.bx || q.z0 > w.bz + 15 || q.z0 + q.d - 1 < w.bz) continue;
+    // its air first (Minecraft's modern pieces: the land, grass and trees inside the building go). Not a path's: it lies on the land
+    if (p.placeAir && !p.terrain && !p.air.empty())
+      for (int ly = 0; ly < p.sy; ly++) for (int lz = 0; lz < p.sz; lz++) for (int lx = 0; lx < p.sx; lx++) {
+        if (!p.airAt(lx, ly, lz)) continue;
+        auto [tx, tz] = vpTurn(p, q.r, lx, lz);
+        const int x = q.x0 + tx, z = q.z0 + tz, y = q.y0 + ly;
+        if (!w.in(x, z) || y < 1 || y >= DIM_H) continue;
+        if (w.get(x, y, z) != AIR) w.put(x, y, z, AIR);
+      }
     for (const VPBlock& k : p.blocks) {
       auto [tx, tz] = vpTurn(p, q.r, k.x, k.z);
-      const int x = q.x0 + tx, z = q.z0 + tz, y = q.y0 + k.y;
+      const int x = q.x0 + tx, z = q.z0 + tz;
+      // a terrain-matching piece (a path) follows the land column by column, its layer 0 in place of the ground's top
+      // (Minecraft's gravity processor), not laid flat at the height where it joins
+      const int y = p.terrain ? w.ground(x, z) + k.y : q.y0 + k.y;
       if (!w.in(x, z) || y < 1 || y >= DIM_H) continue;
       const VPState& s = p.states[k.s];
       // the ground under a surface structure's floor: filled down to the land (no floating corners)
-      if (k.y == 0 && S.surface && reg().tSolid[s.id]) for (int yy = y - 1; yy > y - 10 && yy > 1; yy--) { const BlockId g = w.get(x, yy, z); if (g != AIR && !reg().tLiquid[g]) break; w.put(x, yy, z, DIRT); }
+      if (k.y == 0 && S.surface && !p.terrain && reg().tSolid[s.id]) for (int yy = y - 1; yy > y - 10 && yy > 1; yy--) { const BlockId g = w.get(x, yy, z); if (g != AIR && !reg().tLiquid[g]) break; w.put(x, yy, z, DIRT); }
       const int idx = w.put(x, y, z, s.id, s.meta[q.r]);
       if (idx < 0) continue;
       if (s.rug) w.rug(x, y, z, s.rug);
@@ -208,6 +229,13 @@ void registerStructurePois() {
     for (auto& e : cand) { u -= e.first; if (u <= 0) { d = e.second; break; } }
     auto E = std::make_shared<PoiExt>(); E->key = d->key;
     if (!expand(*pk, *d, tq, x, z, rnd, E->pcs) || E->pcs.empty()) return false;
+    // the land under each rigid piece standing on it (not one buried well below the ground: a crypt keeps its hill)
+    if (d->surface && d->beard) for (auto& q : E->pcs) {
+      if (q.p->terrain) continue;
+      const int qx1 = q.x0 + q.w - 1, qz1 = q.z0 + q.d - 1;
+      if (q.y0 - 1 < tq.surfaceY((q.x0 + qx1) / 2, (q.z0 + qz1) / 2) - 4) continue;
+      E->flat.push_back({q.x0, q.z0, qx1, qz1, q.y0 - 1});
+    }
     int X0 = 1 << 30, Z0 = 1 << 30, X1 = -(1 << 30), Z1 = -(1 << 30);
     for (auto& q : E->pcs) { X0 = std::min(X0, q.x0); Z0 = std::min(Z0, q.z0); X1 = std::max(X1, q.x0 + q.w - 1); Z1 = std::max(Z1, q.z0 + q.d - 1); }
     // on the land: not over water, and level enough under it (a steep slope broke it into pieces up a ravine)
@@ -229,6 +257,23 @@ void registerStructurePois() {
     return true;
   };
   t.build = buildPoi;
+  t.flatten = [](const StructurePlan& S, int x, int z, double& weight, int& targetY) -> bool {
+    auto E = std::static_pointer_cast<const PoiExt>(S.ext);
+    if (!E || E->flat.empty()) return false;
+    double best = 0; int by = 0;
+    for (const auto& r : E->flat) {
+      const int dx = std::max({r[0] - x, 0, x - r[2]}), dz = std::max({r[1] - z, 0, z - r[3]});
+      if (dx == 0 && dz == 0) { if (best < 1 || r[4] > by) { best = 1; by = r[4]; } continue; }   // (under two: the higher floor)
+      const double dd = std::hypot((double)dx, (double)dz);
+      if (dd >= POI_FLAT_R) continue;
+      const double wv = 1 - jsSmooth(0, POI_FLAT_R, dd);
+      if (wv > best) { best = wv; by = r[4]; }
+    }
+    if (best <= 0) return false;
+    weight = best; targetY = by;
+    return true;
+  };
+  t.flattenPad = POI_FLAT_R + 1;
   registerStructure(std::move(t));
 }
 

@@ -384,6 +384,8 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
       pal.push_back(addState(mapState(T.palette[i])));
     }
     (void)jig;
+    P.air.assign(((size_t)P.sx * P.sy * P.sz + 7) / 8, 0);
+    auto markAir = [&](const RawBlock& rb) { const size_t i = ((size_t)rb.y * P.sz + rb.z) * P.sx + rb.x; if ((i >> 3) < P.air.size()) P.air[i >> 3] |= (u8)(1u << (i & 7)); };
     for (const RawBlock& rb : T.blocks) {
       if (rb.s >= T.palette.size()) continue;
       const json& pe = T.palette[rb.s];
@@ -408,11 +410,13 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
           else if (P.animals.empty() && (J.pool.find("common/animals") != std::string::npos || J.pool.find("butcher_animals") != std::string::npos)) P.animals = "stock";
         }
         if (J.fin >= 0) P.blocks.push_back({rb.x, rb.y, rb.z, (u16)J.fin});
+        else markAir(rb);   // (a joint left as air)
         P.joints.push_back(std::move(J));
         continue;
       }
       const int s = pal[rb.s];
-      if (s < 0 || P.states[s].kind == VPK_AIR) continue;
+      if (s >= 0 && P.states[s].kind == VPK_AIR) { markAir(rb); continue; }
+      if (s < 0) continue;
       P.blocks.push_back({rb.x, rb.y, rb.z, (u16)s});
       P.top = std::max(P.top, (int)rb.y);
     }

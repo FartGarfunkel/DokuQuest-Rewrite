@@ -108,6 +108,7 @@ def main(mods, d='data'):
                         if n and 'pool' in n and 'jigsaw' in pal[b['state']]['Name']: todo.append(n['pool'])
                 except Exception as ex:
                     print('  (unreadable', rel, ex, ')')
+            if 'legacy' not in t: index.setdefault('placeAir', {})[ns + ':' + p] = 1   # (Minecraft's modern elements place their air: the land inside goes)
             rl = rules_of(roots, e.get('processors'))
             els.append([ns + ':' + p, w, e.get('projection', 'rigid')] + ([rl] if rl else []))
         for el in j.get('elements', []): add(el.get('element', {}), el.get('weight', 1))
@@ -140,8 +141,9 @@ def main(mods, d='data'):
             if j['start_pool'] not in index['pools']: continue
             sp = spacing.get(key, (40, 12))
             index['structures'].append({'key': key, 'start': j['start_pool'], 'depth': min(int(j.get('size', 6)), 10), 'surface': 'project_start_to_heightmap' in j,
-                                        'y': y, 'lands': lands, 'spacing': sp[0], 'separation': sp[1], 'reach': j.get('max_distance_from_center', 80)})
+                                        'y': y, 'adapt': j.get('terrain_adaptation', 'none'), 'lands': lands, 'spacing': sp[0], 'separation': sp[1], 'reach': j.get('max_distance_from_center', 80)})
     index['pieces'] = sorted(pieces)
+    index['placeAir'] = sorted(index.get('placeAir', {}))
     (out / 'index.json').write_text(json.dumps(index, indent=0))
     (out / '.gitignore').write_text('*\n!.gitignore\n')
     print('poi_import: %d structures, %d pools, %d pieces' % (len(index['structures']), len(index['pools']), len(pieces)))
