@@ -27,6 +27,7 @@ struct TerrainColumn {
   double temp = 0, humid = 0;
   int jsY = -1;         // the original game's height for this column (its own 128-tall coordinates)
   bool river = false;
+  u8 special = 0;       // terrain version 14: 1 a mushroom island
 };
 class TerrainQuery {
 public:

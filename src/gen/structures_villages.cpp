@@ -179,6 +179,7 @@ static bool townPlace(const StructureIndex&, const TerrainQuery& t, int rx, int 
   const int m = tier == TIER_CITY ? 140 : tier == TIER_TOWN ? 112 : 84;
   const int cx = rx * VREG + m + jsFloor(rnd() * (VREG - 2 * m)), cz = rz * VREG + m + jsFloor(rnd() * (VREG - 2 * m));
   const TerrainColumn c = t.terrainColumn(cx, cz);
+  if (c.special == 1) return false;   // (no village on a mushroom island: Minecraft's are left to the mooshrooms)
   const OverworldGen* owg = owOf(t);
   const bool styles10 = owg && owg->villageStyles && villagePieces();
   const bool beachy = styles10 && c.biome == BIOME_BEACH, hilly = styles10 && c.biome == BIOME_MOUNTAINS;

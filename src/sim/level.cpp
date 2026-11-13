@@ -53,6 +53,7 @@ void registerLevelSystem(LevelSystemFactory f) { lsFactories().push_back(std::mo
 Level::Level(LevelInfo i, const fs::path& folder, ThreadPool* pool, EventBus* events)
   : info(std::move(i)), folder(folder), pool(pool), events(events) {
   WorldGenOptions o; o.seed = info.seed; o.genVersion = info.genVersion; o.worldType = info.worldType;
+  if (const char* gv = std::getenv("DQ_FORCE_GENVER")) o.genVersion = std::atoi(gv);   // (tests: compare terrain versions)
   o.looseGround = info.rules.is_object() && info.rules.value("immersive", false);
   gen = std::make_shared<WorldGen>(o);
   realms[REALM_MAIN] = std::make_unique<World>(REALM_MAIN, gen, folder, pool);

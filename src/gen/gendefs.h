@@ -130,7 +130,7 @@ const char* biomeName(int b);
   X(blooming_cooksonia) X(salteago) X(vaiolush_fern) X(fracturn) X(clawfern) X(globulagus) X(orango) X(aeridium) X(lutebus) X(lamellarium) \
   X(inflexia) X(needlegrass) X(murkweed) X(cave_grass) X(charnia_cyan) X(charnia_purple) X(charnia_red) X(charnia_orange) X(charnia_green) X(end_lily) \
   X(glowing_pillar_luminophor) X(dense_vine) X(twisted_vine) X(jungle_vine) X(blue_vine_lantern) X(blue_vine) X(neon_cactus) X(tail_moss) X(cyan_moss) X(twisted_moss) \
-  X(end_stone_stalactite) X(red_mushroom_block) \
+  X(end_stone_stalactite) X(red_mushroom_block) X(mycelium) X(brown_mushroom_block) X(mushroom_stem) \
   /* BTA 8.0's Nether (gen/nether_bta.cpp, terrain version 7) */ \
   X(brimsand) X(nether_brimstone) X(brimthaw) X(cobbled_netherrack) X(crystalline_netherrack) X(cobbled_gloomstone) X(ember) X(ash_layer) \
   X(rubyglass_column) X(rubyglass_node) X(rubyglass_crystal) X(rubyglass_growth) X(magmatic_boulder) X(sulfuric_boulder) X(bone_pile) X(soul_catcher)

@@ -2,6 +2,7 @@
 // calls) with game/worldupdate.js (rivers, the Ember Crust), game/metals.js (ores) and game/deepdark.js
 // (the Deep Dark's halls), scaled into the 256-tall band (gen/gendefs.h vmap).
 #pragma once
+#include <memory>
 #include "gen/generator.h"
 #include "gen/structures.h"
 #include "gen/trees.h"
@@ -15,12 +16,14 @@ struct OwColumn {
   u8 biome = 0;
   double temp = 0, humid = 0;
   float river = 0;      // 1 mid-stream, 0.5 on the banks
+  u8 special = 0;       // terrain version 14: 1 a mushroom island (gen/overworld.cpp)
 };
 // Biome variants inspired by Better than Adventure (our own designs), carved out of the climate: the hottest, driest
 // savanna turns to Redlands (red sand, spinifex, pale gum trees), the coldest taiga and peaks to Glacier (packed and
 // blue ice, ice spires), mild damp plains to Meadow (flowers everywhere), wet lowland to Mossmire (moss, mud, dark trees).
-enum BtaVariant : u8 { BV_NONE = 0, BV_REDLANDS, BV_GLACIER, BV_MEADOW, BV_MOSSMIRE, BV_THORNSCRUB, BV_HIGHLANDS, BV_TUNDRA, BV_SEASONAL };
+enum BtaVariant : u8 { BV_NONE = 0, BV_REDLANDS, BV_GLACIER, BV_MEADOW, BV_MOSSMIRE, BV_THORNSCRUB, BV_HIGHLANDS, BV_TUNDRA, BV_SEASONAL, BV_MUSHROOM };
 inline BtaVariant btaVariant(const OwColumn& c) {
+  if (c.special == 1) return BV_MUSHROOM;   // (terrain version 14: Minecraft's mushroom fields, out in the deep sea)
   if (c.biome == BIOME_PLAINS && c.temp > 0.5 && c.humid < -0.18) return BV_REDLANDS;
   if (c.biome == BIOME_PLAINS && c.temp > 0.32 && c.humid >= -0.16 && c.humid < -0.04) return BV_THORNSCRUB;   // BTA's Caatinga
   if ((c.biome == BIOME_TAIGA || c.biome == BIOME_MOUNTAINS) && c.temp < -0.58) return BV_GLACIER;
@@ -78,8 +81,16 @@ public:
 
   StructureIndex structures;
 
+  // terrain version 14 (docs/WORLDGEN_MERGE.md): the land shaped by Minecraft 1.20's noise router (gen/density.h)
+  bool v14 = false;
+  int v14Surface(int x, int z) const;   // band y of the land's top here (its terrain without the caves)
+
 private:
-  struct BaseCol { int h; double hc; u8 biome; double temp, humid; };
+  std::shared_ptr<class DensityGraph> vg_;
+  int vSloped = -1, vFinal = -1, vCont = -1, vEro = -1, vOff = -1, vJag = -1;
+  void fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const;
+  int v14Corner(int x, int z) const;   // (the exact surface at a cell corner)
+  struct BaseCol { int h; double hc; u8 biome; double temp, humid; int H = -1; u8 special = 0; };
   BaseCol baseColumn(int x, int z) const;
   double riverNoise(int x, int z) const;
   // gen/underground.cpp: Minecraft Beta style underground (carvers, ore veins, lava lakes, springs)

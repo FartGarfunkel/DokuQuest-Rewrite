@@ -90,6 +90,8 @@ static int dump(const char* reqPath, const char* outPath) {
 
 static int bench(const std::string& seedText, int n) {
   WorldGenOptions o; o.seed = seedFromString(seedText);
+  if (const char* v = std::getenv("DQ_GENVER")) o.genVersion = atoi(v);
+  if (std::getenv("DQ_NO_STRUCTS")) setStructuresEnabled(false);
   WorldGen wg(o);
   for (int d = 0; d < DIM_COUNT; d++) {
     DimGenerator* g = wg.forDim(d);
@@ -99,6 +101,7 @@ static int bench(const std::string& seedText, int n) {
     int side = std::max(1, (int)std::sqrt((double)n)), cnt = 0;
     for (int cz = 0; cz < side; cz++) for (int cx = 0; cx < side; cx++) {
       int ccx = d == DIM_END ? 20 + cx : cx, ccz = d == DIM_END ? cz : cz;   // the End: out on the islands
+      if (const char* at = std::getenv("DQ_BENCH_AT")) { int ax = 0, az = 0; sscanf(at, "%d,%d", &ax, &az); ccx += ax >> 4; ccz += az >> 4; }
       Chunk c(d, ccx, ccz); g->generate(c); cnt++;
     }
     double ms = (Clock::now() - t0) / cnt;
@@ -323,10 +326,86 @@ static int poiDump(const std::string& seedText, const char* outPath, int regions
   return 0;
 }
 
+
+// dq-gentool vterrain <seed> <x0> <z0> <step> <n> <out.pgm>: terrain version 14's land (gen/density.h) seen from above:
+// the surface of sloped_cheese per column, a greyscale height map (the sea at mid-grey's dark blue: 64 and below dark)
+#include "gen/density.h"
+static int vterrain(const std::string& seedText, int x0, int z0, int step, int n, const char* out) {
+  DensityGraph g;
+  if (!g.load(dataDir() / "vanilla_worldgen", (u64)(i64)seedFromString(seedText))) { fprintf(stderr, "no data/vanilla_worldgen\n"); return 1; }
+  const int sc = g.find("overworld/sloped_cheese");
+  const double t0 = Clock::now();
+  std::vector<u8> img((size_t)n * n);
+  int evals = 0, lo = 999, hi = -999;
+  for (int j = 0; j < n; j++) for (int i = 0; i < n; i++) {
+    const double x = x0 + i * step, z = z0 + j * step;
+    int top = -64;
+    for (int y = 300; y >= -60; y -= 4) { evals++; if (g.eval(sc, x, y, z) > 0) { for (int k = 3; k >= 0; k--) { evals++; if (g.eval(sc, x, y + k, z) > 0) { top = y + k; break; } } break; } }
+    lo = std::min(lo, top); hi = std::max(hi, top);
+    img[(size_t)j * n + i] = (u8)std::clamp(top + 1, 0, 255);   // (our band y)
+  }
+  const double ms = Clock::now() - t0;
+  printf("%d columns, %d evals, %.1f ms (%.2f us/eval), heights %d..%d (Minecraft y)\n", n * n, evals, ms, ms * 1000 / evals, lo, hi);
+  FILE* f = fopen(out, "wb"); fprintf(f, "P5 %d %d 255\n", n, n); fwrite(img.data(), 1, img.size(), f); fclose(f);
+  return 0;
+}
+
+static int vstats(const std::string& seedText) {
+  DensityGraph g;
+  if (!g.load(dataDir() / "vanilla_worldgen", (u64)(i64)seedFromString(seedText))) return 1;
+  { const int C = g.find("overworld/continents"), E = g.find("overworld/erosion"), R = g.find("overworld/ridges_folded"), O = g.find("overworld/offset");
+    for (int i = 0; i < 8; i++) { const double x = i * 517.0 - 2000, z = i * 311.0 + 100;
+      printf("pt %.5f %.5f %.5f %.5f\n", g.eval(C, x, 0, z), g.eval(E, x, 0, z), g.eval(R, x, 0, z), g.eval(O, x, 0, z)); } }
+  for (const char* nm : {"continents", "erosion", "ridges", "temperature", "vegetation", "overworld/offset", "overworld/factor"}) {
+    const int id = g.find(nm); std::vector<double> v;
+    for (int j = 0; j < 200; j++) for (int i = 0; i < 200; i++) v.push_back(g.eval(id, i * 41.0 - 4000, 64, j * 41.0 - 4000));
+    std::sort(v.begin(), v.end());
+    printf("%-18s p1 %6.3f p10 %6.3f p50 %6.3f p90 %6.3f p99 %6.3f\n", nm, v[v.size() / 100], v[v.size() / 10], v[v.size() / 2], v[v.size() * 9 / 10], v[v.size() * 99 / 100]);
+  }
+  return 0;
+}
+
+// dq-gentool owmap <seed text> <genVersion> <x0> <z0> <step> <n> <out.ppm>: the Overworld as the game makes it (columns:
+// height and biome), a picture from above for checking terrain changes
+static int owmap(const std::string& seedText, int ver, int x0, int z0, int step, int n, const char* out) {
+  WorldGenOptions o; o.seed = seedFromString(seedText); o.genVersion = ver;
+  OverworldGen g(o);
+  const double t0 = Clock::now();
+  std::vector<u8> img((size_t)n * n * 3);
+  int water = 0;
+  for (int j = 0; j < n; j++) for (int i = 0; i < n; i++) {
+    const OwColumn c = g.rawColumn(x0 + i * step, z0 + j * step);
+    int r, gg, b;
+    const int h = c.H - SEA_LEVEL;
+    if (c.H < SEA_LEVEL) { water++; r = 20; gg = 60 + std::max(-40, h) ; b = 150 + std::max(-60, h * 2); }
+    else {
+      switch (c.biome) {
+        case BIOME_BEACH: r = 220; gg = 210; b = 150; break;
+        case BIOME_DESERT: r = 230; gg = 200; b = 120; break;
+        case BIOME_TAIGA: r = 60; gg = 110; b = 80; break;
+        case BIOME_FOREST: r = 40; gg = 120; b = 40; break;
+        case BIOME_MOUNTAINS: r = 130; gg = 130; b = 130; break;
+        default: r = 100; gg = 170; b = 70; break;
+      }
+      if (c.special == 1) { r = 150; gg = 90; b = 160; }
+      const double k = 0.6 + std::min(1.0, h / 120.0) * 0.8;
+      r = std::min(255, (int)(r * k)); gg = std::min(255, (int)(gg * k)); b = std::min(255, (int)(b * k));
+      if (c.temp < -0.38 && c.biome != BIOME_MOUNTAINS) { r = (r + 230) / 2; gg = (gg + 230) / 2; b = (b + 240) / 2; }
+    }
+    u8* px = &img[((size_t)j * n + i) * 3]; px[0] = (u8)std::clamp(r, 0, 255); px[1] = (u8)std::clamp(gg, 0, 255); px[2] = (u8)std::clamp(b, 0, 255);
+  }
+  printf("owmap v%d: %d columns in %.0f ms, water %.0f%%\n", ver, n * n, Clock::now() - t0, 100.0 * water / (n * n));
+  FILE* f = fopen(out, "wb"); fprintf(f, "P6 %d %d 255\n", n, n); fwrite(img.data(), 1, img.size(), f); fclose(f);
+  return 0;
+}
+
 int main(int argc, char** argv) {
   CoreOptions co; co.server = true; co.userDirOverride = "/tmp/dq-gentool";
   if (!initCore(co)) { fprintf(stderr, "initCore failed (run from the build dir: data/ next to the exe)\n"); return 1; }
   std::string m = argc > 1 ? argv[1] : "";
+  if (m == "owmap" && argc >= 9) return owmap(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]), argv[8]);
+  if (m == "vstats" && argc >= 3) return vstats(argv[2]);
+  if (m == "vterrain" && argc >= 8) return vterrain(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argv[7]);
   if (m == "poi" && argc >= 4) return poiDump(argv[2], argv[3], argc > 4 ? atoi(argv[4]) : 48);
   if (m == "dump" && argc >= 4) return dump(argv[2], argv[3]);
   if (m == "stats" && argc >= 7) return stats(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]));

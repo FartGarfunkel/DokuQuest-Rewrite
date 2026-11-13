@@ -111,6 +111,7 @@ std::vector<std::string> landsAt(const TerrainQuery& t, const TerrainColumn& c) 
   OwColumn oc; oc.h = c.jsY; oc.biome = (u8)std::max(0, c.biome); oc.temp = c.temp; oc.humid = c.humid;
   const BtaVariant bv = btaVariant(oc);
   std::vector<std::string> L;
+  if (c.special == 1) { L.push_back("mushroom"); return L; }   // (a mushroom island: its own)
   if (c.biome == BIOME_BEACH) L.push_back("beach");
   if (c.biome == BIOME_DESERT) L.push_back("desert");
   if (bv == BV_REDLANDS) L.push_back("badlands");

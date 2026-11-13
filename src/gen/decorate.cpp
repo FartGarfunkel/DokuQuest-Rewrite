@@ -128,6 +128,27 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
       continue;
     }
     if (here != 0) continue;
+    // a mushroom island (terrain version 14): huge mushrooms, red and brown, and small ones in the mycelium
+    if (c.special == 1 && B.mycelium && below == B.mycelium) {
+      if (r < 0.012 && x >= 3 && x <= 12 && z >= 3 && z <= 12 && B.mushroom_stem) {
+        const bool red = r2 < 0.5; const int hgt = 5 + jsFloor(r2 * 8) % 3;
+        for (int k = 0; k < hgt; k++) set(x, y + k, z, B.mushroom_stem);
+        const BlockId cap = red ? B.red_mushroom_block : B.brown_mushroom_block;
+        if (red) {   // a dome: a ring hanging down round a top
+          for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++) {
+            if (std::abs(dx) == 2 && std::abs(dz) == 2) continue;
+            if (std::abs(dx) == 2 || std::abs(dz) == 2) for (int k = hgt - 3; k < hgt; k++) set(x + dx, y + k, z + dz, cap);
+            else set(x + dx, y + hgt, z + dz, cap);
+          }
+        } else for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) {   // a flat plate
+          if (std::abs(dx) == 3 && std::abs(dz) == 3) continue;
+          set(x + dx, y + hgt, z + dz, cap);
+        }
+        continue;
+      }
+      if (r < 0.05) { set(x, y, z, r2 < 0.5 ? B.red_mushroom : B.brown_mushroom); continue; }
+      continue;   // (no grass, flowers or stones on the mycelium)
+    }
     // shore plants: cattails at the shallows' edge, marram grass on dunes
     if ((below == B.grass || below == B.mud || below == B.sand) && c.h <= JS_SEA + 1 && waterBeside(x, y - 1, z) && r < 0.25 && at(x, y + 1, z) == 0) { set(x, y, z, B.cattail, 0); set(x, y + 1, z, B.cattail, 1); continue; }
     if ((below == B.sand || below == B.silver_sand) && c.biome == BIOME_BEACH && r < 0.08) { set(x, y, z, B.marram_grass); continue; }
