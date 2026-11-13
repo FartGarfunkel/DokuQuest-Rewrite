@@ -702,7 +702,7 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
       // wall: its boxes filled two voxels to a pack pixel, each voxel the colour of its box's nearest face there
       std::string pm = def->block == "old_torch" ? "torch" : def->block;
       if (const PackModel* PM = packModel(pm)) {
-        constexpr int K = 2; constexpr float PX = 0.06f;   // (voxels per pack pixel; blocks per pack pixel in the hand)
+        constexpr int K = 2;   // (voxels per pack pixel)
         float top = 0; for (auto& bx : PM->boxes) top = std::max(top, bx.to.y);
         VoxelGrid tg(ivec3(16 * K, (int)std::ceil(top) * K + 1, 16 * K));
         const int S = ts.size;
@@ -737,7 +737,9 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
             tg.set(x, y, z, col | 0xFF000000u);
           }
         }
-        VoxelFrame fr; fr.voxel = PX / K; fr.origin = vec3(-8 * PX, -3 * PX, -8 * PX);   // (its origin at the grip, 3 px up the stick: held there)
+        // the same span as the game's own held torch (0.8 tall, its top at the origin), so the hand view's grip fits it
+        const float px = 0.8f / std::max(1.f, top);
+        VoxelFrame fr; fr.voxel = px / K; fr.origin = vec3(-8 * px, -0.8f, -8 * px);
         out.kind = VoxelModel::Block; out.torch3d = true; out.depth = 0.1f;
         finishGrid(out, tg, fr, nullptr);
         return true;

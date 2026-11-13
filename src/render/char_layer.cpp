@@ -190,7 +190,7 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
   mat4 hm = glm::translate(fore, vec3(0, -6 + T[0], -1 + T[1]));
   const ItemDef* fd = reg().item(id);
   const bool armTool = isHandheld(id) || (fd && fd->hasTool);   // (swords and tools: along the arm, full size, as third person holds them)
-  if (fpYaw && !armTool && !im.torch3d && !im.stand && !isBowKey(id) && id.rfind("fishing_rod", 0) != 0) {   // (a torch: held as third person holds it, upright from the fist)   // seamless first person: the old hand view's grip, at your own fist, turned with you
+  if (fpYaw && !armTool && !im.stand && !isBowKey(id) && id.rfind("fishing_rod", 0) != 0) {   // seamless first person: the old hand view's grip, at your own fist, turned with you
     // (turned with you and tipped with your look, as the old hand view held things; the fist is nearer the eye than that
     // view's was, so all a little smaller: DQ_DEV_FPGRIPK)
     static float K = 0.6f; static bool kl = false;
@@ -203,11 +203,18 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
     voxelRenderer().draw(im.gl, F * im.matrix(), light, tint, glint ? 1.f : 0.f);
     return;
   }
-  if (im.torch3d) {   // a torch stands up out of the fist (its top, the flame, at its model origin), leaning a little ahead
-    hm = glm::rotate(hm, -0.35f, vec3(1, 0, 0));
-    hm = glm::scale(hm, vec3((fpYaw ? 0.55f : 0.9f) / CHAR_PX));   // (first person: the fist is right by your eye)
-    if (headOut) *headOut = vec3(hm * vec4(0, 0.48f, 0, 1));   // (the flame: 11 of the model's px above the grip)
-    voxelRenderer().draw(im.gl, hm * im.matrix(), light, tint, glint ? 1.f : 0.f);
+  if (im.torch3d && !fpYaw) {   // a torch held upright in the fist, as first person holds it (its top, the flame, up), turned with the body
+    const vec3 fist = vec3(hm[3]);
+    vec3 fz = vec3(fore[2]); fz.y = 0;
+    const float yaw = glm::length(fz) > 1e-5f ? std::atan2(fz.x, fz.z) : 0.f;
+    const float s = glm::length(vec3(fore[0])) * 0.75f / CHAR_PX;   // (the hand's own scale: about the torch on the wall)
+    mat4 t = glm::translate(mat4(1), fist);
+    t = glm::rotate(t, yaw, vec3(0, 1, 0));
+    t = glm::rotate(t, -0.25f, vec3(1, 0, 0));          // (leaning a little ahead, as one carries it)
+    t = glm::scale(t, vec3(s));
+    t = glm::translate(t, vec3(0, 0.62f, 0));            // (gripped 3 of its pixels up the stick: its top 0.62 above the fist)
+    if (headOut) *headOut = vec3(t * vec4(0, -0.2f, 0, 1));
+    voxelRenderer().draw(im.gl, t * im.matrix(), light, tint, glint ? 1.f : 0.f);
     return;
   } else if (im.kind == VoxelModel::Block) {
     hm = glm::translate(hm, vec3(0, 0, -1.5f));
