@@ -3,6 +3,7 @@
 // spellcraft.js castNew (thirteen more, bare-handed casting, per-spell cooldowns). Numbers are the original's;
 // so are its quirks (Arcane Might counts twice for the newer spells, Archmage's free cast earns no school xp).
 #include "sim/magic.h"
+#include "sim/skilltree.h"
 #include "sim/magic_fx.h"
 #include "sim/magic_entities.h"
 #include "sim/effects.h"
@@ -102,6 +103,7 @@ bool castSpellKey(Level& lv, Player& p, const std::string& k) {
   std::string sc = S->school;
   int slv = schoolLv(p, sc), lvl = skillLv(p, "magic");
   float skill = 1 + (lvl - 1) / 98.f * 0.6f, school = 1 + (slv - 1) * 0.005f, robe = robeBoost(p, k);
+  school *= 1 + treeAttrPct(p, "spell_power") + treeAttrPct(p, "spell_power." + sc) + treeAttr(p, "spell_power") + treeAttr(p, "spell_power." + sc);   // (the skill tree)
   CastCtx c;
   c.look = lookVec(p); c.eye = p.pos + vec3(0, 1.55f, 0);
   float m0 = m.mana, cd0 = m.castCd;

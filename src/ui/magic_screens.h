@@ -13,6 +13,7 @@ namespace dq {
 std::unique_ptr<Screen> makeSpellbookScreen();
 std::unique_ptr<Screen> makeSkillsScreen();
 std::unique_ptr<Screen> makeJournalScreen();
+std::unique_ptr<Screen> makeSkillTreeScreen();   // ui/skilltree_screen.cpp: the passive trees and the six stats
 std::unique_ptr<Screen> makeEnchantScreen(ivec3 tablePos);
 std::unique_ptr<Screen> makeBrewScreen(ivec3 standPos);
 

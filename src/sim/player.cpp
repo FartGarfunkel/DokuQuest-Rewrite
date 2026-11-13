@@ -1,6 +1,7 @@
 // sim/player.cpp — port of game/player.js (Player.move, climbStep, health, XP, save) and
 // game/movement.js (ledge shimmy, coyote time, jump buffering).
 #include "sim/player.h"
+#include "sim/skilltree.h"
 #include "sim/attack_moves.h"
 #include "sim/inventory.h"
 #include "sim/blockinfo.h"
@@ -20,6 +21,7 @@ Player::Player() {
 float Player::heal(float n) { float before = hp; hp = std::min(maxHp, hp + n); return hp - before; }
 void Player::recalcMax() {
   float m = 20 + 2 * std::min(10, heartCrystals) + 2 * charmBonus(*this, "hearts");
+  m = std::round((m + treeAttr(*this, "health")) * (1 + treeAttrPct(*this, "health")));   // (the skill tree, sim/skilltree.h)
   if (m != maxHp) { maxHp = m; if (hp > m) hp = m; }
 }
 int Player::addXP(int n) {

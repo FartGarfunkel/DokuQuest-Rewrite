@@ -2,6 +2,7 @@
 // uses, creature statuses, summons' time running out, brewing stands; the MagicSystem that runs them.
 // (game/magic.js, arcana.js, spellcraft.js, paths.js schools, brewing.js, monsters.js venom, stable.js spirits)
 #include "sim/magic.h"
+#include "sim/skilltree.h"
 #include "sim/magic_fx.h"
 #include "sim/magic_entities.h"
 #include "sim/effects.h"
@@ -59,7 +60,8 @@ MagicState& magicState(Level& lv, const Player& p) {
 float manaMax(const Player& p) {
   float m = 20 + std::floor(skillLv(p, "magic") / 2.f);
   for (auto& s : p.armor) if (const ItemDef* d = s.def()) if (d->has("armor")) m += d->props["armor"].value("mana", 0.f);
-  return m + (onPath(p, "mage") ? 20 : 0) + (hasTal(p, "well") ? 25 : 0);
+  m += (onPath(p, "mage") ? 20 : 0) + (hasTal(p, "well") ? 25 : 0);
+  return (m + treeAttr(p, "mana") * 0.5f) * (1 + treeAttrPct(p, "mana"));   // (the skill tree: its mana on our smaller scale)
 }
 float manaRegen(const Player& p) {
   float r = 0.5f;
@@ -69,7 +71,8 @@ float manaRegen(const Player& p) {
   r += 0.3f * enchLv(h, "flow");                                         // enchanting.js Mana Flow
   if (hasPerk(p, "magic", 30)) r *= 1.25f;                                // rpg.js Mana Flow perk
   if (hasEffect(p, "clarity")) r *= 1.8f + 0.4f * effectLevel(p, "clarity");   // arcana.js Clarity
-  if (hasTal(p, "flow")) r *= 1.5f;                                      // paths.js Archmage's Flow
+  if (hasTal(p, "flow")) r *= 1.5f;
+  r *= 1 + treeAttrPct(p, "mana_regen") + treeAttr(p, "mana_regen") * 0.1f;                                      // paths.js Archmage's Flow
   return r;
 }
 const json* heldStaff(const Player& p) {

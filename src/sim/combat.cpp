@@ -1,6 +1,7 @@
 // sim/combat.cpp — damage, death and respawn (local.js hurt/die/respawn, player.js hurt/wearArmor,
 // entities.js Mob.hurt/die, fairplay.js raw-blow floor).
 #include "core/tool_parts.h"
+#include "sim/skilltree.h"
 #include "sim/combat.h"
 #include "sim/combat_rpg.h"
 #include "sim/attack_moves.h"
@@ -83,7 +84,8 @@ static float playerHurtRaw(Player& p, float amount, const DamageSource& src) {
   if (p.dead || amount <= 0) return 0;
   if (p.invuln > 0 && !src.bypass) return 0;
   float dmg = amount;
-  if (!src.bypassArmor) dmg *= 1 - std::min(0.8f, armorPoints(p) * 0.032f);
+  if (!src.bypassArmor) dmg *= 1 - std::min(0.8f, (armorPoints(p) + treeAttr(p, "armor")) * (1 + treeAttrPct(p, "armor")) * 0.032f);
+  if (src.type == "magic") dmg *= 1 - std::min(0.6f, treeAttrPct(p, "spell_resist") + treeAttr(p, "spell_resist"));
   if (src.raw > 0 && !src.bypassArmor) dmg = std::max(dmg, src.raw * 0.2f);
   if (src.element == "fire" || src.type == "lava" || src.type == "burn") dmg *= 1 - fireResist(p);
   dmg = std::max(0.5f, std::round(dmg * 2) / 2);

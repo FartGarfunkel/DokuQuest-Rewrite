@@ -1,5 +1,6 @@
 // sim/combat_rpg.cpp — the combat batch's rules. Bars and animations read the fields; they are not drawn here.
 #include "sim/combat_rpg.h"
+#include "sim/skilltree.h"
 #include "sim/shield_shape.h"
 #include "sim/skills.h"
 #include "sim/gameplay.h"
@@ -43,7 +44,7 @@ void spend(Player& p, float n) {
 
 void combatRpgTick(Level& lv, Player& p, float dt) {
   if (p.dead || dt <= 0) return;
-  p.maxStamina = STAMINA_MAX + p.statCon * 2.f;
+  p.maxStamina = (STAMINA_MAX + p.statCon * 2.f + treeAttr(p, "stamina")) * (1 + treeAttrPct(p, "stamina"));
   if (p.stamina > p.maxStamina) p.stamina = p.maxStamina;
   float idle = p.data.value("stamIdle", 0.0f) + dt;
   if (idle >= STAMINA_DELAY) p.stamina = std::min(p.maxStamina, p.stamina + STAMINA_REGEN * dt);
@@ -146,7 +147,9 @@ float combatRpgOutgoing(Level& lv, Player& p, Entity& e, float dmg, bool& finish
   finishing = e.staggerT > 0;
   if (finishing) dmg = std::ceil(dmg * 1.75f);
   dmg *= 1.f + p.statStr * 0.01f;
-  if (p.statLck > 0 && rnd() < p.statLck * 0.004) dmg = std::ceil(dmg * 1.5f);
+  dmg = (dmg + treeAttr(p, "damage")) * (1 + treeAttrPct(p, "damage"));   // (the skill tree)
+  const float crit = p.statLck * 0.004f + treeAttr(p, "crit_chance") + treeAttrPct(p, "crit_chance");
+  if (crit > 0 && rnd() < crit) dmg = std::ceil(dmg * (1.5f + treeAttr(p, "crit_damage") + treeAttrPct(p, "crit_damage")));
   e.maxPosture = 40.f + e.mobLevel * 2.f;
   e.posture = std::min(e.maxPosture, e.posture + dmg * (2.f + p.statFoc * 0.02f));
   if (e.posture >= e.maxPosture && e.staggerT <= 0) {

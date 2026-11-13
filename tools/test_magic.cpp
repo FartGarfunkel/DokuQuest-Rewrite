@@ -1,6 +1,7 @@
 // tools/test_magic.cpp — headless rules test for magic, enchanting, brewing, skills and the RPG side.
 // The enchanting offers and rune strings are checked against values taken from the running original
 // (tools/port/jsdump.py: enchOffers / enchRunes / skillLevel). Run: build/test_magic
+#include "sim/skilltree.h"
 #include "sim/creature.h"
 #include "core/init.h"
 #include "sim/magic.h"
@@ -254,6 +255,29 @@ int main(int argc, char** argv) {
   CommandSource cs; cs.level = lv.get(); cs.player = &p; cs.name = p.name;
   std::string r = runCommand(*lv, cs, "/learn all");
   check(knownSpells(p).size() == 29, "/learn all (" + r + ")");
+
+  // ---- the passive skill trees (sim/skilltree.h; only with Soulrend's imported: tools/port/soulrend_tree.py) ----
+  if (!skillTrees().empty()) {
+    const SkillTree* W = nullptr; for (auto& t : skillTrees()) if (t.key == "warrior") W = &t;
+    check(W && W->nodes.size() > 100, "the warrior tree is there");
+    if (W) {
+      const TreeNode* start = nullptr; for (auto& n : W->nodes) if (n.start) start = &n;
+      treeReset(p);
+      const int before = treePointsEarned(p);
+      for (auto& sk : magicData().skills) skillGain(*lv, p, sk.key, 200000);
+      check(treePointsEarned(p) > before && treePointsEarned(p) >= 10, "skill levels earn tree points (" + std::to_string(treePointsEarned(p)) + ")");
+      const float hp0 = p.maxHp;
+      check(start && !treeLearn(p, "warrior", start->links.empty() ? start->id : start->links[0]) , "a node not joined to anything can't be learnt first");
+      check(start && treeLearn(p, "warrior", start->id), "the tree's start can be");
+      check(p.maxHp > hp0 && treeAttr(p, "damage") > 0, "and its bonuses apply (health " + std::to_string((int)hp0) + " -> " + std::to_string((int)p.maxHp) + ", damage +" + std::to_string(treeAttr(p, "damage")) + ")");
+      check(start && !start->links.empty() && treeLearn(p, "warrior", start->links[0]), "then a node joined to it");
+      const SkillTree* R = nullptr; for (auto& t : skillTrees()) if (t.key == "ranger") R = &t;
+      const TreeNode* rs = nullptr; if (R) for (auto& n : R->nodes) if (n.start) rs = &n;
+      check(rs && !treeLearn(p, "ranger", rs->id), "one class at a time: not the ranger's start as well");
+      treeReset(p);
+      check(treePointsSpent(p) == 0 && p.maxHp == hp0, "a reset gives the points back");
+    }
+  }
 
   printf("\n%d passed, %d failed\n", passes, fails);
   lv->close();

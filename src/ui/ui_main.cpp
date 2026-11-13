@@ -122,6 +122,7 @@ static void registerMenuTabs() {
   registerMenuTab({"journal", "Journal", [](App& a) { a.pushScreen(makeJournalScreen()); }, nullptr});
   { registerMenuTab({"achievements", "Achievements", [](App& a) { a.pushScreen(makeAchievementsScreen()); }, nullptr}); }
   registerMenuTab({"skills", "Skills", [](App& a) { a.pushScreen(makeSkillsScreen()); }, nullptr});
+  registerMenuTab({"skilltree", "Talents", [](App& a) { a.pushScreen(makeSkillTreeScreen()); }, nullptr});
   registerMenuTab({"spells", "Spellbook", [](App& a) { a.pushScreen(makeSpellbookScreen()); }, nullptr});
   registerMenuTab({"stable", "Stable", [](App& a) { a.pushScreen(makeStableScreen()); }, nullptr});
 }
@@ -320,6 +321,7 @@ static const char* tabKeyOfScreen(const std::string& id) {
   if (id == "spellbook") return "spells";
   if (id == "stable") return "stable";
   if (id == "achievements") return "achievements";
+  if (id == "skilltree") return "skilltree";
   return nullptr;
 }
 void uiAfterScreens(App& a) {
