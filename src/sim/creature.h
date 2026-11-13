@@ -80,6 +80,7 @@ struct RigLife {
   bool init = false; float lifeT = 0, yaw = 0, turn = 0, sp = 0, acc = 0, tail = 0, tailV = 0, idle = 0, rest = 0, ear = 2, earK = 0, sink = 0, shake = 0;
   int earSide = 1; bool wet = false; float lookT = 0, look = 0, cock = 0;
   float anT = -1, anYaw = 0, anLean = 0;
+  float aggro = 0, gallopW = 0, landK = 1;   // Fresh Animations ramps: arms up while hunting, trot to gallop; how hard the last landing was
   float sqAge = -1, tilt = -1, sqYaw = 0, sqRoll = 0;
   // sim/creature_rig.cpp rigBlend: easing from one state's pose to the next (sitting down, lying down, a jump, swimming)
   u32 bKey = 0; float bT = 0, bDur = 0, bLast = -1; std::vector<vec3> bFrom, bShown; vec3 bFrom3{0}, bShown3{0};

@@ -72,6 +72,11 @@ struct Pose {
   vec3& atI(int i) { if (!has[i]) { has[i] = 1; P[i] = vec3(0); } return P[i]; }
 };
 static float age(const Creature& m) { return m.age; }
+// Fresh Animations (study: per-individual seed, warped steps): each its own 0..1 from its id; a step's quick lift and
+// slow plant (sin of a phase warped by cos/3); the smooth 0..1 ease
+static float seed01(u32 id, int salt) { u32 h = id * 2654435761u ^ (u32)salt * 40503u; h ^= h >> 15; h *= 0x2c1b3c6du; h ^= h >> 12; return (h & 0xFFFF) / 65535.f; }
+static float warp(float ph) { return ph + std::cos(ph) / 3.f; }
+static float ease01(float x) { x = clampv(x, 0.f, 1.f); return 0.5f - 0.5f * std::cos(PI * x); }
 static bool inAir(const Creature& m) { return !m.onGround && !m.inWater && !m.ghost; }
 
 // ------------------------------------------------------------------ RIG_ANIM (+ anim.js additions)
@@ -84,7 +89,7 @@ static float rigTurnLean(Creature& m, float k) {
 }
 
 static void animBiped(Creature& m, const RigModel& d, Pose& P) {
-  float a = m.walkAmt, ph = m.walk, t = age(m);
+  float a = m.walkAmt, ph = warp(m.walk + seed01(m.id, 1) * TAU), t = age(m) * (0.88f + 0.24f * seed01(m.id, 2));
   float run = clampv(m.speedNow / 4.6f, 0.f, 1.f); bool air = inAir(m);
   float sL = std::sin(ph), cL = std::cos(ph), amp = (0.7f + 0.3f * run) * a;
   bool crawl = m.lost.count("legL") || m.lost.count("legR") || m.lost.count("shinL") || m.lost.count("shinR");
@@ -96,20 +101,35 @@ static void animBiped(Creature& m, const RigModel& d, Pose& P) {
   P.set("foreR", {0.12f + 0.35f * run * a + 0.05f * idle, 0, 0}); P.set("foreL", {0.12f + 0.35f * run * a + 0.05f * idle, 0, 0});
   P.set("body", {-0.14f * run * a, sL * 0.11f * a, 0});
   P.lift = (1 - std::fabs(sL)) * 0.045f * a + breathe * 0.004f * idle;
+  {   // breathing in the chest (a 4 s breath), the head and arms trailing it
+    const float B = t * TAU / 4.f + seed01(m.id, 3) * 4 * PI;
+    P.at("body").x += 0.025f * std::sin(B) * idle;
+    P.add("head", -0.02f * std::sin(B - PI / 4) * idle, 0, 0);
+    P.add("armR", 0, 0.05f * std::sin(B - PI / 3) * idle, 0); P.add("armL", 0, -0.05f * std::sin(B - PI / 3) * idle, 0);
+  }
   if (air) {
     float fall = clampv(-m.vel.y / 10, 0.f, 1.f);
     P.set("legL", {0.55f, 0, 0.05f}); P.set("shinL", {-1.0f, 0, 0}); P.set("legR", {-0.15f, 0, -0.05f}); P.set("shinR", {-0.45f, 0, 0});
     P.set("armR", {0.3f + fall * 2.2f, 0, 0.35f + fall * 0.5f}); P.set("armL", {0.3f + fall * 2.2f, 0, -0.35f - fall * 0.5f});
   }
   if (m.landT > 0) {
-    float k = m.landT / 0.18f; P.lift -= 0.09f * k;
+    const float u = 1 - m.landT / 0.18f, k = std::sin(std::min(1.f, u * 1.5f) * PI) * (1 - u * 0.3f) * m.life.landK; P.lift -= 0.09f * k;   // (a squash, with a little rebound, as hard as the drop)
     P.at("legL").x += 0.5f * k; P.at("legR").x += 0.5f * k; P.at("shinL").x -= 1.0f * k; P.at("shinR").x -= 1.0f * k; P.at("body").x -= 0.25f * k;
   }
   float sw = m.swingT > 0 ? std::sin(m.swingT / 0.3f * PI) : 0;
-  bool reach = d.armsReach && m.T->hostile && !m.calm;
+  // the arms come up only while it hunts you (eased in at 1.6/s, down at 2/s), and point where it looks
+  {
+    const bool hunting = d.armsReach && m.T->hostile && !m.calm && (m.sees || m.huntT > 0 || m.alertT > 0 || m.swingT > 0);
+    const float dtA = clampv(m.age - m.life.anT, 0.f, 0.1f);   // (rigTurnLean below keeps anT; read before it updates)
+    m.life.aggro = clampv(m.life.aggro + (hunting ? 1.6f : -2.f) * std::max(dtA, 1 / 60.f), 0.f, 1.f);
+  }
+  const float ag = ease01(m.life.aggro);
+  bool reach = ag > 0.01f;
   if (reach) {
-    float sway = std::sin(t * 2.3f) * 0.06f;
-    P.set("armR", {1.45f + sway - sw * 0.6f, 0.05f, 0.02f}); P.set("armL", {1.45f - sway - sw * 0.6f, -0.05f, -0.02f});
+    float sway = std::sin(t * 2.3f) * 0.06f, up = (1.45f + 0.75f * m.headPitch) * ag;
+    const vec3 ar = P.at("armR"), al = P.at("armL");
+    P.set("armR", {ar.x * (1 - ag) + up + (sway - sw * 0.6f) * ag, 0.05f * ag, ar.z * (1 - ag) + 0.02f * ag});
+    P.set("armL", {al.x * (1 - ag) + up + (-sway - sw * 0.6f) * ag, -0.05f * ag, al.z * (1 - ag) - 0.02f * ag});
     P.set("foreR", {0.05f + sw * 0.5f, 0, 0}); P.set("foreL", {0.05f + sw * 0.5f, 0, 0});
   } else if (m.aiming) {
     float dk = clampv(1 - m.shootT / 1.6f, 0.f, 1.f);
@@ -145,12 +165,19 @@ static void animBiped(Creature& m, const RigModel& d, Pose& P) {
 static void animQuad(Creature& m, const RigModel& d, Pose& P) {
   float a = m.walkAmt, ph = m.walk, t = age(m);
   float run = clampv(m.speedNow / 5, 0.f, 1.f);
-  bool gallop = d.gallop && run > 0.55f; float ph2 = gallop ? 0.45f : PI;
+  ph += seed01(m.id, 1) * TAU;
+  {   // trot to gallop, eased (3/s): the legs' timing slides between them instead of popping at a speed
+    const float dtG = clampv(m.age - m.life.anT, 0.f, 0.1f);
+    m.life.gallopW = clampv(m.life.gallopW + ((d.gallop && run > 0.55f) ? 3.f : -3.f) * std::max(dtG, 1 / 60.f), 0.f, 1.f);
+  }
+  const float gw = ease01(m.life.gallopW);
+  bool gallop = gw > 0.5f;
   for (size_t i = 0; i < d.parts.size(); i++) {
     const RigPart& p = d.parts[i];
     if (p.role != "qleg") continue;
-    float off = gallop ? (p.front ? 0 : PI) + (p.side > 0 ? ph2 : 0) : ((p.front == (p.side > 0)) ? 0 : PI);
-    float s = std::sin(ph + off), c = std::cos(ph + off);
+    const float offT = (p.front == (p.side > 0)) ? 0 : PI, offG = (p.front ? 0 : PI) + (p.side > 0 ? 0.45f : 0);
+    const float off = offT + wrapAngle(offG - offT) * gw;
+    float s = std::sin(warp(ph + off)), c = std::cos(warp(ph + off));
     P.atI((int)i) = vec3(s * (0.65f + 0.25f * run) * a, 0, 0);
     std::string shin = "shin" + p.name.substr(3);
     P.set(shin, {p.front ? -std::max(0.f, c) * (0.7f + 0.4f * run) * a : std::max(0.f, -c) * 0.55f * a, 0, 0});
@@ -171,6 +198,8 @@ static void animQuad(Creature& m, const RigModel& d, Pose& P) {
   P.lift += std::fabs(std::cos(ph)) * 0.015f * a;
   if (!(m.grazeT > 0)) P.at("head").y += std::sin(t * 0.33f + m.id) * 0.12f * (1 - a);
   P.at("body").z += std::sin(t * 1.1f + m.id) * 0.012f * (1 - a);
+  // the head holds steady while the body rocks under it
+  { vec3& h = P.at("head"); const vec3 bd = P.at("body"); h.x -= bd.x + 0.7f * P.pitch; h.z -= bd.z + 0.7f * P.roll; }
 }
 
 static void animSpider(Creature& m, const RigModel& d, Pose& P) {
@@ -498,10 +527,15 @@ static void rigLife(Creature& m, const RigModel& d, Pose& P) {
   if (isShaker(m.type)) { if (m.inWater) L.wet = true; else if (L.wet && ground) { L.wet = false; L.shake = 1.1f; } }
   if (L.shake > 0) { L.shake -= dt; float k = std::min(1.f, L.shake * 2); P.roll += std::sin(t * 38) * 0.22f * k; P.add("head", 0, 0, std::sin(t * 38 + 1) * 0.35f * k); }
   if (m.hurtTime > 0 && !dead) {   // a flinch when hit
-    float k = std::sin(clampv(m.hurtTime / 0.35f, 0.f, 1.f) * PI);
-    P.pitch += 0.1f * k * (kind == "quad" ? -1 : 1);
-    P.add("head", -0.25f * k, 0, 0);
-    if (kind == "biped") { P.add("armR", 0, 0, 0.4f * k); P.add("armL", 0, 0, -0.4f * k); P.add("body", 0.15f * k, 0, 0); }
+    // strongest at the moment of the blow, one rebound, gone by 0.35 s; each hit throws the head its own way
+    const float u = 1 - clampv(m.hurtTime / 0.35f, 0.f, 1.f), k = (1 - u) * std::cos(1.6f * PI * u);
+    const float side = seed01(m.id, (int)((m.age - (0.35f - m.hurtTime)) * 4)) > 0.5f ? 1.f : -1.f;   // (the same throughout one flinch)
+    P.pitch += 0.12f * k * (kind == "quad" ? -1 : 1);
+    P.add("head", -0.3f * k, 0.35f * side * k, 0.2f * side * k);
+    if (kind == "biped") {
+      P.add("armR", 0, 0, 0.4f * k); P.add("armL", 0, 0, -0.4f * k); P.add("body", 0.18f * k, 0.15f * side * k, 0);
+      P.add("legR", -0.25f * std::max(0.f, k), 0, 0); P.add("legL", -0.25f * std::max(0.f, k), 0, 0);   // (the knees give)
+    }
   }
   if (kind == "biped" && (m.T->family == "ghoul" || m.type == "ghoul") && !dead) {   // the shamble
     P.roll += std::sin(ph) * 0.07f * a;
