@@ -122,7 +122,7 @@ std::vector<std::string> landsAt(const TerrainQuery& t, const TerrainColumn& c) 
 struct Placed { const VPPiece* p; int r, x0, y0, z0, w, d; int depth; };
 struct PoiExt {
   std::vector<Placed> pcs; std::string key;
-  std::vector<std::array<int, 5>> flat; int flatR = 6;   // x0, z0, x1, z1, ground y: the land under each rigid piece that stands on it (beard)
+  std::vector<std::array<int, 5>> flat; int flatR = 6; bool beard = false;   // x0, z0, x1, z1, ground y: the land under each rigid piece that stands on it (beard)
 };
 
 const int DXJ[4] = {0, 1, 0, -1}, DZJ[4] = {-1, 0, 1, 0};   // north, east, south, west (VPJoint.front)
@@ -204,6 +204,14 @@ void buildPoi(ChunkWriter& w, const StructurePlan& S) {
   if (!E) return;
   const BlockId DIRT = reg().blockId("dirt");
   SP P(w);
+  // Minecraft's beardifier: the land inside every piece's box above its floor is taken away before anything is built (a
+  // sunken courtyard, a bowl, a cellar stair open to the sky: all were left full of earth). First, so no piece's blocks go.
+  if (E->beard) for (const Placed& q : E->pcs) {
+    if (q.p->terrain) continue;
+    const int x1 = q.x0 + q.w - 1, z1 = q.z0 + q.d - 1, top = q.y0 + q.p->sy - 1;
+    for (int x = std::max(q.x0, w.bx); x <= std::min(x1, w.bx + 15); x++) for (int z = std::max(q.z0, w.bz); z <= std::min(z1, w.bz + 15); z++)
+      for (int y = std::max(q.y0, 1); y <= std::min(top, DIM_H - 1); y++) { const BlockId g = w.get(x, y, z); if (g != AIR && !reg().tLiquid[g]) w.put(x, y, z, AIR); }
+  }
   for (const Placed& q : E->pcs) {
     const VPPiece& p = *q.p;
     if (q.x0 > w.bx + 15 || q.x0 + q.w - 1 < w.bx || q.z0 > w.bz + 15 || q.z0 + q.d - 1 < w.bz) continue;
@@ -293,7 +301,7 @@ void registerStructurePois() {
     double tot = 0; for (auto& e : cand) tot += e.first;
     double u = rnd() * tot; const PoiDef* d = cand.back().second;
     for (auto& e : cand) { u -= e.first; if (u <= 0) { d = e.second; break; } }
-    auto E = std::make_shared<PoiExt>(); E->key = d->key; E->flatR = d->flatR;
+    auto E = std::make_shared<PoiExt>(); E->key = d->key; E->flatR = d->flatR; E->beard = d->beard && d->surface;
     if (!expand(*pk, *d, tq, x, z, rnd, E->pcs) || E->pcs.empty()) return false;
     // the land under each rigid piece standing on it (not one buried well below the ground: a crypt keeps its hill)
     if (d->surface && d->beard) for (auto& q : E->pcs) {

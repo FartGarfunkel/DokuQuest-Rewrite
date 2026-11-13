@@ -245,6 +245,15 @@ public:
           if (held == "fishing_rod") setRodTip(c->id, f.cam.origin + glm::dvec3(hm * vec4(0.47f, 0.47f, 0, 1)), f.time);   // its float hangs from here (render/content_layers.cpp)
         }
       }
+      // the other hand: the work held on the anvil (sim/villager_ai.cpp npcTaskWork "off")
+      if (!c->offItem.empty() && !sleep && !sit) {
+        const VoxelModel& im = itemModel(c->offItem);
+        if (im.ready()) {
+          mat4 hm = glm::translate(R.part[CP_ARML_D], vec3(0, -6, -1));
+          hm = glm::scale(hm, vec3(1 / CHAR_PX)) * heldMat(c->offItem);
+          VR.draw(im.gl, hm * im.matrix(), light, tint);
+        }
+      }
     }
     // towns3.js: the town gates (shut = the barrier blocks are there): a portcullis of iron bars in a stone wall, timber
     // doors banded with iron in a palisade. Each gate eases between shut and open (about a second): the portcullis

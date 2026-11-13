@@ -544,7 +544,7 @@ void runStep(App& a, const json& st) {
     R.anchor = ivec3(sp->cx, dimBase(DIM_OVERWORLD) + sp->y, sp->cz);
     DQ_LOG("test: tpvillage %s (%s) at %d,%d,%d", sp->name.c_str(), sp->data.value("style", std::string("?")).c_str(), sp->cx, dimBase(DIM_OVERWORLD) + sp->y, sp->cz);
   } else if (op == "tpstruct" && p && s && s->level->gen) {   // the nearest structure of a kind, seen from above on a diagonal ("side" 0..3), the whole footprint in view
-    const StructurePlan* sp = locateStructure(*s->level->gen, DIM_OVERWORLD, st.value("kind", std::string("poi")), ifloor(p->pos.x), ifloor(p->pos.z), 24);
+    const StructurePlan* sp = locateStructure(*s->level->gen, DIM_OVERWORLD, st.value("kind", std::string("poi")), ifloor(p->pos.x), ifloor(p->pos.z), st.value("regions", 48));
     if (!sp) { result(false, "tpstruct: none"); return; }
     const float W = (float)std::max(sp->x1 - sp->x0, sp->z1 - sp->z0) + 8, k = st.value("dist", 0.75f);
     const int side = st.value("side", 0);

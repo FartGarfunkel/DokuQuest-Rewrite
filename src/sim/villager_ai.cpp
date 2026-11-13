@@ -326,6 +326,8 @@ static void npcTaskWork(Level& lv, Creature& e, NpcMind& M, const json& J, const
   const json T = TT.contains(t.kind) && TT[t.kind].is_object() ? TT[t.kind] : json::object();
   const std::string doing = T.value("do", std::string("work")), held = T.value("held", std::string());
   if (!held.empty() && reg().item(held) && e.heldItem != held) { e.heldItem = held; M.taskHeld = true; }
+  // the work in the other hand (the smith's blade or helmet on the anvil, held in the tongs while the hammer comes down)
+  { const std::string off = T.value("off", std::string()); if (e.offItem != off && (off.empty() || reg().item(off))) e.offItem = off; }
   const vec3 st = vec3(t.at) + vec3(0.5f + DXL[t.f] * 0.85f, 1.05f, 0.5f + DZL[t.f] * 0.85f);   // the station, in front of them
   M.work = doing; M.workAt = t.at;
   if (doing == "read" || doing == "draw") {
@@ -609,6 +611,7 @@ static Move brainInner(Level& lv, Creature& e, NpcMind& M, json& N, const Villag
     e.heldItem = !M.carry.empty() && M.carryN > 0 ? M.carry : J.contains("held") && J["held"].is_string() ? J["held"].get<std::string>() : std::string();
     if (!e.heldItem.empty() && !reg().item(e.heldItem)) e.heldItem.clear();
     M.taskHeld = false;
+    e.offItem.clear();
   }
   if (act == SOCIAL) M.aboutAt = S->now;
   if (act == SOCIAL) if (OptMove m = npcSocial(lv, e, M, v, idx, dt)) return *m;   // free time: a talk with whoever's about (sim/villager_social.cpp)
