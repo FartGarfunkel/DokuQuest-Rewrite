@@ -689,12 +689,17 @@ bool jigsawTownFlatten(const JigsawTown& J, int x, int z, double& weight, int& t
   for (const auto& r : J.boxes) if (x >= r[0] && x <= r[2] && z >= r[1] && z <= r[3]) { weight = 1; targetY = r[4]; return true; }   // under a building
   if (auto t = J.streetH.find(colKey(x, z)); t != J.streetH.end()) { weight = 1; targetY = t->second; return true; }   // a street at its own level
   double best = 0; int by = 0;
-  for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) {   // beside a street: the ground eases to it
+  // beside a street: the ground eases to it over as far as round a house (it was 3 blocks: a Towns and Towers street is a
+  // whole plot levelled, and on a slope each plot stood as a terrace with sheer earth sides)
+  for (int dz = -JFLAT_R; dz <= JFLAT_R; dz++) for (int dx = -JFLAT_R; dx <= JFLAT_R; dx++) {
     if (!dx && !dz) continue;
+    const double d = std::hypot((double)dx, (double)dz);
+    if (d >= JFLAT_R) continue;
+    const double w = 1 - jsSmooth(0, JFLAT_R, d);
+    if (w <= best) continue;
     auto t = J.streetH.find(colKey(x + dx, z + dz));
     if (t == J.streetH.end()) continue;
-    const double w = 1 - std::hypot((double)dx, (double)dz) / 4.2;
-    if (w > best) { best = w; by = t->second; }
+    best = w; by = t->second;
   }
   for (const auto& r : J.flat) {
     const int dx = std::max({r[0] - x, 0, x - r[2]}), dz = std::max({r[1] - z, 0, z - r[3]});
