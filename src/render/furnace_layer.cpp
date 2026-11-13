@@ -18,7 +18,7 @@ float rnd() { return (float)rand() / RAND_MAX; }
 class FurnaceLayer : public RenderLayer {
 public:
   const char* name() const override { return "furnace-fire"; }
-  struct Spot { vec3 at; vec3 right, in; float width; std::string fuel; int n; bool burning; VoxelLight light; };
+  struct Spot { vec3 at; vec3 right, in; float width; std::string fuel, burnId; int n; bool burning; float left; VoxelLight light, lightOff; };
   std::vector<Spot> spots;
   // the floor of the opening in the world: model (x right-to-left as the front is seen, y up, z into the block from its
   // front) turned to the furnace's facing as the mesher turns it
@@ -36,7 +36,7 @@ public:
       static const int Q[4] = {2, 1, 0, 3}, DX[4] = {0, 1, 0, -1}, DZ[4] = {1, 0, -1, 0};
       const int fd = w.getMeta(x, y, z) & 3, q = Q[fd];
       Spot sp;
-      const float mx = (FM->floorX0 + FM->floorX1) * 0.5f, dz = FURNACE_DEPTH * 0.55f;
+      const float mx = (FM->floorX0 + FM->floorX1) * 0.5f, dz = FURNACE_DEPTH * 0.5f;
       sp.at = vec3(x, y, z) + turn(vec3(mx, FM->floorY, dz), q) / 16.f;
       sp.right = (turn(vec3(mx - 1, FM->floorY, dz), q) - turn(vec3(mx, FM->floorY, dz), q));   // (model -x: to the picture's right)
       sp.in = (turn(vec3(mx, FM->floorY, dz + 1), q) - turn(vec3(mx, FM->floorY, dz), q));
@@ -45,9 +45,13 @@ public:
       const ItemStack fuel = ItemStack::fromJson(it);
       sp.fuel = fuel.empty() ? "" : fuel.id; sp.n = fuel.n;
       sp.burning = b.light > 0;
+      sp.burnId = e.value("burnId", std::string());
+      const double bm = e.value("burnMax", 0.0);
+      sp.left = bm > 0 ? (float)std::clamp(e.value("burn", 0.0) / bm, 0.0, 1.0) : 1.f;   // (how much of what burns is left)
       if (sp.fuel.empty() && !sp.burning) return;
       const u8 l = w.getLight(x + DX[fd], y, z + DZ[fd]);
-      sp.light = sp.burning ? VoxelLight{1, 1} : VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f};
+      sp.lightOff = VoxelLight{(l >> 4) / 15.f, std::max((l & 15) / 15.f, sp.burning ? 0.75f : 0.f)};
+      sp.light = sp.burning ? VoxelLight{1, 1} : sp.lightOff;
       spots.push_back(sp);
     });
   }
@@ -58,22 +62,29 @@ public:
     VoxelRenderer& VR = voxelRenderer();
     bool begun = false;
     for (const Spot& sp : spots) {
-      // the fuel (or, burning with none left in the slot, its embers: charcoal glowing)
-      const std::string key = !sp.fuel.empty() ? sp.fuel : std::string("charcoal");
-      const VoxelModel& im = itemModel(key);
-      if (!im.ready()) continue;
-      if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
-      const int pieces = sp.fuel.empty() ? 3 : std::clamp(sp.n, 1, 3);
       const vec3 R = glm::normalize(sp.right), I = glm::normalize(sp.in), U(0, 1, 0);
-      for (int k = 0; k < pieces; k++) {
-        const float off = pieces == 1 ? 0.f : ((float)k / (pieces - 1) - 0.5f) * sp.width * 0.6f;
-        const vec3 p = sp.at + R * off + U * (0.012f + k * 0.004f);
+      const float sc = std::min(0.2f, sp.width * 0.4f);
+      auto lay = [&](const std::string& id, vec3 p, float turn, float scale, VoxelLight L, vec4 tint) {
+        const VoxelModel& im = itemModel(id);
+        if (!im.ready()) return;
+        if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
         mat4 m(1); m[0] = vec4(R, 0); m[1] = vec4(-I, 0); m[2] = vec4(U, 0); m[3] = vec4(f.cam.rel(glm::dvec3(p)), 1);   // (lying flat, its face up)
-        m = glm::rotate(m, (k - 1) * 0.5f, vec3(0, 0, 1));
-        const float sc = std::min(0.32f, sp.width * 0.55f);
-        m = glm::scale(m, vec3(sc));
-        const vec4 tint = sp.burning ? vec4(1.f, 0.45f, 0.1f, 0.35f) : vec4(0);   // (glowing hot)
-        VR.draw(im.gl, m * im.matrix(), sp.light, tint);
+        m = glm::rotate(m, turn, vec3(0, 0, 1));
+        m = glm::scale(m, vec3(scale));
+        VR.draw(im.gl, m * im.matrix(), L, tint);
+      };
+      // what burns: in the middle of the fire, glowing, burning down as its time runs out (sim/worldsys.cpp tickFurnace)
+      if (sp.burning) {
+        const std::string what = !sp.burnId.empty() ? sp.burnId : !sp.fuel.empty() ? sp.fuel : std::string("charcoal");
+        const float k = 0.3f + 0.7f * sp.left;
+        lay(what, sp.at + U * 0.01f, 0.3f, sc * k, sp.light, vec4(1.f, 0.42f, 0.08f, 0.25f + 0.3f * (1 - sp.left)));
+      }
+      // the rest of the stack waiting in the fuel slot: further in, side by side (not yet alight)
+      const int pieces = sp.fuel.empty() ? 0 : std::clamp(sp.n, 1, 4);
+      for (int k = 0; k < pieces; k++) {
+        const float off = pieces == 1 ? 0.f : ((float)k / (pieces - 1) - 0.5f) * sp.width * 0.75f;
+        const vec3 p = sp.at + I * (sp.burning ? 0.12f : 0.f) + R * off + U * (0.012f + k * 0.003f);
+        lay(sp.fuel, p, (k - 1.5f) * 0.45f, sc * 0.85f, sp.lightOff, vec4(0));
       }
     }
     if (begun) VR.end();

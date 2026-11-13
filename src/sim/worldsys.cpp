@@ -612,7 +612,7 @@ bool tickFurnace(json& e, double dt, const std::string& kind) {
   bool changed = false;
   double burn = e.value("burn", 0.0), cook = e.value("cook", 0.0);
   if (burn <= 0 && canOut && !fuel.empty() && fuelValue(fuel.id) > 0) {
-    burn = fuelValue(fuel.id) * SMELT_TIME; e["burnMax"] = burn;
+    burn = fuelValue(fuel.id) * SMELT_TIME; e["burnMax"] = burn; e["burnId"] = fuel.id;   // (what burns: drawn in the fire, burning down: render/furnace_layer.cpp)
     if (fuel.id == "lava_bucket") items[1] = ItemStack("bucket", 1).toJson();
     else { fuel.n--; items[1] = fuel.n <= 0 ? json() : fuel.toJson(); }
     changed = true;
