@@ -59,6 +59,8 @@ void buildPart(VoxelModel& out, const BlockDef& b, int frontFace, int y0, int y1
     if (!hollow || x < 0 || x > 31 || z < 0 || z > 31 || y < y0 || y >= y1 || !inWell(x, z)) return false;
     return inside ? y >= CHEST_FLOOR_ROW : y <= ceil;
   };
+  const bool barrel = b.key.size() >= 6 && b.key.compare(b.key.size() - 6, 6, "barrel") == 0;
+  const int insideTile = barrel ? b.faces[3] : b.faces[2];   // (a barrel's inside: its boards, as its bottom)
   auto texel = [&](int tile, float u, float v) { return tileVoxel(ts, tile, std::min(S - 1, (int)(u * S)), std::min(S - 1, (int)(v * S))); };
   for (int z = 0; z < 32; z++) for (int ly = 0; ly < y1 - y0; ly++) for (int x = 0; x < 32; x++) {
     int y = y0 + ly;
@@ -79,15 +81,15 @@ void buildPart(VoxelModel& out, const BlockDef& b, int frontFace, int y0, int y1
     if (!c) c = voxRGBA(138, 90, 42);
     const float tu = (x + 0.5f) / 32, tv = (z + 0.5f) / 32;
     if (hollow && carved(x, y + 1, z)) {   // the well's floor: the chest's own inside, shaded by its walls
-      c = texel(dbl ? DC->floor[half][facing & 3] : b.faces[2], tu, tv); if (!c) c = voxRGBA(110, 72, 36);
+      c = texel(dbl ? DC->floor[half][facing & 3] : insideTile, tu, tv); if (!c) c = voxRGBA(110, 72, 36);
       c = voxShade(c, dbl ? 0.62f : 0.45f);
     } else if (hollow && carved(x, y - 1, z)) {   // the lid's ceiling, over the well
-      c = texel(dbl ? DC->under[half][facing & 3] : b.faces[3], tu, tv); if (!c) c = voxRGBA(110, 72, 36);
+      c = texel(dbl ? DC->under[half][facing & 3] : barrel ? insideTile : b.faces[3], tu, tv); if (!c) c = voxRGBA(110, 72, 36);
       c = voxShade(c, 0.6f);
     } else if (hollow && (carved(x - 1, y, z) || carved(x + 1, y, z) || carved(x, y, z - 1) || carved(x, y, z + 1))) {
       // a wall's inner face: plain boards (the inside's own picture, along the wall), out of the light
       const bool alongX = carved(x, y, z - 1) || carved(x, y, z + 1);
-      c = texel(dbl ? DC->floor[half][facing & 3] : b.faces[2], alongX ? tu : tv, 1 - (y + 0.5f) / 32); if (!c) c = voxRGBA(110, 72, 36);
+      c = texel(dbl ? DC->floor[half][facing & 3] : insideTile, alongX ? tu : tv, 1 - (y + 0.5f) / 32); if (!c) c = voxRGBA(110, 72, 36);
       c = voxShade(c, 0.55f);
     } else if (!hollow && floor && y == y1 - 1) c = voxShade(c, 0.7f);   // (the large chest's own inside, in the shade of its walls)
     else if (!hollow && inside && f == 2 && y == y1 - 1) {   // looking into the open barrel: its dark top, the boards' rim left light
@@ -112,7 +114,7 @@ ChestModels& modelsFor(BlockId id, int facing, int lidRow, int half = -1) {
   auto m = std::make_unique<ChestModels>();
   const BlockDef& b = reg().block(id);
   const DoubleChestTiles* DC = half >= 0 ? doubleChestFor(b.faces[4]) : nullptr;
-  const bool hollow = b.key.size() >= 5 && b.key.compare(b.key.size() - 5, 5, "chest") == 0;   // (a barrel stays solid under its board)
+  const bool hollow = true;   // (chests and barrels alike: open, a well inside)
   buildPart(m->base, b, FACING_FACE[facing & 3], 0, lidRow, true, DC, half, facing, hollow);
   buildPart(m->lid, b, FACING_FACE[facing & 3], lidRow, 32, false, DC, half, facing, hollow);
   return *(cache[k] = std::move(m));
