@@ -82,7 +82,8 @@ int chestHalves(World& w, ivec3 at, ivec3 out[2]) {
 }
 int chestSlotsPerHalf(World& w, ivec3 at) { const Kind k = kindAt(w, at); return k == K_BLOCK ? (int)reg().block(w.getBlock(at.x, at.y, at.z)).num("container", 27) : 27; }
 int chestLidRow(World& w, ivec3 at) { return isBarrel(reg().block(w.getBlock(at.x, at.y, at.z))) ? 27 : 20; }   // (a barrel's top board; a chest's lid at the tiles' seam)
-float chestFloorY(World& w, ivec3 at) { return chestLidRow(w, at) / 32.f; }
+// a chest is hollow inside (render/chest_layer.cpp CHEST_FLOOR_ROW): its things lie on the floor of the well; a barrel's on its top
+float chestFloorY(World& w, ivec3 at) { return isBarrel(reg().block(w.getBlock(at.x, at.y, at.z))) ? chestLidRow(w, at) / 32.f : 8 / 32.f; }
 float chestSlotSize(World& w, ivec3 at) { return (1 - 2 * margin(w, at)) / 9; }
 
 std::vector<ItemStack> chestItems(Level& lv, Player& p, World& w, ivec3 at) {
