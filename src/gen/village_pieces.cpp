@@ -320,6 +320,7 @@ VPState mapState(const json& e) {
       m = std::clamp((int)std::lround(propI(P, "age", 0) * (st - 1) / (double)mx), 0, st - 1);
       if (shape == ShapeKind::Cocoa) m |= (rf < 0 ? 0 : (rf + 2) & 3) << 4;
     }
+    else if (key == "pointed_dripstone") m = prop(P, "vertical_direction") == "down" ? 1 : 0;   // (hanging from a ceiling: sim/build.cpp's meta)
     else if (d.has("double")) m = top ? 1 : 0;
     else if (R.tRender[id] == (u8)Render::Cube && (d.props.contains("tex") && d.props["tex"].is_object() && d.props["tex"].contains("front"))) m = rf < 0 ? 0 : (2 - rf) & 3;
     else if (d.has("facingBlock")) m = rf < 0 ? 0 : (2 - rf) & 3;

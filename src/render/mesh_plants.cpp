@@ -516,6 +516,18 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   int tile = self.faces[0];
   if (T.crop && !T.stageTiles.empty()) tile = T.stageTiles[std::min<int>(meta & 15, (int)T.stageTiles.size() - 1)];
   else if ((T.dbl || T.altTile) && (meta & 1) && T.upperTile >= 0) tile = T.upperTile;
+  // pointed dripstone (Minecraft's): a column of them is one spike, its picture by where in the column each is: the tip at the
+  // free end (a merged tip where it meets one from the other side), the frustum behind it, the base where it's fixed, the middle
+  // between; up or down by the way it points (meta & 1 hanging). The pack's lone "pointed_dripstone" picture was a block of it.
+  if (key == "pointed_dripstone") {
+    const bool down = meta & 1; const int dir = down ? -1 : 1;
+    auto same = [&](int yy2) { return c.at(x, yy2, z) == id && ((c.metaAt(x, yy2, z) & 1) != 0) == down; };
+    const bool fwd = same(y + dir), fwd2 = fwd && same(y + 2 * dir), back = same(y - dir);
+    const bool merge = !fwd && c.at(x, y + dir, z) == id;   // (the next one points back at it)
+    const char* seg = !fwd ? (merge ? "tip_merge" : "tip") : !fwd2 ? "frustum" : !back ? "base" : "middle";
+    const int t2 = c.R.tile(std::string("pointed_dripstone_") + (down ? "down_" : "up_") + seg);
+    if (t2 >= 0) tile = t2;
+  }
   // stacked vines are one strand: the body picture wherever the strand goes on (the tip picture at its end), every
   // piece of a column at the same spot and angle, and no per-block sway (that would break the strand at each block)
   const bool strand = T.stackPlant && T.bodyTile >= 0;
