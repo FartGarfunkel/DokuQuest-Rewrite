@@ -34,6 +34,7 @@ struct VillagePieces {
 
 const VillagePieces* villagePieces();
 // one structure template (.nbt bytes) as a piece: its blocks in our states, its joints (the village pieces' way: furniture, rugs...)
+std::string piecesMissing();   // the block names no block of ours stands for (most first)
 bool makePiece(const std::string& style, const std::string& kind, const std::string& name, const std::vector<u8>& bytes, VPPiece& P);   // nullptr: data/villages is missing (the classic villages are built)
 // a piece's block at a quarter turn r (clockwise seen from above, like Minecraft's rotation): its offset in the turned box
 inline std::array<int, 2> vpTurn(const VPPiece& p, int r, int x, int z) {

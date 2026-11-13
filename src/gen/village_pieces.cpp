@@ -133,6 +133,7 @@ const std::unordered_map<std::string, std::string>& NAMES() {
     {"deepslate_tile_slab", "slate_tile_slab"}, {"deepslate_tile_wall", "slate_tile_wall"}, {"cracked_deepslate_tiles", "cracked_slate_tiles"},
     {"cobbled_deepslate_wall", "cobbled_slate_wall"}, {"cobbled_deepslate_stairs", "cobbled_slate_stairs"}, {"cobbled_deepslate_slab", "cobbled_slate_slab"},
     {"polished_deepslate", "polished_slate"}, {"deepslate_coal_ore", "coal_ore"}, {"deepslate_iron_ore", "iron_ore"}, {"deepslate_copper_ore", "copper_ore"},
+    {"cave_vines_plant", "cave_vines"}, {"weeping_vines_plant", "weeping_vines"}, {"kelp_plant", "kelp"},
     {"grass_path", "dirt_path"}, {"raw_iron_block", "iron_block"}, {"raw_gold_block", "gold_block"}, {"mangrove_roots", "mangrove_wood"},
     {"lava_cauldron", "cauldron"}, {"twisting_vines_plant", "twisting_vines"}, {"trapped_chest", "chest"}, {"candle_cake", "cake"},
     {"dead_bubble_coral_block", "dead_coral_block"}, {"waxed_copper_block", "copper_block"}, {"waxed_exposed_copper", "exposed_copper"},
@@ -152,6 +153,45 @@ BlockId findBlock(const std::string& n) {
   if (R.blockIds.count(n) || R.blockAliases.count(n)) return R.blockId(n);
   return NONE;
 }
+// a block of another mod (Create, Quark, The Graveyard, Supplementaries...) or a newer Minecraft name: the nearest of ours, by
+// its name without the mod, Minecraft's newer words in ours, the material words, and its shape (stairs, slab, wall...)
+BlockId nearestBlock(std::string n, std::string& keyOut) {
+  if (const size_t c = n.find(':'); c != std::string::npos) n = n.substr(c + 1);
+  auto rep = [&](const char* a, const char* b) { for (size_t p; (p = n.find(a)) != std::string::npos;) n.replace(p, strlen(a), b); };
+  rep("waxed_", ""); rep("deepslate", "slate"); rep("tg_", ""); rep("cut_slate_brick", "slate_brick"); rep("polished_cut_slate", "polished_slate");
+  rep("cut_slate", "slate_tile"); rep("cobblestone_bricks", "stone_bricks"); rep("sandstone_bricks", "cut_sandstone");
+  if (auto it = NAMES().find(n); it != NAMES().end()) n = it->second;
+  if (findBlock(n) != NONE) { keyOut = n; return findBlock(n); }
+  // a whole word it's known by
+  static const std::vector<std::pair<const char*, const char*>> WORDS = {
+    {"chest", "chest"}, {"barrel", "barrel"}, {"coffin", "chest"}, {"sarcophagus", "chiseled_stone_bricks"}, {"gravestone", "cobblestone_wall"},
+    {"vase", "decorated_pot"}, {"lantern", "lantern"}, {"candle", "candle"}, {"rope", "chain"}, {"flower_box", "flower_pot"}, {"book_pile", "bookshelf"},
+    {"hedge", "leaves"}, {"post", "oak_fence"}, {"pipe", "iron_bars"}, {"gearbox", "copper_block"}, {"shaft", "chain"}, {"cogwheel", "copper_block"},
+    {"iron_bars", "iron_bars"}, {"bars", "iron_bars"}, {"grass_block", "grass"}, {"moss_block", "moss_block"}, {"leaves", "leaves"}, {"log", "log"},
+    {"planks", "planks"}, {"glass", "glass"}, {"lamp", "glowstone"}, {"skull", "mob_head"}, {"head", "mob_head"}, {"spawner", "monster_spawner"}, {"sack", "hay_bale"}, {"jar", "glass"},
+    {"pedestal", "chiseled_stone_bricks"}, {"urn", "decorated_pot"}, {"trapdoor", "oak_trapdoor"}, {"door", "oak_door"}, {"button", "oak_button"},
+    {"window", "glass_pane"}, {"pane", "glass_pane"}, {"shingles", "bricks"}, {"casing", "andesite"}, {"girder", "iron_bars"}, {"shelf", "bookshelf"},
+    {"notice_board", "oak_planks"}, {"doormat", "brown_carpet"}, {"clock", "copper_block"}, {"dripleaf", "fern"},
+    {"shroom", "brown_mushroom_block"}, {"spikes", "bamboo"}, {"faucet", "iron_bars"}, {"belt", "black_wool"}, {"crank", "lever"}, {"link", "lever"}};
+  static const char* SHAPES[] = {"_stairs", "_slab", "_wall", "_fence", "_fence_gate", "_trapdoor", "_door", "_pillar", "_vertical_slab", "_button", "_pressure_plate", "_bars"};
+  std::string shape;
+  for (const char* sh : SHAPES) { const size_t L = strlen(sh); if (n.size() > L && n.compare(n.size() - L, L, sh) == 0) { shape = sh; break; } }
+  if (shape == "_vertical_slab") shape = "_slab";
+  if (shape == "_pillar") shape = "";
+  if (!shape.empty()) {   // the material: its words dropped from the left until one of ours has that shape ("polished_cut_scoria_wall" -> "..._wall")
+    std::string mat = n.substr(0, n.rfind(shape == "_slab" && n.find("_vertical_slab") != std::string::npos ? "_vertical_slab" : shape));
+    for (;;) {
+      for (const std::string& c : {mat + shape, mat + "s" + shape, mat + "_brick" + shape}) if (findBlock(c) != NONE) { keyOut = c; return findBlock(c); }
+      const size_t u = mat.find('_'); if (u == std::string::npos) break; mat = mat.substr(u + 1);
+    }
+    for (const char* m : {"stone_brick", "cobblestone", "planks"}) { std::string c = std::string(m) + shape; if (shape == "_slab" || shape == "_stairs") { if (std::string(m) == "planks") c = "oak" + shape; } if (findBlock(c) != NONE) { keyOut = c; return findBlock(c); } }
+  }
+  for (auto& [w, to] : WORDS) if (n.find(w) != std::string::npos && findBlock(to) != NONE) { keyOut = to; return findBlock(to); }
+  // a plain block of a material we know: drop words from the left
+  for (std::string m = n;;) { if (findBlock(m) != NONE) { keyOut = m; return findBlock(m); } const size_t u = m.find('_'); if (u == std::string::npos) break; m = m.substr(u + 1); }
+  return NONE;
+}
+
 std::string wallFree(const std::string& n, const char* wall, const char* plain) {   // "oak_wall_sign" -> "oak_sign"
   const size_t p = n.find(wall);
   return p == std::string::npos ? std::string() : n.substr(0, p) + plain + n.substr(p + std::string(wall).size());
@@ -183,7 +223,9 @@ VPState mapState(const json& e) {
   if (key.rfind("potted_", 0) == 0) { S.plant = key.substr(7); key = "flower_pot"; S.kind = VPK_POT; }
   if (auto it = NAMES().find(key); it != NAMES().end()) key = it->second;
   if (key == "grass" && prop(P, "snowy") == "true" && findBlock("snowy_grass") != NONE) key = "snowy_grass";
+  if (key == "cave_vines" && prop(P, "berries") == "true" && findBlock("cave_vines_lit") != NONE) key = "cave_vines_lit";   // (glow berries on it)
   BlockId id = findBlock(key);
+  if (id == NONE) id = nearestBlock(key, key);   // (another mod's block, or a newer name: the nearest of ours)
   if (id == NONE) { missing()[n]++; return S; }
   if (!S.plant.empty()) { auto it = NAMES().find(S.plant); if (it != NAMES().end()) S.plant = it->second; if (findBlock(S.plant) == NONE) S.plant.clear(); }
   S.id = id;
@@ -290,6 +332,8 @@ std::unique_ptr<VillagePieces> loadPieces() {
 }  // namespace
 
 // one structure template (.nbt bytes) as a piece: its blocks in our states, its joints, our furniture (village_pieces.h)
+std::string piecesMissing() { std::vector<std::pair<int, std::string>> v; for (auto& [k, c] : missing()) v.push_back({c, k}); std::sort(v.rbegin(), v.rend()); std::string o; for (size_t i = 0; i < v.size() && i < 40; i++) o += (o.empty() ? "" : ", ") + v[i].second + " " + std::to_string(v[i].first); return o; }
+
 bool makePiece(const std::string& style, const std::string& kind, const std::string& name, const std::vector<u8>& bytes, VPPiece& P) {
   {
     Template T;

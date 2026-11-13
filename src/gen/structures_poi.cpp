@@ -53,9 +53,12 @@ const PoiPack* poiPack() {
       PoiDef d; d.key = s.value("key", ""); d.start = s.value("start", ""); d.depth = s.value("depth", 4); d.y = s.value("y", 0);
       d.spacing = std::max(8, s.value("spacing", 32)); d.surface = s.value("surface", true); d.reach = s.value("reach", 80);
       for (auto& l : s["lands"]) d.lands.push_back(l.get<std::string>());
+      // no ships and blimps floating in the sky (Dungeons Arise's heavenly ones): they don't belong in our world
+      if (!d.surface && d.y > 90) continue;
+      if (d.key.find("heavenly") != std::string::npos || d.key.find("blimp") != std::string::npos) continue;
       if (pk->pools.count(d.start)) pk->defs.push_back(std::move(d));
     }
-    DQ_LOG("points of interest: %zu structures, %d pieces, %zu pools", pk->defs.size(), n, pk->pools.size());
+    DQ_LOG("points of interest: %zu structures, %d pieces, %zu pools; left out: %s", pk->defs.size(), n, pk->pools.size(), piecesMissing().c_str());
     return pk->defs.empty() ? nullptr : std::move(pk);
   }();
   return P.get();
@@ -183,7 +186,7 @@ void buildPoi(ChunkWriter& w, const StructurePlan& S) {
 void registerStructurePois() {
   StructureType t;
   t.key = "poi"; t.name = "a place of note";
-  t.region = 176; t.margin = 24; t.chance = 0.8; t.clearance = 10;
+  t.region = 112; t.margin = 16; t.chance = 0.9; t.clearance = 8;   // (about three for every one of our own places)
   t.flags = SF_SURFACE;
   t.plan = [](const TerrainQuery& tq, int x, int z, Mulberry32& rnd, StructurePlan& out) -> bool {
     const PoiPack* pk = poiPack();
