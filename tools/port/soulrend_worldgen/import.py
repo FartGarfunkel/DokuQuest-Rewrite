@@ -124,6 +124,7 @@ def main(inst=INSTANCE, d='data'):
     (out / '.gitignore').write_text('*\n!.gitignore\n')
     mc = zipfile.ZipFile(MCJAR)
     ns, ee, ww, cr = jar(mods, 'natures_spirit'), jar(mods, 'expanded_ecosphere'), jar(mods, 'WWOO'), jar(mods, 'ClimateRivers')
+    qk = jar(mods, 'Quark-')
     nscfg = toml_bools((cfgdir / 'natures_spirit-common.toml').read_text()) if (cfgdir / 'natures_spirit-common.toml').exists() else {}
     tbcfg = (cfgdir / 'terrablender.toml').read_text() if (cfgdir / 'terrablender.toml').exists() else ''
     size = int((re.search(r'overworld_region_size\s*=\s*(\d+)', tbcfg) or [0, 3])[1])
@@ -141,14 +142,14 @@ def main(inst=INSTANCE, d='data'):
     # ---- the biomes' data, in Forge's order (vanilla, then the mods by id: expanded_ecosphere, natures_spirit, wwoo_forge)
     for k in ('biome', 'placed_feature', 'configured_feature'):
         n += copy_tree(mc, vprefix + k + '/', out / k / 'minecraft')
-        for z in (ee, ns, ww):
+        for z in (ee, ns, qk, ww):   # (Forge's order: by mod id)
             for name in sorted({p.split('/')[1] for p in z.namelist() if p.startswith('data/') and p.count('/') > 2}):
                 n += copy_tree(z, 'data/%s/worldgen/%s/' % (name, k), out / k / name)
         n += copy_tree(cr, 'data/climaterivers/worldgen/%s/' % k, out / k / 'climaterivers')
     # ---- the block tags the features test (#minecraft:dirt...): every jar's, merged as Forge merges them (a later one
     # with "replace" starts the tag over)
     tags = {}
-    for z in (mc, ee, ns, ww):
+    for z in (mc, ee, ns, qk, ww):
         for name in sorted(z.namelist()):
             m = re.match(r'data/([^/]+)/tags/blocks/(.+)\.json$', name)
             if not m: continue
@@ -158,7 +159,8 @@ def main(inst=INSTANCE, d='data'):
     (out / 'block_tags.json').write_text(json.dumps(tags, separators=(',', ':')))
 
     with tempfile.TemporaryDirectory() as tmp:
-        work = pathlib.Path(tmp); (work / 'src').mkdir()
+        work = pathlib.Path(tmp)
+        if os.environ.get('DQ_KEEPWORK'): work = pathlib.Path(os.environ['DQ_KEEPWORK']); shutil.rmtree(work, ignore_errors=True); work.mkdir(parents=True); (work / 'src').mkdir()
         # ---- Nature's Spirit's regions (their code, run) and vanilla's underground biomes (which theirs call)
         mojnames = {l.split(' -> ')[0]: l.split(' -> ')[1].strip().rstrip(':') for l in open(MOJMAP) if not l.startswith((' ', '#'))}
         decompile(mc, [mojnames['net.minecraft.world.level.biome.OverworldBiomeBuilder'], mojnames['net.minecraft.world.level.biome.Climate']], work, MOJMAP)   # (Climate: for its names)
@@ -196,6 +198,11 @@ def main(inst=INSTANCE, d='data'):
     regions = [{'name': 'minecraft:vanilla (expanded_ecosphere)', 'weight': vweight, 'entries': ee_list}]
     for r in ('ferax', 'solaris', 'flava', 'mater', 'laeta'):   # (TerraBlender's index order: Nature's Spirit registers them so)
         regions.append({'name': 'natures_spirit:terra_' + r, 'weight': nsweights[r], 'entries': nsreg['terra_' + r]})
+    # Quark's region, registered after Nature's Spirit's (by mod id), when its config adds one (Soulrend's: weight 1)
+    qcfg = (cfgdir / 'quark-common.toml').read_text() if (cfgdir / 'quark-common.toml').exists() else ''
+    if re.search(r'"Terrablender Add Region"\s*=\s*true', qcfg) and re.search(r'"Glimmering Weald"\s*=\s*true', qcfg):
+        regions.append({'name': 'quark:biome_provider', 'weight': int((re.search(r'"Terrablender Region Weight"\s*=\s*(\d+)', qcfg) or [0, 1])[1]),
+                        'entries': nsreg['quark']})
     names = sorted({e[-1] for r in regions for e in r['entries']})
     idx = {b: i for i, b in enumerate(names)}
     for r in regions: r['entries'] = [e[:-1] + [idx[e[-1]]] for e in r['entries']]

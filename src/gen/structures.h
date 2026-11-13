@@ -43,6 +43,7 @@ public:
   virtual int finalSurfaceY(int x, int z) const { return surfaceY(x, z); }
   // the Nether of terrain version 5 (BTA's: open land under a high roof): its structures stand on the ground there
   virtual bool openNether() const { return false; }
+  virtual int genVersion() const { return 0; }   // (the world's terrain version: plans that changed keep the old way in older worlds)
 };
 
 struct StructurePlan {

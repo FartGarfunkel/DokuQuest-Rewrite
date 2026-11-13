@@ -30,7 +30,7 @@ void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) con
   if (sr) {
     u16 bio[256];
     for (int i = 0; i < 256; i++) bio[i] = cols[i].mc == 0xFFFF ? 0 : cols[i].mc;
-    mcf_->decorate(b, cx, cz, bio, [&](int wx, int wz) { return structures.active() && structures.flagged(wx, wz, 0, SF_SURFACE); });
+    mcf_->decorate(b, cx, cz, bio, [&](int wx, int wz) { return structures.active() && structures.flagged(wx, wz, 0, SF_SURFACE); }, v17);
   }
   for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
     const OwColumn& c = cols[z * 16 + x];
@@ -141,7 +141,9 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
       }
       continue;
     }
-    if (here != 0) continue;
+    // (Soulrend's grasses cover most ground now: our loose rocks and twigs may take a single grass's place)
+    const bool grassTop = here > 0 && v17 && mcf_ && mcf_->ok() && looseGround && reg().tReplaceable[here] && !reg().tLiquid[here] && !B.dbl[here];
+    if (here != 0 && !grassTop) continue;
     // a mushroom island (terrain version 14): huge mushrooms, red and brown, and small ones in the mycelium
     if (c.special == 1 && B.mycelium && below == B.mycelium) {
       if (r < 0.012 && x >= 3 && x <= 12 && z >= 3 && z <= 12 && B.mushroom_stem) {
@@ -184,6 +186,7 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
     if (!looseGround && below >= 0 && B.solid[below] && below != B.water && (c.biome == BIOME_MOUNTAINS || c.biome == BIOME_BEACH || (c.h > JS_SEA + 14 && c.biome != BIOME_DESERT)) && r > 0.988) { set(x, y, z, B.loose_stones); continue; }
     // TerraFirmaCraft's loose rocks and sticks (the stone age's first tools come from these), in immersive worlds only:
     // rocks on most land, about 4 to a chunk; flint on gravel and on sand by the water; twigs in the woods and along the beaches
+    if (grassTop && !(looseGround && below >= 0 && B.solid[below] && below != B.water)) continue;
     if (looseGround && below >= 0 && B.solid[below] && below != B.water) {
       const bool earth = below == B.grass || below == B.dirt || below == B.podzol || below == B.snowy_grass || below == B.stone || below == B.mud || below == B.gravel;
       const bool shore = below == B.gravel || ((below == B.sand) && (c.biome == BIOME_BEACH || waterBeside(x, y - 1, z)));

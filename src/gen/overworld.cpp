@@ -23,6 +23,7 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
   climateScale = o.genVersion >= 4 ? 2.0 : 1.0;
   if (o.worldType == "large_biomes") climateScale *= 3;   // the "Bigger biomes" world: every land three times as wide
   wtype = o.worldType;
+  genVer_ = o.genVersion;
   jigsawVillages = o.genVersion >= 9;
   villageStyles = o.genVersion >= 10;
   villagePlan11 = o.genVersion >= 11;
@@ -39,15 +40,16 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
     const bool sr = o.genVersion >= 15 && (wtype.empty() || wtype == "default" || wtype == "large_biomes") && fs::exists(dataDir() / "soulrend_worldgen" / "biome_regions.json");
     const std::string prefix = wtype == "amplified" ? "overworld_amplified" : wtype == "large_biomes" ? "overworld_large_biomes" : "overworld";
     struct Shared { std::shared_ptr<DensityGraph> g; std::shared_ptr<McBiomes> b; std::shared_ptr<McSurface> s; std::shared_ptr<McFeatures> f; };
-    static std::mutex mx; static std::map<std::tuple<i32, std::string, bool>, Shared> worlds;
+    static std::mutex mx; static std::map<std::tuple<i32, std::string, bool, bool>, Shared> worlds;
     std::lock_guard<std::mutex> lk(mx);
-    Shared& w = worlds[{o.seed, prefix, sr}];
+    const bool q17 = o.genVersion >= 17;
+    Shared& w = worlds[{o.seed, prefix, sr, q17}];
     if (!w.g) {
       auto ng = std::make_shared<DensityGraph>();
       if (ng->load(dataDir() / (sr ? "soulrend_worldgen" : "vanilla_worldgen"), (u64)(i64)o.seed * 0x9E3779B97F4A7C15ull + 14, prefix)) w.g = ng;
       if (w.g && sr) {
         auto nb = std::make_shared<McBiomes>(); auto nsu = std::make_shared<McSurface>();
-        if (nb->load(dataDir() / "soulrend_worldgen", (i64)o.seed) && nsu->load(dataDir() / "soulrend_worldgen", *w.g, *nb, (u64)(i64)o.seed * 0x2545F4914F6CDD1Dull)) { w.b = nb; w.s = nsu; auto nf = std::make_shared<McFeatures>(); if (nf->load(dataDir() / "soulrend_worldgen", *nb, (u64)(i64)o.seed * 0xD1B54A32D192ED03ull)) w.f = nf; }
+        if (nb->load(dataDir() / "soulrend_worldgen", (i64)o.seed, q17) && nsu->load(dataDir() / "soulrend_worldgen", *w.g, *nb, (u64)(i64)o.seed * 0x2545F4914F6CDD1Dull)) { w.b = nb; w.s = nsu; auto nf = std::make_shared<McFeatures>(); if (nf->load(dataDir() / "soulrend_worldgen", *nb, (u64)(i64)o.seed * 0xD1B54A32D192ED03ull)) w.f = nf; }
       }
     }
     if (w.g) {
@@ -58,7 +60,7 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
       vOff = g->find("overworld/offset"); vJag = g->find("overworld/jaggedness");
       if (vSloped < 0 || vFinal < 0) v14 = false;
       if (v14 && w.b) {
-        mcb_ = w.b; mcs_ = w.s; v15 = true; v16 = o.genVersion >= 16; if (v16) mcf_ = w.f;   // (16: the biomes' own plants and the land's extras)
+        mcb_ = w.b; mcs_ = w.s; v15 = true; v16 = o.genVersion >= 16; v17 = o.genVersion >= 17; if (v16) mcf_ = w.f;   // (16: the biomes' own plants and the land's extras)
         vTemp = g->find("temperature"); vVeg = g->find("vegetation"); vDepth = g->find("depth"); vRidges = g->find("ridges");
         vInit = g->find("initial_density_without_jaggedness");
         {   // (the extras' noises, registered here on this thread)
@@ -178,6 +180,7 @@ int OverworldGen::mcNoiseBiome(int qx, int qy, int qz) const {
   e3 = {key, qy, b};
   return b;
 }
+std::string OverworldGen::mcBiomeNameAt(int x, int y, int z) const { return v15 ? mcb_->info(mcBiomeAt(x, y, z)).name : std::string(); }
 std::string OverworldGen::mcBiomeName(int x, int z) const { return v15 ? mcb_->info(rawColumn(x, z).mc).name : std::string(); }
 int OverworldGen::mcBiomeAt(int x, int y, int z) const {
   int qx, qy, qz; mcb_->fuzzyQuart(x, y, z, qx, qy, qz);
@@ -438,8 +441,20 @@ void OverworldGen::fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const {
     // above it, its top few blocks whole; the cells below make the caves and the hollows under overhangs
     const int Hc = std::clamp(c.H, 1, DIM_H - 2);
     int top = 0;
-    for (int y = Hc; y >= 1; y--) {
-      if (y >= Hc - 3) { b.blocks[colIdx(x, y, z)] = B.stone; if (!top) top = y; continue; }
+    // (by the water the planned height can stand a block or two over the land itself: there the land's own shape wins,
+    // or single columns of grass stood up out of the shallows)
+    auto latD = [&](int y) {   // (the land's density at a block, from the cell corners)
+      const int j0 = y >> 3; const double fy = (y & 7) / 8.0;
+      auto L = [&](int di, int dj, int dk) { return lat[((k0 + dk) * 5 + (i0 + di)) * NY + std::min(NY - 1, j0 + dj)]; };
+      const double c00 = L(0, 0, 0) + (L(1, 0, 0) - L(0, 0, 0)) * fx, c10 = L(0, 1, 0) + (L(1, 1, 0) - L(0, 1, 0)) * fx;
+      const double c01 = L(0, 0, 1) + (L(1, 0, 1) - L(0, 0, 1)) * fx, c11 = L(0, 1, 1) + (L(1, 1, 1) - L(0, 1, 1)) * fx;
+      const double d0 = c00 + (c10 - c00) * fy, d1 = c01 + (c11 - c01) * fy;
+      return d0 + (d1 - d0) * fz;
+    };
+    const int nTop = v17 ? v14Spike(wx, wz, Hc) : Hc;   // (a lone column planned over all round it by the water: theirs)
+    const bool whole = !v17 || lev || Hc != Hs || (nTop == Hc && (Hc > SEA_LEVEL + 4 || Hc / 8 > jmax || latD(Hc) > 0));   // (terrain version 17)
+    for (int y = whole ? Hc : nTop; y >= 1; y--) {
+      if (whole && y >= Hc - 3) { b.blocks[colIdx(x, y, z)] = B.stone; if (!top) top = y; continue; }
       const int j0 = y >> 3; const double fy = (y & 7) / 8.0;
       auto L = [&](int di, int dj, int dk) { return lat[((k0 + dk) * 5 + (i0 + di)) * NY + std::min(NY - 1, j0 + dj)]; };
       const double c00 = L(0, 0, 0) + (L(1, 0, 0) - L(0, 0, 0)) * fx, c10 = L(0, 1, 0) + (L(1, 1, 0) - L(0, 1, 0)) * fx;
@@ -492,6 +507,20 @@ void OverworldGen::fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const {
       } else b.blocks[colIdx(x, SEA_LEVEL, z)] = B.water;
     }
   }
+  if (v17) {   // by the water: a lone column standing 2+ over all four round it (as built; past the chunk's edge, as planned) is cut down to them
+    for (int z = 0; z < CS; z++) for (int x = 0; x < CS; x++) {
+      OwColumn& c = cols[z * 16 + x];
+        if (c.H > SEA_LEVEL + 4 || c.H <= SEA_LEVEL) continue;
+      int m = 0;
+      for (int k = 0; k < 4; k++) {
+        const int nx = x + DIRX[k], nz = z + DIRZ[k];
+        m = std::max(m, nx >= 0 && nx < 16 && nz >= 0 && nz < 16 ? cols[nz * 16 + nx].H : v14Surface(bx + nx, bz + nz));
+      }
+      if (c.H < m + 2) continue;
+      for (int y = c.H; y > m; y--) b.blocks[colIdx(x, y, z)] = y <= SEA_LEVEL ? B.water : AIR;
+      c.H = std::max(1, m);
+    }
+  }
   if (v15) surfaceV15(b, cols, cx, cz);
 }
 
@@ -509,6 +538,8 @@ void OverworldGen::surfaceV15(GenBuf& b, OwColumn* cols, int cx, int cz) const {
   // the preliminary surface at the chunk's 16-block cell corners (a chunk is one cell)
   const int p00 = prelimSurface(bx, bz), p10 = prelimSurface(bx + 16, bz), p01 = prelimSurface(bx, bz + 16), p11 = prelimSurface(bx + 16, bz + 16);
   // the spires, icebergs and pillars first (the rules then lay the ground over them), the heights again after
+  int ground0[256];   // (the land's top before the extras: what rises over it is their plain stone, not our rock layers)
+  for (int i = 0; i < 256; i++) { int y = DIM_H - 1; while (y > 0 && (b.blocks[colIdx(i & 15, y, i >> 4)] == AIR || b.blocks[colIdx(i & 15, y, i >> 4)] == B.water)) y--; ground0[i] = y; }
   if (v16) for (int z = 0; z < CS; z++) for (int x = 0; x < CS; x++) {
     const float fx = x / 16.0f, fz = z / 16.0f;
     const double l0 = p00 + fx * (double)(p10 - p00), l1 = p01 + fx * (double)(p11 - p01);
@@ -542,7 +573,7 @@ void OverworldGen::surfaceV15(GenBuf& b, OwColumn* cols, int cx, int cz) const {
       col.y = my; col.stoneAbove = ++stoneAbove; col.stoneBelow = my - stoneBelowY + 1; col.waterHeight = waterHeight;
       if (here != B.stone) continue;
       const BlockId r = mcs_->apply(col);
-      b.blocks[colIdx(x, y, z)] = r != 0xFFFF ? r : (rockLayers ? layerRock(wx, y, wz, c.H) : B.stone);
+      b.blocks[colIdx(x, y, z)] = r != 0xFFFF ? r : (rockLayers && (!v17 || y <= ground0[z * 16 + x]) ? layerRock(wx, y, wz, c.H) : B.stone);
     }
     // the sea's top, frozen where it's cold enough to snow
     if (b.blocks[colIdx(x, SEA_LEVEL, z)] == B.water && b.blocks[colIdx(x, SEA_LEVEL + 1, z)] == AIR && mcb_->coldEnoughToSnow(mcBiomeAt(wx, SEA_LEVEL - 1, wz), wx, SEA_LEVEL - 1, wz))
@@ -611,6 +642,28 @@ void OverworldGen::surfaceExtras(GenBuf& b, int x, int z, int wx, int wz, int to
       if (e > 0 && o <= j) fill(j, true);
     }
   }
+}
+
+// terrain version 14+: is the planned ground height (column().H) solid land here? Always away from the water; by it, only
+// where the land's density says so (fillV14 and the trees both ask)
+int OverworldGen::v14Spike(int x, int z, int H) const {   // H, or by the water the highest of the four round it when H stands 2+ over them all
+  if (H > SEA_LEVEL + 4) return H;
+  int m = 0; for (int k = 0; k < 4; k++) m = std::max(m, v14Surface(x + DIRX[k], z + DIRZ[k]));
+  return H >= m + 2 ? m : H;
+}
+
+bool OverworldGen::v14Whole(int x, int z, int H) const {
+  if (H > SEA_LEVEL + 4) return true;
+  if (v14Spike(x, z, H) != H) return false;
+  // (as fillV14 has it: the density at its 4x8x4 cell's corners, blended)
+  const DensityGraph& g = *vg_;
+  const int x0 = x & ~3, z0 = z & ~3, j0 = H >> 3;
+  const double fx = (x - x0) / 4.0, fz = (z - z0) / 4.0, fy = (H & 7) / 8.0;
+  auto L = [&](int di, int dj, int dk) { return g.eval(vFinal, x0 + di * 4, (j0 + dj) * 8 - 1, z0 + dk * 4); };
+  const double c00 = L(0, 0, 0) + (L(1, 0, 0) - L(0, 0, 0)) * fx, c10 = L(0, 1, 0) + (L(1, 1, 0) - L(0, 1, 0)) * fx;
+  const double c01 = L(0, 0, 1) + (L(1, 0, 1) - L(0, 0, 1)) * fx, c11 = L(0, 1, 1) + (L(1, 1, 1) - L(0, 1, 1)) * fx;
+  const double d0 = c00 + (c10 - c00) * fy, d1 = c01 + (c11 - c01) * fy;
+  return d0 + (d1 - d0) * fz > 0;
 }
 
 // ---- generate ---------------------------------------------------------------------------------------------

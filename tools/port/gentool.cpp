@@ -399,16 +399,93 @@ static int owmap(const std::string& seedText, int ver, int x0, int z0, int step,
   return 0;
 }
 
+// dq-gentool floaters <#seed|text> <x0> <z0> <chunks>: wood generated with nothing under or beside it but air, water or
+// leaves (a tree's parts left hanging): each clump, where it is and what it's made of
+static int floaters(const std::string& seedText, int x0, int z0, int nc) {
+  WorldGenOptions o; o.seed = seedText.size() > 1 && seedText[0] == '#' ? (i32)std::stoll(seedText.substr(1)) : seedFromString(seedText);
+  if (const char* v = std::getenv("DQ_GENVER")) o.genVersion = atoi(v);
+  WorldGen wg(o); DimGenerator* g = wg.forDim(DIM_OVERWORLD);
+  const int n = nc * 16; std::vector<BlockId> B((size_t)n * n * DIM_H);
+  auto I = [&](int x, int y, int z) { return ((size_t)y * n + z) * n + x; };
+  for (int cz = 0; cz < nc; cz++) for (int cx = 0; cx < nc; cx++) {
+    Chunk c(DIM_OVERWORLD, (x0 >> 4) + cx, (z0 >> 4) + cz); g->generate(c);
+    for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) B[I(cx * 16 + x, y, cz * 16 + z)] = c.get(x, y, z);
+  }
+  std::vector<u8> kind(reg().blocks.size() + 1, 0);   // 1 wood, 2 leaves, 3 holds it up
+  for (size_t i = 1; i < reg().blocks.size(); i++) {
+    const std::string& k = reg().blocks[i].key;
+    if (k.find("leaves") != std::string::npos || k.find("vine") != std::string::npos || k == "cocoa") kind[i] = 2;
+    else if (k.find("_log") != std::string::npos || k == "log" || k.find("branch") != std::string::npos || k.find("_wood") != std::string::npos || k.find("roots") != std::string::npos) kind[i] = 1;
+    else if (reg().tSolid[i] && !reg().tLiquid[i]) kind[i] = 3;
+  }
+  std::vector<u8> seen(B.size(), 0); int found = 0;
+  for (int y = 1; y < DIM_H - 1; y++) for (int z = 0; z < n; z++) for (int x = 0; x < n; x++) {
+    if (seen[I(x, y, z)] || kind[B[I(x, y, z)]] != 1) continue;
+    std::vector<std::array<int, 3>> st{{x, y, z}}, all; seen[I(x, y, z)] = 1; bool held = false;
+    while (!st.empty()) {
+      auto [a, b, c] = st.back(); st.pop_back(); all.push_back({a, b, c});
+      for (int dy = -1; dy <= 1; dy++) for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) {   // (a tree's parts join at corners too)
+        if (!dx && !dy && !dz) continue;
+        const int p = a + dx, q = b + dy, r = c + dz;
+        if (p < 0 || r < 0 || p >= n || r >= n) { held = true; continue; }
+        if (q < 0 || q >= DIM_H) continue;
+        const u8 k = kind[B[I(p, q, r)]];
+        if (k == 3 && (std::abs(dx) + std::abs(dy) + std::abs(dz) == 1)) held = true;
+        else if ((k == 1 || k == 2) && !seen[I(p, q, r)]) { seen[I(p, q, r)] = 1; st.push_back({p, q, r}); }
+      }
+    }
+    if (held) continue;
+    std::map<std::string, int> what; for (auto& e : all) what[key(B[I(e[0], e[1], e[2])])]++;
+    if (all.size() > 400) continue;   // (a wood's canopy reaching out of the area: can't tell)
+    std::string w; for (auto& [k, c] : what) w += " " + k + "x" + std::to_string(c);
+    if (found++ < 40) printf("floating %zu at %d,%d,%d:%s\n", all.size(), x0 + x, y + 512, z0 + z, w.c_str());
+  }
+  printf("%d floating clumps in %d chunks\n", found, nc * nc);
+  // lone columns of land standing two or more blocks over every column round them, by the water
+  std::vector<int> top((size_t)n * n, 0);
+  for (int z = 0; z < n; z++) for (int x = 0; x < n; x++) for (int y = DIM_H - 1; y > 0; y--) { const BlockId t = B[I(x, y, z)]; if (reg().tSolid[t] && reg().tOpaque[t] && !reg().tLiquid[t] && kind[t] == 3) { top[(size_t)z * n + x] = y; break; } }
+  int spikes = 0;
+  for (int z = 1; z < n - 1; z++) for (int x = 1; x < n - 1; x++) {
+    const int h = top[(size_t)z * n + x]; if (h <= SEA_LEVEL) continue;
+    int mx = 0; for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) if (dx || dz) mx = std::max(mx, top[(size_t)(z + dz) * n + x + dx]);
+    if (mx > h - 2 || mx > SEA_LEVEL) continue;
+    if (spikes++ < 12) printf("spike at %d,%d top %d: %s\n", x0 + x, z0 + z, h + 512, key(B[I(x, h, z)]).c_str());
+  }
+  printf("%d lone columns in the water\n", spikes);
+  // tall stalks: a run of more than 8 of one block that isn't solid ground (a plant or a column feature gone too tall)
+  std::map<std::string, int> tall; int shown = 0;
+  for (int z = 0; z < n; z++) for (int x = 0; x < n; x++) {
+    int run = 0; BlockId last = 0;
+    for (int y = 1; y < DIM_H; y++) {
+      const BlockId t = B[I(x, y, z)];
+      if (t && t == last && !reg().tOpaque[t] && !reg().tLiquid[t] && !reg().tLeaves[t] && kind[t] != 1) run++; else run = 1;
+      last = t;
+      if (run == 9) { tall[key(t)]++; if (shown++ < 8) printf("stalk of %s at %d,%d,%d\n", key(t).c_str(), x0 + x, y + 512, z0 + z); }
+    }
+  }
+  for (auto& [k, c] : tall) printf("tall %s: %d\n", k.c_str(), c);
+  // water held up by leaves or air, and stone resting on leaves (features set on the trees' crowns)
+  int wetLeaves = 0, rockLeaves = 0; const BlockId WATER = reg().blockId("water");
+  for (int z = 0; z < n; z++) for (int x = 0; x < n; x++) for (int y = 2; y < DIM_H; y++) {
+    const BlockId t = B[I(x, y, z)], u = B[I(x, y - 1, z)];
+    if (t == WATER && (u == AIR || reg().tLeaves[u]) && y > SEA_LEVEL) { if (wetLeaves++ < 3) printf("water over %s at %d,%d,%d\n", key(u).c_str(), x0 + x, y + 512, z0 + z); }
+    if (t && reg().tOpaque[t] && kind[t] == 3 && reg().tLeaves[u]) { if (rockLeaves++ < 3) printf("%s on leaves at %d,%d,%d\n", key(t).c_str(), x0 + x, y + 512, z0 + z); }
+  }
+  printf("%d water over leaves/air, %d ground blocks on leaves\n", wetLeaves, rockLeaves);
+  return 0;
+}
+
 // dq-gentool topview <#seed|text> <x0> <z0> <chunks> <out.ppm>: real chunks generated, each column's top block's colour from
 // above (shaded by height): what the land actually looks like
 // terrain version 15: Soulrend's biomes over an area, as a picture (a colour per biome) and a count
 static int biomemap(const std::string& seedText, int x0, int z0, int n, int step, const char* out) {
   WorldGenOptions o; o.seed = seedText.size() > 1 && seedText[0] == '#' ? (i32)std::stoll(seedText.substr(1)) : seedFromString(seedText);
-  o.genVersion = 15;
+  o.genVersion = std::getenv("DQ_GENVER") ? atoi(std::getenv("DQ_GENVER")) : 17;
+  const char* by = std::getenv("DQ_BIOMEY");   // (a depth: Minecraft's y)
   WorldGen wg(o); auto* g = dynamic_cast<OverworldGen*>(wg.forDim(DIM_OVERWORLD));
   std::vector<u8> img((size_t)n * n * 3); std::map<std::string, int> count; std::map<std::string, std::pair<int, int>> where;
   for (int j = 0; j < n; j++) for (int i = 0; i < n; i++) {
-    const std::string b = g->mcBiomeName(x0 + i * step, z0 + j * step); count[b]++;
+    const std::string b = by ? g->mcBiomeNameAt(x0 + i * step, atoi(by), z0 + j * step) : g->mcBiomeName(x0 + i * step, z0 + j * step); count[b]++;
     if (!where.count(b)) where[b] = {x0 + i * step, z0 + j * step};
     u32 h = 2166136261u; for (char c : b) h = (h ^ (u8)c) * 16777619u;
     u8* px = &img[((size_t)j * n + i) * 3]; px[0] = 60 + (h & 0xBF); px[1] = 60 + ((h >> 8) & 0xBF); px[2] = 60 + ((h >> 16) & 0xBF);
@@ -456,6 +533,7 @@ int main(int argc, char** argv) {
   if (!initCore(co)) { fprintf(stderr, "initCore failed (run from the build dir: data/ next to the exe)\n"); return 1; }
   std::string m = argc > 1 ? argv[1] : "";
   if (m == "biomemap" && argc >= 8) return biomemap(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argv[7]);
+  if (m == "floaters" && argc >= 6) return floaters(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "topview" && argc >= 7) return topview(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), argv[6]);
   if (m == "owmap" && argc >= 9) return owmap(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]), argv[8]);
   if (m == "vstats" && argc >= 3) return vstats(argv[2]);

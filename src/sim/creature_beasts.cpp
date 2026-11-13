@@ -737,9 +737,8 @@ bool Creature::teleportNear(Level& lv, Entity& o) {
       BlockId below = wd.getBlock(x, y - 1, z);
       if (!reg().tSolid[below] || reg().tLiquid[below]) continue;
       vec3 p(x + 0.5f, y, z + 0.5f);
-      bool clear = true;
-      for (int yy = y; yy < y + (int)std::ceil(h); yy++) if (reg().tSolid[wd.getBlock(x, yy, z)]) clear = false;
-      if (!clear) continue;
+      // room for the whole body there, not just its middle column (a big animal stood half in the wall beside it)
+      if (collides(wd, p.x - w, p.y + 0.01, p.z - w, p.x + w, p.y + h, p.z + w)) continue;
       pos = p; vel = vec3(0); return true;
     }
   }

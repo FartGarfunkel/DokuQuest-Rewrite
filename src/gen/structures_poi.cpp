@@ -129,7 +129,7 @@ std::vector<std::string> landsAt(const TerrainQuery& t, const TerrainColumn& c) 
 struct Placed { const VPPiece* p; int r, x0, y0, z0, w, d; int depth; };
 struct PoiExt {
   std::vector<Placed> pcs; std::string key;
-  std::vector<std::array<int, 6>> flat; int flatR = 6; bool beard = false; char ground = 0;   // x0, z0, x1, z1, floor y, its skirt   // x0, z0, x1, z1, ground y: the land under each rigid piece that stands on it (beard)
+  std::vector<std::array<int, 6>> flat; int flatR = 6; bool beard = false, blend = false; char ground = 0;   // x0, z0, x1, z1, floor y, its skirt   // x0, z0, x1, z1, ground y: the land under each rigid piece that stands on it (beard)
 };
 
 const int DXJ[4] = {0, 1, 0, -1}, DZJ[4] = {-1, 0, 1, 0};   // north, east, south, west (VPJoint.front)
@@ -365,7 +365,7 @@ void registerStructurePois() {
     double tot = 0; for (auto& e : cand) tot += e.first;
     double u = rnd() * tot; const PoiDef* d = cand.back().second;
     for (auto& e : cand) { u -= e.first; if (u <= 0) { d = e.second; break; } }
-    auto E = std::make_shared<PoiExt>(); E->key = d->key; E->flatR = d->flatR; E->beard = d->beard && d->surface; E->ground = d->ground;
+    auto E = std::make_shared<PoiExt>(); E->key = d->key; E->flatR = d->flatR; E->beard = d->beard && d->surface; E->ground = d->ground; E->blend = tq.genVersion() >= 17;
     if (!expand(*pk, *d, tq, x, z, rnd, E->pcs) || E->pcs.empty()) { if (std::getenv("DQ_POI_WHY")) DQ_LOG("poi why %s: expand failed", d->key.c_str()); return false; }
     // the land under each rigid piece standing on it (not one buried well below the ground: a crypt keeps its hill)
     if (d->surface) for (auto& q : E->pcs) {   // (every place on the land, whatever its mod asked: no house stood on a bare plinth of earth)
@@ -435,17 +435,18 @@ void registerStructurePois() {
   t.flatten = [](const StructurePlan& S, int x, int z, double& weight, int& targetY) -> bool {
     auto E = std::static_pointer_cast<const PoiExt>(S.ext);
     if (!E || E->flat.empty()) return false;
-    double best = 0; int by = 0;
+    double best = 0, sw = 0, swy = 0; int inside = INT32_MAX, by = 0;
     for (const auto& r : E->flat) {
       const int dx = std::max({r[0] - x, 0, x - r[2]}), dz = std::max({r[1] - z, 0, z - r[3]});
-      if (dx == 0 && dz == 0) { if (best < 1 || r[4] < by) { best = 1; by = r[4]; } continue; }   // (under two: the lower floor; the land never rises into a room)
+      if (dx == 0 && dz == 0) { inside = std::min(inside, r[4]); continue; }   // (under two: the lower floor; the land never rises into a room)
       const double dd = std::hypot((double)dx, (double)dz);
       if (dd >= r[5]) continue;
-      const double wv = 1 - jsSmooth(0, r[5], dd);
-      if (wv > best) { best = wv; by = r[4]; }
+      const double wv = 1 - jsSmooth(0, r[5], dd), k = wv * wv * wv;   // (round the pieces: their floors blended by nearness, no step between them)
+      if (wv > best) { best = wv; by = r[4]; } sw += k; swy += k * r[4];
     }
-    if (best <= 0) return false;
-    weight = best; targetY = by;
+    if (inside != INT32_MAX) { weight = 1; targetY = inside; return true; }
+    if (best <= 0 || sw <= 0) return false;
+    weight = best; targetY = E->blend ? (int)std::lround(swy / sw) : by;
     return true;
   };
   t.flattenPad = 29;   // (the widest blend: IDAS's kernels)

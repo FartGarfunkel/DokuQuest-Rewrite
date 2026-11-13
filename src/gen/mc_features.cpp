@@ -57,7 +57,8 @@ struct McFeatures::Rng {
 
 struct McFeatures::Ctx {
   GenBuf& b; int bx, bz; const u16* biome; const std::function<bool(int, int)>& builtOn;
-  int step = 0, top = 0;   // (the feature being run: its step and placed index, for the biome filter)
+  int step = 0, top = 0;
+  const u8* treeish = nullptr;   // (our trees' blocks: logs, branches, leaves)   // (the feature being run: its step and placed index, for the biome filter)
   int hm[4][256]; u8 dirty[256];
   Ctx(GenBuf& b, int bx, int bz, const u16* bi, const std::function<bool(int, int)>& bo) : b(b), bx(bx), bz(bz), biome(bi), builtOn(bo) { std::memset(dirty, 1, sizeof dirty); stamp = nextStamp(); }
   bool in(int x, int y, int z) const { return x >= bx && x < bx + 16 && z >= bz && z < bz + 16 && y >= 0 && y < DIM_H; }
@@ -71,7 +72,7 @@ struct McFeatures::Ctx {
       int got = 0, h[4] = {0, 0, 0, 0};
       for (int y = DIM_H - 1; y >= 0 && got != 15; y--) {
         const BlockId id = b.blocks[colIdx(lx, y, lz)];
-        if (id == AIR) continue;
+        if (id == AIR || (treeish && treeish[id])) continue;   // (our trees are planted first: the ground is under them, as Minecraft's is when its features run)
         if (!(got & 1)) { h[HM_WORLD] = y + 1; got |= 1; }
         const bool solid = R.tSolid[id], liquid = R.tLiquid[id];
         if (!(got & 2) && solid && !liquid) { h[HM_OCEAN] = y + 1; got |= 2; }
@@ -829,9 +830,18 @@ bool McFeatures::placeConf(int fi, Ctx& c, Rng& r, int x, int y, int z) const {
   return false;
 }
 
-void McFeatures::decorate(GenBuf& b, int cx, int cz, const u16* biome, const std::function<bool(int, int)>& builtOn) const {
+void McFeatures::decorate(GenBuf& b, int cx, int cz, const u16* biome, const std::function<bool(int, int)>& builtOn, bool underTrees) const {
   if (!loaded_) return;
   Ctx c(b, cx * 16, cz * 16, biome, builtOn);
+  static const std::vector<u8> TREE = [] {
+    std::vector<u8> v(reg().blocks.size() + 1, 0);
+    for (size_t i = 1; i < reg().blocks.size(); i++) {
+      const std::string& k = reg().blocks[i].key;
+      if (reg().tLeaves[i] || k == "log" || k.find("_log") != std::string::npos || k.find("branch") != std::string::npos || k.find("_wood") != std::string::npos) v[i] = 1;
+    }
+    return v;
+  }();
+  if (underTrees) c.treeish = TREE.data();
   std::vector<u8> present(bio_->count(), 0);
   for (int i = 0; i < 256; i++) if (biome[i] < present.size()) present[biome[i]] = 1;
   std::vector<int> pres; for (int i = 0; i < (int)present.size(); i++) if (present[i]) pres.push_back(i);

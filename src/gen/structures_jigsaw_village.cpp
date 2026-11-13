@@ -34,6 +34,7 @@ struct JigsawTown {
   std::vector<JPlaced> pcs;
   std::vector<std::array<int, 5>> flat;       // x0, z0, x1, z1, y: level ground under the rigid pieces
   std::array<int, 4> fb{};                    // the levelling's reach
+  bool blend = false;                         // terrain version 17: the levels round the plots blended, not the nearest
   std::vector<std::array<int, 3>> ends;       // street ends, for the roads between villages: x, z, direction
   bool board = false; int bx = 0, bz = 0, by = 0, bf = 0;   // the quest board (built here when the centre has none)
   std::vector<VPPiece> ours;                  // our hall and windmill as pieces (kept alive with the plan)
@@ -143,6 +144,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
   const std::vector<VPPiece>* centers = pack.pool(sk + "/town_centers");
   if (!centers) return false;
   auto J = std::make_shared<JigsawTown>();
+  J->blend = t.genVersion() >= 17;
   J->ours.reserve(3);
   J->ours.push_back(ourPiece("hall"));
   // (no windmill of ours here: each style's pieces have their own, a tower with sails, shaft and millstone)
@@ -688,29 +690,28 @@ bool jigsawTownFlatten(const JigsawTown& J, int x, int z, double& weight, int& t
   if (x < J.fb[0] || x > J.fb[2] || z < J.fb[1] || z > J.fb[3]) return false;
   for (const auto& r : J.boxes) if (x >= r[0] && x <= r[2] && z >= r[1] && z <= r[3]) { weight = 1; targetY = r[4]; return true; }   // under a building
   if (auto t = J.streetH.find(colKey(x, z)); t != J.streetH.end()) { weight = 1; targetY = t->second; return true; }   // a street at its own level
-  double best = 0; int by = 0;
-  // beside a street: the ground eases to it over as far as round a house (it was 3 blocks: a Towns and Towers street is a
-  // whole plot levelled, and on a slope each plot stood as a terrace with sheer earth sides)
+  // beside a street or a plot: the ground eases to them, every level near blended by nearness (it took only the nearest:
+  // where a street met a plot, or two plots, the land stepped between their levels in sheer earth walls)
+  double best = 0, sw = 0, swy = 0;
+  int by = 0;
+  auto add = [&](double w, int y) { if (w <= 0) return; if (w > best) { best = w; by = y; } const double k = w * w * w; sw += k; swy += k * y; };
   for (int dz = -JFLAT_R; dz <= JFLAT_R; dz++) for (int dx = -JFLAT_R; dx <= JFLAT_R; dx++) {
     if (!dx && !dz) continue;
     const double d = std::hypot((double)dx, (double)dz);
     if (d >= JFLAT_R) continue;
-    const double w = 1 - jsSmooth(0, JFLAT_R, d);
-    if (w <= best) continue;
     auto t = J.streetH.find(colKey(x + dx, z + dz));
     if (t == J.streetH.end()) continue;
-    best = w; by = t->second;
+    add(1 - jsSmooth(0, JFLAT_R, d), t->second);
   }
   for (const auto& r : J.flat) {
     const int dx = std::max({r[0] - x, 0, x - r[2]}), dz = std::max({r[1] - z, 0, z - r[3]});
     if (dx == 0 && dz == 0) { weight = 1; targetY = r[4]; return true; }
     const double d = std::hypot((double)dx, (double)dz);
     if (d >= JFLAT_R) continue;
-    const double w = 1 - jsSmooth(0, JFLAT_R, d);
-    if (w > best) { best = w; by = r[4]; }
+    add(1 - jsSmooth(0, JFLAT_R, d), r[4]);
   }
-  if (best <= 0) return false;
-  weight = best; targetY = by;
+  if (best <= 0 || sw <= 0) return false;
+  weight = best; targetY = J.blend ? (int)std::lround(swy / sw) : by;
   return true;
 }
 

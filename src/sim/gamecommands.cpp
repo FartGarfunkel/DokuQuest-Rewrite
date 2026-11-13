@@ -1,5 +1,6 @@
 // sim/gamecommands.cpp — port of game/commands.js (the game's chat commands and WorldEdit) and /weather
 // (game/weather.js), registered into the chat command registry (sim/commands.h).
+#include "sim/physics.h"
 #include "sim/gamecommands.h"
 #include "sim/gameplay.h"
 #include "sim/combat.h"
@@ -394,6 +395,13 @@ static void registerBuiltinCommands() {
       e->pos = c.p.pos + vec3(L.x * 3 + (float)(rnd() - 0.5) * 2, 0.5f, L.z * 3 + (float)(rnd() - 0.5) * 2);
       const json& T = M[t];
       e->hp = e->maxHp = T.value("hp", 10.0f); e->w = T.value("w", e->w); e->h = T.value("h", e->h);
+      {   // where it has room (not into a wall, to be pushed out its far side): ahead, then nearer, then at your feet
+        const World& wd = c.lv.world(c.p.realm);
+        for (float d : {3.f, 2.f, 1.f, 0.f}) {
+          const vec3 q = c.p.pos + vec3(L.x * d, 0.05f, L.z * d);
+          if (!collides(wd, q.x - e->w, q.y, q.z - e->w, q.x + e->w, q.y + e->h, q.z + e->w)) { e->pos = q; break; }
+        }
+      }
       if (a.size() >= 3) setCreatureLook(*e, toLower(a[2]));   // a look by name: "miner" or "skeleton_miner"
       keepSummoned(*e);
       Entity* se = c.lv.spawn(std::move(e));

@@ -41,7 +41,7 @@ int modeOrRandom(Ctx& c, int a, int b, int cc, int d) {
 }
 } // namespace
 
-bool McBiomes::load(const fs::path& dir, i64 worldSeed) {
+bool McBiomes::load(const fs::path& dir, i64 worldSeed, bool withQuark) {
   auto j = readJson(dir / "biome_regions.json");
   if (!j || !j->contains("regions")) return false;
   worldSeed_ = worldSeed;
@@ -65,6 +65,7 @@ bool McBiomes::load(const fs::path& dir, i64 worldSeed) {
   }
   for (auto& rj : (*j)["regions"]) {
     Region r; r.name = rj.value("name", ""); r.weight = rj.value("weight", 0);
+    if (!withQuark && r.name.rfind("quark:", 0) == 0) continue;   // (terrain versions 15-16: without Quark's region)
     for (auto& e : rj["entries"]) {
       Box b;
       for (int k = 0; k < 6; k++) { b.lo[k] = e[k * 2].get<i64>(); b.hi[k] = e[k * 2 + 1].get<i64>(); }

@@ -68,13 +68,34 @@ def modTex(name):
     return None
 
 
-def square(im):
-    """a tall (or wide) picture onto a square of its larger side, centred, its foot at the bottom"""
+def modelOf(block):
+    """the block's model template in the mod (tall_cross, tall_large_cross, large_cross...; following its parents)"""
+    root = next(iter(MODS.glob('natures_spirit*/assets/natures_spirit')), None)
+    if root is None: return None
+    try:
+        bs = json.loads((root / 'blockstates' / (block + '.json')).read_text())
+        v = next(iter(bs['variants'].values())); v = v[0] if isinstance(v, list) else v
+        m = v['model']
+        for _ in range(4):
+            name = m.split(':')[-1].split('/')[-1]
+            if name in ('tall_cross', 'tall_large_cross', 'tinted_tall_large_cross', 'large_cross', 'tinted_large_cross'): return name
+            mj = json.loads((root / 'models' / 'block' / (name + '.json')).read_text())
+            if not mj.get('parent'): return None
+            m = mj['parent']
+    except Exception: return None
+    return None
+
+
+def square(im, model=None):
+    """the part of the picture the mod's model draws (its tall crosses: the lower three quarters, 1.5 blocks high; its large
+    ones: the lower half of each), filling our one-block square; any other tall picture padded to a square"""
     w, h = im.size
-    if w == h: return im
-    n = max(w, h); out = Image.new('RGBA', (n, n))
-    out.paste(im, ((n - w) // 2, n - h))
-    return out
+    if model in ('tall_cross', 'tall_large_cross', 'tinted_tall_large_cross'): im = im.crop((0, h // 4, w, h))
+    elif model in ('large_cross', 'tinted_large_cross'): im = im.crop((0, h // 2, w, h))
+    elif w == h: return im
+    else:
+        n = max(w, h); out = Image.new('RGBA', (n, n)); out.paste(im, ((n - w) // 2, n - h)); return out
+    n = max(im.size); return im.resize((n, n), Image.NEAREST)
 
 
 def colours(im):
@@ -125,12 +146,12 @@ def main():
         if name not in pmk: pm.append([name, [name], [name]]); pmk.add(name)
         return tiles[name]
 
-    def packPic(name, modName):
+    def packPic(name, modName, block=None):
         im = modTex(modName)
         if im is None or not PACK.exists(): return
         to = 'assets/minecraft/textures/block/%s.png' % name
         (PACK / to).parent.mkdir(parents=True, exist_ok=True)
-        square(im).save(PACK / to)
+        square(im, modelOf(block) if block else None).save(PACK / to)
         if to not in recTo:
             rec.append({'to': to, 'from': 'mod:natures_spirit:assets/natures_spirit/textures/block/%s.png' % modName, 'tile': name, 'mcmeta': False}); recTo.add(to)
 
@@ -152,12 +173,13 @@ def main():
         names = [key] if len(pics) == 1 else [key + '_lower', key + '_upper']
         ids = []
         for i, (nm, m) in enumerate(zip(names, mods)):
+            m = square(m, modelOf(key)) if modelOf(key) else m
             mean, bloom = colours(m)
             src = ourPic(bpics[min(i, len(bpics) - 1)])
             if kind in ('flower', 'flower2'): img = recolour(src, bloom or mean, True, False)
             elif tinted: img = src.copy()
             else: img = recolour(src, mean, False, True)
-            ids.append(tile(nm, img)); packPic(nm, pics[i])
+            ids.append(tile(nm, img)); packPic(nm, pics[i], key)
         upd = {'name': title(key), 'tex': names[0], 'tint': 'grass' if tinted else None}
         if kind in ('flower', 'flower2'): upd['flower'] = True
         if kind in ('grass', 'grass2'): upd['replaceable'] = True; upd['drop'] = None

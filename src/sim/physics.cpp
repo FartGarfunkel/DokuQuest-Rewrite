@@ -142,12 +142,16 @@ static void pushOut(const World& w, double& ex, double& ey, double& ez, double e
     bool done = false;
     for (int k : order) {
       if (need[k] > 1.25) break;
+      // never sideways further than half the body: that far, its middle would cross the block it's in (an elephant
+      // put half into a wall came out on the wall's far side)
+      if (AX[k] != 1 && need[k] > ew + 0.1) continue;
       double p[3] = {ex, ey, ez}; p[AX[k]] += SG[k] * (need[k] + 1e-3);
       if (!collides(w, p[0] - ew + E, p[1] + E, p[2] - ew + E, p[0] + ew - E, p[1] + eh - E, p[2] + ew - E)) { ex = p[0]; ey = p[1]; ez = p[2]; done = true; break; }
     }
     if (done) return;
-    int k = order[0];   // nowhere free in one step: take the shortest and look again from there
-    if (need[k] > 1.25) return;
+    int k = -1;   // nowhere free in one step: take the shortest allowed and look again from there
+    for (int o : order) if (need[o] <= 1.25 && (AX[o] == 1 || need[o] <= ew + 0.1)) { k = o; break; }
+    if (k < 0) return;
     (AX[k] == 0 ? ex : AX[k] == 1 ? ey : ez) += SG[k] * (need[k] + 1e-3);
   }
 }

@@ -26,4 +26,13 @@ for (const [n, f] of [['terra_ferax', 'Ferax'], ['terra_solaris', 'Solaris'], ['
   res[n] = dump(new C(), 'm_187175_');
   console.error(n, res[n].length, 'entries,', new Set(res[n].map(e => e[13])).size, 'biomes');
 }
+// Quark's region (its TerraBlender integration, "Terrablender Add Region"): vanilla's whole Overworld list
+// (Region.addModifiedVanillaOverworldBiomes: OverworldBiomeBuilder.addBiomes) and the Glimmering Weald deep under the land
+{
+  const full = span(-1, 1);
+  res.quark = dump(new Vanilla(), 'addBiomes');
+  const w = params(full, full, span(-1.2, 0.75), span(-0.28, 0.08), span(1.03, 1.1), full, 0);
+  res.quark.push([...w.p.flatMap(x => [x.lo, x.hi]), w.off, 'quark:glimmering_weald']);
+  console.error('quark', res.quark.length, 'entries');
+}
 fs.writeFileSync(process.argv[3], JSON.stringify(res));

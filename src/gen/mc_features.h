@@ -29,7 +29,8 @@ public:
   bool ok() const { return loaded_; }
   // a chunk's features. biome: each column's biome at its ground (McBiomes index, z*16+x); builtOn: true where a
   // structure will stand (no bamboo or cactus columns poking through its roofs)
-  void decorate(GenBuf& b, int cx, int cz, const u16* biome, const std::function<bool(int wx, int wz)>& builtOn) const;
+  // underTrees (terrain version 17): the ground under our trees, not their crowns, is the features' ground
+  void decorate(GenBuf& b, int cx, int cz, const u16* biome, const std::function<bool(int wx, int wz)>& builtOn, bool underTrees = false) const;
 
   struct State { BlockId id = 0xFFFF; u8 meta = 0; };
   struct Ctx;

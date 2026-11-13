@@ -353,6 +353,7 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
 bool OverworldGen::treeGroundOk(const TreeSpec& t) const {
   OwColumn c = column(t.x, t.z);
   if (t.y - 1 != c.H) return false;
+  if (v17 && !v14Whole(t.x, t.z, c.H)) return false;   // (no tree on a shallow the land doesn't reach up to)
   SurfaceMat m = surface(c, t.x, t.z);
   BlockId g = m.top;   // the carvers leave a planted tree's trunk column alone (gen/underground.cpp)
   bool soil = g == B.grass || g == B.snowy_grass || g == B.dirt || g == B.podzol || g == B.coarse_dirt || g == B.mud ||

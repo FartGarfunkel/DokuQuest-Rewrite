@@ -55,10 +55,12 @@ public:
   int dim() const override { return DIM_OVERWORLD; }
   i32 seed() const override { return seed_; }
   TerrainColumn terrainColumn(int x, int z) const override;
+  int genVersion() const override { return genVer_; }
   int finalSurfaceY(int x, int z) const override { return column(x, z).H; }
 
   OwColumn column(int x, int z) const;          // the column as generated (structures' levelling applied)
-  std::string mcBiomeName(int x, int z) const;  // terrain version 15: Soulrend's biome at the ground here ("" before)
+  std::string mcBiomeName(int x, int z) const;
+  std::string mcBiomeNameAt(int x, int y, int z) const;   // (at a depth: Minecraft's y)  // terrain version 15: Soulrend's biome at the ground here ("" before)
   double climateScale = 1;                      // how wide the climate (and so the biomes) spreads: 2 from terrain version 4
   // BTA's world types on this land (the create-world screen): amplified, islands, winter (Endless Winter), hell, floating
   std::string wtype;
@@ -95,10 +97,13 @@ private:
   std::shared_ptr<class DensityGraph> vg_;
   int vSloped = -1, vFinal = -1, vCont = -1, vEro = -1, vOff = -1, vJag = -1;
   void fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const;
+  bool v14Whole(int x, int z, int H) const;
+  int v14Spike(int x, int z, int H) const;   // (the planned ground height is solid land here)
   int v14Corner(int x, int z) const;   // (the exact surface at a cell corner)
   struct BaseCol { int h; double hc; u8 biome; double temp, humid; int H = -1; u8 special = 0; u16 mc = 0xFFFF; };
   // terrain version 15: Soulrend's world (gen/mc_biomes.h, gen/surface_rules.h; data/soulrend_worldgen)
-  bool v15 = false, v16 = false;
+  bool v15 = false, v16 = false, v17 = false;
+  int genVer_ = 0;
   std::shared_ptr<class McBiomes> mcb_;
   std::shared_ptr<class McSurface> mcs_;
   std::shared_ptr<class McFeatures> mcf_;   // (Soulrend's biome features: its plants, disks, rocks, icebergs, snow)

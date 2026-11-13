@@ -24,7 +24,8 @@ public:
     std::string grassModifier;              // "", "dark_forest", "swamp"
   };
   // dir: data/soulrend_worldgen. False when the data isn't there.
-  bool load(const fs::path& dir, i64 worldSeed);
+  // withQuark (terrain version 17): Quark's TerraBlender region too (its Glimmering Weald; and the regions' weights with it)
+  bool load(const fs::path& dir, i64 worldSeed, bool withQuark = true);
   bool ok() const { return !regions_.empty(); }
   int count() const { return (int)info_.size(); }
   const Info& info(int b) const { return info_[b]; }

@@ -491,11 +491,14 @@ static void rigLife(Creature& m, const RigModel& d, Pose& P) {
   L.rest += (wantRest - L.rest) * std::min(1.f, dt * (wantRest ? 1.5f : 6));
   if (L.rest > 0.01f && kind == "quad") {
     float k = L.rest * L.rest * (3 - 2 * L.rest);
-    P.lift += -d.legH * RPX * 0.8f * k;
+    // lying down: the belly on the ground (its whole leg's height, at the animal's size: the big ones, an elephant, sank
+    // only half way and stood on splayed legs), each leg folded flat under it, the shin doubled back along the upper leg
+    // (it had swung down again and stuck out through the ground), forelegs tucked back, hind legs forward
+    P.lift += -d.legH * RPX * d.scale * 0.88f * k;
     for (size_t i = 0; i < d.parts.size(); i++) {
       const RigPart& p = d.parts[i];
-      if (p.role == "qleg") P.atI((int)i) += vec3((p.front ? -1.35f : 1.35f) * k, 0, p.side * 0.1f * k);
-      else if (p.role == "qshin") P.atI((int)i) += vec3((p.front ? 1.3f : -1.3f) * k, 0, 0);
+      if (p.role == "qleg") P.atI((int)i) += vec3((p.front ? -1.5f : 1.5f) * k, 0, p.side * 0.12f * k);
+      else if (p.role == "qshin") P.atI((int)i) += vec3((p.front ? 2.75f : -2.75f) * k, 0, 0);
     }
     P.add("head", 0.15f * k + std::sin(t * 0.5f) * 0.05f * k, 0, std::sin(t * 0.3f) * 0.08f * k);
   }
