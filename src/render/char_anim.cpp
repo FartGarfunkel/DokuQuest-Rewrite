@@ -242,24 +242,9 @@ CharAngles charAnimate(const CharPose& pose) {
   // (the knee folds most just after the foot leaves the ground behind, a little before the leg passes under the body)
   float cK = std::cos(ph + 0.45f);
   if (pose.backward) cL = -cL, cK = -std::cos(ph - 0.45f);   // backing off: each knee bends as its foot reaches back
-  // ---- skins.js avatarAnim: Mo' Bends-style movement, knees, elbows, a twist in the body ----
-  A.legR.x = sL * amp; A.legL.x = -sL * amp;
-  // (after Epic Fight's walk and run: the knee folds well up as the leg swings through and gives a little as the foot
-  // takes the weight; the arms swing less than the legs at a walk, more and bent at a run)
-  A.shinR.x = -a * (0.12f + (0.95f + 0.3f * run) * std::max(0.f, cK));
-  A.shinL.x = -a * (0.12f + (0.95f + 0.3f * run) * std::max(0.f, -cK));
-  const float armAmp = amp * (0.42f + 0.38f * run);
-  A.armR = vec3(-sL * armAmp, 0, (0.05f + std::sin(t * 1.3f) * 0.03f) * idle);
-  A.armL = vec3(sL * armAmp, 0, -(0.05f + std::sin(t * 1.3f) * 0.03f) * idle);
-  A.foreR.x = A.foreL.x = 0.1f + 0.45f * run * a + 0.06f * idle;
-  // (the walk leans a touch into it, more on each push off; a run leans well in and runs lower, the hips bouncing)
-  A.body = vec3(-(0.05f + 0.03f * std::fabs(sL)) * a * (1 - run) - 0.3f * run * a, sL * 0.13f * a, 0);
-  A.lift = (1 - std::fabs(sL)) * (0.05f + 0.035f * run) * a - 0.05f * run * a + std::sin(t * 1.9f) * 0.004f * idle;   // (running: a bigger bounce, more weight)
-  if (pose.backward) A.body.x += 0.08f * a;
-  A.head.x += std::fabs(sL) * 0.06f * run * a;   // the head nods into each running footfall
-  // standing about: a slow shift of weight from foot to foot, the shoulders rising with each breath
-  A.body.z += std::sin(t * 0.55f) * 0.025f * idle; A.body.x += std::sin(t * 1.9f) * 0.012f * idle;
-  A.legR.z += std::sin(t * 0.55f) * 0.02f * idle; A.legL.z += std::sin(t * 0.55f) * 0.02f * idle;
+  // ---- standing, walking and running: Soulrend's Epic Fight loops (render/loco_poses.cpp) ----
+  (void)sL; (void)cL; (void)amp; (void)cK; (void)swimBreath;
+  locoPose(A, pose);
   if (pose.held && !pose.carry) A.armR.x = A.armR.x * 0.5f + 0.31f;
   if (pose.off && !pose.carry) A.armL.x = A.armL.x * 0.5f + 0.31f;
   // off the ground: knees up; falling hard: arms up
