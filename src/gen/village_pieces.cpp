@@ -262,6 +262,17 @@ VPState mapState(const json& e) {
   for (int r = 0; r < 4; r++) {
     const int rf = f >= 0 && f < 4 ? (f + r) & 3 : -1;
     int m = 0;
+    // redstone parts (sim/rsplace.cpp's placing rules): a piston, observer, dispenser, dropper or hopper keeps Minecraft's facing as a
+    // six-way direction (down, up, north, south, west, east); a repeater or comparator faces the way its signal goes (the
+    // opposite of Minecraft's "facing"), a repeater's delay above it. Without these every hidden door's piston pushed north.
+    if (const std::string rs = d.str("rs"); rs == "piston" || rs == "observer" || rs == "dispenser" || rs == "dropper" || rs == "hopper" || rs == "repeater" || rs == "comparator") {
+      static const int H2D6x[4] = {2, 5, 3, 4};   // north east south west -> world/shapes.h D6
+      const int f6 = f == 4 ? 1 : f == 5 ? 0 : f >= 0 ? H2D6x[(f + r) & 3] : 0;
+      if (rs == "repeater") m = (rf < 0 ? 0 : (rf + 2) & 3) | ((std::clamp(propI(P, "delay", 1), 1, 4) - 1) << 2);
+      else if (rs == "comparator") m = rf < 0 ? 0 : (rf + 2) & 3;
+      else m = rs == "hopper" && f < 0 ? 0 : f6;
+      S.meta[r] = (u8)m; continue;
+    }
     if (d.has("cauldron")) m = n == "water_cauldron" ? std::clamp(propI(P, "level", 3), 1, 3) : 0;   // (its water: meta & 3, sim/heat.cpp)
     else if (shape == ShapeKind::Stairs) m = (rf < 0 ? 0 : rf) | (top ? 4 : 0);
     else if (shape == ShapeKind::Slab) { const std::string t = prop(P, "type"); m = t == "top" ? 1 : t == "double" ? 6 : 0; }
@@ -282,6 +293,7 @@ VPState mapState(const json& e) {
       const std::string fc = prop(P, "face");
       m = fc == "floor" ? 0 : fc == "ceiling" ? 1 : 2 + (rf < 0 ? 0 : (rf + 2) & 3);
       if (fc != "wall" && rf >= 0 && (rf & 1)) m |= 16;
+      if (shape == ShapeKind::Lever && prop(P, "powered") == "true") m |= 8;   // (a lever left pulled: sim/redstone.cpp reads m & 8)
     }
     else if (shape == ShapeKind::Hook) m = rf < 0 ? 0 : (rf + 2) & 3;
     else if (shape == ShapeKind::Frame) m = rf < 0 ? 0 : (rf + 2) & 3;   // (it had no rule: every frame hung the same way, off its wall)

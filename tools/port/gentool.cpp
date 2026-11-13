@@ -293,6 +293,8 @@ static int poiDump(const std::string& seedText, const char* outPath, int regions
     const BlockId b = at(X0 + x, Y0 + y, Z0 + z);
     auto it = pal.find(b); if (it == pal.end()) { it = pal.emplace(b, (int)pl.size()).first; pl.push_back(key(b)); }
     v[((size_t)y * sz + z) * sx + x] = (u16)it->second;
+    if (std::getenv("DQ_POI_RS") && reg().block(b).has("rs")) { auto c = cs.find(((long long)floordiv(X0 + x, 16) << 32) ^ (u32)floordiv(Z0 + z, 16));
+      if (c != cs.end()) printf("rs %s meta %d at %d %d %d\n", key(b).c_str(), c->second->getMeta(floormod(X0 + x, 16), Y0 + y, floormod(Z0 + z, 16)), X0 + x, Y0 + y, Z0 + z); }
     landm[((size_t)y * sz + z) * sx + x] = b != AIR && b == nat(X0 + x, Y0 + y, Z0 + z);
   }
   // what its pieces put down that isn't there now (overwritten by a later piece, a tree, the land...): 2 in the mask
