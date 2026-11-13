@@ -9,6 +9,7 @@
 #include "gen/overworld.h"
 #include "common/fs.h"
 #include "core/registry.h"
+#include "sim/creature_rig.h"
 #include <map>
 #include <functional>
 #include <set>
@@ -416,6 +417,16 @@ void registerStructurePois() {
     out.surface = d->surface;
     std::string nm = d->key.substr(d->key.find(':') + 1); for (auto& ch : nm) if (ch == '_') ch = ' ';
     out.name = nm; out.data = json{{"poi", d->key}};
+    // the bosses of Soulrend's places (sim/keepers.cpp wakes one when someone walks in; sim/boss_kit.cpp fights it): the Lich
+    // in its walled graveyard, the Night Lord in the coliseum's arena, the Dead King in the ruined keep
+    {
+      static const std::map<std::string, std::string> BOSS = {{"graveyard:large_graveyard", "graveyard_lich"},
+        {"dungeons_arise:coliseum", "night_lord"}, {"dungeons_arise:keep_kayra", "dead_king"}};
+      if (auto it = BOSS.find(d->key); it != BOSS.end() && reg().mobs.contains(it->second) && rigModel(it->second)) {
+        const Placed& q = E->pcs[0];
+        out.data["boss"] = json{{"at", {q.x0 + q.w / 2, q.y0 + 1, q.z0 + q.d / 2}}, {"type", it->second}, {"box", {X0, q.y0 - 2, Z0, X1, q.y0 + 30, Z1}}};
+      }
+    }
     out.ext = E;
     if (std::getenv("DQ_POI_LOG")) DQ_LOG("poi %s at %d %d %d: %zu pieces", d->key.c_str(), x, out.y, z, E->pcs.size());
     return true;
