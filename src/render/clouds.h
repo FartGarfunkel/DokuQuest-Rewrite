@@ -7,13 +7,15 @@
 // cloud shape).
 #pragma once
 #include "render/frame.h"
+#include "world/dims.h"
 
 namespace dq {
 
 class Level;
 struct SkyEnv;
 
-constexpr int CLOUD_BASE_Y = 512 + 212;   // global y of the cloud layer (Overworld band-local 212, above the highest peaks, under the cloud bank)
+inline int cloudBaseY() { return dimBase(DIM_OVERWORLD) + 212; }   // global y of the cloud layer (Overworld band-local 212, above the highest peaks; follows the world's layout)
+#define CLOUD_BASE_Y cloudBaseY()
 
 class CloudRenderer {
 public:

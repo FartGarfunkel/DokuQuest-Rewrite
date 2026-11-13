@@ -14,7 +14,9 @@ constexpr int NS = 32;                      // the noise: 32 voxels a side, repe
 constexpr int MAP_N = 64;                   // the coverage map: 64 x 64 cells
 constexpr float MAP_CELL = 48.f;            // of 48 blocks (3072 across, round you)
 constexpr double TILE = 1024.0;             // blocks the noise repeats over across
-constexpr float SLAB_BOT = CLOUD_BASE_Y - 4.f, SLAB_TOP = CLOUD_BASE_Y + 52.f;   // the layer (into the cloud bank)
+static float SLAB_BOT_() { return CLOUD_BASE_Y - 4.f; } static float SLAB_TOP_() { return CLOUD_BASE_Y + 52.f; }
+#define SLAB_BOT SLAB_BOT_()
+#define SLAB_TOP SLAB_TOP_()   // the layer (into the cloud bank)
 constexpr float REACH = 1300.f;             // cloud seen this far, fading into the haze
 
 float hf(u32 h) { return (h & 0xFFFFFF) / 16777215.f; }
