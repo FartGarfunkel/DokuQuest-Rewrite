@@ -44,6 +44,7 @@ void registerWeaponRack() {
     if (!e) return false;
     if (!e->is_object() || e->value("type", "") != "rack" || !e->contains("rack") || !(*e)["rack"].is_array())
       *e = json{{"type", "rack"}, {"rack", json::array({nullptr, nullptr, nullptr})}};
+    if (e->value("village", false) && !pc.p.creative()) { pc.toastMsg("That's the smith's work on show: it isn't yours to take"); return true; }   // (sim/villager_jobs.cpp)
     json& R = (*e)["rack"];
     while (R.size() < 3) R.push_back(nullptr);
     vec3 fr = pc.hitFrac(hit);

@@ -511,11 +511,11 @@ OptMove npcJobWork(Level& lv, Creature& e, NpcMind& M, const Village& v, const V
         if (piece(lv, w, rec, "rack", "wall_weapon_rack", f.work, f.workF, rp, true)) {
           json ra = json::array();
           for (int k = 0; k < 3; k++) ra.push_back(ItemStack(job == "weaponsmith" ? WEAP[(n + k + 1) % 5] : TOOL[(n + k + 1) % 5], 1).toJson());
-          w.setBlockEntity(rp.x, rp.y, rp.z, {{"type", "rack"}, {"rack", ra}});
+          w.setBlockEntity(rp.x, rp.y, rp.z, {{"type", "rack"}, {"rack", ra}, {"village", true}});
         }
       }
     }
-    w.setBlockEntity(sp.x, sp.y, sp.z, {{"type", "stand"}, {"items", items}, {"pose", n % 5}});
+    w.setBlockEntity(sp.x, sp.y, sp.z, {{"type", "stand"}, {"items", items}, {"pose", n % 5}, {"village", true}});   // (theirs: sim/build.cpp won't let it be taken)
     lv.fx->sound("equip", vec3(sp) + vec3(0.5f, 1, 0.5f), 10); e.swingT = 0.3f;
     T = 90 + rnd01() * 60;   // (a new set every so often)
     return Move{0, e.yaw};

@@ -587,6 +587,8 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   if (b.has("armorStand")) {
     json* e = w.blockEntity(x, y, z, true);
     if (!e->is_object() || e->value("type", "") != "stand") *e = {{"type", "stand"}, {"items", json::array({nullptr, nullptr, nullptr, nullptr, nullptr})}, {"pose", 0}};
+    // a smith's display in a village (sim/villager_jobs.cpp): it's theirs, not to be taken or dressed (the pose may be turned)
+    if (e->value("village", false) && !p.creative() && !(!hasHeld && p.sneaking)) { toastMsg("That's the smith's work on show: it isn't yours to take"); return true; }
     json& I = (*e)["items"];
     while (I.size() < 5) I.push_back(nullptr);
     auto stackAt = [&](int i) { return I[i].is_null() ? ItemStack() : ItemStack::fromJson(I[i]); };
@@ -604,7 +606,8 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
         done = true;
       }
     } else {
-      for (int i : {4, 0, 1, 2, 3}) if (!stackAt(i).empty()) { *held = stackAt(i); I[i] = nullptr; done = true; break; }   // the hand first, then from the top
+      ItemStack& hand = p.held();   // (an empty hand: `held` may be no stack at all)
+      for (int i : {4, 0, 1, 2, 3}) if (!stackAt(i).empty()) { hand = stackAt(i); I[i] = nullptr; done = true; break; }   // the hand first, then from the top
     }
     if (done) { w.blockEntityChanged(x, y, z); sfxMaterial(lv, "metal", "place", c); swingArm(); return true; }
     if (!hasHeld) return true;
