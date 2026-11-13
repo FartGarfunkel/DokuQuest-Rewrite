@@ -190,7 +190,7 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
   mat4 hm = glm::translate(fore, vec3(0, -6 + T[0], -1 + T[1]));
   const ItemDef* fd = reg().item(id);
   const bool armTool = isHandheld(id) || (fd && fd->hasTool);   // (swords and tools: along the arm, full size, as third person holds them)
-  if (fpYaw && !armTool && !im.stand && !isBowKey(id) && id.rfind("fishing_rod", 0) != 0) {   // seamless first person: the old hand view's grip, at your own fist, turned with you
+  if (fpYaw && !armTool && !im.torch3d && !im.stand && !isBowKey(id) && id.rfind("fishing_rod", 0) != 0) {   // (a torch: held as third person holds it, upright from the fist)   // seamless first person: the old hand view's grip, at your own fist, turned with you
     // (turned with you and tipped with your look, as the old hand view held things; the fist is nearer the eye than that
     // view's was, so all a little smaller: DQ_DEV_FPGRIPK)
     static float K = 0.6f; static bool kl = false;
@@ -203,7 +203,13 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
     voxelRenderer().draw(im.gl, F * im.matrix(), light, tint, glint ? 1.f : 0.f);
     return;
   }
-  if (im.kind == VoxelModel::Block) {
+  if (im.torch3d) {   // a torch stands up out of the fist (its top, the flame, at its model origin), leaning a little ahead
+    hm = glm::rotate(hm, -0.35f, vec3(1, 0, 0));
+    hm = glm::scale(hm, vec3((fpYaw ? 0.55f : 0.9f) / CHAR_PX));   // (first person: the fist is right by your eye)
+    if (headOut) *headOut = vec3(hm * vec4(0, 0.48f, 0, 1));   // (the flame: 11 of the model's px above the grip)
+    voxelRenderer().draw(im.gl, hm * im.matrix(), light, tint, glint ? 1.f : 0.f);
+    return;
+  } else if (im.kind == VoxelModel::Block) {
     hm = glm::translate(hm, vec3(0, 0, -1.5f));
     hm = glm::scale(hm, vec3(1 / CHAR_PX));
     hm = glm::rotate(hm, -0.3f, vec3(1, 0, 0)); hm = glm::scale(hm, vec3(0.375f));

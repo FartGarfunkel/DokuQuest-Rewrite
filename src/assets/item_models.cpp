@@ -1,6 +1,7 @@
 // assets/item_models.cpp — the item model cache, block items, the sculpt, and which builder each item gets
 // (the original's itemMesh chain: models3d.js -> sculpt.js -> items3d.js -> models.js).
 #include "assets/item_build.h"
+#include "assets/pack_models.h"
 #include "assets/pottery3d.h"
 #include "assets/shield3d.h"
 #include <cstring>
@@ -697,6 +698,50 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
       return true;
     }
     if (k == "torch") {
+      // the pack's own torch (assets/pack_models.h: the one the mesher places), so the one in your hand is the one on the
+      // wall: its boxes filled two voxels to a pack pixel, each voxel the colour of its box's nearest face there
+      std::string pm = def->block == "old_torch" ? "torch" : def->block;
+      if (const PackModel* PM = packModel(pm)) {
+        constexpr int K = 2; constexpr float PX = 0.06f;   // (voxels per pack pixel; blocks per pack pixel in the hand)
+        float top = 0; for (auto& bx : PM->boxes) top = std::max(top, bx.to.y);
+        VoxelGrid tg(ivec3(16 * K, (int)std::ceil(top) * K + 1, 16 * K));
+        const int S = ts.size;
+        for (auto& bx : PM->boxes) {
+          const vec3 a0 = bx.from, a1 = bx.to;
+          const bool thinX = a1.x - a0.x < 0.5f, thinZ = a1.z - a0.z < 0.5f;   // (a flame's crossed planes: a voxel thick)
+          const float c = std::cos(glm::radians(bx.rotAngle)), sn = std::sin(glm::radians(bx.rotAngle));
+          for (int z = 0; z < tg.size.z; z++) for (int y = 0; y < tg.size.y; y++) for (int x = 0; x < tg.size.x; x++) {
+            vec3 p = (vec3(x, y, z) + 0.5f) / (float)K;
+            if (bx.rotAxis >= 0 && bx.rotAngle != 0) {   // into the box's own frame
+              vec3 d = p - bx.rotOrigin;
+              if (bx.rotAxis == 0) d = vec3(d.x, d.y * c + d.z * sn, -d.y * sn + d.z * c);
+              else if (bx.rotAxis == 1) d = vec3(d.x * c - d.z * sn, d.y, d.x * sn + d.z * c);
+              else d = vec3(d.x * c + d.y * sn, -d.x * sn + d.y * c, d.z);
+              p = bx.rotOrigin + d;
+            }
+            const float hx = thinX ? 0.5f / K : 0.f, hz = thinZ ? 0.5f / K : 0.f;
+            if (p.x < a0.x - hx || p.x > a1.x + hx || p.y < a0.y || p.y > a1.y || p.z < a0.z - hz || p.z > a1.z + hz) continue;
+            // the nearest face that has a picture: north, south, west, east, up, down
+            const float dist[6] = {p.z - a0.z, a1.z - p.z, p.x - a0.x, a1.x - p.x, a1.y - p.y, p.y - a0.y};
+            int f = -1; for (int i = 0; i < 6; i++) if (bx.face[i].tile >= 0 && (f < 0 || dist[i] < dist[f])) f = i;
+            if (f < 0) continue;
+            const PackModelFace& fcx = bx.face[f];
+            // (across the box's own face: its uv spans the box, not the block)
+            auto fr = [](float q, float lo, float hi) { return hi - lo > 1e-3f ? clampv((q - lo) / (hi - lo), 0.f, 0.999f) : 0.5f; };
+            const float fx = fr(p.x, a0.x, a1.x), fy = fr(p.y, a0.y, a1.y), fz = fr(p.z, a0.z, a1.z);
+            const float u = f <= 1 ? (f == 0 ? 1 - fx : fx) : f <= 3 ? (f == 2 ? fz : 1 - fz) : fx;
+            const float v = f <= 3 ? 1 - fy : (f == 4 ? fz : 1 - fz);
+            const float uu = fcx.uv.x + (fcx.uv.z - fcx.uv.x) * u, vv = fcx.uv.y + (fcx.uv.w - fcx.uv.y) * v;
+            const u32 col = tileVoxel(ts, fcx.tile, clampv((int)(uu / 16 * S), 0, S - 1), clampv((int)(vv / 16 * S), 0, S - 1));
+            if ((col >> 24) < 128) continue;
+            tg.set(x, y, z, col | 0xFF000000u);
+          }
+        }
+        VoxelFrame fr; fr.voxel = PX / K; fr.origin = vec3(-8 * PX, -3 * PX, -8 * PX);   // (its origin at the grip, 3 px up the stick: held there)
+        out.kind = VoxelModel::Block; out.torch3d = true; out.depth = 0.1f;
+        finishGrid(out, tg, fr, nullptr);
+        return true;
+      }
       buildTorch(ts, tileOf((*it)["tile"]), g, fc);
       VoxelFrame fr; fr.voxel = 0.05f; fr.origin = vec3(-0.1f, -0.8f, -0.1f);
       out.kind = VoxelModel::Block; out.torch3d = true; out.depth = 0.1f;
