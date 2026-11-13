@@ -102,7 +102,8 @@ public:
     AudioScene sc;
     sc.inWorld = true; sc.paused = s.paused(); sc.dead = p.hp <= 0; sc.creative = p.creative();
     sc.world = &w; sc.player = p.pos; sc.head = vec3(s.frame.cam.pos);
-    sc.dim = dimOfY((int)std::floor(p.pos.y));
+    const bool underworld = isUnderworld(dimOfY((int)std::floor(p.pos.y)));
+    sc.dim = landOf(dimOfY((int)std::floor(p.pos.y)));   // (the deep world: under the land or over it is the Overworld's: its caves' music, its sky's wind)
     ivec3 h((int)std::floor(sc.head.x), (int)std::floor(sc.head.y), (int)std::floor(sc.head.z));
     sc.eyeWater = reg().tLiquid[w.getBlock(h.x, h.y, h.z)] == 1;
     sc.skyAtHead = w.getLight(h.x, h.y + 0, h.z) >> 4;
@@ -138,10 +139,10 @@ public:
       }
     }
     if (!disc.empty()) { sc.jukebox = true; sc.jukeboxDisc = disc; sc.jukeboxGain = std::clamp(1.f - (discD - 6) / 34.f, 0.f, 1.f); }
-    if (WeatherSystem* W = weatherOf(*s.level); W && p.realm == REALM_MAIN && sc.dim == DIM_OVERWORLD) sc.rain = W->rainLevel;
+    if (WeatherSystem* W = weatherOf(*s.level); W && p.realm == REALM_MAIN && sc.dim == DIM_OVERWORLD && !underworld) sc.rain = W->rainLevel;
     // the gusts where you stand (sim/wind_field.h); ambience.cpp reads 0..0.35 as calm..full gust. It was never set.
     if (p.realm == REALM_MAIN) sc.gust = gustAt(windParams(*s.level), sc.head.x, sc.head.z) * 0.35f;
-    if (WeatherSystem* W = weatherOf(*s.level); W && p.realm == REALM_MAIN && sc.dim == DIM_OVERWORLD) {
+    if (WeatherSystem* W = weatherOf(*s.level); W && p.realm == REALM_MAIN && sc.dim == DIM_OVERWORLD && !underworld) {
       World& ww = s.world();
       const int hx = (int)std::floor(sc.head.x), hz = (int)std::floor(sc.head.z), top = W->topAt(ww, hx, hz);
       const int here = W->rain > 0.02f ? W->precipAt(ww, sc.head.x, (float)top, sc.head.z) : 0;

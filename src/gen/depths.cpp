@@ -16,6 +16,7 @@ DepthsGen::DepthsGen(const WorldGenOptions& o)
     if (id) R.carvable[id] = 1;
   R.lava = 0; R.minY = 6; R.maxY = DIM_H - 8; R.hell = true;
   R.seed = (i64)((u64)(i64)seed_ * 6364136223846793005ULL + 0x4E7E4);
+  v19_ = o.genVersion >= 19;
   if (o.genVersion >= 6) cave_ = std::make_unique<NetherClimate>(seed_, o.genVersion);   // cave Nether: climate, sea at y 96
   if (o.genVersion >= 7) {   // BTA's own generator, block for block (8: on the open land's shape; gen/nether_exact.cpp)
     initExact(o.genVersion >= 8);

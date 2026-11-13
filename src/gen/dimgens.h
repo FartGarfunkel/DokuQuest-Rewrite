@@ -48,6 +48,7 @@ private:
   // terrain version 7: BTA 8.0.1's own Nether generator, exact (gen/bta via gen/nether_exact.cpp)
   std::shared_ptr<bta::NetherGen> exact_;
   bool exactOpen_ = false;
+  bool v19_ = false;         // terrain 19: well-mixed position randoms in the painting (no stripes)
   bool bn_ = false;          // terrain 13: BetterNether's lands painted over it (gen/nether_bn.h)   // terrain 8: the open land (the ground is found from the roof down)
   void initExact(bool open);   // open: terrain 8, BTA's Nether in the open land
 public:

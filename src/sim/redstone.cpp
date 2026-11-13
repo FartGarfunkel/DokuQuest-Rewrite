@@ -845,7 +845,7 @@ void Redstone::daylightTick(int x, int y, int z, BlockId id, int m) {
     if (p != (m & 15)) w.setBlock(x, y, z, id, (m & ~15) | p);
     return;
   }
-  if (w.realm == REALM_MAIN && dimOfY(y) == DIM_OVERWORLD) {
+  if (w.realm == REALM_MAIN && skyLandOf(dimOfY(y)) == DIM_OVERWORLD) {   // (a daylight sensor up in the deep world's open sky too)
     int sky = w.getLight(x, y + 1, z) >> 4;
     // env.day = 0.2 + 0.8 * smoothstep(-0.2, 0.25, sin(t * TAU)) (game.js); sun = (day - 0.2) / 0.8
     float sun = smoothstepf(-0.2f, 0.25f, std::sin((float)lv.dayFraction() * TAU));

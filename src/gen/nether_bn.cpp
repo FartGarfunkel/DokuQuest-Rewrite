@@ -34,14 +34,17 @@ const SimplexNoise& maskNoise(i32 seed) {
 }
 }
 
-u8 bnLandFor(i32 seed, int x, int z, u8 host, double temp) {
+u8 bnLandFor(i32 seed, int x, int z, u8 host, double temp, bool v19) {
   // the slow mask: BetterNether's lands in patches about 400 blocks across, BTA's between them
   const double m = maskNoise(seed).fbm2(x / 384.0, z / 384.0, 2);
   const double edge = ((hash32(seed, x, z, 0xB7E8) & 255) / 255.0) * 0.06;   // a ragged border, not a line
   if (m < 0.12 + edge) return BN_NONE;
   switch (host) {
     // the crags by their warmth, as BetterNether's climate points: jungle (0.5, 0.8), swamp (0.1, 0.8), warped woods (0.0, 0.55)
-    case NB_CRAG: return temp > 0.62 ? BN_JUNGLE : temp > 0.45 ? BN_SWAMP : BN_OLD_WARPED;
+    case NB_CRAG:
+      // (terrain 19: by the crags' own warmth, which runs 0.76..0.96 — at BetterNether's 0.62 / 0.45 they were all jungle)
+      if (v19) return temp > 0.9 ? BN_JUNGLE : temp > 0.84 ? BN_SWAMP : BN_OLD_WARPED;
+      return temp > 0.62 ? BN_JUNGLE : temp > 0.45 ? BN_SWAMP : BN_OLD_WARPED;
     case NB_OLDWORLD: return BN_GRAVEL_DESERT;
     case NB_SULFUR: return BN_SWAMP;
     case NB_VOLCANIC: return BN_MAGMA;
@@ -54,7 +57,7 @@ u8 netherBnLand(i32 seed, int genVersion, int x, int z) {
   if (genVersion < 13) return BN_NONE;
   u8 host = NB_CRAG;
   netherExactLand(seed, x, 128, z, host);
-  return bnLandFor(seed, x, z, host, netherExactTemperature(seed, x, z));
+  return bnLandFor(seed, x, z, host, netherExactTemperature(seed, x, z), genVersion >= 19);
 }
 
 namespace {
@@ -77,12 +80,15 @@ struct Ids {
 const Ids& ids() { static const Ids I; return I; }
 
 struct Painter {
-  GenBuf& b; const Ids& I; const Registry& R = reg(); i32 seed; int bx, bz;
+  GenBuf& b; const Ids& I; const Registry& R = reg(); i32 seed; int bx, bz; bool strong = false;
   bool open(BlockId id) const { return id == 0 || id == I.fire || id == I.sfire; }
-  bool ground(BlockId id) const { return id && R.tSolid[id] && !R.tLiquid[id] && !open(id); }
+  bool ground(BlockId id) const {
+    if (strong && (R.tLeaves[id] || id == I.rlog || id == I.wlog || id == I.wleaves || id == I.rleaves)) return false;   // (terrain 19: a crown is no floor: no tree on a tree, no grass on leaves)
+    return id && R.tSolid[id] && !R.tLiquid[id] && !open(id);
+  }
   BlockId& at(int x, int y, int z) { return b.blocks[colIdx(x, y, z)]; }
   void set(int x, int y, int z, BlockId id) { if (id && y > 0 && y < DIM_H) { b.blocks[colIdx(x, y, z)] = id; b.meta[colIdx(x, y, z)] = 0; } }
-  float rnd(int x, int z, int salt) const { return (hash32(seed, bx + x, bz + z, salt) & 0xFFFF) / 65536.f; }
+  float rnd(int x, int z, int salt) const { return strong ? (float)posHashF(seed, bx + x, bz + z, salt) : (hash32(seed, bx + x, bz + z, salt) & 0xFFFF) / 65536.f; }
 
   // a stack of a plant up from the floor (reeds, cacti: 1..n tall), only into open air
   void stack(int x, int f, int z, BlockId id, int n) { for (int k = 1; k <= n && open(at(x, f + k, z)); k++) set(x, f + k, z, id); }
@@ -193,8 +199,8 @@ struct Painter {
 };
 }
 
-void bnPaint(i32 seed, const bta::NetherGen& g, GenBuf& b, int cx, int cz, bool trees) {
-  Painter P{b, ids(), reg(), seed, cx * 16, cz * 16};
+void bnPaint(i32 seed, const bta::NetherGen& g, GenBuf& b, int cx, int cz, bool trees, bool strongHash) {
+  Painter P{b, ids(), reg(), seed, cx * 16, cz * 16, strongHash};
   if (!P.I.jgrass) return;   // (the data without BetterNether's blocks)
   for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
     const int wx = cx * 16 + x, wz = cz * 16 + z;
@@ -210,7 +216,7 @@ void bnPaint(i32 seed, const bta::NetherGen& g, GenBuf& b, int cx, int cz, bool 
       }
     }();
     if (host == NB_CRAG) temp = g.temperatureAt(wx, wz);
-    const u8 land = bnLandFor(seed, wx, wz, host, temp);
+    const u8 land = bnLandFor(seed, wx, wz, host, temp, strongHash);
     if (land) P.column(x, z, land, trees);
   }
 }

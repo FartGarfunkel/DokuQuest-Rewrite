@@ -136,7 +136,7 @@ void DepthsGen::generateExact(Chunk& ch) {
   }
   if (bn_) {   // terrain 13: BetterNether's lands (no trees where a structure stands)
     std::vector<const StructurePlan*> near; structures.near(ch.cx * 16 + 8, ch.cz * 16 + 8, 24, near);
-    bnPaint(seed_, *exact_, b, ch.cx, ch.cz, near.empty());
+    bnPaint(seed_, *exact_, b, ch.cx, ch.cz, near.empty(), v19_);
   }
   structures.build(b, ch);
   b.store(ch);

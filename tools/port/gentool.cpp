@@ -552,6 +552,23 @@ static int surfgrid(const std::string& seedText, int x0, int z0, int w) {
   return 0;
 }
 
+namespace dq { bool netherExactLand(i32 seed, int x, int y, int z, u8& land); double netherExactTemperature(i32 seed, int x, int z); }
+#include "gen/nether_bn.h"
+static int netherLands(const std::string& seedText, int R, int step) {
+  const i32 seed = seedFromString(seedText);
+  std::map<std::string, int> n; int tot = 0;
+  for (int z = -R; z <= R; z += step) for (int x = -R; x <= R; x += step) {
+    u8 host = NB_CRAG; netherExactLand(seed, x, 128, z, host);
+    const u8 bn = netherBnLand(seed, 19, x, z);
+    static const char* BN[] = {"", "BN jungle", "BN gravel desert", "BN swamp", "BN magma", "BN soul plain", "BN old warped"};
+    n[bn ? std::string(BN[bn]) : std::string("BTA ") + netherBiomeName(host)]++; tot++;
+  }
+  for (auto& [k, c] : n) printf("%5.1f%% %s\n", 100.0 * c / tot, k.c_str());
+  std::vector<double> ts; for (int z = -R; z <= R; z += step * 4) for (int x = -R; x <= R; x += step * 4) { u8 h = 0; netherExactLand(seed, x, 128, z, h); if (h == NB_CRAG) ts.push_back(netherExactTemperature(seed, x, z)); }
+  std::sort(ts.begin(), ts.end()); if (!ts.empty()) printf("crag temperature: min %.2f p10 %.2f p50 %.2f p90 %.2f max %.2f\n", ts[0], ts[ts.size() / 10], ts[ts.size() / 2], ts[ts.size() * 9 / 10], ts.back());
+  return 0;
+}
+
 int main(int argc, char** argv) {
   CoreOptions co; co.server = true; co.userDirOverride = "/tmp/dq-gentool";
   if (!initCore(co)) { fprintf(stderr, "initCore failed (run from the build dir: data/ next to the exe)\n"); return 1; }
@@ -559,6 +576,7 @@ int main(int argc, char** argv) {
   if (const char* lay = std::getenv("DQ_LAYOUT")) setWorldLayout(atoi(lay));   // (the deep world: DQ_LAYOUT=2 DQ_GENVER=19)
   if (m == "biomemap" && argc >= 8) return biomemap(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argv[7]);
   if (m == "floaters" && argc >= 6) return floaters(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
+  if (m == "netherlands" && argc >= 5) return netherLands(argv[2], atoi(argv[3]), atoi(argv[4]));
   if (m == "surfgrid" && argc >= 6) return surfgrid(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "topview" && argc >= 7) return topview(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), argv[6]);
   if (m == "owmap" && argc >= 9) return owmap(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]), argv[8]);

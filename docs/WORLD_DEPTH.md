@@ -45,3 +45,9 @@ generators fill one band. So new depth is added as NEW one-band dimensions, neve
   pillars' tops and other things drawn as plain blocks or wrong shapes.
 - Step 1 (layout tables): dims.h/dims.cpp layouts, dimOfY/dimBase by table, WORLD_H per world, dimAbove/dimBelow, light posKey 12-bit y, sky seeding off in the Underworld; layout 1 identical (12/12 tests).
 - Step 2 (the Underworld): gen/underworld.cpp, terrain version 19, new worlds layout 2; seams (light, water, the crust shaft, sky blend, clouds, weather, spawning, ropes, villagers), display y, /tp y; tools/test_deep (21 checks) + 12/12.
+- Step 3: the Underworld's own dark look (no sky, no far land), the create-world "Underworld Depth" choice, portals
+  from the Underworld and open sky go on to the Nether/Skylands, music and weather sounds by land; the Nether (terrain
+  19): BetterNether's painting with the well-mixed random, no tree grown on a tree's crown (the stacked trees), the
+  crags split by their own warmth (jungle, swamp, warped woods: the warped woods had never appeared). 13/13 tests.
+- Not yet: the End's hanging lantern, cloth hangings and pillar tops; the Nether's mushrooms' shapes; BTA's Old Desert
+  land never comes up (BTA's own generator, ported exactly).

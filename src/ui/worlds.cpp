@@ -145,7 +145,7 @@ struct WorldForm {
     if (nm) name = *nm;
     if (md) mode = *md;
   }
-  void draw(Paged& k, int page, int* worldType) {
+  void draw(Paged& k, int page, int* worldType, int* underDepth = nullptr) {
     const json D = ruleDefaults(false);
     auto ruleToggle = [&](const RuleRow& t) {
       bool v = ruleOn(rules, t.key);
@@ -159,6 +159,11 @@ struct WorldForm {
                     "Default: the whole world. Skyblock: one small island in an empty sky. Bigger Biomes: every land three times as wide. Amplified: the hills and mountains near twice as high. "
                     "Islands: the seas risen over most of the land. Floating Islands: the land in islands hanging over the void. Endless Winter: snow everywhere, the lakes frozen. "
                     "Hell: a world that ended long ago, scorched, its seas turned to lava. Flat: an endless field of grass. (The Nether, Skylands and End are as ever.)", 120)) *worldType = wt;
+      }
+      if (underDepth && worldType && (*worldType == 0 || *worldType == 2 || *worldType == 3)) {   // (the deep world's: docs/WORLD_DEPTH.md)
+        int ud = clampv(*underDepth, 1, 4) - 1;
+        if (k.cycle("Underworld Depth", &ud, {"256 blocks", "512 blocks", "768 blocks", "1024 blocks"}, 3,
+                    "How far the Underworld goes down under the Overworld, through Minecraft's deep layer and the great caverns below it, to the bedrock over the Nether.", 120)) *underDepth = ud + 1;
       }
       if (named || moded) if (k.category("World")) {
         if (named) k.textField("World Name", &name, "New World", nullptr, 140, 0, 32);
@@ -201,7 +206,11 @@ std::vector<WorldEntry> listWorlds() {
     if (auto j = readJson(e.path() / "level.json")) w.level = *j; else continue;
     if (auto pj = readJson(e.path() / "players" / (app().settings.playerName + ".json"))) {
       w.lvl = pj->value("level", 0);
-      if (pj->contains("pos") && (*pj)["pos"].is_array() && (*pj)["pos"].size() == 3) w.dim = dimName(dimOfY((int)(*pj)["pos"][1].get<double>()));
+      if (pj->contains("pos") && (*pj)["pos"].is_array() && (*pj)["pos"].size() == 3) {   // (by that world's own layout, not the one last open)
+        const WorldLayout L = makeLayout(w.level.value("layout", 1), w.level.value("underDepth", 4));
+        const int band = clampv((int)std::floor((*pj)["pos"][1].get<double>()) >> 8, 0, L.bands - 1);
+        w.dim = dimName(L.dimAt[band]);
+      }
     }
     v.push_back(w);
   }
@@ -236,7 +245,7 @@ public:
   enum View { LIST, CREATE, SETTINGS, IMPORT, RENAME, DELETE };
   std::vector<WorldEntry> worlds;
   std::string name = "New World", seed, msg, renameTo;
-  int mode = 0, wtype = 0, selected = -1;
+  int mode = 0, wtype = 0, selected = -1, underDepth = 4;
   View view = LIST;
   WorldForm form;
   Paged kit, setKit;
@@ -268,6 +277,7 @@ public:
     li.difficulty = form.difficulty;
     li.rules = form.rules;
     if (wtype > 0 && wtype < N_WORLD_TYPES) li.worldType = WORLD_TYPES[wtype];
+    li.underDepth = underDepth;
     if (mode == 2) { li.rules["hardcore"] = true; li.rules["commands"] = false; li.rules["keepInventory"] = false; }
     a.settings.extra["played"] = true;
     uiDefer([li](App& app) { if (!app.createWorld(li)) app.toast("Could not create the world", "warn"); });
@@ -318,7 +328,7 @@ public:
     WorldEntry* w = sel();
     const float cx = a.width * 0.5f, y1 = a.height - 52 * U, y2 = a.height - 28 * U;
     if (kit.buttonAt("Play Selected World", ImVec2(cx - 154 * U, y1), 150, 20, !w)) playSelected(a);
-    if (kit.buttonAt("Create New World", ImVec2(cx + 4 * U, y1), 150, 20)) { view = CREATE; msg.clear(); name = "New World"; seed.clear(); mode = 0; wtype = 0; form.init(json(), false, nullptr, nullptr); }
+    if (kit.buttonAt("Create New World", ImVec2(cx + 4 * U, y1), 150, 20)) { view = CREATE; msg.clear(); name = "New World"; seed.clear(); mode = 0; wtype = 0; underDepth = 4; form.init(json(), false, nullptr, nullptr); }
     // the folder button, Rename, Delete | Edit (this world's settings, backups), Cancel
     ImVec2 fp(cx - 154 * U, y2);
     if (kit.buttonAt("##folder", fp, 20, 20)) {
@@ -364,7 +374,7 @@ public:
   void drawSettings(App& a) {
     setKit.begin(a, "##newworldsettings", "World Settings", wsPages());
     setKit.beginContent();
-    form.draw(setKit, setKit.page, &wtype);
+    form.draw(setKit, setKit.page, &wtype, &underDepth);
     setKit.endContent();
     int f = setKit.footer({"Done"});
     setKit.end();

@@ -188,7 +188,7 @@ vec3 portalStand(const World& w, ivec3 a) {
 
 int portalTargetDim(int fromDim, PortalKind k) {
   int far = k == PortalKind::Sky ? DIM_AETHER : DIM_NETHER;
-  return fromDim == DIM_OVERWORLD ? far : DIM_OVERWORLD;
+  return landOf(fromDim) == DIM_OVERWORLD ? far : DIM_OVERWORLD;   // (the deep world's Underworld and open sky are the Overworld's: on to the far land)
 }
 
 vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, PortalSystem* ps, int ow, int oh, int axis, const std::string& dye) {
@@ -651,7 +651,7 @@ PortalDest PortalSystem::dest(const PortalWindow& w) {
           auto b = L.find(back);
           const bool pair = b != L.end() && b->is_object() && b->value("realm", -1) == w.realm && b->contains("anchor") && (*b)["anchor"].is_array() &&
                             (*b)["anchor"].size() == 3 && (*b)["anchor"][0] == w.anchor.x && (*b)["anchor"][1] == w.anchor.y && (*b)["anchor"][2] == w.anchor.z;
-          const bool homeHere = w.realm == REALM_MAIN && dimOfY(w.anchor.y) == DIM_OVERWORLD, homeThere = r == REALM_MAIN && dimOfY(a.y) == DIM_OVERWORLD;
+          const bool homeHere = w.realm == REALM_MAIN && landOf(dimOfY(w.anchor.y)) == DIM_OVERWORLD, homeThere = r == REALM_MAIN && landOf(dimOfY(a.y)) == DIM_OVERWORLD;
           if (pair && b->value("made", homeHere && !homeThere) && !j.value("made", false)) reshapes[back] = {r, a, now, noh};
         }
       }

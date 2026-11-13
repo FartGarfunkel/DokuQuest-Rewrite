@@ -485,6 +485,7 @@ void DistantTerrain::update(Level& lv, World& w, const FrameCtx& f, ThreadPool& 
   // which lands: the one you're in (the only one drawn: game/seamless.js), and the one beyond the cloud bank
   // (Overworld <-> Skylands) made ready while you're in the bank, so it's there when you come out of it
   int d = f.land;   // (the deep world: under the land or up in its sky, the far land is the Overworld's)
+  if (isUnderworld(f.dim)) d = DIM_NETHER;   // (the Underworld: under the land, no far land; as the roofed Nether)
   if (d != DIM_NETHER && cacheLoaded) genFar(w, d, f.cam.pos, pool);
   trimSummaries(f.cam.pos);
   for (auto& b : bands) b->active = false;

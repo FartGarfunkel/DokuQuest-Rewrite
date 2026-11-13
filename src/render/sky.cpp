@@ -252,6 +252,15 @@ const SkyEnv& currentSkyEnv() { return g_env; }
 SkyEnv computeSkyEnv(Level& lv, int dim, int realm, glm::dvec3 camPos, bool blend) {
   g_cam = camPos;
   SkyEnv e = landEnv(lv, landOf(dim), realm, g_settings);   // (the Underworld and the open sky: the Overworld's)
+  if (isUnderworld(dim) && realm == REALM_MAIN) {
+    // the Underworld: no sky, a cave's dark (its top band eases into the Overworld's look on the way up)
+    const float up = dim == DIM_UNDER1 ? smoothstepf(DIM_H - 40, DIM_H, (float)(camPos.y - dimBase(dim))) : 0.f;
+    const vec3 dark(0.035f, 0.035f, 0.045f);
+    e.zenith = mixc(dark, e.zenith, up); e.horizon = mixc(dark, e.horizon, up); e.fog = mixc(dark, e.fog, up);
+    e.sunGlow *= up; e.stars *= up; e.aurora *= up; e.rainbow = 0; e.mist = 0; e.raining = 0; e.cloud = 0;
+    if (up < 0.5f) { e.showSun = false; e.voidBelow = false; e.hasStorm = false; }
+    return e;
+  }
   if (!blend || realm != REALM_MAIN) return e;
   // seamless.js: near the edge between two stacked lands their skies meet halfway, and between the
   // Overworld and the Skylands lies a bank of cloud (bands of the same land, the deep world's, meet without a seam)
