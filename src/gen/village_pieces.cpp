@@ -227,9 +227,11 @@ VPState mapState(const json& e) {
   if (auto it = NAMES().find(key); it != NAMES().end()) key = it->second;
   if (key == "grass" && prop(P, "snowy") == "true" && findBlock("snowy_grass") != NONE) key = "snowy_grass";
   if (key == "cave_vines" && prop(P, "berries") == "true" && findBlock("cave_vines_lit") != NONE) key = "cave_vines_lit";   // (glow berries on it)
-  // another mod's block (or a newer Minecraft one): ours from the table (tools/port/block_substitutes.py), "air" leaving it empty
+  // a block we don't have (another mod's, or a Minecraft one we lack): ours from the table (tools/port/block_match.py, matched by
+  // its texture and shape), "air" leaving it empty. Before any guess by name: a dead coral block the builder used as weathered
+  // stone had become brain coral by its name
   static const json SUBS = [] { auto j = readJson(dataDir() / "block_substitutes.json"); return j && j->is_object() ? *j : json::object(); }();
-  if (findBlock(key) == NONE) if (auto it = SUBS.find(key); it != SUBS.end() && it->is_string()) {
+  if (auto it = SUBS.find(n); it != SUBS.end() && it->is_string() && findBlock(n) == NONE) {
     key = it->get<std::string>();
     if (key == "air") { S.id = AIR; S.kind = VPK_AIR; return S; }
   }

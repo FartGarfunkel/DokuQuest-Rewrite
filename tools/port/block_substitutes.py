@@ -4,7 +4,7 @@ and newer Minecraft names we lack -> the nearest of ours: data/block_substitutes
 before its name-guessing fallback. Each entry lists choices, the first one we have wins; "air" leaves the cell empty
 (placeholders, machines' moving parts, things that would only be clutter). Run after adding blocks to re-check:
   python3 tools/port/block_substitutes.py [data-dir]"""
-import json, pathlib, sys
+import json, pathlib, re, sys
 
 COLORS = ['white', 'orange', 'magenta', 'light_blue', 'yellow', 'lime', 'pink', 'gray', 'light_gray', 'cyan', 'purple', 'blue', 'brown', 'green', 'red', 'black']
 T = {}
@@ -183,6 +183,14 @@ for c in ('tube', 'brain', 'bubble', 'fire', 'horn'):
 put('netherite_block', 'obsidian')
 put('powder_snow', 'snow_block')
 for c in COLORS: put('%s_shulker_box' % c, 'barrel')
+
+# building materials (stone, wood, tiles, bricks...): tools/port/block_match.py matches these by their texture instead
+MATERIAL = re.compile(r'^create:(cut_|polished_cut_|layered_|small_)|^create:(scoria|scorchia|ochrum|veridium|crimsite|asurine|limestone|tuff|calcite|dripstone)'
+                      r'|copper_tiles|zinc_block|brass_block|andesite_alloy_block|jasper|blossom_wood|blossom_log|blossom_planks|azalea_wood|midori|myalite|'
+                      r'stick_block|charcoal_block|stone_tile|blackstone_tile|checker_block|daub|timber_|fine_wood|flint_block|soap_block|cactus_block|'
+                      r'mud_brick_lattice|gravisand|_corundum$|bison_fur_block|subzero_crystal_block|rose_quartz_block|feather_block|bonded_')
+def is_material(n): return bool(MATERIAL.search(n))
+
 
 def main(d='data'):
     d = pathlib.Path(d)

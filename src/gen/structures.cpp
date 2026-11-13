@@ -173,7 +173,7 @@ const std::vector<const StructurePlan*>& StructureIndex::chunkPlans(int cx, int 
   thread_local Memo memo;
   if (memo.serial == serial && memo.cx == cx && memo.cz == cz) return memo.list;
   std::vector<const StructurePlan*> list;
-  near(cx * 16 + 8, cz * 16 + 8, 24, list);
+  near(cx * 16 + 8, cz * 16 + 8, 40, list);   // (a land blend reaches up to 29 blocks out)
   memo.serial = serial; memo.cx = cx; memo.cz = cz; memo.list = std::move(list);
   return memo.list;
 }

@@ -127,7 +127,7 @@ std::vector<std::string> landsAt(const TerrainQuery& t, const TerrainColumn& c) 
 struct Placed { const VPPiece* p; int r, x0, y0, z0, w, d; int depth; };
 struct PoiExt {
   std::vector<Placed> pcs; std::string key;
-  std::vector<std::array<int, 5>> flat; int flatR = 6; bool beard = false;   // x0, z0, x1, z1, ground y: the land under each rigid piece that stands on it (beard)
+  std::vector<std::array<int, 6>> flat; int flatR = 6; bool beard = false;   // x0, z0, x1, z1, floor y, its skirt   // x0, z0, x1, z1, ground y: the land under each rigid piece that stands on it (beard)
 };
 
 const int DXJ[4] = {0, 1, 0, -1}, DZJ[4] = {-1, 0, 1, 0};   // north, east, south, west (VPJoint.front)
@@ -209,15 +209,6 @@ void buildPoi(ChunkWriter& w, const StructurePlan& S) {
   if (!E) return;
   const BlockId DIRT = reg().blockId("dirt");
   SP P(w);
-  // Minecraft's beardifier: the land inside every piece's box above its floor is taken away before anything is built (a
-  // sunken courtyard, a bowl, a cellar stair open to the sky: all were left full of earth). First, so no piece's blocks go.
-  static const bool noClear = std::getenv("DQ_POI_NOCLEAR") != nullptr;
-  if (E->beard && !noClear) for (const Placed& q : E->pcs) {
-    if (q.p->terrain) continue;
-    const int x1 = q.x0 + q.w - 1, z1 = q.z0 + q.d - 1, top = q.y0 + q.p->sy - 1;
-    for (int x = std::max(q.x0, w.bx); x <= std::min(x1, w.bx + 15); x++) for (int z = std::max(q.z0, w.bz); z <= std::min(z1, w.bz + 15); z++)
-      for (int y = std::max(q.y0, 1); y <= std::min(top, DIM_H - 1); y++) { const BlockId g = w.get(x, y, z); if (g != AIR && !reg().tLiquid[g]) w.put(x, y, z, AIR); }
-  }
   for (const Placed& q : E->pcs) {
     const VPPiece& p = *q.p;
     if (q.x0 > w.bx + 15 || q.x0 + q.w - 1 < w.bx || q.z0 > w.bz + 15 || q.z0 + q.d - 1 < w.bz) continue;
@@ -337,12 +328,15 @@ void registerStructurePois() {
       // the pieces stacked on others get no earth under them (raising the land to every floor grew the castles' towers
       // of earth and put ground inside the rooms). Not one buried well below the ground either: a crypt keeps its hill
       const int g = tq.surfaceY((q.x0 + qx1) / 2, (q.z0 + qz1) / 2);
-      if (q.y0 - 1 < g - 4 || q.y0 - 1 > g + 6) continue;
+      if (q.y0 - 1 < g - 4 || q.y0 - 1 > g + 24) continue;
       bool under = false;   // (a piece below it in the plan: it stands on that, not on the land)
       for (auto& o : E->pcs) if (&o != &q && !o.p->terrain && o.y0 < q.y0 && o.y0 + o.p->sy >= q.y0 - 1 &&
                                  o.x0 <= qx1 && o.x0 + o.w - 1 >= q.x0 && o.z0 <= qz1 && o.z0 + o.d - 1 >= q.z0) { under = true; break; }
       if (under) continue;
-      E->flat.push_back({q.x0, q.z0, qx1, qz1, q.y0 - 1});
+      // the skirt: wide enough that the land never climbs more than about a block in two to the floor (Minecraft's beard_box
+      // reaches 12 blocks; a floor raised well above the land had a sheer wall of earth under it)
+      const int rise = std::abs(q.y0 - 1 - g);
+      E->flat.push_back({q.x0, q.z0, qx1, qz1, q.y0 - 1, std::max(E->flatR, std::min(28, rise * 2 + 2))});
     }
     int X0 = 1 << 30, Z0 = 1 << 30, X1 = -(1 << 30), Z1 = -(1 << 30);
     for (auto& q : E->pcs) { X0 = std::min(X0, q.x0); Z0 = std::min(Z0, q.z0); X1 = std::max(X1, q.x0 + q.w - 1); Z1 = std::max(Z1, q.z0 + q.d - 1); }
@@ -385,15 +379,15 @@ void registerStructurePois() {
       const int dx = std::max({r[0] - x, 0, x - r[2]}), dz = std::max({r[1] - z, 0, z - r[3]});
       if (dx == 0 && dz == 0) { if (best < 1 || r[4] < by) { best = 1; by = r[4]; } continue; }   // (under two: the lower floor; the land never rises into a room)
       const double dd = std::hypot((double)dx, (double)dz);
-      if (dd >= E->flatR) continue;
-      const double wv = 1 - jsSmooth(0, E->flatR, dd);
+      if (dd >= r[5]) continue;
+      const double wv = 1 - jsSmooth(0, r[5], dd);
       if (wv > best) { best = wv; by = r[4]; }
     }
     if (best <= 0) return false;
     weight = best; targetY = by;
     return true;
   };
-  t.flattenPad = 17;   // (the widest blend: IDAS's kernels)
+  t.flattenPad = 29;   // (the widest blend: IDAS's kernels)
   registerStructure(std::move(t));
 }
 
