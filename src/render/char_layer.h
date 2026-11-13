@@ -36,7 +36,8 @@ public:
     float bob = 0, bobAmt = 0, swimPh = 0, crawlPh = 0, landT = 0, landAmt = 1, fallStart = 0; bool falling = false;
     float bodyYaw = 0, legTurn = 0, stillT = 0, lastFwd = 0, accLean = 0, lastBody = 0, turnLean = 0;
     float capeA = 0.1f, capeSway = 0, deathT = 0, ladderPh = 0, wing = 0;
-    float idleT = 0, footL = 0, footR = 0, footT = 0, footTL = 0, footTR = 0;   // Story Mode-style life: standing about, the ground under each foot (eased, sampled)
+    float idleT = 0, footL = 0, footR = 0, footT = 0, footTL = 0, footTR = 0;
+    float climbY = 0, lastY = 0; bool haveY = false;   // a step up (or down) the body eases over instead of popping (blocks, + above where it is)   // Story Mode-style life: standing about, the ground under each foot (eased, sampled)
     float pitch = 0, hurtT = 0, lastHurt = 0; bool airLeft = false, wasAir = false, backward = false;   // the look eased, seconds since a hit, the jump's lead leg
     float block = 0, rollU = 0, rollYaw = 0, lastDodge = 0; bool rollBack = false;
     float guardHit = 0, lastParry = 0, lastGuard = 0;   // a blow taken on the shield (1 -> 0), the shield's raise (eased), a dodge roll's progress (sim/combat_rpg.h)

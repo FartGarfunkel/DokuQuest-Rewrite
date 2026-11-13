@@ -433,7 +433,9 @@ CharAngles charAnimate(const CharPose& pose) {
   // ---- Story Mode-style life ----
   if (!special && !pose.air && !pose.fp && pose.deathT <= 0) {
     // feet planted on uneven ground: the hips drop to the lower foot and the other knee bends up to its step
-    const float k = clampf(1 - a * 3, 0, 1);
+    // (walking: still, where a foot is on a step — stairs climbed a leg at a time)
+    const float uneven = clampf((std::max(std::fabs(pose.footL), std::fabs(pose.footR)) - 0.08f) * 6, 0, 1);
+    const float k = std::max(clampf(1 - a * 3, 0, 1), uneven);
     if (k > 0 && (pose.footL != 0 || pose.footR != 0)) {
       const float lo = std::min(0.f, std::min(pose.footL, pose.footR));
       A.lift += lo * k;
