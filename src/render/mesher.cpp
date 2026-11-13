@@ -11,6 +11,7 @@
 #include <mutex>
 
 namespace dq {
+bool fallenDrawnAt(BlockId id);   // render/fallen_layer.cpp
 
 // ---------------------------------------------------------------- tables (original FACES)
 // Shade matches distant_build.cpp (x 170, z 205, down 145, up 255) so a cliff meets the far mesh.
@@ -873,7 +874,8 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
         break;
       }
       case Render::Torch: emitTorch(c, out.cutout, id, x, y, z, meta); break;
-      case Render::Model: if (!chestHiddenAt(wp.x, wp.y, wp.z)) emitModel(c, out.cutout, id, x, y, z, meta); break;   // (an open cabinet: render/chest_layer.cpp)
+      case Render::Model: if (fallenDrawnAt(id)) break;   // (a fallen adventurer: render/fallen_layer.cpp draws the skeleton)
+        if (!chestHiddenAt(wp.x, wp.y, wp.z)) emitModel(c, out.cutout, id, x, y, z, meta); break;   // (an open cabinet: render/chest_layer.cpp)
       case Render::Shape: emitShapeBlock(c, R.tTrans[id] || isPuddle(R, id) ? out.trans : out.cutout, id, x, y, z, meta); break;
       default: break;
     }

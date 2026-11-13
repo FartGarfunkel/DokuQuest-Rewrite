@@ -62,6 +62,7 @@ void registerItemLayers();   // idempotent
 void registerPileLayer();    // render/pile_layer.cpp (called from registerItemLayers)
 void registerLecternLayer(); // render/lectern_layer.cpp (called from registerItemLayers)
 void registerFpBow();        // render/fp_bow.cpp (called from registerItemLayers)
+void registerFallenLayer();  // render/fallen_layer.cpp (called from registerItemLayers)
 void registerSpawnerLayer(); // render/spawner_layer.cpp (called from registerItemLayers)
 void registerStationWorkLayer();   // render/station_work_layer.cpp: what lies on the grindstone and the stonecutter, and their scenes
 void registerStationCards();   // render/station_cards.cpp: the enchanting offers and the anvil's card in the world (called from registerItemLayers)

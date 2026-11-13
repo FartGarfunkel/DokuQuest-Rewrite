@@ -80,6 +80,7 @@ void registerItemLayers() {
   registerFpBow();          // the bow drawn in first person (render/fp_bow.cpp)
   registerWeaponTrailLayer();   // a swing's trail while it is live (render/weapon_trail_layer.cpp)
   registerFurnaceLayer();   // fuel and fire inside furnaces (render/furnace_layer.cpp)
+  registerFallenLayer();    // the fallen adventurers as real skeletons (render/fallen_layer.cpp)
   registerSpawnerLayer();   // the spinning monster inside a monster cage (render/spawner_layer.cpp)
   registerStationWorkLayer();
   registerStationCards(); registerCinematicHands(); // your arms at the crafting table scene (render/cinematic_hands.cpp)
