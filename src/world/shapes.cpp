@@ -458,7 +458,10 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
     case ShapeKind::Wall: {
       bool c[4]; for (int d = 0; d < 4; d++) c[d] = joinsWall(nb.id(DIRX[d], 0, DIRZ[d]));
       bool straight = (c[0] && c[2] && !c[1] && !c[3]) || (c[1] && c[3] && !c[0] && !c[2]);
-      bool post = !straight || R.tShape[nb.id(0, 1, 0)] == ShapeKind::Wall;
+      // (and its post up under anything that stands on it, a lantern, a torch, a sign, as Minecraft's "up": on a straight
+      //  run's low arms a lantern had floated 2 px over the wall)
+      const BlockId above = nb.id(0, 1, 0);
+      bool post = !straight || R.tShape[above] == ShapeKind::Wall || (above && !R.tLiquid[above] && !fullSolid(above) && !R.tLeaves[above] && !R.block(above).replaceable);
       if (post) push(ShapeBox(4, 0, 4, 12, purpose == ShapePurpose::Collide ? 24.f : 16.f, 12));
       for (int d = 0; d < 4; d++) if (c[d]) pushRot(ShapeBox(5, 0, 0, 11, purpose == ShapePurpose::Collide ? 24.f : 14.f, 8), d);
       return true;
@@ -868,6 +871,7 @@ void clothBoxes(BlockId id, u8 meta, std::vector<ShapeBox>& out) {
     for (int i = 0; i < n; i++) out.push_back(K(ShapeBox(2, top - (i + 1) * h, 7.6f, 14, top - i * h, 8.4f), t, t, 2));
     if (low) { out.push_back(K(ShapeBox(3, 1.5f, 7.6f, 13, 3, 8.4f), t, t, 2)); out.push_back(K(ShapeBox(5, 0, 7.6f, 11, 1.5f, 8.4f), t, t, 2)); }
     if (meta & 8) for (size_t i = out.size() - (size_t)(n + (low ? 2 : 1)); i < out.size(); i++) { out[i].b[2] += 6.5f; out[i].b[5] += 6.5f; }   // on a wall: flat against it (behind = +z before the turn)
+    else out.push_back(K(ShapeBox(7.5f, 0, 8.4f, 8.5f, 16, 9.4f), tile("spruce_log_side"), tile("spruce_log_top"), 0));   // standing: its pole, both halves (it had hung from a bar in the air)
   } else if (T.cloth == 3 || T.cloth == 4) {
     float sag = -((meta >> 2) & 15) * 0.5f;
     int rope = tile("rope");

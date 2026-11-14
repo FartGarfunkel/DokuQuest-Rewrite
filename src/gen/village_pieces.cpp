@@ -228,6 +228,8 @@ VPState mapState(const json& e) {
   if (auto s = wallFree(n, "_wall_sign", "_sign"); !s.empty()) { key = s; wallSign = true; }
   else if (auto b = wallFree(n, "_wall_banner", "_banner"); !b.empty()) { key = b; wallBanner = true; }
   if (key.rfind("potted_", 0) == 0) { S.plant = key.substr(7); key = "flower_pot"; S.kind = VPK_POT; }
+  // (another mod's lantern hung on the wall: a lantern stood on nothing beside the wall; ours there is a wall torch, its facing kept)
+  if (key.find("wall_lantern") != std::string::npos) key = "torch";
   if (auto it = NAMES().find(key); it != NAMES().end()) key = it->second;
   if (key == "grass" && prop(P, "snowy") == "true" && findBlock("snowy_grass") != NONE) key = "snowy_grass";
   if (key == "cave_vines" && prop(P, "berries") == "true" && findBlock("cave_vines_lit") != NONE) key = "cave_vines_lit";   // (glow berries on it)
@@ -275,6 +277,23 @@ VPState mapState(const json& e) {
       if (rs == "repeater") m = (rf < 0 ? 0 : (rf + 2) & 3) | ((std::clamp(propI(P, "delay", 1), 1, 4) - 1) << 2);
       else if (rs == "comparator") m = rf < 0 ? 0 : (rf + 2) & 3;
       else m = rs == "hopper" && f < 0 ? 0 : f6;
+      S.meta[r] = (u8)m; continue;
+    }
+    if (shape == ShapeKind::Rail) {   // its course (Minecraft's RailShape order is ours, 0-9), turned with the piece; a powered one's power
+      // (each shape as its two ends: 0 north 1 east 2 south 3 west, an ascending one up toward its first; every rail had lain north-south)
+      static const char* SH[10] = {"north_south", "east_west", "ascending_east", "ascending_west", "ascending_north", "ascending_south", "south_east", "south_west", "north_west", "north_east"};
+      static const int A[10] = {0, 1, 1, 3, 0, 2, 2, 2, 0, 0}, B[10] = {2, 3, -1, -1, -1, -1, 1, 3, 3, 1};
+      const std::string sh = prop(P, "shape");
+      int k = 0; for (int i = 0; i < 10; i++) if (sh == SH[i]) k = i;
+      const int a = (A[k] + r) & 3, b = B[k] < 0 ? -1 : (B[k] + r) & 3;
+      int nk = k;
+      if (b < 0) { static const int ASC[4] = {4, 2, 5, 3}; nk = ASC[a]; }   // (up toward north, east, south, west)
+      else if ((a & 1) == (b & 1)) nk = a & 1 ? 1 : 0;
+      else { const int lo = std::min(a, b), hi = std::max(a, b);   // a curve: its two ends
+        nk = lo == 1 && hi == 2 ? 6 : lo == 2 && hi == 3 ? 7 : lo == 0 && hi == 3 ? 8 : 9; }
+      const bool special = key != "rail";
+      if (special && nk > 5) nk = 0;   // (powered, detector and activator rails don't turn corners)
+      m = nk | (special && prop(P, "powered") == "true" ? 8 : 0);
       S.meta[r] = (u8)m; continue;
     }
     if (d.has("cauldron")) m = n == "water_cauldron" ? std::clamp(propI(P, "level", 3), 1, 3) : 0;   // (its water: meta & 3, sim/heat.cpp)
@@ -598,6 +617,28 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
       std::vector<char> gone(P.blocks.size(), 0);
       auto wetAt = [&](int i) { const VPState& s = P.states[P.blocks[i].s]; return R.tLiquid[s.id] == 1 || (s.meta[0] & 0x80); };
       static const int ND[5][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, -1, 0}};
+      auto dryAt = [&](int i) {
+        VPState dry = P.states[P.blocks[i].s]; for (auto& m : dry.meta) m &= 0x7F;
+        int di = -1; for (int k = 0; k < (int)P.states.size(); k++) if (P.states[k].id == dry.id && P.states[k].meta == dry.meta && P.states[k].kind == dry.kind && P.states[k].plant == dry.plant && P.states[k].rug == dry.rug) { di = k; break; }
+        if (di < 0) { P.states.push_back(dry); di = (int)P.states.size() - 1; }
+        P.blocks[i].s = (u16)di;
+      };
+      if (!P.terrain) {   // a rigid piece's waterlogged stairs and slabs with no water to them (a builder's leftovers): dry. Each had
+        // stood a cube of water in the room, glassy sides to the air, and leaked
+        std::vector<char> seen(P.blocks.size(), 0); std::vector<int> q;
+        for (int i = 0; i < (int)P.blocks.size(); i++) if (R.tLiquid[P.states[P.blocks[i].s].id] == 1) { seen[i] = 1; q.push_back(i); }
+        static const int N6[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+        while (!q.empty()) {
+          const VPBlock b = P.blocks[q.back()]; q.pop_back();
+          for (auto& d6 : N6) {
+            const int nx = b.x + d6[0], ny = b.y + d6[1], nz = b.z + d6[2];
+            if (nx < 0 || ny < 0 || nz < 0 || nx >= SX || ny >= SY || nz >= SZ) continue;
+            const int j = cell(nx, ny, nz);
+            if (j >= 0 && !seen[j] && wetAt(j)) { seen[j] = 1; q.push_back(j); }
+          }
+        }
+        for (int i = 0; i < (int)P.blocks.size(); i++) if (!seen[i] && wetAt(i) && R.tLiquid[P.states[P.blocks[i].s].id] != 1) dryAt(i);
+      }
       for (bool changed = true; changed;) {
         changed = false;
         for (int i = 0; i < (int)P.blocks.size(); i++) {
@@ -615,10 +656,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
           if (held) continue;
           const VPState& s = P.states[b.s];
           if (R.tLiquid[s.id]) { gone[i] = 1; changed = true; continue; }
-          VPState dry = s; for (auto& m : dry.meta) m &= 0x7F;
-          int di = -1; for (int k = 0; k < (int)P.states.size(); k++) if (P.states[k].id == dry.id && P.states[k].meta == dry.meta && P.states[k].kind == dry.kind && P.states[k].plant == dry.plant && P.states[k].rug == dry.rug) { di = k; break; }
-          if (di < 0) { P.states.push_back(dry); di = (int)P.states.size() - 1; }
-          P.blocks[i].s = (u16)di; changed = true;
+          dryAt(i); changed = true;
         }
       }
       std::vector<VPBlock> kept; kept.reserve(P.blocks.size());

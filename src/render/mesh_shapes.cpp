@@ -473,10 +473,14 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       static const int PX[4] = {0, -1, 0, 1}, PZ[4] = {1, 0, -1, 0};
       int ps = R.tShape[c.at(x + PX[rf], y, z + PZ[rf])];
       reach = ps == ShapeKind::Fence ? 6.f : ps == ShapeKind::Wall ? 4.f : 0.f;
+    } else if (T.cloth == 2 && (meta & 8)) {   // a banner hung on a fence or wall post: back against the post, not floating off it
+      static const int PX[4] = {0, -1, 0, 1}, PZ[4] = {1, 0, -1, 0};
+      int ps = R.tShape[c.at(x + PX[rf], y, z + PZ[rf])];
+      reach = ps == ShapeKind::Fence ? 7.f : ps == ShapeKind::Wall ? 5.f : 0.f;
     }
     for (auto& box0 : cb) {
       ShapeBox box = box0;
-      if (reach > 0 && box.kind == 1) { box.b[2] += reach; box.b[5] += reach; }
+      if (reach > 0 && (box.kind == 1 || T.cloth == 2)) { box.b[2] += reach; box.b[5] += reach; }
       rotBox(box, rf);
       u8 k = box.kind;
       std::function<u8(vec3)> fn = [&](vec3 p) -> u8 {

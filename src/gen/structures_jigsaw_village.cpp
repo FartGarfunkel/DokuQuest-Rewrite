@@ -226,7 +226,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
               }
             };
             std::vector<const VPPiece*> keep; for (const VPPiece* p : cands) if (fits(p)) keep.push_back(p);
-            if (keep.empty()) for (const VPPiece* p : cands) if (quarterOf(*p) == Q_HOME) keep.push_back(p);   // (that quarter's full: homes)
+            for (const VPPiece* p : cands) if (quarterOf(*p) == Q_HOME && !fits(p)) keep.push_back(p);   // (homes after them: where none of those fits, a home does, not an empty joint)
             if (!keep.empty()) cands.swap(keep);   // (a style whose every house has its trade (Towns and Towers' Vikings): any of them)
           }
           // the trades it hasn't got come first (most of the time: a plain house now and then between them)
@@ -308,13 +308,14 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
   }
   std::sort(J->ends.begin(), J->ends.end(), [&](const std::array<int, 3>& a, const std::array<int, 3>& b) {
     return std::hypot(a[0] - v.x, a[1] - v.z) > std::hypot(b[0] - v.x, b[1] - v.z); });   // the farthest first: where roads leave
-  int nb = 0; for (auto& q : J->pcs) if (!q.p->terrain && q.p->kind != "town_centers") nb++;
+  // (the pack's own houses, counted: our hall and mine had made a well, a street and one house pass for a village)
+  int nb = 0; for (auto& q : J->pcs) if (!q.p->terrain && q.p->kind != "town_centers" && q.p->name.rfind("dq_", 0) != 0) nb++;
   if (std::getenv("DQ_VILLAGE_LOG")) {
     std::map<std::string, int> k; for (auto& q : J->pcs) k[q.p->kind]++;
     std::string s; for (auto& [a2, n] : k) s += " " + a2 + " " + std::to_string(n);
     DQ_LOG("jigsaw %s (%s):%s; ends %zu", v.name.c_str(), sk.c_str(), s.c_str(), J->ends.size());
   }
-  if (nb < 3) return false;
+  if (nb < (v.tier == TIER_CITY || v.tier == TIER_TOWN ? 6 : 4)) return false;   // (too few: the classic town instead)
   // ---- the streets' own level ----
   // Each street column at the land's height, smoothed, then eased until no column is more than a block off a
   // neighbour's (each such step gets stairs when built), the columns round the town centre held at its level. The
