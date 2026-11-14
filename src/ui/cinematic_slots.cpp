@@ -105,7 +105,7 @@ public:
       }
     }
     if (!pad && !overUi && hover >= 0 && scene().phase == 2) {
-      if (ImGui::IsMouseClicked(0)) act(a, hover, p.held().empty() || (!tr && hover == 1));
+      if (ImGui::IsMouseClicked(0)) act(a, hover, handFree(p) || (!tr && hover == 1));
       else if (ImGui::IsMouseClicked(1)) act(a, hover, true);
     }
     spot = hover >= 0 ? hover : spot;

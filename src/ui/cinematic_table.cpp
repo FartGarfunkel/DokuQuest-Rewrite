@@ -222,7 +222,7 @@ public:
       if (overGhost && ImGui::IsMouseClicked(0)) { craft(a); return; }
     }
     if (scene().phase == 2 && !overUi && !padMode && hover >= 0) {
-      if (ImGui::IsMouseClicked(0)) act(a, hover, p.held().empty());
+      if (ImGui::IsMouseClicked(0)) act(a, hover, handFree(p));
       else if (ImGui::IsMouseClicked(1)) act(a, hover, true);
     }
     // your bag beside the table (Cinematic Interactions keeps the inventory to hand): click a stack to work with it
@@ -298,6 +298,12 @@ float cinematicMoving() {   // 0..1: how far into a move in or out (the bars com
 void cinematicTap() { g_tapAt = scene().clock; static double n = 0; g_tapN = ++n; }
 double cinematicTapTime() { return g_tapN; }
 namespace cine {
+bool handFree(const Player& p) {
+  const ItemStack& h = p.inv[p.selected];
+  if (h.empty()) return true;
+  const ItemDef* d = reg().item(h.id);
+  return h.id == "shield" || (d && d->has("shield"));
+}
 bool mouseTookOver(const App& a) {
   const float d = glm::length(vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y));
   return d > 0.5f && (!a.input.usingPad() || d > 8.f);
@@ -449,7 +455,7 @@ public:
     }
     if (hover >= 0 && !overUi && !pad && scene().phase == 2) {
       // (AnvilStation: a left click on the work with a result ready forges it; with something in hand, it's set down)
-      if (ImGui::IsMouseClicked(0)) { if (p.held().empty() && hover == 0 && anvilWorkResult(w, at).ok) forge(a); else if (p.held().empty() && hover == 0 && !anvilWorkItems(w, at)[1].empty()) denyAt = scene().clock; else if (p.held().empty()) take(a, hover); else put(a, hover); }
+      if (ImGui::IsMouseClicked(0)) { if (handFree(p) && hover == 0 && anvilWorkResult(w, at).ok) forge(a); else if (handFree(p) && hover == 0 && !anvilWorkItems(w, at)[1].empty()) denyAt = scene().clock; else if (handFree(p)) take(a, hover); else put(a, hover); }
       else if (ImGui::IsMouseClicked(1)) take(a, hover);
     }
     g_av.at = at; g_av.viewYaw = scene().viewYaw; g_av.hover = hover; g_av.denyT = denyAt < 0 ? -1 : scene().clock - denyAt; g_av.forgeT = g_forgeAt < 0 ? -1 : scene().clock - g_forgeAt; g_avOn = true;
@@ -534,7 +540,7 @@ public:
     const ivec2 nav = in.navStep();
     if (nav.x) { pad = true; offer = std::clamp((offer < 0 ? 1 : offer) + nav.x, 0, 2); }
     if (pad && in.pressed(Act::MenuOk)) choose(a, offer);
-    if (in.pressed(Act::MenuX)) { if (!p.held().empty()) enchWorkPut(*s->level, p, w, at, p.held()); else enchWorkTake(*s->level, p, w, at, 0); cinematicTap(); }
+    if (in.pressed(Act::MenuX)) { if (!handFree(p)) enchWorkPut(*s->level, p, w, at, p.held()); else enchWorkTake(*s->level, p, w, at, 0); cinematicTap(); }
     if (in.pressed(Act::MenuY)) enchWorkTake(*s->level, p, w, at, 1);
   }
   void draw(App& a) override {
@@ -583,7 +589,7 @@ public:
           onTable = std::fabs(mp.x - ip.x) < r && mp.y > ip.y - r * 1.1f && mp.y < ip.y + r * 1.4f;
         }
         if (hover >= 0 && has) choose(a, hover);
-        else if (onTable && !p.held().empty()) { cinematicTap(); enchWorkPut(*s->level, p, w, at, p.held()); }
+        else if (onTable && !handFree(p)) { cinematicTap(); enchWorkPut(*s->level, p, w, at, p.held()); }
         else if (onTable) { cinematicTap(); enchWorkTake(*s->level, p, w, at, 0); }
       } else if (ImGui::IsMouseClicked(1) && hover < 0) enchWorkTake(*s->level, p, w, at, 0);
     }
@@ -688,7 +694,7 @@ public:
     }
     if (scene().phase == 2 && hover >= 0 && vis[hover]) dl->AddCircle(sp[hover], 26 * z, IM_COL32(255, 236, 160, 220), 24, 2 * z);
     if (!pad && !overUi && hover >= 0 && scene().phase == 2) {
-      if (ImGui::IsMouseClicked(0)) act(a, hover, p.held().empty());
+      if (ImGui::IsMouseClicked(0)) act(a, hover, handFree(p));
       else if (ImGui::IsMouseClicked(1)) act(a, hover, true);
     }
     if (showBag || bag.on) drawBag(a, p, bag.on ? bag.cur : -1);
@@ -800,7 +806,7 @@ public:
       }
     }
     if (!pad && !overUi && hover >= 0 && scene().phase == 2) {
-      if (ImGui::IsMouseClicked(0)) act(a, ZONE[hover], p.held().empty() || hover == 0);
+      if (ImGui::IsMouseClicked(0)) act(a, ZONE[hover], handFree(p) || hover == 0);
       else if (ImGui::IsMouseClicked(1)) act(a, ZONE[hover], true);
     }
     spot = hover >= 0 ? hover : spot;
@@ -1003,7 +1009,7 @@ private:
     Player& p = *s->player; World& w = s->world();
     cinematicTap();
     if (toBag) { chestTake(*s->level, p, w, at, slot, false, true); return; }
-    if (!p.held().empty()) chestPut(*s->level, p, w, at, slot, one);
+    if (!handFree(p)) chestPut(*s->level, p, w, at, slot, one);
     else chestTake(*s->level, p, w, at, slot, one, false);
   }
 };

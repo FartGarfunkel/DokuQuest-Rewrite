@@ -784,11 +784,15 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     }
     if (hit && bhas(hit->id, BF::Carry)) { pickUpBlock(hit->block.x, hit->block.y, hit->block.z); return; }
   }
-  if (hit && repeat && !fromOff && R.block(hit->id).has("sieve") && useBlockAt(*hit, held.empty() ? nullptr : &held, def)) return;   // hold use to keep sifting
+  // (a shield in the main hand is carried, not used on things: the hand is free for them, taking, crafting, opening)
+  const bool shieldHand = !held.empty() && def && (held.id == "shield" || def->has("shield"));
+  ItemStack* const heldIn = held.empty() || shieldHand ? nullptr : &held;
+  const ItemDef* const defIn = shieldHand ? nullptr : def;
+  if (hit && repeat && !fromOff && R.block(hit->id).has("sieve") && useBlockAt(*hit, heldIn, defIn)) return;   // hold use to keep sifting
   if (hit && !repeat && !fromOff) {
     const BlockDef& b = R.block(hit->id);
     if (b.has("pile") && !fromOff && !repeat && metalworkPourOnGround(lv, p, w, hit->block.x, hit->block.y, hit->block.z)) { swingArm(); return; }   // a molten vessel into molds set down there (sim/metalwork.h)
-    if (b.has("pile")) { usePile(*hit, held.empty() ? nullptr : &held); return; }
+    if (b.has("pile")) { usePile(*hit, heldIn); return; }
     if (b.has("placedBackpack")) {
       if (p.sneaking && held.empty()) {
         json* e = w.blockEntity(hit->block.x, hit->block.y, hit->block.z);
@@ -802,7 +806,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     }
     bool sneakPlace = p.sneaking && def && (!def->block.empty() || def->has("backpack"));
     if (!sneakPlace) {
-      bool uba = useBlockAt(*hit, held.empty() ? nullptr : &held, def);
+      bool uba = useBlockAt(*hit, heldIn, defIn);
       if (uba) return;
       json pos = {hit->block.x, hit->block.y, hit->block.z};
       if (bhas(hit->id, BF::Container)) {

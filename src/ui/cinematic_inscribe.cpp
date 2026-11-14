@@ -160,7 +160,7 @@ public:
     if (workAt >= 0) ImGui::Text("%s", g_iv.mode == 0 ? "Inscribing..." : g_iv.mode == 1 ? "Taking it out..." : "Writing...");
     else if (hover >= 4 && hover < 4 + (int)bookList.size()) ImGui::Text("Take %s out of the book as a scroll", spellLabel(bookList[hover - 4].first, bookList[hover - 4].second).c_str());
     else if (hover >= 4 + (int)bookList.size()) ImGui::Text("Write out %s (a paper and a lapis)", spellLabel(writeList[hover - 4 - (int)bookList.size()].first, writeList[hover - 4 - (int)bookList.size()].second).c_str());
-    else if (hover == 1 && !v[0].empty() && isScroll(v[1]) && p.held().empty()) ImGui::Text("Press the scroll into the book");
+    else if (hover == 1 && !v[0].empty() && isScroll(v[1]) && handFree(p)) ImGui::Text("Press the scroll into the book");
     else ImGui::TextDisabled("%s", v[0].empty() && v[1].empty() && v[2].empty() && v[3].empty() ? "Lay a spellbook, a spell scroll, paper and lapis on its board"
                                    : v[2].empty() || v[3].empty() ? "Paper and lapis laid here: write out a spell you know" : writeList.empty() ? "You know no spells to write yet: read a spell tome" : " ");
     ImGui::TextDisabled(bag.on ? "Bag: D-pad choose \xC2\xB7 A take into hand \xC2\xB7 B / LB / RB back to the table"
@@ -187,7 +187,7 @@ private:
     const std::vector<ItemStack> v = inscribeWorkItems(w, at);
     if (k < 4) {
       if (take) { cinematicTap(); inscribeWorkTake(*s->level, p, w, at, k); return; }
-      if (!p.held().empty()) { cinematicTap(); inscribeWorkPut(*s->level, p, w, at, p.held()); return; }
+      if (!handFree(p)) { cinematicTap(); inscribeWorkPut(*s->level, p, w, at, p.held()); return; }
       if (k == 1 && !v[0].empty() && isScroll(v[1])) { begin(a, 0, -1, ""); return; }   // the scroll pressed into the book
       cinematicTap(); inscribeWorkTake(*s->level, p, w, at, k);
       return;

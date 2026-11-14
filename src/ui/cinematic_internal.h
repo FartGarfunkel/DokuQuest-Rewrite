@@ -37,6 +37,9 @@ struct BagPad { bool on = false; int cur = 27; };
 bool bagPadUpdate(Input& in, Player& p, BagPad& b);
 void drawBag(App& a, Player& p, int padCur);   // your bag beside the station (click a stack to work with it)
 std::string nameOf(const ItemStack& s);
+// a free hand for the work: empty, or only a shield in it (a shield is carried, not set down or worked with: with one in
+// hand nothing could be taken back or made)
+bool handFree(const Player& p);
 // the mouse taken up again (the scenes' pad mode off): moved, and more than a stray twitch while a controller's in use (a
 // cursor nudged as the scene frees it had dropped a pad player's first presses)
 bool mouseTookOver(const App& a);

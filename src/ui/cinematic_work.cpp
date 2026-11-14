@@ -195,7 +195,7 @@ public:
     const int nHeads = st == "forge" ? (int)forgeWorkHeads(w, at).size() : 0;   // (the Tool Forge with a material on it: its heads on a dial)
     if (nav.x) { pad = true; if (nHeads) padHead = std::clamp(padHead + nav.x, 0, nHeads - 1); else zone = nav.x > 0 ? 1 : 0; }
     if (nHeads) padHead = std::min(padHead, nHeads - 1);
-    if (pad && in.pressed(Act::MenuOk)) { if (!p.held().empty()) put(a, nHeads ? 0 : zone); else if (nHeads) forgeHead(a, padHead); else if (pairWorkResult(*s->level, w, at).ok) work(a); else take(a, zone); }
+    if (pad && in.pressed(Act::MenuOk)) { if (!handFree(p)) put(a, nHeads ? 0 : zone); else if (nHeads) forgeHead(a, padHead); else if (pairWorkResult(*s->level, w, at).ok) work(a); else take(a, zone); }
     if (pad && in.pressed(Act::MenuX)) take(a, nHeads ? 0 : zone);
   }
   void draw(App& a) override {
@@ -236,13 +236,13 @@ public:
       { char c[8]; snprintf(c, sizeof c, "%d", heads[k].second); dl->AddText(ImVec2(hp.x + is * 0.38f, hp.y + is * 0.22f), IM_COL32(60, 40, 20, 255), c); }
       if (k == headHover) dl->AddCircle(hp, is * 0.8f, IM_COL32(255, 236, 160, 230), 24, 2 * z);
     }
-    if (scene().phase == 2 && workAt < 0 && (hover >= 0 || (onStation && !p.held().empty()))) {
+    if (scene().phase == 2 && workAt < 0 && (hover >= 0 || (onStation && !handFree(p)))) {
       ImVec2 sp; if (toScreen(a, aimAt, sp)) dl->AddCircle(sp, 30 * z, IM_COL32(255, 236, 160, 220), 28, 2 * z);
     }
     if (!overUi && !pad && scene().phase == 2 && workAt < 0) {
       if (headHover >= 0 && ImGui::IsMouseClicked(0)) forgeHead(a, headHover);
       else if (ImGui::IsMouseClicked(0)) {
-        if (!p.held().empty() && (onStation || hover >= 0)) put(a, hover >= 0 ? hover : -1);
+        if (!handFree(p) && (onStation || hover >= 0)) put(a, hover >= 0 ? hover : -1);
         else if (hover >= 0) { if (r.ok) work(a); else take(a, hover); }
       } else if (ImGui::IsMouseClicked(1) && hover >= 0) take(a, hover);
     }
@@ -401,9 +401,9 @@ public:
     const ivec2 nav = in.navStep();
     if (nav.x && n > 0) { pad = true; padPick = std::clamp(padPick + nav.x, 0, n - 1); scrollTo = (float)std::clamp(padPick - 4, 0, std::max(0, n - 9)); }
     // (A cuts one, X all; with nothing on the saw A sets down what's in hand. Y: what's in hand onto the saw, or the stone back)
-    if (pad && in.pressed(Act::MenuOk)) { if (n == 0 && !p.held().empty()) put(a); else cutShape(a, padPick, false); }
+    if (pad && in.pressed(Act::MenuOk)) { if (n == 0 && !handFree(p)) put(a); else cutShape(a, padPick, false); }
     if (pad && in.pressed(Act::MenuX)) cutShape(a, padPick, true);
-    if (in.pressed(Act::MenuY)) { if (!p.held().empty() && !stonecutterOptions(p.held().id).empty()) put(a); else take(a); }
+    if (in.pressed(Act::MenuY)) { if (!handFree(p) && !stonecutterOptions(p.held().id).empty()) put(a); else take(a); }
   }
   void draw(App& a) override {
     GameSession* s = a.session.get();
@@ -435,12 +435,12 @@ public:
         const ImVec2 ts = ImGui::CalcTextSize(label.c_str());
         dl->AddRectFilled(ImVec2(sp.x - ts.x * 0.5f - 6 * z, sp.y - 46 * z), ImVec2(sp.x + ts.x * 0.5f + 6 * z, sp.y - 46 * z + ts.y + 6 * z), IM_COL32(20, 16, 12, 200), 4 * z);
         dl->AddText(ImVec2(sp.x - ts.x * 0.5f, sp.y - 43 * z), IM_COL32(255, 240, 210, 255), label.c_str());
-      } else if ((onStone || (onTable && !p.held().empty())) && toScreen(a, cutLiePos(w, at), sp)) dl->AddCircle(sp, 30 * z, IM_COL32(255, 236, 160, 220), 28, 2 * z);
+      } else if ((onStone || (onTable && !handFree(p))) && toScreen(a, cutLiePos(w, at), sp)) dl->AddCircle(sp, 30 * z, IM_COL32(255, 236, 160, 220), 28, 2 * z);
     }
     if (!overUi && !pad && scene().phase == 2 && cutAt < 0) {
       if (ImGui::IsMouseClicked(0)) {
         if (hover >= 0) cutShape(a, hover, ImGui::GetIO().KeyShift);
-        else if (!p.held().empty() && (onTable || onStone)) put(a);
+        else if (!handFree(p) && (onTable || onStone)) put(a);
         else if (onStone) take(a);
       } else if (ImGui::IsMouseClicked(1)) { if (hover >= 0) cutShape(a, hover, true); else if (onStone) take(a); }
     }
@@ -501,7 +501,7 @@ public:
     leanPose(S, p.pos + vec3(0, p.eye, 0));
     g_jv = JukeView{}; g_jv.at = at; g_jvOn = true;
     // a record in hand when you came: straight in
-    if (const ItemDef* d = p.held().empty() ? nullptr : reg().item(p.held().id); d && d->has("disc") && jukeboxDisc(a.session->world(), at).empty()) pending = p.held().id;
+    if (const ItemDef* d = handFree(p) ? nullptr : reg().item(p.held().id); d && d->has("disc") && jukeboxDisc(a.session->world(), at).empty()) pending = p.held().id;
   }
   void onClose(App&) override { Scene& S = scene(); if (S.phase == 1 || S.phase == 2) { S.phase = 3; S.t = 0; } g_jvOn = false; cinematicSetAimPoint(false); }
   bool onBack(App&) override { if (bag.on) { bag.on = false; return true; } return false; }
