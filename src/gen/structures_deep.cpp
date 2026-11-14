@@ -92,6 +92,10 @@ static void strongholdBuild(ChunkWriter& w, const StructurePlan& S) {
   }
 }
 
+// a deep world (terrain 21): the Deep Dark and the places in it sit 60 rows lower, under the Overworld's floor
+// (Minecraft's y -45..-11 for the Deep Dark, its cities near the bottom as Minecraft's at -27; carveDeep matches)
+static int deepDy(const TerrainQuery& t) { const OverworldGen* ow = owOf(t); return ow && ow->deepStructs() ? OverworldGen::DEEP_DARK_DY : 0; }
+
 // ==== Ancient Cities (STRUCTS 8) =====================================================================================
 static bool cityPlan(const TerrainQuery& t, int x0, int z0, Mulberry32& rnd, StructurePlan& S) {
   const OverworldGen* ow = owOf(t); if (!ow) return false;
@@ -101,7 +105,7 @@ static bool cityPlan(const TerrainQuery& t, int x0, int z0, Mulberry32& rnd, Str
     if (tt) { x = x0 + jsRound((rnd() - 0.5) * 360); z = z0 + jsRound((rnd() - 0.5) * 360); }
     if (ow->deepZone(x, z) < 0.9 || ow->deepZone(x + 30, z) < 0.6 || ow->deepZone(x - 30, z) < 0.6 || ow->deepZone(x, z + 30) < 0.6 || ow->deepZone(x, z - 30) < 0.6) continue;
     if (t.terrainColumn(x, z).jsY < 40) continue;
-    const int y = owUnder(14);
+    const int y = owUnder(14) + deepDy(t);
     S.x0 = x - 38; S.x1 = x + 38; S.z0 = z - 38; S.z1 = z + 38; S.y = y; S.hashDy = 14 - y; S.cx = x; S.cz = z; S.rot = jsFloor(rnd() * 2);
     S.name = "an Ancient City"; S.data = {{"spawners", json::array()}};
     return true;
@@ -213,7 +217,7 @@ static bool dhPlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Structu
   if (L.jhi - L.jlo > 14) return false;
   const int Y0o = std::max(28, std::min(44, L.jlo - 14));
   if (L.jlo - Y0o < 10) return false;
-  const int Y0 = owUnder(Y0o);
+  const int Y0 = owUnder(Y0o) + deepDy(t);
   auto e = std::make_shared<DHExt>(); e->X0 = X0; e->Z0 = Z0; e->W = W; e->Y0 = Y0;
   using Q = std::array<int, 2>;
   auto corner = [](int i) { return Q{DH_CORNERS[i][0], DH_CORNERS[i][1]}; };
@@ -408,7 +412,7 @@ static bool tvPlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Structu
   if (L.jhi - L.jlo > 12) return false;
   const int yo = std::max(16, std::min(36, L.jlo - 14));
   if (L.jlo - yo < 10) return false;
-  const int y = owUnder(yo);
+  const int y = owUnder(yo) + deepDy(t);
   auto e = std::make_shared<TVExt>();
   e->X0 = X0; e->Z0 = Z0; e->X1 = X1; e->Z1 = Z1; e->x = x;
   // the antechamber (south), the arena (middle), the vault (north)
@@ -517,6 +521,7 @@ static void coveBuild(ChunkWriter& w, const StructurePlan& S) {
 static void regDeep(const char* key, const char* name, int region, double chance, int margin, int jsIndex, decltype(StructureType::plan) plan,
                     decltype(StructureType::build) build, u32 flags = 0) {
   StructureType t; t.key = key; t.name = name; t.region = region; t.chance = chance; t.margin = margin; t.jsIndex = jsIndex; t.flags = flags;
+  if (t.key != "pirate_cove") t.flags |= SF_DEEP;
   t.dims = 1u << DIM_OVERWORLD; t.plan = std::move(plan); t.build = std::move(build);
   registerStructure(std::move(t));
 }

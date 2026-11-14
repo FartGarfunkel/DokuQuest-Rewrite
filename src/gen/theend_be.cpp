@@ -53,7 +53,7 @@ void EndGen::beSurface(int land, int x, int z, const Isle& c, ChunkWriter& P) co
     case 9: {
       put(top, pickB(B.amber_moss, B.end_stone));
       // amber ore lies thick under the moss (BE: 60 tries a chunk)
-      for (int y = top - 1; y > top - 6; y--) if (hashFloat(x, y, z, 0xA3B) < 0.09) put(y, pickB(B.amber_ore, B.end_stone));
+      for (int y = top - 1; y > top - 6; y--) if (hz(x, y, z, 0xA3B) < 0.09) put(y, pickB(B.amber_ore, B.end_stone));
       break;
     }
     case 10: {
@@ -378,7 +378,7 @@ void EndGen::beDress(int bx, int bz, ChunkWriter& P) const {
             P.put(x, y, z, band == 0 ? pickB(B.virid_jadestone, B.end_stone) : band == 1 ? pickB(B.azure_jadestone, B.end_stone) : pickB(B.sandy_jadestone, B.end_stone)); }
           continue;
         }
-        const double r = hashFloat(x, y, z, 0xCA71);
+        const double r = hz(x, y, z, 0xCA71);
         if (floor) {
           if (kind == 0) { P.put(x, y, z, pickB(B.cave_moss, B.end_stone)); if (r < 0.3) set(x, y + 1, z, B.cave_grass, true); else if (r < 0.34) set(x, y + 1, z, B.aurora_crystal, true); }
           else if (kind == 1) { if (r < 0.15) set(x, y + 1, z, B.smaragdant_crystal_shard, true); else if (r < 0.18) { set(x, y + 1, z, B.smaragdant_crystal, true); set(x, y + 2, z, B.smaragdant_crystal, true); } }
@@ -423,8 +423,8 @@ void EndGen::bePlants(int land, int x, int z, const Isle& c, ChunkWriter& P) con
     }
     return;
   }
-  const float r = (float)hashFloat(x, y, z, 0xBE71);
-  auto any = [&](std::initializer_list<BlockId> l) { BlockId out = 0; int n = 0; for (BlockId b : l) if (b) n++; if (!n) return out; int k = (int)(hashFloat(z, x, y, 0xBE72) * n); for (BlockId b : l) if (b && k-- == 0) return b; return out; };
+  const float r = (float)hz(x, y, z, 0xBE71);
+  auto any = [&](std::initializer_list<BlockId> l) { BlockId out = 0; int n = 0; for (BlockId b : l) if (b) n++; if (!n) return out; int k = (int)(hz(z, x, y, 0xBE72) * n); for (BlockId b : l) if (b && k-- == 0) return b; return out; };
   BlockId put = 0;
   switch (land) {
     case 0: if (r < 0.12f) put = B.chorus_grass; else if (r < 0.14f) put = B.tail_moss; break;

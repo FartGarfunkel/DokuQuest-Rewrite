@@ -370,9 +370,10 @@ struct MineSeg { int x, z, ex, ez, dir, x0, x1, z0, z1; bool chest, spider; };
 struct MineExt { std::vector<MineSeg> segs; int x, z, sp[3]; };
 
 static bool minePlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) {
-  TerrainColumn c = t.terrainColumn(x, z); if (!sLandy(c)) return false;
+  const OverworldGen* deepOw = owOf(t); if (deepOw && !deepOw->deepStructs()) deepOw = nullptr;
+  TerrainColumn c = t.terrainColumn(x, z); if (!sLandy(c) && !deepOw) return false;   // (a deep world's go under the sea too, as YUNG's)
   const int yo = 18 + jsFloor(rnd() * 14);
-  if (c.jsY - yo < 16) return false;
+  if (c.jsY - yo < 16 && !deepOw) return false;
   // corridors, branching out from the start
   auto e = std::make_shared<MineExt>(); auto& segs = e->segs;
   const int LIM = 56;
@@ -396,7 +397,9 @@ static bool minePlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Struc
   MineSeg& sp = segs[1 + jsFloor(rnd() * (segs.size() - 1))]; sp.spider = true;
   int x0 = x, x1 = x, z0 = z, z1 = z;
   for (const auto& s : segs) { x0 = std::min(x0, s.x0 - 3); x1 = std::max(x1, s.x1 + 3); z0 = std::min(z0, s.z0 - 3); z1 = std::max(z1, s.z1 + 3); }
-  const int y = owUnder(yo);
+  int y = owUnder(yo);
+  // (a deep world, terrain 21: as YUNG's Better Mineshafts in Soulrend, anywhere from Minecraft's y -55 to 30, kept 16 under the land)
+  if (const OverworldGen* ow = owOf(t); ow && ow->deepStructs()) y = std::min(c.y - 16, -54 + (int)(hash32(t.seed() ^ 0x3A1, x, z, 77) % 86u));
   e->x = x; e->z = z; e->sp[0] = (sp.x + sp.ex) >> 1; e->sp[1] = y; e->sp[2] = (sp.z + sp.ez) >> 1;
   S.x0 = x0; S.z0 = z0; S.x1 = x1; S.z1 = z1; S.cx = x; S.cz = z; S.y = y; S.hashDy = yo - y;
   S.name = "Mineshaft";
@@ -442,6 +445,7 @@ static void mineBuild(ChunkWriter& w, const StructurePlan& S) {
   P.spawner(M.sp[0], M.sp[1], M.sp[2], "cave_spider"); P.put(M.sp[0], M.sp[1] - 1, M.sp[2], "planks");
   // the way in: a ladder in a timbered shaft from the land above
   const int gh = P.ground(M.x, M.z);
+  if (const OverworldGen* ow = owOf(w.terrain); ow && ow->deepStructs() && gh <= SEA_LEVEL + 1) return;   // (a deep world's under the sea or a lake: no shaft up into the water)
   for (int yy = y; yy <= gh + 3; yy++) for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) {
     const int x = M.x + dx, z = M.z + dz; if (!P.in(x, z)) continue;
     const bool ring = dx != 0 || dz != 0;
@@ -898,6 +902,7 @@ static void regPlace(const char* key, const char* name, int region, double chanc
                 decltype(StructureType::plan) plan, decltype(StructureType::build) build) {
   StructureType t; t.key = key; t.name = name; t.region = region; t.chance = chance; t.margin = margin; t.jsIndex = jsIndex;
   t.dims = 1u << DIM_OVERWORLD; t.plan = std::move(plan); t.build = std::move(build);
+  if (t.key.rfind("mineshaft", 0) == 0) t.flags |= SF_DEEP;
   registerStructure(std::move(t));
 }
 void registerStructurePlaces() {
@@ -906,8 +911,17 @@ void registerStructurePlaces() {
   regPlace("desert_temple", "Desert Temple", 420, 0.75, 40, 2, desertPlan, desertBuild);
   regPlace("ocean_temple", "Sunken Temple", 520, 0.65, 40, 3, oceanPlan, oceanBuild);
   regPlace("wreck", "Shipwreck", 300, 0.55, 32, 4, wreckPlan, wreckBuild);
-  regPlace("mineshaft", "Mineshaft", 480, 0.55, 64, 5, minePlan, mineBuild);
+  // a deep world (terrain 21) has Soulrend's many more (YUNG's: 0.3% of chunks, about one per 290 blocks square): its own
+  // kind on a 256-block grid; the old one stands aside there (other worlds keep theirs where they were)
+  auto deepOn = [](const TerrainQuery& t) { const OverworldGen* ow = owOf(t); return ow && ow->deepStructs(); };
+  regPlace("mineshaft", "Mineshaft", 480, 0.55, 64, 5, [deepOn](const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) { return !deepOn(t) && minePlan(t, x, z, rnd, S); }, mineBuild);
   regPlace("labyrinth", "The Labyrinth", 720, 0.6, 60, 6, mazePlan, mazeBuild);
+}
+
+// registered after every other kind, so their indices (their seeds) stay as they were
+void registerStructureDeepMines() {
+  regPlace("mineshaft_deep", "Mineshaft", 256, 0.85, 40, 5, [](const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) {
+    const OverworldGen* ow = owOf(t); return ow && ow->deepStructs() && minePlan(t, x, z, rnd, S); }, mineBuild);
 }
 
 } // namespace dq

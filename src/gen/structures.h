@@ -69,6 +69,9 @@ public:
     : buf(buf), ch(ch), S(S), terrain(t), bx(ch.cx * 16), bz(ch.cz * 16) {}
   GenBuf& buf; Chunk& ch; const StructurePlan& S; const TerrainQuery& terrain;
   const int bx, bz;
+  // a plan's y is the Overworld band's (it may run below its floor, in a deep world: Underworld 1 builds the same plan with
+  // yShift = DIM_H, so a mineshaft's shaft or an ancient city carries on across the seam); minY: the lowest row written
+  int yShift = 0, minY = 1;
   bool in(int x, int z) const { return x >= bx && x < bx + 16 && z >= bz && z < bz + 16; }
   int put(int x, int y, int z, BlockId id, u8 meta = 0);              // returns colIdx or -1; clears a block entity there
   int put(int x, int y, int z, const char* key, u8 meta = 0) { return put(x, y, z, reg().blockId(key), meta); }
@@ -84,7 +87,8 @@ public:
 
 constexpr u32 SF_SURFACE = 1;    // stands on the surface: trees are kept 3 blocks off its footprint
 constexpr u32 SF_NO_CARVE = 2;   // the Deep Dark's halls are not carved inside its footprint (ancient cities)
-constexpr u32 SF_HIDDEN = 4;     // not a place (roads): near(..., NEAR_PLACES) leaves it out
+constexpr u32 SF_HIDDEN = 4;
+constexpr u32 SF_DEEP = 8;      // underground only, built into Underworld 1 too where it runs below the Overworld (deep worlds)     // not a place (roads): near(..., NEAR_PLACES) leaves it out
 constexpr int NEAR_PLACES = -2;  // near()'s type: every kind but the hidden ones
 
 struct StructureType {
@@ -129,7 +133,7 @@ public:
   bool active() const { return !types.empty(); }      // any structure types for this band at all
   const StructurePlan* at(int type, int rx, int rz) const;                    // the plan for a region (cached) or null
   void near(int x, int z, int pad, std::vector<const StructurePlan*>& out, int type = -1) const;
-  void build(GenBuf& buf, Chunk& c) const;                                    // every plan overlapping the chunk
+  void build(GenBuf& buf, Chunk& c, int yShift = 0, int minY = 1, bool deepOnly = false) const;   // deepOnly: just the kinds flagged SF_DEEP                                    // every plan overlapping the chunk
   bool flatten(int x, int z, double& weight, int& targetY) const;            // the strongest levelling here
   bool flagged(int x, int z, int pad, u32 flag) const;                        // inside (pad) a structure with flag
                                                                                // (SF_SURFACE: asks the plans' treeOff)

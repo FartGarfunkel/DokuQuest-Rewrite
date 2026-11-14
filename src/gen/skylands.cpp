@@ -10,6 +10,7 @@ using namespace vmap;
 SkylandsGen::SkylandsGen(const WorldGenOptions& o)
   : structures(*this), seed_(o.seed), nCont(o.seed ^ 0x1234), nHill(o.seed ^ 0x2345), nCave1(o.seed ^ 0x89ab) {
   B.resolve();
+  mixed_ = o.genVersion >= 21;
   if (o.genVersion >= 7) aether_ = std::make_shared<AetherNoise>((u64)(u32)o.seed * 0x9E3779B97F4A7C15ULL + 0xAE);
 }
 

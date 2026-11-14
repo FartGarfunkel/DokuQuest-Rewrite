@@ -96,3 +96,13 @@ Checked against Minecraft's code and Soulrend's data, not by eye (`dq-gentool cm
 - Genuine, not bugs: WWOO's `crimson_patch` (crimson nylium in windswept gravelly hills, by its basalt columns); Nature's
   Spirit's sugi pillars (its region puts sugi forest down to the coast, continentalness -0.19, and its pillar fills
   through water: sea stacks); 10+ block cliffs where the density drops (Minecraft's too).
+
+## Terrain 21 underground: Soulrend's depths (deep worlds)
+Soulrend (YUNG's Better Mineshafts / Dungeons, Deeper and Darker, Integrated Stronghold, Iron's catacombs) puts its
+underground places at Minecraft y: mineshafts -55..30 (0.3% of chunks), dungeons -50..50, ancient city -27 in the Deep
+Dark, ancient temple -46..-36, stronghold 15, catacombs -40..20. Ours were all squeezed into the Overworld band by
+owUnder (y 16..60). In a deep world (layout 2, terrain 21) a plan's y may run below the Overworld's floor and Underworld 1
+builds the same plans a band lower (StructureIndex::build yShift, SF_DEEP kinds only), so shafts cross the seam:
+mineshafts -55..30 on their own 256-block grid (mineshaft_deep, also under the sea; ~70 in 3000x3000 against Soulrend's
+~100), dungeons -50..50, the Deep Dark 60 rows lower (y -45..-11) with its cities, the Deep Halls and the Twin Vault.
+Strongholds stay at y 15. The watcher's signs are no longer generated (the haunting leaves them).

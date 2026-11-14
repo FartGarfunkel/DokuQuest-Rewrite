@@ -20,6 +20,7 @@ void registerStructureFarB();         // structures_far.cpp: nether fortress (20
 void registerStructureAether();       // structures_aether.cpp: the Aether's bronze, silver and gold dungeons (terrain 7)
 void registerStructureRoads();        // structures_roads.cpp: roads and bridges between neighbouring villages
 void registerStructurePois();         // structures_poi.cpp: Soulrend's structure mods (data/pois)
+void registerStructureDeepMines();    // structures_places.cpp: a deep world's mineshafts (terrain 21)
 
 const StructureIndex* structureIndexOf(const DimGenerator* g) {
   if (auto* o = dynamic_cast<const OverworldGen*>(g)) return &o->structures;
@@ -132,7 +133,8 @@ void registerStructures() {
   registerStructureFarB();
   registerStructureRoads();   // nothing keeps clear of a road
   registerStructureAether();  // after the roads: their indices stay as they were
-  registerStructurePois();    // last: the places of note keep clear of everything before them
+  registerStructurePois();    // the places of note keep clear of everything before them
+  registerStructureDeepMines();   // last of all: a new kind, the others' indices unchanged
   registerLocate();
 }
 

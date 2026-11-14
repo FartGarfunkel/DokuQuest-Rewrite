@@ -216,7 +216,7 @@ void SkylandsGen::generateAether(Chunk& ch) {
   for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
     for (int y = 128 + DY; y > DY; y--) {
       if (at(x, y, z) != K.grass || at(x, y + 1, z) != AIR) continue;
-      const double r = hashFloat(bx + x, y, bz + z, seed_ ^ 0xAE5);
+      const double r = mixed_ ? posHashF(bx + x, y, bz + z, seed_ ^ 0xAE5) : hashFloat(bx + x, y, bz + z, seed_ ^ 0xAE5);
       const int d2 = (x - fx) * (x - fx) + (z - fz) * (z - fz);
       if (whiteP && d2 < 30 && r < 0.3) put(x, y + 1, z, K.white);
       else if (purpleP && d2 < 30 && r > 0.7) put(x, y + 1, z, K.purple);

@@ -126,6 +126,7 @@ int OverworldGen::v14Surface(int x, int z) const {
   }
   return v14Corner(x, z);
 }
+bool OverworldGen::deepStructs() const { return deep_ && v21; }
 double OverworldGen::debugDensity(int x, int y, int z) const { return vg_ ? vg_->eval(vSloped, x, y - 1, z) : 0; }
 int OverworldGen::debugTopScan(int x, int z, bool finalD) const {
   if (!vg_) return -1;
@@ -738,12 +739,13 @@ void OverworldGen::generate(Chunk& ch) {
   placeSprings(b, cols, ch.cx, ch.cz);
   placeTrees(b, ch.cx, ch.cz);
   decorate(b, cols, ch.cx, ch.cz);
-  placeOddities(b, ch.cx, ch.cz);
+  // (the watcher's signs (sand pyramids in the sea, straight tunnels, lone old torches) are no longer generated: the haunting
+  // leaves them as it grows (sim/haunt.cpp), out of sight; generated, they stood in every world from the start, in rows)
   placeDungeons(b, ch, cols);
   // the Ember Crust at the bottom of the Overworld (worldupdate.js), then the structures, then the Deep Dark
   if (B.ember_crust && !deep_) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) b.blocks[colIdx(x, 0, z)] = B.ember_crust;   // (the deep world: at the Underworld's floor)
-  carveDeep(b, ch.cx, ch.cz);   // (before the structures: run after, it ate into anything built down there — stone to slate, sculk and caves)
-  structures.build(b, ch);
+  if (!deepStructs()) carveDeep(b, ch.cx, ch.cz);   // (a deep world, 21: in Underworld 1, generateDeep) (before the structures: run after, it ate into anything built down there — stone to slate, sculk and caves)
+  structures.build(b, ch, 0, deepStructs() ? 0 : 1);   // (a deep world: row 0 is Minecraft's -1, not bedrock: what runs down through it is built)
   if (!wtype.empty() && wtype != "default" && wtype != "large_biomes") worldTypePass(b, cols, ch.cx, ch.cz);
   b.store(ch);
 }
@@ -825,7 +827,7 @@ void OverworldGen::placeOddities(GenBuf& b, int cx, int cz) const {
 }
 
 // ---- the Deep Dark (deepdark.js): deepslate and sculk-grown halls far down under some of the land ---------
-void OverworldGen::carveDeep(GenBuf& b, int cx, int cz) const {
+void OverworldGen::carveDeep(GenBuf& b, int cx, int cz, int dy, int off) const {
   const int bx = cx * 16, bz = cz * 16;
   bool any = false;
   static const int P[5][2] = {{0, 0}, {15, 0}, {0, 15}, {15, 15}, {8, 8}};
@@ -834,6 +836,9 @@ void OverworldGen::carveDeep(GenBuf& b, int cx, int cz) const {
   const double DEEP_TOP = 34;
   auto rockish = [&](BlockId id) { return id == B.stone || id == B.slate || id == B.granite || id == B.diorite || id == B.andesite || id == B.tuff || id == B.dirt || id == B.gravel || id == B.cobbled_slate; };
   const int yTop = owUnder(DEEP_TOP + 4);
+  // (y runs over the original's rows; the block it makes is dy rows lower, in this band's rows: off + y + dy)
+  auto ok = [&](int y) { const int r = off + y + dy; return r >= 1 && r < DIM_H - 1; };
+  auto at = [&](int lx, int y, int lz) -> BlockId& { return b.blocks[colIdx(lx, off + y + dy, lz)]; };
   for (int lz = 0; lz < 16; lz++) for (int lx = 0; lx < 16; lx++) {
     const int wx = bx + lx, wz = bz + lz;
     double zone = deepZone(wx, wz);
@@ -842,29 +847,31 @@ void OverworldGen::carveDeep(GenBuf& b, int cx, int cz) const {
     const bool city = structures.active() && structures.flagged(wx, wz, 0, SF_NO_CARVE);
     // the rock turns to deepslate, and great halls open in it
     for (int y = owUnder(12); y < yTop; y++) {
+      if (!ok(y)) continue;
       const double yo = owUnderO(y);
-      BlockId& id = b.blocks[colIdx(lx, y, lz)];
+      BlockId& id = at(lx, y, lz);
       if (id == B.stone && yo < DEEP_TOP + jsTrunc(hf(wx, y, wz, 31) * 4)) id = B.slate;
-      if (city || yo > DEEP_TOP - 2 || y >= H - 16) continue;
+      if (city || yo > DEEP_TOP - 2 || y + dy >= H - 16) continue;
       double v = nDeepC.noise3(wx / 30.0, yo / 11, wz / 30.0) + nDeepC.noise3(wx / 11.0, yo / 7, wz / 11.0) * 0.25;
       if (v + (zone - 1) * 0.7 - std::max(0.0, yo - 26) * 0.06 > 0.2 && !B.liquid[id]) id = AIR;
     }
     // sculk over the floors, veins up the walls and over the roof
     for (int y = owUnder(13); y < owUnder(DEEP_TOP); y++) {
-      const int i = colIdx(lx, y, lz);
+      if (!ok(y)) continue;
+      const int i = colIdx(lx, off + y + dy, lz);
       if (b.blocks[i] != AIR) continue;
       const double yo = owUnderO(y);
-      BlockId below = b.blocks[colIdx(lx, y - 1, lz)], above = b.blocks[colIdx(lx, y + 1, lz)];
+      BlockId below = at(lx, y - 1, lz), above = at(lx, y + 1, lz);
       double r = hf(wx, y, wz, seed_ ^ 0x5c1);
       bool patch = nDeepC.noise3(wx / 9.0, yo / 9, wz / 9.0) > -0.15 + (1 - zone) * 0.6;
       if (rockish(below) && patch) {
-        b.blocks[colIdx(lx, y - 1, lz)] = B.sculk;
+        at(lx, y - 1, lz) = B.sculk;
         if (city) continue;
         if (r < 0.010) b.blocks[i] = B.sculk_sensor;
         else if (r < 0.014) { b.blocks[i] = B.sculk_shrieker; b.meta[i] = 1; }
-        else if (r < 0.0155) b.blocks[colIdx(lx, y - 1, lz)] = B.sculk_catalyst;
+        else if (r < 0.0155) at(lx, y - 1, lz) = B.sculk_catalyst;
         else if (r < 0.2) b.blocks[i] = B.sculk_vein;
-      } else if (rockish(above) && patch && r < 0.35) b.blocks[colIdx(lx, y + 1, lz)] = B.sculk;
+      } else if (rockish(above) && patch && r < 0.35) at(lx, y + 1, lz) = B.sculk;
     }
   }
 }

@@ -76,7 +76,9 @@ static bool dungeonPlace(const StructureIndex& idx, const TerrainQuery& t, int r
   if (sc.jsY <= JS_SEA) return false;
   const int yo = std::max(8, std::min(sc.jsY - 18, (deep ? 14 : 24) + jsFloor(rnd() * 10)));
   if (sc.jsY - yo < 10) return false;
-  const int y = owUnder(yo);
+  int y = owUnder(yo);
+  // (a deep world, terrain 21: as YUNG's Better Dungeons in Soulrend, from Minecraft's y -50 to 50, kept 14 under the land)
+  if (const OverworldGen* ow = owOf(t); ow && ow->deepStructs()) y = std::min(sc.y - 14, -49 + (int)(hash32(seed, rx, rz, 5153) % 101u));
   auto e = std::make_shared<DungeonExt>(); e->theme = theme; e->entX = entX; e->entZ = entZ; e->surf = sc.y;
   int far = 0; for (int i = 0; i < (int)cells.size(); i++) if (cells[i].d > cells[far].d) far = i;
   static const char* kinds[10] = {"hall", "loot", "spawner", "hall", "library", "spawner", "loot", "hall", "loot", "spawner"};
@@ -318,7 +320,7 @@ static void lairBuild(ChunkWriter& w, const StructurePlan& S) {
 void registerStructureDungeons() {
   {
     StructureType t; t.key = "dungeon"; t.name = "a dungeon"; t.region = DREG; t.clearance = 8; t.dims = 1u << DIM_OVERWORLD;
-    t.place = dungeonPlace; t.build = dungeonBuild; t.treePad = 0;
+    t.place = dungeonPlace; t.build = dungeonBuild; t.treePad = 0; t.flags |= SF_DEEP;
     // no tree growing out of the shrine
     t.treeOff = [](const StructurePlan& S, int x, int z) { const auto& d = extOf<DungeonExt>(S); return std::abs(x - d.entX - 2) < 7 && std::abs(z - d.entZ - 2) < 7; };
     registerStructure(std::move(t));

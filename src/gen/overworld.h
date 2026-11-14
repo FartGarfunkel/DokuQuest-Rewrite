@@ -93,6 +93,8 @@ public:
   // the deep world (terrain version 19, layout 2: docs/WORLD_DEPTH.md): no floor under the land; the Underworld's
   // bands below are generated here (gen/underworld.cpp), depth 1 just under it
   bool deep_ = false;
+  bool deepStructs() const;
+  static constexpr int DEEP_DARK_DY = -60;   // terrain 21 in a deep world: the underground places at Soulrend's depths, some below the Overworld
   void generateDeep(Chunk& ch, int depth) const;
 
   // terrain version 14 (docs/WORLDGEN_MERGE.md): the land shaped by Minecraft 1.20's noise router (gen/density.h)
@@ -144,7 +146,7 @@ private:
   void decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) const;
   void decorateCaves(GenBuf& b, const OwColumn* cols, int cx, int cz) const;
   void placeOddities(GenBuf& b, int cx, int cz) const;
-  void carveDeep(GenBuf& b, int cx, int cz) const;
+  void carveDeep(GenBuf& b, int cx, int cz, int dy = 0, int off = 0) const;   // dy: rows lower (Overworld y); off: the band's offset (Underworld 1: DIM_H)
 
   i32 seed_;
   GenBlocks B;

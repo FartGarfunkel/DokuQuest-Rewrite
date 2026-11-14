@@ -221,7 +221,7 @@ static int spawns(const std::string& prefix, int n) {
 static int stats(const std::string& seedText, int dim, int cx0, int cz0, int n) {
   WorldGenOptions o; o.seed = seedFromString(seedText);
   if (const char* v = std::getenv("DQ_GENVER")) o.genVersion = atoi(v);
-  WorldGen wg(o); DimGenerator* g = wg.forDim(dim);
+  WorldGen wg(o); if (isUnderworld(dim)) wg.forDim(DIM_OVERWORLD); DimGenerator* g = wg.forDim(dim);   // (the Underworld comes from the Overworld's generator)
   std::map<std::string, std::vector<long>> per;   // key -> count per 8-row band
   std::map<std::string, long> be;
   double ms = 0;
@@ -610,6 +610,13 @@ static int profile(const std::string& seedText, int x, int z) {
   for (int y = DIM_H - 2; y >= 30; y--) { const double v = og->debugDensity(x, y, z); if (y % 8 == 0 || v > 0) printf("%d %.4f%s\n", y, v, y % 8 == 0 ? "  <lattice" : ""); }
   printf("v14Surface %d\n", og->v14Surface(x, z)); return 0;
 }
+static int plans(const std::string& seedText, int x0, int z0, int w) {
+  LandSrc L(seedText); auto* og = dynamic_cast<OverworldGen*>(L.g);
+  std::set<const StructurePlan*> seen;
+  for (int z = z0; z < z0 + w; z += 64) for (int x = x0; x < x0 + w; x += 64) { std::vector<const StructurePlan*> v; og->structures.near(x, z, 64, v);
+    for (auto* S : v) if (seen.insert(S).second) printf("%-14s at %d,%d y %d (Minecraft %d)\n", structureTypes()[S->type].key.c_str(), S->cx, S->cz, S->y, S->y - 1); }
+  return 0;
+}
 static int relief(const std::string& seedText, int x0, int z0, int w, int h, const char* out) {
   LandSrc L(seedText); std::vector<int> H((size_t)(w + 1) * (h + 1));
   for (int z = 0; z <= h; z++) for (int x = 0; x <= w; x++) H[(size_t)z * (w + 1) + x] = L.top(x0 + x - 1, z0 + z - 1);
@@ -685,6 +692,7 @@ int main(int argc, char** argv) {
   if (m == "cmpsave" && argc >= 5) return cmpSave(argv[2], argv[3], atoi(argv[4]));
   if (m == "topcheck" && argc >= 7) return topcheck(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]));
   if (m == "profile" && argc >= 5) return profile(argv[2], atoi(argv[3]), atoi(argv[4]));
+  if (m == "plans" && argc >= 6) return plans(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "relief" && argc >= 8) return relief(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argv[7]);
   if (m == "xsect" && argc >= 10) return xsect(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]), atoi(argv[8]), argv[9]);
   if (m == "surfgrid" && argc >= 6) return surfgrid(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));

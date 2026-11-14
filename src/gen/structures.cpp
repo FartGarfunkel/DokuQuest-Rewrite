@@ -11,18 +11,21 @@ const std::vector<StructureType>& structureTypes() { return typeList(); }
 
 // ---- ChunkWriter ----
 int ChunkWriter::put(int x, int y, int z, BlockId id, u8 meta) {
-  if (!in(x, z) || y < 1 || y >= DIM_H) return -1;
+  y += yShift;
+  if (!in(x, z) || y < minY || y >= DIM_H) return -1;
   int i = colIdx(x - bx, y, z - bz);
   buf.blocks[i] = id; buf.meta[i] = meta; buf.coat[i] = 0;
   ch.blockEntities.erase(i);
   return i;
 }
 void ChunkWriter::rug(int x, int y, int z, BlockId carpet) {
-  if (!in(x, z) || y < 1 || y >= DIM_H) return;
+  y += yShift;
+  if (!in(x, z) || y < minY || y >= DIM_H) return;
   const int i = colIdx(x - bx, y, z - bz);
   if (rugFloor(buf.blocks[i], 0)) buf.coat[i] = rugCodeOf(carpet);
 }
 BlockId ChunkWriter::get(int x, int y, int z) const {
+  y += yShift;
   return in(x, z) && y >= 0 && y < DIM_H ? buf.blocks[colIdx(x - bx, y, z - bz)] : (BlockId)0xFFFF;
 }
 void ChunkWriter::fill(int x0, int y0, int z0, int x1, int y1, int z1, BlockId id, u8 meta) {
@@ -34,6 +37,7 @@ void ChunkWriter::fill(int x0, int y0, int z0, int x1, int y1, int z1, const std
   for (int y = y0; y <= y1; y++) for (int z = az; z <= ez; z++) for (int x = ax; x <= ex; x++) put(x, y, z, f(x, y, z), meta);
 }
 void ChunkWriter::blockEntity(int x, int y, int z, json be) {
+  y += yShift;
   if (!in(x, z) || y < 0 || y >= DIM_H) return;
   ch.blockEntities[colIdx(x - bx, y, z - bz)] = std::move(be);
 }
@@ -178,14 +182,15 @@ const std::vector<const StructurePlan*>& StructureIndex::chunkPlans(int cx, int 
   return memo.list;
 }
 
-void StructureIndex::build(GenBuf& buf, Chunk& c) const {
+void StructureIndex::build(GenBuf& buf, Chunk& c, int yShift, int minY, bool deepOnly) const {
   if (types.empty()) return;
   int bx = c.cx * 16, bz = c.cz * 16;
   std::vector<const StructurePlan*> list;
   near(bx + 8, bz + 8, 12, list);
   for (const StructurePlan* S : list) {
     if (S->x1 < bx || S->x0 > bx + 15 || S->z1 < bz || S->z0 > bz + 15) continue;
-    ChunkWriter w(buf, c, *S, t);
+    if (deepOnly && !(structureTypes()[S->type].flags & SF_DEEP)) continue;
+    ChunkWriter w(buf, c, *S, t); w.yShift = yShift; w.minY = minY;
     structureTypes()[S->type].build(w, *S);
     fallenInPlace(buf, c, structureTypes()[S->type].key, S->x0, S->z0, S->x1, S->z1, S->seed);   // (abandoned places only)
   }

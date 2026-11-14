@@ -16,7 +16,7 @@ namespace dq {
 // the remains for a place: the miner in the deep ones, the wanderer in the sand, a traveller elsewhere
 static const char* kindFor(const std::string& key) {
   static const std::unordered_map<std::string, const char*> K = {
-    {"mineshaft", "miner"}, {"stronghold", "miner"}, {"ancient_city", "miner"}, {"deep_halls", "miner"}, {"twin_vault", "miner"},
+    {"mineshaft", "miner"}, {"mineshaft_deep", "miner"}, {"stronghold", "miner"}, {"ancient_city", "miner"}, {"deep_halls", "miner"}, {"twin_vault", "miner"},
     {"dungeon", "miner"}, {"classic_dungeon", "miner"}, {"labyrinth", "traveller"}, {"desert_temple", "desert"},
     {"ruin", "traveller"}, {"wreck", "swamp"}, {"ocean_temple", "swamp"}, {"dragon_lair", "traveller"}, {"poi", "traveller"},
     {"silver_dungeon", "traveller"}, {"gold_dungeon", "traveller"}, {"bronze_dungeon", "traveller"}, {"sky_temple", "traveller"},

@@ -101,6 +101,7 @@ private:
   GenBlocks B;
   SimplexNoise nCont, nHill, nCave1;
   std::shared_ptr<const class AetherNoise> aether_;
+  bool mixed_ = false;   // terrain 21: the ground cover rolled with a well-mixed hash (the original's drew rows along z)
   void generateAether(Chunk& c);
   void sampleAether(int wx, int wz, ColumnSample& out) const;
   void treesAether(int cx, int cz, std::vector<TreeSample>& out) const;
@@ -151,6 +152,8 @@ private:
   SimplexNoise nA, nB, nC;
   std::vector<Pillar> pillars_;
   std::shared_ptr<const class be::BETerrain> be_;
+  bool mixed_ = false;   // terrain 21: well-mixed position randoms (the original hash drew rows along z)
+  double hz(int x, int y, int z, i32 s) const { return mixed_ ? posHashF(x, y, z, s) : hashFloat(x, y, z, s); }
   mutable std::mutex beMx_;
   mutable std::unordered_map<u64, std::shared_ptr<const BECols>> beCache_;
   mutable std::deque<u64> beOrder_;

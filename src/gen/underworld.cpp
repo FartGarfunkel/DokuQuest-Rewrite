@@ -228,6 +228,12 @@ void OverworldGen::generateDeep(Chunk& ch, int depth) const {
       }
     }
   }
+  // 5b. (terrain 21) the Deep Dark and the underground places at Soulrend's depths: the Overworld's own plans, built here
+  // a band lower where they run under its floor (mineshafts, dungeons, ancient cities, the Deep Halls, the Twin Vault)
+  if (depth == 1 && deepStructs()) {
+    carveDeep(b, ch.cx, ch.cz, DEEP_DARK_DY, DIM_H);
+    structures.build(b, ch, DIM_H, 0, true);
+  }
   // 6. old tombs: the Alpha/Beta monster rooms, where a cavern passes (gen/dungeons_classic.cpp)
   {
     static thread_local OwColumn cols[256];

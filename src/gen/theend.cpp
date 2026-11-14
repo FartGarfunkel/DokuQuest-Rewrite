@@ -13,6 +13,7 @@ static const double JS_TAU = 6.283185307179586;   // Math.PI * 2 (common.h's TAU
 EndGen::EndGen(const WorldGenOptions& o)
   : structures(*this), seed_(o.seed), nA(o.seed ^ 0xE4D01), nB(o.seed ^ 0xE4D02), nC(o.seed ^ 0xE4D03) {
   B.resolve();
+  mixed_ = o.genVersion >= 21;
   if (o.genVersion >= 7) {   // Better End's islands past the gulf; the dragon's own island stays as it is
     be::BETerrainOptions bo; bo.voidRing = OUTER; bo.centralIsland = false;
     be_ = std::make_shared<be::BETerrain>((int64_t)o.seed, bo);
