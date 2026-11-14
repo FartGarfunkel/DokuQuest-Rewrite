@@ -1296,7 +1296,7 @@ def main(d='data', only=None):
             p = {'name': b['name'], 'pivot': [round(-rel[0] / 16, 5), round(rel[1] / 16, 5), round(rel[2] / 16, 5)]}
             if par: p['parent'] = par
             if 'rotation' in b: rot = b['rotation']; p['rest'] = [round(math.radians(rot[0]), 5), round(-math.radians(rot[1]), 5), round(-math.radians(rot[2]), 5)]   # (Java's turns, y mirrored: -x, y, -z)
-            vox = G.bone_voxels(b, img, gimg, M.tw, M.th)
+            vox = G.bone_voxels(b, img, gimg, M.tw, M.th, java=True)
             # a knee (an elbow) for the creatures new to us: a limb cut in two at its middle, the lower half its own part
             # hung at the joint (the very voxels it had: the picture stays as it was), folded by the swing above it
             knee = None
@@ -1398,7 +1398,7 @@ def main(d='data', only=None):
                 vparts = []
                 for b, p0 in zip(bones, parts):
                     p = dict(p0)
-                    vox = G.bone_voxels(b, vimg, gimg, M.tw, M.th)
+                    vox = G.bone_voxels(b, vimg, gimg, M.tw, M.th, java=True)
                     if vox and p0['vox']:
                         ks = np.array(list(vox.keys())); lo = ks.min(0); hi = ks.max(0) + 1
                         p['vox'] = {'n': p0['vox']['n'], 'c': [[int(-(x + 1) - (-hi[0])), int(y - lo[1]), int(z - lo[2]), 1, 1, 1, rgb] + ([1] if lit else []) for (x, y, z), (rgb, lit) in vox.items()]}
@@ -1415,6 +1415,7 @@ def main(d='data', only=None):
             else: mob['drops'] = []
             spawns(key, mob, info)
             if key in EXTRA_SPAWN and not any(a in mob for a in ('spawnIn', 'spawnInWater', 'spawnDim')): mob.update(EXTRA_SPAWN[key])
+            if key == 'sunbird': mob['perches'] = False; mob['soar'] = 22   # (it never lands: it soars high, its wings wide)
             mob['alexsmobs'] = True
             out['mobs'][ourkey] = mob
         warn = sorted(set(M.warn))

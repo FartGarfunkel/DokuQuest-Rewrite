@@ -436,8 +436,9 @@ static Move flyerAI(Level& lv, Creature& m, Entity* p, float dist, float dt) {
     m.flitT = 2 + frand() * 3;
     bool back = std::hypot(m.home.x - m.pos.x, m.home.z - m.pos.z) > 14;
     m.flitDir = back ? heading(m.pos.x, m.pos.z, m.home.x, m.home.z) : frand() * TAU;
-    m.flyAlt = m.groundY(lv) + (T.perches ? 3 + frand() * 6 : 1 + frand() * 2.5f); m.hasFlyAlt = true;
-    if (frand() < (day < 0.35f ? 0.6f : 0.25f)) m.wantPerch = true;
+    const float soar = T.j.value("soar", 0.f);   // (a great bird that never lands: the sunbird, high over the land, its wings wide)
+    m.flyAlt = m.groundY(lv) + (soar > 0 ? soar + frand() * soar * 0.6f : T.perches ? 3 + frand() * 6 : 1 + frand() * 2.5f); m.hasFlyAlt = true;
+    if (soar <= 0 && frand() < (day < 0.35f ? 0.6f : 0.25f)) m.wantPerch = true;
   }
   if (m.wantPerch && (solidAt(w, m.pos.x, m.pos.y - 0.3f, m.pos.z) || m.onGround)) { m.wantPerch = false; m.perched = true; m.perchT = 6 + frand() * 14; }
   m.flyVy = clampv(((m.wantPerch ? (float)m.groundY(lv) : m.hasFlyAlt ? m.flyAlt : m.pos.y) - m.pos.y) * 1.5f, -2.5f, 2.5f);

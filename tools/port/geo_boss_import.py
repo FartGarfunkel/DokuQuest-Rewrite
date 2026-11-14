@@ -78,7 +78,7 @@ def face_uv(cube, f, s, t, tw, th):
     return u + d + w + s * w, v + t * d
 
 
-def bone_voxels(bone, img, glow, tw, th, step=0.5):
+def bone_voxels(bone, img, glow, tw, th, step=0.5, java=False):
     """the bone's cubes as voxels (model pixels) in model space: [(x, y, z, rgb, lit)]"""
     out = {}
     W, H = img.size
@@ -101,9 +101,20 @@ def bone_voxels(bone, img, glow, tw, th, step=0.5):
                     if f is None: continue
                     fr = lambda q, a, b: (q - a) / (b - a) if b - a > 1e-4 else 0.5
                     fx, fy, fz = fr(p[0], lo[0], hi[0]), fr(p[1], lo[1], hi[1]), fr(p[2], lo[2], hi[2])
-                    st = {0: (1 - fz, 1 - fy), 1: (fz, 1 - fy), 2: (fx, 1 - fz), 3: (fx, fz), 4: (fx, 1 - fy), 5: (1 - fx, 1 - fy)}[f]
-                    if c.get('mirror') and f in (0, 1, 2, 3, 4, 5): st = (1 - st[0], st[1])
-                    uv = face_uv(c, f, st[0], st[1], tw, th)
+                    ST = {0: (1 - fz, 1 - fy), 1: (fz, 1 - fy), 2: (fx, 1 - fz), 3: (fx, fz), 4: (fx, 1 - fy), 5: (1 - fx, 1 - fy)}
+                    fu = f
+                    if java:
+                        # a Java model laid out as geo (x negated): its pictures as Java maps them. Java's +x face is geo's
+                        # -x one (the two side faces' regions swap) and every other face's u runs the other way; Java's
+                        # own mirror undoes that again (it swaps the sides and flips u)
+                        if not c.get('mirror'):
+                            fu = {0: 1, 1: 0}.get(f, f); st = ST[fu]
+                            if fu >= 2: st = (1 - st[0], st[1])
+                        else: st = ST[f]
+                    else:
+                        st = ST[f]
+                        if c.get('mirror'): st = (1 - st[0], st[1])
+                    uv = face_uv(c, fu, st[0], st[1], tw, th)
                     if uv is None: continue
                     px = (min(W - 1, max(0, int(uv[0] * sx))), min(H - 1, max(0, int(uv[1] * sy))))
                     r, g, b, a = img.getpixel(px)
