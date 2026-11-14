@@ -571,6 +571,77 @@ static void emitDripstone(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, i
   }
 }
 
+// A mushroom as a solid of revolution (a lathe): its picture read row by row, each row's width the radius there, so the
+// cap is a round dome and the stem a round stalk, in the picture's own colours. Runs of rows the same width are one ring
+// (8 sides, the picture's row wrapped round it); where the width steps, a flat ring closes the step (the cap's
+// underside, the stem's shoulder). Built once a picture (a few rings), drawn without sway.
+namespace {
+struct LatheSeg { float y0, y1, r, u0, u1, v0, v1; };   // block units (y0 < y1), the picture's span for the sides
+std::mutex g_latheMx; std::unordered_map<int, std::vector<LatheSeg>> g_lathe; u64 g_latheGen = ~0ull;
+const std::vector<LatheSeg>& latheOf(const MeshTiles& T, int tile) {
+  std::lock_guard<std::mutex> lk(g_latheMx);
+  if (g_latheGen != T.gen) { g_lathe.clear(); g_latheGen = T.gen; }
+  auto it = g_lathe.find(tile); if (it != g_lathe.end()) return it->second;
+  std::vector<LatheSeg>& out = g_lathe[tile];
+  const int S = T.size; int bottom = -1;
+  std::vector<std::pair<int, int>> rows(S, {-1, -1});
+  for (int j = 0; j < S; j++) {
+    int l = -1, r = -1; for (int i = 0; i < S; i++) if (T.px(tile, i, j)[3] > 128) { if (l < 0) l = i; r = i; }
+    rows[j] = {l, r}; if (l >= 0) bottom = j;
+  }
+  if (bottom < 0) return out;
+  for (int j = 0; j < S;) {
+    if (rows[j].first < 0) { j++; continue; }
+    int k = j; while (k + 1 < S && rows[k + 1] == rows[j]) k++;
+    const auto [l, r] = rows[j];
+    // (the picture's bottom row stands on the ground)
+    out.push_back({(float)(bottom - k) / S, (float)(bottom + 1 - j) / S, (r + 1 - l) * 0.5f / S, (float)l / S, (float)(r + 1) / S, (float)j / S, (float)(k + 1) / S});
+    j = k + 1;
+  }
+  return out;
+}
+} // namespace
+
+static bool emitLathe3D(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, float yy, int z, int y, int tile) {
+  if (!c.tiles || tile < 0 || tile >= c.tiles->count) return false;
+  const std::vector<LatheSeg>& L = latheOf(*c.tiles, tile);
+  if (L.size() < 2) return false;   // (not a mushroom-shaped picture: one width all the way)
+  const u32 h = hashLocal(x, 0, z, 29);
+  const float cx = x + 0.5f + ((h & 255) / 255.f - 0.5f) * 0.18f, cz = z + 0.5f + (((h >> 8) & 255) / 255.f - 0.5f) * 0.18f, rot = ((h >> 16) & 255) / 255.f * PI / 4;
+  const float sk = c.skyAt(x, y, z), bl = std::max<float>(c.blAt(x, y, z), c.R.tLight[id]);
+  const u8 mat = Mat::Cutout | Mat::NoRelief;
+  auto ring = [&](int k, float rad) { const float a = rot + k * PI / 4; return vec2(cx + std::cos(a) * rad, cz + std::sin(a) * rad); };
+  for (size_t s = 0; s < L.size(); s++) {
+    const LatheSeg& g = L[s];
+    // the sides: the rows' picture twice round (each half shows the whole width)
+    for (int k = 0; k < 8; k++) {
+      const vec2 p0 = ring(k, g.r), p1 = ring(k + 1, g.r);
+      const float f0 = (k % 4) / 4.f, f1 = (k % 4 + 1) / 4.f, ua = g.u0 + (g.u1 - g.u0) * f0, ub = g.u0 + (g.u1 - g.u0) * f1;
+      const float shade = (170 + 70 * std::fabs(std::cos(rot + (k + 0.5f) * PI / 4 - 0.6f))) / 255.f;
+      MV v[4] = {{vec3(p0.x, yy + g.y0, p0.y), vec2(ua, g.v1), sk, bl, shade, 0}, {vec3(p1.x, yy + g.y0, p1.y), vec2(ub, g.v1), sk, bl, shade, 0},
+                 {vec3(p1.x, yy + g.y1, p1.y), vec2(ub, g.v0), sk, bl, shade, 0}, {vec3(p0.x, yy + g.y1, p0.y), vec2(ua, g.v0), sk, bl, shade, 0}};
+      c.quad2(d, v, tile, NORMAL_NONE, mat);
+    }
+    // the flat ring over this one (to the one above, or the top) and under it (to the one below; not on the ground)
+    for (int side = 0; side < 2; side++) {
+      const bool top = side == 0;
+      const float other = top ? (s == 0 ? 0.f : L[s - 1].r) : (s + 1 < L.size() ? L[s + 1].r : g.r);   // (L runs top to bottom)
+      if (other >= g.r) continue;
+      const float ry = yy + (top ? g.y1 : g.y0);
+      const float vr = top ? g.v0 + 0.5f / c.tiles->size : g.v1 - 0.5f / c.tiles->size, um = (g.u0 + g.u1) * 0.5f, du = (g.u1 - g.u0) * 0.25f;
+      const float shade = top ? 1.f : 0.62f;
+      for (int k = 0; k < 8; k++) {
+        const vec2 a0 = ring(k, g.r), a1 = ring(k + 1, g.r), b0 = ring(k, other), b1 = ring(k + 1, other);
+        MV v[4] = {{vec3(a0.x, ry, a0.y), vec2(um - du, vr), sk, bl, shade, 0}, {vec3(a1.x, ry, a1.y), vec2(um + du, vr), sk, bl, shade, 0},
+                   {vec3(b1.x, ry, b1.y), vec2(um + du * 0.3f, vr), sk, bl, shade, 0}, {vec3(b0.x, ry, b0.y), vec2(um - du * 0.3f, vr), sk, bl, shade, 0}};
+        if (!top) { std::swap(v[1], v[3]); }   // (facing down)
+        c.quad2(d, v, tile, NORMAL_NONE, mat);
+      }
+    }
+  }
+  return true;
+}
+
 void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta) {
   const BlockDef& self = c.R.block(id);
   const BlockTraits& T = traits(id);
@@ -609,6 +680,8 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
     }
     if (isGrass && !T.dbl) { emitGrassClump(c, d, id, x, y, z, meta, tile, 0); return; }
     if (isGrass && T.dbl) { emitGrassClump(c, d, id, x, y, z, meta, tile, (meta & 1) ? 2 : 1); return; }
+    // mushrooms (Minecraft's, BetterNether's lucis and jellyfish...): round, a cap on a stalk
+    if (!T.dbl && !T.hangs && key.find("mushroom") != std::string::npos && key.find("block") == std::string::npos && emitLathe3D(c, d, id, x, yy, z, y, tile)) return;
     if (key == "sugar_cane" && emitCane3D(c, d, id, x, y, z)) return;
     if (key == "kelp" && emitKelp3D(c, d, id, x, y, z)) return;
   }
