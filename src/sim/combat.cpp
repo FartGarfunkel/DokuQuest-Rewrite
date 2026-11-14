@@ -288,6 +288,13 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
   if (p.atkT < m.turnLock) p.atkYaw = p.yaw;
   const float t0 = p.atkT;
   p.atkT += dt;
+  if (t0 < m.hitFrom && p.atkT >= m.hitFrom) {   // the blade through the air: its whoosh (a heavy head's deeper; fists a soft one)
+    const ItemStack& w = p.atkOff && !p.offhand.empty() ? p.offhand[0] : p.inv[p.selected];
+    const ItemDef* wd = w.empty() ? nullptr : reg().item(w.id);
+    const std::string t = wd && wd->hasTool ? wd->tool.type : "";
+    const bool heavy = t == "axe" || t == "pickaxe" || t == "hammer" || t == "hoe" || t == "shovel" || w.id.find("club") != std::string::npos || w.id.find("mace") != std::string::npos || w.id.find("great") != std::string::npos;
+    sfxAt(lv, heavy ? "swing_heavy" : "swing_light", p.pos + vec3(0, p.eye * 0.8f, 0), w.empty() ? 6.f : 12.f);
+  }
   const float dl = lungeAt(p.atkMove, p.atkT) - lungeAt(p.atkMove, t0);
   if (dl > 0.0001f) {
     bool close = false;

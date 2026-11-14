@@ -17,6 +17,9 @@
 #include "sim/stations.h"
 #include "sim/player.h"
 #include "sim/rpg.h"
+#include "sim/machines.h"
+#include "ui/book_ui.h"
+#include <misc/cpp/imgui_stdlib.h>
 #include <imgui.h>
 #include <algorithm>
 #include <map>
@@ -84,12 +87,19 @@ public:
       if (seen.insert(r.out).second) byCat[recipeCategory(r)].push_back(r.out);
     }
     for (auto& [in2, out] : reg().smelting) if (reg().item(out) && (knowsItem(*p, in2) || knowsItem(*p, out)) && seen.insert(out).second) byCat["smelting"].push_back(out);
+    for (const char* mk : {"millstone", "sawmill", "crusher"}) if (const json* T = machineTable(mk)) for (auto& [in2, o] : T->items())   // (the machines' work)
+      if (o.is_array() && !o.empty() && o[0].is_string() && reg().item(o[0].get<std::string>()) && (knowsItem(*p, in2) || knowsItem(*p, o[0].get<std::string>())) && seen.insert(o[0].get<std::string>()).second) byCat["machines"].push_back(o[0].get<std::string>());
+    // the search: only what's named like it (the index's pictures; a thing's page stays as it is)
+    if (!query.empty()) {
+      std::string q = query; for (char& c : q) c = (char)std::tolower((unsigned char)c);
+      for (auto& [k, v] : byCat) v.erase(std::remove_if(v.begin(), v.end(), [&](const std::string& id) { std::string n = reg().item(id)->name; for (char& c : n) c = (char)std::tolower((unsigned char)c); return n.find(q) == std::string::npos; }), v.end());
+    }
     clicks.clear();
     // ---- the index
     ui::BookRows idx;
     book.heading(idx, "Crafting Guide");
     book.para(idx, std::to_string(seen.size()) + " things you could make" + (hidden ? " \xC2\xB7 more to find as you gather" : ""), ui::ink::muted, ui::F_SMALL);
-    static const std::pair<const char*, const char*> CATS[] = {{"blocks", "Blocks"}, {"tools", "Tools and weapons"}, {"armor", "Armour"}, {"food", "Food"}, {"smelting", "From the furnace"}, {"redstone", "Redstone"}, {"misc", "Other things"}};
+    static const std::pair<const char*, const char*> CATS[] = {{"blocks", "Blocks"}, {"tools", "Tools and weapons"}, {"armor", "Armour"}, {"food", "Food"}, {"smelting", "From the furnace"}, {"machines", "From the mill, the saw and the crusher"}, {"redstone", "Redstone"}, {"misc", "Other things"}};
     const float ic = std::round(ui::textSize(ui::F_BODY, "Ag").y * 1.9f), gap = 3 * z;
     for (auto& [ck, cn] : CATS) {
       auto it = byCat.find(ck);
@@ -127,6 +137,16 @@ public:
       if (padOn && in.pressed(Act::MenuOk)) open(clicks[padCur].item);
     }
     if (std::hypot(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y) > 2) padOn = false;
+    {   // the search, over the book (typing there: the book's keys wait)
+      const float z2 = ui::Z();
+      ImGui::SetNextWindowPos(ImVec2(a.width * 0.5f, 8 * z2), ImGuiCond_Always, ImVec2(0.5f, 0));
+      ImGui::SetNextWindowBgAlpha(0.8f);
+      ImGui::Begin("##guide_search", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing);
+      ImGui::SetNextItemWidth(260 * z2);
+      if (ImGui::InputTextWithHint("##q", "Search the guide", &query)) book.goTab(0);
+      book.active = !ImGui::IsItemActive();
+      ImGui::End();
+    }
     book.hint("Click a picture: its page \xC2\xB7 B / Esc: back \xC2\xB7 X / Y or the arrows: turn the pages \xC2\xB7 D-pad + A on a controller");
     book.end();
   }
@@ -138,6 +158,7 @@ private:
   std::vector<Click> clicks;
   int frames = 0, padCur = -1; bool padOn = false, goPage = false;
   std::map<std::string, int> tipFrame;
+  std::string query;
 
   void open(const std::string& item) { if (item.empty() || !reg().item(item)) return; if (hist.empty() || hist.back() != item) hist.push_back(item); goPage = true; ui::playClick(); }
   // one picture that takes a click (its page) and shows its name
@@ -247,6 +268,15 @@ private:
       for (auto& [k, rg] : m->ranges) { const Metal* md = metalDef(k); t += (first ? "" : ", ") + std::to_string((int)std::round(rg.first * 100)) + "-" + std::to_string((int)std::round(rg.second * 100)) + "% " + (md ? md->name : k); first = false; }
       book.para(R, t, ui::ink::text, ui::F_SMALL);
     }
+    for (const char* mk : {"millstone", "sawmill", "crusher"}) if (const json* T = machineTable(mk)) for (auto& [src, o] : T->items())
+      if (o.is_array() && !o.empty() && o[0].is_string() && o[0].get<std::string>() == id && reg().item(src)) {
+        ways++;
+        const int n = o.size() > 1 && o[1].is_number() ? o[1].get<int>() : 1;
+        const std::string what = std::string("put through a ") + mk + (n > 1 ? " (" + std::to_string(n) + " from one)" : std::string());
+        ui::BookRow row; row.h = ic + 6 * z;
+        row.draw = [this, src = src, what, ic, z](ImDrawList* dl, ImVec2 q, float) { pic(dl, q, ic, src); ui::text(dl, ui::F_SMALL, ImVec2(q.x + ic + 6 * z, q.y + ic * 0.3f), ui::ink::text, what.c_str()); };
+        R.push_back(std::move(row));
+      }
     if (!ways) book.para(R, "Not made: found, mined or gathered.", ui::ink::muted, ui::F_SMALL);
     // ---- the facing page: what it goes into
     ui::BookRow brk; brk.breakBefore = true; brk.h = 1; brk.draw = [](ImDrawList*, ImVec2, float) {}; R.push_back(brk);
