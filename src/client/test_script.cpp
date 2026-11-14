@@ -394,6 +394,7 @@ void runStep(App& a, const json& st) {
     else if (n == "close") { if (a.topScreen()) a.popScreen(); }
     else if (n == "hud_edit") a.pushScreen(makeHudEditScreen());
     else if (n == "pause") a.pushScreen(makePauseScreen());
+    else if (n == "journal") { while (a.topScreen()) a.popScreen(); a.pushScreen(makeJournalScreen()); }
     else if (n == "options") a.pushScreen(makeOptionsScreen());
     else if (n == "board" && p) a.pushScreen(makeQuestBoardScreen(ivec3(ifloor(p->pos.x), ifloor(p->pos.y), ifloor(p->pos.z))));   // the village's quest board (stand in the village)
     else if (n == "path") a.pushScreen(makePathScreen("knight"));

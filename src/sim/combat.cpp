@@ -1,6 +1,7 @@
 // sim/combat.cpp — damage, death and respawn (local.js hurt/die/respawn, player.js hurt/wearArmor,
 // entities.js Mob.hurt/die, fairplay.js raw-blow floor).
 #include "core/tool_parts.h"
+#include "sim/rpg.h"
 #include "sim/skilltree.h"
 #include "sim/combat.h"
 #include "sim/combat_rpg.h"
@@ -135,6 +136,7 @@ void mobDeath(Level& lv, Entity& m, const DamageSource& src) {
     vec3 at = m.pos + vec3(0, m.h, 0);
     grantXP(lv, kp, T.value("xp", 0), &at);
     kp.stats["mobsKilled"] = kp.stats.value("mobsKilled", 0) + 1;
+    dexNote(kp, m.type, true);   // the Compendium (sim/rpg.h)
   }
   m.data["deathTime"] = 0.0001;
   if (lv.events) lv.events->emit("mobDeath", json::array({{{"type", m.type}, {"x", m.pos.x}, {"y", m.pos.y}, {"z", m.pos.z}, {"id", m.id}},

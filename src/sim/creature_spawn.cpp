@@ -117,6 +117,21 @@ static const std::unordered_map<std::string, std::vector<SpawnE>>& waterTable() 
   return S; }();
   return S;
 }
+// where a creature is found (the Compendium, sim/creature.h): the lands and waters it comes to, its own places
+std::vector<std::string> creatureHomes(const std::string& type) {
+  std::vector<std::string> out;
+  auto add = [&](std::string s) { for (char& c : s) if (c == '_') c = ' '; if (std::find(out.begin(), out.end(), s) == out.end()) out.push_back(s); };
+  for (auto& [land, list] : spawnTable()) for (auto& e : list) if (e.t == type) add(land);
+  for (auto& [w, list] : waterTable()) for (auto& e : list) if (e.t == type) add(w == "cave" ? "underground waters" : w == "lake" ? "lakes and rivers" : w + " seas");
+  const json& M = reg().mobs.is_object() && reg().mobs.contains(type) ? reg().mobs[type] : json();
+  if (M.is_object() && M.contains("spawnDim") && M["spawnDim"].is_array())
+    for (auto& e : M["spawnDim"]) if (e.is_array() && !e.empty() && e[0].is_string()) {
+      const std::string pl = e[0].get<std::string>();
+      add(pl == "cave" ? "deep caves" : pl == "night" ? "the night" : pl == "nether" ? "the Ember Depths" : pl == "end" ? "the End" : pl);
+    }
+  std::sort(out.begin(), out.end());
+  return out;
+}
 static bool needsWater(const std::string& t) { return t == "duck" || t == "frog" || t == "turtle" || t == "crocodile"; }
 static const SpawnE& pickWeighted(const std::vector<SpawnE>& list) {
   float tot = 0; for (auto& e : list) tot += e.w;

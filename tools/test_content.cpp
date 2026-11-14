@@ -19,6 +19,7 @@
 #include "sim/creature_rig.h"
 #include "sim/trough.h"
 #include "sim/station_work.h"
+#include "sim/rpg.h"
 #include "sim/spell_items.h"
 #include <thread>
 #include <cstdio>
@@ -534,6 +535,23 @@ int main(int argc, char** argv) {
     const bool ok = A && Z && hp && makePartArmor("helmet", std::vector<std::string>(hp->cells.size(), A->key), h1)
                     && makePartArmor("helmet", [&] { std::vector<std::string> v(hp->cells.size(), A->key); for (size_t i = 0; i < v.size() / 2; i++) v[i] = Z->key; return v; }(), h2);
     check(ok && armorPointsOf(h1) != armorPointsOf(h2), "a helmet of pig iron and zinc: its protection follows how much of each (" + std::to_string(ok ? armorPointsOf(h1) : 0.f) + " / " + std::to_string(ok ? armorPointsOf(h2) : 0.f) + ")");
+  }
+  {   // the journal's story tree: only what you've come to shows
+    P->stats["story"] = json::object(); P->stats.erase("vseen"); P->stats.erase("dex");
+    json saveR = L->info.data.value("rift", json::object()); L->info.data["rift"] = json::object();
+    auto shown = [&](const char* id) { Story s = storyOf(*L, *P); for (auto& c : s.ch) if (c.id == id) return c.shown; return false; };
+    check(shown("village") && !shown("iron") && !shown("tear") && !shown("seal") && !shown("depths"), "a new journal: only the village (the rest hidden)");
+    P->stats["vseen"] = json{{"v1", 1}};
+    check(shown("iron") && !shown("tear"), "  ...the village found: the next chapter shows");
+    P->stats["story"]["iron"] = 1;
+    check(shown("tear") && !shown("keepers") && !shown("end"), "  ...iron made: the tear's chapter, not past it");
+    dexNote(*P, "enderman", false);
+    check(shown("end"), "  ...an enderman met: the End's branch shows");
+    L->info.data["rift"] = json{{"stage", 1}, {"frags", 1}};
+    check(shown("keepers") && shown("depths") && !shown("skylands") && !shown("gateway"), "  ...the tear open, a fragment given: the keepers and the fire below");
+    L->info.data["rift"] = saveR;
+    dexNote(*P, "deer", true); dexNote(*P, "deer", true);
+    check(dexKills(*P, "deer") == 2 && dexKills(*P, "wolf") == -1, "the Compendium counts what you've beaten");
   }
   // ------------------------------------------------------------ the Tool Forge and the inscription table worked by hand
   {

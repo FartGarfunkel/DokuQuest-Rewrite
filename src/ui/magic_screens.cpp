@@ -18,6 +18,11 @@
 #include "world/world.h"
 #include "common/noise.h"
 #include <imgui.h>
+#include "render/creature_portrait.h"
+#include "sim/creature.h"
+#include "common/fs.h"
+#include <map>
+#include <cstring>
 
 namespace dq {
 namespace ui { void padScrollHere(); }   // ui/theme.cpp: the right stick scrolls
@@ -388,37 +393,241 @@ public:
 class JournalScreen : public MagicScreenBase {
 public:
   const char* id() const override { return "journal"; }
+  // ---- the story as a tree: the trunk the main story (from the root at the bottom up), branches off either side; only
+  // what you've come to shows, the next on the trunk a faint bud. The chosen chapter on the right page: what came of it,
+  // or the journal's clue, and "Read closer" for the plain way
+  void storyRows(App& a, Story& s, ui::BookRows& st, float z) {
+    book.heading(st, playerName + "'s journal");
+    if (sel.empty() || std::none_of(s.ch.begin(), s.ch.end(), [&](auto& c) { return c.id == sel && c.shown; })) sel = s.cur >= 0 ? s.ch[s.cur].id : s.ch[0].id;
+    // the layout: trunk chapters in order up the middle; a branch beside its parent, a little higher
+    std::vector<int> trunk; for (int i = 0; i < (int)s.ch.size(); i++) if (s.ch[i].branch == 0) trunk.push_back(i);
+    const float H = std::max(200 * z, book.pageH() - 60 * z);
+    ui::BookRow row; row.h = H;
+    row.draw = [this, &a, s, trunk, z, H](ImDrawList* dl, ImVec2 q, float w) {
+      std::map<std::string, ImVec2> at;
+      const int n = (int)trunk.size();
+      const float step = (H - 40 * z) / std::max(1, n - 1), cx = q.x + w * 0.5f, by = q.y + H - 20 * z;
+      for (int k = 0; k < n; k++) at[s.ch[trunk[k]].id] = ImVec2(cx, by - k * step);
+      for (auto& c : s.ch) if (c.branch != 0 && at.count(c.parent)) { ImVec2 pp = at[c.parent]; at[c.id] = ImVec2(cx + c.branch * w * 0.32f, pp.y - step * 0.45f); }
+      const ImU32 bark = ui::withAlpha(ui::ink::text, 0.75f), faint = ui::ink::faint;
+      // the trunk: drawn up to the highest shown chapter, a dotted shoot on to the next (the bud)
+      int top = -1; for (int k = 0; k < n; k++) if (s.ch[trunk[k]].shown) top = k;
+      if (top > 0) dl->AddLine(at[s.ch[trunk[0]].id], at[s.ch[trunk[top]].id], bark, 5 * z);
+      if (top + 1 < n) { ImVec2 a0 = at[s.ch[trunk[top]].id], a1 = at[s.ch[trunk[top + 1]].id];
+        for (int d = 0; d < 6; d++) { float t0 = d / 6.f, t1 = t0 + 0.08f; dl->AddLine(ImVec2(a0.x, a0.y + (a1.y - a0.y) * t0), ImVec2(a0.x, a0.y + (a1.y - a0.y) * t1), faint, 3 * z); }
+        ui::text(dl, ui::F_BODY, ImVec2(a1.x - 4 * z, a1.y - 8 * z), ui::ink::muted, "?"); }
+      // the roots under it all
+      for (int r = -2; r <= 2; r++) dl->AddBezierCubic(ImVec2(cx, by), ImVec2(cx + r * 6 * z, by + 8 * z), ImVec2(cx + r * 14 * z, by + 10 * z), ImVec2(cx + r * 22 * z, by + 16 * z), bark, 2 * z);
+      // branches
+      for (auto& c : s.ch) if (c.branch != 0 && c.shown && at.count(c.parent)) {
+        ImVec2 p0 = at[c.parent], p1 = at[c.id];
+        dl->AddBezierCubic(p0, ImVec2(p0.x + (p1.x - p0.x) * 0.4f, p0.y), ImVec2(p1.x - (p1.x - p0.x) * 0.3f, p1.y + 6 * z), p1, bark, 3 * z);
+      }
+      // the chapters: leaves (done: green), the one you're on (gold, a ring), the rest found (an open bud)
+      const ImVec2 mp = ImGui::GetIO().MousePos;
+      for (int i = 0; i < (int)s.ch.size(); i++) {
+        const auto& c = s.ch[i];
+        if (!c.shown || !at.count(c.id)) continue;
+        const ImVec2 p = at[c.id];
+        const float r = 9 * z;
+        const bool cur = i == s.cur, chosen = c.id == sel;
+        const bool hot = std::hypot(mp.x - p.x, mp.y - p.y) < r * 1.8f;
+        if (hot && ImGui::IsMouseClicked(0)) { sel = c.id; closer = false; }
+        if (c.done) { dl->AddCircleFilled(p, r, ui::ink::good, 16); ui::drawTick(dl, ImVec2(p.x - r * 0.55f, p.y - r * 0.55f), r * 1.1f, ui::col::rgb(0xf4ecd8)); }
+        else if (cur) dl->AddCircleFilled(p, r, ui::ink::key, 16);
+        else dl->AddCircle(p, r, ui::ink::text, 16, 2 * z);
+        if (chosen || hot) dl->AddCircle(p, r + 4 * z, ui::ink::head, 20, 2 * z);
+        // its name beside it (the trunk's to the left of the trunk, a branch's out past its leaf)
+        const std::string t = c.t;
+        const ImVec2 ts = ui::textSize(ui::F_SMALL, t.c_str());
+        const float tx = c.branch < 0 ? p.x - r - 4 * z - ts.x : c.branch > 0 ? p.x + r + 4 * z : p.x - r - 6 * z - ts.x;
+        float tx2 = std::max(q.x, std::min(tx, q.x + w - ts.x));
+        ui::text(dl, ui::F_SMALL, ImVec2(tx2, p.y - ts.y * 0.5f), c.done ? ui::ink::good : cur ? ui::ink::head : ui::ink::text, t.c_str());
+      }
+    };
+    st.push_back(std::move(row));
+    // the right page: the chosen chapter
+    const StoryChapter* c = nullptr; for (auto& x : s.ch) if (x.id == sel) c = &x;
+    if (!c) return;
+    ui::BookRow brk; brk.breakBefore = true; brk.h = 1; brk.draw = [](ImDrawList*, ImVec2, float) {}; st.push_back(brk);
+    book.sub(st, c->t, c->done ? ui::ink::good : ui::ink::head);
+    if (c->done) {
+      book.para(st, c->note, ui::ink::text);
+      book.gap(st, 4 * z);
+      book.para(st, c->goal, ui::ink::muted, ui::F_SMALL);
+    } else {
+      book.para(st, "\"" + c->clue + "\"", ui::ink::key);
+      if (c->prog >= 0) { book.gap(st, 4 * z); book.bar(st, c->prog, ui::ink::key); }
+      book.gap(st, 8 * z);
+      if (!closer) {
+        ui::BookRow btn; btn.h = ui::textSize(ui::F_BODY, "Ag").y + 10 * z;
+        btn.draw = [this, z](ImDrawList* dl, ImVec2 p, float) {
+          const char* t = "Read closer...";
+          const ImVec2 ts = ui::textSize(ui::F_BODY, t), b0 = p, b1(p.x + ts.x + 16 * z, p.y + ts.y + 8 * z);
+          const ImVec2 mp = ImGui::GetIO().MousePos; const bool hot = mp.x >= b0.x && mp.x <= b1.x && mp.y >= b0.y && mp.y <= b1.y;
+          dl->AddRect(b0, b1, hot ? ui::ink::head : ui::ink::muted, 3 * z, 0, 1.5f * z);
+          ui::text(dl, ui::F_BODY, ImVec2(p.x + 8 * z, p.y + 4 * z), hot ? ui::ink::head : ui::ink::text, t);
+          if (hot && ImGui::IsMouseClicked(0)) closer = true;
+        };
+        st.push_back(std::move(btn));
+        book.para(st, "(the plain way, if you're stuck: A on a controller)", ui::ink::muted, ui::F_SMALL);
+      } else {
+        book.para(st, c->goal, ui::ink::text);
+        book.gap(st, 3 * z);
+        book.para(st, c->hint, ui::ink::muted, ui::F_SMALL);
+      }
+    }
+    // the others found but not done, so a side road isn't forgotten
+    int open = 0; for (auto& x : s.ch) if (x.shown && !x.done && x.id != sel) open++;
+    if (open) { book.gap(st, 10 * z); book.para(st, std::to_string(open) + (open == 1 ? " other road still open on the tree." : " other roads still open on the tree."), ui::ink::muted, ui::F_SMALL); }
+  }
+  // ---- the Compendium: an index, then a spread to each creature met (its picture and what it is on the left; what it
+  // does and drops on the right). What it does shows once you've beaten one, what it drops once you've beaten three
+  void dexRows(App& a, Player& p, ui::BookRows& idx, float z) {
+    std::vector<std::pair<std::string, std::string>> met;   // name, type
+    const json& D = p.stats.contains("dex") && p.stats["dex"].is_object() ? p.stats["dex"] : json::object();
+    int total = 0;
+    for (auto& [k, m] : reg().mobs.items()) {
+      if (!m.is_object() || m.value("npc", false) || !creatureType(k)) continue;
+      total++;
+      if (D.contains(k)) met.push_back({nameOfMob(k), k});
+    }
+    std::sort(met.begin(), met.end());
+    book.heading(idx, "Compendium");
+    book.para(idx, std::to_string(met.size()) + " of " + std::to_string(total) + " creatures met.", ui::ink::muted, ui::F_SMALL);
+    book.gap(idx, 4 * z);
+    if (met.empty()) book.para(idx, "Nothing yet. Get a good look at a creature and it goes in the book.", ui::ink::muted);
+    for (size_t i = 0; i < met.size(); i++) {
+      const std::string type = met[i].second, name = met[i].first;
+      const int kills = D[type].value("k", 0);
+      ui::BookRow row; row.h = ui::textSize(ui::F_BODY, "Ag").y + 3 * z; row.sel = 1000 + (int)i;
+      row.draw = [this, type, name, kills, i, z](ImDrawList* dl, ImVec2 q, float w) {
+        const ImVec2 mp = ImGui::GetIO().MousePos; const float h = ui::textSize(ui::F_BODY, "Ag").y + 3 * z;
+        const bool hot = mp.x >= q.x && mp.x <= q.x + w && mp.y >= q.y && mp.y < q.y + h;
+        if (hot || dexCur == (int)i) dl->AddRectFilled(ImVec2(q.x - 3 * z, q.y), ImVec2(q.x + w, q.y + h), ui::ink::hilite, 3 * z);
+        ui::text(dl, ui::F_BODY, q, ui::ink::text, name.c_str());
+        const std::string kk = kills ? std::to_string(kills) + " beaten" : "seen";
+        ui::text(dl, ui::F_SMALL, ImVec2(q.x + w - ui::textSize(ui::F_SMALL, kk.c_str()).x, q.y + 2 * z), ui::ink::muted, kk.c_str());
+        if (hot && ImGui::IsMouseClicked(0)) dexGo = (int)i;
+      };
+      idx.push_back(std::move(row));
+    }
+    dexTypes.clear();
+    ui::BookRows& R = idx;   // (each creature a page of its own after the index, two to a spread)
+    for (auto& [name, type] : met) {
+      dexTypes.push_back(type);
+      const CreatureType* T = creatureType(type);
+      const json& M = reg().mobs[type];
+      const int kills = D[type].value("k", 0);
+      book.heading(R, name, ui::ink::head, true);
+      R.back().sel = 2000 + (int)dexTypes.size() - 1;
+      // the picture: the creature itself, turning
+      ui::BookRow pic; pic.h = 120 * z;
+      pic.draw = [this, type, z](ImDrawList* dl, ImVec2 q, float w) {
+        const int px = (int)(std::min(w, 120 * z) * 1.5f);
+        CreaturePortrait& pp = portraits[type];   // (each its own picture: two pages open at once)
+        const GLuint tex = pp.render(type, px, px, (float)ImGui::GetTime() * 0.6f, (float)ImGui::GetTime());
+        const float s = std::min(w, 120 * z);
+        if (tex) dl->AddImage((ImTextureID)(intptr_t)tex, ImVec2(q.x + (w - s) * 0.5f, q.y), ImVec2(q.x + (w + s) * 0.5f, q.y + s), ImVec2(0, 1), ImVec2(1, 0));
+      };
+      R.push_back(std::move(pic));
+      const std::string blurb = dexBlurb(type);
+      if (!blurb.empty()) book.para(R, blurb, ui::ink::text, ui::F_SMALL);
+      const auto homes = creatureHomes(type);
+      std::string where;
+      for (size_t i = 0; i < homes.size(); i++) where += (i ? ", " : "") + homes[i];
+      if (where.empty()) where = T && T->hostile ? (M.value("boss", false) ? "its own lair" : "the dark, at night or underground") : "about the land";
+      book.gap(R, 3 * z);
+      book.para(R, "Found in: " + where, ui::ink::muted, ui::F_SMALL);
+      book.gap(R, 4 * z);
+      book.sub(R, kills ? "What it is" : "What it is (beat one to learn more)");
+      if (kills >= 1) {
+        recordRow(book, R, "Health", std::to_string((int)M.value("hp", 0.0)));
+        if (M.contains("damage")) recordRow(book, R, "Its blows", strFormat("%.1f", M.value("damage", 0.0)));
+        recordRow(book, R, "Speed", M.value("speed", 0.0) < 1.5 ? "slow" : M.value("speed", 0.0) < 2.6 ? "steady" : "fast");
+        recordRow(book, R, "Temper", M.value("boss", false) ? "a great foe" : M.value("hostile", false) ? "hostile" : M.value("retaliates", false) || M.value("angersWhenHurt", false) ? "fights back" : M.value("skittish", 0.0) > 0 ? "shy" : "peaceful");
+        book.gap(R, 4 * z);
+        book.sub(R, kills >= 3 ? "How it fights" : "How it fights (beat three)");
+        if (kills >= 3) for (auto& l : dexHabits(M)) book.bullet(R, l);
+        book.gap(R, 4 * z);
+        book.sub(R, kills >= 3 ? "What it leaves" : "What it leaves (beat three)");
+        if (kills >= 3) {
+          if (!M.contains("drops") || M["drops"].empty()) book.para(R, "Nothing.", ui::ink::muted);
+          else for (auto& d : M["drops"]) if (d.is_array() && !d.empty() && d[0].is_string()) {
+            const std::string k = d[0].get<std::string>(); const ItemDef* id = reg().item(k);
+            std::string t = id ? id->name : k;
+            if (d.size() >= 4 && d[3].is_number() && d[3].get<double>() < 1) t += " (now and then)";
+            book.bullet(R, t);
+          }
+        }
+      } else book.para(R, "Its strength and its ways are a mystery yet.", ui::ink::muted);
+      book.gap(R, 6 * z);
+      book.para(R, kills ? std::to_string(kills) + " beaten" : "Met, not yet beaten", ui::ink::muted, ui::F_SMALL);
+    }
+  }
+  static std::string nameOfMob(const std::string& k) {
+    const json& M = reg().mobs[k];
+    std::string n = M.value("name", std::string());
+    if (n.empty()) { n = M.value("label", k); for (const char* a : {"a ", "an ", "the "}) if (n.rfind(a, 0) == 0) n = n.substr(strlen(a)); }
+    for (char& c : n) if (c == '_') c = ' ';
+    if (!n.empty()) n[0] = (char)std::toupper((unsigned char)n[0]);
+    return n;
+  }
+  static std::vector<std::string> dexHabits(const json& M) {
+    std::vector<std::string> o;
+    auto f = [&](const char* k) { return M.contains(k) && !(M[k].is_boolean() && !M[k].get<bool>()) && !(M[k].is_number() && M[k].get<double>() == 0); };
+    if (f("ranged")) o.push_back("Strikes from afar: close in, or keep cover between you.");
+    if (f("onHit")) o.push_back("Its blows carry something nasty with them.");
+    if (f("stings")) o.push_back("It stings.");
+    if (f("pack")) o.push_back("Hunts in packs: where there's one, look for more.");
+    if (f("flyer") || f("fly")) o.push_back("Flies: it comes at you from above.");
+    if (f("swims")) o.push_back("At home in the water.");
+    if (f("climber")) o.push_back("Climbs walls.");
+    if (f("undead")) o.push_back("Undead: Smite bites deep, and healing hurts it.");
+    if (f("fleesSun")) o.push_back("Burns in the sun.");
+    if (f("fireImmune")) o.push_back("Fire doesn't touch it.");
+    if (M.contains("element") && M["element"].is_string()) o.push_back("Its element: " + M["element"].get<std::string>() + ".");
+    if (f("knockResist")) o.push_back("Hard to knock back.");
+    if (f("retaliates") || f("angersWhenHurt")) o.push_back("Leave it be and it leaves you be. Hit it and it fights.");
+    if (f("skittish")) o.push_back("Flees when you come near.");
+    if (f("boss")) o.push_back("A great foe: come ready.");
+    if (o.empty()) o.push_back(M.value("hostile", false) ? "Comes straight at you." : "It means you no harm.");
+    return o;
+  }
+  static std::string dexBlurb(const std::string& type) {
+    static json B = [] { auto j = readJson(dataDir() / "compendium.json"); return j ? *j : json::object(); }();
+    return B.is_object() && B.contains(type) && B[type].is_string() ? B[type].get<std::string>() : std::string();
+  }
+
   void draw(App& a) override {
     Player* p = player(a); Level* lv = level(a);
     if (!p || !lv) return;
     closeOn(a, Act::Journal);
     if (a.input.pressed(Act::Skills) && frames > 1) { want = true; swapTo = 1; }
     Story s = storyOf(*lv, *p);
-    book.begin(a, "##journal", {{"Your story", "book"}, {"Records", "clock"}});
-    const float z = ui::Z(), lh = ui::textSize(ui::F_BODY, "Ag").y + 2 * z;
+    playerName = p->name;
+    book.begin(a, "##journal", {{"Your story", "book"}, {"Compendium", "spawn_egg"}, {"Records", "clock"}});
+    const float z = ui::Z();
+    // the controller: on the story, up / down walks the chapters found and A reads closer; in the Compendium's index up /
+    // down walks it and A opens that creature's spread
+    Input& in = a.input;
+    if (book.tab() == 0) {
+      std::vector<std::string> ids; for (auto& c : s.ch) if (c.shown) ids.push_back(c.id);
+      int k = 0; for (int i = 0; i < (int)ids.size(); i++) if (ids[i] == sel) k = i;
+      if (!ids.empty() && in.pressed(Act::MenuDown)) { sel = ids[(k + 1) % ids.size()]; closer = false; }
+      if (!ids.empty() && in.pressed(Act::MenuUp)) { sel = ids[(k + ids.size() - 1) % ids.size()]; closer = false; }
+      if (in.pressed(Act::MenuOk)) closer = !closer;
+    }
     ui::BookRows st, rec;
-    book.heading(st, p->name + "'s journal");
-    for (int i = 0; i < (int)s.ch.size(); i++) {
-      auto& c = s.ch[i];
-      const bool cur = i == s.cur;
-      ui::BookRow row; row.h = lh + 2 * z; row.keep = true;
-      const ImU32 tc = c.done ? ui::ink::good : cur ? ui::ink::head : ui::ink::text;
-      const int mark = c.done ? 2 : cur ? 1 : 0;   // a tick, a pointer, a dot (drawn: the pixel font has no tick)
-      std::string tag = c.side ? "  (the long way round)" : c.epi ? "  (after)" : "";
-      row.draw = [mark, t = c.t, tag, tc, cur, z, lh](ImDrawList* dl, ImVec2 q, float w) {
-        if (cur) dl->AddRectFilled(ImVec2(q.x - 4 * z, q.y - 1 * z), ImVec2(q.x + w + 2 * z, q.y + lh + 1 * z), ui::ink::hilite, 3 * z);
-        const float s = lh * 0.55f; const ImVec2 m(q.x + 1 * z, q.y + (lh - s) * 0.5f - 1 * z);
-        if (mark == 2) ui::drawTick(dl, m, s, tc);
-        else if (mark == 1) dl->AddTriangleFilled(m, ImVec2(m.x + s * 0.8f, m.y + s * 0.5f), ImVec2(m.x, m.y + s), tc);
-        else dl->AddRectFilled(ImVec2(m.x + s * 0.3f, m.y + s * 0.4f), ImVec2(m.x + s * 0.5f, m.y + s * 0.6f), tc);
-        ui::text(dl, ui::F_BODY, ImVec2(q.x + 16 * z, q.y), tc, t.c_str());
-        if (!tag.empty()) ui::text(dl, ui::F_SMALL, ImVec2(q.x + 16 * z + ui::textSize(ui::F_BODY, t.c_str()).x, q.y + 2 * z), ui::ink::muted, tag.c_str());
-      };
-      st.push_back(std::move(row));
-      book.para(st, c.goal, c.done ? ui::ink::muted : ui::ink::text, ui::F_SMALL, 16 * z);
-      if (cur || (!c.done && (c.side || c.epi))) book.para(st, c.hint, ui::ink::key, ui::F_SMALL, 16 * z);
-      if (c.prog >= 0 && !c.done) book.bar(st, c.prog, ui::ink::key, 16 * z);
-      book.gap(st, 4 * z);
+    storyRows(a, s, st, z);
+    std::vector<ui::BookRows> secs; secs.push_back(std::move(st));
+    if (portraits.size() > 8) portraits.clear();   // (the pictures of the pages open: a few at most)
+    ui::BookRows dex; dexRows(a, *p, dex, z);
+    secs.push_back(std::move(dex));
+    if (book.tab() == 1 && !dexTypes.empty()) {
+      if (in.pressed(Act::MenuDown)) dexCur = (dexCur + 1) % (int)dexTypes.size();
+      if (in.pressed(Act::MenuUp)) dexCur = (dexCur + (int)dexTypes.size() - 1) % (int)dexTypes.size();
+      if (in.pressed(Act::MenuOk) && dexCur >= 0) dexGo = dexCur;
     }
     book.heading(rec, "Records");
     for (auto& [k, v] : journalRecords(*lv, *p)) recordRow(book, rec, k, v);
@@ -426,8 +635,11 @@ public:
     book.gap(rec, 6 * z); book.sub(rec, "Great foes beaten");
     if (foes.empty()) book.para(rec, "None yet.", ui::ink::muted);
     for (auto& f : foes) book.bullet(rec, f);
-    book.draw({st, rec});
-    book.hint("J: close \xC2\xB7 K: your skills and perks \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 or the wheel: turn the pages");
+    secs.push_back(std::move(rec));
+    // (the bookmarks: the Compendium's index and each creature's spread are sections; the ribbon goes to the index)
+    book.draw(secs);
+    if (dexGo >= 0) { book.showSel(2000 + dexGo); dexCur = dexGo; dexGo = -1; }
+    book.hint("J: close \xC2\xB7 K: your skills and perks \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 or the wheel: turn the pages \xC2\xB7 click a leaf on the tree");
     book.end();
   }
   void update(App& a, double dt) override {
@@ -436,6 +648,10 @@ public:
   }
   int swapTo = 0;
   ui::Book book;
+  std::string sel, playerName; bool closer = false;
+  int dexCur = -1, dexGo = -1;
+  std::vector<std::string> dexTypes;
+  std::map<std::string, CreaturePortrait> portraits;
 };
 
 // rune glyphs drawn as strokes (no font has the runic block): each index is a little stave

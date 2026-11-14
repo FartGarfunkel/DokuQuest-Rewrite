@@ -3,6 +3,7 @@
 // quarrels.js, pets.js (hurt), nightmobs.js (jockeys, slime split), husbandry.js (kept animals).
 #include "core/tool_parts.h"
 #include <cstdlib>
+#include "sim/rpg.h"
 #include "sim/creature.h"
 #include "sim/barrel.h"
 #include "sim/blockfx.h"
@@ -601,6 +602,7 @@ void Creature::die(Level& lv, const DamageSrc& src) {
     auto* p = static_cast<Player*>(a);
     if (src.type == "magic") skillGain(lv, *p, "magic", 6.0 + T->xp * 3.0);   // brought down by a spell: Magic grows too
     p->stats["mobsKilled"] = p->stats.value("mobsKilled", 0) + 1;
+    dexNote(*p, type, true);   // the Compendium (sim/rpg.h)
   }
   // death cries (bestiary.js / sounds2.js)
   if (!creatureVoice(*T).empty()) lv.fx->voice(creatureVoice(*T), "death", pos + vec3(0, h * 0.6f, 0));

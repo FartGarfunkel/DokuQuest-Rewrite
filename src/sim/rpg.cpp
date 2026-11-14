@@ -5,6 +5,10 @@
 #include "sim/magic_data.h"
 #include "sim/magic_fx.h"
 #include "world/world.h"
+#include "sim/physics.h"
+#include "sim/gameplay.h"
+#include "sim/player.h"
+#include <unordered_map>
 
 namespace dq {
 
@@ -95,7 +99,36 @@ static void storyTick(Level& lv, Player& p, MagicState& m, double dt) {
   if (pick && arm) { S["iron"] = 1; lv.fx->message(p.id, "Journal: Iron and Fire \xE2\x80\x94 done", "good"); }
 }
 
+void dexNote(Player& p, const std::string& type, bool killed) {
+  if (type.empty()) return;
+  json& d = p.stats["dex"];
+  if (!d.is_object()) d = json::object();
+  json& e = d[type];
+  if (!e.is_object()) e = json{{"s", 1}, {"k", 0}};
+  if (killed) e["k"] = e.value("k", 0) + 1;
+}
+int dexKills(const Player& p, const std::string& type) {
+  const json& d = sub(p.stats, "dex");
+  return d.contains(type) && d[type].is_object() ? d[type].value("k", 0) : -1;
+}
+// creatures you've had a good look at: near (16 blocks), in front of you and in clear view
+static void dexTick(Level& lv, Player& p, double dt) {
+  static std::unordered_map<u32, double> next;
+  double& t = next[p.id];
+  if ((t -= dt) > 0) return;
+  t = 0.5;
+  const vec3 eye = p.pos + vec3(0, p.eye, 0), fwd(-std::sin(p.yaw) * std::cos(p.pitch), std::sin(p.pitch), -std::cos(p.yaw) * std::cos(p.pitch));
+  const json& D = sub(p.stats, "dex");
+  for (auto& e : lv.entities()) {
+    if (!e || e->removed || e->realm != p.realm || e.get() == &p || !isMob(*e) || D.contains(e->type)) continue;
+    const vec3 to = e->pos + vec3(0, 0.5f, 0) - eye; const float d = glm::length(to);
+    if (d > 16 || d < 0.01f || glm::dot(to / d, fwd) < 0.55f) continue;
+    if (raycastBlocks(lv.world(p.realm), glm::dvec3(eye), to / d, d - 0.5f).hit) continue;   // (a wall between)
+    dexNote(p, e->type, false);
+  }
+}
 void rpgTick(Level& lv, Player& p, double dt) {
+  dexTick(lv, p, dt);
   MagicState& m = magicState(lv, p);
   exploreTick(lv, p, m, dt);
   greenThumb(lv, p, m, dt);
@@ -169,24 +202,54 @@ Story storyOf(Level& lv, Player& p) {
   bool ancient = false;
   for (auto& [k, v] : sub(st, "sseen").items()) if (v.is_array() && v.size() > 2 && v[2].is_string() && toLower(v[2].get<std::string>()).find("ancient city") != std::string::npos) ancient = true;
   Story s;
-  auto ch = [&](const char* t, std::string goal, const char* hint, bool done, bool side = false, bool epi = false, float prog = -1) { s.ch.push_back({t, goal, hint, done, side, epi, prog}); };
-  ch("A Village at the Edge", "Find a village and walk into its square.", "Your journey starts beside one. Talk to the villagers, trade with them, and look at the board by the well.", keysOf(st, "vseen") > 0);
-  ch("Iron and Fire", "Make yourself an iron pickaxe or better, and some armour.", "Iron ore is common below about y 60. Smelt it in a furnace. Copper and tin make bronze on the way.", S.value("iron", 0) != 0);
-  ch("The Tear in the Square", "A while after you arrive, something tears open in the village square. Speak to the elder.", "Keep playing: it opens on its own a quarter of an hour in.", stage >= 1);
-  ch("The Keepers", "Feed ten Realm Fragments to the rift (" + std::to_string(frags) + " of " + std::to_string(NEED) + ").", "Every dungeon keeper carries one (the quest board points to the nearest dungeon). So does the first of each great foe: the Cinder Golem (an Ember Effigy at night), the Hollow Archmage and the Minotaur in their towers and mazes, each of the dragons, the Warden, the Ender Dragon. A fragment in your pack does not count. Hold it up to the tear in the square and use it.", frags >= NEED || stage >= 3, false, false, frags / (float)NEED);
-  ch("Fire Below", "Reach the Ember Depths.", "Beat the Cinder Golem for its core, make an Ember Igniter, and light an obsidian frame (2 wide, 3 tall inside). Or dig down far enough to break through.", dims.contains("1"), true);
-  ch("Above the Clouds", "Reach the Skylands.", "Light a glowstone frame with water, or fly up on a mount. Watch for the storm dragon.", dims.contains("2"), true);
-  ch("The Gateway", "Feed the tenth fragment to the rift.", "Stand by the tear with a Realm Fragment in hand and use it (right click, or use/place on a controller). Each one opens the tear a little wider. The tenth makes it a gateway.", stage >= 3);
-  ch("His Realm", "Step through the gateway.", "Go together and go ready: good armour, food, potions. In co-op, everyone is drawn in.", jflag(st, "realmSeen") || sealed);
-  ch("The Storm", "Break the Wither Storm he raises in his last hall.", "Half beaten, he builds a T of soul sand with a command block at its heart, sets the last wither skull on it, and hides behind what wakes. While it lives he can't be touched. Ordinary blows glance off the Storm: bring enchanted weapons (Smite most of all: it's undead), an enchanted bow (plain arrows bounce off), magic, or splash potions of healing. A Formidibomb in its maw knocks it out of the sky for half a minute, when everything hurts it twice over. Struck heads let go of you for a while.", jflag(R, "stormBroken") || sealed);
-  ch("The Seal", "Find Herobrine at the end of his halls and defeat him.", "Five halls. His bolts hurt; he steps through space; below half health his stare stops time.", sealed);
-  ch("The End Beneath", "Slay the Ender Dragon.", "Eyes of ender (an ender pearl and cinder powder) fly toward a stronghold. Or break through the void crust at the very bottom of the Depths.", jflag(E, "slain"), false, true);
-  ch("The Deep Dark", "Find an Ancient City.", "Far below some lands the stone turns to slate and sculk. Tread softly.", ancient, false, true);
-  ch("Dragonslayer", "Slay the seven dragons of the world (" + std::to_string(lairs) + " of 7).", "Each land has its dragon: forest, frost, sand, tide, ember (the Depths), storm (the Skylands), and one more. Their eggs hatch into drakes you can ride.", lairs >= 7, false, true, lairs / 7.f);
+  auto seenMob = [&](std::initializer_list<const char*> keys) { const json& D = sub(st, "dex"); for (const char* k : keys) for (auto& [mk, v] : D.items()) if (mk.find(k) != std::string::npos) return true; return false; };
+  // ch(id, parent, branch, title, goal, plain hint, clue, note once done, done, lead (found before its parent is done), ...)
+  auto ch = [&](const char* id, const char* parent, int branch, const char* t, std::string goal, const char* hint, const char* clue, const char* note,
+                bool done, bool lead = false, bool side = false, bool epi = false, float prog = -1) {
+    StoryChapter c; c.id = id; c.parent = parent; c.branch = branch; c.t = t; c.goal = goal; c.hint = hint; c.clue = clue; c.note = note;
+    c.done = done; c.side = side; c.epi = epi; c.prog = prog; c.shown = lead;
+    s.ch.push_back(c);
+  };
+  const int stage1 = stage;
+  ch("village", "", 0, "A Village at the Edge", "Find a village and walk into its square.", "Your journey starts beside one. Talk to the villagers, trade with them, and look at the board by the well.",
+     "Smoke rises somewhere close. Where there are people, there are answers.", "I found the village, and the board by the well with its odd jobs.", keysOf(st, "vseen") > 0, true);
+  ch("iron", "village", 0, "Iron and Fire", "Make yourself an iron pickaxe or better, and some armour.", "Iron ore is common below about y 60. Smelt it in a furnace. Copper and tin make bronze on the way.",
+     "Stone breaks, wood splinters. What sleeps in the rock below would hold.", "Iron in hand at last. The deep places don't frighten me as they did.", S.value("iron", 0) != 0);
+  ch("tear", "iron", 0, "The Tear in the Square", "A while after you arrive, something tears open in the village square. Speak to the elder.", "Keep playing: it opens on its own a quarter of an hour in.",
+     "The villagers whisper that the air in the square feels thin. Stay a while.", "Something tore open in the square. The elder knew more than she said.", stage1 >= 1, stage1 >= 1);
+  ch("keepers", "tear", 0, "The Keepers", "Feed ten Realm Fragments to the rift (" + std::to_string(frags) + " of " + std::to_string(NEED) + ").",
+     "Every dungeon keeper carries one (the quest board points to the nearest dungeon). So does the first of each great foe: the Cinder Golem (an Ember Effigy at night), the Hollow Archmage and the Minotaur in their towers and mazes, each of the dragons, the Warden, the Ender Dragon. A fragment in your pack does not count. Hold it up to the tear in the square and use it.",
+     "The tear hungers. Whatever guards the deep places might carry what it wants.", "Ten pieces of a broken world, given back to it.", frags >= NEED || stage >= 3, frags > 0, false, false, frags / (float)NEED);
+  ch("depths", "keepers", 1, "Fire Below", "Reach the Ember Depths.", "Beat the Cinder Golem for its core, make an Ember Igniter, and light an obsidian frame (2 wide, 3 tall inside). Or dig down far enough to break through.",
+     "Something burns beneath the world. A golem of cinders keeps the way.", "I walked in the Ember Depths and came back with my eyebrows.", dims.contains("1"), dims.contains("1") || frags >= 1 || seenMob({"cinder_golem", "ember_effigy"}), true);
+  ch("skylands", "keepers", -1, "Above the Clouds", "Reach the Skylands.", "Light a glowstone frame with water, or fly up on a mount. Watch for the storm dragon.",
+     "The clouds hold land of their own. Light caught in stone, water poured within.", "Islands in the sky, and grass that never saw the ground.", dims.contains("2"), dims.contains("2") || frags >= 3, true);
+  ch("gateway", "keepers", 0, "The Gateway", "Feed the tenth fragment to the rift.", "Stand by the tear with a Realm Fragment in hand and use it (right click, or use/place on a controller). Each one opens the tear a little wider. The tenth makes it a gateway.",
+     "Each piece you give, the tear grows. When it is whole, it will be a door.", "The tear is a door now.", stage >= 3);
+  ch("realm", "gateway", 0, "His Realm", "Step through the gateway.", "Go together and go ready: good armour, food, potions. In co-op, everyone is drawn in.",
+     "A door is for going through. Go ready.", "His halls. Whoever he is, he has been waiting.", jflag(st, "realmSeen") || sealed);
+  ch("storm", "realm", 0, "The Storm", "Break the Wither Storm he raises in his last hall.", "Half beaten, he builds a T of soul sand with a command block at its heart, sets the last wither skull on it, and hides behind what wakes. While it lives he can't be touched. Ordinary blows glance off the Storm: bring enchanted weapons (Smite most of all: it's undead), an enchanted bow (plain arrows bounce off), magic, or splash potions of healing. A Formidibomb in its maw knocks it out of the sky for half a minute, when everything hurts it twice over. Struck heads let go of you for a while.",
+     "He will not fight alone. What he raises does not fear plain steel.", "The Storm is broken.", jflag(R, "stormBroken") || sealed);
+  ch("seal", "storm", 0, "The Seal", "Find Herobrine at the end of his halls and defeat him.", "Five halls. His bolts hurt; he steps through space; below half health his stare stops time.",
+     "At the end of his halls, the one who tore the world.", "It is sealed. The square is quiet again.", sealed);
+  ch("end", "iron", 1, "The End Beneath", "Slay the Ender Dragon.", "Eyes of ender (an ender pearl and cinder powder) fly toward a stronghold. Or break through the void crust at the very bottom of the Depths.",
+     "The tall ones blink away when looked at. What they carry wants to go home.", "The dragon of the End is dead.", jflag(E, "slain"), dims.contains("3") || jflag(E, "slain") || seenMob({"enderman", "ender_dragon"}), false, true);
+  ch("deepdark", "iron", -1, "The Deep Dark", "Find an Ancient City.", "Far below some lands the stone turns to slate and sculk. Tread softly.",
+     "Below the slate, the stone listens.", "A city under the world, and something in it that hears.", ancient, ancient || seenMob({"warden", "sculk"}), false, true);
+  ch("dragons", "tear", 1, "Dragonslayer", "Slay the seven dragons of the world (" + std::to_string(lairs) + " of 7).", "Each land has its dragon: forest, frost, sand, tide, ember (the Depths), storm (the Skylands), and one more. Their eggs hatch into drakes you can ride.",
+     "One dragon is a legend. Every land, they say, has its own.", "Seven dragons. The lands are quieter.", lairs >= 7, lairs > 0 || seenMob({"dragon"}), false, true, lairs / 7.f);
+  // found: a chapter shows once its parent's done, or something that leads to it turned up; found stays found
+  json& found = p.stats["story"]["found"];
+  if (!found.is_object()) found = json::object();
+  auto doneOf = [&](const std::string& id) { for (auto& c : s.ch) if (c.id == id) return c.done; return false; };
+  for (auto& c : s.ch) {
+    if (c.parent.empty() || c.done || c.shown || (c.branch == 0 && doneOf(c.parent)) || found.contains(c.id)) c.shown = true;
+    if (c.shown && !found.contains(c.id)) found[c.id] = 1;
+  }
   for (int pass = 0; pass < 3 && s.cur < 0; pass++)
     for (int i = 0; i < (int)s.ch.size(); i++) {
       auto& c = s.ch[i];
-      if (c.done) continue;
+      if (c.done || !c.shown) continue;
       if ((pass == 0 && !c.side && !c.epi) || (pass == 1 && c.side) || pass == 2) { s.cur = i; break; }
     }
   return s;

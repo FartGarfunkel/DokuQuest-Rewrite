@@ -240,6 +240,7 @@ Entity* nearestPawn(Level& lv, int realm, vec3 p, float maxD);
 std::vector<Entity*> pawnsOf(Level& lv, int realm);
 Entity* dropItem(Level& lv, int realm, const ItemStack& st, vec3 p, bool scatter, const vec3* vel = nullptr, float delay = 0);
 Creature* spawnCreature(Level& lv, int realm, const std::string& type, vec3 p);
+std::vector<std::string> creatureHomes(const std::string& type);   // where it's found (sim/creature_spawn.cpp), "" none known
 Creature* mountJockey(Level& lv, Creature& spider);   // a skeleton put riding it (a spider jockey)
 void mobBurst(Level& lv, vec3 p, const std::string& kind, int n, float spread = 0.6f);   // fx->particles
 void flame(Level& lv, vec3 p);

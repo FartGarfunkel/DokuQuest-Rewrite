@@ -15,9 +15,21 @@ bool hasTal(const Player& p, const std::string& t);
 std::string pathSkill(const Player& p);
 
 // a chapter of the journal
-struct StoryChapter { std::string t, goal, hint; bool done = false, side = false, epi = false; float prog = -1; };
+// a chapter of the story as the journal's tree has it (ui/magic_screens.cpp JournalScreen): the trunk is the main story,
+// branches go off it to either side. A chapter shows once you've come to it: its parent done, or what leads to it found
+// (a side branch: the land reached, its creature met); found ones are kept (stats.story.found). `clue` is what the
+// journal says of it, half a riddle; `hint` the plain way, only when asked for (Read closer); `note` once it's done
+struct StoryChapter {
+  std::string t, goal, hint; bool done = false, side = false, epi = false; float prog = -1;
+  std::string id, parent, clue, note;
+  int branch = 0;       // 0 the trunk; -1 off to the left of its parent, +1 the right
+  bool shown = false;   // found: on the tree
+};
 struct Story { std::vector<StoryChapter> ch; int cur = -1; };
 Story storyOf(Level& lv, Player& p);
+// the Compendium: each creature you've met (seen up close), and how many you've beaten (stats.dex[type] = {s, k})
+void dexNote(Player& p, const std::string& type, bool killed);
+int dexKills(const Player& p, const std::string& type);   // -1: never met
 std::vector<std::pair<std::string, std::string>> journalRecords(Level& lv, Player& p);
 std::vector<std::string> greatFoesBeaten(Level& lv);
 
