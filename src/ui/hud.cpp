@@ -9,6 +9,9 @@
 #include "sim/weather.h"
 #include "sim/magic.h"
 #include "sim/magic_data.h"
+#include "sim/atlas.h"
+#include "sim/maps.h"
+#include "render/map_render.h"
 #include "ui/theme.h"
 #include "ui/hud_combat.h"
 #include "client/app.h"
@@ -20,6 +23,7 @@
 #include <imgui_stdlib.h>
 
 namespace dq {
+float g_minimapBottom = 0;   // where the minimap ends this frame (0 = not shown): the right-hand tracks line up under it
 
 // ---- the movable HUD (BTA's rearrangeable HUD): each piece drawn between hudPieceBegin/End is shifted by its offset in
 //      settings extra "hudLayout" {piece: [fx, fy]} (fractions of the screen), and its box is kept for the editor
@@ -421,6 +425,7 @@ public:
     if (!hidden) {
       int b0 = hudPieceBegin(dl); drawBoss(s, dl, z, W); hudPieceEnd(a, dl, b0, "boss");
       drawBottom(s, dl, z, W, H0, vw, vh, eyeWater); drawDebug(s, dl, z);
+      drawMinimap(s, dl, z, W);
     }
     // dimension name (dimIn 3.2 s)
     double dt = now() - h.dimAt;
@@ -610,6 +615,41 @@ public:
       ImVec2 ts = textSize(F_MID, t.c_str()); ImVec2 q(W * 0.5f - ts.x * 0.5f - 10 * z, H0 - slot - 76 * z - ts.y);
       dl->AddRectFilled(q, q + ts + ImVec2(20, 8) * z, IM_COL32(0, 0, 0, 140), 3 * z); text(dl, F_MID, q + ImVec2(10, 4) * z, col::text, t.c_str());
     }
+  }
+
+  // the minimap (sim/atlas.h: a map and a compass in the book, switched on at the map page): the atlas round you, north up,
+  // your arrow in the middle, where you are under it. The quest track on the right lines up under it (g_minimapBottom).
+  void drawMinimap(GameSession& s, ImDrawList* dl, float z, float W) {
+    g_minimapBottom = 0;
+    Player& p = *s.player; Level& lv = *s.level;
+    if (!atlasMinimap(p) || s.app.topScreen()) return;
+    const float S = std::round(150 * z), view = 192;   // (blocks across)
+    const ImVec2 o(W - 10 * z - S, 10 * z), c(o.x + S * 0.5f, o.y + S * 0.5f);
+    const float k = S / view;
+    const int d = jsDimOf(p), span = MAP_N << ATLAS_SCALE;
+    dl->AddRectFilled(o - ImVec2(3, 3) * z, o + ImVec2(S, S) + ImVec2(3, 3) * z, IM_COL32(40, 28, 16, 220), 4 * z);
+    dl->AddRectFilled(o, o + ImVec2(S, S), IM_COL32(205, 190, 150, 255));
+    dl->PushClipRect(o, o + ImVec2(S, S), true);
+    for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) {
+      PaperMap* m = atlasTileAt(lv, d, ifloor(p.pos.x) + dx * span, ifloor(p.pos.z) + dz * span, false);
+      if (!m) continue;
+      const ImVec2 a0(c.x + (m->x0 - p.pos.x) * k, c.y + (m->z0 - p.pos.z) * k);
+      dl->AddImage((ImTextureID)(intptr_t)mapTexture(*m), a0, a0 + ImVec2(span * k, span * k));
+    }
+    {   // you: an arrow the way you face
+      const float yaw = p.yaw; const ImVec2 f(-std::sin(yaw), -std::cos(yaw)), sd(-f.y, f.x);
+      const float L = 9 * z;
+      const ImVec2 tip(c.x + f.x * L, c.y + f.y * L), bl(c.x - f.x * L * 0.6f + sd.x * L * 0.6f, c.y - f.y * L * 0.6f + sd.y * L * 0.6f), br(c.x - f.x * L * 0.6f - sd.x * L * 0.6f, c.y - f.y * L * 0.6f - sd.y * L * 0.6f);
+      dl->AddTriangleFilled(tip, bl, br, IM_COL32(230, 60, 40, 255)); dl->AddTriangle(tip, bl, br, IM_COL32(40, 10, 5, 255), 1.5f * z);
+    }
+    dl->PopClipRect();
+    dl->AddRect(o, o + ImVec2(S, S), IM_COL32(90, 64, 34, 255), 0, 0, 2 * z);
+    text(dl, F_SMALL, ImVec2(c.x - textSize(F_SMALL, "N").x * 0.5f, o.y + 2 * z), IM_COL32(150, 30, 20, 255), "N");
+    const std::string t = strFormat("%d  %d  %d", ifloor(p.pos.x), displayY(ifloor(p.pos.y)), ifloor(p.pos.z));
+    const ImVec2 ts = textSize(F_SMALL, t.c_str());
+    text(dl, F_SMALL, ImVec2(c.x - ts.x * 0.5f + 1, o.y + S + 5 * z + 1), IM_COL32(0, 0, 0, 180), t.c_str());
+    text(dl, F_SMALL, ImVec2(c.x - ts.x * 0.5f, o.y + S + 5 * z), col::text, t.c_str());
+    g_minimapBottom = o.y + S + 8 * z + ts.y;
   }
 
   void drawDebug(GameSession& s, ImDrawList* dl, float z) {

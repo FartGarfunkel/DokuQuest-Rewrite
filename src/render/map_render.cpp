@@ -48,6 +48,7 @@ void paint(const PaperMap& m, MapPic& out) {
     d[o + 3] = 255;
   }
   // (0.9.0.65) N, E, S and W inked at the edges so you know which way is which
+  if (m.id.rfind("atlas_", 0) != 0)   // (not on the atlas's tiles: they lie edge to edge, one map; sim/atlas.h)
   for (auto& g : COMPASS_INK) for (int r = 0; r < 5; r++) for (int q = 0; g.rows[r][q]; q++) if (g.rows[r][q] == '1') {
     int o = ((g.y + r) * MAP_N + g.x + q) * 4; d[o] = 74; d[o + 1] = 46; d[o + 2] = 24; d[o + 3] = 255;
   }

@@ -16,6 +16,7 @@
 //            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text} lookAt{entity,job?,dist?: aim at (and stand dist south of) the nearest creature of a type} report{near?,ents?: a type, to list where each stands} shot{path} save leave open{world} quit
 // give takes "d" (wear) and "tag" (enchantments, gear xp). pad buttons: a b x y back guide start ls rs lb rb up down left right, lt / rt (triggers).
 // The log gets "TEST PASS/FAIL ..." lines and a final "TEST DONE passes=N fails=M".
+#include "sim/atlas.h"
 #include "sim/blockfx.h"
 #include "world/rug.h"
 #include "sim/magic.h"
@@ -152,6 +153,9 @@ void runStep(App& a, const json& st) {
     if (st.value("hover", false)) return;   // just move the pointer (tooltips)
     R.later.push_back({f + 1, [btn, x, y] { pushMouseButton(btn, true, x, y); }});
     R.later.push_back({f + 1 + hold, [btn, x, y] { pushMouseButton(btn, false, x, y); }});
+  } else if (op == "atlas" && p) {   // the book's atlas: a map and a compass in its slots, the minimap on (sim/atlas.h)
+    ItemStack mp("empty_map", 1), cp("compass", 1), back;
+    atlasPut(*p, "map", mp, back); atlasPut(*p, "compass", cp, back); setAtlasMinimap(*p, st.value("mini", true));
   } else if (op == "move") {
     pushMotion(a.width / 2, a.height / 2, st.value("dx", 0), st.value("dy", 0));
   } else if (op == "pad" && (st.value("button", "") == "lt" || st.value("button", "") == "rt")) {
@@ -394,6 +398,7 @@ void runStep(App& a, const json& st) {
     else if (n == "board" && p) a.pushScreen(makeQuestBoardScreen(ivec3(ifloor(p->pos.x), ifloor(p->pos.y), ifloor(p->pos.z))));   // the village's quest board (stand in the village)
     else if (n == "path") a.pushScreen(makePathScreen("knight"));
     else if (n == "skilltree") a.pushScreen(makeSkillTreeScreen());
+    else if (n == "map") a.pushScreen(makeMapScreen(-1));
     else if (n == "spellbook") a.pushScreen(makeSpellbookScreen());
     else if (n == "brew" && p) a.pushScreen(makeBrewScreen(ivec3(ifloor(p->pos.x), ifloor(p->pos.y), ifloor(p->pos.z)) + ivec3(st.value("dx", 0), st.value("dy", 0), st.value("dz", 0))));
     else if (n == "inscribe" && p) a.pushScreen(makeInscriptionScreen(ivec3(ifloor(p->pos.x), ifloor(p->pos.y), ifloor(p->pos.z)) + ivec3(st.value("dx", 0), st.value("dy", 0), st.value("dz", 0))));

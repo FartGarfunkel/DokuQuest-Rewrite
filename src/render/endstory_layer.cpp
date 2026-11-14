@@ -20,7 +20,8 @@
 #include <cstdio>
 
 namespace dq {
-float g_storyTrackBottom = 0;   // where the story line on the right ends this frame (0 = not shown)
+float g_storyTrackBottom = 0;
+extern float g_minimapBottom;   // ui/hud.cpp   // where the story line on the right ends this frame (0 = not shown)
 
 using namespace ui;   // text, textSize, Z, F_MID, col:: (ui/theme.h)
 
@@ -169,7 +170,7 @@ public:
       std::string sp = sealed || stage >= 3 ? "" : std::to_string(n) + "/" + std::to_string(RIFT_NEED);
       ImVec2 bs = textSize(F_MID, b.c_str()), ss = textSize(F_DISP, sp.c_str(), 0, 0.5f);
       float bw = bs.x + (sp.empty() && !sealed ? 0 : ss.x + 10 * z + (sealed ? 14 * z : 0)) + 16 * z, bh = std::max(bs.y, ss.y) + 6 * z;
-      ImVec2 p0(W - 10 * z - bw, 120 * z);
+      ImVec2 p0(W - 10 * z - bw, std::max(120 * z, g_minimapBottom));
       g_storyTrackBottom = p0.y + bh + 6 * z;   // the villagers' jobs line up under it (render/villager_layer.cpp)
       dl->AddRectFilled(p0, p0 + ImVec2(bw, bh), IM_COL32(30, 6, 40, 179));
       dl->AddRectFilled(p0, p0 + ImVec2(3 * z, bh), sealed ? col::xp : col::rgb(0xc040ff));

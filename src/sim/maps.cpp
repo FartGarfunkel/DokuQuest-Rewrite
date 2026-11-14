@@ -1,5 +1,6 @@
 // sim/maps.cpp — paper maps: records, exploring, markers, pins, using, crafting (game/maps.js).
 #include "sim/maps.h"
+#include "sim/atlas.h"
 
 namespace dq {
 
@@ -237,6 +238,7 @@ void mapsTick(Level& lv, double dt) {
   MapStore& st = mapStore(lv);
   for (Player* p : levelPlayers(lv)) {
     if (p->dead) continue;
+    atlasExplore(lv, *p);   // the book's atlas (sim/atlas.h)
     for (ItemStack* s : {&p->held(), p->offhand.empty() ? nullptr : &p->offhand[0]}) {
       if (!s || !isMapStack(*s)) continue;
       PaperMap* m = st.forStack(*p, *s);

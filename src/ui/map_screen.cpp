@@ -14,6 +14,8 @@
 #include "client/session.h"
 #include "render/map_render.h"
 #include "sim/maps.h"
+#include "sim/atlas.h"
+#include "assets/icons.h"
 #include <imgui.h>
 
 namespace dq {
@@ -56,16 +58,16 @@ public:
 
   void update(App& a, double dt) override {
     GameSession* s = a.session.get();
-    if (!s || !s->player || !m || s->player->dead) { a.popScreen(); return; }
+    if (!s || !s->player || s->player->dead) { a.popScreen(); return; }
     Input& in = a.input;
     if (in.pressed(Act::Map) || (inventoryClosePressed(a, true) && !in.padButtonPressed(3))) { a.popScreen(); return; }   // pad Y zooms here; E is "next tab"
     if ((refreshT -= dt) <= 0) {   // (a map picked up or dropped meanwhile)
       refreshT = 1; std::string keep = m ? m->id : ""; gather(a);
       sel = 0; for (size_t i = 0; i < list.size(); i++) if (list[i].m->id == keep) sel = (int)i;
-      if (list.empty()) { a.popScreen(); return; }
-      if (list[sel].m->id != keep) choose(a, sel);
+      if (list.empty()) { m = nullptr; maps.clear(); }
+      else if (!m || list[sel].m->id != keep) choose(a, sel);
     }
-    if (in.textActive) return;
+    if (in.textActive || !m) return;
     vec2 mv = in.moveAxis();   // look around: WASD / the left stick
     if (mv.x || mv.y) { cx += mv.x * (float)dt * 300 / k; cz -= mv.y * (float)dt * 300 / k; }
     const int n = (int)list.size();   // the next map: up / down
@@ -84,9 +86,10 @@ public:
   void draw(App& a) override {
     using namespace ui;
     GameSession* s = a.session.get();
-    if (!s || !s->player || !m) return;
+    if (!s || !s->player) return;
     Level& lv = *s->level;
     Player& P = *s->player;
+    if (!m) { drawEmpty(a, lv, P); return; }
     const float z = Z(), W = (float)a.width, H = (float)a.height;
     setBookTheme(a.settings.extra.value("bookDark", true));
     float bk = std::min({(H - 150 * z) / BOOK_H, (W - 120 * z) / BOOK_W, 4.f * z});
@@ -191,8 +194,8 @@ public:
     }
 
     // ================= the left page: your maps and the controls =================
-    float y = Lp.y;
-    text(dl, F_H3, Lp, ink::head, "Your maps");
+    float y = drawAtlas(a, dl, lv, P, Lp, pw);
+    text(dl, F_H3, ImVec2(Lp.x, y), ink::head, "Your maps");
     { std::string c = std::to_string(list.size()) + (list.size() == 1 ? " map" : " maps"); ImVec2 cs = textSize(F_BODY, c.c_str());
       text(dl, F_BODY, ImVec2(Lp.x + pw - cs.x, y + 4 * z), ink::muted, c.c_str()); }
     y += textSize(F_H3, "Ag").y + 2 * z;
@@ -212,9 +215,9 @@ public:
       dl->AddImage((ImTextureID)(intptr_t)mapTexture(*e.m, true), t0, t0 + ImVec2(th, th));
       dl->AddRect(t0 - ImVec2(1, 1), t0 + ImVec2(th + 1, th + 1), withAlpha(ink::text, 0.6f));
       const float tx = r0.x + th + 8 * z;
-      std::string t1 = jsDimName(e.m->dim) + "  \xC2\xB7  1:" + std::to_string(1 << e.m->scale);
+      std::string t1 = e.slot == -3 ? jsDimName(e.m->dim) + "  \xC2\xB7  the atlas" : jsDimName(e.m->dim) + "  \xC2\xB7  1:" + std::to_string(1 << e.m->scale);
       std::string t2 = std::to_string((int)std::lround(e.m->explored() * 100)) + "% explored  \xC2\xB7  " + std::to_string(e.m->span()) + " blocks across";
-      std::string t3 = e.slot == -2 ? "In your off hand" : e.slot == P.selected ? "In your hand" : e.slot < 9 ? "On your hotbar" : "In your bag";
+      std::string t3 = e.slot == -3 ? "Your atlas (in your book)" : e.slot == -2 ? "In your off hand" : e.slot == P.selected ? "In your hand" : e.slot < 9 ? "On your hotbar" : "In your bag";
       text(dl, F_BODY, ImVec2(tx, r0.y + 2 * z), i == sel ? ink::head : ink::text, t1.c_str());
       text(dl, F_SMALL, ImVec2(tx, r0.y + 2 * z + lh), ink::muted, t2.c_str());
       text(dl, F_SMALL, ImVec2(tx, r0.y + 2 * z + lh + sh), e.slot == P.selected || e.slot == -2 ? ink::key : ink::muted, t3.c_str());
@@ -269,6 +272,70 @@ private:
   float zoom = 1, cx = 0, cz = 0, k = 1, baseK = 1;
   bool dragging = false, moved = false;
   ImVec2 dragFrom; vec2 dragC{0};
+  static void giveBack(Level& lv, Player& p, const ItemStack& s) { void (*g)(Level&, Player&, const ItemStack&) = giveOrDrop; g(lv, p, s); }
+  // the atlas: the book's map and compass slots and the minimap switch, at the top of the left page; returns the y under it
+  float drawAtlas(App& a, ImDrawList* dl, Level& lv, Player& P, ImVec2 Lp, float pw) {
+    using namespace ui;
+    const float z = Z(); float y = Lp.y;
+    text(dl, F_H3, Lp, ink::head, "Atlas");
+    y += textSize(F_H3, "Ag").y + 4 * z;
+    const float sz = std::round(34 * z);
+    auto slotBox = [&](const char* which, const char* ghost, const char* label, float x) {
+      const ItemStack it = atlasSlot(P, which);
+      const ImVec2 p0(x, y), p1(x + sz, y + sz);
+      dl->AddRectFilled(p0, p1, withAlpha(ink::text, 0.12f), 3 * z); dl->AddRect(p0, p1, withAlpha(ink::text, 0.5f), 3 * z);
+      IconRef ic = itemIcons().get(it.empty() ? ghost : it.id);
+      if (ic.valid()) dl->AddImage((ImTextureID)ic.tex, ImVec2(p0.x + 3, p0.y + 3), ImVec2(p1.x - 3, p1.y - 3), ImVec2(ic.uv0.x, ic.uv0.y), ImVec2(ic.uv1.x, ic.uv1.y), it.empty() ? IM_COL32(255, 255, 255, 60) : IM_COL32_WHITE);
+      text(dl, F_SMALL, ImVec2(x + sz + 6 * z, y + 2 * z), ink::text, label);
+      text(dl, F_SMALL, ImVec2(x + sz + 6 * z, y + sz * 0.5f), ink::muted, it.empty() ? "empty: click" : "click to take out");
+      ImGui::SetCursorScreenPos(p0);
+      if (ImGui::InvisibleButton((std::string("##atlas_") + which).c_str(), ImVec2(sz, sz))) {
+        if (!it.empty()) { ItemStack back = atlasTake(P, which); giveBack(lv, P, back); playClick(); }
+        else {   // the first one in your bag goes in
+          for (ItemStack& st : P.inv) {
+            if (st.empty() || !((std::string(which) == "map" && (st.id == "empty_map" || st.id == "filled_map")) || (std::string(which) == "compass" && st.id == "compass"))) continue;
+            ItemStack back; if (atlasPut(P, which, st, back).empty()) { if (!back.empty()) giveBack(lv, P, back); playClick(); gather(a); if (!list.empty() && !m) choose(a, 0); }
+            break;
+          }
+          if (atlasSlot(P, which).empty()) toast(lv, P, std::string("You have no ") + (std::string(which) == "map" ? "map (an empty map or a map)" : "compass") + " to put in");
+        }
+      }
+    };
+    slotBox("map", "empty_map", "Map", Lp.x);
+    slotBox("compass", "compass", "Compass", Lp.x + pw * 0.5f);
+    y += sz + 6 * z;
+    if (atlasHasCompass(P) && atlasHasMap(P)) {
+      ImGui::SetCursorScreenPos(ImVec2(Lp.x, y));
+      bool mini = atlasMinimap(P);
+      if (ImGui::Checkbox("Minimap in the corner##mini", &mini)) setAtlasMinimap(P, mini);
+      y += ImGui::GetFrameHeight() + 2 * z;
+    } else {
+      const char* why = atlasHasMap(P) ? "Add a compass for the minimap" : "A map in your book maps the world as you go";
+      text(dl, F_SMALL, ImVec2(Lp.x, y), ink::muted, why); y += textSize(F_SMALL, "Ag").y + 2 * z;
+    }
+    dl->AddRectFilled(ImVec2(Lp.x, y + 2 * z), ImVec2(Lp.x + pw, y + 2 * z + std::max(1.f, z)), ink::faint);
+    return y + 8 * z;
+  }
+  // the map page with nothing on it yet: the slots, and how
+  void drawEmpty(App& a, Level& lv, Player& P) {
+    using namespace ui;
+    const float z = Z(), W = (float)a.width, H = (float)a.height;
+    setBookTheme(a.settings.extra.value("bookDark", true));
+    float bk = std::min({(H - 150 * z) / BOOK_H, (W - 120 * z) / BOOK_W, 4.f * z}); bk = std::max(1.f, std::floor(bk * 4) / 4);
+    const ImVec2 org(std::round((W - BOOK_W * bk) * 0.5f), std::round(std::max(44 * z, (H - BOOK_H * bk) * 0.5f - 12 * z)));
+    ImGui::SetNextWindowPos(ImVec2(0, 0)); ImGui::SetNextWindowSize(ImVec2(W, H));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0)); ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
+    ImGui::Begin("##mapview", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoBringToFrontOnFocus);
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    if (!bookUiDrawing()) dl->AddRectFilled(ImVec2(0, 0), ImVec2(W, H), IM_COL32(0, 0, 0, 110));
+    drawBookSpread(dl, org, bk);
+    const ImVec2 Lp = bookTextOrigin(org, bk, 0), Rp = bookTextOrigin(org, bk, 1);
+    const float pw = BOOK_TW * bk, sh = textSize(F_SMALL, "Ag").y + 2 * z;
+    float y = drawAtlas(a, dl, lv, P, Lp, pw);
+    for (auto& ln : Book::wrap(F_SMALL, "Put a map (an empty map or one you've drawn) in the map slot: your book maps the world as you walk, every place you go laid together on the right-hand page. A compass beside it lets a minimap show in the corner of your view. Maps you carry show here too.", pw)) { text(dl, F_SMALL, ImVec2(Lp.x, y), ink::text, ln.c_str()); y += sh; }
+    text(dl, F_H3, Rp, ink::muted, "No map yet");
+    ImGui::End(); ImGui::PopStyleVar(2);
+  }
   void zoomBy(float f) { zoom = clampv(zoom * f, 0.2f, 10.f); k = baseK * zoom; }
   // every map you carry (the hotbar first, then the bag, then the off hand), once each
   void gather(App& a) {
@@ -276,6 +343,7 @@ private:
     GameSession* s = a.session.get();
     if (!s || !s->player) return;
     Player& p = *s->player;
+    if (atlasHasMap(p)) if (PaperMap* am = atlasTileAt(*s->level, jsDimOf(p), ifloor(p.pos.x), ifloor(p.pos.z), true)) list.push_back({-3, am});
     std::vector<int> slots;
     for (int i = 0; i < (int)p.inv.size(); i++) slots.push_back(i);
     slots.push_back(-2);
@@ -309,9 +377,7 @@ std::unique_ptr<Screen> makeMapScreen(int slot) { return std::make_unique<MapScr
 bool canOpenMapScreen(App& a) {
   GameSession* s = a.session.get();
   if (!s || !s->player) return false;
-  Player& p = *s->player;
-  for (auto& st : p.inv) if (isMapStack(st)) return true;
-  return !p.offhand.empty() && isMapStack(p.offhand[0]);
+  (void)s; return true;   // (the book's map page: its slots, the atlas, the maps you carry)
 }
 
 } // namespace dq
