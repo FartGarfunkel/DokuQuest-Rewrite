@@ -232,6 +232,14 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
     g_upright = true;
     depth = k == "sword" ? sword(m) : sword(m, 0.92f, 0.13f, 0.16f);
     g_upright = false;
+    {   // both faces alike: the grid has no middle layer (its centres sit half a voxel either side of the blade's plane),
+        // so where the blade thins to its edges one layer was left on one side: that face flat, the other stepped
+      VoxelGrid& G = b.P.g; const int Z = G.size.z;
+      for (int y = 0; y < G.size.y; y++) for (int x = 0; x < G.size.x; x++) for (int z = 0; z < Z / 2; z++) {
+        const u32 a = G.at(x, y, z), c = G.at(x, y, Z - 1 - z);
+        if (a && !c) G.set(x, y, Z - 1 - z, a); else if (c && !a) G.set(x, y, z, c);
+      }
+    }
     b.tilt = -0.7853982f;
   }
   else if (k == "club") {
