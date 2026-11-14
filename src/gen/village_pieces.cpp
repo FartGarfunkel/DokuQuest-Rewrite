@@ -176,7 +176,9 @@ BlockId nearestBlock(std::string n, std::string& keyOut) {
     {"pedestal", "chiseled_stone_bricks"}, {"urn", "decorated_pot"}, {"trapdoor", "oak_trapdoor"}, {"door", "oak_door"}, {"button", "oak_button"},
     {"window", "glass_pane"}, {"pane", "glass_pane"}, {"shingles", "bricks"}, {"casing", "andesite"}, {"girder", "iron_bars"}, {"shelf", "bookshelf"},
     {"notice_board", "oak_planks"}, {"doormat", "brown_carpet"}, {"clock", "copper_block"}, {"dripleaf", "fern"},
-    {"shroom", "brown_mushroom_block"}, {"spikes", "bamboo"}, {"faucet", "iron_bars"}, {"belt", "black_wool"}, {"crank", "lever"}, {"link", "lever"}};
+    {"shroom", "brown_mushroom_block"}, {"spikes", "bamboo"}, {"faucet", "iron_bars"}, {"belt", "black_wool"}, {"crank", "lever"}, {"link", "lever"},
+    // (other mods' woods, signs and flowers: they had been left out, holes in the builds that used them)
+    {"_wood", "log"}, {"bundle", "log"}, {"sign", "oak_sign"}, {"begonia", "red_tulip"}, {"bleeding_heart", "red_tulip"}};
   static const char* SHAPES[] = {"_stairs", "_slab", "_wall", "_fence", "_fence_gate", "_trapdoor", "_door", "_pillar", "_vertical_slab", "_button", "_pressure_plate", "_bars"};
   std::string shape;
   for (const char* sh : SHAPES) { const size_t L = strlen(sh); if (n.size() > L && n.compare(n.size() - L, L, sh) == 0) { shape = sh; break; } }
