@@ -101,7 +101,8 @@ static void bowDrawArms(CharAngles& A, const CharPose& pose, const CharModel& M,
 CharWork charWorkOf(const std::string& d) {
   static const std::pair<const char*, CharWork> K[] = {{"hammer", CW_HAMMER}, {"dip", CW_DIP}, {"brew", CW_BREW}, {"grind", CW_GRIND}, {"chop", CW_CHOP},
     {"knead", CW_KNEAD}, {"cut", CW_CUT}, {"weave", CW_WEAVE}, {"tend", CW_TEND}, {"fit", CW_FIT}, {"sort", CW_SORT}, {"shelve", CW_SORT},
-    {"work", CW_CRAFT}, {"hoe", CW_HOE}, {"feed", CW_FEED}, {"chisel", CW_CHISEL}};
+    {"work", CW_CRAFT}, {"hoe", CW_HOE}, {"feed", CW_FEED}, {"chisel", CW_CHISEL},
+    {"soak", CW_DIP}, {"scrape", CW_CUT}};   // (the tanner: a hide lowered into the barrel; the knife drawn over the hide on the bench)
   for (auto& [k, v] : K) if (d == k) return v;
   return CW_NONE;
 }

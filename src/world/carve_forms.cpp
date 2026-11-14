@@ -13,6 +13,14 @@ std::vector<Form> g_forms;                         // by block id
 // octants kept on one side of the block: side 0 N (z low), 1 E (x high), 2 S (z high), 3 W (x low)
 bool onSide(int side, int hx, int hz) { return side == 0 ? hz == 0 : side == 1 ? hx == 1 : side == 2 ? hz == 1 : hx == 0; }
 
+// a stairs block's high half there (its facing side; with a corner, see STAIR_CORNER): a = facing | corner bits
+bool stairHigh(int hx, int hz, int a) {
+  const int s = a & 3;
+  if (!(a & STAIR_CORNER)) return onSide(s, hx, hz);
+  const int o = a & STAIR_RIGHT ? (s + 1) & 3 : (s + 3) & 3;
+  return a & STAIR_OUTER ? onSide(s, hx, hz) && onSide(o, hx, hz) : onSide(s, hx, hz) || onSide(o, hx, hz);
+}
+
 u8 maskWhere(bool (*keep)(int, int, int, int), int arg) {
   u8 m = 0;
   for (int hx = 0; hx < 2; hx++) for (int hy = 0; hy < 2; hy++) for (int hz = 0; hz < 2; hz++)
@@ -54,9 +62,12 @@ CarveForm carveFormOf(BlockId id, u8 meta) {
     else if (m >= 2 && m <= 5) out.carve = maskWhere([](int hx, int, int hz, int s) { return onSide(s, hx, hz); }, m - 2);
   } else {
     int face = meta & 3; bool upside = meta & 4;
-    // the full half (bottom, or top when upside-down) plus the high side of the other half
-    out.carve = upside ? maskWhere([](int hx, int hy, int hz, int s) { return hy == 1 || onSide(s, hx, hz); }, face)
-                       : maskWhere([](int hx, int hy, int hz, int s) { return hy == 0 || onSide(s, hx, hz); }, face);
+    // the full half (bottom, or top when upside-down) plus the high side of the other half; a corner: an inner one high on
+    // its side to the left (right) as well, an outer one only where the two sides meet (a roof's corners whole: before,
+    // every corner stair was a straight one, and a hipped roof had a hole at each corner)
+    const int arg = face | (meta & (STAIR_CORNER | STAIR_OUTER | STAIR_RIGHT));
+    out.carve = upside ? maskWhere([](int hx, int hy, int hz, int a) { return hy == 1 || stairHigh(hx, hz, a); }, arg)
+                       : maskWhere([](int hx, int hy, int hz, int a) { return hy == 0 || stairHigh(hx, hz, a); }, arg);
   }
   if (out.carve == 0xFF) return {};
   return out;

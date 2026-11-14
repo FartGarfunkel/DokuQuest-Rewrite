@@ -1,5 +1,6 @@
 // tools/test_world.cpp — headless checks for the world (after TerraFirmaCraft): rock layers and where the ores lie,
 // cave-ins and support beams, the new crops and plants. Run: build/test_world (exit code = failures)
+#include "world/carve_forms.h"
 #include "core/init.h"
 #include "core/registry.h"
 #include "sim/level.h"
@@ -103,6 +104,13 @@ int main(int argc, char** argv) {
   {
     const BlockId STONE = reg().blockId("stone"), BEAM = reg().blockId("support_beam");
     check(isRock(STONE) && !isRock(reg().blockId("stone_bricks")) && !isRock(reg().blockId("log")), "raw rock is rock; bricks and logs aren't");
+    {   // corner stairs keep their corner as chiseled blocks (a hipped roof's corners whole)
+      const BlockId st = reg().blockId("oak_stairs");
+      auto solid = [](u8 carve) { int n = 0; for (int i = 0; i < 8; i++) n += !((carve >> i) & 1); return n; };
+      const CarveForm s0 = carveFormOf(st, 0), in = carveFormOf(st, STAIR_CORNER), out = carveFormOf(st, STAIR_CORNER | STAIR_OUTER), inR = carveFormOf(st, STAIR_CORNER | STAIR_RIGHT);
+      check(st && s0.base && solid(s0.carve) == 6 && solid(in.carve) == 7 && solid(out.carve) == 5 && in.carve != inR.carve,
+            "corner stairs keep their corner chiseled (straight 6, inner 7, outer 5 of 8; left and right differ)");
+    }
     // a cave 9 wide, its roof of stone
     const int Y0 = rg.Y + 2;
     for (int x = -2; x <= 12; x++) for (int z = -2; z <= 12; z++) { w.setBlock(x, Y0 + 3, z, STONE); w.setBlock(x, Y0 + 4, z, STONE); for (int y = Y0; y < Y0 + 3; y++) w.setBlock(x, y, z, AIR); }

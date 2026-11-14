@@ -62,7 +62,7 @@ void addBuiltinTileAnims(TileSet& ts) {
 
 namespace {
 // three copies used in turn, so the one being written is never the one the GPU is still reading
-constexpr int MAP_N = 64, MAP_RING = 3;
+constexpr int MAP_N = 128, MAP_RING = 3;   // (16384 layers: the tiles are past 4096 now, a torch's flame among them)
 GLuint gMap[MAP_RING] = {0, 0, 0}; int gCur = 0;
 std::vector<u16> gData;
 void identity() { gData.resize(MAP_N * MAP_N); for (int i = 0; i < MAP_N * MAP_N; i++) gData[i] = (u16)i; }
@@ -104,7 +104,7 @@ void TileAnimator::update(const TileSet& ts, const TileTextures&, double t) {
     if (f == cur[i]) continue;
     cur[i] = f;
     int src = a.frames[f];
-    if (src < 0 || src >= ts.count) continue;   // (a frame may be any layer: the map's values are 16-bit; the animated tile itself is under 4096)
+    if (src < 0 || src >= ts.count) continue;   // (a frame may be any layer: the map's values are 16-bit)
     if (gData[a.layer] != (u16)src) { gData[a.layer] = (u16)src; changed = true; }
   }
   if (changed) uploadMap();

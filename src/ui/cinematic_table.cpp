@@ -1025,7 +1025,10 @@ void cinematicCamera(GameSession& s, Camera& cam, double dt) {
   Scene& S = scene();
   if (S.phase == 0) return;
   S.t += dt; S.clock += dt;
-  S.lean = s.app.settings.extra.value("cinematicLean", false);
+  // leaning in over the work, your arms out to it (Cinematic Interactions' way): the anvil (the hammer in your hand on the
+  // work), the enchanting table (a finger to its runes) and the grindstone (the tool held to the spinning wheel) always;
+  // the rest as the option says (seamless first person, your own body bending to them)
+  S.lean = s.app.settings.extra.value("cinematicLean", false) || S.kind == 1 || S.kind == 2 || S.kind == 6;
   if (!S.lean) {   // seamless first person (the default): your own view; your body bends to the work and the eye goes with it
     if (S.phase == 1 && S.t >= 0.35) { S.phase = 2; S.t = 0; }
     else if (S.phase == 3 && S.t >= 0.35) S.phase = 0;

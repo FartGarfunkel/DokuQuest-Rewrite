@@ -65,7 +65,7 @@ std::string sculptKind(const std::string& key, const ItemDef* def) {
   auto re = [&](const char* r) { return rxSearch(key, r); };
   if (re("paper|map$|feather|^string$|_cape$|name_tag|pattern|^lore_")) return "flat";
   if (re("^leather$|^pelt$|hide$|saddle|music_disc|compass|clock|charm$|_scale$|^turtle_scute$|minecart|boat$|ship$")) return "thin";
-  if ((def->hasTool && def->tool.type == "sword") || re("dagger|blade$")) return "blade";
+  if ((def->hasTool && def->tool.type == "sword" && key != "smith_hammer") || re("dagger|blade$")) return "blade";
   if (def->hasTool || def->has("staff") || re("stick|rod$|bone$|^cinder_rod$|spyglass|horn$|whistle|tooth$|shard$")) return "tool";
   if (def->has("food") || re("ball$|egg|snowball|pearl|eye|seeds|berries|nugget|dust|powder|diamond|emerald|ruby|sapphire|quartz|crystal|lapis|coal|flint|bone_meal|_dye$|beans|wart|slime|cream|sac$|core$|heart|sugar|flour|crushed_|gunpowder|honeycomb|puff$|petal|ectoplasm")) return "round";
   return "default";
@@ -247,6 +247,7 @@ void buildTorch(const TileSet& ts, int tile, VoxelGrid& g, VoxelFaceColor& fc) {
 // middle and right; a sword's tip, then the base), the light and shade of each voxel kept; a haft other than a stick in its
 // colour; and a gem set in the middle of the head.
 static thread_local const std::function<void(VoxelGrid&)>* g_recolour = nullptr;
+static thread_local int g_flameFrame = 0;   // a torch's flame: which frame of the pack's animated flame ("flame<n>:")
 // a mix's flecks come in clumps of 2x2x2 voxels (streaks of each metal, not single-voxel noise)
 static u32 clumpHash(int x, int y, int z) { return (u32)(x >> 1) * 73856093u ^ (u32)(y >> 1) * 19349663u ^ (u32)(z >> 1) * 83492791u; }
 static void recolourPartTool(VoxelGrid& g, const std::string& kind, const std::vector<std::string>& mats, const std::string& haft, const std::string& gem) {
@@ -466,6 +467,14 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
     const auto* prev = g_recolour; g_recolour = &fn;
     const bool ok = buildItemModel(key.substr(5), out);
     g_recolour = prev;
+    out.key = key;
+    return ok;
+  }
+  if (startsWith(key, "flame") && key.find(':') != std::string::npos) {   // "flame<n>:<torch>": its flame at frame n
+    const size_t c = key.find(':');
+    const int prevF = g_flameFrame; g_flameFrame = std::atoi(key.substr(5, c - 5).c_str());
+    const bool ok = buildItemModel(key.substr(c + 1), out);
+    g_flameFrame = prevF;
     out.key = key;
     return ok;
   }
@@ -708,7 +717,17 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
         const int S = ts.size;
         for (auto& bx : PM->boxes) {
           const vec3 a0 = bx.from, a1 = bx.to;
-          const bool thinX = a1.x - a0.x < 0.5f, thinZ = a1.z - a0.z < 0.5f;   // (a flame's crossed planes: a voxel thick)
+          const bool thinX = a1.x - a0.x < 0.5f, thinZ = a1.z - a0.z < 0.5f;   // (a flame's crossed planes)
+          // the flame is not made solid: in the hand it burns as flickering flame particles at the head
+          // (render/held_light_fx.cpp), on the wall as the pack's animated picture (render/mesher.cpp)
+          int flameTile = -1;
+          if (bx.flame) {   // the flame: this frame of the pack's animated picture (a plane a voxel thick, as on the wall)
+            int ft = -1; for (int f = 0; f < 4; f++) if (bx.face[f].tile >= 0) { ft = bx.face[f].tile; break; }
+            for (auto& an : ts.anims) if (an.layer == ft && !an.frames.empty()) {
+              flameTile = an.frames[(size_t)g_flameFrame % an.frames.size()];
+              out.flameFrames = (u8)std::min<size_t>(an.frames.size(), 255); out.flameMs = (u16)std::clamp(an.frameTime, 1, 65535);
+            }
+          }
           const float c = std::cos(glm::radians(bx.rotAngle)), sn = std::sin(glm::radians(bx.rotAngle));
           for (int z = 0; z < tg.size.z; z++) for (int y = 0; y < tg.size.y; y++) for (int x = 0; x < tg.size.x; x++) {
             vec3 p = (vec3(x, y, z) + 0.5f) / (float)K;
@@ -725,7 +744,8 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
             const float dist[6] = {p.z - a0.z, a1.z - p.z, p.x - a0.x, a1.x - p.x, a1.y - p.y, p.y - a0.y};
             int f = -1; for (int i = 0; i < 6; i++) if (bx.face[i].tile >= 0 && (f < 0 || dist[i] < dist[f])) f = i;
             if (f < 0) continue;
-            const PackModelFace& fcx = bx.face[f];
+            PackModelFace fcx = bx.face[f];
+            if (flameTile >= 0) fcx.tile = flameTile;
             // (across the box's own face: its uv spans the box, not the block)
             auto fr = [](float q, float lo, float hi) { return hi - lo > 1e-3f ? clampv((q - lo) / (hi - lo), 0.f, 0.999f) : 0.5f; };
             const float fx = fr(p.x, a0.x, a1.x), fy = fr(p.y, a0.y, a1.y), fz = fr(p.z, a0.z, a1.z);
@@ -734,7 +754,7 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
             const float uu = fcx.uv.x + (fcx.uv.z - fcx.uv.x) * u, vv = fcx.uv.y + (fcx.uv.w - fcx.uv.y) * v;
             const u32 col = tileVoxel(ts, fcx.tile, clampv((int)(uu / 16 * S), 0, S - 1), clampv((int)(vv / 16 * S), 0, S - 1));
             if ((col >> 24) < 128) continue;
-            tg.set(x, y, z, col | 0xFF000000u);
+            tg.set(x, y, z, flameTile >= 0 || bx.flame ? (col & 0xFFFFFFu) | (u32)VOXEL_GLOW << 24 : col | 0xFF000000u);   // (the flame glows, as on the wall)
           }
         }
         // the same span as the game's own held torch (0.8 tall, its top at the origin), so the hand view's grip fits it
@@ -793,6 +813,46 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
   // ---- everything else: built from parts, or sculpted from the picture
   int t = def ? tileOf(def->icon) : -1;
   SpriteInfo I = SpriteInfo::of(ts, t);
+  if (def && !I.empty() && model3dKind(base, def) == "hammer") {
+    // a hammer, a real one: a straight haft with a leather grip, the squared head across its top (the smith's with a
+    // cross-peen), coloured from its own picture (the wood of its handle, the stone, flint or iron of its head). Built
+    // upright like the torch and held as the torch is, in the fist at the haft's foot, the head up (the picture's
+    // diagonal, voxelised, had come out a stepped slab standing in the hand)
+    double wr = 0, wg = 0, wb = 0, hr = 0, hg = 0, hb = 0; int wn = 0, hn = 0;
+    for (u32 c : I.raw) {
+      if (!c) continue;
+      const int r = c & 255, g = (c >> 8) & 255, bb = (c >> 16) & 255, mx = std::max({r, g, bb}), mn = std::min({r, g, bb});
+      if (mx < 45) continue;   // (the outline)
+      if (r > bb + 25 && r >= g && mx - mn > 30) { wr += r; wg += g; wb += bb; wn++; } else { hr += r; hg += g; hb += bb; hn++; }
+    }
+    const vec3 wood = wn ? vec3((float)(wr / wn), (float)(wg / wn), (float)(wb / wn)) : vec3(120, 84, 50);
+    const vec3 head = hn ? vec3((float)(hr / hn), (float)(hg / hn), (float)(hb / hn)) : vec3(140, 140, 146);
+    const bool peen = false;   // (the smith's hammer as the stone one: a plain squared head)
+    VoxelGrid g(ivec3(32, 34, 32));
+    auto col = [&](vec3 c, float k, int x, int y, int z) {
+      const float n = ((float)((x * 73856093u ^ y * 19349663u ^ z * 83492791u) % 13u) - 6.f) * 1.6f;   // (a little grain)
+      return voxRGBA((int)(c.r * k + n), (int)(c.g * k + n), (int)(c.b * k + n));
+    };
+    for (int y = 0; y < 28; y++) for (int z = 15; z < 18; z++) for (int x = 15; x < 18; x++) {   // the haft, its grip wrapped
+      const bool grip = y >= 3 && y < 11, band = y == 3 || y == 10;
+      g.set(x, y, z, grip ? col(wood, band ? 0.45f : 0.62f, x, y, z) : col(wood, 1.f, x, y, z));
+    }
+    // (the head runs front to back, as a hammer is held to strike: its face forward (-z, away from you), the smith's peen
+    //  toward you; not across the haft side to side)
+    for (int y = 27; y < 34; y++) for (int x = 13; x < 20; x++) for (int z = 8; z < 25; z++) {   // the head
+      if (peen && z > 20) {   // (the cross-peen: narrowing to a wedge)
+        const int t2 = z - 20;   // 1..4
+        if (y < 27 + t2 || y > 33 - t2 / 2) continue;
+      }
+      const bool face = z == 8 || z == 24, top = y == 33, eye = z >= 14 && z < 19 && y < 29;
+      g.set(x, y, z, col(head, face ? 1.25f : top ? 1.1f : eye ? 0.8f : 0.95f, x, y, z));
+    }
+    const float px = 0.8f / 17.f;
+    VoxelFrame fr; fr.voxel = px / 2; fr.origin = vec3(-8 * px, -0.8f, -8 * px);
+    out.kind = VoxelModel::Block; out.torch3d = true; out.depth = 0.1f;
+    finishGrid(out, g, fr, nullptr);
+    return true;
+  }
   VoxelPainter P(ivec3(52, 52, 52), vec3(-26.f / 32), 1.f / 32);
   ItemBuild b{ts, P, I, key, def};
   float sz = 1;
@@ -876,6 +936,12 @@ void itemModelsUpdate() {
     std::sort(v.begin(), v.end());
     for (size_t i = 0; i < v.size() && C.models.size() > MAX_MODELS * 3 / 4; i++) { C.models.erase(v[i].second); C.lastUse.erase(v[i].second); }
   }
+}
+
+std::string torchFlameKey(const std::string& key, const VoxelModel& plain, double t) {
+  if (!plain.torch3d || plain.flameFrames < 2) return key;
+  const long long f = (long long)(t * 1000.0 / std::max<int>(1, plain.flameMs)) % plain.flameFrames;   // (as render/tile_anim.cpp times the wall's)
+  return f == 0 ? key : "flame" + std::to_string(f) + ":" + key;
 }
 
 const VoxelModel& itemModel(const std::string& key) {

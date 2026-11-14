@@ -28,6 +28,7 @@ struct VoxelModel {
   std::string key;
   Kind kind = Flat;            // the original's im.kind: 'block' (block items) or 'flat' (pictures and part models)
   bool torch3d = false;        // the 3D torch (held upright)
+  u8 flameFrames = 0; u16 flameMs = 0;   // a torch whose flame is the pack's animated one: "flame<n>:<key>" is frame n (torchFlameKey)
   bool stand = false;          // stands on its foot (potions, buckets...)
   float depth = 0.04f;         // half its thickness, model units (how far it sticks out of a frame / off the ground)
   VoxelFrame frame;            // grid -> model space
@@ -43,6 +44,9 @@ struct VoxelModel {
 // returned model has ready() == false (draw nothing or a fallback). Extra keys like the original's:
 // "bow_pulling_0..2", "fishing_rod_cast", "fishing_rod_tp".
 const VoxelModel& itemModel(const std::string& key);
+// a 3D torch's model as its flame is now (the pack's flame frames, timed as on the wall): the key to draw, given the
+// plain model and the time in seconds
+std::string torchFlameKey(const std::string& key, const VoxelModel& plain, double t);
 // Build on this thread, CPU only (no GL) — used by the icon renderer and the workers.
 bool buildItemModel(const std::string& key, VoxelModel& out);
 // The tiles (or the resource pack) changed: drop every model; later builds read this tile set (copied).

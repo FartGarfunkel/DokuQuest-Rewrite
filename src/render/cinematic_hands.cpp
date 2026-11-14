@@ -10,6 +10,7 @@
 #include "render/char_layer.h"
 #include "assets/item_models.h"
 #include "assets/voxel.h"
+#include "assets/item_build.h"
 #include "core/tool_parts.h"
 #include "sim/worktable.h"
 #include "sim/station_work.h"
@@ -170,12 +171,24 @@ public:
       VR.draw(arm.gl, M * arm.matrix(), L);
     }
     if (forging >= 0) {   // the hammer in the right hand, its head down to the work
-      const VoxelModel& hm = itemModel("smith_hammer");   // ("hammer" was no item: the hammer was never drawn)
+      // your own hammer if you hold one (the stone, flint or smith's: the same as in your hand anywhere), else the smith's
+      const ItemStack& hs = s.player->held();
+      const bool ownHammer = !hs.empty() && model3dKind(hs.id, reg().item(hs.id)) == "hammer";
+      const VoxelModel& hm = itemModel(ownHammer ? hs.id : std::string("smith_hammer"));
       if (hm.ready()) {
         mat4 m = glm::translate(mat4(1), f.cam.rel(glm::dvec3(hand[0] + vec3(0, -0.02f, 0))));
         m = glm::rotate(m, s.frame.cam.yaw, vec3(0, 1, 0));
-        m = glm::rotate(m, -1.1f, vec3(1, 0, 0));
-        m = glm::scale(m, vec3(0.42f));
+        // held as in your hand anywhere else (render/item_layers.cpp fpGripMatrix): the haft up out of the fist, the head on
+        // top, its face forward; each blow swings it forward and down, the face onto the work, then back up
+        float swing = 0;
+        for (double b : {0.7, 1.02, 1.3}) {   // (the anvil's blows, ui/cinematic_table.cpp BLOWS)
+          const double d = forging - b;
+          if (d > -0.2 && d < 0.18) swing = std::max(swing, d < 0 ? (float)(1 - (-d / 0.2) * (-d / 0.2)) : (float)(1 - d / 0.18));
+        }
+        m = glm::rotate(m, 0.15f, vec3(0, 0, 1));                        // (leaning a little in, as a fist holds it)
+        m = glm::rotate(m, 0.25f - 1.45f * swing, vec3(1, 0, 0));       // (drawn back, then down onto the work)
+        m = glm::scale(m, vec3(0.62f));   // (the size it is in your hand: it had been half that, a toy)
+        m = glm::translate(m, vec3(0, 0.62f, 0));
         VR.draw(hm.gl, m * hm.matrix(), L);
       }
     }

@@ -276,7 +276,12 @@ VPState mapState(const json& e) {
       S.meta[r] = (u8)m; continue;
     }
     if (d.has("cauldron")) m = n == "water_cauldron" ? std::clamp(propI(P, "level", 3), 1, 3) : 0;   // (its water: meta & 3, sim/heat.cpp)
-    else if (shape == ShapeKind::Stairs) m = (rf < 0 ? 0 : rf) | (top ? 4 : 0);
+    else if (shape == ShapeKind::Stairs) {   // (a corner: world/carve_forms.h STAIR_CORNER bits, so a roof's corners are whole)
+      m = (rf < 0 ? 0 : rf) | (top ? 4 : 0);
+      const std::string sh = prop(P, "shape");
+      if (sh == "inner_left") m |= STAIR_CORNER; else if (sh == "inner_right") m |= STAIR_CORNER | STAIR_RIGHT;
+      else if (sh == "outer_left") m |= STAIR_CORNER | STAIR_OUTER; else if (sh == "outer_right") m |= STAIR_CORNER | STAIR_OUTER | STAIR_RIGHT;
+    }
     else if (shape == ShapeKind::Slab) { const std::string t = prop(P, "type"); m = t == "top" ? 1 : t == "double" ? 6 : 0; }
     else if (shape == ShapeKind::Door) m = (rf < 0 ? 0 : rf) | (prop(P, "open") == "true" ? 4 : 0) | (prop(P, "hinge") == "right" ? 8 : 0) | (top ? 16 : 0);
     else if (shape == ShapeKind::Trapdoor) m = (rf < 0 ? 0 : (rf + 2) & 3) | (prop(P, "open") == "true" ? 4 : 0) | (top ? 8 : 0);
@@ -944,7 +949,18 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
             }
             sofa = closed(ea) && closed(eb) && !bad;
           }
-          if (!arms && !back && !tbl && !sofa) continue;
+          // pews: rows of wooden seats indoors, one row behind another the same way round (a chapel's, a hall's): each a
+          // bench of ours (they were left as stairs, a church full of steps)
+          bool pews = false;
+          if (!stone && roofed && run.size() >= 2) for (int j : run) {
+            const VPBlock& c = P.blocks[j];
+            for (int d = 1; d <= 2 && !pews; d++) for (int sgn : {1, -1}) {
+              const int q = at2(c.x + sgn * d * DX[rf], c.y, c.z + sgn * d * DZ[rf]);
+              if (q >= 0 && q != j && shapeOf(q) == ShapeKind::Stairs && (m0(q) & 3) == rf && !(m0(q) & 4) && seatOk(q)) { pews = true; break; }
+            }
+            if (pews) break;
+          }
+          if (!arms && !back && !tbl && !sofa && !pews) continue;
           if (!arms && !back) {   // a table alone doesn't make a seat of a stair in a roof's stepped foot, or one out in the snow
             const VPBlock& c = P.blocks[run[0]];
             const int sb = shapeOf(at2(c.x + DX[rf], c.y, c.z + DZ[rf])), sf = shapeOf(at2(c.x + DX[front], c.y, c.z + DZ[front]));
@@ -957,7 +973,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
                    nm(at2(c.x + DX[rf], c.y, c.z + DZ[rf])).c_str(), nm(at2(c.x + DX[rf], c.y + 1, c.z + DZ[rf])).c_str(), nm(at2(c.x + DX[front], c.y, c.z + DZ[front])).c_str(), (int)roofed);
           }
           if (stone && !tbl && !roofed) continue;   // (stone stairs out of doors with no table: steps, a wall's coping)
-          if (run.size() > 4 && !tbl) continue;     // (a long row of stairs: a roof's edge or a terrace)
+          if (run.size() > 4 && !tbl && !pews) continue;     // (a long row of stairs: a roof's edge or a terrace)
           for (long long q : tks) if (!table.count(q)) { const int wj = weak[q]; table[q] = woodAny(keyOf(wj)).empty() ? woodFor(run[0]) : woodAny(keyOf(wj)); }
           if (std::getenv("DQ_FURN_ALL")) {
             auto nm = [&](int j) { std::string k = keyOf(j); if (k.empty()) return std::string("air"); const size_t u = k.rfind('_'); return u == std::string::npos ? k : k.substr(u + 1); };

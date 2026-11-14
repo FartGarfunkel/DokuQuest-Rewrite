@@ -100,7 +100,7 @@ std::string model3dKind(const std::string& key, const ItemDef* def) {
   const std::string t = def->hasTool ? def->tool.type : "";
   auto re = [&](const char* r) { return rxSearch(key, r); };
   // the immersive tools (TerraFirmaCraft's kinds), modelled like the rest rather than as a pickaxe, axe, hoe or sword
-  if (def->hasTool && (def->has("hammer") || t == "hammer")) return "hammer";
+  if (def->hasTool && (def->has("hammer") || t == "hammer" || key == "smith_hammer")) return "hammer";   // (the smith's hammer fights as a sword: it is still a hammer)
   if (def->hasTool && def->has("saw")) return "saw";
   if (def->hasTool && def->has("scythe")) return "scythe";
   if (def->hasTool && def->has("javelin")) return "javelin";

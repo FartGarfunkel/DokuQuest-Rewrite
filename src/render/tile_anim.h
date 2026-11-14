@@ -12,7 +12,7 @@ namespace dq {
 
 void addBuiltinTileAnims(TileSet& ts);   // call right after loadBuiltinTiles (before a resource pack)
 
-GLuint tileAnimMap();   // the current layer map (R16UI, 64 x 64): bound by TileTextures::bind as uAnimMap
+GLuint tileAnimMap();   // the current layer map (R16UI, 128 x 128): bound by TileTextures::bind as uAnimMap
 
 class TileAnimator {
 public:

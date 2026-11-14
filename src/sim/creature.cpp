@@ -866,7 +866,11 @@ void Creature::update(Level& lv, float dt) {
       dir = away + fleeTurn * 0.9f + std::sin(age * 1.7f) * 0.18f; want = shyStep ? T->speed * 0.8f : T->run > 0 ? T->run : T->speed * 2;
     } else { wander(dt); Move m = wanderMove(); if (m.want > 0 && !safeAhead(lv, *this, m.dir)) { wanderDir += PI * (0.7f + frand() * 0.6f); m = Move{0, yaw}; } want = m.want; dir = m.dir; }
     soundT -= dt;
-    if (soundT < 0) { soundT = 6 + frand() * 10; if (dist < 14 && (type == "boar" || !T->sound.empty())) lv.fx->voice(T->sound.empty() ? "boar" : T->sound, "say", pos); }
+    if (soundT < 0) {   // (its voice or its sound: a deer's and a moose's are only voices, and they never called)
+      soundT = 6 + frand() * 10;
+      const std::string& v = creatureVoice(*T);
+      if (dist < 20 && (type == "boar" || !v.empty())) lv.fx->voice(v.empty() ? "boar" : v, "say", pos + vec3(0, h * 0.8f, 0));
+    }
     if (dist > 110 && !kept) removed = true;
   }
   if (removed) return;

@@ -17,6 +17,7 @@ struct PackModelBox {
   vec3 from{0}, to{16};
   int rotAxis = -1; float rotAngle = 0; vec3 rotOrigin{8};   // axis 0 x, 1 y, 2 z (-1 none); degrees
   bool shade = true;
+  bool flame = false;      // a flame's crossed planes (its picture a flame / fire)
   PackModelFace face[6];   // 0 north (-z), 1 south (+z), 2 west (-x), 3 east (+x), 4 up, 5 down; tile -1 = no face
 };
 struct PackModel { std::vector<PackModelBox> boxes; };

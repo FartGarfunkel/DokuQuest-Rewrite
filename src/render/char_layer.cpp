@@ -185,8 +185,11 @@ void shieldInHand(const CharRig& R, int part, const std::string& id, float side,
 // skins.js held(): an item in a fist (fore = the forearm's frame, model pixels about the elbow; side -1 = the left hand)
 void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0), const std::string& modelKey = "", vec3* headOut = nullptr, const float* fpYaw = nullptr) {
   if (id == "fishing_rod") id = "fishing_rod_tp";
-  const VoxelModel& im = itemModel(modelKey.empty() ? id : modelKey);
-  if (!im.ready()) return;
+  const VoxelModel& im0 = itemModel(modelKey.empty() ? id : modelKey);
+  if (!im0.ready()) return;
+  // a torch's flame burns as the pack's animated one does on the wall (each frame its own model; until it's built, the last)
+  const VoxelModel& imF = im0.torch3d ? itemModel(torchFlameKey(modelKey.empty() ? id : modelKey, im0, nowSeconds())) : im0;
+  const VoxelModel& im = imF.ready() ? imF : im0;
   // tuning aid: DQ_DEV_TPHELD="dy,dz,scale" (model pixels, scale added) for screenshots
   static float T[3] = {0, 0, 0}; static bool tl = false;
   if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_TPHELD")) std::sscanf(v, "%f,%f,%f", &T[0], &T[1], &T[2]); }

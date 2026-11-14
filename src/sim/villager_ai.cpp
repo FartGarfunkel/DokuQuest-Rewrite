@@ -346,6 +346,7 @@ static void npcTaskWork(Level& lv, Creature& e, NpcMind& M, const json& J, const
     {"shelve", 2.0f, 3.0f, "book_page", nullptr, 0}, {"sort", 2.0f, 3.0f, "chest", nullptr, 0}, {"chop", 0.9f, 1.3f, "hit", "crumbs", 2},
     {"knead", 1.0f, 1.4f, "craft", nullptr, 0}, {"cut", 1.0f, 1.4f, "saw", "dust", 3}, {"weave", 1.4f, 2.0f, "craft", nullptr, 0},
     {"feed", 1.8f, 2.4f, "saw", "dust", 6}, {"chisel", 0.5f, 0.8f, nullptr, "dust", 2},
+    {"soak", 2.6f, 3.4f, "splash_small", "splash", 4}, {"scrape", 0.6f, 0.9f, "shear", nullptr, 0},   // (the tanner: hides into the barrels, scraped on the bench)
     {"work", 1.4f, 2.0f, "craft", nullptr, 0}};
   const Act* A = &ACTS[sizeof ACTS / sizeof ACTS[0] - 1];
   for (const Act& a : ACTS) if (doing == a.name) { A = &a; break; }
@@ -602,7 +603,12 @@ static Move brainInner(Level& lv, Creature& e, NpcMind& M, json& N, const Villag
       if (!folk->tasks.empty() && ph < 0.3) {   // the morning's work goes round the trade's stations (the counter is kept after)
         const int n = (int)folk->tasks.size();
         if (M.taskI < 0 || M.taskI >= n) { M.taskI = (int)(rnd() * n) % n; M.taskT = 10 + rnd() * 10; }
-        if ((M.taskT -= dt) <= 0) { M.taskI = (M.taskI + 1) % n; M.taskT = 16 + rnd() * 14; M.workT = 0.6f; }
+        if ((M.taskT -= dt) <= 0) {
+          M.taskI = (M.taskI + 1) % n; M.taskT = 16 + rnd() * 14; M.workT = 0.6f;
+          // the trade's real work takes the longest: the smith at the anvil, the tanner's hides in the barrels
+          const std::string& k = folk->tasks[M.taskI].kind;
+          if (k == "anvil" || (job == "leatherworker" && (k == "stores" || k == "table"))) M.taskT *= 2.2f;
+        }
         task = &folk->tasks[M.taskI]; goal = vec3(task->at);
       }
     }

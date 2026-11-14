@@ -159,7 +159,22 @@ std::vector<float> SfxLibrary::render(const SoundRef& r, int take, u32 seed, flo
       if (pitch) *pitch = var.pitch;
       if (vol) *vol = var.vol;
       const Profile* p = pack.profile(var.file);
-      return p ? pack.render(*p, seed) : std::vector<float>{};
+      std::vector<float> out = p ? pack.render(*p, seed) : std::vector<float>{};
+      // a creature's call carries: the packs' own are recorded at all levels (a sheep's baa a third of a cow's moo, so
+      // sheep and pigs could hardly be heard across a field). A quiet call is brought up to a calling animal's loudness
+      // (its loud part's level, at most x3, never past full scale); footsteps and the loud ones are left as they are.
+      if (r.mob && r.key.rfind("mob.mstep_", 0) != 0 && !out.empty()) {
+        double e = 0; float pk = 0; size_t n = 0;
+        for (float x : out) pk = std::max(pk, std::fabs(x));
+        for (float x : out) if (std::fabs(x) > pk * 0.1f) { e += (double)x * x; n++; }
+        const float rms = n ? (float)std::sqrt(e / (double)n) : 0.f;
+        constexpr float WANT = 0.14f;   // (a cow's moo, a deer's grunt)
+        if (rms > 1e-4f && rms < WANT) {
+          const float g = std::min({WANT / rms, 3.f, 0.9f / std::max(pk, 1e-4f)});
+          if (g > 1.05f) for (float& x : out) x *= g;
+        }
+      }
+      return out;
     }
     case SoundRef::Recipe: {
       auto rc = recipes.find(r.key);

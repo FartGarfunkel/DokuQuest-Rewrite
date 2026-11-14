@@ -135,9 +135,11 @@ public:
         if (!it || it->empty() || (it->id != "torch" && it->id != "soul_torch")) continue;
         const float side = hand == 0 ? 0.38f : -0.38f;
         const bool fp = pl == s.player && s.viewMode == 0;
+        if (fp) continue;   // (your own, in first person: render/held_light_fx.cpp burns it at the torch's real head; here it hung
+                            //  in front of your eyes, a flame the size of your face)
         vec3 r(std::cos(pl->yaw), 0, -std::sin(pl->yaw));
         vec3 tip = fp ? tipOf(s, *pl, 0.6f, side * 0.57f, -0.06f) : pl->pos + vec3(0, 1.3f, 0) + r * side * 0.9f + lookVec(*pl) * 0.45f;
-        for (int k = 0; k < nf; k++) P.spawn(it->id == "soul_torch" ? "soul_flame" : "held_flame", tip + vec3((frand() - 0.5f) * 0.04f, 0, (frand() - 0.5f) * 0.04f), 1);
+        (void)nf;   // (the flame itself is the torch model's own, animated: render/char_layer.cpp heldInHand)
         for (int k = 0; k < ns; k++) P.spawn("smoke", tip + vec3(0, 0.08f, 0), 1);
       }
     }

@@ -351,7 +351,10 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     bool rod = stack.id == "fishing_rod";
     float wind = rod ? castWindOf(*p) : 0.f;
     const std::string pk = partToolModelKey(stack);
-    const VoxelModel& im = itemModel(!modelOver.empty() ? modelOver : rod ? std::string("fishing_rod_cast") : !pk.empty() ? pk : stack.id);   // (the hanging float is drawn live from the tip)
+    const std::string imKey = !modelOver.empty() ? modelOver : rod ? std::string("fishing_rod_cast") : !pk.empty() ? pk : stack.id;   // (the hanging float is drawn live from the tip)
+    const VoxelModel& im0 = itemModel(imKey);
+    const VoxelModel& imF = im0.torch3d ? itemModel(torchFlameKey(imKey, im0, nowSeconds())) : im0;   // (a torch: its flame's frame now)
+    const VoxelModel& im = imF.ready() ? imF : im0;
     bool tool = im.kind != VoxelModel::Block && isHandheld(stack.id);
     const bool bowItem = im.kind != VoxelModel::Block && (stack.id == "bow" || stack.id == "crossbow");   // at rest the size it is drawn (render/fp_bow.cpp)
     float e = side > 0 ? eat : 0, pitch = 1.62f + e * 0.35f, yaw = side * 0.32f;

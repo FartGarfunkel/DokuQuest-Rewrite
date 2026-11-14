@@ -130,7 +130,21 @@ void ParticleSystem::spawn(const std::string& kind, vec3 pos, int count, const j
     return;
   }
   if (kind == "burst") { burst(pos, str("tile", "white"), count, num("speed", 1), num("grav", 14)); return; }
-  if (kind == "flame") { for (int i = 0; i < count; i++) flame(pos + vec3(rs(), rs(), rs()) * num("spread", 0.f)); return; }
+  if (kind == "flame") {
+    // a fire's flame; the caller may give its size, speed, life and fall (a torch's flame in the hand: small and short:
+    // these were ignored, and every lick came out a fire's flame, a hand's breadth across)
+    const bool own = extra.is_object() && (extra.contains("size") || extra.contains("vel") || extra.contains("life"));
+    for (int i = 0; i < count; i++) {
+      const vec3 at = pos + vec3(rs(), rs(), rs()) * num("spread", 0.f);
+      if (!own) { flame(at); continue; }
+      Particle q; q.tile = (u16)tile("flame"); q.p = at; q.light = 0xFF; q.shrink = true;
+      q.life = q.max = num("life", 0.35f + rnd() * 0.3f); q.size = q.size0 = num("size", 0.12f); q.grav = num("grav", -1);
+      if (extra.contains("vel") && extra["vel"].is_array() && extra["vel"].size() == 3) q.v = vec3(extra["vel"][0].get<float>(), extra["vel"][1].get<float>(), extra["vel"][2].get<float>());
+      else q.v = vec3(rs() * 0.4f, 1 + rnd(), rs() * 0.4f);
+      add(q);
+    }
+    return;
+  }
   if (kind == "splash") { splash(pos, flag); return; }
   if (kind == "rain_splash") { rainSplash(pos, lightAt(pos), count); return; }
   if (kind == "firework") {   // batche.js fireworkSparks: a sphere (or a ring) of glowing two-colour sparks

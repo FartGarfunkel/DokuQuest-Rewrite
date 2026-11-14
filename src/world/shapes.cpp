@@ -505,7 +505,29 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
     case ShapeKind::Candle: {
       int n = m & 3;
       if (purpose == ShapePurpose::Collide) { push(T.pickle ? ShapeBox(2, 0, 2, 14, 6, 14) : ShapeBox(5, 0, 5, 11, 6, 11)); return true; }
-      for (int i = 0; i <= n; i++) push(B6(T.pickle ? PICKLE_BOXES[n][i] : CANDLE_BOXES[n][i]));
+      if (purpose != ShapePurpose::Draw) { for (int i = 0; i <= n; i++) push(B6(T.pickle ? PICKLE_BOXES[n][i] : CANDLE_BOXES[n][i])); return true; }
+      // drawn from the picture as Minecraft lays it out (the pack's candles and pickles are cut that way): each face its own
+      // patch of the picture, not the box's place in the block (a candle's strip is at the picture's left edge: read where
+      // the candle stands, the picture is empty there and the candle was invisible)
+      // faces: 0 +x (u 16-Z), 1 -x (u Z), 2 +y (X, Z), 3 -y (16-X, Z), 4 +z (u X), 5 -z (u 16-X); sides v 16-Y
+      auto face = [&](ShapeBox b, int f, float tu, float tv) { b.only = (u8)(1 << f); b.tu = tu; b.tv = tv; push(b); };
+      for (int i = 0; i <= n; i++) {
+        const float* q = T.pickle ? PICKLE_BOXES[n][i] : CANDLE_BOXES[n][i];
+        const ShapeBox b = B6(q);
+        const float x0 = q[0], z0 = q[2], w = q[3] - q[0], h = q[4] - q[1];
+        if (T.pickle) {   // (sea_pickle.json: up 4,1-8,5  down 8,1-12,5  north 4,5  south 0,5  west 8,5  east 12,5, sides 6 tall)
+          face(b, 0, z0, h - 11); face(b, 1, 8 - z0, h - 11); face(b, 4, -x0, h - 11); face(b, 5, x0 - 8, h - 11);
+          face(b, 2, 4 - x0, 1 - z0); face(b, 3, x0 - 4, 1 - z0);
+        } else {   // (template_candle.json: sides 0,8-2,14 the top at 8; up 0,6-2,8; down 0,14-2,16; the wick 0,5-1,6)
+          face(b, 0, z0 + w - 16, h - 8); face(b, 1, -z0, h - 8); face(b, 4, -x0, h - 8); face(b, 5, x0 + w - 16, h - 8);
+          face(b, 2, -x0, 6 - z0); face(b, 3, x0 + w - 16, 14 - z0);
+          ShapeBox wick(x0 + w / 2 - 0.5f, q[4], z0 + w / 2 - 0.5f, x0 + w / 2 + 0.5f, q[4] + 1, z0 + w / 2 + 0.5f);
+          wick.nocol = true;
+          const float wx = wick.b[0], wz = wick.b[2];
+          face(wick, 0, wz + 1 - 16, q[4] + 1 - 11); face(wick, 1, -wz, q[4] + 1 - 11); face(wick, 4, -wx, q[4] + 1 - 11); face(wick, 5, wx + 1 - 16, q[4] + 1 - 11);
+          face(wick, 2, -wx, 5 - wz);
+        }
+      }
       return true;
     }
     case ShapeKind::Cake: push(ShapeBox(1.f + 2 * std::min(6, m & 7), 0, 1, 15, 8, 15)); return true;

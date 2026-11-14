@@ -25,16 +25,29 @@ int tileFor(TileSet& ts, const PackFS& P, std::string ref) {
   int w = 0, h = 0, n = 0;
   u8* px = stbi_load_from_memory(bytes->data(), (int)bytes->size(), &w, &h, &n, 4);
   if (!px || w < 4) { if (px) stbi_image_free(px); auto it = ts.index.find(base); return it != ts.index.end() ? it->second : -1; }
-  const int T = ts.size, fh = std::min(w, h);   // (an animated strip: its first frame)
+  const int T = ts.size, fh = std::min(w, h);
+  // an animated strip (a torch's flame: frames stacked down the picture): every frame a tile, played as its .mcmeta says
+  const int nFrames = h > w && h % w == 0 ? std::min(h / w, 24) : 1;
   std::vector<u8> t((size_t)T * T * 4);
-  for (int y = 0; y < T; y++) for (int x = 0; x < T; x++) {
-    const u8* s = px + ((size_t)(y * fh / T) * w + x * w / T) * 4;
-    u8* d = &t[((size_t)y * T + x) * 4];
-    d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = s[3] == 253 ? 252 : s[3];
+  auto frame = [&](int f) {
+    for (int y = 0; y < T; y++) for (int x = 0; x < T; x++) {
+      const u8* s = px + ((size_t)(f * fh + y * fh / T) * w + x * w / T) * 4;
+      u8* d = &t[((size_t)y * T + x) * 4];
+      d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; d[3] = s[3] == 253 ? 252 : s[3];
+    }
+    const int i = appendTile(ts, t.data());
+    ts.res.back() = (u8)std::min(w, T);
+    return i;
+  };
+  const int idx = frame(0);
+  if (nFrames > 1) {
+    int ft = 1;
+    if (auto mm = P.readJson(P.texRoot + ref + ".png.mcmeta")) if ((*mm)["animation"].is_object()) ft = std::max(1, (*mm)["animation"].value("frametime", 1));
+    TileAnim A{idx, {idx}, ft * 50};   // (.mcmeta ticks -> ms)
+    for (int f = 1; f < nFrames; f++) A.frames.push_back(frame(f));
+    ts.anims.push_back(std::move(A));
   }
   stbi_image_free(px);
-  const int idx = appendTile(ts, t.data());
-  ts.res.back() = (u8)std::min(w, T);
   ts.index[key] = idx;
   return idx;
 }
@@ -73,6 +86,7 @@ void loadPackModels(TileSet& ts, const PackFS& P, const std::vector<std::string>
         const std::string ref = resolve(fj.value("texture", std::string()));
         if (ref.empty()) continue;
         b.face[f].tile = tileFor(ts, P, ref);
+        if (f < 4 && (ref.find("flame") != std::string::npos || ref.find("fire") != std::string::npos)) b.flame = true;   // (its flame's crossed planes)
         if (fj.contains("uv")) b.face[f].uv = vec4(fj["uv"][0].get<float>(), fj["uv"][1].get<float>(), fj["uv"][2].get<float>(), fj["uv"][3].get<float>());
       }
       pm.boxes.push_back(b);
@@ -80,7 +94,7 @@ void loadPackModels(TileSet& ts, const PackFS& P, const std::vector<std::string>
     if (!pm.boxes.empty()) (*M)[name] = std::move(pm);
   }
   std::atomic_store(&g_models, std::shared_ptr<const std::map<std::string, PackModel>>(M));
-  if (!M->empty()) DQ_LOG("pack models: %zu block models", M->size());
+  if (!M->empty()) DQ_LOG("pack models: %zu block models (tiles now %d)", M->size(), ts.count);
 }
 
 namespace { std::shared_ptr<const std::unordered_map<int, TileVariants>> g_vars; }

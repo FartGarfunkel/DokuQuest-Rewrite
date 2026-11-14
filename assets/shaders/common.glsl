@@ -45,10 +45,10 @@ uniform sampler2DArray uTiles3;       // the third page (render/world_renderer.c
 uniform sampler2DArray uHeights3;
 uniform sampler2DArray uNormals3;
 uniform float uPageSize;
-// animated tiles: which layer each tile shows now (render/tile_anim.cpp; 64 x 64, one entry per layer). The frames
+// animated tiles: which layer each tile shows now (render/tile_anim.cpp; 128 x 128, one entry per layer). The frames
 // are layers of their own, so an animation is this little table changing, not pictures copied into the array.
 uniform usampler2D uAnimMap;
-float animLayer(float layer) { int l = int(layer); return float(texelFetch(uAnimMap, ivec2(l & 63, l >> 6), 0).r); }
+float animLayer(float layer) { int l = int(layer); return float(texelFetch(uAnimMap, ivec2(l & 127, l >> 7), 0).r); }
 vec4 tileColorGrad(vec2 uv, float layer, vec2 dx, vec2 dy) {
   return layer < uPageSize ? textureGrad(uTiles, vec3(uv, layer), dx, dy) : layer < 2.0 * uPageSize ? textureGrad(uTiles2, vec3(uv, layer - uPageSize), dx, dy)
                            : textureGrad(uTiles3, vec3(uv, layer - 2.0 * uPageSize), dx, dy);

@@ -62,9 +62,11 @@ private:
   std::unordered_map<u64, glm::dvec3> last;
   void burn(ParticleSystem& P, Kind k, vec3 tip, vec3 was, float dt, bool fp) {
     const char* fl = k == SOUL ? "soul_flame" : k == RED ? "redstone" : "flame";
-    const float sz = fp ? 0.45f : 1.f, up = fp ? 0.5f : 1.f;   // in first person the flame is right in front of you: smaller
+    const float sz = fp ? 0.3f : 1.f, up = fp ? 0.35f : 1.f;   // in first person the flame is right in front of you: smaller
     // the flame licking up
-    if (R() < dt * (k == RED ? 3.f : fp ? 16.f : 14.f))   // (a lively flame: licks often)
+    // (a torch's own flame is its model's, the pack's animated flame, as on the wall: render/char_layer.cpp heldInHand. Only
+    //  now and then a lick leaps off it)
+    if (R() < dt * (k == RED ? 3.f : fp ? 1.5f : 2.5f))
       P.spawn(fl, tip + vec3(R2() * 0.03f, 0, R2() * 0.03f), 1, {{"vel", {R2() * 0.05f, (k == RED ? 0.2f : 0.55f + R() * 0.3f) * up, R2() * 0.05f}}, {"life", (0.22f + R() * 0.18f) * (fp ? 0.7f : 1.f)},
                                                                  {"size", 0.05f * sz}, {"shrink", true}, {"glow", true}, {"grav", 0}});
     // a thread of smoke
