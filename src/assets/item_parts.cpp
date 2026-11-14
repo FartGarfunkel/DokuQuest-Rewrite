@@ -15,15 +15,7 @@ namespace dq {
 namespace {
 const float RT2 = 0.70710678f;
 // along the diagonal: u up the handle from the bottom-left corner, v across it, z out of the picture
-// (upright: the same, turned 45 degrees so u runs straight up the grid: a blade on the grid's own lines comes out straight
-//  and even, where along the diagonal its voxels stepped like a stair; the model is laid back to the diagonal after)
-thread_local bool g_upright = false;
-vec3 diag(float u, float v = 0, float z = 0) {
-  if (g_upright) return vec3(-v, -0.6223f + u, z);
-  return vec3(-0.44f + RT2 * u - RT2 * v, -0.44f + RT2 * u + RT2 * v, z);
-}
-// where a point of the model lies over the picture (upright: turned back onto the diagonal)
-vec2 picAt(vec3 p) { return g_upright ? vec2(RT2 * (p.x + p.y), RT2 * (p.y - p.x)) : vec2(p.x, p.y); }
+vec3 diag(float u, float v = 0, float z = 0) { return vec3(-0.44f + RT2 * u - RT2 * v, -0.44f + RT2 * u + RT2 * v, z); }
 float kk(float k) { return k > 1 ? std::min(k, 1.12f) : k; }   // brightening is capped like the original's face shades
 
 struct M {
@@ -32,7 +24,7 @@ struct M {
   const SpriteInfo& I;
   bool glow = false;
   explicit M(ItemBuild& bb) : b(bb), P(bb.P), I(bb.I) {}
-  PaintFn F(float k) { bool g = glow; return [this, k, g](const PaintPt& p) { const vec2 q = picAt(p.p); u32 c = voxShade(I.fillAt(q.x, q.y), kk(k)); return g && c ? (c & 0x00FFFFFFu) | (u32)VOXEL_GLOW << 24 : c; }; }
+  PaintFn F(float k) { bool g = glow; return [this, k, g](const PaintPt& p) { u32 c = voxShade(I.fillAt(p.p.x, p.p.y), kk(k)); return g && c ? (c & 0x00FFFFFFu) | (u32)VOXEL_GLOW << 24 : c; }; }
   // sseg: a segment cut into short pieces, widths and depths easing from one end to the other
   void sseg(vec3 a, vec3 c, float w0, float w1, float d0, float d1, float k = 1, float step = 0.07f, float bevel = 0) {
     float L = std::hypot(c.x - a.x, c.y - a.y);
@@ -228,10 +220,8 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
     m.sseg(diag(0.84f), diag(0.98f), 0.07f, 0.16f, 0.05f, 0.06f, 1.02f, 0.04f);
     m.sseg(diag(0.98f), diag(1.14f), 0.16f, 0.02f, 0.06f, 0.02f, 1.1f, 0.04f);
     depth = 0.05f;
-  } else if (k == "sword" || k == "dagger") {   // built upright, straight and even on both edges, then laid back on the diagonal
-    g_upright = true;
+  } else if (k == "sword" || k == "dagger") {
     depth = k == "sword" ? sword(m) : sword(m, 0.92f, 0.13f, 0.16f);
-    g_upright = false;
     {   // both faces alike: the grid has no middle layer (its centres sit half a voxel either side of the blade's plane),
         // so where the blade thins to its edges one layer was left on one side: that face flat, the other stepped
       VoxelGrid& G = b.P.g; const int Z = G.size.z;
@@ -240,7 +230,6 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
         if (a && !c) G.set(x, y, Z - 1 - z, a); else if (c && !a) G.set(x, y, z, c);
       }
     }
-    b.tilt = -0.7853982f;
   }
   else if (k == "club") {
     m.sseg(diag(-0.02f), diag(0.32f), 0.09f, 0.1f, 0.09f, 0.1f);

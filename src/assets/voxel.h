@@ -49,7 +49,6 @@ struct VoxelGrid {
 struct VoxelFrame {
   vec3 origin{0};
   float voxel = 1.f / 32.f;
-  float tiltZ = 0;           // a turn about the model's z (a sword built upright on the grid, laid back to its diagonal)
   mat4 matrix() const;       // grid units -> model space
   vec3 toModel(vec3 g) const { return origin + g * voxel; }
 };

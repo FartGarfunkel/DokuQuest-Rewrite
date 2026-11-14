@@ -17,10 +17,7 @@ bool VoxelGrid::bounds(ivec3& lo, ivec3& hi) const {
 }
 size_t VoxelGrid::count() const { size_t n = 0; for (u32 v : c) n += v != 0; return n; }
 
-mat4 VoxelFrame::matrix() const {
-  const mat4 m = glm::scale(glm::translate(mat4(1), origin), vec3(voxel));
-  return tiltZ == 0 ? m : glm::rotate(mat4(1), tiltZ, vec3(0, 0, 1)) * m;
-}
+mat4 VoxelFrame::matrix() const { return glm::scale(glm::translate(mat4(1), origin), vec3(voxel)); }
 
 // ------------------------------------------------------------------ greedy mesher
 namespace {
