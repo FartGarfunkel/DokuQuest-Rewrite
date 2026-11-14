@@ -575,6 +575,10 @@ public:
     else if (o.mode == "station") drawStation(a, dl, p, w);
     else if (o.mode == "stonecutter") drawCutter(a, dl, p, w);
     else if (o.gearGet) drawMount(dl, p, true);
+    else if (const int n = sess->groupSize(Grp::Cont); n > 0 && n <= 9) {   // a small one (a fallen adventurer's things, a pouch): big slots, three by three, mid-page
+      const float bs = std::min(is * 1.6f, w / 3.4f), x0 = p.x + (w - 3 * bs) * 0.5f;
+      for (int k = 0; k < n; k++) slot(dl, Grp::Cont, k, ImVec2(x0 + (k % 3) * bs, p.y + is * 0.2f + (k / 3) * bs), bs);
+    }
     else grid9(dl, Grp::Cont, 0, sess->groupSize(Grp::Cont), p);
     paper = false;
   }
