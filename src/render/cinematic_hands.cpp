@@ -170,7 +170,7 @@ public:
       const mat4 M = B * glm::scale(mat4(1), vec3(aw, len / 0.70f, aw)) * glm::translate(mat4(1), vec3(0, 0.30f, 0));
       VR.draw(arm.gl, M * arm.matrix(), L);
     }
-    if (forging >= 0) {   // the hammer in the right hand, its head down to the work
+    if (forging >= 0 && cinematicLeaning()) {   // the hammer in the right hand, its head down to the work (not leaning: your own body's arm and fist, render/char_layer.cpp)
       // your own hammer if you hold one (the stone, flint or smith's: the same as in your hand anywhere), else the smith's
       const ItemStack& hs = s.player->held();
       const bool ownHammer = !hs.empty() && model3dKind(hs.id, reg().item(hs.id)) == "hammer";

@@ -17,6 +17,7 @@
 #include "render/spell_hands.h"
 #include "assets/shield3d.h"
 #include "sim/shield_shape.h"
+#include "assets/item_build.h"
 #include "sim/blockinfo.h"
 #include "world/dirs.h"
 #include "core/item_glint.h"
@@ -801,6 +802,25 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
     if ((p.stationKind == 3 || p.stationKind == 4) && settled) ps.sneak = true;   // (down to the brewing stand, the furnace)
     if (p.stationKind == 13 && settled) ps.sitGround = true;   // (sat down by a campfire)
     if (p.stationKind == 1 && f.time - st.workTapAt < 1.4) { wear.held = "smith_hammer"; wear.heldModel.clear(); ps.held = true; }   // (the hammer while the blows land)
+  }
+  // at the smithing table or the Tool Forge (yours): the hammer in your own hand the whole time you're at it (your own
+  // hammer if you carry one, else the smith's), and your own arm raises it and brings it down on each blow (the village
+  // smith's stroke, CW_HAMMER: the blow lands at workU 0)
+  if (&p == s.player && cinematicActive() && !cinematicLeaning() && (cinematicKind() == 8 || cinematicKind() == 15)) {
+    const ItemStack& hs = p.held();
+    const bool own = !hs.empty() && model3dKind(hs.id, reg().item(hs.id)) == "hammer";
+    wear.held = own ? hs.id : "smith_hammer"; wear.heldModel.clear(); wear.heldGlint = false; ps.held = true;
+    PairView pv;
+    if (cinematicPairView(pv) && pv.t >= 0 && pv.t < pairBeats(pv.kind).length) {
+      static const double BLOWS[3] = {0.7, 1.02, 1.3};
+      const double f2 = pv.t - (pairBeats(pv.kind).contact - 0.7);   // (the blows as the scene times them: the first as it's pressed)
+      if (f2 >= 0.35 && f2 < BLOWS[2] + 0.45) {
+        double last = -1; for (double b : BLOWS) if (f2 >= b) last = b;
+        ps.work = (u8)CW_HAMMER;
+        ps.workU = last < 0 ? 1.f : (float)std::min(1.0, (f2 - last) / 0.32);   // (held high before the first; each blow down and back up)
+        ps.swing = 0;
+      }
+    }
   }
   if (fp && cinematicActive()) {
     if (cinematicLeaning()) ps.fpLeftArm = false;   // (leaning over a station: both hands are the scene's; seamless: your own arms stay)

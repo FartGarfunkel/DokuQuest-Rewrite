@@ -664,7 +664,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   }
   const bool mapHeld = isMapStack(held);   // (a map is held up to read in the hand view)
   if (taken & 1) {}
-  else if ((cinematicForgeT() >= 0 || [] { PairView pv; return cinematicPairView(pv) && (pv.kind == 8 || pv.kind == 15) && pv.t >= 0 && pv.t < pairBeats(pv.kind).letGo; }()) && !cinematicLeaning()) {   // (the smithing table and the Tool Forge too, while the blows land)
+  else if ((cinematicForgeT() >= 0 || [] { PairView pv; return cinematicPairView(pv) && (pv.kind == 8 || pv.kind == 15) && pv.t >= 0 && pv.t < pairBeats(pv.kind).letGo; }()) && !cinematicLeaning() && !bodyHands) {   // (the smithing table and the Tool Forge too, while the blows land; with your body drawn, its own hand has the hammer: render/char_layer.cpp)
     drew |= 1; holdIn(1, ItemStack(!held.empty() && model3dKind(held.id, reg().item(held.id)) == "hammer" ? held.id : std::string("smith_hammer"), 1), 0);   // (your own hammer if you hold one)
   }   // forging at the anvil: the hammer in your own hand, a swing on each blow
   else if (bodyHands && !mapHeld) {}   // (your body's own right hand: render/char_layer.cpp)
