@@ -310,9 +310,11 @@ CharAngles charAnimate(const CharPose& pose) {
   }
   if (pose.gui && !pose.scope) {   // the journal held open before them in both hands (render/char_layer.cpp), a slight sway
     const float sw = std::sin(pose.time * 1.1f) * 0.03f;
-    A.armR = vec3(0.95f + sw, -0.32f, 0.05f); A.foreR = vec3(0.7f, 0, 0);
-    A.armL = vec3(0.95f - sw, 0.32f, -0.05f); A.foreL = vec3(0.7f, 0, 0);
-    A.head.x += 0.25f;   // (reading it)
+    // (out before the chest at a reading distance, below the chin: the arms further out, the forearms less bent; it had been
+    //  held right up against the face)
+    A.armR = vec3(0.78f + sw, -0.3f, 0.05f); A.foreR = vec3(0.32f, 0, 0);
+    A.armL = vec3(0.78f - sw, 0.3f, -0.05f); A.foreL = vec3(0.32f, 0, 0);
+    A.head.x += 0.38f;   // (looking down to read it)
   }
   if (pose.doze) {   // asleep on their feet
     const float br = std::sin(pose.time * 1.3f);
