@@ -548,13 +548,13 @@ static void emitDripstone(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, i
   const int tile = stone >= 0 ? stone : c.R.block(id).faces[0];
   const bool down = meta & 1; const int dir = down ? -1 : 1;
   auto same = [&](int yy) { return c.at(x, yy, z) == id && ((c.metaAt(x, yy, z) & 1) != 0) == down; };
-  // blocks of the column ahead of this one, to its free end (past what the mesher can see: as if it went on)
-  int ahead = 0;
-  for (int k = 1; k <= 4; k++) { const int yy = y + dir * k; if (!c.inside(yy)) { ahead = 4; break; } if (!same(yy)) break; ahead = k; }
+  // how far to its free end and back to its root; the mesher sees 12 blocks down but only 1 up, so whichever way is cut
+  // off (99) the other shapes it: narrower from the tip, and narrower going out from the root
+  auto count = [&](int step) { int k = 0; for (;;) { const int yy = y + step * (k + 1); if (!c.inside(yy)) return 99; if (!same(yy)) return k; if (++k > 30) return k; } };
+  const int ahead = count(dir), back = count(-dir);
   const bool merge = ahead == 0 && c.inside(y + dir) && c.at(x, y + dir, z) == id;   // (the other's tip, against this one's)
-  // the radius at a distance (in blocks) from the free end: a point there, full width 3 blocks back
-  auto R = [&](float dist) { return std::min(0.4f, 0.03f + 0.125f * dist); };
-  const float rFar = R((float)ahead + 1.f), rNear = merge ? 0.06f : R((float)ahead);   // the root side, the tip side
+  auto R = [&](int tipDist, int rootDist) { return std::min({0.4f, tipDist >= 99 ? 0.4f : 0.03f + 0.125f * tipDist, rootDist >= 98 ? 0.4f : 0.4f - 0.07f * rootDist}); };   // (99: out of view, no limit)
+  const float rFar = std::max(0.05f, R(ahead + 1, back)), rNear = merge ? 0.06f : ahead == 0 ? 0.03f : std::max(0.04f, R(ahead, back + 1));   // the root side, the tip side
   const float y0 = down ? (float)y + 1 : (float)y, y1 = down ? (float)y : (float)y + 1;   // root side to tip side
   const u32 h = hashLocal(x, 0, z, 23);
   const float cx = x + 0.5f + ((h & 255) / 255.f - 0.5f) * 0.08f, cz = z + 0.5f + (((h >> 8) & 255) / 255.f - 0.5f) * 0.08f, rot = ((h >> 16) & 255) / 255.f * PI / 4;

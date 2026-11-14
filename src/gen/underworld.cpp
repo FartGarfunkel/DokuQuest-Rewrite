@@ -154,7 +154,7 @@ void OverworldGen::generateDeep(Chunk& ch, int depth) const {
           break;
         case T_FUNGAL:
           if (floor) { setBelow(K.mycelium); if (r < 0.08) put(K.brownM); else if (r < 0.14) put(K.redM);
-            else if (r > 0.992) {   // a great mushroom: a stem and a cap
+            else if (r > 0.992 && x >= 2 && x <= 13 && z >= 2 && z <= 13) {   // a great mushroom: a stem and a cap (its cap all inside the chunk: none cut off at an edge)
               int top = y; while (top - y < 7 && top < DIM_H - 3 && b.blocks[colIdx(x, top + 1, z)] == AIR) top++;
               if (top - y >= 4) { const BlockId cap = r > 0.996 ? K.redMB : K.brownMB;
                 for (int k = y; k < top; k++) b.blocks[colIdx(x, k, z)] = K.stem;
