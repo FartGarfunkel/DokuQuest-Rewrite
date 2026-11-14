@@ -332,4 +332,6 @@ def all_pieces(style, s):
            pergola_bench(style, 'park_bench_01', s('park1')),
            pergola_bench(style, 'park_bench_02', s('park2'), autumn=True),
            lamp_post(style, 'lamp_post_01', s('lamp1'))]
+    import village_builds2   # (the market and town pieces from the pictures: tools/port/village_builds2.py)
+    out += village_builds2.all_pieces(style, s)
     return out

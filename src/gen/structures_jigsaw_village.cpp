@@ -110,6 +110,7 @@ static void pieceRole(const VPPiece& p, std::string& type, std::string& job) {
   if (has("market_stall")) {   // a trader's stall: its wares are in its name (market_stall_<job>_N)
     type = "stall"; job = "merchant";
     for (const char* j : {"baker", "butcher", "fisherman", "farmer", "jeweller", "merchant", "shepherd"}) if (has(j)) { job = j; break; }
+    if (has("alchemist")) job = "cleric";   // (the potion stall: the cleric brews)
     return;
   }
   if (has("windmill")) { type = "house"; return; }   // (the millstone in it makes it the windmill)

@@ -644,8 +644,9 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
         for (int i = 0; i < (int)P.blocks.size(); i++) {
           if (gone[i] || !wetAt(i)) continue;
           const VPBlock& b = P.blocks[i];
-          bool held = !P.terrain;
-          if (held) continue;   // (rigid pieces: kept)
+          if (!P.terrain) continue;   // (rigid pieces: kept)
+          bool held = true;           // (a ground piece's water: kept where it's walled in, below and on every side; it had started
+                                      //  out not held, the walls never looked at, and every pool, fountain and well ran dry)
           for (int k = 0; k < 5 && held; k++) {
             const int nx = b.x + ND[k][0], ny = b.y + ND[k][1], nz = b.z + ND[k][2];
             const int j = nx < 0 || ny < 0 || nz < 0 || nx >= SX || ny >= SY || nz >= SZ ? -1 : cell(nx, ny, nz);
