@@ -513,6 +513,28 @@ int main(int argc, char** argv) {
     check(arrows >= 5, "skeletons shot full of arrows leave their arrows (" + std::to_string(arrows) + " from 3)");
     if (sk) sk->removed = true;
   }
+  // every metal mixes in a tool: the ingots the materials table doesn't list (pig iron, zinc, brass, rose gold...) by their makeup
+  for (const char* ing : {"pig_iron", "zinc_ingot", "bismuth_ingot", "brass_ingot", "rose_gold_ingot", "sterling_silver_ingot", "black_bronze_ingot", "bismuth_bronze_ingot", "iron_ingot", "diamond"})
+    check(reg().item(ing) == nullptr || toolMaterialOfStack(ItemStack(ing, 1)) != nullptr, std::string("a tool can be made of ") + ing);
+  {   // ...and how much of each counts: more of one metal in the head, more of its stats
+    auto mk = [&](const char* a, const char* b2) { const ToolMaterial* A = toolMaterialOfStack(ItemStack(a, 1)), *Bm = toolMaterialOfStack(ItemStack(b2, 1)); return std::make_pair(A, Bm); };
+    for (auto [a, b2] : {std::make_pair("iron_ingot", "zinc_ingot"), std::make_pair("pig_iron", "rose_gold_ingot"), std::make_pair("brass_ingot", "steel_ingot")}) {
+      auto [A, Bm] = mk(a, b2);
+      if (!A || !Bm) { check(false, std::string("materials for ") + a + " + " + b2); continue; }
+      ItemStack t3, t2, t1;
+      const bool ok = makePartTool("pickaxe", {A->key, A->key, A->key}, "stick", t3) && makePartTool("pickaxe", {A->key, A->key, Bm->key}, "stick", t2) && makePartTool("pickaxe", {A->key, Bm->key, Bm->key}, "stick", t1);
+      const int d3 = ok ? toolMaxDurability(t3) : 0, d2 = ok ? toolMaxDurability(t2) : 0, d1 = ok ? toolMaxDurability(t1) : 0;
+      check(ok && d3 != d1 && ((d3 >= d2 && d2 >= d1) || (d3 <= d2 && d2 <= d1)), std::string("a pickaxe of ") + a + " and " + b2 + ": its wear follows how much of each (" + std::to_string(d3) + ", " + std::to_string(d2) + ", " + std::to_string(d1) + ")");
+    }
+  }
+  {   // armour too: a helmet of pig iron and zinc, its protection between theirs
+    const ToolMaterial* A = toolMaterialOfStack(ItemStack("pig_iron", 1)), *Z = toolMaterialOfStack(ItemStack("zinc_ingot", 1));
+    const ArmorPattern* hp = armorPattern("helmet");
+    ItemStack h1, h2;
+    const bool ok = A && Z && hp && makePartArmor("helmet", std::vector<std::string>(hp->cells.size(), A->key), h1)
+                    && makePartArmor("helmet", [&] { std::vector<std::string> v(hp->cells.size(), A->key); for (size_t i = 0; i < v.size() / 2; i++) v[i] = Z->key; return v; }(), h2);
+    check(ok && armorPointsOf(h1) != armorPointsOf(h2), "a helmet of pig iron and zinc: its protection follows how much of each (" + std::to_string(ok ? armorPointsOf(h1) : 0.f) + " / " + std::to_string(ok ? armorPointsOf(h2) : 0.f) + ")");
+  }
   // ------------------------------------------------------------ the Tool Forge and the inscription table worked by hand
   {
     const ivec3 F(2, Y + 1, 12), T(5, Y + 1, 12);

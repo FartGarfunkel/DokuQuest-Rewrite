@@ -106,14 +106,17 @@ const ToolMaterial* toolMaterial(const std::string& key) {
 const ToolMaterial* toolMaterialOfStack(const ItemStack& s) {
   if (s.empty()) return nullptr;
   const bool tagged = s.tag.is_object() && s.tag.contains("comp");
-  if (tagged || (s.def() && s.def()->has("metalHead"))) {
+  // (a metal's own ingot the table doesn't list, pig iron, zinc, bismuth, brass, rose gold...: its makeup, as a cast piece's;
+  //  they had been refused at the table, every metal mixes)
+  const ToolMaterial* listed = tagged ? nullptr : toolMaterialOfItem(s.id);
+  if (tagged || (s.def() && s.def()->has("metalHead")) || (!listed && (s.id.size() > 6 && s.id.compare(s.id.size() - 6, 6, "_ingot") == 0 || (s.def() && s.def()->has("metal"))) && !metalOfItem(s.id).empty())) {
     const Comp c = compOfStack(s);
     if (c.empty()) return nullptr;
     // one metal (98%+): that metal's own material; a named alloy or a free mix: its makeup's (the ratio shows)
     if (const std::string n = namedAlloy(c); !n.empty()) if (const Metal* md = metalDef(n); md && md->ranges.empty()) if (const ToolMaterial* tm = toolMaterial(n)) return tm;
     return toolMaterial(compKey(c));
   }
-  return toolMaterialOfItem(s.id);
+  return listed;
 }
 std::string partToolBaseKind(const std::string& k) {
   if (k == "knife" || k == "javelin" || k == "saw") return "sword";

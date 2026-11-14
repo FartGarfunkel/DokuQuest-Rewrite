@@ -154,7 +154,7 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
     if (tool && mats && !other && tool->d > 0) {
       std::vector<std::string> own; for (auto& m : tool->tag[isPartTool(*tool) ? "pt" : "pa"]["m"]) own.push_back(m.get<std::string>());
       bool ok = true;
-      for (auto& s : slots) if (!s.empty() && &s != tool) { const ToolMaterial* tm = toolMaterialOfItem(s.id); if (!tm || std::find(own.begin(), own.end(), tm->key) == own.end()) ok = false; }
+      for (auto& s : slots) if (!s.empty() && &s != tool) { const ToolMaterial* tm = toolMaterialOfStack(s); if (!tm || std::find(own.begin(), own.end(), tm->key) == own.end()) ok = false; }
       if (ok) {
         const int max = toolMaxDurability(*tool);
         CraftMatch m = special(tool->id, 1); m.extra = tool->tag; m.repair = std::max(0, tool->d - (int)std::ceil(max * 0.25 * mats));
