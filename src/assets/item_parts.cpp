@@ -9,6 +9,7 @@
 #include "assets/item_build.h"
 #include "assets/quiver3d.h"
 #include <regex>
+#include <set>
 
 namespace dq {
 
@@ -193,7 +194,9 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
     handle(m, 0.9f);
     m.sseg(diag(0.76f), diag(0.9f), 0.1f, 0.1f, 0.1f, 0.1f, 0.8f);
     m.sseg(diag(0.84f, 0), diag(0.84f, 0.3f), 0.09f, 0.08f, 0.08f, 0.07f, 1, 0.1f);       // the arm
-    m.sseg(diag(0.86f, 0.3f), diag(0.6f, 0.34f), 0.17f, 0.18f, 0.065f, 0.045f, 1.08f, 0.08f);   // the blade, turned down (Just 3D: broad)
+    // the blade, turned down: a flat plate, thin across and broad through the picture (a real hoe's, lying level as you swing
+    // it into the ground: it had stood edge-on, broad in the picture's own plane like an axe's)
+    m.sseg(diag(0.86f, 0.3f), diag(0.6f, 0.34f), 0.07f, 0.06f, 0.26f, 0.24f, 1.08f, 0.08f);
     depth = 0.06f;
   } else if (k == "hammer") {   // TFC's hammer: a squared head across the top of the haft, its faces bright
     handle(m, 0.84f);
@@ -222,14 +225,6 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
     depth = 0.05f;
   } else if (k == "sword" || k == "dagger") {
     depth = k == "sword" ? sword(m) : sword(m, 0.92f, 0.13f, 0.16f);
-    {   // both faces alike: the grid has no middle layer (its centres sit half a voxel either side of the blade's plane),
-        // so where the blade thins to its edges one layer was left on one side: that face flat, the other stepped
-      VoxelGrid& G = b.P.g; const int Z = G.size.z;
-      for (int y = 0; y < G.size.y; y++) for (int x = 0; x < G.size.x; x++) for (int z = 0; z < Z / 2; z++) {
-        const u32 a = G.at(x, y, z), c = G.at(x, y, Z - 1 - z);
-        if (a && !c) G.set(x, y, Z - 1 - z, a); else if (c && !a) G.set(x, y, z, c);
-      }
-    }
   }
   else if (k == "club") {
     m.sseg(diag(-0.02f), diag(0.32f), 0.09f, 0.1f, 0.09f, 0.1f);
@@ -412,6 +407,16 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
     }
     depth = 0.09f;
   } else return false;
+  // (the tools and weapons the same on both faces: an axe's head, a sword's blade, a hoe's...)
+  static const std::set<std::string> SYM = {"pickaxe", "axe", "shovel", "hoe", "sword", "dagger", "saw", "scythe", "javelin", "club", "hammer"};
+  if (SYM.count(k)) {   // both faces alike: the grid has no middle layer (its centres sit half a voxel either side of the blade's plane),
+        // so where the blade thins to its edges one layer was left on one side: that face flat, the other stepped
+      VoxelGrid& G = b.P.g; const int Z = G.size.z;
+      for (int y = 0; y < G.size.y; y++) for (int x = 0; x < G.size.x; x++) for (int z = 0; z < Z / 2; z++) {
+        const u32 a = G.at(x, y, z), c = G.at(x, y, Z - 1 - z);
+        if (a && !c) G.set(x, y, Z - 1 - z, a); else if (c && !a) G.set(x, y, z, c);
+      }
+    }
   b.depth = depth; b.stand = stand;
   return true;
 }
