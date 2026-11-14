@@ -717,7 +717,8 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
       // a growing tree's branch (sim/dyntree.h, meta bit 4): its own radius, 1..8 of the half-block (Dynamic Trees)
       const float a = (m & 0x10) ? 8.f - (((m >> 1) & 7) + 1) : (m & 1) ? 5.5f : 4.5f, b = 16 - a;
       push(ShapeBox(a, a, a, b, b, b));
-      if (joins(nb.id(0, -1, 0))) push(ShapeBox(a, 0, a, b, a, b));
+      // (and down into the ground it grows from: a sapling's twig on its rooty soil had stood 7 px over it)
+      if (const BlockId dn = nb.id(0, -1, 0); joins(dn) || fullSolid(dn)) push(ShapeBox(a, 0, a, b, a, b));
       if (joins(nb.id(0, 1, 0))) push(ShapeBox(a, b, a, b, 16, b));
       if (joins(nb.id(1, 0, 0))) push(ShapeBox(b, a, a, 16, b, b));
       if (joins(nb.id(-1, 0, 0))) push(ShapeBox(0, a, a, a, b, b));

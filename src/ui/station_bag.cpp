@@ -25,7 +25,9 @@ void drawStationBag(App& a, int padCur) {
       if (k % 9) ImGui::SameLine(0, 3);
       ImGui::PushID(slot);
       const ImVec2 pos = ImGui::GetCursorScreenPos();
-      if (ImGui::InvisibleButton("s", ImVec2(is, is))) { if (slot < 9) p.selected = slot; else std::swap(p.inv[slot], p.inv[p.selected]); }
+      // (the mouse's click only: a pad's A reached ImGui's own nav focus here too and swapped what's in hand; the pad has
+      // its own cursor, LB / RB then the d-pad and A, cinematic bagPadUpdate)
+      if (ImGui::InvisibleButton("s", ImVec2(is, is), ImGuiButtonFlags_MouseButtonLeft) && ImGui::IsMouseReleased(0)) { if (slot < 9) p.selected = slot; else std::swap(p.inv[slot], p.inv[p.selected]); }
       const bool hot = ImGui::IsItemHovered();
       ImDrawList* dl = ImGui::GetWindowDrawList();
       SlotLook lk; lk.hover = hot; lk.sel = slot == p.selected; lk.focus = padBase + k == padCur;

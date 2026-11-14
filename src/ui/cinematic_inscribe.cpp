@@ -54,7 +54,6 @@ public:
     leanPose(S, p.pos + vec3(0, p.eye, 0));
     g_iv = InscribeView{}; g_iv.at = at; g_ivOn = true;
   }
-  void onClose(App&) override { Scene& S = scene(); if (S.phase == 1 || S.phase == 2) { S.phase = 3; S.t = 0; } g_ivOn = false; cinematicSetAimPoint(false); }
   bool onBack(App&) override { if (bag.on) { bag.on = false; return true; } return false; }
   void update(App& a, double) override {
     GameSession* s = a.session.get();

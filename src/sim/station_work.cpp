@@ -297,7 +297,7 @@ std::string inscribeWorkWrite(Level& lv, Player& p, World& w, ivec3 at, const st
 // to its right at the back, the paper to the right in front, the lapis at the right edge
 vec3 inscribeLiePos(World& w, ivec3 at, int k) {
   vec3 out, right; stationWorkFrame(w, at, out, right);
-  static const vec2 O[4] = {{-0.14f, 0.f}, {0.2f, -0.17f}, {0.2f, 0.17f}, {0.4f, 0.f}};
+  static const vec2 O[4] = {{-0.17f, 0.02f}, {0.13f, -0.16f}, {0.14f, 0.15f}, {0.33f, 0.f}};   // (all well inside its edge)
   return vec3(at) + vec3(0.5f, 15.f / 16, 0.5f) + right * O[k & 3].x + out * O[k & 3].y;
 }
 

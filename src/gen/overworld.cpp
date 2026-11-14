@@ -910,6 +910,8 @@ void OverworldGen::sample(int wx, int wz, ColumnSample& s) const {
       bool taiga = c.biome == BIOME_TAIGA || c.biome == BIOME_MOUNTAINS;
       s.tree = jungle ? TREE_JUNGLE : taiga ? TREE_SPRUCE : TREE_OAK;
       s.leaves = jungle ? B.jungle_leaves : taiga ? B.spruce_leaves : B.leaves;
+      // (a seasonal forest's cherry groves: their pink crowns far off too, not oak green turning pink as you come near)
+      if (s.variant == BV_SEASONAL && !jungle && !taiga) s.leaves = B.flowering_cherry_leaves ? B.flowering_cherry_leaves : B.cherry_leaves ? B.cherry_leaves : s.leaves;
       s.treeTop = (i16)(c.H + jsRound(cover * (jungle ? 9 : taiga ? 7 : 5)));
     }
   }

@@ -5,6 +5,7 @@
 #include "ui/book_ui.h"
 #include "render/content_draw.h"
 #include "ui/cinematic.h"
+#include "assets/item_build.h"
 #include "render/book_model.h"
 #include "render/journal_model.h"
 #include "ui/held_book.h"
@@ -355,7 +356,9 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     const VoxelModel& im0 = itemModel(imKey);
     const VoxelModel& imF = im0.torch3d ? itemModel(torchFlameKey(imKey, im0, nowSeconds())) : im0;   // (a torch: its flame's frame now)
     const VoxelModel& im = imF.ready() ? imF : im0;
-    bool tool = im.kind != VoxelModel::Block && isHandheld(stack.id);
+    // (every hammer held as your stone hammer is, upright out of the fist and full size: the smith's is a sword-type tool,
+    // and the tool grip made it small)
+    bool tool = im.kind != VoxelModel::Block && isHandheld(stack.id) && model3dKind(stack.id, stack.def()) != "hammer";
     const bool bowItem = im.kind != VoxelModel::Block && (stack.id == "bow" || stack.id == "crossbow");   // at rest the size it is drawn (render/fp_bow.cpp)
     float e = side > 0 ? eat : 0, pitch = 1.62f + e * 0.35f, yaw = side * 0.32f;
     mat4 am = glm::translate(mat4(1), vec3(side * (FP_HAND.x + (side > 0 ? bx - e * 0.32f : -bx * 0.6f)),
@@ -661,7 +664,9 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   }
   const bool mapHeld = isMapStack(held);   // (a map is held up to read in the hand view)
   if (taken & 1) {}
-  else if (cinematicForgeT() >= 0 && !cinematicLeaning()) { drew |= 1; holdIn(1, ItemStack("smith_hammer", 1), 0); }   // forging at the anvil: the hammer in your own hand, a swing on each blow
+  else if ((cinematicForgeT() >= 0 || [] { PairView pv; return cinematicPairView(pv) && (pv.kind == 8 || pv.kind == 15) && pv.t >= 0 && pv.t < pairBeats(pv.kind).letGo; }()) && !cinematicLeaning()) {   // (the smithing table and the Tool Forge too, while the blows land)
+    drew |= 1; holdIn(1, ItemStack(!held.empty() && model3dKind(held.id, reg().item(held.id)) == "hammer" ? held.id : std::string("smith_hammer"), 1), 0);   // (your own hammer if you hold one)
+  }   // forging at the anvil: the hammer in your own hand, a swing on each blow
   else if (bodyHands && !mapHeld) {}   // (your body's own right hand: render/char_layer.cpp)
   else if (biting) { drew |= 1; holdIn(1, ItemStack(p->eatId, 1), 0, eatModelKey(p->eatId, 1 - eatAnim / EAT_ANIM)); }
   else if (!held.empty() && held.def()) { drew |= 1; holdIn(1, held, 0); }
@@ -702,7 +707,7 @@ mat4 fpGripMatrix(const std::string& id, float side, const VoxelModel& im) {
   static float T[4] = {0, 0, 0, 0}; static bool tl = false;   // tuning aid: DQ_DEV_FPGRIP="dx,dy,dz,scale" (added)
   if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_FPGRIP")) std::sscanf(v, "%f,%f,%f,%f", &T[0], &T[1], &T[2], &T[3]); }
   mat4 m = glm::translate(mat4(1), vec3(side * T[0], T[1], T[2]));
-  const bool tool = im.kind != VoxelModel::Block && isHandheld(id);
+  const bool tool = im.kind != VoxelModel::Block && isHandheld(id) && model3dKind(id, reg().item(id)) != "hammer";   // (hammers: as the stone hammer)
   if (im.torch3d) {   // upright in the fist, leaning a little away
     m = glm::translate(m, vec3(-side * 0.02f, 0.05f, -0.05f));
     m = glm::rotate(m, -0.3f, vec3(1, 0, 0)); m = glm::rotate(m, side * 0.2f, vec3(0, 0, 1)); m = glm::rotate(m, side * 0.6f, vec3(0, 1, 0));

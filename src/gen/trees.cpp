@@ -388,7 +388,11 @@ void OverworldGen::trees(int cx, int cz, std::vector<TreeSample>& out) const {
     TreeSample s{t.x, t.y, t.z, t.kind, t.bare, {}};
     for (const TreePart& p : parts) {
       if (!p.id) continue;
-      bool leaves = R.tLeaves[p.id], logb = B.axis[p.id];
+      BlockId pid = p.id;   // (the same swaps the real tree gets, writeTreeParts: near off, it matches what's built)
+      if (t.gum && B.gum_log && pid == B.birch_log) pid = B.gum_log;
+      if (t.gum && B.gum_leaves && pid == B.birch_leaves) pid = B.gum_leaves;
+      if (t.seasonal && B.seasonal_leaves && pid == B.cherry_leaves) pid = B.seasonal_leaves;
+      bool leaves = R.tLeaves[pid], logb = B.axis[pid];
       if (!leaves && !logb) continue;
       if (t.bare && leaves) continue;
       int dx = jsTrunc(p.x) - t.x, dz = jsTrunc(p.z) - t.z, py = jsTrunc(p.y);
@@ -396,8 +400,8 @@ void OverworldGen::trees(int cx, int cz, std::vector<TreeSample>& out) const {
       for (auto& q : s.cols) if (q.dx == dx && q.dz == dz) { c = &q; break; }
       if (!c) { s.cols.push_back({(i8)dx, (i8)dz, -1, 999, 0, 0}); c = &s.cols.back(); }
       if (py + 1 > c->top) c->top = (i16)(py + 1);
-      if (leaves) { if (py < c->leafBottom) c->leafBottom = (i16)py; if (!c->leaves) c->leaves = p.id; }
-      else if (!c->log) c->log = p.id;
+      if (leaves) { if (py < c->leafBottom) c->leafBottom = (i16)py; if (!c->leaves) c->leaves = pid; }
+      else if (!c->log) c->log = pid;
     }
     out.push_back(std::move(s));
   }

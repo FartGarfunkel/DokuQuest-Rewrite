@@ -207,7 +207,6 @@ public:
     const bool overUi = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook();
     const std::vector<ItemStack> v = pairWorkItems(w, at);
     const StationResult r = pairWorkResult(*s->level, w, at);
-    if (mouseTookOver(a)) pad = false;
     const float topY = st == "grindstone" ? 0.9f : 0.75f;
     // what the mouse is on: a piece lying there, or the station (something in hand)
     int hover = -1; bool onStation = false;
