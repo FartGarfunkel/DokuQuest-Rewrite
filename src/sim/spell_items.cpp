@@ -1,5 +1,6 @@
 // sim/spell_items.cpp — see spell_items.h
 #include "sim/spell_items.h"
+#include "core/tool_parts.h"
 #include "sim/magic.h"
 #include "sim/magic_data.h"
 #include "sim/player.h"
@@ -133,10 +134,19 @@ float gemAttr(const Player& p, const std::string& attr, bool pct) {
   return s;
 }
 std::string gemSocketsLine(const ItemStack& s) {
-  const int n = gearSockets(s); if (!n) return "";
+  int n = gearSockets(s);
   const auto g = gearGems(s);
   std::string out = "Sockets:";
-  for (int i = 0; i < n; i++) {
+  int used = 0;
+  // the gem the Tool Forge set in it (core/tool_parts.h setToolGem: tag "gem") fills a socket of its own
+  if (s.tag.is_object() && s.tag.contains("gem") && s.tag["gem"].is_string()) {
+    const std::string gk = s.tag["gem"]; const ItemDef* id = reg().item(gk); const char* fx = gemEffect(gk);
+    out += std::string(" ") + (id ? id->name : gk) + " (" + (fx ? fx : "set") + ")";
+    used = 1; n = std::max(n, 1);
+  }
+  if (!n) return "";
+  for (int i = 0; i + used < n; i++) {
+    if (used) out += ",";
     if (i < (int)g.size()) { const GemDef* d = gemOf(g[i]); const ItemDef* id = reg().item(g[i]); out += std::string(i ? ", " : " ") + (id ? id->name : g[i]) + " (" + (d ? d->what : "") + ")"; }
     else out += std::string(i ? ", " : " ") + "empty";
   }

@@ -598,6 +598,7 @@ int main(int argc, char** argv) {
     check(pairWorkPut(*L, *P, w, F, -1, gem) && gem.n == 1 && pairWorkItems(w, F)[1].id == "diamond", "  ...a diamond beside it goes in as the gem (one)");
     check(forgeWorkHeads(w, F).empty() && pairWorkResult(*L, w, F).ok, "  ...no heads offered: a gem to set");
     check(pairWorkDo(*L, *P, w, F, &made) && made.id == "iron_pickaxe" && made.tag.is_object() && made.tag.contains("gem"), "  ...set: the pickaxe back with its gem");
+    check(gemSocketsLine(made).find("Diamond") != std::string::npos && gemSocketsLine(made).find("empty") == std::string::npos, "  ...its sockets name the diamond, not empty (" + gemSocketsLine(made) + ")");
     // the inscription table
     for (auto& s : P->inv) s = ItemStack();
     P->stats["spells"] = json::array({"firebolt"});

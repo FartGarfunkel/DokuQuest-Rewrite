@@ -307,9 +307,24 @@ static void recolourPartTool(VoxelGrid& g, const std::string& kind, const std::v
       const float dir = (t1 - (t0 + gb)) > ((t0 + gb) - t0) ? 1.f : -1.f;
       tm = t0 + gb + 0.5f + dir * 2.5f;
     }
+    // a stone in its setting, standing out from both faces in a cut shape (facets lit and shaded), not a flat spot of colour
+    const u32 hiA = gem == "charged_crystal" ? (u32)VOXEL_GLOW << 24 : 0xFF000000u;
+    std::map<std::pair<int, int>, std::pair<int, int>> zr;   // each (x, y) column's z extent
+    for (int z = 0; z < g.size.z; z++) for (int y = 0; y < g.size.y; y++) for (int x = 0; x < g.size.x; x++) if (g.at(x, y, z)) {
+      auto it = zr.find({x, y}); if (it == zr.end()) zr[{x, y}] = {z, z}; else { it->second.first = std::min(it->second.first, z); it->second.second = std::max(it->second.second, z); }
+    }
     for (auto& v : vs) if (v.head) {
-      const vec2 d = v.p - hm; const float along = glm::dot(d, e) - tm, across = glm::dot(d, vec2(-e.y, e.x));
-      if (along * along + across * across <= 9.f) g.c[v.i] = colour(gi->second, 0.85f + 0.3f * (v.lum > lh ? 1.f : 0.f), gem == "charged_crystal" ? (u32)VOXEL_GLOW << 24 : g.c[v.i]);
+      const vec2 d = v.p - hm; const float along = glm::dot(d, e) - tm, across = glm::dot(d, vec2(-e.y, e.x)), r2 = along * along + across * across;
+      if (r2 > 9.f) continue;
+      g.c[v.i] = colour(gi->second * 0.8f, 1.f, hiA);   // (its seat)
+      const int x = (int)v.p.x, y = (int)v.p.y;
+      auto it = zr.find({x, y}); if (it == zr.end()) continue;
+      const int rise = r2 <= 1.5f ? 2 : r2 <= 5.f ? 1 : 0;   // (higher in the middle: a cabochon)
+      for (int k = 1; k <= rise; k++) {
+        const float shade = k == rise ? 1.25f : 1.0f;   // (its crown catches the light)
+        for (int zz : {it->second.first - k, it->second.second + k})
+          if (zz >= 0 && zz < g.size.z) g.set(x, y, zz, colour(gi->second, shade * (along + across < 0 ? 1.1f : 0.9f), hiA));
+      }
     }
   }
 }
