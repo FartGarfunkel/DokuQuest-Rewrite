@@ -123,7 +123,7 @@ static void beastVoice(Level& lv, Creature& m, float dt, float dist) {
   if (m.soundT > 0) return;
   const auto& T = *m.T;
   m.soundT = (T.ai == "swimmer" ? 14 : T.ambient ? 4 : 7) + frand() * 10;
-  if (T.sound.empty() || dist > 20) return;
+  if (creatureVoice(T).empty() || dist > 20) return;
   std::string kind = "say";
   // growls only when it means it: angry at someone, or (a wolf) running down its prey (the same test as the hunt below)
   bool hunting = false;
@@ -135,7 +135,7 @@ static void beastVoice(Level& lv, Creature& m, float dt, float dist) {
   if (T.sound == "fish" && m.inWater) return;
   if (T.sound == "frog") m.croakT = 0.6f;
   if (T.displays && frand() < 0.5f) m.displayT = 2.5f;
-  lv.fx->voice(T.sound, kind, m.pos + vec3(0, m.h * 0.7f, 0));
+  lv.fx->voice(kind == "say" ? creatureVoice(T) : T.sound, kind, m.pos + vec3(0, m.h * 0.7f, 0));   // (its own voice where it has one: the imported animals' calls)
 }
 
 static Move fight(Level& lv, Creature& m, Entity& foe, float dt) {

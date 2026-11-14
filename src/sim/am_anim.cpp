@@ -7,7 +7,7 @@
 // progress ramping 0..max a tick at a time while our creature is sat / asleep / flying / swimming / running / fighting /
 // grazing / rearing, a flag, the tick count, the clip's tick. Its ModelAnimator keyframes come as clips (data "clips"),
 // played on a blow (role "attack") or while grazing ("eat"). What's left at the end, less the box's rest, is the turn and
-// the move of each of our parts (Java -> ours: turns (x, -y, -z), moves (x, -y, z) / 16, as geo_boss_import.py's axes).
+// the move of each of our parts (Java -> ours: turns (-x, y, -z), moves (x, -y, z) / 16: the model mirrored in y only).
 #include "sim/am_anim.h"
 #include "sim/creature_rig.h"
 #include "core/registry.h"
@@ -352,7 +352,7 @@ void amAnim(Creature& m, const RigModel& M, RigAnimOut& o) {
   }
   for (size_t i = 0; i < n; i++) {
     const auto& c = R.cur[i]; const auto& r = P->rest[i];
-    const vec3 dr(c[0] - r[0], -(c[1] - r[1]), -(c[2] - r[2]));
+    const vec3 dr(-(c[0] - r[0]), c[1] - r[1], -(c[2] - r[2]));   // (y flipped, Java's y down: a turn about x or z goes the other way, about y the same)
     if (dr != vec3(0)) { if (!o.has[i]) { o.has[i] = 1; o.rot[i] = vec3(0); } o.rot[i] += dr; }
     const vec3 dp(c[3] - r[3], -(c[4] - r[4]), c[5] - r[5]);
     if (o.pos && dp != vec3(0) && i < o.pos->size()) (*o.pos)[i] += dp / 16.f;

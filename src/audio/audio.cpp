@@ -375,10 +375,16 @@ void AudioEngine::voice(const std::string& creature, const std::string& kind, ve
   }
   std::string n = kind.empty() || kind == "say" ? creature : creature + "_" + kind;
   float pm = 1;
+  if (kind == "death" && !has(n) && has(creature + "_die")) n = creature + "_die";   // (the imported calls name it so)
   if (!has(n)) {
     if (kind == "hurt") { n = creature; pm = 1.2f; }
     else if (kind == "death") { if (has(creature + "_hurt")) { n = creature + "_hurt"; pm = 0.8f; } else { n = creature; pm = 0.72f; } }
     else n = creature;
+  }
+  // a creature with no plain call of its own: its idle sounds by another name, else its hurt, softer and lower (silent before)
+  if (!has(n)) {
+    for (const char* alt : {"_idle", "_call", "_loop", "_ambient", "_say", "_hurt"})
+      if (has(creature + alt)) { n = creature + alt; if (std::string(alt) == "_hurt" && kind != "hurt") pm = 0.85f; break; }
   }
   playAt(n, pos, 28.f, 1, pitch * pm);
 }

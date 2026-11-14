@@ -30,7 +30,7 @@ CFG = pathlib.Path('/home/matt/Documents/Soulrend/Soulrend - Dark Fantasy RPG So
 # the mod's creatures we already keep under another name (our behaviour stays; their body is the mod's)
 ALIAS = {'grizzly_bear': 'brown_bear', 'anaconda': 'green_snake'}
 SKIP = {'bone_serpent_part', 'cachalot_echo', 'void_worm_part', 'centipede_body', 'centipede_tail', 'anaconda_part',
-        'murmur_head', 'hemolymph', 'cosmic_cod_part'}
+        'murmur_head', 'hemolymph', 'cosmic_cod_part', 'skreecher'}   # (skreecher: not wanted in the game)
 
 # ------------------------------------------------------------------ Java tokens and a parser for the bits we need
 TOK = re.compile(r'''\s*(?:(?P<num>(?:0x[0-9a-fA-F]+|\d+\.\d*(?:[eE][+-]?\d+)?|\.\d+(?:[eE][+-]?\d+)?|\d+(?:[eE][+-]?\d+)?)[fFdDlL]?)
@@ -1295,7 +1295,7 @@ def main(d='data', only=None):
             rel = pv - np.array(absp[par], float) if par in absp else pv
             p = {'name': b['name'], 'pivot': [round(-rel[0] / 16, 5), round(rel[1] / 16, 5), round(rel[2] / 16, 5)]}
             if par: p['parent'] = par
-            if 'rotation' in b: rot = b['rotation']; p['rest'] = [round(-math.radians(rot[0]), 5), round(math.radians(rot[1]), 5), round(-math.radians(rot[2]), 5)]
+            if 'rotation' in b: rot = b['rotation']; p['rest'] = [round(math.radians(rot[0]), 5), round(-math.radians(rot[1]), 5), round(-math.radians(rot[2]), 5)]   # (Java's turns, y mirrored: -x, y, -z)
             vox = G.bone_voxels(b, img, gimg, M.tw, M.th)
             # a knee (an elbow) for the creatures new to us: a limb cut in two at its middle, the lower half its own part
             # hung at the joint (the very voxels it had: the picture stays as it was), folded by the swing above it

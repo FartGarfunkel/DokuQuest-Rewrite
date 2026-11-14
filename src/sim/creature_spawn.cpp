@@ -638,7 +638,9 @@ public:
       std::string pl = place ? place : "";
       if (dim == DIM_OVERWORLD) {
         const int surf = w.isLoaded(ifloor(p.pos.x), py, ifloor(p.pos.z)) ? w.surfaceY(ifloor(p.pos.x), ifloor(p.pos.z), DIM_OVERWORLD) : py;
-        pl = py < surf - 12 ? "cave" : night ? "night" : "";
+        // (a cave: well under the ground and no sky over you; under a tall canopy the leaves had made it "a cave")
+        const bool sky = (w.getLight(ifloor(p.pos.x), py + 1, ifloor(p.pos.z)) >> 4) > 0;
+        pl = py < surf - 12 && !sky ? "cave" : night ? "night" : "";
       }
       auto it = pl.empty() ? BY.end() : BY.find(pl);
       if (it != BY.end() && !it->second.empty()) {
@@ -661,8 +663,8 @@ public:
                 }
               }
             } else {
-              const int fy = floorAt(xz.x, xz.y, std::min(base + DIM_H - 4, py + 20), 50);
-              const bool dark = (w.getLight(xz.x, fy, xz.y) & 15) == 0 || pl != "cave";
+              const int fy = floorAt(xz.x, xz.y, std::min(base + DIM_H - 4, py + (pl == "cave" ? 6 : 20)), 50);
+              const bool dark = pl != "cave" || w.getLight(xz.x, fy, xz.y) == 0;   // (a cave's: no sky and no lamp)
               if (fy > 0 && dark && !R.tLiquid[w.getBlock(xz.x, fy - 1, xz.y)])
                 for (int i = 0; i < n; i++) add(t.c_str(), xz.x + 0.5f + i * 0.6f, (float)(fy + (where == "a" ? 2 + (int)(frand() * 5) : 0)), xz.y + 0.5f);
             }
