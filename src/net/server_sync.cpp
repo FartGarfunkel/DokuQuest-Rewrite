@@ -59,11 +59,11 @@ json entitySnapshot(const Entity& e) {
     s["n"] = p->name; s["md"] = p->mode;
     { auto& A = netSkinAliases(); auto a = A.find(p->skin); s["sk"] = a != A.end() ? a->second : p->skin; }   // the host's own skins by their net names
     const ItemStack& h = p->inv[clampv(p->selected, 0, INV_MAIN - 1)];
-    if (!h.empty()) s["hd"] = h.id;
+    if (!h.empty()) { s["hd"] = h.id; if (h.tag.is_object() && !h.tag.empty()) s["ht"] = h.tag; }   // (its makeup: a mixed blade's colours)
     json ar = json::array(); bool anyAr = false;
     for (auto& a : p->armor) { ar.push_back(a.empty() ? json() : json(a.id)); anyAr |= !a.empty(); }
     if (anyAr) s["ar"] = ar;
-    if (!p->offhand.empty() && !p->offhand[0].empty()) s["of"] = p->offhand[0].id;
+    if (!p->offhand.empty() && !p->offhand[0].empty()) { s["of"] = p->offhand[0].id; if (p->offhand[0].tag.is_object() && !p->offhand[0].tag.empty()) s["ot"] = p->offhand[0].tag; }
     if (!p->shield.empty() && !p->shield[0].empty()) s["sh"] = p->shield[0].id;   // (the shield slot's: on their forearm)
     {   // the backpack and the quiver on their back (unless they hide them), so the others see them
       const json& hg = p->data.is_object() ? p->data.value("hideGear", json::array()) : json::array();

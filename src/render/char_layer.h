@@ -74,7 +74,7 @@ struct CharWear {
   int quiverFill = 0;                // 0 empty .. 4 full (sim/quiver.h quiverFill)
   std::string held, off;            // in the hands
   std::string strap; bool strapRight = false;   // the shield slot's shield on a forearm (the right: the main hand's)
-  std::string heldModel;            // a mixed tool's own model (core/tool_parts.h partToolModelKey), "" = the item's
+  std::string heldModel, offModel;  // a mixed tool's own model (core/tool_parts.h partToolModelKey), "" = the item's
   u32 rodOwner = 0;                 // the player whose rod tip is recorded for the fishing line (0 = nobody)
   bool heldGlint = false, offGlint = false;   // enchanted: the shimmer on it
   std::vector<std::string> carried; // carried.js: hotbar things not in the hand (third person)

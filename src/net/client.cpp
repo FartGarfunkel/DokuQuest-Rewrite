@@ -522,8 +522,10 @@ void NetClient::applyEntities(const json& m) {
       p->name = s.value("n", p->name); p->skin = s.value("sk", p->skin); p->mode = s.value("md", p->mode);
       p->selected = 0;
       p->inv[0] = s.contains("hd") ? ItemStack(s["hd"].get<std::string>(), 1) : ItemStack();
+      if (s.contains("ht")) p->inv[0].tag = s["ht"];
       for (int i = 0; i < INV_ARMOR; i++) p->armor[i] = s.contains("ar") && i < (int)s["ar"].size() && s["ar"][i].is_string() ? ItemStack(s["ar"][i].get<std::string>(), 1) : ItemStack();
       p->offhand[0] = s.contains("of") ? ItemStack(s["of"].get<std::string>(), 1) : ItemStack();
+      if (s.contains("ot")) p->offhand[0].tag = s["ot"];
       if (p->shield.empty()) p->shield.resize(1);
       p->shield[0] = s.contains("sh") ? ItemStack(s["sh"].get<std::string>(), 1) : ItemStack();
       if (s.contains("bk")) p->data["back"] = s["bk"]; else p->data.erase("back");          // (render/char_layer wornItem)

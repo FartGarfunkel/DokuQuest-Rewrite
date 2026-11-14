@@ -689,7 +689,7 @@ CharWear charWearOf(const Player& p, const CharacterSpec& spec, bool withCarried
   }
   if (!p.inv.empty() && p.selected >= 0 && p.selected < (int)p.inv.size() && !p.inv[p.selected].empty()) { w.held = p.inv[p.selected].id; w.heldModel = partToolModelKey(p.inv[p.selected]); w.heldGlint = itemGlints(p.inv[p.selected]); if (w.held == "fishing_rod") { w.rodOwner = p.id; if (p.data.value("rodOut", false)) w.held = "fishing_rod_cast"; } }
   if (p.eatT > 0 && !p.eatId.empty() && !isDrinkItem(p.eatId) && reg().item(p.eatId)) { w.held = p.eatId; w.heldModel = eatModelKey(p.eatId, 1 - p.eatT); w.heldGlint = false; }   // the food they're eating, bitten down
-  if (!p.offhand.empty() && !p.offhand[0].empty()) { w.off = p.offhand[0].id; w.offGlint = itemGlints(p.offhand[0]); }
+  if (!p.offhand.empty() && !p.offhand[0].empty()) { w.off = p.offhand[0].id; w.offModel = partToolModelKey(p.offhand[0]); w.offGlint = itemGlints(p.offhand[0]); }   // (its own model: a mixed or gemmed blade had shown the plain one's colours)
   if (!p.shield.empty() && !p.shield[0].empty() && !isShieldItem(w.held) && !isShieldItem(w.off)) {   // the shield slot's (sim/shield_shape.h shieldSide)
     const int side = shieldSide(p);
     if (side) { w.strap = p.shield[0].id; w.strapRight = side > 0; }
@@ -1171,7 +1171,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     else if (!wear.off.empty() && isShieldItem(wear.off)) shieldInHand(R, CP_ARML_D, wear.off, -1.f, ps.blockMain ? 0.f : ps.block, light, tint, wear.offGlint);
     else if (!wear.off.empty()) {
       vec3 head;
-      heldInHand(gripTurn(R.part[CP_ARML_D], R.toolL), wear.off, -1.f, light, tint, wear.offGlint, 0, 0, glm::dvec3(0), "", fp ? &head : nullptr, fp ? fpYawV : nullptr);
+      heldInHand(gripTurn(R.part[CP_ARML_D], R.toolL), wear.off, -1.f, light, tint, wear.offGlint, 0, 0, glm::dvec3(0), wear.offModel, fp ? &head : nullptr, fp ? fpYawV : nullptr);
       if (fp) { HeldItemLayer::torchTip[1] = o.camPos + glm::dvec3(head); HeldItemLayer::torchTipOn[1] = true; }
     }
   }
