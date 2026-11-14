@@ -314,7 +314,8 @@ void npcMutter(Level& lv, Creature& e, const json& lines) {
   npcSay(lv, e, pickStr(lines, rnd()), 0.35f);
 }
 static void npcWorkSound(Level& lv, Creature& e, const std::string& j) {
-  if (j.find("smith") != std::string::npos || j.find("armorer") != std::string::npos || j.find("mason") != std::string::npos) lv.fx->sound("anvil", e.pos + vec3(0, 1, 0));
+  if (j == "mason") lv.fx->material("stone", "dig", e.pos + vec3(0, 1, 0));   // (the chisel on stone, not an anvil)
+  else if (j.find("smith") != std::string::npos || j.find("armorer") != std::string::npos) lv.fx->sound("anvil", e.pos + vec3(0, 1, 0));
   else if (j == "farmer") lv.fx->sound("dig_gravel", e.pos + vec3(0, 0.5f, 0));
 }
 
@@ -325,7 +326,10 @@ static void npcTaskWork(Level& lv, Creature& e, NpcMind& M, const json& J, const
   const json& TT = J.contains("tasks") && J["tasks"].is_object() ? J["tasks"] : json::object();
   const json T = TT.contains(t.kind) && TT[t.kind].is_object() ? TT[t.kind] : json::object();
   const std::string doing = T.value("do", std::string("work")), held = T.value("held", std::string());
-  if (!held.empty() && reg().item(held) && e.heldItem != held) { e.heldItem = held; M.taskHeld = true; }
+  // the stonecutter fed by hand: the raw block pushed through the blade, then the cut piece taken off ("out"), stroke by stroke
+  const std::string out = T.value("out", std::string());
+  const std::string inHand = !out.empty() && (M.workN & 1) && reg().item(out) ? out : held;
+  if (!inHand.empty() && reg().item(inHand) && e.heldItem != inHand) { e.heldItem = inHand; M.taskHeld = true; }
   // the work in the other hand (the smith's blade or helmet on the anvil, held in the tongs while the hammer comes down)
   { const std::string off = T.value("off", std::string()); if (e.offItem != off && (off.empty() || reg().item(off))) e.offItem = off; }
   const vec3 st = vec3(t.at) + vec3(0.5f + DXL[t.f] * 0.85f, 1.05f, 0.5f + DZL[t.f] * 0.85f);   // the station, in front of them
@@ -341,11 +345,17 @@ static void npcTaskWork(Level& lv, Creature& e, NpcMind& M, const json& J, const
     {"fit", 1.6f, 2.4f, "equip", nullptr, 0}, {"grind", 0.45f, 0.7f, "grind", "crit", 3}, {"brew", 2.4f, 3.2f, "brew_bubble", "white", 3},
     {"shelve", 2.0f, 3.0f, "book_page", nullptr, 0}, {"sort", 2.0f, 3.0f, "chest", nullptr, 0}, {"chop", 0.9f, 1.3f, "hit", "crumbs", 2},
     {"knead", 1.0f, 1.4f, "craft", nullptr, 0}, {"cut", 1.0f, 1.4f, "saw", "dust", 3}, {"weave", 1.4f, 2.0f, "craft", nullptr, 0},
+    {"feed", 1.8f, 2.4f, "saw", "dust", 6}, {"chisel", 0.5f, 0.8f, nullptr, "dust", 2},
     {"work", 1.4f, 2.0f, "craft", nullptr, 0}};
   const Act* A = &ACTS[sizeof ACTS / sizeof ACTS[0] - 1];
   for (const Act& a : ACTS) if (doing == a.name) { A = &a; break; }
   if ((M.workT -= dt) > 0) return;
-  M.workT = A->a + rnd() * (A->b - A->a); e.swingT = 0.3f;
+  M.workT = A->a + rnd() * (A->b - A->a); e.swingT = 0.3f; M.workN++;
+  if (doing == "chisel" || doing == "feed") {   // stone worked: its grit off the block, the tap of the mallet (the blade's whine)
+    if (A->sound) lv.fx->sound(A->sound, st, 10, 0.6f); else lv.fx->material("stone", "dig", st);
+    lv.fx->particles("burst", st, A->n, json{{"item", doing == "feed" && !out.empty() ? out : std::string("stone")}, {"speed", 0.25}});
+    return;
+  }
   const bool hot = doing == "dip" && (held.find("iron") != std::string::npos || held.find("sword") != std::string::npos || held.find("ingot") != std::string::npos);
   if (hot) {   // the smith's quench: the hot iron hisses and steams in the tub
     lv.fx->sound("fizz", st, 12, 0.7f);
@@ -666,7 +676,7 @@ static Move brainInner(Level& lv, Creature& e, NpcMind& M, json& N, const Villag
       if (task) { npcTaskWork(lv, e, M, J, *task, dt); return Move{0, e.yaw}; }
       std::string wk = J.value("work", std::string("idle"));
       if (wk == "read") M.pose |= NP_READ;
-      else if (wk == "hammer" || wk == "hoe") { M.work = wk; M.workAt = folk->work; M.workT -= dt; if (M.workT <= 0) { M.workT = 1.1f + rnd() * 0.8f; e.swingT = 0.3f; npcWorkSound(lv, e, job); } }
+      else if (wk == "hammer" || wk == "hoe" || wk == "chisel") { M.work = wk; M.workAt = folk->work; M.workT -= dt; if (M.workT <= 0) { M.workT = 1.1f + rnd() * 0.8f; e.swingT = 0.3f; npcWorkSound(lv, e, job); } }
       else if (p && dist < 5) e.yaw = turnTo(e.yaw, hdg(e.pos, p->pos), dt * 4);
       else M.pose |= NP_FOLD;
       return Move{0, e.yaw};

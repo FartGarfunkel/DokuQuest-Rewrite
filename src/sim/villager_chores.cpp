@@ -312,13 +312,29 @@ OptMove npcChore(Level& lv, Creature& e, NpcMind& M, const Village& v, const VFo
 
   // ---- the miller ----
   if (job == "miller") {
+    // the wheat carried in his arms from the stores to the stones, poured in; the ground flour bagged up and carried off
+    // (he walks there and back: nothing goes in or comes out of the millstone from across the village)
     if (M.choreT > 0) return std::nullopt;
-    M.choreT = 4;
     const VBld* mill = nearestOf(v, "windmill", vec3(f.work));
     ivec3 ms;
     const bool found = mill && millstoneIn(w, *mill, ms);
     if (std::getenv("DQ_CHORE_DEBUG")) DQ_LOG("chore miller: mill %d (%d,%d..%d,%d y%d) stones %d at %d %d %d, wheat %d", mill ? 1 : 0, mill ? mill->x0 : 0, mill ? mill->z0 : 0, mill ? mill->x1 : 0, mill ? mill->z1 : 0, mill ? mill->y : 0, (int)found, ms.x, ms.y, ms.z, stockOf(S, "wheat"));
     if (found) {
+      { json* pe = w.blockEntity(ms.x, ms.y, ms.z);
+        const bool flourWaiting = pe && pe->contains("items") && (*pe)["items"].is_array() && (*pe)["items"].size() > 1 && !(*pe)["items"][1].is_null();
+        const int inN = pe && pe->contains("items") && (*pe)["items"].is_array() && !(*pe)["items"].empty() && !(*pe)["items"][0].is_null() ? ItemStack::fromJson((*pe)["items"][0]).n : 0;
+        if (!flourWaiting && (stockOf(S, "wheat") <= 0 || inN >= 16)) { M.choreT = 4; M.jobT = 0; if (M.carry == "wheat") { M.carry.clear(); M.carryN = 0; holding(e, M, job); } return std::nullopt; }
+        if (stockOf(S, "wheat") > 0 && M.carry != "wheat") { M.carry = "wheat"; M.carryN = std::min(32, stockOf(S, "wheat")); holding(e, M, job); }
+        const vec3 at = vec3(ms) + vec3(0.5f, 0, 0.5f);
+        if (!by(e, at, 2.0f)) {
+          M.jobT += dt;
+          if (M.jobT < 40) return go(at);
+          M.jobT = 0;   // (no way to the stones from here: the quern by hand below, this once)
+          M.carry.clear(); M.carryN = 0; holding(e, M, job);
+          if (stockOf(S, "wheat") > 0) { M.choreT = 12; stockAdd(S, "wheat", -1); stockAdd(S, "flour", 1); e.swingT = 0.3f; lv.fx->sound("grind", e.pos + vec3(0, 1, 0), 12); }
+          return std::nullopt;
+        }
+        M.jobT = 0; M.choreT = 4; }
       json* be = w.blockEntity(ms.x, ms.y, ms.z, true);
       if (!be) return std::nullopt;
       if (!be->contains("type")) (*be)["type"] = "machine";
@@ -334,8 +350,9 @@ OptMove npcChore(Level& lv, Creature& e, NpcMind& M, const Village& v, const VFo
         if (in.empty()) in = ItemStack("wheat", put); else in.n += put;
         it[0] = in.toJson(); stockAdd(S, "wheat", -put); changed = true;
       }
-      if (changed) { w.blockEntityChanged(ms.x, ms.y, ms.z); e.swingT = 0.3f; lv.fx->sound("click", e.pos + vec3(0, 1, 0), 10); }
-    } else if (stockOf(S, "wheat") > 0) {   // no stones turning here (an older windmill): a quern, by hand, slowly
+      if (changed) { w.blockEntityChanged(ms.x, ms.y, ms.z); e.swingT = 0.3f; lv.fx->sound("click", e.pos + vec3(0, 1, 0), 10); lv.fx->particles("burst", vec3(ms) + vec3(0.5f, 1.1f, 0.5f), 4, json{{"item", "wheat"}, {"speed", 0.2}}); }
+      if (M.carry == "wheat") { M.carry.clear(); M.carryN = 0; holding(e, M, job); }
+    } else if (M.choreT = 4; stockOf(S, "wheat") > 0) {   // no stones turning here (an older windmill): a quern, by hand, slowly
       M.choreT = 12; stockAdd(S, "wheat", -1); stockAdd(S, "flour", 1);
       e.swingT = 0.3f; lv.fx->sound("grind", e.pos + vec3(0, 1, 0), 12);
     }
@@ -574,7 +591,7 @@ OptMove npcChore(Level& lv, Creature& e, NpcMind& M, const Village& v, const VFo
   // ---- the crafts, at their own workplace: the stores' raw stuff into goods ----
   struct Craft { const char* job; std::vector<std::pair<const char*, int>> in; std::pair<const char*, int> out; float every; const char* sound; };
   static const std::vector<Craft> CRAFTS = {
-    {"mason", {{"cobblestone", 2}}, {"stone_bricks", 2}, 8, "anvil"},
+    {"mason", {{"cobblestone", 2}}, {"stone_bricks", 2}, 8, "saw"},
     {"armorer", {{"iron_ore", 1}, {"coal", 1}}, {"iron_ingot", 1}, 12, "anvil"},
     {"weaponsmith", {{"iron_ore", 1}, {"coal", 1}}, {"iron_ingot", 1}, 12, "anvil"},
     {"toolsmith", {{"iron_ore", 1}, {"coal", 1}}, {"iron_ingot", 1}, 12, "anvil"},

@@ -101,7 +101,7 @@ static void bowDrawArms(CharAngles& A, const CharPose& pose, const CharModel& M,
 CharWork charWorkOf(const std::string& d) {
   static const std::pair<const char*, CharWork> K[] = {{"hammer", CW_HAMMER}, {"dip", CW_DIP}, {"brew", CW_BREW}, {"grind", CW_GRIND}, {"chop", CW_CHOP},
     {"knead", CW_KNEAD}, {"cut", CW_CUT}, {"weave", CW_WEAVE}, {"tend", CW_TEND}, {"fit", CW_FIT}, {"sort", CW_SORT}, {"shelve", CW_SORT},
-    {"work", CW_CRAFT}, {"hoe", CW_HOE}};
+    {"work", CW_CRAFT}, {"hoe", CW_HOE}, {"feed", CW_FEED}, {"chisel", CW_CHISEL}};
   for (auto& [k, v] : K) if (d == k) return v;
   return CW_NONE;
 }
@@ -148,6 +148,18 @@ static void charWorkAngles(CharAngles& A, const CharPose& pose, float t) {
       A.armR = vec3(0.9f, -0.05f, 0); A.foreR = vec3(0.45f + 0.45f * std::sin(t * 7), 0, 0);
       A.armL = vec3(0.8f, 0.25f, 0); A.foreL = vec3(0.6f, 0, 0);
       A.head.x += 0.35f;
+      break;
+    case CW_FEED: {   // the stonecutter: the block held in both hands and pushed slowly through the blade, drawn back, pushed again
+      const float push = 0.5f + 0.5f * std::sin(t * 1.6f);
+      A.armR = vec3(1.05f + 0.25f * push, -0.18f, 0.05f); A.foreR = vec3(0.35f - 0.25f * push, 0, 0);
+      A.armL = vec3(1.05f + 0.25f * push, 0.18f, -0.05f); A.foreL = vec3(0.35f - 0.25f * push, 0, 0);
+      A.head.x += 0.4f; A.body.x += 0.08f + 0.06f * push;
+      break;
+    }
+    case CW_CHISEL:   // the chisel held to the stone in the left hand, the mallet tapping it short and quick
+      A.armR = vec3(1.25f - blow * 0.45f, -0.05f, 0.1f); A.foreR = vec3(0.55f - blow * 0.3f, 0, 0);
+      A.armL = vec3(0.95f, 0.22f, -0.05f); A.foreL = vec3(0.7f, 0, 0);
+      A.head.x += 0.4f; A.body.x += 0.05f;
       break;
     case CW_WEAVE:    // the shuttle passed from hand to hand across the loom
       A.armR = vec3(0.95f, 0, 0.25f * std::sin(t * 2.4f)); A.foreR = vec3(0.6f, 0, 0);

@@ -16,7 +16,7 @@ struct NpcMind {
   u32 confront = 0; float confrontT = 0; bool confrontSaid = false; std::string confrontVictim;
   u32 foe = 0; float foeT = 0, scanT = 0;
   std::map<std::string, double> greeted;
-  u32 chatMate = 0; float chatT = 0, workT = 0; double mutterT = -1e9;
+  u32 chatMate = 0; float chatT = 0, workT = 0; double mutterT = -1e9; int workN = 0;   // (strokes at a station: the mason's block in, then the cut piece out)
   struct Door { ivec3 at; double t; };
   std::vector<Door> doors;
   // npcGo

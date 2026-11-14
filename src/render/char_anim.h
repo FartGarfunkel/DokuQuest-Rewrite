@@ -66,7 +66,7 @@ struct CharPose {
 };
 
 // part angles (x, y, z; applied as rotY, rotX, rotZ) and the lift of the whole body (blocks)
-enum CharWork : u8 { CW_NONE = 0, CW_HAMMER, CW_DIP, CW_BREW, CW_GRIND, CW_CHOP, CW_KNEAD, CW_CUT, CW_WEAVE, CW_TEND, CW_FIT, CW_SORT, CW_CRAFT, CW_HOE };
+enum CharWork : u8 { CW_NONE = 0, CW_HAMMER, CW_DIP, CW_BREW, CW_GRIND, CW_CHOP, CW_KNEAD, CW_CUT, CW_WEAVE, CW_TEND, CW_FIT, CW_SORT, CW_CRAFT, CW_HOE, CW_FEED, CW_CHISEL };
 CharWork charWorkOf(const std::string& doing);
 struct CharAngles { vec3 body{0}, head{0}, armR{0}, foreR{0}, armL{0}, foreL{0}, legR{0}, shinR{0}, legL{0}, shinL{0}; float lift = 0;
                     vec2 toolR{0}, toolL{0}; };   // toolR/L: the grip's turn at the fist (x, z), the held thing turned in the hand
