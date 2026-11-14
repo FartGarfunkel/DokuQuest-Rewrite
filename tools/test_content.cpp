@@ -246,7 +246,8 @@ int main(int argc, char** argv) {
     Creature* c = spawnCreature(*L, P->realm, bird, vec3(60.5f, Y + 30, 60.5f));
     const RigModel* RM = c ? rigModel(c->modelKey()) : nullptr;
     if (!c || !RM) { check(false, std::string("a ") + bird + " to fly"); continue; }
-    const int wi = RM->find("wingR");
+    int wi = RM->find("wingR");   // (an imported body names it its own way: tools/port/alexsmobs_import.py)
+    for (const char* n : {"wing_right", "right_wing", "rightWing", "wingRight", "wing_r"}) if (wi < 0) wi = RM->find(n);
     auto wingDown = [&] { const vec3 d = glm::normalize(vec3(c->mats[wi] * vec4(0, -1, 0, 0))); return d.y; };   // how far the wing points down
     float worstAir = -1, worstGround = 1;
     float tAge = 1;
@@ -256,6 +257,14 @@ int main(int argc, char** argv) {
     }
     for (int k = 0; k < 40; k++) { c->onGround = true; c->vel = vec3(0); c->age = (tAge += 0.02f); rigPose(*c, *RM, creatureBase(*c, false)); }
     worstGround = wingDown();
+    if (RM->rig == "am") {   // an imported body (its wing laid its own way): in the air it beats (the tip swings up and down a lot), perched it's still
+      auto tipY = [&] { return (c->mats[wi] * vec4(0, 0, 0.3f, 1)).y + (c->mats[wi] * vec4(0.3f, 0, 0, 1)).y; };
+      float lo = 1e9f, hi = -1e9f, glo = 1e9f, ghi = -1e9f;
+      for (int k = 0; k < 120; k++) { c->onGround = false; c->vel = vec3(2.5f, 0.3f, 0); c->age = (tAge += 0.011f); rigPose(*c, *RM, creatureBase(*c, false)); if (k > 60) { lo = std::min(lo, tipY()); hi = std::max(hi, tipY()); } }
+      for (int k = 0; k < 120; k++) { c->onGround = true; c->vel = vec3(0); c->age = (tAge += 0.02f); rigPose(*c, *RM, creatureBase(*c, false)); if (k > 80) { glo = std::min(glo, tipY()); ghi = std::max(ghi, tipY()); } }
+      check(wi >= 0 && hi - lo > 0.08f && ghi - glo < (hi - lo) * 0.5f, std::string("a flying ") + bird + "'s wings beat (" + std::to_string(hi - lo) + " up and down), perched they rest (" + std::to_string(ghi - glo) + ")");
+      c->removed = true; continue;
+    }
     check(wi >= 0 && worstAir < 0.75f && worstGround < -0.85f, std::string("a flying ") + bird + "'s wings are spread out and beat (never hanging: " + std::to_string(worstAir) + "); perched, folded down (" + std::to_string(worstGround) + ")");
     c->removed = true;
   }
@@ -264,6 +273,8 @@ int main(int argc, char** argv) {
     const BlockId tr = B("feeding_trough");
     check(tr != AIR, "the feeding trough is a block");
     const int TX = 40, TZ = 8;
+    { const double tw = nowSeconds();   // (its chunk out at x 40: streamed in before the floor's laid, however long it takes)
+      while (!w.chunk(DIM_OVERWORLD, TX >> 4, TZ >> 4) && nowSeconds() - tw < 30) { w.stream({{vec3(TX, Y, TZ), 1, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(20)); } }
     for (int x = TX - 6; x <= TX + 6; x++) for (int z = TZ - 6; z <= TZ + 6; z++) { w.setBlock(x, Y, z, B("stone")); for (int y = Y + 1; y <= Y + 3; y++) w.setBlock(x, y, z, AIR); }   // (a floor: the test world is bare out here)
     w.setBlock(TX, Y + 1, TZ, tr);
     RayHit h; h.hit = true; h.block = ivec3(TX, Y + 1, TZ); h.normal = ivec3(0, 1, 0); h.id = tr; h.point = vec3(TX + 0.5f, Y + 1.56f, TZ + 0.5f);

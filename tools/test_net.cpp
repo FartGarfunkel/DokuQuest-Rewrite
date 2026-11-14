@@ -193,7 +193,7 @@ int main(int argc, char** argv) {
   // ---- refusals ----
   {
     net::NetClient bad;
-    net::JoinOptions o; o.address = addr; o.name = "no/slashes"; o.timeout = 5;
+    net::JoinOptions o; o.address = addr; o.name = "no/slashes"; o.timeout = 15;   // (the client's own wait: a fresh server is still warming up for its first few seconds)
     bool refused = !bad.connect(o);
     check(refused && bad.error().find("name") != std::string::npos, "a bad name is refused: " + bad.error());
   }

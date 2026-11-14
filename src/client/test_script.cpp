@@ -208,7 +208,7 @@ void runStep(App& a, const json& st) {
         float d = glm::distance(e->pos, p->pos); if (d < bd) { bd = d; best = e.get(); }
       }
       if (!best) { result(false, "lookAt: no " + want + (job.empty() ? "" : " (" + job + ")") + " near"); return; }
-      if (st.contains("dist")) { p->pos = vec3(best->pos.x, p->pos.y, best->pos.z + st.value("dist", 2.5f)); p->vel = vec3(0); }   // stand that far south of it first
+      if (st.contains("dist")) { p->pos = vec3(best->pos.x, p->pos.y + st.value("up", 0.f), best->pos.z + st.value("dist", 2.5f)); p->vel = vec3(0); }   // stand that far south of it first ("up": and that far over)
       t = best->pos + vec3(0, best->h * st.value("eh", 0.9f), 0);   // its head ("eh": that far up it; 0 its feet): stalls and counters stand in front of the chest
     }
     vec3 d = glm::normalize(t - (p->pos + vec3(0, p->eye, 0)));

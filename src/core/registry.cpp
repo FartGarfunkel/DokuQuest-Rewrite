@@ -84,6 +84,10 @@ bool Registry::loadBase(const fs::path& dir) {
       if (j->contains("models")) for (auto& [k, v] : (*j)["models"].items()) models[k] = v;
       if (j->contains("clips")) for (auto& [k, v] : (*j)["clips"].items()) clips[k] = v;
       if (j->contains("kits")) for (auto& [k, v] : (*j)["kits"].items()) kits[k] = v;
+      // whole creatures (tools/port/alexsmobs_import.py): new kinds only; a kind we have keeps its own ways (and wears the model)
+      if (j->contains("mobs") && mobs.is_object()) for (auto& [k, v] : (*j)["mobs"].items()) if (!mobs.contains(k)) mobs[k] = v;
+      // and a few things of a kind we have (its imported voice): merged field by field
+      if (j->contains("mobPatch") && mobs.is_object()) for (auto& [k, v] : (*j)["mobPatch"].items()) if (mobs.contains(k) && v.is_object()) mobs[k].update(v);
     } }
   finalize();
   DQ_LOG("registry: %zu blocks, %zu items, %zu recipes, %zu tiles", blocks.size(), items.size(), recipes.size(), tileIndex.size());

@@ -8,6 +8,7 @@
 #include "sim/boss_kit.h"
 #include "sim/creature.h"
 #include "sim/geo_anim.h"
+#include "sim/am_anim.h"
 #include "sim/mob_combat.h"
 #include "sim/weather.h"
 #include "sim/level.h"
@@ -131,6 +132,7 @@ void registerBossKits() {
   const json& mobs = reg().mobs;
   if (!mobs.is_object()) return;
   registerGeoAnim();
+  registerAmAnim();
   for (auto& [type, d] : mobs.items()) {
     if (!d.is_object() || d.value("kit", std::string()).empty()) continue;
     CreatureHooks h;

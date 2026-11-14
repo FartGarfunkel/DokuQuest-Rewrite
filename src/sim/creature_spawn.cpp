@@ -623,6 +623,53 @@ public:
         }
       }
     }
+    // creatures that name their own places in data (mobs.json / imported: "spawnDim": [[place, weight, fewest, most, where]...]):
+    // "nether" / "end" anywhere on the ground of that band, "cave" under the Overworld's land in the dark, "night" on the
+    // Overworld's land after dark; where: "g" the ground, "a" the air over it, "w" in water, "l" in lava. A slow roll, a
+    // few about at most, the way the mod's own spawns come (rare, in their places)
+    if (realm == REALM_MAIN && frand() < 0.04f) {
+      static const std::unordered_map<std::string, std::vector<std::pair<std::string, json>>> BY = [] {
+        std::unordered_map<std::string, std::vector<std::pair<std::string, json>>> by;
+        for (auto& [k, m] : reg().mobs.items()) if (m.is_object() && m.contains("spawnDim") && m["spawnDim"].is_array())
+          for (auto& e : m["spawnDim"]) if (e.is_array() && e.size() >= 5 && e[0].is_string()) by[e[0].get<std::string>()].push_back({k, e});
+        return by; }();
+      const bool night = day < 0.42f;   // (as the night crowd)
+      const char* place = dim == DIM_NETHER ? "nether" : dim == DIM_END ? "end" : nullptr;
+      std::string pl = place ? place : "";
+      if (dim == DIM_OVERWORLD) {
+        const int surf = w.isLoaded(ifloor(p.pos.x), py, ifloor(p.pos.z)) ? w.surfaceY(ifloor(p.pos.x), ifloor(p.pos.z), DIM_OVERWORLD) : py;
+        pl = py < surf - 12 ? "cave" : night ? "night" : "";
+      }
+      auto it = pl.empty() ? BY.end() : BY.find(pl);
+      if (it != BY.end() && !it->second.empty()) {
+        float tot = 0; for (auto& [k, e] : it->second) tot += e[1].get<float>();
+        float q = frand() * tot; const std::pair<std::string, json>* pick = &it->second.back();
+        for (auto& c : it->second) { q -= c.second[1].get<float>(); if (q <= 0) { pick = &c; break; } }
+        const std::string& t = pick->first; const json& e = pick->second;
+        const CreatureType* ct = creatureType(t);
+        const std::string where = e[4].get<std::string>();
+        if (ct && !(ct->hostile && peaceful) && count(t.c_str(), 64) < std::max(2, e[3].get<int>() + 1)) {
+          const ivec2 xz = ringFar(20, 44);
+          if (w.isLoaded(xz.x, py, xz.y)) {
+            const int lo = e[2].get<int>(), hi = std::max(lo, e[3].get<int>()), n = lo + (int)(frand() * (hi - lo + 1));
+            if (where == "w" || where == "l") {
+              for (int y = std::min(base + DIM_H - 3, py + 16); y > std::max(base + 2, py - 30); y--) {
+                const BlockId b = w.getBlock(xz.x, y, xz.y);
+                if (R.tLiquid[b] && R.tLiquid[w.getBlock(xz.x, y - 1, xz.y)] && (where == "l") == (R.block(b).key.find("lava") != std::string::npos)) {
+                  for (int i = 0; i < n; i++) add(t.c_str(), xz.x + 0.5f + i * 0.4f, (float)y - 0.5f, xz.y + 0.5f);
+                  break;
+                }
+              }
+            } else {
+              const int fy = floorAt(xz.x, xz.y, std::min(base + DIM_H - 4, py + 20), 50);
+              const bool dark = (w.getLight(xz.x, fy, xz.y) & 15) == 0 || pl != "cave";
+              if (fy > 0 && dark && !R.tLiquid[w.getBlock(xz.x, fy - 1, xz.y)])
+                for (int i = 0; i < n; i++) add(t.c_str(), xz.x + 0.5f + i * 0.6f, (float)(fy + (where == "a" ? 2 + (int)(frand() * 5) : 0)), xz.y + 0.5f);
+            }
+          }
+        }
+      }
+    }
     // endermen
     if (!peaceful) {
       int cap = dim == DIM_END ? 12 : 2;
