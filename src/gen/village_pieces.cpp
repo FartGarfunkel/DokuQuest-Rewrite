@@ -1,6 +1,7 @@
 // gen/village_pieces.cpp — our villages' buildings: Better Village's structure pieces (gzip'd NBT templates in
 // data/villages, tools/port/village_import.py), read once on first use, each Minecraft block state turned into our
 // block and its meta for every quarter turn.
+#include <regex>
 #include <set>
 #include "world/rug.h"
 #include "gen/village_pieces.h"
@@ -204,7 +205,8 @@ std::string prop(const json& P, const char* k) { return P.is_object() && P.conta
 int propI(const json& P, const char* k, int def) { const std::string s = prop(P, k); return s.empty() ? def : std::atoi(s.c_str()); }
 
 std::unordered_map<std::string, int>& missing() { static std::unordered_map<std::string, int> m; return m; }
-int furnN[2] = {0, 0};   // chairs and tables of ours put in for the builders' stand-ins (logged)
+int furnN[2] = {0, 0};
+int emptyFurnished = 0;   // houses that came empty, furnished (logged)   // chairs and tables of ours put in for the builders' stand-ins (logged)
 std::map<std::string, std::array<int, 2>> furnBy;   // (by style)
 
 // one palette entry -> our block (id NONE: nothing placed) with its meta at each quarter turn
@@ -374,6 +376,105 @@ static std::string spawnerMob(const std::string& id) {
   if (auto it = NEAR.find(n); it != NEAR.end()) n = it->second;
   if (n == "phantom" || !reg().mobs.contains(n)) n = "skeleton";
   return n;
+}
+
+// A house its builder left empty inside (our mushroom houses, savanna huts and classic cottages were shells): furnished
+// here, as a villager would have it. On the main floor inside its walls: a bed with its head to a wall, a chest by
+// another, the work block its name asks for (a bakery's smoker, a library's lectern...), a table in the room with a chair
+// at it and a lantern on it. Nothing goes in a doorway or the cell before one.
+static void furnishEmpty(VPPiece& P) {
+  const int SX = P.sx, SY = P.sy, SZ = P.sz;
+  if (SX < 4 || SZ < 4 || SY < 3) return;
+  std::vector<int> g((size_t)SX * SY * SZ, -1);
+  auto in = [&](int x, int y, int z) { return x >= 0 && y >= 0 && z >= 0 && x < SX && y < SY && z < SZ; };
+  auto at = [&](int x, int y, int z) { return in(x, y, z) ? g[((size_t)y * SZ + z) * SX + x] : -1; };
+  for (int i = 0; i < (int)P.blocks.size(); i++) g[((size_t)P.blocks[i].y * SZ + P.blocks[i].z) * SX + P.blocks[i].x] = i;
+  auto keyAt = [&](int x, int y, int z) -> std::string { const int i = at(x, y, z); return i < 0 ? std::string() : reg().block(P.states[P.blocks[i].s].id).key; };
+  auto solid = [&](int x, int y, int z) { const int i = at(x, y, z); return i >= 0 && reg().tSolid[P.states[P.blocks[i].s].id]; };
+  auto free = [&](int x, int y, int z) { return in(x, y, z) && at(x, y, z) < 0; };
+  static const int DX[4] = {0, 1, 0, -1}, DZ[4] = {-1, 0, 1, 0};   // north east south west
+  static const char* FN[4] = {"north", "east", "south", "west"};
+  // the floor cells inside: free with free over them, standing on something solid, roofed, walled every way within 8
+  struct C { int x, y, z; };
+  std::map<int, std::vector<C>> byY;
+  for (int y = 1; y < SY - 1; y++) for (int z = 0; z < SZ; z++) for (int x = 0; x < SX; x++) {
+    if (!free(x, y, z) || !free(x, y + 1, z) || !solid(x, y - 1, z)) continue;
+    bool roof = false; for (int k = y + 2; k < SY && k <= y + 9 && !roof; k++) roof = at(x, k, z) >= 0;
+    if (!roof) continue;
+    bool walled = true;
+    for (int d = 0; d < 4 && walled; d++) { bool w = false; for (int k = 1; k <= 8 && !w; k++) w = solid(x + DX[d] * k, y, z + DZ[d] * k) || solid(x + DX[d] * k, y + 1, z + DZ[d] * k); walled = w; }
+    if (!walled) continue;
+    bool byDoor = false;
+    for (int d = 0; d < 4; d++) for (int k = 0; k <= 1; k++) if (keyAt(x + DX[d], y + k, z + DZ[d]).find("door") != std::string::npos) byDoor = true;
+    if (keyAt(x, y, z).find("door") != std::string::npos) byDoor = true;
+    if (!byDoor) byY[y].push_back({x, y, z});
+  }
+  if (byY.empty()) return;
+  int fy = byY.begin()->first; for (auto& [y, v] : byY) if (v.size() > byY[fy].size()) fy = y;
+  std::vector<C>& cells = byY[fy];
+  if (cells.size() < 4) return;
+  std::set<long> used;
+  auto ck = [](int x, int z) { return (long)x * 4096 + z; };
+  auto isCell = [&](int x, int z) { for (auto& c : cells) if (c.x == x && c.z == z) return !used.count(ck(x, z)); return false; };
+  auto wallDir = [&](const C& c) { for (int d = 0; d < 4; d++) if (solid(c.x + DX[d], fy, c.z + DZ[d])) return d; return -1; };
+  auto put = [&](int x, int y, int z, const json& e) {
+    VPState st = mapState(e); if (st.id == NONE || st.id == AIR) return false;
+    P.states.push_back(st); P.blocks.push_back({(u8)x, (u8)y, (u8)z, (u16)(P.states.size() - 1)});
+    g[((size_t)y * SZ + z) * SX + x] = (int)P.blocks.size() - 1; used.insert(ck(x, z)); return true;
+  };
+  auto mc = [](const std::string& n, json props = json::object()) { json e = {{"Name", "minecraft:" + n}}; if (!props.empty()) e["Properties"] = props; return e; };
+  u32 h = (u32)std::hash<std::string>()(P.name);
+  auto rnd = [&]() { h = h * 1103515245u + 12345u; return (h >> 8) & 0xFFFF; };
+  // 1. the bed: its head to a wall, its foot into the room
+  for (int t = 0; t < (int)cells.size(); t++) {
+    const C& c = cells[(t + rnd()) % cells.size()];
+    const int w = wallDir(c); if (w < 0 || !isCell(c.x, c.z)) continue;
+    const int fx = c.x - DX[w], fz = c.z - DZ[w];
+    if (!isCell(fx, fz)) continue;
+    put(c.x, fy, c.z, mc("red_bed", {{"facing", FN[w]}, {"part", "head"}}));
+    put(fx, fy, fz, mc("red_bed", {{"facing", FN[w]}, {"part", "foot"}}));
+    break;
+  }
+  // 2. the work block the house's name asks for, then 3. a chest, each against a wall facing the room
+  static const std::pair<const char*, const char*> JOBS[] = {{"bakery", "smoker"}, {"butcher", "smoker"}, {"armorer", "blast_furnace"}, {"cartographer", "cartography_table"},
+    {"fletcher", "fletching_table"}, {"librar", "lectern"}, {"mason", "stonecutter"}, {"shepherd", "loom"}, {"tanner", "cauldron"}, {"leather", "cauldron"},
+    {"toolsmith", "smithing_table"}, {"weaponsmith", "grindstone"}, {"temple", "brewing_stand"}, {"church", "brewing_stand"}, {"cleric", "brewing_stand"},
+    {"fisher", "barrel"}, {"farm", "composter"}, {"jewel", "crafting_table"}, {"alchemist", "brewing_stand"}};
+  std::vector<std::string> wallThings;
+  for (auto& [k, b] : JOBS) if (P.name.find(k) != std::string::npos) { wallThings.push_back(b); break; }
+  if (wallThings.empty()) wallThings.push_back("crafting_table");
+  wallThings.push_back("chest");
+  for (const std::string& what : wallThings) for (int t = 0; t < (int)cells.size(); t++) {
+    const C& c = cells[(t + rnd()) % cells.size()];
+    const int w = wallDir(c); if (w < 0 || !isCell(c.x, c.z)) continue;
+    put(c.x, fy, c.z, mc(what, {{"facing", FN[(w + 2) & 3]}}));
+    break;
+  }
+  // 4. a table in the room (not against a wall when there's room for that) with a chair at it and a lantern on it
+  std::string wood = "oak";
+  { std::map<std::string, int> wc; for (auto& b : P.blocks) { const std::string k = reg().block(P.states[b.s].id).key;
+      for (const char* wd : {"spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry"}) if (k.rfind(std::string(wd) + "_", 0) == 0) wc[wd]++; }
+    int best = 0; for (auto& [k, n] : wc) if (n > best) { best = n; wood = k; } }
+  const std::string tableKey = findBlock(wood + "_table") != NONE ? wood + "_table" : "oak_table", chairKey = findBlock(wood + "_chair") != NONE ? wood + "_chair" : "oak_chair";
+  for (int pass = 0; pass < 2; pass++) {
+    bool done = false;
+    for (int t = 0; t < (int)cells.size() && !done; t++) {
+      const C& c = cells[(t + rnd()) % cells.size()];
+      if (!isCell(c.x, c.z) || (pass == 0 && wallDir(c) >= 0)) continue;
+      int sd = -1; for (int d = 0; d < 4 && sd < 0; d++) if (isCell(c.x + DX[d], c.z + DZ[d])) sd = d;
+      if (sd < 0 || findBlock(tableKey) == NONE) continue;
+      VPState tb; tb.id = findBlock(tableKey); tb.meta = {0, 1, 2, 3}; P.states.push_back(tb);
+      P.blocks.push_back({(u8)c.x, (u8)fy, (u8)c.z, (u16)(P.states.size() - 1)}); used.insert(ck(c.x, c.z));
+      if (findBlock(chairKey) != NONE) {   // (a chair keeps a stair's meta: its back on the far side from the table)
+        const int f = sd;   // the chair's back away from the table
+        VPState ch; ch.id = findBlock(chairKey); for (int r = 0; r < 4; r++) ch.meta[r] = (u8)((f + r) & 3); P.states.push_back(ch);
+        P.blocks.push_back({(u8)(c.x + DX[sd]), (u8)fy, (u8)(c.z + DZ[sd]), (u16)(P.states.size() - 1)}); used.insert(ck(c.x + DX[sd], c.z + DZ[sd]));
+      }
+      if (fy + 1 < SY && free(c.x, fy + 1, c.z)) put(c.x, fy + 1, c.z, mc("lantern"));
+      done = true;
+    }
+    if (done) break;
+  }
 }
 
 bool makePiece(const std::string& style, const std::string& kind, const std::string& name, const std::vector<u8>& bytes, VPPiece& P, const json* rules) {
@@ -921,6 +1022,15 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
       }
     }
   }
+  // a house left empty inside: furnished (furnishEmpty)
+  if (kind == "houses" && !std::regex_search(name, std::regex("stable|farm|pen|ruin|well|lamp|decor|garden|field|pasture|pond|fountain|statue|tree|graveyard|camp|tent|market|gazebo"))) {
+    int furn = 0;
+    for (const VPBlock& b : P.blocks) { const VPState& st = P.states[b.s]; const BlockDef& d = reg().block(st.id);
+      if (st.kind == VPK_CHEST || st.kind == VPK_BED_FOOT || st.kind == VPK_JOB || d.has("furniture") || d.has("table") || d.has("chair")) furn++; }
+    if (furn <= 1) { const size_t before = P.blocks.size(); furnishEmpty(P); emptyFurnished += P.blocks.size() > before;
+      if (std::getenv("DQ_FURN_LOG")) { std::string o; for (size_t i = before; i < P.blocks.size(); i++) o += " " + reg().block(P.states[P.blocks[i].s].id).key + "@" + std::to_string(P.blocks[i].x) + "," + std::to_string(P.blocks[i].y) + "," + std::to_string(P.blocks[i].z);
+        DQ_LOG("furnished %s/%s (%dx%dx%d):%s", P.style.c_str(), P.name.c_str(), P.sx, P.sy, P.sz, o.c_str()); } }
+  }
   return true;
 }
 
@@ -929,6 +1039,7 @@ std::unique_ptr<VillagePieces> finishPack(std::unique_ptr<VillagePieces> pack, i
   if (!pieces) return nullptr;
   for (auto& [k, v] : pack->pools) std::sort(v.begin(), v.end(), [](const VPPiece& a, const VPPiece& b) { return a.name < b.name; });   // the same order on every machine
   { std::string by; for (auto& [st, n] : furnBy) by += " " + st + " " + std::to_string(n[0]) + "/" + std::to_string(n[1]); DQ_LOG("village pieces: chairs/tables by style:%s", by.c_str()); }
+  DQ_LOG("village pieces: %d empty houses furnished", emptyFurnished);
   std::string miss; int shown = 0;
   for (auto& [k, c] : missing()) if (shown++ < 40) miss += (miss.empty() ? "" : ", ") + k;
   DQ_LOG("village pieces: %d in %d pools, %d chairs and %d tables of ours%s%s", pieces, (int)pack->pools.size(), furnN[0], furnN[1], miss.empty() ? "" : "; left out (no block of ours): ", miss.c_str());
