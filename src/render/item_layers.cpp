@@ -643,10 +643,18 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     const vec2 ts = bookUiSize();
     const vec4 sp = offJ.spread;
     const float cw = (crop.z - crop.x) * ts.x, ch = (crop.w - crop.y) * ts.y;
-    offW = 0.44f; offH = offW * ((sp.w - sp.y) * ch) / std::max(1e-3f, (sp.z - sp.x) * cw);
-    offJM = glm::translate(mat4(1), vec3(-0.30f, -0.13f, -0.68f));   // (held steady: the page under the pointer mustn't swim)
-    offJM = glm::rotate(offJM, 0.55f, vec3(0, 1, 0));    // (turned in toward you)
-    offJM = glm::rotate(offJM, -0.42f, vec3(1, 0, 0));   // (its top tipped away, as a book held low)
+    // lifted up and nearer the middle while you use it (the pad in the bag, the pointer on its pages), lowered again
+    // after: eased, and held up a moment after the pointer leaves so it doesn't bob as you go between book and station
+    static float lift = 0; static double lastUse = -1e9, lastT = -1;
+    if (bookUiStationInUse()) lastUse = f.time;
+    const float dt = lastT < 0 ? 0.f : (float)std::clamp(f.time - lastT, 0.0, 0.1); lastT = f.time;
+    const float goal = f.time - lastUse < 0.7 ? 1.f : 0.f;
+    lift += (goal - lift) * std::min(1.f, dt * 7);
+    const float e = lift * lift * (3 - 2 * lift);
+    offW = glm::mix(0.52f, 0.64f, e); offH = offW * ((sp.w - sp.y) * ch) / std::max(1e-3f, (sp.z - sp.x) * cw);
+    offJM = glm::translate(mat4(1), glm::mix(vec3(-0.31f, -0.14f, -0.68f), vec3(-0.17f, -0.05f, -0.64f), e));   // (held steady: the page under the pointer mustn't swim)
+    offJM = glm::rotate(offJM, glm::mix(0.55f, 0.30f, e), vec3(0, 1, 0));    // (turned in toward you)
+    offJM = glm::rotate(offJM, glm::mix(-0.42f, -0.22f, e), vec3(1, 0, 0));   // (its top tipped away, as a book held low; raised to read, more upright)
     offJM = glm::rotate(offJM, 0.06f, vec3(0, 0, 1));
     drawJournalBody(VR, offJM, offW, offH, 0.35f, L, bookUiDark(s.app));
     {   // the off hand under its spine side, the arm up from below the view

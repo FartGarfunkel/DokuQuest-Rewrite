@@ -21,6 +21,7 @@ void bookUiRender(App& a, bool station = false);
 bool bookUiStationOn(App& a);
 void bookUiStationBag(int padCur);
 bool bookUiMouseOverBook();
+bool bookUiStationInUse();             // the station's journal being used now (the pad in the bag, the pointer on it): it's lifted up to read
 // a tooltip that may reach past the pages (beside a ribbon): in the book it's shown on the screen at the pointer, not
 // on the page picture (it was cut off there); outside the book, false (draw it as ever)
 bool bookUiScreenTip(const std::string& text);
