@@ -78,6 +78,7 @@ struct CharWear {
   u32 rodOwner = 0;                 // the player whose rod tip is recorded for the fishing line (0 = nobody)
   bool heldGlint = false, offGlint = false;   // enchanted: the shimmer on it
   std::vector<std::string> carried; // carried.js: hotbar things not in the hand (third person)
+  std::vector<std::string> carriedModel;   // each one's own model (a mixed or gemmed blade's: partToolModelKey), "" = the item's
   bool hatItem = false;             // the helmet slot holds a hat (no 3D-look hiding under it)
 };
 // p's equipment slots (Player::cape/back/hook or the inventory's Player::data copies, whichever holds the stack)

@@ -694,7 +694,7 @@ CharWear charWearOf(const Player& p, const CharacterSpec& spec, bool withCarried
     const int side = shieldSide(p);
     if (side) { w.strap = p.shield[0].id; w.strapRight = side > 0; }
   }
-  if (withCarried) for (int i = 0; i < 9 && i < (int)p.inv.size(); i++) if (i != p.selected && !p.inv[i].empty()) w.carried.push_back(p.inv[i].id);
+  if (withCarried) for (int i = 0; i < 9 && i < (int)p.inv.size(); i++) if (i != p.selected && !p.inv[i].empty()) { w.carried.push_back(p.inv[i].id); w.carriedModel.push_back(partToolModelKey(p.inv[i])); }
   return w;
 }
 
@@ -1266,7 +1266,12 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   // ---- carried.js: what you carry shows on you (hotbar things not in your hand) ----
   if (!fp && !ps.swim && !ps.crawl && !ps.sleep && ps.deathT <= 0 && !wear.carried.empty()) {
     const std::vector<std::string>& ids = wear.carried;
+    // (each by its own model: a mixed or gemmed blade's own colours, not the plain item's)
+    auto modelOf = [&](const std::string& id) { for (size_t i = 0; i < ids.size(); i++) if (ids[i] == id && i < wear.carriedModel.size() && !wear.carriedModel[i].empty()) return wear.carriedModel[i]; return id; };
     std::string kb, kb2, hr, hl; std::vector<std::string> pots;
+    // two swords (or blades) carried: crossed in an X on the back
+    std::vector<size_t> blades; for (size_t i = 0; i < ids.size(); i++) if (toolType(ids[i]) == "sword") blades.push_back(i);
+    const bool crossed = blades.size() >= 2;
     for (auto& id : ids) { std::string t = toolType(id); if (kb.empty() && (t == "sword" || t == "staff" || rx(id, {"club", "spear", "trident", "mace"}))) kb = id; }
     for (auto& id : ids) if (toolType(id) == "bow") { if (!kb.empty()) kb2 = id; else kb = id; break; }
     for (auto& id : ids) if (hr.empty() && toolType(id) == "pickaxe") hr = id;
@@ -1274,15 +1279,21 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     for (auto& id : ids) if (hl.empty() && toolType(id) == "axe") hl = id;
     for (auto& id : ids) if (hl.empty() && toolType(id) == "hoe") hl = id;
     for (auto& id : ids) if ((id.rfind("potion_", 0) == 0 || id.rfind("splash_potion_", 0) == 0 || id == "honey_bottle") && pots.size() < 3) pots.push_back(id);
-    auto put = [&](const std::string& id, const std::function<mat4(mat4)>& place) {
+    auto put = [&](const std::string& id, const std::function<mat4(mat4)>& place, const std::string& model = "") {
       if (!reg().item(id)) return;
-      const VoxelModel& im = itemModel(id);
+      const VoxelModel& im = itemModel(model.empty() ? modelOf(id) : model);
       if (!im.ready()) return;
       VR.draw(im.gl, place(glm::scale(B, vec3(1 / CHAR_PX))) * im.matrix(), light, tint);
     };
     const float PXb = CHAR_PX;
     float zb = (!back.empty() ? 7.4f : 2.7f) * PXb;
-    if (!kb.empty()) put(kb, [&](mat4 m) { m = glm::translate(m, vec3(0, 7.4f * PXb, zb)); m = glm::rotate(m, PI - 0.12f, vec3(0, 0, 1)); return glm::scale(m, vec3(0.72f)); });
+    if (crossed) {   // the two blades crossed behind the shoulders, hilts up either side (each its own colours)
+      for (int k = 0; k < 2; k++) {
+        const size_t i = blades[k];
+        const std::string mk = i < wear.carriedModel.size() && !wear.carriedModel[i].empty() ? wear.carriedModel[i] : ids[i];
+        put(ids[i], [&](mat4 m) { m = glm::translate(m, vec3(0, 7.0f * PXb, zb + k * 0.6f * PXb)); m = glm::rotate(m, k ? PI * 1.5f + 0.05f : PI - 0.05f, vec3(0, 0, 1));   /* (the models lie on their diagonal: a quarter turn apart, one blade down to each side) */ return glm::scale(m, vec3(0.72f)); }, mk);
+      }
+    } else if (!kb.empty()) put(kb, [&](mat4 m) { m = glm::translate(m, vec3(0, 7.4f * PXb, zb)); m = glm::rotate(m, PI - 0.12f, vec3(0, 0, 1)); return glm::scale(m, vec3(0.72f)); });
     if (!kb2.empty()) put(kb2, [&](mat4 m) { m = glm::translate(m, vec3(0, 6.8f * PXb, zb + 0.9f * PXb)); m = glm::rotate(m, PI / 2 + 0.12f, vec3(0, 0, 1)); return glm::scale(m, vec3(0.78f)); });
     if (!hr.empty()) put(hr, [&](mat4 m) { m = glm::translate(m, vec3(4.75f * PXb, 1.2f * PXb, 0.4f * PXb)); m = glm::rotate(m, PI / 2, vec3(0, 1, 0)); m = glm::rotate(m, PI / 4 + 0.08f, vec3(0, 0, 1)); return glm::scale(m, vec3(0.52f)); });
     if (!hl.empty()) put(hl, [&](mat4 m) { m = glm::translate(m, vec3(-4.75f * PXb, 1.2f * PXb, 0.4f * PXb)); m = glm::rotate(m, -PI / 2, vec3(0, 1, 0)); m = glm::rotate(m, PI / 4 + 0.08f, vec3(0, 0, 1)); return glm::scale(m, vec3(0.52f)); });
