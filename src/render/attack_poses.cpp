@@ -39,7 +39,20 @@ mat4 gripTurn(const mat4& fore, vec2 turn) {
   return glm::translate(m, vec3(0, 6, 1));
 }
 
+// the body mirrored left for right (turns about x kept, about y and z the other way): an off-hand blow is the main hand's
+// mirrored, so the stance is mirrored, the move laid over it, and the whole mirrored back
+static void mirrorAngles(CharAngles& A) {
+  auto m = [](vec3& v) { v.y = -v.y; v.z = -v.z; };
+  std::swap(A.armR, A.armL); std::swap(A.foreR, A.foreL); std::swap(A.legR, A.legL); std::swap(A.shinR, A.shinL); std::swap(A.toolR, A.toolL);
+  for (vec3* v : {&A.armR, &A.armL, &A.foreR, &A.foreL, &A.legR, &A.legL, &A.shinR, &A.shinL, &A.body, &A.head}) m(*v);
+  A.toolR.y = -A.toolR.y; A.toolL.y = -A.toolL.y;
+}
+static void attackPoseRaw(CharAngles& A, const CharPose& pose);
 void attackPose(CharAngles& A, const CharPose& pose) {
+  if (!pose.atkOff) { attackPoseRaw(A, pose); return; }
+  mirrorAngles(A); attackPoseRaw(A, pose); mirrorAngles(A);
+}
+static void attackPoseRaw(CharAngles& A, const CharPose& pose) {
   const u8 id = pose.atkMove;
   if (id == MV_NONE || id >= MV_COUNT) return;
   const AttackMove& M = attackMove(id);
@@ -67,7 +80,7 @@ void attackPose(CharAngles& A, const CharPose& pose) {
   const vec2 grip(L(&AtkKey::gx), L(&AtkKey::gz));
   if (!C.left) {
     A.armR = mixv(A.armR, arm, k); A.foreR.x += (L(&AtkKey::fx) - A.foreR.x) * k; A.toolR = grip * k;
-    if (!pose.off) { A.armL = mixv(A.armL, other, k * 0.85f); A.foreL.x += (L(&AtkKey::ofx) - A.foreL.x) * k * 0.85f; }
+    if (!(pose.atkOff ? pose.held : pose.off)) { A.armL = mixv(A.armL, other, k * 0.85f); A.foreL.x += (L(&AtkKey::ofx) - A.foreL.x) * k * 0.85f; }
   } else {
     A.armL = mixv(A.armL, arm, k); A.foreL.x += (L(&AtkKey::fx) - A.foreL.x) * k; A.toolL = grip * k;
     A.armR = mixv(A.armR, other, k * 0.85f); A.foreR.x += (L(&AtkKey::ofx) - A.foreR.x) * k * 0.85f;

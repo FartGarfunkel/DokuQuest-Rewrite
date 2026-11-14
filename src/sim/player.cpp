@@ -14,7 +14,7 @@ namespace dq {
 Player::Player() {
   type = "player"; w = PLAYER_W; h = PLAYER_H; hp = maxHp = 20;
   inv.resize(INV_MAIN); armor.resize(INV_ARMOR); offhand.resize(INV_OFFHAND);
-  back.resize(1); hook.resize(1); charm.resize(1); cape.resize(1); quiver.resize(1); ender.resize(INV_ENDER);
+  back.resize(1); shield.resize(1); hook.resize(1); charm.resize(1); cape.resize(1); quiver.resize(1); ender.resize(INV_ENDER);
   stats = {{"blocksMined", 0}, {"mobsKilled", 0}, {"bossesKilled", 0}, {"deaths", 0}};
 }
 
@@ -320,7 +320,7 @@ json Player::save() const {
   j["stamina"] = stamina; j["secondChance"] = secondChanceCd;
   j["rpg"] = {{"con", statCon}, {"str", statStr}, {"agi", statAgi}, {"int", statInt}, {"lck", statLck}, {"foc", statFoc}};
   j["inv"] = {{"main", slotsToJson(inv)}, {"armor", slotsToJson(armor)}, {"back", slotsToJson(back)}, {"off", slotsToJson(offhand)},
-              {"hook", slotsToJson(hook)}, {"charm", slotsToJson(charm)}, {"cape", slotsToJson(cape)}, {"quiver", slotsToJson(quiver)}, {"ender", slotsToJson(ender)}, {"selected", selected}};
+              {"hook", slotsToJson(hook)}, {"shield", slotsToJson(shield)}, {"charm", slotsToJson(charm)}, {"cape", slotsToJson(cape)}, {"quiver", slotsToJson(quiver)}, {"ender", slotsToJson(ender)}, {"selected", selected}};
   j["fuel"] = fuel;
   j["spawn"] = spawnPoint.y < 0 ? json() : json::array({spawnPoint.x, spawnPoint.y, spawnPoint.z});
   j["spawnDim"] = spawnPoint.y < 0 ? 0 : jsFromDim(dimOfY(ifloor(spawnPoint.y)));
@@ -341,7 +341,7 @@ void Player::load(const json& j) {
   if (j.contains("inv") && j["inv"].is_object()) {
     const json& o = j["inv"];
     slotsFromJson(o.value("main", json()), inv); slotsFromJson(o.value("armor", json()), armor); slotsFromJson(o.value("back", json()), back);
-    slotsFromJson(o.value("off", json()), offhand); slotsFromJson(o.value("hook", json()), hook); slotsFromJson(o.value("charm", json()), charm);
+    slotsFromJson(o.value("off", json()), offhand); slotsFromJson(o.value("hook", json()), hook); slotsFromJson(o.value("shield", json()), shield); if (shield.empty()) shield.resize(1); slotsFromJson(o.value("charm", json()), charm);
     slotsFromJson(o.value("cape", json()), cape); slotsFromJson(o.value("quiver", json()), quiver); slotsFromJson(o.value("ender", json()), ender);
     selected = clampv(o.value("selected", 0), 0, 8);
   } else {   // the engine foundation's first format

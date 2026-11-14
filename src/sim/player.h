@@ -57,6 +57,8 @@ public:
   // inventory (game/inventory.js PlayerInventory): main 36 (0-8 hotbar), armour 4, backpack slot,
   // off hand, belt hook, charm, cape, the quiver (worn beside the backpack: sim/quiver.h), and the ender chest's 27
   std::vector<ItemStack> inv, armor, offhand, back, hook, charm, cape, quiver, ender;
+  std::vector<ItemStack> shield;   // the shield slot: strapped on the forearm of the hand with no weapon in it, that hand still free
+  bool atkOff = false;             // the swing going is the off hand's (sim/combat.cpp: the left hand's weapon, mirrored)
   ItemStack cursor;                 // stack held by the mouse in inventory screens
   int selected = 0;                 // hotbar slot
   bool flying = false, sneaking = false, sprinting = false, swimming = false, crawling = false, crawlWant = false;

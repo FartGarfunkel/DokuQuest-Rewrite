@@ -60,10 +60,9 @@ ShieldBox shieldBoxAt(const vec3& pos, float yaw, float pitch, bool guard, bool 
 
 bool playerShieldBox(const Player& p, ShieldBox& out) {
   if (p.dead || p.sleeping || p.swimming || p.crawling || p.riding || p.dodgeT > 0) return false;
-  const bool mainSh = isShield(p.inv[p.selected]);
-  const bool offSh = !p.offhand.empty() && isShield(p.offhand[0]);
-  if (!mainSh && !offSh) return false;
-  out = shieldBoxAt(p.pos, p.yaw, p.pitch, p.blockT > 0, p.sneaking, mainSh);
+  const int side = shieldSide(p);   // (sim/combat_rpg.h: a shield in a hand, or the shield slot's on the free forearm)
+  if (!side) return false;
+  out = shieldBoxAt(p.pos, p.yaw, p.pitch, p.blockT > 0, p.sneaking, side > 0);
   return true;
 }
 

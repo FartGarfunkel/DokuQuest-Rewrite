@@ -38,6 +38,7 @@ public:
       for (int i = 0; i <= n; i++) {
         const float u = a0 + (a1 - a0) * i / n;
         vec3 h, tp; bladeAt(p.atkMove, u, h, tp);
+        if (p.atkOff) { h.x = -h.x; tp.x = -tp.x; }   // (the off hand's: the other side)
         const vec3 inner = h + (tp - h) * (fist ? 0.f : 0.35f), outer = fist ? tp + (tp - h) * 0.6f : tp;
         const vec3 wi = attackFrameToWorld(inner, p.pos, p.atkYaw, p.pitch), wo = attackFrameToWorld(outer, p.pos, p.atkYaw, p.pitch);
         const vec3 ri = f.cam.rel(glm::dvec3(wi)), ro = f.cam.rel(glm::dvec3(wo));

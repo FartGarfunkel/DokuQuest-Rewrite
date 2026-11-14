@@ -8,7 +8,7 @@
 
 namespace dq {
 
-static const char* GRP_NAMES[] = {"main", "armor", "off", "back", "hook", "charm", "cape", "bp", "grid", "cont", "furn", "out", "mach", "sta", "sout", "cut", "quiver", "qv", "mount"};
+static const char* GRP_NAMES[] = {"main", "armor", "off", "back", "hook", "charm", "cape", "bp", "grid", "cont", "furn", "out", "mach", "sta", "sout", "cut", "quiver", "qv", "mount", "shield"};
 const char* grpName(Grp g) { return (int)g < (int)Grp::Count ? GRP_NAMES[(int)g] : "?"; }
 
 static bool hasContents(const ItemStack& s) { return s.tag.is_object() && s.tag.contains("c"); }
@@ -68,6 +68,8 @@ void InvSession::refresh() {
   };
   adopt("back", p.back, 1); adopt("hook", p.hook, 1); adopt("charm", p.charm, 1); adopt("cape", p.cape, 1); adopt("ender", p.ender, 27);
   if (p.quiver.empty()) p.quiver.resize(1);
+  if (p.shield.empty()) p.shield.resize(1);
+  shield = p.shield;
   back = p.back; hook = p.hook; charm = p.charm; cape = p.cape; ender = p.ender; quiver = p.quiver;
   qv = quiverLoad(quiver[0]);   // the worn quiver's arrows
   bp.clear();
@@ -148,6 +150,7 @@ void InvSession::store(Grp g) {
   switch (g) {
     case Grp::Back: p.back = back; break;
     case Grp::Hook: p.hook = hook; break;
+    case Grp::Shield: p.shield = shield; break;
     case Grp::Charm: p.charm = charm; break;
     case Grp::Cape: p.cape = cape; break;
     case Grp::Quiver: p.quiver = quiver; break;
@@ -188,7 +191,7 @@ void InvSession::changed(Grp g) {
   // everything an op may have touched is written back; the backpack's contents follow the backpack
   if (g != Grp::Back) store(Grp::Bp);
   if (g != Grp::Quiver) store(Grp::Qv);   // (the quiver's arrows follow the quiver)
-  for (Grp s : {Grp::Back, Grp::Hook, Grp::Charm, Grp::Cape, Grp::Quiver}) store(s);
+  for (Grp s : {Grp::Back, Grp::Hook, Grp::Charm, Grp::Cape, Grp::Quiver, Grp::Shield}) store(s);
   if (o.mode == "container") { store(Grp::Cont); store(Grp::Mount); }
   if (o.mode == "furnace") store(Grp::Furn);
   if (o.mode == "machine") store(Grp::Mach);
@@ -204,6 +207,7 @@ std::vector<ItemStack>* InvSession::arr(Grp g) {
     case Grp::Off: return &p.offhand;
     case Grp::Back: return &back;
     case Grp::Hook: return &hook;
+    case Grp::Shield: return &shield;
     case Grp::Charm: return &charm;
     case Grp::Cape: return &cape;
     case Grp::Quiver: return &quiver;
@@ -234,6 +238,7 @@ bool InvSession::accepts(Grp g, int i, const ItemStack& s) const {
     case Grp::Armor: return d->has("armor") && d->props["armor"].value("slot", -1) == i;
     case Grp::Back: return d->has("backpack");
     case Grp::Hook: return d->has("hook");
+    case Grp::Shield: return s.id == "shield" || d->has("shield");
     case Grp::Charm: return d->has("charm");
     case Grp::Cape: return d->has("cape");
     case Grp::Quiver: return isQuiverItem(s);
@@ -307,7 +312,7 @@ void InvSession::slotClick(Grp g, int i, bool right, bool shift) {
       if (cur.n <= 0) cur.clear();
     }
   }
-  bool gear = g == Grp::Armor || g == Grp::Back || g == Grp::Hook || g == Grp::Off || g == Grp::Charm || g == Grp::Cape || g == Grp::Quiver;
+  bool gear = g == Grp::Armor || g == Grp::Back || g == Grp::Hook || g == Grp::Off || g == Grp::Charm || g == Grp::Cape || g == Grp::Quiver || g == Grp::Shield;
   if (gear && !s.empty() && !(s.id == before.id && s.n == before.n)) sound("equip");
   if (hadS || hadCur) sound("click");
   if (g == Grp::Grid) ghost.clear();
@@ -433,6 +438,7 @@ void InvSession::quickMove(Grp g, int i) {
   if (o.mode == "inventory" || o.mode == "table") {
     if (d && d->has("armor")) { int slot = d->props["armor"].value("slot", -1); if (slot >= 0 && slot < (int)p.armor.size() && p.armor[slot].empty()) { p.armor[slot] = s; s.clear(); sound("equip"); return; } }
     if (isPack && back[0].empty() && g == Grp::Main) { back[0] = s; s.clear(); sound("equip"); return; }
+    if ((s.id == "shield" || (d && d->has("shield"))) && shield[0].empty() && g == Grp::Main) { shield[0] = s; s.clear(); sound("equip"); return; }   // (shift-click: into its slot)
     if (isQuiverItem(s) && quiver[0].empty() && g == Grp::Main) { quiver[0] = s; s.clear(); sound("equip"); return; }   // on with it
     if (isArrowItem(s) && !qv.empty() && g == Grp::Main) { if (into(qv, s) <= 0) { s.clear(); return; } }   // arrows into the quiver
     if (d && d->has("hook") && hook[0].empty() && o.mode == "inventory") { hook[0] = s; hook[0].n = 1; if (--s.n <= 0) s.clear(); sound("equip"); return; }

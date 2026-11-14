@@ -20,6 +20,9 @@ ShieldBox shieldBoxAt(const vec3& pos, float yaw, float pitch, bool guard, bool 
 // the player's shield (false: none held, or no shield pose now: rolling, swimming, crawling, riding, asleep, dead).
 // The main hand's shield first, as the renderer draws it.
 bool playerShieldBox(const Player& p, ShieldBox& out);
+// which forearm the shield is on: 1 the main (right) hand's, -1 the off (left) hand's, 0 none to raise (sim/combat_rpg.cpp:
+// one in a hand, or the shield slot's on the forearm of the hand without a weapon; both hands armed, slung)
+int shieldSide(const Player& p);
 // where along o + d * t (0 <= t <= maxT; d need not be unit) the segment first enters the box
 bool shieldRayHit(const ShieldBox& b, const vec3& o, const vec3& d, float maxT, float* tHit = nullptr);
 // is the point inside it (with a margin)

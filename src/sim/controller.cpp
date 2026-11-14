@@ -112,6 +112,7 @@ bool itemHasUse(const ItemDef& d) {   // (also sim/combat_rpg.cpp: a shield wait
 }
 
 // ---- the per-frame update (LocalPlayer.update) ----------------------------------------------------
+bool interactable(BlockId id);   // (below: a block for using, not a swing's)
 void PlayerController::update(float dt, const PlayerInput& in) {
   t += dt;
   World& w = world();
@@ -426,7 +427,9 @@ void PlayerController::interact(float dt, const PlayerInput& in) {
   if (in.attackPressed && deflectFireball(lv, p, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch), 4.5f)) { swingArm(); mining.active = false; fightHold = true; return; }
   // a combat move starts on a creature or on thin air; a click on a block digs it, whatever is in your hand
   const bool allowSwing = te || !target.hit;
-  tickMelee(lv, p, dt, in, allowSwing);
+  // both hands armed: use swings the off hand (Skyrim's two hands), unless what you look at is for using (a door, a chest)
+  const bool offUse = in.usePressed && offHandSwings(p, false, true) && !(target.hit && interactable(target.id));
+  tickMelee(lv, p, dt, in, allowSwing || offUse, offUse);
   if (p.atkMove) { mining.active = false; fightHold = true; if (in.attackPressed) return; }
   if (!in.attack) fightHold = false;
   if (in.attackPressed && !target.hit) swingArm();
@@ -459,7 +462,7 @@ void PlayerController::interact(float dt, const PlayerInput& in) {
   // holding use repeats only after a fresh press in the game
   if (!in.use || t - interactAt > 0.15) useArmed = false;
   interactAt = t;
-  if (in.usePressed) { useArmed = true; useRepeat = 0.28f; use(false, in); }
+  if (in.usePressed && !offUse) { useArmed = true; useRepeat = 0.28f; use(false, in); }
   else if (in.use && useArmed) { useRepeat -= dt; if (useRepeat <= 0) { useRepeat = 0.22f; use(true, in); } }
 }
 
@@ -624,7 +627,7 @@ void PlayerController::useOffhand(bool repeat, const PlayerInput& in) {
   std::swap(p.inv[p.selected], p.offhand[0]);
 }
 
-static bool interactable(BlockId id) {
+bool interactable(BlockId id) {
   const BlockDef& b = reg().block(id);
   static const char* keys[] = {"anvil", "enchant", "brewing", "grindstone", "loom", "smithing", "cartography", "fletching", "composter", "cauldron", "lectern", "barrel", "chest", "furnace", "smoker", "crafting", "table", "bench", "bed", "door", "gate", "trapdoor", "bell", "note", "jukebox", "shelf", "bookcase", "campfire", "cooking", "altar", "forge", "press", "mill", "rack", "stand"};
   for (const char* k : {"container", "table", "furnace", "lectern", "station", "enderChest", "partyChest", "machine", "stonecutter", "jukebox", "bed", "door", "trapdoor", "noteBlock", "bellBlock", "cauldron", "pile", "placedBackpack", "frame", "sign", "pot"}) if (b.has(k)) return true;

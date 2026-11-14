@@ -397,7 +397,7 @@ void NetClient::sendMe() {
   m["st"] = std::round(p.stamina * 10) / 10;
   if (p.dodgeT > 0) { m["dg"] = r3(p.dodgeT); m["dy"] = r3(p.dodgeYaw); }
   if (p.blockT > 0) m["bk"] = r3(p.blockT);
-  if (p.atkMove) { m["am"] = p.atkMove; m["at"] = r3(p.atkT); m["ay"] = r3(p.atkYaw); }   // a swing (sim/attack_moves.h): drawn on the others' screens
+  if (p.atkMove) { m["am"] = p.atkMove; m["at"] = r3(p.atkT); m["ay"] = r3(p.atkYaw); if (p.atkOff) m["ao"] = 1; }   // a swing (sim/attack_moves.h): drawn on the others' screens
   if (p.riding) {
     m["rd"] = p.riding;
     // what we steer it with goes to the host, whose game moves the mount (and us on it)
@@ -524,6 +524,8 @@ void NetClient::applyEntities(const json& m) {
       p->inv[0] = s.contains("hd") ? ItemStack(s["hd"].get<std::string>(), 1) : ItemStack();
       for (int i = 0; i < INV_ARMOR; i++) p->armor[i] = s.contains("ar") && i < (int)s["ar"].size() && s["ar"][i].is_string() ? ItemStack(s["ar"][i].get<std::string>(), 1) : ItemStack();
       p->offhand[0] = s.contains("of") ? ItemStack(s["of"].get<std::string>(), 1) : ItemStack();
+      if (p->shield.empty()) p->shield.resize(1);
+      p->shield[0] = s.contains("sh") ? ItemStack(s["sh"].get<std::string>(), 1) : ItemStack();
       if (s.contains("bk")) p->data["back"] = s["bk"]; else p->data.erase("back");          // (render/char_layer wornItem)
       if (s.contains("qv")) p->data["quiver"] = s["qv"]; else p->data.erase("quiver");
       if (const int f = s.value("qf", 0)) p->data["quiverFill"] = f; else p->data.erase("quiverFill");

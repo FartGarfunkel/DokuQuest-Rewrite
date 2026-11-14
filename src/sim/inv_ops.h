@@ -21,7 +21,7 @@ namespace dq {
 
 class World;
 
-enum class Grp : u8 { Main, Armor, Off, Back, Hook, Charm, Cape, Bp, Grid, Cont, Furn, Out, Mach, Sta, SOut, Cut, Quiver, Qv, Mount, Count };   // Quiver: the worn quiver; Qv: its arrows; Mount: a mount's gear
+enum class Grp : u8 { Main, Armor, Off, Back, Hook, Charm, Cape, Bp, Grid, Cont, Furn, Out, Mach, Sta, SOut, Cut, Quiver, Qv, Mount, Shield, Count };   // Quiver: the worn quiver; Qv: its arrows; Mount: a mount's gear
 const char* grpName(Grp g);
 bool stacksMerge(const ItemStack& a, const ItemStack& b);   // the original's canMerge
 
@@ -105,7 +105,7 @@ public:
 
 private:
   bool ok = true;
-  std::vector<ItemStack> cont, furn, back, hook, charm, cape, bp, ender, mach, sta, cut, quiver, qv, mgear;
+  std::vector<ItemStack> cont, furn, back, hook, charm, cape, bp, ender, mach, sta, cut, quiver, qv, mgear, shield;
   int contN = 0; bool dbl = false; ivec3 posA{0}, posB{0}; int nA = 0;
   struct Drag { bool active = false, right = false; ItemStack orig; std::vector<std::pair<Grp, int>> slots; std::vector<ItemStack> base; } drag;
   void store(Grp g);

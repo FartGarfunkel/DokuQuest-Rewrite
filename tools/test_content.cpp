@@ -20,6 +20,8 @@
 #include "sim/trough.h"
 #include "sim/station_work.h"
 #include "sim/rpg.h"
+#include "sim/combat.h"
+#include "sim/shield_shape.h"
 #include "sim/spell_items.h"
 #include <thread>
 #include <cstdio>
@@ -535,6 +537,30 @@ int main(int argc, char** argv) {
     const bool ok = A && Z && hp && makePartArmor("helmet", std::vector<std::string>(hp->cells.size(), A->key), h1)
                     && makePartArmor("helmet", [&] { std::vector<std::string> v(hp->cells.size(), A->key); for (size_t i = 0; i < v.size() / 2; i++) v[i] = Z->key; return v; }(), h2);
     check(ok && armorPointsOf(h1) != armorPointsOf(h2), "a helmet of pig iron and zinc: its protection follows how much of each (" + std::to_string(ok ? armorPointsOf(h1) : 0.f) + " / " + std::to_string(ok ? armorPointsOf(h2) : 0.f) + ")");
+  }
+  {   // the off hand: the shield slot on the free forearm, a sword in the off hand swings (Skyrim's two hands)
+    for (auto& s2 : P->inv) s2 = ItemStack();
+    P->selected = 0; P->offhand[0] = ItemStack(); P->shield[0] = ItemStack("shield", 1);
+    P->inv[0] = ItemStack("iron_sword", 1);
+    check(shieldSide(*P) == -1, "the shield slot: a sword in the main hand, the shield on the left forearm");
+    P->offhand[0] = ItemStack("torch", 1);
+    check(shieldSide(*P) == -1, "  ...a torch in the off hand: the shield still there to raise");
+    P->offhand[0] = ItemStack("iron_sword", 1); P->inv[0] = ItemStack();
+    check(shieldSide(*P) == 1, "  ...the sword swapped to the off hand: the shield on the right forearm");
+    P->inv[0] = ItemStack("iron_sword", 1);
+    check(shieldSide(*P) == 0, "  ...a sword in each hand: the shield slung (nothing to raise)");
+    check(offHandSwings(*P, false, true) && !offHandSwings(*P, true, false), "  ...two swords: use swings the off hand, attack the main");
+    P->inv[0] = ItemStack();
+    check(offHandSwings(*P, true, false), "  ...the main hand empty: attack swings the off hand's sword");
+    // a swing of the off hand's: the move starts, marked the off hand's, and its blow wears the off hand's sword
+    P->inv[0] = ItemStack("iron_sword", 1); P->offhand[0] = ItemStack("diamond_sword", 1);
+    P->atkMove = 0; P->atkT = 0; P->atkGap = 9;
+    PlayerInput none;
+    tickMelee(*L, *P, 0.01f, none, true, true);
+    check(P->atkMove != 0 && P->atkOff, "  ...use with two swords: an off-hand swing begins");
+    for (int k = 0; k < 200 && P->atkMove; k++) tickMelee(*L, *P, 0.01f, none, true, false);
+    check(!P->atkOff && P->inv[0].id == "iron_sword" && P->offhand[0].id == "diamond_sword", "  ...and ends with each sword still in its own hand");
+    P->offhand[0] = ItemStack(); P->shield[0] = ItemStack(); P->inv[0] = ItemStack();
   }
   {   // the journal's story tree: only what you've come to shows
     P->stats["story"] = json::object(); P->stats.erase("vseen"); P->stats.erase("dex");

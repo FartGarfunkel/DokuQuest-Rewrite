@@ -142,6 +142,7 @@ void netAttack(dq::Player& p, const json& m) {
   const float t = m.value("at", 0.f);
   if (p.atkMove != id || std::fabs(p.atkT - t) > 0.12f) { p.atkMove = (u8)id; p.atkT = t; }
   p.atkYaw = m.value("ay", p.atkYaw);
+  p.atkOff = m.value("ao", 0) != 0;
 }
 
 } // namespace dq::net

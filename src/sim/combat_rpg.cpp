@@ -4,6 +4,7 @@
 #include "sim/shield_shape.h"
 #include "sim/skills.h"
 #include "sim/gameplay.h"
+#include "sim/combat.h"
 #include "core/registry.h"
 #include <algorithm>
 #include <cmath>
@@ -27,10 +28,7 @@ constexpr int STAT_CAP = 15;
 constexpr float SECOND_CHANCE_CD = 180;
 constexpr float BOSS_CAP_FRAC = 0.08f;
 
-bool holdingShield(const Player& p) {
-  auto is = [](const ItemStack& s) { return !s.empty() && (s.id == "shield" || (reg().item(s.id) && reg().item(s.id)->has("shield"))); };
-  return is(p.inv[p.selected]) || (!p.offhand.empty() && is(p.offhand[0]));
-}
+bool holdingShield(const Player& p) { return shieldSide(p) != 0; }
 const json& mobDef(const std::string& type) {
   static const json none = json::object();
   const json& m = reg().mobs;
@@ -225,4 +223,14 @@ bool arrowStrikeShield(Level& lv, Entity& arrow, const vec3& from, const vec3& t
   return true;
 }
 
+int shieldSide(const Player& p) {
+  auto is = [](const ItemStack& s) { return !s.empty() && (s.id == "shield" || (reg().item(s.id) && reg().item(s.id)->has("shield"))); };
+  if (is(p.inv[p.selected])) return 1;
+  if (!p.offhand.empty() && is(p.offhand[0])) return -1;
+  if (p.shield.empty() || !is(p.shield[0])) return 0;
+  // the shield slot: on the forearm of the hand that holds no weapon (a torch in it is fine); both hands armed: slung
+  const bool mainW = isHandWeapon(p.inv[p.selected]), offW = !p.offhand.empty() && isHandWeapon(p.offhand[0]);
+  if (mainW && offW) return 0;
+  return offW ? 1 : -1;
+}
 } // namespace dq

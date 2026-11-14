@@ -221,6 +221,7 @@ void runStep(App& a, const json& st) {
     ItemStack gs(st.value("item", "stone"), st.value("n", 1), st.value("d", 0));
     if (st.contains("tag") && st["tag"].is_object()) gs.tag = st["tag"];   // e.g. {"en":{"sharp":3},"gx":900}
     if (st.value("offhand", false)) { if (p->offhand.empty()) p->offhand.resize(1); p->offhand[0] = gs; return; }   // straight into the other hand
+    if (st.value("shieldSlot", false)) { if (p->shield.empty()) p->shield.resize(1); p->shield[0] = gs; return; }   // into the shield slot
     if (st.contains("armor")) { const int k = std::clamp(st.value("armor", 0), 0, 3); if ((int)p->armor.size() <= k) p->armor.resize(4); p->armor[k] = gs; return; }   // worn: 0 helmet .. 3 boots
     if (st.value("clear", false)) for (auto& it : p->inv) it = ItemStack();   // an empty bag first (whatever the spawn put in it)
     if (st.value("hand", false) && p->selected < (int)p->inv.size()) { p->inv[p->selected] = gs; return; }   // straight into the held slot

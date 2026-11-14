@@ -230,7 +230,22 @@ float attackEntity(Level& lv, Player& p, Entity& e, float dmgMul, float knockMul
   return dealt;
 }
 
-static void beginSwing(Player& p, bool sprint, bool air) {
+bool isHandWeapon(const ItemStack& s) {
+  if (s.empty()) return false;
+  const ItemDef* d = reg().item(s.id);
+  if (!d || !d->hasTool) return false;
+  static const char* NOT[] = {"shears", "igniter", "chisel", "brush", "rod"};
+  for (const char* n : NOT) if (d->tool.type == n) return false;
+  return !(s.id == "shield" || d->has("shield"));
+}
+bool offHandSwings(const Player& p, bool attackPressed, bool usePressed) {
+  if (p.offhand.empty() || !isHandWeapon(p.offhand[0])) return false;
+  const bool mainArmed = isHandWeapon(p.inv[p.selected]);
+  return mainArmed ? usePressed : attackPressed && p.inv[p.selected].empty();
+}
+static void beginSwingOf(Player& p, bool sprint, bool air, bool off);
+static void beginSwing(Player& p, bool sprint, bool air) { beginSwingOf(p, sprint, air, false); }
+static void beginSwingRaw(Player& p, bool sprint, bool air) {
   const ToolInfo* tool = heldTool(p);
   const std::string type = tool ? tool->type : "";
   const std::string key = p.inv[p.selected].empty() ? "" : p.inv[p.selected].id;
@@ -248,14 +263,23 @@ static void beginSwing(Player& p, bool sprint, bool air) {
   p.swing = 0.0001f;
   p.swinging = true;
 }
-void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allowStart) {
+// the off hand's swing: the same moves, with its own weapon (swapped into the hand for the start and each blow) and drawn
+// on the other side (render/attack_poses.cpp mirrors it; its sweep is the main hand's mirrored across your facing)
+static void beginSwingOf(Player& p, bool sprint, bool air, bool off) {
+  if (off && !p.offhand.empty()) std::swap(p.inv[p.selected], p.offhand[0]);
+  beginSwingRaw(p, sprint, air);
+  if (off && !p.offhand.empty()) std::swap(p.inv[p.selected], p.offhand[0]);
+  p.atkOff = off && p.atkMove != MV_NONE;
+}
+void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allowStart, bool offStart) {
   const ToolInfo* tool = heldTool(p);
   (void)tool;
-  if (in.attackPressed && allowStart) {
-    if (p.atkMove != MV_NONE && p.atkT < attackMove(p.atkMove).recovery) p.data["atkQueue"] = true;
-    else beginSwing(p, p.sprinting, !p.onGround);
+  const bool offPress = offStart || (in.attackPressed && offHandSwings(p, true, false));   // (the main hand empty: the attack button is the off hand's)
+  if ((in.attackPressed || offStart) && allowStart) {
+    if (p.atkMove != MV_NONE && p.atkT < attackMove(p.atkMove).recovery) { p.data["atkQueue"] = true; p.data["atkQueueOff"] = offPress; }
+    else beginSwingOf(p, p.sprinting, !p.onGround, offPress);
   }
-  if (p.atkMove == MV_NONE) { p.atkGap += dt; if (p.data.value("atkQueue", false)) beginSwing(p, p.sprinting, !p.onGround); return; }
+  if (p.atkMove == MV_NONE) { p.atkGap += dt; if (p.data.value("atkQueue", false)) beginSwingOf(p, p.sprinting, !p.onGround, p.data.value("atkQueueOff", false)); return; }
   const AttackMove& m = attackMove(p.atkMove);
   if ((p.dodgeT > 0 || p.blockT > 0.001f) && p.atkT < m.hitFrom) {
     p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear(); p.atkGap = COMBO_WINDOW; p.data.erase("atkQueue");
@@ -283,9 +307,14 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
       if ((int)p.atkHit.size() >= (int)m.strikes) break;
       if (e->removed || e->id == p.id || e->realm != p.realm || e->hp <= 0 || (!isMob(*e) && !e->isPlayer())) continue;
       if (std::find(p.atkHit.begin(), p.atkHit.end(), e->id) != p.atkHit.end()) continue;
-      const vec3 lo = e->pos - vec3(e->w, 0.05f, e->w), hi = e->pos + vec3(e->w, e->h, e->w);
+      vec3 ep = e->pos;
+      if (p.atkOff) { const vec3 right(std::cos(p.atkYaw), 0, -std::sin(p.atkYaw)); ep -= right * (2 * glm::dot(ep - p.pos, right)); }   // (the off hand: its sweep the mirror of the main hand's)
+      const vec3 lo = ep - vec3(e->w, 0.05f, e->w), hi = ep + vec3(e->w, e->h, e->w);
       if (!bladeSweepHits(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.pitch, lo, hi)) continue;
+      const bool swapIn = p.atkOff && !p.offhand.empty();
+      if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);   // (the blow is the off hand's weapon's: its damage, its wear)
       attackEntity(lv, p, *e, m.dmg, m.impact, p.atkMove == MV_SWORD_AIR, false);
+      if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);
       p.atkHit.push_back(e->id);
       if (isMob(*e)) {
         if (!e->data.is_object()) e->data = json::object();
@@ -293,10 +322,10 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
       }
     }
   }
-  if (in.attackPressed && p.atkT < m.recovery) p.data["atkQueue"] = true;
+  if ((in.attackPressed || offStart) && p.atkT < m.recovery) { p.data["atkQueue"] = true; p.data["atkQueueOff"] = offPress; }
   if (p.atkT >= m.len) {
-    p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear(); p.atkGap = 0;
-    if (p.data.value("atkQueue", false)) beginSwing(p, p.sprinting, !p.onGround);
+    p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear(); p.atkGap = 0; p.atkOff = false;
+    if (p.data.value("atkQueue", false)) beginSwingOf(p, p.sprinting, !p.onGround, p.data.value("atkQueueOff", false));
   }
 }
 
@@ -340,11 +369,11 @@ void playerDie(Level& lv, Player& p, const DamageSource& src) {
   else if (src.type == "explosion") cause = "You were blown up";
   if (!rule(lv, "keepInventory")) {
     std::vector<ItemStack> all;
-    for (auto* v : {&p.inv, &p.armor, &p.back, &p.offhand, &p.hook, &p.charm}) for (auto& s : *v) if (!s.empty() && s.id != "death_compass") all.push_back(s);
+    for (auto* v : {&p.inv, &p.armor, &p.back, &p.offhand, &p.hook, &p.charm, &p.shield}) for (auto& s : *v) if (!s.empty() && s.id != "death_compass") all.push_back(s);
     json grave = rule(lv, "graves") ? makeGrave(lv, p, all) : json();
     if (!grave.is_null()) p.grave = grave;
     else for (auto& s : all) dropItem(lv, p.realm, s, p.pos + vec3(0, 1, 0), true, 6);
-    for (auto* v : {&p.inv, &p.armor, &p.back, &p.offhand, &p.hook, &p.charm}) for (auto& s : *v) s.clear();
+    for (auto* v : {&p.inv, &p.armor, &p.back, &p.offhand, &p.hook, &p.charm, &p.shield}) for (auto& s : *v) s.clear();
     if (!grave.is_null() && reg().item("death_compass")) p.inv[0] = ItemStack("death_compass", 1);
     p.xp = 0;
   }

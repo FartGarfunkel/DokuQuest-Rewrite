@@ -511,10 +511,10 @@ public:
       }
     }
     struct G { Grp g; const char* ph; const char* cap; };
-    const G gear[] = {{Grp::Off, nullptr, "Off hand"}, {Grp::Hook, "lantern", "Hook"}, {Grp::Back, "leather_backpack", "Pack"}, {Grp::Charm, "vigor_charm", "Charm"}, {Grp::Cape, "red_cape", "Cape"}, {Grp::Quiver, "quiver", "Quiver"}};
+    const G gear[] = {{Grp::Off, nullptr, "Off hand"}, {Grp::Hook, "lantern", "Hook"}, {Grp::Back, "leather_backpack", "Pack"}, {Grp::Charm, "vigor_charm", "Charm"}, {Grp::Cape, "red_cape", "Cape"}, {Grp::Quiver, "quiver", "Quiver"}, {Grp::Shield, "shield", "Shield"}};
     const float gx = d1.x + is * 0.3f, cs = is * 0.22f / z / fontPx(F_BODY);
-    for (int i = 0; i < 6; i++) {
-      const float x = gx + (i % 2) * is * 1.25f, y = p.y + (i / 2) * is * 1.42f;
+    for (int i = 0; i < 7; i++) {
+      const float x = gx + (i < 6 ? (i % 2) : 2) * is * 1.25f, y = p.y + (i < 6 ? i / 2 : 0) * is * 1.42f;   // (the shield's slot a third column, by the off hand)
       slot(dl, gear[i].g, 0, ImVec2(x, y), is, gear[i].ph);
       ImVec2 cz = textSize(F_BODY, gear[i].cap, 0, cs);
       text(dl, F_BODY, ImVec2(x + (is - cz.x) * 0.5f, y + is + 1 * z), ink::muted, gear[i].cap, 0, cs);
@@ -631,7 +631,7 @@ public:
     x += is * 2 + is * 0.18f;
     // gear: off hand, hook, pack, charm, cape with captions under them
     struct G { Grp g; const char* ph; const char* cap; };
-    const G gear[] = {{Grp::Off, nullptr, "Off hand"}, {Grp::Hook, "lantern", "Hook"}, {Grp::Back, "leather_backpack", "Pack"}, {Grp::Charm, "vigor_charm", "Charm"}, {Grp::Cape, "red_cape", "Cape"}};
+    const G gear[] = {{Grp::Off, nullptr, "Off hand"}, {Grp::Hook, "lantern", "Hook"}, {Grp::Back, "leather_backpack", "Pack"}, {Grp::Charm, "vigor_charm", "Charm"}, {Grp::Cape, "red_cape", "Cape"}, {Grp::Shield, "shield", "Shield"}};
     float cs = is * 0.21f / z / fontPx(F_BODY), gy = p.y;
     for (auto& gr : gear) {
       slot(dl, gr.g, 0, ImVec2(x, gy), is, gr.ph);

@@ -689,6 +689,10 @@ CharWear charWearOf(const Player& p, const CharacterSpec& spec, bool withCarried
   if (!p.inv.empty() && p.selected >= 0 && p.selected < (int)p.inv.size() && !p.inv[p.selected].empty()) { w.held = p.inv[p.selected].id; w.heldModel = partToolModelKey(p.inv[p.selected]); w.heldGlint = itemGlints(p.inv[p.selected]); if (w.held == "fishing_rod") { w.rodOwner = p.id; if (p.data.value("rodOut", false)) w.held = "fishing_rod_cast"; } }
   if (p.eatT > 0 && !p.eatId.empty() && !isDrinkItem(p.eatId) && reg().item(p.eatId)) { w.held = p.eatId; w.heldModel = eatModelKey(p.eatId, 1 - p.eatT); w.heldGlint = false; }   // the food they're eating, bitten down
   if (!p.offhand.empty() && !p.offhand[0].empty()) { w.off = p.offhand[0].id; w.offGlint = itemGlints(p.offhand[0]); }
+  if (!p.shield.empty() && !p.shield[0].empty() && !isShieldItem(w.held) && !isShieldItem(w.off)) {   // the shield slot's (sim/shield_shape.h shieldSide)
+    const int side = shieldSide(p);
+    if (side) { w.strap = p.shield[0].id; w.strapRight = side > 0; }
+  }
   if (withCarried) for (int i = 0; i < 9 && i < (int)p.inv.size(); i++) if (i != p.selected && !p.inv[i].empty()) w.carried.push_back(p.inv[i].id);
   return w;
 }
@@ -743,6 +747,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   // the shield up, a dodge roll (sim/combat_rpg.h): the roll turns the body the way it goes (back to it on a step back)
   ps.block = st.block; ps.blockMain = isShieldItem(wear.held); ps.guardHit = st.guardHit;
   ps.shieldArm = ps.blockMain ? -1 : isShieldItem(wear.off) ? 1 : 0;
+  if (!wear.strap.empty()) { ps.blockMain = wear.strapRight; ps.shieldArm = wear.strapRight ? -1 : 1; }
   if (st.rollU > 0 && !fp && !p.dead && !p.riding && !p.swimming) {
     ps.roll = st.rollU; ps.rollBack = st.rollBack;
     ps.bodyYaw = st.rollYaw + (st.rollBack ? PI : 0.f) + devTurn; ps.headTurn = 0; ps.legTurn = 0; ps.air = false;
@@ -860,7 +865,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   u8 devMove = 0; float devT = 0;
   if (&p == s.player && devAttackPose(devMove, devT)) { ps.atkMove = devMove; ps.atkT = devT; ps.swing = 0; ps.swingKind = 0; if (!fp) { ps.bodyYaw = p.yaw; ps.hasBodyYaw = true; } }
   else if (p.atkMove && p.atkT < attackMove(p.atkMove).len) {   // an attack move (sim/attack_moves.h, the rules' own clock): drawn from its keys, the body turned to the blow
-    ps.atkMove = p.atkMove; ps.atkT = p.atkT; ps.swing = 0; ps.swingKind = 0;
+    ps.atkMove = p.atkMove; ps.atkT = p.atkT; ps.atkOff = p.atkOff; ps.swing = 0; ps.swingKind = 0;
     if (!fp) { ps.bodyYaw = p.atkYaw; ps.hasBodyYaw = true; }
   } else if (st.swingU > 0 && ps.armed && !isShieldItem(wear.held) && !p.swinging) { ps.swingKind = (u8)(1 + st.swingN); ps.swing = st.swingU; }
   {   // a spell held up in a free hand after a cast (render/spell_hands.h)
@@ -1140,6 +1145,8 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
       heldInHand(gripTurn(R.part[CP_ARMR_D], R.toolR), wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel, fp ? &head : nullptr, fp && !ps.atkMove ? fpYawV : nullptr);
       if (fp) { HeldItemLayer::torchTip[0] = o.camPos + glm::dvec3(head); HeldItemLayer::torchTipOn[0] = true; }   // (your own torch's flame, at its head)
     }
+    if (!wear.strap.empty() && (wear.strapRight ? mainOn : offOn) && !bowDraw)   // the shield slot's, strapped on the free forearm
+      shieldInHand(R, wear.strapRight ? CP_ARMR_D : CP_ARML_D, wear.strap, wear.strapRight ? 1.f : -1.f, ps.block, light, tint, false);
     if (!offOn || bowDraw) {}
     else if (!wear.off.empty() && isShieldItem(wear.off)) shieldInHand(R, CP_ARML_D, wear.off, -1.f, ps.blockMain ? 0.f : ps.block, light, tint, wear.offGlint);
     else if (!wear.off.empty()) {

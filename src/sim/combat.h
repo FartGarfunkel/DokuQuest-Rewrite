@@ -45,7 +45,12 @@ bool wearHeld(Level& lv, Player& p, int n = 1);            // tool durability
 void wearArmor(Player& p);                             // each worn piece takes one wear
 float attackEntity(Level& lv, Player& p, Entity& target);   // a melee blow (crits when falling); returns damage dealt
 float attackEntity(Level& lv, Player& p, Entity& target, float dmgMul, float knockMul, bool forceCrit, bool setCd);
-void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allowStart);
+void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allowStart, bool offStart = false);
+// a weapon in a hand: a tool or a blade (what swings in the attack moves)
+bool isHandWeapon(const ItemStack& s);
+// the off hand swings (Skyrim's way): its weapon, with the main hand empty or not a weapon, on the attack button; both
+// hands armed, on use. true: the off hand swings for that press (the controller: not a use then)
+bool offHandSwings(const Player& p, bool attackPressed, bool usePressed);
 void playerDie(Level& lv, Player& p, const DamageSource& src);
 void respawnPlayer(Level& lv, Player& p);              // to the bed if it's still there, else the world spawn
 void placeAtSpawn(Level& lv, Player& p, bool initial);
