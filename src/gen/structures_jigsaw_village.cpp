@@ -295,6 +295,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
             }
             q.parent = (int)qi; q.jx = ax; q.jz = az; q.dy = A.y - B.y;
             J->pcs.push_back(q);
+            if (std::getenv("DQ_VILLAGE_LOG") && C->name.find("garden_bridge") != std::string::npos) DQ_LOG("garden bridge in %s at %d %d", v.name.c_str(), q.x0, q.z0);
             { std::string t, j; pieceRole(*C, t, j); if (!(t == "house" && j.empty())) J->trades[t + "/" + j]++; }
             if (isOurs(*C)) oursLeft.erase(std::find(oursLeft.begin(), oursLeft.end(), C));
             placed = true; break;
@@ -973,6 +974,71 @@ void jigsawTownBuild(SP& P, const Town& v, const JigsawTown& J) {
       const int x = J.bx + lx * a, z = J.bz + lz * a;
       if (!P.in(x, z)) continue;
       P.put(x, y0 + 1, z, st.fence); P.put(x, y0 + 2, z, "lantern");
+    }
+  }
+  // the garden bridge's brook carried out of its piece into the land: from each end a stream (3 wide, at the brook's own
+  // level) runs on outward, meandering a little, till rising ground or a drop ends it in a pond, or it's gone ~20 blocks;
+  // never across a street or into a building, and banked wherever the land beside it is lower, so none of it spills.
+  // Worked out the same in every chunk (from the piece and the terrain), carved where it falls in this one
+  {
+    const BlockId WATER = bid("water"), BANK = bid("dirt"), BED = bid("gravel"), STONE = bid("mossy_cobblestone");
+    auto blocked = [&](int x, int z) {
+      if (J.street.count(colKey(x, z))) return true;
+      for (auto& b : J.boxes) if (x >= b[0] && x <= b[2] && z >= b[1] && z <= b[3]) return true;
+      return false;
+    };
+    for (const JPlaced& q : J.pcs) {
+      const VPPiece& p = *q.p;
+      if (p.name.find("garden_bridge") == std::string::npos) continue;
+      const int wl = q.y0;
+      auto inPiece = [&](int x, int z) { return x >= q.x0 && x <= q.x1() && z >= q.z0 && z <= q.z1(); };   // (the bridge's own: left as built)
+      for (int end : {0, 1}) {
+        // the brook's end row (local z 0 or sz-1, x 5..7) and the way out from it
+        const int lz = end ? p.sz - 1 : 0;
+        auto [cx0, cz0] = vpTurn(p, q.r, 6, lz);
+        auto [ix, iz] = vpTurn(p, q.r, 6, end ? lz - 1 : lz + 1);
+        int dx = cx0 - ix, dz = cz0 - iz;   // (outward)
+        const int sx = -dz, sz = dx;          // (across it)
+        int x = q.x0 + cx0, z = q.z0 + cz0;
+        Mulberry32 mr(hash32((i32)v.seed, x, z, 91));
+        auto carve = [&](int cx, int cz, bool pond) {
+          for (int k = pond ? -2 : -1; k <= (pond ? 2 : 1); k++) for (int k2 = pond ? -2 : 0; k2 <= (pond ? 2 : 0); k2++) {
+            const int wx = cx + sx * k + dx * k2, wz = cz + sz * k + dz * k2;
+            if (!P.in(wx, wz) || blocked(wx, wz) || inPiece(wx, wz)) continue;
+            P.putId(wx, wl - 1, wz, BED); P.putId(wx, wl, wz, WATER);
+            for (int y = wl + 1; y <= wl + 4; y++) { const BlockId u = P.get(wx, y, wz); if (u != AIR && u != NOBLOCK && !tLiquid(u)) P.put(wx, y, wz, "air"); }
+          }
+          for (int k : {pond ? -3 : -2, pond ? 3 : 2}) {   // its banks: built up where the land beside is lower
+            for (int k2 = pond ? -3 : 0; k2 <= (pond ? 3 : 0); k2++) {
+              const int wx = cx + sx * k + dx * k2, wz = cz + sz * k + dz * k2;
+              if (!P.in(wx, wz) || blocked(wx, wz) || inPiece(wx, wz)) continue;
+              for (int y = P.ground(wx, wz) + 1; y <= wl; y++) P.putId(wx, y, wz, y == wl ? BANK : STONE);
+            }
+          }
+        };
+        // the end row itself opened to the stream
+        int steps = 0;
+        { const int g0 = P.ground(x + dx, z + dz); if (blocked(x + dx, z + dz) || g0 < wl - 1 || g0 > wl + 2) continue; }   // (nowhere to run: its end stays closed)
+        for (int k = -1; k <= 1; k++) { const int wx = x + sx * k, wz = z + sz * k; if (P.in(wx, wz)) { P.putId(wx, wl, wz, WATER); P.put(wx, wl + 1, wz, "air"); } }
+        for (; steps < 22; steps++) {
+          const int nx = x + dx, nz = z + dz;
+          const int g = P.ground(nx, nz);
+          if (blocked(nx, nz) || g < wl - 1 || g > wl + 2) break;   // (a street, a building, a drop or a rise: the pond here)
+          x = nx; z = nz;
+          carve(x, z, false);
+          if (steps > 3 && mr() < 0.18) {   // (a bend now and then: it wanders, but on)
+            const int t = mr() < 0.5 ? 1 : -1;
+            const int ndx = dx == 0 ? t : dx, ndz = dz == 0 ? t : dz;
+            if (!blocked(x + (dx == 0 ? t : 0), z + (dz == 0 ? t : 0))) { const int bxx = x + (dx == 0 ? t : 0), bzz = z + (dz == 0 ? t : 0); x = bxx; z = bzz; carve(x, z, false); }
+            (void)ndx; (void)ndz;
+          }
+        }
+        if (steps > 0) carve(x, z, true);   // where it ends: a pond (reeds and lily pads about it); hemmed in at once, none
+        for (auto [ox, oz] : {std::pair<int, int>{2, 0}, {-2, 1}, {1, -2}}) {
+          const int wx = x + sx * ox + dx * oz, wz = z + sz * ox + dz * oz;
+          if (steps > 0 && P.in(wx, wz) && !blocked(wx, wz) && !inPiece(wx, wz) && P.get(wx, wl, wz) == WATER && mr() < 0.7) P.put(wx, wl + 1, wz, "lily_pad");
+        }
+      }
     }
   }
 }
