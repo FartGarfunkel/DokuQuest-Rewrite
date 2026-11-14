@@ -94,6 +94,8 @@ static void onScreenOpen(App& a, const json& args) {
   }
   if (io.mode == "container" && !io.hasPos && !io.ender && !io.heldPack && !io.entItems) { if (!o.contains("entity")) hudToast("That screen isn't in this build yet", "warn"); return; }
   if (!make) make = [io] { return makeInventoryScreen(io); };
+  // the millstone, sawmill and crusher: worked by hand too, its mouth and its chute (ui/cinematic_slots.cpp)
+  if (kind == "machine" && io.hasPos && a.settings.extra.value("cinematicStations", true) && !o.value("classic", false)) { const ivec3 at = io.pos; make = [at] { return makeCinematicSlotsScreen(at); }; }
   {   // the stations as scenes (ui/cinematic.h): the lean in with the station's own pose, then its screen, the glide back
     const int ck = kind == "furnace" ? 4 : kind == "station" && io.kind == "enchant" ? 2 : kind == "station" && io.kind == "brew" ? 3
                  : kind == "anvil_smith" || (kind == "station" && io.kind == "anvil") ? 1 : kind == "station" && pairSceneKind(io.kind) ? pairSceneKind(io.kind)
@@ -106,6 +108,7 @@ static void onScreenOpen(App& a, const json& args) {
       else if (kind == "station" && pairSceneKind(io.kind)) { const std::string st = io.kind; make = [at, st] { return makeCinematicPairScreen(at, st); }; }   // what's worked lying on top
       else if (ck == 7) make = [at] { return makeCinematicCutScreen(at); };     // the stone by the saw, the shapes on a dial
       else if (kind == "furnace" && o.value("kind", std::string()) != "trommel") make = [at] { return makeCinematicFurnaceScreen(at); };   // loaded by hand
+      else if (kind == "furnace") make = [at] { return makeCinematicSlotsScreen(at); };   // the trommel: its hopper and firebox by hand
       else make = [at, ck, inner] { return makeCinematicStationScreen(at, ck, inner); };
     }
   }

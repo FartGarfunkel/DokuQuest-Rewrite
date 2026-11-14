@@ -12,6 +12,8 @@
 #include "core/item_glint.h"
 #include "core/registry.h"
 #include "render/content_draw.h"
+#include "render/tile_box.h"
+#include "render/mesher.h"
 #include "render/map_render.h"
 #include "sim/maps.h"
 
@@ -62,8 +64,47 @@ class StationWorkLayer : public RenderLayer {
 public:
   const char* name() const override { return "station-work"; }
   int order() const override { return 111; }
+  // the grindstone at work: left out of the chunk mesh while its scene is open and drawn here, its wheel turning on its
+  // axle as the pieces are held to it (spun up while grinding, running down after)
+  ivec3 grindAt{0}; bool grindHidden = false; float wheelAng = 0, wheelSpd = 0; double lastT = -1;
+  void grindstone(GameSession& s, const FrameCtx& f, const PairView* pv) {
+    World& w = s.world();
+    const bool on = pv && pv->kind == 6 && reg().block(w.getBlock(pv->at.x, pv->at.y, pv->at.z)).key == "grindstone";
+    if (grindHidden && (!on || pv->at != grindAt)) {
+      auto& H = meshHiddenBlocks();
+      for (size_t i = 0; i < H.size(); i++) if (H[i] == grindAt) { H.erase(H.begin() + i); break; }
+      w.markBlockDirty(grindAt.x, grindAt.y, grindAt.z, true); grindHidden = false;
+    }
+    if (!on) { wheelSpd = 0; lastT = -1; return; }
+    if (!grindHidden) { grindAt = pv->at; meshHiddenBlocks().push_back(grindAt); w.markBlockDirty(grindAt.x, grindAt.y, grindAt.z, true); grindHidden = true; }
+    const float dt = lastT < 0 ? 0.f : (float)std::clamp(f.time - lastT, 0.0, 0.1); lastT = f.time;
+    const bool grinding = pv->t >= 0.28 && pv->t < pairBeats(6).letGo;
+    wheelSpd += ((grinding ? 14.f : 0.f) - wheelSpd) * std::min(1.f, dt * (grinding ? 3.f : 1.2f));
+    wheelAng += wheelSpd * dt;
+    ContentDraw& cd = contentDraw();
+    if (!cd.begin(f, f.cam.viewProj)) return;
+    const GLuint round = tileTexture(s.app, "grindstone_round"), disc = tileTexture(s.app, "grindstone_side"),
+                 leg = tileTexture(s.app, "grindstone_leg"), piv = tileTexture(s.app, "grindstone_pivot");
+    const u8 l = w.getLight(grindAt.x, grindAt.y, grindAt.z);
+    const vec2 light((l >> 4) / 15.f, (l & 15) / 15.f);
+    const int m = w.getMeta(grindAt.x, grindAt.y, grindAt.z) & 3;
+    mat4 M = glm::translate(mat4(1), f.cam.rel(glm::dvec3(grindAt)) + vec3(0.5f, 0, 0.5f));
+    M = glm::rotate(M, -m * PI / 2, vec3(0, 1, 0));
+    M = glm::translate(M, vec3(-0.5f, 0, -0.5f));
+    drawTileBox(cd, M, vec3(0, 0, 6), vec3(2, 13, 10), leg, leg, leg, light);
+    drawTileBox(cd, M, vec3(14, 0, 6), vec3(16, 13, 10), leg, leg, leg, light);
+    drawTileBox(cd, M, vec3(2, 7, 6), vec3(4, 13, 10), piv, piv, piv, light);
+    drawTileBox(cd, M, vec3(12, 7, 6), vec3(14, 13, 10), piv, piv, piv, light);
+    // the wheel, its axle along x: drawn with the axle as the box's own y (its ends the stone's faces), turned on it
+    mat4 W = glm::translate(M, vec3(8, 10, 8) / 16.f);
+    W = glm::rotate(W, -PI / 2, vec3(0, 0, 1));
+    W = glm::rotate(W, wheelAng, vec3(0, 1, 0));
+    drawTileBox(cd, W, vec3(-6, -4, -6), vec3(6, 4, 6), round, disc, disc, light);
+    cd.end();
+  }
   void drawOpaque(GameSession& s, const FrameCtx& f) override {
     if (!s.player) return;
+    { PairView gv; const bool on = cinematicPairView(gv); grindstone(s, f, on ? &gv : nullptr); }
     World& w = s.world();
     VoxelRenderer& VR = voxelRenderer();
     bool begun = false;

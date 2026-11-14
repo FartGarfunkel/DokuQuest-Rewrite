@@ -38,6 +38,8 @@ double cinematicRitualT();  // seconds into the rite, -1 when none
 std::unique_ptr<Screen> makeCinematicBrewScreen(ivec3 at);
 // a furnace loaded by hand: its mouth, its grate, the smelted off its top
 std::unique_ptr<Screen> makeCinematicFurnaceScreen(ivec3 at);
+// the trommel and the machines (millstone, sawmill, crusher) worked by hand: hopper, firebox, chute (ui/cinematic_slots.cpp)
+std::unique_ptr<Screen> makeCinematicSlotsScreen(ivec3 at);
 // a chest worked by hand (sim/chest_work.h): its lid up, its slots lying inside in rows, put into and taken out of (kind 5)
 std::unique_ptr<Screen> makeCinematicChestScreen(ivec3 at);
 // the grindstone (kind 6), smithing table (8), loom (9), fletching table (10) and cartography table (11) worked in the

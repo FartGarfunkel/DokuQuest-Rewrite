@@ -506,7 +506,7 @@ public:
     S.at = at; S.t = 0; S.phase = 1; S.kind = 2; g_ritualAt = -1;
     leanPose(S, p.pos + vec3(0, p.eye, 0));
   }
-  void onClose(App&) override { Scene& S = scene(); if (S.phase == 1 || S.phase == 2) { S.phase = 3; S.t = 0; } g_ritualAt = -1; g_evOn = false; }
+  void onClose(App&) override { Scene& S = scene(); if (S.phase == 1 || S.phase == 2) { S.phase = 3; S.t = 0; } g_ritualAt = -1; g_evOn = false; cinematicSetAimPoint(false); }
   bool onBack(App&) override { if (bag.on) { bag.on = false; return true; } return false; }
   void update(App& a, double) override {
     GameSession* s = a.session.get();
@@ -564,6 +564,10 @@ public:
     }
     g_ev.at = at; g_ev.viewYaw = scene().viewYaw; g_ev.hover = has ? hover : -1; g_ev.ritualT = g_ritualAt < 0 ? -1 : scene().clock - g_ritualAt; g_ev.pick = pick; g_evOn = true;
     if (hover >= 0) offer = hover;
+    // a finger to the rune looked at (EnchantStation: you touch the glyph to enchant): the working hand reaches up to it,
+    // pressing in as it's chosen
+    if (has && hover >= 0 && scene().phase == 2 && g_ritualAt < 0) cinematicSetAimPoint(true, cinematicOfferPos(at, scene().viewYaw, hover, scene().clock) + vec3(std::sin(scene().viewYaw), 0, std::cos(scene().viewYaw)) * 0.03f);
+    else cinematicSetAimPoint(false);
     if (!pad && !overUi && scene().phase == 2 && g_ritualAt < 0) {
       if (ImGui::IsMouseClicked(0)) {
         // the table itself (or the item over it) under the mouse: set down / take back there; anywhere else, nothing
