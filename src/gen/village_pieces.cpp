@@ -814,7 +814,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
         auto has = [](const std::string& k, const char* w) { return k.find(w) != std::string::npos; };
         auto isTrap = [&](int j) { return shapeOf(j) == ShapeKind::Trapdoor; };
         auto trapOpen = [&](int j) { return isTrap(j) && (m0(j) & 4); };
-        auto isArm = [&](int j) { const std::string q = keyOf(j); return j >= 0 && (trapOpen(j) || has(q, "_sign")); };
+        auto isArm = [&](int j) { const std::string q = keyOf(j); return j >= 0 && (trapOpen(j) || has(q, "_sign") || has(q, "fence_gate") || has(q, "_button")); };   // (gates and buttons for arms too)
         // a cell on a room's (or a yard's) floor: a whole block under it
         // (not on top of a counter: the block under it isn't one that stands up out of a floor beside it)
         auto floorBlock = [&](int j) {   // something to stand on that fills its cell's top: a whole block, a top or double slab, a stair upside down
@@ -915,6 +915,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
         std::map<long long, int> weak;            // cells that make a table when someone sits at them (index)
         auto ck = [](int x, int y, int z) { return (long long)(x & 0xFFFF) | ((long long)(y & 0xFFFF) << 16) | ((long long)(z & 0xFFFF) << 32); };
         auto makeTable = [&](int j, const std::string& wood) { table[ck(P.blocks[j].x, P.blocks[j].y, P.blocks[j].z)] = wood; };
+        std::set<long long> clothPosts;   // tables that were a post under a carpet or a plate (beside a real table: stools)
         for (int i = 0; i < (int)P.blocks.size(); i++) {
           if (drop[i]) continue;
           const VPBlock& b = P.blocks[i];
@@ -931,6 +932,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
           if (post && (cloth || lid || slabTop)) {
             bool lone = true; for (int d = 0; d < 4; d++) if (has(keyOf(at2(b.x + DX[d], b.y, b.z + DZ[d])), "_fence")) lone = false;
             if (slabTop && !lone) continue;
+            if (cloth && !piled) clothPosts.insert(ck(b.x, b.y, b.z));
             if (cloth || lone || k == "scaffolding") { makeTable(i, woodAny(k).empty() ? (woodAny(uk).empty() ? styleWood : woodAny(uk)) : woodAny(k)); if (!piled) drop[up] = 1; continue; }
           }
           // a stair turned upside down: a little table (with a cloth on it, always)
@@ -1096,6 +1098,10 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
           const int x = (int)(k & 0xFFFF), y = (int)((k >> 16) & 0xFFFF), z = (int)((k >> 32) & 0xFFFF), j = at2(x, y, z);
           if (j < 0 || drop[j]) continue;
           if (std::getenv("DQ_FURN_ALL")) DQ_LOG("tbl %s %s was %s/%d", P.style.c_str(), P.name.c_str(), keyOf(j).c_str(), m0(j));
+          // a carpeted post beside a real table is a stool drawn up to it (our stools: they had never been placed)
+          bool stool = false;
+          if (clothPosts.count(k)) for (int d = 0; d < 4 && !stool; d++) { const long long k2 = ck(x + DX[d], y, z + DZ[d]); stool = table.count(k2) && !clothPosts.count(k2); }
+          if (stool && findBlock(furn(w, "stool")) != NONE) { P.blocks[j].s = (u16)stateOf(furn(w, "stool"), {0, 1, 2, 3}); furnN[0]++; furnBy[P.style][0]++; continue; }
           P.blocks[j].s = (u16)stateOf(furn(w, "table"), {0, 1, 2, 3});
           furnN[1]++; furnBy[P.style][1]++;
         }
