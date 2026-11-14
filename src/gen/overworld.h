@@ -107,7 +107,7 @@ private:
   int v14Corner(int x, int z) const;   // (the exact surface at a cell corner)
   struct BaseCol { int h; double hc; u8 biome; double temp, humid; int H = -1; u8 special = 0; u16 mc = 0xFFFF; };
   // terrain version 15: Soulrend's world (gen/mc_biomes.h, gen/surface_rules.h; data/soulrend_worldgen)
-  bool v15 = false, v16 = false, v17 = false, v18 = false;
+  bool v15 = false, v16 = false, v17 = false, v18 = false, v20 = false;
   double hf(i32 a, i32 b, i32 c, i32 d) const { return v18 ? posHashF(a, b, c, d) : hashFloat(a, b, c, d); }   // (18: no stripes)
   int genVer_ = 0;
   std::shared_ptr<class McBiomes> mcb_;

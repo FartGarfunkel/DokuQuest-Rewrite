@@ -570,6 +570,27 @@ static int netherLands(const std::string& seedText, int R, int step) {
   return 0;
 }
 
+static int pillars(const std::string& seedText, int x0, int z0, int w) {
+  WorldGenOptions o; o.seed = seedFromString(seedText);
+  if (const char* v = std::getenv("DQ_GENVER")) o.genVersion = atoi(v);
+  WorldGen wg(o); auto* g = dynamic_cast<OverworldGen*>(wg.forDim(DIM_OVERWORLD));
+  std::map<std::pair<int,int>, Chunk*> cs;
+  auto top = [&](int x, int z) { auto k = std::make_pair(x >> 4, z >> 4); auto it = cs.find(k); Chunk* c;
+    if (it == cs.end()) { c = new Chunk(DIM_OVERWORLD, k.first, k.second); g->generate(*c); cs[k] = c; } else c = it->second;
+    for (int y = DIM_H - 1; y > 0; y--) { BlockId b = c->get(x & 15, y, z & 15); if (b && reg().tSolid[b] && !reg().tLeaves[b] && reg().block(b).key.find("log") == std::string::npos) return y; } return 0; };
+  std::map<std::string, int> n; int found = 0;
+  const int stp = std::getenv("DQ_STEP") ? atoi(std::getenv("DQ_STEP")) : 3;
+  for (int z = z0 + 8; z < z0 + w - 8; z += stp) for (int x = x0 + 8; x < x0 + w - 8; x += stp) {
+    const int h = top(x, z); int ring = 0, rn = 0;
+    for (int a = 0; a < 8; a++) { ring += top(x + (int)std::lround(std::cos(a * 0.785) * 7), z + (int)std::lround(std::sin(a * 0.785) * 7)); rn++; }
+    const int d = h - ring / rn;
+    if (d >= 18 && h > SEA_LEVEL + 2) { found++; const std::string b = g->mcBiomeName(x, z); n[b]++; if (n[b] <= 2) printf("tower +%d at %d %d (%s) top %d\n", d, x, z, b.c_str(), h); }
+  }
+  for (auto& [k, c] : n) printf("%5d %s\n", c, k.c_str());
+  printf("%d samples stand 18+ over the ground 7 blocks round\n", found);
+  return 0;
+}
+
 int main(int argc, char** argv) {
   CoreOptions co; co.server = true; co.userDirOverride = "/tmp/dq-gentool";
   if (!initCore(co)) { fprintf(stderr, "initCore failed (run from the build dir: data/ next to the exe)\n"); return 1; }
@@ -578,6 +599,7 @@ int main(int argc, char** argv) {
   if (m == "biomemap" && argc >= 8) return biomemap(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argv[7]);
   if (m == "floaters" && argc >= 6) return floaters(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "netherlands" && argc >= 5) return netherLands(argv[2], atoi(argv[3]), atoi(argv[4]));
+  if (m == "pillars" && argc >= 6) return pillars(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "surfgrid" && argc >= 6) return surfgrid(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "topview" && argc >= 7) return topview(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), argv[6]);
   if (m == "owmap" && argc >= 9) return owmap(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]), argv[8]);

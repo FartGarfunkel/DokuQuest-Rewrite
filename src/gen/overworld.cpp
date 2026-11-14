@@ -61,7 +61,7 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
       vOff = g->find("overworld/offset"); vJag = g->find("overworld/jaggedness");
       if (vSloped < 0 || vFinal < 0) v14 = false;
       if (v14 && w.b) {
-        mcb_ = w.b; mcs_ = w.s; v15 = true; v16 = o.genVersion >= 16; v17 = o.genVersion >= 17; v18 = o.genVersion >= 18; if (v16) mcf_ = w.f;   // (16: the biomes' own plants and the land's extras)
+        mcb_ = w.b; mcs_ = w.s; v15 = true; v16 = o.genVersion >= 16; v17 = o.genVersion >= 17; v18 = o.genVersion >= 18; v20 = o.genVersion >= 20; if (v16) mcf_ = w.f;   // (16: the biomes' own plants and the land's extras)
         vTemp = g->find("temperature"); vVeg = g->find("vegetation"); vDepth = g->find("depth"); vRidges = g->find("ridges");
         vInit = g->find("initial_density_without_jaggedness");
         {   // (the extras' noises, registered here on this thread)
@@ -453,7 +453,10 @@ void OverworldGen::fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const {
       return d0 + (d1 - d0) * fz;
     };
     const int nTop = v17 ? v14Spike(wx, wz, Hc) : Hc;   // (a lone column planned over all round it by the water: theirs)
-    const bool whole = !v17 || lev || Hc != Hs || (nTop == Hc && (Hc > SEA_LEVEL + 4 || Hc / 8 > jmax || latD(Hc) > 0));   // (terrain version 17)
+    // (terrain version 20: the land's top is the land's own, Minecraft's cave mouths left open; whole only under a
+    // structure's levelling. Before, every column over the sea's edge was made whole to its top: each cave entrance
+    // got a crust over it, and on a slope that left a hollow hill and a broken wall of rock)
+    const bool whole = !v17 || lev || Hc != Hs || (!v20 && nTop == Hc && (Hc > SEA_LEVEL + 4 || Hc / 8 > jmax || latD(Hc) > 0));   // (terrain version 17)
     for (int y = whole ? Hc : nTop; y >= (deep_ ? 0 : 1); y--) {   // (the deep world: row 0 too, Minecraft's y -1)
       if (whole && y >= Hc - 3) { b.blocks[colIdx(x, y, z)] = B.stone; if (!top) top = y; continue; }
       const int j0 = y >> 3; const double fy = (y & 7) / 8.0;
@@ -654,7 +657,7 @@ int OverworldGen::v14Spike(int x, int z, int H) const {   // H, or by the water 
 }
 
 bool OverworldGen::v14Whole(int x, int z, int H) const {
-  if (H > SEA_LEVEL + 4) return true;
+  if (H > SEA_LEVEL + 4 && !v20) return true;   // (20: the land's top is its own: a cave mouth may open there)
   if (v14Spike(x, z, H) != H) return false;
   // (as fillV14 has it: the density at its 4x8x4 cell's corners, blended)
   const DensityGraph& g = *vg_;
