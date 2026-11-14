@@ -421,8 +421,16 @@ void registerStructurePois() {
     // in its walled graveyard, the Night Lord in the coliseum's arena, the Dead King in the ruined keep
     {
       static const std::map<std::string, std::string> BOSS = {{"graveyard:large_graveyard", "graveyard_lich"},
-        {"dungeons_arise:coliseum", "night_lord"}, {"dungeons_arise:keep_kayra", "dead_king"}};
-      if (auto it = BOSS.find(d->key); it != BOSS.end() && reg().mobs.contains(it->second) && rigModel(it->second)) {
+        {"dungeons_arise:coliseum", "night_lord"}, {"dungeons_arise:keep_kayra", "dead_king"},
+        // and the other great places, each a master of ours to suit it
+        {"dungeons_arise:foundry", "cinder_golem"}, {"dungeons_arise:mechanical_nest", "broodmother"}, {"dungeons_arise:illager_fort", "hex_matron"},
+        {"dungeons_arise:illager_windmill", "hex_matron"}, {"dungeons_arise:scorched_mines", "ember_lord"}, {"dungeons_arise:shiraz_palace", "sand_dragon"},
+        {"dungeons_arise:heavenly_conqueror", "valkyrie_queen"}, {"dungeons_arise:heavenly_challenger", "valkyrie_queen"}, {"dungeons_arise:heavenly_rider", "valkyrie_queen"},
+        {"dungeons_arise:mining_system", "minotaur"}, {"dungeons_arise:ceryneian_hind", "minotaur"}, {"idas:pillager_fortress", "hex_matron"},
+        {"idas:desert_pyramid", "rot_king"}, {"idas:labyrinth", "minotaur"}, {"idas:ruins_of_the_deep", "grave_warden"}, {"idas:haunted_manor", "hollow_archmage"},
+        {"idas:frozen_crypt", "lich_king"}, {"idas:castle", "gaoler"}, {"idas:tinkers_citadel", "cinder_golem"}, {"idas:nexus", "lich_king"},
+        {"idas:tree_of_wisdom", "verdant_dragon"}, {"idas:windswept_shrine", "storm_dragon"}};
+      if (auto it = BOSS.find(d->key); it != BOSS.end() && reg().mobs.contains(it->second) && (rigModel(it->second) || reg().models.contains(it->second))) {
         const Placed& q = E->pcs[0];
         out.data["boss"] = json{{"at", {q.x0 + q.w / 2, q.y0 + 1, q.z0 + q.d / 2}}, {"type", it->second}, {"box", {X0, q.y0 - 2, Z0, X1, q.y0 + 30, Z1}}};
       }

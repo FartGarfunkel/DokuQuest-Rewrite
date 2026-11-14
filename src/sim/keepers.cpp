@@ -17,6 +17,27 @@ namespace dq {
 void grantXP(Level& lv, Player& p, int n, const vec3* at);   // sim/gameplay.h (not included: content.h declares its kin)
 
 namespace {
+// where a boss stands: its post if there's room (3 wide, 3 high, a floor under it), else the nearest such room within 8
+// (the middle of a place's first piece can be inside a wall or over a hall's floor)
+vec3 openSpot(World& w, vec3 at) {
+  const Registry& R = reg();
+  auto room = [&](int x, int y, int z) {
+    if (!R.tSolid[w.getBlock(x, y - 1, z)]) return false;
+    for (int dy = 0; dy < 3; dy++) for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) if (R.tSolid[w.getBlock(x + dx, y + dy, z + dz)]) return false;
+    return true;
+  };
+  const int x0 = ifloor(at.x), y0 = ifloor(at.y), z0 = ifloor(at.z);
+  if (room(x0, y0, z0)) return at;
+  for (int r = 1; r <= 8; r++) for (int dy = 0; dy <= 6; dy++) for (int s = 0; s < 2; s++) {
+    const int y = y0 + (s ? -dy : dy);
+    for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) {
+      if (std::max(std::abs(dx), std::abs(dz)) != r && r > 1) continue;
+      if (room(x0 + dx, y, z0 + dz)) return vec3(x0 + dx + 0.5f, (float)y, z0 + dz + 0.5f);
+    }
+  }
+  return at;
+}
+
 class KeeperSystem : public LevelSystem {
 public:
   explicit KeeperSystem(Level& l) : lv(l) {
@@ -72,7 +93,7 @@ public:
         if (rec.value("bossUp", 0) || live) continue;
         Player* in = nullptr; for (Player* q : ps) if (inside(*q, 0)) { in = q; break; }
         if (!in) continue;
-        Creature* m = spawnCreature(l, REALM_MAIN, type, at);
+        Creature* m = spawnCreature(l, REALM_MAIN, type, openSpot(l.world(REALM_MAIN), at));
         if (!m) continue;
         m->data[dungeon ? "dungeon" : "structBoss"] = S->id; m->huntT = 60; m->persistent = true; m->kept = true;
         if (type == "valkyrie_queen" && isCreatureType("valkyrie"))   // her guard wakes with her (tools/port/skylands_more.py)
