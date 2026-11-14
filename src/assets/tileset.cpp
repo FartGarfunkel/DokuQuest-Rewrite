@@ -1,5 +1,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "core/registry.h"
 #include <stb_image.h>
 #include <stb_image_write.h>
 #include "assets/tileset.h"
@@ -118,6 +119,36 @@ void unpackCampfireLog(TileSet& ts) {
     for (int y = 0; y < S; y++) for (int x = 0; x < S; x++) std::memcpy(e + ((size_t)y * S + x) * 4, &src[((size_t)(Q + y / 4) * S + x / 4) * 4], 4);
   }
   for (int y = 0; y < S; y++) std::memcpy(p + (size_t)y * S * 4, &src[(size_t)(y % Q) * S * 4], (size_t)S * 4);
+}
+
+void loadLocalTiles(TileSet& ts) {
+  const auto j = readJson(dataDir() / "local_models" / "irons_fx.json");
+  if (!j || !j->contains("tiles") || !(*j)["tiles"].is_array()) return;
+  int n = 0;
+  const int T = ts.size;
+  for (auto& t : (*j)["tiles"]) {
+    if (!t.is_string()) continue;
+    const std::string name = t.get<std::string>();
+    const size_t u = name.find('_');
+    if (u == std::string::npos || ts.index.count(name)) continue;
+    const fs::path f = dataDir() / "local_models" / "tiles" / name.substr(0, u) / (name.substr(u + 1) + ".png");
+    int w = 0, h = 0, ch = 0;
+    u8* px = stbi_load(f.string().c_str(), &w, &h, &ch, 4);
+    if (!px) continue;
+    const int fw = std::min(w, h);   // (a strip: its first frame)
+    std::vector<u8> out((size_t)T * T * 4);
+    for (int y = 0; y < T; y++) for (int x = 0; x < T; x++) {   // (nearest: the pixels stay crisp)
+      const u8* sp = px + ((size_t)(y * fw / T) * w + (x * fw / T)) * 4;
+      u8* d = &out[((size_t)y * T + x) * 4];
+      d[0] = sp[0]; d[1] = sp[1]; d[2] = sp[2]; d[3] = sp[3] >= 250 ? 251 : sp[3];   // (below the special alphas)
+    }
+    stbi_image_free(px);
+    const int idx = appendTile(ts, out.data());
+    ts.res.back() = (u8)std::min(fw, T);
+    for (int i = 0; i < T * T; i++) if (out[i * 4 + 3] > 8) ts.emissive[(size_t)idx * T * T + i] = 255;   // (magic shines)
+    ts.index[name] = idx; reg().tileIndex[name] = idx; n++;   // (the particles find their pictures by name)
+  }
+  if (n) DQ_LOG("tiles: %d local pictures (data/local_models/tiles)", n);
 }
 
 int appendTile(TileSet& ts, const u8* px) {

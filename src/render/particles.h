@@ -23,6 +23,7 @@ struct Particle {
   vec2 wind{0};                 // smoke drift (blocks/s²)
   float floorY = -1e9f;         // rain and snow: where it lands
   u16 tile = 0;                 // tile layer
+  u16 frame0 = 0; u8 frames = 0;   // a sequence of tiles side by side (frame0, frame0 + 1, ...) played over its life (imported magic)
   u8 uv[4] = {0, 0, 128, 128};  // sub-rectangle of the tile, 1/128 units
   u8 light = 0xF0;              // sky << 4 | block (0xFF = full bright)
   u8 tint[3] = {255, 255, 255};

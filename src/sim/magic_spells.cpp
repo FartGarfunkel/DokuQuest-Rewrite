@@ -24,6 +24,13 @@ struct CastCtx {
   u32 target = 0;
 };
 
+// a bolt leaves the hand that cast it (beside and below the eye), aimed to meet your gaze 16 blocks out
+static vec3 handStart(const Player& p, vec3 E, vec3 L) {
+  const int h = handMods().hand;
+  const vec3 r(std::cos(p.yaw), 0, -std::sin(p.yaw));
+  return E + L * 0.6f + vec3(0, -0.3f, 0) + r * (h == 0 ? 0.34f : h == 1 ? -0.34f : 0.f);
+}
+static vec3 aimFrom(vec3 start, vec3 E, vec3 L) { const vec3 d = E + L * 16.f - start; return d / std::max(1e-3f, glm::length(d)); }
 static vec3 lookVec(const Player& p) { return vec3(-std::sin(p.yaw) * std::cos(p.pitch), std::sin(p.pitch), -std::cos(p.yaw) * std::cos(p.pitch)); }
 static void toast(Level& lv, Player& p, const std::string& t, const std::string& k = "") { lv.fx->message(p.id, t, k); }
 static void ui(Level& lv, Player& p, const char* s) { lv.fx->soundUi(p.id, s); }
@@ -43,8 +50,8 @@ static void wearHeld(Level& lv, Player& p, int n) {
 
 // the circle under your feet, the sparks at the staff, and every other machine seeing it (and its bolts)
 static void castFx(Level& lv, Player& p, const SpellDef& S, CastCtx& c, const std::string& k) {
-  sfx::burst(lv, c.eye + c.look * 0.8f - vec3(0, 0.2f, 0), S.fx, 14, 0.8f, json{{"life", 0.4}});
-  json o{{"m", "cast"}, {"s", k}, {"caster", p.name}, {"b", c.bolts}, {"t", c.target}, {"x", p.pos.x}, {"y", p.pos.y}, {"z", p.pos.z}, {"fx", S.fx}};
+  sfx::burst(lv, handStart(p, c.eye, c.look), S.fx, 14, 0.8f, json{{"life", 0.4}});   // (out of the hand that cast it)
+  json o{{"m", "cast"}, {"s", k}, {"caster", p.name}, {"b", c.bolts}, {"t", c.target}, {"x", p.pos.x}, {"y", p.pos.y}, {"z", p.pos.z}, {"fx", S.fx}, {"h", handMods().hand}};
   lv.fx->particles(S.fx, p.pos, 1, o);
   if (lv.isRemote() && lv.net) lv.net->action(p, "magicCast", o);
 }
@@ -180,7 +187,7 @@ bool castOldSpell(Level& lv, Player& p, const std::string& k, const json& st, fl
     float mul = st.value(k == "firebolt" ? "fire" : "frost", 1.f), sp = 26;
     auto b = std::make_unique<SpellBolt>();
     b->realm = p.realm; b->spell = k; b->caster = p.id;
-    b->pos = vec3(E.x + L.x * 0.6f, E.y + L.y * 0.6f - 0.25f, E.z + L.z * 0.6f); b->vel = L * sp;
+    b->pos = handStart(p, E, L); b->vel = aimFrom(b->pos, E, L) * sp;
     b->dmg = (float)iround((k == "firebolt" ? 6 : 4.5) * power * mul);
     c.bolts.push_back({b->pos.x, b->pos.y, b->pos.z, b->vel.x, b->vel.y, b->vel.z});
     lv.spawn(std::move(b));
@@ -326,7 +333,7 @@ bool castNewSpell(Level& lv, Player& p, const std::string& k, const json& st, fl
       float a = (i - 1) * 0.35f, sp = 18;
       auto b = std::make_unique<SpellBolt>();
       b->realm = p.realm; b->spell = "missiles"; b->caster = p.id; b->target = best ? best->id : 0;
-      b->pos = vec3(E.x + L.x * 0.6f, E.y - 0.2f, E.z + L.z * 0.6f);
+      b->pos = handStart(p, E, L);
       b->vel = vec3((L.x * std::cos(a) - L.z * std::sin(a)) * sp, L.y * sp + 1.5f, (L.z * std::cos(a) + L.x * std::sin(a)) * sp);
       b->dmg = (float)iround(2.6 * power);
       c.bolts.push_back({b->pos.x, b->pos.y, b->pos.z, b->vel.x, b->vel.y, b->vel.z});
@@ -338,7 +345,7 @@ bool castNewSpell(Level& lv, Player& p, const std::string& k, const json& st, fl
     float sp = 20;
     auto b = std::make_unique<SpellBolt>();
     b->realm = p.realm; b->spell = "fireball"; b->caster = p.id;
-    b->pos = vec3(E.x + L.x * 0.6f, E.y + L.y * 0.6f - 0.25f, E.z + L.z * 0.6f); b->vel = L * sp;
+    b->pos = handStart(p, E, L); b->vel = aimFrom(b->pos, E, L) * sp;
     b->dmg = (float)iround(8 * power * fire);
     c.bolts.push_back({b->pos.x, b->pos.y, b->pos.z, b->vel.x, b->vel.y, b->vel.z});
     lv.spawn(std::move(b));

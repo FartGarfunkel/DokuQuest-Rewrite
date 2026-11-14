@@ -28,7 +28,7 @@ u32 charStateKey(const CharPose& p) {
   if (p.hang || p.climb > 0) k |= K_HANG; if (p.ladder) k |= K_LADDER; if (p.fly) k |= K_FLY; if (p.glide) k |= K_GLIDE;
   if (p.paddle) k |= K_PADDLE; if (p.carry) k |= K_CARRY; if (p.eat > 0) k |= K_EAT; if (p.eat > 0 && p.drink) k |= K_DRINK;
   if (p.bow > 0) k |= K_BOW; if (p.scope) k |= K_SCOPE; if (p.air) k |= K_AIR; if (p.deathT > 0) k |= K_DEAD; if (p.sprint && p.runAmt < 0) k |= K_SPRINT;
-  if (p.mapMain || p.mapOff) k |= K_MAP; if (p.castWind > 0) k |= K_CAST; if (p.block > 0) k |= K_BLOCK;
+  if (p.mapMain || p.mapOff) k |= K_MAP; if (p.castWind > 0 || p.spellR > 0 || p.spellL > 0) k |= K_CAST; if (p.block > 0) k |= K_BLOCK;
   if (p.xbowCharge > 0 || p.xbowAim) k |= K_XBOW; if (p.throwCharge > 0) k |= K_THROW; if (p.spearCharge > 0) k |= K_SPEAR;
   if (p.held) k |= K_HELD; if (p.fp) k |= K_FP; if (p.roll > 0) k |= K_ROLL;
   return k;

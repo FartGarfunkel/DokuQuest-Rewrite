@@ -289,6 +289,7 @@ void ParticleSystem::update(World* w, double dtd, double time) {
     Particle& p = L[i];
     p.life -= dt;
     if (p.life <= 0) { if (p.drop) drops--; L[i] = L.back(); L.pop_back(); continue; }
+    if (p.frames > 1) p.tile = (u16)(p.frame0 + std::min<int>(p.frames - 1, (int)((1.f - p.life / std::max(1e-4f, p.max)) * p.frames)));
     if (p.hang > 0) { p.hang -= dt; continue; }   // a drip gathering before it falls
     if (p.drop) {
       // rain and snow (game/weather.js updateDrops): fall, drift, and splash where they land

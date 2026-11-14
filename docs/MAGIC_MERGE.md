@@ -34,3 +34,14 @@ schools, practice ranks I..X).
   sockets by gear (1; 2 for diamond, netherite, mithril, adamantite, cinderite, dragon, archmage; a "sockets" tag
   overrides), set at the crafting grid (gear + gem, after any real recipe), summed into treeAttr / treeAttrPct.
 - test_magic: 17 new checks.
+
+## Iron's look, Skyrim's hands (2026-11-14)
+- `tools/port/irons_fx_import.py` (local, git-ignored): Iron's particle frames -> `data/local_models/tiles/isb/` (loaded into
+  the atlas by `loadLocalTiles`, played over a particle's life: `Particle::frame0/frames`), its projectiles as voxel models
+  (firebolt, fireball core, magic missile from their renderers' boxes; icicle and guiding bolt pictures extruded).
+- Every school's sparks are joined by Iron's own (fire: embers / fire / fiery smoke; frost: snowflakes; storm: electricity;
+  life: wisps; arcane: violet electricity and traces; stone: fog); bolts fly as Iron's projectiles with its trails.
+- Hands: each free hand holds its readied spell at the body's own fist (`playerPalms`, first person too); after a cast the
+  arm comes up holding it a few seconds and each cast thrusts it out (`render/spell_hands.h`, `CharPose::spellR/L`).
+  Two spells: each hand its own (mix and match shows both). Each hand has its own cooldown (`castCdL`); bolts leave the
+  casting hand and meet your gaze 16 blocks out.

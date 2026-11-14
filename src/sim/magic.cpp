@@ -395,6 +395,7 @@ void MagicSystem::tickPlayer(Player& p, double dt) {
     if (!any) { p.stats["spell"] = 0; lv.fx->message(p.id, "You know Firebolt: press Z to cast it (G changes spell, B opens your Spellbook)", "epic"); }
   }
   if (m.castCd > 0) m.castCd -= (float)dt;
+  if (m.castCdL > 0) m.castCdL -= (float)dt;
   float max = manaMax(p);
   if (m.mana < 0) m.mana = max;
   if (m.mana < max) m.mana = std::min(max, m.mana + manaRegen(p) * (float)dt);

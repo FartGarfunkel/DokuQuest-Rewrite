@@ -13,7 +13,7 @@ namespace dq {
 // What a player has going on that isn't saved (the original kept these on the Player object).
 struct MagicState {
   float mana = -1;                 // < 0 = not set yet (fills to manaMax)
-  float castCd = 0;
+  float castCd = 0, castCdL = 0;   // (the right hand's and the left's: each hand casts on its own)
   float ward = 0, wardT = 0;       // Ward spell / Warding potion
   float lightT = 0, levT = 0, stoneT = 0, slowFallT = 0;
   float poison = 0, poisonT = 0;   // venom timer (monsters.js), its tick
@@ -47,7 +47,7 @@ bool castSpell(Level& lv, Player& p);                         // with the held s
 // it) the left-hand spell joins every cast: the same spell twice is one dual cast, two spells go off together (and
 // some pairs fuse: steam, plasma, hail...). A sword or axe in the right hand: use casts the left-hand spell, and the
 // blade carries it for a few blows. Spells rank up I..X with use (stronger, cheaper).
-struct HandMods { float power = 1, mana = 1; bool noStaff = false, ok = false, windup = false; };   // windup: a long cast winds up first (one hand's plain cast)
+struct HandMods { float power = 1, mana = 1; bool noStaff = false, ok = false, windup = false; int hand = -1; };   // windup: a long cast winds up first (one hand's plain cast); hand: 0 right, 1 left, -1 both / the staff's
 HandMods& handMods();                                         // set around each hand's cast
 bool castSpellKey(Level& lv, Player& p, const std::string& k);   // one hand's cast (sim/magic_spells.cpp)
 bool spellNeedsStaff(const std::string& k);                   // the first spells can't be cast bare-handed

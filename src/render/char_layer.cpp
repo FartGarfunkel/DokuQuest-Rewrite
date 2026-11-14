@@ -14,6 +14,7 @@
 #include "core/tool_parts.h"
 #include "sim/weather.h"
 #include "render/char_layer.h"
+#include "render/spell_hands.h"
 #include "assets/shield3d.h"
 #include "sim/shield_shape.h"
 #include "sim/blockinfo.h"
@@ -37,6 +38,8 @@
 #include "sim/quiver.h"
 
 namespace dq {
+std::unordered_map<u32, std::pair<std::array<glm::dvec3, 2>, double>>& palmsOf();   // (the fists' last places, by player)
+
 
 namespace {
 // ---- getting into bed (after the user's ask: sit on its edge, turn, lie down; seen the same in first person) ----
@@ -857,6 +860,12 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
     ps.atkMove = p.atkMove; ps.atkT = p.atkT; ps.swing = 0; ps.swingKind = 0;
     if (!fp) { ps.bodyYaw = p.atkYaw; ps.hasBodyYaw = true; }
   } else if (st.swingU > 0 && ps.armed && !isShieldItem(wear.held) && !p.swinging) { ps.swingKind = (u8)(1 + st.swingN); ps.swing = st.swingU; }
+  {   // a spell held up in a free hand after a cast (render/spell_hands.h)
+    float rdy[2], thr[2]; spellHandPose(p.id, rdy, thr);
+    auto freeHand = [&](const std::string& it) { const ItemDef* d = it.empty() ? nullptr : reg().item(it); return it.empty() || (d && d->props.contains("staff")); };
+    if (freeHand(wear.held) && !ps.held && ps.swing <= 0 && !ps.atkMove) { ps.spellR = rdy[0]; ps.thrustR = thr[0]; }
+    if (freeHand(wear.off)) { ps.spellL = rdy[1]; ps.thrustL = thr[1]; }
+  }
   CharDrawOpts o;
   o.light = VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f};
   o.tint = p.hurtTime > 0 ? vec4(1, 0.15f, 0.1f, 0.4f) : vec4(0);
@@ -874,7 +883,9 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
     o.bookLeaf = f.time - st.flipAt < 0.45 ? (float)((f.time - st.flipAt) / 0.45) : -1.f; o.bookDir = st.flipDir;
     if (want) { ps.gui = true; }
   }
+  glm::dvec3 palms[2] = {glm::dvec3(0), glm::dvec3(0)}; o.palms = palms;
   drawCharacter(*spec, ps, wear, base, o);
+  palmsOf()[p.id] = {{palms[0], palms[1]}, f.time};
   if (carrying && !fp && !ps.sleep && ps.deathT <= 0) {   // skins.js: it sits against the chest, in front of the arms
     mat4 m = glm::rotate(base, ps.hasBodyYaw && !ps.swim && !ps.crawl ? ps.bodyYaw : ps.yaw, vec3(0, 1, 0));
     m = glm::translate(m, vec3(0, 15 * CHAR_PX - (ps.sneak ? 0.12f : 0.f), -9 * CHAR_PX));
@@ -896,7 +907,16 @@ void drawCharFace(const CharModel& M, const CharPose& ps, const mat4& head, Voxe
   if (open && F.mouth.ready() && !ps.sleep) VR.draw(F.mouth.gl, head * F.mouth.local(), light, tint);
 }
 
+std::unordered_map<u32, std::pair<std::array<glm::dvec3, 2>, double>>& palmsOf() { static std::unordered_map<u32, std::pair<std::array<glm::dvec3, 2>, double>> m; return m; }
+static double palmsNow = 0;
+bool playerPalms(u32 id, glm::dvec3 out[2]) {
+  auto it = palmsOf().find(id);
+  if (it == palmsOf().end() || palmsNow - it->second.second > 0.25) return false;
+  out[0] = it->second.first[0]; out[1] = it->second.first[1];
+  return true;
+}
 void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear& wear, const mat4& base, const CharDrawOpts& o) {
+  palmsNow = std::max(palmsNow, o.time);
   VoxelRenderer& VR = voxelRenderer();
   const TileSet& ts = app().tiles;
   const CharModel& M = charModel(spec);
@@ -912,6 +932,10 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   bool cloak = L && L->cloak && cape.empty();
   CharRig R;
   charRig(M, ps, base, R, cloak, !back.empty());
+  if (o.palms) {   // (the fists, where a held thing's grip is: the bow's)
+    o.palms[0] = o.camPos + glm::dvec3(vec3(R.part[CP_ARMR_D] * vec4(0, -BOW_FIST, 0, 1)));
+    o.palms[1] = o.camPos + glm::dvec3(vec3(R.part[CP_ARML_D] * vec4(0, -BOW_FIST, 0, 1)));
+  }
   if (o.blend) charBlendStep(*o.blend, R, base, charStateKey(ps), o.time);
   // first person: nothing of the body above the shoulders under your eyes (a cape's collar, a hood's rim, a ruff): cut level
   // with the shoulders (the body's top, in its own frame turned to render space)

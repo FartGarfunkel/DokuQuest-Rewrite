@@ -343,6 +343,31 @@ int main(int argc, char** argv) {
     check(mm.windK.empty() && mm.mana < m1, "Firebolt is instant");
   }
 
+  // ---- each hand on its own: the left casts right after the right, its own time between casts; bolts leave the hand ----
+  {
+    MagicState& mm = magicState(*lv, p);
+    p.inv[0].clear(); p.offhand[0].clear(); mm.castCd = mm.castCdL = 0; mm.mana = manaMax(p); mm.windK.clear();
+    pickSpell(*lv, p, "firebolt"); setOffSpell(*lv, p, "frost");
+    for (auto& e : lv->entities()) if (e->type == "spell_bolt") e->removed = true;
+    lv->tick(TICK_DT);
+    const float m0 = mm.mana;
+    castHand(*lv, p, 0);
+    const float m1 = mm.mana, cdR = mm.castCd;
+    castHand(*lv, p, 1);
+    check(m1 < m0 && mm.mana < m1 && mm.castCd > 0 && mm.castCdL > 0 && near(mm.castCd, cdR, 0.001), "the right hand casts, and the left straight after it (each its own wait: right " + std::to_string(mm.castCd) + ", left " + std::to_string(mm.castCdL) + ")");
+    const float m2 = mm.mana; castHand(*lv, p, 1);
+    check(near(mm.mana, m2, 0.001), "...but not the left again before its own wait is over");
+    const vec3 r(std::cos(p.yaw), 0, -std::sin(p.yaw));
+    float sideR = 0, sideL = 0; int nb = 0;
+    for (auto& e : lv->entities()) if (!e->removed && e->type == "spell_bolt") {
+      auto* b = dynamic_cast<SpellBolt*>(e.get()); if (!b) continue;
+      const float sd = glm::dot(b->pos - p.pos, r);
+      if (b->spell == "firebolt") sideR = sd; else if (b->spell == "frost") sideL = sd;
+      nb++;
+    }
+    check(nb >= 2 && sideR > 0.15f && sideL < -0.15f, "each bolt leaves its own hand (firebolt " + std::to_string(sideR) + " to the right, frost shard " + std::to_string(sideL) + " to the left)");
+  }
+
   printf("\n%d passed, %d failed\n", passes, fails);
   lv->close();
   return fails ? 1 : 0;

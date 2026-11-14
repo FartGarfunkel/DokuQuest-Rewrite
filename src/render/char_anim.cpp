@@ -498,6 +498,15 @@ CharAngles charAnimate(const CharPose& pose) {
   if (pose.hoe > 0) { float k = std::sin(pose.hoe * PI); A.armR = vec3(0.6f + k * 1.2f, 0, 0); A.armL = vec3(0.6f + k * 1.1f, 0, 0); A.body.x -= k * 0.25f; }
   if (pose.work && pose.walkAmt < 0.05f) charWorkAngles(A, pose, t);
   if (pose.bowArm && pose.bow <= 0 && pose.swing <= 0) { A.armR = vec3(std::min(bowR.x, 0.1f), 0, bowR.z); A.foreR = vec3(std::min(bowF.x, 0.06f), 0, 0); }   // the arm hangs nearly straight: the bow it carries lies level at the side
+  // Skyrim's hands: the arm up before them, bent a little, the palm out holding the spell; a cast drives it out straight
+  auto spellArm = [&](vec3& arm, vec3& fore, float k, float th, float side) {
+    if (k <= 0) return;
+    const float e = k * k * (3 - 2 * k);
+    const vec3 up(1.2f + 0.35f * th, -0.18f * side + 0.1f * side * th, 0.08f * side), bend(0.55f * (1 - th), 0, 0);
+    arm = arm + (up - arm) * e; fore = fore + (bend - fore) * e;
+  };
+  spellArm(A.armR, A.foreR, pose.spellR, pose.thrustR, 1.f);
+  spellArm(A.armL, A.foreL, pose.spellL, pose.thrustL, -1.f);
   charMorePoses(A, pose);
   return A;
 }

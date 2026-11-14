@@ -104,12 +104,15 @@ bool castLeft(Level& lv, Player& p, const std::string& k, float power, float man
     return false;
   }
   HandMods& H = handMods();
-  H = {}; H.power = power; H.mana = mana; H.noStaff = !staff;
+  H = {}; H.power = power; H.mana = mana; H.noStaff = !staff; H.hand = 1;
   const bool bare0 = m.bare;
   m.bare = !staff;
+  // (the left hand keeps its own time between casts: the right's isn't touched)
+  const float cdR = m.castCd; m.castCd = 0;
   if (staff) std::swap(p.inv[p.selected], p.offhand[0]);
   castSpellKey(lv, p, k);
   if (staff) std::swap(p.inv[p.selected], p.offhand[0]);
+  m.castCdL = std::max(m.castCdL, m.castCd); m.castCd = cdR;
   m.bare = bare0;
   const bool ok = H.ok;
   H = {};
@@ -170,7 +173,7 @@ bool castSpell(Level& lv, Player& p) {
   MagicState& m = magicState(lv, p);
   const std::string right = activeSpell(p), left = offSpell(p);
   H = {};
-  if (right.empty() || left.empty() || !leftFree(p) || m.castCd > 0) return castSpellKey(lv, p, right);
+  if (right.empty() || left.empty() || !leftFree(p) || m.castCd > 0 || m.castCdL > 0) return castSpellKey(lv, p, right);
   if (left == right) {   // both hands, one spell
     H.power = 1.6f; H.mana = 1.8f;
     bool r = castSpellKey(lv, p, right);
@@ -184,7 +187,7 @@ bool castSpell(Level& lv, Player& p) {
   }
   if (!staffIn(p.offhand[0]) && spellNeedsStaff(left)) return castSpellKey(lv, p, right);   // that one needs a staff in the left hand
   const Fusion f = fusionOf(right, left);
-  H.power = f.mul; H.mana = 0.9f;
+  H.power = f.mul; H.mana = 0.9f; H.hand = 0;   // (each spell out of its own hand)
   bool r = castSpellKey(lv, p, right);
   if (!H.ok) { H = {}; return r; }
   const float cd1 = m.castCd;
@@ -206,7 +209,7 @@ void castHand(Level& lv, Player& p, int hand) {
     const std::string left = offSpell(p);
     if (left.empty()) { lv.fx->message(p.id, "Your left hand holds no spell (choose one in the spellbook)", ""); return; }
     if (!leftFree(p)) { lv.fx->message(p.id, "Your left hand is full", ""); return; }
-    if (m.castCd > 0) return;
+    if (m.castCdL > 0) return;
     castLeft(lv, p, left, 1, 1);
     return;
   }
@@ -215,7 +218,7 @@ void castHand(Level& lv, Player& p, int hand) {
   if (m.castCd > 0) return;
   const bool staff = staffIn(p.held());
   if (!staff && spellNeedsStaff(right)) { const SpellDef* S = magicData().spell(right); lv.fx->message(p.id, "Hold a staff to cast " + (S ? S->name : right), ""); return; }
-  HandMods& H = handMods(); H = {}; H.noStaff = !staff; H.windup = true;
+  HandMods& H = handMods(); H = {}; H.noStaff = !staff; H.windup = true; H.hand = 0;
   const bool bare0 = m.bare; m.bare = !staff;
   castSpellKey(lv, p, right);
   m.bare = bare0; H = {};
@@ -227,7 +230,7 @@ bool castWithWeapon(Level& lv, Player& p) {
   const std::string left = offSpell(p);
   if (left.empty() || !leftFree(p)) return false;
   MagicState& m = magicState(lv, p);
-  if (m.castCd > 0) return true;
+  if (m.castCdL > 0) return true;
   if (!castLeft(lv, p, left, 1, 1)) return true;
   const SpellDef* S = magicData().spell(left);
   if (S && !S->util) {

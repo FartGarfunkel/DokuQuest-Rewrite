@@ -19,17 +19,93 @@
 #include "sim/enchanting.h"
 #include "sim/commands.h"
 #include "world/world.h"
+#include "render/particles.h"
+#include "render/spell_hands.h"
+#include "render/char_layer.h"
+#include "render/creature_models.h"
+#include "sim/creature_rig.h"
 #include <imgui.h>
 #include <deque>
 
 namespace dq {
 
-static float frand() { return (float)mrand(); }
 static float jv(const json& o, const char* k, float d) { return o.is_object() && o.contains(k) && o[k].is_number() ? o[k].get<float>() : d; }
 
 namespace {
 
 struct Spark { vec3 pos{0}, vel{0}; float life = 0.5f, max = 0.5f, size = 0.08f, size0 = 0.08f, grav = 0, grow = 0, flutter = 0, ph = 0; bool shrink = true, flat = false; vec3 col{1}; int shape = 0; };
+// ---- Iron's Spells' own particles (tools/port/irons_fx_import.py: local, git-ignored; without them, nothing changes) ----
+// Each kind's frames sit side by side in the tile atlas; a particle plays them over its life, shining.
+struct IsbKind { std::string first; int n = 0; };
+static const std::unordered_map<std::string, IsbKind>& isbKinds() {
+  static std::unordered_map<std::string, IsbKind> K; static bool tried = false;
+  if (!tried) {
+    tried = true;
+    if (auto j = readJson(dataDir() / "local_models" / "irons_fx.json"); j && j->contains("particles"))
+      for (auto& [k, v] : (*j)["particles"].items()) if (v.is_array() && !v.empty()) K[k] = {v[0].get<std::string>(), (int)v.size()};
+  }
+  return K;
+}
+static bool isbHave() { return !isbKinds().empty(); }
+// a particle of that kind (embers, fire, snowflake, electricity, wisp...): false if there's none here
+static bool isbParticle(const std::string& kind, vec3 pos, vec3 vel, float life, float size, float grav = 0, bool soft = false, u32 tint = 0xFFFFFF) {
+  auto it = isbKinds().find(kind);
+  if (it == isbKinds().end()) return false;
+  const int t0 = reg().tile(it->second.first);
+  if (t0 < 0) return false;
+  Particle P; P.p = pos; P.v = vel; P.life = P.max = life; P.size = P.size0 = size; P.grav = grav;
+  P.tile = P.frame0 = (u16)t0; P.frames = (u8)std::min(it->second.n, 255);
+  P.glow = true; P.light = 0xFF; P.soft = soft; P.alpha = soft ? 0.7f : 1.f; P.shrink = !soft; P.ph = (float)mrand() * 6;
+  P.tint[0] = (u8)(tint >> 16); P.tint[1] = (u8)(tint >> 8); P.tint[2] = (u8)tint;
+  particles().add(P);
+  return true;
+}
+// what each of our schools' sparks are in Iron's: fire embers and flames, frost snowflakes, storm sparks and lightning,
+// life's wisps and cleansing light, the arcane's traces, stone's rings of dust
+struct IsbPick { const char* kind = nullptr; u32 tint = 0xFFFFFF; };
+static IsbPick isbFor(const std::string& spark) {
+  const float r = (float)mrand();
+  if (spark == "mana_fire") return {r < 0.55f ? "embers" : r < 0.9f ? "fire" : "fiery_smoke"};
+  if (spark == "mana_frost") return {"snowflake"};
+  if (spark == "mana_light") return {"electricity"};
+  if (spark == "mana_heal") return {"wisp"};
+  if (spark == "mana_arcane") return r < 0.7f ? IsbPick{"electricity", 0xC890FF} : IsbPick{"trace", 0xE0C0FF};
+  if (spark == "mana_stone") return {r < 0.7f ? "fog" : "ring_smoke", 0xC8B8A0};
+  return {};
+}
+// the spells' bolts as Iron's projectiles (voxel models from its renderers' boxes and pictures)
+static const char* isbBoltModel(const std::string& spell) {
+  if (spell == "firebolt") return "isb_firebolt";
+  if (spell == "fireball") return "isb_fireball";
+  if (spell == "frost") return "isb_icicle";
+  if (spell == "missiles") return "isb_magic_missile";
+  if (spell == "light" || spell == "healother") return "isb_guiding_bolt";
+  return nullptr;
+}
+
+// ---- the hands' spells (render/spell_hands.h) ----
+}  // namespace
+static std::unordered_map<u32, std::array<double, 2>>& castsAt() { static std::unordered_map<u32, std::array<double, 2>> m; return m; }
+void noteSpellCast(u32 id, int hand) {
+  const double t = nowSeconds();
+  auto& c = castsAt().try_emplace(id, std::array<double, 2>{-1e9, -1e9}).first->second;
+  if (hand != 1) c[0] = t;
+  if (hand != 0) c[1] = t;
+}
+void spellHandPose(u32 id, float ready[2], float thrust[2]) {
+  const double now = nowSeconds();
+  ready[0] = ready[1] = thrust[0] = thrust[1] = 0;
+  auto it = castsAt().find(id);
+  if (it == castsAt().end()) return;
+  for (int h = 0; h < 2; h++) {
+    const double a = now - it->second[h];
+    if (a < 0 || a > 6) continue;
+    ready[h] = (float)std::clamp(std::min(a / 0.12, (6 - a) / 0.7), 0.0, 1.0);   // (up at once, held, lowered over the last moments)
+    thrust[h] = a < 0.32 ? (float)std::sin(a / 0.32 * PI) : 0.f;                  // (out and back)
+  }
+}
+namespace {
+
 struct VBolt { std::string spell, fx; vec3 pos{0}, vel{0}; float age = 0; u32 target = 0; int realm = 0; };
 struct FloatText { vec3 pos{0}; std::string text; u32 col = 0xffffff; float t = 0; };
 struct Pop { std::string k; double xp = 0; double t = 0; };
@@ -99,6 +175,11 @@ public:
     k.grav = jv(o, "grav", 0); k.grow = jv(o, "grow", 0); k.shrink = k.grow == 0; k.flutter = jv(o, "flutter", 0); k.ph = frand() * 6;
     k.flat = o.is_object() && o.value("flat", false); k.col = tileColor(kind); k.shape = tileShape(kind);
     sparks.push_back(k);
+    // and Iron's own particle with it, about every other spark (bigger: they're pictures, not dots)
+    if (isbHave() && frand() < 0.5f) if (const IsbPick ip = isbFor(kind); ip.kind) {
+      const bool smoke = std::strcmp(ip.kind, "fiery_smoke") == 0 || std::strcmp(ip.kind, "fog") == 0 || std::strcmp(ip.kind, "ring_smoke") == 0;
+      isbParticle(ip.kind, p, v * (smoke ? 0.4f : 1.f) + (smoke ? vec3(0, 0.4f, 0) : vec3(0)), k.max * (smoke ? 1.6f : 1.15f), size * (smoke ? 3.4f : 2.4f), k.grav * 0.5f, smoke, ip.tint);
+    }
   }
   void fx(const std::string& t, vec3 p, int n, float sp, const json& o) {
     float spread = jv(o, "spread", 0.3f);
@@ -153,6 +234,7 @@ public:
       bool mine = s.player && caster == s.player->name;
       if (o.value("relay", false) && mine) return;
       if (mine) if (auto* h = s.layer<HeldItemLayer>()) h->swingArm();
+      for (auto& e : s.level->entities()) if (auto* pl = dynamic_cast<Player*>(e.get()); pl && pl->name == caster) { noteSpellCast(pl->id, o.value("h", -1)); break; }
       if (o.contains("b") && o["b"].is_array()) for (auto& b : o["b"]) if (b.is_array() && b.size() == 6) {
         VBolt v; v.spell = o.value("s", ""); v.pos = vec3(b[0], b[1], b[2]); v.vel = vec3(b[3], b[4], b[5]); v.target = o.value("t", 0u);
         v.realm = s.player ? s.player->realm : 0;
@@ -327,6 +409,13 @@ void MagicLayer::update(GameSession& gs, double dt) {
     float a = b.age * 26;
     fx(b.fx, b.pos, 3, 0.25f, json{{"life", 0.3}, {"size", 0.12}, {"spread", 0.12}});
     for (float k2 : {0.f, PI}) { float c = std::cos(a + k2) * 0.22f, sn = std::sin(a + k2) * 0.22f; add(k2 != 0 ? "mana_arcane" : b.fx, b.pos + vec3(px.x * c, sn, px.z * c), -u * 0.6f, 0.45f, 0.06f); }
+    if (isbHave()) {   // Iron's trails: embers turning round the firebolt (its trailParticles), fire off the fireball, snow off the icicle
+      const vec3 ax1 = glm::normalize(glm::cross(u, std::fabs(u.y) > 0.95f ? vec3(1, 0, 0) : vec3(0, 1, 0))), ax2 = glm::cross(u, ax1);
+      const float ang = b.age / 0.375f * TAU;
+      const char* tk = b.spell == "firebolt" ? "embers" : b.spell == "fireball" ? "fire" : b.spell == "frost" ? "snowflake" : b.spell == "lightning" || b.spell == "chainlight" ? "electricity" : "trace";
+      for (int j = 0; j < 2; j++) { const float aa = ang + j * PI; isbParticle(tk, b.pos + (ax1 * std::cos(aa) + ax2 * std::sin(aa)) * 0.25f, vec3((frand() - 0.5f) * 0.1f), 0.5f, 0.14f); }
+      if (b.spell == "fireball" && frand() < 0.6f) isbParticle("fiery_smoke", b.pos - u * 0.3f, vec3(0, 0.5f, 0), 1.0f, 0.4f, 0, true);
+    }
     if (b.spell == "firebolt" || b.spell == "fireball") { if (frand() < 0.8f) add("mana_fire", b.pos, vec3((frand() - 0.5f) * 1.5f, frand() * 0.5f, (frand() - 0.5f) * 1.5f), 0.7f, 0.05f, json{{"grav", 4}}); if (frand() < 0.5f) add("flame", b.pos, vec3(0, 0.5f, 0), 0.5f, 0.08f); }
     else add("mana_frost", b.pos + vec3(frand() - 0.5f, frand() - 0.5f, frand() - 0.5f) * 0.3f, vec3(0, -0.4f, 0), 1.1f, 0.05f, json{{"grav", 0.4}, {"flutter", 1.2}});
   }
@@ -345,18 +434,27 @@ void MagicLayer::ambient(double dt) {
   auto chance = [&](float rate) { return frand() < fdt * rate; };
   if (!p.dead) {
     if (m.ward > 0) for (int k = 0; k < 2; k++) { float a = t * 3 + k * PI + frand() * 0.3f, b = t * 1.7f + k; add("mana_light", p.pos + vec3(std::cos(a) * 0.8f, 1 + std::sin(b) * 0.8f, std::sin(a) * 0.8f), vec3(0), 0.35f, 0.05f); }
-    if (heldStaff(p) && chance(14)) {
-      std::string k = activeSpell(p); const SpellDef* S = magicData().spell(k);
-      std::string tile = S ? S->fx : "mana_arcane";
-      if (!s.viewMode) {
-        const Camera& c = s.frame.cam; vec3 f = c.forward(), r = c.right(), up = glm::cross(r, f);
-        float a = frand() * TAU, rr = 0.05f + frand() * 0.05f;
-        vec3 tip = vec3(c.pos) + f * 0.75f + r * (0.36f + std::cos(a) * rr) + up * (0.12f + std::sin(a) * rr * 0.6f);
-        add(tile, tip, vec3(0, 0.18f, 0), 0.55f, 0.022f, json{{"flutter", 0.25}});
-      } else {
-        float rx = std::cos(p.yaw), rz = -std::sin(p.yaw), fx2 = -std::sin(p.yaw), fz = -std::cos(p.yaw);
-        auto j = [] { return (frand() - 0.5f) * 0.12f; };
-        add(tile, p.pos + vec3(rx * 0.38f + fx2 * 0.3f + j(), (p.sneaking ? 1.3f : 1.6f) + j(), rz * 0.38f + fz * 0.3f + j()), vec3(0, 0.35f, 0), 0.45f, 0.035f, json{{"flutter", 0.6}});
+    {   // a spell in each free hand, held at the body's own fist (first person too: your hands are your body's); stronger while
+        // the arm is up holding it after a cast. Two different spells: each hand its own (mix and match shows both)
+      glm::dvec3 palm[2]; const bool have = playerPalms(p.id, palm);
+      float rdy[2], thr[2]; spellHandPose(p.id, rdy, thr);
+      const ItemStack& off = p.offhand[0];
+      const bool offFree = off.empty() || (off.def() && off.def()->props.contains("staff"));
+      const bool mainFree = p.held().empty() || heldStaff(p);
+      for (int h = 0; h < 2; h++) {
+        const std::string k = h == 0 ? activeSpell(p) : offSpell(p);
+        if (k.empty() || !(h == 0 ? mainFree : offFree)) continue;
+        const SpellDef* S = magicData().spell(k);
+        const std::string tile = S ? S->fx : "mana_arcane";
+        vec3 at;
+        if (have) at = vec3(palm[h]);
+        else { const float sd = h == 0 ? 1.f : -1.f; at = p.pos + vec3(std::cos(p.yaw) * 0.38f * sd, 0.9f, -std::sin(p.yaw) * 0.38f * sd); }
+        const float rate = 5 + 20 * rdy[h] + 30 * thr[h];
+        if (chance(rate)) {
+          const float a = frand() * TAU, rr = 0.03f + frand() * 0.05f;
+          add(tile, at + vec3(std::cos(a) * rr, (frand() - 0.3f) * 0.08f, std::sin(a) * rr), vec3(0, 0.2f + 0.3f * rdy[h], 0), 0.45f, 0.02f + 0.012f * rdy[h], json{{"flutter", 0.25}});
+        }
+        if (isbHave() && chance(4 + 14 * rdy[h])) if (const IsbPick ip = isbFor(tile); ip.kind) isbParticle(ip.kind, at + vec3((frand() - 0.5f) * 0.06f, 0.02f, (frand() - 0.5f) * 0.06f), vec3(0, 0.15f, 0), 0.35f, 0.07f + 0.05f * rdy[h], 0, false, ip.tint);
       }
     }
     if (m.lightT > 0 && m.witchSet) {
@@ -491,6 +589,31 @@ void MagicLayer::drawOpaque(GameSession& gs, const FrameCtx& f) {
   }
   for (auto& e : s.level->entities()) if (!e->removed && e->type == "potion_flask" && e->realm == s.player->realm)
     drawItem(e->data.value("potion", "splash_potion_water"), e->pos, e->age * 8, 0.36f);
+  // the bolts as Iron's projectiles, along their flight (the fireball turning over as it goes)
+  for (auto& b : bolts) {
+    if (b.age >= 99) continue;
+    const char* mk = isbBoltModel(b.spell);
+    const CreatureModelGL* CM = mk ? creatureModel(mk) : nullptr;
+    const RigModel* RM = mk ? rigModel(mk) : nullptr;
+    if (!CM || !RM || CM->parts.empty() || RM->parts.empty()) continue;
+    const float v = std::max(1e-3f, glm::length(b.vel));
+    const float yaw = std::atan2(-b.vel.x, -b.vel.z), pitch = std::asin(std::clamp(b.vel.y / v, -1.f, 1.f));
+    mat4 m = glm::translate(mat4(1), f.cam.rel(glm::dvec3(b.pos)));
+    m = glm::rotate(m, yaw, vec3(0, 1, 0)); m = glm::rotate(m, pitch, vec3(1, 0, 0));
+    if (b.spell == "fireball" || b.spell == "missiles") m = glm::rotate(m, b.age * 9.f, vec3(0.3f, 0.5f, 1));
+    m = glm::scale(m, vec3(RM->scale));
+    for (size_t i = 0; i < CM->parts.size() && i < RM->parts.size(); i++) {
+      const CreaturePartMesh& pm = *CM->parts[i];
+      if (pm.hidden || !pm.gl.ready()) continue;
+      const RigPart& rp = RM->parts[i];
+      mat4 pmx = glm::translate(m, rp.pivot);
+      if (rp.rest.z) pmx = glm::rotate(pmx, rp.rest.z, vec3(0, 0, 1));
+      if (rp.rest.y) pmx = glm::rotate(pmx, rp.rest.y, vec3(0, 1, 0));
+      if (rp.rest.x) pmx = glm::rotate(pmx, rp.rest.x, vec3(1, 0, 0));
+      if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+      VR.draw(pm.gl, pmx * pm.local, VoxelLight{1, 1});
+    }
+  }
   if (begun) VR.end();
 }
 

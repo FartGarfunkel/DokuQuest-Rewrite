@@ -12,6 +12,7 @@ struct CharPose {
   u8 atkMove = 0; float atkT = 0;   // an attack move in progress (sim/attack_moves.h): drawn from its fitted keys (render/attack_poses.cpp)
   float yaw = 0, headPitch = 0, walk = 0, walkAmt = 0, swing = 0, time = 0, vy = 0, land = 0, landAmt = 1, bow = 0, eat = 0;   // landAmt: how hard (0.3 a hop .. 1.6 a long drop)
   float swimPh = 0, swimMv = 0, swimPitch = 0, climb = 0, deathT = 0, lean = 0, castWind = 0;
+  float spellR = 0, spellL = 0, thrustR = 0, thrustL = 0;   // a spell held up before them in that hand after a cast (render/spell_hands.h), the cast's thrust
   bool crawl = false; float crawlPh = 0, crawlMv = 0;   // on your belly in a low gap: a commando crawl (charRig crawlLimbs), not the swim
   bool sneak = false, sit = false, sleep = false, swim = false, hang = false, air = false, sprint = false;
   bool bowArm = false;   // a bow carried in the right hand: that arm hangs at the side, still (no gestures turn the bow over)
