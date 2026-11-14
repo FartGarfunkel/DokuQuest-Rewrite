@@ -89,7 +89,7 @@ float sword(M& m, float L = 1.22f, float bw = 0.15f, float guard = 0.22f) {
   m.sseg(diag(0.27f), diag(0.29f, -guard), 0.075f, 0.065f, 0.11f, 0.1f, 0.85f, 0.11f);
   m.sseg(diag(0.27f), diag(0.29f, guard), 0.075f, 0.065f, 0.11f, 0.1f, 0.85f, 0.11f);
   m.sseg(diag(0.31f), diag(L - 0.14f), bw * 1.2f, bw * 0.95f, 0.045f, 0.04f, 1, 0.08f, 0.65f);   // the blade, bevelled to its edges (broader, after Just 3D)
-  m.sseg(diag(L - 0.14f), diag(L), bw * 0.95f, 0.02f, 0.04f, 0.02f, 1.05f, 0.05f, 0.65f); // its point
+  m.sseg(diag(L - 0.14f), diag(L), bw * 0.95f, 0.07f, 0.04f, 0.04f, 1.05f, 0.05f, 0.65f); // its point (as wide as two voxels and as thick as the blade at its tip: thinner, its last steps were bare)
   for (float z : {0.022f, -0.022f}) m.sseg(diag(0.34f, 0, z), diag(L - 0.22f, 0, z), 0.035f, 0.03f, 0.012f, 0.012f, 0.78f);   // the fuller
   return 0.055f;
 }
