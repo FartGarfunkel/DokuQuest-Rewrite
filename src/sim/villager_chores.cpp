@@ -592,9 +592,9 @@ OptMove npcChore(Level& lv, Creature& e, NpcMind& M, const Village& v, const VFo
   struct Craft { const char* job; std::vector<std::pair<const char*, int>> in; std::pair<const char*, int> out; float every; const char* sound; };
   static const std::vector<Craft> CRAFTS = {
     {"mason", {{"cobblestone", 2}}, {"stone_bricks", 2}, 8, "saw"},
-    {"armorer", {{"iron_ore", 1}, {"coal", 1}}, {"iron_ingot", 1}, 12, "anvil"},
-    {"weaponsmith", {{"iron_ore", 1}, {"coal", 1}}, {"iron_ingot", 1}, 12, "anvil"},
-    {"toolsmith", {{"iron_ore", 1}, {"coal", 1}}, {"iron_ingot", 1}, 12, "anvil"},
+    {"armorer", {{"iron_ore", 1}, {"coal", 1}}, {"iron_ingot", 1}, 12, "fire_crackle"},
+    {"weaponsmith", {{"iron_ore", 1}, {"coal", 1}}, {"iron_ingot", 1}, 12, "fire_crackle"},
+    {"toolsmith", {{"iron_ore", 1}, {"coal", 1}}, {"iron_ingot", 1}, 12, "fire_crackle"},
     {"butcher", {{"beef", 1}}, {"cooked_beef", 1}, 10, "fire_crackle"},
     {"butcher", {{"porkchop", 1}}, {"cooked_porkchop", 1}, 10, "fire_crackle"},
     {"butcher", {{"chicken", 1}}, {"cooked_chicken", 1}, 10, "fire_crackle"},
