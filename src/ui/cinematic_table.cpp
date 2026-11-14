@@ -54,7 +54,6 @@ void leanPose(Scene& S, vec3 eye) {
   d = std::fabs(d.x) > std::fabs(d.z) ? vec3(d.x > 0 ? 1.f : -1.f, 0, 0) : vec3(0, 0, d.z > 0 ? 1.f : -1.f);
   if (glm::length(S.front) > 0.5f) d = S.front;
   const vec3 right(d.z, 0, -d.x);   // to your right as you face the station
-  S.dir = d; S.stand = false;
   auto aimAt = [&](vec3 from, vec3 to) {
     const vec3 v = to - from;
     S.viewPos = glm::dvec3(from); S.viewYaw = std::atan2(-v.x, -v.z); S.viewPitch = std::atan2(v.y, std::hypot(v.x, v.z));
@@ -1036,36 +1035,10 @@ void cinematicCamera(GameSession& s, Camera& cam, double dt) {
   Scene& S = scene();
   if (S.phase == 0) return;
   S.t += dt; S.clock += dt;
-  // every station is worked by your own body, seen from its eyes: you step up to it, turn to the work and bend to it, and
-  // your body's own arms reach for it (the hammer in your own fist at the anvil). Leaning the camera over it with the
-  // scene's arms (Cinematic Interactions' way) only when the option asks for it
-  S.lean = s.app.settings.extra.value("cinematicLean", false);   // (off: your own body works every station, its arms on the work, seen from its eyes)
-  if (!S.lean && s.player && (S.phase == 1 || S.phase == 2)) {   // your own body steps up to the station and turns to the work
-    Player& p = *s.player;
-    if (S.phase == 1 && !S.stand && glm::length(S.dir) > 0.5f) {
-      // where you stand to work it: just off its face (the campfire: sat a little further back), on your own level, and only
-      // if that's clear ground (two blocks of air over something to stand on); else you work it from where you are
-      const double back = S.kind == 13 ? 1.1 : S.kind == 4 ? 1.35 : S.kind == 3 || S.kind == 7 ? 1.0 : 0.9;   // (the furnace: crouched before its mouth, room to reach in)   // (an arm's length: closer, your own forearms filled the view)
-      const glm::dvec3 to = glm::dvec3(S.at) + glm::dvec3(0.5, 0, 0.5) + glm::dvec3(S.dir) * back;
-      const int fx = (int)std::floor(to.x), fz = (int)std::floor(to.z), fy = (int)std::floor(p.pos.y + 0.01f);
-      World& w = s.world();
-      auto solid = [&](int y) { return reg().block(w.getBlock(fx, y, fz)).solid; };
-      if (!solid(fy) && !solid(fy + 1) && solid(fy - 1)) { S.standTo = glm::dvec3(to.x, p.pos.y, to.z); S.stand = true; }
-    }
-    if (S.stand) {
-      const float k = (float)std::min(1.0, dt * 7.0);
-      p.pos.x += (float)(S.standTo.x - p.pos.x) * k; p.pos.z += (float)(S.standTo.z - p.pos.z) * k;
-      p.vel.x = p.vel.z = 0;
-    }
-    if (S.phase == 1) {   // turned to it, looking down at its top (low stations lower)
-      const vec3 eye = p.pos + vec3(0, p.eye, 0);
-      const bool lowSt = S.kind == 3 || S.kind == 4 || S.kind == 7 || S.kind == 13;
-      const vec3 look = vec3(S.at) + vec3(0.5f, S.kind == 4 ? 0.5f : lowSt ? 0.45f : 0.9f, 0.5f) - eye;
-      const float wantYaw = std::atan2(-look.x, -look.z), wantPitch = std::atan2(look.y, std::hypot(look.x, look.z));
-      const float k = (float)std::min(1.0, dt * 9.0);
-      p.yaw += wrapPi(wantYaw - p.yaw) * k; p.pitch += (wantPitch - p.pitch) * k;
-    }
-  }
+  // leaning in over the work, your arms out to it (Cinematic Interactions' way): the anvil (the hammer in your hand on the
+  // work), the enchanting table (a finger to its runes) and the grindstone (the tool held to the spinning wheel) always;
+  // the rest as the option says (seamless first person, your own body bending to them)
+  S.lean = s.app.settings.extra.value("cinematicLean", false) || S.kind == 1 || S.kind == 2 || S.kind == 6;
   if (!S.lean) {   // seamless first person (the default): your own view; your body bends to the work and the eye goes with it
     if (S.phase == 1 && S.t >= 0.35) { S.phase = 2; S.t = 0; }
     else if (S.phase == 3 && S.t >= 0.35) S.phase = 0;

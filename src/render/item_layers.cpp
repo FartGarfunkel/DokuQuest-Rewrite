@@ -277,7 +277,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   if (cinematicActive() && cinematicLeaning()) return;
   Player* p = s.player;
   handsTaken = 0;
-  if (vec3 hw[2]; cinematicActive() && s.app.settings.fpBody && cinematicHandsWorld(hw) && !bookUiStationOn(s.app)) return;   // (at any station: your body's own arms work it)
+  if (vec3 hw[2]; cinematicActive() && cinematicKind() == 13 && s.app.settings.fpBody && cinematicHandsWorld(hw) && !bookUiStationOn(s.app)) return;
   if (!p || p->dead || s.viewMode != 0 || s.hudHidden || p->scoping) return;   // (the spyglass at your eye: just the glass)
   { vec3 be; float by, br; if (s.app.settings.fpBody && bedEyeWorld(be, by, br)) return; }   // (getting into bed: your own body's arms, render/char_layer.cpp)
   const Settings& st = s.app.settings;
@@ -661,7 +661,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   }
   const bool mapHeld = isMapStack(held);   // (a map is held up to read in the hand view)
   if (taken & 1) {}
-  else if (cinematicForgeT() >= 0 && !cinematicLeaning() && !bodyHands) { drew |= 1; holdIn(1, ItemStack("smith_hammer", 1), 0); }   // forging at the anvil without your body drawn: the hand view's hammer (with it: in your body's own fist, render/char_layer.cpp)
+  else if (cinematicForgeT() >= 0 && !cinematicLeaning()) { drew |= 1; holdIn(1, ItemStack("smith_hammer", 1), 0); }   // forging at the anvil: the hammer in your own hand, a swing on each blow
   else if (bodyHands && !mapHeld) {}   // (your body's own right hand: render/char_layer.cpp)
   else if (biting) { drew |= 1; holdIn(1, ItemStack(p->eatId, 1), 0, eatModelKey(p->eatId, 1 - eatAnim / EAT_ANIM)); }
   else if (!held.empty() && held.def()) { drew |= 1; holdIn(1, held, 0); }

@@ -23,8 +23,6 @@ struct Scene {
   vec3 front{0};   // a station with a front of its own (a furnace): lean in there, wherever you stand
   vec3 viewOff{0};     // the eye's offset from bending (cinematicViewOffset)
   float bend = 0;      // seamless first person: how far bent toward the work (0..1, eased)
-  vec3 dir{0};          // from the station toward where you work it (its front, or the side you came to)
-  glm::dvec3 standTo{0}; bool stand = false;   // seamless first person: where your body steps up to work it (if that's clear)
   bool lean = false;   // the camera leans over the station (Options "Lean the camera over stations"); off: seamless first person
 };
 Scene& scene();

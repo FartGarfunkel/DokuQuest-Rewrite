@@ -3,7 +3,6 @@
 // render/char_layer.cpp — players drawn as voxel characters (render/skins.js avatarDraws, game/anim.js,
 // game/capes.js, game/carried.js, game/charparts.js, render/gear3d.js gearDraws).
 #include "ui/cinematic.h"
-#include "assets/item_build.h"
 #include "sim/attack_moves.h"
 #include "render/book_model.h"
 #include "render/journal_model.h"
@@ -183,10 +182,6 @@ void shieldInHand(const CharRig& R, int part, const std::string& id, float side,
   if (!im.ready()) return;
   voxelRenderer().draw(im.gl, shieldPlacement(R, part, side, k) * im.matrix(), light, tint, glint ? 1.f : 0.f);
 }
-// a hammer at work on a station (the anvil, smithing table, Tool Forge), the arm reaching to the piece: held as one
-// strikes, the haft out of the fist ahead of you over the work and the head beyond it (along the reaching arm it pointed
-// back up at the eyes). The body's yaw while it's drawn; off (NaN) otherwise
-static float g_hammerYaw = NAN;
 // skins.js held(): an item in a fist (fore = the forearm's frame, model pixels about the elbow; side -1 = the left hand)
 void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0), const std::string& modelKey = "", vec3* headOut = nullptr, const float* fpYaw = nullptr) {
   if (id == "fishing_rod") id = "fishing_rod_tp";
@@ -200,16 +195,6 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
   if (!tl) { tl = true; if (const char* v = std::getenv("DQ_DEV_TPHELD")) std::sscanf(v, "%f,%f,%f", &T[0], &T[1], &T[2]); }
   mat4 hm = glm::translate(fore, vec3(0, -6 + T[0], -1 + T[1]));
   const ItemDef* fd = reg().item(id);
-  if (side > 0 && !std::isnan(g_hammerYaw)) {
-    const float sc = glm::length(vec3((glm::scale(hm, vec3((1 + T[2]) / CHAR_PX)) * heldMat(id))[0]));
-    mat4 F = glm::rotate(glm::translate(mat4(1), vec3(hm[3])), g_hammerYaw, vec3(0, 1, 0));
-    F = glm::rotate(F, -(1.5708f + 0.3f), vec3(1, 0, 0));   // (its haft, built up the model's y, forward and a little down)
-    F = glm::scale(F, vec3(sc));
-    F = glm::translate(F, vec3(0, 0.3f, 0));                // (held near the end of the haft)
-    if (headOut) *headOut = vec3(F * vec4(0, 0.4f, 0, 1));
-    voxelRenderer().draw(im.gl, F * im.matrix(), light, tint, glint ? 1.f : 0.f);
-    return;
-  }
   const bool armTool = isHandheld(id) || (fd && fd->hasTool);   // (swords and tools: along the arm, full size, as third person holds them)
   if (fpYaw && !armTool && !im.torch3d && !im.stand && !isBowKey(id) && id.rfind("fishing_rod", 0) != 0) {   // (a torch: held as a pickaxe, below)   // seamless first person: the old hand view's grip, at your own fist, turned with you
     // (turned with you and tipped with your look, as the old hand view held things; the fist is nearer the eye than that
@@ -796,7 +781,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   vec3 fpHands[2];
   // (for now the campfire, sat down: at the standing stations the hands rest just before the eyes and the body's own
   // forearms from there filled the view; the hand view's arms stay there until those rests sit out on the work)
-  const bool fpStation = fp && &p == s.player && cinematicActive() && !cinematicLeaning() && cinematicHandsWorld(fpHands);   // (every station: your hands rest on the work)
+  const bool fpStation = fp && &p == s.player && cinematicActive() && !cinematicLeaning() && cinematicKind() == 13 && cinematicHandsWorld(fpHands);
   const bool settled = !fpStation || cinematicCrouch() > 0.5f;   // (first person: sat or crouched once the view has come down)
   if ((!fp || fpStation) && p.stationKind >= 0 && !p.dead && !p.riding) {
     if (p.workTap != st.workTapSeen) { st.workTapSeen = p.workTap; st.workTapAt = f.time; }
@@ -810,20 +795,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
     if (fpStation) { ps.reachR = f.cam.rel(glm::dvec3(fpHands[0])); ps.reachL = f.cam.rel(glm::dvec3(fpHands[1])); }   // (both your hands where the scene puts them)
     if ((p.stationKind == 3 || p.stationKind == 4) && settled) ps.sneak = true;   // (down to the brewing stand, the furnace)
     if (p.stationKind == 13 && settled) ps.sitGround = true;   // (sat down by a campfire)
-    // the hammer in the fist while the blows land (the anvil, the smithing table, the Tool Forge): your own if you hold one
-    // (the stone, flint or smith's, as in your hand anywhere), else the smith's. Yours from the scene's own clock
-    if (p.stationKind == 1 || p.stationKind == 8 || p.stationKind == 15) {
-      bool blows = f.time - st.workTapAt < 1.4;
-      if (&p == s.player && cinematicActive()) {
-        blows = cinematicForgeT() >= 0;
-        PairView pv; if (cinematicPairView(pv) && pv.t >= 0 && pv.t < pairBeats(pv.kind).letGo) blows = true;
-      }
-      if (blows) {
-        const ItemStack& hs = p.held();
-        const bool own = !hs.empty() && model3dKind(hs.id, reg().item(hs.id)) == "hammer";
-        wear.held = own ? hs.id : "smith_hammer"; wear.heldModel.clear(); ps.held = true; wear.hammering = true;
-      }
-    }
+    if (p.stationKind == 1 && f.time - st.workTapAt < 1.4) { wear.held = "smith_hammer"; wear.heldModel.clear(); ps.held = true; }   // (the hammer while the blows land)
   }
   if (fp && cinematicActive()) {
     if (cinematicLeaning()) ps.fpLeftArm = false;   // (leaning over a station: both hands are the scene's; seamless: your own arms stay)
@@ -1165,9 +1137,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     else if (isShieldItem(wear.held)) shieldInHand(R, CP_ARMR_D, wear.held, 1.f, ps.blockMain ? ps.block : 0.f, light, tint, wear.heldGlint);
     else if (!wear.held.empty()) {
       vec3 head;
-      if (ps.reach && wear.hammering) g_hammerYaw = ps.yaw;
       heldInHand(gripTurn(R.part[CP_ARMR_D], R.toolR), wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel, fp ? &head : nullptr, fp && !ps.atkMove ? fpYawV : nullptr);
-      g_hammerYaw = NAN;
       if (fp) { HeldItemLayer::torchTip[0] = o.camPos + glm::dvec3(head); HeldItemLayer::torchTipOn[0] = true; }   // (your own torch's flame, at its head)
     }
     if (!offOn || bowDraw) {}

@@ -76,7 +76,6 @@ struct CharWear {
   std::string heldModel;            // a mixed tool's own model (core/tool_parts.h partToolModelKey), "" = the item's
   u32 rodOwner = 0;                 // the player whose rod tip is recorded for the fishing line (0 = nobody)
   bool heldGlint = false, offGlint = false;   // enchanted: the shimmer on it
-  bool hammering = false;                     // a hammer at work on a station (held as one strikes: render/char_layer.cpp)
   std::vector<std::string> carried; // carried.js: hotbar things not in the hand (third person)
   bool hatItem = false;             // the helmet slot holds a hat (no 3D-look hiding under it)
 };
