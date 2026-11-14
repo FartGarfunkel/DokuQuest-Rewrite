@@ -98,6 +98,15 @@ bool castSpellKey(Level& lv, Player& p, const std::string& k) {
   const int erank = effectiveSpellRank(p, k);   // (yours, or the off-hand book's when it's written higher)
   const float rankP = (1 + 0.05f * (erank - 1)) * HM.power, cost = S->mana * HM.mana * (1 - 0.03f * (erank - 1));
   if (m.mana < cost && !cr) { toast(lv, p, "Not enough mana", "warn"); ui(lv, p, "spell_fizzle"); m.castCd = 0.4f; return true; }
+  // a long cast (Iron's cast types): from one hand's plain cast it winds up first; the magic system's tick casts it when
+  // the time is up (sim/magic.cpp tickPlayer), with what it was begun with (staff or bare hands)
+  if (S->castTime > 0 && HM.windup && !m.windGo) {
+    m.windK = k; m.windT = m.windTot = S->castTime; m.windFx = 0; m.windBare = m.bare; m.windNoStaff = HM.noStaff;
+    m.castCd = S->castTime + 0.1f;
+    lv.fx->soundUi(p.id, "charge");
+    HM.ok = true;
+    return true;
+  }
   ItemStack& held = p.held();
   json st = staff ? *staff : json{{"power", 0.7}};
   int arcane = enchLv(held, "arcane");

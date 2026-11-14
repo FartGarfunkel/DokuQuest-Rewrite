@@ -215,7 +215,7 @@ void castHand(Level& lv, Player& p, int hand) {
   if (m.castCd > 0) return;
   const bool staff = staffIn(p.held());
   if (!staff && spellNeedsStaff(right)) { const SpellDef* S = magicData().spell(right); lv.fx->message(p.id, "Hold a staff to cast " + (S ? S->name : right), ""); return; }
-  HandMods& H = handMods(); H = {}; H.noStaff = !staff;
+  HandMods& H = handMods(); H = {}; H.noStaff = !staff; H.windup = true;
   const bool bare0 = m.bare; m.bare = !staff;
   castSpellKey(lv, p, right);
   m.bare = bare0; H = {};

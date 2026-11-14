@@ -14,6 +14,8 @@ struct SpellDef {
   int mana = 0, lvl = 1;
   bool util = false;     // a quiet spell: doesn't repeat while the button is held
   float cd = 0;          // its own cooldown in seconds (Home Teleport)
+  std::string cast = "instant";   // Iron's cast types: "instant", "long" (a cast time first), "continuous" (it goes on while held)
+  float castTime = 0;    // a long cast's wind-up, seconds
 };
 struct EnchDef {
   std::string key, name, group, desc;

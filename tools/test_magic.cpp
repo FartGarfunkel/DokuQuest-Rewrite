@@ -311,6 +311,20 @@ int main(int argc, char** argv) {
     check(!writeScroll(p, "entangle", paper, lap, w).empty(), "...not one you only carry in a book");
     p.offhand[0].clear(); p.stats["spells"] = keep;
   }
+  // ---- cast types: a long cast winds up, then goes off by itself ----
+  {
+    MagicState& mm = magicState(*lv, p);
+    p.inv[0] = ItemStack("apprentice_staff", 1); p.selected = 0; mm.castCd = 0; mm.mana = manaMax(p); mm.windK.clear();
+    pickSpell(*lv, p, "fireball");
+    const float mana0 = mm.mana;
+    castHand(*lv, p, 0);
+    check(mm.windK == "fireball" && near(mm.mana, mana0, 0.01) && magicData().spell("fireball")->cast == "long", "Fireball is a long cast: it winds up first (no mana spent yet)");
+    for (int i = 0; i < 70 && !mm.windK.empty(); i++) lv->tick(TICK_DT);
+    check(mm.windK.empty() && mm.mana < mana0 - 10, "...and goes off when its cast time is up (mana " + std::to_string((int)mana0) + " -> " + std::to_string((int)mm.mana) + ")");
+    pickSpell(*lv, p, "firebolt"); mm.castCd = 0;
+    const float m1 = mm.mana; castHand(*lv, p, 0);
+    check(mm.windK.empty() && mm.mana < m1, "Firebolt is instant");
+  }
 
   printf("\n%d passed, %d failed\n", passes, fails);
   lv->close();

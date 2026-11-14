@@ -24,6 +24,8 @@ struct MagicState {
   bool jumpHeld = false;           // set by the controller each frame (levitation: jump to rise)
   std::string lastSpell;           // shown by the HUD
   std::string bladeEl; i64 bladeUntil = 0;   // the spellblade: a spell's school carried by the blade, until (unix ms)
+  // a long cast winding up (Iron's cast types: sim/magic_data.h SpellDef::cast): the spell, time left, how it was begun
+  std::string windK; float windT = 0, windTot = 0, windFx = 0; bool windBare = false, windNoStaff = false, windGo = false;
 };
 
 class MagicSystem;
@@ -45,7 +47,7 @@ bool castSpell(Level& lv, Player& p);                         // with the held s
 // it) the left-hand spell joins every cast: the same spell twice is one dual cast, two spells go off together (and
 // some pairs fuse: steam, plasma, hail...). A sword or axe in the right hand: use casts the left-hand spell, and the
 // blade carries it for a few blows. Spells rank up I..X with use (stronger, cheaper).
-struct HandMods { float power = 1, mana = 1; bool noStaff = false, ok = false; };
+struct HandMods { float power = 1, mana = 1; bool noStaff = false, ok = false, windup = false; };   // windup: a long cast winds up first (one hand's plain cast)
 HandMods& handMods();                                         // set around each hand's cast
 bool castSpellKey(Level& lv, Player& p, const std::string& k);   // one hand's cast (sim/magic_spells.cpp)
 bool spellNeedsStaff(const std::string& k);                   // the first spells can't be cast bare-handed

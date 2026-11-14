@@ -35,6 +35,7 @@ bool loadMagicData(const fs::path& file) {
     SpellDef s; s.key = k; s.name = v.value("name", k); s.col = v.value("col", "#ffffff"); s.fx = v.value("fx", "mana_arcane");
     s.school = v.value("school", "arcane"); s.desc = v.value("desc", ""); s.mana = v.value("mana", 0); s.lvl = v.value("lvl", 1);
     s.util = v.value("util", 0) != 0; s.cd = v.value("cd", 0.f);
+    s.cast = v.value("cast", std::string("instant")); s.castTime = s.cast == "long" ? v.value("castTime", 0.8f) : 0.f;
     d.spells[k] = s;
   }
   for (auto& s : G(j, "schools")) d.schools.push_back({s[0].get<std::string>(), s[1].get<std::string>(), s[2].get<std::string>()});

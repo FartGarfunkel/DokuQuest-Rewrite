@@ -367,6 +367,22 @@ void MagicSystem::tick(Level& l, double dt) {
 
 void MagicSystem::tickPlayer(Player& p, double dt) {
   MagicState& m = state(p);
+  // a long cast winding up: magic gathering round the caster, then the spell; a death or another spell chosen ends it
+  if (!m.windK.empty()) {
+    const SpellDef* S = magicData().spell(m.windK);
+    if (!S || p.dead || p.hp <= 0 || activeSpell(p) != m.windK) { m.windK.clear(); m.castCd = 0; }
+    else {
+      m.windT -= (float)dt; m.windFx -= (float)dt;
+      if (m.windFx <= 0) { m.windFx = 0.12f; sfx::spiral(lv, p.pos, S->fx, 6, json{{"r", 0.7f * (m.windT / std::max(0.01f, m.windTot)) + 0.2f}, {"h", 2.0}, {"turns", 1}, {"life", 0.4}}); }
+      if (m.windT <= 0 && !lv.isRemote()) {
+        const std::string k = m.windK; m.windK.clear();
+        HandMods& H = handMods(); H = {}; H.noStaff = m.windNoStaff;
+        const bool b0 = m.bare; m.bare = m.windBare; m.windGo = true; m.castCd = 0;
+        castSpellKey(lv, p, k);
+        m.windGo = false; m.bare = b0; H = {};
+      }
+    }
+  }
   // everyone starts knowing two spells (Firebolt to fight with, Home Teleport to get back): casting is what grows Magic,
   // so with none there was no way in. Once per player (older saves get them too).
   if (!p.stats.value("magicStart", false) && !lv.isRemote()) {
