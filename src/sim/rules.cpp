@@ -9,7 +9,7 @@ const json& ruleDefaults() {
     {"dayMinutes", 10}, {"nightMinutes", 10},
     {"daylightCycle", true}, {"keepInventory", false}, {"graves", true}, {"mobSpawning", true}, {"mobGriefing", true}, {"tntExplodes", true},
     {"fireSpread", true}, {"blockDrops", true}, {"fallDamage", true}, {"drowning", true}, {"fireDamage", true}, {"naturalRegen", true},
-    {"grassSpread", true}, {"randomTickSpeed", 1}, {"hardcore", false}, {"nightmares", true}, {"seasons", false}, {"startInWild", false}, {"treeFelling", true}, {"dynamicTrees", true}, {"saplingsPlant", true}, {"showCoords", false}, {"commands", false}, {"downed", true}, {"haunting", true}, {"allowSprinting", true}, {"allowSleeping", true}, {"weatherCycle", true},
+    {"grassSpread", true}, {"randomTickSpeed", 1}, {"hardcore", false}, {"nightmares", true}, {"seasons", false}, {"startInWild", true}, {"treeFelling", true}, {"dynamicTrees", true}, {"saplingsPlant", true}, {"showCoords", false}, {"commands", false}, {"downed", true}, {"haunting", true}, {"allowSprinting", true}, {"allowSleeping", true}, {"weatherCycle", true},
     {"hostileSpawns", true}, {"passiveSpawns", true},
     {"immersive", false},   // opt-in (Create World → Immersive Progression); off, the classic crafting
   };

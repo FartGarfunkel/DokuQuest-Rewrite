@@ -112,8 +112,9 @@ const std::vector<RuleRow>& ruleRows() {
     {"showCoords", "Show Coordinates", "Your position, shown in the corner", 0},
     {"commands", "Allow Commands", "Chat commands and WorldEdit (press T or /)", 0},
     {"downed", "Downed, Not Dead", "With someone else playing, you go down instead of dying, and they can help you back up", 0},
-    {"immersive", "Immersive Progression (experimental)", "TerraFirmaCraft-style beginnings: no punching trees, gather stones and sticks, knap your first tools, fire clay, smelt and smith metal. Off: the classic crafting", 1},
-    {"startInWild", "Start in the Wild", "Begin out in the wilds, well away from any village, instead of at a village's edge", 1},
+    // (Immersive Progression, the experimental TFC beginnings, is hidden: a world made with it keeps it; its ores, metals,
+    // tools and stations are in every world)
+    {"startInWild", "Start in the Wild", "Begin somewhere out in the wilds, well away from any village (the story begins at the first village you find); off: at a village's edge", 1},
     {"seasons", "Seasons", "Spring, summer, autumn and winter, seven days each: snow in the winter, colour in the autumn", 1},
     {"mobSpawning", "Mob Spawning", "Master switch. Off stops animals and monsters alike", 2},
     {"hostileSpawns", "Hostile Spawns", "Monsters appear on their own", 2},

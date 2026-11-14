@@ -867,8 +867,11 @@ static void townLife(SP& P, const Town& v, const VStyle& st) {
 bool wildStartPoint(const WorldGen& wg, vec3& pos) {
   const DimGenerator* g = wg.forDim(DIM_OVERWORLD);
   if (!g) return false;
-  for (int r = 64; r < 4000; r += 48) for (int a = 0; a < 8; a++) {
-    const float ang = a * 0.785398f + r * 0.013f;
+  // somewhere of the world's own: a direction and a distance (300-1500 out) from its seed, then outwards from there
+  const u32 h = hash32(wg.opts.seed, 0x51A7, 0x7A11, 9);
+  const float a0 = (h & 0xFFFF) / 65536.f * 6.2831853f; const int r0 = 300 + (int)((h >> 16) % 1200);
+  for (int r = r0; r < r0 + 4000; r += 48) for (int a = 0; a < 8; a++) {
+    const float ang = a0 + a * 0.785398f + r * 0.013f;
     const int x = (int)std::lround(std::cos(ang) * r), z = (int)std::lround(std::sin(ang) * r);
     ColumnSample s; g->sample(x, z, s);
     if (s.height <= 0 || s.water >= 0) continue;

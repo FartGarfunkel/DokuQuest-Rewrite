@@ -749,7 +749,8 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
       swingArm();
       return;
     }
-    if (immersive(lv) && p.sneaking && hit->normal.y == 1 && !held.empty() && pileKindOfItem(held.id) != PileKind::None) {   // (a classic world places a log as ever)
+    // TFC's ingot piles in every world; log piles in an immersive one (a classic world places a log as ever)
+    if (p.sneaking && hit->normal.y == 1 && !held.empty() && (pileKindOfItem(held.id) == PileKind::Ingots || (immersive(lv) && pileKindOfItem(held.id) != PileKind::None))) {
       const bool ingots = pileKindOfItem(held.id) == PileKind::Ingots;
       if (pilePlace(w, b.x, b.y + 1, b.z, held, &why)) { swingArm(); sfxMaterial(lv, ingots ? "metal" : "wood", "place", vec3(b) + vec3(0.5f, 1.1f, 0.5f)); return; }
       if (ingots) { if (!why.empty()) toastMsg(why); return; }   // (a log that can't make a pile is placed as a block below)
