@@ -59,7 +59,17 @@ for c in COLORS:
 for c in ('indigo', 'violet'):
     put(['quark:%s_corundum' % c, 'quark:waxed_%s_corundum' % c], 'purple_stained_glass', 'glass')
     put('quark:%s_corundum_cluster' % c, 'amethyst_cluster')
-put(['create:white_sail', 'create:sail_frame'], 'white_wool', 'wool')
+# the working mills (ours: sim/mechanics): a windmill bearing is our windmill (its sails our own, drawn on it), the shafts our
+# axles, the gearboxes and cogs our gearbox, the millstone ours, the water wheel, saw and crushing wheel our machines; the
+# assembled sails' cloth goes (our windmill draws its own)
+put('create:windmill_bearing', 'windmill')
+put('create:millstone', 'millstone')
+put(['create:gearbox', 'create:vertical_gearbox', 'create:cogwheel', 'create:large_cogwheel'], 'gearbox')
+put(['create:shaft', 'create:andesite_encased_shaft', 'create:brass_encased_shaft'], 'axle')
+put(['create:water_wheel', 'create:large_water_wheel'], 'waterwheel')
+put('create:mechanical_saw', 'sawmill')
+put('create:crushing_wheel', 'crusher')
+put(['create:white_sail', 'create:sail_frame'] + ['create:%s_sail' % c for c in ('orange', 'magenta', 'light_blue', 'yellow', 'lime', 'pink', 'gray', 'light_gray', 'cyan', 'purple', 'blue', 'brown', 'green', 'red', 'black')], 'air')
 put(['create:brown_toolbox'], 'air')
 
 # ---- Supplementaries

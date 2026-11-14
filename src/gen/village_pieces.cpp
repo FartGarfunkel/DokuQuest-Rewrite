@@ -308,9 +308,11 @@ VPState mapState(const json& e) {
       else m = rf < 0 ? 0 : d.str("station") == "anvil" ? rf : (rf + 2) & 3;
     }
     else if (d.str("mech") == "axle" || d.str("mech") == "windmill") {   // a mill's shaft and its sails (big: the village mills' great sails)
-      const std::string a = prop(P, "axis"); int ax = a == "z" ? 2 : 1;
+      std::string a = prop(P, "axis");
+      if (a.empty()) { const std::string fc = prop(P, "facing"); a = fc == "north" || fc == "south" ? "z" : fc == "east" || fc == "west" ? "x" : ""; }   // (Create's windmill bearing faces a way)
+      int ax = a == "z" ? 2 : 1;
       if (r & 1) ax = 3 - ax;
-      m = ax | (d.str("mech") == "windmill" && prop(P, "big") == "true" ? 4 : 0);
+      m = ax | (d.str("mech") == "windmill" && (prop(P, "big") == "true" || n.find("windmill_bearing") != std::string::npos) ? 4 : 0);
     }
     else if (d.has("axisBlock") || shape == ShapeKind::Rod || d.str("shape") == "chain") {
       const std::string a = prop(P, "axis"); int ax = a == "x" ? 1 : a == "z" ? 2 : 0;
