@@ -730,7 +730,10 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
       // Only in our own villages' pieces (made for it: tools/port/village_builder.py): other builders' stairs are steps
       static const std::set<std::string> OURS = {"plains", "savanna", "taiga", "snowy", "desert", "beach", "jungle", "swamp", "mountain", "alpine", "mesa",
         "oasis", "savanna_hut", "mushroom", "igloo", "christmas", "halloween", "jungle_tree"};
-      if (OURS.count(P.style) && P.kind != "poi") {
+      // (every village's: Towns and Towers' styles had kept their stair-and-sign chairs and fence tables. Theirs are only
+      //  taken for seats indoors, a roof over them, so a stair out in the street stays a stair)
+      const bool ours = OURS.count(P.style) > 0;
+      if (P.kind != "poi") {
         std::vector<int> grid2((size_t)SX * SY * SZ, -1);
         auto at2 = [&](int x, int y, int z) -> int { return x < 0 || y < 0 || z < 0 || x >= SX || y >= SY || z >= SZ ? -1 : grid2[((size_t)y * SZ + z) * SX + x]; };
         for (int i = 0; i < (int)P.blocks.size(); i++) grid2[((size_t)P.blocks[i].y * SZ + P.blocks[i].z) * SX + P.blocks[i].x] = i;
@@ -880,8 +883,11 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
           const bool lid = isTrap(up) && !trapOpen(up);
           // a post with a top: a fence, a wall, a scaffold under a carpet, a plate or a closed trapdoor
           const bool post = has(k, "_fence") && !has(k, "gate") ? true : (k == "scaffolding" || (has(k, "_wall") && shp == ShapeKind::Wall));
-          if (post && (cloth || lid)) {
+          // (and a lone fence post under a wooden bottom slab: the commonest table of all; a railing's capped posts aren't lone)
+          const bool slabTop = up >= 0 && shapeOf(up) == ShapeKind::Slab && !(m0(up) & 1) && !woodAny(uk).empty() && has(k, "_fence");
+          if (post && (cloth || lid || slabTop)) {
             bool lone = true; for (int d = 0; d < 4; d++) if (has(keyOf(at2(b.x + DX[d], b.y, b.z + DZ[d])), "_fence")) lone = false;
+            if (slabTop && !lone) continue;
             if (cloth || lone || k == "scaffolding") { makeTable(i, woodAny(k).empty() ? (woodAny(uk).empty() ? styleWood : woodAny(uk)) : woodAny(k)); if (!piled) drop[up] = 1; continue; }
           }
           // a stair turned upside down: a little table (with a cloth on it, always)
@@ -914,6 +920,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
           if (j < 0 || drop[j] || shapeOf(j) != ShapeKind::Stairs || (m0(j) & 4)) return false;
           const VPBlock& b = P.blocks[j];
           if (!isAir(b.x, b.y + 1, b.z) || !onFloor(b.x, b.y, b.z)) return false;
+          if (!ours) { bool roof = false; for (int yy = b.y + 2; yy < std::min(SY, b.y + 9) && !roof; yy++) roof = at2(b.x, yy, b.z) >= 0 && !isAir(b.x, yy, b.z); if (!roof) return false; }
           const int rf = m0(j) & 3, bx = b.x + DX[rf], bz = b.z + DZ[rf];
           const int up1 = at2(bx, b.y + 1, bz);
           if (shapeOf(up1) == ShapeKind::Stairs || shapeOf(up1) == ShapeKind::Slab) return false;   // a staircase going on up
