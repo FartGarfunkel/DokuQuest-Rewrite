@@ -91,7 +91,7 @@ public:
 // ---- weather and ambient effects (spawn particles; the particle layer moves and draws them) ----------------
 struct Emitter { i16 x, y, z; u8 kind, meta; float h; };   // x,z chunk-local, y global
 enum EmKind : u8 { EM_TORCH = 1, EM_SOUL_TORCH, EM_FIRE, EM_LAVA, EM_FURNACE, EM_CANDLE, EM_END_ROD, EM_CRYING, EM_SPORE, EM_PORTAL, EM_RS_TORCH, EM_RS_WIRE, EM_RS_ORE, EM_CAMPFIRE, EM_FIREFLY_JAR, EM_BUTTERFLY_JAR, EM_BN_SMOKER, EM_BN_GLOW,
-                   EM_DRIP_WATER = 32, EM_DRIP_LAVA, EM_DRIP_LEAF, EM_DRIP_HONEY };
+                   EM_DRIP_WATER = 32, EM_DRIP_LAVA, EM_DRIP_LEAF, EM_DRIP_HONEY, EM_DRIP_TIP };   // TIP: a stalactite's point
 
 class WeatherFxLayer : public RenderLayer {
 public:
@@ -161,6 +161,7 @@ void WeatherFxLayer::scanChunk(const World& w, const Chunk& c, ChunkEm& out) {
     const Section* sec = c.section(sy); if (!sec || !sec->solidCount) continue;
     for (int i = 0; i < 4096; i++) {
       BlockId id = sec->blocks[i]; if (!id) continue;
+      static const BlockId dripstone = R.blockId("pointed_dripstone");
       int x = i & 15, z = (i >> 4) & 15, y = sy * 16 + (i >> 8);
       u8 k = id < kinds.size() ? kinds[id] : 0;
       if (k == EM_LAVA && c.get(x, y + 1, z) != AIR) k = 0;   // only the open surface pops
@@ -168,6 +169,8 @@ void WeatherFxLayer::scanChunk(const World& w, const Chunk& c, ChunkEm& out) {
       // drips form under any block with water or lava on top of it, and under leaves while it rains
       if (R.tLiquid[id] && y >= 2 && R.tSolid[c.get(x, y - 1, z)] && R.tOpaque[c.get(x, y - 1, z)] && c.get(x, y - 2, z) == AIR)
         out.em.push_back({(i16)x, (i16)(base + y - 1), (i16)z, (u8)(R.tLiquid[id] == 2 ? EM_DRIP_LAVA : EM_DRIP_WATER), 0, 0});
+      else if (id == dripstone && dripstone && (sec->meta[i] & 1) && y >= 1 && c.get(x, y - 1, z) == AIR)   // a stalactite's tip: water drips off its point, slowly
+        out.em.push_back({(i16)x, (i16)(base + y), (i16)z, EM_DRIP_TIP, 0, 0});
       else if (R.tLeaves[id] && y >= 1 && c.get(x, y - 1, z) == AIR && leafDrips < 48 && (hash32(x, y, z, 5) & 3) == 0) { leafDrips++; out.em.push_back({(i16)x, (i16)(base + y), (i16)z, EM_DRIP_LEAF, 0, 0}); }
     }
   }
@@ -538,6 +541,10 @@ void WeatherFxLayer::emitters(GameSession& s, double dt, double step) {
             // (the smoke is content_layers' campfireFx: up the chimney when it's a hearth. This one puffed it out at the
             // fire itself, inside the house and up through its roof)
             if (rnd() < step * 2) P.spawn("flame", vec3(x + 0.3f + rnd() * 0.4f, y + 0.3f, z + 0.3f + rnd() * 0.4f), 1);
+            break;
+          case EM_DRIP_TIP:
+            if (rnd() > 0.1f * k * step || w.getBlock((int)x, (int)y - 1, (int)z) != AIR) break;   // (about one drop in ten seconds)
+            P.spawn("drip_water", vec3(x + 0.5f, y + 0.05f, z + 0.5f), 1);
             break;
           case EM_DRIP_WATER: case EM_DRIP_LAVA: case EM_DRIP_LEAF: {
             if (kind == EM_DRIP_LEAF && !raining) break;
