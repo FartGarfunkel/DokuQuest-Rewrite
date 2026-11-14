@@ -147,7 +147,8 @@ const std::unordered_map<std::string, std::string>& NAMES() {
 }
 // blocks a village is better without here: traps and parts of machines we'd only half-build
 bool dropped(const std::string& n) {
-  static const std::vector<std::string> D = {"tnt", "piston_head", "moving_piston", "structure_block", "barrier", "light", "turtle_egg"};
+  static const std::vector<std::string> D = {"tnt", "moving_piston", "structure_block", "barrier", "light", "turtle_egg"};
+  if (n == "piston_head") return false;   // (an extended piston keeps its head: village_pieces mapState)
   return std::find(D.begin(), D.end(), n) != D.end() || n.find("_skull") != std::string::npos || n.find("_head") != std::string::npos;
 }
 const BlockId NONE = 0xFFFF;
@@ -228,6 +229,9 @@ VPState mapState(const json& e) {
   if (auto s = wallFree(n, "_wall_sign", "_sign"); !s.empty()) { key = s; wallSign = true; }
   else if (auto b = wallFree(n, "_wall_banner", "_banner"); !b.empty()) { key = b; wallBanner = true; }
   if (key.rfind("potted_", 0) == 0) { S.plant = key.substr(7); key = "flower_pot"; S.kind = VPK_POT; }
+  // a piston left pushed out in the template: ours pushed out too, its head in front (it had come in drawn back, a gap where
+  // its head was, and the hidden door it closes fired as the chunk woke)
+  if ((key == "piston" || key == "sticky_piston") && prop(P, "extended") == "true" && findBlock(key + "_extended") != NONE) key += "_extended";
   // (another mod's lantern hung on the wall: a lantern stood on nothing beside the wall; ours there is a wall torch, its facing kept)
   if (key.find("wall_lantern") != std::string::npos) key = "torch";
   if (auto it = NAMES().find(key); it != NAMES().end()) key = it->second;
@@ -274,10 +278,15 @@ VPState mapState(const json& e) {
     if (const std::string rs = d.str("rs"); rs == "piston" || rs == "observer" || rs == "dispenser" || rs == "dropper" || rs == "hopper" || rs == "repeater" || rs == "comparator") {
       static const int H2D6x[4] = {2, 5, 3, 4};   // north east south west -> world/shapes.h D6
       const int f6 = f == 4 ? 1 : f == 5 ? 0 : f >= 0 ? H2D6x[(f + r) & 3] : 0;
-      if (rs == "repeater") m = (rf < 0 ? 0 : (rf + 2) & 3) | ((std::clamp(propI(P, "delay", 1), 1, 4) - 1) << 2);
-      else if (rs == "comparator") m = rf < 0 ? 0 : (rf + 2) & 3;
-      else m = rs == "hopper" && f < 0 ? 0 : f6;
+      if (rs == "repeater") m = (rf < 0 ? 0 : (rf + 2) & 3) | ((std::clamp(propI(P, "delay", 1), 1, 4) - 1) << 2) | (prop(P, "locked") == "true" ? 32 : 0);
+      else if (rs == "comparator") m = (rf < 0 ? 0 : (rf + 2) & 3) | (prop(P, "mode") == "subtract" ? 4 : 0);
+      else m = (rs == "hopper" && f < 0 ? 0 : f6) | (rs == "piston" && key.find("_extended") != std::string::npos ? 8 : 0);
       S.meta[r] = (u8)m; continue;
+    }
+    if (key == "piston_head") {   // its facing (six ways) and whether it's a sticky one's
+      static const int H2D6h[4] = {2, 5, 3, 4};
+      S.meta[r] = (u8)((f == 4 ? 1 : f == 5 ? 0 : f >= 0 ? H2D6h[(f + r) & 3] : 0) | (prop(P, "type") == "sticky" ? 8 : 0));
+      continue;
     }
     if (shape == ShapeKind::Rail) {   // its course (Minecraft's RailShape order is ours, 0-9), turned with the piece; a powered one's power
       // (each shape as its two ends: 0 north 1 east 2 south 3 west, an ascending one up toward its first; every rail had lain north-south)
