@@ -1,6 +1,8 @@
 // tools/test_magic.cpp — headless rules test for magic, enchanting, brewing, skills and the RPG side.
 // The enchanting offers and rune strings are checked against values taken from the running original
 // (tools/port/jsdump.py: enchOffers / enchRunes / skillLevel). Run: build/test_magic
+#include "sim/spell_items.h"
+#include "core/tool_parts.h"
 #include "sim/skilltree.h"
 #include "sim/creature.h"
 #include "core/init.h"
@@ -277,6 +279,37 @@ int main(int argc, char** argv) {
       treeReset(p);
       check(treePointsSpent(p) == 0 && p.maxHp == hp0, "a reset gives the points back");
     }
+  }
+
+  // ---- scrolls, spellbooks and the inscription table (sim/spell_items.h, docs/MAGIC_MERGE.md) ----
+  {
+    ItemStack sc = makeScroll("firebolt", 5);
+    check(sc.id == "spell_scroll" && stackName(sc).find("Firebolt V (Rare)") != std::string::npos, "a scroll is named for its spell, rank and rarity (" + stackName(sc) + ")");
+    check(std::string(spellRarityName(1)) == "Common" && std::string(spellRarityName(4)) == "Uncommon" && std::string(spellRarityName(10)) == "Legendary", "rarity by rank: I-II Common ... IX-X Legendary");
+    ItemStack book("apprentice_spellbook", 1);
+    ItemStack a1 = makeScroll("firebolt", 2), a2 = makeScroll("frost", 1), a3 = makeScroll("heal", 1), a4 = makeScroll("blink", 1);
+    check(inscribeScroll(book, a1).empty() && inscribeScroll(book, a2).empty() && inscribeScroll(book, a3).empty() && a1.empty() && bookSpells(book).size() == 3, "an apprentice's book takes three spells (each scroll used up)");
+    check(!inscribeScroll(book, a4).empty() && !a4.empty(), "...and no fourth");
+    ItemStack low = makeScroll("firebolt", 1), high = makeScroll("firebolt", 6);
+    check(!inscribeScroll(book, low).empty() && inscribeScroll(book, high).empty() && bookSpells(book)[0].second == 6, "a scroll of a spell already in it only goes over a lower rank");
+    ItemStack out; check(extractSpell(book, 1, out).empty() && isScroll(out) && out.tag.value("spell", std::string()) == "frost" && bookSpells(book).size() == 2, "a spell taken back out as a scroll");
+    ItemStack mb("mage_spellbook", 1); ItemStack fb = makeScroll("fireball", 8); inscribeScroll(mb, fb);
+    p.offhand[0] = mb;
+    check(effectiveSpellRank(p, "fireball") == 8 && bookRank(p, "fireball") == 8, "a book in the off hand: its spells at its ranks");
+    p.offhand[0].clear();
+    MagicState& mm = magicState(*lv, p); mm.castCd = 0; mm.mana = manaMax(p);
+    for (auto& e : lv->entities()) if (e->type == "spell_bolt") e->removed = true;
+    const float mana0 = mm.mana;
+    ItemStack rd = makeScroll("firebolt", 3);
+    const bool cast = readScroll(*lv, p, rd);
+    bool bolt2 = false; for (auto& e : lv->entities()) bolt2 |= e->type == "spell_bolt" && !e->removed;
+    check(cast && rd.empty() && bolt2 && near(mm.mana, mana0, 0.01), "reading a scroll casts it (a bolt), without mana, and uses it up");
+    ItemStack paper("paper", 2), lap("lapis_lazuli", 2), w;
+    check(writeScroll(p, "firebolt", paper, lap, w).empty() && isScroll(w) && paper.n == 1 && lap.n == 1, "writing a scroll of a spell you know: a paper and a lapis");
+    json keep = p.stats["spells"]; json only = json::array(); for (auto& k : keep) if (k != "entangle") only.push_back(k); p.stats["spells"] = only;
+    ItemStack wb("apprentice_spellbook", 1); ItemStack en = makeScroll("entangle", 2); inscribeScroll(wb, en); p.offhand[0] = wb;
+    check(!writeScroll(p, "entangle", paper, lap, w).empty(), "...not one you only carry in a book");
+    p.offhand[0].clear(); p.stats["spells"] = keep;
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);

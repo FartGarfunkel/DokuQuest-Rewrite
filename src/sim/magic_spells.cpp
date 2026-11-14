@@ -2,6 +2,7 @@
 // (the schools: half a percent a level, a sixth less mana from 50; the Mage path), rpg.js (Thrift, Archmage) and
 // spellcraft.js castNew (thirteen more, bare-handed casting, per-spell cooldowns). Numbers are the original's;
 // so are its quirks (Arcane Might counts twice for the newer spells, Archmage's free cast earns no school xp).
+#include "sim/spell_items.h"
 #include "sim/magic.h"
 #include "sim/skilltree.h"
 #include "sim/magic_fx.h"
@@ -94,7 +95,8 @@ bool castSpellKey(Level& lv, Player& p, const std::string& k) {
     m.castCd = 0.4f; return true;
   }
   bool cr = p.creative();
-  const float rankP = spellRankPower(p, k) * HM.power, cost = S->mana * HM.mana * spellRankMana(p, k);
+  const int erank = effectiveSpellRank(p, k);   // (yours, or the off-hand book's when it's written higher)
+  const float rankP = (1 + 0.05f * (erank - 1)) * HM.power, cost = S->mana * HM.mana * (1 - 0.03f * (erank - 1));
   if (m.mana < cost && !cr) { toast(lv, p, "Not enough mana", "warn"); ui(lv, p, "spell_fizzle"); m.castCd = 0.4f; return true; }
   ItemStack& held = p.held();
   json st = staff ? *staff : json{{"power", 0.7}};

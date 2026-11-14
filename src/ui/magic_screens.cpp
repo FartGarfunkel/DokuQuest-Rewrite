@@ -1,5 +1,6 @@
 // ui/magic_screens.cpp — spellbook, skills, journal, enchanting table and brewing stand (plain ImGui; the
 // wording, order and numbers are the original's — see ui/magic_screens.h).
+#include "sim/spell_items.h"
 #include "ui/magic_screens.h"
 #include "client/app.h"
 #include "client/session.h"
@@ -452,6 +453,93 @@ public:
   }
 };
 
+// ---- the inscription table (Iron's Spells, ours: docs/MAGIC_MERGE.md) ---------------------------------------------------
+class InscriptionScreen : public MagicScreenBase {
+public:
+  explicit InscriptionScreen(ivec3 at) : pos(at) {}
+  const char* id() const override { return "inscribe"; }
+  ivec3 pos;
+  ItemStack book, scroll, paper, lapis;
+  std::string status;
+  void giveBack(App& a) {
+    Player* p = player(a); Level* lv = level(a);
+    if (!p || !lv) return;
+    for (ItemStack* s : {&book, &scroll, &paper, &lapis}) if (!s->empty()) { giveOrDrop(*lv, *p, *s); s->clear(); }
+  }
+  void onClose(App& a) override { giveBack(a); }
+  void draw(App& a) override {
+    Player* p = player(a); Level* lv = level(a);
+    if (!p || !lv) return;
+    if (reg().block(lv->world(p->realm).getBlock(pos.x, pos.y, pos.z)).key != "inscription_table") { want = true; return; }
+    const float sz = ui::bookPagesBegin(a, "##inscribe");
+    ui::bookPageTitle(a, "Inscription Table");
+    auto back = [&](ItemStack& s) { if (!s.empty()) { giveOrDrop(*lv, *p, s); s.clear(); } };
+    ImGui::BeginGroup();
+    if (slotButton("book", book, sz, "apprentice_spellbook")) back(book);
+    ImGui::SameLine(0, 6); if (slotButton("scroll", scroll, sz, "spell_scroll")) back(scroll);
+    ImGui::SameLine(0, 14); if (slotButton("paper", paper, sz, "paper")) back(paper);
+    ImGui::SameLine(0, 6); if (slotButton("lapis", lapis, sz, "lapis_lazuli")) back(lapis);
+    ImGui::EndGroup();
+    // the book's slots
+    const int slots = bookSlots(book.id);
+    if (slots) {
+      const auto sp = bookSpells(book);
+      ImGui::TextDisabled("%s: %d of %d slots written", reg().item(book.id) ? reg().item(book.id)->name.c_str() : "Spellbook", (int)sp.size(), slots);
+      for (int i = 0; i < slots; i++) {
+        ImGui::PushID(1000 + i);
+        if (i < (int)sp.size()) {
+          const u32 c = spellRarityColor(sp[i].second);
+          ImGui::TextColored(ImVec4(((c >> 16) & 255) / 255.f, ((c >> 8) & 255) / 255.f, (c & 255) / 255.f, 1), "%d. %s", i + 1, spellLabel(sp[i].first, sp[i].second).c_str());
+          ImGui::SameLine();
+          if (ImGui::SmallButton("Take out")) { ItemStack out; status = extractSpell(book, i, out); if (status.empty()) { giveOrDrop(*lv, *p, out); status = "Taken out as a scroll"; lv->fx->soundUi(p->id, "book_page"); } }
+        } else ImGui::TextDisabled("%d. (empty)", i + 1);
+        ImGui::PopID();
+      }
+      const bool can = isScroll(scroll);
+      if (!can) ImGui::BeginDisabled();
+      if (ImGui::Button("Inscribe the scroll")) {
+        status = inscribeScroll(book, scroll);
+        if (status.empty()) { status = "Inscribed"; lv->fx->soundUi(p->id, "levelup"); }
+      }
+      if (!can) ImGui::EndDisabled();
+    } else ImGui::TextDisabled("Put in a spellbook to inscribe scrolls into it");
+    // write a scroll of a spell you know
+    ImGui::Dummy(ImVec2(1, 6));
+    ImGui::TextDisabled("Write a scroll (a paper and a lapis): a spell you know, at your rank");
+    const auto& ks = knownSpells(*p);
+    int shown = 0;
+    for (const std::string& k : ks) {
+      if (!learntSpell(*p, k)) continue;   // (one only carried in a book can't be written out)
+      ImGui::PushID(k.c_str());
+      const int r = spellRank(*p, k); const u32 c = spellRarityColor(r);
+      ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(((c >> 16) & 255) / 255.f, ((c >> 8) & 255) / 255.f, (c & 255) / 255.f, 1));
+      const bool go = ImGui::SmallButton(spellLabel(k, r).c_str());
+      ImGui::PopStyleColor();
+      if (go) { ItemStack out; status = writeScroll(*p, k, paper, lapis, out); if (status.empty()) { giveOrDrop(*lv, *p, out); status = "Written"; lv->fx->soundUi(p->id, "book_page"); } }
+      if (++shown % 2) ImGui::SameLine();
+      ImGui::PopID();
+    }
+    if (ks.empty()) ImGui::TextDisabled("You know no spells yet: read a spell tome");
+    ImGui::NewLine();
+    if (!status.empty()) { ImGui::PushTextWrapPos(0); ImGui::TextDisabled("%s", status.c_str()); ImGui::PopTextWrapPos(); }
+    ui::bookPagesRight("##inscribe-bag");
+    bagGrid(*p, sz, [&](int i) {
+      ItemStack& s = p->inv[i];
+      if (s.empty()) return;
+      auto take = [&](ItemStack& slot, int most) {
+        if (slot.empty()) { slot = s; slot.n = std::min(s.n, most); s.n -= slot.n; if (s.n <= 0) s.clear(); return; }
+        if (slot.id != s.id || slot.tag != s.tag) return;
+        const int mv = std::min(most - slot.n, s.n); slot.n += mv; s.n -= mv; if (s.n <= 0) s.clear();
+      };
+      if (bookSlots(s.id) && book.empty()) take(book, 1);
+      else if (isScroll(s) && scroll.empty()) take(scroll, 1);
+      else if (s.id == "paper") take(paper, 64);
+      else if (s.id == "lapis_lazuli") take(lapis, 64);
+    });
+    ui::bookPagesEnd();
+  }
+};
+
 // ---- the brewing stand (brewing.js) ------------------------------------------------------------------------------------
 class BrewScreen : public MagicScreenBase {
 public:
@@ -513,6 +601,7 @@ std::unique_ptr<Screen> makeSpellbookScreen() { return std::make_unique<Spellboo
 std::unique_ptr<Screen> makeSkillsScreen() { return std::make_unique<SkillsScreen>(); }
 std::unique_ptr<Screen> makeJournalScreen() { return std::make_unique<JournalScreen>(); }
 std::unique_ptr<Screen> makeEnchantScreen(ivec3 at) { return std::make_unique<EnchantScreen>(at); }
+std::unique_ptr<Screen> makeInscriptionScreen(ivec3 at) { return std::make_unique<InscriptionScreen>(at); }
 std::unique_ptr<Screen> makeBrewScreen(ivec3 at) { return std::make_unique<BrewScreen>(at); }
 
 } // namespace dq

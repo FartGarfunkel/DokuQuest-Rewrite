@@ -395,6 +395,7 @@ void runStep(App& a, const json& st) {
     else if (n == "path") a.pushScreen(makePathScreen("knight"));
     else if (n == "skilltree") a.pushScreen(makeSkillTreeScreen());
     else if (n == "brew" && p) a.pushScreen(makeBrewScreen(ivec3(ifloor(p->pos.x), ifloor(p->pos.y), ifloor(p->pos.z)) + ivec3(st.value("dx", 0), st.value("dy", 0), st.value("dz", 0))));
+    else if (n == "inscribe" && p) a.pushScreen(makeInscriptionScreen(ivec3(ifloor(p->pos.x), ifloor(p->pos.y), ifloor(p->pos.z)) + ivec3(st.value("dx", 0), st.value("dy", 0), st.value("dz", 0))));
     else if (n == "enchant" && p) a.pushScreen(makeEnchantScreen(ivec3(ifloor(p->pos.x), ifloor(p->pos.y), ifloor(p->pos.z)) + ivec3(st.value("dx", 0), st.value("dy", 0), st.value("dz", 0))));
     else if (n == "waystones") a.pushScreen(makeWaystoneScreen(""));
     else if (n == "places") a.pushScreen(makePlacesScreen());

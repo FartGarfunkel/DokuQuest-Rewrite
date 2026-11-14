@@ -1,4 +1,5 @@
 // gen/structures_common.cpp — shared structure helpers (see structures_common.h).
+#include "sim/spell_items.h"
 #include "core/tool_parts.h"
 #include "gen/structures_common.h"
 #include <mutex>
@@ -60,6 +61,18 @@ static void rollTable(json& items, const json& table, Mulberry32& rnd) {
 }
 static json emptySlots() { json items = json::array(); for (int i = 0; i < 27; i++) items.push_back(nullptr); return items; }
 
+// now and then a spell scroll (Iron's Spells' loot, ours: sim/spell_items.h): a spell any tome teaches, its rank by the
+// place (deeper and grander places, rarer scrolls)
+static void maybeScroll(json& items, Mulberry32& rnd, double chance, int maxRank) {
+  if (!hasItem("spell_scroll") || rnd() >= chance) return;
+  static const std::vector<std::string> spells = [] { std::vector<std::string> v; for (const ItemDef& d : reg().items) if (d.has("tome")) v.push_back(d.str("tome")); std::sort(v.begin(), v.end()); return v; }();
+  if (spells.empty()) return;
+  const std::string k = spells[jsFloor(rnd() * spells.size()) % spells.size()];
+  int r = 1; while (r < maxRank && rnd() < 0.45) r++;
+  int slot = jsFloor(rnd() * 27); for (int t = 0; t < 27 && !items[slot].is_null(); t++) slot = (slot + 1) % 27;
+  if (items[slot].is_null()) items[slot] = makeScroll(k, r).toJson();
+}
+
 json structLoot(const std::string& kind, Mulberry32& rnd) {
   json items = emptySlots();
   const json& L = SD()["STRUCT_LOOT"];
@@ -79,6 +92,7 @@ json structLoot(const std::string& kind, Mulberry32& rnd) {
     int s = jsFloor(rnd() * 27); for (int t = 0; t < 27 && !items[s].is_null(); t++) s = (s + 1) % 27;
     items[s] = json{{"id", "lore_" + k}, {"n", 1}};
   }
+  maybeScroll(items, rnd, kind == "tower" ? 0.5 : kind == "archmage" || kind == "maze_heart" ? 0.8 : kind == "temple" || kind == "stronghold_library" ? 0.3 : 0.12, kind == "archmage" ? 8 : kind == "tower" ? 5 : 4);
   return items;
 }
 
@@ -89,6 +103,7 @@ json dungeonLoot(const std::string& kind, Mulberry32& rnd) {
   if (kind == "boss") for (auto& e : L["rare"]) table.push_back(e);
   else if (kind == "rare") for (int i = 0; i < 8 && i < (int)L["common"].size(); i++) table.push_back(L["common"][i]);
   rollTable(items, table, rnd);
+  maybeScroll(items, rnd, kind == "boss" ? 0.85 : kind == "rare" ? 0.45 : 0.2, kind == "boss" ? 9 : kind == "rare" ? 6 : 3);
   return items;
 }
 

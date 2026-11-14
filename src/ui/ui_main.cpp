@@ -65,6 +65,7 @@ static void onScreenOpen(App& a, const json& args) {
     // the enchanting table and the brewing stand have their own panels (ui/magic_screens)
     if (io.kind == "enchant" && io.hasPos) { ivec3 p = io.pos; make = [p] { return makeEnchantScreen(p); }; }
     else if (io.kind == "brew" && io.hasPos) { ivec3 p = io.pos; make = [p] { return makeBrewScreen(p); }; }
+    else if (io.kind == "inscribe" && io.hasPos) { ivec3 p = io.pos; make = [p] { return makeInscriptionScreen(p); }; }
   }
   else if (kind == "stonecutter") { io.mode = "stonecutter"; io.kind = o.value("kind", ""); }   // kind "forge": the Tool Forge
   else if (kind == "machine") { io.mode = "machine"; if (!io.hasPos) return; }

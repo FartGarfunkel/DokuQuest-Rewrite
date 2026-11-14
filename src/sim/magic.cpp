@@ -2,6 +2,7 @@
 // uses, creature statuses, summons' time running out, brewing stands; the MagicSystem that runs them.
 // (game/magic.js, arcana.js, spellcraft.js, paths.js schools, brewing.js, monsters.js venom, stable.js spirits)
 #include "sim/magic.h"
+#include "sim/spell_items.h"
 #include "sim/skilltree.h"
 #include "sim/magic_fx.h"
 #include "sim/magic_entities.h"
@@ -107,6 +108,8 @@ const std::vector<std::string>& knownSpells(const Player& p) {
   thread_local std::vector<std::string> v;
   v.clear();
   if (p.stats.contains("spells") && p.stats["spells"].is_array()) for (auto& k : p.stats["spells"]) if (k.is_string()) v.push_back(k);
+  // a spellbook in the off hand: its spells too (cast at the rank written in it: docs/MAGIC_MERGE.md)
+  if (!p.offhand.empty()) for (auto& [k, r] : bookSpells(p.offhand[0])) if (std::find(v.begin(), v.end(), k) == v.end()) v.push_back(k);
   return v;
 }
 std::string activeSpell(Player& p) {
@@ -271,6 +274,7 @@ bool magicItemUse(Level& lv, Player& p, const std::string& key, ivec3 at, int fa
   // crouched on the top of a block: set it down there (sim/controller.cpp putDown), the ground, a table, a counter
   if (face == 2 && p.sneaking && (potionInfo(key) || d->has("xpBottle"))) return true;
   if (d->has("tome")) { learnTome(lv, p, h); return false; }
+  if (key == "spell_scroll") { if (!readScroll(lv, p, h)) lv.fx->message(p.id, "The scroll's writing has faded", "warn"); return false; }
   if (!p.sneaking && castWithWeapon(lv, p)) return false;   // a sword or axe: the left hand casts
   if (d->has("staff")) {
     if (p.sneaking) { cycleSpell(lv, p); return false; }
