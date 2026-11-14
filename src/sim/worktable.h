@@ -20,6 +20,9 @@ bool worktableUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& 
 bool worktablePut(Level& lv, Player& p, World& w, ivec3 at, int cell, ItemStack& held);
 bool worktableTake(Level& lv, Player& p, World& w, ivec3 at, int cell);
 bool worktableCraft(Level& lv, Player& p, World& w, ivec3 at);
+// a recipe laid out on the table from your bag (the crafting guide's "Lay it out"): what's on the grid back to you first,
+// then one of each piece onto its square as you'd read the recipe standing where you are. "" done, else why not (toasted)
+std::string worktableLayout(Level& lv, Player& p, World& w, ivec3 at, int recipe);
 struct CraftMatch;
 CraftMatch worktableMatch(World& w, ivec3 at, float yaw, bool immersiveWorld);   // what the grid makes, read from that facing
 // the 3 x 3 grid on a table (empty stacks where nothing lies), and what it makes now ("" if nothing)

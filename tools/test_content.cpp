@@ -20,6 +20,7 @@
 #include "sim/trough.h"
 #include "sim/station_work.h"
 #include "sim/rpg.h"
+#include "sim/worktable.h"
 #include "sim/combat.h"
 #include "sim/shield_shape.h"
 #include "sim/spell_items.h"
@@ -561,6 +562,19 @@ int main(int argc, char** argv) {
     for (int k = 0; k < 200 && P->atkMove; k++) tickMelee(*L, *P, 0.01f, none, true, false);
     check(!P->atkOff && P->inv[0].id == "iron_sword" && P->offhand[0].id == "diamond_sword", "  ...and ends with each sword still in its own hand");
     P->offhand[0] = ItemStack(); P->shield[0] = ItemStack(); P->inv[0] = ItemStack();
+  }
+  {   // the crafting guide's "Lay it out": a recipe set out on a crafting table from the bag, piece by piece
+    const ivec3 T(8, Y + 1, 16); w.setBlock(T.x, T.y, T.z, B("crafting_table"));
+    for (auto& s2 : P->inv) s2 = ItemStack();
+    P->inv[0] = ItemStack("planks", 6); P->yaw = 0;
+    int ri = -1; for (int i = 0; i < (int)reg().recipes.size(); i++) if (reg().recipes[i].out == "crafting_table") { ri = i; break; }
+    check(ri >= 0 && worktableLayout(*L, *P, w, T, ri).empty(), "the guide lays a crafting table's recipe out on a table");
+    const json* be = w.blockEntity(T.x, T.y, T.z);
+    int on = 0; if (be) for (auto& s2 : worktableGrid(*be)) on += s2.empty() ? 0 : s2.n;
+    check(on == 4 && P->inv[0].n == 2 && worktableMatch(w, T, P->yaw, w.immersive).out == "crafting_table", "  ...four planks on its squares, two left in the bag, and it makes a crafting table");
+    P->inv[0] = ItemStack();
+    int ri2 = -1; for (int i = 0; i < (int)reg().recipes.size(); i++) if (reg().recipes[i].out == "iron_pickaxe") { ri2 = i; break; }
+    check(ri2 >= 0 && !worktableLayout(*L, *P, w, T, ri2).empty(), "  ...not without what it takes");
   }
   {   // the journal's story tree: only what you've come to shows
     P->stats["story"] = json::object(); P->stats.erase("vseen"); P->stats.erase("dex");

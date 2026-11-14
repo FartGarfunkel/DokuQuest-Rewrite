@@ -33,7 +33,8 @@ std::unique_ptr<Screen> makeSkinEditorScreen();
 std::unique_ptr<Screen> makeWorldSettingsScreen(const fs::path& folder);   // empty = the world being played
 std::unique_ptr<Screen> makeDeathScreen(const std::string& cause, int level);
 std::unique_ptr<Screen> makeChatScreen(const std::string& prefill);
-std::unique_ptr<Screen> makeInventoryScreen(const InvOpen& o);   // also stations, the stonecutter, machines (InvOpen::mode)
+std::unique_ptr<Screen> makeInventoryScreen(const InvOpen& o);
+void inventoryBookPick(App& a, int recipe);   // (ui/inventory.cpp: the guide's "Lay it out" in the 2 x 2)   // also stations, the stonecutter, machines (InvOpen::mode)
 std::unique_ptr<Screen> makeSignScreen(ivec3 signPos);            // writing on a sign (ui/sign_screen.cpp)
 std::unique_ptr<Screen> makeLecternScreen(ivec3 at);              // an old book on a lectern: choose the page (ui/lectern_screen.cpp)
 std::unique_ptr<Screen> makeMultiplayerScreen();                    // title → Multiplayer (LAN list + address)

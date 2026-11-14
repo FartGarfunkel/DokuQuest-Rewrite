@@ -89,6 +89,8 @@ public:
     if (creative && book().creativeWorld != a.session->level->folder.string()) { book().open = true; book().creativeWorld = a.session->level->folder.string(); }
     if (a.input.usingPad() || a.input.padCount()) { hasFocus = true; focus = Hit{H_SLOT, Grp::Main, p->selected}; }
   }
+  bool sessReady(App& a) { if (!sess) onOpen(a); return (bool)sess; }
+  void pickRecipe(int idx) { if (sess) sess->bookPick(idx, false, true); }
   void onClose(App& a) override {
     if (o.mode == "container" && o.hasPos) chestScreenOpened(o.pos, false);
     if (!sess) return;
@@ -1084,6 +1086,10 @@ public:
 };
 
 std::unique_ptr<Screen> makeInventoryScreen(const InvOpen& o) { return std::make_unique<InventoryScreen>(o); }
+// the crafting guide's "Lay it out" with no table near: the recipe set out in the open inventory's grid (as the recipe book does)
+void inventoryBookPick(App& a, int recipe) {
+  if (auto* s = dynamic_cast<InventoryScreen*>(a.topScreen())) { if (!s->sessReady(a)) return; s->pickRecipe(recipe); }
+}
 void openInventory(App& a, const InvOpen& o) {
   if (!a.session || !a.session->player) return;
   if (InventoryScreen* s = a.findScreen<InventoryScreen>()) { (void)s; return; }

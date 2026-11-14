@@ -74,6 +74,34 @@ bool worktablePut(Level& lv, Player& p, World& w, ivec3 at, int cell, ItemStack&
   return true;
 }
 
+std::string worktableLayout(Level& lv, Player& p, World& w, ivec3 at, int recipe) {
+  if (recipe < 0 || recipe >= (int)reg().recipes.size()) return "No such recipe";
+  const Recipe& r = reg().recipes[recipe];
+  const std::vector<std::string> lay = recipeLayout(r, 3);
+  auto matches = [](const std::string& want, const ItemStack& s) {
+    if (s.empty() || want.empty()) return false;
+    if (want == s.id) return true;
+    if (want[0] == '#') { auto it = reg().tags.find(want); return it != reg().tags.end() && std::find(it->second.begin(), it->second.end(), s.id) != it->second.end(); }
+    return false;
+  };
+  // enough of everything in the bag? (counted with what's on the table now, which comes back first)
+  std::vector<ItemStack> bag = p.inv;
+  for (auto& s : gridAt(w, at)) if (!s.empty()) { bool put = false; for (auto& b : bag) if (b.empty() || (b.canMerge(s) && b.n < b.maxStack())) { if (b.empty()) b = s; else b.n += s.n; put = true; break; } (void)put; }
+  for (const std::string& want : lay) {
+    if (want.empty()) continue;
+    bool got = false;
+    for (auto& b : bag) if (matches(want, b)) { if (--b.n <= 0) b = ItemStack(); got = true; break; }
+    if (!got) { const std::string why = "You haven't got all it takes: " + ingredientLabel(want); toast(lv, p, why); return why; }
+  }
+  for (int c = 0; c < 9; c++) worktableTake(lv, p, w, at, c);
+  const std::array<int, 9> order = worktableOrder(p.yaw);
+  for (int k = 0; k < 9; k++) {
+    if (lay[k].empty()) continue;
+    for (auto& b : p.inv) if (matches(lay[k], b)) { worktablePut(lv, p, w, at, order[k], b); break; }
+  }
+  return "";
+}
+
 bool worktableTake(Level& lv, Player& p, World& w, ivec3 at, int cell) {
   if (cell < 0 || cell > 8) return false;
   std::vector<ItemStack> g = gridAt(w, at);

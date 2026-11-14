@@ -18,6 +18,9 @@
 #include "sim/player.h"
 #include "sim/rpg.h"
 #include "sim/machines.h"
+#include "sim/worktable.h"
+#include "sim/inv_ops.h"
+#include "core/registry.h"
 #include "ui/book_ui.h"
 #include <misc/cpp/imgui_stdlib.h>
 #include <imgui.h>
@@ -160,7 +163,38 @@ private:
   std::map<std::string, int> tipFrame;
   std::string query;
 
-  void open(const std::string& item) { if (item.empty() || !reg().item(item)) return; if (hist.empty() || hist.back() != item) hist.push_back(item); goPage = true; ui::playClick(); }
+  void layOut(int ridx, bool small) {
+    App& a = app();
+    GameSession* s = a.session.get();
+    if (!s || !s->player) return;
+    Player& p = *s->player; World& w = s->world();
+    // the nearest crafting table within reach
+    ivec3 best(0); float bd = 1e9f; bool found = false;
+    const ivec3 c(ifloor(p.pos.x), ifloor(p.pos.y), ifloor(p.pos.z));
+    for (int dy = -2; dy <= 2; dy++) for (int dz = -5; dz <= 5; dz++) for (int dx = -5; dx <= 5; dx++) {
+      const ivec3 b = c + ivec3(dx, dy, dz);
+      if (!reg().block(w.getBlock(b.x, b.y, b.z)).has("table")) continue;
+      const float d = glm::length(vec3(b) + vec3(0.5f) - p.pos);
+      if (d < bd && d <= 5.f) { bd = d; best = b; found = true; }
+    }
+    if (found) {
+      if (!worktableLayout(*s->level, p, w, best, ridx).empty()) return;
+      const ivec3 at = best; const std::string name = p.name;
+      a.popScreen();
+      uiDefer([at, name](App& a2) { a2.events.emit("screenOpen", json::array({name, "table", json{{"pos", {at.x, at.y, at.z}}}})); });
+      return;
+    }
+    if (!small) { a.toast("Lay it out on a crafting table: stand by one", "warn"); return; }
+    a.popScreen();
+    uiDefer([ridx](App& a2) {   // (your own 2 x 2: the inventory opened with the recipe set out in it)
+      InvOpen o; o.mode = "inventory";
+      a2.pushScreen(makeInventoryScreen(o));
+      inventoryBookPick(a2, ridx);
+    });
+  }
+  void open(const std::string& item) {
+    if (item.rfind("#lay:", 0) == 0) { layOut(std::atoi(item.c_str() + 5), item.size() > 2 && item.compare(item.size() - 2, 2, ":s") == 0); return; }
+    if (item.empty() || !reg().item(item)) return; if (hist.empty() || hist.back() != item) hist.push_back(item); goPage = true; ui::playClick(); }
   // one picture that takes a click (its page) and shows its name
   void pic(ImDrawList* dl, ImVec2 p, float s, const std::string& item, float alpha = 1, const std::string& label = "") {
     const ImVec2 mp = ImGui::GetIO().MousePos;
@@ -198,7 +232,9 @@ private:
     const float cs = ic * 0.9f, z = ui::Z();
     ui::BookRow row; row.h = cs * 3 + 8 * z;
     const std::string out = r.out; const int n = r.n; const bool shapeless = !r.shaped();
-    row.draw = [this, cells, cs, out, n, shapeless, known, z](ImDrawList* dl, ImVec2 q, float) {
+    const int ridx = (int)(&r - &reg().recipes[0]);
+    int rw = 3, rh = 3; recipeDims(r, rw, rh); const bool small = rw <= 2 && rh <= 2;
+    row.draw = [this, cells, cs, out, n, shapeless, known, z, ridx, small](ImDrawList* dl, ImVec2 q, float) {
       for (int k = 0; k < 9; k++) {
         const ImVec2 c(q.x + (k % 3) * cs, q.y + (k / 3) * cs);
         dl->AddRect(c, ImVec2(c.x + cs, c.y + cs), ui::ink::faint, 0, 0, std::max(1.f, z));
@@ -212,6 +248,16 @@ private:
       pic(dl, ImVec2(ax + 18 * z, q.y + cs), cs * 1.1f, out);
       if (n > 1) ui::text(dl, ui::F_SMALL, ImVec2(ax + 18 * z + cs * 1.1f, q.y + cs * 1.6f), ui::ink::text, ("\xC3\x97" + std::to_string(n)).c_str());
       if (shapeless) ui::text(dl, ui::F_SMALL, ImVec2(ax, q.y + cs * 2.4f), ui::ink::muted, "any order");
+      {   // "Lay it out": onto the crafting table you're by, piece by piece from your bag (or your own 2 x 2 for a small one)
+        const char* t = "Lay it out";
+        const ImVec2 ts = ui::textSize(ui::F_SMALL, t), b0(ax + 18 * z + cs * 1.4f + 10 * z, q.y + cs * 1.05f), b1(b0.x + ts.x + 12 * z, b0.y + ts.y + 6 * z);
+        const ImVec2 mp = ImGui::GetIO().MousePos; const bool hot = mp.x >= b0.x && mp.x <= b1.x && mp.y >= b0.y && mp.y <= b1.y;
+        const int me = (int)clicks.size(); clicks.push_back({ImVec2((b0.x + b1.x) * 0.5f, (b0.y + b1.y) * 0.5f), "#lay:" + std::to_string(ridx) + (small ? ":s" : "")});
+        const bool padHere = padOn && padCur == me;
+        dl->AddRect(b0, b1, hot || padHere ? ui::ink::head : ui::ink::muted, 3 * z, 0, 1.5f * z);
+        ui::text(dl, ui::F_SMALL, ImVec2(b0.x + 6 * z, b0.y + 3 * z), hot || padHere ? ui::ink::head : ui::ink::text, t);
+        if (hot && ImGui::IsMouseClicked(0)) layOut(ridx, small);
+      }
     };
     R.push_back(std::move(row));
   }
