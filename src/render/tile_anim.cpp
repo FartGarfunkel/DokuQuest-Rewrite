@@ -28,6 +28,35 @@ void addBuiltinTileAnims(TileSet& ts) {
     }
     if (an.frames.size() > 1) ts.anims.push_back(std::move(an));
   }
+  // liquids with no frames of their own (the Sulfur Pools' acid): made from their still picture, a slow seamless ripple
+  // (each texel sways along sines whose period is the tile, so the frames still tile) and a gentle pulse of brightness
+  for (const char* key : {"acid"}) {
+    auto it = ts.index.find(key);
+    if (it == ts.index.end()) continue;
+    const int layer = it->second;
+    if (std::any_of(ts.anims.begin(), ts.anims.end(), [&](const TileAnim& a) { return a.layer == layer; })) continue;
+    std::vector<u8> base(ts.tile(layer), ts.tile(layer) + tpx * 4);
+    constexpr int N = 32; constexpr double TAU = 6.283185307179586;
+    TileAnim an; an.layer = layer; an.frameTime = 100;
+    for (int f = 0; f < N; f++) {
+      const int t = ts.count++;
+      ts.rgba.resize((size_t)ts.count * tpx * 4);
+      const double ph = TAU * f / N;
+      u8* out = ts.tile(t);
+      for (int y = 0; y < S; y++) for (int x = 0; x < S; x++) {
+        const int sx = ((x + (int)std::lround(1.6 * std::sin(TAU * y / S + ph)) + f * S / N) % S + S) % S;
+        const int sy = ((y + (int)std::lround(1.6 * std::sin(TAU * x / S + ph * 2))) % S + S) % S;
+        const u8* p = &base[((size_t)sy * S + sx) * 4];
+        const double k = 1.0 + 0.08 * std::sin(TAU * (x + y) / S + ph);
+        for (int c = 0; c < 3; c++) out[((size_t)y * S + x) * 4 + c] = (u8)std::clamp(p[c] * k, 0.0, 255.0);
+        out[((size_t)y * S + x) * 4 + 3] = p[3];
+      }
+      if (ts.height.size() >= (size_t)(layer + 1) * tpx) { ts.height.resize((size_t)ts.count * tpx); std::memcpy(&ts.height[(size_t)t * tpx], &ts.height[(size_t)layer * tpx], tpx); }
+      if (ts.emissive.size() >= (size_t)(layer + 1) * tpx) { ts.emissive.resize((size_t)ts.count * tpx); std::memcpy(&ts.emissive[(size_t)t * tpx], &ts.emissive[(size_t)layer * tpx], tpx); }
+      an.frames.push_back(t);
+    }
+    ts.anims.push_back(std::move(an));
+  }
   DQ_LOG("tiles: %zu built-in animations", ts.anims.size());
 }
 

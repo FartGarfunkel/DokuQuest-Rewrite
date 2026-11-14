@@ -90,7 +90,8 @@ static std::string fill(const std::string& t, Level& lv, const VTalk& T, const V
 static void say(Level& lv, Creature& e, const std::string& text, float dur) {
   json& N = e.data["npc"];
   json& b = N["say"];
-  b = json{{"t", text}, {"k", (b.is_object() ? b.value("k", 0) : 0) + 1}, {"d", dur}};
+  static int serial = 0;   // (every line its own number: a talk's first line never matches the last talk's, which hid it)
+  b = json{{"t", text}, {"k", ++serial}, {"d", dur}};
   npcSay(lv, e, text, 0.45f);
 }
 static void unsay(Creature& e) { if (e.data.contains("npc") && e.data["npc"].contains("say")) e.data["npc"].erase("say"); }

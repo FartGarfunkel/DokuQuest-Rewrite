@@ -439,6 +439,12 @@ static void partGrid(const TileSet& ts, const RigModel& M, const std::string& ke
       const auto& b = bi->second; vec3 piv(0); for (int q = (int)i; q >= 0; q = M.parts[q].parent) piv += M.parts[q].pivot;
       lo = vec3(b[0], b[1], b[2]) / 16.f - piv; size = vec3(b[3], b[4], b[5]) / 16.f;
     }
+  // the enderman's glow with the pack's eye picture: the whole front of the head, just before it, so each eye texel lies
+  // on the skin texel it was drawn for (the original's own glow is a strip across the face: the picture was squashed into it)
+  if (packed && p.name == "eyeglow" && M.key == "enderman") if (const int h = M.find("head"); h >= 0) {
+    const RigPart& hp = M.parts[h];
+    lo = vec3(hp.min.x, hp.min.y, hp.min.z - 0.06f / 16); size = vec3(hp.max.x - hp.min.x, hp.max.y - hp.min.y, 0.04f / 16);
+  }
   ivec3 n = glm::max(ivec3(glm::round(size * (p.res > 0 ? p.res : 32.f))), ivec3(1));
   bool faceRelief = p.tex.is_object() && p.tex.contains("front") && !pack;
   voxelPart(g, n, F, p.glow || p.unlit, faceRelief);

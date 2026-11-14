@@ -354,7 +354,7 @@ public:
         const int k = b.value("k", 0);
         if (k != B.k) { B.k = k; B.at = time; }
         if (time - B.at < b.value("d", 3.0)) saying = b.value("t", std::string());
-      }
+      } else bubbles.erase(c->id);   // (the talk is over: its next first line is new)
       if (d > 24 || (d > 8 && !mark && (saying.empty() || d > 16))) continue;
       ImVec2 sp; if (!project(c->pos + vec3(0, c->baby ? 1.4f : 2.15f, 0), sp)) continue;
       float y = sp.y;
