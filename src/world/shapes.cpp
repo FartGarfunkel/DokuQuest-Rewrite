@@ -490,6 +490,13 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
       push(ends); push(ns); push(ew);
       return true;
     }
+    case ShapeKind::StoneLantern: {   // Better End's stone lanterns: a base, the lantern, its cap; hung from a chain or a roof (nothing under it)
+      const BlockId below = nb.id(0, -1, 0), above = nb.id(0, 1, 0);
+      const bool hang = !R.tSolid[below] && (R.tSolid[above] || R.block(above).str("shape") == "chain");
+      if (hang) { push(ShapeBox(5, 1, 5, 11, 3, 11)); push(ShapeBox(4, 3, 4, 12, 11, 12)); push(ShapeBox(3, 11, 3, 13, 13, 13)); push(ShapeBox(6, 13, 6, 10, 16, 10)); }
+      else { push(ShapeBox(3, 0, 3, 13, 2, 13)); push(ShapeBox(4, 2, 4, 12, 10, 12)); push(ShapeBox(3, 10, 3, 13, 12, 13)); push(ShapeBox(6, 12, 6, 10, 14, 10)); }
+      return true;
+    }
     case ShapeKind::Pile: {   // ingot / log piles (sim/piles.h): as high as they're stacked (meta: layers of 2 px, courses of 4)
       const int k = std::max(1, (int)m);
       push(ShapeBox(0, 0, 0, 16, std::min(16.f, def.has("logPile") ? 4.f * k : 2.f * k), 16));

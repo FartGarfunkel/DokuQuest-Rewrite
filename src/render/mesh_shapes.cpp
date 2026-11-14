@@ -359,7 +359,7 @@ void emitPlanes(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, floa
 
 // an ore's specks over the rock it is drawn as (render/ore_overlay.h): the block's faces a hair out, culled as a cube's
 void emitOreSpecks(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, int tile) {
-  ShapeBox b; const float e = 0.02f;
+  ShapeBox b; const float e = 2 / 16.f;   // (two steps of the vertex grid, 1/128 block, out: any less rounds back onto the rock's face and the two fight)
   b.b[0] = -e; b.b[1] = -e; b.b[2] = -e; b.b[3] = 16 + e; b.b[4] = 16 + e; b.b[5] = 16 + e;
   const float L0 = c.R.tLight[id];
   Own own{(float)c.skyAt(x, y, z), std::max<float>(c.blAt(x, y, z), L0), L0};
