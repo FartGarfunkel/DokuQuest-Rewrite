@@ -47,6 +47,7 @@
 #include "gen/structures.h"
 
 namespace dq {
+std::unique_ptr<Screen> makeGuideScreen(const std::string& item);
 void primeFormidi(Level& lv, World& w, int x, int y, int z, const std::string& key);   // sim/wither_storm.cpp
 
 namespace {
@@ -396,6 +397,7 @@ void runStep(App& a, const json& st) {
     else if (n == "hud_edit") a.pushScreen(makeHudEditScreen());
     else if (n == "pause") a.pushScreen(makePauseScreen());
     else if (n == "journal") { while (a.topScreen()) a.popScreen(); a.pushScreen(makeJournalScreen()); }
+    else if (n == "guide") { while (a.topScreen()) a.popScreen(); a.pushScreen(makeGuideScreen(st.value("item", std::string()))); }
     else if (n == "options") a.pushScreen(makeOptionsScreen());
     else if (n == "board" && p) a.pushScreen(makeQuestBoardScreen(ivec3(ifloor(p->pos.x), ifloor(p->pos.y), ifloor(p->pos.z))));   // the village's quest board (stand in the village)
     else if (n == "path") a.pushScreen(makePathScreen("knight"));

@@ -30,6 +30,7 @@ Story storyOf(Level& lv, Player& p);
 // the Compendium: each creature you've met (seen up close), and how many you've beaten (stats.dex[type] = {s, k})
 void dexNote(Player& p, const std::string& type, bool killed);
 int dexKills(const Player& p, const std::string& type);   // -1: never met
+bool knowsItem(const Player& p, const std::string& id);   // had it (the crafting guide's discovery: stats.known)
 std::vector<std::pair<std::string, std::string>> journalRecords(Level& lv, Player& p);
 std::vector<std::string> greatFoesBeaten(Level& lv);
 

@@ -127,8 +127,21 @@ static void dexTick(Level& lv, Player& p, double dt) {
     dexNote(p, e->type, false);
   }
 }
+// the things you've had (the crafting guide shows the recipes that use what you've had: stats.known[item])
+static void knownTick(Player& p, double dt) {
+  static std::unordered_map<u32, double> next;
+  double& t = next[p.id];
+  if ((t -= dt) > 0) return;
+  t = 1.0;
+  json& K = p.stats["known"];
+  if (!K.is_object()) K = json::object();
+  for (auto* v : {&p.inv, &p.offhand, &p.armor, &p.shield, &p.hook, &p.back})
+    for (auto& s : *v) if (!s.empty() && !K.contains(s.id)) K[s.id] = 1;
+}
+bool knowsItem(const Player& p, const std::string& id) { const json& K = sub(p.stats, "known"); return K.contains(id); }
 void rpgTick(Level& lv, Player& p, double dt) {
   dexTick(lv, p, dt);
+  knownTick(p, dt);
   MagicState& m = magicState(lv, p);
   exploreTick(lv, p, m, dt);
   greenThumb(lv, p, m, dt);

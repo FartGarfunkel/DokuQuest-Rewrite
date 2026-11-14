@@ -32,6 +32,7 @@ void uiDefer(std::function<void(App&)> f) { g_deferred.push_back(std::move(f)); 
 // chests, barrels, shulker boxes, hoppers, the ender chest, backpacks -> container; crafting table -> table;
 // furnaces; anvil / grindstone / smithing table / loom / fletching table -> station {kind}; the stonecutter;
 // millstone / sawmill / crusher -> machine; signs. (Cart and boat chests, opts.entity, are the vehicles' own.)
+std::unique_ptr<Screen> makeGuideScreen(const std::string& item);   // ui/guide_screen.cpp
 std::unique_ptr<Screen> makeKnappingScreen(const std::string& material, const std::string& item);   // ui/knapping_screen.cpp
 std::unique_ptr<Screen> makeAnvilScreen(ivec3 at, int tier);
 std::unique_ptr<Screen> makeHeldBookScreen(int slot);          // ui/held_book.cpp   // ui/anvil_screen.cpp
@@ -128,6 +129,7 @@ static void registerMenuTabs() {
   registerInventoryTab();
   registerMenuTab({"map", "Map", [](App& a) { a.pushScreen(makeMapScreen(-1)); }, [](App& a) { return canOpenMapScreen(a); }});
   registerMenuTab({"journal", "Journal", [](App& a) { a.pushScreen(makeJournalScreen()); }, nullptr});
+  registerMenuTab({"guide", "Guide", [](App& a) { a.pushScreen(makeGuideScreen("")); }, nullptr});   // the crafting guide (ui/guide_screen.cpp)
   { registerMenuTab({"achievements", "Achievements", [](App& a) { a.pushScreen(makeAchievementsScreen()); }, nullptr}); }
   registerMenuTab({"skills", "Skills", [](App& a) { a.pushScreen(makeSkillsScreen()); }, nullptr});
   registerMenuTab({"skilltree", "Talents", [](App& a) { a.pushScreen(makeSkillTreeScreen()); }, nullptr});
@@ -267,8 +269,8 @@ void throwStackFromPlayer(App& a, const ItemStack& s) {
 // ---- menu tabs (game/menutabs.js) ---------------------------------------------------------------------------
 static std::vector<MenuTab>& tabs() { static std::vector<MenuTab> t; return t; }
 void registerMenuTab(MenuTab t) {
-  static const char* order[] = {"inventory", "map", "journal", "skills", "spells", "stable", "achievements"};
-  auto rank = [](const std::string& k) { for (int i = 0; i < 7; i++) if (k == order[i]) return i; return 7; };
+  static const char* order[] = {"inventory", "guide", "map", "journal", "skills", "spells", "stable", "achievements"};
+  auto rank = [](const std::string& k) { for (int i = 0; i < 8; i++) if (k == order[i]) return i; return 8; };
   auto& v = tabs();
   for (auto& o : v) if (o.key == t.key) { o = std::move(t); return; }
   auto it = std::find_if(v.begin(), v.end(), [&](const MenuTab& o) { return rank(o.key) > rank(t.key); });
@@ -325,6 +327,7 @@ bool menuTabsUpdate(App& a, const std::string& current) {
 static const char* tabKeyOfScreen(const std::string& id) {
   if (id == "map") return "map";
   if (id == "journal") return "journal";
+  if (id == "guide") return "guide";
   if (id == "skills") return "skills";
   if (id == "spellbook") return "spells";
   if (id == "stable") return "stable";
