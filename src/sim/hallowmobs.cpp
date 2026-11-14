@@ -196,6 +196,35 @@ static void injectTypes() {
   // — /summon, the entity factory, saves, PMSpec pack reskins — keeps working; only its look changed).
   models["fuseling"] = creeperModel();
 
+  // eyes for the animals whose face picture can't show them: a horse's, a donkey's or a camel's are on the sides of a long
+  // head (the face picture is on the end of the snout), an armadillo's or a mouse's face is too narrow to keep both
+  // (squeezed to 3 px, one eye was lost). A small dark eye each side, near the top of the head, a third of the way back
+  // from its front on the short heads, two thirds on the long ones.
+  for (auto& [key, mdl] : models.items()) {
+    static const char* fam[] = {"horse", "donkey", "camel", "armadillo", "mouse"};
+    bool ours = false; for (const char* f : fam) if (key.rfind(f, 0) == 0) ours = true;
+    if (!ours || !mdl.is_object() || mdl.value("rig", "") != "quad" || !mdl.contains("parts")) continue;
+    json& parts = mdl["parts"];
+    const json* head = nullptr; bool has = false;
+    for (const json& p : parts) { const std::string n = p.value("name", ""); if (n == "head") head = &p; if (n.find("eye") != std::string::npos) has = true; }
+    if (has || !head || !head->contains("box") || !(*head)["box"].is_array()) continue;
+    const json headCopy = *head; head = &headCopy;   // (a copy: adding parts below may move the list it points into)
+    const json& b = headCopy["box"];
+    const float x0 = b[0], y0 = b[1], z0 = b[2], x1 = b[3], y1 = b[4], z1 = b[5];
+    const bool longHead = (z1 - z0) >= 1.3f * (x1 - x0);
+    const float ez = z0 + (z1 - z0) * (longHead ? 0.68f : 0.35f), ey = y1 - std::max(1.0f, (y1 - y0) * 0.3f);
+    const float es = (x1 - x0) <= 3 ? 0.8f : 1.0f;   // (the eye: a pixel, a little less on the small ones)
+    for (int side = -1; side <= 1; side += 2) {
+      const float ex = side < 0 ? x0 - 0.06f : x1 + 0.02f;
+      json box = {ex, ey - es / 2, ez - es / 2, ex + 0.04f, ey + es / 2, ez + es / 2};
+      json mn = {(float)box[0] / 16, (float)box[1] / 16, (float)box[2] / 16}, mx = {(float)box[3] / 16, (float)box[4] / 16, (float)box[5] / 16};
+      json eye = {{"name", side < 0 ? "eyeL" : "eyeR"}, {"parent", "head"}, {"at", {0, 0, 0}}, {"box", box}, {"tex", "black_concrete"},
+                  {"pivot", {0, 0, 0}}, {"min", mn}, {"max", mx}};
+      for (const char* k : {"only", "not"}) if (head->contains(k)) eye[k] = (*head)[k];   // (shown when the head is: not in the armadillo's ball)
+      parts.push_back(std::move(eye));
+    }
+  }
+
   // the enderman's eyes: two glowing purple eyes across the middle of the face (the whole-face eye tile showed nothing)
   if (models.contains("enderman") && models["enderman"].contains("parts"))
     for (json& p : models["enderman"]["parts"]) if (p.value("name", "") == "eyeglow") {
