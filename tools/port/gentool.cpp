@@ -614,7 +614,16 @@ static int plans(const std::string& seedText, int x0, int z0, int w) {
   LandSrc L(seedText); auto* og = dynamic_cast<OverworldGen*>(L.g);
   std::set<const StructurePlan*> seen;
   for (int z = z0; z < z0 + w; z += 64) for (int x = x0; x < x0 + w; x += 64) { std::vector<const StructurePlan*> v; og->structures.near(x, z, 64, v);
-    for (auto* S : v) if (seen.insert(S).second) printf("%-14s at %d,%d y %d (Minecraft %d)\n", structureTypes()[S->type].key.c_str(), S->cx, S->cz, S->y, S->y - 1); }
+    for (auto* S : v) if (seen.insert(S).second) {
+      printf("%-14s at %d,%d y %d (Minecraft %d)", structureTypes()[S->type].key.c_str(), S->cx, S->cz, S->y, S->y - 1);
+      if (structureTypes()[S->type].key == "village" && S->data.is_object()) {
+        const json& D = S->data; int jobs = 0; std::set<std::string> kinds;
+        if (D.contains("blds")) for (auto& b : D["blds"]) { if (b.contains("job") && b["job"].is_string() && !b["job"].get<std::string>().empty()) jobs++; kinds.insert(b.contains("type") && b["type"].is_string() ? b["type"].get<std::string>() : "?"); }
+        auto str = [&](const char* k) { return D.contains(k) && D[k].is_string() ? D[k].get<std::string>() : std::string("?"); };
+        printf("  style %s tier %s r %d: %d buildings (%d kinds, %d with a trade), %d stalls", str("style").c_str(), str("tier").c_str(), D.contains("r") && D["r"].is_number() ? D["r"].get<int>() : 0,
+               D.contains("blds") ? (int)D["blds"].size() : 0, (int)kinds.size(), jobs, D.contains("stalls") ? (int)D["stalls"].size() : 0);
+      }
+      printf("\n"); } }
   return 0;
 }
 static int relief(const std::string& seedText, int x0, int z0, int w, int h, const char* out) {

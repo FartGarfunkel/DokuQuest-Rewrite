@@ -150,7 +150,9 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
   // (no windmill of ours here: each style's pieces have their own, a tower with sails, shaft and millstone)
   J->ours.push_back(ourPiece("mine"));   // the miner's: a drift down to a working face (structures_townbld.cpp bMine)
   std::vector<const VPPiece*> oursLeft; for (auto& p : J->ours) oursLeft.push_back(&p);
-  const int maxDepth = v.tier == TIER_CITY ? 8 : v.tier == TIER_TOWN ? 7 : 6, R = v.tier == TIER_CITY ? 112 : v.tier == TIER_TOWN ? 96 : 80;
+  // (terrain 21: Towns and Towers' villages a street further out, a market round their square: they were small and plain)
+  const bool tnt21 = isTntStyle(sk) && t.genVersion() >= 21;
+  const int maxDepth = (v.tier == TIER_CITY ? 8 : v.tier == TIER_TOWN ? 7 : 6) + (tnt21 ? 1 : 0), R = (v.tier == TIER_CITY ? 112 : v.tier == TIER_TOWN ? 96 : 80) + (tnt21 ? 16 : 0);
   auto top = [&](int x, int z) { return t.terrainColumn(x, z).y; };
   // water over it: the land below the sea (plan 11; the original's height at sea level was a test too coarse for the taller
   // band: dry shore at the sea's level and a block above counted, the streets there had no level of their own, and a
@@ -195,6 +197,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
       std::vector<const VPPiece*> cands;
       if (Q.depth + 1 <= maxDepth) {
         if (const auto* pl = pack.pool(A.pool)) cands = pickWeighted(*pl);
+        if (houses && tnt21 && Q.depth <= 2) if (const auto* mk = pack.pool(sk + "/market")) { auto st = pickWeighted(*mk); cands.insert(cands.begin(), st.begin(), st.end()); }
         if (houses) {
           // a trade's building once in a village (twice in a town or a city; farms and pens as the land allows), a stall
           // of each kind once, and the stalls only near the square (a market street, not stalls up every lane)
@@ -665,6 +668,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
   v.flatRects.clear(); for (auto& f : J->flat) v.flatRects.push_back({f[0], f[1], f[2], f[3]});
   v.fb = J->fb;
   v.P = std::max(J->pcs[0].w, J->pcs[0].d) / 2; v.hw = 1;
+  if (std::getenv("DQ_STALL_LOG")) { int st = 0; for (auto& q : J->pcs) if (q.p->name.find("market_stall") != std::string::npos) st++; DQ_LOG("village %s (%s): %d pieces, %d market stalls", v.name.c_str(), sk.c_str(), (int)J->pcs.size(), st); }
   out = J;
   return true;
 }

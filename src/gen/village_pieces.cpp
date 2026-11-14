@@ -1039,6 +1039,23 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
 namespace {
 std::unique_ptr<VillagePieces> finishPack(std::unique_ptr<VillagePieces> pack, int pieces) {
   if (!pieces) return nullptr;
+  // Towns and Towers' styles have no market: each takes the stalls of the style of ours nearest it (the baker's, butcher's,
+  // farmer's, fisherman's, jeweller's and merchant's), a pool of its own the town plan draws on round the square (terrain 21)
+  {
+    static const std::map<std::string, std::string> NEAR = {{"tudor", "plains"}, {"classic", "plains"}, {"rustic", "plains"}, {"iberian", "plains"},
+      {"flower_forest_japanese", "plains"}, {"mediterranean", "plains"}, {"birch_forest_romanian", "plains"}, {"swedish", "taiga"}, {"meadow_swiss", "alpine"},
+      {"old_growth_taiga_polish", "taiga"}, {"snowy_taiga_viking", "snowy"}, {"sparse_jungle_polynesian", "jungle"}, {"jungle_tribal", "jungle"},
+      {"badlands_pueblo", "mesa"}, {"swamp_boat", "swamp"}, {"mushroom_fields_fantasy", "mushroom"}, {"nilotic", "desert"}};
+    int n = 0;
+    for (auto& [st, near] : NEAR) {
+      auto src = pack->pools.find(near + "/houses");
+      if (src == pack->pools.end() || !pack->pools.count(st + "/houses")) continue;
+      std::vector<VPPiece> stalls;
+      for (const VPPiece& p : src->second) if (p.name.find("market_stall") != std::string::npos) { stalls.push_back(p); n++; }
+      if (!stalls.empty()) pack->pools[st + "/market"] = std::move(stalls);
+    }
+    DQ_LOG("village pieces: %d market stalls lent to Towns and Towers' styles", n);
+  }
   for (auto& [k, v] : pack->pools) std::sort(v.begin(), v.end(), [](const VPPiece& a, const VPPiece& b) { return a.name < b.name; });   // the same order on every machine
   { std::string by; for (auto& [st, n] : furnBy) by += " " + st + " " + std::to_string(n[0]) + "/" + std::to_string(n[1]); DQ_LOG("village pieces: chairs/tables by style:%s", by.c_str()); }
   DQ_LOG("village pieces: %d empty houses furnished", emptyFurnished);
