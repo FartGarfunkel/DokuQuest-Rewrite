@@ -626,6 +626,16 @@ static int plans(const std::string& seedText, int x0, int z0, int w) {
       printf("\n"); } }
   return 0;
 }
+static int torches(const std::string& seedText, int x0, int z0, int w) {
+  LandSrc L(seedText); const BlockId T = reg().blockId("torch");
+  for (int z = z0; z < z0 + w; z++) for (int x = x0; x < x0 + w; x++) for (int y = 60; y < 160; y++) {
+    if (L.get(x, y, z) != T) continue;
+    const u8 m = L.at(x, z)->getMeta(floormod(x, 16), y, floormod(z, 16));
+    printf("torch %d %d %d meta %d | up %s down %s n %s s %s e %s w %s\n", x, y, z, m, key(L.get(x, y + 1, z)).c_str(), key(L.get(x, y - 1, z)).c_str(),
+           key(L.get(x, y, z - 1)).c_str(), key(L.get(x, y, z + 1)).c_str(), key(L.get(x + 1, y, z)).c_str(), key(L.get(x - 1, y, z)).c_str());
+  }
+  return 0;
+}
 static int relief(const std::string& seedText, int x0, int z0, int w, int h, const char* out) {
   LandSrc L(seedText); std::vector<int> H((size_t)(w + 1) * (h + 1));
   for (int z = 0; z <= h; z++) for (int x = 0; x <= w; x++) H[(size_t)z * (w + 1) + x] = L.top(x0 + x - 1, z0 + z - 1);
@@ -702,6 +712,7 @@ int main(int argc, char** argv) {
   if (m == "topcheck" && argc >= 7) return topcheck(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]));
   if (m == "profile" && argc >= 5) return profile(argv[2], atoi(argv[3]), atoi(argv[4]));
   if (m == "plans" && argc >= 6) return plans(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
+  if (m == "torches" && argc >= 6) return torches(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "relief" && argc >= 8) return relief(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argv[7]);
   if (m == "xsect" && argc >= 10) return xsect(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]), atoi(argv[8]), argv[9]);
   if (m == "surfgrid" && argc >= 6) return surfgrid(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));

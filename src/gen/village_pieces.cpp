@@ -1024,6 +1024,22 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
       }
     }
   }
+  // a torch in a roof's eaves (our builder's pieces hung some in the row of stairs along the wall: a hole in the roof with
+  // a torch in it): the eaves made whole, the stair either side carried on through it
+  {
+    std::map<long long, int> at;
+    auto ck = [](int x, int y, int z) { return ((long long)x << 40) | ((long long)y << 20) | (long long)z; };
+    for (int i = 0; i < (int)P.blocks.size(); i++) at[ck(P.blocks[i].x, P.blocks[i].y, P.blocks[i].z)] = i;
+    const BlockId torch = findBlock("torch");
+    auto stairAt = [&](int x, int y, int z) -> int { auto it = at.find(ck(x, y, z)); if (it == at.end()) return -1; const BlockId id = P.states[P.blocks[it->second].s].id; return reg().tShape[id] == ShapeKind::Stairs || reg().block(id).key.find("stairs") != std::string::npos ? it->second : -1; };
+    for (VPBlock& b : P.blocks) {
+      if (torch == NONE || P.states[b.s].id != torch) continue;
+      for (auto [dx, dz] : {std::pair{1, 0}, {0, 1}}) {
+        const int a1 = stairAt(b.x - dx, b.y, b.z - dz), a2 = stairAt(b.x + dx, b.y, b.z + dz);
+        if (a1 >= 0 && a2 >= 0 && P.blocks[a1].s == P.blocks[a2].s) { b.s = P.blocks[a1].s; break; }
+      }
+    }
+  }
   // a house left empty inside: furnished (furnishEmpty)
   if (kind == "houses" && !std::regex_search(name, std::regex("stable|farm|pen|ruin|well|lamp|decor|garden|field|pasture|pond|fountain|statue|tree|graveyard|camp|tent|market|gazebo"))) {
     int furn = 0;
