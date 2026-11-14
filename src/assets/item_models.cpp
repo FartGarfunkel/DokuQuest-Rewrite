@@ -882,7 +882,7 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
       G = std::move(W); b.depth += 3.f / 32;
     }
   }
-  VoxelFrame fr = P.frame;
+  VoxelFrame fr = P.frame; fr.tiltZ = b.tilt;
   // scaleMB: shrink about the middle, or (standing things) keeping the foot on the ground
   if (sz != 1) {
     fr.voxel *= sz;

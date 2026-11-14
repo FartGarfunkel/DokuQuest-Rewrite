@@ -18,6 +18,7 @@ struct ItemBuild {
   const ItemDef* def;
   float depth = 0.04f;
   bool stand = false;
+  float tilt = 0;   // the model's turn about z once built (VoxelFrame::tiltZ)
   VoxelModel::Kind kind = VoxelModel::Flat;
   int tile(const std::string& name) const { auto it = ts.index.find(name == "white_wool" ? "wool" : name); return it == ts.index.end() ? 0 : it->second; }
 };
