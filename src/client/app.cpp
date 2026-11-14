@@ -401,7 +401,7 @@ void App::frameLoop() {
     else {
       for (size_t i = 0; i < screens.size(); i++) if (i + 1 == screens.size() || screens[i + 1]->showsWorld()) screens[i]->draw(*this);
       uiAfterScreens(*this);   // the menu tab strip (ui/ui_main.cpp)
-      if (bookUiStationOn(*this)) { bookUiRender(*this, true); bookUiDebugQuad(ImGui::GetForegroundDrawList()); }   // at a station: your bag in the journal in your off hand
+      if (bookUiStationOn(*this)) { bookUiRender(*this, true); bookUiDrawScreenTip(); bookUiDebugQuad(ImGui::GetForegroundDrawList()); }   // at a station: your bag in the journal in your off hand
     }
     if (session && session->split()) {
       // split screen: a shared menu (pause...) answers to everybody; otherwise each person's Back / Pause closes their own menu, or pauses

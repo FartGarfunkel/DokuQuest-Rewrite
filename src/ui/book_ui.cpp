@@ -162,9 +162,11 @@ void bookUiSetBook(const mat4& proj, const mat4& frame, float w, float h, float 
 }
 void bookUiStationBag(int padCur) { g_stationAsked = app().frame; g_stationPad = padCur; }
 bool bookUiMouseOverBook() { return g_overBook; }
-namespace { std::string g_screenTip; }
+namespace { std::string g_screenTip; std::function<void()> g_screenDraw; }
+bool bookUiScreenDraw(std::function<void()> f) { if (!g_drawing) return false; g_screenDraw = std::move(f); return true; }
 bool bookUiScreenTip(const std::string& t) { if (!g_drawing) return false; g_screenTip = t; return true; }
 void bookUiDrawScreenTip() {
+  if (g_screenDraw) { auto f = std::move(g_screenDraw); g_screenDraw = nullptr; f(); }
   if (g_screenTip.empty()) return;
   const float z = ui::Z();
   const ImVec2 m = ImGui::GetIO().MousePos, s = ui::textSize(ui::F_MID, g_screenTip.c_str());

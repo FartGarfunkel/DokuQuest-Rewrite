@@ -845,6 +845,11 @@ public:
     if (s.empty()) return;
     std::vector<std::pair<std::string, u32>> lines;
     itemInfoText(s, &sess->p, &lines);
+    // (on the journal's pages: drawn on the window after the book, at the real pointer, so it isn't cut off at the page)
+    if (bookUiScreenDraw([lines, &a] { drawTip(a, lines, ImGui::GetIO().MousePos); })) return;
+    drawTip(a, lines, m);
+  }
+  static void drawTip(App& a, const std::vector<std::pair<std::string, u32>>& lines, ImVec2 m) {
     float z = Z(), maxW = 260 * z - 16 * z, k = 13.f / 15.f;
     float w = 0, hgt = 0;
     for (auto& [t, c] : lines) { if (!t.empty() && t[0] == '\x02') { w = std::max(w, 120 * z); hgt += 8 * z; continue; } ImVec2 ts = textSize(F_BODY, t.c_str(), maxW, k); w = std::max(w, ts.x); hgt += ts.y; }

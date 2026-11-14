@@ -3,6 +3,7 @@
 // of over the screen. The screens draw as ever, into a picture of their own (an ImGui context of its own, as split
 // screen's viewports have: client/split.cpp); the mouse is carried from where you point on the pages.
 #pragma once
+#include <functional>
 #include "common/common.h"
 #include <imgui.h>
 
@@ -23,7 +24,10 @@ bool bookUiMouseOverBook();
 // a tooltip that may reach past the pages (beside a ribbon): in the book it's shown on the screen at the pointer, not
 // on the page picture (it was cut off there); outside the book, false (draw it as ever)
 bool bookUiScreenTip(const std::string& text);
-void bookUiDrawScreenTip();   // (App::frameLoop, after the book)
+void bookUiDrawScreenTip();
+// something drawn on the window itself after the book (an item's tooltip: on the pages it was cut off at their edge and
+// drawn twice where it crossed it). Called from the book's drawing; false when not drawing the book (draw it yourself)
+bool bookUiScreenDraw(std::function<void()> f);   // (App::frameLoop, after the book)
 void bookUiDebugQuad(ImDrawList* dl);   // (dev: DQ_DEV_QUAD)
 bool bookUiPointOverBook(vec2 p);   // a window point behind the off-hand journal (the station's marks there are hidden)
 // where the picture's crop is on the window (top left, top right, bottom right, bottom left): a book held at an angle
