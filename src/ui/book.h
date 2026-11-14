@@ -62,6 +62,7 @@ struct BookRow {
   bool keep = false;                                            // stays on the page of the row after it (headings)
   bool breakBefore = false;                                     // starts a new page
   int sel = -1;                                                 // the screen's id for a row it can select
+  bool wide = false;                                            // on a left page: drawn across the whole spread (`w` both pages)
 };
 using BookRows = std::vector<BookRow>;
 

@@ -188,41 +188,58 @@ public:
         // faint; the right hand's ringed, the left's in gold. Click: the right hand; right-click: the left
       ui::BookRows tr;
       book.heading(tr, "The Tree of Magic");
-      ui::BookRow row; const float side = book.pageW(); row.h = side;
+      // (across the whole spread: the right page is left to it; the ten branches on an ellipse filling both pages)
+      ui::BookRow row; const float headH = tr.empty() ? 0.f : tr.back().h; row.h = std::max(book.pageW(), book.pageH() - headH - 2); row.wide = true;
+      const float treeH = row.h;
       std::vector<std::pair<std::string, std::vector<std::string>>> br;
       for (size_t i = 0; i < lists.size(); i++) br.push_back({(*sch[i])[2], lists[i]});
       std::vector<std::string> names; for (size_t i = 0; i < lists.size(); i++) names.push_back((*sch[i])[1]);
-      row.draw = [this, lv, p, br, names, z, lvl, active, left, known](ImDrawList* dl, ImVec2 q, float w) {
+      row.draw = [this, lv, p, br, names, z, lvl, active, left, known, treeH](ImDrawList* dl, ImVec2 q, float w) {
         auto kn = [&](const std::string& k) { return std::find(known.begin(), known.end(), k) != known.end(); };
-        const ImVec2 c(q.x + w * 0.5f, q.y + w * 0.5f);
-        size_t most = 1; for (auto& b2 : br) most = std::max(most, b2.second.size());
-        const float R0 = w * 0.06f, R1 = w * 0.17f, nr = std::max(7.f * z, w * 0.028f), step = (w * 0.5f - R1 - nr - 14 * z) / ((float)most + 0.6f);   // (the longest branch reaches the page's edge)
+        const ImVec2 c(q.x + w * 0.5f, q.y + treeH * 0.5f);
+        // laid out over the whole spread (rx across, ry down): the longest branches get the most level directions (the
+        // spread is wide), each branch's spells spaced along it to fill the room it has to the edge
+        const float rx = w * 0.5f - 6 * z, ry = treeH * 0.5f - 4 * z, rmin = std::min(rx, ry);
+        const float nr = std::max(8.f * z, rmin * 0.05f);
+        const float R0 = rmin * 0.12f, R1 = rmin * 0.27f;
+        auto at = [&](float a, float r) { return ImVec2(c.x + std::cos(a) * r, c.y + std::sin(a) * r); };
+        auto reach = [&](float a) { const float ca = std::cos(a) / rx, sa = std::sin(a) / ry; return 1.f / std::sqrt(ca * ca + sa * sa); };   // (centre to the ellipse's edge)
         dl->AddCircleFilled(c, R0, ui::withAlpha(ui::ink::key, 0.35f), 32); dl->AddCircle(c, R0, ui::ink::key, 32, 2 * z);
         const int B = (int)br.size();
+        std::vector<int> slotOf(B);
+        {   // the slots round the ring, most level first; the branches, longest first
+          std::vector<int> slots(B), order(B);
+          for (int i = 0; i < B; i++) slots[i] = order[i] = i;
+          std::stable_sort(slots.begin(), slots.end(), [&](int x, int y) { return std::fabs(std::cos(x * 6.2832f / B)) > std::fabs(std::cos(y * 6.2832f / B)); });
+          std::stable_sort(order.begin(), order.end(), [&](int x, int y) { return br[x].second.size() > br[y].second.size(); });
+          for (int i = 0; i < B; i++) slotOf[order[i]] = slots[i];
+        }
         for (int b = 0; b < B; b++) {
-          const float ang = -1.5708f + b * 6.2832f / B;
+          const float ang = slotOf[b] * 6.2832f / B + 0.0001f;
           const ImVec2 dir(std::cos(ang), std::sin(ang));
           const ImU32 sc = inkOf(br[b].first);
           std::vector<std::string> o = br[b].second;
           std::stable_sort(o.begin(), o.end(), [](const std::string& x, const std::string& y) { return magicData().spells.at(x).lvl < magicData().spells.at(y).lvl; });
-          const ImVec2 sn(c.x + dir.x * R1, c.y + dir.y * R1);
+          const ImVec2 ls = ui::textSize(ui::F_SMALL, names[b].c_str());
+          const float room = reach(ang) - R1 - nr - (std::fabs(std::cos(ang)) * ls.x * 0.6f + std::fabs(std::sin(ang)) * ls.y + 6 * z);
+          const float step = std::clamp(room / ((float)o.size() + 0.4f), 2.3f * nr, 7.f * nr);
+          const ImVec2 sn = at(ang, R1);
           int litN = 0; for (auto& k : o) if (kn(k)) litN++;
-          dl->AddLine(ImVec2(c.x + dir.x * R0, c.y + dir.y * R0), sn, litN ? sc : ui::withAlpha(ui::ink::muted, 0.6f), (litN ? 2.5f : 1.3f) * z);
+          dl->AddLine(at(ang, R0), sn, litN ? sc : ui::withAlpha(ui::ink::muted, 0.6f), (litN ? 2.5f : 1.3f) * z);
           dl->AddNgonFilled(sn, nr * 1.15f, ui::withAlpha(sc, litN ? 0.55f : 0.25f), 6); dl->AddNgon(sn, nr * 1.15f, sc, 6, 1.5f * z);
           {   // the school's name at the tip of its branch, kept on the page
             const ImVec2 ts = ui::textSize(ui::F_SMALL, names[b].c_str());
-            const float rt = R1 + step * ((float)o.size() + 0.75f) + 4 * z;
-            float lx = c.x + dir.x * rt - ts.x * 0.5f + dir.x * ts.x * 0.5f, ly = c.y + dir.y * rt - ts.y * 0.5f;
-            lx = std::clamp(lx, q.x, q.x + w - ts.x); ly = std::clamp(ly, q.y, q.y + w - ts.y);
+            const ImVec2 tip = at(ang, R1 + step * ((float)o.size() + 0.55f));
+            float lx = tip.x - ts.x * 0.5f + dir.x * (ts.x * 0.5f + nr), ly = tip.y - ts.y * 0.5f + dir.y * (ts.y * 0.5f + 2 * z);
+            lx = std::clamp(lx, q.x, q.x + w - ts.x); ly = std::clamp(ly, q.y, q.y + treeH - ts.y);
             ui::text(dl, ui::F_SMALL, ImVec2(lx, ly), ui::withAlpha(sc, 0.95f), names[b].c_str());
           }
           ImVec2 prev = sn; bool prevLit = litN > 0;
           for (int i = 0; i < (int)o.size(); i++) {
             const std::string& k = o[i]; const SpellDef& S = magicData().spells.at(k);
             const bool k1 = kn(k), near = !k1 && lvl + 5 >= S.lvl;
-            const float sway = ((i & 1) ? 1 : -1) * 0.09f * (i > 0);
-            const ImVec2 d2(std::cos(ang + sway), std::sin(ang + sway));
-            const ImVec2 pt(c.x + d2.x * (R1 + step * (i + 1)), c.y + d2.y * (R1 + step * (i + 1)));
+            const float sway = ((i & 1) ? 1 : -1) * std::min(0.07f, 0.9f * nr / (R1 + step * (i + 1))) * (i > 0);
+            const ImVec2 pt = at(ang + sway, R1 + step * (i + 1));
             dl->AddLine(prev, pt, k1 && prevLit ? sc : ui::withAlpha(ui::ink::muted, 0.55f), (k1 && prevLit ? 2.5f : 1.2f) * z);
             dl->AddCircleFilled(pt, nr, k1 ? ui::withAlpha(sc, 0.4f) : ui::withAlpha(ui::ink::muted, near ? 0.25f : 0.1f), 20);
             dl->AddCircle(pt, nr, k1 ? sc : ui::withAlpha(ui::ink::muted, near ? 0.9f : 0.4f), 20, (k == active ? 2.6f : 1.2f) * z);
@@ -241,6 +258,7 @@ public:
         }
       };
       tr.push_back(std::move(row));
+      { ui::BookRow keep; keep.breakBefore = true; keep.h = 1; keep.draw = [](ImDrawList*, ImVec2, float) {}; tr.push_back(std::move(keep)); }   // (its right page: the tree's)
       secs.push_back(std::move(tr));
     }
     for (size_t s = 0; s < lists.size(); s++) {

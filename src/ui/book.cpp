@@ -409,7 +409,12 @@ void Book::draw(const std::vector<BookRows>& sections) {
     float y = ta.y;
     int ri = 0;
     for (const BookRow* r : pages[pi].rows) {   // (ids by place on the page: the rows are made anew every frame)
-      if (r->draw) { ImGui::PushID(r->sel >= 0 ? 1000000 + r->sel : (int)(pi * 4096 + ri)); r->draw(dl, ImVec2(ta.x, std::round(y)), pw); ImGui::PopID(); }
+      if (r->draw && r->wide && side == 0) {   // (the whole spread: its own clip over both pages)
+        const float right = mid.x + TX * k + pw;
+        dl->PopClipRect(); dl->PushClipRect(ImVec2(ta.x - 2 * k, ta.y - 2 * k), ImVec2(right + 2 * k, ta.y + ph + 1 * k), true);
+        ImGui::PushID((int)(pi * 4096 + ri)); r->draw(dl, ImVec2(ta.x, std::round(y)), right - ta.x); ImGui::PopID();
+        dl->PopClipRect(); dl->PushClipRect(ImVec2(ta.x - 2 * k, ta.y - 2 * k), ImVec2(ta.x + pw + 2 * k, ta.y + ph + 1 * k), true);
+      } else if (r->draw) { ImGui::PushID(r->sel >= 0 ? 1000000 + r->sel : (int)(pi * 4096 + ri)); r->draw(dl, ImVec2(ta.x, std::round(y)), pw); ImGui::PopID(); }
       if (r->sel >= 0) shownSel.push_back(r->sel);
       y += r->h; ri++;
     }
