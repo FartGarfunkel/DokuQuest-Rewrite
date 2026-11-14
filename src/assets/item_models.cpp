@@ -291,7 +291,22 @@ static void recolourPartTool(VoxelGrid& g, const std::string& kind, const std::v
     {"ruby", vec3(0.92f, 0.16f, 0.24f)}, {"sapphire", vec3(0.22f, 0.36f, 0.92f)}, {"quartz", vec3(0.96f, 0.94f, 0.9f)}, {"red_crystal", vec3(0.88f, 0.2f, 0.24f)},
     {"charged_crystal", vec3(1.f, 0.5f, 0.3f)}, {"cinderite_shard", vec3(0.95f, 0.45f, 0.16f)}};
   if (auto gi = GEM.find(gem); gi != GEM.end()) {   // the gem: set in the middle of the head
-    const float tm = (t0 + t1) * 0.5f;
+    // (set in the middle of a tool's head; a sword's or a dagger's at its guard, where the blade meets the crossguard: the
+    //  ricasso, as a jeweller sets one)
+    float tm = (t0 + t1) * 0.5f;
+    if (kind == "sword" || kind == "dagger") {   // the crossguard: where the head is widest across; the gem just past it, on the blade
+      const int nb = std::max(4, (int)std::ceil(t1 - t0) + 1);
+      std::vector<float> lo(nb, 1e9f), hi(nb, -1e9f);
+      for (auto& v : vs) if (v.head) {
+        const vec2 d = v.p - hm; const int b = clampv((int)std::floor(glm::dot(d, e) - t0), 0, nb - 1);
+        const float ac = glm::dot(d, vec2(-e.y, e.x)); lo[b] = std::min(lo[b], ac); hi[b] = std::max(hi[b], ac);
+      }
+      int gb = 0; float gw = -1;
+      for (int b = 0; b < nb; b++) if (hi[b] - lo[b] > gw) { gw = hi[b] - lo[b]; gb = b; }
+      // (the blade's side of the guard: the longer way from it)
+      const float dir = (t1 - (t0 + gb)) > ((t0 + gb) - t0) ? 1.f : -1.f;
+      tm = t0 + gb + 0.5f + dir * 2.5f;
+    }
     for (auto& v : vs) if (v.head) {
       const vec2 d = v.p - hm; const float along = glm::dot(d, e) - tm, across = glm::dot(d, vec2(-e.y, e.x));
       if (along * along + across * across <= 9.f) g.c[v.i] = colour(gi->second, 0.85f + 0.3f * (v.lum > lh ? 1.f : 0.f), gem == "charged_crystal" ? (u32)VOXEL_GLOW << 24 : g.c[v.i]);

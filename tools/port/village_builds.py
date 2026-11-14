@@ -182,10 +182,22 @@ def garden_bridge(style, name, seed):
     for x in range(1, W):
         for z in range(0, D): p.set(x, 0, z, P.S['ground'] if not P.snowy else 'grass_block')
     # the brook runs across the piece (along z) at x 5..7
+    # (a stream of its own: it rises from a mossy spring at one end and runs into a reed pool at the other, closed in by its
+    #  banks, so none of it spills out over the land and the fields beside)
+    for x in range(4, 9):
+        for z in range(0, D): p.set(x, -1, z, 'stone')   # (its bed)
     for x in range(5, 8):
-        for z in range(0, D):
+        for z in range(1, D - 1):
             p.set(x, 0, z, 'water', level=0)
             if rnd.random() < 0.18 and x == 6 and z not in (3, 4, 5): p.set(x, 1, z, 'lily_pad')
+    for x in range(4, 9):
+        p.set(x, 0, 0, rnd.choice(['mossy_cobblestone', 'mossy_stone_bricks', 'cobblestone']))
+        p.set(x, 0, D - 1, rnd.choice(['mossy_cobblestone', 'gravel', 'clay' if vb.known('clay') else 'gravel']))
+    for z in range(1, D - 1):
+        for x in (4, 8):
+            if z not in (3, 4, 5): p.set(x, 0, z, rnd.choice(['mossy_cobblestone', 'gravel', 'coarse_dirt']))
+    p.set(6, 1, 0, 'mossy_cobblestone'); p.set(5, 1, 0, 'mossy_stone_bricks'); p.set(7, 1, 0, 'fern')   # the spring's rocks
+    for x in (5, 7): p.set(x, 1, D - 1, 'sugar_cane' if vb.known('sugar_cane') else 'fern')
     # the bridge: across x 4..8 at z 3..5, a step up each end, rails along its sides
     for x in range(4, 9):
         for z in range(3, 6): p.set(x, 1, z, P.floor)
