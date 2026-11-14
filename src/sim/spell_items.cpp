@@ -5,6 +5,7 @@
 #include "sim/player.h"
 #include "sim/level.h"
 #include "core/itemstack.h"
+#include "core/registry.h"
 #include <algorithm>
 
 namespace dq {
@@ -98,6 +99,48 @@ bool readScroll(Level& lv, Player& p, ItemStack& scroll) {
   H = {}; m.bare = bare0;
   if (ok && !p.creative() && --scroll.n <= 0) scroll.clear();
   return ok;
+}
+
+// ---- gem sockets ----
+static const GemDef GEMS[] = {
+  {"ruby", "damage", 0.05f, true, "+5% damage"}, {"sapphire", "spell_power", 0.08f, true, "+8% spell power"},
+  {"emerald", "mana", 10, false, "+10 mana"}, {"diamond", "armor", 1, false, "+1 armour"},
+  {"amethyst_shard", "mana_regen", 0.12f, true, "+12% mana regeneration"}, {"amber_gem", "stamina", 0.10f, true, "+10% stamina"},
+  {"zanite_gemstone", "crit_chance", 0.04f, true, "+4% critical chance"}, {"quartz", "crit_damage", 0.10f, true, "+10% critical damage"},
+  {"echo_shard", "spell_resist", 0.08f, true, "+8% spell resistance"}, {"mese_crystal", "spell_power", 0.05f, true, "+5% spell power"},
+};
+const GemDef* gemOf(const std::string& id) { for (const GemDef& g : GEMS) if (id == g.item) return &g; return nullptr; }
+int gearSockets(const ItemStack& s) {
+  if (s.empty()) return 0;
+  if (s.tag.is_object() && s.tag.contains("sockets") && s.tag["sockets"].is_number()) return std::clamp(s.tag["sockets"].get<int>(), 0, 3);
+  const ItemDef* d = s.def(); if (!d) return 0;
+  const bool gear = d->has("armor") || d->hasTool || d->has("weapon") || d->has("staff");
+  if (!gear || (s.id.find("leather") != std::string::npos) || s.id.rfind("wooden", 0) == 0 || s.id.rfind("stone_", 0) == 0) return 0;
+  for (const char* fine : {"diamond", "netherite", "mithril", "adamantite", "archmage", "cinderite", "dragon"}) if (s.id.find(fine) != std::string::npos) return 2;
+  return 1;
+}
+std::vector<std::string> gearGems(const ItemStack& s) {
+  std::vector<std::string> v;
+  if (!s.empty() && s.tag.is_object() && s.tag.contains("gems") && s.tag["gems"].is_array()) for (const json& g : s.tag["gems"]) if (g.is_string() && gemOf(g)) v.push_back(g);
+  return v;
+}
+float gemAttr(const Player& p, const std::string& attr, bool pct) {
+  float s = 0;
+  auto add = [&](const ItemStack& it) { for (const std::string& g : gearGems(it)) { const GemDef* d = gemOf(g); if (d && d->pct == pct && attr == d->attr) s += d->v; } };
+  for (const ItemStack& a : p.armor) add(a);
+  if (!p.inv.empty() && p.selected >= 0 && p.selected < (int)p.inv.size()) add(p.inv[p.selected]);
+  if (!p.offhand.empty()) add(p.offhand[0]);
+  return s;
+}
+std::string gemSocketsLine(const ItemStack& s) {
+  const int n = gearSockets(s); if (!n) return "";
+  const auto g = gearGems(s);
+  std::string out = "Sockets:";
+  for (int i = 0; i < n; i++) {
+    if (i < (int)g.size()) { const GemDef* d = gemOf(g[i]); const ItemDef* id = reg().item(g[i]); out += std::string(i ? ", " : " ") + (id ? id->name : g[i]) + " (" + (d ? d->what : "") + ")"; }
+    else out += std::string(i ? ", " : " ") + "empty";
+  }
+  return out;
 }
 
 } // namespace dq

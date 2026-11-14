@@ -1,4 +1,5 @@
 // sim/skilltree.cpp — see skilltree.h
+#include "sim/spell_items.h"
 #include "sim/skilltree.h"
 #include "sim/player.h"
 #include "sim/skills.h"
@@ -85,8 +86,8 @@ bool treeLearn(Player& p, const std::string& tree, const std::string& id) {
 void treeReset(Player& p) { p.stats["tree"] = json{{"nodes", json::array()}}; p.recalcMax(); }
 
 static float sumAttr(const Player& p, const std::string& attr, bool pct) {
-  if (skillTrees().empty() || learnt(p).empty()) return 0;
-  float s = 0;
+  float s = gemAttr(p, attr, pct);   // (gems set in the gear worn and held: sim/spell_items.h)
+  if (skillTrees().empty() || learnt(p).empty()) return s;
   for (const SkillTree& t : skillTrees()) for (const TreeNode& n : t.nodes) {
     bool any = false; for (auto& b : n.bonus) if (b.attr == attr && b.pct == pct) any = true;
     if (!any || !treeHas(p, n.id)) continue;

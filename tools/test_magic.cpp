@@ -1,6 +1,7 @@
 // tools/test_magic.cpp — headless rules test for magic, enchanting, brewing, skills and the RPG side.
 // The enchanting offers and rune strings are checked against values taken from the running original
 // (tools/port/jsdump.py: enchOffers / enchRunes / skillLevel). Run: build/test_magic
+#include "sim/crafting.h"
 #include "sim/spell_items.h"
 #include "core/tool_parts.h"
 #include "sim/skilltree.h"
@@ -311,6 +312,22 @@ int main(int argc, char** argv) {
     check(!writeScroll(p, "entangle", paper, lap, w).empty(), "...not one you only carry in a book");
     p.offhand[0].clear(); p.stats["spells"] = keep;
   }
+  // ---- gem sockets: gear and a gem together in the grid; the gem's bonus while it's held or worn ----
+  {
+    ItemStack sw("iron_sword", 1); sw.tag = json{{"en", {{"sharp", 2}}}};
+    std::vector<ItemStack> grid(4); grid[0] = sw; grid[1] = ItemStack("ruby", 1);
+    CraftMatch cm = matchGrid(grid, 2);
+    ItemStack got = cm.ok ? cm.result() : ItemStack();
+    check(cm.ok && got.id == "iron_sword" && gearGems(got).size() == 1 && gearGems(got)[0] == "ruby" && got.tag["en"]["sharp"] == 2, "an iron sword and a ruby in the grid: the ruby set in its socket, its enchantment kept");
+    const float d0 = treeAttrPct(p, "damage");
+    p.inv[0] = got; p.selected = 0;
+    check(near(treeAttrPct(p, "damage") - d0, 0.05f), "held, the ruby adds 5% damage");
+    grid[0] = got; grid[1] = ItemStack("sapphire", 1);
+    check(!matchGrid(grid, 2).ok, "an iron sword has one socket: no second gem");
+    check(gearSockets(ItemStack("diamond_sword", 1)) == 2 && gearSockets(ItemStack("stone", 1)) == 0 && gemSocketsLine(got).find("Ruby") != std::string::npos, "a diamond sword has two sockets, a stone none; the tooltip names the gem");
+    p.inv[0].clear();
+  }
+
   // ---- cast types: a long cast winds up, then goes off by itself ----
   {
     MagicState& mm = magicState(*lv, p);

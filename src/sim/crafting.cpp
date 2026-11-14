@@ -1,6 +1,7 @@
 // sim/crafting.cpp — see crafting.h. Ported from core/items.js (matchGrid, recipeIngredients, recipeLayout,
 // SMELTING rules), game/inventory.js (recipeMissing, ingredientLabel), game/dyeing.js, game/maps.js,
 // game/blocks2.js (recolorKey), game/game.js (tickFurnace) and game/itemfix.js (smoker/blast classes).
+#include "sim/spell_items.h"
 #include "core/metals.h"
 #include "core/tool_parts.h"
 #include <algorithm>
@@ -257,7 +258,21 @@ static CraftMatch matchDye(const std::vector<ItemStack>& slots, int W) {
     }
   }
   if (CraftMatch t = matchPartTool(slots, W); t.ok) return t;
-  return matchBase(slots, W);
+  if (CraftMatch b = matchBase(slots, W); b.ok) return b;
+  // a gem set in a socket (sim/spell_items.h): the gear and one gem alone in the grid, a socket free; the gear keeps all it had
+  if (rest.size() + dyes.size() == 2 && dyes.empty()) {
+    const ItemStack* gear = nullptr; const ItemStack* gem = nullptr;
+    for (auto& s : slots) if (!s.empty()) { if (gemOf(s.id)) gem = &s; else gear = &s; }
+    if (gear && gem && gearSockets(*gear) > (int)gearGems(*gear).size()) {
+      CraftMatch m = special(gear->id, 1);
+      m.extra = gear->tag.is_object() ? gear->tag : json::object();
+      json gl = m.extra.contains("gems") && m.extra["gems"].is_array() ? m.extra["gems"] : json::array();
+      gl.push_back(gem->id); m.extra["gems"] = gl;
+      if (gear->d) m.extra["d"] = gear->d;
+      return m;
+    }
+  }
+  return {};
 }
 
 // game/maps.js: copies of a map, or a map ringed with paper zoomed out

@@ -19,5 +19,18 @@ schools, practice ranks I..X).
    of a spell you know, for a paper and a lapis.
 5. **Cast types**: instant (most), long (a cast time held before it fires: fireball, lightning, ice nova, guardian),
    continuous (held, mana each quarter second: flames, drain life). In magic.json `cast` / `castTime`.
-6. **Gem sockets**: gear gets 0-3 sockets (by tier); gems (existing amber, zanite + Apotheosis-style cut gems) socketed at
-   the smithing table add their stat (treeAttr names: damage, armor, health, spell_power...).
+6. **Gem sockets**: gear gets 0-2 sockets (by tier); gems (our existing gem items) set at the crafting grid (the gear and a
+   gem together) add their stat (treeAttr names: damage, armor, mana, spell_power...). (The smithing table is a cinematic
+   scene; the grid keeps it simple and works with a controller everywhere.)
+
+## Done (2026-11-13)
+- 1-4: sim/spell_items.{h,cpp}, the inscription table (ui/magic_screens.cpp InscriptionScreen, station "inscribe"),
+  items spell_scroll / apprentice_ / mage_ / archmage_spellbook / inscription_table (our own pictures), scrolls in loot
+  (gen/structures_common.cpp maybeScroll), the off-hand book's spells in knownSpells and its rank in castSpellKey.
+- 5: SpellDef::cast / castTime (data/magic.json); a long cast winds up from one hand's plain cast (HandMods::windup), the
+  magic tick casts it (MagicState::windK); a death or another spell chosen cancels it. Shown in the spellbook.
+- 6: gems (GEMS in spell_items.cpp: ruby damage, sapphire spell power, emerald mana, diamond armour, amethyst mana
+  regeneration, amber stamina, zanite crit chance, quartz crit damage, echo shard spell resistance, mese spell power),
+  sockets by gear (1; 2 for diamond, netherite, mithril, adamantite, cinderite, dragon, archmage; a "sockets" tag
+  overrides), set at the crafting grid (gear + gem, after any real recipe), summed into treeAttr / treeAttrPct.
+- test_magic: 17 new checks.

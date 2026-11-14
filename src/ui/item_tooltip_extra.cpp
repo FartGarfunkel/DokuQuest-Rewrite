@@ -1,6 +1,7 @@
 // ui/item_tooltip_extra.cpp — the lines enchanting.js, brewing.js and skills.js add to itemInfoHTML:
 // enchantments under the name (a book also says what each does), a potion's effects, and a tool / weapon /
 // armour piece's level with its progress bar toward the next one ("\x02<fraction>" is the bar).
+#include "sim/spell_items.h"
 #include "sim/heat.h"
 #include "ui/ui.h"
 #include "sim/enchanting.h"
@@ -43,6 +44,9 @@ void tooltipEffectLines(const ItemStack& s, std::vector<std::pair<std::string, u
 }
 
 void tooltipGearLines(const ItemStack& s, std::vector<std::pair<std::string, u32>>& out) {
+  if (const std::string g = gemSocketsLine(s); !g.empty()) out.push_back({g, 0x7fe0c8});   // (gem sockets: sim/spell_items.h)
+  if (isScroll(s)) { const int r = s.tag.value("rank", 1); out.push_back({std::string(spellRarityName(r)) + " scroll \xC2\xB7 one cast, no staff or mana", spellRarityColor(r)}); }
+  if (bookSlots(s.id)) { for (auto& [k, r] : bookSpells(s)) out.push_back({spellLabel(k, r), spellRarityColor(r)}); out.push_back({std::to_string(bookSpells(s).size()) + " of " + std::to_string(bookSlots(s.id)) + " slots written", TD}); }
   const ItemDef* d = s.def();
   if (const float h = itemHeat(s); h > 25) {   // sim/heat.h: TFC's names for the heat
     const std::string n = heatName(h);

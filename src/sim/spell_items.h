@@ -27,4 +27,13 @@ std::string inscribeScroll(ItemStack& book, ItemStack& scroll);           // the
 std::string extractSpell(ItemStack& book, int slot, ItemStack& scrollOut); // a slot back out as a scroll
 std::string writeScroll(const Player& p, const std::string& k, ItemStack& paper, ItemStack& lapis, ItemStack& scrollOut);   // a spell you know, at your rank
 bool readScroll(Level& lv, Player& p, ItemStack& scroll);                 // cast it once (used up)
+
+// gem sockets (Apotheosis-style, ours): gear has sockets (1, or 2 for the finest; a "sockets" tag overrides), a gem set in one
+// at the crafting grid (the gear and the gem together) adds its bonus while the gear is worn or held
+struct GemDef { const char* item; const char* attr; float v; bool pct; const char* what; };
+const GemDef* gemOf(const std::string& itemId);                           // null: not a socketable gem
+int gearSockets(const ItemStack& s);                                      // 0: no sockets
+std::vector<std::string> gearGems(const ItemStack& s);                    // the gems set in it
+float gemAttr(const Player& p, const std::string& attr, bool pct);        // from the worn and held gear
+std::string gemSocketsLine(const ItemStack& s);                           // "Sockets: Ruby (+5% damage), empty" ("" with none)
 } // namespace dq

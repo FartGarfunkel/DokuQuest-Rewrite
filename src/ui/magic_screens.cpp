@@ -58,6 +58,7 @@ std::string magicItemTooltip(const ItemStack& s0) {
     int L = gearLevel(s);
     out += "Level " + std::to_string(L) + (L >= GEAR_MAX ? " (max)" : "") + "\n";
   }
+  if (const std::string g = gemSocketsLine(s); !g.empty()) out += g + "\n";
   if (d) { std::string desc = d->str("desc"); if (!desc.empty()) out += desc + "\n"; }
   return out;
 }
@@ -206,11 +207,13 @@ public:
           if (*hand) { ImVec2 hs = ui::textSize(ui::F_SMALL, hand); dl->AddRectFilled(q, ImVec2(q.x + hs.x + 6 * z, q.y + lh - 2 * z), ui::ink::head, 2 * z); ui::text(dl, ui::F_SMALL, ImVec2(q.x + 3 * z, q.y + (lh - 2 * z - hs.y) * 0.5f), ui::col::rgb(0xf3ead6), hand); }
           const float nx = q.x + 26 * z;
           ui::text(dl, ui::F_BODY, ImVec2(nx, q.y), kn ? inkOf(col) : ui::ink::muted, name.c_str());
-          std::string cost = "Magic " + std::to_string(lvlNeed) + " \xC2\xB7 " + std::to_string(mana) + " mana";
+          const SpellDef* SD = magicData().spell(k);
+          const int er = kn ? effectiveSpellRank(*p, k) : 1;
+          std::string cost = (kn ? std::string(spellRarityName(er)) + " \xC2\xB7 " : std::string()) + (SD && SD->cast != "instant" ? (SD->cast == "long" ? "long cast \xC2\xB7 " : "continuous \xC2\xB7 ") : "") + "Magic " + std::to_string(lvlNeed) + " \xC2\xB7 " + std::to_string(mana) + " mana";
           ImVec2 cs = ui::textSize(ui::F_SMALL, cost.c_str());
           ui::text(dl, ui::F_SMALL, ImVec2(q.x + w - cs.x, q.y + (lh - cs.y) * 0.5f), ui::ink::muted, cost.c_str());
           for (size_t i = 0; i < lines.size(); i++) ui::text(dl, ui::F_SMALL, ImVec2(nx, q.y + lh + i * sh), kn ? ui::ink::text : ui::ink::muted, lines[i].c_str());
-          if (kn && hot) ImGui::SetTooltip("Rank %d of 10 \xC2\xB7 %d%% to the next", spellRank(*p, k), (int)(spellRankProgress(*p, k) * 100));
+          if (kn && hot) ImGui::SetTooltip("Rank %d of 10 (%s) \xC2\xB7 %d%% to the next%s", spellRank(*p, k), spellRarityName(spellRank(*p, k)), (int)(spellRankProgress(*p, k) * 100), bookRank(*p, k) > spellRank(*p, k) ? " \xC2\xB7 your spellbook holds it higher" : "");
           (void)a;
         };
         r.push_back(std::move(row));
