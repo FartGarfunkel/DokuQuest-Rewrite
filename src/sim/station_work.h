@@ -39,6 +39,23 @@ std::vector<std::pair<std::string, int>> cutWorkOptions(World& w, ivec3 at);    
 // one block cut into option k (all: every block on the table); the pieces into the bag. Returns how many blocks went
 int cutWorkDo(Level& lv, Player& p, World& w, ivec3 at, int k, bool all);
 
+// the Tool Forge (pairs as "forgework": slot 0 a tool to set a gem in, slot 1 the gem; or slot 0 a material it forges heads
+// of, tools/port/forging.py): the heads the material lying there makes {head, its cost}, and one forged (into the bag)
+std::vector<std::pair<std::string, int>> forgeWorkHeads(World& w, ivec3 at);
+bool forgeWorkHead(Level& lv, Player& p, World& w, ivec3 at, int k, ItemStack* made = nullptr);
+
+// the inscription table {type:"inscribework", items:[spellbook, scroll, paper, lapis], f}: what's laid on its board (the
+// spell_items.h work: a scroll inscribed into the book, a spell taken out of it as a scroll, a scroll written on the paper
+// in the lapis's ink). The work's functions return "" done, else why not (toasted)
+std::vector<ItemStack> inscribeWorkItems(World& w, ivec3 at);
+int inscribeSlotFor(const ItemStack& s);   // -1: not one of them
+bool inscribeWorkPut(Level& lv, Player& p, World& w, ivec3 at, ItemStack& held);
+bool inscribeWorkTake(Level& lv, Player& p, World& w, ivec3 at, int k);
+std::string inscribeWorkInscribe(Level& lv, Player& p, World& w, ivec3 at);
+std::string inscribeWorkExtract(Level& lv, Player& p, World& w, ivec3 at, int slot);
+std::string inscribeWorkWrite(Level& lv, Player& p, World& w, ivec3 at, const std::string& spell);
+vec3 inscribeLiePos(World& w, ivec3 at, int k);
+
 // the jukebox {type:"jukebox", disc}: a record in its slot plays (the "jukebox" event; the classic use and its scene)
 std::string jukeboxDisc(World& w, ivec3 at);                                                // "" none
 bool jukeboxInsert(Level& lv, Player& p, World& w, ivec3 at, ItemStack& held);             // one record from what's held

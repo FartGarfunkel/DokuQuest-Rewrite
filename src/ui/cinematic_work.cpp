@@ -60,7 +60,7 @@ bool sceneKeys(App& a, ivec3 at, bool working, bool& showBag) {
 PairBeats pairBeats(int kind) {
   switch (kind) {
     case 6: return {2.4, 0.6, 1.9};
-    case 8: return {2.6, 0.95, SMITH_COOLED};
+    case 8: case 15: return {2.6, 0.95, SMITH_COOLED};   // (15 the Tool Forge: the gem hammered into the tool, a head hammered out, as the smithing table)
     case 9: return {2.4, LOOM_FROM, LOOM_TO};
     case 10: return {1.8, 0.6, 1.4};
     case 11: return {2.1, 0.6, 1.55};
@@ -68,7 +68,7 @@ PairBeats pairBeats(int kind) {
   }
 }
 int pairSceneKind(const std::string& st) {
-  return st == "grindstone" ? 6 : st == "smithing" ? 8 : st == "loom" ? 9 : st == "fletching" ? 10 : st == "cartography" ? 11 : 0;
+  return st == "grindstone" ? 6 : st == "smithing" ? 8 : st == "loom" ? 9 : st == "fletching" ? 10 : st == "cartography" ? 11 : st == "forge" ? 15 : 0;
 }
 
 vec3 pairHeldPos(const PairView& v, int k, const vec3 lying[2]) {
@@ -88,7 +88,7 @@ vec3 pairHeldPos(const PairView& v, int k, const vec3 lying[2]) {
       p.y -= 0.008f * std::fabs(std::sin(PI * (t - B.contact) / 0.433)) * (float)win(t, B.contact, 0.7);
       return p;
     }
-    case 8: {   // SmithingStation: the material up (MATERIAL_UP 0.5), over the gear and down onto it (MATERIAL_DOWN 0.76, ON_GEAR)
+    case 8: case 15: {   // SmithingStation: the material up (MATERIAL_UP 0.5), over the gear and down onto it (MATERIAL_DOWN 0.76, ON_GEAR)
       if (k == 0) return lying[0];
       const vec3 up = lying[1] + vec3(0, 0.12f, 0), onGear = lying[0] + vec3(0, 0.025f, 0), over = onGear + vec3(0, 0.12f, 0);
       if (t < 0.5) return mixv(lying[1], up, smoother(win(t, 0.1, 0.5)));
@@ -158,6 +158,12 @@ namespace {
 // With something in hand, a click on the station sets it down where it belongs (all of a stack that goes in; one piece of
 // gear); an empty hand on a piece does the work when there's something to make (else takes the piece back); right click
 // takes back. The work (pairBeats): the pieces taken up, the thing made at contact and handed to you
+// the Tool Forge's dial of heads: a half ring over the forge (StonecutterStation's dial, smaller), head k of n
+vec3 headDialPointAt(ivec3 at, float viewYaw, int k, int n, double clock) {
+  const float a = dialAngle(k, n, 0) * PI / 180.f;
+  const float bob = 0.008f * std::sin((float)clock * 1.7f + k * 1.3f);
+  return vec3(at) + vec3(0.5f, 1.f, 0.5f) - sideOf(viewYaw) * 0.08f + rightOf(viewYaw) * (std::cos(a) * 0.5f) + vec3(0, 0.1f + std::sin(a) * 0.2f + bob, 0);
+}
 class CinematicPairScreen : public Screen {
 public:
   CinematicPairScreen(ivec3 at, std::string station) : at(at), st(std::move(station)), kind(pairSceneKind(st)) {}
@@ -186,9 +192,11 @@ public:
     if (inBag) return;
     if (in.pressed(Act::MenuY) || in.pressed(Act::MenuStart)) work(a);
     const ivec2 nav = in.navStep();
-    if (nav.x) { pad = true; zone = nav.x > 0 ? 1 : 0; }
-    if (pad && in.pressed(Act::MenuOk)) { if (!p.held().empty()) put(a, zone); else if (pairWorkResult(*s->level, w, at).ok) work(a); else take(a, zone); }
-    if (pad && in.pressed(Act::MenuX)) take(a, zone);
+    const int nHeads = st == "forge" ? (int)forgeWorkHeads(w, at).size() : 0;   // (the Tool Forge with a material on it: its heads on a dial)
+    if (nav.x) { pad = true; if (nHeads) padHead = std::clamp(padHead + nav.x, 0, nHeads - 1); else zone = nav.x > 0 ? 1 : 0; }
+    if (nHeads) padHead = std::min(padHead, nHeads - 1);
+    if (pad && in.pressed(Act::MenuOk)) { if (!p.held().empty()) put(a, nHeads ? 0 : zone); else if (nHeads) forgeHead(a, padHead); else if (pairWorkResult(*s->level, w, at).ok) work(a); else take(a, zone); }
+    if (pad && in.pressed(Act::MenuX)) take(a, nHeads ? 0 : zone);
   }
   void draw(App& a) override {
     GameSession* s = a.session.get();
@@ -199,7 +207,7 @@ public:
     const bool overUi = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook();
     const std::vector<ItemStack> v = pairWorkItems(w, at);
     const StationResult r = pairWorkResult(*s->level, w, at);
-    if (glm::length(vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y)) > 0.5f) pad = false;
+    if (mouseTookOver(a)) pad = false;
     const float topY = st == "grindstone" ? 0.9f : 0.75f;
     // what the mouse is on: a piece lying there, or the station (something in hand)
     int hover = -1; bool onStation = false;
@@ -207,13 +215,34 @@ public:
       for (int k = 0; k < 2 && hover < 0; k++) if (!v[k].empty() && under(a, pairLiePos(w, at, k), st == "cartography" && k == 0 ? 0.22f : 0.13f)) hover = k;
       onStation = under(a, vec3(at) + vec3(0.5f, topY, 0.5f), 0.45f);
     } else if (pad) hover = zone;
-    const vec3 aimAt = hover >= 0 ? pairLiePos(w, at, hover) : vec3(at) + vec3(0.5f, 1.f, 0.5f);
-    cinematicSetAimPoint(scene().phase == 2 && workAt < 0 && (hover >= 0 || onStation), aimAt);
+    // the Tool Forge's heads: on a dial over it, each its picture; the mouse on one (or the pad's pick) forges it
+    const std::vector<std::pair<std::string, int>> heads = st == "forge" ? forgeWorkHeads(w, at) : std::vector<std::pair<std::string, int>>{};
+    int headHover = -1;
+    auto headPoint = [&](int k) { return headDialPoint(k, (int)heads.size()); };
+    if (!heads.empty() && scene().phase == 2 && workAt < 0) {
+      if (pad) headHover = std::min(padHead, (int)heads.size() - 1);
+      else if (!overUi) for (int k = 0; k < (int)heads.size() && headHover < 0; k++) if (under(a, headPoint(k), 0.08f)) headHover = k;
+      if (headHover >= 0) hover = -1;
+    }
+    const vec3 aimAt = headHover >= 0 ? headPoint(headHover) - vec3(0, 0.08f, 0) + sideOf(scene().viewYaw) * 0.1f : hover >= 0 ? pairLiePos(w, at, hover) : vec3(at) + vec3(0.5f, 1.f, 0.5f);
+    cinematicSetAimPoint(scene().phase == 2 && workAt < 0 && (hover >= 0 || onStation || headHover >= 0), aimAt);
+    for (int k = 0; k < (int)heads.size() && scene().phase == 2 && workAt < 0; k++) {
+      ImVec2 hp; if (!toScreen(a, headPoint(k), hp)) continue;
+      const float is = 44 * z;
+      const bool afford = !v[0].empty() && v[0].n >= heads[k].second;
+      dl->AddCircleFilled(hp, is * 0.72f, IM_COL32(236, 222, 190, afford ? 200 : 110), 24);   // (a pale disc: dark iron heads read on it)
+      dl->AddCircle(hp, is * 0.72f, IM_COL32(90, 70, 40, 200), 24, 1.5f * z);
+      ui::drawItem(dl, ItemStack(heads[k].first, 1), ImVec2(hp.x - is / 2, hp.y - is / 2), is);
+      if (!afford) dl->AddCircleFilled(hp, is * 0.72f, IM_COL32(20, 14, 10, 120), 24);
+      { char c[8]; snprintf(c, sizeof c, "%d", heads[k].second); dl->AddText(ImVec2(hp.x + is * 0.38f, hp.y + is * 0.22f), IM_COL32(60, 40, 20, 255), c); }
+      if (k == headHover) dl->AddCircle(hp, is * 0.8f, IM_COL32(255, 236, 160, 230), 24, 2 * z);
+    }
     if (scene().phase == 2 && workAt < 0 && (hover >= 0 || (onStation && !p.held().empty()))) {
       ImVec2 sp; if (toScreen(a, aimAt, sp)) dl->AddCircle(sp, 30 * z, IM_COL32(255, 236, 160, 220), 28, 2 * z);
     }
     if (!overUi && !pad && scene().phase == 2 && workAt < 0) {
-      if (ImGui::IsMouseClicked(0)) {
+      if (headHover >= 0 && ImGui::IsMouseClicked(0)) forgeHead(a, headHover);
+      else if (ImGui::IsMouseClicked(0)) {
         if (!p.held().empty() && (onStation || hover >= 0)) put(a, hover >= 0 ? hover : -1);
         else if (hover >= 0) { if (r.ok) work(a); else take(a, hover); }
       } else if (ImGui::IsMouseClicked(1) && hover >= 0) take(a, hover);
@@ -225,9 +254,13 @@ public:
     ImGui::Begin("##cine_pair", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav);
     ImGui::Text("In hand: %s   \xC2\xB7   On the %s: %s, %s", nameOf(p.held()).c_str(), place(), nameOf(v[0]).c_str(), nameOf(v[1]).c_str());
     if (workAt >= 0) ImGui::Text("%s: %s", verbing(), nameOf(g_pv.after).c_str());
+    else if (headHover >= 0) ImGui::Text("Forge: %s   \xC2\xB7   takes %d", nameOf(ItemStack(heads[headHover].first, 1)).c_str(), heads[headHover].second);
+    else if (!heads.empty()) ImGui::Text("Pick a head to forge from it (a head and a haft make the tool at the crafting table)");
     else if (r.ok) ImGui::Text("Makes: %s%s%s", nameOf(r.out).c_str(), r.note.empty() ? "" : "   \xC2\xB7   ", r.note.c_str());
     else ImGui::TextDisabled("%s", v[0].empty() && v[1].empty() ? help() : "Nothing comes of those two");
     ImGui::TextDisabled(bag.on ? "Bag: D-pad choose \xC2\xB7 A take into hand \xC2\xB7 B / LB / RB back to the station"
+                      : !heads.empty() ? (pad ? "D-pad left / right a head \xC2\xB7 A forge it \xC2\xB7 X take the material back \xC2\xB7 LB / RB your bag \xC2\xB7 B leave"
+                                              : "Click a head to forge it \xC2\xB7 right click the material: take it back")
                       : pad ? "D-pad left / right a side \xC2\xB7 A set it down (empty hand: do it) \xC2\xB7 X take back \xC2\xB7 Y do it \xC2\xB7 LB / RB your bag \xC2\xB7 B leave"
                             : "Left click the station: set down what's in hand \xC2\xB7 empty hand on a piece: do the work (or take it back) \xC2\xB7 Right click: take back");
     ImGui::BeginDisabled(!r.ok || workAt >= 0);
@@ -239,6 +272,7 @@ public:
       uiDefer([pos, station](App& a2) {
         if (!a2.session || !a2.session->player) return;
         if (station == "cartography") a2.events.emit("screenOpen", json::array({a2.session->player->name, "table", json{{"classic", true}}}));
+        else if (station == "forge" && !forgeWorkHeads(a2.session->world(), pos).empty()) a2.events.emit("screenOpen", json::array({a2.session->player->name, "stonecutter", json{{"kind", "forge"}}}));   // (the heads' list)
         else a2.events.emit("screenOpen", json::array({a2.session->player->name, "station", json{{"kind", station}, {"pos", {pos.x, pos.y, pos.z}}, {"classic", true}}}));
       });
       a.popScreen(); ImGui::End(); return;
@@ -248,16 +282,18 @@ public:
     ImGui::End();
   }
 private:
-  ivec3 at; std::string st; int kind; int zone = 0, lastBeat = -1; bool pad = false, showBag = true, made = false, cooled = false; double workAt = -1;
+  ivec3 at; std::string st; int kind; int zone = 0, lastBeat = -1, headPick = -1, padHead = 0;
+  vec3 headDialPoint(int k, int n) const { return headDialPointAt(at, scene().viewYaw, k, n, scene().clock); } bool pad = false, showBag = true, made = false, cooled = false; double workAt = -1;
   BagPad bag;
-  const char* place() const { return st == "grindstone" ? "stone" : st == "loom" ? "loom" : "table"; }
-  const char* verb() const { return st == "grindstone" ? "Grind" : st == "smithing" ? "Smith" : st == "loom" ? "Weave" : st == "fletching" ? "Fletch" : "Work the map"; }
-  const char* verbing() const { return st == "grindstone" ? "Grinding" : st == "smithing" ? "Smithing" : st == "loom" ? "Weaving" : st == "fletching" ? "Fletching" : "Drawing"; }
+  const char* place() const { return st == "grindstone" ? "stone" : st == "loom" ? "loom" : st == "forge" ? "forge" : "table"; }
+  const char* verb() const { return st == "grindstone" ? "Grind" : st == "smithing" ? "Smith" : st == "forge" ? "Set the gem" : st == "loom" ? "Weave" : st == "fletching" ? "Fletch" : "Work the map"; }
+  const char* verbing() const { return st == "grindstone" ? "Grinding" : st == "smithing" || st == "forge" ? "Smithing" : st == "loom" ? "Weaving" : st == "fletching" ? "Fletching" : "Drawing"; }
   const char* help() const {
     return st == "grindstone" ? "Lay an enchanted piece on the stone (or two worn ones of a kind) to grind"
          : st == "smithing" ? "Lay gear in the middle and its upgrade beside it (diamond + cinderite shard, copper + tin)"
          : st == "loom" ? "Lay blocks to dye on the loom (up to eight a dye) and a dye at its corner"
          : st == "fletching" ? "Lay a flint and a feather on the table: six arrows"
+         : st == "forge" ? "Lay a tool on the forge and a gem beside it to set in it, or a material (flint, an ingot, a gem, obsidian...) to forge tool heads of"
          : "Lay a map on the table, and paper to zoom it out or empty maps to copy it";
   }
   void put(App& a, int slot) { GameSession* s = a.session.get(); if (!s || workAt >= 0 || scene().phase != 2) return; cinematicTap(); pairWorkPut(*s->level, *s->player, s->world(), at, slot, s->player->held()); }
@@ -270,9 +306,23 @@ private:
     if (!r.ok) return;
     const std::vector<ItemStack> v = pairWorkItems(w, at);
     g_pv.before[0] = v[0]; g_pv.before[1] = v[1]; g_pv.after = r.out;
-    workAt = scene().clock; made = false; cooled = false; lastBeat = -1;
+    workAt = scene().clock; made = false; cooled = false; lastBeat = -1; headPick = -1;
     cinematicTap();
     if (a.audio) a.audio->play(st == "grindstone" ? "grind" : st == "cartography" ? "map_paper" : "click");
+  }
+  // the Tool Forge: head k hammered out of the material lying there (the smithing table's beats; made at contact)
+  void forgeHead(App& a, int k) {
+    GameSession* s = a.session.get();
+    if (!s || workAt >= 0 || scene().phase != 2) return;
+    World& w = s->world();
+    const auto heads = forgeWorkHeads(w, at);
+    if (k < 0 || k >= (int)heads.size()) return;
+    const std::vector<ItemStack> v = pairWorkItems(w, at);
+    if (v[0].n < heads[k].second) { toast(*s->level, *s->player, "That head takes " + std::to_string(heads[k].second) + " of it"); return; }
+    g_pv.before[0] = v[0]; g_pv.before[1] = ItemStack(); g_pv.after = ItemStack(heads[k].first, 1);
+    workAt = scene().clock; made = false; cooled = false; lastBeat = -1; headPick = k;
+    cinematicTap();
+    if (a.audio) a.audio->play("click");
   }
   // the work going on: the thing made at contact; each station's sparks, sounds and smoke on its beats
   void tick(App& a, GameSession& s, Player& p, World& w) {
@@ -282,9 +332,9 @@ private:
     if (!made && t >= B.contact) {
       made = true;
       ItemStack out;
-      if (!pairWorkDo(*s.level, p, w, at, &out)) { workAt = -1; return; }
+      if (headPick >= 0 ? !forgeWorkHead(*s.level, p, w, at, headPick, &out) : !pairWorkDo(*s.level, p, w, at, &out)) { workAt = -1; return; }
       g_pv.after = out;   // (a zoomed-out map has its own new map only now)
-      if (s.level->fx && kind == 8) s.level->fx->particles("spark", pairLiePos(w, at, 0) + vec3(0, 0.05f, 0), 12);
+      if (s.level->fx && (kind == 8 || kind == 15)) s.level->fx->particles("spark", pairLiePos(w, at, 0) + vec3(0, 0.05f, 0), 12);
       if (s.level->fx && kind == 10) s.level->fx->particles("poof", c, 4);
     }
     if (kind == 6 && t >= B.contact && t < B.letGo) {   // a shower of sparks off the wheel at each stroke's turn
@@ -300,7 +350,7 @@ private:
       const int pass = (int)(win(t, LOOM_FROM, LOOM_TO) * LOOM_PASSES);
       if (pass != lastBeat) { lastBeat = pass; if (a.audio) a.audio->play("click", 0.45f, 0.8f + 0.05f * pass); cinematicTap(); }
     }
-    if (kind == 8 && !cooled && t >= SMITH_COOLED - 0.15) {   // quenched: a hiss and a breath of steam
+    if ((kind == 8 || kind == 15) && !cooled && t >= SMITH_COOLED - 0.15) {   // quenched: a hiss and a breath of steam
       cooled = true;
       if (a.audio) a.audio->play("fizz", 0.6f);
       if (s.level->fx) s.level->fx->particles("smoke", pairLiePos(w, at, 0) + vec3(0, 0.08f, 0), 6);
@@ -366,7 +416,7 @@ public:
     const ItemStack stone = cutWorkItem(w, at);
     const auto opts = cutWorkOptions(w, at);
     const int n = (int)opts.size();
-    if (glm::length(vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y)) > 0.5f) pad = false;
+    if (mouseTookOver(a)) pad = false;
     int hover = -1; bool onStone = false, onTable = false;
     if (!pad && !overUi && scene().phase == 2 && cutAt < 0) {
       for (int k = 0; k < n && hover < 0; k++) if (cutDialShown(k, n, scroll) > 0.5f && under(a, cutDialPoint(at, scene().viewYaw, k, n, scroll, scene().clock), 0.075f)) hover = k;
@@ -495,7 +545,7 @@ public:
     const bool overUi = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook();
     const std::string playing = jukeboxDisc(w, at);
     const int n = (int)g_jv.dial.size();
-    if (glm::length(vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y)) > 0.5f) pad = false;
+    if (mouseTookOver(a)) pad = false;
     int hover = -1; bool onBox = false;
     if (!pad && !overUi && scene().phase == 2 && animAt < 0) {
       if (playing.empty()) for (int k = 0; k < n && hover < 0; k++) if (cutDialShown(k, n, scroll) > 0.5f && under(a, jukeDialPoint(at, scene().viewYaw, k, n, scroll, scene().clock), 0.1f)) hover = k;
@@ -603,7 +653,7 @@ public:
     const bool overUi = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook();
     const std::vector<ItemStack> food = campfireFood(w, at);
     const bool cooks = campfireCooks(p.held()), lit = !(w.getMeta(at.x, at.y, at.z) & 8);
-    if (glm::length(vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y)) > 0.5f) pad = false;
+    if (mouseTookOver(a)) pad = false;
     int hover = -1;
     if (!pad && !overUi && scene().phase == 2) { for (int k = 0; k < 4 && hover < 0; k++) if (under(a, campfireSpot(at, k), 0.14f)) hover = k; }
     else if (pad) hover = padSpot;

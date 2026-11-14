@@ -7,6 +7,9 @@
 #include "core/registry.h"
 #include "world/dirs.h"
 #include "sim/skills.h"
+#include "sim/spell_items.h"
+#include "sim/magic.h"
+#include "core/tool_parts.h"
 
 namespace dq {
 
@@ -36,7 +39,7 @@ void give(Level& lv, Player& p, ItemStack s) {
 // ---- the grindstone, smithing table, loom, fletching and cartography tables ----
 const char* pairWorkType(const std::string& st) {
   return st == "grindstone" ? "grindwork" : st == "smithing" ? "smithwork" : st == "loom" ? "loomwork" : st == "fletching" ? "fletchwork"
-       : st == "cartography" ? "mapwork" : nullptr;
+       : st == "cartography" ? "mapwork" : st == "forge" ? "forgework" : nullptr;
 }
 std::string pairStationAt(World& w, ivec3 at) {
   const std::string st = reg().block(w.getBlock(at.x, at.y, at.z)).str("station");
@@ -69,12 +72,22 @@ bool pairWorkPut(Level& lv, Player& p, World& w, ivec3 at, int slot, ItemStack& 
   const std::string st = pairStationAt(w, at);
   if (st.empty() || held.empty() || slot > 1) return false;
   std::vector<ItemStack> v = pairWorkItems(w, at);
-  if (const int want = pairSlotFor(st, held); want >= 0) slot = want;
+  if (st == "forge") {   // the Tool Forge: a tool in the middle (a gem set in it beside), or a material to forge heads of
+    const ItemDef* d = reg().item(held.id);
+    const bool tool = d && d->hasTool, gem = gemEffect(held.id) != nullptr, mat = !forgeOptions(held.id).empty();
+    const ItemDef* d0 = v[0].empty() ? nullptr : reg().item(v[0].id);
+    const bool toolOn = d0 && d0->hasTool;
+    if (tool) slot = 0;
+    else if (gem && (toolOn || !mat)) slot = 1;
+    else if (mat) slot = 0;
+    else { toast(lv, p, "The forge makes nothing of that"); return false; }
+    if (slot == 1 && !v[0].empty() && !toolOn) { toast(lv, p, "Take the material off first: a gem is set in a tool"); return false; }
+  } else if (const int want = pairSlotFor(st, held); want >= 0) slot = want;
   else if (slot < 0 || !v[slot].empty()) slot = v[0].empty() ? 0 : v[1].empty() ? 1 : -1;
   if (slot < 0) { toast(lv, p, "Both sides are taken"); return false; }
   if (!v[slot].empty() && !v[slot].canMerge(held)) { toast(lv, p, "Something's lying there already"); return false; }
   // one piece of gear (and one a side on the grindstone); the rest as many as stack
-  const bool one = st == "grindstone" || (st == "smithing" && slot == 0) || held.maxStack() <= 1;
+  const bool one = st == "grindstone" || (st == "smithing" && slot == 0) || (st == "forge" && slot == 1) || held.maxStack() <= 1;   // (the Tool Forge: one gem a tool; a tool is one of itself)
   const int room = one ? (v[slot].empty() ? 1 : 0) : (v[slot].empty() ? held.maxStack() : v[slot].maxStack() - v[slot].n);
   const int put = std::min(room, held.n);
   if (put <= 0) return false;
@@ -122,7 +135,8 @@ bool pairWorkDo(Level& lv, Player& p, World& w, ivec3 at, ItemStack* made) {
   StationResult r = (v[0].empty() && v[1].empty()) ? StationResult{} : st == "cartography" ? mapPairResult(lv, v[0], v[1], true) : pairResult(lv, st, v[0], v[1]);
   if (!r.ok) {
     toast(lv, p, st == "grindstone" ? "Nothing to grind off that" : st == "smithing" ? "That won't take that upgrade" : st == "loom" ? "That dye won't take on that"
-               : st == "fletching" ? "Fletching takes a flint and a feather" : "That doesn't make anything of the map");
+               : st == "fletching" ? "Fletching takes a flint and a feather" : st == "forge" ? "That gem won't set in that"
+               : "That doesn't make anything of the map");
     return false;
   }
   auto use = [&](int k, int n) { if (v[k].empty() || n <= 0) return; if ((v[k].n -= n) <= 0) v[k] = ItemStack(); };
@@ -132,7 +146,7 @@ bool pairWorkDo(Level& lv, Player& p, World& w, ivec3 at, ItemStack* made) {
   give(lv, p, r.out);
   if (r.xp > 0) { addXP(p, r.xp); sfxUi(lv, p, "xp"); }   // (the grindstone: the enchantments' experience back)
   const vec3 c = vec3(at) + vec3(0.5f, 1.f, 0.5f);
-  sfxAt(lv, st == "grindstone" ? "grind" : st == "smithing" ? "anvil" : st == "cartography" ? "map_paper" : st == "fletching" ? "bow" : "craft", c);
+  sfxAt(lv, st == "grindstone" ? "grind" : st == "smithing" || st == "forge" ? "anvil" : st == "cartography" ? "map_paper" : st == "fletching" ? "bow" : "craft", c);
   if (st == "smithing" || st == "fletching") onCrafted(lv, p, r.out.id, r.out.n, st == "smithing", false);   // (Smithing / Fine Work)
   return true;
 }
@@ -183,6 +197,108 @@ int cutWorkDo(Level& lv, Player& p, World& w, ivec3 at, int k, bool all) {
   while (out.n > 0) { ItemStack o = out; o.n = std::min(out.n, std::max(1, o.maxStack())); out.n -= o.n; give(lv, p, o); }
   sfxAt(lv, "saw", vec3(at) + vec3(0.5f, 0.6f, 0.5f));
   return blocks;
+}
+
+// ---- the Tool Forge's heads ----
+std::vector<std::pair<std::string, int>> forgeWorkHeads(World& w, ivec3 at) {
+  std::vector<std::pair<std::string, int>> out;
+  if (pairStationAt(w, at) != "forge") return out;
+  const std::vector<ItemStack> v = pairWorkItems(w, at);
+  const ItemDef* d = v[0].empty() ? nullptr : reg().item(v[0].id);
+  if (!d || d->hasTool || !v[1].empty()) return out;
+  for (auto& [head, n] : forgeOptions(v[0].id)) out.push_back({head, forgeCost(head)});
+  return out;
+}
+bool forgeWorkHead(Level& lv, Player& p, World& w, ivec3 at, int k, ItemStack* made) {
+  const auto heads = forgeWorkHeads(w, at);
+  if (k < 0 || k >= (int)heads.size()) return false;
+  std::vector<ItemStack> v = pairWorkItems(w, at);
+  const int cost = heads[k].second;
+  if (v[0].n < cost) { toast(lv, p, "That head takes " + std::to_string(cost) + " of it"); return false; }
+  if ((v[0].n -= cost) <= 0) v[0] = ItemStack();
+  savePair(w, at, "forge", v, std::max(0, pairFacing(w, at)));
+  const ItemStack out(heads[k].first, 1);
+  if (made) *made = out;
+  give(lv, p, out);
+  sfxAt(lv, "anvil", vec3(at) + vec3(0.5f, 1.f, 0.5f));
+  return true;
+}
+
+// ---- the inscription table ----
+namespace {
+bool isInscriber(World& w, ivec3 at) { return reg().block(w.getBlock(at.x, at.y, at.z)).str("station") == "inscribe"; }
+int inscribeFacing(World& w, ivec3 at) { return pairFacing(w, at); }
+}  // namespace
+std::vector<ItemStack> inscribeWorkItems(World& w, ivec3 at) { return items(w, at, "inscribework", 4); }
+int inscribeSlotFor(const ItemStack& s) {
+  if (s.empty()) return -1;
+  if (bookSlots(s.id)) return 0;
+  if (isScroll(s)) return 1;
+  if (s.id == "paper") return 2;
+  if (s.id == "lapis_lazuli") return 3;
+  return -1;
+}
+bool inscribeWorkPut(Level& lv, Player& p, World& w, ivec3 at, ItemStack& held) {
+  if (held.empty() || !isInscriber(w, at)) return false;
+  const int k = inscribeSlotFor(held);
+  if (k < 0) { toast(lv, p, "The table takes a spellbook, a scroll, paper and lapis"); return false; }
+  std::vector<ItemStack> v = inscribeWorkItems(w, at);
+  if (!v[k].empty() && !v[k].canMerge(held)) { toast(lv, p, "Something's lying there already"); return false; }
+  const int most = k < 2 ? 1 : held.maxStack();
+  const int put = std::min(held.n, most - (v[k].empty() ? 0 : v[k].n));
+  if (put <= 0) return false;
+  if (v[k].empty()) { v[k] = held; v[k].n = 0; }
+  v[k].n += put;
+  if ((held.n -= put) <= 0) held = ItemStack();
+  int f = inscribeFacing(w, at);
+  if (f < 0) f = w.getMeta(at.x, at.y, at.z) & 3;
+  save(w, at, "inscribework", v, f);
+  sfxMaterial(lv, "wood", "place", vec3(at) + vec3(0.5f, 1.f, 0.5f));
+  return true;
+}
+bool inscribeWorkTake(Level& lv, Player& p, World& w, ivec3 at, int k) {
+  if (k < 0 || k > 3) return false;
+  std::vector<ItemStack> v = inscribeWorkItems(w, at);
+  if (v[k].empty()) return false;
+  ItemStack s = v[k]; v[k] = ItemStack();
+  save(w, at, "inscribework", v, std::max(0, inscribeFacing(w, at)));
+  give(lv, p, s);
+  return true;
+}
+std::string inscribeWorkInscribe(Level& lv, Player& p, World& w, ivec3 at) {
+  std::vector<ItemStack> v = inscribeWorkItems(w, at);
+  const std::string why = inscribeScroll(v[0], v[1]);
+  if (!why.empty()) { toast(lv, p, why); return why; }
+  save(w, at, "inscribework", v, std::max(0, inscribeFacing(w, at)));
+  sfxAt(lv, "levelup", vec3(at) + vec3(0.5f, 1.f, 0.5f));
+  return "";
+}
+std::string inscribeWorkExtract(Level& lv, Player& p, World& w, ivec3 at, int slot) {
+  std::vector<ItemStack> v = inscribeWorkItems(w, at);
+  ItemStack out;
+  const std::string why = extractSpell(v[0], slot, out);
+  if (!why.empty()) { toast(lv, p, why); return why; }
+  save(w, at, "inscribework", v, std::max(0, inscribeFacing(w, at)));
+  give(lv, p, out);
+  sfxAt(lv, "book_page", vec3(at) + vec3(0.5f, 1.f, 0.5f));
+  return "";
+}
+std::string inscribeWorkWrite(Level& lv, Player& p, World& w, ivec3 at, const std::string& spell) {
+  std::vector<ItemStack> v = inscribeWorkItems(w, at);
+  ItemStack out;
+  const std::string why = writeScroll(p, spell, v[2], v[3], out);
+  if (!why.empty()) { toast(lv, p, why); return why; }
+  save(w, at, "inscribework", v, std::max(0, inscribeFacing(w, at)));
+  give(lv, p, out);
+  sfxAt(lv, "book_page", vec3(at) + vec3(0.5f, 1.f, 0.5f));
+  return "";
+}
+// on the lectern's board (data/shapes.json: its top 15 px up, the whole width): the book left of the middle, the scroll
+// to its right at the back, the paper to the right in front, the lapis at the right edge
+vec3 inscribeLiePos(World& w, ivec3 at, int k) {
+  vec3 out, right; stationWorkFrame(w, at, out, right);
+  static const vec2 O[4] = {{-0.14f, 0.f}, {0.2f, -0.17f}, {0.2f, 0.17f}, {0.4f, 0.f}};
+  return vec3(at) + vec3(0.5f, 15.f / 16, 0.5f) + right * O[k & 3].x + out * O[k & 3].y;
 }
 
 // ---- the jukebox ----
@@ -287,14 +403,14 @@ vec3 pairLiePos(World& w, ivec3 at, int slot) {
   vec3 out, right; stationWorkFrame(w, at, out, right);
   const std::string st = pairStationAt(w, at);
   vec2 o = slot == 0 ? vec2(0.1f, 0) : vec2(-0.1f, 0);
-  if (st == "smithing") o = slot == 0 ? vec2(0.f, 0.06f) : vec2(0.27f, -0.12f);
+  if (st == "smithing" || st == "forge") o = slot == 0 ? vec2(0.f, 0.06f) : vec2(0.27f, -0.12f);
   else if (st == "loom") o = slot == 0 ? vec2(0.06f, 0.04f) : vec2(0.32f, -0.22f);
   else if (st == "fletching") o = slot == 0 ? vec2(-0.16f, 0.04f) : vec2(0.16f, 0.04f);
   else if (st == "cartography") o = slot == 0 ? vec2(-0.04f, 0.04f) : vec2(0.34f, -0.1f);
   return vec3(at) + vec3(0.5f, 1.f, 0.5f) + right * o.x + out * o.y;
 }
 float pairLieSize(const std::string& st, int slot) {
-  if (st == "smithing") return slot == 0 ? 0.34f : 0.2f;
+  if (st == "smithing" || st == "forge") return slot == 0 ? 0.34f : 0.2f;
   if (st == "cartography") return slot == 0 ? 0.5f : 0.24f;
   if (st == "loom") return slot == 0 ? 0.24f : 0.2f;
   return 0.3f;

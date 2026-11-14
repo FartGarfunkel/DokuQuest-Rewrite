@@ -111,6 +111,7 @@ public:
     auto begin = [&] { if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; } };
     PairView pv; CutView cv; JukeView jv;
     FireView fv;
+    InscribeView insV; const bool inscribeOn = cinematicInscribeView(insV);
     const bool pairOn = cinematicPairView(pv), cutOn = cinematicCutView(cv), jukeOn = cinematicJukeView(jv), fireOn = cinematicFireView(fv);
     // a record standing up (in a jukebox's slot, on the dial): centred at c, facing along yaw, turned spin about its face
     auto record = [&](const std::string& id, vec3 c, float yaw, float spin, float size, VoxelLight L) {
@@ -172,6 +173,33 @@ public:
         }
         return;
       }
+      if (type == "inscribework") {   // the inscription table's board: book, scroll, paper, lapis (and its scene's work, ui/cinematic_inscribe.cpp)
+        const vec3 rel = f.cam.rel(glm::dvec3(x, y, z));
+        if (!f.cam.frustum.sphere(rel + vec3(0.5f), 1.2f)) return;
+        const ivec3 at(x, y, z);
+        const u8 l = w.getLight(x, y + 1, z);
+        const VoxelLight L{(l >> 4) / 15.f, (l & 15) / 15.f};
+        vec3 out, right; stationWorkFrame(w, at, out, right);
+        const float yaw = std::atan2(out.x, out.z);
+        const std::vector<ItemStack> v = inscribeWorkItems(w, at);
+        InscribeView iv; const bool on = inscribeOn && insV.at == at; if (on) iv = insV;
+        const bool work = on && iv.t >= 0 && iv.t < INSCRIBE_LENGTH;
+        const bool madeYet = work && iv.t >= INSCRIBE_CONTACT;
+        static const float SZ[4] = {0.36f, 0.26f, 0.24f, 0.18f};
+        vec3 lie[4]; for (int k = 0; k < 4; k++) lie[k] = inscribeLiePos(w, at, k);
+        for (int k = 0; k < 4; k++) {
+          ItemStack st = work && !madeYet && k < 2 ? iv.before[k] : v[k];
+          if (work && iv.mode == 0 && k == 1 && !madeYet) continue;   // (the scroll's in the hand, below)
+          const float lift = on && iv.hover == k && !work ? 0.02f + 0.006f * std::sin(t * 4.f) : 0.f;
+          // the book glowing as a spell goes in or comes out; the paper as it's written on
+          const float glow = !work ? 0.f : (k == 0 && iv.mode < 2) || (k == 2 && iv.mode == 2) ? (float)std::sin(std::clamp(iv.t / INSCRIBE_LENGTH, 0.0, 1.0) * PI) : 0.f;
+          if (glow > 0.01f) { lay(st, lie[k] + vec3(0, lift, 0), yaw + (k ? 0.3f : 0.f), SZ[k], VoxelLight{L.sky, std::max(L.block, glow)}, vec4(0.45f, 0.6f, 1.f, 0.6f * glow)); continue; }
+          heap(st, lie[k] + vec3(0, lift, 0), yaw + (k ? 0.3f : 0.f), SZ[k], L, right);
+        }
+        if (work && iv.mode == 0 && !madeYet) { ItemStack sc = iv.before[1]; sc.n = 1; lay(sc, inscribeScrollPos(iv, lie[0], lie[1]), yaw + 0.3f, SZ[1], L); }
+        if (madeYet && iv.mode > 0) lay(iv.made, inscribeRisePos(iv, iv.mode == 1 ? lie[0] : lie[2]), yaw + 0.3f, SZ[1] * (1 - 0.5f * (float)((iv.t - INSCRIBE_CONTACT) / (INSCRIBE_LENGTH - INSCRIBE_CONTACT))), VoxelLight{L.sky, std::max(L.block, 0.5f)});
+        return;
+      }
       if (type == "jukebox") {   // the record playing: standing in the slot, half out, turning slowly
         if (jukeOn && jv.at == ivec3(x, y, z)) return;
         const vec3 rel = f.cam.rel(glm::dvec3(x, y, z));
@@ -180,7 +208,7 @@ public:
         record(e["disc"].get<std::string>(), vec3(x, y, z) + vec3(0.5f, 1.06f, 0.5f), 0, -t * 1.6f, 0.5f, VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f});
         return;
       }
-      if (!cutwork && type != "grindwork" && type != "smithwork" && type != "loomwork" && type != "fletchwork" && type != "mapwork") return;
+      if (!cutwork && type != "grindwork" && type != "smithwork" && type != "loomwork" && type != "fletchwork" && type != "mapwork" && type != "forgework") return;
       const ivec3 at(x, y, z);
       if ((pairOn && pv.at == at) || (cutOn && cv.at == at)) return;   // (the scene draws it, below)
       const vec3 rel = f.cam.rel(glm::dvec3(x, y, z));
@@ -327,11 +355,12 @@ public:
         }
         break;
       }
-      case 8: {   // the smithing table: the material onto the gear; pressed, it glows (PEAK) and cools (COOLED); then off
+      case 8: case 15: {   // the smithing table (the Tool Forge): the material onto the gear (the gem into the tool); pressed, it glows (PEAK) and cools (COOLED); then off
         if (!made) { heap(v.before[0], lying[0], yaw + tilt[0], sz[0], L, right); lay(one(v.before[1]), pairHeldPos(v, 1, lying), yaw, sz[1], L); }
         else {
           const float heat = (float)(win(v.t, B.contact, SMITH_PEAK) * (1 - win(v.t, SMITH_PEAK, SMITH_COOLED)));
-          lay(v.after, flyOff(lying[0]), yaw + tilt[0], sz[0] * shrink, VoxelLight{L.sky, std::max(L.block, heat)}, vec4(1.f, 0.42f, 0.08f, 0.75f * heat));
+          if (v.kind == 15 && !now[0].empty()) heap(now[0], lying[0], yaw + tilt[0], sz[0], L, right);   // (a head forged: the rest of the material, the head on it)
+          lay(v.after, flyOff(lying[0] + vec3(0, v.kind == 15 && !now[0].empty() ? 0.06f : 0.f, 0)), yaw + tilt[0], sz[0] * shrink, VoxelLight{L.sky, std::max(L.block, heat)}, vec4(1.f, 0.42f, 0.08f, 0.75f * heat));
         }
         heap(made ? now[1] : less(v.before[1]), lying[1], yaw + tilt[1], sz[1], L, right);
         break;

@@ -56,8 +56,9 @@ public:
     const vec3 side(-std::sin(viewYaw + PI), 0, -std::cos(viewYaw + PI));   // from the table toward you
     vec3 rest[2];
     for (int k = 0; k < 2; k++) {
-      // leaning: the station's own rest (ui/cinematic_table.cpp leanPose); seamless first person: low before your own eyes
-      const vec3 r0 = cinematicLeaning() ? restAt[k] : camPos + fwd * 0.5f + right * (k == 0 ? 0.2f : -0.2f) + vec3(0, -0.36f, 0);
+      // the station's own rest (ui/cinematic_table.cpp leanPose): the hands on the work, leaning or with your own body's arms
+      // (seamless first person: they had rested low before the eyes, and the body's forearms from there filled the view)
+      const vec3 r0 = restAt[k];
       rest[k] = r0 + vec3(0, 0.003f * std::sin((float)since * (k ? 1.5f : 1.7f) + k * 2), 0);
     }
     const bool carrying = !s.player->held().empty();
@@ -80,7 +81,7 @@ public:
     if (glm::length(working - shoulder[w]) > MAX_REACH) working = shoulder[w] + glm::normalize(working - shoulder[w]) * MAX_REACH;
     vec3 target[2] = {w == 0 ? working : rest[0], w == 1 ? working : rest[1]};
     forging = cinematicKind() == 1 ? cinematicForgeT() : -1;
-    if (cinematicKind() == 8) {   // the smithing table: the anvil's three blows, the first landing as it's pressed (SmithingStation PRESS)
+    if (cinematicKind() == 8 || cinematicKind() == 15) {   // the smithing table (the Tool Forge): the anvil's three blows, the first landing as it's pressed (SmithingStation PRESS)
       PairView pv;
       if (cinematicPairView(pv) && pv.t >= 0) { const double f = pv.t - (pairBeats(8).contact - 0.7); if (f >= 0.45 && f < 1.62) forging = f; }
     }
@@ -94,7 +95,9 @@ public:
         prev = b;
       }
       if (forging >= BLOWS[2]) lift = 0.12f * (float)std::max(0.0, 1 - (forging - BLOWS[2]) / 0.32);
-      target[0] = strike + vec3(0, lift, 0) + side * (lift * 0.4f);
+      // (leaning: drawn back toward you; your own body's arm: raised over the work and away, the hammer it holds clear of
+      // your eyes, the blow coming down onto the piece before you)
+      target[0] = lean ? strike + vec3(0, lift, 0) + side * (lift * 0.4f) : strike + vec3(0, lift * 0.7f, 0) - side * (0.1f + lift * 0.35f);
       work = 0;
     }
     if (cinematicKind() == 2) if (const double rt = cinematicRitualT(); rt >= 0) {   // the rite: both hands rise round the item
@@ -110,7 +113,7 @@ public:
         auto hold = [&](int k) { return pairHeldPos(pv, k, lying) + side * 0.07f + right * (k ? -0.05f : 0.05f) + vec3(0, HAND_Y + 0.03f, 0); };
         const float back = (float)std::clamp((pv.t - B.letGo) / std::max(0.05, B.length - B.letGo), 0.0, 1.0);
         if (pv.kind == 6 || (pv.kind == 10 && pv.t < B.contact + 0.1)) for (int k = 0; k < 2; k++) { const vec3 h = hold(k); target[k] = h + (rest[k] - h) * back; }   // (both)
-        else if ((pv.kind == 8 && pv.t < 0.76) || (pv.kind == 11 && pv.t < B.contact + 0.05)) target[0] = hold(1);   // (the material, the paper)
+        else if (((pv.kind == 8 || pv.kind == 15) && pv.t < 0.76 && !pv.before[1].empty()) || (pv.kind == 11 && pv.t < B.contact + 0.05)) target[0] = hold(1);   // (the material, the paper)
         else if (pv.kind == 9 && pv.t < LOOM_TO) target[0] = hold(1);                                 // (the shuttle)
       }
     }
@@ -170,7 +173,7 @@ public:
       const mat4 M = B * glm::scale(mat4(1), vec3(aw, len / 0.70f, aw)) * glm::translate(mat4(1), vec3(0, 0.30f, 0));
       VR.draw(arm.gl, M * arm.matrix(), L);
     }
-    if (forging >= 0) {   // the hammer in the right hand, its head down to the work
+    if (forging >= 0 && cinematicLeaning()) {   // the hammer in the right hand, its head down to the work (seamless: in your body's own fist, render/char_layer.cpp)
       // your own hammer if you hold one (the stone, flint or smith's: the same as in your hand anywhere), else the smith's
       const ItemStack& hs = s.player->held();
       const bool ownHammer = !hs.empty() && model3dKind(hs.id, reg().item(hs.id)) == "hammer";
@@ -194,7 +197,7 @@ public:
     }
     // what you're working with, in the working hand (Cinematic Interactions' heldItemPoint)
     const ItemStack& held = s.player->held();
-    if (!held.empty() && forging < 0 && cinematicLeaning()) {
+    if (!held.empty() && forging < 0 && cinematicLeaning()) {   // (seamless first person: in your own body's fist, render/char_layer.cpp)
       const std::string pk = partToolModelKey(held);
       const VoxelModel& im = itemModel(pk.empty() ? held.id : pk);
       if (im.ready()) {

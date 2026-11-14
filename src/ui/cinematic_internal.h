@@ -23,6 +23,8 @@ struct Scene {
   vec3 front{0};   // a station with a front of its own (a furnace): lean in there, wherever you stand
   vec3 viewOff{0};     // the eye's offset from bending (cinematicViewOffset)
   float bend = 0;      // seamless first person: how far bent toward the work (0..1, eased)
+  vec3 dir{0};          // from the station toward where you work it (its front, or the side you came to)
+  glm::dvec3 standTo{0}; bool stand = false;   // seamless first person: where your body steps up to work it (if that's clear)
   bool lean = false;   // the camera leans over the station (Options "Lean the camera over stations"); off: seamless first person
 };
 Scene& scene();
@@ -37,6 +39,9 @@ struct BagPad { bool on = false; int cur = 27; };
 bool bagPadUpdate(Input& in, Player& p, BagPad& b);
 void drawBag(App& a, Player& p, int padCur);   // your bag beside the station (click a stack to work with it)
 std::string nameOf(const ItemStack& s);
+// the mouse taken up again (the scenes' pad mode off): moved, and more than a stray twitch while a controller's in use (a
+// cursor nudged as the scene frees it had dropped a pad player's first presses)
+bool mouseTookOver(const App& a);
 
 }  // namespace cine
 }  // namespace dq

@@ -429,6 +429,8 @@ void runStep(App& a, const json& st) {
     const ivec3 b = at(st); primeFormidi(*s->level, s->world(), b.x, b.y, b.z, st.value("key", std::string("formidibomb")));
   } else if (op == "health" && p) {   // set your health ("hp", half hearts): hurt, so food can be eaten
     p->hp = clampv(st.value("hp", p->hp), 1.f, p->maxHp);
+  } else if (op == "view" && s) {   // view{mode}: 0 first person, 1 over the shoulder, 2 behind, 3 in front
+    s->viewMode = std::clamp(st.value("mode", 0), 0, 3);
   } else if (op == "data" && p) {   // set Player::data[key] = value (hideGear, cape ...)
     p->data[st.value("key", "")] = st.contains("value") ? st["value"] : json();
   } else if (op == "explode" && s) {   // a blast there ("power", default 3; "at": "rug" the first rug "find" found)

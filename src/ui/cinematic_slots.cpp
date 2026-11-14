@@ -67,7 +67,7 @@ public:
     const float W = (float)a.width, H = (float)a.height, z = ui::Z();
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     const bool overUi = (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook());
-    if (glm::length(vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y)) > 0.5f) pad = false;
+    if (mouseTookOver(a)) pad = false;
     auto project = [&](vec3 wp, ImVec2& out) { vec4 q = cam.viewProj * vec4(cam.rel(glm::dvec3(wp)), 1); if (q.w <= 0.01f) return false; out = ImVec2((q.x / q.w * 0.5f + 0.5f) * W, (1 - (q.y / q.w * 0.5f + 0.5f)) * H); return true; };
     const vec3 side(std::sin(scene().viewYaw), 0, std::cos(scene().viewYaw));   // from it toward you
     const vec3 face = vec3(at) + vec3(0.5f) + side * 0.5f;

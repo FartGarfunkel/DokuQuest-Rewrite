@@ -54,6 +54,7 @@ void leanPose(Scene& S, vec3 eye) {
   d = std::fabs(d.x) > std::fabs(d.z) ? vec3(d.x > 0 ? 1.f : -1.f, 0, 0) : vec3(0, 0, d.z > 0 ? 1.f : -1.f);
   if (glm::length(S.front) > 0.5f) d = S.front;
   const vec3 right(d.z, 0, -d.x);   // to your right as you face the station
+  S.dir = d; S.stand = false;
   auto aimAt = [&](vec3 from, vec3 to) {
     const vec3 v = to - from;
     S.viewPos = glm::dvec3(from); S.viewYaw = std::atan2(-v.x, -v.z); S.viewPitch = std::atan2(v.y, std::hypot(v.x, v.z));
@@ -94,7 +95,7 @@ void leanPose(Scene& S, vec3 eye) {
     S.roll = -1.5f * PI / 180;
   } else {                    // TableStation: LEAN_BACK 0.86, LEAN_UP 0.72, the pitch atan2(LEAN_UP, LEAN_BACK - LOOK_BACK);
     // the smithing table (SmithingStation) 0.7 and 0.62, the cartography table (CartographyStation) 0.7 and 0.64
-    const float LEAN_BACK = S.kind == 8 || S.kind == 11 ? 0.7f : 0.86f, LEAN_UP = S.kind == 8 ? 0.62f : S.kind == 11 ? 0.64f : 0.72f, LOOK_BACK = -0.04f;
+    const float LEAN_BACK = S.kind == 8 || S.kind == 15 || S.kind == 11 ? 0.7f : 0.86f, LEAN_UP = S.kind == 8 || S.kind == 15 ? 0.62f : S.kind == 11 ? 0.64f : 0.72f, LOOK_BACK = -0.04f;
     S.viewPos = glm::dvec3(c + d * LEAN_BACK + vec3(0, LEAN_UP, 0));
     S.viewYaw = std::atan2(d.x, d.z);   // facing the table (lookVector: yaw 0 looks toward -z)
     S.viewPitch = -std::atan2(LEAN_UP, LEAN_BACK - LOOK_BACK);
@@ -297,6 +298,12 @@ float cinematicMoving() {   // 0..1: how far into a move in or out (the bars com
 }
 void cinematicTap() { g_tapAt = scene().clock; static double n = 0; g_tapN = ++n; }
 double cinematicTapTime() { return g_tapN; }
+namespace cine {
+bool mouseTookOver(const App& a) {
+  const float d = glm::length(vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y));
+  return d > 0.5f && (!a.input.usingPad() || d > 8.f);
+}
+}  // namespace cine
 bool cinematicHandsState(ivec3& at, int& aimCell, double& sinceTap, int& phase, float& viewYaw, vec3* rest) {
   const Scene& S = scene();
   if (S.phase == 0) return false;
@@ -421,7 +428,7 @@ public:
     const bool overUi = (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook());
     const vec3 c = vec3(at) + vec3(0.5f, 1.f, 0.5f);
     const vec3 right(std::cos(scene().viewYaw), 0, -std::sin(scene().viewYaw));
-    if (glm::length(vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y)) > 0.5f) pad = false;
+    if (mouseTookOver(a)) pad = false;
     int hover = pad ? zone : -1;
     if (!pad && !overUi && scene().phase == 2) {   // the ray through the mouse onto the face
       const ImVec2 m = ImGui::GetIO().MousePos; const vec2 ndc(m.x / W * 2 - 1, 1 - m.y / H * 2);
@@ -538,7 +545,7 @@ public:
     const float W = (float)a.width, H = (float)a.height, z = ui::Z();
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     const bool overUi = (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook());
-    if (glm::length(vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y)) > 0.5f) pad = false;
+    if (mouseTookOver(a)) pad = false;
     auto project = [&](vec3 wp, ImVec2& out) { vec4 q = cam.viewProj * vec4(cam.rel(glm::dvec3(wp)), 1); if (q.w <= 0.01f) return false; out = ImVec2((q.x / q.w * 0.5f + 0.5f) * W, (1 - (q.y / q.w * 0.5f + 0.5f)) * H); return true; };
     const vec3 top = vec3(at) + vec3(0.5f, 0.75f, 0.5f);
     const vec3 side(std::sin(scene().viewYaw), 0, std::cos(scene().viewYaw)), right(std::cos(scene().viewYaw), 0, -std::sin(scene().viewYaw));
@@ -668,7 +675,7 @@ public:
     const float W = (float)a.width, H = (float)a.height, z = ui::Z();
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     const bool overUi = (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook());
-    if (glm::length(vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y)) > 0.5f) pad = false;
+    if (mouseTookOver(a)) pad = false;
     auto project = [&](vec3 wp, ImVec2& out) { vec4 q = cam.viewProj * vec4(cam.rel(glm::dvec3(wp)), 1); if (q.w <= 0.01f) return false; out = ImVec2((q.x / q.w * 0.5f + 0.5f) * W, (1 - (q.y / q.w * 0.5f + 0.5f)) * H); return true; };
     // (on the stand's own pads, data/shapes.json: their tops 2 px up, centred 12.5,8  3.5,4  3.5,12; the bowl at the top of the rod)
     static const vec3 SPOT[5] = {{12.5f / 16, 2.5f / 16, 8 / 16.f}, {3.5f / 16, 2.5f / 16, 4 / 16.f}, {3.5f / 16, 2.5f / 16, 12 / 16.f}, {0.5f, 14.5f / 16, 0.5f}, {11 / 16.f, 1.5f / 16.f, 13 / 16.f}};
@@ -765,7 +772,7 @@ public:
     const float W = (float)a.width, H = (float)a.height, z = ui::Z();
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     const bool overUi = (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook());
-    if (glm::length(vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y)) > 0.5f) pad = false;
+    if (mouseTookOver(a)) pad = false;
     auto project = [&](vec3 wp, ImVec2& out) { vec4 q = cam.viewProj * vec4(cam.rel(glm::dvec3(wp)), 1); if (q.w <= 0.01f) return false; out = ImVec2((q.x / q.w * 0.5f + 0.5f) * W, (1 - (q.y / q.w * 0.5f + 0.5f)) * H); return true; };
     const vec3 side(std::sin(scene().viewYaw), 0, std::cos(scene().viewYaw));
     const vec3 face = vec3(at) + vec3(0.5f) + side * 0.5f;
@@ -899,7 +906,7 @@ public:
       }
       cursor = h * per + std::min(per - 1, r * 9 + c);
     }
-    if (glm::length(vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y)) > 0.5f) pad = false;
+    if (mouseTookOver(a)) pad = false;
     if (pad && cursor >= 0) {
       if (in.pressed(Act::MenuOk)) act(a, cursor, false, false);
       if (in.pressed(Act::MenuX)) act(a, cursor, true, false);
@@ -1029,10 +1036,36 @@ void cinematicCamera(GameSession& s, Camera& cam, double dt) {
   Scene& S = scene();
   if (S.phase == 0) return;
   S.t += dt; S.clock += dt;
-  // leaning in over the work, your arms out to it (Cinematic Interactions' way): the anvil (the hammer in your hand on the
-  // work), the enchanting table (a finger to its runes) and the grindstone (the tool held to the spinning wheel) always;
-  // the rest as the option says (seamless first person, your own body bending to them)
-  S.lean = s.app.settings.extra.value("cinematicLean", false) || S.kind == 1 || S.kind == 2 || S.kind == 6;
+  // every station is worked by your own body, seen from its eyes: you step up to it, turn to the work and bend to it, and
+  // your body's own arms reach for it (the hammer in your own fist at the anvil). Leaning the camera over it with the
+  // scene's arms (Cinematic Interactions' way) only when the option asks for it
+  S.lean = s.app.settings.extra.value("cinematicLean", false);   // (off: your own body works every station, its arms on the work, seen from its eyes)
+  if (!S.lean && s.player && (S.phase == 1 || S.phase == 2)) {   // your own body steps up to the station and turns to the work
+    Player& p = *s.player;
+    if (S.phase == 1 && !S.stand && glm::length(S.dir) > 0.5f) {
+      // where you stand to work it: just off its face (the campfire: sat a little further back), on your own level, and only
+      // if that's clear ground (two blocks of air over something to stand on); else you work it from where you are
+      const double back = S.kind == 13 ? 1.1 : S.kind == 4 ? 1.35 : S.kind == 3 || S.kind == 7 ? 1.0 : 0.9;   // (the furnace: crouched before its mouth, room to reach in)   // (an arm's length: closer, your own forearms filled the view)
+      const glm::dvec3 to = glm::dvec3(S.at) + glm::dvec3(0.5, 0, 0.5) + glm::dvec3(S.dir) * back;
+      const int fx = (int)std::floor(to.x), fz = (int)std::floor(to.z), fy = (int)std::floor(p.pos.y + 0.01f);
+      World& w = s.world();
+      auto solid = [&](int y) { return reg().block(w.getBlock(fx, y, fz)).solid; };
+      if (!solid(fy) && !solid(fy + 1) && solid(fy - 1)) { S.standTo = glm::dvec3(to.x, p.pos.y, to.z); S.stand = true; }
+    }
+    if (S.stand) {
+      const float k = (float)std::min(1.0, dt * 7.0);
+      p.pos.x += (float)(S.standTo.x - p.pos.x) * k; p.pos.z += (float)(S.standTo.z - p.pos.z) * k;
+      p.vel.x = p.vel.z = 0;
+    }
+    if (S.phase == 1) {   // turned to it, looking down at its top (low stations lower)
+      const vec3 eye = p.pos + vec3(0, p.eye, 0);
+      const bool lowSt = S.kind == 3 || S.kind == 4 || S.kind == 7 || S.kind == 13;
+      const vec3 look = vec3(S.at) + vec3(0.5f, S.kind == 4 ? 0.5f : lowSt ? 0.45f : 0.9f, 0.5f) - eye;
+      const float wantYaw = std::atan2(-look.x, -look.z), wantPitch = std::atan2(look.y, std::hypot(look.x, look.z));
+      const float k = (float)std::min(1.0, dt * 9.0);
+      p.yaw += wrapPi(wantYaw - p.yaw) * k; p.pitch += (wantPitch - p.pitch) * k;
+    }
+  }
   if (!S.lean) {   // seamless first person (the default): your own view; your body bends to the work and the eye goes with it
     if (S.phase == 1 && S.t >= 0.35) { S.phase = 2; S.t = 0; }
     else if (S.phase == 3 && S.t >= 0.35) S.phase = 0;

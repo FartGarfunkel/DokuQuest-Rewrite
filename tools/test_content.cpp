@@ -18,6 +18,8 @@
 #include "sim/creature_entities.h"
 #include "sim/creature_rig.h"
 #include "sim/trough.h"
+#include "sim/station_work.h"
+#include "sim/spell_items.h"
 #include <thread>
 #include <cstdio>
 using namespace dq;
@@ -510,6 +512,38 @@ int main(int argc, char** argv) {
     }
     check(arrows >= 5, "skeletons shot full of arrows leave their arrows (" + std::to_string(arrows) + " from 3)");
     if (sk) sk->removed = true;
+  }
+  // ------------------------------------------------------------ the Tool Forge and the inscription table worked by hand
+  {
+    const ivec3 F(2, Y + 1, 12), T(5, Y + 1, 12);
+    w.setBlock(F.x, F.y, F.z, B("tool_forge")); w.setBlock(T.x, T.y, T.z, B("inscription_table"));
+    auto count = [&](const std::string& id) { int n = 0; for (auto& s : P->inv) if (s.id == id) n += s.n; return n; };
+    for (auto& s : P->inv) s = ItemStack();
+    ItemStack held("iron_ingot", 8);
+    check(pairWorkPut(*L, *P, w, F, -1, held) && held.empty() && pairWorkItems(w, F)[0].n == 8, "the Tool Forge: ingots laid on it");
+    auto heads = forgeWorkHeads(w, F);
+    check(!heads.empty() && heads[0].second >= 1, "  ...it offers the heads they make (" + std::to_string(heads.size()) + ")");
+    int axe = -1; for (int k = 0; k < (int)heads.size(); k++) if (heads[k].second == 3) axe = k;
+    ItemStack made;
+    check(axe >= 0 && forgeWorkHead(*L, *P, w, F, axe, &made) && pairWorkItems(w, F)[0].n == 5 && count(made.id) == 1, "  ...a head forged: three ingots for it, the head in the bag");
+    check(pairWorkTake(*L, *P, w, F, 0) && count("iron_ingot") == 5 && forgeWorkHeads(w, F).empty(), "  ...the rest taken back");
+    ItemStack pick("iron_pickaxe", 1), gem("diamond", 2);
+    check(pairWorkPut(*L, *P, w, F, -1, pick) && pick.empty(), "  a pickaxe laid on it");
+    check(pairWorkPut(*L, *P, w, F, -1, gem) && gem.n == 1 && pairWorkItems(w, F)[1].id == "diamond", "  ...a diamond beside it goes in as the gem (one)");
+    check(forgeWorkHeads(w, F).empty() && pairWorkResult(*L, w, F).ok, "  ...no heads offered: a gem to set");
+    check(pairWorkDo(*L, *P, w, F, &made) && made.id == "iron_pickaxe" && made.tag.is_object() && made.tag.contains("gem"), "  ...set: the pickaxe back with its gem");
+    // the inscription table
+    for (auto& s : P->inv) s = ItemStack();
+    P->stats["spells"] = json::array({"firebolt"});
+    ItemStack book("apprentice_spellbook", 1), scroll = makeScroll("frost", 2), paper("paper", 4), lapis("lapis_lazuli", 4), dirt("dirt", 1);
+    check(!inscribeWorkPut(*L, *P, w, T, dirt) && dirt.n == 1, "the inscription table: dirt isn't laid on it");
+    check(inscribeWorkPut(*L, *P, w, T, book) && inscribeWorkPut(*L, *P, w, T, scroll) && inscribeWorkPut(*L, *P, w, T, paper) && inscribeWorkPut(*L, *P, w, T, lapis)
+          && book.empty() && scroll.empty() && paper.empty() && lapis.empty(), "  ...book, scroll, paper and lapis laid on its board");
+    check(inscribeWorkInscribe(*L, *P, w, T).empty() && inscribeWorkItems(w, T)[1].empty() && bookSpells(inscribeWorkItems(w, T)[0]).size() == 1, "  ...the scroll pressed into the book");
+    check(inscribeWorkExtract(*L, *P, w, T, 0).empty() && bookSpells(inscribeWorkItems(w, T)[0]).empty() && count("spell_scroll") == 1, "  ...taken back out as a scroll");
+    check(inscribeWorkWrite(*L, *P, w, T, "firebolt").empty() && inscribeWorkItems(w, T)[2].n == 3 && inscribeWorkItems(w, T)[3].n == 3 && count("spell_scroll") == 2, "  ...a spell you know written out: a paper and a lapis used");
+    check(!inscribeWorkWrite(*L, *P, w, T, "frost").empty(), "  ...not one you don't know");
+    check(inscribeWorkTake(*L, *P, w, T, 0) && count("apprentice_spellbook") == 1, "  ...the book taken back");
   }
   lvp->close();
   printf("\n%d passed, %d failed\n", passes, fails);

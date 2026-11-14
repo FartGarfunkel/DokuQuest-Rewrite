@@ -83,6 +83,15 @@ vec3 pairHeldPos(const PairView& v, int k, const vec3 lying[2]);
 // StonecutterStation's dial (shapePoint: up to 9 shapes on a half ring over the saw, 0.72 wide, 0.5 high)
 vec3 cutDialPoint(ivec3 at, float viewYaw, int k, int count, float scroll, double clock);
 float cutDialShown(int k, int count, float scroll);   // 0..1: on the dial (fading at its ends)
+// the inscription table worked by hand (kind 16, ui/cinematic_inscribe.cpp; sim/station_work.h inscribeWork*): its board
+// holds the spellbook, a scroll, paper and lapis; the book's spells and those you can write stand in columns over them.
+// The work (mode 0 the scroll pressed into the book, 1 a spell taken out of it, 2 a scroll written): made at CONTACT
+struct InscribeView { ivec3 at{0}; float viewYaw = 0; int hover = -1; int mode = 0; double t = -1; ItemStack before[2], made; vec3 hand{0}; };
+bool cinematicInscribeView(InscribeView& v);
+constexpr double INSCRIBE_LENGTH = 1.4, INSCRIBE_CONTACT = 0.7;
+vec3 inscribeScrollPos(const InscribeView& v, vec3 book, vec3 scroll);   // mode 0: the scroll carried over and into the book
+vec3 inscribeRisePos(const InscribeView& v, vec3 from);                  // the scroll made rising off toward you
+std::unique_ptr<Screen> makeCinematicInscribeScreen(ivec3 at);
 // a point the working hand reaches for (a station without the table's squares: the chest's slots); false: none
 void cinematicSetAimPoint(bool on, vec3 p = vec3(0));
 bool cinematicAimPoint(vec3& p);
