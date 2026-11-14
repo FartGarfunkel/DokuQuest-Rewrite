@@ -27,11 +27,12 @@ std::mutex g_mx;
 u64 g_gen = ~0ull;
 std::unordered_map<int, std::shared_ptr<PlantTemplate>> g_tpl;
 std::unordered_map<int, std::shared_ptr<PlantTemplate>> g_panel;   // doors: keep the real thickness, own cache
+std::unordered_map<int, std::shared_ptr<PlantTemplate>> g_even;    // strands: one thickness all over (cheap: many of them)
 std::unordered_map<int, std::shared_ptr<FlowerLook>> g_flower;
 std::unordered_map<int, std::shared_ptr<CaneLook>> g_cane;
 std::unordered_map<int, std::shared_ptr<KelpLook>> g_kelp;
 std::unordered_map<u64, std::shared_ptr<RailPlate>> g_rail;
-void checkGen(const MeshTiles* t) { if (t && t->gen != g_gen) { g_gen = t->gen; g_tpl.clear(); g_panel.clear(); g_flower.clear(); g_cane.clear(); g_kelp.clear(); g_rail.clear(); } }
+void checkGen(const MeshTiles* t) { if (t && t->gen != g_gen) { g_gen = t->gen; g_tpl.clear(); g_panel.clear(); g_even.clear(); g_flower.clear(); g_cane.clear(); g_kelp.clear(); g_rail.clear(); } }
 
 Sprite spriteInfo(const MeshTiles& T, int tile) {
   Sprite s; s.R = T.size;
@@ -158,6 +159,15 @@ std::shared_ptr<PlantTemplate> plantTemplate(const MeshTiles* T, int tile) {
 
 // A door is one block, not a field of vines, so it keeps the thick plate. Only a very noisy picture
 // falls back to one thickness, and that one still has the holes and the edge caps.
+std::shared_ptr<PlantTemplate> evenTemplate(const MeshTiles* T, int tile) {
+  std::lock_guard<std::mutex> lk(g_mx);
+  checkGen(T);
+  auto it = g_even.find(tile);
+  if (it != g_even.end()) return it->second;
+  auto p = buildTemplate(*T, tile, true);
+  g_even[tile] = p;
+  return p;
+}
 std::shared_ptr<PlantTemplate> panelTemplate(const MeshTiles* T, int tile) {
   std::lock_guard<std::mutex> lk(g_mx);
   checkGen(T);
@@ -457,6 +467,29 @@ bool emitKelp3D(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int 
   return true;
 }
 
+// a strand (a vine, roots, weeping or twisting vines) block by block: a thin stem down (hanging) or up (climbing)
+// through the cell, leaves off it turning round the strand, at its free end a tuft; still
+bool emitStrand3D(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, bool hangs) {
+  int tile = c.R.block(id).faces[0];
+  auto L = kelpLook(c.tiles, tile);
+  if (L->none) return false;
+  const float sk = c.skyAt(x, y, z), bl = std::max<float>(c.blAt(x, y, z), c.R.tLight[id]);
+  Kit K{c, d, tile, sk, bl, [](float) -> u8 { return 0; }};
+  const int dir = hangs ? -1 : 1;
+  const bool end = c.at(x, y + dir, z) != id;   // the free end
+  const u32 h = hashLocal(x, 0, z, 41);
+  const float cx = x + 0.5f + (((h & 255) / 255.f) - 0.5f) * 0.3f, cz = z + 0.5f + ((((h >> 8) & 255) / 255.f) - 0.5f) * 0.3f, s = 0.9f / 16;
+  const float y0 = hangs ? (end ? y + 0.25f : (float)y) : (float)y, y1 = hangs ? y + 1.f : (end ? y + 0.75f : y + 1.f);
+  K.box(cx - s, y0, cz - s, cx + s, y1, cz + s, L->stem, 0);
+  const float base = ((h >> 16) & 255) / 255.f * TAU; const int ly = c.in.sy * 16 + y;
+  for (int k = 0; k < 2; k++) {
+    const float a = base + (ly * 2 + k) * 2.4f, yy = y + 0.25f + k * 0.45f, len = 0.2f + (((h >> (k * 5)) & 31) / 31.f) * 0.12f;
+    K.piece(vec3(cx, yy, cz), vec3(cx + std::cos(a) * len, yy + 0.16f * dir, cz + std::sin(a) * len), 0.14f, 0.03f, k ? L->leaf : L->stem, 0.35f);
+  }
+  if (end) { const float ey = hangs ? y0 : y1; for (int k = 0; k < 3; k++) { const float a = base + k * TAU / 3 + ly; K.piece(vec3(cx, ey, cz), vec3(cx + std::cos(a) * 0.13f, ey + 0.18f * dir, cz + std::sin(a) * 0.13f), 0.11f, 0.03f, L->leaf, 0.35f); } }
+  return true;
+}
+
 // the classic two crossed pictures (plant detail off, or far away with "near")
 void emitCrossFlat(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta, int tile, float yy) {
   const BlockTraits& T = traits(id);
@@ -507,6 +540,37 @@ void emitGrassTufts(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
 }
 
 
+// pointed dripstone as a solid spike: an eight-sided frustum through each block of a column, wide at its root and
+// narrowing to a point at its free end (a stalagmite up from the floor, a stalactite down from the roof), in the
+// dripstone's own stone; no sway. Where it meets one from the other side the two tips join.
+static void emitDripstone(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta) {
+  static const int stone = c.R.tile("dripstone_block");
+  const int tile = stone >= 0 ? stone : c.R.block(id).faces[0];
+  const bool down = meta & 1; const int dir = down ? -1 : 1;
+  auto same = [&](int yy) { return c.at(x, yy, z) == id && ((c.metaAt(x, yy, z) & 1) != 0) == down; };
+  // blocks of the column ahead of this one, to its free end (past what the mesher can see: as if it went on)
+  int ahead = 0;
+  for (int k = 1; k <= 4; k++) { const int yy = y + dir * k; if (!c.inside(yy)) { ahead = 4; break; } if (!same(yy)) break; ahead = k; }
+  const bool merge = ahead == 0 && c.inside(y + dir) && c.at(x, y + dir, z) == id;   // (the other's tip, against this one's)
+  // the radius at a distance (in blocks) from the free end: a point there, full width 3 blocks back
+  auto R = [&](float dist) { return std::min(0.4f, 0.03f + 0.125f * dist); };
+  const float rFar = R((float)ahead + 1.f), rNear = merge ? 0.06f : R((float)ahead);   // the root side, the tip side
+  const float y0 = down ? (float)y + 1 : (float)y, y1 = down ? (float)y : (float)y + 1;   // root side to tip side
+  const u32 h = hashLocal(x, 0, z, 23);
+  const float cx = x + 0.5f + ((h & 255) / 255.f - 0.5f) * 0.08f, cz = z + 0.5f + (((h >> 8) & 255) / 255.f - 0.5f) * 0.08f, rot = ((h >> 16) & 255) / 255.f * PI / 4;
+  const float sk = c.skyAt(x, y, z), bl = c.blAt(x, y, z);
+  const u8 mat = Mat::NoRelief;
+  for (int k = 0; k < 8; k++) {
+    const float a0 = rot + k * PI / 4, a1 = rot + (k + 1) * PI / 4;
+    const vec3 p[4] = {vec3(cx + std::cos(a0) * rFar, y0, cz + std::sin(a0) * rFar), vec3(cx + std::cos(a1) * rFar, y0, cz + std::sin(a1) * rFar),
+                       vec3(cx + std::cos(a1) * rNear, y1, cz + std::sin(a1) * rNear), vec3(cx + std::cos(a0) * rNear, y1, cz + std::sin(a0) * rNear)};
+    const float u0 = k / 8.f, u1 = (k + 1) / 8.f, shade = (175 + 60 * std::fabs(std::cos((a0 + a1) * 0.5f - 0.6f))) / 255.f;
+    MV v[4] = {{p[0], vec2(u0, down ? 0.f : 1.f), sk, bl, shade, 0}, {p[1], vec2(u1, down ? 0.f : 1.f), sk, bl, shade, 0},
+               {p[2], vec2(u1, down ? 1.f : 0.f), sk, bl, shade, 0}, {p[3], vec2(u0, down ? 1.f : 0.f), sk, bl, shade, 0}};
+    c.quad2(d, v, tile, NORMAL_NONE, mat);
+  }
+}
+
 void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta) {
   const BlockDef& self = c.R.block(id);
   const BlockTraits& T = traits(id);
@@ -519,6 +583,7 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   // pointed dripstone (Minecraft's): a column of them is one spike, its picture by where in the column each is: the tip at the
   // free end (a merged tip where it meets one from the other side), the frustum behind it, the base where it's fixed, the middle
   // between; up or down by the way it points (meta & 1 hanging). The pack's lone "pointed_dripstone" picture was a block of it.
+  if (key == "pointed_dripstone" && c.opt.detail) { emitDripstone(c, d, id, x, y, z, meta); return; }   // (a solid spike: render/mesh_plants.cpp emitDripstone)
   if (key == "pointed_dripstone") {
     const bool down = meta & 1; const int dir = down ? -1 : 1;
     auto same = [&](int yy2) { return c.at(x, yy2, z) == id && ((c.metaAt(x, yy2, z) & 1) != 0) == down; };
@@ -555,6 +620,9 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   // Nether's terrain memory, thousands of little faces a block)
   bool voxPlant = !T.fire && !T.tint && key != "cobweb" && key != "kelp" && !T.stackPlant && !T.hangs;
   int ly = c.in.sy * 16 + y;
+  // vines, roots and strands, hanging or climbing: 3D as kelp is (a thin stem and its leaves in the picture's own
+  // colours), a few quads a block (they come in thousands: as voxel slabs they cost the Nether another 12 million)
+  if (detail && !voxPlant && !T.fire && !T.tint && key != "cobweb" && key != "kelp" && !T.crop && emitStrand3D(c, d, id, x, y, z, T.hangs)) { c.tint = 0xFFFFFF; c.tintKind = 0; return; }
   if (voxPlant && detail) {
     auto P = plantTemplate(c.tiles, tile);
     if (T.crop) {

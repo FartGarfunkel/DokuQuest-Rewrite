@@ -1,6 +1,9 @@
+#include <algorithm>
+#include <unordered_map>
 // render/mesher.cpp — the section mesher: gathering, climate tints, cubes (with greedy merging of
 // flat, evenly lit faces), liquids, torches and the per-section loop. Port of world/mesher.js.
 #include "render/mesh_ctx.h"
+#include "render/ore_overlay.h"
 #include "world/rug.h"
 #include "world/light_color.h"
 #include "render/chest_layer.h"
@@ -11,6 +14,15 @@
 #include <mutex>
 
 namespace dq {
+static std::mutex g_tallyMx; static std::unordered_map<BlockId, u64> g_tally; static double g_tallyT = 0;
+void meshTally(BlockId id, size_t verts) {
+  if (!verts) return;
+  std::lock_guard<std::mutex> lk(g_tallyMx); g_tally[id] += verts;
+  const double now = nowSeconds(); if (now - g_tallyT < 5) return; g_tallyT = now;
+  std::vector<std::pair<u64, BlockId>> v; for (auto& [k, n] : g_tally) v.push_back({n, k}); std::sort(v.rbegin(), v.rend());
+  std::string s; for (size_t i = 0; i < v.size() && i < 12; i++) s += " " + reg().block(v[i].second).key + "=" + std::to_string(v[i].first / 4);
+  DQ_LOG("mesh tally (cutout quads):%s", s.c_str());
+}
 bool fallenDrawnAt(BlockId id);   // render/fallen_layer.cpp
 
 // ---------------------------------------------------------------- tables (original FACES)
@@ -812,6 +824,7 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
   initF6Rot();
   const Registry& R = reg();
   auto tiles = meshTilesSnapshot();
+  const auto ores = oreTables();   // (ores in their rock's colour: render/ore_overlay.h)
   MeshCtx c(in, out, opt, R, tiles.get());
   // the masks are left clean by flushGreedy (every entry it reads it clears), so one per worker will do
   thread_local std::unique_ptr<GreedyMasks> tlMasks;
@@ -832,6 +845,9 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
     ivec3 wp(c.wx0 + x, c.wy0 + y, c.wz0 + z);
     Render rt = (Render)R.tRender[id];
     const BlockTraits& T = traits(id);
+    static const bool tally = std::getenv("DQ_MESH_TALLY") != nullptr;   // (dev: which blocks make the cutout quads)
+    const size_t cut0 = out.cutout.size();
+    struct TallyAt { const std::vector<ChunkVertex>& v; size_t n0; BlockId id; bool on; ~TallyAt() { if (on) meshTally(id, v.size() - n0); } } tallyAt{out.cutout, cut0, id, tally};
     switch (rt) {
       case Render::Cube: case Render::Cutout: {
         if (chestHiddenAt(wp.x, wp.y, wp.z)) break;   // the open chest is drawn by render/chest_layer.cpp
@@ -841,6 +857,20 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
           break;
         }
         if (surroundedCovered(c, x, y, z)) break;   // every opaque neighbour must itself be carved: a plain neighbour would leave the shared plane undrawn on both sides
+        if (const int sp = ores->specks(id); sp >= 0) {   // an ore: drawn as the rock round it, its specks over that
+          BlockId cand[6]; int cn[6] = {}, k = 0;
+          static const int NX[6] = {1, -1, 0, 0, 0, 0}, NY[6] = {0, 0, 1, -1, 0, 0}, NZ[6] = {0, 0, 0, 0, 1, -1};
+          for (int f = 0; f < 6; f++) {
+            const BlockId nb = c.at(x + NX[f], y + NY[f], z + NZ[f]); if (!ores->isHost(nb)) continue;
+            int j = 0; while (j < k && cand[j] != nb) j++; if (j == k) { cand[k] = nb; cn[k++] = 0; } cn[j]++;
+          }
+          BlockId host = 0; int best = 0; for (int j = 0; j < k; j++) if (cn[j] > best) { best = cn[j]; host = cand[j]; }
+          if (host && host != ores->baseOf(id)) {
+            emitCube(c, gm, 0, out.opaque, host, x, y, z, 0);
+            emitOreSpecks(c, out.cutout, id, x, y, z, sp);
+            break;
+          }
+        }
         int pass = R.tTrans[id] ? 2 : rt == Render::Cutout ? 1 : 0;
         emitCube(c, gm, pass, pass == 2 ? out.trans : pass == 1 ? out.cutout : out.opaque, id, x, y, z, meta);
         if (tufts && id == grassBlock && c.at(x, y + 1, z) == AIR) emitGrassTufts(c, out.cutout, id, x, y, z);

@@ -78,6 +78,7 @@ struct MeshShapeNb : ShapeNb {
 
 // per-kind emitters
 void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
+void emitOreSpecks(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, int tile);   // render/ore_overlay.h
 void emitCarvedBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);
 void emitSnowCaps(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 carve);
 void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta);

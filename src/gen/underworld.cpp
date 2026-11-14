@@ -163,8 +163,25 @@ void OverworldGen::generateDeep(Chunk& ch, int depth) const {
           if (roof && r > 0.95) setAbove(K.shroom);
           break;
         case T_DRIP:
-          if (floor) { setBelow(K.dripB); if (r < 0.1 && K.dripP) put(K.dripP); }
-          if (roof) { setAbove(K.dripB); if (r > 0.86 && K.dripP) put(K.dripP); }
+          // clusters of spikes, each its own length, the longest nearest the middle of a cluster (the clusters by a slow
+          // noise); now and then a stalagmite and a stalactite meet in a column
+          if (floor) { setBelow(K.dripB);
+            const double cl = nCave2.noise2(wx / 7.0, wz / 7.0 + my * 0.01);
+            if (K.dripP && cl > 0.15 && r < 0.45) {
+              int room = 0; while (room < 12 && y + room < DIM_H - 1 && b.blocks[colIdx(x, y + room, z)] == AIR) room++;
+              const int n = std::min(room - 1, 1 + (int)((cl - 0.15) * 9 * (0.5 + h01(seed_, wx, my, wz, 31))));
+              const bool meet = r < 0.02 && room <= 9;
+              const int up = meet ? (room + 1) / 2 : n;
+              for (int k = 0; k < up; k++) { b.blocks[colIdx(x, y + k, z)] = K.dripP; b.meta[colIdx(x, y + k, z)] = 0; }
+              if (meet) for (int k = up; k < room; k++) { b.blocks[colIdx(x, y + k, z)] = K.dripP; b.meta[colIdx(x, y + k, z)] = 1; }
+            } }
+          if (roof && b.blocks[i] == AIR) { setAbove(K.dripB);
+            const double cl = nCave2.noise2(wx / 7.0 + 40, wz / 7.0 - my * 0.01);
+            if (K.dripP && cl > 0.1 && r > 0.45) {
+              int room = 0; while (room < 12 && y - room > 5 && b.blocks[colIdx(x, y - room, z)] == AIR) room++;
+              const int n = std::min(room - 1, 1 + (int)((cl - 0.1) * 10 * (0.5 + h01(seed_, wx, my, wz, 37))));
+              for (int k = 0; k < n; k++) { b.blocks[colIdx(x, y - k, z)] = K.dripP; b.meta[colIdx(x, y - k, z)] = 1; }
+            } }
           break;
         case T_FROZEN:
           if (floor) { setBelow(r < 0.2 ? K.blue : r < 0.6 ? K.packed : K.snow); }

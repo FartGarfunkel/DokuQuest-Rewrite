@@ -1,5 +1,6 @@
 #include "assets/pack_models.h"
 #include "client/app.h"
+#include "render/ore_overlay.h"
 #include "ui/book_ui.h"
 #include "render/gpu_select.h"
 #include "render/weather_sprites.h"
@@ -193,6 +194,7 @@ void App::reloadTiles() {
       e[i] = glass ? (bright ? 120 : 25) : giant ? (bright ? 210 : 45) : (bright ? 225 : 70);
     }
   }
+  buildOreOverlays(tiles);   // every ore in the colour of its rock (render/ore_overlay.h)
   bakeTileRelief(tiles);   // once per tile set: whole-voxel geometry + smooth normal maps (assets/tile_relief.cpp)
   for (int p = 0; p < 3; p++) {
     for (GLuint* t : {&tileTex.color[p], &tileTex.height[p], &tileTex.normal[p]}) { if (*t) glDeleteTextures(1, t); *t = 0; }
