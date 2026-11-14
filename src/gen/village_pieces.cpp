@@ -231,6 +231,7 @@ VPState mapState(const json& e) {
   if (key.rfind("potted_", 0) == 0) { S.plant = key.substr(7); key = "flower_pot"; S.kind = VPK_POT; }
   // a piston left pushed out in the template: ours pushed out too, its head in front (it had come in drawn back, a gap where
   // its head was, and the hidden door it closes fired as the chunk woke)
+  if (key == "redstone_torch" && prop(P, "lit") == "false" && findBlock("redstone_torch_off") != NONE) key = "redstone_torch_off";   // (one a circuit keeps off)
   if ((key == "piston" || key == "sticky_piston") && prop(P, "extended") == "true" && findBlock(key + "_extended") != NONE) key += "_extended";
   // (another mod's lantern hung on the wall: a lantern stood on nothing beside the wall; ours there is a wall torch, its facing kept)
   if (key.find("wall_lantern") != std::string::npos) key = "torch";
@@ -332,7 +333,9 @@ VPState mapState(const json& e) {
       if (fc != "wall" && rf >= 0 && (rf & 1)) m |= 16;
       if (shape == ShapeKind::Lever && prop(P, "powered") == "true") m |= 8;   // (a lever left pulled: sim/redstone.cpp reads m & 8)
     }
-    else if (shape == ShapeKind::Hook) m = rf < 0 ? 0 : (rf + 2) & 3;
+    else if (shape == ShapeKind::Hook) m = (rf < 0 ? 0 : (rf + 2) & 3) | (prop(P, "attached") == "true" ? 4 : 0);   // (strung: its wire across)
+    else if (key == "tripwire") m = prop(P, "attached") == "true" ? 2 : 0;
+    else if (key == "daylight_detector") m = prop(P, "inverted") == "true" ? 16 : 0;
     else if (shape == ShapeKind::Frame) m = rf < 0 ? 0 : (rf + 2) & 3;   // (it had no rule: every frame hung the same way, off its wall)
     else if (d.str("shape") == "campfire" || d.str("shape") == "soul_campfire") m = prop(P, "lit") == "false" ? 8 : 0;   // (CAMPFIRE_OUT)
     else if (d.render == Render::Torch) { static const int T[4] = {4, 1, 3, 2}; m = rf < 0 ? 0 : T[rf]; }
@@ -647,6 +650,34 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
           }
         }
         for (int i = 0; i < (int)P.blocks.size(); i++) if (!seen[i] && wetAt(i) && R.tLiquid[P.states[P.blocks[i].s].id] != 1) dryAt(i);
+        // flowing water caught mid-run in the template (levels 1-7) with nothing feeding it: no source and no higher water
+        // beside it, nothing falling into it from above. It was never ticked, so it stood at its odd partial height for
+        // good: taken out, a pass at a time, so a whole stranded run goes
+        auto lvlOf = [&](int i) -> int { const VPState& st = P.states[P.blocks[i].s]; return R.tLiquid[st.id] == 1 ? (st.meta[0] & 15) : -1; };
+        for (int pass = 0; pass < 8; pass++) {
+          std::vector<int> drop;
+          for (int i = 0; i < (int)P.blocks.size(); i++) {
+            const int lv = lvlOf(i);
+            if (lv <= 0 || lv >= 8) continue;   // (a source, or falling water: kept)
+            const VPBlock& b = P.blocks[i];
+            bool fed = false;
+            for (auto& d6 : N6) {
+              const int nx = b.x + d6[0], ny = b.y + d6[1], nz = b.z + d6[2];
+              if (nx < 0 || ny < 0 || nz < 0 || nx >= SX || ny >= SY || nz >= SZ) continue;
+              const int j = cell(nx, ny, nz); if (j < 0) continue;
+              const int lj = lvlOf(j);
+              if (lj < 0) continue;
+              if (d6[1] == 1 || lj == 0 || lj >= 8 || lj < lv) { fed = true; break; }
+            }
+            if (!fed) drop.push_back(i);
+          }
+          if (drop.empty()) break;
+          for (int i : drop) { const VPBlock b = P.blocks[i]; cell(b.x, b.y, b.z) = -1; P.blocks[i].s = (u16)0xFFFF; }
+          std::vector<VPBlock> kept2; std::vector<int> remap(P.blocks.size(), -1);
+          for (int i = 0; i < (int)P.blocks.size(); i++) if (P.blocks[i].s != 0xFFFF) { remap[i] = (int)kept2.size(); kept2.push_back(P.blocks[i]); }
+          P.blocks.swap(kept2);
+          for (auto& g : grid) if (g >= 0) g = remap[g];
+        }
       }
       for (bool changed = true; changed;) {
         changed = false;

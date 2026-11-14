@@ -1,5 +1,6 @@
 // render/mesh_shapes.cpp — slabs, stairs, fences... (emitShapeBlock/emitBox), static models
 // (emitShape + the cloth of game/townlife.js), redstone dust, rails, lever handles, candle flames.
+#include <algorithm>
 #include "render/mesh_ctx.h"
 #include "world/light_color.h"
 #include "world/carve_faces.h"
@@ -467,6 +468,9 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   if (T.cloth) {
     // flags, banners, bunting: each vertex learns how far it is from what holds it, and the shader flaps it
     thread_local std::vector<ShapeBox> cb; clothBoxes(id, meta, cb);
+    // (a banner hung under another: no crossbar of its own, the cloth runs on from the one above; stacked, each had its bar)
+    if (T.cloth == 2 && traits(c.at(x, y + 1, z)).cloth == 2)
+      cb.erase(std::remove_if(cb.begin(), cb.end(), [](const ShapeBox& b) { return b.kind == 0 && b.b[0] == 0 && b.b[3] == 16; }), cb.end());
     // a flag reaches over to its pole: a fence post or wall post stands back from the cell's edge
     float reach = 0;
     if (T.cloth == 1) {
