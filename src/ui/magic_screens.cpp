@@ -167,6 +167,7 @@ public:
       tabs.push_back({sc[1], icon}); lists.push_back(ks); sch.push_back(&sc);
       for (auto& k : ks) flat.push_back(k);
     }
+    tabs.insert(tabs.begin(), ui::BookTab{"Tree of Magic", "enchanted_book"});   // (the first page: the whole tree)
     book.keysTab = false;   // X is the left hand here
     book.begin(a, "##spellbook", tabs);
     const int n = (int)flat.size();
@@ -182,6 +183,66 @@ public:
     const float z = ui::Z(), lh = ui::textSize(ui::F_BODY, "Ag").y + 2 * z, sh = ui::textSize(ui::F_SMALL, "Ag").y + 2 * z;
     std::vector<ui::BookRows> secs;
     int idx = 0;
+    {   // the Tree of Magic: one page, the ten schools branching from the middle in their colours, each school's spells growing out
+        // along its branch in the order they open (by Magic level); learnt ones lit, the next within reach outlined, the rest
+        // faint; the right hand's ringed, the left's in gold. Click: the right hand; right-click: the left
+      ui::BookRows tr;
+      book.heading(tr, "The Tree of Magic");
+      ui::BookRow row; const float side = book.pageW(); row.h = side;
+      std::vector<std::pair<std::string, std::vector<std::string>>> br;
+      for (size_t i = 0; i < lists.size(); i++) br.push_back({(*sch[i])[2], lists[i]});
+      std::vector<std::string> names; for (size_t i = 0; i < lists.size(); i++) names.push_back((*sch[i])[1]);
+      row.draw = [this, lv, p, br, names, z, lvl, active, left, known](ImDrawList* dl, ImVec2 q, float w) {
+        auto kn = [&](const std::string& k) { return std::find(known.begin(), known.end(), k) != known.end(); };
+        const ImVec2 c(q.x + w * 0.5f, q.y + w * 0.5f);
+        size_t most = 1; for (auto& b2 : br) most = std::max(most, b2.second.size());
+        const float R0 = w * 0.06f, R1 = w * 0.17f, nr = std::max(7.f * z, w * 0.028f), step = (w * 0.5f - R1 - nr - 14 * z) / ((float)most + 0.6f);   // (the longest branch reaches the page's edge)
+        dl->AddCircleFilled(c, R0, ui::withAlpha(ui::ink::key, 0.35f), 32); dl->AddCircle(c, R0, ui::ink::key, 32, 2 * z);
+        const int B = (int)br.size();
+        for (int b = 0; b < B; b++) {
+          const float ang = -1.5708f + b * 6.2832f / B;
+          const ImVec2 dir(std::cos(ang), std::sin(ang));
+          const ImU32 sc = inkOf(br[b].first);
+          std::vector<std::string> o = br[b].second;
+          std::stable_sort(o.begin(), o.end(), [](const std::string& x, const std::string& y) { return magicData().spells.at(x).lvl < magicData().spells.at(y).lvl; });
+          const ImVec2 sn(c.x + dir.x * R1, c.y + dir.y * R1);
+          int litN = 0; for (auto& k : o) if (kn(k)) litN++;
+          dl->AddLine(ImVec2(c.x + dir.x * R0, c.y + dir.y * R0), sn, litN ? sc : ui::withAlpha(ui::ink::muted, 0.6f), (litN ? 2.5f : 1.3f) * z);
+          dl->AddNgonFilled(sn, nr * 1.15f, ui::withAlpha(sc, litN ? 0.55f : 0.25f), 6); dl->AddNgon(sn, nr * 1.15f, sc, 6, 1.5f * z);
+          {   // the school's name at the tip of its branch, kept on the page
+            const ImVec2 ts = ui::textSize(ui::F_SMALL, names[b].c_str());
+            const float rt = R1 + step * ((float)o.size() + 0.75f) + 4 * z;
+            float lx = c.x + dir.x * rt - ts.x * 0.5f + dir.x * ts.x * 0.5f, ly = c.y + dir.y * rt - ts.y * 0.5f;
+            lx = std::clamp(lx, q.x, q.x + w - ts.x); ly = std::clamp(ly, q.y, q.y + w - ts.y);
+            ui::text(dl, ui::F_SMALL, ImVec2(lx, ly), ui::withAlpha(sc, 0.95f), names[b].c_str());
+          }
+          ImVec2 prev = sn; bool prevLit = litN > 0;
+          for (int i = 0; i < (int)o.size(); i++) {
+            const std::string& k = o[i]; const SpellDef& S = magicData().spells.at(k);
+            const bool k1 = kn(k), near = !k1 && lvl + 5 >= S.lvl;
+            const float sway = ((i & 1) ? 1 : -1) * 0.09f * (i > 0);
+            const ImVec2 d2(std::cos(ang + sway), std::sin(ang + sway));
+            const ImVec2 pt(c.x + d2.x * (R1 + step * (i + 1)), c.y + d2.y * (R1 + step * (i + 1)));
+            dl->AddLine(prev, pt, k1 && prevLit ? sc : ui::withAlpha(ui::ink::muted, 0.55f), (k1 && prevLit ? 2.5f : 1.2f) * z);
+            dl->AddCircleFilled(pt, nr, k1 ? ui::withAlpha(sc, 0.4f) : ui::withAlpha(ui::ink::muted, near ? 0.25f : 0.1f), 20);
+            dl->AddCircle(pt, nr, k1 ? sc : ui::withAlpha(ui::ink::muted, near ? 0.9f : 0.4f), 20, (k == active ? 2.6f : 1.2f) * z);
+            if (k == active) dl->AddCircle(pt, nr + 3.5f * z, sc, 20, 1.5f * z);
+            if (k == left) dl->AddCircle(pt, nr + 3.5f * z, ui::ink::key, 20, 1.2f * z);
+            IconRef ic = itemIcons().get(reg().item("tome_" + k) ? "tome_" + k : "book");
+            if (ic.valid()) dl->AddImage((ImTextureID)ic.tex, ImVec2(pt.x - nr * 0.72f, pt.y - nr * 0.72f), ImVec2(pt.x + nr * 0.72f, pt.y + nr * 0.72f), ImVec2(ic.uv0.x, ic.uv0.y), ImVec2(ic.uv1.x, ic.uv1.y), k1 ? IM_COL32_WHITE : IM_COL32(255, 255, 255, near ? 110 : 50));
+            ImGui::SetCursorScreenPos(ImVec2(pt.x - nr, pt.y - nr));
+            ImGui::PushID(("tree" + k).c_str());
+            const bool hit = ImGui::InvisibleButton("##n", ImVec2(2 * nr, 2 * nr), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s \xC2\xB7 Magic %d \xC2\xB7 %d mana%s%s", S.name.c_str(), S.lvl, S.mana, S.cast != "instant" ? (" \xC2\xB7 " + S.cast + " cast").c_str() : "", k1 ? (" \xC2\xB7 " + std::string(spellRarityName(effectiveSpellRank(*p, k)))).c_str() : " \xC2\xB7 not learnt");
+            if (hit && k1) { if (ImGui::IsMouseReleased(ImGuiMouseButton_Right)) setOffSpell(*lv, *p, k); else pickSpell(*lv, *p, k); }
+            ImGui::PopID();
+            prev = pt; prevLit = k1;
+          }
+        }
+      };
+      tr.push_back(std::move(row));
+      secs.push_back(std::move(tr));
+    }
     for (size_t s = 0; s < lists.size(); s++) {
       ui::BookRows r;
       book.heading(r, (*sch[s])[1], inkOf((*sch[s])[2]));
