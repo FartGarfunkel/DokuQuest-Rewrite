@@ -1092,9 +1092,9 @@ BEDSIDE = ['candle', 'book', 'flower_pot', 'clock', 'paper', 'candle']
 
 
 def show_goods(p, P, B, rnd, key, frames=3, table=True, shelves=3):
-    """a shop's goods where they belong: blades, tools and bows on weapon racks on the walls, armour and maps hung in frames,
-    everything else (food, potions, gems, books, cloth) on wall shelves; a display table with goods lying on it; the shop's
-    sign over the door outside (its own thing in a frame)"""
+    """a shop's goods where they belong: blades, tools and bows on weapon racks on the walls, everything else (armour,
+    maps, food, potions, gems, books, cloth) set down on wall shelves; a display table with goods lying on it; outside the
+    door a barrel with what's made here on its lid"""
     goods = [g for g in GOODS.get(key, []) if item_ok(g)]
     if not goods: return
     rk = [g for g in goods if racked(g)]; hg = [g for g in goods if hung(g)]; sh = [g for g in goods if not racked(g) and not hung(g)]
@@ -1104,11 +1104,9 @@ def show_goods(p, P, B, rnd, key, frames=3, table=True, shelves=3):
         for (x, z, d) in wall_cells(p, P, B, y, rnd):
             if n >= 2 or p.get(x, y, z) is not None: continue
             p.set(x, y, z, 'wall_weapon_rack', facing=OPP[d], items=','.join(rnd.sample(rk * 3, 3))); n += 1
-    if hg:
-        n = 0
-        for (x, z, d) in wall_cells(p, P, B, y, rnd):
-            if n >= frames or p.get(x, y, z) is not None: continue
-            p.set(x, y, z, 'item_frame', facing=OPP[d], items=hg[n % len(hg)]); n += 1
+    # (no item frames: armour, maps and the rest are set down where they'd be kept, on the shelves and the display table;
+    #  armour on stands where the trade has them)
+    sh = sh + hg
     pool = sh or goods
     for _ in range(shelves if sh else 1):
         if not wall_shelf(p, P, B, rnd, [rnd.choice(pool) for _ in range(3)]): break
@@ -1120,10 +1118,12 @@ def show_goods(p, P, B, rnd, key, frames=3, table=True, shelves=3):
                     p.set(x, B.y0 + 1, z, furn(P, 'table')); p.set(x, B.y0 + 2, z, 'item_pile', items=','.join(rnd.choice(goods) for _ in range(3)))
                     done = True; break
             if done: break
-    # the sign over the door: what's made here, in a frame
-    sx, sy = B.x0 - 1, B.y0 + 3
-    if p.get(sx, sy, B.zd) is None and p.get(B.x0, sy, B.zd) is not None and 'door' not in p.get(B.x0, sy, B.zd):
-        p.set(sx, sy, B.zd, 'item_frame', facing='west', items=goods[0])
+    # out by the door: a barrel with what's made here laid on its lid (the shop's sign, the real thing)
+    for dz in (2, -2):
+        bx, bz = B.x0 - 1, B.zd + dz
+        if p.get(bx, B.y0 + 1, bz) is None and p.get(bx, B.y0 + 2, bz) is None and p.get(bx, B.y0, bz) is not None and B.z0 <= bz <= B.z1:
+            p.set(bx, B.y0 + 1, bz, 'barrel', facing='up'); p.set(bx, B.y0 + 2, bz, 'item_pile', items=','.join(goods[:2]))
+            break
 
 
 JOBS = {   # name keyword -> its workstation and what else it keeps
@@ -1231,6 +1231,9 @@ def library(style, name, seed):
         if f == 0: R.put('lectern', facing_in=False, facing='west')
         R.table(chairs=3); R.lights(2)
         if f == B.floors - 1: R.bed()
+        if f == 0:
+            import village_builds
+            village_builds.study(p, P, R, rnd)   # the scholar's corner: the enchanting table, the desk, potions
     if B.floors == 1:
         R = Room(p, P, B, B.y0, rnd, keep); R.put('lectern', facing_in=False, facing='west')
     show_goods(p, P, B, rnd, 'library', frames=2, table=False)
@@ -1562,6 +1565,8 @@ WARES = {   # what each trader sells, laid out on the counter and on the shelf b
     'farmer': ['carrot', 'potato', 'beetroot', 'wheat', 'melon_slice', 'apple', 'egg', 'pumpkin'],
     'jeweller': ['emerald', 'diamond', 'gold_ingot', 'ruby', 'sapphire', 'amethyst_shard', 'gold_nugget', 'lapis_lazuli'],
 }
+PRODUCE = {'farmer': ['carrot', 'beetroot', 'potato', 'apple'], 'baker': ['wheat', 'apple'], 'fisherman': ['cod', 'salmon'],
+           'butcher': ['beef', 'porkchop'], 'merchant': ['wool', 'leather']}   # (crates of it by the stall)
 STALLS = {'merchant': 'barrel', 'baker': 'smoker', 'butcher': 'smoker', 'fisherman': 'barrel', 'farmer': 'composter', 'jeweller': 'grindstone'}   # the trader's station
 _KEYS = None
 
@@ -1617,6 +1622,8 @@ def market_stall(style, name, seed, wares):
     rnd = random.Random(seed); P = Pal(style, rnd)
     p = Piece(name, 'houses', style)
     stall_frame(p, P, 0, 0, wares, rnd, station=STALLS[wares])
+    import village_builds
+    village_builds.stall_dress(p, P, 0, 0, rnd, produce=PRODUCE.get(wares))
     p.joint(0, 1, 2, 'west_up', 'minecraft:building_entrance', 'minecraft:building_entrance', 'minecraft:village/%s/streets' % style)
     return p
 
@@ -1905,6 +1912,8 @@ def pieces(style):
     out.append(alchemist(style, '%s_alchemist_1' % style, s('alchemist')))
     out.append(general_store(style, '%s_general_store_1' % style, s('store')))
     for w in STALLS: out.append(market_stall(style, '%s_market_stall_%s_1' % (style, w), s('stall' + w), w))
+    import village_builds   # the forge, the barn, the garden bridge, the park benches, the lamp posts
+    out += village_builds.all_pieces(style, s)
     return out
 
 
@@ -1926,7 +1935,12 @@ def main(d):
             (out / rel).parent.mkdir(parents=True, exist_ok=True)
             nbt_io.write(out / rel, pc.template())
             files.append(rel)
-    (out / 'index.json').write_text(json.dumps({'source': "DokuQuest's own (tools/port/village_builder.py)", 'pieces': files}, indent=0))
+    # (the pieces other importers listed — Towns and Towers' styles, tools/port/tnt_village_import.py — are kept: this
+    #  run rewrote only its own styles' folders)
+    idx_path = out / 'index.json'
+    old = json.loads(idx_path.read_text()) if idx_path.exists() else {}
+    kept = [r for r in old.get('pieces', []) if r.split('/', 1)[0] not in STYLES and (out / r).exists()]
+    idx_path.write_text(json.dumps(dict(old, source=old.get('source', "DokuQuest's own (tools/port/village_builder.py)"), pieces=files + kept), indent=0))
     # the styles beyond the game's five, for gen/structures_townbld.cpp vstyle(): each a base style's look with its own
     # materials (its walls, gates and lamp posts, the hall's and the windmill's woods, its streets)
     extra = []
@@ -1940,7 +1954,11 @@ def main(d):
             'base': S['found'][0], 'base2': S['found'][0], 'base3': S['found'][-1], 'plaster': S['fill_hi'][0], 'frame': S['frame'] if 'log' in S['frame'] else S['log'],
             'path': S['path'], 'bed': S['bed'], 'banner': [S['banner'] + '_wool', 'white_wool'],
             'roofs': [[ROOFMAT[r][0], ROOFMAT[r][1]] for r in S['roof'] if ROOFMAT[r][0] != ROOFMAT[r][1]] or [['dark_oak_stairs', 'dark_oak_slab']]}})
-    (out / 'styles.json').write_text(json.dumps({'source': "DokuQuest's own (tools/port/village_builder.py)", 'styles': extra}, indent=0))
+    st_path = out / 'styles.json'
+    olds = json.loads(st_path.read_text()) if st_path.exists() else {}
+    mine = {e['key'] for e in extra}
+    extra += [e for e in olds.get('styles', []) if e.get('key') not in mine]   # (other importers' styles kept)
+    st_path.write_text(json.dumps(dict(olds, source=olds.get('source', "DokuQuest's own (tools/port/village_builder.py)"), styles=extra), indent=0))
     print('village_builder: %d pieces into %s' % (len(files), out))
 
 
