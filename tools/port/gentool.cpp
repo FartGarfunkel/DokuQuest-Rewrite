@@ -553,6 +553,87 @@ static int surfgrid(const std::string& seedText, int x0, int z0, int w) {
   return 0;
 }
 
+
+// relief / xsect: pictures of the land (from a save with DQ_SAVE, else generated; DQ_NO_STRUCTS for none)
+struct LandSrc {
+  WorldGen* wg; DimGenerator* g; RegionStore* rs = nullptr; std::map<std::pair<int,int>, Chunk*> cs; int fromSave = 0, gen = 0;
+  explicit LandSrc(const std::string& seedText) {
+    WorldGenOptions o; o.seed = seedText.size() > 1 && seedText[0] == '#' ? (i32)std::stoll(seedText.substr(1)) : seedFromString(seedText);
+    if (const char* v = std::getenv("DQ_GENVER")) o.genVersion = atoi(v);
+    wg = new WorldGen(o); g = wg->forDim(DIM_OVERWORLD);
+    if (const char* save = std::getenv("DQ_SAVE")) rs = new RegionStore(save);
+  }
+  Chunk* at(int x, int z) { auto k = std::make_pair(floordiv(x, 16), floordiv(z, 16)); auto it = cs.find(k); if (it != cs.end()) return it->second;
+    Chunk* c = new Chunk(DIM_OVERWORLD, k.first, k.second); std::vector<u8> d;
+    if (rs && rs->load({DIM_OVERWORLD, k.first, k.second}, d) && decodeChunk(*c, d.data(), d.size())) fromSave++; else { g->generate(*c); gen++; } return cs[k] = c; }
+  BlockId get(int x, int y, int z) { return at(x, z)->get(floormod(x, 16), y, floormod(z, 16)); }
+  int top(int x, int z) { Chunk* c = at(x, z); for (int y = DIM_H - 1; y > 0; y--) { BlockId b = c->get(floormod(x, 16), y, floormod(z, 16)); if (b && reg().tSolid[b] && !reg().tLeaves[b] && key(b).find("log") == std::string::npos) return y; } return 0; }
+};
+static u32 landColour(BlockId b) {
+  static std::map<BlockId, u32> cc; auto it = cc.find(b); if (it != cc.end()) return it->second;
+  const std::string k = key(b); u32 c = 0xff00ff;
+  if (b == AIR) c = 0xd8e8ff;
+  struct { const char* w; u32 c; } T[] = {{"water", 0x3060c0}, {"ice", 0xa0c0f0}, {"leaves", 0x2f7a2a}, {"grass", 0x5aa040}, {"sandstone", 0xc8b070}, {"sand", 0xece0a0}, {"deepslate", 0x505058}, {"slate", 0x505058}, {"cobble", 0x707070}, {"stone", 0x8a8a8a},
+    {"gravel", 0xa09890}, {"coarse_dirt", 0x6a4a30}, {"dirt", 0x8a5a3a}, {"snow", 0xf0f0f0}, {"log", 0x6b4a2a}, {"clay", 0xa0a8b8}, {"mud", 0x4a3a30}, {"podzol", 0x6a4a28},
+    {"terracotta", 0xb06a40}, {"mycelium", 0x806878}, {"moss", 0x507a30}, {"andesite", 0x9a9a9a}, {"granite", 0xa06a5a}, {"diorite", 0xd0d0d0}, {"tuff", 0x6a6a5a}, {"calcite", 0xe8e8e0},
+    {"_ore", 0x202020}, {"lava", 0xff6000}, {"bedrock", 0x101010}, {"nylium", 0xc02020}, {"planks", 0xb08850}, {"brick", 0x907060}};
+  for (auto& t : T) if (k.find(t.w) != std::string::npos) { c = t.c; break; }
+  return cc[b] = c;
+}
+static void writeImg(const char* out, int w, int h, const std::vector<u8>& img) { FILE* f = fopen(out, "wb"); fprintf(f, "P6 %d %d 255\n", w, h); fwrite(img.data(), 1, img.size(), f); fclose(f); }
+static int findBlock(const char* save, const char* k) {
+  RegionStore rs(save); int n = 0;
+  for (const ChunkKey& ck : rs.listStored(DIM_OVERWORLD)) { std::vector<u8> d; Chunk c(DIM_OVERWORLD, ck.cx, ck.cz); if (!rs.load(ck, d) || !decodeChunk(c, d.data(), d.size())) continue;
+    int cnt = 0, fx = 0, fy = 0, fz = 0; for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) if (key(c.get(x, y, z)) == k) { if (!cnt++) { fx = x; fy = y; fz = z; } }
+    if (cnt) { printf("chunk %d,%d: %d (first %d %d %d)\n", ck.cx, ck.cz, cnt, ck.cx * 16 + fx, fy, ck.cz * 16 + fz); n++; } }
+  printf("%d chunks\n", n); return 0;
+}
+static int cmpSave(const std::string& seedText, const char* save, int lim) {
+  LandSrc L(seedText); RegionStore rs(save); int n = 0, bad = 0;
+  for (const ChunkKey& ck : rs.listStored(DIM_OVERWORLD)) { if (n >= lim) break; std::vector<u8> d; Chunk c(DIM_OVERWORLD, ck.cx, ck.cz); if (!rs.load(ck, d) || !decodeChunk(c, d.data(), d.size())) continue;
+    Chunk g(DIM_OVERWORLD, ck.cx, ck.cz); L.g->generate(g); n++;
+    int diff = 0, terr = 0, ty = 999, tx = 0, tz = 0; for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) { BlockId a = c.get(x, y, z), b = g.get(x, y, z); if (a != b) { diff++;
+      const bool sa = a && reg().tSolid[a] && !reg().tLeaves[a], sb = b && reg().tSolid[b] && !reg().tLeaves[b]; if (sa != sb) { terr++; if (y < ty) { ty = y; tx = x; tz = z; } } } }
+    if (terr > 30) { bad++; printf("chunk %d,%d: %d differ, %d solid/air (lowest y %d at %d,%d)\n", ck.cx, ck.cz, diff, terr, ty, ck.cx * 16 + tx, ck.cz * 16 + tz); } }
+  printf("%d chunks compared, %d differ in shape\n", n, bad); return 0;
+}
+static int topcheck(const std::string& seedText, int x0, int z0, int w, int step) {
+  LandSrc L(seedText); auto* og = dynamic_cast<OverworldGen*>(L.g); int n = 0, cut = 0, cut8 = 0, worst = 0, wx = 0, wz = 0;
+  for (int z = z0; z < z0 + w; z += step) for (int x = x0; x < x0 + w; x += step) { const int xs = x & ~3, zs = z & ~3;
+    int t = 1; { double hi = og->debugDensity(xs, (DIM_H / 8) * 8, zs);
+      for (int j = DIM_H / 8 - 1; j >= 0; j--) { const double lo = og->debugDensity(xs, j * 8, zs); if (lo > 0) { t = j * 8; for (int k = 7; k >= 1; k--) if (lo + (hi - lo) * k / 8.0 > 0) { t = j * 8 + k; break; } break; } hi = lo; } }
+    const int a = og->v14Surface(xs, zs); n++; if (t > a) { cut++; if (t - a >= 8) cut8++; if (t - a > worst) { worst = t - a; wx = xs; wz = zs; } } }
+  printf("%d corners: %d found too low (%d by 8+), worst %d at %d,%d\n", n, cut, cut8, worst, wx, wz); return 0;
+}
+static int profile(const std::string& seedText, int x, int z) {
+  LandSrc L(seedText); auto* og = dynamic_cast<OverworldGen*>(L.g);
+  for (int y = DIM_H - 2; y >= 30; y--) { const double v = og->debugDensity(x, y, z); if (y % 8 == 0 || v > 0) printf("%d %.4f%s\n", y, v, y % 8 == 0 ? "  <lattice" : ""); }
+  printf("v14Surface %d\n", og->v14Surface(x, z)); return 0;
+}
+static int relief(const std::string& seedText, int x0, int z0, int w, int h, const char* out) {
+  LandSrc L(seedText); std::vector<int> H((size_t)(w + 1) * (h + 1));
+  for (int z = 0; z <= h; z++) for (int x = 0; x <= w; x++) H[(size_t)z * (w + 1) + x] = L.top(x0 + x - 1, z0 + z - 1);
+  std::vector<u8> img((size_t)w * h * 3); int steps = 0;
+  for (int z = 0; z < h; z++) for (int x = 0; x < w; x++) {
+    const int y = H[(size_t)(z + 1) * (w + 1) + x + 1], yw = H[(size_t)(z + 1) * (w + 1) + x], yn = H[(size_t)z * (w + 1) + x + 1];
+    const u32 c = landColour(L.get(x0 + x, y, z0 + z)); float k = 1.f + 0.06f * ((y - yw) + (y - yn)); k = std::clamp(k, 0.4f, 1.6f);
+    u8* px = &img[((size_t)z * w + x) * 3]; px[0] = (u8)std::min(255.f, ((c >> 16) & 255) * k); px[1] = (u8)std::min(255.f, ((c >> 8) & 255) * k); px[2] = (u8)std::min(255.f, (c & 255) * k);
+    if (std::abs(y - yw) >= 8 || std::abs(y - yn) >= 8) { px[0] = 255; px[1] = 0; px[2] = 0; steps++; }
+  }
+  writeImg(out, w, h, img); printf("%d chunks from save, %d generated; %d cells with an 8+ step\n", L.fromSave, L.gen, steps); return 0;
+}
+static int xsect(const std::string& seedText, int x0, int z0, int x1, int z1, int y0, int y1, const char* out) {
+  LandSrc L(seedText); const int n = std::max(std::abs(x1 - x0), std::abs(z1 - z0)) + 1, hh = y1 - y0 + 1;
+  std::vector<u8> img((size_t)n * hh * 3);
+  for (int i = 0; i < n; i++) { const int x = x0 + (x1 - x0) * i / std::max(1, n - 1), z = z0 + (z1 - z0) * i / std::max(1, n - 1);
+    for (int y = y0; y <= y1; y++) { const u32 c = landColour(L.get(x, y, z)); u8* px = &img[((size_t)(y1 - y) * n + i) * 3]; px[0] = c >> 16; px[1] = c >> 8; px[2] = c; } }
+  writeImg(out, n, hh, img); printf("%d chunks from save, %d generated\n", L.fromSave, L.gen);
+  if (auto* og = dynamic_cast<OverworldGen*>(L.g)) { std::string last; for (int i = 0; i < n; i++) { const int x = x0 + (x1 - x0) * i / std::max(1, n - 1), z = z0 + (z1 - z0) * i / std::max(1, n - 1);
+    if (std::getenv("DQ_COLS")) printf("  %d,%d: H %d surf %d top %d  scan sloped %d final %d\n", x, z, og->column(x, z).H, og->v14Surface(x, z), L.top(x, z), og->debugTopScan(x, z, false), og->debugTopScan(x, z, true));
+    const std::string b = og->mcBiomeName(x, z); if (b != last) { printf("  from %d (%d,%d): %s  top %d\n", i, x, z, b.c_str(), L.top(x, z)); last = b; } } }
+  return 0;
+}
+
 namespace dq { bool netherExactLand(i32 seed, int x, int y, int z, u8& land); double netherExactTemperature(i32 seed, int x, int z); }
 #include "gen/nether_bn.h"
 static int netherLands(const std::string& seedText, int R, int step) {
@@ -600,6 +681,12 @@ int main(int argc, char** argv) {
   if (m == "floaters" && argc >= 6) return floaters(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "netherlands" && argc >= 5) return netherLands(argv[2], atoi(argv[3]), atoi(argv[4]));
   if (m == "pillars" && argc >= 6) return pillars(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
+  if (m == "findblock" && argc >= 4) return findBlock(argv[2], argv[3]);
+  if (m == "cmpsave" && argc >= 5) return cmpSave(argv[2], argv[3], atoi(argv[4]));
+  if (m == "topcheck" && argc >= 7) return topcheck(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]));
+  if (m == "profile" && argc >= 5) return profile(argv[2], atoi(argv[3]), atoi(argv[4]));
+  if (m == "relief" && argc >= 8) return relief(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argv[7]);
+  if (m == "xsect" && argc >= 10) return xsect(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]), atoi(argv[8]), argv[9]);
   if (m == "surfgrid" && argc >= 6) return surfgrid(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "topview" && argc >= 7) return topview(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), argv[6]);
   if (m == "owmap" && argc >= 9) return owmap(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]), argv[8]);

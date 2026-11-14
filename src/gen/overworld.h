@@ -72,6 +72,7 @@ public:
   bool villageStyles = false;    // terrain version 10: villages in every style (beach, jungle, swamp, mesa, igloo, festive...) by the land
   bool looseGround = false;      // immersive worlds only: loose rocks, flint and twigs (gen/decorate.cpp)
   bool dynTrees = false;         // terrain version 13: grown trees (gen/dyntree_gen.cpp, sim/dyntree.h)
+  bool strata = false;          // our rock layers painted through the land (12..20; 21: Soulrend's plain stone and Minecraft's rock blobs)
   bool rockLayers = false;       // terrain version 12: rock layers and ores in their rocks (gen/rock_layers.cpp)
   std::vector<u8> zincRep_, bismuthRep_, tinRep_, silverRep_, goldRep_;
   BlockId layerRock(int wx, int y, int wz, int H) const;
@@ -96,7 +97,9 @@ public:
 
   // terrain version 14 (docs/WORLDGEN_MERGE.md): the land shaped by Minecraft 1.20's noise router (gen/density.h)
   bool v14 = false;
-  int v14Surface(int x, int z) const;   // band y of the land's top here (its terrain without the caves)
+  int v14Surface(int x, int z) const;
+  int debugTopScan(int x, int z, bool finalD) const;
+  double debugDensity(int x, int y, int z) const;   // (dq-gentool: the highest solid by a full scan, sloped_cheese or final_density)   // band y of the land's top here (its terrain without the caves)
 
 private:
   std::shared_ptr<class DensityGraph> vg_;
@@ -107,7 +110,7 @@ private:
   int v14Corner(int x, int z) const;   // (the exact surface at a cell corner)
   struct BaseCol { int h; double hc; u8 biome; double temp, humid; int H = -1; u8 special = 0; u16 mc = 0xFFFF; };
   // terrain version 15: Soulrend's world (gen/mc_biomes.h, gen/surface_rules.h; data/soulrend_worldgen)
-  bool v15 = false, v16 = false, v17 = false, v18 = false, v20 = false;
+  bool v15 = false, v16 = false, v17 = false, v18 = false, v20 = false, v21 = false;
   double hf(i32 a, i32 b, i32 c, i32 d) const { return v18 ? posHashF(a, b, c, d) : hashFloat(a, b, c, d); }   // (18: no stripes)
   int genVer_ = 0;
   std::shared_ptr<class McBiomes> mcb_;

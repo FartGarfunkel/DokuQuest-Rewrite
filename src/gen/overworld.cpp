@@ -28,7 +28,7 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
   jigsawVillages = o.genVersion >= 9;
   villageStyles = o.genVersion >= 10;
   villagePlan11 = o.genVersion >= 11;
-  rockLayers = o.genVersion >= 12;
+  rockLayers = o.genVersion >= 12; strata = rockLayers && (o.genVersion < 21 || o.looseGround);   // (immersive worlds keep TFC's layers)
   dynTrees = o.genVersion >= 13;
   looseGround = o.looseGround;
   floes = o.genVersion >= 5;   // terrain version 5: BTA's ice floes in the seas round the glaciers   // terrain version 4 (BTA): biomes about twice as big
@@ -61,7 +61,7 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
       vOff = g->find("overworld/offset"); vJag = g->find("overworld/jaggedness");
       if (vSloped < 0 || vFinal < 0) v14 = false;
       if (v14 && w.b) {
-        mcb_ = w.b; mcs_ = w.s; v15 = true; v16 = o.genVersion >= 16; v17 = o.genVersion >= 17; v18 = o.genVersion >= 18; v20 = o.genVersion >= 20; if (v16) mcf_ = w.f;   // (16: the biomes' own plants and the land's extras)
+        mcb_ = w.b; mcs_ = w.s; v15 = true; v16 = o.genVersion >= 16; v17 = o.genVersion >= 17; v18 = o.genVersion >= 18; v20 = o.genVersion >= 20; v21 = o.genVersion >= 21; if (v16) mcf_ = w.f;   // (16: the biomes' own plants and the land's extras)
         vTemp = g->find("temperature"); vVeg = g->find("vegetation"); vDepth = g->find("depth"); vRidges = g->find("ridges");
         vInit = g->find("initial_density_without_jaggedness");
         {   // (the extras' noises, registered here on this thread)
@@ -126,6 +126,12 @@ int OverworldGen::v14Surface(int x, int z) const {
   }
   return v14Corner(x, z);
 }
+double OverworldGen::debugDensity(int x, int y, int z) const { return vg_ ? vg_->eval(vSloped, x, y - 1, z) : 0; }
+int OverworldGen::debugTopScan(int x, int z, bool finalD) const {
+  if (!vg_) return -1;
+  for (int y = DIM_H - 2; y >= 1; y--) if (vg_->eval(finalD ? vFinal : vSloped, x, y - 1, z) > 0) return y;
+  return 0;
+}
 int OverworldGen::v14Corner(int x, int z) const {
   struct E { i64 k; int y; };
   thread_local std::vector<E> cache(1 << 18, E{(i64)1 << 62, 0});   // (4 MB a thread: structure plans ask about wide areas)
@@ -136,6 +142,18 @@ int OverworldGen::v14Corner(int x, int z) const {
   if (e.k == key) return e.y;
   const DensityGraph& g = *vg_;
   int top = 1;
+  if (v21) {   // (21: as the land is built, on Minecraft's lattice (every 8 blocks up, blended between), from the sky down:
+    // the highest ground there is, however far its 3D noise lifts it over the 2D shape. Before, the search began a little
+    // over that shape and land higher still was cut off flat, a sheer wall round a flat top)
+    double hi = g.eval(vSloped, x, (DIM_H / 8) * 8 - 1, z);
+    for (int j = DIM_H / 8 - 1; j >= 0; j--) {
+      const double lo = g.eval(vSloped, x, j * 8 - 1, z);
+      if (lo > 0) { top = j * 8; for (int k = 7; k >= 1; k--) if (lo + (hi - lo) * k / 8.0 > 0) { top = j * 8 + k; break; } break; }
+      hi = lo;
+    }
+    e = {key, std::clamp(top, 1, DIM_H - 2)};
+    return e.y;
+  }
   // from just above where its 2D shape puts the ground (depth = 0 where Minecraft's y = 128 (1.5 + offset) - 64, the jagged
   // peaks at most the jaggedness higher), not from the sky: a dozen samples, not fifty
   const double off = g.eval(vOff, x, 0, z), jag = vJag >= 0 ? std::max(0.0, g.eval(vJag, x, 0, z)) : 0.5;
@@ -493,7 +511,7 @@ void OverworldGen::fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const {
       else if (sky && nearTop && depth < fd + 3 && m.under == B.sandstone) id = B.sandstone;
       else if (sky && nearTop && depth < fd + 6 && m.under == B.desert_stone) id = depth < fd + 2 ? B.desert_sandstone : B.desert_stone;
       else if (sky && nearTop && depth < fd + 2 && m.under == B.peat) id = B.peat;
-      else id = rockLayers ? layerRock(wx, y, wz, top) : B.stone;
+      else id = strata ? layerRock(wx, y, wz, top) : B.stone;
       if (y < Hs - 8) sky = false;   // (deeper down: caves, no grass)
       here = id;
     }
@@ -577,7 +595,7 @@ void OverworldGen::surfaceV15(GenBuf& b, OwColumn* cols, int cx, int cz) const {
       col.y = my; col.stoneAbove = ++stoneAbove; col.stoneBelow = my - stoneBelowY + 1; col.waterHeight = waterHeight;
       if (here != B.stone) continue;
       const BlockId r = mcs_->apply(col);
-      b.blocks[colIdx(x, y, z)] = r != 0xFFFF ? r : (rockLayers && (!v17 || y <= ground0[z * 16 + x]) ? layerRock(wx, y, wz, c.H) : B.stone);
+      b.blocks[colIdx(x, y, z)] = r != 0xFFFF ? r : (strata && (!v17 || y <= ground0[z * 16 + x]) ? layerRock(wx, y, wz, c.H) : B.stone);
     }
     // the sea's top, frozen where it's cold enough to snow
     if (b.blocks[colIdx(x, SEA_LEVEL, z)] == B.water && b.blocks[colIdx(x, SEA_LEVEL + 1, z)] == AIR && mcb_->coldEnoughToSnow(mcBiomeAt(wx, SEA_LEVEL - 1, wz), wx, SEA_LEVEL - 1, wz))
@@ -699,7 +717,7 @@ void OverworldGen::generate(Chunk& ch) {
       else if (y > H - fd - 3 && m.under == B.sandstone) id = B.sandstone;
       else if (y > H - fd - 6 && m.under == B.desert_stone) id = y > H - fd - 2 ? B.desert_sandstone : B.desert_stone;
       else if (y > H - fd - 2 && m.under == B.peat) id = B.peat;
-      else id = rockLayers ? layerRock(wx, y, wz, H) : yo < slateTop ? B.slate : B.stone;
+      else id = strata ? layerRock(wx, y, wz, H) : yo < slateTop ? B.slate : B.stone;
       b.blocks[colIdx(x, y, z)] = id;
     }
     const bool cold = c.temp < -0.38;

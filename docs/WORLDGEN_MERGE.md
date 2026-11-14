@@ -77,3 +77,22 @@ Version 18 uses `posHashF` (splitmix rounds) for the bedrock floor, icebergs, de
 whole murmur mix for the snow line; village names come from a per-tile bijection (no two alike in 24 x 24 regions).
 Wythers' "thermal" taiga (white, orange and yellow terracotta round its hot springs, `wythers:terrain/local/
 thermal_taiga_*` in WWOO's taiga) is genuine Soulrend and stays.
+
+# Terrain version 21: the land's whole top, and Soulrend's stone
+Checked against Minecraft's code and Soulrend's data, not by eye (`dq-gentool cmpsave / topcheck / profile / relief / xsect`):
+- Generation is deterministic: 2180 saved chunks of a v20 world regenerate the same (only snow and plants differ).
+- The density interpreter matches Minecraft's: ImprovedNoise, PerlinNoise, NormalNoise, BlendedNoise, CubicSpline and every
+  density type Soulrend's data uses (all 28 types handled; every named function resolves).
+- **Found 1: the land's top cut off flat.** `v14Corner` searched for the ground from ~20 blocks over its 2D shape, down.
+  Where the 3D noise lifts the land higher (low `factor`: crags, windswept hills) the search began in an air gap and the
+  land over it was never built (the fill places stone only up to that height): a flat top and a sheer wall. Version 21
+  finds the top on Minecraft's own lattice (density every 8 blocks up, blended between), from the sky down: against that
+  lattice v20 had 32 corners in 16384 8+ blocks too low (worst 119), v21 none.
+- **Found 2: our rock layers on every cliff.** Version 12's TerraFirmaCraft-style strata (a 200-block region of sandstone,
+  claystone, quartzite... under the soil, its layer tops following the ground) showed on every cut as flat slabs and
+  straight seams. Soulrend's Overworld is stone, with Minecraft's dirt, gravel, granite, diorite, andesite and tuff blobs
+  (its biomes' `ore_*` features; ours in `placeOres`). Version 21: `strata` off, plain stone; the metal ores (tin, zinc,
+  bismuth, silver) keep their depths in any stone.
+- Genuine, not bugs: WWOO's `crimson_patch` (crimson nylium in windswept gravelly hills, by its basalt columns); Nature's
+  Spirit's sugi pillars (its region puts sugi forest down to the coast, continentalness -0.19, and its pillar fills
+  through water: sea stacks); 10+ block cliffs where the density drops (Minecraft's too).

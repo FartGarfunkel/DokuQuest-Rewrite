@@ -20,7 +20,7 @@ struct LevelInfo {
   std::string mode = "survival";       // survival | creative | adventure | spectator
   std::string difficulty = "normal";   // peaceful | easy | normal | hard
   std::string worldType = "default";
-  int genVersion = 20;  // new worlds: the newest terrain (20: cave mouths open, no hollow crusted hills; 19: the deep world, docs/WORLD_DEPTH.md; 18: no stripes in bedrock, ice and rock; 17: blended levelling, shore fixes; 16: Soulrend's plants and features; 15: Soulrend's world, tools/port/soulrend_worldgen; 14: Minecraft 1.20's land, docs/WORLDGEN_MERGE.md) (old saves keep theirs: fromJson defaults to 3)
+  int genVersion = 21;  // new worlds: the newest terrain (21: the land's whole top (none cut off flat), plain stone in the Overworld as Soulrend; 20: cave mouths open, no hollow crusted hills; 19: the deep world, docs/WORLD_DEPTH.md; 18: no stripes in bedrock, ice and rock; 17: blended levelling, shore fixes; 16: Soulrend's plants and features; 15: Soulrend's world, tools/port/soulrend_worldgen; 14: Minecraft 1.20's land, docs/WORLDGEN_MERGE.md) (old saves keep theirs: fromJson defaults to 3)
   int layout = 0;              // the column's layout (world/dims.h): 1 the four bands of old, 2 the deep world (the
   int underDepth = 4;          //   Underworld under the Overworld, underDepth bands of it, and open sky over it);
                                //   0 = a new world's: Level::create picks (the deep world for the land's own world types)
