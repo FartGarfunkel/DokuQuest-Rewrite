@@ -965,6 +965,21 @@ public:
         }
       }
     }
+    // what's lifted up (render/chest_layer.cpp): its name over it, the count beside, readable from the couch
+    if (scene().phase == 2 && shown >= 0 && shown < (int)items.size() && !items[shown].empty()) {
+      ImVec2 tp;
+      if (project(chestSlotCenter(w, at, shown) + vec3(0, cs * 2.5f, 0), tp) && !bookUiPointOverBook(vec2(tp.x, tp.y))) {
+        const ItemStack& it = items[shown];
+        const std::string n = nameOf(it);
+        ImGui::PushFont(ui::font(ui::F_MID));
+        const ImVec2 ts = ImGui::CalcTextSize(n.c_str());
+        const ImVec2 lo(tp.x - ts.x * 0.5f - 8 * z, tp.y - ts.y - 6 * z), hi(tp.x + ts.x * 0.5f + 8 * z, tp.y + 2 * z);
+        dl->AddRectFilled(lo, hi, IM_COL32(20, 14, 10, 200), 4 * z);
+        dl->AddRect(lo, hi, IM_COL32(255, 236, 160, 140), 4 * z, 0, 1.5f * z);
+        dl->AddText(ImVec2(tp.x - ts.x * 0.5f, lo.y + 4 * z), IM_COL32(255, 244, 214, 255), n.c_str());
+        ImGui::PopFont();
+      }
+    }
     if (!pad && !overUi && hover >= 0 && scene().phase == 2) {
       const bool shift = ImGui::GetIO().KeyShift;
       if (ImGui::IsMouseClicked(0)) act(a, hover, false, shift);

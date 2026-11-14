@@ -15,6 +15,7 @@
 #include "sim/chest_work.h"
 #include "sim/controller.h"
 #include "sim/player.h"
+#include "ui/cinematic.h"
 #include <cstring>
 #include <map>
 #include <set>
@@ -246,9 +247,13 @@ public:
     g_chestHiddenN = n;
   }
   // what's inside, lying in its rows (or on a cabinet's shelves: sim/chest_work.h chestSlotCenter)
-  void drawInside(GameSession& s, World& w, VoxelRenderer& VR, const Open& o, ivec3 pos, const mat4& m, VoxelLight L) {
+  void drawInside(GameSession& s, World& w, VoxelRenderer& VR, const Open& o, ivec3 pos, const mat4& m, VoxelLight L, float time) {
     ivec3 hs[2]; const int nh = chestHalves(w, pos, hs);
     if (!nh || !s.level) return;
+    // your own chest open in front of you: its well not so dark that its things are lost (a little light falls in);
+    // the slot you point at (mouse or d-pad: ui/cinematic_table.cpp) has its thing lifted up to you, turning slowly
+    vec3 aim; const bool aiming = o.mine && cinematicAimPoint(aim);
+    if (o.mine) { L.block = std::max(L.block, 0.62f); L.sky = std::max(L.sky, 0.35f); }
     const std::vector<ItemStack> items = chestHalfItems(*s.level, o.mine ? s.player : nullptr, w, pos);
     const int per = (int)items.size(), h = nh == 2 && hs[1] == pos ? 1 : 0;
     const float cs = chestSlotSize(w, pos);
@@ -259,11 +264,29 @@ public:
       if (!im.ready()) continue;
       const vec3 c = chestSlotCenter(w, hs[0], h * per + i) - vec3(pos);
       const int layers = st.n > 1 ? (st.n >= 16 ? 3 : 2) : 1;   // (a stack: a few of it piled)
+      const bool lifted = aiming && glm::distance(c + vec3(pos), aim) < cs * 0.3f;
+      // its own extent (a picture fills only part of its frame; a 3D one stands off its middle): sized to its slot
+      const vec3 lo = im.frame.origin, hi = im.frame.origin + vec3(im.size) * im.frame.voxel, ctr = (lo + hi) * 0.5f;
+      const bool cube = im.kind == VoxelModel::Block && !im.torch3d;
+      if (lifted) {   // held up out of the well: bigger, turning, a gentle bob
+        const float ext = std::max({hi.x - lo.x, hi.y - lo.y, hi.z - lo.z, 0.05f});
+        const float sc = (cube ? cs * 1.5f : cs * 2.0f) / ext;
+        mat4 im4 = glm::translate(m, c + vec3(0, cs * 1.0f + std::sin(time * 2.4f) * cs * 0.06f, 0));
+        im4 = glm::rotate(im4, time * 1.3f, vec3(0, 1, 0));
+        im4 = glm::translate(glm::scale(im4, vec3(sc)), -ctr);
+        VR.draw(im.gl, im4 * im.matrix(), VoxelLight{std::max(L.sky, 0.6f), std::max(L.block, 0.85f)}, vec4(0), itemGlints(st) ? 1.f : 0.f);
+        continue;
+      }
       for (int ly = 0; ly < layers; ly++) {
         mat4 im4 = glm::translate(m, c + vec3((ly & 1) * cs * 0.08f, 0.002f, (ly == 2) * -cs * 0.08f));
         im4 = glm::rotate(im4, (o.facing & 3) * PI / 2 + ly * 0.35f, vec3(0, 1, 0));
-        if (im.kind == VoxelModel::Block) im4 = glm::scale(glm::translate(im4, vec3(0, cs * 0.42f + ly * cs * 0.55f, 0)), vec3(cs * 0.8f));
-        else { im4 = glm::translate(im4, vec3(0, (im.depth > 0 ? im.depth : 0.03f) * cs + 0.003f + ly * cs * 0.12f, 0)); im4 = glm::rotate(im4, -PI / 2, vec3(1, 0, 0)); im4 = glm::scale(im4, vec3(cs * 1.05f)); }
+        if (cube) im4 = glm::scale(glm::translate(im4, vec3(0, cs * 0.42f + ly * cs * 0.55f, 0)), vec3(cs * 0.8f));
+        else {   // lying flat, filling its slot, resting on the floor (not sunk into it)
+          const float sc = std::min(cs * 1.15f / std::max({hi.x - lo.x, hi.y - lo.y, 0.05f}), cs * 2.4f);
+          im4 = glm::translate(im4, vec3(0, -lo.z * sc + ly * (hi.z - lo.z) * sc * 0.9f, 0));
+          im4 = glm::rotate(im4, -PI / 2, vec3(1, 0, 0));
+          im4 = glm::translate(glm::scale(im4, vec3(sc)), vec3(-ctr.x, -ctr.y, 0));
+        }
         VR.draw(im.gl, im4 * im.matrix(), L, vec4(0), itemGlints(st) ? 1.f : 0.f);
       }
     }
@@ -293,7 +316,7 @@ public:
         mat4 dm = glm::translate(m, hinge); dm = glm::rotate(dm, -1.85f * e, vec3(0, 1, 0)); dm = glm::translate(dm, -hinge);
         VR.draw(cab.lid.gl, dm * cab.lid.matrix(), L);
         if (o.settling || o.t < 0.2f) continue;
-        drawInside(s, w, VR, o, pos, glm::translate(mat4(1), rel), L);
+        drawInside(s, w, VR, o, pos, glm::translate(mat4(1), rel), L, (float)f.time);
         continue;
       }
       const int half = reg().block(o.id).str("shape").empty() && doubleChestFor(reg().block(o.id).faces[4])
@@ -317,7 +340,7 @@ public:
       VR.draw(cm.lid.gl, lm * cm.lid.matrix(), L);
       // what's inside, lying in its rows (seen once the lid is up)
       if (o.settling || o.t < 0.2f) continue;
-      drawInside(s, w, VR, o, pos, m, L);
+      drawInside(s, w, VR, o, pos, m, L, (float)f.time);
     }
     if (begun) VR.end();
   }
