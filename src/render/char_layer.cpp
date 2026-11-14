@@ -875,13 +875,13 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   {   // the journal: off the belt into both hands at a menu, its pages turned as they turn them (synced: Player::bookFlip)
     const bool want = (p.activity & Player::ACT_SCREEN) && !p.riding && !p.sleeping;
     const float dtb = st.bookT < 0 ? 0.f : (float)std::clamp(f.time - st.bookT, 0.0, 0.1); st.bookT = f.time;
-    st.book = std::clamp(st.book + (want ? dtb * 3.f : -dtb * 4.f), 0.f, 1.f);
+    st.book = std::clamp(st.book + (want ? dtb / 0.9f : -dtb / 0.35f), 0.f, 1.f);   // (taken out and opened, as the hand view does it)
     if (!st.bookSeen) { st.bookFlip = p.bookFlip; st.bookSeen = true; }
     if (p.bookFlip != st.bookFlip) { st.bookFlip = p.bookFlip; st.flipAt = f.time; st.flipDir = p.bookDir; }
     o.book = st.book > 0.02f ? st.book : -1.f;
     o.bookPic = &p.bookPic; o.bookLay = &p.bookLay; o.bookKey = p.id;
     o.bookLeaf = f.time - st.flipAt < 0.45 ? (float)((f.time - st.flipAt) / 0.45) : -1.f; o.bookDir = st.flipDir;
-    if (want) { ps.gui = true; }
+    if (want && st.book > 0.4f) { ps.gui = true; }   // (both hands up once the left has brought it off the belt)
   }
   glm::dvec3 palms[2] = {glm::dvec3(0), glm::dvec3(0)}; o.palms = palms;
   drawCharacter(*spec, ps, wear, base, o);
@@ -1152,11 +1152,22 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     vec3 left = sL - sR; left -= up * glm::dot(left, up); left = glm::length(left) > 1e-5f ? glm::normalize(left) : vec3(1, 0, 0);
     const vec3 fwd = glm::cross(left, up);   // (the way they face)
     const vec3 hip = vec3(R.part[CP_BODY][3]);
-    if (o.book < 0.35f) {   // on the belt: upright on the front of the left hip (clear of the arm), its cover outward
-      const vec3 at = hip + left * 0.26f + up * 0.06f + fwd * 0.15f;
-      mat4 F(1); F[0] = vec4(fwd, 0); F[1] = vec4(-left, 0); F[2] = vec4(up, 0); F[3] = vec4(at, 1);
-      drawBook(VR, F, light, 0.f, -1.f, 1, 0.42f, 0x5A3418);
-    } else if (!fp) {   // in both hands before them, open, the pages toward their face
+    // off the belt into the left hand (a), carried up between both hands (b), opened (c): the hand view's timing
+    auto phs = [&](float a0, float a1) { const float u = std::clamp((o.book - a0) / (a1 - a0), 0.f, 1.f); return u * u * (3 - 2 * u); };
+    const float pa = o.book < 0 ? 0.f : phs(0.f, 0.36f), pb = o.book < 0 ? 0.f : phs(0.33f, 0.62f);
+    const vec3 beltAt = hip + left * 0.26f + up * 0.06f + fwd * 0.15f;
+    mat4 Fbelt(1); Fbelt[0] = vec4(fwd, 0); Fbelt[1] = vec4(-left, 0); Fbelt[2] = vec4(up, 0); Fbelt[3] = vec4(beltAt, 1);
+    if (o.book < 0) {   // on the belt: upright on the front of the left hip (clear of the arm), its cover outward
+      drawBook(VR, Fbelt, light, 0.f, -1.f, 1, 0.42f, 0x5A3418);
+    } else if (pb < 0.999f) { if (!fp) {   // in the left fist, closed, on its way up (first person: the hand view has it)
+      const vec3 fL = vec3(R.part[CP_ARML_D] * vec4(0, -6, -1, 1)), fR = vec3(R.part[CP_ARMR_D] * vec4(0, -6, -1, 1));
+      const vec3 heldAt = (fR + fL) * 0.5f + up * 0.03f;
+      const vec3 at = glm::mix(glm::mix(beltAt, fL, pa), heldAt, pb);
+      // turned from the belt's way (cover out) toward facing them as it comes up
+      const vec3 fwd2 = glm::normalize(glm::mix(fwd, up, pb * 0.8f)), up2 = glm::normalize(glm::mix(up, -fwd, pb * 0.8f));
+      mat4 F(1); F[0] = vec4(fwd2, 0); F[1] = vec4(-left, 0); F[2] = vec4(up2, 0); F[3] = vec4(at, 1);
+      drawBook(VR, F, light, 0.f, -1.f, 1, glm::mix(0.42f, 0.55f, pb), 0x5A3418);
+    } } else if (!fp) {   // in both hands before them, open, the pages toward their face
       const vec3 fR = vec3(R.part[CP_ARMR_D] * vec4(0, -6, -1, 1)), fL = vec3(R.part[CP_ARML_D] * vec4(0, -6, -1, 1));
       const vec3 head = vec3(R.part[CP_HEAD] * vec4(0, 4, 0, 1));
       const vec3 c = (fR + fL) * 0.5f + up * 0.03f;
@@ -1166,7 +1177,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
       mat4 F(1); F[0] = vec4(x, 0); F[1] = vec4(y, 0); F[2] = vec4(z, 0); F[3] = vec4(c, 1);
       const float sc = std::clamp(glm::length(fR - fL) / 0.75f, 0.4f, 0.75f);
       const bool pic = o.bookPic && !o.bookPic->empty() && o.book > 0.95f;
-      if (!pic) drawBook(VR, F, light, std::clamp((o.book - 0.35f) / 0.65f, 0.f, 1.f), o.bookLeaf, o.bookDir, sc, 0x5A3418);
+      if (!pic) drawBook(VR, F, light, phs(0.6f, 1.f), o.bookLeaf, o.bookDir, sc, 0x5A3418);
       else {   // the journal as they hold it: the drawn book of their menus as a real one (render/journal_model.h), its pages
         // toward their face — x across it as they read it, y up its pages, z out of them toward their eyes
         const vec3 zb = y, yb = z, xb = glm::cross(yb, zb);

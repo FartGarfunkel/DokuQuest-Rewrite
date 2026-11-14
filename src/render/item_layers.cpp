@@ -528,31 +528,48 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     }
   }
   // at a menu: your journal off the belt, open in both hands before you (others see the same: render/char_layer.cpp)
+  // Taken out the way a hand does it, not popped up: the left hand brings it up off the belt at your left, closed (a);
+  // carries it before you as the right hand comes up to the cover (b); the cover opened in both hands (c); the menus on
+  // its pages once it's open. Put away: the same backwards, quicker.
   static float open = 0;
-  if (!(p->activity & Player::ACT_SCREEN)) open = 0;
+  static double bookT = -1;
+  const bool atMenu = (p->activity & Player::ACT_SCREEN) != 0;
+  { const float dtb = bookT < 0 ? 0.f : (float)std::clamp(f.time - bookT, 0.0, 0.1); bookT = f.time;
+    open = atMenu ? std::min(1.f, open + dtb / 0.9f) : std::max(0.f, open - dtb / 0.35f); }
+  if (!atMenu && open <= 0) {}
   else {
     drew = 3;
-    static double bookT = -1, flipAt = -10; static u8 lastFlip = 0;
-    const float dtb = bookT < 0 ? 0.f : (float)std::clamp(f.time - bookT, 0.0, 0.1); bookT = f.time;
-    open = std::min(1.f, open + dtb * 3.f);
+    static double flipAt = -10; static u8 lastFlip = 0;
+    auto ph = [&](float a0, float a1) { const float u = std::clamp((open - a0) / (a1 - a0), 0.f, 1.f); return u * u * (3 - 2 * u); };
+    const float pa = ph(0.f, 0.36f), pb = ph(0.33f, 0.62f), pc = ph(0.6f, 1.f);
     static JournalPic turnFrom; static bool hasTurn = false;
     if (p->bookFlip != lastFlip) { lastFlip = p->bookFlip; flipAt = f.time; hasTurn = open >= 1 && bookUiSnapshot(turnFrom); }   // (the pages as they were: the page turned over carries them)
-    const float lift = (1 - open) * 0.6f;   // (it comes up from the belt)
     setBookPagesDark(bookUiDark(s.app));
     // held up to read, close: the pages square to your view and as tall as most of it, the menus on them (ui/book_ui.h)
     const bool ui = bookUiOn(s.app);
     const float D = 0.5f, tanH = 1.f / std::max(0.1f, proj[1][1]);
     const float scale = (2 * D * tanH * 0.86f) / (10 / 16.f);   // (the page length 86 % of the view's height)
     float hw, hl, top; bookPageArea(scale, hw, hl, top);
-    const vec3 c(0, -0.02f * D - lift, -D);
+    const vec3 home(0, -0.02f * D, -D);
+    // where the book is: up from below the view at your left (the belt), to low on the left, to before you
+    // (held lower and further off while it comes up, closed: a book at arm's length, not over your eyes; at reading size once
+    // it's before you and opening)
+    const vec3 belt = vec3(-0.34f, -0.52f, -0.62f), low = vec3(-0.2f, -0.24f, -0.7f);
+    const float kz = glm::mix(0.42f, 1.f, ph(0.45f, 0.9f));   // (its size: the far book looks small)
+    const vec3 c = glm::mix(glm::mix(belt, low, pa), home, ph(0.33f, 0.9f));
+    const float roll = (1 - pb) * 0.55f;   // (one-handed it leans, its spine in the left hand)
     vec4 crop(0, 0, 1, 1);
     const bool drawn = ui && open >= 1 && bookUiTexture() && bookUiCrop(crop);   // a menu with its drawn book: that book IS the journal
     float SX = 1.3f;
     if (drawn) { const vec2 ts = bookUiSize(); SX = (crop.z - crop.x) * ts.x / std::max(1.f, (crop.w - crop.y) * ts.y) * hl / std::max(1e-4f, hw); }
     hw *= SX;
-    mat4 F(1); F[0] = vec4(SX, 0, 0, 0); F[1] = vec4(0, 0, 1, 0); F[2] = vec4(0, 1, 0, 0); F[3] = vec4(c - vec3(0, 0, top), 1);
-    for (int sd : {1, -1}) {   // your own two hands holding its lower corners, the arms up from below the view
-      const vec3 fist = c + vec3(sd * (hw * 0.93f - 0.01f), -hl + 0.02f, 0.03f);
+    mat4 F(1); F[0] = vec4(SX, 0, 0, 0); F[1] = vec4(0, 0, 1, 0); F[2] = vec4(0, 1, 0, 0); F[3] = vec4(0, 0, -top, 1);
+    const mat4 Rl = glm::rotate(mat4(1), roll, vec3(0, 0, 1)) * glm::scale(mat4(1), vec3(kz));
+    F = glm::translate(mat4(1), c) * Rl * F;
+    for (int sd : {1, -1}) {   // your own two hands holding its lower corners, the arms up from below the view (the right comes later)
+      const vec3 corner = c + vec3(Rl * vec4(sd * (hw * 0.93f - 0.01f), -hl + 0.02f, 0.03f, 0));
+      if (sd > 0 && pb <= 0.02f) continue;   // (the right hand not up yet)
+      const vec3 fist = sd > 0 ? glm::mix(home + vec3(0.5f, -0.8f, 0.12f), corner, pb) : corner;
       const vec3 shoulder = fist + vec3(sd * 0.1f, -0.55f, 0.32f);
       const vec3 y = glm::normalize(shoulder - fist);
       vec3 x = glm::normalize(glm::cross(y, vec3(0, 0, 1))); const vec3 z = glm::cross(x, y);
@@ -573,7 +590,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     }
     const float JB = 0.1f;   // (held up to read: nearly flat, so where you point is where it is)
     if (jr) drawJournalBody(VR, glm::translate(mat4(1), jc), jw, jh, JB, L, bookUiDark(s.app));
-    if (!drawn) drawBook(VR, F, L, ui && open >= 1 ? 2.f : std::clamp((open - 0.3f) / 0.7f, 0.f, 1.f), leaf, p->bookDir, scale, 0x5A3418);
+    if (!drawn) drawBook(VR, F, L, ui && open >= 1 ? 2.f : pc, leaf, p->bookDir, scale, 0x5A3418);   // (closed until both hands open it; F carries its size)
     VR.end();
     if (ui && open >= 1 && bookUiTexture()) {
       // the menus on the pages, and where they are on the window (for the mouse)
