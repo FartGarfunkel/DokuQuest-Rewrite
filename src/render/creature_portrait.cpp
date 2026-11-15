@@ -46,6 +46,7 @@ GLuint CreaturePortrait::render(const std::string& type, int w, int h, float yaw
   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
   if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) { glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prevFbo); return 0; }
   glViewport(0, 0, w, h);
+  const GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST); glDisable(GL_SCISSOR_TEST);   // (split screen's scissor would clip it)
   glClearColor(0, 0, 0, 0); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); glDepthMask(GL_TRUE);
   glEnable(GL_CULL_FACE); glCullFace(GL_BACK); glFrontFace(GL_CCW); glDisable(GL_BLEND);
@@ -83,6 +84,7 @@ GLuint CreaturePortrait::render(const std::string& type, int w, int h, float yaw
   VR.end();
   glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prevFbo);
   glViewport(vp[0], vp[1], vp[2], vp[3]);
+  if (scissor) glEnable(GL_SCISSOR_TEST);
   glDisable(GL_DEPTH_TEST); glDisable(GL_CULL_FACE);
   return tex;
 }

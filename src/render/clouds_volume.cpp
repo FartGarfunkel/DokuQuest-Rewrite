@@ -172,6 +172,9 @@ void VolumetricClouds::draw(const FrameCtx& f, const SkyEnv& env) {
   const GLenum bufs[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
   glDrawBuffers(2, bufs);
   glViewport(0, 0, w, h);
+  // (split screen draws each view with a scissor round it: left on here it clipped the march to where the view sits on
+  //  the window, so beside the first view nothing was marched and the second person's sky came out black)
+  const GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST); glDisable(GL_SCISSOR_TEST);
   glDisable(GL_DEPTH_TEST); glDisable(GL_BLEND); glDepthMask(GL_FALSE); glDisable(GL_CULL_FACE);
   march.use();
   f.apply(march);
@@ -208,6 +211,7 @@ void VolumetricClouds::draw(const FrameCtx& f, const SkyEnv& env) {
   // laid over the picture, at its own depth
   glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)prevFbo);
   glViewport(vp[0], vp[1], vp[2], vp[3]);
+  if (scissor) glEnable(GL_SCISSOR_TEST);
   glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL);
   glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_SRC_ALPHA);
   comp.use();
