@@ -1,5 +1,5 @@
-// gen/mc_biomes.h — Soulrend's biomes (terrain version 15): which biome is where, as its mods place them
-// (tools/port/soulrend_worldgen/import.py -> data/soulrend_worldgen/biome_regions.json, biome/<ns>/<name>.json).
+// gen/land_biomes.h — Soulrend's biomes (terrain version 15): which biome is where, as its mods place them
+// (tools/port/worldgen/import.py -> data/worldgen/biome_regions.json, biome/<ns>/<name>.json).
 // TerraBlender's region layer picks, per area of the world, one of six lists of climate boxes (region 0: Expanded
 // Ecosphere's; 1-5: Nature's Spirit's regions); the biome is the box nearest the climate there (temperature, humidity,
 // continentalness, erosion, depth, weirdness: Minecraft's noise router), as Minecraft's Climate.RTree finds it.
@@ -14,7 +14,7 @@
 
 namespace dq {
 
-class McBiomes {
+class LandBiomes {
 public:
   struct Info {
     std::string name;                       // "natures_spirit:aspen_forest"
@@ -23,7 +23,7 @@ public:
     int grass = -1, foliage = -1, water = 0x3F76E4, sky = 0x78A7FF;   // -1: from the colour maps
     std::string grassModifier;              // "", "dark_forest", "swamp"
   };
-  // dir: data/soulrend_worldgen. False when the data isn't there.
+  // dir: data/worldgen. False when the data isn't there.
   // withQuark (terrain version 17): Quark's TerraBlender region too (its Glimmering Weald; and the regions' weights with it)
   bool load(const fs::path& dir, i64 worldSeed, bool withQuark = true, bool strongHash = true);   // strongHash (18): unstriped snow lines
   bool ok() const { return !regions_.empty(); }

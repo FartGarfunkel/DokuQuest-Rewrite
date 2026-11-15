@@ -1,19 +1,19 @@
-# BTA 8.0.1 Nether generator port (`src/gen/bta/`)
+# BTA 8.0.1 Nether generator port (`src/gen/nethergen/`)
 
 An exact C++20 port of Better than Adventure 8.0.1's Nether world generation
 (`minecraft:nether.default`): same seed, same blocks. It is standalone: no engine types, no globals with
-static constructors, no external libraries. `namespace bta`.
+static constructors, no external libraries. `namespace nethergen`.
 
 | File | What |
 |---|---|
 | `jrandom.h` | `java.util.Random` (bit exact, incl. `nextGaussian` via a port of fdlibm `log`), Java cast/overflow helpers |
-| `bta_noise.h/.cpp` | `ImprovedPerlinNoise` (all three legacy branches and the y-cache quirk), `SimplexNoise`, `WorleyNoise`, `FractalNoise2D/3D`, `Normalize2D`, `MathHelper` sin table/floor |
-| `bta_nether.h` | public API |
-| `bta_nether.cpp` | biome provider, `DensityGeneratorNether` + `TerrainGeneratorNether`, `SurfaceGeneratorNether`, `CavesLargeFeature(64,256)`, `LavaFloe`/`RubyglassFloe`/`Shelf` large features, terrain cache |
-| `bta_nether_world.h/.cpp` | the decoration "World": BTA `World`/`Chunk` set/notify/schedule semantics and the block logic decoration triggers (fluid flow + hardening, fire, magma/brimthaw melting, vents, growth/flower/ash support checks) |
-| `bta_nether_features.h/.cpp` | every `WorldFeature*` used by `ChunkDecoratorNether` |
-| `bta_nether_deco.cpp` | `ChunkDecoratorNether` (47 decorations, selectors, placement methods, per-decoration seeds, `postDecorate` ash), neighbourhood models, decorated-region cache |
-| `bta_nether_internal.h`, `bta_nether_stats.h` | internal |
+| `nethergen_noise.h/.cpp` | `ImprovedPerlinNoise` (all three legacy branches and the y-cache quirk), `SimplexNoise`, `WorleyNoise`, `FractalNoise2D/3D`, `Normalize2D`, `MathHelper` sin table/floor |
+| `nethergen.h` | public API |
+| `nethergen.cpp` | biome provider, `DensityGeneratorNether` + `TerrainGeneratorNether`, `SurfaceGeneratorNether`, `CavesLargeFeature(64,256)`, `LavaFloe`/`RubyglassFloe`/`Shelf` large features, terrain cache |
+| `nethergen_world.h/.cpp` | the decoration "World": BTA `World`/`Chunk` set/notify/schedule semantics and the block logic decoration triggers (fluid flow + hardening, fire, magma/brimthaw melting, vents, growth/flower/ash support checks) |
+| `nethergen_features.h/.cpp` | every `WorldFeature*` used by `ChunkDecoratorNether` |
+| `nethergen_deco.cpp` | `ChunkDecoratorNether` (47 decorations, selectors, placement methods, per-decoration seeds, `postDecorate` ash), neighbourhood models, decorated-region cache |
+| `nethergen_internal.h`, `nethergen_stats.h` | internal |
 
 Compile without `-ffast-math`, and without floating-point contraction (the `.cpp` files carry
 `#pragma GCC optimize("fp-contract=off")` / `#pragma clang fp contract(off)`; on MSVC use `/fp:precise`
@@ -22,26 +22,26 @@ with `/fp:contract-` or `/fp:strict`). Plain x86-64 SSE2 code is exact; FMA cont
 ## API
 
 ```cpp
-#include "gen/bta/bta_nether.h"
+#include "gen/nethergen/nethergen.h"
 
-bta::NetherGen gen(seed);                       // optional: bta::NetherGenOptions (see below)
-int    b = gen.biomeAt(x, y, z);                // bta::NetherBiome, = BTA world.getBlockBiome
+nethergen::NetherGen gen(seed);                       // optional: nethergen::NetherGenOptions (see below)
+int    b = gen.biomeAt(x, y, z);                // nethergen::NetherBiome, = BTA world.getBlockBiome
 double t = gen.temperatureAt(x, z);             // BiomeProviderNether.getTemperature, in [0,1]
-auto* out = new bta::NetherGen::Out;            // 128 KB, keep it off the stack
+auto* out = new nethergen::NetherGen::Out;            // 128 KB, keep it off the stack
 gen.generateChunk(cx, cz, *out);                // final (decorated) chunk, thread-safe
-uint8_t k = out->kind[(y << 8) | (z << 4) | x]; // bta::NB, y = BTA y 0..255
+uint8_t k = out->kind[(y << 8) | (z << 4) | x]; // nethergen::NB, y = BTA y 0..255
 uint8_t m = out->meta[(y << 8) | (z << 4) | x];
-const char* name = bta::nbName((bta::NB)k);     // "minecraft:block/cobble_netherrack"
+const char* name = nethergen::nbName((nethergen::NB)k);     // "minecraft:block/cobble_netherrack"
 ```
 
 Exact signatures:
 
 ```cpp
-namespace bta {
+namespace nethergen {
 enum NB : uint8_t { NB_AIR, ..., NB_OTHER, NB_COUNT };
 const char* nbName(NB k);
-uint16_t nbToBtaId(NB k);
-NB nbFromBtaId(uint16_t btaId);
+uint16_t nbToLegacyId(NB k);
+NB nbFromLegacyId(uint16_t legacyId);
 enum NetherBiome : uint8_t { NBIO_OLD_WORLD, NBIO_CRYSTAL_PLAINS, NBIO_CRYSTAL_FOREST, NBIO_SHELF, NBIO_CRAG,
                              NBIO_SULFUR_POOLS, NBIO_VOLCANIC_ISLANDS, NBIO_OLD_WORLD_DESERT, NBIO_COUNT };
 const char* netherBiomeName(int biome);
@@ -108,7 +108,7 @@ row-major order; centre 8x8 chunks compared, % of decoration-touched blocks that
 A cached region is served in ~0.01 ms. Memory: terrain cache 64 KB/chunk (default 512 = 32 MB),
 region cache 2 MB/region (default 16 = 32 MB), plus ~26 MB transient per region being decorated.
 
-## Blocks (`bta::NB`) and metadata
+## Blocks (`nethergen::NB`) and metadata
 
 | NB | BTA namespace id | BTA id | `meta` |
 |---|---|---|---|

@@ -21,7 +21,7 @@ struct SkyEnv {
   int moonPhase = 0;
   float beDensity = 0;      // the End: Better End's fog density here (0 elsewhere); the fog closes in to view/density
   double beTicks = 0;       // the End: the world's time in ticks, for Better End's turning sky
-  int btaFog = 0;           // the Nether (BTA 8.0): 1 flat fog from the camera out, 2 the Old World's closer fog
+  int emberFog = 0;           // the Nether (BTA 8.0): 1 flat fog from the camera out, 2 the Old World's closer fog
   vec2 fogRange{64, 128};   // blocks (worked out by computeFrame)
 };
 

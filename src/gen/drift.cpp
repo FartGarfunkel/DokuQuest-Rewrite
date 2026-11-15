@@ -2,7 +2,7 @@
 // DensityGeneratorDrift (three fractal Perlin noises — 16 octaves for the low and high limits, 8 for the blend — the
 // old Sky Dimension's way: land hangs in the air in great drifting masses, faded out at the top and the bottom) on
 // its TerrainGeneratorLerp (a 5 x 33 x 5 density grid per chunk, filled in 4 x 8 x 4), bit-exact through the Nether
-// port's BTA noise (gen/bta/bta_noise.h). The terrain is in the Overworld band of its own World. On top: grass and
+// port's BTA noise (gen/nethergen/nethergen_noise.h). The terrain is in the Overworld band of its own World. On top: grass and
 // three of dirt over stone (SurfaceGeneratorOverworld), then oak trees, long grass and flowers, coal and iron.
 // The portal, the golden sky and its chickens: sim/drift.cpp, render/sky.cpp.
 #if defined(__clang__)
@@ -11,7 +11,7 @@
 #pragma GCC optimize("fp-contract=off")   // (the density as BTA's doubles: no fused multiply-adds)
 #endif
 #include "gen/dimgens.h"
-#include "gen/bta/bta_noise.h"
+#include "gen/nethergen/nethergen_noise.h"
 #include "core/registry.h"
 #include "common/noise.h"
 #include <array>
@@ -24,8 +24,8 @@ constexpr int YS = 33;   // densities up the 256-tall band (BTA: terrainHeight /
 class DriftGen : public DimGenerator {
 public:
   explicit DriftGen(const WorldGenOptions& o)
-    : seed_(o.seed), minN(bta::ImprovedPerlin::genOctaves((int64_t)o.seed, 16, 0)), maxN(bta::ImprovedPerlin::genOctaves((int64_t)o.seed, 16, 16)),
-      mainN(bta::ImprovedPerlin::genOctaves((int64_t)o.seed, 8, 32)) {
+    : seed_(o.seed), minN(nethergen::ImprovedPerlin::genOctaves((int64_t)o.seed, 16, 0)), maxN(nethergen::ImprovedPerlin::genOctaves((int64_t)o.seed, 16, 16)),
+      mainN(nethergen::ImprovedPerlin::genOctaves((int64_t)o.seed, 8, 32)) {
     const Registry& R = reg();
     stone = R.blockId("stone"); dirt = R.blockId("dirt"); grass = R.blockId("grass"); log = R.blockId("log"); leaves = R.blockId("leaves");
     tall = R.blockId("tall_grass"); if (!tall) tall = R.blockId("grass_plant");
@@ -133,7 +133,7 @@ public:
 
 private:
   i32 seed_;
-  bta::Fractal<bta::ImprovedPerlin> minN, maxN, mainN;
+  nethergen::Fractal<nethergen::ImprovedPerlin> minN, maxN, mainN;
   BlockId stone = 0, dirt = 0, grass = 0, log = 0, leaves = 0, tall = 0, coal = 0, iron = 0;
   std::array<BlockId, 3> flowers{};
   static int floorDiv(int a, int b) { return a >= 0 ? a / b : -((-a + b - 1) / b); }

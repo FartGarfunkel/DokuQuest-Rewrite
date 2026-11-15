@@ -227,14 +227,14 @@ int main(int argc, char** argv) {
   {
     const i32 seed = 12345;
     // a chunk all BetterNether land and one all BTA's, found on the map
-    ivec2 bnC(INT32_MIN, 0), btaC(INT32_MIN, 0); std::set<int> lands;
-    for (int cz = -40; cz < 40 && (bnC.x == INT32_MIN || btaC.x == INT32_MIN || lands.size() < 3); cz += 3) for (int cx = -40; cx < 40; cx += 3) {
+    ivec2 bnC(INT32_MIN, 0), classicC(INT32_MIN, 0); std::set<int> lands;
+    for (int cz = -40; cz < 40 && (bnC.x == INT32_MIN || classicC.x == INT32_MIN || lands.size() < 3); cz += 3) for (int cx = -40; cx < 40; cx += 3) {
       int any = 0, none = 0;
       for (int k = 0; k < 16; k++) { const u8 l = netherBnLand(seed, 13, cx * 16 + (k & 3) * 5, cz * 16 + (k >> 2) * 5); l ? any++ : none++; if (l) lands.insert(l); }
       if (any == 16 && bnC.x == INT32_MIN) bnC = ivec2(cx, cz);
-      if (none == 16 && btaC.x == INT32_MIN) btaC = ivec2(cx, cz);
+      if (none == 16 && classicC.x == INT32_MIN) classicC = ivec2(cx, cz);
     }
-    check(bnC.x != INT32_MIN && btaC.x != INT32_MIN, "the map has both BetterNether's lands and BTA's");
+    check(bnC.x != INT32_MIN && classicC.x != INT32_MIN, "the map has both BetterNether's lands and BTA's");
     check(lands.size() >= 2, "more than one of BetterNether's lands nearby (" + std::to_string(lands.size()) + ")");
     check(netherBnLand(seed, 12, bnC.x * 16, bnC.y * 16) == BN_NONE, "terrain 12 has none of them");
     auto gen = [&](int ver, ivec2 c) {
@@ -268,7 +268,7 @@ int main(int argc, char** argv) {
       }
       check(best > 40, std::string("  ") + bnLandName(l) + ": repainted (" + std::to_string(best) + " blocks, " + std::to_string(bn) + " of BetterNether's)");
     }
-    check(same(*gen(12, btaC), *gen(13, btaC)), "outside BetterNether's lands terrain 13 is terrain 12, block for block");
+    check(same(*gen(12, classicC), *gen(13, classicC)), "outside BetterNether's lands terrain 13 is terrain 12, block for block");
   }
 
   printf("[growing trees (Dynamic Trees, terrain 13)]\n");

@@ -10,10 +10,10 @@
 #include <algorithm>
 #include <cstring>
 
-#include "bta_nether_features.h"
-#include "bta_nether_stats.h"
+#include "nethergen_features.h"
+#include "nethergen_stats.h"
 
-namespace bta {
+namespace nethergen {
 
 namespace {
 using namespace feat;
@@ -241,7 +241,7 @@ struct Runner {
     for (int i = 0; i < K_COUNT; ++i) {
       if (!((g.decoMask >> i) & 1) || !((onlyMask >> i) & 1)) continue;
       rand.setSeed(base ^ (int64_t)g.decoSeeds[i]);
-#ifdef BTA_RANDOM_DEBUG
+#ifdef NETHERGEN_RANDOM_DEBUG
       rand.debugLog = getenv("LOGRAND") != nullptr;
       if (rand.debugLog) printf("DECO %d chunk %d %d\n", i, cx, cz);
 #endif
@@ -266,7 +266,7 @@ void extractChunk(const DecoWorld& w, int cx, int cz, uint8_t* kind, uint8_t* me
   const uint16_t* src = sd.ids;
   for (int i = 0; i < 65536; ++i) {
     bool al = sd.alloc[i >> 12] != 0;
-    if (kind) kind[i] = (uint8_t)nbFromBtaId(src[i]);
+    if (kind) kind[i] = (uint8_t)nbFromLegacyId(src[i]);
     if (ids) ids[i] = src[i];
     if (meta) meta[i] = al ? (uint8_t)sd.getMeta(i) : 0;
   }
@@ -363,7 +363,7 @@ void NetherGen::Impl::finalChunk(int cx, int cz, uint8_t* kind, uint8_t* meta, u
     if (!mdst) { mtmp.resize(65536); mdst = mtmp.data(); }
     decorateFour(cx, cz, dst, mdst, stats);
     if (kind) {
-      for (int i = 0; i < 65536; ++i) kind[i] = (uint8_t)nbFromBtaId(dst[i]);
+      for (int i = 0; i < 65536; ++i) kind[i] = (uint8_t)nbFromLegacyId(dst[i]);
       if (meta) normalizeMeta(kind, meta);
     }
     return;
@@ -376,7 +376,7 @@ void NetherGen::Impl::finalChunk(int cx, int cz, uint8_t* kind, uint8_t* meta, u
   if (meta) std::memcpy(meta, &reg->meta[o], 65536);
   if (kind && meta) normalizeMeta(kind, meta);
   if (ids)
-    for (int i = 0; i < 65536; ++i) ids[i] = nbToBtaId((NB)reg->kind[o + i]);
+    for (int i = 0; i < 65536; ++i) ids[i] = nbToLegacyId((NB)reg->kind[o + i]);
 }
 
-}  // namespace bta
+}  // namespace nethergen

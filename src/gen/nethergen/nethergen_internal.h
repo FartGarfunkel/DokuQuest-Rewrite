@@ -9,10 +9,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "bta_nether.h"
-#include "bta_noise.h"
+#include "nethergen.h"
+#include "nethergen_noise.h"
 
-namespace bta {
+namespace nethergen {
 namespace bid {  // BTA numeric block ids (Blocks.java)
 constexpr uint16_t AIR = 0, BASALT = 2, SLATE = 6, COBBLE_BASALT = 12, OBSIDIAN = 180, PUMICE_DRY = 232,
                    PUMICE_WET = 233, BEDROCK = 260, WATER_FLOWING = 270, WATER_STILL = 271, LAVA_FLOWING = 272,
@@ -107,7 +107,7 @@ struct NetherGen::Impl {
   std::mutex mu;
   std::list<std::pair<int64_t, std::shared_ptr<const TerrainCached>>> lru;
   std::unordered_map<int64_t, decltype(lru)::iterator> index;
-  // decoration (bta_nether_deco.cpp)
+  // decoration (nethergen_deco.cpp)
   void decorateFour(int cx, int cz, uint16_t* ids, uint8_t* meta, DecoStats* stats);
   std::shared_ptr<const DecoRegion> region(int rx, int rz, DecoStats* stats);
   std::mutex rmu;
@@ -120,4 +120,4 @@ struct NetherGen::Impl {
 
 int32_t javaStringHash(const char* s);
 
-}  // namespace bta
+}  // namespace nethergen

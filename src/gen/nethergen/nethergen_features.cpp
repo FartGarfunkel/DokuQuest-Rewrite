@@ -8,9 +8,9 @@
 #include <cstdio>
 #include <cstring>
 
-#include "bta_nether_features.h"
+#include "nethergen_features.h"
 
-namespace bta {
+namespace nethergen {
 namespace feat {
 
 namespace {
@@ -55,7 +55,7 @@ bool crystalHasSpace(DecoWorld& w, int px, int py, int pz, int base) {
 }
 
 void placeCrystal(DecoWorld& w, JavaRandom& r, bool ceiling, int minHeight, int heightMod, int px, int py, int pz) {
-#ifdef BTA_RANDOM_DEBUG
+#ifdef NETHERGEN_RANDOM_DEBUG
   if (r.debugLog) printf("CRYSTAL state %llu at %d %d %d\n", (unsigned long long)r.rawSeed(), px, py, pz);
 #endif
   float r0 = r.nextFloat();
@@ -797,4 +797,4 @@ void soulCatcherPatch(DecoWorld& w, JavaRandom& r, int x, int y, int z) {
 }
 
 }  // namespace feat
-}  // namespace bta
+}  // namespace nethergen

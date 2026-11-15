@@ -297,8 +297,8 @@ def main(d):
               'drop': None, 'light': 11, 'sound': 'stone', 'portal': 3}, 'drift_portal', item=False)
         for k in ('translucent', 'selfCull', 'portalBlock'): blocks[at['drift_portal']].pop(k, None)   # (a window now, like the others)
 
-    # ---- pebbles on the ground (BTA's overlay pebbles: place a pebble; it's also thrown, sim/bta_items.cpp), leaf piles
-    #      (they fall under trees in autumn, sim/bta_items.cpp), the soul wax candle ----
+    # ---- pebbles on the ground (BTA's overlay pebbles: place a pebble; it's also thrown, sim/extra_items.cpp), leaf piles
+    #      (they fall under trees in autumn, sim/extra_items.cpp), the soul wax candle ----
     gv = P('gravel'); pb = gv.copy(); yy, xx = np.mgrid[0:32, 0:32]
     stones = np.zeros((32, 32), bool)
     for cx, cy, r in ((8, 9, 3.2), (22, 7, 2.6), (14, 21, 3.6), (26, 24, 2.4), (5, 26, 2.2)): stones |= np.hypot(xx - cx, yy - cy) < r
@@ -330,7 +330,7 @@ def main(d):
 
     # ---- BTA's statues: a figure two blocks tall on a carved plinth, in each stone (ItemStatue; recipe: two of the stone
     #      over its carved slab). Their shapes are written to shapes.json (statue_<stone>_lower / _upper); placing the
-    #      lower one puts the upper above it (sim/bta_items.cpp) ----
+    #      lower one puts the upper above it (sim/extra_items.cpp) ----
     sp = json.loads((d / 'shapes.json').read_text())
     for st in ('stone', 'basalt', 'granite', 'limestone', 'marble', 'gloomstone', 'netherrack', 'permafrost', 'slate'):
         if st not in at: continue
@@ -379,7 +379,7 @@ def main(d):
                 if r[1] == 'rotten_cloth': r[1] = 'cloth'
         tp.write_text(json.dumps(t, separators=(',', ':')))
 
-    # ---- BTA's giant zombie, as the crypts' third boss (a huge ghoul; its stamp: sim/bta_items.cpp) ----
+    # ---- BTA's giant zombie, as the crypts' third boss (a huge ghoul; its stamp: sim/extra_items.cpp) ----
     mp, mdp = d / 'mobs.json', d / 'models.json'
     mobs, models = json.loads(mp.read_text()), json.loads(mdp.read_text())
     if 'ghoul' in models:

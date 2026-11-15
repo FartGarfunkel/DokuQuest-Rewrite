@@ -7,13 +7,13 @@
 #elif defined(__GNUC__)
 #pragma GCC optimize("fp-contract=off")
 #endif
-#include "bta_nether_world.h"
+#include "nethergen_world.h"
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
-namespace bta {
+namespace nethergen {
 
 namespace {
 // Direction offsets: DOWN, UP, NORTH, SOUTH, WEST, EAST
@@ -28,7 +28,7 @@ inline uint64_t tickKey(int x, int y, int z, uint16_t b) {
 void fizz(DecoWorld& w) { w.wrand.nextFloat(); w.wrand.nextFloat(); }  // sound pitch (world.rand)
 }  // namespace
 
-#ifdef BTA_DEBUG_TRACE
+#ifdef NETHERGEN_DEBUG_TRACE
 bool traceEnabled() { static const bool on = getenv("LOGSET") != nullptr; return on; }
 void DecoWorld::trace(char c, int x, int y, int z, int id, int d) const {
   if (!traceEnabled()) return;
@@ -52,7 +52,7 @@ void DecoWorld::load(int s) const {
   auto d = std::make_unique<Slot>();
   int cx = ox + s % nx, cz = oz + s / nx;
   auto t = g->terrain(cx, cz);
-  for (int i = 0; i < 65536; ++i) d->ids[i] = nbToBtaId((NB)t->kind[i]);
+  for (int i = 0; i < 65536; ++i) d->ids[i] = nbToLegacyId((NB)t->kind[i]);
   for (int sec = 0; sec < 16; ++sec) d->alloc[sec] = (t->sections >> sec) & 1;
   std::memcpy(d->climate, t->climate, 256);
   slots[s] = std::move(d);
@@ -483,4 +483,4 @@ void blockUpdateTick(DecoWorld& w, int x, int y, int z, uint16_t id, JavaRandom&
   }
 }
 
-}  // namespace bta
+}  // namespace nethergen

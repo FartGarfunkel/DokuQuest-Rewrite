@@ -1,5 +1,5 @@
 // gen/density.h — Minecraft 1.20's terrain as data: its density functions (worldgen/density_function, noise,
-// noise_settings: tools/port/vanilla_worldgen.py -> data/vanilla_worldgen/) read and evaluated here. Terrain version 14
+// noise_settings: tools/port/worldgen_base.py -> data/worldgen_base/) read and evaluated here. Terrain version 14
 // (gen/overworld.cpp) shapes the Overworld with them: continents, erosion and ridges through the offset/factor/jaggedness
 // splines, the 3D noise that gives cliffs and overhangs, and the caves. The noise is our own Perlin, seeded from the world
 // seed by each noise's name: the same kind of land as Minecraft's, not the same land as a Minecraft seed.
@@ -16,7 +16,7 @@ namespace dq {
 
 class DensityGraph {
 public:
-  // dir: data/vanilla_worldgen; prefix: "overworld" (or "overworld_amplified" / "overworld_large_biomes" for those worlds'
+  // dir: data/worldgen_base; prefix: "overworld" (or "overworld_amplified" / "overworld_large_biomes" for those worlds'
   // splines). False (and nothing loaded) when the data isn't there.
   bool load(const fs::path& dir, u64 seed, const std::string& prefix = "overworld");
   bool ok() const { return !nodes.empty(); }

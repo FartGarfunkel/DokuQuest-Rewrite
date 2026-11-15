@@ -14,7 +14,7 @@ namespace dq {
 
 // our block for a Minecraft block state ({"Name": "minecraft:grass_block", "Properties": {...}}): the structures' mapping
 // (block_substitutes.json first, then by name); 0xFFFF when there's none
-BlockId mcBlockState(const json& state);
+BlockId blockFromState(const json& state);
 struct VPState { BlockId id = 0; std::array<u8, 4> meta{}; u8 kind = 0, banner = 0; BlockId rug = 0; std::string plant, items, etype; };   // rug: the carpet laid on it as a rug (world/rug.h)   // items: what it shows or keeps, "a,b*3,,c"; etype: pile, shelf, bookcase, frame, rack, cabinet   // meta per quarter turn; banner 1 on a wall, 2 standing
 enum : u8 { VPK_BLOCK = 0, VPK_AIR = 1, VPK_CHEST = 2, VPK_BED_FOOT = 3, VPK_POT = 4, VPK_JOB = 5, VPK_BELL = 6, VPK_WARES = 7, VPK_SPAWNER = 8 };   // spawner: items = our mob
 struct VPBlock { u8 x, y, z; u16 s; };

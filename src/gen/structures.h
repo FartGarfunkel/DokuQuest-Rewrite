@@ -28,7 +28,7 @@ struct TerrainColumn {
   int jsY = -1;         // the original game's height for this column (its own 128-tall coordinates)
   bool river = false;
   u8 special = 0;       // terrain version 14: 1 a mushroom island
-  u16 mc = 0xFFFF;      // terrain version 15: Soulrend's biome (gen/overworld.h OwColumn::mc)
+  u16 landBiome = 0xFFFF;      // terrain version 15: Soulrend's biome (gen/overworld.h OwColumn::landBiome)
 };
 class TerrainQuery {
 public:

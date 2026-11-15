@@ -9,9 +9,9 @@
 #include <cmath>
 #include <cstring>
 
-#include "bta_nether_internal.h"
+#include "nethergen_internal.h"
 
-namespace bta {
+namespace nethergen {
 
 // ---- block table -------------------------------------------------------------------------------
 namespace {
@@ -133,8 +133,8 @@ const BlockProps& props(uint16_t id) {
   return id < bid::MAX_ID ? ptable().p[id] : none;
 }
 const char* nbName(NB k) { return k < NB_COUNT ? kNB[k].name : kNB[NB_OTHER].name; }
-uint16_t nbToBtaId(NB k) { return k < NB_COUNT ? kNB[k].id : 0; }
-NB nbFromBtaId(uint16_t id) { return id < bid::MAX_ID ? (NB)ptable().p[id].nb : NB_OTHER; }
+uint16_t nbToLegacyId(NB k) { return k < NB_COUNT ? kNB[k].id : 0; }
+NB nbFromLegacyId(uint16_t id) { return id < bid::MAX_ID ? (NB)ptable().p[id].nb : NB_OTHER; }
 
 const char* netherBiomeName(int b) {
   static const char* n[] = {"minecraft:nether.old_world", "minecraft:nether.crystal_plains",
@@ -745,7 +745,7 @@ std::shared_ptr<const TerrainCached> NetherGen::Impl::terrain(int cx, int cz) {
   auto c = std::make_shared<TerrainCached>();
   c->sections = 0;
   for (int i = 0; i < 65536; ++i) {
-    c->kind[i] = (uint8_t)nbFromBtaId(tc->id[i]);
+    c->kind[i] = (uint8_t)nbFromLegacyId(tc->id[i]);
     if (tc->id[i]) c->sections |= (uint16_t)(1u << (i >> 12));
   }
   std::memcpy(c->climate, tc->climate, 256);
@@ -799,4 +799,4 @@ void NetherGen::chunkIds(int cx, int cz, uint16_t* ids, uint8_t* meta, DecoStats
 
 void NetherGen::generateChunk(int cx, int cz, Out& out) { impl_->finalChunk(cx, cz, out.kind, out.meta, nullptr, nullptr); }
 
-}  // namespace bta
+}  // namespace nethergen

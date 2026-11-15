@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tools/port/nether_bta.py — the blocks of the BTA-style Nether (terrain version 5, gen/nether_bta.cpp), our own designs
+# tools/port/nether_lands.py — the blocks of the BTA-style Nether (terrain version 5, gen/nether_lands.cpp), our own designs
 # with pictures recoloured from the base pack (so they sit in its style); idempotent, run by data_patches.py:
 #   acid (the Sulfur Pools' caustic liquid: it eats at whoever swims in it without armour), red crystal and charged
 #   crystal (the Crystal Forest's spires; a charged one holds latent energy: a redstone power source), red crystal

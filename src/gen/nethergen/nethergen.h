@@ -7,7 +7,7 @@
 #include <functional>
 #include <memory>
 
-namespace bta {
+namespace nethergen {
 
 // Every block the BTA Nether generation can place. Names in nbName() are BTA namespace ids.
 enum NB : uint8_t {
@@ -60,8 +60,8 @@ enum NB : uint8_t {
   NB_COUNT
 };
 const char* nbName(NB k);         // e.g. "minecraft:block/cobble_netherrack"
-uint16_t nbToBtaId(NB k);         // BTA numeric block id (0 for NB_OTHER)
-NB nbFromBtaId(uint16_t btaId);
+uint16_t nbToLegacyId(NB k);         // BTA numeric block id (0 for NB_OTHER)
+NB nbFromLegacyId(uint16_t legacyId);
 
 // BiomeProviderNether biomes
 enum NetherBiome : uint8_t {
@@ -146,4 +146,4 @@ class NetherGen {
   std::unique_ptr<Impl> impl_;
 };
 
-}  // namespace bta
+}  // namespace nethergen

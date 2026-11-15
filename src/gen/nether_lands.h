@@ -1,4 +1,4 @@
-// gen/nether_bta.h — the Nether, in two terrain versions.
+// gen/nether_lands.h — the Nether, in two terrain versions.
 // Version 5 is a walkable heightfield of five lands (cells about 230 blocks across). Saved worlds keep it.
 //   the Crag, the Volcanic Islands, the Sulfur Pools, the Crystal Forest, the Old World.
 // Version 6 follows Better than Adventure 8.0's layout, written for this engine (its own noise and blocks;
@@ -57,7 +57,7 @@ class NetherClimate {
 public:
   static constexpr int OCEAN_Y = 96;
   static constexpr int SAMPLES = 33;     // band height / 8 + 1
-  explicit NetherClimate(i32 seed, int genVersion = 6);   // 7: BTA's own climate octaves and main noise (see nether_bta.cpp)
+  explicit NetherClimate(i32 seed, int genVersion = 6);   // 7: BTA's own climate octaves and main noise (see nether_lands.cpp)
   u8 biomeAt(int x, int y, int z) const;
   int oceanKind(int x, int z) const;     // 1 lava, 2 water, 3 obsidian, 4 solid shelf
   bool solidAt(int x, int y, int z) const;

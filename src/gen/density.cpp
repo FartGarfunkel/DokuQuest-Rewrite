@@ -154,10 +154,10 @@ bool DensityGraph::load(const fs::path& dir, u64 seed, const std::string& prefix
   // the router's entries, parsed on demand by find()
   nodes.reserve(4096);
   // terrain version 14 only: more land than Minecraft's, its continents raised a little (half our world was sea, in islands;
-  // DQ_CONT_BIAS to try others). Soulrend's world (data/soulrend_worldgen) is as its mods make it
+  // DQ_CONT_BIAS to try others). Soulrend's world (data/worldgen) is as its mods make it
   {
     const char* eb = std::getenv("DQ_CONT_BIAS");
-    const double bias = eb ? std::atof(eb) : dir.filename() == "vanilla_worldgen" ? 0.1 : 0.0;
+    const double bias = eb ? std::atof(eb) : dir.filename() == "worldgen_base" ? 0.1 : 0.0;
     const int c = find("minecraft:overworld/continents");
     if (c >= 0 && bias != 0) {
       Node k; k.op = O_CONST; k.c = bias; nodes.push_back(k);

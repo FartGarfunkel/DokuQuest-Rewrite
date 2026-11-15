@@ -1,4 +1,4 @@
-// gen/nether_bta7.cpp — terrain version 7: the large features and decorations of Better than Adventure 8.0's Nether,
+// gen/nether_lands7.cpp — terrain version 7: the large features and decorations of Better than Adventure 8.0's Nether,
 // after its generator (ChunkDecoratorNether, the Nether's LargeFeatures; numbers from the research notes), written for
 // this engine:
 //   - lava floes: the Volcanic Islands' sea paved with chunk-sized islands of rack under brimsand, cracks of lava between
@@ -13,7 +13,7 @@
 //   - the Old World: a layer of ash on every open top above the sea, embers buried under it here and there
 //   - bone piles everywhere, magmatic boulders (Volcanic), sulfuric boulders (Sulfur Pools), soul catchers (Old World)
 #include "gen/dimgens.h"
-#include "gen/nether_bta.h"
+#include "gen/nether_lands.h"
 #include "gen/carvers.h"
 
 namespace dq {
@@ -34,7 +34,7 @@ Cell worley(int x, int z, int size, i32 seed) {
 }
 }
 
-void DepthsGen::btaFeatures7(GenBuf& b, int cx, int cz, const u8* atSea) const {
+void DepthsGen::netherFeatures7(GenBuf& b, int cx, int cz, const u8* atSea) const {
   const NetherClimate& C = *cave_;
   const int bx = cx * 16, bz = cz * 16, SEA = NetherClimate::OCEAN_Y;
   auto at = [&](int x, int y, int z) { return b.at(x, y, z); };

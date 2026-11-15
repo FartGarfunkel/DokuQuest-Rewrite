@@ -4,12 +4,12 @@
 //   EndGen      The End (theend.js: islands, pillars, exit portal bowl, platform, chorus), lifted 64
 //   PocketGen   the pocket dimension's rooms (worldgen.js generatePocket), RealmGen his realm (riftarc.js)
 #pragma once
-#include "gen/nether_bta.h"
+#include "gen/nether_lands.h"
 #include <deque>
 #include <mutex>
 #include <unordered_map>
 namespace dq { namespace be { class BETerrain; } }
-namespace bta { class NetherGen; }
+namespace nethergen { class NetherGen; }
 #include <memory>
 #include "gen/generator.h"
 #include "gen/structures.h"
@@ -40,13 +40,13 @@ public:
 private:
   void fungusTrees(int cx, int cz, std::vector<TreeSpec>& out) const;
   // terrain version 5: the five-land heightfield. Version 6: the cave Nether (NetherClimate).
-  std::unique_ptr<NetherShape> bta_;
+  std::unique_ptr<NetherShape> lands_;
   std::unique_ptr<NetherClimate> cave_;
-  CarveRules btaCarve_;
-  void generateBTA(Chunk& c);
+  CarveRules landsCarve_;
+  void generateLands(Chunk& c);
   void generateCave(Chunk& c);
   // terrain version 7: BTA 8.0.1's own Nether generator, exact (gen/bta via gen/nether_exact.cpp)
-  std::shared_ptr<bta::NetherGen> exact_;
+  std::shared_ptr<nethergen::NetherGen> exact_;
   bool exactOpen_ = false;
   bool v19_ = false;         // terrain 19: well-mixed position randoms in the painting (no stripes)
   bool bn_ = false;          // terrain 13: BetterNether's lands painted over it (gen/nether_bn.h)   // terrain 8: the open land (the ground is found from the roof down)
@@ -58,15 +58,15 @@ private:
   void generateExact(Chunk& c);
   bool solidExact(int x, int y, int z) const;
   TerrainColumn terrainExact(int x, int z) const;
-  bool openNether() const override { return bta_ != nullptr || cave_ != nullptr; }
-  bool solidBTA(int x, int y, int z) const;
+  bool openNether() const override { return lands_ != nullptr || cave_ != nullptr; }
+  bool solidLands(int x, int y, int z) const;
   bool solidCave(int x, int y, int z) const;
-  TerrainColumn terrainBTA(int x, int z) const;
+  TerrainColumn terrainLands(int x, int z) const;
   TerrainColumn terrainCave(int x, int z) const;
-  void sampleBTA(int wx, int wz, ColumnSample& s) const;
+  void sampleLands(int wx, int wz, ColumnSample& s) const;
   void sampleCave(int wx, int wz, ColumnSample& s) const;
   void glowstone(GenBuf& b, int cx, int cz) const;     // clusters hanging from the roofs (WorldGenGlowStone)
-  void btaFeatures7(GenBuf& b, int cx, int cz, const u8* atSea) const;   // terrain 7: BTA 8.0's floes, terraces, crystals, pillars, ash (gen/nether_bta7.cpp)
+  void netherFeatures7(GenBuf& b, int cx, int cz, const u8* atSea) const;   // terrain 7: BTA 8.0's floes, terraces, crystals, pillars, ash (gen/nether_lands7.cpp)
   void ores(GenBuf& b, int cx, int cz) const;          // quartz, gold, cinderite, debris veins
   i32 seed_;
   GenBlocks B;

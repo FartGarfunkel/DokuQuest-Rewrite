@@ -170,10 +170,10 @@ private:
   bool gather(int sx, int sy, int sz, int mv, ivec3 piston, Plan& out);
   int pushLimit = 12;   // blocks a piston can shove (24 for the reinforced one, set around its gather)
   void siphonTick(int x, int y, int z, BlockId id, int m);   // sim/basket.cpp
-  void updateConduit(int x, int y, int z);                  // sim/bta_more.cpp: an Emberglass run carries a fading level
-  void matcherTick(int x, int y, int z, BlockId id, int m);  // sim/bta_more.cpp: the two blocks on the matcher's axis
+  void updateConduit(int x, int y, int z);                  // sim/more_items.cpp: an Emberglass run carries a fading level
+  void matcherTick(int x, int y, int z, BlockId id, int m);  // sim/more_items.cpp: the two blocks on the matcher's axis
   void timerTick(int x, int y, int z, BlockId id, int m);    // a redstone timer flips its output every interval
-  void meshTick(int x, int y, int z, BlockId id, int m);     // sim/bta_more.cpp: iron and gold mesh siphon items through water
+  void meshTick(int x, int y, int z, BlockId id, int m);     // sim/more_items.cpp: iron and gold mesh siphon items through water
   void extend(int x, int y, int z, BlockId id, int dir);
   void retract(int x, int y, int z, BlockId id, int dir);
   void carry(const Plan& plan, int mv, const std::function<void()>& then, std::vector<std::array<int, 9>> extra, u64 key);

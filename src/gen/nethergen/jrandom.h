@@ -5,11 +5,11 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
-#ifdef BTA_RANDOM_DEBUG
+#ifdef NETHERGEN_RANDOM_DEBUG
 #include <cstdio>
 #endif
 
-namespace bta {
+namespace nethergen {
 
 // ---- Java casts / helpers ---------------------------------------------------------------------
 // (int)double in Java: NaN -> 0, saturates at Integer.MIN/MAX_VALUE, otherwise truncates toward 0.
@@ -112,12 +112,12 @@ class JavaRandom {
   int32_t next(int bits) {
     seed_ = (seed_ * kMult + kAdd) & kMask;
     int32_t v = (int32_t)(uint32_t)(seed_ >> (48 - bits));
-#ifdef BTA_RANDOM_DEBUG
+#ifdef NETHERGEN_RANDOM_DEBUG
     if (debugLog) std::printf("R %d %d\n", bits, v);
 #endif
     return v;
   }
-#ifdef BTA_RANDOM_DEBUG
+#ifdef NETHERGEN_RANDOM_DEBUG
   bool debugLog = false;
 #endif
   int32_t nextInt() { return next(32); }
@@ -163,4 +163,4 @@ class JavaRandom {
   bool haveNextNextGaussian_ = false;
 };
 
-}  // namespace bta
+}  // namespace nethergen

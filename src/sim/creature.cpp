@@ -364,7 +364,7 @@ const std::string& Creature::armourPiece(int slot) const {
   if (!data.contains("armor") || !data["armor"].is_array() || slot >= (int)data["armor"].size() || !data["armor"][slot].is_string()) return none;
   return data["armor"][slot].get_ref<const std::string&>();
 }
-float wolfArmourPoints(const Creature& c);   // sim/bta_items.cpp
+float wolfArmourPoints(const Creature& c);   // sim/extra_items.cpp
 void wolfArmourWear(Creature& c, Level& lv);
 float Creature::armourPoints() const {
   float pts = wolfArmourPoints(*this) + horseArmourPoints(*this);   // (sim/mount_gear.cpp)
@@ -1026,7 +1026,7 @@ json Creature::snap() const {
   if (data.contains("hat")) o["hd"] = data["hat"];
   if (data.contains("hw")) o["hw"] = data["hw"];
   if (data.contains("armor")) o["ar"] = data["armor"];
-  // what a pet wears and carries (sim/mount_gear.cpp, sim/bta_items.cpp), for the barding, chests and bags drawn on it
+  // what a pet wears and carries (sim/mount_gear.cpp, sim/extra_items.cpp), for the barding, chests and bags drawn on it
   if (data.contains("horseArmor")) o["ha"] = data["horseArmor"];
   if (data.contains("wolfArmor")) o["wa"] = data["wolfArmor"];
   if (std::string pk = mountPack(*this); !pk.empty()) o["mp"] = pk;   // ("pk" is the peck: the two shared a key, and a pecking chicken's timer became a joined player's "pack" and crashed them)

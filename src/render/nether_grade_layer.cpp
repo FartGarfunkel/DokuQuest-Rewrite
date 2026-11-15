@@ -5,7 +5,7 @@
 #include "client/session.h"
 #include "client/app.h"
 #include "render/gl.h"
-#include "gen/nether_bta.h"
+#include "gen/nether_lands.h"
 #include "sim/level.h"
 
 namespace dq {

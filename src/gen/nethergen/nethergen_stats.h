@@ -1,7 +1,7 @@
 // Optional per-decoration counters (validation).
 #pragma once
-namespace bta {
+namespace nethergen {
 struct DecoStats {
   long long attempts[64] = {};
 };
-}  // namespace bta
+}  // namespace nethergen

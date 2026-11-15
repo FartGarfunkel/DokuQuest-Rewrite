@@ -1,5 +1,5 @@
-// gen/mc_biomes.cpp — see mc_biomes.h
-#include "gen/mc_biomes.h"
+// gen/land_biomes.cpp — see mc_biomes.h
+#include "gen/land_biomes.h"
 #include <algorithm>
 #include <cmath>
 
@@ -41,7 +41,7 @@ int modeOrRandom(Ctx& c, int a, int b, int cc, int d) {
 }
 } // namespace
 
-bool McBiomes::load(const fs::path& dir, i64 worldSeed, bool withQuark, bool strongHash) {
+bool LandBiomes::load(const fs::path& dir, i64 worldSeed, bool withQuark, bool strongHash) {
   strong_ = strongHash;
   auto j = readJson(dir / "biome_regions.json");
   if (!j || !j->contains("regions")) return false;
@@ -85,15 +85,15 @@ bool McBiomes::load(const fs::path& dir, i64 worldSeed, bool withQuark, bool str
   // (BiomeManager.obfuscateSeed: a hash of the seed)
   u64 z = (u64)worldSeed + 0x9E3779B97F4A7C15ull;
   z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull; z = (z ^ (z >> 27)) * 0x94D049BB133111EBull; zoomSeed_ = z ^ (z >> 31);
-  DQ_LOG("mc_biomes: %d biomes, %d regions", (int)info_.size(), (int)regions_.size());
+  DQ_LOG("land biomes: %d biomes, %d regions", (int)info_.size(), (int)regions_.size());
   return !regions_.empty();
 }
 
 // ---- the region layer ----
-int McBiomes::layer(int L, int x, int z) const {
+int LandBiomes::layer(int L, int x, int z) const {
   struct E { i64 k; int v; };
   thread_local std::vector<std::vector<E>> cache;
-  thread_local const McBiomes* owner = nullptr;
+  thread_local const LandBiomes* owner = nullptr;
   if (owner != this || cache.size() != layerSeed_.size()) { cache.assign(layerSeed_.size(), std::vector<E>(1 << 12, E{INT64_MIN, 0})); owner = this; }
   const i64 key = ((i64)x << 32) ^ (u32)z;
   E& e = cache[L][((u64)key * 0x9E3779B97F4A7C15ull) >> 52];
@@ -131,10 +131,10 @@ int McBiomes::layer(int L, int x, int z) const {
   e = {key, v};
   return v;
 }
-int McBiomes::region(int qx, int qz) const { return regions_.empty() ? 0 : layer((int)layerSeed_.size() - 1, qx, qz); }
+int LandBiomes::region(int qx, int qz) const { return regions_.empty() ? 0 : layer((int)layerSeed_.size() - 1, qx, qz); }
 
 // ---- the nearest box (Climate.RTree's answer: the least sum of squared distances) ----
-void McBiomes::build(Region& r) {
+void LandBiomes::build(Region& r) {
   r.nodes.clear();
   struct Job { int node, first, count; };
   // (ties go to the box listed first: its place in the list rides along in the top bits of its biome)
@@ -168,7 +168,7 @@ void McBiomes::build(Region& r) {
   for (auto& t : tagged) { Box b = t.first; b.biome = (b.biome & 0xFFFF) | (t.second << 16); r.boxes.push_back(b); }
 }
 
-int McBiomes::lookup(int region, const i64 p[6]) const {
+int LandBiomes::lookup(int region, const i64 p[6]) const {
   if (regions_.empty()) return 0;
   const Region& r = regions_[std::clamp(region, 0, (int)regions_.size() - 1)];
   i64 t[7]; for (int k = 0; k < 6; k++) t[k] = p[k]; t[6] = 0;
@@ -194,7 +194,7 @@ int McBiomes::lookup(int region, const i64 p[6]) const {
 }
 
 // ---- BiomeManager.getBiome: which quart a block reads ----
-void McBiomes::fuzzyQuart(int x, int y, int z, int& qx, int& qy, int& qz) const {
+void LandBiomes::fuzzyQuart(int x, int y, int z, int& qx, int& qy, int& qz) const {
   const int i = x - 2, j = y - 2, k = z - 2;
   const int l = i >> 2, m = j >> 2, n = k >> 2;
   const double d0 = (i & 3) / 4.0, d1 = (j & 3) / 4.0, d2 = (k & 3) / 4.0;
@@ -225,7 +225,7 @@ void McBiomes::fuzzyQuart(int x, int y, int z, int& qx, int& qy, int& qz) const 
   qx = (pick & 4) == 0 ? l : l + 1; qy = (pick & 2) == 0 ? m : m + 1; qz = (pick & 1) == 0 ? n : n + 1;
 }
 
-bool McBiomes::coldEnoughToSnow(int b, int x, int y, int z) const {
+bool LandBiomes::coldEnoughToSnow(int b, int x, int y, int z) const {
   if (b < 0 || b >= (int)info_.size()) return false;
   const Info& in = info_[b];
   float t = in.temperature;

@@ -1,6 +1,6 @@
-// gen/nether_bta.cpp — see nether_bta.h. NetherShape (the ground, the roof and the lands) and DepthsGen's terrain
-// version 5 generation (DepthsGen::generateBTA and its queries).
-#include "gen/nether_bta.h"
+// gen/nether_lands.cpp — see nether_lands.h. NetherShape (the ground, the roof and the lands) and DepthsGen's terrain
+// version 5 generation (DepthsGen::generateLands and its queries).
+#include "gen/nether_lands.h"
 #include "gen/dimgens.h"
 #include "world/dims.h"
 #include <algorithm>
@@ -228,13 +228,13 @@ namespace {
 struct Mats { BlockId top, sub, deep, roof; };
 } // namespace
 
-void DepthsGen::generateBTA(Chunk& ch) {
+void DepthsGen::generateLands(Chunk& ch) {
   GenBuf& b = GenBuf::local();
   std::fill(ch.climate.begin(), ch.climate.end(), (u8)128);
   const int bx = ch.cx * CS, bz = ch.cz * CS, LV = LAVA_Y;
   const i32 s5 = seed_ ^ 5;
   thread_local std::vector<NetherCol> cols; cols.resize(256);
-  for (int z = 0; z < CS; z++) for (int x = 0; x < CS; x++) cols[z * 16 + x] = bta_->column(bx + x, bz + z);
+  for (int z = 0; z < CS; z++) for (int x = 0; x < CS; x++) cols[z * 16 + x] = lands_->column(bx + x, bz + z);
   auto landOf = [&](const NetherCol& c, int wx, int wz) { return c.biome != c.other && hashFloat(wx, 17, wz, seed_) > c.mix ? c.other : c.biome; };   // dithered at the borders
 
   // 1. the ground, the roof, the lava sea, the craters' lava and the pools' acid
@@ -288,7 +288,7 @@ void DepthsGen::generateBTA(Chunk& ch) {
     }
   }
   // 2. tunnels low in the rock (they stay under the walking ground's top layers mostly, and out of the roof)
-  carveCaves(b, ch.cx, ch.cz, btaCarve_);
+  carveCaves(b, ch.cx, ch.cz, landsCarve_);
 
   // 3. what stands on the ground
   auto air = [&](int x, int y, int z) { return y > 0 && y < DIM_H && b.blocks[colIdx(x, y, z)] == AIR; };
@@ -336,7 +336,7 @@ void DepthsGen::generateBTA(Chunk& ch) {
       if (!up && !down) continue;
       const int px = cx * G + (int)(h01(h2, 0) * (G - 1)), pz = cz * G + (int)(h01(h2, 16) * (G - 1));
       if (px < bx - M || px > bx + 15 + M || pz < bz - M || pz > bz + 15 + M) continue;
-      const NetherCol c = bta_->column(px, pz);
+      const NetherCol c = lands_->column(px, pz);
       if (c.biome != NB_CRYSTAL || c.mix < 0.8f || c.pillar) continue;
       const double f1 = h01(h, 16), f2 = (h >> 24) / 255.0, f3 = h01(h2, 8);
       const bool charged = f3 < 0.1 && B.charged_crystal;
@@ -371,7 +371,7 @@ void DepthsGen::generateBTA(Chunk& ch) {
       if ((h & 255) > 150) continue;
       const int px = cx * G + 6 + (int)(h01(h2, 0) * (G - 12)), pz = cz * G + 6 + (int)(h01(h2, 16) * (G - 12));
       if (px < bx - M - 6 || px > bx + 15 + M + 6 || pz < bz - M - 6 || pz > bz + 15 + M + 6) continue;
-      const NetherCol c = bta_->column(px, pz);
+      const NetherCol c = lands_->column(px, pz);
       if (c.biome != NB_OLDWORLD || c.mix < 0.85f || c.floor <= LV + 2) continue;
       const int base = c.floor - 2, kind = (int)((h >> 8) % 3);
       auto brick = [&](int wx, int y, int wz) { const double q = hashFloat(wx, y, wz, seed_ ^ 0xB1); setIn(wx, y, wz, q < 0.3 ? B.cracked_scorched_bricks : B.scorched_bricks, true); };
@@ -417,7 +417,7 @@ void DepthsGen::generateBTA(Chunk& ch) {
       if ((h & 255) > 100) continue;
       const int px = cx * G + 8 + (int)(h01(h2, 0) * (G - 16)), pz = cz * G + 8 + (int)(h01(h2, 16) * (G - 16));
       if (px < bx - M - 12 || px > bx + 15 + M + 12 || pz < bz - M - 12 || pz > bz + 15 + M + 12) continue;
-      const NetherCol c = bta_->column(px, pz);
+      const NetherCol c = lands_->column(px, pz);
       if (c.biome != NB_CRAG || c.mix < 0.85f || c.floor <= LV + 1) continue;
       const bool alongX = (h >> 8) & 1;
       const int len = 7 + (int)((h >> 9) % 6), y0 = c.floor;
@@ -448,14 +448,14 @@ void DepthsGen::generateBTA(Chunk& ch) {
   b.store(ch);
 }
 
-bool DepthsGen::solidBTA(int x, int y, int z) const {
+bool DepthsGen::solidLands(int x, int y, int z) const {
   if (y <= 0 || y >= DIM_H - 1) return true;
-  const NetherCol c = bta_->column(x, z);
+  const NetherCol c = lands_->column(x, z);
   return y <= c.floor || y >= c.roof || c.pillar;
 }
 
-TerrainColumn DepthsGen::terrainBTA(int x, int z) const {
-  const NetherCol c = bta_->column(x, z);
+TerrainColumn DepthsGen::terrainLands(int x, int z) const {
+  const NetherCol c = lands_->column(x, z);
   TerrainColumn t;
   t.y = c.pillar ? c.roof : c.floor;
   if (c.floor < LAVA_Y) t.water = LAVA_Y;
@@ -464,8 +464,8 @@ TerrainColumn DepthsGen::terrainBTA(int x, int z) const {
   return t;
 }
 
-void DepthsGen::sampleBTA(int wx, int wz, ColumnSample& s) const {
-  const NetherCol c = bta_->column(wx, wz);
+void DepthsGen::sampleLands(int wx, int wz, ColumnSample& s) const {
+  const NetherCol c = lands_->column(wx, wz);
   s = ColumnSample();
   s.height = (i16)c.floor; s.roof = (i16)c.roof; s.roofBlock = c.biome == NB_VOLCANIC ? B.basalt : c.biome == NB_CRYSTAL ? B.blackstone : B.netherrack;
   BlockId top = B.netherrack, under = B.netherrack;
@@ -899,10 +899,10 @@ void DepthsGen::generateCave(Chunk& ch) {
     }
     return false;
   };
-  if (v7) {   // BTA 8.0's large features and decorations (gen/nether_bta7.cpp)
+  if (v7) {   // BTA 8.0's large features and decorations (gen/nether_lands7.cpp)
     u8 atSea[256];
     for (int i = 0; i < 256; i++) atSea[i] = cols[i].atSea;
-    btaFeatures7(b, ch.cx, ch.cz, atSea);
+    netherFeatures7(b, ch.cx, ch.cz, atSea);
     structures.build(b, ch);
     if (B.void_crust) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) b.blocks[colIdx(x, 0, z)] = B.void_crust;
     b.store(ch);

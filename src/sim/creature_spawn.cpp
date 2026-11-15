@@ -4,7 +4,7 @@
 // lives here), item merging (game.js updateEntities), players' status effects; plus registerCreatures().
 // No phantoms, ever.
 #include "sim/weather.h"
-#include "gen/nether_bta.h"
+#include "gen/nether_lands.h"
 #include "gen/nether_bn.h"
 #include "gen/dimgens.h"
 #include <unordered_set>
@@ -34,10 +34,10 @@ void registerGuns();
 void registerTravelJournal();
 void registerAchievements();
 void registerSnowSentry();
-void registerBtaItems();   // sim/bta_items.cpp
+void registerExtraItems();   // sim/extra_items.cpp
 void registerDrift();      // sim/drift.cpp
 void registerEndShulkers();
-void registerBtaMore();   // sim/bta_more.cpp
+void registerMoreItems();   // sim/more_items.cpp
 
 bool beeFlower(World& w, vec3 at, float R, int tries, ivec3& out);   // creature_beasts.cpp
 vec3 hiveFront(World& w, ivec3 h);
@@ -447,10 +447,10 @@ public:
       // crystal wisps to the Crystal Forest, scorched skeletons to the Old World's ruins.
       // Cave Nether (version 6, BTA 8.0): every land spawns only zombie pigmen and ghasts. Once a second
       // the roll is a pigman pack or a ghast (peaceful worlds roll pigmen only).
-      const bool bta = realm == REALM_MAIN && lv.info.genVersion >= 5;
-      const bool cave = bta && lv.info.genVersion >= 6;
+      const bool netherLands = realm == REALM_MAIN && lv.info.genVersion >= 5;
+      const bool cave = netherLands && lv.info.genVersion >= 6;
       auto landAt = [&](ivec2 xz) {
-        if (!bta) return -1;
+        if (!netherLands) return -1;
         u8 a, b; float m;
         if (cave) netherLandAt(lv.info.seed, lv.info.genVersion, xz.x, py, xz.y, a, b, m);
         else netherBiomeMix(lv.info.seed, xz.x, xz.y, a, b, m);
@@ -466,7 +466,7 @@ public:
       };
       // Each land its own crowd, besides BTA's pigmen and ghasts (the cave Nether too: the exact BTA lands of terrain 7 have
       // the same names: sulfur pools, crystal forest and plains, volcanic islands, the old world, crags and shelves)
-      if (bta && !peaceful) {
+      if (netherLands && !peaceful) {
         if (here == NB_SULFUR && count("sulfur_slime", 96) < 5 && frand() < 0.08f) if (Creature* m = ground("sulfur_slime", 24, 48, NB_SULFUR)) m->setSize(frand() < 0.6f ? 2 : 1);
         const bool crystal = here == NB_CRYSTAL || here == NB_CRYSTAL_PLAINS;
         if (crystal && count("crystal_wisp", 96) < 3 && frand() < 0.05f) {
@@ -508,8 +508,8 @@ public:
         if (!peaceful && frand() >= 0.5f) tryPig = false;
         else tryGhast = false;
       }
-      const float pigK = cave || !bta || here == NB_CRAG || here == NB_OLDWORLD ? 1.f : 0.25f;
-      const float fuseK = here == NB_VOLCANIC ? (cave ? 1.5f : 3.f) : cave ? 0.f : bta ? 0.4f : 1.f;
+      const float pigK = cave || !netherLands || here == NB_CRAG || here == NB_OLDWORLD ? 1.f : 0.25f;
+      const float fuseK = here == NB_VOLCANIC ? (cave ? 1.5f : 3.f) : cave ? 0.f : netherLands ? 0.4f : 1.f;
       // BTA (MobZombiePig.canSpawnHere): air, spawning ground under it, block light 7 or less; packs of up to 4 a chunk.
       // The cave Nether looks in up to six places a roll, over and under you (BTA's spawner tries every chunk at
       // every height; one spot at your own height mostly found a ledge of rock or a lit shore).
@@ -1042,9 +1042,9 @@ void registerCreatures() {
   registerTravelJournal();   // sim/travel_journal.cpp
   registerAchievements();     // sim/achievements.cpp
   registerSnowSentry();         // sim/snow_sentry.cpp
-  registerBtaItems();           // sim/bta_items.cpp: steel bucket, wolf armour, label
+  registerExtraItems();           // sim/extra_items.cpp: steel bucket, wolf armour, label
   registerDrift();              // sim/drift.cpp: BTA's Drift (its portal, the way there and back, its chickens)
-  registerBtaMore(); registerEndShulkers();   // sim/end_shulkers.cpp
+  registerMoreItems(); registerEndShulkers();   // sim/end_shulkers.cpp
   registerTrickOrTreat();
   registerWeaponRack();
   registerSlimeGoo();

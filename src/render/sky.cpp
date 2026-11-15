@@ -24,22 +24,22 @@ vec3 mixc(vec3 a, vec3 b, float t) { return a + (b - a) * t; }
 vec3 grey(vec3 c, float k) { float l = (c.x + c.y + c.z) / 3; return mixc(c, vec3(l), k); }
 
 glm::dvec3 g_cam(0);   // where the sky is seen from (computeSkyEnv / computeFrame set it)
-// BTA 8.0's Nether (gen/nether_bta.h): each land its own haze, and light enough to find your way across it
+// BTA 8.0's Nether (gen/nether_lands.h): each land its own haze, and light enough to find your way across it
 // BTA 8.0's fog ramp (textures/colormap/fog/nether.png) by temperature, and each land's mean temperature
-vec3 btaFogRamp(float t) {
+vec3 emberFogRamp(float t) {
   static const float T[10] = {0.0f, 0.1f, 0.25f, 0.35f, 0.5f, 0.6f, 0.72f, 0.8f, 0.9f, 1.0f};
   static const u32 C[10] = {0x10100F, 0x160E0D, 0x210606, 0x2C0002, 0x450500, 0x5F1A00, 0x863900, 0xA34F00, 0xC16700, 0xD67900};
   t = std::clamp(t, 0.f, 1.f);
   for (int i = 1; i < 10; i++) if (t <= T[i]) return mixc(rgb(C[i - 1]), rgb(C[i]), (t - T[i - 1]) / (T[i] - T[i - 1]));
   return rgb(C[9]);
 }
-float btaLandTemp(u8 land) {
+float emberLandTemp(u8 land) {
   switch (land) {
     case NB_VOLCANIC: return 0.99f; case NB_CRAG: case NB_SULFUR: return 0.88f; case NB_SHELF: return 0.73f;
     case NB_CRYSTAL: case NB_CRYSTAL_PLAINS: return 0.59f; default: return 0.26f;
   }
 }
-void btaNetherEnv(Level& lv, SkyEnv& e, const Settings* st) {
+void emberNetherEnv(Level& lv, SkyEnv& e, const Settings* st) {
   if (lv.info.genVersion >= 6) {
     // BTA 8.0: no sky. The fog and the background are one flat colour from the fog ramp at the temperature where you
     // stand, darkened for the render distance (1 - rds) and a little for the light (fogBrightness)
@@ -47,18 +47,18 @@ void btaNetherEnv(Level& lv, SkyEnv& e, const Settings* st) {
     netherLandAt(lv.info.seed, lv.info.genVersion, (int)std::floor(g_cam.x), (int)std::floor(g_cam.y), (int)std::floor(g_cam.z), a, b, m);
     // terrain 7: BTA's own temperature at the camera (BiomeProviderNether, exact and smooth); older: the land's mean
     const float t = lv.info.genVersion >= 7 ? (float)netherExactTemperature(lv.info.seed, (int)std::floor(g_cam.x), (int)std::floor(g_cam.z))
-                                            : btaLandTemp(a) * m + btaLandTemp(b) * (1 - m);
+                                            : emberLandTemp(a) * m + emberLandTemp(b) * (1 - m);
     const float rd = st ? (float)std::clamp(st->renderDist, 2, 32) : 8.f;
     const float k = std::pow(1.f / (40.f - rd), 0.25f) * 0.86f;
     static vec3 eased(-1);   // BTA eases its fog; a land's edge isn't a jump
-    vec3 want = btaFogRamp(t) * k;
+    vec3 want = emberFogRamp(t) * k;
     // terrain 13: BetterNether's lands tint it their own fog colour (gen/nether_bn.h)
     if (const u8 bn = netherBnLand(lv.info.seed, lv.info.genVersion, (int)std::floor(g_cam.x), (int)std::floor(g_cam.z)))
       want = mixc(want, rgb(bnFogColour(bn)) * k * 0.8f, 0.55f);
     if (eased.x < 0) eased = want; else eased += (want - eased) * 0.04f;
     e.fog = e.zenith = e.horizon = eased;
     e.stars = 0; e.voidBelow = false; e.showSun = false;
-    e.btaFog = a == NB_OLDWORLD || a == NB_OLD_DESERT ? 2 : 1;
+    e.emberFog = a == NB_OLDWORLD || a == NB_OLD_DESERT ? 2 : 1;
     e.minLight = std::max(e.minLight, 0.15f); e.day = std::max(e.day, 0.30f);
     return;
   }
@@ -119,7 +119,7 @@ SkyEnv baseEnv(Level& lv, int dim, int realm, const Settings* st) {
     }
     case DIM_NETHER:
       e.day = 0.22f; e.zenith = rgb(0x1e0604); e.horizon = rgb(0x4a1408); e.fog = rgb(0x3a1006); e.fogStart = 0.25f; e.minLight = std::max(e.minLight, 0.07f);
-      if (realm == REALM_MAIN && lv.info.genVersion >= 5) btaNetherEnv(lv, e, st);
+      if (realm == REALM_MAIN && lv.info.genVersion >= 5) emberNetherEnv(lv, e, st);
       break;
     case DIM_AETHER:
       // A bright high sky, a warm sun, and a pale cloud haze. The islands stay in clear air.
@@ -338,16 +338,16 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd, bool prima
     u8 liq = reg().tLiquid[eye];
     if (liq) { e.fog = liq == 1 ? vec3(0.09f, 0.23f, 0.48f) : vec3(1, 0.35f, 0.04f); e.fogStart = 0; e.underwater = true; eyeLiq = liq; }
     // BTA's Nether (FogManager): its water a murky red, its lava all but opaque
-    if (liq && e.btaFog) e.fog = liq == 1 ? vec3(0.5f, 0.098f, 0.063f) * 0.8f : vec3(0.6f, 0.1f, 0.f);
+    if (liq && e.emberFog) e.fog = liq == 1 ? vec3(0.5f, 0.098f, 0.063f) * 0.8f : vec3(0.6f, 0.1f, 0.f);
   }
   // the fog: at the edge of the land you can see (renderer.js render)
   float far = std::max(48.f, rd * 16.f);
   float viewFar = g_farRange > 0 ? std::max(far, g_farRange) : far;
-  vec2 fr = e.underwater ? (e.btaFog ? (eyeLiq == 1 ? vec2(0, 30) : vec2(0, 2.5f)) : vec2(0, 22)) : vec2(viewFar * e.fogStart, viewFar - 6);
+  vec2 fr = e.underwater ? (e.emberFog ? (eyeLiq == 1 ? vec2(0, 30) : vec2(0, 2.5f)) : vec2(0, 22)) : vec2(viewFar * e.fogStart, viewFar - 6);
   const float dtSky = primary && skyT > 0 ? (float)std::clamp(f.time - skyT, 0.0, 0.25) : 0.f;
-  if (e.btaFog && !e.underwater) {   // BTA: linear from the camera to the render distance (512 at most); the Old World closer
+  if (e.emberFog && !e.underwater) {   // BTA: linear from the camera to the render distance (512 at most); the Old World closer
     // BTA eases the Old World's fog in and out (oldWorldFogTransition) rather than snapping at the land's edge
-    static float ow = -1; const float tgt = e.btaFog == 2 ? 1.f : 0.f;
+    static float ow = -1; const float tgt = e.emberFog == 2 ? 1.f : 0.f;
     if (ow < 0 || !primary) ow = ow < 0 ? tgt : ow; else ow += (tgt - ow) * std::min(1.f, dtSky * 0.6f);
     fr = glm::mix(vec2(0.f, std::min(far, 512.f)), vec2(far * 0.15f, far * 0.45f), ow);
   }

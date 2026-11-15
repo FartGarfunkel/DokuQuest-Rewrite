@@ -403,7 +403,7 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
           }
         }
       }
-      // wolf armour (sim/bta_items.cpp): the material's helmet and chestplate plates stretched over the wolf's head and
+      // wolf armour (sim/extra_items.cpp): the material's helmet and chestplate plates stretched over the wolf's head and
       // body, a little larger than them
       if (m->data.contains("wolfArmor") && m->data["wolfArmor"].is_string()) {
         const ItemDef* wd = reg().item(m->data["wolfArmor"].get<std::string>());

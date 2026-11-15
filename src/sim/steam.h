@@ -1,5 +1,5 @@
 // sim/steam.h — the Sulphur Springs' steam vents (BTA): each vent breathes out scalding steam for a moment every few
-// seconds, on its own beat. The simulation (sim/bta_more.cpp: scald and lift what stands over it) and the client
+// seconds, on its own beat. The simulation (sim/more_items.cpp: scald and lift what stands over it) and the client
 // (render/env_layers.cpp: the plume and its hiss) both ask this, so they agree without sending anything.
 #pragma once
 #include "common/common.h"

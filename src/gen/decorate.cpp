@@ -3,7 +3,7 @@
 // exactly as in the original; positions are band-local.
 #include "core/registry.h"
 #include "gen/overworld.h"
-#include "gen/mc_features.h"
+#include "gen/biome_features.h"
 #include "common/holiday.h"
 
 namespace dq {
@@ -24,13 +24,13 @@ void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) con
   const BlockId FOREST_FLOWERS[] = {B.lily_of_the_valley, B.allium, B.flower_red, B.lilac, B.rose_bush, B.peony};
   auto set = [&](int x, int y, int z, BlockId id, u8 meta = 0) { int i = colIdx(x, y, z); b.blocks[i] = id; b.meta[i] = meta; };
   auto tall = [&](int x, int y, int z, BlockId id) { if (y + 1 < DIM_H && b.blocks[colIdx(x, y + 1, z)] == AIR) { set(x, y, z, id, 0); set(x, y + 1, z, id, 1); } };
-  // terrain version 15: Soulrend's biomes grow their own plants (gen/mc_features.h); ours below only add what theirs
+  // terrain version 15: Soulrend's biomes grow their own plants (gen/biome_features.h); ours below only add what theirs
   // haven't: the warm seas' coral, TFC's berry bushes in the woods
-  const bool sr = mcf_ && mcf_->ok();
+  const bool sr = bf_ && bf_->ok();
   if (sr) {
     u16 bio[256];
-    for (int i = 0; i < 256; i++) bio[i] = cols[i].mc == 0xFFFF ? 0 : cols[i].mc;
-    mcf_->decorate(b, cx, cz, bio, [&](int wx, int wz) { return structures.active() && structures.flagged(wx, wz, 0, SF_SURFACE); }, v17);
+    for (int i = 0; i < 256; i++) bio[i] = cols[i].landBiome == 0xFFFF ? 0 : cols[i].landBiome;
+    bf_->decorate(b, cx, cz, bio, [&](int wx, int wz) { return structures.active() && structures.flagged(wx, wz, 0, SF_SURFACE); }, v17);
   }
   for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
     const OwColumn& c = cols[z * 16 + x];
@@ -56,7 +56,7 @@ void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) con
     }
     // lily pads on calm, shallow water near land
     if (!sr && here == B.water && y == SEA_LEVEL && c.h >= JS_SEA - 2 && c.humid > 0.2 && r < 0.05) { set(x, y + 1, z, B.lily_pad); continue; }
-    if (here == B.water && y == SEA_LEVEL && B.algae && btaVariant(c) == BV_MOSSMIRE && r < 0.3) { set(x, y + 1, z, B.algae); continue; }   // the Mossmire's still water grows algae
+    if (here == B.water && y == SEA_LEVEL && B.algae && landVariant(c) == BV_MOSSMIRE && r < 0.3) { set(x, y + 1, z, B.algae); continue; }   // the Mossmire's still water grows algae
     if (here != AIR) continue;
     if (sr) {
       if ((below == B.grass || below == B.podzol || below == B.snowy_grass) && (c.biome == BIOME_FOREST || c.biome == BIOME_TAIGA) && r < 0.006) set(x, y, z, bushFor(c, r2));
@@ -142,7 +142,7 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
       continue;
     }
     // (Soulrend's grasses cover most ground now: our loose rocks and twigs may take a single grass's place)
-    const bool grassTop = here > 0 && v17 && mcf_ && mcf_->ok() && looseGround && reg().tReplaceable[here] && !reg().tLiquid[here] && !B.dbl[here];
+    const bool grassTop = here > 0 && v17 && bf_ && bf_->ok() && looseGround && reg().tReplaceable[here] && !reg().tLiquid[here] && !B.dbl[here];
     if (here != 0 && !grassTop) continue;
     // a mushroom island (terrain version 14): huge mushrooms, red and brown, and small ones in the mycelium
     if (c.special == 1 && B.mycelium && below == B.mycelium) {
@@ -165,7 +165,7 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
       if (r < 0.05) { set(x, y, z, r2 < 0.5 ? B.red_mushroom : B.brown_mushroom); continue; }
       continue;   // (no grass, flowers or stones on the mycelium)
     }
-    const bool sr = mcf_ && mcf_->ok();   // (terrain version 15: Soulrend's own plants instead of ours, gen/mc_features.h)
+    const bool sr = bf_ && bf_->ok();   // (terrain version 15: Soulrend's own plants instead of ours, gen/biome_features.h)
     // shore plants: cattails at the shallows' edge, marram grass on dunes
     if (!sr && (below == B.grass || below == B.mud || below == B.sand) && c.h <= JS_SEA + 1 && waterBeside(x, y - 1, z) && r < 0.25 && at(x, y + 1, z) == 0) { set(x, y, z, B.cattail, 0); set(x, y + 1, z, B.cattail, 1); continue; }
     if (!sr && (below == B.sand || below == B.silver_sand) && c.biome == BIOME_BEACH && r < 0.08) { set(x, y, z, B.marram_grass); continue; }
@@ -209,14 +209,14 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
     if (sr) continue;
     // the BTA-inspired variants: spinifex and dead bushes on the Redlands, ice spires on the Glacier, moss and orchids in the
     // Mossmire, flowers all over the Meadow
-    if (below == B.red_sand && btaVariant(c) == BV_REDLANDS) { if (r < 0.08 && B.spinifex) set(x, y, z, B.spinifex); else if (r < 0.12) set(x, y, z, B.dry_grass); else if (r < 0.14) set(x, y, z, B.dead_bush); continue; }
-    if (below == B.packed_ice && btaVariant(c) == BV_GLACIER) {
+    if (below == B.red_sand && landVariant(c) == BV_REDLANDS) { if (r < 0.08 && B.spinifex) set(x, y, z, B.spinifex); else if (r < 0.12) set(x, y, z, B.dry_grass); else if (r < 0.14) set(x, y, z, B.dead_bush); continue; }
+    if (below == B.packed_ice && landVariant(c) == BV_GLACIER) {
       if (r > 0.992) { int h2 = 3 + jsFloor(r2 * 7); for (int k = 0; k < h2 && at(x, y + k, z) == 0; k++) set(x, y + k, z, k > h2 - 3 && B.blue_ice ? B.blue_ice : B.packed_ice); }
       continue;
     }
-    if ((below == B.grass || below == B.coarse_dirt) && btaVariant(c) == BV_THORNSCRUB) { if (r < 0.16) set(x, y, z, B.dry_grass); else if (r < 0.19) set(x, y, z, B.dead_bush); continue; }
-    if (below == B.moss_block && btaVariant(c) == BV_MOSSMIRE) { if (r < 0.3) set(x, y, z, B.moss_carpet); else if (r < 0.33) set(x, y, z, B.blue_orchid); else if (r < 0.36) set(x, y, z, B.fern); continue; }
-    if (below == B.grass && btaVariant(c) == BV_MEADOW && r < 0.42) {
+    if ((below == B.grass || below == B.coarse_dirt) && landVariant(c) == BV_THORNSCRUB) { if (r < 0.16) set(x, y, z, B.dry_grass); else if (r < 0.19) set(x, y, z, B.dead_bush); continue; }
+    if (below == B.moss_block && landVariant(c) == BV_MOSSMIRE) { if (r < 0.3) set(x, y, z, B.moss_carpet); else if (r < 0.33) set(x, y, z, B.blue_orchid); else if (r < 0.36) set(x, y, z, B.fern); continue; }
+    if (below == B.grass && landVariant(c) == BV_MEADOW && r < 0.42) {
       const BlockId fl[] = {B.azure_bluet, B.oxeye_daisy, B.cornflower, B.allium, B.flower_yellow, B.flower_red, B.marigold ? B.marigold : B.tall_grass, B.tall_grass, B.lily_of_the_valley, B.bluebells ? B.bluebells : B.cornflower};
       BlockId f = fl[jsFloor((patch * 0.5 + 0.5) * 9.99)];   // flowers in drifts of one kind
       if (r < 0.08) f = B.tall_grass;

@@ -6,11 +6,11 @@
 #include <unordered_set>
 #include <vector>
 
-#include "bta_nether_internal.h"
+#include "nethergen_internal.h"
 
-namespace bta {
+namespace nethergen {
 
-#ifdef BTA_DEBUG_TRACE
+#ifdef NETHERGEN_DEBUG_TRACE
 bool traceEnabled();
 #endif
 struct DecoWorld {
@@ -93,7 +93,7 @@ struct DecoWorld {
   bool setIdData(int x, int y, int z, uint16_t id, int data, bool raw);
   // World.* setters
   bool setBlockType(int x, int y, int z, uint16_t id) { trace('S', x, y, z, id, 0); return setIdData(x, y, z, id, 0, false); }
-#ifdef BTA_DEBUG_TRACE
+#ifdef NETHERGEN_DEBUG_TRACE
   void trace(char c, int x, int y, int z, int id, int d) const;  // debug log of world writes (matches the Java harness)
 #else
   void trace(char, int, int, int, int, int) const {}
@@ -129,4 +129,4 @@ void blockOnNeighborChanged(DecoWorld& w, int x, int y, int z, uint16_t id, uint
 void blockUpdateTick(DecoWorld& w, int x, int y, int z, uint16_t id, JavaRandom& rand);
 bool layerAshCanPlaceAt(const DecoWorld& w, int x, int y, int z);
 
-}  // namespace bta
+}  // namespace nethergen

@@ -1,7 +1,7 @@
 // gen/surface_rules.cpp — see surface_rules.h
 #include "gen/surface_rules.h"
 #include "gen/density.h"
-#include "gen/mc_biomes.h"
+#include "gen/land_biomes.h"
 #include "gen/village_pieces.h"
 #include "common/noise.h"
 #include <algorithm>
@@ -22,14 +22,14 @@ double posRand(u64 salt, int x, int y, int z) { return unit(salt ^ ((u64)(u32)x 
 std::string strip(std::string s) { return s.rfind("minecraft:", 0) == 0 ? s.substr(10) : s; }
 } // namespace
 
-int McSurface::anchor(const json& j) const {
+int LandSurface::anchor(const json& j) const {
   if (j.contains("absolute")) return j["absolute"].get<int>();
   if (j.contains("above_bottom")) return MIN_Y + j["above_bottom"].get<int>();
   if (j.contains("below_top")) return TOP_Y - j["below_top"].get<int>();
   return 0;
 }
 
-int McSurface::parseCond(const json& j) {
+int LandSurface::parseCond(const json& j) {
   Cond c;
   const std::string t = strip(j.value("type", std::string()));
   if (t == "biome") {
@@ -57,16 +57,16 @@ int McSurface::parseCond(const json& j) {
   return (int)conds_.size() - 1;
 }
 
-int McSurface::parseRule(const json& j) {
+int LandSurface::parseRule(const json& j) {
   Rule r;
   const std::string t = strip(j.value("type", std::string()));
   if (t == "block") {
     r.t = R_BLOCK;
     const std::string nm = j["result_state"].value("Name", std::string());
     const std::string bare = nm.substr(nm.find(':') + 1);
-    if (nm.rfind("minecraft:", 0) != 0 && reg().blockIds.count(bare)) r.block = reg().blockId(bare);   // (a mod's ground we have as a block of ours: tools/port/soulrend_worldgen/ns_blocks.py)
-    else if (auto it = subs_.find(nm); it != subs_.end()) r.block = mcBlockState(json{{"Name", it->second}});   // (else ours that looks like it)
-    else r.block = mcBlockState(j["result_state"]);
+    if (nm.rfind("minecraft:", 0) != 0 && reg().blockIds.count(bare)) r.block = reg().blockId(bare);   // (a mod's ground we have as a block of ours: tools/port/worldgen/ns_blocks.py)
+    else if (auto it = subs_.find(nm); it != subs_.end()) r.block = blockFromState(json{{"Name", it->second}});   // (else ours that looks like it)
+    else r.block = blockFromState(j["result_state"]);
     if (r.block == NONE) DQ_LOG("surface rules: no block for %s", j["result_state"].value("Name", std::string("?")).c_str());
   } else if (t == "sequence") { r.t = R_SEQ; for (auto& s : j["sequence"]) r.seq.push_back(parseRule(s)); }
   else if (t == "condition") { r.t = R_IF; r.cond = parseCond(j["if_true"]); r.then = parseRule(j["then_run"]); }
@@ -76,7 +76,7 @@ int McSurface::parseRule(const json& j) {
   return (int)rules_.size() - 1;
 }
 
-bool McSurface::load(const fs::path& dir, DensityGraph& g, const McBiomes& biomes, u64 seed) {
+bool LandSurface::load(const fs::path& dir, DensityGraph& g, const LandBiomes& biomes, u64 seed) {
   auto j = readJson(dir / "surface_rules.json");
   if (!j || !j->contains("base") || !biomes.ok()) return false;
   g_ = &g; bio_ = &biomes; seed_ = seed;
@@ -91,7 +91,7 @@ bool McSurface::load(const fs::path& dir, DensityGraph& g, const McBiomes& biome
     if (auto it = ns.find(n.substr(0, n.find(':'))); it != ns.end()) byNs_[b] = it->second;
   }
   // SurfaceSystem.generateBands (with our random: the same kind of bands, not Minecraft's exact ones)
-  auto B = [](const char* n) { return mcBlockState(json{{"Name", n}}); };
+  auto B = [](const char* n) { return blockFromState(json{{"Name", n}}); };
   const BlockId TC = B("terracotta"), OR = B("orange_terracotta"), YE = B("yellow_terracotta"), BR = B("brown_terracotta"),
                 RE = B("red_terracotta"), WH = B("white_terracotta"), LG = B("light_gray_terracotta");
   u64 rs = mix(seed ^ hashStr("clay_bands"));
@@ -114,7 +114,7 @@ bool McSurface::load(const fs::path& dir, DensityGraph& g, const McBiomes& biome
   return true;
 }
 
-void McSurface::begin(Column& c, int x, int z, int prelim) const {
+void LandSurface::begin(Column& c, int x, int z, int prelim) const {
   c.x = x; c.z = z;
   c.surfaceDepth = (int)(g_->noiseValue(nSurface, x, 0, z) * 2.75 + 3.0 + posRand(seed_ ^ 0x5u, x, 0, z) * 0.25);
   c.secondary = g_->noiseValue(nSecondary, x, 0, z);
@@ -122,12 +122,12 @@ void McSurface::begin(Column& c, int x, int z, int prelim) const {
   c.biomeY = INT32_MIN;
 }
 
-int McSurface::biomeOf(Column& c) const {
+int LandSurface::biomeOf(Column& c) const {
   if (c.biomeY != c.y) { c.biomeY = c.y; c.biome = c.biomeAt ? c.biomeAt(c.y) : -1; }
   return c.biome;
 }
 
-bool McSurface::test(int ci, Column& c) const {
+bool LandSurface::test(int ci, Column& c) const {
   const Cond& k = conds_[ci];
   switch (k.t) {
     case C_BIOME: { const int b = biomeOf(c); return b >= 0 && b < (int)k.biomes.size() && k.biomes[b]; }
@@ -155,7 +155,7 @@ bool McSurface::test(int ci, Column& c) const {
   }
 }
 
-BlockId McSurface::run(int ri, Column& c) const {
+BlockId LandSurface::run(int ri, Column& c) const {
   const Rule& r = rules_[ri];
   switch (r.t) {
     case R_BLOCK: return r.block;
@@ -169,7 +169,7 @@ BlockId McSurface::run(int ri, Column& c) const {
   return NONE;
 }
 
-BlockId McSurface::apply(Column& c) const {
+BlockId LandSurface::apply(Column& c) const {
   if (base_ < 0) return NONE;
   const int b = biomeOf(c);
   if (b >= 0 && b < (int)byNs_.size() && byNs_[b] >= 0) { const BlockId r = run(byNs_[b], c); if (r != NONE) return r; }

@@ -6,8 +6,8 @@
 //   dq-gentool structs <request.json> <out.json>        structure plans and blocks for tools/port/struct_compare.py
 //   dq-gentool stats <seed> <dim> <cx0> <cz0> <n>       block counts per 8-row band of y over n x n chunks (ores, caves...)
 //   dq-gentool slice <seed> <dim> <x0> <z> <w> [y0 y1]  ASCII cutaway along x at z (one char per block)
-#include "gen/bta/bta_nether.h"
-#include "gen/nether_bta.h"
+#include "gen/nethergen/nethergen.h"
+#include "gen/nether_lands.h"
 #include "core/init.h"
 #include "gen/overworld.h"
 #include "gen/dimgens.h"
@@ -335,7 +335,7 @@ static int poiDump(const std::string& seedText, const char* outPath, int regions
 #include "gen/density.h"
 static int vterrain(const std::string& seedText, int x0, int z0, int step, int n, const char* out) {
   DensityGraph g;
-  if (!g.load(dataDir() / "vanilla_worldgen", (u64)(i64)seedFromString(seedText))) { fprintf(stderr, "no data/vanilla_worldgen\n"); return 1; }
+  if (!g.load(dataDir() / "worldgen_base", (u64)(i64)seedFromString(seedText))) { fprintf(stderr, "no data/worldgen_base\n"); return 1; }
   const int sc = g.find("overworld/sloped_cheese");
   const double t0 = Clock::now();
   std::vector<u8> img((size_t)n * n);
@@ -355,7 +355,7 @@ static int vterrain(const std::string& seedText, int x0, int z0, int step, int n
 
 static int vstats(const std::string& seedText) {
   DensityGraph g;
-  if (!g.load(dataDir() / "vanilla_worldgen", (u64)(i64)seedFromString(seedText))) return 1;
+  if (!g.load(dataDir() / "worldgen_base", (u64)(i64)seedFromString(seedText))) return 1;
   { const int C = g.find("overworld/continents"), E = g.find("overworld/erosion"), R = g.find("overworld/ridges_folded"), O = g.find("overworld/offset");
     for (int i = 0; i < 8; i++) { const double x = i * 517.0 - 2000, z = i * 311.0 + 100;
       printf("pt %.5f %.5f %.5f %.5f\n", g.eval(C, x, 0, z), g.eval(E, x, 0, z), g.eval(R, x, 0, z), g.eval(O, x, 0, z)); } }
@@ -488,7 +488,7 @@ static int biomemap(const std::string& seedText, int x0, int z0, int n, int step
   WorldGen wg(o); auto* g = dynamic_cast<OverworldGen*>(wg.forDim(DIM_OVERWORLD));
   std::vector<u8> img((size_t)n * n * 3); std::map<std::string, int> count; std::map<std::string, std::pair<int, int>> where;
   for (int j = 0; j < n; j++) for (int i = 0; i < n; i++) {
-    const std::string b = by ? g->mcBiomeNameAt(x0 + i * step, atoi(by), z0 + j * step) : g->mcBiomeName(x0 + i * step, z0 + j * step); count[b]++;
+    const std::string b = by ? g->landBiomeNameAt(x0 + i * step, atoi(by), z0 + j * step) : g->landBiomeName(x0 + i * step, z0 + j * step); count[b]++;
     if (!where.count(b)) where[b] = {x0 + i * step, z0 + j * step};
     u32 h = 2166136261u; for (char c : b) h = (h ^ (u8)c) * 16777619u;
     u8* px = &img[((size_t)j * n + i) * 3]; px[0] = 60 + (h & 0xBF); px[1] = 60 + ((h >> 8) & 0xBF); px[2] = 60 + ((h >> 16) & 0xBF);
@@ -697,7 +697,7 @@ static int xsect(const std::string& seedText, int x0, int z0, int x1, int z1, in
   writeImg(out, n, hh, img); printf("%d chunks from save, %d generated\n", L.fromSave, L.gen);
   if (auto* og = dynamic_cast<OverworldGen*>(L.g)) { std::string last; for (int i = 0; i < n; i++) { const int x = x0 + (x1 - x0) * i / std::max(1, n - 1), z = z0 + (z1 - z0) * i / std::max(1, n - 1);
     if (std::getenv("DQ_COLS")) printf("  %d,%d: H %d surf %d top %d  scan sloped %d final %d\n", x, z, og->column(x, z).H, og->v14Surface(x, z), L.top(x, z), og->debugTopScan(x, z, false), og->debugTopScan(x, z, true));
-    const std::string b = og->mcBiomeName(x, z); if (b != last) { printf("  from %d (%d,%d): %s  top %d\n", i, x, z, b.c_str(), L.top(x, z)); last = b; } } }
+    const std::string b = og->landBiomeName(x, z); if (b != last) { printf("  from %d (%d,%d): %s  top %d\n", i, x, z, b.c_str(), L.top(x, z)); last = b; } } }
   return 0;
 }
 
@@ -732,7 +732,7 @@ static int pillars(const std::string& seedText, int x0, int z0, int w) {
     const int h = top(x, z); int ring = 0, rn = 0;
     for (int a = 0; a < 8; a++) { ring += top(x + (int)std::lround(std::cos(a * 0.785) * 7), z + (int)std::lround(std::sin(a * 0.785) * 7)); rn++; }
     const int d = h - ring / rn;
-    if (d >= 18 && h > SEA_LEVEL + 2) { found++; const std::string b = g->mcBiomeName(x, z); n[b]++; if (n[b] <= 2) printf("tower +%d at %d %d (%s) top %d\n", d, x, z, b.c_str(), h); }
+    if (d >= 18 && h > SEA_LEVEL + 2) { found++; const std::string b = g->landBiomeName(x, z); n[b]++; if (n[b] <= 2) printf("tower +%d at %d %d (%s) top %d\n", d, x, z, b.c_str(), h); }
   }
   for (auto& [k, c] : n) printf("%5d %s\n", c, k.c_str());
   printf("%d samples stand 18+ over the ground 7 blocks round\n", found);
@@ -815,14 +815,14 @@ int main(int argc, char** argv) {
     return 0;
   }
   if (m == "nether8" && argc >= 3) {   // dq-gentool nether8 <seed>: BTA's Nether lands across 4096 blocks (the terrain 8 map)
-    bta::NetherGen g((int64_t)seedFromString(argv[2]));
-    int cnt[bta::NBIO_COUNT] = {0}, tot = 0;
+    nethergen::NetherGen g((int64_t)seedFromString(argv[2]));
+    int cnt[nethergen::NBIO_COUNT] = {0}, tot = 0;
     for (int z = -2048; z <= 2048; z += 64) {
       std::string row;
       for (int x = -2048; x <= 2048; x += 32) { const int b = g.biomeAt(x, 100, z); row += "OPFSCUVD"[b]; cnt[b]++; tot++; }
       printf("%s\n", row.c_str());
     }
-    for (int b = 0; b < bta::NBIO_COUNT; b++) printf("%-20s %5.1f%%\n", bta::netherBiomeName(b), 100.0 * cnt[b] / tot);
+    for (int b = 0; b < nethergen::NBIO_COUNT; b++) printf("%-20s %5.1f%%\n", nethergen::netherBiomeName(b), 100.0 * cnt[b] / tot);
     return 0;
   }
   if (m == "map" && argc >= 8) return map(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]));

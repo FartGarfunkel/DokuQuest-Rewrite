@@ -24,7 +24,7 @@ struct ColumnSample {
   i16 roof = -1; BlockId roofBlock = AIR;
   u8 temp = 128, humid = 128;  // the column's climate bytes (Chunk::climate): tint = climateTint(kind, temp, humid)
   u8 biome = 255;              // Biome (gen/gendefs.h) for the Overworld, 255 elsewhere
-  u8 variant = 0;              // the Overworld's Better than Adventure land (gen/overworld.h BtaVariant), 0 none
+  u8 variant = 0;              // the Overworld's Better than Adventure land (gen/overworld.h LandVariant), 0 none
 };
 
 // A generated tree, column by column (for distant terrain near the player: game/distant.js distTreeCols).
@@ -57,9 +57,9 @@ struct WorldGenOptions {
                                        //     region its own rocks) and the ores in their own rocks (gen/rock_layers.cpp)
                                        // 13: BetterNether's lands over BTA's Nether (gen/nether_bn.h)
                                        // 14: Minecraft 1.20's land (gen/density.h; docs/WORLDGEN_MERGE.md)
-                                       // 15: Soulrend's world on it: its biomes and surfaces (gen/mc_biomes.h,
-                                       //     gen/surface_rules.h; tools/port/soulrend_worldgen/import.py)
-                                       // 16: its biomes' plants and features (gen/mc_features.h), its pillars, spires
+                                       // 15: Soulrend's world on it: its biomes and surfaces (gen/land_biomes.h,
+                                       //     gen/surface_rules.h; tools/port/worldgen/import.py)
+                                       // 16: its biomes' plants and features (gen/biome_features.h), its pillars, spires
                                        //     and icebergs (OverworldGen::surfaceExtras)
                                        // 17: the land levelled round villages and structures blended between their
                                        //     levels; no lone columns or tree-less plugs by the water; pillars of plain stone

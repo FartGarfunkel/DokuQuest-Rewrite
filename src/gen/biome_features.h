@@ -1,6 +1,6 @@
-// gen/mc_features.h — Soulrend's biome features (terrain version 15): the plants, flowers, grasses, water plants, sand and
+// gen/biome_features.h — Soulrend's biome features (terrain version 15): the plants, flowers, grasses, water plants, sand and
 // clay disks, mossy rocks, icebergs and the snow, placed as Minecraft places a biome's features: each biome's placed
-// features (data/soulrend_worldgen/placed_feature, configured_feature: vanilla's as Expanded Ecosphere, Nature's Spirit
+// features (data/worldgen/placed_feature, configured_feature: vanilla's as Expanded Ecosphere, Nature's Spirit
 // and WWOO change them), in the steps' order, each run from every chunk with its placement (count, rarity, in_square,
 // heightmap, biome, block predicates, noise counts...) and its configured feature (random_patch, simple_block, the
 // selectors, block_column, vegetation_patch, disk, kelp, seagrass, sea pickles, bamboo, vines, forest_rock, iceberg,
@@ -20,14 +20,14 @@
 
 namespace dq {
 struct GenBuf;
-class McBiomes;
+class LandBiomes;
 
-class McFeatures {
+class BiomeFeatures {
 public:
-  // dir: data/soulrend_worldgen. False without the data.
-  bool load(const fs::path& dir, const McBiomes& biomes, u64 seed);
+  // dir: data/worldgen. False without the data.
+  bool load(const fs::path& dir, const LandBiomes& biomes, u64 seed);
   bool ok() const { return loaded_; }
-  // a chunk's features. biome: each column's biome at its ground (McBiomes index, z*16+x); builtOn: true where a
+  // a chunk's features. biome: each column's biome at its ground (LandBiomes index, z*16+x); builtOn: true where a
   // structure will stand (no bamboo or cactus columns poking through its roofs)
   // underTrees (terrain version 17): the ground under our trees, not their crowns, is the features' ground
   void decorate(GenBuf& b, int cx, int cz, const u16* biome, const std::function<bool(int wx, int wz)>& builtOn, bool underTrees = false) const;
@@ -68,7 +68,7 @@ private:
 
   bool loaded_ = false;
   u64 seed_ = 0;
-  const McBiomes* bio_ = nullptr;
+  const LandBiomes* bio_ = nullptr;
   std::vector<IntP> ints_;
   std::vector<Prov> provs_;
   std::vector<Pred> preds_;

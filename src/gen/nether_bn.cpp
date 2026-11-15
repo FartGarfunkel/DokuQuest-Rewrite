@@ -1,8 +1,8 @@
 // gen/nether_bn.cpp — see nether_bn.h
 #include "gen/nether_bn.h"
-#include "gen/nether_bta.h"
+#include "gen/nether_lands.h"
 #include "gen/gendefs.h"
-#include "gen/bta/bta_nether.h"
+#include "gen/nethergen/nethergen.h"
 #include "core/registry.h"
 #include "world/chunk.h"
 #include <cmath>
@@ -199,7 +199,7 @@ struct Painter {
 };
 }
 
-void bnPaint(i32 seed, const bta::NetherGen& g, GenBuf& b, int cx, int cz, bool trees, bool strongHash) {
+void bnPaint(i32 seed, const nethergen::NetherGen& g, GenBuf& b, int cx, int cz, bool trees, bool strongHash) {
   Painter P{b, ids(), reg(), seed, cx * 16, cz * 16, strongHash};
   if (!P.I.jgrass) return;   // (the data without BetterNether's blocks)
   for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
@@ -210,9 +210,9 @@ void bnPaint(i32 seed, const bta::NetherGen& g, GenBuf& b, int cx, int cz, bool 
     const u8 host = [&] {
       const int bio = g.biomeAt(wx, 128, wz);
       switch (bio) {   // as gen/nether_exact.cpp ourLand
-        case bta::NBIO_OLD_WORLD: return (u8)NB_OLDWORLD; case bta::NBIO_CRYSTAL_PLAINS: return (u8)NB_CRYSTAL_PLAINS;
-        case bta::NBIO_CRYSTAL_FOREST: return (u8)NB_CRYSTAL; case bta::NBIO_SHELF: return (u8)NB_SHELF; case bta::NBIO_CRAG: return (u8)NB_CRAG;
-        case bta::NBIO_SULFUR_POOLS: return (u8)NB_SULFUR; case bta::NBIO_VOLCANIC_ISLANDS: return (u8)NB_VOLCANIC; default: return (u8)NB_OLD_DESERT;
+        case nethergen::NBIO_OLD_WORLD: return (u8)NB_OLDWORLD; case nethergen::NBIO_CRYSTAL_PLAINS: return (u8)NB_CRYSTAL_PLAINS;
+        case nethergen::NBIO_CRYSTAL_FOREST: return (u8)NB_CRYSTAL; case nethergen::NBIO_SHELF: return (u8)NB_SHELF; case nethergen::NBIO_CRAG: return (u8)NB_CRAG;
+        case nethergen::NBIO_SULFUR_POOLS: return (u8)NB_SULFUR; case nethergen::NBIO_VOLCANIC_ISLANDS: return (u8)NB_VOLCANIC; default: return (u8)NB_OLD_DESERT;
       }
     }();
     if (host == NB_CRAG) temp = g.temperatureAt(wx, wz);

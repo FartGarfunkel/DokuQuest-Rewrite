@@ -305,10 +305,10 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
   double density = mid.biome == BIOME_FOREST ? 7 : mid.biome == BIOME_PLAINS ? 0.6 : mid.biome == BIOME_TAIGA ? 4 : mid.biome == BIOME_MOUNTAINS ? 0.8 : 0;
   if (jungle) density = 9;
   if (savanna) density = 0.9;
-  if (btaVariant(mid) == BV_MOSSMIRE) density = 3;   // a swampy wood
-  if (btaVariant(mid) == BV_THORNSCRUB) density = 2.5;   // thick with thorn trees
-  if (btaVariant(mid) == BV_HIGHLANDS) density = 6;      // close-grown spruce
-  if (btaVariant(mid) == BV_SEASONAL) density = 5;       // the Seasonal Forest
+  if (landVariant(mid) == BV_MOSSMIRE) density = 3;   // a swampy wood
+  if (landVariant(mid) == BV_THORNSCRUB) density = 2.5;   // thick with thorn trees
+  if (landVariant(mid) == BV_HIGHLANDS) density = 6;      // close-grown spruce
+  if (landVariant(mid) == BV_SEASONAL) density = 5;       // the Seasonal Forest
   bool bare = (mid.biome == BIOME_FOREST || mid.biome == BIOME_PLAINS) && hashFloat(cx, cz, seed_, 67) < 0.025;
   int n = jsFloor(density) + (rnd() < std::fmod(density, 1.0) ? 1 : 0) + (bare ? 3 : 0);
   for (int i = 0; i < n; i++) {
@@ -323,7 +323,7 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
       continue;
     }
     if (c.biome == BIOME_MOUNTAINS && (v14 ? c.H > SEA_LEVEL + 105 : c.h > 82)) continue;   // (terrain version 14: trees up its high meadows to the tree line)
-    const BtaVariant bv = btaVariant(c);
+    const LandVariant bv = landVariant(c);
     if (bv == BV_GLACIER || (bv == BV_REDLANDS && r > 0.65) || (bv == BV_MEADOW && r > 0.3) || (bv == BV_TUNDRA && r > 0.08)) continue;   // open country
     u8 type = TREE_OAK;
     if (c.biome == BIOME_TAIGA || (c.biome == BIOME_MOUNTAINS && r < 0.7)) type = c.biome == BIOME_MOUNTAINS && c.humid > 0.15 && c.h < 78 && r < 0.25 ? TREE_CHERRY : r < 0.45 ? TREE_PINE : TREE_SPRUCE;

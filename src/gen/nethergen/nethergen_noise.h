@@ -10,7 +10,7 @@
 
 #include "jrandom.h"
 
-namespace bta {
+namespace nethergen {
 
 // ---- net.minecraft.core.util.helper.MathHelper -------------------------------------------------
 namespace mh {
@@ -145,4 +145,4 @@ class Normalize2D {
   double mn_ = 0, mx_ = 0;
 };
 
-}  // namespace bta
+}  // namespace nethergen

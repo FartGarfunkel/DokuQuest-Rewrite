@@ -1,8 +1,8 @@
-// gen/mc_features.cpp — see mc_features.h. The features' rules are Minecraft 1.20.1's (PlacementModifier, the
+// gen/biome_features.cpp — see mc_features.h. The features' rules are Minecraft 1.20.1's (PlacementModifier, the
 // Feature classes named on each), the randomness our own.
-#include "gen/mc_features.h"
+#include "gen/biome_features.h"
 #include "gen/gendefs.h"
-#include "gen/mc_biomes.h"
+#include "gen/land_biomes.h"
 #include "gen/village_pieces.h"
 #include "common/noise.h"
 #include "world/chunk.h"
@@ -26,7 +26,7 @@ enum : u8 { F_NONE, F_PATCH, F_SIMPLE, F_SELECT, F_SIMPLESELECT, F_BOOL, F_COLUM
             F_BAMBOO, F_DISK, F_ROCK, F_ICEBERG, F_BLUEICE, F_FREEZE, F_BIGBLOCK, F_POND };
 enum : u8 { HM_WORLD, HM_OCEAN, HM_MOTION, HM_NOLEAVES };
 constexpr BlockId OUT = 0xFFFF;
-constexpr int MC_MIN = -64, MC_TOP = 319;   // (Minecraft's Overworld: height anchors count from these)
+constexpr int DATA_MIN_Y = -64, DATA_TOP_Y = 319;   // (Minecraft's Overworld: height anchors count from these)
 
 std::string strip(const std::string& s) { return s.rfind("minecraft:", 0) == 0 ? s.substr(10) : s; }
 std::string full(const std::string& s) { return s.find(':') == std::string::npos ? "minecraft:" + s : s; }
@@ -34,8 +34,8 @@ u64 mix(u64 z) { z += 0x9E3779B97F4A7C15ull; z = (z ^ (z >> 30)) * 0xBF58476D1CE
 int anchorY(const json& j) {   // Minecraft's y
   if (j.is_object()) {
     if (j.contains("absolute")) return j["absolute"].get<int>();
-    if (j.contains("above_bottom")) return MC_MIN + j["above_bottom"].get<int>();
-    if (j.contains("below_top")) return MC_TOP - j["below_top"].get<int>();
+    if (j.contains("above_bottom")) return DATA_MIN_Y + j["above_bottom"].get<int>();
+    if (j.contains("below_top")) return DATA_TOP_Y - j["below_top"].get<int>();
   }
   return 0;
 }
@@ -43,7 +43,7 @@ const json& val(const json& j) { return j.is_object() && j.contains("value") && 
 const SimplexNoise& infoNoise() { static const SimplexNoise n(2345); return n; }   // (Biome.BIOME_INFO_NOISE)
 } // namespace
 
-struct McFeatures::Rng {
+struct BiomeFeatures::Rng {
   u64 s;
   explicit Rng(u64 seed) : s(seed) {}
   u64 next() { s += 0x9E3779B97F4A7C15ull; u64 z = s; z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull; z = (z ^ (z >> 27)) * 0x94D049BB133111EBull; return z ^ (z >> 31); }
@@ -55,7 +55,7 @@ struct McFeatures::Rng {
   double gaussian() { const double u = std::max(1e-12, nextDouble()), v = nextDouble(); return std::sqrt(-2 * std::log(u)) * std::cos(6.283185307179586 * v); }
 };
 
-struct McFeatures::Ctx {
+struct BiomeFeatures::Ctx {
   GenBuf& b; int bx, bz; const u16* biome; const std::function<bool(int, int)>& builtOn;
   int step = 0, top = 0;
   const u8* treeish = nullptr;   // (our trees' blocks: logs, branches, leaves)   // (the feature being run: its step and placed index, for the biome filter)
@@ -100,7 +100,7 @@ struct McFeatures::Ctx {
 };
 
 // ---- loading ----------------------------------------------------------------------------------------------
-int McFeatures::parseInt(const json& j) {
+int BiomeFeatures::parseInt(const json& j) {
   IntP p;
   if (j.is_number()) { p.t = I_CONST; p.a = j.get<int>(); }
   else if (j.is_object()) {
@@ -118,7 +118,7 @@ int McFeatures::parseInt(const json& j) {
   return (int)ints_.size() - 1;
 }
 
-int McFeatures::sampleInt(int i, Rng& r) const {
+int BiomeFeatures::sampleInt(int i, Rng& r) const {
   if (i < 0) return 0;
   const IntP& p = ints_[i];
   switch (p.t) {
@@ -137,12 +137,12 @@ int McFeatures::sampleInt(int i, Rng& r) const {
   return 0;
 }
 
-McFeatures::State McFeatures::state(const json& j) {
+BiomeFeatures::State BiomeFeatures::state(const json& j) {
   State s;
   if (!j.is_object()) return s;
-  static std::mutex mx; static std::unordered_map<std::string, BlockId> memo;   // (mcBlockState logs each block it lacks: once)
+  static std::mutex mx; static std::unordered_map<std::string, BlockId> memo;   // (blockFromState logs each block it lacks: once)
   const std::string k = j.dump();
-  { std::lock_guard<std::mutex> lk(mx); if (auto it = memo.find(k); it != memo.end()) { s.id = it->second; } else { s.id = mcBlockState(j); memo[k] = s.id; } }
+  { std::lock_guard<std::mutex> lk(mx); if (auto it = memo.find(k); it != memo.end()) { s.id = it->second; } else { s.id = blockFromState(j); memo[k] = s.id; } }
   if (s.id != OUT) {
     // a plant's own stages and props we don't keep; the pickles' count is ours
     const std::string pk = j.contains("Properties") && j["Properties"].contains("pickles") ? j["Properties"]["pickles"].get<std::string>() : "";
@@ -151,7 +151,7 @@ McFeatures::State McFeatures::state(const json& j) {
   return s;
 }
 
-void McFeatures::tagInto(const std::string& tag, std::vector<u8>& m, int depth) {
+void BiomeFeatures::tagInto(const std::string& tag, std::vector<u8>& m, int depth) {
   auto it = tags_.find(full(tag));
   if (it == tags_.end() || depth > 8) return;
   for (const std::string& v : it->second) {
@@ -161,7 +161,7 @@ void McFeatures::tagInto(const std::string& tag, std::vector<u8>& m, int depth) 
   }
 }
 
-std::vector<u8> McFeatures::blockSet(const json& j) {
+std::vector<u8> BiomeFeatures::blockSet(const json& j) {
   std::vector<u8> m(reg().blocks.size() + 1, 0);
   auto one = [&](const std::string& n) {
     if (!n.empty() && n[0] == '#') { tagInto(n.substr(1), m); return; }
@@ -174,7 +174,7 @@ std::vector<u8> McFeatures::blockSet(const json& j) {
   return m;
 }
 
-int McFeatures::parseProv(const json& j) {
+int BiomeFeatures::parseProv(const json& j) {
   Prov p;
   const std::string t = strip(j.value("type", std::string(j.contains("fallback") ? "rule_based_state_provider" : "simple_state_provider")));
   if (t == "rule_based_state_provider") {   // (the disks': no type given)
@@ -197,7 +197,7 @@ int McFeatures::parseProv(const json& j) {
   return (int)provs_.size() - 1;
 }
 
-McFeatures::State McFeatures::provide(int i, Rng& r, int x, int y, int z, Ctx& c) const {
+BiomeFeatures::State BiomeFeatures::provide(int i, Rng& r, int x, int y, int z, Ctx& c) const {
   const Prov& p = provs_[i];
   auto noise = [&](u64 seed, double scale) {
     static thread_local std::unordered_map<u64, std::unique_ptr<SimplexNoise>> ns;
@@ -224,7 +224,7 @@ McFeatures::State McFeatures::provide(int i, Rng& r, int x, int y, int z, Ctx& c
   return State{};
 }
 
-int McFeatures::parsePred(const json& j) {
+int BiomeFeatures::parsePred(const json& j) {
   Pred p;
   const std::string t = strip(j.value("type", std::string("true")));
   if (j.contains("offset") && j["offset"].is_array() && j["offset"].size() == 3) { p.ox = j["offset"][0]; p.oy = j["offset"][1]; p.oz = j["offset"][2]; }
@@ -247,7 +247,7 @@ int McFeatures::parsePred(const json& j) {
   return (int)preds_.size() - 1;
 }
 
-bool McFeatures::test(int i, Ctx& c, int x, int y, int z) const {
+bool BiomeFeatures::test(int i, Ctx& c, int x, int y, int z) const {
   const Pred& p = preds_[i];
   x += p.ox; y += p.oy; z += p.oz;
   const Registry& R = reg();
@@ -269,7 +269,7 @@ bool McFeatures::test(int i, Ctx& c, int x, int y, int z) const {
 
 // Minecraft's canSurvive, for the kinds of block the features place: plants on soil (sand for the desert's), cactus on sand
 // alone, sugar cane by water, lily pads on water, sea plants under it, vines on a wall
-bool McFeatures::survives(BlockId id, Ctx& c, int x, int y, int z) const {
+bool BiomeFeatures::survives(BlockId id, Ctx& c, int x, int y, int z) const {
   const Registry& R = reg();
   const BlockDef& d = R.block(id);
   const BlockId here = c.get(x, y, z), below = c.get(x, y - 1, z);
@@ -297,7 +297,7 @@ bool McFeatures::survives(BlockId id, Ctx& c, int x, int y, int z) const {
   return in(dirt_, below);
 }
 
-int McFeatures::placedRef(const std::string& id) {
+int BiomeFeatures::placedRef(const std::string& id) {
   const std::string k = full(id);
   if (auto it = placedIds_.find(k); it != placedIds_.end()) return it->second;
   placedIds_[k] = -1;   // (a loop guard)
@@ -309,7 +309,7 @@ int McFeatures::placedRef(const std::string& id) {
   return i;
 }
 
-int McFeatures::confRef(const std::string& id) {
+int BiomeFeatures::confRef(const std::string& id) {
   const std::string k = full(id);
   if (auto it = confIds_.find(k); it != confIds_.end()) return it->second;
   confIds_[k] = -1;
@@ -321,7 +321,7 @@ int McFeatures::confRef(const std::string& id) {
   return i;
 }
 
-int McFeatures::parsePlaced(const json& j) {
+int BiomeFeatures::parsePlaced(const json& j) {
   if (j.is_string()) return placedRef(j.get<std::string>());
   Placed P;
   const json& f = j.contains("feature") ? j["feature"] : j;
@@ -365,7 +365,7 @@ int McFeatures::parsePlaced(const json& j) {
   return (int)placed_.size() - 1;
 }
 
-int McFeatures::parseConf(const json& j) {
+int BiomeFeatures::parseConf(const json& j) {
   Conf C;
   const std::string t = j.value("type", std::string());
   const json& g = j.contains("config") ? j["config"] : json::object();
@@ -409,7 +409,7 @@ int McFeatures::parseConf(const json& j) {
   return (int)confs_.size() - 1;
 }
 
-int McFeatures::intMax(int i) const {   // the largest size an int provider gives
+int BiomeFeatures::intMax(int i) const {   // the largest size an int provider gives
   if (i < 0) return 0;
   const IntP& p = ints_[i];
   switch (p.t) {
@@ -420,7 +420,7 @@ int McFeatures::intMax(int i) const {   // the largest size an int provider give
   }
 }
 
-int McFeatures::reachOf(int f, int depth) const {   // how far from its origin a feature may set blocks (-1: it places nothing)
+int BiomeFeatures::reachOf(int f, int depth) const {   // how far from its origin a feature may set blocks (-1: it places nothing)
   if (f < 0 || depth > 12) return -1;
   const Conf& C = confs_[f];
   auto kid = [&](int p) {
@@ -452,7 +452,7 @@ int McFeatures::reachOf(int f, int depth) const {   // how far from its origin a
   }
 }
 
-bool McFeatures::load(const fs::path& dir, const McBiomes& biomes, u64 seed) {
+bool BiomeFeatures::load(const fs::path& dir, const LandBiomes& biomes, u64 seed) {
   dir_ = dir; bio_ = &biomes; seed_ = seed;
   if (auto t = readJson(dir / "block_tags.json"); t && t->is_object()) for (auto& [k, v] : t->items()) tags_[k] = v.get<std::vector<std::string>>();
   else return false;
@@ -503,7 +503,7 @@ bool McFeatures::load(const fs::path& dir, const McBiomes& biomes, u64 seed) {
 }
 
 // ---- placing ----------------------------------------------------------------------------------------------
-bool McFeatures::setState(Ctx& c, int x, int y, int z, State s) const {
+bool BiomeFeatures::setState(Ctx& c, int x, int y, int z, State s) const {
   if (s.id == OUT) return false;
   const Registry& R = reg();
   u8 meta = s.meta;
@@ -516,7 +516,7 @@ bool McFeatures::setState(Ctx& c, int x, int y, int z, State s) const {
   return c.set(x, y, z, s.id, meta);
 }
 
-bool McFeatures::placePlaced(int pi, Ctx& c, Rng& r, int x, int y, int z) const {
+bool BiomeFeatures::placePlaced(int pi, Ctx& c, Rng& r, int x, int y, int z) const {
   if (pi < 0) return false;
   const Placed& P = placed_[pi];
   if (!P.ok || P.conf < 0) return false;
@@ -584,7 +584,7 @@ bool McFeatures::placePlaced(int pi, Ctx& c, Rng& r, int x, int y, int z) const 
   return any;
 }
 
-bool McFeatures::placeConf(int fi, Ctx& c, Rng& r, int x, int y, int z) const {
+bool BiomeFeatures::placeConf(int fi, Ctx& c, Rng& r, int x, int y, int z) const {
   if (fi < 0) return false;
   const Conf& C = confs_[fi];
   const Registry& R = reg();
@@ -830,7 +830,7 @@ bool McFeatures::placeConf(int fi, Ctx& c, Rng& r, int x, int y, int z) const {
   return false;
 }
 
-void McFeatures::decorate(GenBuf& b, int cx, int cz, const u16* biome, const std::function<bool(int, int)>& builtOn, bool underTrees) const {
+void BiomeFeatures::decorate(GenBuf& b, int cx, int cz, const u16* biome, const std::function<bool(int, int)>& builtOn, bool underTrees) const {
   if (!loaded_) return;
   Ctx c(b, cx * 16, cz * 16, biome, builtOn);
   static const std::vector<u8> TREE = [] {

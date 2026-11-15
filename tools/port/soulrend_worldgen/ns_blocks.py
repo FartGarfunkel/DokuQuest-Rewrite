@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""tools/port/soulrend_worldgen/ns_blocks.py — Nature's Spirit's plants and ground, as blocks of ours (idempotent).
+"""tools/port/worldgen/ns_blocks.py — Nature's Spirit's plants and ground, as blocks of ours (idempotent).
 
 Soulrend's biomes grow Nature's Spirit's flowers, grasses, succulents and water plants, and its surface rules lay its
 ground (chert, the kaolins, travertine, white chalk, sandy soil, pink sand and sandstone, red moss). Each becomes a block
@@ -10,7 +10,7 @@ of the game's own, cloned from the nearest block we have (a flower, a tall grass
   - the mod's own picture goes into the git-excluded DokuQuest Base pack (padded to a square where the mod's is a tall
     one), recorded in its soulrend_import.json like soulrend_import.py's, and named in data/packmap.json.
 
-  python3 tools/port/soulrend_worldgen/ns_blocks.py [data] [unpacked mods dir]
+  python3 tools/port/worldgen/ns_blocks.py [data] [unpacked mods dir]
 """
 import colorsys, io, json, os, pathlib, sys
 from PIL import Image

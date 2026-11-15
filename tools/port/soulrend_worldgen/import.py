@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Soulrend's Overworld generation, as data, into data/soulrend_worldgen/ (git-ignored: Mojang's and the mods' data), read by
-gen/density.cpp, gen/mc_biomes.cpp and gen/surface_rules.cpp for terrain version 15:
-  python3 tools/port/soulrend_worldgen/import.py [prism instance dir] [data-dir]
+"""Soulrend's Overworld generation, as data, into data/worldgen/ (git-ignored: Mojang's and the mods' data), read by
+gen/density.cpp, gen/land_biomes.cpp and gen/surface_rules.cpp for terrain version 15:
+  python3 tools/port/worldgen/import.py [prism instance dir] [data-dir]
 
 What Soulrend's Overworld is made of (its mods and their configs, in the order Forge loads them):
   - Minecraft 1.20.1's noise router, with Expanded Ecosphere's own offset / factor / jaggedness splines (its ee_default pack:
@@ -30,7 +30,7 @@ NS_CLASSES = ['net/hibiscus/naturespirit/terrablender/Terra%sParameters' % r for
 def jar(mods, prefix):
     for f in sorted(os.listdir(mods)):
         if f.lower().startswith(prefix.lower()) and f.endswith('.jar'): return zipfile.ZipFile(mods / f)
-    raise SystemExit('soulrend_worldgen: no %s*.jar in %s' % (prefix, mods))
+    raise SystemExit('worldgen: no %s*.jar in %s' % (prefix, mods))
 
 
 def decompile(z, names, work, mapping=None):
@@ -83,7 +83,7 @@ def ground_kind(n):
 
 
 def ground_substitutes(out, d, jars):
-    """data/soulrend_worldgen/block_substitutes.json: each block the surface rules lay that isn't ours, as the nearest of our ground"""
+    """data/worldgen/block_substitutes.json: each block the surface rules lay that isn't ours, as the nearest of our ground"""
     sys.path.insert(0, str(HERE.parent)); import block_match as BM
     ours = {b['key'] for b in json.loads((d / 'blocks.json').read_text())['blocks']}
     names = sorted(set(re.findall(r'"Name":"([^"]+)"', (out / 'surface_rules.json').read_text())))
@@ -110,13 +110,13 @@ def ground_substitutes(out, d, jars):
             png = tex.block_texture(n); f = BM.features(png) if png else None
             c = cand.get(ground_kind(n), {})
             if f and c: res[n] = min(c, key=lambda k: BM.dist(f, c[k]))
-            else: print('soulrend_worldgen: no picture for', n)
+            else: print('worldgen: no picture for', n)
     (out / 'block_substitutes.json').write_text(json.dumps(res, indent=0, sort_keys=True))
-    print('soulrend_worldgen: ground blocks matched: ' + ', '.join('%s -> %s' % (k.split(':')[1], v) for k, v in res.items()))
+    print('worldgen: ground blocks matched: ' + ', '.join('%s -> %s' % (k.split(':')[1], v) for k, v in res.items()))
 
 
 def main(inst=INSTANCE, d='data'):
-    inst = pathlib.Path(inst); out = pathlib.Path(d) / 'soulrend_worldgen'
+    inst = pathlib.Path(inst); out = pathlib.Path(d) / 'worldgen'
     mods = inst / 'minecraft/mods'
     cfgdir = inst / 'minecraft/config'
     if out.exists(): shutil.rmtree(out)
@@ -213,7 +213,7 @@ def main(inst=INSTANCE, d='data'):
     (out / 'surface_rules.json').write_text(json.dumps({'base': base, 'namespaces': {'minecraft': vanilla_rule, **rules}}, separators=(',', ':')))
     ground_substitutes(out, pathlib.Path(d), [ns, ee, ww, mc])
     missing = [b for b in names if not (out / 'biome' / b.split(':')[0] / (b.split(':')[1] + '.json')).exists()]
-    print('soulrend_worldgen: %d files; %d regions (%s entries), %d biomes%s' % (n, len(regions), '/'.join(str(len(r['entries'])) for r in regions),
+    print('worldgen: %d files; %d regions (%s entries), %d biomes%s' % (n, len(regions), '/'.join(str(len(r['entries'])) for r in regions),
           len(names), '; no data for: ' + ', '.join(missing) if missing else ''))
 
 

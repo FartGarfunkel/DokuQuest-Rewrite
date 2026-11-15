@@ -4,7 +4,7 @@
   * the feeding trough (Animal Feeding Trough's): a wooden trough holding a stack of food; the farm animals that eat it
     come to it and feed themselves into the mood to breed (sim/trough.cpp), the food showing in it as it fills;
   * the waystone as a pillar two blocks tall: a stepped plinth of dark brick, a shaft with runes cut down its four faces,
-    a stepped (pagoda) cap. The lower block sets the upper above it and breaking either takes both (sim/bta_items.cpp's
+    a stepped (pagoda) cap. The lower block sets the upper above it and breaking either takes both (sim/extra_items.cpp's
     two-block statues); the runes light up on the ones you're attuned to (render/waystone_layer.cpp);
 
   python3 tools/port/polish_data.py [data]"""

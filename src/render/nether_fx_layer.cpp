@@ -1,4 +1,4 @@
-// render/nether_fx_layer.cpp — the life of BTA 8.0's Nether lands (gen/nether_bta.h), on this device:
+// render/nether_fx_layer.cpp — the life of BTA 8.0's Nether lands (gen/nether_lands.h), on this device:
 //  * the Volcanic Islands' volcanoes erupt now and then, each on its own clock taken from the world's time (so everyone
 //    in a shared world sees the same eruption): a grumble a few seconds before, then the blast (heard far off, the
 //    ground shakes near it), a fountain of lava, glowing bombs flung down the slopes and a column of smoke that
@@ -11,7 +11,7 @@
 #include "audio/audio.h"
 #include "sim/steam.h"
 #include "render/particles.h"
-#include "gen/nether_bta.h"
+#include "gen/nether_lands.h"
 #include "core/registry.h"
 #include "sim/level.h"
 #include "sim/player.h"
@@ -50,7 +50,7 @@ public:
 
 private:
   std::vector<NetherVolcano> vols;
-  // the steam vents (sim/steam.h: each breathes on its own beat; sim/bta_more.cpp scalds and lifts): found every couple of
+  // the steam vents (sim/steam.h: each breathes on its own beat; sim/more_items.cpp scalds and lifts): found every couple of
   // seconds round the player, a white plume shot up out of each while it breathes, a hiss as it starts, a wisp between
   std::vector<ivec3> vents; float ventScanT = 0; vec3 ventAt{0}; std::unordered_map<u64, float> ventPh;
   void steamVents(GameSession& s, ParticleSystem& P, vec3 p, float amount, float dt) {

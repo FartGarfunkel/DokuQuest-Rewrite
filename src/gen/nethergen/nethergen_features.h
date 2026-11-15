@@ -1,8 +1,8 @@
 // Internal: WorldFeature* ports used by ChunkDecoratorNether.
 #pragma once
-#include "bta_nether_world.h"
+#include "nethergen_world.h"
 
-namespace bta {
+namespace nethergen {
 namespace feat {
 struct OreMap { int n; uint16_t from[4]; uint16_t to[4]; };
 void rubyglassCrystalline(DecoWorld& w, JavaRandom& r, int x, int y, int z, bool ceiling, int minH, int hMod);
@@ -27,4 +27,4 @@ void scatterBonePile(DecoWorld& w, JavaRandom& r, int x, int y, int z);
 void scatterBoulder(DecoWorld& w, int x, int y, int z, bool sulfuric);
 void soulCatcherPatch(DecoWorld& w, JavaRandom& r, int x, int y, int z);
 }  // namespace feat
-}  // namespace bta
+}  // namespace nethergen

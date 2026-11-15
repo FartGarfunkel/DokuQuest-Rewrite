@@ -23,8 +23,8 @@ DepthsGen::DepthsGen(const WorldGenOptions& o)
     bn_ = o.genVersion >= 13 && exactOpen_;   // 13: BetterNether's lands painted over it (gen/nether_bn.h)
   }
   else if (o.genVersion >= 5) {   // the five-land heightfield kept for worlds already generated that way
-    bta_ = std::make_unique<NetherShape>(seed_);
-    btaCarve_ = R; btaCarve_.maxY = 120; btaCarve_.carvable[B.ash] = 1; btaCarve_.carvable[B.sulphur_block] = 1;
+    lands_ = std::make_unique<NetherShape>(seed_);
+    landsCarve_ = R; landsCarve_.maxY = 120; landsCarve_.carvable[B.ash] = 1; landsCarve_.carvable[B.sulphur_block] = 1;
   }
 }
 
@@ -51,14 +51,14 @@ bool DepthsGen::solidFrom(const float* D, int y) {
 bool DepthsGen::solidAt(int x, int y, int z) const {
   if (exact_) return solidExact(x, y, z);
   if (cave_) return solidCave(x, y, z);
-  if (bta_) return solidBTA(x, y, z);
+  if (lands_) return solidLands(x, y, z);
   thread_local int lx = INT32_MIN, lz = INT32_MIN; thread_local const DepthsGen* lg = nullptr; thread_local float D[LAYERS];
   if (lx != x || lz != z || lg != this) { densityColumn(x, z, D); lx = x; lz = z; lg = this; }
   return solidFrom(D, y);
 }
 
 void DepthsGen::fungusTrees(int cx, int cz, std::vector<TreeSpec>& out) const {
-  if (bta_ || cave_) return;
+  if (lands_ || cave_) return;
   Mulberry32 rnd(hash32(seed_, cx, cz, 0xf00));
   float D[LAYERS];
   for (int k = 0; k < 3; k++) {
@@ -78,7 +78,7 @@ void DepthsGen::fungusTrees(int cx, int cz, std::vector<TreeSpec>& out) const {
 void DepthsGen::generate(Chunk& ch) {
   if (exact_) { generateExact(ch); return; }
   if (cave_) { generateCave(ch); return; }
-  if (bta_) { generateBTA(ch); return; }
+  if (lands_) { generateLands(ch); return; }
   GenBuf& b = GenBuf::local();
   std::fill(ch.climate.begin(), ch.climate.end(), (u8)128);
   const int bx = ch.cx * CS, bz = ch.cz * CS;
@@ -311,7 +311,7 @@ void DepthsGen::ores(GenBuf& b, int cx, int cz) const {
 TerrainColumn DepthsGen::terrainColumn(int x, int z) const {
   if (exact_) return terrainExact(x, z);
   if (cave_) return terrainCave(x, z);
-  if (bta_) return terrainBTA(x, z);
+  if (lands_) return terrainLands(x, z);
   float D[LAYERS]; densityColumn(x, z, D);
   TerrainColumn t;
   // the cavern floor: the first open space above the lava sea's bed
@@ -325,7 +325,7 @@ TerrainColumn DepthsGen::terrainColumn(int x, int z) const {
 
 void DepthsGen::sample(int wx, int wz, ColumnSample& s) const {
   if (cave_) { sampleCave(wx, wz, s); return; }
-  if (bta_) { sampleBTA(wx, wz, s); return; }
+  if (lands_) { sampleLands(wx, wz, s); return; }
   // cheap: nCave1 exact (no grid), floor found row by row from the lava sea up, the roof in steps of 3 rows
   auto dens = [&](int L) { return nCave1.noise3(wx / 48.0, L / 26.0, wz / 48.0) + nCave2.noise3(wx / 16.0, L / 12.0, wz / 16.0) * 0.35 + bias(netherY(L)); };
   s = ColumnSample();

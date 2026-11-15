@@ -2,8 +2,8 @@
 // (gen/bta, checked block for block against BTA's classes: terrain, surface, caves, floes, shelves, its biomes and all
 // 47 decorations), its blocks mapped onto ours. BTA's y is our band y (both 256 tall, its sea at 96, bedrock below 64).
 #include "gen/dimgens.h"
-#include "gen/bta/bta_nether.h"
-#include "gen/nether_bta.h"
+#include "gen/nethergen/nethergen.h"
+#include "gen/nether_lands.h"
 #include "gen/nether_bn.h"
 #include <cmath>
 #include "core/registry.h"
@@ -14,31 +14,31 @@ namespace dq {
 
 namespace {
 // BTA's blocks -> ours (the nearest where this game has no exact one)
-struct NBMap { BlockId id[bta::NB_OTHER + 1]; };
+struct NBMap { BlockId id[nethergen::NB_OTHER + 1]; };
 const NBMap& nbMap() {
   static const NBMap m = [] {
     NBMap r{};
-    auto k = [&](bta::NB n, std::initializer_list<const char*> keys) {
+    auto k = [&](nethergen::NB n, std::initializer_list<const char*> keys) {
       for (const char* s : keys) if (BlockId b = reg().blockId(s)) { r.id[n] = b; return; }
     };
-    k(bta::NB_BEDROCK, {"bedrock"}); k(bta::NB_NETHERRACK, {"netherrack"}); k(bta::NB_COBBLE_NETHERRACK, {"cobbled_netherrack", "netherrack"});
-    k(bta::NB_COBBLE_NETHERRACK_CRYSTALLINE, {"crystalline_netherrack", "cobbled_netherrack", "netherrack"});
-    k(bta::NB_LAVA_STILL, {"lava"}); k(bta::NB_LAVA_FLOWING, {"lava"}); k(bta::NB_WATER_STILL, {"water"}); k(bta::NB_WATER_FLOWING, {"water"});
-    k(bta::NB_ACID_STILL, {"acid", "water"}); k(bta::NB_ACID_FLOWING, {"acid", "water"}); k(bta::NB_OBSIDIAN, {"obsidian"});
-    k(bta::NB_SOULSAND, {"soul_sand"}); k(bta::NB_SULFUR, {"sulphur_block", "nether_brimstone"}); k(bta::NB_BRIMSAND, {"brimsand", "soul_sand"});
-    k(bta::NB_BRIMSTONE, {"nether_brimstone", "basalt"}); k(bta::NB_BRIMTHAW, {"brimthaw", "magma_block"});
-    k(bta::NB_GLOOMSTONE, {"gloomstone", "blackstone"}); k(bta::NB_COBBLE_GLOOMSTONE, {"cobbled_gloomstone", "gloomstone"});
-    k(bta::NB_GLOWSTONE, {"glowstone"}); k(bta::NB_BLOCK_ASH, {"ash"}); k(bta::NB_LAYER_ASH, {"ash_layer", "ash"}); k(bta::NB_SLATE, {"slate"});
-    k(bta::NB_BASALT, {"basalt"}); k(bta::NB_COBBLE_BASALT, {"cobbled_basalt", "basalt"}); k(bta::NB_PUMICE_WET, {"molten_pumice", "pumice"});
-    k(bta::NB_PUMICE_DRY, {"pumice", "basalt"}); k(bta::NB_MAGMA, {"magma_block"});
-    k(bta::NB_RUBYGLASS_CRYSTAL, {"rubyglass_crystal", "red_crystal"}); k(bta::NB_RUBYGLASS_COLUMN, {"rubyglass_column", "red_crystal"});
-    k(bta::NB_RUBYGLASS_NODE, {"rubyglass_node", "red_crystal"}); k(bta::NB_RUBYGLASS_GROWTH, {"rubyglass_growth", "red_crystal_cluster"});
-    k(bta::NB_ORE_NETHERCOAL_NETHERRACK, {"nether_coal_ore", "coal_ore"}); k(bta::NB_ORE_NETHERCOAL_BASALT, {"basalt_coal_ore", "nether_coal_ore"});
-    k(bta::NB_ORE_NETHERCOAL_GLOOMSTONE, {"gloom_coal_ore", "nether_coal_ore"}); k(bta::NB_BLOCK_NETHER_COAL, {"nether_coal_block", "coal_block"});
-    k(bta::NB_THERMAL_VENT, {"thermal_vent", "steam_vent", "magma_block"}); k(bta::NB_FIRE, {"fire"}); k(bta::NB_FIRE_SULFURIC, {"sulfuric_fire", "fire"});
-    k(bta::NB_EMBER, {"ember", "magma_block"}); k(bta::NB_BONE_PILE, {"bone_pile", "bone_block"}); k(bta::NB_BOULDER_MAGMATIC, {"magmatic_boulder", "magma_block"});
-    k(bta::NB_BOULDER_SULFURIC, {"sulfuric_boulder", "sulphur_block"}); k(bta::NB_SOUL_CATCHER, {"soul_catcher", "soul_sand"});
-    k(bta::NB_OTHER, {"netherrack"});
+    k(nethergen::NB_BEDROCK, {"bedrock"}); k(nethergen::NB_NETHERRACK, {"netherrack"}); k(nethergen::NB_COBBLE_NETHERRACK, {"cobbled_netherrack", "netherrack"});
+    k(nethergen::NB_COBBLE_NETHERRACK_CRYSTALLINE, {"crystalline_netherrack", "cobbled_netherrack", "netherrack"});
+    k(nethergen::NB_LAVA_STILL, {"lava"}); k(nethergen::NB_LAVA_FLOWING, {"lava"}); k(nethergen::NB_WATER_STILL, {"water"}); k(nethergen::NB_WATER_FLOWING, {"water"});
+    k(nethergen::NB_ACID_STILL, {"acid", "water"}); k(nethergen::NB_ACID_FLOWING, {"acid", "water"}); k(nethergen::NB_OBSIDIAN, {"obsidian"});
+    k(nethergen::NB_SOULSAND, {"soul_sand"}); k(nethergen::NB_SULFUR, {"sulphur_block", "nether_brimstone"}); k(nethergen::NB_BRIMSAND, {"brimsand", "soul_sand"});
+    k(nethergen::NB_BRIMSTONE, {"nether_brimstone", "basalt"}); k(nethergen::NB_BRIMTHAW, {"brimthaw", "magma_block"});
+    k(nethergen::NB_GLOOMSTONE, {"gloomstone", "blackstone"}); k(nethergen::NB_COBBLE_GLOOMSTONE, {"cobbled_gloomstone", "gloomstone"});
+    k(nethergen::NB_GLOWSTONE, {"glowstone"}); k(nethergen::NB_BLOCK_ASH, {"ash"}); k(nethergen::NB_LAYER_ASH, {"ash_layer", "ash"}); k(nethergen::NB_SLATE, {"slate"});
+    k(nethergen::NB_BASALT, {"basalt"}); k(nethergen::NB_COBBLE_BASALT, {"cobbled_basalt", "basalt"}); k(nethergen::NB_PUMICE_WET, {"molten_pumice", "pumice"});
+    k(nethergen::NB_PUMICE_DRY, {"pumice", "basalt"}); k(nethergen::NB_MAGMA, {"magma_block"});
+    k(nethergen::NB_RUBYGLASS_CRYSTAL, {"rubyglass_crystal", "red_crystal"}); k(nethergen::NB_RUBYGLASS_COLUMN, {"rubyglass_column", "red_crystal"});
+    k(nethergen::NB_RUBYGLASS_NODE, {"rubyglass_node", "red_crystal"}); k(nethergen::NB_RUBYGLASS_GROWTH, {"rubyglass_growth", "red_crystal_cluster"});
+    k(nethergen::NB_ORE_NETHERCOAL_NETHERRACK, {"nether_coal_ore", "coal_ore"}); k(nethergen::NB_ORE_NETHERCOAL_BASALT, {"basalt_coal_ore", "nether_coal_ore"});
+    k(nethergen::NB_ORE_NETHERCOAL_GLOOMSTONE, {"gloom_coal_ore", "nether_coal_ore"}); k(nethergen::NB_BLOCK_NETHER_COAL, {"nether_coal_block", "coal_block"});
+    k(nethergen::NB_THERMAL_VENT, {"thermal_vent", "steam_vent", "magma_block"}); k(nethergen::NB_FIRE, {"fire"}); k(nethergen::NB_FIRE_SULFURIC, {"sulfuric_fire", "fire"});
+    k(nethergen::NB_EMBER, {"ember", "magma_block"}); k(nethergen::NB_BONE_PILE, {"bone_pile", "bone_block"}); k(nethergen::NB_BOULDER_MAGMATIC, {"magmatic_boulder", "magma_block"});
+    k(nethergen::NB_BOULDER_SULFURIC, {"sulfuric_boulder", "sulphur_block"}); k(nethergen::NB_SOUL_CATCHER, {"soul_catcher", "soul_sand"});
+    k(nethergen::NB_OTHER, {"netherrack"});
     return r;
   }();
   return m;
@@ -46,16 +46,16 @@ const NBMap& nbMap() {
 // the meta that carries over: fluid levels (BTA's 0 source, 1..7 flowing, 8 falling: ours exactly) and ash layer heights
 inline u8 metaOf(u8 kind, u8 meta) {
   switch (kind) {
-    case bta::NB_LAVA_STILL: case bta::NB_LAVA_FLOWING: case bta::NB_WATER_STILL: case bta::NB_WATER_FLOWING: case bta::NB_ACID_STILL: case bta::NB_ACID_FLOWING: return meta & 15;
-    case bta::NB_LAYER_ASH: return meta & 7;
+    case nethergen::NB_LAVA_STILL: case nethergen::NB_LAVA_FLOWING: case nethergen::NB_WATER_STILL: case nethergen::NB_WATER_FLOWING: case nethergen::NB_ACID_STILL: case nethergen::NB_ACID_FLOWING: return meta & 15;
+    case nethergen::NB_LAYER_ASH: return meta & 7;
     default: return 0;
   }
 }
 inline u8 ourLand(int nbio) {
   switch (nbio) {
-    case bta::NBIO_OLD_WORLD: return NB_OLDWORLD; case bta::NBIO_CRYSTAL_PLAINS: return NB_CRYSTAL_PLAINS;
-    case bta::NBIO_CRYSTAL_FOREST: return NB_CRYSTAL; case bta::NBIO_SHELF: return NB_SHELF; case bta::NBIO_CRAG: return NB_CRAG;
-    case bta::NBIO_SULFUR_POOLS: return NB_SULFUR; case bta::NBIO_VOLCANIC_ISLANDS: return NB_VOLCANIC; default: return NB_OLD_DESERT;
+    case nethergen::NBIO_OLD_WORLD: return NB_OLDWORLD; case nethergen::NBIO_CRYSTAL_PLAINS: return NB_CRYSTAL_PLAINS;
+    case nethergen::NBIO_CRYSTAL_FOREST: return NB_CRYSTAL; case nethergen::NBIO_SHELF: return NB_SHELF; case nethergen::NBIO_CRAG: return NB_CRAG;
+    case nethergen::NBIO_SULFUR_POOLS: return NB_SULFUR; case nethergen::NBIO_VOLCANIC_ISLANDS: return NB_VOLCANIC; default: return NB_OLD_DESERT;
   }
 }
 // Terrain 8: BTA's Nether in the open land of terrain 5. BTA's lands (its biome map, every 4 blocks round the chunk)
@@ -64,16 +64,16 @@ inline u8 ourLand(int nbio) {
 // sea (y 50) is BTA's (y 96). BTA's generator does the rest on that shape: its surfaces, caves, floes, shelves and all
 // its decorations. A walk across it, not a climb through caves.
 struct OpenShape {
-  NetherShape shape; std::shared_ptr<bta::NetherGen> biomes;
-  OpenShape(i32 seed, std::shared_ptr<bta::NetherGen> b) : shape(seed, true), biomes(std::move(b)) {}
+  NetherShape shape; std::shared_ptr<nethergen::NetherGen> biomes;
+  OpenShape(i32 seed, std::shared_ptr<nethergen::NetherGen> b) : shape(seed, true), biomes(std::move(b)) {}
   static int kindOf(int nbio) {   // each of BTA's lands its own shape (NetherShape open8)
     switch (nbio) {
-      case bta::NBIO_CRAG: return NB_CRAG; case bta::NBIO_VOLCANIC_ISLANDS: return NB_VOLCANIC; case bta::NBIO_SULFUR_POOLS: return NB_SULFUR;
-      case bta::NBIO_CRYSTAL_FOREST: return NB_CRYSTAL; case bta::NBIO_CRYSTAL_PLAINS: return NB_CRYSTAL_PLAINS; case bta::NBIO_SHELF: return NB_SHELF;
+      case nethergen::NBIO_CRAG: return NB_CRAG; case nethergen::NBIO_VOLCANIC_ISLANDS: return NB_VOLCANIC; case nethergen::NBIO_SULFUR_POOLS: return NB_SULFUR;
+      case nethergen::NBIO_CRYSTAL_FOREST: return NB_CRYSTAL; case nethergen::NBIO_CRYSTAL_PLAINS: return NB_CRYSTAL_PLAINS; case nethergen::NBIO_SHELF: return NB_SHELF;
       default: return NB_OLDWORLD;
     }
   }
-  void fill(int cx, int cz, bta::NetherGenOptions::ShapeColumn* cols) const {
+  void fill(int cx, int cz, nethergen::NetherGenOptions::ShapeColumn* cols) const {
     constexpr int N = 13, STEP = 4, R = 14, LIFT = 96 - NetherShape::LAVA;
     const int x0 = cx * 16 - 16, z0 = cz * 16 - 16;
     u8 kind[N][N];
@@ -94,26 +94,26 @@ struct OpenShape {
   }
 };
 // one exact Nether per seed (and one in the open shape), shared by the generator, the sky and the spawns
-std::shared_ptr<bta::NetherGen> exactFor(i32 seed, bool open = false) {
-  static std::mutex mx; static std::map<std::pair<i32, bool>, std::weak_ptr<bta::NetherGen>> all;
-  std::shared_ptr<bta::NetherGen> exact;
+std::shared_ptr<nethergen::NetherGen> exactFor(i32 seed, bool open = false) {
+  static std::mutex mx; static std::map<std::pair<i32, bool>, std::weak_ptr<nethergen::NetherGen>> all;
+  std::shared_ptr<nethergen::NetherGen> exact;
   if (open) exact = exactFor(seed, false);   // (its biome map: the open one's lands are the same)
   std::lock_guard<std::mutex> lk(mx);
   auto& w = all[{seed, open}];
   if (auto p = w.lock()) return p;
-  bta::NetherGenOptions o;
-  if (open) { auto os = std::make_shared<OpenShape>(seed, exact); o.shape = [os](int cx, int cz, bta::NetherGenOptions::ShapeColumn* c) { os->fill(cx, cz, c); }; }
-  auto p = std::make_shared<bta::NetherGen>((int64_t)seed, o);
+  nethergen::NetherGenOptions o;
+  if (open) { auto os = std::make_shared<OpenShape>(seed, exact); o.shape = [os](int cx, int cz, nethergen::NetherGenOptions::ShapeColumn* c) { os->fill(cx, cz, c); }; }
+  auto p = std::make_shared<nethergen::NetherGen>((int64_t)seed, o);
   w = p;
   return p;
 }
 // undecorated terrain for the queries structures make (where the ground is), a few chunks kept per thread
-struct TerrainLRU { const bta::NetherGen* g = nullptr; int cx = INT32_MIN, cz = INT32_MIN; std::unique_ptr<bta::NetherGen::Out> out; };
-const bta::NetherGen::Out& terrainOf(bta::NetherGen& g, int cx, int cz) {
+struct TerrainLRU { const nethergen::NetherGen* g = nullptr; int cx = INT32_MIN, cz = INT32_MIN; std::unique_ptr<nethergen::NetherGen::Out> out; };
+const nethergen::NetherGen::Out& terrainOf(nethergen::NetherGen& g, int cx, int cz) {
   thread_local TerrainLRU slot[4]; thread_local int next = 0;
   for (auto& s : slot) if (s.g == &g && s.cx == cx && s.cz == cz) return *s.out;
   TerrainLRU& s = slot[next++ & 3];
-  if (!s.out) s.out = std::make_unique<bta::NetherGen::Out>();
+  if (!s.out) s.out = std::make_unique<nethergen::NetherGen::Out>();
   g.generateTerrain(cx, cz, *s.out); s.g = &g; s.cx = cx; s.cz = cz;
   return *s.out;
 }
@@ -124,14 +124,14 @@ void DepthsGen::initExact(bool open) { exact_ = exactFor(seed_, open); exactOpen
 void DepthsGen::generateExact(Chunk& ch) {
   GenBuf& b = GenBuf::local();
   std::fill(ch.climate.begin(), ch.climate.end(), (u8)128);
-  thread_local std::unique_ptr<bta::NetherGen::Out> out;
-  if (!out) out = std::make_unique<bta::NetherGen::Out>();
+  thread_local std::unique_ptr<nethergen::NetherGen::Out> out;
+  if (!out) out = std::make_unique<nethergen::NetherGen::Out>();
   exact_->generateChunk(ch.cx, ch.cz, *out);
   const NBMap& M = nbMap();
   for (int i = 0; i < DIM_H * 256; i++) {
     const u8 k = out->kind[i];
     if (!k) continue;
-    b.blocks[i] = M.id[k < bta::NB_OTHER ? k : bta::NB_OTHER];
+    b.blocks[i] = M.id[k < nethergen::NB_OTHER ? k : nethergen::NB_OTHER];
     b.meta[i] = metaOf(k, out->meta[i]);
   }
   if (bn_) {   // terrain 13: BetterNether's lands (no trees where a structure stands)
@@ -147,32 +147,32 @@ bool DepthsGen::solidExact(int x, int y, int z) const {
   if (y >= DIM_H) return false;
   const auto& T = terrainOf(*exact_, floordiv(x, 16), floordiv(z, 16));
   const u8 k = T.kind[(y << 8) | ((z & 15) << 4) | (x & 15)];
-  return k && k != bta::NB_LAVA_STILL && k != bta::NB_LAVA_FLOWING && k != bta::NB_WATER_STILL && k != bta::NB_WATER_FLOWING &&
-         k != bta::NB_ACID_STILL && k != bta::NB_ACID_FLOWING && k != bta::NB_FIRE && k != bta::NB_FIRE_SULFURIC;
+  return k && k != nethergen::NB_LAVA_STILL && k != nethergen::NB_LAVA_FLOWING && k != nethergen::NB_WATER_STILL && k != nethergen::NB_WATER_FLOWING &&
+         k != nethergen::NB_ACID_STILL && k != nethergen::NB_ACID_FLOWING && k != nethergen::NB_FIRE && k != nethergen::NB_FIRE_SULFURIC;
 }
 
 // the floor a structure stands on: the highest open floor between BTA's sea (96) and its roof, else the sea floor
 namespace {
 // the finished (decorated) chunk, one kept per thread: a landing is checked against what is really there (BTA's
 // decorations melt, burn and flow after the terrain is made)
-const bta::NetherGen::Out& decoratedOf(bta::NetherGen& g, int cx, int cz) {
+const nethergen::NetherGen::Out& decoratedOf(nethergen::NetherGen& g, int cx, int cz) {
   thread_local TerrainLRU slot; 
   if (slot.g == &g && slot.cx == cx && slot.cz == cz) return *slot.out;
-  if (!slot.out) slot.out = std::make_unique<bta::NetherGen::Out>();
+  if (!slot.out) slot.out = std::make_unique<nethergen::NetherGen::Out>();
   g.generateChunk(cx, cz, *slot.out); slot.g = &g; slot.cx = cx; slot.cz = cz;
   return *slot.out;
 }
 // the ground under the open air from the roof down: the y to stand at, or -1 (no ground, or lava, acid, a crystal's tip)
-int landingIn(const bta::NetherGen::Out& T, int i) {
+int landingIn(const nethergen::NetherGen::Out& T, int i) {
   auto k = [&](int y) { return T.kind[(y << 8) | i]; };
-  auto open = [&](u8 c) { return c == bta::NB_AIR || c == bta::NB_FIRE || c == bta::NB_FIRE_SULFURIC; };
+  auto open = [&](u8 c) { return c == nethergen::NB_AIR || c == nethergen::NB_FIRE || c == nethergen::NB_FIRE_SULFURIC; };
   int y = 248;
   while (y > 66 && !open(k(y))) y--;          // down through the roof
   while (y > 66 && open(k(y))) y--;           // down through the air to the ground
   if (y <= 66 || !open(k(y + 1)) || !open(k(y + 2)) || open(k(y - 1))) return -1;   // headroom, and ground two thick (not a shelf's lip)
   const u8 g = k(y);
-  if (g == bta::NB_LAVA_STILL || g == bta::NB_LAVA_FLOWING || g == bta::NB_WATER_STILL || g == bta::NB_WATER_FLOWING || g == bta::NB_ACID_STILL || g == bta::NB_ACID_FLOWING ||
-      g == bta::NB_RUBYGLASS_CRYSTAL || g == bta::NB_RUBYGLASS_GROWTH || g == bta::NB_LAYER_ASH) return -1;
+  if (g == nethergen::NB_LAVA_STILL || g == nethergen::NB_LAVA_FLOWING || g == nethergen::NB_WATER_STILL || g == nethergen::NB_WATER_FLOWING || g == nethergen::NB_ACID_STILL || g == nethergen::NB_ACID_FLOWING ||
+      g == nethergen::NB_RUBYGLASS_CRYSTAL || g == nethergen::NB_RUBYGLASS_GROWTH || g == nethergen::NB_LAYER_ASH) return -1;
   return y + 1;
 }
 }
@@ -192,8 +192,8 @@ TerrainColumn DepthsGen::terrainExact(int x, int z) const {
   const auto& T = terrainOf(*exact_, floordiv(x, 16), floordiv(z, 16));
   const int i = ((z & 15) << 4) | (x & 15);
   auto kind = [&](int y) { return T.kind[(y << 8) | i]; };
-  auto fluid = [&](u8 k) { return k == bta::NB_LAVA_STILL || k == bta::NB_LAVA_FLOWING || k == bta::NB_WATER_STILL || k == bta::NB_WATER_FLOWING; };
-  auto solid = [&](u8 k) { return k != bta::NB_AIR && !fluid(k) && k != bta::NB_FIRE && k != bta::NB_FIRE_SULFURIC; };
+  auto fluid = [&](u8 k) { return k == nethergen::NB_LAVA_STILL || k == nethergen::NB_LAVA_FLOWING || k == nethergen::NB_WATER_STILL || k == nethergen::NB_WATER_FLOWING; };
+  auto solid = [&](u8 k) { return k != nethergen::NB_AIR && !fluid(k) && k != nethergen::NB_FIRE && k != nethergen::NB_FIRE_SULFURIC; };
   int y = 64;
   if (exactOpen_) {
     // the open land: the ground under the open air, found from the roof down (from the bedrock up, BTA's caves under
@@ -215,8 +215,8 @@ bool netherMobsSpawnOn(BlockId id) {
   static const std::vector<u8> tag = [] {
     std::vector<u8> t(65536, 0);
     const NBMap& m = nbMap();
-    for (bta::NB n : {bta::NB_NETHERRACK, bta::NB_COBBLE_NETHERRACK, bta::NB_SOULSAND, bta::NB_ORE_NETHERCOAL_NETHERRACK, bta::NB_ORE_NETHERCOAL_BASALT,
-                      bta::NB_ORE_NETHERCOAL_GLOOMSTONE, bta::NB_RUBYGLASS_CRYSTAL, bta::NB_GLOOMSTONE, bta::NB_EMBER, bta::NB_BRIMSAND, bta::NB_BRIMSTONE, bta::NB_SULFUR})
+    for (nethergen::NB n : {nethergen::NB_NETHERRACK, nethergen::NB_COBBLE_NETHERRACK, nethergen::NB_SOULSAND, nethergen::NB_ORE_NETHERCOAL_NETHERRACK, nethergen::NB_ORE_NETHERCOAL_BASALT,
+                      nethergen::NB_ORE_NETHERCOAL_GLOOMSTONE, nethergen::NB_RUBYGLASS_CRYSTAL, nethergen::NB_GLOOMSTONE, nethergen::NB_EMBER, nethergen::NB_BRIMSAND, nethergen::NB_BRIMSTONE, nethergen::NB_SULFUR})
       if (m.id[n]) t[m.id[n]] = 1;
     for (const char* k : {"bone_shale", "soul_schist", "carved_slate", "brimstone_bricks", "cobbled_netherrack", "netherrack"}) if (BlockId b = reg().blockId(k)) t[b] = 1;
     return t;

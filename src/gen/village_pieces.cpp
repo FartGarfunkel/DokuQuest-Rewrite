@@ -398,7 +398,7 @@ std::unique_ptr<VillagePieces> loadPieces() {
 
 }  // namespace
 
-BlockId mcBlockState(const json& state) { const VPState s = mapState(state); return s.id; }
+BlockId blockFromState(const json& state) { const VPState s = mapState(state); return s.id; }
 
 // one structure template (.nbt bytes) as a piece: its blocks in our states, its joints, our furniture (village_pieces.h)
 std::string piecesMissing() { std::vector<std::pair<int, std::string>> v; for (auto& [k, c] : missing()) v.push_back({c, k}); std::sort(v.rbegin(), v.rend()); std::string o; for (size_t i = 0; i < v.size() && i < 40; i++) o += (o.empty() ? "" : ", ") + v[i].second + " " + std::to_string(v[i].first); return o; }

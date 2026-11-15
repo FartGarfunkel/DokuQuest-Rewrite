@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tools/port/bta_more.py — the rest of the BTA list (our own designs, our own pictures recoloured from the base pack or
+# tools/port/more_items.py — the rest of the BTA list (our own designs, our own pictures recoloured from the base pack or
 # the code-painted tiles; idempotent, run by data_patches.py after bta_blocks.py):
 #   painted doors, trapdoors, buttons and pressure plates (16 colours; the paintbrush makes them, signs and chests take
 #   a colour in their block entity), igneous emberstone (keeps a fire burning on top, dries wet sponges), the gold mesh

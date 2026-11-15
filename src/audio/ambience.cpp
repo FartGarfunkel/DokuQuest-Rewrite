@@ -5,7 +5,7 @@
 #include "audio/ambience.h"
 #include "world/world.h"
 #include "core/registry.h"
-#include "gen/nether_bta.h"
+#include "gen/nether_lands.h"
 
 namespace dq::snd {
 

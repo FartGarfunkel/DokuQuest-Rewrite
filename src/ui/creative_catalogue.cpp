@@ -83,7 +83,7 @@ std::string creativeTabOf(const std::string& key) {
     if (b.has("aether")) return "sky";
     if (b.has("betterEnd")) return "end";
     static const std::regex NETHER("(^|_)(nether|netherrack|crimson|warped|soul|blackstone|magma|glowstone|shroomlight|ancient_debris|brimsand|brimthaw|ember|rubyglass|gloomstone|cinderite|nylium|wart)(_|$)");
-    if (b.has("bta") || std::regex_search(k, NETHER)) return "nether";
+    if (b.has("netherSet") || std::regex_search(k, NETHER)) return "nether";
     static const std::regex COLOURED("(^|_)(wool|carpet|concrete|concrete_powder|stained_glass|stained_glass_pane|glazed_terracotta|terracotta|candle|shulker_box|flag)$");
     if (b.has("color") || b.has("cloth") || b.has("painted") || b.has("paintOf") || std::regex_search(k, COLOURED)) return "colour";
     static const std::regex NATURE("(^|_)(dirt|grass|sand|red_sand|gravel|clay|mud|snow|ice|stone|granite|diorite|andesite|deepslate|tuff|calcite|basalt|obsidian|mycelium|podzol|moss|vine|vines|lily_pad|kelp|seagrass|coral|mushroom|cactus|bamboo|sugar_cane|fern|bush|roots|log|stem|leaves|sapling|ore|limestone|permafrost|sandstone|end_stone|flower|tulip|orchid|poppy|dandelion|allium|bluet|daisy|cornflower|rose|lilac|peony|pumpkin|melon|hay_block|farmland|path|sponge|dripstone|amethyst_block|budding_amethyst|turf|litter)$");
