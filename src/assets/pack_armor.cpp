@@ -20,7 +20,13 @@ const std::vector<std::pair<std::string, std::vector<std::string>>> NAMES = {
 const int LEATHER_UNDYED[3] = {160, 101, 64};
 }
 
-void resetPackArmor() { g_sets.clear(); g_dyed.clear(); }
+// armour trims (Minecraft's): a pattern laid out as the armour's own picture, its grey shades the trim palette's eight,
+// each swapped for the trim material's own eight
+std::map<std::string, ArmorLayer> g_trimPat;                    // pattern -> its picture (both layers' layout)
+std::vector<u32> g_trimKey;                                      // the palette's eight greys
+std::map<std::string, std::vector<u32>> g_trimMat;               // material -> its eight colours
+std::map<std::string, ArmorLayer> g_trimDone;                    // "pattern:material" -> coloured
+void resetPackArmor() { g_sets.clear(); g_dyed.clear(); g_trimPat.clear(); g_trimKey.clear(); g_trimMat.clear(); g_trimDone.clear(); }
 
 int loadPackArmor(const PackFS& P) {
   resetPackArmor();
@@ -53,11 +59,67 @@ int loadPackArmor(const PackFS& P) {
     }
     if (S.l1 || S.l2) { g_sets[mat] = std::move(S); n++; }
   }
+  {   // the trims: the chosen pack's, else the game's own base pack's
+    std::unique_ptr<PackFS> base = PackFS::open(dataDir() / "resourcepacks" / "DokuQuest Base");
+    auto readPng = [&](const std::vector<std::string>& rels, ArmorLayer& L) {
+      for (const PackFS* Q : std::initializer_list<const PackFS*>{&P, base.get(), ov.get()}) {
+        if (!Q || !Q->hasTextures()) continue;
+        for (auto& r : rels) { auto b = Q->read(Q->texRoot + r); if (b && loadPngMem(b->data(), b->size(), L.w, L.h, L.rgba)) return true; }
+      }
+      return false;
+    };
+    auto palette = [&](const std::string& name, std::vector<u32>& out) {
+      ArmorLayer L;
+      if (!readPng({"trims/color_palettes/" + name + ".png", "trims/" + name + ".png"}, L) || L.w < 8) return false;
+      out.clear(); for (int i = 0; i < 8; i++) { const u8* q = &L.rgba[(size_t)i * 4]; out.push_back((u32)q[0] | (u32)q[1] << 8 | (u32)q[2] << 16 | 0xFF000000u); }
+      return true;
+    };
+    palette("trim_palette", g_trimKey);
+    for (const char* m : {"iron", "gold", "copper", "diamond", "emerald", "lapis", "quartz", "amethyst", "redstone", "netherite", "resin", "iron_darker", "gold_darker", "diamond_darker", "netherite_darker"}) { std::vector<u32> c; if (palette(m, c)) g_trimMat[m] = c; }
+    for (const char* pt : {"sentry", "vex", "wild", "coast", "dune", "wayfinder", "raiser", "shaper", "host", "ward", "silence", "tide", "snout", "rib", "eye", "spire", "flow", "bolt"}) {
+      ArmorLayer L;
+      if (readPng({"trims/entity/humanoid/" + std::string(pt) + ".png", "trims/models/armor/" + std::string(pt) + ".png", "trims/" + std::string(pt) + ".png"}, L) && L.w >= 64 && L.w == L.h * 2) g_trimPat[pt] = std::move(L);
+    }
+  }
   loadArmor3d(P);   // the 3D sets (assets/armor3d.h)
   return n;
 }
 
 bool packArmorHas(const std::string& mat) { return g_sets.count(mat) > 0; }
+
+const ArmorLayer* trimLayer(const std::string& pattern, const std::string& material) {
+  const std::string key = pattern + ":" + material;
+  if (auto it = g_trimDone.find(key); it != g_trimDone.end()) return &it->second;
+  auto pt = g_trimPat.find(pattern); auto mt = g_trimMat.find(material);
+  if (pt == g_trimPat.end() || mt == g_trimMat.end() || g_trimKey.size() < 8) return nullptr;
+  ArmorLayer L = pt->second;
+  for (size_t i = 0; i < L.rgba.size(); i += 4) {
+    if (L.rgba[i + 3] < 8) { L.rgba[i + 3] = 0; continue; }
+    int best = 0, bd = 1 << 30;   // (its grey: the nearest of the palette's eight)
+    for (int k = 0; k < 8; k++) { const u32 c = g_trimKey[k]; const int d = std::abs((int)(c & 255) - L.rgba[i]) + std::abs((int)(c >> 8 & 255) - L.rgba[i + 1]) + std::abs((int)(c >> 16 & 255) - L.rgba[i + 2]); if (d < bd) { bd = d; best = k; } }
+    const u32 c = mt->second[best];
+    L.rgba[i] = c & 255; L.rgba[i + 1] = c >> 8 & 255; L.rgba[i + 2] = c >> 16 & 255; L.rgba[i + 3] = 255;
+  }
+  return &(g_trimDone[key] = std::move(L));
+}
+
+void stampTrim(VoxelGrid& g, vec3 lo, int vpp, const ArmorPiece& p, const ArmorLayer& T) {
+  const vec3 sz = glm::max(p.hi - p.lo, vec3(1e-3f));
+  static const ivec3 N[6] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+  for (int z = 0; z < g.size.z; z++) for (int y = 0; y < g.size.y; y++) for (int x = 0; x < g.size.x; x++) {
+    if (!g.solid(x, y, z)) continue;
+    // where it is on the box Minecraft lays the picture over (the piece's), 0..1 each way
+    const vec3 q = glm::clamp((lo + (vec3(x, y, z) + 0.5f) / (float)vpp - p.lo) / sz, vec3(0), vec3(1));
+    const float s[6][2] = {{1 - q.z, 1 - q.y}, {q.z, 1 - q.y}, {1 - q.x, 1 - q.z}, {1 - q.x, q.z}, {q.x, 1 - q.y}, {1 - q.x, 1 - q.y}};
+    for (int k : {4, 5, 0, 1, 2, 3}) {   // (an open face, front/back first as the picture's are painted)
+      const ivec3 nb = ivec3(x, y, z) + N[k];
+      if (g.solid(nb.x, nb.y, nb.z)) continue;
+      const u32 c = skinBoxColor(p, T.rgba.data(), T.w, T.h, 64, 32, k, s[k][0], s[k][1]);
+      if (c) { g.set(x, y, z, (c & 0x00FFFFFFu) | (g.at(x, y, z) & 0xFF000000u)); }
+      break;
+    }
+  }
+}
 std::string armorMatOf(const std::string& key) { auto p = key.find('_'); return p == std::string::npos ? key : key.substr(0, p); }
 
 const ArmorLayer* packArmorLayer(const std::string& mat, int layer, const std::string& dye) {

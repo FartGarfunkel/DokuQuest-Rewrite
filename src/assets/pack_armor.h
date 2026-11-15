@@ -29,6 +29,11 @@ const ArmorLayer* packArmorLayer(const std::string& mat, int layer, const std::s
 bool packArmorBareArms(const std::string& mat);
 // helmet, chest, waist, pad, padL, cuff, cuffL, thigh, thighL, knee, kneeL, boot, bootL (cuff = cuffB when bareArms)
 const std::vector<ArmorPiece>& packArmorPieces(bool bareArms = false);
+// an armour trim (Minecraft's: pattern "coast", material "gold"...) as an armour picture in the material's colours; null: none
+const ArmorLayer* trimLayer(const std::string& pattern, const std::string& material);
+// the trim laid over a piece's voxels (any piece: the pack's, our 3D sets, the procedural), its open faces coloured where the
+// trim's picture is, mapped as Minecraft lays it on the piece's box p; lo: the grid's corner in the part's skin pixels
+void stampTrim(VoxelGrid& g, vec3 lo, int vpp, const ArmorPiece& p, const ArmorLayer& trim);
 
 // colour of a skin box's face (0..5 = +x -x +y -y +z -z) at (s, t) in 0..1 of that face (addSkinBox's
 // mapping), from a picture of TW x TH layout units (64 x 32 for armour, 64 x 64 for skins); 0 = clear

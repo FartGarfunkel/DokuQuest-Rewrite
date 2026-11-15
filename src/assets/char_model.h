@@ -14,6 +14,7 @@
 #include "assets/voxel.h"
 #include "assets/item_models.h"
 #include "assets/char_creator.h"
+#include "core/itemstack.h"
 #include <map>
 
 namespace dq {
@@ -64,6 +65,8 @@ const CharModel& charModel(const CharacterSpec& spec);
 // resource pack's pictures when it has that material, else the game's armour tile. look3d adds gear3d's
 // pauldrons, crests, tassets... (3D characters only). dye "rrggbb" for leather ("" = none).
 struct ArmorSet { std::map<std::string, std::vector<const CharMesh*>> byPart; std::vector<std::unique_ptr<CharMesh>> meshes; bool pack = false; };
+// what's passed as armorMeshes' dye for a worn piece: its dye ("RRGGBB" or "") and its trim after a bar ("|trim:coast:gold")
+std::string armourWornDye(const ItemStack& s);
 const ArmorSet& armorMeshes(const std::string& itemKey, const std::string& dye, int slot, bool slim, bool look3d, const TileSet& ts);
 
 // a worn cape (game/capes.js): seg 0 = the whole cape (10 x 16 x 1 px, hung from its top edge at the origin,

@@ -339,12 +339,39 @@ void recolourWorn(VoxelGrid& g, vec3 lo, const std::string& part, int slot, floa
 }
 }
 
-const ArmorSet& armorMeshes(const std::string& itemKey, const std::string& dye, int slot, bool slim, bool look3d, const TileSet& ts) {
-  std::string key = itemKey + "#" + dye + "|" + std::to_string(slot) + (slim ? "s" : "c") + (look3d ? "3" : "");
+std::string armourWornDye(const ItemStack& s) {
+  std::string d;
+  if (s.tag.is_object() && s.tag.contains("col") && s.tag["col"].is_string()) { const std::string c = s.tag["col"]; d = c.size() == 7 ? c.substr(1) : ""; }
+  if (s.tag.is_object() && s.tag.contains("trim") && s.tag["trim"].is_object()) d += "|trim:" + s.tag["trim"].value("p", std::string()) + ":" + s.tag["trim"].value("m", std::string());
+  return d;
+}
+const ArmorSet& armorMeshes(const std::string& itemKey, const std::string& dyeTrim, int slot, bool slim, bool look3d, const TileSet& ts) {
+  std::string key = itemKey + "#" + dyeTrim + "|" + std::to_string(slot) + (slim ? "s" : "c") + (look3d ? "3" : "");
   Cache& c = C();
   auto it = c.armor.find(key);
   if (it != c.armor.end()) return *it->second;
   auto set = std::make_unique<ArmorSet>();
+  // a trim riding after the dye ("RRGGBB|trim:pattern:material", armourWornDye): laid over every piece built below
+  const size_t bar = dyeTrim.find('|');
+  const std::string dye = dyeTrim.substr(0, bar);
+  std::string trimPat, trimMat;
+  if (bar != std::string::npos && dyeTrim.compare(bar + 1, 5, "trim:") == 0) {
+    const std::string t = dyeTrim.substr(bar + 6); const size_t k = t.find(':');
+    if (k != std::string::npos) { trimPat = t.substr(0, k); trimMat = t.substr(k + 1); }
+  }
+  auto stamp = [&](VoxelGrid& g, vec3 lo, const std::string& part, const std::string& armourMat) {
+    if (trimPat.empty()) return;
+    const ArmorLayer* T = trimLayer(trimPat, armourMat == trimMat || (armourMat == "cinderite" && trimMat == "netherite") ? trimMat + "_darker" : trimMat);
+    if (!T) T = trimLayer(trimPat, trimMat);
+    if (!T) return;
+    static const std::map<std::pair<int, std::string>, std::string> PIECE_OF = {
+      {{0, "head"}, "helmet"}, {{1, "body"}, "chest"}, {{1, "armR_u"}, "pad"}, {{1, "armL_u"}, "padL"}, {{1, "armR_d"}, "cuff"}, {{1, "armL_d"}, "cuffL"},
+      {{2, "body"}, "waist"}, {{2, "legR_u"}, "thigh"}, {{2, "legL_u"}, "thighL"}, {{2, "legR_d"}, "knee"}, {{2, "legL_d"}, "kneeL"},
+      {{3, "legR_d"}, "boot"}, {{3, "legL_d"}, "bootL"}};
+    auto pn = PIECE_OF.find({slot, part});
+    if (pn == PIECE_OF.end()) return;
+    for (const ArmorPiece& ap : packArmorPieces(false)) if (ap.name == pn->second) { stampTrim(g, lo, CHAR_VPP, ap, *T); break; }
+  };
   // a mixed piece, "pa:<piece>:<m1,...>": iron's armour with its cells' materials over it (recolourWorn)
   const ArmorPattern* paP = nullptr; std::vector<std::string> paMats;
   if (itemKey.rfind("pa:", 0) == 0) {
@@ -382,6 +409,7 @@ const ArmorSet& armorMeshes(const std::string& itemKey, const std::string& dye, 
     for (auto& [part, A] : armor3dSlot(mat, slot, slim ? 3.f : 4.f, CHAR_VPP, tint)) {
       if (!A.g.count()) continue;
       if (paP) recolourWorn(A.g, A.lo, part, slot, slim ? 3.f : 4.f, *paP, paMats);
+      stamp(A.g, A.lo, part, paP && !paMats.empty() ? paMats[0] : mat);
       auto cm = std::make_unique<CharMesh>();
       VoxelMeshData md; buildVoxelMesh(A.g, md);
       upload(*cm, md, A.lo);
@@ -421,6 +449,7 @@ const ArmorSet& armorMeshes(const std::string& itemKey, const std::string& dye, 
       for (int z = 0; z < n.z; z++) for (int y = 0; y < std::min(cut, n.y); y++) for (int x = 0; x < n.x; x++) g.set(x, y, z, 0);
     }
     if (paP) recolourWorn(g, lo, pi->second.second, slot, aw, *paP, paMats);
+    stamp(g, lo, pi->second.second, paP && !paMats.empty() ? paMats[0] : mat);
     auto cm = std::make_unique<CharMesh>();
     VoxelMeshData md; buildVoxelMesh(g, md);
     upload(*cm, md, lo);

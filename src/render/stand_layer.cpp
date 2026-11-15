@@ -103,8 +103,7 @@ public:
       for (int slot = 0; slot < 4; slot++) {
         const ItemStack& g = o.gear[slot];
         if (g.empty() || !reg().item(g.id)) continue;
-        std::string dye;
-        if (g.tag.is_object() && g.tag.contains("col") && g.tag["col"].is_string()) { std::string c = g.tag["col"]; dye = c.size() == 7 ? c.substr(1) : ""; }
+        const std::string dye = armourWornDye(g);   // (its dye and its trim)
         const ArmorSet& A = armorMeshes(partArmorWornLook(g), dye, slot, false, false, a.tiles);   // (a mixed piece: its cells' materials)
         for (auto& [pn, meshes] : A.byPart) {
           mat4 pm = partMat(pn);
