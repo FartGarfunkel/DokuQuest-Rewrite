@@ -126,7 +126,7 @@ vec3 mcBrightness(vec3 l) {
   return mix(l, 1.0 - inv * inv * inv * inv, clamp(uBrightness, 0.0, 1.0));
 }
 // sun31 and block31 are Cubyz's 0..31 channels. sqrt(sun^2 + block^2), the brightness curve, then the floor.
-vec3 cubyzCombine(vec3 sun31, vec3 block31) {
+vec3 rgbCombine(vec3 sun31, vec3 block31) {
   vec3 amb = sun31 * uAmbient;
   vec3 q = sqrt(amb * amb + block31 * block31);
   return max(mcBrightness(min(q, vec3(31.0)) / 31.0), vec3(uMinLight));
@@ -147,7 +147,7 @@ vec3 dynBlock31(vec3 pos, vec3 n) {
 }
 vec3 lighting(float sky, float block, bool emissive) {
   if (emissive) return vec3(1.0);
-  return cubyzCombine(vec3(sky * 31.0), vec3(block * 31.0) * uBlockLightColor);
+  return rgbCombine(vec3(sky * 31.0), vec3(block * 31.0) * uBlockLightColor);
 }
 // coloured block light (render/light_colour_layer.cpp): the colour of the light where this point is, from the volume
 // round the camera; rel = the point relative to the camera's block (as vRel)
@@ -165,7 +165,7 @@ vec3 lightingAt(float sky, float block, bool emissive, vec3 rel, vec3 n) {
   // and does not sample the volume (that would paint the colour a second time).
   vec3 block31 = vec3(block * 31.0) * col;
   if (uDynN > 0) block31 = max(block31, dynBlock31(rel, n));
-  return cubyzCombine(vec3(sky * 31.0), block31);
+  return rgbCombine(vec3(sky * 31.0), block31);
 }
 // the sky behind something seen along dir (sky.glsl's zenith-horizon gradient and the sun's glow round a low sun; looking down,
 // the horizon): far land fades into exactly the sky behind it, no band of fog colour between them at sunset

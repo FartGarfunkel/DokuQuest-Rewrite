@@ -132,7 +132,7 @@ vec3 smoothNormal(vec4 nm, float k) {
 }
 // light on a tilted micro-voxel: the sun where the sky reaches, and a key light from above for everything
 // (so the bumps read in a torch-lit cave too). Returns a multiplier for the face's colour.
-float cubyzSky() {
+float rgbSky() {
   return max(vSun.r, max(vSun.g, vSun.b)) / 31.0 * max(uAmbient.r, max(uAmbient.g, uAmbient.b));
 }
 float bumpLight(vec3 nB, vec3 N, float skyLit) {
@@ -230,7 +230,7 @@ void main() {
       vec3 nW = T * nt.x + B * nt.y + N * nt.z;
       shade *= axisShade(nW) / axisShade(N);                   // the side walls of micro-voxels shade like block faces
       shade *= 1.0 - 0.05 * hitDepth;                         // deeper is darker
-      float skyLit = cubyzSky();
+      float skyLit = rgbSky();
       float sunN = max(dot(N, uSunDir), 0.0);
       sunMod = 1.0 + 0.22 * skyLit * (max(dot(nW, uSunDir), 0.0) - sunN);
       // the smooth surface where the ray lands: crevice darkening everywhere, and on a column's top the sub-voxel
@@ -270,7 +270,7 @@ void main() {
     // lighting (stones bulge, mortar sinks) and the crevice darkening
     vec4 sm = tileNormalAt(uv, layer);
     vec3 bt = smoothNormal(sm, 1.0);
-    float skyLit = cubyzSky();
+    float skyLit = rgbSky();
     float bl = bumpLight(normalize(T * bt.x + B * bt.y + N * bt.z), N, skyLit);
     shade *= mix(1.0, (1.0 - sm.w * 0.22) * sm.z * bl, fade);
 #endif
@@ -306,7 +306,7 @@ void main() {
   if (uDynN > 0) block31 = max(block31, dynBlock31(vRel + N * 0.25, N));
   vec3 sun31 = vSun;
   if (uShadowK > 0.0 && uPass < 2 && !liquid) sun31 *= 1.0 - uShadowK * (1.0 - sunShadow(vRel, N, n));   // in the sun's shade
-  vec3 lc = (vMat & 1u) != 0u ? vec3(1.0) : cubyzCombine(sun31, block31);
+  vec3 lc = (vMat & 1u) != 0u ? vec3(1.0) : rgbCombine(sun31, block31);
   float emis = tileHeightAt(fract(uv), layer).g;
   lc = max(lc, vec3(emis));
   if (lava) lc = vec3(1.0) * (0.92 + 0.16 * vnoise(vWorld.xz * 1.3 + vec2(uTime * 0.25, -uTime * 0.17)));
@@ -324,7 +324,7 @@ void main() {
     if (dot(wn, viewVec) > 0.0) wn = -wn;
     vec3 v = -viewVec / max(dist, 1e-4);
     float fres = pow(1.0 - clamp(dot(v, wn), 0.0, 1.0), 3.0);
-    float skyLit = cubyzSky();
+    float skyLit = rgbSky();
     // a rain puddle is water without the climate tint: darker, glossier, a stronger sky reflection
     float pud = (vMat & 128u) == 0u ? 1.0 : 0.0;
     c *= 1.0 - 0.2 * pud;
