@@ -15,12 +15,14 @@
 #include "sim/blockinfo.h"
 #include "core/registry.h"
 #include "world/world.h"
+#include "render/tile_box.h"
+#include "sim/worldsys.h"
 
 namespace dq {
 namespace {
 float rnd01(u32 h) { return (h & 0xFFFF) / 65535.f; }
 
-struct Furn { ivec3 at; int facing; std::string kind; bool lit, door; ItemStack in[4], fuel, out[4]; std::string burn; VoxelLight L; };
+struct Furn { ivec3 at; int facing; std::string kind; bool lit, door; ItemStack in[4], fuel, out[4]; float cook[4] = {0, 0, 0, 0}; std::string burn; VoxelLight L; };
 
 class TactileFurnaces : public RenderLayer {
 public:
@@ -58,6 +60,10 @@ public:
       static const int IN[4] = {0, 3, 4, 5}, OUT[4] = {2, 6, 7, 8};   // (Tactile's four spots: sim/worldsys.cpp tickFurnace)
       for (int k = 0; k < 4; k++) { fu.in[k] = at(IN[k]); fu.out[k] = at(OUT[k]); }
       fu.fuel = at(1);
+      for (int k = 0; k < 4; k++) {   // (how far each spot has cooked: sim/worldsys.cpp tickFurnace)
+        const double c = e.contains("cooks") && e["cooks"].is_array() && (int)e["cooks"].size() > k ? e["cooks"][k].get<double>() : k == 0 ? e.value("cook", 0.0) : 0.0;
+        fu.cook[k] = std::clamp((float)(c / SMELT_TIME), 0.f, 1.f);
+      }
       fu.burn = fu.lit ? e.value("burnId", std::string()) : std::string();
       fu.L = tactileLight(w, fu.at);
       list.push_back(fu);
@@ -69,6 +75,25 @@ public:
     VR.end();
     ContentDraw& cd = contentDraw();
     if (!cd.begin(f, f.cam.viewProj)) return;
+    // the blast furnace's melt: down the trough from the crucible into the mould, a pool there as the ingot forms
+    if (const GLuint lava = tileTexture(s.app, "lava")) for (const Furn& fu : list) {
+      if (fu.kind != "blast" || !fu.lit) continue;
+      float c = 0; for (float k : fu.cook) c = std::max(c, k);
+      if (c < 0.25f) continue;
+      const float flow = std::min(1.f, (c - 0.25f) / 0.2f);   // (it starts to run a quarter of the way in)
+      const vec2 hot(fu.L.sky, 1.f);
+      const vec3 a(8.f / 16, 14.7f / 16, 6.0f / 16), b(8.f / 16, 12.4f / 16, 0.55f / 16);   // (the trough's sloped floor between its rails, north frame)
+      const vec3 e2 = a + (b - a) * flow, mid = (a + e2) * 0.5f, d = e2 - a;
+      TPose st = tactileBlockPose(f, fu.at, fu.facing);
+      st.t(mid.x, mid.y + 0.002f, mid.z).rx(-90.f + glm::degrees(std::atan2(d.y, -d.z)));
+      st.s(1.9f / 16, glm::length(d), 1);
+      cd.picture(lava, st.m, vec4(0.4f, 0.f, 0.6f, 1.f), vec4(1.f, 0.85f, 0.7f, 1.f), hot, false);
+      if (flow >= 1.f) {   // (the pool in the mould, filling as the piece melts in)
+        TPose pool = tactileBlockPose(f, fu.at, fu.facing);
+        pool.t(0.5f, (11.2f + 1.2f * c) / 16, -1.f / 16).rx(-90).s(5.f / 16, 5.f / 16, 1);
+        cd.picture(lava, pool.m, vec4(0, 0, 1, 1), vec4(1.f, 0.8f, 0.6f, 1.f), hot, false);
+      }
+    }
     for (const Furn& fu : list) {
       if (fu.kind == "furnace") continue;
       const PackModel* door = tactilePart(fu.kind == "smoker" ? "fumoir_door" : "haut_fourneau_porte");
@@ -86,7 +111,13 @@ public:
     const VoxelLight glow{fu.L.sky, 1.f};
     if (fu.kind == "blast") {   // (HautFourneauBlockEntityRenderer: the raw on the crucible, the mould's top, the fuel)
       static const float RAW[4][2] = {{6.5f, 8.5f}, {9.5f, 8.5f}, {6.5f, 11.5f}, {9.5f, 11.5f}};
-      for (int i = 0; i < 4; i++) { TPose p = base; p.t(RAW[i][0] / 16, 0.88125f, RAW[i][1] / 16).rx(90).s(0.3f, 0.3f, 0.75f); tactileItem(fu.in[i], p.m, fu.lit ? glow : fu.L); }
+      // the ore heating on the crucible: glowing as it goes, melting down to nothing as its piece runs off to the mould
+      for (int i = 0; i < 4; i++) {
+        if (fu.in[i].empty()) continue;
+        const float c = fu.lit ? fu.cook[i] : 0.f, k = 1.f - 0.55f * c;
+        TPose p = base; p.t(RAW[i][0] / 16, 0.88125f - 0.02f * c, RAW[i][1] / 16).rx(90).s(0.3f * k, 0.3f * k, 0.75f * k);
+        tactileItem(fu.in[i], p.m, fu.lit ? glow : fu.L, c > 0 ? vec4(1.f, 0.45f, 0.08f, 0.25f + 0.5f * c) : vec4(0));
+      }
       for (int i = 0; i < 4; i++) if (!fu.out[i].empty()) { TPose p = base; p.t(0.5f, 0.75625f, -0.0625f).rx(90).s(0.3f, 0.3f, 0.75f); tactileItem(fu.out[i], p.m, fu.L); break; }   // (the mould shows its top)
     } else {   // (Four/FumoirBlockEntityRenderer: four spots a tier, what cooks on the shelf, what's done above)
       const bool smoker = fu.kind == "smoker";
