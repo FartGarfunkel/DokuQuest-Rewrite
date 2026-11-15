@@ -235,6 +235,7 @@ public:
       for (auto& f : found) if ((int)lidOpen.size() < CHEST_HIDE_MAX - 8) lidOpen.push_back(f.second);   // (room kept for the ones in use)
     }
     for (const ivec3& q : lidOpen) if (want.size() + 8 <= (size_t)CHEST_HIDE_MAX && chestLidOpen(w, q)) add(q);
+    if (s.target.hit && chestLidOpen(w, s.target.block)) add(s.target.block);   // (the one you look at: open at once, not at the next look round)
     if (s.level) for (auto& e : s.level->entities()) {
       if (!e || e->removed || e.get() == s.player || !e->isPlayer() || e->realm != s.player->realm) continue;
       const Player* o = static_cast<const Player*>(e.get());
@@ -315,7 +316,7 @@ public:
         if (cube) im4 = glm::scale(glm::translate(im4, vec3(0, cs * 0.42f + ly * cs * 0.55f, 0)), vec3(cs * 0.8f));
         else {   // lying flat, filling its slot, resting on the floor (not sunk into it)
           const float sc = std::min(cs * 1.15f / std::max({hi.x - lo.x, hi.y - lo.y, 0.05f}), cs * 2.4f);
-          im4 = glm::translate(im4, vec3(0, -lo.z * sc + ly * (hi.z - lo.z) * sc * 0.9f, 0));
+          im4 = glm::translate(im4, vec3(0, -lo.z * sc + ly * std::min((hi.z - lo.z) * sc * 0.9f, cs * 0.12f), 0));   // (a round thing piled sits on the last, not over the shelf above)
           im4 = glm::rotate(im4, -PI / 2, vec3(1, 0, 0));
           im4 = glm::translate(glm::scale(im4, vec3(sc)), vec3(-ctr.x, -ctr.y, 0));
         }

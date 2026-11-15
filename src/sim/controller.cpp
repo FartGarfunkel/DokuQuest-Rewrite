@@ -508,6 +508,12 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
   // a held swing that hit a creature never digs into the ground behind it; in creative a sword never breaks blocks (Minecraft)
   const ToolInfo* ti = heldTool(p);
   bool noDig = fightHold || (p.creative() && ti && ti->type == "sword") || p.mode == "adventure";   // adventure: the world stays as it is
+  // Tactile Stations: an open barrel, large chest or cabinet is reached into too (a strike takes one; sneaking, the stack)
+  if (tactileStations && target.hit && !te && bhas(target.id, BF::Container) && !tactileChest(world(), target.block) && chestLidOpen(world(), target.block)) {
+    noDig = true;
+    const int slot = chestSlotAtRay(world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch));
+    if (in.attackPressed && !p.atkMove && slot >= 0 && chestTake(lv, p, world(), target.block, slot, !p.sneaking, true)) swingArm();
+  }
   // Tactile Stations: an open chest's tray is reached into, not dug (a strike takes one; sneaking, the stack)
   if (tactileStations && target.hit && !te && tactileChest(world(), target.block) && chestLidOpen(world(), target.block)) {
     noDig = true;
@@ -789,6 +795,32 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     const vec3 eye(p.pos.x, p.pos.y + p.eye, p.pos.z);
     if (!repeat || tactileChestAim(w, hit->block, eye, lookVector(p.yaw, p.pitch)).what == TactileChestAim::Tray)
       if (tactileChestUse(lv, p, w, hit->block, eye, lookVector(p.yaw, p.pitch), held, repeat && t - tactileHoldAt > 0.5, p.sneaking) && !repeat) swingArm();
+    return;
+  }
+  // Tactile Stations: every other store worked the same way by hand (barrels, large chests, cabinets): use opens it (the top
+  // off, the doors out); open, use at a spot inside puts one of what's held there (held, the stack), strike takes; use off
+  // the spots shuts it; sneak + use its screen
+  if (!fromOff && hit && !te && tactileStations && bhas(hit->id, BF::Container) && chestHasLid(w, hit->block) && !tactileChest(w, hit->block) && !p.sneaking) {
+    const vec3 eye(p.pos.x, p.pos.y + p.eye, p.pos.z), c = vec3(hit->block) + vec3(0.5f);
+    if (!repeat) tactileHoldAt = t;
+    if (!chestLidOpen(w, hit->block)) {
+      if (!repeat) { containerEntity(w, hit->block.x, hit->block.y, hit->block.z); setChestLidOpen(w, hit->block, true); swingArm(); sfxAt(lv, isCabinet(w, hit->block) ? "door_open" : "chest", c); }
+      return;
+    }
+    const int slot = chestSlotAtRay(w, hit->block, eye, lookVector(p.yaw, p.pitch));
+    if (slot < 0) {
+      if (!repeat) { setChestLidOpen(w, hit->block, false); swingArm(); sfxAt(lv, isCabinet(w, hit->block) ? "door_close" : "chest", c); }
+      return;
+    }
+    if (!held.empty() && (!repeat || t - tactileHoldAt > 0.5)) {
+      bool put = chestPut(lv, p, w, hit->block, slot, !repeat);
+      // (the spot holds something else, or is full: the same kind's spot, else the first free one)
+      for (int pass = 0; pass < 2 && !put && !held.empty(); pass++) {
+        const std::vector<ItemStack> v = chestItems(lv, p, w, hit->block);
+        for (int k = 0; k < (int)v.size() && !put; k++) if (pass == 0 ? (!v[k].empty() && v[k].id == held.id && v[k].n < v[k].maxStack()) : v[k].empty()) put = chestPut(lv, p, w, hit->block, k, !repeat);
+      }
+      if (put && !repeat) swingArm();
+    }
     return;
   }
   // Tactile Stations: a furnace, smoker or blast furnace worked where you look (sim/tactile.h): fuel low, what cooks high,

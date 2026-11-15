@@ -134,7 +134,10 @@ int chestSlotAtRay(World& w, ivec3 at, vec3 o, vec3 dir) {
   }
   if (std::fabs(dir.y) < 1e-5f) return -1;
   const float t = (at.y + chestFloorY(w, at) - o.y) / dir.y;
-  return t > 0 ? chestSlotAt(w, at, o + dir * t) : -1;
+  if (t > 0) if (const int s = chestSlotAt(w, at, o + dir * t); s >= 0) return s;
+  // (looked into from the side at a low angle the floor is out of reach: the spot under where the look comes in at the top)
+  const float t2 = (at.y + 1.f - o.y) / dir.y;
+  return t2 > 0 ? chestSlotAt(w, at, o + dir * t2) : -1;
 }
 
 int chestSlotAt(World& w, ivec3 at, vec3 p) {
@@ -225,7 +228,7 @@ int chestStoreAll(Level& lv, Player& p, World& w, ivec3 at) {
 }
 
 // ---- lids left open ------------------------------------------------------------------------------------------------------
-bool chestHasLid(World& w, ivec3 at) { return kindAt(w, at) == K_BLOCK && !isCabinet(w, at); }
+bool chestHasLid(World& w, ivec3 at) { return kindAt(w, at) == K_BLOCK; }   // (a cabinet's doors count: left open the same way)
 bool chestLidOpen(World& w, ivec3 at) { return chestHasLid(w, at) && (w.getMeta(at.x, at.y, at.z) & LID_OPEN); }
 void setChestLidOpen(World& w, ivec3 at, bool open) {
   ivec3 hs[2]; const int n = chestHalves(w, at, hs);
