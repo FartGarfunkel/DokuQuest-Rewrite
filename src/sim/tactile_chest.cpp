@@ -110,6 +110,21 @@ float tactileChestLidRay(World& w, ivec3 at, vec3 eye, vec3 dir) {
   return best;
 }
 
+bool tactileChestOutline(World& w, ivec3 at, std::vector<std::pair<vec3, vec3>>& out) {
+  if (!tactileChest(w, at) || !chestLidOpen(w, at)) return false;
+  const int f = tactileFacing(w, at);
+  static const float BOXES[2][6] = {{0, 0, 0, 16, 10, 16}, {0, 10, 11, 16, 22, 16}};   // (the body; the lid standing up at the back)
+  for (auto& b : BOXES) {
+    vec3 lo(1e9f), hi(-1e9f);
+    for (int k = 0; k < 8; k++) {
+      const vec3 c = vec3(at) + tactileFromNorth(f, vec3(k & 1 ? b[3] : b[0], k & 2 ? b[4] : b[1], k & 4 ? b[5] : b[2]) / 16.f);
+      lo = glm::min(lo, c); hi = glm::max(hi, c);
+    }
+    out.push_back({lo, hi});
+  }
+  return true;
+}
+
 float tactileExtraRay(World& w, ivec3 at, vec3 eye, vec3 dir) {
   const float t = tactileChestLidRay(w, at, eye, dir);
   if (t >= 0) return t;

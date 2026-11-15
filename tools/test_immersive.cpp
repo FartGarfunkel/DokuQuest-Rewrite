@@ -296,6 +296,8 @@ int main(int argc, char** argv) {
     check(tactileChestAim(w, at, e2, d2).what == TactileChestAim::Sort, "the lower button sorts");
     auto [e3, d3] = aimAt(vec3(4.f / 16, 14.f / 16, 13.f / 16));
     check(tactileChestAim(w, at, e3, d3).what == TactileChestAim::Lid, "the rest of the lid shuts it");
+    std::vector<std::pair<vec3, vec3>> ol;
+    check(tactileChestOutline(w, at, ol) && ol.size() == 2 && ol[1].second.y > at.y + 1.3f, "open, its outline takes in the lid standing up over it");
   }
 
   printf("[Tactile's still: its recipe book's pages]\n");

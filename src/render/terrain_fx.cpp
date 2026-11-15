@@ -1,6 +1,8 @@
 // render/terrain_fx.cpp — the terrain's RenderLayer: block selection outline (the block's real
 // select boxes), breaking-crack overlay, animated tiles, underwater/lava fog, keeping the mesher's
 // copy of the tiles current, and test hooks (DQ_RENDER_CAM / DQ_RENDER_TIME / DQ_RENDER_STATS).
+#include "sim/tactile.h"
+#include "client/app.h"
 #include "client/session.h"
 #include "client/app.h"
 namespace dq { class PlayerController; PlayerController* localController(GameSession& s); }   // client/play.h
@@ -109,6 +111,10 @@ public:
     if (!s.target.hit) return false;
     ivec3 b = s.target.block;
     World& w = s.world();
+    if (s.app.settings.tactileStations) {   // (an open Tactile chest: its body and its raised lid, so the lid is plainly there to shut)
+      std::vector<std::pair<vec3, vec3>> tb;
+      if (tactileChestOutline(w, b, tb)) { boxes.clear(); for (auto& [lo, hi] : tb) boxes.push_back({lo, hi}); return true; }
+    }
     if (!blockShapeBoxes(w, b.x, b.y, b.z, ShapePurpose::Select, boxes)) { boxes.clear(); boxes.push_back({vec3(b), vec3(b) + vec3(1)}); }
     if (boxes.empty()) boxes.push_back({vec3(b), vec3(b) + vec3(1)});
     return true;

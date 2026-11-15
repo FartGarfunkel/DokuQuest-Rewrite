@@ -51,6 +51,8 @@ bool tactileChestUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 di
 float tactileChestLidRay(World& w, ivec3 at, vec3 eye, vec3 dir);
 // any Tactile part that stands out of its block's own shape (a chest's lid, the still's recipe book): how far along the ray
 float tactileExtraRay(World& w, ivec3 at, vec3 eye, vec3 dir);
+// an open Tactile chest's outline (its body and its raised lid, world boxes): false when it isn't one
+bool tactileChestOutline(World& w, ivec3 at, std::vector<std::pair<vec3, vec3>>& out);
 bool tactileChestTake(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, bool whole);
 
 // the brewing stand worked as Tactile's alambic (over our brewing record: bottles 0-2, the ingredient 3, cinder powder 4):
