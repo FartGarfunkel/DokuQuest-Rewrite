@@ -15,6 +15,9 @@
 #include "sim/magic.h"
 #include "sim/effects.h"
 #include "sim/brewing.h"
+#include "sim/tactile.h"
+#include "assets/local_models.h"
+#include "render/tactile_kit.h"
 #include "render/book_model.h"
 #include "sim/enchanting.h"
 #include "sim/commands.h"
@@ -300,7 +303,10 @@ public:
     const BlockDef& b = reg().block(s.world().getBlock(at.x, at.y, at.z));
     const bool cine = s.app.settings.extra.value("cinematicStations", true);   // the stations as scenes (ui/cinematic.h)
     if (b.key == "enchanting_table") { s.app.pushScreen(cine ? makeCinematicEnchantScreen(at) : makeEnchantScreen(at)); return false; }
-    if (b.key == "brewing_stand") { s.app.pushScreen(cine ? makeCinematicBrewScreen(at) : makeBrewScreen(at)); return false; }
+    if (b.key == "brewing_stand") {
+      if (s.app.settings.tactileStations && stationModel(s.world().getBlock(at.x, at.y, at.z))) return true;   // (Tactile's still, worked where it stands: sim/tactile.h)
+      s.app.pushScreen(cine ? makeCinematicBrewScreen(at) : makeBrewScreen(at)); return false;
+    }
     return true;
   }
 
@@ -511,6 +517,10 @@ void MagicLayer::ambient(double dt) {
   for (auto& S : stands) {
     json* e = w.blockEntity(S.x, S.y, S.z);
     if (!e || e->value("t", 0.0) <= 0) continue;
+    if (stationModel(w.getBlock(S.x, S.y, S.z)) && s.app.settings.tactileStations) {   // (Tactile's still: bubbles in its dome)
+      if (frand() < 0.12f) add("brew_bubble", vec3(S) + tactileFromNorth(tactileFacing(w, S), vec3(0.7375f + (frand() - 0.5f) * 0.2f, 0.3f, 0.68125f + (frand() - 0.5f) * 0.2f)), vec3(0, 0.25f, 0), 0.7f, 0.035f);
+      continue;
+    }
     static const float pads[3][2] = {{12.5f, 8}, {3.5f, 4}, {3.5f, 12}};
     for (int k = 0; k < 3; k++) if (frand() < 0.08f && (*e)["items"].is_array() && !(*e)["items"][k].is_null()) add("brew_bubble", vec3(S.x + pads[k][0] / 16, S.y + 0.45f, S.z + pads[k][1] / 16), vec3(0, 0.5f, 0), 0.6f, 0.04f);
     if (frand() < 0.05f) add("brew_bubble", vec3(S) + vec3(0.5f, 0.95f, 0.5f), vec3(0, 0.3f, 0), 0.8f, 0.05f);
@@ -581,6 +591,22 @@ void MagicLayer::drawOpaque(GameSession& gs, const FrameCtx& f) {
   for (auto& S : stands) {
     json* e = w.blockEntity(S.x, S.y, S.z);
     if (!e || !(*e)["items"].is_array()) continue;
+    if (stationModel(w.getBlock(S.x, S.y, S.z)) && s.app.settings.tactileStations) {   // (Tactile's still: our own 3D bottles on its rack)
+      static const float RACK[3][2] = {{1.f, 10.05f}, {3.f, 10.05f}, {5.f, 10.05f}};
+      const int fc = tactileFacing(w, S);
+      for (int k = 0; k < 3; k++) {
+        ItemStack st = ItemStack::fromJson((*e)["items"][k]);
+        if (st.empty()) continue;
+        const VoxelModel& im = itemModel(st.id);
+        if (!im.ready()) continue;
+        if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+        const VoxelLight L = tactileLight(w, S);
+        TPose pp = tactileBlockPose(f, S, fc);
+        pp.t(RACK[k][0] / 16, 0.05f + 0.47f * 0.26f, RACK[k][1] / 16).ry(180).s(0.26f);   // (stood on the rack, upright)
+        VR.draw(im.gl, pp.m * im.matrix(), L);
+      }
+      continue;
+    }
     static const float pads[3][3] = {{12.5f, 8, PI / 2}, {3.5f, 4, -PI / 4 * 3}, {3.5f, 12, -PI / 4}};
     for (int k = 0; k < 3; k++) { ItemStack st = ItemStack::fromJson((*e)["items"][k]); if (!st.empty()) drawItem(st.id, vec3(S) + vec3(pads[k][0] / 16, 2.f / 16 + 0.2f, pads[k][1] / 16), pads[k][2], 0.42f); }
   }

@@ -7,6 +7,7 @@
 #include "render/be_scan.h"
 #include "render/tactile_kit.h"
 #include "render/content_draw.h"
+#include "render/map_render.h"
 #include "assets/local_models.h"
 #include "sim/tactile.h"
 #include "sim/chest_work.h"
@@ -91,10 +92,13 @@ public:
     VR.end();
     ContentDraw& cd = contentDraw();
     if (!cd.begin(f, f.cam.viewProj)) return;
-    const PackModel* lidM = tactilePart("coffre_lid");
-    const PackModel* sortM = tactilePart("coffre_buttontri");
-    const PackModel* swapM = tactilePart("coffre_buttonswap");
     for (const Chest& c : list) {
+      // its own lid and buttons, in its own wood (assets/local_models.h)
+      const StationModel* SM = stationModel(w.getBlock(c.at.x, c.at.y, c.at.z));
+      auto partOf = [&](const char* n) -> const PackModel* { if (SM) { auto it = SM->parts.find(n); if (it != SM->parts.end() && it->second && !it->second->boxes.empty()) return it->second.get(); } return tactilePart(n); };
+      const PackModel* lidM = partOf("coffre_lid");
+      const PackModel* sortM = partOf("coffre_buttontri");
+      const PackModel* swapM = partOf("coffre_buttonswap");
       const float lid = tactileEase(c.at, 2, c.open, dt) * 90.f;
       const vec2 light(c.L.sky, c.L.block);
       auto part = [&](const PackModel* m, float press) {
@@ -105,6 +109,12 @@ public:
         tactilePartDraw(s.app, cd, *m, p.m, light);
       };
       part(lidM, 0);
+      if (lid > 0.1f) {   // (the sheet inside the lid in our own paper: the maps' parchment, both faces, over Tactile's)
+        TPose p = tactileBlockPose(f, c.at, c.facing);
+        p.t(0.5f, 0.625f, 0.75f).rx(lid).t(-0.5f, -0.625f, -0.75f);
+        p.t(6.f / 16, 10.75f / 16, 7.f / 16).rx(90).s(6.f / 16, 8.f / 16, 1);
+        cd.picture(mapPaperTexture(), p.m, vec4(0, 0, 1, 1), vec4(1), light, true);
+      }
       if (lid > 0.1f) { part(sortM, pressOf(c.at, 0, c.press[0], f.time)); part(swapM, pressOf(c.at, 1, c.press[1], f.time)); }
       if (lid > 0.1f && c.hover >= 0) {   // (renderAffiche: the item's name and lines written inside the lid)
         const ItemStack& it = c.items[c.page * 15 + c.hover];
@@ -140,7 +150,7 @@ public:
       }
       if (!cur.empty()) wrapped.push_back(cur);
       const float cz = z + h * 0.5f;
-      for (float xr : {90.f, -90.f}) {
+      for (float xr : {90.f}) {   // (ours are pictures with two faces: one copy reads right from the open side; Tactile wrote both)
         TPose p = tactileBlockPose(f, c.at, c.facing);
         p.t(0.5f, 0.625f, 0.75f).rx(lid).t(-0.5f, -0.625f, -0.75f);
         p.t(6.f / 16, 0.634375f, cz / 16).rx(xr).ry(180).s(scale, -scale, scale);
@@ -153,7 +163,7 @@ public:
             const ImFontGlyph* g = font->FindGlyph((ImWchar)cp);
             if (!g) continue;
             if (g->Visible) {
-              TPose gq = p; gq.t(x + (g->X0 + g->X1) / 2, y + (g->Y0 + g->Y1) / 2, 0).s(g->X1 - g->X0, -(g->Y1 - g->Y0), 1);
+              TPose gq = p; gq.t(x + (g->X0 + g->X1) / 2, y + (g->Y0 + g->Y1) / 2, 0).s(g->X1 - g->X0, g->Y1 - g->Y0, 1);
               cd.picture(atlas, gq.m, vec4(g->U0, g->V0, g->U1, g->V1), vec4(0.08f, 0.06f, 0.05f, 1.f), vec2(c.L.sky, c.L.block), true);
             }
             x += g->AdvanceX;

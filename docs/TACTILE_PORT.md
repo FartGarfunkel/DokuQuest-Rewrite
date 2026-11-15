@@ -29,5 +29,6 @@ keeps our own blocks.
 - [ ] (was) coffre / coffre_ender -> chests: the lid (kept off the wall behind), a note of paper on the lid naming it, the
       contents in Tactile's layers (large items, stacks)
 - [x] cartographe -> cartography table (ink, quill, board, pile, compass; draw, copy, enlarge with 8 blanks or paper)
-- [ ] alambic -> brewing stand, enclume -> anvil, table_enchantement -> enchanting
+- [x] alambic -> brewing stand (rack of our 3D bottles, dome ingredient, burner powder, water while brewing; the recipe book not yet)
+- [ ] (rest) -> brewing stand, enclume -> anvil, table_enchantement -> enchanting
       table, jukebox, bibliotheque -> bookshelf, pupitre -> lectern, etabli_gravure -> engraving

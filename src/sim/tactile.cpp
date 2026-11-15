@@ -8,6 +8,7 @@
 #include "core/registry.h"
 #include "world/world.h"
 #include "sim/anvil_work.h"
+#include "sim/brewing.h"
 #include "sim/magic_combat.h"
 #include "sim/enchanting.h"
 #include "sim/stations.h"
@@ -228,6 +229,31 @@ bool tactileGrind(Level& lv, Player& p, World& w, ivec3 at, ItemStack& held, dou
     if (r.ok) { held = r.out; if (r.xp > 0) addXP(p, r.xp); sfxAt(lv, "anvil_land", c); }
     gs.dis = 0;
   }
+  return true;
+}
+
+bool tactileBrewUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held, bool all) {
+  const ivec3 at = hit.block;
+  if (reg().block(w.getBlock(at.x, at.y, at.z)).key != "brewing_stand") return false;
+  // (AlambicBlockEntity.zoneAt / bottleIndexAt: the rack left of 7.5, its spots split at 2 and 4; the dome over 0.16 up)
+  const vec3 n = tactileNorthLocal(tactileFacing(w, at), hit.point - vec3(at));
+  const float lx = n.x * 16;
+  int slot = lx < 7.5f ? (lx < 2.f ? 0 : lx < 4.f ? 1 : 2) : n.y >= 0.16f ? 3 : 4;
+  if (!held.empty()) {
+    if (slot <= 2) {   // (a bottle: the spot looked at, else the first free)
+      if (!brewAccepts(0, held.id)) { toast(lv, p, "Only bottles go on the rack"); return true; }
+      const json& e = brewEntity(w, at.x, at.y, at.z);
+      if (!ItemStack::fromJson(e["items"][slot]).empty()) for (int k = 0; k < 3; k++) if (ItemStack::fromJson(e["items"][k]).empty()) { slot = k; break; }
+      brewPut(lv, p, w, at, slot, held);
+      return true;
+    }
+    if (brewAccepts(4, held.id)) slot = 4; else if (isBrewIngredient(held.id)) slot = 3;   // (forgiving: each finds its own place)
+    if (!brewAccepts(slot, held.id)) { toast(lv, p, "That won't brew"); return true; }
+    if (slot == 4 && !all) { ItemStack one = held; one.n = 1; if (brewPut(lv, p, w, at, 4, one)) held.n--; if (held.n <= 0) held = ItemStack(); return true; }
+    brewPut(lv, p, w, at, slot, held);
+    return true;
+  }
+  brewTake(lv, p, w, at, slot);
   return true;
 }
 

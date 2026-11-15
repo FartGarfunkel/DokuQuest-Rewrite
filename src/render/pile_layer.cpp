@@ -131,6 +131,8 @@ const VoxelModel& ingotBar(const ItemStack& st) {
 class PileLayer : public RenderLayer {
   struct FramedMap { const PaperMap* map; mat4 M; vec2 light; };
   std::vector<FramedMap> framedMaps;   // drawn after the voxels, with the content shader
+  struct StillWater { ivec3 at; int facing; vec2 light; };
+  std::vector<StillWater> tactileWater;   // Tactile's still brewing: water in its glass (alambic_water)
 public:
   const char* name() const override { return "item-piles"; }
   int order() const override { return 110; }
@@ -157,6 +159,31 @@ public:
         if (bl && reg().tShape[bl] == ShapeKind::Slab && !(w.getMeta(x, y - 1, z) & 7)) yOff = -0.5f;
       }
       mat4 base = glm::translate(mat4(1), rel + vec3(0, yOff, 0));
+      if (type == "brew" && stationModel(w.getBlock(x, y, z)) && s.app.settings.tactileStations) {
+        // Tactile's still (AlambicBlockEntityRenderer.renderPile): the ingredient in its dome, the powder in its burner, a few
+        // of each tossed where the block's own seed throws them (the bottles on its rack: render/magic_fx.cpp)
+        begin();
+        const ivec3 at(x, y, z);
+        const TPose base = tactileBlockPose(f, at, tactileFacing(w, at));
+        const VoxelLight TL = tactileLight(w, at);
+        const json& items = e.contains("items") && e["items"].is_array() ? e["items"] : json::array();
+        auto pile = [&](int k, float cx, float cy, float cz) {
+          const ItemStack st = k < (int)items.size() ? ItemStack::fromJson(items[k]) : ItemStack();
+          if (st.empty()) return;
+          u32 h = (u32)(x * 73856093) ^ (u32)(y * 19349663) ^ (u32)(z * 83492791) ^ (u32)k;
+          auto rnd = [&] { h = h * 1664525u + 1013904223u; return (h >> 8 & 0xFFFF) / 65535.f; };
+          ItemStack one = st; one.n = 1;
+          for (int i = 0; i < std::min(st.n, 4); i++) {
+            const float a = rnd() * 6.2832f, r = std::sqrt(rnd()), oy = rnd() * 0.6f, spin = rnd() * 360, tx = (rnd() - 0.5f) * 25, tz = (rnd() - 0.5f) * 25;
+            TPose p = base; p.t((cx + std::cos(a) * r) / 16, (cy + oy) / 16, (cz + std::sin(a) * r) / 16).ry(spin).rx(90 + tx).rz(tz).s(0.16f);
+            tactileItem(one, p.m, TL);
+          }
+        };
+        pile(3, 11.8f, 4.2f, 10.9f);
+        pile(4, 11.5f, 0.8f, 10.f);
+        if (e.value("t", 0.0) > 0) tactileWater.push_back({at, tactileFacing(w, at), vec2(TL.sky, TL.block)});
+        return;
+      }
       if (type == "brew") {   // the brewing stand: bottles on its three feet, the ingredient in the bowl, the powder at its foot
         begin();
         // (Cinematic Interactions' BrewingStation FEET {12, 8} {4, 4} {4, 12} px, the bottles' feet on the stone 2 px up)
@@ -479,6 +506,14 @@ public:
       }
     });
     if (begun) VR.end();
+    if (!tactileWater.empty()) {
+      ContentDraw& cd = contentDraw();
+      if (const PackModel* water = tactilePart("alambic_water")) if (cd.begin(f, f.cam.viewProj)) {
+        for (auto& sw : tactileWater) tactilePartDraw(s.app, cd, *water, tactileBlockPose(f, sw.at, sw.facing).m, sw.light);
+        cd.end();
+      }
+      tactileWater.clear();
+    }
     if (!framedMaps.empty()) {
       ContentDraw& cd = contentDraw();
       if (cd.begin(f, f.cam.viewProj)) {

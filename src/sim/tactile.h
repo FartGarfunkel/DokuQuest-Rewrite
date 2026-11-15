@@ -49,6 +49,11 @@ TactileChestAim tactileChestAim(World& w, ivec3 at, vec3 eye, vec3 dir);
 bool tactileChestUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, ItemStack& held, bool all, bool sneak);
 bool tactileChestTake(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, bool whole);
 
+// the brewing stand worked as Tactile's alambic (over our brewing record: bottles 0-2, the ingredient 3, cinder powder 4):
+// the bottle rack on its left (three spots across it), the still's dome for the ingredient, its burner below for the
+// powder; what's held goes where you look (held a moment: the whole stack of powder), an empty hand takes back from there
+bool tactileBrewUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held, bool all);
+
 // the cartography desk (Tactile's cartographe; our "mapwork" record {items: [the map worked, a blank to copy onto, blank
 // sheets to enlarge with], ink, feather}): an ink sac fills its pot (three uses), a feather goes in its holder (three);
 // a map goes on the board (front: the one worked, back: a blank to copy onto), blanks and paper pile on the right; an empty

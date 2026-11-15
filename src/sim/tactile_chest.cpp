@@ -73,7 +73,8 @@ bool placeOne(json& items, int page, ItemStack& held) {   // (CoffreBlockEntity.
 }  // namespace
 
 bool tactileChest(World& w, ivec3 at) {
-  if (reg().block(w.getBlock(at.x, at.y, at.z)).key != "chest") return false;
+  const std::string& k = reg().block(w.getBlock(at.x, at.y, at.z)).key;
+  if (k != "chest" && !(k.size() > 13 && k.compare(k.size() - 13, 13, "painted_chest") == 0)) return false;   // (the plain and the painted)
   ivec3 hs[2];
   return chestHalves(w, at, hs) <= 1;   // (a large chest stays ours: Tactile's is one block)
 }

@@ -777,6 +777,12 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     if (tactileFurnaceUse(lv, p, w, *hit, held, repeat && t - tactileHoldAt > 1.0) && !repeat) swingArm();
     return;
   }
+  // Tactile Stations: the brewing stand as Tactile's still (sim/tactile.h); held, the powder goes in by the stack
+  if (!fromOff && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).key == "brewing_stand") {
+    if (!repeat) tactileHoldAt = t;
+    if (!repeat || t - tactileHoldAt > 1.0) if (tactileBrewUse(lv, p, w, *hit, held, repeat) && !repeat) swingArm();
+    return;
+  }
   // Tactile Stations: the grindstone (sim/tactile.h): what's held is held to the wheel while use is held
   if (!fromOff && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).str("station") == "grindstone") {
     if (tactileGrind(lv, p, w, hit->block, held, t, grind) && !repeat) swingArm();

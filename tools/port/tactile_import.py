@@ -23,7 +23,9 @@ STATIONS = {
     'blast_furnace': ('haut_fourneau', {'lit': 'false'}), 'lit_blast_furnace': ('haut_fourneau', {'lit': 'true'}),
     'grindstone': ('meule', {}),
     'chest': ('coffre', {}),
-    'ender_chest': ('coffre_ender', {}),
+    **{f'{c}_painted_chest': ('coffre', {}) for c in ['white', 'orange', 'magenta', 'light_blue', 'yellow', 'lime', 'pink', 'gray', 'light_gray', 'cyan', 'purple', 'blue', 'brown', 'green', 'red', 'black']},
+    'party_chest': ('coffre', {}),
+    'ender_chest': ('coffre', {}),   # (every chest the same model, in its own picture's colours)
     'anvil': ('enclume', {}), 'chipped_anvil': ('enclume', {}), 'damaged_anvil': ('enclume', {}),
     'enchanting_table': ('table_enchantement', {}),
     'jukebox': ('jukebox', {}),
