@@ -309,7 +309,7 @@ public:
           const PaperMap* pm = isMapStack(st) && !stackMapId(st).empty() ? mapStore(*s.level).get(stackMapId(st)) : nullptr;
           const int n = isMapStack(st) ? 1 : std::min(st.n, 16);
           for (int i = 0; i < n; i++) {   // (a sheet a tenth of a pixel over the last)
-            TPose p = base; p.t(POS[k][0] / 16, (POS[k][1] + i * 0.1f) / 16, POS[k][2] / 16).rz(POS[k][3]).rx(90).t(0.15625f, 0.15625f, 0).s(1, -1, 1);
+            TPose p = base; p.t(POS[k][0] / 16, (POS[k][1] + i * 0.1f) / 16, POS[k][2] / 16).rz(POS[k][3]).rx(90).s(1, -1, 1);   // (Tactile's positions are the sheets' middles: it draws them from -64 to 64)
             sheets.push_back({pm, p.m, 0.3125f / 1.12f, vec2(L.sky, L.block)});
           }
         }
