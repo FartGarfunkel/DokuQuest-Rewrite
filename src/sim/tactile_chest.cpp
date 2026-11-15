@@ -74,7 +74,6 @@ bool placeOne(json& items, int page, ItemStack& held, int PG = PAGE) {   // (Cof
 
 namespace {
 // (the chest's own layout: its tray of fifteen in five by three, a page of the 27; under the barrel's rim instead of the chest's)
-const float B_WELL[6] = {1.5f, 1, 1.5f, 14.5f, 16, 14.5f};
 const int B_PAGE = PAGE;
 float barrelTrayY(World& w, ivec3 at) { return chestLidRow(w, at) / 2.f - 1.f; }   // (sixteenths: a pixel under the rim, as the chest's 9.5 under its 10)
 // (its front: the side it was opened from, kept in the block's meta as a chest's facing is, so render/chest_layer.cpp swings
@@ -84,6 +83,21 @@ int barrelFacing(World& w, ivec3 at) { return w.getMeta(at.x, at.y, at.z) & 3; }
 void barrelButtonBox(World& w, ivec3 at, int k, float out[6]) {
   const vec3 c = tactileBarrelButton(w, at, k) * 16.f;
   out[0] = c.x - 1.6f; out[1] = c.y - 1.6f; out[2] = c.z - 1.6f; out[3] = c.x + 1.6f; out[4] = c.y + 1.6f; out[5] = c.z + 1.6f;
+}
+}  // namespace
+
+namespace {
+// the raised top's box (north frame, sixteenths): its four corners as shut (the board over lidRow, all across), swung up
+void barrelLidBox(World& w, ivec3 at, float out[6]) {
+  const float lr = chestLidRow(w, at) / 2.f;
+  vec3 lo(1e9f), hi(-1e9f);
+  for (int k = 0; k < 8; k++) {
+    // (a chest-lid point is given as if hinged at y 10, z 12: shift the barrel's own corners there)
+    const vec3 q(k & 1 ? 16.f : 0.f, (k & 2 ? 16.f : lr) - lr + 10, (k & 4 ? 16.f : 0.f) - 4);
+    const vec3 p = tactileBarrelLidPoint(w, at, q) * 16.f;
+    lo = glm::min(lo, p); hi = glm::max(hi, p);
+  }
+  out[0] = lo.x; out[1] = lo.y; out[2] = lo.z; out[3] = hi.x; out[4] = hi.y; out[5] = hi.z;
 }
 }  // namespace
 
@@ -147,8 +161,8 @@ float tactileExtraRay(World& w, ivec3 at, vec3 eye, vec3 dir) {
     const int f = barrelFacing(w, at);
     const vec3 o = tactileNorthLocal(f, eye - vec3(at)), d = tactileNorthLocal(f, eye + dir - vec3(at)) - o;
     float best = -1;
-    float bs[6], bw[6]; barrelButtonBox(w, at, 0, bs); barrelButtonBox(w, at, 1, bw);
-    for (const float* b : {(const float*)bs, (const float*)bw}) { const float t = rayBox(o, d, b); if (t >= 0 && (best < 0 || t < best)) best = t; }
+    float bs[6], bw[6], lb[6]; barrelButtonBox(w, at, 0, bs); barrelButtonBox(w, at, 1, bw); barrelLidBox(w, at, lb);
+    for (const float* b : {(const float*)bs, (const float*)bw, (const float*)lb}) { const float t = rayBox(o, d, b); if (t >= 0 && (best < 0 || t < best)) best = t; }
     if (best >= 0) return best;
   }
   if (reg().block(w.getBlock(at.x, at.y, at.z)).key == "brewing_stand") {   // (the still's recipe book, lying in front)
@@ -267,10 +281,11 @@ TactileChestAim tactileBarrelAim(World& w, ivec3 at, vec3 eye, vec3 dir) {
   auto test = [&](const float b[6], int what) { const float t = rayBox(o, d, b); if (t >= 0 && t < best) { best = t; r.what = what; } };
   float bs[6], bw[6]; barrelButtonBox(w, at, 0, bs); barrelButtonBox(w, at, 1, bw);
   test(bs, TactileChestAim::Sort); test(bw, TactileChestAim::Swap);
+  float lb[6]; barrelLidBox(w, at, lb);
+  if (r.what == TactileChestAim::None) test(lb, TactileChestAim::Lid);   // (the raised top: shuts it)
   const float ty = barrelTrayY(w, at);
   const float tray[6] = {GRID_SLAB[0], ty - 1, GRID_SLAB[2], GRID_SLAB[3], ty + 0.6f, GRID_SLAB[5]};
   test(tray, TactileChestAim::Tray);
-  if (r.what == TactileChestAim::None) test(B_WELL, TactileChestAim::Tray);
   if (r.what == TactileChestAim::Tray) {   // (the chest's slot under where the look meets the tray)
     const float t = std::fabs(d.y) > 1e-5f ? (ty / 16 - o.y) / d.y : best;
     const vec3 p = o + d * (t > 0 ? t : best);

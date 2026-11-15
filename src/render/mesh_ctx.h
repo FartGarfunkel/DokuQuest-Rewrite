@@ -1,5 +1,6 @@
 // render/mesh_ctx.h — internal to the mesher (mesher.cpp, mesh_shapes.cpp, mesh_plants.cpp).
 #pragma once
+#include "assets/local_models.h"
 #include "render/mesher.h"
 #include "world/shapes.h"
 
@@ -40,7 +41,7 @@ struct MeshCtx {
   u8 coatAt(int x, int y, int z) const { return inside(y) ? in.coat[I(x, y, z)] : 0; }
   u8 skyAt(int x, int y, int z) const { return inside(y) ? in.light[I(x, y, z)] >> 4 : 15; }
   u8 blAt(int x, int y, int z) const { return inside(y) ? in.light[I(x, y, z)] & 15 : 0; }
-  bool opaque(int x, int y, int z) const { return R.tOpaque[at(x, y, z)]; }
+  bool opaque(int x, int y, int z) const { const BlockId b = at(x, y, z); return R.tOpaque[b] && !stationModelOpen(b); }   // (a station drawn from its model doesn't fill its cell)
   // A chisel-carved neighbour does NOT fully cover the faces it shares: its meta high bits mark
   // carved corner octants, so any face shared with it must draw on both sides. Treat carved blocks
   // as non-opaque for culling (they get their own octant-box pass in the Cube case).

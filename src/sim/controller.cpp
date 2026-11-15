@@ -511,7 +511,8 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
   const ToolInfo* ti = heldTool(p);
   bool noDig = fightHold || (p.creative() && ti && ti->type == "sword") || p.mode == "adventure";   // adventure: the world stays as it is
   // Tactile Stations: an open barrel's tray (a strike takes one; sneaking, the stack)
-  if (tactileStations && target.hit && !te && tactileBarrel(world(), target.block) && chestLidOpen(world(), target.block)) {
+  if (tactileStations && target.hit && !te && tactileBarrel(world(), target.block) && chestLidOpen(world(), target.block)
+      && tactileBarrelAim(world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch)).what >= TactileChestAim::Tray) {   // (its tray or buttons: else it breaks as ever)
     noDig = true;
     if (in.attackPressed && !p.atkMove && tactileBarrelTake(lv, p, world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch), p.sneaking)) swingArm();
   }
@@ -522,7 +523,8 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
     if (in.attackPressed && !p.atkMove && slot >= 0 && chestTake(lv, p, world(), target.block, slot, !p.sneaking, true)) swingArm();
   }
   // Tactile Stations: an open chest's tray is reached into, not dug (a strike takes one; sneaking, the stack)
-  if (tactileStations && target.hit && !te && tactileChest(world(), target.block) && chestLidOpen(world(), target.block)) {
+  if (tactileStations && target.hit && !te && tactileChest(world(), target.block) && chestLidOpen(world(), target.block)
+      && tactileChestAim(world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch)).what >= TactileChestAim::Tray) {
     noDig = true;
     if (in.attackPressed && !p.atkMove && tactileChestTake(lv, p, world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch), p.sneaking)) swingArm();
   }

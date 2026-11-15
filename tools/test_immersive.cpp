@@ -333,6 +333,27 @@ int main(int argc, char** argv) {
     }
   }
 
+  printf("[a barrel worked as the chest is]\n");
+  {
+    World& w = im.lv->world();
+    const ivec3 at(12, im.Y + 1, 12);
+    w.setBlock(at.x, at.y, at.z, reg().blockId("barrel"));
+    const vec3 eye = vec3(at) + vec3(-1.2f, 1.62f, 0.5f);   // (stood west of it)
+    ItemStack none;
+    tactileBarrelUse(*im.lv, *im.P, w, at, eye, glm::normalize(vec3(at) + vec3(0.5f, 0.9f, 0.5f) - eye), none, false, false);
+    check(chestLidOpen(w, at), "use opens it");
+    const int f = tactileBarrelFacing(w, at);
+    const vec3 front = tactileFromNorth(f, vec3(0.5f, 0, 0)) - vec3(0.5f, 0, 0.5f);
+    check(front.x < -0.4f, "its front is toward you (west)");
+    const vec3 btn = vec3(at) + tactileFromNorth(f, tactileBarrelButton(w, at, 1));
+    check(btn.x > at.x + 0.5f && btn.y > at.y + 1.f, "its buttons are up on the top, on the far side (" + std::to_string(btn.x - at.x) + ", " + std::to_string(btn.y - at.y) + ")");
+    check(tactileBarrelAim(w, at, eye, glm::normalize(btn - eye)).what == TactileChestAim::Swap, "aimed at the upper button: the next layer");
+    const vec3 topMid = vec3(at) + tactileFromNorth(f, tactileBarrelLidPoint(w, at, vec3(8, 10.8f, 2)));
+    check(tactileBarrelAim(w, at, eye, glm::normalize(topMid - eye)).what == TactileChestAim::Lid, "aimed at the raised top: it shuts");
+    check(tactileBarrelAim(w, at, eye, glm::normalize(vec3(at) + vec3(0.5f, 0.3f, 0.5f) - eye)).what < TactileChestAim::Tray, "aimed at its side: not the tray (it can be broken)");
+    check(tactileBarrelAim(w, at, eye, glm::normalize(vec3(at) + vec3(0.5f, 0.75f, 0.5f) - eye)).what == TactileChestAim::Tray, "aimed into it: the tray");
+  }
+
   printf("\n%d passed, %d failed\n", passes, fails);
   im.lv->close();
   return fails;
