@@ -608,6 +608,10 @@ public:
     ImGui::TextDisabled(bag.on ? "Bag: D-pad choose \xC2\xB7 A take into hand \xC2\xB7 B / LB / RB back to the table"
                       : pad ? "D-pad the offers \xC2\xB7 A enchant \xC2\xB7 X set down / take back \xC2\xB7 Y the lapis back \xC2\xB7 LB / RB your bag \xC2\xB7 B leave"
                             : "Click an offer to enchant \xC2\xB7 click the table to set down what's in hand (empty hand: take it back) \xC2\xB7 right click: take it back");
+    if (!v[0].empty()) {   // (what's over the table, back into your hand: a plain button, as the lapis has)
+      if (ImGui::Button(("Take back the " + nameOf(v[0])).c_str())) { enchWorkTake(*s->level, p, w, at, 0); cinematicTap(); }
+      ImGui::SameLine();
+    }
     if (ImGui::Button("Lapis back")) enchWorkTake(*s->level, p, w, at, 1);
     ImGui::SameLine();
     if (ImGui::Button("Enchanting screen")) {

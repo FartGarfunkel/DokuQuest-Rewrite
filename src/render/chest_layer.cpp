@@ -348,7 +348,18 @@ public:
         const vec3 rel = f.cam.rel(glm::dvec3(pos));
         if (!f.cam.frustum.sphere(rel + vec3(0.5f), 1.2f)) continue;
         if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
-        const u8 l = w.getLight(pos.x + (int)FRONT[o.facing & 3].x, pos.y, pos.z + (int)FRONT[o.facing & 3].z);
+        // lit by the air before its door; faced to a wall (the wall holds no light: it was drawn black) the brightest
+        // open side round it
+        const ivec3 fr = pos + ivec3(FRONT[o.facing & 3]);
+        u8 l = w.getLight(fr.x, fr.y, fr.z);
+        if (reg().tOpaque[w.getBlock(fr.x, fr.y, fr.z)]) {
+          int sk = 0, bl = 0;
+          for (const ivec3 d : {ivec3(1, 0, 0), ivec3(-1, 0, 0), ivec3(0, 0, 1), ivec3(0, 0, -1), ivec3(0, 1, 0)}) {
+            const ivec3 q = pos + d; if (reg().tOpaque[w.getBlock(q.x, q.y, q.z)]) continue;
+            const u8 ql = w.getLight(q.x, q.y, q.z); sk = std::max(sk, ql >> 4); bl = std::max(bl, ql & 15);
+          }
+          l = (u8)((sk << 4) | bl);
+        }
         const VoxelLight L{(l >> 4) / 15.f, (l & 15) / 15.f};
         mat4 m = glm::translate(mat4(1), rel + vec3(0.5f, 0, 0.5f));
         m = glm::rotate(m, (o.facing & 3) * PI / 2, vec3(0, 1, 0));

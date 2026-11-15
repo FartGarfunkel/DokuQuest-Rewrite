@@ -233,7 +233,10 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
     const float yaw = glm::length(fz) > 1e-5f ? std::atan2(fz.x, fz.z) : 0.f;
     const bool bucket = id.find("bucket") != std::string::npos;
     hm = glm::translate(mat4(1), fist);
-    hm = glm::rotate(hm, yaw, vec3(0, 1, 0));
+    if (fpYaw) {   // (from your own eyes: upright on the screen, tipped with your look; upright in the world it stood
+      //  right under the eye, and seen from above it seemed to lie along the arm)
+      hm = glm::rotate(hm, fpYaw[0], vec3(0, 1, 0)); hm = glm::rotate(hm, fpYaw[1], vec3(1, 0, 0));
+    } else hm = glm::rotate(hm, yaw, vec3(0, 1, 0));
     hm = glm::scale(hm, vec3(sc * (bucket ? 1.f : 1.15f)));
     hm = glm::translate(hm, vec3(0, bucket ? -0.42f : 0.2f, 0));
     // its liquid sloshes with the hand's own motion (each hand found again by where it was: no two hands that close)
