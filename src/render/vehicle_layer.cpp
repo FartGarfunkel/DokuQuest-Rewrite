@@ -328,7 +328,6 @@ private:
   // ---------------------------------------------------------------- boats and the ship
 public:   // (the hulls are their items' models too: vehicleItemParts)
   static std::vector<Part> hullParts() { return hullOf("boat_planks", "boat_rail", "planks"); }
-  static std::vector<Part> lavaHullParts() { return hullOf("crimson_planks", "polished_blackstone", "warped_planks"); }   // the lava boat: nether woods don't burn
   static std::vector<Part> hullOf(const std::string& P, const std::string& R, const std::string& IN) {   // boats2.js: the clinker rowboat hull (the sailboat's too, scaled)
     std::vector<Part> v;
     v.push_back(bb(0, 0.03f, -0.1f, 0.05f, 0.05f, 1.27f, 0, R));
@@ -420,10 +419,20 @@ private:
       if (!b.cargo.is_null() || b.items.is_array()) drawItem(!b.cargo.is_null() ? b.cargo.value("key", "chest") : (b.cargoKey.empty() ? "chest" : b.cargoKey), base * T(vec3(SHIP.cargo.x, dk + 0.5f, SHIP.cargo.y)), L);
       return;
     }
-    Model& hull = b.kind == "lava_rowboat" ? model("lava_boat_hull", 1.f / 32, lavaHullParts, ts) : model("boat_hull", 1.f / 32, hullParts, ts);
     VoxelLight L = lightAt(w, b.pos + vec3(0, 0.8f, 0));
     mat4 S = glm::scale(T(rel), vec3(sc));
     mat4 base = RX(RZ(RY(S, b.yaw), b.heel + (b.shakeT > 0 ? std::sin(b.age * 60) * 0.06f : 0)), std::sin(b.bob * 1.3f) * 0.025f + clampv(b.speed * 0.006f, -0.03f, 0.05f));
+    if (b.kind == "lava_rowboat") {   // the lava boat: an iron minecart riding the lava (wood has no business on it), its own well kept dry
+      Model& body = model("cart", 1.f / 32, cartBodyParts, ts);
+      Model& wheelM = model("cart_wheel", 1.f / 32, cartWheelParts, ts);
+      Model& mask = model("cart_lava_mask", 1.f / 32, [] { return std::vector<Part>{box({-0.4f, 0.2f, -0.58f}, {0.4f, 0.66f, 0.58f}, "minecart_inside")}; }, ts);
+      const mat4 cb = base * T(vec3(0, 0.1f, 0));
+      draw(body, cb, L);
+      for (int sx : {-1, 1}) for (int sz : {-1, 1}) draw(wheelM, cb * T(vec3(sx * 0.3f, 0.09f, sz * 0.4f)), L);
+      glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE); draw(mask, cb, L); glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+      return;
+    }
+    Model& hull = model("boat_hull", 1.f / 32, hullParts, ts);
     draw(hull, base, L);
     {   // no water inside the boat (Minecraft's water mask): its well filled, depth only, before the water is drawn
       Model& mask = model("boat_water_mask", 1.f / 32, [] {
@@ -560,8 +569,11 @@ std::vector<ModelPart> vehicleItemParts(const std::string& item) {
     else if (item == "furnace_minecart") cube("furnace_top", "furnace_side", "furnace_front", vec3(0, 0.5f, 0), 0.32f);
     else if (item == "hopper_minecart") cube("hopper_top", "hopper_outside", "hopper_outside", vec3(0, 0.5f, 0), 0.32f);
     else if (item == "tnt_minecart") cube("tnt_top", "tnt_side", "tnt_side", vec3(0, 0.5f, 0), 0.32f);
-  } else if (item == "rowboat" || item == "lava_rowboat" || item == "sailboat") {
-    add(item == "lava_rowboat" ? VehicleLayer::lavaHullParts() : VehicleLayer::hullParts());
+  } else if (item == "lava_rowboat") {   // the lava boat: an iron minecart (render/vehicle_layer.cpp drawBoat)
+    add(cartBodyParts());
+    for (int sx : {-1, 1}) for (int sz : {-1, 1}) add(cartWheelParts(), vec3(sx * 0.3f, 0.09f, sz * 0.4f));
+  } else if (item == "rowboat" || item == "sailboat") {
+    add(VehicleLayer::hullParts());
     if (item == "sailboat") {   // the mast, its boom and the sail set
       v.push_back(box({-0.06f, 0.15f, -0.06f}, {0.06f, 3.2f, 0.06f}, "axle"));
       v.push_back(box({-0.04f, 0.85f, 0}, {0.04f, 0.93f, 1.5f}, "axle"));
@@ -589,7 +601,7 @@ void registerVehicleLayers() {
 }
 
 bool boatOarGrips(const Boat& b, vec3 rel, vec3 out[2]) {
-  if (b.ship() || b.kind == "sailboat") return false;
+  if (b.ship() || b.kind == "sailboat" || b.kind == "lava_rowboat") return false;   // (the lava cart has no oars: hands on its rim)
   for (int k = 0; k < 2; k++) out[k] = vec3(oarFrame(b, rel, k == 0 ? 1 : -1) * vec4(0, 0, 0.47f, 1));
   return true;
 }
