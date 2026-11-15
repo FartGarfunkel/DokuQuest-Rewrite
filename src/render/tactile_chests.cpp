@@ -26,7 +26,8 @@ std::vector<std::string> itemTooltipLines(const ItemStack& s);   // the item's n
 namespace {
 const float COL_X[5] = {2.4f, 5.2f, 8.0f, 10.8f, 13.6f}, ROW_Z[3] = {9.5f, 6.5f, 3.5f};
 
-struct Chest { ivec3 at; int facing; bool open; int page; ItemStack items[27]; int press[2]; VoxelLight L; int hover = -1; };
+struct Chest { ivec3 at; int facing; bool open; int page; ItemStack items[27]; int press[2]; VoxelLight L; int hover = -1;
+               bool barrel = false; float trayY = 9.5f, floorY = 2.f, lr = 10.f; };   // (a barrel: the chest's workings under its own top)
 
 class TactileChests : public RenderLayer {
 public:
@@ -45,86 +46,30 @@ public:
     return e < 0 || e > 4 ? 0.f : (float)std::sin(e / 4 * PI);
   }
 
-  // an open barrel (sim/tactile.h tactileBarrel): its layer of nine on a shelf of its planks under the rim, the other layers
-  // heaped below, its two buttons on the rim (Tactile's own, pressing in)
-  struct Barrel { ivec3 at; int facing, page, press[2]; ItemStack items[27]; VoxelLight L; int hover = -1; };
-  std::vector<Barrel> barrels;
-  void drawBarrels(GameSession& s, const FrameCtx& f, World& w, vec3 eye, vec3 dir) {
-    barrels.clear();
-    forBlockEntities(w, f, 24.f, [&](const Chunk&, json& e, int x, int y, int z) {
-      const ivec3 at(x, y, z);
-      if (!tactileBarrel(w, at) || !chestLidOpen(w, at)) return;
-      Barrel b; b.at = at; b.facing = tactileBarrelFacing(w, at); b.page = e.value("page", 0); b.press[0] = e.value("press0", 0); b.press[1] = e.value("press1", 0);
-      const json& it = e.contains("items") && e["items"].is_array() ? e["items"] : json::array();
-      for (int k = 0; k < 27 && k < (int)it.size(); k++) b.items[k] = ItemStack::fromJson(it[k]);
-      b.L = tactileLight(w, at);
-      if (s.target.hit && s.target.block == at) { const TactileChestAim a = tactileBarrelAim(w, at, eye, dir); if (a.what == TactileChestAim::Tray) b.hover = a.slot; }
-      barrels.push_back(b);
-    });
-    if (barrels.empty()) return;
-    static const float COL[3] = {4.5f, 8.f, 11.5f}, ROW[3] = {11.5f, 8.f, 4.5f};
-    VoxelRenderer& VR = voxelRenderer();
-    VR.begin(f, f.cam.viewProj);
-    for (const Barrel& b : barrels) {
-      const TPose base = tactileBlockPose(f, b.at, b.facing);
-      for (int i = 0; i < 9; i++) {
-        const int k = b.page * 9 + i;
-        if (k >= 27 || b.items[k].empty()) continue;
-        const bool hot = i == b.hover;
-        TPose p = base; p.t(COL[i % 3] / 16, (14.6f + (hot ? 1.5f : 0.f)) / 16, ROW[i / 3] / 16).rx(90).s(0.28f * (hot ? 1.25f : 1.f));
-        ItemStack one = b.items[k]; one.n = 1;
-        tactileItem(one, p.m, b.L);
-      }
-      u32 h = (u32)(b.at.x * 73856093) ^ (u32)(b.at.y * 19349663) ^ (u32)(b.at.z * 83492791) ^ 0x51u;
-      auto rnd = [&] { h = h * 1664525u + 1013904223u; return (h >> 8 & 0xFFFF) / 65535.f; };
-      for (int k = 0; k < 27; k++) {   // (the other layers, heaped below the shelf)
-        const float jx = (rnd() - 0.5f) * 9, jz = (rnd() - 0.5f) * 9, dy = rnd() * 6, spin = rnd() * 360, tx = (rnd() - 0.5f) * 60;
-        if (k / 9 == b.page || b.items[k].empty()) continue;
-        TPose p = base; p.t((8 + jx) / 16, (2 + dy) / 16, (8 + jz) / 16).ry(spin).rx(90 + tx).s(0.26f);
-        ItemStack one = b.items[k]; one.n = 1;
-        tactileItem(one, p.m, b.L);
-      }
-    }
-    VR.end();
-    ContentDraw& cd = contentDraw();
-    if (!cd.begin(f, f.cam.viewProj)) return;
-    const PackModel* sortM = tactilePart("coffre_buttontri");
-    const PackModel* swapM = tactilePart("coffre_buttonswap");
-    for (const Barrel& b : barrels) {
-      const vec2 light(b.L.sky, b.L.block);
-      const TPose base = tactileBlockPose(f, b.at, b.facing);
-      const std::string side = reg().block(w.getBlock(b.at.x, b.at.y, b.at.z)).props["tex"].value("side", std::string("barrel_side"));
-      if (const GLuint t = tileTexture(s.app, side)) {   // (the shelf: one board across under the rim, its planks)
-        TPose p = base; p.t(0.5f, 14.f / 16, 0.5f).rx(-90).s(12.f / 16, 12.f / 16, 1);
-        cd.picture(t, p.m, vec4(0, 0, 1, 1), vec4(0.85f, 0.85f, 0.85f, 1), light, true);
-      }
-      auto button = [&](const PackModel* m, vec3 partMid, vec3 to, float press) {
-        if (!m) return;
-        TPose p = base; p.t((to.x - partMid.x) / 16, (to.y - partMid.y - press * 1.2f) / 16, (to.z - partMid.z) / 16);
-        tactilePartDraw(s.app, cd, *m, p.m, light);
-      };
-      button(sortM, vec3(12.5f, 10.25f, 8.65f), vec3(3.5f, 16.4f, 1.2f), pressOf(b.at, 4, b.press[0], f.time));
-      button(swapM, vec3(12.5f, 10.25f, 4.5f), vec3(12.5f, 16.4f, 1.2f), pressOf(b.at, 5, b.press[1], f.time));
-    }
-    cd.end();
+  // the chest's lid frame (its own sixteenths, as shut, hinge at y 10, z 12) where it is now; a barrel's on its own top
+  static TPose lidPose(const FrameCtx& f, const Chest& c, float lidDeg) {
+    TPose p = tactileBlockPose(f, c.at, c.facing);
+    if (c.barrel) p.t(0, c.lr / 16, 1).rx(lidDeg).t(0, -10.f / 16, -12.f / 16);
+    else p.t(0.5f, 0.625f, 0.75f).rx(lidDeg).t(-0.5f, -0.625f, -0.75f);
+    return p;
   }
-
   void drawOpaque(GameSession& s, const FrameCtx& f) override {
     if (!s.player || !s.app.settings.tactileStations) return;
     World& w = s.world();
-    drawBarrels(s, f, w, vec3(s.player->pos.x, s.player->pos.y + s.player->eye, s.player->pos.z), lookVector(s.player->yaw, s.player->pitch));
     list.clear();
     const vec3 eye(s.player->pos.x, s.player->pos.y + s.player->eye, s.player->pos.z);
     const vec3 dir = lookVector(s.player->yaw, s.player->pitch);
     forBlockEntities(w, f, 24.f, [&](const Chunk&, json& e, int x, int y, int z) {
       const ivec3 at(x, y, z);
-      if (!stationModel(w.getBlock(x, y, z)) || !tactileChest(w, at)) return;
-      Chest c; c.at = at; c.facing = tactileFacing(w, at); c.open = chestLidOpen(w, at); c.page = e.value("page", 0) & 1;
+      const bool barrel = tactileBarrel(w, at);
+      if (!barrel && (!stationModel(w.getBlock(x, y, z)) || !tactileChest(w, at))) return;
+      Chest c; c.at = at; c.facing = barrel ? tactileBarrelFacing(w, at) : tactileFacing(w, at); c.barrel = barrel;
+      if (barrel) { c.lr = chestLidRow(w, at) / 2.f; c.trayY = c.lr - 1.f; c.floorY = chestFloorY(w, at) * 16 + 1.f; } c.open = chestLidOpen(w, at); c.page = e.value("page", 0) & 1;
       { const std::vector<ItemStack> it = chestHalfItems(*s.level, s.player, w, at);   // (an ender chest: your own)
         for (int k = 0; k < 27 && k < (int)it.size(); k++) c.items[k] = it[k]; }
       c.press[0] = e.value("press0", 0); c.press[1] = e.value("press1", 0);
       c.L = tactileLight(w, at);
-      if (c.open && s.target.hit && s.target.block == at) { const TactileChestAim a = tactileChestAim(w, at, eye, dir); if (a.what == TactileChestAim::Tray && c.page * 15 + a.slot < 27) c.hover = a.slot; }
+      if (c.open && s.target.hit && s.target.block == at) { const TactileChestAim a = barrel ? tactileBarrelAim(w, at, eye, dir) : tactileChestAim(w, at, eye, dir); if (a.what == TactileChestAim::Tray && c.page * 15 + a.slot < 27) c.hover = a.slot; }
       list.push_back(c);
     });
     // chests with no record yet: their lid still drawn (shut)
@@ -139,7 +84,7 @@ public:
         const int k = c.page * 15 + i;
         if (k >= 27 || c.items[k].empty()) continue;
         const bool hot = i == c.hover;
-        TPose p = base; p.t(COL_X[i % 5] / 16, (9.5f + (hot ? 2.f : 0.f)) / 16, ROW_Z[i / 5] / 16).rx(90).s(0.2f * (hot ? 1.3f : 1.f));
+        TPose p = base; p.t(COL_X[i % 5] / 16, (c.trayY + (hot ? 2.f : 0.f)) / 16, ROW_Z[i / 5] / 16).rx(90).s(0.2f * (hot ? 1.3f : 1.f));
         ItemStack one = c.items[k]; one.n = 1;
         tactileItem(one, p.m, c.L);
       }
@@ -150,7 +95,7 @@ public:
         const float jx = (rnd() - 0.5f) * 10, jz = (rnd() - 0.5f) * 7, dy = rnd() * 2.5f, spin = rnd() * 360, tx = (rnd() - 0.5f) * 60, tz = (rnd() - 0.5f) * 60;
         const int k = (1 - c.page) * 15 + i;
         if (k >= 27 || c.items[k].empty()) continue;
-        TPose p = base; p.t((8 + jx) / 16, (2 + dy) / 16, (6.5f + jz) / 16).ry(spin).rx(90 + tx).rz(tz).s(0.28f);
+        TPose p = base; p.t((8 + jx) / 16, (c.floorY + dy) / 16, (6.5f + jz) / 16).ry(spin).rx(90 + tx).rz(tz).s(0.28f);
         ItemStack one = c.items[k]; one.n = 1;
         tactileItem(one, p.m, c.L);
       }
@@ -165,19 +110,17 @@ public:
       const PackModel* lidM = partOf("coffre_lid");
       const PackModel* sortM = partOf("coffre_buttontri");
       const PackModel* swapM = partOf("coffre_buttonswap");
-      const float lid = tactileEase(c.at, 2, c.open, dt) * 90.f;
+      const float lid = tactileEase(c.at, 2, c.open, dt) * (c.barrel ? 71.6f : 90.f);   // (a barrel's top: render/chest_layer.cpp's 1.25)
       const vec2 light(c.L.sky, c.L.block);
       auto part = [&](const PackModel* m, float press) {
         if (!m) return;
-        TPose p = tactileBlockPose(f, c.at, c.facing);
-        p.t(0.5f, 0.625f, 0.75f).rx(lid).t(-0.5f, -0.625f, -0.75f);
+        TPose p = lidPose(f, c, lid);
         if (press != 0) p.t(0, press * 1.2f / 16, 0);
         tactilePartDraw(s.app, cd, *m, p.m, light);
       };
-      part(lidM, 0);
+      if (!c.barrel) part(lidM, 0);   // (a barrel's own top is render/chest_layer.cpp's)
       if (lid > 0.1f) {   // (the sheet inside the lid in our own paper: the maps' parchment, both faces, over Tactile's)
-        TPose p = tactileBlockPose(f, c.at, c.facing);
-        p.t(0.5f, 0.625f, 0.75f).rx(lid).t(-0.5f, -0.625f, -0.75f);
+        TPose p = lidPose(f, c, lid);
         p.t(6.f / 16, 10.75f / 16, 7.f / 16).rx(90).s(6.f / 16, 8.f / 16, 1);
         cd.picture(mapPaperTexture(), p.m, vec4(0, 0, 1, 1), vec4(1), light, true);
       }
@@ -217,8 +160,7 @@ public:
       if (!cur.empty()) wrapped.push_back(cur);
       const float cz = z + h * 0.5f;
       for (float xr : {90.f}) {   // (ours are pictures with two faces: one copy reads right from the open side; Tactile wrote both)
-        TPose p = tactileBlockPose(f, c.at, c.facing);
-        p.t(0.5f, 0.625f, 0.75f).rx(lid).t(-0.5f, -0.625f, -0.75f);
+        TPose p = lidPose(f, c, lid);
         p.t(6.f / 16, 0.634375f, cz / 16).rx(xr).ry(180).s(scale, -scale, scale);
         const float total = wrapped.size() * fh;
         for (size_t l = 0; l < wrapped.size(); l++) {

@@ -316,6 +316,23 @@ int main(int argc, char** argv) {
     check(w.blockEntity(at.x, at.y, at.z)->value("bookPage", 0) == 0, "the back arrow turns it back");
   }
 
+  printf("[a cupboard worked by hand: its shelves aimed at from in front]\n");
+  {
+    World& w = im.lv->world();
+    for (int m = 0; m < 4; m++) {
+      const ivec3 at(8 + m * 2, im.Y + 1, 4);
+      w.setBlock(at.x, at.y, at.z, reg().blockId("oak_cabinet"), (u8)m);
+      setChestLidOpen(w, at, true);
+      // stand where its doors face (its model's front: north, east, south, west for meta 0..3)
+      static const vec3 OUT[4] = {{0, 0, -1}, {1, 0, 0}, {0, 0, 1}, {-1, 0, 0}};
+      for (float hy : {0.75f, 0.45f, 0.18f}) {
+        const vec3 eye = vec3(at) + vec3(0.5f, hy, 0.5f) + OUT[m] * 1.6f;
+        const int s = chestSlotAtRay(w, at, eye, -OUT[m]);
+        check(s >= 0, "meta " + std::to_string(m) + ", looked at from its doors' side at " + std::to_string(hy) + ": a shelf spot (" + std::to_string(s) + ")");
+      }
+    }
+  }
+
   printf("\n%d passed, %d failed\n", passes, fails);
   im.lv->close();
   return fails;

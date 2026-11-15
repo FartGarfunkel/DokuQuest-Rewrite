@@ -296,7 +296,8 @@ public:
       const VoxelModel& im = itemModel(stackModelKey(st));
       if (!im.ready()) continue;
       const vec3 c = chestSlotCenter(w, hs[0], h * per + i) - vec3(pos);
-      const int layers = st.n > 1 ? (st.n >= 16 ? 3 : 2) : 1;   // (a stack: a few of it piled)
+      const bool shelved = isCabinet(w, pos);   // (a cupboard's shelf: 3.5 px under the board above, one of it, kept under)
+      const int layers = shelved ? 1 : st.n > 1 ? (st.n >= 16 ? 3 : 2) : 1;   // (a stack: a few of it piled)
       const bool lifted = aiming && glm::distance(c + vec3(pos), aim) < cs * 0.3f;
       // its own extent (a picture fills only part of its frame; a 3D one stands off its middle): sized to its slot
       const vec3 lo = im.frame.origin, hi = im.frame.origin + vec3(im.size) * im.frame.voxel, ctr = (lo + hi) * 0.5f;
@@ -313,9 +314,10 @@ public:
       for (int ly = 0; ly < layers; ly++) {
         mat4 im4 = glm::translate(m, c + vec3((ly & 1) * cs * 0.08f, 0.002f, (ly == 2) * -cs * 0.08f));
         im4 = glm::rotate(im4, (o.facing & 3) * PI / 2 + ly * 0.35f, vec3(0, 1, 0));
-        if (cube) im4 = glm::scale(glm::translate(im4, vec3(0, cs * 0.42f + ly * cs * 0.55f, 0)), vec3(cs * 0.8f));
+        if (cube) { const float k = shelved ? std::min(cs * 0.8f, 3.f / 16) : cs * 0.8f; im4 = glm::scale(glm::translate(im4, vec3(0, k * 0.52f + ly * cs * 0.55f, 0)), vec3(k)); }
         else {   // lying flat, filling its slot, resting on the floor (not sunk into it)
-          const float sc = std::min(cs * 1.15f / std::max({hi.x - lo.x, hi.y - lo.y, 0.05f}), cs * 2.4f);
+          float sc = std::min(cs * 1.15f / std::max({hi.x - lo.x, hi.y - lo.y, 0.05f}), cs * 2.4f);
+          if (shelved) sc = std::min(sc, (3.f / 16) / std::max(hi.z - lo.z, 0.01f));   // (its height under the shelf above)
           im4 = glm::translate(im4, vec3(0, -lo.z * sc + ly * std::min((hi.z - lo.z) * sc * 0.9f, cs * 0.12f), 0));   // (a round thing piled sits on the last, not over the shelf above)
           im4 = glm::rotate(im4, -PI / 2, vec3(1, 0, 0));
           im4 = glm::translate(glm::scale(im4, vec3(sc)), vec3(-ctr.x, -ctr.y, 0));

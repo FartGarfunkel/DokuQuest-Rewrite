@@ -73,11 +73,18 @@ bool placeOne(json& items, int page, ItemStack& held, int PG = PAGE) {   // (Cof
 }  // namespace
 
 namespace {
-const float B_COL[3] = {4.5f, 8.f, 11.5f}, B_ROW[3] = {11.5f, 8.f, 4.5f};
-const float B_TRAY[6] = {2, 12, 2, 14, 14.5f, 14}, B_WELL[6] = {1.5f, 1, 1.5f, 14.5f, 16, 14.5f};
-const float B_SORT[6] = {2, 15.6f, 0.2f, 5, 17.6f, 2.2f}, B_SWAP[6] = {11, 15.6f, 0.2f, 14, 17.6f, 2.2f};
-const int B_PAGE = 9;
-int barrelFacing(World& w, ivec3 at) { const json* e = w.blockEntity(at.x, at.y, at.z); return e && e->is_object() ? e->value("f", 2) & 3 : 2; }
+// (the chest's own layout: its tray of fifteen in five by three, a page of the 27; under the barrel's rim instead of the chest's)
+const float B_WELL[6] = {1.5f, 1, 1.5f, 14.5f, 16, 14.5f};
+const int B_PAGE = PAGE;
+float barrelTrayY(World& w, ivec3 at) { return chestLidRow(w, at) / 2.f - 1.f; }   // (sixteenths: a pixel under the rim, as the chest's 9.5 under its 10)
+// (its front: the side it was opened from, kept in the block's meta as a chest's facing is, so render/chest_layer.cpp swings
+// its top away from you on its back edge)
+int barrelFacing(World& w, ivec3 at) { return w.getMeta(at.x, at.y, at.z) & 3; }   // (its front: render/chest_layer.cpp hinges its top on the far side)
+// a rim button's box (k 0 sort, 1 next layer) on the raised top's underside, in the north frame (sixteenths)
+void barrelButtonBox(World& w, ivec3 at, int k, float out[6]) {
+  const vec3 c = tactileBarrelButton(w, at, k) * 16.f;
+  out[0] = c.x - 1.6f; out[1] = c.y - 1.6f; out[2] = c.z - 1.6f; out[3] = c.x + 1.6f; out[4] = c.y + 1.6f; out[5] = c.z + 1.6f;
+}
 }  // namespace
 
 bool tactileChest(World& w, ivec3 at) {
@@ -140,7 +147,8 @@ float tactileExtraRay(World& w, ivec3 at, vec3 eye, vec3 dir) {
     const int f = barrelFacing(w, at);
     const vec3 o = tactileNorthLocal(f, eye - vec3(at)), d = tactileNorthLocal(f, eye + dir - vec3(at)) - o;
     float best = -1;
-    for (const float* b : {B_SORT, B_SWAP}) { const float t = rayBox(o, d, b); if (t >= 0 && (best < 0 || t < best)) best = t; }
+    float bs[6], bw[6]; barrelButtonBox(w, at, 0, bs); barrelButtonBox(w, at, 1, bw);
+    for (const float* b : {(const float*)bs, (const float*)bw}) { const float t = rayBox(o, d, b); if (t >= 0 && (best < 0 || t < best)) best = t; }
     if (best >= 0) return best;
   }
   if (reg().block(w.getBlock(at.x, at.y, at.z)).key == "brewing_stand") {   // (the still's recipe book, lying in front)
@@ -232,6 +240,17 @@ bool tactileChestTake(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 d
 
 // ---- a barrel, worked the same way: a tray of nine under its rim (three layers of the 27), its two buttons on the rim ----
 
+vec3 tactileBarrelLidPoint(World& w, ivec3 at, vec3 chestLidPx) {
+  // a point of the chest's lid (its own sixteenths, as shut: hinge at y 10, z 12) on the barrel's top: its hinge at the top's
+  // underside at the back (y lidRow, z 16), swung up 1.25 as render/chest_layer.cpp swings it
+  const float lr = chestLidRow(w, at) / 2.f, ang = 1.25f;
+  const vec3 rel = (chestLidPx - vec3(0, 10, 12)) / 16.f;
+  const float y = rel.y * std::cos(ang) - rel.z * std::sin(ang), z = rel.y * std::sin(ang) + rel.z * std::cos(ang);
+  return vec3(rel.x, lr / 16 + y, 1 + z);
+}
+vec3 tactileBarrelButton(World& w, ivec3 at, int k) {   // (the chest lid's two buttons' middles: sort 12.5,10.25,8.65; next 12.5,10.25,4.5)
+  return tactileBarrelLidPoint(w, at, k == 0 ? vec3(12.5f, 10.25f, 8.65f) : vec3(12.5f, 10.25f, 4.5f));
+}
 bool tactileBarrel(World& w, ivec3 at) {
   const BlockDef& b = reg().block(w.getBlock(at.x, at.y, at.z));
   return b.has("container") && b.key.size() >= 6 && b.key.compare(b.key.size() - 6, 6, "barrel") == 0 && !b.has("sealed");
@@ -246,15 +265,16 @@ TactileChestAim tactileBarrelAim(World& w, ivec3 at, vec3 eye, vec3 dir) {
   const vec3 o = tactileNorthLocal(f, eye - vec3(at)), d = tactileNorthLocal(f, eye + dir - vec3(at)) - o;
   float best = 1e9f;
   auto test = [&](const float b[6], int what) { const float t = rayBox(o, d, b); if (t >= 0 && t < best) { best = t; r.what = what; } };
-  test(B_SORT, TactileChestAim::Sort); test(B_SWAP, TactileChestAim::Swap);
-  test(B_TRAY, TactileChestAim::Tray);
+  float bs[6], bw[6]; barrelButtonBox(w, at, 0, bs); barrelButtonBox(w, at, 1, bw);
+  test(bs, TactileChestAim::Sort); test(bw, TactileChestAim::Swap);
+  const float ty = barrelTrayY(w, at);
+  const float tray[6] = {GRID_SLAB[0], ty - 1, GRID_SLAB[2], GRID_SLAB[3], ty + 0.6f, GRID_SLAB[5]};
+  test(tray, TactileChestAim::Tray);
   if (r.what == TactileChestAim::None) test(B_WELL, TactileChestAim::Tray);
-  if (r.what == TactileChestAim::Tray) {   // (the spot under where the look meets the tray)
-    const float ty = (B_TRAY[1] + B_TRAY[4]) * 0.5f / 16.f;
-    const float t = std::fabs(d.y) > 1e-5f ? (ty - o.y) / d.y : best;
+  if (r.what == TactileChestAim::Tray) {   // (the chest's slot under where the look meets the tray)
+    const float t = std::fabs(d.y) > 1e-5f ? (ty / 16 - o.y) / d.y : best;
     const vec3 p = o + d * (t > 0 ? t : best);
-    const int col = std::clamp((int)std::lround((p.x * 16 - B_COL[0]) / 3.5f), 0, 2), row = std::clamp((int)std::lround((B_ROW[0] - p.z * 16) / 3.5f), 0, 2);
-    r.slot = row * 3 + col;
+    r.slot = slotAt(std::clamp(p.x * 16, 1.f, 15.f), std::clamp(p.z * 16, 2.f, 11.f));
   }
   if (r.what == TactileChestAim::None) r.what = TactileChestAim::Lid;   // (the rim: shuts it)
   return r;
@@ -270,7 +290,9 @@ bool tactileBarrelUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 d
     vec3 toMe = eye - (vec3(at) + vec3(0.5f)); toMe.y = 0;
     int bf = 2; float bd = -1e9f;
     for (int f = 0; f < 4; f++) { const vec3 fr = tactileFromNorth(f, vec3(0.5f, 0, 0)) - vec3(0.5f, 0, 0.5f); const float dd = glm::dot(fr, toMe); if (dd > bd) { bd = dd; bf = f; } }
-    (*e)["f"] = bf; changed();
+    const u8 m = w.getMeta(at.x, at.y, at.z);
+    const u8 want = (u8)bf;   // (its front toward you: render/chest_layer.cpp hinges the top on the far side)
+    if ((m & 3) != want) w.setBlock(at.x, at.y, at.z, w.getBlock(at.x, at.y, at.z), (u8)((m & ~3) | want));
     setChestLidOpen(w, at, true); sfxAt(lv, "chest", c);
     return true;
   }

@@ -70,6 +70,7 @@ bool tactileJukeboxPlaying(World& w, ivec3 at);
 // the next layer, use on the rim shuts it
 bool tactileBarrel(World& w, ivec3 at);
 int tactileBarrelFacing(World& w, ivec3 at);
+vec3 tactileBarrelButton(World& w, ivec3 at, int k);   // a rim button's middle on the raised top (north frame, blocks): 0 sort, 1 next layer
 TactileChestAim tactileBarrelAim(World& w, ivec3 at, vec3 eye, vec3 dir);
 bool tactileBarrelUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, ItemStack& held, bool all, bool sneak);
 bool tactileBarrelTake(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, bool whole);
