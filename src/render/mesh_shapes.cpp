@@ -455,7 +455,7 @@ void emitSnowCaps(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, in
 
 bool emitStationModel(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, int y, int z, u8 meta);   // (mesher.cpp)
 void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta) {
-  if (emitStationModel(c, d, id, x, y, z, meta)) return;   // (its Tactile model: assets/local_models.h)
+  if (emitStationModel(c, d, id, x, y, z, meta)) return;   // (its hands-on model: assets/local_models.h)
   const Registry& R = c.R;
   const BlockTraits& T = traits(id);
   u8 mat = Mat::Cutout;

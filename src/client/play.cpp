@@ -101,7 +101,7 @@ void clientTickLocalPlayer(GameSession& s, double dt) {
   c.aimOverride = s.viewMode == 1 && st.hasShoulder;
   if (c.aimOverride) { c.aimOrigin = st.shoulder; c.aimDir = lookVector(p.yaw, p.pitch); }
   c.chestLids = app.settings.leaveChestsOpen;
-  c.tactileStations = app.settings.tactileStations;
+  c.handsStations = app.settings.handsStations;
   c.update((float)dt, pi);
   // what the renderer and HUD read
   s.target = c.target;

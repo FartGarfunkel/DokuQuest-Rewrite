@@ -5,7 +5,7 @@
 #include "sim/weather.h"
 #include "sim/controller.h"
 #include "sim/station_work.h"
-#include "sim/tactile.h"
+#include "sim/hands.h"
 #include "sim/ench_work.h"
 #include <climits>
 #include "sim/anvil_work.h"
@@ -362,8 +362,8 @@ void PlayerController::updateTarget() {
     if (l > 0.3) d = vec3(P / l);
   }
   RayHit hit = raycastBlocks(w, o, d, REACH);
-  // an open Tactile chest's lid and buttons stand up out of its block: aimed at, they're the chest
-  if (tactileStations) {
+  // an open hands-on chest's lid and buttons stand up out of its block: aimed at, they're the chest
+  if (handsStations) {
     const double lim = hit.hit ? hit.dist : REACH;
     ivec3 last(INT_MIN);
     for (double s = 0; s < lim; s += 0.1) {
@@ -372,7 +372,7 @@ void PlayerController::updateTarget() {
       last = c;
       for (int dy = 0; dy <= 1; dy++) {
         const ivec3 q = c - ivec3(0, dy, 0);
-        const float t = tactileExtraRay(w, q, vec3(o), d);
+        const float t = handsExtraRay(w, q, vec3(o), d);
         if (t >= 0 && t < (float)lim && (!hit.hit || hit.block != q)) {
           hit.hit = true; hit.block = q; hit.id = w.getBlock(q.x, q.y, q.z); hit.dist = t; hit.normal = ivec3(0, 1, 0);
           hit.point = vec3(o) + d * t;
@@ -442,16 +442,16 @@ bool PlayerController::blockedByBody(int x, int y, int z) {
 bool deflectFireball(Level& lv, Entity& by, vec3 eye, vec3 look, float reach);   // sim/creature_entities.cpp
 
 // ---- mining / attacking / using --------------------------------------------------------------
-// a blow on a station's work (Tactile Blocks' forge hammer, your own arm's swing): three with a hammer (five without) on the
+// a blow on a station's work (the hands-on stations' forge hammer, your own arm's swing): three with a hammer (five without) on the
 // smithing table and the Tool Forge, three strokes on the grindstone, one on the loom, fletching and cartography tables
-bool PlayerController::tactileStrike(const RayHit& hit) {
+bool PlayerController::handsStrike(const RayHit& hit) {
   World& w = world();
   const ivec3 at = hit.block;
   const std::string st = pairStationAt(w, at);
-  if (st.empty() || st == "cartography") return false;   // (the desk is worked at its quill and compass: sim/tactile.h)
+  if (st.empty() || st == "cartography") return false;   // (the desk is worked at its quill and compass: sim/hands.h)
   const std::vector<ItemStack> v = pairWorkItems(w, at);
   if (v[0].empty() && v[1].empty()) return false;
-  // the smithing table (Tactile's table_de_forge): struck with a hammer only, a blow at most every half second, three to
+  // the smithing table (the hands-on smithing table): struck with a hammer only, a blow at most every half second, three to
   // forge it; the result stays on the table
   if (st == "smithing") {
     if (!isStrikingHammer(p.held())) { toastMsg("Strike it with a hammer", "info"); return true; }
@@ -510,38 +510,38 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
   // a held swing that hit a creature never digs into the ground behind it; in creative a sword never breaks blocks (Minecraft)
   const ToolInfo* ti = heldTool(p);
   bool noDig = fightHold || (p.creative() && ti && ti->type == "sword") || p.mode == "adventure";   // adventure: the world stays as it is
-  // Tactile Stations: an open barrel's tray (a strike takes one; sneaking, the stack)
-  if (tactileStations && target.hit && !te && tactileBarrel(world(), target.block) && chestLidOpen(world(), target.block)
-      && tactileBarrelAim(world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch)).what >= TactileChestAim::Tray) {   // (its tray or buttons: else it breaks as ever)
+  // Hands-on Stations: an open barrel's tray (a strike takes one; sneaking, the stack)
+  if (handsStations && target.hit && !te && handsBarrel(world(), target.block) && chestLidOpen(world(), target.block)
+      && handsBarrelAim(world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch)).what >= HandsChestAim::Tray) {   // (its tray or buttons: else it breaks as ever)
     noDig = true;
-    if (in.attackPressed && !p.atkMove && tactileBarrelTake(lv, p, world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch), p.sneaking)) swingArm();
+    if (in.attackPressed && !p.atkMove && handsBarrelTake(lv, p, world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch), p.sneaking)) swingArm();
   }
-  // Tactile Stations: an open large chest or cabinet is reached into too (a strike takes one; sneaking, the stack)
-  else if (tactileStations && target.hit && !te && bhas(target.id, BF::Container) && !tactileChest(world(), target.block) && chestLidOpen(world(), target.block)) {
+  // Hands-on Stations: an open large chest or cabinet is reached into too (a strike takes one; sneaking, the stack)
+  else if (handsStations && target.hit && !te && bhas(target.id, BF::Container) && !handsChest(world(), target.block) && chestLidOpen(world(), target.block)) {
     const int slot = chestSlotAtRay(world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch));
     if (slot >= 0) noDig = true;   // (reached into; anywhere else it breaks as ever)
     if (in.attackPressed && !p.atkMove && slot >= 0 && chestTake(lv, p, world(), target.block, slot, !p.sneaking, true)) swingArm();
   }
-  // Tactile Stations: an open chest's tray is reached into, not dug (a strike takes one; sneaking, the stack)
-  if (tactileStations && target.hit && !te && tactileChest(world(), target.block) && chestLidOpen(world(), target.block)
-      && tactileChestAim(world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch)).what >= TactileChestAim::Tray) {
+  // Hands-on Stations: an open chest's tray is reached into, not dug (a strike takes one; sneaking, the stack)
+  if (handsStations && target.hit && !te && handsChest(world(), target.block) && chestLidOpen(world(), target.block)
+      && handsChestAim(world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch)).what >= HandsChestAim::Tray) {
     noDig = true;
-    if (in.attackPressed && !p.atkMove && tactileChestTake(lv, p, world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch), p.sneaking)) swingArm();
+    if (in.attackPressed && !p.atkMove && handsChestTake(lv, p, world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch), p.sneaking)) swingArm();
   }
-  // Tactile Stations: an anvil with work on it is struck with a hammer, not dug
-  if (tactileStations && target.hit && !te && reg().block(target.id).str("station") == "anvil" && !anvilWorkItems(world(), target.block)[0].empty()) {
+  // Hands-on Stations: an anvil with work on it is struck with a hammer, not dug
+  if (handsStations && target.hit && !te && reg().block(target.id).str("station") == "anvil" && !anvilWorkItems(world(), target.block)[0].empty()) {
     noDig = true;
     if (in.attackPressed && !p.atkMove) {
-      if (isStrikingHammer(p.held())) { swingArm(); tactileAnvilStrike(lv, p, world(), target.block, t); }
+      if (isStrikingHammer(p.held())) { swingArm(); handsAnvilStrike(lv, p, world(), target.block, t); }
       else toastMsg("Strike it with a hammer", "info");
     }
   }
-  // Tactile Stations: a station with work on it is struck, not dug (take what's on it off first to break it)
-  if (tactileStations && target.hit && !te && !pairStationAt(world(), target.block).empty()) {
+  // Hands-on Stations: a station with work on it is struck, not dug (take what's on it off first to break it)
+  if (handsStations && target.hit && !te && !pairStationAt(world(), target.block).empty()) {
     const std::vector<ItemStack> v = pairWorkItems(world(), target.block);
     if (!v[0].empty() || !v[1].empty()) {
       noDig = true;
-      if (in.attackPressed && !p.atkMove) tactileStrike(target);
+      if (in.attackPressed && !p.atkMove) handsStrike(target);
     }
   }
   // creative: every fresh click breaks the block it's on at once, however short the click and however soon after the
@@ -798,40 +798,40 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     if (!lv.events->emit("itemUse", a)) { swingArm(); return; }
     def = held.empty() ? nullptr : R.item(held.id);   // a handler may have changed the stack
   }
-  // Tactile Stations: a chest worked as Tactile's coffre (sim/tactile.h); sneak + use on a shut one opens its screen
-  if (!fromOff && hit && !te && tactileStations && tactileChest(w, hit->block) && !(p.sneaking && !chestLidOpen(w, hit->block))) {
-    if (!repeat) tactileHoldAt = t;
+  // Hands-on Stations: a chest worked as the hands-on chest (sim/hands.h); sneak + use on a shut one opens its screen
+  if (!fromOff && hit && !te && handsStations && handsChest(w, hit->block) && !(p.sneaking && !chestLidOpen(w, hit->block))) {
+    if (!repeat) handsHoldAt = t;
     const vec3 eye(p.pos.x, p.pos.y + p.eye, p.pos.z);
-    if (!repeat || tactileChestAim(w, hit->block, eye, lookVector(p.yaw, p.pitch)).what == TactileChestAim::Tray)
-      if (tactileChestUse(lv, p, w, hit->block, eye, lookVector(p.yaw, p.pitch), held, repeat && t - tactileHoldAt > 0.5, p.sneaking) && !repeat) swingArm();
+    if (!repeat || handsChestAim(w, hit->block, eye, lookVector(p.yaw, p.pitch)).what == HandsChestAim::Tray)
+      if (handsChestUse(lv, p, w, hit->block, eye, lookVector(p.yaw, p.pitch), held, repeat && t - handsHoldAt > 0.5, p.sneaking) && !repeat) swingArm();
     return;
   }
-  // Tactile Stations: a barrel worked as the chest is (sim/tactile.h: its tray of nine, its layers and rim buttons)
-  if (!fromOff && hit && !te && tactileStations && tactileBarrel(w, hit->block) && !(p.sneaking && !chestLidOpen(w, hit->block))) {
-    if (!repeat) tactileHoldAt = t;
+  // Hands-on Stations: a barrel worked as the chest is (sim/hands.h: its tray of nine, its layers and rim buttons)
+  if (!fromOff && hit && !te && handsStations && handsBarrel(w, hit->block) && !(p.sneaking && !chestLidOpen(w, hit->block))) {
+    if (!repeat) handsHoldAt = t;
     const vec3 eye(p.pos.x, p.pos.y + p.eye, p.pos.z);
-    if (!repeat || (tactileBarrelAim(w, hit->block, eye, lookVector(p.yaw, p.pitch)).what == TactileChestAim::Tray && !held.empty()))
-      if (tactileBarrelUse(lv, p, w, hit->block, eye, lookVector(p.yaw, p.pitch), held, repeat && t - tactileHoldAt > 0.5, p.sneaking) && !repeat) swingArm();
+    if (!repeat || (handsBarrelAim(w, hit->block, eye, lookVector(p.yaw, p.pitch)).what == HandsChestAim::Tray && !held.empty()))
+      if (handsBarrelUse(lv, p, w, hit->block, eye, lookVector(p.yaw, p.pitch), held, repeat && t - handsHoldAt > 0.5, p.sneaking) && !repeat) swingArm();
     return;
   }
-  // Tactile Stations: every other store worked the same way by hand (barrels, large chests, cabinets): use opens it (the top
+  // Hands-on Stations: every other store worked the same way by hand (barrels, large chests, cabinets): use opens it (the top
   // off, the doors out); open, use at a spot inside puts one of what's held there (held, the stack), strike takes; use off
   // the spots shuts it; sneak + use its screen
-  if (!fromOff && hit && !te && tactileStations && bhas(hit->id, BF::Container) && chestHasLid(w, hit->block) && !tactileChest(w, hit->block) && !p.sneaking) {
+  if (!fromOff && hit && !te && handsStations && bhas(hit->id, BF::Container) && chestHasLid(w, hit->block) && !handsChest(w, hit->block) && !p.sneaking) {
     const vec3 eye(p.pos.x, p.pos.y + p.eye, p.pos.z), c = vec3(hit->block) + vec3(0.5f);
-    if (!repeat) tactileHoldAt = t;
+    if (!repeat) handsHoldAt = t;
     if (!chestLidOpen(w, hit->block)) {
       if (!repeat) { containerEntity(w, hit->block.x, hit->block.y, hit->block.z); setChestLidOpen(w, hit->block, true); swingArm(); sfxAt(lv, isCabinet(w, hit->block) ? "door_open" : "chest", c); }
       return;
     }
-    if (!repeat && tactileCabinetButtonRay(w, hit->block, eye, lookVector(p.yaw, p.pitch)) >= 0) { tactileCabinetSort(lv, p, w, hit->block); swingArm(); return; }   // (its sort button, on the door)
+    if (!repeat && handsCabinetButtonRay(w, hit->block, eye, lookVector(p.yaw, p.pitch)) >= 0) { handsCabinetSort(lv, p, w, hit->block); swingArm(); return; }   // (its sort button, on the door)
     const int slot = chestSlotAtRay(w, hit->block, eye, lookVector(p.yaw, p.pitch));
     if (slot < 0) {
       if (!repeat) { setChestLidOpen(w, hit->block, false); swingArm(); sfxAt(lv, isCabinet(w, hit->block) ? "door_close" : "chest", c); }
       return;
     }
     if (held.empty()) { if (!repeat && chestTake(lv, p, w, hit->block, slot, false, true)) swingArm(); return; }   // (an empty hand takes what lies there)
-    if (!held.empty() && (!repeat || t - tactileHoldAt > 0.5)) {
+    if (!held.empty() && (!repeat || t - handsHoldAt > 0.5)) {
       bool put = chestPut(lv, p, w, hit->block, slot, !repeat);
       // (the spot holds something else, or is full: the same kind's spot, else the first free one)
       for (int pass = 0; pass < 2 && !put && !held.empty(); pass++) {
@@ -842,33 +842,33 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     }
     return;
   }
-  // Tactile Stations: a furnace, smoker or blast furnace worked where you look (sim/tactile.h): fuel low, what cooks high,
+  // Hands-on Stations: a furnace, smoker or blast furnace worked where you look (sim/hands.h): fuel low, what cooks high,
   // an empty hand takes back; held, one more each moment, and after a second the whole stack. Never its screen (sneak)
-  if (!fromOff && hit && !te && tactileStations && !p.sneaking && bhas(hit->id, BF::Furnace) && binfo(hit->id).furnace != "trommel") {
-    if (!repeat) tactileHoldAt = t;
-    if (tactileFurnaceUse(lv, p, w, *hit, held, repeat && t - tactileHoldAt > 1.0) && !repeat) swingArm();
+  if (!fromOff && hit && !te && handsStations && !p.sneaking && bhas(hit->id, BF::Furnace) && binfo(hit->id).furnace != "trommel") {
+    if (!repeat) handsHoldAt = t;
+    if (handsFurnaceUse(lv, p, w, *hit, held, repeat && t - handsHoldAt > 1.0) && !repeat) swingArm();
     return;
   }
-  // Tactile Stations: the brewing stand as Tactile's still (sim/tactile.h); held, the powder goes in by the stack
-  if (!fromOff && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).key == "brewing_stand") {
-    if (!repeat) tactileHoldAt = t;
-    if (!repeat || t - tactileHoldAt > 1.0) if (tactileBrewUse(lv, p, w, *hit, held, repeat) && !repeat) swingArm();
+  // Hands-on Stations: the brewing stand as the hands-on still (sim/hands.h); held, the powder goes in by the stack
+  if (!fromOff && hit && !te && handsStations && !p.sneaking && R.block(hit->id).key == "brewing_stand") {
+    if (!repeat) handsHoldAt = t;
+    if (!repeat || t - handsHoldAt > 1.0) if (handsBrewUse(lv, p, w, *hit, held, repeat) && !repeat) swingArm();
     return;
   }
-  // Tactile Stations: the jukebox (sim/tactile.h): the record on its platter, its needle arm to play
-  if (!fromOff && !repeat && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).has("jukebox")) {
-    if (tactileJukeboxUse(lv, p, w, *hit, held)) swingArm();
+  // Hands-on Stations: the jukebox (sim/hands.h): the record on its platter, its needle arm to play
+  if (!fromOff && !repeat && hit && !te && handsStations && !p.sneaking && R.block(hit->id).has("jukebox")) {
+    if (handsJukeboxUse(lv, p, w, *hit, held)) swingArm();
     return;
   }
-  // Tactile Stations: the enchanting table: the item into its socket, lapis into its reservoir; an empty hand takes the lapis
+  // Hands-on Stations: the enchanting table: the item into its socket, lapis into its reservoir; an empty hand takes the lapis
   // back (with something on it, the offers come up: render/magic_fx.cpp)
-  if (!fromOff && !repeat && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).key == "enchanting_table") {
+  if (!fromOff && !repeat && hit && !te && handsStations && !p.sneaking && R.block(hit->id).key == "enchanting_table") {
     if (!held.empty()) { if (enchWorkPut(lv, p, w, hit->block, held)) swingArm(); return; }
     if (enchWorkItems(w, hit->block)[0].empty()) { if (enchWorkTake(lv, p, w, hit->block, 1)) swingArm(); return; }
   }
-  // Tactile Stations: the grindstone (sim/tactile.h): what's held is held to the wheel while use is held
-  if (!fromOff && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).str("station") == "grindstone") {
-    if (tactileGrind(lv, p, w, hit->block, held, t, grind)) {
+  // Hands-on Stations: the grindstone (sim/hands.h): what's held is held to the wheel while use is held
+  if (!fromOff && hit && !te && handsStations && !p.sneaking && R.block(hit->id).str("station") == "grindstone") {
+    if (handsGrind(lv, p, w, hit->block, held, t, grind)) {
       // your arms hold the piece to the wheel (render/char_layer.cpp: the station reach, seen from your eyes too)
       const vec3 eye(p.pos.x, p.pos.y + p.eye, p.pos.z), top = vec3(hit->block) + vec3(0.5f, 0.86f, 0.5f);
       vec3 toMe = eye - top; toMe.y = 0; toMe = glm::length(toMe) > 1e-3f ? glm::normalize(toMe) : vec3(0, 0, 1);
@@ -876,15 +876,15 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     }
     return;
   }
-  // Tactile Stations: the anvil worked where it stands (sim/tactile.h): what's held laid on it, a hammer strikes it (an empty
+  // Hands-on Stations: the anvil worked where it stands (sim/hands.h): what's held laid on it, a hammer strikes it (an empty
   // anvil and a hammer: the immersive smithing's own anvil work, below)
-  if (!fromOff && !repeat && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).str("station") == "anvil") {
-    if (isStrikingHammer(held)) { if (tactileAnvilStrike(lv, p, w, hit->block, t)) { swingArm(); return; } }
-    else { if (tactileAnvilUse(lv, p, w, *hit, held)) swingArm(); return; }
+  if (!fromOff && !repeat && hit && !te && handsStations && !p.sneaking && R.block(hit->id).str("station") == "anvil") {
+    if (isStrikingHammer(held)) { if (handsAnvilStrike(lv, p, w, hit->block, t)) { swingArm(); return; } }
+    else { if (handsAnvilUse(lv, p, w, *hit, held)) swingArm(); return; }
   }
-  // Tactile Stations: the station takes the use before what's held does (armour laid on the smithing table, not worn)
-  if (!fromOff && !repeat && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).has("station") && pairWorkType(R.block(hit->id).str("station"))) {
-    if (R.block(hit->id).str("station") == "cartography") { if (tactileCartographyUse(lv, p, w, *hit, held)) swingArm(); return; }   // (Tactile's desk: sim/tactile.h)
+  // Hands-on Stations: the station takes the use before what's held does (armour laid on the smithing table, not worn)
+  if (!fromOff && !repeat && hit && !te && handsStations && !p.sneaking && R.block(hit->id).has("station") && pairWorkType(R.block(hit->id).str("station"))) {
+    if (R.block(hit->id).str("station") == "cartography") { if (handsCartographyUse(lv, p, w, *hit, held)) swingArm(); return; }   // (the hands-on desk: sim/hands.h)
     useBlockAt(*hit, held.empty() ? nullptr : &held, def);
     return;
   }

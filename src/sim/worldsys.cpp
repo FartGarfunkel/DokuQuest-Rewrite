@@ -605,7 +605,7 @@ bool tickFurnace(json& e, double dt, const std::string& kind) {
   if (!e.contains("items") || !e["items"].is_array()) e["items"] = json::array({nullptr, nullptr, nullptr});
   json& items = e["items"];
   while (items.size() < 3) items.push_back(nullptr);
-  // a Tactile furnace (sim/tactile.h) has four spots to cook on and four for what's done: slots 0, 3, 4, 5 and 2, 6, 7, 8
+  // a hands-on furnace (sim/hands.h) has four spots to cook on and four for what's done: slots 0, 3, 4, 5 and 2, 6, 7, 8
   // (the classic three — input, fuel, output — are the first of each, so the screen and hoppers see what they always did)
   const bool multi = items.size() >= 9;
   static const int IN[4] = {0, 3, 4, 5}, OUT[4] = {2, 6, 7, 8};
@@ -636,7 +636,7 @@ bool tickFurnace(json& e, double dt, const std::string& kind) {
     changed = true;
   }
   if (burn > 0) {
-    burn = std::max(0.0, burn - dt * std::max(1, active));   // (Tactile: the more cooking, the faster the fire goes)
+    burn = std::max(0.0, burn - dt * std::max(1, active));   // (hands-on: the more cooking, the faster the fire goes)
     for (int k = 0; k < spots; k++) {
       double cook = cooks[k].get<double>();
       if (!can[k]) { cooks[k] = 0.0; continue; }
@@ -647,7 +647,7 @@ bool tickFurnace(json& e, double dt, const std::string& kind) {
       if (cook >= SMELT_TIME && room(result[k])) {
         cook = 0;
         ItemStack in = ItemStack::fromJson(items[IN[k]]); in.n--; items[IN[k]] = in.n <= 0 ? json() : in.toJson();
-        for (int o = 0; o < spots; o++) {   // (Tactile's placeOneOutput: onto the same, else the first free)
+        for (int o = 0; o < spots; o++) {   // (the hands-on placeOneOutput: onto the same, else the first free)
           ItemStack out = ItemStack::fromJson(items[OUT[o]]);
           if (!out.empty() && !(out.id == result[k] && out.n < maxStackOf(result[k]))) continue;
           if (out.empty()) { bool same = false; for (int q = o + 1; q < spots; q++) { const ItemStack x = ItemStack::fromJson(items[OUT[q]]); if (x.id == result[k] && x.n < maxStackOf(result[k])) { same = true; break; } } if (same) continue; }

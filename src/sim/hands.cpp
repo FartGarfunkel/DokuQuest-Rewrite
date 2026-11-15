@@ -1,5 +1,5 @@
-// sim/tactile.cpp — see tactile.h
-#include "sim/tactile.h"
+// sim/hands.cpp — see hands-on.h
+#include "sim/hands.h"
 #include "sim/blockinfo.h"
 #include "sim/worldsys.h"
 #include "sim/gameplay.h"
@@ -16,7 +16,7 @@
 
 namespace dq {
 
-int tactileFacing(World& w, ivec3 at) {
+int handsFacing(World& w, ivec3 at) {
   const BlockDef& b = reg().block(w.getBlock(at.x, at.y, at.z));
   const u8 m = w.getMeta(at.x, at.y, at.z);
   static const int FM[4] = {2, 1, 0, 3};   // a turned model's meta (north, east, south, west)
@@ -24,25 +24,25 @@ int tactileFacing(World& w, ivec3 at) {
   if (b.has("facingModel")) return b.key == "brewing_stand" || b.key == "enchanting_table" ? (FM[m & 3] + 2) & 3 : FM[m & 3];   // (the still's book, the table's socket: toward whoever placed it)
   return 2;
 }
-float tactileFacingDegrees(int f) { static const float D[4] = {180.f, -90.f, 0.f, 90.f}; return D[f & 3]; }
-vec3 tactileNorthLocal(int f, vec3 p) {   // (Tactile's unrotate: the turn undone about the middle)
-  const float a = -glm::radians(tactileFacingDegrees(f)), c = std::cos(a), s = std::sin(a);
+float handsFacingDegrees(int f) { static const float D[4] = {180.f, -90.f, 0.f, 90.f}; return D[f & 3]; }
+vec3 handsNorthLocal(int f, vec3 p) {   // (the hands-on unrotate: the turn undone about the middle)
+  const float a = -glm::radians(handsFacingDegrees(f)), c = std::cos(a), s = std::sin(a);
   const float x = p.x - 0.5f, z = p.z - 0.5f;
   return vec3(0.5f + x * c + z * s, p.y, 0.5f - x * s + z * c);
 }
-vec3 tactileFromNorth(int f, vec3 p) {
-  const float a = glm::radians(tactileFacingDegrees(f)), c = std::cos(a), s = std::sin(a);
+vec3 handsFromNorth(int f, vec3 p) {
+  const float a = glm::radians(handsFacingDegrees(f)), c = std::cos(a), s = std::sin(a);
   const float x = p.x - 0.5f, z = p.z - 0.5f;
   return vec3(0.5f + x * c + z * s, p.y, 0.5f - x * s + z * c);
 }
 
-bool tactileDoorOpen(World& w, ivec3 at) {
+bool handsDoorOpen(World& w, ivec3 at) {
   const json* e = w.blockEntity(at.x, at.y, at.z);
   return e && e->is_object() && e->value("door", false);
 }
 
 namespace {
-bool inBox(vec3 n, const float b[6]) {   // (pixels, Tactile's boxes)
+bool inBox(vec3 n, const float b[6]) {   // (pixels, the hands-on boxes)
   auto within = [](float v, float lo, float hi) { return v >= lo / 16.f - 1e-4f && v <= hi / 16.f + 1e-4f; };
   return within(n.x, b[0], b[3]) && within(n.y, b[1], b[4]) && within(n.z, b[2], b[5]);
 }
@@ -51,7 +51,7 @@ const float SMOKER_DOOR_SHUT[6] = {3, 8, -1, 13, 12, 2}, SMOKER_DOOR_OPEN[6] = {
 const float BLAST_DOOR_SHUT[6] = {3, 14, 3, 13, 22, 7}, BLAST_DOOR_OPEN[6] = {-2, 14, -3, 5, 22, 6}, BLAST_MOLD[6] = {5, 10, -4, 11, 13, 2};
 }  // namespace
 
-bool tactileFurnaceUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held, bool all) {
+bool handsFurnaceUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held, bool all) {
   const ivec3 at = hit.block;
   const BlockInfo& bi = binfo(w.getBlock(at.x, at.y, at.z));
   const std::string kind = bi.furnace;
@@ -59,9 +59,9 @@ bool tactileFurnaceUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemSt
   json* e = containerEntity(w, at.x, at.y, at.z);
   if (!e) return false;
   if (!e->contains("items") || !(*e)["items"].is_array()) (*e)["items"] = json::array({nullptr, nullptr, nullptr});
-  while ((*e)["items"].size() < 9) (*e)["items"].push_back(nullptr);   // (Tactile's four spots: sim/worldsys.cpp tickFurnace)
-  const int f = tactileFacing(w, at);
-  const vec3 n = tactileNorthLocal(f, hit.point - vec3(at));
+  while ((*e)["items"].size() < 9) (*e)["items"].push_back(nullptr);   // (the hands-on furnace's spots: sim/worldsys.cpp tickFurnace)
+  const int f = handsFacing(w, at);
+  const vec3 n = handsNorthLocal(f, hit.point - vec3(at));
   const vec3 c = vec3(at) + vec3(0.5f);
   auto changed = [&] { w.blockEntityChanged(at.x, at.y, at.z); };
   // the door (the smoker's on its front, the blast furnace's hatch on top): used, it opens or shuts
@@ -123,7 +123,7 @@ bool tactileFurnaceUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemSt
   const bool upper = n.y >= (kind == "blast" ? 0.6f : 0.45f);
   if (!held.empty()) {
     if (upper) {
-      if (smeltResult(held.id, kind).empty()) {   // (Tactile says nothing; a word on why helps)
+      if (smeltResult(held.id, kind).empty()) {   // (hands-on says nothing; a word on why helps)
         if (fuelValue(held.id) <= 0) toast(lv, p, std::string("That won't cook in the ") + (kind == "blast" ? "blast furnace" : kind));
         return false;
       }
@@ -140,7 +140,7 @@ bool tactileFurnaceUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemSt
   return take(1);
 }
 
-bool tactileAnvilUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held) {
+bool handsAnvilUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held) {
   const ivec3 at = hit.block;
   if (reg().block(w.getBlock(at.x, at.y, at.z)).str("station") != "anvil") return false;
   const std::vector<ItemStack> v = anvilWorkItems(w, at);
@@ -153,7 +153,7 @@ bool tactileAnvilUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStac
   if (k >= 0 && anvilWorkTake(lv, p, w, at, k)) { if (json* e = w.blockEntity(at.x, at.y, at.z)) { (*e)["hits"] = 0; w.blockEntityChanged(at.x, at.y, at.z); } sfxAt(lv, "pop", c); }
   return true;
 }
-bool tactileAnvilStrike(Level& lv, Player& p, World& w, ivec3 at, double now) {
+bool handsAnvilStrike(Level& lv, Player& p, World& w, ivec3 at, double now) {
   const std::vector<ItemStack> v = anvilWorkItems(w, at);
   if (v[0].empty()) return false;
   json* e = w.blockEntity(at.x, at.y, at.z);
@@ -177,16 +177,16 @@ bool tactileAnvilStrike(Level& lv, Player& p, World& w, ivec3 at, double now) {
 namespace {
 float grindWear(const ItemStack& s) { return s.tag.is_object() ? s.tag.value("gw", 0.f) : 0.f; }   // (MeuleBlockEntity's wear: damage that won't grind out)
 }
-bool tactileGrindTarget(const ItemStack& s) {
+bool handsGrindTarget(const ItemStack& s) {
   if (s.empty()) return false;
   const ItemDef* d = reg().item(s.id);
   if (d && maxDurabilityOf(d) > 0 && s.d > (int)std::lround(grindWear(s))) return true;
   const json en = s.tag.is_object() && s.tag.contains("en") ? s.tag["en"] : json();
   return en.is_object() && !en.empty();
 }
-bool tactileGrind(Level& lv, Player& p, World& w, ivec3 at, ItemStack& held, double now, GrindSession& gs) {
+bool handsGrind(Level& lv, Player& p, World& w, ivec3 at, ItemStack& held, double now, GrindSession& gs) {
   if (reg().block(w.getBlock(at.x, at.y, at.z)).str("station") != "grindstone") return false;
-  if (!tactileGrindTarget(held)) { toast(lv, p, "Hold a worn or enchanted piece to the wheel"); return true; }
+  if (!handsGrindTarget(held)) { toast(lv, p, "Hold a worn or enchanted piece to the wheel"); return true; }
   const bool broke = gs.at != at || now - gs.last > 0.35;   // (a fresh session: MeuleBlockEntity's six ticks)
   const double el = broke ? 0.2 : std::clamp(now - gs.last, 0.05, 0.4);
   if (broke) { gs = GrindSession(); gs.at = at; }
@@ -233,11 +233,11 @@ bool tactileGrind(Level& lv, Player& p, World& w, ivec3 at, ItemStack& held, dou
   return true;
 }
 
-bool tactileBrewUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held, bool all) {
+bool handsBrewUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held, bool all) {
   const ivec3 at = hit.block;
   if (reg().block(w.getBlock(at.x, at.y, at.z)).key != "brewing_stand") return false;
   // (AlambicBlockEntity.zoneAt / bottleIndexAt: the rack left of 7.5, its spots split at 2 and 4; the dome over 0.16 up)
-  const vec3 n = tactileNorthLocal(tactileFacing(w, at), hit.point - vec3(at));
+  const vec3 n = handsNorthLocal(handsFacing(w, at), hit.point - vec3(at));
   const float lx = n.x * 16;
   // (its recipe book, lying in front: AlambicBookLayout's buttons turn its pages)
   if (lx >= 1 && lx <= 15 && n.y * 16 <= 2.2f && n.z * 16 <= 7.6f) {
@@ -271,11 +271,11 @@ bool tactileBrewUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack
   return true;
 }
 
-bool tactileJukeboxPlaying(World& w, ivec3 at) {
+bool handsJukeboxPlaying(World& w, ivec3 at) {
   const json* e = w.blockEntity(at.x, at.y, at.z);
   return e && e->is_object() && e->contains("disc") && !e->value("stopped", false);
 }
-bool tactileJukeboxUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held) {
+bool handsJukeboxUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held) {
   const ivec3 at = hit.block;
   if (!reg().block(w.getBlock(at.x, at.y, at.z)).has("jukebox")) return false;
   const vec3 c = vec3(at) + vec3(0.5f, 1.f, 0.5f);
@@ -289,7 +289,7 @@ bool tactileJukeboxUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemSt
     return true;
   }
   // (JukeboxBlock.isNeedleHit: on the top, the arm's strip at the left)
-  const vec3 n = tactileNorthLocal(tactileFacing(w, at), hit.point - vec3(at));
+  const vec3 n = handsNorthLocal(handsFacing(w, at), hit.point - vec3(at));
   const bool needle = n.y * 16 >= 15.9f && n.x * 16 >= 1 && n.x * 16 <= 7 && n.z * 16 >= 6 && n.z * 16 <= 10;
   if (needle) {
     json* e = w.blockEntity(at.x, at.y, at.z);
@@ -305,7 +305,7 @@ bool tactileJukeboxUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemSt
   return true;
 }
 
-void tactileGive(Level& lv, Player& p, ItemStack s) {
+void handsGive(Level& lv, Player& p, ItemStack s) {
   if (int left = giveItem(lv, p, s); left > 0) { s.n = left; dropItem(lv, p.realm, s, p.pos + vec3(0, 1, 0), true, 0.f); }
 }
 

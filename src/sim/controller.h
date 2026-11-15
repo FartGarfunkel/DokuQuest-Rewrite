@@ -9,7 +9,7 @@
 // drive remote players with the same code. Screens are asked for through the EventBus
 // ("screenOpen" [player, kind, opts]) and the UI calls back into the controller/inventory.
 #pragma once
-#include "sim/tactile.h"
+#include "sim/hands.h"
 #include "sim/gameplay.h"
 #include "sim/combat.h"
 
@@ -37,14 +37,14 @@ public:
   int placeMode = 0;             // 0 normal, 1 vertical slabs / upside-down stairs and trapdoors (R)
   float breakCd = 0, useRepeat = 0, bowPull = 0, landT = 0, shakeAmt = 0;
   bool useArmed = false, jumpWas = false, sneakWas = false, fightHold = false;
-  bool tactileStations = false;   // Options → Tactile Stations (set each frame by the client): the grindstone, smithing, loom, fletching and
-                                  // cartography tables worked in the world (Tactile Blocks): use lays what's held on the spot you point at (an empty
+  bool handsStations = false;   // Options → Hands-on Stations (set each frame by the client): the grindstone, smithing, loom, fletching and
+                                  // cartography tables worked in the world (the hands-on stations): use lays what's held on the spot you point at (an empty
                                   // hand takes it back), striking it does the work; sneak + use opens its scene
   ivec3 strikeAt{0, -9999, 0}; int strikes = 0; double strikeT = -10;   // the blows on a station's work so far
-  bool tactileStrike(const RayHit& hit);
-  double tactileHoldAt = -10;
-  GrindSession grind;           // a piece held to a grindstone's wheel (sim/tactile.h)
-  bool grindPose = false;       // your body holding it there (stationKind 6, workAt the wheel), let go a moment after   // when use was first pressed on a Tactile station (held a second: the whole stack goes in)   // true: a blow on a station's work (no digging)
+  bool handsStrike(const RayHit& hit);
+  double handsHoldAt = -10;
+  GrindSession grind;           // a piece held to a grindstone's wheel (sim/hands.h)
+  bool grindPose = false;       // your body holding it there (stationKind 6, workAt the wheel), let go a moment after   // when use was first pressed on a hands-on station (held a second: the whole stack goes in)   // true: a blow on a station's work (no digging)
   bool chestLids = false;   // Options → Leave Chests Open (set each frame by the client): use lifts a chest's lid and leaves it up
   float castWaitR = -1, castWaitL = -1; bool castHoldR = false, castHoldL = false;   // Skyrim's hands (interact)
   double t = 0;                  // this controller's clock (the original's g.time)

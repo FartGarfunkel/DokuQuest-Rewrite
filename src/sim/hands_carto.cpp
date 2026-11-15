@@ -1,5 +1,5 @@
-// sim/tactile_carto.cpp — the cartography desk worked as Tactile Blocks' cartographe (sim/tactile.h)
-#include "sim/tactile.h"
+// sim/hands_carto.cpp — the cartography desk worked as the hands-on cartography desk (sim/hands.h)
+#include "sim/hands.h"
 #include "sim/maps.h"
 #include "sim/content.h"
 #include "sim/player.h"
@@ -8,9 +8,9 @@
 
 namespace dq {
 
-int tactileCartoFacing(int f) { static const int CW[4] = {3, 0, 1, 2}; return CW[f & 3]; }   // (S->W, E->S, N->E, W->N)
+int handsCartoFacing(int f) { static const int CW[4] = {3, 0, 1, 2}; return CW[f & 3]; }   // (S->W, E->S, N->E, W->N)
 
-bool tactileCartographyUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held) {
+bool handsCartographyUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held) {
   const ivec3 at = hit.block;
   if (reg().block(w.getBlock(at.x, at.y, at.z)).str("station") != "cartography") return false;
   json* e = w.blockEntity(at.x, at.y, at.z, true);
@@ -23,7 +23,7 @@ bool tactileCartographyUse(Level& lv, Player& p, World& w, const RayHit& hit, It
   auto changed = [&] { w.blockEntityChanged(at.x, at.y, at.z); };
   auto slot = [&](int k) { return ItemStack::fromJson(items[k]); };
   // the zone (CartographeBlockEntity.zoneAt): in the desk's own north frame, sixteenths
-  const vec3 n = tactileNorthLocal(tactileCartoFacing(tactileFacing(w, at)), hit.point - vec3(at));
+  const vec3 n = handsNorthLocal(handsCartoFacing(handsFacing(w, at)), hit.point - vec3(at));
   const float lx = n.x * 16, lz = n.z * 16;
   enum { IN, BLANK, QUILL, INK, COMPASS, PILE } zone = lx < 7.5f ? (lz < 6.5f ? IN : lz < 9.5f ? QUILL : BLANK) : lz < 7.5f ? (lx < 12.f ? INK : COMPASS) : PILE;
   int ink = e->value("ink", 0), feather = e->value("feather", 0);
@@ -56,7 +56,7 @@ bool tactileCartographyUse(Level& lv, Player& p, World& w, const RayHit& hit, It
   auto takeBack = [&](int k) {
     ItemStack s = slot(k); if (s.empty()) return false;
     items[k] = nullptr;
-    tactileGive(lv, p, s);
+    handsGive(lv, p, s);
     changed(); sfxAt(lv, "map_paper", c); return true;
   };
   if (zone == QUILL) {   // (tryCraft: a blank on the board drawn into a map of here; a map copied onto the blank)

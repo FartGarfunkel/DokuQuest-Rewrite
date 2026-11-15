@@ -29,7 +29,7 @@ struct Settings {
   int particles = 2;             // 0 off, 1 few, 2 all
   std::string guiScale = "auto";
   bool toggleSneak = false, toggleSprint = false, screenShake = true, hurtTilt = true;
-  bool tactileStations = true;       // Tactile Stations: what's worked laid on the station in the world, struck to work it (no scene; sneak + use: the scene)
+  bool handsStations = true;       // Hands-on Stations: what's worked laid on the station in the world, struck to work it (no scene; sneak + use: the scene)
   bool leaveChestsOpen = true;        // Leave Chests Open: use lifts the lid (it stays up, what's inside seen), use again to open it, its lid to shut it
   int fpsLimit = 0;
   std::string padLayout = "xbox";

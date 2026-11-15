@@ -12,5 +12,5 @@ void registerDynLights();
 // render/station_work_layer.cpp (data/shapes.json "spin")
 const std::vector<glm::ivec4>& sawsNear();
 const std::vector<glm::ivec4>& grindsNear();
-const std::vector<glm::ivec4>& jukesNear();    // the jukeboxes about you (their Tactile arm and record)   // the grindstones about you (their Tactile wheel turned by render/station_work_layer.cpp)   // dyn_light.cpp: carried torches, glowing drops, lit TNT, fireballs light the world (called by registerEnvironmentLayers)
+const std::vector<glm::ivec4>& jukesNear();    // the jukeboxes about you (their hands-on arm and record)   // the grindstones about you (their hands-on wheel turned by render/station_work_layer.cpp)   // dyn_light.cpp: carried torches, glowing drops, lit TNT, fireballs light the world (called by registerEnvironmentLayers)
 } // namespace dq

@@ -49,7 +49,7 @@ std::string pairStationAt(World& w, ivec3 at) {
 }
 int pairSlotFor(const std::string& st, const ItemStack& s) {
   if (s.empty()) return -1;
-  if (st == "smithing") {   // (Tactile's three: the gear, a template, the material)
+  if (st == "smithing") {   // (the hands-on three: the gear, a template, the material)
     const ItemDef* d = reg().item(s.id);
     if (d && d->props.contains("template")) return 2;
     if (d && s.maxStack() <= 1 && (d->hasTool || d->props.contains("armor"))) return 0;
@@ -128,7 +128,7 @@ bool pairWorkTake(Level& lv, Player& p, World& w, ivec3 at, int slot) {
 StationResult pairResult(Level& lv, const std::string& st, const ItemStack& a, const ItemStack& b) {
   return st == "cartography" ? mapPairResult(lv, a, b, false) : stationResult(st, a, b);
 }
-// the smithing table with its template (Tactile's three slots): a trim template sets its pattern in armour in the
+// the smithing table with its template (the hands-on three slots): a trim template sets its pattern in armour in the
 // material's colour; the cinderite upgrade takes its template (diamond -> cinderite); copper -> bronze needs none
 StationResult smithResult(const ItemStack& a, const ItemStack& b, const ItemStack& t) {
   StationResult r;
@@ -172,7 +172,7 @@ bool smithWorkForge(Level& lv, Player& p, World& w, ivec3 at) {
   if (v.size() < 3) return false;
   const StationResult r = smithResult(v[0], v[1], v[2]);
   if (!r.ok) { toast(lv, p, !r.note.empty() ? r.note : "Nothing comes of those"); return false; }
-  if (!p.creative() && p.level < 1) { toast(lv, p, "It takes a level of experience to smith"); return false; }   // (Tactile: a level a piece)
+  if (!p.creative() && p.level < 1) { toast(lv, p, "It takes a level of experience to smith"); return false; }   // (hands-on: a level a piece)
   if (!p.creative()) spendLevels(p, 1);
   v[0] = r.out;                                         // (the result lies where the gear was: taken off by hand)
   if (!v[1].empty() && (v[1].n -= std::max(1, r.useB)) <= 0) v[1] = ItemStack();

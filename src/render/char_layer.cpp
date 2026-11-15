@@ -794,7 +794,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   // forearms from there filled the view; the hand view's arms stay there until those rests sit out on the work)
   const bool fpStation = fp && &p == s.player && cinematicActive() && !cinematicLeaning() && cinematicKind() == 13 && cinematicHandsWorld(fpHands);
   const bool settled = !fpStation || cinematicCrouch() > 0.5f;   // (first person: sat or crouched once the view has come down)
-  // holding a piece to a grindstone's wheel (sim/tactile.h): your own body's forearms there, seen from your eyes too
+  // holding a piece to a grindstone's wheel (sim/hands.h): your own body's forearms there, seen from your eyes too
   const bool fpGrind = fp && &p == s.player && p.stationKind == 6 && !cinematicActive();
   if ((!fp || fpStation || fpGrind) && p.stationKind >= 0 && !p.dead && !p.riding) {
     if (p.workTap != st.workTapSeen) { st.workTapSeen = p.workTap; st.workTapAt = f.time; }

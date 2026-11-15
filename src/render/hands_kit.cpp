@@ -1,5 +1,5 @@
-// render/tactile_kit.cpp — see tactile_kit.h
-#include "render/tactile_kit.h"
+// render/hands_kit.cpp — see hands_kit.h
+#include "render/hands_kit.h"
 #include "render/content_draw.h"
 #include "render/tile_box.h"
 #include "assets/item_models.h"
@@ -16,26 +16,26 @@
 namespace dq {
 std::string stackModelKey(const ItemStack& s);   // render/pile_layer.cpp
 
-TPose tactileBlockPose(const FrameCtx& f, ivec3 at, int facing) {
-  static const float D[4] = {180.f, -90.f, 0.f, 90.f};   // (Tactile's rotationFor: south, east, north, west)
+TPose handsBlockPose(const FrameCtx& f, ivec3 at, int facing) {
+  static const float D[4] = {180.f, -90.f, 0.f, 90.f};   // (the hands-on turn: south, east, north, west)
   TPose p; p.m = glm::translate(mat4(1), f.cam.rel(glm::dvec3(at)));
   p.t(0.5f, 0.5f, 0.5f).ry(D[facing & 3]).t(-0.5f, -0.5f, -0.5f);
   return p;
 }
 
-void tactileItem(const ItemStack& s, const mat4& pose, VoxelLight L, vec4 tint) {
+void handsItem(const ItemStack& s, const mat4& pose, VoxelLight L, vec4 tint) {
   if (s.empty()) return;
   const VoxelModel& im = itemModel(stackModelKey(s));
   if (!im.ready()) return;
   mat4 m = pose;
-  // Minecraft's FIXED display: a flat item turned to face back the way it's drawn (item/generated "fixed": y 180, scale 1);
+  // as an item frame shows it: a flat item turned to face back the way it's drawn (item/generated "fixed": y 180, scale 1);
   // a block item half a block (block/block "fixed": scale 0.5)
   if (im.kind == VoxelModel::Block) m = glm::scale(m, vec3(0.5f));
   else m = glm::rotate(m, glm::radians(180.f), vec3(0, 1, 0));
   voxelRenderer().draw(im.gl, m * im.matrix(), L, tint, itemGlints(s) ? 1.f : 0.f);
 }
 
-void tactilePartDraw(App& app, ContentDraw& cd, const PackModel& M, const mat4& pose, vec2 light) {
+void handsPartDraw(App& app, ContentDraw& cd, const PackModel& M, const mat4& pose, vec2 light) {
   for (const PackModelBox& b : M.boxes) {
     const vec3 a = b.from, z = b.to;
     auto rot = [&](vec3 p) {
@@ -70,7 +70,7 @@ void tactilePartDraw(App& app, ContentDraw& cd, const PackModel& M, const mat4& 
   }
 }
 
-void tactileText(ContentDraw& cd, const TPose& pose, float cx, float y, float cz, const std::string& text, float scale, float maxW, vec4 color, vec2 light) {
+void handsText(ContentDraw& cd, const TPose& pose, float cx, float y, float cz, const std::string& text, float scale, float maxW, vec4 color, vec2 light) {
   ImFont* font = ImGui::GetIO().Fonts->Fonts.empty() ? nullptr : ImGui::GetIO().Fonts->Fonts[0];
   if (!font || text.empty()) return;
   const GLuint atlas = (GLuint)(intptr_t)ImGui::GetIO().Fonts->TexID;
@@ -103,7 +103,7 @@ void tactileText(ContentDraw& cd, const TPose& pose, float cx, float y, float cz
   }
 }
 
-VoxelLight tactileLight(World& w, ivec3 at) {
+VoxelLight handsLight(World& w, ivec3 at) {
   u8 best = w.getLight(at.x, at.y, at.z);
   static const int D[6][3] = {{0, 1, 0}, {1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, -1, 0}};
   int s = best >> 4, b = best & 15;
@@ -111,7 +111,7 @@ VoxelLight tactileLight(World& w, ivec3 at) {
   return VoxelLight{s / 15.f, b / 15.f};
 }
 
-float tactileEase(ivec3 at, int part, bool open, double dt) {
+float handsEase(ivec3 at, int part, bool open, double dt) {
   static std::map<std::tuple<int, int, int, int>, float> v;
   float& a = v[{at.x, at.y, at.z, part}];
   const float goal = open ? 1.f : 0.f, step = (float)dt * 3.f;

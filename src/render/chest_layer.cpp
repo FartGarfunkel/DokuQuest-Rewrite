@@ -18,15 +18,15 @@
 #include "ui/cinematic.h"
 #include <cstring>
 #include "assets/local_models.h"
-#include "sim/tactile.h"
-#include "render/tactile_kit.h"
+#include "sim/hands.h"
+#include "render/hands_kit.h"
 #include "render/content_draw.h"
 #include "sim/physics.h"
 #include <map>
 #include <set>
 
 namespace dq {
-std::vector<std::string> itemTooltipLines(const ItemStack& s);   // render/tactile_chests.cpp
+std::vector<std::string> itemTooltipLines(const ItemStack& s);   // render/hands_chests.cpp
 GLuint mapPaperTexture();   // render/map_render.h
 
 std::string stackModelKey(const ItemStack& s);   // render/pile_layer.cpp
@@ -192,7 +192,7 @@ bool isChest(BlockId id) {
   return b.render == Render::Cube && (ends("chest") || (ends("barrel") && b.has("container")));
 }
 
-struct DoorThing { ivec3 at; mat4 dm; VoxelLight L; float e; };   // a cupboard door's inside: its note and sort button (Tactile's chest lid's)
+struct DoorThing { ivec3 at; mat4 dm; VoxelLight L; float e; };   // a cupboard door's inside: its note and sort button (the hands-on chest lid's)
 struct Open { BlockId id = 0; int facing = 0, lidRow = 20; float t = 0, linger = 0; bool settling = false, mine = false, listed = false; };   // listed: left out of the mesh (drawn here)
 
 class ChestLayer : public RenderLayer {
@@ -211,10 +211,10 @@ public:
     const float fdt = (float)std::min(dt, 0.1);
     // what's open: yours (and each one's other half), the others' at work at a chest
     std::set<std::tuple<int, int, int>> want;
-    const bool tactile = s.app.settings.tactileStations;
+    const bool handsOn = s.app.settings.handsStations;
     auto add = [&](ivec3 p) {
       if (!isChest(w.getBlock(p.x, p.y, p.z))) return;
-      if (tactile && stationModel(w.getBlock(p.x, p.y, p.z)) && tactileChest(w, p)) return;   // (drawn as Tactile's: render/tactile_chests.cpp)
+      if (handsOn && stationModel(w.getBlock(p.x, p.y, p.z)) && handsChest(w, p)) return;   // (drawn hands-on: render/hands_chests.cpp)
       ivec3 hs[2]; const int n = chestHalves(w, p, hs);
       if (!n) { want.insert({p.x, p.y, p.z}); return; }
       for (int i = 0; i < n; i++) want.insert({hs[i].x, hs[i].y, hs[i].z});
@@ -358,7 +358,7 @@ public:
         const vec3 hinge(2 / 16.f, 0, 15.2f / 16.f);
         mat4 dm = glm::translate(m, hinge); dm = glm::rotate(dm, -1.85f * e, vec3(0, 1, 0)); dm = glm::translate(dm, -hinge);
         VR.draw(cab.lid.gl, dm * cab.lid.matrix(), L);
-        if (s.app.settings.tactileStations && e > 0.6f) doorThings.push_back({pos, dm, L, e});   // (the note and sort button on its inside: below)
+        if (s.app.settings.handsStations && e > 0.6f) doorThings.push_back({pos, dm, L, e});   // (the note and sort button on its inside: below)
         if (o.settling || o.t < 0.2f) continue;
         drawInside(s, w, VR, o, pos, glm::translate(mat4(1), rel), L, (float)f.time);
         continue;
@@ -384,10 +384,10 @@ public:
       VR.draw(cm.lid.gl, lm * cm.lid.matrix(), L);
       // what's inside, lying in its rows (seen once the lid is up)
       if (o.settling || o.t < 0.2f) continue;
-      if (!(s.app.settings.tactileStations && tactileBarrel(w, pos))) drawInside(s, w, VR, o, pos, m, L, (float)f.time);   // (a barrel's tray: render/tactile_chests.cpp)
+      if (!(s.app.settings.handsStations && handsBarrel(w, pos))) drawInside(s, w, VR, o, pos, m, L, (float)f.time);   // (a barrel's tray: render/hands_chests.cpp)
     }
     if (begun) VR.end();
-    // a cupboard door's inside (Tactile's chest lid, on the door): our parchment with the name of what you look at, the sort button
+    // a cupboard door's inside (the hands-on chest lid, on the door): our parchment with the name of what you look at, the sort button
     if (!doorThings.empty()) {
       ContentDraw& cd = contentDraw();
       if (cd.begin(f, f.cam.viewProj)) {
@@ -396,7 +396,7 @@ public:
         for (const DoorThing& d : doorThings) {
           const vec2 light(d.L.sky, std::max(d.L.block, 0.3f));
           { TPose p; p.m = d.dm; p.t(0.42f, 0.45f, 0.899f).s(0.42f, 0.5f, 1); cd.picture(mapPaperTexture(), p.m, vec4(0, 0, 1, 1), vec4(1), light, true); }
-          if (const PackModel* b = tactilePart("coffre_buttontri")) { TPose p; p.m = d.dm; p.t(12.f / 16, 9.f / 16, 0.9f).rx(-90).t(-12.5f / 16, -10.25f / 16, -8.65f / 16); tactilePartDraw(s.app, cd, *b, p.m, light); }
+          if (const PackModel* b = handsPart("chest_button_sort")) { TPose p; p.m = d.dm; p.t(12.f / 16, 9.f / 16, 0.9f).rx(-90).t(-12.5f / 16, -10.25f / 16, -8.65f / 16); handsPartDraw(s.app, cd, *b, p.m, light); }
           if (s.target.hit && s.target.block == d.at) {
             const int slot = chestSlotAtRay(w, d.at, eye, dir);
             const std::vector<ItemStack> v = chestHalfItems(*s.level, s.player, w, d.at);
@@ -404,9 +404,9 @@ public:
               const std::vector<std::string> lines = itemTooltipLines(v[slot]);
               TPose tp; tp.m = d.dm; tp.t(0, 0, 0.897f).rx(-90);
               const vec4 ink(0.15f, 0.1f, 0.05f, 1);
-              tactileText(cd, tp, 6.7f, 0.002f, 10.6f, lines[0], 0.004f, 6.f, ink, light);
-              if (lines.size() > 1) tactileText(cd, tp, 6.7f, 0.002f, 8.2f, lines[1], 0.0026f, 6.f, ink, light);
-              tactileText(cd, tp, 6.7f, 0.002f, 4.6f, "\xC3\x97" + std::to_string(v[slot].n), 0.0032f, 6.f, ink, light);
+              handsText(cd, tp, 6.7f, 0.002f, 10.6f, lines[0], 0.004f, 6.f, ink, light);
+              if (lines.size() > 1) handsText(cd, tp, 6.7f, 0.002f, 8.2f, lines[1], 0.0026f, 6.f, ink, light);
+              handsText(cd, tp, 6.7f, 0.002f, 4.6f, "\xC3\x97" + std::to_string(v[slot].n), 0.0032f, 6.f, ink, light);
             }
           }
         }

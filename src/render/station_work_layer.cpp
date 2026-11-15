@@ -5,8 +5,8 @@
 #include "assets/local_models.h"
 #include "render/item_layers.h"
 #include "render/env_layers.h"
-#include "render/tactile_kit.h"
-#include "sim/tactile.h"
+#include "render/hands_kit.h"
+#include "sim/hands.h"
 #include "assets/tileset.h"
 #include "render/be_scan.h"
 #include "client/app.h"
@@ -69,7 +69,7 @@ class StationWorkLayer : public RenderLayer {
   struct Ink { mat4 M; vec2 light; };
   std::vector<Ink> inks;
   struct Wheel { int seen = -1; double lastT = -10; float speed = 0, angle = 0; };
-  std::map<std::tuple<int, int, int>, Wheel> wheels;   // Tactile's grindstone wheels, turning
+  std::map<std::tuple<int, int, int>, Wheel> wheels;   // the hands-on grindstone wheels, turning
   double lastDt = 0.016;
   void update(GameSession&, double dt) override { lastDt = dt; }
 public:
@@ -266,7 +266,7 @@ public:
         if (madeYet && iv.mode > 0) lay(iv.made, inscribeRisePos(iv, iv.mode == 1 ? lie[0] : lie[2]), yaw + 0.3f, SZ[1] * (1 - 0.5f * (float)((iv.t - INSCRIBE_CONTACT) / (INSCRIBE_LENGTH - INSCRIBE_CONTACT))), VoxelLight{L.sky, std::max(L.block, 0.5f)});
         return;
       }
-      if (type == "jukebox" && stationModel(w.getBlock(x, y, z)) && s.app.settings.tactileStations) return;   // (Tactile's: below)
+      if (type == "jukebox" && stationModel(w.getBlock(x, y, z)) && s.app.settings.handsStations) return;   // (hands-on's: below)
       if (type == "jukebox") {   // the record playing: standing in the slot, half out, turning slowly
         if (jukeOn && jv.at == ivec3(x, y, z)) return;
         const vec3 rel = f.cam.rel(glm::dvec3(x, y, z));
@@ -275,12 +275,12 @@ public:
         record(e["disc"].get<std::string>(), vec3(x, y, z) + vec3(0.5f, 1.06f, 0.5f), 0, -t * 1.6f, 0.5f, VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f});
         return;
       }
-      // Tactile's smithing table (TableDeForgeBlockEntityRenderer): the gear tilted on the anvil plate, the material on the
+      // the hands-on smithing table: the gear tilted on the anvil plate, the material on the
       // left block, the template on the right, what it'll make standing at the back over the tongs
-      if (type == "smithwork" && stationModel(w.getBlock(x, y, z)) && s.app.settings.tactileStations && !(pairOn && pv.at == ivec3(x, y, z))) {
+      if (type == "smithwork" && stationModel(w.getBlock(x, y, z)) && s.app.settings.handsStations && !(pairOn && pv.at == ivec3(x, y, z))) {
         const ivec3 at(x, y, z);
-        const VoxelLight L = tactileLight(w, at);
-        const TPose base = tactileBlockPose(f, at, tactileFacing(w, at));
+        const VoxelLight L = handsLight(w, at);
+        const TPose base = handsBlockPose(f, at, handsFacing(w, at));
         const std::vector<ItemStack> v = pairWorkItems(w, at);
         begin();
         auto item = [&](const ItemStack& st, float px, float py, float pz, float pitch, float yaw, float sc) {
@@ -290,7 +290,7 @@ public:
           if (pitch != 0) p.rx(pitch);
           p.s(sc);
           ItemStack one = st; one.n = 1;
-          tactileItem(one, p.m, L);
+          handsItem(one, p.m, L);
         };
         item(v[0], 8, 13, 5, 67.5f, 0, 0.7f);
         if (v.size() > 2) item(v[2], 14, 15.3f, 3, 67.5f, 0, 0.3f);
@@ -299,13 +299,13 @@ public:
         if (r.ok && !r.out.empty()) item(r.out, 8, 22, 14.2f, -15.f, 180.f, 0.65f);
         return;
       }
-      // Tactile's cartography desk (CartographeBlockEntityRenderer): the maps on its board and the pile on its right, the
+      // the hands-on cartography desk: the maps on its board and the pile on its right, the
       // ink in its pot, the quill in its holder; turned by the facing's clockwise (its model faces west)
-      if (type == "mapwork" && stationModel(w.getBlock(x, y, z)) && s.app.settings.tactileStations && !(pairOn && pv.at == ivec3(x, y, z))) {
+      if (type == "mapwork" && stationModel(w.getBlock(x, y, z)) && s.app.settings.handsStations && !(pairOn && pv.at == ivec3(x, y, z))) {
         const ivec3 at(x, y, z);
-        const int fc = tactileCartoFacing(tactileFacing(w, at));
-        const VoxelLight L = tactileLight(w, at);
-        const TPose base = tactileBlockPose(f, at, fc);
+        const int fc = handsCartoFacing(handsFacing(w, at));
+        const VoxelLight L = handsLight(w, at);
+        const TPose base = handsBlockPose(f, at, fc);
         const json& it = e.contains("items") && e["items"].is_array() ? e["items"] : json::array();
         static const float POS[3][4] = {{3.95f, 14.9f, 3.45f, 22.5f}, {3.95f, 14.9f, 12.45f, 22.5f}, {10.95f, 16.2f, 10.95f, 0.f}};
         for (int k = 0; k < 3 && k < (int)it.size(); k++) {
@@ -314,13 +314,13 @@ public:
           const PaperMap* pm = isMapStack(st) && !stackMapId(st).empty() ? mapStore(*s.level).get(stackMapId(st)) : nullptr;
           const int n = isMapStack(st) ? 1 : std::min(st.n, 16);
           for (int i = 0; i < n; i++) {   // (a sheet a tenth of a pixel over the last)
-            TPose p = base; p.t(POS[k][0] / 16, (POS[k][1] + i * 0.1f) / 16, POS[k][2] / 16).rz(POS[k][3]).rx(90).s(1, -1, 1);   // (Tactile's positions are the sheets' middles: it draws them from -64 to 64)
+            TPose p = base; p.t(POS[k][0] / 16, (POS[k][1] + i * 0.1f) / 16, POS[k][2] / 16).rz(POS[k][3]).rx(90).s(1, -1, 1);   // (the hands-on positions are the sheets' middles: it draws them from -64 to 64)
             sheets.push_back({pm, p.m, 0.3125f / 1.12f, vec2(L.sky, L.block)});
           }
         }
         const int ink = e.value("ink", 0), feather = e.value("feather", 0);
         if (ink > 0) { TPose p = base; p.t(0, 1.0125f, 0).s(1, ink / 3.f, 1).t(0, -1.0125f, 0); inks.push_back({p.m, vec2(L.sky, L.block)}); }
-        if (feather > 0) { begin(); TPose p = base; p.t(0.371875f, 1.08125f, 0.515625f).ry(-15).rx(25).rz(-45).s(0.15f); tactileItem(ItemStack("feather", 1), p.m, L); }
+        if (feather > 0) { begin(); TPose p = base; p.t(0.371875f, 1.08125f, 0.515625f).ry(-15).rx(25).rz(-45).s(0.15f); handsItem(ItemStack("feather", 1), p.m, L); }
         return;
       }
       if (!cutwork && type != "grindwork" && type != "smithwork" && type != "loomwork" && type != "fletchwork" && type != "mapwork" && type != "forgework") return;
@@ -336,8 +336,8 @@ public:
       const std::string st = pairStationAt(w, at);
       const std::vector<ItemStack> v = pairWorkItems(w, at);
       for (int k = 0; k < 2; k++) heap(v[k], pairLieOnModel(w, at, k), yaw + (k ? -0.35f : 0.35f) * (st == "cartography" && k == 0 ? 0.f : 1.f), pairLieSize(st, k), L, right);
-      // Tactile Stations: what it'll make, turning over the work, faint (Tactile Blocks' preview) — strike it to make it
-      if (s.app.settings.tactileStations && s.level && (!v[0].empty() || !v[1].empty()) && glm::distance(vec3(at) + vec3(0.5f), s.player->pos) < 8.f) {
+      // Hands-on Stations: what it'll make, turning over the work, faint (the hands-on stations' preview) — strike it to make it
+      if (s.app.settings.handsStations && s.level && (!v[0].empty() || !v[1].empty()) && glm::distance(vec3(at) + vec3(0.5f), s.player->pos) < 8.f) {
         const StationResult r = pairWorkResult(*s.level, w, at);
         if (r.ok && !r.out.empty()) if (const VoxelModel& im = itemModel(stackModelKey(r.out)); im.ready()) {
           begin();
@@ -426,9 +426,9 @@ public:
       if (cd.begin(f, f.cam.viewProj)) { for (auto& sh : sheets) drawMapSheet(cd, *s.level, sh.map, s.player, sh.M, sh.S, sh.light); cd.end(); }
       sheets.clear();
     }
-    // Tactile's grindstone wheel (MeuleBlockEntityRenderer: about its axle 9/16 up, turning while it's ground on — the record's
+    // the hands-on grindstone wheel (about its axle 9/16 up, turning while it's ground on — the record's
     // "grind" count changing — up to 22 degrees a tick, easing up and down by 3)
-    if (!grindsNear().empty()) if (const PackModel* wheel = tactilePart("meule_wheel")) {
+    if (!grindsNear().empty()) if (const PackModel* wheel = handsPart("grindstone_wheel")) {
       ContentDraw& cd = contentDraw();
       if (cd.begin(f, f.cam.viewProj)) {
         for (const glm::ivec4& q : grindsNear()) {
@@ -442,18 +442,18 @@ public:
           const float goal = active ? 440.f : 0.f, step = 1200.f * (float)lastDt;   // (22 deg a tick = 440 a second; 3 a tick a tick = 1200 a second a second)
           wh.speed = wh.speed < goal ? std::min(goal, wh.speed + step) : std::max(goal, wh.speed - step);
           wh.angle = std::fmod(wh.angle + wh.speed * (float)lastDt, 360.f);
-          const VoxelLight L = tactileLight(w, at);
-          TPose p = tactileBlockPose(f, at, tactileFacing(w, at));
+          const VoxelLight L = handsLight(w, at);
+          TPose p = handsBlockPose(f, at, handsFacing(w, at));
           p.t(0.5f, 0.5625f, 0.5f).rx(wh.angle).t(-0.5f, -0.5625f, -0.5f);
-          tactilePartDraw(s.app, cd, *wheel, p.m, vec2(L.sky, L.block));
+          handsPartDraw(s.app, cd, *wheel, p.m, vec2(L.sky, L.block));
         }
         cd.end();
       }
     }
-    // Tactile's jukebox (JukeboxBlockEntityRenderer): its needle arm swung onto the record while it plays, the record flat on
+    // the hands-on jukebox: its needle arm swung onto the record while it plays, the record flat on
     // its platter, turning
-    if (!jukesNear().empty() && s.app.settings.tactileStations) {
-      const PackModel* arm = tactilePart("jukebox_arm");
+    if (!jukesNear().empty() && s.app.settings.handsStations) {
+      const PackModel* arm = handsPart("jukebox_arm");
       bool vr = false;
       for (const glm::ivec4& q : jukesNear()) {   // (the records: voxels)
         const ivec3 at(q.x, q.y, q.z);
@@ -462,10 +462,10 @@ public:
         if (disc.empty()) continue;
         if (!vr) { VR.begin(f, f.cam.viewProj); vr = true; }
         Wheel& sp = wheels[{at.x, at.y + 4096, at.z}];
-        if (tactileJukeboxPlaying(w, at)) sp.angle = std::fmod(sp.angle + 120.f * (float)lastDt, 360.f);
-        TPose p = tactileBlockPose(f, at, tactileFacing(w, at));
+        if (handsJukeboxPlaying(w, at)) sp.angle = std::fmod(sp.angle + 120.f * (float)lastDt, 360.f);
+        TPose p = handsBlockPose(f, at, handsFacing(w, at));
         p.t(0.5f, 1.01875f, 0.5f).ry(sp.angle).rx(90).s(0.55f, 0.8642857f, 0.055f);
-        tactileItem(ItemStack(disc, 1), p.m, tactileLight(w, at));
+        handsItem(ItemStack(disc, 1), p.m, handsLight(w, at));
       }
       if (vr) VR.end();
       ContentDraw& cd = contentDraw();
@@ -473,18 +473,18 @@ public:
         for (const glm::ivec4& q : jukesNear()) {
           const ivec3 at(q.x, q.y, q.z);
           if (!stationModel(w.getBlock(at.x, at.y, at.z))) continue;
-          const float a = tactileEase(at, 3, tactileJukeboxPlaying(w, at), lastDt);
-          const VoxelLight L = tactileLight(w, at);
-          TPose p = tactileBlockPose(f, at, tactileFacing(w, at));
+          const float a = handsEase(at, 3, handsJukeboxPlaying(w, at), lastDt);
+          const VoxelLight L = handsLight(w, at);
+          TPose p = handsBlockPose(f, at, handsFacing(w, at));
           p.t(0.1203125f, 1.03125f, 0.5f).rz(-22.5f * a).t(-0.1203125f, -1.03125f, -0.5f);
-          tactilePartDraw(s.app, cd, *arm, p.m, vec2(L.sky, L.block));
+          handsPartDraw(s.app, cd, *arm, p.m, vec2(L.sky, L.block));
         }
         cd.end();
       }
     }
     if (!inks.empty()) {
       ContentDraw& cd = contentDraw();
-      if (const PackModel* fill = tactilePart("encrier_fill")) if (cd.begin(f, f.cam.viewProj)) { for (auto& k : inks) tactilePartDraw(s.app, cd, *fill, k.M, k.light); cd.end(); }
+      if (const PackModel* fill = handsPart("inkwell_fill")) if (cd.begin(f, f.cam.viewProj)) { for (auto& k : inks) handsPartDraw(s.app, cd, *fill, k.M, k.light); cd.end(); }
       inks.clear();
     }
   }

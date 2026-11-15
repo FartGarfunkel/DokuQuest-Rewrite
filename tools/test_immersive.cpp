@@ -13,7 +13,7 @@
 #include "sim/knapping.h"
 #include "sim/crafting.h"
 #include "sim/worldsys.h"
-#include "sim/tactile.h"
+#include "sim/hands.h"
 #include "sim/brewing.h"
 #include "sim/chest_work.h"
 #include "sim/stations.h"
@@ -237,7 +237,7 @@ int main(int argc, char** argv) {
     check(smeltResult("beef", "smoker") == "cooked_beef", "beef smokes into cooked beef (what the smoker shows it turning into)");
   }
 
-  printf("[a Tactile furnace cooks on four spots at once]\n");
+  printf("[a hands-on furnace cooks on four spots at once]\n");
   {
     json e = {{"type", "furnace"}, {"items", json::array({ItemStack("beef", 2).toJson(), ItemStack("coal", 4).toJson(), nullptr,
                                                           ItemStack("porkchop", 1).toJson(), nullptr, nullptr, nullptr, nullptr, nullptr})}};
@@ -251,7 +251,7 @@ int main(int argc, char** argv) {
     check(c["items"].size() == 3 && ItemStack::fromJson(c["items"][2]).id == "cooked_beef", "a classic furnace keeps its three slots and cooks as ever");
   }
 
-  printf("[Tactile's grindstone: a worn piece held to the wheel]\n");
+  printf("[the hands-on grindstone: a worn piece held to the wheel]\n");
   {
     World& w = im.lv->world();
     const ivec3 at(6, im.Y + 1, 10);
@@ -261,7 +261,7 @@ int main(int argc, char** argv) {
     im.P->level = 5; im.P->xp = 0; im.P->mode = "survival";
     ItemStack sword("iron_sword", 1); sword.d = 200;
     GrindSession gs; double t = 100;
-    for (int i = 0; i < 15; i++) { tactileGrind(*im.lv, *im.P, w, at, sword, t, gs); t += 0.22; }
+    for (int i = 0; i < 15; i++) { handsGrind(*im.lv, *im.P, w, at, sword, t, gs); t += 0.22; }
     check(sword.d < 200 && sword.d > 0, "ground back a little in three seconds (" + std::to_string(sword.d) + " left of 200)");
     check(im.P->level < 5, "paid for in experience");
     check(sword.tag.is_object() && sword.tag.value("gw", 0.f) > 0, "a little wear ground in for good");
@@ -269,11 +269,11 @@ int main(int argc, char** argv) {
     check(e && e->value("grind", 0) >= 15, "the wheel's turning shows to everyone");
     ItemStack book("enchanted_book", 1); book.tag = {{"en", {{"sharp", 2}}}};
     gs = GrindSession(); t += 5;
-    for (int i = 0; i < 50; i++) { tactileGrind(*im.lv, *im.P, w, at, book, t, gs); t += 0.22; }
+    for (int i = 0; i < 50; i++) { handsGrind(*im.lv, *im.P, w, at, book, t, gs); t += 0.22; }
     check(book.id == "book", "an enchanted book held there ten seconds comes away plain");
   }
 
-  printf("[Tactile's chest: its lid's buttons, standing up out of the block]\n");
+  printf("[the hands-on chest: its lid's buttons, standing up out of the block]\n");
   {
     World& w = im.lv->world();
     const ivec3 at(4, im.Y + 1, 12);
@@ -281,73 +281,73 @@ int main(int argc, char** argv) {
     json* e = containerEntity(w, at.x, at.y, at.z);
     for (int i = 0; i < 20; i++) (*e)["items"][i] = ItemStack(i < 15 ? "apple" : "bread", 1).toJson();
     setChestLidOpen(w, at, true);
-    const int f = tactileFacing(w, at);
+    const int f = handsFacing(w, at);
     auto aimAt = [&](vec3 north) {   // (from in front of it, at eye height, toward a point given in its own north frame)
-      const vec3 eye = vec3(at) + tactileFromNorth(f, vec3(0.5f, 1.62f, -0.5f)), tgt = vec3(at) + tactileFromNorth(f, north);
+      const vec3 eye = vec3(at) + handsFromNorth(f, vec3(0.5f, 1.62f, -0.5f)), tgt = vec3(at) + handsFromNorth(f, north);
       return std::make_pair(eye, glm::normalize(tgt - eye));
     };
     auto [eye, dir] = aimAt(vec3(12.5f / 16, 17.5f / 16, 12.f / 16));
-    check(tactileChestAim(w, at, eye, dir).what == TactileChestAim::Swap, "aimed at the upper button: it's the page button");
-    check(tactileChestLidRay(w, at, eye, dir) > 0, "it stands out of the block and can be aimed at");
+    check(handsChestAim(w, at, eye, dir).what == HandsChestAim::Swap, "aimed at the upper button: it's the page button");
+    check(handsChestLidRay(w, at, eye, dir) > 0, "it stands out of the block and can be aimed at");
     ItemStack none;
-    tactileChestUse(*im.lv, *im.P, w, at, eye, dir, none, false, false);
+    handsChestUse(*im.lv, *im.P, w, at, eye, dir, none, false, false);
     check(w.blockEntity(at.x, at.y, at.z)->value("page", 0) == 1, "pressed, the other page is out");
     auto [e2, d2] = aimAt(vec3(12.5f / 16, 13.3f / 16, 12.f / 16));
-    check(tactileChestAim(w, at, e2, d2).what == TactileChestAim::Sort, "the lower button sorts");
+    check(handsChestAim(w, at, e2, d2).what == HandsChestAim::Sort, "the lower button sorts");
     auto [e3, d3] = aimAt(vec3(4.f / 16, 14.f / 16, 13.f / 16));
-    check(tactileChestAim(w, at, e3, d3).what == TactileChestAim::Lid, "the rest of the lid shuts it");
+    check(handsChestAim(w, at, e3, d3).what == HandsChestAim::Lid, "the rest of the lid shuts it");
     std::vector<std::pair<vec3, vec3>> ol;
-    check(tactileChestOutline(w, at, ol) && ol.size() == 2 && ol[1].second.y > at.y + 1.3f, "open, its outline takes in the lid standing up over it");
+    check(handsChestOutline(w, at, ol) && ol.size() == 2 && ol[1].second.y > at.y + 1.3f, "open, its outline takes in the lid standing up over it");
   }
 
-  printf("[a large chest: each half worked as Tactile's chest, its own 27]\n");
+  printf("[a large chest: each half worked as the hands-on chest, its own 27]\n");
   {
     World& w = im.lv->world();
     ivec3 A(4, im.Y + 1, 18), B(5, im.Y + 1, 18), hs[2];
     int n = 0;
     for (u8 m = 0; m < 4 && n != 2; m++) { w.setBlock(A.x, A.y, A.z, reg().blockId("chest"), m); w.setBlock(B.x, B.y, B.z, reg().blockId("chest"), m); n = chestHalves(w, A, hs); }
     check(n == 2, "two chests side by side make a large one");
-    check(tactileChest(w, A) && tactileChest(w, B), "both halves are worked as Tactile's chest");
-    const int f = tactileFacing(w, A);
-    const ChestLayout LA = tactileChestLayout(w, A), LB = tactileChestLayout(w, B);
+    check(handsChest(w, A) && handsChest(w, B), "both halves are worked as the hands-on chest");
+    const int f = handsFacing(w, A);
+    const ChestLayout LA = handsChestLayout(w, A), LB = handsChestLayout(w, B);
     const ivec3 left = LA.sheet ? A : B, right = LA.sheet ? B : A;
     check(LA.slots == 54 && LA.key == LB.key && LA.sheet != LB.sheet && LA.buttons != LB.buttons && LA.off != LB.off, "one chest of 54: one sheet (left lid), one pair of buttons (right lid), a page across both trays");
     auto aimAt = [&](ivec3 at, vec3 north) {
-      const vec3 eye = vec3(at) + tactileFromNorth(f, vec3(0.5f, 1.62f, -0.5f)), tgt = vec3(at) + tactileFromNorth(f, north);
+      const vec3 eye = vec3(at) + handsFromNorth(f, vec3(0.5f, 1.62f, -0.5f)), tgt = vec3(at) + handsFromNorth(f, north);
       return std::make_pair(eye, glm::normalize(tgt - eye));
     };
     ItemStack none;
     auto [e0, d0] = aimAt(left, vec3(0.5f, 0.5f, 0.3f));
-    tactileChestUse(*im.lv, *im.P, w, left, e0, d0, none, false, false);
+    handsChestUse(*im.lv, *im.P, w, left, e0, d0, none, false, false);
     check(chestLidOpen(w, A) && chestLidOpen(w, B), "opening one half opens both lids");
     check(w.blockEntity(A.x, A.y, A.z) && w.blockEntity(B.x, B.y, B.z), "both halves have their record (both lids are drawn)");
     const vec3 btn(12.5f / 16, 17.5f / 16, 12.f / 16);
-    { auto [eb, db] = aimAt(left, btn); check(tactileChestAim(w, left, eb, db).what != TactileChestAim::Swap, "no buttons on the left lid"); }
+    { auto [eb, db] = aimAt(left, btn); check(handsChestAim(w, left, eb, db).what != HandsChestAim::Swap, "no buttons on the left lid"); }
     auto [eb, db] = aimAt(right, btn);
-    check(tactileChestAim(w, right, eb, db).what == TactileChestAim::Swap, "the right lid has the page button");
+    check(handsChestAim(w, right, eb, db).what == HandsChestAim::Swap, "the right lid has the page button");
     // sixteen different things put in: the first fifteen fill the left tray, the sixteenth lies first on the right one
     static const char* K[16] = {"apple", "bread", "stick", "dirt", "cobblestone", "torch", "coal", "iron_ingot", "gold_ingot", "diamond", "feather", "string", "bone", "arrow", "flint", "wheat"};
     auto [e1, d1] = aimAt(right, vec3(2.4f / 16, 9.5f / 16, 9.5f / 16));
-    check(tactileChestAim(w, right, e1, d1).what == TactileChestAim::Tray, "aimed into the right half's tray");
-    for (const char* k : K) { ItemStack h(k, 1); tactileChestUse(*im.lv, *im.P, w, right, e1, d1, h, false, false); }
+    check(handsChestAim(w, right, e1, d1).what == HandsChestAim::Tray, "aimed into the right half's tray");
+    for (const char* k : K) { ItemStack h(k, 1); handsChestUse(*im.lv, *im.P, w, right, e1, d1, h, false, false); }
     const std::vector<ItemStack> all = chestItems(*im.lv, *im.P, w, A);
     int n16 = 0; for (auto& q : all) if (!q.empty()) n16++;
     check(all.size() == 54 && n16 == 16, "sixteen things in the large chest (" + std::to_string(n16) + ")");
     auto wheat = [&] { int n = 0; for (auto& q : im.P->inv) if (q.id == "wheat") n += q.n; return n; };
     const int w0 = wheat();
-    check(tactileChestTake(*im.lv, *im.P, w, right, e1, d1, true) && wheat() == w0 + 1, "the right tray's first spot holds the sixteenth");
+    check(handsChestTake(*im.lv, *im.P, w, right, e1, d1, true) && wheat() == w0 + 1, "the right tray's first spot holds the sixteenth");
     const int page0 = w.blockEntity(left.x, left.y, left.z)->value("page", 0);
-    tactileChestUse(*im.lv, *im.P, w, right, eb, db, none, false, false);
+    handsChestUse(*im.lv, *im.P, w, right, eb, db, none, false, false);
     check(w.blockEntity(left.x, left.y, left.z)->value("page", 0) == 1 - page0, "the right lid's button turns the whole chest's page (kept by the left half)");
   }
 
-  printf("[Tactile's still: its recipe book's pages]\n");
+  printf("[the hands-on still: its recipe book's pages]\n");
   {
     World& w = im.lv->world();
     const ivec3 at(4, im.Y + 1, 14);
     w.setBlock(at.x, at.y, at.z, reg().blockId("brewing_stand"));
     auto click = [&](float nx, float nz) { RayHit h; h.hit = true; h.block = at; h.id = w.getBlock(at.x, at.y, at.z); h.normal = ivec3(0, 1, 0);
-      h.point = vec3(at) + tactileFromNorth(tactileFacing(w, at), vec3(nx / 16, 0.1f, nz / 16)); ItemStack none; tactileBrewUse(*im.lv, *im.P, w, h, none, false); };
+      h.point = vec3(at) + handsFromNorth(handsFacing(w, at), vec3(nx / 16, 0.1f, nz / 16)); ItemStack none; handsBrewUse(*im.lv, *im.P, w, h, none, false); };
     const json* e = nullptr;
     click(3.6f, 0.6f);   // (the next arrow, on the right-hand page)
     e = w.blockEntity(at.x, at.y, at.z);
@@ -381,18 +381,18 @@ int main(int argc, char** argv) {
     w.setBlock(at.x, at.y, at.z, reg().blockId("barrel"));
     const vec3 eye = vec3(at) + vec3(-1.2f, 1.62f, 0.5f);   // (stood west of it)
     ItemStack none;
-    tactileBarrelUse(*im.lv, *im.P, w, at, eye, glm::normalize(vec3(at) + vec3(0.5f, 0.9f, 0.5f) - eye), none, false, false);
+    handsBarrelUse(*im.lv, *im.P, w, at, eye, glm::normalize(vec3(at) + vec3(0.5f, 0.9f, 0.5f) - eye), none, false, false);
     check(chestLidOpen(w, at), "use opens it");
-    const int f = tactileBarrelFacing(w, at);
-    const vec3 front = tactileFromNorth(f, vec3(0.5f, 0, 0)) - vec3(0.5f, 0, 0.5f);
+    const int f = handsBarrelFacing(w, at);
+    const vec3 front = handsFromNorth(f, vec3(0.5f, 0, 0)) - vec3(0.5f, 0, 0.5f);
     check(front.x < -0.4f, "its front is toward you (west)");
-    const vec3 btn = vec3(at) + tactileFromNorth(f, tactileBarrelButton(w, at, 1));
+    const vec3 btn = vec3(at) + handsFromNorth(f, handsBarrelButton(w, at, 1));
     check(btn.x > at.x + 0.5f && btn.y > at.y + 1.f, "its buttons are up on the top, on the far side (" + std::to_string(btn.x - at.x) + ", " + std::to_string(btn.y - at.y) + ")");
-    check(tactileBarrelAim(w, at, eye, glm::normalize(btn - eye)).what == TactileChestAim::Swap, "aimed at the upper button: the next layer");
-    const vec3 topMid = vec3(at) + tactileFromNorth(f, tactileBarrelLidPoint(w, at, vec3(8, 10.8f, 2)));
-    check(tactileBarrelAim(w, at, eye, glm::normalize(topMid - eye)).what == TactileChestAim::Lid, "aimed at the raised top: it shuts");
-    check(tactileBarrelAim(w, at, eye, glm::normalize(vec3(at) + vec3(0.5f, 0.3f, 0.5f) - eye)).what < TactileChestAim::Tray, "aimed at its side: not the tray (it can be broken)");
-    check(tactileBarrelAim(w, at, eye, glm::normalize(vec3(at) + vec3(0.5f, 0.75f, 0.5f) - eye)).what == TactileChestAim::Tray, "aimed into it: the tray");
+    check(handsBarrelAim(w, at, eye, glm::normalize(btn - eye)).what == HandsChestAim::Swap, "aimed at the upper button: the next layer");
+    const vec3 topMid = vec3(at) + handsFromNorth(f, handsBarrelLidPoint(w, at, vec3(8, 10.8f, 2)));
+    check(handsBarrelAim(w, at, eye, glm::normalize(topMid - eye)).what == HandsChestAim::Lid, "aimed at the raised top: it shuts");
+    check(handsBarrelAim(w, at, eye, glm::normalize(vec3(at) + vec3(0.5f, 0.3f, 0.5f) - eye)).what < HandsChestAim::Tray, "aimed at its side: not the tray (it can be broken)");
+    check(handsBarrelAim(w, at, eye, glm::normalize(vec3(at) + vec3(0.5f, 0.75f, 0.5f) - eye)).what == HandsChestAim::Tray, "aimed into it: the tray");
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);

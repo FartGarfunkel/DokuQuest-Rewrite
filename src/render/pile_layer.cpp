@@ -16,9 +16,9 @@
 #include "assets/voxel_paint.h"
 #include "world/shapes.h"
 #include "core/item_glint.h"
-#include "render/tactile_kit.h"
+#include "render/hands_kit.h"
 #include "assets/local_models.h"
-#include "sim/tactile.h"
+#include "sim/hands.h"
 #include "sim/brewing.h"
 #include "client/app.h"
 #include <regex>
@@ -133,11 +133,11 @@ class PileLayer : public RenderLayer {
   struct FramedMap { const PaperMap* map; mat4 M; vec2 light; };
   std::vector<FramedMap> framedMaps;   // drawn after the voxels, with the content shader
   struct StillWater { ivec3 at; int facing; vec2 light; };
-  std::vector<StillWater> tactileWater;   // Tactile's still brewing: water in its glass (alambic_water)
+  std::vector<StillWater> handsWater;   // the hands-on still brewing: water in its glass
   struct StillBook { ivec3 at; int facing, page; vec2 light; };
-  std::vector<StillBook> tactileBooks;   // the still's recipe books: their parts and writing
+  std::vector<StillBook> handsBooks;   // the still's recipe books: their parts and writing
   struct TableLapis { ivec3 at; int facing; float fill; vec2 light; };
-  std::vector<TableLapis> tactileLapis;   // the enchanting table's lapis in its tray (Tactile's table_enchantement_lapis, filled to the stack)
+  std::vector<TableLapis> handsLapis;   // the enchanting table's lapis in its tray (filled to the stack)
 public:
   const char* name() const override { return "item-piles"; }
   int order() const override { return 110; }
@@ -164,13 +164,13 @@ public:
         if (bl && reg().tShape[bl] == ShapeKind::Slab && !(w.getMeta(x, y - 1, z) & 7)) yOff = -0.5f;
       }
       mat4 base = glm::translate(mat4(1), rel + vec3(0, yOff, 0));
-      if (type == "brew" && stationModel(w.getBlock(x, y, z)) && s.app.settings.tactileStations) {
-        // Tactile's still (AlambicBlockEntityRenderer.renderPile): the ingredient in its dome, the powder in its burner, a few
+      if (type == "brew" && stationModel(w.getBlock(x, y, z)) && s.app.settings.handsStations) {
+        // the hands-on still: the ingredient in its dome, the powder in its burner, a few
         // of each tossed where the block's own seed throws them (the bottles on its rack: render/magic_fx.cpp)
         begin();
         const ivec3 at(x, y, z);
-        const TPose base = tactileBlockPose(f, at, tactileFacing(w, at));
-        const VoxelLight TL = tactileLight(w, at);
+        const TPose base = handsBlockPose(f, at, handsFacing(w, at));
+        const VoxelLight TL = handsLight(w, at);
         const json& items = e.contains("items") && e["items"].is_array() ? e["items"] : json::array();
         auto pile = [&](int k, float cx, float cy, float cz) {
           const ItemStack st = k < (int)items.size() ? ItemStack::fromJson(items[k]) : ItemStack();
@@ -181,13 +181,13 @@ public:
           for (int i = 0; i < std::min(st.n, 4); i++) {
             const float a = rnd() * 6.2832f, r = std::sqrt(rnd()), oy = rnd() * 0.6f, spin = rnd() * 360, tx = (rnd() - 0.5f) * 25, tz = (rnd() - 0.5f) * 25;
             TPose p = base; p.t((cx + std::cos(a) * r) / 16, (cy + oy) / 16, (cz + std::sin(a) * r) / 16).ry(spin).rx(90 + tx).rz(tz).s(0.16f);
-            tactileItem(one, p.m, TL);
+            handsItem(one, p.m, TL);
           }
         };
         pile(3, 11.8f, 4.2f, 10.9f);
         pile(4, 11.5f, 0.8f, 10.f);
-        if (e.value("t", 0.0) > 0) tactileWater.push_back({at, tactileFacing(w, at), vec2(TL.sky, TL.block)});
-        // its recipe book in front (AlambicBlockEntityRenderer.renderRecipeBook): ten of our brews a spread, five a page, each
+        if (e.value("t", 0.0) > 0) handsWater.push_back({at, handsFacing(w, at), vec2(TL.sky, TL.block)});
+        // its recipe book in front: ten of our brews a spread, five a page, each
         // its ingredient's icon and what it makes from what; the page's parts and writing drawn after the voxels
         const int page = e.value("bookPage", 0);
         const auto& R = brewRecipes();
@@ -199,9 +199,9 @@ public:
           TPose p = base;
           p.t(0.5f, 0.0875f, 0.21875f).rz(left ? 4.f : -4.f).t(-0.5f, -0.0875f, -0.21875f);   // (each half tilted on the spine)
           p.t((x0 + rh * 0.5f) / 16, 0.096875f, (z1 - rh * 0.5f) / 16).ry(180).rx(-90).s(rh * 0.85f / 16);
-          tactileItem(ItemStack(R[k].ing, 1), p.m, TL);
+          handsItem(ItemStack(R[k].ing, 1), p.m, TL);
         }
-        tactileBooks.push_back({at, tactileFacing(w, at), page, vec2(TL.sky, TL.block)});
+        handsBooks.push_back({at, handsFacing(w, at), page, vec2(TL.sky, TL.block)});
         return;
       }
       if (type == "brew") {   // the brewing stand: bottles on its three feet, the ingredient in the bowl, the powder at its foot
@@ -223,21 +223,21 @@ public:
         }
         return;
       }
-      if (type == "enchwork" && stationModel(w.getBlock(x, y, z)) && s.app.settings.tactileStations) {
-        // Tactile's table (TableEnchantementBlockEntityRenderer): the item over its socket, bobbing and turning; the lapis in its
+      if (type == "enchwork" && stationModel(w.getBlock(x, y, z)) && s.app.settings.handsStations) {
+        // the hands-on table: the item over its socket, bobbing and turning; the lapis in its
         // reservoir at the back, filling it as there's more
         begin();
         const ivec3 at(x, y, z);
         const std::vector<ItemStack> v = enchWorkItems(w, at);
-        const TPose base = tactileBlockPose(f, at, tactileFacing(w, at));
-        const VoxelLight TL = tactileLight(w, at);
+        const TPose base = handsBlockPose(f, at, handsFacing(w, at));
+        const VoxelLight TL = handsLight(w, at);
         const float age = (float)f.time * 20.f;
         if (!v[0].empty()) {
           TPose p = base; p.t(0.5f, (16.5f + std::sin(age * 0.1f) * 0.6f) / 16, 0.375f).ry(age * 2.f).s(0.55f);
           ItemStack one = v[0]; one.n = 1;
-          tactileItem(one, p.m, VoxelLight{TL.sky, std::max(TL.block, 0.7f)});
+          handsItem(one, p.m, VoxelLight{TL.sky, std::max(TL.block, 0.7f)});
         }
-        if (!v[1].empty()) tactileLapis.push_back({at, tactileFacing(w, at), std::clamp(v[1].n / 64.f, 0.08f, 1.f), vec2(TL.sky, TL.block)});   // (its tray, below)
+        if (!v[1].empty()) handsLapis.push_back({at, handsFacing(w, at), std::clamp(v[1].n / 64.f, 0.08f, 1.f), vec2(TL.sky, TL.block)});   // (its tray, below)
         return;
       }
       if (type == "enchwork") {   // sim/ench_work.h: the item hovering over the enchanting table, turning; the lapis on its top
@@ -257,13 +257,13 @@ public:
         }
         return;
       }
-      if (type == "anvilwork" && stationModel(w.getBlock(x, y, z)) && s.app.settings.tactileStations) {
-        // Tactile's anvil (EnclumeBlockEntityRenderer): the work flat on its face, the material over it sinking in blow by blow
+      if (type == "anvilwork" && stationModel(w.getBlock(x, y, z)) && s.app.settings.handsStations) {
+        // the hands-on anvil: the work flat on its face, the material over it sinking in blow by blow
         begin();
         const ivec3 at(x, y, z);
         const std::vector<ItemStack> v = anvilWorkItems(w, at);
-        const TPose base = tactileBlockPose(f, at, tactileFacing(w, at));
-        const VoxelLight TL = tactileLight(w, at);
+        const TPose base = handsBlockPose(f, at, handsFacing(w, at));
+        const VoxelLight TL = handsLight(w, at);
         const int req = std::max(1, e.value("req", 2)), hits = e.value("hits", 0);
         const float sink = std::min(1.f, (float)hits / req);
         const bool fusion = !v[0].empty() && !v[1].empty() && v[0].id == v[1].id;
@@ -271,7 +271,7 @@ public:
           if (st.empty()) return;
           ItemStack one = st; one.n = 1;
           TPose p = base; p.t(0.5f, py / 16, 0.5f).rx(90).s(sc);
-          tactileItem(one, p.m, TL);
+          handsItem(one, p.m, TL);
         };
         flat(v[0], 16.1f, 0.84f);
         flat(v[1], 17.f + (16.1f - 17.f) * sink + 0.1f, fusion ? 0.84f : 0.42f);
@@ -543,52 +543,52 @@ public:
       }
     });
     if (begun) VR.end();
-    if (!tactileWater.empty()) {
+    if (!handsWater.empty()) {
       ContentDraw& cd = contentDraw();
-      if (const PackModel* water = tactilePart("alambic_water")) if (cd.begin(f, f.cam.viewProj)) {
-        for (auto& sw : tactileWater) tactilePartDraw(s.app, cd, *water, tactileBlockPose(f, sw.at, sw.facing).m, sw.light);
+      if (const PackModel* water = handsPart("still_water")) if (cd.begin(f, f.cam.viewProj)) {
+        for (auto& sw : handsWater) handsPartDraw(s.app, cd, *water, handsBlockPose(f, sw.at, sw.facing).m, sw.light);
         cd.end();
       }
-      tactileWater.clear();
+      handsWater.clear();
     }
-    if (!tactileLapis.empty()) {
+    if (!handsLapis.empty()) {
       ContentDraw& cd = contentDraw();
-      if (const PackModel* lp = tactilePart("table_enchantement_lapis")) if (cd.begin(f, f.cam.viewProj)) {
-        for (auto& l : tactileLapis) { TPose p = tactileBlockPose(f, l.at, l.facing); p.t(0, 0.975f, 0).s(1, l.fill, 1).t(0, -0.975f, 0); tactilePartDraw(s.app, cd, *lp, p.m, l.light); }
+      if (const PackModel* lp = handsPart("enchanting_lapis")) if (cd.begin(f, f.cam.viewProj)) {
+        for (auto& l : handsLapis) { TPose p = handsBlockPose(f, l.at, l.facing); p.t(0, 0.975f, 0).s(1, l.fill, 1).t(0, -0.975f, 0); handsPartDraw(s.app, cd, *lp, p.m, l.light); }
         cd.end();
       }
-      tactileLapis.clear();
+      handsLapis.clear();
     }
-    if (!tactileBooks.empty()) {
+    if (!handsBooks.empty()) {
       ContentDraw& cd = contentDraw();
       if (cd.begin(f, f.cam.viewProj)) {
         const auto& R = brewRecipes();
         auto name = [](const std::string& id) { const ItemDef* d = reg().item(id); std::string n = d ? d->name : id; for (const char* pre : {"Potion of ", "Splash Potion of ", "Lingering Potion of "}) if (n.rfind(pre, 0) == 0) n = n.substr(std::string(pre).size()); return n; };
         const int pages = std::max(1, ((int)R.size() + 9) / 10);
-        for (auto& b : tactileBooks) {
-          const TPose base = tactileBlockPose(f, b.at, b.facing);
+        for (auto& b : handsBooks) {
+          const TPose base = handsBlockPose(f, b.at, b.facing);
           auto part = [&](const char* n, float tilt) {
-            if (const PackModel* m = tactilePart(n)) { TPose p = base; if (tilt != 0) p.t(0.5f, 0.0875f, 0.21875f).rz(tilt).t(-0.5f, -0.0875f, -0.21875f); tactilePartDraw(s.app, cd, *m, p.m, b.light); }
+            if (const PackModel* m = handsPart(n)) { TPose p = base; if (tilt != 0) p.t(0.5f, 0.0875f, 0.21875f).rz(tilt).t(-0.5f, -0.0875f, -0.21875f); handsPartDraw(s.app, cd, *m, p.m, b.light); }
           };
-          part("livre_reliure", 0); part("livre_base_g", 4); part("livre_page_g", 4); part("livre_base_d", -4); part("livre_page_d", -4);
-          if (b.page > 0) part("livre_fleche_prec", 4);
-          if (b.page < pages - 1) part("livre_fleche_suiv", -4);
+          part("book_spine", 0); part("book_base_l", 4); part("book_page_l", 4); part("book_base_r", -4); part("book_page_r", -4);
+          if (b.page > 0) part("book_arrow_prev", 4);
+          if (b.page < pages - 1) part("book_arrow_next", -4);
           const vec4 ink(0.2f, 0.12f, 0.06f, 1.f);
           for (int half = 0; half < 2; half++) {
             const bool left = half == 0;
             TPose hp = base; hp.t(0.5f, 0.0875f, 0.21875f).rz(left ? 4.f : -4.f).t(-0.5f, -0.0875f, -0.21875f);
-            if (left) tactileText(cd, hp, 10.5f, 0.1f, 6.3f, "Recipes " + std::to_string(b.page + 1) + "/" + std::to_string(pages), 0.003f, 4.4f, ink, b.light);
+            if (left) handsText(cd, hp, 10.5f, 0.1f, 6.3f, "Recipes " + std::to_string(b.page + 1) + "/" + std::to_string(pages), 0.003f, 4.4f, ink, b.light);
             for (int r = 0; r < 5; r++) {
               const int k = b.page * 10 + half * 5 + r;
               if (k >= (int)R.size()) break;
               const float rh = 0.96f, z1 = 5.6f - r * rh, x0 = left ? 8.3f : 3.3f, x1 = left ? 12.7f : 7.7f;
-              tactileText(cd, hp, (x0 + 1.2f * rh + x1) * 0.5f, 0.1f, z1 - rh * 0.5f, name(R[k].to) + " (" + name(R[k].from) + ")", 0.0021f, x1 - x0 - 1.2f * rh, ink, b.light);
+              handsText(cd, hp, (x0 + 1.2f * rh + x1) * 0.5f, 0.1f, z1 - rh * 0.5f, name(R[k].to) + " (" + name(R[k].from) + ")", 0.0021f, x1 - x0 - 1.2f * rh, ink, b.light);
             }
           }
         }
         cd.end();
       }
-      tactileBooks.clear();
+      handsBooks.clear();
     }
     if (!framedMaps.empty()) {
       ContentDraw& cd = contentDraw();

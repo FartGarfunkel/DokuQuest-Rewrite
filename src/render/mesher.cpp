@@ -346,7 +346,7 @@ static bool leafHidden(const MeshCtx& c, int x, int y, int z, const int* n) {
 }
 
 static void emitPackModel(MeshCtx& c, std::vector<ChunkVertex>& dst, const PackModel& M, vec3 at, int quarters, float sk, float bl, u32 lit, u8 mat);
-// a block drawn from its Tactile model (cube or model-shaped: emitCube, emitModel), turned to Tactile's facing for it; lit by
+// a block drawn from its hands-on model (cube or model-shaped: emitCube, emitModel), turned to the hands-on facing for it; lit by
 // the brightest air round it and in it (a cube's own cell counts as solid)
 bool emitStationModelIn(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, int y, int z, u8 meta) {
   const StationModel* SM = stationModel(id);
@@ -375,7 +375,7 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
   if (self.render == Render::Cutout) mat |= Mat::Cutout | Mat::NoRelief;
   if (R.tTrans[id]) mat |= Mat::Translucent | Mat::NoRelief;
   static const int AXIS_END[3][2] = {{2, 3}, {0, 1}, {4, 5}};
-  // a station drawn from its Tactile model (assets/local_models.h), turned with the way it faces
+  // a station drawn from its hands-on model (assets/local_models.h), turned with the way it faces
   if (emitStationModelIn(c, dst, id, x, y, z, meta)) return;
   // a furnace, smoker or blast furnace: its opening hollowed (assets/pack_models.h buildFurnaceModels), the fire behind it
   // bright while it burns; lit by the air in front of it

@@ -12,7 +12,7 @@
 #include "sim/worldsys.h"
 #include "sim/station_work.h"
 #include "sim/brewing.h"
-#include "sim/tactile.h"
+#include "sim/hands.h"
 #include <random>
 
 namespace dq {
@@ -709,15 +709,15 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   if (b.has("partyChest")) { swingArm(); sfxUi(lv, p, "chest"); openScreen(lv, p, "container", {{"party", true}, {"pos", {x, y, z}}}); return true; }   // (pos: its lid lifts, the chest scene)
   if (b.has("enderChest")) { swingArm(); sfxUi(lv, p, "chest"); openScreen(lv, p, "container", {{"ender", true}, {"pos", {x, y, z}}}); return true; }
   if (b.has("station")) {
-    // Tactile Stations (Tactile Blocks' way, in your own first person): laid on it and taken off it where you point, the
-    // work done by striking it (tactileStrike); sneak + use for its scene
-    if (tactileStations && !p.sneaking && pairWorkType(b.str("station"))) {
-      if (held && isStrikingHammer(*held)) { tactileStrike(hit); return true; }   // (a hammer strikes, it isn't laid down)
+    // Hands-on Stations (in your own first person): laid on it and taken off it where you point, the
+    // work done by striking it (handsStrike); sneak + use for its scene
+    if (handsStations && !p.sneaking && pairWorkType(b.str("station"))) {
+      if (held && isStrikingHammer(*held)) { handsStrike(hit); return true; }   // (a hammer strikes, it isn't laid down)
       const std::vector<ItemStack> v = pairWorkItems(w, hit.block);
       int slot = 0;   // the spot pointed at: the nearer of the two places things lie
       if (glm::distance(pairLiePos(w, hit.block, 1), hit.point) < glm::distance(pairLiePos(w, hit.block, 0), hit.point)) slot = 1;
       if (b.str("station") == "smithing") {   // (TableDeForgeBlockEntity.slotForHit: across its front, the material left, the template right)
-        const float x = tactileNorthLocal(tactileFacing(w, hit.block), hit.point - vec3(hit.block)).x;
+        const float x = handsNorthLocal(handsFacing(w, hit.block), hit.point - vec3(hit.block)).x;
         slot = x < 0.3f ? 1 : x > 0.7f ? 2 : 0;
       }
       if (held && !held->empty()) { if (pairWorkPut(lv, p, w, hit.block, slot, *held)) swingArm(); return true; }

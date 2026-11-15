@@ -1,7 +1,7 @@
 // render/furnace_layer.cpp — inside a furnace, smoker or blast furnace (their openings hollowed: assets/pack_models.h
 // buildFurnaceModels): the fuel in its fuel slot lies on the floor of the opening (a few of the stack, side by side), and
 // while it burns (the lit block) it glows, embers lie there if the slot is empty, and flames lick up out of it. Above the
-// fire, an iron grill across the opening (Tactile Blocks' four/fumoir): what's cooking (the input slot) lies on it, browning
+// fire, an iron grill across the opening (the hands-on furnace and smoker): what's cooking (the input slot) lies on it, browning
 // as it cooks (food) or glowing as it heats (ore), turning into what it makes; what's done (the output slot) waits at the back.
 #include "client/session.h"
 #include "render/be_scan.h"
@@ -51,7 +51,7 @@ public:
       const BlockId id = w.getBlock(x, y, z);
       if (!id) return;
       const BlockDef& b = reg().block(id);
-      if (!b.has("furnace") || stationModel(id)) return;   // (drawn from its Tactile model: render/tactile_furnaces.cpp)
+      if (!b.has("furnace") || stationModel(id)) return;   // (drawn from its hands-on model: render/hands_furnaces.cpp)
       const FurnaceModel* FM = furnaceModelFor(b.faces[4]);
       if (!FM) return;
       static const int Q[4] = {2, 1, 0, 3}, DX[4] = {0, 1, 0, -1}, DZ[4] = {1, 0, -1, 0};

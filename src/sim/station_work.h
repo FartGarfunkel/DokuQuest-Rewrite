@@ -31,7 +31,7 @@ StationResult mapPairResult(Level& lv, const ItemStack& map, const ItemStack& wi
 StationResult pairWorkResult(Level& lv, World& w, ivec3 at);
 StationResult smithResult(const ItemStack& gear, const ItemStack& material, const ItemStack& tmpl);   // (the template: trims, the cinderite upgrade)
 std::string trimMaterialOf(const std::string& item);   // a trim material's colour ("iron", "gold"...), "" not one
-// Tactile's forge blows on the smithing table: the work done (the result left on the table where the gear was, the material
+// the hands-on forge blows on the smithing table: the work done (the result left on the table where the gear was, the material
 // used, the template kept, a level spent). false and why (toasted) if not
 bool smithWorkForge(Level& lv, Player& p, World& w, ivec3 at);
 // does the work: the result into the bag, the pieces used, any experience given back. false (and why, toasted) if not

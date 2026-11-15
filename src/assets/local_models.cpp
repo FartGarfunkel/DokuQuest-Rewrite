@@ -16,8 +16,8 @@ struct Stations { std::vector<u8> has; std::unordered_map<BlockId, StationModel>
 std::atomic<const Stations*> g_st{nullptr};
 std::vector<std::shared_ptr<const Stations>> g_keep;
 
-// Tactile's chest picture in one of our chests' own colour (its paint, the party chest's gold, the ender chest's dark): the
-// wood keeps Tactile's grain and shading, tinted to the colour of our picture's painted part (its coloured pixels, the
+// the hands-on chest picture in one of our chests' own colour (its paint, the party chest's gold, the ender chest's dark): the
+// wood keeps the hands-on grain and shading, tinted to the colour of our picture's painted part (its coloured pixels, the
 // metal bands and black edges left out); the grey metal and the latch kept
 void recolorWood(std::vector<u8>& px, const TileSet& ts, int ourTile) {
   if (ourTile < 0 || ourTile >= ts.count) return;
@@ -45,18 +45,18 @@ void recolorWood(std::vector<u8>& px, const TileSet& ts, int ourTile) {
   mean /= m;
   for (size_t i = 0; i < px.size(); i += 4) {
     if (!woody(&px[i])) continue;
-    const float k = lum(&px[i]) / mean;   // (Tactile's grain, light and dark, over the paint)
+    const float k = lum(&px[i]) / mean;   // (the hands-on grain, light and dark, over the paint)
     for (int c = 0; c < 3; c++) px[i + c] = (u8)std::clamp((int)std::lround(paint[c] * k), 0, 255);
   }
 }
 
 // a picture from the import's folder as a tile (nearest: the pixels stay crisp), once; recolor: one of our tiles whose wood
-// it takes (Tactile's chest in each of our chests' own colours)
+// it takes (the hands-on chest in each of our chests' own colours)
 int localTile(TileSet& ts, const fs::path& dir, const std::string& ref, int recolor = -1) {
   std::string r = ref;
   for (const char* p : {"minecraft:", "block/"}) if (r.rfind(p, 0) == 0) r = r.substr(std::string(p).size());
-  if (r.rfind("tactile:block/", 0) == 0) {
-    const std::string name = r.substr(14), key = "tactile:" + name + (recolor >= 0 && name == "coffre" ? "@" + std::to_string(recolor) : "");
+  if (r.rfind("hands:block/", 0) == 0) {
+    const std::string name = r.substr(std::string("hands:block/").size()), key = "hands:" + name + (recolor >= 0 && name == "chest_wood" ? "@" + std::to_string(recolor) : "");
     if (auto it = ts.index.find(key); it != ts.index.end()) return it->second;
     int w = 0, h = 0, ch = 0;
     u8* px = stbi_load((dir / "textures" / (name + ".png")).string().c_str(), &w, &h, &ch, 4);
@@ -69,7 +69,7 @@ int localTile(TileSet& ts, const fs::path& dir, const std::string& ref, int reco
       d[0] = sp[0]; d[1] = sp[1]; d[2] = sp[2]; d[3] = sp[3] >= 250 ? 251 : sp[3];   // (below the special alphas)
     }
     stbi_image_free(px);
-    if (recolor >= 0 && name == "coffre") recolorWood(out, ts, recolor);
+    if (recolor >= 0 && name == "chest_wood") recolorWood(out, ts, recolor);
     const int idx = appendTile(ts, out.data());
     ts.res.back() = (u8)std::min(fw, T);
     ts.index[key] = idx;
@@ -81,13 +81,13 @@ int localTile(TileSet& ts, const fs::path& dir, const std::string& ref, int reco
 }
 }  // namespace
 
-bool tactilePorted(const std::string& key) {
+bool handsPorted(const std::string& key) {
   if (key.size() > 13 && key.compare(key.size() - 13, 13, "painted_chest") == 0) return true;
-  if (key == "ender_chest" || key == "party_chest" || key == "jukebox" || key == "enchanting_table") return true;   // (every painted chest: Tactile's in its paint)
+  if (key == "ender_chest" || key == "party_chest" || key == "jukebox" || key == "enchanting_table") return true;   // (every painted chest: the hands-on in its paint)
   static const std::unordered_set<std::string> DONE = {"smithing_table", "cartography_table", "furnace", "lit_furnace", "smoker", "lit_smoker", "blast_furnace", "lit_blast_furnace", "anvil", "chipped_anvil", "damaged_anvil", "grindstone", "chest", "brewing_stand"};
   return DONE.count(key) > 0;
 }
-const PackModel* tactilePart(const std::string& name) {   // a part drawn on its own (a door, a lid, the wheel), loaded once
+const PackModel* handsPart(const std::string& name) {   // a part drawn on its own (a door, a lid, the wheel), loaded once
   const Stations* s = g_st.load(std::memory_order_acquire);
   if (!s) return nullptr;
   auto it = s->models.find(name);
@@ -95,26 +95,26 @@ const PackModel* tactilePart(const std::string& name) {   // a part drawn on its
 }
 void loadStationModels(TileSet& ts) {
   auto S = std::make_shared<Stations>();
-  const fs::path dir = dataDir() / "local_models" / "tactile";
+  const fs::path dir = dataDir() / "local_models" / "hands";
   if (const auto man = readJson(dir / "stations.json"); man && man->is_object()) {
     for (auto& [key, v] : man->items()) {
       const BlockId id = reg().blockId(key);
       if (!id || !v.is_object()) continue;
-      if (!tactilePorted(key)) continue;   // (a block is drawn from its Tactile model once its port is whole: docs/TACTILE_PORT.md)
+      if (!handsPorted(key)) continue;   // (a block is drawn from its hands-on model once its port is whole: docs/HANDS_ON.md)
       StationModel sm;
-      // a chest: Tactile's model in its own wood (its side picture's shades: tools/port/tactile_import.py maps every chest here)
+      // a chest: the hands-on model in its own wood (its side picture's shades: the station models' import maps every chest here)
       const BlockDef& bdef = reg().block(id);
-      // a chest: Tactile's model wearing the chest's own pictures (the pack's, as its icon shows them): every face Tactile
+      // a chest: the hands-on model wearing the chest's own pictures (the pack's, as its icon shows them): every face hands-on
       // painted from its chest picture takes our top, front or side, mapped over the block as a cube's faces are (the lock
       // where the front's lock is); the lid's buttons and their marks kept
-      const bool chest = v.value("state", std::string()) == "coffre";
+      const bool chest = v.value("state", std::string()) == "chest";
       int tTop = -1, tSide = -1, tFront = -1;
       if (chest && bdef.props.contains("tex") && bdef.props["tex"].is_object()) {
         auto tile = [&](const char* k) { auto it = ts.index.find(bdef.props["tex"].value(k, std::string())); return it == ts.index.end() ? -1 : it->second; };
         tTop = tile("top"); tSide = tile("side"); tFront = tile("front");
         if (tFront < 0) tFront = tSide;
       }
-      const int coffreTile = chest ? localTile(ts, dir, "tactile:block/coffre") : -1;
+      const int woodTile = chest ? localTile(ts, dir, "hands:block/chest_wood") : -1;
       auto model = [&](const std::string& name) -> std::shared_ptr<PackModel> {
         const std::string ck = chest && tSide >= 0 ? name + "@" + key : name;
         auto it = S->models.find(ck);
@@ -123,7 +123,7 @@ void loadStationModels(TileSet& ts) {
         if (const auto mj = readJson(dir / "models" / (name + ".json"))) *pm = parseBlockModel(*mj, [&](const std::string& ref) { return localTile(ts, dir, ref); });
         if (chest && tSide >= 0 && tTop >= 0) for (PackModelBox& bx : pm->boxes) for (int f = 0; f < 6; f++) {
           PackModelFace& fc = bx.face[f];
-          if (fc.tile != coffreTile) continue;
+          if (fc.tile != woodTile) continue;
           // our picture over the block (a cube's mapping: x across, y down; the lid's, as it lies shut)
           const vec3 lo = glm::min(bx.from, bx.to), hi = glm::max(bx.from, bx.to);
           if (f < 2) fc.uv = f == 0 ? vec4(16 - hi.x, 16 - hi.y, 16 - lo.x, 16 - lo.y) : vec4(lo.x, 16 - hi.y, hi.x, 16 - lo.y);
@@ -135,12 +135,12 @@ void loadStationModels(TileSet& ts) {
         }
         return S->models[ck] = pm;
       };
-      if (v.value("state", std::string()) == "coffre") for (const char* part : {"coffre_lid", "coffre_buttontri", "coffre_buttonswap"}) sm.parts[part] = model(part);
+      if (v.value("state", std::string()) == "chest") for (const char* part : {"chest_lid", "chest_button_sort", "chest_button_page"}) sm.parts[part] = model(part);
       if (v.contains("model") && v["model"].is_array()) for (int k = 0; k < 4 && k < (int)v["model"].size(); k++) sm.models[k] = model(v["model"][k].get<std::string>());
       else if (v.contains("model") && v["model"].is_string()) for (int k = 0; k < 4; k++) sm.models[k] = model(v["model"].get<std::string>());
       if (!sm.models[0] || sm.models[0]->boxes.empty()) continue;
       sm.model = *sm.models[0];
-      if (v.value("state", std::string()) == "coffre") sm.closed = model("coffre_full");   // (shut: the whole chest; open: render/tactile_chests.cpp swings its lid)
+      if (v.value("state", std::string()) == "chest") sm.closed = model("chest_full");   // (shut: the whole chest; open: render/hands_chests.cpp swings its lid)
       { const BlockDef& bd = reg().block(id);
         sm.facingKind = bd.props.contains("tex") && bd.props["tex"].is_object() && bd.props["tex"].contains("front") ? 1 : bd.has("facingModel") ? 2 : 0;
         sm.faceBack = key == "brewing_stand" || key == "enchanting_table"; }
@@ -160,7 +160,7 @@ void loadStationModels(TileSet& ts) {
       S->models[name] = pm;
     }
   }
-  if (!S->byId.empty()) DQ_LOG("stations: %zu drawn from local models (data/local_models/tactile)", S->byId.size());
+  if (!S->byId.empty()) DQ_LOG("stations: %zu drawn from local models (data/local_models/hands)", S->byId.size());
   g_keep.push_back(S);
   g_st.store(S.get());
 }

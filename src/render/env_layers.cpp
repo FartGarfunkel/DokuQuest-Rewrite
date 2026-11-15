@@ -144,8 +144,8 @@ void WeatherFxLayer::buildKinds() {
     else if (b.key == "redstone_ore_lit") k = EM_RS_ORE;
     else if (b.str("shape") == "campfire" || b.str("shape") == "soul_campfire") k = EM_CAMPFIRE;
     else if (b.key == "stonecutter") k = EM_SAW;                    // its blade turned by render/station_work_layer.cpp
-    else if (b.str("station") == "grindstone") k = EM_GRIND;        // its Tactile wheel turned there too
-    else if (b.has("jukebox")) k = EM_JUKE;                         // its Tactile arm and record
+    else if (b.str("station") == "grindstone") k = EM_GRIND;        // its hands-on wheel turned there too
+    else if (b.has("jukebox")) k = EM_JUKE;                         // its hands-on arm and record
     else if (b.has("smokes")) k = EM_BN_SMOKER;                        // BetterNether's smoker: a thin column of smoke
     else if (b.has("betternether") && b.light >= 9 && !b.has("hangs")) k = EM_BN_GLOW;   // lucis, jellyfish mushroom: motes of their light
     kinds[b.id] = k;

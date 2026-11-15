@@ -16,6 +16,6 @@ bool anvilWorkTake(Level& lv, Player& p, World& w, ivec3 at, int slot);         
 StationResult anvilWorkResult(World& w, ivec3 at);                                          // what forging would make
 // forges it: the result into the bag, the pieces used, the levels spent, the anvil worn (it may chip, or break: then
 // what's left on it spills). false (and why, toasted) if it can't
-bool anvilWorkForge(Level& lv, Player& p, World& w, ivec3 at, bool leaveOnAnvil = false);   // (Tactile: the result stays where the work was)
+bool anvilWorkForge(Level& lv, Player& p, World& w, ivec3 at, bool leaveOnAnvil = false);   // (hands-on: the result stays where the work was)
 
 } // namespace dq
