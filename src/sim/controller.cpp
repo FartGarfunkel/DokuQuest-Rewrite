@@ -6,6 +6,7 @@
 #include "sim/controller.h"
 #include "sim/station_work.h"
 #include "sim/tactile.h"
+#include "sim/ench_work.h"
 #include <climits>
 #include "sim/anvil_work.h"
 #include "sim/magic.h"
@@ -841,6 +842,12 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   if (!fromOff && !repeat && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).has("jukebox")) {
     if (tactileJukeboxUse(lv, p, w, *hit, held)) swingArm();
     return;
+  }
+  // Tactile Stations: the enchanting table: the item into its socket, lapis into its reservoir; an empty hand takes the lapis
+  // back (with something on it, the offers come up: render/magic_fx.cpp)
+  if (!fromOff && !repeat && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).key == "enchanting_table") {
+    if (!held.empty()) { if (enchWorkPut(lv, p, w, hit->block, held)) swingArm(); return; }
+    if (enchWorkItems(w, hit->block)[0].empty()) { if (enchWorkTake(lv, p, w, hit->block, 1)) swingArm(); return; }
   }
   // Tactile Stations: the grindstone (sim/tactile.h): what's held is held to the wheel while use is held
   if (!fromOff && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).str("station") == "grindstone") {

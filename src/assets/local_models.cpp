@@ -83,7 +83,7 @@ int localTile(TileSet& ts, const fs::path& dir, const std::string& ref, int reco
 
 bool tactilePorted(const std::string& key) {
   if (key.size() > 13 && key.compare(key.size() - 13, 13, "painted_chest") == 0) return true;
-  if (key == "ender_chest" || key == "party_chest" || key == "jukebox") return true;   // (every painted chest: Tactile's in its paint)
+  if (key == "ender_chest" || key == "party_chest" || key == "jukebox" || key == "enchanting_table") return true;   // (every painted chest: Tactile's in its paint)
   static const std::unordered_set<std::string> DONE = {"smithing_table", "cartography_table", "furnace", "lit_furnace", "smoker", "lit_smoker", "blast_furnace", "lit_blast_furnace", "anvil", "chipped_anvil", "damaged_anvil", "grindstone", "chest", "brewing_stand"};
   return DONE.count(key) > 0;
 }

@@ -203,6 +203,29 @@ public:
         }
         return;
       }
+      if (type == "enchwork" && stationModel(w.getBlock(x, y, z)) && s.app.settings.tactileStations) {
+        // Tactile's table (TableEnchantementBlockEntityRenderer): the item over its socket, bobbing and turning; the lapis in its
+        // reservoir at the back, filling it as there's more
+        begin();
+        const ivec3 at(x, y, z);
+        const std::vector<ItemStack> v = enchWorkItems(w, at);
+        const TPose base = tactileBlockPose(f, at, tactileFacing(w, at));
+        const VoxelLight TL = tactileLight(w, at);
+        const float age = (float)f.time * 20.f;
+        if (!v[0].empty()) {
+          TPose p = base; p.t(0.5f, (16.5f + std::sin(age * 0.1f) * 0.6f) / 16, 0.375f).ry(age * 2.f).s(0.55f);
+          ItemStack one = v[0]; one.n = 1;
+          tactileItem(one, p.m, VoxelLight{TL.sky, std::max(TL.block, 0.7f)});
+        }
+        if (!v[1].empty()) {
+          const int n = std::clamp(v[1].n / 4 + 1, 1, 12);
+          for (int i = 0; i < n; i++) {   // (the reservoir's floor, the pieces laid side by side, rising)
+            TPose p = base; p.t((3.f + (i % 6) * 2.f) / 16, (14.6f + (i / 6) * 0.5f) / 16, (12.6f + (i % 2) * 1.6f) / 16).ry(i * 47.f).rx(90).s(0.22f);
+            tactileItem(ItemStack(v[1].id, 1), p.m, TL);
+          }
+        }
+        return;
+      }
       if (type == "enchwork") {   // sim/ench_work.h: the item hovering over the enchanting table, turning; the lapis on its top
         begin();
         const std::vector<ItemStack> v = enchWorkItems(w, ivec3(x, y, z));

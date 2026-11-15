@@ -15,6 +15,7 @@
 #include "sim/magic.h"
 #include "sim/effects.h"
 #include "sim/brewing.h"
+#include "sim/ench_work.h"
 #include "sim/tactile.h"
 #include "assets/local_models.h"
 #include "render/tactile_kit.h"
@@ -302,7 +303,12 @@ public:
     ivec3 at(a[2].get<int>(), a[3].get<int>(), a[4].get<int>());
     const BlockDef& b = reg().block(s.world().getBlock(at.x, at.y, at.z));
     const bool cine = s.app.settings.extra.value("cinematicStations", true);   // the stations as scenes (ui/cinematic.h)
-    if (b.key == "enchanting_table") { s.app.pushScreen(cine ? makeCinematicEnchantScreen(at) : makeEnchantScreen(at)); return false; }
+    if (b.key == "enchanting_table") {
+      // Tactile's table (worked by hand: sim/controller.cpp): what's held is laid in; an empty hand with something on it
+      // brings up the offers over it
+      if (s.app.settings.tactileStations && stationModel(s.world().getBlock(at.x, at.y, at.z)) && (!s.player->held().empty() || enchWorkItems(s.world(), at)[0].empty())) return true;
+      s.app.pushScreen(cine ? makeCinematicEnchantScreen(at) : makeEnchantScreen(at)); return false;
+    }
     if (b.key == "brewing_stand") {
       if (s.app.settings.tactileStations && stationModel(s.world().getBlock(at.x, at.y, at.z))) return true;   // (Tactile's still, worked where it stands: sim/tactile.h)
       s.app.pushScreen(cine ? makeCinematicBrewScreen(at) : makeBrewScreen(at)); return false;
@@ -556,6 +562,7 @@ void MagicLayer::drawBooks(const FrameCtx& f) {
   const float HALF_W = 6 / 16.f, LEN = 10 / 16.f, COVER_T = 1 / 64.f, PAGE_T = 1.5f / 32;
   auto boxM = [](const mat4& frame, vec3 lo, vec3 hi, vec3 n) { return glm::scale(glm::translate(frame, lo), (hi - lo) / n); };
   for (auto& T : tables) {
+    if (s.app.settings.tactileStations && stationModel(s.world().getBlock(T.x, T.y, T.z))) continue;   // (Tactile's table: no floating book)
     i64 key = ((i64)T.x * 73856093) ^ ((i64)T.y * 19349663) ^ ((i64)T.z * 83492791);
     BookAnim& a = books[key];
     vec3 rel = f.cam.rel(glm::dvec3(T));
