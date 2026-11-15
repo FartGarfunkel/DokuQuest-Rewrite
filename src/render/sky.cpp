@@ -460,13 +460,15 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd, bool prima
   if (primary) skyT = f.time;
 }
 
-void SkyRenderer::draw(const FrameCtx& f) {
+void SkyRenderer::draw(const FrameCtx& f, bool behind) {
   const SkyEnv& e = f.sky ? *f.sky : env;
   // Full-screen triangle. It has no back face: leave culling off for this draw.
   // Vulkan's framebuffer winding does not match this triangle's OpenGL winding,
   // so leaving GL_CULL_FACE on drops the whole sky and the clear colour shows through.
   GLboolean cull = glIsEnabled(GL_CULL_FACE);
   glDisable(GL_DEPTH_TEST); glDepthMask(GL_FALSE); glDisable(GL_BLEND); glDisable(GL_CULL_FACE);
+  // (behind the land: only the pixels it left empty are shaded, the sky's sums no longer run under every hill and wall)
+  if (behind) { glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); }
   shader.use();
   f.apply(shader);
   shader.set("uInvViewProj", glm::inverse(f.cam.proj * mat4(mat3(f.cam.view))));

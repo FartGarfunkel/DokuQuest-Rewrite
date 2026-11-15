@@ -193,13 +193,7 @@ void GameSession::splitRender() {
     glClearColor(0.05f, 0.04f, 0.035f, 1); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL);
     glEnable(GL_CULL_FACE); glCullFace(GL_BACK); glFrontFace(GL_CCW);
-    sky->draw(frame);
-    worldRenderer.drawOpaque(frame);
-    worldRenderer.drawCutout(frame);
-    for (auto& l : layers) l->drawOpaque(*this, frame);
-    worldRenderer.drawTranslucent(frame);
-    for (auto& l : layers) l->drawTranslucent(*this, frame);
-    for (auto& l : layers) l->drawOverlay(*this, frame);
+    drawSplitView();   // (client/session.cpp: the passes, timed with the rest under DQ_PROFILE)
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_SCISSOR_TEST); glScissor(px, py, pw, ph); glViewport(px, py, pw, ph);   // (a layer may have changed them)
     leaveLocal();

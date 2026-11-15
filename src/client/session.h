@@ -98,6 +98,7 @@ public:
   bool entered = false;               // enterLocal() swapped that person's menus into App::screens (the shared ones wait in locals[cur].screens)
   bool uiWantsText = false;           // a split-screen viewport has a text box focused (keys must not act in the world)
   u64 joinedFrame = ~0ull;            // the frame a controller joined on (its Start press must not also pause)
+  void drawSplitView();               // one person's view in split screen (client/session.cpp)
   void lendRenderDist(bool on);       // with 2+ people: settings.renderDist is the capped value while the world updates / draws
   void freeLocalUi(LocalPlayer& lp);
   void drawNameTags();                // the other people's names over their heads, in the current ImGui context

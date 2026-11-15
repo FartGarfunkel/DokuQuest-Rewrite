@@ -27,6 +27,9 @@ private:
   Shader march, comp;
   GLuint vao = 0, noise = 0, weather[2] = {0, 0}, fbo = 0, colTex = 0, distTex = 0;
   int wi = 0, fw = 0, fh = 0;
+  // its own GPU time, measured (a timer query read a couple of frames late, never waited on): built-in graphics that
+  // take long over the march get it at a coarser grid (divisor 2 -> 3 -> 4), a fast card keeps the finest
+  GLuint tq[3] = {0, 0, 0}; bool tqUsed[3] = {false, false, false}; int tqi = 0; float gpuMs = 0; int div = 0, divHold = 0;
   double mapT = 1e9;
   glm::dvec2 mapOrigin{0};          // world x,z of the coverage map's corner
   float flash = 0, thunder = 0, mist = 0, baseCov = -1;

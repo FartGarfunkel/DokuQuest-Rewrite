@@ -1,5 +1,7 @@
 #include "common/settings.h"
 
+#include <map>
+
 namespace dq {
 
 const char* rendererName(RendererKind k) {
@@ -74,7 +76,11 @@ void Settings::applyPreset(const std::string& p) {
   else if (p == "medium") { weatherParticles = 1500; weatherDist = 16; weatherSurfaceFx = true; groundFog = true; heightFog = true; }
   else if (p == "high") { weatherParticles = 3000; weatherDist = 20; weatherSurfaceFx = true; groundFog = true; heightFog = true; }
   else if (p == "ultra") { weatherParticles = 3000; weatherDist = 24; weatherSurfaceFx = true; groundFog = true; heightFog = true; }
-  if (p == "potato") { renderer = RendererKind::Legacy; renderDist = 4; farTerrain = 512; microVoxels = 0; waterQuality = 0; shadows = 0; particles = 1; fancyLeaves = false; plantDetail = "near"; scale = 0.75f; clouds = false; }
+  // the 3D plants and the game's own shaders follow it too (left as they were, a Low preset kept 3D plants everywhere
+  // and Ultra shaders from before: on built-in graphics most of the frame)
+  static const std::map<std::string, std::pair<const char*, int>> LOOK = {{"potato", {"flat", 0}}, {"low", {"near", 0}}, {"medium", {"near", 1}}, {"high", {"near", 3}}, {"ultra", {"all", 4}}};
+  if (auto it = LOOK.find(p); it != LOOK.end()) { plantDetail = it->second.first; extra["shaderLevel"] = it->second.second; }
+  if (p == "potato") { renderer = RendererKind::Legacy; renderDist = 4; farTerrain = 512; microVoxels = 0; waterQuality = 0; shadows = 0; particles = 1; fancyLeaves = false; scale = 0.75f; clouds = false; }
   else if (p == "low") { renderDist = 6; farTerrain = 1024; microVoxels = 0; waterQuality = 1; shadows = 0; particles = 1; fancyLeaves = false; scale = 1; }
   else if (p == "medium") { renderDist = 8; farTerrain = 2048; microVoxels = 0; microVoxelDist = 32; waterQuality = 1; shadows = 0; particles = 2; fancyLeaves = true; scale = 1; }
   else if (p == "high") { renderDist = 12; farTerrain = 4096; microVoxels = 0; microVoxelDist = 48; waterQuality = 2; shadows = 1; particles = 2; fancyLeaves = true; scale = 1; }

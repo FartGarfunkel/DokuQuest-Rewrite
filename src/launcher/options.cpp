@@ -38,6 +38,9 @@ GpuInfo suggestForGpu(const std::string& vendor, const std::string& renderer, in
     if (has("arc")) { g.preset = "high"; g.why = "Intel Arc graphics card."; }
     else if (has("iris xe") || has("xe graphics")) { g.preset = "medium"; g.why = "Intel Iris Xe graphics."; }
     else if (has("uhd") || has("iris")) { g.preset = "low"; g.why = "Intel UHD/Iris graphics built into the processor."; }
+    // (an HD 520/530/620/630 with a modern GL runs Low at about 60-70 fps, split screen too: Potato's 4-chunk world at
+    //  three-quarter resolution was far less than it can do; the older ones without GL 4.3 stay the lightest)
+    else if (gl >= 43) { g.preset = "low"; g.why = "Intel HD graphics built into the processor."; }
     else { g.preset = "potato"; g.kind = RendererKind::Legacy; g.why = "Older Intel HD graphics built into the processor."; }
   } else if (has("nvidia") || has("geforce") || has("quadro")) {
     int rtx = numAfter("rtx"), gtx = numAfter("gtx"), gt = numAfter("gt ");

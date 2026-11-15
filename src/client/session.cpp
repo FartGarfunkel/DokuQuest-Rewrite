@@ -273,14 +273,17 @@ void GameSession::update(double dt) {
 }
 
 void GameSession::render() {
-  if (split()) { splitRender(); return; }
+  if (split()) { prof().frame(); splitRender(); return; }
   glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL);
   glEnable(GL_CULL_FACE); glCullFace(GL_BACK); glFrontFace(GL_CCW);
   prof().frame();
   { ProfScope ps("world.fx"); worldFxBegin(*this, frame); }   // the built-in shaders' sun shadow map (render/world_fx.cpp)
-  { ProfScope ps("sky"); sky->draw(frame); }
+  // the sky after the land (only where it left the picture empty), unless a shader pack's passes expect it first
+  const bool skyLast = app.settings.shaderPack.empty();
+  if (!skyLast) { ProfScope ps("sky"); sky->draw(frame); }
   { ProfScope ps("world.opaque"); worldRenderer.drawOpaque(frame); }
   { ProfScope ps("world.cutout"); worldRenderer.drawCutout(frame); }
+  if (skyLast) { ProfScope ps("sky"); sky->draw(frame, true); }
   for (auto& l : layers) { ProfScope ps(l->name(), ".opaque"); l->drawOpaque(*this, frame); }
   { ProfScope ps("world.fxCopy"); worldFxAfterOpaque(*this, frame); }   // corner shading, then the scene copied for the water
   { ProfScope ps("world.translucent"); worldRenderer.drawTranslucent(frame); }
@@ -288,6 +291,20 @@ void GameSession::render() {
   for (auto& l : layers) { ProfScope ps(l->name(), ".overlay"); l->drawOverlay(*this, frame); }
   worldFxEnd();
   glDisable(GL_DEPTH_TEST);
+}
+
+// one person's view in split screen (client/split.cpp splitRender: its viewport and scissor are set): no world fx there
+void GameSession::drawSplitView() {
+  // the sky after the land (only where it left the picture empty), unless a shader pack's passes expect it first
+  const bool skyLast = app.settings.shaderPack.empty();
+  if (!skyLast) { ProfScope ps("sky"); sky->draw(frame); }
+  { ProfScope ps("world.opaque"); worldRenderer.drawOpaque(frame); }
+  { ProfScope ps("world.cutout"); worldRenderer.drawCutout(frame); }
+  if (skyLast) { ProfScope ps("sky"); sky->draw(frame, true); }
+  for (auto& l : layers) { ProfScope ps(l->name(), ".opaque"); l->drawOpaque(*this, frame); }
+  { ProfScope ps("world.translucent"); worldRenderer.drawTranslucent(frame); }
+  for (auto& l : layers) { ProfScope ps(l->name(), ".translucent"); l->drawTranslucent(*this, frame); }
+  for (auto& l : layers) { ProfScope ps(l->name(), ".overlay"); l->drawOverlay(*this, frame); }
 }
 
 void GameSession::drawHud() {
