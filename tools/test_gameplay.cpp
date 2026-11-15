@@ -103,6 +103,7 @@ int main(int argc, char** argv) {
     r.p->inv[0].clear();
     for (int i = 0; i < 40 && r.p->atkMove; i++) r.step(0.05);
     r.p->atkMove = 0; r.p->atkT = 0;
+    r.p->hp = r.p->maxHp; r.p->invuln = 0;   // (the ghoul may have landed a blow before it went)
   }
   std::vector<std::string> events;
   bus.on("blockBreak", [&](const json& a) { events.push_back("break " + a[4].get<std::string>()); return true; });
@@ -165,10 +166,11 @@ int main(int argc, char** argv) {
   }
   printf("[movement]\n");
   {
+    const float hpBefore = r.p->hp;
     r.put(0.5f, Y + 5.5f, 0.5f);
     r.step(1.5);
     CHECK(r.p->onGround && std::fabs(r.p->pos.y - Y) < 1e-3f, "falls and lands on the floor (y=%.3f)", r.p->pos.y);
-    CHECK(std::fabs(r.p->hp - 18) < 0.01f, "a 5.5-block fall costs floor(5.5-3)=2 HP (hp=%.1f)", r.p->hp);
+    CHECK(std::fabs(r.p->hp - 18) < 0.01f, "a 5.5-block fall costs floor(5.5-3)=2 HP (hp=%.1f, before %.1f, max %.1f)", r.p->hp, hpBefore, r.p->maxHp);
     r.p->hp = 20;
     r.put(0.5f, Y, 0.5f); r.step(0.3);
     PlayerInput fw; fw.mz = -1;
@@ -337,23 +339,23 @@ int main(int argc, char** argv) {
     r.p->inv[0].clear();
     aimFace({0, Y, 1}, {0, 1, 0}); r.step(0.3); r.step(0.05, use);
     CHECK(r.p->sleeping && r.p->spawnPoint.y > 0, "sleeping in a bed at night sets the spawn point");
-    r.step(2.2);
-    CHECK(!r.p->sleeping && r.lv->info.time < DAY_LEN * 0.1, "and the night is skipped (time %.0f)", r.lv->info.time);
+    r.step(3.6);   // (lying down 1.5 s, then the 1.8 s fade)
+    CHECK(!r.p->sleeping && r.lv->info.time < DAY_LEN * 0.1, "and the night is skipped (time %.0f, still asleep %d)", r.lv->info.time, (int)r.p->sleeping);
     r.set(0, Y, 1, AIR); r.set(DIRX[f], Y, 1 + DIRZ[f], AIR);
     r.set(0, Y, 0, stone); r.step(0.3);
     // torch on a wall; chest gets a 27-slot block entity
     r.hold(0, "torch", 4);
     aimFace({0, Y, 0}, {0, 0, 1}); r.step(0.3); r.step(0.05, use);
-    CHECK(r.get(0, Y, 1) == r.B("torch") && r.w().getMeta(0, Y, 1) == 3, "a torch fixes to the wall it's put on (meta %d)", r.w().getMeta(0, Y, 1));
+    CHECK(r.get(0, Y, 1) == r.B("torch") && r.w().getMeta(0, Y, 1) == 3, "a torch fixes to the wall it's put on (meta %d, block %s)", r.w().getMeta(0, Y, 1), reg().block(r.get(0, Y, 1)).key.c_str());
     r.set(0, Y, 0, AIR); r.step(0.2);
     CHECK(r.get(0, Y, 1) == AIR, "and drops when the wall goes");
     r.hold(0, "chest", 1);
     aimFace({0, Y - 1, 1}, {0, 1, 0}); r.step(0.3); r.step(0.05, use);
     json* ce = r.w().blockEntity(0, Y, 1);
-    CHECK(ce && ce->value("type", "") == "chest" && (*ce)["items"].size() == 27, "a chest gets {type:'chest', items[27]}");
+    CHECK(ce && ce->value("type", "") == "chest" && (*ce)["items"].size() == 27, "a chest gets {type:'chest', items[27]} (block %s, entity %s)", reg().block(r.get(0, Y, 1)).key.c_str(), ce ? ce->dump().substr(0, 80).c_str() : "none");
     r.p->inv[0].clear(); events.clear();
     aimFace({0, Y, 1}, {0, 1, 0}); r.step(0.3); r.step(0.05, use);
-    CHECK(!events.empty() && events.back() == "screen container", "using a chest asks the UI for the container screen");
+    CHECK(!events.empty() && events.back() == "screen container", "using a chest asks the UI for the container screen (last event: %s)", events.empty() ? "none" : events.back().c_str());
     r.set(0, Y, 1, AIR);
   }
 
@@ -447,7 +449,7 @@ int main(int argc, char** argv) {
     r.p->hp = 20; r.p->invuln = 0; r.step(1.0);
     r.p->inv[3] = ItemStack("dirt", 10);
     std::string reply; ((reply = runCommand(*r.lv, r.p, "/kill")), true);
-    CHECK(r.p->dead, "/kill kills");
+    CHECK(r.p->dead, "/kill kills (%s)", reply.c_str());
     CHECK(r.p->grave.is_object() && r.get(r.p->grave["x"], r.p->grave["y"], r.p->grave["z"]) == KBk.grave, "the things go into a grave");
     CHECK(r.p->inv[0].id == "death_compass", "with a compass that points to it");
     r.c->respawn();
@@ -630,8 +632,9 @@ int main(int argc, char** argv) {
       std::set<u32> crossed; auto hp = bus.on("portalEnter", [&](const json& a) { crossed.insert(a[0].get<u32>()); return true; });
       r.lv->tick(TICK_DT);
       // an arrow through it hits what's on the other side
-      Creature* pig = spawnCreature(*r.lv, REALM_MAIN, "pig", vec3(18.5f, Y, -13.5f));
+      Creature* pig = spawnCreature(*r.lv, REALM_MAIN, "pig", vec3(18.5f, Y, -10.5f));   // (where the arrow is still at a pig's body height, not skimming the ground under it)
       if (pig) { pig->calm = true; pig->vel = vec3(0); }
+      r.lv->tick(TICK_DT);   // (its first tick sets its level, and its health with it)
       Entity* arrow = spawnArrow(*r.lv, REALM_MAIN, vec3(0.5f, Y + 0.7f, -4.5f), vec3(0, 2.5f, -26), r.p, 4, false);
       const float pigHp = pig ? pig->hp : 0; const u32 arrowId = arrow ? arrow->id : 0;
       for (int i = 0; i < 60 && pig && pig->hp >= pigHp; i++) r.lv->tick(TICK_DT);

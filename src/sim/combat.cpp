@@ -115,7 +115,8 @@ float damagePlayer(Level& lv, Player& p, float amount, DamageSource src) {
   if (lv.events) lv.events->emit("rumble", json::array({p.name, std::min(1.f, 0.25f + dealt * 0.08f), 140}));
   if (src.attacker && src.knock != 0) if (Entity* a = lv.entity(src.attacker)) knockback(p, a->pos, src.knock < 0 ? 5.f : src.knock, 4);
   if (src.element == "fire" && src.type != "burn") p.burn = std::max(p.burn, 2.f);
-  if (p.hp <= 0 && !pathCheatDeath(lv, p) && !combatRpgSecondChance(lv, p)) playerDie(lv, p, src);
+  // (the void and /kill are sure: no second chance, no cheating death there)
+  if (p.hp <= 0 && (src.type == "void" || (!pathCheatDeath(lv, p) && !combatRpgSecondChance(lv, p)))) playerDie(lv, p, src);
   return dealt;
 }
 
