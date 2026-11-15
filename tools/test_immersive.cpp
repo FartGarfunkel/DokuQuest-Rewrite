@@ -12,6 +12,7 @@
 #include "sim/immersive.h"
 #include "sim/knapping.h"
 #include "sim/crafting.h"
+#include "sim/worldsys.h"
 #include "common/fs.h"
 #include "common/threadpool.h"
 #include "world/world.h"
@@ -219,6 +220,17 @@ int main(int argc, char** argv) {
     check(twigs >= chunks / 8, "twigs in the woods and on beaches (" + std::to_string(twigs) + ")");
     check(grounded == total, "every one lies on solid ground");
     printf("  (flint: %d)\n", flint);
+  }
+
+  printf("[a furnace's front shows the cooking: its stages reach the players]\n");
+  {
+    json e = {{"type", "furnace"}, {"items", json::array({ItemStack("beef", 2).toJson(), ItemStack("coal", 4).toJson(), nullptr})}};
+    check(tickFurnace(e, 0.1, "furnace"), "lighting it is sent");
+    int sent = 0; double t = 0.1;
+    while (t < SMELT_TIME * 0.9) { const bool ch = tickFurnace(e, 0.25, "furnace"); t += 0.25; if (ch) sent++; }
+    check(sent == 2, "browning: two updates before it's done (ore glows, food turns cooked), got " + std::to_string(sent));
+    check(e.value("cook", 0.0) > SMELT_TIME * 0.55, "the cooking time is in the record");
+    check(smeltResult("beef", "smoker") == "cooked_beef", "beef smokes into cooked beef (what the smoker shows it turning into)");
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);

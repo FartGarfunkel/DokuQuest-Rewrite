@@ -273,6 +273,7 @@ void buildFurnaceModels(TileSet& ts) {
     }
     for (auto& h : hole) { if (h == 2) h = 0; holes += h; }
     if (holes < 4) continue;
+    if (getenv("DQ_DEV_FURNACE")) { std::string m; for (int y = 0; y < N; y++) { for (int x = 0; x < N; x++) m += hole[(size_t)y * N + x] ? '#' : '.'; m += '\n'; } DQ_LOG("furnace %s mask:\n%s", k, m.c_str()); }
     const float U = 16.f / N, Dp = FURNACE_DEPTH;
     auto isHole = [&](int x, int y) { return x >= 0 && y >= 0 && x < N && y < N && hole[(size_t)y * N + x]; };
     // model x runs right to left as the front is seen (the north face's left is high x): pixel x -> [16-(x+1)U, 16-xU]
@@ -316,11 +317,49 @@ void buildFurnaceModels(TileSet& ts) {
       }
       if (!isHole(x, y - 1)) { PackModelBox b; b.from = vec3(X0(x), Y0(y) + U, 0); b.to = vec3(X0(x) + U, Y0(y) + U, Dp); b.face[5] = pixUV(front, x, y); fm.body.boxes.push_back(b); }
     }
-    fm.floorY = floorRow >= 0 ? Y0(floorRow) : 0;
-    if (floorRow >= 0) {   // across the lowest floor
-      int lo = N, hi = -1; for (int x = 0; x < N; x++) if (isHole(x, floorRow) && !isHole(x, floorRow + 1)) { lo = std::min(lo, x); hi = std::max(hi, x); }
-      if (hi >= lo) { fm.floorX0 = X0(hi); fm.floorX1 = X0(lo) + U; }
+    // the openings: the holes' connected pieces, leaving out the picture's thin dark lines and specks (a piece filling under half
+    // its box, or under 4 pixels); pieces side by side at the same height are one opening (a grille's slots). The main opening
+    // is the lowest (where the fire is), the one over it (if any) the chamber above.
+    struct Piece { int x0, x1, y0, y1, n; };
+    std::vector<Piece> pieces;
+    {
+      std::vector<int> seen((size_t)N * N, 0);
+      for (int sy = 0; sy < N; sy++) for (int sx = 0; sx < N; sx++) {
+        if (!isHole(sx, sy) || seen[(size_t)sy * N + sx]) continue;
+        Piece P{sx, sx, sy, sy, 0};
+        std::vector<ivec2> st{{sx, sy}}; seen[(size_t)sy * N + sx] = 1;
+        while (!st.empty()) {
+          const ivec2 c = st.back(); st.pop_back(); P.n++;
+          P.x0 = std::min(P.x0, c.x); P.x1 = std::max(P.x1, c.x); P.y0 = std::min(P.y0, c.y); P.y1 = std::max(P.y1, c.y);
+          const ivec2 nb[4] = {{c.x + 1, c.y}, {c.x - 1, c.y}, {c.x, c.y + 1}, {c.x, c.y - 1}};
+          for (const ivec2& d : nb) if (isHole(d.x, d.y) && !seen[(size_t)d.y * N + d.x]) { seen[(size_t)d.y * N + d.x] = 1; st.push_back(d); }
+        }
+        if (P.n >= 4 && P.n * 2 >= (P.x1 - P.x0 + 1) * (P.y1 - P.y0 + 1)) pieces.push_back(P);
+      }
     }
+    struct Opening { Piece box; int parts = 0; };
+    std::vector<Opening> opens;
+    for (const Piece& P : pieces) {
+      bool joined = false;
+      for (Opening& o : opens) {
+        const int ov = std::min(o.box.y1, P.y1) - std::max(o.box.y0, P.y0) + 1;
+        if (ov * 2 >= std::min(o.box.y1 - o.box.y0, P.y1 - P.y0) + 1) {
+          o.box = {std::min(o.box.x0, P.x0), std::max(o.box.x1, P.x1), std::min(o.box.y0, P.y0), std::max(o.box.y1, P.y1), o.box.n + P.n}; o.parts++; joined = true; break;
+        }
+      }
+      if (!joined) opens.push_back({P, 1});
+    }
+    const Opening* mainO = nullptr;
+    for (const Opening& o : opens) if (!mainO || o.box.y1 > mainO->box.y1 || (o.box.y1 == mainO->box.y1 && o.box.n > mainO->box.n)) mainO = &o;
+    if (mainO) {
+      const Piece& m = mainO->box;
+      fm.floorY = Y0(m.y1); fm.floorX0 = X0(m.x1); fm.floorX1 = X0(m.x0) + U; fm.topY = Y0(m.y0) + U;
+      fm.grille = mainO->parts > 1;
+      const Opening* upO = nullptr;   // the nearest opening above it, over its sides
+      for (const Opening& o : opens) if (&o != mainO && o.box.y1 < m.y0 && o.box.x1 >= m.x0 && o.box.x0 <= m.x1 && (!upO || o.box.y1 > upO->box.y1)) upO = &o;
+      if (upO) { const Piece& u = upO->box; fm.up = true; fm.upFloorY = Y0(u.y1); fm.upTopY = Y0(u.y0) + U; fm.upX0 = X0(u.x1); fm.upX1 = X0(u.x0) + U; }
+    } else fm.floorY = floorRow >= 0 ? Y0(floorRow) : 0;
+    if (getenv("DQ_DEV_FURNACE")) DQ_LOG("furnace %s: floor %.1f top %.1f x %.1f..%.1f grille %d up %d (%.1f..%.1f)", k, fm.floorY, fm.topY, fm.floorX0, fm.floorX1, (int)fm.grille, (int)fm.up, fm.upFloorY, fm.upTopY);
     (*D)[front] = fm;
     if (lit >= 0) { FurnaceModel fl = fm; fl.back.boxes[0].face[0].tile = lit; (*D)[lit] = fl; }   // (lit: the same holes, its fire behind them)
   }

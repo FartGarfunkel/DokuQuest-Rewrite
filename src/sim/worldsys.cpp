@@ -620,7 +620,10 @@ bool tickFurnace(json& e, double dt, const std::string& kind) {
   if (burn > 0) {
     burn = std::max(0.0, burn - dt);
     if (canOut) {
+      const double was = cook;
       cook += dt;
+      // the stages the furnace's front shows (render/furnace_layer.cpp: ore glowing, food turned cooked) reach players too
+      for (double at : {SMELT_TIME * 0.3, SMELT_TIME * 0.55}) if (was < at && cook >= at) changed = true;
       if (cook >= SMELT_TIME) {
         cook = 0; inp.n--; items[0] = inp.n <= 0 ? json() : inp.toJson();
         if (!out.empty()) { out.n++; items[2] = out.toJson(); } else items[2] = ItemStack(result, 1).toJson();

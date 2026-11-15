@@ -54,7 +54,10 @@ void paintChestTiles(TileSet& ts);
 // when it burns). body: the block (front, the holes' walls, floors and ceilings, sides, top, bottom); back: the back wall,
 // drawn bright when the furnace is lit. Facing north (-z); keyed by the block's front tile. After the tiles are final.
 constexpr float FURNACE_DEPTH = 9.f;
-struct FurnaceModel { PackModel body, back; float floorY = 0, floorX0 = 6, floorX1 = 10; };   // the main opening's floor (of 16: its height, from x0 to x1, model x), where the fuel lies
+struct FurnaceModel { PackModel body, back; float floorY = 0, floorX0 = 6, floorX1 = 10, topY = 0;
+  // a second, higher opening over the main one (the smoker's grille: its food chamber): its floor, ceiling and sides; grille:
+  // the main opening is itself only slots (the blast furnace's) — what cooks stands behind the bars
+  bool up = false, grille = false; float upFloorY = 0, upTopY = 0, upX0 = 0, upX1 = 0; };   // the main opening's floor (of 16: its height, from x0 to x1, model x), where the fuel lies; topY: its ceiling over that floor (the lowest over the run)
 void buildFurnaceModels(TileSet& ts);
 const FurnaceModel* furnaceModelFor(int frontTile);
 
