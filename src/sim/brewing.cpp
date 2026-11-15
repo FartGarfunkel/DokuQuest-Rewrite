@@ -28,6 +28,15 @@ std::string brewResult(const std::string& from, const std::string& ing) {
   return j == it->second.end() ? "" : j->second;
 }
 bool isBrewIngredient(const std::string& id) { return magicData().brewIngs.count(id) > 0; }
+const std::vector<BrewRecipe>& brewRecipes() {
+  static std::vector<BrewRecipe> v = [] {
+    std::vector<BrewRecipe> r;
+    for (auto& [from, m] : magicData().brew) for (auto& [ing, to] : m) r.push_back({from, ing, to});
+    std::sort(r.begin(), r.end(), [](const BrewRecipe& a, const BrewRecipe& b) { return a.to != b.to ? a.to < b.to : a.from < b.from; });
+    return r;
+  }();
+  return v;
+}
 bool brewAccepts(int i, const std::string& id) {
   if (i < 3) return potionInfo(id) != nullptr;
   if (i == 3) return isBrewIngredient(id);

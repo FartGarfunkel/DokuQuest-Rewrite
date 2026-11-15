@@ -372,7 +372,7 @@ void PlayerController::updateTarget() {
       last = c;
       for (int dy = 0; dy <= 1; dy++) {
         const ivec3 q = c - ivec3(0, dy, 0);
-        const float t = tactileChestLidRay(w, q, vec3(o), d);
+        const float t = tactileExtraRay(w, q, vec3(o), d);
         if (t >= 0 && t < (float)lim && (!hit.hit || hit.block != q)) {
           hit.hit = true; hit.block = q; hit.id = w.getBlock(q.x, q.y, q.z); hit.dist = t; hit.normal = ivec3(0, 1, 0);
           hit.point = vec3(o) + d * t;

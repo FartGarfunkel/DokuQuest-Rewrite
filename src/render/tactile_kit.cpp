@@ -8,6 +8,8 @@
 #include "client/app.h"
 #include "world/world.h"
 #include <map>
+#include <imgui.h>
+#include <imgui_internal.h>
 #include <tuple>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -64,6 +66,39 @@ void tactilePartDraw(App& app, ContentDraw& cd, const PackModel& M, const mat4& 
       mat4 q(1); q[0] = vec4(X, 0); q[1] = vec4(Y, 0); q[2] = vec4(glm::normalize(glm::cross(X, Y)) * 0.001f, 0); q[3] = vec4(bl + (X + Y) * 0.5f, 1);
       vec4 uv = fc.uv / 16.f;   // (picture: v down; the quad's top is +y)
       cd.picture(tex, pose * q, uv, vec4(1), light, true);
+    }
+  }
+}
+
+void tactileText(ContentDraw& cd, const TPose& pose, float cx, float y, float cz, const std::string& text, float scale, float maxW, vec4 color, vec2 light) {
+  ImFont* font = ImGui::GetIO().Fonts->Fonts.empty() ? nullptr : ImGui::GetIO().Fonts->Fonts[0];
+  if (!font || text.empty()) return;
+  const GLuint atlas = (GLuint)(intptr_t)ImGui::GetIO().Fonts->TexID;
+  const float fh = font->FontSize, sc = scale * 9.f / fh, wMax = maxW * 0.98f / (sc * 16.f);
+  auto width = [&](const std::string& t) { return font->CalcTextSizeA(fh, 1e9f, 0, t.c_str()).x; };
+  std::vector<std::string> lines; std::string cur, word;
+  for (size_t k = 0; k <= text.size(); k++) {
+    const char ch = k < text.size() ? text[k] : ' ';
+    if (ch != ' ') { word += ch; continue; }
+    const std::string t = cur.empty() ? word : cur + " " + word;
+    if (!cur.empty() && width(t) > wMax) { lines.push_back(cur); cur = word; } else cur = t;
+    word.clear();
+  }
+  if (!cur.empty()) lines.push_back(cur);
+  TPose p = pose; p.t(cx / 16, y, cz / 16).rx(90).ry(180).s(sc, sc, sc);   // (lying face up: the lines run down the page)
+  const float total = lines.size() * fh;
+  for (size_t l = 0; l < lines.size(); l++) {
+    float x = -width(lines[l]) / 2;
+    const float yy = -total / 2 + l * fh;
+    for (const char* q = lines[l].c_str(); *q;) {
+      unsigned int cp = 0; const int n = ImTextCharFromUtf8(&cp, q, nullptr); q += std::max(1, n);
+      const ImFontGlyph* g = font->FindGlyph((ImWchar)cp);
+      if (!g) continue;
+      if (g->Visible) {
+        TPose gq = p; gq.t(x + (g->X0 + g->X1) / 2, -(yy + (g->Y0 + g->Y1) / 2), 0).s(g->X1 - g->X0, g->Y1 - g->Y0, 1);
+        cd.picture(atlas, gq.m, vec4(g->U0, g->V0, g->U1, g->V1), color, light, true);
+      }
+      x += g->AdvanceX;
     }
   }
 }

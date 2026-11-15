@@ -14,6 +14,7 @@
 #include "sim/crafting.h"
 #include "sim/worldsys.h"
 #include "sim/tactile.h"
+#include "sim/brewing.h"
 #include "sim/chest_work.h"
 #include "sim/stations.h"
 #include "common/fs.h"
@@ -295,6 +296,22 @@ int main(int argc, char** argv) {
     check(tactileChestAim(w, at, e2, d2).what == TactileChestAim::Sort, "the lower button sorts");
     auto [e3, d3] = aimAt(vec3(4.f / 16, 14.f / 16, 13.f / 16));
     check(tactileChestAim(w, at, e3, d3).what == TactileChestAim::Lid, "the rest of the lid shuts it");
+  }
+
+  printf("[Tactile's still: its recipe book's pages]\n");
+  {
+    World& w = im.lv->world();
+    const ivec3 at(4, im.Y + 1, 14);
+    w.setBlock(at.x, at.y, at.z, reg().blockId("brewing_stand"));
+    auto click = [&](float nx, float nz) { RayHit h; h.hit = true; h.block = at; h.id = w.getBlock(at.x, at.y, at.z); h.normal = ivec3(0, 1, 0);
+      h.point = vec3(at) + tactileFromNorth(tactileFacing(w, at), vec3(nx / 16, 0.1f, nz / 16)); ItemStack none; tactileBrewUse(*im.lv, *im.P, w, h, none, false); };
+    const json* e = nullptr;
+    click(3.6f, 0.6f);   // (the next arrow, on the right-hand page)
+    e = w.blockEntity(at.x, at.y, at.z);
+    check(brewRecipes().size() > 10, "the book has our brews (" + std::to_string(brewRecipes().size()) + ")");
+    check(e && e->value("bookPage", 0) == 1, "the next arrow turns the page");
+    click(12.4f, 0.6f);
+    check(w.blockEntity(at.x, at.y, at.z)->value("bookPage", 0) == 0, "the back arrow turns it back");
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);

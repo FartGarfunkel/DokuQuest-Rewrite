@@ -15,6 +15,8 @@ std::string potKey(const std::string& P, const std::string& v = "", bool splash 
 const json* potionInfo(const std::string& itemId);           // the item's `potion` def ({P, v, fx, col, splash}) or null
 std::string brewResult(const std::string& from, const std::string& ing);   // "" = nothing
 bool isBrewIngredient(const std::string& id);
+struct BrewRecipe { std::string from, ing, to; };
+const std::vector<BrewRecipe>& brewRecipes();   // every brew, by what it makes (the still's recipe book)
 bool brewAccepts(int slot, const std::string& id);            // 0-2 potions, 3 ingredient, 4 cinder powder
 
 json& brewEntity(World& w, int x, int y, int z);              // the stand's record (created if missing)

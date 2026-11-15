@@ -110,6 +110,18 @@ float tactileChestLidRay(World& w, ivec3 at, vec3 eye, vec3 dir) {
   return best;
 }
 
+float tactileExtraRay(World& w, ivec3 at, vec3 eye, vec3 dir) {
+  const float t = tactileChestLidRay(w, at, eye, dir);
+  if (t >= 0) return t;
+  if (reg().block(w.getBlock(at.x, at.y, at.z)).key == "brewing_stand") {   // (the still's recipe book, lying in front)
+    const int f = tactileFacing(w, at);
+    const vec3 o = tactileNorthLocal(f, eye - vec3(at)), d = tactileNorthLocal(f, eye + dir - vec3(at)) - o;
+    static const float BOOK[6] = {1, 0, 0, 15, 1.6f, 7.5f};
+    return rayBox(o, d, BOOK);
+  }
+  return -1;
+}
+
 bool tactileChestUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, ItemStack& held, bool all, bool sneak) {
   if (!tactileChest(w, at)) return false;
   const TactileChestAim a = tactileChestAim(w, at, eye, dir);

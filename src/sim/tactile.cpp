@@ -239,6 +239,19 @@ bool tactileBrewUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack
   // (AlambicBlockEntity.zoneAt / bottleIndexAt: the rack left of 7.5, its spots split at 2 and 4; the dome over 0.16 up)
   const vec3 n = tactileNorthLocal(tactileFacing(w, at), hit.point - vec3(at));
   const float lx = n.x * 16;
+  // (its recipe book, lying in front: AlambicBookLayout's buttons turn its pages)
+  if (lx >= 1 && lx <= 15 && n.y * 16 <= 2.2f && n.z * 16 <= 7.6f) {
+    json& e = brewEntity(w, at.x, at.y, at.z);
+    const int pages = std::max(1, ((int)brewRecipes().size() + 9) / 10), page = e.value("bookPage", 0);
+    const float bx = lx, bz = n.z * 16;
+    auto in = [&](float x0, float z0, float x1, float z1) { return bx >= x0 - 0.4f && bx <= x1 + 0.4f && bz >= z0 - 0.4f && bz <= z1 + 0.4f; };
+    int to = page;
+    if (in(11.9f, 0.1f, 12.9f, 1.1f)) to = page - 1; else if (in(3.1f, 0.1f, 4.1f, 1.1f)) to = page + 1; else if (in(8.f, 0.1f, 9.f, 1.1f)) to = 0;
+    else to = bx >= 8 ? page - 1 : page + 1;   // (anywhere on a half: that way)
+    to = std::clamp(to, 0, pages - 1);
+    if (to != page) { e["bookPage"] = to; w.blockEntityChanged(at.x, at.y, at.z); sfxAt(lv, "book_page", vec3(at) + vec3(0.5f, 0.1f, 0.3f)); }
+    return true;
+  }
   int slot = lx < 7.5f ? (lx < 2.f ? 0 : lx < 4.f ? 1 : 2) : n.y >= 0.16f ? 3 : 4;
   if (!held.empty()) {
     if (slot <= 2) {   // (a bottle: the spot looked at, else the first free)

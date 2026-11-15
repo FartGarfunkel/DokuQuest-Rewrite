@@ -26,6 +26,10 @@ TPose tactileBlockPose(const FrameCtx& f, ivec3 at, int facing);
 void tactileItem(const ItemStack& s, const mat4& pose, VoxelLight L, vec4 tint = vec4(0));
 // a model's faces at the pose (block space 0..1 = the model's 0..16), each its own picture (ContentDraw begun by the caller)
 void tactilePartDraw(App& app, ContentDraw& cd, const PackModel& M, const mat4& pose, vec2 light);
+// writing laid on a surface as Tactile's drawTextLines writes it: centred at (cx, y, cz) in the pose's block space
+// (sixteenths for cx and cz, blocks for y), read from above the surface, wrapped to maxW sixteenths, in the UI font; scale
+// is Tactile's (for its 9-pixel font). ContentDraw begun by the caller
+void tactileText(ContentDraw& cd, const TPose& pose, float cx, float y, float cz, const std::string& text, float scale, float maxW, vec4 color, vec2 light);
 // the light a Tactile renderer sees at a block (the brightest of it and the air round it)
 VoxelLight tactileLight(World& w, ivec3 at);
 // a door or lid's angle easing toward open (1) or shut (0), Tactile's 0.15 a tick (3 a second); per block, kept here

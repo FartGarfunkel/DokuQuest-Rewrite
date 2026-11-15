@@ -49,6 +49,8 @@ TactileChestAim tactileChestAim(World& w, ivec3 at, vec3 eye, vec3 dir);
 bool tactileChestUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, ItemStack& held, bool all, bool sneak);
 // how far along the ray an open chest's lid and buttons are (they stand up out of its block), -1 if it misses them
 float tactileChestLidRay(World& w, ivec3 at, vec3 eye, vec3 dir);
+// any Tactile part that stands out of its block's own shape (a chest's lid, the still's recipe book): how far along the ray
+float tactileExtraRay(World& w, ivec3 at, vec3 eye, vec3 dir);
 bool tactileChestTake(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, bool whole);
 
 // the brewing stand worked as Tactile's alambic (over our brewing record: bottles 0-2, the ingredient 3, cinder powder 4):

@@ -19,6 +19,7 @@
 #include "render/tactile_kit.h"
 #include "assets/local_models.h"
 #include "sim/tactile.h"
+#include "sim/brewing.h"
 #include "client/app.h"
 #include <regex>
 #include <map>
@@ -133,6 +134,8 @@ class PileLayer : public RenderLayer {
   std::vector<FramedMap> framedMaps;   // drawn after the voxels, with the content shader
   struct StillWater { ivec3 at; int facing; vec2 light; };
   std::vector<StillWater> tactileWater;   // Tactile's still brewing: water in its glass (alambic_water)
+  struct StillBook { ivec3 at; int facing, page; vec2 light; };
+  std::vector<StillBook> tactileBooks;   // the still's recipe books: their parts and writing
 public:
   const char* name() const override { return "item-piles"; }
   int order() const override { return 110; }
@@ -182,6 +185,21 @@ public:
         pile(3, 11.8f, 4.2f, 10.9f);
         pile(4, 11.5f, 0.8f, 10.f);
         if (e.value("t", 0.0) > 0) tactileWater.push_back({at, tactileFacing(w, at), vec2(TL.sky, TL.block)});
+        // its recipe book in front (AlambicBlockEntityRenderer.renderRecipeBook): ten of our brews a spread, five a page, each
+        // its ingredient's icon and what it makes from what; the page's parts and writing drawn after the voxels
+        const int page = e.value("bookPage", 0);
+        const auto& R = brewRecipes();
+        for (int i = 0; i < 10; i++) {
+          const int k = page * 10 + i;
+          if (k >= (int)R.size()) break;
+          const bool left = i < 5; const int r = i % 5;
+          const float rh = 0.96f, z1 = 5.6f - r * rh, x0 = left ? 8.3f : 3.3f;
+          TPose p = base;
+          p.t(0.5f, 0.0875f, 0.21875f).rz(left ? 4.f : -4.f).t(-0.5f, -0.0875f, -0.21875f);   // (each half tilted on the spine)
+          p.t((x0 + rh * 0.5f) / 16, 0.096875f, (z1 - rh * 0.5f) / 16).ry(180).rx(-90).s(rh * 0.85f / 16);
+          tactileItem(ItemStack(R[k].ing, 1), p.m, TL);
+        }
+        tactileBooks.push_back({at, tactileFacing(w, at), page, vec2(TL.sky, TL.block)});
         return;
       }
       if (type == "brew") {   // the brewing stand: bottles on its three feet, the ingredient in the bowl, the powder at its foot
@@ -536,6 +554,37 @@ public:
         cd.end();
       }
       tactileWater.clear();
+    }
+    if (!tactileBooks.empty()) {
+      ContentDraw& cd = contentDraw();
+      if (cd.begin(f, f.cam.viewProj)) {
+        const auto& R = brewRecipes();
+        auto name = [](const std::string& id) { const ItemDef* d = reg().item(id); std::string n = d ? d->name : id; for (const char* pre : {"Potion of ", "Splash Potion of ", "Lingering Potion of "}) if (n.rfind(pre, 0) == 0) n = n.substr(std::string(pre).size()); return n; };
+        const int pages = std::max(1, ((int)R.size() + 9) / 10);
+        for (auto& b : tactileBooks) {
+          const TPose base = tactileBlockPose(f, b.at, b.facing);
+          auto part = [&](const char* n, float tilt) {
+            if (const PackModel* m = tactilePart(n)) { TPose p = base; if (tilt != 0) p.t(0.5f, 0.0875f, 0.21875f).rz(tilt).t(-0.5f, -0.0875f, -0.21875f); tactilePartDraw(s.app, cd, *m, p.m, b.light); }
+          };
+          part("livre_reliure", 0); part("livre_base_g", 4); part("livre_page_g", 4); part("livre_base_d", -4); part("livre_page_d", -4);
+          if (b.page > 0) part("livre_fleche_prec", 4);
+          if (b.page < pages - 1) part("livre_fleche_suiv", -4);
+          const vec4 ink(0.2f, 0.12f, 0.06f, 1.f);
+          for (int half = 0; half < 2; half++) {
+            const bool left = half == 0;
+            TPose hp = base; hp.t(0.5f, 0.0875f, 0.21875f).rz(left ? 4.f : -4.f).t(-0.5f, -0.0875f, -0.21875f);
+            if (left) tactileText(cd, hp, 10.5f, 0.1f, 6.3f, "Recipes " + std::to_string(b.page + 1) + "/" + std::to_string(pages), 0.003f, 4.4f, ink, b.light);
+            for (int r = 0; r < 5; r++) {
+              const int k = b.page * 10 + half * 5 + r;
+              if (k >= (int)R.size()) break;
+              const float rh = 0.96f, z1 = 5.6f - r * rh, x0 = left ? 8.3f : 3.3f, x1 = left ? 12.7f : 7.7f;
+              tactileText(cd, hp, (x0 + 1.2f * rh + x1) * 0.5f, 0.1f, z1 - rh * 0.5f, name(R[k].to) + " (" + name(R[k].from) + ")", 0.0021f, x1 - x0 - 1.2f * rh, ink, b.light);
+            }
+          }
+        }
+        cd.end();
+      }
+      tactileBooks.clear();
     }
     if (!framedMaps.empty()) {
       ContentDraw& cd = contentDraw();
