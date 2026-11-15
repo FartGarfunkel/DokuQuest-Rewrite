@@ -22,6 +22,15 @@ vec3 tactileFromNorth(int facing, vec3 north);
 // (what's done first, then what cooks; the fuel down low; the blast furnace's ingots from its mould). all: the whole stack.
 // false: not one of them (or nothing to do there)
 bool tactileFurnaceUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held, bool all);
-bool tactileDoorOpen(World& w, ivec3 at);   // the smoker's and blast furnace's door (block entity "door")
+bool tactileDoorOpen(World& w, ivec3 at);
+
+// the cartography desk (Tactile's cartographe; our "mapwork" record {items: [the map worked, a blank to copy onto, blank
+// sheets to enlarge with], ink, feather}): an ink sac fills its pot (three uses), a feather goes in its holder (three);
+// a map goes on the board (front: the one worked, back: a blank to copy onto), blanks and paper pile on the right; an empty
+// hand at the quill draws a new map of where you stand (a blank on the front) or copies the map onto the blank, at the
+// compass enlarges the map with eight from the pile; anywhere else takes back what lies there
+bool tactileCartographyUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held);
+int tactileCartoFacing(int facing);
+void tactileGive(Level& lv, Player& p, ItemStack s);   // into the bag, the rest dropped at your feet   // the desk's model faces west: Tactile turns it by facing.getClockWise()
 
 } // namespace dq

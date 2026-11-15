@@ -134,4 +134,8 @@ bool tactileFurnaceUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemSt
   return take(1);
 }
 
+void tactileGive(Level& lv, Player& p, ItemStack s) {
+  if (int left = giveItem(lv, p, s); left > 0) { s.n = left; dropItem(lv, p.realm, s, p.pos + vec3(0, 1, 0), true, 0.f); }
+}
+
 } // namespace dq

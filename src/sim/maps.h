@@ -83,6 +83,7 @@ std::string mapTogglePin(Level& lv, Player& p, int dim, float x, float z, float 
 
 // using maps; the M key: the slot of the map to look at (-1 none, -2 the off hand)
 int mapBestSlot(Level& lv, Player& p);
+ItemStack mapStartHere(Level& lv, Player& p);   // a new map of where p stands (an empty map used; the cartography desk drawing one)
 ItemStack* mapStackAt(Player& p, int slot);
 // crafting (maps.js matchGrid): a map and empty maps -> copies; a map ringed with 8 paper (3x3) -> zoomed out.
 // take = the result is being taken (a zoomed map is made then). Returns false if this isn't a map recipe.

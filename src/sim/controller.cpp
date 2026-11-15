@@ -425,7 +425,7 @@ bool PlayerController::tactileStrike(const RayHit& hit) {
   World& w = world();
   const ivec3 at = hit.block;
   const std::string st = pairStationAt(w, at);
-  if (st.empty()) return false;
+  if (st.empty() || st == "cartography") return false;   // (the desk is worked at its quill and compass: sim/tactile.h)
   const std::vector<ItemStack> v = pairWorkItems(w, at);
   if (v[0].empty() && v[1].empty()) return false;
   swingArm();
@@ -741,6 +741,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   }
   // Tactile Stations: the station takes the use before what's held does (armour laid on the smithing table, not worn)
   if (!fromOff && !repeat && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).has("station") && pairWorkType(R.block(hit->id).str("station"))) {
+    if (R.block(hit->id).str("station") == "cartography") { if (tactileCartographyUse(lv, p, w, *hit, held)) swingArm(); return; }   // (Tactile's desk: sim/tactile.h)
     useBlockAt(*hit, held.empty() ? nullptr : &held, def);
     return;
   }

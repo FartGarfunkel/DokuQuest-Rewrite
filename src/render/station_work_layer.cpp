@@ -5,6 +5,8 @@
 #include "assets/local_models.h"
 #include "render/item_layers.h"
 #include "render/env_layers.h"
+#include "render/tactile_kit.h"
+#include "sim/tactile.h"
 #include "assets/tileset.h"
 #include "render/be_scan.h"
 #include "client/app.h"
@@ -63,7 +65,9 @@ void drawCutHeap(VoxelRenderer& VR, const FrameCtx& f, const ItemStack& st, vec3
 
 class StationWorkLayer : public RenderLayer {
   struct Sheet { const PaperMap* map; mat4 M; float S; vec2 light; };
-  std::vector<Sheet> sheets;   // maps lying on the cartography table: drawn after the voxels, with the content shader
+  std::vector<Sheet> sheets;
+  struct Ink { mat4 M; vec2 light; };
+  std::vector<Ink> inks;       // the cartography desk's ink in its pot (Tactile's encrier_fill, filled to the ink left)   // maps lying on the cartography table: drawn after the voxels, with the content shader
 public:
   const char* name() const override { return "station-work"; }
   int order() const override { return 111; }
@@ -266,6 +270,30 @@ public:
         record(e["disc"].get<std::string>(), vec3(x, y, z) + vec3(0.5f, 1.06f, 0.5f), 0, -t * 1.6f, 0.5f, VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f});
         return;
       }
+      // Tactile's cartography desk (CartographeBlockEntityRenderer): the maps on its board and the pile on its right, the
+      // ink in its pot, the quill in its holder; turned by the facing's clockwise (its model faces west)
+      if (type == "mapwork" && stationModel(w.getBlock(x, y, z)) && s.app.settings.tactileStations && !(pairOn && pv.at == ivec3(x, y, z))) {
+        const ivec3 at(x, y, z);
+        const int fc = tactileCartoFacing(tactileFacing(w, at));
+        const VoxelLight L = tactileLight(w, at);
+        const TPose base = tactileBlockPose(f, at, fc);
+        const json& it = e.contains("items") && e["items"].is_array() ? e["items"] : json::array();
+        static const float POS[3][4] = {{3.95f, 14.9f, 3.45f, 22.5f}, {3.95f, 14.9f, 12.45f, 22.5f}, {10.95f, 16.2f, 10.95f, 0.f}};
+        for (int k = 0; k < 3 && k < (int)it.size(); k++) {
+          const ItemStack st = ItemStack::fromJson(it[k]);
+          if (st.empty()) continue;
+          const PaperMap* pm = isMapStack(st) && !stackMapId(st).empty() ? mapStore(*s.level).get(stackMapId(st)) : nullptr;
+          const int n = isMapStack(st) ? 1 : std::min(st.n, 16);
+          for (int i = 0; i < n; i++) {   // (a sheet a tenth of a pixel over the last)
+            TPose p = base; p.t(POS[k][0] / 16, (POS[k][1] + i * 0.1f) / 16, POS[k][2] / 16).rz(POS[k][3]).rx(90).t(0.15625f, 0.15625f, 0).s(1, -1, 1);
+            sheets.push_back({pm, p.m, 0.3125f / 1.12f, vec2(L.sky, L.block)});
+          }
+        }
+        const int ink = e.value("ink", 0), feather = e.value("feather", 0);
+        if (ink > 0) { TPose p = base; p.t(0, 1.0125f, 0).s(1, ink / 3.f, 1).t(0, -1.0125f, 0); inks.push_back({p.m, vec2(L.sky, L.block)}); }
+        if (feather > 0) { begin(); TPose p = base; p.t(0.371875f, 1.08125f, 0.515625f).ry(-15).rx(25).rz(-45).s(0.15f); tactileItem(ItemStack("feather", 1), p.m, L); }
+        return;
+      }
       if (!cutwork && type != "grindwork" && type != "smithwork" && type != "loomwork" && type != "fletchwork" && type != "mapwork" && type != "forgework") return;
       const ivec3 at(x, y, z);
       if ((pairOn && pv.at == at) || (cutOn && cv.at == at)) return;   // (the scene draws it, below)
@@ -368,6 +396,11 @@ public:
       ContentDraw& cd = contentDraw();
       if (cd.begin(f, f.cam.viewProj)) { for (auto& sh : sheets) drawMapSheet(cd, *s.level, sh.map, s.player, sh.M, sh.S, sh.light); cd.end(); }
       sheets.clear();
+    }
+    if (!inks.empty()) {
+      ContentDraw& cd = contentDraw();
+      if (const PackModel* fill = tactilePart("encrier_fill")) if (cd.begin(f, f.cam.viewProj)) { for (auto& k : inks) tactilePartDraw(s.app, cd, *fill, k.M, k.light); cd.end(); }
+      inks.clear();
     }
   }
 

@@ -379,6 +379,12 @@ bool blockUsable(const BlockDef& b) {   // the block you look at has its own use
   return s == Door || s == Gate || s == Trapdoor || s == Lever || s == Button || s == Bed || s == Frame || s == Repeater || s == Comparator;
 }
 }
+ItemStack mapStartHere(Level& lv, Player& p) {
+  std::string id = newId();
+  mapStore(lv).create(id, jsDimOf(p), p.pos.x, p.pos.z, 0);
+  ItemStack fm("filled_map", 1); fm.tag = {{"map", id}};
+  return fm;
+}
 bool mapsUse(UseCtx& u) {
   Player& p = u.p;
   ItemStack& s = p.held();
