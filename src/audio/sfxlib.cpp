@@ -33,7 +33,7 @@ bool SfxLibrary::load(const std::filesystem::path& dir) {
   addHalloweenSounds(table);
   addNetherSounds(table);
   if (!pack.load(dir / "sounds.json", dir / "sounds.bin")) DQ_WARN("audio: no resource-pack sound profiles (data/sounds.*)");
-  // imported creatures' own voices (tools/port/alexsmobs_sounds.py: local, git-ignored): <name>_sounds.json + .bin, merged in
+  // imported creatures' own voices (the creature voice import: local, git-ignored): <name>_sounds.json + .bin, merged in
   { std::error_code ec;
     for (auto& e : std::filesystem::directory_iterator(dir / "local_models", ec)) {
       const std::string fn = e.path().filename().string();

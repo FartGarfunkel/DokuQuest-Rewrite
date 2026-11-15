@@ -33,7 +33,7 @@ void FrameCtx::apply(Shader& s) const {
   s.set("uSea", sea);
   s.set("uMinLight", minLight);
   s.set("uEyeFluid", eyeFluid);
-  s.set("uAmbient", cubyzAmbient(daylight));
+  s.set("uAmbient", rgbAmbient(daylight));
   s.set("uBlockLightColor", blockLightColor);
   // coloured block light: the volume round the camera (render/light_colour_layer.cpp) on unit 12
   glActiveTexture(GL_TEXTURE0 + 12); glBindTexture(GL_TEXTURE_3D, lightVol); glActiveTexture(GL_TEXTURE0);

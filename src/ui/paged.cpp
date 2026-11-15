@@ -57,7 +57,7 @@ bool resetButton(ImVec2 p, float s) {
   return hit;
 }
 // Minecraft's text field: black, a grey frame (white while typing)
-bool mcTextField(const char* id, std::string* s, const char* hint, ImVec2 size, int flags, size_t maxLen) {
+bool greyTextField(const char* id, std::string* s, const char* hint, ImVec2 size, int flags, size_t maxLen) {
   float fh = textSize(F_BODY, "Ag").y;
   ImGui::PushFont(font(F_BODY));
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(std::round(size.y * 0.2f), std::max(0.f, (size.y - fh) * 0.5f)));
@@ -210,7 +210,7 @@ void tooltipBox(ImDrawList* dl, ImVec2 p, const std::string& t, float maxW) {
   text(dl, F_BODY, ImVec2(p.x + pad, p.y + pad), IM_COL32(255, 255, 255, 255), t.c_str(), maxW);
 }
 
-bool mcSlider(const char* id, float* v, float mn, float mx, float step, const std::string& shown, ImVec2 size, bool* released) {
+bool greySlider(const char* id, float* v, float mn, float mx, float step, const std::string& shown, ImVec2 size, bool* released) {
   ImVec2 p = ImGui::GetCursorScreenPos();
   ImGui::InvisibleButton(id, size, ImGuiButtonFlags_EnableNav);
   const bool hot = hotItem(), active = ImGui::IsItemActive(), focus = ImGui::IsItemFocused() && navVisible();
@@ -363,7 +363,7 @@ void Paged::centerText(const std::string& t, float y, ImU32 c, FontId f) {
 }
 bool Paged::fieldAt(const char* id, std::string* s, ImVec2 pos, float wU, const char* hint, int flags, size_t maxLen) {
   ImGui::SetCursorScreenPos(pos);
-  return mcTextField(id, s, hint, ImVec2(std::round(wU * unit), std::round(20 * unit)), flags, maxLen);
+  return greyTextField(id, s, hint, ImVec2(std::round(wU * unit), std::round(20 * unit)), flags, maxLen);
 }
 
 void Paged::takeFocus() {
@@ -575,7 +575,7 @@ bool Paged::range(const char* label, float* v, float mn, float mx, float step, c
   if (!rowBegin(label, tip, ctrlU, isDef, cp, reset)) return false;
   const float U = unit;
   float w = std::min(ctrlU * U, (cw - (curCat.empty() ? 0 : 16 * U)) * (book_ ? 0.44f : 0.62f));
-  bool ch = mcSlider("##r", v, mn, mx, step, shown, ImVec2(std::round(w), 20 * U), released);
+  bool ch = greySlider("##r", v, mn, mx, step, shown, ImVec2(std::round(w), 20 * U), released);
   ownLeftRight();
   bool padReset = false;
   rowEnd(tip, isDef, &padReset);
@@ -599,7 +599,7 @@ bool Paged::textField(const char* label, std::string* s, const char* hint, const
   if (!rowBegin(label, tip, ctrlU, true, cp, reset)) return false;
   const float U = unit;
   float w = std::min(ctrlU * U, (cw - (curCat.empty() ? 0 : 16 * U)) * (book_ ? 0.44f : 0.62f));
-  bool ch = mcTextField("##tx", s, hint, ImVec2(std::round(w), 20 * U), flags, maxLen);
+  bool ch = greyTextField("##tx", s, hint, ImVec2(std::round(w), 20 * U), flags, maxLen);
   rowEnd(tip, true, nullptr);
   return ch;
 }

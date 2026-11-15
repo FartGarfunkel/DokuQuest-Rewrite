@@ -162,7 +162,7 @@ void App::reloadTiles() {
   buildFurnaceModels(tiles);   // furnaces, smokers, blast furnaces with their openings hollowed (assets/pack_models.h)
   loadStationModels(tiles);    // stations drawn from imported models, local only (assets/local_models.h)
   holidayTiles(tiles);     // December's wrapped chests
-  loadLocalTiles(tiles);   // imported magic's particles (local only: tools/port/irons_fx_import.py)
+  loadLocalTiles(tiles);   // imported magic's particles (local only: the spell effects import)
   buildWeatherSprites(tiles);   // render/weather_sprites.h: rain and snow from the pack, or drawn
   // ice you can see through like Minecraft's (about 60 % cover), whichever pack painted it
   for (const char* k : {"ice", "frosted_ice"}) {

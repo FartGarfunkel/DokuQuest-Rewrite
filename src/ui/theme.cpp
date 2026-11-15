@@ -343,7 +343,7 @@ static bool itemHot() { return ImGui::IsItemHovered() || (ImGui::IsItemFocused()
 
 // every menu button is the launcher's grey button (ui/paged.cpp classicButton), so the game's menus match the
 // launcher's Options tab and BTA's screens
-bool mcButton(const char* lbl, ImVec2 size, bool disabled) { return classicButton(lbl, size, disabled, F_MID); }
+bool greyButton(const char* lbl, ImVec2 size, bool disabled) { return classicButton(lbl, size, disabled, F_MID); }
 
 bool button(const char* lbl, BtnStyle st, bool tiny, float width, bool disabled) {
   (void)st;   // BTA has one kind of button: the grey one (the style only ever changed its colour)
@@ -366,9 +366,9 @@ bool checkbox(const char* lbl, bool* v, const char* desc) {
 }
 
 bool slider(const char* id, float* v, float mn, float mx, float step, const char* shown, float width) {
-  // BTA's slider (ui/paged.cpp mcSlider): a dark track, a button-faced handle, the value written on it
+  // BTA's slider (ui/paged.cpp greySlider): a dark track, a button-faced handle, the value written on it
   const float z = Z(), w = width > 0 ? width : ImGui::GetContentRegionAvail().x;
-  return mcSlider(id, v, mn, mx, step, shown ? std::string(shown) : std::string(), ImVec2(w, 20 * z), nullptr);
+  return greySlider(id, v, mn, mx, step, shown ? std::string(shown) : std::string(), ImVec2(w, 20 * z), nullptr);
 }
 
 bool combo(const char* id, int* cur, const std::vector<std::string>& items, float width) {

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Alex's Mobs (Soulrend's copy) into our game as built-in creatures, local only (the mod's art and moves are not ours to
-ship): data/local_models/alexsmobs.json (git-ignored), merged by the registry (core/registry.cpp) like the bosses'.
-  python3 tools/port/alexsmobs_import.py [data-dir] [--only=raccoon,tiger]
-  python3 tools/port/alexsmobs_sounds.py [data-dir]     # then: their voices (it writes them into the creatures)
+ship): data/local_models/beasts.json (git-ignored), merged by the registry (core/registry.cpp) like the bosses'.
+  python3 the creature import [data-dir] [--only=raccoon,tiger]
+  python3 the creature voice import [data-dir]     # then: their voices (it writes them into the creatures)
 
 For each creature the mod draws with a Citadel AdvancedEntityModel (client/model/Model*.java):
   - its boxes, read from the model's constructor, turned into a Bedrock-style geometry (Blockbench's Java -> Bedrock rule:
     pivot (-Px, 24 - Py, Pz), cube origin (-(Px + x + w), 24 - (Py + y + h), Pz + z), turns [-rx, -ry, rz] in degrees)
     and voxelised from the mod's picture by tools/port/geo_boss_import.py (a voxel a model pixel), x mirrored to ours;
-  - its setupAnim(), translated statement by statement into a small program ("am" in the model) that sim/am_anim.cpp runs
+  - its setupAnim(), translated statement by statement into a small program ("am" in the model) that sim/beast_anim.cpp runs
     each frame: Citadel's walk / swing / flap / bob / chain* / progressRotation(Prev) / progressPosition(Prev) / faceTarget,
     assignments to a box's rotateAngle* / rotationPoint*, locals, ifs, the maths; the entity's own values (sitProgress,
     isFlying()...) become named inputs ("ents") the game feeds from our creature's state;
@@ -1372,8 +1372,8 @@ def main(d='data', only=None):
         clips = clips_of(M, C)
         ents = {n: ent_spec(n, info) for n in sorted(C.ents)}
         scale = r['scale'] or 1.0
-        model = {'rig': 'am', 'rotOrder': 'zyx', 'scale': scale, 'hipY': 12, 'parts': parts,
-                 'am': {'prog': prog, 'slots': len(C.slots), 'ents': ents, 'clipRole': {c: clip_role(c) for c in clips}}}
+        model = {'rig': 'beast', 'rotOrder': 'zyx', 'scale': scale, 'hipY': 12, 'parts': parts,
+                 'beast': {'prog': prog, 'slots': len(C.slots), 'ents': ents, 'clipRole': {c: clip_role(c) for c in clips}}}
         out['models'][ourkey] = model
         if clips: out['clips'][ourkey] = clips
         # variants we already know by name (tiger_white...): the same body, their own picture
@@ -1416,11 +1416,11 @@ def main(d='data', only=None):
             spawns(key, mob, info)
             if key in EXTRA_SPAWN and not any(a in mob for a in ('spawnIn', 'spawnInWater', 'spawnDim')): mob.update(EXTRA_SPAWN[key])
             if key == 'sunbird': mob['perches'] = False; mob['soar'] = 22   # (it never lands: it soars high, its wings wide)
-            mob['alexsmobs'] = True
+            mob['imported'] = True
             out['mobs'][ourkey] = mob
         warn = sorted(set(M.warn))
         report.append('%s%s: %d parts, %d voxels, %d statements, %d clips, %d inputs%s' % (key, ' (ours: %s)' % ourkey if ourkey in ours else '', len(parts), nvox, len(prog), len(clips), len(ents), ('; skipped: ' + ', '.join(warn[:8]) + (' +%d' % (len(warn) - 8) if len(warn) > 8 else '')) if warn else ''))
-    (od / 'alexsmobs.json').write_text(json.dumps(out, separators=(',', ':')))
+    (od / 'beasts.json').write_text(json.dumps(out, separators=(',', ':')))
     (od / 'alexsmobs_report.txt').write_text('\n'.join(report) + '\n')
     print('alexsmobs_import: %d models (%d new creatures), %d with clips -> %s' % (len(out['models']), len(out['mobs']), len(out['clips']), od / 'alexsmobs.json'))
 

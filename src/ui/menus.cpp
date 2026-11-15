@@ -47,24 +47,24 @@ public:
     Level* lv = a.session ? a.session->level.get() : nullptr;
     Player* p = a.session ? a.session->player : nullptr;
     bool creative = p && p->creative();
-    if (mcButton("Back to Game", ImVec2(bw, bh))) { a.popScreen(); ImGui::End(); ImGui::PopStyleVar(); return; }
-    if (mcButton("Options...", ImVec2(half, bh))) a.pushScreen(makeOptionsScreen());
-    ImGui::SameLine(); if (mcButton("Players & Skins", ImVec2(half, bh))) a.pushScreen(makePlayersScreen());
-    if (mcButton("Photo Mode...", ImVec2(bw, bh), !p || p->dead || a.session->split())) {   // BTA: the camera flies free (ui/photo_mode.cpp)
+    if (greyButton("Back to Game", ImVec2(bw, bh))) { a.popScreen(); ImGui::End(); ImGui::PopStyleVar(); return; }
+    if (greyButton("Options...", ImVec2(half, bh))) a.pushScreen(makeOptionsScreen());
+    ImGui::SameLine(); if (greyButton("Players & Skins", ImVec2(half, bh))) a.pushScreen(makePlayersScreen());
+    if (greyButton("Photo Mode...", ImVec2(bw, bh), !p || p->dead || a.session->split())) {   // BTA: the camera flies free (ui/photo_mode.cpp)
       a.popScreen(); a.pushScreen(makePhotoModeScreen()); ImGui::End(); ImGui::PopStyleVar(); return;
     }
     bool guest = netIsGuest(a);
     // (netui.js) a guest has no world settings, backups, mode switch or LAN of its own
-    if (mcButton("How to Play", ImVec2(guest ? bw : half, bh))) a.pushScreen(makeHowToScreen());
-    if (!guest) { ImGui::SameLine(); if (mcButton("World Settings", ImVec2(half, bh))) a.pushScreen(makeWorldSettingsScreen({})); }
+    if (greyButton("How to Play", ImVec2(guest ? bw : half, bh))) a.pushScreen(makeHowToScreen());
+    if (!guest) { ImGui::SameLine(); if (greyButton("World Settings", ImVec2(half, bh))) a.pushScreen(makeWorldSettingsScreen({})); }
     if (!guest) {
-      if (mcButton(creative ? "Switch to Survival##mode" : "Switch to Creative##mode", ImVec2(half, bh)) && lv && p) {
+      if (greyButton(creative ? "Switch to Survival##mode" : "Switch to Creative##mode", ImVec2(half, bh)) && lv && p) {
         lv->info.mode = p->mode = creative ? "survival" : "creative";
         if (!p->creative()) p->flying = false;
         a.toast(p->creative() ? "Creative mode: every block in the inventory, double-tap jump to fly" : "Survival mode", "good");
       }
       ImGui::SameLine();
-      if (mcButton("Back Up World", ImVec2(half, bh)) && lv) {
+      if (greyButton("Back Up World", ImVec2(half, bh)) && lv) {
         a.session->save();
         fs::path out; std::string err;
         if (backupWorldFolder(lv->folder, lv->info.name, out, err)) { info = "Backup saved: " + out.filename().string(); a.toast("Backup saved", "good"); }
@@ -72,10 +72,10 @@ public:
       }
       LanStatus ls = lanStatus(a);
       std::string lanLabel = ls.open ? "LAN: " + (ls.players.empty() ? std::string("open, nobody yet") : std::to_string(ls.players.size()) + " joined") + " \xC2\xB7 " + ls.address + "##lan" : "Open to LAN##lan";
-      if (mcButton(lanLabel.c_str(), ImVec2(bw, bh))) a.pushScreen(makeLanHostScreen());
+      if (greyButton(lanLabel.c_str(), ImVec2(bw, bh))) a.pushScreen(makeLanHostScreen());
     }
     std::string quit = guest ? "Leave " + (lv ? lv->info.name : std::string("the world")) + "##quit" : "Save and Quit to Title##quit";
-    if (mcButton(quit.c_str(), ImVec2(bw, bh))) uiDefer([](App& app) { app.leaveWorld(true); });
+    if (greyButton(quit.c_str(), ImVec2(bw, bh))) uiDefer([](App& app) { app.leaveWorld(true); });
     // .pause-party: who is playing on this screen (ui.js ~305: one row per local player, Leave for the partners, how to join)
     if (book) {   // (onto the left page)
       ImGui::End();

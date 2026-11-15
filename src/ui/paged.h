@@ -108,7 +108,7 @@ void classicDirt(ImDrawList* dl, ImVec2 a, ImVec2 b, float tilePx, float dark);
 bool classicButton(const char* label, ImVec2 size, bool disabled = false, FontId f = F_MID);
 void pageIcon(ImDrawList* dl, const std::string& icon, ImVec2 p, float size);
 // the classic BTA slider (a dark track, a button-faced handle, the value in the middle). Returns true when changed.
-bool mcSlider(const char* id, float* v, float mn, float mx, float step, const std::string& shown, ImVec2 size, bool* released = nullptr);
+bool greySlider(const char* id, float* v, float mn, float mx, float step, const std::string& shown, ImVec2 size, bool* released = nullptr);
 // draws a tooltip box in BTA's style (dark violet, a violet frame) at p
 void tooltipBox(ImDrawList* dl, ImVec2 p, const std::string& t, float maxW);
 // the dirt background of BTA's menus (the pack's gui/options_background.png, else the dirt tile), tinted

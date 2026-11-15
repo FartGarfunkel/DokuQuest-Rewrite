@@ -116,32 +116,32 @@ public:
     if (a.input.padCount() > 0) focusPending = false;
     char b[64];
     const ImVec2 B(bw, bh);
-    if (mcButton("Take Screenshot##shot", B)) shoot = true;
-    if (mcButton("Center Camera##centre", B)) centre(a);
-    if (mcButton(m.showPlayer ? "Show Player: On##show" : "Show Player: Off##show", B)) m.showPlayer = !m.showPlayer;
-    if (mcButton(m.setTime ? "Time of Day: Set##tod" : "Time of Day: The World's##tod", B)) m.setTime = !m.setTime;
+    if (greyButton("Take Screenshot##shot", B)) shoot = true;
+    if (greyButton("Center Camera##centre", B)) centre(a);
+    if (greyButton(m.showPlayer ? "Show Player: On##show" : "Show Player: Off##show", B)) m.showPlayer = !m.showPlayer;
+    if (greyButton(m.setTime ? "Time of Day: Set##tod" : "Time of Day: The World's##tod", B)) m.setTime = !m.setTime;
     if (m.setTime) {
       const int mins = (int)std::lround(m.hour * 60) % (24 * 60);
       std::snprintf(b, sizeof b, "%02d:%02d", mins / 60, mins % 60);
-      mcSlider("##hour", &m.hour, 0, 23.75f, 0.25f, b, B);
+      greySlider("##hour", &m.hour, 0, 23.75f, 0.25f, b, B);
     }
     std::snprintf(b, sizeof b, "Season: %s##season", SEASONS[m.season]);
-    if (mcButton(b, B)) m.season = (m.season + 1) % 5;
+    if (greyButton(b, B)) m.season = (m.season + 1) % 5;
     if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) m.season = (m.season + 4) % 5;
-    if (mcButton(m.fog ? "Fog: On##fog" : "Fog: Off##fog", B)) m.fog = !m.fog;
+    if (greyButton(m.fog ? "Fog: On##fog" : "Fog: Off##fog", B)) m.fog = !m.fog;
     std::snprintf(b, sizeof b, "Tilt: %+d", (int)std::lround(m.tilt));
-    mcSlider("##tilt", &m.tilt, -45, 45, 1, m.tilt == 0 ? "Tilt: None" : b, B);
+    greySlider("##tilt", &m.tilt, -45, 45, 1, m.tilt == 0 ? "Tilt: None" : b, B);
     std::snprintf(b, sizeof b, "Field of View: %d", (int)std::lround(clampv(a.settings.fov + m.fovAdd, 20.f, 120.f)));
-    mcSlider("##fov", &m.fovAdd, -50, 40, 1, b, B);
+    greySlider("##fov", &m.fovAdd, -50, 40, 1, b, B);
     std::snprintf(b, sizeof b, "Shader: %s##shader", SHADERS[m.shader]);
-    if (mcButton(b, B)) m.shader = (m.shader + 1) % N_SHADERS;
+    if (greyButton(b, B)) m.shader = (m.shader + 1) % N_SHADERS;
     if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) m.shader = (m.shader + N_SHADERS - 1) % N_SHADERS;
     if (m.shader > 0) {
       std::snprintf(b, sizeof b, "Intensity: %d%%", (int)std::lround(m.intensity * 100));
-      mcSlider("##amt", &m.intensity, 0, 1, 0.05f, b, B);
+      greySlider("##amt", &m.intensity, 0, 1, 0.05f, b, B);
     }
     ImGui::Dummy(ImVec2(bw, 2 * z));
-    if (mcButton("Done##done", B)) { ImGui::End(); ImGui::PopStyleColor(); ImGui::PopStyleVar(2); a.popScreen(); return; }
+    if (greyButton("Done##done", B)) { ImGui::End(); ImGui::PopStyleColor(); ImGui::PopStyleVar(2); a.popScreen(); return; }
     overPanel = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) || ImGui::IsAnyItemActive();
     ImGui::End();
     ImGui::PopStyleColor(); ImGui::PopStyleVar(2);

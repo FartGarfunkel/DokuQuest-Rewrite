@@ -122,7 +122,7 @@ void unpackCampfireLog(TileSet& ts) {
 }
 
 void loadLocalTiles(TileSet& ts) {
-  const auto j = readJson(dataDir() / "local_models" / "irons_fx.json");
+  const auto j = readJson(dataDir() / "local_models" / "spell_fx.json");
   if (!j || !j->contains("tiles") || !(*j)["tiles"].is_array()) return;
   int n = 0;
   const int T = ts.size;

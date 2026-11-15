@@ -261,7 +261,7 @@ void drawList(Launcher& L) {
   const char* cats[] = {"Blocks", "Items", "Creatures", "Yours"};
   for (int i = 0; i < 4; i++) {
     if (i) ImGui::SameLine(0, 4);
-    if (mcButton(L, cats[i], ImVec2(i == 2 ? 74 : 56, 30), t.cat == i ? BtnKind::Go : BtnKind::Grey, true, L.fSmall)) { t.cat = i; t.shownKey.clear(); }
+    if (greyButton(L, cats[i], ImVec2(i == 2 ? 74 : 56, 30), t.cat == i ? BtnKind::Go : BtnKind::Grey, true, L.fSmall)) { t.cat = i; t.shownKey.clear(); }
   }
   if (t.cat == 2) {   // the creatures' skins
     ImGui::SetNextItemWidth(250); ImGui::InputTextWithHint("##sfind", "Find a creature (cow, zombie...)", &t.filter);
@@ -404,14 +404,14 @@ void drawSide(Launcher& L) {
   // the tools
   for (int i = 0; i < 4; i++) {
     if (i) ImGui::SameLine();
-    if (mcButton(L, TOOLS[i], ImVec2(59, 30), t.tool == i ? BtnKind::Go : BtnKind::Grey, true, L.fSmall)) t.tool = i;
+    if (greyButton(L, TOOLS[i], ImVec2(59, 30), t.tool == i ? BtnKind::Go : BtnKind::Grey, true, L.fSmall)) t.tool = i;
   }
-  if (mcButton(L, t.mirror ? "Mirror: on" : "Mirror: off", ImVec2(122, 30), BtnKind::Grey, true, L.fSmall)) t.mirror = !t.mirror;
+  if (greyButton(L, t.mirror ? "Mirror: on" : "Mirror: off", ImVec2(122, 30), BtnKind::Grey, true, L.fSmall)) t.mirror = !t.mirror;
   ImGui::SameLine();
-  if (mcButton(L, t.grid ? "Grid: on" : "Grid: off", ImVec2(122, 30), BtnKind::Grey, true, L.fSmall)) t.grid = !t.grid;
-  if (mcButton(L, "Undo", ImVec2(122, 30), BtnKind::Grey, !t.undo.empty(), L.fSmall)) doUndo();
+  if (greyButton(L, t.grid ? "Grid: on" : "Grid: off", ImVec2(122, 30), BtnKind::Grey, true, L.fSmall)) t.grid = !t.grid;
+  if (greyButton(L, "Undo", ImVec2(122, 30), BtnKind::Grey, !t.undo.empty(), L.fSmall)) doUndo();
   ImGui::SameLine();
-  if (mcButton(L, "Redo", ImVec2(122, 30), BtnKind::Grey, !t.redo.empty(), L.fSmall)) doRedo();
+  if (greyButton(L, "Redo", ImVec2(122, 30), BtnKind::Grey, !t.redo.empty(), L.fSmall)) doRedo();
   // the colour and the palette
   float cf[4] = {t.col[0] / 255.f, t.col[1] / 255.f, t.col[2] / 255.f, t.col[3] / 255.f};
   ImGui::SetNextItemWidth(250);
@@ -459,13 +459,13 @@ void drawTextureStudio(Launcher& L) {
   const bool on = t.layer >= 0 || t.skin;
   ImGui::SetNextItemWidth(260); ImGui::InputTextWithHint("##png", "A PNG to bring in (any square size)", &t.path);
   ImGui::SameLine();
-  if (mcButton(L, "Browse\xE2\x80\xA6", ImVec2(0, 0), BtnKind::Grey, !t.pick.busy())) t.pick.open("A picture", "png");
+  if (greyButton(L, "Browse\xE2\x80\xA6", ImVec2(0, 0), BtnKind::Grey, !t.pick.busy())) t.pick.open("A picture", "png");
   std::string picked; if (t.pick.take(picked) && !picked.empty()) t.path = picked;
   ImGui::SameLine();
-  if (mcButton(L, "Bring it in", ImVec2(0, 0), BtnKind::Grey, on && !t.path.empty())) importPng(t.path);
-  if (mcButton(L, "Use in the game", ImVec2(0, 0), BtnKind::Go, on)) saveMine();
+  if (greyButton(L, "Bring it in", ImVec2(0, 0), BtnKind::Grey, on && !t.path.empty())) importPng(t.path);
+  if (greyButton(L, "Use in the game", ImVec2(0, 0), BtnKind::Go, on)) saveMine();
   ImGui::SameLine();
-  if (mcButton(L, "Start over", ImVec2(0, 0), BtnKind::Grey, on && !t.undo.empty())) {
+  if (greyButton(L, "Start over", ImVec2(0, 0), BtnKind::Grey, on && !t.undo.empty())) {
     pushUndo();
     if (t.skin) t.img = t.skinBase;
     else { const u8* s = t.ts.tile(t.layer); t.img.assign(s, s + N * N * 4); for (int i = 0; i < N * N; i++) if (t.img[i * 4 + 3] >= 250) t.img[i * 4 + 3] = 255; }
@@ -473,10 +473,10 @@ void drawTextureStudio(Launcher& L) {
   }
   if (t.skin && t.mySkins.count(t.skinRel)) {
     ImGui::SameLine();
-    if (mcButton(L, "Put the pack's back", ImVec2(0, 0))) { std::error_code ec; fs::remove(userDir() / "textures" / "entity" / (t.skinRel + ".png"), ec); t.mySkins.erase(t.skinRel); openSkin(t.skinRel); t.status = "The pack's skin is back"; }
+    if (greyButton(L, "Put the pack's back", ImVec2(0, 0))) { std::error_code ec; fs::remove(userDir() / "textures" / "entity" / (t.skinRel + ".png"), ec); t.mySkins.erase(t.skinRel); openSkin(t.skinRel); t.status = "The pack's skin is back"; }
   }
   ImGui::SameLine();
-  if (on && !t.skin && t.mine.count(t.sel) && mcButton(L, "Put the original back", ImVec2(0, 0))) {
+  if (on && !t.skin && t.mine.count(t.sel) && greyButton(L, "Put the original back", ImVec2(0, 0))) {
     std::error_code ec; fs::remove(userDir() / "textures" / (t.sel + ".png"), ec);
     std::memcpy(t.ts.tile(t.layer), t.base.data() + (size_t)t.layer * N * N * 4, N * N * 4);
     t.mine.erase(t.sel); t.shownKey.clear();
@@ -487,7 +487,7 @@ void drawTextureStudio(Launcher& L) {
     open(t.sel); t.status = "The original is back";
   }
   ImGui::SameLine();
-  if (mcButton(L, "Open folder", ImVec2(0, 0))) { std::error_code ec; fs::create_directories(userDir() / "textures", ec); openPath(userDir() / "textures"); }
+  if (greyButton(L, "Open folder", ImVec2(0, 0))) { std::error_code ec; fs::create_directories(userDir() / "textures", ec); openPath(userDir() / "textures"); }
   ImGui::PushFont(L.fSmall);
   dimText("%s", !t.status.empty() ? t.status.c_str() : t.ts.packName.empty() ? "Pictures from the Doku tiles. P pencil, F fill, I picker, E eraser, M mirror, G grid; right-click picks a colour."
                                                     : ("Pictures from " + t.ts.packName + ". P pencil, F fill, I picker, E eraser, M mirror, G grid; right-click picks a colour.").c_str());

@@ -131,29 +131,29 @@ void drawSoundStudio(Launcher& L) {
   sl("##fi", &s.fadeIn, 0, 1, "fade in %.2f s"); ImGui::SameLine(); sl("##fo", &s.fadeOut, 0, 1, "fade out %.2f s");
   sl("##lp", &s.lowpass, 0, 12000, s.lowpass > 0 ? "low-pass %.0f Hz" : "low-pass off");
   ImGui::SameLine();
-  if (mcButton(L, "Play", ImVec2(90, 0), BtnKind::Go, !s.out.empty()) && e) e->playSamples(s.out, 1, s.pitch);
+  if (greyButton(L, "Play", ImVec2(90, 0), BtnKind::Go, !s.out.empty()) && e) e->playSamples(s.out, 1, s.pitch);
   ImGui::SameLine();
-  if (mcButton(L, "Another take", ImVec2(0, 0), BtnKind::Grey, !s.sel.empty()) && e) { s.src = e->renderSound(s.sel, ++s.take, (u32)s.take * 7919u + 1); s.dirty = true; e->playSamples(s.src); }
+  if (greyButton(L, "Another take", ImVec2(0, 0), BtnKind::Grey, !s.sel.empty()) && e) { s.src = e->renderSound(s.sel, ++s.take, (u32)s.take * 7919u + 1); s.dirty = true; e->playSamples(s.src); }
   ImGui::SameLine();
-  if (mcButton(L, "Normalise", ImVec2(0, 0), BtnKind::Grey, !s.out.empty())) {
+  if (greyButton(L, "Normalise", ImVec2(0, 0), BtnKind::Grey, !s.out.empty())) {
     float pk = 0; for (float v : s.out) pk = std::max(pk, std::abs(v));
     if (pk > 1e-5f) { s.gainDb += 20 * std::log10(0.891f / pk); s.dirty = true; s.status = "Normalised to -1 dB"; }
   }
   // bringing one in, and saving it as the game's
   ImGui::SetNextItemWidth(340); ImGui::InputTextWithHint("##path", "A recording (WAV, MP3 or FLAC)", &s.path);
   ImGui::SameLine();
-  if (mcButton(L, "Browse\xE2\x80\xA6", ImVec2(0, 0), BtnKind::Grey, !s.pick.busy())) s.pick.open("A recording", "wav");
+  if (greyButton(L, "Browse\xE2\x80\xA6", ImVec2(0, 0), BtnKind::Grey, !s.pick.busy())) s.pick.open("A recording", "wav");
   std::string picked; if (s.pick.take(picked) && !picked.empty()) s.path = picked;
   ImGui::SameLine();
-  if (mcButton(L, "Bring it in", ImVec2(0, 0), BtnKind::Grey, !s.path.empty())) load(s.path);
+  if (greyButton(L, "Bring it in", ImVec2(0, 0), BtnKind::Grey, !s.path.empty())) load(s.path);
   const bool can = !s.sel.empty() && !s.out.empty();
-  if (mcButton(L, can ? ("Use as the game's \"" + s.sel + "\"").c_str() : "Use as the game's sound", ImVec2(0, 0), BtnKind::Go, can)) {
+  if (greyButton(L, can ? ("Use as the game's \"" + s.sel + "\"").c_str() : "Use as the game's sound", ImVec2(0, 0), BtnKind::Go, can)) {
     const fs::path p = userDir() / "sounds" / (s.sel + ".wav");
     s.status = saveWav(p, s.out, s.pitch) ? "Saved " + p.string() + ": the game uses it from its next start" : "Couldn't write " + p.string();
   }
   { const fs::path p = userDir() / "sounds" / (s.sel + ".wav"); std::error_code ec;
     ImGui::SameLine();
-    if (!s.sel.empty() && fs::exists(p, ec) && mcButton(L, "Put the original back", ImVec2(0, 0))) { fs::remove(p, ec); s.status = "Removed " + p.string(); } }
+    if (!s.sel.empty() && fs::exists(p, ec) && greyButton(L, "Put the original back", ImVec2(0, 0))) { fs::remove(p, ec); s.status = "Removed " + p.string(); } }
   ImGui::PushFont(L.fSmall);
   dimText("%s", s.status.empty() ? "Your sounds go in the sounds folder; a .wav named after a sound replaces it." : s.status.c_str());
   ImGui::PopFont();

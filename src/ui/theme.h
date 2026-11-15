@@ -49,7 +49,7 @@ void label(FontId f, ImU32 c, const char* t, float wrap = -1);   // ImGui layout
 void drawTiled(ImDrawList* dl, const char* tileName, ImVec2 a, ImVec2 b, float tilePx, ImU32 tint);
 
 // .mcbtn — the classic grey menu button (title, pause)
-bool mcButton(const char* label, ImVec2 size, bool disabled = false);
+bool greyButton(const char* label, ImVec2 size, bool disabled = false);
 // .btn — panel buttons
 enum BtnStyle { BTN_NORMAL, BTN_PRIMARY, BTN_GHOST, BTN_DANGER };
 bool button(const char* label, BtnStyle st = BTN_NORMAL, bool tiny = false, float width = 0, bool disabled = false);

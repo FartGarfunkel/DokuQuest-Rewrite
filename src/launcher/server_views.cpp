@@ -145,7 +145,7 @@ void drawServerMap(Launcher& L, DedicatedServer& srv, ImVec2 size) {
   followCombo(L, "##follow", "Centre on", followNames(v), 200);
   bool panned = D.mapPan.x != 0 || D.mapPan.y != 0;
   ImGui::SameLine(0, 18);
-  if (mcButton(L, "Back to the centre", ImVec2(0, ImGui::GetFrameHeight()), BtnKind::Grey, panned, L.fSmall)) D.mapPan = ImVec2(0, 0);
+  if (greyButton(L, "Back to the centre", ImVec2(0, ImGui::GetFrameHeight()), BtnKind::Grey, panned, L.fSmall)) D.mapPan = ImVec2(0, 0);
   ImGui::SameLine(0, 18);
   ImGui::PushFont(L.fSmall); ImGui::AlignTextToFramePadding(); dimText("Wheel zooms, drag to look round (right stick on a controller)"); ImGui::PopFont();
   float used = ImGui::GetCursorScreenPos().y - top.y;

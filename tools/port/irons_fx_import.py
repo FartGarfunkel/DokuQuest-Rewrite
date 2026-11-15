@@ -2,11 +2,11 @@
 """Iron's Spells 'n Spellbooks' (Soulrend's copy) look for our magic, local only (the mod's art is not ours to ship):
   data/local_models/tiles/isb/*.png   its particle pictures (each frame of each particle), loaded into the tile atlas
                                       by name "isb_<file>" (assets/tileset.cpp loadLocalTiles), frames in order
-  data/local_models/irons_fx.json     {"particles": {kind: [tile names, in order]}, "tiles": [every tile, in order],
+  data/local_models/spell_fx.json     {"particles": {kind: [tile names, in order]}, "tiles": [every tile, in order],
                                        "models": {...}}: the spells' projectiles as voxel models (the firebolt's and
                                       fireball's boxes from their renderers, the icicle and magic missile pictures
                                       extruded the way our items are), merged by the registry like the creatures'
-  python3 tools/port/irons_fx_import.py [data-dir]
+  python3 the spell effects import [data-dir]
 The game uses them where it has them (render/magic_fx.cpp): each school's sparks in Iron's own particles, the
 spells' bolts as Iron's projectiles; without the files, everything is as it was."""
 import json, pathlib, shutil, sys
@@ -83,7 +83,7 @@ def main(d='data'):
         p = part_of(vox)
         if p: p['rest'] = [-1.5708, 0, 0.7854]; models[key] = {'rig': '', 'scale': 0.6, 'parts': [p]}   # (laid along its flight, the point ahead)
     out = {'tiles': tiles, 'particles': particles, 'models': models}
-    (od / 'irons_fx.json').write_text(json.dumps(out, separators=(',', ':')))
+    (od / 'spell_fx.json').write_text(json.dumps(out, separators=(',', ':')))
     print('irons_fx_import: %d particle kinds, %d frames, %d projectile models' % (len(particles), len(tiles), len(models)))
 
 

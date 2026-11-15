@@ -198,7 +198,7 @@ void faceCorners(const MeshCtx& c, int x, int y, int z, int f, FaceCorners& fc) 
     LightRgb avg;
     if (cnt) for (int i = 0; i < 3; i++) { avg.s[i] = (u8)(ss[i] / cnt); avg.b[i] = (u8)(sb[i] / cnt); }
     fc.rgb[k] = avg;
-    fc.lit[k] = markCubyz(packCubyzLight(avg));
+    fc.lit[k] = markRgbLit(packRgbLight(avg));
     fc.sky[k] = (float)(max3u(avg.s[0], avg.s[1], avg.s[2]) >> 4);
     fc.bl[k] = (float)(max3u(avg.b[0], avg.b[1], avg.b[2]) >> 4);
     fc.ao[k] = AO_CURVE[a]; fc.aoi[k] = a;
@@ -358,7 +358,7 @@ bool emitStationModelIn(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, i
   const float sk = (float)(max3u(L.s[0], L.s[1], L.s[2]) >> 4), bl = (float)(max3u(L.b[0], L.b[1], L.b[2]) >> 4);
   const int fd = SM->idx(meta);
   const bool shut = SM->closed && SM->closed->boxes.size() && !(meta & 0x20);   // (sim/chest_work.h LID_OPEN)
-  emitPackModel(c, dst, shut ? *SM->closed : SM->of(fd), vec3((float)x, (float)y, (float)z), SM->turn[fd], sk, bl, markCubyz(packCubyzLight(L)), Mat::Cutout | Mat::NoRelief);
+  emitPackModel(c, dst, shut ? *SM->closed : SM->of(fd), vec3((float)x, (float)y, (float)z), SM->turn[fd], sk, bl, markRgbLit(packRgbLight(L)), Mat::Cutout | Mat::NoRelief);
   return true;
 }
 void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& dst, BlockId id, int x, int y, int z, u8 meta) {
@@ -387,10 +387,10 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
     { u8 em[3]; blockLightRgb(id, R.metaLight(id, meta), em); for (int i = 0; i < 3; i++) if (em[i] > L.b[i]) L.b[i] = em[i]; }
     const vec3 at((float)x, (float)y, (float)z);
     const float sk = (float)(max3u(L.s[0], L.s[1], L.s[2]) >> 4), bl = (float)(max3u(L.b[0], L.b[1], L.b[2]) >> 4);
-    emitPackModel(c, dst, FM->body, at, Q[fd], sk, bl, markCubyz(packCubyzLight(L)), Mat::NoRelief);
+    emitPackModel(c, dst, FM->body, at, Q[fd], sk, bl, markRgbLit(packRgbLight(L)), Mat::NoRelief);
     const bool burning = R.tLight[id] > 0;
     LightRgb G = L; if (burning) for (int i = 0; i < 3; i++) G.b[i] = 255;
-    emitPackModel(c, dst, FM->back, at, Q[fd], sk, burning ? 15.f : bl, markCubyz(packCubyzLight(G)), Mat::NoRelief);
+    emitPackModel(c, dst, FM->back, at, Q[fd], sk, burning ? 15.f : bl, markRgbLit(packRgbLight(G)), Mat::NoRelief);
     return;
   }
   // a large chest: two of the same, side by side, facing the same way — each drawn as its half of one (assets/pack_models.h)
@@ -630,7 +630,7 @@ void emitLiquid(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, in
     LightRgb L = biasedRgb(c, sx, sy, sz, F.n[0], F.n[1], F.n[2]);
     u8 em[3]; blockLightRgb(id, R.tLight[id], em);
     for (int i = 0; i < 3; i++) if (em[i] > L.b[i]) L.b[i] = em[i];
-    const u32 lit = markCubyz(packCubyzLight(L));
+    const u32 lit = markRgbLit(packRgbLight(L));
     float sk = (float)(max3u(L.s[0], L.s[1], L.s[2]) >> 4), bl = (float)(max3u(L.b[0], L.b[1], L.b[2]) >> 4);
     bool top = f == 2, side = f != 2 && f != 3;
     // A still source beside ice (the ice is clear) must not wear the downward-flow picture.
@@ -724,7 +724,7 @@ void emitTorch(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, int
       static const int Q[5] = {0, 0, 2, 1, 3};
       LightRgb L = rgbAt(c, x, y, z);
       { u8 em[3]; blockLightRgb(id, c.R.metaLight(id, meta), em); for (int i = 0; i < 3; i++) if (em[i] > L.b[i]) L.b[i] = em[i]; }
-      const u32 lit = markCubyz(packCubyzLight(L));
+      const u32 lit = markRgbLit(packRgbLight(L));
       emitPackModel(c, dst, *PM, at, Q[m <= 4 ? m : 0], (float)(max3u(L.s[0], L.s[1], L.s[2]) >> 4), (float)(max3u(L.b[0], L.b[1], L.b[2]) >> 4), lit, Mat::Cutout | Mat::NoRelief);
       return;
     }
@@ -746,7 +746,7 @@ void emitTorch(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, int
   auto V = [&](float lx, float ly, float lz) { return vec3(bx + lx + wx * ly * sa, by + ly * ca, bz + lz + wz * ly * sa); };
   LightRgb L = rgbAt(c, x, y, z);
   { u8 em[3]; blockLightRgb(id, c.R.metaLight(id, meta), em); for (int i = 0; i < 3; i++) if (em[i] > L.b[i]) L.b[i] = em[i]; }
-  const u32 lit = markCubyz(packCubyzLight(L));
+  const u32 lit = markRgbLit(packRgbLight(L));
   float sk = (float)(max3u(L.s[0], L.s[1], L.s[2]) >> 4), bl = (float)(max3u(L.b[0], L.b[1], L.b[2]) >> 4);
   float u0 = 7 / 16.f, u1 = 9 / 16.f, v0 = 6 / 16.f, v1 = 1;
   vec3 C[8] = {V(-w, 0, -w), V(w, 0, -w), V(w, 0, w), V(-w, 0, w), V(-w, hgt, -w), V(w, hgt, -w), V(w, hgt, w), V(-w, hgt, w)};
@@ -778,7 +778,7 @@ void emitNotchWater(MeshCtx& c, std::vector<ChunkVertex>& dst, int x, int y, int
   c.extraMat = Mat::TintAll;
   u8 mat = (u8)(Mat::NoRelief | Mat::Liquid | Mat::Translucent);
   LightRgb L = rgbAt(c, x, y, z);
-  const u32 lit = markCubyz(packCubyzLight(L));
+  const u32 lit = markRgbLit(packRgbLight(L));
   float sk = (float)(max3u(L.s[0], L.s[1], L.s[2]) >> 4), bl = (float)(max3u(L.b[0], L.b[1], L.b[2]) >> 4);
   auto quad = [&](int f, vec3 a, vec3 b, vec3 cc, vec3 d, bool top) {
     MV v[4] = {{a, {0, 1}, sk, bl, 1, 0, lit}, {b, {1, 1}, sk, bl, 1, 0, lit}, {cc, {1, 0}, sk, bl, 1, 0, lit}, {d, {0, 0}, sk, bl, 1, 0, lit}};

@@ -1,6 +1,6 @@
-// sim/am_anim.cpp — the "am" rig: Alex's Mobs creatures imported as our own (tools/port/alexsmobs_import.py, the data local
+// sim/beast_anim.cpp — the "beast" rig: imported creatures as our own (the creature import, the data local
 // and git-ignored) move the way the mod moves them. Each model carries its setupAnim() translated into a small program
-// ("am": {"prog", "slots", "ents", "clipRole"}), run here every pose on the boxes' Java pose (turns in radians, pivots in
+// ("beast": {"prog", "slots", "ents", "clipRole"}), run here every pose on the boxes' Java pose (turns in radians, pivots in
 // model pixels, y down), with Citadel's helpers as Citadel writes them (walk / swing / flap: cos(f * speed + offset) *
 // degree * f1 + weight * f1; bob; chainSwing / Wave / Flap; progressRotation(Prev) / progressPosition(Prev); faceTarget).
 // The entity's own values the model asks for (sitProgress, isFlying()...) are named in "ents" with what they mean here: a
@@ -8,7 +8,7 @@
 // grazing / rearing, a flag, the tick count, the clip's tick. Its ModelAnimator keyframes come as clips (data "clips"),
 // played on a blow (role "attack") or while grazing ("eat"). What's left at the end, less the box's rest, is the turn and
 // the move of each of our parts (Java -> ours: turns (-x, y, -z), moves (x, -y, z) / 16: the model mirrored in y only).
-#include "sim/am_anim.h"
+#include "sim/beast_anim.h"
 #include "sim/creature_rig.h"
 #include "core/registry.h"
 #include <cstdlib>
@@ -109,8 +109,8 @@ std::unique_ptr<Prog> build(const RigModel& M) {
   const json* d = nullptr;
   const json& models = reg().models;
   if (models.is_object() && models.contains(M.key)) d = &models[M.key];
-  if (!d || !d->contains("am")) return nullptr;
-  const json& A = (*d)["am"];
+  if (!d || !d->contains("beast")) return nullptr;
+  const json& A = (*d)["beast"];
   auto P = std::make_unique<Prog>();
   P->slots = A.value("slots", 0);
   if (A.contains("ents")) for (auto& [name, sp] : A["ents"].items()) {
@@ -292,7 +292,7 @@ struct Run {
   }
 };
 
-void amAnim(Creature& m, const RigModel& M, RigAnimOut& o) {
+void beastAnim(Creature& m, const RigModel& M, RigAnimOut& o) {
   const Prog* P = progFor(M);
   if (!P) return;
   static const bool still = std::getenv("DQ_AM_STILL") != nullptr;   // (looking at the rest pose: nothing moves)
@@ -360,6 +360,6 @@ void amAnim(Creature& m, const RigModel& M, RigAnimOut& o) {
 }
 } // namespace
 
-void registerAmAnim() { registerRigAnim("am", [](Creature& m, const RigModel& M, RigAnimOut& o) { amAnim(m, M, o); }); }
+void registerBeastAnim() { registerRigAnim("beast", [](Creature& m, const RigModel& M, RigAnimOut& o) { beastAnim(m, M, o); }); }
 
 } // namespace dq

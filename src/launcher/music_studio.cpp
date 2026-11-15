@@ -108,21 +108,21 @@ void toolbar(Launcher& L) {
   ImGui::SameLine(); ImGui::SetNextItemWidth(130);
   if (ImGui::Combo("##realm", &m.realm, REALMS, 5)) m.song.realm = REALM_IDS[m.realm];
   ImGui::SameLine();
-  if (mcButton(L, m.playing ? "Stop" : "Play", ImVec2(80, 0), BtnKind::Go)) { if (m.playing) stop(); else play(L, 0); }
+  if (greyButton(L, m.playing ? "Stop" : "Play", ImVec2(80, 0), BtnKind::Go)) { if (m.playing) stop(); else play(L, 0); }
   ImGui::SameLine();
-  if (mcButton(L, "Save", ImVec2(80, 0))) { std::string err; if (saveUserSong(m.song, &err)) { m.status = "Saved to " + (userDir() / "music").string(); reloadList(); } else m.status = err; }
+  if (greyButton(L, "Save", ImVec2(80, 0))) { std::string err; if (saveUserSong(m.song, &err)) { m.status = "Saved to " + (userDir() / "music").string(); reloadList(); } else m.status = err; }
   ImGui::SameLine();
-  if (mcButton(L, "New", ImVec2(70, 0))) { setSong(Song()); m.status.clear(); }
+  if (greyButton(L, "New", ImVec2(70, 0))) { setSong(Song()); m.status.clear(); }
   // writing pieces
   const auto& moods = songMoods();
   std::vector<const char*> mn; for (auto& s : moods) mn.push_back(s.c_str());
   ImGui::SetNextItemWidth(140); ImGui::Combo("##mood", &m.mood, mn.data(), (int)mn.size());
   ImGui::SameLine();
-  if (mcButton(L, "Write a piece to this mood", ImVec2(0, 0))) { m.seed = (u32)(ImGui::GetTime() * 1000) ^ (m.seed * 2654435761u); setSong(songFromMood(moods[m.mood], m.seed)); m.status = "A new " + moods[m.mood] + " piece"; }
+  if (greyButton(L, "Write a piece to this mood", ImVec2(0, 0))) { m.seed = (u32)(ImGui::GetTime() * 1000) ^ (m.seed * 2654435761u); setSong(songFromMood(moods[m.mood], m.seed)); m.status = "A new " + moods[m.mood] + " piece"; }
   ImGui::SameLine();
-  if (mcButton(L, "Import MIDI\xE2\x80\xA6", ImVec2(0, 0), BtnKind::Grey, !m.pickMidi.busy())) m.pickMidi.open("Import a MIDI file", "mid");
+  if (greyButton(L, "Import MIDI\xE2\x80\xA6", ImVec2(0, 0), BtnKind::Grey, !m.pickMidi.busy())) m.pickMidi.open("Import a MIDI file", "mid");
   ImGui::SameLine();
-  if (mcButton(L, "Export MIDI", ImVec2(0, 0), BtnKind::Grey, !m.song.notes.empty())) {
+  if (greyButton(L, "Export MIDI", ImVec2(0, 0), BtnKind::Grey, !m.song.notes.empty())) {
     std::error_code ec; fs::create_directories(userDir() / "music", ec);
     fs::path p = userDir() / "music" / (m.song.name + ".mid");
     auto b = songToMidi(m.song);
@@ -138,10 +138,10 @@ void toolbar(Launcher& L) {
   // reading a recording
   ImGui::SetNextItemWidth(320); ImGui::InputTextWithHint("##rec", "A recording to read (WAV, MP3 or FLAC)", &m.recPath);
   ImGui::SameLine();
-  if (mcButton(L, "Browse\xE2\x80\xA6", ImVec2(0, 0), BtnKind::Grey, !m.pickRec.busy())) m.pickRec.open("A recording to read", "mp3");
+  if (greyButton(L, "Browse\xE2\x80\xA6", ImVec2(0, 0), BtnKind::Grey, !m.pickRec.busy())) m.pickRec.open("A recording to read", "mp3");
   if (m.pickRec.take(picked) && !picked.empty()) m.recPath = picked;
   ImGui::SameLine();
-  if (mcButton(L, "Read it", ImVec2(0, 0), BtnKind::Grey, !m.recPath.empty())) {
+  if (greyButton(L, "Read it", ImVec2(0, 0), BtnKind::Grey, !m.recPath.empty())) {
     m.an = analyseRecording(m.recPath);
     m.status = m.an.ok ? "Read: " + std::to_string((int)m.an.bpm) + " beats a minute, " + keyName(m.an.key, m.an.minor) : m.an.err;
   }
@@ -150,7 +150,7 @@ void toolbar(Launcher& L) {
     ImGui::PushFont(L.fSmall); dimText("%d beats a minute \xC2\xB7 %s \xC2\xB7 chords: %s", (int)m.an.bpm, keyName(m.an.key, m.an.minor).c_str(), ch.c_str()); ImGui::PopFont();
     ImGui::SetNextItemWidth(110); ImGui::Combo("##style", &m.style, STYLES, 4);
     ImGui::SameLine();
-    if (mcButton(L, "Write an original piece from it", ImVec2(0, 0), BtnKind::Go)) { m.seed = m.seed * 1103515245u + 12345u; setSong(songFromAnalysis(m.an, STYLES[m.style], m.seed)); m.status = "Our own piece in its key, tempo and chords"; }
+    if (greyButton(L, "Write an original piece from it", ImVec2(0, 0), BtnKind::Go)) { m.seed = m.seed * 1103515245u + 12345u; setSong(songFromAnalysis(m.an, STYLES[m.style], m.seed)); m.status = "Our own piece in its key, tempo and chords"; }
   }
   // the pen
   std::vector<const char*> insN; for (int i = 0; i < MI_COUNT; i++) insN.push_back(insName(i));

@@ -38,14 +38,14 @@ static float jv(const json& o, const char* k, float d) { return o.is_object() &&
 namespace {
 
 struct Spark { vec3 pos{0}, vel{0}; float life = 0.5f, max = 0.5f, size = 0.08f, size0 = 0.08f, grav = 0, grow = 0, flutter = 0, ph = 0; bool shrink = true, flat = false; vec3 col{1}; int shape = 0; };
-// ---- Iron's Spells' own particles (tools/port/irons_fx_import.py: local, git-ignored; without them, nothing changes) ----
+// ---- Iron's Spells' own particles (the spell effects import: local, git-ignored; without them, nothing changes) ----
 // Each kind's frames sit side by side in the tile atlas; a particle plays them over its life, shining.
 struct IsbKind { std::string first; int n = 0; };
 static const std::unordered_map<std::string, IsbKind>& isbKinds() {
   static std::unordered_map<std::string, IsbKind> K; static bool tried = false;
   if (!tried) {
     tried = true;
-    if (auto j = readJson(dataDir() / "local_models" / "irons_fx.json"); j && j->contains("particles"))
+    if (auto j = readJson(dataDir() / "local_models" / "spell_fx.json"); j && j->contains("particles"))
       for (auto& [k, v] : (*j)["particles"].items()) if (v.is_array() && !v.empty()) K[k] = {v[0].get<std::string>(), (int)v.size()};
   }
   return K;

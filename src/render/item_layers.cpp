@@ -134,7 +134,7 @@ const vec3 FP_HAND(0.56f, -0.5f, -0.72f);   // where the first-person arms sit (
 inline float wrapA(float a) { return std::fmod(std::fmod(a + PI * 3, TAU) + TAU, TAU) - PI; }
 // Minecraft's first-person swing, turned about the fist: the item chops forward and down and eases back
 // (an empty hand punches instead)
-mat4 mcSwing(const mat4& am, float side, float sp, bool empty, bool mining = false) {
+mat4 armSwing(const mat4& am, float side, float sp, bool empty, bool mining = false) {
   float r = std::sqrt(sp), f = std::sin(sp * sp * PI), f1 = std::sin(r * PI), D = PI / 180;
   float k = empty ? -0.3f : 0.35f;
   vec3 pv = vec3(am[1]) * k + vec3(am[3]);   // turn about the shoulder end
@@ -405,7 +405,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       if (itemHook && im.ready()) over.push_back({stack, m});
       return;
     }
-    if (side > 0 && swing > 0) am = mcSwing(am, 1, swing, false, s.breaking);
+    if (side > 0 && swing > 0) am = armSwing(am, 1, swing, false, s.breaking);
     if (side > 0 && wind > 0) { am = glm::translate(am, vec3(0, 0.1f * wind, 0.05f * wind)); am = glm::rotate(am, -0.75f * std::sin(wind * PI / 2), vec3(1, 0, 0)); }   // the rod comes back over the shoulder before the cast
     drawArm(am);
     // the fist, turned back to face the way you look
@@ -461,7 +461,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       if (side < 0) b[0] = vec4(0, 0, 1, 0);   // (still right-handed, mirrored)
       b = glm::rotate(mat4(1), side * (0.5f + BT[3]), vec3(0, 1, 0)) * glm::translate(mat4(1), -pos) * b;   // turned in toward you about the hand
       b = glm::translate(mat4(1), pos) * b;
-      if (side > 0 && swing > 0) b = mcSwing(glm::translate(mat4(1), vec3(0)), 1, swing, false, s.breaking) * b;
+      if (side > 0 && swing > 0) b = armSwing(glm::translate(mat4(1), vec3(0)), 1, swing, false, s.breaking) * b;
       drawBook(VR, b, L, 0.f, -1.f, 1, 0.38f + BT[4], cover);
       if (glint) {}   // (an enchanted book: its cover's colour says it)
       return;
@@ -687,7 +687,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     mat4 m = glm::translate(mat4(1), vec3(0.5f + bx, -0.39f + by - eqMain * 0.55f - eat * 0.1f + fo.dy, -0.5f));
     m = glm::rotate(m, 0.33f, vec3(0, 1, 0));
     m = glm::rotate(m, 1.9f, vec3(1, 0, 0));
-    if (swing > 0) m = mcSwing(m, 1, swing, true);
+    if (swing > 0) m = armSwing(m, 1, swing, true);
     drawArm(m);
   }
   // the off hand, mirrored on the left

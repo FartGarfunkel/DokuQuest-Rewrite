@@ -71,7 +71,7 @@ void applyLauncherStyle();
 void makeLauncherTextures(Launcher& L);
 void drawDirt(ImDrawList* dl, ImVec2 a, ImVec2 b, const Launcher& L, float alphaDark = 0);
 enum class BtnKind { Grey, Go };
-bool mcButton(Launcher& L, const char* label, ImVec2 size, BtnKind kind = BtnKind::Grey, bool enabled = true, ImFont* font = nullptr);
+bool greyButton(Launcher& L, const char* label, ImVec2 size, BtnKind kind = BtnKind::Grey, bool enabled = true, ImFont* font = nullptr);
 void shadowText(ImDrawList* dl, ImFont* f, ImVec2 pos, ImU32 col, ImU32 shadow, float off, const char* text, const char* end = nullptr);
 void beginDokuPanel(const char* id, ImVec2 size, bool scroll = true, ImGuiWindowFlags extra = 0);
 void endDokuPanel();

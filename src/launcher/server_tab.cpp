@@ -126,7 +126,7 @@ void drawServer(Launcher& L) {
   ImGui::SameLine(); ImGui::SetNextItemWidth(leftW * 0.28f); ImGui::InputTextWithHint("##ns", "Seed", &S.newSeed);
   ImGui::PopFont();
   ImGui::SameLine();
-  if (mcButton(L, "New", ImVec2(-1, ImGui::GetFrameHeight()), BtnKind::Grey, validFolderName(S.newName), L.fUi)) {
+  if (greyButton(L, "New", ImVec2(-1, ImGui::GetFrameHeight()), BtnKind::Grey, validFolderName(S.newName), L.fUi)) {
     c.world = S.newName; c.seed = S.newSeed; cfgChanged = true; S.msg = "A new world \"" + S.newName + "\" is made when the server starts.";
   }
   if (!S.saves.empty()) {
@@ -139,7 +139,7 @@ void drawServer(Launcher& L) {
     }
     ImGui::PopFont();
     ImGui::SameLine();
-    if (mcButton(L, "Copy", ImVec2(-1, ImGui::GetFrameHeight()), BtnKind::Grey, S.copyIdx >= 0, L.fUi) && S.copyIdx < (int)S.saves.size()) {
+    if (greyButton(L, "Copy", ImVec2(-1, ImGui::GetFrameHeight()), BtnKind::Grey, S.copyIdx >= 0, L.fUi) && S.copyIdx < (int)S.saves.size()) {
       auto& w = S.saves[S.copyIdx];
       fs::path to = userSub("servers") / w.folder; std::error_code ec;
       if (fs::exists(to)) S.msg = "There is already a server world called " + w.folder + ".";
@@ -167,9 +167,9 @@ void drawServer(Launcher& L) {
   if (running) ImGui::EndDisabled();
   ImGui::Spacing();
   if (!running) {
-    if (mcButton(L, "Start server", ImVec2(-1, 46), BtnKind::Go, validFolderName(c.world), L.fBig)) serverStartFromConfig(L);
-  } else if (mcButton(L, "Stop server", ImVec2(-1, 46), BtnKind::Grey, true, L.fBig)) { S.srv->stop(); S.srv.reset(); }
-  if (mcButton(L, "Open server folder", ImVec2(-1, 32), BtnKind::Grey, true, L.fUi)) openPath(userSub("servers"));
+    if (greyButton(L, "Start server", ImVec2(-1, 46), BtnKind::Go, validFolderName(c.world), L.fBig)) serverStartFromConfig(L);
+  } else if (greyButton(L, "Stop server", ImVec2(-1, 46), BtnKind::Grey, true, L.fBig)) { S.srv->stop(); S.srv.reset(); }
+  if (greyButton(L, "Open server folder", ImVec2(-1, 32), BtnKind::Grey, true, L.fUi)) openPath(userSub("servers"));
   endDokuPanel();
   if (cfgChanged) saveCfg();
 
@@ -226,7 +226,7 @@ void drawServerConsole(Launcher& L, DedicatedServer* srv, ImVec2 size, bool with
   bool send = ImGui::InputTextWithHint("##cmd", running ? "Say something to everyone, or type a command (stop, save, say, list, kick, /time…)" : "Start the server to type commands", &S.cmd,
                                        ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory, histCallback);
   ImGui::SameLine();
-  if (mcButton(L, "Send", ImVec2(-1, ImGui::GetFrameHeight()), BtnKind::Grey, running && !S.cmd.empty(), L.fUi)) send = true;
+  if (greyButton(L, "Send", ImVec2(-1, ImGui::GetFrameHeight()), BtnKind::Grey, running && !S.cmd.empty(), L.fUi)) send = true;
   if (send && running && !S.cmd.empty()) {
     srv->command(S.cmd); S.history.push_back(S.cmd); S.histPos = -1; S.cmd.clear();
     ImGui::SetKeyboardFocusHere(-1);

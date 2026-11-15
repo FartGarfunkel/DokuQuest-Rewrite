@@ -231,18 +231,18 @@ public:
     if (focusPending && a.input.padCount() > 0) { ImGui::SetKeyboardFocusHere(); ImGui::SetNavCursorVisible(true); }
     if (a.input.padCount() > 0) focusPending = false;   // a pad picked up later still gets its highlight
     row(by);
-    if (mcButton("Singleplayer", ImVec2(btnW, btnH))) a.pushScreen(makeWorldsScreen());
+    if (greyButton("Singleplayer", ImVec2(btnW, btnH))) a.pushScreen(makeWorldsScreen());
     row(by += btnH + bgap);
-    if (mcButton("Multiplayer", ImVec2(btnW, btnH))) a.pushScreen(makeMultiplayerScreen());
+    if (greyButton("Multiplayer", ImVec2(btnW, btnH))) a.pushScreen(makeMultiplayerScreen());
     row(by += btnH + bgap);
-    if (mcButton("Players & Skins", ImVec2(btnW, btnH))) a.pushScreen(makePlayersScreen());
+    if (greyButton("Players & Skins", ImVec2(btnW, btnH))) a.pushScreen(makePlayersScreen());
     row(by += btnH + bgap);
-    if (mcButton("How to Play", ImVec2(btnW, btnH))) a.pushScreen(makeHowToScreen());
+    if (greyButton("How to Play", ImVec2(btnW, btnH))) a.pushScreen(makeHowToScreen());
     row(by += btnH + bgap);
     float half = (btnW - bgap) * 0.5f;
-    if (mcButton("Options...", ImVec2(half, btnH))) a.pushScreen(makeOptionsScreen());
+    if (greyButton("Options...", ImVec2(half, btnH))) a.pushScreen(makeOptionsScreen());
     ImGui::SameLine(0, bgap);
-    if (mcButton("Quit Game", ImVec2(half, btnH))) a.quit = true;
+    if (greyButton("Quit Game", ImVec2(half, btnH))) a.quit = true;
     // version (bottom left) and storage line (bottom right)
     std::string ver = versionText();
     bool isNew = a.settings.extra.value("seenVersion", "") != DQ_VERSION;

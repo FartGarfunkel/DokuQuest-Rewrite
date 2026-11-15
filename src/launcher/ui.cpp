@@ -97,7 +97,7 @@ void shadowText(ImDrawList* dl, ImFont* f, ImVec2 pos, ImU32 col, ImU32 shadow, 
   dl->AddText(f, sz, pos, col, text, end);
 }
 
-bool mcButton(Launcher& L, const char* label, ImVec2 size, BtnKind kind, bool enabled, ImFont* font) {
+bool greyButton(Launcher& L, const char* label, ImVec2 size, BtnKind kind, bool enabled, ImFont* font) {
   ImFont* f = font ? font : L.fMid;
   const char* end = ImGui::FindRenderedTextEnd(label);
   ImVec2 ts = f->CalcTextSizeA(f->FontSize, FLT_MAX, 0, label, end);

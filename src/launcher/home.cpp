@@ -142,16 +142,16 @@ void drawBottomBar(Launcher& L, float barH) {
   float top = cy - (52 + 6 + 28) * 0.5f;
   ImGui::SetCursorScreenPos(ImVec2(xPlay, top));
   const char* playLabel = L.gameRunning ? "Running…" : "Play";
-  if (mcButton(L, playLabel, ImVec2(playW, 52), BtnKind::Go, !L.gameRunning, L.fBig)) L.play();
+  if (greyButton(L, playLabel, ImVec2(playW, 52), BtnKind::Go, !L.gameRunning, L.fBig)) L.play();
   if (L.tab == LTab::News && ImGui::GetFrameCount() < 3) ImGui::SetKeyboardFocusHere(-1);
   ImGui::SetCursorScreenPos(ImVec2(xPlay, top + 52 + 6));
-  if (mcButton(L, serverRunning() ? "Server running" : "Dedicated Server", ImVec2(playW, 28), BtnKind::Grey, true, L.fSmall)) L.tab = LTab::Server;
+  if (greyButton(L, serverRunning() ? "Server running" : "Dedicated Server", ImVec2(playW, 28), BtnKind::Grey, true, L.fSmall)) L.tab = LTab::Server;
   if (ImGui::IsItemHovered()) ImGui::SetTooltip("Run one of your worlds as a server for others to join");
   float stackTop = cy - (34 + 6 + 34) * 0.5f;
   ImGui::SetCursorScreenPos(ImVec2(xOpts, stackTop));
-  if (mcButton(L, "Options...", ImVec2(smallW, 34), BtnKind::Grey, true, L.fUi)) L.tab = L.tab == LTab::Options ? LTab::News : LTab::Options;
+  if (greyButton(L, "Options...", ImVec2(smallW, 34), BtnKind::Grey, true, L.fUi)) L.tab = L.tab == LTab::Options ? LTab::News : LTab::Options;
   ImGui::SetCursorScreenPos(ImVec2(xOpts, stackTop + 40));
-  if (mcButton(L, "Game folder", ImVec2(smallW, 34), BtnKind::Grey, true, L.fUi)) openPath(userDir());
+  if (greyButton(L, "Game folder", ImVec2(smallW, 34), BtnKind::Grey, true, L.fUi)) openPath(userDir());
   // player name
   ImGui::SetCursorScreenPos(ImVec2(xName, cy - 30));
   ImGui::PushFont(L.fSmall); ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "Player name"); ImGui::PopFont();

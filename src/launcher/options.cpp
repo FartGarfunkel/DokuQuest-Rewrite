@@ -162,7 +162,7 @@ struct LKit {
     ImGui::PushID(curCat.c_str()); ImGui::PushID(label);
     if (!isDef && !locked) {
       ImGui::SetCursorScreenPos(ImVec2(ctrl->x - 20 * KU, ctrl->y));
-      if (mcButton(*L, "R##reset", ImVec2(20 * KU, 20 * KU), BtnKind::Grey, true, L->fSmall)) *reset = true;
+      if (greyButton(*L, "R##reset", ImVec2(20 * KU, 20 * KU), BtnKind::Grey, true, L->fSmall)) *reset = true;
       if (ImGui::IsItemHovered()) tip = "Reset to default";
     }
     ImGui::SetCursorScreenPos(*ctrl);
@@ -178,7 +178,7 @@ struct LKit {
   bool toggle(const char* label, bool* v, bool def, const char* desc = nullptr) {
     ImVec2 c; bool r;
     if (!rowBegin(label, desc, 100, *v == def, &c, &r)) return false;
-    bool ch = mcButton(*L, *v ? "ON###t" : "OFF###t", ImVec2(ctrlW(100), 20 * KU), BtnKind::Grey, !locked, L->fUi);
+    bool ch = greyButton(*L, *v ? "ON###t" : "OFF###t", ImVec2(ctrlW(100), 20 * KU), BtnKind::Grey, !locked, L->fUi);
     if (ch) *v = !*v;
     rowEnd();
     if (r) { *v = def; ch = true; }
@@ -191,7 +191,7 @@ struct LKit {
     if (!rowBegin(label, desc, u, *cur == def, &c, &r)) return false;
     bool ch = false;
     std::string t = names[*cur] + "###c";
-    if (mcButton(*L, t.c_str(), ImVec2(ctrlW(u), 20 * KU), BtnKind::Grey, !locked, L->fUi)) { *cur = (*cur + 1) % n; ch = true; }
+    if (greyButton(*L, t.c_str(), ImVec2(ctrlW(u), 20 * KU), BtnKind::Grey, !locked, L->fUi)) { *cur = (*cur + 1) % n; ch = true; }
     if (!locked && ImGui::IsItemClicked(ImGuiMouseButton_Right)) { *cur = (*cur + n - 1) % n; ch = true; }
     rowEnd();
     if (r && *cur != def) { *cur = def; ch = true; }
@@ -235,7 +235,7 @@ struct LKit {
     ImVec2 c; bool r;
     if (!rowBegin(label, desc, u, true, &c, &r)) return false;
     std::string t = std::string(btn) + "###a";
-    bool hit = mcButton(*L, t.c_str(), ImVec2(ctrlW(u), 20 * KU), BtnKind::Grey, !disabled && (always || !locked), L->fUi);
+    bool hit = greyButton(*L, t.c_str(), ImVec2(ctrlW(u), 20 * KU), BtnKind::Grey, !disabled && (always || !locked), L->fUi);
     rowEnd();
     return hit;
   }

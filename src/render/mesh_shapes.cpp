@@ -139,7 +139,7 @@ void emitBox(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, u8 meta, int x
       } else { sk = own.sky; bl = own.bl; sample = rgbAt(c, x, y, z); }
       { u8 em[3]; blockLightRgb(id, (u8)clampv((int)std::lround(own.l0), 0, 15), em); for (int i = 0; i < 3; i++) if (em[i] > sample.b[i]) sample.b[i] = em[i]; }
       float shade = FACES[f].shade * ao;
-      v[k] = {vec3(x + X * P, y + (Y + sink) * P, z + Z * P), vec2(clampv(st.x, 0.f, 16.f) / 16, clampv(st.y, 0.f, 16.f) / 16), sk, bl, shade, 0, markCubyz(packCubyzLight(sample))};
+      v[k] = {vec3(x + X * P, y + (Y + sink) * P, z + Z * P), vec2(clampv(st.x, 0.f, 16.f) / 16, clampv(st.y, 0.f, 16.f) / 16), sk, bl, shade, 0, markRgbLit(packRgbLight(sample))};
     }
     c.quad(d, v, tile, f, mat);
   }

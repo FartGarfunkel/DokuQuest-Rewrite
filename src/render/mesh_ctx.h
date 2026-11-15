@@ -20,7 +20,7 @@ extern const float AO_CURVE[4];
 // the rain puddle (a flat carpet of water): drawn flat, glossy and see-through like water, never as relief
 inline bool isPuddle(const Registry& R, BlockId id) { static const BlockId pid = R.blockId("puddle"); return id && id == pid; }
 
-// One vertex before packing. `lit` is markCubyz(pack): bit 31 set means the 5-bit RGB word is real.
+// One vertex before packing. `lit` is markRgbLit(pack): bit 31 set means the 5-bit RGB word is real.
 // Left at 0, put() builds a grayscale word from sky and blk so plants keep the new brightness.
 struct MV { vec3 p; vec2 uv; float sky, blk; float shade; u8 sway; u32 lit = 0; };
 

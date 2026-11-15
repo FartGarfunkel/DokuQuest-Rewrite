@@ -27,12 +27,12 @@ inline u8 lightNibble(const LightRgb& L) {
   return (u8)((max3u(L.s[0], L.s[1], L.s[2]) >> 4) << 4 | (max3u(L.b[0], L.b[1], L.b[2]) >> 4));
 }
 // 5 bits per channel, the packing Cubyz's chunk shader unpacks: sun then block.
-inline u32 packCubyzLight(const LightRgb& L) {
+inline u32 packRgbLight(const LightRgb& L) {
   return (u32)(L.s[0] >> 3) << 25 | (u32)(L.s[1] >> 3) << 20 | (u32)(L.s[2] >> 3) << 15
        | (u32)(L.b[0] >> 3) << 10 | (u32)(L.b[1] >> 3) << 5 | (u32)(L.b[2] >> 3);
 }
 // Bit 31 marks a vertex light word as real RGB (0 is also a valid dark cell).
-inline u32 markCubyz(u32 pack) { return pack | 0x80000000u; }
+inline u32 markRgbLit(u32 pack) { return pack | 0x80000000u; }
 inline LightRgb fullSunRgb() { return LightRgb{{255, 255, 255}, {0, 0, 0}}; }
 
 struct Section {

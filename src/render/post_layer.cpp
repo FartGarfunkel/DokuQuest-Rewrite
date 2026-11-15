@@ -156,7 +156,7 @@ struct Target {
 // ---- an Iris/OptiFine pack's post passes ----
 // nOut 0 draws the screen (final). Otherwise outs[i] is the colortex gl_FragData[i] lands in
 // (Iris: DRAWBUFFERS:16 means gl_FragData[0] -> colortex1 and gl_FragData[1] -> colortex6).
-struct IrisPass {
+struct PackPass {
   GLuint prog = 0; std::string name; int outs[8]{}; int nOut = 0;
   std::vector<std::pair<std::string, GLenum>> uniforms; bool writesColor = true;
   // gbuffers_water blends like vanilla translucent unless shaders.properties says otherwise.
@@ -172,7 +172,7 @@ std::string rx(const std::string& s, const char* re, const char* to) { return st
 static int ifEval(const std::unordered_map<std::string, int>& defined, const std::string& d, size_t p);
 
 // the pack's files: a folder or a zip, with the shaders/ folder somewhere at its top
-struct IrisFiles {
+struct PackFiles {
   std::unique_ptr<PackFS> fs; std::string root;   // root: the path to "shaders/" inside it
   bool open(const fs::path& p) {
     fs = PackFS::open(p);
@@ -1056,7 +1056,7 @@ std::vector<int> drawBuffers(const std::string& fsh, bool isFinal) {
 }
 
 // Iris's built-in macros (StandardMacros). The pack's own #define later on the same name wins.
-std::string irisHeader() {
+std::string packHeader() {
   auto lower = [](const char* s) {
     std::string o = s ? s : "";
     for (char& c : o) c = (char)std::tolower((unsigned char)c);
@@ -1379,7 +1379,7 @@ std::string readAlphaKeep(const std::string& props, const std::string& prefix, c
 
 // Horizon's dimension folder: world0 overworld, world-1 nether, world1 end. The Skylands have no
 // folder of their own, so they use the overworld set. Empty when the pack has only the base files.
-std::string dimensionPrefix(const IrisFiles& F, int dim) {
+std::string dimensionPrefix(const PackFiles& F, int dim) {
   const char* name = "world0";
   if (dim == DIM_NETHER) name = "world-1";
   else if (dim == DIM_END) name = "world1";
@@ -1389,7 +1389,7 @@ std::string dimensionPrefix(const IrisFiles& F, int dim) {
 }
 
 // OptiFine binds noisetex from shaders.properties. MakeUp names it texture.gbuffers.noisetex.
-std::string packNoiseRel(const IrisFiles& F) {
+std::string packNoiseRel(const PackFiles& F) {
   std::string rel = "lib/textures/noise.png";
   auto props = F.read("shaders.properties");
   if (!props) return rel;
@@ -1477,10 +1477,10 @@ void noteTexFlags(const std::string& src, bool clear[16], bool mip[16]) {
 
 // shaders.properties: uniform.float.name = expression. Enough of Iris's expression language for the
 // mixes a post pass actually samples (dayNightMix, exposure helpers). Unknown names leave it unset.
-struct IrisU { std::string name, expr; bool integer = false; bool upload = true; };
+struct PackU { std::string name, expr; bool integer = false; bool upload = true; };
 
-std::vector<IrisU> parseIrisUniforms(const std::string& props) {
-  std::vector<IrisU> out;
+std::vector<PackU> parsePackUniforms(const std::string& props) {
+  std::vector<PackU> out;
   size_t from = 0;
   while (from < props.size()) {
     size_t eol = props.find('\n', from);
@@ -1508,7 +1508,7 @@ std::vector<IrisU> parseIrisUniforms(const std::string& props) {
     size_t b = expr.size(); while (b > a && std::isspace((unsigned char)expr[b - 1])) b--;
     expr = expr.substr(a, b - a);
     if (expr.empty()) continue;
-    IrisU u;
+    PackU u;
     u.name = line.substr(ns, ne - ns);
     u.expr = expr;
     u.integer = kind == 1 || kind == 3;
@@ -1518,7 +1518,7 @@ std::vector<IrisU> parseIrisUniforms(const std::string& props) {
   return out;
 }
 
-std::optional<double> evalIrisExpr(const std::string& expr, const std::unordered_map<std::string, double>& env) {
+std::optional<double> evalPackExpr(const std::string& expr, const std::unordered_map<std::string, double>& env) {
   struct P {
     const std::unordered_map<std::string, double>& env;
     const std::string& s;
@@ -1685,14 +1685,14 @@ struct PackIds {
   int tiles = 0, grass = -1, leaves = -1, water = -1, stone = -1;
 };
 
-PackIds buildPackIds(const IrisFiles& F) {
+PackIds buildPackIds(const PackFiles& F) {
   PackIds ids;
   ids.lut.assign(4096, 1.f);
   struct Hit { int id, score, order; };
   std::unordered_map<std::string, std::vector<Hit>> byName;
   std::set<std::string> seen;
   std::unordered_map<std::string, int> defined;
-  const std::string text = F.expand(irisHeader() + F.read("block.properties").value_or(""), "", seen, defined);
+  const std::string text = F.expand(packHeader() + F.read("block.properties").value_or(""), "", seen, defined);
   int order = 0;
   size_t i = 0;
   auto scoreOf = [](const std::string& props) {
@@ -1862,7 +1862,7 @@ int texStageOf(const std::string& program) {
   if (starts("begin")) return 2;
   return 0;
 }
-GLuint loadPackPng(const IrisFiles& F, const std::string& rel) {
+GLuint loadPackPng(const PackFiles& F, const std::string& rel) {
   auto file = F.read(rel);
   if (!file) return 0;
   int w = 0, h = 0;
@@ -1892,14 +1892,14 @@ public:
     auto armCapture = [&] { packVoxelSetCapture(gbuf.prog != 0); };
     if (f.portalDepth > 0) { packVoxelClear(); armCapture(); return; }
     const std::string& pack = s.app.settings.shaderPack;
-    if (pack != irisFor || f.land != irisDim) loadIris(pack, f.land);
+    if (pack != packFor || f.land != packDim) loadShaderPackPasses(pack, f.land);
     s.worldRenderer.setPackGeometry(gbuf.prog != 0);
     if (iris.empty() && !gbuf.prog) { packVoxelClear(); armCapture(); return; }
     GLint vp[4]; glGetIntegerv(GL_VIEWPORT, vp);
     if (vp[2] <= 16 || vp[3] <= 16) { packVoxelClear(); armCapture(); return; }
     GLint drawFbo = 0; glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
     glDisable(GL_DEPTH_TEST); glDisable(GL_BLEND); glDisable(GL_CULL_FACE); glDepthMask(GL_FALSE);
-    runIris(s, f, vp, drawFbo);
+    runPackPasses(s, f, vp, drawFbo);
     glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)drawFbo);
     glViewport(vp[0], vp[1], vp[2], vp[3]);
     glBindVertexArray(0); glActiveTexture(GL_TEXTURE0);
@@ -1908,10 +1908,10 @@ public:
   }
 private:
   // an Iris/OptiFine pack
-  std::string irisFor = "\x01";
-  int irisDim = -1;
-  std::vector<IrisPass> iris, irisBegin, irisPrep, irisDef;
-  IrisPass gbuf, gshadow, gwater, gentity, gshadowEnt, ghand;
+  std::string packFor = "\x01";
+  int packDim = -1;
+  std::vector<PackPass> iris, packBegin, packPrep, packDef;
+  PackPass gbuf, gshadow, gwater, gentity, gshadowEnt, ghand;
   bool packHasFinal = false;
   bool toldShow = false;
   bool toldGeom = false;
@@ -1928,7 +1928,7 @@ private:
   int slotFront[16] = {};
   bool slotClear[16] = {};
   bool slotMip[16] = {};
-  std::vector<IrisU> irisU;
+  std::vector<PackU> packU;
   std::unordered_map<std::string, int> packItems;
   int sceneBuf = 0;
   GLuint passFbo = 0, packSsbo = 0, entityLut = 0;
@@ -2004,8 +2004,8 @@ private:
   // ---- Iris / OptiFine ----
   // One fullscreen or gbuffer program. geom unpacks terrain; otherwise the pass is a quad.
   // A missing file is quiet. A compile failure is logged by buildProgram and the pass is skipped.
-  bool compilePass(const IrisFiles& F, const std::string& pack, const std::string& prefix,
-                   const std::string& props, const std::string& n, bool geom, IrisPass& out, bool shadow = false, bool translucent = false, bool entity = false, bool hand = false) {
+  bool compilePass(const PackFiles& F, const std::string& pack, const std::string& prefix,
+                   const std::string& props, const std::string& n, bool geom, PackPass& out, bool shadow = false, bool translucent = false, bool entity = false, bool hand = false) {
     try {
       std::string base = (!prefix.empty() && F.read(prefix + n + ".fsh")) ? prefix + n : n;
       auto fsh = F.read(base + ".fsh");
@@ -2014,7 +2014,7 @@ private:
       std::set<std::string> seen;
       std::unordered_map<std::string, int> defined;
       const std::string dir = base.substr(0, base.rfind('/') + 1);
-      const std::string expanded = F.expand(irisHeader() + *fsh, dir, seen, defined);
+      const std::string expanded = F.expand(packHeader() + *fsh, dir, seen, defined);
       noteTexFlags(expanded, slotClear, slotMip);
       if (!passEnabled(props, prefix, n, defined)) {
         DQ_LOG("shader pack '%s': %s disabled", pack.c_str(), n.c_str());
@@ -2031,7 +2031,7 @@ private:
       auto vsh = F.read(base + ".vsh");
       seen.clear();
       defined.clear();
-      const std::string vexp = vsh ? F.expand(irisHeader() + *vsh, dir, seen, defined) : std::string(DEFAULT_VSH);
+      const std::string vexp = vsh ? F.expand(packHeader() + *vsh, dir, seen, defined) : std::string(DEFAULT_VSH);
       if (shadow) {
         auto take = [&](const std::string& s) {
           shDist = lastConstFloat(s, "shadowDistance", shDist);
@@ -2056,7 +2056,7 @@ private:
       }
       GLuint prog = buildProgram(vsrc, fsrc, pack + ":" + base);
       if (!prog) return false;
-      IrisPass P; P.prog = prog; P.name = n;
+      PackPass P; P.prog = prog; P.name = n;
       P.blend = doBlend; P.bSrc = bSrc; P.bDst = bDst; P.bSrcA = bSrcA; P.bDstA = bDstA; P.blendOff = blendOff;
       const bool userOut = std::regex_search(expanded, std::regex(R"(\bout\s+vec[234]\b)"));
       P.writesColor = expanded.find("gl_FragData") != std::string::npos || expanded.find("gl_FragColor") != std::string::npos || userOut;
@@ -2092,7 +2092,7 @@ private:
   }
   // texture.<stage>.<name> = file.dat TEXTURE_3D <internal> <w> <h> <d> <format> <type>
   // Photon stores the atmosphere LUT here and reads the sun color from one texel of it.
-  GLuint loadPackRaw3D(const IrisFiles& F, const std::string& rel, const std::string& spec, bool& linear, bool& clamp) {
+  GLuint loadPackRaw3D(const PackFiles& F, const std::string& rel, const std::string& spec, bool& linear, bool& clamp) {
     linear = true; clamp = true;
     std::vector<std::string> tok;
     std::string cur;
@@ -2160,7 +2160,7 @@ private:
   }
   // texture.<stage>.<sampler>=path.png. The same file can be named twice (gbuffers and deferred).
   // #if in shaders.properties follows the macros the terrain shader defined, so one cloud style wins.
-  void loadStageTextures(const IrisFiles& F, const std::string& pack, const std::string& props,
+  void loadStageTextures(const PackFiles& F, const std::string& pack, const std::string& props,
                          const std::unordered_map<std::string, int>& defined) {
     dropStageTextures();
     std::unordered_map<std::string, GLuint> byPath;
@@ -2237,11 +2237,11 @@ private:
   }
 
   // item.properties: item.<id> = torch lava_bucket. Held-light uniforms use these ids.
-  void loadPackItems(const IrisFiles& F) {
+  void loadPackItems(const PackFiles& F) {
     packItems.clear();
     std::set<std::string> seen;
     std::unordered_map<std::string, int> defined;
-    const std::string text = F.expand(irisHeader() + F.read("item.properties").value_or(""), "", seen, defined);
+    const std::string text = F.expand(packHeader() + F.read("item.properties").value_or(""), "", seen, defined);
     size_t i = 0;
     int n = 0;
     while (i < text.size()) {
@@ -2282,9 +2282,9 @@ private:
     if (n) DQ_LOG("shader pack: %d held item ids", n);
   }
 
-  void loadIris(const std::string& pack, int dim) {
-    irisFor = pack;
-    irisDim = dim;
+  void loadShaderPackPasses(const std::string& pack, int dim) {
+    packFor = pack;
+    packDim = dim;
     packHasFinal = false;
     toldShow = false;
     havePrev = false;
@@ -2297,9 +2297,9 @@ private:
     toldEntShadow = false;
     entityDrew = -1;
     shDist = 128.f; shPath = 0.f; shInterval = 2.f; shMul = 1.f; shRes = 1024;
-    auto dropPass = [](IrisPass& p) { if (p.prog) glDeleteProgram(p.prog); p = {}; };
-    auto dropList = [&](std::vector<IrisPass>& v) { for (auto& p : v) dropPass(p); v.clear(); };
-    dropList(iris); dropList(irisBegin); dropList(irisPrep); dropList(irisDef); dropPass(gbuf); dropPass(gshadow); dropPass(gwater); dropPass(gentity); dropPass(gshadowEnt); dropPass(ghand);
+    auto dropPass = [](PackPass& p) { if (p.prog) glDeleteProgram(p.prog); p = {}; };
+    auto dropList = [&](std::vector<PackPass>& v) { for (auto& p : v) dropPass(p); v.clear(); };
+    dropList(iris); dropList(packBegin); dropList(packPrep); dropList(packDef); dropPass(gbuf); dropPass(gshadow); dropPass(gwater); dropPass(gentity); dropPass(gshadowEnt); dropPass(ghand);
     packHandSetSuppress(false);
     packSetSkipClouds(false);
     toldHand = false;
@@ -2307,13 +2307,13 @@ private:
     packItems.clear();
     dropStageTextures();
     if (pack.empty()) return;
-    IrisFiles F;
+    PackFiles F;
     if (!F.open(userDir() / "shaderpacks" / pack)) return;   // one of our own packs (or nothing to run)
     const std::string prefix = dimensionPrefix(F, dim);
     const std::string props = F.read("shaders.properties").value_or("");
     loadPackItems(F);
     for (int i = 0; i < 16; i++) { slotClear[i] = true; slotMip[i] = false; }
-    irisU = parseIrisUniforms(props);
+    packU = parsePackUniforms(props);
     sceneBuf = 0;
     bool cloudsOff = false;
     {
@@ -2322,7 +2322,7 @@ private:
       if (auto tf = F.read(tbase + ".fsh")) {
         std::set<std::string> seen;
         const std::string dir = tbase.substr(0, tbase.rfind('/') + 1);
-        const std::string expanded = F.expand(irisHeader() + *tf, dir, seen, defined);
+        const std::string expanded = F.expand(packHeader() + *tf, dir, seen, defined);
         noteTexFlags(expanded, slotClear, slotMip);
         auto bufs = drawBuffers(expanded, false);
         if (!bufs.empty()) sceneBuf = bufs[0];
@@ -2351,9 +2351,9 @@ private:
         packSetSkipClouds(true);
         DQ_LOG("shader pack '%s': game clouds skipped", pack.c_str());
       }
-      auto loadStage = [&](const char* base, std::vector<IrisPass>& dest) {
+      auto loadStage = [&](const char* base, std::vector<PackPass>& dest) {
         for (int i = 0; i <= 16; i++) {
-          IrisPass P;
+          PackPass P;
           std::string n = i ? std::string(base) + std::to_string(i) : base;
           if (!compilePass(F, pack, prefix, props, n, false, P)) continue;
           bool image = false;
@@ -2387,9 +2387,9 @@ private:
         if (gshadow.prog)
           DQ_LOG("shader pack '%s': shadow map %d, distance %.0f, sun path %.1f", pack.c_str(), shRes, shDist, shPath);
         else DQ_LOG("shader pack '%s': no shadow program, sun shadow stays folded", pack.c_str());
-        loadStage("begin", irisBegin);
-        loadStage("prepare", irisPrep);
-        loadStage("deferred", irisDef);
+        loadStage("begin", packBegin);
+        loadStage("prepare", packPrep);
+        loadStage("deferred", packDef);
       }
     }
     std::vector<std::string> names;
@@ -2406,7 +2406,7 @@ private:
       std::set<std::string> seen;
       std::unordered_map<std::string, int> defined;
       const std::string dir = base.substr(0, base.rfind('/') + 1);
-      const std::string expanded = F.expand(irisHeader() + *fsh, dir, seen, defined);
+      const std::string expanded = F.expand(packHeader() + *fsh, dir, seen, defined);
       noteTexFlags(expanded, slotClear, slotMip);
       if (!passEnabled(props, prefix, n, defined)) {
         DQ_LOG("shader pack '%s': %s disabled", pack.c_str(), n.c_str());
@@ -2419,10 +2419,10 @@ private:
       seen.clear();
       defined.clear();
       std::string fsrc = translate(expanded, false);
-      std::string vsrc = translate(vsh ? F.expand(irisHeader() + *vsh, dir, seen, defined) : std::string(DEFAULT_VSH), true);
+      std::string vsrc = translate(vsh ? F.expand(packHeader() + *vsh, dir, seen, defined) : std::string(DEFAULT_VSH), true);
       GLuint prog = buildProgram(vsrc, fsrc, pack + ":" + base);
       if (!prog) continue;
-      IrisPass P; P.prog = prog; P.name = n;
+      PackPass P; P.prog = prog; P.name = n;
       if (!isFinal) {
         for (int b : drawBuffers(expanded, false)) if (b >= 0 && b < 16 && P.nOut < 8) P.outs[P.nOut++] = b;
         if (!P.nOut) { glDeleteProgram(prog); continue; }
@@ -2454,7 +2454,7 @@ private:
     }
     DQ_LOG("shader pack '%s': %d of %d post passes ready, gbuffer %s, water %s, shadow %s, begin %d, prepare %d, deferred %d",
            pack.c_str(), ok, tried, gbuf.prog ? gbuf.name.c_str() : "off", gwater.prog ? "on" : "off", gshadow.prog ? "on" : "off",
-           (int)irisBegin.size(), (int)irisPrep.size(), (int)irisDef.size());
+           (int)packBegin.size(), (int)packPrep.size(), (int)packDef.size());
     {
       PackIds ids = buildPackIds(F);
       blockIdInts = std::move(ids.blockMap);
@@ -2555,27 +2555,27 @@ private:
     }
   }
 
-  void runIris(GameSession& s, const FrameCtx& f, const GLint* vp, GLint outFbo) {
+  void runPackPasses(GameSession& s, const FrameCtx& f, const GLint* vp, GLint outFbo) {
     const int W = vp[2], H = vp[3];
     const GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
     if (scissor) glDisable(GL_SCISSOR_TEST);
     bool need[16] = {};
     need[0] = true;
     if (sceneBuf > 0 && sceneBuf < 16) need[sceneBuf] = true;
-    auto mark = [&](const IrisPass& P) {
+    auto mark = [&](const PackPass& P) {
       for (int i = 0; i < P.nOut; i++) if (P.outs[i] >= 0 && P.outs[i] < 16) need[P.outs[i]] = true;
       for (auto& u : P.uniforms) if (u.second == GL_SAMPLER_2D) {
         int ct = colortexOf(u.first);
         if (ct >= 0 && ct < 16) need[ct] = true;
       }
     };
-    for (const IrisPass& P : irisBegin) mark(P);
-    for (const IrisPass& P : irisPrep) mark(P);
-    for (const IrisPass& P : irisDef) mark(P);
+    for (const PackPass& P : packBegin) mark(P);
+    for (const PackPass& P : packPrep) mark(P);
+    for (const PackPass& P : packDef) mark(P);
     if (gbuf.prog) mark(gbuf);
     if (gwater.prog) mark(gwater);
     if (gentity.prog) mark(gentity);
-    for (const IrisPass& P : iris) mark(P);
+    for (const PackPass& P : iris) mark(P);
     for (int b = 0; b < 16; b++) if (need[b]) {
       // Iris clears a buffer when the pack says so (the default). colortex2 and MakeUp's exposure
       // (gaux3) opt out, and the ping-pong front stays on the side the last pass wrote.
@@ -2751,17 +2751,17 @@ private:
         {"eyeBrightness.x", (double)eyeBlock}, {"eyeBrightness.y", (double)eyeSky},
         {"eyeBrightnessSmooth.x", (double)eyeBlockI}, {"eyeBrightnessSmooth.y", (double)eyeSkyI},
       };
-      std::vector<char> done(irisU.size(), 0);
-      for (int pass = 0; pass < (int)irisU.size() + 2; pass++) {
+      std::vector<char> done(packU.size(), 0);
+      for (int pass = 0; pass < (int)packU.size() + 2; pass++) {
         bool progress = false;
-        for (size_t ui = 0; ui < irisU.size(); ui++) {
+        for (size_t ui = 0; ui < packU.size(); ui++) {
           if (done[ui]) continue;
-          auto v = evalIrisExpr(irisU[ui].expr, env);
+          auto v = evalPackExpr(packU[ui].expr, env);
           if (!v) continue;
-          env[irisU[ui].name] = *v;
+          env[packU[ui].name] = *v;
           done[ui] = 1;
           progress = true;
-          if (irisU[ui].upload) customNow[irisU[ui].name] = (float)*v;
+          if (packU[ui].upload) customNow[packU[ui].name] = (float)*v;
         }
         if (!progress) break;
       }
@@ -2787,7 +2787,7 @@ private:
         DQ_LOG("shader pack: held light %d (id %d) off %d (id %d)", heldLv, heldId, heldLv2, heldId2);
       }
     }
-    auto bindUniforms = [&](IrisPass& P, bool geomDraw, bool flatAlbedo) -> bool {
+    auto bindUniforms = [&](PackPass& P, bool geomDraw, bool flatAlbedo) -> bool {
       glUseProgram(P.prog);
       int unit = 0;
       bool fed = false;
@@ -2926,7 +2926,7 @@ private:
       }
       return fed;
     };
-    auto runFullscreen = [&](IrisPass& P) {
+    auto runFullscreen = [&](PackPass& P) {
       const bool toScreen = P.nOut == 0;
       if (toScreen) {
         bool missing = false;
@@ -3054,8 +3054,8 @@ private:
     // the packed gbuffer, which Photon shows as a magenta arm.
     bool handDrawn = false;
     if (gbuf.prog && s.worldRenderer.blockAtlas() && depthOk) {
-      for (auto& P : irisBegin) runFullscreen(P);
-      for (auto& P : irisPrep) runFullscreen(P);
+      for (auto& P : packBegin) runFullscreen(P);
+      for (auto& P : packPrep) runFullscreen(P);
       // prepare may have replaced the sky. Put the game picture back; the gbuffer overwrites terrain only.
       copyFrame(slot[0][slotFront[0]], vp, outFbo);
       if (sceneBuf > 0 && sceneBuf < 16) copyFrame(slot[sceneBuf][slotFront[sceneBuf]], vp, outFbo);
@@ -3134,7 +3134,7 @@ private:
         // gbuffer now. Deferred writes the shaded arm. Drawing the gbuffer afterwards is magenta.
         if (ghand.prog && ghand.nOut > 0 && !packHandPrev().draws.empty()) {
           bool read = false, overwritten = false;
-          for (const IrisPass& P : irisDef) {
+          for (const PackPass& P : packDef) {
             for (const auto& u : P.uniforms) {
               if (u.second != GL_SAMPLER_2D) continue;
               int ct = colortexOf(u.first);
@@ -3202,7 +3202,7 @@ private:
         glDisable(GL_DEPTH_TEST);
         glDepthMask(GL_FALSE);
         glDisable(GL_BLEND);
-        for (auto& P : irisDef) runFullscreen(P);
+        for (auto& P : packDef) runFullscreen(P);
         // The opaque redraw replaced water pixels with the seabed. gbuffers_water blends the
         // surface back on top and writes its depth into a second image, so depthtex0 and depthtex1 differ.
         if (gwater.prog && transCopy) {
@@ -3355,7 +3355,7 @@ private:
         DQ_LOG("shader pack: %s drew %d hand meshes into colortex%d", ghand.name.c_str(), drew, target);
       }
     };
-    auto handTargetOf = [&](const IrisPass& P) {
+    auto handTargetOf = [&](const PackPass& P) {
       // The first sampler can be an aux buffer (MakeUp's gaux3 is exposure). The arm
       // belongs on the hand's own colour target when this pass reads it, else the scene.
       bool seen[16] = {};

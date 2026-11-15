@@ -61,17 +61,17 @@ void drawPlayers(Launcher& L, DedicatedServer& srv, const ServerView* v) {
       ImGui::TableNextColumn(); ImGui::AlignTextToFramePadding(); ImGui::Text("%u ms", p.ping);
       ImGui::TableNextColumn();
       float bh = ImGui::GetFrameHeight();
-      if (mcButton(L, "Message", ImVec2(84, bh), BtnKind::Grey, true, L.fSmall)) { U.msgTo = p.name; U.msgText.clear(); U.openMsg = true; }
+      if (greyButton(L, "Message", ImVec2(84, bh), BtnKind::Grey, true, L.fSmall)) { U.msgTo = p.name; U.msgText.clear(); U.openMsg = true; }
       ImGui::SameLine(0, 4);
-      if (mcButton(L, "To spawn", ImVec2(84, bh), BtnKind::Grey, true, L.fSmall)) srv.command("tp " + p.name + " spawn");
+      if (greyButton(L, "To spawn", ImVec2(84, bh), BtnKind::Grey, true, L.fSmall)) srv.command("tp " + p.name + " spawn");
       ImGui::SameLine(0, 4);
-      if (mcButton(L, "Watch", ImVec2(70, bh), BtnKind::Grey, true, L.fSmall)) { serverDash().follow = p.name; serverDash().mapPan = ImVec2(0, 0); serverDash().tab = SvTab::Iso; }
+      if (greyButton(L, "Watch", ImVec2(70, bh), BtnKind::Grey, true, L.fSmall)) { serverDash().follow = p.name; serverDash().mapPan = ImVec2(0, 0); serverDash().tab = SvTab::Iso; }
       if (ImGui::IsItemHovered()) ImGui::SetTooltip("The isometric view round %s", p.name.c_str());
       ImGui::SameLine(0, 4);
-      if (mcButton(L, p.op ? "Deop" : "Op", ImVec2(64, bh), BtnKind::Grey, true, L.fSmall)) srv.command((p.op ? "deop " : "op ") + p.name);
+      if (greyButton(L, p.op ? "Deop" : "Op", ImVec2(64, bh), BtnKind::Grey, true, L.fSmall)) srv.command((p.op ? "deop " : "op ") + p.name);
       if (ImGui::IsItemHovered()) ImGui::SetTooltip(p.op ? "Stop %s using commands" : "Let %s use commands", p.name.c_str());
       ImGui::SameLine(0, 4);
-      if (mcButton(L, "Kick", ImVec2(64, bh), BtnKind::Grey, true, L.fSmall)) { srv.command("say " + p.name + " was asked to leave."); srv.command("kick " + p.name); }
+      if (greyButton(L, "Kick", ImVec2(64, bh), BtnKind::Grey, true, L.fSmall)) { srv.command("say " + p.name + " was asked to leave."); srv.command("kick " + p.name); }
       ImGui::PopID();
     }
     ImGui::EndTable();
@@ -85,9 +85,9 @@ void drawPlayers(Launcher& L, DedicatedServer& srv, const ServerView* v) {
     if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
     ImGui::SetNextItemWidth(-1);
     bool send = ImGui::InputText("##svmsgtext", &U.msgText, ImGuiInputTextFlags_EnterReturnsTrue);
-    if (mcButton(L, "Send", ImVec2(120, 32), BtnKind::Go, !U.msgText.empty(), L.fUi)) send = true;
+    if (greyButton(L, "Send", ImVec2(120, 32), BtnKind::Go, !U.msgText.empty(), L.fUi)) send = true;
     ImGui::SameLine();
-    bool cancel = mcButton(L, "Cancel", ImVec2(120, 32), BtnKind::Grey, true, L.fUi) || ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight) || ImGui::IsKeyPressed(ImGuiKey_Escape);
+    bool cancel = greyButton(L, "Cancel", ImVec2(120, 32), BtnKind::Grey, true, L.fUi) || ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight) || ImGui::IsKeyPressed(ImGuiKey_Escape);
     if (send && !U.msgText.empty()) { srv.command("msg " + U.msgTo + " " + U.msgText); cancel = true; }
     if (cancel) ImGui::CloseCurrentPopup();
     ImGui::EndPopup();
@@ -110,11 +110,11 @@ void drawSettings(Launcher& L, DedicatedServer& srv, const ServerStatus& st, con
   float bh = ImGui::GetFrameHeight() + 4;
   label("Time of day");
   struct T { const char* n; double f; } times[] = {{"Morning", 0.02}, {"Noon", 0.25}, {"Evening", 0.48}, {"Night", 0.6}};
-  for (auto& t : times) { if (mcButton(L, t.n, ImVec2(96, bh), BtnKind::Grey, true, L.fSmall)) srv.command(strFormat("time set %d", (int)std::round(DAY_LEN * t.f))); ImGui::SameLine(0, 6); }
+  for (auto& t : times) { if (greyButton(L, t.n, ImVec2(96, bh), BtnKind::Grey, true, L.fSmall)) srv.command(strFormat("time set %d", (int)std::round(DAY_LEN * t.f))); ImGui::SameLine(0, 6); }
   ImGui::PushFont(L.fSmall); ImGui::AlignTextToFramePadding(); ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "now: %s, day %lld", v ? v->timeOfDay.c_str() : "…", v ? (long long)v->day : 0LL); ImGui::PopFont();
   label("Weather");
   struct Wt { const char* n; const char* k; } weathers[] = {{"Clear", "clear"}, {"Rain", "rain"}, {"Storm", "thunder"}};
-  for (auto& w : weathers) { if (mcButton(L, w.n, ImVec2(96, bh), BtnKind::Grey, true, L.fSmall)) srv.command(std::string("weather ") + w.k); ImGui::SameLine(0, 6); }
+  for (auto& w : weathers) { if (greyButton(L, w.n, ImVec2(96, bh), BtnKind::Grey, true, L.fSmall)) srv.command(std::string("weather ") + w.k); ImGui::SameLine(0, 6); }
   ImGui::PushFont(L.fSmall); ImGui::AlignTextToFramePadding();
   std::string wk = v ? (v->weather == "thunder" ? "storm" : v->weather) : "…";
   ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "now: %s", wk.c_str()); ImGui::PopFont();
@@ -139,7 +139,7 @@ void drawSettings(Launcher& L, DedicatedServer& srv, const ServerStatus& st, con
           "Port %d · %s · %s · PvP %s — these are set before the server starts.", st.port, srv.config().mode.c_str(), srv.config().difficulty.c_str(), srv.config().pvp ? "on" : "off");
   ImGui::PopFont();
   ImGui::Spacing();
-  if (mcButton(L, "Open server folder", ImVec2(220, 32), BtnKind::Grey, true, L.fUi)) openPath(userSub("servers"));
+  if (greyButton(L, "Open server folder", ImVec2(220, 32), BtnKind::Grey, true, L.fUi)) openPath(userSub("servers"));
 }
 
 // ---- Plugins (modsRender(g, body, 'plugin')) ----
@@ -169,16 +169,16 @@ void drawPlugins(Launcher& L, const ServerStatus& st) {
       if (!err.empty()) { ImGui::SameLine(); ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_BAD), "%s", err.c_str()); }
       ImGui::PopFont();
       ImGui::SameLine();
-      if (mcButton(L, "Remove", ImVec2(80, ImGui::GetFrameHeight()), BtnKind::Grey, true, L.fSmall)) removeId = m.id;
+      if (greyButton(L, "Remove", ImVec2(80, ImGui::GetFrameHeight()), BtnKind::Grey, true, L.fSmall)) removeId = m.id;
       ImGui::PopID();
     }
     if (!removeId.empty()) { L.mods->removeMod(removeId); U.pluginMsg = "Removed. The server keeps running it until it stops."; }
   }
   if (!n) dimText("None yet.");
   ImGui::Spacing();
-  if (mcButton(L, "Open the mods folder", ImVec2(220, 34), BtnKind::Grey, true, L.fUi)) openPath(userSub("mods"));
+  if (greyButton(L, "Open the mods folder", ImVec2(220, 34), BtnKind::Grey, true, L.fUi)) openPath(userSub("mods"));
   ImGui::SameLine();
-  if (mcButton(L, "Save an example plugin", ImVec2(240, 34), BtnKind::Grey, L.mods != nullptr, L.fUi)) {
+  if (greyButton(L, "Save an example plugin", ImVec2(240, 34), BtnKind::Grey, L.mods != nullptr, L.fUi)) {
     fs::path tmp = fs::temp_directory_path() / "welcome-plugin.js";
     std::string err;
     if (writeFileAtomic(tmp, ModLoader::exampleMod()) && L.mods->addMod(tmp, true, &err)) U.pluginMsg = "Added an example plugin to the mods folder. It runs the next time the server starts.";
@@ -186,7 +186,7 @@ void drawPlugins(Launcher& L, const ServerStatus& st) {
     std::error_code ec; fs::remove(tmp, ec);
   }
   ImGui::SameLine();
-  if (mcButton(L, "Look again", ImVec2(140, 34), BtnKind::Grey, L.mods != nullptr, L.fUi)) { L.mods->scan(); U.pluginMsg.clear(); }
+  if (greyButton(L, "Look again", ImVec2(140, 34), BtnKind::Grey, L.mods != nullptr, L.fUi)) { L.mods->scan(); U.pluginMsg.clear(); }
   if (!U.pluginMsg.empty()) { ImGui::PushFont(L.fSmall); dimText("%s", U.pluginMsg.c_str()); ImGui::PopFont(); }
 }
 } // namespace
@@ -245,9 +245,9 @@ void drawServerDashboard(Launcher& L, DedicatedServer& srv, const ServerStatus& 
   ImGui::PopFont();
   ImVec2 after = ImGui::GetCursorPos();
   ImGui::SetCursorPos(ImVec2(p0.x + right - bw * 2 - 8, p0.y));
-  if (mcButton(L, "Save now", ImVec2(bw, bh), BtnKind::Grey, true, L.fUi)) srv.command("save");
+  if (greyButton(L, "Save now", ImVec2(bw, bh), BtnKind::Grey, true, L.fUi)) srv.command("save");
   ImGui::SameLine(0, 8);
-  if (mcButton(L, "Stop server", ImVec2(bw, bh), BtnKind::Grey, true, L.fUi)) stop = true;
+  if (greyButton(L, "Stop server", ImVec2(bw, bh), BtnKind::Grey, true, L.fUi)) stop = true;
   ImGui::SetCursorPos(after);
   ImGui::Spacing();
   // the tabs (LT / RT on a controller)

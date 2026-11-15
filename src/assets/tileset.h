@@ -40,7 +40,7 @@ void bakeTileRelief(TileSet& ts);            // once per finished tile set: whol
 std::string applyResourcePack(TileSet& ts, const std::string& choice);
 std::vector<std::string> listResourcePacks();
 int appendTile(TileSet& ts, const u8* rgba32x32);   // adds a tile (animation frames), returns its layer
-// imported pictures kept on this machine only (data/local_models/irons_fx.json "tiles", the files under
+// imported pictures kept on this machine only (data/local_models/spell_fx.json "tiles", the files under
 // data/local_models/tiles/<prefix>/): appended in that order (a particle's frames side by side), each glowing where lit
 void loadLocalTiles(TileSet& ts);
 // the player's own pictures (Texture Studio): userDir()/textures/<tile name>.png over whatever pack is on; a tile the

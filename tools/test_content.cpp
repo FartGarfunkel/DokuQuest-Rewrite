@@ -252,7 +252,7 @@ int main(int argc, char** argv) {
     Creature* c = spawnCreature(*L, P->realm, bird, vec3(60.5f, Y + 30, 60.5f));
     const RigModel* RM = c ? rigModel(c->modelKey()) : nullptr;
     if (!c || !RM) { check(false, std::string("a ") + bird + " to fly"); continue; }
-    int wi = RM->find("wingR");   // (an imported body names it its own way: tools/port/alexsmobs_import.py)
+    int wi = RM->find("wingR");   // (an imported body names it its own way: the creature import)
     for (const char* n : {"wing_right", "right_wing", "rightWing", "wingRight", "wing_r"}) if (wi < 0) wi = RM->find(n);
     auto wingDown = [&] { const vec3 d = glm::normalize(vec3(c->mats[wi] * vec4(0, -1, 0, 0))); return d.y; };   // how far the wing points down
     float worstAir = -1, worstGround = 1;
@@ -263,7 +263,7 @@ int main(int argc, char** argv) {
     }
     for (int k = 0; k < 40; k++) { c->onGround = true; c->vel = vec3(0); c->age = (tAge += 0.02f); rigPose(*c, *RM, creatureBase(*c, false)); }
     worstGround = wingDown();
-    if (RM->rig == "am") {   // an imported body (its wing laid its own way): in the air it beats (the tip swings up and down a lot), perched it's still
+    if (RM->rig == "beast") {   // an imported body (its wing laid its own way): in the air it beats (the tip swings up and down a lot), perched it's still
       auto tipY = [&] { return (c->mats[wi] * vec4(0, 0, 0.3f, 1)).y + (c->mats[wi] * vec4(0.3f, 0, 0, 1)).y; };
       float lo = 1e9f, hi = -1e9f, glo = 1e9f, ghi = -1e9f;
       for (int k = 0; k < 120; k++) { c->onGround = false; c->vel = vec3(2.5f, 0.3f, 0); c->age = (tAge += 0.011f); rigPose(*c, *RM, creatureBase(*c, false)); if (k > 60) { lo = std::min(lo, tipY()); hi = std::max(hi, tipY()); } }
