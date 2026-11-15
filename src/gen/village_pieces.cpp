@@ -1161,6 +1161,40 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
       if (std::getenv("DQ_FURN_LOG")) { std::string o; for (size_t i = before; i < P.blocks.size(); i++) o += " " + reg().block(P.states[P.blocks[i].s].id).key + "@" + std::to_string(P.blocks[i].x) + "," + std::to_string(P.blocks[i].y) + "," + std::to_string(P.blocks[i].z);
         DQ_LOG("furnished %s/%s (%dx%dx%d):%s", P.style.c_str(), P.name.c_str(), P.sx, P.sy, P.sz, o.c_str()); } }
   }
+  // a brewing stand standing on the floor (a market stall's, or one furnishEmpty set against a wall) up on a table, as a
+  // healer works at one: the stand keeps its state (the job's place goes up with it), a table of the house's wood under it
+  if (const BlockId STAND = findBlock("brewing_stand"); STAND != NONE) {
+    std::map<long long, int> at;
+    auto ck = [](int x, int y, int z) { return ((long long)x << 40) | ((long long)y << 20) | (long long)z; };
+    for (int i = 0; i < (int)P.blocks.size(); i++) at[ck(P.blocks[i].x, P.blocks[i].y, P.blocks[i].z)] = i;
+    auto idAt = [&](int x, int y, int z) -> BlockId { auto it = at.find(ck(x, y, z)); if (it == at.end()) return AIR; const VPState& st = P.states[P.blocks[it->second].s]; return st.kind == VPK_AIR ? AIR : st.id; };
+    auto solid = [&](int x, int y, int z) { const BlockId id = idAt(x, y, z); return id != AIR && reg().tSolid[id]; };
+    std::vector<int> lift;
+    for (int i = 0; i < (int)P.blocks.size(); i++) {
+      const VPBlock& b = P.blocks[i];
+      if (P.states[b.s].id != STAND || b.y < 1 || b.y + 1 >= P.sy) continue;
+      if (!solid(b.x, b.y - 1, b.z) || idAt(b.x, b.y + 1, b.z) != AIR) continue;
+      int floorN = 0, openN = 0;
+      for (auto [dx, dz] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) { floorN += solid(b.x + dx, b.y - 1, b.z + dz); openN += idAt(b.x + dx, b.y, b.z + dz) == AIR; }
+      if (floorN == 4 && openN >= 2) lift.push_back(i);   // (on a counter, the counter's sides are open below it)
+    }
+    if (!lift.empty()) {
+      std::string wood = "oak";
+      { std::map<std::string, int> wc; for (auto& bb : P.blocks) { const std::string k = reg().block(P.states[bb.s].id).key;
+          for (const char* wd : {"spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry"}) if (k.rfind(std::string(wd) + "_", 0) == 0) wc[wd]++; }
+        int best = 0; for (auto& [k, n] : wc) if (n > best) { best = n; wood = k; } }
+      const BlockId TABLE = findBlock(wood + "_table") != NONE ? findBlock(wood + "_table") : findBlock("oak_table");
+      if (TABLE != NONE) {
+        VPState tb; tb.id = TABLE; tb.meta = {0, 1, 2, 3}; P.states.push_back(tb); const u16 ts = (u16)(P.states.size() - 1);
+        for (int i : lift) {
+          VPBlock up = P.blocks[i]; up.y = (u8)(up.y + 1);
+          P.blocks[i].s = ts;
+          P.blocks.push_back(up);
+          P.top = std::max(P.top, (int)up.y);
+        }
+      }
+    }
+  }
   return true;
 }
 

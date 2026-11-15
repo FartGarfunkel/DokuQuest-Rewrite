@@ -14,6 +14,7 @@
 #include "gen/overworld.h"
 #include "gen/structures.h"
 #include "gen/structures_api.h"
+#include "gen/village_pieces.h"
 #include "world/dims.h"
 #include <thread>
 #include <cstdio>
@@ -44,6 +45,28 @@ int main(int argc, char** argv) {
   std::error_code ec; fs::remove_all(ud, ec);
   CoreOptions co; co.server = true; co.userDirOverride = ud;
   if (!initCore(co)) { printf("FAIL initCore\n"); return 1; }
+
+  {   // a healer's brewing stand stands on a table, not on the floor (gen/village_pieces.cpp makePiece)
+    const VillagePieces* VP = villagePieces();
+    int stands = 0, onFloor = 0, onTable = 0; std::string where;
+    if (VP) for (const auto& [pool, list] : VP->pools) for (const VPPiece& P : list) {
+      std::map<std::array<int, 3>, BlockId> at;
+      for (const VPBlock& b : P.blocks) { const VPState& st = P.states[b.s]; if (st.kind != VPK_AIR) at[{b.x, b.y, b.z}] = st.id; }
+      auto solid = [&](int x, int y, int z) { auto it = at.find({x, y, z}); return it != at.end() && it->second && reg().tSolid[it->second]; };
+      auto open = [&](int x, int y, int z) { return !at.count({x, y, z}); };
+      for (const auto& [k, id] : at) {
+        if (reg().block(id).key != "brewing_stand") continue;
+        stands++;
+        const int x = k[0], y = k[1], z = k[2];
+        auto bt = at.find({x, y - 1, z});
+        if (bt != at.end() && reg().block(bt->second).key.find("_table") != std::string::npos) onTable++;
+        int floorN = 0, openN = 0;
+        for (auto [dx, dz] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) { floorN += solid(x + dx, y - 1, z + dz); openN += open(x + dx, y, z + dz); }
+        if (solid(x, y - 1, z) && floorN == 4 && openN >= 2 && open(x, y + 1, z)) { onFloor++; if (where.empty()) where = P.name; }
+      }
+    }
+    check(VP && stands > 0 && onFloor == 0, strFormat("no brewing stand left on the floor (%d stands, %d on tables, %d on the floor%s)", stands, onTable, onFloor, where.empty() ? "" : (": " + where).c_str()));
+  }
 
   // ------------------------------------------------------------ the data and the original's numbers
   check(VD().contains("jobs") && VD()["shops"].size() == 19 && VD()["riftLore"].size() > 30, "data/villagers.json: jobs, 19 shops (the miller, the miner and the leatherworker too), the rift lore");
