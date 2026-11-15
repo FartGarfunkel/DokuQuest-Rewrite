@@ -491,6 +491,8 @@ void MagicLayer::ambient(double dt) {
       BlockId b = w.getBlock(c.x + x, c.y + y, c.z + z);
       if (b && b == et) tables.push_back(c + ivec3(x, y, z)); else if (b && b == bs) stands.push_back(c + ivec3(x, y, z));
     }
+    // a stand that never had its record (built into a village, a tower): given one, so Tactile's still shows its book
+    if (!s.level->isRemote()) for (const ivec3& S : stands) if (!w.blockEntity(S.x, S.y, S.z)) brewEntity(w, S.x, S.y, S.z);
   }
   for (auto& T : tables) {
     i64 key = ((i64)T.x * 73856093) ^ ((i64)T.y * 19349663) ^ ((i64)T.z * 83492791);

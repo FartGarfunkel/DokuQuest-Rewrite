@@ -11,6 +11,7 @@
 #include "world/carve_forms.h"
 #include "sim/worldsys.h"
 #include "sim/station_work.h"
+#include "sim/brewing.h"
 #include "sim/tactile.h"
 #include <random>
 
@@ -355,6 +356,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
     else for (int i = 0, n = (int)bdef.num("container", 27); i < n; i++) items.push_back(nullptr);
     w.setBlockEntity(x, y, z, {{"type", "chest"}, {"items", items}});
   } else if (bhas(bid, BF::Furnace)) containerEntity(w, x, y, z);
+  if (bdef.key == "brewing_stand") brewEntity(w, x, y, z);   // (its record from the start: the still's recipe book is drawn from it)
   if (bhas(bid, BF::Sign)) { w.setBlockEntity(x, y, z, {{"type", "sign"}, {"lines", {"", "", "", ""}}}); editSign(x, y, z); }
   if (R.block(bid).has("armorStand")) w.setBlockEntity(x, y, z, {{"type", "stand"}, {"items", json::array({nullptr, nullptr, nullptr, nullptr, nullptr})}, {"pose", 0}});
   if (bdef.has("painting")) w.setBlockEntity(x, y, z, {{"type", "painting"}, {"n", (int)(rnd() * 30)}});   // a picture of its own (render/painting_layer.cpp)

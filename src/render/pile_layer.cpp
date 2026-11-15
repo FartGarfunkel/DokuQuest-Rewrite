@@ -136,6 +136,8 @@ class PileLayer : public RenderLayer {
   std::vector<StillWater> tactileWater;   // Tactile's still brewing: water in its glass (alambic_water)
   struct StillBook { ivec3 at; int facing, page; vec2 light; };
   std::vector<StillBook> tactileBooks;   // the still's recipe books: their parts and writing
+  struct TableLapis { ivec3 at; int facing; float fill; vec2 light; };
+  std::vector<TableLapis> tactileLapis;   // the enchanting table's lapis in its tray (Tactile's table_enchantement_lapis, filled to the stack)
 public:
   const char* name() const override { return "item-piles"; }
   int order() const override { return 110; }
@@ -235,13 +237,7 @@ public:
           ItemStack one = v[0]; one.n = 1;
           tactileItem(one, p.m, VoxelLight{TL.sky, std::max(TL.block, 0.7f)});
         }
-        if (!v[1].empty()) {
-          const int n = std::clamp(v[1].n / 4 + 1, 1, 12);
-          for (int i = 0; i < n; i++) {   // (the reservoir's floor, the pieces laid side by side, rising)
-            TPose p = base; p.t((3.f + (i % 6) * 2.f) / 16, (14.6f + (i / 6) * 0.5f) / 16, (12.6f + (i % 2) * 1.6f) / 16).ry(i * 47.f).rx(90).s(0.22f);
-            tactileItem(ItemStack(v[1].id, 1), p.m, TL);
-          }
-        }
+        if (!v[1].empty()) tactileLapis.push_back({at, tactileFacing(w, at), std::clamp(v[1].n / 64.f, 0.08f, 1.f), vec2(TL.sky, TL.block)});   // (its tray, below)
         return;
       }
       if (type == "enchwork") {   // sim/ench_work.h: the item hovering over the enchanting table, turning; the lapis on its top
@@ -554,6 +550,14 @@ public:
         cd.end();
       }
       tactileWater.clear();
+    }
+    if (!tactileLapis.empty()) {
+      ContentDraw& cd = contentDraw();
+      if (const PackModel* lp = tactilePart("table_enchantement_lapis")) if (cd.begin(f, f.cam.viewProj)) {
+        for (auto& l : tactileLapis) { TPose p = tactileBlockPose(f, l.at, l.facing); p.t(0, 0.975f, 0).s(1, l.fill, 1).t(0, -0.975f, 0); tactilePartDraw(s.app, cd, *lp, p.m, l.light); }
+        cd.end();
+      }
+      tactileLapis.clear();
     }
     if (!tactileBooks.empty()) {
       ContentDraw& cd = contentDraw();

@@ -21,7 +21,7 @@ int tactileFacing(World& w, ivec3 at) {
   const u8 m = w.getMeta(at.x, at.y, at.z);
   static const int FM[4] = {2, 1, 0, 3};   // a turned model's meta (north, east, south, west)
   if (b.props.contains("tex") && b.props["tex"].is_object() && b.props["tex"].contains("front")) return m & 3;
-  if (b.has("facingModel")) return FM[m & 3];
+  if (b.has("facingModel")) return b.key == "brewing_stand" || b.key == "enchanting_table" ? (FM[m & 3] + 2) & 3 : FM[m & 3];   // (the still's book, the table's socket: toward whoever placed it)
   return 2;
 }
 float tactileFacingDegrees(int f) { static const float D[4] = {180.f, -90.f, 0.f, 90.f}; return D[f & 3]; }

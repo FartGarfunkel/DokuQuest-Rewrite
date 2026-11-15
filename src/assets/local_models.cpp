@@ -142,7 +142,8 @@ void loadStationModels(TileSet& ts) {
       sm.model = *sm.models[0];
       if (v.value("state", std::string()) == "coffre") sm.closed = model("coffre_full");   // (shut: the whole chest; open: render/tactile_chests.cpp swings its lid)
       { const BlockDef& bd = reg().block(id);
-        sm.facingKind = bd.props.contains("tex") && bd.props["tex"].is_object() && bd.props["tex"].contains("front") ? 1 : bd.has("facingModel") ? 2 : 0; }
+        sm.facingKind = bd.props.contains("tex") && bd.props["tex"].is_object() && bd.props["tex"].contains("front") ? 1 : bd.has("facingModel") ? 2 : 0;
+        sm.faceBack = key == "brewing_stand" || key == "enchanting_table"; }
       if (v.contains("y") && v["y"].is_array()) for (int k = 0; k < 4 && k < (int)v["y"].size(); k++) sm.turn[k] = ((v["y"][k].get<int>() / 90) % 4 + 4) % 4;
       if ((size_t)id >= S->has.size()) S->has.resize((size_t)id + 1, 0);
       S->has[id] = 1;

@@ -17,7 +17,8 @@ struct StationModel {
   std::shared_ptr<PackModel> closed;
   std::unordered_map<std::string, std::shared_ptr<PackModel>> parts;   // its own parts (a chest's lid and buttons, in its own wood)            // a chest shut (its lid in the model: "coffre_full"); open, the lid is drawn on its hinge
   int facingKind = 0;                           // the block's own facing: 0 none, 1 a front (meta & 3: S E N W), 2 a turned model (N E S W)
-  int idx(u8 meta) const { static const int FM[4] = {2, 1, 0, 3}; return facingKind == 1 ? meta & 3 : facingKind == 2 ? FM[meta & 3] : 2; }   // -> south, east, north, west
+  bool faceBack = false;                        // its front toward whoever placed it (the still's book): the look's way turned round
+  int idx(u8 meta) const { static const int FM[4] = {2, 1, 0, 3}; const int k = facingKind == 1 ? meta & 3 : facingKind == 2 ? FM[meta & 3] : 2; return faceBack ? (k + 2) & 3 : k; }   // -> south, east, north, west
 };
 bool tactilePorted(const std::string& key);       // its Tactile port is whole (docs/TACTILE_PORT.md): drawn from its model
 const PackModel* tactilePart(const std::string& name);   // a Tactile model by name (parts: "haut_fourneau_porte", "meule_wheel")
