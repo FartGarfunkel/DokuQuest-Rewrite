@@ -736,11 +736,12 @@ bool buildItems3d(ItemBuild& b) {
     b.depth = 0.05f;
     return true;
   }
-  if (key == "leather_backpack" || key == "reinforced_backpack") {
-    // a proper pack, with a flap, a pouch, side pockets and a bedroll, as it is held and dropped
-    bool big = key == "reinforced_backpack";
-    int body = b.tile(big ? "pack_body_r" : "pack_body_l"), flap = b.tile(big ? "pack_flap_r" : "pack_flap_l"), metal = b.tile(big ? "pack_iron" : "pack_brass"),
-        roll = b.tile(big ? "pack_roll_r" : "pack_roll_l"), strap = b.tile("pack_strap"), iron = b.tile("pack_iron");
+  if (key == "leather_backpack" || key == "reinforced_backpack" || key == "explorer_backpack") {
+    // a proper pack, with a flap, a pouch, side pockets and a bedroll, as it is held and dropped (the explorer's: the big
+    // pack in its own colours, as it is worn: assets/char_model.cpp packWornMesh)
+    const bool ex = key == "explorer_backpack", big = key != "leather_backpack";
+    int body = b.tile(ex ? "pack_body_e" : big ? "pack_body_r" : "pack_body_l"), flap = b.tile(ex ? "pack_flap_e" : big ? "pack_flap_r" : "pack_flap_l"), metal = b.tile(big ? "pack_iron" : "pack_brass"),
+        roll = b.tile(ex ? "pack_roll_e" : big ? "pack_roll_r" : "pack_roll_l"), strap = b.tile("pack_strap"), iron = b.tile("pack_iron");
     auto tf = [](vec3 v) { return vec3(v.x * 0.1f, (v.y - 7) * 0.1f, (v.z - 4.2f) * 0.1f); };
     auto box = [&](vec3 a, vec3 c, std::array<int, 6> t) { vec3 p = tf(a), q = tf(c), lo = glm::min(p, q), hi = glm::max(p, q); b.P.box(lo, hi, tileBox(b, lo, hi, t)); };
     auto all = [](int t) { return std::array<int, 6>{t, t, t, t, t, t}; };
