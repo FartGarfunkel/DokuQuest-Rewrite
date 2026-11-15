@@ -149,6 +149,7 @@ void GameSession::spawnPlayer() {
       level->info.spawn = sp;
     }
     p->pos = sp;
+    freshSpawnT = 0;   // (its ground checked once it's loaded: update)
   }
   player = static_cast<Player*>(level->spawn(std::move(p)));
 }
@@ -185,6 +186,26 @@ void GameSession::update(double dt) {
   selectLocal(0);
   if (level->net) level->net->update(*level, dt);   // multiplayer (net/): a joined world, or one open to LAN
   checkJoin();                                      // Start on a free controller joins split screen
+  // a new spawn inside the ground (the start point is chosen from the terrain's plan, before the cliffs, trees and buildings are
+  // in): once its chunk is here, up to the first place with two free blocks over something solid
+  if (freshSpawnT >= 0 && player) {
+    freshSpawnT += dt;
+    World& w = world();
+    const ivec3 b = ivec3(glm::floor(player->pos));
+    if (w.chunk(dimOfY(std::clamp(b.y, 0, WORLD_H - 1)), b.x >> 4, b.z >> 4)) {
+      const Registry& R = reg();
+      auto freeAt = [&](int y) { const BlockId a = w.getBlock(b.x, y, b.z); return !R.tSolid[a] && !R.tLiquid[a]; };
+      if (!freeAt(b.y) || !freeAt(b.y + 1)) {
+        const int top = dimBase(dimOfY(b.y)) + 255;
+        for (int y = b.y + 1; y < top - 1; y++) if (freeAt(y) && freeAt(y + 1) && R.tSolid[w.getBlock(b.x, y - 1, b.z)]) {
+          player->pos.y = (float)y; player->vel = vec3(0); level->info.spawn = player->pos;
+          DQ_LOG("spawn: lifted out of the ground to y %d", y);
+          break;
+        }
+      }
+      freshSpawnT = -1;
+    } else if (freshSpawnT > 30) freshSpawnT = -1;
+  }
   struct RdGuard {   // more people, shorter view: lend the capped render distance to everything below
     GameSession& s; bool on;
     explicit RdGuard(GameSession& g) : s(g), on(g.split()) { s.lendRenderDist(on); }

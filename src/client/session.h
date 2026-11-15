@@ -58,6 +58,7 @@ public:
   App& app;
   std::unique_ptr<Level> level;
   Player* player = nullptr;           // the local player entity (owned by the level)
+  double freshSpawnT = -1;            // a new spawn not yet checked for room to stand (lifted out of the ground once its chunk is in)
   WorldRenderer worldRenderer;
   std::unique_ptr<SkyRenderer> sky;
   FrameCtx frame;
