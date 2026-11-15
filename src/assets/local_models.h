@@ -9,7 +9,16 @@
 namespace dq {
 class TileSet;
 
-struct StationModel { PackModel model; int turn[4] = {0, 0, 0, 0}; };   // turn: quarters (clockwise from above) for meta & 3
+struct StationModel {
+  PackModel model;                              // the north-facing one's (models[0]'s)
+  std::shared_ptr<PackModel> models[4];         // per meta & 3 (south, east, north, west)
+  int turn[4] = {0, 0, 0, 0};                   // quarters (clockwise from above) for meta & 3
+  const PackModel& of(int facing) const { return models[facing & 3] ? *models[facing & 3] : model; }
+  int facingKind = 0;                           // the block's own facing: 0 none, 1 a front (meta & 3: S E N W), 2 a turned model (N E S W)
+  int idx(u8 meta) const { static const int FM[4] = {2, 1, 0, 3}; return facingKind == 1 ? meta & 3 : facingKind == 2 ? FM[meta & 3] : 2; }   // -> south, east, north, west
+};
+bool tactilePorted(const std::string& key);       // its Tactile port is whole (docs/TACTILE_PORT.md): drawn from its model
+const PackModel* tactilePart(const std::string& name);   // a Tactile model by name (parts: "haut_fourneau_porte", "meule_wheel")
 void loadStationModels(TileSet& ts);
 const StationModel* stationModel(BlockId id);   // null: drawn the game's own way
 // a cube block drawn from a model leaves the cells round it open (its neighbours keep their faces toward it)

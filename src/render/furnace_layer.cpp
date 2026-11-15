@@ -13,6 +13,7 @@
 #include "core/itemstack.h"
 #include "world/world.h"
 #include "render/vehicle_parts.h"
+#include "assets/local_models.h"
 #include "sim/blockinfo.h"
 #include "sim/worldsys.h"
 #include "client/app.h"
@@ -50,7 +51,7 @@ public:
       const BlockId id = w.getBlock(x, y, z);
       if (!id) return;
       const BlockDef& b = reg().block(id);
-      if (!b.has("furnace")) return;
+      if (!b.has("furnace") || stationModel(id)) return;   // (drawn from its Tactile model: render/tactile_furnaces.cpp)
       const FurnaceModel* FM = furnaceModelFor(b.faces[4]);
       if (!FM) return;
       static const int Q[4] = {2, 1, 0, 3}, DX[4] = {0, 1, 0, -1}, DZ[4] = {1, 0, -1, 0};

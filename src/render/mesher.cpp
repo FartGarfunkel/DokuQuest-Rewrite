@@ -346,6 +346,20 @@ static bool leafHidden(const MeshCtx& c, int x, int y, int z, const int* n) {
 }
 
 static void emitPackModel(MeshCtx& c, std::vector<ChunkVertex>& dst, const PackModel& M, vec3 at, int quarters, float sk, float bl, u32 lit, u8 mat);
+// a block drawn from its Tactile model (cube or model-shaped: emitCube, emitModel), turned to Tactile's facing for it; lit by
+// the brightest air round it and in it (a cube's own cell counts as solid)
+bool emitStationModelIn(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, int y, int z, u8 meta) {
+  const StationModel* SM = stationModel(id);
+  if (!SM) return false;
+  static const int DX[6] = {0, 1, 0, -1, 0, 0}, DZ[6] = {1, 0, -1, 0, 0, 0}, DY[6] = {0, 0, 0, 0, 1, 0};
+  LightRgb L = rgbAt(c, x, y + 1, z);
+  for (int k = 0; k < 6; k++) { const LightRgb Ls = rgbAt(c, x + DX[k], y + DY[k], z + DZ[k]); for (int i = 0; i < 3; i++) { L.s[i] = std::max(L.s[i], Ls.s[i]); L.b[i] = std::max(L.b[i], Ls.b[i]); } }
+  { u8 em[3]; blockLightRgb(id, c.R.metaLight(id, meta), em); for (int i = 0; i < 3; i++) if (em[i] > L.b[i]) L.b[i] = em[i]; }
+  const float sk = (float)(max3u(L.s[0], L.s[1], L.s[2]) >> 4), bl = (float)(max3u(L.b[0], L.b[1], L.b[2]) >> 4);
+  const int fd = SM->idx(meta);
+  emitPackModel(c, dst, SM->of(fd), vec3((float)x, (float)y, (float)z), SM->turn[fd], sk, bl, markCubyz(packCubyzLight(L)), Mat::Cutout | Mat::NoRelief);
+  return true;
+}
 void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& dst, BlockId id, int x, int y, int z, u8 meta) {
   const Registry& R = c.R;
   const BlockDef& self = R.block(id);
@@ -360,6 +374,8 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
   if (self.render == Render::Cutout) mat |= Mat::Cutout | Mat::NoRelief;
   if (R.tTrans[id]) mat |= Mat::Translucent | Mat::NoRelief;
   static const int AXIS_END[3][2] = {{2, 3}, {0, 1}, {4, 5}};
+  // a station drawn from its Tactile model (assets/local_models.h), turned with the way it faces
+  if (emitStationModelIn(c, dst, id, x, y, z, meta)) return;
   // a furnace, smoker or blast furnace: its opening hollowed (assets/pack_models.h buildFurnaceModels), the fire behind it
   // bright while it burns; lit by the air in front of it
   if (T.hasFront) if (const FurnaceModel* FM = furnaceModelFor(faces[4])) {
@@ -374,16 +390,6 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
     const bool burning = R.tLight[id] > 0;
     LightRgb G = L; if (burning) for (int i = 0; i < 3; i++) G.b[i] = 255;
     emitPackModel(c, dst, FM->back, at, Q[fd], sk, burning ? 15.f : bl, markCubyz(packCubyzLight(G)), Mat::NoRelief);
-    return;
-  }
-  // a station drawn from an imported model (assets/local_models.h: Tactile Blocks' smithing table, cartography desk), turned
-  // with the way it faces; lit by the brightest air round it (its own cell counts as solid)
-  if (const StationModel* SM = stationModel(id)) {
-    static const int DX[5] = {0, 1, 0, -1, 0}, DZ[5] = {1, 0, -1, 0, 0}, DY[5] = {0, 0, 0, 0, 1};
-    LightRgb L = rgbAt(c, x, y + 1, z);
-    for (int k = 0; k < 4; k++) { const LightRgb Ls = rgbAt(c, x + DX[k], y + DY[k], z + DZ[k]); for (int i = 0; i < 3; i++) { L.s[i] = std::max(L.s[i], Ls.s[i]); L.b[i] = std::max(L.b[i], Ls.b[i]); } }
-    const float sk = (float)(max3u(L.s[0], L.s[1], L.s[2]) >> 4), bl = (float)(max3u(L.b[0], L.b[1], L.b[2]) >> 4);
-    emitPackModel(c, dst, SM->model, vec3((float)x, (float)y, (float)z), SM->turn[T.hasFront ? meta & 3 : 0], sk, bl, markCubyz(packCubyzLight(L)), Mat::Cutout | Mat::NoRelief);
     return;
   }
   // a large chest: two of the same, side by side, facing the same way — each drawn as its half of one (assets/pack_models.h)
@@ -793,6 +799,7 @@ void emitNotchWater(MeshCtx& c, std::vector<ChunkVertex>& dst, int x, int y, int
   c.tint = 0xFFFFFF; c.tintKind = 0; c.extraMat = 0;
 }
 } // namespace
+bool emitStationModel(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, int y, int z, u8 meta) { return emitStationModelIn(c, dst, id, x, y, z, meta); }
 
 // ---------------------------------------------------------------- the section (worker threads)
 u16 sectionVisibility(const MeshInput& in) {

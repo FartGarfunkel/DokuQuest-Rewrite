@@ -5,12 +5,13 @@
 #include "world/world.h"
 #include "common/common.h"
 #include <atomic>
+#include <unordered_set>
 #include <memory>
 #include <stb_image.h>
 
 namespace dq {
 namespace {
-struct Stations { std::vector<u8> has; std::unordered_map<BlockId, StationModel> byId; };
+struct Stations { std::vector<u8> has; std::unordered_map<BlockId, StationModel> byId; std::unordered_map<std::string, std::shared_ptr<PackModel>> models; };
 // read on every cube the mesher draws (its neighbours' faces): a plain pointer, the old ones kept (a reload's worth each)
 std::atomic<const Stations*> g_st{nullptr};
 std::vector<std::shared_ptr<const Stations>> g_keep;
@@ -44,6 +45,16 @@ int localTile(TileSet& ts, const fs::path& dir, const std::string& ref) {
 }
 }  // namespace
 
+bool tactilePorted(const std::string& key) {
+  static const std::unordered_set<std::string> DONE = {"smithing_table", "cartography_table", "furnace", "lit_furnace", "smoker", "lit_smoker", "blast_furnace", "lit_blast_furnace"};
+  return DONE.count(key) > 0;
+}
+const PackModel* tactilePart(const std::string& name) {   // a part drawn on its own (a door, a lid, the wheel), loaded once
+  const Stations* s = g_st.load(std::memory_order_acquire);
+  if (!s) return nullptr;
+  auto it = s->models.find(name);
+  return it == s->models.end() || !it->second || it->second->boxes.empty() ? nullptr : it->second.get();
+}
 void loadStationModels(TileSet& ts) {
   auto S = std::make_shared<Stations>();
   const fs::path dir = dataDir() / "local_models" / "tactile";
@@ -51,15 +62,35 @@ void loadStationModels(TileSet& ts) {
     for (auto& [key, v] : man->items()) {
       const BlockId id = reg().blockId(key);
       if (!id || !v.is_object()) continue;
-      const auto mj = readJson(dir / "models" / (v.value("model", std::string()) + ".json"));
-      if (!mj) continue;
+      if (!tactilePorted(key)) continue;   // (a block is drawn from its Tactile model once its port is whole: docs/TACTILE_PORT.md)
       StationModel sm;
-      sm.model = parseBlockModel(*mj, [&](const std::string& ref) { return localTile(ts, dir, ref); });
-      if (sm.model.boxes.empty()) continue;
+      auto model = [&](const std::string& name) -> std::shared_ptr<PackModel> {
+        auto it = S->models.find(name);
+        if (it != S->models.end()) return it->second;
+        auto pm = std::make_shared<PackModel>();
+        if (const auto mj = readJson(dir / "models" / (name + ".json"))) *pm = parseBlockModel(*mj, [&](const std::string& ref) { return localTile(ts, dir, ref); });
+        return S->models[name] = pm;
+      };
+      if (v.contains("model") && v["model"].is_array()) for (int k = 0; k < 4 && k < (int)v["model"].size(); k++) sm.models[k] = model(v["model"][k].get<std::string>());
+      else if (v.contains("model") && v["model"].is_string()) for (int k = 0; k < 4; k++) sm.models[k] = model(v["model"].get<std::string>());
+      if (!sm.models[0] || sm.models[0]->boxes.empty()) continue;
+      sm.model = *sm.models[0];
+      { const BlockDef& bd = reg().block(id);
+        sm.facingKind = bd.props.contains("tex") && bd.props["tex"].is_object() && bd.props["tex"].contains("front") ? 1 : bd.has("facingModel") ? 2 : 0; }
       if (v.contains("y") && v["y"].is_array()) for (int k = 0; k < 4 && k < (int)v["y"].size(); k++) sm.turn[k] = ((v["y"][k].get<int>() / 90) % 4 + 4) % 4;
       if ((size_t)id >= S->has.size()) S->has.resize((size_t)id + 1, 0);
       S->has[id] = 1;
       S->byId[id] = std::move(sm);
+    }
+  }
+  if (!S->byId.empty()) {   // the parts drawn on their own (doors, lids, the wheel, the arm): every model of the import
+    std::error_code ec;
+    for (auto& f : fs::directory_iterator(dir / "models", ec)) {
+      const std::string name = f.path().stem().string();
+      if (f.path().extension() != ".json" || S->models.count(name)) continue;
+      auto pm = std::make_shared<PackModel>();
+      if (const auto mj = readJson(f.path())) *pm = parseBlockModel(*mj, [&](const std::string& ref) { return localTile(ts, dir, ref); });
+      S->models[name] = pm;
     }
   }
   if (!S->byId.empty()) DQ_LOG("stations: %zu drawn from local models (data/local_models/tactile)", S->byId.size());

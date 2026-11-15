@@ -5,6 +5,7 @@
 #include "sim/weather.h"
 #include "sim/controller.h"
 #include "sim/station_work.h"
+#include "sim/tactile.h"
 #include "sim/magic.h"
 #include "sim/chest_work.h"
 #include "sim/combat_rpg.h"
@@ -730,6 +731,18 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     json a = json::array({p.name, held.empty() ? std::string() : held.id, hit ? hit->block.x : 0, hit ? hit->block.y : 0, hit ? hit->block.z : 0, face});
     if (!lv.events->emit("itemUse", a)) { swingArm(); return; }
     def = held.empty() ? nullptr : R.item(held.id);   // a handler may have changed the stack
+  }
+  // Tactile Stations: a furnace, smoker or blast furnace worked where you look (sim/tactile.h): fuel low, what cooks high,
+  // an empty hand takes back; held, one more each moment, and after a second the whole stack. Never its screen (sneak)
+  if (!fromOff && hit && !te && tactileStations && !p.sneaking && bhas(hit->id, BF::Furnace) && binfo(hit->id).furnace != "trommel") {
+    if (!repeat) tactileHoldAt = t;
+    if (tactileFurnaceUse(lv, p, w, *hit, held, repeat && t - tactileHoldAt > 1.0) && !repeat) swingArm();
+    return;
+  }
+  // Tactile Stations: the station takes the use before what's held does (armour laid on the smithing table, not worn)
+  if (!fromOff && !repeat && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).has("station") && pairWorkType(R.block(hit->id).str("station"))) {
+    useBlockAt(*hit, held.empty() ? nullptr : &held, def);
+    return;
   }
   // quenching (sim/heat.h): something hot used on water (a source, a cauldron) or held in it is cooled at once
   if (!fromOff && !repeat && !held.empty() && itemHeat(held) > 100) {
