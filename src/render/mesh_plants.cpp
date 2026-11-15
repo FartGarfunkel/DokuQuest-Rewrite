@@ -727,6 +727,20 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       planeQuad(c, d, tile, x, yy, z, cx - ca, cz - sa, cx + ca, cz + sa, sk, bl, sh, top ? sway : 0);
       planeQuad(c, d, tile, x, yy, z, cx + sa, cz - ca, cx - sa, cz + ca, sk, bl, sh, top ? sway : 0);
     }
+  } else if (T.fire && !c.R.tSolid[c.at(x, y - 1, z)] && (c.R.tSolid[c.at(x - 1, y, z)] || c.R.tSolid[c.at(x + 1, y, z)] || c.R.tSolid[c.at(x, y, z - 1)] || c.R.tSolid[c.at(x, y, z + 1)])) {
+    // fire with no floor under it burns on the walls it touches (Minecraft's): a sheet of flame against each, its top
+    // leaning a little out from it
+    auto sheet = [&](vec3 b0, vec3 b1, vec3 out) {   // b0..b1: the bottom edge on the wall; out: away from it
+      const vec3 base(x, yy, z), lean = out * 0.16f, up(0, 1, 0);
+      MV v[4] = {{base + b0, {0, 1}, sk, bl, sh, 0}, {base + b1, {1, 1}, sk, bl, sh, 0},
+                 {base + b1 + up + lean, {1, 0}, sk, bl, sh, 0}, {base + b0 + up + lean, {0, 0}, sk, bl, sh, 0}};
+      c.quad2(d, v, tile, NORMAL_NONE, PLANT_MAT);
+    };
+    const float e = 0.012f;
+    if (c.R.tSolid[c.at(x - 1, y, z)]) sheet(vec3(e, 0, 0), vec3(e, 0, 1), vec3(1, 0, 0));
+    if (c.R.tSolid[c.at(x + 1, y, z)]) sheet(vec3(1 - e, 0, 1), vec3(1 - e, 0, 0), vec3(-1, 0, 0));
+    if (c.R.tSolid[c.at(x, y, z - 1)]) sheet(vec3(1, 0, e), vec3(0, 0, e), vec3(0, 0, 1));
+    if (c.R.tSolid[c.at(x, y, z + 1)]) sheet(vec3(0, 0, 1 - e), vec3(1, 0, 1 - e), vec3(0, 0, -1));
   } else if (T.hash || T.fire) {
     // fire (and anything else drawn that way): four planes in a # pattern, like the classic game
     float o = T.fire ? 0.06f : 0.25f; bool top = !T.dbl || (meta & 1);
