@@ -7,6 +7,7 @@
 #include "ui/ui.h"
 #include "ui/book.h"
 #include "ui/theme.h"
+#include "ui/glyphs.h"
 #include "client/app.h"
 #include "client/session.h"
 #include "sim/player.h"
@@ -23,6 +24,20 @@ ImU32 hexCol(const std::string& h, int a = 255) {
   if (h.size() != 6) return IM_COL32(200, 200, 200, a);
   const u32 c = (u32)std::stoul(h, nullptr, 16);
   return IM_COL32((c >> 16) & 255, (c >> 8) & 255, c & 255, a);
+}
+// each node's picture (ui/glyphs.h): by what it gives, else what it does, else its subclass
+ui::Glyph nodeGlyph(const TreeNode& n) {
+  return ui::glyphForNode(n.bonus.empty() ? std::string() : n.bonus[0].attr, n.desc, n.tags.empty() ? std::string() : n.tags[0], n.size);
+}
+ui::Glyph treeGlyph(const std::string& key) {
+  return key == "warrior" ? ui::Glyph::Sword : key == "ranger" ? ui::Glyph::Arrow : key == "rogue" ? ui::Glyph::Dagger : key == "mage" ? ui::Glyph::Star : ui::Glyph::Orb;
+}
+// a picture on the line, then the cursor on past it (ImGui text beside it)
+void glyphInline(ui::Glyph g, ImU32 c, float size) {
+  const ImVec2 p = ImGui::GetCursorScreenPos();
+  const float h = std::max(size, ImGui::GetTextLineHeight());
+  ui::drawGlyph(ImGui::GetWindowDrawList(), g, ImVec2(p.x + size * 0.5f, p.y + h * 0.5f), size * 0.5f, c);
+  ImGui::Dummy(ImVec2(size, h)); ImGui::SameLine(0, 5 * ui::Z());
 }
 
 class SkillTreeScreen : public Screen {
@@ -55,7 +70,10 @@ public:
       if (i) ImGui::SameLine();
       const bool on = i == cur;
       if (on) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-      if (ImGui::SmallButton(trees[i].name.c_str())) { cur = i; sel = -1; panX = panY = 0; }
+      const ImVec2 bp = ImGui::GetCursorScreenPos();
+      if (ImGui::SmallButton(("     " + trees[i].name + "##t").c_str())) { cur = i; sel = -1; panX = panY = 0; }
+      const float bh = ImGui::GetItemRectSize().y;
+      ui::drawGlyph(ImGui::GetWindowDrawList(), treeGlyph(trees[i].key), ImVec2(bp.x + bh * 0.62f, bp.y + bh * 0.5f), bh * 0.36f, ImGui::GetColorU32(ImGuiCol_Text));
       if (on) ImGui::PopStyleColor();
     }
     if (a.input.pressed(Act::MenuX)) { cur = (cur + 1) % (int)trees.size(); sel = -1; panX = panY = 0; }
@@ -92,13 +110,15 @@ public:
     for (int i = 0; i < (int)T.nodes.size(); i++) {
       const TreeNode& n = T.nodes[i];
       const ImVec2 q = at(n);
-      const float r = (n.size == 2 ? 12.f : n.size == 1 ? 8.f : 5.5f) * std::max(0.6f, scale / z) * z;
+      const float r = (n.size == 2 ? 13.f : n.size == 1 ? 9.5f : 7.f) * std::max(0.6f, scale / z) * z;
       if (q.x < c0.x - r || q.y < c0.y - r || q.x > c1.x + r || q.y > c1.y + r) continue;
       const bool has = treeHas(*p, n.id);
       const bool can = !has && treeWhyNot(*p, T, n).empty();
       const ImU32 base = has ? ui::inkOf(hexCol(n.col.empty() ? "ebd93b" : n.col)) : can ? ui::ink::good : ui::withAlpha(ui::ink::muted, 0.55f);
       if (n.size == 2) dl->AddNgonFilled(q, r, base, 6); else dl->AddCircleFilled(q, r, base, 20);
+      if (n.size == 2) dl->AddNgon(q, r + 3 * z, has ? base : ui::withAlpha(ui::ink::muted, 0.6f), 6, 1.2f * z);   // (a keystone: a second rim)
       dl->AddCircle(q, r, i == sel ? ui::ink::head : ui::withAlpha(ui::ink::text, 0.6f), 20, (i == sel ? 2.5f : 1.f) * z);
+      if (r >= 5.5f) ui::drawGlyph(dl, nodeGlyph(n), q, r * 0.6f, has || can ? ui::col::rgb(0xf8f1df) : ui::withAlpha(ui::col::rgb(0xf8f1df), 0.8f));
       const float dx = io.MousePos.x - q.x, dy = io.MousePos.y - q.y;
       if (hov && dx * dx + dy * dy <= r * r * 1.4f) hot = i;
     }
@@ -131,6 +151,7 @@ public:
     if (show >= 0) {
       const TreeNode& n = T.nodes[show];
       const std::string why = treeWhyNot(*p, T, n);
+      glyphInline(nodeGlyph(n), ui::inkOf(hexCol(n.col.empty() ? "ebd93b" : n.col)), 22 * z);
       ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(ui::inkOf(hexCol(n.col.empty() ? "ebd93b" : n.col))));
       ImGui::TextWrapped("%s", n.title.empty() ? "A node" : n.title.c_str());
       ImGui::PopStyleColor();
@@ -144,12 +165,14 @@ public:
     if (ImGui::SmallButton("Reset the tree")) treeReset(*p);
     ImGui::Separator();
     ImGui::Text("Stat points: %d", p->statPoints);
-    struct S { const char* name; int* v; const char* what; };
-    S stats[] = {{"Constitution", &p->statCon, "stamina and toughness"}, {"Strength", &p->statStr, "+1% damage a point"}, {"Agility", &p->statAgi, "quicker on your feet"},
-                 {"Intelligence", &p->statInt, "spell power"}, {"Luck", &p->statLck, "critical hits"}, {"Focus", &p->statFoc, "posture damage"}};
+    struct S { const char* name; int* v; const char* what; ui::Glyph g; };
+    S stats[] = {{"Constitution", &p->statCon, "stamina and toughness", ui::Glyph::Heart}, {"Strength", &p->statStr, "+1% damage a point", ui::Glyph::Fist},
+                 {"Agility", &p->statAgi, "quicker on your feet", ui::Glyph::Wing}, {"Intelligence", &p->statInt, "spell power", ui::Glyph::Star},
+                 {"Luck", &p->statLck, "critical hits", ui::Glyph::Clover}, {"Focus", &p->statFoc, "posture damage", ui::Glyph::Target}};
     const float pw = ImGui::GetWindowSize().x;
     for (auto& st : stats) {
       ImGui::PushID(st.name);
+      glyphInline(st.g, ImGui::GetColorU32(ImGuiCol_Text), ImGui::GetTextLineHeight());
       ImGui::Text("%s", st.name); ImGui::SameLine(pw * 0.55f); ImGui::Text("%d", *st.v); ImGui::SameLine(pw * 0.7f);
       ImGui::BeginDisabled(p->statPoints <= 0 || *st.v >= 15);
       if (ImGui::SmallButton("+")) { (*st.v)++; p->statPoints--; }
@@ -166,7 +189,8 @@ public:
       const float f = treeAttr(*p, sh[0]), pc = treeAttrPct(*p, sh[0]);
       if (f == 0 && pc == 0) continue;
       any++;
-      ImGui::BulletText("%s %s%s", sh[1], f ? ("+" + std::to_string((int)std::round(f))).c_str() : "", pc ? (" +" + std::to_string((int)std::round(pc * 100)) + "%").c_str() : "");
+      glyphInline(ui::glyphForAttr(sh[0]), ImGui::GetColorU32(ImGuiCol_Text), ImGui::GetTextLineHeight());
+      ImGui::Text("%s %s%s", sh[1], f ? ("+" + std::to_string((int)std::round(f))).c_str() : "", pc ? (" +" + std::to_string((int)std::round(pc * 100)) + "%").c_str() : "");
     }
     if (!any) ImGui::TextDisabled("Nothing yet");
     ui::bookPagesEnd();

@@ -13,6 +13,7 @@
 #include "sim/rpg.h"
 #include "core/item_glint.h"
 #include "ui/theme.h"
+#include "ui/glyphs.h"
 #include "ui/book.h"
 #include "core/registry.h"
 #include "world/world.h"
@@ -199,8 +200,8 @@ public:
       const float treeH = row.h;
       std::vector<std::pair<std::string, std::vector<std::string>>> br;
       for (size_t i = 0; i < lists.size(); i++) br.push_back({(*sch[i])[2], lists[i]});
-      std::vector<std::string> names; for (size_t i = 0; i < lists.size(); i++) names.push_back((*sch[i])[1]);
-      row.draw = [this, lv, p, br, names, z, lvl, active, left, known, treeH](ImDrawList* dl, ImVec2 q, float w) {
+      std::vector<std::string> names, skeys; for (size_t i = 0; i < lists.size(); i++) { names.push_back((*sch[i])[1]); skeys.push_back((*sch[i])[0]); }
+      row.draw = [this, lv, p, br, names, skeys, z, lvl, active, left, known, treeH](ImDrawList* dl, ImVec2 q, float w) {
         auto kn = [&](const std::string& k) { return std::find(known.begin(), known.end(), k) != known.end(); };
         const ImVec2 c(q.x + w * 0.5f, q.y + treeH * 0.5f);
         // laid out over the whole spread (rx across, ry down): the longest branches get the most level directions (the
@@ -211,6 +212,7 @@ public:
         auto at = [&](float a, float r) { return ImVec2(c.x + std::cos(a) * r, c.y + std::sin(a) * r); };
         auto reach = [&](float a) { const float ca = std::cos(a) / rx, sa = std::sin(a) / ry; return 1.f / std::sqrt(ca * ca + sa * sa); };   // (centre to the ellipse's edge)
         dl->AddCircleFilled(c, R0, ui::withAlpha(ui::ink::key, 0.35f), 32); dl->AddCircle(c, R0, ui::ink::key, 32, 2 * z);
+        ui::drawGlyph(dl, ui::Glyph::Orb, c, R0 * 0.62f, ui::ink::key);
         const int B = (int)br.size();
         std::vector<int> slotOf(B);
         {   // the slots round the ring, most level first; the branches, longest first
@@ -233,6 +235,7 @@ public:
           int litN = 0; for (auto& k : o) if (kn(k)) litN++;
           dl->AddLine(at(ang, R0), sn, litN ? sc : ui::withAlpha(ui::ink::muted, 0.6f), (litN ? 2.5f : 1.3f) * z);
           dl->AddNgonFilled(sn, nr * 1.15f, ui::withAlpha(sc, litN ? 0.55f : 0.25f), 6); dl->AddNgon(sn, nr * 1.15f, sc, 6, 1.5f * z);
+          ui::drawGlyph(dl, ui::glyphForSchool(skeys[b]), sn, nr * 0.72f, litN ? ui::ink::text : ui::withAlpha(ui::ink::text, 0.55f));   // (the school's mark on its hub)
           {   // the school's name at the tip of its branch, kept on the page
             const ImVec2 ts = ui::textSize(ui::F_SMALL, names[b].c_str());
             const ImVec2 tip = at(ang, R1 + step * ((float)o.size() + 0.55f));
@@ -321,6 +324,16 @@ public:
 };
 
 // ---- skills and perks (skills.js + rpg.js) ------------------------------------------------------------------------
+// each skill's picture: the tool or thing it's about (an item of the game's own, drawn as its icon)
+static std::string skillIcon(const std::string& k) {
+  static const std::pair<const char*, const char*> M[] = {
+    {"mining", "iron_pickaxe"}, {"woodcutting", "iron_axe"}, {"excavation", "iron_shovel"}, {"farming", "wheat"}, {"fishing", "fishing_rod"},
+    {"melee", "iron_sword"}, {"archery", "bow"}, {"defence", "shield"}, {"smithing", "anvil"}, {"cooking", "cooked_beef"}, {"taming", "lead"},
+    {"magic", "enchanted_book"}, {"exploring", "compass"}, {"alchemy", "brewing_stand"},
+  };
+  for (auto& [s, i] : M) if (k == s && reg().item(i)) return i;
+  return reg().item("book") ? "book" : std::string();
+}
 class SkillsScreen : public MagicScreenBase {
 public:
   const char* id() const override { return "skills"; }
@@ -342,8 +355,11 @@ public:
       const float pr = L >= 99 ? 1.f : (float)((xp - lo) / std::max(1.0, hi - lo));
       std::string tip = thousands(xp) + " xp" + (L < 99 ? " \xC2\xB7 " + thousands(std::ceil(hi - xp)) + " to level " + std::to_string(L + 1) : std::string());
       ui::BookRow row; row.h = lh + 10 * z;
-      row.draw = [name = s.name, col = s.col, L, pr, tip, lh, z](ImDrawList* dl, ImVec2 q, float w) {
-        bool hot = false; rowHit(q, w, lh + 8 * z, &hot);
+      row.draw = [name = s.name, col = s.col, icon = skillIcon(s.key), L, pr, tip, lh, z](ImDrawList* dl, ImVec2 q0, float w0) {
+        bool hot = false; rowHit(q0, w0, lh + 8 * z, &hot);
+        const float is = lh + 6 * z;   // the skill's picture on the left, its name and bar beside it
+        if (!icon.empty()) ui::drawIcon(dl, icon, ImVec2(q0.x, q0.y), is, L > 1 ? 1.f : 0.7f);
+        const ImVec2 q(q0.x + is + 6 * z, q0.y); const float w = w0 - is - 6 * z;
         ui::text(dl, ui::F_BODY, q, inkOf(col), name.c_str());
         std::string lv = std::to_string(L); ImVec2 ls = ui::textSize(ui::F_BODY, lv.c_str());
         ui::text(dl, ui::F_BODY, ImVec2(q.x + w - ls.x, q.y), ui::ink::text, lv.c_str());
@@ -356,7 +372,7 @@ public:
       sk.push_back(std::move(row));
     }
     // perks: the ones you have, then the nearest few to come
-    struct P { std::string k, name, col, pn, desc; int lv; };
+    struct P { std::string k, name, col, pn, desc; int lv; };   // (k: the skill)
     std::vector<P> have, next;
     for (auto& s : md.skills) {
       int L = skillLv(*p, s.key);
@@ -368,13 +384,16 @@ public:
     book.heading(pk, "Perks \xC2\xB7 " + std::to_string(have.size()) + " of " + std::to_string(have.size() + next.size()));
     auto perk = [&](const P& o, bool got) {
       ui::BookRow row; row.h = lh; row.keep = true;
-      row.draw = [o, got](ImDrawList* dl, ImVec2 q, float) {
+      row.draw = [o, got, icon = skillIcon(o.k), lh](ImDrawList* dl, ImVec2 q0, float) {
+        const float is = lh - 2 * ui::Z();
+        if (!icon.empty()) ui::drawIcon(dl, icon, ImVec2(q0.x, q0.y), is, got ? 1.f : 0.45f);
+        const ImVec2 q(q0.x + is + 5 * ui::Z(), q0.y);
         ui::text(dl, ui::F_BODY, q, inkOf(o.col, got ? 1.f : 0.6f), o.pn.c_str());
         std::string t = "  " + o.name + " " + std::to_string(o.lv);
         ui::text(dl, ui::F_SMALL, ImVec2(q.x + ui::textSize(ui::F_BODY, o.pn.c_str()).x, q.y + 2 * ui::Z()), ui::ink::muted, t.c_str());
       };
       pk.push_back(std::move(row));
-      book.para(pk, o.desc, got ? ui::ink::text : ui::ink::muted, ui::F_SMALL, 10 * z);
+      book.para(pk, o.desc, got ? ui::ink::text : ui::ink::muted, ui::F_SMALL, lh + 3 * z);
     };
     if (have.empty()) book.para(pk, "None yet. Each skill earns its perks as it levels up.", ui::ink::muted);
     for (auto& o : have) perk(o, true);
@@ -393,6 +412,23 @@ public:
 };
 
 // ---- the journal (rpg.js) ------------------------------------------------------------------------------------------
+// each chapter's picture: a thing of the game's own that the chapter is about
+static std::string chapterIcon(const std::string& id) {
+  static const std::pair<const char*, const char*> M[] = {
+    {"village", "bell"}, {"iron", "iron_pickaxe"}, {"tear", "rift_crystal"}, {"keepers", "realm_fragment"}, {"depths", "cinder_core"},
+    {"skylands", "feather"}, {"gateway", "rift_core"}, {"realm", "rift_staff"}, {"storm", "wither_skeleton_skull"}, {"seal", "nether_star"},
+    {"end", "ender_eye"}, {"deepdark", "echo_shard"}, {"dragons", "dragon_scale"},
+  };
+  for (auto& [c, i] : M) if (id == c && reg().item(i)) return i;
+  return reg().item("writable_book") ? "writable_book" : std::string();
+}
+// a leaf on the journal's tree, pointing along `a` (radians)
+static void journalLeaf(ImDrawList* dl, ImVec2 p, float a, float len, ImU32 c) {
+  const ImVec2 d(std::cos(a), std::sin(a)), n(-d.y, d.x);
+  const ImVec2 tip(p.x + d.x * len, p.y + d.y * len), m(p.x + d.x * len * 0.5f, p.y + d.y * len * 0.5f);
+  dl->AddTriangleFilled(p, ImVec2(m.x + n.x * len * 0.32f, m.y + n.y * len * 0.32f), tip, c);
+  dl->AddTriangleFilled(p, tip, ImVec2(m.x - n.x * len * 0.32f, m.y - n.y * len * 0.32f), c);
+}
 class JournalScreen : public MagicScreenBase {
 public:
   const char* id() const override { return "journal"; }
@@ -422,9 +458,21 @@ public:
       // the roots under it all
       for (int r = -2; r <= 2; r++) dl->AddBezierCubic(ImVec2(cx, by), ImVec2(cx + r * 6 * z, by + 8 * z), ImVec2(cx + r * 14 * z, by + 10 * z), ImVec2(cx + r * 22 * z, by + 16 * z), bark, 2 * z);
       // branches
+      const ImU32 leafOn = ui::withAlpha(ui::ink::good, 0.8f), leafOff = ui::withAlpha(ui::ink::good, 0.3f);
       for (auto& c : s.ch) if (c.branch != 0 && c.shown && at.count(c.parent)) {
         ImVec2 p0 = at[c.parent], p1 = at[c.id];
-        dl->AddBezierCubic(p0, ImVec2(p0.x + (p1.x - p0.x) * 0.4f, p0.y), ImVec2(p1.x - (p1.x - p0.x) * 0.3f, p1.y + 6 * z), p1, bark, 3 * z);
+        const ImVec2 k1(p0.x + (p1.x - p0.x) * 0.4f, p0.y), k2(p1.x - (p1.x - p0.x) * 0.3f, p1.y + 6 * z);
+        dl->AddBezierCubic(p0, k1, k2, p1, bark, 3 * z);
+        for (int l = 1; l <= 2; l++) {   // a pair of leaves along it, green once its chapter's done
+          const float t = l / 3.f, u = 1 - t;
+          const ImVec2 b(u * u * u * p0.x + 3 * u * u * t * k1.x + 3 * u * t * t * k2.x + t * t * t * p1.x, u * u * u * p0.y + 3 * u * u * t * k1.y + 3 * u * t * t * k2.y + t * t * t * p1.y);
+          journalLeaf(dl, b, (l & 1 ? -1.9f : -1.2f) + (c.branch < 0 ? -0.4f : 0.4f), 9 * z, c.done ? leafOn : leafOff);
+        }
+      }
+      for (int k = 0; k < top; k++) {   // and a leaf each side of the trunk between chapters, for the ones done
+        const ImVec2 a0 = at[s.ch[trunk[k]].id], a1 = at[s.ch[trunk[k + 1]].id], m((a0.x + a1.x) * 0.5f, (a0.y + a1.y) * 0.5f);
+        const ImU32 lc = s.ch[trunk[k]].done ? leafOn : leafOff;
+        journalLeaf(dl, ImVec2(m.x + 2 * z, m.y), -0.6f, 10 * z, lc); journalLeaf(dl, ImVec2(m.x - 2 * z, m.y + 5 * z), -2.5f, 10 * z, lc);
       }
       // the chapters: leaves (done: green), the one you're on (gold, a ring), the rest found (an open bud)
       const ImVec2 mp = ImGui::GetIO().MousePos;
@@ -432,13 +480,16 @@ public:
         const auto& c = s.ch[i];
         if (!c.shown || !at.count(c.id)) continue;
         const ImVec2 p = at[c.id];
-        const float r = 9 * z;
+        const float r = 12 * z;
         const bool cur = i == s.cur, chosen = c.id == sel;
-        const bool hot = std::hypot(mp.x - p.x, mp.y - p.y) < r * 1.8f;
+        const bool hot = std::hypot(mp.x - p.x, mp.y - p.y) < r * 1.5f;
         if (hot && ImGui::IsMouseClicked(0)) { sel = c.id; closer = false; }
-        if (c.done) { dl->AddCircleFilled(p, r, ui::ink::good, 16); ui::drawTick(dl, ImVec2(p.x - r * 0.55f, p.y - r * 0.55f), r * 1.1f, ui::col::rgb(0xf4ecd8)); }
-        else if (cur) dl->AddCircleFilled(p, r, ui::ink::key, 16);
-        else dl->AddCircle(p, r, ui::ink::text, 16, 2 * z);
+        // a medallion with the chapter's picture: green-rimmed when done (a tick on it), gold when it's the one you're on
+        dl->AddCircleFilled(p, r, ui::withAlpha(c.done ? ui::ink::good : cur ? ui::ink::key : ui::ink::faint, c.done || cur ? 0.28f : 0.35f), 20);
+        dl->AddCircle(p, r, c.done ? ui::ink::good : cur ? ui::ink::key : ui::ink::text, 20, (c.done || cur ? 2.5f : 1.5f) * z);
+        if (const std::string ic = chapterIcon(c.id); !ic.empty()) ui::drawIcon(dl, ic, ImVec2(p.x - r * 0.72f, p.y - r * 0.72f), r * 1.44f, c.done || cur ? 1.f : 0.75f);
+        if (c.done) { const ImVec2 bc(p.x + r * 0.72f, p.y + r * 0.72f); const float br = r * 0.42f;
+          dl->AddCircleFilled(bc, br, ui::ink::good, 14); ui::drawTick(dl, ImVec2(bc.x - br * 0.62f, bc.y - br * 0.62f), br * 1.24f, ui::col::rgb(0xf4ecd8)); }
         if (chosen || hot) dl->AddCircle(p, r + 4 * z, ui::ink::head, 20, 2 * z);
         // its name beside it (the trunk's to the left of the trunk, a branch's out past its leaf)
         const std::string t = c.t;
@@ -453,7 +504,7 @@ public:
     const StoryChapter* c = nullptr; for (auto& x : s.ch) if (x.id == sel) c = &x;
     if (!c) return;
     ui::BookRow brk; brk.breakBefore = true; brk.h = 1; brk.draw = [](ImDrawList*, ImVec2, float) {}; st.push_back(brk);
-    book.sub(st, c->t, c->done ? ui::ink::good : ui::ink::head);
+    book.iconRow(st, chapterIcon(c->id), c->t, c->done ? "Done" : "Under way", c->done ? ui::ink::good : ui::ink::head);
     if (c->done) {
       book.para(st, c->note, ui::ink::text);
       book.gap(st, 4 * z);
@@ -508,6 +559,12 @@ public:
         const ImVec2 mp = ImGui::GetIO().MousePos; const float h = ui::textSize(ui::F_BODY, "Ag").y + 3 * z;
         const bool hot = mp.x >= q.x && mp.x <= q.x + w && mp.y >= q.y && mp.y < q.y + h;
         if (hot || dexCur == (int)i) dl->AddRectFilled(ImVec2(q.x - 3 * z, q.y), ImVec2(q.x + w, q.y + h), ui::ink::hilite, 3 * z);
+        static std::map<std::string, std::string> eggs;   // (its spawn egg's picture, if it has one)
+        auto e = eggs.find(type);
+        if (e == eggs.end()) e = eggs.emplace(type, reg().item(type + "_spawn_egg") ? type + "_spawn_egg" : std::string()).first;
+        if (!e->second.empty()) ui::drawIcon(dl, e->second, ImVec2(q.x, q.y), h - 2 * z, kills ? 1.f : 0.6f);
+        else ui::drawGlyph(dl, kills ? ui::Glyph::Skull : ui::Glyph::Eye, ImVec2(q.x + (h - 2 * z) * 0.5f, q.y + h * 0.5f - z), (h - 2 * z) * 0.4f, ui::ink::muted);
+        q.x += h + 2 * z; w -= h + 2 * z;
         ui::text(dl, ui::F_BODY, q, ui::ink::text, name.c_str());
         const std::string kk = kills ? std::to_string(kills) + " beaten" : "seen";
         ui::text(dl, ui::F_SMALL, ImVec2(q.x + w - ui::textSize(ui::F_SMALL, kk.c_str()).x, q.y + 2 * z), ui::ink::muted, kk.c_str());
