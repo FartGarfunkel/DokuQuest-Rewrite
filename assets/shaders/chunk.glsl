@@ -80,6 +80,7 @@ void main() {
 #ifdef FRAGMENT
 uniform vec3 uCamFrac;       // camera position inside its block
 uniform int uPass;           // 0 opaque, 1 cutout, 2 translucent
+uniform int uTransPart;      // in the translucent pass: 0 everything, 1 only the water, 2 all but the water (ice, glass)
 // the built-in shader levels' world passes (render/world_fx.cpp): the sun's shadow map, the solid scene copied before the water
 uniform mat4 uViewProj;               // (the reflections trace with it)
 uniform int uShadowPass;              // 1: drawing into the shadow map
@@ -181,6 +182,9 @@ void main() {
   float dist = length(viewVec);
   int n = vNormal;
   bool liquid = (vMat & 2u) != 0u, lava = (vMat & 32u) != 0u;
+  // (the water first, then ice and glass over it: water shows the scene copied before them, and drawn after the ice it
+  //  painted that copy over the ice's sunk part, leaving bits of floes in the air)
+  if (uPass == 2 && ((uTransPart == 1 && !liquid) || (uTransPart == 2 && liquid))) discard;
   vec3 N = faceNormal(n);
   float shade = (liquid && n == 2) ? 1.0 : vLight.z;
   float sunMod = 1.0;

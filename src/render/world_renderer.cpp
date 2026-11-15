@@ -654,7 +654,10 @@ void WorldRenderer::drawOpaque(const FrameCtx& f) {
 void WorldRenderer::drawCutout(const FrameCtx& f) { drawPass(f, 1); }
 void WorldRenderer::drawTranslucent(const FrameCtx& f) {
   glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); glDepthMask(GL_FALSE);
-  drawPass(f, 2);
+  // the water, then the ice and glass over it (assets/shaders/chunk.glsl uTransPart)
+  shader.use(); shader.set("uTransPart", 1); drawPass(f, 2);
+  shader.use(); shader.set("uTransPart", 2); drawPass(f, 2);
+  shader.use(); shader.set("uTransPart", 0);
   glDepthMask(GL_TRUE); glDisable(GL_BLEND);
   if (tqActive) { glEndQuery(GL_TIME_ELAPSED); tqUsed[tqi] = true; tqActive = false; tqi ^= 1; }
 }
