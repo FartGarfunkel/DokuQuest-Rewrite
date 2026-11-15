@@ -429,7 +429,7 @@ void registerStructurePois() {
         {"halls:desert_pyramid", "rot_king"}, {"halls:labyrinth", "minotaur"}, {"halls:ruins_of_the_deep", "grave_warden"}, {"halls:haunted_manor", "hollow_archmage"},
         {"halls:frozen_crypt", "lich_king"}, {"halls:castle", "gaoler"}, {"halls:tinkers_citadel", "cinder_golem"}, {"halls:nexus", "lich_king"},
         {"halls:tree_of_wisdom", "verdant_dragon"}, {"halls:windswept_shrine", "storm_dragon"}};
-      if (auto it = BOSS.find(d->key); it != BOSS.end() && reg().mobs.contains(it->second) && (rigModel(it->second) || reg().models.contains(it->second))) {
+      if (auto it = BOSS.find(d->key); it != BOSS.end() && reg().mobs.contains(it->second) && reg().models.contains(it->second)) {   // (only reading the models: this runs on the generators' threads, and rigModel builds its cache unguarded)
         const Placed& q = E->pcs[0];
         out.data["boss"] = json{{"at", {q.x0 + q.w / 2, q.y0 + 1, q.z0 + q.d / 2}}, {"type", it->second}, {"box", {X0, q.y0 - 2, Z0, X1, q.y0 + 30, Z1}}};
       }

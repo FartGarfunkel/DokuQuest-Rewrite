@@ -110,9 +110,12 @@ private:
   bool v14Whole(int x, int z, int H) const;
   int v14Spike(int x, int z, int H) const;   // (the planned ground height is solid land here)
   int v14Corner(int x, int z) const;   // (the exact surface at a cell corner)
+  bool floatingAt(int x, int z, int j) const;
   struct BaseCol { int h; double hc; u8 biome; double temp, humid; int H = -1; u8 special = 0; u16 landBiome = 0xFFFF; };
   // terrain version 15: the land biomes' world (gen/land_biomes.h, gen/surface_rules.h; data/worldgen)
   bool v15 = false, v16 = false, v17 = false, v18 = false, v20 = false, v21 = false;
+  bool v23 = false;   // (23: the land's little floating pieces taken away: gen/floating_land.h)
+  std::shared_ptr<class FloatingLand> fl_;
   double hf(i32 a, i32 b, i32 c, i32 d) const { return v18 ? posHashF(a, b, c, d) : hashFloat(a, b, c, d); }   // (18: no stripes)
   int genVer_ = 0;
   std::shared_ptr<class LandBiomes> lb_;

@@ -333,6 +333,48 @@ int main(int argc, char** argv) {
     rg.lv->info.genVersion = 13;
   }
 
+  printf("[terrain 23: no land floating in the air, its overhangs kept]\n");
+  {   // (a deep world, as new worlds are; a stretch of seed 421506624 where terrain 22 left a lump of rock hanging in the sky)
+    setWorldLayout(2, 4);
+    const Registry& R = reg();
+    // the biggest piece of solid ground (no trees, no plants) with nothing joining it to the land under band y 48 or to the
+    // area's edge
+    auto biggestFloating = [&](int ver) {
+      WorldGenOptions o; o.seed = 421506624; o.genVersion = ver; WorldGen g(o);
+      const int n = 9, W = n * 16, cx0 = 33, cz0 = 17;
+      std::vector<u8> m((size_t)W * W * DIM_H, 0);
+      auto at = [&](int x, int y, int z) -> u8& { return m[((size_t)y * W + z) * W + x]; };
+      for (int cz = 0; cz < n; cz++) for (int cx = 0; cx < n; cx++) {
+        Chunk ch(DIM_OVERWORLD, cx0 + cx, cz0 + cz); g.forDim(DIM_OVERWORLD)->generate(ch);
+        for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+          const BlockId id = ch.get(x, y, z); if (!id || !R.tSolid[id] || !R.tOpaque[id] || R.tLeaves[id]) continue;   // (the land: whole solid blocks)
+          const std::string& k = R.block(id).key;
+          if (k.find("log") != std::string::npos || k.find("wood") != std::string::npos || k.find("branch") != std::string::npos) continue;
+          at(cx * 16 + x, y, cz * 16 + z) = 1;
+        }
+      }
+      int biggest = 0; std::vector<ivec3> st;
+      for (int y = 48; y < DIM_H; y++) for (int z = 0; z < W; z++) for (int x = 0; x < W; x++) {
+        if (at(x, y, z) != 1) continue;
+        bool grounded = false; int size = 0; st.assign(1, ivec3(x, y, z)); at(x, y, z) = 2;
+        while (!st.empty()) {
+          const ivec3 c = st.back(); st.pop_back(); size++;
+          if (c.y < 48 || c.x == 0 || c.z == 0 || c.x == W - 1 || c.z == W - 1) grounded = true;
+          for (ivec3 d : {ivec3(1, 0, 0), ivec3(-1, 0, 0), ivec3(0, 1, 0), ivec3(0, -1, 0), ivec3(0, 0, 1), ivec3(0, 0, -1)}) {
+            const ivec3 q = c + d;
+            if (q.x < 0 || q.z < 0 || q.x >= W || q.z >= W || q.y < 0 || q.y >= DIM_H || at(q.x, q.y, q.z) != 1) continue;
+            at(q.x, q.y, q.z) = 2; st.push_back(q);
+          }
+        }
+        if (!grounded) biggest = std::max(biggest, size);
+      }
+      return biggest;
+    };
+    const int b22 = biggestFloating(22), b23 = biggestFloating(23);
+    check(b22 > 500, "terrain 22 here: a lump of rock hanging in the air (" + std::to_string(b22) + " blocks)");
+    check(b23 < 20, "terrain 23: none (the biggest piece left " + std::to_string(b23) + " blocks)");
+    setWorldLayout(1, 4);
+  }
   printf("\n%d passed, %d failed\n", passes, fails);
   rg.lv->close();
   return fails;

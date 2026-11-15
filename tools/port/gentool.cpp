@@ -244,6 +244,51 @@ static int stats(const std::string& seedText, int dim, int cx0, int cz0, int n) 
   return 0;
 }
 
+// land hanging in the air: generate n x n chunks and find every piece of solid ground (no leaves, wood or plants) not
+// joined to the ground (band y < 48) and not reaching the area's edge; their count, size and where the biggest are
+static int floatLand(const std::string& seedText, int cx0, int cz0, int n) {
+  WorldGenOptions o; o.seed = seedFromString(seedText);
+  if (const char* v = std::getenv("DQ_GENVER")) o.genVersion = atoi(v);
+  WorldGen wg(o); DimGenerator* g = wg.forDim(DIM_OVERWORLD);
+  const int W = n * 16; const Registry& R = reg();
+  std::vector<u8> solid((size_t)W * W * DIM_H, 0); std::vector<BlockId> ids((size_t)W * W * DIM_H, 0);
+  auto at = [&](int x, int y, int z) -> u8& { return solid[((size_t)y * W + z) * W + x]; };
+  for (int cz = 0; cz < n; cz++) for (int cx = 0; cx < n; cx++) {
+    Chunk ch(DIM_OVERWORLD, cx0 + cx, cz0 + cz); g->generate(ch);
+    for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+      const BlockId id = ch.get(x, y, z);
+      if (!id || !R.tSolid[id] || R.tLeaves[id]) continue;
+      const std::string& k = R.block(id).key;
+      if (k.find("log") != std::string::npos || k.find("wood") != std::string::npos || k.find("planks") != std::string::npos) continue;
+      at(cx * 16 + x, y, cz * 16 + z) = 1; ids[((size_t)y * W + cz * 16 + z) * W + cx * 16 + x] = id;
+    }
+  }
+  struct P { int size, x, y, z, w; std::string what; };
+  std::vector<P> found; long total = 0;
+  std::vector<std::array<int, 3>> st;
+  for (int y = 48; y < DIM_H; y++) for (int z = 0; z < W; z++) for (int x = 0; x < W; x++) {
+    if (at(x, y, z) != 1) continue;
+    bool grounded = false; int size = 0, x0 = x, x1 = x, z0 = z, z1 = z; std::map<std::string, int> kinds;
+    st.clear(); st.push_back({x, y, z}); at(x, y, z) = 2;
+    while (!st.empty()) {
+      auto [a, b, c] = st.back(); st.pop_back(); size++; kinds[R.block(ids[((size_t)b * W + c) * W + a]).key]++;
+      x0 = std::min(x0, a); x1 = std::max(x1, a); z0 = std::min(z0, c); z1 = std::max(z1, c);
+      if (b < 48 || a == 0 || c == 0 || a == W - 1 || c == W - 1) grounded = true;
+      static const int N[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+      for (auto& d : N) {
+        const int p = a + d[0], q = b + d[1], r = c + d[2];
+        if (p < 0 || r < 0 || p >= W || r >= W || q < 0 || q >= DIM_H || at(p, q, r) != 1) continue;
+        at(p, q, r) = 2; st.push_back({p, q, r});
+      }
+    }
+    if (!grounded) { std::string w; for (auto& [k, c2] : kinds) w += k + " " + std::to_string(c2) + " "; found.push_back({size, cx0 * 16 + x, y, cz0 * 16 + z, std::max(x1 - x0, z1 - z0) + 1, w}); total += size; }
+  }
+  std::sort(found.begin(), found.end(), [](const P& a, const P& b) { return a.size > b.size; });
+  printf("%zu floating pieces, %ld blocks\n", found.size(), total);
+  for (size_t i = 0; i < found.size() && i < 12; i++) printf("  %6d blocks, %3d across, at %d %d %d: %s\n", found[i].size, found[i].w, found[i].x, found[i].y, found[i].z, found[i].what.substr(0, 90).c_str());
+  return 0;
+}
+
 static int slice(const std::string& seedText, int dim, int x0, int z, int w, int y0, int y1) {
   WorldGenOptions o; o.seed = seedFromString(seedText);
   WorldGen wg(o); DimGenerator* g = wg.forDim(dim);
@@ -745,7 +790,7 @@ int main(int argc, char** argv) {
   std::string m = argc > 1 ? argv[1] : "";
   if (const char* lay = std::getenv("DQ_LAYOUT")) setWorldLayout(atoi(lay));   // (the deep world: DQ_LAYOUT=2 DQ_GENVER=19)
   if (m == "biomemap" && argc >= 8) return biomemap(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argv[7]);
-  if (m == "floaters" && argc >= 6) return floaters(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
+  if (m == "floatland" && argc >= 6) return floatLand(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "netherlands" && argc >= 5) return netherLands(argv[2], atoi(argv[3]), atoi(argv[4]));
   if (m == "pillars" && argc >= 6) return pillars(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "findblock" && argc >= 4) return findBlock(argv[2], argv[3]);
@@ -767,6 +812,7 @@ int main(int argc, char** argv) {
   if (m == "vterrain" && argc >= 8) return vterrain(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argv[7]);
   if (m == "poi" && argc >= 4) return poiDump(argv[2], argv[3], argc > 4 ? atoi(argv[4]) : 48);
   if (m == "dump" && argc >= 4) return dump(argv[2], argv[3]);
+  if (m == "floaters" && argc >= 6) return floaters(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "stats" && argc >= 7) return stats(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]));
   if (m == "slice" && argc >= 7) return slice(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argc > 7 ? atoi(argv[7]) : 0, argc > 8 ? atoi(argv[8]) : 120);
   if (m == "bench" && argc >= 3) return bench(argv[2], argc > 3 ? atoi(argv[3]) : 64);

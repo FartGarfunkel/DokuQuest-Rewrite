@@ -2,6 +2,7 @@
 // levelling), the block columns, caves, ores (+ metals.js), the watcher's oddities, the Deep Dark
 // (deepdark.js) and the Ember Crust. Heights/depths go through gen/gendefs.h vmap.
 #include "gen/overworld.h"
+#include "gen/floating_land.h"
 #include "gen/density.h"
 #include "gen/land_biomes.h"
 #include "gen/surface_rules.h"
@@ -61,7 +62,7 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
       vOff = g->find("overworld/offset"); vJag = g->find("overworld/jaggedness");
       if (vSloped < 0 || vFinal < 0) v14 = false;
       if (v14 && w.b) {
-        lb_ = w.b; ls_ = w.s; v15 = true; v16 = o.genVersion >= 16; v17 = o.genVersion >= 17; v18 = o.genVersion >= 18; v20 = o.genVersion >= 20; v21 = o.genVersion >= 21; if (v16) bf_ = w.f;   // (16: the biomes' own plants and the land's extras)
+        lb_ = w.b; ls_ = w.s; v15 = true; v16 = o.genVersion >= 16; v17 = o.genVersion >= 17; v18 = o.genVersion >= 18; v20 = o.genVersion >= 20; v21 = o.genVersion >= 21; v23 = o.genVersion >= 23; if (v23) fl_ = std::make_shared<FloatingLand>(*g, vFinal); if (v16) bf_ = w.f;   // (16: the biomes' own plants and the land's extras)
         vTemp = g->find("temperature"); vVeg = g->find("vegetation"); vDepth = g->find("depth"); vRidges = g->find("ridges");
         vInit = g->find("initial_density_without_jaggedness");
         {   // (the extras' noises, registered here on this thread)
@@ -133,6 +134,17 @@ int OverworldGen::debugTopScan(int x, int z, bool finalD) const {
   for (int y = DIM_H - 2; y >= 1; y--) if (vg_->eval(finalD ? vFinal : vSloped, x, y - 1, z) > 0) return y;
   return 0;
 }
+// (terrain version 23) the land at this height round a column only a floating scrap (gen/floating_land.h): its top isn't the ground's
+bool OverworldGen::floatingAt(int x, int z, int j) const {
+  const int lx = x >> 2, lz = z >> 2;
+  bool anyLand = false;
+  for (int dj = 0; dj <= 1; dj++) for (int dz = 0; dz <= 1; dz++) for (int dx = 0; dx <= 1; dx++) {
+    if (fl_->value(lx + dx, j + dj, lz + dz) <= 0) continue;
+    anyLand = true;
+    if (!fl_->floating(lx + dx, j + dj, lz + dz)) return false;
+  }
+  return anyLand;
+}
 int OverworldGen::v14Corner(int x, int z) const {
   struct E { i64 k; int y; };
   thread_local std::vector<E> cache(1 << 18, E{(i64)1 << 62, 0});   // (4 MB a thread: structure plans ask about wide areas)
@@ -149,7 +161,7 @@ int OverworldGen::v14Corner(int x, int z) const {
     double hi = g.eval(vSloped, x, (DIM_H / 8) * 8 - 1, z);
     for (int j = DIM_H / 8 - 1; j >= 0; j--) {
       const double lo = g.eval(vSloped, x, j * 8 - 1, z);
-      if (lo > 0) { top = j * 8; for (int k = 7; k >= 1; k--) if (lo + (hi - lo) * k / 8.0 > 0) { top = j * 8 + k; break; } break; }
+      if (lo > 0 && !(fl_ && floatingAt(x, z, j))) { top = j * 8; for (int k = 7; k >= 1; k--) if (lo + (hi - lo) * k / 8.0 > 0) { top = j * 8 + k; break; } break; }
       hi = lo;
     }
     e = {key, std::clamp(top, 1, DIM_H - 2)};
@@ -449,7 +461,10 @@ void OverworldGen::fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const {
   int hmax = 0; for (int i = 0; i < 256; i++) hmax = std::max(hmax, cols[i].H);
   const int jmax = std::min(NY - 1, hmax / 8 + 2);   // (above the highest ground here it's all air: no need to ask)
   for (int k = 0; k < 5; k++) for (int i = 0; i < 5; i++) for (int j = 0; j <= jmax; j++)
-    lat[(k * 5 + i) * NY + j] = g.eval(vFinal, bx + i * 4, j * 8 - 1, bz + k * 4);
+    lat[(k * 5 + i) * NY + j] = fl_ ? fl_->value(cx * 4 + i, j, cz * 4 + k) : g.eval(vFinal, bx + i * 4, j * 8 - 1, bz + k * 4);
+  // (terrain version 23: a scrap of land hanging in the air with nothing under it is taken away; overhangs stay)
+  if (fl_) for (int k = 0; k < 5; k++) for (int i = 0; i < 5; i++) for (int j = 0; j <= jmax; j++)
+    if (lat[(k * 5 + i) * NY + j] > 0 && fl_->floating(cx * 4 + i, j, cz * 4 + k)) lat[(k * 5 + i) * NY + j] = -0.05;
   for (int z = 0; z < CS; z++) for (int x = 0; x < CS; x++) {
     OwColumn& c = cols[z * 16 + x];
     const int wx = bx + x, wz = bz + z;
