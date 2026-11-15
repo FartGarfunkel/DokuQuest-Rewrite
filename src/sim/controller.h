@@ -36,6 +36,8 @@ public:
   int placeMode = 0;             // 0 normal, 1 vertical slabs / upside-down stairs and trapdoors (R)
   float breakCd = 0, useRepeat = 0, bowPull = 0, landT = 0, shakeAmt = 0;
   bool useArmed = false, jumpWas = false, sneakWas = false, fightHold = false;
+  bool chestLids = false;   // Options → Leave Chests Open (set each frame by the client): use lifts a chest's lid and leaves it up
+  float castWaitR = -1, castWaitL = -1; bool castHoldR = false, castHoldL = false;   // Skyrim's hands (interact)
   double t = 0;                  // this controller's clock (the original's g.time)
   double lastJump = -10, interactAt = -10, carryHint = -10;
   bool ledgeTip = false, chewTip = false;
@@ -47,6 +49,7 @@ public:
   // ---- rules (local.js) ----
   void updateTarget();
   void interact(float dt, const PlayerInput& in);
+  void handCasting(float dt, PlayerInput& in, Entity* te);
   void use(bool repeat, const PlayerInput& in, bool fromOff = false);
   void useOffhand(bool repeat, const PlayerInput& in);
   float breakTime(BlockId id, const RayHit* hit);

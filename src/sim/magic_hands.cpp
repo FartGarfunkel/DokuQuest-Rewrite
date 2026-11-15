@@ -175,6 +175,24 @@ bool castSpell(Level& lv, Player& p) {
   H = {};
   if (right.empty() || left.empty() || !leftFree(p) || m.castCd > 0 || m.castCdL > 0) return castSpellKey(lv, p, right);
   if (left == right) {   // both hands, one spell
+    const SpellDef* S0 = magicData().spell(right);
+    if (spellRepeats(right) && S0 && S0->castTime <= 0 && (staffIn(p.offhand[0]) || !spellNeedsStaff(right))) {
+      // a bolt-like spell: one out of each hand at once (Skyrim's dual cast), together stronger than one
+      H.power = 0.85f; H.mana = 0.9f; H.hand = 0;
+      bool r = castSpellKey(lv, p, right);
+      if (!H.ok) { H = {}; return r; }
+      json& cds = p.stats["spellCd"];
+      const json keep = cds.is_object() && cds.contains(right) ? cds[right] : json();
+      if (cds.is_object()) cds.erase(right);   // (the one cast: its wait is set once, by the second hand)
+      const float cd1 = m.castCd; m.castCd = 0;
+      castLeft(lv, p, right, 0.85f, 0.9f);
+      m.castCd = std::max(cd1, m.castCd);
+      if (!keep.is_null() && cds.is_object() && !cds.contains(right)) cds[right] = keep;
+      lv.fx->particles("text", p.pos + vec3(0, 2.2f, 0), 1, json{{"text", "Dual cast"}, {"col", "#e0c8ff"}});
+      sfx::ring(lv, p.pos + vec3(0, 0.2f, 0), S0->fx, 1.4f, 28, json{{"speed", 2.5}, {"life", 0.5}, {"flat", true}, {"size", 0.09}});
+      H = {};
+      return true;
+    }
     H.power = 1.6f; H.mana = 1.8f;
     bool r = castSpellKey(lv, p, right);
     if (H.ok) {
@@ -221,6 +239,63 @@ void castHand(Level& lv, Player& p, int hand) {
   HandMods& H = handMods(); H = {}; H.noStaff = !staff; H.windup = true; H.hand = 0;
   const bool bare0 = m.bare; m.bare = !staff;
   castSpellKey(lv, p, right);
+  m.bare = bare0; H = {};
+}
+
+namespace {
+std::string rightSpellOf(const Player& p) {   // activeSpell, without setting anything
+  auto& ks = knownSpells(p);
+  if (ks.empty()) return "";
+  const auto it = p.stats.find("spell");
+  return ks[floormod(it != p.stats.end() && it->is_number_integer() ? it->get<int>() : 0, (int)ks.size())];
+}
+}
+// ---- which hand casts with its own button (sim/controller.cpp) ------------------------------------------------
+bool handCasts(const Player& p, int hand) {
+  if (hand == 0) {
+    const std::string k = rightSpellOf(p);
+    if (k.empty()) return false;
+    const ItemStack& h = p.inv[p.selected];
+    return staffIn(h) || (h.empty() && !spellNeedsStaff(k));
+  }
+  const std::string k = offSpell(p);
+  return !k.empty() && leftFree(p) && (staffIn(p.offhand[0]) || !spellNeedsStaff(k));
+}
+
+// ---- the quick spell (Morrowind): its own button, whatever is in your hands ----------------------------------------
+std::string quickSpell(const Player& p) {
+  auto it = p.stats.find("spellQuick");
+  if (it != p.stats.end() && it->is_string()) {
+    auto& ks = knownSpells(p);
+    if (std::find(ks.begin(), ks.end(), it->get<std::string>()) != ks.end()) return *it;
+  }
+  return rightSpellOf(p);
+}
+void setQuickSpell(Level& lv, Player& p, const std::string& k) {
+  const SpellDef* S = magicData().spell(k);
+  if (!S) return;
+  p.stats["spellQuick"] = k;
+  lv.fx->message(p.id, S->name + " is your quick spell", "good");
+  lv.fx->soundUi(p.id, "click");
+}
+void cycleQuickSpell(Level& lv, Player& p) {
+  auto& ks = knownSpells(p);
+  if (ks.empty()) { lv.fx->message(p.id, "You know no spells yet \xE2\x80\x94 read a spell tome", ""); return; }
+  const std::string cur = quickSpell(p);
+  auto it = std::find(ks.begin(), ks.end(), cur);
+  setQuickSpell(lv, p, it == ks.end() || it + 1 == ks.end() ? ks.front() : *(it + 1));
+}
+void castQuickSpell(Level& lv, Player& p) {
+  const std::string k = quickSpell(p);
+  if (k.empty()) { lv.fx->message(p.id, "You know no spells yet \xE2\x80\x94 read a spell tome", ""); return; }
+  MagicState& m = magicState(lv, p);
+  if (m.castCd > 0) return;
+  const bool staff = staffIn(p.held());
+  if (!staff && spellNeedsStaff(k)) { const SpellDef* S = magicData().spell(k); lv.fx->message(p.id, "Hold a staff to cast " + (S ? S->name : k), ""); return; }
+  HandMods& H = handMods(); H = {}; H.noStaff = !staff; H.windup = true;
+  H.hand = staff || p.inv[p.selected].empty() ? 0 : leftFree(p) ? 1 : -1;   // (out of a free hand)
+  const bool bare0 = m.bare; m.bare = !staff;
+  castSpellKey(lv, p, k);
   m.bare = bare0; H = {};
 }
 

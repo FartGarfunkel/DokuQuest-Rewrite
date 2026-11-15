@@ -38,4 +38,13 @@ bool chestTake(Level& lv, Player& p, World& w, ivec3 at, int slot, bool one, boo
 int chestTakeAll(Level& lv, Player& p, World& w, ivec3 at);        // everything into your bag (what fits); how many stacks
 int chestStoreAll(Level& lv, Player& p, World& w, ivec3 at);       // your bag (not the hotbar) into the chest; how many stacks
 
+// lids left open (Options → Gameplay → Leave Chests Open): a chest's or a barrel's lid kept up in the world, its things seen
+// inside; kept in the block's meta (saved and shared as ever). Both halves of a large chest go together
+constexpr u8 LID_OPEN = 0x20;
+bool chestHasLid(World& w, ivec3 at);              // a chest or barrel (not a cabinet, an ender or a party chest)
+bool chestLidOpen(World& w, ivec3 at);
+void setChestLidOpen(World& w, ivec3 at, bool open);
+// the lid itself under a click on an open chest (its back face, or the back of its top where the lid stands up)
+bool chestLidClicked(World& w, ivec3 at, ivec3 normal, vec3 point);
+
 } // namespace dq

@@ -122,6 +122,7 @@ float damagePlayer(Level& lv, Player& p, float amount, DamageSource src) {
 void mobDeath(Level& lv, Entity& m, const DamageSource& src) {
   const json& T = mobType(m.type);
   bool baby = m.data.value("baby", false);
+  for (int roll = 0, rolls = m.data.value("elite", false) ? 2 : 1; roll < rolls; roll++)   // (an elite: its drops twice over)
   if (!baby && T.contains("drops") && T["drops"].is_array()) for (auto& d : T["drops"]) {
     if (!d.is_array() || d.size() < 4) continue;
     if (rnd() < d[3].get<double>()) { int a = d[1], b = d[2]; int n = a + (int)(rnd() * (b - a + 1)); if (n > 0) dropItem(lv, m.realm, ItemStack(d[0], n), m.pos + vec3(0, 0.5f, 0), true); }
@@ -134,7 +135,7 @@ void mobDeath(Level& lv, Entity& m, const DamageSource& src) {
   if (killer && killer->isPlayer()) {
     Player& kp = static_cast<Player&>(*killer);
     vec3 at = m.pos + vec3(0, m.h, 0);
-    grantXP(lv, kp, T.value("xp", 0), &at);
+    grantXP(lv, kp, (int)std::lround(T.value("xp", 0) * mobXpScale(m)), &at);   // (its level, an elite: sim/combat_rpg.h)
     kp.stats["mobsKilled"] = kp.stats.value("mobsKilled", 0) + 1;
     dexNote(kp, m.type, true);   // the Compendium (sim/rpg.h)
   }

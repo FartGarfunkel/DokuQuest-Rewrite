@@ -3,6 +3,7 @@
 #include "sim/magic.h"
 #include "sim/brewing.h"
 #include "sim/magic_fx.h"
+#include "sim/blockfx.h"
 
 namespace dq {
 
@@ -34,8 +35,10 @@ void SpellBolt::tick(Level& lv, double dt) {
 void SpellBolt::hit(Level& lv, Entity* e) {
   removed = true;
   Player* by = asPlayer(lv, caster);
-  if (spell == "fireball") {   // the fireball bursts: everything near it burns
+  if (spell == "fireball") {   // the fireball bursts: everything near it burns, the ground about it too
     lv.fx->sound("explode", pos, 40);
+    igniteAt(lv, realm, pos, vel, by);
+    for (int i = 0; i < 4; i++) { const float a = (float)mrand() * 6.2832f, rr = 1.f + (float)mrand() * 1.6f; igniteAt(lv, realm, pos + vec3(std::cos(a) * rr, 0.6f, std::sin(a) * rr), vec3(0, -1, 0), by); }
     for (auto& up : lv.entities()) {
       Entity& m = *up;
       if (m.realm != realm || !isSpellTarget(m) || (m.data.contains("owner") && !m.data["owner"].is_null() && m.data["owner"] != "")) continue;
@@ -49,6 +52,7 @@ void SpellBolt::hit(Level& lv, Entity* e) {
     return;
   }
   lv.fx->sound("spell_hit", pos, 28);
+  if (!e && spell == "firebolt") igniteAt(lv, realm, pos, vel, by);   // a firebolt sets alight what it strikes
   if (!e) return;
   if (spell == "missiles") { combatHurt(lv, *e, dmg, json{{"type", "magic"}, {"knock", 0.5}}, by); return; }
   combatHurt(lv, *e, dmg, json{{"type", "magic"}, {"element", spell == "firebolt" ? "fire" : "frost"}, {"knock", 1}}, by);

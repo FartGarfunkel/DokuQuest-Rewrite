@@ -100,6 +100,7 @@ void clientTickLocalPlayer(GameSession& s, double dt) {
   } else st.deadT = 0;
   c.aimOverride = s.viewMode == 1 && st.hasShoulder;
   if (c.aimOverride) { c.aimOrigin = st.shoulder; c.aimDir = lookVector(p.yaw, p.pitch); }
+  c.chestLids = app.settings.chestLids;
   c.update((float)dt, pi);
   // what the renderer and HUD read
   s.target = c.target;

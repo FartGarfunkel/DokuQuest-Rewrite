@@ -4,6 +4,7 @@
 // so are its quirks (Arcane Might counts twice for the newer spells, Archmage's free cast earns no school xp).
 #include "sim/spell_items.h"
 #include "sim/magic.h"
+#include "sim/blockfx.h"
 #include "sim/skilltree.h"
 #include "sim/magic_fx.h"
 #include "sim/magic_entities.h"
@@ -254,6 +255,7 @@ bool castOldSpell(Level& lv, Player& p, const std::string& k, const json& st, fl
     if (!lv.isRemote()) { auto bolt = createEntity("lightning_bolt"); bolt->type = "lightning_bolt"; bolt->realm = p.realm; bolt->pos = at; bolt->netLocal = false; lv.spawn(std::move(bolt)); }
     lv.fx->sound("spell_zap", at, 80);
     lv.fx->particles("flash", at, 1, json{{"t", 0.25}});
+    igniteAt(lv, p.realm, at + vec3(0, 0.3f, 0), vec3(0, -1, 0), &p);   // where it strikes, it burns
     float dmg = (float)iround(9 * power);
     for (auto& e : lv.entities()) if (e->realm == p.realm && isSpellTarget(*e) && glm::length(vec2(e->pos.x - at.x, e->pos.z - at.z)) < 2.6f && std::abs(e->pos.y - at.y) < 3) {
       combatHurt(lv, *e, dmg, json{{"type", "magic"}, {"element", "lightning"}, {"knock", 2}}, &p);
@@ -388,6 +390,7 @@ bool castNewSpell(Level& lv, Player& p, const std::string& k, const json& st, fl
       combatHurt(lv, e, dmg, json{{"type", "magic"}, {"element", "fire"}, {"knock", 0.6}}, &p);
       if (!lv.isRemote() && !isFireImmune(e)) setMobStatus(lv, e, "burnT", 3, &p);
     }
+    for (float d = 1; d <= 5.5f; d += 0.5f) if (solidAt(lv.world(p.realm), E + L * d)) { if (rnd() < 0.4) igniteAt(lv, p.realm, E + L * d, L, &p); break; }   // the flames catch what they wash over
     lv.fx->particles("mana_fire", E + L * 0.7f - vec3(0, 0.25f, 0), 26, json{{"m", "cone"}, {"dir", {L.x, L.y, L.z}}});
     for (int i = 0; i < 4; i++) sfx::flame(lv, E + L * (1.f + i) - vec3(0, 0.3f, 0));
     lv.fx->sound("spell_fire", E); c.cd = 0.5f;

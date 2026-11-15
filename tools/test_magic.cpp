@@ -15,6 +15,9 @@
 #include "sim/skills.h"
 #include "sim/rpg.h"
 #include "sim/commands.h"
+#include "sim/controller.h"
+#include "sim/blockfx.h"
+#include "sim/combat_rpg.h"
 #include "world/world.h"
 #include <cstdio>
 #include <thread>
@@ -122,7 +125,7 @@ int main(int argc, char** argv) {
   check(fx.heard("You need Magic 28 to learn Fireball") && skillXp(p, "magic") == 420, "...and only the first time");
   ItemStack t1("tome_frost", 1);
   learnTome(*lv, p, t1);
-  check(fx.heard("You have learned Frost Shard! Press Z to cast it") && t1.empty() && knownSpells(p).size() == 3 && skillXp(p, "magic") == 460, "learning Frost Shard (+40 Magic xp)");
+  check(fx.heard("You have learned Frost Shard! It is in your right hand") && t1.empty() && knownSpells(p).size() == 3 && skillXp(p, "magic") == 460, "learning Frost Shard (+40 Magic xp)");
   p.stats["spell"] = 0;   // Firebolt in the right hand again
 
   // casting a firebolt at a skeleton
@@ -366,6 +369,126 @@ int main(int argc, char** argv) {
       nb++;
     }
     check(nb >= 2 && sideR > 0.15f && sideL < -0.15f, "each bolt leaves its own hand (firebolt " + std::to_string(sideR) + " to the right, frost shard " + std::to_string(sideL) + " to the left)");
+  }
+
+  // ---- Skyrim's hands: each free hand's spell on its own button (attack the right, use the left), both at once dual ----
+  {
+    MagicState& mm = magicState(*lv, p);
+    auto bolts = [&]() { std::vector<SpellBolt*> v; for (auto& e : lv->entities()) if (!e->removed && e->type == "spell_bolt") if (auto* b = dynamic_cast<SpellBolt*>(e.get())) v.push_back(b); return v; };
+    auto clearBolts = [&]() { for (auto& e : lv->entities()) if (e->type == "spell_bolt") e->removed = true; lv->tick(TICK_DT); };
+    auto fresh = [&]() { mm.castCd = mm.castCdL = 0; mm.mana = manaMax(p); mm.windK.clear(); p.stats.erase("spellCd"); clearBolts(); };
+    p.inv[0].clear(); p.offhand[0].clear(); p.selected = 0;
+    pickSpell(*lv, p, "firebolt"); p.stats["spellOff"] = "frost";
+    check(handCasts(p, 0) && handCasts(p, 1), "both hands empty, a spell readied in each: both cast");
+    p.inv[0] = ItemStack("iron_sword", 1);
+    check(!handCasts(p, 0) && handCasts(p, 1), "a sword in the right hand: the right swings, the left still casts");
+    p.inv[0].clear(); p.offhand[0] = ItemStack("shield", 1);
+    check(handCasts(p, 0) && !handCasts(p, 1), "a shield in the left hand: the left doesn't cast");
+    p.offhand[0].clear();
+    PlayerController pc(*lv, p);
+    pc.target.hit = false; pc.targetEnt = 0;
+    fresh();
+    PlayerInput in; in.attackPressed = in.attack = true;
+    pc.handCasting(TICK_DT, in, nullptr);
+    check(bolts().empty() && !in.attackPressed && !in.attack, "attack with the right hand's spell: the press is the spell's (a moment to see if the left joins)");
+    for (int i = 0; i < 8; i++) { in = PlayerInput(); in.attack = true; pc.handCasting(TICK_DT, in, nullptr); }
+    auto b1 = bolts();
+    check(b1.size() == 1 && b1[0]->spell == "firebolt", "...then the right hand casts its firebolt (no punch)");
+    for (int i = 0; i < 60; i++) { in = PlayerInput(); in.attack = true; mm.castCd = std::max(0.f, mm.castCd - (float)TICK_DT); pc.handCasting(TICK_DT, in, nullptr); }
+    check(bolts().size() >= 2, "held, the attack spell keeps coming (" + std::to_string(bolts().size()) + " bolts)");
+    in = PlayerInput(); pc.handCasting(TICK_DT, in, nullptr);
+    fresh();
+    in = PlayerInput(); in.usePressed = in.use = true;
+    pc.handCasting(TICK_DT, in, nullptr);
+    for (int i = 0; i < 8; i++) { in = PlayerInput(); in.use = true; pc.handCasting(TICK_DT, in, nullptr); }
+    in = PlayerInput(); pc.handCasting(TICK_DT, in, nullptr);
+    auto b2 = bolts();
+    check(b2.size() == 1 && b2[0]->spell == "frost", "use casts the left hand's frost shard");
+    fresh();
+    p.stats["spellOff"] = "firebolt";   // the same spell in both hands
+    in = PlayerInput(); in.attackPressed = in.attack = true; pc.handCasting(TICK_DT, in, nullptr);
+    in = PlayerInput(); in.attack = true; in.usePressed = in.use = true; pc.handCasting(TICK_DT, in, nullptr);
+    in = PlayerInput(); pc.handCasting(TICK_DT, in, nullptr);
+    const vec3 r(std::cos(p.yaw), 0, -std::sin(p.yaw));
+    int right = 0, left = 0; for (auto* b : bolts()) { const float sd = glm::dot(b->pos - p.pos, r); if (b->spell == "firebolt") (sd > 0.15f ? right : sd < -0.15f ? left : right) += sd > 0.15f || sd < -0.15f ? 1 : 0; }
+    check(right == 1 && left == 1, "both buttons together, the same spell: a dual cast, a firebolt out of each hand");
+    float dmg = 0; for (auto* b : bolts()) dmg += b->dmg;
+    check(dmg > 6 * 1.2f * 0.7f, "...together stronger than one (" + std::to_string(dmg) + ")");
+    in = PlayerInput(); in.attackPressed = in.attack = true; pc.target.hit = true; pc.target.id = reg().blockId("stone");
+    fresh(); pc.handCasting(TICK_DT, in, nullptr);
+    check(in.attackPressed && bolts().empty(), "attack on a block within reach, hand empty: it digs (no spell)");
+    pc.target.hit = false;
+    // ---- the quick spell (Morrowind): its own button, a heal with a sword and a shield in hand ----
+    p.inv[0] = ItemStack("iron_sword", 1); p.offhand[0] = ItemStack("shield", 1);
+    fresh();
+    setQuickSpell(*lv, p, "heal");
+    p.hp = p.maxHp - 8;
+    const float hp0 = p.hp;
+    castQuickSpell(*lv, p);
+    check(quickSpell(p) == "heal" && p.hp > hp0, "the quick spell heals with a sword and a shield in hand (" + std::to_string((int)hp0) + " -> " + std::to_string((int)p.hp) + ")");
+    p.inv[0].clear(); p.offhand[0].clear(); p.stats["spellOff"] = "frost";
+  }
+
+  // ---- fire takes where fire strikes: a firebolt, lightning, a flaming arrow (sim/blockfx.h igniteAt) ----
+  {
+    World& w = lv->world(0);
+    const BlockId stone = reg().blockId("stone"), FIRE = reg().blockId("fire"), tnt = reg().blockId("tnt"), water = reg().blockId("water");
+    for (int x = 4; x < 14; x++) for (int z = 4; z < 14; z++) { w.setBlock(x, 710, z, stone); for (int y = 711; y < 718; y++) w.setBlock(x, y, z, AIR); }
+    igniteAt(*lv, 0, vec3(6.5f, 711.05f, 6.5f), vec3(0, -1, 0));
+    check(FIRE && w.getBlock(6, 711, 6) == FIRE, "fire striking the ground: a fire on top of it");
+    w.setBlock(10, 711, 10, tnt);
+    igniteAt(*lv, 0, vec3(10.5f, 711.9f, 10.5f), vec3(0, -1, 0));
+    bool primed = false; for (auto& e : lv->entities()) primed |= !e->removed && e->type == "tnt";
+    check(w.getBlock(10, 711, 10) != tnt && primed, "...on TNT: it's lit");
+    for (auto& e : lv->entities()) if (e->type == "tnt") e->removed = true;
+    w.setBlock(12, 710, 12, water);
+    check(!igniteAt(*lv, 0, vec3(12.5f, 711.05f, 12.5f), vec3(0, -1, 0)) && w.getBlock(12, 711, 12) != FIRE, "...never on water");
+    auto b = std::make_unique<SpellBolt>();
+    b->realm = 0; b->spell = "firebolt"; b->caster = p.id; b->pos = vec3(8.5f, 714.5f, 8.5f); b->vel = vec3(0, -26, 0); b->dmg = 6;
+    SpellBolt* bp = static_cast<SpellBolt*>(lv->spawn(std::move(b)));
+    for (int i = 0; i < 30 && !bp->removed; i++) bp->tick(*lv, TICK_DT);
+    check(w.getBlock(8, 711, 8) == FIRE, "a firebolt into the ground sets it alight");
+  }
+
+  // ---- creature levels: set once from the party near it, elites, +8% health / +5% damage a level, a party's fight ----
+  {
+    const json keepSkills = p.stats.value("skills", json::object());
+    json sk = json::object(); for (auto& d : magicData().skills) sk[d.key] = skillXpFor(20); p.stats["skills"] = sk;
+    const int L = playerCombatLevel(p);
+    check(L == 14 * 20 / 8, "all fourteen skills at 20: combat level " + std::to_string(L));
+    int lo = 999, hi = 0, elites = 0, plain = 0, plainOk = 0; float base = 0;
+    for (int i = 0; i < 300; i++) {
+      Entity* z = spawnCreature(*lv, "skeleton", 0, p.pos + vec3(3, 0, 3));
+      if (!z) continue;
+      if (base == 0) base = z->maxHp;
+      mobLevelUpdate(*lv, *z);
+      const bool el = z->data.value("elite", false);
+      if (el) elites++;
+      else { plain++; lo = std::min(lo, z->mobLevel); hi = std::max(hi, z->mobLevel); if (near(z->maxHp, base * (1 + 0.08f * (z->mobLevel - 1)), 0.01)) plainOk++; }
+      z->removed = true;
+    }
+    lv->tick(TICK_DT);
+    check(lo >= L - 1 && hi <= L + 2 && lo < hi, "a skeleton's level: the party's, give or take (" + std::to_string(lo) + ".." + std::to_string(hi) + " for level " + std::to_string(L) + ")");
+    check(plainOk == plain, "...its health +8% a level (" + std::to_string(plainOk) + " of " + std::to_string(plain) + ")");
+    check(elites >= 5 && elites <= 50, "about one in fourteen an elite (" + std::to_string(elites) + " of 300)");
+    Entity* z = spawnCreature(*lv, "skeleton", 0, p.pos + vec3(3, 0, 3));
+    z->data["lvlSet"] = false; mobLevelUpdate(*lv, *z);
+    const int zl = z->mobLevel; const float hp1 = z->maxHp;
+    mobLevelUpdate(*lv, *z);
+    check(z->mobLevel == zl && near(z->maxHp, hp1, 0.01), "its level is set once (not again each time it's looked at)");
+    check(near(combatRpgMobScale(*z, 10), 10 * (1 + 0.05f * (zl - 1)) * (z->data.value("elite", false) ? 1.25f : 1.f), 0.01), "its blows +5% a level");
+    check(mobXpScale(*z) > 1.5f, "killing it is worth more experience (x" + std::to_string(mobXpScale(*z)) + ")");
+    auto friendP = std::make_unique<Player>(); friendP->name = "Friend"; friendP->mode = "survival"; friendP->pos = p.pos + vec3(6, 0, 0); friendP->noGravity = true;
+    Player& f2 = *static_cast<Player*>(lv->spawn(std::move(friendP)));
+    z->hp = z->maxHp * 0.5f;
+    mobLevelUpdate(*lv, *z);
+    check(near(z->maxHp, hp1 * 1.4f, 0.05) && near(z->hp / z->maxHp, 0.5f, 0.01), "a second player near: its health x1.4, as wounded as it was");
+    check(z->mobLevel == zl, "...its level kept");
+    f2.removed = true; f2.pos = vec3(1e4f, 700, 1e4f);
+    mobLevelUpdate(*lv, *z);
+    check(near(z->maxHp, hp1, 0.05), "they leave: back as it was");
+    z->removed = true; lv->tick(TICK_DT);
+    p.stats["skills"] = keepSkills;
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);

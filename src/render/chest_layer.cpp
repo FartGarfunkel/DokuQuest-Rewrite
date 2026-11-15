@@ -194,6 +194,7 @@ public:
   const char* name() const override { return "chest-lids"; }
   int order() const override { return 130; }
   std::map<std::tuple<int, int, int>, Open> open;
+  std::vector<ivec3> lidOpen; float lidScanT = 0;   // (lids left open about you)
 
   void update(GameSession& s, double dt) override {
     if (!s.player) return;
@@ -209,6 +210,27 @@ public:
     };
     for (auto& [k, c] : g_wanted) if (c > 0) add(ivec3(std::get<0>(k), std::get<1>(k), std::get<2>(k)));
     std::set<std::tuple<int, int, int>> mineSet = want;   // (yours: an ender chest shows what's in it to you alone)
+    // lids left open (sim/chest_work.h LID_OPEN): the stores about you with theirs up, nearest first, looked for now and then
+    lidScanT -= fdt;
+    if (lidScanT <= 0) {
+      lidScanT = 0.4f; lidOpen.clear();
+      const ivec3 me(glm::floor(s.player->pos));
+      const int d = dimOfY(clampv(me.y, 0, WORLD_H - 1));
+      std::vector<std::pair<float, ivec3>> found;
+      for (int cz = (me.z >> 4) - 2; cz <= (me.z >> 4) + 2; cz++) for (int cx = (me.x >> 4) - 2; cx <= (me.x >> 4) + 2; cx++) {
+        Chunk* ch = w.chunk(d, cx, cz);
+        if (!ch) continue;
+        for (auto& [ci, be] : ch->blockEntities) {
+          const ivec3 q(cx * 16 + (ci & 15), dimBase(d) + (ci >> 8), cz * 16 + ((ci >> 4) & 15));
+          if (!(w.getMeta(q.x, q.y, q.z) & LID_OPEN) || !chestLidOpen(w, q)) continue;
+          const float dd = glm::distance(vec3(q) + vec3(0.5f), s.player->pos);
+          if (dd < 28) found.push_back({dd, q});
+        }
+      }
+      std::sort(found.begin(), found.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+      for (auto& f : found) if ((int)lidOpen.size() < CHEST_HIDE_MAX - 2) lidOpen.push_back(f.second);   // (room kept for the ones in use)
+    }
+    for (const ivec3& q : lidOpen) if (want.size() + 2 <= (size_t)CHEST_HIDE_MAX && chestLidOpen(w, q)) add(q);
     if (s.level) for (auto& e : s.level->entities()) {
       if (!e || e->removed || e.get() == s.player || !e->isPlayer() || e->realm != s.player->realm) continue;
       const Player* o = static_cast<const Player*>(e.get());

@@ -56,6 +56,7 @@ json entitySnapshot(const Entity& e) {
   // the combat batch (sim/combat_rpg.h): posture filling, staggered, the mob's level (only when they say something)
   if (e.posture > 0 || e.staggerT > 0) { s["po"] = std::round(e.posture * 10) / 10; s["pm"] = e.maxPosture; if (e.staggerT > 0) s["sg"] = std::round(e.staggerT * 100) / 100; }
   if (e.mobLevel > 1) s["ml"] = e.mobLevel;
+  if (!e.isPlayer() && e.data.is_object() && e.data.value("elite", false)) s["el"] = 1;   // (an elite: its plate says so)
   if (auto* p = dynamic_cast<const Player*>(&e)) {
     s["n"] = p->name; s["md"] = p->mode;
     { auto& A = netSkinAliases(); auto a = A.find(p->skin); s["sk"] = a != A.end() ? a->second : p->skin; }   // the host's own skins by their net names

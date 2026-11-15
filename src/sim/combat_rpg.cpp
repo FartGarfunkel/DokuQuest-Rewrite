@@ -5,6 +5,7 @@
 #include "sim/skills.h"
 #include "sim/gameplay.h"
 #include "sim/combat.h"
+#include "sim/creature.h"
 #include "core/registry.h"
 #include <algorithm>
 #include <cmath>
@@ -59,27 +60,59 @@ void combatRpgTick(Level& lv, Player& p, float dt) {
   float scan = p.data.value("lvlScan", 0.0f) + dt;
   if (scan >= 2.f) {
     scan = 0;
-    const int lvl = std::max(1, totalLevel(p) / 8);
-    for (auto& up : lv.entities()) {
+    if (!lv.isRemote()) for (auto& up : lv.entities()) {   // (the host decides; a guest's copies follow its updates)
       Entity* e = up.get();
-      if (!e || e->isPlayer() || e->removed || e->realm != p.realm) continue;
+      if (!e || e->isPlayer() || e->removed || e->realm != p.realm || e->hp <= 0) continue;
       if (std::hypot(e->pos.x - p.pos.x, e->pos.z - p.pos.z) > 48) continue;
-      e->maxPosture = 40.f + std::max(1, e->mobLevel) * 2.f;
-      if (e->mobLevel >= lvl && e->data.value("lvlHp", false)) continue;
-      const int was = std::max(1, e->mobLevel);
-      e->mobLevel = std::max(e->mobLevel, lvl);
-      e->maxPosture = 40.f + e->mobLevel * 2.f;
-      if (!e->data.value("lvlHp", false)) {
-        const float k = 1.f + 0.03f * (e->mobLevel - 1);
-        e->maxHp *= k; e->hp = std::min(e->maxHp, e->hp * k);
-        e->data["lvlHp"] = true;
-      } else if (e->mobLevel > was) {
-        const float k = (1.f + 0.03f * (e->mobLevel - 1)) / (1.f + 0.03f * (was - 1));
-        e->maxHp *= k; e->hp = std::min(e->maxHp, e->hp * k);
-      }
+      mobLevelUpdate(lv, *e);
     }
   }
   p.data["lvlScan"] = scan;
+}
+
+// ---- levels (an RPG's): a creature takes its level once, when first met: the party near it (between its average and its
+// best, so a newcomer's friend doesn't make the world trivial or impossible), give or take a little; one in fourteen hostile
+// ones is an elite, three levels up, tougher and richer. Each level: +8% health, +5% damage, +6% experience. With more
+// players about, its health grows (40% for each beyond the first, while they stay near) so a party has a fight too.
+int playerCombatLevel(const Player& p) { return std::max(1, totalLevel(p) / 8); }
+namespace {
+float levelHp(int lvl) { return 1.f + 0.08f * (std::max(1, lvl) - 1); }
+float levelDmg(int lvl) { return 1.f + 0.05f * (std::max(1, lvl) - 1); }
+}
+float mobXpScale(const Entity& e) { return (1.f + 0.06f * (std::max(1, e.mobLevel) - 1)) * (e.data.value("elite", false) ? 2.f : 1.f); }
+void mobLevelUpdate(Level& lv, Entity& e) {
+  if (e.isPlayer() || e.hp <= 0) return;
+  if (e.data.contains("owner") && !e.data["owner"].is_null() && e.data["owner"] != "") return;   // (a pet or a summon: yours, not the world's)
+  int n = 0, best = 1; float sum = 0;
+  for (auto& up : lv.entities()) {
+    if (!up->isPlayer() || up->removed || up->realm != e.realm) continue;
+    const Player& q = static_cast<const Player&>(*up);
+    if (q.dead || q.mode == "spectator" || std::hypot(q.pos.x - e.pos.x, q.pos.z - e.pos.z) > 48) continue;
+    const int l = playerCombatLevel(q); n++; sum += l; best = std::max(best, l);
+  }
+  if (!n) return;
+  const json& T = mobDef(e.type);
+  const CreatureType* CT = creatureType(e.type);
+  const bool hostile = CT ? CT->hostile : T.value("hostile", false), boss = (CT && CT->boss) || T.value("boss", false);
+  if (!e.data.value("lvlSet", false)) {
+    // its health at level 1 (an older save's creature: its old +3% a level taken back out)
+    float base = e.maxHp;
+    if (e.data.value("lvlHp", false)) base /= 1.f + 0.03f * (std::max(1, e.mobLevel) - 1);
+    const int party = (int)std::lround((sum / n + best) * 0.5f);
+    int lvl = std::max(1, party + (int)std::floor(rnd() * 4) - 1);   // (-1 .. +2)
+    const bool elite = hostile && !boss && !e.data.value("boss", false) && rnd() < 1.0 / 14;
+    if (elite) { lvl += 3; e.data["elite"] = true; }
+    if (e.data.value("lvlHp", false)) lvl = std::max(lvl, e.mobLevel);   // (never lower than an older save gave it)
+    e.mobLevel = lvl;
+    e.data["hp0"] = base; e.data["coop"] = 1.f; e.data["lvlSet"] = true; e.data.erase("lvlHp");
+    const float k = levelHp(lvl) * (elite ? 1.6f : 1.f);
+    const float frac = e.maxHp > 0 ? e.hp / e.maxHp : 1.f;
+    e.maxHp = base * k; e.hp = std::max(0.5f, frac * e.maxHp);
+  }
+  // the party near it: its health grows and shrinks with the players about it (kept as a share of the whole)
+  const float coop = 1.f + 0.4f * (std::min(n, 6) - 1), was = e.data.value("coop", 1.f);
+  if (std::fabs(coop - was) > 1e-3f) { const float frac = e.maxHp > 0 ? e.hp / e.maxHp : 1.f; e.maxHp *= coop / was; e.hp = std::max(0.5f, frac * e.maxHp); e.data["coop"] = coop; }
+  e.maxPosture = (40.f + e.mobLevel * 2.f) * (e.data.value("elite", false) ? 1.4f : 1.f);
 }
 
 void combatRpgInput(Level& lv, Player& p, const PlayerInput& in, float dt) {
@@ -148,7 +181,7 @@ float combatRpgOutgoing(Level& lv, Player& p, Entity& e, float dmg, bool& finish
   dmg = (dmg + treeAttr(p, "damage")) * (1 + treeAttrPct(p, "damage"));   // (the skill tree)
   const float crit = p.statLck * 0.004f + treeAttr(p, "crit_chance") + treeAttrPct(p, "crit_chance");
   if (crit > 0 && rnd() < crit) dmg = std::ceil(dmg * (1.5f + treeAttr(p, "crit_damage") + treeAttrPct(p, "crit_damage")));
-  e.maxPosture = 40.f + e.mobLevel * 2.f;
+  e.maxPosture = (40.f + e.mobLevel * 2.f) * (e.data.value("elite", false) ? 1.4f : 1.f);
   e.posture = std::min(e.maxPosture, e.posture + dmg * (2.f + p.statFoc * 0.02f));
   if (e.posture >= e.maxPosture && e.staggerT <= 0) {
     e.staggerT = 1.2f;
@@ -171,8 +204,8 @@ float combatRpgBossCap(Level& lv, Entity& e, float dmg) {
 }
 
 float combatRpgMobScale(const Entity& attacker, float amount) {
-  if (attacker.mobLevel <= 1) return amount;
-  return amount * (1.f + 0.03f * (attacker.mobLevel - 1));
+  if (attacker.isPlayer()) return amount;
+  return amount * levelDmg(attacker.mobLevel) * (attacker.data.value("elite", false) ? 1.25f : 1.f);
 }
 
 bool arrowStrikeShield(Level& lv, Entity& arrow, const vec3& from, const vec3& to) {
@@ -217,7 +250,7 @@ bool arrowStrikeShield(Level& lv, Entity& arrow, const vec3& from, const vec3& t
   }
   hit->guardFlash = 0.35f;
   const std::string kind = arrow.data.value("item", std::string("arrow"));
-  dropItem(lv, arrow.realm, ItemStack(kind.empty() ? "arrow" : kind, 1), at, false);
+  dropItem(lv, arrow.realm, ItemStack(kind.empty() ? "arrow" : kind, 1), at, false, 0.f);
   sfxAt(lv, "arrow_hit", at);
   arrow.removed = true;
   return true;

@@ -145,6 +145,47 @@ void checkHarden(Level& lv, World& w, int x, int y, int z) {
   for (auto& n : N) if (waterAt(w, x + n[0], y + n[1], z + n[2])) { w.setBlock(x, y, z, reg().blockId(to)); sfxAt(lv, "fizz", vec3(x, y, z)); return; }
 }
 
+bool igniteAt(Level& lv, int realm, vec3 at, vec3 dir, Player* by) {
+  if (lv.isRemote()) {   // a guest: the host lights it (sim/magic.cpp onNetAction "magicIgnite")
+    if (lv.net && by) lv.net->action(*by, "magicIgnite", json{{"r", realm}, {"at", {at.x, at.y, at.z}}, {"d", {dir.x, dir.y, dir.z}}});
+    return false;
+  }
+  static const BlockId FIRE = reg().blockId("fire");
+  if (!FIRE) return false;
+  const Registry& R = reg();
+  World& w = lv.world(realm);
+  const float dl = glm::length(dir);
+  const vec3 d = dl > 1e-4f ? dir / dl : vec3(0, -1, 0);
+  // what it struck: the first solid cell from a little before `at` to a little past it
+  ivec3 hitB(0); bool hit = false;
+  for (float t = -0.6f; t <= 0.6f && !hit; t += 0.1f) { const vec3 v = at + d * t; const ivec3 b(ifloor(v.x), ifloor(v.y), ifloor(v.z)); if (R.tSolid[w.getBlock(b.x, b.y, b.z)]) { hitB = b; hit = true; } }
+  if (hit) {
+    const BlockId id = w.getBlock(hitB.x, hitB.y, hitB.z);
+    const BlockDef& hb = R.block(id);
+    if (hb.key == "tnt") { w.setBlock(hitB.x, hitB.y, hitB.z, 0, 0); primeTNT(lv, w, hitB.x, hitB.y, hitB.z, 4.f); return true; }
+    if (hb.has("lightMeta") || hb.key == "brazier" || hb.has("campfire")) { w.setBlock(hitB.x, hitB.y, hitB.z, id, (u8)(w.getMeta(hitB.x, hitB.y, hitB.z) | 4)); return true; }
+  }
+  // where the fire goes: the open cell it came through (just before the block), else the top of what it struck
+  auto open = [&](ivec3 c) { const BlockId b = w.getBlock(c.x, c.y, c.z); return (b == AIR || (R.tReplaceable[b] && !R.tLiquid[b])) && !R.tLiquid[b]; };
+  auto touches = [&](ivec3 c) {
+    static const ivec3 N[6] = {{0, -1, 0}, {1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, 1, 0}};
+    for (auto& n : N) if (R.tSolid[w.getBlock(c.x + n.x, c.y + n.y, c.z + n.z)]) return true;
+    return false;
+  };
+  std::vector<ivec3> tries;
+  for (float t = 0.f; t <= 1.2f; t += 0.2f) { const vec3 v = at - d * t; tries.push_back(ivec3(ifloor(v.x), ifloor(v.y), ifloor(v.z))); }
+  if (hit) tries.push_back(hitB + ivec3(0, 1, 0));
+  tries.push_back(ivec3(ifloor(at.x), ifloor(at.y), ifloor(at.z)));
+  for (const ivec3& c : tries) {
+    if (!open(c) || !touches(c)) continue;
+    const BlockId below = w.getBlock(c.x, c.y - 1, c.z);
+    if (R.tLiquid[below] && !R.tSolid[below]) continue;   // (not on water)
+    w.setBlock(c.x, c.y, c.z, FIRE, 0);
+    return true;
+  }
+  return false;
+}
+
 void primeTNT(Level& lv, World& w, int x, int y, int z, float fuse) {
   vec3 c(x + 0.5f, y + 0.5f, z + 0.5f);
   if (!rule(lv, "tntExplodes")) { sfxAt(lv, "fizz", c); burst(lv, c, "white", 8, 0.5f); dropItem(lv, w.realm, ItemStack("tnt", 1), c, true); return; }

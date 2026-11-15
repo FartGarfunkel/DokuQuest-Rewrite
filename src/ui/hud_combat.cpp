@@ -7,6 +7,7 @@
 #include "client/session.h"
 #include "render/camera.h"
 #include "sim/player.h"
+#include "sim/combat_rpg.h"
 #include "core/registry.h"
 #include <imgui.h>
 #include <cmath>
@@ -105,10 +106,12 @@ void drawCombatHud(GameSession& s, ImDrawList* dl, float z, float W, float H) {
   if (!nm.empty() && nm.rfind("an ", 0) == 0) nm = nm.substr(3);
   if (!nm.empty() && nm.rfind("the ", 0) == 0) nm = nm.substr(4);
   if (!nm.empty()) nm[0] = (char)std::toupper((unsigned char)nm[0]);
-  const std::string label = "Lv " + std::to_string(std::max(1, e->mobLevel)) + "  " + nm;
+  const bool elite = e->data.is_object() && e->data.value("elite", false);
+  const std::string label = "Lv " + std::to_string(std::max(1, e->mobLevel)) + "  " + (elite ? "\xE2\x98\x85 Elite " : "") + nm;
   const float al = h.plateAlpha, bw = 92 * z;
   const ImVec2 ts = textSize(F_SMALL, label.c_str());
-  const ImU32 lvCol = e->mobLevel > p.level + 8 ? IM_COL32(255, 120, 100, (int)(255 * al)) : IM_COL32(240, 232, 210, (int)(255 * al));
+  const int you = playerCombatLevel(p);   // (red: well above you; gold: an elite)
+  const ImU32 lvCol = e->mobLevel > you + 3 ? IM_COL32(255, 120, 100, (int)(255 * al)) : elite ? IM_COL32(255, 205, 90, (int)(255 * al)) : IM_COL32(240, 232, 210, (int)(255 * al));
   textOutline(dl, F_SMALL, ImVec2(sp.x - ts.x * 0.5f, sp.y - ts.y - 12 * z), lvCol, label.c_str(), 1 * z, IM_COL32(0, 0, 0, (int)(200 * al)));
   // health
   const ImVec2 h0(sp.x - bw * 0.5f, sp.y - 9 * z), h1(sp.x + bw * 0.5f, sp.y - 4 * z);

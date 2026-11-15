@@ -64,6 +64,14 @@ float spellbladeHit(Level& lv, Player& p, Entity& e, float dmg, std::string& ele
 void castQuick(Level& lv, Player& p);                         // both hands (the dual cast), with or without a staff
 void castHand(Level& lv, Player& p, int hand);                // the cast buttons: 0 right hand, 1 left hand, 2 both
 bool spellRepeats(const std::string& k);                      // held button repeats the cast
+// Skyrim's hands: a spell readied in a free hand (empty, or a staff in it) casts with that hand's button (attack: the
+// right, use: the left); hand 0 right, 1 left. false: that hand would punch / use as ever
+bool handCasts(const Player& p, int hand);
+// Morrowind's quick spell: its own button casts it whatever your hands hold (a heal in the thick of a fight)
+std::string quickSpell(const Player& p);                      // set, else the right hand's
+void setQuickSpell(Level& lv, Player& p, const std::string& k);
+void cycleQuickSpell(Level& lv, Player& p);
+void castQuickSpell(Level& lv, Player& p);
 const std::vector<std::string>& knownSpells(const Player& p); // (reads stats.spells)
 int schoolLv(const Player& p, const std::string& school);
 std::string schoolOfSpell(const std::string& k);

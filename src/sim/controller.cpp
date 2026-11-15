@@ -4,6 +4,8 @@
 #include "sim/dyntree.h"
 #include "sim/weather.h"
 #include "sim/controller.h"
+#include "sim/magic.h"
+#include "sim/chest_work.h"
 #include "sim/combat_rpg.h"
 #include "sim/creature_rig.h"
 #include "sim/vehicles.h"
@@ -415,7 +417,8 @@ bool PlayerController::blockedByBody(int x, int y, int z) {
 bool deflectFireball(Level& lv, Entity& by, vec3 eye, vec3 look, float reach);   // sim/creature_entities.cpp
 
 // ---- mining / attacking / using --------------------------------------------------------------
-void PlayerController::interact(float dt, const PlayerInput& in) {
+void PlayerController::interact(float dt, const PlayerInput& in0) {
+  PlayerInput inM = in0; const PlayerInput& in = inM;   // (a hand's cast takes its button: see below)
   if (breakCd > 0) breakCd -= dt;
   if (p.attackCd > 0) p.attackCd -= dt;
   if (p.mode == "spectator") { mining.active = false; return; }   // watching only: no breaking, placing, using or fighting
@@ -425,6 +428,7 @@ void PlayerController::interact(float dt, const PlayerInput& in) {
   Entity* te = targetEnt ? lv.entity(targetEnt) : nullptr;
   // a ghast's fireball can be punched back (Minecraft): it flies for you then, and finishes off a ghast it hits
   if (in.attackPressed && deflectFireball(lv, p, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch), 4.5f)) { swingArm(); mining.active = false; fightHold = true; return; }
+  handCasting(dt, inM, te);
   // a combat move starts on a creature or on thin air; a click on a block digs it, whatever is in your hand
   const bool allowSwing = te || !target.hit;
   // both hands armed: use swings the off hand (Skyrim's two hands), unless what you look at is for using (a door, a chest)
@@ -464,6 +468,40 @@ void PlayerController::interact(float dt, const PlayerInput& in) {
   interactAt = t;
   if (in.usePressed && !offUse) { useArmed = true; useRepeat = 0.28f; use(false, in); }
   else if (in.use && useArmed) { useRepeat -= dt; if (useRepeat <= 0) { useRepeat = 0.22f; use(true, in); } }
+}
+
+// Skyrim's hands (sim/magic_hands.cpp): a spell readied in a free hand casts with that hand's button: attack the right
+// (at a creature or thin air; with a staff, anywhere), use the left (unless what you look at is for using). Both within
+// a moment of each other: both hands at once (the dual cast, or two spells fused). Held, an attack spell keeps coming.
+// The press is the spell's: no punch, dig or use comes of it.
+void PlayerController::handCasting(float dt, PlayerInput& in, Entity* te) {
+  if (p.dead || p.riding) { castWaitR = castWaitL = -1; castHoldR = castHoldL = false; return; }
+  const bool rOk = handCasts(p, 0), lOk = handCasts(p, 1);
+  const ItemStack& held = p.held();
+  const bool staffR = heldStaff(p) != nullptr;
+  bool forUse = false;
+  if (target.hit && !te) { const BlockDef& b = reg().block(target.id); forUse = interactable(target.id) || b.has("harvest") || b.key == "sluice" || b.key == "sealed_barrel" || b.key == "bloomery"; }
+  const bool rPress = rOk && in.attackPressed && (te || !target.hit || staffR);
+  if (te && !isFoe(*te)) forUse = true;   // (a villager, a horse, a pet: used as ever)
+  const bool lPress = lOk && in.usePressed && !forUse && !p.sneaking && (held.empty() || staffR);
+  if (!in.attack) castHoldR = false;
+  if (!in.use) castHoldL = false;
+  if (rPress) { if (castWaitR < 0) castWaitR = lOk ? 0.09f : 0.f; castHoldR = true; }
+  if (lPress) { if (castWaitL < 0) castWaitL = rOk ? 0.09f : 0.f; castHoldL = true; }
+  if (castHoldR || castWaitR >= 0) { in.attackPressed = false; in.attack = false; }
+  if (castHoldL || castWaitL >= 0) { in.usePressed = false; in.use = false; }
+  if (castWaitR >= 0 && castWaitL >= 0) { castWaitR = castWaitL = -1; castHand(lv, p, 2); swingArm(); return; }
+  bool cast = false;
+  if (castWaitR >= 0 && (castWaitR -= dt) < 0) { castWaitR = -1; castHand(lv, p, 0); cast = true; }
+  if (castWaitL >= 0 && (castWaitL -= dt) < 0) { castWaitL = -1; castHand(lv, p, 1); cast = true; }
+  if (cast || castWaitR >= 0 || castWaitL >= 0) return;
+  // held: the attack spells keep coming as fast as the hand can cast them
+  MagicState& m = magicState(lv, p);
+  auto repeats = [](const std::string& k) { const SpellDef* S = magicData().spell(k); return !k.empty() && spellRepeats(k) && S && S->castTime <= 0; };
+  const bool hr = castHoldR && rOk && repeats(activeSpell(p)), hl = castHoldL && lOk && repeats(offSpell(p));
+  if (hr && hl) { if (m.castCd <= 0 && m.castCdL <= 0) castHand(lv, p, 2); }
+  else if (hr) { if (m.castCd <= 0) castHand(lv, p, 0); }
+  else if (hl) { if (m.castCdL <= 0) castHand(lv, p, 1); }
 }
 
 float PlayerController::breakTime(BlockId id, const RayHit* hit) {
@@ -812,6 +850,14 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
       bool uba = useBlockAt(*hit, heldIn, defIn);
       if (uba) return;
       json pos = {hit->block.x, hit->block.y, hit->block.z};
+      if (bhas(hit->id, BF::Container) && chestLids && chestHasLid(w, hit->block)) {   // lids left open (sim/chest_work.h): the lid first
+        if (!chestLidOpen(w, hit->block)) {
+          containerEntity(w, hit->block.x, hit->block.y, hit->block.z);
+          setChestLidOpen(w, hit->block, true); swingArm(); sfxAt(lv, "chest", vec3(hit->block) + vec3(0.5f));
+          return;
+        }
+        if (chestLidClicked(w, hit->block, hit->normal, hit->point)) { setChestLidOpen(w, hit->block, false); swingArm(); sfxAt(lv, "chest", vec3(hit->block) + vec3(0.5f)); return; }
+      }
       if (bhas(hit->id, BF::Container)) {
         swingArm(); sfxAt(lv, b.has("remains") ? "bone" : "chest", vec3(hit->block) + vec3(0.5f)); containerEntity(w, hit->block.x, hit->block.y, hit->block.z);
         if (b.has("remains")) fallenOpened(lv, p, w, hit->block.x, hit->block.y, hit->block.z);   // (sim/fallen.h: now and then a trap)
@@ -1052,11 +1098,9 @@ public:
         if (hitIt) {
           if (data.value("golden", false)) { removed = true; lv.fx->particles("burst", pos, 6, {{"tile", "gold_block"}, {"speed", 1.2f}}); return; }   // a golden quiver's arrow breaks where it lands
           if (data.value("breaks", false)) { removed = true; lv.fx->particles("burst", pos, 4, {{"tile", "amethyst_block"}, {"speed", 1.f}}); sfxAt(lv, "glass_break", n); return; }   // BTA's purple arrow shatters
-          if (data.value("fire", false)) {   // BTA's flaming arrow lights what it strikes: TNT, a brazier, a candle, a campfire
-            const BlockDef& hb = reg().block(id);
-            if (hb.key == "tnt") { w.setBlock(bx, by, bz, 0, 0); primeTNT(lv, w, bx, by, bz, 4.f); }
-            else if (hb.has("lightMeta") || hb.key == "brazier" || hb.has("campfire")) { w.setBlock(bx, by, bz, id, (u8)(w.getMeta(bx, by, bz) | 4)); }
-            else if (w.getBlock(bx, by + 1, bz) == 0 && reg().blockId("fire")) w.setBlock(bx, by + 1, bz, reg().blockId("fire"), 0);
+          if (data.value("fire", false) || data.value("flame", false)) {   // a flaming arrow (BTA's, or a Flame bow's) lights what it strikes: TNT, a brazier, a candle, a campfire, else a fire where it sticks
+            Entity* sh = lv.entity(data.value("owner", 0u));
+            igniteAt(lv, realm, n, vel, sh && sh->isPlayer() ? static_cast<Player*>(sh) : nullptr);
           }
           aim(); data["stuck"] = true; data["bx"] = bx; data["by"] = by; data["bz"] = bz; age = 0; vel = vec3(0);
           sfxAt(lv, "arrow_hit", n);

@@ -224,4 +224,21 @@ int chestStoreAll(Level& lv, Player& p, World& w, ivec3 at) {
   return moved;
 }
 
+// ---- lids left open ------------------------------------------------------------------------------------------------------
+bool chestHasLid(World& w, ivec3 at) { return kindAt(w, at) == K_BLOCK && !isCabinet(w, at); }
+bool chestLidOpen(World& w, ivec3 at) { return chestHasLid(w, at) && (w.getMeta(at.x, at.y, at.z) & LID_OPEN); }
+void setChestLidOpen(World& w, ivec3 at, bool open) {
+  ivec3 hs[2]; const int n = chestHalves(w, at, hs);
+  for (int i = 0; i < n; i++) {
+    const u8 m = w.getMeta(hs[i].x, hs[i].y, hs[i].z), want = open ? (u8)(m | LID_OPEN) : (u8)(m & ~LID_OPEN);
+    if (want != m) w.setBlock(hs[i].x, hs[i].y, hs[i].z, w.getBlock(hs[i].x, hs[i].y, hs[i].z), want);
+  }
+}
+bool chestLidClicked(World& w, ivec3 at, ivec3 normal, vec3 point) {
+  const vec3 d = FRONT[w.getMeta(at.x, at.y, at.z) & 3];
+  if (vec3(normal) == -d) return true;   // its back, where the lid stands
+  if (normal.y != 1) return false;
+  return glm::dot(point - (vec3(at) + vec3(0.5f)), d) < -0.22f;   // the back of its top, under the raised lid
+}
+
 } // namespace dq

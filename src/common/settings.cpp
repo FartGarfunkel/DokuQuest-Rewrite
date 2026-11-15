@@ -10,7 +10,7 @@ const char* rendererName(RendererKind k) {
 #define DQ_SETTINGS_FIELDS(X) \
   X(renderDist) X(sens) X(padSens) X(fov) X(scale) X(fancyLeaves) X(plantDetail) X(wavingPlants) X(autoJump) \
   X(volume) X(mobVol) X(music) X(musicFreq) X(colorFilter) X(captions) X(ambience) X(invertY) X(showFps) X(fpBody) X(viewBob) X(brightness) X(colourStyle) X(saturation) X(contrast) X(split) \
-  X(particles) X(guiScale) X(toggleSneak) X(toggleSprint) X(screenShake) X(hurtTilt) X(fpsLimit) X(padLayout) \
+  X(particles) X(guiScale) X(toggleSneak) X(chestLids) X(toggleSprint) X(screenShake) X(hurtTilt) X(fpsLimit) X(padLayout) \
   X(heldSway) X(clouds) X(portalViews) X(farTerrain) X(preset) X(microVoxels) X(microVoxelDist) X(waterQuality) \
   X(shadows) X(weatherParticles) X(weatherDist) X(weatherSurfaceFx) X(groundFog) X(heightFog) X(vsync) X(fullscreen) X(windowW) X(windowH) X(workerThreads) X(resourcePack) X(shaderPack) X(gpu) \
   X(playerName) X(skin) X(autoUpdate) X(pauseOnLostFocus) X(muteOnLostFocus) X(rawMouse) X(autosaveSec) \

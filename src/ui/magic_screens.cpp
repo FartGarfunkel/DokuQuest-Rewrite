@@ -128,10 +128,10 @@ static ImU32 inkOf(const std::string& hex, float a = 1) { vec3 c = hexRGBf(hex);
 // a whole row that takes clicks: returns 1 left, 2 right; hot when the pointer is on it
 static int rowHit(ImVec2 p, float w, float h, bool* hot = nullptr) {
   ImGui::SetCursorScreenPos(p);
-  bool l = ImGui::InvisibleButton("##row", ImVec2(std::max(1.f, w), std::max(1.f, h)), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+  bool l = ImGui::InvisibleButton("##row", ImVec2(std::max(1.f, w), std::max(1.f, h)), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
   if (hot) *hot = ImGui::IsItemHovered();
   if (!l) return 0;
-  return ImGui::IsMouseReleased(ImGuiMouseButton_Right) ? 2 : 1;
+  return ImGui::IsMouseReleased(ImGuiMouseButton_Right) ? 2 : ImGui::IsMouseReleased(ImGuiMouseButton_Middle) ? 3 : 1;
 }
 // a line of the record: name on the left, value on the right
 static void recordRow(ui::Book& b, ui::BookRows& r, const std::string& k, const std::string& v) {
@@ -159,7 +159,7 @@ public:
     auto known = knownSpells(*p);
     auto knows = [&](const std::string& k) { return std::find(known.begin(), known.end(), k) != known.end(); };
     const int lvl = skillLv(*p, "magic");
-    const std::string active = activeSpell(*p), left = offSpell(*p);
+    const std::string active = activeSpell(*p), left = offSpell(*p), quick = quickSpell(*p);
     // a bookmark per school (its first tome on the ribbon)
     std::vector<ui::BookTab> tabs; std::vector<std::vector<std::string>> lists; std::vector<const std::array<std::string, 3>*> sch;
     flat.clear();
@@ -184,6 +184,7 @@ public:
       cur = std::clamp(cur, 0, n - 1);
       if (in.pressed(Act::MenuOk) && knows(flat[cur])) pickSpell(*lv, *p, flat[cur]);
       if (in.pressed(Act::MenuX) && knows(flat[cur])) setOffSpell(*lv, *p, flat[cur]);
+      if (in.pressed(Act::MenuY) && knows(flat[cur])) setQuickSpell(*lv, *p, flat[cur]);
     }
     const float z = ui::Z(), lh = ui::textSize(ui::F_BODY, "Ag").y + 2 * z, sh = ui::textSize(ui::F_SMALL, "Ag").y + 2 * z;
     std::vector<ui::BookRows> secs;
@@ -273,21 +274,23 @@ public:
         std::to_string((int)std::floor(m.mana < 0 ? manaMax(*p) : m.mana)) + " / " + std::to_string((int)manaMax(*p)) + " mana", ui::ink::muted, ui::F_SMALL);
       for (auto& k : lists[s]) {
         const SpellDef& S = md.spells.at(k);
-        const bool kn = knows(k), R = k == active, Lh = kn && k == left;
+        const bool kn = knows(k), R = k == active, Lh = kn && k == left, Q = kn && k == quick && p->stats.contains("spellQuick");
         const std::string name = kn ? spellTitle(*p, k) : S.name;
         const std::string note = kn ? S.desc : std::string(lvl >= S.lvl ? "Find or craft its tome to learn it. " : "Needs Magic " + std::to_string(S.lvl) + ": cast spells to grow your Magic. ") + S.desc;
         auto lines = ui::Book::wrap(ui::F_SMALL, note, book.pageW() - 26 * z);
         const int me = idx++;
         ui::BookRow row; row.sel = me; row.h = lh + lines.size() * sh + 7 * z;
-        row.draw = [this, a = &a, lv, p, k, kn, R, Lh, name, lines, lh, sh, z, me, col = S.col, lvlNeed = S.lvl, mana = S.mana](ImDrawList* dl, ImVec2 q, float w) {
+        row.draw = [this, a = &a, lv, p, k, kn, R, Lh, Q, name, lines, lh, sh, z, me, col = S.col, lvlNeed = S.lvl, mana = S.mana](ImDrawList* dl, ImVec2 q, float w) {
           bool hot = false;
           const int c = rowHit(q, w, lh + lines.size() * sh + 4 * z, &hot);
           if (c == 1) cur = me;
           if (kn && c == 1) pickSpell(*lv, *p, k);
           if (kn && c == 2) { cur = me; setOffSpell(*lv, *p, k); }
+          if (kn && c == 3) { cur = me; setQuickSpell(*lv, *p, k); }
           if (me == cur || hot) dl->AddRectFilled(ImVec2(q.x - 4 * z, q.y - 1 * z), ImVec2(q.x + w + 2 * z, q.y + lh + lines.size() * sh + 3 * z), me == cur ? ui::ink::hilite : ui::col::rgb(0xc8a050, 45), 3 * z);
           // which hand holds it: R, L, or both
-          const char* hand = R && Lh ? "RL" : R ? "R" : Lh ? "L" : "";
+          const std::string handS = std::string(R ? "R" : "") + (Lh ? "L" : "") + (Q ? "Q" : "");
+          const char* hand = handS.c_str();
           if (*hand) { ImVec2 hs = ui::textSize(ui::F_SMALL, hand); dl->AddRectFilled(q, ImVec2(q.x + hs.x + 6 * z, q.y + lh - 2 * z), ui::ink::head, 2 * z); ui::text(dl, ui::F_SMALL, ImVec2(q.x + 3 * z, q.y + (lh - 2 * z - hs.y) * 0.5f), ui::col::rgb(0xf3ead6), hand); }
           const float nx = q.x + 26 * z;
           ui::text(dl, ui::F_BODY, ImVec2(nx, q.y), kn ? inkOf(col) : ui::ink::muted, name.c_str());
@@ -307,8 +310,8 @@ public:
     book.draw(secs);
     // turning the pages with the arrows: the choice moves onto the open pages
     if (book.turned && !book.shownSel.empty() && std::find(book.shownSel.begin(), book.shownSel.end(), cur) == book.shownSel.end()) cur = book.shownSel.front();
-    book.hint(a.input.usingPad() ? "\xE2\x86\x91 \xE2\x86\x93 choose \xC2\xB7 A: right hand \xC2\xB7 X: left hand \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 turn the pages \xC2\xB7 B: close"
-                                 : "Click: right hand \xC2\xB7 right-click: left hand \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 or the wheel: pages \xC2\xB7 B / Esc: close \xC2\xB7 Z / N cast (a staff makes it stronger)");
+    book.hint(a.input.usingPad() ? "\xE2\x86\x91 \xE2\x86\x93 choose \xC2\xB7 A: right hand (RT) \xC2\xB7 X: left hand (LT) \xC2\xB7 Y: quick spell (hold B, press RB) \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 pages \xC2\xB7 B: close"
+                                 : "Click: right hand (left click casts) \xC2\xB7 right-click: left hand (right click casts) \xC2\xB7 middle-click: quick spell (Z) \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 or the wheel: pages \xC2\xB7 Esc: close");
     book.end();
   }
   std::string lv0;

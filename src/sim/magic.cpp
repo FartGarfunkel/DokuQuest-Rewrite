@@ -2,6 +2,7 @@
 // uses, creature statuses, summons' time running out, brewing stands; the MagicSystem that runs them.
 // (game/magic.js, arcana.js, spellcraft.js, paths.js schools, brewing.js, monsters.js venom, stable.js spirits)
 #include "sim/magic.h"
+#include "sim/blockfx.h"
 #include "sim/spell_items.h"
 #include "sim/skilltree.h"
 #include "sim/magic_fx.h"
@@ -162,7 +163,7 @@ bool learnTome(Level& lv, Player& p, ItemStack& tome) {
   sp.push_back(k);
   p.stats["spell"] = (int)sp.size() - 1;
   if (!p.creative() && --tome.n <= 0) tome.clear();
-  lv.fx->message(p.id, "You have learned " + S->name + "! Press Z to cast it (a staff makes it stronger)", "epic");
+  lv.fx->message(p.id, "You have learned " + S->name + "! It is in your right hand: attack with that hand empty to cast it (a staff makes it stronger)", "epic");
   lv.fx->soundUi(p.id, "levelup");
   skillGain(lv, p, "magic", 40.0 * S->lvl);
   sfx::spiral(lv, p.pos, S->fx, 70, json{{"r", 0.9}, {"h", 2.6}, {"turns", 4}, {"life", 1.3}});
@@ -318,6 +319,12 @@ bool MagicSystem::onNetAction(const json& a) {
       for (auto& [k, v] : args["f"].items()) if (v.is_number() && (k == "rootT" || k == "slowT" || k == "burnT" || k == "poisonT")) setMobStatus(lv, *e, k.c_str(), std::min(30.f, v.get<float>()));
     return false;
   }
+  if (n == "magicIgnite" && args.is_object() && args.contains("at") && args["at"].is_array() && args["at"].size() == 3 && args.contains("d") && args["d"].is_array() && args["d"].size() == 3) {
+    Player* p = playerNamed(lv, a[0].is_string() ? a[0].get<std::string>() : "");
+    const vec3 at(args["at"][0].get<float>(), args["at"][1].get<float>(), args["at"][2].get<float>()), d(args["d"][0].get<float>(), args["d"][1].get<float>(), args["d"][2].get<float>());
+    if (p && !p->dead && glm::distance(p->pos, at) < 64) igniteAt(lv, p->realm, at, d);   // (near the one who asked)
+    return false;
+  }
   if (n == "magicFamiliar" && args.is_object()) {
     if (Player* p = playerNamed(lv, a[0].is_string() ? a[0].get<std::string>() : "")) spawnFamiliar(lv, *p, clampv(args.value("power", 1.f), 0.5f, 4.f));
     return false;
@@ -392,7 +399,7 @@ void MagicSystem::tickPlayer(Player& p, double dt) {
     bool any = !sp.empty();
     for (const char* k : {"firebolt", "homeport"})
       if (magicData().spell(k) && std::find(sp.begin(), sp.end(), json(k)) == sp.end()) sp.push_back(k);
-    if (!any) { p.stats["spell"] = 0; lv.fx->message(p.id, "You know Firebolt: press Z to cast it (G changes spell, B opens your Spellbook)", "epic"); }
+    if (!any) { p.stats["spell"] = 0; lv.fx->message(p.id, "You know Firebolt: with your right hand empty, attack (left click, RT) casts it. B opens your Spellbook to ready spells in each hand", "epic"); }
   }
   if (m.castCd > 0) m.castCd -= (float)dt;
   if (m.castCdL > 0) m.castCdL -= (float)dt;

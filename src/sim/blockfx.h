@@ -10,6 +10,11 @@ namespace dq {
 void checkFall(Level& lv, World& w, int x, int y, int z);
 void checkHarden(Level& lv, World& w, int x, int y, int z);
 void primeTNT(Level& lv, World& w, int x, int y, int z, float fuse);
+// Fire striking the world at `at` (a firebolt, a fireball, lightning, a flaming arrow), travelling along dir: TNT there
+// is lit, a campfire / candle / brazier lights, else a fire takes on the open side of what it struck (on its top, or
+// against its side). Only where the world is simulated, never in water. false: nothing caught
+class Player;
+bool igniteAt(Level& lv, int realm, vec3 at, vec3 dir, Player* by = nullptr);   // (a guest's: asked of the host, by)
 // Blow a round hole, knock everyone back, set off nearby TNT. noBlocks: hurt only (mobGriefing off).
 void explode(Level& lv, int realm, vec3 at, float power, bool noBlocks = false, u32 source = 0);
 // Everyone in bed: skip to morning (called every tick by the gameplay system).
