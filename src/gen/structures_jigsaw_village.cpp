@@ -148,9 +148,15 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
   auto J = std::make_shared<JigsawTown>();
   J->blend = t.genVersion() >= 17;
   J->millOut = t.genVersion() >= 22;
-  J->ours.reserve(3);
+  J->ours.reserve(4);   // (room for all of them: oursLeft points into it)
   J->ours.push_back(ourPiece("hall"));
-  // (no windmill of ours here: each style's pieces have their own, a tower with sails, shaft and millstone)
+  // a windmill: most styles' pieces have their own, a tower with sails, shaft and millstone; (terrain 22) a style without one
+  // (the Towns and Towers styles, the Romanian, Japanese, Swiss...) has ours, so every village has its miller
+  if (t.genVersion() >= 22) {
+    bool own = false;
+    for (const auto& [name, list] : pack.pools) if (name.rfind(sk + "/", 0) == 0) for (const VPPiece& q : list) if (q.name.find("windmill") != std::string::npos) { own = true; break; }
+    if (!own) J->ours.push_back(ourPiece("windmill"));
+  }
   J->ours.push_back(ourPiece("mine"));   // the miner's: a drift down to a working face (structures_townbld.cpp bMine)
   std::vector<const VPPiece*> oursLeft; for (auto& p : J->ours) oursLeft.push_back(&p);
   // (terrain 21: Towns and Towers' villages a street further out, a market round their square: they were small and plain)
@@ -237,8 +243,20 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
           // the trades it hasn't got come first (most of the time: a plain house now and then between them)
           if (rnd() < 0.7) std::stable_partition(cands.begin(), cands.end(), [&](const VPPiece* p) { const std::string t = tradeOf(p); return !t.empty() && !J->trades.count(t) && t.rfind("stall", 0) != 0; });
         }
+        // (terrain 22) no mill yet: the style's own windmill tried first at any plot two streets or more out (it was kept to the
+        // village's edge, where its big plot seldom found room, and most villages went without)
+        if (houses && t.genVersion() >= 22 && Q.depth >= 2 && !J->trades.count("mill/miller"))
+          if (const auto* pl = pack.pool(A.pool))
+            for (const VPPiece& pc : *pl) if (pc.name.find("windmill") != std::string::npos) {
+              cands.erase(std::remove(cands.begin(), cands.end(), &pc), cands.end()); cands.insert(cands.begin(), &pc);
+            }
         if (houses) {
-          if (!oursLeft.empty() && Q.depth >= 1) cands.insert(cands.begin(), oursLeft.front());   // our hall first, then the windmill
+          if (!oursLeft.empty() && Q.depth >= 1) {   // our hall first, then the windmill
+            // (terrain 22: each of ours still to place, in turn; only the first had been tried, and a hall too big for any of a
+            // style's lots (Towns and Towers' Tudor) had kept the windmill and the mine behind it out of the village)
+            if (t.genVersion() >= 22) cands.insert(cands.begin(), oursLeft.begin(), oursLeft.end());
+            else cands.insert(cands.begin(), oursLeft.front());
+          }
           else if (rnd() < (v.tier == TIER_CITY ? 0.0 : v.tier == TIER_TOWN ? 0.05 : 0.12)) continue;   // the pools' "empty": a gap between the houses now and then (towns and cities fill up)
         }
       }
@@ -689,6 +707,11 @@ void jigsawTownBounds(const JigsawTown& J, int& x0, int& z0, int& x1, int& z1) {
   if (J.hasMine) { x0 = std::min(x0, J.mineBox[0]); z0 = std::min(z0, J.mineBox[1]); x1 = std::max(x1, J.mineBox[2]); z1 = std::max(z1, J.mineBox[3]); }
 }
 const std::vector<std::array<int, 3>>& jigsawTownEnds(const JigsawTown& J) { return J.ends; }
+void jigsawTownBoxes(const JigsawTown& J, const std::array<int, 4>& n, std::vector<std::array<int, 4>>& out) {
+  auto add = [&](int x0, int z0, int x1, int z1) { if (x1 >= n[0] && x0 <= n[2] && z1 >= n[1] && z0 <= n[3]) out.push_back({x0, z0, x1, z1}); };
+  for (auto& q : J.pcs) add(q.x0, q.z0, q.x1(), q.z1());
+  if (J.board) add(J.bx - 2, J.bz - 2, J.bx + 2, J.bz + 2);
+}
 
 // Towns and Towers' styles (tools/port/tnt_village_import.py): their streets are plots with the houses' lots in them, and
 // their villages have no wall

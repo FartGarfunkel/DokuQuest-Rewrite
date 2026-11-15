@@ -90,6 +90,10 @@ bool jigsawTownFlatten(const JigsawTown& J, int x, int z, double& weight, int& t
 bool jigsawTownTreeOff(const JigsawTown& J, int x, int z);
 void jigsawTownBounds(const JigsawTown& J, int& x0, int& z0, int& x1, int& z1);
 const std::vector<std::array<int, 3>>& jigsawTownEnds(const JigsawTown& J);
+// the boxes the village's pieces stand in (streets, houses, farms, the board), x0 z0 x1 z1, those touching the given box
+void jigsawTownBoxes(const JigsawTown& J, const std::array<int, 4>& near, std::vector<std::array<int, 4>>& out);
+// a village's pieces' boxes near a box (false: a classic village, which has none to give: its footprint stands for them)
+bool townPieceBoxes(const StructurePlan& S, const std::array<int, 4>& near, std::vector<std::array<int, 4>>& out);
 
 // villages.js vRot / vWorld
 inline std::pair<int, int> vRot(int r, int x, int z) { switch (r & 3) { case 0: return {x, z}; case 1: return {-z, x}; case 2: return {-x, -z}; default: return {z, -x}; } }

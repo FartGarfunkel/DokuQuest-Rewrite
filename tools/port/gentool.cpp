@@ -623,6 +623,8 @@ static int plans(const std::string& seedText, int x0, int z0, int w) {
         printf("  style %s tier %s r %d: %d buildings (%d kinds, %d with a trade), %d stalls", str("style").c_str(), str("tier").c_str(), D.contains("r") && D["r"].is_number() ? D["r"].get<int>() : 0,
                D.contains("blds") ? (int)D["blds"].size() : 0, (int)kinds.size(), jobs, D.contains("stalls") ? (int)D["stalls"].size() : 0);
         printf("%s", kinds.count("windmill") ? " WINDMILL" : " no-mill");
+        if (std::getenv("DQ_RECT")) printf(" rect %d,%d..%d,%d", S->x0, S->z0, S->x1, S->z1);
+        if (std::getenv("DQ_KINDS")) { printf(" ["); for (auto& k : kinds) printf("%s ", k.c_str()); printf("]"); }
       }
       printf("\n"); } }
   return 0;
@@ -657,6 +659,12 @@ static int millCheck(const std::string& seedText, int cx, int cz, int r) {   // 
     }
     printf("windmill %d %d %d meta %d: %s, %d solid in the big sails' reach\n", x, y, z, m, rule ? "BLOCKED" : "turns", big);
   }
+  return 0;
+}
+static int surf(const std::string& seedText, int x, int z) {   // the surface the structures think is there against the top block
+  LandSrc L(seedText); auto* og = dynamic_cast<OverworldGen*>(L.g);
+  int top = 0; for (int y = 250; y > 1; y--) { const BlockId b = L.get(x, y, z); if (b && reg().tSolid[b]) { top = y; break; } }
+  printf("%d %d: finalSurfaceY %d, top solid %d (%s)\n", x, z, og->structures.terrain().finalSurfaceY(x, z), top, key(L.get(x, top, z)).c_str());
   return 0;
 }
 static int torches(const std::string& seedText, int x0, int z0, int w) {
@@ -748,6 +756,7 @@ int main(int argc, char** argv) {
   if (m == "near" && argc >= 7) return nearKey(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), argv[6]);
   if (m == "planez" && argc >= 7) return planeZ(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]));
   if (m == "millcheck" && argc >= 6) return millCheck(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
+  if (m == "surf" && argc >= 5) return surf(argv[2], atoi(argv[3]), atoi(argv[4]));
   if (m == "torches" && argc >= 6) return torches(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "relief" && argc >= 8) return relief(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argv[7]);
   if (m == "xsect" && argc >= 10) return xsect(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]), atoi(argv[8]), argv[9]);

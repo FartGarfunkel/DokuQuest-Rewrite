@@ -926,6 +926,13 @@ std::vector<std::array<int, 3>> townStreetEnds(const StructurePlan& S) {
   if (out.empty()) out.push_back({v.x, v.z, 0});
   return out;
 }
+bool townPieceBoxes(const StructurePlan& S, const std::array<int, 4>& near, std::vector<std::array<int, 4>>& out) {
+  if (!S.ext) return false;
+  const auto& jg = extOf<TownExt>(S).jig;
+  if (!jg || extOf<TownExt>(S).v.hasWall) return false;   // (a walled town: its wall rings the footprint, the road meets its gate)
+  jigsawTownBoxes(*jg, near, out);
+  return true;
+}
 int townStyleOf(const StructurePlan& S) { return S.ext ? extOf<TownExt>(S).v.style : VS_PLAINS; }
 
 void registerStructureVillages() {

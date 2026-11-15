@@ -12,7 +12,13 @@ namespace dq {
 
 namespace {
 constexpr int VREG = 352, RREG = VREG * 3, STEP = 12;   // structures_villages.cpp's village region; a road plan's; route step
-struct RoadSeg { std::vector<std::array<int, 2>> pts; std::vector<float> at; int style = 0, x0 = 0, z0 = 0, x1 = 0, z1 = 0; std::array<int, 4> skipA{}, skipB{}; std::string from, to; };
+struct RoadSeg { std::vector<std::array<int, 2>> pts; std::vector<float> at; int style = 0, x0 = 0, z0 = 0, x1 = 0, z1 = 0; std::array<int, 4> skipA{}, skipB{}; std::string from, to;
+  // (terrain 22) the villages' own pieces near the road: it's laid right up to the street it leaves from, not stopped at the
+  // village's whole footprint (a city's ran out a long way past its streets, and left the road short of them)
+  bool pieces = false; std::vector<std::array<int, 4>> skipBoxes;
+  bool trueGround = false;   // (terrain 22) laid on the ground that's there, not the height map's guess at it (a block out here
+                             // and there since the land's been shaped in 3D: the road was left out wherever the guess was high)
+};
 struct RoadExt { std::vector<RoadSeg> segs; };
 
 int villageType() { static const int k = structureTypeIndex("village"); return k; }
@@ -106,6 +112,12 @@ bool roadPlace(const StructureIndex& idx, const TerrainQuery& t, int Rx, int Rz,
     if (!ok) return;
     g.style = townStyleOf(*A);
     g.skipA = {A->x0, A->z0, A->x1, A->z1}; g.skipB = {B->x0, B->z0, B->x1, B->z1}; g.from = A->id; g.to = B->id;
+    g.trueGround = t.genVersion() >= 22;
+    if (t.genVersion() >= 22) {
+      const std::array<int, 4> near{g.x0 - 3, g.z0 - 3, g.x1 + 3, g.z1 + 3};
+      std::vector<std::array<int, 4>> bx;
+      if (townPieceBoxes(*A, near, bx) && townPieceBoxes(*B, near, bx)) { g.pieces = true; g.skipBoxes = std::move(bx); }
+    }
     e->segs.push_back(std::move(g));
   };
   int y = 0;
@@ -142,11 +154,18 @@ void roadBuild(ChunkWriter& w, const StructurePlan& S) {
     const VStyle& st = vstyle(g.style);
     const float total = g.at.back();
     for (int z = w.bz; z < w.bz + 16; z++) for (int x = w.bx; x < w.bx + 16; x++) {
-      if (inRect(g.skipA, x, z) || inRect(g.skipB, x, z)) continue;
+      if (g.pieces) { bool in = false; for (auto& r : g.skipBoxes) if (inRect(r, x, z)) { in = true; break; } if (in) continue; }
+      else if (inRect(g.skipA, x, z) || inRect(g.skipB, x, z)) continue;
       double along = 0, side = 0;
       const double d = nearest(g, x + 0.5, z + 0.5, &along, &side);
       if (d > 2.6) continue;
-      const int gy = w.ground(x, z);
+      int gy = w.ground(x, z);
+      if (g.trueGround) {   // the solid ground nearest the guess (not a plant on it, nor a leaf)
+        for (int y = std::min(250, gy + 4); y >= std::max(2, gy - 6); y--) {
+          const BlockId b = w.get(x, y, z);
+          if (b != 0 && b != 0xFFFF && reg().tSolid[b] && !reg().tLeaves[b] && !reg().tLiquid[b]) { gy = y; break; }
+        }
+      }
       if (gy < 2 || gy > 250) continue;
       int wy = gy + 1; bool bridge = false;
       for (BlockId b = w.get(x, wy, z); wy < 252 && (b == WATER || b == ICE); b = w.get(x, ++wy, z)) bridge = true;

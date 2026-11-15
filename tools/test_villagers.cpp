@@ -378,8 +378,17 @@ int main(int argc, char** argv) {
     VillageRef a = villageById(*L, road.from), b = villageById(*L, road.to);
     check(a && b && a != b, "each from one village (" + (a ? a->name : std::string("?")) + ") to another (" + (b ? b->name : std::string("?")) + ")");
     if (road.pts.size() >= 6 && a && b) {
-      // stand on the road halfway, away from both villages, by day: before long a merchant comes along it
-      const auto mid = road.pts[road.pts.size() / 2];
+      // stand on the road halfway, away from both villages, by day: before long a merchant comes along it (the point
+      // farthest into the open from either village, a merchant's not met within twenty blocks of one: the middle point had
+      // lain by a big city's edge)
+      auto mid = road.pts[road.pts.size() / 2];
+      { float best = -1;
+        for (size_t i = road.pts.size() / 4; i < road.pts.size() * 3 / 4; i++) {
+          float d = 1e9f;
+          for (int dz = -40; dz <= 40 && d > 0; dz += 4) for (int dx = -40; dx <= 40; dx += 4)
+            if (villageAtPos(*L, REALM_MAIN, vec3(road.pts[i][0] + dx, base + 64, road.pts[i][1] + dz), 20)) d = std::min(d, std::hypot((float)dx, (float)dz));
+          if (d > best) { best = d; mid = road.pts[i]; }
+        } }
       P->pos = vec3(mid[0] + 0.5f, base + 120, mid[1] + 0.5f);
       double t1 = nowSeconds(); int y = -1;
       while (nowSeconds() - t1 < 60) {
