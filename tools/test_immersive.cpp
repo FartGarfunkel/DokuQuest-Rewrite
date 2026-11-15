@@ -14,6 +14,7 @@
 #include "sim/crafting.h"
 #include "sim/worldsys.h"
 #include "sim/tactile.h"
+#include "sim/chest_work.h"
 #include "sim/stations.h"
 #include "common/fs.h"
 #include "common/threadpool.h"
@@ -269,6 +270,31 @@ int main(int argc, char** argv) {
     gs = GrindSession(); t += 5;
     for (int i = 0; i < 50; i++) { tactileGrind(*im.lv, *im.P, w, at, book, t, gs); t += 0.22; }
     check(book.id == "book", "an enchanted book held there ten seconds comes away plain");
+  }
+
+  printf("[Tactile's chest: its lid's buttons, standing up out of the block]\n");
+  {
+    World& w = im.lv->world();
+    const ivec3 at(4, im.Y + 1, 12);
+    w.setBlock(at.x, at.y, at.z, reg().blockId("chest"), 3);   // (facing west)
+    json* e = containerEntity(w, at.x, at.y, at.z);
+    for (int i = 0; i < 20; i++) (*e)["items"][i] = ItemStack(i < 15 ? "apple" : "bread", 1).toJson();
+    setChestLidOpen(w, at, true);
+    const int f = tactileFacing(w, at);
+    auto aimAt = [&](vec3 north) {   // (from in front of it, at eye height, toward a point given in its own north frame)
+      const vec3 eye = vec3(at) + tactileFromNorth(f, vec3(0.5f, 1.62f, -0.5f)), tgt = vec3(at) + tactileFromNorth(f, north);
+      return std::make_pair(eye, glm::normalize(tgt - eye));
+    };
+    auto [eye, dir] = aimAt(vec3(12.5f / 16, 17.5f / 16, 12.f / 16));
+    check(tactileChestAim(w, at, eye, dir).what == TactileChestAim::Swap, "aimed at the upper button: it's the page button");
+    check(tactileChestLidRay(w, at, eye, dir) > 0, "it stands out of the block and can be aimed at");
+    ItemStack none;
+    tactileChestUse(*im.lv, *im.P, w, at, eye, dir, none, false, false);
+    check(w.blockEntity(at.x, at.y, at.z)->value("page", 0) == 1, "pressed, the other page is out");
+    auto [e2, d2] = aimAt(vec3(12.5f / 16, 13.3f / 16, 12.f / 16));
+    check(tactileChestAim(w, at, e2, d2).what == TactileChestAim::Sort, "the lower button sorts");
+    auto [e3, d3] = aimAt(vec3(4.f / 16, 14.f / 16, 13.f / 16));
+    check(tactileChestAim(w, at, e3, d3).what == TactileChestAim::Lid, "the rest of the lid shuts it");
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);

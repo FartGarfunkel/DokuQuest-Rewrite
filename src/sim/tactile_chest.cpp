@@ -89,8 +89,8 @@ TactileChestAim tactileChestAim(World& w, ivec3 at, vec3 eye, vec3 dir) {
   if (!chestLidOpen(w, at)) { r.what = TactileChestAim::Shut; return r; }
   float best = 1e9f;
   auto test = [&](const float b[6], int what) { const float t = rayBox(o, d, b); if (t >= 0 && t < best) { best = t; r.what = what; } };
+  test(BTN_SORT, TactileChestAim::Sort); test(BTN_SWAP, TactileChestAim::Swap);   // (first: their faces are flush with the lid's, a tie goes to them)
   test(LID_BOX, TactileChestAim::Lid); test(LID_POKE, TactileChestAim::Lid);
-  test(BTN_SORT, TactileChestAim::Sort); test(BTN_SWAP, TactileChestAim::Swap);
   test(GRID_SLAB, TactileChestAim::Tray);
   if (r.what == TactileChestAim::Tray) {
     const vec3 p = o + d * best;
@@ -99,6 +99,15 @@ TactileChestAim tactileChestAim(World& w, ivec3 at, vec3 eye, vec3 dir) {
   }
   if (r.what == TactileChestAim::None) r.what = TactileChestAim::Lid;   // (the open chest's rim: shuts it)
   return r;
+}
+
+float tactileChestLidRay(World& w, ivec3 at, vec3 eye, vec3 dir) {
+  if (!tactileChest(w, at) || !chestLidOpen(w, at)) return -1;
+  const int f = tactileFacing(w, at);
+  const vec3 o = tactileNorthLocal(f, eye - vec3(at)), d = tactileNorthLocal(f, eye + dir - vec3(at)) - o;
+  float best = -1;
+  for (const float* b : {LID_BOX, LID_POKE, BTN_SORT, BTN_SWAP}) { const float t = rayBox(o, d, b); if (t >= 0 && (best < 0 || t < best)) best = t; }
+  return best;
 }
 
 bool tactileChestUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, ItemStack& held, bool all, bool sneak) {

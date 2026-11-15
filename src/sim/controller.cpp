@@ -6,6 +6,7 @@
 #include "sim/controller.h"
 #include "sim/station_work.h"
 #include "sim/tactile.h"
+#include <climits>
 #include "sim/anvil_work.h"
 #include "sim/magic.h"
 #include "sim/chest_work.h"
@@ -360,6 +361,26 @@ void PlayerController::updateTarget() {
     if (l > 0.3) d = vec3(P / l);
   }
   RayHit hit = raycastBlocks(w, o, d, REACH);
+  // an open Tactile chest's lid and buttons stand up out of its block: aimed at, they're the chest
+  if (tactileStations) {
+    const double lim = hit.hit ? hit.dist : REACH;
+    ivec3 last(INT_MIN);
+    for (double s = 0; s < lim; s += 0.1) {
+      const ivec3 c = ivec3(glm::floor(o + glm::dvec3(d) * s));
+      if (c == last) continue;
+      last = c;
+      for (int dy = 0; dy <= 1; dy++) {
+        const ivec3 q = c - ivec3(0, dy, 0);
+        const float t = tactileChestLidRay(w, q, vec3(o), d);
+        if (t >= 0 && t < (float)lim && (!hit.hit || hit.block != q)) {
+          hit.hit = true; hit.block = q; hit.id = w.getBlock(q.x, q.y, q.z); hit.dist = t; hit.normal = ivec3(0, 1, 0);
+          hit.point = vec3(o) + d * t;
+          s = lim;
+          break;
+        }
+      }
+    }
+  }
   double ed = hit.hit ? hit.dist : REACH;
   u32 ent = 0;
   for (auto& e : lv.entities()) {

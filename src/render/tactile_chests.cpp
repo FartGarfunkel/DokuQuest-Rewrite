@@ -58,7 +58,7 @@ public:
       for (int k = 0; k < 27 && k < (int)it.size(); k++) c.items[k] = ItemStack::fromJson(it[k]);
       c.press[0] = e.value("press0", 0); c.press[1] = e.value("press1", 0);
       c.L = tactileLight(w, at);
-      if (c.open && s.target.hit && s.target.block == at) { const TactileChestAim a = tactileChestAim(w, at, eye, dir); if (a.what == TactileChestAim::Tray) c.hover = a.slot; }
+      if (c.open && s.target.hit && s.target.block == at) { const TactileChestAim a = tactileChestAim(w, at, eye, dir); if (a.what == TactileChestAim::Tray && c.page * 15 + a.slot < 27) c.hover = a.slot; }
       list.push_back(c);
     });
     // chests with no record yet: their lid still drawn (shut)
@@ -116,7 +116,7 @@ public:
         cd.picture(mapPaperTexture(), p.m, vec4(0, 0, 1, 1), vec4(1), light, true);
       }
       if (lid > 0.1f) { part(sortM, pressOf(c.at, 0, c.press[0], f.time)); part(swapM, pressOf(c.at, 1, c.press[1], f.time)); }
-      if (lid > 0.1f && c.hover >= 0) {   // (renderAffiche: the item's name and lines written inside the lid)
+      if (lid > 0.1f && c.hover >= 0 && c.page * 15 + c.hover < 27) {   // (our chests hold 27: the second page has 12 spots)   // (renderAffiche: the item's name and lines written inside the lid)
         const ItemStack& it = c.items[c.page * 15 + c.hover];
         if (!it.empty()) affiche(cd, f, c, lid, it);
       }
