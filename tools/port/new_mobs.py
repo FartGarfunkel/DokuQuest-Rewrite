@@ -58,10 +58,10 @@ MOBS = {
 # in their lands (gen/nether_painted.h), not by spawnIn
 MOBS.update({
     'firefly': dict(base='dragonfly', scale=0.8, coat=((236, 220, 90), (120, 96, 30)),
-                    mob=dict(label='a firefly', hp=1, glows=12, ambient=True, betterEnd=False, paintedNether=True, drops=[['glowstone_dust', 0, 1, 0.5]])),
+                    mob=dict(label='a firefly', hp=1, glows=12, ambient=True, endLands=False, paintedNether=True, drops=[['glowstone_dust', 0, 1, 0.5]])),
     'hydrogen_jellyfish': dict(base='cubozoa', scale=1.0, coat=((214, 120, 200), (110, 50, 120)),
                                mob=dict(label='a hydrogen jellyfish', ai='flyer', hp=1, flyer=True, floaty=True, swims=False, water=False, glows=10,
-                                        retaliates=True, damage=3, speed=0.5, fly=0.6, deathBlast=3.0, fireImmune=True, betterEnd=False, paintedNether=True, drops=[])),
+                                        retaliates=True, damage=3, speed=0.5, fly=0.6, deathBlast=3.0, fireImmune=True, endLands=False, paintedNether=True, drops=[])),
     'naga': dict(base='scorched_skeleton', scale=1.05, coat=((96, 120, 70), (40, 52, 30)),
                  mob=dict(label='a naga', hp=10, damage=1, onHit={'wither': 10}, fireImmune=True, paintedNether=True,
                           drops=[['coal', 0, 1, 0.5], ['bone', 0, 2, 1]]),
