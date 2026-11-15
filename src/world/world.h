@@ -74,6 +74,8 @@ public:
   void stream(const std::vector<StreamAnchor>& anchors, double budgetMs);
   void requestChunk(int dim, int cx, int cz, float priority);
   void unloadAll(bool save = true);
+  // forget a chunk (unloaded unsaved, its stored copy dropped): it's made again from the seed when next needed (/regen)
+  void regenerateChunk(int dim, int cx, int cz);
   int pendingGeneration() const { return (int)inFlight.size(); }
   bool hasNeighbours(const Chunk& c) const;
 

@@ -229,6 +229,11 @@ void World::tryPopulate(Chunk& c) {
   c.extra["populated"] = true;
 }
 
+void World::regenerateChunk(int dim, int cx, int cz) {
+  const ChunkKey k{dim, cx, cz};
+  unloadChunk(k, false);
+  if (store) store->store(k, {});   // (written with the next save)
+}
 void World::unloadChunk(const ChunkKey& k, bool save) {
   auto it = map.find(k);
   if (it == map.end()) return;
