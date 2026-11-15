@@ -1,6 +1,7 @@
 // sim/villagers.cpp — the villages and the people in them (game/villagers.js: who they are, standing with a village,
 // bringing a village to life near players and letting it go when everyone has left), the VillagerSystem that runs
 // it all, its events (itemUse for the quest board, gates and levers), the creature hooks and the chat commands.
+#include "sim/combat_rpg.h"
 #include "sim/villagers_internal.h"
 #include "sim/skills.h"
 #include "sim/rpg.h"
@@ -507,7 +508,7 @@ static void hookDied(Level& lv, Creature& c, const DamageSrc& src) {
     for (Player* p : levelPlayers(lv)) if (std::hypot(p->pos.x - c.pos.x, p->pos.z - c.pos.z) < 40)
       toast(lv, *p, N->value("n", std::string("A villager")) + (c.type == "village_guard" ? " the guard" : "") + " has died", "warn");
   }
-  if (c.data.contains("elite")) eliteSlain(lv, c);
+  if (!mobWantedId(c.data).empty()) eliteSlain(lv, c);   // (a Wanted elite: not the one-in-fourteen elites, whose "elite" is true)
   if (c.data.contains("raid")) { json& K = lv.info.data["raidKills"]; if (!K.is_object()) K = json::object(); std::string r = c.data.value("raid", ""); K[r] = K.value(r, 0) + 1; }
   // monsters slain: bounties (and the party's), the village's thanks for one killed near it, the Warlord's heal
   Player* a = attackerPlayer(lv, src);

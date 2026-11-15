@@ -2,6 +2,7 @@
 // evening bell, opened for you at night by the watch, levers), raids and named foes (livingworld.js), the missing
 // villager and a Hero's house (hearth.js), the welcome, the rift's word as you walk in (riftlore.js), and the
 // moment a path opens to you (paths.js).
+#include "sim/combat_rpg.h"
 #include "sim/villagers_internal.h"
 #include "sim/places.h"
 #include "sim/skills.h"
@@ -228,7 +229,7 @@ static void eliteSpawn(Level& lv, const json& q, Player* who) {
   std::string id = q.value("id", ""), type = q.value("etype", "");
   const CreatureType* T0 = creatureType(type);
   if (E.value(id, std::string()) == "dead" || !T0) return;
-  for (auto& up : lv.entities()) if (auto* c = dynamic_cast<Creature*>(up.get())) if (c->alive() && !c->removed && c->data.value("elite", "") == id) return;
+  for (auto& up : lv.entities()) if (auto* c = dynamic_cast<Creature*>(up.get())) if (c->alive() && !c->removed && mobWantedId(c->data) == id) return;
   World& w = lv.world(REALM_MAIN);
   int qx = q["at"][0], qz = q["at"][1];
   if (!w.isLoaded(qx, dimBase(DIM_OVERWORLD) + 64, qz)) return;
@@ -248,12 +249,12 @@ static void eliteSpawn(Level& lv, const json& q, Player* who) {
   for (auto& d : extra) if (reg().item(d.id)) T.drops.push_back(d);
   m->T = &T;
   m->maxHp = m->hp = T.hp;
-  m->data["elite"] = id; m->persistent = true; m->huntT = 60;
+  m->data["wanted"] = id; m->persistent = true; m->huntT = 60;
   if (who) toast(lv, *who, q.value("ename", std::string("It")) + " is here!", "boss");
   lv.fx->sound("rift_boom", m->pos + vec3(0, 2, 0), 60);
 }
 void eliteSlain(Level& lv, Creature& m) {
-  std::string id = m.data.value("elite", "");
+  std::string id = mobWantedId(m.data);
   json& E = lv.info.data["elites"]; if (!E.is_object()) E = json::object();
   E[id] = "dead";
   for (Player* p : levelPlayers(lv)) for (auto& q : npcStats(*p)["quests"]) if (q.value("id", "") == id && !q.value("have", 0)) {

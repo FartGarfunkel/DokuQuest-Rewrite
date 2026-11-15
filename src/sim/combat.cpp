@@ -122,7 +122,7 @@ float damagePlayer(Level& lv, Player& p, float amount, DamageSource src) {
 void mobDeath(Level& lv, Entity& m, const DamageSource& src) {
   const json& T = mobType(m.type);
   bool baby = m.data.value("baby", false);
-  for (int roll = 0, rolls = m.data.value("elite", false) ? 2 : 1; roll < rolls; roll++)   // (an elite: its drops twice over)
+  for (int roll = 0, rolls = mobIsElite(m.data) ? 2 : 1; roll < rolls; roll++)   // (an elite: its drops twice over)
   if (!baby && T.contains("drops") && T["drops"].is_array()) for (auto& d : T["drops"]) {
     if (!d.is_array() || d.size() < 4) continue;
     if (rnd() < d[3].get<double>()) { int a = d[1], b = d[2]; int n = a + (int)(rnd() * (b - a + 1)); if (n > 0) dropItem(lv, m.realm, ItemStack(d[0], n), m.pos + vec3(0, 0.5f, 0), true); }

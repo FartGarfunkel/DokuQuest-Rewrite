@@ -79,7 +79,7 @@ namespace {
 float levelHp(int lvl) { return 1.f + 0.08f * (std::max(1, lvl) - 1); }
 float levelDmg(int lvl) { return 1.f + 0.05f * (std::max(1, lvl) - 1); }
 }
-float mobXpScale(const Entity& e) { return (1.f + 0.06f * (std::max(1, e.mobLevel) - 1)) * (e.data.value("elite", false) ? 2.f : 1.f); }
+float mobXpScale(const Entity& e) { return (1.f + 0.06f * (std::max(1, e.mobLevel) - 1)) * (mobIsElite(e.data) ? 2.f : 1.f); }
 void mobLevelUpdate(Level& lv, Entity& e) {
   if (e.isPlayer() || e.hp <= 0) return;
   if (e.data.contains("owner") && !e.data["owner"].is_null() && e.data["owner"] != "") return;   // (a pet or a summon: yours, not the world's)
@@ -112,7 +112,7 @@ void mobLevelUpdate(Level& lv, Entity& e) {
   // the party near it: its health grows and shrinks with the players about it (kept as a share of the whole)
   const float coop = 1.f + 0.4f * (std::min(n, 6) - 1), was = e.data.value("coop", 1.f);
   if (std::fabs(coop - was) > 1e-3f) { const float frac = e.maxHp > 0 ? e.hp / e.maxHp : 1.f; e.maxHp *= coop / was; e.hp = std::max(0.5f, frac * e.maxHp); e.data["coop"] = coop; }
-  e.maxPosture = (40.f + e.mobLevel * 2.f) * (e.data.value("elite", false) ? 1.4f : 1.f);
+  e.maxPosture = (40.f + e.mobLevel * 2.f) * (mobIsElite(e.data) ? 1.4f : 1.f);
 }
 
 void combatRpgInput(Level& lv, Player& p, const PlayerInput& in, float dt) {
@@ -181,7 +181,7 @@ float combatRpgOutgoing(Level& lv, Player& p, Entity& e, float dmg, bool& finish
   dmg = (dmg + treeAttr(p, "damage")) * (1 + treeAttrPct(p, "damage"));   // (the skill tree)
   const float crit = p.statLck * 0.004f + treeAttr(p, "crit_chance") + treeAttrPct(p, "crit_chance");
   if (crit > 0 && rnd() < crit) dmg = std::ceil(dmg * (1.5f + treeAttr(p, "crit_damage") + treeAttrPct(p, "crit_damage")));
-  e.maxPosture = (40.f + e.mobLevel * 2.f) * (e.data.value("elite", false) ? 1.4f : 1.f);
+  e.maxPosture = (40.f + e.mobLevel * 2.f) * (mobIsElite(e.data) ? 1.4f : 1.f);
   e.posture = std::min(e.maxPosture, e.posture + dmg * (2.f + p.statFoc * 0.02f));
   if (e.posture >= e.maxPosture && e.staggerT <= 0) {
     e.staggerT = 1.2f;
@@ -205,7 +205,7 @@ float combatRpgBossCap(Level& lv, Entity& e, float dmg) {
 
 float combatRpgMobScale(const Entity& attacker, float amount) {
   if (attacker.isPlayer()) return amount;
-  return amount * levelDmg(attacker.mobLevel) * (attacker.data.value("elite", false) ? 1.25f : 1.f);
+  return amount * levelDmg(attacker.mobLevel) * (mobIsElite(attacker.data) ? 1.25f : 1.f);
 }
 
 bool arrowStrikeShield(Level& lv, Entity& arrow, const vec3& from, const vec3& to) {

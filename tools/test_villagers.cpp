@@ -9,6 +9,7 @@
 #include "sim/skills.h"
 #include "sim/rpg.h"
 #include "sim/mob_combat.h"
+#include "sim/combat_rpg.h"
 #include "sim/villagers_internal.h"
 #include "gen/overworld.h"
 #include "gen/structures.h"
@@ -204,6 +205,18 @@ int main(int argc, char** argv) {
   for (int i = 0; i < need; i++) {
     Creature* m = spawnCreature(*L, REALM_MAIN, mob, P->pos + vec3(3, 0, 0));
     if (m) { m->persistent = true; DamageSrc s; s.attacker = P->id; m->hurt(*L, 500, s); }
+  }
+  {   // an ordinary elite (one in fourteen: data "elite" true) dying: the Wanted bounty's check took that flag for a bounty's
+    // id and threw (a string read off a true)
+    Creature* m = spawnCreature(*L, REALM_MAIN, mob, P->pos + vec3(4, 0, 0));
+    bool threw = false, died = false;
+    if (m) {
+      m->persistent = true; m->data["elite"] = true;
+      try { tick(2.2); DamageSrc s; s.attacker = P->id; m->hurt(*L, 500, s); tick(0.2); died = !m->alive(); } catch (const std::exception&) { threw = true; }
+    }
+    check(m && !threw && died, "an ordinary elite lives near you and dies without trouble (its flag isn't a bounty's id)");
+    check(mobIsElite(json{{"elite", true}}) && !mobIsElite(json{{"elite", "q1"}}) && mobWantedId(json{{"elite", "q1"}}) == "q1" && mobWantedId(json{{"wanted", "q2"}}) == "q2" && mobWantedId(json{{"elite", true}}).empty(),
+          "elite and Wanted told apart (an old save's Wanted id under \"elite\" still found)");
   }
   json* hq = findQuest(*P, hunt["id"]);
   check(hq && (*hq)["have"].get<int>() == need && questReady(*L, *P, *hq), "slaying the bounty's monsters counts (" + mob + ")");
