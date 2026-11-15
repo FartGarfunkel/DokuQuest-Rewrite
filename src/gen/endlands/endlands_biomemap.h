@@ -1,20 +1,20 @@
-// gen/be/be_biomemap.h — the End's lands and their hex biome map. The biome table (genChance, terrainHeight,
+// gen/endlands/endlands_biomemap.h — the End's lands and their hex biome map. The biome table (genChance, terrainHeight,
 // parent) is read from the End data (data/betterend/worldgen/betterx/biome/*.json); the map itself is not in that
 // data, so HexBiomeMap / HexBiomeChunk / BiomePicker here are RECONSTRUCTED from memory (see README.md):
 // 32 x 32 hex cells per map chunk, 16 jittered seeds per chunk each painting a 7-cell hexagon, random-neighbour growth
 // until full, then a 1-in-4 per cell chance to paint a 7-cell hexagon of a sub-biome (weighted by genChance); cells are
 // size/8 blocks, the lookup point is rotated 0.4 rad and warped by fractal OpenSimplex noise.
 #pragma once
-#include "gen/be/be_noise.h"
+#include "gen/endlands/endlands_noise.h"
 #include <cstdint>
 #include <memory>
 #include <shared_mutex>
 #include <unordered_map>
 #include <vector>
 
-namespace dq::be {
+namespace dq::endlands {
 
-// 0..18 are DokuQuest's End land indices (gen/theend_be.cpp); 19..23 are the base End biomes kept in the pools.
+// 0..18 are DokuQuest's End land indices (gen/theend_lands.cpp); 19..23 are the base End biomes kept in the pools.
 enum BiomeId : int {
   B_CHORUS_FOREST = 0, B_BLOSSOMING_SPIRES, B_FOGGY_MUSHROOMLAND, B_GLOWING_GRASSLANDS, B_CRYSTAL_MOUNTAINS,
   B_SULPHUR_SPRINGS, B_UMBRELLA_JUNGLE, B_SHADOW_FOREST, B_ICE_STARFIELD, B_AMBER_LAND,
@@ -83,4 +83,4 @@ private:
   mutable std::unordered_map<uint64_t, std::unique_ptr<Chunk>> chunks_;
 };
 
-}  // namespace dq::be
+}  // namespace dq::endlands

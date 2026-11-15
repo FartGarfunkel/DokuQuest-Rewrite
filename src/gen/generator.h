@@ -55,7 +55,7 @@ struct WorldGenOptions {
                                        //     (gen/town_mine.h), every trade staffed before a second of one
                                        // 12: rock layers (sedimentary over metamorphic over igneous, each
                                        //     region its own rocks) and the ores in their own rocks (gen/rock_layers.cpp)
-                                       // 13: the painted Nether lands over the classic Nether (gen/nether_bn.h)
+                                       // 13: the painted Nether lands over the classic Nether (gen/nether_painted.h)
                                        // 14: the imported land shape (gen/density.h; docs/WORLDGEN_MERGE.md)
                                        // 15: the land biomes on it: their biomes and surfaces (gen/land_biomes.h,
                                        //     gen/surface_rules.h; tools/port/worldgen/import.py)

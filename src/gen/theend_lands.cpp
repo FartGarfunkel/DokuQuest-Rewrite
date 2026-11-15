@@ -1,4 +1,4 @@
-// gen/theend_be.cpp — the outer End's lands (MIT; docs/THIRD_PARTY_NOTICES.md):
+// gen/theend_lands.cpp — the outer End's lands (MIT; docs/THIRD_PARTY_NOTICES.md):
 // each of the sixteen lands takes its biome's ground (its surface rules: the turf, the moss/mycelium
 // dither, the sulphuric bands, the painted mountains' strata, flavolite and violecite layers in the cliffs), its
 // trees and big growths (mossy glowshrooms, pythadendrons, dragon trees, lucernias, umbrella trees, jellyshrooms,

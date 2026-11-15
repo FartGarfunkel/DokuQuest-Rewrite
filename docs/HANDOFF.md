@@ -126,8 +126,8 @@ floating or resizing, stations worked in the world, other players see what you d
   button rows) and Select Server (`ui/multiplayer.cpp`: Favorites/History/Local Network/Direct Connect, Join/Edit/
   Delete column, Add/Edit/Delete Server screens). The launcher's Options tab (`launcher/options.cpp`) has its own copy
   of the same layout (the launcher has its own ImGui context and fonts).
-- **The End's lands (docs/THIRD_PARTY_NOTICES.md):** `render/be_sky.cpp` (+ `assets/shaders/be_sky.glsl`,
-  `assets/sky/betterend/`), the per-land fog colour/density in `render/sky.cpp`, `gen/theend_be.cpp` (surfaces, trees,
+- **The End's lands (docs/THIRD_PARTY_NOTICES.md):** `render/end_sky.cpp` (+ `assets/shaders/end_sky.glsl`,
+  `assets/sky/end/`), the per-land fog colour/density in `render/sky.cpp`, `gen/theend_lands.cpp` (surfaces, trees,
   plants per land; land 2 is now Foggy Mushroomland), 103 End blocks from `tools/port/end_blocks.py`.
 - **Terrain version 7** (new worlds; old ones keep 6 until World Settings → Upgrade): the classic Nether's climate/density
   fixes, surfaces and features (`gen/nether_lands.cpp` v7 branches, `gen/nether_lands7.cpp`), classic Nether fog + grade
@@ -165,12 +165,12 @@ floating or resizing, stations worked in the world, other players see what you d
     its reference: terrain, surface, large features, biomes, all 47 decorations; Region decoration mode).
     gen/nether_exact.cpp maps its blocks to ours and serves generate/solidAt/terrainColumn/netherLandAt/temperature.
     The old v7 approximation (nether_lands7.cpp, the v7 branches in generateCave) is now unused for v7.
-  - **Terrain 7 End = gen/be/** (the End's terrain generator/island layer/OpenSimplex, bit-exact; the SDF and
-    hex biome map reconstructed — see gen/be/README.md). theend.cpp: island()/endBiome() read a per-chunk column cache,
+  - **Terrain 7 End = gen/endlands/** (the End's terrain generator/island layer/OpenSimplex, bit-exact; the SDF and
+    hex biome map reconstructed — see gen/endlands/README.md). theend.cpp: island()/endBiome() read a per-chunk column cache,
     generate() fills from the 3D density (stacked islands each get their land's ground); voidRing = OUTER, the dragon's
     island stays ours. endLandAt(seed, genVersion, x, z) for the sky/spawns/particles.
   - The End lands' 63 structures: tools/port/end_building.py makes the 116 building blocks they need (cloned from our
-    block kinds, reference pictures through the art pass) and data/be_structures.json; gen/end_be_structures.cpp places them
+    block kinds, reference pictures through the art pass) and data/end_structures.json; gen/endlands_buildings.cpp places them
     (1 in 10 chunks, the lists per land, rotated). Pillars: see the night section above. Not done: the eternal portal.
   - Textures: local_mod_art.py and end_blocks.py use restyle.py's colour ramp now (the pack's picture of the same
     kind in the reference's colours); packs.cpp lays "Mod Art (local)" over the chosen pack automatically.
@@ -289,7 +289,7 @@ misleading on Intel: the GPU idles and clocks down), `DQ_PROFILE_FRAMES=n`, `DQ_
     (mesher waterfall fx at the floor). No aercloud blocks in either Skylands generator any more (v7 chains/ribbons,
     v6 banks); the Silver dungeon keeps its cloud bed. Chunks already saved keep their clouds. lod_far.bin's tag has a
     generator revision ("/2") so the far land is made again.
-  - The End's pillars: end_building.py exports data/betterend/structures/pillars/*.nbt into be_structures.json
+  - The End's pillars: end_building.py exports data/betterend/structures/pillars/*.nbt into end_structures.json
     ("pillars"); EndGen::bePillar builds them (base 3 into the ground, top at ground +
     height - 64, obsidian column one narrower with crying obsidian on the rim 1 in 24). end_fight.cpp puts each crystal
     on the highest bedrock of its pillar's centre column (so old saved pillars still work). New block: flavolite_slab.

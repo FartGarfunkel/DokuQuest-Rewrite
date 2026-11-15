@@ -1,12 +1,12 @@
-// gen/be/be_biomemap.cpp — see be_biomemap.h. Everything below the biome table is a reconstruction of the hex
+// gen/endlands/endlands_biomemap.cpp — see endlands_biomemap.h. Everything below the biome table is a reconstruction of the hex
 // biome map (HexBiomeMap, HexBiomeChunk, BiomePicker, weighted lists), which the End data does not contain.
-#include "gen/be/be_biomemap.h"
+#include "gen/endlands/endlands_biomemap.h"
 
 #include <algorithm>
 #include <cmath>
 #include <mutex>
 
-namespace dq::be {
+namespace dq::endlands {
 
 // The End lands' values: data/betterend/worldgen/betterx/biome/<id>.json ("genChance", "terrainHeight", "parent",
 // "edgeSize" — 0 everywhere). The base End rows are wrapped with recalled values: genChance 0.5 and
@@ -213,4 +213,4 @@ int HexBiomeMap::biome(double x, double z) const {
   return b;
 }
 
-}  // namespace dq::be
+}  // namespace dq::endlands

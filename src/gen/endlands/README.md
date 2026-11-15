@@ -8,14 +8,14 @@ There are no engine dependencies: nothing here includes engine headers or touche
 
 | file | what |
 |---|---|
-| `be_noise.h/.cpp` | `JavaRandom` (java.util.Random), `OpenSimplexNoise` (2D + 3D), `beHash` |
-| `be_biomemap.h/.cpp` | biome table (`kBiomes`), `BiomePicker`, `HexBiomeMap` (reconstruction) |
-| `be_terrain.h/.cpp` | `BETerrain`: island layers, density, `chunkDensity`, `isLand`, `land`, terrain-height averaging |
+| `endlands_noise.h/.cpp` | `JavaRandom` (java.util.Random), `OpenSimplexNoise` (2D + 3D), `beHash` |
+| `endlands_biomemap.h/.cpp` | biome table (`kBiomes`), `BiomePicker`, `HexBiomeMap` (reconstruction) |
+| `endlands_terrain.h/.cpp` | `EndTerrain`: island layers, density, `chunkDensity`, `isLand`, `land`, terrain-height averaging |
 
-## API (`namespace dq::be`)
+## API (`namespace dq::endlands`)
 
 ```cpp
-explicit BETerrain(int64_t worldSeed, const BETerrainOptions& opt = {});
+explicit EndTerrain(int64_t worldSeed, const EndTerrainOptions& opt = {});
 void  chunkDensity(int cx, int cz, float* out) const;          // 16*256*16, out[(y<<8)|(z<<4)|x], OUR y; > 0 solid
 void  cornerColumn(int cellX, int cellZ, float out[33]) const; // the density fill of one 8-block corner column (island y = 4*i)
 bool  isLand(int x, int z) const;                              // isLand for the 8x8 column (block coords)
@@ -39,7 +39,7 @@ Biomes are per 4×4 quart. Each quart is sampled at its min corner and there is 
 **Threads:** every query is const and safe to call from any number of threads at once. The isLand cache
 (16 KiB sections of 128×128 cells, cleared above 512 sections) and the hex-map chunk cache (1 KiB per ~1.2×1 km,
 never evicted) are behind `shared_mutex`es. A 4-thread run on a fresh instance gives the same bytes as a 1-thread run.
-Build one `BETerrain` per world seed and share it. Construction is about 0.2 ms.
+Build one `EndTerrain` per world seed and share it. Construction is about 0.2 ms.
 
 ## Y mapping
 `ourY = beY + yOffset` (default 56, from §3.8). The island noise column is y 0..127, so ours is 56..183. `chunkDensity`
@@ -152,7 +152,7 @@ Data points that confirm the reconstruction behaves as it should:
 - ice_starfield is 33.7 % of the void (expected 1/3).
 - Biome regions are about 200–350 blocks across with ragged edges.
 
-## Tuning knobs (`BETerrainOptions`)
+## Tuning knobs (`EndTerrainOptions`)
 | option | default | meaning |
 |---|---|---|
 | `big/medium/small` | table above | `distance`, `scale`, `averageHeight`, `heightVariation`, `coverage`, `hasCentralIsland` (the End's `generator.json`) |

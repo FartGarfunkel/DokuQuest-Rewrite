@@ -41,10 +41,10 @@ BLOCKS = [
     ('sangnum', 'Sangnum', 'turf', ['sangnum_top', 'sangnum_side'], TURF),
     ('rutiscus', 'Rutiscus', 'turf', ['rutiscus_top_1', 'rutiscus_side_1'], TURF),
     ('cave_moss', 'Cave Moss', 'turf', ['cave_moss_top', 'cave_moss_side'], TURF),
-    ('pallidium_full', 'Pallidium (Full Cover)', 'turf', ['pallidium_full_top', 'pallidium_full_side'], dict(TURF, drop='umbralith', bottom='be_umbralith')),
-    ('pallidium_heavy', 'Pallidium (Heavy Cover)', 'turf', ['pallidium_heavy_top', 'pallidium_heavy_side'], dict(TURF, drop='umbralith', bottom='be_umbralith')),
-    ('pallidium_thin', 'Pallidium (Thin Cover)', 'turf', ['pallidium_thin_top', 'pallidium_thin_side'], dict(TURF, drop='umbralith', bottom='be_umbralith')),
-    ('pallidium_tiny', 'Pallidium (Tiny Cover)', 'turf', ['pallidium_tiny_top', 'pallidium_tiny_side'], dict(TURF, drop='umbralith', bottom='be_umbralith')),
+    ('pallidium_full', 'Pallidium (Full Cover)', 'turf', ['pallidium_full_top', 'pallidium_full_side'], dict(TURF, drop='umbralith', bottom='end_umbralith')),
+    ('pallidium_heavy', 'Pallidium (Heavy Cover)', 'turf', ['pallidium_heavy_top', 'pallidium_heavy_side'], dict(TURF, drop='umbralith', bottom='end_umbralith')),
+    ('pallidium_thin', 'Pallidium (Thin Cover)', 'turf', ['pallidium_thin_top', 'pallidium_thin_side'], dict(TURF, drop='umbralith', bottom='end_umbralith')),
+    ('pallidium_tiny', 'Pallidium (Tiny Cover)', 'turf', ['pallidium_tiny_top', 'pallidium_tiny_side'], dict(TURF, drop='umbralith', bottom='end_umbralith')),
     ('flavolite', 'Flavolite', 'cube', ['flavolite'], STONE),
     ('violecite', 'Violecite', 'cube', ['violecite'], STONE),
     ('sulphuric_rock', 'Sulphuric Rock', 'cube', ['sulphuric_rock'], STONE),
@@ -270,10 +270,10 @@ def main(d, be):
                              'stackPlant': True, 'climb': True, 'sound': 'leaves'}}[kind]
         b = {'render': 1, 'solid': True, 'opaque': True, 'replaceable': False, 'hardness': 1.5, 'tool': None, 'tier': 0, 'drop': key,
              'light': 0, 'lightAtt': 0, 'sound': 'stone', 'key': key, 'name': name}
-        b.update(base); b.update(props); b['tex'] = texj; b['betterEnd'] = True
+        b.update(base); b.update(props); b['tex'] = texj; b['endLands'] = True
         if key in at:   # a block we already had: the source's look, our id and behaviour otherwise
             old = blocks[at[key]]
-            for k2 in ('tex', 'name', 'render', 'solid', 'opaque', 'translucent', 'selfCull', 'light', 'betterEnd'):
+            for k2 in ('tex', 'name', 'render', 'solid', 'opaque', 'translucent', 'selfCull', 'light', 'endLands'):
                 if k2 in b: old[k2] = b[k2]
             bj['faces'][at[key]] = faces
         else:

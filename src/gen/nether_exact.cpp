@@ -4,7 +4,7 @@
 #include "gen/dimgens.h"
 #include "gen/nethergen/nethergen.h"
 #include "gen/nether_lands.h"
-#include "gen/nether_bn.h"
+#include "gen/nether_painted.h"
 #include <cmath>
 #include "core/registry.h"
 #include <map>

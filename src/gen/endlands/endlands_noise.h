@@ -1,4 +1,4 @@
-// gen/be/be_noise.h — the random and noise sources of the End's island generator, bit-exact:
+// gen/endlands/endlands_noise.h — the random and noise sources of the End's island generator, bit-exact:
 //   JavaRandom        java.util.Random: the 48-bit LCG, same draws.
 //   OpenSimplexNoise  Kurt Spencer's 2014 OpenSimplex (long seed),
 //                     2D and 3D eval ported line for line (checked against the reference: tools in README).
@@ -7,7 +7,7 @@
 #pragma once
 #include <cstdint>
 
-namespace dq::be {
+namespace dq::endlands {
 
 class JavaRandom {
 public:
@@ -50,4 +50,4 @@ private:
   int16_t permGradIndex3D[256];
 };
 
-}  // namespace dq::be
+}  // namespace dq::endlands

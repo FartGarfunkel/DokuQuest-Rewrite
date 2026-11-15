@@ -119,7 +119,7 @@ const char* biomeName(int b);
   X(dragon_log) X(dragon_leaves) X(umbrella_cap) X(glowshroom_stem) X(glowshroom_cap) X(amber_block) X(neon_moss) X(shadow_soil) X(lantern_log) \
   X(chorus_turf) X(glow_turf) X(umbrella_turf) X(lantern_turf) X(crystal_turf) X(blossom_cap) \
   X(fire) X(acid) X(red_crystal) X(charged_crystal) X(red_crystal_cluster) X(smouldering_ash) X(scorched_bricks) X(cracked_scorched_bricks) \
-  /* the End's lands (gen/theend_be.cpp) */ \
+  /* the End's lands (gen/theend_lands.cpp) */ \
   X(endstone_dust) X(chorus_nylium) X(end_mycelium) X(crystal_moss) X(shadow_grass) X(pink_moss) X(amber_moss) X(jungle_moss) X(sangnum) X(rutiscus) \
   X(cave_moss) X(pallidium_full) X(pallidium_heavy) X(pallidium_thin) X(pallidium_tiny) X(flavolite) X(violecite) X(sulphuric_rock) X(brimstone) X(umbralith) \
   X(virid_jadestone) X(azure_jadestone) X(sandy_jadestone) X(dragon_bone_block) X(dense_snow) X(emerald_ice) X(dense_emerald_ice) X(ancient_emerald_ice) X(amber_ore) X(ender_ore) \

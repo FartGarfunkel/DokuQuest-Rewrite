@@ -1,10 +1,10 @@
-// render/be_sky.cpp — the End's sky (docs/THIRD_PARTY_NOTICES.md). Over the fog-coloured background, in this order: the horizon band (nebula_1, a cylinder
+// render/end_sky.cpp — the End's sky (docs/THIRD_PARTY_NOTICES.md). Over the fog-coloured background, in this order: the horizon band (nebula_1, a cylinder
 // turning with time), two sets of nebula clouds (nebula_2, nebula_3, at twice the stars' distance), two sets of
 // textured stars (stars.png, four sizes), the fog band (fog.png, as thick as the land's fog density is over 1), and
 // two sets of point stars. Each set turns about its own axis, once in 360000 ticks (x1, x2 or x3). Star places
 // come from java.util.Random with fixed seeds, so the sky is always the same one. Geometry is camera-centred at
 // 1/20 of the full-size distances (the angles are the same).
-#include "render/be_sky.h"
+#include "render/end_sky.h"
 #include "assets/tileset.h"
 #include "common/fs.h"
 #include <cmath>
@@ -71,7 +71,7 @@ void makeCylinder(std::vector<BeSky::V>& out, float r) {
   }
 }
 GLuint loadSkyTex(const char* name, bool smooth) {
-  auto b = readBinary(assetsDir() / "sky" / "betterend" / name);
+  auto b = readBinary(assetsDir() / "sky" / "end" / name);
   if (!b) { DQ_WARN("End sky: no %s", name); return 0; }
   int w, h; std::vector<u8> px;
   if (!loadPngMem(b->data(), b->size(), w, h, px)) return 0;
@@ -81,7 +81,7 @@ GLuint loadSkyTex(const char* name, bool smooth) {
 
 bool BeSky::init() {
   if (ready) return true;
-  if (!shader.load("be_sky.glsl", "be_sky.glsl")) return false;
+  if (!shader.load("end_sky.glsl", "end_sky.glsl")) return false;
   std::vector<V> v;
   auto range = [&](Range& r, auto&& build) { r.first = (int)v.size(); build(); r.count = (int)v.size() - r.first; };
   range(stars1, [&] { makeQuads(v, 3500, 41315, 0.1, 0.30, 0); });

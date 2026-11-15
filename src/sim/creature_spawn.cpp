@@ -5,7 +5,7 @@
 // No phantoms, ever.
 #include "sim/weather.h"
 #include "gen/nether_lands.h"
-#include "gen/nether_bn.h"
+#include "gen/nether_painted.h"
 #include "gen/dimgens.h"
 #include <unordered_set>
 #include "sim/leads.h"
@@ -477,7 +477,7 @@ public:
         if (here == NB_OLDWORLD && count("scorched_skeleton", 96) < 4 && frand() < 0.06f) ground("scorched_skeleton", 24, 48, NB_OLDWORLD);
         if (here == NB_VOLCANIC && count("magma_slime", 96) < 5 && frand() < 0.06f) if (Creature* m = ground("magma_slime", 24, 48, NB_VOLCANIC)) m->setSize(frand() < 0.5f ? 2 : 1);
       }
-      // Terrain 13: the deep Nether's lands (gen/nether_bn.h) and their own creatures, beside the classic ones
+      // Terrain 13: the deep Nether's lands (gen/nether_painted.h) and their own creatures, beside the classic ones
       if (cave && lv.info.genVersion >= 13) {
         const int bnHere = netherBnLand(lv.info.seed, lv.info.genVersion, ifloor(p.pos.x), ifloor(p.pos.z));
         auto bn = [&](const char* t, int cap, float chance, float lift, bool hostileMob) {
@@ -488,12 +488,12 @@ public:
           if (y > 0) add(t, xz.x + 0.5f, y + lift, xz.y + 0.5f);
         };
         switch (bnHere) {
-          case BN_JUNGLE: bn("jungle_skeleton", 4, 0.06f, 0, true); bn("firefly", 6, 0.12f, 1.5f, false); bn("flying_pig", 3, 0.03f, 3, false); break;
-          case BN_SWAMP: bn("firefly", 8, 0.15f, 1.5f, false); bn("hydrogen_jellyfish", 3, 0.03f, 5, false); break;
-          case BN_GRAVEL_DESERT: bn("naga", 4, 0.06f, 0, true); break;
-          case BN_MAGMA: bn("skull", 3, 0.05f, 2, true); bn("hydrogen_jellyfish", 2, 0.02f, 5, false); break;
-          case BN_SOUL_PLAIN: bn("skull", 3, 0.04f, 2, true); break;
-          case BN_OLD_WARPED: bn("flying_pig", 3, 0.04f, 3, false); bn("firefly", 5, 0.08f, 1.5f, false); break;
+          case PN_JUNGLE: bn("jungle_skeleton", 4, 0.06f, 0, true); bn("firefly", 6, 0.12f, 1.5f, false); bn("flying_pig", 3, 0.03f, 3, false); break;
+          case PN_SWAMP: bn("firefly", 8, 0.15f, 1.5f, false); bn("hydrogen_jellyfish", 3, 0.03f, 5, false); break;
+          case PN_GRAVEL_DESERT: bn("naga", 4, 0.06f, 0, true); break;
+          case PN_MAGMA: bn("skull", 3, 0.05f, 2, true); bn("hydrogen_jellyfish", 2, 0.02f, 5, false); break;
+          case PN_SOUL_PLAIN: bn("skull", 3, 0.04f, 2, true); break;
+          case PN_OLD_WARPED: bn("flying_pig", 3, 0.04f, 3, false); bn("firefly", 5, 0.08f, 1.5f, false); break;
           default: break;
         }
       }

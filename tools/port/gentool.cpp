@@ -702,7 +702,7 @@ static int xsect(const std::string& seedText, int x0, int z0, int x1, int z1, in
 }
 
 namespace dq { bool netherExactLand(i32 seed, int x, int y, int z, u8& land); double netherExactTemperature(i32 seed, int x, int z); }
-#include "gen/nether_bn.h"
+#include "gen/nether_painted.h"
 static int netherLands(const std::string& seedText, int R, int step) {
   const i32 seed = seedFromString(seedText);
   std::map<std::string, int> n; int tot = 0;

@@ -1,5 +1,5 @@
-// gen/end_be_structures.cpp — the End lands' structures (their building lists: ruins, houses, a library, a
-// tree house, a small mansion, cabins, stumps and fallen trees) in their six lands, read from data/be_structures.json
+// gen/endlands_buildings.cpp — the End lands' structures (their building lists: ruins, houses, a library, a
+// tree house, a small mansion, cabins, stumps and fallen trees) in their six lands, read from data/end_structures.json
 // (tools/port/end_building.py converts the .nbt templates). In one chunk of ten (the rarity
 // filter) a spot in the chunk, if its land has a list, gets one structure from it, centred there, turned a random
 // quarter; SURFACE ones sit with their floor in the ground, OBJECT ones on top of it. Its air clears only what stands
@@ -13,14 +13,14 @@
 namespace dq {
 
 namespace {
-struct BEStruct {
+struct EndStruct {
   bool object = false; int offY = 0, sx = 0, sy = 0, sz = 0;
   std::vector<BlockId> id; std::vector<std::array<u8, 4>> meta;
   std::vector<u32> blocks;   // x | y << 8 | z << 16 | palette << 24
 };
-struct BELand { int chance = 0; std::vector<BEStruct> list; };
-BEStruct readStruct(const json& s) {
-  BEStruct S; S.object = s.value("merger", "SURFACE") == "OBJECT"; S.offY = s.value("offY", 0);
+struct EndLandSet { int chance = 0; std::vector<EndStruct> list; };
+EndStruct readStruct(const json& s) {
+  EndStruct S; S.object = s.value("merger", "SURFACE") == "OBJECT"; S.offY = s.value("offY", 0);
   S.sx = s["size"][0]; S.sy = s["size"][1]; S.sz = s["size"][2];
   for (auto& p : s["palette"]) {
     const std::string key = p[0];
@@ -30,33 +30,33 @@ BEStruct readStruct(const json& s) {
   S.blocks = s["blocks"].get<std::vector<u32>>();
   return S;
 }
-// the End lands' pillar bases and tops (data/be_structures.json "pillars", from its pillars/*.nbt)
-const std::unordered_map<std::string, BEStruct>& bePillarTpls() {
-  static const std::unordered_map<std::string, BEStruct> M = [] {
-    std::unordered_map<std::string, BEStruct> out;
-    auto j = readJson(dataDir() / "be_structures.json");
+// the End lands' pillar bases and tops (data/end_structures.json "pillars", from its pillars/*.nbt)
+const std::unordered_map<std::string, EndStruct>& bePillarTpls() {
+  static const std::unordered_map<std::string, EndStruct> M = [] {
+    std::unordered_map<std::string, EndStruct> out;
+    auto j = readJson(dataDir() / "end_structures.json");
     if (j && (*j)["pillars"].is_object()) for (auto& [k, v] : (*j)["pillars"].items()) out[k] = readStruct(v);
     return out;
   }();
   return M;
 }
-const BEStruct* bePillarTpl(const std::string& name) { auto& M = bePillarTpls(); auto it = M.find(name); return it == M.end() ? nullptr : &it->second; }
-void putStruct(const BEStruct& S, int x0, int y0, int z0, ChunkWriter& P) {   // unturned, air included (like a template placed in the world)
+const EndStruct* bePillarTpl(const std::string& name) { auto& M = bePillarTpls(); auto it = M.find(name); return it == M.end() ? nullptr : &it->second; }
+void putStruct(const EndStruct& S, int x0, int y0, int z0, ChunkWriter& P) {   // unturned, air included (like a template placed in the world)
   for (u32 b : S.blocks) {
     const int x = x0 + (int)(b & 255), y = y0 + (int)((b >> 8) & 255), z = z0 + (int)((b >> 16) & 255), pi = (int)(b >> 24);
     if (!P.in(x, z) || y < 1 || y >= DIM_H) continue;
     P.put(x, y, z, S.id[pi], S.meta[pi][0]);
   }
 }
-const std::array<BELand, 19>& beStructs() {
-  static const std::array<BELand, 19> L = [] {
-    std::array<BELand, 19> out;
-    auto j = readJson(dataDir() / "be_structures.json");
-    if (!j || !(*j)["lands"].is_object()) { DQ_WARN("End: no data/be_structures.json, the End's buildings are off"); return out; }
+const std::array<EndLandSet, 19>& endStructs() {
+  static const std::array<EndLandSet, 19> L = [] {
+    std::array<EndLandSet, 19> out;
+    auto j = readJson(dataDir() / "end_structures.json");
+    if (!j || !(*j)["lands"].is_object()) { DQ_WARN("End: no data/end_structures.json, the End's buildings are off"); return out; }
     for (auto& [k, v] : (*j)["lands"].items()) {
       const int land = std::atoi(k.c_str());
       if (land < 0 || land >= 19) continue;
-      BELand& BL = out[land]; BL.chance = std::max(1, v.value("chance", 10));
+      EndLandSet& BL = out[land]; BL.chance = std::max(1, v.value("chance", 10));
       for (auto& s : v["list"]) BL.list.push_back(readStruct(s));
     }
     return out;
@@ -70,9 +70,9 @@ const std::array<BELand, 19>& beStructs() {
 // and then (1 in 24). Its height counts from the ground: top = ground + the plain pillar's height - 64. The crystal stands on the
 // top's bedrock (sim/end_fight.cpp finds it there).
 bool EndGen::bePillar(const Pillar& pl, ChunkWriter* P, int* topY) const {
-  if (!betterEnd() || pl.rad < 2 || pl.rad > 5) return false;
-  const BEStruct* base = bePillarTpl("pillar_base_" + std::to_string(pl.rad - 1));
-  const BEStruct* top = bePillarTpl("pillar_top_" + std::to_string(pl.rad - 1) + (pl.cage ? "_cage" : ""));
+  if (!endLands() || pl.rad < 2 || pl.rad > 5) return false;
+  const EndStruct* base = bePillarTpl("pillar_base_" + std::to_string(pl.rad - 1));
+  const EndStruct* top = bePillarTpl("pillar_top_" + std::to_string(pl.rad - 1) + (pl.cage ? "_cage" : ""));
   if (!base || !top) return false;
   Isle c;
   int minY = (island(pl.x, pl.z, c) ? c.top : 60 + vmap::END_DY) + 1;   // the first open block over the ground
@@ -99,7 +99,7 @@ bool EndGen::bePillar(const Pillar& pl, ChunkWriter* P, int* topY) const {
 }
 
 void EndGen::beStructures(int bx, int bz, ChunkWriter& P) const {
-  const auto& L = beStructs();
+  const auto& L = endStructs();
   const int cx = floordiv(bx, 16), cz = floordiv(bz, 16);
   for (int oz = cz - 2; oz <= cz + 2; oz++) for (int ox = cx - 2; ox <= cx + 2; ox++) {
     const u32 h = hash32(ox, oz, seed_, 0xBE57);
@@ -109,7 +109,7 @@ void EndGen::beStructures(int bx, int bz, ChunkWriter& P) const {
     Isle c; if (!island(x, z, c) || c.main) continue;
     const int land = endBiome(x, z);
     if (land < 0 || land >= 19 || L[land].list.empty()) continue;
-    const BEStruct& S = L[land].list[(h >> 24) % L[land].list.size()];
+    const EndStruct& S = L[land].list[(h >> 24) % L[land].list.size()];
     const int rot = (int)((h >> 28) & 3);
     const int rsx = rot & 1 ? S.sz : S.sx, rsz = rot & 1 ? S.sx : S.sz;
     const int x0 = x - rsx / 2, z0 = z - rsz / 2, y0 = c.top + (S.object ? 1 : 0) + S.offY;

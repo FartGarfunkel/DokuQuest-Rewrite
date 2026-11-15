@@ -1,4 +1,4 @@
-// render/be_sky.h — the End's sky (nebulae, stars, the fog band): see be_sky.cpp.
+// render/end_sky.h — the End's sky (nebulae, stars, the fog band): see end_sky.cpp.
 #pragma once
 #include "render/gl.h"
 

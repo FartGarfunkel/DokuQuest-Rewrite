@@ -4,7 +4,7 @@ The classic Nether is the cave Nether of terrain versions 7 and up: a 3D cave sp
 climate lands, 47 decorations and its own fog and colour grade. The generator lives in `src/gen/nethergen/`
 (standalone, `namespace nethergen`, see its README). `src/gen/nether_exact.cpp` maps its blocks onto ours and feeds
 it to the engine. Later terrain versions build on it (for example version 13 puts the overgrown lands of
-`gen/nether_bn.h` on top). This page is the reference for what that generator does: numbers, rules and blocks.
+`gen/nether_painted.h` on top). This page is the reference for what that generator does: numbers, rules and blocks.
 Section 4 lists how the older versions 5 and 6 differ and what is still open.
 
 **Height:** the classic Nether is 256 tall like our band, so **band-local y = generator y (scale 1:1)**. Lowest

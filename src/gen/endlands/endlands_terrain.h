@@ -1,5 +1,5 @@
-// gen/be/be_terrain.h — the End's island terrain (the terrain generator, its island layers, layer options and
-// generator options) and its End biome layout (the land decider + the hex biome source, see be_biomemap.h), standalone.
+// gen/endlands/endlands_terrain.h — the End's island terrain (the terrain generator, its island layers, layer options and
+// generator options) and its End biome layout (the land decider + the hex biome source, see endlands_biomemap.h), standalone.
 //
 // Terrain: three IslandLayers (big / medium / small) each scatter one candidate island per grid cell, keep it where an
 // OpenSimplex coverage noise is > -0.0001 (about half), and give every kept island the same SDF (capped cones: a root
@@ -14,8 +14,8 @@
 // Thread safety: every query is const and may run on any number of threads at once; the land and biome-map caches are
 // internally locked. Construction is not cheap (a few permutation tables) — build one per world seed and share it.
 #pragma once
-#include "gen/be/be_biomemap.h"
-#include "gen/be/be_noise.h"
+#include "gen/endlands/endlands_biomemap.h"
+#include "gen/endlands/endlands_noise.h"
 
 #include <array>
 #include <atomic>
@@ -24,7 +24,7 @@
 #include <shared_mutex>
 #include <unordered_map>
 
-namespace dq::be {
+namespace dq::endlands {
 
 // customGenerator.layers.<name> in the End's generator.json (LayerOptions). The derived values follow LayerOptions exactly.
 struct LayerOptions {
@@ -36,7 +36,7 @@ struct LayerOptions {
   bool hasCentralIsland = false;
 };
 
-struct BETerrainOptions {
+struct EndTerrainOptions {
   LayerOptions big{300.0f, 200.0f, 0.546875f, 0.078125f, 0.5f, false};
   LayerOptions medium{150.0f, 100.0f, 0.546875f, 0.15625f, 0.5f, true};
   LayerOptions small{60.0f, 50.0f, 0.546875f, 0.234375f, 0.5f, false};
@@ -53,15 +53,15 @@ struct BETerrainOptions {
 
 enum VanillaKind : int { V_NONE = -1, V_HIGHLANDS = 0, V_MIDLANDS = 1, V_SMALL_ISLANDS = 2, V_BARRENS = 3, V_THE_END = 4 };
 
-class BETerrain {
+class EndTerrain {
 public:
   static constexpr int kNoiseH = 128;                 // End noise column height
   static constexpr int kChunkVol = 16 * 256 * 16;     // chunkDensity() output size
 
-  explicit BETerrain(int64_t worldSeed, const BETerrainOptions& opt = {});
-  ~BETerrain();
-  BETerrain(const BETerrain&) = delete;
-  BETerrain& operator=(const BETerrain&) = delete;
+  explicit EndTerrain(int64_t worldSeed, const EndTerrainOptions& opt = {});
+  ~EndTerrain();
+  EndTerrain(const EndTerrain&) = delete;
+  EndTerrain& operator=(const EndTerrain&) = delete;
 
   // Density of every block of chunk (cx, cz): out[(y << 8) | (z << 4) | x], y = OUR band-local y 0..255.
   // > 0 = solid. -1 outside island y 0..127. The reference way: corner columns every 8 blocks, 33 corners every 4 y, trilinear.
@@ -100,7 +100,7 @@ public:
 
   int ourY(int beY) const { return beY + opt_.yOffset; }
   int beY(int ourY) const { return ourY - opt_.yOffset; }
-  const BETerrainOptions& options() const { return opt_; }
+  const EndTerrainOptions& options() const { return opt_; }
 
   // ---- introspection for tools / tests
   struct Island { int x, y, z; float s; int layer; };
@@ -112,7 +112,7 @@ public:
   LayerStats layerStats(int layer, int ix0, int iz0, int ix1, int iz1) const;  // over grid cells [ix0,ix1) x [iz0,iz1)
   float layerDistance(int layer) const;
 
-  class Layer;  // internal (be_terrain.cpp)
+  class Layer;  // internal (endlands_terrain.cpp)
 
 private:
   struct Positions;
@@ -121,7 +121,7 @@ private:
   float layersDensity(const Positions& p, double px, double py, double pz, float intensity, float radius) const;
   bool isLandCell(int cellX, int cellZ) const;
 
-  BETerrainOptions opt_;
+  EndTerrainOptions opt_;
   std::unique_ptr<Layer> large_, medium_, small_;
   OpenSimplexNoise noise1_, noise2_;
   BiomePicker landPicker_, voidPicker_;
@@ -134,4 +134,4 @@ private:
   mutable std::unordered_map<uint64_t, std::shared_ptr<LandSection>> land_;
 };
 
-}  // namespace dq::be
+}  // namespace dq::endlands

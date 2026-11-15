@@ -55,24 +55,24 @@ MOBS = {
                     mob=dict(hp=6, hostile=False, drops=[['cod', 0, 1, 1]], spawnIn=[['beach', 4, 1, 3]])),
 }
 # the terrain-13 Nether lands' creatures (MIT-licensed source, docs/THIRD_PARTY_NOTICES.md): sim/creature_spawn.cpp spawns them
-# in their lands (gen/nether_bn.h), not by spawnIn
+# in their lands (gen/nether_painted.h), not by spawnIn
 MOBS.update({
     'firefly': dict(base='dragonfly', scale=0.8, coat=((236, 220, 90), (120, 96, 30)),
-                    mob=dict(label='a firefly', hp=1, glows=12, ambient=True, betterEnd=False, betterNether=True, drops=[['glowstone_dust', 0, 1, 0.5]])),
+                    mob=dict(label='a firefly', hp=1, glows=12, ambient=True, betterEnd=False, paintedNether=True, drops=[['glowstone_dust', 0, 1, 0.5]])),
     'hydrogen_jellyfish': dict(base='cubozoa', scale=1.0, coat=((214, 120, 200), (110, 50, 120)),
                                mob=dict(label='a hydrogen jellyfish', ai='flyer', hp=1, flyer=True, floaty=True, swims=False, water=False, glows=10,
-                                        retaliates=True, damage=3, speed=0.5, fly=0.6, deathBlast=3.0, fireImmune=True, betterEnd=False, betterNether=True, drops=[])),
+                                        retaliates=True, damage=3, speed=0.5, fly=0.6, deathBlast=3.0, fireImmune=True, betterEnd=False, paintedNether=True, drops=[])),
     'naga': dict(base='scorched_skeleton', scale=1.05, coat=((96, 120, 70), (40, 52, 30)),
-                 mob=dict(label='a naga', hp=10, damage=1, onHit={'wither': 10}, fireImmune=True, betterNether=True,
+                 mob=dict(label='a naga', hp=10, damage=1, onHit={'wither': 10}, fireImmune=True, paintedNether=True,
                           drops=[['coal', 0, 1, 0.5], ['bone', 0, 2, 1]]),
                  extra=[('hoodL', 'head', [-4, 2, 0], [-2, -4, -2, 0, 4, 3], 'coat'), ('hoodR', 'head', [4, 2, 0], [0, -4, -2, 2, 4, 3], 'coat')]),
     'flying_pig': dict(base='phyg', scale=0.9, coat=((214, 130, 120), (140, 60, 60)),
-                       mob=dict(label='a flying pig', hp=6, farm=False, flyer=True, roosts=True, betterNether=True,
+                       mob=dict(label='a flying pig', hp=6, farm=False, flyer=True, roosts=True, paintedNether=True,
                                 drops=[['porkchop', 1, 2, 1], ['nether_wart', 0, 3, 0.25]])),
     'jungle_skeleton': dict(base='skeleton', scale=1.0, coat=((150, 170, 110), (70, 84, 50)),
-                            mob=dict(label='a jungle skeleton', fleesSun=False, fireImmune=True, betterNether=True, drops=[['bone', 0, 2, 1], ['arrow', 0, 2, 1]])),
+                            mob=dict(label='a jungle skeleton', fleesSun=False, fireImmune=True, paintedNether=True, drops=[['bone', 0, 2, 1], ['arrow', 0, 2, 1]])),
     'skull': dict(base='cinder_wisp', scale=0.55, coat=((226, 220, 200), (110, 100, 86)),
-                  mob=dict(label='a skull', hp=4, damage=1, onHit={'fire': 3}, fireImmune=True, betterNether=True,
+                  mob=dict(label='a skull', hp=4, damage=1, onHit={'fire': 3}, fireImmune=True, paintedNether=True,
                            drops=[['coal', 0, 1, 0.5], ['bone', 0, 1, 1]])),
 })
 

@@ -16,7 +16,7 @@
 #include "world/world.h"
 #include "world/dims.h"
 #include "gen/generator.h"
-#include "gen/nether_bn.h"
+#include "gen/nether_painted.h"
 #include "sim/dyntree.h"
 #include "sim/blockinfo.h"
 #include "sim/worldsys.h"
@@ -236,19 +236,19 @@ int main(int argc, char** argv) {
     }
     check(bnC.x != INT32_MIN && classicC.x != INT32_MIN, "the map has both the new Nether lands and the classic ones");
     check(lands.size() >= 2, "more than one of the new Nether lands nearby (" + std::to_string(lands.size()) + ")");
-    check(netherBnLand(seed, 12, bnC.x * 16, bnC.y * 16) == BN_NONE, "terrain 12 has none of them");
+    check(netherBnLand(seed, 12, bnC.x * 16, bnC.y * 16) == PN_NONE, "terrain 12 has none of them");
     auto gen = [&](int ver, ivec2 c) {
       WorldGenOptions o; o.seed = seed; o.genVersion = ver; WorldGen g(o);
       auto ch = std::make_unique<Chunk>(DIM_NETHER, c.x, c.y); g.forDim(DIM_NETHER)->generate(*ch); return ch;
     };
-    auto bnBlocks = [&](const Chunk& ch) { int n = 0; for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) if (reg().block(ch.get(x, y, z)).has("betternether")) n++; return n; };
+    auto pnBlocks = [&](const Chunk& ch) { int n = 0; for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) if (reg().block(ch.get(x, y, z)).has("paintedNether")) n++; return n; };
     auto same = [&](const Chunk& a, const Chunk& b) { for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) if (a.get(x, y, z) != b.get(x, y, z)) return false; return true; };
     auto a12 = gen(12, bnC), a13 = gen(13, bnC), b13 = gen(13, bnC);
-    check(bnBlocks(*a12) == 0, "terrain 12: the classic Nether as it was (no new-land blocks)");
+    check(pnBlocks(*a12) == 0, "terrain 12: the classic Nether as it was (no new-land blocks)");
     int diff = 0; for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) if (a12->get(x, y, z) != a13->get(x, y, z)) diff++;
-    printf("     (land %s: %d blocks differ from terrain 12)\n", bnLandName(netherBnLand(seed, 13, bnC.x * 16 + 8, bnC.y * 16 + 8)), diff);
+    printf("     (land %s: %d blocks differ from terrain 12)\n", pnLandName(netherBnLand(seed, 13, bnC.x * 16 + 8, bnC.y * 16 + 8)), diff);
     check(diff > 60, "terrain 13 repaints the new Nether land (" + std::to_string(diff) + " blocks)");
-    check(bnBlocks(*a13) > 20 || netherBnLand(seed, 13, bnC.x * 16 + 8, bnC.y * 16 + 8) != BN_JUNGLE, "terrain 13: the new lands' ground and plants there (" + std::to_string(bnBlocks(*a13)) + " blocks)");
+    check(pnBlocks(*a13) > 20 || netherBnLand(seed, 13, bnC.x * 16 + 8, bnC.y * 16 + 8) != PN_JUNGLE, "terrain 13: the new lands' ground and plants there (" + std::to_string(pnBlocks(*a13)) + " blocks)");
     check(same(*a13, *b13), "the same chunk generates the same twice");
     // each land found within 1500 blocks: up to three chunks of it (one may be a fortress), the best repainted
     std::map<int, std::vector<ivec2>> some;
@@ -264,9 +264,9 @@ int main(int argc, char** argv) {
       for (ivec2 c : cs) {
         auto x12 = gen(12, c), x13 = gen(13, c);
         int diff = 0; for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) if (x12->get(x, y, z) != x13->get(x, y, z)) diff++;
-        if (diff > best) { best = diff; bn = bnBlocks(*x13); }
+        if (diff > best) { best = diff; bn = pnBlocks(*x13); }
       }
-      check(best > 40, std::string("  ") + bnLandName(l) + ": repainted (" + std::to_string(best) + " blocks, " + std::to_string(bn) + " of the new lands')");
+      check(best > 40, std::string("  ") + pnLandName(l) + ": repainted (" + std::to_string(best) + " blocks, " + std::to_string(bn) + " of the new lands')");
     }
     check(same(*gen(12, classicC), *gen(13, classicC)), "outside the new Nether lands terrain 13 is terrain 12, block for block");
   }

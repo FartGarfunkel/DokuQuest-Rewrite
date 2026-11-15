@@ -95,7 +95,7 @@ public:
 
 // ---- weather and ambient effects (spawn particles; the particle layer moves and draws them) ----------------
 struct Emitter { i16 x, y, z; u8 kind, meta; float h; };   // x,z chunk-local, y global
-enum EmKind : u8 { EM_TORCH = 1, EM_SOUL_TORCH, EM_FIRE, EM_LAVA, EM_FURNACE, EM_CANDLE, EM_END_ROD, EM_CRYING, EM_SPORE, EM_PORTAL, EM_RS_TORCH, EM_RS_WIRE, EM_RS_ORE, EM_CAMPFIRE, EM_FIREFLY_JAR, EM_BUTTERFLY_JAR, EM_BN_SMOKER, EM_BN_GLOW, EM_SAW, EM_GRIND, EM_JUKE,
+enum EmKind : u8 { EM_TORCH = 1, EM_SOUL_TORCH, EM_FIRE, EM_LAVA, EM_FURNACE, EM_CANDLE, EM_END_ROD, EM_CRYING, EM_SPORE, EM_PORTAL, EM_RS_TORCH, EM_RS_WIRE, EM_RS_ORE, EM_CAMPFIRE, EM_FIREFLY_JAR, EM_BUTTERFLY_JAR, EM_PN_SMOKER, EM_PN_GLOW, EM_SAW, EM_GRIND, EM_JUKE,
                    EM_DRIP_WATER = 32, EM_DRIP_LAVA, EM_DRIP_LEAF, EM_DRIP_HONEY, EM_DRIP_TIP };   // TIP: a stalactite's point
 
 class WeatherFxLayer : public RenderLayer {
@@ -146,8 +146,8 @@ void WeatherFxLayer::buildKinds() {
     else if (b.key == "stonecutter") k = EM_SAW;                    // its blade turned by render/station_work_layer.cpp
     else if (b.str("station") == "grindstone") k = EM_GRIND;        // its hands-on wheel turned there too
     else if (b.has("jukebox")) k = EM_JUKE;                         // its hands-on arm and record
-    else if (b.has("smokes")) k = EM_BN_SMOKER;                        // the smoker: a thin column of smoke
-    else if (b.has("betternether") && b.light >= 9 && !b.has("hangs")) k = EM_BN_GLOW;   // lucis, jellyfish mushroom: motes of their light
+    else if (b.has("smokes")) k = EM_PN_SMOKER;                        // the smoker: a thin column of smoke
+    else if (b.has("paintedNether") && b.light >= 9 && !b.has("hangs")) k = EM_PN_GLOW;   // lucis, jellyfish mushroom: motes of their light
     kinds[b.id] = k;
     // leaf colour for each kind of leaves (ambientfx LEAF_PARTICLE)
     if (R.tLeaves[b.id]) {
@@ -542,10 +542,10 @@ void WeatherFxLayer::emitters(GameSession& s, double dt, double step) {
             Particle q; q.p = vec3(tx, ty, tz); q.v = vec3(0, 0.15f, 0); q.life = q.max = 0.6f; q.size = 0.035f; q.tile = (u16)P.tile("redstone_spark"); q.light = 0xFF; P.add(q);
             break;
           }
-          case EM_BN_SMOKER:
+          case EM_PN_SMOKER:
             if (rnd() < step * 2.5f) P.spawn("smoke", vec3(x + 0.5f + (rnd() - 0.5f) * 0.2f, y + 0.7f, z + 0.5f + (rnd() - 0.5f) * 0.2f), 1);
             break;
-          case EM_BN_GLOW:
+          case EM_PN_GLOW:
             if (rnd() < step * 0.8f) { Particle q; q.p = vec3(x + 0.2f + rnd() * 0.6f, y + 0.3f + rnd() * 0.5f, z + 0.2f + rnd() * 0.6f); q.v = vec3((rnd() - 0.5f) * 0.1f, 0.12f, (rnd() - 0.5f) * 0.1f);
               q.life = q.max = 2.f; q.size = q.size0 = 0.025f; q.shrink = true; q.tile = (u16)P.tile("sparkle"); q.light = 0xFF; q.flutter = 0.3f; q.ph = rnd() * 6; P.add(q); }
             break;

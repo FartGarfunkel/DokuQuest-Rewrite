@@ -8,7 +8,7 @@
 #include <deque>
 #include <mutex>
 #include <unordered_map>
-namespace dq { namespace be { class BETerrain; } }
+namespace dq { namespace endlands { class EndTerrain; } }
 namespace nethergen { class NetherGen; }
 #include <memory>
 #include "gen/generator.h"
@@ -49,7 +49,7 @@ private:
   std::shared_ptr<nethergen::NetherGen> exact_;
   bool exactOpen_ = false;
   bool v19_ = false;         // terrain 19: well-mixed position randoms in the painting (no stripes)
-  bool bn_ = false;          // terrain 13: the painted Nether lands over it (gen/nether_bn.h)   // terrain 8: the open land (the ground is found from the roof down)
+  bool bn_ = false;          // terrain 13: the painted Nether lands over it (gen/nether_painted.h)   // terrain 8: the open land (the ground is found from the roof down)
   void initExact(bool open);   // open: terrain 8, the classic Nether in the open land
 public:
   // where to put someone down (terrain 7 and 8: the real generated ground, from the roof down; never in the lava)
@@ -127,10 +127,10 @@ public:
   int fountainY() const;                             // the exit portal's bowl floor + 1 (band-local)
   void outerFeatures(int bx, int bz, class ChunkWriter& P) const;   // spires, arches and floating shards
   void landDress(int bx, int bz, class ChunkWriter& P) const;       // the outer lands' trees, springs, stars and ribs
-  // the End's lands (gen/theend_be.cpp): each land's ground, its trees and growths, its plants
+  // the End's lands (gen/theend_lands.cpp): each land's ground, its trees and growths, its plants
   void beSurface(int land, int x, int z, const Isle& c, class ChunkWriter& P) const;
   void beDress(int bx, int bz, class ChunkWriter& P) const;
-  void beStructures(int bx, int bz, class ChunkWriter& P) const;   // the End's buildings (gen/end_be_structures.cpp)
+  void beStructures(int bx, int bz, class ChunkWriter& P) const;   // the End's buildings (gen/endlands_buildings.cpp)
   // the End lands' rebuild of a pillar: false when it doesn't apply (terrain before 7, no data).
   // Builds it into P when given; topY gets the highest block.
   bool bePillar(const Pillar& pl, class ChunkWriter* P, int* topY) const;
@@ -141,21 +141,21 @@ public:
   // terrain version 7: the End's own islands (gen/be: its three island layers' SDF density, the domain warp, the
   // hex biome map), outside the dragon's island and its gulf. Each chunk's columns (the top and the lowest bottom of
   // the land standing in them) are kept for island() / sample() / the features.
-  bool betterEnd() const { return be_ != nullptr; }
-  const class be::BETerrain* beTerrain() const { return be_.get(); }
+  bool endLands() const { return lands_ != nullptr; }
+  const class endlands::EndTerrain* endTerrain() const { return lands_.get(); }
 private:
   bool chorusAt(int wx, int wz, std::vector<std::array<int, 4>>& out) const;
-  struct BECols { i16 top[256], bot[256]; i8 land[256]; };
-  std::shared_ptr<const BECols> beCols(int cx, int cz, const float* density = nullptr) const;
+  struct EndCols { i16 top[256], bot[256]; i8 land[256]; };
+  std::shared_ptr<const EndCols> endCols(int cx, int cz, const float* density = nullptr) const;
   i32 seed_;
   GenBlocks B;
   SimplexNoise nA, nB, nC;
   std::vector<Pillar> pillars_;
-  std::shared_ptr<const class be::BETerrain> be_;
+  std::shared_ptr<const class endlands::EndTerrain> lands_;
   bool mixed_ = false;   // terrain 21: well-mixed position randoms (the original hash drew rows along z)
   double hz(int x, int y, int z, i32 s) const { return mixed_ ? posHashF(x, y, z, s) : hashFloat(x, y, z, s); }
   mutable std::mutex beMx_;
-  mutable std::unordered_map<u64, std::shared_ptr<const BECols>> beCache_;
+  mutable std::unordered_map<u64, std::shared_ptr<const EndCols>> endCache_;
   mutable std::deque<u64> beOrder_;
 };
 // the End land at a block for a world (gen/be for terrain version 7, else the older noise lands)

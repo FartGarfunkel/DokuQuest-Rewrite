@@ -1,4 +1,4 @@
-// be_sky.glsl — the End's sky layers (render/be_sky.cpp): a texture (or a flat colour) times a colour, blended
+// end_sky.glsl — the End's sky layers (render/end_sky.cpp): a texture (or a flat colour) times a colour, blended
 // over the fog-coloured background. No distance fog.
 #include "common.glsl"
 #ifdef VERTEX

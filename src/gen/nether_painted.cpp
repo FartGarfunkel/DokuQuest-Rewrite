@@ -1,5 +1,5 @@
-// gen/nether_bn.cpp — see nether_bn.h
-#include "gen/nether_bn.h"
+// gen/nether_painted.cpp — see nether_painted.h
+#include "gen/nether_painted.h"
 #include "gen/nether_lands.h"
 #include "gen/gendefs.h"
 #include "gen/nethergen/nethergen.h"
@@ -15,13 +15,13 @@ namespace dq {
 bool netherExactLand(i32 seed, int x, int y, int z, u8& land);   // gen/nether_exact.cpp
 double netherExactTemperature(i32 seed, int x, int z);
 
-const char* bnLandName(int l) {
-  static const char* N[BN_COUNT] = {"", "Nether Jungle", "Gravel Desert", "Nether Swampland", "Magma Land", "Soul Plain", "Old Warped Woods"};
-  return l > 0 && l < BN_COUNT ? N[l] : "";
+const char* pnLandName(int l) {
+  static const char* N[PN_COUNT] = {"", "Nether Jungle", "Gravel Desert", "Nether Swampland", "Magma Land", "Soul Plain", "Old Warped Woods"};
+  return l > 0 && l < PN_COUNT ? N[l] : "";
 }
 u32 bnFogColour(int l) {   // the painted lands' fog colours
-  static const u32 F[BN_COUNT] = {0, 0x3EA93D, 0xAA3000, 0x89134E, 0xF89E44, 0xC471EF, 0x1A051A};
-  return l > 0 && l < BN_COUNT ? F[l] : 0;
+  static const u32 F[PN_COUNT] = {0, 0x3EA93D, 0xAA3000, 0x89134E, 0xF89E44, 0xC471EF, 0x1A051A};
+  return l > 0 && l < PN_COUNT ? F[l] : 0;
 }
 
 namespace {
@@ -34,30 +34,30 @@ const SimplexNoise& maskNoise(i32 seed) {
 }
 }
 
-u8 bnLandFor(i32 seed, int x, int z, u8 host, double temp, bool v19) {
+u8 pnLandFor(i32 seed, int x, int z, u8 host, double temp, bool v19) {
   // the slow mask: the painted lands in patches about 400 blocks across, the classic lands between them
   const double m = maskNoise(seed).fbm2(x / 384.0, z / 384.0, 2);
   const double edge = ((hash32(seed, x, z, 0xB7E8) & 255) / 255.0) * 0.06;   // a ragged border, not a line
-  if (m < 0.12 + edge) return BN_NONE;
+  if (m < 0.12 + edge) return PN_NONE;
   switch (host) {
     // the crags by their warmth, as the lands' climate points: jungle (0.5, 0.8), swamp (0.1, 0.8), warped woods (0.0, 0.55)
     case NB_CRAG:
       // (terrain 19: by the crags' own warmth, which runs 0.76..0.96 — at the old 0.62 / 0.45 they were all jungle)
-      if (v19) return temp > 0.9 ? BN_JUNGLE : temp > 0.84 ? BN_SWAMP : BN_OLD_WARPED;
-      return temp > 0.62 ? BN_JUNGLE : temp > 0.45 ? BN_SWAMP : BN_OLD_WARPED;
-    case NB_OLDWORLD: return BN_GRAVEL_DESERT;
-    case NB_SULFUR: return BN_SWAMP;
-    case NB_VOLCANIC: return BN_MAGMA;
-    case NB_SHELF: case NB_OLD_DESERT: return BN_SOUL_PLAIN;   // the cold dry shelf: BN's soul plain (0.01, -0.5)
-    default: return BN_NONE;   // the crystal lands stay classic
+      if (v19) return temp > 0.9 ? PN_JUNGLE : temp > 0.84 ? PN_SWAMP : PN_OLD_WARPED;
+      return temp > 0.62 ? PN_JUNGLE : temp > 0.45 ? PN_SWAMP : PN_OLD_WARPED;
+    case NB_OLDWORLD: return PN_GRAVEL_DESERT;
+    case NB_SULFUR: return PN_SWAMP;
+    case NB_VOLCANIC: return PN_MAGMA;
+    case NB_SHELF: case NB_OLD_DESERT: return PN_SOUL_PLAIN;   // the cold dry shelf: BN's soul plain (0.01, -0.5)
+    default: return PN_NONE;   // the crystal lands stay classic
   }
 }
 
 u8 netherBnLand(i32 seed, int genVersion, int x, int z) {
-  if (genVersion < 13) return BN_NONE;
+  if (genVersion < 13) return PN_NONE;
   u8 host = NB_CRAG;
   netherExactLand(seed, x, 128, z, host);
-  return bnLandFor(seed, x, z, host, netherExactTemperature(seed, x, z), genVersion >= 19);
+  return pnLandFor(seed, x, z, host, netherExactTemperature(seed, x, z), genVersion >= 19);
 }
 
 namespace {
@@ -73,7 +73,7 @@ struct Ids {
     reed = id("nether_reed"); cactus = id("nether_cactus"); bbush = id("black_bush"); abush = id("black_apple_bush");
     lucis = id("lucis_mushroom"); jelly = id("jellyfish_mushroom");
     vines[0] = id("black_vine"); vines[1] = id("golden_vine"); vines[2] = id("blooming_vine"); vines[3] = id("eye_vine");
-    smoker = id("bn_smoker"); wlog = id("willow_log"); wleaves = id("willow_leaves"); rlog = id("rubeus_log"); rleaves = id("rubeus_leaves");
+    smoker = id("pn_smoker"); wlog = id("willow_log"); wleaves = id("willow_leaves"); rlog = id("rubeus_log"); rleaves = id("rubeus_leaves");
     wroots = id("warped_roots"); wfungus = id("warped_fungus"); twisting = id("twisting_vines"); sprouts = id("nether_sprouts");
   }
 };
@@ -136,7 +136,7 @@ struct Painter {
     const float r = rnd(x, z, 0xB0), r2 = rnd(x, z, 0xB3), r3 = rnd(x, z, 0xB4);
     const bool inner = x >= 2 && x <= 13 && z >= 2 && z <= 13;   // a tree stays inside its chunk (no seams)
     switch (land) {
-      case BN_JUNGLE:
+      case PN_JUNGLE:
         if (solidTop) {
           set(x, f, z, I.jgrass);
           if (trees && inner && r < 0.012f && roofUnder - f > 12 && clearUp(x, f, z, 9)) rubeus(x, f, z, 5 + (int)(r2 * 3));
@@ -148,14 +148,14 @@ struct Painter {
         }
         if (roof && r3 < 0.07f) hang(x, roofUnder, z, I.vines[1 + (int)(r2 * 3) % 3], 1 + (int)(rnd(x, z, 0xB5) * 6));
         break;
-      case BN_GRAVEL_DESERT:
+      case PN_GRAVEL_DESERT:
         if (solidTop) {
           for (int k = 0; k < 4 && ground(at(x, f - k, z)); k++) set(x, f - k, z, I.gravel);
           if (r < 0.012f) stack(x, f, z, I.cactus, 1 + (int)(r2 * 3));
           else if (r < 0.022f) stack(x, f, z, I.bbush, 1);
         }
         break;
-      case BN_SWAMP:
+      case PN_SWAMP:
         if (!solidTop && R.tLiquid[top] == 3 && ground(at(x, f - 1, z)) && r3 < 0.7f) set(x, f, z, I.sgrass);   // the acid's shallows: marsh
         if (ground(at(x, f, z))) {
           set(x, f, z, r2 < 0.3f ? I.ssoil : I.sgrass);
@@ -167,7 +167,7 @@ struct Painter {
         }
         if (roof && r3 < 0.03f) hang(x, roofUnder, z, I.vines[0], 1 + (int)(r2 * 4));
         break;
-      case BN_MAGMA:
+      case PN_MAGMA:
         if (solidTop) {
           if (r2 < 0.32f) set(x, f, z, I.magma);
           if (r < 0.008f) stack(x, f, z, I.obsidian, 1 + (int)(r3 * 3));   // obsidian crystals, small
@@ -175,7 +175,7 @@ struct Painter {
         }
         if (roof && r3 < 0.025f) hang(x, roofUnder, z, I.vines[1], 1 + (int)(r2 * 3));
         break;
-      case BN_SOUL_PLAIN:
+      case PN_SOUL_PLAIN:
         if (solidTop) {
           const BlockId s = maskNoise(seed).noise2((bx + x) / 9.0, (bz + z) / 9.0) > 0 ? I.ssand : I.ssoil;
           for (int k = 0; k < 2 && ground(at(x, f - k, z)); k++) set(x, f - k, z, s);
@@ -183,7 +183,7 @@ struct Painter {
         }
         if (roof) for (int k = 0; k < 2 && ground(at(x, roofUnder + k, z)); k++) set(x, roofUnder + k, z, I.sandstone);
         break;
-      case BN_OLD_WARPED:
+      case PN_OLD_WARPED:
         if (solidTop) {
           set(x, f, z, I.wnyl);
           if (r < 0.05f) stack(x, f, z, I.wroots, 1);
@@ -216,7 +216,7 @@ void bnPaint(i32 seed, const nethergen::NetherGen& g, GenBuf& b, int cx, int cz,
       }
     }();
     if (host == NB_CRAG) temp = g.temperatureAt(wx, wz);
-    const u8 land = bnLandFor(seed, wx, wz, host, temp, strongHash);
+    const u8 land = pnLandFor(seed, wx, wz, host, temp, strongHash);
     if (land) P.column(x, z, land, trees);
   }
 }

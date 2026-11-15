@@ -20,7 +20,7 @@ DepthsGen::DepthsGen(const WorldGenOptions& o)
   if (o.genVersion >= 6) cave_ = std::make_unique<NetherClimate>(seed_, o.genVersion);   // cave Nether: climate, sea at y 96
   if (o.genVersion >= 7) {   // the classic Nether generator, block for block (8: on the open land's shape; gen/nether_exact.cpp)
     initExact(o.genVersion >= 8);
-    bn_ = o.genVersion >= 13 && exactOpen_;   // 13: the painted Nether lands over it (gen/nether_bn.h)
+    bn_ = o.genVersion >= 13 && exactOpen_;   // 13: the painted Nether lands over it (gen/nether_painted.h)
   }
   else if (o.genVersion >= 5) {   // the five-land heightfield kept for worlds already generated that way
     lands_ = std::make_unique<NetherShape>(seed_);

@@ -81,7 +81,7 @@ std::string creativeTabOf(const std::string& key) {
         k == "loom" || k == "smithing_table" || k == "fletching_table" || k == "cartography_table" || k == "stonecutter" || k == "grindstone" || k == "lectern" ||
         k == "composter" || k == "bell" || k == "beacon" || k == "jukebox" || k == "campfire" || k == "flower_pot" || k == "scaffolding") return "func";
     if (b.has("skylands")) return "sky";
-    if (b.has("betterEnd")) return "end";
+    if (b.has("endLands")) return "end";
     static const std::regex NETHER("(^|_)(nether|netherrack|crimson|warped|soul|blackstone|magma|glowstone|shroomlight|ancient_debris|brimsand|brimthaw|ember|rubyglass|gloomstone|cinderite|nylium|wart)(_|$)");
     if (b.has("netherSet") || std::regex_search(k, NETHER)) return "nether";
     static const std::regex COLOURED("(^|_)(wool|carpet|concrete|concrete_powder|stained_glass|stained_glass_pane|glazed_terracotta|terracotta|candle|shulker_box|flag)$");

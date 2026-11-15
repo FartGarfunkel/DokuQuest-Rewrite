@@ -9,11 +9,11 @@
    walls, buttons and plates; thallasium and terminite bars and chains. Each is the game's own block of that kind
    (oak_door, oak_stairs, iron_bars...) with the source's picture run through the art pass (tools/port/restyle.py via
    local_mod_art.fit: the base pack's picture of the same kind of thing in the source's colours).
-2. data/be_structures.json: the End lands' structures (data/betterend/structures/biome/**.nbt, MIT) with the lists
+2. data/end_structures.json: the End lands' structures (data/betterend/structures/biome/**.nbt, MIT) with the lists
    and rarity of its building_list_features: in chorus forest, blossoming spires, foggy mushroomland, umbrella jungle,
    shadow forest and lantern woods, one chunk in N gets one of its land's ruins, houses, stumps or fallen trees.
    Each block is [key, meta for rotations 0..3] (stairs, logs, doors, trapdoors, ladders, buttons turn with it).
-   gen/end_be_structures.cpp places them.
+   gen/endlands_buildings.cpp places them.
 """
 import gzip, json, pathlib, struct, sys
 import numpy as np
@@ -101,7 +101,7 @@ def main(d, be):
         if key in at: return key
         if template not in at: return None
         b = json.loads(json.dumps(blocks[at[template]]))
-        b.update(over); b['key'] = key; b['name'] = name; b['drop'] = key; b['betterEnd'] = True
+        b.update(over); b['key'] = key; b['name'] = name; b['drop'] = key; b['endLands'] = True
         for k in ('strip', 'itemIcon'): b.pop(k, None)
         tex = b['tex'] if 'base' not in over else blocks[at[over['base']]]['tex']
         if 'base' in over: b['tex'] = tex
@@ -279,7 +279,7 @@ def main(d, be):
     # the guarded ones with a cage
     pillars = {}
     for path in sorted((sroot / 'pillars').glob('*.nbt')): pillars[path.stem] = convert(path); total += 1
-    (d / 'be_structures.json').write_text(json.dumps({'lands': lands, 'pillars': pillars}, separators=(',', ':')))
+    (d / 'end_structures.json').write_text(json.dumps({'lands': lands, 'pillars': pillars}, separators=(',', ':')))
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
     (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':')))

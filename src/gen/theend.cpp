@@ -2,7 +2,7 @@
 // and the exit portal's bowl, the platform the stronghold portal lets you down onto, and past the gulf the
 // outer islands with their chorus groves. Shapes are the original's, lifted END_DY (64). End cities are
 // structures (gen/structures.h, DIM_END).
-#include "gen/be/be_terrain.h"
+#include "gen/endlands/endlands_terrain.h"
 #include "gen/dimgens.h"
 
 namespace dq {
@@ -15,8 +15,8 @@ EndGen::EndGen(const WorldGenOptions& o)
   B.resolve();
   mixed_ = o.genVersion >= 21;
   if (o.genVersion >= 7) {   // the End's islands past the gulf; the dragon's own island stays as it is
-    be::BETerrainOptions bo; bo.voidRing = OUTER; bo.centralIsland = false;
-    be_ = std::make_shared<be::BETerrain>((int64_t)o.seed, bo);
+    endlands::EndTerrainOptions bo; bo.voidRing = OUTER; bo.centralIsland = false;
+    lands_ = std::make_shared<endlands::EndTerrain>((int64_t)o.seed, bo);
   }
   // the ten obsidian pillars (WorldGen.endPillars): where, how high, how thick; the two tallest caged
   Mulberry32 rnd((u32)(seed_ ^ 0x5b1e5));
@@ -42,8 +42,8 @@ bool EndGen::island(int x, int z, Isle& o) const {
     return true;
   }
   if (r < OUTER) return false;
-  if (be_) {
-    auto C = beCols(floordiv(x, 16), floordiv(z, 16));
+  if (lands_) {
+    auto C = endCols(floordiv(x, 16), floordiv(z, 16));
     const int i = ((z & 15) << 4) | (x & 15);
     if (C->top[i] < 0) return false;
     o = {C->top[i], C->bot[i], false};
@@ -87,7 +87,7 @@ bool EndGen::island(int x, int z, Isle& o) const {
   return true;
 }
 
-// ---- the outer End: sixteen lands, the End's biomes (gen/theend_be.cpp dresses them) ----
+// ---- the outer End: sixteen lands, the End's biomes (gen/theend_lands.cpp dresses them) ----
 //  0 chorus forest     1 blossoming spires 2 foggy mushroomland 3 glowing grasslands
 //  4 crystal mountains 5 sulphur springs   6 umbrella jungle    7 shadow forest
 //  8 ice starfield     9 amber land       10 megalake          11 lantern woods
@@ -116,10 +116,10 @@ static int endBiomeOf(const SimplexNoise& nA, const SimplexNoise& nB, const Simp
 }
 // the End's land (T.land) as ours: its plain End lands (highlands, midlands, small islands) and the
 // centre take chorus forest's dressing, the nearest of ours
-static int beLand(const be::BETerrain& T, int x, int z) { const int l = T.land(x, z); return l < 0 || l > 18 ? 0 : l; }
+static int endLand(const endlands::EndTerrain& T, int x, int z) { const int l = T.land(x, z); return l < 0 || l > 18 ? 0 : l; }
 int EndGen::endBiome(int x, int z) const {
-  if (be_) {
-    auto C = beCols(floordiv(x, 16), floordiv(z, 16));
+  if (lands_) {
+    auto C = endCols(floordiv(x, 16), floordiv(z, 16));
     return C->land[((z & 15) << 4) | (x & 15)];
   }
   return endBiomeOf(nA, nB, nC, x, z);
@@ -131,22 +131,22 @@ int endLandAt(i32 seed, int x, int z) {
 int endLandAt(i32 seed, int genVersion, int x, int z) {
   if (genVersion < 7) return endLandAt(seed, x, z);
   // one outer End terrain per seed for the sky, the spawns and the particles (cheap queries; it caches its biome map)
-  static std::mutex mx; static i32 lastSeed = 0; static std::shared_ptr<const be::BETerrain> T;
-  std::shared_ptr<const be::BETerrain> t;
+  static std::mutex mx; static i32 lastSeed = 0; static std::shared_ptr<const endlands::EndTerrain> T;
+  std::shared_ptr<const endlands::EndTerrain> t;
   { std::lock_guard<std::mutex> lk(mx);
-    if (!T || lastSeed != seed) { be::BETerrainOptions bo; bo.voidRing = EndGen::OUTER; bo.centralIsland = false; T = std::make_shared<be::BETerrain>((int64_t)seed, bo); lastSeed = seed; }
+    if (!T || lastSeed != seed) { endlands::EndTerrainOptions bo; bo.voidRing = EndGen::OUTER; bo.centralIsland = false; T = std::make_shared<endlands::EndTerrain>((int64_t)seed, bo); lastSeed = seed; }
     t = T; }
-  return beLand(*t, x, z);
+  return endLand(*t, x, z);
 }
 
 // a chunk's columns of outer End land: the top and the lowest bottom of what stands there, and its land
-std::shared_ptr<const EndGen::BECols> EndGen::beCols(int cx, int cz, const float* density) const {
+std::shared_ptr<const EndGen::EndCols> EndGen::endCols(int cx, int cz, const float* density) const {
   const u64 key = ((u64)(u32)cx << 32) | (u32)cz;
-  { std::lock_guard<std::mutex> lk(beMx_); auto it = beCache_.find(key); if (it != beCache_.end()) return it->second; }
+  { std::lock_guard<std::mutex> lk(beMx_); auto it = endCache_.find(key); if (it != endCache_.end()) return it->second; }
   thread_local std::vector<float> buf;
-  if (!density) { buf.resize(be::BETerrain::kChunkVol); be_->chunkDensity(cx, cz, buf.data()); density = buf.data(); }
-  auto C = std::make_shared<BECols>();
-  int8_t lands[256]; be_->chunkLand(cx, cz, lands);
+  if (!density) { buf.resize(endlands::EndTerrain::kChunkVol); lands_->chunkDensity(cx, cz, buf.data()); density = buf.data(); }
+  auto C = std::make_shared<EndCols>();
+  int8_t lands[256]; lands_->chunkLand(cx, cz, lands);
   for (int i = 0; i < 256; i++) {
     int top = -1, bot = -1;
     for (int y = DIM_H - 1; y >= 1; y--) if (density[(y << 8) | i] > 0) { top = y; break; }
@@ -155,12 +155,12 @@ std::shared_ptr<const EndGen::BECols> EndGen::beCols(int cx, int cz, const float
     C->land[i] = (i8)(lands[i] < 0 || lands[i] > 18 ? 0 : lands[i]);
   }
   std::lock_guard<std::mutex> lk(beMx_);
-  auto [it, fresh] = beCache_.emplace(key, C);
-  if (fresh) { beOrder_.push_back(key); while (beOrder_.size() > 6000) { beCache_.erase(beOrder_.front()); beOrder_.pop_front(); } }
+  auto [it, fresh] = endCache_.emplace(key, C);
+  if (fresh) { beOrder_.push_back(key); while (beOrder_.size() > 6000) { endCache_.erase(beOrder_.front()); beOrder_.pop_front(); } }
   return it->second;
 }
 double EndGen::craterDepth(int x, int z) const {
-  if (be_) return 0;   // the outer End has no craters
+  if (lands_) return 0;   // the outer End has no craters
   if (std::hypot((double)x, (double)z) < OUTER + 40 || nC.noise2(x / 320.0 + 51.3, z / 320.0 - 17.9) < 0.2) return 0;   // only in and round the barrens
   const int C = 48;
   int cx = jsFloor(x / (double)C), cz = jsFloor(z / (double)C);
@@ -254,7 +254,7 @@ void EndGen::outerFeatures(int bx, int bz, ChunkWriter& P) const {
     else if (eb == 14 && B.bone_block) cap = B.bone_block;
     for (int y = bot; y <= top; y++) P.put(x, y, z, y == top ? cap : B.end_stone);
   }
-  beDress(bx, bz, P);   // the End's trees and growths (gen/theend_be.cpp)
+  beDress(bx, bz, P);   // the End's trees and growths (gen/theend_lands.cpp)
 }
 
 // Trees, springs, stars and ribs on the outer lands. Each one is its own cell so a chunk only
@@ -516,12 +516,12 @@ void EndGen::generate(Chunk& ch) {
   std::fill(ch.climate.begin(), ch.climate.end(), (u8)128);
   const int bx = ch.cx * 16, bz = ch.cz * 16;
   // the End's islands are solid wherever its density is above 0 (several islands may stand over each other)
-  const bool beChunk = be_ && std::hypot(bx + 8.0, bz + 8.0) > OUTER - 30;
+  const bool landsChunk = lands_ && std::hypot(bx + 8.0, bz + 8.0) > OUTER - 30;
   thread_local std::vector<float> dens;
-  if (beChunk) { dens.resize(be::BETerrain::kChunkVol); be_->chunkDensity(ch.cx, ch.cz, dens.data()); beCols(ch.cx, ch.cz, dens.data()); }
+  if (landsChunk) { dens.resize(endlands::EndTerrain::kChunkVol); lands_->chunkDensity(ch.cx, ch.cz, dens.data()); endCols(ch.cx, ch.cz, dens.data()); }
   auto beSolid = [&](int lx, int y, int lz) { return y >= 1 && y < DIM_H && dens[(y << 8) | (lz << 4) | lx] > 0; };
   for (int lz = 0; lz < 16; lz++) for (int lx = 0; lx < 16; lx++) {
-    if (beChunk && std::hypot((double)(bx + lx), (double)(bz + lz)) >= OUTER) {
+    if (landsChunk && std::hypot((double)(bx + lx), (double)(bz + lz)) >= OUTER) {
       for (int y = 1; y < DIM_H; y++) if (beSolid(lx, y, lz)) b.blocks[colIdx(lx, y, lz)] = B.end_stone;
       continue;
     }
@@ -532,7 +532,7 @@ void EndGen::generate(Chunk& ch) {
   ChunkWriter P(b, ch, S0, *this);
   if (std::abs(bx) < 64 && std::abs(bz) < 64) {
     for (const Pillar& pl : pillars_) {
-      const int reach = betterEnd() ? 6 : pl.rad;   // (the End's bases and tops are up to 11 across)
+      const int reach = endLands() ? 6 : pl.rad;   // (the End's bases and tops are up to 11 across)
       if (pl.x + reach < bx || pl.x - reach > bx + 15 || pl.z + reach < bz || pl.z - reach > bz + 15) continue;
       if (bePillar(pl, &P, nullptr)) continue;
       Isle c; int base = (island(pl.x, pl.z, c) ? c.top : 60 + END_DY) - 8;
@@ -570,7 +570,7 @@ void EndGen::generate(Chunk& ch) {
       int x = bx + lx, z = bz + lz; Isle c;
       if (!island(x, z, c) || c.main) continue;
       const int eb = endBiome(x, z);
-      if (beChunk) {   // every island standing in the column gets its land's ground, the lower ones too
+      if (landsChunk) {   // every island standing in the column gets its land's ground, the lower ones too
         for (int y = c.top; y >= std::max(1, c.bot); ) {
           if (!beSolid(lx, y, lz) || beSolid(lx, y + 1, lz)) { y--; continue; }
           int y2 = y; while (y2 > 1 && beSolid(lx, y2 - 1, lz)) y2--;
@@ -581,7 +581,7 @@ void EndGen::generate(Chunk& ch) {
       }
       beSurface(eb, x, z, c, P);
     }
-    if (beChunk) beStructures(bx, bz, P);   // the End's ruins, houses, stumps and fallen trees in their lands
+    if (landsChunk) beStructures(bx, bz, P);   // the End's ruins, houses, stumps and fallen trees in their lands
     outerFeatures(bx, bz, P);
     // each land's plants, last, on the ground the trees left free
     for (int lz = 0; lz < 16; lz++) for (int lx = 0; lx < 16; lx++) {

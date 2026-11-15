@@ -1,8 +1,8 @@
-// gen/be/be_terrain.cpp — see be_terrain.h. The terrain generator / island layers / layer options are ported from the
+// gen/endlands/endlands_terrain.cpp — see endlands_terrain.h. The terrain generator / island layers / layer options are ported from the
 // reference statement for statement, float vs double as in Java. The SDF operators are not in the reference:
 // SDFCappedCone (Inigo Quilez's capped cone), SDFSmoothUnion (polynomial smooth min), SDFScale, SDFTranslate and
 // SDFRadialNoiseMap are written from memory and marked [recalled*].
-#include "gen/be/be_terrain.h"
+#include "gen/endlands/endlands_terrain.h"
 
 #include <algorithm>
 #include <cmath>
@@ -18,7 +18,7 @@
 #pragma fp_contract(off)
 #endif
 
-namespace dq::be {
+namespace dq::endlands {
 
 namespace {
 // the reference's floor: x < 0 ? (int)(x - 1) : (int)x  (one below floor() at exact negative integers, as it does)
@@ -70,9 +70,9 @@ constexpr int kMaxIslands = 10;  // 9 grid cells + the central island
 }  // namespace
 
 // ================================================================= IslandLayer
-class BETerrain::Layer {
+class EndTerrain::Layer {
 public:
-  Layer(int32_t seed, const LayerOptions& o, const BETerrainOptions& g, int index)
+  Layer(int32_t seed, const LayerOptions& o, const EndTerrainOptions& g, int index)
       : seed_(seed), index_(index), o_(o), density_(seed), radial_(seed) {
     distance_ = std::clamp(o.distance, 1.0f, 8192.0f);
     scale_ = std::clamp(o.scale, 0.1f, 1024.0f);
@@ -229,13 +229,13 @@ private:
   float sin_, cos_;
 };
 
-struct BETerrain::Positions {
+struct EndTerrain::Positions {
   Island isl[3][kMaxIslands];
   int n[3];
 };
 
-// ================================================================= BETerrain
-BETerrain::BETerrain(int64_t worldSeed, const BETerrainOptions& opt) : opt_(opt) {
+// ================================================================= EndTerrain
+EndTerrain::EndTerrain(int64_t worldSeed, const EndTerrainOptions& opt) : opt_(opt) {
   JavaRandom random(worldSeed);  // the noise init: a Java Random(seed), nextInt() x 5
   const int32_t sBig = random.nextInt(), sMed = random.nextInt(), sSmall = random.nextInt();
   large_ = std::make_unique<Layer>(sBig, opt_.big, opt_, 0);
@@ -274,13 +274,13 @@ BETerrain::BETerrain(int64_t worldSeed, const BETerrainOptions& opt) : opt_(opt)
   voidMap_ = std::make_unique<HexBiomeMap>(worldSeed, opt_.voidBiomeSize, &voidPicker_, opt_.hex);
 }
 
-BETerrain::~BETerrain() = default;
+EndTerrain::~EndTerrain() = default;
 
-float BETerrain::layerDistance(int layer) const {
+float EndTerrain::layerDistance(int layer) const {
   return (layer == 0 ? large_ : layer == 1 ? medium_ : small_)->distance();
 }
 
-void BETerrain::warp(double x, double z, double& px, double& pz) const {
+void EndTerrain::warp(double x, double z, double& px, double& pz) const {
   const double d1 = noise1_.eval(x * 0.1, z * 0.1) * 20.0 + noise2_.eval(x * 0.2, z * 0.2) * 10.0 +
                     noise1_.eval(x * 0.4, z * 0.4) * 5.0;
   const double d2 = noise2_.eval(x * 0.1, z * 0.1) * 20.0 + noise1_.eval(x * 0.2, z * 0.2) * 10.0 +
@@ -289,13 +289,13 @@ void BETerrain::warp(double x, double z, double& px, double& pz) const {
   pz = z * 8.0 + d2;
 }
 
-void BETerrain::positions(double px, double pz, Positions& p) const {
+void EndTerrain::positions(double px, double pz, Positions& p) const {
   p.n[0] = large_->positions(px, pz, kNoiseH, p.isl[0]);
   p.n[1] = medium_->positions(px, pz, kNoiseH, p.isl[1]);
   p.n[2] = small_->positions(px, pz, kNoiseH, p.isl[2]);
 }
 
-float BETerrain::layersDensity(const Positions& p, double px, double py, double pz, float intensity,
+float EndTerrain::layersDensity(const Positions& p, double px, double py, double pz, float intensity,
                                float radius) const {
   float dist = -large_->sdf(p.isl[0], p.n[0], px, py, pz, intensity, radius);
   dist = dist > 1.0f ? dist : fmaxJ(dist, -medium_->sdf(p.isl[1], p.n[1], px, py, pz, intensity, radius));
@@ -303,7 +303,7 @@ float BETerrain::layersDensity(const Positions& p, double px, double py, double 
   return dist;
 }
 
-float BETerrain::islandDensity(double px, double py, double pz, float h) const {
+float EndTerrain::islandDensity(double px, double py, double pz, float h) const {
   Positions p;
   positions(px, pz, p);
   return layersDensity(p, px, py, pz, h, 0.5f / (1.0f + h));
@@ -320,8 +320,8 @@ inline float roughen(const OpenSimplexNoise& n1, const OpenSimplexNoise& n2, flo
   return dist;
 }
 inline float topFade(float dist, double py) {
-  constexpr float fadOutStart = float(BETerrain::kNoiseH) - 28.0f;  // 100
-  if (py >= double(BETerrain::kNoiseH)) return -1.0f;
+  constexpr float fadOutStart = float(EndTerrain::kNoiseH) - 28.0f;  // 100
+  if (py >= double(EndTerrain::kNoiseH)) return -1.0f;
   if (py > double(fadOutStart)) {
     const double d = (py - double(fadOutStart)) / 27.0;
     return float(double(dist) + d * (-1.0 - double(dist)));  // lerp(d, dist, -1)
@@ -330,13 +330,13 @@ inline float topFade(float dist, double py) {
 }
 }  // namespace
 
-float BETerrain::density(double px, double py, double pz, float h) const {
+float EndTerrain::density(double px, double py, double pz, float h) const {
   return topFade(roughen(noise1_, noise2_, islandDensity(px, py, pz, h), px, py, pz), py);
 }
 
 // ----------------------------------------------------------------- the fill
 // TerrainGenerator.fillTerrainDensity for one corner column, given h = avgTerrainHeight * 0.5
-void BETerrain::fillCorner(int cellX, int cellZ, float h, float out[33]) const {
+void EndTerrain::fillCorner(int cellX, int cellZ, float h, float out[33]) const {
   double px, pz;
   warp(double(cellX), double(cellZ), px, pz);
   Positions p;
@@ -348,11 +348,11 @@ void BETerrain::fillCorner(int cellX, int cellZ, float h, float out[33]) const {
   }
 }
 
-void BETerrain::cornerColumn(int cellX, int cellZ, float out[33]) const {
+void EndTerrain::cornerColumn(int cellX, int cellZ, float out[33]) const {
   fillCorner(cellX, cellZ, avgTerrainHeight(cellX << 1, cellZ << 1) * 0.5f, out);
 }
 
-void BETerrain::chunkDensity(int cx, int cz, float* out) const {
+void EndTerrain::chunkDensity(int cx, int cz, float* out) const {
   // the 11 x 11 quarts the nine corner columns average their terrainHeight over (each biome looked up once)
   const int q0x = cx * 4 - 3, q0z = cz * 4 - 3;
   float th[11][11];
@@ -397,7 +397,7 @@ void BETerrain::chunkDensity(int cx, int cz, float* out) const {
 }
 
 // ----------------------------------------------------------------- land / void and biomes
-bool BETerrain::isLandCell(int cellX, int cellZ) const {
+bool EndTerrain::isLandCell(int cellX, int cellZ) const {
   const uint64_t key = (uint64_t(uint32_t(cellX >> 7)) << 32) | uint32_t(cellZ >> 7);
   std::shared_ptr<LandSection> sec;
   {
@@ -440,9 +440,9 @@ bool BETerrain::isLandCell(int cellX, int cellZ) const {
   return result;
 }
 
-bool BETerrain::isLand(int x, int z) const { return isLandCell(x >> 3, z >> 3); }
+bool EndTerrain::isLand(int x, int z) const { return isLandCell(x >> 3, z >> 3); }
 
-int BETerrain::biomeQuart(int qx, int qz) const {
+int EndTerrain::biomeQuart(int qx, int qz) const {
   const int64_t posX = int64_t(qx) * 4, posZ = int64_t(qz) * 4;
   const int64_t r2 = int64_t(opt_.voidRing) * opt_.voidRing;
   const int64_t dist = std::llabs(posX) + std::llabs(posZ) > r2 ? r2 + 1 : posX * posX + posZ * posZ;
@@ -451,9 +451,9 @@ int BETerrain::biomeQuart(int qx, int qz) const {
   return land ? landMap_->biome(double(posX), double(posZ)) : voidMap_->biome(double(posX), double(posZ));
 }
 
-int BETerrain::biome(int x, int z) const { return biomeQuart(x >> 2, z >> 2); }
+int EndTerrain::biome(int x, int z) const { return biomeQuart(x >> 2, z >> 2); }
 
-int BETerrain::land(int x, int z, int* vanillaKind) const {
+int EndTerrain::land(int x, int z, int* vanillaKind) const {
   const int b = biome(x, z);
   int vk = V_NONE, r = b;
   if (b == B_THE_END) { vk = V_THE_END; r = -2; }
@@ -462,7 +462,7 @@ int BETerrain::land(int x, int z, int* vanillaKind) const {
   return r;
 }
 
-void BETerrain::chunkLand(int cx, int cz, int8_t out[256], int8_t* vanillaKind) const {
+void EndTerrain::chunkLand(int cx, int cz, int8_t out[256], int8_t* vanillaKind) const {
   for (int qz = 0; qz < 4; ++qz)
     for (int qx = 0; qx < 4; ++qx) {
       int vk = V_NONE;
@@ -475,12 +475,12 @@ void BETerrain::chunkLand(int cx, int cz, int8_t out[256], int8_t* vanillaKind) 
     }
 }
 
-double BETerrain::terrainHeight(int land) {
+double EndTerrain::terrainHeight(int land) {
   if (land < 0 || land >= B_COUNT) return 0.1;
   return kBiomes[land].terrainHeight;
 }
 
-float BETerrain::avgTerrainHeight(int qx, int qz) const {
+float EndTerrain::avgTerrainHeight(int qx, int qz) const {
   if (kBiomes[biomeQuart(qx, qz)].terrainHeight < 0.1f) return 0.0f;
   float depth = 0.0f;
   for (int i = 0; i < 29; ++i) depth += kBiomes[biomeQuart(qx + offs_[i][0], qz + offs_[i][1])].terrainHeight * coef_[i];
@@ -488,7 +488,7 @@ float BETerrain::avgTerrainHeight(int qx, int qz) const {
 }
 
 // ----------------------------------------------------------------- introspection
-int BETerrain::islandsNear(double px, double pz, Island* out, int maxOut) const {
+int EndTerrain::islandsNear(double px, double pz, Island* out, int maxOut) const {
   Positions p;
   positions(px, pz, p);
   int n = 0;
@@ -497,12 +497,12 @@ int BETerrain::islandsNear(double px, double pz, Island* out, int maxOut) const 
   return n;
 }
 
-float BETerrain::islandOwnDensity(const Island& is, double px, double py, double pz, float h) const {
+float EndTerrain::islandOwnDensity(const Island& is, double px, double py, double pz, float h) const {
   const Layer& L = is.layer == 0 ? *large_ : is.layer == 1 ? *medium_ : *small_;
   return -L.sdf(&is, 1, px, py, pz, h, 0.5f / (1.0f + h));
 }
 
-BETerrain::LayerStats BETerrain::layerStats(int layer, int ix0, int iz0, int ix1, int iz1) const {
+EndTerrain::LayerStats EndTerrain::layerStats(int layer, int ix0, int iz0, int ix1, int iz1) const {
   const Layer& L = layer == 0 ? *large_ : layer == 1 ? *medium_ : *small_;
   LayerStats s{0, 0};
   const int64_t r2 = int64_t(opt_.voidRing) * opt_.voidRing;
@@ -518,4 +518,4 @@ BETerrain::LayerStats BETerrain::layerStats(int layer, int ix0, int iz0, int ix1
   return s;
 }
 
-}  // namespace dq::be
+}  // namespace dq::endlands

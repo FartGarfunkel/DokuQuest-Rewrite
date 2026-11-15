@@ -3,14 +3,14 @@
 data_patches.py runs it):  python3 tools/port/nether_biome_blocks.py <data-dir>
 
 After an MIT-licensed source (see docs/THIRD_PARTY_NOTICES.md): the jungle, swamp, gravel desert,
-magma land, soul plain and old warped woods (gen/nether_bn.cpp paints them, terrain 13). The pictures are the
+magma land, soul plain and old warped woods (gen/nether_painted.cpp paints them, terrain 13). The pictures are the
 DokuQuest Base pack's nearest, recoloured to each land's own colours (as nether_blocks.py does) — no outside art.
 
   turf: jungle_grass, swampland_grass, mushroom_grass, netherrack_moss; soul_sandstone
   plants: nether_reed (grows by lava, 3 tall), nether_cactus (3 tall, pricks), black_bush, black_apple_bush (black
   apples: food), lucis_mushroom (glows), jellyfish_mushroom (soft: no fall damage), black / golden / blooming / eye
   vines (hang), smoker (smokes)
-  trees: willow_log / willow_leaves, rubeus_log / rubeus_leaves (gen/nether_bn.cpp grows them)
+  trees: willow_log / willow_leaves, rubeus_log / rubeus_leaves (gen/nether_painted.cpp grows them)
 """
 import importlib.util as _u, json, pathlib
 import numpy as np
@@ -40,8 +40,8 @@ def main(d):
         tid = {k: tiles[v] for k, v in tex.items()} if isinstance(tex, dict) else tiles[tex]
         b = {'render': 1, 'solid': True, 'opaque': True, 'replaceable': False, 'hardness': 1.5, 'tool': 'pickaxe', 'tier': 0, 'drop': key,
              'light': 0, 'lightAtt': 0, 'sound': 'stone', 'key': key, 'name': name}
-        b.update(props); b['tex'] = tex; b['betternether'] = True
-        if key in at and not blocks[at[key]].get('betternether'): raise SystemExit('nether_biome_blocks: %s is already another block' % key)
+        b.update(props); b['tex'] = tex; b['paintedNether'] = True
+        if key in at and not blocks[at[key]].get('paintedNether'): raise SystemExit('nether_biome_blocks: %s is already another block' % key)
         if key in at: blocks[at[key]].update(b); bj['faces'][at[key]] = faces_of(tid)
         else:
             b['id'] = len(blocks); blocks.append(b); bj['faces'].append(faces_of(tid)); at[key] = b['id']
@@ -65,28 +65,28 @@ def main(d):
         tile('bn_%s_top' % key, recolour(nyl_t, top, 1.15)); tile('bn_%s_side' % key, recolour(nyl_s, side, 1.1))
         block(key, nm, {'hardness': 0.4, 'tier': 1, 'drop': 'netherrack', 'sound': 'grass'},
               {'top': 'bn_%s_top' % key, 'bottom': 'netherrack', 'side': 'bn_%s_side' % key})
-    tile('bn_soul_sandstone_top', recolour(sst_t, 0x5E4A3C, 1.1)); tile('bn_soul_sandstone_side', recolour(sst_s, 0x56443A, 1.1))
-    tile('bn_soul_sandstone_bottom', recolour(sst_b, 0x4E3E34, 1.1))
+    tile('pn_soul_sandstone_top', recolour(sst_t, 0x5E4A3C, 1.1)); tile('pn_soul_sandstone_side', recolour(sst_s, 0x56443A, 1.1))
+    tile('pn_soul_sandstone_bottom', recolour(sst_b, 0x4E3E34, 1.1))
     block('soul_sandstone', 'Soul Sandstone', {'hardness': 0.8},
-          {'top': 'bn_soul_sandstone_top', 'bottom': 'bn_soul_sandstone_bottom', 'side': 'bn_soul_sandstone_side'})
+          {'top': 'pn_soul_sandstone_top', 'bottom': 'pn_soul_sandstone_bottom', 'side': 'pn_soul_sandstone_side'})
 
     cross = {'render': 3, 'solid': False, 'opaque': False, 'replaceable': False, 'hardness': 0, 'tool': None, 'sound': 'grass', 'needsSupport': True}
     hang = dict(cross, sound='leaves', hangs=True, stackPlant=True, climb=True)
-    tile('bn_nether_reed', recolour(cane, 0x6E8C3A, 1.2))
-    block('nether_reed', 'Nether Reed', dict(cross, stackPlant=True, netherReed=True, randomTick=True), 'bn_nether_reed')
-    tile('bn_nether_cactus_side', recolour(cact, 0x7A5A2C, 1.2)); tile('bn_nether_cactus_top', recolour(cact_t, 0x8A6630, 1.2))
+    tile('pn_nether_reed', recolour(cane, 0x6E8C3A, 1.2))
+    block('nether_reed', 'Nether Reed', dict(cross, stackPlant=True, netherReed=True, randomTick=True), 'pn_nether_reed')
+    tile('pn_nether_cactus_side', recolour(cact, 0x7A5A2C, 1.2)); tile('pn_nether_cactus_top', recolour(cact_t, 0x8A6630, 1.2))
     block('nether_cactus', 'Nether Cactus', {'render': 7, 'solid': True, 'opaque': False, 'hardness': 0.4, 'tool': None, 'sound': 'wool', 'shapeKind': 35,
           'contactDamage': 1, 'needsSupport': True, 'netherCactus': True, 'randomTick': True},
-          {'top': 'bn_nether_cactus_top', 'bottom': 'bn_nether_cactus_top', 'side': 'bn_nether_cactus_side'})
-    tile('bn_black_bush', recolour(bush, 0x2A2226, 1.3))
-    block('black_bush', 'Black Bush', dict(cross, replaceable=True), 'bn_black_bush')
+          {'top': 'pn_nether_cactus_top', 'bottom': 'pn_nether_cactus_top', 'side': 'pn_nether_cactus_side'})
+    tile('pn_black_bush', recolour(bush, 0x2A2226, 1.3))
+    block('black_bush', 'Black Bush', dict(cross, replaceable=True), 'pn_black_bush')
     ab = recolour(berry, 0x2C2A24, 1.2); ab = veins(ab, 0x14100E, 0.1)
-    tile('bn_black_apple_bush', ab)
-    block('black_apple_bush', 'Black Apple Bush', dict(cross, drop='black_apple'), 'bn_black_apple_bush')
-    tile('bn_lucis_mushroom', veins(recolour(brown, 0xC8A040, 1.1), 0xFFE070, 0.25))
-    block('lucis_mushroom', 'Lucis Mushroom', dict(cross, light=15, sound='wool'), 'bn_lucis_mushroom')
-    tile('bn_jellyfish_mushroom', recolour(red, 0x5AB8C8, 1.0))
-    block('jellyfish_mushroom', 'Jellyfish Mushroom', dict(cross, light=9, sound='slime', softLanding=True), 'bn_jellyfish_mushroom')
+    tile('pn_black_apple_bush', ab)
+    block('black_apple_bush', 'Black Apple Bush', dict(cross, drop='black_apple'), 'pn_black_apple_bush')
+    tile('pn_lucis_mushroom', veins(recolour(brown, 0xC8A040, 1.1), 0xFFE070, 0.25))
+    block('lucis_mushroom', 'Lucis Mushroom', dict(cross, light=15, sound='wool'), 'pn_lucis_mushroom')
+    tile('pn_jellyfish_mushroom', recolour(red, 0x5AB8C8, 1.0))
+    block('jellyfish_mushroom', 'Jellyfish Mushroom', dict(cross, light=9, sound='slime', softLanding=True), 'pn_jellyfish_mushroom')
     for key, nm, col, glow in [('black_vine', 'Black Vine', 0x2A2428, 0), ('golden_vine', 'Golden Vine', 0xC8A030, 12),
                                ('blooming_vine', 'Blooming Vine', 0x7A3A5C, 8), ('eye_vine', 'Eye Vine', 0x8A2A2A, 6)]:
         a = recolour(lit if glow else vine, col, 1.2)
@@ -94,8 +94,8 @@ def main(d):
         if key == 'blooming_vine': a = veins(a, 0xF08AC8, 0.1)
         tile('bn_' + key, a)
         block(key, nm, dict(hang, light=glow), 'bn_' + key)
-    tile('bn_smoker', recolour(deadb, 0x4A3E36, 1.3))
-    block('bn_smoker', 'Nether Smoker', dict(cross, hardness=0.3, sound='stone', smokes=True), 'bn_smoker')
+    tile('pn_smoker', recolour(deadb, 0x4A3E36, 1.3))
+    block('pn_smoker', 'Nether Smoker', dict(cross, hardness=0.3, sound='stone', smokes=True), 'pn_smoker')
     # trees
     LOG = {'hardness': 2, 'tool': 'axe', 'sound': 'log', 'isLog': True, 'axisBlock': True, 'fuel': 1.5}
     LEAF = {'render': 2, 'solid': True, 'opaque': False, 'hardness': 0.2, 'tool': None, 'sound': 'leaves', 'isLeaves': True, 'lightAtt': 1, 'drop': None}

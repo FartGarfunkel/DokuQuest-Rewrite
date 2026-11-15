@@ -67,7 +67,7 @@ def main(d):
         models[key] = model
         m = copy.deepcopy(mobs[base])
         m.pop('variantDefs', None)
-        m['model'] = key; m['label'] = label; m['betterEnd'] = True
+        m['model'] = key; m['label'] = label; m['endLands'] = True
         m.update(over)
         mobs[key] = m
     (d / 'mobs.json').write_text(json.dumps(mobs, separators=(',', ':'), ensure_ascii=False))

@@ -9,7 +9,7 @@
 #include "core/registry.h"
 #include "gen/gendefs.h"
 #include "gen/dimgens.h"
-#include "gen/nether_bn.h"
+#include "gen/nether_painted.h"
 
 namespace dq {
 double netherExactTemperature(i32 seed, int x, int z);   // gen/nether_exact.cpp
@@ -52,7 +52,7 @@ void emberNetherEnv(Level& lv, SkyEnv& e, const Settings* st) {
     const float k = std::pow(1.f / (40.f - rd), 0.25f) * 0.86f;
     static vec3 eased(-1);   // the fog eases; a land's edge isn't a jump
     vec3 want = emberFogRamp(t) * k;
-    // terrain 13: the newer Nether lands tint it their own fog colour (gen/nether_bn.h)
+    // terrain 13: the newer Nether lands tint it their own fog colour (gen/nether_painted.h)
     if (const u8 bn = netherBnLand(lv.info.seed, lv.info.genVersion, (int)std::floor(g_cam.x), (int)std::floor(g_cam.z)))
       want = mixc(want, rgb(bnFogColour(bn)) * k * 0.8f, 0.55f);
     if (eased.x < 0) eased = want; else eased += (want - eased) * 0.04f;
@@ -135,7 +135,7 @@ SkyEnv baseEnv(Level& lv, int dim, int realm, const Settings* st) {
       }
       break;
     default: {
-      // the End's lands (render/be_sky.cpp): the End's sky is its fog colour all round, under turning nebulae and stars,
+      // the End's lands (render/end_sky.cpp): the End's sky is its fog colour all round, under turning nebulae and stars,
       // and each land's fog has its own colour and density. The dragon's island is the plain End (#A080A0, density 1).
       static const u32 FOG[19] = {
         0x571A57, 0xF192E5, 0x297AAD, 0x63E4F7, 0xA080A0, 0xCFC23E, 0x57DFDD, 0x000000,
@@ -171,9 +171,9 @@ SkyEnv baseEnv(Level& lv, int dim, int realm, const Settings* st) {
       const float hk = 1 - std::pow(0.25f + 0.75f * std::min(rdc, 32.f) / 32.f, 0.25f);
       vec3 fc = fogc * 0.6f * (1 - hk);
       e.fog = fc; e.zenith = fc; e.horizon = fc;
-      e.beDensity = std::max(0.5f, dens);
+      e.endDensity = std::max(0.5f, dens);
       e.beTicks = ((double)lv.info.day * DAY_LEN + lv.info.time) * 20.0;
-      e.fogStart = 0.25f / e.beDensity;
+      e.fogStart = 0.25f / e.endDensity;
       break;
     }
   }
@@ -351,9 +351,9 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd, bool prima
     if (ow < 0 || !primary) ow = ow < 0 ? tgt : ow; else ow += (tgt - ow) * std::min(1.f, dtSky * 0.6f);
     fr = glm::mix(vec2(0.f, std::min(far, 512.f)), vec2(far * 0.15f, far * 0.45f), ow);
   }
-  if (e.beDensity > 0 && !e.underwater) {   // the End's lands: fog from a quarter of the view to all of it, over the density
+  if (e.endDensity > 0 && !e.underwater) {   // the End's lands: fog from a quarter of the view to all of it, over the density
     float vd = std::max(96.f, far);
-    fr = vec2(vd * 0.25f / e.beDensity, vd / e.beDensity);
+    fr = vec2(vd * 0.25f / e.endDensity, vd / e.endDensity);
   }
   // inside a bank of cloud the world closes in: white all round well before the edge between the lands,
   // so crossing it is a walk through cloud (only the camera's own land is drawn; see world_renderer.cpp)
@@ -481,9 +481,9 @@ void SkyRenderer::draw(const FrameCtx& f) {
   shader.set("uSunDir", e.sunDir);
   glBindVertexArray(vao);
   glDrawArrays(GL_TRIANGLES, 0, 3);
-  if (f.dim == DIM_END && e.beDensity > 0 && !e.underwater && beSky.init()) {
+  if (f.dim == DIM_END && e.endDensity > 0 && !e.underwater && endSky.init()) {
     glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    beSky.draw(f.cam.proj * mat4(mat3(f.cam.view)), e.beTicks, e.fog, e.beDensity, 1.f);
+    endSky.draw(f.cam.proj * mat4(mat3(f.cam.view)), e.beTicks, e.fog, e.endDensity, 1.f);
     glDisable(GL_BLEND);
   }
   glDepthMask(GL_TRUE); glEnable(GL_DEPTH_TEST);

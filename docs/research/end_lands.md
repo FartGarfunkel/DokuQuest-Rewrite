@@ -2,16 +2,16 @@
 
 Notes on the End band past the dragon's island: what the game has, how each part works (the numbers the code
 uses), and what is still to do. Code: `src/gen/theend.cpp` (land choice, the dragon's island, the outer island
-columns), `src/gen/theend_be.cpp` (each land's ground, trees, growths, caves and plants),
-`src/gen/end_be_structures.cpp` (ruins and pillar pieces from `data/be_structures.json`), `src/gen/be/` (the
-floating-island density and land map; see its README), `src/render/sky.cpp` + `src/render/be_sky.cpp` (fog and sky).
+columns), `src/gen/theend_lands.cpp` (each land's ground, trees, growths, caves and plants),
+`src/gen/endlands_buildings.cpp` (ruins and pillar pieces from `data/end_structures.json`), `src/gen/endlands/` (the
+floating-island density and land map; see its README), `src/render/sky.cpp` + `src/render/end_sky.cpp` (fog and sky).
 Worlds with `genVersion >= 7` use all of this; older worlds keep the original outer islands.
 
 Conventions
 - "gen y" = the island generator's own y. Its column is 0..127 (cells 8 × 4 blocks); our End band is 256 tall.
   `ourY = genY + 56` (3.8).
 - RNG: a 48-bit LCG (`seed ^ 0x5DEECE66D`). `nextFloat = next(24)/2^24`, `nextDouble = ((next(26)<<27)+next(27))/2^53`.
-  `JavaRandom` in `src/gen/be/be_noise.h`.
+  `JavaRandom` in `src/gen/endlands/endlands_noise.h`.
 - `randRange(int a,b)` = `a + nextInt(b-a+1)`; float/double = `a + next*(b-a)`.
 - **[est]** marks numbers worked out from how they are used rather than read off a table. Check them before
   relying on them exactly.
@@ -19,7 +19,7 @@ Conventions
 
 ---------------------------------------------------------------------------------------------------
 
-## 1. Sky (`render/be_sky.cpp`, done)
+## 1. Sky (`render/end_sky.cpp`, done)
 
 ### 1.1 What is drawn
 The End's sky is its fog colour all round (the clear colour, 1.7), with turning nebulae and stars on top. There is
@@ -190,7 +190,7 @@ Fog colours and densities are in `sky.cpp` (`FOG[19]`, `DEN[19]`). Particles: ab
 - jungle_spore drifts upward at 0.02–0.04 per tick with gravity −0.001 per tick.
 Ours: each land sheds its own motes in `render/env_layers.cpp` (close in colour and drift, not the exact table).
 
-### 2b. Terrain settings and surface (`theend_be.cpp`, done)
+### 2b. Terrain settings and surface (`theend_lands.cpp`, done)
 
 | land | terrainHeight | genChance | parent | caves | top / alt-top / under | default floor rule |
 |---|---|---|---|---|---|---|
@@ -232,7 +232,7 @@ Surface rules:
   giving [virid, azure, sandy]_jadestone. Noise seeds are `"jade_cave".hashCode()` and `"depth_noise".hashCode()`.
 
 ### 2c. Land features and creatures (defaults omitted)
-This is the full list each land should have. Ours (`theend_be.cpp`) builds the main tree/growth per land and a
+This is the full list each land should have. Ours (`theend_lands.cpp`) builds the main tree/growth per land and a
 reduced plant scatter; the rest are on the to-do list in 6.
 - **amber_land**: end_lake_rare[1/40], amber_ore[x60], helix_tree[L0-1], lanceleaf[L0-2], glow_pillar[L0-1], amber_grass[L0-7], amber_root[L0-1], bulb_moss[L0-1], bulb_moss_wood[L0-15], charnia_orange[L0-10], charnia_red[L0-10]. Mobs: enderman 50 1-4, end_slime 30 1-2.
 - **blossoming_spires**: spire[1/4], floating_spire[1/8], silk_moth_nest[1/2], buildings[1/10], tenanea[L0-3], tenanea_bush[L0-12], bulb_vine[L0-5], bushy_grass[L0-10], bushy_grass_wg[L0-8], blossom_berry[L0-3], twisted_moss[L0-15], twisted_moss_wood[L0-25]. Mobs: silk_moth 5 1-2, enderman 50 1-4.
@@ -279,7 +279,7 @@ The lush caves' ceiling block is cave_moss. Ours: pockets in the thick islands, 
 
 ---------------------------------------------------------------------------------------------------
 
-## 3. Islands (`src/gen/be/be_terrain.cpp`, done)
+## 3. Islands (`src/gen/endlands/endlands_terrain.cpp`, done)
 
 ### 3.1 When it runs
 Past the gulf round the dragon's island, for `genVersion >= 7`. The column is y 0..127 (gen y), cells 8 (xz) × 4 (y),
@@ -398,7 +398,7 @@ cells become bark "veins" (1 in 15 for lucernia).
 
 "Ground ok" means the block below is in the nylium tag; all End turf and moss blocks are in it.
 
-Ours (`theend_be.cpp`) builds each of these in a simpler voxel form (lean-as-it-climbs trunks, sphere crowns);
+Ours (`theend_lands.cpp`) builds each of these in a simpler voxel form (lean-as-it-climbs trunks, sphere crowns);
 the recipes below are the target shapes.
 
 1. **Mossy glowshroom** (foggy_mushroomland L0-2; ground end_moss or end_mycelium)
@@ -669,7 +669,7 @@ Animated textures: crystal_moss_cover 16×64 (4 frames, t32, interpolated) and b
 
 ## 6. Our lands and what is left
 
-Land index → name (`theend.cpp`, `theend_be.cpp`, `sky.cpp FOG[19]`):
+Land index → name (`theend.cpp`, `theend_lands.cpp`, `sky.cpp FOG[19]`):
 
 | # | land | state | notes |
 |---|---|---|---|
@@ -695,7 +695,7 @@ Land index → name (`theend.cpp`, `theend_be.cpp`, `sky.cpp FOG[19]`):
 | cave | 6 cave kinds | done (4 kinds) | lush aurora, smaragdant, jade, plain; empty aurora and lush/empty split folded together |
 
 Buildings (ruins, houses, a library, a tree house, a small mansion, cabins, stumps and fallen trees) stand in six
-lands, one chunk in ten (`end_be_structures.cpp`). The dragon's pillars get their base and top pieces there too.
+lands, one chunk in ten (`endlands_buildings.cpp`). The dragon's pillars get their base and top pieces there too.
 
 Still to do, roughly by value:
 1. **Big land pieces**: crystal mountain pieces (11), megalake carving (15), painted mountain pieces (16), giant
