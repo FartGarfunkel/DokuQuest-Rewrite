@@ -15,20 +15,20 @@ keeps our own blocks.
 - [x] interaction kit (sim/tactile.h): the hit point in the block's north frame (worldToNorthLocal), zones -> slots, put/take
 
 ## Blocks (Tactile -> ours)
-- [x] table_de_forge -> smithing table: base/template/material zones (x<0.3 material, >0.7 template), Tactile spots and
-      tilts, forge hammer 3 blows (0.5 s apart, a level), result left on the table, preview at the back (armour worn)
-- [ ] smithing templates: the cinderite upgrade (diamond -> cinderite), the 18 armour trims; trims drawn on worn armour
-- [x] haut_fourneau -> blast furnace: the door, four raw spots on the crucible, the mould and its ingot, loose fuel
-- [x] four -> furnace, fumoir -> smoker (ours light themselves: no flint and steel needed; one stack a slot, shown as Tactile's 16-a-spot): their chambers, food on the grill spots, fuel
-- [x] meule -> grindstone: the round wheel turning, grinding held to it (repair for experience, wear; ten seconds to disenchant)
-- [ ] the grindstone's first-person pose (MeuleFirstPersonAnimator: the piece held to the wheel)
-- [x] enclume -> anvil (work + material on its face, hammer blows, the result left on it)
-- [ ] armour trims shown on worn armour (every armour, the procedural ones too)
-- [x] coffre -> chest (lid on its inner hinge, tray of 15 + heap, buttons sort/swap, the item looked at written inside the lid; a large chest stays ours)
-- [ ] coffre_ender -> ender chest
-- [ ] (was) coffre / coffre_ender -> chests: the lid (kept off the wall behind), a note of paper on the lid naming it, the
-      contents in Tactile's layers (large items, stacks)
-- [x] cartographe -> cartography table (ink, quill, board, pile, compass; draw, copy, enlarge with 8 blanks or paper)
-- [x] alambic -> brewing stand (rack of our 3D bottles, dome ingredient, burner powder, water while brewing; the recipe book not yet)
-- [ ] (rest) -> brewing stand, enclume -> anvil, table_enchantement -> enchanting
-      table, jukebox, bibliotheque -> bookshelf, pupitre -> lectern, etabli_gravure -> engraving
+- [x] table_de_forge -> smithing table (three spots, hammer blows, templates, trims shown on worn armour)
+- [x] haut_fourneau, four, fumoir -> blast furnace, furnace, smoker (four spots each, doors, the melt down the trough)
+- [x] meule -> grindstone (round wheel, grinding held to it, your arms holding the piece)
+- [x] enclume -> anvil (work + material, hammer blows, result left on it)
+- [x] coffre -> every chest (plain, painted, ender, party; each its own pictures; lid, buttons, tray, heap, note, outline)
+- [x] barrels, large chests, cabinets: the same open-by-hand put/take (our own models)
+- [x] cartographe -> cartography table (ink, quill, board, pile, compass)
+- [x] alambic -> brewing stand (rack of our 3D bottles, dome, burner, water, bubbles, recipe book of our brews)
+- [x] jukebox (platter, needle arm)
+- [x] table_enchantement -> enchanting table: its model, the socket and the lapis reservoir by hand; our offers kept
+- [ ] (not ported, on purpose) Tactile's enchanting system (feeding XP into the table, nether-star antennas, the grimoire's
+      runes and knowledge books): it would replace our enchanting, not show it
+- [ ] (not ported, on purpose) bibliotheque: a four-book shelf; our bookshelf is a full shelf that powers enchanting, and
+      our chiseled bookshelf already takes books one at a time
+- [ ] pupitre: Minecraft's own lectern and book, which ours already is
+- [ ] etabli_gravure (the engraving bench, renaming): a new block of ours, and typing a name needs the on-screen keyboard
+      for controllers first (the controller audit)
