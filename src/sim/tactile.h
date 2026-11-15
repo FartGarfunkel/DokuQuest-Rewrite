@@ -76,6 +76,14 @@ TactileChestAim tactileBarrelAim(World& w, ivec3 at, vec3 eye, vec3 dir);
 bool tactileBarrelUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, ItemStack& held, bool all, bool sneak);
 bool tactileBarrelTake(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, bool whole);
 
+// a cupboard's door, open (render/chest_layer.cpp: its model facing +z turned a quarter per meta, the door swung 1.85 out on
+// its left edge): a point on the door's inside (its own sixteenths, as shut) where it is now, block-relative; the sort
+// button on the door (its middle 12, 9) and the door's own box, aimed at
+vec3 tactileCabinetDoorPoint(World& w, ivec3 at, vec3 doorPx);
+float tactileCabinetButtonRay(World& w, ivec3 at, vec3 eye, vec3 dir);   // -1: missed
+float tactileCabinetDoorRay(World& w, ivec3 at, vec3 eye, vec3 dir);
+void tactileCabinetSort(Level& lv, Player& p, World& w, ivec3 at);
+
 // the cartography desk (Tactile's cartographe; our "mapwork" record {items: [the map worked, a blank to copy onto, blank
 // sheets to enlarge with], ink, feather}): an ink sac fills its pot (three uses), a feather goes in its holder (three);
 // a map goes on the board (front: the one worked, back: a blank to copy onto), blanks and paper pile on the right; an empty

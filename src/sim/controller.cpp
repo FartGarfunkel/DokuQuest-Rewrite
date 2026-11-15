@@ -518,8 +518,8 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
   }
   // Tactile Stations: an open large chest or cabinet is reached into too (a strike takes one; sneaking, the stack)
   else if (tactileStations && target.hit && !te && bhas(target.id, BF::Container) && !tactileChest(world(), target.block) && chestLidOpen(world(), target.block)) {
-    noDig = true;
     const int slot = chestSlotAtRay(world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch));
+    if (slot >= 0) noDig = true;   // (reached into; anywhere else it breaks as ever)
     if (in.attackPressed && !p.atkMove && slot >= 0 && chestTake(lv, p, world(), target.block, slot, !p.sneaking, true)) swingArm();
   }
   // Tactile Stations: an open chest's tray is reached into, not dug (a strike takes one; sneaking, the stack)
@@ -824,6 +824,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
       if (!repeat) { containerEntity(w, hit->block.x, hit->block.y, hit->block.z); setChestLidOpen(w, hit->block, true); swingArm(); sfxAt(lv, isCabinet(w, hit->block) ? "door_open" : "chest", c); }
       return;
     }
+    if (!repeat && tactileCabinetButtonRay(w, hit->block, eye, lookVector(p.yaw, p.pitch)) >= 0) { tactileCabinetSort(lv, p, w, hit->block); swingArm(); return; }   // (its sort button, on the door)
     const int slot = chestSlotAtRay(w, hit->block, eye, lookVector(p.yaw, p.pitch));
     if (slot < 0) {
       if (!repeat) { setChestLidOpen(w, hit->block, false); swingArm(); sfxAt(lv, isCabinet(w, hit->block) ? "door_close" : "chest", c); }

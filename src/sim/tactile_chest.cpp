@@ -101,6 +101,50 @@ void barrelLidBox(World& w, ivec3 at, float out[6]) {
 }
 }  // namespace
 
+vec3 tactileCabinetDoorPoint(World& w, ivec3 at, vec3 q) {
+  const float fa = (w.getMeta(at.x, at.y, at.z) & 3) * PI / 2, da = -1.85f;
+  vec3 p = q / 16.f;
+  const vec3 hinge(2 / 16.f, 0, 15.2f / 16.f);
+  auto rotY = [](vec3 v, float a) { return vec3(v.x * std::cos(a) + v.z * std::sin(a), v.y, -v.x * std::sin(a) + v.z * std::cos(a)); };
+  p = hinge + rotY(p - hinge, da);
+  return vec3(0.5f, 0, 0.5f) + rotY(p - vec3(0.5f, 0, 0.5f), fa);
+}
+namespace {
+float rayAround(vec3 o, vec3 d, vec3 c, vec3 h) {   // (an axis box about c, half sizes h, blocks)
+  float t0 = 0, t1 = 1e9f;
+  for (int a = 0; a < 3; a++) {
+    const float lo = c[a] - h[a], hi = c[a] + h[a];
+    if (std::fabs(d[a]) < 1e-6f) { if (o[a] < lo || o[a] > hi) return -1; continue; }
+    float ta = (lo - o[a]) / d[a], tb = (hi - o[a]) / d[a]; if (ta > tb) std::swap(ta, tb);
+    t0 = std::max(t0, ta); t1 = std::min(t1, tb);
+    if (t0 > t1) return -1;
+  }
+  return t0;
+}
+}  // namespace
+float tactileCabinetButtonRay(World& w, ivec3 at, vec3 eye, vec3 dir) {
+  if (!isCabinet(w, at) || !chestLidOpen(w, at)) return -1;
+  return rayAround(eye - vec3(at), dir, tactileCabinetDoorPoint(w, at, vec3(12, 9, 14.2f)), vec3(0.09f));
+}
+float tactileCabinetDoorRay(World& w, ivec3 at, vec3 eye, vec3 dir) {
+  if (!isCabinet(w, at) || !chestLidOpen(w, at)) return -1;
+  float best = -1;   // (the door, a few boxes along it)
+  for (float x : {3.f, 6.f, 9.f, 12.f}) for (float y : {3.f, 7.f, 11.f}) {
+    const float t = rayAround(eye - vec3(at), dir, tactileCabinetDoorPoint(w, at, vec3(x, y, 14.8f)), vec3(0.11f, 0.13f, 0.11f));
+    if (t >= 0 && (best < 0 || t < best)) best = t;
+  }
+  return best;
+}
+void tactileCabinetSort(Level& lv, Player& p, World& w, ivec3 at) {
+  std::vector<ItemStack> v = chestItems(lv, p, w, at), k;
+  for (auto& s : v) if (!s.empty()) k.push_back(s);
+  std::stable_sort(k.begin(), k.end(), [](const ItemStack& a, const ItemStack& b) { return a.id < b.id; });
+  for (size_t i = 0; i < v.size(); i++) v[i] = i < k.size() ? k[i] : ItemStack();
+  chestSetItems(lv, p, w, at, v);
+  if (json* e = w.blockEntity(at.x, at.y, at.z)) { (*e)["press0"] = e->value("press0", 0) + 1; w.blockEntityChanged(at.x, at.y, at.z); }
+  sfxAt(lv, "click", vec3(at) + vec3(0.5f));
+}
+
 bool tactileChest(World& w, ivec3 at) {
   const std::string& k = reg().block(w.getBlock(at.x, at.y, at.z)).key;
   if (k != "chest" && k != "ender_chest" && k != "party_chest" && !(k.size() > 13 && k.compare(k.size() - 13, 13, "painted_chest") == 0)) return false;   // (the plain, the painted, the ender and the party chest)
@@ -165,6 +209,8 @@ float tactileExtraRay(World& w, ivec3 at, vec3 eye, vec3 dir) {
     for (const float* b : {(const float*)bs, (const float*)bw, (const float*)lb}) { const float t = rayBox(o, d, b); if (t >= 0 && (best < 0 || t < best)) best = t; }
     if (best >= 0) return best;
   }
+  if (const float tb = tactileCabinetButtonRay(w, at, eye, dir); tb >= 0) return tb;
+  if (const float td = tactileCabinetDoorRay(w, at, eye, dir); td >= 0) return td;   // (an open cupboard's door: aimed at, it shuts)
   if (reg().block(w.getBlock(at.x, at.y, at.z)).key == "brewing_stand") {   // (the still's recipe book, lying in front)
     const int f = tactileFacing(w, at);
     const vec3 o = tactileNorthLocal(f, eye - vec3(at)), d = tactileNorthLocal(f, eye + dir - vec3(at)) - o;
