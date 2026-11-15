@@ -1089,7 +1089,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   // body's middle. Folded it leans 15 deg back and 15 deg in, the two crossing in a V down the back; gliding it swings out
   // level (90 deg) with a 20 deg sweep; sneaking, 40 / 45 deg and dropped 3 px. (The model's space has x and y the other
   // way round to the rig's: the left wing hinges at -5 here, and its turns about y and x change sign.)
-  if (cape == "elytra" && !fp && !ps.sleep) {
+  if (cape == "elytra" && (!fp || ps.glide) && !ps.sleep) {
     const float open = clampf(ps.wingOpen, 0, 1);
     float ax = 0.2617994f, az = 0.2617994f, ay = 0.f, drop = 0.f;
     if (ps.sneak && !ps.glide) { ax = 0.6981317f; az = 0.7853982f; ay = 0.08726646f; drop = 3.f; }
