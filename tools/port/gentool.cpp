@@ -58,8 +58,8 @@ static int dump(const char* reqPath, const char* outPath) {
   }
   for (auto& p : req["sky"]) {
     int cx = p[0], cz = p[1];
-    Chunk ch(DIM_AETHER, cx, cz); sky.generate(ch);
-    BlockId sg = reg().blockId("sky_grass"), ss = reg().blockId("skystone"), dt = reg().blockId("dirt"), co = reg().blockId("aether_crystal_ore");
+    Chunk ch(DIM_SKYLANDS, cx, cz); sky.generate(ch);
+    BlockId sg = reg().blockId("sky_grass"), ss = reg().blockId("skystone"), dt = reg().blockId("dirt"), co = reg().blockId("skyland_crystal_ore");
     json cols = json::array();
     for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
       int top = -1, bot = -1;
@@ -137,7 +137,7 @@ static std::unique_ptr<DimGenerator> makeGen(int dim, const WorldGenOptions& o) 
   switch (dim) {
     case DIM_OVERWORLD: return std::make_unique<OverworldGen>(o);
     case DIM_NETHER: return std::make_unique<DepthsGen>(o);
-    case DIM_AETHER: return std::make_unique<SkylandsGen>(o);
+    case DIM_SKYLANDS: return std::make_unique<SkylandsGen>(o);
     default: return std::make_unique<EndGen>(o);
   }
 }

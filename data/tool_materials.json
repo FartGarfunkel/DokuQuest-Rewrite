@@ -448,12 +448,12 @@
     "armorDur": 0.95
    }
   },
-  "aether_crystal": {
+  "skyland_crystal": {
    "items": [
-    "aether_crystal"
+    "skyland_crystal"
    ],
-   "name": "Aether Crystal",
-   "prefix": "aether_crystal",
+   "name": "Sky Crystal",
+   "prefix": "skyland_crystal",
    "rgb": [
     155,
     213,

@@ -81,7 +81,7 @@ public:
   void sample(int wx, int wz, ColumnSample& out) const override;
   void trees(int cx, int cz, std::vector<TreeSample>& out) const override;
   const TerrainQuery* terrain() const override { return this; }
-  int dim() const override { return DIM_AETHER; }
+  int dim() const override { return DIM_SKYLANDS; }
   i32 seed() const override { return seed_; }
   TerrainColumn terrainColumn(int x, int z) const override;
   int islandTop(int x, int z) const;                 // band y of the island's grass here, -1 = open sky
@@ -91,20 +91,20 @@ public:
   int skyBiome(int x, int z) const;                  // 0 meadow, 1 forest, 2 grove, 3 woodland
   int hillTop(int x, int z) const;                   // band y an island's top has here wherever the mask allows one
   StructureIndex structures;
-  // terrain version 7: The Aether's islands (gen/skylands_aether.cpp): its 3D density, Aether grass over Aether dirt
+  // terrain version 7: The Aether's islands (gen/skylands_isles.cpp): its 3D density, Aether grass over Aether dirt
   // over holystone, its trees, aerclouds, quicksoil shelves, ores and ground cover
-  bool aether() const { return aether_ != nullptr; }
-  bool aetherColumn(int wx, int wz, int& top, int& bottom) const;   // band y of the highest and lowest land here
-  static constexpr int AETHER_DY = 100;              // band y = Aether y + 100: the islands at 118-205, clear of the cloud bank
+  bool isles() const { return isles_ != nullptr; }
+  bool islesColumn(int wx, int wz, int& top, int& bottom) const;   // band y of the highest and lowest land here
+  static constexpr int ISLES_DY = 100;              // band y = Aether y + 100: the islands at 118-205, clear of the cloud bank
 private:
   i32 seed_;
   GenBlocks B;
   SimplexNoise nCont, nHill, nCave1;
-  std::shared_ptr<const class AetherNoise> aether_;
+  std::shared_ptr<const class IslesNoise> isles_;
   bool mixed_ = false;   // terrain 21: the ground cover rolled with a well-mixed hash (the original's drew rows along z)
-  void generateAether(Chunk& c);
-  void sampleAether(int wx, int wz, ColumnSample& out) const;
-  void treesAether(int cx, int cz, std::vector<TreeSample>& out) const;
+  void generateIsles(Chunk& c);
+  void sampleIsles(int wx, int wz, ColumnSample& out) const;
+  void treesIsles(int cx, int cz, std::vector<TreeSample>& out) const;
 };
 
 class EndGen : public DimGenerator, public TerrainQuery {

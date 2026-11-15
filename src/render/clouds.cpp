@@ -158,7 +158,7 @@ void CloudRenderer::update(Level& lv, const FrameCtx& f, const SkyEnv& env) {
   list.clear(); active = false;
   if (!f.settings || !f.settings->clouds || f.cam.realm != REALM_MAIN) return;
   int d = f.land;
-  if ((d != DIM_OVERWORLD && d != DIM_AETHER) || isUnderworld(f.dim)) return;
+  if ((d != DIM_OVERWORLD && d != DIM_SKYLANDS) || isUnderworld(f.dim)) return;
   WeatherSystem* W = weatherOf(lv);
   active = true;
   // cloudScene (clouds.js + skies.js)
@@ -168,7 +168,7 @@ void CloudRenderer::update(Level& lv, const FrameCtx& f, const SkyEnv& env) {
   float base = zone == "desert" ? 0.22f : zone == "jungle" || zone == "swamp" ? 0.55f : zone == "savanna" ? 0.32f : 0.42f;
   thunder = kind == "thunder" ? 1.f : 0.f;
   float darkK = d == DIM_OVERWORLD ? (kind == "thunder" ? 1.f : 0.8f) : 0.45f;
-  flash = W ? std::max(W->flashT > 0 ? std::min(1.f, W->flashT / 0.2f) : 0.f, d == DIM_AETHER && W->belowFlash > 0 ? W->belowFlash / 0.3f : 0.f) : 0.f;
+  flash = W ? std::max(W->flashT > 0 ? std::min(1.f, W->flashT / 0.2f) : 0.f, d == DIM_SKYLANDS && W->belowFlash > 0 ? W->belowFlash / 0.3f : 0.f) : 0.f;
   float far = (float)(f.settings->farTerrain);
   reach = far > 1024 && gfx.modern ? std::min(1400.f, 680 + (far - 1024) * 0.35f) : 680.f;
   double cx = f.cam.pos.x, cz = f.cam.pos.z;

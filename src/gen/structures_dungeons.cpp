@@ -26,7 +26,7 @@ static const DTheme& dtheme(int k) {
       r[i].key = names[i]; r[i].name = j["name"]; r[i].pillar = j["pillar"]; r[i].stairs = j["stairs"]; r[i].slab = j["slab"]; r[i].light = j["light"];
       r[i].wall = strList(j["wall"]); r[i].floor = strList(j["floor"]); r[i].mobs = strList(j["mobs"]); r[i].bosses = strList(j["bosses"]);
       r[i].webs = j.contains("webs") && j["webs"].is_boolean() && j["webs"].get<bool>();
-      // bosses added since (mobs.json "dungeonBoss": the theme they keep, e.g. BTA's Giant in the crypts: tools/port/bta_extras.py)
+      // bosses added since (mobs.json "dungeonBoss": the theme they keep, e.g. BTA's Giant in the crypts: tools/port/classic_extras.py)
       if (reg().mobs.is_object()) for (auto& [k, v] : reg().mobs.items())
         if (v.is_object() && v.value("dungeonBoss", std::string()) == names[i] && std::find(r[i].bosses.begin(), r[i].bosses.end(), k) == r[i].bosses.end()) r[i].bosses.push_back(k);
     }
@@ -265,7 +265,7 @@ static bool lairPlace(const StructureIndex& idx, const TerrainQuery& t, int rx, 
 static void lairBuild(ChunkWriter& w, const StructurePlan& S) {
   SP P(w); const LairExt& L = extOf<LairExt>(S);
   const int dim = P.w.terrain.dim(), Ly = S.y;
-  const bool deep = dim == DIM_NETHER, sky = dim == DIM_AETHER, sea = L.type == "tide";
+  const bool deep = dim == DIM_NETHER, sky = dim == DIM_SKYLANDS, sea = L.type == "tide";
   auto hf = [&](int x, int z, int s) { return hashFloat(x, z, (i32)S.seed, s); };
   auto above = [&](int y) { return sea && y <= SEA_LEVEL ? "water" : "air"; };   // what fills the space over the nest
   using V = std::vector<const char*>;
@@ -327,7 +327,7 @@ void registerStructureDungeons() {
   }
   {
     StructureType t; t.key = "dragon_lair"; t.name = "a dragon's lair"; t.region = LAIR_REG; t.clearance = 6;
-    t.dims = (1u << DIM_OVERWORLD) | (1u << DIM_NETHER) | (1u << DIM_AETHER);
+    t.dims = (1u << DIM_OVERWORLD) | (1u << DIM_NETHER) | (1u << DIM_SKYLANDS);
     t.place = lairPlace; t.build = lairBuild; t.treePad = 2;
     t.treeOff = [](const StructurePlan&, int, int) { return true; };
     registerStructure(std::move(t));

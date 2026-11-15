@@ -1,4 +1,4 @@
-// sim/extra_items.cpp — what Better than Adventure 8.0.1's newer items do (the items themselves: tools/port/bta_extras.py):
+// sim/extra_items.cpp — what Better than Adventure 8.0.1's newer items do (the items themselves: tools/port/classic_extras.py):
 //   the steel bucket (ItemBucketSteel: three bucketfuls, kept on the stack's tag {fluid, n}; scoop from a source, pour
 //   one at a time), wolf armour (on your own tamed wolf: it takes it, protects it like a player's armour, wears down;
 //   sneak with an empty hand to take it back), and the label (ItemLabel: write a name on it, then use it on a creature
@@ -94,7 +94,7 @@ struct LeafFall : LevelSystem {
   }
 };
 
-// BTA's Giant, a crypt's boss here (tools/port/bta_extras.py): with someone close it rears up for a moment (time to get
+// BTA's Giant, a crypt's boss here (tools/port/classic_extras.py): with someone close it rears up for a moment (time to get
 // clear), then stamps — those still near are hurt and thrown up. mobs.json "stomp".
 struct GiantStomp : LevelSystem {
   double t = 0;

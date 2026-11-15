@@ -109,7 +109,7 @@ void registerAchievements() {
             const int d = dimOfY(ifloor(p->pos.y));
             if (d == DIM_NETHER) grant(lv, *p, "nether");
             if (d == DIM_END) grant(lv, *p, "end");
-            if (d == DIM_AETHER) grant(lv, *p, "sky");
+            if (d == DIM_SKYLANDS) grant(lv, *p, "sky");
             if (d == DIM_OVERWORLD && villageAtPos(lv, p->realm, p->pos, 8)) grant(lv, *p, "village");
           }
           for (auto& o : lv.entities()) if (auto* c = dynamic_cast<Creature*>(o.get())) if (c->tamed && c->owner == p->name) { grant(lv, *p, "tame"); break; }

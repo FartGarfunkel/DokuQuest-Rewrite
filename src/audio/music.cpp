@@ -693,7 +693,7 @@ struct MusicDirector::Impl {
     if (s.realm == 2) return "hisrealm";   // (sim/level.h REALM_HIS)
     const float r = rnd();
     if (s.dim == DIM_NETHER) return r < 0.35f ? "depths" : r < 0.65f ? "depths2" : "nether_edm";
-    if (s.dim == DIM_AETHER) return r < 0.3f ? "sky" : r < 0.6f ? "sky2" : "sky_edm";
+    if (s.dim == DIM_SKYLANDS) return r < 0.3f ? "sky" : r < 0.6f ? "sky2" : "sky_edm";
     if (s.dim == DIM_END) return r < 0.5f ? "end" : r < 0.8f ? "end_edm" : "cave2";
     if (s.eyeWater) return "deep";
     int localY = (int)std::floor(s.head.y) - dimBase(DIM_OVERWORLD);
@@ -721,7 +721,7 @@ struct MusicDirector::Impl {
   }
   const Song* realmSong() {
     if (e.audioNow() - userRead > 60) { userSongs = loadUserSongs(); userRead = e.audioNow(); }
-    const char* want = dimNow == DIM_OVERWORLD ? "overworld" : dimNow == DIM_NETHER ? "nether" : dimNow == DIM_END ? "end" : dimNow == DIM_AETHER ? "skylands" : "";
+    const char* want = dimNow == DIM_OVERWORLD ? "overworld" : dimNow == DIM_NETHER ? "nether" : dimNow == DIM_END ? "end" : dimNow == DIM_SKYLANDS ? "skylands" : "";
     std::vector<const Song*> c;
     for (auto& s : userSongs) if (*want && s.realm == want && !s.notes.empty()) c.push_back(&s);
     return c.empty() ? nullptr : c[(size_t)(rnd() * c.size()) % c.size()];

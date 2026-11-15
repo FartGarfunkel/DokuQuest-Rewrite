@@ -478,7 +478,7 @@ def main(d):
         bkeys[key]['drop'] = ck
         rj['smelting'][ck] = key
         if ck not in rj['tags']['#stone_tool']: rj['tags']['#stone_tool'].append(ck)
-    # the same family as granite's (gen bta_extras.py): the rock and its cobble each with a slab, stairs and a wall (the
+    # the same family as granite's (gen classic_extras.py): the rock and its cobble each with a slab, stairs and a wall (the
     # chisel makes slabs and stairs of them too, world/carve_forms), and a mossy cobble (cobble + vine)
     def rock_shape(base, suffix, kind, fam, name):
         k = base + '_' + suffix

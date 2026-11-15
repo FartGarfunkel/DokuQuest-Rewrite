@@ -46,7 +46,7 @@ EXTRA = {
     'quartz': (['quartz'], 'Quartz', 'quartz', '', {'tier': 3, 'speed': 7, 'damage': 4, 'durability': 200, 'armor': 0.8, 'armorDur': 0.8}),
     'amethyst': (['amethyst_shard'], 'Amethyst', 'amethyst', '', {'tier': 3, 'speed': 9, 'damage': 4, 'durability': 170, 'armor': 0.75, 'armorDur': 0.7}),
     'olivine': (['olivine'], 'Olivine', 'olivine', '', {'tier': 3, 'speed': 6.5, 'damage': 4, 'durability': 320, 'armor': 0.9, 'armorDur': 0.95}),
-    'aether_crystal': (['aether_crystal'], 'Aether Crystal', 'aether_crystal', '', {'tier': 3, 'speed': 8, 'damage': 4, 'durability': 450, 'armor': 0.9, 'armorDur': 1.0}),
+    'skyland_crystal': (['skyland_crystal'], 'Aether Crystal', 'skyland_crystal', '', {'tier': 3, 'speed': 8, 'damage': 4, 'durability': 450, 'armor': 0.9, 'armorDur': 1.0}),
     'ender': (['ender_shard'], 'Ender', 'ender', '', {'tier': 4, 'speed': 8.5, 'damage': 5, 'durability': 900, 'armor': 1.05, 'armorDur': 1.2}),
     'mese': (['mese_crystal'], 'Mese', 'mese', '', {'tier': 4, 'speed': 9, 'damage': 5.5, 'durability': 1100, 'armor': 1.15, 'armorDur': 1.4}),
     'crude_steel': (['crude_steel'], 'Crude Steel', 'crude_steel', '', {'tier': 3, 'speed': 6.5, 'damage': 4, 'durability': 600, 'armor': 1.08, 'armorDur': 1.4}),
@@ -79,7 +79,7 @@ FALLBACK = {'leather': (160, 101, 64), 'wood': (162, 130, 78), 'stone': (128, 12
             'cinderite': (230, 96, 40), 'obsidian': (52, 36, 80), 'emberglass': (240, 96, 40),
             'zanite': (170, 118, 236), 'gravitite': (232, 120, 214), 'thallasium': (92, 204, 194),
             'tin': (200, 206, 212), 'lapis': (44, 76, 196), 'amber': (232, 150, 40), 'quartz': (236, 230, 222), 'amethyst': (164, 104, 222),
-            'olivine': (132, 172, 64), 'aether_crystal': (150, 220, 255), 'ender': (40, 150, 128), 'mese': (240, 228, 40), 'chainmail': (150, 152, 160),
+            'olivine': (132, 172, 64), 'skyland_crystal': (150, 220, 255), 'ender': (40, 150, 128), 'mese': (240, 228, 40), 'chainmail': (150, 152, 160),
             'crude_steel': (140, 140, 146), 'frost': (170, 230, 250), 'red_crystal': (220, 50, 60), 'rubyglass': (230, 60, 80), 'charged_crystal': (255, 140, 80),
             'aurora': (150, 120, 240), 'smaragdant': (60, 220, 140), 'echo': (20, 70, 90), 'rift': (160, 60, 220), 'ambrosium': (250, 230, 120),
             'croc': (100, 120, 70), 'dragonscale': (150, 40, 50)}

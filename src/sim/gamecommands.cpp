@@ -214,7 +214,7 @@ static void registerBuiltinCommands() {
     if (a.empty() || !c.lv.gen) throw CommandUsage{};
     const std::string kind = toLower(a[0]);
     const int here = dimOfY(ifloor(c.p.pos.y));
-    for (int dim : {here, (int)DIM_OVERWORLD, (int)DIM_NETHER, (int)DIM_END, (int)DIM_AETHER}) {
+    for (int dim : {here, (int)DIM_OVERWORLD, (int)DIM_NETHER, (int)DIM_END, (int)DIM_SKYLANDS}) {
       if (const StructurePlan* s = locateStructure(*c.lv.gen, dim, kind, ifloor(c.p.pos.x), ifloor(c.p.pos.z), 16))
         // y as /tp takes it (the stacked world's y, not the land's own); another land is named, not measured
         return strFormat("%s at %d, %d, %d (%s)", s->name.empty() ? kind.c_str() : s->name.c_str(), s->cx, dimBase(dim) + s->y, s->cz,
@@ -281,7 +281,7 @@ static void registerBuiltinCommands() {
     // BTA: /tp to a dimension (here a band of the stacked world): onto its ground above x, z
     if (!a.empty()) {
       const std::string d = toLower(a[0]);
-      const int dim = d == "overworld" || d == "world" ? DIM_OVERWORLD : d == "skylands" || d == "aether" || d == "sky" ? DIM_AETHER
+      const int dim = d == "overworld" || d == "world" ? DIM_OVERWORLD : d == "skylands" || d == "sky" ? DIM_SKYLANDS
                     : d == "nether" || d == "depths" || d == "ember" ? DIM_NETHER : d == "end" || d == "the_end" ? DIM_END : -1;
       if (dim >= 0) {
         if (p.realm == REALM_DRIFT) return driftTravel(c.lv, p);

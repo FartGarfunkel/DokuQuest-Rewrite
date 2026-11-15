@@ -28,7 +28,7 @@ const std::vector<Rx>& sizeTable() {
       {"^ender_pearl$|^ender_eye$", 0.5f},
       {"chorus_fruit$", 0.6f},
       {"nugget$|seeds$|^cocoa_beans$|^nether_wart_item$|berries$", 0.55f},
-      {"^(diamond|emerald|ruby|sapphire|quartz|lapis_lazuli|amethyst_shard|frost_shard|cinderite_shard|aether_crystal|mese_crystal|heart_crystal|turtle_scute|dragon_scale|croc_scale)$", 0.6f},
+      {"^(diamond|emerald|ruby|sapphire|quartz|lapis_lazuli|amethyst_shard|frost_shard|cinderite_shard|skyland_crystal|mese_crystal|heart_crystal|turtle_scute|dragon_scale|croc_scale)$", 0.6f},
       {"ball$|^snowball$|^egg$|^cinder_core$|^magma_cream$|^ink_sac$|^glow_ink_sac$|^venom_sac$|^spider_eye$|^fermented_spider_eye$|^ectoplasm$|^gust_puff$|^rabbit_foot$|^shark_tooth$", 0.6f},
       {"^(golden_)?apple$|potato$|^beetroot$|^cookie$|^aechor_petal$", 0.62f},
       {"_dye$|dust$|powder$|^sugar$|^flour$|^bone_meal$|^gunpowder$|^redstone$|^crushed_", 0.68f},

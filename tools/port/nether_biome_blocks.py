@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""tools/port/betternether_blocks.py — BetterNether's lands' blocks and plants for the Nether band (idempotent;
-data_patches.py runs it):  python3 tools/port/betternether_blocks.py <data-dir>
+"""tools/port/nether_biome_blocks.py — BetterNether's lands' blocks and plants for the Nether band (idempotent;
+data_patches.py runs it):  python3 tools/port/nether_biome_blocks.py <data-dir>
 
 After BetterNether (github.com/quiqueck/BetterNether, MIT; see docs/CREDITS.md): its jungle, swamp, gravel desert,
 magma land, soul plain and old warped woods (gen/nether_bn.cpp paints them, terrain 13). The pictures are the
-DokuQuest Base pack's nearest, recoloured to BetterNether's colours (as bta_nether_blocks.py does) — no BetterNether art.
+DokuQuest Base pack's nearest, recoloured to BetterNether's colours (as nether_blocks.py does) — no BetterNether art.
 
   turf: jungle_grass, swampland_grass, mushroom_grass, netherrack_moss; soul_sandstone
   plants: nether_reed (grows by lava, 3 tall), nether_cactus (3 tall, pricks), black_bush, black_apple_bush (black
@@ -15,7 +15,7 @@ DokuQuest Base pack's nearest, recoloured to BetterNether's colours (as bta_neth
 import importlib.util as _u, json, pathlib
 import numpy as np
 
-_s = _u.spec_from_file_location('bta_nether_blocks', pathlib.Path(__file__).with_name('bta_nether_blocks.py'))
+_s = _u.spec_from_file_location('nether_blocks', pathlib.Path(__file__).with_name('nether_blocks.py'))
 _b = _u.module_from_spec(_s); _s.loader.exec_module(_b)
 pack_pic, recolour, veins, save = _b.pack_pic, _b.recolour, _b.veins, _b.save
 
@@ -41,7 +41,7 @@ def main(d):
         b = {'render': 1, 'solid': True, 'opaque': True, 'replaceable': False, 'hardness': 1.5, 'tool': 'pickaxe', 'tier': 0, 'drop': key,
              'light': 0, 'lightAtt': 0, 'sound': 'stone', 'key': key, 'name': name}
         b.update(props); b['tex'] = tex; b['betternether'] = True
-        if key in at and not blocks[at[key]].get('betternether'): raise SystemExit('betternether_blocks: %s is already another block' % key)
+        if key in at and not blocks[at[key]].get('betternether'): raise SystemExit('nether_biome_blocks: %s is already another block' % key)
         if key in at: blocks[at[key]].update(b); bj['faces'][at[key]] = faces_of(tid)
         else:
             b['id'] = len(blocks); blocks.append(b); bj['faces'].append(faces_of(tid)); at[key] = b['id']
@@ -124,7 +124,7 @@ def main(d):
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
     (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':')))
-    print('betternether_blocks: done')
+    print('nether_biome_blocks: done')
 
 
 if __name__ == '__main__':

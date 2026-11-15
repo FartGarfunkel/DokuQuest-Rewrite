@@ -65,7 +65,7 @@ def main(d):
     ore = load(d, 'diamond_ore'); op = ore.load()
     gem = lambda r, g, b, a: colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)[1] > 0.25
     ore = tint(ore, sky, mask=lambda r, g, b, a: not gem(r, g, b, a), gamma=0.9)
-    save('aether_crystal_ore', tint(ore, (170, 236, 255), mask=gem), 'diamond_ore')
+    save('skyland_crystal_ore', tint(ore, (170, 236, 255), mask=gem), 'diamond_ore')
     # the cloud banks: powder snow's soft speckle, white, sky blue (bounce) and gold (float down)
     save('cloud_puff_block', tint(load(d, 'powder_snow'), (246, 249, 255), gamma=0.6), 'powder_snow')
     save('bounce_cloud', tint(load(d, 'powder_snow'), (150, 200, 250), gamma=0.7), 'powder_snow')

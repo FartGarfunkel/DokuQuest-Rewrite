@@ -15,7 +15,7 @@ const std::vector<CreativeTab>& creativeTabs() {
     {"nature", "Nature", "grass"}, {"func", "Functional", "crafting_table"}, {"redstone", "Redstone & rails", "redstone"},
     {"tools", "Tools & gear", "iron_pickaxe"}, {"combat", "Combat", "iron_sword"}, {"food", "Food", "apple"},
     {"magic", "Magic & potions", "apprentice_staff"}, {"mat", "Materials", "iron_ingot"}, {"nether", "The Nether", "netherrack"},
-    {"sky", "The Skylands", "aether_grass_block"}, {"end", "The End", "end_stone"}, {"eggs", "Spawn eggs", "sheep_spawn_egg"},
+    {"sky", "The Skylands", "skyland_grass_block"}, {"end", "The End", "end_stone"}, {"eggs", "Spawn eggs", "sheep_spawn_egg"},
     {"forged", "Forged & mixed", "steel_hafted_iron_pickaxe"},
   };
   return T;
@@ -80,7 +80,7 @@ std::string creativeTabOf(const std::string& key) {
         k.find("banner") != std::string::npos || k == "crafting_table" || k == "anvil" || k == "enchanting_table" || k == "brewing_stand" || k == "cauldron" ||
         k == "loom" || k == "smithing_table" || k == "fletching_table" || k == "cartography_table" || k == "stonecutter" || k == "grindstone" || k == "lectern" ||
         k == "composter" || k == "bell" || k == "beacon" || k == "jukebox" || k == "campfire" || k == "flower_pot" || k == "scaffolding") return "func";
-    if (b.has("aether")) return "sky";
+    if (b.has("skylands")) return "sky";
     if (b.has("betterEnd")) return "end";
     static const std::regex NETHER("(^|_)(nether|netherrack|crimson|warped|soul|blackstone|magma|glowstone|shroomlight|ancient_debris|brimsand|brimthaw|ember|rubyglass|gloomstone|cinderite|nylium|wart)(_|$)");
     if (b.has("netherSet") || std::regex_search(k, NETHER)) return "nether";

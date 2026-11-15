@@ -23,7 +23,7 @@ static const std::vector<std::vector<std::string>> RIFT_SIGNS = {{"WE ARE", "WAT
 static bool hauntRock(BlockId id) {
   static std::vector<BlockId> R;
   if (R.empty()) for (const char* k : {"stone", "dirt", "grass", "gravel", "andesite", "diorite", "granite", "slate", "tuff", "deepslate", "coarse_dirt", "sandstone", "clay", "coal_ore", "iron_ore", "copper_ore", "tin_ore",
-      "snowy_grass", "podzol", "calcite", "limestone", "marble", "dripstone_block", "mud", "red_sandstone", "terracotta", "emberstone", "basalt", "blackstone", "ash", "skystone", "sky_grass", "aether_grass_block", "aether_dirt", "holystone", "end_stone", "desert_stone", "desert_sandstone"})
+      "snowy_grass", "podzol", "calcite", "limestone", "marble", "dripstone_block", "mud", "red_sandstone", "terracotta", "emberstone", "basalt", "blackstone", "ash", "skystone", "sky_grass", "skyland_grass_block", "skyland_dirt", "holystone", "end_stone", "desert_stone", "desert_sandstone"})
     if (BlockId b = B(k)) R.push_back(b);
   return id && std::find(R.begin(), R.end(), id) != R.end();
 }

@@ -112,7 +112,7 @@ void registerDefaultWorldGen() {
     switch (d) {
       case DIM_OVERWORLD: { auto g = std::make_unique<OverworldGen>(o); lastOw = g.get(); return g; }
       case DIM_NETHER: return std::make_unique<DepthsGen>(o);
-      case DIM_AETHER: return std::make_unique<SkylandsGen>(o);
+      case DIM_SKYLANDS: return std::make_unique<SkylandsGen>(o);
       case DIM_END: return std::make_unique<EndGen>(o);
       default: return std::make_unique<VoidGen>();
     }

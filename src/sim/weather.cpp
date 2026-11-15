@@ -399,7 +399,7 @@ void WeatherSystem::localWeather(Level& lv, World& w, double dt) {
   mistNow += (m - mistNow) * std::min(1.f, fdt * 0.35f);
   // the Skylands: the storms are below you, and flash
   if (belowFlash > 0) belowFlash -= fdt;
-  if (leadDim == DIM_AETHER && kind == "thunder" && rnd() < dt / 7) { belowFlash = 0.3f; if (rnd() < 0.5f) soundLater(0.6 + rnd() * 1.8, "thunder_far", leadPos, 1e4f); }
+  if (leadDim == DIM_SKYLANDS && kind == "thunder" && rnd() < dt / 7) { belowFlash = 0.3f; if (rnd() < 0.5f) soundLater(0.6 + rnd() * 1.8, "thunder_far", leadPos, 1e4f); }
 }
 
 float WeatherSystem::mistTarget(Level& lv, World& w, const std::string& zn, const WeatherColumn* c) {

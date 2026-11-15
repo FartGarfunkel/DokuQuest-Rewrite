@@ -1,5 +1,5 @@
-// gen/aether_noise.cpp — see aether_noise.h.
-#include "gen/aether_noise.h"
+// gen/isles_noise.cpp — see isles_noise.h.
+#include "gen/isles_noise.h"
 #include "common/noise.h"
 #include <cmath>
 #include <random>
@@ -18,7 +18,7 @@ inline double yclamp(double y, double y0, double y1, double v0, double v1) { dou
 }
 
 // Minecraft's ImprovedNoise.noise(x, y, z, yScale, yMax): with yScale the y gradient's offset snaps (the smear)
-double AetherNoise::Octave::noise(double x, double y, double z, double yScale, double yMax) const {
+double IslesNoise::Octave::noise(double x, double y, double z, double yScale, double yMax) const {
   double d = x + xo, e = y + yo, f = z + zo;
   int i = (int)std::floor(d), j = (int)std::floor(e), k = (int)std::floor(f);
   double g = d - i, h = e - j, l = f - k, o = 0;
@@ -34,7 +34,7 @@ double AetherNoise::Octave::noise(double x, double y, double z, double yScale, d
   return lerpd(u, lerpd(t, lerpd(s, x1, x2), lerpd(s, x3, x4)), lerpd(t, lerpd(s, x5, x6), lerpd(s, x7, x8)));
 }
 
-AetherNoise::AetherNoise(u64 seed) : seed_(seed) {
+IslesNoise::IslesNoise(u64 seed) : seed_(seed) {
   std::mt19937_64 r(seed ^ 0xAE7E2ULL);
   std::uniform_real_distribution<double> U(0, 1);
   auto make = [&](std::vector<Octave>& v, int n) {
@@ -49,7 +49,7 @@ AetherNoise::AetherNoise(u64 seed) : seed_(seed) {
 }
 
 // old_blended_noise {xz_scale .25, y_scale .25, xz_factor 80, y_factor 160, smear_scale_multiplier 8}
-double AetherNoise::blended(int bx, int by, int bz) const {
+double IslesNoise::blended(int bx, int by, int bz) const {
   const double xzMul = 684.412 * 0.25, yMul = 684.412 * 0.25, xzF = 80, yF = 160, smear = 8;
   double d = bx * xzMul, e = by * yMul, f = bz * xzMul;
   double g = d / xzF, h = e / yF, i = f / xzF;
@@ -70,15 +70,15 @@ double AetherNoise::blended(int bx, int by, int bz) const {
   return c / 128.0;
 }
 
-double AetherNoise::corner(int x, int y, int z) const {
+double IslesNoise::corner(int x, int y, int z) const {
   if (y <= 8 || y >= 128) return -0.15;   // G1 = 0 or G2 = 0: always air
   const double N = blended(x, y, z);
   const double g1 = yclamp(y, 8, 40, 0, 1), g2 = yclamp(y, 56, 128, 1, 0);
   return -0.05 + (-0.1 + g1 * (0.1 + (-0.2 + g2 * (0.2 + (-0.13 + N)))));
 }
 
-const double* AetherNoise::cornerColumn(int x, int z) const {
-  struct Key { int x, z; const AetherNoise* n; bool operator==(const Key& o) const { return x == o.x && z == o.z && n == o.n; } };
+const double* IslesNoise::cornerColumn(int x, int z) const {
+  struct Key { int x, z; const IslesNoise* n; bool operator==(const Key& o) const { return x == o.x && z == o.z && n == o.n; } };
   struct KH { size_t operator()(const Key& k) const { return (size_t)hash32(k.x, k.z, (i32)(intptr_t)k.n, 77); } };
   struct Col { double v[CY]; };
   thread_local std::unordered_map<Key, Col, KH> cache;

@@ -54,7 +54,7 @@ const std::vector<BlockId>& soilIds() {
     v.clear();
     for (BlockId id : {B.grass, B.dirt, B.snowy_grass, B.sky_grass, B.podzol, B.coarse_dirt, B.moss_block, B.rooted_dirt, B.mycelium, B.farmland, B.mud,
                        B.dirt_with_dry_grass, B.dry_dirt_with_dry_grass, B.dirt_with_coniferous_litter, B.dirt_with_rainforest_litter, B.dry_dirt, B.peat}) if (id) v.push_back(id);
-    for (const char* k : {"aether_grass_block", "aether_dirt", "end_moss", "end_mycelium", "chorus_nylium", "jungle_moss", "pink_moss", "shadow_grass", "amber_moss", "crystal_moss", "rutiscus", "sangnum", "cave_moss"})
+    for (const char* k : {"skyland_grass_block", "skyland_dirt", "end_moss", "end_mycelium", "chorus_nylium", "jungle_moss", "pink_moss", "shadow_grass", "amber_moss", "crystal_moss", "rutiscus", "sangnum", "cave_moss"})
       if (BlockId id = reg().blockId(k)) v.push_back(id);   // the Aether's soil and Better End's turf grow things too
     built = reg().blocks.size();
   }

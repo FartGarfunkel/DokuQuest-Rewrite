@@ -12,9 +12,9 @@ WorldLayout makeLayout(int id, int underDepth) {
     L.underDepth = clampv(underDepth, 1, 4);
     order = {DIM_END, DIM_NETHER};
     for (int k = L.underDepth; k >= 1; k--) order.push_back(DIM_UNDER1 + k - 1);   // the deepest first
-    for (int d : {(int)DIM_OVERWORLD, (int)DIM_SKY1, (int)DIM_SKY2, (int)DIM_AETHER}) order.push_back(d);
+    for (int d : {(int)DIM_OVERWORLD, (int)DIM_SKY1, (int)DIM_SKY2, (int)DIM_SKYLANDS}) order.push_back(d);
   } else {
-    L.id = 1; order = {DIM_END, DIM_NETHER, DIM_OVERWORLD, DIM_AETHER};
+    L.id = 1; order = {DIM_END, DIM_NETHER, DIM_OVERWORLD, DIM_SKYLANDS};
   }
   L.bands = (int)order.size();
   for (int b = 0; b < L.bands; b++) { L.dimAt[b] = order[b]; L.posOf[order[b]] = b; }

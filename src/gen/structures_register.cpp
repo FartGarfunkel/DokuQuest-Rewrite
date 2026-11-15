@@ -17,7 +17,7 @@ void registerStructureDeepA();        // structures_deep.cpp: stronghold (7), an
 void registerStructureFarA();         // structures_far.cpp: places.js (9..16)
 void registerStructureDeepB();        // structures_deep.cpp: deep halls (17), twin vault (18), pirate cove (19)
 void registerStructureFarB();         // structures_far.cpp: nether fortress (20), floating sanctum (21)
-void registerStructureAether();       // structures_aether.cpp: the Aether's bronze, silver and gold dungeons (terrain 7)
+void registerStructureSkylands();       // structures_skylands.cpp: the Aether's bronze, silver and gold dungeons (terrain 7)
 void registerStructureRoads();        // structures_roads.cpp: roads and bridges between neighbouring villages
 void registerStructurePois();         // structures_poi.cpp: Soulrend's structure mods (data/pois)
 void registerStructureDeepMines();    // structures_places.cpp: a deep world's mineshafts (terrain 21)
@@ -132,7 +132,7 @@ void registerStructures() {
   registerStructureDeepB();
   registerStructureFarB();
   registerStructureRoads();   // nothing keeps clear of a road
-  registerStructureAether();  // after the roads: their indices stay as they were
+  registerStructureSkylands();  // after the roads: their indices stay as they were
   registerStructurePois();    // the places of note keep clear of everything before them
   registerStructureDeepMines();   // last of all: a new kind, the others' indices unchanged
   registerLocate();

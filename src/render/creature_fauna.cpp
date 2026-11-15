@@ -73,12 +73,12 @@ static bool surfaceAt(World& w, int x, int z, int fromY, int dim, int& y, BlockI
 void Fauna::spawn(GameSession& s, vec3 p) {
   World& w = s.world();
   int dim = dimOfY(clampv(ifloor(p.y), 0, WORLD_H - 1));
-  if (dim != DIM_OVERWORLD && dim != DIM_AETHER) return;
+  if (dim != DIM_OVERWORLD && dim != DIM_SKYLANDS) return;
   float day = envDay(*s.level, dim);
   auto ring = [&](float a, float b) { float ang = frand() * TAU, d = a + frand() * (b - a); return ivec2(ifloor(p.x + std::cos(ang) * d), ifloor(p.z + std::sin(ang) * d)); };
   auto count = [&](int k) { int n = 0; for (auto& c : *list) if (c.kind == k) n++; return n; };
   const Registry& R = reg();
-  auto grassy = [&](BlockId id) { const std::string& k = keyOf(id); return k == "grass" || k == "sky_grass" || k == "aether_grass_block"; };
+  auto grassy = [&](BlockId id) { const std::string& k = keyOf(id); return k == "grass" || k == "sky_grass" || k == "skyland_grass_block"; };
   if (day > 0.6f && count(0) < 10 && frand() < 0.5f) {   // butterflies over flowers and grass on bright days
     ivec2 xz = ring(8, 26); int y; BlockId id;
     if (w.isLoaded(xz.x, ifloor(p.y), xz.y) && surfaceAt(w, xz.x, xz.y, ifloor(p.y) + 20, dim, y, id) && grassy(id) && std::fabs(y - p.y) < 20) {

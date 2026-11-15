@@ -187,7 +187,7 @@ vec3 portalStand(const World& w, ivec3 a) {
 }
 
 int portalTargetDim(int fromDim, PortalKind k) {
-  int far = k == PortalKind::Sky ? DIM_AETHER : DIM_NETHER;
+  int far = k == PortalKind::Sky ? DIM_SKYLANDS : DIM_NETHER;
   return landOf(fromDim) == DIM_OVERWORLD ? far : DIM_OVERWORLD;   // (the deep world's Underworld and open sky are the Overworld's: on to the far land)
 }
 
@@ -238,7 +238,7 @@ vec3 arrivePortal(World& w, int dim, double x, double z, PortalKind kind, Portal
       if (by >= 0) break;
     }
     if (by < 0) { bx = bx0; bz = bz0; by = base + 90; }
-  } else if (dim == DIM_AETHER) {
+  } else if (dim == DIM_SKYLANDS) {
     for (int y = base + 220; y > base + 40; y--) if (solid(y)) { by = y + 1; break; }
     if (by < 0) by = base + 160;
   } else if (dim == DIM_END) {
@@ -257,7 +257,7 @@ vec3 PortalSystem::buildAt(World& w, PortalSystem* ps, PortalKind kind, int dim,
   KindDef K = kindDef(kind);
   const int fw = ow + 2, fh = oh + 2;
   auto at = [&](int a, int dy, int b) { return axis ? ivec3(bx + b, dy, bz + a) : ivec3(bx + a, dy, bz + b); };   // a: along the portal, b: across
-  BlockId floor = R.blockId(dim == DIM_AETHER ? "skystone" : (dim == DIM_NETHER || dim == DIM_END) ? "obsidian" : "cobblestone");
+  BlockId floor = R.blockId(dim == DIM_SKYLANDS ? "skystone" : (dim == DIM_NETHER || dim == DIM_END) ? "obsidian" : "cobblestone");
   if (ps) ps->guard++;
   // clear space + platform; past that, floor out to four blocks each side wherever there's nothing to stand on (you
   // walk through a portal and keep walking: a portal built over a drop, in the Nether's open air or a Skylands gap,

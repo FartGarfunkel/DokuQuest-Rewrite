@@ -1,6 +1,6 @@
-// gen/skylands_aether.cpp — terrain version 7: the Skylands as The Aether makes its sky (the mod's worldgen data and
+// gen/skylands_isles.cpp — terrain version 7: the Skylands as The Aether makes its sky (the mod's worldgen data and
 // features, rebuilt here from their numbers; no art or code of the mod's is used):
-//   - islands from the Aether's 3D density (gen/aether_noise.h), Aether y 18-105 lifted AETHER_DY: lumpy terraced
+//   - islands from the Aether's 3D density (gen/isles_noise.h), Aether y 18-105 lifted ISLES_DY: lumpy terraced
 //     land 100-500 blocks across with bays, holes and arches, stacked now and then, no caves
 //   - every floor: Aether grass over about three blocks of Aether dirt, holystone below; ceilings bare holystone
 //   - skyroot trees (the oak's shape) and 1 % golden oaks (ten logs, branches, a ragged ball of gold leaves), as many as
@@ -9,7 +9,7 @@
 //   - quicksoil aprons under thin low rims, ponds, ores (aether dirt, icestone, ambrosium, zanite, gravitite) and the
 //     ground cover: dense grass, white and purple flowers, berry bushes
 #include "gen/dimgens.h"
-#include "gen/aether_noise.h"
+#include "gen/isles_noise.h"
 #include "core/registry.h"
 #include "core/itemstack.h"
 
@@ -25,7 +25,7 @@ const AB& ab() {
   static const AB a = [] {
     auto id = [](const char* k, const char* alt = nullptr) { BlockId b = reg().blockId(k); return b || !alt ? b : reg().blockId(alt); };
     AB r;
-    r.grass = id("aether_grass_block", "sky_grass"); r.dirt = id("aether_dirt", "dirt"); r.holy = id("holystone", "skystone");
+    r.grass = id("skyland_grass_block", "sky_grass"); r.dirt = id("skyland_dirt", "dirt"); r.holy = id("holystone", "skystone");
     r.mossy = id("mossy_holystone", "holystone"); r.quick = id("quicksoil", "glimmersand"); r.ice = id("icestone", "packed_ice");
     r.skyLog = id("skyroot_log", "birch_log"); r.skyLeaf = id("skyroot_leaves", "birch_leaves");
     r.goldLog = id("golden_oak_log", "skyroot_log"); r.goldLeaf = id("golden_oak_leaves", "skyroot_leaves");
@@ -43,33 +43,33 @@ inline double lerpd(double t, double a, double b) { return a + t * (b - a); }
 }
 
 // the density at a block from the corner columns round it (the Aether interpolates between cell corners)
-static double aetherAt(const double* c00, const double* c10, const double* c01, const double* c11, double fx, double fz, int y) {
+static double islesAt(const double* c00, const double* c10, const double* c01, const double* c11, double fx, double fz, int y) {
   if (y <= 8 || y >= 128) return -1;
   const int cy = y >> 2; const double fy = (y & 3) / 4.0;
-  auto at = [&](const double* c, int i) { return c[std::min(i, AetherNoise::CY - 1)]; };
+  auto at = [&](const double* c, int i) { return c[std::min(i, IslesNoise::CY - 1)]; };
   const double a = lerpd(fx, at(c00, cy), at(c10, cy)), b = lerpd(fx, at(c01, cy), at(c11, cy));
   const double a1 = lerpd(fx, at(c00, cy + 1), at(c10, cy + 1)), b1 = lerpd(fx, at(c01, cy + 1), at(c11, cy + 1));
   return lerpd(fy, lerpd(fz, a, b), lerpd(fz, a1, b1));
 }
 
-bool SkylandsGen::aetherColumn(int wx, int wz, int& top, int& bottom) const {
+bool SkylandsGen::islesColumn(int wx, int wz, int& top, int& bottom) const {
   const int x0 = floordiv(wx, 8) * 8, z0 = floordiv(wz, 8) * 8;
   const double fx = (wx - x0) / 8.0, fz = (wz - z0) / 8.0;
-  const double *c00 = aether_->cornerColumn(x0, z0), *c10 = aether_->cornerColumn(x0 + 8, z0);
-  const double *c01 = aether_->cornerColumn(x0, z0 + 8), *c11 = aether_->cornerColumn(x0 + 8, z0 + 8);
+  const double *c00 = isles_->cornerColumn(x0, z0), *c10 = isles_->cornerColumn(x0 + 8, z0);
+  const double *c01 = isles_->cornerColumn(x0, z0 + 8), *c11 = isles_->cornerColumn(x0 + 8, z0 + 8);
   top = -1; bottom = -1;
-  for (int y = 120; y > 8; y--) if (aetherAt(c00, c10, c01, c11, fx, fz, y) > 0) { top = y; break; }
+  for (int y = 120; y > 8; y--) if (islesAt(c00, c10, c01, c11, fx, fz, y) > 0) { top = y; break; }
   if (top < 0) return false;
-  for (int y = 9; y <= top; y++) if (aetherAt(c00, c10, c01, c11, fx, fz, y) > 0) { bottom = y; break; }
-  top += AETHER_DY; bottom += AETHER_DY;
+  for (int y = 9; y <= top; y++) if (islesAt(c00, c10, c01, c11, fx, fz, y) > 0) { bottom = y; break; }
+  top += ISLES_DY; bottom += ISLES_DY;
   return true;
 }
 
-void SkylandsGen::generateAether(Chunk& ch) {
+void SkylandsGen::generateIsles(Chunk& ch) {
   GenBuf& b = GenBuf::local();
   for (int i = 0; i < 256; i++) { ch.climate[i * 2] = 160; ch.climate[i * 2 + 1] = 190; }
   const AB& K = ab();
-  const int bx = ch.cx * CS, bz = ch.cz * CS, DY = AETHER_DY;
+  const int bx = ch.cx * CS, bz = ch.cz * CS, DY = ISLES_DY;
   auto inb = [](int x, int y, int z) { return x >= 0 && x < 16 && z >= 0 && z < 16 && y > 0 && y < DIM_H - 1; };
   auto at = [&](int x, int y, int z) -> BlockId { return inb(x, y, z) ? b.blocks[colIdx(x, y, z)] : (BlockId)0xFFFF; };
   auto put = [&](int x, int y, int z, BlockId id) { if (id && inb(x, y, z)) b.blocks[colIdx(x, y, z)] = id; };
@@ -77,11 +77,11 @@ void SkylandsGen::generateAether(Chunk& ch) {
 
   // ---- the islands: holystone wherever the density is above 0 ----
   const double* C[3][3];
-  for (int i = 0; i < 3; i++) for (int k = 0; k < 3; k++) C[i][k] = aether_->cornerColumn(bx + i * 8, bz + k * 8);
+  for (int i = 0; i < 3; i++) for (int k = 0; k < 3; k++) C[i][k] = isles_->cornerColumn(bx + i * 8, bz + k * 8);
   for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
     const int ix = x >> 3, iz = z >> 3; const double fx = (x & 7) / 8.0, fz = (z & 7) / 8.0;
     for (int y = 9; y < 128; y++)
-      if (aetherAt(C[ix][iz], C[ix + 1][iz], C[ix][iz + 1], C[ix + 1][iz + 1], fx, fz, y) > 0) b.blocks[colIdx(x, y + DY, z)] = K.holy;
+      if (islesAt(C[ix][iz], C[ix + 1][iz], C[ix][iz + 1], C[ix + 1][iz + 1], fx, fz, y) > 0) b.blocks[colIdx(x, y + DY, z)] = K.holy;
   }
   // ---- every floor: Aether grass, then about three blocks of Aether dirt (vanilla's surface depth) ----
   for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
@@ -233,20 +233,20 @@ void SkylandsGen::generateAether(Chunk& ch) {
     for (int d = 0; d < 4; d++) { const BlockId nb = at(x + DIRX[d], y, z + DIRZ[d]); if (nb == AIR) air++; else if (rock(nb)) solid++; }
     if (solid == 3 && air == 1) { put(x, y, z, K.water); b.meta[colIdx(x, y, z)] = 0; }
   }
-  // the bronze, silver and gold dungeons are structures (gen/structures_aether.cpp)
+  // the bronze, silver and gold dungeons are structures (gen/structures_skylands.cpp)
   structures.build(b, ch);
   b.store(ch);
 }
 
-void SkylandsGen::sampleAether(int wx, int wz, ColumnSample& s) const {
+void SkylandsGen::sampleIsles(int wx, int wz, ColumnSample& s) const {
   s = ColumnSample(); s.temp = 160; s.humid = 190;
   int top, bot;
-  if (!aetherColumn(wx, wz, top, bot)) { s.height = -1; return; }
+  if (!islesColumn(wx, wz, top, bot)) { s.height = -1; return; }
   const AB& K = ab();
   s.height = (i16)top; s.top = K.grass; s.under = K.holy; s.floatBottom = (i16)bot;
 }
 
-void SkylandsGen::treesAether(int cx, int cz, std::vector<TreeSample>& out) const {
+void SkylandsGen::treesIsles(int cx, int cz, std::vector<TreeSample>& out) const {
   const AB& K = ab();
   const int land = skyBiome(cx * 16 + 8, cz * 16 + 8);
   const double perChunk = land == 1 ? 3.05 : land == 3 ? 2.55 : land == 2 ? 1.05 : 0.5;
@@ -255,7 +255,7 @@ void SkylandsGen::treesAether(int cx, int cz, std::vector<TreeSample>& out) cons
   for (int i = 0; i < n; i++) {
     const int x = cx * 16 + 2 + (int)(tr() * 12), z = cz * 16 + 2 + (int)(tr() * 12);
     int top, bot;
-    if (!aetherColumn(x, z, top, bot)) continue;
+    if (!islesColumn(x, z, top, bot)) continue;
     const int H = 4 + (int)(tr() * 3);
     TreeSample t{x, top + 1, z, TREE_BIRCH, false, {}};
     for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++) {

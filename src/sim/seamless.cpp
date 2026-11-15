@@ -15,14 +15,14 @@ const char* TOAST_UNVOID = "Up out of the End, through the void crust, into the 
 float SeamlessSystem::cloudAt(double y) {
   int d = dimOfY(clampv((int)std::floor(y), 0, WORLD_H - 1));
   float ly = (float)(y - dimBase(d)), k = 0;
-  if (d == DIM_AETHER) k = smoothstepf(30, 0, ly);
-  else if (d == dimBelow(DIM_AETHER)) k = smoothstepf(DIM_H - 22, DIM_H, ly);   // (the band under the Skylands: the Overworld, or the deep world's open sky)
+  if (d == DIM_SKYLANDS) k = smoothstepf(30, 0, ly);
+  else if (d == dimBelow(DIM_SKYLANDS)) k = smoothstepf(DIM_H - 22, DIM_H, ly);   // (the band under the Skylands: the Overworld, or the deep world's open sky)
   return k > 0 ? smoothstepf(0.15f, 0.85f, k) * 0.93f : 0.f;
 }
 
 // the nearest island surface to (x, z), worked out from the Skylands' own shape (worldupdate.js)
 vec3 SeamlessSystem::skyLanding(double x, double z) const {
-  DimGenerator* g = lv.gen ? lv.gen->forDim(DIM_AETHER) : nullptr;
+  DimGenerator* g = lv.gen ? lv.gen->forDim(DIM_SKYLANDS) : nullptr;
   for (int r = 0; g && r <= 160; r += 6) {
     int n = std::max(1, r / 3);
     for (int a = 0; a < n; a++) {
@@ -30,10 +30,10 @@ vec3 SeamlessSystem::skyLanding(double x, double z) const {
       int wx = ifloor(x + std::cos(ang) * r), wz = ifloor(z + std::sin(ang) * r);
       ColumnSample s; g->sample(wx, wz, s);
       if (s.height < 0) continue;
-      return vec3(wx + 0.5f, (float)(dimBase(DIM_AETHER) + s.height + 2), wz + 0.5f);
+      return vec3(wx + 0.5f, (float)(dimBase(DIM_SKYLANDS) + s.height + 2), wz + 0.5f);
     }
   }
-  return vec3((float)x, (float)(dimBase(DIM_AETHER) + 180), (float)z);
+  return vec3((float)x, (float)(dimBase(DIM_SKYLANDS) + 180), (float)z);
 }
 
 vec3 SeamlessSystem::endLanding(double x, double z) const {
@@ -71,7 +71,7 @@ void SeamlessSystem::puff(State& s, int slot, float rate, double dt, const char*
 // islands to clear sky beside one, straight up past its top, then across onto it.
 void SeamlessSystem::startUpdraft(Player& p, State& s) {
   vec3 L = skyLanding(p.pos.x, p.pos.z);
-  DimGenerator* g = lv.gen ? lv.gen->forDim(DIM_AETHER) : nullptr;
+  DimGenerator* g = lv.gen ? lv.gen->forDim(DIM_SKYLANDS) : nullptr;
   auto open = [&](int cx, int cz) { if (!g) return true; ColumnSample c; g->sample(cx, cz, c); return c.height < 0; };
   bool found = false; vec3 col(0);
   if (std::hypot(L.x - p.pos.x, L.z - p.pos.z) < 40 && open(ifloor(p.pos.x), ifloor(p.pos.z))) { col = p.pos; found = true; }
@@ -90,11 +90,11 @@ void SeamlessSystem::startUpdraft(Player& p, State& s) {
 void SeamlessSystem::crossed(Player& p, State& s, int from, int to) {
   u32 id = p.id;
   // (the deep world: the Skylands' neighbour is the open sky over the Overworld, the Nether's the Underworld's floor)
-  const int underSky = dimBelow(DIM_AETHER), overNether = dimAbove(DIM_NETHER);
-  if (from == DIM_AETHER && to == underSky) {
+  const int underSky = dimBelow(DIM_SKYLANDS), overNether = dimAbove(DIM_NETHER);
+  if (from == DIM_SKYLANDS && to == underSky) {
     s.slowFallT = 40; s.cloudFall = true; p.vel.y = std::max(p.vel.y, -6.f);
     lv.fx->message(id, TOAST_FALL, "");
-  } else if (from == underSky && to == DIM_AETHER) {
+  } else if (from == underSky && to == DIM_SKYLANDS) {
     p.vel.y = std::max(p.vel.y, 2.f);
     if (!p.flying && !p.riding) startUpdraft(p, s);
     firstVisit(p, "skyVisited", 40);
@@ -119,7 +119,7 @@ void SeamlessSystem::arrived(Entity& e, PortalKind kind, int fromDim, int toDim)
   s.updraft = -1; s.drift = false;
   if (!e.isPlayer()) return;
   Player& p = static_cast<Player&>(e);
-  if (toDim == DIM_AETHER && e.realm == REALM_MAIN) firstVisit(p, "skyVisited", 40);
+  if (toDim == DIM_SKYLANDS && e.realm == REALM_MAIN) firstVisit(p, "skyVisited", 40);
   if (toDim == DIM_NETHER && e.realm == REALM_MAIN) firstVisit(p, "depthsVisited", 40);
   if (kind == PortalKind::End) {
     // (theend.js pvArrived) the winds of the portal set you down gently
@@ -185,7 +185,7 @@ void SeamlessSystem::tick(Level& l, double dt) {
         d1 = DIM_NETHER;
       }
       // the cloud bank under the Skylands slows a fall, so you come out the other side gently
-      if (d1 == DIM_AETHER && p.pos.y - dimBase(DIM_AETHER) < 30 && p.vel.y < 0 && !p.flying && !p.riding && cloudAt(p.pos.y) > 0.05f) {
+      if (d1 == DIM_SKYLANDS && p.pos.y - dimBase(DIM_SKYLANDS) < 30 && p.vel.y < 0 && !p.flying && !p.riding && cloudAt(p.pos.y) > 0.05f) {
         s.slowFallT = std::max(s.slowFallT, 2.f); s.cloudFall = true;
       }
     }
@@ -199,10 +199,10 @@ void SeamlessSystem::tick(Level& l, double dt) {
     }
     // the updraft: along under the islands, straight up, then across onto one
     if (s.updraft >= 0) {
-      if (!main || d1 != DIM_AETHER || p.riding || p.flying) s.updraft = -1;
+      if (!main || d1 != DIM_SKYLANDS || p.riding || p.flying) s.updraft = -1;
       else {
         p.fallDist = 0;
-        float ab = (float)dimBase(DIM_AETHER);
+        float ab = (float)dimBase(DIM_SKYLANDS);
         if (s.updraft == 0) {
           float dx = s.upCol.x - p.pos.x, dz = s.upCol.z - p.pos.z, d = std::hypot(dx, dz);
           if (d < 0.6f) s.updraft = 1;

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""tools/port/aether_blocks.py — The Aether's blocks for the Skylands (idempotent; data_patches.py runs it):
-  python3 tools/port/aether_blocks.py <data-dir>
+"""tools/port/skyland_blocks.py — The Aether's blocks for the Skylands (idempotent; data_patches.py runs it):
+  python3 tools/port/skyland_blocks.py <data-dir>
 
 The Aether's art is "All Rights Reserved", so nothing here is taken from it. Each picture is the DokuQuest Base pack's
 nearest picture, its light and shade kept, in the Aether block's own colour (the average colours measured from the
@@ -28,7 +28,7 @@ def pack_pic(d, names):
             if h > w: im = im.crop((0, 0, w, w))
             if im.size[0] != N: im = im.resize((N, N), Image.NEAREST if im.size[0] < N else Image.BOX)
             return np.asarray(im).astype(np.float32)
-    raise SystemExit('aether_blocks: no pack picture among %s' % names)
+    raise SystemExit('skyland_blocks: no pack picture among %s' % names)
 
 
 def lum(a): return a[..., 0] * 0.299 + a[..., 1] * 0.587 + a[..., 2] * 0.114
@@ -90,12 +90,12 @@ def main(d):
 
     tile('holystone', recolour(stone, 0xA7A7A7, 1.15))
     tile('mossy_holystone', recolour(mossy, 0x95A5A2, 1.1))
-    tile('aether_dirt', recolour(dirt, 0x63777F, 1.1))
-    tile('aether_grass_top', recolour(gtop, 0x72A785, 1.15))
+    tile('skyland_dirt', recolour(dirt, 0x63777F, 1.1))
+    tile('skyland_grass_top', recolour(gtop, 0x72A785, 1.15))
     side = recolour(dirt, 0x63777F, 1.1)
     om = gover[..., 3] > 0
     side = np.where(om[..., None], recolour(gover, 0x8BC9A0, 1.1, om), side); side[..., 3] = 255
-    tile('aether_grass_side', side)
+    tile('skyland_grass_side', side)
     tile('quicksoil', recolour(sand, 0xD8CE82, 1.2))
     tile('icestone', recolour(ice, 0xBCBCBC, 1.1))
     tile('skyroot_log_side', recolour(logs, 0x57553E, 1.15)); tile('skyroot_log_top', recolour(logt, 0x65664B, 1.1))
@@ -137,9 +137,9 @@ def main(d):
     CROSS = {'render': 3, 'solid': False, 'opaque': False, 'replaceable': True, 'hardness': 0, 'tool': None, 'needsSupport': True, 'sound': 'grass'}
     block('holystone', 'Holystone', {'hardness': 0.5}, 'holystone')
     block('mossy_holystone', 'Mossy Holystone', {'hardness': 0.5}, 'mossy_holystone')
-    block('aether_dirt', 'Aether Dirt', {'hardness': 0.5, 'tool': 'shovel', 'sound': 'dirt'}, 'aether_dirt')
-    block('aether_grass_block', 'Aether Grass Block', {'hardness': 0.6, 'tool': 'shovel', 'sound': 'grass', 'drop': 'aether_dirt'},
-          {'top': 'aether_grass_top', 'side': 'aether_grass_side', 'bottom': 'aether_dirt'})
+    block('skyland_dirt', 'Aether Dirt', {'hardness': 0.5, 'tool': 'shovel', 'sound': 'dirt'}, 'skyland_dirt')
+    block('skyland_grass_block', 'Aether Grass Block', {'hardness': 0.6, 'tool': 'shovel', 'sound': 'grass', 'drop': 'skyland_dirt'},
+          {'top': 'skyland_grass_top', 'side': 'skyland_grass_side', 'bottom': 'skyland_dirt'})
     block('quicksoil', 'Quicksoil', {'hardness': 0.5, 'tool': 'shovel', 'sound': 'sand', 'slippery': True}, 'quicksoil')
     block('icestone', 'Icestone', {'hardness': 0.5, 'sound': 'glass'}, 'icestone')
     block('skyroot_log', 'Skyroot Log', LOG, {'top': 'skyroot_log_top', 'bottom': 'skyroot_log_top', 'side': 'skyroot_log_side'})
@@ -167,7 +167,7 @@ def main(d):
     block('white_flower', 'White Flower', CROSS, 'white_flower')
     block('purple_flower', 'Purple Flower', CROSS, 'purple_flower')
 
-    # the BTA Nether's new tiles may come from a pack too (tools/port/bta_nether_blocks.py made them)
+    # the BTA Nether's new tiles may come from a pack too (tools/port/nether_blocks.py made them)
     for t in ('brimsand', 'nether_brimstone_top', 'nether_brimstone_side', 'brimthaw', 'cobbled_netherrack', 'crystalline_netherrack',
               'cobbled_gloomstone', 'ember', 'rubyglass_column', 'rubyglass_node', 'rubyglass_crystal', 'rubyglass_growth',
               'magmatic_boulder', 'sulfuric_boulder', 'bone_pile', 'soul_catcher', 'ash_layer', 'gloomstone', 'nether_coal_ore', 'basalt_coal_ore',
@@ -178,7 +178,7 @@ def main(d):
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
     (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':')))
     (d / 'packmap.json').write_text(json.dumps(pm, separators=(',', ':')))
-    print('aether_blocks: done')
+    print('skyland_blocks: done')
 
 
 if __name__ == '__main__':

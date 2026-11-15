@@ -409,7 +409,7 @@ static bool waterNear(World& w, int x, int y, int z, int r) {
   return false;
 }
 static float bandDaylight(Level& lv, int y) {
-  switch (dimOfY(y)) { case DIM_NETHER: return 0.22f; case DIM_AETHER: return 1; case DIM_END: return 0.7f; default: return daylight(lv); }
+  switch (dimOfY(y)) { case DIM_NETHER: return 0.22f; case DIM_SKYLANDS: return 1; case DIM_END: return 0.7f; default: return daylight(lv); }
 }
 static void stemFruit(World& w, int x, int y, int z, const BlockDef& d) {
   BlockId fruit = reg().blockId(d.props["crop"].value("fruit", std::string()));

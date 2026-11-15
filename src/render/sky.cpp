@@ -121,7 +121,7 @@ SkyEnv baseEnv(Level& lv, int dim, int realm, const Settings* st) {
       e.day = 0.22f; e.zenith = rgb(0x1e0604); e.horizon = rgb(0x4a1408); e.fog = rgb(0x3a1006); e.fogStart = 0.25f; e.minLight = std::max(e.minLight, 0.07f);
       if (realm == REALM_MAIN && lv.info.genVersion >= 5) emberNetherEnv(lv, e, st);
       break;
-    case DIM_AETHER:
+    case DIM_SKYLANDS:
       // A bright high sky, a warm sun, and a pale cloud haze. The islands stay in clear air.
       e.day = 1; e.zenith = rgb(0x6eb6ff); e.horizon = rgb(0xfff6e4); e.fog = rgb(0xe7f4ff); e.fogStart = 0.55f;
       e.showSun = true; e.voidBelow = st && !st->clouds;
@@ -267,9 +267,9 @@ SkyEnv computeSkyEnv(Level& lv, int dim, int realm, glm::dvec3 camPos, bool blen
   float ly = (float)(camPos.y - dimBase(dim));
   float k = 0; int other = -1; bool cloudy = false;
   const int up = dimAbove(dim), dn = dimBelow(dim);
-  const float topEdge = up == DIM_AETHER ? 22.f : 16.f, botEdge = dim == DIM_AETHER ? 30.f : 16.f;
-  if (up >= 0 && landOf(up) != landOf(dim) && ly > DIM_H - topEdge) { k = smoothstepf(DIM_H - topEdge, DIM_H, ly); other = landOf(up); cloudy = up == DIM_AETHER; }
-  else if (dn >= 0 && landOf(dn) != landOf(dim) && ly < botEdge) { k = smoothstepf(botEdge, 0, ly); other = landOf(dn); cloudy = dim == DIM_AETHER; }
+  const float topEdge = up == DIM_SKYLANDS ? 22.f : 16.f, botEdge = dim == DIM_SKYLANDS ? 30.f : 16.f;
+  if (up >= 0 && landOf(up) != landOf(dim) && ly > DIM_H - topEdge) { k = smoothstepf(DIM_H - topEdge, DIM_H, ly); other = landOf(up); cloudy = up == DIM_SKYLANDS; }
+  else if (dn >= 0 && landOf(dn) != landOf(dim) && ly < botEdge) { k = smoothstepf(botEdge, 0, ly); other = landOf(dn); cloudy = dim == DIM_SKYLANDS; }
   if (!(k > 0) || other < 0) return e;
   SkyEnv o = landEnv(lv, other, realm, g_settings);
   float h = k * 0.5f;   // halfway through, the two worlds' skies and light are the same on either side
@@ -426,7 +426,7 @@ void SkyRenderer::computeFrame(const Level& clv, FrameCtx& f, int rd, bool prima
   f.dim = d; f.land = landOf(d);
   if (d == DIM_END) f.blockLightColor = vec3(0.90f, 0.84f, 1.0f);
   else if (d == DIM_NETHER) f.blockLightColor = vec3(1.0f, 0.62f, 0.38f);
-  else if (d == DIM_AETHER) f.blockLightColor = vec3(1.0f, 0.97f, 0.88f);
+  else if (d == DIM_SKYLANDS) f.blockLightColor = vec3(1.0f, 0.97f, 0.88f);
   else f.blockLightColor = vec3(1.0f, 0.85f, 0.62f);
   f.skyColor = e.zenith; f.horizonColor = e.horizon; f.fogColor = e.fog;
   f.daylight = e.day; f.minLight = e.minLight;

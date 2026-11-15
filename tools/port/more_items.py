@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # tools/port/more_items.py — the rest of the BTA list (our own designs, our own pictures recoloured from the base pack or
-# the code-painted tiles; idempotent, run by data_patches.py after bta_blocks.py):
+# the code-painted tiles; idempotent, run by data_patches.py after classic_blocks.py):
 #   painted doors, trapdoors, buttons and pressure plates (16 colours; the paintbrush makes them, signs and chests take
 #   a colour in their block entity), igneous emberstone (keeps a fire burning on top, dries wet sponges), the gold mesh
 #   (an item filter), the Emberglass conduit (carries a redstone signal at full strength, glowing), the redstone pumpkin
@@ -9,7 +9,7 @@
 #   drop it: string, or a bed with wool).
 import json, pathlib, sys, importlib.util
 
-_s = importlib.util.spec_from_file_location('bta_blocks', pathlib.Path(__file__).with_name('bta_blocks.py'))
+_s = importlib.util.spec_from_file_location('classic_blocks', pathlib.Path(__file__).with_name('classic_blocks.py'))
 _b = importlib.util.module_from_spec(_s); _s.loader.exec_module(_b)
 src_pic, recolour, hsv_map = _b.src_pic, _b.recolour, _b.hsv_map
 

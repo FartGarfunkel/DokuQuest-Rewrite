@@ -50,7 +50,7 @@ JS_EXPR = r"""(() => {
   for (const [cx, cz] of [[0, 0], [5, -3], [-7, 9], [12, 12]]) {
     const ch = new Chunk(2, cx, cz); gs.generate(ch); const cols = [];
     for (let z = 0; z < 16; z++) for (let x = 0; x < 16; x++) {
-      let top = -1, bot = -1; for (let y = 120; y > 0; y--) { const id = ch.blocks[cidx(x, y, z)]; if (id === B.sky_grass && top < 0) top = y; if (id === B.skystone || id === B.dirt || id === B.sky_grass || id === B.aether_crystal_ore) bot = y; }
+      let top = -1, bot = -1; for (let y = 120; y > 0; y--) { const id = ch.blocks[cidx(x, y, z)]; if (id === B.sky_grass && top < 0) top = y; if (id === B.skystone || id === B.dirt || id === B.sky_grass || id === B.skyland_crystal_ore) bot = y; }
       cols.push([top, bot]);
     }
     out.sky.push({ cx, cz, cols });

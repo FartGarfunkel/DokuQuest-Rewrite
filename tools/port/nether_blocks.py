@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""tools/port/bta_nether_blocks.py — the blocks of Better than Adventure 8.0's Nether that DokuQuest lacked (idempotent;
-data_patches.py runs it):  python3 tools/port/bta_nether_blocks.py <data-dir>
+"""tools/port/nether_blocks.py — the blocks of Better than Adventure 8.0's Nether that DokuQuest lacked (idempotent;
+data_patches.py runs it):  python3 tools/port/nether_blocks.py <data-dir>
 
 BTA's art is not ours to ship (it has no licence), so each picture here is the DokuQuest Base pack's nearest picture,
 its light and shade kept and its colours moved to BTA's block's average colour (the colours measured from BTA's
@@ -31,7 +31,7 @@ def pack_pic(d, names):
             if h > w: im = im.crop((0, 0, w, w))
             if im.size[0] != N: im = im.resize((N, N), Image.NEAREST if im.size[0] < N else Image.BOX)
             return np.asarray(im).astype(np.float32)
-    raise SystemExit('bta_nether_blocks: no pack picture among %s' % names)
+    raise SystemExit('nether_blocks: no pack picture among %s' % names)
 
 
 def lum(a): return a[..., 0] * 0.299 + a[..., 1] * 0.587 + a[..., 2] * 0.114
@@ -147,7 +147,7 @@ def main(d):
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
     (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':')))
-    print('bta_nether_blocks: done')
+    print('nether_blocks: done')
 
 
 if __name__ == '__main__':

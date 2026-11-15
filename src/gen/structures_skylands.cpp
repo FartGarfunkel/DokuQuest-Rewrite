@@ -1,4 +1,4 @@
-// gen/structures_aether.cpp — The Aether's three dungeons, for terrain version 7's Aether islands (docs/research/aether.md 3.9):
+// gen/structures_skylands.cpp — The Aether's three dungeons, for terrain version 7's Aether islands (docs/research/aether.md 3.9):
 //  * Bronze: a carved-stone boss hall deep inside a thick island (sentry stones in its walls), a chest room beside it
 //    and a holystone tunnel out to the sky. The Slider keeps it. One in about each 6 x 6 chunks where an island is thick.
 //  * Silver: a temple of angelic stone standing in the open sky on a bed of cold aerclouds: a colonnade of pillars, a
@@ -6,7 +6,7 @@
 //    where the Valkyrie Queen waits with her guard. Three in four of the far sky regions.
 //  * Gold: a floating island of its own, 38 across, with stub islets round it, gumdrop caves through it and golden
 //    oaks on top; a hellfire-stone hall inside, reached by a tunnel, where the Sun Spirit burns. One in four regions.
-// The shapes are the Aether's (sizes measured from its templates); the blocks are ours (tools/port/aether_blocks.py).
+// The shapes are the Aether's (sizes measured from its templates); the blocks are ours (tools/port/skyland_blocks.py).
 #include "gen/structures_common.h"
 #include <cmath>
 
@@ -26,7 +26,7 @@ const AK& ak() {
     r.angelic = id("angelic_stone", "quartz_block"); r.angelicLit = id("light_angelic_stone", "glowstone");
     r.hellfire = id("hellfire_stone", "red_nether_bricks"); r.hellfireLit = id("light_hellfire_stone", "shroomlight");
     r.pillar = id("pillar", "quartz_pillar"); r.pillarTop = id("pillar_top", "chiseled_quartz_block");
-    r.cold = id("cold_aercloud", "cloud_puff"); r.dirt = id("aether_dirt", "dirt"); r.grass = id("aether_grass_block", "grass_block");
+    r.cold = id("cold_aercloud", "cloud_puff"); r.dirt = id("skyland_dirt", "dirt"); r.grass = id("skyland_grass_block", "grass_block");
     r.goldLog = id("golden_oak_log", "oak_log"); r.goldLeaf = id("golden_oak_leaves", "oak_leaves");
     r.glow = id("glowstone", "sea_lantern"); r.water = id("water", "air"); r.chest = id("chest", "air");
     r.white = id("white_flower", "oxeye_daisy"); r.purple = id("purple_flower", "allium"); r.tallGrass = id("tall_grass", "air");
@@ -34,16 +34,16 @@ const AK& ak() {
   }();
   return k;
 }
-constexpr int DY = SkylandsGen::AETHER_DY;
+constexpr int DY = SkylandsGen::ISLES_DY;
 
 // the Aether's treasure: what each dungeon's chests hold (only what this game has)
-json aetherLoot(int tier, Mulberry32& r) {
+json skyLoot(int tier, Mulberry32& r) {
   static const std::vector<std::pair<const char*, int>> T[3] = {
     {{"zanite_ore", 6}, {"ambrosium_ore", 10}, {"gravitite_ore", 3}, {"golden_apple", 1}, {"iron_ingot", 6}, {"gold_ingot", 4},
      {"arrow", 16}, {"bow", 1}, {"saddle", 1}, {"enchanted_book", 1}, {"music_disc_skylark", 1}, {"golden_feather", 1}},
-    {{"gravitite_ore", 4}, {"zanite_ore", 8}, {"golden_apple", 2}, {"diamond", 2}, {"gold_ingot", 6}, {"aether_crystal", 6},
+    {{"gravitite_ore", 4}, {"zanite_ore", 8}, {"golden_apple", 2}, {"diamond", 2}, {"gold_ingot", 6}, {"skyland_crystal", 6},
      {"golden_feather", 1}, {"enchanted_book", 1}, {"experience_bottle", 4}, {"emerald", 6}, {"valkyrie_lance", 1}, {"heart_crystal", 1}},
-    {{"gravitite_ore", 6}, {"diamond", 3}, {"golden_apple", 3}, {"gold_block", 2}, {"emerald", 10}, {"aether_crystal", 8},
+    {{"gravitite_ore", 6}, {"diamond", 3}, {"golden_apple", 3}, {"gold_block", 2}, {"emerald", 10}, {"skyland_crystal", 8},
      {"heart_crystal", 1}, {"enchanted_book", 2}, {"experience_bottle", 6}, {"golden_feather", 2}, {"mithril_ingot", 2}, {"fire_charge", 8}}};
   json items = json::array(); for (int s = 0; s < 27; s++) items.push_back(nullptr);
   const auto& L = T[std::clamp(tier, 0, 2)];
@@ -55,11 +55,11 @@ json aetherLoot(int tier, Mulberry32& r) {
   }
   return items;
 }
-void aetherChest(SP& P, int x, int y, int z, int f, int tier) {
+void skyChest(SP& P, int x, int y, int z, int f, int tier) {
   const int i = P.putId(x, y, z, ak().chest, (u8)((2 - f) & 3));
   if (i < 0) return;
   Mulberry32 r(hash32(x, y, z, 0xAE7C + tier));
-  P.setEntity(i, json{{"type", "chest"}, {"items", aetherLoot(tier, r)}});
+  P.setEntity(i, json{{"type", "chest"}, {"items", skyLoot(tier, r)}});
 }
 // a box: walls/floor/roof from shell(x, y, z), the inside cleared
 template <class F> void room(SP& P, int x0, int y0, int z0, int x1, int y1, int z1, F shell) {
@@ -79,10 +79,10 @@ bool solidAt(SP& P, int x, int y, int z) { const BlockId b = P.get(x, y, z); ret
 // =====================================================================================================================
 // Bronze
 static bool bronzePlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) {
-  const SkylandsGen* g = skyOf(t); if (!g || !g->aether()) return false;
+  const SkylandsGen* g = skyOf(t); if (!g || !g->isles()) return false;
   static const int PTS[7][2] = {{-7, -7}, {6, -7}, {-7, 6}, {6, 6}, {0, 0}, {15, -5}, {15, 4}};
   int lo = -1, hi = 9999;
-  for (auto& p : PTS) { int tp, bt; if (!g->aetherColumn(x + p[0], z + p[1], tp, bt)) return false; lo = std::max(lo, bt); hi = std::min(hi, tp); }
+  for (auto& p : PTS) { int tp, bt; if (!g->islesColumn(x + p[0], z + p[1], tp, bt)) return false; lo = std::max(lo, bt); hi = std::min(hi, tp); }
   if (hi - lo < 12) return false;
   S.y = lo + (hi - lo) / 2 - 5; S.cx = x; S.cz = z; S.x0 = x - 7; S.x1 = x + 55; S.z0 = z - 7; S.z1 = z + 6;
   S.data = {{"boss", {{"at", jat(x, S.y + 1, z)}, {"type", "slider"}, {"box", {x - 6, S.y + 1, z - 6, x + 5, S.y + 8, z + 5}}}},
@@ -109,20 +109,20 @@ static void bronzeBuild(ChunkWriter& w, const StructurePlan& S) {
   room(P, x + 6, y0, z - 5, x + 15, y0 + 6, z + 4, [&](int a, int b, int c) { return P.h(a, b, c, 3) < 0.1 ? K.sentry : K.carved; });
   carve(P, x + 6, y0 + 1, z - 1, x + 6, y0 + 3, z);
   carve(P, x + 15, y0 + 1, z - 1, x + 15, y0 + 3, z + 1);
-  aetherChest(P, x + 13, y0 + 1, z - 4, 0, 0);
-  if (P.h(x, y0, z, 4) < 0.6) aetherChest(P, x + 13, y0 + 1, z + 3, 2, 0);
+  skyChest(P, x + 13, y0 + 1, z - 4, 0, 0);
+  if (P.h(x, y0, z, 4) < 0.6) skyChest(P, x + 13, y0 + 1, z + 3, 2, 0);
   // the reward behind the Slider
-  aetherChest(P, x - 6, y0 + 1, z + 5, 2, 0);
+  skyChest(P, x - 6, y0 + 1, z + 5, 2, 0);
 }
 
 // =====================================================================================================================
 // Silver: local (u, v) = (x - S.x0r, z - S.z0r); u across (0..21), v back (0..46); the door at v = 0 faces north
 struct SilverExt { int ox, oz; };
 static bool silverPlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) {
-  const SkylandsGen* g = skyOf(t); if (!g || !g->aether()) return false;
+  const SkylandsGen* g = skyOf(t); if (!g || !g->isles()) return false;
   int y = 70 + (int)(rnd() * 36) + DY;                        // in the open sky
   for (int dz = -20; dz <= 40; dz += 10) for (int dx = -12; dx <= 24; dx += 12) {
-    int tp, bt; if (g->aetherColumn(x + dx, z + dz, tp, bt) && tp + 3 > y && bt < y + 24) y = tp + 3;   // over an island in the way
+    int tp, bt; if (g->islesColumn(x + dx, z + dz, tp, bt) && tp + 3 > y && bt < y + 24) y = tp + 3;   // over an island in the way
   }
   if (y > 228) return false;
   const int ox = x - 11, oz = z - 21;
@@ -167,7 +167,7 @@ static void silverBuild(ChunkWriter& w, const StructurePlan& S) {
       const int u0 = cx * 7, v0 = cz * 7;
       P.putId(ox + u0 + 3, Y + 6, oz + v0 + 3, K.angelicLit);      // a light in each ceiling
       const double r = P.h(ox + u0, Y, oz + v0, 11);
-      if (r < 0.3) aetherChest(P, ox + u0 + 1, Y + 1, oz + v0 + 1, (int)(r * 13) & 3, 1);
+      if (r < 0.3) skyChest(P, ox + u0 + 1, Y + 1, oz + v0 + 1, (int)(r * 13) & 3, 1);
     }
   }
   for (int f = 0; f < 2; f++) {   // a ladder up from one room of each floor, against its back wall
@@ -186,7 +186,7 @@ static void silverBuild(ChunkWriter& w, const StructurePlan& S) {
   for (int a : {6, 15}) for (int b : {29, 38}) for (int d = 0; d < 4; d++) P.putId(ox + a + (d & 1), y + 16, oz + b + (d >> 1), K.glow);
   for (int u = 8; u <= 13; u++) for (int v = 42; v <= 44; v++) P.putId(ox + u, y, oz + v, K.water);
   if (BlockId sap = bid("golden_oak_sapling"); sap != NOBLOCK) { P.putId(ox + 3, y + 1, oz + 44, sap); P.putId(ox + 18, y + 1, oz + 44, sap); }
-  aetherChest(P, ox + 8, y + 1, oz + 45, 2, 1); aetherChest(P, ox + 13, y + 1, oz + 45, 2, 1);
+  skyChest(P, ox + 8, y + 1, oz + 45, 2, 1); skyChest(P, ox + 13, y + 1, oz + 45, 2, 1);
 }
 
 // =====================================================================================================================
@@ -201,9 +201,9 @@ struct GoldExt {
   std::vector<Oak> oaks;
 };
 static bool goldPlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) {
-  const SkylandsGen* g = skyOf(t); if (!g || !g->aether()) return false;
+  const SkylandsGen* g = skyOf(t); if (!g || !g->isles()) return false;
   int yc = 55 + (int)(rnd() * 45) + DY;
-  int tp, bt; if (g->aetherColumn(x, z, tp, bt)) yc = std::max(yc, tp + 34);
+  int tp, bt; if (g->islesColumn(x, z, tp, bt)) yc = std::max(yc, tp + 34);
   if (yc > 220) return false;
   auto E = std::make_shared<GoldExt>(); E->yc = yc;
   const int n = 8 + (int)(rnd() * 5);
@@ -273,7 +273,7 @@ static void goldBuild(ChunkWriter& w, const StructurePlan& S) {
   room(P, cx - 11, yc - 6, cz - 14, cx + 11, yc + 2, cz + 13, hf);
   carve(P, cx - 2, yc - 5, cz - 14, cx + 2, yc - 3, cz - 14);
   for (int a : {-7, 7}) for (int b : {-8, 0, 8}) for (int k = 1; k <= 7; k++) P.putId(cx + a, yc - 6 + k, cz + b, K.hellfireLit);   // burning pillars
-  aetherChest(P, cx - 3, yc - 5, cz + 12, 2, 2); aetherChest(P, cx + 3, yc - 5, cz + 12, 2, 2);
+  skyChest(P, cx - 3, yc - 5, cz + 12, 2, 2); skyChest(P, cx + 3, yc - 5, cz + 12, 2, 2);
   // golden oaks on top
   for (const auto& o : E.oaks) {
     if (o.x < P.bx - 3 || o.x > P.bx + 18 || o.z < P.bz - 3 || o.z > P.bz + 18) continue;
@@ -288,10 +288,10 @@ static void goldBuild(ChunkWriter& w, const StructurePlan& S) {
   }
 }
 
-void registerStructureAether() {
+void registerStructureSkylands() {
   auto reg1 = [](const char* key, const char* name, int region, double chance, int margin, int ji, decltype(StructureType::plan) plan, decltype(StructureType::build) build) {
     StructureType t; t.key = key; t.name = name; t.region = region; t.chance = chance; t.margin = margin; t.jsIndex = ji; t.clearance = 24;
-    t.dims = 1u << DIM_AETHER; t.plan = std::move(plan); t.build = std::move(build);
+    t.dims = 1u << DIM_SKYLANDS; t.plan = std::move(plan); t.build = std::move(build);
     registerStructure(std::move(t));
   };
   reg1("silver_dungeon", "a Silver Dungeon", 576, 0.7, 90, 901, silverPlan, silverBuild);

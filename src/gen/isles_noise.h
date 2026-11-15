@@ -1,4 +1,4 @@
-// gen/aether_noise.h — the density of The Aether's islands (data/aether/worldgen noise_settings "aether:skylands" with
+// gen/isles_noise.h — the density of The Aether's islands (data/aether/worldgen noise_settings "aether:skylands" with
 // density_function "aether:base_3d_noise_aether"): Minecraft's old blended terrain noise (two 16-octave limit noises
 // chosen between by an 8-octave selector, with the y "smear" that makes the terraces) at xz/y scale 0.25, factors
 // 80 / 160, smear 8, shaped by two height gradients:
@@ -12,9 +12,9 @@
 
 namespace dq {
 
-class AetherNoise {
+class IslesNoise {
 public:
-  explicit AetherNoise(u64 seed);
+  explicit IslesNoise(u64 seed);
   // the density before interpolation at a cell corner (x, z on the 8-block grid, y on the 4-block grid; Aether y 0..128)
   double corner(int x, int y, int z) const;
   // the 33 corner densities (y = 0, 4, ... 128) of the corner column at (x, z) (multiples of 8), cached per thread

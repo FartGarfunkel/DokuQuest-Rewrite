@@ -159,7 +159,7 @@ void Ambience::update(double dtIn, const AudioScene& s) {
     static const float LAND_WIND[NB_COUNT] = {0.05f, 0.03f, 0.028f, 0.02f, 0.075f, 0.05f, 0.018f, 0.08f};
     static const float LAND_FR[NB_COUNT] = {300, 210, 260, 380, 470, 300, 380, 470};
     const bool land = s.dim == DIM_NETHER && s.netherLand >= 0 && s.netherLand < NB_COUNT;
-    float want = level * (s.dim == DIM_OVERWORLD || s.dim == DIM_AETHER ? 0.02f + open * (0.025f + high * 0.08f) * (1 + gust * 1.6f) : land ? LAND_WIND[s.netherLand] : s.dim == DIM_NETHER ? 0.035f : 0.01f);
+    float want = level * (s.dim == DIM_OVERWORLD || s.dim == DIM_SKYLANDS ? 0.02f + open * (0.025f + high * 0.08f) * (1 + gust * 1.6f) : land ? LAND_WIND[s.netherLand] : s.dim == DIM_NETHER ? 0.035f : 0.01f);
     windG += (want - windG) * std::min(1.f, dt * 1.5f);
     wind(windG, (land ? LAND_FR[s.netherLand] : 300 + high * 400) + (float)std::sin(s.time * 0.21) * 80);
   } else if (windG > 0) { windG = 0; wind(0, 420); }
@@ -173,7 +173,7 @@ void Ambience::update(double dtIn, const AudioScene& s) {
   tBird -= dt; tCricket -= dt; tDrip -= dt; tRumble -= dt; tLand -= dt;
   float vol = level;
   if (vol > 0.05f) {
-    if (s.dim == DIM_OVERWORLD || s.dim == DIM_AETHER) {
+    if (s.dim == DIM_OVERWORLD || s.dim == DIM_SKYLANDS) {
       if (open > 0.7f && day > 0.6f && tBird <= 0) { tBird = 2 + e.rnd() * 6; if (e.rnd() < vol) at(s, "chirp", 14); }
       if (open > 0.7f && day < 0.4f && tCricket <= 0) { tCricket = 0.6 + e.rnd() * 1.8; if (e.rnd() < vol) at(s, "cricket", 10); }
     }
@@ -200,7 +200,7 @@ void Ambience::update(double dtIn, const AudioScene& s) {
   moodT = 0.25;
   int x = (int)std::floor(s.player.x + (e.rnd() - 0.5f) * 16), y = (int)std::floor(s.player.y + 1 + (e.rnd() - 0.5f) * 16), z = (int)std::floor(s.player.z + (e.rnd() - 0.5f) * 16);
   BlockId id = s.world->getBlock(x, y, z); u8 l = s.world->getLight(x, y, z);
-  if (id == AIR && l == 0 && s.dim != DIM_AETHER) mood += 1.0 / 220;
+  if (id == AIR && l == 0 && s.dim != DIM_SKYLANDS) mood += 1.0 / 220;
   else if ((l >> 4) > 8 || (l & 15) > 6) mood = std::max(0.0, mood - 1.0 / 400);
   if (mood >= 1) {
     mood = 0;

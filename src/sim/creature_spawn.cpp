@@ -319,14 +319,14 @@ public:
       return false;
     };
     const Registry& R = reg();
-    bool OVER = dim == DIM_OVERWORLD, SKY = dim == DIM_AETHER;
+    bool OVER = dim == DIM_OVERWORLD, SKY = dim == DIM_SKYLANDS;
     float day = envDay(lv, dim);
     // land animals: by habitat, in daylight on natural ground (herds mostly come with the land)
     if ((OVER || SKY) && animals < capA && frand() < 0.012f) {
       ivec2 xz = ring(32, 56); int x = xz.x, z = xz.y;
       int y = surfaceY(w, x, z, dim);
       BlockId ground = y > 0 ? w.getBlock(x, y - 1, z) : AIR;
-      static const std::set<std::string> NATURAL = {"grass", "sky_grass", "aether_grass_block", "aether_dirt", "snowy_grass", "sand", "red_sand", "desert_sand", "mud", "coarse_dirt", "podzol", "dirt_with_dry_grass", "dirt_with_coniferous_litter", "dirt_with_rainforest_litter", "snow_block", "silver_sand"};
+      static const std::set<std::string> NATURAL = {"grass", "sky_grass", "skyland_grass_block", "skyland_dirt", "snowy_grass", "sand", "red_sand", "desert_sand", "mud", "coarse_dirt", "podzol", "dirt_with_dry_grass", "dirt_with_coniferous_litter", "dirt_with_rainforest_litter", "snow_block", "silver_sand"};
       const std::string& gk = R.block(ground).key;
       bool natural = NATURAL.count(gk) || (gk == "stone" && y - dimBase(dim) > SEA_LEVEL + 20);
       if (y > 0 && natural && !R.tLiquid[ground] && (w.getLight(x, y, z) >> 4) >= 12) {
@@ -571,7 +571,7 @@ public:
         }
       }
     }
-    if (dim == DIM_AETHER) {
+    if (dim == DIM_SKYLANDS) {
       auto skyAir = [&](int x, int y, int z, int r) { for (int dy = -r; dy <= r; dy++) for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) if (w.getBlock(x + dx, y + dy, z + dz)) return false; return true; };
       if (frand() < 0.025f && count("aerwhale", 96) < 2) {   // whales in the open sky, well away from you
         ivec2 xz = ring(40, 64); int y = ifloor(clampv(p.pos.y + 6 + frand() * 22, (float)base + 52, (float)base + DIM_H - 14));
@@ -581,13 +581,13 @@ public:
         ivec2 xz = ringFar(24, 48); int y = ifloor(clampv(p.pos.y + 4 + frand() * 8, (float)base + 48, (float)base + DIM_H - 8));
         if (w.isLoaded(xz.x, y, xz.y) && skyAir(xz.x, y + 1, xz.y, 1)) add("zephyr", xz.x + 0.5f, y, xz.y + 0.5f);
       }
-      static BlockId skyGrass = R.blockId("sky_grass"), aetherGrass = R.blockId("aether_grass_block");   // the Aether's (terrain 7) too
+      static BlockId skyGrass = R.blockId("sky_grass"), isleGrass = R.blockId("skyland_grass_block");   // the Aether's (terrain 7) too
       auto ground = [&](const char* t, float lo, float hi) {
         ivec2 xz = ringFar(lo, hi);
         if (!w.isLoaded(xz.x, py, xz.y)) return;
         for (int y = std::min(base + DIM_H - 3, py + 14); y > std::max(base + 30, py - 20); y--) {
           BlockId id = w.getBlock(xz.x, y, xz.y); if (!id) continue;
-          if ((id == skyGrass || (aetherGrass && id == aetherGrass)) && !w.getBlock(xz.x, y + 1, xz.y) && !w.getBlock(xz.x, y + 2, xz.y)) add(t, xz.x + 0.5f, y + 1, xz.y + 0.5f);
+          if ((id == skyGrass || (isleGrass && id == isleGrass)) && !w.getBlock(xz.x, y + 1, xz.y) && !w.getBlock(xz.x, y + 2, xz.y)) add(t, xz.x + 0.5f, y + 1, xz.y + 0.5f);
           return;
         }
       };
@@ -595,7 +595,7 @@ public:
       if (!peaceful && frand() < 0.02f && count("aechor_plant", 96) < 3) ground("aechor_plant", 24, 48);
       if (!peaceful && frand() < 0.012f && count("sky_fuseling", 96) < 2) ground("sky_fuseling", 24, 48);
       if (!peaceful && frand() < 0.008f && count("evil_whirlwind", 96) < 1) ground("evil_whirlwind", 24, 48);
-      // sentries keep the bronze dungeons' halls: on carved stone near you, out of the light of day (gen/structures_aether.cpp)
+      // sentries keep the bronze dungeons' halls: on carved stone near you, out of the light of day (gen/structures_skylands.cpp)
       static BlockId carved = R.blockId("carved_stone");
       if (!peaceful && carved && frand() < 0.06f && count("sentry", 32) < 3) {
         const int sx = ifloor(p.pos.x) + (int)(frand() * 21) - 10, sz = ifloor(p.pos.z) + (int)(frand() * 21) - 10;
@@ -832,7 +832,7 @@ public:
       std::vector<Entity*> ps = pawnsOf(lv, realm);
       std::vector<Chunk*> todo;
       for (auto& [k, ch] : w.chunks()) {
-        if ((k.dim != DIM_OVERWORLD && k.dim != DIM_AETHER) || !ch->lightReady) continue;
+        if ((k.dim != DIM_OVERWORLD && k.dim != DIM_SKYLANDS) || !ch->lightReady) continue;
         bool seen = false;
         for (Entity* p : ps) if (std::fabs(k.cx * 16 + 8 - p->pos.x) < 72 && std::fabs(k.cz * 16 + 8 - p->pos.z) < 72) seen = true;
         if (!seen) continue;
@@ -844,7 +844,7 @@ public:
         u32 hsh = (u32)lv.info.seed * 2654435761u ^ (u32)ch->cx * 73856093u ^ (u32)ch->cz * 19349663u ^ 4242u;
         auto r = [&hsh] { hsh ^= hsh << 13; hsh ^= hsh >> 17; hsh ^= hsh << 5; return (hsh & 0xFFFFFF) / 16777216.f; };
         r(); r();
-        bool sky = ch->dim == DIM_AETHER;
+        bool sky = ch->dim == DIM_SKYLANDS;
         if (r() > (sky ? 0.12f : 0.09f)) continue;
         for (int tries = 0; tries < 6; tries++) {
           int x = ch->cx * 16 + (int)(r() * 16), z = ch->cz * 16 + (int)(r() * 16), base = dimBase(ch->dim);
@@ -895,7 +895,7 @@ public:
     for (int realm : realmsWithPlayers(lv)) {
       World& w = lv.world(realm);
       std::vector<Entity*> ps = pawnsOf(lv, realm);
-      if (scan) for (auto& [k, ch] : w.chunks()) if (k.dim == DIM_OVERWORLD || k.dim == DIM_AETHER) for (Entity* p : ps) if (std::fabs(k.cx * 16 + 8 - p->pos.x) < 56 && std::fabs(k.cz * 16 + 8 - p->pos.z) < 56) { scanHives(w, *ch); break; }
+      if (scan) for (auto& [k, ch] : w.chunks()) if (k.dim == DIM_OVERWORLD || k.dim == DIM_SKYLANDS) for (Entity* p : ps) if (std::fabs(k.cx * 16 + 8 - p->pos.x) < 56 && std::fabs(k.cz * 16 + 8 - p->pos.z) < 56) { scanHives(w, *ch); break; }
       std::unordered_map<std::string, int> out;
       for (auto& e : lv.entities()) if (auto* b = dynamic_cast<Creature*>(e.get())) if (b->type == "bee" && b->alive() && b->hasHive && b->realm == realm) out[hkey(b->hive)]++;
       bool day = lv.info.data.value("rain", 0.f) <= 0.3f;

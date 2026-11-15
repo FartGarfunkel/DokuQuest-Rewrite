@@ -126,8 +126,8 @@ _s = _u.spec_from_file_location('spawn_eggs', pathlib.Path(__file__).with_name('
 # ---- mob heads (tools/port/mob_heads.py) ----
 _s = _u.spec_from_file_location('mob_heads', pathlib.Path(__file__).with_name('mob_heads.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
 
-# ---- BTA-inspired blocks (tools/port/bta_blocks.py) ----
-_s = _u.spec_from_file_location('bta_blocks', pathlib.Path(__file__).with_name('bta_blocks.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
+# ---- BTA-inspired blocks (tools/port/classic_blocks.py) ----
+_s = _u.spec_from_file_location('classic_blocks', pathlib.Path(__file__).with_name('classic_blocks.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
 _s2 = _u.spec_from_file_location('more_items', pathlib.Path(__file__).with_name('more_items.py')); _m2b = _u.module_from_spec(_s2); _s2.loader.exec_module(_m2b); _m2b.main(d)
 _s3 = _u.spec_from_file_location('nether_lands', pathlib.Path(__file__).with_name('nether_lands.py')); _m3 = _u.module_from_spec(_s3); _s3.loader.exec_module(_m3); _m3.main(d)
 _s4 = _u.spec_from_file_location('discs', pathlib.Path(__file__).with_name('discs.py')); _m4 = _u.module_from_spec(_s4); _s4.loader.exec_module(_m4); _m4.main(d)
@@ -475,25 +475,25 @@ def _match_family_tools(d):
     print('family tools: %d stairs/slabs/walls matched to their block' % n)
 _match_family_tools(d)
 
-# ---- Better End's blocks for the End band, its pictures fitted to the base pack (tools/port/betterend_blocks.py; MIT,
+# ---- Better End's blocks for the End band, its pictures fitted to the base pack (tools/port/end_blocks.py; MIT,
 # docs/CREDITS.md; only when the Better End jar is unpacked next to the project) ----
-_s14 = _u.spec_from_file_location('betterend_blocks', pathlib.Path(__file__).with_name('betterend_blocks.py')); _m14 = _u.module_from_spec(_s14); _s14.loader.exec_module(_m14)
+_s14 = _u.spec_from_file_location('end_blocks', pathlib.Path(__file__).with_name('end_blocks.py')); _m14 = _u.module_from_spec(_s14); _s14.loader.exec_module(_m14)
 _m14.main(d, pathlib.Path(__file__).resolve().parents[3] / 'Better END')
 
-# ---- the blocks of BTA 8.0's Nether we lacked, drawn from the base pack in BTA's colours (tools/port/bta_nether_blocks.py) ----
-_s15 = _u.spec_from_file_location('bta_nether_blocks', pathlib.Path(__file__).with_name('bta_nether_blocks.py')); _m15 = _u.module_from_spec(_s15); _s15.loader.exec_module(_m15); _m15.main(d)
+# ---- the blocks of BTA 8.0's Nether we lacked, drawn from the base pack in BTA's colours (tools/port/nether_blocks.py) ----
+_s15 = _u.spec_from_file_location('nether_blocks', pathlib.Path(__file__).with_name('nether_blocks.py')); _m15 = _u.module_from_spec(_s15); _s15.loader.exec_module(_m15); _m15.main(d)
 
-# ---- The Aether's blocks, drawn from the base pack in the Aether's colours, and its clouds' behaviour (tools/port/aether_blocks.py) ----
-_s16 = _u.spec_from_file_location('aether_blocks', pathlib.Path(__file__).with_name('aether_blocks.py')); _m16 = _u.module_from_spec(_s16); _s16.loader.exec_module(_m16); _m16.main(d)
+# ---- The Aether's blocks, drawn from the base pack in the Aether's colours, and its clouds' behaviour (tools/port/skyland_blocks.py) ----
+_s16 = _u.spec_from_file_location('skyland_blocks', pathlib.Path(__file__).with_name('skyland_blocks.py')); _m16 = _u.module_from_spec(_s16); _s16.loader.exec_module(_m16); _m16.main(d)
 
 # ---- Better End's creatures on the rigs of ours, recoloured (tools/port/end_mobs.py) ----
 _s17 = _u.spec_from_file_location('end_mobs', pathlib.Path(__file__).with_name('end_mobs.py')); _m17 = _u.module_from_spec(_s17); _s17.loader.exec_module(_m17); _m17.main(d)
 
-# ---- The Aether's dungeon keepers (Slider, Sun Spirit) and creatures it lacked, recoloured (tools/port/aether_mobs.py) ----
-_s18 = _u.spec_from_file_location('aether_mobs', pathlib.Path(__file__).with_name('aether_mobs.py')); _m18 = _u.module_from_spec(_s18); _s18.loader.exec_module(_m18); _m18.main(d)
+# ---- The Aether's dungeon keepers (Slider, Sun Spirit) and creatures it lacked, recoloured (tools/port/skyland_mobs.py) ----
+_s18 = _u.spec_from_file_location('skyland_mobs', pathlib.Path(__file__).with_name('skyland_mobs.py')); _m18 = _u.module_from_spec(_s18); _s18.loader.exec_module(_m18); _m18.main(d)
 
-# ---- Better End's building blocks and its land structures (tools/port/be_building.py; after betterend_blocks.py) ----
-_s19 = _u.spec_from_file_location('be_building', pathlib.Path(__file__).with_name('be_building.py')); _m19 = _u.module_from_spec(_s19); _s19.loader.exec_module(_m19)
+# ---- Better End's building blocks and its land structures (tools/port/end_building.py; after end_blocks.py) ----
+_s19 = _u.spec_from_file_location('end_building', pathlib.Path(__file__).with_name('end_building.py')); _m19 = _u.module_from_spec(_s19); _s19.loader.exec_module(_m19)
 _m19.main(d, pathlib.Path(__file__).resolve().parents[3] / 'Better END')
 
 # ---- the dragons' shape and scales (tools/port/dragon_shape.py: chest, haunches, thighs, clawed feet, frills, finer tail; membranes) ----
@@ -501,5 +501,5 @@ _s20 = _u.spec_from_file_location('dragon_shape', pathlib.Path(__file__).with_na
 
 # ---- the Aether's and Better End's ores as materials, then the forge and mixed tools again so they take them up
 #      (tools/port/new_materials.py; forging.py and tool_parts.py are idempotent) ----
-for _n in ('new_materials', 'forging', 'tool_parts', 'armor_art', 'elytra_art', 'trommel', 'bta_extras', 'tool_parts', 'magic_rework', 'village_rework', 'village_builder', 'bird_feet', 'polish_data', 'new_mobs', 'betternether_blocks', 'dynamic_trees', 'limb_tags'):   # (tool_parts again: chainlinks, olivine)
+for _n in ('new_materials', 'forging', 'tool_parts', 'armor_art', 'elytra_art', 'trommel', 'classic_extras', 'tool_parts', 'magic_rework', 'village_rework', 'village_builder', 'bird_feet', 'polish_data', 'new_mobs', 'nether_biome_blocks', 'dynamic_trees', 'limb_tags'):   # (tool_parts again: chainlinks, olivine)
     _s21 = _u.spec_from_file_location(_n, pathlib.Path(__file__).with_name(_n + '.py')); _m21 = _u.module_from_spec(_s21); _s21.loader.exec_module(_m21); _m21.main(d)

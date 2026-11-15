@@ -47,13 +47,13 @@
 "donor": "own shape",
 "file": "item/aechor_petal.png"
 },
-"aether_crystal": {
+"skyland_crystal": {
 "donor": "amethyst_shard",
-"file": "item/aether_crystal.png"
+"file": "item/skyland_crystal.png"
 },
-"aether_crystal_ore": {
+"skyland_crystal_ore": {
 "donor": "iron_ore",
-"file": "block/aether_crystal_ore.png"
+"file": "block/skyland_crystal_ore.png"
 },
 "ale_mug": {
 "donor": "own shape",

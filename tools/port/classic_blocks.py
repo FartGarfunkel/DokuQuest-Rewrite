@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Better than Adventure-inspired blocks, our own Doku designs (idempotent; data_patches.py runs it):
-  python3 tools/port/bta_blocks.py <data-dir>
+  python3 tools/port/classic_blocks.py <data-dir>
 Pictures are made from the nearest existing picture (the DokuQuest Base pack's, else the generated one) recoloured and
 retouched, so they sit with the rest of the art; nothing is taken from BTA.
 - pumice: soaks up the lava around it when it is put down or lava reaches it (sim/blockfx.cpp), turning molten

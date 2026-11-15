@@ -19,7 +19,7 @@ namespace dq {
 //            sky, Skylands — y 0 .. 256 * bands
 // Each dimension is still one 256-tall band: dimBase(d) is its band's floor, dimOfY(y) the dimension there. Global y
 // is never negative (the display shows a layout-2 world's y the Minecraft way: hud.cpp displayY).
-enum Dim : int { DIM_END = 0, DIM_NETHER = 1, DIM_OVERWORLD = 2, DIM_AETHER = 3,
+enum Dim : int { DIM_END = 0, DIM_NETHER = 1, DIM_OVERWORLD = 2, DIM_SKYLANDS = 3,
                  DIM_UNDER1 = 4, DIM_UNDER2 = 5, DIM_UNDER3 = 6, DIM_UNDER4 = 7,   // the Underworld: 1 just under the Overworld
                  DIM_SKY1 = 8, DIM_SKY2 = 9,                                       // open air over the Overworld (1 the lower)
                  DIM_COUNT = 10 };
@@ -68,8 +68,8 @@ inline bool landRoofAt(int y) { if ((y & 255) != 255) return false; const int d 
 
 // Original JS dimension numbers (game/portals.js DIM) for porting reference
 enum JsDim : int { JS_OVERWORLD = 0, JS_DEPTHS = 1, JS_SKYLANDS = 2, JS_POCKET = 3, JS_REALM = 4, JS_END = 5 };
-inline int dimFromJs(int js) { switch (js) { case JS_DEPTHS: return DIM_NETHER; case JS_SKYLANDS: return DIM_AETHER; case JS_END: return DIM_END; default: return DIM_OVERWORLD; } }
-inline int jsFromDim(int d) { d = landOf(d); switch (d) { case DIM_NETHER: return JS_DEPTHS; case DIM_AETHER: return JS_SKYLANDS; case DIM_END: return JS_END; default: return JS_OVERWORLD; } }
+inline int dimFromJs(int js) { switch (js) { case JS_DEPTHS: return DIM_NETHER; case JS_SKYLANDS: return DIM_SKYLANDS; case JS_END: return DIM_END; default: return DIM_OVERWORLD; } }
+inline int jsFromDim(int d) { d = landOf(d); switch (d) { case DIM_NETHER: return JS_DEPTHS; case DIM_SKYLANDS: return JS_SKYLANDS; case DIM_END: return JS_END; default: return JS_OVERWORLD; } }
 inline const char* dimName(int d) {
   static const char* n[] = {"The End", "Ember Depths", "Overworld", "Skylands", "Underworld", "Underworld", "Underworld", "Underworld", "Overworld", "Overworld"};
   return d >= 0 && d < DIM_COUNT ? n[d] : "Somewhere";

@@ -1,6 +1,6 @@
 // gen/end_be_structures.cpp — Better End's land structures (its building_list_features: ruins, houses, a library, a
 // tree house, a small mansion, cabins, stumps and fallen trees) in their six lands, read from data/be_structures.json
-// (tools/port/be_building.py converts Better End's MIT .nbt templates). Like Better End: in one chunk of ten (its rarity
+// (tools/port/end_building.py converts Better End's MIT .nbt templates). Like Better End: in one chunk of ten (its rarity
 // filter) a spot in the chunk, if its land has a list, gets one structure from it, centred there, turned a random
 // quarter; SURFACE ones sit with their floor in the ground, OBJECT ones on top of it. Its air clears only what stands
 // above the ground.

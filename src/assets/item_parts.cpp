@@ -129,7 +129,7 @@ std::string model3dKind(const std::string& key, const ItemDef* def) {
   if (key == "pumpkin_pie") return "pie";
   if (key == "egg") return "egg";
   if (re("ball$|^snowball$|^cinder_core$|^magma_cream$")) return "ball";
-  if (re("^(diamond|emerald|ruby|sapphire|heart_crystal|aether_crystal|mese_crystal)$")) return "gem";
+  if (re("^(diamond|emerald|ruby|sapphire|heart_crystal|skyland_crystal|mese_crystal)$")) return "gem";
   if (re("shard$|^quartz$")) return "crystal";
   if (re("^(coal|charcoal|flint|raw_\\w+|crushed_\\w+)$")) return "lump";
   if (re("nugget$")) return "nugget";

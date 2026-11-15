@@ -111,7 +111,7 @@ const std::vector<Section>& helpText() {
   {"The Skylands", "feather", {
     {H, "The Skylands"},
     {P, "A frame of glowstone filled with water from a bucket opens the way up. The Skylands are islands in the open sky \xE2\x80\x94 their waterfalls pour off the edges and vanish into the clouds far below."},
-    {P, "Mine zanite for gemstones, gravitite for plates and ambrosium for its healing shards. Aether crystals make a Pocket Key to your own private dimension."},
+    {P, "Mine zanite for gemstones, gravitite for plates and ambrosium for its healing shards. Sky crystals make a Pocket Key to your own private dimension."},
     {P, "Don't fall: the Overworld is a long way down. Elytra let you glide down safely."},
   }},
   {"The End", "end_stone", {

@@ -32,7 +32,7 @@ static void skyTempleBuild(ChunkWriter& w, const StructurePlan& S) {
   for (int dz = -14; dz <= 14; dz++) for (int dx = -14; dx <= 14; dx++) {
     const double r = std::hypot(dx, dz); if (r > 13.5) continue;
     const int depth = jsRound((13.5 - r) * 0.9 + P.h(cx + dx, 0, cz + dz, 3) * 3);
-    for (int k = 1; k <= depth; k++) P.put(cx + dx, y - k, cz + dz, k == depth && P.h(cx + dx, k, cz + dz, 4) < 0.3 ? "aether_crystal_ore" : "skystone");
+    for (int k = 1; k <= depth; k++) P.put(cx + dx, y - k, cz + dz, k == depth && P.h(cx + dx, k, cz + dz, 4) < 0.3 ? "skyland_crystal_ore" : "skystone");
     if (std::abs(dx) > R || std::abs(dz) > R) { P.put(cx + dx, y, cz + dz, "sky_grass"); if (P.h(cx + dx, 1, cz + dz, 5) < 0.12) P.put(cx + dx, y + 1, cz + dz, "tall_grass"); }
   }
   // the hall
@@ -441,10 +441,10 @@ void registerStructureEndCities() {
   registerStructure(std::move(t));
 }
 void registerStructureFarA() {   // places.js, STRUCTS 9..16
-  regFar("sky_temple", "the Sky Temple", 640, 0.8, 70, 9, DIM_AETHER, skyTemplePlan, skyTempleBuild);
-  regFar("sky_shrine", "a Cloud Shrine", 260, 0.6, 30, 10, DIM_AETHER, skyShrinePlan, skyShrineBuild);
-  regFar("skyship", "a Skyship", 480, 0.55, 50, 11, DIM_AETHER, skyshipPlan, skyshipBuild);
-  regFar("moa_nest", "a Moa Nest", 300, 0.5, 30, 12, DIM_AETHER, moaPlan, moaBuild);
+  regFar("sky_temple", "the Sky Temple", 640, 0.8, 70, 9, DIM_SKYLANDS, skyTemplePlan, skyTempleBuild);
+  regFar("sky_shrine", "a Cloud Shrine", 260, 0.6, 30, 10, DIM_SKYLANDS, skyShrinePlan, skyShrineBuild);
+  regFar("skyship", "a Skyship", 480, 0.55, 50, 11, DIM_SKYLANDS, skyshipPlan, skyshipBuild);
+  regFar("moa_nest", "a Moa Nest", 300, 0.5, 30, 12, DIM_SKYLANDS, moaPlan, moaBuild);
   regFar("ember_bastion", "an Ember Bastion", 600, 0.8, 70, 13, DIM_NETHER, bastionPlan, bastionBuild);
   regFar("ember_spire", "an Obsidian Spire", 360, 0.55, 30, 14, DIM_NETHER, spirePlan, spireBuild);
   regFar("ruined_forge", "a Ruined Forge", 320, 0.6, 30, 15, DIM_NETHER, forgePlan, forgeBuild);
@@ -452,7 +452,7 @@ void registerStructureFarA() {   // places.js, STRUCTS 9..16
 }
 void registerStructureFarB() {   // nether2.js (20), batche.js (21)
   regFar("nether_fortress", "a Nether Fortress", 520, 0.75, 80, 20, DIM_NETHER, fortressPlanMC, fortressBuildMC);
-  regFar("sky_sanctum", "a Floating Sanctum", 340, 0.55, 30, 21, DIM_AETHER, sanctumPlan, sanctumBuild);
+  regFar("sky_sanctum", "a Floating Sanctum", 340, 0.55, 30, 21, DIM_SKYLANDS, sanctumPlan, sanctumBuild);
 }
 
 } // namespace dq

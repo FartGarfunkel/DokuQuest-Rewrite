@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""tools/port/be_building.py — Better End's buildings (idempotent; data_patches.py runs it after betterend_blocks.py):
-  python3 tools/port/be_building.py <data-dir> [<Better End folder>]
+"""tools/port/end_building.py — Better End's buildings (idempotent; data_patches.py runs it after end_blocks.py):
+  python3 tools/port/end_building.py <data-dir> [<Better End folder>]
 
 1. The building blocks its structures are made of and the game lacked: per wood (mossy glowshroom, pythadendron, end
    lotus, lacugrove, dragon tree, tenanea, helix tree, umbrella tree, jellyshroom, lucernia) planks, stripped logs,
@@ -62,7 +62,7 @@ def nbt(path):
 def main(d, be):
     d = pathlib.Path(d); be = pathlib.Path(be)
     sroot = be / 'data/betterend/structures'; troot = be / 'assets/betterend/textures/block'
-    if not sroot.exists(): print('be_building: no Better End structures at', sroot, '- skipped'); return
+    if not sroot.exists(): print('end_building: no Better End structures at', sroot, '- skipped'); return
     import importlib.util as ilu
     sp = ilu.spec_from_file_location('local_mod_art', pathlib.Path(__file__).with_name('local_mod_art.py')); LM = ilu.module_from_spec(sp); sp.loader.exec_module(LM)
     bj = json.loads((d / 'blocks.json').read_text()); items = json.loads((d / 'items.json').read_text())
@@ -250,7 +250,7 @@ def main(d, be):
             conf = json.loads((cf / (land + '_structures.json')).read_text())['config']
             chance = next((p['chance'] for p in json.loads((pf / (land + '_structures.json')).read_text())['placement'] if p['type'] == 'minecraft:rarity_filter'), 10)
         except Exception as e:
-            print('be_building: no list for', land, e); continue
+            print('end_building: no list for', land, e); continue
         lst = []
         for s in conf['structures']:
             path = be / s['path'].lstrip('/')
@@ -283,7 +283,7 @@ def main(d, be):
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
     (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':')))
-    print('be_building: %d structures in %d lands, %d blocks now; fell back to end stone for %s' % (total, len(lands), len(blocks), json.dumps(missing) if missing else 'nothing'))
+    print('end_building: %d structures in %d lands, %d blocks now; fell back to end stone for %s' % (total, len(lands), len(blocks), json.dumps(missing) if missing else 'nothing'))
 
 
 if __name__ == '__main__':

@@ -235,7 +235,7 @@ void WeatherFxLayer::particleWeather(GameSession& s, WeatherSystem* W, double dt
   if (W) { if (gust > 0.6f && !gusting) { gusting = true; gustSound = true; } else if (gust < 0.3f) gusting = false; }
   int sky = w.getLight(ifloor(p.x), ifloor(p.y + 1.6f), ifloor(p.z)) >> 4;
   int d = skyLandOf(s.frame.dim);
-  bool open = (d == DIM_OVERWORLD || d == DIM_AETHER) && sky >= 13 && pl.realm == REALM_MAIN;
+  bool open = (d == DIM_OVERWORLD || d == DIM_SKYLANDS) && sky >= 13 && pl.realm == REALM_MAIN;
   if (gustSound && open) s.level->fx->soundUi(pl.id, "gust");
   if (W && open && gust > 0.05f) {
     float dx = -std::sin(W->windDir), dz = -std::cos(W->windDir), sp = 7 + gust * 6;
@@ -289,7 +289,7 @@ void WeatherFxLayer::particleWeather(GameSession& s, WeatherSystem* W, double dt
     }
   }
   // the Skylands: white motes on the meadows, golden leaves falling in the woods
-  if (d == DIM_AETHER && s.level) {
+  if (d == DIM_SKYLANDS && s.level) {
     int land = skyLandAt(s.level->info.seed, ifloor(p.x), ifloor(p.z));
     float n = (land == 0 ? 10.f : 6.f) * amount * (float)dt;
     u16 tMote = (u16)P.tile("sparkle");

@@ -3,7 +3,7 @@
 // Nether (gen/nether_exact.cpp) where a slow mask noise says so, each inside the BTA land it suits (BetterNether's own
 // climate points: the jungle in warm crags, the swamp in the sulfur pools, the magma land among the volcanoes...).
 // BTA's own generator is untouched (it is checked block for block): this is a pass after it, column by column, its
-// blocks from tools/port/betternether_blocks.py. Terrain 12 and older never run it.
+// blocks from tools/port/nether_biome_blocks.py. Terrain 12 and older never run it.
 #pragma once
 #include "common/common.h"
 

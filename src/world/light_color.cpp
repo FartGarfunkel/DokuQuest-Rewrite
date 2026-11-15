@@ -17,7 +17,7 @@ vec3 blockLightColour(BlockId id) {
   else if (has("glow_lichen") || has("verdant") || has("firefly")) c = vec3(0.6f, 1.0f, 0.7f);
   else if (has("lava") || has("magma") || has("ember")) c = vec3(1.0f, 0.42f, 0.12f);
   else if (has("glowstone") || has("shroomlight") || has("sun_cloud")) c = vec3(1.0f, 0.86f, 0.55f);
-  else if (has("crystal") || has("aether")) c = vec3(0.7f, 0.85f, 1.0f);
+  else if (has("crystal") || has("skylands")) c = vec3(0.7f, 0.85f, 1.0f);
   else {
     static const std::pair<const char*, vec3> D[] = {
       {"light_blue", {0.45f, 0.75f, 1.0f}}, {"light_gray", {0.85f, 0.85f, 0.85f}}, {"white", {1, 1, 1}}, {"orange", {1.0f, 0.55f, 0.15f}}, {"magenta", {0.9f, 0.35f, 0.9f}},

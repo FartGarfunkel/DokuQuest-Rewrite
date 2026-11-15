@@ -2,7 +2,7 @@
 // grass, tall grass and flowers, aether crystal ore and cloud-pine trees. Shapes are the original's, lifted
 // SKY_DY (120) so they float high in the band; the band's bottom 30 is the cloud bank (vmap::cloudBank).
 #include "gen/dimgens.h"
-#include "gen/aether_noise.h"
+#include "gen/isles_noise.h"
 
 namespace dq {
 using namespace vmap;
@@ -11,11 +11,11 @@ SkylandsGen::SkylandsGen(const WorldGenOptions& o)
   : structures(*this), seed_(o.seed), nCont(o.seed ^ 0x1234), nHill(o.seed ^ 0x2345), nCave1(o.seed ^ 0x89ab) {
   B.resolve();
   mixed_ = o.genVersion >= 21;
-  if (o.genVersion >= 7) aether_ = std::make_shared<AetherNoise>((u64)(u32)o.seed * 0x9E3779B97F4A7C15ULL + 0xAE);
+  if (o.genVersion >= 7) isles_ = std::make_shared<IslesNoise>((u64)(u32)o.seed * 0x9E3779B97F4A7C15ULL + 0xAE);
 }
 
 int SkylandsGen::islandTop(int wx, int wz) const {
-  if (aether_) { int t, b; return aetherColumn(wx, wz, t, b) ? t : -1; }
+  if (isles_) { int t, b; return islesColumn(wx, wz, t, b) ? t : -1; }
   double mask = nCont.fbm2(wx / 180.0, wz / 180.0, 3);
   if (mask <= 0.05) return -1;
   // the top row is always solid where the mask allows (0.6 + n > 0 for |n| <= 0.4)
@@ -23,7 +23,7 @@ int SkylandsGen::islandTop(int wx, int wz) const {
 }
 
 double SkylandsGen::islandMask(int wx, int wz) const {
-  if (aether_) { int t, b; return aetherColumn(wx, wz, t, b) ? 0.3 : -1.0; }
+  if (isles_) { int t, b; return islesColumn(wx, wz, t, b) ? 0.3 : -1.0; }
   return nCont.fbm2(wx / 180.0, wz / 180.0, 3);
 }
 // how far an island reaches down under a column: deep in the middle, so each hangs to a point like an upturned hill
@@ -48,12 +48,12 @@ bool SkylandsGen::sunwoodAt(int x, int z) const {
   return B.sunwood_log && hashFloat(x, z, seed_, 47) < p;
 }
 int SkylandsGen::hillTop(int wx, int wz) const {
-  if (aether_) { int t = islandTop(wx, wz); return t >= 0 ? t : 64 + AETHER_DY; }
+  if (isles_) { int t = islandTop(wx, wz); return t >= 0 ? t : 64 + ISLES_DY; }
   return 70 + jsFloor(nHill.fbm2(wx / 60.0, wz / 60.0, 3) * 10) + SKY_DY;
 }
 
 void SkylandsGen::generate(Chunk& ch) {
-  if (aether_) { generateAether(ch); return; }
+  if (isles_) { generateIsles(ch); return; }
   GenBuf& b = GenBuf::local();
   for (int i = 0; i < 256; i++) { ch.climate[i * 2] = 160; ch.climate[i * 2 + 1] = 190; }
   const int bx = ch.cx * CS, bz = ch.cz * CS;
@@ -155,7 +155,7 @@ void SkylandsGen::generate(Chunk& ch) {
     double x = rnd() * 16, y = 40 + rnd() * 60, z = rnd() * 16;
     for (int k = 0; k < 5; k++) {
       int ix = jsFloor(x), iy = jsFloor(y), iz = jsFloor(z);
-      if (ix >= 0 && ix < 16 && iz >= 0 && iz < 16) { BlockId& cur = b.blocks[colIdx(ix, iy + SKY_DY, iz)]; if (cur == B.skystone || (B.holystone && cur == B.holystone)) cur = B.aether_crystal_ore; }
+      if (ix >= 0 && ix < 16 && iz >= 0 && iz < 16) { BlockId& cur = b.blocks[colIdx(ix, iy + SKY_DY, iz)]; if (cur == B.skystone || (B.holystone && cur == B.holystone)) cur = B.skyland_crystal_ore; }
       x += rnd() * 2 - 1; y += rnd() * 2 - 1; z += rnd() * 2 - 1;
     }
   }
@@ -234,12 +234,12 @@ void SkylandsGen::generate(Chunk& ch) {
 }
 
 TerrainColumn SkylandsGen::terrainColumn(int x, int z) const {
-  TerrainColumn t; t.y = islandTop(x, z); t.jsY = t.y < 0 ? -1 : t.y - (aether_ ? AETHER_DY : SKY_DY); t.temp = 160 / 127.0 - 128 / 127.0; t.humid = 190 / 127.0 - 128 / 127.0;
+  TerrainColumn t; t.y = islandTop(x, z); t.jsY = t.y < 0 ? -1 : t.y - (isles_ ? ISLES_DY : SKY_DY); t.temp = 160 / 127.0 - 128 / 127.0; t.humid = 190 / 127.0 - 128 / 127.0;
   return t;
 }
 
 void SkylandsGen::sample(int wx, int wz, ColumnSample& s) const {
-  if (aether_) { sampleAether(wx, wz, s); return; }
+  if (isles_) { sampleIsles(wx, wz, s); return; }
   s = ColumnSample(); s.temp = 160; s.humid = 190;
   const double mask = nCont.fbm2(wx / 180.0, wz / 180.0, 3);
   if (mask <= 0.05) { s.height = -1; return; }
@@ -250,7 +250,7 @@ void SkylandsGen::sample(int wx, int wz, ColumnSample& s) const {
 }
 
 void SkylandsGen::trees(int cx, int cz, std::vector<TreeSample>& out) const {
-  if (aether_) { treesAether(cx, cz, out); return; }
+  if (isles_) { treesIsles(cx, cz, out); return; }
   auto add = [&](int x, int z, int H, bool sun) {
     int top = islandTop(x, z);
     if (top < 0) return;

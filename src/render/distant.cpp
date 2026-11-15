@@ -493,8 +493,8 @@ void DistantTerrain::update(Level& lv, World& w, const FrameCtx& f, ThreadPool& 
   setSkyFarRange(range);
   int maskR = std::min(40, R + 3);
   std::vector<int> list = {d};
-  if (d == DIM_OVERWORLD && f.cloudBank > 0.01f) list.push_back(DIM_AETHER);
-  if (d == DIM_AETHER && f.cloudBank > 0.01f) list.push_back(DIM_OVERWORLD);
+  if (d == DIM_OVERWORLD && f.cloudBank > 0.01f) list.push_back(DIM_SKYLANDS);
+  if (d == DIM_SKYLANDS && f.cloudBank > 0.01f) list.push_back(DIM_OVERWORLD);
   std::vector<std::tuple<float, int, Band::Want>> wants;
   for (size_t n = 0; n < list.size(); n++) {
     Band& b = *bands[list[n]];

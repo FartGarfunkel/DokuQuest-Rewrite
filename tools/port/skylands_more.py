@@ -91,7 +91,7 @@ def main(d):
             M['valkyrie'] = m
             v = {k: q[k] for k in ('w', 'h', 'speed', 'voice', 'tint') if k in q}
             v.update({'model': 'valkyrie', 'label': 'a valkyrie', 'hp': 40, 'hostile': True, 'damage': 4, 'xp': 30, 'knockResist': 0.3, 'held': 'iron_sword',
-                      'drops': [['golden_feather', 0, 1, 0.3], ['aether_crystal', 1, 3, 0.6], ['feather', 1, 3, 0.8]]})
+                      'drops': [['golden_feather', 0, 1, 0.3], ['skyland_crystal', 1, 3, 0.6], ['feather', 1, 3, 0.8]]})
             v['h'] = round(q.get('h', 2.4) * 0.85, 2)
             mobs['valkyrie'] = v
             M['valkyrie']['scale'] = M['valkyrie'].get('scale', 1) * 0.85

@@ -104,13 +104,13 @@ bool VolumetricClouds::init() {
 void VolumetricClouds::update(Level& lv, const FrameCtx& f, const SkyEnv& env, double dt) {
   active = false;
   if (!f.settings || !f.settings->clouds || !f.settings->extra.value("volumetricClouds", true) || f.cam.realm != REALM_MAIN) return;
-  if ((f.land != DIM_OVERWORLD && f.land != DIM_AETHER) || isUnderworld(f.dim)) return;
+  if ((f.land != DIM_OVERWORLD && f.land != DIM_SKYLANDS) || isUnderworld(f.dim)) return;
   if (!init()) return;
   active = true;
   WeatherSystem* W = weatherOf(lv);
   const std::string kind = W ? W->stormKind() : "clear";
   thunder = kind == "thunder" ? 1.f : 0.f;
-  flash = W ? std::max(W->flashT > 0 ? std::min(1.f, W->flashT / 0.2f) : 0.f, f.land == DIM_AETHER && W->belowFlash > 0 ? W->belowFlash / 0.3f : 0.f) : 0.f;
+  flash = W ? std::max(W->flashT > 0 ? std::min(1.f, W->flashT / 0.2f) : 0.f, f.land == DIM_SKYLANDS && W->belowFlash > 0 ? W->belowFlash / 0.3f : 0.f) : 0.f;
   mist = std::min(1.f, env.mist);
   wind = W ? glm::dvec2(W->cloudX, W->cloudZ) : glm::dvec2(0);
   // the coverage map, round you: the land's usual cover, thickening to full where a storm or a shower is

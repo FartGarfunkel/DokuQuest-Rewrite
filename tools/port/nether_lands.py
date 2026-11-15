@@ -7,7 +7,7 @@
 #   bricks and cracked scorched bricks (the Old World's ruins).
 import json, pathlib, sys, importlib.util
 
-_s = importlib.util.spec_from_file_location('bta_blocks', pathlib.Path(__file__).with_name('bta_blocks.py'))
+_s = importlib.util.spec_from_file_location('classic_blocks', pathlib.Path(__file__).with_name('classic_blocks.py'))
 _b = importlib.util.module_from_spec(_s); _s.loader.exec_module(_b)
 src_pic = _b.src_pic
 

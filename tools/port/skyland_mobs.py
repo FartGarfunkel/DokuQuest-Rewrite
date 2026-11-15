@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""tools/port/aether_mobs.py — The Aether's dungeon keepers and its missing creatures (idempotent; data_patches.py runs it):
-  python3 tools/port/aether_mobs.py <data-dir>
+"""tools/port/skyland_mobs.py — The Aether's dungeon keepers and its missing creatures (idempotent; data_patches.py runs it):
+  python3 tools/port/skyland_mobs.py <data-dir>
 
 Built like tools/port/end_mobs.py: each on the rig of the nearest creature the game has, its model a copy of that one
 (scaled) with every picture recoloured (light and shade kept):
   slider (bronze dungeon boss: a big carved-stone cube that hops at you, on the slime), sentry (its small cousin that
   guards the bronze halls), sun_spirit (gold dungeon boss: a burning golden giant, on the Ember Lord), fire_minion (its
   guard, a small one), evil_whirlwind (a dark whirlwind that hunts you, on the whirlwind).
-gen/structures_aether.cpp names the bosses; sim/keepers.cpp wakes the Sun Spirit's minions with it; sim/creature_spawn.cpp
+gen/structures_skylands.cpp names the bosses; sim/keepers.cpp wakes the Sun Spirit's minions with it; sim/creature_spawn.cpp
 spawns sentries in the bronze halls and evil whirlwinds on the islands.
 """
 import copy, json, pathlib, sys
@@ -53,9 +53,9 @@ def main(d):
     tj = json.loads((d / 'tiles.json').read_text()); tiles, files = tj['names'], tj['files']
     tj['res'] += [32] * max(0, tj['count'] - len(tj['res']))
     for key, (base, label, col, cols, scale, opaque, over) in MOBS.items():
-        if base not in mobs: print('aether_mobs: no', base); continue
+        if base not in mobs: print('skyland_mobs: no', base); continue
         mkey = mobs[base].get('model', base)
-        if mkey not in models: print('aether_mobs: no model', mkey); continue
+        if mkey not in models: print('skyland_mobs: no model', mkey); continue
         model = copy.deepcopy(models[mkey])
         def retex(t):
             new = key + '_' + t
@@ -83,7 +83,7 @@ def main(d):
     (d / 'mobs.json').write_text(json.dumps(mobs, separators=(',', ':'), ensure_ascii=False))
     (d / 'models.json').write_text(json.dumps(models, separators=(',', ':'), ensure_ascii=False))
     (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':')))
-    print('aether_mobs: %d creatures' % len(MOBS))
+    print('skyland_mobs: %d creatures' % len(MOBS))
 
 
 if __name__ == '__main__':

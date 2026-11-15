@@ -121,7 +121,7 @@ def outline_style(target, outline):
 
 BLOCK_RULES = [
     (r'deepslate_.*_ore$', 'deepslate_iron_ore'), (r'_ore$', 'iron_ore'),
-    (r'(^|_)(tin|bronze|steel|silver|mithril|adamantite|mese|ruby|sapphire|cinderite|aether_crystal)_block$', 'iron_block'),
+    (r'(^|_)(tin|bronze|steel|silver|mithril|adamantite|mese|ruby|sapphire|cinderite|skyland_crystal)_block$', 'iron_block'),
     (r'_bricks?$', 'stone_bricks'), (r'roof_tiles$', 'bricks'), (r'pillar_top$', 'quartz_pillar_top'), (r'pillar$', 'quartz_pillar'),
     (r'_planks$', 'oak_planks'), (r'_log_top$', 'oak_log_top'), (r'_log(_side)?$', 'oak_log'), (r'_leaves$', 'oak_leaves'),
     (r'_sapling$', 'oak_sapling'), (r'_door_lower$', 'oak_door_bottom'), (r'_door_upper$', 'oak_door_top'), (r'_trapdoor$', 'oak_trapdoor'),

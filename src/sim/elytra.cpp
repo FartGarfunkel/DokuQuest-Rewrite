@@ -40,7 +40,7 @@ void elytraMove(Level& lv, Player& p, double dtd) {
     const int d = dimOfY(ifloor(p.pos.y));
     World& w0 = lv.world(p.realm);
     const u8 lt = w0.getLight(ifloor(p.pos.x), ifloor(p.pos.y + 0.5f), ifloor(p.pos.z));
-    if (p.realm == REALM_MAIN && (d == DIM_OVERWORLD || d == DIM_AETHER) && (lt >> 4) >= 12) {
+    if (p.realm == REALM_MAIN && (d == DIM_OVERWORLD || d == DIM_SKYLANDS) && (lt >> 4) >= 12) {
       W = vec2(-std::sin(ws->windDir), -std::cos(ws->windDir)) * ws->windStrength * 0.45f;   // blocks a tick
       gustUp = ws->gust;
     }

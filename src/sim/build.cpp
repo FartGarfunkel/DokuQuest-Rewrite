@@ -896,7 +896,7 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
     }
     return false;
   }
-  static const std::unordered_set<std::string> HOE = {"grass", "dirt", "coarse_dirt", "rooted_dirt", "snowy_grass", "sky_grass", "aether_grass_block", "aether_dirt", "podzol", "mycelium", "dirt_path", "dirt_with_dry_grass", "dirt_with_coniferous_litter", "dirt_with_rainforest_litter"};
+  static const std::unordered_set<std::string> HOE = {"grass", "dirt", "coarse_dirt", "rooted_dirt", "snowy_grass", "sky_grass", "skyland_grass_block", "skyland_dirt", "podzol", "mycelium", "dirt_path", "dirt_with_dry_grass", "dirt_with_coniferous_litter", "dirt_with_rainforest_litter"};
   if (tool == "hoe" && HOE.count(b.key) && w.getBlock(x, y + 1, z) == AIR && B.farmland) { w.setBlock(x, y, z, B.farmland, 0); sfxMaterial(lv, "gravel", "dig", c); wearHeld(lv, p, 1); swingArm(); return true; }
   if ((tool == "sword" || (def && def->has("shears"))) && id == B.pumpkin && id) {
     w.setBlock(x, y, z, B.carved_pumpkin, (u8)facingMeta(p));

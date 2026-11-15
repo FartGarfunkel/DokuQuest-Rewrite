@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""tools/port/betterend_blocks.py — Better End's blocks for the End band (idempotent; data_patches.py runs it when the
+"""tools/port/end_blocks.py — Better End's blocks for the End band (idempotent; data_patches.py runs it when the
 Better End jar is unpacked next to the project):
 
-  python3 tools/port/betterend_blocks.py <data-dir> [<Better End folder>]
+  python3 tools/port/end_blocks.py <data-dir> [<Better End folder>]
 
 Better End 3.2.5 (github.com/quiqueck/BetterEnd, MIT; see docs/CREDITS.md) has its own terrain, turf, trees, mushrooms
 and plants. Each block here takes Better End's own picture (16 px) and is made to sit in the DokuQuest Base pack:
@@ -11,7 +11,7 @@ turf tops, the oak log for logs, the oak leaves for leaves). Better End's shapes
 pack's. Plants keep their own pixels (their outline is the picture).
 
 Blocks Better End and DokuQuest both have (end_moss, amber_block) take Better End's pictures. Tile names are be_<file>.
-The list of what is added is written to tools/port/betterend_manifest.json.
+The list of what is added is written to tools/port/end_manifest.json.
 """
 import json, pathlib, sys
 import numpy as np
@@ -201,7 +201,7 @@ def tint(im, rgb):
 def main(d, be):
     d = pathlib.Path(d); be = pathlib.Path(be)
     if not (be / 'assets/betterend/textures/block').exists():
-        print('betterend_blocks: no Better End textures at', be, '- skipped'); return
+        print('end_blocks: no Better End textures at', be, '- skipped'); return
     bj = json.loads((d / 'blocks.json').read_text())
     items = json.loads((d / 'items.json').read_text()); tj = json.loads((d / 'tiles.json').read_text())
     tiles, files = tj['names'], tj['files']
@@ -284,8 +284,8 @@ def main(d, be):
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
     (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':')))
-    pathlib.Path(__file__).with_name('betterend_manifest.json').write_text(json.dumps({'blocks': made}, indent=1))
-    print('betterend_blocks: %d blocks' % len(made))
+    pathlib.Path(__file__).with_name('end_manifest.json').write_text(json.dumps({'blocks': made}, indent=1))
+    print('end_blocks: %d blocks' % len(made))
 
 
 if __name__ == '__main__':

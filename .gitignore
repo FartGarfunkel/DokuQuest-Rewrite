@@ -8,3 +8,6 @@ third_party/*
 __pycache__/
 /dist/
 .superpowers/
+
+# importers that read other games' files: kept on this machine only
+tools/local/

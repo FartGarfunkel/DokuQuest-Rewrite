@@ -39,18 +39,18 @@ int main(int argc, char** argv) {
   printf("[the layouts]\n");
   {
     WorldLayout a = makeLayout(1), b = makeLayout(2, 4), c = makeLayout(2, 1);
-    check(a.bands == 4 && a.posOf[DIM_END] == 0 && a.posOf[DIM_NETHER] == 1 && a.posOf[DIM_OVERWORLD] == 2 && a.posOf[DIM_AETHER] == 3 && a.posOf[DIM_UNDER1] < 0, "layout 1: End, Nether, Overworld, Skylands (as ever)");
+    check(a.bands == 4 && a.posOf[DIM_END] == 0 && a.posOf[DIM_NETHER] == 1 && a.posOf[DIM_OVERWORLD] == 2 && a.posOf[DIM_SKYLANDS] == 3 && a.posOf[DIM_UNDER1] < 0, "layout 1: End, Nether, Overworld, Skylands (as ever)");
     check(b.bands == 10 && b.dimAt[0] == DIM_END && b.dimAt[1] == DIM_NETHER && b.dimAt[2] == DIM_UNDER4 && b.dimAt[5] == DIM_UNDER1 && b.dimAt[6] == DIM_OVERWORLD &&
-          b.dimAt[7] == DIM_SKY1 && b.dimAt[8] == DIM_SKY2 && b.dimAt[9] == DIM_AETHER, "layout 2: End, Nether, the Underworld deepest first, Overworld, open sky, Skylands");
+          b.dimAt[7] == DIM_SKY1 && b.dimAt[8] == DIM_SKY2 && b.dimAt[9] == DIM_SKYLANDS, "layout 2: End, Nether, the Underworld deepest first, Overworld, open sky, Skylands");
     check(c.bands == 7 && c.posOf[DIM_UNDER1] == 2 && c.posOf[DIM_UNDER2] < 0, "a shallower Underworld: fewer bands");
     setWorldLayout(2, 4);
     bool round = true; for (int y = 0; y < WORLD_H; y += 7) { const int d = dimOfY(y); if (y < dimBase(d) || y >= dimBase(d) + DIM_H) round = false; }
     check(round && WORLD_H == 2560, "every y is in the band of its dimension; the column 2560 tall");
-    check(dimBelow(DIM_OVERWORLD) == DIM_UNDER1 && dimAbove(DIM_OVERWORLD) == DIM_SKY1 && dimBelow(DIM_AETHER) == DIM_SKY2 && dimAbove(DIM_NETHER) == DIM_UNDER4, "the bands above and below");
+    check(dimBelow(DIM_OVERWORLD) == DIM_UNDER1 && dimAbove(DIM_OVERWORLD) == DIM_SKY1 && dimBelow(DIM_SKYLANDS) == DIM_SKY2 && dimAbove(DIM_NETHER) == DIM_UNDER4, "the bands above and below");
     check(displayY(dimBase(DIM_OVERWORLD) + SEA_LEVEL) == 63 && displayY(dimBase(DIM_OVERWORLD) - 64) == -65 && fromDisplayY(-58, DIM_OVERWORLD) == dimBase(DIM_OVERWORLD) - 57, "the y shown the Minecraft way (sea level 63, the Underworld below 0)");
     check(landFloorAt(dimBase(DIM_UNDER4)) && !landFloorAt(dimBase(DIM_OVERWORLD)) && !landFloorAt(dimBase(DIM_UNDER1)) && landRoofAt(dimBase(DIM_SKY2) + 255), "the seams between worlds: under the Underworld and over the open sky, not inside the Overworld's land");
     setWorldLayout(1);
-    check(WORLD_H == 1024 && dimOfY(600) == DIM_OVERWORLD && dimBase(DIM_AETHER) == 768 && displayY(512 + 64) == 64, "back to layout 1: exactly as before");
+    check(WORLD_H == 1024 && dimOfY(600) == DIM_OVERWORLD && dimBase(DIM_SKYLANDS) == 768 && displayY(512 + 64) == 64, "back to layout 1: exactly as before");
   }
 
   ThreadPool pool{2}; EventBus bus;

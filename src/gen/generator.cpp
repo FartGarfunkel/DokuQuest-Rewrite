@@ -32,7 +32,7 @@ public:
     switch (dim) {
       case DIM_OVERWORLD: return (int)(SEA_LEVEL + 4 + n * 36);
       case DIM_NETHER: return (int)(40 + n * 18);
-      case DIM_AETHER: return n > 0.15 ? (int)(120 + n * 40) : -1;
+      case DIM_SKYLANDS: return n > 0.15 ? (int)(120 + n * 40) : -1;
       default: return n > 0.2 ? (int)(64 + n * 24) : -1;
     }
   }
@@ -51,7 +51,7 @@ public:
         for (int y = ceil; y < 250; y++) c.set(x, y, z, netherrack);
       } else if (h > 0) {
         int thick = 6 + (h % 7);
-        for (int y = h - thick; y <= h; y++) c.set(x, y, z, dim == DIM_AETHER ? (y == h ? skygrass : dirt) : endstone);
+        for (int y = h - thick; y <= h; y++) c.set(x, y, z, dim == DIM_SKYLANDS ? (y == h ? skygrass : dirt) : endstone);
       }
     }
   }
@@ -60,7 +60,7 @@ public:
     s.height = (i16)h;
     if (dim == DIM_OVERWORLD) { s.top = h < SEA_LEVEL + 1 ? sand : grass; s.under = dirt; if (h < SEA_LEVEL) { s.water = SEA_LEVEL; s.fluid = water; } }
     else if (dim == DIM_NETHER) { s.top = netherrack; s.under = netherrack; if (h < 32) { s.water = 32; s.fluid = lava; } }
-    else if (h > 0) { s.top = dim == DIM_AETHER ? skygrass : endstone; s.under = dim == DIM_AETHER ? dirt : endstone; s.floatBottom = (i16)(h - 6 - (h % 7)); }
+    else if (h > 0) { s.top = dim == DIM_SKYLANDS ? skygrass : endstone; s.under = dim == DIM_SKYLANDS ? dirt : endstone; s.floatBottom = (i16)(h - 6 - (h % 7)); }
   }
   int dim; SimplexNoise noise;
   BlockId stone, dirt, grass, water, sand, bedrock, netherrack, endstone, skygrass, lava;

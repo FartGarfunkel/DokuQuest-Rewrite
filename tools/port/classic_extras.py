@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""tools/port/bta_extras.py — the rest of Better than Adventure 8.0.1's blocks and items that DokuQuest lacked (idempotent;
-data_patches.py runs it after trommel.py):  python3 tools/port/bta_extras.py <data-dir>
+"""tools/port/classic_extras.py — the rest of Better than Adventure 8.0.1's blocks and items that DokuQuest lacked (idempotent;
+data_patches.py runs it after trommel.py):  python3 tools/port/classic_extras.py <data-dir>
 
 Recipes are BTA's (recipes/workbench.json, furnace.json; stairs give 4 and slabs 6, as this game's do), with BTA's items
 swapped for ours (nether coal -> ember coal, sugarcane -> sugar cane, dye -> ink sac...). Pictures are the DokuQuest Base
@@ -111,7 +111,7 @@ def main(d):
 
     P = lambda n: pic('block/%s.png' % n)
     I = lambda n: pic('item/%s.png' % n)
-    if P('stone') is None or P('cobblestone') is None: print('bta_extras: no DokuQuest Base pack - skipped'); return
+    if P('stone') is None or P('cobblestone') is None: print('classic_extras: no DokuQuest Base pack - skipped'); return
 
     # ---- stone ----
     tile('polished_stone', P('smooth_stone') if P('smooth_stone') is not None else P('stone'))
@@ -397,7 +397,7 @@ def main(d):
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
     (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':')))
     (d / 'recipes.json').write_text(json.dumps(R, separators=(',', ':'), ensure_ascii=False))
-    print('bta_extras: %d blocks, %d items, %d recipes now' % (len(blocks), len(items), len(R['recipes'])))
+    print('classic_extras: %d blocks, %d items, %d recipes now' % (len(blocks), len(items), len(R['recipes'])))
 
 
 if __name__ == '__main__':
