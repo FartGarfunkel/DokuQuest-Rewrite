@@ -836,6 +836,11 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     if (!repeat || t - tactileHoldAt > 1.0) if (tactileBrewUse(lv, p, w, *hit, held, repeat) && !repeat) swingArm();
     return;
   }
+  // Tactile Stations: the jukebox (sim/tactile.h): the record on its platter, its needle arm to play
+  if (!fromOff && !repeat && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).has("jukebox")) {
+    if (tactileJukeboxUse(lv, p, w, *hit, held)) swingArm();
+    return;
+  }
   // Tactile Stations: the grindstone (sim/tactile.h): what's held is held to the wheel while use is held
   if (!fromOff && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).str("station") == "grindstone") {
     if (tactileGrind(lv, p, w, hit->block, held, t, grind) && !repeat) swingArm();

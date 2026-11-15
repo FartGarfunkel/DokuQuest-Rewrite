@@ -8,6 +8,7 @@
 #include "core/registry.h"
 #include "world/world.h"
 #include "sim/anvil_work.h"
+#include "sim/station_work.h"
 #include "sim/brewing.h"
 #include "sim/magic_combat.h"
 #include "sim/enchanting.h"
@@ -254,6 +255,40 @@ bool tactileBrewUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack
     return true;
   }
   brewTake(lv, p, w, at, slot);
+  return true;
+}
+
+bool tactileJukeboxPlaying(World& w, ivec3 at) {
+  const json* e = w.blockEntity(at.x, at.y, at.z);
+  return e && e->is_object() && e->contains("disc") && !e->value("stopped", false);
+}
+bool tactileJukeboxUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held) {
+  const ivec3 at = hit.block;
+  if (!reg().block(w.getBlock(at.x, at.y, at.z)).has("jukebox")) return false;
+  const vec3 c = vec3(at) + vec3(0.5f, 1.f, 0.5f);
+  const std::string disc = jukeboxDisc(w, at);
+  if (disc.empty()) {   // (a record onto the platter, waiting)
+    const ItemDef* d = held.empty() ? nullptr : reg().item(held.id);
+    if (!d || !d->has("disc")) { if (!held.empty()) toast(lv, p, "Only a record goes on it"); return true; }
+    w.setBlockEntity(at.x, at.y, at.z, {{"type", "jukebox"}, {"disc", held.id}, {"stopped", true}});
+    if (--held.n <= 0) held = ItemStack();
+    sfxAt(lv, "click", c);
+    return true;
+  }
+  // (JukeboxBlock.isNeedleHit: on the top, the arm's strip at the left)
+  const vec3 n = tactileNorthLocal(tactileFacing(w, at), hit.point - vec3(at));
+  const bool needle = n.y * 16 >= 15.9f && n.x * 16 >= 1 && n.x * 16 <= 7 && n.z * 16 >= 6 && n.z * 16 <= 10;
+  if (needle) {
+    json* e = w.blockEntity(at.x, at.y, at.z);
+    const bool playing = !e->value("stopped", false);
+    (*e)["stopped"] = playing;
+    w.blockEntityChanged(at.x, at.y, at.z);
+    const ItemDef* d = reg().item(disc);
+    if (lv.events) lv.events->emit("jukebox", playing ? json::array({at.x, at.y, at.z, nullptr}) : json::array({at.x, at.y, at.z, d ? d->str("disc") : disc}));
+    sfxAt(lv, "click", c);
+    return true;
+  }
+  jukeboxEject(lv, p, w, at, true);
   return true;
 }
 

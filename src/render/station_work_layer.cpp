@@ -266,6 +266,7 @@ public:
         if (madeYet && iv.mode > 0) lay(iv.made, inscribeRisePos(iv, iv.mode == 1 ? lie[0] : lie[2]), yaw + 0.3f, SZ[1] * (1 - 0.5f * (float)((iv.t - INSCRIBE_CONTACT) / (INSCRIBE_LENGTH - INSCRIBE_CONTACT))), VoxelLight{L.sky, std::max(L.block, 0.5f)});
         return;
       }
+      if (type == "jukebox" && stationModel(w.getBlock(x, y, z)) && s.app.settings.tactileStations) return;   // (Tactile's: below)
       if (type == "jukebox") {   // the record playing: standing in the slot, half out, turning slowly
         if (jukeOn && jv.at == ivec3(x, y, z)) return;
         const vec3 rel = f.cam.rel(glm::dvec3(x, y, z));
@@ -445,6 +446,38 @@ public:
           TPose p = tactileBlockPose(f, at, tactileFacing(w, at));
           p.t(0.5f, 0.5625f, 0.5f).rx(wh.angle).t(-0.5f, -0.5625f, -0.5f);
           tactilePartDraw(s.app, cd, *wheel, p.m, vec2(L.sky, L.block));
+        }
+        cd.end();
+      }
+    }
+    // Tactile's jukebox (JukeboxBlockEntityRenderer): its needle arm swung onto the record while it plays, the record flat on
+    // its platter, turning
+    if (!jukesNear().empty() && s.app.settings.tactileStations) {
+      const PackModel* arm = tactilePart("jukebox_arm");
+      bool vr = false;
+      for (const glm::ivec4& q : jukesNear()) {   // (the records: voxels)
+        const ivec3 at(q.x, q.y, q.z);
+        if (!stationModel(w.getBlock(at.x, at.y, at.z))) continue;
+        const std::string disc = jukeboxDisc(w, at);
+        if (disc.empty()) continue;
+        if (!vr) { VR.begin(f, f.cam.viewProj); vr = true; }
+        Wheel& sp = wheels[{at.x, at.y + 4096, at.z}];
+        if (tactileJukeboxPlaying(w, at)) sp.angle = std::fmod(sp.angle + 120.f * (float)lastDt, 360.f);
+        TPose p = tactileBlockPose(f, at, tactileFacing(w, at));
+        p.t(0.5f, 1.01875f, 0.5f).ry(sp.angle).rx(90).s(0.55f, 0.8642857f, 0.055f);
+        tactileItem(ItemStack(disc, 1), p.m, tactileLight(w, at));
+      }
+      if (vr) VR.end();
+      ContentDraw& cd = contentDraw();
+      if (arm && cd.begin(f, f.cam.viewProj)) {   // (the arms: their pictures)
+        for (const glm::ivec4& q : jukesNear()) {
+          const ivec3 at(q.x, q.y, q.z);
+          if (!stationModel(w.getBlock(at.x, at.y, at.z))) continue;
+          const float a = tactileEase(at, 3, tactileJukeboxPlaying(w, at), lastDt);
+          const VoxelLight L = tactileLight(w, at);
+          TPose p = tactileBlockPose(f, at, tactileFacing(w, at));
+          p.t(0.1203125f, 1.03125f, 0.5f).rz(-22.5f * a).t(-0.1203125f, -1.03125f, -0.5f);
+          tactilePartDraw(s.app, cd, *arm, p.m, vec2(L.sky, L.block));
         }
         cd.end();
       }

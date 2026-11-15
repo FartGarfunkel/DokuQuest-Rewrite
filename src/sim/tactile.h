@@ -56,6 +56,11 @@ bool tactileChestTake(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 d
 // powder; what's held goes where you look (held a moment: the whole stack of powder), an empty hand takes back from there
 bool tactileBrewUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held, bool all);
 
+// the jukebox (Tactile's): a record laid on its platter waits; using its needle arm sets it playing (again, stops it);
+// anywhere else takes the record back. The record {type:"jukebox", disc, stopped}
+bool tactileJukeboxUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held);
+bool tactileJukeboxPlaying(World& w, ivec3 at);
+
 // the cartography desk (Tactile's cartographe; our "mapwork" record {items: [the map worked, a blank to copy onto, blank
 // sheets to enlarge with], ink, feather}): an ink sac fills its pot (three uses), a feather goes in its holder (three);
 // a map goes on the board (front: the one worked, back: a blank to copy onto), blanks and paper pile on the right; an empty
