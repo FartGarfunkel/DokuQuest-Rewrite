@@ -642,6 +642,18 @@ static int cmpSave(const std::string& seedText, const char* save, int lim) {
     if (terr > 30) { bad++; printf("chunk %d,%d: %d differ, %d solid/air (lowest y %d at %d,%d)\n", ck.cx, ck.cz, diff, terr, ty, ck.cx * 16 + tx, ck.cz * 16 + tz); } }
   printf("%d chunks compared, %d differ in shape\n", n, bad); return 0;
 }
+static int saveNear(const char* save, int cx, int cz, int r, int y0, int y1) {   // a saved world's blocks round (cx, cz), band y y0..y1 (meta, block data)
+  RegionStore rs(save); std::map<long long, std::unique_ptr<Chunk>> got;
+  auto chunk = [&](int x, int z) -> Chunk* { const int qx = floordiv(x, 16), qz = floordiv(z, 16); const long long k = (long long)qx * 1000003 + qz;
+    auto it = got.find(k); if (it != got.end()) return it->second.get();
+    auto c = std::make_unique<Chunk>(DIM_OVERWORLD, qx, qz); std::vector<u8> d;
+    if (!rs.load(ChunkKey{DIM_OVERWORLD, qx, qz}, d) || !decodeChunk(*c, d.data(), d.size())) c.reset();
+    return (got[k] = std::move(c)).get(); };
+  for (int y = y0; y <= y1; y++) for (int z = cz - r; z <= cz + r; z++) for (int x = cx - r; x <= cx + r; x++) {
+    Chunk* c = chunk(x, z); if (!c) continue; const BlockId b = c->get(floormod(x, 16), y, floormod(z, 16)); if (!b) continue;
+    printf("%s %d %d %d meta %d\n", key(b).c_str(), x, y, z, c->getMeta(floormod(x, 16), y, floormod(z, 16))); }
+  return 0;
+}
 static int topcheck(const std::string& seedText, int x0, int z0, int w, int step) {
   LandSrc L(seedText); auto* og = dynamic_cast<OverworldGen*>(L.g); int n = 0, cut = 0, cut8 = 0, worst = 0, wx = 0, wz = 0;
   for (int z = z0; z < z0 + w; z += step) for (int x = x0; x < x0 + w; x += step) { const int xs = x & ~3, zs = z & ~3;
@@ -795,6 +807,7 @@ int main(int argc, char** argv) {
   if (m == "pillars" && argc >= 6) return pillars(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "findblock" && argc >= 4) return findBlock(argv[2], argv[3]);
   if (m == "cmpsave" && argc >= 5) return cmpSave(argv[2], argv[3], atoi(argv[4]));
+  if (m == "savenear" && argc >= 8) return saveNear(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]));
   if (m == "topcheck" && argc >= 7) return topcheck(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]));
   if (m == "profile" && argc >= 5) return profile(argv[2], atoi(argv[3]), atoi(argv[4]));
   if (m == "plans" && argc >= 6) return plans(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));

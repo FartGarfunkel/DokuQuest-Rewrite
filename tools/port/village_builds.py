@@ -34,7 +34,7 @@ def entrance(p, style, z, path):
 def forge_shop(style, name, seed):
     """a smith's forge open to the street: a cobbled floor under a plank roof on log posts; at the back a brick hearth with
     the fire behind iron bars, its chimney, the bellows; the anvil on its stump, the quench tub, the grindstone, a stand
-    with the work, a barrel of tools, the shelf of ingots, a chest; a lantern on a chain at the front"""
+    with the work, a barrel of tools, the shelf of ingots, a chest; lanterns hung under the roof at the front"""
     rnd = random.Random(seed); P = Pal(style, rnd)
     p = Piece(name, 'houses', style)
     X0, X1, Z0, Z1 = 1, 8, 0, 8
@@ -51,12 +51,12 @@ def forge_shop(style, name, seed):
     for z in range(Z0 + 1, Z1):   # the back wall: brick round the hearth, planks either side
         for y in range(1, 4): p.set(X1, y, z, 'bricks' if 2 <= z <= 6 else planks)
     # the hearth: brick cheeks, the fire in its pit (our forge: charcoal burns there) behind iron bars, a stone hood over it
-    p.set(7, 1, zc - 1, 'bricks'); p.set(7, 1, zc + 1, 'bricks')
+    # (the bellows is the hearth's one cheek, beside the fire it blows: sim/forge.cpp wants it next to the forge)
+    p.set(7, 1, zc - 1, 'bricks'); p.set(7, 1, zc + 1, 'bellows')
     p.set(7, 1, zc, 'forge')
     p.set(7, 2, zc - 1, 'bricks'); p.set(7, 2, zc + 1, 'bricks'); p.set(7, 2, zc, 'iron_bars')
     for z in range(zc - 1, zc + 2): p.set(7, 3, z, P.S['stone_slab'], type='top')
-    p.set(6, 1, zc + 2, 'bellows')
-    p.set(7, 1, zc + 2, 'blast_furnace', facing='west')   # (the smith's own furnace: the workstation)
+    p.set(7, 1, zc + 2, 'blast_furnace', facing='west')   # (the smith's own furnace: the workstation; its front kept clear)
     for y in range(4, 8): p.set(X1, y, zc, (P.S.get('chimney') or 'stone_bricks'))   # the chimney
     p.set(X1, 8, zc, (P.S.get('chimcap') or 'stone_brick_wall'))
     # the anvil on a stump, the quench tub, the grindstone
@@ -67,15 +67,16 @@ def forge_shop(style, name, seed):
     p.set(3, 1, Z0 + 1, 'barrel', facing='up'); pile(p, 3, 2, Z0 + 1, ['iron_shovel', 'iron_hoe', 'stick'])
     p.set(X1 - 1, 1, Z1 - 1, 'chest', facing='west')
     p.set(X1 - 1, 2, Z0 + 1, furn(P, 'shelf'), facing='south', items='iron_ingot*3,iron_nugget*6,coal*4')
-    p.set(2, 1, Z1 - 1, 'smithing_table'); p.set(2, 2, Z1 - 1, 'potted_' + rnd.choice(['red_tulip', 'dandelion', 'cornflower']))
+    p.set(2, 1, Z1 - 1, 'smithing_table', facing='north');   # (its working face to the room, not the wall) p.set(2, 2, Z1 - 1, 'potted_' + rnd.choice(['red_tulip', 'dandelion', 'cornflower']))
     p.set(3, 1, Z1 - 1, 'coal_block'); pile(p, 3, 2, Z1 - 1, ['charcoal*8'])
     # the roof: plank slabs on beams, a lantern hanging at the front
     for x in range(X0 - 1, X1 + 2):
         for z in range(Z0 - 1, Z1 + 2): p.set(x, 4, z, vb.ROOFMAT.get(P.wood, (None, P.rslab))[1] if P.wood in vb.ROOFMAT else P.rslab, type='bottom')
     for z in range(Z0, Z1 + 1): p.set(X0, 4, z, log, axis='z')
     p.set(X1, 4, zc, (P.S.get('chimney') or 'stone_bricks'))
-    chain_lantern(p, X0 + 1, 2, Z0 + 1, links=1)
-    chain_lantern(p, X0 + 1, 2, Z1 - 1, links=1)
+    # (hung right under the roof: lower, the one over the stand hung inside its head and the other sat on the bench)
+    chain_lantern(p, X0 + 1, 3, Z0 + 1, links=0)
+    chain_lantern(p, X0 + 1, 3, Z1 - 1, links=0)
     for z in (Z0 - 1, Z1 + 1):   # green at its corners
         if not P.sandy and not P.snowy: bush(p, P, X0, z, rnd); bush(p, P, X0 + 1, z, rnd)
     entrance(p, style, zc, P.pathb())

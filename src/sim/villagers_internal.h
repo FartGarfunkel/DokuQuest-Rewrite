@@ -21,6 +21,7 @@ struct NpcMind {
   std::vector<Door> doors;
   // npcGo
   std::vector<ivec3> path; size_t pathI = 0; bool hasPath = false; float navT = 0; bool hasNavGoal = false; vec3 navGoal{0};
+  float lostT = 0; vec3 lostFrom{0};   // (no way there and not getting anywhere: sim/villager_ai.cpp npcGo's rescue)
   int stuckGo = 0; float stuckT = 0, sideStepT = 0; bool hasNav = false; vec2 navXZ{0};
   int wetN = 0;   // seconds in a row in water (a fountain, a well): climbs out after a few
   float stuckCheckT = 0; int stuckN = 0;   // towns3.js npcStuckCheck

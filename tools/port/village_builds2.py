@@ -148,11 +148,14 @@ def great_stall(style, name, seed, cols, cart=False, wares=None):
     rnd, P, p = stall_base(name, style, seed)
     floor(p, P, 0, 0, 6, 6, rnd, [P.floor, P.S['pave'][0]])
     posts(p, P, ((1, 0), (1, 6), (6, 0), (6, 6)), 4, 'dark_oak_log' if vb.known('dark_oak_log') else None)
-    for x in range(0, 8):   # the stepped roof: plank slabs out at the eaves, the cloth peak along the middle
-        for z in range(0, 7):
+    for x in range(0, 8):   # the stepped roof: slabs out at the eaves, the cloth peak along the middle, each step resting on
+        for z in range(0, 7):   # a full layer under it (as half slabs a level apart they stood in the air, the cloth over a gap)
             edge = min(z, 6 - z)
-            y = 5 + min(edge, 2)
-            p.set(x, y, z, cols[x % len(cols)] if edge >= 2 else P.rslab, **({} if edge >= 2 else {'type': 'bottom'}))
+            for k in range(min(edge, 2) + 1):
+                top = k == min(edge, 2)
+                if top and edge >= 2: p.set(x, 5 + k, z, cols[x % len(cols)])
+                elif top: p.set(x, 5 + k, z, P.rslab, type='bottom')
+                else: p.set(x, 5 + k, z, P.rfull)
     for z in (0, 6):
         p.set(1, 3, z, cols[0].replace('_wool', '_wall_banner'), facing='west'); p.set(6, 3, z, cols[0].replace('_wool', '_wall_banner'), facing='east')
     wares = wares or ['bread', 'apple', 'cod', 'leather', 'candle', 'book']
@@ -161,7 +164,7 @@ def great_stall(style, name, seed, cols, cart=False, wares=None):
     p.set(6, 1, 2, shelf_of(P), facing='west', items=','.join(rnd.choice(wares) for _ in range(6)))
     p.set(6, 1, 3, 'bookshelf'); p.set(6, 2, 3, 'bookshelf'); p.set(6, 1, 4, 'chest', facing='west'); p.set(6, 1, 5, 'barrel', facing='west')
     p.set(4, 1, 3, furn(P, 'chair'), facing='west')
-    for (x, z) in ((3, 1), (3, 5), (5, 3)): chain_lantern(p, x, 4, z)
+    for (x, z) in ((3, 1), (3, 5), (5, 3)): chain_lantern(p, x, 4, z, links=0)   # (hung from the roof's underside)
     for (x, z) in ((7, 1), (7, 2), (0, 7), (1, 7)):   # crates of produce at its side
         p.set(x, 1, z, 'barrel', facing='up'); pile(p, x, 2, z, [rnd.choice(['apple', 'carrot', 'melon_slice', 'beetroot', 'potato']) + '*8'])
     if cart:

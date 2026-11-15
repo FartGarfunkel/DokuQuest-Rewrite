@@ -43,6 +43,15 @@ mat4 bowHeldMatrix(float s, vec2 grip) {
   const vec3 X(0, r2 * s, -r2 * s), Y(0, -r2 * s, -r2 * s), Z(-s, 0, 0), t = -(grip.x * X + grip.y * Y);
   return mat4(vec4(X, 0), vec4(Y, 0), vec4(Z, 0), vec4(t, 1));
 }
+// a 3D tool built upright (the hammers, a torch: VoxelModel::torch3d) in the fist as a pickaxe is held: out of the fist along
+// the handle, a little up, held at its foot. (They fell to the block grip, a third the size and tipped: the smith's hammer
+// was a toy in his hand.) The same grip as render/char_layer.cpp heldInHand's.
+static mat4 torchGrip(const mat4& fist) {
+  mat4 t = glm::scale(fist, vec3(1 / CHAR_PX));
+  t = glm::rotate(t, 0.25f - 1.5708f, vec3(1, 0, 0));
+  t = glm::scale(t, vec3(0.75f));
+  return glm::translate(t, vec3(0, 0.78f, 0));
+}
 const mat4& heldMat(const std::string& id) {
   static const mat4 TOOL = heldMatrix(0.25f, 0.85f, {-0.34f, -0.24f}, false), ITEM = heldMatrix(0.2f, 0.55f, {0, -0.25f}, true), ROD = heldMatrix(0.75f, 0.85f, {-0.34f, -0.24f}, false);
   static const mat4 BOW = bowHeldMatrix(BOW_SCALE, {-0.235f, 0.235f});   // the fist round the middle of the stave (it was 1.5 px off it)
@@ -240,7 +249,8 @@ public:
         const VoxelModel& im = itemModel(id);
         if (im.ready()) {
           mat4 hm = glm::translate(R.part[CP_ARMR_D], vec3(0, -6, -1));
-          if (im.kind == VoxelModel::Block) { hm = glm::translate(hm, vec3(0, 0, -1.5f)); hm = glm::scale(hm, vec3(1 / CHAR_PX)); hm = glm::rotate(hm, -0.3f, vec3(1, 0, 0)); hm = glm::scale(hm, vec3(0.375f)); }
+          if (im.torch3d) hm = torchGrip(hm);   // (the smith's hammer, a torch: as the players' bodies hold them, render/char_layer.cpp)
+          else if (im.kind == VoxelModel::Block) { hm = glm::translate(hm, vec3(0, 0, -1.5f)); hm = glm::scale(hm, vec3(1 / CHAR_PX)); hm = glm::rotate(hm, -0.3f, vec3(1, 0, 0)); hm = glm::scale(hm, vec3(0.375f)); }
           else hm = glm::scale(hm, vec3(1 / CHAR_PX)) * heldMat(id);
           VR.draw(im.gl, hm * im.matrix(), light, tint);
           if (held == "fishing_rod") setRodTip(c->id, f.cam.origin + glm::dvec3(hm * vec4(0.47f, 0.47f, 0, 1)), f.time);   // its float hangs from here (render/content_layers.cpp)
@@ -251,7 +261,7 @@ public:
         const VoxelModel& im = itemModel(c->offItem);
         if (im.ready()) {
           mat4 hm = glm::translate(R.part[CP_ARML_D], vec3(0, -6, -1));
-          hm = glm::scale(hm, vec3(1 / CHAR_PX)) * heldMat(c->offItem);
+          hm = im.torch3d ? torchGrip(hm) : glm::scale(hm, vec3(1 / CHAR_PX)) * heldMat(c->offItem);
           VR.draw(im.gl, hm * im.matrix(), light, tint);
         }
       }

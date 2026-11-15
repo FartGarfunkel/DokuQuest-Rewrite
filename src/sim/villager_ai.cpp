@@ -137,7 +137,29 @@ OptMove npcGo(Level& lv, Creature& e, NpcMind& M, vec3 t, float dt, float speed)
     M.navT = 2 + rnd();
     M.path = npcPath(lv.world(e.realm), ifloor(e.pos.x), ifloor(e.pos.y + 0.45f), ifloor(e.pos.z), ifloor(t.x), ifloor(t.y + 0.45f), ifloor(t.z));
     M.pathI = 0; M.navGoal = t; M.hasNavGoal = true; M.hasPath = !M.path.empty();
-    if (!M.hasPath) { M.stuckGo++; return Move{speed * 0.6f, hdg(e.pos, t)}; }
+    if (!M.hasPath) {
+      M.stuckGo++;
+      // no way there, and not getting anywhere either (out on a roof, wedged in a corner, turning on the spot): fifteen
+      // seconds of that and they step to a free spot where they were going, watched or not (it had waited for nobody
+      // to be about, so whoever saw one stuck watched it turn round and round for good)
+      if (M.lostT <= 0 || glm::distance(e.pos, M.lostFrom) > 3) { M.lostFrom = e.pos; M.lostT = 0; }
+      M.lostT += std::max(dt, 0.f) + 1e-4f;
+      if (M.lostT > 15) {
+        M.lostT = 0;
+        World& w = lv.world(e.realm);
+        const int tx = ifloor(t.x), ty = ifloor(t.y + 0.45f), tz = ifloor(t.z);
+        for (int r = 0; r <= 2; r++) for (int dy : {0, 1, -1, -2})
+          for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) {
+            if (std::max(std::abs(dx), std::abs(dz)) != r) continue;
+            const int x = tx + dx, y = ty + dy, z = tz + dz;
+            if (!reg().tSolid[w.getBlock(x, y - 1, z)] || reg().tSolid[w.getBlock(x, y, z)] || reg().tSolid[w.getBlock(x, y + 1, z)]) continue;
+            e.pos = vec3(x + 0.5f, (float)y + 0.01f, z + 0.5f); e.vel = vec3(0); M.stuckGo = 0; M.navT = 0;
+            return Move{0, e.yaw};
+          }
+      }
+      return Move{speed * 0.6f, hdg(e.pos, t)};
+    }
+    M.lostT = 0;
   }
   auto& P = M.path;
   while (M.pathI < P.size()) {

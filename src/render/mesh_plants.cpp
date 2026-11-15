@@ -673,7 +673,9 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   }
   bool detail = c.opt.detail && c.tiles;
   if (!detail && !T.hangs && key != "kelp" && key != "sugar_cane") { emitCrossFlat(c, d, id, x, y, z, meta, tile, yy); return; }
-  bool isGrass = T.tint && keyHas(key, {"grass", "fern"}) && key.find("sea") == std::string::npos;
+  // (grass only: a fern's picture is one bush of fronds, and cut into blade strips it came out as solid panels;
+  // ferns stand as the whole picture crossed, further down)
+  bool isGrass = T.tint && keyHas(key, {"grass"}) && key.find("fern") == std::string::npos && key.find("sea") == std::string::npos;
   if (detail) {
     if ((T.flower || keyHas(key, {"flower_", "tulip", "daisy", "orchid", "allium", "bluet", "cornflower", "lily_of_the", "poppy", "dandelion"})) && !T.dbl && !T.hangs && !T.tint) {
       if (emitFlower3D(c, d, id, x, y, z)) return;

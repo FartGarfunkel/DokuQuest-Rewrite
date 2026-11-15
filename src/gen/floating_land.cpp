@@ -29,8 +29,12 @@ bool FloatingLand::floating(int lx, int j, int lz) const {
   std::vector<u64> order{key(lx, j, lz)};
   int x0 = lx, x1 = lx, z0 = lz, z1 = lz;
   bool grounded = false;
+  // (the answer belongs to the whole piece: reaching a corner already answered answers this one, so a hillside's corners
+  //  don't each walk the same column down to the ground again)
+  auto known = [&](u64 k) -> u8 { Shard& s = shard(k); std::lock_guard<std::mutex> lk(s.m); auto it = s.f.find(k); return it == s.f.end() ? 0 : it->second; };
   while (!stack.empty() && !grounded) {
     const C c = stack.back(); stack.pop_back();
+    if (const u8 r0 = known(key(c.x, c.j, c.z))) { grounded = r0 == 2; break; }   // (else a scrap's: so is this)
     x0 = std::min(x0, c.x); x1 = std::max(x1, c.x); z0 = std::min(z0, c.z); z1 = std::max(z1, c.z);
     if (c.j * 8 <= GROUND_Y || x1 - x0 > 2 * REACH || z1 - z0 > 2 * REACH || seen.size() > 30000) { grounded = true; break; }
     // (pushed so the one below is taken first: a mountain finds its ground at once)

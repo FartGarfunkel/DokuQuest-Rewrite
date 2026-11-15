@@ -56,8 +56,12 @@ public:
   }
   // what a chest's half shows: the whole chest's slots (a large one's 54, both halves'), its page and buttons (a large
   // chest's kept by its left half), the slot looked at on its tray
+  // (shut, and its lid down: only the lid is drawn, so what's in it isn't read: copying every chest's and barrel's goods
+  //  out each frame was a fifth of a village's frame)
   static void fill(GameSession& s, World& w, Chest& c, const json* e, vec3 eye, vec3 dir) {
     if (!c.barrel) c.lay = handsChestLayout(w, c.at); else c.lay.key = c.at;   // (a barrel: its own record, the chest's page size)
+    c.L = handsLight(w, c.at);
+    if (!c.open && handsEase(c.at, 2, false, 0) <= 0.001f) return;
     ivec3 hs[2]; const int nh = c.barrel ? 1 : chestHalves(w, c.at, hs);
     if (nh == 2) for (int h = 0; h < 2; h++) { const auto it = chestHalfItems(*s.level, s.player, w, hs[h]); c.items.insert(c.items.end(), it.begin(), it.end()); }
     else c.items = chestHalfItems(*s.level, s.player, w, c.at);   // (an ender chest: your own)
@@ -65,7 +69,6 @@ public:
     const json* ke = c.lay.key == c.at ? e : w.blockEntity(c.lay.key.x, c.lay.key.y, c.lay.key.z);
     c.page = ke ? ke->value("page", 0) & 1 : 0;
     c.press[0] = ke ? ke->value("press0", 0) : 0; c.press[1] = ke ? ke->value("press1", 0) : 0;
-    c.L = handsLight(w, c.at);
     if (c.open && s.target.hit && s.target.block == c.at) {
       const HandsChestAim a = c.barrel ? handsBarrelAim(w, c.at, eye, dir) : handsChestAim(w, c.at, eye, dir);
       if (a.what == HandsChestAim::Tray && c.page * c.lay.pg + c.lay.off + a.slot < c.lay.slots) c.hover = a.slot;
@@ -90,6 +93,8 @@ public:
     const vec3 dir = lookVector(s.player->yaw, s.player->pitch);
     forBlockEntities(w, f, 24.f, [&](const Chunk&, json& e, int x, int y, int z) {
       const ivec3 at(x, y, z);
+      const vec3 rel = f.cam.rel(glm::dvec3(x + 0.5, y + 0.5, z + 0.5));   // (in reach and in view: the scan is chunks wide)
+      if (glm::dot(rel, rel) > 24.f * 24.f || !f.cam.frustum.sphere(rel, 1.f)) return;
       const bool barrel = handsBarrel(w, at);
       if (!barrel && (!stationModel(w.getBlock(x, y, z)) || !handsChest(w, at))) return;
       Chest c; c.at = at; c.facing = barrel ? handsBarrelFacing(w, at) : handsFacing(w, at); c.barrel = barrel;

@@ -611,8 +611,8 @@ class Room:
 
 def ladder(p, B, floors):
     x, z = B.x1 - 1, B.z1 - 1
-    for y in range(B.y0 + 1, B.y0 + floors * B.fh + 1):
-        p.set(x, y, z, 'ladder', facing='west')
+    for y in range(B.y0 + 1, B.y0 + floors * B.fh):   # (up to the top floor, not through its ceiling: the hole there let
+        p.set(x, y, z, 'ladder', facing='west')        #  a villager out into the roof and onto the windmill's top)
     for f in range(1, floors): p.clear(x, B.y0 + f * B.fh, z)
     B.ladder_keep = [(x, z), (x - 1, z)]   # the ladder and the square you climb it from (Room keeps both free)
     return (x, z)
