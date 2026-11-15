@@ -13,7 +13,7 @@ namespace dq {
 inline int secIdx(int x, int y, int z) { return (y << 8) | (z << 4) | x; }      // within a section (y 0..15)
 inline int colIdx(int x, int y, int z) { return (y << 8) | (z << 4) | x; }      // within a chunk band (y 0..255), same layout as the JS cidx
 
-// Cubyz light: sun and block are each an RGB byte. A step subtracts 8 (about 31 blocks from full to dark).
+// the coloured light: sun and block are each an RGB byte. A step subtracts 8 (about 31 blocks from full to dark).
 // `light[]` stays the gameplay nibble (max channel >> 4), so mobs, spawn and shader-pack eye brightness still read 0..15.
 struct LightRgb {
   u8 s[3]{};   // sun
@@ -26,7 +26,7 @@ inline u8 max3u(u8 a, u8 b, u8 c) { return a > b ? (a > c ? a : c) : (b > c ? b 
 inline u8 lightNibble(const LightRgb& L) {
   return (u8)((max3u(L.s[0], L.s[1], L.s[2]) >> 4) << 4 | (max3u(L.b[0], L.b[1], L.b[2]) >> 4));
 }
-// 5 bits per channel, the packing Cubyz's chunk shader unpacks: sun then block.
+// 5 bits per channel, the packing the chunk shader unpacks: sun then block.
 inline u32 packRgbLight(const LightRgb& L) {
   return (u32)(L.s[0] >> 3) << 25 | (u32)(L.s[1] >> 3) << 20 | (u32)(L.s[2] >> 3) << 15
        | (u32)(L.b[0] >> 3) << 10 | (u32)(L.b[1] >> 3) << 5 | (u32)(L.b[2] >> 3);

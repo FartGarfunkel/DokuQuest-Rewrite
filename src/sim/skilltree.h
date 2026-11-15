@@ -1,4 +1,4 @@
-// sim/skilltree.h — the passive skill trees (Soulrend's warrior, ranger, rogue and mage trees, tools/port/soulrend_tree.py ->
+// sim/skilltree.h — the passive skill trees (the warrior, ranger, rogue and mage trees, tools/port/soulrend_tree.py ->
 // data/local_models/skilltree.json; git-ignored, so a game without it simply has none). Points come from your total level
 // (a point every 3); you learn a tree's starting node first, then any node joined to one you have. A tree's limits (its tags)
 // cap how many of a kind (one subclass, two keystones of a school...). What you've learnt adds to your attributes:

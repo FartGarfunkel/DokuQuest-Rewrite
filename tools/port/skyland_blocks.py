@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""tools/port/skyland_blocks.py — The Aether's blocks for the Skylands (idempotent; data_patches.py runs it):
+"""tools/port/skyland_blocks.py — the Skylands' blocks (idempotent; data_patches.py runs it):
   python3 tools/port/skyland_blocks.py <data-dir>
 
-The Aether's art is "All Rights Reserved", so nothing here is taken from it. Each picture is the DokuQuest Base pack's
-nearest picture, its light and shade kept, in the Aether block's own colour (the average colours measured from the
-mod, in the research notes): holystone from stone, aether dirt from dirt (slate blue-grey), aether grass from the
-pack's grass (mint on top, a mint fringe over aether dirt on the sides, never tinted by biome), skyroot from oak, ores
-from the pack's coal ore with their own spots, aerclouds from wool. To see the Aether's own pictures on your computer,
+No outside art is used here. Each picture is the DokuQuest Base pack's
+nearest picture, its light and shade kept, in the block's own colour (the average colours are in the research
+notes): holystone from stone, skyland dirt from dirt (slate blue-grey), skyland grass from the
+pack's grass (mint on top, a mint fringe over skyland dirt on the sides, never tinted by biome), skyroot from oak, ores
+from the pack's coal ore with their own spots, aerclouds from wool. To see the reference pictures on your computer,
 make the local pack with tools/port/local_mod_art.py (never shipped).
 
-Also puts the Aether's behaviour in the data: only the blue aercloud throws you (cold and golden ones catch you
+Also puts the Skylands' behaviour in the data: only the blue aercloud throws you (cold and golden ones catch you
 softly), gravitite ore gives no light, quicksoil is slippery.
 """
 import json, pathlib, sys
@@ -167,7 +167,7 @@ def main(d):
     block('white_flower', 'White Flower', CROSS, 'white_flower')
     block('purple_flower', 'Purple Flower', CROSS, 'purple_flower')
 
-    # the BTA Nether's new tiles may come from a pack too (tools/port/nether_blocks.py made them)
+    # the classic Nether's new tiles may come from a pack too (tools/port/nether_blocks.py made them)
     for t in ('brimsand', 'nether_brimstone_top', 'nether_brimstone_side', 'brimthaw', 'cobbled_netherrack', 'crystalline_netherrack',
               'cobbled_gloomstone', 'ember', 'rubyglass_column', 'rubyglass_node', 'rubyglass_crystal', 'rubyglass_growth',
               'magmatic_boulder', 'sulfuric_boulder', 'bone_pile', 'soul_catcher', 'ash_layer', 'gloomstone', 'nether_coal_ore', 'basalt_coal_ore',

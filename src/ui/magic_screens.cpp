@@ -811,7 +811,7 @@ public:
   }
 };
 
-// ---- the inscription table (Iron's Spells, ours: docs/MAGIC_MERGE.md) ---------------------------------------------------
+// ---- the inscription table (the spell magic, ours: docs/MAGIC_MERGE.md) ----------------------------------------------
 class InscriptionScreen : public MagicScreenBase {
 public:
   explicit InscriptionScreen(ivec3 at) : pos(at) {}

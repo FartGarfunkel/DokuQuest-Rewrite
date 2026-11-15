@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The Wither Storm as Minecraft: Story Mode has it: no longer a Wither drawn five times over, but the behemoth it grows
+"""The Wither Storm as the story has it: no longer a Wither drawn five times over, but the behemoth it grows
 into: a black obsidian mass with a nether-brick maw, three heads with glowing violet eyes and mandibles (the middle one
 huge, quartz-white teeth), the command block glowing in its chest, and long tentacles hanging under it that sway as it
 drifts (rig "wither_storm": sim/wither.cpp animates the tentacles, the jaws and the heads; it grows with what it eats).
@@ -110,7 +110,7 @@ def core_model():
 
 def bombs(d):
     """Super TNT and the Formidibomb (sim/wither_storm.cpp PrimedBomb; flint and steel lights them): TNT's pictures
-    recoloured. Super TNT = 4 TNT + 4 gunpowder round a rift crystal (the mod's needs a command block book, which comes
+    recoloured. Super TNT = 4 TNT + 4 gunpowder round a rift crystal (a stand-in for a command block book, which comes
     from a mini-boss we don't have); the Formidibomb = Super TNT + 4 cinder powder (our blaze powder) + 4 gunpowder."""
     from PIL import Image
     import colorsys
@@ -170,7 +170,7 @@ def main(d):
     d = pathlib.Path(d)
     models = json.loads((d / 'models.json').read_text())
     mobs = json.loads((d / 'mobs.json').read_text())
-    # its looks are the mod's own now (tools/port/wither_storm_models.py writes wither_storm_p0..p5); these hand-made
+    # its looks are the imported model's now (tools/port/wither_storm_models.py writes wither_storm_p0..p5); these hand-made
     # ones stand in only until that has been run
     if 'uvTex' not in models.get('wither_storm', {}):
         models['wither_storm'] = model()
@@ -179,7 +179,7 @@ def main(d):
     if 'wither_storm' in mobs:
         m = mobs['wither_storm']
         m.pop('tint', None)               # its own colours now
-        m['hp'] = 400                     # (the mod's; a young one mends ten a second, a grown one takes nothing)
+        m['hp'] = 400                     # (a young one mends ten a second, a grown one takes nothing)
         m['w'], m['h'] = 1.2, 3.6         # (sim/wither_storm.cpp sets its box by phase as it grows)
     (d / 'models.json').write_text(json.dumps(models, separators=(',', ':'), ensure_ascii=False))
     (d / 'mobs.json').write_text(json.dumps(mobs, separators=(',', ':'), ensure_ascii=False))

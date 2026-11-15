@@ -1,4 +1,4 @@
-// sim/firestarter.h — TerraFirmaCraft's firestarter (two sticks): hold use on something for about a second; then a 30%
+// sim/firestarter.h — the firestarter (two sticks): hold use on something for about a second; then a 30%
 // chance (70% with straw lying there) to light it: an out firepit, three sticks lying on the ground (a new firepit), a full
 // pit kiln (sim/pit_kiln.h), a log pile (a charcoal pit, sim/charcoal_pit.h). Each try wears it (8 tries).
 #pragma once

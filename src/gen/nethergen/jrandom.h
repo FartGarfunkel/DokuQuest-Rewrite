@@ -1,4 +1,4 @@
-// Bit-exact port of java.util.Random (legacy LCG) plus the Java numeric helpers the BTA
+// Bit-exact port of java.util.Random (legacy LCG) plus the Java numeric helpers the classic
 // generator ports need (saturating double->int casts, Math.min/max NaN semantics, fdlibm log).
 #pragma once
 #include <cmath>
@@ -121,7 +121,7 @@ class JavaRandom {
   bool debugLog = false;
 #endif
   int32_t nextInt() { return next(32); }
-  // bound must be > 0 (Java throws otherwise; callers never pass <= 0 in valid BTA paths)
+  // bound must be > 0 (Java throws otherwise; callers never pass <= 0 in valid generator paths)
   int32_t nextInt(int32_t bound) {
     int32_t r = next(31);
     int32_t m = bound - 1;

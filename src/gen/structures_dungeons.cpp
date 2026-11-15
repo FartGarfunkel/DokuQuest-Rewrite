@@ -26,7 +26,7 @@ static const DTheme& dtheme(int k) {
       r[i].key = names[i]; r[i].name = j["name"]; r[i].pillar = j["pillar"]; r[i].stairs = j["stairs"]; r[i].slab = j["slab"]; r[i].light = j["light"];
       r[i].wall = strList(j["wall"]); r[i].floor = strList(j["floor"]); r[i].mobs = strList(j["mobs"]); r[i].bosses = strList(j["bosses"]);
       r[i].webs = j.contains("webs") && j["webs"].is_boolean() && j["webs"].get<bool>();
-      // bosses added since (mobs.json "dungeonBoss": the theme they keep, e.g. BTA's Giant in the crypts: tools/port/classic_extras.py)
+      // bosses added since (mobs.json "dungeonBoss": the theme they keep, e.g. the Giant in the crypts: tools/port/classic_extras.py)
       if (reg().mobs.is_object()) for (auto& [k, v] : reg().mobs.items())
         if (v.is_object() && v.value("dungeonBoss", std::string()) == names[i] && std::find(r[i].bosses.begin(), r[i].bosses.end(), k) == r[i].bosses.end()) r[i].bosses.push_back(k);
     }
@@ -77,7 +77,7 @@ static bool dungeonPlace(const StructureIndex& idx, const TerrainQuery& t, int r
   const int yo = std::max(8, std::min(sc.jsY - 18, (deep ? 14 : 24) + jsFloor(rnd() * 10)));
   if (sc.jsY - yo < 10) return false;
   int y = owUnder(yo);
-  // (a deep world, terrain 21: as YUNG's Better Dungeons in Soulrend, from Minecraft's y -50 to 50, kept 14 under the land)
+  // (a deep world, terrain 21: from the imported data's y -50 to 50, kept 14 under the land)
   if (const OverworldGen* ow = owOf(t); ow && ow->deepStructs()) y = std::min(sc.y - 14, -49 + (int)(hash32(seed, rx, rz, 5153) % 101u));
   auto e = std::make_shared<DungeonExt>(); e->theme = theme; e->entX = entX; e->entZ = entZ; e->surf = sc.y;
   int far = 0; for (int i = 0; i < (int)cells.size(); i++) if (cells[i].d > cells[far].d) far = i;

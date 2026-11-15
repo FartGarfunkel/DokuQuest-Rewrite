@@ -17,9 +17,9 @@ void registerStructureDeepA();        // structures_deep.cpp: stronghold (7), an
 void registerStructureFarA();         // structures_far.cpp: places.js (9..16)
 void registerStructureDeepB();        // structures_deep.cpp: deep halls (17), twin vault (18), pirate cove (19)
 void registerStructureFarB();         // structures_far.cpp: nether fortress (20), floating sanctum (21)
-void registerStructureSkylands();       // structures_skylands.cpp: the Aether's bronze, silver and gold dungeons (terrain 7)
+void registerStructureSkylands();       // structures_skylands.cpp: the Skylands' bronze, silver and gold dungeons (terrain 7)
 void registerStructureRoads();        // structures_roads.cpp: roads and bridges between neighbouring villages
-void registerStructurePois();         // structures_poi.cpp: Soulrend's structure mods (data/pois)
+void registerStructurePois();         // structures_poi.cpp: the imported places (data/pois)
 void registerStructureDeepMines();    // structures_places.cpp: a deep world's mineshafts (terrain 21)
 
 const StructureIndex* structureIndexOf(const DimGenerator* g) {
@@ -58,7 +58,7 @@ bool debugSpawnPoint(const WorldGen& wg, const std::string& spec, vec3& pos, flo
   int x, y, z;
   if (sscanf(spec.c_str(), "%d,%d,%d", &x, &y, &z) == 3) { pos = vec3(x + 0.5f, y, z + 0.5f); return true; }
   if (spec == "classic_dungeon" || spec == "monster_room") {
-    // the nearest Alpha/Beta monster room (gen/dungeons_classic.cpp): generate chunks outward until one has a cage
+    // the nearest classic monster room (gen/dungeons_classic.cpp): generate chunks outward until one has a cage
     DimGenerator* g = wg.forDim(DIM_OVERWORLD);
     for (int r = 0; r < 24 && g; r++) for (int cz = -r; cz <= r; cz++) for (int cx = -r; cx <= r; cx++) {
       if (std::max(std::abs(cx), std::abs(cz)) != r) continue;

@@ -1,5 +1,5 @@
-// sim/wither_storm.cpp — the Wither Storm as Minecraft: Story Mode has it, from what Cracker's Wither Storm Mod does
-// (docs/wither_storm_mod_spec.md). It wakes from a T with a command block at its heart (sim/wither.cpp tryWitherSummon,
+// sim/wither_storm.cpp — the Wither Storm
+// (docs/wither_storm_spec.md). It wakes from a T with a command block at its heart (sim/wither.cpp tryWitherSummon,
 // or Herobrine's own at the end of his realm: sim/rift.cpp) looking like a Wither, a command block glowing in a cage of
 // ribs, and grows with everything it eats: a hump, a jawed head, tentacles, and at last the destroyer, a mass of
 // obsidian with three great heads. It eats the world in clumps torn out whole (block clusters: they tremble, lift and
@@ -32,8 +32,8 @@ constexpr float CHARGE = 12.f;   // gathering itself out of the T
 constexpr int MAXP = 5;
 // what it must have eaten to grow past each phase (in his realm everything counts thrice: the finale can't wait hours)
 const float GROW[MAXP] = {60, 240, 700, 2000, 6000};
-// each phase's look (its own model, converted from the mod's: tools/port/wither_storm_models.py), its box (enough to
-// strike: the mod's are smaller than what you see), its strength, and how high it hangs over the ground
+// each phase's look (its own model, converted: tools/port/wither_storm_models.py), its box (enough to
+// strike: the models' own are smaller than what you see), its strength, and how high it hangs over the ground
 struct Look { const char* model; float s, w, h, hp, hover; };
 const Look LOOK[MAXP + 1] = {
   {"wither_storm_p0", 1.f, 1.2f, 3.6f, 400, 10},    // the Wither it rises as, the command block caged in its ribs
@@ -43,7 +43,7 @@ const Look LOOK[MAXP + 1] = {
   {"wither_storm", 1.f, 22.f, 36.f, 1024, 22},      // the destroyer
   {"wither_storm_p5", 1.f, 30.f, 50.f, 1500, 28}};  // the evolved destroyer
 // its heads' mouths (0 the main one), model space in blocks: the Wither's heads, then a storm head in the middle, then
-// the destroyer's three (the mod's head1 in the middle, head0 to its right, head2 to its left)
+// the destroyer's three (head1 in the middle, head0 to its right, head2 to its left)
 const vec3 MOUTH[MAXP + 1][3] = {
   {{0, 3.f, -0.6f}, {1.1f, 2.6f, -0.5f}, {-1.3f, 2.6f, -0.5f}}, {{0, 3.f, -0.6f}, {1.1f, 2.6f, -0.5f}, {-1.3f, 2.6f, -0.5f}},
   {{0, 2.8f, -1.4f}, {1.1f, 2.6f, -0.5f}, {-1.3f, 2.6f, -0.5f}}, {{0, 2.8f, -1.4f}, {1.1f, 2.6f, -0.5f}, {-1.3f, 2.6f, -0.5f}},
@@ -357,7 +357,7 @@ static OptMove stormBrain(Level& lv, Creature& m, Entity* p, float dist, float d
   return Move{sp, std::atan2(-dx, -dz)};
 }
 
-// what a blow is worth against it (Story Mode's way: nothing ordinary will do): an enchanted hand weapon, the more
+// what a blow is worth against it (nothing ordinary will do): an enchanted hand weapon, the more
 // enchanted the better and Smite most of all (it's undead); arrows from an enchanted bow, likewise; magic, and a splash
 // of healing (undead: it hurts it, and comes as magic). Ordinary blows and arrows, fire and explosions glance off. 0 = nothing
 static float stormWorth(Level& lv, const DamageSrc& src) {
@@ -540,8 +540,8 @@ void primeFormidi(Level& lv, World& w, int x, int y, int z, const std::string& k
   if (formidi) lv.fx->message(0, "The Formidibomb is lit. Let the Storm take it.", "warn");
 }
 
-// ---- how it moves (rig "wither_storm": the mod's models, tools/port/wither_storm_models.py) ----
-// The tentacles sway and curl as the mod's TentacleModel has them (each out of step with the next); each head turns to
+// ---- how it moves (rig "wither_storm": its models, tools/port/wither_storm_models.py) ----
+// The tentacles sway and curl as its tentacle model has them (each out of step with the next); each head turns to
 // its own mark and droops, shaking, while it's hurt; the storm heads' jaws chew, and gape when it roars; knocked down it
 // tips over onto its back.
 static void animStorm(Creature& m, const RigModel& M, RigAnimOut& R) {

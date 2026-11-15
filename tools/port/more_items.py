@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tools/port/more_items.py — the rest of the BTA list (our own designs, our own pictures recoloured from the base pack or
+# tools/port/more_items.py — the rest of the classic list (our own designs, our own pictures recoloured from the base pack or
 # the code-painted tiles; idempotent, run by data_patches.py after classic_blocks.py):
 #   painted doors, trapdoors, buttons and pressure plates (16 colours; the paintbrush makes them, signs and chests take
 #   a colour in their block entity), igneous emberstone (keeps a fire burning on top, dries wet sponges), the gold mesh
@@ -129,7 +129,7 @@ def main(d):
     block('igneous_emberstone', 'Igneous Emberstone', {'hardness': 0.6, 'tier': 1, 'light': 5, 'hot': True, 'igneous': True,
                                                         'randomTick': True, 'tex': 'igneous_emberstone'}, [tiles['igneous_emberstone']] * 6)
     recipe('igneous_emberstone', 1, items_=['emberstone', 'magma_cream'])
-    # smooth emberstone (BTA's smooth netherrack): polished emberstone fired in a furnace
+    # smooth emberstone: polished emberstone fired in a furnace
     if 'smooth_emberstone' not in tiles:
         sm = pic('polished_emberstone') if 'polished_emberstone' in tiles else pic('emberstone'); sp = sm.load()
         for y in range(32):
@@ -219,7 +219,7 @@ def main(d):
     block('cacao_sapling', 'Cacao Sapling', cs, [tiles['cacao_sapling']] * 6)
     recipe('cacao_sapling', 1, items_=['jungle_sapling', 'cocoa_beans'])
 
-    # ---- the Sulphur Springs' steam vent (BTA): a crusted hole that breathes out scalding steam now and then ----
+    # ---- the Sulphur Springs' steam vent: a crusted hole that breathes out scalding steam now and then ----
     if 'steam_vent' not in tiles:
         sv = pic('sulphur_block') if 'sulphur_block' in tiles else pic('netherrack'); vp = sv.load()
         for y in range(32):
@@ -298,7 +298,7 @@ def main(d):
     (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':'), ensure_ascii=False))
     (d / 'recipes.json').write_text(json.dumps(rj, separators=(',', ':'), ensure_ascii=False))
     (d / 'mobs.json').write_text(json.dumps(mobs, separators=(',', ':'), ensure_ascii=False))
-    print('bta more ok')
+    print('classic more ok')
 
 
 if __name__ == '__main__':

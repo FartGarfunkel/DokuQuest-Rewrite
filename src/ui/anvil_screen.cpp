@@ -1,4 +1,4 @@
-// ui/anvil_screen.cpp — smithing on an anvil (sim/anvil.h, TFC-lite): the hot piece in your other hand, the hammer in your
+// ui/anvil_screen.cpp — smithing on an anvil (sim/anvil.h): the hot piece in your other hand, the hammer in your
 // main hand. Pick what to make; a bar from 0 to 150 shows where the work is (the pointer) and where it must end (the
 // target, with its ±3 band); eight moves push the pointer; the plan's last three steps are shown, met ones lit. When the
 // work is within the band and on plan, "Finish" takes the piece and gives what it made. Each move wears the hammer; the

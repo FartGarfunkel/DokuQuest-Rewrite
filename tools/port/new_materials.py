@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""tools/port/new_materials.py — the ores the Aether and Better End brought, made into materials (idempotent; data_patches.py
+"""tools/port/new_materials.py — the ores the Skylands and the End brought, made into materials (idempotent; data_patches.py
 runs it before forging.py and tool_parts.py, which take the three metals and gems up as forge and mixed-tool materials):
 
-  zanite      (Aether)      zanite_ore drops a zanite gemstone; tools and armour a step past iron
-  gravitite   (Aether)      gravitite_ore smelts to a gravitite plate; tools and armour of diamond's tier
-  thallasium  (Better End)  thallasium_ore smelts to a thallasium ingot; tools and armour a little under iron
+  zanite      (Skylands)    zanite_ore drops a zanite gemstone; tools and armour a step past iron
+  gravitite   (Skylands)    gravitite_ore smelts to a gravitite plate; tools and armour of diamond's tier
+  thallasium  (the End)     thallasium_ore smelts to a thallasium ingot; tools and armour a little under iron
   and the ores that give a thing, not a metal: ender_ore an ender shard, amber_ore an amber gem, ambrosium_ore an
-  ambrosium shard (a heal, as in the Aether).
+  ambrosium shard (a heal).
 
 Pictures: each new icon is the matching iron one (the game's own, and the DokuQuest Base pack's into the local overlay
 pack "Mod Art (local)"), its metal recoloured to the material's ramp, the handle left as it was; gems and shards from

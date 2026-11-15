@@ -28,7 +28,7 @@ struct TerrainColumn {
   int jsY = -1;         // the original game's height for this column (its own 128-tall coordinates)
   bool river = false;
   u8 special = 0;       // terrain version 14: 1 a mushroom island
-  u16 landBiome = 0xFFFF;      // terrain version 15: Soulrend's biome (gen/overworld.h OwColumn::landBiome)
+  u16 landBiome = 0xFFFF;      // terrain version 15: the land biome (gen/overworld.h OwColumn::landBiome)
 };
 class TerrainQuery {
 public:
@@ -41,7 +41,7 @@ public:
   virtual bool solidAt(int x, int y, int z) const { TerrainColumn c = terrainColumn(x, z); return c.y >= 0 && y <= c.y; }
   // the ground as finally generated (with structures' levelling): for build(), never from plan()
   virtual int finalSurfaceY(int x, int z) const { return surfaceY(x, z); }
-  // the Nether of terrain version 5 (BTA's: open land under a high roof): its structures stand on the ground there
+  // the Nether of terrain version 5 (the classic Nether: open land under a high roof): its structures stand on the ground there
   virtual bool openNether() const { return false; }
   virtual int genVersion() const { return 0; }   // (the world's terrain version: plans that changed keep the old way in older worlds)
 };

@@ -1,5 +1,5 @@
-// sim/geo_anim.cpp — the "geo" rig: imported GeckoLib models (tools/port/geo_boss_import.py) play their own clips, keyframe
-// for keyframe (linear or Catmull-Rom, as GeckoLib does). Which clip: the creature's data "clip" (set by its brain, with
+// sim/geo_anim.cpp — the "geo" rig: imported keyframe models (tools/port/geo_boss_import.py) play their own clips, keyframe
+// for keyframe (linear or Catmull-Rom). Which clip: the creature's data "clip" (set by its brain, with
 // "clipT0" its age when it began), else idle / walking / running by how it moves. Turns go on each bone's rest turn, moves
 // on its pivot, in our axes (x mirrored).
 #include "sim/geo_anim.h"
@@ -88,7 +88,7 @@ void geoAnim(Creature& m, const RigModel& M, RigAnimOut& o) {
     C = m.walkAmt > 0.15f ? find(run ? "running" : "walking") : nullptr;
     if (!C) C = find("idle");
     t = m.age;
-    // no walk of its own (Iron's walk their mobs in code): legs and arms swung by name
+    // no walk clip of its own (the source walks them in code): legs and arms swung by name
     if (m.walkAmt > 0.15f && !find("walking")) {
       const float sw = std::sin(m.walk) * 0.7f * std::min(1.f, m.walkAmt);
       for (size_t i = 0; i < M.parts.size(); i++) {

@@ -1,9 +1,9 @@
 // assets/pack_armor.h — worn armour in the resource pack's own pictures (port of render/packarmor.js).
 //
-// Minecraft paints armour as two pictures laid out like an old 64x32 skin: layer 1 holds the helmet,
+// A pack paints armour as two pictures laid out like an old 64x32 skin: layer 1 holds the helmet,
 // the chestplate (body and both arms) and the boots, layer 2 the leggings (the belt on the body and both
 // legs). When the pack has them, worn armour is built from the boxes below, a pixel (half a pixel for
-// the leggings) out from the body the way Minecraft does it, painted with the pack's pictures; leather
+// the leggings) out from the body the way the pack format expects, painted with the pack's pictures; leather
 // takes its dye with the pack's undyed overlay on top. Our own metals keep their own look.
 //
 // This module provides the data (pictures, boxes) and a voxeliser; the characters workstream draws it.
@@ -16,7 +16,7 @@ class PackFS;
 
 struct ArmorLayer { int w = 0, h = 0; std::vector<u8> rgba; };   // a 64x32-layout picture (w = 64 * scale)
 // a box of worn armour in its body part's frame, in skin pixels (packarmor.js packArmorMeshes):
-// the Minecraft box unwrap at (u, v) of size w x h x d; slice = the part of the side faces' height used
+// the skin-layout box unwrap at (u, v) of size w x h x d; slice = the part of the side faces' height used
 struct ArmorPiece { std::string name; int layer; vec3 lo, hi; int u, v, w, h, d; bool mirror; vec2 slice{0, 1}; };
 
 int loadPackArmor(const PackFS& P);     // called by applyResourcePack; returns the number of materials found
@@ -29,10 +29,10 @@ const ArmorLayer* packArmorLayer(const std::string& mat, int layer, const std::s
 bool packArmorBareArms(const std::string& mat);
 // helmet, chest, waist, pad, padL, cuff, cuffL, thigh, thighL, knee, kneeL, boot, bootL (cuff = cuffB when bareArms)
 const std::vector<ArmorPiece>& packArmorPieces(bool bareArms = false);
-// an armour trim (Minecraft's: pattern "coast", material "gold"...) as an armour picture in the material's colours; null: none
+// an armour trim (the pack format's: pattern "coast", material "gold"...) as an armour picture in the material's colours; null: none
 const ArmorLayer* trimLayer(const std::string& pattern, const std::string& material);
 // the trim laid over a piece's voxels (any piece: the pack's, our 3D sets, the procedural), its open faces coloured where the
-// trim's picture is, mapped as Minecraft lays it on the piece's box p; lo: the grid's corner in the part's skin pixels
+// trim's picture is, mapped as the pack format lays it on the piece's box p; lo: the grid's corner in the part's skin pixels
 void stampTrim(VoxelGrid& g, vec3 lo, int vpp, const ArmorPiece& p, const ArmorLayer& trim);
 
 // colour of a skin box's face (0..5 = +x -x +y -y +z -z) at (s, t) in 0..1 of that face (addSkinBox's

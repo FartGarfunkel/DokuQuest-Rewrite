@@ -1,4 +1,4 @@
-// tools/test_world.cpp — headless checks for the world (after TerraFirmaCraft): rock layers and where the ores lie,
+// tools/test_world.cpp — headless checks for the world: rock layers and where the ores lie,
 // cave-ins and support beams, the new crops and plants. Run: build/test_world (exit code = failures)
 #include "world/carve_forms.h"
 #include "core/init.h"
@@ -161,7 +161,7 @@ int main(int argc, char** argv) {
       const ItemDef* sd = reg().item(seed);
       if (!b || !sd || (sd->block != std::string(c) + "_crop" && sd->str("plants") != std::string(c) + "_crop") || !reg().item(cp.value("drop", ""))) { crops = false; printf("    %s\n", c); }
     }
-    check(crops, "TFC's crops: barley, oat, rye, jute, garlic, soybean, green beans, squash, each planted from its seed");
+    check(crops, "the immersive crops: barley, oat, rye, jute, garlic, soybean, green beans, squash, each planted from its seed");
     bool bushes = true;
     for (const char* b : {"blueberry", "raspberry", "blackberry", "snowberry", "cloudberry", "cranberry", "elderberry", "gooseberry", "bunchberry", "wintergreen"}) {
       const BlockId full = reg().blockId(std::string(b) + "_bush"), empty = reg().blockId(std::string(b) + "_bush_empty");
@@ -223,10 +223,10 @@ int main(int argc, char** argv) {
     check(M && M->speedAt(X + 2, Y, Z + 2) < 0.05f, "a powered gearbox lets go: the quern stops");
   }
 
-  printf("[BetterNether's lands (terrain 13)]\n");
+  printf("[the terrain-13 Nether lands]\n");
   {
     const i32 seed = 12345;
-    // a chunk all BetterNether land and one all BTA's, found on the map
+    // a chunk all terrain-13 land and one all classic Nether, found on the map
     ivec2 bnC(INT32_MIN, 0), classicC(INT32_MIN, 0); std::set<int> lands;
     for (int cz = -40; cz < 40 && (bnC.x == INT32_MIN || classicC.x == INT32_MIN || lands.size() < 3); cz += 3) for (int cx = -40; cx < 40; cx += 3) {
       int any = 0, none = 0;
@@ -234,8 +234,8 @@ int main(int argc, char** argv) {
       if (any == 16 && bnC.x == INT32_MIN) bnC = ivec2(cx, cz);
       if (none == 16 && classicC.x == INT32_MIN) classicC = ivec2(cx, cz);
     }
-    check(bnC.x != INT32_MIN && classicC.x != INT32_MIN, "the map has both BetterNether's lands and BTA's");
-    check(lands.size() >= 2, "more than one of BetterNether's lands nearby (" + std::to_string(lands.size()) + ")");
+    check(bnC.x != INT32_MIN && classicC.x != INT32_MIN, "the map has both the new Nether lands and the classic ones");
+    check(lands.size() >= 2, "more than one of the new Nether lands nearby (" + std::to_string(lands.size()) + ")");
     check(netherBnLand(seed, 12, bnC.x * 16, bnC.y * 16) == BN_NONE, "terrain 12 has none of them");
     auto gen = [&](int ver, ivec2 c) {
       WorldGenOptions o; o.seed = seed; o.genVersion = ver; WorldGen g(o);
@@ -244,11 +244,11 @@ int main(int argc, char** argv) {
     auto bnBlocks = [&](const Chunk& ch) { int n = 0; for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) if (reg().block(ch.get(x, y, z)).has("betternether")) n++; return n; };
     auto same = [&](const Chunk& a, const Chunk& b) { for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) if (a.get(x, y, z) != b.get(x, y, z)) return false; return true; };
     auto a12 = gen(12, bnC), a13 = gen(13, bnC), b13 = gen(13, bnC);
-    check(bnBlocks(*a12) == 0, "terrain 12: BTA's Nether as it was (no BetterNether blocks)");
+    check(bnBlocks(*a12) == 0, "terrain 12: the classic Nether as it was (no new-land blocks)");
     int diff = 0; for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) if (a12->get(x, y, z) != a13->get(x, y, z)) diff++;
     printf("     (land %s: %d blocks differ from terrain 12)\n", bnLandName(netherBnLand(seed, 13, bnC.x * 16 + 8, bnC.y * 16 + 8)), diff);
-    check(diff > 60, "terrain 13 repaints BetterNether's land (" + std::to_string(diff) + " blocks)");
-    check(bnBlocks(*a13) > 20 || netherBnLand(seed, 13, bnC.x * 16 + 8, bnC.y * 16 + 8) != BN_JUNGLE, "terrain 13: BetterNether's ground and plants there (" + std::to_string(bnBlocks(*a13)) + " blocks)");
+    check(diff > 60, "terrain 13 repaints the new Nether land (" + std::to_string(diff) + " blocks)");
+    check(bnBlocks(*a13) > 20 || netherBnLand(seed, 13, bnC.x * 16 + 8, bnC.y * 16 + 8) != BN_JUNGLE, "terrain 13: the new lands' ground and plants there (" + std::to_string(bnBlocks(*a13)) + " blocks)");
     check(same(*a13, *b13), "the same chunk generates the same twice");
     // each land found within 1500 blocks: up to three chunks of it (one may be a fortress), the best repainted
     std::map<int, std::vector<ivec2>> some;
@@ -266,12 +266,12 @@ int main(int argc, char** argv) {
         int diff = 0; for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) if (x12->get(x, y, z) != x13->get(x, y, z)) diff++;
         if (diff > best) { best = diff; bn = bnBlocks(*x13); }
       }
-      check(best > 40, std::string("  ") + bnLandName(l) + ": repainted (" + std::to_string(best) + " blocks, " + std::to_string(bn) + " of BetterNether's)");
+      check(best > 40, std::string("  ") + bnLandName(l) + ": repainted (" + std::to_string(best) + " blocks, " + std::to_string(bn) + " of the new lands')");
     }
-    check(same(*gen(12, classicC), *gen(13, classicC)), "outside BetterNether's lands terrain 13 is terrain 12, block for block");
+    check(same(*gen(12, classicC), *gen(13, classicC)), "outside the new Nether lands terrain 13 is terrain 12, block for block");
   }
 
-  printf("[growing trees (Dynamic Trees, terrain 13)]\n");
+  printf("[growing trees (terrain 13)]\n");
   {
     const Registry& R = reg();
     const BlockId DIRT = R.blockId("dirt"), SAP = R.blockId("sapling"), BR = R.blockId("oak_branch"), ROOTY = R.blockId("rooty_dirt"), LEAVES = R.blockId("leaves");

@@ -18,9 +18,9 @@ DepthsGen::DepthsGen(const WorldGenOptions& o)
   R.seed = (i64)((u64)(i64)seed_ * 6364136223846793005ULL + 0x4E7E4);
   v19_ = o.genVersion >= 19;
   if (o.genVersion >= 6) cave_ = std::make_unique<NetherClimate>(seed_, o.genVersion);   // cave Nether: climate, sea at y 96
-  if (o.genVersion >= 7) {   // BTA's own generator, block for block (8: on the open land's shape; gen/nether_exact.cpp)
+  if (o.genVersion >= 7) {   // the classic Nether generator, block for block (8: on the open land's shape; gen/nether_exact.cpp)
     initExact(o.genVersion >= 8);
-    bn_ = o.genVersion >= 13 && exactOpen_;   // 13: BetterNether's lands painted over it (gen/nether_bn.h)
+    bn_ = o.genVersion >= 13 && exactOpen_;   // 13: the painted Nether lands over it (gen/nether_bn.h)
   }
   else if (o.genVersion >= 5) {   // the five-land heightfield kept for worlds already generated that way
     lands_ = std::make_unique<NetherShape>(seed_);
@@ -103,7 +103,7 @@ void DepthsGen::generate(Chunk& ch) {
   };
   auto isDelta = [](const Biome& bi) { return bi.delta > 0.42 && std::fabs(bi.wood) < 0.35 && bi.vale >= -0.4; };
   const i32 s5 = seed_ ^ 5;
-  // 1. the rock: open caverns over a low lava sea (Minecraft's Nether shape), bedrock at the floor and the roof
+  // 1. the rock: open caverns over a low lava sea (the classic Nether shape), bedrock at the floor and the roof
   for (int z = 0; z < CS; z++) for (int x = 0; x < CS; x++) {
     const int wx = bx + x, wz = bz + z;
     float* D = &Dall[(z * 16 + x) * LAYERS];
@@ -134,7 +134,7 @@ void DepthsGen::generate(Chunk& ch) {
       b.meta[colIdx(x, y, z)] = 0;
     }
   }
-  // 2. Minecraft's Nether tunnels through the rock (MapGenCavesHell)
+  // 2. the classic Nether tunnels through the rock
   carveCaves(b, ch.cx, ch.cz, hell_);
   // 3. the floors and roofs: crimson and warped woods, soul sand valleys, basalt deltas, the wastes' soul sand and
   //    gravel round the lava sea; vines hang from roofs as whole strands (a tip under a run of body)
@@ -146,7 +146,7 @@ void DepthsGen::generate(Chunk& ch) {
     const double wood = bi.wood, vale = bi.vale;
     const bool delta = isDelta(bi);
     const double patch = nFloor.noise3(wx / 14.0, 7.5, wz / 14.0);
-    // the wastes' own corners (BTA's Nether): Emberglass Groves (ember > 0.45), Ashen Wastes (ember < -0.45), and the
+    // the wastes' own corners (the classic Nether): Emberglass Groves (ember > 0.45), Ashen Wastes (ember < -0.45), and the
     // Cinder Isles, low islands of cinder sand out on the lava sea with pumice on their higher shores
     const double ember = nMount.noise2(wx / 120.0 + 211, wz / 120.0 - 97);
     const double isle = nFloor.noise3(wx / 22.0, 41.5, wz / 22.0);
@@ -207,7 +207,7 @@ void DepthsGen::generate(Chunk& ch) {
       else if (ember < -0.45) {   // the Ashen Wastes: deep ash with pumice boulders
         b.blocks[i] = r < 0.8 ? B.ash : B.basalt;
         if (r > 0.994 && y < Y90) for (int k = 1; k <= 2; k++) b.blocks[colIdx(x, y + k, z)] = B.pumice;
-        else if (B.ashen_trunk && r > 0.985 && r <= 0.994 && y < Y90 - 8) {   // a petrified trunk standing in the ash (BTA's petrified log)
+        else if (B.ashen_trunk && r > 0.985 && r <= 0.994 && y < Y90 - 8) {   // a petrified trunk standing in the ash (a petrified log)
           const int th = 3 + (int)(hashFloat(wx, y, wz, 95) * 4);
           for (int k = 1; k <= th; k++) b.blocks[colIdx(x, y + k, z)] = B.ashen_trunk;
         }
@@ -269,7 +269,7 @@ void DepthsGen::glowstone(GenBuf& b, int cx, int cz) const {
   }
 }
 
-// ore veins (Minecraft 1.16 rates, the original's ores in its own rock), seeded per source chunk over the 3x3
+// ore veins (the classic rates, the original's ores in its own rock), seeded per source chunk over the 3x3
 void DepthsGen::ores(GenBuf& b, int cx, int cz) const {
   static thread_local std::vector<u8> rack, ember, deep, basalt, gloom, lime, gran;
   if (rack.empty()) {
@@ -303,8 +303,8 @@ void DepthsGen::ores(GenBuf& b, int cx, int cz) const {
     if (B.gloom_coal_ore && B.gloomstone) veins(6, 7, 8, 100, B.gloom_coal_ore, gloom);
     if (B.limestone_coal_ore && B.limestone) veins(4, 6, 12, DIM_H - 40, B.limestone_coal_ore, lime);
     if (B.granite_gold_ore && B.granite) veins(4, 6, 12, DIM_H - 40, B.granite_gold_ore, gran);
-    if (B.soul_schist) veins(5, 30, 8, 70, B.soul_schist, ember);        // BTA's Nether strata: dark schist low down,
-    if (B.bone_shale) veins(4, 24, 40, DIM_H - 40, B.bone_shale, ember);  // pale bone shale higher up   // BTA's Nether coal: ember coal in the emberstone
+    if (B.soul_schist) veins(5, 30, 8, 70, B.soul_schist, ember);        // the classic Nether strata: dark schist low down,
+    if (B.bone_shale) veins(4, 24, 40, DIM_H - 40, B.bone_shale, ember);  // pale bone shale higher up   // the classic Nether coal: ember coal in the emberstone
   }
 }
 

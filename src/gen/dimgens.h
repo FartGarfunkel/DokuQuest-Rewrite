@@ -1,6 +1,6 @@
 // gen/dimgens.h — the other bands and the side realms:
 //   DepthsGen   the Ember Depths / Nether (worldgen.js generateDepths + theend.js void crust), 2.5x taller
-//   SkylandsGen the Skylands / Aether (worldgen.js generateSkylands), islands lifted to band 140..230
+//   SkylandsGen the Skylands (worldgen.js generateSkylands), islands lifted to band 140..230
 //   EndGen      The End (theend.js: islands, pillars, exit portal bowl, platform, chorus), lifted 64
 //   PocketGen   the pocket dimension's rooms (worldgen.js generatePocket), RealmGen his realm (riftarc.js)
 #pragma once
@@ -23,7 +23,7 @@ public:
   explicit DepthsGen(const WorldGenOptions& o);
   static constexpr int LAYERS = 104;                 // original rows 0..103 sampled (the band reaches 102.0)
   static constexpr int LAVA_SEA = 28;                // the original's lava sea row (structures' random picks)
-  // Minecraft-like layout in band rows: a low lava sea, open caverns over it up to the roof, bedrock at both ends
+  // classic layout in band rows: a low lava sea, open caverns over it up to the roof, bedrock at both ends
   static constexpr int LAVA_Y = 50, FLOOR_Y = 44, ROOF_Y = 206;
   static double bias(int y) { return (y < FLOOR_Y ? (FLOOR_Y - y) / 22.0 : 0) + (y > ROOF_Y ? (y - ROOF_Y) / 20.0 : 0); }
   void generate(Chunk& c) override;
@@ -45,12 +45,12 @@ private:
   CarveRules landsCarve_;
   void generateLands(Chunk& c);
   void generateCave(Chunk& c);
-  // terrain version 7: BTA 8.0.1's own Nether generator, exact (gen/bta via gen/nether_exact.cpp)
+  // terrain version 7: the classic Nether generator, exact (gen/nethergen via gen/nether_exact.cpp)
   std::shared_ptr<nethergen::NetherGen> exact_;
   bool exactOpen_ = false;
   bool v19_ = false;         // terrain 19: well-mixed position randoms in the painting (no stripes)
-  bool bn_ = false;          // terrain 13: BetterNether's lands painted over it (gen/nether_bn.h)   // terrain 8: the open land (the ground is found from the roof down)
-  void initExact(bool open);   // open: terrain 8, BTA's Nether in the open land
+  bool bn_ = false;          // terrain 13: the painted Nether lands over it (gen/nether_bn.h)   // terrain 8: the open land (the ground is found from the roof down)
+  void initExact(bool open);   // open: terrain 8, the classic Nether in the open land
 public:
   // where to put someone down (terrain 7 and 8: the real generated ground, from the roof down; never in the lava)
   int spawnHeight(int wx, int wz) const override;
@@ -66,7 +66,7 @@ private:
   void sampleLands(int wx, int wz, ColumnSample& s) const;
   void sampleCave(int wx, int wz, ColumnSample& s) const;
   void glowstone(GenBuf& b, int cx, int cz) const;     // clusters hanging from the roofs (WorldGenGlowStone)
-  void netherFeatures7(GenBuf& b, int cx, int cz, const u8* atSea) const;   // terrain 7: BTA 8.0's floes, terraces, crystals, pillars, ash (gen/nether_lands7.cpp)
+  void netherFeatures7(GenBuf& b, int cx, int cz, const u8* atSea) const;   // terrain 7: the classic Nether's floes, terraces, crystals, pillars, ash (gen/nether_lands7.cpp)
   void ores(GenBuf& b, int cx, int cz) const;          // quartz, gold, cinderite, debris veins
   i32 seed_;
   GenBlocks B;
@@ -91,11 +91,11 @@ public:
   int skyBiome(int x, int z) const;                  // 0 meadow, 1 forest, 2 grove, 3 woodland
   int hillTop(int x, int z) const;                   // band y an island's top has here wherever the mask allows one
   StructureIndex structures;
-  // terrain version 7: The Aether's islands (gen/skylands_isles.cpp): its 3D density, Aether grass over Aether dirt
+  // terrain version 7: the Skylands' islands (gen/skylands_isles.cpp): its 3D density, Skylands grass over Skylands dirt
   // over holystone, its trees, aerclouds, quicksoil shelves, ores and ground cover
   bool isles() const { return isles_ != nullptr; }
   bool islesColumn(int wx, int wz, int& top, int& bottom) const;   // band y of the highest and lowest land here
-  static constexpr int ISLES_DY = 100;              // band y = Aether y + 100: the islands at 118-205, clear of the cloud bank
+  static constexpr int ISLES_DY = 100;              // band y = island y + 100: the islands at 118-205, clear of the cloud bank
 private:
   i32 seed_;
   GenBlocks B;
@@ -121,24 +121,24 @@ public:
   i32 seed() const override { return seed_; }
   TerrainColumn terrainColumn(int x, int z) const override;
   bool island(int x, int z, Isle& out) const;        // WorldGen.endColumn (+ the outer End's craters)
-  int endBiome(int x, int z) const;                  // outer End lands, Better End's biomes: chorus forest, blossoming spires, foggy mushroomland, glowing grasslands, crystal mountains, sulphur springs, umbrella jungle, shadow forest, ice starfield, amber land, megalake, lantern woods, painted mountains, neon oasis, dragon graveyards, dry shrubland
+  int endBiome(int x, int z) const;                  // outer End lands, the End's biomes: chorus forest, blossoming spires, foggy mushroomland, glowing grasslands, crystal mountains, sulphur springs, umbrella jungle, shadow forest, ice starfield, amber land, megalake, lantern woods, painted mountains, neon oasis, dragon graveyards, dry shrubland
   double craterDepth(int x, int z) const;            // how deep a crater bowl dips here (0: none; < 0: its raised rim)
   const std::vector<Pillar>& pillars() const { return pillars_; }
   int fountainY() const;                             // the exit portal's bowl floor + 1 (band-local)
   void outerFeatures(int bx, int bz, class ChunkWriter& P) const;   // spires, arches and floating shards
   void landDress(int bx, int bz, class ChunkWriter& P) const;       // the outer lands' trees, springs, stars and ribs
-  // Better End's lands (gen/theend_be.cpp): each land's ground, its trees and growths, its plants
+  // the End's lands (gen/theend_be.cpp): each land's ground, its trees and growths, its plants
   void beSurface(int land, int x, int z, const Isle& c, class ChunkWriter& P) const;
   void beDress(int bx, int bz, class ChunkWriter& P) const;
-  void beStructures(int bx, int bz, class ChunkWriter& P) const;   // Better End's buildings (gen/end_be_structures.cpp)
-  // Better End's rebuild of a pillar (its SpikeFeatureMixin): false when it doesn't apply (terrain before 7, no data).
+  void beStructures(int bx, int bz, class ChunkWriter& P) const;   // the End's buildings (gen/end_be_structures.cpp)
+  // the End lands' rebuild of a pillar: false when it doesn't apply (terrain before 7, no data).
   // Builds it into P when given; topY gets the highest block.
   bool bePillar(const Pillar& pl, class ChunkWriter* P, int* topY) const;
   void bePlants(int land, int x, int z, const Isle& c, class ChunkWriter& P) const;
   bool beSplit(int x, int z) const;
   vec3 spawnPoint() const { return vec3(PLAT_X + 0.5f, PLAT_Y + 1, PLAT_Z + 0.5f); }
   StructureIndex structures;
-  // terrain version 7: Better End's own islands (gen/be: its three island layers' SDF density, the domain warp, the
+  // terrain version 7: the End's own islands (gen/be: its three island layers' SDF density, the domain warp, the
   // hex biome map), outside the dragon's island and its gulf. Each chunk's columns (the top and the lowest bottom of
   // the land standing in them) are kept for island() / sample() / the features.
   bool betterEnd() const { return be_ != nullptr; }
@@ -158,7 +158,7 @@ private:
   mutable std::unordered_map<u64, std::shared_ptr<const BECols>> beCache_;
   mutable std::deque<u64> beOrder_;
 };
-// the Better End land at a block for a world (gen/be for terrain version 7, else the older noise lands)
+// the End land at a block for a world (gen/be for terrain version 7, else the older noise lands)
 int endLandAt(i32 seed, int genVersion, int x, int z);
 
 class PocketGen : public DimGenerator {

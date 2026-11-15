@@ -1,6 +1,6 @@
 // sim/redstone.h — redstone circuits (game/redstone.js), their placing and using (game/rsplace.js).
 //
-// Works like Minecraft Java at 20 game ticks a second (a redstone tick is two game ticks): power 0-15, dust
+// Works at 20 game ticks a second (a redstone tick is two game ticks): power 0-15, dust
 // loses one level per block, strong/weak power through solid blocks, torches, repeaters (delay, pulse
 // stretching, locking), comparators (compare/subtract, reading containers), observers, lamps, copper bulbs,
 // pistons and sticky pistons (slime/honey drag neighbours, PistonAnim slides the blocks), dispensers,

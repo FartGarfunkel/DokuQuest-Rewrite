@@ -331,7 +331,7 @@ private:
 }
 
 std::unique_ptr<Screen> makeWaystoneScreen(const std::string& hereId) { return std::make_unique<WaystoneScreen>(hereId); }
-// ---- BTA's label: a name written on it (sim/extra_items.cpp names a creature with it) ----
+// ---- the label: a name written on it (sim/extra_items.cpp names a creature with it) ----
 namespace {
 class LabelScreen : public Screen {
 public:

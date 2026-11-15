@@ -1,5 +1,5 @@
-// BTA 8.0.1 Nether: biome provider, terrain (DensityGeneratorNether + TerrainGeneratorNether), surface
-// (SurfaceGeneratorNether) and large features (Caves, LavaFloe, RubyglassFloe, Shelf). Exact port.
+// The classic Nether: biome provider, terrain (the Nether density + terrain generators), surface
+// (the Nether surface generator) and large features (Caves, LavaFloe, RubyglassFloe, Shelf). Exact port.
 #if defined(__clang__)
 #pragma clang fp contract(off)
 #elif defined(__GNUC__)
@@ -69,7 +69,7 @@ static_assert(sizeof(kNB) / sizeof(kNB[0]) == NB_COUNT, "NB table");
 struct PropTable {
   BlockProps p[bid::MAX_ID];
   PropTable() {
-    // Values dumped from BTA 8.0.1 (Blocks.init(), Block.getMaterial(), hasTag, Block.solid(), ...)
+    // Values dumped from the reference (block init, materials, tags, solid(), ...)
     auto set = [&](uint16_t id, Mat m, uint32_t f) { p[id].mat = m; p[id].f = f | P_KNOWN; };
     const uint32_t SOLIDCUBE = P_MAT_SOLID | P_BLOCKS_MOTION | P_SOLID | P_CUBE | P_SOLID_RENDER;
     set(bid::AIR, Mat::AIR, T_PLACE_OVERWRITES);
@@ -153,7 +153,7 @@ int32_t javaStringHash(const char* s) {
 // ---- construction ------------------------------------------------------------------------------
 namespace {
 struct Range { double t0, t1, h0, h1, a0, a1; uint8_t b; };
-// BiomeProviderNether.init() insertion order (LinkedHashMap), last match wins in findBiome
+// the biome provider's insertion order (LinkedHashMap), last match wins in findBiome
 const Range kRanges[] = {
     {0.95, 1.0, 0.0, 1.0, 0.5, 1.0, BI_VOLCANIC_ISLANDS}, {0.75, 0.95, 0.0, 0.85, 0.5, 1.0, BI_CRAG},
     {0.75, 0.95, 0.85, 1.0, 0.5, 1.0, BI_SULFUR_POOLS},    {0.7, 0.75, 0.0, 1.0, 0.5, 1.0, BI_SHELF},
@@ -219,7 +219,7 @@ NetherGen::Impl::Impl(int64_t s, const NetherGenOptions& o)
     lfRandZ = r.nextLong() / 2 * 2 + 1;
   }
   {
-    JavaRandom r(s);  // ChunkFeatureDecorator seed constants
+    JavaRandom r(s);  // the feature decorator's seed constants
     decoA = r.nextLong() / 2 * 2 + 1;
     decoB = r.nextLong() / 2 * 2 + 1;
   }
@@ -346,7 +346,7 @@ void NetherGen::Impl::buildTerrain(int cx, int cz, TerrainChunk& tc, int stages)
   climateRegion(jmul(cx, 16), jmul(cz, 16), tc.climate, nullptr);
   std::memset(tc.id, 0, sizeof(tc.id));
   if ((stages & 1) && opt.shape) {
-    // a given shape (NetherGenOptions::shape): bedrock as BTA lays it, the rest by the columns
+    // a given shape (NetherGenOptions::shape): bedrock as the reference lays it, the rest by the columns
     NetherGenOptions::ShapeColumn C[256];
     opt.shape(cx, cz, C);
     JavaRandom rand(chunkSeed(cx, cz));
@@ -416,7 +416,7 @@ void NetherGen::Impl::buildTerrain(int cx, int cz, TerrainChunk& tc, int stages)
   if (stages & (8 | 16 | 32)) floes(cx, cz, tc, stages);
 }
 
-// ---- SurfaceGeneratorNether --------------------------------------------------------------------
+// ---- Nether surface generator ------------------------------------------------------------------
 namespace {
 inline int mixStone(int biome, int id, JavaRandom& r) {
   if ((biome == BI_CRAG || biome == BI_SHELF || biome == BI_CRYSTAL_PLAINS || biome == BI_CRYSTAL_FOREST) &&
@@ -606,7 +606,7 @@ void generateCave(CaveCtx& c, int64_t seed, double bx, double by, double bz, flo
               else {
                 setR(tc, x, yIndex, z, 0);
                 if (replaceTop) {
-                  // BTA bug kept: world.getBlockBiome(x, yIndex - 1, z) with chunk-LOCAL x/z
+                  // reference bug kept: the block biome at (x, yIndex - 1, z) with chunk-LOCAL x/z
                   int yy = yIndex - 1;
                   int b = yy < 64 ? BI_OLD_WORLD_DESERT : c.g->climateAt(x, z, nullptr);
                   uint16_t top, fill;

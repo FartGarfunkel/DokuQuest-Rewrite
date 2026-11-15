@@ -1,4 +1,4 @@
-// launcher/options.cpp — the Options tab, laid out like Better than Adventure 8.0's options screen (the same pages,
+// launcher/options.cpp — the Options tab, laid out like the paged options screen (the same pages,
 // categories and rows as the game's Options, ui/options.cpp): renderer, graphics presets with a suggestion from the
 // GPU (GL_RENDERER of the launcher's own GL context), view distances, micro-voxel detail, resource/shader packs,
 // frame rate, launcher behaviour and updates. These are the game's own settings (common/settings.h,
@@ -65,7 +65,7 @@ GpuInfo suggestForGpu(const std::string& vendor, const std::string& renderer, in
 }
 
 
-// ---------------------------------------------------------------- BTA 8.0's options layout, in the launcher
+// ---------------------------------------------------------------- the paged options layout, in the launcher
 // The same pages, categories and rows as the game's Options (ui/options.cpp, ui/paged.h): the page list on the left
 // with the pack's pictures, folding categories, 24-unit rows (name, a faint line, a 100-unit control, a reset
 // button once it isn't the default) and the description when the name is hovered. One unit is 2 design pixels.
@@ -83,11 +83,11 @@ std::vector<std::string> listPacks(const char* sub) {
 const char* presetNames[] = {"potato", "low", "medium", "high", "ultra", "custom"};
 const char* presetLabels[] = {"Potato", "Low", "Medium", "High", "Ultra", "Custom"};
 constexpr ImU32 K_WHITE = IM_COL32(255, 255, 255, 255), K_HOT = IM_COL32(255, 255, 160, 255), K_GREY = IM_COL32(127, 127, 127, 255), K_LINE = IM_COL32(127, 127, 127, 95);
-constexpr float KU = 2;   // pixels per BTA unit
+constexpr float KU = 2;   // pixels per menu unit
 
 std::string lowerS(std::string s) { for (auto& c : s) c = (char)std::tolower((unsigned char)c); return s; }
 
-// a page icon: a picture of the DokuQuest Base pack (BTA draws an item beside each page)
+// a page icon: a picture of the DokuQuest Base pack (an item drawn beside each page)
 unsigned packIcon(const char* rel) {
   static std::map<std::string, unsigned> cache;
   auto it = cache.find(rel);
@@ -287,7 +287,7 @@ void drawOptions(Launcher& L) {
   float fullW = ImGui::GetContentRegionAvail().x, fullH = ImGui::GetContentRegionAvail().y;
   float leftW = std::floor(fullW * 0.25f);
   ImDrawList* bg = ImGui::GetWindowDrawList();
-  // the bands: BTA's darker page dirt, a lighter 8-unit strip between the list and the page
+  // the bands: the darker page dirt, a lighter 8-unit strip between the list and the page
   drawDirt(bg, origin, ImVec2(origin.x + fullW, origin.y + fullH), L, 0.62f);
   drawDirt(bg, ImVec2(origin.x + leftW, origin.y), ImVec2(origin.x + leftW + 8 * KU, origin.y + fullH), L, 0.25f);
   bg->AddRect(origin, ImVec2(origin.x + fullW, origin.y + fullH), IM_COL32(0, 0, 0, 255), 0, 0, 2);
@@ -407,12 +407,12 @@ void drawOptions(Launcher& L) {
       }
       if (k.category("Visuals")) {
         { int cur = clampv(s.extra.value("dreamLight", 0), 0, 2); if (k.cycle("Lighting", &cur, {"Classic", "Dreamlike", "Dreamlike (Strong)"}, 0, "Dreamlike: a soft glow round bright things, golden light when the sun is low.", 120)) { s.extra["dreamLight"] = cur; changed = true; } }
-        if (k.range("Brightness", &s.brightness, 0, 1, 0.05f, s.brightness <= 0 ? "Moody" : s.brightness >= 1 ? "Bright" : pct(s.brightness), D.brightness, "Lights up caves and the night, like Minecraft's Brightness. Full daylight stays the same.")) custom();
+        if (k.range("Brightness", &s.brightness, 0, 1, 0.05f, s.brightness <= 0 ? "Moody" : s.brightness >= 1 ? "Bright" : pct(s.brightness), D.brightness, "Lights up caves and the night. Full daylight stays the same.")) custom();
         {   // Settings::applyColourStyle; moving a slider makes it Custom (render/colour_filter_layer.cpp draws it)
           static const char* styles[] = {"vibrant", "natural", "classic", "custom"};
           int cur = 3; for (int i = 0; i < 4; i++) if (s.colourStyle == styles[i]) cur = i;
           int pick = cur;
-          if (k.cycle("Colour Style", &pick, {"Vibrant", "Natural", "Classic", "Custom"}, 1, "Vibrant: the colours as drawn. Natural: a little softer. Classic: muted and flatter, like Minecraft Alpha and Beta (blacks less deep on an OLED).", 120) && pick != cur) {
+          if (k.cycle("Colour Style", &pick, {"Vibrant", "Natural", "Classic", "Custom"}, 1, "Vibrant: the colours as drawn. Natural: a little softer. Classic: muted and flatter, like the early blocky games (blacks less deep on an OLED).", 120) && pick != cur) {
             if (pick < 3) s.applyColourStyle(styles[pick]); else s.colourStyle = "custom";
             changed = true;
           }
@@ -434,7 +434,7 @@ void drawOptions(Launcher& L) {
         if (k.toggle("Waving Plants", &s.wavingPlants, D.wavingPlants, "Grass, leaves and water move in the wind.")) custom();
         if (k.toggle("See Through Portals", &s.portalViews, D.portalViews, "Portals show the other side.")) custom();
       }
-      if (k.category("Weather")) {   // render/weather_layer.cpp (after Particle Rain)
+      if (k.category("Weather")) {   // render/weather_layer.cpp
         { static const int amounts[] = {0, 600, 1500, 3000}; int cur = 2; for (int i = 0; i < 4; i++) if (s.weatherParticles == amounts[i]) cur = i;
           int pick = cur;
           if (k.cycle("Weather Particles", &pick, {"Off", "Low", "Normal", "High"}, 2, "Rain, snow, dust and fog around you. Fewer is faster.") && pick != cur) { s.weatherParticles = amounts[pick]; custom(); } }
@@ -449,11 +449,11 @@ void drawOptions(Launcher& L) {
         std::vector<std::string> items = {"None"}; int cur = 0;
         for (size_t i = 0; i < sps.size(); i++) { items.push_back(sps[i]); if (sps[i] == s.shaderPack) cur = (int)i + 1; }
         int c = cur;
-        if (k.cycle("Shader Pack", &c, items, 0, "Our own packs and Iris/OptiFine packs (folders or .zip) in shaderpacks/.", 140) && c != cur) { s.shaderPack = c == 0 ? "" : sps[c - 1]; changed = true; }
+        if (k.cycle("Shader Pack", &c, items, 0, "Our own packs and other shader packs (folders or .zip) in shaderpacks/.", 140) && c != cur) { s.shaderPack = c == 0 ? "" : sps[c - 1]; changed = true; }
         { float cc = std::clamp(s.extra.value("colorCorrectionNether", 0.5f), 0.f, 1.f);
-          if (k.range("Nether Color Correction", &cc, 0, 1, 0.05f, pct(cc), 0.5f, "Better than Adventure's warm grade over the Nether.")) { s.extra["colorCorrectionNether"] = cc; changed = true; } }
+          if (k.range("Nether Color Correction", &cc, 0, 1, 0.05f, pct(cc), 0.5f, "A warm grade over the Nether.")) { s.extra["colorCorrectionNether"] = cc; changed = true; } }
         { float hh = std::clamp(s.extra.value("heatHaze", 0.5f), 0.f, 1.f);
-          if (k.range("Heat Haze", &hh, 0, 1, 0.05f, pct(hh), 0.5f, "Better than Adventure's shimmer over the hot Nether's distance.")) { s.extra["heatHaze"] = hh; changed = true; } }
+          if (k.range("Heat Haze", &hh, 0, 1, 0.05f, pct(hh), 0.5f, "A shimmer over the hot Nether's distance.")) { s.extra["heatHaze"] = hh; changed = true; } }
         int lv = std::clamp(s.extra.value("shaderLevel", 0), 0, 4);
         if (k.cycle("Shaders", &lv, {"Off", "Low", "Medium", "High", "Ultra"}, 0, "The game's own shaders over the picture: a film grade and vignette, then bloom and eyes that adjust, then sun rays, a lens flare, clear water and sun shadows; Ultra adds reflections and shading in the corners.")) { s.extra["shaderLevel"] = lv; changed = true; }
         { static const int v[] = {1, 2, 4, 8, 16}; int cur = 2; for (int i = 0; i < 5; i++) if (s.extra.value("anisotropic", 4) == v[i]) cur = i;
@@ -487,7 +487,7 @@ void drawOptions(Launcher& L) {
           if (k.cycle("Button Layout", &cur, {"Xbox", "PlayStation", "Nintendo"}, 0, "Xbox: A jumps. PlayStation: \xE2\x9C\x95 jumps. Nintendo: B jumps.")) { s.padLayout = pv[cur]; changed = true; } }
         if (k.toggle("Auto-Jump (Touch)", &s.autoJump, D.autoJump)) changed = true;
       }
-      k.note("Every key and controller button is changed in the game: Options \xE2\x86\x92 Controls, where BTA keeps them.");
+      k.note("Every key and controller button is changed in the game: Options \xE2\x86\x92 Controls.");
       break;
     case 5:
       if (k.category("Accessibility")) {

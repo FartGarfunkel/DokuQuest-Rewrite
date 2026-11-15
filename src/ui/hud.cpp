@@ -25,7 +25,7 @@
 namespace dq {
 float g_minimapBottom = 0;   // where the minimap ends this frame (0 = not shown): the right-hand tracks line up under it
 
-// ---- the movable HUD (BTA's rearrangeable HUD): each piece drawn between hudPieceBegin/End is shifted by its offset in
+// ---- the movable HUD (the rearrangeable HUD): each piece drawn between hudPieceBegin/End is shifted by its offset in
 //      settings extra "hudLayout" {piece: [fx, fy]} (fractions of the screen), and its box is kept for the editor
 //      (ui/hud_edit.cpp) ----
 std::map<std::string, std::pair<ImVec2, ImVec2>>& hudPieceBoxes() { static std::map<std::string, std::pair<ImVec2, ImVec2>> m; return m; }
@@ -161,7 +161,7 @@ public:
     float slot = std::floor(clampv(std::min({(vw - 24) / 9.6f, (vh - 140) / 9.5f, 46.f}), 24.f, 46.f));
     float w = std::min(520.f, vw * 0.7f) * z, x = 10 * z, bottom = H0 - (slot * 2.6f + 40) * z;
     float ih = textSize(F_BODY, "Ag").y + 12 * z + 4 * z;
-    {   // the emote picker (BTA): a row of faces to drop into the line
+    {   // the emote picker: a row of faces to drop into the line
       static const char* EMOTES[] = {":)", ":D", ";)", ":P", ":(", ":O", "<3", "o/", "\\o/", "^_^", "T_T", "xD", ">:(", "-_-"};
       const float eh = textSize(F_SMALL, "Ag").y + 10 * z;
       ImGui::SetNextWindowPos(ImVec2(x, bottom - ih - eh - 4 * z)); ImGui::SetNextWindowSize(ImVec2(w, eh));
@@ -511,7 +511,7 @@ public:
       SlotLook lk; lk.inv = false; drawSlot(dl, o0 + ImVec2(2, 2) * z, slot, lk); drawItem(dl, p.offhand[0], o0 + ImVec2(2, 2) * z, slot);
     }
     hudPieceEnd(a, dl, hb0v, "hotbar");
-    {   // BTA's rotary calendar, held: the season and the day, beside the hotbar
+    {   // the rotary calendar, held: the season and the day, beside the hotbar
       auto cal = [](const ItemStack& s) { return !s.empty() && s.id == "rotary_calendar"; };
       if (cal(p.held()) || (!p.offhand.empty() && cal(p.offhand[0]))) {
         const int se = p.realm == REALM_DRIFT ? -1 : seasonOf(*s.level);
@@ -548,7 +548,7 @@ public:
       int spr = tint + (hp >= i * 2 + 2 ? SP_HEART : hp >= i * 2 + 1 ? SP_HEART_HALF : SP_HEART_EMPTY);
       drawSprite(dl, spr, ImVec2(x0 + c * (sp + 1 * z), y - (r + 1) * sp - r * 1 * z + shake), sp);
     }
-    // mana, in the place Minecraft keeps its food: ten crystals right of the hearts, emptying from the left as you cast
+    // mana, in the place a food bar would sit: ten crystals right of the hearts, emptying from the left as you cast
     // (once you know a spell or hold a staff). The spell in hand shows over them a moment when it changes or is cast.
     if (!knownSpells(p).empty() || heldStaff(p)) {
       MagicState& m = magicState(*s.level, p);
@@ -586,7 +586,7 @@ public:
       }
     }
     y -= std::max(rows, 1) * (sp + 1 * z) + 4 * z;
-    // armour over the hearts (where Minecraft has it)
+    // armour over the hearts
     if (int ap = armorPoints(p)) {
       for (int i = 0; i < 10; i++) drawSprite(dl, ap - 20 > i ? SP_SHIELD_GLOW : SP_SHIELD, ImVec2(x0 + i * (sp + 1 * z), y - sp), sp, ap >= i * 2 + 1 ? 1.f : 0.25f);
       y -= sp + 4 * z;

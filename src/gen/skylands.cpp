@@ -1,5 +1,5 @@
 // gen/skylands.cpp — the Skylands (world/worldgen.js generateSkylands): floating islands of skystone with sky
-// grass, tall grass and flowers, aether crystal ore and cloud-pine trees. Shapes are the original's, lifted
+// grass, tall grass and flowers, skyland crystal ore and cloud-pine trees. Shapes are the original's, lifted
 // SKY_DY (120) so they float high in the band; the band's bottom 30 is the cloud bank (vmap::cloudBank).
 #include "gen/dimgens.h"
 #include "gen/isles_noise.h"

@@ -80,7 +80,7 @@ bool Minecart::use(Level& lv, Player& p, ItemStack* held) {
     return true;
   }
   if (kind == "minecart" && pet) { Entity* m = lv.entity(pet); std::string n = m ? m->type : "pet"; std::replace(n.begin(), n.end(), '_', ' '); vehToast(lv, p, "There's a " + n + " in this cart (sneak + use to lift it out)"); return true; }
-  // any fuel keeps it going (BTA), as long as a furnace would burn it: coal 180 s, a block of coal 1620 s, planks 34 s...
+  // any fuel keeps it going, as long as a furnace would burn it: coal 180 s, a block of coal 1620 s, planks 34 s...
   const float fv = held && held->id.find("bucket") == std::string::npos ? fuelValue(held->id) : 0.f;
   if (kind == "furnace" && held && (isCoal(held->id) || fv > 0)) {
     bool block = held->id == "coal_block";

@@ -55,7 +55,7 @@ for n in new:
 (d / 'packmap.json').write_text(json.dumps(pm, separators=(',', ':'), sort_keys=False))
 print('patched: gate_barrier drawn; body tiles', new, 'count', tj['count'])
 
-# ---- the enderman's jaw: Minecraft's shrunk "headwear" box, hidden inside the head until it lifts its head in anger ----
+# ---- the enderman's jaw: a shrunk "headwear" box, hidden inside the head until it lifts its head in anger ----
 mj = json.loads((d / 'models.json').read_text())
 en = mj.get('enderman')
 if en and not any(pt['name'] == 'jaw' for pt in en['parts']):
@@ -65,7 +65,7 @@ if en and not any(pt['name'] == 'jaw' for pt in en['parts']):
 for pt in (en['parts'] if en else []):   # the jaw: 7x5x7 on the shoulders, its toothed rim just under the lifted head
     if pt['name'] == 'jaw':
         pt['box'] = [-3.5, 0, -3.5, 3.5, 5, 3.5]; pt['min'] = [-0.21875, 0, -0.21875]; pt['max'] = [0.21875, 0.3125, 0.21875]
-for pt in (en['parts'] if en else []):   # its legs a little apart (Minecraft's +-2 px), not pressed together
+for pt in (en['parts'] if en else []):   # its legs a little apart (+-2 px), not pressed together
     if pt['name'] in ('legR', 'legL') and abs(pt['at'][0]) == 1:
         sx = 1 if pt['at'][0] > 0 else -1; pt['at'][0] = 2 * sx; pt['pivot'][0] = 0.125 * sx
 (d / 'models.json').write_text(json.dumps(mj, separators=(',', ':'), ensure_ascii=False))
@@ -126,7 +126,7 @@ _s = _u.spec_from_file_location('spawn_eggs', pathlib.Path(__file__).with_name('
 # ---- mob heads (tools/port/mob_heads.py) ----
 _s = _u.spec_from_file_location('mob_heads', pathlib.Path(__file__).with_name('mob_heads.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
 
-# ---- BTA-inspired blocks (tools/port/classic_blocks.py) ----
+# ---- classic-style blocks (tools/port/classic_blocks.py) ----
 _s = _u.spec_from_file_location('classic_blocks', pathlib.Path(__file__).with_name('classic_blocks.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
 _s2 = _u.spec_from_file_location('more_items', pathlib.Path(__file__).with_name('more_items.py')); _m2b = _u.module_from_spec(_s2); _s2.loader.exec_module(_m2b); _m2b.main(d)
 _s3 = _u.spec_from_file_location('nether_lands', pathlib.Path(__file__).with_name('nether_lands.py')); _m3 = _u.module_from_spec(_s3); _s3.loader.exec_module(_m3); _m3.main(d)
@@ -139,7 +139,7 @@ _sHG = _u.spec_from_file_location('horse_gear', pathlib.Path(__file__).with_name
 _s = _u.spec_from_file_location('forging', pathlib.Path(__file__).with_name('forging.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
 _s = _u.spec_from_file_location('tool_parts', pathlib.Path(__file__).with_name('tool_parts.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
 
-# ---- the lead (Minecraft's): leads an animal, ties it to a fence post (sim/leads.cpp) ----
+# ---- the lead: leads an animal, ties it to a fence post (sim/leads.cpp) ----
 items = json.loads((d / 'items.json').read_text()); tj4 = json.loads((d / 'tiles.json').read_text())
 sh4 = json.loads((d / 'itemshapes.json').read_text()); rj4 = json.loads((d / 'recipes.json').read_text())
 if 'lead' not in tj4['names']:
@@ -169,8 +169,8 @@ if not any(r.get('out') == 'lead' for r in rj4['recipes']):
     rj4['recipes'].append({'out': 'lead', 'n': 2, 'shape': ['SS ', 'SB ', '  S'], 'key': {'S': 'string', 'B': 'slime_ball'}, 'h': 3, 'w': 3, 'group': 'tools'})
     (d / 'recipes.json').write_text(json.dumps(rj4, separators=(',', ':'), ensure_ascii=False))
 
-# ---- plant pictures drawn grey for the biome tint (Minecraft-style) must carry the game's "tint me" marker (alpha 253);
-#      spruce leaves aren't tinted by biome in Minecraft, so theirs get its fixed colour painted in ----
+# ---- plant pictures drawn grey for the biome tint (as resource packs draw them) must carry the game's "tint me" marker (alpha 253);
+#      spruce leaves aren't tinted by biome, so theirs get its fixed colour painted in ----
 tj5 = json.loads((d / 'tiles.json').read_text())
 def _grey(im):
     op = [p for p in im.getdata() if p[3] >= 128]
@@ -190,7 +190,7 @@ for _n in ('acacia_leaves', 'birch_leaves', 'dark_oak_leaves', 'jungle_leaves', 
     _im.save(_p)
     print('tint marker:', _n)
 
-# ---- the Travel Journal (BTA's guidebook): every thing you've carried, with how it's made (ui/travel_journal.cpp) ----
+# ---- the Travel Journal (the guidebook): every thing you've carried, with how it's made (ui/travel_journal.cpp) ----
 items = json.loads((d / 'items.json').read_text()); tj6 = json.loads((d / 'tiles.json').read_text())
 sh6 = json.loads((d / 'itemshapes.json').read_text()); rj6 = json.loads((d / 'recipes.json').read_text())
 if 'travel_journal' not in tj6['names']:
@@ -250,7 +250,7 @@ mobs['wither'] = {'model': 'wither', 'label': 'the Wither', 'hp': 300, 'w': 0.9,
                   'drops': [['nether_star', 1, 1, 1]]}
 mg['effects']['wither'] = {'name': 'Wither', 'col': '#3a3030', 'bad': True}
 # the Wither Storm: a Wither grown out of a rift core (sim/wither.cpp stormBrain): the same bones, huge and dark
-if 'uvTex' not in models.get('wither_storm', {}): models['wither_storm'] = dict(models['wither']); models['wither_storm']['scale'] = 5.0   # (the mod's own looks once tools/port/wither_storm_models.py has run)
+if 'uvTex' not in models.get('wither_storm', {}): models['wither_storm'] = dict(models['wither']); models['wither_storm']['scale'] = 5.0   # (the imported model's looks once tools/port/wither_storm_models.py has run)
 mobs['wither_storm'] = {'model': 'wither_storm', 'label': 'the Wither Storm', 'hp': 900, 'w': 2.8, 'h': 9.5, 'speed': 1.1, 'fly': 5, 'xp': 500, 'hostile': True,
                         'boss': True, 'special': True, 'flyer': True, 'undead': True, 'fireImmune': True, 'knockResist': 1, 'damage': 0,
                         'tint': [0.22, 0.06, 0.32, 0.45], 'drops': [['nether_star', 3, 3, 1], ['rift_crystal', 6, 10, 1]]}
@@ -322,7 +322,7 @@ if items['armor_stand'].get('block') != 'armor_stand':
     items['armor_stand']['block'] = 'armor_stand'
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
 
-# ---- the reinforced piston (BTA's): steel-bound, pushes 16 blocks, and flings whatever stands in front of it
+# ---- the reinforced piston: steel-bound, pushes 16 blocks, and flings whatever stands in front of it
 #      (sim/redstone_parts.cpp); its pictures are the piston's, steel-blue with rivets ----
 bj = json.loads((d / 'blocks.json').read_text()); items = json.loads((d / 'items.json').read_text())
 tj = json.loads((d / 'tiles.json').read_text()); rj = json.loads((d / 'recipes.json').read_text())
@@ -413,7 +413,7 @@ for f, o in (('blocks.json', bj), ('shapes.json', sj)): (d / f).write_text(json.
 (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':'))); (d / 'recipes.json').write_text(json.dumps(rj, separators=(',', ':')))
 (d / 'itemshapes.json').write_text(json.dumps(sh, separators=(',', ':')))
 
-# ---- potions stack to 16 (the stand takes one bottle a slot: ui/magic_screens.cpp); lingering potions (Minecraft's):
+# ---- potions stack to 16 (the stand takes one bottle a slot: ui/magic_screens.cpp); lingering potions:
 #      a splash potion and ectoplasm make one that leaves a cloud of itself on the ground for ten seconds
 #      (sim/magic_bolt.cpp PotionCloud) ----
 items = json.loads((d / 'items.json').read_text()); rj = json.loads((d / 'recipes.json').read_text())
@@ -446,7 +446,7 @@ _s = _u.spec_from_file_location('spawn_eggs', pathlib.Path(__file__).with_name('
 # pack's own creatures untouched; before the looks, which are made from these) ----
 _s11 = _u.spec_from_file_location('mob_restyle', pathlib.Path(__file__).with_name('mob_restyle.py')); _m11 = _u.module_from_spec(_s11); _s11.loader.exec_module(_m11); _m11.main(d)
 
-# ---- the Wither Storm as Story Mode has it (tools/port/wither_storm.py) ----
+# ---- the Wither Storm, the full behemoth (tools/port/wither_storm.py) ----
 _s13 = _u.spec_from_file_location('wither_storm', pathlib.Path(__file__).with_name('wither_storm.py')); _m13 = _u.module_from_spec(_s13); _s13.loader.exec_module(_m13); _m13.main(d)
 # ---- the Storm's own picture, and the Wither made in its likeness (tools/port/wither_storm_texture.py) ----
 _s15 = _u.spec_from_file_location('wither_storm_texture', pathlib.Path(__file__).with_name('wither_storm_texture.py')); _m15 = _u.module_from_spec(_s15); _s15.loader.exec_module(_m15); _m15.main(d)
@@ -475,31 +475,31 @@ def _match_family_tools(d):
     print('family tools: %d stairs/slabs/walls matched to their block' % n)
 _match_family_tools(d)
 
-# ---- Better End's blocks for the End band, its pictures fitted to the base pack (tools/port/end_blocks.py; MIT,
-# docs/CREDITS.md; only when the Better End jar is unpacked next to the project) ----
+# ---- the End lands' blocks for the End band, their pictures fitted to the base pack (tools/port/end_blocks.py; MIT,
+# docs/THIRD_PARTY_NOTICES.md; only when the End blocks' source is unpacked next to the project) ----
 _s14 = _u.spec_from_file_location('end_blocks', pathlib.Path(__file__).with_name('end_blocks.py')); _m14 = _u.module_from_spec(_s14); _s14.loader.exec_module(_m14)
 _m14.main(d, pathlib.Path(__file__).resolve().parents[3] / 'Better END')
 
-# ---- the blocks of BTA 8.0's Nether we lacked, drawn from the base pack in BTA's colours (tools/port/nether_blocks.py) ----
+# ---- the classic Nether's blocks we lacked, drawn from the base pack in their own colours (tools/port/nether_blocks.py) ----
 _s15 = _u.spec_from_file_location('nether_blocks', pathlib.Path(__file__).with_name('nether_blocks.py')); _m15 = _u.module_from_spec(_s15); _s15.loader.exec_module(_m15); _m15.main(d)
 
-# ---- The Aether's blocks, drawn from the base pack in the Aether's colours, and its clouds' behaviour (tools/port/skyland_blocks.py) ----
+# ---- the Skylands' blocks, drawn from the base pack in the Skylands' colours, and its clouds' behaviour (tools/port/skyland_blocks.py) ----
 _s16 = _u.spec_from_file_location('skyland_blocks', pathlib.Path(__file__).with_name('skyland_blocks.py')); _m16 = _u.module_from_spec(_s16); _s16.loader.exec_module(_m16); _m16.main(d)
 
-# ---- Better End's creatures on the rigs of ours, recoloured (tools/port/end_mobs.py) ----
+# ---- the End lands' creatures on the rigs of ours, recoloured (tools/port/end_mobs.py) ----
 _s17 = _u.spec_from_file_location('end_mobs', pathlib.Path(__file__).with_name('end_mobs.py')); _m17 = _u.module_from_spec(_s17); _s17.loader.exec_module(_m17); _m17.main(d)
 
-# ---- The Aether's dungeon keepers (Slider, Sun Spirit) and creatures it lacked, recoloured (tools/port/skyland_mobs.py) ----
+# ---- the Skylands' dungeon keepers (Slider, Sun Spirit) and creatures it lacked, recoloured (tools/port/skyland_mobs.py) ----
 _s18 = _u.spec_from_file_location('skyland_mobs', pathlib.Path(__file__).with_name('skyland_mobs.py')); _m18 = _u.module_from_spec(_s18); _s18.loader.exec_module(_m18); _m18.main(d)
 
-# ---- Better End's building blocks and its land structures (tools/port/end_building.py; after end_blocks.py) ----
+# ---- the End lands' building blocks and their structures (tools/port/end_building.py; after end_blocks.py) ----
 _s19 = _u.spec_from_file_location('end_building', pathlib.Path(__file__).with_name('end_building.py')); _m19 = _u.module_from_spec(_s19); _s19.loader.exec_module(_m19)
 _m19.main(d, pathlib.Path(__file__).resolve().parents[3] / 'Better END')
 
 # ---- the dragons' shape and scales (tools/port/dragon_shape.py: chest, haunches, thighs, clawed feet, frills, finer tail; membranes) ----
 _s20 = _u.spec_from_file_location('dragon_shape', pathlib.Path(__file__).with_name('dragon_shape.py')); _m20 = _u.module_from_spec(_s20); _s20.loader.exec_module(_m20); _m20.main(d)
 
-# ---- the Aether's and Better End's ores as materials, then the forge and mixed tools again so they take them up
+# ---- the Skylands' and the End's ores as materials, then the forge and mixed tools again so they take them up
 #      (tools/port/new_materials.py; forging.py and tool_parts.py are idempotent) ----
 for _n in ('new_materials', 'forging', 'tool_parts', 'armor_art', 'elytra_art', 'trommel', 'classic_extras', 'tool_parts', 'magic_rework', 'village_rework', 'village_builder', 'bird_feet', 'polish_data', 'new_mobs', 'nether_biome_blocks', 'dynamic_trees', 'limb_tags'):   # (tool_parts again: chainlinks, olivine)
     _s21 = _u.spec_from_file_location(_n, pathlib.Path(__file__).with_name(_n + '.py')); _m21 = _u.module_from_spec(_s21); _s21.loader.exec_module(_m21); _m21.main(d)

@@ -38,7 +38,7 @@ static float jv(const json& o, const char* k, float d) { return o.is_object() &&
 namespace {
 
 struct Spark { vec3 pos{0}, vel{0}; float life = 0.5f, max = 0.5f, size = 0.08f, size0 = 0.08f, grav = 0, grow = 0, flutter = 0, ph = 0; bool shrink = true, flat = false; vec3 col{1}; int shape = 0; };
-// ---- Iron's Spells' own particles (the spell effects import: local, git-ignored; without them, nothing changes) ----
+// ---- the spell effects' own particles (the spell effects import: local, git-ignored; without them, nothing changes) ----
 // Each kind's frames sit side by side in the tile atlas; a particle plays them over its life, shining.
 struct IsbKind { std::string first; int n = 0; };
 static const std::unordered_map<std::string, IsbKind>& isbKinds() {
@@ -64,7 +64,7 @@ static bool isbParticle(const std::string& kind, vec3 pos, vec3 vel, float life,
   particles().add(P);
   return true;
 }
-// what each of our schools' sparks are in Iron's: fire embers and flames, frost snowflakes, storm sparks and lightning,
+// what each of our schools' sparks are in the spell effects: fire embers and flames, frost snowflakes, storm sparks and lightning,
 // life's wisps and cleansing light, the arcane's traces, stone's rings of dust
 struct IsbPick { const char* kind = nullptr; u32 tint = 0xFFFFFF; };
 static IsbPick isbFor(const std::string& spark) {
@@ -77,7 +77,7 @@ static IsbPick isbFor(const std::string& spark) {
   if (spark == "mana_stone") return {r < 0.7f ? "fog" : "ring_smoke", 0xC8B8A0};
   return {};
 }
-// the spells' bolts as Iron's projectiles (voxel models from its renderers' boxes and pictures)
+// the spells' bolts as the spell effects' projectiles (voxel models from its renderers' boxes and pictures)
 static const char* isbBoltModel(const std::string& spell) {
   if (spell == "firebolt") return "isb_firebolt";
   if (spell == "fireball") return "isb_fireball";
@@ -179,7 +179,7 @@ public:
     k.grav = jv(o, "grav", 0); k.grow = jv(o, "grow", 0); k.shrink = k.grow == 0; k.flutter = jv(o, "flutter", 0); k.ph = frand() * 6;
     k.flat = o.is_object() && o.value("flat", false); k.col = tileColor(kind); k.shape = tileShape(kind);
     sparks.push_back(k);
-    // and Iron's own particle with it, about every other spark (bigger: they're pictures, not dots)
+    // and the spell effects' own particle with it, about every other spark (bigger: they're pictures, not dots)
     if (isbHave() && frand() < 0.5f) if (const IsbPick ip = isbFor(kind); ip.kind) {
       const bool smoke = std::strcmp(ip.kind, "fiery_smoke") == 0 || std::strcmp(ip.kind, "fog") == 0 || std::strcmp(ip.kind, "ring_smoke") == 0;
       isbParticle(ip.kind, p, v * (smoke ? 0.4f : 1.f) + (smoke ? vec3(0, 0.4f, 0) : vec3(0)), k.max * (smoke ? 1.6f : 1.15f), size * (smoke ? 3.4f : 2.4f), k.grav * 0.5f, smoke, ip.tint);
@@ -418,7 +418,7 @@ void MagicLayer::update(GameSession& gs, double dt) {
     float a = b.age * 26;
     fx(b.fx, b.pos, 3, 0.25f, json{{"life", 0.3}, {"size", 0.12}, {"spread", 0.12}});
     for (float k2 : {0.f, PI}) { float c = std::cos(a + k2) * 0.22f, sn = std::sin(a + k2) * 0.22f; add(k2 != 0 ? "mana_arcane" : b.fx, b.pos + vec3(px.x * c, sn, px.z * c), -u * 0.6f, 0.45f, 0.06f); }
-    if (isbHave()) {   // Iron's trails: embers turning round the firebolt (its trailParticles), fire off the fireball, snow off the icicle
+    if (isbHave()) {   // spell-effect trails: embers turning round the firebolt, fire off the fireball, snow off the icicle
       const vec3 ax1 = glm::normalize(glm::cross(u, std::fabs(u.y) > 0.95f ? vec3(1, 0, 0) : vec3(0, 1, 0))), ax2 = glm::cross(u, ax1);
       const float ang = b.age / 0.375f * TAU;
       const char* tk = b.spell == "firebolt" ? "embers" : b.spell == "fireball" ? "fire" : b.spell == "frost" ? "snowflake" : b.spell == "lightning" || b.spell == "chainlight" ? "electricity" : "trace";
@@ -558,7 +558,7 @@ void MagicLayer::drawBooks(const FrameCtx& f) {
   VoxelRenderer& VR = voxelRenderer();
   VR.begin(f, f.cam.viewProj);
   World& w = s.world();
-  // the book (the enchanting table's, Minecraft's sizes): the spine along local z, 10 px long; each half 6 px from it: a
+  // the book (the enchanting table's, at its usual sizes): the spine along local z, 10 px long; each half 6 px from it: a
   // leather cover outside, its pages inside, hinged at its own side of the spine. Closed, the two page blocks meet; open,
   // the halves fall apart to a wide V, the pages up. The whole turns to face you (+x toward you) and tips toward you.
   const float HALF_W = 6 / 16.f, LEN = 10 / 16.f, COVER_T = 1 / 64.f, PAGE_T = 1.5f / 32;
@@ -573,7 +573,7 @@ void MagicLayer::drawBooks(const FrameCtx& f) {
     float open = a.open * a.open * (3 - 2 * a.open), ang = 0.04f + open * 1.2f;
     mat4 base = glm::translate(mat4(1), rel + vec3(0.5f, 0.75f + 0.32f + std::sin((float)time * 1.4f + T.x) * 0.04f, 0.5f));
     base = glm::rotate(base, a.yaw, vec3(0, 1, 0));
-    // landscape to you, as Minecraft's: the spine pointing at you, the pages left and right, the far end lifted a little
+    // landscape to you: the spine pointing at you, the pages left and right, the far end lifted a little
     base = glm::rotate(base, PI / 2, vec3(0, 1, 0));
     base = glm::rotate(base, 0.12f + 0.22f * open, vec3(1, 0, 0));
     (void)ang; (void)HALF_W; (void)LEN; (void)COVER_T; (void)PAGE_T; (void)boxM;
@@ -621,7 +621,7 @@ void MagicLayer::drawOpaque(GameSession& gs, const FrameCtx& f) {
   }
   for (auto& e : s.level->entities()) if (!e->removed && e->type == "potion_flask" && e->realm == s.player->realm)
     drawItem(e->data.value("potion", "splash_potion_water"), e->pos, e->age * 8, 0.36f);
-  // the bolts as Iron's projectiles, along their flight (the fireball turning over as it goes)
+  // the bolts as the spell effects' projectiles, along their flight (the fireball turning over as it goes)
   for (auto& b : bolts) {
     if (b.age >= 99) continue;
     const char* mk = isbBoltModel(b.spell);

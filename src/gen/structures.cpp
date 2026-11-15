@@ -137,7 +137,7 @@ const StructurePlan* StructureIndex::at(int k, int rx, int rz) const {
       const int qx = jsFloor(cx / J.region), qz = jsFloor(cz / J.region);
       for (int dz = -1; dz <= 1 && clear; dz++) for (int dx = -1; dx <= 1; dx++) if (hit(at(j, qx + dx, qz + dz))) { clear = false; break; }
     }
-    // and of a neighbour of its own kind that comes first (row by row): a plan wider than its region (the Soulrend places)
+    // and of a neighbour of its own kind that comes first (row by row): a plan wider than its region (the big places)
     // was built over by the one next door
     if (clear) for (int dz = -2; dz <= 2 && clear; dz++) for (int dx = -2; dx <= 2; dx++) {
       if (dz > 0 || (dz == 0 && dx >= 0)) continue;
@@ -162,7 +162,7 @@ void StructureIndex::near(int x, int z, int pad, std::vector<const StructurePlan
       continue;
     }
     int rx = floordiv(x, T.region), rz = floordiv(z, T.region);
-    const int R = T.region < 160 ? 2 : 1;   // (a small region's plans can reach two regions out: the Soulrend places)
+    const int R = T.region < 160 ? 2 : 1;   // (a small region's plans can reach two regions out: the big places)
     for (int dz = -R; dz <= R; dz++) for (int dx = -R; dx <= R; dx++) {
       const StructurePlan* S = at(k, rx + dx, rz + dz);
       if (S && x >= S->x0 - pad && x <= S->x1 + pad && z >= S->z0 - pad && z <= S->z1 + pad) out.push_back(S);

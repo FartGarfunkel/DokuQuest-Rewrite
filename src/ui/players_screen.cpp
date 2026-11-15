@@ -33,7 +33,7 @@ bool importSkin(App& a, const fs::path& src, std::string& msg) {
 }
 
 namespace {
-const char* ARMS[3][2] = {{"", "Work it out"}, {"classic", "Classic (Steve, 4 px)"}, {"slim", "Slim (Alex, 3 px)"}};
+const char* ARMS[3][2] = {{"", "Work it out"}, {"classic", "Classic (4 px)"}, {"slim", "Slim (3 px)"}};
 
 class PlayersScreen : public Screen {
 public:
@@ -99,7 +99,7 @@ public:
     const float gx = bk ? 0 : 16 * z;
     ImGui::SetCursorPos(ImVec2(gx, bk ? 4 * z : 14 * z));
     if (!bk) ImGui::BeginGroup();
-    label(F_MID, col::muted, "Up to four people can play on one screen. Player 1 uses the keyboard, mouse or touch (or a controller); everyone else plugs in a controller and presses Start to join. Any Minecraft or Mineclonia skin works \xE2\x80\x94 a 64\xC3\x97" "64 or 64\xC3\x97" "32 skin.png. Drop one on the window, or choose it.", pn.width - 32 * z);
+    label(F_MID, col::muted, "Up to four people can play on one screen. Player 1 uses the keyboard, mouse or touch (or a controller); everyone else plugs in a controller and presses Start to join. Any standard skin works \xE2\x80\x94 a 64\xC3\x97" "64 or 64\xC3\x97" "32 skin.png. Drop one on the window, or choose it.", pn.width - 32 * z);
     ImGui::Dummy(ImVec2(1, 6 * z));
     padScrollHere();
     // ---- the four people of this screen (ui.js: one .profile card each; here a tab per person) ----

@@ -1,5 +1,5 @@
 // assets/skin.h — player skins (port of the data side of render/skins.js and the skin helpers of
-// ui/skineditor.js): the 64x64 Minecraft layout, slim/classic arms, the original's painted default skin,
+// ui/skineditor.js): the 64x64 skin layout, slim/classic arms, the original's painted default skin,
 // legacy 64x32 skins, where skins live and how a skin is named.
 //
 // Skin references (Settings::skin, Player::skin):
@@ -18,7 +18,7 @@ namespace dq {
 // a skin, always 64x64 RGBA (64x32 pictures are converted on load: left limbs mirrored from the right ones)
 struct SkinImage {
   std::vector<u8> px;        // 64 * 64 * 4
-  bool slim = false;         // Alex arms (3 px)
+  bool slim = false;         // slim arms (3 px)
   bool legacy = false;       // came from a 64x32 picture
   SkinImage() : px(64 * 64 * 4, 0) {}
   bool valid() const { return px.size() == 64 * 64 * 4; }
@@ -27,7 +27,7 @@ struct SkinImage {
   u64 hash() const;          // pixels + arms
 };
 
-// How a voxel character is proportioned (the voxel creator's sliders; 1 = Minecraft proportions).
+// How a voxel character is proportioned (the voxel creator's sliders; 1 = the classic blocky proportions).
 struct BodyShape {
   float height = 1, build = 1, head = 1, legs = 1;   // overall height, breadth, head size, leg length
   std::string headShape = "square";                 // square | round | long | wide
@@ -38,7 +38,7 @@ struct BodyShape {
   u64 hash() const;
 };
 
-// the six faces of a box in the Minecraft net, in FACES order (0..5 = +x right, -x left, +y top, -y bottom, +z back, -z front)
+// the six faces of a box in the skin layout's net, in FACES order (0..5 = +x right, -x left, +y top, -y bottom, +z back, -z front)
 struct SkinRect { int x, y, w, h; };
 std::array<SkinRect, 6> skinRects(int u, int v, int w, int h, int d);
 // the skin pixel of face f at (s, t) in 0..1 of that face (skins.js addSkinBox's mapping), c = position in the box 0..1

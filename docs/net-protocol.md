@@ -20,7 +20,7 @@ Modelled on the original `net/net.js` messages (same names and short keys where 
   both ways by key (unknown keys become air). Chunk records use the save codec (palette of keys), so they never
   depend on ids. Entity `data` and block entities should use keys, not ids.
 - Coordinates are global (y 0..1023 across the stacked dimensions). `rl` = realm (0 main, 1 pocket, 2 his realm),
-  `d` = dimension band (0 End, 1 Nether, 2 Overworld, 3 Aether).
+  `d` = dimension band (0 End, 1 Nether, 2 Overworld, 3 Skylands).
 
 ## Joining
 1. client → `hello {proto, version, name, skin, password, R}` (R = view distance in chunks)

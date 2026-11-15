@@ -1,4 +1,4 @@
-// Internal: BTA 8.0.1 block ids / properties and shared state of the Nether generator port.
+// Internal: the classic Nether's block ids / properties and shared state of the Nether generator port.
 #pragma once
 #include <cstdint>
 #include <condition_variable>
@@ -13,7 +13,7 @@
 #include "nethergen_noise.h"
 
 namespace nethergen {
-namespace bid {  // BTA numeric block ids (Blocks.java)
+namespace bid {  // the generator's numeric block ids
 constexpr uint16_t AIR = 0, BASALT = 2, SLATE = 6, COBBLE_BASALT = 12, OBSIDIAN = 180, PUMICE_DRY = 232,
                    PUMICE_WET = 233, BEDROCK = 260, WATER_FLOWING = 270, WATER_STILL = 271, LAVA_FLOWING = 272,
                    LAVA_STILL = 273, ORE_NETHERCOAL_NETHERRACK = 420, ORE_NETHERCOAL_BASALT = 421,
@@ -36,7 +36,7 @@ enum : uint32_t {
   T_CAVES_CUT = 1u << 0, T_CAVE_REPLACES_SURFACE = 1u << 1, T_NETHER_SURFACE = 1u << 2, T_INF_BURN = 1u << 3,
   T_INF_BURN_SULF = 1u << 4, T_IS_LAVA = 1u << 5, T_IS_WATER = 1u << 6, T_BROKEN_BY_FLUIDS = 1u << 7,
   T_PLACE_OVERWRITES = 1u << 8,
-  P_MAT_SOLID = 1u << 12, P_BLOCKS_MOTION = 1u << 13, P_LIQUID = 1u << 14, P_SOLID = 1u << 15,  // Block.solid()
+  P_MAT_SOLID = 1u << 12, P_BLOCKS_MOTION = 1u << 13, P_LIQUID = 1u << 14, P_SOLID = 1u << 15,  // the block's solid() flag
   P_CUBE = 1u << 16, P_SOLID_RENDER = 1u << 17, P_FLUID_LOGIC = 1u << 18, P_KNOWN = 1u << 19,
 };
 
@@ -53,7 +53,7 @@ inline Mat matOf(uint16_t id) { return props(id).mat; }
 enum : uint8_t { BI_OLD_WORLD = 0, BI_CRYSTAL_PLAINS, BI_CRYSTAL_FOREST, BI_SHELF, BI_CRAG, BI_SULFUR_POOLS,
                  BI_VOLCANIC_ISLANDS, BI_OLD_WORLD_DESERT, BI_COUNT };
 
-// Undecorated chunk: blocks after ChunkGeneratorPerlin.doBlockGeneration (terrain+surface+large features)
+// Undecorated chunk: blocks after the block generation pass (terrain+surface+large features)
 struct TerrainChunk {
   uint16_t id[65536];    // (y<<8)|(z<<4)|x
   uint8_t climate[256];  // biome above y=64 at (z<<4)|x  (y < 64 is always OLD_WORLD_DESERT)
@@ -88,7 +88,7 @@ struct NetherGen::Impl {
   // decoration
   Worley pillarWorley;
   Fractal<ImprovedPerlin> crystalDensity;
-  ImprovedPerlin veinNoise;  // WorldFeaturePerlinVein(COBBLE_NETHERRACK_CRYSTALLINE) noiseGen
+  ImprovedPerlin veinNoise;  // the perlin vein feature's (COBBLE_NETHERRACK_CRYSTALLINE) noise
   int64_t decoA, decoB;
   std::vector<int32_t> decoSeeds;
   uint64_t decoMask = ~0ull;  // NamespaceID.toString().hashCode() per registered decoration

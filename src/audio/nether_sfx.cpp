@@ -1,4 +1,4 @@
-// audio/nether_sfx.cpp — the sounds of the Nether's five lands (BTA 8.0's Nether, gen/nether_lands.h), made on the fly
+// audio/nether_sfx.cpp — the sounds of the Nether's five lands (the classic Nether, gen/nether_lands.h), made on the fly
 // with the original's live synthesis ops (audio/dsp.cpp: "tone", "nh" noise hits, "voice", "swell"): the volcanoes'
 // rumble and eruptions, the acid pools' bubbling, the Crystal Forest's chimes, the Old World's hollow wind and the
 // Crag's falling stones. Added to the name table like every other sound (audio/ambience.cpp plays them).

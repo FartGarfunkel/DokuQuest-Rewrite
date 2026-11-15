@@ -1,4 +1,4 @@
-// Bit-exact ports of BTA 8.0.1 noise classes. See nethergen_noise.h.
+// Bit-exact ports of the classic Nether's noise classes. See nethergen_noise.h.
 #if defined(__clang__)
 #pragma clang fp contract(off)
 #elif defined(__GNUC__)

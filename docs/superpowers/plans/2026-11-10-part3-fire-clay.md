@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
 
-**Goal:** Firestarter; the campfire as a TFC firepit (fuel, temperature, rain, heating); item heat; straw, scythe and
+**Goal:** Firestarter; the campfire as a firepit (fuel, temperature, rain, heating); item heat; straw, scythe and
 thatch; clay knapping into unfired pottery and molds; the pit kiln; the charcoal pit.
 
 **Architecture:** Pure sim modules, each one feature: `sim/heat.{h,cpp}` (item temperature in the stack tag, cooling,
@@ -15,7 +15,7 @@ inside `campingTick`), `sim/firestarter.{h,cpp}` (hold-use progress and what it 
 
 ## Global Constraints
 - Time: one in-game hour = (dayMinutes + nightMinutes) × 60 / 24 seconds (`sim/rules.h` ruleNum); pit kiln 3 h,
-  charcoal pit 6 h (a third of TFC's).
+  charcoal pit 6 h (short waits).
 - Every world gets the firepit, firestarter, heat, straw, clay pottery, kilns and charcoal pits; immersive only marks the
   campfire recipe classic-only (you make a firepit from sticks).
 - No hunger; controller: everything here is Use / hold Use.
@@ -31,7 +31,7 @@ inside `campingTick`), `sim/firestarter.{h,cpp}` (hold-use progress and what it 
 ## Rulings made while planning
 - R1: Heat cools in the player's inventory only (and on firepits/kilns heats); items in chests keep their temperature
   until taken (cheap; chests rarely hold hot metal).
-- R2: A firepit's fuel holds up to 4 items (TFC's 4 fuel slots), added by use; logs, planks, sticks, charcoal, coal.
+- R2: A firepit's fuel holds up to 4 items (4 fuel slots), added by use; logs, planks, sticks, charcoal, coal.
 - R3: Charcoal from a finished pit goes into a ground-storage pile (the existing `item_pile`), not a new block.
 - R4: Straw comes from any grass plant broken with a knife or scythe; by hand grass gives what it gave before.
 
@@ -41,7 +41,7 @@ inside `campingTick`), `sim/firestarter.{h,cpp}` (hold-use progress and what it 
 `float itemHeat(const ItemStack&)` (°C, 20 if none); `void setItemHeat(ItemStack&, float)` (≤ 25: tag removed);
 `bool heatable(const std::string& id)` (ingots, ores, ore pieces, heads, double ingots, sheets, blooms, unfired/ceramic
 pottery, crucible); `float heatTowards(float h, float target, float dt)` (rises 60 °C/s toward a hotter target, cools
-2%/s of the gap); `std::string heatName(float)` (TFC: Warming ≥ 80, Hot ≥ 210, Very Hot ≥ 480, Faint Red ≥ 580, Dark Red
+2%/s of the gap); `std::string heatName(float)` (Warming ≥ 80, Hot ≥ 210, Very Hot ≥ 480, Faint Red ≥ 580, Dark Red
 ≥ 730, Bright Red ≥ 930, Orange ≥ 1100, Yellow ≥ 1300, Yellow White ≥ 1400, White ≥ 1500, Brilliant White ≥ 1600);
 `u32 heatGlow(float)` (rgb, 0 below 480). Player inventory cools every second (`sim/worldsys` or campingTick).
 Tooltip line in `ui/item_tooltip_extra.cpp`.

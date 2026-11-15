@@ -1,12 +1,12 @@
-# DokuQuest — Master Development Plan, BTA Integration & Bug Tracker (V2)
+# DokuQuest — Master Development Plan, Classic Content & Bug Tracker (V2)
 
-This document consolidates all project goals, existing development schedules (`SATURDAY_PLAN.md`, `WEEKEND_PLAN.md`), feature gap analyses (`BTA_GAP.md`), engine architecture evaluations (Zig vs. C++), GUI/IDE tooling plans, and the complete inventory of reported bugs, enhancements, and manual coding additions.
+This document consolidates all project goals, existing development schedules (`SATURDAY_PLAN.md`, `WEEKEND_PLAN.md`), feature gap analyses (`WISHLIST.md`), engine architecture evaluations (Zig vs. C++), GUI/IDE tooling plans, and the complete inventory of reported bugs, enhancements, and manual coding additions.
 
 ---
 
 ## Status (2026-11-01, after alpha.11) — the live list is `docs/STATUS.md`
 * **Phase 0** done. **Phase 1:** done except Travel Journal checks at every story stage and the start-to-finish sweep.
-* **Phase 2:** procedural equipment, Cubyz-style LOD (first version), the base pack's relief done; **in progress:** the
+* **Phase 2:** procedural equipment, distant-terrain LOD (first version), the base pack's relief done; **in progress:** the
   engine GUI with Strata, the data archive and game-only launcher updates, the skin audit; **on hold:** per-mob files,
   skin variant folders (creature looks are done another way: tools/port/mob_variants.py), Zig/Rust modules.
 * **Phase 3** done (swimming, lava boats, placing loop, cloth in the wind, creeper/enderman/ghast faces, heads and eggs,
@@ -20,9 +20,9 @@ This document consolidates all project goals, existing development schedules (`S
   cover) and the Texture Studio's creature-skin tab.
 * **Phase 10** done (levelling, magic hands, spell ranks); **in progress:** a cast button for each hand.
 * **Phase 11** done except the player-triggered Wither Storm finale.
-* **Phase 12** done except coloured light, dye-tuned portals and the bigger-biomes option (in progress) and the BTA mob
+* **Phase 12** done except coloured light, dye-tuned portals and the bigger-biomes option (in progress) and the classic mob
   tweaks (open).
-* **Phase 13:** Options and holidays done; **in progress:** the Story Mode animation layer.
+* **Phase 13:** Options and holidays done; **in progress:** the storybook animation layer.
 
 ---
 
@@ -38,7 +38,7 @@ This document consolidates all project goals, existing development schedules (`S
   * Validate `alpha.5.1`'s push-out fix with automated walk/knock tests against walls, ladders, and path blocks (addressing ladder back-clipping and dirt path hangups).
   * Prevent players, mobs, and NPCs of any kind from clipping or standing inside each other on the same block during pathfinding.
   * Mobs/NPCs should physically push each other slightly while remaining able to slip past through tight 1-block spaces (such as doorways).
-  * Integrate [`aitoolkit`](https://github.com/linkdd/aitoolkit) logic to keep town NPCs from pathfinding into wells and stop Aether/Skylands mobs from walking off island edges.
+  * Integrate [`aitoolkit`](https://github.com/linkdd/aitoolkit) logic to keep town NPCs from pathfinding into wells and stop Skylands mobs from walking off island edges.
 * **The Big Sweep:** Comprehensive testing across all systems: menus, saving, crafting, mobs, villages, portals, story, magic, and multiplayer.
 * **User Bug Reports & Optional Polish:** Address all reported bugs; include optional behaviors like crows landing on scarecrows.
 
@@ -47,10 +47,10 @@ This document consolidates all project goals, existing development schedules (`S
 ## Phase 2: Engine Architecture, Tooling, & Asset Foundations
 * **Engine Structure & Tooling GUI:**
   * Build a front-end GUI application for the game engine to streamline file editing, file organization, and real-time visualization.
-  * Hook in **Strata coding AI** to assist with live coding and real-time testing, serving future projects (Voxel Mechwarriors, Voxel MMO World of Warcraft-style game, and D&D campaign world).
+  * Hook in **Strata coding AI** to assist with live coding and real-time testing, serving future projects (a voxel mech game, a voxel MMO, and a tabletop campaign world).
 * **C++ vs. Zig Architecture Evaluation:**
   * *C++ Maintenance:* Retain working C++ engine foundations while integrating optimized open-source Zig/Rust modules via clean C-compatible ABIs (`extern "C"` / `no_mangle`).
-  * *Distant Horizons / Voxy Style LOD:* Implement superior distant chunk meshing and procedural world generation inspired by advanced voxel rendering techniques.
+  * *Far-terrain LOD:* Implement superior distant chunk meshing and procedural world generation inspired by advanced voxel rendering techniques.
   * *Dynamic Procedural Equipment Crafting:* Replace traditional fixed tools/weapons with a procedural system where different ores mix and match to craft items with dynamic stats linked to RPG levelling, repair mechanics, and 3D slot visual rendering of different ores.
 * **Per-Mob Files & Skin Variants:**
   * Move mob stats, models, sounds, spawn rules, and variant definitions to `data/mobs/<mob>.json` (retaining legacy combined file fallback).
@@ -66,19 +66,19 @@ This document consolidates all project goals, existing development schedules (`S
 ---
 
 ## Phase 3: Immediate Gameplay, Physics, & Mechanics Queue
-* **Swimming Overhaul:** Implement smoother, proper swimming mechanics (floating/paddling at the surface like Minecraft rather than thrashing/bobbing).
+* **Swimming Overhaul:** Implement smoother, proper swimming mechanics (floating/paddling at the surface rather than thrashing/bobbing).
 * **Lava Boats:** Add lava-proof craftable boats for navigating subterranean lava lakes.
-* **Block Placement Animation:** Continuous holding/placing of blocks should loop smoothly like Minecraft without resetting or stopping abruptly.
+* **Block Placement Animation:** Continuous holding/placing of blocks should loop smoothly without resetting or stopping abruptly.
 * **Cloth Simulation:** Capes and cloth-like blocks/items must move freely in response to environmental wind, matching banner wind physics.
 * **Mob Visual Updates & Expressions:**
   * *Creeper Scaling:* Fix creeper model proportions and scaling issues.
   * *Enderman Agro:* Implement the iconic mouth-open aggressive face state when aggravated.
   * *Ghast Attack State:* Show the firing/shooting face frame when launching a fireball.
 * **Wither Skeleton Heads & Rare Mob Drops:**
-  * Withers and Wither Skeletons drop heads as rare loot (matching Minecraft drop rates).
+  * Withers and Wither Skeletons drop heads as rare loot (classic drop rates).
   * Introduce wearable/placeable mob heads for all mob types and spawn eggs for every mob.
 * **Bees:** Fix broken bee AI, hive tracking, and flying routines.
-* **Vintage Story-Style World Placement & Ingot Stacking:**
+* **World Placement & Ingot Stacking:**
   * Allow items (e.g., metal ingots) to be placed directly on surfaces in 3D stacks.
   * Ingot stacking pattern: 4 across in one direction, next layer 4 across at 90 degrees, and so on.
 
@@ -90,7 +90,7 @@ This document consolidates all project goals, existing development schedules (`S
   * Add multi-resolution chisel options: **2x2, 4x4, and 8x8** grid configurations for fine detail building.
   * **Chiseled Block Rules:** Chiseled blocks natively fill stair/slab void requirements and must allow torches, lanterns, and smaller items to be mounted directly on them.
 * **Path Block Interaction:**
-  * Fix bug where blocks placed on top of path blocks turn invisible. Revert path blocks to dirt when built on (Minecraft style) or ensure full rendering compatibility when items are attached to them.
+  * Fix bug where blocks placed on top of path blocks turn invisible. Revert path blocks to dirt when built on or ensure full rendering compatibility when items are attached to them.
 * **Lantern Chains:** Ensure lantern chains always connect dynamically to the block face above them instead of hovering in air over half-slabs.
 
 ---
@@ -98,17 +98,17 @@ This document consolidates all project goals, existing development schedules (`S
 ## Phase 5: Village, Housing, & Economy Overhaul
 * **Village Gates:** Fix village gates so they smoothly swing open/closed rather than snapping between visible/invisible states.
 * **Villager AI & Furniture Usage:** Update villager pathfinding so NPCs actually sit on chairs, interact with benches, use church banners, and utilize placed furniture.
-* **Housing Upgrades (Animal Crossing / Skyrim Style):**
+* **Housing Upgrades:**
   * NPC/Villager interaction system allowing players to buy structural home upgrades (expanding floor space, adding a basement, adding a 2nd floor).
-  * Skyrim-style purchasable interior furnishings alongside manual block customization.
+  * Purchasable interior furnishings alongside manual block customization.
 * **Economy Update:** Villagers trade in gold coins instead of emeralds, rebalancing emerald as a precious ore.
 
 ---
 
-## Phase 6: Audio & Music Design (Yáhno & C418 Influence)
+## Phase 6: Audio & Music Design
 * **Music & Ambient Soundtrack:**
-  * Crafted in the style of indie producer **Yáhno** (blending electronic dance music / EDM light rhythms with ancient hammered dulcimer melodies) infused with **C418**-style sparse Minecraft atmospheric synth textures.
-  * Dynamic track sets for Overworld biomes, Aether, Nether, End, Herobrine's realm, caves, boss fights, and more.
+  * Original pieces blending light EDM rhythms with ancient hammered dulcimer melodies, with sparse atmospheric synth textures.
+  * Dynamic track sets for Overworld biomes, Skylands, Nether, End, Herobrine's realm, caves, boss fights, and more.
 * **Sound Overhaul:** Match original HTML events (volumes, falloff, cave reverb, material footsteps, mining/breaking/placing, mobs, UI, ambience, music, plus your custom recordings).
 * **Sound Studio (Launcher Tool):**
   * Built-in browser for all game sounds with a modular synth sandbox to tweak/audition sounds.
@@ -125,7 +125,7 @@ This document consolidates all project goals, existing development schedules (`S
 ## Phase 8: Feel, Polish, & Particle Overhaul
 * **Particle Overhaul:** Replicate emitter effects: handheld and placed lights (torches with flame, smoke, and movement trails), block breaking, footsteps, water/lava, mobs, spells, portals, and weather.
 * **Bows (Players & Skeletons):** Correct grip (middle grip with string facing archer), upright orientation, multi-stage draw animation (string to cheek, bow arm forward), correct scale in first and third person.
-* **Elytra Gliding:** Minecraft-style pitch-based lift/drag, speed conservation from dives, upper-back positioning, and weather wind interaction (headwinds lift, tailwinds push, crosswinds drift, gusts provide updrafts).
+* **Elytra Gliding:** Pitch-based lift/drag, speed conservation from dives, upper-back positioning, and weather wind interaction (headwinds lift, tailwinds push, crosswinds drift, gusts provide updrafts).
 * **End Gateways:** Functional ender pearl teleportation.
 
 ---
@@ -142,7 +142,7 @@ This document consolidates all project goals, existing development schedules (`S
 
 ## Phase 10: RPG Levelling & Magic Overhaul
 * **RPG Levelling:** Port the HTML levelling system: tools, weapons, and armor gain XP through active use (mining, striking, taking damage) and level up with stat bonuses, tooltips, particle/audio feedback, and persistent save states.
-* **Magic Overhaul & Skyrim-Style Hands:**
+* **Magic Overhaul & Spell Hands:**
   * Dual-wield spelling mechanics: combine identical spells, mix distinct spells, or pair weapons with off-hand spells.
   * Spells level up with active use.
 
@@ -159,17 +159,17 @@ This document consolidates all project goals, existing development schedules (`S
 
 ---
 
-## Phase 12: Better Than Adventure (BTA) Feature Integration
-* **Content Expansion:** Implement BTA-inspired biomes (Outback/Redlands, Swamplands/Mossmire, Seasonal Forest, Glacier, Caatinga/Thornscrub), custom blocks (Pumice, Cinder Sand, Emberglass, painted planks, spike traps, trommels/sieves), and structures.
+## Phase 12: Classic Content Expansion
+* **Content Expansion:** Implement new biomes (Outback/Redlands, Swamplands/Mossmire, Seasonal Forest, Glacier, Caatinga/Thornscrub), custom blocks (Pumice, Cinder Sand, Emberglass, painted planks, spike traps, trommels/sieves), and structures.
 * **Mob & Boss Additions:** Biome fuselings, articulated biome iron golems with glowing eyes, player-summoned Wither boss, mob heads/skulls as drops, and spawn eggs for every mob.
-* **End & Skylands Overhauls:** Proper End cities, ships, shulkers, and Nullscape-style outer End terrain. Aether-style Skylands islands, holystone, aerclouds, and dungeons.
+* **End & Skylands Overhauls:** Proper End cities, ships, shulkers, and outer End terrain (spires, arches, floating chunks). Skylands islands, holystone, aerclouds, and dungeons.
 * **Boss Music:** Restore HTML boss battle themes for dragon, keepers, and Wither fights.
 
 ---
 
-## Phase 13: Story Mode-Style Animation & Backlog
-* **Story Mode-Style Animation:** A unified shared animation layer providing fluid, expressive movement, follow-through on capes/hair/tails, anticipation and weight, head/eye tracking, foot planting on slopes, varied idles, and smooth turning.
+## Phase 13: Storybook-Style Animation & Backlog
+* **Storybook-Style Animation:** A unified shared animation layer providing fluid, expressive movement, follow-through on capes/hair/tails, anticipation and weight, head/eye tracking, foot planting on slopes, varied idles, and smooth turning.
 * **Backlog:**
-  * Over/Under-style original procedural music sets per biome and dimension.
+  * Original "over" and "under" procedural music sets per biome and dimension.
   * Launcher-styled in-game Options screen.
   * PC-clock holiday events (Halloween, Christmas, etc.) with seasonal villager town decorations.

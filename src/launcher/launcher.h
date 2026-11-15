@@ -1,7 +1,7 @@
 // launcher/launcher.h — the DokuQuest launcher (port of launcher/desktop/launcher.html + main.js):
 // news (patch notes), your worlds, player name, Play (starts the game as a child process), game folder,
 // options (renderer, graphics presets with GPU auto-detect, packs, updates), the dedicated server and the
-// Mod Studio. Drawn with Dear ImGui in the original's dark "Doku" look (dirt, grey Minecraft-style buttons).
+// Mod Studio. Drawn with Dear ImGui in the original's dark "Doku" look (dirt, grey blocky buttons).
 #pragma once
 #include "common/settings.h"
 #include "launcher/process.h"

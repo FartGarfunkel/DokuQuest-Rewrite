@@ -1,4 +1,4 @@
-// ui/photo_mode.cpp — Better than Adventure 8.0.1's Photo Mode (its GuiPhotoMode: "Photo Mode..." in the pause menu, or
+// ui/photo_mode.cpp — Photo Mode ("Photo Mode..." in the pause menu, or
 // the photo mode key, F6). The camera leaves you and flies on its own, up to 48 blocks off; the world stands still in a
 // world of your own (a shared one keeps going); the HUD is put away. The panel down the left side: Take Screenshot (the
 // panel hides for it), Center Camera, Show Player, Time of Day, Season, Fog, Tilt, Field of View, Shader and its

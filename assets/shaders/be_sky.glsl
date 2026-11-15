@@ -1,5 +1,5 @@
-// be_sky.glsl — Better End's End sky layers (render/be_sky.cpp): a texture (or a flat colour) times a colour, blended
-// over the fog-coloured background. No distance fog, like Better End's sky shaders.
+// be_sky.glsl — the End's sky layers (render/be_sky.cpp): a texture (or a flat colour) times a colour, blended
+// over the fog-coloured background. No distance fog.
 #include "common.glsl"
 #ifdef VERTEX
 layout(location = 0) in vec3 aPos;

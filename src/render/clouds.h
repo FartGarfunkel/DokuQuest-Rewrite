@@ -1,4 +1,4 @@
-// render/clouds.h — clouds, Cube World style (render/clouds.js + the weather's clouds from
+// render/clouds.h — chunky voxel clouds (render/clouds.js + the weather's clouds from
 // game/skies.js): voxel cumulus heaps of rounded puffs with smaller puffs boiling up on top, in two
 // layers, shaded like a soft volume (bright crowns, grey-blue bellies, a hazy halo near you), drifting
 // with the wind; thick, dark and towering where a storm is, wisps running ahead of a front, lit

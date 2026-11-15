@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""tools/port/trommel.py — Better than Adventure 8.0's Trommel (idempotent; data_patches.py runs it):
+"""tools/port/trommel.py — the Trommel (idempotent; data_patches.py runs it):
 
   python3 tools/port/trommel.py <data-dir>
 
-The block (trommel, and lit_trommel while it turns), its recipe (BTA's: cobblestone round an iron mesh over a row of
-logs), the two things BTA's trommel gives that DokuQuest lacked — pebbles (2x2 make 2 cobblestone, with flint they make
-gravel) and olivine (a green gem; with glass it makes tinted glass) — and the sifting table, BTA's recipes/trommel.json
-with each BTA item swapped for this game's (sulfur -> sulphur, nether coal -> ember coal, raw iron / gold -> crushed iron
+The block (trommel, and lit_trommel while it turns), its recipe (cobblestone round an iron mesh over a row of
+logs), the two things the trommel gives that DokuQuest lacked — pebbles (2x2 make 2 cobblestone, with flint they make
+gravel) and olivine (a green gem; with glass it makes tinted glass) — and the sifting table (recipes/trommel.json)
+with each item swapped for this game's (sulfur -> sulphur, nether coal -> ember coal, raw iron / gold -> crushed iron
 / gold, the dye -> an ink sac, cloth -> rotten cloth, chainlink -> chain), written to data/trommel.json for
 sim/trommel.cpp. Pictures: the DokuQuest Base pack's own (cobblestone, iron bars, gravel, oak log), put together the
-way BTA's trommel looks: a stone frame round a dark mesh drum (full of gravel while it turns), logs underneath.
+way the trommel looks: a stone frame round a dark mesh drum (full of gravel while it turns), logs underneath.
 """
 import json, pathlib, sys
 import numpy as np
@@ -17,7 +17,7 @@ from PIL import Image
 
 PACK = 'resourcepacks/DokuQuest Base/assets/minecraft/textures'
 
-# BTA's table: input -> [(weight, item, min, max)]   (recipes/trommel.json, BTA 8.0.1)
+# the sifting table: input -> [(weight, item, min, max)]   (recipes/trommel.json)
 SIFT = {
     'dirt':      [(35, 'pebble', 1, 2), (15, 'clay_ball', 1, 4), (7.5, 'flint', 1, 2), (2, 'gunpowder', 1, 1), (0.5, 'crushed_iron', 1, 1), (0.25, 'olivine', 1, 1), (0.25, 'quartz', 1, 1)],
     'gravel':    [(25, 'flint', 1, 2), (30, 'olivine', 1, 3), (15, 'pebble', 1, 4), (5, 'crushed_iron', 1, 2), (5, 'ink_sac', 2, 6), (4, 'redstone', 2, 4), (0.5, 'quartz', 1, 1)],
@@ -29,7 +29,7 @@ SIFT = {
     'rich_scorched_dirt': [(17, 'crushed_gold', 1, 2), (17, 'crushed_iron', 1, 2), (24, 'quartz', 1, 4), (24, 'olivine', 1, 4), (17, 'ink_sac', 1, 4), (8, 'clay_ball', 4, 8), (5, 'pebble', 1, 5)],
     'sulphur_block': [(30, 'glowstone_dust', 2, 5), (20, 'sulphur', 2, 4), (10, 'bone', 1, 2), (5, 'flint', 1, 2), (4, 'crushed_iron', 1, 2)],
 }
-# BTA's trommel_dirt group: dirt, scorched dirt, grass, retro grass, scorched grass, path, farmland
+# the trommel_dirt group: dirt, scorched dirt, grass, retro grass, scorched grass, path, farmland
 ALIAS = {'scorched_dirt': 'dirt', 'grass': 'dirt', 'grass_block': 'dirt', 'dirt_path': 'dirt', 'farmland': 'dirt', 'coarse_dirt': 'dirt', 'rooted_dirt': 'dirt',
          'brimstone': 'sulphur_block'}
 

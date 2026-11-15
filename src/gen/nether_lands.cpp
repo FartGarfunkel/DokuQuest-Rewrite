@@ -52,7 +52,7 @@ void NetherShape::biomeMix(int x, int z, u8& a, u8& b, float& mix) const {
 double NetherShape::sulfurBase(int x, int z) const { return 57 + 3.5 * nA.noise2(x / 56.0 - 20, z / 56.0) + 1.5 * nB.noise2(x / 15.0, z / 15.0); }
 
 double NetherShape::floorOf(int b, int x, int z, NetherCol& c) const {
-  if (open8_) {   // terrain 8: BTA's seven lands as walkable ground (version 5's shapes unchanged for its worlds)
+  if (open8_) {   // terrain 8: the classic seven lands as walkable ground (version 5's shapes unchanged for its worlds)
     switch (b) {
       case NB_CRAG: {   // rolling crags, a ridge here and there, the odd short spire
         double h = 66 + 10 * nA.noise2(x / 80.0, z / 80.0) + 4 * nB.noise2(x / 24.0, z / 24.0);
@@ -482,7 +482,7 @@ void DepthsGen::sampleLands(int wx, int wz, ColumnSample& s) const {
 }
 
 // =================================================================================================== version 6
-// Cave density follows BTA 8.0's Nether generator: two limit noises and a main noise, divided and lerped,
+// Cave density follows the classic Nether generator: two limit noises and a main noise, divided and lerped,
 // with a cosine wall and a fade to air at the top of the upper three-quarter field. The field is stored
 // on sample rows 8..32 of a 33-tall column (4 blocks in x/z, 8 in y). The bottom quarter stays open so
 // the sea can reach the thin bedrock cap — a solid slab there would trap the stacked-world shaft.
@@ -514,8 +514,8 @@ double NetherClimate::f3(const SimplexNoise& n, double x, double y, double z, in
 double NetherClimate::f2(const SimplexNoise& n, double x, double z, double scale, double lac) const {
   double sum = 0, freq = 1, amp = 1;
   x *= scale; z *= scale;
-  // version 7: each of BTA's 2D simplex octaves also does scale /= 1.5 and amplitude *= 0.55 (SimplexNoise.addRegion),
-  // which makes the lands BTA's size and share (Volcanic a third, the Old World a tenth)
+  // version 7: each of the classic 2D simplex octaves also does scale /= 1.5 and amplitude *= 0.55 (when added),
+  // which makes the lands the classic size and share (Volcanic a third, the Old World a tenth)
   const double inner = ver_ >= 7 ? 1.0 / 1.5 : 1.0, gain = ver_ >= 7 ? 0.55 : 1.0;
   for (int i = 0; i < 4; i++) {
     sum += n.noise2(x * freq * inner, z * freq * inner) * amp * gain;
@@ -533,7 +533,7 @@ void NetherClimate::climateAt(int x, int z, double& temp, double& humid) const {
   humid = (hn * 0.15 + 0.5) * 0.998 + a * 0.002;
   temp = std::clamp(temp, 0.0, 1.0);
   humid = std::clamp(humid, 0.0, 1.0);
-  if (ver_ >= 7) { temp = std::floor(temp * 50) / 50; humid = std::floor(humid * 50) / 50; }   // BTA's BiomeRangeLookup(span 50)
+  if (ver_ >= 7) { temp = std::floor(temp * 50) / 50; humid = std::floor(humid * 50) / 50; }   // the biome range lookup (span 50)
 }
 u8 NetherClimate::biomeFrom(double temp, double humid, int y) const {
   // Exclusive upper bounds. Clamp so 1.0 still lands in the top bin, matching a quantized lookup.
@@ -568,7 +568,7 @@ double NetherClimate::fieldDensity(int ix, int dy, int iz, int octaves) const {
   const double freq = std::ldexp(1.0, -skip), amp = std::ldexp(1.0, skip);
   const double minD = f3(nMin, ix * 684.412, dy * 2053.236, iz * 684.412, octaves, freq, amp) / 512.0;
   const double maxD = f3(nMax, ix * 684.412, dy * 2053.236, iz * 684.412, octaves, freq, amp) / 512.0;
-  // BTA's main noise has 8 octaves starting at frequency 1, amplitude 1 (version 6 started it 256x too low and loud)
+  // the classic main noise has 8 octaves starting at frequency 1, amplitude 1 (version 6 started it 256x too low and loud)
   const int mOct = std::min(octaves, 8), mSkip = 8 - mOct;
   const double main = ver_ >= 7 ? f3(nMain, ix * 8.55515, dy * 34.2206, iz * 8.55515, mOct, std::ldexp(1.0, -mSkip), std::ldexp(1.0, mSkip)) / 10.0
                                 : f3(nMain, ix * 8.55515, dy * 34.2206, iz * 8.55515, octaves, freq, amp) / 10.0;
@@ -624,7 +624,7 @@ bool NetherClimate::solidAt(int x, int y, int z) const {
 bool netherExactLand(i32 seed, int x, int y, int z, u8& land);   // gen/nether_exact.cpp
 void netherLandAt(i32 seed, int genVersion, int worldX, int worldY, int worldZ, u8& a, u8& b, float& mix) {
   if (genVersion < 6) { netherBiomeMix(seed, worldX, worldZ, a, b, mix); return; }
-  if (genVersion >= 7) {   // BTA's own biomes (exact)
+  if (genVersion >= 7) {   // the classic biomes (exact)
     const int y = std::clamp(worldY - dimBase(DIM_NETHER), 0, 255);
     netherExactLand(seed, worldX, y, worldZ, a); b = a; mix = 1.f;
     return;
@@ -643,7 +643,7 @@ void netherLandAt(i32 seed, int genVersion, int worldX, int worldY, int worldZ, 
 namespace {
 struct Skin { BlockId top, fill; bool old; };
 Skin skinFor(const GenBlocks& B, u8 biome, bool v7 = false) {
-  if (v7) switch (biome) {   // BTA 8.0's SurfaceProperties
+  if (v7) switch (biome) {   // the classic surface properties
     case NB_VOLCANIC: return {B.brimsand ? B.brimsand : B.cinder_sand, B.nether_brimstone ? B.nether_brimstone : B.basalt, false};
     case NB_SULFUR: return {B.nether_brimstone ? B.nether_brimstone : B.basalt, B.nether_brimstone ? B.nether_brimstone : B.basalt, false};
     case NB_OLDWORLD: return {B.ash, B.ash, true};
@@ -714,7 +714,7 @@ void DepthsGen::generateCave(Chunk& ch) {
   std::fill(ch.climate.begin(), ch.climate.end(), (u8)128);
   const int bx = ch.cx * CS, bz = ch.cz * CS;
   const NetherClimate& C = *cave_;
-  const bool v7 = C.version() >= 7;   // BTA's Nether as BTA makes it (terrain version 7)
+  const bool v7 = C.version() >= 7;   // the classic Nether, exact (terrain version 7)
   const BlockId cobble = v7 && B.cobbled_netherrack ? B.cobbled_netherrack : B.emberstone;
   // 5 x 25 x 5 density samples. Neighbouring chunks share the edge sample, so the caves join.
   float grid[5][FIELD_Y][5];
@@ -753,7 +753,7 @@ void DepthsGen::generateCave(Chunk& ch) {
   };
   auto deepOf = [&](u8 biome, int wx, int y, int wz) {
     const bool flip = hashFloat(wx, y, wz, seed_ ^ 0x5A1) < 0.5;
-    if (v7) switch (biome) {   // BTA: rack/cobble, cobble in the crystal lands, brimsand, brimstone, gloomstone/cobbled
+    if (v7) switch (biome) {   // rack/cobble, cobble in the crystal lands, brimsand, brimstone, gloomstone/cobbled
       case NB_VOLCANIC: return B.brimsand ? B.brimsand : B.cinder_sand;
       case NB_SULFUR: return B.nether_brimstone ? B.nether_brimstone : B.basalt;
       case NB_OLDWORLD: case NB_OLD_DESERT: return flip && B.cobbled_gloomstone ? B.cobbled_gloomstone : B.gloomstone ? B.gloomstone : B.slate;
@@ -792,7 +792,7 @@ void DepthsGen::generateCave(Chunk& ch) {
   auto mixPlace = [&](u8 biome, BlockId id, int wx, int y, int wz) {
     if (!id) return id;
     const bool flip = hashFloat(wx, y, wz, seed_ ^ 0xA11) < 0.5;
-    if (v7) {   // BTA's mixStoneVariant
+    if (v7) {   // the stone variant mix
       if ((biome == NB_CRAG || biome == NB_SHELF) && id == cobble) return flip ? B.netherrack : cobble;
       if ((biome == NB_OLDWORLD || biome == NB_OLD_DESERT) && (id == B.gloomstone || id == B.cobbled_gloomstone) && B.cobbled_gloomstone) return flip ? B.cobbled_gloomstone : B.gloomstone;
       return id;
@@ -899,7 +899,7 @@ void DepthsGen::generateCave(Chunk& ch) {
     }
     return false;
   };
-  if (v7) {   // BTA 8.0's large features and decorations (gen/nether_lands7.cpp)
+  if (v7) {   // the classic large features and decorations (gen/nether_lands7.cpp)
     u8 atSea[256];
     for (int i = 0; i < 256; i++) atSea[i] = cols[i].atSea;
     netherFeatures7(b, ch.cx, ch.cz, atSea);

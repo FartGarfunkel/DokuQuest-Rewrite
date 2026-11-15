@@ -43,7 +43,7 @@ Files: `src/sim/portals.{h,cpp}`, `src/sim/seamless.{h,cpp}`, `src/render/portal
   (doku.js painter colours; the End's starry deep; rift purple).
 - **Stacked worlds** (`SeamlessSystem`, main realm only): crossing a band edge while moving gives the
   original's notices and effects — Skylands → Overworld: cloud-bank slow fall; Overworld top → Skylands:
-  the updraft (along under the islands, up, across onto the nearest island from the Aether generator's
+  the updraft (along under the islands, up, across onto the nearest island from the Skylands generator's
   `sample`); Overworld floor → Depths: a shaft is broken through the Depths' roof; Depths → End: void
   winds carry you to the nearest End island; End → Depths: a pocket opens in the Depths' floor (void
   crust). Void below y −32 (side realms: their band − 32) hurts 4 per tick, creative too (local.js).

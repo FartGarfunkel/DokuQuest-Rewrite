@@ -98,7 +98,7 @@ public:
         m->data[dungeon ? "dungeon" : "structBoss"] = S->id; m->huntT = 60; m->persistent = true; m->kept = true;
         if (type == "valkyrie_queen" && isCreatureType("valkyrie"))   // her guard wakes with her (tools/port/skylands_more.py)
           for (int k = 0; k < 2; k++) if (Creature* g = spawnCreature(l, REALM_MAIN, "valkyrie", at + vec3(k ? 2.5f : -2.5f, 0, 1.5f))) { g->huntT = 60; g->persistent = true; }
-        if (type == "sun_spirit" && isCreatureType("fire_minion"))   // the Aether's gold dungeon: two fire minions with it (tools/port/skyland_mobs.py)
+        if (type == "sun_spirit" && isCreatureType("fire_minion"))   // the Skylands' gold dungeon: two fire minions with it (tools/port/skyland_mobs.py)
           for (int k = 0; k < 2; k++) if (Creature* g = spawnCreature(l, REALM_MAIN, "fire_minion", at + vec3(k ? 4.f : -4.f, 0, -2.f))) { g->huntT = 60; g->persistent = true; }
         rec["bossUp"] = 1;
         l.fx->sound(dungeon ? "spell_zap" : "levelup", at + vec3(0, 2, 0), 40);

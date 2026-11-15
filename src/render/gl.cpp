@@ -11,7 +11,7 @@ static std::string g_shaderPack;
 static std::set<Shader*>& liveShaders() { static std::set<Shader*>* s = new std::set<Shader*>(); return *s; }   // kept past exit
 static bool g_noPack = false;   // compiling a pack's shader failed: this one falls back to the game's own
 
-// Shader packs (OptiFine style): a folder userDir()/shaderpacks/<name>/ whose files replace the game's
+// Shader packs: a folder userDir()/shaderpacks/<name>/ whose files replace the game's
 // shaders of the same name (chunk.glsl, sky.glsl, clouds.glsl, common.glsl, ...); everything else stays.
 // A pack file that doesn't compile falls back to the built-in one (the log says which).
 void setShaderPack(const std::string& name) {
@@ -19,9 +19,9 @@ void setShaderPack(const std::string& name) {
   if (name.empty()) { DQ_LOG("shader pack: none"); return; }
   fs::path dir = userDir() / "shaderpacks" / name;
   std::error_code ec;
-  if (fs::exists(dir, ec) && !fs::is_directory(dir, ec)) { DQ_LOG("shader pack '%s': an Iris/OptiFine pack (its post passes run: render/post_layer.cpp)", name.c_str()); return; }
+  if (fs::exists(dir, ec) && !fs::is_directory(dir, ec)) { DQ_LOG("shader pack '%s': a full shader pack (its post passes run: render/post_layer.cpp)", name.c_str()); return; }
   if (!fs::is_directory(dir, ec)) { DQ_WARN("shader pack '%s' not found in %s", name.c_str(), (userDir() / "shaderpacks").string().c_str()); return; }
-  if (fs::is_directory(dir / "shaders", ec)) DQ_LOG("shader pack '%s': an Iris/OptiFine pack (its post passes run: render/post_layer.cpp)", name.c_str());
+  if (fs::is_directory(dir / "shaders", ec)) DQ_LOG("shader pack '%s': a full shader pack (its post passes run: render/post_layer.cpp)", name.c_str());
   std::string files;
   for (auto& e : fs::directory_iterator(dir, ec)) if (e.path().extension() == ".glsl") files += (files.empty() ? "" : ", ") + e.path().filename().string();
   DQ_LOG("shader pack '%s': replaces %s", name.c_str(), files.empty() ? "nothing (no .glsl files)" : files.c_str());
@@ -32,7 +32,7 @@ std::vector<std::string> listShaderPacks() {
   std::error_code ec;
   fs::path dir = userDir() / "shaderpacks";
   if (fs::is_directory(dir, ec)) for (auto& e : fs::directory_iterator(dir, ec)) {
-    // folders (our own packs, or an Iris/OptiFine pack unpacked), and Iris/OptiFine packs as they come, zipped
+    // folders (our own packs, or a full shader pack unpacked), and full shader packs as they come, zipped
     if (e.is_directory(ec)) out.push_back(e.path().filename().string());
     else if (toLower(e.path().extension().string()) == ".zip") out.push_back(e.path().filename().string());
   }

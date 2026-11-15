@@ -468,7 +468,7 @@ static const std::map<std::string, Mood>& moods() {
     // ---- the End and his realm: lands of their own ----
     {"end", {{"whole", "phrygian"}, {40, 42}, {50, 60}, 0.3f, -2, {{0, 1, 0, 4}, {0, 5, 1, 0}}, 0.45f, true, false, "celesta", "choir", "musicbox", "choir", "", "musicbox"}},
     {"hisrealm", {{"phrygian", "harmonic"}, {38}, {44, 52}, 0.25f, -4, {{0, 1, 0, 1}, {0, 1, 6, 0}}, 0.2f, true, false, "mezzo", "", "cello", "choir", "", "musicbox"}},
-    // ---- the newer lands (Better than Adventure's biomes) ----
+    // ---- the newer lands (the classic-era biomes) ----
     {"redlands", {{"minpenta", "dorian"}, {50, 52}, {78, 90}, 0.6f, 0, {{0, 3, 4, 3}, {0, 4, 3, 0}}, 0, false, false, "guitar", "bandora", "pluck", "pad", "hand"}},
     {"glacier", {{"lydian", "aeolian"}, {55, 57}, {48, 58}, 0.4f, 4, {{0, 5, 3, 4}, {0, 1, 4, 0}}, 0.6f, false, true, "celesta", "musicbox", "harp", "strings", "", "celesta"}},
     {"mossmire", {{"dorian", "aeolian"}, {45, 48}, {56, 66}, 0.45f, -2, {{0, 6, 0, 4}, {0, 3, 1, 0}}, 0, true, false, "clarinet", "flute", "pluck", "pad", "hand"}},

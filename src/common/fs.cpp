@@ -86,7 +86,7 @@ bool writeFileAtomic(const fs::path& p, const void* data, size_t n) {
 std::optional<json> readJson(const fs::path& p) {
   auto s = readFile(p);
   if (!s) return std::nullopt;
-  // (comments allowed: some mods' data has them, as Minecraft reads it)
+  // (comments allowed: some mods' data has them)
   try { return json::parse(*s, nullptr, true, true); } catch (std::exception& e) { DQ_WARN("bad json %s: %s", p.string().c_str(), e.what()); return std::nullopt; }
 }
 bool writeJson(const fs::path& p, const json& j, bool pretty) {

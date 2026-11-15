@@ -4,7 +4,7 @@
 //          into (the solid scene copied before the water: the bottom bent by the ripples, deeper water more of its colour)
 //   Ultra: a bigger, finer shadow map, reflections in the water (traced across that copy), shading in the corners (from
 //          its depth, laid over the solid scene before the water and the hand go in)
-// Off in split screen, through portals, with an Iris/OptiFine pack (it lights the world itself) and on Vulkan.
+// Off in split screen, through portals, with a full shader pack (it lights the world itself) and on Vulkan.
 #pragma once
 #include "render/gl.h"
 #include "render/frame.h"

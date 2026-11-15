@@ -23,7 +23,7 @@ struct Rng {   // small and deterministic (the same pictures every run)
 void put(Img& c, int x, int y, u8 r, u8 g, u8 b, u8 a) {
   if (x < 0 || y < 0 || x >= c.w || y >= c.h) return;
   u8* p = c.at(x, y);
-  if (a > p[3]) { p[0] = r; p[1] = g; p[2] = b; p[3] = a; }   // highest alpha wins (as Particle Rain merges)
+  if (a > p[3]) { p[0] = r; p[1] = g; p[2] = b; p[3] = a; }   // highest alpha wins
 }
 Img blank(int n) { Img c; c.w = c.h = n; c.px.assign((size_t)n * n * 4, 0); return c; }
 
@@ -49,7 +49,7 @@ Img drawSnow(int i, int n) {   // a few pixel flakes: dots, small squares, littl
   }
   return c;
 }
-Img drawRipple(int i, int n) {   // Particle Rain's ring: a Bresenham circle, radius (n/2)/8 * (i+1)
+Img drawRipple(int i, int n) {   // the ring: a Bresenham circle, radius (n/2)/8 * (i+1)
   Img c = blank(n);
   int R = std::clamp((int)((n / 2.f) / 8.f * (i + 1)), 1, n / 2 - 1), cx = n / 2, cy = n / 2;
   auto oct = [&](int x, int y) {
@@ -105,7 +105,7 @@ Img fromTile(const TileSet& ts, const char* name, int n) {
   return c;
 }
 
-// ---- from the resource pack (Particle Rain's SpriteLoaderMixin + TextureUtil) ----
+// ---- from the resource pack ----
 bool loadPng(const std::string& rel, Img& out) {
   PackFS* pk = activePack();
   if (!pk || !pk->hasTextures()) return false;
@@ -116,13 +116,13 @@ bool loadPng(const std::string& rel, Img& out) {
   out.w = w; out.h = h; out.px = std::move(rgba);
   return true;
 }
-void boostAlpha(Img& s) {   // TextureUtil.boostAlpha: a faint sheet is made as opaque as its most opaque pixel allows
+void boostAlpha(Img& s) {   // a faint sheet is made as opaque as its most opaque pixel allows
   int hi = 0; for (size_t i = 3; i < s.px.size(); i += 4) hi = std::max<int>(hi, s.px[i]);
   if (hi == 0 || hi == 255) return;
   int mul = 255 / hi; if (mul <= 1) return;
   for (size_t i = 3; i < s.px.size(); i += 4) s.px[i] = (u8)std::min(255, s.px[i] * mul);
 }
-void desaturate(Img& s) {   // TextureUtil.desaturate: grey = the brightest channel (the rain is tinted per particle)
+void desaturate(Img& s) {   // grey = the brightest channel (the rain is tinted per particle)
   for (size_t i = 0; i < s.px.size(); i += 4) { u8 g = std::max({s.px[i], s.px[i + 1], s.px[i + 2]}); s.px[i] = s.px[i + 1] = s.px[i + 2] = g; }
 }
 // slice i of a 2-column sheet (column-major: row i % rows, column i / rows), flipped both ways like copyRect(..,true,true)

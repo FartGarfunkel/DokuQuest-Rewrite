@@ -278,7 +278,7 @@ void tickSleep(Level& lv, double dt) {
   t += dt;
   if (t < 1.8) return;
   t = 0;
-  // nightmares (BTA's doNightmares, Minecraft beta's): asleep in the dark in the Overworld with monsters about, one may find
+  // nightmares: asleep in the dark in the Overworld with monsters about, one may find
   // its way to your bed and wake you, and the night goes on
   if (rule(lv, "nightmares") && !lv.isRemote() && rule(lv, "mobSpawning")) {
     bool woken = false;
@@ -433,7 +433,7 @@ static void dropUnsupported(Level& lv, World& w, int x, int y, int z, BlockId ne
   }
 }
 
-// Pumice (our take on BTA's): it soaks up the lava round it — a flood fill of up to 64 lava cells within 6 — and turns
+// Pumice: it soaks up the lava round it — a flood fill of up to 64 lava cells within 6 — and turns
 // molten; water cools molten pumice back. Started when either is put down next to the other.
 static void pumiceSoak(World& w, int x, int y, int z) {
   const Registry& R = reg();
@@ -496,7 +496,7 @@ void onBlockChangedRules(Level& lv, World& w, int x, int y, int z, BlockId oldId
       else if (R.tLiquid[newId] == 1) for (auto& n : N6) if (w.getBlock(x + n[0], y + n[1], z + n[2]) == molten) cool(x + n[0], y + n[1], z + n[2]);
     }
   }
-  // a dirt path under a new solid block packs back into dirt (Minecraft)
+  // a dirt path under a new solid block packs back into dirt
   if (R.tSolid[newId] && !R.tShape[newId] && B.dirt_path && B.dirt && w.getBlock(x, y - 1, z) == B.dirt_path) w.setBlock(x, y - 1, z, B.dirt);
   for (auto& h : hooks().blockChanged) h(lv, w, x, y, z, oldId, newId);
   villageSeatChanged(lv, w, x, y, z, oldId, newId);   // furniture put down in a village gets used

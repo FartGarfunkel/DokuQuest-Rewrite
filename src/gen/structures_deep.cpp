@@ -93,7 +93,7 @@ static void strongholdBuild(ChunkWriter& w, const StructurePlan& S) {
 }
 
 // a deep world (terrain 21): the Deep Dark and the places in it sit 60 rows lower, under the Overworld's floor
-// (Minecraft's y -45..-11 for the Deep Dark, its cities near the bottom as Minecraft's at -27; carveDeep matches)
+// (the imported data's y -45..-11 for the Deep Dark, its cities near the bottom at -27; carveDeep matches)
 static int deepDy(const TerrainQuery& t) { const OverworldGen* ow = owOf(t); return ow && ow->deepStructs() ? OverworldGen::DEEP_DARK_DY : 0; }
 
 // ==== Ancient Cities (STRUCTS 8) =====================================================================================

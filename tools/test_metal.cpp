@@ -1,5 +1,5 @@
 // tools/test_metal.cpp — headless checks for metallurgy (core/metals.h, core/tool_parts.h, sim/metalwork.h, sim/forge.h,
-// sim/anvil.h, sim/bloomery.h; after TerraFirmaCraft): metals and alloys, makeup-blended tools, ores, vessels and casting,
+// sim/anvil.h, sim/bloomery.h): metals and alloys, makeup-blended tools, ores, vessels and casting,
 // the forge, the anvil, the bloomery, quenching and the prospector's pick. Run: build/test_metal (exit code = failures)
 #include "core/init.h"
 #include "core/registry.h"
@@ -365,7 +365,7 @@ int main(int argc, char** argv) {
     std::string why;
     check(!anvilCanWork(cold, *pick, 1, &why) && anvilCanWork(hot, *pick, 1, &why), "a cold ingot can't be worked; a hot one can");
     ItemStack hotIron("iron_ingot", 1); setItemHeat(hotIron, 1200);
-    // an anvil works its own tier and the one above (TFC): stone works copper (to make the first anvil), bronze works iron
+    // an anvil works its own tier and the one above: stone works copper (to make the first anvil), bronze works iron
     check(anvilCanWork(hot, *pick, 0, &why), "the stone anvil works copper (the first anvil comes from it)");
     check(!anvilCanWork(hotIron, *pick, 1, &why) && anvilCanWork(hotIron, *pick, 2, &why), "iron needs a bronze anvil, not a copper one");
     ItemStack outp = anvilOutput(*pick, hot, 1.15f);
@@ -453,7 +453,7 @@ int main(int argc, char** argv) {
     check(mend.ok && mend.out.d < 40, "a worn procedural iron helmet mends at the anvil with iron");
   }
 
-  printf("[TFC progression: no shortcuts]\n");
+  printf("[immersive progression: no shortcuts]\n");
   {
     auto recipeFor = [](const std::string& out, const std::string& anyIn) -> const Recipe* {
       for (auto& r : reg().recipes) if (r.out == out) { const std::string j = json(r.items).dump() + json(r.key).dump(); if (j.find(anyIn) != std::string::npos) return &r; }

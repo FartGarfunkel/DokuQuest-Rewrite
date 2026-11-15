@@ -1,4 +1,4 @@
-// gen/structures_skylands.cpp — The Aether's three dungeons, for terrain version 7's Aether islands (docs/research/aether.md 3.9):
+// gen/structures_skylands.cpp — the Skylands' three dungeons, for terrain version 7's isles (docs/research/skylands.md 3.9):
 //  * Bronze: a carved-stone boss hall deep inside a thick island (sentry stones in its walls), a chest room beside it
 //    and a holystone tunnel out to the sky. The Slider keeps it. One in about each 6 x 6 chunks where an island is thick.
 //  * Silver: a temple of angelic stone standing in the open sky on a bed of cold aerclouds: a colonnade of pillars, a
@@ -6,7 +6,7 @@
 //    where the Valkyrie Queen waits with her guard. Three in four of the far sky regions.
 //  * Gold: a floating island of its own, 38 across, with stub islets round it, gumdrop caves through it and golden
 //    oaks on top; a hellfire-stone hall inside, reached by a tunnel, where the Sun Spirit burns. One in four regions.
-// The shapes are the Aether's (sizes measured from its templates); the blocks are ours (tools/port/skyland_blocks.py).
+// The shapes follow their templates' sizes; the blocks are ours (tools/port/skyland_blocks.py).
 #include "gen/structures_common.h"
 #include <cmath>
 
@@ -36,7 +36,7 @@ const AK& ak() {
 }
 constexpr int DY = SkylandsGen::ISLES_DY;
 
-// the Aether's treasure: what each dungeon's chests hold (only what this game has)
+// the Skylands' treasure: what each dungeon's chests hold (only what this game has)
 json skyLoot(int tier, Mulberry32& r) {
   static const std::vector<std::pair<const char*, int>> T[3] = {
     {{"zanite_ore", 6}, {"ambrosium_ore", 10}, {"gravitite_ore", 3}, {"golden_apple", 1}, {"iron_ingot", 6}, {"gold_ingot", 4},

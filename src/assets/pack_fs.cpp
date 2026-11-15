@@ -55,7 +55,7 @@ std::unique_ptr<PackFS> PackFS::open(const fs::path& path) {
   if (P->base.empty()) for (auto& r : raw) if (endsWith(r, "pack.mcmeta")) { P->base = r.substr(0, r.size() - 11); break; }
   for (auto& r : raw) if (startsWith(r, P->base)) P->files.push_back(r.substr(P->base.size()));
   std::sort(P->files.begin(), P->files.end());
-  // where the textures live (render/packs.js: assets/minecraft/textures/, else the old textures/blocks)
+  // where the textures live (render/packs.js: the resource-pack layout's assets/minecraft/textures/, else the old textures/blocks)
   if (!P->list("assets/minecraft/textures/").empty()) P->texRoot = "assets/minecraft/textures/";
   else if (!P->list("textures/blocks/").empty()) { P->texRoot = "textures/"; P->legacy = true; }
   if (auto mc = P->readJson("pack.mcmeta")) {

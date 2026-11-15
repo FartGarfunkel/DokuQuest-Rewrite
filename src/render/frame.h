@@ -11,7 +11,7 @@ struct TileTextures { GLuint color[3] = {0, 0, 0}, height[3] = {0, 0, 0}, normal
 struct SkyEnv;   // render/sky.h
 struct DynLight { glm::dvec3 pos; float level; vec3 color{1.f, 0.85f, 0.62f}; };   // point light: world position, level 0..15, its own colour (render/dyn_light.cpp)
 
-// Cubyz day ambient: 1 at noon, 0.1 when daylight is at its night floor (0.2), and never under the blue night colour.
+// day ambient: 1 at noon, 0.1 when daylight is at its night floor (0.2), and never under the blue night colour.
 // Near chunks multiply by the colour. Distant land uses the luminance, so an open top meets the near mesh.
 inline vec3 rgbAmbient(float daylight) {
   float dayF = (daylight - 0.2f) / 0.8f;

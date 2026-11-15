@@ -1,9 +1,9 @@
-// gen/density.h — Minecraft 1.20's terrain as data: its density functions (worldgen/density_function, noise,
+// gen/density.h — the imported terrain as data: its density functions (worldgen/density_function, noise,
 // noise_settings: tools/port/worldgen_base.py -> data/worldgen_base/) read and evaluated here. Terrain version 14
 // (gen/overworld.cpp) shapes the Overworld with them: continents, erosion and ridges through the offset/factor/jaggedness
 // splines, the 3D noise that gives cliffs and overhangs, and the caves. The noise is our own Perlin, seeded from the world
-// seed by each noise's name: the same kind of land as Minecraft's, not the same land as a Minecraft seed.
-// Coordinates are Minecraft's: block x/z, and y with its sea at 63 (ours: band y - 1).
+// seed by each noise's name: the same kind of land as the data describes, not the same land as any other seed.
+// Coordinates are the imported data's: block x/z, and y with its sea at 63 (ours: band y - 1).
 #pragma once
 #include "common/common.h"
 #include "common/fs.h"
@@ -24,12 +24,12 @@ public:
   // "ridges", "depth", "temperature", "vegetation"); -1 if unknown
   int find(const std::string& name) const;
   double eval(int node, double x, double y, double z) const;
-  // a named noise ("minecraft:surface", "natures_spirit:sugi_pillar": noise/<name>.json, a mod's under noise/<mod>/), made
-  // the first time it's asked for (on the main thread, as find()); its value (Minecraft's NormalNoise.getValue)
+  // a named noise ("minecraft:surface", "<namespace>:<name>": noise/<name>.json, a namespace's under noise/<namespace>/),
+  // made the first time it's asked for (on the main thread, as find()); its value (NormalNoise.getValue)
   int noise(const std::string& id) { return noiseRef(id); }
   double noiseValue(int n, double x, double y, double z) const;
 
-  struct Perlin;     // Minecraft's PerlinNoise (octaves of ImprovedNoise)
+  struct Perlin;     // PerlinNoise (octaves of ImprovedNoise)
   struct Normal;     // its NormalNoise (two Perlins, the second offset)
   struct Blended;    // old_blended_noise (the 3D terrain noise)
   struct Spline;

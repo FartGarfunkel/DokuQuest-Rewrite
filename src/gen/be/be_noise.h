@@ -1,8 +1,8 @@
-// gen/be/be_noise.h — the random and noise sources of Better End 3.2.5 (github.com/quiqueck/BetterEnd, MIT), bit-exact:
-//   JavaRandom        java.util.Random == Minecraft's LegacyRandomSource (class_5820): the 48-bit LCG, same draws.
-//   OpenSimplexNoise  org.betterx.betterend.noise.OpenSimplexNoise (Kurt Spencer's 2014 OpenSimplex, long seed),
-//                     2D and 3D eval ported line for line from the jar (checked against the class: tools in README).
-//   beHash            the int hash BE (IslandLayer.getSeed) and BCLib (MHelper.getSeed) seed per-cell randoms with.
+// gen/be/be_noise.h — the random and noise sources of the End's island generator, bit-exact:
+//   JavaRandom        java.util.Random: the 48-bit LCG, same draws.
+//   OpenSimplexNoise  Kurt Spencer's 2014 OpenSimplex (long seed),
+//                     2D and 3D eval ported line for line (checked against the reference: tools in README).
+//   beHash            the int hash the island layers and the biome map seed per-cell randoms with.
 // No engine dependencies; safe to use from any thread (const evals, no shared state).
 #pragma once
 #include <cstdint>

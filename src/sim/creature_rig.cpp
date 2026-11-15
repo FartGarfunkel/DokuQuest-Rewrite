@@ -73,7 +73,7 @@ struct Pose {
   vec3& atI(int i) { if (!has[i]) { has[i] = 1; P[i] = vec3(0); } return P[i]; }
 };
 static float age(const Creature& m) { return m.age; }
-// Fresh Animations (study: per-individual seed, warped steps): each its own 0..1 from its id; a step's quick lift and
+// lifelike walking (per-individual seed, warped steps): each its own 0..1 from its id; a step's quick lift and
 // slow plant (sin of a phase warped by cos/3); the smooth 0..1 ease
 static float seed01(u32 id, int salt) { u32 h = id * 2654435761u ^ (u32)salt * 40503u; h ^= h >> 15; h *= 0x2c1b3c6du; h ^= h >> 12; return (h & 0xFFFF) / 65535.f; }
 static float warp(float ph) { return ph + std::cos(ph) / 3.f; }
@@ -590,7 +590,7 @@ static void rigLife(Creature& m, const RigModel& d, Pose& P) {
     if (!m.lookAt || a > 0.3f) { vec3& h = P.at("head"); h.y += L.look * (1 - a); h.z += L.cock * (1 - a); }
   }
   if (!dead && a < 0.2f && kind != "slime") P.lift += std::sin(t * 1.9f + m.id) * 0.006f;
-  // Story Mode-style weight: an attack carries the whole body into it (a lunge, then the follow-through settles), and a
+  // weight: an attack carries the whole body into it (a lunge, then the follow-through settles), and a
   // biped standing about looks round now and then, each its own way
   if (!dead && m.swingT > 0 && (kind == "biped" || kind == "quad")) {
     const float u = clampv(1 - m.swingT / 0.3f, 0.f, 1.f), k = std::sin(u * PI), over = u > 0.6f ? std::sin((u - 0.6f) / 0.4f * PI) * 0.35f : 0;
@@ -703,7 +703,7 @@ void rigPose(Creature& m, const RigModel& M, const mat4& base) {
   else if (k == "ghast" || k == "aerwhale" || k == "zephyr" || k == "aechor" || k == "shulker") animRealm(m, M, P);
   if (M.pitch0) P.pitch += M.pitch0;
   if (!M.post.empty()) applyPost(m, M, P);
-  // Minecraft's enderman: in anger the head lifts off its jaw and the mouth gapes; the jaw turns with the head
+  // the enderman: in anger the head lifts off its jaw and the mouth gapes; the jaw turns with the head
   if (int hi = M.find("head"), ji = M.find("jaw"); M.key == "enderman" && hi >= 0 && ji >= 0) {
     if (P.has[hi]) { P.has[ji] = 1; P.P[ji] = P.P[hi]; }
     if (m.angryT > 0) P.headLift = 6.f / 16;   // a pixel of dark mouth between the head and the jaw's teeth
@@ -727,7 +727,7 @@ void rigPose(Creature& m, const RigModel& M, const mat4& base) {
     vec3 r = P.has[i] ? P.P[i] : vec3(0);
     float rx = part.rest.x + r.x, ry = part.rest.y + r.y, rz = part.rest.z + r.z;
     if (k.empty()) { rx += part.swing * sw + part.look * clampv(m.headPitch, -0.6f, 0.6f); }
-    if (M.zyx) {   // (Minecraft's order, for the imported models)
+    if (M.zyx) {   // (the imported models' order)
       if (rz) mm = glm::rotate(mm, rz, vec3(0, 0, 1));
       if (ry) mm = glm::rotate(mm, ry, vec3(0, 1, 0));
       if (rx) mm = glm::rotate(mm, rx, vec3(1, 0, 0));

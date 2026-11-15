@@ -256,7 +256,7 @@ int AudioEngine::Impl::start(const SoundRef& r, AudioCmd c, float pitchMul) {
   c.handle = c.handle ? c.handle : nextHandle++;
   c.rate = pitchMul * (1 + (rnd() * 2 - 1) * pv);
   float g = r.gain * (r.jitter ? 0.9f + rnd() * 0.15f : 1.f);
-  if (r.kind == SoundRef::Pack) {   // Minecraft's own per-entry pitch and volume
+  if (r.kind == SoundRef::Pack) {   // the pack's own per-entry pitch and volume
     if (auto v = lib.packs().event(r.key)) { auto& var = (*v)[take % v->size()]; c.rate *= var.pitch; g *= var.vol; }
   }
   c.gL *= g; c.gR *= g;

@@ -1,4 +1,4 @@
-// gen/skyblock.cpp — the Skyblock world type (BTA 7.3's): the Overworld is empty sky, but for one small L of grass and
+// gen/skyblock.cpp — the Skyblock world type: the Overworld is empty sky, but for one small L of grass and
 // dirt with an oak tree and a chest (lava, ice, a few seeds and a sapling) at the world's middle. The Depths, the
 // Skylands and the End are as ever, so there is somewhere to go once you've built a way there. World type "skyblock".
 #include "gen/dimgens.h"

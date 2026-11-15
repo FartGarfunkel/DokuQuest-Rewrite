@@ -8,13 +8,13 @@
 namespace dq {
 
 namespace {
-// Epic Fight's clips start cocked and blend into that from whatever you were doing (its "convert" time is the
+// The attack clips start cocked and blend into that from whatever you were doing (its "convert" time is the
 // wind-up), strike in about a tenth of a second, hold the follow-through and take the next press at recovery. Our
 // times count from the press, so the wind-up is in them: hitFrom..hitTo = the drawing's blend in + the clip's contact
 // (render/attack_poses_data.inc), so the blade is live exactly while it is drawn passing, trimmed to where it is drawn in
 // front of you (not while it is still up over the shoulder, nor once the chop is down by the feet); dagger_2's live part
 // is the forehand it draws back across the front after its backhand. Rounded from the measurements (docs/ANIMATION_STUDY.md);
-// targets per blow as Soulrend's weapon patch has them (swords 2, daggers and fists 1).
+// targets per blow: swords 2, daggers and fists 1.
 //                 name           len   lock  hitFrom hitTo recov lunge dmg  impact strikes left
 const AttackMove MOVES[MV_COUNT] = {
   {"none",         0,    0,    0,    0,    0,    0,    0,   0,   0, false},
@@ -134,7 +134,7 @@ bool bladeSweepHits(u8 id, float t0, float t1, const vec3& feet, float yaw, floa
     // (from the shoulder out: the arm is in the blow too, so a foe close in is struck by the hilt end of it)
     const vec3 sh(h.x < 0 ? -SHOULDER_X : SHOULDER_X, SHOULDER_Y, 0);
     const vec3 S = attackFrameToWorld(sh + (h - sh) * 0.4f, feet, yaw, pitch), T = attackFrameToWorld(tp, feet, yaw, pitch);
-    // (Soulrend's blades: 0.3-0.4 thick boxes)
+    // (the blades: 0.3-0.4 thick boxes)
     if (segBox(S, T, lo, hi, 0.15f)) { if (when) *when = t; return true; }
   }
   return false;

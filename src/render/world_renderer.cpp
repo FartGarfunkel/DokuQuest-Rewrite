@@ -151,7 +151,7 @@ void WorldRenderer::rebuildAtlas(const TileSet& ts) {
 // ---------------------------------------------------------------- arena
 static const std::vector<VertexAttrib> CHUNK_ATTRS = {
   {0, 4, GL_UNSIGNED_INT, GL_FALSE, true, 0},      // a,b,c,d (mesher.h ChunkVertex). Pack shaders read only this.
-  {1, 1, GL_UNSIGNED_INT, GL_FALSE, true, 16},     // e: Cubyz sun/block RGB, 5 bits per channel
+  {1, 1, GL_UNSIGNED_INT, GL_FALSE, true, 16},     // e: coloured-light sun/block RGB, 5 bits per channel
 };
 void WorldRenderer::setupVao(Page& pg) {
   if (!pg.vao) glGenVertexArrays(1, &pg.vao);
@@ -260,7 +260,7 @@ void WorldRenderer::submit(const SectionKey& k, ThreadPool& pool, float pri, boo
   }, pri);
 }
 
-// Cave culling (the idea of Tommaso Checchi's "advanced cave culling", as Minecraft does it): walk out from the camera's
+// Cave culling (the idea of Tommaso Checchi's "advanced cave culling"): walk out from the camera's
 // section, face to face, only through sections that let you see from the face you came in by to the face you leave
 // by, never turning back against a way already gone, only into what the frustum holds. What the walk can't reach is
 // shut away behind rock and isn't drawn.

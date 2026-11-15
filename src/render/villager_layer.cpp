@@ -411,7 +411,7 @@ public:
 private:
   struct Bubble { int k = -1; double at = 0; };   // a line said: when it started (its number in npc.say)
   std::unordered_map<u32, Bubble> bubbles;
-  struct Look { float hy = 0, pitch = 0; u64 seen = 0; float idleT = 0; double lastT = -1; };   // idleT: standing about (Story Mode-style idles)
+  struct Look { float hy = 0, pitch = 0; u64 seen = 0; float idleT = 0; double lastT = -1; };   // idleT: standing about (lifelike idles)
   App& app;
   int hScreen = 0;
   double time = 0; u64 frameNo = 0;

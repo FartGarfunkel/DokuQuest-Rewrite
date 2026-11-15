@@ -204,7 +204,7 @@ public:
     // out of the End. It doesn't spread along the floor either: the falls just end.
     if (landFloorAt(y)) return;
     // spread: a carved neighbour takes water into its empty octants. Down first, otherwise sideways. Only from still water
-    // in its own block, like Minecraft's waterlogging: running water (and water a block holds) filled them too, and each
+    // in its own block, as waterlogging works: running water (and water a block holds) filled them too, and each
     // one filled became a spring of its own, so a slab floor beside a waterfall flooded on and on.
     const bool fills = kind == 1 && isSource && !logged;
     if (fills) {
@@ -319,7 +319,7 @@ bool growTree(Level& lv, World& w, int x, int y, int z, double r) {
     }
     return true;
   };
-  if (type == "cacao") {   // the cacao tree (BTA): a short jungle-wood trunk under its own leaves, cocoa pods all up the trunk
+  if (type == "cacao") {   // the cacao tree: a short jungle-wood trunk under its own leaves, cocoa pods all up the trunk
     BlockId lg = R.blockId("jungle_log"), lf = R.blockId("cacao_leaves"), pod = R.blockId("cocoa");
     if (!lg || !lf) return false;
     std::vector<std::array<int, 6>> cp;
@@ -428,7 +428,7 @@ static void grassTick(Level& lv, World& w, int x, int y, int z, BlockId id) {
   BlockId above = w.getBlock(x, y + 1, z);
   if ((R.tOpaque[above] && R.tSolid[above] && !bhas(above, BF::IsLog)) || R.tLiquid[above]) { if (rule(lv, "grassSpread")) w.setBlock(x, y, z, B.dirt, 0); return; }
   if (!rule(lv, "grassSpread")) return;
-  // Minecraft's way: four tries at bare dirt in the 3 x 5 x 3 around (one up, three down), each needing light and air above
+  // four tries at bare dirt in the 3 x 5 x 3 around (one up, three down), each needing light and air above
   static const BlockId snowy = R.blockId("snowy_grass");
   for (int t = 0; t < 4; t++) {
     int tx = x + (int)std::floor(rnd() * 3) - 1, ty = y + (int)std::floor(rnd() * 5) - 3, tz = z + (int)std::floor(rnd() * 3) - 1;
@@ -457,7 +457,7 @@ static void growExtra(Level& lv, World& w, int x, int y, int z, BlockId id, u8 m
     else if (id == B.cave_vines && rnd() < 1.0 / 60) w.setBlock(x, y, z, B.cave_vines_lit, meta);
     return;
   }
-  if (d.has("seasonalForm")) {   // the Seasonal Forest (BTA): its leaves turn with the year, a few at a time
+  if (d.has("seasonalForm")) {   // the Seasonal Forest: its leaves turn with the year, a few at a time
     static const BlockId F[4] = {R.blockId("seasonal_blossom"), R.blockId("seasonal_leaves"), R.blockId("seasonal_leaves_autumn"), R.blockId("seasonal_leaves_winter")};
     float ph = seasonPhase(lv);
     if (ph < 0) ph = (float)std::fmod(lv.info.day / 7.0, 4.0);   // with world seasons off the grove keeps its own year
@@ -465,12 +465,12 @@ static void growExtra(Level& lv, World& w, int x, int y, int z, BlockId id, u8 m
     if (want != now && F[want] && rnd() < 0.04) w.setBlock(x, y, z, F[want], meta);
     return;
   }
-  if (d.has("regrows")) {   // emberglass (BTA's rubyglass) regrows: now and then a fresh cluster on top, in the Depths
+  if (d.has("regrows")) {   // emberglass regrows: now and then a fresh cluster on top, in the Depths
     static const BlockId cl = R.blockId(d.str("regrows"));
     if (cl && dimOfY(y) == DIM_NETHER && w.getBlock(x, y + 1, z) == AIR && rnd() < 0.02) w.setBlock(x, y + 1, z, cl, 0);
     return;
   }
-  if (d.has("igneous")) {   // igneous emberstone (BTA): a fire on top that never goes out, and wet sponges beside it dry
+  if (d.has("igneous")) {   // igneous emberstone: a fire on top that never goes out, and wet sponges beside it dry
     static const BlockId fireId = R.blockId("fire"), wet = R.blockId("wet_sponge"), dry = R.blockId("sponge");
     if (fireId && w.getBlock(x, y + 1, z) == AIR) w.setBlock(x, y + 1, z, fireId, 0);
     if (wet && dry) for (int dz = -2; dz <= 2; dz++) for (int dy = -1; dy <= 2; dy++) for (int dx = -2; dx <= 2; dx++)
@@ -527,7 +527,7 @@ void randomTicks(Level& lv, World& w, float px, float pz) {
           } else w.setBlock(x, y, z, id, meta | 8);
         }
       } else if (id == B.berry_bush_empty) { if (rnd() < 1 / (RT * 5)) w.setBlock(x, y, z, B.berry_bush); }
-      else if (d.has("refill")) { if (rnd() < 1 / (RT * 5)) if (BlockId f = R.blockId(d.str("refill"))) w.setBlock(x, y, z, f); }   // a picked berry bush of TFC's kinds bears again
+      else if (d.has("refill")) { if (rnd() < 1 / (RT * 5)) if (BlockId f = R.blockId(d.str("refill"))) w.setBlock(x, y, z, f); }   // a picked berry bush bears again
       else if (bhas(id, BF::Crop)) {
         int m = meta & 15, stages = d.props["crop"].value("stages", 1);
         if (m >= stages - 1) { if (d.props["crop"].contains("fruit")) growExtra(lv, w, x, y, z, id, meta); continue; }
@@ -543,16 +543,16 @@ void randomTicks(Level& lv, World& w, float px, float pz) {
         int h = 1; while (h < 4 && w.getBlock(x, y - h, z) == id) h++;
         BlockId above = w.getBlock(x, y + 1, z);
         if (h < (id == B.kelp ? 8 : 3) && (id == B.kelp ? R.tLiquid[above] == 1 : above == AIR)) w.setBlock(x, y + 1, z, id, id == B.kelp ? WLOG : 0);
-      } else if (d.has("rootySoil")) {   // a growing tree's soil: one growth signal now and then (Dynamic Trees: sim/dyntree.h)
+      } else if (d.has("rootySoil")) {   // a growing tree's soil: one growth signal now and then (the growing trees: sim/dyntree.h)
         if (dynTreesOn(lv) && rnd() < 1 / (RT * 0.5)) growDynTree(lv, w, x, y, z, (u32)(rnd() * 4294967295.0));
-      } else if (d.has("netherReed") || d.has("netherCactus")) {   // BetterNether: reeds grow by lava (BlockNetherReed), cacti on their own, 3 tall
+      } else if (d.has("netherReed") || d.has("netherCactus")) {   // the classic Nether: reeds grow by lava, cacti on their own, 3 tall
         if (rnd() > 1 / (RT * 16)) continue;
         int h = 1; while (h < 4 && w.getBlock(x, y - h, z) == id) h++;
         if (h >= 3 || w.getBlock(x, y + 1, z) != AIR) continue;
         if (d.has("netherReed")) {
           bool lava = false;
           for (auto [a, b] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) if (R.tLiquid[w.getBlock(x + a, y - h, z + b)] == 2) lava = true;
-          if (!lava && rnd() < 0.5) continue;   // (by lava twice as fast: BetterNether's fertile ground)
+          if (!lava && rnd() < 0.5) continue;   // (by lava twice as fast: the classic Nether's fertile ground)
         }
         w.setBlock(x, y + 1, z, id, 0);
       } else if (bhas(id, BF::Fire)) {
@@ -562,7 +562,7 @@ void randomTicks(Level& lv, World& w, float px, float pz) {
       } else if (d.has("oxidizes")) { if (rnd() < 1.0 / 2400) w.setBlock(x, y, z, R.blockId(d.str("oxidizes")), meta); }
       else growExtra(lv, w, x, y, z, id, meta);
     }
-    // grass creeping: four random columns per chunk each second (about once a minute for each, as in Minecraft; the
+    // grass creeping: four random columns per chunk each second (about once a minute for each; the
     // randomTickSpeed rule scales it), looking down through leaves, logs and plants to the ground under trees too
     for (int k = 0, n = (int)std::lround(4 * tickSpeed); k < n; k++) {
       int col = ((int)(rnd() * 16)) | (((int)(rnd() * 16)) << 4);

@@ -1,5 +1,5 @@
 // render/item_layers.h — items in the world as voxel models:
-//  * HeldItemLayer: the first-person arm and what it holds (game/local.js hand(): Minecraft's swing turned
+//  * HeldItemLayer: the first-person arm and what it holds (game/local.js hand(): the classic swing turned
 //    about the fist, the step bob, the lag when you turn (settings.heldSway), the equip dip, eating, the
 //    off hand; the 3D torch held upright, blocks held as blocks, tools by the handle);
 //  * DroppedItemLayer: entities of type "item" (data["stack"] = ItemStack json) hover, bob and spin

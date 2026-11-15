@@ -27,7 +27,7 @@ Workstream: voxel player characters, skins, the character creator and skin edito
   See-through overlay pixels: alpha ≥ 100 are solid voxels, the rest are left out (the original blended 26–200).
 - The overlay is hidden under **any** worn armour piece covering it (the original let it show through pack armour's gaps;
   with voxels both would occupy the same cells).
-- **Creator additions** (Cube World / Veloren / Hytale): body sliders (height, build, head size, leg length), head shape
+- **Creator additions**: body sliders (height, build, head size, leg length), head shape
   (square/rounded/long/wide), brows (plain/thick/thin/none), nose (small/big as its own row), a cosmetic cape (worn when no cape
   item is), helmet shown/hidden, custom colour pickers next to every palette, try-on armour, walk preview, drag/stick turning.
 - The creator and the skin editor are separate screens linked both ways ("Paint by hand…" / "Character creator…"); editing a
@@ -74,7 +74,7 @@ Workstream: voxel player characters, skins, the character creator and skin edito
 ## Left to do
 
 - Worn chestplate sleeve on the first-person arm (fpArmDraws' pad/cuff); skin face blinks/talk (skinFace); arcana hat meshes;
-  Carry On poses need the gameplay hook (`pose.carry` is ported, nothing sets it yet); `castWind` (fishing) likewise.
+  Carrying poses need the gameplay hook (`pose.carry` is ported, nothing sets it yet); `castWind` (fishing) likewise.
 - Name tags over players (avatarTopOf is easy from `CharModel::stature`).
 - Networked skins: send `encodeSkinPng` + body shape, `registerSkin` on arrival (net workstream).
 - Menus entry points (Players & skins → Character creator… / Skin editor…) belong to the UI engineer's menus.

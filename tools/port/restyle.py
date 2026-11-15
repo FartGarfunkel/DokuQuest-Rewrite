@@ -179,7 +179,7 @@ def main(d, sheet=None):
     manifest_path = os.path.join(os.path.dirname(__file__), 'restyle_manifest.json')
     manifest = json.load(open(manifest_path)) if os.path.exists(manifest_path) else {}
     # only the original game's code-painted pictures, as the port first wrote them, are restyled: never the user's own
-    # edited pictures, nor the ones our generators already made from the pack (forged tools, spawn eggs, BTA blocks...)
+    # edited pictures, nor the ones our generators already made from the pack (forged tools, spawn eggs, classic blocks...)
     code = set(open(os.path.join(os.path.dirname(__file__), 'code_tiles.txt')).read().split())
     made, rows = 0, []
     skip = re.compile(r'^(crack_|_tile_)|_f\d+$|spawn_egg|_pic$|_head$|^head_|bed_|_bed$|chest|_front|machine|panel|screen|'

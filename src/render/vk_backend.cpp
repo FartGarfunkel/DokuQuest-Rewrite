@@ -1471,7 +1471,7 @@ static void resolveIfdefs(std::string& s) {
       while (p < d.size() && isspace((unsigned char)d[p])) p++;
       if (kw == "define" && active) {
         std::string name = word(d, p);
-        // glslang rejects a second #define with a different body. Iris lets the later
+        // glslang rejects a second #define with a different body. The format lets the later
         // one win, so drop the previous body before writing this one.
         if (!name.empty() && defined.count(name)) out += "#undef " + name + "\n";
         // Function-like macros stay in the text for glslang. Object-like ones feed #if.
@@ -1946,7 +1946,7 @@ static std::string ioNameAt(const std::string& line, size_t kwAt) {
   return name;
 }
 // A user struct varying occupies one location per member. Counting it as one slot
-// put the next varying on top of it (Photon fog_params overlapped sky_sh at location 6,
+// put the next varying on top of it (one pack's fog_params overlapped sky_sh at location 6,
 // and clouds_params overlapped the next output at location 9).
 static bool structQual(const std::string& w) {
   return w == "const" || w == "in" || w == "out" || w == "flat" || w == "smooth" || w == "noperspective" ||
@@ -2070,7 +2070,7 @@ static bool layoutCloser(const std::string& line) {
   return h < line.size() && line[h] == ')';
 }
 // A mat4 varying occupies one location per column. Giving the next matrix location+1
-// overlaps (Rethinking Voxels prepare: in mat4 unprojectionMatrix, projectionMatrix).
+// overlaps (one pack's prepare: in mat4 unprojectionMatrix, projectionMatrix).
 static int ioLocationSpan(const std::string& decl, const std::unordered_map<std::string, int>& structs) {
   std::string bare = decl;
   auto cmt = bare.find("//");
@@ -2291,7 +2291,7 @@ static void addLooseMembers(std::vector<std::string>& out, std::unordered_set<st
 }
 // Desktop GL uses `uniform float cloudHeight = 192.0` when the game never writes it.
 // That initializer is illegal in the block, so it is stripped and the zeroed UBO would
-// leave the value at 0. Complementary then puts the cloud slab under the camera.
+// leave the value at 0. One pack then puts the cloud slab under the camera.
 struct UniInit {
   bool integral = false;
   bool matrix = false;
@@ -2617,7 +2617,7 @@ static void applyUniformDefaults(Prog& p, const std::unordered_map<std::string, 
 static void wrapLooseUniforms(std::string& vs, std::string& fs) {
   // The same uniform in both stages is one block member. A comment on only one
   // of the lines (clouds.glsl uShell) used to leave both in and fail the link.
-  // A comma list plus a second declaration of the same name (Rethinking Voxels
+  // A comma list plus a second declaration of the same name (one pack's
   // viewWidth) is one member too.
   std::vector<std::string> decls;
   std::unordered_set<std::string> seen;
@@ -3393,7 +3393,7 @@ static int depthMismatch(const std::vector<float>& mem, const std::vector<float>
 static bool depthColorForSample(Tex& t) {
   if (!t.depth || !t.image || !t.defined || t.w <= 0 || t.h <= 0) return false;
   // The R32F copy matches this image (a cleared depth is 1, and a real frame was 0.962..1
-  // with no mismatches). Binding it made Complementary's horizon darker than sampling the
+  // with no mismatches). Binding it made one pack's horizon darker than sampling the
   // depth image, so the pack keeps the depth view.
   return false;
   if (g_depthAsColor == 0) return false;

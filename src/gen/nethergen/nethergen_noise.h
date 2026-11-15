@@ -1,5 +1,5 @@
-// Bit-exact C++ ports of the Better than Adventure 8.0.1 noise classes used by its Nether generator
-// (net.minecraft.core.world.noise.*): ImprovedPerlinNoise, SimplexNoise, WorleyNoise, FractalNoise2D/3D,
+// Bit-exact C++ ports of the noise classes used by the classic Nether generator:
+// ImprovedPerlinNoise, SimplexNoise, WorleyNoise, FractalNoise2D/3D,
 // operator.Normalize2D, plus MathHelper's sin/cos lookup table and floor helpers.
 // All math is IEEE double/float exactly as in Java; compile WITHOUT -ffast-math and without FMA
 // contraction (the .cpp files carry pragmas; keep -ffp-contract=off if you add -march flags).
@@ -12,7 +12,7 @@
 
 namespace nethergen {
 
-// ---- net.minecraft.core.util.helper.MathHelper -------------------------------------------------
+// ---- MathHelper -------------------------------------------------
 namespace mh {
 float sin(float rad);  // SIN_TABLE[(int)(rad * 10430.38f) & 0xFFFF]
 float cos(float rad);  // SIN_TABLE[(int)(rad * 10430.38f + 16384.0f) & 0xFFFF]

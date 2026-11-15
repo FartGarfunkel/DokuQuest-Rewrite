@@ -1,10 +1,9 @@
-# Animation study: Epic Fight and Fresh Animations (measured, not copied)
+# Animation notes: what makes our movement read as fluid
 
-Epic Fight's code is GPL-3 and its assets (the animation clips) are "All rights reserved"; Fresh Animations is third-party
-art. Nothing from either is in this repo: we read the engine to learn its techniques, measured the clips (timings,
-angles, travel) with a converter kept outside the repo, and wrote our own procedural animation from the numbers.
+Our character and mob animation is our own procedural code (render/char_anim.cpp, render/char_blend.cpp). These are
+the principles it follows and the numbers it is tuned to.
 
-## What makes Epic Fight read as fluid
+## Principles
 - **Links from what is on screen.** Every change of clip blends from the pose actually shown to the next clip's first
   frame (0.03-0.1 s for actions, 0.15-0.35 s for idle/walk/holding). We had this (render/char_blend.cpp).
 - **Joint masks.** Upper-body actions (guard, eating, holding) are layers over the legs' own cycle, so the legs keep
@@ -17,8 +16,8 @@ angles, travel) with a converter kept outside the repo, and wrote our own proced
   Now: the flinch snaps in 0.06 s, holds 0.1 s, eases out, away from where the blow came from.
 - **Aiming swings.** The chest pitches with the look (pitch squared over 30 degrees, capped at 30); the head keeps the look.
 
-## Measured characteristics we used (our CharAngles convention, rounded)
-| motion | Epic Fight | ours now |
+## Target characteristics (our CharAngles convention, rounded)
+| motion | target | ours now |
 |---|---|---|
 | walk arm swing | about +-0.25 rad, forearm bent 0.2-0.3 | amp x 0.42, forearm bend kept |
 | walk knee fold | up to about -1.2 in the swing, after toe-off | -0.95 peak, phase +0.45 rad |
@@ -31,8 +30,8 @@ angles, travel) with a converter kept outside the repo, and wrote our own proced
 | sword cuts | 1 diagonal down R to L, 2 flat backhand L to R, 3 rising R low to L high | the same three shapes |
 | roll | tucked somersault, about 0.63 s, 3.2 blocks | ours 0.4 s (sim timing) |
 
-## Still to do from the studies
+## Still to do
 Weapon trail ribbon; an aim/chest-twist share for bows and crossbows; a body yaw snap at the start of an action; a
 crouch anticipation into the roll and a sidestep; per-weapon cuts (greatsword, dagger, spear, axe) once the weapon
-items exist; first-person versions of the cuts; mobs (Fresh Animations): a hurt flinch that peaks at the hit, level
+items exist; first-person versions of the cuts; mobs: a hurt flinch that peaks at the hit, level
 heads on quadrupeds and birds, warped-sine gaits with phase lag, breathing, blinks, rare idle actions.

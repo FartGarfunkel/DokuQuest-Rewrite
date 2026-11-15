@@ -20,7 +20,7 @@ float rnd01() { static thread_local std::mt19937 g{std::random_device{}()}; retu
 
 bool vesselAdd(ItemStack& v, ItemStack& from) {
   if (!isVessel(v) || from.empty() || unitsOf(from.id) <= 0) return false;   // (onto metal already in it too: it melts in)
-  // iron ore, a raw bloom, pig iron: the bloomery's and the anvil's (TFC), not to be melted and cast; a wrought iron ingot melts
+  // iron ore, a raw bloom, pig iron: the bloomery's and the anvil's, not to be melted and cast; a wrought iron ingot melts
   if (const std::string mt = metalOfItem(from.id); (mt == "iron" || mt == "pig_iron") && from.id != "iron_ingot" && from.id != "metal_double_ingot" && from.id.find("_sheet") == std::string::npos) return false;
   if (from.id == "raw_bloom" || from.id == "refined_bloom" || from.id == "pig_iron" || from.id == "high_carbon_steel") return false;
   json& c = contents(v);
@@ -163,7 +163,7 @@ bool metalworkUse(Level& lv, Player& p) {
       if (!vesselAdd(held, off)) toastMsg("The vessel is full");
       return true;
     }
-    // pour: into the fired mold in the other hand, else the first empty fired mold in the bag (TFC pours from the vessel's
+    // pour: into the fired mold in the other hand, else the first empty fired mold in the bag (as from the vessel's
     // screen into any mold you carry)
     auto emptyMold = [](const ItemStack& s) { return !s.empty() && s.def() && !s.def()->str("mold").empty() && !moldFilled(s); };
     ItemStack* src = emptyMold(off) ? &off : nullptr;

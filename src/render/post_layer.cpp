@@ -1,10 +1,10 @@
 // render/post_layer.cpp — the picture after the world is drawn (before the colour-blind filter):
-//  * Iris/OptiFine shader packs. A dimension folder (world0, world-1, world1) replaces shaders/ for that band.
+//  * Full shader packs. A dimension folder (world0, world-1, world1) replaces shaders/ for that band.
 //    When gbuffers_terrain (or textured_lit / textured / basic) links, opaque and cutout sections are drawn into its
 //    DRAWBUFFERS with the game's clip position, so the pack's own lighting replaces the terrain. Translucent
 //    sections (water, glass, ice) are drawn with gbuffers_water when that links: the pack keeps its clip position,
 //    waves included, and writes depth. depthtex0 is that depth. depthtex1 stays the opaque depth the terrain pass
-//    matched. texture.<stage>.<sampler>=png replaces that sampler for the Iris stage (gbuffers includes the
+//    matched. texture.<stage>.<sampler>=png replaces that sampler for that stage (gbuffers includes the
 //    shadow pass, composite includes final), so a name like colortex3 can be a noise image in deferred and a
 //    buffer afterwards. Sky and clouds stay the copied picture. Creatures, characters, chests and dropped
 //    items are voxel meshes; they are drawn again with gbuffers_entities so the pack lights them. begin/prepare
@@ -153,14 +153,14 @@ struct Target {
   void drop() { if (fbo) glDeleteFramebuffers(1, &fbo); if (tex) glDeleteTextures(1, &tex); fbo = tex = 0; w = h = 0; }
 };
 
-// ---- an Iris/OptiFine pack's post passes ----
+// ---- a full shader pack's post passes ----
 // nOut 0 draws the screen (final). Otherwise outs[i] is the colortex gl_FragData[i] lands in
-// (Iris: DRAWBUFFERS:16 means gl_FragData[0] -> colortex1 and gl_FragData[1] -> colortex6).
+// (DRAWBUFFERS:16 means gl_FragData[0] -> colortex1 and gl_FragData[1] -> colortex6).
 struct PackPass {
   GLuint prog = 0; std::string name; int outs[8]{}; int nOut = 0;
   std::vector<std::pair<std::string, GLenum>> uniforms; bool writesColor = true;
-  // gbuffers_water blends like vanilla translucent unless shaders.properties says otherwise.
-  // blendOff bit i turns blending off for colortex i (Complementary's normals and reflections).
+  // gbuffers_water blends like plain translucent unless shaders.properties says otherwise.
+  // blendOff bit i turns blending off for colortex i (some packs' normals and reflections).
   bool blend = false;
   GLenum bSrc = GL_SRC_ALPHA, bDst = GL_ONE_MINUS_SRC_ALPHA, bSrcA = GL_ONE, bDstA = GL_ONE_MINUS_SRC_ALPHA;
   uint32_t blendOff = 0;
@@ -181,7 +181,7 @@ struct PackFiles {
       size_t i = f.find("shaders/");
       if (i == std::string::npos || (i > 0 && f[i - 1] != '/')) continue;
       // Horizon: a pack is a shaders/ folder. world0/, world-1/ and world1/ replace that folder
-      // for one dimension, so a pack whose programs live only there (Complementary) still counts.
+      // for one dimension, so a pack whose programs live only there still counts.
       root = f.substr(0, i + 8);
       return true;
     }
@@ -240,7 +240,7 @@ struct PackFiles {
           if (q0 == std::string::npos) continue;
           char close = d[q0] == '<' ? '>' : '"';
           size_t q1 = d.find(close, q0 + 1);
-          // Rethinking Voxels' prepare vertex shaders leave the closing quote off. Iris reads to EOL.
+          // Some packs' prepare vertex shaders leave the closing quote off. The format reads to EOL.
           std::string inc = q1 == std::string::npos ? d.substr(q0 + 1) : d.substr(q0 + 1, q1 - q0 - 1);
           while (!inc.empty() && std::isspace((unsigned char)inc.back())) inc.pop_back();
           if (inc.empty()) continue;
@@ -264,7 +264,7 @@ struct PackFiles {
         };
         if (kw == "define" && active) {
           std::string name = word(d, p);
-          // The driver rejects a second #define. Iris's preprocessor lets the later one win,
+          // The driver rejects a second #define. The format's preprocessor lets the later one win,
           // which packs do on purpose (#define X 1, then #undef X, then #define X 0).
           if (!name.empty() && defined.count(name)) out += "#undef " + name + "\n";
           if (p < d.size() && d[p] == '(') {
@@ -441,7 +441,7 @@ vec3 dqWave(float sway, vec3 world) {
 }
 )DQGB";
 
-// ChunkVertex unpacked into the Iris attributes. File-scope, because the pack's main is textually
+// ChunkVertex unpacked into the pack format's attributes. File-scope, because the pack's main is textually
 // separate and a #define of gl_Vertex cannot see a local. gl_Position is forced afterwards so the
 // pack's TAA jitter cannot miss the depth the game already wrote.
 std::string geomVertexHead(bool shadow, bool translucent) {
@@ -553,7 +553,7 @@ void main() {
   rel += wo;
 #endif
 #if defined(DQ_SHADOW) || defined(DQ_TRANSLUCENT)
-  // Iris player space puts the camera at the origin. The shadow caster has to start there or the
+  // The format's player space puts the camera at the origin. The shadow caster has to start there or the
   // shadow texel slides, and translucent clip space is the pack's (waves included) only if this matches.
   rel -= uEyeRel;
 #endif
@@ -584,7 +584,7 @@ void main() {
   dqTC[1] = dqGbLM;
   dqMcEntity = vec4(texelFetch(dqEntityLut, ivec2(int(layer) & 4095, 0), 0).r, 0.0, 0.0, 0.0);
 #ifdef DQ_FOG_COORD
-  // OptiFine writes the eye distance before the pack's main. MakeUp's hand light is
+  // The format writes the eye distance before the pack's main. Some packs' hand light is
   // (1 - fogFragCoord / 15). Zero lit the whole world; a pack that assigns it still overwrites this.
 #if defined(DQ_SHADOW) || defined(DQ_TRANSLUCENT)
   dqFogFragCoord = length(dqGbRel);
@@ -606,7 +606,7 @@ void main() {
 )DQGB";
 
 // Voxel meshes (creatures, characters, chests, drops) use a different vertex than terrain.
-// gl_Vertex is player space so the pack's varyings match Iris. gl_Position is then the game's
+// gl_Vertex is player space so the pack's varyings match the format. gl_Position is then the game's
 // clip, or a depth test against the copy misses and the model stays game-lit.
 // The hand is already in view space. Its fixed-function modelview stays identity so the normal
 // is not rotated twice, while gbufferModelView remains the camera rotation for the sun and
@@ -723,16 +723,16 @@ void main() {
 )DQGB";
 
 void stripPackAttribs(std::string& src) {
-  // The standard Iris attributes are supplied by #define. A leftover `in` would be a second declaration
+  // The pack format's standard attributes are supplied by #define. A leftover `in` would be a second declaration
   // once the macro expands, and the VAO only feeds locations 0 and 6.
   src = std::regex_replace(src, std::regex(
     R"([ \t]*(?:layout\s*\([^)]*\)\s*)?(?:attribute|in|out)\s+(?:(?:flat|smooth|noperspective)\s+)?(?:(?:highp|mediump|lowp)\s+)?(?:vec[234]|ivec[234]|uvec[234]|float|int|uint)\s+(?:mc_Entity|mc_midTexCoord|at_tangent|vaPosition|vaColor|vaUV0|vaUV1|vaUV2|vaNormal)\s*;[ \t]*(?://[^\n]*)?\r?)"),
     "");
 }
 
-// Iris injects these. A second `uniform mat4` of the same name fails to compile on this Mesa even when the type matches.
+// The format injects these. A second `uniform mat4` of the same name fails to compile on this Mesa even when the type matches.
 // force declares a matrix the preamble's macros name; otherwise only a name the pack actually uses.
-// Rethinking Voxels (and Complementary's shadow geometry stage) writes texCoordV from the vertex
+// Some packs (and some shadow geometry stages) write texCoordV from the vertex
 // and reads texCoord in the fragment. The geometry shader is the voxel volume, which is not run.
 // Copy each fragment input from the vertex output of the same name plus "V".
 std::string shadowBridgeDef(const std::string& vsrc, const std::string& fsrc) {
@@ -849,18 +849,18 @@ std::string translate(std::string src, bool vertex, bool geom = false, bool shad
   src = rx(src, R"(\bgl_Fog\s*\.\s*scale\b)", "(1.0 / max(far - near, 0.001))");
   // A gbuffer's gl_Color is the biome tint. The fullscreen path has no per-vertex colour.
   if (!geom) src = rx(src, R"(\bgl_Color\b)", "vec4(1.0)");
-  // gl_FragData / gl_FragColor is the OptiFine path (dqOut copies). A pack that already
-  // declares out vec2/vec3/vec4 keeps those locations: Photon binds location 0 itself, and
+  // gl_FragData / gl_FragColor is the classic pack path (dqOut copies). A pack that already
+  // declares out vec2/vec3/vec4 keeps those locations: some packs bind location 0 themselves, and
   // a second out there fails the link. `out bool` parameters do not count.
   const bool legacyOut = src.find("gl_FragData") != std::string::npos || src.find("gl_FragColor") != std::string::npos;
   const bool userOut = std::regex_search(src, std::regex(R"(\bout\s+vec[234]\b)"));
   const bool old = legacyOut || !userOut;
   src = rx(src, R"(\bvoid\s+main\s*\(\s*(void)?\s*\))", "void dqPackMain()");
-  // Vulkan reserves the word sampler. Photon names texture parameters `sampler`.
+  // Vulkan reserves the word sampler. Some packs name texture parameters `sampler`.
   src = rx(src, R"(\bsampler\b)", "dqSampler");
-  // OptiFine names the block atlas sampler `texture`. After texture2D becomes texture(),
+  // The format names the block atlas sampler `texture`. After texture2D becomes texture(),
   // that name hides the built-in and glslang rejects the call. Rename the sampler only
-  // in files that declare it. Photon uses the word as the texture() function in a macro.
+  // in files that declare it. Some packs use the word as the texture() function in a macro.
   if (std::regex_search(src, std::regex(R"(\buniform\s+sampler[0-9A-Za-z]*\s+texture\s*;)")))
     src = rx(src, R"(\btexture\b(?!\s*\())", "gtexture");
   src = rx(src, R"(\btexture2DLod\b)", "textureLod");
@@ -869,14 +869,14 @@ std::string translate(std::string src, bool vertex, bool geom = false, bool shad
   src = rx(src, R"(\bshadow2D\s*\()", "dqShadow2D(");
   src = rx(src, R"(\btexture2DProj\b)", "textureProj");
   src = rx(src, R"(\bgl_TexCoord\b)", "dqTC");
-  // 330 core rejects layout(binding) and shader storage blocks. Iris compiles these at 4.30+.
+  // 330 core rejects layout(binding) and shader storage blocks. The format compiles these at 4.30+.
   std::string head = "#version 430 core\n" + ext;
   if (vertex) {
     src = rx(src, R"(\battribute\b)", "in");
     src = rx(src, R"(\bvarying\b)", "out");
     src = rx(src, R"(\bgl_FrontColor\b)", "dqFrontColor");
     if (geom) {
-      // OptiFine's mc_midTexCoord is vec4 in some packs and vec2 in others. The vec4 macro
+      // The format's mc_midTexCoord is vec4 in some packs and vec2 in others. The vec4 macro
       // makes `uv - mc_midTexCoord` illegal for a pack that declared vec2.
       const bool midVec2 = std::regex_search(src, std::regex(R"(\bin\s+vec2\s+mc_midTexCoord\b)"));
       stripPackAttribs(src);
@@ -912,7 +912,7 @@ std::string translate(std::string src, bool vertex, bool geom = false, bool shad
     if (geom) head += "in vec4 dqFrontColor;\n#define gl_Color dqFrontColor\n#define mc_Entity vec4(1.0, 0.0, 0.0, 0.0)\n"
                       "#define mc_midTexCoord vec4(0.5)\n#define at_tangent vec4(1.0, 0.0, 0.0, 1.0)\n";
     // File-scope `ivec2 texelCoord = ivec2(gl_FragCoord.xy)` is not a constant. Core GLSL
-    // rejects it or runs it once as 0, so every texelFetch reads the corner. Iris evaluates
+    // rejects it or runs it once as 0, so every texelFetch reads the corner. The format evaluates
     // it per fragment. Hoist those to the start of main.
     std::string fragInit;
     {
@@ -950,7 +950,7 @@ std::string translate(std::string src, bool vertex, bool geom = false, bool shad
         assigns += "dqOut" + std::to_string(i) + " = dqData[" + std::to_string(i) + "];";
       }
       head += outs + "vec4 dqData[8];\n";
-      // OptiFine alphaTest runs on the color written to gl_FragData[0], before it is stored.
+      // The format's alphaTest runs on the color written to gl_FragData[0], before it is stored.
       const std::string alphaDiscard = alphaKeep.empty() ? std::string() : "if (!(" + alphaKeep + ")) discard;\n";
       src += "\nvoid main() {\n" + fragInit + "for (int i = 0; i < 8; i++) dqData[i] = vec4(0.0); dqPackMain();\n"
              + alphaDiscard + assigns + " }\n";
@@ -1010,13 +1010,13 @@ int colortexOf(const std::string& n) {
 
 // Every buffer in the last live DRAWBUFFERS / RENDERTARGETS. final draws the screen (empty).
 // DRAWBUFFERS:16 is colortex1 then colortex6. RENDERTARGETS: 1,2 is the same idea with commas.
-// No directive means colortex0, which is what Iris uses.
+// No directive means colortex0, which is what the format uses.
 std::vector<int> drawBuffers(const std::string& fsh, bool isFinal) {
   if (isFinal) return {};
   std::vector<int> bufs{0};
   const std::string& s = fsh;
   // RENDERTARGETS is 13 letters. A 12-character compare never matches, so a pack that
-  // uses it (Rethinking Voxels composite6) fell through to colortex0.
+  // uses it (one pack's composite6) fell through to colortex0.
   for (size_t i = 0; i < s.size(); ++i) {
     const bool targets = i + 13 <= s.size() && s.compare(i, 13, "RENDERTARGETS") == 0;
     const bool buffers = i + 11 <= s.size() && s.compare(i, 11, "DRAWBUFFERS") == 0;
@@ -1055,7 +1055,7 @@ std::vector<int> drawBuffers(const std::string& fsh, bool isFinal) {
   return bufs;
 }
 
-// Iris's built-in macros (StandardMacros). The pack's own #define later on the same name wins.
+// The pack format's built-in macros. The pack's own #define later on the same name wins.
 std::string packHeader() {
   auto lower = [](const char* s) {
     std::string o = s ? s : "";
@@ -1090,7 +1090,7 @@ std::string packHeader() {
   o += "#define MC_RENDER_QUALITY 1.0\n";
   o += "#define MC_SHADOW_QUALITY 1.0\n";
   o += "#define MC_MIPMAP_LEVEL 4\n";
-  // OptiFine / Iris render-stage ordinals. Packs compare `renderStage` to these and do not define them.
+  // The pack format's render-stage ordinals. Packs compare `renderStage` to these and do not define them.
   o += "#define MC_RENDER_STAGE_NONE 0\n";
   o += "#define MC_RENDER_STAGE_SKY 1\n";
   o += "#define MC_RENDER_STAGE_SUNSET 2\n";
@@ -1136,7 +1136,7 @@ int lastConstInt(const std::string& src, const char* name, int fallback) {
 
 // program.world0/composite5.enabled = BLOOM, or = false. Missing means the pass runs.
 bool passEnabled(const std::string& props, const std::string& prefix, const std::string& name, const std::unordered_map<std::string, int>& defined) {
-  // shaders.properties uses the same #if as the shaders. Complementary disables the shadow
+  // shaders.properties uses the same #if as the shaders. One pack disables the shadow
   // program only when SHADOW_QUALITY is -1; reading that line raw turned shadows off for every profile.
   struct Frame { bool parent; bool taken; };
   std::vector<Frame> stack;
@@ -1388,7 +1388,7 @@ std::string dimensionPrefix(const PackFiles& F, int dim) {
   return "";
 }
 
-// OptiFine binds noisetex from shaders.properties. MakeUp names it texture.gbuffers.noisetex.
+// The format binds noisetex from shaders.properties. Some packs name it texture.gbuffers.noisetex.
 std::string packNoiseRel(const PackFiles& F) {
   std::string rel = "lib/textures/noise.png";
   auto props = F.read("shaders.properties");
@@ -1475,7 +1475,7 @@ void noteTexFlags(const std::string& src, bool clear[16], bool mip[16]) {
   }
 }
 
-// shaders.properties: uniform.float.name = expression. Enough of Iris's expression language for the
+// shaders.properties: uniform.float.name = expression. Enough of the format's expression language for the
 // mixes a post pass actually samples (dayNightMix, exposure helpers). Unknown names leave it unset.
 struct PackU { std::string name, expr; bool integer = false; bool upload = true; };
 
@@ -1621,7 +1621,7 @@ std::optional<double> evalPackExpr(const std::string& expr, const std::unordered
       if (name == "if") return n(0) != 0.0 ? n(1) : n(2);
       if (name == "step") return n(1) >= n(0) ? 1.0 : 0.0;
       if (name == "mix") return n(0) * (1.0 - n(2)) + n(1) * n(2);
-      // Iris: smooth([id], value, [fadeUp, [fadeDown]]). Four arguments means the first is an id.
+      // smooth([id], value, [fadeUp, [fadeDown]]). Four arguments means the first is an id.
       if (name == "smooth") return a.size() >= 4 ? n(1) : n(0);
       if (name == "int" || name == "float") return n(0);
       bad = true;
@@ -1839,7 +1839,7 @@ PackIds buildPackIds(const PackFiles& F) {
   return ids;
 }
 
-// Iris TextureStage. "gbuffers" also covers the shadow program. "composite" also covers final.
+// The format's texture stages. "gbuffers" also covers the shadow program. "composite" also covers final.
 // A raw `texture.stage.sampler = file.dat TEXTURE_3D ...` line is a new sampler, not a buffer override.
 int texStageId(const std::string& stage) {
   if (stage == "setup") return 1;
@@ -1907,7 +1907,7 @@ public:
     armCapture();
   }
 private:
-  // an Iris/OptiFine pack
+  // a full shader pack
   std::string packFor = "\x01";
   int packDim = -1;
   std::vector<PackPass> iris, packBegin, packPrep, packDef;
@@ -2001,7 +2001,7 @@ private:
     return true;
   }
 
-  // ---- Iris / OptiFine ----
+  // ---- full shader packs ----
   // One fullscreen or gbuffer program. geom unpacks terrain; otherwise the pass is a quad.
   // A missing file is quiet. A compile failure is logged by buildProgram and the pass is skipped.
   bool compilePass(const PackFiles& F, const std::string& pack, const std::string& prefix,
@@ -2091,7 +2091,7 @@ private:
     return 0;
   }
   // texture.<stage>.<name> = file.dat TEXTURE_3D <internal> <w> <h> <d> <format> <type>
-  // Photon stores the atmosphere LUT here and reads the sun color from one texel of it.
+  // Some packs store the atmosphere LUT here and reads the sun color from one texel of it.
   GLuint loadPackRaw3D(const PackFiles& F, const std::string& rel, const std::string& spec, bool& linear, bool& clamp) {
     linear = true; clamp = true;
     std::vector<std::string> tok;
@@ -2327,7 +2327,7 @@ private:
         auto bufs = drawBuffers(expanded, false);
         if (!bufs.empty()) sceneBuf = bufs[0];
       }
-      // OptiFine's shorthand. Complementary, Photon and MakeUp set this and raymarch the sky.
+      // The format's shorthand. Packs that set this raymarch the sky.
       forActiveLines(props, defined, [&](const std::string& line) {
         size_t eq = line.find('=');
         if (eq == std::string::npos) return;
@@ -2358,7 +2358,7 @@ private:
           if (!compilePass(F, pack, prefix, props, n, false, P)) continue;
           bool image = false;
           for (auto& u : P.uniforms) if (imageUniform(u.second)) image = true;
-          // An image-only pass (Rethinking Voxels prepare) would otherwise clear its DRAWBUFFERS to black.
+          // An image-only pass (a pack's prepare pass) would otherwise clear its DRAWBUFFERS to black.
           if (image && !P.writesColor) {
             DQ_LOG("shader pack '%s': %s uses image load/store, skipped", pack.c_str(), n.c_str());
             glDeleteProgram(P.prog);
@@ -2476,7 +2476,7 @@ private:
       const u8 b[4] = {0, 0, 0, 255}, w[4] = {255, 255, 255, 255};
       blackTex = makeTexture2D(1, 1, b, true, false, false); whiteTex = makeTexture2D(1, 1, w, true, false, false);
       // A sampler2DShadow or sampler3D with nothing bound is incomplete. On this Intel driver
-      // that makes every lookup in the pass return 0, so Rethinking Voxels writes a black frame.
+      // that makes every lookup in the pass return 0, so some packs write a black frame.
       glGenTextures(1, &shadowDummy);
       glBindTexture(GL_TEXTURE_2D, shadowDummy);
       const float shadowZero = 0.f;
@@ -2577,7 +2577,7 @@ private:
     if (gentity.prog) mark(gentity);
     for (const PackPass& P : iris) mark(P);
     for (int b = 0; b < 16; b++) if (need[b]) {
-      // Iris clears a buffer when the pack says so (the default). colortex2 and MakeUp's exposure
+      // The format clears a buffer when the pack says so (the default). colortex2 and some packs' exposure
       // (gaux3) opt out, and the ping-pong front stays on the side the last pass wrote.
       const bool fresh = !slot[b][0].tex || slot[b][0].w != W || slot[b][0].h != H || !slot[b][0].hdr;
       slot[b][0].make(W, H, true, true); slot[b][1].make(W, H, true, true);
@@ -2662,7 +2662,7 @@ private:
     const double now = nowSeconds(); const float ft = lastT > 0 ? (float)(now - lastT) : 0.016f; lastT = now; frames++;
     const Camera& cam = f.cam;
     const vec3 eyeRel = vec3(cam.pos - cam.origin);
-    // OptiFine's view space: the camera at the origin (our view matrix is relative to the camera's block)
+    // The format's view space: the camera at the origin (our view matrix is relative to the camera's block)
     const mat4 mv = cam.view * glm::translate(mat4(1), eyeRel);
     const mat4 mvi = glm::inverse(mv), pr = cam.proj, pri = glm::inverse(cam.proj);
     const vec3 sunV = vec3(mv * vec4(f.sunDir * 100.f, 0.f)), moonV = -sunV, upV = vec3(mv * vec4(0, 100.f, 0, 0.f));
@@ -2680,7 +2680,7 @@ private:
     const vec3 prevPos = havePrev ? prevCam : camPos;
     const mat4& pMV = havePrev ? prevMV : mv;
     const mat4& pP = havePrev ? prevP : pr;
-    // Iris eyeBrightness is block light, then sky light, each 0..15 stored as 0..240.
+    // eyeBrightness is block light, then sky light, each 0..15 stored as 0..240.
     const u8 eyePacked = s.world().getLight(ifloor(cam.pos.x), ifloor(cam.pos.y + 1.62), ifloor(cam.pos.z));
     const int eyeBlock = (eyePacked & 15) * 16;
     const int eyeSky = (eyePacked >> 4) * 16;
@@ -2710,7 +2710,7 @@ private:
     bool shadowDrew = false;
     float shHalf = 128.f;
     if (gshadow.prog && s.worldRenderer.blockAtlas()) {
-      // Iris ShadowMatrices: light looks down at noon, and the snap keeps texels from swimming.
+      // shadow matrices: light looks down at noon, and the snap keeps texels from swimming.
       if (shMul <= 0.f) shHalf = (float)std::max(32, s.app.settings.renderDist * 16);
       else shHalf = std::max(32.f, shDist * shMul);
       shHalf = std::clamp(shHalf, 32.f, 512.f);
@@ -2771,7 +2771,7 @@ private:
     auto shadowDepthName = [](const std::string& n) {
       return n == "shadowtex0" || n == "shadowtex1" || n == "shadowtex0HW" || n == "watershadow";
     };
-    // Iris held-light uniforms. The game's dyn lights only reach the built-in shader.
+    // The format's held-light uniforms. The game's dyn lights only reach the built-in shader.
     int heldId = 0, heldLv = 0, heldId2 = 0, heldLv2 = 0;
     if (s.player) {
       auto take = [&](const ItemStack& st, int& id, int& lv) {
@@ -2847,7 +2847,7 @@ private:
           continue;
         }
         if (type == GL_SAMPLER_3D) {
-          // A stage image (Photon's atmosphere LUT on depthtex0) wins over the 1x1 dummy.
+          // A stage image (an atmosphere LUT on depthtex0) wins over the 1x1 dummy.
           if (int stg = texStageOf(P.name)) {
             if (GLuint img = stageSampler(stg, n, GL_TEXTURE_3D)) { bindTex(loc, GL_TEXTURE_3D, img); continue; }
           }
@@ -2880,7 +2880,7 @@ private:
         else if (n == "eyeBrightness" && type == GL_INT_VEC2) glUniform2i(loc, eyeBlock, eyeSky);
         else if (n == "eyeBrightnessSmooth" && type == GL_INT_VEC2) glUniform2i(loc, eyeBlockI, eyeSkyI);
         else if (n == "atlasSize" && (type == GL_INT_VEC2 || type == GL_FLOAT_VEC2)) {
-          // Iris: the atlas in pixels. Generated normals divide by this. Zero made them a flat face.
+          // the atlas in pixels. Generated normals divide by this. Zero made them a flat face.
           int side = std::max(1, s.worldRenderer.atlasGrid()) * std::max(1, s.worldRenderer.atlasTileSize());
           if (type == GL_INT_VEC2) glUniform2i(loc, side, side);
           else { float a[2] = {(float)side, (float)side}; glUniform2fv(loc, 1, a); }
@@ -2979,7 +2979,7 @@ private:
           if (fed) wrote[b] = true;
           if (b == 0 && fed) wroteScene = true;
         }
-        // Complementary's composite6 writes the blended picture to colortex3 and the same value to
+        // Some packs' composite6 writes the blended picture to colortex3 and the same value to
         // colortex2 (the TAA history). Copy onto the side the next frame reads.
         if (P.name == "composite6" && fed && P.nOut > 0 && P.outs[0] == 3 && slot[2][slotFront[2]].fbo) {
           glBindFramebuffer(GL_READ_FRAMEBUFFER, slot[3][slotFront[3]].fbo);
@@ -3051,7 +3051,7 @@ private:
       }
     }
     // Set when the hand is drawn into the gbuffer deferred reads. The late splat is then
-    // the packed gbuffer, which Photon shows as a magenta arm.
+    // the packed gbuffer, which some packs show as a magenta arm.
     bool handDrawn = false;
     if (gbuf.prog && s.worldRenderer.blockAtlas() && depthOk) {
       for (auto& P : packBegin) runFullscreen(P);
@@ -3128,9 +3128,9 @@ private:
             DQ_WARN("shader pack: entity framebuffer incomplete");
           }
         }
-        // Iris: deferred is after opaque gbuffers and before translucent ones. It writes the
+        // deferred is after opaque gbuffers and before translucent ones. It writes the
         // cloud depth gbuffers_water tests. Running it afterwards replaces the water colour.
-        // A hand whose buffers deferred only reads (Photon's colortex1) has to be in that
+        // A hand whose buffers deferred only reads (colortex1, in some packs) has to be in that
         // gbuffer now. Deferred writes the shaded arm. Drawing the gbuffer afterwards is magenta.
         if (ghand.prog && ghand.nOut > 0 && !packHandPrev().draws.empty()) {
           bool read = false, overwritten = false;
@@ -3356,7 +3356,7 @@ private:
       }
     };
     auto handTargetOf = [&](const PackPass& P) {
-      // The first sampler can be an aux buffer (MakeUp's gaux3 is exposure). The arm
+      // The first sampler can be an aux buffer (some packs' gaux3 is exposure). The arm
       // belongs on the hand's own colour target when this pass reads it, else the scene.
       bool seen[16] = {};
       int best = -1;

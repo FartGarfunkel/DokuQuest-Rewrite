@@ -30,7 +30,7 @@ public:
     // in the journal (ui/book_ui.h): the buttons down the right page, who's playing and the world on the left
     const bool book = bookUiDrawing();
     ImVec2 bL, bR, bS; if (book) bookBackdropPages(W, H, bL, bR, bS);
-    if (!book) ImGui::GetBackgroundDrawList()->AddRectFilledMultiColor(ImVec2(0, 0), ImVec2(W, H), IM_COL32(16, 16, 16, 192), IM_COL32(16, 16, 16, 192), IM_COL32(16, 16, 16, 208), IM_COL32(16, 16, 16, 208));   // BTA's GuiScreen gradient
+    if (!book) ImGui::GetBackgroundDrawList()->AddRectFilledMultiColor(ImVec2(0, 0), ImVec2(W, H), IM_COL32(16, 16, 16, 192), IM_COL32(16, 16, 16, 192), IM_COL32(16, 16, 16, 208), IM_COL32(16, 16, 16, 208));   // the menu screen gradient
     float bw = book ? bS.x - 16 * z : std::min(400.f, 0.9f * W / z) * z, bh = book ? 34 * z : 40 * z, gap = 8 * z, half = (bw - gap) * 0.5f;
     if (book) ImGui::SetNextWindowPos(bR, ImGuiCond_Always);
     else ImGui::SetNextWindowPos(ImVec2(W * 0.5f, H * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
@@ -50,7 +50,7 @@ public:
     if (greyButton("Back to Game", ImVec2(bw, bh))) { a.popScreen(); ImGui::End(); ImGui::PopStyleVar(); return; }
     if (greyButton("Options...", ImVec2(half, bh))) a.pushScreen(makeOptionsScreen());
     ImGui::SameLine(); if (greyButton("Players & Skins", ImVec2(half, bh))) a.pushScreen(makePlayersScreen());
-    if (greyButton("Photo Mode...", ImVec2(bw, bh), !p || p->dead || a.session->split())) {   // BTA: the camera flies free (ui/photo_mode.cpp)
+    if (greyButton("Photo Mode...", ImVec2(bw, bh), !p || p->dead || a.session->split())) {   // the camera flies free (ui/photo_mode.cpp)
       a.popScreen(); a.pushScreen(makePhotoModeScreen()); ImGui::End(); ImGui::PopStyleVar(); return;
     }
     bool guest = netIsGuest(a);

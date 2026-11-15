@@ -87,7 +87,7 @@ bool anvilCanWork(const ItemStack& p, const AnvilRecipe& r, int tier, std::strin
   if (p.n < r.n) { if (why) *why = "That needs " + std::to_string(r.n) + " of them"; return false; }
   const Comp c = compOfStack(p);
   const Metal m = blendMetal(c.empty() ? Comp{{"iron", 1.f}} : c);
-  if (m.anvil > tier + 1) {   // an anvil works its own tier and the next (TFC): stone → copper → bronze → iron → steel...
+  if (m.anvil > tier + 1) {   // an anvil works its own tier and the next: stone → copper → bronze → iron → steel...
     if (why) *why = m.name + " needs a better anvil"; return false; }
   const float h = itemHeat(p), lo = m.melt * (r.weld ? 0.8f : 0.6f);
   if (h < lo) { if (why) *why = "Too cold to work: heat it to " + std::to_string((int)lo) + "\xC2\xB0" "C"; return false; }
@@ -117,7 +117,7 @@ ItemStack anvilOutput(const AnvilRecipe& r, const ItemStack& piece, float qualit
     if (tm && P) {
       makePartArmor(pieceName, std::vector<std::string>(P->cells.size(), tm->key), out);
       if (out.tag.is_object() && out.tag.contains("pa")) out.tag["pa"]["dur"] = (int)std::lround(out.tag["pa"].value("dur", 0) * quality);
-      if (!out.empty() && reg().item("unfinished_" + pieceName)) out.id = "unfinished_" + pieceName;   // padded at the crafting table to finish (TFC)
+      if (!out.empty() && reg().item("unfinished_" + pieceName)) out.id = "unfinished_" + pieceName;   // padded at the crafting table to finish
     }
   } else if (r.out == "anvil") out = ItemStack(anvilBlockFor(c), 1);
   else out = ItemStack(r.out, 1);

@@ -1,4 +1,4 @@
-// render/statue_layer.cpp — statues (BTA's statue, our own make): a stone figure of a creature standing on its plinth,
+// render/statue_layer.cpp — statues (our own make): a stone figure of a creature standing on its plinth,
 // carved from a spawn egg used on the plinth (sim/build.cpp). Drawn from the creature's own model, posed still and
 // tinted the colour of stone. Creatures drawn from a player-style skin show as their rig where they have one.
 #include "render/item_layers.h"

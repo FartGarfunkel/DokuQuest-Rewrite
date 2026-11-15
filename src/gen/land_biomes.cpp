@@ -6,14 +6,14 @@
 namespace dq {
 
 namespace {
-// Minecraft's LinearCongruentialGenerator.next (Java long arithmetic: wrapping)
+// the linear congruential step (Java long arithmetic: wrapping)
 inline i64 lcg(i64 seed, i64 salt) {
   const u64 s = (u64)seed;
   return (i64)(s * (s * 6364136223846793005ull + 1442695040888963407ull) + (u64)salt);
 }
 inline i64 floorMod(i64 a, i64 b) { const i64 m = a % b; return m < 0 ? m + b : m; }
 
-// TerraBlender's AreaContext
+// the region layer's area context
 struct Ctx {
   i64 seed, rval = 0;
   void init(i64 x, i64 y) { i64 i = seed; i = lcg(i, x); i = lcg(i, y); i = lcg(i, x); rval = lcg(i, y); }
@@ -66,7 +66,7 @@ bool LandBiomes::load(const fs::path& dir, i64 worldSeed, bool withQuark, bool s
   }
   for (auto& rj : (*j)["regions"]) {
     Region r; r.name = rj.value("name", ""); r.weight = rj.value("weight", 0);
-    if (!withQuark && r.name.rfind("quark:", 0) == 0) continue;   // (terrain versions 15-16: without Quark's region)
+    if (!withQuark && r.name.rfind("quark:", 0) == 0) continue;   // (terrain versions 15-16: without that extra region)
     for (auto& e : rj["entries"]) {
       Box b;
       for (int k = 0; k < 6; k++) { b.lo[k] = e[k * 2].get<i64>(); b.hi[k] = e[k * 2 + 1].get<i64>(); }
@@ -82,7 +82,7 @@ bool LandBiomes::load(const fs::path& dir, i64 worldSeed, bool withQuark, bool s
   layerSeed_.push_back(mixSeed(worldSeed, 2000));
   for (int i = 0; i < 3; i++) layerSeed_.push_back(mixSeed(worldSeed, 2001 + i));
   for (int i = 0; i < regionSize_; i++) layerSeed_.push_back(mixSeed(worldSeed, 1001 + i));
-  // (BiomeManager.obfuscateSeed: a hash of the seed)
+  // (the biome zoom seed: a hash of the seed)
   u64 z = (u64)worldSeed + 0x9E3779B97F4A7C15ull;
   z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull; z = (z ^ (z >> 27)) * 0x94D049BB133111EBull; zoomSeed_ = z ^ (z >> 31);
   DQ_LOG("land biomes: %d biomes, %d regions", (int)info_.size(), (int)regions_.size());
@@ -133,7 +133,7 @@ int LandBiomes::layer(int L, int x, int z) const {
 }
 int LandBiomes::region(int qx, int qz) const { return regions_.empty() ? 0 : layer((int)layerSeed_.size() - 1, qx, qz); }
 
-// ---- the nearest box (Climate.RTree's answer: the least sum of squared distances) ----
+// ---- the nearest box (the R-tree search's answer: the least sum of squared distances) ----
 void LandBiomes::build(Region& r) {
   r.nodes.clear();
   struct Job { int node, first, count; };
@@ -193,7 +193,7 @@ int LandBiomes::lookup(int region, const i64 p[6]) const {
   return bestBox < 0 ? 0 : r.boxes[bestBox].biome & 0xFFFF;
 }
 
-// ---- BiomeManager.getBiome: which quart a block reads ----
+// ---- the biome zoom: which quart a block reads ----------
 void LandBiomes::fuzzyQuart(int x, int y, int z, int& qx, int& qy, int& qz) const {
   const int i = x - 2, j = y - 2, k = z - 2;
   const int l = i >> 2, m = j >> 2, n = k >> 2;
@@ -229,7 +229,7 @@ bool LandBiomes::coldEnoughToSnow(int b, int x, int y, int z) const {
   if (b < 0 || b >= (int)info_.size()) return false;
   const Info& in = info_[b];
   float t = in.temperature;
-  // (Minecraft's frozen modifier and height chill use its own simplex noises; a hash-smooth stand-in here)
+  // (the reference frozen modifier and height chill use their own simplex noises; a hash-smooth stand-in here)
   auto vn = [&](double fx, double fz, u64 salt) {
     const int ix = (int)std::floor(fx), iz = (int)std::floor(fz); const double ux = fx - ix, uz = fz - iz;
     auto h = [&](int a, int c) { u64 k = ((u64)(u32)a << 32 | (u32)c) ^ (zoomSeed_ + salt); k ^= k >> 33; k *= 0xff51afd7ed558ccdull; k ^= k >> 33;

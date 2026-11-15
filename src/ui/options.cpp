@@ -1,7 +1,7 @@
-// ui/options.cpp — Options, laid out like Better than Adventure 8.0's options screen (ScreenOptions / OptionsPages):
+// ui/options.cpp — Options, laid out as a paged options screen:
 // the pages General, Player, Audio, Video, Controls, Accessibility, Asset Packs, Language Packs and Search down the
 // left, each page folding categories of rows (ui/paged.h). Every setting of ui.js buildSettings is here, under the
-// BTA page and category it belongs to; keys and controller buttons are rebound right on the Controls page
+// page and category it belongs to; keys and controller buttons are rebound right on the Controls page
 // (input/controls.js: every key, mouse button and controller button, clashes in red). Also the controller setup
 // wizard (input/padsetup.js: press each button and move each stick once; the pad is remembered by its name).
 #include "ui/book_ui.h"
@@ -33,7 +33,7 @@ int controlGroup(const std::string& id) {
   if (id == "view" || id == "shoulder" || id == "zoom" || id == "debug") return 5;
   return 6;
 }
-// BTA's key categories on the Controls page
+// the key categories on the Controls page
 const char* const KEY_CATS[] = {"Interactions", "Movement", "User Interface", "HUD Editor", "Hotbar", "View", "Miscellaneous"};
 std::string pct(float v) { return std::to_string((int)std::lround(v * 100)) + "%"; }
 void openFolder(const fs::path& p) {
@@ -52,7 +52,7 @@ int indexOfStr(const char* const* v, int n, const std::string& x, int dflt = 0) 
 
 enum Page { P_GENERAL, P_PLAYER, P_AUDIO, P_VIDEO, P_CONTROLS, P_ACCESS, P_PACKS, P_LANG, P_SEARCH, P_COUNT };
 const std::vector<PagedPage>& optionPages() {
-  // BTA's icons: grass, a statue, a record, a flag, a boat, a spawner wand, a painting, a book, glass
+  // the page icons: grass, a statue, a record, a flag, a boat, a spawner wand, a painting, a book, glass
   // the same pictures as the launcher's Options tab (the pack's flat block and item pictures)
   static const std::vector<PagedPage> p = {{"General", "block/grass_block_side"}, {"Player", "item/armor_stand"}, {"Audio", "item/music_disc_cat"},
     {"Video", "item/painting"}, {"Controls", "item/oak_boat"}, {"Accessibility", "item/spyglass"}, {"Asset Packs", "item/flower_banner_pattern"},
@@ -153,7 +153,7 @@ private:
     case P_GENERAL: {
       if (kit.category("Gameplay")) {
         if (kit.range("Field of View", &s.fov, 55, 100, 1, std::to_string((int)std::lround(s.fov)) + "\xC2\xB0", D.fov, "How wide you see.", &rel)) applyLight = true;
-        if (a.session && a.session->level && !a.session->level->info.remote) {   // BTA's Difficulty: this world's
+        if (a.session && a.session->level && !a.session->level->info.remote) {   // Difficulty: this world's
           static const char* DIFFS[] = {"peaceful", "easy", "normal", "hard"};
           std::string& d = a.session->level->info.difficulty;
           int cur = indexOfStr(DIFFS, 4, d, 2);
@@ -227,19 +227,19 @@ private:
       }
       if (kit.category("Visuals")) {
         { int cur = clampv(s.extra.value("dreamLight", 0), 0, 2); if (kit.cycle("Lighting", &cur, {"Classic", "Dreamlike", "Dreamlike (Strong)"}, 0, "Dreamlike: a soft glow round bright things, golden light when the sun is low, soft focus (after Horizon's shaders).", 120)) { s.extra["dreamLight"] = cur; applyNow = true; } }
-        if (kit.range("Brightness", &s.brightness, 0, 1, 0.05f, s.brightness <= 0 ? "Moody" : s.brightness >= 1 ? "Bright" : pct(s.brightness), D.brightness, "Lights up caves and the night, like Minecraft's Brightness. Full daylight stays the same.", &rel)) applyLight = true;
+        if (kit.range("Brightness", &s.brightness, 0, 1, 0.05f, s.brightness <= 0 ? "Moody" : s.brightness >= 1 ? "Bright" : pct(s.brightness), D.brightness, "Lights up caves and the night. Full daylight stays the same.", &rel)) applyLight = true;
         {   // Settings::applyColourStyle; moving a slider makes it Custom (render/colour_filter_layer.cpp draws it)
           static const char* styles[] = {"vibrant", "natural", "classic", "custom"};
           int cur = 3; for (int i = 0; i < 4; i++) if (s.colourStyle == styles[i]) cur = i;
           int pick = cur;
-          if (kit.cycle("Colour Style", &pick, {"Vibrant", "Natural", "Classic", "Custom"}, 1, "Vibrant: the colours as drawn. Natural: a little softer. Classic: muted and flatter, like Minecraft Alpha and Beta (blacks less deep on an OLED).", 120) && pick != cur) {
+          if (kit.cycle("Colour Style", &pick, {"Vibrant", "Natural", "Classic", "Custom"}, 1, "Vibrant: the colours as drawn. Natural: a little softer. Classic: muted and flatter, like the early blocky games (blacks less deep on an OLED).", 120) && pick != cur) {
             if (pick < 3) s.applyColourStyle(styles[pick]); else s.colourStyle = "custom";
             applyLight = true;
           }
           if (kit.range("Saturation", &s.saturation, 0, 1.5f, 0.05f, pct(s.saturation), D.saturation, "How colourful the world is. 100% is the colours as drawn.", &rel)) { s.colourStyle = "custom"; applyLight = true; }
           if (kit.range("Contrast", &s.contrast, 0.5f, 1.5f, 0.05f, pct(s.contrast), D.contrast, "How far apart the darks and lights are. Lower is flatter and softer.", &rel)) { s.colourStyle = "custom"; applyLight = true; }
         }
-        { bool cl = s.extra.value("colouredLight", true); if (kit.toggle("Coloured Light", &cl, true, "Redstone glows red, soul fire blue, sea lanterns cyan, the coloured lamps their colour (BTA).")) { s.extra["colouredLight"] = cl; applyNow = true; } }
+        { bool cl = s.extra.value("colouredLight", true); if (kit.toggle("Coloured Light", &cl, true, "Redstone glows red, soul fire blue, sea lanterns cyan, the coloured lamps their colour.")) { s.extra["colouredLight"] = cl; applyNow = true; } }
         { int cur = clampv(s.microVoxels, 0, 2); if (kit.cycle("Block Detail", &cur, {"Flat", "Shaded", "Raised"}, D.microVoxels, "Every block is 32\xC3\x97" "32\xC3\x97" "32 little voxels coloured from its texture. Flat is fastest; Raised gives the voxels depth.")) { s.microVoxels = cur; applyNow = true; } }
         { int cur = clampv(s.waterQuality, 0, 2); if (kit.cycle("Water", &cur, {"Flat", "Waves", "Reflections"}, D.waterQuality, "Reflections are waves and reflections.")) { s.waterQuality = cur; applyNow = true; } }
         { bool sh = s.shadows != 0; if (kit.toggle("Sun Shadows", &sh, D.shadows != 0, "Soft shadows from the sun and moon (Modern renderer).")) { s.shadows = sh ? 1 : 0; applyNow = true; } }
@@ -253,7 +253,7 @@ private:
         if (kit.toggle("Waving Plants", &s.wavingPlants, D.wavingPlants, "Grass, leaves and water move in the wind.")) applyNow = true;
         if (kit.toggle("See Through Portals", &s.portalViews, D.portalViews, "Portals show the other side; you step straight through.")) applyNow = true;
       }
-      if (kit.category("Weather")) {   // render/weather_layer.cpp (after Particle Rain)
+      if (kit.category("Weather")) {   // render/weather_layer.cpp
         { static const int amounts[] = {0, 600, 1500, 3000}; int cur = 2; for (int i = 0; i < 4; i++) if (s.weatherParticles == amounts[i]) cur = i;
           int pick = cur;
           if (kit.cycle("Weather Particles", &pick, {"Off", "Low", "Normal", "High"}, 2, "Rain, snow, dust and fog around you. Fewer is faster.") && pick != cur) { s.weatherParticles = amounts[pick]; applyNow = true; } }
@@ -268,14 +268,14 @@ private:
         int cur = 0;
         for (size_t i = 0; i < sps.size(); i++) { items.push_back(sps[i]); if (sps[i] == s.shaderPack) cur = (int)i + 1; }
         int c = cur;
-        if (kit.cycle("Shader Pack", &c, items, 0, "In shaderpacks/: our own packs (folders of the game's shader files), and Iris/OptiFine packs (.zip or folder: their colour, bloom and other after-effects run; their own lighting and shadows don't). Switches at once.", 140) && c != cur) {
+        if (kit.cycle("Shader Pack", &c, items, 0, "In shaderpacks/: our own packs (folders of the game's shader files), and other shader packs (.zip or folder: their colour, bloom and other after-effects run; their own lighting and shadows don't). Switches at once.", 140) && c != cur) {
           s.shaderPack = c == 0 ? "" : sps[c - 1]; s.save(); setShaderPack(s.shaderPack); reloadAllShaders();
         }
         int lv = std::clamp(s.extra.value("shaderLevel", 0), 0, 4);
         { float cc = std::clamp(s.extra.value("colorCorrectionNether", 0.5f), 0.f, 1.f);
-          if (kit.range("Nether Color Correction", &cc, 0, 1, 0.05f, pct(cc), 0.5f, "Better than Adventure's warm grade over the Nether: darker, redder and more golden. 0% leaves the picture as it is.")) s.extra["colorCorrectionNether"] = cc; }
+          if (kit.range("Nether Color Correction", &cc, 0, 1, 0.05f, pct(cc), 0.5f, "A warm grade over the Nether: darker, redder and more golden. 0% leaves the picture as it is.")) s.extra["colorCorrectionNether"] = cc; }
         { float hh = std::clamp(s.extra.value("heatHaze", 0.5f), 0.f, 1.f);
-          if (kit.range("Heat Haze", &hh, 0, 1, 0.05f, pct(hh), 0.5f, "Better than Adventure's shimmer over the hot Nether's distance. 0% turns it off.")) s.extra["heatHaze"] = hh; }
+          if (kit.range("Heat Haze", &hh, 0, 1, 0.05f, pct(hh), 0.5f, "A shimmer over the hot Nether's distance. 0% turns it off.")) s.extra["heatHaze"] = hh; }
         if (kit.cycle("Shaders", &lv, {"Off", "Low", "Medium", "High", "Ultra"}, 0, "The game's own shaders over the picture. Low: a film grade, vignette, a wobble under water. Medium: and a soft bloom, eyes that adjust to the dark. High: and sun rays, a lens flare, water you see into, sun shadows. Ultra: all of it, stronger, with reflections in the water and shading in the corners. Works with a shader pack too.")) { s.extra["shaderLevel"] = lv; s.save(); }
         { static const int v[] = {1, 2, 4, 8, 16}; int cur = indexOf(v, s.extra.value("anisotropic", 4), 2);
           if (kit.cycle("Texture Filtering", &cur, {"Off", "2x", "4x", "8x", "16x"}, 2, "Anisotropic filtering: ground and walls seen at a slant stay sharp into the distance. 4x costs next to nothing.")) { s.extra["anisotropic"] = v[cur]; s.save(); a.applyTextureFiltering(); } }
@@ -322,7 +322,7 @@ private:
     }
   }
 
-  // ---- Controls: mouse, keyboard and controller settings, then every key in BTA's categories ----
+  // ---- Controls: mouse, keyboard and controller settings, then every key in its category ----
   void drawControls(App& a) {
     Settings& S = a.settings; Input& in = a.input;
     static const Settings D{};
@@ -401,7 +401,7 @@ private:
     if (!kit.searching()) kit.note("Esc always pauses and can't be changed. On a controller, tap sneak twice to crawl. A controller with mixed-up buttons? Set it up first (Controller \xE2\x86\x92 Set Up), then change actions here.");
   }
 
-  // ---- Asset Packs: BTA's Textures, Selected and Available lists ----
+  // ---- Asset Packs: the Textures, Selected and Available lists ----
   void drawPacks(App& a) {
     Settings& s = a.settings;
     std::vector<std::string> packs = listResourcePacks();
@@ -445,7 +445,7 @@ private:
   }
 };
 std::unique_ptr<Screen> makeOptionsScreen() { return std::make_unique<OptionsScreen>(); }
-// BTA keeps the keys on the Controls page; the old Controls screen opens it there
+// the keys are on the Controls page; the old Controls screen opens it there
 std::unique_ptr<Screen> makeControlsScreen() { return std::make_unique<OptionsScreen>(P_CONTROLS); }
 
 // ---- the controller setup wizard (padsetup.js) ------------------------------------------------------------

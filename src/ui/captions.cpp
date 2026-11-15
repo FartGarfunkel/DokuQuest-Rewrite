@@ -1,4 +1,4 @@
-// ui/captions.cpp — captions for the sounds around you (BTA's subtitles; Options → Accessibility → Captions): what a
+// ui/captions.cpp — captions for the sounds around you (subtitles; Options → Accessibility → Captions): what a
 // played sound is, in a few words. client/client_fx.cpp asks as each world sound plays; ui/hud.cpp shows the last few at
 // the side of the screen with the way they come from. Sounds that are only the interface (clicks, your own steps) say
 // nothing.

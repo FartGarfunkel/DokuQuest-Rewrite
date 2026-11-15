@@ -183,7 +183,7 @@ bool PlayerController::placement(const RayHit& hit, BlockId bid, Placement& out)
     bool okSoil = below == B.sugar_cane || ((below == B.grass || below == B.dirt || below == B.sand || below == B.red_sand) && below && waterSide);
     if (!okSoil) { toastMsg("Sugar cane needs water beside it"); return false; }
   }
-  if (R.block(bid).has("netherReed") && below != bid) {   // BetterNether's nether reed: lava beside the ground it stands in
+  if (R.block(bid).has("netherReed") && below != bid) {   // the nether reed: lava beside the ground it stands in
     bool lavaSide = false;
     for (auto [a, b] : {std::pair{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) if (R.tLiquid[w.getBlock(x + a, y - 1, z + b)] == 2) lavaSide = true;
     if (!lavaSide || !R.tSolid[below]) { toastMsg("Nether reed needs lava beside it"); return false; }
@@ -818,7 +818,7 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   }
   if (b.has("bellBlock")) { sfxAt(lv, "bell", vec3(x, y, z), 48); swingArm(); return true; }
   if (bhas(id, BF::Sign)) {
-    // glow ink makes the writing glow, an ink sac puts it out, a dye colours it (Minecraft's sign inks)
+    // glow ink makes the writing glow, an ink sac puts it out, a dye colours it (sign inks)
     std::string hk = held && !held->empty() ? held->id : "";
     if (json* e = w.blockEntity(x, y, z); e && e->is_object() && (hk == "glow_ink_sac" || hk == "ink_sac" || (def && def->has("dye")))) {
       bool changed = false;
@@ -863,7 +863,7 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   if (bhas(id, BF::Tnt) && def && def->str("igniter") == "flint") { w.setBlock(x, y, z, AIR); primeTNT(lv, w, x, y, z, 4); wearHeld(lv, p, 1); return true; }
   // tools on blocks
   if (tool == "axe" && b.has("strip")) { w.setBlock(x, y, z, R.blockId(b.str("strip")), meta); sfxMaterial(lv, "wood", "dig", c); wearHeld(lv, p, 1); swingArm(); return true; }
-  // chisel (Cubyz-style): aim at one of a full block's 8 corners to carve it away, or re-chisel a carved corner to put it
+  // chisel: aim at one of a full block's 8 corners to carve it away, or re-chisel a carved corner to put it
   // back. The octant bits live in the block's carve byte (meta keeps its legacy meaning); the mesher and physics draw and
   // collide them as octant boxes. The crosshair raycast's entry point is the geometry under the cursor, and a hit through
   // a carved notch still lands inside the aimed octant, so the same click toggles it back. Each octant toggles on its own.

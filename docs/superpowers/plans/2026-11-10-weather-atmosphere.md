@@ -17,9 +17,9 @@
 - Shaders: one file both stages (`#ifdef VERTEX` / `#ifdef FRAGMENT`), GLSL 330 subset, `#include "common.glsl"`; must compile on Legacy, Modern and Vulkan.
 - No audio files shipped: sounds are profiles in `data/sounds.json` / `data/sounds.bin`.
 - Budget: weather adds ≤ 0.5 ms/frame at "Normal" (1500 particles, distance 16) on Modern GL, Vulkan and Legacy (`DQ_FRAME_STATS=1`).
-- Particle Rain numbers used verbatim: particle amount 1500, storm density ×1.5, sky distance 16, surface range 100, wind strength 0.03, gust frequency 0.15, modulation speed 0.1, height ramp start 50 over 40 blocks (band-local), tint mix 0.6, ripple 8 frames / lifetime 7 ticks, fog lifetime 250 ticks, fog size 2, fog distance scaling 0.1, after-rain fog up to 6000 ticks (5 min). 1 tick = 1/20 s.
+- Tuning numbers: particle amount 1500, storm density ×1.5, sky distance 16, surface range 100, wind strength 0.03, gust frequency 0.15, modulation speed 0.1, height ramp start 50 over 40 blocks (band-local), tint mix 0.6, ripple 8 frames / lifetime 7 ticks, fog lifetime 250 ticks, fog size 2, fog distance scaling 0.1, after-rain fog up to 6000 ticks (5 min). 1 tick = 1/20 s.
 - Options (game Options → Video → Weather, and launcher): Weather Particles Off/Low/Normal/High = 0/600/1500/3000 (default Normal); Weather Distance 12–32 (default 16); Splashes & Ripples (on); Ground Fog (on); Height Fog (on). Presets: potato Low/12/off/off/on, low Low/14, medium Normal/16, high High/20, ultra High/24.
-- Particle Rain's MIT notice goes into `docs/CREDITS.md`.
+- The attribution for the adapted algorithms goes into `docs/THIRD_PARTY_NOTICES.md`.
 - No git repository: "commit" steps are replaced by "smoke test + note in docs/CHANGELOG.md" checkpoints.
 
 ## Review Focus
@@ -27,7 +27,7 @@
 1. Wind-blown rain or blizzard snow next to a wall or under an overhang must not appear indoors → collision test in Task 4.
 2. Moving fast (sprinting, falling, flying, elytra) must not leave the camera in a weather "hole" → spawn-distribution test in Task 4 (fast mode uses the whole sphere).
 3. Standing in a cave or house during a storm: no sky particles inside, rain sound muffled not silent → Task 4 roof rejection test, Task 9 indoor-rain check.
-4. Changing dimension band (falling from the Aether into the Overworld, portals) must clear weather particles of the old band → Task 4 test `clearsOnBandChange`.
+4. Changing dimension band (falling from the Skylands into the Overworld, portals) must clear weather particles of the old band → Task 4 test `clearsOnBandChange`.
 5. A guest joining mid-storm must see the storm, not clear sky → Task 1 test (guest joins after `/weather thunder`).
 
 ---
@@ -62,7 +62,7 @@
 
 - [ ] **Step 1: Write the failing tests** — `windAt` with the same params and position returns bit-identical results twice; at band-local y 40 the result is `vec3(0)`; at band-local y 100 its length is > 0 and ≤ `0.03f * 2 * (0.5f + strength)`; its mean over a 64×64 grid of x,z points has a direction within 30° of `dir`; `y` component is always 0; `gustAt` stays in [0,1].
 - [ ] **Step 2: Run** `ninja -C build dq-test-gameplay && ./build/dq-test-gameplay` — FAIL (no such function).
-- [ ] **Step 3: Implement.** Particle Rain's field per axis, then rotated so its mean points along `dir` and scaled by `(0.5 + strength)`:
+- [ ] **Step 3: Implement.** The gust field per axis, then rotated so its mean points along `dir` and scaled by `(0.5 + strength)`:
 
 ```cpp
 // PR: -(sin(p*f + t) * sin(p*f*0.5 + t*0.5) * max + max), f = 0.15, t = ticks * 0.1, max = 0.03
@@ -191,11 +191,11 @@ Magnitude along the wind = `-(one(x,t) + one(z,t)) / 2`, lateral wobble = `(one(
 - Consumes: `gustAt` (Task 2), `WeatherSystem::sand, bliz, rain, rainOpen`, `precipAt`.
 - Produces: sound names `ws_weather.snow`, `ws_weather.snow.above`, `ws_weather.sandstorm`, `ws_weather.sandstorm.above` (pack events `fx.ws_weather.*` created by the merge); `AudioScene` fields `float snowK, sandK; bool above; float roof;`.
 
-- [ ] **Step 1: Generate profiles:** `python3 tools/port/sound_analyze.py merge "/home/matt/Documents/particlerain-4.0.3+1.20.1-forge/assets/particlerain" particlerain data/sounds.json data/sounds.bin` — expected output lists 18 profiles; `data/sounds.json` gains events `fx.ws_weather.snow`, `fx.ws_weather.snow.above`, `fx.ws_weather.sandstorm`, `fx.ws_weather.sandstorm.above`.
+- [ ] **Step 1: Generate profiles:** `python3 tools/port/sound_analyze.py merge "<the recorded weather sounds folder>" particlerain data/sounds.json data/sounds.bin` — expected output lists 18 profiles; `data/sounds.json` gains events `fx.ws_weather.snow`, `fx.ws_weather.snow.above`, `fx.ws_weather.sandstorm`, `fx.ws_weather.sandstorm.above`.
 - [ ] **Step 2: Verify** each renders: `./build/dq-sfx render ws_weather.snow /tmp/s.wav` (and the other three names) produce non-silent audio (peak > 0.05) of 2–10 s.
 - [ ] **Step 3: Implement** PR's ambience: every ~0.1–0.3 s while snowing / sandstorming nearby, play the matching sound at a random point near the camera at volume `snowK` / `sandK` (snow: snowing columns × `rain`; sand: `sand`), pitch 0.5 and volume ×0.5 with the `.above` variant when the camera is above the weather (`cam y > topAt + 12`). Rain indoors: when sky light at the head < 8 but `rainOpen` sampling found rain within 16 blocks, the rain loop gets a 600 Hz low-pass and stays at 60 % instead of dropping toward 0.
 - [ ] **Step 4: Verify** — `DQ_ENV_TEST` blizzard/sandstorm runs log the sounds played (`audio: N sounds played`) and no audio errors; indoor rain run logs the roof filter on.
-- [ ] **Step 5: Checkpoint** — add Particle Rain's MIT notice (copyright line and permission text from its LICENSE) to `docs/CREDITS.md` naming what was adapted (spawning, wind field, particle kinds and numbers, fog sheets, sounds).
+- [ ] **Step 5: Checkpoint** — add the MIT notice for the adapted algorithms to `docs/THIRD_PARTY_NOTICES.md`, naming what was adapted (spawning, wind field, particle kinds and numbers, fog sheets, sounds).
 
 ### Task 10: Final pass
 

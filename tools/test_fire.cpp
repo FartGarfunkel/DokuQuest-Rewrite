@@ -1,5 +1,5 @@
 // tools/test_fire.cpp — headless checks for fire and clay (sim/heat.h, sim/firepit.h, sim/firestarter.h, sim/pit_kiln.h,
-// sim/charcoal_pit.h, sim/straw.h; after TerraFirmaCraft): item heat, the firepit's fuel and temperature, rain, lighting
+// sim/charcoal_pit.h, sim/straw.h): item heat, the firepit's fuel and temperature, rain, lighting
 // with the firestarter, straw, clay pottery, the pit kiln and the charcoal pit. Run: build/test_fire (exit code = failures)
 #include "core/init.h"
 #include "core/registry.h"
@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
     check(!canMergeStacks(ing, cold), "a hot ingot doesn't stack with a cold one");
     setItemHeat(ing, 22);
     check(ing.tag.is_null() || !ing.tag.contains("heat"), "cooled down, the heat leaves its tag");
-    check(heatName(100) == "Warming" && heatName(600) == "Faint Red" && heatName(1150) == "Orange" && heatName(50).empty(), "TFC's names for the heat");
+    check(heatName(100) == "Warming" && heatName(600) == "Faint Red" && heatName(1150) == "Orange" && heatName(50).empty(), "the names for the heat");
     check(heatGlow(300) == 0 && heatGlow(900) != 0, "it glows from red heat");
     check(heatable("copper_ingot") && heatable("iron_pickaxe_head") && !heatable("apple"), "what can be heated");
   }
@@ -122,7 +122,7 @@ int main(int argc, char** argv) {
   const BlockId FIRE = reg().blockId("campfire");
   auto ent = [&](int x, int y, int z) -> json& { return *w.blockEntity(x, y, z, true); };
   {
-    check(fuelOf("log").peak >= 600 && fuelOf("log").secs >= 60 && fuelOf("charcoal").peak > 1300 && fuelOf("apple").secs == 0, "TFC's fuels");
+    check(fuelOf("log").peak >= 600 && fuelOf("log").secs >= 60 && fuelOf("charcoal").peak > 1300 && fuelOf("apple").secs == 0, "the fuels");
     const int X = 3, Z = 3, Y1 = rg.Y + 1;
     w.setBlock(X, Y1, Z, FIRE, 0);
     json& e = ent(X, Y1, Z); e = json{{"type", "campfire"}, {"items", {nullptr, nullptr, nullptr, nullptr}}, {"t", {0, 0, 0, 0}}, {"temp", 20}, {"burn", 0}, {"fuel", json::array()}};

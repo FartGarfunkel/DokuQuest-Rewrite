@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""tools/port/end_mobs.py — Better End's creatures for the End's lands (idempotent; data_patches.py runs it):
+"""tools/port/end_mobs.py — the End lands' creatures (idempotent; data_patches.py runs it):
   python3 tools/port/end_mobs.py <data-dir>
 
 Each is built on the rig of the nearest creature the game already has (so it moves and thinks like it), its own model
-a copy of that one with every picture recoloured to the Better End creature's colours (light and shade kept):
+a copy of that one with every picture recoloured to the new creature's colours (light and shade kept):
   end_slime (on the slime: purple jelly, a green core), dragonfly (on the bee, no sting: cyan), end_fish (on the cod:
   pink and violet), cubozoa (on the glow squid: turquoise jelly that stings), silk_moth (on the bat: cream), shadow_walker
-  (on the ghoul: near-black with violet eyes, hostile). sim/creature_spawn.cpp spawns them in their Better End biomes.
+  (on the ghoul: near-black with violet eyes, hostile). sim/creature_spawn.cpp spawns them in their End lands.
 """
 import copy, json, pathlib, sys
 import numpy as np

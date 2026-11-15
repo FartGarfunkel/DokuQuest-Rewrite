@@ -1,4 +1,4 @@
-// ui/travel_journal.cpp — the Travel Journal (Better than Adventure's guidebook): the things you've carried
+// ui/travel_journal.cpp — the Travel Journal (a guidebook): the things you've carried
 // (sim/travel_journal.cpp keeps the list in the player's data["found"]), and how each one is made. Controller:
 // up/down picks, LB/RB jumps ten, B/Esc or the inventory button closes; the mouse clicks.
 #include "ui/content_screens.h"

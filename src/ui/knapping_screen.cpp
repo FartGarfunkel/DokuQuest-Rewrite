@@ -1,4 +1,4 @@
-// ui/knapping_screen.cpp — knapping (sim/knapping.h, after TerraFirmaCraft's GuiKnapping): a 5x5 grid of the stone,
+// ui/knapping_screen.cpp — knapping (sim/knapping.h): a 5x5 grid of the stone,
 // flint or clay in your hands; chip cells away until what's left is a shape, then take what you've made. Stone and flint:
 // the first chip spends one; clay: five, when you take the piece. Mouse: click a cell to chip it (or hold and drag across
 // the grid to chip all it passes), click the result to take it. Controller: the d-pad / stick moves, A chips (or takes, on the result), X takes, B closes. Esc closes.

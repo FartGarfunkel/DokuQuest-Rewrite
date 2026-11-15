@@ -100,7 +100,7 @@ std::string model3dKind(const std::string& key, const ItemDef* def) {
   if (!def || !def->block.empty()) return "";
   const std::string t = def->hasTool ? def->tool.type : "";
   auto re = [&](const char* r) { return rxSearch(key, r); };
-  // the immersive tools (TerraFirmaCraft's kinds), modelled like the rest rather than as a pickaxe, axe, hoe or sword
+  // the immersive tools (the early-tool kinds), modelled like the rest rather than as a pickaxe, axe, hoe or sword
   if (def->hasTool && (def->has("hammer") || t == "hammer" || key == "smith_hammer")) return "hammer";   // (the smith's hammer fights as a sword: it is still a hammer)
   if (def->hasTool && def->has("saw")) return "saw";
   if (def->hasTool && def->has("scythe")) return "scythe";
@@ -133,7 +133,7 @@ std::string model3dKind(const std::string& key, const ItemDef* def) {
   if (re("shard$|^quartz$")) return "crystal";
   if (re("^(coal|charcoal|flint|raw_\\w+|crushed_\\w+)$")) return "lump";
   if (re("nugget$")) return "nugget";
-  if (re("berry$")) return "berries";                                  // the TFC berries (blackberry, cranberry...)
+  if (re("berry$")) return "berries";                                  // the wild berries (blackberry, cranberry...)
   if (re("^(orange|lemon|lime|peach|plum|squash)$")) return "apple";   // round fruit
   if (key == "garlic") return "potato";
   if (re("^(barley|oat|rye)$")) return "wheat";
@@ -198,7 +198,7 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
     // it into the ground: it had stood edge-on, broad in the picture's own plane like an axe's)
     m.sseg(diag(0.86f, 0.3f), diag(0.6f, 0.34f), 0.07f, 0.06f, 0.26f, 0.24f, 1.08f, 0.08f);
     depth = 0.06f;
-  } else if (k == "hammer") {   // TFC's hammer: a squared head across the top of the haft, its faces bright
+  } else if (k == "hammer") {   // the smithing hammer: a squared head across the top of the haft, its faces bright
     handle(m, 0.84f);
     m.sseg(diag(0.84f, -0.24f), diag(0.84f, 0.24f), 0.17f, 0.17f, 0.15f, 0.15f, 1.0f, 0.05f, 0.02f);
     m.sseg(diag(0.84f, -0.26f), diag(0.84f, -0.22f), 0.17f, 0.17f, 0.15f, 0.15f, 1.12f, 0.03f);

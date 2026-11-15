@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""tools/port/nether_blocks.py — the blocks of Better than Adventure 8.0's Nether that DokuQuest lacked (idempotent;
+"""tools/port/nether_blocks.py — the classic Nether's blocks that DokuQuest lacked (idempotent;
 data_patches.py runs it):  python3 tools/port/nether_blocks.py <data-dir>
 
-BTA's art is not ours to ship (it has no licence), so each picture here is the DokuQuest Base pack's nearest picture,
-its light and shade kept and its colours moved to BTA's block's average colour (the colours measured from BTA's
-textures; see the research notes). To see BTA's own pictures on your computer, make the local pack with
+No outside art is shipped, so each picture here is the DokuQuest Base pack's nearest picture,
+its light and shade kept and its colours moved to the block's own average colour (see the research
+notes). To see the reference pictures on your computer, make the local pack with
 tools/port/local_mod_art.py (never shipped).
 
-  brimsand (BTA's black volcanic sand; it does not fall), nether_brimstone (BTA's near-black brimstone; Better End has
-  its own yellow brimstone), brimthaw (glowing olive, light 10), cobbled_netherrack (BTA's world filler),
+  brimsand (black volcanic sand; it does not fall), nether_brimstone (near-black brimstone; the End has
+  its own yellow brimstone), brimthaw (glowing olive, light 10), cobbled_netherrack (the classic Nether's world filler),
   crystalline_netherrack (cobbled, with glowing red veins), cobbled_gloomstone, ember (light 5, buried under the Old
   World's ash), ash_layer (a 1/8 layer of ash), rubyglass_column / rubyglass_node (the giant crystals), rubyglass_crystal
   (the crust on the crystal seas: no light, slippery), rubyglass_growth, magmatic_boulder, sulfuric_boulder, bone_pile,
@@ -58,7 +58,7 @@ def veins(a, hexcol, frac=0.14):
 
 
 def boulder(a, seed):
-    """a rock's outline (BTA's boulders are a cross of rock sprites): a lumpy oval in the lower part of the picture"""
+    """a rock's outline (boulders are a cross of rock sprites): a lumpy oval in the lower part of the picture"""
     rng = np.random.default_rng(seed); yy, xx = np.mgrid[0:N, 0:N]
     r = ((xx - 15.5) / 12.5) ** 2 + ((yy - 21.5) / 9.5) ** 2 + rng.normal(0, 0.06, (N, N))
     out = a.copy(); out[..., 3] = np.where(r <= 1, 255, 0)
@@ -126,7 +126,7 @@ def main(d):
     block('cobbled_netherrack', 'Cobbled Netherrack', {'hardness': 0.4, 'tier': 1}, 'cobbled_netherrack')
     block('crystalline_netherrack', 'Crystalline Netherrack', {'hardness': 0.4, 'tier': 1, 'drop': 'cobbled_netherrack'}, 'crystalline_netherrack')
     block('cobbled_gloomstone', 'Cobbled Gloomstone', {'hardness': 2.0, 'tier': 1}, 'cobbled_gloomstone')
-    # BTA's sulfuric fire: the pack's flames burning sulphur-yellow (#e0d620), forever on the brimstone of the Sulfur Fields
+    # the sulfuric fire: the pack's flames burning sulphur-yellow (#e0d620), forever on the brimstone of the Sulfur Fields
     tile('sulfuric_fire', recolour(pack_pic(d, ['fire_0', 'fire']), 0xE0D620, 1.25))
     block('sulfuric_fire', 'Sulfuric Fire', {'render': 3, 'solid': False, 'opaque': False, 'replaceable': True, 'hardness': 0, 'tool': None,
           'drop': None, 'light': 15, 'sound': 'wool', 'fire': True}, 'sulfuric_fire', item=False)

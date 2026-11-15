@@ -1,4 +1,4 @@
-// assets/pack_fs.h — read any file of a resource pack (Java edition layout), whether the pack is a
+// assets/pack_fs.h — read any file of a resource pack (the resource-pack layout), whether the pack is a
 // folder or a .zip in userDir()/resourcepacks/. Paths are relative to the pack's root (the folder that
 // holds pack.mcmeta and assets/), e.g. "assets/minecraft/textures/block/stone.png" — a zip that wraps
 // everything in a folder of its own is handled. Thread-safe (reads are serialised per pack).
@@ -21,7 +21,7 @@ public:
   std::optional<std::vector<u8>> read(const std::string& rel) const;
   std::optional<json> readJson(const std::string& rel) const;
   std::vector<std::string> list(const std::string& prefix) const;   // every file whose path starts with prefix
-  // where the textures are: "assets/minecraft/textures/" (or "textures/" for pre-1.13 packs: legacy)
+  // where the textures are: "assets/minecraft/textures/" (or "textures/" for the oldest packs: legacy)
   std::string texRoot;
   bool legacy = false;
   int packFormat = 0;            // pack.mcmeta pack.pack_format (0 = unknown)

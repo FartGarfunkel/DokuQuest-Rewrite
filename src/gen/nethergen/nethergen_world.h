@@ -1,4 +1,4 @@
-// Internal: the composite "World" the BTA decorator runs on (World/Chunk set/notify/schedule semantics)
+// Internal: the composite "World" the classic Nether decorator runs on (World/Chunk set/notify/schedule semantics)
 // and the block logic (BlockLogic* onPlacedByWorld / onNeighborChanged / updateTick) that decoration triggers.
 #pragma once
 #include <cstdint>
@@ -35,7 +35,7 @@ struct DecoWorld {
   mutable std::vector<std::unique_ptr<Slot>> slots;
   bool immediate = false;                 // World.scheduledUpdatesAreImmediate
   std::unordered_set<uint64_t> immSet;    // World.immediatelyUpdatedPositions (pos, block)
-  JavaRandom wrand;                       // stand-in for World.rand (BTA: global, unpredictable)
+  JavaRandom wrand;                       // stand-in for World.rand (in the source: global, unpredictable)
   NetherGen::Impl* g = nullptr;
   int tickDepth = 0;
 

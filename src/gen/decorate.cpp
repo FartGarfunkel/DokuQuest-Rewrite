@@ -10,7 +10,7 @@ namespace dq {
 using namespace vmap;
 
 void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) const {
-  // terrain version 12, immersive worlds: TFC's berry bushes by climate in place of the one wild bush (sim/... data: <berry>_bush)
+  // terrain version 12, immersive worlds: berry bushes by climate in place of the one wild bush (sim/... data: <berry>_bush)
   auto bushFor = [&](const OwColumn& c, double r2) -> BlockId {
     if (!rockLayers || !looseGround) return B.berry_bush;   // (a classic world: the one wild bush, as ever)
     const BlockId cold[] = {B.snowberry_bush, B.cloudberry_bush, B.cranberry_bush, B.wintergreen_bush, B.bunchberry_bush};
@@ -24,8 +24,8 @@ void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) con
   const BlockId FOREST_FLOWERS[] = {B.lily_of_the_valley, B.allium, B.flower_red, B.lilac, B.rose_bush, B.peony};
   auto set = [&](int x, int y, int z, BlockId id, u8 meta = 0) { int i = colIdx(x, y, z); b.blocks[i] = id; b.meta[i] = meta; };
   auto tall = [&](int x, int y, int z, BlockId id) { if (y + 1 < DIM_H && b.blocks[colIdx(x, y + 1, z)] == AIR) { set(x, y, z, id, 0); set(x, y + 1, z, id, 1); } };
-  // terrain version 15: Soulrend's biomes grow their own plants (gen/biome_features.h); ours below only add what theirs
-  // haven't: the warm seas' coral, TFC's berry bushes in the woods
+  // terrain version 15: the land biomes grow their own plants (gen/biome_features.h); ours below only add what theirs
+  // haven't: the warm seas' coral, berry bushes in the woods
   const bool sr = bf_ && bf_->ok();
   if (sr) {
     u16 bio[256];
@@ -141,7 +141,7 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
       }
       continue;
     }
-    // (Soulrend's grasses cover most ground now: our loose rocks and twigs may take a single grass's place)
+    // (the land biomes' grasses cover most ground now: our loose rocks and twigs may take a single grass's place)
     const bool grassTop = here > 0 && v17 && bf_ && bf_->ok() && looseGround && reg().tReplaceable[here] && !reg().tLiquid[here] && !B.dbl[here];
     if (here != 0 && !grassTop) continue;
     // a mushroom island (terrain version 14): huge mushrooms, red and brown, and small ones in the mycelium
@@ -165,11 +165,11 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
       if (r < 0.05) { set(x, y, z, r2 < 0.5 ? B.red_mushroom : B.brown_mushroom); continue; }
       continue;   // (no grass, flowers or stones on the mycelium)
     }
-    const bool sr = bf_ && bf_->ok();   // (terrain version 15: Soulrend's own plants instead of ours, gen/biome_features.h)
+    const bool sr = bf_ && bf_->ok();   // (terrain version 15: the land biomes' own plants instead of ours, gen/biome_features.h)
     // shore plants: cattails at the shallows' edge, marram grass on dunes
     if (!sr && (below == B.grass || below == B.mud || below == B.sand) && c.h <= JS_SEA + 1 && waterBeside(x, y - 1, z) && r < 0.25 && at(x, y + 1, z) == 0) { set(x, y, z, B.cattail, 0); set(x, y + 1, z, B.cattail, 1); continue; }
     if (!sr && (below == B.sand || below == B.silver_sand) && c.biome == BIOME_BEACH && r < 0.08) { set(x, y, z, B.marram_grass); continue; }
-    // terrain version 12: now and then a little fruit tree in the warmer woods and fields (TFC's fruit trees)
+    // terrain version 12: now and then a little fruit tree in the warmer woods and fields
     if (rockLayers && looseGround && below == B.grass && (c.biome == BIOME_FOREST || c.biome == BIOME_PLAINS) && c.temp > 0.25 && r < 0.0015 && x >= 2 && x <= 13 && z >= 2 && z <= 13) {
       const BlockId hotWet[] = {B.banana_leaves, B.orange_leaves}, hotDry[] = {B.olive_leaves, B.lemon_leaves}, mild[] = {B.peach_leaves, B.plum_leaves};
       const BlockId lf = c.temp > 0.55 ? (c.humid > 0.2 ? hotWet[jsFloor(r2 * 2)] : hotDry[jsFloor(r2 * 2)]) : mild[jsFloor(r2 * 2)];
@@ -184,14 +184,14 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
     }
     // a classic world: loose stones on hills, beaches and mountain meadows, as ever
     if (!looseGround && below >= 0 && B.solid[below] && below != B.water && (c.biome == BIOME_MOUNTAINS || c.biome == BIOME_BEACH || (c.h > JS_SEA + 14 && c.biome != BIOME_DESERT)) && r > 0.988) { set(x, y, z, B.loose_stones); continue; }
-    // TerraFirmaCraft's loose rocks and sticks (the stone age's first tools come from these), in immersive worlds only:
+    // loose rocks and sticks (the stone age's first tools come from these), in immersive worlds only:
     // rocks on most land, about 4 to a chunk; flint on gravel and on sand by the water; twigs in the woods and along the beaches
     if (grassTop && !(looseGround && below >= 0 && B.solid[below] && below != B.water)) continue;
     if (looseGround && below >= 0 && B.solid[below] && below != B.water) {
       const bool earth = below == B.grass || below == B.dirt || below == B.podzol || below == B.snowy_grass || below == B.stone || below == B.mud || below == B.gravel;
       const bool shore = below == B.gravel || ((below == B.sand) && (c.biome == BIOME_BEACH || waterBeside(x, y - 1, z)));
       if (earth && c.biome != BIOME_DESERT && r > 0.985) {
-        // TFC: one loose rock in three over an ore body is a small piece of that ore (looking 35 blocks down)
+        // one loose rock in three over an ore body is a small piece of that ore (looking 35 blocks down)
         BlockId sample = 0;
         if (r2 < 0.34) for (int yy = y - 2; yy > y - 36 && yy > 0 && !sample; yy--) {
           const BlockId o = at(x, yy, z);
@@ -207,7 +207,7 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
       if (B.twigs && (woods || c.biome == BIOME_BEACH) && r > 0.975 && r <= 0.985) { set(x, y, z, B.twigs); continue; }
     }
     if (sr) continue;
-    // the BTA-inspired variants: spinifex and dead bushes on the Redlands, ice spires on the Glacier, moss and orchids in the
+    // the classic land variants: spinifex and dead bushes on the Redlands, ice spires on the Glacier, moss and orchids in the
     // Mossmire, flowers all over the Meadow
     if (below == B.red_sand && landVariant(c) == BV_REDLANDS) { if (r < 0.08 && B.spinifex) set(x, y, z, B.spinifex); else if (r < 0.12) set(x, y, z, B.dry_grass); else if (r < 0.14) set(x, y, z, B.dead_bush); continue; }
     if (below == B.packed_ice && landVariant(c) == BV_GLACIER) {

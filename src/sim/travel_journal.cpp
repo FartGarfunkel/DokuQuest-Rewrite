@@ -1,4 +1,4 @@
-// sim/travel_journal.cpp — the Travel Journal (BTA's guidebook): everything a player has carried is noted in their
+// sim/travel_journal.cpp — the Travel Journal (a guidebook): everything a player has carried is noted in their
 // data["found"]; using the journal opens it (ui/travel_journal.cpp shows each thing and how it's made).
 #include "sim/gameplay.h"
 #include "sim/controller.h"

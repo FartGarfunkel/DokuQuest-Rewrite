@@ -1,5 +1,5 @@
 // distant.glsl — distant terrain tiles (render/distant.cpp, game/distant.js DIST_VS/DIST_FS): voxels drawn with
-// the blocks' own textures, one texture per voxel face as Cubyz draws its far chunks (tinted as the chunk shader
+// the blocks' own textures, one texture per voxel face as the far chunks are drawn (tinted as the chunk shader
 // tints grass, leaves and water), the storm's shadow and rain over the far land, fog at the far edge; cut away
 // where the real chunks are drawn.
 #include "common.glsl"

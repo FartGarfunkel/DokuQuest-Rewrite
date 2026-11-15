@@ -426,13 +426,13 @@ void CharacterLayer::update(GameSession& s, double dt) {
     if (st.landT > 0) st.landT -= fdt;
     if (!e->onGround && !e->inWater && !p->flying) { if (!st.falling || e->pos.y > st.fallStart) st.fallStart = st.falling ? std::max(st.fallStart, e->pos.y) : e->pos.y; st.falling = true; }
     if (e->inWater || p->flying) st.falling = false;
-    if (e->onGround && st.falling) {   // Story Mode weight: the bigger the drop, the deeper and longer the landing
+    if (e->onGround && st.falling) {   // a sense of weight: the bigger the drop, the deeper and longer the landing
       const float drop = st.fallStart - e->pos.y;
       if (drop > 0.8f) { st.landAmt = clampf(0.3f + drop / 5, 0.3f, 1.6f); st.landT = 0.2f * std::max(1.f, st.landAmt); }
       st.falling = false;
     }
     st.deathT = p->dead ? st.deathT + fdt : 0;
-    // AnimatedPlayer: the look eased (a remote player's comes in steps), a hit's flinch timed from the hit, a lead leg per jump
+    // the look eased (a remote player's comes in steps), a hit's flinch timed from the hit, a lead leg per jump
     st.pitch += wrapAngle(p->pitch - st.pitch) * std::min(1.f, fdt * (p == s.player ? 30.f : 14.f));
     if (p->hurtTime > st.lastHurt + 0.01f) {
       st.hurtT = 0.0001f;
@@ -447,7 +447,7 @@ void CharacterLayer::update(GameSession& s, double dt) {
     // sprinting and sneaking come and go over a moment, the legs never stopping (render/char_anim.cpp)
     st.runAmt += ((p->sprinting ? 1.f : 0.f) - st.runAmt) * std::min(1.f, fdt / 0.15f);
     st.sneakAmt += ((p->sneaking && !p->swimming ? 1.f : 0.f) - st.sneakAmt) * std::min(1.f, fdt / 0.12f);
-    // weapon combos: a swing begun within 0.8 s of the last is the next of the chain (Epic Fight's combo window)
+    // weapon combos: a swing begun within 0.8 s of the last is the next of the chain (the combo window)
     if (p->swingT > 0 && (st.lastSwing <= 0 || p->swingT < st.lastSwing - 0.05f)) {
       st.swingN = time - st.swingAt < 0.8 ? (u8)((st.swingN + 1) % 3) : 0; st.swingAt = time; st.swingU = 0.0001f;
     }
@@ -495,7 +495,7 @@ void CharacterLayer::update(GameSession& s, double dt) {
       }
     }
     // a cut runs on its own clock (WEAPON_SWING_T): the blow lands as fast as the arm's swing, the follow-through is held
-    // a moment and the pose given back after, as Epic Fight's do (the game's swing timer is shorter)
+    // a moment and the pose given back after (the game's swing timer is shorter)
     if (st.swingU > 0 && (st.swingU += fdt / 0.5f) >= 1) st.swingU = 0;
     if (st.hurtT > 1) st.hurtT = 0;
     st.lastHurt = p->hurtTime;
@@ -950,7 +950,7 @@ void drawCharFace(const CharModel& M, const CharPose& ps, const mat4& head, Voxe
   VoxelRenderer& VR = voxelRenderer();
   float t = ps.time, ph = std::fmod(t + F.seed, F.period);
   if (ps.sleep || ph < 0.13f || (ph > 1.6f && ph < 1.7f && F.period > 4.5f)) VR.draw(F.lid.gl, head * F.lid.local(), light, tint);   // a blink (now and then a double one)
-  // the mouth: talking; a gasp when hit; chewing; open to drink; puffing on a long run (AnimatedPlayer's face)
+  // the mouth: talking; a gasp when hit; chewing; open to drink; puffing on a long run
   bool open = ps.talk && std::sin(t * 13 + F.seed * 3) + std::sin(t * 7.7f) * 0.7f > 0.25f;
   if (ps.hurt > 0 && ps.hurt < 0.35f) open = true;
   if (ps.eat > 0) open = ps.drink || std::sin(t * 22) > 0.2f;
@@ -1175,7 +1175,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     }
     }
   }
-  // ---- what's in their hands (third person: Minecraft's thirdperson_righthand / lefthand; seamless first person: the
+  // ---- what's in their hands (third person: the pack model's thirdperson_righthand / lefthand; seamless first person: the
   // same, in your own hands, for each hand that is your body's)
   if (!fp || fpArmR || fpArmL) {
     const bool mainOn = !fp || fpArmR, offOn = !fp || fpArmL;

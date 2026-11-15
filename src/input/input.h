@@ -22,9 +22,9 @@ enum class Act : int {
   // added with the full controls port (ids follow the original's KEY_ACTIONS)
   Crawl, Shoulder, Skills, Spell, Stable, Journal, Spellbook, CastQuick,
   MenuX, MenuY, MenuStart,
-  HotbarRow,   // BTA: the next bag row into the hotbar
+  HotbarRow,   // the next bag row into the hotbar
   CastLeft,    // the left hand's spell (CastQuick is the right hand's; both at once: both hands)
-  PhotoMode,   // BTA's photo mode (ui/photo_mode.cpp)
+  PhotoMode,   // photo mode (ui/photo_mode.cpp)
   Dodge,       // the dodge roll (sim/combat_rpg.h: stamina, a moment untouchable)
   Count
 };

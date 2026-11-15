@@ -27,7 +27,7 @@ void elytraMove(Level& lv, Player& p, double dtd) {
   float dt = (float)dtd;
   if (p.onGround || p.inWater || p.inLava || p.flying || p.riding || p.dead || !hasElytra(p)) { p.gliding = false; p.h = PLAYER_H; return; }
   p.sneaking = false; p.swimming = false; p.crawling = false;
-  // Minecraft's glide, step for step at its 20 ticks a second (in blocks per tick): gravity eased by how level you
+  // the glide, step for step at 20 ticks a second (in blocks per tick): gravity eased by how level you
   // look, a dive turned into speed along your heading, a climb paid for with speed, the air's drag; a boost pulls
   // you along where you look
   vec3 l = lookVec(p);
@@ -47,7 +47,7 @@ void elytraMove(Level& lv, Player& p, double dtd) {
   }
   while (a >= 0.05f) {
     a -= 0.05f;
-    const float pitch = -std::asin(clampv(l.y, -1.f, 1.f));   // Minecraft's: looking down is positive
+    const float pitch = -std::asin(clampv(l.y, -1.f, 1.f));   // looking down is positive
     const float hl = std::hypot(l.x, l.z), hs = std::hypot(v.x, v.z);
     float cp = std::cos(pitch); cp = cp * cp * std::min(1.f, glm::length(l) / 0.4f);
     v.y += 0.08f * (-1 + cp * 0.75f);

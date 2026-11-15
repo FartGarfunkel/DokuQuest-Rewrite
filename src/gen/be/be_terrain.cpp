@@ -1,8 +1,7 @@
-// gen/be/be_terrain.cpp — see be_terrain.h. TerrainGenerator / IslandLayer / LayerOptions are ported from the jar
-// (CFR decompile) statement for statement, float vs double as in Java. The SDF operators come from BCLib
-// (org.betterx.bclib.sdf.*), which is not in the jar: SDFCappedCone (Inigo Quilez's capped cone), SDFSmoothUnion
-// (polynomial smooth min), SDFScale, SDFTranslate and SDFRadialNoiseMap are written from BCLib 2.x as remembered and
-// marked [BCLib*].
+// gen/be/be_terrain.cpp — see be_terrain.h. The terrain generator / island layers / layer options are ported from the
+// reference statement for statement, float vs double as in Java. The SDF operators are not in the reference:
+// SDFCappedCone (Inigo Quilez's capped cone), SDFSmoothUnion (polynomial smooth min), SDFScale, SDFTranslate and
+// SDFRadialNoiseMap are written from memory and marked [recalled*].
 #include "gen/be/be_terrain.h"
 
 #include <algorithm>
@@ -22,18 +21,18 @@
 namespace dq::be {
 
 namespace {
-// BCLib MHelper.floor: x < 0 ? (int)(x - 1) : (int)x  (one below floor() at exact negative integers, like BE)
+// the reference's floor: x < 0 ? (int)(x - 1) : (int)x  (one below floor() at exact negative integers, as it does)
 inline int mfloor(double x) { return x < 0 ? int(x - 1) : int(x); }
 inline float fminJ(float a, float b) { return a < b ? a : b; }  // MHelper.min
 inline float fmaxJ(float a, float b) { return a > b ? a : b; }  // MHelper.max
-inline float clampJ(float v, float lo, float hi) { return v < lo ? lo : std::min(v, hi); }  // Mth.clamp
+inline float clampJ(float v, float lo, float hi) { return v < lo ? lo : std::min(v, hi); }  // the table maths' clamp
 
-// Minecraft's Mth.sin / Mth.cos (65536-entry table)
+// table sin / cos (65536-entry table)
 float mthSinIdx(int i) { return float(std::sin(double(i & 65535) * 3.141592653589793 * 2.0 / 65536.0)); }
 float mthSin(float f) { return mthSinIdx(int(f * 10430.378f)); }
 float mthCos(float f) { return mthSinIdx(int(f * 10430.378f + 16384.0f)); }
 
-// [BCLib*] SDFCappedCone: half-height h, radius r1 at y = -h, r2 at y = +h
+// [recalled*] SDFCappedCone: half-height h, radius r1 at y = -h, r2 at y = +h
 float cappedCone(float x, float y, float z, float h, float r1, float r2) {
   const float qx = std::sqrt(x * x + z * z);  // MHelper.length
   const float k2x = r2 - r1;
@@ -47,7 +46,7 @@ float cappedCone(float x, float y, float z, float h, float r1, float r2) {
   return s * std::sqrt(fminJ(cax * cax + cay * cay, cbx * cbx + cby * cby));
 }
 
-// [BCLib*] SDFSmoothUnion: h = clamp(0.5 + 0.5 (b - a) / r, 0, 1); lerp(h, b, a) - r h (1 - h)
+// [recalled*] SDFSmoothUnion: h = clamp(0.5 + 0.5 (b - a) / r, 0, 1); lerp(h, b, a) - r h (1 - h)
 inline float smoothUnion(float a, float b, float r) {
   const float h = clampJ(0.5f + 0.5f * (b - a) / r, 0.0f, 1.0f);
   return (b + h * (a - b)) - r * h * (1.0f - h);
@@ -82,7 +81,7 @@ public:
     threshold_ = 0.9999f - std::clamp(o.coverage, 0.0f, 1.0f) * 2.0f;
     minY_ = center - variation;
     maxY_ = center + variation;
-    centerDist_ = int64_t(std::floor(float(g.voidRing) / distance_));  // BE: Mth.floor(1000 / distance)
+    centerDist_ = int64_t(std::floor(float(g.voidRing) / distance_));  // floor(1000 / distance), as the reference
     hasCentral_ = o.hasCentralIsland;
     globalCentral_ = g.centralIsland;
     islandDistChunk_ = g.voidRing >> 3;
@@ -196,7 +195,7 @@ public:
     return smoothUnion(top, bottom, 0.01f);
   }
 
-  // [BCLib*] SDFRadialNoiseMap displacement (added to the distance)
+  // [recalled*] SDFRadialNoiseMap displacement (added to the distance)
   float radialNoise(float x, float z, float intensity, float radius, int16_t offX, int16_t offZ) const {
     if (intensity == 0.0f) return 0.0f;
     const float px = x / radius;
@@ -237,7 +236,7 @@ struct BETerrain::Positions {
 
 // ================================================================= BETerrain
 BETerrain::BETerrain(int64_t worldSeed, const BETerrainOptions& opt) : opt_(opt) {
-  JavaRandom random(worldSeed);  // TerrainGenerator.initNoise: LegacyRandomSource(seed), nextInt() x 5
+  JavaRandom random(worldSeed);  // the noise init: a Java Random(seed), nextInt() x 5
   const int32_t sBig = random.nextInt(), sMed = random.nextInt(), sSmall = random.nextInt();
   large_ = std::make_unique<Layer>(sBig, opt_.big, opt_, 0);
   medium_ = std::make_unique<Layer>(sMed, opt_.medium, opt_, 1);
@@ -260,7 +259,7 @@ BETerrain::BETerrain(int64_t worldSeed, const BETerrainOptions& opt) : opt_(opt)
     }
   for (int i = 0; i < 29; ++i) coef_[i] = raw[i] / sum;
 
-  // BCLib's pools, in registry order (resource paths sorted: ResourceLocation compares the path first) [BCLib*]
+  // the biome pools, in registry order (resource paths sorted: the path compares first) [recalled*]
   static const int kLandOrder[] = {B_AMBER_LAND, B_BLOSSOMING_SPIRES, B_CHORUS_FOREST, B_CRYSTAL_MOUNTAINS,
                                    B_DRAGON_GRAVEYARDS, B_DRY_SHRUBLAND, B_DUST_WASTELANDS, B_END_HIGHLANDS,
                                    B_END_MIDLANDS, B_FOGGY_MUSHROOMLAND, B_GLOWING_GRASSLANDS, B_LANTERN_WOODS,
@@ -325,7 +324,7 @@ inline float topFade(float dist, double py) {
   if (py >= double(BETerrain::kNoiseH)) return -1.0f;
   if (py > double(fadOutStart)) {
     const double d = (py - double(fadOutStart)) / 27.0;
-    return float(double(dist) + d * (-1.0 - double(dist)));  // Mth.lerp(d, dist, -1)
+    return float(double(dist) + d * (-1.0 - double(dist)));  // lerp(d, dist, -1)
   }
   return dist;
 }
@@ -369,7 +368,7 @@ void BETerrain::chunkDensity(int cx, int cz, float* out) const {
       }
       fillCorner(cx * 2 + i, cz * 2 + k, h * 0.5f, col[i][k]);
     }
-  // vanilla NoiseChunk interpolation: along y, then x, then z
+  // the cell interpolation: along y, then x, then z
   for (int y = 0; y < 256; ++y) {
     float* row = out + (y << 8);
     const int by = y - opt_.yOffset;

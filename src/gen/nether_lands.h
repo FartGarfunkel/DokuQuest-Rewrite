@@ -1,8 +1,8 @@
 // gen/nether_lands.h — the Nether, in two terrain versions.
 // Version 5 is a walkable heightfield of five lands (cells about 230 blocks across). Saved worlds keep it.
 //   the Crag, the Volcanic Islands, the Sulfur Pools, the Crystal Forest, the Old World.
-// Version 6 follows Better than Adventure 8.0's layout, written for this engine (its own noise and blocks;
-// the shape is not a copy of BTA's classes): beta-style 3D caves, eight climate lands, a sea at band y 96.
+// Version 6 follows the classic Nether's layout, written for this engine (its own noise and blocks;
+// the shape is not a copy of the reference): classic 3D caves, eight climate lands, a sea at band y 96.
 //   Above y 64 the climate picks the land. Below that the floor is the Old World desert.
 //   Volcanic, sulfur and the crag hold lava; the crystal lands hold water under a crystal crust;
 //   the shelf is solid rock up to the sea; the old world holds obsidian.
@@ -30,11 +30,11 @@ struct NetherCol {
 
 class NetherShape {
 public:
-  explicit NetherShape(i32 seed, bool open8 = false);   // open8: terrain 8's lands (walkable, all seven of BTA's)
+  explicit NetherShape(i32 seed, bool open8 = false);   // open8: terrain 8's lands (walkable, all seven classic lands)
   static constexpr int LAVA = 50;    // the lava sea's surface (band y), as DepthsGen::LAVA_Y
   NetherCol column(int x, int z) const;
   // the column for lands given as weights (w[NB_CRAG .. NB_OLDWORLD], summing to anything > 0): the open shape under
-  // another biome map (terrain 8: BTA's lands, gen/nether_exact.cpp)
+  // another biome map (terrain 8: the classic lands, gen/nether_exact.cpp)
   NetherCol columnWeighted(int x, int z, const float w[NB_COUNT]) const;
   void biomeMix(int x, int z, u8& a, u8& b, float& mix) const;
   int biomeAt(int x, int z) const { u8 a, b; float m; biomeMix(x, z, a, b, m); return a; }
@@ -52,12 +52,12 @@ private:
 void netherBiomeMix(i32 seed, int x, int z, u8& a, u8& b, float& mix);
 
 // Version 6's climate. Same cave noise in every land; the land only paints the rock and chooses the sea.
-// Seeds will not match a BTA world block for block. The scales, the sea line and the climate ranges do.
+// Seeds will not match a classic world block for block. The scales, the sea line and the climate ranges do.
 class NetherClimate {
 public:
   static constexpr int OCEAN_Y = 96;
   static constexpr int SAMPLES = 33;     // band height / 8 + 1
-  explicit NetherClimate(i32 seed, int genVersion = 6);   // 7: BTA's own climate octaves and main noise (see nether_lands.cpp)
+  explicit NetherClimate(i32 seed, int genVersion = 6);   // 7: the classic climate octaves and main noise (see nether_lands.cpp)
   u8 biomeAt(int x, int y, int z) const;
   int oceanKind(int x, int z) const;     // 1 lava, 2 water, 3 obsidian, 4 solid shelf
   bool solidAt(int x, int y, int z) const;
@@ -82,7 +82,7 @@ private:
 // Fog, particles, ambience and spawns. genVersion >= 6 uses the climate at this world position
 // (y is a world coordinate, not band-local). Older versions use the heightfield mix.
 void netherLandAt(i32 seed, int genVersion, int worldX, int worldY, int worldZ, u8& a, u8& b, float& mix);
-bool netherMobsSpawnOn(u16 id);   // BTA's NETHER_MOBS_SPAWN tag on our blocks (gen/nether_exact.cpp)
+bool netherMobsSpawnOn(u16 id);   // the Nether mob-spawn tag on our blocks (gen/nether_exact.cpp)
 
 // the Volcanic Islands' volcanoes within `range` blocks of (x, z): the crater's centre, its lava's band y, the cone's radius
 struct NetherVolcano { int x = 0, z = 0, lavaY = 0; float radius = 0, crater = 0, height = 0; u32 hash = 0; };

@@ -34,7 +34,7 @@ bool riftCoreAt(World& w, ivec3 p) {
 
 // a wither skeleton skull (or a rift core / command block) was just set at `at`: does it finish a T of soul sand? Three
 // skulls wake the Wither. The Wither Storm: a command block (or a rift core) in the middle of the T's top row with the
-// three skulls on it, as in the mod the Storm comes from; or (the older way) the block in place of the middle skull.
+// three skulls on it; or (the older way) the block in place of the middle skull.
 // (Herobrine raises the story's own at the end of his realm: sim/rift.cpp heroRaiseStorm.)
 bool tryWitherSummon(Level& lv, int realm, ivec3 at) {
   World& w = lv.world(realm);
@@ -64,7 +64,7 @@ bool tryWitherSummon(Level& lv, int realm, ivec3 at) {
   return false;
 }
 
-// ---- the Wither, as Minecraft has it (WitherBoss) ----
+// ---- the Wither ----
 namespace {
 constexpr float WITHER_CHARGE = 11.f;   // its 220 ticks of gathering itself
 // what it goes for: any living thing that isn't undead (players, villagers, animals, monsters alike)

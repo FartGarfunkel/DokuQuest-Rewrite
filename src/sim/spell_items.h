@@ -1,4 +1,4 @@
-// sim/spell_items.h — Iron's Spells' items, ours (docs/MAGIC_MERGE.md): a spell's rarity by its rank, spell scrolls
+// sim/spell_items.h — the spell items (docs/MAGIC_MERGE.md): a spell's rarity by its rank, spell scrolls
 // (one cast of a spell at a rank, by anyone), spellbooks (a loadout of spells at the ranks written in them, carried in the
 // off hand) and the inscription table's work on them.
 #pragma once
@@ -11,7 +11,7 @@ namespace dq {
 struct ItemStack; class Level; struct Player;
 
 const char* spellRarityName(int rank);    // I-II Common, III-IV Uncommon, V-VI Rare, VII-VIII Epic, IX-X Legendary
-u32 spellRarityColor(int rank);           // 0xRRGGBB (Iron's: white, green, blue, purple, gold)
+u32 spellRarityColor(int rank);           // 0xRRGGBB (white, green, blue, purple, gold)
 std::string spellLabel(const std::string& k, int rank);   // "Firebolt III (Rare)"
 
 int bookSlots(const std::string& itemId); // a spellbook's slots (0: not one)

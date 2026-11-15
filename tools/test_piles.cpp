@@ -1,4 +1,4 @@
-// tools/test_piles.cpp — headless checks for ingot piles and log piles (sim/piles.h, after TerraFirmaCraft): placing,
+// tools/test_piles.cpp — headless checks for ingot piles and log piles (sim/piles.h): placing,
 // adding, taking, topping up the pile below, one metal (or wood) to a pile, the height by count, the slot layout, what a
 // broken pile drops, and the controls. Run: build/test_piles (exit code = failures)
 #include "core/init.h"
@@ -159,7 +159,7 @@ int main(int argc, char** argv) {
     P->inv[0] = ItemStack(); aim(UX, Y + 1, UZ); pc.use(false, plain);
     int back = 0; for (auto& st : P->inv) if (st.id == "iron_ingot") back += st.n;
     check(back == 1, "use on the pile takes one back");
-    // crouched, anything is set down on top of what you look at: a furnace, a crafting table, a chest (Vintage Story's way)
+    // crouched, anything is set down on top of what you look at: a furnace, a crafting table, a chest
     const BlockId PILE = reg().blockId("item_pile");
     struct Case { const char* block; const char* item; };
     int i = 0;

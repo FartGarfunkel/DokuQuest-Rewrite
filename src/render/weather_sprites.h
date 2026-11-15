@@ -1,6 +1,6 @@
 // render/weather_sprites.h — the pictures the weather particles use (render/weather_sim, weather_draw), in one
-// small atlas: rain and snow sliced from the resource pack's environment/rain.png and snow.png the way Particle Rain
-// does (pigcart, MIT: 2 columns, 16 slices; the heavy ones merge 4 slices by highest alpha), drawn here when the pack
+// small atlas: rain and snow sliced from the resource pack's environment/rain.png and snow.png as
+// 2 columns, 16 slices ( the heavy ones merge 4 slices by highest alpha), drawn here when the pack
 // has none (the game's own art); ripple rings, wall streaks, fog sheets, dust and a dead bush.
 #pragma once
 #include "common/common.h"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sheared sheep keep a short undercoat (as Minecraft's sheep do since 1.21.5): a thin layer of tufts over the bare
+"""Sheared sheep keep a short undercoat: a thin layer of tufts over the bare
 body, legs and the back of the head, in the sheep's own colour, until the wool grows back. Idempotent; data_patches.py
 runs it after the art pass and before the creature looks (so every sheep look gets it too).
   - models.json: under / underCap / legUnder* parts (flag "undercoat": drawn only while sheared) on every model that

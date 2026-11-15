@@ -1,14 +1,14 @@
-// gen/biome_features.h — Soulrend's biome features (terrain version 15): the plants, flowers, grasses, water plants, sand and
-// clay disks, mossy rocks, icebergs and the snow, placed as Minecraft places a biome's features: each biome's placed
-// features (data/worldgen/placed_feature, configured_feature: vanilla's as Expanded Ecosphere, Nature's Spirit
-// and WWOO change them), in the steps' order, each run from every chunk with its placement (count, rarity, in_square,
+// gen/biome_features.h — the land biomes' features (terrain version 15): the plants, flowers, grasses, water plants, sand and
+// clay disks, mossy rocks, icebergs and the snow, placed as the data describes a biome's features: each biome's placed
+// features (data/worldgen/placed_feature, configured_feature: the base set with the land biomes' changes), in the
+// steps' order, each run from every chunk with its placement (count, rarity, in_square,
 // heightmap, biome, block predicates, noise counts...) and its configured feature (random_patch, simple_block, the
 // selectors, block_column, vegetation_patch, disk, kelp, seagrass, sea pickles, bamboo, vines, forest_rock, iceberg,
-// blue_ice, freeze_top_layer, Nature's Spirit's leveled patches, ponds and turnips).
+// blue_ice, freeze_top_layer, leveled patches, ponds and turnips).
 // Trees are ours (gen/trees.cpp): their tree features are left out, as are the underground ones (ores, caves, dungeons,
-// fossils, geodes: ours too). A feature reaches into the chunks round its own as in Minecraft: a chunk runs its
+// fossils, geodes: ours too). A feature reaches into the chunks round its own: a chunk runs its
 // neighbours' features too and keeps what lands in it (their ground there read from its own edge).
-// Coordinates: band y (Minecraft's y is one less).
+// Coordinates: band y (the imported data's y is one less).
 #pragma once
 #include "common/common.h"
 #include "common/fs.h"
@@ -78,7 +78,7 @@ private:
   std::unordered_map<std::string, std::vector<std::string>> tags_;
   fs::path dir_;
   static constexpr int STEPS = 11;
-  std::vector<int> order_[STEPS];                // the steps' features in Minecraft's order (first seen)
+  std::vector<int> order_[STEPS];                // the steps' features in the data's order (first seen)
   std::vector<std::vector<u8>> has_[STEPS];      // per biome: which placed features its step lists (by placed index)
   std::vector<u8> dirt_, sand_, terracotta_, plantable_, iceish_;   // (masks the plants' rules use)
   BlockId water_ = 0, ice_ = 0, packed_ = 0, blueIce_ = 0, snow_ = 0, snowBlock_ = 0, grass_ = 0, snowyGrass_ = 0, podzol_ = 0, bamboo_ = 0, cactus_ = 0, cane_ = 0, vine_ = 0, seagrass_ = 0, kelp_ = 0, pickle_ = 0;

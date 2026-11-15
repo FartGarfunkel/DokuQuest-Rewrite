@@ -1,18 +1,18 @@
-# BTA 8.0.1 Nether generator port (`src/gen/nethergen/`)
+# The classic Nether generator port (`src/gen/nethergen/`)
 
-An exact C++20 port of Better than Adventure 8.0.1's Nether world generation
+An exact C++20 port of the classic Nether world generation
 (`minecraft:nether.default`): same seed, same blocks. It is standalone: no engine types, no globals with
 static constructors, no external libraries. `namespace nethergen`.
 
 | File | What |
 |---|---|
 | `jrandom.h` | `java.util.Random` (bit exact, incl. `nextGaussian` via a port of fdlibm `log`), Java cast/overflow helpers |
-| `nethergen_noise.h/.cpp` | `ImprovedPerlinNoise` (all three legacy branches and the y-cache quirk), `SimplexNoise`, `WorleyNoise`, `FractalNoise2D/3D`, `Normalize2D`, `MathHelper` sin table/floor |
+| `nethergen_noise.h/.cpp` | `ImprovedPerlinNoise` (all three legacy branches and the y-cache quirk), `SimplexNoise`, `WorleyNoise`, `FractalNoise2D/3D`, `Normalize2D`, sin table/floor helpers |
 | `nethergen.h` | public API |
-| `nethergen.cpp` | biome provider, `DensityGeneratorNether` + `TerrainGeneratorNether`, `SurfaceGeneratorNether`, `CavesLargeFeature(64,256)`, `LavaFloe`/`RubyglassFloe`/`Shelf` large features, terrain cache |
-| `nethergen_world.h/.cpp` | the decoration "World": BTA `World`/`Chunk` set/notify/schedule semantics and the block logic decoration triggers (fluid flow + hardening, fire, magma/brimthaw melting, vents, growth/flower/ash support checks) |
-| `nethergen_features.h/.cpp` | every `WorldFeature*` used by `ChunkDecoratorNether` |
-| `nethergen_deco.cpp` | `ChunkDecoratorNether` (47 decorations, selectors, placement methods, per-decoration seeds, `postDecorate` ash), neighbourhood models, decorated-region cache |
+| `nethergen.cpp` | biome provider, the Nether density + terrain generators, the Nether surface generator, the cave large feature (64,256), lava floe / rubyglass floe / shelf large features, terrain cache |
+| `nethergen_world.h/.cpp` | the decoration "World": the reference world/chunk set/notify/schedule semantics and the block logic decoration triggers (fluid flow + hardening, fire, magma/brimthaw melting, vents, growth/flower/ash support checks) |
+| `nethergen_features.h/.cpp` | every world feature used by the Nether decorator |
+| `nethergen_deco.cpp` | the Nether decorator (47 decorations, selectors, placement methods, per-decoration seeds, `postDecorate` ash), neighbourhood models, decorated-region cache |
 | `nethergen_internal.h`, `nethergen_stats.h` | internal |
 
 Compile without `-ffast-math`, and without floating-point contraction (the `.cpp` files carry
@@ -25,11 +25,11 @@ with `/fp:contract-` or `/fp:strict`). Plain x86-64 SSE2 code is exact; FMA cont
 #include "gen/nethergen/nethergen.h"
 
 nethergen::NetherGen gen(seed);                       // optional: nethergen::NetherGenOptions (see below)
-int    b = gen.biomeAt(x, y, z);                // nethergen::NetherBiome, = BTA world.getBlockBiome
-double t = gen.temperatureAt(x, z);             // BiomeProviderNether.getTemperature, in [0,1]
+int    b = gen.biomeAt(x, y, z);                // nethergen::NetherBiome, = the world's block biome
+double t = gen.temperatureAt(x, z);             // the biome provider's temperature, in [0,1]
 auto* out = new nethergen::NetherGen::Out;            // 128 KB, keep it off the stack
 gen.generateChunk(cx, cz, *out);                // final (decorated) chunk, thread-safe
-uint8_t k = out->kind[(y << 8) | (z << 4) | x]; // nethergen::NB, y = BTA y 0..255
+uint8_t k = out->kind[(y << 8) | (z << 4) | x]; // nethergen::NB, y = generator y 0..255
 uint8_t m = out->meta[(y << 8) | (z << 4) | x];
 const char* name = nethergen::nbName((nethergen::NB)k);     // "minecraft:block/cobble_netherrack"
 ```
@@ -56,8 +56,8 @@ class NetherGen {
   int biomeAt(int x, int y, int z) const;
   double temperatureAt(int x, int z) const;
   void generateChunk(int cx, int cz, Out& out);   // decorated
-  void generateTerrain(int cx, int cz, Out& out); // undecorated (doBlockGeneration output)
-  // validation helpers (raw BTA ids)
+  void generateTerrain(int cx, int cz, Out& out); // undecorated (block generation output)
+  // validation helpers (raw generator ids)
   void terrainIds(int cx, int cz, uint16_t* ids, int stages = 63) const;
   void chunkIds(int cx, int cz, uint16_t* ids, uint8_t* meta, DecoStats* stats = nullptr);
   void densityMap(int cx, int cz, double* out) const;
@@ -71,21 +71,21 @@ All public methods are thread-safe. Shared mutable state is only the two mutex-p
 
 ## Biomes
 
-`BiomeProviderNether`: temperature = 4-octave simplex (lacunarity 0.25, scale 1/60), downfall = 4-octave
+The biome provider: temperature = 4-octave simplex (lacunarity 0.25, scale 1/60), downfall = 4-octave
 simplex (lacunarity 1/3, scale 1/30), fuzz = 4-octave simplex (lacunarity 1/1.7, scale 1/6), then
-`BiomeRangeMap`'s 50-step lookup table (last matching range wins). BTA stores biomes per chunk section at
+the biome range map's 50-step lookup table (last matching range wins). The generator stores biomes per chunk section at
 16x2x16 with altitude `(16*section + half)/128`, so every block **below y = 64 is `old_world.desert`**
 (soul sand surface), and y >= 64 is the climate biome. `biomeAt` reproduces exactly that.
 
 ## Decoration neighbourhood (`DecoMode`)
 
-BTA decorates a chunk once its 8 neighbours exist; the decoration of chunk D starts at D*16+8 and spills
+The generator decorates a chunk once its 8 neighbours exist; the decoration of chunk D starts at D*16+8 and spills
 into D+1 (and further: rubyglass crystals lean up to ~3 chunks, nether pillars are centred on a Worley
 cell centre up to ~3 chunks away). The final content of a chunk therefore depends on many chunks'
-decorations *and their order*, which in BTA follows the player's loading order.
+decorations *and their order*, which in the reference follows the player's loading order.
 
 * `DecoMode::Region` (default): defines the world as decorated in row-major order (z outer, x inner) -
-  the order BTA uses when chunks stream in row by row. A region of `regionSize`^2 chunks is produced by
+  the order the reference uses when chunks stream in row by row. A region of `regionSize`^2 chunks is produced by
   decorating the region plus `margin` chunks around it (and optionally, from `margin` to `farMargin`,
   only the long-reach crystal/pillar decorations) on a composite with one more ring of terrain, and is
   cached. Region borders are seamless (all writers into a region are included and run in the same global
@@ -94,7 +94,7 @@ decorations *and their order*, which in BTA follows the player's loading order.
   (cx,cz-1), (cx-1,cz), (cx,cz) in that order. Cheapest, but features that reach more than one chunk out
   are cut at chunk borders or missing (crystals, pillars).
 
-Measured against Java BTA worlds (BTA's own classes) whose 24x24 chunks were all decorated in
+Measured against Java reference worlds (the reference's own classes) whose 24x24 chunks were all decorated in
 row-major order; centre 8x8 chunks compared, % of decoration-touched blocks that differ:
 
 | model | seed 1 | seed 12345 | seed -987654321 (crystal heavy) | ms/chunk* |
@@ -110,7 +110,7 @@ region cache 2 MB/region (default 16 = 32 MB), plus ~26 MB transient per region 
 
 ## Blocks (`nethergen::NB`) and metadata
 
-| NB | BTA namespace id | BTA id | `meta` |
+| NB | namespace id | numeric id | `meta` |
 |---|---|---|---|
 | `NB_AIR` | minecraft:block/air | 0 | 0 |
 | `NB_BEDROCK` | minecraft:block/bedrock | 260 | 0 |
@@ -155,38 +155,38 @@ region cache 2 MB/region (default 16 = 32 MB), plus ~26 MB transient per region 
 | `NB_OVERLAY_PEBBLES` | minecraft:block/overlay_pebbles | 880 | pebble count (`& 3`); never generated in the Nether |
 | `NB_OTHER` | (anything else; never produced) | - | - |
 
-\* BTA/b1.7.3 fluid data: 0 = source, 1..7 = flow level (distance from the source, 7 = thinnest),
-bit 3 (8) = falling. Flowing blocks are left exactly as BTA leaves them after decoration; BTA ticks
+\* classic fluid data: 0 = source, 1..7 = flow level (distance from the source, 7 = thinnest),
+bit 3 (8) = falling. Flowing blocks are left exactly as the reference leaves them after decoration; it ticks
 them later (see below), so an engine with fluid simulation should schedule updates for `*_FLOWING`.
 \** `Direction` id: 0 down, 1 up, 2 north (-z), 3 south (+z), 4 west (-x), 5 east (+x); the growth points
 that way and is supported by the block on the opposite side.
-\*** set from BTA's global `World.rand` (see below).
+\*** set from the reference's global world random (see below).
 
 ## What is exact
 
-Validated against BTA 8.0.1's own classes run from the jar (Java harness: mock `World`, BTA's
-`ChunkGeneratorNether`, `ChunkDecoratorNether`, real block logic):
+Validated against the reference classes (Java harness: mock world, the reference
+chunk generator and decorator, real block logic):
 
 * terrain stages (density map bit-exact, lerp, surface, caves, lava floe, rubyglass floe, shelf): 66 chunks
   over 3 seeds incl. far/negative coordinates, 0 differing blocks per stage;
 * decoration (`FourNeighbours` mode = the harness's order): 213 chunks over 3 seeds (biome-stratified),
   0 differing block ids, 0 differing metas (excluding fire age / stacked vent state, which come from
-  `World.rand`; even those match in 508 of 514 blocks);
-* biomes (250k points) and `temperatureAt` (bit-exact doubles), MathHelper sin table (65536/65536);
+  the world random; even those match in 508 of 514 blocks);
+* biomes (250k points) and `temperatureAt` (bit-exact doubles), the sin table (65536/65536);
 * region mode vs a fully decorated Java world: see the table above.
 
 ## Not exact / not ported
 
-* `World.rand`-dependent values: fire age (0/1 after its first tick), the state of a vent stacked on a
-  vent, and the ignored outcomes (sounds, particles, item drops) consume BTA's global `World.rand`, whose
+* world-random-dependent values: fire age (0/1 after its first tick), the state of a vent stacked on a
+  vent, and the ignored outcomes (sounds, particles, item drops) consume the reference's global world random, whose
   state depends on everything that happened before. The port uses a per-chunk seeded stand-in; block ids
   never depend on it.
-* Ordering: BTA's result at chunk borders depends on exploration order; this port fixes row-major order
-  (Region) or the four-neighbour order. Writes outside the composite are dropped (BTA would generate and
+* Ordering: the reference result at chunk borders depends on exploration order; this port fixes row-major order
+  (Region) or the four-neighbour order. Writes outside the composite are dropped (the reference would generate and
   load the chunk there).
-* Scheduled ticks that BTA queues instead of running immediately (after the first spring or lava pillar of
-  a chunk's decoration, BTA's `scheduledUpdatesAreImmediate` is off for the rest of that chunk) are not
-  run: BTA runs them later in normal world ticks.
+* Scheduled ticks that the reference queues instead of running immediately (after the first spring or lava pillar of
+  a chunk's decoration, its immediate-updates flag is off for the rest of that chunk) are not
+  run: the reference runs them later in normal world ticks.
 * Not modelled because they cannot happen in generated Nether terrain: nether/drift portal creation by
   fire on obsidian / bedrock on glowstone, flammable-block fire spread (no Nether block is flammable),
   pebbles (they only spawn on overworld soils), the cave "replace surface" path (needs grass).

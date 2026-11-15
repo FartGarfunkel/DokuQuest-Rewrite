@@ -1001,7 +1001,7 @@ void Redstone::dispense(int x, int y, int z) {
   if (!me || !me.items) return;
   std::vector<int> full;
   for (int i = 0; i < me.size(); i++) if (!me.get(i).empty()) full.push_back(i);
-  // the activator (BTA's): it uses what it holds on the block in front, like a hand: sets a block down, digs with a
+  // the activator: it uses what it holds on the block in front, like a hand: sets a block down, digs with a
   // tool, and with nothing in it swings a door, trapdoor or gate. Anything else it uses as a dispenser would, but it
   // never throws things out.
   const bool activator = R.block(id).has("activator");
@@ -1108,7 +1108,7 @@ void Redstone::dispense(int x, int y, int z) {
   bool freeCell = cur == AIR || (R.tReplaceable[cur] && !R.tLiquid[cur]);
   auto ok = [&] { smoke(); lv.fx->sound("dispense", c, 20); };
   std::string bucket = def ? def->str("bucket") : "";
-  if (def && def->has("summonWand")) {   // the summoning wand (BTA): from a dispenser too it calls up its creature
+  if (def && def->has("summonWand")) {   // the summoning wand: from a dispenser too it calls up its creature
     std::string mob = s.tag.is_object() ? s.tag.value("mob", std::string("pig")) : std::string("pig");
     if (freeCell && spawnCreature(lv, w.realm, mob, fc - vec3(0, 0.5f, 0))) { ok(); lv.fx->particles("end_mote", fc, 10); }
     else lv.fx->sound("dispense_fail", c, 20);
@@ -1141,7 +1141,7 @@ void Redstone::dispense(int x, int y, int z) {
     return;
   }
   if (s.id == "bone_meal" && cur) {
-    // (LocalPlayer.useBonemeal on a dispenser's behalf) crops grow a few stages
+    // (bone meal on a dispenser's behalf) crops grow a few stages
     const BlockDef& cb = R.block(cur);
     if (cb.props.contains("crop") && cb.props["crop"].is_object()) {
       int stages = cb.props["crop"].value("stages", 8), cm = w.getMeta(fx, fy, fz);

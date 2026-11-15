@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""tools/port/dynamic_trees.py — the data for growing trees (after Dynamic Trees, github.com/DynamicTreesTeam/DynamicTrees,
-MIT; docs/CREDITS.md; sim/dyntree.cpp grows them). Idempotent; data_patches.py runs it:
+"""tools/port/dynamic_trees.py — the data for growing trees (MIT-licensed
+source, docs/THIRD_PARTY_NOTICES.md; sim/dyntree.cpp grows them). Idempotent; data_patches.py runs it:
   python3 tools/port/dynamic_trees.py <data-dir>
 
 - every branch block (oak_branch ...) learns its log and its leaves ('log', 'leaves'): a felled tree gives logs by the wood
   in it, and a growing tree leafs out in its own leaves;
-- rooty_dirt: the soil under a growing tree (Dynamic Trees' rooty soil). Its meta is the soil's life (0..15); it ticks and
+- rooty_dirt: the soil under a growing tree (rooty soil). Its meta is the soil's life (0..15); it ticks and
   sends the tree its growth; it drops dirt. A sapling planted in a terrain-13 world takes root in it.
 """
 import json, pathlib

@@ -1,5 +1,5 @@
-// gen/nether_lands7.cpp — terrain version 7: the large features and decorations of Better than Adventure 8.0's Nether,
-// after its generator (ChunkDecoratorNether, the Nether's LargeFeatures; numbers from the research notes), written for
+// gen/nether_lands7.cpp — terrain version 7: the large features and decorations of the classic Nether,
+// after its generator (the Nether decorator, the Nether's large features; numbers from the research notes), written for
 // this engine:
 //   - lava floes: the Volcanic Islands' sea paved with chunk-sized islands of rack under brimsand, cracks of lava between
 //   - rubyglass floes: slabs of crystalline netherrack in the crystal lands' crusted water
@@ -46,7 +46,7 @@ void DepthsGen::netherFeatures7(GenBuf& b, int cx, int cz, const u8* atSea) cons
   auto rack = [&](int x, int y, int z) { return hashFloat(bx + x, y, bz + z, seed_ ^ 0x7A) < 0.5 ? B.netherrack : cobble; };
   const SimplexNoise& nF = C.nFuzz;
 
-  // ---- caves: BTA carves the Nether with the classic beta cave carver (CavesLargeFeature 64..256), not the Nether's ----
+  // ---- caves: the classic Nether is carved with the classic cave carver (64..256), not the Nether's ----
   {
     CarveRules R;
     R.carvable.assign(MAX_BLOCKS, 0); R.stopper.assign(MAX_BLOCKS, 0);
@@ -58,7 +58,7 @@ void DepthsGen::netherFeatures7(GenBuf& b, int cx, int cz, const u8* atSea) cons
     carveCaves(b, cx, cz, R);
   }
 
-  // ---- the sea's floes and the Shelf's terraces (one Worley cell = one chunk, like BTA's) ----
+  // ---- the sea's floes and the Shelf's terraces (one Worley cell = one chunk) ----
   for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
     const int wx = bx + x, wz = bz + z;
     const u8 land = atSea[z * 16 + x];
@@ -92,7 +92,7 @@ void DepthsGen::netherFeatures7(GenBuf& b, int cx, int cz, const u8* atSea) cons
     return false;
   };
 
-  // ---- glowstone: rare, from the roofs (BTA seeds it at random points that touch a ceiling) ----
+  // ---- glowstone: rare, from the roofs (seeded at random points that touch a ceiling) ----
   if (B.glowstone && rnd.nextInt(8) == 0) {
     const int x = 2 + rnd.nextInt(12), z = 2 + rnd.nextInt(12);
     int y = 0;
@@ -328,7 +328,7 @@ void DepthsGen::netherFeatures7(GenBuf& b, int cx, int cz, const u8* atSea) cons
     else if (rnd.nextInt(3) != 0) continue;
     set(x, y, z, put);
   }
-  // fire on the hot lands' rack (BTA sets the ground under each fire to netherrack)
+  // fire on the hot lands' rack (the ground under each fire is set to netherrack)
   static const BlockId sulfFire = reg().blockId("sulfuric_fire");
   for (int n = 0; n < 8 && B.fire; n++) {
     const int x = rnd.nextInt(16), z = rnd.nextInt(16);

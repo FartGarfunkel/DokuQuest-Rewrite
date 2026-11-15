@@ -1,9 +1,8 @@
-// gen/be/be_noise.cpp — see be_noise.h. The two eval bodies are the jar's OpenSimplexNoise (CFR decompile of
-// org/betterx/betterend/noise/OpenSimplexNoise.class), transcribed statement for statement so the doubles match.
-// CFR mis-rendered two "ysv_ext0 = ysv_ext1 = ysb...; if (..) ysv_ext1 -= 1; else ysv_ext0 -= 1;" blocks in 3D eval
+// gen/be/be_noise.cpp — see be_noise.h. The two eval bodies are the reference OpenSimplexNoise, transcribed
+// statement for statement so the doubles match. The decompiler mis-rendered two "ysv_ext0 = ysv_ext1 = ysb...; if (..) ysv_ext1 -= 1; else ysv_ext0 -= 1;" blocks in 3D eval
 // (it hoisted the decrement out of the branch); they are written as in Kurt Spencer's original, which is what the
 // class does: 36000 random 2D/3D evals over 9 seeds plus a lattice and java.util.Random draws compared bit for bit
-// against the jar's class running on Java 25 (README.md, "Validation").
+// against the reference class running on Java 25 (README.md, "Validation").
 #include "gen/be/be_noise.h"
 
 // keep the doubles Java-exact: no fused multiply-add

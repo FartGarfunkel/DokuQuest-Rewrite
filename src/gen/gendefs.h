@@ -119,7 +119,7 @@ const char* biomeName(int b);
   X(dragon_log) X(dragon_leaves) X(umbrella_cap) X(glowshroom_stem) X(glowshroom_cap) X(amber_block) X(neon_moss) X(shadow_soil) X(lantern_log) \
   X(chorus_turf) X(glow_turf) X(umbrella_turf) X(lantern_turf) X(crystal_turf) X(blossom_cap) \
   X(fire) X(acid) X(red_crystal) X(charged_crystal) X(red_crystal_cluster) X(smouldering_ash) X(scorched_bricks) X(cracked_scorched_bricks) \
-  /* Better End (gen/theend_be.cpp) */ \
+  /* the End's lands (gen/theend_be.cpp) */ \
   X(endstone_dust) X(chorus_nylium) X(end_mycelium) X(crystal_moss) X(shadow_grass) X(pink_moss) X(amber_moss) X(jungle_moss) X(sangnum) X(rutiscus) \
   X(cave_moss) X(pallidium_full) X(pallidium_heavy) X(pallidium_thin) X(pallidium_tiny) X(flavolite) X(violecite) X(sulphuric_rock) X(brimstone) X(umbralith) \
   X(virid_jadestone) X(azure_jadestone) X(sandy_jadestone) X(dragon_bone_block) X(dense_snow) X(emerald_ice) X(dense_emerald_ice) X(ancient_emerald_ice) X(amber_ore) X(ender_ore) \
@@ -131,7 +131,7 @@ const char* biomeName(int b);
   X(inflexia) X(needlegrass) X(murkweed) X(cave_grass) X(charnia_cyan) X(charnia_purple) X(charnia_red) X(charnia_orange) X(charnia_green) X(end_lily) \
   X(glowing_pillar_luminophor) X(dense_vine) X(twisted_vine) X(jungle_vine) X(blue_vine_lantern) X(blue_vine) X(neon_cactus) X(tail_moss) X(cyan_moss) X(twisted_moss) \
   X(end_stone_stalactite) X(red_mushroom_block) X(mycelium) X(brown_mushroom_block) X(mushroom_stem) \
-  /* BTA 8.0's Nether (gen/nether_lands.cpp, terrain version 7) */ \
+  /* the classic Nether (gen/nether_lands.cpp, terrain version 7) */ \
   X(brimsand) X(nether_brimstone) X(brimthaw) X(cobbled_netherrack) X(crystalline_netherrack) X(cobbled_gloomstone) X(ember) X(ash_layer) \
   X(rubyglass_column) X(rubyglass_node) X(rubyglass_crystal) X(rubyglass_growth) X(magmatic_boulder) X(sulfuric_boulder) X(bone_pile) X(soul_catcher)
 

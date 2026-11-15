@@ -129,7 +129,7 @@ static void moaBuild(ChunkWriter& w, const StructurePlan& S) {
 }
 
 // ---- the Ember Depths ----
-// BTA's open Nether: the ground under a structure, from the middle and four points round it (the lowest dry one; over
+// the classic open Nether: the ground under a structure, from the middle and four points round it (the lowest dry one; over
 // the lava sea, just over the lava as in the old Nether)
 static int netherGround(const TerrainQuery& t, int x, int z, int r, int overLava) {
   int best = 1 << 20, sea = -1;
@@ -248,7 +248,7 @@ static void bonePitBuild(ChunkWriter& w, const StructurePlan& S) {
   P.put(cx - 4, y, cz - 2, "soul_lantern"); P.put(cx + 4, y, cz + 3, "soul_lantern");
 }
 
-// ---- Nether fortresses: Minecraft's bridges and castle (gen/structures_fortress.cpp) ----
+// ---- Nether fortresses: bridges and castle (gen/structures_fortress.cpp) ----
 bool fortressPlanMC(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S);
 void fortressBuildMC(ChunkWriter& w, const StructurePlan& S);
 
@@ -294,7 +294,7 @@ static void sanctumBuild(ChunkWriter& w, const StructurePlan& S) {
 
 // ---- End cities: a purpur hall on an outer island, its tower rising in stages to a crowned top room, bridges
 //      reaching out from it to hanging side towers, and often a ship moored off the top with the wings aboard and a
-//      dragon's head on its bow (our own take on Minecraft's, which grow piece by piece)
+//      dragon's head on its bow (our own take, built whole rather than piece by piece)
 constexpr int END_CITY_REG = 360;
 struct CityBranch { int dir, level, len, segs; };
 struct CityExt { int floors, dir; bool ship; std::vector<CityBranch> branches; };

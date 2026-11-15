@@ -147,7 +147,7 @@ const std::vector<Section>& helpText() {
     {P, "Each world has its own settings (World settings in the pause menu, or More options when you make one): its name, game mode, how long days and nights last, and game rules such as keep inventory, mob griefing and fire spread."},
     {P, "When an update brings new land, World settings \xE2\x86\x92 Upgrade lets an older world grow it in the places you haven't built on."},
     {H, "Commands"},
-    {P, "Where commands are on (always in Creative), press T or / to type one: /time set day, /gamemode creative, /tp, /give, /fill, /locate and more. Builders get WorldEdit: //wand gives the wand, then //set, //replace, //walls, //copy, //paste, //rotate, //stack, //sphere and //undo."},
+    {P, "Where commands are on (always in Creative), press T or / to type one: /time set day, /gamemode creative, /tp, /give, /fill, /locate and more. Builders get the building tools: //wand gives the wand, then //set, //replace, //walls, //copy, //paste, //rotate, //stack, //sphere and //undo."},
     {H, "Your worlds are safe"},
     {P, "The game saves every few seconds. Worlds keep working through updates, and you can make a backup from the pause menu at any time."},
   }},

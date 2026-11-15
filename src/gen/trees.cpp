@@ -20,7 +20,7 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
       if (d <= 1 - rnd() * 0.18) put(cx + dx, cy + dy, cz + dz, id, true);
     }
   };
-  // a branch (the idea is Cubyz's, the code ours): slim branch blocks (world/shapes.cpp ShapeKind::Branch, they join
+  // a branch: slim branch blocks (world/shapes.cpp ShapeKind::Branch, they join
   // to logs, branches and leaves) winding out of the trunk, climbing a step every other block, a diagonal going x then
   // z; thick near the trunk and thin toward the tip (meta bit 0); now and then a leaf along the way; at the end it may
   // fork into two twigs; each tip vanishes into a clump of leaves (none on a bare tree: leafR 0). With no branch
@@ -88,7 +88,7 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
         }
         return;
       }
-      if (B.cacao_leaves && (hash32(t.x, t.ySeed, t.z, seed ^ 911) & 1023) < 72 && !t.bare) {   // now and then a cacao tree (BTA): short, cocoa all up the trunk
+      if (B.cacao_leaves && (hash32(t.x, t.ySeed, t.z, seed ^ 911) & 1023) < 72 && !t.bare) {   // now and then a cacao tree: short, cocoa all up the trunk
         int Hc = 5 + jsFloor(t.h * 3);
         for (int k = 0; k < Hc; k++) put(x, y + k, z, B.jungle_log);
         leafBall(x, y + Hc - 1, z, 2.4, B.cacao_leaves, 0.75);
@@ -155,7 +155,7 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
     }
     case TREE_THORN: {   // low and crooked, a flat ragged crown of thorn leaves
       int H = 2 + jsFloor(t.h * 2), d = jsFloor(rnd() * 4), tx = x, tz = z;
-      const BlockId tl = B.thorn_log ? B.thorn_log : B.acacia_log;   // (BTA's thorn log)
+      const BlockId tl = B.thorn_log ? B.thorn_log : B.acacia_log;   // (the thorn log)
       for (int k = 0; k < H; k++) { if (k == H - 1) { tx += DIRX[d]; tz += DIRZ[d]; } put(tx, y + k, tz, tl); }
       if (t.bare) return;
       BlockId lf = B.thorn_leaves ? B.thorn_leaves : B.acacia_leaves;
@@ -164,7 +164,7 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
       put(tx, y + H + 1, tz, lf, true);
       return;
     }
-    case TREE_SHRUB: {   // BTA's shrub: a stub of trunk in a low round bush
+    case TREE_SHRUB: {   // the shrub: a stub of trunk in a low round bush
       const BlockId lf = B.shrub_leaves ? B.shrub_leaves : B.leaves;
       const int H = 1 + (t.h > 0.6 ? 1 : 0);
       for (int k = 0; k < H; k++) put(x, y + k, z, B.log);
@@ -204,7 +204,7 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
       if (t.bare) return;
       for (int b = 0, nb = 2 + jsFloor(rnd() * 2), d0 = jsFloor(rnd() * 8); b < nb; b++)
         branch(x, y + H - 2 + (b & 1), z, d0 + b * (8 / nb), 3 + jsFloor(rnd() * 2), B.cherry_log, B.cherry_leaves, 2.0, true);
-      // the Seasonal Forest's cherries flower (BTA's flowering cherry leaves: they drop cherries)
+      // the Seasonal Forest's cherries flower (flowering cherry leaves: they drop cherries)
       leafBall(x, y + H + 1, z, 2.2, t.seasonal && B.flowering_cherry_leaves && rnd() < 0.7 ? B.flowering_cherry_leaves : B.cherry_leaves, 0.6);
       return;
     }
@@ -331,7 +331,7 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
     else if (savanna) type = TREE_ACACIA;
     else if (c.biome == BIOME_FOREST) type = r < 0.2 ? TREE_BIRCH : c.temp < 0 && r < 0.42 ? TREE_ASPEN : c.humid > 0.25 && r < 0.55 ? TREE_DARK_OAK : c.humid > 0.15 && r > 0.97 ? TREE_AZALEA : TREE_OAK;
     else if (c.biome == BIOME_PLAINS && c.temp < -0.05 && r < 0.4) type = TREE_ASPEN;
-    if (savanna && r < 0.22) type = TREE_SHRUB;                            // (BTA's shrubs in the dry lands)
+    if (savanna && r < 0.22) type = TREE_SHRUB;                            // (shrubs in the dry lands)
     else if (c.biome == BIOME_PLAINS && r > 0.93) type = TREE_SHRUB;
     if (bv == BV_REDLANDS) type = r > 0.45 ? TREE_SHRUB : TREE_BIRCH;      // pale-barked gums (eucalyptus) standing alone, shrubs between
     else if (bv == BV_MOSSMIRE) type = r < 0.6 ? TREE_DARK_OAK : TREE_MANGROVE;   // dark, mossy swamp trees

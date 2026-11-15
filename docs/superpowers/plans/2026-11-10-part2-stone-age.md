@@ -32,7 +32,7 @@ safely: skips keys that exist).
 ## Rulings made while planning
 - R1: Ground twigs/flint/denser rocks generate in every new chunk (classic too): harmless, and worldgen has no rule access.
 - R2: Pebble knapping → new `stone_*_head` items; flint knapping → the existing `flint_*_head` items (flint tools are
-  better, tier 2, as now). Tools from heads keep our existing stats (stone tools tier 2, durability 132) — not TFC's
+  better, tier 2, as now). Tools from heads keep our existing stats (stone tools tier 2, durability 132) — not the knapped heads' own
   50–70 — to keep it from being hard.
 - R3: Only wooden-tool and cobblestone-tool recipes are switched off in Part 2; metal tool recipes are switched off in
   Part 4 when smithing exists (so an immersive world is never without a path).
@@ -66,7 +66,7 @@ on soil, and on beaches, ~5 per chunk; none in oceans); test in `tools/test_imme
 
 ### Task 3: Knapping rules and data
 **Files:** `data/knapping.json` (new: `{"stone": [{out, n, pattern[5 strings], from: ["pebble"]}], "flint": [...],
-"clay": []}` — TFC's shapes with `#` = kept: axe, shovel, hoe, knife ×1, knife ×2, hammer, javelin, plus crude pickaxe
+"clay": []}` — the shapes with `#` = kept: axe, shovel, hoe, knife ×1, knife ×2, hammer, javelin, plus crude pickaxe
 `"#####"," # # ","  #  "`-like (top bar, centre post)); `src/sim/knapping.{h,cpp}`; tests in `tools/test_immersive.cpp`.
 **Interfaces:**
 ```cpp

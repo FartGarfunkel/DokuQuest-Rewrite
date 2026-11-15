@@ -98,7 +98,7 @@ bool loadBuiltinTiles(TileSet& ts) {
   return true;
 }
 
-// A campfire log picture laid out like Minecraft's (the bark in a strip along the top quarter, the log's end ring in a
+// A campfire log picture laid out the pack format's way (the bark in a strip along the top quarter, the log's end ring in a
 // quarter-size square under it, the ash bed in the bottom half) is cut up for this game's log boxes: the bark strip is
 // repeated down the whole picture (so every log side shows bark, not the ash), and the ring becomes the end picture.
 void unpackCampfireLog(TileSet& ts) {

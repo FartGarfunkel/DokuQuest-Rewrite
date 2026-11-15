@@ -1,6 +1,6 @@
 // sim/minecart.h — rails and minecarts (game/minecart.js) and trains (game/trains.js).
 //
-// Rails shape themselves as they're laid (straight, slopes, corners). Carts follow the track like Minecraft's:
+// Rails shape themselves as they're laid (straight, slopes, corners). Carts follow the track:
 // each rail is a line between the middles of two of its edges (a curve is the diagonal), slopes speed them,
 // powered rails push them up to 8 blocks a second (and brake them when off), detector rails see them,
 // activator rails tip riders out, light TNT carts and lock hopper carts. Kinds: minecart (a seat), chest,

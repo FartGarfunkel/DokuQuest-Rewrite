@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """tools/port/elytra_art.py — the elytra in the DokuQuest Base pack's style, shaped like the classic elytra: two panels
 of charcoal membrane on a light grey frame (a leading-edge bone along the top, the hinge bone down the shoulder side,
-three ribs fanning from the hinge to a ragged trailing edge). Drawn here (no Minecraft picture is used), then given the
+three ribs fanning from the hinge to a ragged trailing edge). Drawn here (no outside picture is used), then given the
 pack's own grain: the membrane takes the pack's black wool's light and shade, the bones its bone block's, with the
 pack's dark outline round the silhouette.
 
@@ -14,7 +14,7 @@ import math, pathlib, sys
 import numpy as np
 from PIL import Image
 
-S = 2   # pixels per vanilla texel (the pack is 32x)
+S = 2   # pixels per base-layout texel (the pack is 32x)
 
 
 def grain(path, w, h):

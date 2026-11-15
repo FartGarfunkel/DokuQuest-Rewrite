@@ -425,7 +425,7 @@ int main(int argc, char** argv) {
     StationResult again = stationResult("forge", gem.out, ItemStack("ruby", 1));
     check(!again.ok, "  ...one gem a tool");
   }
-  // ------------------------------------------------------------ BTA: a saddled pig is ridden (no taming)
+  // ------------------------------------------------------------ a saddled pig is ridden (no taming)
   {
     Creature* pig = spawnCreature(*L, P->realm, "pig", P->pos + vec3(1.5f, 0, 0));
     check(pig != nullptr, "a pig");
@@ -539,7 +539,7 @@ int main(int argc, char** argv) {
                     && makePartArmor("helmet", [&] { std::vector<std::string> v(hp->cells.size(), A->key); for (size_t i = 0; i < v.size() / 2; i++) v[i] = Z->key; return v; }(), h2);
     check(ok && armorPointsOf(h1) != armorPointsOf(h2), "a helmet of pig iron and zinc: its protection follows how much of each (" + std::to_string(ok ? armorPointsOf(h1) : 0.f) + " / " + std::to_string(ok ? armorPointsOf(h2) : 0.f) + ")");
   }
-  {   // the off hand: the shield slot on the free forearm, a sword in the off hand swings (Skyrim's two hands)
+  {   // the off hand: the shield slot on the free forearm, a sword in the off hand swings (each hand its own)
     for (auto& s2 : P->inv) s2 = ItemStack();
     P->selected = 0; P->offhand[0] = ItemStack(); P->shield[0] = ItemStack("shield", 1);
     P->inv[0] = ItemStack("iron_sword", 1);

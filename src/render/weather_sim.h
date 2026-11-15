@@ -1,8 +1,7 @@
 // render/weather_sim.h — the weather particles' simulation (no GL; tools/test/weather_test.cpp drives it headless):
 // rain, heavy rain, snow and heavy snow from a sphere round the camera; splashes, ripples, wall streaks and steam where
-// rain lands; desert dust, skittering dust, tumbling shrubs and haze; ground fog sheets. After Particle Rain 4.0.3 by
-// pigcart (MIT): ParticleSpawner (spawning), CustomParticle / WeatherParticle (motion, fading, collision), the
-// particles.json numbers. Velocities are in blocks per tick (1/20 s) like Particle Rain's; the wind is
+// rain lands; desert dust, skittering dust, tumbling shrubs and haze; ground fog sheets: spawning, motion,
+// fading, collision. Velocities are in blocks per tick (1/20 s); the wind is
 // sim/wind_field.h. render/weather_draw.cpp draws what this holds.
 #pragma once
 #include "common/common.h"
@@ -85,10 +84,10 @@ private:
   void step(const WeatherInputs& in, WParticle& p, float ticks);
 };
 
-// ground fog's opacity over its life: fades in to full at half its life and out again (FadeType.IN_AND_OUT)
+// ground fog's opacity over its life: fades in to full at half its life and out again (fade in and out)
 float fogAlpha(const WParticle& p);
 
-// Particle Rain's sky spawn point on a sphere of `radius` round the origin: slow, weighted toward the top of the upper
+// the sky spawn point on a sphere of `radius` round the origin: slow, weighted toward the top of the upper
 // half; fast (falling, flying), anywhere on the sphere, so you never run out of the weather
 vec3 skySpawnPoint(WRng& r, float radius, bool fast);
 // the first block the segment from..to enters that stops weather (solid, leaves or liquid), and where it meets it

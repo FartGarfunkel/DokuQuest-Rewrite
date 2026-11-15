@@ -67,7 +67,7 @@ void main() {
   float lit = 0.84 + 0.16 * max(dot(N, uSunDir), 0.0) * sunUp;
   c *= lit * mix(0.86, 1.0, step(-0.5, N.y));               // undersides a little darker still
   c = mix(c, vCol, 0.25);
-  // each voxel of the heap a touch lighter or darker (Cube World's mottled clouds)
+  // each voxel of the heap a touch lighter or darker (mottled clouds)
   vec3 cell = floor(vW - N * 0.5);
   c *= 0.965 + 0.06 * hash12(cell.xz + cell.y * 7.31);
   c *= max(uDay, uMinLight);

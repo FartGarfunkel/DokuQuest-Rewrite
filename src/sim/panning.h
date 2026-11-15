@@ -1,4 +1,4 @@
-// sim/panning.h — gold panning and the sluice (after TerraFirmaCraft): a fired clay pan used on gravel or sand with water
+// sim/panning.h — gold panning and the sluice: a fired clay pan used on gravel or sand with water
 // beside it — two seconds of swirling — now and then gives an ore sample (copper, tin, gold, silver, zinc, bismuth, iron) or,
 // rarely, a gem; one try in four uses up the block. A sluice set in the water beside gravel or sand does it on its own, a
 // find a minute, until it's worn out (64 finds).

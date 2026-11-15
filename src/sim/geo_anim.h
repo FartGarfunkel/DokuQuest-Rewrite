@@ -1,4 +1,4 @@
-// sim/geo_anim.h — imported GeckoLib models' clips on the "geo" rig (sim/geo_anim.cpp)
+// sim/geo_anim.h — imported keyframe models' clips on the "geo" rig (sim/geo_anim.cpp)
 #pragma once
 #include <string>
 

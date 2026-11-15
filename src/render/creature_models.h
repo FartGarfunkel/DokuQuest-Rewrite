@@ -1,4 +1,4 @@
-// render/creature_models.h — creature bodies as voxel models (Veloren / Cube World look). Every rig part
+// render/creature_models.h — creature bodies as voxel models (chunky voxel look). Every rig part
 // (data/models.json) becomes a voxel box, 32 voxels to the block; its surface voxels take the part's face
 // pictures — the original's code-painted tiles, or the resource pack's entity skin cut up box by box like
 // render/packmobs.js — see-through pixels are carved out (a visual hull of the six pictures, so skeleton ribs

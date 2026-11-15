@@ -1,4 +1,4 @@
-// sim/guns.cpp — powder weapons (BTA's handcannon and rocket launcher, our own make): the handcannon fires a cannonball
+// sim/guns.cpp — powder weapons (the handcannon and rocket launcher, our own make): the handcannon fires a cannonball
 // that bursts where it lands without breaking blocks (fire it at your feet to fling yourself), the rocket launcher a
 // rocket that flies straight and blasts what it hits. Both kick back. The shots are projectiles in sim/creature_entities.cpp.
 #include "sim/gameplay.h"
@@ -23,7 +23,7 @@ void registerGuns() {
     const i64 now = unixMillis();
     if (next[p.id] > now) return true;
     const char* ammo = cannon ? "cannonball" : "rocket";
-    // BTA's explosive charge: the handcannon's heavier load (a bigger burst), used before plain cannonballs
+    // the explosive charge: the handcannon's heavier load (a bigger burst), used before plain cannonballs
     const bool charge = cannon && playerCount(p, "explosive_charge") > 0;
     if (!p.creative()) {
       if (charge) playerRemove(p, "explosive_charge", 1);

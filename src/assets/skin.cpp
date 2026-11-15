@@ -1,4 +1,4 @@
-// assets/skin.cpp — skins: the Minecraft layout, the painted default, loading/normalising, arms (render/skins.js,
+// assets/skin.cpp — skins: the 64x64 skin layout, the painted default, loading/normalising, arms (render/skins.js,
 // ui/skineditor.js helpers).
 #include "assets/skin.h"
 #include "assets/tileset.h"

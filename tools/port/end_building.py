@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""tools/port/end_building.py — Better End's buildings (idempotent; data_patches.py runs it after end_blocks.py):
-  python3 tools/port/end_building.py <data-dir> [<Better End folder>]
+"""tools/port/end_building.py — the End lands' buildings (idempotent; data_patches.py runs it after end_blocks.py):
+  python3 tools/port/end_building.py <data-dir> [<source folder>]
 
 1. The building blocks its structures are made of and the game lacked: per wood (mossy glowshroom, pythadendron, end
    lotus, lacugrove, dragon tree, tenanea, helix tree, umbrella tree, jellyshroom, lucernia) planks, stripped logs,
    bark, stairs, slabs, fences, doors, trapdoors, ladders, bookshelves, barrels and crafting tables; per stone
    (flavolite, violecite, sulphuric rock, the jadestones) bricks, tiles, polished, pillars, lanterns, stairs, slabs,
    walls, buttons and plates; thallasium and terminite bars and chains. Each is the game's own block of that kind
-   (oak_door, oak_stairs, iron_bars...) with Better End's picture run through the art pass (tools/port/restyle.py via
-   local_mod_art.fit: the base pack's picture of the same kind of thing in Better End's colours).
-2. data/be_structures.json: Better End's land structures (data/betterend/structures/biome/**.nbt, MIT) with the lists
+   (oak_door, oak_stairs, iron_bars...) with the source's picture run through the art pass (tools/port/restyle.py via
+   local_mod_art.fit: the base pack's picture of the same kind of thing in the source's colours).
+2. data/be_structures.json: the End lands' structures (data/betterend/structures/biome/**.nbt, MIT) with the lists
    and rarity of its building_list_features: in chorus forest, blossoming spires, foggy mushroomland, umbrella jungle,
    shadow forest and lantern woods, one chunk in N gets one of its land's ruins, houses, stumps or fallen trees.
    Each block is [key, meta for rotations 0..3] (stairs, logs, doors, trapdoors, ladders, buttons turn with it).
@@ -62,7 +62,7 @@ def nbt(path):
 def main(d, be):
     d = pathlib.Path(d); be = pathlib.Path(be)
     sroot = be / 'data/betterend/structures'; troot = be / 'assets/betterend/textures/block'
-    if not sroot.exists(): print('end_building: no Better End structures at', sroot, '- skipped'); return
+    if not sroot.exists(): print('end_building: no End structures at', sroot, '- skipped'); return
     import importlib.util as ilu
     sp = ilu.spec_from_file_location('local_mod_art', pathlib.Path(__file__).with_name('local_mod_art.py')); LM = ilu.module_from_spec(sp); sp.loader.exec_module(LM)
     bj = json.loads((d / 'blocks.json').read_text()); items = json.loads((d / 'items.json').read_text())
@@ -77,7 +77,7 @@ def main(d, be):
         return im.crop((0, 0, w, w)) if h > w else im
 
     def tile(src, donor, how='ramp'):
-        """be_<src>: Better End's picture through the art pass; None if Better End has no such picture"""
+        """be_<src>: the source picture through the art pass; None if the source has no such picture"""
         name = 'be_' + src
         if name in tiles: return name
         p = troot / (src + '.png')
@@ -113,7 +113,7 @@ def main(d, be):
     made = []
 
     def resolve(full):
-        """a Better End / Minecraft block name -> our key, making the block when it's one of the kinds we can"""
+        """a source block name -> our key, making the block when it's one of the kinds we can"""
         ns, nm = full.split(':')
         if nm in NEAREST:
             k = NEAREST[nm]
@@ -275,7 +275,7 @@ def main(d, be):
             lst.append({'name': path.stem, 'merger': s.get('terrain_merger', 'SURFACE'), 'offY': s.get('offset_y', 0), 'size': t['size'], 'palette': pal2, 'blocks': blk})
             total += 1
         lands[str(idx)] = {'chance': chance, 'list': lst}
-    # the End's pillars as Better End rebuilds them (SpikeFeatureMixin): a base and a top for radius 2-5 (index 1-4),
+    # the End's pillars as the End lands rebuild them: a base and a top for radius 2-5 (index 1-4),
     # the guarded ones with a cage
     pillars = {}
     for path in sorted((sroot / 'pillars').glob('*.nbt')): pillars[path.stem] = convert(path); total += 1

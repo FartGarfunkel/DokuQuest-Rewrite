@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
   CHECK(gap, "goes through the gap");
   for (int z = -5; z < 39; z++) for (int y = Y; y < Y + 3; y++) w.setBlock(15, y, z, AIR);
   w.setBlock(25, Y, 5, AIR);
-  // BTA: a fuseling (1.7 tall) walks under a shut trapdoor at the top of its head's block; a ghoul (1.95) can't
+  // a fuseling (1.7 tall) walks under a shut trapdoor at the top of its head's block; a ghoul (1.95) can't
   {
     BlockId trap = reg().blockId("oak_trapdoor") ? reg().blockId("oak_trapdoor") : reg().blockId("trapdoor");
     for (int z = -5; z < 39; z++) { w.setBlock(15, Y + 2, z, stone); w.setBlock(15, Y + 1, z, trap, 8 /* top half */); }

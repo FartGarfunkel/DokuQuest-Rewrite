@@ -48,7 +48,7 @@ void registerLeads() {
   static bool done = false;
   if (done) return;
   done = true;
-  // ahead of the other creature uses (feeding, riding...), as Minecraft does
+  // ahead of the other creature uses (feeding, riding...)
   hooks().useEntity.insert(hooks().useEntity.begin(), [](PlayerController& pc, Entity& e, ItemStack* held, const ItemDef*) {
     auto* c = dynamic_cast<Creature*>(&e);
     if (!c || pc.lv.isRemote()) return false;

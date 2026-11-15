@@ -1,4 +1,4 @@
-// sim/metalwork.h — melting and casting (after TerraFirmaCraft's small vessel and ceramic molds): ore (pieces, samples,
+// sim/metalwork.h — melting and casting (the small vessel and ceramic molds): ore (pieces, samples,
 // powder) and metal go into a fired vessel, four stacks; heated on a firepit or in a forge past its melting point
 // (core/metals.h: the mix's) it becomes liquid metal of that makeup (tag "metal" {comp, u}). Used with a fired mold in the
 // other hand it pours a hundred units into it (tool molds take only the metals that cast: the copper family, gold, silver,

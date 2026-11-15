@@ -66,7 +66,7 @@ inline void packHandEnd() {
   packHandPrev() = std::move(packHandCur());
   packHandCur() = {};
 }
-// A pack that sets clouds=off draws the sky itself (Complementary's deferred raymarch).
+// A pack that sets clouds=off draws the sky itself (a deferred raymarch).
 // The game's planes would be copied into that picture and hide the pack's clouds.
 inline bool& packSkipGameClouds() { static bool on = false; return on; }
 inline void packSetSkipClouds(bool on) { packSkipGameClouds() = on; }

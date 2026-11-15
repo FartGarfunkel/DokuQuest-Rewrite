@@ -1,4 +1,4 @@
-// sim/beast_anim.h — Alex's Mobs creatures (imported as ours: the creature import) moved by their own setupAnim
+// sim/beast_anim.h — the imported creatures (the creature import, rig "beast") moved by their own animation programs
 #pragma once
 
 namespace dq {

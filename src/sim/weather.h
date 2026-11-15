@@ -44,7 +44,7 @@ public:
   float rain = 0, thunderK = 0;        // smoothed 0..1
   float flashT = 0, bankFlash = 0, belowFlash = 0;
   float showerT = 0, showerK = 0, sand = 0, bliz = 0, ash = 0.2f, ashT = 0, mistNow = 0;
-  float afterRainT = 0;                // seconds of fog lying on the land after rain (Particle Rain: up to 5 minutes)
+  float afterRainT = 0;                // seconds of fog lying on the land after rain (up to 5 minutes)
   float dens = 1, windDX = 1, windDZ = 0, windTilt = 0, snowDrift = 0, approach = 0, windUp = 0, over = 0;
   std::string zone = "temperate", showerZone, lastStorm = "rain";
   vec2 anchor{0};                      // the lead player's x,z (fronts are measured from here)
@@ -112,7 +112,7 @@ private:
 };
 
 WeatherSystem* weatherOf(Level& lv);
-// Seasons (BTA's, world rule "seasons", off unless turned on in World settings): a year of four seasons of seven days each in the
+// Seasons (world rule "seasons", off unless turned on in World settings): a year of four seasons of seven days each in the
 // Overworld. seasonPhase: 0..4 (0 spring, 1 summer, 2 autumn, 3 winter, fractions between), -1 when off.
 float seasonPhase(const Level& lv);
 int seasonOf(const Level& lv);   // 0..3, -1 off

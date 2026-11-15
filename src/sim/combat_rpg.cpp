@@ -129,7 +129,7 @@ void combatRpgInput(Level& lv, Player& p, const PlayerInput& in, float dt) {
     p.dodgeYaw = std::atan2(-tx, -tz);        // the heading whose front is that way
     sfxUi(lv, p, "step");
   }
-  // the shield comes up only when the main hand has nothing of its own to do (Minecraft): a sapling, a block, food, a bow...
+  // the shield comes up only when the main hand has nothing of its own to do: a sapling, a block, food, a bow...
   // in the main hand is used, the shield in the other hand waits
   const ItemStack& mh = p.inv[p.selected];
   const ItemDef* md = mh.empty() ? nullptr : reg().item(mh.id);

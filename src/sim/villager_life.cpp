@@ -505,7 +505,7 @@ static HeroHouse homeGive(Level& lv, const Village& v, Player& who) {
   sfxUi(lv, who, "levelup");
   return h;
 }
-// ------------------------------------------------------------------ improving your house (Animal Crossing) and furnishing it (Skyrim)
+// ------------------------------------------------------------------ improving your house and furnishing it
 // The elder's builders add to the hero's house for gold coins: a second room, an upstairs, a cellar; then furnish them.
 // Each is built onto the plain house (plainHouse's layout: walls x 0..6, z 0..5, the door at x 3 on z 0) and recorded
 // in homeBuilt[...]["ups"].

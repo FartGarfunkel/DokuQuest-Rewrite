@@ -1,4 +1,4 @@
-// core/metals.h — metals, alloys and ore (data/metals.json; after TerraFirmaCraft): every metal thing carries its makeup
+// core/metals.h — metals, alloys and ore (data/metals.json): every metal thing carries its makeup
 // (a Comp: metal -> fraction). A makeup inside a named alloy's ranges is that alloy (bronze, brass, bismuth bronze, black
 // bronze, rose gold, sterling silver) with its own stats; any other mix works too, its stats, melting point and colour
 // blended by proportion (it works only as well as its weakest metal; a little tougher for each metal in it, a little worse

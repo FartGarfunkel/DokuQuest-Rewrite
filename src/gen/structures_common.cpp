@@ -62,7 +62,7 @@ static void rollTable(json& items, const json& table, Mulberry32& rnd) {
 }
 static json emptySlots() { json items = json::array(); for (int i = 0; i < 27; i++) items.push_back(nullptr); return items; }
 
-// now and then a spell scroll (Iron's Spells' loot, ours: sim/spell_items.h): a spell any tome teaches, its rank by the
+// now and then a spell scroll (sim/spell_items.h): a spell any tome teaches, its rank by the
 // place (deeper and grander places, rarer scrolls)
 static void maybeScroll(json& items, Mulberry32& rnd, double chance, int maxRank) {
   if (!hasItem("spell_scroll") || rnd() >= chance) return;
@@ -74,7 +74,7 @@ static void maybeScroll(json& items, Mulberry32& rnd, double chance, int maxRank
   if (items[slot].is_null()) items[slot] = makeScroll(k, r).toJson();
 }
 
-// now and then a smithing template (Minecraft's places for them, in ours): its own roll, seeded from what the chest already
+// now and then a smithing template (in the places that keep them): its own roll, seeded from what the chest already
 // holds, so the place's other rolls (and every world made before) come out the same
 static void maybeTemplate(json& items, const std::string& kind) {
   static const std::unordered_map<std::string, std::vector<std::pair<const char*, double>>> T = {

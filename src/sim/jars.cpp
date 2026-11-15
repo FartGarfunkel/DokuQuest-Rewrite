@@ -1,4 +1,4 @@
-// sim/jars.cpp — glass jars (BTA's jar): an empty jar swung through the air over grass at night catches fireflies
+// sim/jars.cpp — glass jars: an empty jar swung through the air over grass at night catches fireflies
 // (the same nights and places render/creature_fauna.cpp sends them out); a placed jar of fireflies glows, and using
 // it lets them go. The fireflies drifting inside are render/env_layers.cpp's.
 #include "sim/gameplay.h"

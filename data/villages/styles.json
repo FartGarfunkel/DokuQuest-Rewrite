@@ -681,7 +681,7 @@
   {
    "key": "meadow_swiss",
    "base": "plains",
-   "source": "Towns and Towers",
+   "source": "imported village styles",
    "set": {
     "planks": "spruce_planks",
     "log": "spruce_log"
@@ -690,7 +690,7 @@
   {
    "key": "birch_forest_romanian",
    "base": "plains",
-   "source": "Towns and Towers",
+   "source": "imported village styles",
    "set": {
     "planks": "birch_planks",
     "log": "birch_log"
@@ -699,7 +699,7 @@
   {
    "key": "flower_forest_japanese",
    "base": "plains",
-   "source": "Towns and Towers",
+   "source": "imported village styles",
    "set": {
     "planks": "cherry_planks",
     "log": "cherry_log"
@@ -708,7 +708,7 @@
   {
    "key": "forest_ruins",
    "base": "plains",
-   "source": "Towns and Towers",
+   "source": "imported village styles",
    "set": {
     "planks": "planks",
     "log": "log"
@@ -717,12 +717,12 @@
   {
    "key": "mushroom_fields_fantasy",
    "base": "plains",
-   "source": "Towns and Towers"
+   "source": "imported village styles"
   },
   {
    "key": "swamp_boat",
    "base": "plains",
-   "source": "Towns and Towers",
+   "source": "imported village styles",
    "set": {
     "planks": "mangrove_planks",
     "log": "mangrove_log"
@@ -731,7 +731,7 @@
   {
    "key": "jungle_tribal",
    "base": "plains",
-   "source": "Towns and Towers",
+   "source": "imported village styles",
    "set": {
     "planks": "jungle_planks",
     "log": "jungle_log"
@@ -740,7 +740,7 @@
   {
    "key": "sparse_jungle_polynesian",
    "base": "savanna",
-   "source": "Towns and Towers",
+   "source": "imported village styles",
    "set": {
     "planks": "bamboo_planks"
    }
@@ -748,42 +748,42 @@
   {
    "key": "badlands_pueblo",
    "base": "desert",
-   "source": "Towns and Towers"
+   "source": "imported village styles"
   },
   {
    "key": "old_growth_taiga_polish",
    "base": "taiga",
-   "source": "Towns and Towers"
+   "source": "imported village styles"
   },
   {
    "key": "snowy_taiga_viking",
    "base": "snowy",
-   "source": "Towns and Towers"
+   "source": "imported village styles"
   },
   {
    "key": "tudor",
    "base": "plains",
-   "source": "Towns and Towers"
+   "source": "imported village styles"
   },
   {
    "key": "classic",
    "base": "plains",
-   "source": "Towns and Towers"
+   "source": "imported village styles"
   },
   {
    "key": "rustic",
    "base": "plains",
-   "source": "Towns and Towers"
+   "source": "imported village styles"
   },
   {
    "key": "swedish",
    "base": "taiga",
-   "source": "Towns and Towers"
+   "source": "imported village styles"
   },
   {
    "key": "iberian",
    "base": "savanna",
-   "source": "Towns and Towers"
+   "source": "imported village styles"
   }
  ]
 }

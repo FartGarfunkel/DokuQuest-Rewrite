@@ -166,7 +166,7 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
   auto at = [&](int x, int y) -> const ItemStack& { return slots[(y0 + y) * W + x0 + x]; };
   if (count == 2) {   // a cast or forged head (any makeup, core/metals.h) and a haft: the tool, its whole head that metal
     const ItemStack* h = nullptr; const ItemStack* hf = nullptr;
-    {   // an unfinished piece of armour (off the anvil) and padding: the finished piece, its makeup and wear kept (TFC)
+    {   // an unfinished piece of armour (off the anvil) and padding: the finished piece, its makeup and wear kept
       const ItemStack* un = nullptr; const ItemStack* pad = nullptr;
       for (const ItemStack& s : slots) { if (s.empty()) continue; if (s.id.rfind("unfinished_", 0) == 0 && isPartArmor(s)) un = &s; else pad = &s; }
       if (un && pad && (pad->id == "leather" || pad->id == "wool_cloth" || pad->id == "burlap") && reg().item("mixed_" + un->id.substr(11))) {

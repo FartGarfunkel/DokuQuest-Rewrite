@@ -59,7 +59,7 @@ std::string habitatAt(World& w, int x, int z, BlockId ground) {
   const std::string& g = R.block(ground).key;
   BlockId topId = top >= 0 ? w.getBlock(x, top, z) : AIR;
   if (R.tLiquid[topId] == 1) { int d = 0; while (d < 12 && R.tLiquid[w.getBlock(x, top - d, z)] == 1) d++; if (d > 6) return "ocean"; }
-  if (g == "red_sand" || g.find("terracotta") != std::string::npos || g == "scorched_dirt") return "redlands";   // (BTA's Outback)
+  if (g == "red_sand" || g.find("terracotta") != std::string::npos || g == "scorched_dirt") return "redlands";   // (the outback)
   bool sand = g == "sand" || g == "red_sand" || g == "desert_sand" || g == "silver_sand";
   if (sand && h <= SEA_LEVEL + 3) return temp < -0.2f ? "snowy_beach" : "beach";
   if (sand && temp > 0.15f) return "desert";
@@ -90,7 +90,7 @@ static const std::unordered_map<std::string, std::vector<SpawnE>>& spawnTable() 
     {"birch_forest", {{"crow", 2, 2, 3}, {"deer", 8, 2, 4}, {"rabbit", 6, 1, 3}, {"pig", 5, 1, 3}, {"chicken", 5, 1, 3}, {"sheep", 5, 2, 3}, {"cow", 4, 2, 3}, {"fox", 3, 1, 2}}},
     {"taiga", {{"wolf", 12, 2, 5}, {"fox", 8, 1, 3}, {"rabbit", 6, 1, 3}, {"deer", 5, 2, 3}, {"sheep", 4, 2, 3}, {"pig", 3, 1, 2}, {"brown_bear", 3, 1, 2}}},
     {"snowy_taiga", {{"wolf", 12, 2, 5}, {"snow_fox", 8, 1, 3}, {"rabbit", 6, 1, 3}, {"deer", 3, 2, 3}, {"brown_bear", 2, 1, 2}}},
-    {"snowy_plains", {{"polar_bear", 3, 1, 2}, {"snow_fox", 6, 1, 2}, {"rabbit", 8, 1, 3}, {"wolf", 5, 2, 4}}},   // (BTA: wolves are about more often)
+    {"snowy_plains", {{"polar_bear", 3, 1, 2}, {"snow_fox", 6, 1, 2}, {"rabbit", 8, 1, 3}, {"wolf", 5, 2, 4}}},   // (wolves are about more often)
     {"snowy_peaks", {{"goat", 10, 2, 3}, {"snow_fox", 2, 1, 2}, {"rabbit", 3, 1, 2}, {"snow_leopard", 2, 1, 1}}},
     {"mountains", {{"goat", 10, 2, 3}, {"llama", 6, 2, 4}, {"sheep", 5, 2, 3}, {"rabbit", 3, 1, 2}}},
     {"savanna", {{"crow", 2, 2, 3}, {"horse", 8, 2, 5}, {"donkey", 5, 1, 3}, {"llama", 4, 2, 4}, {"cow", 4, 2, 3}, {"armadillo", 7, 1, 2}, {"sheep", 3, 2, 3}, {"lioness", 3, 2, 3}, {"lion", 1, 1, 1}}},
@@ -262,7 +262,7 @@ public:
 
   void spawnMobs(Level& lv, int realm) {
     if (!rule(lv, "mobSpawning") || lv.info.difficulty == "peaceful_all") return;
-    if (realm == REALM_DRIFT) return;   // BTA's Drift: only its chickens (sim/drift.cpp)
+    if (realm == REALM_DRIFT) return;   // the Drift: only its chickens (sim/drift.cpp)
     World& w = lv.world(realm);
     std::vector<Entity*> ps = pawnsOf(lv, realm);
     if (ps.empty()) return;
@@ -309,7 +309,7 @@ public:
     }
     int n = (int)ps.size();
     int capA = 7 + n * 2, capW = 6 + n * 2, capB = 2 + n, capH = 6 + n * 2;
-    if (dim == DIM_OVERWORLD && seasonOf(lv) == 3) capH += 2 + n;   // BTA: winter's long dark brings more monsters out
+    if (dim == DIM_OVERWORLD && seasonOf(lv) == 3) capH += 2 + n;   // winter's long dark brings more monsters out
     bool peaceful = lv.info.difficulty == "peaceful";
     auto ring = [&](float a, float b) { float ang = frand() * TAU, d = a + frand() * (b - a); return ivec2(ifloor(p->pos.x + std::cos(ang) * d), ifloor(p->pos.z + std::sin(ang) * d)); };
     auto ringFar = [&](float a, float b) { float ang = frand() * TAU, d = areaRadius(a, b); return ivec2(ifloor(p->pos.x + std::cos(ang) * d), ifloor(p->pos.z + std::sin(ang) * d)); };
@@ -445,7 +445,7 @@ public:
       // Heightfield Nether (terrain version 5): each land its own crowd. Pigmen keep to the Crag and the
       // Old World, ember fuselings and magma slimes to the volcanoes, sulfur slimes to the acid pools,
       // crystal wisps to the Crystal Forest, scorched skeletons to the Old World's ruins.
-      // Cave Nether (version 6, BTA 8.0): every land spawns only zombie pigmen and ghasts. Once a second
+      // Cave Nether (version 6): every land spawns only zombie pigmen and ghasts. Once a second
       // the roll is a pigman pack or a ghast (peaceful worlds roll pigmen only).
       const bool netherLands = realm == REALM_MAIN && lv.info.genVersion >= 5;
       const bool cave = netherLands && lv.info.genVersion >= 6;
@@ -464,7 +464,7 @@ public:
         int y = cave ? floorAt(xz.x, xz.y, py + 16, 96) : floorAt(xz.x, xz.y, py + (int)(frand() * 20) - 10, 12);
         return y > 0 ? add(t, xz.x + 0.5f, y, xz.y + 0.5f) : nullptr;
       };
-      // Each land its own crowd, besides BTA's pigmen and ghasts (the cave Nether too: the exact BTA lands of terrain 7 have
+      // Each land its own crowd, besides the classic Nether's pigmen and ghasts (the cave Nether too: the classic lands of terrain 7 have
       // the same names: sulfur pools, crystal forest and plains, volcanic islands, the old world, crags and shelves)
       if (netherLands && !peaceful) {
         if (here == NB_SULFUR && count("sulfur_slime", 96) < 5 && frand() < 0.08f) if (Creature* m = ground("sulfur_slime", 24, 48, NB_SULFUR)) m->setSize(frand() < 0.6f ? 2 : 1);
@@ -477,7 +477,7 @@ public:
         if (here == NB_OLDWORLD && count("scorched_skeleton", 96) < 4 && frand() < 0.06f) ground("scorched_skeleton", 24, 48, NB_OLDWORLD);
         if (here == NB_VOLCANIC && count("magma_slime", 96) < 5 && frand() < 0.06f) if (Creature* m = ground("magma_slime", 24, 48, NB_VOLCANIC)) m->setSize(frand() < 0.5f ? 2 : 1);
       }
-      // Terrain 13: BetterNether's lands (gen/nether_bn.h) and their own creatures, beside BTA's
+      // Terrain 13: the deep Nether's lands (gen/nether_bn.h) and their own creatures, beside the classic ones
       if (cave && lv.info.genVersion >= 13) {
         const int bnHere = netherBnLand(lv.info.seed, lv.info.genVersion, ifloor(p.pos.x), ifloor(p.pos.z));
         auto bn = [&](const char* t, int cap, float chance, float lift, bool hostileMob) {
@@ -500,8 +500,8 @@ public:
       // The Depths' own ground, not bricks or what you've built. Cave oceans add obsidian, sulphur and slate.
       static const std::unordered_set<BlockId> NATURAL = [] { std::unordered_set<BlockId> n; for (const char* k : {"netherrack", "soul_sand", "soul_soil", "crimson_nylium", "warped_nylium", "emberstone", "ash", "ash_layer", "cinder_sand", "basalt", "blackstone", "magma_block", "gravel", "scorched_dirt", "sulphur_block", "obsidian", "slate", "soul_schist", "bone_shale",
                                                                                                   "nether_jungle_grass", "swampland_grass", "mushroom_grass", "netherrack_moss", "soul_sandstone"}) if (BlockId b = reg().blockId(k)) n.insert(b); return n; }();
-      // the cave Nether (terrain 6+) also takes BTA's own spawning ground: brimstone, gloomstone, ember, rubyglass...
-      // (with only the list above, the exact BTA Nether of terrain 7 had almost nowhere a pigman could stand)
+      // the cave Nether (terrain 6+) also takes the classic Nether's own spawning ground: brimstone, gloomstone, ember, rubyglass...
+      // (with only the list above, the classic Nether of terrain 7 had almost nowhere a pigman could stand)
       auto natural = [&](BlockId b) { return NATURAL.count(b) != 0 || (cave && netherMobsSpawnOn(b)); };
       bool tryPig = true, tryGhast = true;
       if (cave) {
@@ -510,9 +510,9 @@ public:
       }
       const float pigK = cave || !netherLands || here == NB_CRAG || here == NB_OLDWORLD ? 1.f : 0.25f;
       const float fuseK = here == NB_VOLCANIC ? (cave ? 1.5f : 3.f) : cave ? 0.f : netherLands ? 0.4f : 1.f;
-      // BTA (MobZombiePig.canSpawnHere): air, spawning ground under it, block light 7 or less; packs of up to 4 a chunk.
-      // The cave Nether looks in up to six places a roll, over and under you (BTA's spawner tries every chunk at
-      // every height; one spot at your own height mostly found a ledge of rock or a lit shore).
+      // a pigman's spawn: air, spawning ground under it, block light 7 or less; packs of up to 4 a chunk.
+      // The cave Nether looks in up to six places a roll, over and under you (one spot at
+      // your own height mostly found a ledge of rock or a lit shore).
       if (tryPig && count("zombie_pigman", 96) < (cave ? 16 : 8) && frand() < (cave ? 0.45f : 0.22f * pigK)) {
         for (int attempt = 0, packs = 0; attempt < (cave ? 6 : 1) && packs == 0; attempt++) {
           ivec2 xz = ringFar(24, 64);
@@ -581,7 +581,7 @@ public:
         ivec2 xz = ringFar(24, 48); int y = ifloor(clampv(p.pos.y + 4 + frand() * 8, (float)base + 48, (float)base + DIM_H - 8));
         if (w.isLoaded(xz.x, y, xz.y) && skyAir(xz.x, y + 1, xz.y, 1)) add("zephyr", xz.x + 0.5f, y, xz.y + 0.5f);
       }
-      static BlockId skyGrass = R.blockId("sky_grass"), isleGrass = R.blockId("skyland_grass_block");   // the Aether's (terrain 7) too
+      static BlockId skyGrass = R.blockId("sky_grass"), isleGrass = R.blockId("skyland_grass_block");   // the Skylands' (terrain 7) too
       auto ground = [&](const char* t, float lo, float hi) {
         ivec2 xz = ringFar(lo, hi);
         if (!w.isLoaded(xz.x, py, xz.y)) return;
@@ -603,7 +603,7 @@ public:
           if (w.getBlock(sx, y, sz) == carved && !w.getBlock(sx, y + 1, sz) && !w.getBlock(sx, y + 2, sz) && w.getBlock(sx, y + 6, sz)) { add("sentry", sx + 0.5f, y + 1, sz + 0.5f); break; }
       }
     }
-    // Better End's creatures, each in its own lands (its biomes' spawn lists): dragonflies and silk moths in the air,
+    // the End's lands' creatures, each in its own lands (its biomes' spawn lists): dragonflies and silk moths in the air,
     // end fish and cubozoa in the water, end slimes and shadow walkers on the ground (tools/port/end_mobs.py)
     if (dim == DIM_END && realm == REALM_MAIN && std::hypot(p.pos.x, p.pos.z) > EndGen::OUTER && frand() < 0.06f) {
       const int land = endLandAt(lv.info.seed, lv.info.genVersion, ifloor(p.pos.x), ifloor(p.pos.z));
@@ -747,7 +747,7 @@ public:
       Creature* m = spawnCreature(lv, realm, t, vec3(x + 0.5f, y, z + 0.5f));
       if (!m) return;
       if (t == "slime" || t == "magma_slime") m->setSize(frand() < 0.6f ? 2 : 1);
-      if (t == "spider" && frand() < 0.01f) mountJockey(lv, *m);   // (Minecraft: one spider in a hundred carries a skeleton)
+      if (t == "spider" && frand() < 0.01f) mountJockey(lv, *m);   // (one spider in a hundred carries a skeleton)
       if (t == "raider") {   // a band: a leader and two to four more
         for (int i = 0, n = 2 + (int)(frand() * 3); i < n; i++)
           if (Creature* o = spawnCreature(lv, realm, "raider", vec3(x + 0.5f + (frand() - 0.5f) * 3, y, z + 0.5f + (frand() - 0.5f) * 3))) { o->leader = m->id; if (frand() < 0.35f) o->heldItem = "stone_axe"; }
@@ -1043,7 +1043,7 @@ void registerCreatures() {
   registerAchievements();     // sim/achievements.cpp
   registerSnowSentry();         // sim/snow_sentry.cpp
   registerExtraItems();           // sim/extra_items.cpp: steel bucket, wolf armour, label
-  registerDrift();              // sim/drift.cpp: BTA's Drift (its portal, the way there and back, its chickens)
+  registerDrift();              // sim/drift.cpp: the Drift (its portal, the way there and back, its chickens)
   registerMoreItems(); registerEndShulkers();   // sim/end_shulkers.cpp
   registerTrickOrTreat();
   registerWeaponRack();

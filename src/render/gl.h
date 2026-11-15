@@ -3,7 +3,7 @@
 //   Modern  = OpenGL 4.6 core (falls back to 4.5/4.3) — enables multi-draw-indirect, persistent buffers
 // Shaders are written once (assets/shaders/*.glsl, GLSL 330 subset) and get a version line plus
 // defines (DQ_MODERN, quality levels) injected. A shader pack in userDir()/shaderpacks/<name>/ can
-// override any file (OptiFine-style).
+// override any file (the shader-pack way).
 #pragma once
 #include <glad/gl.h>
 #include "common/settings.h"
@@ -73,7 +73,7 @@ private:
   bool sharedIbo = false;
   std::vector<VertexAttrib> attrs;
 };
-// a program from two finished sources (no shader-pack lookup, no #include): Iris/OptiFine post passes (render/post_layer.cpp)
+// a program from two finished sources (no shader-pack lookup, no #include): full shader packs' post passes (render/post_layer.cpp)
 GLuint buildProgram(const std::string& vs, const std::string& fs, const std::string& name, std::string* err = nullptr);
 GLuint quadIndexBuffer(size_t quads);   // shared 0,1,2, 0,2,3 pattern for quad lists
 

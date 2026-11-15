@@ -1,5 +1,5 @@
-// ui/creator_screen.cpp — the voxel character creator (ui/creator.js, grown into a Cube World / Veloren /
-// Hytale-style creator): peoples, body proportions, head shape, face, hair, beards, ears, horns, clothes and
+// ui/creator_screen.cpp — the voxel character creator (ui/creator.js, grown into a full
+// creator): peoples, body proportions, head shape, face, hair, beards, ears, horns, clothes and
 // their colours, accessories, hats, cloaks and capes, with a live turning 3D model. Saves a character file
 // (userDir()/characters/<name>.json) you can wear (Settings::skin = "creator:<name>") and exports a 64x64 skin.
 // Plain ImGui, self-contained, so the UI theme can restyle it.
@@ -279,7 +279,7 @@ private:
       listRow("People", "species", L.species);
       row("Skin", L.own ? "Your own skin" : "Creator's look", "own");
       ImGui::TextWrapped("A 3D character wears real hair, beards, ears, horns, hats, robes and cloaks over the skin, and stands at its people's height. It still works as a normal skin anywhere else.");
-    } else ImGui::TextWrapped("A classic flat skin, like Minecraft's: everything is painted on the boxes.");
+    } else ImGui::TextWrapped("A classic flat skin: everything is painted on the boxes.");
     sep("Body");
     row("Sex", L.sex == "f" ? "Female" : "Male", "sex");
     row("Arms", L.body == "slim" ? "Slender (slim arms)" : "Broad (classic arms)", "body");

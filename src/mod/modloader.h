@@ -1,4 +1,4 @@
-// mod/modloader.h — mods, built in (like Fabric + Forge + OptiFine together):
+// mod/modloader.h — mods, built in (scripts, native plugins and packs together):
 //   * JS mods (QuickJS) using the original DQ API (game/mods.js) — the same .js files the HTML game's Mods panel
 //     took: the file is the body of a function given the API as `DQ`. A plugin (DQ.plugin = true) runs only
 //     while this game hosts a world (a server, or a world opened to LAN).

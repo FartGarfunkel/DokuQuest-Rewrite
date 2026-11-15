@@ -24,7 +24,7 @@ struct ColumnSample {
   i16 roof = -1; BlockId roofBlock = AIR;
   u8 temp = 128, humid = 128;  // the column's climate bytes (Chunk::climate): tint = climateTint(kind, temp, humid)
   u8 biome = 255;              // Biome (gen/gendefs.h) for the Overworld, 255 elsewhere
-  u8 variant = 0;              // the Overworld's Better than Adventure land (gen/overworld.h LandVariant), 0 none
+  u8 variant = 0;              // the Overworld's classic land variant (gen/overworld.h LandVariant), 0 none
 };
 
 // A generated tree, column by column (for distant terrain near the player: game/distant.js distTreeCols).
@@ -48,16 +48,16 @@ public:
 
 struct WorldGenOptions {
   i32 seed = 0;
-  int genVersion = 22;                 // 4: bigger biomes, 5: heightfield Nether, 6: cave Nether (climate, sea, spawns), 7: BTA's Nether as BTA makes it, 8: BTA's Nether on the open land of 5,
+  int genVersion = 22;                 // 4: bigger biomes, 5: heightfield Nether, 6: cave Nether (climate, sea, spawns), 7: the classic Nether, exact, 8: the classic Nether on the open land of 5,
                                        // 9: villages of jigsaw pieces (data/villages: ours, tools/port/village_builder.py),
                                        // 10: villages in every style, chosen by the land (gen/structures_villages.cpp villageStyle10),
                                        // 11: the village plan's fixes: real water for the streets' levels, the deep town mine
                                        //     (gen/town_mine.h), every trade staffed before a second of one
-                                       // 12: rock layers (TerraFirmaCraft's: sedimentary over metamorphic over igneous, each
+                                       // 12: rock layers (sedimentary over metamorphic over igneous, each
                                        //     region its own rocks) and the ores in their own rocks (gen/rock_layers.cpp)
-                                       // 13: BetterNether's lands over BTA's Nether (gen/nether_bn.h)
-                                       // 14: Minecraft 1.20's land (gen/density.h; docs/WORLDGEN_MERGE.md)
-                                       // 15: Soulrend's world on it: its biomes and surfaces (gen/land_biomes.h,
+                                       // 13: the painted Nether lands over the classic Nether (gen/nether_bn.h)
+                                       // 14: the imported land shape (gen/density.h; docs/WORLDGEN_MERGE.md)
+                                       // 15: the land biomes on it: their biomes and surfaces (gen/land_biomes.h,
                                        //     gen/surface_rules.h; tools/port/worldgen/import.py)
                                        // 16: its biomes' plants and features (gen/biome_features.h), its pillars, spires
                                        //     and icebergs (OverworldGen::surfaceExtras)
@@ -67,10 +67,10 @@ struct WorldGenOptions {
                                        //     bedrock floor, icebergs, deep rock, cave plants, frozen seas and snow lines
                                        // 19: the deep world (layout 2, docs/WORLD_DEPTH.md): the land runs on under the
                                        //     Overworld's band into the Underworld (gen/underworld.cpp); no floor under it
-                                       // 20: the land's top is its own (Minecraft's cave mouths open, not crusted over)
-                                       // 21: Towns and Towers' villages a street further out, a market round their square
+                                       // 20: the land's top is its own (the cave mouths open, not crusted over)
+                                       // 21: the towns' villages a street further out, a market round their square
                                        // 22: a style's windmill is the miller's trade (each village puts one up when it can)
-  bool looseGround = false;            // immersive worlds (sim/immersive.h): TFC's loose rocks, flint and twigs on the ground
+  bool looseGround = false;            // immersive worlds (sim/immersive.h): loose rocks, flint and twigs on the ground
   std::string worldType = "default";   // default | flat | amplified | ... (from the create-world screen)
   json extra;                          // structures on/off, bonus chest, etc.
 };

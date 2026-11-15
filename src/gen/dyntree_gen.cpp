@@ -1,6 +1,6 @@
-// gen/dyntree_gen.cpp — terrain 13: the generated trees are grown trees (Dynamic Trees; sim/dyntree.h). Each tree's
-// own shape (gen/trees.cpp treeParts) is kept; its wood becomes its wood's branch block with the radius Dynamic Trees'
-// pipe model gives it (a tip 1; each block sqrt of the areas of the branches it carries + 0.3, at most 8), and it stands
+// gen/dyntree_gen.cpp — terrain 13: the generated trees are grown trees (sim/dyntree.h). Each tree's
+// own shape (gen/trees.cpp treeParts) is kept; its wood becomes its wood's branch block with the radius the growing
+// trees' pipe model gives it (a tip 1; each block sqrt of the areas of the branches it carries + 0.3, at most 8), and it stands
 // in rooty soil, so it goes on growing. Pure: the tree's parts alone decide it, so every chunk it crosses agrees.
 #include "gen/trees.h"
 #include "sim/dyntree.h"
@@ -53,7 +53,7 @@ void dynTreeParts(const TreeSpec& t, std::vector<TreePart>& parts) {
   spread(0);
   // wood a step off diagonally (the acacia's crooked top goes up and over at once, joined to the trunk by an edge): with
   // faces only it stayed whole logs hanging in the crown over a thin trunk that carried none of it. Each such step gets
-  // the block between — up first, then over (as Dynamic Trees' acacias bend) — and the tree goes on from there
+  // the block between — up first, then over (as the grown acacias bend) — and the tree goes on from there
   for (bool joined = true; joined;) {
     joined = false;
     for (size_t q = 0; q < order.size() && !joined; q++) {
@@ -76,7 +76,7 @@ void dynTreeParts(const TreeSpec& t, std::vector<TreePart>& parts) {
       }
     }
   }
-  // the pipe model from the tips down. A generated tree has no twigs in its crown (Dynamic Trees' trees are full of
+  // the pipe model from the tips down. A generated tree has no twigs in its crown (grown trees are full of
   // them, and they thicken it): the leaves round each block stand in for them, half a twig's area each
   std::unordered_map<i64, float> area;
   {

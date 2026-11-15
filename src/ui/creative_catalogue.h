@@ -1,6 +1,6 @@
 // ui/creative_catalogue.h — the creative catalogue's tabs and what goes in each (ui/inventory.cpp shows them: as icon
 // tabs over the classic panel's catalogue, or as the book inventory's bookmarks). Every item the game has, sorted into
-// fifteen tabs like Minecraft's creative tabs plus one for each world (Nether, Skylands, the End), and within a tab
+// fifteen creative tabs plus one for each world (Nether, Skylands, the End), and within a tab
 // kept in families: a wood's planks, stairs, slabs, fences and doors together; a colour's wool, carpet, glass...; a
 // metal's tools in order (sword, pickaxe, axe, shovel, hoe), armour head to foot.
 #pragma once

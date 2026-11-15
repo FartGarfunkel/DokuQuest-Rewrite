@@ -1,4 +1,4 @@
-// sim/anvil.h — smithing on an anvil, TFC-lite (after TerraFirmaCraft's anvil; data/anvil.json): the piece (hot metal in
+// sim/anvil.h — smithing on an anvil (data/anvil.json): the piece (hot metal in
 // your other hand) is worked toward a target on a 0–150 scale by eight moves — light, medium and heavy hits (−3, −6, −9),
 // draw (−15), punch (+2), bend (+7), upset (+13), shrink (+16) — and each piece's plan wants its last three steps to be so
 // (a pickaxe: punch last, bend and draw not last). Forgiving: within 3 of the target and on plan it's done; exact is the

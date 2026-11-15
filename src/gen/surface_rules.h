@@ -1,9 +1,9 @@
-// gen/surface_rules.h — Minecraft's surface rules, run as Soulrend runs them (terrain version 15): what the stone of the
+// gen/surface_rules.h — the surface rules (terrain version 15): what the stone of the
 // land becomes near its surface (grass, dirt, sand, snow, terracotta bands, calcite, gravel...), by biome, height, depth,
 // slope, water and noise. The rules are data (tools/port/worldgen/import.py -> data/worldgen/
-// surface_rules.json): TerraBlender's by the biome's namespace (natures_spirit, minecraft, climaterivers), then the noise
-// settings' own (Expanded Ecosphere's: its wythers biomes). The column walk is SurfaceSystem.buildSurface's.
-// Coordinates are Minecraft's (y with its sea at 63).
+// surface_rules.json): first the rules for the biome's namespace, then the noise settings' own (for the
+// wythers biomes). The column walk follows the imported surface builder.
+// Coordinates are the imported data's (y with its sea at 63).
 #pragma once
 #include "common/common.h"
 #include "common/fs.h"
@@ -23,7 +23,7 @@ public:
   bool load(const fs::path& dir, DensityGraph& g, const LandBiomes& biomes, u64 seed);
   bool ok() const { return base_ >= 0; }
 
-  // one column, as Minecraft's SurfaceRules.Context
+  // one column: the rules' context
   struct Column {
     int x = 0, z = 0;
     int surfaceDepth = 0, minSurface = 0;   // (minSurface: the preliminary surface - 8 + surfaceDepth; begin() sets it)
@@ -34,7 +34,7 @@ public:
     std::function<int(int y)> biomeAt;      // the biome (LandBiomes index) at (x, y, z)
     int biomeY = INT32_MIN, biome = -1;     // (the last asked)
   };
-  // a column's start: its surface depth and secondary noise; prelim is Minecraft's preliminary surface level here
+  // a column's start: its surface depth and secondary noise; prelim is the preliminary surface level here
   // (NoiseChunk.preliminarySurfaceLevel, blended from its 16-block cell corners by the caller)
   void begin(Column& c, int x, int z, int prelim) const;
   // the block the rules put at the column's block (c.y and the rest set): 0xFFFF for none (it stays stone)
@@ -64,7 +64,7 @@ private:
   u64 seed_ = 0;
   int nSurface = -1, nSecondary = -1, nClayOffset = -1;
   std::vector<BlockId> bands_;   // the badlands' clay bands
-  std::unordered_map<std::string, std::string> subs_;   // a mod's ground block -> ours (import.py matched them by look)
+  std::unordered_map<std::string, std::string> subs_;   // an imported ground block -> ours (import.py matched them by look)
 };
 
 } // namespace dq

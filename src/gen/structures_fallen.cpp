@@ -1,6 +1,6 @@
 // gen/structures_fallen.cpp — where the fallen adventurers lie (sim/fallen.h, drawn by render/fallen_layer.cpp): only in the
-// abandoned places, in every realm. Ruins, dungeons, mineshafts, temples, strongholds, the Soulrend places, the Nether's
-// fortresses and forges, the End's cities, the Aether's dungeons: now and then someone who came for the loot and never left,
+// abandoned places, in every realm. Ruins, dungeons, mineshafts, temples, strongholds, the deep places, the Nether's
+// fortresses and forges, the End's cities, the Skylands' dungeons: now and then someone who came for the loot and never left,
 // lying on the floor a few steps from a chest or a monster cage. Never in a village or on a road.
 #include "gen/structures.h"
 #include "gen/gendefs.h"

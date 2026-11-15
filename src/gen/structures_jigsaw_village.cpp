@@ -1,6 +1,6 @@
 // gen/structures_jigsaw_village.cpp — our villages from terrain version 9: our village pieces (gen/village_pieces.h; built by
-// tools/port/village_builder.py) put together the way
-// Minecraft's jigsaw does it: a town centre, streets growing out of its street joints, houses on the streets' building
+// tools/port/village_builder.py) put together
+// jigsaw-fashion: a town centre, streets growing out of its street joints, houses on the streets' building
 // joints, each piece joined face to face and turned to fit, none overlapping, up to a depth and a distance from the
 // centre. Streets follow the land; everything else stands level at the height of the street joint it hangs off, the
 // ground levelled under it (villageflat's blend, piece by piece). Our own hall (the elder, the inn, the quest board's
@@ -151,7 +151,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
   J->ours.reserve(4);   // (room for all of them: oursLeft points into it)
   J->ours.push_back(ourPiece("hall"));
   // a windmill: most styles' pieces have their own, a tower with sails, shaft and millstone; (terrain 22) a style without one
-  // (the Towns and Towers styles, the Romanian, Japanese, Swiss...) has ours, so every village has its miller
+  // (the town styles, the Romanian, Japanese, Swiss...) has ours, so every village has its miller
   if (t.genVersion() >= 22) {
     bool own = false;
     for (const auto& [name, list] : pack.pools) if (name.rfind(sk + "/", 0) == 0) for (const VPPiece& q : list) if (q.name.find("windmill") != std::string::npos) { own = true; break; }
@@ -159,7 +159,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
   }
   J->ours.push_back(ourPiece("mine"));   // the miner's: a drift down to a working face (structures_townbld.cpp bMine)
   std::vector<const VPPiece*> oursLeft; for (auto& p : J->ours) oursLeft.push_back(&p);
-  // (terrain 21: Towns and Towers' villages a street further out, a market round their square: they were small and plain)
+  // (terrain 21: the town-style villages a street further out, a market round their square: they were small and plain)
   const bool tnt21 = isTntStyle(sk) && t.genVersion() >= 21;
   const int maxDepth = (v.tier == TIER_CITY ? 8 : v.tier == TIER_TOWN ? 7 : 6) + (tnt21 ? 1 : 0), R = (v.tier == TIER_CITY ? 112 : v.tier == TIER_TOWN ? 96 : 80) + (tnt21 ? 16 : 0);
   auto top = [&](int x, int z) { return t.terrainColumn(x, z).y; };
@@ -198,8 +198,8 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
       const int ax = Q.x0 + tx, az = Q.z0 + tz, af = (A.front + Q.r) & 3;
       const int ay = Q.p->terrain ? top(ax, az) + A.y : Q.y0 + A.y;
       const int Tx = ax + DXJ[af], Tz = az + DZJ[af];
-      // Minecraft's jigsaw: a joint whose spot is inside its own piece's box puts the next piece inside that box (Towns and
-      // Towers' streets are plots with the houses' lots in them); anywhere else, the spot must be free
+      // the jigsaw: a joint whose spot is inside its own piece's box puts the next piece inside that box (the town
+      // styles' streets are plots with the houses' lots in them); anywhere else, the spot must be free
       const bool inParent = isTntStyle(Q.p->style) && Tx >= Q.x0 && Tx <= Q.x1() && Tz >= Q.z0 && Tz <= Q.z1();
       if (inParent ? overlaps(Tx, Tz, Tx, Tz, (int)qi) : inside(Tx, Tz)) continue;
       const bool streets = A.pool.find("/streets") != std::string::npos, houses = A.pool.find("/houses") != std::string::npos;
@@ -238,7 +238,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
             };
             std::vector<const VPPiece*> keep; for (const VPPiece* p : cands) if (fits(p)) keep.push_back(p);
             for (const VPPiece* p : cands) if (quarterOf(*p) == Q_HOME && !fits(p)) keep.push_back(p);   // (homes after them: where none of those fits, a home does, not an empty joint)
-            if (!keep.empty()) cands.swap(keep);   // (a style whose every house has its trade (Towns and Towers' Vikings): any of them)
+            if (!keep.empty()) cands.swap(keep);   // (a style whose every house has its trade (the Vikings): any of them)
           }
           // the trades it hasn't got come first (most of the time: a plain house now and then between them)
           if (rnd() < 0.7) std::stable_partition(cands.begin(), cands.end(), [&](const VPPiece* p) { const std::string t = tradeOf(p); return !t.empty() && !J->trades.count(t) && t.rfind("stall", 0) != 0; });
@@ -253,7 +253,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
         if (houses) {
           if (!oursLeft.empty() && Q.depth >= 1) {   // our hall first, then the windmill
             // (terrain 22: each of ours still to place, in turn; only the first had been tried, and a hall too big for any of a
-            // style's lots (Towns and Towers' Tudor) had kept the windmill and the mine behind it out of the village)
+            // style's lots (the Tudor) had kept the windmill and the mine behind it out of the village)
             if (t.genVersion() >= 22) cands.insert(cands.begin(), oursLeft.begin(), oursLeft.end());
             else cands.insert(cands.begin(), oursLeft.front());
           }
@@ -461,8 +461,8 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
     std::array<int, 3> entW{(q.x0 + q.x1()) / 2, q.y0 + 1, (q.z0 + q.z1()) / 2};
     if (ent) { auto [x, z] = vpTurn(p, q.r, ent->x, ent->z); entW = {q.x0 + x, q.y0 + ent->y, q.z0 + z}; }
     std::array<int, 3> door = entW; int dd = 1 << 30; bool work = false, mill = false;
-    // where the trade is worked: its own station first (Minecraft's job block for it, or the smith's anvil), indoors
-    // before out in the yard (the weaponsmith stood at the yard's sharpening wheel, Minecraft's grindstone, not his anvil)
+    // where the trade is worked: its own station first (the job block for it, or the smith's anvil), indoors
+    // before out in the yard (the weaponsmith stood at the yard's sharpening wheel, the grindstone, not his anvil)
     static const std::map<std::string, std::vector<std::string>> PREF = {
       {"armorer", {"blast_furnace", "anvil", "smithing_table"}}, {"weaponsmith", {"anvil", "smithing_table", "grindstone"}},
       {"toolsmith", {"smithing_table", "anvil"}}, {"butcher", {"smoker"}}, {"fletcher", {"fletching_table"}}, {"librarian", {"lectern"}},
@@ -575,7 +575,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
     if (J->board) v.board = {J->bx, J->by + 2, J->bz};
     else v.board = {v.x, cy + 2, v.z};
   }
-  // the baker, the merchant and (with no windmill) the miller: Better Village has no house for them, so they take a
+  // the baker, the merchant and (with no windmill) the miller: the imported pieces have no house for them, so they take a
   // plain house with an oven, a counter or a bench (indoors first, nearest the centre); else a place by the hall door.
   // (They stood out in the street at the hall's porch: the miller grinding at its wall.)
   {
@@ -607,7 +607,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
   }
   // towns and cities keep their walls (stone for a city, a palisade for most towns), round the whole place, with a gate
   // on each side where a street can run straight out to it past no building; the way out paved through the gate
-  // Not round a Towns and Towers village: theirs are open (their streets run off in long lines; a box round them shut a bare
+  // Not round a town-style village: theirs are open (their streets run off in long lines; a box round them shut a bare
   // hillside in a palisade with a few houses in it). (The draw is still made, so the rest of the plan stays as it was.)
   const bool wallRoll = v.tier == TIER_TOWN && rnd() < 0.6;
   const bool tntStyle = !J->pcs.empty() && isTntStyle(J->pcs[0].p->style);
@@ -713,7 +713,7 @@ void jigsawTownBoxes(const JigsawTown& J, const std::array<int, 4>& n, std::vect
   if (J.board) add(J.bx - 2, J.bz - 2, J.bx + 2, J.bz + 2);
 }
 
-// Towns and Towers' styles (tools/port/tnt_village_import.py): their streets are plots with the houses' lots in them, and
+// the town styles (tools/port/tnt_village_import.py): their streets are plots with the houses' lots in them, and
 // their villages have no wall
 bool isTntStyle(const std::string& st) {
   static const std::set<std::string> TNT = {"meadow_swiss", "birch_forest_romanian", "flower_forest_japanese", "forest_ruins", "mushroom_fields_fantasy",

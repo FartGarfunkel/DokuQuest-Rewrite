@@ -1,5 +1,5 @@
-// assets/armor3d.h — worn armour from 3D armour sets (GeckoLib .geo.json + picture, Soulrend's Fantasy Armor, brought into
-// the pack's assets/dokuquest/armor3d/ by tools/port/soulrend_import.py). Each of the game's metals is drawn as one of the sets,
+// assets/armor3d.h — worn armour from 3D armour sets (.geo.json geometry + picture, the imported fantasy armour, brought into
+// the pack's assets/dokuquest/armor3d/ by the armour import tool in tools/port/). Each of the game's metals is drawn as one of the sets,
 // its grey metal recoloured to the metal (cloth, leather and trims keep their own colours): the pack's own armour pictures
 // still go first where it has them (leather, chainmail). Built per body part in that part's frame, like the pack shells.
 #pragma once

@@ -13,7 +13,7 @@ namespace {
 enum : u8 { C_BIOME, C_NOISE, C_VGRAD, C_YABOVE, C_WATER, C_TEMP, C_STEEP, C_NOT, C_HOLE, C_PRELIM, C_STONE, C_FALSE };
 enum : u8 { R_BLOCK, R_SEQ, R_IF, R_BANDS };
 constexpr BlockId NONE = 0xFFFF;
-constexpr int MIN_Y = -64, TOP_Y = 319;   // (Minecraft's Overworld: the anchors count from these)
+constexpr int MIN_Y = -64, TOP_Y = 319;   // (the imported Overworld's: the anchors count from these)
 
 u64 mix(u64 z) { z += 0x9E3779B97F4A7C15ull; z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull; z = (z ^ (z >> 27)) * 0x94D049BB133111EBull; return z ^ (z >> 31); }
 u64 hashStr(const std::string& s) { u64 h = 1469598103934665603ull; for (char ch : s) h = (h ^ (u8)ch) * 1099511628211ull; return h; }
@@ -64,7 +64,7 @@ int LandSurface::parseRule(const json& j) {
     r.t = R_BLOCK;
     const std::string nm = j["result_state"].value("Name", std::string());
     const std::string bare = nm.substr(nm.find(':') + 1);
-    if (nm.rfind("minecraft:", 0) != 0 && reg().blockIds.count(bare)) r.block = reg().blockId(bare);   // (a mod's ground we have as a block of ours: tools/port/worldgen/ns_blocks.py)
+    if (nm.rfind("minecraft:", 0) != 0 && reg().blockIds.count(bare)) r.block = reg().blockId(bare);   // (an imported ground we have as a block of ours: tools/port/worldgen/ns_blocks.py)
     else if (auto it = subs_.find(nm); it != subs_.end()) r.block = blockFromState(json{{"Name", it->second}});   // (else ours that looks like it)
     else r.block = blockFromState(j["result_state"]);
     if (r.block == NONE) DQ_LOG("surface rules: no block for %s", j["result_state"].value("Name", std::string("?")).c_str());
@@ -90,7 +90,7 @@ bool LandSurface::load(const fs::path& dir, DensityGraph& g, const LandBiomes& b
     const std::string& n = biomes.info(b).name;
     if (auto it = ns.find(n.substr(0, n.find(':'))); it != ns.end()) byNs_[b] = it->second;
   }
-  // SurfaceSystem.generateBands (with our random: the same kind of bands, not Minecraft's exact ones)
+  // the terracotta bands (with our random: the same kind of bands, not the imported data's exact ones)
   auto B = [](const char* n) { return blockFromState(json{{"Name", n}}); };
   const BlockId TC = B("terracotta"), OR = B("orange_terracotta"), YE = B("yellow_terracotta"), BR = B("brown_terracotta"),
                 RE = B("red_terracotta"), WH = B("white_terracotta"), LG = B("light_gray_terracotta");

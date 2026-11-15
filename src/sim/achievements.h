@@ -1,4 +1,4 @@
-// sim/achievements.h — achievements (BTA's achievement screen; our own list): things done once, kept in the player's
+// sim/achievements.h — achievements (our own list): things done once, kept in the player's
 // data["ach"] {id: when}, a toast when earned, shown on their own menu tab (ui/achievements_screen.cpp).
 #pragma once
 #include "common/common.h"

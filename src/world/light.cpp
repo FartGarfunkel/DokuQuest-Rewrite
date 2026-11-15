@@ -19,7 +19,7 @@ static void copy3(u8* d, const u8* s) { d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; }
 static void sub1(u8& v, int a) { v = (u8)(v > a ? v - a : 0); }
 static void sub3(u8* c, int a) { sub1(c[0], a); sub1(c[1], a); sub1(c[2], a); }
 
-// Water takes Cubyz's (9, 5, 1). Stained glass takes that dye's absorbedLight, a different amount on
+// Water takes (9, 5, 1). Stained glass takes that dye's absorbedLight, a different amount on
 // each channel, so white light comes out the color of the glass. Every other attenuating block takes
 // att*16 on all three channels (leaves att 1 -> 16, plus the step of 8). Opaque blocks are not entered.
 static void absorb(u8* c, const Registry& R, BlockId id) {

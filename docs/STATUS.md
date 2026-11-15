@@ -5,10 +5,10 @@ This is the one current list. It replaces the open items in QUEUE.md (the alpha.
 status block at the top.
 
 ## The user's list of 2026-11-01 night (alpha.12)
-Done: a cast button for each hand; the Story Mode animation layer (jump push-off/tuck, landing, swing wind-up, run
+Done: a cast button for each hand; the storybook animation layer (jump push-off/tuck, landing, swing wind-up, run
 bounce); more Skylands (driftstone, whirlwinds, valkyries); villagers at church with the banners; crows on scarecrows;
 coloured block light; portals tuned with dye; bigger biomes; the creature-skin tab in the Texture Studio (saves into
-the pack or over it); the skin check (a skin with no head or body falls back); Iris/OptiFine packs (their post passes)
+the pack or over it); the skin check (a skin with no head or body falls back); full shader packs (their post passes)
 and the built-in shader levels; distant terrain (per-block textures, water like the near water, the breath blob was a
 particle; then four times finer, corner AO on the tops, lumpy canopies, sea ice in the sea's blue); a terrain memory
 budget (far land fills the ring) and a 12-byte far-land vertex (was 16); the particle pass (soft blended smoke/breath/mist,
@@ -26,7 +26,7 @@ rift.stormBroken; test_endstory).
 
 ## Still open after that
 - (Dropped by the user 2026-11-02: dwarf mode, the easy-bridge key, spawners passing items along, the host deciding
-  trades. Done 2026-11-02: the BTA mob tweaks; painted doors/trapdoors/buttons/plates/chests, the Seasonal Forest,
+  trades. Done 2026-11-02: the classic mob tweaks; painted doors/trapdoors/buttons/plates/chests, the Seasonal Forest,
   igneous emberstone and chimney smoke were already in.)
 - Audio: the Sound Studio's synth sandbox. (Done 2026-11-02: the sound-by-sound check; five silent names fixed.)
 - Tests: the Nether-portal-invisible test as an expect (a portal's window is seen in portal.json's first shot). (Done 2026-11-02: a scripted start-to-finish playthrough, see HANDOFF; dq-sweep --drops,
@@ -45,8 +45,8 @@ rift.stormBroken; test_endstory).
   rebuilt; small bees; bows held right; footsteps on the stride; Nether places on the new Nether ground; the Wither
   Storm from a T with a command block; captions and the Accessibility page; /tp to each land; music per land and the
   dulcimer pieces; eight more discs.
-- **alpha.9 and before:** the BTA 8.0 Nether (five lands, volcanoes, acid), mixed tools and armour, the Tool Forge,
-  magic hands (dual casting, spell ranks), RPG levelling, cave culling, Cubyz-style distant terrain (first version),
+- **alpha.9 and before:** the classic Nether (five lands, volcanoes, acid), mixed tools and armour, the Tool Forge,
+  magic hands (dual casting, spell ranks), RPG levelling, cave culling, distant terrain (first version),
   raised micro-voxels, signs, armour stands, lingering potions, the chisel and chiseled slabs/stairs, waterlogged
   chiseled blocks, branching trees and palms, the quiver, paintings, Music/Sound/Texture Studios, grass regrowth,
   swinging doors and gates, hardcore/adventure/spectator, achievements, colour filters, nightmares, hotbar rows,
@@ -57,4 +57,4 @@ rift.stormBroken; test_endstory).
 - **The alpha.3 queue (QUEUE.md):** all done: shelves, puddles (glossy, drying), relief displacement, dynamic lights,
   spawner mobs, glint, levelling display, chimneys, particles, the ale mug, fishing rod and line, swimming, the
   Nether portal remesh, bow animation, potions, split screen, village gates, babble, talents, sneak-use, the armour
-  dupe, block sweep, the playthrough list, BTA content.
+  dupe, block sweep, the playthrough list, the classic-era content.

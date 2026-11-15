@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Better than Adventure-inspired blocks, our own Doku designs (idempotent; data_patches.py runs it):
+"""Classic-style blocks, our own Doku designs (idempotent; data_patches.py runs it):
   python3 tools/port/classic_blocks.py <data-dir>
 Pictures are made from the nearest existing picture (the DokuQuest Base pack's, else the generated one) recoloured and
-retouched, so they sit with the rest of the art; nothing is taken from BTA.
+retouched, so they sit with the rest of the art.
 - pumice: soaks up the lava around it when it is put down or lava reaches it (sim/blockfx.cpp), turning molten
 - molten pumice: glows and burns long in a furnace; water cools it back to pumice
 - cinder sand: black volcanic sand that falls
@@ -209,7 +209,7 @@ def main(d):
     recipe('iron_mesh', 4, ['BB', 'BB'], {'B': 'iron_bars'})
     recipe('motion_sensor', 1, ['CCC', 'RQR', 'CCC'], {'C': 'cobblestone', 'R': 'redstone', 'Q': 'quartz'})
 
-    # the sieve (BTA's trommel, by hand): use gravel, sand, dirt, mud, soul sand, ash or cinder sand on it and what
+    # the sieve (the trommel, by hand): use gravel, sand, dirt, mud, soul sand, ash or cinder sand on it and what
     # was in it falls out below (sim/sieve.cpp)
     if 'sieve' not in sj['shapes']:
         P = 'spruce_planks'
@@ -258,7 +258,7 @@ def main(d):
     block('end_moss', 'End Moss', {'hardness': 3, 'tool': 'pickaxe', 'sound': 'grass', 'drop': 'end_stone', 'tex': {'top': 'end_moss', 'side': 'end_stone', 'bottom': 'end_stone'}},
           [tiles['end_stone'], tiles['end_stone'], tiles['end_moss'], tiles['end_stone'], tiles['end_stone'], tiles['end_stone']])
 
-    # the Skylands (our own take on the Aether): three clouds (a soft puff that breaks any fall, a blue one that
+    # the Skylands: three clouds (a soft puff that breaks any fall, a blue one that
     # throws you up, a golden one that lets you float down), glimmersand (slick pale sand at the islands' rims), the
     # rare sunwood tree with golden leaves, and sky blooms
     if 'bounce_cloud' not in tiles:
@@ -339,7 +339,7 @@ def main(d):
                                                'wlog': True, 'trapdoor': True, 'tex': 'glass_trapdoor'}, [tiles['glass_trapdoor']] * 6)
     recipe('glass_door', 1, ['GG', 'GG', 'GG'], {'G': 'glass'})
     recipe('glass_trapdoor', 2, ['GGG', 'GGG'], {'G': 'glass'})
-    # the steel set (BTA's steel tier pieces): a steel door and trapdoor (opened by redstone, like iron, but no blast
+    # the steel set (the steel tier pieces): a steel door and trapdoor (opened by redstone, like iron, but no blast
     # breaks them), a steel fence, and steel-framed glass (clear, and blast-proof)
     steel = hsv_map(hue=0.6, sat=0.35, val=0.82)
     if 'steel_door_lower' not in tiles:
@@ -377,7 +377,7 @@ def main(d):
     recipe('sugar_cane_bundle', 1, ['SSS', 'SSS', 'SSS'], {'S': 'sugar_cane'})
     recipe('sugar_cane', 9, items_=['sugar_cane_bundle'])
 
-    # palms (BTA's palm trees): warm beaches and the thornscrub; a leaning ringed trunk, a crown of drooping fronds,
+    # palms: warm beaches and the thornscrub; a leaning ringed trunk, a crown of drooping fronds,
     # coconuts falling when one is felled (sim/controller.cpp timber)
     if 'palm_log_side' not in tiles:
         side = recolour(src_pic(d, tiles, files, 'jungle_log_side'), hsv_map(hue=0.09, sat=0.55, val=1.15))
@@ -418,7 +418,7 @@ def main(d):
     block('rift_core', 'Rift Core', {'hardness': 10, 'tool': 'pickaxe', 'tier': 3, 'sound': 'stone', 'light': 7, 'tex': 'rift_core'}, [tiles['rift_core']] * 6)
     items['rift_core'].update({'rarity': 'epic', 'desc': 'Humming with the rift. Set it in the middle of a Wither\'s T, between two wither skeleton skulls.'})
     recipe('rift_core', 1, ['CCC', 'CNC', 'CCC'], {'C': 'rift_crystal', 'N': 'nether_star'})
-    # the statue (BTA's): a stone plinth; a spawn egg used on it carves that creature standing on it (render/statue_layer.cpp)
+    # the statue: a stone plinth; a spawn egg used on it carves that creature standing on it (render/statue_layer.cpp)
     if 'statue_side' not in tiles:
         tile('statue_side', recolour(src_pic(d, tiles, files, 'chiseled_stone_bricks' if 'chiseled_stone_bricks' in tiles else 'stone_bricks'), hsv_map(val=1.05)))
         tile('statue_top', recolour(src_pic(d, tiles, files, 'smooth_stone' if 'smooth_stone' in tiles else 'stone'), hsv_map(val=1.08)))
@@ -450,7 +450,7 @@ def main(d):
                                    'painting': True, 'tex': 'painting_frame', 'itemIcon': 'painting_item', 'fuel': 0.5}, [tiles['painting_frame']] * 6)
     items['painting'].update({'icon': 'painting_item'})
     recipe('painting', 1, ['SSS', 'SWS', 'SSS'], {'S': 'stick', 'W': '#wool'})
-    # tree branches (the idea is Cubyz's): slim bark stems that join to logs, other branches and leaves (world/shapes.cpp
+    # tree branches: slim bark stems that join to logs, other branches and leaves (world/shapes.cpp
     # ShapeKind::Branch = 37); the trees grow them (gen/trees.cpp branch()); they burn and can be built with
     for wood, logk in (('oak', 'log'), ('birch', 'birch_log'), ('spruce', 'spruce_log'), ('jungle', 'jungle_log'), ('acacia', 'acacia_log'),
                        ('dark_oak', 'dark_oak_log'), ('cherry', 'cherry_log'), ('mangrove', 'mangrove_log'), ('pine', 'pine_log'), ('aspen', 'aspen_log'), ('palm', 'palm_log')):
@@ -460,7 +460,7 @@ def main(d):
         block(k, wood.replace('_', ' ').title() + ' Branch', {'render': 7, 'opaque': False, 'hardness': 1.2, 'tool': 'axe', 'sound': 'log', 'shapeKind': 37,
                                                                'branch': True, 'isLog': True, 'fuel': 1, 'tex': side}, [tiles[side]] * 6)
         recipe(k, 4, ['L', 'L'], {'L': logk})
-    # the activator (BTA's): a dispenser that uses what it holds on the block in front (sim/redstone.cpp dispense)
+    # the activator: a dispenser that uses what it holds on the block in front (sim/redstone.cpp dispense)
     if 'activator_front' not in tiles:
         hand = lambda r, g, b_, a, x, y: (min(255, b_ + 40), min(255, g + 10), r // 2 + 40, a) if 9 <= x <= 22 and 9 <= y <= 22 else (r, g, b_, a)
         tile('activator_front', recolour(src_pic(d, tiles, files, 'dispenser_front'), hand))
@@ -519,7 +519,7 @@ def main(d):
     recipe('rocket_launcher', 1, ['S  ', ' SR', '  S'], {'S': 'steel_ingot', 'R': 'redstone'})
     recipe('cannonball', 4, items_=['iron_ingot', 'gunpowder'])
     recipe('rocket', 2, items_=['firework_rocket', 'gunpowder', 'iron_ingot'])
-    # the quiver (BTA's): a leather case of arrows (sim/quiver.cpp)
+    # the quiver: a leather case of arrows (sim/quiver.cpp)
     if 'quiver' not in tiles:
         qv = _I.new('RGBA', (32, 32), (0, 0, 0, 0)); qp = qv.load()
         for k in range(22):   # the case, slanting up to the right
@@ -546,7 +546,7 @@ def main(d):
     recipe('golden_quiver', 1, ['GQG', 'GAG', 'GGG'], {'G': 'gold_ingot', 'Q': 'quiver', 'A': 'arrow'})
     items['quiver'] = {'key': 'quiver', 'name': 'Quiver', 'maxStack': 1, 'icon': 'quiver', 'desc': 'Wear it in the quiver slot beside your backpack: four stacks of arrows, the first your bow draws from, and arrows you pick up go into it. In the hand, use it to gather your arrows; crouch and use it to tip them out.'}
     recipe('quiver', 1, ['LS', 'LL', 'LL'], {'L': 'leather', 'S': 'string'})
-    # thorn leaves: the Thornscrub's thorn trees (BTA's Caatinga); they prick like cactus
+    # thorn leaves: the Thornscrub's thorn trees; they prick like cactus
     if 'thorn_leaves' not in tiles:
         im = recolour(src_pic(d, tiles, files, 'acacia_leaves'), lambda r, g, b, a, x, y: (r * 150 // 255, g * 140 // 255, b * 70 // 255, 255 if a else 0))
         px = im.load()
@@ -556,7 +556,7 @@ def main(d):
         tile('thorn_leaves', im)
     block('thorn_leaves', 'Thorn Leaves', {'render': 2, 'opaque': False, 'hardness': 0.3, 'tool': None, 'sound': 'leaves', 'lightAtt': 1,
                                            'isLeaves': True, 'thorns': True, 'drop': 'stick', 'tex': 'thorn_leaves'}, [tiles['thorn_leaves']] * 6)
-    # BTA's rarer ground and wood: scorched dirt of the Redlands (the rich kind sifts out raw metal), ice that never
+    # the rarer ground and wood: scorched dirt of the Redlands (the rich kind sifts out raw metal), ice that never
     # melts in the glaciers, ember coal in the Depths, moss-grown logs and algae in the Mossmire, dried cane bundles
     if 'scorched_dirt' not in tiles:
         tile('scorched_dirt', recolour(src_pic(d, tiles, files, 'dirt'), hsv_map(hue=0.06, sat=1.25, val=1.12)))
@@ -598,7 +598,7 @@ def main(d):
            tiles['dried_sugar_cane_bundle_side'], tiles['dried_sugar_cane_bundle_side']])
     rj.setdefault('smelting', {}).setdefault('sugar_cane_bundle', 'dried_sugar_cane_bundle')
     rj['smelting'].setdefault('ember_coal_ore', 'ember_coal')
-    # BTA's Nether stone family and strata, in our emberstone: cobbled and polished emberstone, soul schist and bone shale
+    # the classic Nether's stone family and strata, in our emberstone: cobbled and polished emberstone, soul schist and bone shale
     # in the deep rock, ashen trunks standing petrified on the Ashen Wastes; and gum wood for the Redlands' pale trees
     if 'polished_emberstone' not in tiles:
         tile('cobbled_emberstone', recolour(src_pic(d, tiles, files, 'cobblestone'), hsv_map(hue=0.0, sat=0.9, val=0.75, add=4)))
@@ -626,13 +626,13 @@ def main(d):
     recipe('gum_planks', 4, items_=['gum_log'])
     recipe('polished_emberstone', 4, ['EE', 'EE'], {'E': 'emberstone'})
     recipe('cobbled_emberstone', 2, items_=['emberstone', 'gravel'])
-    # the wet sponge (Minecraft's): a sponge that soaked up water; dry it in a furnace. Used on dyed wool, terracotta,
-    # glass or painted planks it washes the colour out (BTA)
+    # the wet sponge: a sponge that soaked up water; dry it in a furnace. Used on dyed wool, terracotta,
+    # glass or painted planks it washes the colour out
     if 'wet_sponge' not in tiles:
         tile('wet_sponge', recolour(src_pic(d, tiles, files, 'sponge'), lambda r, g, b, a, x, y: (r * 150 // 255, g * 160 // 255, b * 110 // 255 + 20, a)))
     block('wet_sponge', 'Wet Sponge', {'hardness': 0.6, 'tool': 'hoe', 'sound': 'grass', 'wetSponge': True, 'tex': 'wet_sponge'}, [tiles['wet_sponge']] * 6)
     rj.setdefault('smelting', {}).setdefault('wet_sponge', 'sponge')
-    # the rest of BTA's stone families: permafrost cut down to cobbles, polished and laid as bricks; a mossy oak log;
+    # the rest of the classic stone families: permafrost cut down to cobbles, polished and laid as bricks; a mossy oak log;
     # mossy emberstone. Pictures from the base pack's own (cobblestone, polished andesite, stone bricks, oak log, moss)
     if 'cobbled_permafrost' not in tiles:
         ice = lambda r, g, b, a, x, y: (r * 78 // 100 + 18, g * 88 // 100 + 24, min(255, b * 100 // 100 + 40), a)
@@ -658,7 +658,7 @@ def main(d):
                                              'tex': {'top': 'log_top', 'bottom': 'log_top', 'side': 'mossy_oak_log_side'}},
           [tiles['mossy_oak_log_side'], tiles['mossy_oak_log_side'], tiles['log_top'], tiles['log_top'], tiles['mossy_oak_log_side'], tiles['mossy_oak_log_side']])
     pf = next((b for b in blocks if b['key'] == 'permafrost'), None)
-    if pf and pf.get('drop') == 'dirt': pf['drop'] = 'cobbled_permafrost'   # BTA: mined permafrost breaks to cobbles
+    if pf and pf.get('drop') == 'dirt': pf['drop'] = 'cobbled_permafrost'   # mined permafrost breaks to cobbles
     recipe('polished_permafrost', 4, ['CC', 'CC'], {'C': 'cobbled_permafrost'})
     recipe('permafrost_bricks', 4, ['PP', 'PP'], {'P': 'polished_permafrost'})
     recipe('mossy_oak_log', 1, items_=['log', 'vine'])
@@ -680,7 +680,7 @@ def main(d):
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
     (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':'), ensure_ascii=False))
     (d / 'recipes.json').write_text(json.dumps(rj, separators=(',', ':'), ensure_ascii=False))
-    print('bta blocks ok')
+    print('classic blocks ok')
 
 
 if __name__ == '__main__':

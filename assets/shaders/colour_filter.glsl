@@ -1,4 +1,4 @@
-// colour_filter.glsl — the colour-blind filters (Options → Graphics → Colour filter; BTA's accessibility shaders): the
+// colour_filter.glsl — the colour-blind filters (Options → Graphics → Colour filter): the
 // finished picture is read back and the colours a kind of colour blindness loses are moved to ones it keeps
 // (daltonising: Machado et al. 2009's simulation, Fidaner's shift of the lost difference).
 uniform sampler2D uTex;

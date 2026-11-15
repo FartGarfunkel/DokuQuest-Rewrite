@@ -105,7 +105,7 @@ void dragonBreath(Level& lv, Creature& e, Entity& target, float dt);
 }
 namespace dq::es {
 
-// A ring of waypoints around the island, the way the vanilla dragon flies node to node rather than one smooth orbit.
+// A ring of waypoints around the island, the way the dragon flies node to node rather than one smooth orbit.
 static void dragonNode(int i, float fy, float& x, float& y, float& z) {
   const int N = 12;
   int k = i % N; if (k < 0) k += N;
@@ -304,7 +304,7 @@ static void dragonSlain(Level& lv, EndStory& S, Creature& e) {
   // the exit portal opens, and the egg comes to rest on the pillar
   for (int z = -3; z <= 3; z++) for (int x = -3; x <= 3; x++) { float d = std::hypot((float)x, (float)z); if (d <= 2.6f && (x || z)) w.setBlock(x, fy, z, portal, 0); }
   if (slain == 1) w.setBlock(0, fy + 4, 0, B("dragon_egg_ender"), 0);   // (0.9.0.33) one egg
-  if (slain == 1 && reg().item("ender_dragon_head")) dropItem(lv, REALM_MAIN, ItemStack("ender_dragon_head", 1), vec3(0.5f, fy + 5.2f, 0.5f), true);   // its head (Minecraft keeps it on an End ship: here until those are built)
+  if (slain == 1 && reg().item("ender_dragon_head")) dropItem(lv, REALM_MAIN, ItemStack("ender_dragon_head", 1), vec3(0.5f, fy + 5.2f, 0.5f), true);   // its head (meant for an End ship: here until those are built)
   gatewayOpen(lv);
   lv.fx->sound("end_portal_open", vec3(0, fy, 0), 300);
   for (int i = 0; i < 2; i++) sfx::burst(lv, e.pos + vec3(0, 1.5f, 0), i ? "mana_arcane" : "end_mote", 30, 6, json{{"life", 1.6f}, {"size", 0.25f}, {"vy", 4}});
@@ -377,7 +377,7 @@ void endFightTick(Level& lv, EndStory& S, double dt) {
     for (auto& u : lv.entities()) if (u->type == "end_crystal" && !u->removed && jint(u->data, "crystalIdx", -1) == (int)i) { have = true; break; }
     if (have) continue;
     const auto& pl = pillars[i];
-    // it stands on the bedrock at the top of its pillar: the plain pillar's cap, or Better End's top piece (higher up,
+    // it stands on the bedrock at the top of its pillar: the plain pillar's cap, or the End lands' top piece (higher up,
     // inside its cage). Not till the pillar is loaded to look at.
     World& w = lv.world(REALM_MAIN);
     const int base = dimBase(DIM_END);

@@ -1,4 +1,4 @@
-// The decoration world + the BTA block logic side effects that the Nether decorator triggers.
+// The decoration world + the classic Nether's block logic side effects that the Nether decorator triggers.
 // Ported from World / Chunk / NeighborUpdates and BlockLogicFluid{,Still,Flowing}, FluidHardening,
 // BlockLogicFire, BlockLogicMagma/Brimthaw, BlockLogicSulfur, BlockLogicThermalVent,
 // BlockLogicGrowthRubyglass, BlockLogicFlower (bone pile/boulders/soul catcher), BlockLogicLayerSupportable.

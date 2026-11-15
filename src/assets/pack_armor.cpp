@@ -20,7 +20,7 @@ const std::vector<std::pair<std::string, std::vector<std::string>>> NAMES = {
 const int LEATHER_UNDYED[3] = {160, 101, 64};
 }
 
-// armour trims (Minecraft's): a pattern laid out as the armour's own picture, its grey shades the trim palette's eight,
+// armour trims (the pack format's): a pattern laid out as the armour's own picture, its grey shades the trim palette's eight,
 // each swapped for the trim material's own eight
 std::map<std::string, ArmorLayer> g_trimPat;                    // pattern -> its picture (both layers' layout)
 std::vector<u32> g_trimKey;                                      // the palette's eight greys
@@ -108,7 +108,7 @@ void stampTrim(VoxelGrid& g, vec3 lo, int vpp, const ArmorPiece& p, const ArmorL
   static const ivec3 N[6] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
   for (int z = 0; z < g.size.z; z++) for (int y = 0; y < g.size.y; y++) for (int x = 0; x < g.size.x; x++) {
     if (!g.solid(x, y, z)) continue;
-    // where it is on the box Minecraft lays the picture over (the piece's), 0..1 each way
+    // where it is on the box the pack format lays the picture over (the piece's), 0..1 each way
     const vec3 q = glm::clamp((lo + (vec3(x, y, z) + 0.5f) / (float)vpp - p.lo) / sz, vec3(0), vec3(1));
     const float s[6][2] = {{1 - q.z, 1 - q.y}, {q.z, 1 - q.y}, {1 - q.x, 1 - q.z}, {1 - q.x, q.z}, {q.x, 1 - q.y}, {1 - q.x, 1 - q.y}};
     for (int k : {4, 5, 0, 1, 2, 3}) {   // (an open face, front/back first as the picture's are painted)

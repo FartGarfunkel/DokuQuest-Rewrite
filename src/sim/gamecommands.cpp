@@ -1,4 +1,4 @@
-// sim/gamecommands.cpp — port of game/commands.js (the game's chat commands and WorldEdit) and /weather
+// sim/gamecommands.cpp — port of game/commands.js (the game's chat commands and world editing) and /weather
 // (game/weather.js), registered into the chat command registry (sim/commands.h).
 #include "sim/physics.h"
 #include "sim/gamecommands.h"
@@ -29,7 +29,7 @@ struct CommandCtx { Level& lv; Player& p; };
 struct CommandUsage {};   // thrown by a command to print its usage line
 using GameCmd = std::function<std::string(CommandCtx&, std::vector<std::string>&)>;
 // A game command in the registry: a player runs it; usage lines and errors come back as text.
-// A creature named the way a player types it: our key, "@e[type=x]", or a Minecraft name for ours (zombie is a ghoul,
+// A creature named the way a player types it: our key, "@e[type=x]", or a common outside name for ours (zombie is a ghoul,
 // creeper a fuseling). "" when there's none.
 static std::string creatureKey(std::string t) {
   t = toLower(t);
@@ -180,7 +180,7 @@ std::string completeCommand(const std::string& v, std::string& hint) {
 // ---- the commands ----------------------------------------------------------------------------
 static void registerBuiltinCommands() {
   auto C = [](const std::string& n, const std::string& usage, const std::string& desc, bool cheat, GameCmd f) { addCommand(n, usage, desc, cheat, std::move(f)); };
-  // (/help is the registry's own: it lists every command, the game's, WorldEdit's, the server's and mods')
+  // (/help is the registry's own: it lists every command, the game's, world editing's, the server's and mods')
   C("herobrine", "[trace]", "\xE2\x80\xA6", false, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
     if (c.lv.events) c.lv.events->emit("herobrine", json::array({c.p.name, a.empty() ? "" : a[0]}));
     return "Removed Herobrine.";
@@ -276,9 +276,9 @@ static void registerBuiltinCommands() {
   C("tp", "<x y z> | spawn | <player> | <overworld|skylands|nether|end|drift> [x z]", "Teleport", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
     Player& p = c.p;
     if (!a.empty() && a[0] == "spawn") { placeAtSpawn(c.lv, p, false); return "To spawn"; }
-    // BTA's Drift (sim/drift.cpp): in as its portal takes you; from there any dimension's name brings you back
+    // the Drift (sim/drift.cpp): in as its portal takes you; from there any dimension's name brings you back
     if (!a.empty() && toLower(a[0]) == "drift") return p.realm == REALM_DRIFT ? "You're in the Drift already (/tp overworld to go back)" : driftTravel(c.lv, p);
-    // BTA: /tp to a dimension (here a band of the stacked world): onto its ground above x, z
+    // /tp to a dimension (here a band of the stacked world): onto its ground above x, z
     if (!a.empty()) {
       const std::string d = toLower(a[0]);
       const int dim = d == "overworld" || d == "world" ? DIM_OVERWORLD : d == "skylands" || d == "sky" ? DIM_SKYLANDS
@@ -318,7 +318,7 @@ static void registerBuiltinCommands() {
     p.pos = vec3(x + 0.5f, y, z + 0.5f); p.vel = vec3(0); p.hasFallStart = false; p.prevPos = p.pos;
     return "Teleported to " + std::to_string(x) + " " + std::to_string(inWorldY(y) ? displayY(y) : y) + " " + std::to_string(z);
   });
-  C("playsound", "<sound> [volume] [pitch] [x y z]", "Play one of the game's sounds (BTA)", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
+  C("playsound", "<sound> [volume] [pitch] [x y z]", "Play one of the game's sounds", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
     if (a.empty()) throw CommandUsage{};
     const double v = num(a, 1, 1), pt = num(a, 2, 1);
     vec3 at = c.p.pos + vec3(0, 1.6f, 0);
@@ -326,7 +326,7 @@ static void registerBuiltinCommands() {
     c.lv.fx->sound(a[0], at, 32, std::isfinite(v) ? clampv((float)v, 0.f, 4.f) : 1.f, std::isfinite(pt) ? clampv((float)pt, 0.25f, 4.f) : 1.f);
     return "Playing " + a[0];
   });
-  C("particle", "<kind> [count] [x y z]", "Make particles (smoke, flame, heart, firework...) (BTA)", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
+  C("particle", "<kind> [count] [x y z]", "Make particles (smoke, flame, heart, firework...)", true, [](CommandCtx& c, std::vector<std::string>& a) -> std::string {
     if (a.empty()) throw CommandUsage{};
     const double n = num(a, 1, 12);
     vec3 at = c.p.pos + vec3(0, 1, 0) + vec3(-std::sin(c.p.yaw), 0, -std::cos(c.p.yaw)) * 2.f;
@@ -454,7 +454,7 @@ static void registerBuiltinCommands() {
   });
 }
 
-// ---- WorldEdit ---------------------------------------------------------------------------------
+// ---- world editing -----------------------------------------------------------------------------
 constexpr long long WE_MAX = 1500000;
 struct WeEdit { std::string label; std::vector<std::array<int, 5>> data; };   // x,y,z,id,meta (what was there)
 struct WeState { WeSelection sel; std::vector<std::array<int, 5>> clip; bool hasClip = false; std::vector<WeEdit> undo, redo; };
@@ -538,7 +538,7 @@ static std::string joined(const std::vector<std::string>& a) { std::string s; fo
 
 static void registerWorldEditCommands() {
   // //set stone (the registry strips the slashes, so /set works as well)
-  auto W = [](const std::string& n, const std::string& usage, const std::string& desc, GameCmd f) { addCommand(n, usage, "WorldEdit: " + desc, true, std::move(f)); };
+  auto W = [](const std::string& n, const std::string& usage, const std::string& desc, GameCmd f) { addCommand(n, usage, "World edit: " + desc, true, std::move(f)); };
   auto pick = [](const Pattern& pat) { return [pat](int, int, int, PatternPart& o) { o = pat.pick(); return true; }; };
   auto air = [](int, int, int, PatternPart& o) { o = {0, 0, 1}; return true; };
   W("wand", "", "Get the selection wand (left click: corner 1, right click: corner 2)", [](CommandCtx& c, std::vector<std::string>&) -> std::string {

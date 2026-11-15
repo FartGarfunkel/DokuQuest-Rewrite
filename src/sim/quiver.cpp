@@ -1,4 +1,4 @@
-// sim/quiver.cpp — the quiver (BTA's, worn now): a leather case of arrows in its own slot beside the backpack's, four
+// sim/quiver.cpp — the quiver (worn now): a leather case of arrows in its own slot beside the backpack's, four
 // slots of arrows of any kind (its stack's tag "c", as a backpack keeps its contents; an older quiver's "arrows" count
 // comes out as stacks of plain arrows). A bow draws from the off hand first, then from the worn quiver, then from a
 // quiver carried in the bag, then loose arrows (sim/controller.cpp); arrows you pick up go into the worn quiver first

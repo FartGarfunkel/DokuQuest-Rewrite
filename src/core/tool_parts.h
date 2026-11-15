@@ -1,5 +1,5 @@
-// core/tool_parts.h — tools whose heads are made of more than one material (the idea is Cubyz's procedural tools; our
-// own design and code, nothing taken from it). At an ordinary crafting table, a tool's pattern whose head holds two or
+// core/tool_parts.h — tools whose heads are made of more than one material (our
+// own design and code). At an ordinary crafting table, a tool's pattern whose head holds two or
 // three different materials (say iron, diamond and copper across a pickaxe's head) makes a mixed tool: one item per kind
 // (mixed_pickaxe, mixed_axe, mixed_shovel, mixed_sword, mixed_hoe) whose stack carries what it is made of, tag "pt":
 //   {"t": kind, "m": [material per head section, in the grid's order], "h": haft item,

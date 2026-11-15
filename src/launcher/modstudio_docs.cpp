@@ -191,7 +191,7 @@ DQ.on('blockBreak', (player, x, y, z, key) => {
 void drawOverview(Launcher& L) {
   panelBegin(L, "How the game is built");
   hint(L, "DokuQuest is a C++ engine now: the launcher (this window: news, Play, the dedicated server and this studio), the game "
-          "(its own window, OpenGL 3.3 Legacy or 4.6 Modern) and a headless server. Mods are built in, like Fabric, Forge and OptiFine together.");
+          "(its own window, OpenGL 3.3 Legacy or 4.6 Modern) and a headless server. Mods are built in: scripts, native plugins and shader and resource packs, all in one.");
   ImGui::Spacing();
   if (twoColumns("##ov")) {
     cardBegin(L, "Runtime");
@@ -264,7 +264,7 @@ void drawApi(Launcher& L) {
                 "`DQ_MODERN` is defined on the Modern renderer. A broken shader falls back to the built-in one."});
     cardEnd(); nextCell();
     cardBegin(L, "Resource packs");
-    bullets(L, {"A folder or .zip in `resourcepacks/` in the Minecraft 1.19 layout (`assets/minecraft/textures/block/…`).",
+    bullets(L, {"A folder or .zip in `resourcepacks/` in the resource-pack layout (`assets/minecraft/textures/block/…`).",
                 "Every pixel of a block texture becomes a micro-voxel; items become 3D voxel models.", "Sounds are resynthesised from the pack's sounds — no audio files ship with the game.",
                 "DokuQuest Base is the game's own art and the pack it starts with. Other packs in resourcepacks/ are listed with it."});
     cardEnd();

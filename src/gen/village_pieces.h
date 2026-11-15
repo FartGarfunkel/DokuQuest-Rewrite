@@ -1,7 +1,7 @@
-// gen/village_pieces.h — our villages' buildings: Better Village's houses, streets, town centres and street ends for
+// gen/village_pieces.h — our villages' buildings: the imported houses, streets, town centres and street ends for
 // plains, savanna, snowy, desert and taiga (data/villages/<style>/<kind>/*.nbt, index.json; tools/port/village_import.py
-// brings them in). Read on first use, their Minecraft block states turned into ours (gen/village_pieces.cpp);
-// gen/structures_jigsaw_village.cpp puts them together the way Minecraft's jigsaw does.
+// brings them in). Read on first use, their imported block states turned into ours (gen/village_pieces.cpp);
+// gen/structures_jigsaw_village.cpp puts them together jigsaw-fashion.
 #pragma once
 #include "core/registry.h"
 #include <array>
@@ -12,7 +12,7 @@
 
 namespace dq {
 
-// our block for a Minecraft block state ({"Name": "minecraft:grass_block", "Properties": {...}}): the structures' mapping
+// our block for an imported block state ({"Name": "minecraft:grass_block", "Properties": {...}}): the structures' mapping
 // (block_substitutes.json first, then by name); 0xFFFF when there's none
 BlockId blockFromState(const json& state);
 struct VPState { BlockId id = 0; std::array<u8, 4> meta{}; u8 kind = 0, banner = 0; BlockId rug = 0; std::string plant, items, etype; };   // rug: the carpet laid on it as a rug (world/rug.h)   // items: what it shows or keeps, "a,b*3,,c"; etype: pile, shelf, bookcase, frame, rack, cabinet   // meta per quarter turn; banner 1 on a wall, 2 standing
@@ -26,10 +26,10 @@ struct VPPiece {
   int weight = 1;
   bool terrain = false;                    // streets and their ends follow the land; everything else stands rigid
   std::vector<VPState> states;
-  std::vector<VPBlock> blocks;             // no air (Minecraft places none of a village piece's air either)
+  std::vector<VPBlock> blocks;             // no air (a village piece's air is never placed)
   std::vector<VPJoint> joints;
-  // the template's air, one bit a cell (x fastest, then z, then y): Minecraft's modern pool elements place it (the land and
-  // trees inside the building go), its legacy ones (vanilla's and Towns and Towers' villages) don't. placeAir: this one does.
+  // the template's air, one bit a cell (x fastest, then z, then y): the modern pool elements place it (the land and
+  // trees inside the building go), the legacy ones (the classic and the town-style villages) don't. placeAir: this one does.
   std::vector<u8> air; bool placeAir = false;
   bool airAt(int x, int y, int z) const { const size_t i = ((size_t)y * sz + z) * sx + x; return (i >> 3) < air.size() && (air[i >> 3] >> (i & 7) & 1); }
   std::string animals;                     // a pen's beasts ("sheep", "" = cows, pigs and chickens) from its markers
@@ -43,7 +43,7 @@ const VillagePieces* villagePieces();
 // one structure template (.nbt bytes) as a piece: its blocks in our states, its joints (the village pieces' way: furniture, rugs...)
 std::string piecesMissing();   // the block names no block of ours stands for (most first)
 bool makePiece(const std::string& style, const std::string& kind, const std::string& name, const std::vector<u8>& bytes, VPPiece& P, const json* rules = nullptr);   // rules: the builder's block swaps (tools/port/processors.py)   // nullptr: data/villages is missing (the classic villages are built)
-// a piece's block at a quarter turn r (clockwise seen from above, like Minecraft's rotation): its offset in the turned box
+// a piece's block at a quarter turn r (clockwise seen from above): its offset in the turned box
 inline std::array<int, 2> vpTurn(const VPPiece& p, int r, int x, int z) {
   switch (r & 3) { case 1: return {p.sz - 1 - z, x}; case 2: return {p.sx - 1 - x, p.sz - 1 - z}; case 3: return {z, p.sx - 1 - x}; default: return {x, z}; }
 }

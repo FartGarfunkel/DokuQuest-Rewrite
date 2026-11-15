@@ -1,4 +1,4 @@
-// sim/wind_field.h — the wind felt at a point: Particle Rain's gust field (pigcart, MIT; ParticleRain.getWind:
+// sim/wind_field.h — the wind felt at a point: the gust field (
 // sine products of position and time, stronger with height, nothing low down) laid along the weather's own wind
 // (WeatherSystem::windDir / windStrength / gust). A pure function of world time and position, so every player in a
 // multiplayer world sees the same gusts. Weather particles (render/weather_sim) and the wind sound use it.

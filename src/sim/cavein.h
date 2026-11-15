@@ -1,4 +1,4 @@
-// sim/cavein.h — cave-ins (after TerraFirmaCraft, gentler), in an immersive world: mining rock under a wide span with
+// sim/cavein.h — cave-ins (gentle ones), in an immersive world: mining rock under a wide span with
 // nothing holding it up now and then (1%) shakes loose a little rubble from the roof — one to three blocks falling as
 // cobblestone, never a chain, never burying you. A support beam within four blocks makes a span safe.
 #pragma once

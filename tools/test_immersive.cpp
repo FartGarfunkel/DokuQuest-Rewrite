@@ -1,5 +1,5 @@
-// tools/test_immersive.cpp — headless checks for the immersive progression's stone age (sim/immersive.h, sim/knapping.h,
-// after TerraFirmaCraft): the world rule (old saves stay classic), trees need an axe, leaves you fall through, sticks from
+// tools/test_immersive.cpp — headless checks for the immersive progression's stone age (sim/immersive.h, sim/knapping.h):
+// the world rule (old saves stay classic), trees need an axe, leaves you fall through, sticks from
 // leaves, the ground decorations, knapping patterns, the recipes per mode, and the knapping screen being asked for.
 // Run: build/test_immersive (exit code = failures)
 #include "core/init.h"
@@ -138,7 +138,7 @@ int main(int argc, char** argv) {
     }
     check(shapes, "every pattern fits the 5x5 grid and makes a real item");
     check(distinct, "no two patterns of one material are the same");
-    check(knapPatterns("stone").size() >= 7 && knapPatterns("flint").size() >= 7, "TFC's stone shapes, and the crude pickaxe");
+    check(knapPatterns("stone").size() >= 7 && knapPatterns("flint").size() >= 7, "the stone shapes, and the crude pickaxe");
   }
 
   printf("[tools and recipes]\n");

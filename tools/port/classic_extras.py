@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""tools/port/classic_extras.py — the rest of Better than Adventure 8.0.1's blocks and items that DokuQuest lacked (idempotent;
+"""tools/port/classic_extras.py — the rest of the classic blocks and items that DokuQuest lacked (idempotent;
 data_patches.py runs it after trommel.py):  python3 tools/port/classic_extras.py <data-dir>
 
-Recipes are BTA's (recipes/workbench.json, furnace.json; stairs give 4 and slabs 6, as this game's do), with BTA's items
+Recipes follow the classic set (recipes/workbench.json, furnace.json; stairs give 4 and slabs 6, as this game's do), with their items
 swapped for ours (nether coal -> ember coal, sugarcane -> sugar cane, dye -> ink sac...). Pictures are the DokuQuest Base
-pack's nearest ones, recoloured or put together here (BTA's art isn't ours to ship).
+pack's nearest ones, recoloured or put together here.
 
   Stone:   polished stone, polished stone bricks (+ mossy, slab, stairs), polished limestone / gloomstone / netherrack,
-           carved slabs of eight stones (the statues' plinths in BTA), cobbled + mossy cobbled basalt / granite /
-           limestone (from pebbles, as BTA makes them; they smelt back to the stone) with slabs and stairs
+           carved slabs of eight stones (the statues' plinths), cobbled + mossy cobbled basalt / granite /
+           limestone (from pebbles; they smelt back to the stone) with slabs and stairs
   Blocks:  block of rubyglass, rubyglass bricks (+ slab, stairs), block of ember coal, block of sugar cane and baked,
            baked mud, steel glass, chainlink fence, slabs and stairs of gold / iron / steel / lapis bricks
   Items:   chainmail (helmet .. boots: found on armoured monsters, scrapped into chainlinks), chainlinks, wolf armour
@@ -134,7 +134,7 @@ def main(d):
         if pol not in at: continue
         k = 'carved_' + st
         tile(k, recolour(ch, mean_colour(P(pol) if P(pol) is not None else ch), 1.1))
-        block(k, 'Carved ' + st.title(), {'render': 7, 'opaque': False, 'shapeKind': 1, 'family': 'slab', 'wlog': True}, k)   # BTA's carved stone is a slab: the statues' plinth
+        block(k, 'Carved ' + st.title(), {'render': 7, 'opaque': False, 'shapeKind': 1, 'family': 'slab', 'wlog': True}, k)   # carved stone is a slab: the statues' plinth
         shaped(k, 6, ['XXX'], {'X': pol})
     cob, mcob = P('cobblestone'), P('mossy_cobblestone')
     for st, partner in (('basalt', 'coal'), ('granite', 'quartz'), ('limestone', 'sand')):
@@ -217,7 +217,7 @@ def main(d):
         tile('steel_fire_striker', recolour(I('flint_and_steel'), 0x6A7280, 1.2), 'item')
         item('steel_fire_striker', 'Steel Fire Striker', {'igniter': 'flint', 'tool': {'type': 'igniter', 'tier': 0, 'speed': 1, 'damage': 1, 'durability': 256}}, stack=1)
         shapeless('steel_fire_striker', 1, ['steel_ingot', 'flint'])
-    # arrows (BTA: golden flies flat and fast, flaming burns and lights, purple shatters where it lands)
+    # arrows (golden flies flat and fast, flaming burns and lights, purple shatters where it lands)
     ar = I('arrow')
     for k, nm, col, props in (('golden_arrow', 'Golden Arrow', 0xF0C838, {'arrow': {'damage': 2, 'gravity': 0.4, 'speed': 1.35, 'flat': True}}),
                               ('flaming_arrow', 'Flaming Arrow', 0xE8602A, {'arrow': {'damage': 6, 'fire': True, 'light': True}}),
@@ -230,12 +230,12 @@ def main(d):
     tile('explosive_charge', recolour(I('fire_charge'), 0x5A4A3A, 1.3), 'item')
     item('explosive_charge', 'Explosive Charge', {'cannonAmmo': {'power': 2.2}, 'desc': 'A heavier load for the handcannon: it bursts harder.'})
     shaped('explosive_charge', 6, [' S ', '#X#', ' # '], {'S': 'string', '#': 'clay_ball', 'X': 'gunpowder'})
-    # buckets: the steel bucket holds three (BTA ItemBucketSteel)
+    # buckets: the steel bucket holds three
     if 'steel_ingot' in items:
         tile('steel_bucket', recolour(I('bucket'), 0x6A7280, 1.3), 'item')
         item('steel_bucket', 'Steel Bucket', {'bucket': 'empty', 'charges': 3, 'desc': 'Holds three bucketfuls.'}, stack=1)
         shaped('steel_bucket', 1, ['# #', '*#*'], {'#': 'steel_ingot', '*': 'crude_steel'})
-    # BTA's ice skates (worn as boots: fast and sure-footed on ice, sim/player.cpp)
+    # ice skates (worn as boots: fast and sure-footed on ice, sim/player.cpp)
     sk = recolour(I('leather_boots'), 0x5A3A22, 1.1); sk[27:30, 4:28] = [200, 206, 214, 255]; sk[29:30, 4:28] = [120, 126, 134, 255]
     tile('ice_skates', sk, 'item')
     item('ice_skates', 'Ice Skates', {'armor': {'slot': 3, 'points': 1, 'durability': 160, 'fireResist': 0}, 'desc': 'Worn as boots: glide fast and steer on ice.'}, stack=1)
@@ -256,7 +256,7 @@ def main(d):
     tile('label', I('name_tag'), 'item'); item('label', 'Label', {'label': True, 'desc': 'Write a name on it, then use it on a creature to name it.'}, stack=1)
     shapeless('label', 1, ['paper', 'ink_sac' if 'ink_sac' in items else 'black_dye', 'string'])
 
-    # ---- trees: BTA's eucalyptus is the game's gum tree (named so now, with a sapling), the thorn tree gets its own log
+    # ---- trees: eucalyptus is the game's gum tree (named so now, with a sapling), the thorn tree gets its own log
     #      and sapling, the shrub is new (sim + gen/trees.cpp), and the Seasonal Forest's cherries flower and fruit ----
     for k, nm in (('gum_log', 'Eucalyptus Log'), ('gum_planks', 'Eucalyptus Planks'), ('gum_leaves', 'Eucalyptus Leaves')):
         if k in at: blocks[at[k]]['name'] = nm
@@ -288,7 +288,7 @@ def main(d):
         block('flowering_cherry_leaves', 'Flowering Cherry Leaves', {'render': 2, 'opaque': False, 'hardness': 0.2, 'tool': None, 'sound': 'leaves', 'lightAtt': 1, 'isLeaves': True,
               'drop': 'flowering_cherry_leaves', 'sapling': 'cherry_sapling', 'fruit': 'cherries'}, 'flowering_cherry_leaves')
 
-    # ---- BTA's Drift portal (Blocks.PORTAL_DRIFT): silver, lit by bedrock set inside a glowstone frame (sim/drift.cpp) ----
+    # ---- the Drift portal: silver, lit by bedrock set inside a glowstone frame (sim/drift.cpp) ----
     np_ = P('nether_portal')
     if np_ is not None:
         dp = recolour(np_, 0xC8D0E0, 1.4); dp[..., 3] = np.where(np_[..., 3] > 0, 190, 0)
@@ -297,7 +297,7 @@ def main(d):
               'drop': None, 'light': 11, 'sound': 'stone', 'portal': 3}, 'drift_portal', item=False)
         for k in ('translucent', 'selfCull', 'portalBlock'): blocks[at['drift_portal']].pop(k, None)   # (a window now, like the others)
 
-    # ---- pebbles on the ground (BTA's overlay pebbles: place a pebble; it's also thrown, sim/extra_items.cpp), leaf piles
+    # ---- pebbles on the ground (overlay pebbles: place a pebble; it's also thrown, sim/extra_items.cpp), leaf piles
     #      (they fall under trees in autumn, sim/extra_items.cpp), the soul wax candle ----
     gv = P('gravel'); pb = gv.copy(); yy, xx = np.mgrid[0:32, 0:32]
     stones = np.zeros((32, 32), bool)
@@ -328,7 +328,7 @@ def main(d):
         block('soul_wax_candle', 'Soul Wax Candle', cd, 'soul_wax_candle')
         if 'soul_sand' in items: shapeless('soul_wax_candle', 1, ['candle', 'soul_sand'])
 
-    # ---- BTA's statues: a figure two blocks tall on a carved plinth, in each stone (ItemStatue; recipe: two of the stone
+    # ---- statues: a figure two blocks tall on a carved plinth, in each stone (recipe: two of the stone
     #      over its carved slab). Their shapes are written to shapes.json (statue_<stone>_lower / _upper); placing the
     #      lower one puts the upper above it (sim/extra_items.cpp) ----
     sp = json.loads((d / 'shapes.json').read_text())
@@ -352,13 +352,13 @@ def main(d):
         if car: shaped('statue_' + st, 1, ['#', '#', '_'], {'#': st, '_': car})
     (d / 'shapes.json').write_text(json.dumps(sp, separators=(',', ':')))
 
-    # ---- bedrock as an item: BTA lights the Drift portal by setting bedrock in a glowstone frame (sim/drift.cpp). It was
+    # ---- bedrock as an item: the Drift portal is lit by setting bedrock in a glowstone frame (sim/drift.cpp). It was
     # a block with no item, so it was in no inventory; mined with a tier-4 pickaxe it now drops itself (its old drop) ----
     if 'bedrock' in at and 'bedrock' not in items:
         items['bedrock'] = {'key': 'bedrock', 'name': 'Bedrock', 'maxStack': 64, 'icon': 'block:bedrock', 'block': 'bedrock'}
 
     # ---- every wood's planks are planks, every cobbled stone a tool's stone: sticks, tables, wooden and stone tools, and
-    #      a mixed tool's wood or stone (core/tool_parts.cpp). Palm, eucalyptus and Better End's woods weren't. ----
+    #      a mixed tool's wood or stone (core/tool_parts.cpp). Palm, eucalyptus and the End's woods weren't. ----
     tags = R.setdefault('tags', {})
     pl = tags.setdefault('#planks', [])
     for k in list(items):
@@ -379,7 +379,7 @@ def main(d):
                 if r[1] == 'rotten_cloth': r[1] = 'cloth'
         tp.write_text(json.dumps(t, separators=(',', ':')))
 
-    # ---- BTA's giant zombie, as the crypts' third boss (a huge ghoul; its stamp: sim/extra_items.cpp) ----
+    # ---- the giant zombie, as the crypts' third boss (a huge ghoul; its stamp: sim/extra_items.cpp) ----
     mp, mdp = d / 'mobs.json', d / 'models.json'
     mobs, models = json.loads(mp.read_text()), json.loads(mdp.read_text())
     if 'ghoul' in models:

@@ -48,7 +48,7 @@ public:
     const vec3 camPos = tp ? s.player->pos + vec3(0, s.player->eye, 0) + cinematicViewOffset() : vec3(cam.pos);
     const float vyaw = tp ? s.player->yaw : cam.yaw;
     const vec3 fwd(-std::sin(vyaw), 0, -std::cos(vyaw)), right(std::cos(vyaw), 0, -std::sin(vyaw));
-    // 0 right, 1 left. Leaning: the mod's shoulders (0.38 out, 0.46 down, 0.08 forward of the leaning eye). Seamless first
+    // 0 right, 1 left. Leaning: the lean's shoulders (0.38 out, 0.46 down, 0.08 forward of the leaning eye). Seamless first
     // person: your own shoulders, lower and a little ahead of your eye (at the eye's plane they filled the screen)
     const bool lean = cinematicLeaning();
     for (int k = 0; k < 2; k++) shoulder[k] = lean ? camPos + right * (k == 0 ? 0.38f : -0.38f) + vec3(0, -0.46f, 0) + fwd * 0.08f
@@ -81,7 +81,7 @@ public:
     if (glm::length(working - shoulder[w]) > MAX_REACH) working = shoulder[w] + glm::normalize(working - shoulder[w]) * MAX_REACH;
     vec3 target[2] = {w == 0 ? working : rest[0], w == 1 ? working : rest[1]};
     forging = cinematicKind() == 1 ? cinematicForgeT() : -1;
-    if (cinematicKind() == 8 || cinematicKind() == 15) {   // the smithing table (and the Tool Forge): the anvil's three blows, the first landing as it's pressed (SmithingStation PRESS)
+    if (cinematicKind() == 8 || cinematicKind() == 15) {   // the smithing table (and the Tool Forge): the anvil's three blows, the first landing as it's pressed
       PairView pv;
       if (cinematicPairView(pv) && pv.t >= 0) { const double f = pv.t - (pairBeats(8).contact - 0.7); if (f >= 0.45 && f < 1.62) forging = f; }
     }

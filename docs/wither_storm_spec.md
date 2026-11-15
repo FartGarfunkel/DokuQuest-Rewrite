@@ -1,15 +1,14 @@
-# The Wither Storm as Cracker's Wither Storm Mod 3.5.0.1 has it (behaviour spec)
+# The Wither Storm (behaviour spec)
 
-Read from the decompiled mod (~/Documents/Projects/witherstorm, CFR) on 2026-11-09. The mod is "All rights reserved":
-this is our own description of its behaviour for building ours natively; no code or art of it goes in the repo.
+Our own description of how the Wither Storm behaves, written 2026-11-09 as the target for building it natively.
 20 ticks = 1 s. "consumed" = the count of things it has eaten (blocks per cluster, items per stack, 1 per creature).
 
 ## Summoning
-- Vanilla Wither T with a command block (any kind) in the middle of the soul sand row; the third skull completes it.
+- The usual Wither T with a command block (any kind) in the middle of the soul sand row; the third skull completes it.
   Not on Peaceful. Pattern blocks vanish; COMMAND_BLOCK_ACTIVATES (vol 4).
-- Spawn = the vanilla Wither's: invulnerable 1000 ticks (50 s, config), health from 1 filling to full, armour swirl the
+- Spawn = the plain Wither's: invulnerable 1000 ticks (50 s, a setting), health from 1 filling to full, armour swirl the
   first 5 s, texture blinks, scale 1.5 -> 2.0; then a power-7 burst and the global wither-spawn sound.
-- Phases 0-3 look and act like a Wither (0.9 x 3.5 box, vanilla Wither sounds, 3 Wither heads, Wither skulls, wither
+- Phases 0-3 look and act like a Wither (0.9 x 3.5 box, the plain Wither's sounds, 3 Wither heads, Wither skulls, wither
   roses from kills) with command-block particles streaming into its chest (0-2); purple boss bar.
 
 ## Phases (0..7), driven only by consumed

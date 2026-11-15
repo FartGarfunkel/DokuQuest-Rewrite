@@ -8,7 +8,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 ## 1.0.0-alpha.21 — Back on Track (November 2026)
 
 **Classic worlds are classic again:**
-- **New worlds start with the classic crafting.** Immersive Progression (the TerraFirmaCraft-style start) is now a choice in Create World, marked experimental. A world you made with it keeps it, and you can switch it off in the world's settings.
+- **New worlds start with the classic crafting.** Immersive Progression (the hands-on survival start) is now a choice in Create World, marked experimental. A world you made with it keeps it, and you can switch it off in the world's settings.
 - **Campfires** burn and cook as they always did in a classic world. Fuel, heat, rain putting them out and setting metal on them are for immersive worlds.
 - **Pebbles are thrown again,** and crouching with a log places the log. Knapping, ingot and log piles, smithing with a hammer and building a forge are for immersive worlds.
 - **The miller and the miner keep shop again.**
@@ -22,7 +22,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Every new rock breaks to its own cobble** (chalk to cobbled chalk, gneiss to cobbled gneiss...), which smelts back to the rock. Each rock and each cobble has a slab, stairs and a wall, every cobble a mossy one (with a vine), and the chisel works them like any other stone.
 
 **Immersive Progression, done properly:**
-- **TerraFirmaCraft's own knapping patterns** for every clay shape and every stone tool head. Every mold can be made, the pickaxe mold included.
+- **Proper knapping patterns** for every clay shape and every stone tool head. Every mold can be made, the pickaxe mold included.
 - **The chisel:** knap a chisel mold, or work a chisel head on the anvil, and put it on a stick.
 - **Pouring metal:** carry a fired mold anywhere in your bag and use the molten vessel, or set molds down on the ground and pour into them. The vessel tells you how hot it is and how hot it needs to be (copper needs a charcoal fire or a forge).
 - **No planks without a saw:** log and saw make lumber, four lumber make planks.
@@ -42,7 +42,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 
 ## 1.0.0-alpha.20 — Forge and Fire (November 2026)
 
-**Weather (after the Particle Rain mod by pigcart, MIT):**
+**Weather:**
 - **Rain falls round you, not in a ring at your feet:** drops come from a sphere around you, lean and stretch with the wind and with how you move, and are see-through like real rain. Thunderstorms add heavy rain. Rain and snow no longer blow through walls or into houses.
 - **Snow** drifts down slowly, turning as it falls, with heavy snow in a blizzard.
 - **Where the rain lands:** splashes on the ground, rings on water, drops running down stone and glass walls, steam where it hits lava or fire.
@@ -54,8 +54,8 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - New **Options → Video → Weather**: Weather Particles (Off, Low, Normal, High), Weather Distance, Splashes & Ripples, Ground Fog and Height Fog. The graphics presets set them too.
 
 **Look and feel:**
-- **Brightness** works: it lights up caves and the night like Minecraft's, leaving full daylight alone.
-- **Colour Style** (Options → Video): Vibrant, Natural (the new default), Classic (muted and flatter, like Minecraft Alpha and Beta) or your own Saturation and Contrast. Handy on bright OLED screens.
+- **Brightness** works: it lights up caves and the night, leaving full daylight alone.
+- **Colour Style** (Options → Video): Vibrant, Natural (the new default), Classic (muted and flatter, like the old days) or your own Saturation and Contrast. Handy on bright OLED screens.
 - New worlds start with Flat blocks and Classic lighting.
 
 **Graphics cards and Vulkan:**
@@ -74,19 +74,19 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 **Tools and weapons:** pickaxes, axes, shovels, hoes and swords have new 3D shapes: wrapped grips on sturdier handles, pickaxe points that hook down, a curved axe edge with a beard, a dished shovel blade, a broader hoe blade, wider sword blades with an upturned guard. They still show their material (wood, stone, iron, gold, diamond...) from the item's picture.
 - **Swimming** is a breaststroke now: arms out ahead, a wide sweep and a pull under the chest, a frog kick, the head coming up to breathe. No more arms windmilling round.
 
-**Placing things (after TerraFirmaCraft):**
-- **Ingot piles:** sneak + use with an ingot on the ground sets it down; keep adding and they stack like TFC's, eight to a layer in two rows of four, each layer laid across the one below, 64 to a block. A full pile takes another on top. One metal to a pile; use takes one back.
+**Placing things:**
+- **Ingot piles:** sneak + use with an ingot on the ground sets it down; keep adding and they stack eight to a layer in two rows of four, each layer laid across the one below, 64 to a block. A full pile takes another on top. One metal to a pile; use takes one back.
 - **Log piles:** sneak + use with a log on the ground starts a log pile, a crib of 16 logs. Placing logs normally (not sneaking) is unchanged.
 - Fixed the see-through gap round the bottom of cacti.
 
-**Immersive Progression (new worlds; after TerraFirmaCraft):** a new world option, on by default (Create World → Game Rules). Worlds made before it stay classic.
+**Immersive Progression (new worlds):** a new world option, on by default (Create World → Game Rules). Worlds made before it stay classic.
 - **No punching trees:** logs need an axe. Leaves don't hold you up any more: you push through them, slowed, and they break your fall. Broken leaves drop sticks now and then.
 - **On the ground:** loose rocks lie about everywhere, flint by the water on gravel and sand, twigs in the woods and on beaches.
 - **Knapping:** hold two or more pebbles or flint and use them in the air. Chip away at the 5×5 grid until it's the shape you want: an axe, shovel, hoe, knife, hammer or javelin head, or a crude pickaxe (flint makes a proper flint pickaxe). Works with a controller.
 - **Stone tools:** a head and a stick make the tool. Flint tools are better than stone ones.
 - The wooden tools and the cobblestone tools can't be crafted in an immersive world.
 
-**Fire and clay (after TerraFirmaCraft):**
+**Fire and clay:**
 - **Firestarter:** two sticks. Hold use on three sticks lying on the ground to make a firepit (straw helps it catch), or on an out fire, a pit kiln or a log pile. It takes a moment, and a few tries.
 - **Campfires are firepits now:** feed them logs, planks, sticks, charcoal or coal (up to four). Each fuel burns so long at so hot; a fire with nothing to burn dies down and goes out, and rain puts out one in the open. Food cooks once the fire's hot. Set metal, ore or pottery on it to heat it; an empty hand takes it back.
 - **Hot things:** metal and pottery carry their heat, glow, and cool in your bag; the tooltip says how hot ("Faint Red", "Orange"...).
@@ -95,7 +95,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Pit kiln:** sneak + use to set unfired pottery down in a pit, then add eight straw and eight logs, wall it in and light it. Three in-game hours later it's fired.
 - **Charcoal pit:** pack log piles together, cover every side with earth or stone, and light one: six in-game hours later they're heaps of charcoal. A pile left open burns away.
 
-**Metal (after TerraFirmaCraft):**
+**Metal:**
 - **New ores:** zinc and bismuth. In an immersive world ore breaks into ore pieces, and now and then a loose rock on the surface is a small piece of the ore below it. The furnace no longer smelts ore there.
 - **Any metal, any mix:** everything metal carries what it's made of. Copper and tin in the right measure is bronze; so too brass, bismuth bronze, black bronze, rose gold and sterling silver. Any other mix works as well: its strength, its name ("Copper-Zinc-Tin Alloy") and its colour come from what's in it, all the way to the finished tool.
 - **Casting:** fill a fired vessel with ore (hold the ore in your other hand and use the vessel), melt it on a charcoal fire, then use it with a fired mold in your other hand to pour. When the mold's cooled, use it to break it open: a tool head, or an ingot.
@@ -106,13 +106,13 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Alloy colours:** a tool or piece of armour made of a mix of metals shows its blend, flecked with each metal by how much of it is in the mix (a 70/30 copper-zinc tool is copper with streaks of zinc). Named alloys like bronze keep their own colour. The name above the hotbar shows what it's made of ("Copper-Zinc Alloy Pickaxe").
 - In an immersive world metal tools and armour are made this way, not at the crafting table.
 
-**Crafting and materials (after TerraFirmaCraft):**
+**Crafting and materials:**
 - **Saws and lumber:** a log and a saw at the crafting table make eight lumber (the saw stays, a little worn). Lumber makes planks, support beams, barrels and sluices. In an immersive world a log by hand gives only two planks.
 - **The quern:** hold use on it with grain (flour), ore (powder, which holds more metal), limestone (flux), bone, cobblestone, gravel or flowers (dye).
 - **Barrels and leather:** a sealable barrel holds water by the bucket and four stacks; sneak + use seals it. Lime in water makes limewater, logs steep into tannin. Raw hide (animals drop it in an immersive world) soaks in limewater, is scraped with a knife (the hide in your other hand), tans in tannin, and becomes leather.
 - **Panning:** a clay pan used on gravel or sand by the water washes out ore samples now and then, and rarely a gem. A sluice in the water does it on its own.
 
-**More like TerraFirmaCraft:**
+**More immersive:**
 - **Every metal tool, weapon and armour piece is procedural:** made at the crafting table (in every world), from a Tool Forge head, bought from a villager, found in a chest or dropped by a mob, its stats, name and colour come from what it's made of. Named alloys vary with their mix too: bronze near 90/10 outlasts an off-ratio bronze, and its colour shifts a little. Armour protection follows the blend, and mixed armour now counts its fire resistance.
 - **No shortcuts:** in an immersive world steel blend only makes pig iron, in the blast furnace; iron ore can't be melted down (the bloomery makes iron); mithril, adamantite, thallasium and cinderite ore melt in the crucible, not the furnace; the anvil is smithed, not crafted from iron blocks; pelts are raw hide to tan, not leather; the Tool Forge cuts no metal heads.
 - **Two-step refining:** a raw bloom is refined, then worked into wrought iron; pig iron becomes high-carbon steel, then steel.
@@ -144,21 +144,21 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 **Worlds:**
 - **New land comes with new worlds:** the new Nether, End, Skylands and villages below are made in worlds you start now. A world you already have keeps its land; World Settings → Upgrade brings them to every place you haven't been yet (there can be seams where old land meets new, so make a backup first).
 - **More world types** for a new world: Amplified (the hills and mountains near twice as high), Islands (the seas risen over most of the land), Floating Islands (the land in islands hanging over the void), Endless Winter (snow everywhere, the lakes frozen), Hell (a world that ended long ago, scorched, its seas turned to lava) and Flat.
-- **The Drift,** as in Better than Adventure: great masses of land hanging in open sky under a golden light, where only chickens live. Build a frame of Glow Lanterns (glowstone) and set a block of bedrock inside its bottom: it fills with a silver portal you can see through and walk through like the others, and a portal home is built where you arrive. Distances there are eight times those at home. Bedrock has an item now: a diamond or steel pickaxe (or better) mines it and keeps it. `/tp drift` goes there too.
+- **The Drift:** great masses of land hanging in open sky under a golden light, where only chickens live. Build a frame of Glow Lanterns (glowstone) and set a block of bedrock inside its bottom: it fills with a silver portal you can see through and walk through like the others, and a portal home is built where you arrive. Distances there are eight times those at home. Bedrock has an item now: a diamond or steel pickaxe (or better) mines it and keeps it. `/tp drift` goes there too.
 
 **The Skylands:**
-- **Islands the Aether's way,** and three dungeons with keepers: a bronze one held by the Slider; a silver one, an angelic temple on a bed of cloud, where the Valkyrie Queen waits; and a gold one, a floating island with a hall of hellfire stone, where the Sun Spirit wakes with two fire minions.
+- **New Skylands islands,** and three dungeons with keepers: a bronze one held by the Slider; a silver one, an angelic temple on a bed of cloud, where the Valkyrie Queen waits; and a gold one, a floating island with a hall of hellfire stone, where the Sun Spirit wakes with two fire minions.
 - **New creatures and blocks:** sentries that sit on carved stone, evil whirlwinds, the slider, the sun spirit and its fire minions; angelic and hellfire stone (and lit ones), pillars and pillar tops, holystone bricks and crystal fruit leaves. Zanite and gravitite make whole sets of tools and armour now, and ambrosium ore gives an ambrosium shard that heals.
 - **Waterfalls end in the clouds:** the islands' falls pour into the cloud bank below them and break into spray, and water and lava no longer leak out of the bottom of the Skylands (old floods drain away). The new land has no banks of cloud blocks (the sky's clouds are real ones now); the silver dungeon keeps its cloud bed, and clouds already there stay.
 
 **The Nether:**
-- **Better than Adventure's own Nether** (new worlds), laid over open land you can walk across under the high roof: its lands, caves, lava floes, shelves and every one of its decorations as BTA makes them. Each land has ground of its own: gentler crags, volcanic islands half out of the lava with channels between them, crystal plains, stepped shelves, the forest, the Old World and the sulfur pools. Its structures stand on the land, not in the caves under it.
+- **The classic Nether** (new worlds), laid over open land you can walk across under the high roof: its lands, caves, lava floes, shelves and every one of its decorations. Each land has ground of its own: gentler crags, volcanic islands half out of the lava with channels between them, crystal plains, stepped shelves, the forest, the Old World and the sulfur pools. Its structures stand on the land, not in the caves under it.
 - **Its blocks:** brimstone, brimsand, gloomstone, ember, cobbled netherrack and rubyglass. The giant rubyglass crystals are clear red glass, and their bright veins glow from within.
-- **Its air:** every land has its own fog, with BTA's warm, golden grade over it all (Options → Nether Color Correction) and a heat haze over the distance (Options → Heat Haze); water runs red, lava is thick to see through, and yellow sulfur fire burns on brimstone in the sulfur fields. Fog, sky and grade fade over as you pass between worlds instead of switching at once.
-- **Its creatures:** zombie pigmen and ghasts come as in BTA (the pigmen almost never found ground to stand on before), and the Nether's own crowd is back, each in its land: sulfur slimes, crystal wisps, magma slimes and ember fuselings on the volcanic islands, scorched skeletons in the Old World, charred ghouls on the crags and shelves, and cinder wisps with the fortress's wither skeletons. They spawn on the ground below you even when you fly high over it. A portal or `/tp nether` sets you on real ground, never in lava or inside a structure.
+- **Its air:** every land has its own fog, with a warm, golden grade over it all (Options → Nether Color Correction) and a heat haze over the distance (Options → Heat Haze); water runs red, lava is thick to see through, and yellow sulfur fire burns on brimstone in the sulfur fields. Fog, sky and grade fade over as you pass between worlds instead of switching at once.
+- **Its creatures:** zombie pigmen and ghasts come as they should (the pigmen almost never found ground to stand on before), and the Nether's own crowd is back, each in its land: sulfur slimes, crystal wisps, magma slimes and ember fuselings on the volcanic islands, scorched skeletons in the Old World, charred ghouls on the crags and shelves, and cinder wisps with the fortress's wither skeletons. They spawn on the ground below you even when you fly high over it. A portal or `/tp nether` sets you on real ground, never in lava or inside a structure.
 
 **The End:**
-- **The outer End, the Better End way** (new worlds): its lands, each with its own ground, trees and plants: the chorus forest, blossoming spires, foggy mushroomland, glowing grasslands, crystal mountains, sulphur springs, umbrella jungle, shadow forest, ice starfield, amber land, the megalake and its grove, lantern woods, painted mountains, neon oasis, dragon graveyards, dry shrubland, dust wastelands and umbra valley. Islands stack over islands, each with its land's ground. The dragon's island stays as it was.
+- **The outer End's lands** (new worlds): its lands, each with its own ground, trees and plants: the chorus forest, blossoming spires, foggy mushroomland, glowing grasslands, crystal mountains, sulphur springs, umbrella jungle, shadow forest, ice starfield, amber land, the megalake and its grove, lantern woods, painted mountains, neon oasis, dragon graveyards, dry shrubland, dust wastelands and umbra valley. Islands stack over islands, each with its land's ground. The dragon's island stays as it was.
 - **Its sky, fog and buildings:** slow-turning nebulae and stars overhead, each land its own fog colour and thickness, over a hundred new blocks, and buildings standing about the lands, each land its own kinds.
 - **Its creatures:** dragonflies, end fish, cubozoa, silk moths, shadow walkers and end slimes.
 - **The dragon's pillars** are tall obsidian columns, here and there rimmed with crying obsidian, with the crystals on top. Thallasium makes tools and armour, ender ore gives an ender shard, and amber ore an amber gem.
@@ -180,7 +180,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - A villager with nothing to do strolls the streets instead of waiting at the hall door; workers in walled towns go in and out by the gates; villagers keep out of water and climb out if they fall in.
 
 **The Wither and the Wither Storm:**
-- **The Wither as Minecraft has it:** it swells for eleven seconds, untouchable, then bursts out with a cry heard across the world. The middle head hunts you while the side heads pick their own targets, and now and then a blue skull flies that breaks even obsidian. Hurt, it tears up the blocks round its body. Its skulls wither creatures as well as players, and every kill heals it. It has a new look to match the Storm's first form, and a voice of its own.
+- **The Wither's full fight:** it swells for eleven seconds, untouchable, then bursts out with a cry heard across the world. The middle head hunts you while the side heads pick their own targets, and now and then a blue skull flies that breaks even obsidian. Hurt, it tears up the blocks round its body. Its skulls wither creatures as well as players, and every kill heals it. It has a new look to match the Storm's first form, and a voice of its own.
 - **The Wither Storm grows:** it starts as a Wither with a command block caged in its ribs (a real command block, your pack's when one is on), grows a hump, a jawed storm head and tentacles, and becomes the destroyer, one tentacle arching over its back; evolved, its tentacles hang under it like legs. Obsidian-black, veined with purple, its eyes and mouths lit violet. Each form is bigger and tougher, and it has its own roar, bite, beam and death sounds.
 - **It eats the land:** whole clumps of ground tremble, tear loose and spiral up into the head that took them, and everything it swallows makes it grow. Each head picks its own target; the middle one's tractor beam comes first and all three later, pulling you up to the mouth to bite and swallowing creatures whole, while a head without a beam spits skulls. Wound one head enough and it screams, its beam goes out, and it leaves you alone for a while.
 - **Only worthy blows hurt it:** magic, arrows from an enchanted bow, and enchanted weapons (Smite most of all). Plain blows, plain arrows, fire and explosions glance off, and it mends itself, faster once grown. Its last wound brings it crashing down.
@@ -193,7 +193,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Dragons have fuller bodies:** a deep chest, haunches and a belly round a slimmer waist, thighs, three-clawed feet, a longer tail, frills along the jaw, nostrils and fangs. The ender dragon's wings are a dark membrane with magenta veins.
 - **Birds have real feet:** three toes forward, a hind toe and claws, webbed for ducks, mallards, geese and swans (they stood on flat plates).
 - **The Giant:** a ghoul nearly three times your height guards some crypts. Watch for its stomp: a wind-up, then a blow that throws you.
-- **Wolf armour** (BTA) in leather, chainmail, iron, gold, diamond and steel, worn on the head and body.
+- **Wolf armour** in leather, chainmail, iron, gold, diamond and steel, worn on the head and body.
 - **Resource pack skins:** zombie pigmen (their left arm and leg were missing) and wither skeletons wear the pack's skins, pigs, cows and chickens in cold and warm lands take the pack's cold and warm looks, and endermen's eyes are the pack's own. Villagers lost the stray dots on their faces.
 
 **Mounts:**
@@ -206,16 +206,16 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 **Bows and quivers:**
 - **Wear a quiver** in its own slot beside the backpack. It holds four slots of any kind of arrow, and the bow draws from your off hand, then the worn quiver, then a quiver in your bag, then loose arrows, shooting whatever kind comes out. Arrows you pick up go into the worn quiver first, and the golden quiver never runs dry. In the book inventory its slots sit beside the crafting grid, and you can hide it like the rest of your gear.
 - **Quivers are 3D:** a leather tube with a rolled rim, strap and buckle, slung across your back or hung on the backpack's side, with more arrows showing as it fills. Friends see your quiver and your backpack (they never saw the backpack before).
-- **Bows are held as archers hold them:** drawing turns you side-on, the bow upright in your left fist and the string pulled back to your chin; carried, the bow hangs level at your side, string up. Villagers and skeletons hold theirs the same way. New arrows from BTA: golden, flaming (they light TNT and braziers) and purple.
+- **Bows are held as archers hold them:** drawing turns you side-on, the bow upright in your left fist and the string pulled back to your chin; carried, the bow hangs level at your side, string up. Villagers and skeletons hold theirs the same way. New arrows: golden, flaming (they light TNT and braziers) and purple.
 
 **Magic:**
 - **Every spell casts bare-handed** at a little under three-quarters of its power; a staff gives the full power and wears instead. Everyone starts knowing Firebolt and Home Teleport. A tome above your Magic can be studied once for Magic experience, and you keep it; ten starter tomes craft from a book, lapis and a reagent; the Apprentice Staff takes amethyst or lapis too; and kills with a spell train Magic.
 - **Mana** is a row of ten crystals beside the hearts, draining from the left, with the spell's name over them for a moment when you change or cast. Armour moved up over the hearts, and the old bar that covered villagers' talk is gone.
 
 **Blocks and items:**
-- **The trommel** (BTA): give it up to four things to sift and some fuel, and every 2.5 seconds it throws what it finds out of its left side, into a chest there if there is one: pebbles, olivine and more, and very rarely a small slime. Make it from cobblestone round an iron mesh, over a log.
-- **More of BTA's blocks:** polished stone (and its bricks, mossy bricks, slabs and stairs), polished limestone, gloomstone and netherrack, carved slabs of eight stones, cobbled and mossy cobbled basalt, granite and limestone (from pebbles), rubyglass blocks and bricks, an ember coal block, a sugar cane block (and a baked one), baked mud, steel glass, a chainlink fence, gold, iron, steel and lapis brick slabs and stairs, two-block statues, piles of autumn leaves and the soul wax candle. Loose stones are called pebbles now, and you can throw them.
-- **More of BTA's items:** chainmail (scrap it back to chainlinks), steel shears, a steel fire striker, crude steel, a steel bucket that holds three bucketfuls, ice skates (glide fast on ice and still steer), an explosive charge for the handcannon, ice cream, dough, cherries, cloth, a label to name things, and a rotary calendar that shows the season and the day while you hold it.
+- **The trommel:** give it up to four things to sift and some fuel, and every 2.5 seconds it throws what it finds out of its left side, into a chest there if there is one: pebbles, olivine and more, and very rarely a small slime. Make it from cobblestone round an iron mesh, over a log.
+- **More blocks:** polished stone (and its bricks, mossy bricks, slabs and stairs), polished limestone, gloomstone and netherrack, carved slabs of eight stones, cobbled and mossy cobbled basalt, granite and limestone (from pebbles), rubyglass blocks and bricks, an ember coal block, a sugar cane block (and a baked one), baked mud, steel glass, a chainlink fence, gold, iron, steel and lapis brick slabs and stairs, two-block statues, piles of autumn leaves and the soul wax candle. Loose stones are called pebbles now, and you can throw them.
+- **More items:** chainmail (scrap it back to chainlinks), steel shears, a steel fire striker, crude steel, a steel bucket that holds three bucketfuls, ice skates (glide fast on ice and still steer), an explosive charge for the handcannon, ice cream, dough, cherries, cloth, a label to name things, and a rotary calendar that shows the season and the day while you hold it.
 - **Trees:** gum trees (the eucalyptus, renamed, with a sapling), thorn trees, shrubs in the thornscrub, Redlands, savanna and plains, and flowering cherry leaves that bear cherries in season. Every kind of branch makes two sticks.
 - **Every material mixes with every other:** all 44 make both tools and armour, and a tool or piece all of one (a Tin Pickaxe) crafts at the crafting table. Mixed armour shows each material's colour where it went in the grid.
 - **A use for everything:** a venom sac brews strong poison, dough is two flour and a water bucket, and the goat horn is a war horn: speed and strength for 10 seconds to every player within 16 blocks, once every 30 seconds. Banners stand two blocks tall when you place them, on a floor or a wall, and break as one.
@@ -231,7 +231,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Players move better:** a real crawl (on your chest, pulling with one arm then the other, a knee drawing up); elytra that hang from your back as the classic ones do, folded in a V, spread when you glide and swept back in a dive; and capes in one piece that lift as you walk and blow in the wind, a ripple running to the hem.
 
 **Screens:**
-- **Menus in Better than Adventure's style,** with the launcher's look: Options in pages with icons, folding sections, a Search page and the keys inline under Controls (the controller's bumpers turn the pages); BTA's Select World, Create New World and World Settings; and Select Server with Favorites, History, Local Network and Direct Connect. Buttons use your resource pack's own when it has them.
+- **Paged menus** with the launcher's look: Options in pages with icons, folding sections, a Search page and the keys inline under Controls (the controller's bumpers turn the pages); new Select World, Create New World and World Settings screens; and Select Server with Favorites, History, Local Network and Direct Connect. Buttons use your resource pack's own when it has them.
 - **Book screens:** the Help book (with new pages), the Journal, Skills, Spellbook, the Stable, brewing, enchanting, waystones, places and the Travel Journal open as a guidebook, with cloth ribbons for bookmarks. Turn pages with the arrows, the wheel or the d-pad.
 - **Your inventory as a book** (Options → User Interface → Book Inventory, on): you, your gear and your skills on the left page, crafting and your bag on the right. Chests, furnaces, crafting tables and every station open as books too. Dark pages with light writing: Options → User Interface → Dark Book Pages, or the moon under any open book.
 - **Achievements and maps are books:** achievements by world in order, with what each asks and when you earned it; the map on the right page (drag, zoom about the pointer, pins, a compass rose), every map you carry on the left. **The creative catalogue** has 16 tabs, with families kept together.
@@ -266,7 +266,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - Still water beside clear ice keeps its calm face. It no longer wears the downward-flow picture just because you can see through the ice.
 
 **Light:**
-- Sun and lamps mix the Cubyz way, and the night never drops below its floor.
+- Sun and lamps mix their colours, and the night never drops below its floor.
 - Stained glass colours the light that passes through it. Wool and concrete stay opaque and do not.
 - A torch in your hand lights the ground in front of you in that torch's own warm colour, even where the air is already some other colour.
 
@@ -283,14 +283,14 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 
 **The story:** a Realm Fragment in your pack does nothing by itself. Hold it up to the town's tear and use it (right click, or the controller's use). The tear drinks that one, opens a little wider, and he grows bolder by the same count. The tenth one steadies the tear into a gateway.
 
-**Drawing the world:** shader packs in the Iris and OptiFine style can light the land, the water and the creatures when their programs link. Vulkan sits beside the legacy and modern renderers (`--renderer vulkan`). Looking along a ladder or a leaf no longer lets the little holes swallow the rung.
+**Drawing the world:** shader packs can light the land, the water and the creatures when their programs link. Vulkan sits beside the legacy and modern renderers (`--renderer vulkan`). Looking along a ladder or a leaf no longer lets the little holes swallow the rung.
 
 - Removed Herobrine.
 
 ## 1.0.0-alpha.16 — Port of Call (November 2026)
 
 **Playing over the internet:**
-- **Your servers:** the Multiplayer screen keeps a list of servers, as Minecraft does. Type an address, give it a name and press Save server; Join, Edit or Remove it from the list later. The last address you joined is filled in the next time.
+- **Your servers:** the Multiplayer screen keeps a list of servers. Type an address, give it a name and press Save server; Join, Edit or Remove it from the list later. The last address you joined is filled in the next time.
 - **VPNs:** with a VPN on (NordVPN, Proton, Mullvad…), Open to LAN and the server showed the VPN's own address instead of your home one, and the internet address it found was the VPN's, which nobody can join. Open to LAN shows your home address now. Open to LAN, the server dashboard and the server's console say when a VPN is on, that friends on the internet can't get through it, and how to let the game's port skip it (NordVPN on Linux: `nordvpn allowlist add port 25580 protocol UDP`; on Windows: Split tunneling, turn the VPN off for DokuQuest), or to turn it off while you play together. A join that can't get through says so too when a VPN is on.
 - **On Windows, "Let DokuQuest through Windows Firewall"** on the Multiplayer screen: if Windows' question about networks was closed or answered Cancel, Windows quietly blocks the game from then on, so joining finds nobody. The button clears the block and lets the game through, after one Yes from Windows. (An antivirus with its own firewall needs DokuQuest allowed there too.)
 - **The server's console says when someone knocks:** "Heard from …" the moment a friend's first packet arrives, before they've joined. Now you can tell "their attempt never reached me" (the router, the firewall or a VPN) from "it reached me but didn't get through". It also says which UDP port it's listening on.
@@ -310,7 +310,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 
 ## 1.0.0-alpha.14 — Tractor Beam (November 2026)
 
-**The Wither Storm, as in Story Mode:** it isn't a Wither drawn five times bigger any more but the behemoth itself: a black obsidian mass with three heads (the middle one huge), glowing violet eyes, mandibles and fangs, the command block glowing in its chest, and long tentacles hanging under it that sway and coil as it drifts. It rises out of the T a third of its size and grows with everything it eats. Its violet tractor beam tears up the ground under it (the blocks fly up the beam into its maw), drags you toward it, and pulls the creatures round it in to be devoured; too near its maw, the wither sickness takes you. And it roars.
+**The Wither Storm, the full behemoth:** it isn't a Wither drawn five times bigger any more but the behemoth itself: a black obsidian mass with three heads (the middle one huge), glowing violet eyes, mandibles and fangs, the command block glowing in its chest, and long tentacles hanging under it that sway and coil as it drifts. It rises out of the T a third of its size and grows with everything it eats. Its violet tractor beam tears up the ground under it (the blocks fly up the beam into its maw), drags you toward it, and pulls the creatures round it in to be devoured; too near its maw, the wither sickness takes you. And it roars.
 
 **Hit it back:** fireballs punched back now hurt the creatures of fire that threw them (the cinder wisps and the Cinder Golem shrugged them off before), and a shulker's bolt hit back flies home to its shulker and stings it. Ghast fireballs and Wither skulls go back as before.
 
@@ -322,7 +322,7 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 
 **Lighter on memory:** the land near you takes a fifth less graphics memory (16 bytes a corner instead of 20). Grass, leaves and water now take their colour from the climate where they stand as they're drawn, with the resource pack's grass and foliage colour maps, so the colours along the edge of the loaded land settle by themselves as the next chunks arrive.
 
-**Sheep:** a shorn sheep keeps a short undercoat of tufts in its own colour until its wool grows back (as in Minecraft 1.21.5), from the resource pack's own undercoat picture when it has one. A pack's sheep wool picture is used now too (only its body was before).
+**Sheep:** a shorn sheep keeps a short undercoat of tufts in its own colour until its wool grows back, from the resource pack's own undercoat picture when it has one. A pack's sheep wool picture is used now too (only its body was before).
 
 **Creatures:** every land's fuseling comes in two more looks, grown, burnt or bleached into it by its land:
 - barnacled and kelp-draped on the beaches, reed-grown and mud-caked in the bogs, cactus-spined and sun-bleached in the dunes
@@ -347,7 +347,7 @@ Many of them drop a little of what grows on them.
 - **Villagers go to church:** every seventh morning the bell rings, villagers fill the pews and stand at the back, and bow before the chapel's banners.
 - **More in the Skylands:** driftstone, a pale lilac stone that falls *up* until it meets something; whirlwinds that wander the islands and toss whatever they touch into the air; and the Valkyrie Queen now wakes with two valkyries at her side.
 - **Players move better:** a push-off and a tuck when you jump, a landing that sinks with the height of the fall, a wind-up before a swing, a bounce and a nod as you run.
-- **Creatures, as in BTA:** fuselings slip under a shut trapdoor at head height (a ghoul doesn't fit); squid keep to deep water, swim in strokes, and squirt ink and dash off when you swim up close; a ridden horse or pig takes stairs and slabs at a run instead of stopping at each; and winter's long dark brings more monsters out.
+- **Creatures:** fuselings slip under a shut trapdoor at head height (a ghoul doesn't fit); squid keep to deep water, swim in strokes, and squirt ink and dash off when you swim up close; a ridden horse or pig takes stairs and slabs at a run instead of stopping at each; and winter's long dark brings more monsters out.
 - **Steam vents in the Nether:** the vents breathe out plumes of steam with a hiss now and then, in every Nether land.
 
 **Worlds and portals:**
@@ -360,10 +360,10 @@ Many of them drop a little of what grows on them.
 - A friend's game no longer misses checking some of the world on a busy host (chunks the host was still making).
 
 **Looks:**
-- **Distant terrain, much closer to Cubyz:** the far land is four times finer at every distance (a far voxel stays a few pixels across instead of turning hills into giant steps at the edges of the view); every block shows its own picture at its true size (no more one picture stretched across a mountain), fading to the block's colour where a block is smaller than a pixel; the corners of its tops are shaded where higher ground stands over them, so slopes and cliffs have depth; far forests are a lumpy canopy, not a flat roof; and its water takes the colour of the water near you, darkens with depth and catches the sky at a low angle.
+- **Distant terrain, much finer:** the far land is four times finer at every distance (a far voxel stays a few pixels across instead of turning hills into giant steps at the edges of the view); every block shows its own picture at its true size (no more one picture stretched across a mountain), fading to the block's colour where a block is smaller than a pixel; the corners of its tops are shaded where higher ground stands over them, so slopes and cliffs have depth; far forests are a lumpy canopy, not a flat roof; and its water takes the colour of the water near you, darkens with depth and catches the sky at a low angle.
 - **Terrain memory:** a new option caps the graphics memory the land uses; past it, the chunks farthest out are drawn as distant terrain instead. The far land itself takes a quarter less memory per vertex.
 - **Particles:** smoke, breath, mist and poofs are soft and see-through now, fade in and out, and take the light of wherever they drift; your breath in the cold no longer fills your view.
-- **Shaders:** built-in shader levels (Off, Low, Medium, High, Ultra): a film grade and vignette, bloom, sun rays and sharpening. And **Iris/OptiFine shader packs** can be used: drop the pack's .zip in shaderpacks/ and its after-effects (colour, bloom, tone mapping, depth of field...) run over the game's picture.
+- **Shaders:** built-in shader levels (Off, Low, Medium, High, Ultra): a film grade and vignette, bloom, sun rays and sharpening. And **shader packs** can be used: drop the pack's .zip in shaderpacks/ and its after-effects (colour, bloom, tone mapping, depth of field...) run over the game's picture.
 - **Creatures:** the skins the DokuQuest Base pack has none of (about a hundred creatures) now sit with the pack's own: a shade darker and less sweet, their speckle smoothed into a soft mottle, their markings kept; the pack's own creatures are untouched. Every creature's skin is checked when it loads (one without a head or a body falls back to its own instead of drawing broken).
 
 **Tools:**
@@ -380,8 +380,8 @@ Many of them drop a little of what grows on them.
 - **The Travel Journal, maps, the places list and the quest board no longer crash later in the game** (once a dragon was slain or a great dungeon cleared: some records were saved as numbers and read as yes/no). Checked now at every point of the game's progress.
 - **Placed mob heads no longer flicker:** the block under each head drew a stone box in the same place as the head, and the two fought (most easily seen on a Wither skull on soul sand or a command block).
 - **Sounds that played nothing now do:** a sieve wearing out, the block placer placing and breaking blocks, a snow sentry building its snow, and the summoning wand calling a creature up. Every sound the game plays is checked now.
-- **Under water you can see:** a few blocks down (in a well, a pond, the sea) it was a dark navy wall; now your eyes adjust after a moment, like Minecraft's water vision: murky blue, but you see the walls, the bottom and what's in front of you (more by day than by night).
-- **/kill and /summon know creatures by name:** `/kill ghoul` or `/kill @e[type=ghoul]` clears those nearby (it used to kill *you*, whatever you typed after it), `/kill @e` every creature nearby, and the Minecraft names work too (`/summon zombie` is a ghoul, a creeper a fuseling). A name that's no creature gets a few that look like it instead of all hundred and twenty.
+- **Under water you can see:** a few blocks down (in a well, a pond, the sea) it was a dark navy wall; now your eyes adjust after a moment, murky blue, but you see the walls, the bottom and what's in front of you (more by day than by night).
+- **/kill and /summon know creatures by name:** `/kill ghoul` or `/kill @e[type=ghoul]` clears those nearby (it used to kill *you*, whatever you typed after it), `/kill @e` every creature nearby, and the common names work too (`/summon zombie` is a ghoul, a creeper a fuseling). A name that's no creature gets a few that look like it instead of all hundred and twenty.
 - **Death messages for every way to die:** acid, poison, withering, lightning, a falling block or tree and more now say what got you instead of a bare "You died".
 - **Stepping through a portal mid-stride** could count as a fall from the height you left.
 - **/weather works again:** it only took effect once the world was closed and opened (and saving could undo it); now the rain, snow or storm rolls in at once.
@@ -465,11 +465,11 @@ Many of them drop a little of what grows on them.
 
 - Removed Herobrine.
 
-## 1.0.0-alpha.9 — The Better Nether (November 2026)
+## 1.0.0-alpha.9 — The Open Nether (November 2026)
 
 **A new Nether (new worlds):**
 
-- **The Nether is a land you can cross now,** like Better than Adventure's: open ground under a high roof instead of a maze of caverns, lit well enough to find your way, each land with its own haze. Five lands:
+- **The Nether is a land you can cross now,** open ground under a high roof instead of a maze of caverns, lit well enough to find your way, each land with its own haze. Five lands:
   - **The Crag:** the old Nether's netherrack hills and crags, rock spires and pillars, lavafalls from the roof, melting rock and bleached bones.
   - **The Volcanic Islands:** a lava sea with islands of basalt and blackstone, and volcanoes whose craters spill lava down one side; brimstone on their flanks.
   - **The Sulfur Pools:** a flat yellow wasteland with steam vents and pools of **acid**. It burns whoever swims in it without armour, and wears the armour down; buckets can't hold it.
@@ -487,13 +487,13 @@ Many of them drop a little of what grows on them.
 
 **Light and distance:**
 
-- **Dreamlike lighting** (Options → Graphics → Lighting): a soft glow round bright things, golden light when the sun is low, soft focus and a warm halo round a low sun. After the Horizon project's shaders; Classic turns it off.
+- **Dreamlike lighting** (Options → Graphics → Lighting): a soft glow round bright things, golden light when the sun is low, soft focus and a warm halo round a low sun. Classic turns it off.
 - **Far land fades in** instead of popping, and floating islands far off show their stone undersides.
-- **Far land is made of voxels now, like Cubyz's:** textured with the blocks' own pictures (stone cliffs, snowy peaks, sand, brick builds), coarser the further it is, each coarse voxel taking the block that shows the most.
+- **Far land is made of voxels now:** textured with the blocks' own pictures (stone cliffs, snowy peaks, sand, brick builds), coarser the further it is, each coarse voxel taking the block that shows the most.
 - **And it's the real world out there:** the land you haven't been to yet is made by the world generator itself in the background, nearest first, so caves and ravines, natural arches, villages and towers, lakes, ice floes and real trees show far off as they are, overhangs and all. It's kept in the world's folder, so next time it's there at once.
 - **Raised micro-voxels on every textured block:** sand, dirt, terracotta, netherrack, granite and the other softer pictures stand out in relief too (they were flat).
 
-**More from Better than Adventure:**
+**More classic features:**
 
 - **Saddle a pig and ride it** (no taming needed). Its short legs can't jump a whole block: stairs and slabs help.
 - **Ice floes** drift in the seas by the glaciers (new worlds).
@@ -569,10 +569,10 @@ Many of them drop a little of what grows on them.
 - **The Wither:** three wither skeleton skulls on a T of soul sand wake it. It drops a nether star.
 - **The Wither Storm:** set a humming core (crystals round a nether star) in the middle of a Wither's T, between two wither skeleton skulls. It hangs high overhead, tears up the ground beneath it and grows stronger on every block it swallows, pulls you toward it, and fires from all three heads at once. When it falls, what it swallowed comes down.
 - **Biome fuselings** (frost, dune and bog, each with its own burst) and **village golems** that take after their land.
-- **Elytra glide like Minecraft's.** Throw an ender pearl into an End gateway to go through it.
+- **Elytra glide properly.** Throw an ender pearl into an End gateway to go through it.
 - **Treading water:** hold jump with your head out of the water and you float at the waterline, bobbing gently, instead of popping out and splashing back.
 - **Capes stream in the wind** out under the sky, gusting with the weather; indoors and in caves they hang still.
-- **Ingots set down stack Vintage Story-style,** four across, each layer turned across the last.
+- **Ingots set down stack in piles,** four across, each layer turned across the last.
 - `/locate <structure>` finds the nearest one of a kind.
 - **Chiseled blocks hold water:** slabs and stairs placed in water keep it in their carved-away part, a bucket fills or empties a chiseled block, and a notch carved under water fills.
 - **Coloured lamps** in 16 colours, the **inverted lamp** (it shines while unpowered), and **iron, gold, lapis and steel bricks.**
@@ -589,41 +589,41 @@ Many of them drop a little of what grows on them.
 - **The Music Studio** (launcher: Mod Studio → Music): write songs on a piano roll with the game's own instruments, have a piece written to any of the game's moods, read a recording (WAV, MP3 or FLAC) for its tempo, key and chords and have an original piece written from them, and bring MIDI in or send it out. Give a song a realm and it plays there now and then.
 - **The Sound Studio** (launcher: Mod Studio → Sounds): hear and see every sound the game makes, shape one (pitch, gain, trim, fades, low-pass) or bring in your own recording, normalise it and save it as the game's own: it replaces that sound from the next start.
 - **The Texture Studio** (launcher: Mod Studio → Textures): every block and item picture, painted pixel by pixel like the skin editor (pencil, fill, picker, eraser, mirror, grid, undo and redo, the picture's own colours as a palette) with a live block preview and PNG import. "Use in the game" lays your picture over whatever resource pack is on; grass and leaves keep their biome colours.
-- **Grass grows back.** Bare dirt next to grass turns green again at Minecraft's pace (about a minute or two for a lone block), under trees too. A new game rule, randomTickSpeed, speeds it and the other slow growth up.
+- **Grass grows back.** Bare dirt next to grass turns green again at a natural pace (about a minute or two for a lone block), under trees too. A new game rule, randomTickSpeed, speeds it and the other slow growth up.
 - **Doors, gates and trapdoors swing** open and shut on their hinges instead of snapping, village gates included.
-- **Livelier people** (Story Mode-style): standing about, players and villagers now and then look round, stretch, scratch their heads, look at their hands, tap a foot or shift their weight, each in their own way; on steps and slabs their feet plant on the ground under each one, the hips dropping and a knee bending; and creatures throw their weight into an attack and look round when they stand about.
+- **Livelier people:** standing about, players and villagers now and then look round, stretch, scratch their heads, look at their hands, tap a foot or shift their weight, each in their own way; on steps and slabs their feet plant on the ground under each one, the hips dropping and a knee bending; and creatures throw their weight into an attack and look round when they stand about.
 - **Elytra ride the wind.** Out under the open sky a headwind lifts you, a tailwind pushes you on, a crosswind drifts you sideways and gusts carry you up.
 - **Torches burn in your hand.** A held torch has a little flame and a thread of smoke, and leaves a trail of sparks when you swing it (soul torches burn blue, redstone torches give off red dust), for you and for everyone else carrying one.
 - **The End has a sound of its own:** a low, slowly breathing drone with a hollow wind through it, and now and then something far off blinking from place to place.
 - **Hardcore worlds.** Pick Hardcore when you make a world: survival with one life, no commands. When you die you can stay and watch the world as a spectator, or leave.
-- **Adventure and Spectator modes** (BTA): Adventure lets you explore, fight, trade and use things, but blocks can't be broken or placed; Spectator flies through anything and only watches. Pick Adventure for a new world, switch any world in World settings, or use /gamemode.
-- **Skyblock worlds** (BTA): pick the Skyblock world type for a new world and you start on one small island of grass in an empty sky, with an oak tree and a chest of what you'll need (lava, ice, seeds, a sapling). The Depths, the Skylands and the End are still there to reach.
+- **Adventure and Spectator modes:** Adventure lets you explore, fight, trade and use things, but blocks can't be broken or placed; Spectator flies through anything and only watches. Pick Adventure for a new world, switch any world in World settings, or use /gamemode.
+- **Skyblock worlds:** pick the Skyblock world type for a new world and you start on one small island of grass in an empty sky, with an oak tree and a chest of what you'll need (lava, ice, seeds, a sapling). The Depths, the Skylands and the End are still there to reach.
 - **Sorting.** Middle-click a chest, a backpack or your bag (or click the right stick on one) and its stacks are put in order and topped up; the hotbar stays as you left it.
 - **New commands:** /playsound plays any of the game's sounds (with volume, pitch and a place) and /particle makes any particle (smoke, flame, heart, firework...).
-- **An emote row in the chat** (BTA): click a face to drop it into your line.
+- **An emote row in the chat:** click a face to drop it into your line.
 - **Nightmares** (a game rule, on by default): sleep in the dark with monsters about and one may come to your bed and wake you. Light your bedroom.
-- **Hotbar rows** (BTA): Tab turns the rows of your bag round into the hotbar, like pages.
-- **Lead animals on a fishing line** (BTA): cast at an animal and the hook catches; it follows you on the line (too far and it snaps), and reeling in gives it a tug toward you.
-- **Sponges soak up water** when you put them down (everything within six blocks), turning into wet sponges; dry them in a furnace. A wet sponge used on dyed wool, glass, terracotta or painted planks washes the colour out (BTA).
-- **Furnace minecarts burn any fuel** a furnace would, not just coal (BTA).
-- **Armoured zombies and skeletons** (BTA): now and then one comes dressed in leather, copper, gold, iron or (rarely) diamond armour, and zombies carry more kinds of weapons. Armour soaks their hurt, a helmet keeps off the sun, and a piece may drop when they fall.
-- **The reinforced piston** (BTA): steel-bound, it pushes up to 16 blocks and flings whatever stands in front of it.
+- **Hotbar rows:** Tab turns the rows of your bag round into the hotbar, like pages.
+- **Lead animals on a fishing line:** cast at an animal and the hook catches; it follows you on the line (too far and it snaps), and reeling in gives it a tug toward you.
+- **Sponges soak up water** when you put them down (everything within six blocks), turning into wet sponges; dry them in a furnace. A wet sponge used on dyed wool, glass, terracotta or painted planks washes the colour out.
+- **Furnace minecarts burn any fuel** a furnace would, not just coal.
+- **Armoured zombies and skeletons:** now and then one comes dressed in leather, copper, gold, iron or (rarely) diamond armour, and zombies carry more kinds of weapons. Armour soaks their hurt, a helmet keeps off the sun, and a piece may drop when they fall.
+- **The reinforced piston:** steel-bound, it pushes up to 16 blocks and flings whatever stands in front of it.
 - **Glow ink on a sign** makes its writing glow in the dark, an ink sac puts it out, and any dye colours it.
 - **The Siphon:** a copper pipe that draws items one at a time out of whatever is behind it (or lying there) and pushes them into whatever is in front.
 - **The Wicker Basket:** lift a chicken, rabbit, cat, duck, frog or any small animal into it, carry it off and set it down somewhere else.
-- **Move the HUD** (BTA): Options → Interface → Move HUD pieces, then drag the hotbar, the hearts, the boss bar, the chat and the messages wherever you like (a controller works too).
+- **Move the HUD:** Options → Interface → Move HUD pieces, then drag the hotbar, the hearts, the boss bar, the chat and the messages wherever you like (a controller works too).
 - **Whole trees fall** is a World setting now, for those who'd rather take a tree down log by log.
 - **Lingering potions:** a splash potion and ectoplasm make one that leaves a cloud of itself on the ground for ten seconds. **Potions stack to 16.**
-- **More stone and wood** (BTA): permafrost breaks into cobbles that polish and lay as bricks, a mossy oak log, and mossy emberstone.
-- **Highland Spruce and the tundra** (BTA): close-grown spruce woods on podzol up in the cool hills, and between the snowy woods and the plains an open, snowy tundra over permafrost.
+- **More stone and wood:** permafrost breaks into cobbles that polish and lay as bricks, a mossy oak log, and mossy emberstone.
+- **Highland Spruce and the tundra:** close-grown spruce woods on podzol up in the cool hills, and between the snowy woods and the plains an open, snowy tundra over permafrost.
 - **Three more fuselings:** ember fuselings creep over the Depths' floors and leave fires burning, moss fuselings lurk in the woods and leave moss and poison spores, and sky fuselings in the Skylands burst in a gust that throws you skyward.
 - **Zombie pigmen keep to the Depths' natural ground,** not to bricks and what you build.
 - **December in the villages:** winter caps and scarves, strings of lights along the eaves, a decorated tree with a star on the square, wrapped chests, and now and then a carol (Silent Night, Jingle Bells, We Wish You a Merry Christmas, Deck the Halls). On New Year's Eve and Day the villages let off fireworks after dark.
-- **More of BTA's world:** scorched dirt in the Redlands (rich scorched dirt sifts out iron, gold and copper), perma-ice deep in the glaciers that never melts, ember coal ore in the Depths (burns hotter and longer), moss-grown dark oak and mangrove logs and algae on the still water of the Mossmire, and dried sugar cane bundles (smelt a bundle).
-- **More of BTA's Nether and Redlands:** cobbled and polished emberstone, soul schist low in the rock and bone shale higher up, petrified ashen trunks standing in the Ashen Wastes, and gum trees with pale bark and their own wood in the Redlands.
-- **The Snow Sentry** (BTA's snowman): set a carved pumpkin or jack-o'-lantern on two stacked snow blocks and it comes alive, throwing snowballs at monsters near it (they push them back and burn the creatures of fire). It leaves a dusting of snow where it walks in the cold and melts in hot lands.
-- **Stars come in colours** (BTA): mostly white, some blue, yellow, orange and red, and they twinkle a little.
-- **Achievements** (BTA): 27 of them, from Getting Wood to The End., on their own tab beside the Stable. A toast when you earn one, and the date you did.
+- **More of the world:** scorched dirt in the Redlands (rich scorched dirt sifts out iron, gold and copper), perma-ice deep in the glaciers that never melts, ember coal ore in the Depths (burns hotter and longer), moss-grown dark oak and mangrove logs and algae on the still water of the Mossmire, and dried sugar cane bundles (smelt a bundle).
+- **More of the Nether and Redlands:** cobbled and polished emberstone, soul schist low in the rock and bone shale higher up, petrified ashen trunks standing in the Ashen Wastes, and gum trees with pale bark and their own wood in the Redlands.
+- **The Snow Sentry** (a snowman): set a carved pumpkin or jack-o'-lantern on two stacked snow blocks and it comes alive, throwing snowballs at monsters near it (they push them back and burn the creatures of fire). It leaves a dusting of snow where it walks in the cold and melts in hot lands.
+- **Stars come in colours:** mostly white, some blue, yellow, orange and red, and they twinkle a little.
+- **Achievements:** 27 of them, from Getting Wood to The End., on their own tab beside the Stable. A toast when you earn one, and the date you did.
 - **Colour filters** for colour blindness (Options → Graphics → Colour filter): red-blind, green-blind and blue-blind, shifting the colours you may not tell apart into ones you can.
 
 **Gear and magic:**
@@ -641,11 +641,11 @@ Many of them drop a little of what grows on them.
 - **The chisel:** carve any full block into eighths with the iron chisel. Aim at a corner to carve it away; chisel the same spot again to put it back.
 - **Slabs and stairs are chiseled blocks now.** The ones already in your worlds change over by themselves; make new ones with the chisel.
 - **Torches, lanterns and plants** only fix to a whole face, and drop off if you carve away the face they sit on.
-- **Dirt paths turn back to dirt** when you build on them, like Minecraft.
+- **Dirt paths turn back to dirt** when you build on them.
 - **Blocks no longer vanish** when placed on a path or left floating, and chains show again, so hanging lanterns connect.
 - **Spawn eggs for every creature,** with their own tab in the creative inventory. Use one on a monster cage to choose what it spawns.
 - **Lava Boat:** crimson or warped planks with magma cream in the middle (the rowboat shape). It floats on lava as well as water, and the lava never reaches you or your pet aboard.
-- **Endermen, ghasts and creepers wear the resource pack's skins.** An angry enderman lifts its head off its jagged jaw, a ghast opens its mouth before it fires, endermen stand with their legs apart, and creepers have Minecraft's proportions.
+- **Endermen, ghasts and creepers wear the resource pack's skins.** An angry enderman lifts its head off its jagged jaw, a ghast opens its mouth before it fires, endermen stand with their legs apart, and creepers have the classic proportions.
 - **Holding right-click** keeps placing blocks with the arm swinging smoothly.
 - **Sounds:** carving a pumpkin plays its own carving sound, and jack o'lanterns sound like wood.
 - **Music:** new instruments, including dulcimer, mandolin and fiddle.
@@ -662,7 +662,7 @@ Many of them drop a little of what grows on them.
 ## 1.0.0-alpha.6 — New look (October 2026)
 
 - **New default art:** the game now ships its own texture set, DokuQuest Base, as the default look: blocks, items, mobs, chests and leather armour. Anything it doesn't cover keeps the generated pictures. Choose "none" in Options → Resource pack for the old generated look, or any other pack as before.
-- The base set lives in data/resourcepacks/DokuQuest Base in the game folder, laid out like a Minecraft resource pack, so it can be edited directly.
+- The base set lives in data/resourcepacks/DokuQuest Base in the game folder, laid out like a standard resource pack, so it can be edited directly.
 - Removed Herobrine.
 
 ## 1.0.0-alpha.5.9 — Sounds (October 2026)
@@ -779,7 +779,7 @@ Many of them drop a little of what grows on them.
 - **Every player has their own look:** Players & Skins has a tab for each of the four players, each with their own name, skin (or creator character), arms and painted cape, like the original. The skin editor, character creator and cape editor work on whichever player is chosen. Opened from a split-screen player's own pause menu, it opens on them, and players who join come in as themselves.
 - **Throw eggs and slimeballs** like snowballs. An egg breaks where it lands and now and then hatches a chick; a slimeball splats.
 - **Slime puddles:** slimes splat where they land, like the original, and leave a sticky puddle that slows you down (a bit like a cobweb) until it dries. Thrown slimeballs leave one too.
-- **Ice you can see through,** like Minecraft's, with any resource pack.
+- **Ice you can see through,** with any resource pack.
 - Removed Herobrine.
 
 ## 1.0.0-alpha.4.1 — Hotfix (October 2026)
@@ -831,7 +831,7 @@ Many of them drop a little of what grows on them.
 - **Capes:** a cape editor — paint your cape like your skin, wear it, export it as a PNG or import one (file chooser or drag and drop).
 - **3D icons:** furniture, doors, levers, hoppers and other shaped blocks show as their real 3D shape in the inventory, the creative catalogue and the recipe book.
 - **Placed items show:** items put down with sneak + use lie on the ground again; item frames show their item.
-- **In your hands:** swords and tools are held bigger and angled like Minecraft in first person; held compasses and clocks show their faces in third person.
+- **In your hands:** swords and tools are held bigger and angled in first person; held compasses and clocks show their faces in third person.
 - **Blocks:** ice is see-through; chest lids open while you look inside; lecterns hold a book you can open to the page you choose; rain puddles are flat, glossy water.
 - **Smoother relief:** bump mapping is smoothed — latches, tools and book spines stand out instead of sinking in, mortar stays a groove, and block edges get a slight bevel.
 - **Characters and villagers:** guards' faces show under their helmets; villagers' mouths move when they talk; everyone blinks; a picked-up animal or block is shown in your arms; the elytra are wings that spread when you glide.
@@ -848,7 +848,7 @@ Many of them drop a little of what grows on them.
 - **Controller:** the menu tabs (Inventory, Map, Journal, Skills, Spells, Stable) are back across the top with LB/RB. The d-pad reaches every button, the right stick scrolls and Y zooms the map. A stuck key or a drifting stick can no longer slide your character.
 - **Characters:** a Players & skins screen with a turning 3D preview; skin import (64×64 and old 64×32, from a file chooser or by dropping the picture on the window); capes, backpacks and belt lanterns show. The inventory doll is your 3D character with show/hide buttons for each worn piece, the pause menu shows 3D heads, the right arm wears its sleeve, swords sit properly in the hand, and there are ledge, ladder and vine climbing poses and maps held up in third person.
 - **Creatures:** monsters come out at night; the Nether, the Skylands and The End have their creatures; creatures topple over when they die and fade a moment later; limbs can be severed; blazes have their spinning rods; birds have feet; the compass and the recovery compass point the right way; every creature has its sounds (horses use the original game's, as the pack has none).
-- **Worlds:** a Minecraft Beta-style underground with worm caves and rooms, ravines, lava lakes, ores at their usual depths and jagged bedrock; classic dungeons with monster cages and loot; a Minecraft-style Nether with big caverns, a low lava sea, glowstone and new fortresses; monster cages let out their creatures; weeping and twisting vines hang as one strand. The coordinates show Y within the world you're in, like Minecraft.
+- **Worlds:** a classic underground with worm caves and rooms, ravines, lava lakes, ores at their usual depths and jagged bedrock; classic dungeons with monster cages and loot; a classic Nether with big caverns, a low lava sea, glowstone and new fortresses; monster cages let out their creatures; weeping and twisting vines hang as one strand. The coordinates show Y within the world you're in.
 - **Villages:** gates are visible again, open at dawn and close at dusk; guards open them for you at night and the lever beside them works. Washing lines and bamboo no longer break villages.
 - **Looks:** each world shows only itself (no Skylands above the Overworld's clouds, no Nether above The End); portals are see-through windows without the old swirl texture; new puffy clouds; bump-mapped ores, cobblestone and bricks that work with any resource pack; 3D grass on grass blocks (Options → 3D grass); shader packs can be switched in Options.
 - **New:** villagers live in the villages, with their days, homes and jobs, shops with daily stock, errands, the quest board, guards and golems, raids and the Knight, Ranger and Mage paths. The End's dragon fight with its crystals, the exit portal, gateways and the egg; wild dragons in their lairs that you can hatch, raise and ride; the Deep Dark's sensors, shriekers and the Warden. Minecarts, boats, the ship, windmills and machines have their 3D models.
@@ -865,7 +865,7 @@ DokuQuest is being rebuilt as a native C++ game, as close as possible to Alpha 0
 - **A new launcher:** the news, your worlds, your player name and Play, now as a native program. Options choose the renderer and a graphics preset; the launcher looks at your graphics card and suggests one.
 - **The dedicated server lives in the launcher:** pick or make a server world, set the port, players, MOTD, mode, difficulty and password, and watch its console with TPS and players.
 - **The Mod Studio is built in:** write DQ mods with templates and a syntax check, switch installed mods on and off, make data packs (blocks, items, recipes) without code, and browse the engine's source.
-- **Mods, like Fabric, Forge and OptiFine together:** JS mods with the original `DQ` API, data packs, native plugins, shader packs and resource packs.
+- **Mods, all together:** JS mods with the original `DQ` API, data packs, native plugins, shader packs and resource packs.
 - **Updates from GitHub Releases:** the launcher checks for new versions, downloads and checks them, and keeps the previous version in case the new one won't start.
 - Linux AppImage (and a tar.gz). A Windows build comes later. Your worlds are kept in the game folder.
 - **In this build:** the original's terrain for all four worlds, villages, towns, dungeons, strongholds, fortresses, ancient cities and End cities; 125 creatures with their AI; survival and creative with every block rule; crafting, furnaces, chests and the creative catalogue; magic, enchanting, brewing, skills; maps, farming, fishing, camping, elytra and the stable; redstone, minecarts, boats and ships; multiplayer over LAN or the internet; the original menus with full controller support.

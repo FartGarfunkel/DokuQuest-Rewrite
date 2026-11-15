@@ -1,4 +1,4 @@
-// render/activity_layer.cpp — What Are They Up To (Watut), our own way: in a game with others you see what each is doing.
+// render/activity_layer.cpp — what the others are up to: in a game with others you see what each is doing.
 //   * typing in chat: a speech bubble over their head with three dots bouncing, quicker the faster they type;
 //   * in a menu (their bag, a chest, the crafting screen...): a glowing screen held up before them, the right hand
 //     tapping at it (the pose: render/char_anim.cpp CharPose::gui);
@@ -17,7 +17,7 @@
 namespace dq {
 namespace {
 
-constexpr double DOZE_AFTER = 300;   // seconds without a touch (Watut's five minutes)
+constexpr double DOZE_AFTER = 300;   // seconds without a touch (five minutes)
 
 class ActivityLayer : public RenderLayer {
 public:

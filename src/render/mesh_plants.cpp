@@ -651,7 +651,7 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   int tile = self.faces[0];
   if (T.crop && !T.stageTiles.empty()) tile = T.stageTiles[std::min<int>(meta & 15, (int)T.stageTiles.size() - 1)];
   else if ((T.dbl || T.altTile) && (meta & 1) && T.upperTile >= 0) tile = T.upperTile;
-  // pointed dripstone (Minecraft's): a column of them is one spike, its picture by where in the column each is: the tip at the
+  // pointed dripstone: a column of them is one spike, its picture by where in the column each is: the tip at the
   // free end (a merged tip where it meets one from the other side), the frustum behind it, the base where it's fixed, the middle
   // between; up or down by the way it points (meta & 1 hanging). The pack's lone "pointed_dripstone" picture was a block of it.
   if (key == "pointed_dripstone" && c.opt.detail) { emitDripstone(c, d, id, x, y, z, meta); return; }   // (a solid spike: render/mesh_plants.cpp emitDripstone)
@@ -680,7 +680,7 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
     }
     if (isGrass && !T.dbl) { emitGrassClump(c, d, id, x, y, z, meta, tile, 0); return; }
     if (isGrass && T.dbl) { emitGrassClump(c, d, id, x, y, z, meta, tile, (meta & 1) ? 2 : 1); return; }
-    // mushrooms (Minecraft's, BetterNether's lucis and jellyfish...): round, a cap on a stalk
+    // mushrooms (the common ones, the Nether's lucis and jellyfish...): round, a cap on a stalk
     if (!T.dbl && !T.hangs && key.find("mushroom") != std::string::npos && key.find("block") == std::string::npos && emitLathe3D(c, d, id, x, yy, z, y, tile)) return;
     if (key == "sugar_cane" && emitCane3D(c, d, id, x, y, z)) return;
     if (key == "kelp" && emitKelp3D(c, d, id, x, y, z)) return;
@@ -728,7 +728,7 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       planeQuad(c, d, tile, x, yy, z, cx + sa, cz - ca, cx - sa, cz + ca, sk, bl, sh, top ? sway : 0);
     }
   } else if (T.fire && !c.R.tSolid[c.at(x, y - 1, z)] && (c.R.tSolid[c.at(x - 1, y, z)] || c.R.tSolid[c.at(x + 1, y, z)] || c.R.tSolid[c.at(x, y, z - 1)] || c.R.tSolid[c.at(x, y, z + 1)])) {
-    // fire with no floor under it burns on the walls it touches (Minecraft's): a sheet of flame against each, its top
+    // fire with no floor under it burns on the walls it touches: a sheet of flame against each, its top
     // leaning a little out from it
     auto sheet = [&](vec3 b0, vec3 b1, vec3 out) {   // b0..b1: the bottom edge on the wall; out: away from it
       const vec3 base(x, yy, z), lean = out * 0.16f, up(0, 1, 0);

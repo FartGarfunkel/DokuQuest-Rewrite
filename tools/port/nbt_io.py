@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""tools/port/nbt_io.py — read and write Minecraft's NBT (gzipped structure templates and the like), no dependencies.
+"""tools/port/nbt_io.py — read and write NBT (gzipped structure templates and the like), no dependencies.
 
   read(path_or_bytes) -> python values: dict for compounds, list for lists, int/float/str, bytes/list for arrays
   write(path, value, root_name='') writes a gzipped file. Python values are typed this way: dict -> compound,

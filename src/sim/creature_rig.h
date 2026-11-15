@@ -16,7 +16,7 @@ struct RigPart {
   float alpha = 1;
   vec3 pivot{0}, min{0}, max{0}, rest{0}, hand{0};
   json tex;                       // tile name, per-face object/array (models.js tilesOf)
-  // a part cut from the model's own picture (uvTex), Minecraft-fashion: uv = [u, v, w, h, d] texels, mirror; or built
+  // a part cut from the model's own picture (uvTex), box-UV fashion: uv = [u, v, w, h, d] texels, mirror; or built
   // straight from a voxel list (vox = {"n": [nx, ny, nz], "c": [[x, y, z, w, h, d, 0xRRGGBB]...]}; an empty list: a pivot
   // only, nothing drawn); res: voxels per block (default 32) for big parts (the Wither Storm's)
   json uv, vox; bool uvMirror = false; float res = 0;
@@ -28,7 +28,7 @@ struct RigModel {
   std::string key, rig, post;
   float scale = 1, hipY = 0, rollY = 0, bodyDepth = 4, height = 16, bodyY = 0, bodyLen = 12, legH = 6, pitch0 = 0, seatY = 0;
   bool hasRollY = false, gallop = false, armsReach = false, heavy = false, flukes = false, hasNeck = false;
-  bool zyx = false;   // "rotOrder": "zyx": turns applied z, then y, then x (imported GeckoLib models: tools/port/geo_boss_import.py)
+  bool zyx = false;   // "rotOrder": "zyx": turns applied z, then y, then x (imported keyframe models: tools/port/geo_boss_import.py)
   std::vector<RigPart> parts;     // parents before children
   // a variant's model (tools/port/mob_variants.py): with a resource pack it wears its base's pack skin (packBase), the
   // pack's own picture for it when there is one (packTex), else the base's tinted (packTint {hue, sat, val, colVal, mix})

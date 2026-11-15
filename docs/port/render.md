@@ -42,7 +42,7 @@ pixels (alpha 253) take the climate tint ×1.3 (mip-blended smoothly).
 - Shader: `curve(l) = l / (3.2 - 2.2 l)`, sky × env.day, block × (1, .85, .62), floor `minLight` = 0.025 + brightness·0.07
   (Depths ≥ .07, End ≥ .12), per-micro-voxel glow from the height texture's G channel (assets fill `TileSet.emissive`).
 
-## Plants (3D voxel, Lay of the Land style; `settings.plantDetail` off/near/all, near = 44 blocks like perf.js)
+## Plants (3D voxel; `settings.plantDetail` off/near/all, near = 44 blocks like perf.js)
 - A plant picture becomes a voxel slab on the 32×32 grid: each micro-voxel 1–3 micro-voxels thick each side, as thick as
   its part is wide (plantDepth at 32 res), greedy front/back rectangles, step walls between thicknesses. Crops (every stage)
   = # of four slabs; saplings, mushrooms, bushes, hanging vines, seagrass, coral, dead bushes = two crossed slabs.

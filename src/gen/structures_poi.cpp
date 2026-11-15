@@ -1,7 +1,6 @@
-// gen/structures_poi.cpp — points of interest from Soulrend's structure mods (Dungeons Arise, Moog's Voyager Structures,
-// The Graveyard, Integrated Dungeons and Structures; tools/port/poi_import.py -> data/pois/index.json, git-ignored). One
-// region in a few gets one, chosen by the land there (its lands, as the mod's biome tags say) and how rare the mod made
-// it; put together Minecraft's jigsaw way in 3D (rigid pieces, joints up and down too, a piece inside its parent's box
+// gen/structures_poi.cpp — points of interest from the imported places (tools/port/poi_import.py ->
+// data/pois/index.json, git-ignored). One region in a few gets one, chosen by the land there (its lands, as its biome
+// tags say) and how rare its data makes it; put together jigsaw-fashion in 3D (rigid pieces, joints up and down too, a piece inside its parent's box
 // only when it fits there), from the pieces turned into our blocks as the village pieces are (gen/village_pieces.h).
 #include "gen/structures.h"
 #include "gen/structures_common.h"
@@ -60,12 +59,12 @@ const PoiPack* poiPack() {
       PoiDef d; d.key = s.value("key", ""); d.start = s.value("start", ""); d.depth = s.value("depth", 4); d.y = s.value("y", 0);
       d.spacing = std::max(8, s.value("spacing", 32)); d.surface = s.value("surface", true); d.reach = s.value("reach", 80);
       for (auto& l : s["lands"]) d.lands.push_back(l.get<std::string>());
-      // Minecraft's terrain adaptation: beard_thin / beard_box ease the land up to and down to the pieces' floors (no
+      // the terrain adaptation: beard_thin / beard_box ease the land up to and down to the pieces' floors (no
       // pillars of dirt under them, no hillside through them); bury and none leave the land as it is
       { const std::string a = s.value("adapt", std::string("none")); d.beard = a == "beard_thin" || a == "beard_box" || a.rfind("beard:", 0) == 0;
-        // Integrated API's (IDAS) blend reaches as far as its kernel says; Minecraft's beard_box a little further than its thin one
+        // a "beard:" blend reaches as far as its kernel says; beard_box a little further than the thin one
         if (a.rfind("beard:", 0) == 0) d.flatR = std::clamp(std::atoi(a.c_str() + 6) / 2, 6, 16); else if (a == "beard_box") d.flatR = 8; }
-      // no ships and blimps floating in the sky (Dungeons Arise's heavenly ones): they don't belong in our world
+      // no ships and blimps floating in the sky (the heavenly ones): they don't belong in our world
       if (!d.surface && d.y > 90) continue;
       if (d.key.find("heavenly") != std::string::npos || d.key.find("blimp") != std::string::npos) continue;
       if (pk->pools.count(d.start)) pk->defs.push_back(std::move(d));
@@ -107,7 +106,7 @@ const PoiPack* poiPack() {
   return P.get();
 }
 
-// our lands at a column (the mods' biome tags were turned into these: tools/port/poi_import.py LAND)
+// our lands at a column (the places' biome tags were turned into these: tools/port/poi_import.py LAND)
 std::vector<std::string> landsAt(const TerrainQuery& t, const TerrainColumn& c) {
   OwColumn oc; oc.h = c.jsY; oc.biome = (u8)std::max(0, c.biome); oc.temp = c.temp; oc.humid = c.humid; oc.landBiome = c.landBiome;
   const LandVariant bv = landVariant(oc);
@@ -154,12 +153,12 @@ bool expand(const PoiPack& pk, const PoiDef& d, const TerrainQuery& t, int cx, i
   const VPPiece* s0 = weighted(start)[0];
   Placed s{}; s.p = s0; s.r = (int)(rnd() * 4) & 3; s.w = s.r & 1 ? s0->sz : s0->sx; s.d = s.r & 1 ? s0->sx : s0->sz;
   s.x0 = cx - s.w / 2; s.z0 = cz - s.d / 2;
-  // the start's height: on the ground (Minecraft's project_start_to_heightmap, plus its offset), else Minecraft's y in ours
+  // the start's height: on the ground (project_start_to_heightmap, plus its offset), else the imported data's y in ours
   // (its sea at 63, ours at 64)
   if (d.surface) {
     int hs[9]; for (int k = 0; k < 9; k++) hs[k] = t.surfaceY(s.x0 + s.w * (k % 3) / 2, s.z0 + s.d * (k / 3) / 2);
     std::nth_element(hs, hs + 4, hs + 9);
-    // with a beard: the median (the land is eased to the floor anyway). Without one: Minecraft's own rule, the ground at the
+    // with a beard: the median (the land is eased to the floor anyway). Without one: the format's own rule, the ground at the
     // start (the lowest of the samples sank every building on a slope into the hill)
     s.y0 = (d.beard ? hs[4] : t.surfaceY(s.x0 + s.w / 2, s.z0 + s.d / 2)) + 1 + d.y;
   } else s.y0 = std::clamp(d.y + 1, 6, DIM_H - s0->sy - 2);
@@ -257,7 +256,7 @@ void buildPoi(ChunkWriter& w, const StructurePlan& S) {
   for (const Placed& q : E->pcs) {
     const VPPiece& p = *q.p;
     if (q.x0 > w.bx + 15 || q.x0 + q.w - 1 < w.bx || q.z0 > w.bz + 15 || q.z0 + q.d - 1 < w.bz) continue;
-    // its air first (Minecraft's modern pieces: the land, grass and trees inside the building go). Not a path's: it lies on the land
+    // its air first (the modern pieces: the land, grass and trees inside the building go). Not a path's: it lies on the land
     if (p.placeAir && !p.terrain && !p.air.empty())
       for (int ly = 0; ly < p.sy; ly++) for (int lz = 0; lz < p.sz; lz++) for (int lx = 0; lx < p.sx; lx++) {
         if (!p.airAt(lx, ly, lz)) continue;
@@ -274,7 +273,7 @@ void buildPoi(ChunkWriter& w, const StructurePlan& S) {
       auto [tx, tz] = vpTurn(p, q.r, k.x, k.z);
       const int x = q.x0 + tx, z = q.z0 + tz;
       // a terrain-matching piece (a path) follows the land column by column, its layer 0 in place of the ground's top
-      // (Minecraft's gravity processor), not laid flat at the height where it joins
+      // (the gravity processor), not laid flat at the height where it joins
       const int y = p.terrain ? w.ground(x, z) + k.y : q.y0 + k.y;
       if (!w.in(x, z) || y < 1 || y >= DIM_H) continue;
       const VPState& s = p.states[k.s];
@@ -324,7 +323,7 @@ void buildPoi(ChunkWriter& w, const StructurePlan& S) {
 }
 }  // namespace
 
-// (the checker, tools/port/gentool.cpp poi) every block a Soulrend place's pieces put down, where and what
+// (the checker, tools/port/gentool.cpp poi) every block an imported place's pieces put down, where and what
 void poiExpected(const StructurePlan& S, const std::function<void(int, int, int, BlockId)>& fn) {
   auto E = std::static_pointer_cast<const PoiExt>(S.ext);
   if (!E) return;
@@ -355,7 +354,7 @@ void registerStructurePois() {
     const TerrainColumn c = tq.terrainColumn(x, z);
     if (c.y < 0 || c.water >= 0) return false;
     const std::vector<std::string> lands = landsAt(tq, c);
-    // the structures this land may have, the rarer ones (a wider spacing in their mod) less often
+    // the structures this land may have, the rarer ones (a wider spacing in their data) less often
     std::vector<std::pair<double, const PoiDef*>> cand;
     static const char* only = std::getenv("DQ_POI_ONLY");   // (the audit: this one structure wherever it may stand)
     for (const PoiDef& d : pk->defs) if (!only || d.key == only) for (const std::string& l : d.lands) if (std::find(lands.begin(), lands.end(), l) != lands.end()) {
@@ -368,10 +367,10 @@ void registerStructurePois() {
     auto E = std::make_shared<PoiExt>(); E->key = d->key; E->flatR = d->flatR; E->beard = d->beard && d->surface; E->ground = d->ground; E->blend = tq.genVersion() >= 17;
     if (!expand(*pk, *d, tq, x, z, rnd, E->pcs) || E->pcs.empty()) { if (std::getenv("DQ_POI_WHY")) DQ_LOG("poi why %s: expand failed", d->key.c_str()); return false; }
     // the land under each rigid piece standing on it (not one buried well below the ground: a crypt keeps its hill)
-    if (d->surface) for (auto& q : E->pcs) {   // (every place on the land, whatever its mod asked: no house stood on a bare plinth of earth)
+    if (d->surface) for (auto& q : E->pcs) {   // (every place on the land, whatever its data asked: no house stood on a bare plinth of earth)
       if (q.p->terrain) continue;
       const int qx1 = q.x0 + q.w - 1, qz1 = q.z0 + q.d - 1;
-      // only a piece standing at the ground: Minecraft's beard reaches about a dozen blocks, so a tower's upper floors and
+      // only a piece standing at the ground: the beard reaches about a dozen blocks, so a tower's upper floors and
       // the pieces stacked on others get no earth under them (raising the land to every floor grew the castles' towers
       // of earth and put ground inside the rooms). Not one buried well below the ground either: a crypt keeps its hill
       const int g = tq.surfaceY((q.x0 + qx1) / 2, (q.z0 + qz1) / 2);
@@ -380,7 +379,7 @@ void registerStructurePois() {
       for (auto& o : E->pcs) if (&o != &q && !o.p->terrain && o.y0 < q.y0 && o.y0 + o.p->sy >= q.y0 - 1 &&
                                  o.x0 <= qx1 && o.x0 + o.w - 1 >= q.x0 && o.z0 <= qz1 && o.z0 + o.d - 1 >= q.z0) { under = true; break; }
       if (under) continue;
-      // the skirt: wide enough that the land never climbs more than about a block in two to the floor (Minecraft's beard_box
+      // the skirt: wide enough that the land never climbs more than about a block in two to the floor (beard_box
       // reaches 12 blocks; a floor raised well above the land had a sheer wall of earth under it)
       // (a floor below the land: the land comes down only on the piece itself and a step round it, never in a wide funnel)
       const int rise = q.y0 - 1 - g;
@@ -417,7 +416,7 @@ void registerStructurePois() {
     out.surface = d->surface;
     std::string nm = d->key.substr(d->key.find(':') + 1); for (auto& ch : nm) if (ch == '_') ch = ' ';
     out.name = nm; out.data = json{{"poi", d->key}};
-    // the bosses of Soulrend's places (sim/keepers.cpp wakes one when someone walks in; sim/boss_kit.cpp fights it): the Lich
+    // the bosses of the imported places (sim/keepers.cpp wakes one when someone walks in; sim/boss_kit.cpp fights it): the Lich
     // in its walled graveyard, the Night Lord in the coliseum's arena, the Dead King in the ruined keep
     {
       static const std::map<std::string, std::string> BOSS = {{"graveyard:large_graveyard", "graveyard_lich"},
@@ -457,7 +456,7 @@ void registerStructurePois() {
     weight = best; targetY = E->blend ? (int)std::lround(swy / sw) : by;
     return true;
   };
-  t.flattenPad = 29;   // (the widest blend: IDAS's kernels)
+  t.flattenPad = 29;   // (the widest blend: the "beard:" kernels)
   registerStructure(std::move(t));
 }
 

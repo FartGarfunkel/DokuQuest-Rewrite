@@ -1,7 +1,7 @@
 # DokuQuest: the Saturday plan (from October 31 2026), in priority order
 
 Starts automatically after the weekly reset (12:05 PM Toronto). This is the run order: each step comes before the ones
-after it because later work builds on it. It supersedes Part A of WEEKEND_PLAN.md (Part B, the BTA detail, and Part C,
+after it because later work builds on it. It supersedes Part A of WEEKEND_PLAN.md (Part B, the classic-era content detail, and Part C,
 the queue, still apply). Anything unfinished carries over in this order.
 
 Standing rules: no hunger, no phantoms; full controller AND keyboard/mouse in every menu and screen; patch notes never
@@ -71,11 +71,11 @@ pack and folder names stay plain ([A-Za-z0-9_ .-]) so Windows builds work.
   - draw: string hand to the cheek, bow arm forward, release
   - correct scale; first person checked too
 - **Elytra:**
-  - Minecraft-style gliding: dive for speed, climbing costs speed, smooth turns, firework boosts
+  - classic gliding: dive for speed, climbing costs speed, smooth turns, firework boosts
   - sits properly on the upper back: folded at rest, swept back in flight
   - catches the weather wind: headwind lift, tailwind push, crosswind drift, updrafts to ride; stronger up high and
     over open land or sea
-- **End gateways:** throw an ender pearl in to travel through, like Minecraft.
+- **End gateways:** throw an ender pearl in to travel through.
 
 ## 5. Art: everything in one style
 - **Fill the gaps:** every texture the base pack doesn't cover gets restyled from the generated version to your style
@@ -122,8 +122,8 @@ pack and folder names stay plain ([A-Za-z0-9_ .-]) so Windows builds work.
   - **Safety lines:** none of it may really crash the game, lock the controls so you can't pause or quit, or touch real
     files. The effects are staged and brief, and every one can be escaped or survived.
 
-## 8. BTA update (full detail: WEEKEND_PLAN.md Part B)
-- **The BTA list:** everything on it, in our own designs: biomes, blocks, items, mobs, structures, a BTA-style Nether,
+## 8. Classic-era content update (full detail: WEEKEND_PLAN.md Part B)
+- **The content list:** everything on it, in our own designs: biomes, blocks, items, mobs, structures, the classic Nether,
   music ideas and other features.
   - Seasons: optional, or mainly in the Seasonal Forest.
   - Leads: a real lead item, not the fishing rod.
@@ -134,19 +134,19 @@ pack and folder names stay plain ([A-Za-z0-9_ .-]) so Windows builds work.
 - **Mob heads/skulls and spawn eggs** for every mob.
 - **End overhaul:**
   - proper End cities, end ships with elytra and dragon head, shulkers, loot
-  - Nullscape-style outer End terrain (spires, arches, floating chunks, craters)
+  - outer End terrain (spires, arches, floating chunks, craters)
   - End atmosphere
 - **Skylands overhaul:**
-  - Aether-style islands, holystone, aerclouds, skyroot and golden oak, quicksoil
-  - Aether plants, ores, dungeons and mobs
+  - floating islands, holystone, aerclouds, skyroot and golden oak, quicksoil
+  - Skylands plants, ores, dungeons and mobs
   - the bright floaty feel
 - **Boss battle music** from the HTML version back for every boss fight.
 
-## 9. Story Mode-style animation
+## 9. Storybook-style animation
 - A shared animation layer: fluid, expressive movement for NPCs, mobs and players.
 
 ## 10. Magic overhaul (needs RPG levelling)
-- **Skyrim-style hands:** the same spell in both hands combines; two different spells mix; a weapon in one hand and a
+- **Spell hands:** the same spell in both hands combines; two different spells mix; a weapon in one hand and a
   spell in the other. Spells still have to be unlocked.
 - **Spell levelling:** spells level up with use.
 - **Gold coins:** villagers trade in gold coins instead of emeralds.
@@ -164,26 +164,25 @@ pack and folder names stay plain ([A-Za-z0-9_ .-]) so Windows builds work.
   - import/export PNG; save into a pack or straight into the game's textures
 
 ## Backlog (after all of this)
-- Over/Under-style original music for every part of the world.
-- **Dulcimer music set** (user asked, inspired by Yáhno's "melodic EDM on ancient strings"): original tracks in
+- Original music for every part of the world, an "over" set and an "under" set.
+- **Dulcimer music set** (user asked, "melodic EDM on ancient strings"): original tracks in
   src/audio/music.cpp.
   - Lead: a synthesised hammered dulcimer (struck strings, sympathetic ringing, a bright attack, a long shimmer).
   - Underneath: soft, pretty melodic EDM (warm pads, gentle side-chained pulses, light drums that build and fall away).
-  - Calm stretches: a hint of C418's sparse, wistful piano-and-space feel.
+  - Calm stretches: a sparse, wistful piano-and-space feel.
   - Placement: daytime and travel music in the Overworld and Skylands, with calmer variants for night.
-  - Original melodies only: no copying either artist's songs.
+  - Original melodies only.
 - An Options screen laid out like the launcher's.
 - Other holiday events from the PC clock (Christmas and so on), with villagers decorating their towns.
 
-## Reference: Vintage Story's API (design ideas only)
-https://github.com/anegostudios/vsapi/tree/master (the whole API; Client/ is the client side) (C#). Read the matching parts when each step comes up, for
-architecture ideas only. Check its licence before reusing anything beyond ideas; never port code wholesale.
+## Reference: architecture ideas
+Design ideas to keep in mind as each step comes up (ideas only, our own code):
 - **Weighted ambient modifiers** (fog, sky, clouds, sun blended by weight): the model for the alpha-fog dread layer
   (step 7). Herobrine, night, weather and caves each push a weighted modifier.
 - **Render stages** (opaque, order-independent transparency, shadows, post-process, ortho): our RenderLayer passes,
   water/glass sorting.
-- **Data-driven shapes and keyframe animations** (JSON shapes, animation manager): per-mob files (step 2a) and the Story
-  Mode animation layer (step 9).
+- **Data-driven shapes and keyframe animations** (JSON shapes, animation manager): per-mob files (step 2a) and the
+  storybook animation layer (step 9).
 - **Particle properties** (simple/advanced): the particle overhaul (step 4).
 - **Sound parameters** (position, range, pitch, filters, reverb): the sound overhaul (step 4).
 - **GUI composer:** the launcher studios (step 11).

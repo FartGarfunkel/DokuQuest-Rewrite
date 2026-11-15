@@ -7,8 +7,8 @@
 //                 even with water already standing in it.
 //   The End:      twelve Eyes of Ender in a stronghold's ring of frames open a 3x3 pool (a flat window).
 //   Rifts:        free-standing tears (riftarc.js) registered as virtual portals, with a ragged edge.
-//   The Drift:    BTA's: a glowstone frame with bedrock set on its bottom inside (sim/drift.cpp lights it); it leads
-//                 to the side realm REALM_DRIFT, eight times as far out (BTA's worldScale 8), and back.
+//   The Drift:    a glowstone frame with bedrock set on its bottom inside (sim/drift.cpp lights it); it leads
+//                 to the side realm REALM_DRIFT, eight times as far out (worldScale 8), and back.
 //
 // The stacked dimensions are bands of ONE World (world/dims.h), so a portal pair joins two places in
 // the same World; side realms (pocket, his realm) are other Worlds (Level::world(realm)). A portal is a
@@ -24,7 +24,7 @@
 
 namespace dq {
 
-constexpr int PORTAL_MAX = 21;          // largest opening, like Minecraft
+constexpr int PORTAL_MAX = 21;          // largest opening
 constexpr int NETHER_SCALE = 1;         // Ember Depths distances: 1:1 like the original 0.9.0.90 (rule "portalScale" overrides)
 // the obsidian platform a stronghold portal lets you down onto (theend.js END_PLAT [100, 48, 0] in a
 // 128-tall End; band-local y doubled for the 256-tall band). End generators should build it here.

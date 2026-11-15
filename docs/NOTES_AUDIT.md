@@ -3,14 +3,14 @@
 **Superseded by `docs/STATUS.md` (2026-11-01 night).**
 Every planned item and bug in docs/ checked against the code. Items marked **[DONE tonight]** were finished in the night's work (alpha.8).
 
-Sources read: docs/MASTER_PLAN [MP], BTA_GAP [BTA] (= WEEKEND Part B), QUEUE [Q] (= WEEKEND Part C), HANDOFF [HO],
+Sources read: docs/MASTER_PLAN [MP], BTA_GAP [WISH] (the feature wishlist, = WEEKEND Part B), QUEUE [Q] (= WEEKEND Part C), HANDOFF [HO],
 SATURDAY_PLAN [SAT], WEEKEND_PLAN Part A [WE], PORT_STATUS [PS], plus CHANGELOG for evidence of what shipped.
-Project docs (claude/*.md): no Projects tool in this session, so they were skipped. Story-secret items left out, and C418 items too.
+Project docs (claude/*.md): no Projects tool in this session, so they were skipped. Story-secret items left out, and the music-style items too.
 Evidence is grep over src/, data/, tools/ (file:line where it helps).
 
 ## MISSING (not in code)
-- [HO][BTA] Siphon: HANDOFF says "done", but there's no key, code or data anywhere (repo-wide grep -i siphon matches only docs)  **[DONE tonight]**
-- [HO][BTA] Basket / Wicker Basket: HANDOFF says "done", but nothing in src/data/tools (grep -i basket matches only docs)  **[DONE tonight]**
+- [HO][WISH] Siphon: HANDOFF says "done", but there's no key, code or data anywhere (repo-wide grep -i siphon matches only docs)  **[DONE tonight]**
+- [HO][WISH] Basket / Wicker Basket: HANDOFF says "done", but nothing in src/data/tools (grep -i basket matches only docs)  **[DONE tonight]**
 - [Q] Knight/Ranger talents in combat: pathMeleeFactor/pathArrowFactor/pathArrowPoisons/pathQuiverSaves/pathSpeedFactor/pathCheatDeath are defined (sim/villager_quests.cpp ~375-390) but nothing calls them  **[DONE tonight]**
 - [MP][SAT][WE] Automated walk/knock clipping test (walls, ladders, path blocks): no ladder/path/knock test in tools/*.cpp or playtests (the pushOut fix is in sim/physics.cpp:76)  **[walk over dirt paths + climb a ladder and step off on top DONE tonight (tools/playtests/clip.json, passes); knockback into walls still untested]**
 - [Q] Potions stack to 16: every potion_* has maxStack 1 in data/items.json  **[DONE tonight]**
@@ -21,28 +21,28 @@ Evidence is grep over src/, data/, tools/ (file:line where it helps).
 - [MP][SAT] Raised micro-voxel relief on EVERY base-pack block (some come out flat): no fix recorded; tile_relief.cpp unchanged in purpose
 - [MP][SAT] Crows landing on scarecrows (optional): no crow mob (hallowmobs.cpp only counts "crows")
 - [MP] Villagers use church banners: nothing in sim/villager*.cpp (seats are done)
-- [HO] Horizon's caves and shaders (agreed order step 4): no Horizon-derived code; docs/CREDITS.md doesn't exist
+- [HO] Horizon's caves and shaders (agreed order step 4): no Horizon-derived code; docs/THIRD_PARTY_NOTICES.md doesn't exist
 - [SAT] Dulcimer melodic-EDM music set: MI_DULCIMER instrument exists (audio/music.cpp:235) but no mood uses it
 - [MP][Q] End music set: moodNow() plays "cave2" in the End (music.cpp:620); no per-realm sets from the user's 3 examples
-- [BTA] Highland Spruce (Boreal) biome and the Seasonal Forest (cherry turning with the seasons): BtaVariant enum has only REDLANDS/GLACIER/MEADOW/MOSSMIRE/THORNSCRUB  **[Highland Spruce DONE tonight (Seasonal Forest still open)]**
-- [BTA] Bigger biomes + a tundra step: no biome-scale change, no "tundra"  **[tundra step DONE tonight (bigger biomes open)]**
-- [BTA] Mossy and igneous (ever-burning) emberstone: only cobbled_/polished_emberstone exist  **[mossy DONE tonight (igneous open)]**
-- [BTA] Permafrost family (cobbled, polished, bricks): only "permafrost"  **[DONE tonight]**
-- [BTA] Cacao tree (farmable cocoa on a tree): no cacao/cocoa tree in gen/trees.cpp
-- [BTA] Mossy oak log: only mossy_dark_oak_log, mossy_mangrove_log  **[DONE tonight]**
-- [BTA] Gold mesh (item filter), Emberglass conduit, redstone pumpkin, matcher (the last two optional): no keys
-- [BTA] Summoning wand (creative), firefly lantern, rotten cloth / zombies drop cloth (optional): no keys (only we_wand, firefly_jar)
-- [BTA] Dye-tuned portals (dyed blocks pick the link): nothing in sim/portals.cpp
-- [BTA] Coloured block light (red/orange Emberglass glow; darker unlit caves): only a global uBlockLightColor (world_renderer.cpp:25)
-- [BTA] Nether rules: pigmen spawn only on natural blocks (creature_spawn.cpp:323 has no ground check); wet sponge dries near lava/igneous (smelt only); glowstone always 4 dust (unverified)  **[pigmen rule DONE tonight]**
-- [BTA] Sulphur Springs steam vents (fog, light damage); Emberglass regrowth, crystals that ring: depths.cpp makes sulphur + magma pools only
-- [BTA] Darker labyrinth variant with spike traps, motion sensors, mesh and crystal light: gen/ never uses spike_trap/motion_sensor/iron_mesh
-- [BTA] Mob behaviour tweaks: creepers path under trapdoors, smarter squid, ridden pigs keep momentum on stairs, more wolves, more mobs in winter (no winter check in creature_spawn.cpp)
-- [BTA] Sound ideas: cues for the new biomes (client_fx.cpp placeMood folds them into frost/savanna/swamp); Nether biome ambience (steam hiss, bubbling, chimes, ash wind; nothing in audio/ambience.cpp); subtitles/captions; a real nightmare sting (it plays "hurt", blockfx.cpp:~170); new discs (only 4)
-- [BTA] UI/commands: treecapitator and dwarfMode rules (not in sim/rules.cpp); easy-bridge key; render distance to 32 (max 16, ui/options.cpp:136); dimension option for /tp (gamecommands.cpp:242); accessibility page; rail power up slopes; spawners pass items  **[tree-felling rule DONE tonight (dwarfMode, easy-bridge, 32 render distance open)]**
-- [BTA] Painting gold/iron frame trims (paintings themselves are done)
+- [WISH] Highland Spruce (Boreal) biome and the Seasonal Forest (cherry turning with the seasons): LandVariant enum has only REDLANDS/GLACIER/MEADOW/MOSSMIRE/THORNSCRUB  **[Highland Spruce DONE tonight (Seasonal Forest still open)]**
+- [WISH] Bigger biomes + a tundra step: no biome-scale change, no "tundra"  **[tundra step DONE tonight (bigger biomes open)]**
+- [WISH] Mossy and igneous (ever-burning) emberstone: only cobbled_/polished_emberstone exist  **[mossy DONE tonight (igneous open)]**
+- [WISH] Permafrost family (cobbled, polished, bricks): only "permafrost"  **[DONE tonight]**
+- [WISH] Cacao tree (farmable cocoa on a tree): no cacao/cocoa tree in gen/trees.cpp
+- [WISH] Mossy oak log: only mossy_dark_oak_log, mossy_mangrove_log  **[DONE tonight]**
+- [WISH] Gold mesh (item filter), Emberglass conduit, redstone pumpkin, matcher (the last two optional): no keys
+- [WISH] Summoning wand (creative), firefly lantern, rotten cloth / zombies drop cloth (optional): no keys (only we_wand, firefly_jar)
+- [WISH] Dye-tuned portals (dyed blocks pick the link): nothing in sim/portals.cpp
+- [WISH] Coloured block light (red/orange Emberglass glow; darker unlit caves): only a global uBlockLightColor (world_renderer.cpp:25)
+- [WISH] Nether rules: pigmen spawn only on natural blocks (creature_spawn.cpp:323 has no ground check); wet sponge dries near lava/igneous (smelt only); glowstone always 4 dust (unverified)  **[pigmen rule DONE tonight]**
+- [WISH] Sulphur Springs steam vents (fog, light damage); Emberglass regrowth, crystals that ring: depths.cpp makes sulphur + magma pools only
+- [WISH] Darker labyrinth variant with spike traps, motion sensors, mesh and crystal light: gen/ never uses spike_trap/motion_sensor/iron_mesh
+- [WISH] Mob behaviour tweaks: creepers path under trapdoors, smarter squid, ridden pigs keep momentum on stairs, more wolves, more mobs in winter (no winter check in creature_spawn.cpp)
+- [WISH] Sound ideas: cues for the new biomes (client_fx.cpp placeMood folds them into frost/savanna/swamp); Nether biome ambience (steam hiss, bubbling, chimes, ash wind; nothing in audio/ambience.cpp); subtitles/captions; a real nightmare sting (it plays "hurt", blockfx.cpp:~170); new discs (only 4)
+- [WISH] UI/commands: tree-felling and dwarfMode rules (not in sim/rules.cpp); easy-bridge key; render distance to 32 (max 16, ui/options.cpp:136); dimension option for /tp (gamecommands.cpp:242); accessibility page; rail power up slopes; spawners pass items  **[tree-felling rule DONE tonight (dwarfMode, easy-bridge, 32 render distance open)]**
+- [WISH] Painting gold/iron frame trims (paintings themselves are done)
 - [Q] Chimneys smoke like the original: town buildings get chimney stacks (structures_townbld.cpp:97) but there's no chimney emitter in render/env_layers.cpp
-- [Q] Iris/OptiFine shader-pack loader (only DokuQuest-format overrides, render/gl.cpp:14); built-in shader levels
+- [Q] Full shader-pack loader (the common pack format) (only DokuQuest-format overrides, render/gl.cpp:14); built-in shader levels
 - [Q] Roadmap items: start in the wild, roads and bridges between villages, travellers, saddle bags, bigger ship, poses, Shadowbloom ports (none found; village streets only)
 - [MP] Procedural mix-and-match equipment for ARMOUR, plus ore mixing with dynamic stats (the Tool Forge covers tool heads + hafts only, tools/port/forging.py)
 
@@ -53,12 +53,12 @@ Evidence is grep over src/, data/, tools/ (file:line where it helps).
 - [MP][SAT][WE] Particle overhaul: held torch, sprint/landing/crit/creature dust and breath are done; no event-by-event pass vs the original (placed lights, water/lava, spells, portals, weather)
 - [MP][SAT][WE] Sound overhaul (event-by-event match, falloff, footsteps per material): no record of the audit
 - [SAT][WE] Terrain memory diet: plant/vine savings shipped (alpha.8); no compact vertex format and no distance memory budget found
-- [MP][Q] Story Mode animation layer: idles, foot planting, attack weight and look-round are done; still missing follow-through on capes/hair/tails, expressive talking faces, blended transitions, smooth turning and eye look-at as one shared layer
+- [MP][Q] Storybook animation layer: idles, foot planting, attack weight and look-round are done; still missing follow-through on capes/hair/tails, expressive talking faces, blended transitions, smooth turning and eye look-at as one shared layer
 - [Q][SAT] Biome fuselings: 3 of the ~12 asked for (frost/dune/bog, data_patches.py:269)  **[6 now (ember, moss, sky added tonight)]**
 - [Q][MP] Biome golems: 3 tinted iron_golem copies (data_patches.py:279-285); not articulated (elbow/knee joints, hands), not built from local blocks, no glowing-eyes check
-- [SAT][WE] Skylands/Aether overhaul: island shapes, clouds, sunwood, blooms, glimmersand are done; no holystone/quicksoil/skyroot analogues beyond skystone, no bronze/silver/gold sky dungeons, no new Aether mobs
-- [BTA] Painted planks done; painted doors, trapdoors, signs, buttons, pressure plates and chests MISSING (paintbrush only does planks/wool/glass/terracotta, usables.cpp:200)
-- [BTA] Seasons rule defaults ON ("on unless turned off", sim/weather.h:99); the user said optional/off by default; no toggle in World settings (worlds.cpp), only /gamerule  **[DONE tonight: off by default, toggle in World settings]**
+- [SAT][WE] Skylands overhaul: island shapes, clouds, sunwood, blooms, glimmersand are done; no holystone/quicksoil/skyroot analogues beyond skystone, no bronze/silver/gold sky dungeons, no new Skylands mobs
+- [WISH] Painted planks done; painted doors, trapdoors, signs, buttons, pressure plates and chests MISSING (paintbrush only does planks/wool/glass/terracotta, usables.cpp:200)
+- [WISH] Seasons rule defaults ON ("on unless turned off", sim/weather.h:99); the user said optional/off by default; no toggle in World settings (worlds.cpp), only /gamerule  **[DONE tonight: off by default, toggle in World settings]**
 - [Q] Magic "one button per hand": the left-hand spell joins every cast (magic_hands.cpp:1-7); there's no separate per-hand cast button on mouse/pad
 - [MP][SAT] Art pass: restyle.py covers block and item pictures; mob skins and "blend the clashing base textures" not done
 - [MP][SAT] Studios (counted done) sub-gaps: Texture Studio tabs are Blocks/Items/Yours only (no entity/mob-skin browsing, no save into a pack); Sound Studio has no synth sandbox
@@ -86,8 +86,8 @@ Evidence is grep over src/, data/, tools/ (file:line where it helps).
 - [Q] Items: ale mug model (item_parts.cpp:366), rod float/line (content_layers.cpp:188-232), 1st-person bow draw, splash potions
 - [Q] Characters/systems: 4-player split screen, front crawl, babble (also in the world, alpha.4.4), sneak-use on stations, gear dupe (alpha.3.2), portal remesh (alpha.3), deep-underground vanish (alpha.5/5.2)
 - [Q] Wither boss, mob heads, spawn eggs, Wither Storm; economy coins (see above)
-- [BTA] Done but not ticked: pick up containers with contents (build.cpp:934 "Carry On"), game rules panel (rules.cpp + worlds.cpp), rainbows (weather.h:35), rearrangeable HUD (ui/hud_edit.cpp), emote row (hud.cpp), reinforced piston (redstone_parts.cpp:92), brazier, spike trap, molten pumice, rocket launcher, handcannon, statue, painting, ambient butterflies/fireflies (render/creature_fauna.cpp), skeletons visibly load bows, eating sound (build.cpp:531), variable portal sizes, mobs don't fight back in creative (pawnCreative), creature blasts respect mobGriefing
-- [BTA] Biomes Redlands/Glacier/Meadow/Mossmire/Thornscrub, the Nether biomes, scorched dirt, perma-ice, ember coal, gum/palm/thorn, giant jungle trees, spinifex/algae/bluebells/marigold, cane bundles: all in code, the list isn't ticked
+- [WISH] Done but not ticked: pick up containers with contents (build.cpp:934), game rules panel (rules.cpp + worlds.cpp), rainbows (weather.h:35), rearrangeable HUD (ui/hud_edit.cpp), emote row (hud.cpp), reinforced piston (redstone_parts.cpp:92), brazier, spike trap, molten pumice, rocket launcher, handcannon, statue, painting, ambient butterflies/fireflies (render/creature_fauna.cpp), skeletons visibly load bows, eating sound (build.cpp:531), variable portal sizes, mobs don't fight back in creative (pawnCreative), creature blasts respect mobGriefing
+- [WISH] Biomes Redlands/Glacier/Meadow/Mossmire/Thornscrub, the Nether biomes, scorched dirt, perma-ice, ember coal, gum/palm/thorn, giant jungle trees, spinifex/algae/bluebells/marigold, cane bundles: all in code, the list isn't ticked
 - [HO] "Left: rare skull drops, capes in the wind": both done
 - [PS] Item frames (alpha.3) and in-world babble are done; the three duplicate "Everything else ... wave 3" rows are stale
 
@@ -96,7 +96,7 @@ Evidence is grep over src/, data/, tools/ (file:line where it helps).
 - [MP][SAT][HO] Structure refactor: per-mob data/mobs/<mob>.json, weighted skin-variant folders + name endings, splitting mob code by family
 - [MP][SAT][WE] Release archive for data/; game-only launcher updates into versions/ with rollback
 - [MP][HO] Engine GUI front-end with Strata AI; performance instancing
-- [MP][HO] Zig/Rust modules over a C ABI: decided to stay on C++ (Cubyz ideas only)
+- [MP][HO] Zig/Rust modules over a C ABI: decided to stay on C++ (ideas only)
 - [MP][SAT][HO] Holidays beyond Halloween: December carols, New Year fireworks, a brighter tree, other holidays (December partly started, not in the notes)  **[carols, New Year fireworks, brighter tree DONE tonight]**
-- [BTA] Seasons extras ("maybe"): calendar item, sundial, more mobs in winter, longer nights, season stingers
+- [WISH] Seasons extras ("maybe"): calendar item, sundial, more mobs in winter, longer nights, season stingers
 - Waiting on the user: wolf-howl/duck/horse sound mapping (HO, asked, no answer); campfire/jack-o'-lantern texture repro; Phase 0 zip merge is a per-session process

@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
 
-**Goal:** Full TFC metallurgy with our metals: zinc and bismuth; ore pieces and surface samples; every metal carrying its
+**Goal:** Full metallurgy with our metals: zinc and bismuth; ore pieces and surface samples; every metal carrying its
 makeup (named alloys or any mix) with stats, name and colour blended by proportion through our part tools; vessels melting
-ore on a fire and pouring into molds; the forge and crucible; the bloomery and steel; the TFC-lite anvil; cooling,
+ore on a fire and pouring into molds; the forge and crucible; the bloomery and steel; the simplified anvil; cooling,
 quenching, tongs; the prospector's pick; sheets and metal armour.
 
 **Architecture:**
@@ -25,7 +25,7 @@ quenching, tongs; the prospector's pick; sheets and metal armour.
 
 ## Global Constraints
 - Units: ore piece 25, small sample 10, powder 30 (Part 5), ingot 100, double ingot 200, sheet 200, double sheet 400.
-- Named alloy ranges (widened TFC): bronze Cu 85–95/Sn 5–15; brass Cu 85–95/Zn 5–15; bismuth bronze Zn 20–30, Cu 50–65,
+- Named alloy ranges (widened): bronze Cu 85–95/Sn 5–15; brass Cu 85–95/Zn 5–15; bismuth bronze Zn 20–30, Cu 50–65,
   Bi 10–20; black bronze Au 10–25, Cu 50–70, Ag 10–25; rose gold Au 70–85, Cu 15–30; sterling silver Ag 60–80, Cu 20–40.
 - Anvil: target 70–119 fixed per recipe per world; moves −3 −6 −9 −15 +2 +7 +13 +16; ±3 tolerance; can't pass 150;
   working heat 60–100% of melt; welding 80–100% + flux; tiers copper 1, bronze-family 2, wrought iron 3, steel 4, mithril
@@ -93,7 +93,7 @@ need the forge at full heat with bellows); pours like a vessel.
 
 ### Task 6: Anvil (rules + screen)
 Stone anvil (hammer used on raw stone: the block becomes `stone_anvil`, tier 0); metal anvils (items/blocks
-`<metal>_anvil`, smithed from 4 double ingots); recipes (`data/anvil.json`): ingot → each head kind (plans as TFC: pickaxe
+`<metal>_anvil`, smithed from 4 double ingots); recipes (`data/anvil.json`): ingot → each head kind (plans: pickaxe
 PUNCH last, BEND not last, DRAW not last; axe PUNCH last, HIT 2nd, UPSET 3rd; shovel PUNCH last, HIT not last; hoe PUNCH
 last, HIT not last, BEND not last; sword HIT last, BEND 2nd, BEND 3rd; knife HIT last, DRAW 2nd, DRAW 3rd; hammer PUNCH
 last, SHRINK not last; saw HIT last, HIT 2nd; scythe HIT last, DRAW 2nd, BEND 3rd; javelin HIT last, HIT 2nd, DRAW 3rd;

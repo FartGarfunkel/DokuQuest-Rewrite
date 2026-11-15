@@ -1,4 +1,4 @@
-/* mod/dq_plugin.h — the native plugin ABI (Forge-style power): a shared library in userDir()/mods/<id>/
+/* mod/dq_plugin.h — the native plugin ABI (full engine access): a shared library in userDir()/mods/<id>/
  * (any *.so / *.dll / *.dylib there) that exports dq_plugin_init. Plain C, so a plugin built with any compiler
  * keeps working: the struct only ever grows at the end, and `abi`/`size` say what this game offers.
  *

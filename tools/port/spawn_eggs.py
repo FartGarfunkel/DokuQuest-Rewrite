@@ -4,13 +4,13 @@
 - one item <mob>_spawn_egg per creature in mobs.json (creative catalogue, "Spawn Eggs" tab; sim/usables.cpp spawns it)
 - one tile spawn_egg_<mob> per egg, painted from the base pack's grey spawn_egg + spawn_egg_overlay pictures tinted with
   two colours taken from the creature's own pictures, so every egg has a picture even with no pack
-- packmap entries so a pack's own <name>_spawn_egg picture (Minecraft 1.20.5+ layout) replaces the painted one
+- packmap entries so a pack's own <name>_spawn_egg picture (the newer pack layout) replaces the painted one
 Never makes an egg for creatures that only the story brings (SKIP)."""
 import json, sys, pathlib, hashlib
 from PIL import Image
 
 SKIP = {'herobrine', 'end_crystal', 'wither_storm'}   # the story's figure, and its climax (summoned, never hatched)
-# our creature -> the Minecraft name its pack egg picture uses, where ours stands in for theirs
+# our creature -> the name its pack egg picture uses, where ours stands in for theirs
 MC = {'ghoul': 'zombie', 'fuseling': 'creeper', 'stone_mite': 'silverfish', 'zombie_pigman': 'zombified_piglin',
       'magma_slime': 'magma_cube', 'snow_fox': 'fox_snow'}
 # fallback colours (primary, secondary) for creatures with no pictures of their own

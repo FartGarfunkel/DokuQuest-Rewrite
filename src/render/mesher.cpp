@@ -664,7 +664,7 @@ void emitLiquid(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, in
 // any shift), with the light given
 static void emitPackModel(MeshCtx& c, std::vector<ChunkVertex>& dst, const PackModel& M, vec3 at, int quarters, float sk, float bl, u32 lit, u8 mat) {
   const float P = 1 / 16.f;
-  auto turn = [&](vec3 p) {   // (Minecraft's y rotation: clockwise seen from above, about 8,8)
+  auto turn = [&](vec3 p) {   // (the model's y rotation: clockwise seen from above, about 8,8)
     for (int q = 0; q < (quarters & 3); q++) { const float dx = p.x - 8, dz = p.z - 8; p.x = 8 - dz; p.z = 8 + dx; }
     return p;
   };

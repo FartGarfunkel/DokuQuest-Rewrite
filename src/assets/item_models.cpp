@@ -453,7 +453,7 @@ bool shapedBlockBoxes(const ItemDef& def, std::vector<PxBox>& out) {
 
 namespace { std::shared_ptr<const TileSet>& tilesSnap() { static std::shared_ptr<const TileSet> t; return t; } std::mutex g_snapMx; }
 
-// Eating Animation's bitten frames (its "eat" predicate picks <food>_eating_0..2 by use progress), carved from our own
+// the bitten frames (an "eat" predicate picks <food>_eating_0..2 by use progress), carved from our own
 // model instead of drawn: bite n takes n round bites out of the top corner, the scalloped edge of each showing the paler
 // inside of the food
 void biteVoxelGrid(VoxelGrid& g, int n) {
@@ -683,7 +683,7 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
     auto it = bi.find(key);
     std::string k = it != bi.end() ? (*it)["k"].get<std::string>() : "sprite";
     VoxelGrid g; VoxelFaceColor fc;
-    if (it == bi.end()) {   // a block added since itemshapes.json was made (the Tool Forge, the BTA blocks...): a plain cube is drawn as one
+    if (it == bi.end()) {   // a block added since itemshapes.json was made (the Tool Forge, the classic-era blocks...): a plain cube is drawn as one
       BlockId bid = reg().blockId(def->block);
       const BlockDef* bd = bid ? &reg().block(bid) : nullptr;
       if (bd && (bd->render == Render::Cube || (bd->render == Render::Cutout && bd->solid)) && !bd->shapeKind && !bd->has("shape")) {

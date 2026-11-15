@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Analyse every sound of a Minecraft-style resource pack into compact synthesis PROFILES, so the game can
+"""Analyse every sound of a resource pack (the standard pack layout) into compact synthesis PROFILES, so the game can
 resynthesise them on the fly (src/audio/resynth.cpp) without shipping a single recording.
 
 A profile (all levels in dB, quantised to 0.5 dB, 0 = silence):
@@ -287,7 +287,7 @@ for m in ['deepslate', 'cobweb', 'vine', 'rooted_dirt', 'iron', 'cherry_wood', '
     for k, ev, n in [('step', 'step', 6), ('dig', 'hit', 6), ('break', 'break', 4), ('place', 'place', 4)]:
         EXTRA['%s.%s' % (m, k)] = ('block.%s.%s' % (m, ev), ['block/%s/%s%d' % (m, ev, i) for i in range(1, n + 1)])
 
-# Our sounds a pack's own event table must not redefine: GeruDoku points entity.wolf.ambient at grunts and growls,
+# Our sounds a pack's own event table must not redefine: the user's resource pack points entity.wolf.ambient at grunts and growls,
 # so every wild wolf growled the whole time (the game plays mob.wolf for an idle wolf, mob.wolf_angry when it attacks).
 # The same check over every event found the dolphin below.
 # These take the files listed here (the first that exist), the way the original's render/packs.js chose them.
@@ -299,7 +299,7 @@ KEEP_FILES = {
 
 def resolve(table, root, event, defaults):
     """The files (with the event's own pitch and volume) a pack plays for an event, like render/packs.js does
-    (sounds.json first, falling back to the vanilla file names), plus Minecraft's per-entry pitch/volume."""
+    (sounds.json first, falling back to the base file names), plus the pack's per-entry pitch/volume."""
     def lst(ev, d=0):
         t = table.get(ev)
         if not t or not isinstance(t.get('sounds'), list) or d > 2: return []
@@ -334,7 +334,7 @@ def cmd_analyze(root, out_json, out_bin):
         if got: events[ours] = got
     z = zlib.compress(bytes(blob), 9)
     pathlib.Path(out_bin).write_bytes(z)
-    meta = {'about': 'Synthesis profiles of the GeruDoku resource pack sounds (tools/port/sound_analyze.py). No audio: levels, bands and partials only.',
+    meta = {'about': 'Synthesis profiles of the resource pack sounds (tools/port/sound_analyze.py). No audio: levels, bands and partials only.',
             'rate': SR, 'bands': NB, 'nfft': NFFT, 'fine': FINE, 'db0': DB0, 'raw': len(blob), 'edges': [round(e, 2) for e in EDGES],
             'sounds': index, 'events': events}
     pathlib.Path(out_json).write_text(json.dumps(meta, separators=(',', ':')))

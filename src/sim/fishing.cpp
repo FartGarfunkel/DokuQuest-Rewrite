@@ -115,7 +115,7 @@ void Bobber::tick(Level& lv, double dtd) {
       float h = dt / 3;
       vel.y -= 16 * h; float k = std::max(0.f, 1 - h * 0.4f); vel.x *= k; vel.z *= k;
       vec3 n = pos + vel * h;
-      // a creature in the way: the hook catches in it (BTA leads animals on a fishing line)
+      // a creature in the way: the hook catches in it (animals are led on a fishing line)
       if (age > 0.05f) for (auto& e : lv.entities()) {
         if (e->removed || e->realm != realm || e->hp <= 0 || !isMob(*e) || e->data.contains("hooked")) continue;
         if (std::fabs(e->pos.x - n.x) < e->w + 0.25f && std::fabs(e->pos.z - n.z) < e->w + 0.25f && n.y > e->pos.y - 0.2f && n.y < e->pos.y + e->h + 0.3f) {

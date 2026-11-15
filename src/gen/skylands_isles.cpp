@@ -1,12 +1,12 @@
-// gen/skylands_isles.cpp — terrain version 7: the Skylands as The Aether makes its sky (the mod's worldgen data and
-// features, rebuilt here from their numbers; no art or code of the mod's is used):
-//   - islands from the Aether's 3D density (gen/isles_noise.h), Aether y 18-105 lifted ISLES_DY: lumpy terraced
+// gen/skylands_isles.cpp — terrain version 7: the Skylands' isles (their worldgen data and
+// features, rebuilt here from their numbers):
+//   - islands from the isles' 3D density (gen/isles_noise.h), its y 18-105 lifted ISLES_DY: lumpy terraced
 //     land 100-500 blocks across with bays, holes and arches, stacked now and then, no caves
-//   - every floor: Aether grass over about three blocks of Aether dirt, holystone below; ceilings bare holystone
+//   - every floor: skyland grass over about three blocks of skyland dirt, holystone below; ceilings bare holystone
 //   - skyroot trees (the oak's shape) and 1 % golden oaks (ten logs, branches, a ragged ball of gold leaves), as many as
 //     the land asks (forest 3, woodland 2.5, grove 1, meadow 0.5 a chunk); a crystal tree on its islet 1 chunk in 50
-//   - no aerclouds (the mod's cold, blue and golden cloud chains and ribbons are left out: only the islands are land)
-//   - quicksoil aprons under thin low rims, ponds, ores (aether dirt, icestone, ambrosium, zanite, gravitite) and the
+//   - no aerclouds (the cold, blue and golden cloud chains and ribbons are left out: only the islands are land)
+//   - quicksoil aprons under thin low rims, ponds, ores (skyland dirt, icestone, ambrosium, zanite, gravitite) and the
 //     ground cover: dense grass, white and purple flowers, berry bushes
 #include "gen/dimgens.h"
 #include "gen/isles_noise.h"
@@ -42,7 +42,7 @@ const AB& ab() {
 inline double lerpd(double t, double a, double b) { return a + t * (b - a); }
 }
 
-// the density at a block from the corner columns round it (the Aether interpolates between cell corners)
+// the density at a block from the corner columns round it (interpolated between cell corners)
 static double islesAt(const double* c00, const double* c10, const double* c01, const double* c11, double fx, double fz, int y) {
   if (y <= 8 || y >= 128) return -1;
   const int cy = y >> 2; const double fy = (y & 3) / 4.0;
@@ -83,7 +83,7 @@ void SkylandsGen::generateIsles(Chunk& ch) {
     for (int y = 9; y < 128; y++)
       if (islesAt(C[ix][iz], C[ix + 1][iz], C[ix][iz + 1], C[ix + 1][iz + 1], fx, fz, y) > 0) b.blocks[colIdx(x, y + DY, z)] = K.holy;
   }
-  // ---- every floor: Aether grass, then about three blocks of Aether dirt (vanilla's surface depth) ----
+  // ---- every floor: skyland grass, then about three blocks of skyland dirt (the usual surface depth) ----
   for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
     const int wx = bx + x, wz = bz + z;
     const int depth = (int)(nHill.noise2(wx / 64.0 + 17.0, wz / 64.0 - 3.0) * 2.75 + 3 + hashFloat(wx, wz, seed_, 0xD1) * 0.25);
@@ -98,7 +98,7 @@ void SkylandsGen::generateIsles(Chunk& ch) {
 
   Mulberry32 rnd(hash32(seed_, ch.cx, ch.cz, 0xAE01));
   auto ri = [&](int n) { return n <= 0 ? 0 : (int)(rnd() * n); };
-  // ---- ores (vanilla OreFeature blobs in holystone) ----
+  // ---- ores (ore blobs in holystone) ----
   auto vein = [&](BlockId id, int size, int count, int y0, int y1) {
     if (!id) return;
     for (int c = 0; c < count; c++) {

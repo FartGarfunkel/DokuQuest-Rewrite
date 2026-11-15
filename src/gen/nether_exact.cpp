@@ -1,6 +1,6 @@
-// gen/nether_exact.cpp — terrain version 7's Nether: Better than Adventure 8.0.1's own generator, ported exactly
-// (gen/bta, checked block for block against BTA's classes: terrain, surface, caves, floes, shelves, its biomes and all
-// 47 decorations), its blocks mapped onto ours. BTA's y is our band y (both 256 tall, its sea at 96, bedrock below 64).
+// gen/nether_exact.cpp — terrain version 7's Nether: the classic Nether generator, ported exactly
+// (gen/nethergen, checked block for block against the reference: terrain, surface, caves, floes, shelves, its biomes and all
+// 47 decorations), its blocks mapped onto ours. Its y is our band y (both 256 tall, its sea at 96, bedrock below 64).
 #include "gen/dimgens.h"
 #include "gen/nethergen/nethergen.h"
 #include "gen/nether_lands.h"
@@ -13,7 +13,7 @@
 namespace dq {
 
 namespace {
-// BTA's blocks -> ours (the nearest where this game has no exact one)
+// the classic Nether's blocks -> ours (the nearest where this game has no exact one)
 struct NBMap { BlockId id[nethergen::NB_OTHER + 1]; };
 const NBMap& nbMap() {
   static const NBMap m = [] {
@@ -43,7 +43,7 @@ const NBMap& nbMap() {
   }();
   return m;
 }
-// the meta that carries over: fluid levels (BTA's 0 source, 1..7 flowing, 8 falling: ours exactly) and ash layer heights
+// the meta that carries over: fluid levels (its 0 source, 1..7 flowing, 8 falling: ours exactly) and ash layer heights
 inline u8 metaOf(u8 kind, u8 meta) {
   switch (kind) {
     case nethergen::NB_LAVA_STILL: case nethergen::NB_LAVA_FLOWING: case nethergen::NB_WATER_STILL: case nethergen::NB_WATER_FLOWING: case nethergen::NB_ACID_STILL: case nethergen::NB_ACID_FLOWING: return meta & 15;
@@ -58,15 +58,15 @@ inline u8 ourLand(int nbio) {
     case nethergen::NBIO_SULFUR_POOLS: return NB_SULFUR; case nethergen::NBIO_VOLCANIC_ISLANDS: return NB_VOLCANIC; default: return NB_OLD_DESERT;
   }
 }
-// Terrain 8: BTA's Nether in the open land of terrain 5. BTA's lands (its biome map, every 4 blocks round the chunk)
+// Terrain 8: the classic Nether in the open land of terrain 5. Its lands (its biome map, every 4 blocks round the chunk)
 // pick the shapes of version 5's five lands (crags, volcanic islands in the lava sea, acid pools, the crystal plains,
 // the Old World's dunes), blended across their borders; the ground and roof are lifted 46 blocks so version 5's lava
-// sea (y 50) is BTA's (y 96). BTA's generator does the rest on that shape: its surfaces, caves, floes, shelves and all
+// sea (y 50) is the classic one's (y 96). The classic generator does the rest on that shape: its surfaces, caves, floes, shelves and all
 // its decorations. A walk across it, not a climb through caves.
 struct OpenShape {
   NetherShape shape; std::shared_ptr<nethergen::NetherGen> biomes;
   OpenShape(i32 seed, std::shared_ptr<nethergen::NetherGen> b) : shape(seed, true), biomes(std::move(b)) {}
-  static int kindOf(int nbio) {   // each of BTA's lands its own shape (NetherShape open8)
+  static int kindOf(int nbio) {   // each of the classic lands its own shape (NetherShape open8)
     switch (nbio) {
       case nethergen::NBIO_CRAG: return NB_CRAG; case nethergen::NBIO_VOLCANIC_ISLANDS: return NB_VOLCANIC; case nethergen::NBIO_SULFUR_POOLS: return NB_SULFUR;
       case nethergen::NBIO_CRYSTAL_FOREST: return NB_CRYSTAL; case nethergen::NBIO_CRYSTAL_PLAINS: return NB_CRYSTAL_PLAINS; case nethergen::NBIO_SHELF: return NB_SHELF;
@@ -134,7 +134,7 @@ void DepthsGen::generateExact(Chunk& ch) {
     b.blocks[i] = M.id[k < nethergen::NB_OTHER ? k : nethergen::NB_OTHER];
     b.meta[i] = metaOf(k, out->meta[i]);
   }
-  if (bn_) {   // terrain 13: BetterNether's lands (no trees where a structure stands)
+  if (bn_) {   // terrain 13: the painted lands (no trees where a structure stands)
     std::vector<const StructurePlan*> near; structures.near(ch.cx * 16 + 8, ch.cz * 16 + 8, 24, near);
     bnPaint(seed_, *exact_, b, ch.cx, ch.cz, near.empty(), v19_);
   }
@@ -151,9 +151,9 @@ bool DepthsGen::solidExact(int x, int y, int z) const {
          k != nethergen::NB_ACID_STILL && k != nethergen::NB_ACID_FLOWING && k != nethergen::NB_FIRE && k != nethergen::NB_FIRE_SULFURIC;
 }
 
-// the floor a structure stands on: the highest open floor between BTA's sea (96) and its roof, else the sea floor
+// the floor a structure stands on: the highest open floor between the classic sea (96) and its roof, else the sea floor
 namespace {
-// the finished (decorated) chunk, one kept per thread: a landing is checked against what is really there (BTA's
+// the finished (decorated) chunk, one kept per thread: a landing is checked against what is really there (the
 // decorations melt, burn and flow after the terrain is made)
 const nethergen::NetherGen::Out& decoratedOf(nethergen::NetherGen& g, int cx, int cz) {
   thread_local TerrainLRU slot; 
@@ -196,7 +196,7 @@ TerrainColumn DepthsGen::terrainExact(int x, int z) const {
   auto solid = [&](u8 k) { return k != nethergen::NB_AIR && !fluid(k) && k != nethergen::NB_FIRE && k != nethergen::NB_FIRE_SULFURIC; };
   int y = 64;
   if (exactOpen_) {
-    // the open land: the ground under the open air, found from the roof down (from the bedrock up, BTA's caves under
+    // the open land: the ground under the open air, found from the roof down (from the bedrock up, the classic caves under
     // the land came first, and structures were built in them, out of sight)
     y = 248;
     while (y > 66 && solid(kind(y))) y--;
@@ -207,8 +207,8 @@ TerrainColumn DepthsGen::terrainExact(int x, int z) const {
   return t;
 }
 
-// the BTA land and temperature where you stand (the fog, the grade and the spawns read these)
-// BTA's BlockTags.NETHER_MOBS_SPAWN: the ground zombie pigmen stand on and ghasts float over, as the blocks they are
+// the classic land and temperature where you stand (the fog, the grade and the spawns read these)
+// the Nether mob-spawn tag: the ground zombie pigmen stand on and ghasts float over, as the blocks they are
 // here (netherrack and its cobble, soul sand and schist, the nether coal ores, gloomstone, ember, rubyglass, brimsand,
 // brimstone and its bricks, sulfur, boneshale, carved slate)
 bool netherMobsSpawnOn(BlockId id) {

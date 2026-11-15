@@ -50,7 +50,7 @@ void holidayTiles(TileSet& ts);   // December: chests wrapped as presents (asset
 // a picture of any square size brought to the tile size (smaller doubled up, bigger averaged down)
 std::vector<u8> fitTile(const std::vector<u8>& rgba, int w, int h, int T);
 
-// Biome colour from the active pack's colormap (textures/colormap/grass.png or foliage.png), Minecraft's
+// Biome colour from the active pack's colormap (textures/colormap/grass.png or foliage.png), the pack format's
 // lookup: x = (1 - temp), y = (1 - humid * temp). kind "grass"/"foliage"; ok = false when no pack colormap.
 // Same packing as climateTint (r | g << 8 | b << 16). Safe to call from mesher threads.
 u32 packTint(const char* kind, u8 temp, u8 humid, bool& ok);

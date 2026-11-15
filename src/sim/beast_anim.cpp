@@ -1,13 +1,13 @@
 // sim/beast_anim.cpp — the "beast" rig: imported creatures as our own (the creature import, the data local
-// and git-ignored) move the way the mod moves them. Each model carries its setupAnim() translated into a small program
-// ("beast": {"prog", "slots", "ents", "clipRole"}), run here every pose on the boxes' Java pose (turns in radians, pivots in
-// model pixels, y down), with Citadel's helpers as Citadel writes them (walk / swing / flap: cos(f * speed + offset) *
+// and git-ignored) move the way their source moves them. Each model carries its own animation code translated into a small program
+// ("beast": {"prog", "slots", "ents", "clipRole"}), run here every pose on the boxes' source pose (turns in radians, pivots in
+// model pixels, y down), with the source's helpers as it writes them (walk / swing / flap: cos(f * speed + offset) *
 // degree * f1 + weight * f1; bob; chainSwing / Wave / Flap; progressRotation(Prev) / progressPosition(Prev); faceTarget).
 // The entity's own values the model asks for (sitProgress, isFlying()...) are named in "ents" with what they mean here: a
 // progress ramping 0..max a tick at a time while our creature is sat / asleep / flying / swimming / running / fighting /
 // grazing / rearing, a flag, the tick count, the clip's tick. Its ModelAnimator keyframes come as clips (data "clips"),
 // played on a blow (role "attack") or while grazing ("eat"). What's left at the end, less the box's rest, is the turn and
-// the move of each of our parts (Java -> ours: turns (-x, y, -z), moves (x, -y, z) / 16: the model mirrored in y only).
+// the move of each of our parts (source -> ours: turns (-x, y, -z), moves (x, -y, z) / 16: the model mirrored in y only).
 #include "sim/beast_anim.h"
 #include "sim/creature_rig.h"
 #include "core/registry.h"
@@ -31,7 +31,7 @@ struct Clip { float len = 0; std::string role; std::vector<std::pair<int, std::v
 struct Prog {
   std::vector<Node> nodes; std::vector<Stmt> stmts; int slots = 0;
   std::vector<Ent> ents; std::unordered_map<std::string, int> entIx;
-  std::vector<std::array<float, 6>> rest;     // each box's Java pose (rx, ry, rz, px, py, pz)
+  std::vector<std::array<float, 6>> rest;     // each box's source pose (rx, ry, rz, px, py, pz)
   std::unordered_map<std::string, Clip> clips; std::unordered_map<std::string, int> animIx;   // (clip names asked for by "anim" tests)
   std::vector<std::string> animNames;
 };
@@ -249,7 +249,7 @@ struct Run {
           float& t = cur[s.bone][s.attr]; const float v = E(0);
           if (s.mode == '=') t = v; else if (s.mode == '+') t += v; else if (s.mode == '-') t -= v; else if (s.mode == '*') t *= v; else if (s.mode == '/' && v != 0) t /= v;
         } break;
-        case S_WALK: case S_SWING: case S_FLAP: if (ok(s.bone)) {   // Citadel calculateRotation (movementScale 1)
+        case S_WALK: case S_SWING: case S_FLAP: if (ok(s.bone)) {   // the source's rotation helper (movementScale 1)
           const float speed = E(0), degree = E(1), offset = E(3), weight = E(4), f = E(5), f1 = E(6);
           float r = std::cos(f * speed + offset) * degree * f1 + weight * f1;
           if (E(2) != 0) r = -r;
@@ -326,10 +326,10 @@ void beastAnim(Creature& m, const RigModel& M, RigAnimOut& o) {
   Run R{*P, m, L};
   R.vars.assign(std::max(0, P->slots), 0.f);
   R.cur = P->rest;
-  R.in[0] = m.walk * 1.25f;                          // limbSwing (Minecraft: about 4 a second a block a second; ours 3.2)
+  R.in[0] = m.walk * 1.25f;                          // limbSwing (about 4 a second a block a second in the source; ours 3.2)
   R.in[1] = std::min(1.f, m.walkAmt);                // limbSwingAmount
   R.in[2] = m.age * 20.f;                            // ageInTicks
-  R.in[3] = -glm::degrees(m.headYawRel);             // netHeadYaw (degrees; Java's y turn is ours the other way)
+  R.in[3] = -glm::degrees(m.headYawRel);             // netHeadYaw (degrees; the source's y turn is ours the other way)
   R.in[4] = glm::degrees(m.headPitch);               // headPitch
   R.in[5] = 0;
   R.exec(P->stmts);
@@ -345,14 +345,14 @@ void beastAnim(Creature& m, const RigModel& M, RigAnimOut& o) {
     }
   }
   const size_t n = std::min(R.cur.size(), M.parts.size());
-  if (const char* dbg = std::getenv("DQ_AM_DEBUG"); dbg && M.key == dbg && (int)(m.age * 2) != (int)((m.age - dt) * 2)) {   // (twice a second: each part's Java pose)
+  if (const char* dbg = std::getenv("DQ_AM_DEBUG"); dbg && M.key == dbg && (int)(m.age * 2) != (int)((m.age - dt) * 2)) {   // (twice a second: each part's source pose)
     std::string line = "am " + M.key + " clip '" + L.clip + "' f1 " + std::to_string(R.in[1]) + ":";
     for (size_t i = 0; i < n; i++) { char b[160]; std::snprintf(b, sizeof b, " %s[%.2f %.2f %.2f | %.1f %.1f %.1f]", M.parts[i].name.c_str(), R.cur[i][0] - P->rest[i][0], R.cur[i][1] - P->rest[i][1], R.cur[i][2] - P->rest[i][2], R.cur[i][3] - P->rest[i][3], R.cur[i][4] - P->rest[i][4], R.cur[i][5] - P->rest[i][5]); line += b; }
     DQ_LOG("%s", line.c_str());
   }
   for (size_t i = 0; i < n; i++) {
     const auto& c = R.cur[i]; const auto& r = P->rest[i];
-    const vec3 dr(-(c[0] - r[0]), c[1] - r[1], -(c[2] - r[2]));   // (y flipped, Java's y down: a turn about x or z goes the other way, about y the same)
+    const vec3 dr(-(c[0] - r[0]), c[1] - r[1], -(c[2] - r[2]));   // (y flipped, the source's y down: a turn about x or z goes the other way, about y the same)
     if (dr != vec3(0)) { if (!o.has[i]) { o.has[i] = 1; o.rot[i] = vec3(0); } o.rot[i] += dr; }
     const vec3 dp(c[3] - r[3], -(c[4] - r[4]), c[5] - r[5]);
     if (o.pos && dp != vec3(0) && i < o.pos->size()) (*o.pos)[i] += dp / 16.f;

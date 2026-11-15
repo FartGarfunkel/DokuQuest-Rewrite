@@ -2,19 +2,19 @@
 
 DokuQuest is being rebuilt in C++ as close as possible to the original HTML/JS game
 (DokuQuest Alpha 0.9.0.90), with these agreed changes:
-- Worlds stacked in ONE seamless column, each 256 tall: Aether/Skylands (top, y 768–1023), Overworld
+- Worlds stacked in ONE seamless column, each 256 tall: Skylands (top, y 768–1023), Overworld
   (512–767), Nether/Ember Depths (256–511), The End (0–255). No loading screens anywhere.
 - True portals: seamless walk-through and a live window to the other side.
-- Distant Horizons / Voxy style LOD ("see forever"), well optimised.
-- Everything is voxels (Veloren / Cube World / Lay of the Land): blocks are 32×32×32 micro-voxels coloured
-  pixel-for-voxel from the tiles (GeruDoku resource pack when installed, else the original code-painted
+- Far-view LOD ("see forever"): distant land drawn in coarse levels of detail, well optimised.
+- Everything is voxels: blocks are 32×32×32 micro-voxels coloured
+  pixel-for-voxel from the tiles (the user's resource pack when installed, else the original code-painted
   Doku tiles); items are real 3D voxel models that resemble their pack sprite; characters are voxel
   models built from a 64×64 skin or from the voxel character creator. Waving grass/foliage, waves,
   waterfalls, particles for everything.
 - Sounds are generated on the fly, resynthesised from analysed profiles of the resource-pack sounds
   plus the original game's synthesised sounds. No audio files are shipped.
 - Renderers: Legacy (OpenGL 3.3 core, potato PCs) and Modern (OpenGL 4.6/4.5); Vulkan later.
-- Mods built in (Fabric + Forge + OptiFine idea): JS mods with the original DQ API (QuickJS), data
+- Mods built in (a mod loader, shader support and pack support in one): JS mods with the original DQ API (QuickJS), data
   packs, native plugins, shader packs, resource packs.
 - The dedicated server and the Mod Studio live in the LAUNCHER, not the game.
 
@@ -26,7 +26,7 @@ Herobrine and always end with "Removed Herobrine."; no phantoms, ever.
 ## Where the original lives (in this session)
 - JS source: `/home/claude/src_in/DokuQuest-0.9.0.90/src/js/**` (+ `src/styles.css`, `src/index.html`,
   `launcher/desktop/launcher.html`, `launcher/news.html`, `notes/roadmap.md`)
-- Resource pack: `/home/claude/pack_in/assets/minecraft/**` (GeruDoku 1.19.3, 32px). NEVER commit pack files
+- Resource pack: `/home/claude/pack_in/assets/minecraft/**` (the user's resource pack, 32px). NEVER commit pack files
   (third-party art) — the game loads packs from `userDir()/resourcepacks/` at run time.
 - Extract any JS data: `python3 tools/port/jsdump.py /home/claude/src_in/DokuQuest-0.9.0.90 out.json "<JS expr>"`
   (runs the whole original game headless; the expression can use any top-level const/function).
@@ -91,3 +91,4 @@ nlohmann json) — `tools/fetch_deps.sh` fetches it on a clean checkout.
 - If a build error survives 2 fix attempts, stop and report it.
 - Don't take screenshots for the user; use them only to check your own work.
 - Update `docs/PORT_STATUS.md` when you port a JS module.
+- Never name other games, mods or their authors in code, comments, data or docs: describe things in our own words.

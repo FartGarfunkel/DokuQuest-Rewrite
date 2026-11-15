@@ -1,4 +1,4 @@
-// sim/spinning.h — TerraFirmaCraft's spindle: a fired clay whorl on a stick. Hold use with wool in your other hand: a moment's
+// sim/spinning.h — the spindle: a fired clay whorl on a stick. Hold use with wool in your other hand: a moment's
 // spinning and a block of wool becomes four yarn; yarn weaves into wool cloth (and jute fibre into burlap).
 #pragma once
 #include "sim/level.h"

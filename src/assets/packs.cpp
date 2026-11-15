@@ -1,5 +1,5 @@
-// assets/packs.cpp — resource packs, the way Minecraft does them (port of render/packs.js).
-// A pack (folder or .zip, Java Edition layout: assets/minecraft/textures/block and /item, or the old
+// assets/packs.cpp — resource packs (port of render/packs.js).
+// A pack (folder or .zip, the resource-pack layout: assets/minecraft/textures/block and /item, or the old
 // textures/blocks and /items) in userDir()/resourcepacks/ replaces the built-in tiles wherever it has a
 // matching picture — pixel-for-voxel, since every tile is a face of 32x32 micro-voxels. Grass and leaves
 // stay biome-coloured (the 253 alpha marker), animated strips animate (TileSet::anims), 16x, 32x and
@@ -20,7 +20,7 @@
 namespace dq {
 
 namespace {
-// Older packs (1.12 and before) used different names in textures/blocks.
+// The oldest packs used different names in textures/blocks.
 const std::unordered_map<std::string, std::string> PACK_LEGACY = {
   {"grass_block_top", "grass_top"}, {"grass_block_side", "grass_side"}, {"grass_block_side_overlay", "grass_side_overlay"}, {"grass_block_snow", "grass_side_snowed"},
   {"oak_planks", "planks_oak"}, {"spruce_planks", "planks_spruce"}, {"birch_planks", "planks_birch"}, {"jungle_planks", "planks_jungle"}, {"acacia_planks", "planks_acacia"}, {"dark_oak_planks", "planks_big_oak"},
@@ -37,11 +37,11 @@ const std::unordered_map<std::string, std::string> PACK_LEGACY = {
 // Pictures whose layout in a pack doesn't match how this game draws the block: leave them be.
 const std::unordered_set<std::string> PACK_SKIP = {"lantern", "soul_lantern", "lantern_cap", "chain", "bell", "bell_frame", "chest_top", "chest_side", "chest_front", "trapped_chest_top", "trapped_chest_side", "trapped_chest_front", "ender_chest_top", "ender_chest_side", "ender_chest_front", "cauldron_side", "cauldron_top", "cauldron_inner",
   "campfire_log", "campfire_log_end", "campfire_embers", "compass", "clock", "flower_pot", "flower_pot_top"};
-// Tinted by the biome in this game (the pack draws them in grey, as Minecraft's are)
+// Tinted by the biome in this game (the pack draws them in grey)
 const std::unordered_set<std::string> PACK_TINTED_SRC = {"grass_block_top", "grass_block_side_overlay", "short_grass", "grass", "fern", "tall_grass_top", "tall_grass_bottom", "large_fern_top", "large_fern_bottom",
   "oak_leaves", "jungle_leaves", "acacia_leaves", "dark_oak_leaves", "mangrove_leaves", "birch_leaves", "spruce_leaves", "vine", "lily_pad", "sugar_cane",
   "grass_top", "grass_side_overlay", "tallgrass", "leaves_oak", "leaves_jungle", "leaves_acacia", "leaves_big_oak", "leaves_birch", "leaves_spruce", "waterlily", "reeds"};
-// Minecraft's fixed colours for the leaves it doesn't tint by biome
+// the fixed colours for the leaves it doesn't tint by biome
 const std::unordered_map<std::string, std::array<int, 3>> PACK_FIXED = {{"spruce_leaves", {97, 153, 97}}, {"birch_leaves", {128, 167, 85}}, {"leaves_spruce", {97, 153, 97}}, {"leaves_birch", {128, 167, 85}},
   {"leather_helmet", {160, 101, 64}}, {"leather_chestplate", {160, 101, 64}}, {"leather_leggings", {160, 101, 64}}, {"leather_boots", {160, 101, 64}}};
 
@@ -92,9 +92,9 @@ std::optional<Img> loadImg(const PackFS& P, const std::string& rel) {
   return im;
 }
 
-// Minecraft draws chests as a model with a 64x64 picture (entity/chest/normal.png): a lid box 14x5x14
+// A pack draws chests as a model with a 64x64 picture (entity/chest/normal.png): a lid box 14x5x14
 // above a base box 14x10x14, and a little latch. This game's chest is an ordinary block, so its top,
-// side and front pictures are put together from the pieces. Packs for 1.15 and later store those
+// side and front pictures are put together from the pieces. Newer packs store those
 // sides upside down. (packs.js packChests)
 int packChests(TileSet& ts, const PackFS& P) {
   bool flip = !P.legacy && (P.packFormat == 0 || P.packFormat >= 5);
@@ -290,7 +290,7 @@ std::string applyResourcePack(TileSet& ts, const std::string& choice) {
     };
     std::vector<u8> px = packFrame(*img, 0, res, crop);
     fix(px);
-    // the grassy side: Minecraft draws a grey fringe over the dirt as a second layer
+    // the grassy side: the pack draws a grey fringe over the dirt as a second layer
     if (tname == "grass_side") {
       auto ov = find(blockDirs, "grass_block_side_overlay");
       auto oimg = ov ? load(ov->path) : nullptr;
@@ -321,7 +321,7 @@ std::string applyResourcePack(TileSet& ts, const std::string& choice) {
         // at most 24 frames of an animation (every k-th, each shown k times as long): every frame is a layer of the tile
         // arrays, and a GPU with 2048 layers a page holds 4096 tiles in all. Packs' 40- to 64-frame water and lava
         // would otherwise crowd the game's own blocks out (the speed stays, the motion is a little less fine). (32 until
-        // the Aether's and Better End's tool sets came in.)
+        // the Skylands' and the End's tool sets came in.)
         if (order.size() > 24) {
           const size_t k = (order.size() + 23) / 24;
           std::vector<int> o2; for (size_t i = 0; i < order.size(); i += k) o2.push_back(order[i]);

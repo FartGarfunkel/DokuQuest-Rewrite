@@ -24,8 +24,8 @@ uniform vec2 uGrassFade;                // 3D grass: fully grown nearer than x, 
 
 out vec3 vUV;
 out vec4 vLight;                        // sky byte, block byte, shade (liquid tops: shore foam), 1 with water in front (caustics)
-out vec3 vSun;                          // Cubyz sun channels, 0..31
-out vec3 vBlock;                        // Cubyz block channels, 0..31
+out vec3 vSun;                          // coloured-light sun channels, 0..31
+out vec3 vBlock;                        // coloured-light block channels, 0..31
 out vec3 vTint;
 out vec3 vRel;                          // position relative to the camera block
 out vec3 vWorld;                        // wrapped world position (patterns)

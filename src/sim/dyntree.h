@@ -1,7 +1,7 @@
-// sim/dyntree.h — trees that grow (after Dynamic Trees, github.com/DynamicTreesTeam/DynamicTrees, MIT; docs/CREDITS.md).
+// sim/dyntree.h — trees that grow (docs/THIRD_PARTY_NOTICES.md).
 // In a terrain-13 world (rule dynamicTrees) a sapling takes root: rooty soil under a twig of its wood's branch block. The
 // soil's random tick sends the tree one growth signal (GrowSignal): energy 16, up from the trunk's foot, turning at each
-// branch by Dynamic Trees' weights (up 2, the way it was going +1, air 1, leaves 2, a branch of the tree its radius + 2;
+// branch by these weights (up 2, the way it was going +1, air 1, leaves 2, a branch of the tree its radius + 2;
 // only up below the third block). Where it ends the tree grows: a twig leafs out, a thicker branch (or a leaf it reaches)
 // branches out into a new twig with leaves round it. On the way back every branch it passed takes the pipe model's
 // radius: sqrt(the areas of the branches joining it) + 0.3, never thinner than it was, at most 8 (a whole block).
@@ -25,7 +25,7 @@ bool dynTreesOn(Level& lv);
 bool plantDynTree(Level& lv, World& w, int x, int y, int z);
 // one growth signal from the rooty soil at (x, y, z) (its random tick; bone meal): true if the tree grew
 bool growDynTree(Level& lv, World& w, int x, int y, int z, u32 seed);
-// what a felled growing tree's wood comes to: Dynamic Trees' volume (a branch r^2 * 64 of a log's 4096), logs and sticks
+// what a felled growing tree's wood comes to: its volume (a branch r^2 * 64 of a log's 4096), logs and sticks
 void dynTreeYield(const std::vector<std::pair<BlockId, u8>>& parts, std::map<std::string, int>& logs, int& sticks);
 
 } // namespace dq

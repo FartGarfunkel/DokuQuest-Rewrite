@@ -63,7 +63,7 @@ static std::string placeMood(Level& lv, vec3 p) {
   ColumnSample c; g->sample((int)std::floor(p.x), (int)std::floor(p.z), c);
   const std::string& top = reg().block(c.top).key, &leaves = reg().block(c.leaves).key;
   if (c.water >= 0 && c.water > c.height) return "ocean";
-  // Better than Adventure's lands, each its own music (gen/overworld.h LandVariant)
+  // the classic-era lands, each its own music (gen/overworld.h LandVariant)
   static const char* BV[] = {"", "redlands", "glacier", "meadow", "mossmire", "thornscrub", "highlands", "tundra", "seasonal"};
   if (c.variant > 0 && c.variant < 9) return BV[c.variant];
   if (top.find("snow") != std::string::npos || top.find("ice") != std::string::npos) return "frost";

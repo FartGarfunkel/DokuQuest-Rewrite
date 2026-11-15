@@ -1,5 +1,5 @@
 // common.glsl — shared lighting, fog, wind and micro-voxel helpers (include from any shader).
-// Lighting follows Cubyz: sun and block are added in quadrature, sun scaled by uAmbient (1 by day,
+// Coloured light: sun and block are added in quadrature, sun scaled by uAmbient (1 by day,
 // a blue floor at night). Nothing falls below env.minLight.
 #ifndef DQ_COMMON
 #define DQ_COMMON
@@ -25,7 +25,7 @@ uniform float uFogStart;
 uniform float uFogEnd;
 uniform vec3 uNearFog;
 uniform vec4 uSeason;    // seasons: grass and leaves turn toward rgb by a (0 = summer green)   // the old fog: start, end, how thick (0 = none); the far lands stay faint beyond it
-uniform float uBrightness;    // settings.brightness: Minecraft's brightness curve (mcBrightness), 0 moody .. 1 bright
+uniform float uBrightness;    // settings.brightness: the brightness curve (mcBrightness), 0 moody .. 1 bright
 uniform float uMicroDist;     // micro-voxel relief distance
 uniform float uWind;          // wind strength (original env.wind: 0.45 + strength * 0.9, 0 when waving is off)
 uniform float uSea;           // storm swell on open water
@@ -119,13 +119,13 @@ vec3 dynLightRgb(vec3 pos, vec3 n) {
   }
   return acc;
 }
-// Minecraft's brightness option (LightTexture: 1 - (1 - l)^4, mixed in by the gamma setting): dark places open up,
+// The brightness option (1 - (1 - l)^4, mixed in by the gamma setting): dark places open up,
 // full light stays as it is. Options → Brightness 0 (Moody) leaves the light as it was.
 vec3 mcBrightness(vec3 l) {
   vec3 inv = 1.0 - clamp(l, 0.0, 1.0);
   return mix(l, 1.0 - inv * inv * inv * inv, clamp(uBrightness, 0.0, 1.0));
 }
-// sun31 and block31 are Cubyz's 0..31 channels. sqrt(sun^2 + block^2), the brightness curve, then the floor.
+// sun31 and block31 are the coloured light's 0..31 channels. sqrt(sun^2 + block^2), the brightness curve, then the floor.
 vec3 rgbCombine(vec3 sun31, vec3 block31) {
   vec3 amb = sun31 * uAmbient;
   vec3 q = sqrt(amb * amb + block31 * block31);

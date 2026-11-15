@@ -1,10 +1,10 @@
-// nether_grade.glsl — Better than Adventure 8.0's colour grade for the Nether (render/nether_grade_layer.cpp), in BTA's
+// nether_grade.glsl — the classic Nether's colour grade (render/nether_grade_layer.cpp), in this
 // order: brightness, contrast about mid-grey, exposure, saturation against Rec. 709 luma, then the colour mods.
 uniform sampler2D uTex;
 uniform float uBrightness, uContrast, uExposure, uSaturation;
 uniform vec3 uRgbMod;
 uniform sampler2D uDepth;          // the world's depth (heat haze)
-uniform float uHaze, uTime, uFar;  // haze amount (BTA: scale * slider * 3), seconds, the render distance in blocks
+uniform float uHaze, uTime, uFar;  // haze amount (scale * slider * 3), seconds, the render distance in blocks
 uniform vec2 uNearFar;
 
 #ifdef VERTEX
@@ -21,7 +21,7 @@ in vec2 vUV;
 out vec4 fragColor;
 void main() {
   vec2 uv = vUV;
-  if (uHaze > 0.0) {   // BTA post.fsh: a faint shimmer that grows with distance
+  if (uHaze > 0.0) {   // a faint shimmer that grows with distance
     float z = texture(uDepth, vUV).r * 2.0 - 1.0;
     float lin = 2.0 * uNearFar.x * uNearFar.y / (uNearFar.y + uNearFar.x - z * (uNearFar.y - uNearFar.x));
     float s = clamp((lin / uFar - 0.068) / 0.2, 0.0, 1.0) * uHaze;

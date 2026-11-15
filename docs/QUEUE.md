@@ -22,12 +22,12 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
 - Chimneys working like the original (smoke).
 - Particles: verify torches, campfires, splash potions now that sim particles reach the client (ClientFx::particles was a stub until alpha.3).
 
-- Shader packs: the user reports they don't appear to work. Today only DokuQuest-format packs (docs/shader-packs.md: files that override assets/shaders/*.glsl) load; Minecraft Iris/OptiFine packs (shaders/*.fsh/.vsh, gbuffers_*, composite) are not supported yet — that's the roadmap's shader-pack pipeline. First check a DokuQuest-format pack end to end in Options, then plan the Iris/OptiFine loader.
+- Shader packs: the user reports they don't appear to work. Today only DokuQuest-format packs (docs/shader-packs.md: files that override assets/shaders/*.glsl) load; full shader packs in the common pack format (shaders/*.fsh/.vsh, gbuffers_*, composite) are not supported yet — that's the roadmap's shader-pack pipeline. First check a DokuQuest-format pack end to end in Options, then plan the full-pack loader.
 
 ## Items and animation
 - Mug of ale no longer looks like a mug (likely the alpha.3 "3D icons from block shape boxes" change in assets/item_models.cpp/icons.cpp overriding special item models — items with their own 3D model must keep it).
 - Fishing rod (user): the lure hangs down in front of the rod when not cast; when cast, the line runs out to the bobber in the water until reeled back in.
-- Creatures swim like Minecraft (float at the surface and paddle steadily) instead of bobbing and thrashing.
+- Creatures swim properly (float at the surface and paddle steadily) instead of bobbing and thrashing.
 - Nether portal: the Nether (and the Overworld on the way back) stays invisible after walking through until save + reload. Not the realm-change bug fixed in alpha.3 (that was the pocket/rift). Reproduce with tools/playtests/portal.json (the scripted portal didn't light — fix the script first: flint and steel on the frame's inside bottom block).
 - Bow draw animation (first and third person).
 - Fishing rod: better 3D model, cast/reel animation, line and bobber.
@@ -55,25 +55,25 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
 - Late stage (close to 10 fragments): he opens portals like the rift in town — anywhere: mines, caves, any land — walks through from his realm with corrupted hostile mobs AND corrupted ordinary animals (cows etc. that attack for him), then walks back through and the portal closes.
 - Patch notes never hint at him; they still end with "Removed Herobrine."
 
-- Better than Adventure inspiration (user, 2026-10-25): biomes, blocks, a Nether more like BTA's, mobs we lack, music in the same mood. BTA ships as jars only (the GitHub "Source code" zip is the download repo, not the mod) and its code, art and music are theirs: build OUR versions from its public feature lists (wiki, the user's video) in DokuQuest style — Doku tiles/micro-voxels, our own synth music. Never copy or resample their files.
+- Classic-era content (user, 2026-10-25): biomes, blocks, the classic Nether, mobs we lack, music in the same mood. Build OUR versions in DokuQuest style — Doku tiles/micro-voxels, our own synth music.
 
-- More music, everywhere (user, 2026-10-25): OUR OWN procedural pieces in the mood of ShignBright's "Over / Under" (the BTA soundtrack: soft C418-style piano, warm pads, lots of space). An "over" set (bright, nostalgic, per biome: plains, forest, snow, desert, ocean, village) and an "under" set (caves, deep mines, moss/lush caves, karst, torch-lit tunnels, foggy depths), plus Nether, Skylands and End sets. Seeded variation so each world sounds different. Never copy or resample their tracks or melodies.
+- More music, everywhere (user, 2026-10-25): OUR OWN procedural pieces: soft piano, warm pads, lots of space. An "over" set (bright, nostalgic, per biome: plains, forest, snow, desert, ocean, village) and an "under" set (caves, deep mines, moss/lush caves, karst, torch-lit tunnels, foggy depths), plus Nether, Skylands and End sets. Seeded variation so each world sounds different. Original melodies only.
 
 - In-game Options laid out like the launcher's options (user, 2026-10-25): after the weekly reset.
 
 - Holiday events from the PC clock (user, 2026-10-25): October = Halloween (zombies and skeletons in pumpkin / jack-o'-lantern heads, a hostile pumpkin creature that stands up on a vine body, pumpkins sprouting, spooky decorations), December = Christmas, and so on for each holiday; villagers decorate their towns for the current event. Our own designs. DONE for October (common/holiday.h, DQ_EVENT=halloween forces it, Options > Holiday events / settings.json "holidayEvents" switches it off): pumpkin and jack-o'-lantern heads on ghouls, skeletons and 30% of villagers (a few villager capes), 3x pumpkin patches, jack-o'-lanterns on village lamps and porches, harvest moon, foggier nights, wisps, more bats, trick-or-treat villagers. STILL QUEUED: the hostile pumpkin creature, the scarecrow, other holidays.
 
-- Saturday Oct 31 after the reset (user): 1) Halloween creatures and costumes, 2) a large-scale bug test, finding and fixing everything in game and making sure it's all connected and working, 3) then the BTA update.
+- Saturday Oct 31 after the reset (user): 1) Halloween creatures and costumes, 2) a large-scale bug test, finding and fixing everything in game and making sure it's all connected and working, 3) then the classic-era content update.
 
-- Biome fuseling variants (user, 2026-10-26, with the BTA update): one per biome, built from that biome's blocks (terracotta and gold, bamboo, mossy sandstone, gravel, cactus-topped sandstone, mud with a spike, snow, mossy cobble, flowering azalea, mushroom cap, terracotta totem, swamp). The user showed fan art as inspiration; make our own designs, don't copy the artist's.
-- After BTA (user, 2026-10-26): a Minecraft Story Mode feel for players, NPCs and mobs. That means blended transitions, follow-through on capes, hair and tails, anticipation and weight, head and eye look-at, feet planted on slopes, varied idles, expressive talking faces and smooth turning, all as one shared animation layer over the existing rigs.
+- Biome fuseling variants (user, 2026-10-26, with the classic-era content update): one per biome, built from that biome's blocks (terracotta and gold, bamboo, mossy sandstone, gravel, cactus-topped sandstone, mud with a spike, snow, mossy cobble, flowering azalea, mushroom cap, terracotta totem, swamp). Our own designs.
+- After the content update (user, 2026-10-26): a storybook animation feel for players, NPCs and mobs. That means blended transitions, follow-through on capes, hair and tails, anticipation and weight, head and eye look-at, feet planted on slopes, varied idles, expressive talking faces and smooth turning, all as one shared animation layer over the existing rigs.
 
-- Biome golems (user, 2026-10-26, with the biome fuselings): the village iron golem built from local materials per biome (sandstone, mossy cobble, terracotta, packed snow and ice, spruce and stone...), more articulated (elbow and knee joints, segmented limbs, hands), glowing eyes. Our own designs; the user's reference is a mod's art.
+- Biome golems (user, 2026-10-26, with the biome fuselings): the village iron golem built from local materials per biome (sandstone, mossy cobble, terracotta, packed snow and ice, spruce and stone...), more articulated (elbow and knee joints, segmented limbs, hands), glowing eyes. Our own designs.
 
 - Story beats (user, 2026-10-26):
   - Nether foreshadowing: while players are in a fortress, he appears, opens a portal, grabs a wither skeleton and pulls it into his portal.
-  - The climax: we see him place the last wither skull, starting a Wither Storm. It is a campaign-only boss, never natural spawning: a giant, growing three-headed wither that tears up and pulls in blocks. Our own design, not Story Mode's model.
-- With BTA (user, 2026-10-26):
+  - The climax: we see him place the last wither skull, starting a Wither Storm. It is a campaign-only boss, never natural spawning: a giant, growing three-headed wither that tears up and pulls in blocks. Our own design.
+- With the content update (user, 2026-10-26):
   - the Wither boss, summoned by players with soul sand and 3 wither skeleton skulls, never natural;
   - mob heads/skulls, as drops, wearable and placeable;
   - spawn eggs for every creature.
@@ -84,7 +84,7 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
   - Late stage: he brings groups of them through portals like the rift in town, then walks back and the portal closes.
 
 - Magic overhaul (user, 2026-10-26): keep the ways to unlock spells.
-  - Skyrim-style hands: a spell in either hand, the same spell in both hands to combine it into a stronger one, two different spells to mix their effects, or a weapon/tool in one hand and a spell in the off hand.
+  - Spell hands: a spell in either hand, the same spell in both hands to combine it into a stronger one, two different spells to mix their effects, or a weapon/tool in one hand and a spell in the off hand.
   - One button per hand, on both mouse and controller.
   - Spells level up with use, like gear, tools and weapons.
 - Economy (user, 2026-10-26): villagers trade in gold coins instead of emeralds, so emerald becomes a better-balanced ore. Keep or convert old saves' emerald trades.
@@ -96,4 +96,4 @@ Reported by the user while testing alpha.2/alpha.3, not yet done. Work top to bo
   - Fixed: the quest tracker now sits under the story line instead of on top of it.
 
 ## Roadmap (after the bugs)
-Start in the wild, potions stack to 16, test-build small fixes, coins/economy, roads and bridges, travellers, saddle bags, bigger ship, poses, torches on fences, chains/lanterns, rift to 10 fragments + slow pacing + lore, graphics presets, built-in shader levels, Skylands content, Shadowbloom ports, Iris/OptiFine shader packs.
+Start in the wild, potions stack to 16, test-build small fixes, coins/economy, roads and bridges, travellers, saddle bags, bigger ship, poses, torches on fences, chains/lanterns, rift to 10 fragments + slow pacing + lore, graphics presets, built-in shader levels, Skylands content, Shadowbloom ports, full shader packs.

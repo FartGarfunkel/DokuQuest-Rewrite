@@ -1,9 +1,9 @@
-// gen/world_types.cpp — Better than Adventure's world types on DokuQuest's own Overworld (the create-world screen):
-//   flat       BTA's Flat: an endless flat field of grass (the other worlds of the column as ever)
+// gen/world_types.cpp — the world types on DokuQuest's own Overworld (the create-world screen):
+//   flat       Flat: an endless flat field of grass (the other worlds of the column as ever)
 //   amplified  the hills and mountains near twice as high            (OverworldGen::baseColumn)
 //   islands    the land sunk, so the seas cover most of it          (baseColumn)
 //   winter     Endless Winter: every land snow-bound, the lakes frozen, snow lying on the ground
-//   hell       BTA's Hell: a world that ended long ago — scorched ground, lava where the seas were, trees bare
+//   hell       Hell: a world that ended long ago — scorched ground, lava where the seas were, trees bare
 //   floating   Floating Islands: the land cut into islands hanging over the void, each with a long rocky underside
 // The column changes are in gen/overworld.cpp; this is the pass over each finished chunk, and the flat world.
 #include "gen/dimgens.h"
@@ -79,7 +79,7 @@ void OverworldGen::worldTypePass(GenBuf& b, const OwColumn* cols, int cx, int cz
 }
 
 namespace {
-// BTA's Flat world: bedrock, stone, three of dirt and grass at band-local 64
+// the Flat world: bedrock, stone, three of dirt and grass at band-local 64
 class FlatGen : public DimGenerator {
 public:
   void generate(Chunk& ch) override {

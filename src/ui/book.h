@@ -1,5 +1,5 @@
-// ui/book.h — the open book the Help, Journal, Skills, Spellbook and Stable screens are written in: Better than
-// Adventure's guidebook (ScreenGuidebook: a two-page spread, a bookmark per section down the right edge, the pages
+// ui/book.h — the open book the Help, Journal, Skills, Spellbook and Stable screens are written in: a
+// guidebook (a two-page spread, a bookmark per section down the right edge, the pages
 // turned with arrows in the bottom corners) in the DokuQuest Base pack's own look: its parchment page (gui/book.png,
 // the left page the same one mirrored), its page arrows and its side tabs (tab_right_*), dark ink on the paper.
 // A pack without them gets a plain paper page and ribbons drawn here.
@@ -48,7 +48,7 @@ float bookPagesBegin(App& a, const char* id);
 void bookPagesRight(const char* id);
 void bookPagesEnd();
 void bookPageTitle(App& a, const char* title);   // the page's heading in ink, a rule under it
-// one bookmark, as BTA's guidebook has them: a cloth ribbon coming out from between the pages with a swallowtail cut at
+// one bookmark, as the guidebook has them: a cloth ribbon coming out from between the pages with a swallowtail cut at
 // its end and the section's icon on it, in the book's own colours (idx picks the ribbon's). p0: the 32 x 28 box (ts
 // screen px each) it lies in, its inner 9 under the page; sel: the open section (it sits further out, a gold thread
 // down it); left: on the book's left edge, mirrored. Draw it before the pages so it comes out from under them.

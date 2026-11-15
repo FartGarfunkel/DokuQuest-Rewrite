@@ -9,7 +9,7 @@ namespace dq {
 // 0..1, brightest channel normalised to 1. The usual light is warm white (1, 0.85, 0.62).
 vec3 blockLightColour(BlockId id);
 
-// Cubyz-style emission: level 0..15 maps onto 0..255 (15 -> 255) in that colour.
+// coloured emission: level 0..15 maps onto 0..255 (15 -> 255) in that colour.
 void blockLightRgb(BlockId id, u8 level, u8 out[3]);
 
 } // namespace dq

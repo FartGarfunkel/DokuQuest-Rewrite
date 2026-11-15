@@ -459,7 +459,7 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
     case ShapeKind::Wall: {
       bool c[4]; for (int d = 0; d < 4; d++) c[d] = joinsWall(nb.id(DIRX[d], 0, DIRZ[d]));
       bool straight = (c[0] && c[2] && !c[1] && !c[3]) || (c[1] && c[3] && !c[0] && !c[2]);
-      // (and its post up under anything that stands on it, a lantern, a torch, a sign, as Minecraft's "up": on a straight
+      // (and its post up under anything that stands on it, a lantern, a torch, a sign, as the block-state "up": on a straight
       //  run's low arms a lantern had floated 2 px over the wall)
       const BlockId above = nb.id(0, 1, 0);
       bool post = !straight || R.tShape[above] == ShapeKind::Wall || (above && !R.tLiquid[above] && !fullSolid(above) && !R.tLeaves[above] && !R.block(above).replaceable);
@@ -494,7 +494,7 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
       push(ends); push(ns); push(ew);
       return true;
     }
-    case ShapeKind::StoneLantern: {   // Better End's stone lanterns: a base, the lantern, its cap; hung from a chain or a roof (nothing under it)
+    case ShapeKind::StoneLantern: {   // the End's stone lanterns: a base, the lantern, its cap; hung from a chain or a roof (nothing under it)
       const BlockId below = nb.id(0, -1, 0), above = nb.id(0, 1, 0);
       const bool hang = !R.tSolid[below] && (R.tSolid[above] || R.block(above).str("shape") == "chain");
       if (hang) { push(ShapeBox(5, 1, 5, 11, 3, 11)); push(ShapeBox(4, 3, 4, 12, 11, 12)); push(ShapeBox(3, 11, 3, 13, 13, 13)); push(ShapeBox(6, 13, 6, 10, 16, 10)); }
@@ -510,7 +510,7 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
       int n = m & 3;
       if (purpose == ShapePurpose::Collide) { push(T.pickle ? ShapeBox(2, 0, 2, 14, 6, 14) : ShapeBox(5, 0, 5, 11, 6, 11)); return true; }
       if (purpose != ShapePurpose::Draw) { for (int i = 0; i <= n; i++) push(B6(T.pickle ? PICKLE_BOXES[n][i] : CANDLE_BOXES[n][i])); return true; }
-      // drawn from the picture as Minecraft lays it out (the pack's candles and pickles are cut that way): each face its own
+      // drawn from the picture as the pack format lays it out (the pack's candles and pickles are cut that way): each face its own
       // patch of the picture, not the box's place in the block (a candle's strip is at the picture's left edge: read where
       // the candle stands, the picture is empty there and the candle was invisible)
       // faces: 0 +x (u 16-Z), 1 -x (u Z), 2 +y (X, Z), 3 -y (16-X, Z), 4 +z (u X), 5 -z (u 16-X); sides v 16-Y
@@ -537,7 +537,7 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
     case ShapeKind::Cake: push(ShapeBox(1.f + 2 * std::min(6, m & 7), 0, 1, 15, 8, 15)); return true;
     case ShapeKind::Rod: {
       int ax = m & 3;
-      if (purpose == ShapePurpose::Draw && T.endRod) {   // the picture is laid out like Minecraft's: a 2 px rod strip at the left, its tip and the base beside it
+      if (purpose == ShapePurpose::Draw && T.endRod) {   // the picture is laid out the pack format's way: a 2 px rod strip at the left, its tip and the base beside it
         auto part = [&](ShapeBox b, u8 only, float tu, float tv, bool t) { b.only = only; b.tu = tu; b.tv = tv; b.uvT = t; push(b); };
         const u8 FX = 1 | 2, FY = 4 | 8, FZ = 16 | 32;
         if (ax == 1) { ShapeBox r(0, 7, 7, 16, 9, 9); part(r, FY | FZ, -7, 0, true); part(r, FX, -5, -7, false); }
@@ -549,7 +549,7 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
         return true;
       }
       static const BlockId LROD = reg().blockId("lightning_rod");
-      if (purpose == ShapePurpose::Draw && id == LROD && LROD) {   // Minecraft's picture too: a 4 x 4 tip at the top left, the 2 px rod under it
+      if (purpose == ShapePurpose::Draw && id == LROD && LROD) {   // the pack format's picture too: a 4 x 4 tip at the top left, the 2 px rod under it
         auto part = [&](ShapeBox b, u8 only, float tu, float tv, bool t) { b.only = only; b.tu = tu; b.tv = tv; b.uvT = t; push(b); };
         const u8 FX = 1 | 2, FY = 4 | 8, FZ = 16 | 32;
         if (ax == 1) { ShapeBox r(0, 7, 7, 16, 9, 9); part(r, FY | FZ, -7, 0, true); part(r, FX, -7, -7, false); }
@@ -586,7 +586,7 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
       if (purpose == ShapePurpose::Collide) { push(ShapeBox(0, 0, 0, 16, 16, 16)); return true; }
       const TileNames& t = tn();
       push(BT(0, 0, 0, 16, 2, 16, t.composter_side, t.composter_bottom));
-      // the corner posts full height; between them boards with slits where the picture's dark lines are (Minecraft's
+      // the corner posts full height; between them boards with slits where the picture's dark lines are (the pack's
       // composter shows through them), a pixel each at 4, 8 and 12
       for (float cx : {0.f, 14.f}) for (float cz : {0.f, 14.f}) push(ShapeBox(cx, 2, cz, cx + 2, 16, cz + 2));
       static const float BOARD[4][2] = {{2, 3.5f}, {4.5f, 7.5f}, {8.5f, 11.5f}, {12.5f, 16}};
@@ -715,10 +715,10 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
       return true;
     }
     case ShapeKind::Branch: {
-      // a tree branch (the idea is Cubyz's): a slim stem reaching into the branches, logs and leaves beside it, so a
+      // a tree branch (our own idea): a slim stem reaching into the branches, logs and leaves beside it, so a
       // branch winds out of the trunk and vanishes into its leaves; thinner out toward the tips (meta bit 0)
       auto joins = [](BlockId k) { const BlockTraits& t = traits(k); return t.branch || t.logLike || t.leaves; };
-      // a growing tree's branch (sim/dyntree.h, meta bit 4): its own radius, 1..8 of the half-block (Dynamic Trees)
+      // a growing tree's branch (sim/dyntree.h, meta bit 4): its own radius, 1..8 of the half-block (the growing trees)
       const float a = (m & 0x10) ? 8.f - (((m >> 1) & 7) + 1) : (m & 1) ? 5.5f : 4.5f, b = 16 - a;
       push(ShapeBox(a, a, a, b, b, b));
       // (and down into the ground it grows from: a sapling's twig on its rooty soil had stood 7 px over it)
@@ -757,10 +757,10 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
   return false;
 }
 
-// ---- chisel carving (Cubyz-style): a full block minus any of its 8 corners ----
+// ---- chisel carving: a full block minus any of its 8 corners ----
 // The high nibble of meta carries which of the 8 corner octants are carved away.
 // Bit b = (hx<<2)|(hy<<1)|hz with hx/hz picking the +half along x/z, hy the upper half.
-// Carve octant mask lives in meta bits 0..6 (Cubyz-style byte: bit (hx<<2)|(hy<<1)|hz per corner).
+// Carve octant mask lives in meta bits 0..6 (a byte: bit (hx<<2)|(hy<<1)|hz per corner).
 // Only full-solid NON-shape blocks ever carry it, and they never read those low bits as facing/shape
 // states (all such readers are trait-gated), so the whole low 7 bits are free. WLOG stays bit 7.
 static inline u8 carveNib(const ShapeNb& nb, int dx, int dy, int dz) {
@@ -773,10 +773,10 @@ bool carveBoxes(std::vector<ShapeBox>& out, u8 carve, const ShapeNb& nb) {   // 
   // own octant present unless its bit is carved
   auto own = [&](int x, int y, int z) { return !((carve >> ((x << 2) | (y << 1) | z)) & 1); };
   for (int m = 0; m < 8; m++) {
-    // encode: bit = (hx<<2)|(hy<<1)|hz (Cubyz subBlockMask / build.cpp). Decode MUST match:
+    // encode: bit = (hx<<2)|(hy<<1)|hz (the sub-block mask). Decode MUST match:
     int x = (m >> 2) & 1, y = (m >> 1) & 1, z = m & 1;
     if (!own(x, y, z)) continue;
-    // Cubyz: every PRESENT octant always stands (its collision box and geometry exist);
+    // every PRESENT octant always stands (its collision box and geometry exist);
     // only its faces get culled when the sub-block across each face plane is present.
     u8 only = 0;
     // A half-face is covered ONLY by a fullSolid neighbor whose touching corner is present:

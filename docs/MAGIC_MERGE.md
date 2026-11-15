@@ -1,12 +1,12 @@
-# Magic merge: Iron's Spells (Soulrend) into ours
+# Magic additions: rarity, scrolls, spellbooks, sockets
 
 The user's ask: spell rarity, cast types, the inscription table, gem sockets; the skill trees (done: commit cf567e4,
 sim/skilltree + ui/skilltree_screen, 985 nodes, six stats). Keep every way we already have to unlock spells (tomes,
 schools, practice ranks I..X).
 
 ## Pieces
-1. **Rarity** (Iron's five tiers) from a spell's rank: I-II Common, III-IV Uncommon, V-VI Rare, VII-VIII Epic, IX-X
-   Legendary, each its colour (Iron's: white, green, blue, purple, gold). Shown wherever a spell is named (spellbook
+1. **Rarity** (five tiers) from a spell's rank: I-II Common, III-IV Uncommon, V-VI Rare, VII-VIII Epic, IX-X
+   Legendary, each its colour (white, green, blue, purple, gold). Shown wherever a spell is named (spellbook
    screen, scrolls, the spellbook item, the HUD's spell).
 2. **Scrolls** (`spell_scroll`, tag {spell, rank}): one cast of that spell at that rank, by anyone, no staff, no mana;
    the scroll is used up. Found in dungeon and tower loot; written at the inscription table from a spell you know (paper
@@ -35,12 +35,12 @@ schools, practice ranks I..X).
   overrides), set at the crafting grid (gear + gem, after any real recipe), summed into treeAttr / treeAttrPct.
 - test_magic: 17 new checks.
 
-## Iron's look, Skyrim's hands (2026-11-14)
-- `tools/port/irons_fx_import.py` (local, git-ignored): Iron's particle frames -> `data/local_models/tiles/isb/` (loaded into
+## The spell effects and the casting hands (2026-11-14)
+- The spell effects import (local, git-ignored): animated particle frames -> `data/local_models/tiles/isb/` (loaded into
   the atlas by `loadLocalTiles`, played over a particle's life: `Particle::frame0/frames`), its projectiles as voxel models
   (firebolt, fireball core, magic missile from their renderers' boxes; icicle and guiding bolt pictures extruded).
-- Every school's sparks are joined by Iron's own (fire: embers / fire / fiery smoke; frost: snowflakes; storm: electricity;
-  life: wisps; arcane: violet electricity and traces; stone: fog); bolts fly as Iron's projectiles with its trails.
+- Every school's sparks are joined by animated frames (fire: embers / fire / fiery smoke; frost: snowflakes; storm: electricity;
+  life: wisps; arcane: violet electricity and traces; stone: fog); bolts fly as voxel projectiles with trails.
 - Hands: each free hand holds its readied spell at the body's own fist (`playerPalms`, first person too); after a cast the
   arm comes up holding it a few seconds and each cast thrusts it out (`render/spell_hands.h`, `CharPose::spellR/L`).
   Two spells: each hand its own (mix and match shows both). Each hand has its own cooldown (`castCdL`); bolts leave the

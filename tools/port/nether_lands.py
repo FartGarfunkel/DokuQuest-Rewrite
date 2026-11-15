@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# tools/port/nether_lands.py — the blocks of the BTA-style Nether (terrain version 5, gen/nether_lands.cpp), our own designs
+# tools/port/nether_lands.py — the blocks of the classic Nether (terrain version 5, gen/nether_lands.cpp), our own designs
 # with pictures recoloured from the base pack (so they sit in its style); idempotent, run by data_patches.py:
 #   acid (the Sulfur Pools' caustic liquid: it eats at whoever swims in it without armour), red crystal and charged
 #   crystal (the Crystal Forest's spires; a charged one holds latent energy: a redstone power source), red crystal
@@ -103,7 +103,7 @@ def main(d):
     v.pop('fleesSun', None)
     mobs['scorched_skeleton'] = v
     (d / 'mobs.json').write_text(json.dumps(mobs, separators=(',', ':'), ensure_ascii=False))
-    print('nether bta ok')
+    print('nether classic ok')
 
 
 if __name__ == '__main__':

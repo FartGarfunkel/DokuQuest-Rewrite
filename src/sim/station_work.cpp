@@ -79,7 +79,7 @@ bool pairWorkPut(Level& lv, Player& p, World& w, ivec3 at, int slot, ItemStack& 
   const std::string st = pairStationAt(w, at);
   if (st.empty() || held.empty() || slot > (st == "smithing" ? 2 : 1)) return false;
   std::vector<ItemStack> v = pairWorkItems(w, at);
-  if (st == "forge") {   // the Tool Forge: a tool in the middle (a gem set in it beside), or a material to forge heads of
+  if (st == "forge") {   // the forge station: a tool in the middle (a gem set in it beside), or a material to forge heads of
     const ItemDef* d = reg().item(held.id);
     const bool tool = d && d->hasTool, gem = gemEffect(held.id) != nullptr, mat = !forgeOptions(held.id).empty();
     const ItemDef* d0 = v[0].empty() ? nullptr : reg().item(v[0].id);
@@ -94,7 +94,7 @@ bool pairWorkPut(Level& lv, Player& p, World& w, ivec3 at, int slot, ItemStack& 
   if (slot < 0) { toast(lv, p, "Both sides are taken"); return false; }
   if (!v[slot].empty() && !v[slot].canMerge(held)) { toast(lv, p, "Something's lying there already"); return false; }
   // one piece of gear (and one a side on the grindstone); the rest as many as stack
-  const bool one = st == "grindstone" || (st == "smithing" && slot != 1) || (st == "forge" && slot == 1) || held.maxStack() <= 1;   // (the Tool Forge: one gem a tool; a tool is one of itself)
+  const bool one = st == "grindstone" || (st == "smithing" && slot != 1) || (st == "forge" && slot == 1) || held.maxStack() <= 1;   // (the forge station: one gem a tool; a tool is one of itself)
   const int room = one ? (v[slot].empty() ? 1 : 0) : (v[slot].empty() ? held.maxStack() : v[slot].maxStack() - v[slot].n);
   const int put = std::min(room, held.n);
   if (put <= 0) return false;
@@ -254,7 +254,7 @@ int cutWorkDo(Level& lv, Player& p, World& w, ivec3 at, int k, bool all) {
   return blocks;
 }
 
-// ---- the Tool Forge's heads ----
+// ---- the forge station's heads ----
 std::vector<std::pair<std::string, int>> forgeWorkHeads(World& w, ivec3 at) {
   std::vector<std::pair<std::string, int>> out;
   if (pairStationAt(w, at) != "forge") return out;

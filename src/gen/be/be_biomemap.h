@@ -1,7 +1,6 @@
-// gen/be/be_biomemap.h — Better End 3.2.5's End biomes and BCLib 2.3's hex biome map (BCLibEndBiomeSource with
-// EndBiomeMapType.HEX). The biome table (genChance, terrainHeight, parent) is Better End's own data
-// (data/betterend/worldgen/betterx/biome/*.json); the map itself lives in BCLib, which is not in the BE jar, so
-// HexBiomeMap / HexBiomeChunk / BiomePicker here are RECONSTRUCTED from BCLib 2.x as remembered (see README.md):
+// gen/be/be_biomemap.h — the End's lands and their hex biome map. The biome table (genChance, terrainHeight,
+// parent) is read from the End data (data/betterend/worldgen/betterx/biome/*.json); the map itself is not in that
+// data, so HexBiomeMap / HexBiomeChunk / BiomePicker here are RECONSTRUCTED from memory (see README.md):
 // 32 x 32 hex cells per map chunk, 16 jittered seeds per chunk each painting a 7-cell hexagon, random-neighbour growth
 // until full, then a 1-in-4 per cell chance to paint a 7-cell hexagon of a sub-biome (weighted by genChance); cells are
 // size/8 blocks, the lookup point is rotated 0.4 rad and warped by fractal OpenSimplex noise.
@@ -15,7 +14,7 @@
 
 namespace dq::be {
 
-// 0..18 are DokuQuest's End land indices (gen/theend_be.cpp); 19..23 are the vanilla biomes BCLib keeps in its pools.
+// 0..18 are DokuQuest's End land indices (gen/theend_be.cpp); 19..23 are the base End biomes kept in the pools.
 enum BiomeId : int {
   B_CHORUS_FOREST = 0, B_BLOSSOMING_SPIRES, B_FOGGY_MUSHROOMLAND, B_GLOWING_GRASSLANDS, B_CRYSTAL_MOUNTAINS,
   B_SULPHUR_SPRINGS, B_UMBRELLA_JUNGLE, B_SHADOW_FOREST, B_ICE_STARFIELD, B_AMBER_LAND,
@@ -39,7 +38,7 @@ struct BiomeInfo {
 };
 extern const BiomeInfo kBiomes[B_COUNT];
 
-// BCLib BiomePicker + BCLBiome sub-biome lists: weighted picks with one nextFloat() each.
+// biome picker + sub-biome lists: weighted picks with one nextFloat() each.
 class BiomePicker {
 public:
   void add(int id);
@@ -58,7 +57,7 @@ private:
 struct HexMapOptions {
   float warp = 0.5f;      // fractal warp amplitude (cell units) of the octave at 1 cycle per cell [reconstructed]
   float seamWarp = 1.5f;  // amplitude (cells) of an extra octave at 1/4 cycle per cell that bends the straight
-                          // map-chunk seams; 0 = only the BCLib-like octaves [DokuQuest addition]
+                          // map-chunk seams; 0 = only the reconstructed octaves [DokuQuest addition]
   int subOneIn = 4;       // per cell: 1 in N paints a sub-biome hexagon [reconstructed]
 };
 

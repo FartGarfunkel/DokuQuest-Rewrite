@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
     bool round = true; for (int y = 0; y < WORLD_H; y += 7) { const int d = dimOfY(y); if (y < dimBase(d) || y >= dimBase(d) + DIM_H) round = false; }
     check(round && WORLD_H == 2560, "every y is in the band of its dimension; the column 2560 tall");
     check(dimBelow(DIM_OVERWORLD) == DIM_UNDER1 && dimAbove(DIM_OVERWORLD) == DIM_SKY1 && dimBelow(DIM_SKYLANDS) == DIM_SKY2 && dimAbove(DIM_NETHER) == DIM_UNDER4, "the bands above and below");
-    check(displayY(dimBase(DIM_OVERWORLD) + SEA_LEVEL) == 63 && displayY(dimBase(DIM_OVERWORLD) - 64) == -65 && fromDisplayY(-58, DIM_OVERWORLD) == dimBase(DIM_OVERWORLD) - 57, "the y shown the Minecraft way (sea level 63, the Underworld below 0)");
+    check(displayY(dimBase(DIM_OVERWORLD) + SEA_LEVEL) == 63 && displayY(dimBase(DIM_OVERWORLD) - 64) == -65 && fromDisplayY(-58, DIM_OVERWORLD) == dimBase(DIM_OVERWORLD) - 57, "the y shown the familiar way (sea level 63, the Underworld below 0)");
     check(landFloorAt(dimBase(DIM_UNDER4)) && !landFloorAt(dimBase(DIM_OVERWORLD)) && !landFloorAt(dimBase(DIM_UNDER1)) && landRoofAt(dimBase(DIM_SKY2) + 255), "the seams between worlds: under the Underworld and over the open sky, not inside the Overworld's land");
     setWorldLayout(1);
     check(WORLD_H == 1024 && dimOfY(600) == DIM_OVERWORLD && dimBase(DIM_SKYLANDS) == 768 && displayY(512 + 64) == 64, "back to layout 1: exactly as before");
@@ -78,10 +78,10 @@ int main(int argc, char** argv) {
     }
     check(cols > 1000 && bed == 0, strFormat("no bedrock or crust at the Overworld's old floor (%d of %d columns)", bed, cols));
     check(cols > 0 && agree > cols * 85 / 100 && solidSeam > cols / 2, strFormat("the land runs on through the seam: slate under it, solid over solid (%d of %d agree)", agree, cols));
-    // Minecraft's caves below y -55 hold lava
+    // the deep caves below y -55 hold lava
     int lavaLow = 0, lavaHigh = 0;
     for (int x = -16; x < 32; x++) for (int z = -16; z < 32; z++) for (int y = ob - 64; y < ob - 1; y++) if (w.getBlock(x, y, z) == lava) (displayY(y) <= -55 ? lavaLow : lavaHigh)++;
-    check(lavaHigh == 0, strFormat("the lava of Minecraft's deep caves lies at y -55 and below (%d below, %d above)", lavaLow, lavaHigh));
+    check(lavaHigh == 0, strFormat("the lava of the deep caves lies at y -55 and below (%d below, %d above)", lavaLow, lavaHigh));
     // no sky down there
     int litDeep = 0, airDeep = 0;
     for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++) for (int y = ob - 200; y < ob - 120; y++) if (w.getBlock(x, y, z) == AIR) { airDeep++; if ((w.getLight(x, y, z) >> 4) > 0) litDeep++; }

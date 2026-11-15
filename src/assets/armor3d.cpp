@@ -47,7 +47,7 @@ bool parseSet(const std::string& txt, Set& S) {
   return !S.bones.empty();
 }
 
-// GeckoLib's way with a Bedrock rotation: z, then y, then x, with x and y turned the other way
+// the .geo.json format's way with a rotation: z, then y, then x, with x and y turned the other way
 mat4 rotAbout(vec3 pivot, vec3 deg) {
   mat4 m = glm::translate(mat4(1), pivot);
   m = glm::rotate(m, glm::radians(deg.z), vec3(0, 0, 1));

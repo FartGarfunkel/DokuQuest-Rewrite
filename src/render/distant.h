@@ -1,4 +1,4 @@
-// render/distant.h — distant terrain (game/distant.js), built like Cubyz's far land (see distant_build.cpp):
+// render/distant.h — distant terrain (game/distant.js), built as level-of-detail voxels (see distant_build.cpp):
 // past the loaded chunks the land goes on as textured voxels, 2 blocks across just outside them, then
 // 4, 8, 16 ... 512 blocks, out to settings.farTerrain (up to 16384 blocks). Tiles of 32x32 columns
 // in a quadtree around the camera, coarse ones first so there is never a hole, finer ones as they're
@@ -24,7 +24,7 @@ constexpr int MAX_LEVEL = 8;              // levels 0..8: columns of 2 .. 512 bl
 inline int cellSize(int L) { return 2 << L; }
 inline int tileSize(int L) { return CELLS * cellSize(L); }
 
-// A real chunk brought down to voxels 2x2 blocks across and one block high (Cubyz: each LOD level made from the one
+// A real chunk brought down to voxels 2x2 blocks across and one block high (each LOD level made from the one
 // under it; render/distant_build.cpp summarizeChunk): per cell, its solid runs bottom up, each one block type.
 struct ChunkSummary {
   struct Run { u8 y0, y1; u16 id; };   // band-local, inclusive
@@ -86,7 +86,7 @@ private:
   void scanChunks(World& w, double now);
   void addSummary(const ChunkKey& k, std::shared_ptr<lod::ChunkSummary> s, bool quiet);
   void markDirty(int dim, int cx, int cz);
-  // Cubyz makes its far land with the world generator itself: the chunks nobody has been to are generated on a worker
+  // The far land is made with the world generator itself: the chunks nobody has been to are generated on a worker
   // (caves, ravines, villages, lakes, trees), brought down to voxels and kept, nearest first
   void genFar(World& w, int dim, glm::dvec3 cam, ThreadPool& pool);
   void trimSummaries(glm::dvec3 cam);

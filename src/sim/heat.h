@@ -1,6 +1,6 @@
-// sim/heat.h — how hot a thing is (after TerraFirmaCraft's ItemHeat): metal, ore and pottery carry a temperature in their
+// sim/heat.h — how hot a thing is: metal, ore and pottery carry a temperature in their
 // stack's tag ("heat", °C), heated on a firepit, a forge or in a kiln and cooling in the air. Smithing needs working heat,
-// pouring needs molten metal; hot things glow and the tooltip names the heat as TFC does.
+// pouring needs molten metal; hot things glow and the tooltip names the heat.
 #pragma once
 #include "core/itemstack.h"
 

@@ -17,7 +17,7 @@ that kit. Data total: 1.81 MB (profiles 1.44 MB zlib + 43 KB index, recipes 330 
 | game/ambience.js (wind, birds, crickets, drips, rumbles, Depths hiss) | ambience.cpp + live wind in the mixer | |
 | game/music.js + music2.js (composePiece/2, moods + night, band, battle, fanfare, bus) | music.cpp | composer runs on the game thread, the band plays live on the audio thread |
 | render/packs.js PACK_SOUND_EVENTS (pack event → our sound) | tools/port/sound_analyze.py `EXTRA` + data/sounds.json `events` | plus pack events the original never listed (anvil, fuse, thunder, cave ambience, portal, fireworks, mob steps, iron/deepslate/cobweb/vine… blocks) |
-| other modules' SND_FX/VOX additions (deepdark, dragons, theend, brewing, camping, magic, riftarc, trains, aether, nether2, villagers…) | data/sfx.json | come along for free: the extractor records every recipe present after the whole game loads |
+| other modules' SND_FX/VOX additions (deepdark, dragons, theend, brewing, camping, magic, riftarc, trains, skylands (aether.js), nether2, villagers…) | data/sfx.json | come along for free: the extractor records every recipe present after the whole game loads |
 
 ## How the original's sounds are carried over
 `tools/port/sfx_extract.py` runs the whole original game in headless Chromium (like jsdump.py), wraps the
@@ -50,7 +50,7 @@ u8 amp0, i8 damp[len-1])`; dB code v → −100 + v/2 dB.
 `resynth.cpp` (mirrors `resynth()` in the tool): random-phase noise shaped by the bands (2048-point frames every
 512 samples, both halves in one complex IFFT), the partials as oscillators with interpolated frequency/level,
 then each half scaled block by block to its loudness track; peaks over 0.9 softened. Every render draws new
-noise; every play varies pitch (±5–7 %) and level like the original's `sample()`, plus Minecraft's own per-entry
+noise; every play varies pitch (±5–7 %) and level like the original's `sample()`, plus the per-entry
 pitch/volume from the pack's sounds.json.
 
 ### Quality (all 662 pack sounds)

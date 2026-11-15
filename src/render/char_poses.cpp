@@ -1,5 +1,4 @@
-// render/char_poses.cpp — the newer poses laid on charAnimate's (render/char_anim.cpp), after AnimatedPlayer
-// (thehippomaster), Not Enough Animations / Animations n' Stuff and Hold My Items (Punched Stuffs), used with permission:
+// render/char_poses.cpp — the newer poses laid on charAnimate's (render/char_anim.cpp):
 // drinking with the head tipped back, the flinch from a hit, the knees giving as you die, a sleeper's slack limbs, and
 // the poses for a shield, a crossbow, a trident and a spear. Each eases in by its own amount, so the blend between states
 // (render/char_blend.h) has smooth ends to work between.
@@ -42,11 +41,11 @@ void charMorePoses(CharAngles& A, const CharPose& pose) {
     const float up = std::min(1.f, (1 - pose.eat) * 4);
     A.head.x -= 0.45f * up + std::max(0.f, std::sin(t * 9)) * 0.04f * up;
   } else if (pose.eat > 0 && !lying) A.head.x += std::max(0.f, std::sin(t * 22)) * 0.06f;   // chewing: the head nods with each bite
-  // ---- What Are They Up To (render/activity_layer.cpp): looking down at the screen in their hands; dozing, the head dropped ----
+  // ---- what they're up to (render/activity_layer.cpp): looking down at the screen in their hands; dozing, the head dropped ----
   if (pose.gui && !lying) A.head.x += 0.18f;
   if (pose.doze && !lying) A.head.x += 0.55f + std::sin(t * 1.3f) * 0.04f;
   // ---- a hit: a sharp flinch back, the arms jerking up and out, then easing off ----
-  // (after Epic Fight's hit: snapped into in 0.06 s, held a moment, then let go; away from where the blow came from)
+  // (a hit: snapped into in 0.06 s, held a moment, then let go; away from where the blow came from)
   if (pose.hurt > 0 && pose.hurt < 0.45f && pose.deathT <= 0 && !pose.sleep) {
     const float h = pose.hurt, f = h < 0.06f ? ease(h / 0.06f) : h < 0.16f ? 1.f : 1 - ease((h - 0.16f) / 0.29f);
     const float fr = clampf(pose.hurtDir.y, -1, 1), sd = clampf(pose.hurtDir.x, -1, 1);   // (from the front: rocked back; from behind: thrown forward)
@@ -109,7 +108,7 @@ void charMorePoses(CharAngles& A, const CharPose& pose) {
     return;
   }
   // ---- a shield raised across the body in the off hand (the elbow out, the forearm across the chest) ----
-  // ---- on guard behind a shield (Epic Fight's guard): turned shield side on, feet apart (the shield side's ahead, both
+  // ---- on guard behind a shield (the guard): turned shield side on, feet apart (the shield side's ahead, both
   // knees bent), the shield arm out before the chest with the forearm across it. The weapon hand stays as it was (raised
   // back over the shoulder it read as a wind-up, not a guard). Written for the shield in the left hand and mirrored for
   // the right (y and z of an arm flip side to side). Walking keeps its stride: the stance is for standing.
@@ -124,7 +123,7 @@ void charMorePoses(CharAngles& A, const CharPose& pose) {
     fore = vec3(1.5f + CG[3], o * CG[4], o * CG[5]);
   }
   if (pose.block > 0) {
-    // (after Epic Fight's shield guard, which is a pose for the upper body laid over whatever the legs do: the body turned
+    // (the shield guard is a pose for the upper body laid over whatever the legs do: the body turned
     // shield shoulder forward about half a right angle, the head turned back to keep looking ahead, the shield arm's
     // elbow forward and low and the forearm level across the front of the chest, so the shield strapped on it stands
     // square before the body; the other arm as it was)
@@ -171,7 +170,7 @@ void charMorePoses(CharAngles& A, const CharPose& pose) {
     A.body.y += 0.35f * k; A.body.x += 0.1f * k; A.head.y -= 0.35f * k;
     A.legR.x -= 0.25f * k; A.legL.x += 0.3f * k; A.shinL.x -= 0.2f * k;
   }
-  // ---- a spear couched under the arm for a charge (Punchy's spear_charge): leaning into it, the point level ----
+  // ---- a spear couched under the arm for a charge (the spear charge): leaning into it, the point level ----
   if (pose.spearCharge > 0) {
     const float k = ease(pose.spearCharge);
     A.armR = mixv(A.armR, vec3(1.0f + pitch * 0.4f, -0.12f, 0.12f), k); A.foreR = mixv(A.foreR, vec3(0.65f, 0, 0), k);

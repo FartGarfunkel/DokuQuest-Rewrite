@@ -88,12 +88,12 @@ void WeatherSim::update(const WeatherInputs& in, double dt) {
     const float d = (float)glm::length(p.pos - glm::dvec3(in.cam));
     // sky things live within the weather distance; things spawned on the ground (shrubs, haze, fog) out to the surface range
     const bool sky = p.kind <= WKind::HeavySnow || p.kind == WKind::Dust || p.kind == WKind::SkitterDust;
-    const bool distFade = sky || p.kind == WKind::Shrub || p.kind == WKind::Haze;   // FadeType.DISTANCE
+    const bool distFade = sky || p.kind == WKind::Shrub || p.kind == WKind::Haze;   // distance fade
     const float range = sky ? in.dist : p.kind == WKind::Haze ? in.dist * 2 : in.surface;
     const bool dead = p.impact <= 0 || d > range + 0.5f || (K.lifetime > 0 && p.age >= K.lifetime) || (K.lifetime == 0 && p.age > 3000);
     if (dead) { parts[i] = parts.back(); parts.pop_back(); continue; }
     if (!distFade) fade(p);
-    else {   // Particle Rain's FadeType.DISTANCE: full over the nearer two thirds, fading out over the last third
+    else {   // distance fade: full over the nearer two thirds, fading out over the last third
       const float fall = range / 3;
       p.alpha = K.opacity * (1 - std::clamp((d + fall) / fall - 3, 0.f, 1.f));
     }
@@ -104,7 +104,7 @@ void WeatherSim::update(const WeatherInputs& in, double dt) {
 void WeatherSim::spawnSky(const WeatherInputs& in, float ticks) {
   WeatherSystem& W = *in.W;
   if (in.band != DIM_OVERWORLD || W.rain <= 0.001f) { skyAcc = 0; return; }
-  const float speed = glm::length(in.camVel) / 20.f;   // blocks per tick, as Particle Rain measures it
+  const float speed = glm::length(in.camVel) / 20.f;   // blocks per tick
   // getSkyParticleDensity: amount / 25 a tick, up to x1.5 in a thunderstorm, more while moving so it looks as thick
   const float perTick = budget / 25.f * (1 + 0.5f * W.thunderK) * W.rain * std::min(2.f, W.dens) * (1 + 2 * std::floor(speed));
   skyAcc += perTick * ticks;
@@ -245,7 +245,7 @@ void WeatherSim::spawnDust(const WeatherInputs& in, float ticks) {
     if (!dusty(ground) || W.precipAt(w, (float)x, (float)top, (float)z) != 0) continue;   // dry sand, terracotta, sandstone
     const WKindDef& K = kindDef(k);
     WParticle q; q.kind = k; q.pos = at; q.size = K.size;
-    // (haze: big faint soft blobs growing with distance, as Particle Rain's dust_haze)
+    // (haze: big faint soft blobs growing with distance)
     q.sprite = (u8)(k == WKind::Shrub ? (int)WSprite::Shrub : k == WKind::Haze ? (int)WSprite::FogFlat : (int)WSprite::Dust0 + (int)(rng.next() % 3));
     float col[3] = {0.76f, 0.62f, 0.42f};
     if (in.tiles && k != WKind::Shrub) { mapRGB(*in.tiles, ground, 0x88, col); for (float& c : col) c /= 255.f; }   // (mapRGB is 0..255: unscaled, every speck came out white)
@@ -301,20 +301,20 @@ void WeatherSim::fade(WParticle& p) {
   const WKindDef& K = kindDef(p.kind);
   const float L = (float)std::max(1, K.lifetime), half = L / 2;
   switch (p.kind) {
-    case WKind::Ripple: case WKind::Splash:   // FadeType.OUT
+    case WKind::Ripple: case WKind::Splash:   // fade out
       p.alpha = std::clamp((L - p.age) / half, 0.f, 1.f) * K.opacity;
       if (p.kind == WKind::Ripple) p.sprite = (u8)((int)WSprite::Ripple0 + std::min(7, (int)(p.age / L * 8)));
       break;
     case WKind::Streak: p.alpha = p.hit ? std::max(0.f, p.alpha - 0.1f) : K.opacity * std::min(1.f, (L - p.age) / 10.f); break;
     case WKind::FogFlat: case WKind::FogUpright: p.alpha = fogAlpha(p); break;
-    default: p.alpha = (p.age < half ? p.age / half : (L - p.age) / half) * K.opacity; break;   // FadeType.IN_AND_OUT
+    default: p.alpha = (p.age < half ? p.age / half : (L - p.age) / half) * K.opacity; break;   // fade in and out
   }
 }
 
 void WeatherSim::step(const WeatherInputs& in, WParticle& p, float ticks) {
   const WKindDef& K = kindDef(p.kind);
   p.age += ticks;
-  if (p.hit) {   // CustomParticle.tickCollisionAnim: rain shortens into the ground, snow shrinks away
+  if (p.hit) {   // after a hit: rain shortens into the ground, snow shrinks away
     p.impact -= (p.kind == WKind::Rain || p.kind == WKind::HeavyRain) ? 0.5f * ticks : 0.15f * ticks;
     if (p.kind != WKind::Rain && p.kind != WKind::HeavyRain) p.size = K.size * std::max(0.f, p.impact);
     return;
@@ -343,7 +343,7 @@ void WeatherSim::step(const WeatherInputs& in, WParticle& p, float ticks) {
   const glm::dvec3 next = p.pos + glm::dvec3(p.vel * ticks);
   WeatherHit h;
   if (in.world && K.bounce > 0 && sweepHit(*in.world, vec3(p.pos), vec3(next), h) && !h.liquid) {
-    // CustomParticle.onCollision with bounciness: pushed off the face, up and over a side (wind rising over a hill)
+    // a collision with bounciness: pushed off the face, up and over a side (wind rising over a hill)
     const float speed = glm::length(p.vel), b = K.bounce * speed * 6;
     const vec3 nrm = h.face == 0 ? vec3(0, 1, 0) : h.face == 5 ? vec3(0, -1, 0) : h.face == 1 ? vec3(-1, 0, 0) : h.face == 2 ? vec3(1, 0, 0) : h.face == 3 ? vec3(0, 0, -1) : vec3(0, 0, 1);
     if (nrm.y == 0) { if (p.bounces++ >= 3) p.hit = true; p.vel.y += 0.5f * b; }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The Wither's voice (Minecraft's has one; ours was silent but for borrowed ghast noises): a rasping, breathy growl
+"""The Wither's voice (ours was silent but for borrowed ghast noises): a rasping, breathy growl
 from three throats at once (its three heads, a little apart in pitch and time), a sharp rasp when hurt, a long
 falling wail when it dies, the cry when it bursts out of its T (sim/wither.cpp plays it for everyone, wherever they
 are), the hiss of a skull leaving a head and the crunch of the blocks it breaks out of. Synth recipes in sfx.json

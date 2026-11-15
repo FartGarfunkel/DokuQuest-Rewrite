@@ -1,5 +1,5 @@
 // gen/structures_places.cpp — game/structures.js: ruins, mage towers, desert temples, sunken temples, shipwrecks,
-// mineshafts and the Labyrinth (STRUCTS 0..6). The labyrinth's rooms follow BTA 8.0's trap dungeon, written
+// mineshafts and the Labyrinth (STRUCTS 0..6). The labyrinth's rooms follow the classic trap dungeon, written
 // for this engine. The other places are built block for block as the original builds them.
 // Plans decide with the original's heights (jsY) and build at band heights; underground depths go through
 // vmap::owUnder. The residents/boss/spawners lists go in StructurePlan::data in the original's shape.
@@ -371,7 +371,7 @@ struct MineExt { std::vector<MineSeg> segs; int x, z, sp[3]; };
 
 static bool minePlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) {
   const OverworldGen* deepOw = owOf(t); if (deepOw && !deepOw->deepStructs()) deepOw = nullptr;
-  TerrainColumn c = t.terrainColumn(x, z); if (!sLandy(c) && !deepOw) return false;   // (a deep world's go under the sea too, as YUNG's)
+  TerrainColumn c = t.terrainColumn(x, z); if (!sLandy(c) && !deepOw) return false;   // (a deep world's go under the sea too)
   const int yo = 18 + jsFloor(rnd() * 14);
   if (c.jsY - yo < 16 && !deepOw) return false;
   // corridors, branching out from the start
@@ -398,7 +398,7 @@ static bool minePlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Struc
   int x0 = x, x1 = x, z0 = z, z1 = z;
   for (const auto& s : segs) { x0 = std::min(x0, s.x0 - 3); x1 = std::max(x1, s.x1 + 3); z0 = std::min(z0, s.z0 - 3); z1 = std::max(z1, s.z1 + 3); }
   int y = owUnder(yo);
-  // (a deep world, terrain 21: as YUNG's Better Mineshafts in Soulrend, anywhere from Minecraft's y -55 to 30, kept 16 under the land)
+  // (a deep world, terrain 21: anywhere from the imported data's y -55 to 30, kept 16 under the land)
   if (const OverworldGen* ow = owOf(t); ow && ow->deepStructs()) y = std::min(c.y - 16, -54 + (int)(hash32(t.seed() ^ 0x3A1, x, z, 77) % 86u));
   e->x = x; e->z = z; e->sp[0] = (sp.x + sp.ex) >> 1; e->sp[1] = y; e->sp[2] = (sp.z + sp.ez) >> 1;
   S.x0 = x0; S.z0 = z0; S.x1 = x1; S.z1 = z1; S.cx = x; S.cz = z; S.y = y; S.hashDy = yo - y;
@@ -459,7 +459,7 @@ static void mineBuild(ChunkWriter& w, const StructurePlan& S) {
 
 // ==== The Labyrinth ==================================================================================================
 // Buried trap rooms and corridors. No surface stair. A walk stops after 32 corridor segments, 64 calls deep,
-// 30000 cells, or 72 blocks from that network's origin. Three BTA mistakes are not repeated: the saved room's
+// 30000 cells, or 72 blocks from that network's origin. Three mistakes of the source are not repeated: the saved room's
 // z uses dz, the library and trophy test the z bound against z, and shaft spikes are placed after the carve.
 // Stand-ins this game does not have: no armoured zombie, ice skates, gold arrows, sandstone or permafrost
 // plate, mossy log, or permafrost slab.
@@ -746,7 +746,7 @@ struct LabGen {
   }
 
   void generateStatue(int rot, int blockX, int blockY, int blockZ) {
-    (void)rot;   // BTA turned a statue with this. The minotaur has no facing block.
+    (void)rot;   // the source turned a statue with this. The minotaur has no facing block.
     if (e.hasBoss) return;
     for (int x = blockX - 1; x <= blockX + 1; ++x)
       for (int z = blockZ - 1; z <= blockZ + 1; ++z)
@@ -847,8 +847,8 @@ static json labyrinthDispenser(u32 salt) {
     const double w = r() * 600.0;
     ItemStack st;
     if (w < 300.0) st = ItemStack("arrow", 5 + jsFloor(r() * 3));
-    else if (w < 310.0) st = ItemStack("arrow", 1);     // BTA's gold arrow
-    else if (w < 310.5) st = ItemStack("tnt", 1);       // BTA's explosive charge
+    else if (w < 310.0) st = ItemStack("arrow", 1);     // the gold arrow
+    else if (w < 310.5) st = ItemStack("tnt", 1);       // the explosive charge
     else continue;
     items[jsFloor(r() * 9)] = st.toJson();
   }
@@ -911,7 +911,7 @@ void registerStructurePlaces() {
   regPlace("desert_temple", "Desert Temple", 420, 0.75, 40, 2, desertPlan, desertBuild);
   regPlace("ocean_temple", "Sunken Temple", 520, 0.65, 40, 3, oceanPlan, oceanBuild);
   regPlace("wreck", "Shipwreck", 300, 0.55, 32, 4, wreckPlan, wreckBuild);
-  // a deep world (terrain 21) has Soulrend's many more (YUNG's: 0.3% of chunks, about one per 290 blocks square): its own
+  // a deep world (terrain 21) has many more (0.3% of chunks, about one per 290 blocks square): its own
   // kind on a 256-block grid; the old one stands aside there (other worlds keep theirs where they were)
   auto deepOn = [](const TerrainQuery& t) { const OverworldGen* ow = owOf(t); return ow && ow->deepStructs(); };
   regPlace("mineshaft", "Mineshaft", 480, 0.55, 64, 5, [deepOn](const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) { return !deepOn(t) && minePlan(t, x, z, rnd, S); }, mineBuild);

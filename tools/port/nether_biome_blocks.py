@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""tools/port/nether_biome_blocks.py — BetterNether's lands' blocks and plants for the Nether band (idempotent;
+"""tools/port/nether_biome_blocks.py — the terrain-13 Nether lands' blocks and plants for the Nether band (idempotent;
 data_patches.py runs it):  python3 tools/port/nether_biome_blocks.py <data-dir>
 
-After BetterNether (github.com/quiqueck/BetterNether, MIT; see docs/CREDITS.md): its jungle, swamp, gravel desert,
+After an MIT-licensed source (see docs/THIRD_PARTY_NOTICES.md): the jungle, swamp, gravel desert,
 magma land, soul plain and old warped woods (gen/nether_bn.cpp paints them, terrain 13). The pictures are the
-DokuQuest Base pack's nearest, recoloured to BetterNether's colours (as nether_blocks.py does) — no BetterNether art.
+DokuQuest Base pack's nearest, recoloured to each land's own colours (as nether_blocks.py does) — no outside art.
 
   turf: jungle_grass, swampland_grass, mushroom_grass, netherrack_moss; soul_sandstone
   plants: nether_reed (grows by lava, 3 tall), nether_cactus (3 tall, pricks), black_bush, black_apple_bush (black
@@ -59,7 +59,7 @@ def main(d):
     mtop = pack_pic(d, ['mangrove_log_top', 'jungle_log_top']); leaves = pack_pic(d, ['jungle_leaves', 'mangrove_leaves'])
     lichen = pack_pic(d, ['glow_lichen']); deadb = pack_pic(d, ['dead_bush'])
 
-    # turf: BetterNether's floor colours (measured from its pictures: averages only)
+    # turf: the lands' floor colours (averages only)
     for key, nm, top, side in [('nether_jungle_grass', 'Nether Jungle Grass', 0x3E7A2A, 0x4F7230), ('swampland_grass', 'Nether Swampland Grass', 0x5A4466, 0x5B4762),
                                ('mushroom_grass', 'Nether Mushroom Grass', 0x7C5A6A, 0x77566A), ('netherrack_moss', 'Netherrack Moss', 0x8B5A2E, 0x7E4A34)]:
         tile('bn_%s_top' % key, recolour(nyl_t, top, 1.15)); tile('bn_%s_side' % key, recolour(nyl_s, side, 1.1))

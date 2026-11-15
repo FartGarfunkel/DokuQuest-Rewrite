@@ -1,6 +1,6 @@
-// gen/carvers.cpp — Minecraft Beta's carvers (MapGenCaves / MapGenCavesHell / MapGenRavine), carving straight into
-// one band chunk's GenBuf. Every source chunk within RANGE chunks seeds its systems from the world seed the way
-// Minecraft's MapGenBase does, so a tunnel is the same whichever chunk it is carved from.
+// gen/carvers.cpp — the classic carvers (worm caves, the Nether's caves, ravines), carving straight into
+// one band chunk's GenBuf. Every source chunk within RANGE chunks seeds its systems from the world seed the same
+// way, so a tunnel is the same whichever chunk it is carved from.
 #include "gen/carvers.h"
 #include <cmath>
 
@@ -12,7 +12,7 @@ constexpr double PI_D = 3.141592653589793;
 
 struct Carver {
   GenBuf& b; const CarveRules& r; int cx, cz;
-  // MapGenCaves.generateCaveNode / MapGenRavine.generateRavine share this walk; ravine = taller, rougher sides
+  // the cave tunnel and the ravine share this walk; ravine = taller, rougher sides
   void tunnel(i64 seed, double x, double y, double z, float width, float yaw, float pitch, int step, int end, double vScale,
               bool ravine) {
     const double mx = cx * 16 + 8, mz = cz * 16 + 8;
@@ -97,7 +97,7 @@ struct Carver {
     }
   }
 
-  // MapGenCaves.recursiveGenerate (one source chunk)
+  // the caves of one source chunk
   void caves(JRandom& rnd, int sx, int sz) {
     int n = rnd.nextInt(rnd.nextInt(rnd.nextInt(r.hell ? 10 : 40) + 1) + 1);
     if (rnd.nextInt(r.hell ? 5 : 15) != 0) n = 0;
@@ -107,7 +107,7 @@ struct Carver {
       const double z = sz * 16 + rnd.nextInt(16);
       int k = 1;
       if (rnd.nextInt(4) == 0) {
-        // a room: a short fat blob (MapGenCaves.generateLargeCaveNode)
+        // a room: a short fat blob
         const i64 sd = rnd.nextLong(); const float w = 1.f + rnd.nextFloat() * 6.f;
         tunnel(sd, x, y, z, w, 0, 0, -1, -1, 0.5, false);
         k += rnd.nextInt(4);
@@ -121,7 +121,7 @@ struct Carver {
       }
     }
   }
-  // MapGenRavine.recursiveGenerate (one source chunk)
+  // the ravines of one source chunk
   void ravines(JRandom& rnd, int sx, int sz) {
     if (rnd.nextInt(50) != 0) return;
     const double x = sx * 16 + rnd.nextInt(16), y = rnd.nextInt(rnd.nextInt(40) + 8) + 20, z = sz * 16 + rnd.nextInt(16);

@@ -1,4 +1,4 @@
-// sim/attack_moves.h — melee attacks as moves (Epic Fight's way, studied and measured, our own numbers: see
+// sim/attack_moves.h — melee attacks as moves (studied and measured, our own numbers: see
 // docs/ANIMATION_STUDY.md): a press starts a move; the blade is live only while it is really passing through the air
 // in front of you (hitFrom..hitTo), and it lands on whatever it passes through there; the next press is taken from
 // `recovery`; chains of cuts, a lunging thrust when sprinting, a chop from the air.
@@ -30,7 +30,7 @@ struct AttackMove {
   const char* name;
   float len;        // the whole move, s (after it, back to walking/standing)
   float turnLock;   // from here to `recovery` the blow keeps the facing it had (aim during the wind-up only)
-  float hitFrom, hitTo;   // the blade is live (it lands on what it passes through) — Epic Fight's preDelay..contact
+  float hitFrom, hitTo;   // the blade is live (it lands on what it passes through) — the clip's preDelay..contact
   float recovery;   // the next press is taken from here (a press earlier is kept for then); walking speed back
   float lunge;      // blocks travelled forward over 0..hitTo (lungeAt); stop short at a target in reach
   float dmg;        // x the weapon's damage
@@ -41,7 +41,7 @@ struct AttackMove {
 const AttackMove& attackMove(u8 id);   // MV_NONE / out of range: a zeroed move
 
 // the chain: the n-th press (n counts from 0; it wraps), or the dash (sprinting at the press) or the air move (off the
-// ground at the press). A chain restarts when 0.8 s pass after a move ends with no press (Epic Fight's window).
+// ground at the press). A chain restarts when 0.8 s pass after a move ends with no press.
 int comboLength(Moveset m);
 u8 attackMoveFor(Moveset m, int n, bool dash, bool air);
 constexpr float COMBO_WINDOW = 0.8f;

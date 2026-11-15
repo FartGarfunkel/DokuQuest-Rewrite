@@ -1,8 +1,8 @@
-// gen/rock_layers.cpp — rock layers (terrain version 12; after TerraFirmaCraft's rock layers): under the soil each region
+// gen/rock_layers.cpp — rock layers (terrain version 12): under the soil each region
 // (about 200 blocks across, its edges wavering) has its own rocks, one of each group: a sedimentary rock on top (limestone,
 // chalk, shale, claystone, conglomerate, sandstone) — a volcanic one instead in a volcanic region (basalt, andesite,
 // rhyolite, dacite) — a metamorphic one under it (marble, slate, gneiss, schist, quartzite) and an igneous one at the bottom
-// (granite, diorite, gabbro). Ores keep to their rocks as TFC's do: zinc (sphalerite) in metamorphic rock, bismuth in
+// (granite, diorite, gabbro). Ores keep to their rocks: zinc (sphalerite) in metamorphic rock, bismuth in
 // sedimentary, tin (cassiterite) in the igneous intrusive rocks, silver in granite and gneiss, gold in the igneous rocks;
 // copper, iron and the rest anywhere.
 #include "gen/overworld.h"
@@ -41,7 +41,7 @@ void OverworldGen::initRockLayers() {
 }
 
 const u8* OverworldGen::oreHost(BlockId ore) const {
-  if (!strata || !looseGround) return nullptr;   // a classic world: every ore where it always was, whatever the rock (immersive: TFC's hosts)
+  if (!strata || !looseGround) return nullptr;   // a classic world: every ore where it always was, whatever the rock (immersive: their host rocks)
   if (ore == B.zinc_ore) return zincRep_.data();
   if (ore == B.bismuth_ore) return bismuthRep_.data();
   if (ore == B.tin_ore) return tinRep_.data();

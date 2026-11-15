@@ -1,5 +1,5 @@
-// render/fp_motion.h — the first-person hand's extra motion (render/item_layers.cpp), after Hold My Items' animation
-// scripts and Punchy's per-kind animation sets (Punched Stuffs, used with permission): how fast each kind of thing
+// render/fp_motion.h — the first-person hand's extra motion (render/item_layers.cpp), per-kind
+// animation sets: how fast each kind of thing
 // swings, the swap (the old thing lowered out of view, the new one brought up with a little overshoot), and the hand's
 // place by what you're doing (sprinting, landing, on a ladder, swimming, drinking). Pure math (tools/test/anim_test.cpp).
 #pragma once
@@ -7,7 +7,7 @@
 
 namespace dq {
 
-// swing progress per second: Minecraft's 3.6 for most things; heavy heads (axes, maces, hammers) slower, daggers quicker;
+// swing progress per second: 3.6 for most things; heavy heads (axes, maces, hammers) slower, daggers quicker;
 // mining never slower than 3.6
 float fpSwingRate(const std::string& itemId, bool mining);
 

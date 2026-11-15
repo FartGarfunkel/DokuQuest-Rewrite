@@ -6,7 +6,7 @@
 
 namespace dq {
 namespace {
-// Particle Rain: -(sin(p*f + t) * sin(p*f*0.5 + t*0.5) * max + max), gust frequency f 0.15, max (strength) 0.03,
+// the gust field: -(sin(p*f + t) * sin(p*f*0.5 + t*0.5) * max + max), gust frequency f 0.15, max (strength) 0.03,
 // t = game ticks * modulation speed 0.1. In -0.06..0.
 constexpr double FREQ = 0.15, MAXW = 0.03, TWO_PI = 6.283185307179586;
 double one(double p, double t) { return -(std::sin(p * FREQ + t) * std::sin(p * FREQ * 0.5 + t * 0.5) * MAXW + MAXW); }

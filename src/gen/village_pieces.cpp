@@ -1,5 +1,5 @@
-// gen/village_pieces.cpp — our villages' buildings: Better Village's structure pieces (gzip'd NBT templates in
-// data/villages, tools/port/village_import.py), read once on first use, each Minecraft block state turned into our
+// gen/village_pieces.cpp — our villages' buildings: the imported structure pieces (gzip'd NBT templates in
+// data/villages, tools/port/village_import.py), read once on first use, each imported block state turned into our
 // block and its meta for every quarter turn.
 #include <regex>
 #include <set>
@@ -117,7 +117,7 @@ bool eachPiece(const PieceFn& f) {
   return n > 0;
 }
 
-// ---- Minecraft block states -> ours ----
+// ---- imported block states -> ours ----
 const std::unordered_map<std::string, std::string>& NAMES() {
   static const std::unordered_map<std::string, std::string> M = {
     {"oak_planks", "planks"}, {"oak_log", "log"}, {"stripped_oak_log", "stripped_log"}, {"oak_wood", "oak_wood"}, {"oak_leaves", "leaves"},
@@ -131,7 +131,7 @@ const std::unordered_map<std::string, std::string>& NAMES() {
     {"attached_pumpkin_stem", "pumpkin_stem"}, {"attached_melon_stem", "melon_stem"}, {"tall_seagrass", "seagrass"},
     {"ice", "packed_ice"},   // (ours melts by lamplight and in rain: the snowy houses' ice walls flooded them)
     {"deepslate", "slate"}, {"cobbled_deepslate", "cobbled_slate"}, {"sweet_berry_bush", "berry_bush"},
-    // (Towns and Towers' pieces: Minecraft's newer names)
+    // (the town-style pieces: the newer names)
     {"deepslate_bricks", "slate_bricks"}, {"deepslate_brick_stairs", "slate_brick_stairs"}, {"deepslate_brick_slab", "slate_brick_slab"},
     {"deepslate_brick_wall", "slate_brick_wall"}, {"deepslate_tiles", "slate_tiles"}, {"deepslate_tile_stairs", "slate_tile_stairs"},
     {"deepslate_tile_slab", "slate_tile_slab"}, {"deepslate_tile_wall", "slate_tile_wall"}, {"cracked_deepslate_tiles", "cracked_slate_tiles"},
@@ -158,8 +158,8 @@ BlockId findBlock(const std::string& n) {
   if (R.blockIds.count(n) || R.blockAliases.count(n)) return R.blockId(n);
   return NONE;
 }
-// a block of another mod (Create, Quark, The Graveyard, Supplementaries...) or a newer Minecraft name: the nearest of ours, by
-// its name without the mod, Minecraft's newer words in ours, the material words, and its shape (stairs, slab, wall...)
+// a block from another namespace or under a newer name: the nearest of ours, by
+// its name without the namespace, the newer words in ours, the material words, and its shape (stairs, slab, wall...)
 BlockId nearestBlock(std::string n, std::string& keyOut) {
   if (const size_t c = n.find(':'); c != std::string::npos) n = n.substr(c + 1);
   auto rep = [&](const char* a, const char* b) { for (size_t p; (p = n.find(a)) != std::string::npos;) n.replace(p, strlen(a), b); };
@@ -178,7 +178,7 @@ BlockId nearestBlock(std::string n, std::string& keyOut) {
     {"window", "glass_pane"}, {"pane", "glass_pane"}, {"shingles", "bricks"}, {"casing", "andesite"}, {"girder", "iron_bars"}, {"shelf", "bookshelf"},
     {"notice_board", "oak_planks"}, {"doormat", "brown_carpet"}, {"clock", "copper_block"}, {"dripleaf", "fern"},
     {"shroom", "brown_mushroom_block"}, {"spikes", "bamboo"}, {"faucet", "iron_bars"}, {"belt", "black_wool"}, {"crank", "lever"}, {"link", "lever"},
-    // (other mods' woods, signs and flowers: they had been left out, holes in the builds that used them)
+    // (other namespaces' woods, signs and flowers: they had been left out, holes in the builds that used them)
     {"_wood", "log"}, {"bundle", "log"}, {"sign", "oak_sign"}, {"begonia", "red_tulip"}, {"bleeding_heart", "red_tulip"}};
   static const char* SHAPES[] = {"_stairs", "_slab", "_wall", "_fence", "_fence_gate", "_trapdoor", "_door", "_pillar", "_vertical_slab", "_button", "_pressure_plate", "_bars"};
   std::string shape;
@@ -220,7 +220,7 @@ VPState mapState(const json& e) {
   const json P = e.contains("Properties") ? e["Properties"] : json::object();
   if (n == "air" || n == "cave_air" || n == "void_air") { S.id = AIR; S.kind = VPK_AIR; return S; }
   if (n == "structure_void" || n == "jigsaw" || dropped(n)) return S;
-  // water and lava as they were, running parts and all (our levels are Minecraft's: 0 still, 1-7 running, 8 falling); the
+  // water and lava as they were, running parts and all (our levels are the format's: 0 still, 1-7 running, 8 falling); the
   // farms' irrigation runs down their terraces in it (left out, the stepped channels dried up and the crops with them)
   const int liquidLevel = (n == "water" || n == "lava") ? std::min(8, propI(P, "level", 0)) : 0;
   const Registry& R = reg();
@@ -233,12 +233,12 @@ VPState mapState(const json& e) {
   // its head was, and the hidden door it closes fired as the chunk woke)
   if (key == "redstone_torch" && prop(P, "lit") == "false" && findBlock("redstone_torch_off") != NONE) key = "redstone_torch_off";   // (one a circuit keeps off)
   if ((key == "piston" || key == "sticky_piston") && prop(P, "extended") == "true" && findBlock(key + "_extended") != NONE) key += "_extended";
-  // (another mod's lantern hung on the wall: a lantern stood on nothing beside the wall; ours there is a wall torch, its facing kept)
+  // (another namespace's lantern hung on the wall: a lantern stood on nothing beside the wall; ours there is a wall torch, its facing kept)
   if (key.find("wall_lantern") != std::string::npos) key = "torch";
   if (auto it = NAMES().find(key); it != NAMES().end()) key = it->second;
   if (key == "grass" && prop(P, "snowy") == "true" && findBlock("snowy_grass") != NONE) key = "snowy_grass";
   if (key == "cave_vines" && prop(P, "berries") == "true" && findBlock("cave_vines_lit") != NONE) key = "cave_vines_lit";   // (glow berries on it)
-  // a block we don't have (another mod's, or a Minecraft one we lack): ours from the table (tools/port/block_match.py, matched by
+  // a block we don't have (from another namespace, or one we lack): ours from the table (tools/port/block_match.py, matched by
   // its texture and shape), "air" leaving it empty. Before any guess by name: a dead coral block the builder used as weathered
   // stone had become brain coral by its name
   static const json SUBS = [] { auto j = readJson(dataDir() / "block_substitutes.json"); return j && j->is_object() ? *j : json::object(); }();
@@ -247,7 +247,7 @@ VPState mapState(const json& e) {
     if (key == "air") { S.id = AIR; S.kind = VPK_AIR; return S; }
   }
   BlockId id = findBlock(key);
-  if (id == NONE) id = nearestBlock(key, key);   // (another mod's block, or a newer name: the nearest of ours)
+  if (id == NONE) id = nearestBlock(key, key);   // (another namespace's block, or a newer name: the nearest of ours)
   if (id == NONE) { missing()[n]++; if (std::getenv("DQ_POI_AUDIT")) DQ_LOG("poi audit missing-block %s", n.c_str()); return S; }
   if (!S.plant.empty()) { auto it = NAMES().find(S.plant); if (it != NAMES().end()) S.plant = it->second; if (findBlock(S.plant) == NONE) S.plant.clear(); }
   S.id = id;
@@ -273,9 +273,9 @@ VPState mapState(const json& e) {
   for (int r = 0; r < 4; r++) {
     const int rf = f >= 0 && f < 4 ? (f + r) & 3 : -1;
     int m = 0;
-    // redstone parts (sim/rsplace.cpp's placing rules): a piston, observer, dispenser, dropper or hopper keeps Minecraft's facing as a
+    // redstone parts (sim/rsplace.cpp's placing rules): a piston, observer, dispenser, dropper or hopper keeps the format's facing as a
     // six-way direction (down, up, north, south, west, east); a repeater or comparator faces the way its signal goes (the
-    // opposite of Minecraft's "facing"), a repeater's delay above it. Without these every hidden door's piston pushed north.
+    // opposite of the format's "facing"), a repeater's delay above it. Without these every hidden door's piston pushed north.
     if (const std::string rs = d.str("rs"); rs == "piston" || rs == "observer" || rs == "dispenser" || rs == "dropper" || rs == "hopper" || rs == "repeater" || rs == "comparator") {
       static const int H2D6x[4] = {2, 5, 3, 4};   // north east south west -> world/shapes.h D6
       const int f6 = f == 4 ? 1 : f == 5 ? 0 : f >= 0 ? H2D6x[(f + r) & 3] : 0;
@@ -289,7 +289,7 @@ VPState mapState(const json& e) {
       S.meta[r] = (u8)((f == 4 ? 1 : f == 5 ? 0 : f >= 0 ? H2D6h[(f + r) & 3] : 0) | (prop(P, "type") == "sticky" ? 8 : 0));
       continue;
     }
-    if (shape == ShapeKind::Rail) {   // its course (Minecraft's RailShape order is ours, 0-9), turned with the piece; a powered one's power
+    if (shape == ShapeKind::Rail) {   // its course (the format's rail shape order is ours, 0-9), turned with the piece; a powered one's power
       // (each shape as its two ends: 0 north 1 east 2 south 3 west, an ascending one up toward its first; every rail had lain north-south)
       static const char* SH[10] = {"north_south", "east_west", "ascending_east", "ascending_west", "ascending_north", "ascending_south", "south_east", "south_west", "north_west", "north_east"};
       static const int A[10] = {0, 1, 1, 3, 0, 2, 2, 2, 0, 0}, B[10] = {2, 3, -1, -1, -1, -1, 1, 3, 3, 1};
@@ -318,7 +318,7 @@ VPState mapState(const json& e) {
     else if (shape == ShapeKind::Trapdoor) m = (rf < 0 ? 0 : (rf + 2) & 3) | (prop(P, "open") == "true" ? 4 : 0) | (top ? 8 : 0);
     else if (shape == ShapeKind::Gate) m = (rf < 0 ? 0 : rf) | (prop(P, "open") == "true" ? 4 : 0);
     else if (shape == ShapeKind::Bed || d.has("bed")) m = (rf < 0 ? 0 : rf) | (prop(P, "part") == "head" ? 4 : 0);
-    else if (shape == ShapeKind::Ladder && n == "vine") {   // ours cling to one wall: the first side Minecraft's has
+    else if (shape == ShapeKind::Ladder && n == "vine") {   // ours cling to one wall: the first side the piece's has
       int s = -1; for (const char* k : {"north", "east", "south", "west"}) if (prop(P, k) == "true") { s = dirOf(k); break; }
       if (s < 0) { S.id = NONE; return S; }
       m = (s + r) & 3;
@@ -347,7 +347,7 @@ VPState mapState(const json& e) {
     }
     else if (d.str("mech") == "axle" || d.str("mech") == "windmill") {   // a mill's shaft and its sails (big: the village mills' great sails)
       std::string a = prop(P, "axis");
-      if (a.empty()) { const std::string fc = prop(P, "facing"); a = fc == "north" || fc == "south" ? "z" : fc == "east" || fc == "west" ? "x" : ""; }   // (Create's windmill bearing faces a way)
+      if (a.empty()) { const std::string fc = prop(P, "facing"); a = fc == "north" || fc == "south" ? "z" : fc == "east" || fc == "west" ? "x" : ""; }   // (a windmill bearing faces a way)
       int ax = a == "z" ? 2 : 1;
       if (r & 1) ax = 3 - ax;
       m = ax | (d.str("mech") == "windmill" && (prop(P, "big") == "true" || n.find("windmill_bearing") != std::string::npos) ? 4 : 0);
@@ -373,7 +373,7 @@ VPState mapState(const json& e) {
   return S;
 }
 
-const std::map<std::string, int>& WEIGHTS() {   // roughly vanilla's pool weights, by what the piece is
+const std::map<std::string, int>& WEIGHTS() {   // rough pool weights, by what the piece is
   static const std::map<std::string, int> W = {{"farm", 4}, {"straight", 4}, {"library", 3}, {"animal_pen", 2}, {"cartographer", 1}, {"accessory", 1}};
   return W;
 }
@@ -403,7 +403,7 @@ BlockId blockFromState(const json& state) { const VPState s = mapState(state); r
 // one structure template (.nbt bytes) as a piece: its blocks in our states, its joints, our furniture (village_pieces.h)
 std::string piecesMissing() { std::vector<std::pair<int, std::string>> v; for (auto& [k, c] : missing()) v.push_back({c, k}); std::sort(v.rbegin(), v.rend()); std::string o; for (size_t i = 0; i < v.size() && i < 40; i++) o += (o.empty() ? "" : ", ") + v[i].second + " " + std::to_string(v[i].first); return o; }
 
-// a builder's spawner mob (Minecraft's or another mod's) as ours: the same where we have it, else the nearest kind. Never a
+// a builder's spawner mob (from any namespace) as ours: the same where we have it, else the nearest kind. Never a
 // phantom (there are none); a skeleton when there's no telling
 static std::string spawnerMob(const std::string& id) {
   static const std::map<std::string, std::string> NEAR = {
@@ -578,7 +578,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
         if (rb.nbt >= 0) {
           const json& nb = T.nbts[rb.nbt];
           J.name = nb.value("name", std::string()); J.target = nb.value("target", std::string()); J.pool = nb.value("pool", std::string());
-          // Minecraft's joint: "aligned" (the pieces' tops must agree, so an upper floor sits square on the one below) or "rollable" (any turn);
+          // the joint: "aligned" (the pieces' tops must agree, so an upper floor sits square on the one below) or "rollable" (any turn);
           // without one, a side joint is aligned and an up/down one rollable
           const std::string jt = nb.value("joint", std::string());
           J.aligned = jt.empty() ? J.front < 4 : jt == "aligned";
@@ -618,7 +618,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
       P.top = std::max(P.top, (int)rb.y);
     }
     (void)jigIdx;
-    // Water: a building's is kept as its builder made it (our water runs and settles as Minecraft's does, so what held
+    // Water: a building's is kept as its builder made it (our water runs and settles as theirs does, so what held
     // there holds here). A street's puddles go (it lies on whatever ground there is).
     {
       const Registry& R = reg();
@@ -740,7 +740,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
           for (int d = 0; d < 4; d++) {
             const int nx = b.x + ND[d][0], nz = b.z + ND[d][2];
             plug(nx, nz, b.x, b.z);
-            // a slab or stair rim beside still water: Minecraft's stays dry and holds the pond, ours takes the water into its
+            // a slab or stair rim beside still water: theirs stays dry and holds the pond, ours takes the water into its
             // empty half and runs it on out of its far side (taiga_small_farm_1's pond spilled 48 blocks over the grass)
             const int j = at3(nx, b.y, nz);
             if (!source || j < 0 || j >= nB) continue;
@@ -751,7 +751,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
         }
         for (auto& pl : plugs) P.blocks.push_back(pl);
       }
-      // a banner is two blocks of ours: Minecraft's hangs from the wall down into the block below, or stands up into the
+      // a banner is two blocks of ours: theirs hangs from the wall down into the block below, or stands up into the
       // one above; the other half goes there when it's free
       auto withMeta = [&](int si, bool low) {
         VPState t = P.states[si]; for (auto& m : t.meta) m = (u8)(low ? m | 4 : m & ~4);
@@ -773,7 +773,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
       // Only in our own villages' pieces (made for it: tools/port/village_builder.py): other builders' stairs are steps
       static const std::set<std::string> OURS = {"plains", "savanna", "taiga", "snowy", "desert", "beach", "jungle", "swamp", "mountain", "alpine", "mesa",
         "oasis", "savanna_hut", "mushroom", "igloo", "christmas", "halloween", "jungle_tree"};
-      // (every village's: Towns and Towers' styles had kept their stair-and-sign chairs and fence tables. Theirs are only
+      // (every village's: the town styles had kept their stair-and-sign chairs and fence tables. Theirs are only
       //  taken for seats indoors, a roof over them, so a stair out in the street stays a stair)
       const bool ours = OURS.count(P.style) > 0;
       if (P.kind != "poi") {
@@ -803,7 +803,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
           VPState t; t.id = id; t.meta = meta; P.states.push_back(t); return (int)P.states.size() - 1;
         };
         std::vector<char> drop(P.blocks.size(), 0);
-        // ---- what Better Village's builders made furniture of, made ours ----
+        // ---- what the pieces' builders made furniture of, made ours ----
         const Registry& RR = reg();
         static const int DX[4] = {0, 1, 0, -1}, DZ[4] = {-1, 0, 1, 0};
         auto isAir = [&](int x, int y, int z) { return at2(x, y, z) < 0; };
@@ -857,7 +857,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
             furnN[1]++; furnBy[P.style][1]++;
           }
         }
-        // 2. unlit campfires laid side by side (or over nothing) are a roof of logs in Minecraft (the stables', the snowy
+        // 2. unlit campfires laid side by side (or over nothing) are a roof of logs in the pieces (the stables', the snowy
         //    pens'): ours look like campfires, so oak slabs; a lone one in a kitchen stays a campfire
         {
           const BlockId CF = findBlock("campfire"), OS = findBlock("oak_slab");
@@ -873,7 +873,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
             if (!roof.empty()) { const int slab = stateOf("oak_slab", {0, 0, 0, 0}); for (int i : roof) P.blocks[i].s = (u16)slab; }
           }
         }
-        // 2b. water let into a floor indoors with open trapdoors round its rim (the fisherman's fish tank, Minecraft's cod and
+        // 2b. water let into a floor indoors with open trapdoors round its rim (the fisherman's fish tank, cod and
         //     salmon in it): glass round it instead, a tank you can see is one
         {
           const BlockId GP = findBlock("glass_pane");
@@ -888,7 +888,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
             }
           }
         }
-        // 2c. a block of leaves set on a flower pot (Minecraft's potted shrub): ours floats over the pot's little plant, so it goes
+        // 2c. a block of leaves set on a flower pot (a potted shrub): ours floats over the pot's little plant, so it goes
         for (int i = 0; i < (int)P.blocks.size(); i++) {
           if (keyOf(i) != "flower_pot") continue;
           const VPBlock& b = P.blocks[i];
@@ -1105,8 +1105,8 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
           P.blocks[j].s = (u16)stateOf(furn(w, "table"), {0, 1, 2, 3});
           furnN[1]++; furnBy[P.style][1]++;
         }
-        // Better Village's weaponsmith yard "machine" (a grindstone hung under an anvil, an observer and trapdoors over it, a
-        // hopper on a cobble wall each side, carpet on the hoppers: Minecraft decoration, it does nothing): made a smith's
+        // the imported weaponsmith yard "machine" (a grindstone hung under an anvil, an observer and trapdoors over it, a
+        // hopper on a cobble wall each side, carpet on the hoppers: decoration, it does nothing): made a smith's
         // corner that works: the grindstone on the ground, an anvil beside it, a barrel the other side, the rest gone
         std::vector<VPBlock> added;
         for (int i = 0; i < (int)P.blocks.size(); i++) {
@@ -1201,7 +1201,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
 namespace {
 std::unique_ptr<VillagePieces> finishPack(std::unique_ptr<VillagePieces> pack, int pieces) {
   if (!pieces) return nullptr;
-  // Towns and Towers' styles have no market: each takes the stalls of the style of ours nearest it (the baker's, butcher's,
+  // the town styles have no market: each takes the stalls of the style of ours nearest it (the baker's, butcher's,
   // farmer's, fisherman's, jeweller's and merchant's), a pool of its own the town plan draws on round the square (terrain 21)
   {
     static const std::map<std::string, std::string> NEAR = {{"tudor", "plains"}, {"classic", "plains"}, {"rustic", "plains"}, {"iberian", "plains"},
@@ -1216,7 +1216,7 @@ std::unique_ptr<VillagePieces> finishPack(std::unique_ptr<VillagePieces> pack, i
       for (const VPPiece& p : src->second) if (p.name.find("market_stall") != std::string::npos) { stalls.push_back(p); n++; }
       if (!stalls.empty()) pack->pools[st + "/market"] = std::move(stalls);
     }
-    DQ_LOG("village pieces: %d market stalls lent to Towns and Towers' styles", n);
+    DQ_LOG("village pieces: %d market stalls lent to the town styles", n);
   }
   for (auto& [k, v] : pack->pools) std::sort(v.begin(), v.end(), [](const VPPiece& a, const VPPiece& b) { return a.name < b.name; });   // the same order on every machine
   { std::string by; for (auto& [st, n] : furnBy) by += " " + st + " " + std::to_string(n[0]) + "/" + std::to_string(n[1]); DQ_LOG("village pieces: chairs/tables by style:%s", by.c_str()); }
@@ -1231,9 +1231,9 @@ std::unique_ptr<VillagePieces> finishPack(std::unique_ptr<VillagePieces> pack, i
 
 const std::vector<VPPiece>* VillagePieces::pool(const std::string& name) const {
   std::string n = name;
-  if (const size_t c = n.find(':'); c != std::string::npos) n = n.substr(c + 1);   // (any namespace: minecraft:, kaisyn: (Towns and Towers))
+  if (const size_t c = n.find(':'); c != std::string::npos) n = n.substr(c + 1);   // (any namespace)
   if (n.rfind("village/", 0) == 0) n = n.substr(8);
-  if (n.rfind("exclusives/", 0) == 0) n = n.substr(11);   // (Towns and Towers' exclusive styles: their own folder)
+  if (n.rfind("exclusives/", 0) == 0) n = n.substr(11);   // (the town styles' exclusive ones: their own folder)
   auto it = pools.find(n);
   return it == pools.end() || it->second.empty() ? nullptr : &it->second;
 }

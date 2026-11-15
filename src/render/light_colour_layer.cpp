@@ -1,4 +1,4 @@
-// render/light_colour_layer.cpp — coloured block light (BTA): every light-giving block has a colour (torches and
+// render/light_colour_layer.cpp — coloured block light: every light-giving block has a colour (torches and
 // campfires warm, soul fire blue, redstone red, sea lanterns and prismarine cyan, amethyst and portals violet, the
 // coloured lamps their dye...; data/blocks.json "lightColor": [r, g, b] sets any block's). Round the camera a volume of
 // 64 x 48 x 64 cells holds the light's colour in each: from every light in it, a flood out through everything that

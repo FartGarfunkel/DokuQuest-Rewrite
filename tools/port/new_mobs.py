@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""tools/port/new_mobs.py — new creatures (idempotent; data_patches.py runs it): our own animals of the kinds Alex's Mobs
-brought to mind (its code and art are GPL: nothing of it is used). Each is made from one of our own as its pattern: that
+"""tools/port/new_mobs.py — new creatures (idempotent; data_patches.py runs it): our own animals, wholly our own
+designs (no outside code or art is used). Each is made from one of our own as its pattern: that
 one's way of living (data/mobs.json: grazing, herding, flying, swimming, hopping), its rig and model (data/models.json)
 at its own size, its pictures recoloured to the new animal's coat, and parts of its own (a moose's palmate antlers, an
 elephant's trunk, tusks and ears, a toucan's great beak). Where they live: "spawnIn" / "spawnInWater" (sim/creature_spawn).
@@ -54,8 +54,8 @@ MOBS = {
     'lobster': dict(base='scorpion', scale=0.8, coat=((196, 60, 40), (110, 26, 18)),
                     mob=dict(hp=6, hostile=False, drops=[['cod', 0, 1, 1]], spawnIn=[['beach', 4, 1, 3]])),
 }
-# BetterNether's creatures (github.com/quiqueck/BetterNether, MIT; docs/CREDITS.md): sim/creature_spawn.cpp spawns them
-# in its lands (gen/nether_bn.h), not by spawnIn
+# the terrain-13 Nether lands' creatures (MIT-licensed source, docs/THIRD_PARTY_NOTICES.md): sim/creature_spawn.cpp spawns them
+# in their lands (gen/nether_bn.h), not by spawnIn
 MOBS.update({
     'firefly': dict(base='dragonfly', scale=0.8, coat=((236, 220, 90), (120, 96, 30)),
                     mob=dict(label='a firefly', hp=1, glows=12, ambient=True, betterEnd=False, betterNether=True, drops=[['glowstone_dust', 0, 1, 0.5]])),

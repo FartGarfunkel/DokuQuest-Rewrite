@@ -1,6 +1,6 @@
-// gen/dungeons_classic.cpp — Minecraft Alpha/Beta monster rooms (WorldGenDungeons): a cobblestone room with a
+// gen/dungeons_classic.cpp — classic monster rooms: a cobblestone room with a
 // mossy floor carved where a cave passes, a monster cage in the middle (block entity {type:'spawner', mob}, the same
-// shape structure cages use) and one or two chests against the walls with Beta's loot plus a few of the original's
+// shape structure cages use) and one or two chests against the walls with the classic loot plus a few of the original's
 // things. Each room lies wholly inside one chunk, so the opening test sees exactly the blocks it changes.
 #include "gen/structures.h"
 #include "gen/overworld.h"
@@ -10,7 +10,7 @@ namespace dq {
 
 namespace {
 json slot(const char* id, int n) { return hasItem(id) ? json{{"id", id}, {"n", n}} : json(); }
-// WorldGenDungeons.pickCheckLootItem (Beta 1.7), and now and then something of the original's
+// the classic loot pick, and now and then something of the original's
 json lootItem(JRandom& r) {
   switch (r.nextInt(14)) {
     case 0: return slot("saddle", 1);
@@ -39,15 +39,15 @@ void OverworldGen::placeDungeons(GenBuf& b, Chunk& ch, const OwColumn* cols) con
   auto solid = [&](int x, int y, int z) { return B.solid[b.blocks[colIdx(x, y, z)]] && !B.liquid[b.blocks[colIdx(x, y, z)]]; };
   auto air = [&](int x, int y, int z) { return b.blocks[colIdx(x, y, z)] == AIR; };
   int built = 0;
-  for (int attempt = 0; attempt < 16 && built < 2; attempt++) {   // Beta tries 8 times over a 2x2 area; a room here fits one chunk
+  for (int attempt = 0; attempt < 16 && built < 2; attempt++) {   // the classic rooms try 8 times over a 2x2 area; a room here fits one chunk
     const int rx = rnd.nextInt(2) + 2, rz = rnd.nextInt(2) + 2, H = 3;
     const int x = rx + 1 + rnd.nextInt(16 - 2 * (rx + 1)), z = rz + 1 + rnd.nextInt(16 - 2 * (rz + 1));
-    // Beta tries random heights and keeps the few that touch a cave; here a cave floor in this column is looked for
+    // the classic rooms try random heights and keep the few that touch a cave; here a cave floor in this column is looked for
     // (from a random height down), so a room is found by most caves instead of one try in many
     int y = 6 + rnd.nextInt(std::max(1, std::min(minH - 10, 120) - 6));
     while (y > 6 && !(air(x, y, z) && solid(x, y - 1, z))) y--;
     if (y <= 6 || y + H + 1 >= minH - 3) continue;
-    // the Beta test: solid floor and roof all over, 1-5 openings (two-high gaps) in the walls at the floor
+    // the classic test: solid floor and roof all over, 1-5 openings (two-high gaps) in the walls at the floor
     // (relaxed a little: three quarters of the floor and roof solid, 1-8 openings; the rest is bricked over)
     int openings = 0, floorS = 0, roofS = 0, cells = 0;
     for (int xx = x - rx - 1; xx <= x + rx + 1; xx++) for (int zz = z - rz - 1; zz <= z + rz + 1; zz++) {
@@ -64,7 +64,7 @@ void OverworldGen::placeDungeons(GenBuf& b, Chunk& ch, const OwColumn* cols) con
         else if (yy == y - 1) { if (b.blocks[i] != B.bedrock) { b.blocks[i] = rnd.nextInt(4) != 0 ? MOSSY : COBBLE; b.meta[i] = 0; } }
         else if (B.solid[b.blocks[i]] && b.blocks[i] != B.bedrock) { b.blocks[i] = COBBLE; b.meta[i] = 0; }
       }
-    // the roof (Beta leaves whatever rock was there; cobble it so the room reads as built)
+    // the roof (the classic rooms leave whatever rock was there; cobble it so the room reads as built)
     for (int xx = x - rx - 1; xx <= x + rx + 1; xx++) for (int zz = z - rz - 1; zz <= z + rz + 1; zz++) {
       const int i = colIdx(xx, y + H + 1, zz);
       if (b.blocks[i] != B.bedrock) { b.blocks[i] = COBBLE; b.meta[i] = 0; }
@@ -83,7 +83,7 @@ void OverworldGen::placeDungeons(GenBuf& b, Chunk& ch, const OwColumn* cols) con
       ch.blockEntities[i] = json{{"type", "chest"}, {"items", items}};
       break;
     }
-    // the cage: Beta's mix (skeleton 1/4, zombie 1/2, spider 1/4); the original's zombie is the ghoul
+    // the cage: the classic mix (skeleton 1/4, zombie 1/2, spider 1/4); the original's zombie is the ghoul
     static const char* MOBS[4] = {"skeleton", "ghoul", "ghoul", "spider"};
     const int i = colIdx(x, y, z);
     b.blocks[i] = CAGE; b.meta[i] = 0;

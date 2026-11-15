@@ -177,7 +177,7 @@ bool castSpell(Level& lv, Player& p) {
   if (left == right) {   // both hands, one spell
     const SpellDef* S0 = magicData().spell(right);
     if (spellRepeats(right) && S0 && S0->castTime <= 0 && (staffIn(p.offhand[0]) || !spellNeedsStaff(right))) {
-      // a bolt-like spell: one out of each hand at once (Skyrim's dual cast), together stronger than one
+      // a bolt-like spell: one out of each hand at once (a dual cast), together stronger than one
       H.power = 0.85f; H.mana = 0.9f; H.hand = 0;
       bool r = castSpellKey(lv, p, right);
       if (!H.ok) { H = {}; return r; }
@@ -262,7 +262,7 @@ bool handCasts(const Player& p, int hand) {
   return !k.empty() && leftFree(p) && (staffIn(p.offhand[0]) || !spellNeedsStaff(k));
 }
 
-// ---- the quick spell (Morrowind): its own button, whatever is in your hands ----------------------------------------
+// ---- the quick spell: its own button, whatever is in your hands ----------------------------------------
 std::string quickSpell(const Player& p) {
   auto it = p.stats.find("spellQuick");
   if (it != p.stats.end() && it->is_string()) {

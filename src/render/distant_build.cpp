@@ -1,5 +1,4 @@
-// render/distant_build.cpp — the worker side of distant terrain, built the way Cubyz builds its far land (ideas from
-// Cubyz's chunk.zig updateFromLowerResolution and renderer/mesh_storage.zig; no code taken, Cubyz is GPL):
+// render/distant_build.cpp — the worker side of distant terrain, built as level-of-detail voxels:
 //  * the land is VOXELS at every distance, only coarser further off: 2x2 blocks across next to the loaded chunks,
 //    then 4, 8 ... (one block high each, so far hills keep their true heights);
 //  * a coarse voxel is made from the finer ones under it: solid if ANY of them is (air is avoided, so thin walls,
@@ -7,7 +6,7 @@
 //    grass stays on top of dirt and a wall keeps its bricks;
 //  * real chunks are brought down to 2x2-block voxels once (summarizeChunk) and every coarser level is made from those;
 //    where nobody has been, the generator's columns give the voxels;
-//  * the voxels are drawn with the blocks' own textures (one texture per voxel face, like Cubyz's LOD chunks), merged
+//  * the voxels are drawn with the blocks' own textures (one texture per voxel face, like LOD chunks), merged
 //    into big quads where the same block runs on.
 #include "render/distant.h"
 #include "render/mesher.h"
@@ -21,12 +20,12 @@ using Col = std::array<BlockId, DIM_H>;   // a column of voxels, band-local y
 vec3 unpack(u32 c) { return vec3(c & 255, (c >> 8) & 255, (c >> 16) & 255); }
 inline u8 b8(float v) { return (u8)clampv((int)std::lround(v), 0, 255); }
 
-// what a voxel can be made of: plants, torches and the like vanish far off (Cubyz's lodReplacement)
+// what a voxel can be made of: plants, torches and the like vanish far off (an LOD replacement)
 inline bool lodSolid(const Registry& R, BlockId id) {
   return id && (R.tOpaque[id] || R.tLiquid[id] || R.tLeaves[id] || (R.tSolid[id] && R.tRender[id] != (u8)Render::Cross));
 }
 
-// Cubyz's pick for a coarse voxel: solid if any of the finer columns is solid at that height, and the block among them
+// the pick for a coarse voxel: solid if any of the finer columns is solid at that height, and the block among them
 // with the most air round it (above, below, and in the voxel's other columns)
 void mergeCols(const Col* const* sub, int n, const Registry& R, Col& out) {
   for (int y = 0; y < DIM_H; y++) {
@@ -71,7 +70,7 @@ std::shared_ptr<ColorTable> makeColorTable(const TileSet& tiles) {
   return ct;
 }
 
-// ---- a real chunk brought down to 2x2-block voxels, one block high (Cubyz: a level made from the one under it) ----
+// ---- a real chunk brought down to 2x2-block voxels, one block high (a level made from the one under it) ----
 // Works for chunks you've seen and for chunks the generator makes for the far land alone (DistantTerrain::genFar).
 std::shared_ptr<ChunkSummary> summarizeChunk(const Chunk& c, const ColorTable& ct) {
   (void)ct;
@@ -266,7 +265,7 @@ void buildTile(const TileInput& in, TileOutput& out) {
       fromGenerator(fx, fz, col, smp, k);
       temp[k] = smp.temp; humid[k] = smp.humid; stint[k] = smp.tint;
     } else {
-      // Cubyz: a coarse voxel from the finer ones under it; the land nobody has seen from the generator
+      // a coarse voxel from the finer ones under it; the land nobody has seen from the generator
       for (int s = 0; s < Q; s++) {
         const int qx = Q == 1 ? fx : (int)std::floor(fx + ((s & 1) ? 0.25 : -0.25) * cs), qz = Q == 1 ? fz : (int)std::floor(fz + ((s & 2) ? 0.25 : -0.25) * cs);
         const ChunkSummary* sm = in.sums[(size_t)k * Q + s].get();
@@ -304,7 +303,7 @@ void buildTile(const TileInput& in, TileOutput& out) {
     return t * 255.f;
   };
   // tops and undersides, merged into rectangles of the same height and block (a quad's texture repeats per voxel)
-  // ambient occlusion on the tops, as Cubyz and the near chunks have it: a top next to higher ground is darker in the
+  // ambient occlusion on the tops, as the near chunks have it: a top next to higher ground is darker in the
   // corners that ground stands over, so hills, terraces and cliff feet read with depth. Those tops are their own quads
   // (shaded per corner); the open ones still merge into big rectangles.
   struct Face { i16 y; BlockId id; u8 ao[4]; };   // ao: corners (x0,z0) (x0,z1) (x1,z1) (x1,z0), 3 open .. 0 shut in
@@ -426,7 +425,7 @@ void buildTile(const TileInput& in, TileOutput& out) {
           const int k = (j + 1) * W + (i + 1), nk = k + dk;
           const bool edge = d == 0 ? j == 0 : d == 1 ? j == N - 1 : d == 2 ? i == 0 : i == N - 1;
           // at the tile's edge the neighbour's voxels count a skirt lower, so a wall hangs down over any crack to the next
-          // tile (which may be finer or coarser: Cubyz draws the faces toward a coarser neighbour for the same reason)
+          // tile (which may be finer or coarser: faces toward a coarser neighbour are drawn for the same reason)
           Sp theirs[16]; const int nt = solidSpans(nk, theirs, 16, edge ? skirt : 0.f);
           for (int r = start[k]; r < start[k + 1]; r++) {
             const BlockId id = runs[r].id;

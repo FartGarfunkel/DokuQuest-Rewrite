@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** TFC-style ingot piles (64 per block, 8 per layer as 2 rows of 4, alternating courses, height by count, stacking
+**Goal:** Ingot piles (64 per block, 8 per layer as 2 rows of 4, alternating courses, height by count, stacking
 upward) and log piles (16 logs in a crossed crib, stacking upward) in every world.
 
 **Architecture:** The rules live in a pure sim module (`src/sim/piles.{h,cpp}`): placing, adding, taking, topping up the
@@ -79,7 +79,7 @@ layout functions.
     `pileMeta(Logs, 16) == 4`.
   - Place: held 70 iron ingots, `pilePlace(w, 4, Y+1, 4, held)` → true, block is `ingot_pile`, entity item n == 1,
     held n == 69; 63 more `pileAdd` → n == 64, meta 8; one more `pileAdd` → a new pile at Y+2 with n == 1.
-  - Top-up (TFC): with the lower pile full (64) and an upper pile of 1 on it, `pileTake` from the lower (63), then
+  - Top-up: with the lower pile full (64) and an upper pile of 1 on it, `pileTake` from the lower (63), then
     `pileAdd` on the upper → the lower is back to 64 and the upper stays at 1.
   - Mixed: gold ingot `pileAdd` on the iron pile → false, why == "One metal to a pile"; held unchanged.
   - Not solid below: `pilePlace` on air cell over air → false.

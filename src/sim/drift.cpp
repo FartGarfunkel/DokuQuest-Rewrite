@@ -1,11 +1,10 @@
-// sim/drift.cpp — the way to Better than Adventure 8.0.1's Drift (REALM_DRIFT; its land: gen/drift.cpp).
-//   The portal (BTA's BlockLogicBedrock / BlockLogicPortal: Blocks.PORTAL_DRIFT with GLOWSTONE as the frame and
-//   BEDROCK as the trigger): build a frame of glowstone ("glow lantern") and set a block of bedrock on its bottom
-//   inside — the frame fills with a silver portal. From there it is a portal like the Ember and Sky ones
+// sim/drift.cpp — the way to the Drift (REALM_DRIFT; its land: gen/drift.cpp).
+//   The portal (glowstone as the frame, bedrock as the trigger): build a frame of glowstone ("glow lantern") and set a
+//   block of bedrock on its bottom inside — the frame fills with a silver portal. From there it is a portal like the Ember and Sky ones
 //   (sim/portals.cpp PortalKind::Drift): a live window, walked through with no wait, its far end found or built on the
-//   nearest land eight times as far out (BTA's worldScale 8) and linked both ways; break the frame and it goes out.
+//   nearest land eight times as far out (world scale 8) and linked both ways; break the frame and it goes out.
 //   /tp drift goes the same way without a portal (and /tp <dimension> from there comes back where you left).
-//   Its life: only chickens (BTA's BiomeDrift), kept a few round each person there.
+//   Its life: only chickens, kept a few round each person there.
 #include "sim/gameplay.h"
 #include "sim/creature.h"
 #include "sim/player.h"
@@ -138,7 +137,7 @@ void registerDrift() {
   static bool done = false;
   if (done) return;
   done = true;
-  // BTA: bedrock set on glowstone in a glowstone frame lights it (the portal system does the rest: sim/portals.cpp)
+  // bedrock set on glowstone in a glowstone frame lights it (the portal system does the rest: sim/portals.cpp)
   hooks().blockChanged.push_back([](Level& lv, World& w, int x, int y, int z, BlockId, BlockId newId) {
     if (lv.isRemote() || !newId || newId != bedrockId() || w.getBlock(x, y - 1, z) != glowId()) return;
     tryCreate(lv, w, x, y, z);

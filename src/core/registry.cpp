@@ -145,7 +145,7 @@ void Registry::finalize() {
     u16 i = b.id;
     tOpaque[i] = b.opaque; tSolid[i] = b.solid; tRender[i] = (u8)b.render; tLight[i] = b.light; tAtt[i] = b.lightAtt;
     tAbsR[i] = tAbsG[i] = tAbsB[i] = 0;
-    // Cubyz glass/*.zig.zon absorbedLight. light_blue and light_gray are not in Cubyz; same strength as the others.
+    // stained glass absorbedLight per dye. light_blue and light_gray: same strength as the others.
     if (b.key.find("stained_glass") != std::string::npos) {
       const std::string dye = b.str("color");
       u32 hex = 0;

@@ -263,7 +263,7 @@ int main(int argc, char** argv) {
   std::string r = runCommand(*lv, cs, "/learn all");
   check(knownSpells(p).size() == 29, "/learn all (" + r + ")");
 
-  // ---- the passive skill trees (sim/skilltree.h; only with Soulrend's imported: tools/port/soulrend_tree.py) ----
+  // ---- the passive skill trees (sim/skilltree.h; only once the trees are imported: tools/port/soulrend_tree.py) ----
   if (!skillTrees().empty()) {
     const SkillTree* W = nullptr; for (auto& t : skillTrees()) if (t.key == "warrior") W = &t;
     check(W && W->nodes.size() > 100, "the warrior tree is there");
@@ -372,7 +372,7 @@ int main(int argc, char** argv) {
     check(nb >= 2 && sideR > 0.15f && sideL < -0.15f, "each bolt leaves its own hand (firebolt " + std::to_string(sideR) + " to the right, frost shard " + std::to_string(sideL) + " to the left)");
   }
 
-  // ---- Skyrim's hands: each free hand's spell on its own button (attack the right, use the left), both at once dual ----
+  // ---- two-handed casting: each free hand's spell on its own button (attack the right, use the left), both at once dual ----
   {
     MagicState& mm = magicState(*lv, p);
     auto bolts = [&]() { std::vector<SpellBolt*> v; for (auto& e : lv->entities()) if (!e->removed && e->type == "spell_bolt") if (auto* b = dynamic_cast<SpellBolt*>(e.get())) v.push_back(b); return v; };

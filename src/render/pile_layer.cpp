@@ -97,7 +97,7 @@ const VoxelModel& shelfBook(int i) {
   return *(cache[i] = std::move(m));
 }
 
-// a piled ingot (TFC's): a bar 16 x 4 x 8 voxels (half a block long, an eighth high, a quarter wide), its top narrower like a
+// a piled ingot: a bar 16 x 4 x 8 voxels (half a block long, an eighth high, a quarter wide), its top narrower like a
 // cast bar, in the colour of the ingot's own picture (the item model is carved from a diagonal sprite: it doesn't stack)
 const VoxelModel& ingotBar(const ItemStack& st) {
   static auto& cache = *new std::map<std::string, std::unique_ptr<VoxelModel>>();
@@ -364,7 +364,7 @@ public:
         }
         return;
       }
-      if (type == "ingots" || type == "logs") {   // sim/piles.h: TFC's ingot piles (brickwork courses) and log piles (a crib)
+      if (type == "ingots" || type == "logs") {   // sim/piles.h: ingot piles (brickwork courses) and log piles (a crib)
         if (!e.contains("item")) return;
         const ItemStack st = ItemStack::fromJson(e["item"]);
         if (st.empty() || !st.def()) return;
@@ -381,7 +381,7 @@ public:
           if (logs) {   // the log's rings at its ends: its up turned to lie along the slot
             m = glm::rotate(m, PI / 2, vec3(1, 0, 0));
             m = glm::scale(m, vec3(0.245f, 0.99f, 0.245f));
-          } else {      // an ingot as TFC's: a bar half a block long along the slot, a quarter wide, an eighth high
+          } else {      // an ingot: a bar half a block long along the slot, a quarter wide, an eighth high
             const VoxelModel& bar = ingotBar(st);
             m = glm::rotate(m, PI / 2, vec3(0, 1, 0));   // (the bar's length along x: along the slot)
             VR.draw(bar.gl, m * bar.matrix(), L, vec4(0), gl);
@@ -510,7 +510,7 @@ public:
         bool bar = std::regex_search(st.id, BAR) && !im.stand, tool = im.kind != VoxelModel::Block && isHandheld(st.id) && !im.stand;   // (a mold or a pot stands, whatever its name)
         bool block = im.kind == VoxelModel::Block;
         int n = st.n;
-        // a stack of bars on its own (Vintage Story's ingot piles): four across the whole block, each layer turned
+        // a stack of bars on its own (the ingot piles): four across the whole block, each layer turned
         // across the one under it, the pile rising as the stack grows
         const bool solo = bar && filled == 1;
         int copies = block ? std::min(4, (n + 15) / 16) : solo ? std::min(32, (n + 1) / 2) : bar ? std::min(16, (n + 3) / 4) : tool ? 1 : std::min(5, (n + 11) / 12);

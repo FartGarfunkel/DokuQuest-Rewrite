@@ -43,7 +43,7 @@ std::vector<ivec3> findPath(const World& w, ivec3 s, ivec3 t, const PathOpts& o)
     return true;
   };
   auto pass = [&](int x, int y, int z, int ax) { BlockId id = w.getBlock(x, y, z); return R.tSolid[id] ? doorish(id) && doorOK(x, y, z, ax) : !navDanger[id]; };
-  // BTA: a creature a little under its cells' height (a fuseling, 1.7) walks under what only fills the top of its head's
+  // a creature a little under its cells' height (a fuseling, 1.7) walks under what only fills the top of its head's
   // cell, like a shut trapdoor at the top of the block
   const float headRoom = o.hf > 0 ? (float)H - o.hf : 0;
   auto overhead = [&](int x, int y, int z) {

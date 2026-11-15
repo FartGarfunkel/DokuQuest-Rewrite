@@ -17,7 +17,7 @@ namespace dq {
 constexpr float SMELT_TIME = 5;   // seconds per item
 void attachWorldSystems(Level& lv, World& w);
 // While one of these lives, block changes are still reported (saving, net sync) but the gameplay reactions
-// (fluids waking, supports, falling, hardening) stay quiet: WorldEdit, lit/unlit furnace swaps.
+// (fluids waking, supports, falling, hardening) stay quiet: world editing, lit/unlit furnace swaps.
 struct QuietEdits { QuietEdits(); ~QuietEdits(); };
 bool quietEdits();
 void randomTicks(Level& lv, World& w, float px, float pz);

@@ -1,8 +1,8 @@
-// assets/cape_tex.h — a cape you painted yourself (the cape editor): a Minecraft-layout 64x32 PNG in
+// assets/cape_tex.h — a cape you painted yourself (the cape editor): a 64x32 cape-layout PNG in
 // userDir()/capes/<name>.png. The renderer refers to it by the cape key "cape@<name>" (capeMesh, char_model.cpp);
 // the editor shows work that isn't saved yet under "cape@~edit" (setLiveCape). Settings::extra["cape"] names the one you wear.
 //
-// Minecraft cape layout (64x32, x y w h):  top 1,0,10,1   bottom 11,0,10,1   outside (back) 1,1,10,16
+// The cape layout (64x32, x y w h):  top 1,0,10,1   bottom 11,0,10,1   outside (back) 1,1,10,16
 //                                          inside 12,1,10,16   right edge 0,1,1,16   left edge 11,1,1,16
 #pragma once
 #include "common/common.h"

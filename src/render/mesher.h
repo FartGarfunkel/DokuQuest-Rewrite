@@ -12,7 +12,7 @@ namespace dq {
 
 struct TileSet;
 
-// 20 bytes per vertex: four words the pack lightmap still reads, plus Cubyz's 5-bit RGB light.
+// 20 bytes per vertex: four words the pack lightmap still reads, plus the 5-bit RGB coloured light.
 //   a: x (14 bits) | y (14) << 14 | face normal (3) << 28 | Mat::NoRelief << 31   position: section-relative, 1/256 block, +16 blocks
 //   b: z (14)      | tile layer (12) << 14 | tint (5) << 26 | Mat::Lava << 31
 //   c: u (14)      | v (14) << 14 | Mat bits 0-3 << 28                         uv: tile units, 1/256, +16 tiles (a merged face spans 16)

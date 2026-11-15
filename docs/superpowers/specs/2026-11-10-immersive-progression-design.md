@@ -1,12 +1,11 @@
-# Immersive progression (TerraFirmaCraft-style early game) — design
+# Immersive progression (a hands-on early game) — design
 
 Date: 2026-11-10. Status: approved in conversation, awaiting written-spec review.
-Reference: TerraFirmaCraft 1.7.10 source (`~/Documents/TFC-1.7.10-master`), used for mechanics and numbers.
 
 ## Intent
 
 "A good mix of both. Not hard survival but more immersive." The early game moves from punching trees and wooden tools to
-gathering, knapping, fire, clay and metallurgy, after TFC, with the waits shortened and the punishing edges taken off. Our
+gathering, knapping, fire, clay and metallurgy, with the waits shortened and the punishing edges taken off. Our
 procedural mixed-material tools stay at the heart of it: whatever metals you melt together, in whatever proportions,
 decide a tool's stats and its colouring.
 
@@ -22,7 +21,7 @@ Project rules hold throughout: no hunger; full controller support in every new s
 ## Part 1 — Placeables (every world)
 
 **Ingot piles.** Sneak + use with an ingot on a solid top places an `ingot_pile` block (separate from general ground
-storage). Layout as TFC: 8 ingots per layer as 2 rows of 4 (each a quarter of the block wide), layers 1/8 block tall, each
+storage). Layout: 8 ingots per layer as 2 rows of 4 (each a quarter of the block wide), layers 1/8 block tall, each
 layer turned 90° from the one below (brickwork), 64 per block. Its collision height is ceil(n/8)/8. One metal per pile.
 Sneak + use with the same ingot adds one; use with an empty hand takes one. A full pile accepts a new pile on top; placing
 on a pile tops up the one below first. Existing ground-storage piles keep working; ingots already in them stay.
@@ -38,7 +37,7 @@ the block, leaving a see-through ring. Only solid boxes now hide the face under 
 
 - **Trees:** logs need an axe (any tier). Bare-handed or with another tool: a "You need an axe" hint, nothing breaks. Tree
   felling keeps working. Leaves drop a stick about 25% of the time.
-- **Leaves don't hold you up** (TFC): no collision; moving through them is slowed (about half speed) and a fall through
+- **Leaves don't hold you up**: no collision; moving through them is slowed (about half speed) and a fall through
   them is braked.
 - **On the ground** (worldgen, all surface chunks except ocean): about 8 loose rocks per chunk (the local stone: our
   existing `loose_stones`, denser), flint on gravel, beaches and river banks, and twigs (a new `twigs` ground block)
@@ -46,11 +45,11 @@ the block, leaving a see-through ring. Only solid boxes now hide the face under 
   `stick`).
 - **Knapping:** with 2 or more pebbles or flint in hand, use on air opens a 5×5 knapping grid. Each click chips a cell
   away; the first chip uses up one stone. The grid is matched after every chip against patterns in
-  `data/knapping.json` (smaller patterns at any offset, mirrored too), TFC's shapes: axe, shovel, hoe, knife (×1 and ×2),
+  `data/knapping.json` (smaller patterns at any offset, mirrored too), the shapes: axe, shovel, hoe, knife (×1 and ×2),
   hammer and javelin heads, plus our **crude flint pickaxe** head (our addition, so the start isn't hard). Taking the
   result closes it. Controller: the d-pad or stick moves a cursor, A chips, B closes.
 - **Stone tools:** head + stick (shapeless) → stone axe, shovel, hoe, knife, hammer, javelin, crude pickaxe. Tier 1,
-  durability 50–70 (TFC's 50/55/60/70 by stone kind, flint 65), speed about 6.5. The crude pickaxe mines stone, coal and
+  durability 50–70 (50/55/60/70 by stone kind, flint 65), speed about 6.5. The crude pickaxe mines stone, coal and
   copper/tin/zinc/bismuth ore (tier 1), nothing harder, durability 40.
 - **Recipes:** wooden tools and the classic stone/iron/gold/diamond tool recipes are off; tools already made still work.
   Planks by hand and the crafting table stay. The iron Tool Forge stays (gems, fancy heads).
@@ -59,26 +58,26 @@ the block, leaving a see-through ring. Only solid boxes now hide the face under 
 
 - **Firestarter** *(item, every world)*: 2 sticks diagonal. Hold use for about 1 s; about 30% success per try (70% with
   straw on the spot), 8 uses. Lights firepits, forges, pit kilns, charcoal pits.
-- **Firepit** *(every world; your campfire)*: our campfire becomes a TFC firepit, keeping its 4 cooking spots. Made by
+- **Firepit** *(every world; your campfire)*: our campfire becomes a firepit, keeping its 4 cooking spots. Made by
   dropping 3 sticks on the ground and using the firestarter on them (immersive), or crafted as now (classic). A fuel slot
-  takes logs, sticks, charcoal, coal; each fuel has a peak temperature and burn time (TFC: wood 600–760 °C for 1000–2250
+  takes logs, sticks, charcoal, coal; each fuel has a peak temperature and burn time (wood 600–760 °C for 1000–2250
   ticks, charcoal 1350 °C/1800, coal 1400 °C/2200). The fire's temperature climbs toward its fuel's peak and falls without
   fuel; it goes out when the fuel is gone; rain puts out an uncovered one. It cooks food as now and heats what's on it.
 - **Item heat** *(every world)*: metal, ore and pottery stacks carry a temperature (tag `heat`) that eases toward their
   surroundings over time. It shows as a glow colour on the model and in the tooltip, and pouring and smithing check it.
 - **Straw, scythe and thatch** *(every world)*: cutting tall grass with a knife or scythe gives straw (pit kiln fuel,
   thatch blocks and roofs, straw beds). The scythe (knapped, cast or forged) cuts a 3×3 patch of grass and crops.
-- **Clay knapping:** the same screen with 5 clay balls; 5 are used when a shape is made. Shapes (TFC): vessel, jug, pot,
+- **Clay knapping:** the same screen with 5 clay balls; 5 are used when a shape is made. Shapes: vessel, jug, pot,
   bowl, ingot mold, and tool-head molds for pickaxe, axe, shovel, hoe, sword, knife, hammer, saw; fire clay (4 clay balls +
   1 gravel, crafted) makes the crucible. All are unfired.
-- **Pit kiln:** sneak-place up to 4 unfired pieces on a solid top (one per quarter, as TFC). Use with straw adds straw
+- **Pit kiln:** sneak-place up to 4 unfired pieces on a solid top (one per quarter). Use with straw adds straw
   (8; wheat or hay); then logs (8). Light with the firestarter; needs solid sides and floor. After about 3
   in-game hours each piece is fired. Losing the fire or a side loses the fuel.
 - **Charcoal pit:** log piles touching each other, every exposed face against dirt, stone or another pile (nothing that
   burns). Light one: it spreads to the touching piles; after about 6 in-game hours each pile becomes charcoal, 25–50% of
   its logs. A face left open burns.
 
-## Part 4 — Metallurgy (full TFC, our metals)
+## Part 4 — Metallurgy (full metallurgy, our metals)
 
 **New ores:** zinc (sphalerite) and bismuth (bismuthinite), generated like tin and copper; ore pieces, ingots, surface
 samples.
@@ -88,7 +87,7 @@ body is a small sample worth 10 units (a prospecting hint, and enough for a firs
 (it keeps food, glass, bricks).
 
 **Every metal carries its makeup.** Liquid metal, ingots, heads and tools carry `comp` (metal → fraction).
-- **Named alloys** (TFC's ranges, widened a little): bronze Cu 85–95 / Sn 5–15; brass Cu 85–95 / Zn 5–15; bismuth bronze
+- **Named alloys** (ranges widened a little): bronze Cu 85–95 / Sn 5–15; brass Cu 85–95 / Zn 5–15; bismuth bronze
   Zn 20–30, Cu 50–65, Bi 10–20; black bronze Au 10–25, Cu 50–70, Ag 10–25; rose gold Au 70–85, Cu 15–30; sterling silver
   Ag 60–80, Cu 20–40. Each has its own ingot and stats, better than the average of its parts. Our bronze ingot becomes the
   bronze alloy; steel stays the iron route's.
@@ -102,7 +101,7 @@ body is a small sample worth 10 units (a prospecting hint, and enough for a firs
 - Melting point is the weighted blend of its metals'; the anvil tier needed is its strongest metal's.
 
 **Melting and casting.** A fired vessel takes 4 slots of ore; heated in a firepit or forge above the melt point its
-contents become liquid metal with their makeup (lost if it cools for long: about 11 in-game hours of pour time, as TFC).
+contents become liquid metal with their makeup (lost if it cools for long: about 11 in-game hours of pour time).
 Use the hot vessel on a fired mold to pour (1 unit per tick, 100 units fill a mold): copper, bronze and the other copper
 alloys, gold and silver for tool heads; any metal for an ingot mold. Break the mold for the piece (molds can break, 10%).
 
@@ -118,22 +117,22 @@ how much ("traces of", "a small/large amount of", "a very large amount of"), or 
 1500 °C, more with bellows; it heats items in its slots and stops in the rain. A fire-clay crucible on it melts larger
 batches (up to 30 ingots) and the fantasy metals (mithril, adamantite, thallasium, cinderite) at high heat.
 
-**Iron.** A bloomery (TFC structure: the bloomery block in a stone chimney; 8/16/24 ore by height) with ore and charcoal
+**Iron.** A bloomery (the bloomery block in a stone chimney; 8/16/24 ore by height) with ore and charcoal
 1:1 for about 5 in-game hours gives a bloom; refining it on the anvil (hit ×3) gives wrought iron. **Steel:** our blast
 furnace takes iron and charcoal to pig iron; working pig iron on the anvil gives steel.
 
-**Anvil (TFC-lite).** A stone anvil is a hammer used on raw stone (tier 0: soft metals, double ingots and sheets, and the
+**Anvil (simplified).** A stone anvil is a hammer used on raw stone (tier 0: soft metals, double ingots and sheets, and the
 first anvil). Metal anvils are forged from double ingots on a lower anvil; tiers copper 1, bronze-family 2, wrought iron 3,
 steel 4, mithril 5, adamantite 6. Smithing: the piece must be at working heat (60–100% of its melt point). Pick the piece
 to make; a 0–150 bar shows the target (70–119, fixed per recipe per world). Eight moves shift your pointer: light, medium,
 heavy hit −3/−6/−9, draw −15, punch +2, bend +7, upset +13, shrink +16 (each costs hammer wear). The plan's last three
 steps show as icons. Forgiving: finishing within ±3 of the target works; full quality only exact and on plan (a
-durability bonus, as TFC's skill buffs), less quality otherwise; the pointer can't pass 150 (no ruined metal). Every move
+durability bonus, like a smithing skill buff), less quality otherwise; the pointer can't pass 150 (no ruined metal). Every move
 has a controller button. It makes tool heads (all eight kinds, plus saw, scythe, tongs and prospector's pick), double ingots, sheets and double
 sheets, anvils and refined bloom; heads plus a stick make tools through the part-tool system.
 
 **Sheets and metal armour.** Double sheets (two sheets welded at working heat, with flux) are smithed into helmet,
-chestplate, leggings and boots pieces (TFC's unfinished/finished steps), then fitted with padding (cloth or leather) at the
+chestplate, leggings and boots pieces (unfinished, then finished), then fitted with padding (cloth or leather) at the
 crafting table. Every metal and mix works, through our mixed-armour system (core/tool_parts `pa`): each piece keeps its
 makeup, its protection and wear blend by proportion, and its colour is the blend.
 
@@ -155,10 +154,10 @@ makeup, its protection and wear blend by proportion, and its colour is the blend
 
 ## Part 6 — The world
 
-- **Rock layers and geology:** the Overworld's stone in layers by depth and region, TFC's four groups: igneous intrusive
+- **Rock layers and geology:** the Overworld's stone in layers by depth and region, in four groups: igneous intrusive
   (granite, diorite, gabbro), igneous extrusive (basalt, andesite, rhyolite, dacite), sedimentary (limestone, shale,
   claystone, chalk, sandstone...) and metamorphic (marble, slate, schist, gneiss, quartzite). Each ore comes in its own
-  rocks (TFC's tables: e.g. native copper in igneous extrusive, cassiterite in igneous intrusive, sphalerite in
+  rocks (e.g. native copper in igneous extrusive, cassiterite in igneous intrusive, sphalerite in
   metamorphic, bismuthinite in sedimentary...), as veins and clusters. Loose rocks and the knapped stone tools take the
   local rock. Existing worlds keep their old land; new chunks in old worlds are untouched (the rule is new worlds only).
   Uses the rock blocks we have where they exist, adds the missing ones.
@@ -166,7 +165,7 @@ makeup, its protection and wear blend by proportion, and its colour is the blend
   loose a little rubble (a few cobble falling from the roof, about 1% per block mined in an unsupported span wider than 5
   blocks; a single falling block does at most a heart and a half). Wooden support beams (lumber) within 4 blocks make a
   span safe. Never chains, never buries you.
-- **More crops and plants:** TFC's crops we don't have yet (barley, oat, rye, rice, maize, onion, garlic, cabbage, soybean,
+- **More crops and plants:** Crops we don't have yet (barley, oat, rye, rice, maize, onion, garlic, cabbage, soybean,
   squash, tomato, bell peppers, green beans, jute, sugarcane where missing), its fruit trees (apple, banana, cherry, green
   apple, lemon, olive, orange, peach, plum: seasonal flowering and fruit), berry bushes (wintergreen, blueberry,
   raspberry, strawberry, blackberry, bunchberry, cranberry, snowberry, elderberry, gooseberry, cloudberry) and wild plants,
@@ -195,7 +194,7 @@ makeup, its protection and wear blend by proportion, and its colour is the blend
 
 ## Pacing
 
-About a third of TFC's: pit kiln ~3 in-game hours, bloomery ~5 h, charcoal pit ~6 h.
+Shortened waits: pit kiln ~3 in-game hours, bloomery ~5 h, charcoal pit ~6 h.
 
 ## Testing
 

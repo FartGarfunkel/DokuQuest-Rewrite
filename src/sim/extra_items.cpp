@@ -1,4 +1,4 @@
-// sim/extra_items.cpp — what Better than Adventure 8.0.1's newer items do (the items themselves: tools/port/classic_extras.py):
+// sim/extra_items.cpp — what the classic extras' items do (the items themselves: tools/port/classic_extras.py):
 //   the steel bucket (ItemBucketSteel: three bucketfuls, kept on the stack's tag {fluid, n}; scoop from a source, pour
 //   one at a time), wolf armour (on your own tamed wolf: it takes it, protects it like a player's armour, wears down;
 //   sneak with an empty hand to take it back), and the label (ItemLabel: write a name on it, then use it on a creature
@@ -63,7 +63,7 @@ bool steelBucket(PlayerController& pc, ItemStack& held, const ItemDef& def) {
 Entity* spawnProjectile(Level& lv, int realm, vec3 p, vec3 v, const std::string& kind, Entity* owner);   // sim/creature_entities.cpp
 int seasonOf(const Level& lv);   // sim/weather.cpp
 
-// BTA's leaf piles: in autumn the trees round people shed them onto the ground under their leaves
+// leaf piles: in autumn the trees round people shed them onto the ground under their leaves
 struct LeafFall : LevelSystem {
   double t = 0;
   const char* name() const override { return "leaf_fall"; }
@@ -94,7 +94,7 @@ struct LeafFall : LevelSystem {
   }
 };
 
-// BTA's Giant, a crypt's boss here (tools/port/classic_extras.py): with someone close it rears up for a moment (time to get
+// the Giant, a crypt's boss here (tools/port/classic_extras.py): with someone close it rears up for a moment (time to get
 // clear), then stamps — those still near are hurt and thrown up. mobs.json "stomp".
 struct GiantStomp : LevelSystem {
   double t = 0;
@@ -141,7 +141,7 @@ void registerExtraItems() {
   done = true;
   registerLevelSystem([](Level&) -> std::shared_ptr<LevelSystem> { return std::make_shared<LeafFall>(); });
   registerLevelSystem([](Level&) -> std::shared_ptr<LevelSystem> { return std::make_shared<GiantStomp>(); });
-  // BTA's statues: two blocks tall (the lower places the upper above it; break either and both go)
+  // statues: two blocks tall (the lower places the upper above it; break either and both go)
   hooks().blockChanged.push_back([](Level& lv, World& w, int x, int y, int z, BlockId oldId, BlockId newId) {
     if (lv.isRemote()) return;
     const Registry& R = reg();
@@ -156,7 +156,7 @@ void registerExtraItems() {
   hooks().useItem.push_back([](PlayerController& pc, ItemStack& held, const ItemDef& def, bool repeat) {
     if (repeat) return false;
     if (def.has("charges") && def.has("bucket")) return steelBucket(pc, held, def);
-    if (def.key == "pebble" && !pc.target.hit) {   // BTA's pebble, thrown when there's nothing to set it on
+    if (def.key == "pebble" && !pc.target.hit) {   // the pebble, thrown when there's nothing to set it on
       Player& p = pc.p; const vec3 L = lookVector(p.yaw, p.pitch);
       spawnProjectile(pc.lv, p.realm, p.pos + vec3(0, p.eye - 0.1f, 0) + L * 0.5f, L * 22.f + vec3(0, 1.5f, 0), "snow", &p);
       if (!p.creative() && --held.n <= 0) held.clear();

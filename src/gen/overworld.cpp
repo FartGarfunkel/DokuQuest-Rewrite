@@ -28,14 +28,14 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
   jigsawVillages = o.genVersion >= 9;
   villageStyles = o.genVersion >= 10;
   villagePlan11 = o.genVersion >= 11;
-  rockLayers = o.genVersion >= 12; strata = rockLayers && (o.genVersion < 21 || o.looseGround);   // (immersive worlds keep TFC's layers)
+  rockLayers = o.genVersion >= 12; strata = rockLayers && (o.genVersion < 21 || o.looseGround);   // (immersive worlds keep the rock layers)
   dynTrees = o.genVersion >= 13;
   looseGround = o.looseGround;
-  floes = o.genVersion >= 5;   // terrain version 5: BTA's ice floes in the seas round the glaciers   // terrain version 4 (BTA): biomes about twice as big
+  floes = o.genVersion >= 5;   // terrain version 5: ice floes in the seas round the glaciers   // terrain version 4: biomes about twice as big
   B.resolve();
   initUnderground();
-  // terrain version 14: Minecraft 1.20's land (docs/WORLDGEN_MERGE.md), when its data is here (tools/port/worldgen_base.py);
-  // terrain version 15: Soulrend's world (its mods' land, biomes and surfaces: tools/port/worldgen/import.py) for the
+  // terrain version 14: the imported land (docs/WORLDGEN_MERGE.md), when its data is here (tools/port/worldgen_base.py);
+  // terrain version 15: the land biomes' world (the imported land, biomes and surfaces: tools/port/worldgen/import.py) for the
   // default and bigger-biome worlds when its data is here. The world types that reshape the land their own way keep the old
   if (o.genVersion >= 14 && (wtype.empty() || wtype == "default" || wtype == "amplified" || wtype == "large_biomes" || wtype == "winter" || wtype == "hell")) {
     const bool sr = o.genVersion >= 15 && (wtype.empty() || wtype == "default" || wtype == "large_biomes") && fs::exists(dataDir() / "worldgen" / "biome_regions.json");
@@ -101,8 +101,8 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
             else if (has({"maple", "autumn", "sakura", "cherry", "seasonal"})) v = BV_SEASONAL;
             biomeLandKinds().push_back(v);
           }
-          // our temperature: snowy (below our -0.38: snow villages, winter structures, snowy lands) exactly where Minecraft
-          // snows (under 0.15); a taiga at 0.25 is green, so it gets green villages
+          // our temperature: snowy (below our -0.38: snow villages, winter structures, snowy lands) exactly where the imported
+          // data snows (under 0.15); a taiga at 0.25 is green, so it gets green villages
           const double T = in.temperature;
           const double ours = T < 0.15 ? -0.40 - (0.15 - T) * 0.8 : T < 0.8 ? -0.36 + (T - 0.15) / 0.65 * 0.36 : (T - 0.8) / 1.25;
           lbTemp_.push_back((float)std::clamp(ours, -1.0, 1.0));
@@ -113,10 +113,10 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
   }
 }
 
-// terrain version 14: the top of the land (Minecraft's sloped_cheese: the terrain before the caves) at a column, found from
+// terrain version 14: the top of the land (sloped_cheese: the terrain before the caves) at a column, found from
 // above in steps of 4 then to the block; kept per thread for the columns it was last asked about
 int OverworldGen::v14Surface(int x, int z) const {
-  // Minecraft works its land out at the corners of 4-block cells and blends between: the height here the same way (each
+  // the land is worked out at the corners of 4-block cells and blends between: the height here the same way (each
   // corner found once, a sixteenth of the work for everyone asking about columns: structure plans, trees, the far land)
   const int x0 = x & ~3, z0 = z & ~3;
   if (x != x0 || z != z0) {
@@ -143,7 +143,7 @@ int OverworldGen::v14Corner(int x, int z) const {
   if (e.k == key) return e.y;
   const DensityGraph& g = *vg_;
   int top = 1;
-  if (v21) {   // (21: as the land is built, on Minecraft's lattice (every 8 blocks up, blended between), from the sky down:
+  if (v21) {   // (21: as the land is built, on the density lattice (every 8 blocks up, blended between), from the sky down:
     // the highest ground there is, however far its 3D noise lifts it over the 2D shape. Before, the search began a little
     // over that shape and land higher still was cut off flat, a sheer wall round a flat top)
     double hi = g.eval(vSloped, x, (DIM_H / 8) * 8 - 1, z);
@@ -155,13 +155,13 @@ int OverworldGen::v14Corner(int x, int z) const {
     e = {key, std::clamp(top, 1, DIM_H - 2)};
     return e.y;
   }
-  // from just above where its 2D shape puts the ground (depth = 0 where Minecraft's y = 128 (1.5 + offset) - 64, the jagged
+  // from just above where its 2D shape puts the ground (depth = 0 where the imported data's y = 128 (1.5 + offset) - 64, the jagged
   // peaks at most the jaggedness higher), not from the sky: a dozen samples, not fifty
   const double off = g.eval(vOff, x, 0, z), jag = vJag >= 0 ? std::max(0.0, g.eval(vJag, x, 0, z)) : 0.5;
   int start = (int)std::ceil((1.5 + off + jag) * 128 - 64 + 1 + 20);
   start = std::clamp(start - start % 4 + 4, 8, DIM_H - 6);
   while (start < DIM_H - 6 && g.eval(vSloped, x, start - 1, z) > 0) start += 8;   // (solid already: an overhang higher up)
-  for (int y = start; y >= 4; y -= 4) {   // (band y; Minecraft's is one less)
+  for (int y = start; y >= 4; y -= 4) {   // (band y; the imported data's is one less)
     if (g.eval(vSloped, x, y - 1, z) > 0) {
       top = y;
       for (int k = 3; k >= 1; k--) if (g.eval(vSloped, x, y + k - 1, z) > 0) { top = y + k; break; }
@@ -172,8 +172,8 @@ int OverworldGen::v14Corner(int x, int z) const {
   return top;
 }
 
-// ---- terrain version 15: Soulrend's biomes --------------------------------------------------------------
-// the biome at a quart: TerraBlender's region there, and the climate box nearest Minecraft's climate (its noise router's
+// ---- terrain version 15: the land biomes --------------------------------------------------------------
+// the biome at a quart: the biome region there, and the climate box nearest the imported climate (its noise router's
 // temperature, vegetation, continents, erosion, depth, ridges at the quart's corner block, quantized as it does). The 2D
 // parts are kept per quart column (depth is the offset spline plus a straight gradient in y: worked from one value)
 int OverworldGen::landNoiseBiome(int qx, int qy, int qz) const {
@@ -224,11 +224,11 @@ int OverworldGen::prelimSurface(int x, int z) const {
 // ---- columns ---------------------------------------------------------------------------------------------
 OverworldGen::BaseCol OverworldGen::baseColumn(int x, int z) const {
   if (v14) {
-    // the land's height from Minecraft's terrain; the climate (and so the biomes, their variants, surfaces and trees) ours
+    // the land's height from the imported terrain; the climate (and so the biomes, their variants, surfaces and trees) ours
     BaseCol c;
     c.H = v14Surface(x, z);
     c.hc = owSurfaceInv(c.H + 0.5); c.h = jsFloor(c.hc);
-    if (v15) {   // Soulrend's biome at the ground here (Minecraft's y: ours less one)
+    if (v15) {   // the land biome at the ground here (the imported data's y: ours less one)
       const int b = landBiomeAt(x, std::max(c.H, SEA_LEVEL) - 1, z);
       c.landBiome = (u16)b; c.biome = lbCat_[b]; c.temp = lbTemp_[b]; c.humid = lbHumid_[b];
       c.special = lb_->info(b).name == "minecraft:mushroom_fields" ? 1 : 0;
@@ -244,13 +244,13 @@ OverworldGen::BaseCol OverworldGen::baseColumn(int x, int z) const {
     u8 b;
     if (c.H < SEA_LEVEL) b = BIOME_OCEAN;
     else if (c.H <= SEA_LEVEL + 2 && cont < -0.05 && ero > -0.2) b = BIOME_BEACH;   // (the sea's edge where the land is low and worn)
-    else if (c.H > SEA_LEVEL + 70 || (c.H > SEA_LEVEL + 45 && ero < -0.2)) b = BIOME_MOUNTAINS;   // (Minecraft's peaks: high and little worn)
+    else if (c.H > SEA_LEVEL + 70 || (c.H > SEA_LEVEL + 45 && ero < -0.2)) b = BIOME_MOUNTAINS;   // (the peaks: high and little worn)
     else if (t < -0.3) b = BIOME_TAIGA;
     else if (t > 0.32 && u < 0.12) b = BIOME_DESERT;
     else if (u > 0.08) b = BIOME_FOREST;
     else b = BIOME_PLAINS;
     if (b == BIOME_BEACH && t > 0.32 && u < 0.12) b = BIOME_DESERT;
-    // Minecraft's mushroom fields: land rising out of the deepest sea, far from any other
+    // the mushroom fields: land rising out of the deepest sea, far from any other
     if (cont < -0.95 && c.H >= SEA_LEVEL) { b = BIOME_PLAINS; c.special = 1; }
     c.biome = b;
     return c;
@@ -264,14 +264,14 @@ OverworldGen::BaseCol OverworldGen::baseColumn(int x, int z) const {
   double mMask = jsSmooth(0.18, 0.55, mRaw) * land;
   if (mMask > 0) { double r = 1 - std::fabs(nRidge.fbm2(x / 230.0, z / 230.0, 3)); h += mMask * (r * r * 58 + 6); }
   BaseCol c;
-  // BTA's world types: Amplified (the hills and mountains near twice as high), Islands (the land sunk: the seas risen)
+  // the world types: Amplified (the hills and mountains near twice as high), Islands (the land sunk: the seas risen)
   if (wtype == "amplified" && h > JS_SEA) h = JS_SEA + (h - JS_SEA) * 1.85;
   else if (wtype == "islands") h -= 11 + 4 * land;
   c.hc = jsClamp(h, 4, 120);
   c.h = jsFloor(c.hc);
   c.temp = nTemp.fbm2(x / (800.0 * climateScale), z / (800.0 * climateScale), 2) - (c.h > 90 ? (c.h - 90) / 40.0 : 0);
   c.humid = nHumid.fbm2(x / (650.0 * climateScale), z / (650.0 * climateScale), 2);
-  if (climateScale > 1) c.temp -= 0.06;   // and the cold lands a little more common (BTA: more snow biomes)
+  if (climateScale > 1) c.temp -= 0.06;   // and the cold lands a little more common (more snow biomes)
   if (wtype == "winter") c.temp = std::min(c.temp, -0.4) - 0.12;             // Endless Winter: everywhere snow-bound
   else if (wtype == "hell") { c.temp = 0.08 + c.temp * 0.25; c.humid = 0.12 + c.humid * 0.3; }   // Hell: the green lands burnt (not desert: scorched earth)
   const int hh = c.h; const double t = c.temp, u = c.humid;
@@ -372,7 +372,7 @@ double OverworldGen::deepZone(int x, int z) const { return jsSmooth(0.32, 0.46, 
 
 // The column's surface materials (generateOverworld; distant.js distTop is the same choice).
 SurfaceMat OverworldGen::surface(const OwColumn& c, int wx, int wz) const {
-  if (v15) {   // Soulrend's rules for the top of the land here (the far land, the map: as the chunk will be)
+  if (v15) {   // the surface rules for the top of the land here (the far land, the map: as the chunk will be)
     LandSurface::Column col;
     const int x0 = wx & ~15, z0 = wz & ~15;
     const double fx = (wx & 15) / 16.0, fz = (wz & 15) / 16.0;
@@ -402,7 +402,7 @@ SurfaceMat OverworldGen::surface(const OwColumn& c, int wx, int wz) const {
       top = f > 0.45 ? B.clay : f > 0.05 ? B.sand : B.gravel; filler = top == B.clay ? B.clay : B.sand; fillDepth = 2; break;
     }
     case BIOME_MOUNTAINS:
-      if (v14) {   // Minecraft's way on its land: bare stone where it's steep, snow on the heights, grass on the high meadows
+      if (v14) {   // the imported land's way: bare stone where it's steep, snow on the heights, grass on the high meadows
         const int H0 = c.H, dx = std::abs(v14Surface(wx + 2, wz) - v14Surface(wx - 2, wz)), dz = std::abs(v14Surface(wx, wz + 2) - v14Surface(wx, wz - 2));
         const bool steep = std::max(dx, dz) >= 6;
         top = H0 > SEA_LEVEL + 120 ? B.snow_block : steep ? B.stone : H0 > SEA_LEVEL + 95 && hashFloat(wx, wz, seed_, 17) < 0.5 ? B.snowy_grass : B.grass;
@@ -422,7 +422,7 @@ SurfaceMat OverworldGen::surface(const OwColumn& c, int wx, int wz) const {
   if (c.biome == BIOME_BEACH && c.temp < -0.2) { top = B.silver_sand; filler = B.silver_sand; }
   switch (landVariant(c)) {
     case BV_REDLANDS: top = fq < 0.55 ? B.red_sand : fq < 0.82 && B.scorched_dirt ? B.scorched_dirt : B.coarse_dirt; filler = B.red_sand; under = B.terracotta ? B.terracotta : B.sandstone; fillDepth = 3;
-      if (fq > 0.985 && B.rich_scorched_dirt) top = B.rich_scorched_dirt;   // BTA: rich scorched dirt sifts out metal
+      if (fq > 0.985 && B.rich_scorched_dirt) top = B.rich_scorched_dirt;   // rich scorched dirt sifts out metal
       break;
     case BV_GLACIER: if (h <= 96) { double g = nFloor.noise2(wx / 18.0, wz / 18.0); top = g > 0.1 ? B.packed_ice : B.snow_block; filler = g > 0.3 && B.perma_ice ? B.perma_ice : B.packed_ice; under = g > 0.4 && B.blue_ice ? B.blue_ice : B.stone; fillDepth = 4; } break;
     case BV_MOSSMIRE: top = fq < 0.45 ? B.moss_block : B.mud; filler = B.mud; fillDepth = 3; break;
@@ -437,7 +437,7 @@ SurfaceMat OverworldGen::surface(const OwColumn& c, int wx, int wz) const {
 }
 
 // ---- terrain version 14: the blocks ----------------------------------------------------------------------
-// Minecraft's final density (the land, its cliffs and overhangs, and its caves) worked out on its cells (every 4 blocks
+// the final density (the land, its cliffs and overhangs, and its caves) worked out on its cells (every 4 blocks
 // across, 8 up) and blended between them; a structure's levelling draws it to its ground. Solid is stone (our rock layers),
 // its surface the biome's ground (and ledges and overhangs that see the sky); air at or under the sea above the land is
 // water. The columns are updated to the land as built (the trees, decoration and structures go on what's there).
@@ -472,11 +472,11 @@ void OverworldGen::fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const {
       return d0 + (d1 - d0) * fz;
     };
     const int nTop = v17 ? v14Spike(wx, wz, Hc) : Hc;   // (a lone column planned over all round it by the water: theirs)
-    // (terrain version 20: the land's top is the land's own, Minecraft's cave mouths left open; whole only under a
+    // (terrain version 20: the land's top is the land's own, its cave mouths left open; whole only under a
     // structure's levelling. Before, every column over the sea's edge was made whole to its top: each cave entrance
     // got a crust over it, and on a slope that left a hollow hill and a broken wall of rock)
     const bool whole = !v17 || lev || Hc != Hs || (!v20 && nTop == Hc && (Hc > SEA_LEVEL + 4 || Hc / 8 > jmax || latD(Hc) > 0));   // (terrain version 17)
-    for (int y = whole ? Hc : nTop; y >= (deep_ ? 0 : 1); y--) {   // (the deep world: row 0 too, Minecraft's y -1)
+    for (int y = whole ? Hc : nTop; y >= (deep_ ? 0 : 1); y--) {   // (the deep world: row 0 too, the imported data's y -1)
       if (whole && y >= Hc - 3) { b.blocks[colIdx(x, y, z)] = B.stone; if (!top) top = y; continue; }
       const int j0 = y >> 3; const double fy = (y & 7) / 8.0;
       auto L = [&](int di, int dj, int dk) { return lat[((k0 + dk) * 5 + (i0 + di)) * NY + std::min(NY - 1, j0 + dj)]; };
@@ -492,7 +492,7 @@ void OverworldGen::fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const {
     c.H = top; c.h = jsFloor(owSurfaceInv(top + 0.5));
     if (c.H < SEA_LEVEL && c.biome != BIOME_OCEAN && !c.special) c.biome = BIOME_OCEAN;
     else if (c.H >= SEA_LEVEL && c.biome == BIOME_OCEAN) c.biome = c.H <= SEA_LEVEL + 2 ? BIOME_BEACH : BIOME_PLAINS;
-    if (v15) {   // (Soulrend's surface: surfaceV15, once the chunk's land is all here)
+    if (v15) {   // (the land biomes' surface: surfaceV15, once the chunk's land is all here)
       if (!deep_) for (int y = 0; y < 5; y++) if (y == 0 || hf(wx, y, wz, seed_) < (5 - y) / 5.0) b.blocks[colIdx(x, y, z)] = B.bedrock;
       for (int y = top + 1; y <= SEA_LEVEL; y++) b.blocks[colIdx(x, y, z)] = B.water;
       continue;
@@ -547,13 +547,13 @@ void OverworldGen::fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const {
   if (v15) surfaceV15(b, cols, cx, cz);
 }
 
-// terrain version 15: Soulrend's surface, as Minecraft's SurfaceSystem.buildSurface lays it: each column walked down from its
+// terrain version 15: the land biomes' surface, laid as the imported surface builder does: each column walked down from its
 // top, every stone block given to the surface rules with how deep it is under the open air or water above (and over the
 // air or water under it), the water's height, the slope (the chunk's heightmap), its biome there; what they don't change
-// stays rock (our layers). The sea's top freezes where its biome is cold enough to snow (Minecraft's freeze_top_layer).
+// stays rock (our layers). The sea's top freezes where its biome is cold enough to snow (freeze_top_layer).
 void OverworldGen::surfaceV15(GenBuf& b, OwColumn* cols, int cx, int cz) const {
   const int bx = cx * CS, bz = cz * CS;
-  int hm[256];   // WORLD_SURFACE_WG: the highest block that isn't air (Minecraft's y)
+  int hm[256];   // the world-surface heightmap: the highest block that isn't air (the imported data's y)
   for (int z = 0; z < CS; z++) for (int x = 0; x < CS; x++) {
     int y = DIM_H - 1; while (y > 0 && b.blocks[colIdx(x, y, z)] == AIR) y--;
     hm[z * 16 + x] = y - 1;
@@ -577,7 +577,7 @@ void OverworldGen::surfaceV15(GenBuf& b, OwColumn* cols, int cx, int cz) const {
     const float fx = (x & 15) / 16.0f, fz = (z & 15) / 16.0f;
     const double l0 = p00 + fx * (double)(p10 - p00), l1 = p01 + fx * (double)(p11 - p01);
     ls_->begin(col, wx, wz, (int)std::floor(l0 + fz * (l1 - l0)));
-    {   // SteepMaterialCondition (within the chunk, as Minecraft)
+    {   // the steep condition (within the chunk)
       const int zN = std::max(z - 1, 0), zS = std::min(z + 1, 15), xW = std::max(x - 1, 0), xE = std::min(x + 1, 15);
       col.steep = hm[zS * 16 + x] >= hm[zN * 16 + x] + 4 || hm[z * 16 + xW] >= hm[z * 16 + xE] + 4;
     }
@@ -591,7 +591,7 @@ void OverworldGen::surfaceV15(GenBuf& b, OwColumn* cols, int cx, int cz) const {
       if (here == B.water || here == B.lava) { if (waterHeight == INT32_MIN) waterHeight = my + 1; continue; }
       if (stoneBelowY >= my) {   // (the bottom of this run of solid ground)
         stoneBelowY = -100000;
-        for (int k = y - 1; k >= 0; k--) { const BlockId u = b.blocks[colIdx(x, k, z)]; if (u == AIR || u == B.water || u == B.lava) { stoneBelowY = k; break; } }   // (Minecraft's y of the block above it)
+        for (int k = y - 1; k >= 0; k--) { const BlockId u = b.blocks[colIdx(x, k, z)]; if (u == AIR || u == B.water || u == B.lava) { stoneBelowY = k; break; } }   // (the imported data's y of the block above it)
       }
       col.y = my; col.stoneAbove = ++stoneAbove; col.stoneBelow = my - stoneBelowY + 1; col.waterHeight = waterHeight;
       if (here != B.stone) continue;
@@ -604,9 +604,9 @@ void OverworldGen::surfaceV15(GenBuf& b, OwColumn* cols, int cx, int cz) const {
   }
 }
 
-// a column's extras before its surface (Minecraft's y throughout; top: WORLD_SURFACE_WG's height + 1, as buildSurface has it):
-// SurfaceSystem.erodedBadlandsExtension and frozenOceanExtension, Nature's Spirit's placeSugiPillar and
-// placeStratifiedDesertPillar. Each raises stone (or ice) from the ground up to a height its noises give.
+// a column's extras before its surface (the imported data's y throughout; top: the world-surface height + 1):
+// the eroded badlands and frozen ocean extensions, the sugi pillars and the
+// stratified desert pillars. Each raises stone (or ice) from the ground up to a height its noises give.
 void OverworldGen::surfaceExtras(GenBuf& b, int x, int z, int wx, int wz, int top, int prelim) const {
   const DensityGraph& g = *vg_;
   const int bio = landBiomeAt(wx, top, wz);
@@ -652,7 +652,7 @@ void OverworldGen::surfaceExtras(GenBuf& b, int x, int z, int wx, int wz, int to
     }
   }
   if (bio >= 0 && (bio == bSugi_ || bio == bSugi2_ || bio == bStrat_ || bio == bLively_ || bio == bBlooming_)) {
-    int o = 0; for (int y = DIM_H - 1; y > 0; y--) { const BlockId h = b.blocks[colIdx(x, y, z)]; if (h != AIR && h != B.water && reg().tSolid[h]) { o = y + 1; break; } }   // (OCEAN_FLOOR_WG's height, + 1: Nature's Spirit's)
+    int o = 0; for (int y = DIM_H - 1; y > 0; y--) { const BlockId h = b.blocks[colIdx(x, y, z)]; if (h != AIR && h != B.water && reg().tSolid[h]) { o = y + 1; break; } }   // (the ocean-floor height, + 1)
     if (bio == bSugi_ || bio == bSugi2_) {
       const double e = std::min(std::abs(N(6, wx, wz) * 8.5), N(8, wx * 0.2, wz * 0.2) * 12.0);
       const double hh = std::abs(N(7, wx * 0.9, wz * 0.8) * 2.05);
@@ -711,7 +711,7 @@ void OverworldGen::generate(Chunk& ch) {
     for (int y = 0; y <= H; y++) {
       BlockId id;
       double yo = owCaveO(y, H, c.h);
-      // a jagged bedrock floor (Minecraft: y 0 always, then 4/5, 3/5, 2/5, 1/5); row 0 becomes the Ember Crust
+      // a jagged bedrock floor (y 0 always, then 4/5, 3/5, 2/5, 1/5); row 0 becomes the Ember Crust
       if (y == 0 || (y < 5 && hf(wx, y, wz, seed_) < (5 - y) / 5.0)) id = B.bedrock;
       else if (y == H) id = m.top;
       else if (y > H - fd) id = m.filler;
@@ -733,7 +733,7 @@ void OverworldGen::generate(Chunk& ch) {
     }
   }
 
-  if (!v14) carve(b, cols, ch.cx, ch.cz);   // (terrain version 14: Minecraft's own caves are in the land)
+  if (!v14) carve(b, cols, ch.cx, ch.cz);   // (terrain version 14: the land's own caves are in it)
   placeOres(b, ch.cx, ch.cz, rnd);
   placeLakes(b, cols, ch.cx, ch.cz);
   placeSprings(b, cols, ch.cx, ch.cz);
@@ -745,7 +745,7 @@ void OverworldGen::generate(Chunk& ch) {
   // the Ember Crust at the bottom of the Overworld (worldupdate.js), then the structures, then the Deep Dark
   if (B.ember_crust && !deep_) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) b.blocks[colIdx(x, 0, z)] = B.ember_crust;   // (the deep world: at the Underworld's floor)
   if (!deepStructs()) carveDeep(b, ch.cx, ch.cz);   // (a deep world, 21: in Underworld 1, generateDeep) (before the structures: run after, it ate into anything built down there — stone to slate, sculk and caves)
-  structures.build(b, ch, 0, deepStructs() ? 0 : 1);   // (a deep world: row 0 is Minecraft's -1, not bedrock: what runs down through it is built)
+  structures.build(b, ch, 0, deepStructs() ? 0 : 1);   // (a deep world: row 0 is the imported data's -1, not bedrock: what runs down through it is built)
   if (!wtype.empty() && wtype != "default" && wtype != "large_biomes") worldTypePass(b, cols, ch.cx, ch.cz);
   b.store(ch);
 }
@@ -878,7 +878,7 @@ void OverworldGen::carveDeep(GenBuf& b, int cx, int cz, int dy, int off) const {
 
 // ---- distant terrain ---------------------------------------------------------------------------------------
 void OverworldGen::sample(int wx, int wz, ColumnSample& s) const {
-  if (v14) { wx &= ~3; wz &= ~3; }   // (the far land: its cell corner, the exact height Minecraft worked out there)
+  if (v14) { wx &= ~3; wz &= ~3; }   // (the far land: its cell corner, the exact height worked out there)
   OwColumn c = column(wx, wz);
   SurfaceMat m = surface(c, wx, wz);
   s.height = (i16)c.H; s.top = m.top; s.under = m.top == B.grass ? B.dirt : m.filler;

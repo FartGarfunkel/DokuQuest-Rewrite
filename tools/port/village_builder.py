@@ -4,7 +4,7 @@
   python3 tools/port/village_builder.py [data-dir]
 
 Every house, workshop, farm, pen, street, crossroad and town square of the five village styles (plains, savanna, taiga,
-snowy, desert) is built by the rules below and written as a Minecraft structure template (data/villages/<style>/<houses|
+snowy, desert) is built by the rules below and written as a structure template (NBT; data/villages/<style>/<houses|
 streets|town_centers|terminators>/<name>.nbt, listed in data/villages/index.json). src/gen/village_pieces.cpp reads them
 and src/gen/structures_jigsaw_village.cpp puts a village together from them the jigsaw way. Nothing here is copied from
 anyone's builds: the look of each style (what its walls, roofs and gardens are made of, how big its houses run, how its
@@ -19,7 +19,7 @@ The conventions the village generator expects (gen/structures_jigsaw_village.cpp
     butcher, fletcher, shepherd, mason, cartographer, library, fisher, tannery, bakery, tavern) and its workstation;
     beds, chests and the square's bell are found by their blocks; a fence under a pressure plate is a table and a
     wooden stair at it a chair (they become our furniture);
-  - blocks are Minecraft's names and states (village_pieces.cpp turns them into ours).
+  - blocks are the template format's names and states (village_pieces.cpp turns them into ours).
 """
 import json, math, pathlib, random, sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -1181,7 +1181,7 @@ def side_work(p, P, B, rnd, key):
         for x in range(B.x0, B.x0 + 6):
             for zz in range(z - 1, z + 2): p.set(x, 4, zz, P.S['stone_slab'], type='bottom')
         p.set(B.x0 + 2, 1, z, 'anvil', facing='north'); p.set(B.x0 + 3, 1, z, 'water_cauldron', level=3)
-        # a TFC forge: charcoal in a pit walled with stone, the bellows beside it (sim/forge.h)
+        # a forge: charcoal in a pit walled with stone, the bellows beside it (sim/forge.h)
         p.set(B.x0 + 5, 1, z, 'forge'); p.set(B.x0 + 4, 1, z, 'bellows')
         p.set(B.x0 + 6, 1, z, 'cobblestone'); p.set(B.x0 + 5, 1, z - 1, 'cobblestone'); p.set(B.x0 + 5, 1, z + 1, 'cobblestone'); p.set(B.x0 + 5, 0, z, 'cobblestone')
     elif key == 'fletcher_house':   # targets
@@ -1935,7 +1935,7 @@ def main(d):
             (out / rel).parent.mkdir(parents=True, exist_ok=True)
             nbt_io.write(out / rel, pc.template())
             files.append(rel)
-    # (the pieces other importers listed — Towns and Towers' styles, tools/port/tnt_village_import.py — are kept: this
+    # (the pieces other importers listed — the extra styles, tools/port/tnt_village_import.py — are kept: this
     #  run rewrote only its own styles' folders)
     idx_path = out / 'index.json'
     old = json.loads(idx_path.read_text()) if idx_path.exists() else {}

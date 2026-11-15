@@ -149,7 +149,7 @@ public:
     // cursor) shuts it again; once you have moved around, or in a container, Y is the quick-move button it is in the original
     if (Y && o.mode == "inventory" && !in.textActive && !padActed && p->cursor.empty()) { a.popScreen(); return; }   // (a chest, furnace... opened with Use: Y is quick move at once)
     if (f && (A || X || Y)) activate(a, *f, X, Y, true);
-    // sorting (BTA): the right stick's click over a bag, chest or backpack slot; the middle mouse button over one
+    // sorting: the right stick's click over a bag, chest or backpack slot; the middle mouse button over one
     if (f && f->k == H_SLOT && in.padButtonPressed(11)) sess->sortGroup(f->g);
     if (!in.textActive && ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) if (const Hit* h = hovered()) if (h->k == H_SLOT && !creative) sess->sortGroup(h->g);
     // keyboard over the hovered slot: 1-9 swaps with the hotbar, Q drops one (Ctrl: the stack)
@@ -688,7 +688,7 @@ public:
     slot(dl, Grp::Furn, 2, ImVec2(x, mid - is * 0.65f), is * 1.3f, nullptr, true);
   }
 
-  // BTA's trommel screen: the fuel under its flame on the left, the four inputs round the drum (it turns while it
+  // the trommel screen: the fuel under its flame on the left, the four inputs round the drum (it turns while it
   // sifts), and what the next input can give with its chances on the right; the finds pop out of the block's side
   void drawTrommel(App& a, ImDrawList* dl, ImVec2 p, float w) {
     float z = Z();

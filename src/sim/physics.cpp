@@ -17,7 +17,7 @@ static int meshBlock(BlockId id) {
   if (T.size() != R.blocks.size()) { T.assign(R.blocks.size(), 0); for (size_t i = 0; i < R.blocks.size(); i++) T[i] = R.blocks[i].has("mesh") ? (R.blocks[i].has("meshFilter") ? 2 : 1) : 0; }
   return id < T.size() ? T[id] : 0;
 }
-// a dropped item meets a mesh block: an iron mesh lets every item through; a gold mesh only the item set on it (BTA)
+// a dropped item meets a mesh block: an iron mesh lets every item through; a gold mesh only the item set on it
 static bool meshLets(const World& w, int x, int y, int z, BlockId id) {
   int k = meshBlock(id);
   if (k == 1) return true;
@@ -118,8 +118,8 @@ static float storeToward(double v, int side) {
 }
 
 // A body that starts the tick inside something solid (shoved by a crowd or a blow, a block set where it stands, a
-// ladder's lip, a float rounded the wrong way) is put back out first, the shortest way that leaves it free (Minecraft's
-// pushOutOfBlocks). The sweep below only stops boxes ahead of a body, so without this it could walk on inside a wall.
+// ladder's lip, a float rounded the wrong way) is put back out first, the shortest way that leaves it free.
+// The sweep below only stops boxes ahead of a body, so without this it could walk on inside a wall.
 static void pushOut(const World& w, double& ex, double& ey, double& ez, double ew, double eh, bool sneak) {
   static thread_local std::vector<DBox> bs;
   const double E = 2e-3;

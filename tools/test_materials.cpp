@@ -1,4 +1,4 @@
-// tools/test_materials.cpp — headless checks for crafting and materials (after TerraFirmaCraft): the saw and lumber, the
+// tools/test_materials.cpp — headless checks for crafting and materials (the immersive progression): the saw and lumber, the
 // quern, the sealable barrel and leather, panning and the sluice. Run: build/test_materials (exit code = failures)
 #include "core/init.h"
 #include "core/registry.h"
@@ -211,7 +211,7 @@ int main(int argc, char** argv) {
     check(pl && pl.out == "planks" && pl.n == 4, "classic: a log is four planks");
     std::vector<ItemStack> bw(9); for (int i : {0, 1, 2, 6, 7, 8}) bw[i] = ItemStack("planks", 1); for (int i : {3, 4, 5}) bw[i] = ItemStack("leather", 1);
     CraftMatch bm = matchGrid(bw, 3);
-    check(!(bm && bm.out == "bellows"), "classic: TFC's bellows aren't crafted (immersive worlds only)");
+    check(!(bm && bm.out == "bellows"), "classic: the bellows aren't crafted (immersive worlds only)");
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);

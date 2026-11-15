@@ -247,7 +247,7 @@ void PlayerController::tickSurvival(float dt, const MoveInfo& mv) {
     BlockId landId = w.getBlock(ifloor(p.pos.x), ifloor(p.pos.y - 0.2f), ifloor(p.pos.z));
     if (fall > 2.5f && landId && R.tSolid[landId] && !c.water)   // a hard landing throws up a ring of what you land on
       lv.fx->particles("crumbs", p.pos + vec3(0, 0.1f, 0), std::min(28, (int)(fall * 3)), {{"block", R.block(landId).key}, {"speed", std::min(3.f, 0.8f + fall * 0.12f)}, {"grav", 14}});
-    // beds, hay, slime and honey break a fall (and BetterNether's jellyfish mushroom, landed in)
+    // beds, hay, slime and honey break a fall (and the jellyfish mushroom, landed in)
     float soft = (bhas(landId, BF::Bed) || bhas(landId, BF::Bouncy) || bhas(landId, BF::Sticky) || R.block(landId).has("cloud") ||
                   R.block(w.getBlock(ifloor(p.pos.x), ifloor(p.pos.y + 0.1f), ifloor(p.pos.z))).has("softLanding") ? 0.f : startsWith(R.block(landId).key, "hay") ? 0.2f : 1.f) * (1 - charmBonus(p, "fall"));
     if (R.block(landId).has("sunCloud")) giveEffect(lv, p, "slowfall", 10);   // a golden cloud: float down from it
@@ -280,7 +280,7 @@ void PlayerController::tickSurvival(float dt, const MoveInfo& mv) {
   } else if (p.data.contains("spikeT")) p.data["spikeT"] = 0;
   if (c.fire && !c.water) p.burn = std::max(p.burn, 3.f);
   if (c.hot && !p.sneaking) { if ((p.hotT += dt) > 1) { p.hotT = 0; DamageSource s; s.type = "burn"; hurt(1, s); } }
-  // BTA 8.0's Nether: an ember (buried under the Old World's ash) goes off when it is stepped on: a blast with fire that
+  // the classic Nether: an ember (buried under the Old World's ash) goes off when it is stepped on: a blast with fire that
   // flings you up; the rubyglass crust over the crystal seas cracks under you, a stage every quarter second, and shatters
   {
     static const BlockId ember = reg().blockId("ember"), ruby = reg().blockId("rubyglass_crystal");
@@ -496,18 +496,18 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
   const ItemStack& h = p.held();
   if (!h.empty() && h.id == "we_wand") { if (in.attackPressed) weClick(1); if (in.usePressed) weClick(2); mining.active = false; return; }
   Entity* te = targetEnt ? lv.entity(targetEnt) : nullptr;
-  // a ghast's fireball can be punched back (Minecraft): it flies for you then, and finishes off a ghast it hits
+  // a ghast's fireball can be punched back: it flies for you then, and finishes off a ghast it hits
   if (in.attackPressed && deflectFireball(lv, p, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch), 4.5f)) { swingArm(); mining.active = false; fightHold = true; return; }
   handCasting(dt, inM, te);
   // a combat move starts on a creature or on thin air; a click on a block digs it, whatever is in your hand
   const bool allowSwing = te || !target.hit;
-  // both hands armed: use swings the off hand (Skyrim's two hands), unless what you look at is for using (a door, a chest)
+  // both hands armed: use swings the off hand (two hands), unless what you look at is for using (a door, a chest)
   const bool offUse = in.usePressed && offHandSwings(p, false, true) && !(target.hit && interactable(target.id));
   tickMelee(lv, p, dt, in, allowSwing || offUse, offUse);
   if (p.atkMove) { mining.active = false; fightHold = true; if (in.attackPressed) return; }
   if (!in.attack) fightHold = false;
   if (in.attackPressed && !target.hit) swingArm();
-  // a held swing that hit a creature never digs into the ground behind it; in creative a sword never breaks blocks (Minecraft)
+  // a held swing that hit a creature never digs into the ground behind it; in creative a sword never breaks blocks
   const ToolInfo* ti = heldTool(p);
   bool noDig = fightHold || (p.creative() && ti && ti->type == "sword") || p.mode == "adventure";   // adventure: the world stays as it is
   // Hands-on Stations: an open barrel's tray (a strike takes one; sneaking, the stack)
@@ -545,7 +545,7 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
     }
   }
   // creative: every fresh click breaks the block it's on at once, however short the click and however soon after the
-  // last one (Minecraft's startDestroyBlock); holding repeats every quarter second
+  // last one; holding repeats every quarter second
   if (p.creative() && in.attackPressed && target.hit && !te && !noDig) {
     const RayHit& tg = target;
     if (mining.active) rememberDamage(lv, mining);
@@ -574,7 +574,7 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
   else if (in.use && useArmed) { useRepeat -= dt; if (useRepeat <= 0) { useRepeat = 0.22f; use(true, in); } }
 }
 
-// Skyrim's hands (sim/magic_hands.cpp): a spell readied in a free hand casts with that hand's button: attack the right
+// the spell hands (sim/magic_hands.cpp): a spell readied in a free hand casts with that hand's button: attack the right
 // (at a creature or thin air; with a staff, anywhere), use the left (unless what you look at is for using). Both within
 // a moment of each other: both hands at once (the dual cast, or two spells fused). Held, an attack spell keeps coming.
 // The press is the spell's: no punch, dig or use comes of it.
@@ -611,11 +611,11 @@ void PlayerController::handCasting(float dt, PlayerInput& in, Entity* te) {
 float PlayerController::breakTime(BlockId id, const RayHit* hit) {
   if (hit) if (const BlockId rug = rugBlockOf(world().getCoat(hit->block.x, hit->block.y, hit->block.z))) id = rug;   // (a rug on it: that comes up first, as quick as carpet)
   const BlockDef& b = reg().block(id);
-  if (p.creative()) return 0.05f;   // creative breaks anything, bedrock and command blocks too (Minecraft)
+  if (p.creative()) return 0.05f;   // creative breaks anything, bedrock and command blocks too
   if (b.hardness < 0) return INFINITY;
   if (b.hardness == 0) return 0;
   const ToolInfo* tool = heldTool(p);
-  if (needsAxe(lv, id) && !(tool && tool->type == "axe")) {   // immersive: no punching trees (TFC)
+  if (needsAxe(lv, id) && !(tool && tool->type == "axe")) {   // immersive: no punching trees
     static double hintAt = -10;
     if (nowSeconds() - hintAt > 4) { hintAt = nowSeconds(); toastMsg("You need an axe"); }
     return INFINITY;
@@ -744,7 +744,7 @@ void PlayerController::fellTree(int x, int y, int z, const std::vector<std::arra
     // the sapling of the tree it came from, so every kind can be grown back
     if (rnd() < 0.05) extras[R.block((BlockId)l[3]).str("sapling", "sapling")]++;
     if (l[3] == KB().leaves && rnd() < 0.02) extras["apple"]++;
-    if (const std::string fr = R.block((BlockId)l[3]).str("fruit"); !fr.empty() && rnd() < 0.12) extras[fr]++;   // BTA's flowering cherry leaves: cherries
+    if (const std::string fr = R.block((BlockId)l[3]).str("fruit"); !fr.empty() && rnd() < 0.12) extras[fr]++;   // flowering cherry leaves: cherries
     { static const BlockId palmLeaves = R.blockId("palm_leaves"); if (palmLeaves && l[3] == palmLeaves && rnd() < 0.06) extras["coconut"]++; }   // a felled palm drops its coconuts
     if (rnd() < 0.015) extras["stick"]++;
   }
@@ -984,7 +984,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
       swingArm();
       return;
     }
-    // TFC's ingot piles in every world; log piles in an immersive one (a classic world places a log as ever)
+    // ingot piles in every world; log piles in an immersive one (a classic world places a log as ever)
     if (p.sneaking && hit->normal.y == 1 && !held.empty() && (pileKindOfItem(held.id) == PileKind::Ingots || (immersive(lv) && pileKindOfItem(held.id) != PileKind::None))) {
       const bool ingots = pileKindOfItem(held.id) == PileKind::Ingots;
       if (pilePlace(w, b.x, b.y + 1, b.z, held, &why)) { swingArm(); sfxMaterial(lv, ingots ? "metal" : "wood", "place", vec3(b) + vec3(0.5f, 1.1f, 0.5f)); return; }
@@ -996,7 +996,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     if (interactable(hit->id) && !R.block(hit->id).has("pile")) { placeBlock(*hit, *def, held); return; }
   }
   // crouched, any item that isn't a block is set down on top of what you look at: the ground, a furnace, a table, a chest
-  // (Vintage Story's way) -- before the item's own use or the block's. Items whose crouched use is aimed at the block keep it.
+  // -- before the item's own use or the block's. Items whose crouched use is aimed at the block keep it.
   // (aimed at a side, it's set down on the floor in front of that side, when there's floor there)
   RayHit downHit = hit ? *hit : RayHit();
   if (hit && hit->normal.y == 0) {
@@ -1235,7 +1235,7 @@ public:
       if (age > 60) { removed = true; return; }
       if (!reg().tSolid[w.getBlock(data.value("bx", 0), data.value("by", 0), data.value("bz", 0))]) { data["stuck"] = false; vel = vec3(0); return; }
       if (data.value("pickup", false)) for (Player* pl : playersIn(lv, realm)) {
-        if (!pl->dead && std::fabs(pl->pos.x - pos.x) < 1.6f && std::fabs(pl->pos.z - pos.z) < 1.6f && pos.y > pl->pos.y - 1.2f && pos.y < pl->pos.y + 2.8f) {   // Minecraft: the player box grown by 1
+        if (!pl->dead && std::fabs(pl->pos.x - pos.x) < 1.6f && std::fabs(pl->pos.z - pos.z) < 1.6f && pos.y > pl->pos.y - 1.2f && pos.y < pl->pos.y + 2.8f) {   // the player box grown by 1
           const std::string kind = data.value("item", std::string("arrow"));   // the arrow you shot comes back (golden, flaming...)
           if (pl->give(ItemStack(kind, 1)) <= 0) { removed = true; sfxUi(lv, *pl, "pop"); if (lv.events) lv.events->emit("pickup", json::array({pl->name, kind, 1})); return; }
         }
@@ -1244,7 +1244,7 @@ public:
     }
     if (age > 30) { removed = true; return; }
     u32 owner = data.value("owner", 0u);
-    const float grav = data.value("grav", 1.0f);   // BTA's golden arrow barely drops
+    const float grav = data.value("grav", 1.0f);   // the golden arrow barely drops
     if (data.value("fire", false) && (int)(age * 20) % 2 == 0) lv.fx->particles("flame", pos, 1);   // the flaming arrow
     for (int s = 0; s < 4; s++) {
       float h2 = dt / 4;
@@ -1298,8 +1298,8 @@ public:
         }
         if (hitIt) {
           if (data.value("golden", false)) { removed = true; lv.fx->particles("burst", pos, 6, {{"tile", "gold_block"}, {"speed", 1.2f}}); return; }   // a golden quiver's arrow breaks where it lands
-          if (data.value("breaks", false)) { removed = true; lv.fx->particles("burst", pos, 4, {{"tile", "amethyst_block"}, {"speed", 1.f}}); sfxAt(lv, "glass_break", n); return; }   // BTA's purple arrow shatters
-          if (data.value("fire", false) || data.value("flame", false)) {   // a flaming arrow (BTA's, or a Flame bow's) lights what it strikes: TNT, a brazier, a candle, a campfire, else a fire where it sticks
+          if (data.value("breaks", false)) { removed = true; lv.fx->particles("burst", pos, 4, {{"tile", "amethyst_block"}, {"speed", 1.f}}); sfxAt(lv, "glass_break", n); return; }   // the purple arrow shatters
+          if (data.value("fire", false) || data.value("flame", false)) {   // a flaming arrow (its own, or a Flame bow's) lights what it strikes: TNT, a brazier, a candle, a campfire, else a fire where it sticks
             Entity* sh = lv.entity(data.value("owner", 0u));
             igniteAt(lv, realm, n, vel, sh && sh->isPlayer() ? static_cast<Player*>(sh) : nullptr);
           }
@@ -1325,7 +1325,7 @@ void PlayerController::updateHeldTools(float dt, const PlayerInput& in) {
   if (playing && def && def->has("bow")) {
     const bool golden = goldenQuiver(p);
     // the arrows: the off hand's first, then the quiver's (the worn one, then one in the bag: whatever kind it holds),
-    // then the first arrows in the bag (BTA's golden, flaming and purple arrows too)
+    // then the first arrows in the bag (the golden, flaming and purple arrows too)
     auto isArrow = [](const ItemStack& s) { return isArrowItem(s); };
     auto bagArrow = [&]() -> ItemStack* { for (auto& s : p.inv) if (isArrow(s)) return &s; return nullptr; };
     bool hasArrow = isArrow(p.offhand[0]) || bagArrow() || quiverArrows(p) > 0 || golden;

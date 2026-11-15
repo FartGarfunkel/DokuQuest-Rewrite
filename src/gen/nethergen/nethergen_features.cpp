@@ -1,4 +1,4 @@
-// BTA 8.0.1 WorldFeature* used by ChunkDecoratorNether, ported 1:1 (same Random call order).
+// The classic Nether's world features used by its decorator, ported 1:1 (same Random call order).
 #if defined(__clang__)
 #pragma clang fp contract(off)
 #elif defined(__GNUC__)
@@ -17,7 +17,7 @@ namespace {
 constexpr float PIF = 3.14159265358979323846f;
 const int DX[6] = {0, 0, 0, 0, -1, 1}, DY[6] = {-1, 1, 0, 0, 0, 0}, DZ[6] = {0, 0, -1, 1, 0, 0};
 inline bool surf(uint16_t id) { return hasF(id, T_NETHER_SURFACE); }
-inline bool bsolid(uint16_t id) { return hasF(id, P_SOLID); }  // Block.solid()
+inline bool bsolid(uint16_t id) { return hasF(id, P_SOLID); }  // the block's solid() flag
 inline bool isAcidId(uint16_t id) { return id == bid::ACID_STILL || id == bid::ACID_FLOWING; }
 inline int nI(JavaRandom& r, int b) { return r.nextInt(b); }
 
@@ -44,7 +44,7 @@ inline V3 normalize(V3 a) {
 }
 }  // namespace
 
-// ---- WorldFeatureRubyglassCrystalline ------------------------------------------------------------
+// ---- rubyglass crystalline -----------------------------------------------------------------------
 namespace {
 bool crystalHasSpace(DecoWorld& w, int px, int py, int pz, int base) {
   for (int y = py; y < py + base; ++y)
@@ -187,7 +187,7 @@ void rubyglassCrystalline(DecoWorld& w, JavaRandom& r, int px, int py, int pz, b
   }
 }
 
-// ---- WorldFeatureOre ----------------------------------------------------------------------------
+// ---- ore ----------------------------------------------------------------------------------------
 void ore(DecoWorld& w, JavaRandom& r, int xs, int ys, int zs, const OreMap& map, int n) {
   float f = r.nextFloat() * PIF;
   float sf = mh::sin(f), cf = mh::cos(f);
@@ -230,7 +230,7 @@ void ore(DecoWorld& w, JavaRandom& r, int xs, int ys, int zs, const OreMap& map,
   }
 }
 
-// ---- WorldFeatureRubyglassGrowthPatch -------------------------------------------------------------
+// ---- rubyglass growth patch -----------------------------------------------------------------------
 namespace {
 bool growthSupport(DecoWorld& w, int x, int y, int z) {
   if (!w.normalCube(x, y, z)) return false;
@@ -271,7 +271,7 @@ void growthPatch(DecoWorld& w, JavaRandom& r, int px, int py, int pz, float tall
   }
 }
 
-// ---- WorldFeaturePerlinVein -----------------------------------------------------------------------
+// ---- perlin vein ----------------------------------------------------------------------------------
 void perlinVein(DecoWorld& w, const ImprovedPerlin& noise, int sx, int sz, uint16_t place, uint16_t target,
                 double scale, double thickness) {
   const int minY = 0, ySize = 255;
@@ -292,7 +292,7 @@ void perlinVein(DecoWorld& w, const ImprovedPerlin& noise, int sx, int sz, uint1
   }
 }
 
-// ---- WorldFeatureWallClump (maxClumpSize 1: the growth loop never runs) ----------------------------
+// ---- wall clump (maxClumpSize 1: the growth loop never runs) ---------------------------------------
 void wallClump(DecoWorld& w, int x, int y, int z, uint16_t place, uint16_t target) {
   if (w.get(x, y, z) != target) return;
   bool air = false;
@@ -301,7 +301,7 @@ void wallClump(DecoWorld& w, int x, int y, int z, uint16_t place, uint16_t targe
   w.setBlockType(x, y, z, place);
 }
 
-// ---- WorldFeatureNetherSpring ---------------------------------------------------------------------
+// ---- nether spring --------------------------------------------------------------------------------
 void netherSpring(DecoWorld& w, JavaRandom& r, int x, int y, int z, uint16_t id) {
   if (surf(w.get(x, y + 1, z))) return;
   if (!w.isAir(x, y, z) && surf(w.get(x, y, z))) return;
@@ -326,7 +326,7 @@ void netherSpring(DecoWorld& w, JavaRandom& r, int x, int y, int z, uint16_t id)
   w.immediate = false;
 }
 
-// ---- WorldFeatureLake ------------------------------------------------------------------------------
+// ---- lake ------------------------------------------------------------------------------------------
 void lake(DecoWorld& w, JavaRandom& r, int x, int y, int z, uint16_t liquid) {
   x -= 8;
   z -= 8;
@@ -388,7 +388,7 @@ void lake(DecoWorld& w, JavaRandom& r, int x, int y, int z, uint16_t liquid) {
   }
 }
 
-// ---- WorldFeatureTerrace ---------------------------------------------------------------------------
+// ---- terrace ---------------------------------------------------------------------------------------
 void terrace(DecoWorld& w, JavaRandom& r, int x, int y, int z, uint16_t fill, uint16_t wall, int minR, int rMod) {
   (void)y;
   int radius = minR + r.nextInt(rMod);
@@ -415,7 +415,7 @@ void terrace(DecoWorld& w, JavaRandom& r, int x, int y, int z, uint16_t fill, ui
     }
 }
 
-// ---- WorldFeaturePillar ----------------------------------------------------------------------------
+// ---- pillar ----------------------------------------------------------------------------------------
 namespace {
 struct PillarBuf {
   bool b[17 * 17];
@@ -524,7 +524,7 @@ void pillar(DecoWorld& w, JavaRandom& r, int x, int y, int z, uint16_t blockId, 
   }
 }
 
-// ---- WorldFeatureBoulderMagma ------------------------------------------------------------------------
+// ---- boulder magma -----------------------------------------------------------------------------------
 void boulderMagma(DecoWorld& w, JavaRandom& r, int px, int py, int pz) {
   int x = px, y = py, z = pz;
   while (w.isAir(x, y, z) && y - 1 > 0) --y;
@@ -565,7 +565,7 @@ void boulderMagma(DecoWorld& w, JavaRandom& r, int px, int py, int pz) {
   w.setBlockType(x, y + 1, z, bid::BLOCK_NETHER_COAL);
 }
 
-// ---- WorldFeatureFloorVent(1, 2) -----------------------------------------------------------------------
+// ---- floor vent (1, 2) ---------------------------------------------------------------------------------
 void floorVent(DecoWorld& w, JavaRandom& r, int px, int py, int pz) {
   int x = px + r.nextInt(8), y = py;
   int z = pz + r.nextInt(8);
@@ -597,7 +597,7 @@ void floorVent(DecoWorld& w, JavaRandom& r, int px, int py, int pz) {
     }
 }
 
-// ---- WorldFeatureSpireVent ------------------------------------------------------------------------------
+// ---- spire vent -----------------------------------------------------------------------------------------
 void spireVent(DecoWorld& w, JavaRandom& r, int px, int py, int pz) {
   if (!w.isAir(px, py, pz)) return;
   int x = px, y = py, z = pz;
@@ -621,7 +621,7 @@ void spireVent(DecoWorld& w, JavaRandom& r, int px, int py, int pz) {
   for (int y1 = 0; y1 < 2; ++y1) w.setBlockType(x + hx, y + hy + y1, z + hz, bid::THERMAL_VENT);
 }
 
-// ---- WorldFeatureBoulderGlowstone(GLOWSTONE, FIRE_SULFURIC, 1) ------------------------------------------
+// ---- boulder glowstone (GLOWSTONE, FIRE_SULFURIC, 1) -----------------------------------------------------
 void boulderGlowstone(DecoWorld& w, JavaRandom& r, int px, int py, int pz) {
   int x = px, y = py, z = pz;
   for (int s = 0; (w.isAir(x, y, z) || isAcidId(w.get(x, y, z))) && y - 1 > 0 && s < 64; ++s) --y;
@@ -646,7 +646,7 @@ void boulderGlowstone(DecoWorld& w, JavaRandom& r, int px, int py, int pz) {
     }
 }
 
-// ---- WorldFeatureRoofSpire -------------------------------------------------------------------------------
+// ---- roof spire ------------------------------------------------------------------------------------------
 void roofSpire(DecoWorld& w, JavaRandom& r, int px, int py, int pz, uint16_t boulder) {
   int x = px, y = py, z = pz;
   while (w.isAir(x, y, z) && y < 245) ++y;
@@ -677,7 +677,7 @@ void roofSpire(DecoWorld& w, JavaRandom& r, int px, int py, int pz, uint16_t bou
   }
 }
 
-// ---- WorldFeatureGlowstone -------------------------------------------------------------------------------
+// ---- glowstone -------------------------------------------------------------------------------------------
 void glowstone(DecoWorld& w, JavaRandom& r, int x, int y, int z) {
   if (!w.isAir(x, y, z)) return;
   if (!bsolid(w.get(x, y + 1, z))) return;
@@ -697,7 +697,7 @@ void glowstone(DecoWorld& w, JavaRandom& r, int x, int y, int z) {
   }
 }
 
-// ---- WorldFeatureFire ------------------------------------------------------------------------------------
+// ---- fire ------------------------------------------------------------------------------------------------
 void fire(DecoWorld& w, JavaRandom& r, int x, int y, int z, bool overrideVolcanic) {
   for (int i = 0; i < 32; ++i) {
     int a = nI(r, 8), b = nI(r, 8);
@@ -720,7 +720,7 @@ void fire(DecoWorld& w, JavaRandom& r, int x, int y, int z, bool overrideVolcani
   }
 }
 
-// ---- WorldFeatureNetherScatter* / SoulCatcherPatch ---------------------------------------------------------
+// ---- nether scatter / soul catcher patch ---------------------------------------------------------
 namespace {
 inline bool forbiddenSurface(uint16_t b) {
   return b == bid::RUBYGLASS_NODE || b == bid::RUBYGLASS_COLUMN || b == bid::RUBYGLASS_GROWTH;

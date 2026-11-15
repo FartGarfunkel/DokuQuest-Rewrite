@@ -278,7 +278,7 @@ void DistantTerrain::select(Band& b, double cx, double cz) {
     Tile* t = it == b.tiles.end() ? nullptr : it->second.get();
     double mid = std::hypot(x0 + s / 2.0 - cx, z0 + s / 2.0 - cz);
     // a tile splits into its four finer ones while it's nearer than REFINE tile-widths: a voxel then stays about
-    // distance/150 across, a few pixels on screen at any distance, as Cubyz keeps its far land (at 1.25 it was
+    // distance/150 across, a few pixels on screen at any distance, as the far land is kept (at 1.25 it was
     // distance/40: far hills became stairs of 32-block steps, worst at the wide edges of the view)
     if (L > 0 && mid < s * REFINE) {
       int ks = tileSize(L - 1), live = 0; bool ready = true;
@@ -561,7 +561,7 @@ void DistantTerrain::draw(const FrameCtx& f, const SkyEnv& env, const TileTextur
     float lum = 0.25f + 0.75f * clampv((env.day - 0.2f) / 0.8f, 0.f, 1.f);
     shader.set("uRainCol", vec3(th ? 0.36f : 0.52f, th ? 0.38f : 0.55f, th ? 0.43f : 0.6f) * lum);
   }
-  tex.bind(shader, 5);   // the blocks' own textures (units 5..10), drawn on the voxels like Cubyz's far chunks
+  tex.bind(shader, 5);   // the blocks' own textures (units 5..10), drawn on the voxels like the far chunks
   glActiveTexture(GL_TEXTURE4);
   shader.set("uMask", 4);
   GLint locO = shader.loc("uTileOrigin"), locS = shader.loc("uTileScale"), locC = shader.loc("uCell"), locW = shader.loc("uTileWorld");

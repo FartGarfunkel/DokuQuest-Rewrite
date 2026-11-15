@@ -17,26 +17,26 @@ struct OwColumn {
   double temp = 0, humid = 0;
   float river = 0;      // 1 mid-stream, 0.5 on the banks
   u8 special = 0;       // terrain version 14: 1 a mushroom island (gen/overworld.cpp)
-  u16 landBiome = 0xFFFF;      // terrain version 15: Soulrend's biome here (gen/land_biomes.h index; 0xFFFF older terrain)
+  u16 landBiome = 0xFFFF;      // terrain version 15: the land biome here (gen/land_biomes.h index; 0xFFFF older terrain)
 };
-// Biome variants inspired by Better than Adventure (our own designs), carved out of the climate: the hottest, driest
+// Biome variants (our own designs), carved out of the climate: the hottest, driest
 // savanna turns to Redlands (red sand, spinifex, pale gum trees), the coldest taiga and peaks to Glacier (packed and
 // blue ice, ice spires), mild damp plains to Meadow (flowers everywhere), wet lowland to Mossmire (moss, mud, dark trees).
 enum LandVariant : u8 { BV_NONE = 0, BV_REDLANDS, BV_GLACIER, BV_MEADOW, BV_MOSSMIRE, BV_THORNSCRUB, BV_HIGHLANDS, BV_TUNDRA, BV_SEASONAL, BV_MUSHROOM };
-// terrain version 15: each of Soulrend's biomes as one of our land kinds, by its name (OverworldGen fills it once; the same
+// terrain version 15: each of the land biomes as one of our land kinds, by its name (OverworldGen fills it once; the same
 // data gives every world the same list)
 inline std::vector<u8>& biomeLandKinds() { static std::vector<u8> v; return v; }
 inline LandVariant landVariant(const OwColumn& c) {
-  if (c.special == 1) return BV_MUSHROOM;   // (terrain version 14: Minecraft's mushroom fields, out in the deep sea)
-  if (c.landBiome != 0xFFFF) return c.landBiome < biomeLandKinds().size() ? (LandVariant)biomeLandKinds()[c.landBiome] : BV_NONE;   // (terrain version 15: by Soulrend's biome)
+  if (c.special == 1) return BV_MUSHROOM;   // (terrain version 14: the mushroom fields, out in the deep sea)
+  if (c.landBiome != 0xFFFF) return c.landBiome < biomeLandKinds().size() ? (LandVariant)biomeLandKinds()[c.landBiome] : BV_NONE;   // (terrain version 15: by the land biome)
   if (c.biome == BIOME_PLAINS && c.temp > 0.5 && c.humid < -0.18) return BV_REDLANDS;
-  if (c.biome == BIOME_PLAINS && c.temp > 0.32 && c.humid >= -0.16 && c.humid < -0.04) return BV_THORNSCRUB;   // BTA's Caatinga
+  if (c.biome == BIOME_PLAINS && c.temp > 0.32 && c.humid >= -0.16 && c.humid < -0.04) return BV_THORNSCRUB;   // the Caatinga
   if ((c.biome == BIOME_TAIGA || c.biome == BIOME_MOUNTAINS) && c.temp < -0.58) return BV_GLACIER;
   if ((c.biome == BIOME_PLAINS || c.biome == BIOME_FOREST) && c.humid > 0.46 && c.temp > -0.15 && c.temp < 0.24 && c.h <= vmap::JS_SEA + 5 && c.h > vmap::JS_SEA) return BV_MOSSMIRE;
   if (c.biome == BIOME_PLAINS && c.temp > 0.02 && c.temp < 0.26 && c.humid > 0.05 && c.humid < 0.28) return BV_MEADOW;
-  // BTA's Highland Spruce (Boreal): tall spruce woods on podzol up in the cool hills
+  // Highland Spruce (Boreal): tall spruce woods on podzol up in the cool hills
   if ((c.biome == BIOME_TAIGA || c.biome == BIOME_MOUNTAINS) && c.temp > -0.45 && c.temp < -0.08 && c.h > vmap::JS_SEA + 16 && c.h < vmap::JS_SEA + 52) return BV_HIGHLANDS;
-  // BTA's Seasonal Forest: mild, damp lowland groves of cherry whose leaves turn with the year (sim/worldsys.cpp)
+  // the Seasonal Forest: mild, damp lowland groves of cherry whose leaves turn with the year (sim/worldsys.cpp)
   if ((c.biome == BIOME_FOREST || c.biome == BIOME_PLAINS) && c.temp > 0.04 && c.temp < 0.3 && c.humid > 0.28 && c.humid < 0.46 && c.h > vmap::JS_SEA + 1 && c.h < vmap::JS_SEA + 22) return BV_SEASONAL;
   // the tundra step between the snowy woods and the plains: open snowy grass over permafrost, hardly a tree
   if (c.biome == BIOME_PLAINS && c.temp < -0.32) return BV_TUNDRA;
@@ -61,9 +61,9 @@ public:
 
   OwColumn column(int x, int z) const;          // the column as generated (structures' levelling applied)
   std::string landBiomeName(int x, int z) const;
-  std::string landBiomeNameAt(int x, int y, int z) const;   // (at a depth: Minecraft's y)  // terrain version 15: Soulrend's biome at the ground here ("" before)
+  std::string landBiomeNameAt(int x, int y, int z) const;   // (at a depth: the imported data's y)  // terrain version 15: the land biome at the ground here ("" before)
   double climateScale = 1;                      // how wide the climate (and so the biomes) spreads: 2 from terrain version 4
-  // BTA's world types on this land (the create-world screen): amplified, islands, winter (Endless Winter), hell, floating
+  // the world types on this land (the create-world screen): amplified, islands, winter (Endless Winter), hell, floating
   std::string wtype;
   void worldTypePass(GenBuf& b, const OwColumn* cols, int cx, int cz) const;   // gen/world_types.cpp
   int floatingBottom(int wx, int wz, int H) const;   // floating islands: the underside here (-1: no island)
@@ -72,7 +72,7 @@ public:
   bool villageStyles = false;    // terrain version 10: villages in every style (beach, jungle, swamp, mesa, igloo, festive...) by the land
   bool looseGround = false;      // immersive worlds only: loose rocks, flint and twigs (gen/decorate.cpp)
   bool dynTrees = false;         // terrain version 13: grown trees (gen/dyntree_gen.cpp, sim/dyntree.h)
-  bool strata = false;          // our rock layers painted through the land (12..20; 21: Soulrend's plain stone and Minecraft's rock blobs)
+  bool strata = false;          // our rock layers painted through the land (12..20; 21: the land's plain stone and its rock blobs)
   bool rockLayers = false;       // terrain version 12: rock layers and ores in their rocks (gen/rock_layers.cpp)
   std::vector<u8> zincRep_, bismuthRep_, tinRep_, silverRep_, goldRep_;
   BlockId layerRock(int wx, int y, int wz, int H) const;
@@ -94,10 +94,10 @@ public:
   // bands below are generated here (gen/underworld.cpp), depth 1 just under it
   bool deep_ = false;
   bool deepStructs() const;
-  static constexpr int DEEP_DARK_DY = -60;   // terrain 21 in a deep world: the underground places at Soulrend's depths, some below the Overworld
+  static constexpr int DEEP_DARK_DY = -60;   // terrain 21 in a deep world: the underground places at their imported depths, some below the Overworld
   void generateDeep(Chunk& ch, int depth) const;
 
-  // terrain version 14 (docs/WORLDGEN_MERGE.md): the land shaped by Minecraft 1.20's noise router (gen/density.h)
+  // terrain version 14 (docs/WORLDGEN_MERGE.md): the land shaped by the imported noise router (gen/density.h)
   bool v14 = false;
   int v14Surface(int x, int z) const;
   int debugTopScan(int x, int z, bool finalD) const;
@@ -111,34 +111,34 @@ private:
   int v14Spike(int x, int z, int H) const;   // (the planned ground height is solid land here)
   int v14Corner(int x, int z) const;   // (the exact surface at a cell corner)
   struct BaseCol { int h; double hc; u8 biome; double temp, humid; int H = -1; u8 special = 0; u16 landBiome = 0xFFFF; };
-  // terrain version 15: Soulrend's world (gen/land_biomes.h, gen/surface_rules.h; data/worldgen)
+  // terrain version 15: the land biomes' world (gen/land_biomes.h, gen/surface_rules.h; data/worldgen)
   bool v15 = false, v16 = false, v17 = false, v18 = false, v20 = false, v21 = false;
   double hf(i32 a, i32 b, i32 c, i32 d) const { return v18 ? posHashF(a, b, c, d) : hashFloat(a, b, c, d); }   // (18: no stripes)
   int genVer_ = 0;
   std::shared_ptr<class LandBiomes> lb_;
   std::shared_ptr<class LandSurface> ls_;
-  std::shared_ptr<class BiomeFeatures> bf_;   // (Soulrend's biome features: its plants, disks, rocks, icebergs, snow)
+  std::shared_ptr<class BiomeFeatures> bf_;   // (the land biomes' features: their plants, disks, rocks, icebergs, snow)
   int vTemp = -1, vVeg = -1, vDepth = -1, vRidges = -1, vInit = -1;
-  // the land's extras before its surface: Minecraft's eroded badlands spires and frozen-ocean icebergs (SurfaceSystem's
-  // extensions), Nature's Spirit's sugi and stratified-desert pillars (its SurfaceBuilderMixin): their noises and biomes
+  // the land's extras before its surface: the eroded badlands spires and frozen-ocean icebergs, and the
+  // sugi and stratified-desert pillars: their noises and biomes
   int nX_[12] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
   int bEroded_ = -1, bFrozen_ = -1, bDeepFrozen_ = -1, bSugi_ = -1, bSugi2_ = -1, bStrat_ = -1, bLively_ = -1, bBlooming_ = -1;
   void surfaceExtras(GenBuf& b, int x, int z, int wx, int wz, int top, int prelim) const;
   std::vector<u8> lbCat_;                 // per biome: ours (BIOME_*)
   std::vector<float> lbTemp_, lbHumid_;   // per biome: our climate numbers for it (tints, snow, our systems)
-  int landNoiseBiome(int qx, int qy, int qz) const;   // the biome at a quart (y Minecraft's)
-  int landBiomeAt(int x, int y, int z) const;         // at a block (BiomeManager's zoom; y Minecraft's)
-  int prelimSurface(int x, int z) const;            // Minecraft's preliminary surface level (y Minecraft's)
+  int landNoiseBiome(int qx, int qy, int qz) const;   // the biome at a quart (the imported data's y)
+  int landBiomeAt(int x, int y, int z) const;         // at a block (the biome zoom; the imported data's y)
+  int prelimSurface(int x, int z) const;            // the preliminary surface level (the imported data's y)
   void surfaceV15(GenBuf& b, OwColumn* cols, int cx, int cz) const;
   BaseCol baseColumn(int x, int z) const;
   double riverNoise(int x, int z) const;
-  // gen/underground.cpp: Minecraft Beta style underground (carvers, ore veins, lava lakes, springs)
+  // gen/underground.cpp: the classic underground (carvers, ore veins, lava lakes, springs)
   void initUnderground();
   void carve(GenBuf& b, const OwColumn* cols, int cx, int cz) const;
   void placeOres(GenBuf& b, int cx, int cz, Mulberry32& rnd) const;
   void placeLakes(GenBuf& b, const OwColumn* cols, int cx, int cz) const;
   void placeSprings(GenBuf& b, const OwColumn* cols, int cx, int cz) const;
-  // gen/dungeons_classic.cpp: Minecraft Alpha/Beta monster rooms (cobblestone, a cage, a chest or two)
+  // gen/dungeons_classic.cpp: the classic monster rooms (cobblestone, a cage, a chest or two)
   void placeDungeons(GenBuf& b, Chunk& ch, const OwColumn* cols) const;
   void placeTrees(GenBuf& b, int cx, int cz) const;
   void writeTree(GenBuf& b, int cx, int cz, const TreeSpec& t, std::vector<TreePart>& parts) const;

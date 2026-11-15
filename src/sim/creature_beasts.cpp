@@ -54,7 +54,7 @@ static const std::unordered_map<std::string, TameFood>& tameTable() {
 static bool mountStats(const std::string& t, float& speed, float& jump) {
   static const std::unordered_map<std::string, vec2> M = {
     {"horse", {10, 9.5f}}, {"donkey", {7.5f, 8.5f}}, {"llama", {6.5f, 8}}, {"camel", {7.5f, 8}}, {"deer", {9.5f, 10}}, {"goat", {6.5f, 11}}, {"moa", {8.5f, 10}},
-    {"pig", {5.5f, 5.6f}},   // BTA: a saddled pig is ridden too; its short legs can't jump a whole block (stairs and slabs help)
+    {"pig", {5.5f, 5.6f}},   // a saddled pig is ridden too; its short legs can't jump a whole block (stairs and slabs help)
     {"brown_bear", {6.5f, 8}}, {"polar_bear", {6.5f, 8}}, {"lion", {9.5f, 9.5f}}, {"lioness", {9.5f, 9.5f}}, {"tiger", {10, 9.5f}}, {"panther", {10, 10}}, {"snow_leopard", {9, 10.5f}}};
   auto it = M.find(t);
   if (it == M.end()) { speed = 7; jump = 8; return false; }
@@ -493,7 +493,7 @@ static Move swimmerAI(Level& lv, Creature& m, Entity* p, float dist, float dyp, 
   const bool squid = T.sound == "squid";
   if (m.hurtTime > 0.3f && squid && !m.inked) { m.inked = true; mobBurst(lv, m.pos + vec3(0, 0.5f, 0), "black_wool", 24, 1.6f); }
   if (m.hurtTime <= 0) m.inked = false;
-  // BTA's smarter squid: someone swimming up close startles it: a cloud of ink and a dash away (then a while before the
+  // the smarter squid: someone swimming up close startles it: a cloud of ink and a dash away (then a while before the
   // next; puffT is a pufferfish's puff timer, free on a squid, so it keeps the wait)
   if (squid) {
     m.puffT = std::max(0.f, m.puffT - dt);
@@ -797,7 +797,7 @@ bool useOnCreature(Level& lv, Player& p, Creature& e, bool sneaking) {
   std::string name = petLabel(e);
   float sp, jump; bool mountable = mountStats(e.type, sp, jump);
   auto toast = [&](const std::string& t, const std::string& k = "") { lv.fx->message(p.id, t, k); };
-  // ---- BTA: any grown pig takes a saddle (no taming), and then you ride it ----
+  // ---- any grown pig takes a saddle (no taming), and then you ride it ----
   if (e.type == "pig" && !e.baby && e.owner.empty()) {
     if (!held.empty() && held.id == "saddle" && !e.saddled) {
       e.saddled = true; e.kept = true; use1(p, held); lv.fx->soundUi(p.id, "equip");

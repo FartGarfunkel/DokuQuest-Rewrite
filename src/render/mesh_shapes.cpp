@@ -295,7 +295,7 @@ void addShapeBox(MeshCtx& c, std::vector<ChunkVertex>& d, const ShapeBox& box, v
   static int chainTile = -2;
   if (chainTile == -2) chainTile = c.R.tile("chain");
   if (chainTile >= 0 && box.side == chainTile) {
-    // a chain is drawn like Minecraft's: two crossed planes along the box's long axis, showing the picture's two link
+    // a chain is drawn as two crossed planes along the box's long axis, showing the picture's two link
     // strips (columns 0-3 and 3-6). As a thin box it only showed the picture's empty middle and looked invisible.
     float ext[3] = {box.b[3] - box.b[0], box.b[4] - box.b[1], box.b[5] - box.b[2]};
     int ax = ext[1] >= ext[0] && ext[1] >= ext[2] ? 1 : ext[0] >= ext[2] ? 0 : 2, p = (ax + 1) % 3, q = (ax + 2) % 3;
@@ -326,7 +326,7 @@ void addShapeBox(MeshCtx& c, std::vector<ChunkVertex>& d, const ShapeBox& box, v
     for (int k = 0; k < 4; k++) {
       const int* cc = F.c[k];
       float X = cc[0] ? box.b[3] : box.b[0], Y = cc[1] ? box.b[4] : box.b[1], Z = cc[2] ? box.b[5] : box.b[2];
-      // a turned model's top and bottom turn their picture with it (Minecraft's y-rotation): an anvil's top is painted down
+      // a turned model's top and bottom turn their picture with it (the model's y-rotation): an anvil's top is painted down
       // its middle only, and turned east or west it showed the clear margins, holes in the top
       float sX = X, sZ = Z;
       if ((f == 2 || f == 3) && (rot & 3) && !box.grain) unrotDoor(sX, sZ, rot & 3);

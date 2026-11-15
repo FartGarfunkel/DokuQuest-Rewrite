@@ -1,4 +1,4 @@
-// ui/guide_screen.cpp — the crafting guide (after Better than Adventure's guidebook): a book of the things you can make.
+// ui/guide_screen.cpp — the crafting guide (a guidebook): a book of the things you can make.
 // Its index lists, by kind, what you could make from the things you've had (all a recipe takes, or the thing itself:
 // discovery, stats.known, sim/rpg.h knowsItem); a thing's
 // page shows every way it's made (the crafting grid drawn out, the furnace, the stonecutter, the Tool Forge, an alloy's

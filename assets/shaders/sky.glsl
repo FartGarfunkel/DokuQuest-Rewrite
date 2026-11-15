@@ -53,7 +53,7 @@ void main() {
   if (uStars > 0.0 && d.y > 0.0) {
     vec3 q = floor(d * 220.0);
     float s = step(0.9975, h(q));
-    // each star its own colour and brightness (BTA's random star colours): mostly white, some blue, yellow, orange, red
+    // each star its own colour and brightness (random star colours): mostly white, some blue, yellow, orange, red
     float k = h(q + vec3(17.0, 3.0, 41.0)), b = 0.55 + 0.45 * h(q + vec3(5.0, 29.0, 11.0));
     vec3 sc = k < 0.55 ? vec3(1.0) : k < 0.72 ? vec3(0.72, 0.82, 1.0) : k < 0.86 ? vec3(1.0, 0.95, 0.72) : k < 0.95 ? vec3(1.0, 0.78, 0.55) : vec3(1.0, 0.6, 0.5);
     float tw = 0.85 + 0.15 * sin(uSkyT * (1.5 + 3.0 * h(q + vec3(7.0))) + 40.0 * k);   // a slow twinkle

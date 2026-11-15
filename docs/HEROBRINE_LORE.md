@@ -1,13 +1,13 @@
 # The Ultimate Herobrine Mythos & Lore Compendium
 
-Herobrine is the definitive urban legend of *Minecraft*, originating from an anonymous 4chan `/x/` post in August 2010. While officially debunked by Mojang, over a decade of community creepypastas, mods, machinimas, and animations have evolved him into a god-like entity, a corruptive virus, and a master of a broken digital reality.
+Herobrine is the world's oldest legend: a figure whispered about long before anyone saw him, who has grown in the telling into a god-like entity, a corruptive virus, and a master of a broken digital reality. This is the lore our Herobrine draws on.
 
 ---
 
 ## 1. Origins & The Prime Directive
-* **The Ghost in the Code:** Early lore posits Herobrine as a manifestation of Markus "Notch" Persson’s deceased brother, trapped as a fragmented consciousness inside the game's code. 
+* **The Ghost in the Code:** The oldest tales hold that Herobrine was once a living soul, lost and trapped as a fragmented consciousness inside the world's code.
 * **The Silent Stalker:** His original core directive was psychological warfare. He did not directly attack; he watched from the fog at the edge of the render distance, vanishing the moment the player looked directly at him.
-* **The "Stop" Message:** He represents a protective, hostile artificial intelligence. According to early stories, he actively tries to gatekeep *Minecraft* worlds from being fully discovered or altered by players.
+* **The "Stop" Message:** He represents a protective, hostile artificial intelligence. According to early stories, he actively tries to gatekeep worlds from being fully discovered or altered by players.
 
 ---
 
@@ -45,7 +45,7 @@ When forced into direct combat, Herobrine commands administrative commands trans
 ---
 
 ## 5. The Scourge: Corrupted Entities & Mobs
-Herobrine controls a plagued legion, transforming the standard fauna and undead of *Minecraft* into a unified hive mind.
+Herobrine controls a plagued legion, transforming the world's ordinary fauna and undead into a unified hive mind.
 
 * **The White-Eyed Plague:** Any standard mob (Zombies, Skeletons, Creepers, Endermen, or even passive animals like Pigs and Wolves) can be possessed. When corrupted, their eyes turn glowing white. They gain double movement speed, triple health pools, and hyper-aggressive pathfinding AI that ignores walls to find the player.
 * **Illusionary Stalkers:** During confrontations, he summons dozens of translucent, intangible clones of himself. These duplicates charge through the fog simultaneously to mask his true physical position and induce panic.
@@ -54,7 +54,7 @@ Herobrine controls a plagued legion, transforming the standard fauna and undead 
 ---
 
 ## 6. The Traditional Summoning Ritual
-According to early 2011 community lore, Herobrine can be bound to a world through a specific, forbidden altar structure:
+According to the oldest tales, Herobrine can be bound to a world through a specific, forbidden altar structure:
 
 1. **The Base:** Place a 3x3 platform of solid **Gold Blocks** on the ground.
 2. **The Core:** Position a single block of **Netherrack** directly in the center of the gold grid.

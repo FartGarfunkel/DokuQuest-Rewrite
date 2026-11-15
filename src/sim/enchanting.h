@@ -62,7 +62,7 @@ bool enchInfinity(const ItemStack& bow);
 bool enchVolley(const ItemStack& bow);
 int enchLure(const ItemStack& rod);                        // bite comes lure*4 s sooner (min 2)
 int enchLuck(const ItemStack& rod);                        // treasure: luck * 3%
-// after a melee blow that dealt `dealt` (Vampirism heals, Frost Aspect slows)
+// after a melee blow that dealt `dealt` (life-drain heals, Frost Aspect slows)
 void enchAfterMelee(Level& lv, Player& p, Entity& target, float dealt);
 // after `p` was hurt by `attacker` (Thorns)
 void enchThorns(Level& lv, Player& p, Entity* attacker, float healthBefore);

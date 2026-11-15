@@ -69,7 +69,7 @@ void registerUsables() {
       std::vector<std::pair<int, ivec3>> sponges;   // just placed: soak up the water round them next tick
       const char* name() const override { return "usables"; }
       ~S() override { if (lv && lv->events) { if (h) lv->events->off(h); if (hp) lv->events->off(hp); } }
-      // Minecraft's sponge: the water within 6 steps (up to 65 blocks of it) is soaked up and the sponge turns wet
+      // the sponge: the water within 6 steps (up to 65 blocks of it) is soaked up and the sponge turns wet
       double fwT = 0;
       // New Year's Eve and Day (common/holiday newYear()): after dark the villages let off fireworks, now and then,
       // from among their people
@@ -208,7 +208,7 @@ void registerUsables() {
         if (d->str("mobHead") == "wither_skeleton") tryWitherSummon(lv, p->realm, at);   // the third skull on a T of soul sand
         return false;
       }
-      if (d->key == "wet_sponge" && hitBlock) {   // BTA: a wet sponge washes the dye out of wool, glass, terracotta and planks
+      if (d->key == "wet_sponge" && hitBlock) {   // a wet sponge washes the dye out of wool, glass, terracotta and planks
         World& w = lv.world(p->realm);
         const std::string k = reg().block(w.getBlock(hb.x, hb.y, hb.z)).key;
         static const char* COLS[16] = {"white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray", "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black"};
@@ -249,7 +249,7 @@ void registerUsables() {
         else if (k == "wool" || ends("_wool")) to = col == "white" ? "wool" : col + "_wool";
         else if (k == "glass" || ends("_stained_glass")) to = col + "_stained_glass";
         else if (k == "terracotta" || ends("_terracotta")) to = col + "_terracotta";
-        // BTA's painted wood: doors, trapdoors, buttons, pressure plates and chests of any wood, signs (their board), lamps
+        // painted wood: doors, trapdoors, buttons, pressure plates and chests of any wood, signs (their board), lamps
         else if (bd.has("door") && wooden) to = col + "_painted_door";
         else if (bd.has("trapdoor") && wooden) to = col + "_painted_trapdoor";
         else if (bd.str("rs") == "button" && (bd.has("wooden") || wooden)) to = col + "_painted_button";

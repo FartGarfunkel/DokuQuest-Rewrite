@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
   BlockId stone = r.B("stone"), dirt = r.B("dirt"), sand = r.B("sand"), water = r.B("water");
 
   printf("[wind field]\n");
-  {   // sim/wind_field.h: Particle Rain's gust field on our wind (the same on every machine)
+  {   // sim/wind_field.h: the gust field on our wind (the same on every machine)
     WindParams wp{1.1f, 0.8f, 0.2f, 1234.5};
     const double ob = dimBase(DIM_OVERWORLD);
     vec3 a = windAt(wp, 37.5, ob + 100, -12.25), b = windAt(wp, 37.5, ob + 100, -12.25);

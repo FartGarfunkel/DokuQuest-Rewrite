@@ -1,6 +1,6 @@
-// ui/worlds.cpp — Select World, Create New World and World Settings laid out like Better than Adventure 8.0
-// (ScreenSelectWorld, ScreenCreateWorld, ScreenWorldSettings; ui/paged.h), with the original's features (ui.js
-// refreshWorlds, rules.js worldSettingsForm): play, rename, delete (BTA's confirmation), the world's settings (rules,
+// ui/worlds.cpp — Select World, Create New World and World Settings laid out as paged
+// screens (ui/paged.h), with the original's features (ui.js
+// refreshWorlds, rules.js worldSettingsForm): play, rename, delete (with a confirmation), the world's settings (rules,
 // mob spawns, day and night, game mode, difficulty, terrain version, back up), importing a backup.
 // Worlds are folders in userDir()/saves; backups are .zip files in userDir()/backups.
 #include "ui/ui.h"
@@ -86,7 +86,7 @@ static bool importWorldZip(const fs::path& zip, std::string& name, std::string& 
 }
 
 
-// ---- world settings, the BTA way (ScreenWorldSettings: World Settings / Game Rules / Mob Spawning) -------------
+// ---- world settings (World Settings / Game Rules / Mob Spawning) -------------------------------------------------
 namespace {
 struct RuleRow { const char* key; const char* label; const char* tip; int page; };
 const std::vector<RuleRow>& ruleRows() {
@@ -110,9 +110,9 @@ const std::vector<RuleRow>& ruleRows() {
     {"grassSpread", "Grass Spreads", "Grass slowly grows onto nearby bare dirt", 0},
     {"saplingsPlant", "Saplings Plant Themselves", "A sapling left lying on soil takes root", 0},
     {"showCoords", "Show Coordinates", "Your position, shown in the corner", 0},
-    {"commands", "Allow Commands", "Chat commands and WorldEdit (press T or /)", 0},
+    {"commands", "Allow Commands", "Chat commands and the building tools (press T or /)", 0},
     {"downed", "Downed, Not Dead", "With someone else playing, you go down instead of dying, and they can help you back up", 0},
-    // (Immersive Progression, the experimental TFC beginnings, is hidden: a world made with it keeps it; its ores, metals,
+    // (Immersive Progression, the experimental early-tools beginnings, is hidden: a world made with it keeps it; its ores, metals,
     // tools and stations are in every world)
     {"startInWild", "Start in the Wild", "Begin somewhere out in the wilds, well away from any village (the story begins at the first village you find); off: at a village's edge", 1},
     {"seasons", "Seasons", "Spring, summer, autumn and winter, seven days each: snow in the winter, colour in the autumn", 1},
@@ -164,7 +164,7 @@ struct WorldForm {
       if (underDepth && worldType && (*worldType == 0 || *worldType == 2 || *worldType == 3)) {   // (the deep world's: docs/WORLD_DEPTH.md)
         int ud = clampv(*underDepth, 1, 4) - 1;
         if (k.cycle("Underworld Depth", &ud, {"256 blocks", "512 blocks", "768 blocks", "1024 blocks"}, 3,
-                    "How far the Underworld goes down under the Overworld, through Minecraft's deep layer and the great caverns below it, to the bedrock over the Nether.", 120)) *underDepth = ud + 1;
+                    "How far the Underworld goes down under the Overworld, through the deep layer and the great caverns below it, to the bedrock over the Nether.", 120)) *underDepth = ud + 1;
       }
       if (named || moded) if (k.category("World")) {
         if (named) k.textField("World Name", &name, "New World", nullptr, 140, 0, 32);
@@ -229,7 +229,7 @@ std::string modeLabel(const json& L) {
   if (L.contains("rules") && L["rules"].is_object() && L["rules"].value("hardcore", false)) return "Hardcore Mode";
   return m == "creative" ? "Creative Mode" : m == "adventure" ? "Adventure Mode" : m == "spectator" ? "Spectator Mode" : "Survival Mode";
 }
-// the folder button's picture (BTA's button_folder): a little folder
+// the folder button's picture (the folder button): a little folder
 void folderGlyph(ImDrawList* dl, ImVec2 p, float s, bool hot) {
   ImU32 c = hot ? IM_COL32(255, 255, 160, 255) : IM_COL32(230, 200, 120, 255), d = IM_COL32(120, 90, 40, 255);
   ImVec2 a(p.x + s * 0.22f, p.y + s * 0.32f), b(p.x + s * 0.78f, p.y + s * 0.72f);
@@ -295,7 +295,7 @@ public:
     }
   }
 
-  // BTA's ScreenSelectWorld: the list between a 32-unit band and a 64-unit band, two rows of buttons
+  // Select World: the list between a 32-unit band and a 64-unit band, two rows of buttons
   void drawList(App& a) {
     kit.begin(a, "##worlds", "Select World", {}, 0, 32, 64);
     const float U = kit.u();
@@ -347,7 +347,7 @@ public:
     kit.end();
   }
 
-  // BTA's ScreenCreateWorld
+  // Create New World
   void drawCreate(App& a) {
     kit.beginPlain(a, "##createworld", "Create New World");
     const float U = kit.u(), cx = a.width * 0.5f;
@@ -407,7 +407,7 @@ public:
     if (f == 0) view = CREATE;
   }
 
-  // BTA's rename screen: a field and Rename / Cancel
+  // the rename screen: a field and Rename / Cancel
   void drawRename(App& a) {
     WorldEntry* w = sel(); if (!w) { view = LIST; return; }
     kit.beginPlain(a, "##renameworld", "Rename World");
@@ -422,7 +422,7 @@ public:
     else if (cancel) view = LIST;
   }
 
-  // BTA's delete confirmation
+  // the delete confirmation
   void drawDelete(App& a) {
     WorldEntry* w = sel(); if (!w) { view = LIST; return; }
     kit.beginPlain(a, "##deleteworld", "Delete World");

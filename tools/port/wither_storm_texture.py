@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""tools/port/wither_storm_texture.py — the Wither Storm's (and the Wither's) own picture, painted here: the Story Mode
+"""tools/port/wither_storm_texture.py — the Wither Storm's (and the Wither's) own picture, painted here: the story's
 look, an obsidian-black body with purple light in its eyes, its mouths and the veins of what it has eaten. Nothing in it
-is taken from the mod's picture; only where things go is read, from the models' own box layouts in data/models.json
-(each part's uv [u, v, w, h, d], Minecraft's box unwrap: top, bottom, then right, front, left, back), so every face gets
+is taken from an outside picture; only where things go is read, from the models' own box layouts in data/models.json
+(each part's uv [u, v, w, h, d], the standard box unwrap: top, bottom, then right, front, left, back), so every face gets
 the stuff it is made of: skull, jaw, tooth, bone, tentacle, the mass, the command block. Where two parts read the same
 texels the more particular one wins (eyes, then heads, teeth, jaws, the block, bones, tentacles, the mass).
 

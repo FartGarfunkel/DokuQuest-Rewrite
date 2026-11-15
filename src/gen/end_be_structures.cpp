@@ -1,6 +1,6 @@
-// gen/end_be_structures.cpp — Better End's land structures (its building_list_features: ruins, houses, a library, a
+// gen/end_be_structures.cpp — the End lands' structures (their building lists: ruins, houses, a library, a
 // tree house, a small mansion, cabins, stumps and fallen trees) in their six lands, read from data/be_structures.json
-// (tools/port/end_building.py converts Better End's MIT .nbt templates). Like Better End: in one chunk of ten (its rarity
+// (tools/port/end_building.py converts the .nbt templates). In one chunk of ten (the rarity
 // filter) a spot in the chunk, if its land has a list, gets one structure from it, centred there, turned a random
 // quarter; SURFACE ones sit with their floor in the ground, OBJECT ones on top of it. Its air clears only what stands
 // above the ground.
@@ -30,7 +30,7 @@ BEStruct readStruct(const json& s) {
   S.blocks = s["blocks"].get<std::vector<u32>>();
   return S;
 }
-// Better End's pillar bases and tops (data/be_structures.json "pillars", from its pillars/*.nbt)
+// the End lands' pillar bases and tops (data/be_structures.json "pillars", from its pillars/*.nbt)
 const std::unordered_map<std::string, BEStruct>& bePillarTpls() {
   static const std::unordered_map<std::string, BEStruct> M = [] {
     std::unordered_map<std::string, BEStruct> out;
@@ -52,7 +52,7 @@ const std::array<BELand, 19>& beStructs() {
   static const std::array<BELand, 19> L = [] {
     std::array<BELand, 19> out;
     auto j = readJson(dataDir() / "be_structures.json");
-    if (!j || !(*j)["lands"].is_object()) { DQ_WARN("End: no data/be_structures.json, Better End's buildings are off"); return out; }
+    if (!j || !(*j)["lands"].is_object()) { DQ_WARN("End: no data/be_structures.json, the End's buildings are off"); return out; }
     for (auto& [k, v] : (*j)["lands"].items()) {
       const int land = std::atoi(k.c_str());
       if (land < 0 || land >= 19) continue;
@@ -65,9 +65,9 @@ const std::array<BELand, 19>& beStructs() {
 }
 }
 
-// SpikeFeatureMixin.be_placeSpike: a pillar of radius 2-5 becomes Better End's base (3 into the ground) and top piece
+// the pillar rebuild: a pillar of radius 2-5 becomes the End lands' base (3 into the ground) and top piece
 // (the caged one for the guarded pillars), the obsidian between them one narrower, with crying obsidian on its rim now
-// and then (1 in 24). Its height counts from the ground: top = ground + vanilla height - 64. The crystal stands on the
+// and then (1 in 24). Its height counts from the ground: top = ground + the plain pillar's height - 64. The crystal stands on the
 // top's bedrock (sim/end_fight.cpp finds it there).
 bool EndGen::bePillar(const Pillar& pl, ChunkWriter* P, int* topY) const {
   if (!betterEnd() || pl.rad < 2 || pl.rad > 5) return false;
@@ -91,7 +91,7 @@ bool EndGen::bePillar(const Pillar& pl, ChunkWriter* P, int* topY) const {
     const bool rim = px == r || px == -r || pz == r || pz == -r;
     for (int y = std::max(1, minY); y < maxY && y < DIM_H; y++) {
       const BlockId was = P->get(x, y, z);
-      if (was != AIR && !R.tLiquid[was]) continue;   // only into the open, like the mod
+      if (was != AIR && !R.tLiquid[was]) continue;   // only into the open
       P->put(x, y, z, rim && crying && hash32(x, y, z, seed_ ^ 0x5B1E) % 24 == 0 ? crying : obsidian);
     }
   }
@@ -103,7 +103,7 @@ void EndGen::beStructures(int bx, int bz, ChunkWriter& P) const {
   const int cx = floordiv(bx, 16), cz = floordiv(bz, 16);
   for (int oz = cz - 2; oz <= cz + 2; oz++) for (int ox = cx - 2; ox <= cx + 2; ox++) {
     const u32 h = hash32(ox, oz, seed_, 0xBE57);
-    if ((h & 0xFFFF) % 10 != 0) continue;   // Better End's rarity filter (1 in 10 for every land's list)
+    if ((h & 0xFFFF) % 10 != 0) continue;   // the rarity filter (1 in 10 for every land's list)
     const int x = ox * 16 + (int)((h >> 16) & 15), z = oz * 16 + (int)((h >> 20) & 15);
     if (std::hypot((double)x, (double)z) < OUTER + 24) continue;
     Isle c; if (!island(x, z, c) || c.main) continue;

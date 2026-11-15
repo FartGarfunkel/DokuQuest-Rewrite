@@ -1,6 +1,6 @@
-// sim/bloomery.h — TerraFirmaCraft's bloomery, for iron: the bloomery with a chimney of stone bricks over it (one to three
+// sim/bloomery.h — the bloomery, for iron: the bloomery with a chimney of stone bricks over it (one to three
 // high: room for 8, 16 or 24 ore), loaded with iron ore and as much charcoal, lit with a firestarter; five in-game hours
-// later (TFC's 14.4, shortened) it gives a raw bloom for every hundred units of iron, to be refined on an anvil into iron.
+// later it gives a raw bloom for every hundred units of iron, to be refined on an anvil into iron.
 // Block bloomery, entity {type: "bloomery", ore[] (item ids), units, charcoal, lit, t, out}; ticked from sim/content.cpp.
 #pragma once
 #include "sim/level.h"

@@ -1,5 +1,5 @@
-// gen/biome_features.cpp — see mc_features.h. The features' rules are Minecraft 1.20.1's (PlacementModifier, the
-// Feature classes named on each), the randomness our own.
+// gen/biome_features.cpp — see biome_features.h. The features' rules follow the imported data's format (placement
+// modifiers, the feature types named on each), the randomness our own.
 #include "gen/biome_features.h"
 #include "gen/gendefs.h"
 #include "gen/land_biomes.h"
@@ -26,12 +26,12 @@ enum : u8 { F_NONE, F_PATCH, F_SIMPLE, F_SELECT, F_SIMPLESELECT, F_BOOL, F_COLUM
             F_BAMBOO, F_DISK, F_ROCK, F_ICEBERG, F_BLUEICE, F_FREEZE, F_BIGBLOCK, F_POND };
 enum : u8 { HM_WORLD, HM_OCEAN, HM_MOTION, HM_NOLEAVES };
 constexpr BlockId OUT = 0xFFFF;
-constexpr int DATA_MIN_Y = -64, DATA_TOP_Y = 319;   // (Minecraft's Overworld: height anchors count from these)
+constexpr int DATA_MIN_Y = -64, DATA_TOP_Y = 319;   // (the imported data's Overworld: height anchors count from these)
 
 std::string strip(const std::string& s) { return s.rfind("minecraft:", 0) == 0 ? s.substr(10) : s; }
 std::string full(const std::string& s) { return s.find(':') == std::string::npos ? "minecraft:" + s : s; }
 u64 mix(u64 z) { z += 0x9E3779B97F4A7C15ull; z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull; z = (z ^ (z >> 27)) * 0x94D049BB133111EBull; return z ^ (z >> 31); }
-int anchorY(const json& j) {   // Minecraft's y
+int anchorY(const json& j) {   // the imported data's y
   if (j.is_object()) {
     if (j.contains("absolute")) return j["absolute"].get<int>();
     if (j.contains("above_bottom")) return DATA_MIN_Y + j["above_bottom"].get<int>();
@@ -72,7 +72,7 @@ struct BiomeFeatures::Ctx {
       int got = 0, h[4] = {0, 0, 0, 0};
       for (int y = DIM_H - 1; y >= 0 && got != 15; y--) {
         const BlockId id = b.blocks[colIdx(lx, y, lz)];
-        if (id == AIR || (treeish && treeish[id])) continue;   // (our trees are planted first: the ground is under them, as Minecraft's is when its features run)
+        if (id == AIR || (treeish && treeish[id])) continue;   // (our trees are planted first: the ground is under them when the features run)
         if (!(got & 1)) { h[HM_WORLD] = y + 1; got |= 1; }
         const bool solid = R.tSolid[id], liquid = R.tLiquid[id];
         if (!(got & 2) && solid && !liquid) { h[HM_OCEAN] = y + 1; got |= 2; }
@@ -91,7 +91,7 @@ struct BiomeFeatures::Ctx {
     b.blocks[i] = id; b.meta[i] = meta; dirty[col(x, z)] = 1;
     return true;
   }
-  // block predicates' results, remembered until a block changes (Nature's Spirit's cliffs test each block dozens of times)
+  // block predicates' results, remembered until a block changes (the cliff features test each block dozens of times)
   struct Memo { u64 key; u32 stamp; u8 v; };
   static constexpr int MEMO = 1 << 15;
   std::vector<Memo>& memo() { static thread_local std::vector<Memo> m(MEMO, Memo{~0ull, 0, 0}); return m; }
@@ -267,7 +267,7 @@ bool BiomeFeatures::test(int i, Ctx& c, int x, int y, int z) const {
   return false;
 }
 
-// Minecraft's canSurvive, for the kinds of block the features place: plants on soil (sand for the desert's), cactus on sand
+// canSurvive, for the kinds of block the features place: plants on soil (sand for the desert's), cactus on sand
 // alone, sugar cane by water, lily pads on water, sea plants under it, vines on a wall
 bool BiomeFeatures::survives(BlockId id, Ctx& c, int x, int y, int z) const {
   const Registry& R = reg();
@@ -797,7 +797,7 @@ bool BiomeFeatures::placeConf(int fi, Ctx& c, Rng& r, int x, int y, int z) const
       }
       return true;
     }
-    case F_BIGBLOCK: {   // (Nature's Spirit's large pumpkins and stone lumps: a 2x2x2 block on the ground)
+    case F_BIGBLOCK: {   // (the large pumpkins and stone lumps: a 2x2x2 block on the ground)
       int py = y; while (py > 2 && c.get(x, py - 1, z) == AIR) py--;
       const BlockId g = c.get(x, py - 1, z);
       if (g == OUT || !(g < dirt_.size() && (dirt_[g] || sand_[g])) || c.builtOn(x, z)) return false;
@@ -808,7 +808,7 @@ bool BiomeFeatures::placeConf(int fi, Ctx& c, Rng& r, int x, int y, int z) const
       }
       return true;
     }
-    case F_POND: {   // (Nature's Spirit's ponds and deltas: a round of still water in the ground, a rim of its mud or stone)
+    case F_POND: {   // (the ponds and deltas: a round of still water in the ground, a rim of its mud or stone)
       const int sz = std::max(2, sampleInt(C.ia, r) / 2), rim = sampleInt(C.ib, r);
       const int gy = c.height(HM_OCEAN, x, z) - 1;
       if (gy < SEA_LEVEL - 2 || gy > SEA_LEVEL + 40) return false;

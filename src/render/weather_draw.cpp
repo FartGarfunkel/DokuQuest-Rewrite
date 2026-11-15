@@ -44,7 +44,7 @@ void WeatherDraw::draw(const FrameCtx& f, const WeatherSim& sim, vec3 camVel) {
     Inst q;
     const vec3 rel = vec3(p.pos - cam.origin);
     float size = p.size;
-    if (K.distScale > 0) size += p.size * d * K.distScale;   // Particle Rain's distance scaling (fog banks)
+    if (K.distScale > 0) size += p.size * d * K.distScale;   // distance scaling (fog banks)
     const vec3 rv = p.vel - cv;
     float stretch = 1;
     if (K.rot == WRot::Velocity) { stretch = std::clamp(glm::dot(rv, rv), 0.25f, 1.f); if (p.hit) stretch = std::min(stretch, std::max(0.f, p.impact)); }
@@ -60,7 +60,7 @@ void WeatherDraw::draw(const FrameCtx& f, const WeatherSim& sim, vec3 camVel) {
       a *= nk; if (nk <= 0) q.posSize.w = 0;
     }
     if (p.kind == WKind::FogFlat || p.kind == WKind::FogUpright) {
-      // CustomParticle.tickFading: a sheet lying flat fades as you see it edge on (below 0.4 rad), one standing up as
+      // fading: a sheet lying flat fades as you see it edge on (below 0.4 rad), one standing up as
       // you look down on it (over 45 degrees), so neither is ever a hard edge
       const vec3 o = rel - eye;
       const float ang = std::abs(std::atan2(o.y, std::sqrt(o.x * o.x + o.z * o.z)));

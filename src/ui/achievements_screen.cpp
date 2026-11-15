@@ -1,6 +1,6 @@
 // ui/achievements_screen.cpp — the Achievements tab (sim/achievements.h), written in the guidebook like the other menu
 // tabs (ui/book.h): an Overview bookmark (how many you've earned, each world's share, the latest few) and a bookmark for
-// each world BTA keeps an achievement page for (the Overworld, the Nether) and the End. Each world's achievements run in
+// each world with an achievement page of its own (the Overworld, the Nether) and the End. Each world's achievements run in
 // the order you'd earn them (each after the one that leads to it), each in the pack's own advancement frame — task,
 // goal or challenge, gold once earned — with its icon, what it asks, and when you earned it or what comes first.
 // Controls: as every book (arrows / wheel / d-pad turn the pages, a bookmark or X / Tab jumps); LB / RB (Q / E) change

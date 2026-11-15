@@ -167,7 +167,7 @@ void init(App& a) {
   buildFonts(a, g_zoom);
   buildSprites();
   ImGuiStyle& s = ImGui::GetStyle();
-  // square and grey like BTA's screens and the launcher's Options tab (black fields with a grey frame, white checks)
+  // square and grey like the paged screens and the launcher's Options tab (black fields with a grey frame, white checks)
   s.WindowRounding = 0; s.ChildRounding = 0; s.FrameRounding = 0; s.PopupRounding = 0; s.GrabRounding = 0; s.ScrollbarRounding = 0;
   s.WindowBorderSize = 0; s.FrameBorderSize = 2; s.PopupBorderSize = 2; s.ChildBorderSize = 0;
   s.ItemSpacing = ImVec2(8, 8); s.ScrollbarSize = 10; s.GrabMinSize = 14;
@@ -342,11 +342,11 @@ float baselineOf(FontId f, float scale) { ImFont* fo = font(f); return fo->Ascen
 static bool itemHot() { return ImGui::IsItemHovered() || (ImGui::IsItemFocused() && navVisible()); }
 
 // every menu button is the launcher's grey button (ui/paged.cpp classicButton), so the game's menus match the
-// launcher's Options tab and BTA's screens
+// launcher's Options tab and the paged screens
 bool greyButton(const char* lbl, ImVec2 size, bool disabled) { return classicButton(lbl, size, disabled, F_MID); }
 
 bool button(const char* lbl, BtnStyle st, bool tiny, float width, bool disabled) {
-  (void)st;   // BTA has one kind of button: the grey one (the style only ever changed its colour)
+  (void)st;   // one kind of button: the grey one (the style only ever changed its colour)
   float z = Z();
   std::string t = lbl; size_t hh = t.find("##"); if (hh != std::string::npos) t.resize(hh);
   const FontId f = F_MID;
@@ -366,7 +366,7 @@ bool checkbox(const char* lbl, bool* v, const char* desc) {
 }
 
 bool slider(const char* id, float* v, float mn, float mx, float step, const char* shown, float width) {
-  // BTA's slider (ui/paged.cpp greySlider): a dark track, a button-faced handle, the value written on it
+  // the slider (ui/paged.cpp greySlider): a dark track, a button-faced handle, the value written on it
   const float z = Z(), w = width > 0 ? width : ImGui::GetContentRegionAvail().x;
   return greySlider(id, v, mn, mx, step, shown ? std::string(shown) : std::string(), ImVec2(w, 20 * z), nullptr);
 }
@@ -432,7 +432,7 @@ bool Panel::begin(const char* id, const char* title, float maxW, const char* clo
     return true;
   }
   // backdrop (.panel-screen)
-  ImGui::GetBackgroundDrawList()->AddRectFilled(ImVec2(0, 0), ImVec2((float)a.width, (float)a.height), IM_COL32(16, 16, 16, 160));   // BTA's dim over the world
+  ImGui::GetBackgroundDrawList()->AddRectFilled(ImVec2(0, 0), ImVec2((float)a.width, (float)a.height), IM_COL32(16, 16, 16, 160));   // the dim over the world
   width = std::min(maxW * z, a.width - pad * 2);
   float maxH = a.height - pad * 2;
   ImGui::SetNextWindowPos(ImVec2(a.width * 0.5f, a.height * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
@@ -448,7 +448,7 @@ bool Panel::begin(const char* id, const char* title, float maxW, const char* clo
   dl = ImGui::GetWindowDrawList();
   pos = ImGui::GetWindowPos(); size = ImGui::GetWindowSize();
   hasFooter = false; footH = 0;
-  // the launcher's look (its Options tab, BTA's screens): the darker brown dirt for the body, a lighter dirt band for
+  // the launcher's look (its Options tab, the paged screens): the darker brown dirt for the body, a lighter dirt band for
   // the title with the name centred in white, black lines between, a black frame
   const float U = 2 * z, tile = 32 * U;
   ImVec2 b0 = pos, b1 = pos + ImVec2(width, std::max(size.y, 60 * z));
@@ -513,7 +513,7 @@ void Panel::beginFooter() {
   float z = Z();
   hasFooter = true;
   ImVec2 p = ImGui::GetCursorScreenPos();
-  if (!book_) dl->AddRectFilled(ImVec2(pos.x, p.y - 8 * z), ImVec2(pos.x + width, p.y - 6 * z), IM_COL32(0, 0, 0, 255));   // BTA's black line over the button band
+  if (!book_) dl->AddRectFilled(ImVec2(pos.x, p.y - 8 * z), ImVec2(pos.x + width, p.y - 6 * z), IM_COL32(0, 0, 0, 255));   // the black line over the button band
   ImGui::SetCursorScreenPos(ImVec2(p.x + 16 * z, p.y + 4 * z));
   ImGui::BeginGroup();
 }

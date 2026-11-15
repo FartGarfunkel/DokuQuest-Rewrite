@@ -1,4 +1,4 @@
-// sim/husbandry.h — animal husbandry (after TerraFirmaCraft), in an immersive world: farm animals are male or female, and
+// sim/husbandry.h — animal husbandry, in an immersive world: farm animals are male or female, and
 // come to know you: feeding one its food once a day raises its familiarity (a missed day or two and it slowly forgets).
 // Only a familiar male and female breed. Wild animals stay wild. Kept in the creature's own data (no change to saves).
 #pragma once

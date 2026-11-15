@@ -1,4 +1,4 @@
-// assets/pack_models.h — Blockbench-style block models from the game's own pack (assets/minecraft/models/block/<name>.json:
+// assets/pack_models.h — box-element block models from the game's own pack (assets/minecraft/models/block/<name>.json:
 // "textures" + "elements" of boxes with per-face UVs, an element rotation about an origin), loaded with the pack
 // (assets/packs.cpp) and drawn by the world mesher for the blocks that use them (render/mesher.cpp: torches — placed,
 // and the wall ones turned to their wall). Each texture a model names becomes a tile (the pack's picture, or ours of
@@ -26,7 +26,7 @@ struct PackModel { std::vector<PackModelBox> boxes; };
 // the pack's models for these blocks (by model name, e.g. "torch", "wall_torch"); their textures added to the tiles
 void loadPackModels(TileSet& ts, const PackFS& P, const std::vector<std::string>& names);
 const PackModel* packModel(const std::string& name);   // null: none (draw the block the game's own way)
-// a Blockbench block model's boxes (its "elements"), each texture it names a tile by tileOf (the model's own "textures"
+// a block model's boxes (its "elements"), each texture it names a tile by tileOf (the model's own "textures"
 // resolved, "#name" references followed)
 PackModel parseBlockModel(const json& j, const std::function<int(const std::string&)>& tileOf);
 

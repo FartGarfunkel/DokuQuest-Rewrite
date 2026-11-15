@@ -1,4 +1,4 @@
-// sim/snow_sentry.cpp — the Snow Sentry (BTA's snowman, our own make): set a carved pumpkin or a jack-o'-lantern on two
+// sim/snow_sentry.cpp — the Snow Sentry (a snowman, our own make): set a carved pumpkin or a jack-o'-lantern on two
 // stacked snow blocks and they come alive as a sentry that throws snowballs at monsters near it (they push them back,
 // and burn the creatures of fire). It leaves a dusting of snow where it walks in the cold, and melts away in hot lands
 // and in the Depths. Two snowballs of snow sit at its base when it falls.

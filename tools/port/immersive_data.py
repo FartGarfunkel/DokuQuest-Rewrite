@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""The immersive progression's data (docs/superpowers/specs/2026-11-10-immersive-progression-design.md), after
-TerraFirmaCraft. Idempotent: rerun safely, it skips what's there.
+"""The immersive progression's data (docs/superpowers/specs/2026-11-10-immersive-progression-design.md).
+Idempotent: rerun safely, it skips what's there.
   python3 tools/port/immersive_data.py data
 Part 2 (stone age):
 - knapped heads: stone_{axe,shovel,hoe,knife,hammer,javelin}_head and crude_pickaxe_head (from pebbles), and
@@ -300,7 +300,7 @@ def main(d):
     for key, name, rgb in (('metal_double_ingot', 'Double Ingot', (190, 190, 196)), ('metal_sheet', 'Sheet', (196, 196, 202)), ('metal_double_sheet', 'Double Sheet', (186, 186, 192))):
         item(key, name, {'maxStack': 16, 'metal': True, 'metalPiece': True}, ingot_icon(rgb))
     item('raw_bloom', 'Raw Bloom', {'maxStack': 16, 'desc': 'Iron from the bloomery: refine it on an anvil (hit, hit, hit)'}, lumps((96, 86, 82), 5, 4))
-    # TFC's two-step refining: raw bloom -> refined bloom -> wrought iron; pig iron -> high-carbon steel -> steel
+    # two-step refining: raw bloom -> refined bloom -> wrought iron; pig iron -> high-carbon steel -> steel
     item('refined_bloom', 'Refined Bloom', {'maxStack': 16, 'desc': 'Hammered once: work it again into wrought iron'}, lumps((120, 112, 108), 4, 5))
     item('high_carbon_steel', 'High-Carbon Steel', {'maxStack': 16, 'desc': 'Pig iron worked once: work it again into steel'}, ingot_icon((84, 84, 92)))
     # the anvil makes armour unfinished; padding at the crafting table finishes it (leather, wool cloth or burlap)
@@ -365,7 +365,7 @@ def main(d):
     for r in list(rj['recipes']):
         if r.get('out', '').endswith('planks') and r.get('n') == 4 and 'items' in r and len(r['items']) == 1 and r['items'][0].startswith('#logs_') and not r.get('classicOnly'):
             r['classicOnly'] = True
-    # as in TFC, no planks without a saw: log + saw -> lumber, four lumber -> planks (no log -> planks in the grid)
+    # no planks without a saw: log + saw -> lumber, four lumber -> planks (no log -> planks in the grid)
     rj['recipes'] = [r for r in rj['recipes'] if not (r.get('immersiveOnly') and r.get('out', '').endswith('planks') and r.get('items') and r['items'][0].startswith('#logs_'))]
     kj = json.loads((d / 'knapping.json').read_text())
     if not any(x['out'] == 'flint_saw_head' for x in kj['flint']): kj['flint'].append({'out': 'flint_saw_head', 'n': 1, 'rows': ['#    ', '##   ', '###  ', '#### ']})
@@ -443,7 +443,7 @@ def main(d):
     if not any(r.get('out') == 'wool_cloth' for r in rj['recipes']):
         rj['recipes'].append({'out': 'wool_cloth', 'n': 1, 'shape': ['YY', 'YY'], 'key': {'Y': 'yarn'}, 'w': 2, 'h': 2})
 
-    # Part 6: the rocks TFC's layers need that we haven't (pictures: the stone's, recoloured; they break to cobblestone)
+    # Part 6: the rocks the rock layers need that we haven't (pictures: the stone's, recoloured; they break to cobblestone)
     bj = json.loads((d / 'blocks.json').read_text()); bkeys = {b['key']: b for b in bj['blocks']}
     ROCKS = {'chalk': (232, 230, 220), 'shale': (92, 96, 104), 'claystone': (170, 120, 90), 'conglomerate': (160, 150, 130), 'gneiss': (150, 146, 140),
              'schist': (120, 132, 120), 'quartzite': (220, 214, 206), 'gabbro': (70, 72, 76), 'rhyolite': (196, 160, 150), 'dacite': (176, 176, 168)}
@@ -514,7 +514,7 @@ def main(d):
         if not any(r.get('out') == mk for r in rj['recipes']): rj['recipes'].append({'out': mk, 'n': 1, 'items': [ck, 'vine'], 'w': 2, 'h': 2})
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
 
-    # Part 6: TFC's crops, berry bushes and fruit trees that we hadn't (pictures recoloured from our own: wheat's stages for
+    # Part 6: the immersive crops, berry bushes and fruit trees that we hadn't (pictures recoloured from our own: wheat's stages for
     # the grains and jute, the onion's for garlic, the pepper's for the beans and squash; the berry bush's; the leaves')
     bj = json.loads((d / 'blocks.json').read_text()); bkeys = {b['key']: b for b in bj['blocks']}
     def tint_file(src_name, dst_name, fn):
@@ -614,13 +614,13 @@ def main(d):
             if t[0] in items and t[0] not in have: shop['buy'].append(t)
     vj_path.write_text(json.dumps(vj, indent=1, ensure_ascii=False) if '\n' in vj_path.read_text()[:200] else json.dumps(vj, separators=(',', ':'), ensure_ascii=False))
 
-    # TFC: no shortcuts past a stage in an immersive world
+    # no shortcuts past a stage in an immersive world
     for rr in rj['recipes']:
         if rr.get('out') == 'anvil' and 'iron_block' in json.dumps(rr.get('key', {})): rr['classicOnly'] = True    # smith the anvil
         if rr.get('out') == 'leather' and rr.get('items') in (['pelt'], ['croc_scale', 'croc_scale']): rr['classicOnly'] = True   # tan it
     if not any(rr.get('out') == 'raw_hide' and rr.get('items') == ['pelt'] for rr in rj['recipes']):
         rj['recipes'].append({'out': 'raw_hide', 'n': 1, 'items': ['pelt'], 'immersiveOnly': True})
-    if not any(rr.get('out') == 'bucket' and 'lumber' in json.dumps(rr.get('key', {})) for rr in rj['recipes']):   # TFC's wooden bucket
+    if not any(rr.get('out') == 'bucket' and 'lumber' in json.dumps(rr.get('key', {})) for rr in rj['recipes']):   # the wooden bucket
         rj['recipes'].append({'out': 'bucket', 'n': 1, 'shape': ['L L', ' L '], 'key': {'L': 'lumber'}, 'w': 3, 'h': 2, 'immersiveOnly': True, 'group': 'misc'})
 
     # the classic early tools: off in an immersive world
@@ -630,8 +630,8 @@ def main(d):
     for r in rj['recipes']:   # (metal tools and armour come off the anvil now, or are cast)
         if 'shape' in r and (r.get('out') in early or metal_gear.match(r.get('out', ''))): r['classicOnly'] = True
 
-    # TerraFirmaCraft's own knapping patterns (its data: recipe/knapping/ceramic and stone, 1.21.x; '#' kept, defOn = TFC's
-    # default_on: the cells round a smaller pattern stay kept). Ours that TFC hasn't (the flint saw, the crude pickaxe, the
+    # the knapping patterns (ceramic and stone; '#' kept, defOn = default_on:
+    # the cells round a smaller pattern stay kept). Ours that the base set hasn't (the flint saw, the crude pickaxe, the
     # stone scythe...) keep their patterns.
     TFC_CLAY = {
         'vessel': [([' ### ', '#####', '#####', '#####', ' ### '], 1, True)],
@@ -697,7 +697,7 @@ def main(d):
             if 'items' in r: r['items'] = ['#' + lit if i == lit else i for i in r['items']]
             if 'key' in r: r['key'] = {k: ('#' + lit if v == lit else v) for k, v in r['key'].items()}
 
-    # TFC's equipment is an immersive world's: a classic world crafts as it did before (its new rocks and metals aside)
+    # the immersive equipment is an immersive world's: a classic world crafts as it did before (its new rocks and metals aside)
     IMM_ONLY = {'bellows', 'bloomery', 'burlap', 'fire_clay', 'firestarter', 'flint_hammer', 'flint_javelin', 'flint_knife', 'flint_saw',
                 'flint_scythe', 'stone_hammer', 'stone_javelin', 'stone_knife', 'stone_scythe', 'crude_pickaxe', 'flux', 'gearbox', 'handstone',
                 'lumber', 'quern', 'sealed_barrel', 'sluice', 'spindle', 'support_beam', 'tongs', 'wool_cloth'}

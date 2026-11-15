@@ -5,7 +5,7 @@
 // Its frame: the spine along local z (centred on the origin), the open pages facing local +y, the right half toward +x
 // and the left toward -x. open 0 = shut (both halves along +y, the page blocks meeting), 1 = open nearly flat. leaf
 // 0..1 = a page turning over (dir +1 right to left, -1 back), < 0 none. Sizes in the frame's units: half width 6/16,
-// length 10/16 (Minecraft's book) times scale.
+// length 10/16 (the classic book) times scale.
 #pragma once
 #include "assets/voxel.h"
 

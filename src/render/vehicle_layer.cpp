@@ -434,7 +434,7 @@ private:
     }
     Model& hull = model("boat_hull", 1.f / 32, hullParts, ts);
     draw(hull, base, L);
-    {   // no water inside the boat (Minecraft's water mask): its well filled, depth only, before the water is drawn
+    {   // no water inside the boat (a water mask): its well filled, depth only, before the water is drawn
       Model& mask = model("boat_water_mask", 1.f / 32, [] {
         return std::vector<Part>{box({-0.6f, 0.14f, -0.55f}, {0.6f, 0.57f, 1.08f}, "boat_planks"), box({-0.4f, 0.14f, -0.95f}, {0.4f, 0.57f, -0.55f}, "boat_planks"),
                                  box({-0.18f, 0.14f, -1.25f}, {0.18f, 0.57f, -0.95f}, "boat_planks")};
@@ -507,7 +507,7 @@ private:
       for (int k = 0; k < 4; k++) { v.push_back(turned(box({-0.07f, 0.2f, -0.05f}, {0.07f, 4.2f, 0.05f}, "axle"), k * PI / 2, {0, 0, 1})); v.push_back(turned(box({0.07f, 0.9f, -0.02f}, {1.05f, 4.1f, 0.02f}, "sail"), k * PI / 2, {0, 0, 1})); }
       return v;
     }, ts);
-    // Better Village's windmills, made to work (meta bit 4): their sails at their own scale, seven blocks out
+    // the village windmills, made to work (meta bit 4): their sails at their own scale, seven blocks out
     Model& sailsBig = model("m_windmill_big", 1.f / 16, [] {
       std::vector<Part> v{box({-0.32f, -0.32f, -0.5f}, {0.32f, 0.32f, 0.5f}, "axle_end")};
       for (int k = 0; k < 4; k++) {

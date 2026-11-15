@@ -17,7 +17,7 @@ inline double wrapc(double d) { const double W = 3.3554432E7; return d - std::fl
 inline double yclamp(double y, double y0, double y1, double v0, double v1) { double t = std::clamp((y - y0) / (y1 - y0), 0.0, 1.0); return v0 + t * (v1 - v0); }
 }
 
-// Minecraft's ImprovedNoise.noise(x, y, z, yScale, yMax): with yScale the y gradient's offset snaps (the smear)
+// ImprovedNoise.noise(x, y, z, yScale, yMax): with yScale the y gradient's offset snaps (the smear)
 double IslesNoise::Octave::noise(double x, double y, double z, double yScale, double yMax) const {
   double d = x + xo, e = y + yo, f = z + zo;
   int i = (int)std::floor(d), j = (int)std::floor(e), k = (int)std::floor(f);

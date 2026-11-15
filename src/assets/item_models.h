@@ -54,7 +54,7 @@ void itemModelsReset(const TileSet& ts, ThreadPool* pool);
 // Pump finished worker builds to the GPU (itemModel() does this too). Call once per frame.
 void itemModelsUpdate();
 
-// The model key of a food being eaten (progress 0..1 through the bite): "eat<1..3>:<model>" (Eating Animation's frames)
+// The model key of a food being eaten (progress 0..1 through the bite): "eat<1..3>:<model>" (the eating frames)
 std::string eatModelKey(const std::string& model, float progress);
 void biteVoxelGrid(VoxelGrid& g, int n);   // n (1..3) round bites out of a picture model's top corner, the bitten edge paler
 

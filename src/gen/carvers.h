@@ -1,13 +1,12 @@
-// gen/carvers.h — Minecraft Beta style carvers: worm caves with rooms and forks (MapGenCaves), ravines
-// (MapGenRavine), and the Nether's wide caves (MapGenCavesHell). Each source chunk within 8 chunks of the
-// chunk being generated seeds its own cave systems (Java Random, like Minecraft), so tunnels run seamlessly
+// gen/carvers.h — classic carvers: worm caves with rooms and forks, ravines, and the Nether's wide caves.
+// Each source chunk within 8 chunks of the chunk being generated seeds its own cave systems (Java Random), so tunnels run seamlessly
 // across chunk borders with no neighbour access. Thread-safe: all state is on the stack.
 #pragma once
 #include "gen/gendefs.h"
 
 namespace dq {
 
-// java.util.Random, bit for bit (Minecraft's carvers depend on its exact stream shape)
+// java.util.Random, bit for bit (the carvers depend on its exact stream shape)
 struct JRandom {
   u64 s = 0;
   explicit JRandom(i64 seed = 0) { setSeed(seed); }
@@ -34,13 +33,13 @@ struct CarveRules {
   int lavaY = 10;
   int minY = 1, maxY = DIM_H - 2;
   i64 seed = 0;
-  // Nether flavour (MapGenCavesHell): wider, more frequent tunnels
+  // Nether flavour: wider, more frequent tunnels
   bool hell = false;
   // columns (z*16+x) whose top is protected from this height up (tree trunks), DIM_H = none
   const i16* protect = nullptr;
 };
 
-// Minecraft's per-chunk population seed for a source chunk (salted per feature)
+// the per-chunk population seed for a source chunk (salted per feature)
 i64 chunkSeed(i64 world, int cx, int cz, i64 salt);
 // WorldGenMinable: a vein of n blocks of `id` centred near (x, y, z) (world x/z, band y), written where it falls in
 // chunk (cx, cz) over blocks with replace[id] set; the stream is consumed the same wherever it lands
@@ -48,7 +47,7 @@ void oreVein(GenBuf& b, int cx, int cz, JRandom& rnd, int x, int y, int z, int n
 
 // worm caves + rooms into one band chunk (the GenBuf), from every source chunk within 8
 void carveCaves(GenBuf& b, int cx, int cz, const CarveRules& r);
-// ravines (1 in 50 source chunks), MapGenRavine
+// ravines (1 in 50 source chunks)
 void carveRavines(GenBuf& b, int cx, int cz, const CarveRules& r);
 
 } // namespace dq

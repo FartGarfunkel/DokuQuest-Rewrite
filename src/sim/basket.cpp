@@ -1,4 +1,4 @@
-// sim/basket.cpp — two small BTA ideas, our own designs:
+// sim/basket.cpp — two small ideas, our own designs:
 // - the Wicker Basket: use it on a small animal (a chicken, rabbit, cat, fox, duck, frog...) to lift it in, on a block to
 //   set it down again, as it was (its name, its owner, its colour). The animal rides in the stack's tag.
 // - the Siphon: a copper pipe that draws items one by one out of what is behind it (a chest, a furnace, or loose items

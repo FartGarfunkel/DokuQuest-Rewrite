@@ -1,7 +1,7 @@
 # The deep world (layout 2): the Underworld and the open sky
 
-The user's chart: Aether 768..1024, the Overworld 0..512, the Underworld -1..-1024 (cave biomes, tombs and ruins, a
-depth chosen per world), the Nether below it, the End below that. Minecraft's own depth (y -64..-1, deepslate,
+The user's chart: the Skylands 768..1024, the Overworld 0..512, the Underworld -1..-1024 (cave biomes, tombs and ruins, a
+depth chosen per world), the Nether below it, the End below that. The deepslate depth (y -64..-1,
 diamonds at -58) is the top of the Underworld.
 
 ## Design: every dimension stays ONE 256-tall band
@@ -22,7 +22,7 @@ generators fill one band. So new depth is added as NEW one-band dimensions, neve
   dimOfY(y) = dimAtPos[y >> 8], dimBase(d) = posOfDim[d] * 256; inWorldY uses worldH(). A layout-1 world: every
   answer identical to before (the tests prove it).
 - The Underworld's depth (1..4 bands, default 4) is a world option; fewer bands = fewer positions.
-- Display y (F3, coordinates, commands' read-outs): layout 2 shows Minecraft's numbers: y - (dimBase(Overworld) + 1)
+- Display y (F3, coordinates, commands' read-outs): layout 2 shows the classic numbers: y - (dimBase(Overworld) + 1)
   (sea level 63, diamonds at -58, the Underworld down to -1025, the Skylands from 767). Layout 1: as before.
 - Region files: region/d<dim id>/ (new dims, new folders; nothing old moves). LOD cache tag bumped for layout 2.
 - `landOf(d)`: the Underworld and the Sky are the Overworld's for what is the Overworld's (its sky, weather, day,
@@ -30,8 +30,8 @@ generators fill one band. So new depth is added as NEW one-band dimensions, neve
 
 ## Generation (terrain version 19 = layout 2)
 - The Overworld band: no bedrock floor, no Ember Crust row (its land goes on down).
-- Underworld 1 (Minecraft y -257..-2): Minecraft's land continued (final_density, its caves) to y -64 in deepslate
-  (the surface rule's deepslate gradient), its ores at their Minecraft heights (diamonds -64..16, deepslate ores),
+- Underworld 1 (display y -257..-2): the Overworld's land continued (final_density, its caves) to y -64 in deepslate
+  (the surface rule's deepslate gradient), its ores at their usual heights (diamonds -64..16, deepslate ores),
   the Deep Dark (ancient cities) in the deep; below -64: our deep caverns.
 - Underworld 2..4: deep caverns (cave biomes), lava, tombs and ruins; bedrock floor at the very bottom over the Nether.
 - Sky 1, 2: air.
@@ -47,7 +47,7 @@ generators fill one band. So new depth is added as NEW one-band dimensions, neve
 - Step 2 (the Underworld): gen/underworld.cpp, terrain version 19, new worlds layout 2; seams (light, water, the crust shaft, sky blend, clouds, weather, spawning, ropes, villagers), display y, /tp y; tools/test_deep (21 checks) + 12/12.
 - Step 3: the Underworld's own dark look (no sky, no far land), the create-world "Underworld Depth" choice, portals
   from the Underworld and open sky go on to the Nether/Skylands, music and weather sounds by land; the Nether (terrain
-  19): BetterNether's painting with the well-mixed random, no tree grown on a tree's crown (the stacked trees), the
+  19): the Nether biome painting with the well-mixed random, no tree grown on a tree's crown (the stacked trees), the
   crags split by their own warmth (jungle, swamp, warped woods: the warped woods had never appeared). 13/13 tests.
-- Not yet: the End's hanging lantern, cloth hangings and pillar tops; the Nether's mushrooms' shapes; BTA's Old Desert
-  land never comes up (BTA's own generator, ported exactly).
+- Not yet: the End's hanging lantern, cloth hangings and pillar tops; the Nether's mushrooms' shapes; the classic Nether's Old Desert
+  land never comes up (gen/nethergen, nether_lands).

@@ -98,7 +98,7 @@ struct RailPlate { std::vector<PanelVert> top, under; };
 std::shared_ptr<const RailPlate> railPlate(const MeshTiles* tiles, int tile, int straight);
 void emitPlanes(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, float y, float z, float inset, float scale, float sk, float bl, bool cross);
 
-// 3D grass (Lay of the Land style): short blades over the top of a grass block, swaying, faded out with
+// 3D grass: short blades over the top of a grass block, swaying, faded out with
 // distance in chunk.glsl (sway codes 80..95 mark a tuft's tip). blades per block, 0 = off (settings grass3d).
 void emitGrassTufts(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z);
 int meshGrassTufts();
@@ -106,7 +106,7 @@ void setMeshGrassTufts(int bladesPerBlock);
 void applyGrassSetting(const struct Settings& s);   // world_renderer.cpp: settings "grass3d" -> setMeshGrassTufts
 
 // smooth light + AO at the four corners of a full face (same rules as cubes). sky/bl stay 0..15 (the nibble).
-// rgb is the Cubyz sample after the darker-neighbour bias; lit is that sample packed, bit 31 set.
+// rgb is the coloured-light sample after the darker-neighbour bias; lit is that sample packed, bit 31 set.
 struct FaceCorners { float sky[4], bl[4], ao[4]; int aoi[4]; LightRgb rgb[4]; u32 lit[4]; };
 void faceCorners(const MeshCtx& c, int x, int y, int z, int f, FaceCorners& fc);
 
@@ -118,7 +118,7 @@ inline LightRgb rgbAt(const MeshCtx& c, int x, int y, int z) {
   if (!meshApron(x, y, z)) return y < 0 ? LightRgb{} : fullSunRgb();
   return c.in.rgb[c.I(x, y, z)];
 }
-// Cubyz smooth bias: along the face normal, a neighbour up to 8 darker pulls this sample down by 2.5 times that gap.
+// smooth bias: along the face normal, a neighbour up to 8 darker pulls this sample down by 2.5 times that gap.
 inline void biasLightChannel(u8& a, u8 nxt) {
   if (a <= nxt) return;
   int diff = (int)a - (int)nxt; if (diff > 8) diff = 8;

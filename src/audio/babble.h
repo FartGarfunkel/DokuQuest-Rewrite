@@ -1,6 +1,6 @@
 // audio/babble.h — the villagers' voice (villagers.js babble / npcVoice): one short vowel blip per letter, with a
-// puff of noise for the hard consonants, at the villager's own pitch, so a line sounds like Animal Crossing or the
-// traders of Vintage Story. Rendered like every other sound here (no audio files): a line is one buffer, started
+// puff of noise for the hard consonants, at the villager's own pitch, so a line sounds like a little
+// chattering voice. Rendered like every other sound here (no audio files): a line is one buffer, started
 // when the words start to appear and paced like them (26 letters a second).
 #pragma once
 #include "common/common.h"

@@ -24,7 +24,7 @@ struct MagicState {
   bool jumpHeld = false;           // set by the controller each frame (levitation: jump to rise)
   std::string lastSpell;           // shown by the HUD
   std::string bladeEl; i64 bladeUntil = 0;   // the spellblade: a spell's school carried by the blade, until (unix ms)
-  // a long cast winding up (Iron's cast types: sim/magic_data.h SpellDef::cast): the spell, time left, how it was begun
+  // a long cast winding up (the cast types: sim/magic_data.h SpellDef::cast): the spell, time left, how it was begun
   std::string windK; float windT = 0, windTot = 0, windFx = 0; bool windBare = false, windNoStaff = false, windGo = false;
 };
 
@@ -68,10 +68,10 @@ float spellbladeHit(Level& lv, Player& p, Entity& e, float dmg, std::string& ele
 void castQuick(Level& lv, Player& p);                         // both hands (the dual cast), with or without a staff
 void castHand(Level& lv, Player& p, int hand);                // the cast buttons: 0 right hand, 1 left hand, 2 both
 bool spellRepeats(const std::string& k);                      // held button repeats the cast
-// Skyrim's hands: a spell readied in a free hand (empty, or a staff in it) casts with that hand's button (attack: the
+// spell hands: a spell readied in a free hand (empty, or a staff in it) casts with that hand's button (attack: the
 // right, use: the left); hand 0 right, 1 left. false: that hand would punch / use as ever
 bool handCasts(const Player& p, int hand);
-// Morrowind's quick spell: its own button casts it whatever your hands hold (a heal in the thick of a fight)
+// the quick spell: its own button casts it whatever your hands hold (a heal in the thick of a fight)
 std::string quickSpell(const Player& p);                      // set, else the right hand's
 void setQuickSpell(Level& lv, Player& p, const std::string& k);
 void cycleQuickSpell(Level& lv, Player& p);

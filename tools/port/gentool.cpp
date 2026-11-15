@@ -266,7 +266,7 @@ static int slice(const std::string& seedText, int dim, int x0, int z, int w, int
 }
 
 
-// dq-gentool poi <seed> <out.bin> [regions]: with DQ_POI_ONLY=<key> set, the nearest such Soulrend place generated with the land
+// dq-gentool poi <seed> <out.bin> [regions]: with DQ_POI_ONLY=<key> set, the nearest such land place generated with the land
 // round it (8 blocks), dumped for tools/port/poi_check.py: a JSON header line {x0,y0,z0,sx,sy,sz,palette,name,y,...} then sx*sy*sz u16
 // block indices (x fastest, then z, then y)
 namespace dq { void poiExpected(const StructurePlan& S, const std::function<void(int, int, int, BlockId)>& fn); }
@@ -348,7 +348,7 @@ static int vterrain(const std::string& seedText, int x0, int z0, int step, int n
     img[(size_t)j * n + i] = (u8)std::clamp(top + 1, 0, 255);   // (our band y)
   }
   const double ms = Clock::now() - t0;
-  printf("%d columns, %d evals, %.1f ms (%.2f us/eval), heights %d..%d (Minecraft y)\n", n * n, evals, ms, ms * 1000 / evals, lo, hi);
+  printf("%d columns, %d evals, %.1f ms (%.2f us/eval), heights %d..%d (display y)\n", n * n, evals, ms, ms * 1000 / evals, lo, hi);
   FILE* f = fopen(out, "wb"); fprintf(f, "P5 %d %d 255\n", n, n); fwrite(img.data(), 1, img.size(), f); fclose(f);
   return 0;
 }
@@ -480,11 +480,11 @@ static int floaters(const std::string& seedText, int x0, int z0, int nc) {
 
 // dq-gentool topview <#seed|text> <x0> <z0> <chunks> <out.ppm>: real chunks generated, each column's top block's colour from
 // above (shaded by height): what the land actually looks like
-// terrain version 15: Soulrend's biomes over an area, as a picture (a colour per biome) and a count
+// terrain version 15: the land biomes over an area, as a picture (a colour per biome) and a count
 static int biomemap(const std::string& seedText, int x0, int z0, int n, int step, const char* out) {
   WorldGenOptions o; o.seed = seedText.size() > 1 && seedText[0] == '#' ? (i32)std::stoll(seedText.substr(1)) : seedFromString(seedText);
   o.genVersion = std::getenv("DQ_GENVER") ? atoi(std::getenv("DQ_GENVER")) : 17;
-  const char* by = std::getenv("DQ_BIOMEY");   // (a depth: Minecraft's y)
+  const char* by = std::getenv("DQ_BIOMEY");   // (a depth: the display y)
   WorldGen wg(o); auto* g = dynamic_cast<OverworldGen*>(wg.forDim(DIM_OVERWORLD));
   std::vector<u8> img((size_t)n * n * 3); std::map<std::string, int> count; std::map<std::string, std::pair<int, int>> where;
   for (int j = 0; j < n; j++) for (int i = 0; i < n; i++) {
@@ -615,7 +615,7 @@ static int plans(const std::string& seedText, int x0, int z0, int w) {
   std::set<const StructurePlan*> seen;
   for (int z = z0; z < z0 + w; z += 64) for (int x = x0; x < x0 + w; x += 64) { std::vector<const StructurePlan*> v; og->structures.near(x, z, 64, v);
     for (auto* S : v) if (seen.insert(S).second) {
-      printf("%-14s at %d,%d y %d (Minecraft %d)", structureTypes()[S->type].key.c_str(), S->cx, S->cz, S->y, S->y - 1);
+      printf("%-14s at %d,%d y %d (display %d)", structureTypes()[S->type].key.c_str(), S->cx, S->cz, S->y, S->y - 1);
       if (structureTypes()[S->type].key == "village" && S->data.is_object()) {
         const json& D = S->data; int jobs = 0; std::set<std::string> kinds;
         if (D.contains("blds")) for (auto& b : D["blds"]) { if (b.contains("job") && b["job"].is_string() && !b["job"].get<std::string>().empty()) jobs++; kinds.insert(b.contains("type") && b["type"].is_string() ? b["type"].get<std::string>() : "?"); }
@@ -709,8 +709,8 @@ static int netherLands(const std::string& seedText, int R, int step) {
   for (int z = -R; z <= R; z += step) for (int x = -R; x <= R; x += step) {
     u8 host = NB_CRAG; netherExactLand(seed, x, 128, z, host);
     const u8 bn = netherBnLand(seed, 19, x, z);
-    static const char* BN[] = {"", "BN jungle", "BN gravel desert", "BN swamp", "BN magma", "BN soul plain", "BN old warped"};
-    n[bn ? std::string(BN[bn]) : std::string("BTA ") + netherBiomeName(host)]++; tot++;
+    static const char* BN[] = {"", "lands: jungle", "lands: gravel desert", "lands: swamp", "lands: magma", "lands: soul plain", "lands: old warped"};
+    n[bn ? std::string(BN[bn]) : std::string("classic: ") + netherBiomeName(host)]++; tot++;
   }
   for (auto& [k, c] : n) printf("%5.1f%% %s\n", 100.0 * c / tot, k.c_str());
   std::vector<double> ts; for (int z = -R; z <= R; z += step * 4) for (int x = -R; x <= R; x += step * 4) { u8 h = 0; netherExactLand(seed, x, 128, z, h); if (h == NB_CRAG) ts.push_back(netherExactTemperature(seed, x, z)); }
@@ -772,7 +772,7 @@ int main(int argc, char** argv) {
   if (m == "bench" && argc >= 3) return bench(argv[2], argc > 3 ? atoi(argv[3]) : 64);
   if (m == "spawns" && argc >= 4) return spawns(argv[2], atoi(argv[3]));
   if (m == "structs" && argc >= 4) return structs(argv[2], argv[3]);
-  if (m == "nether" && argc >= 3) {   // dq-gentool nether <seed>: where each of the BTA Nether's lands lies (and a coarse map)
+  if (m == "nether" && argc >= 3) {   // dq-gentool nether <seed>: where each of the classic Nether's lands lies (and a coarse map)
     NetherShape S(seedFromString(argv[2]));
     int found[NB_COUNT][3]; for (auto& f : found) f[0] = INT32_MIN;
     for (int z = -1600; z <= 1600; z += 64) {
@@ -791,7 +791,7 @@ int main(int argc, char** argv) {
     }
     return 0;
   }
-  if (m == "end" && argc >= 3) {   // dq-gentool end <seed>: where each outer End land (Better End's biomes) first lies, near the origin
+  if (m == "end" && argc >= 3) {   // dq-gentool end <seed>: where each outer End land first lies, near the origin
     const i32 seed = seedFromString(argv[2]);
     WorldGenOptions o; o.seed = seed; WorldGen wg(o);
     auto* eg = dynamic_cast<EndGen*>(wg.forDim(DIM_END));
@@ -814,7 +814,7 @@ int main(int argc, char** argv) {
     for (int y = 175; y >= 90; y--) { BlockId b = c.get(x & 15, y, z & 15); if (b) printf("%d %s\n", y, reg().block(b).key.c_str()); }
     return 0;
   }
-  if (m == "nether8" && argc >= 3) {   // dq-gentool nether8 <seed>: BTA's Nether lands across 4096 blocks (the terrain 8 map)
+  if (m == "nether8" && argc >= 3) {   // dq-gentool nether8 <seed>: the classic Nether's lands across 4096 blocks (the terrain 8 map)
     nethergen::NetherGen g((int64_t)seedFromString(argv[2]));
     int cnt[nethergen::NBIO_COUNT] = {0}, tot = 0;
     for (int z = -2048; z <= 2048; z += 64) {

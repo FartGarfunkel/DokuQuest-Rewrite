@@ -216,7 +216,7 @@ int main(int argc, char** argv) {
   }
   printf("[first person]\n");
   {
-    CHECK(fpSwingRate("diamond_sword", false) == 3.6f && fpSwingRate("", false) == 3.6f && fpSwingRate("apple", false) == 3.6f, "a sword, a fist, an apple: Minecraft's swing as before");
+    CHECK(fpSwingRate("diamond_sword", false) == 3.6f && fpSwingRate("", false) == 3.6f && fpSwingRate("apple", false) == 3.6f, "a sword, a fist, an apple: the standard swing as before");
     CHECK(fpSwingRate("iron_axe", false) < 3.6f, "an axe swings heavier");
     CHECK(fpSwingRate("iron_pickaxe", true) >= 3.6f, "mining doesn't slow down");
     CHECK(fpSwapLower(0) == 0 && fpSwapLower(1) == 0 && fpSwapLower(0.4f) > 0.9f, "a swap: the old thing goes down, the new comes up");
@@ -255,7 +255,7 @@ int main(int argc, char** argv) {
     }
     CHECK(ok, "4000 random poses, all finite");
   }
-  {   // Eating Animation: the food in hand bitten down in three stages (assets/item_models.cpp biteVoxelGrid, eatModelKey)
+  {   // eating: the food in hand bitten down in three stages (assets/item_models.cpp biteVoxelGrid, eatModelKey)
     CHECK(eatModelKey("apple", 0) == "apple" && eatModelKey("apple", 0.1f) == "eat1:apple" && eatModelKey("apple", 0.5f) == "eat2:apple"
           && eatModelKey("apple", 0.99f) == "eat3:apple" && eatModelKey("apple", 1.f) == "eat3:apple", "the bite's stage by its progress: whole, then bitten 1, 2, 3 times");
     auto food = [] { VoxelGrid g(ivec3(16, 16, 3)); for (int z = 0; z < 3; z++) for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) g.set(x, y, z, voxRGBA(200, 30, 30)); return g; };

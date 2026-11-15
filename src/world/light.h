@@ -1,4 +1,4 @@
-// world/light.h — Cubyz-style light, stored per section in Chunk.
+// world/light.h — coloured light, stored per section in Chunk.
 //
 // Sun and block light are each RGB bytes (0..255). Every step subtracts 8, so a full light reaches
 // about 31 blocks. Full white sun going straight down does not decay (a sun column). Crossing a

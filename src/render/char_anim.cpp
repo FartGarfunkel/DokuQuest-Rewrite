@@ -191,7 +191,7 @@ static void charWorkAngles(CharAngles& A, const CharPose& pose, float t) {
   }
 }
 
-// ---- a weapon's combo (after Epic Fight's one-handed sword chain, measured not copied: docs/ANIMATION_STUDY.md) ----
+// ---- a weapon's combo (a one-handed sword chain: docs/ANIMATION_STUDY.md) ----
 // Each cut starts cocked where the last one's follow-through ended, strikes in about a third of the swing (the body's
 // turn leads the arm), follows through and holds, then gives the pose back. Keys over the cut (0..1 = 0.5 s):
 // the body's twist and lean, the sword arm and forearm, the other arm (a counter-swing), the legs (a step), the hips.
@@ -226,7 +226,7 @@ void weaponSwing(CharAngles& A, const CharPose& pose) {
   int i = 0; while (i < 3 && u > K[i + 1].u) i++;
   const SwingKey &a = K[i], &b = K[i + 1];
   float w = clampf((u - a.u) / (b.u - a.u), 0, 1);
-  if (i != 1 && i != 2) w = w * w * (3 - 2 * w);   // (the strike itself goes straight through, unsmoothed: Epic Fight's are linear)
+  if (i != 1 && i != 2) w = w * w * (3 - 2 * w);   // (the strike itself goes straight through, unsmoothed, linear)
   auto L = [&](float SwingKey::*f) { return a.*f + (b.*f - a.*f) * w; };
   // in from the stance over the first 0.05 s, out from 0.7 back to the stance (the pose given back to walking)
   const float in = clampf(u / 0.1f, 0, 1), out = 1 - clampf((u - 0.7f) / 0.3f, 0, 1), k = std::min(in * in * (3 - 2 * in), out * out * (3 - 2 * out));
@@ -240,7 +240,7 @@ void weaponSwing(CharAngles& A, const CharPose& pose) {
   A.shinR.x += L(&SwingKey::shinR) * st; A.shinL.x += L(&SwingKey::shinL) * st;
   A.legR.y += L(&SwingKey::by) * 0.35f * st; A.legL.y += L(&SwingKey::by) * 0.35f * st;   // (the feet turn a little with the hips)
   A.lift += L(&SwingKey::lift) * st;
-  // the blow follows the look up and down: the chest pitches with it (Epic Fight: pitch squared over 30 degrees, at most
+  // the blow follows the look up and down: the chest pitches with it (pitch squared over 30 degrees, at most
   // 30), the head keeping the look
   const float pitch = clampf(pose.headPitch, -1.2f, 1.2f), cp = std::copysign(std::min(pitch * pitch / 0.52f, 0.52f), pitch);
   A.body.x += cp * 0.6f * k;
@@ -255,14 +255,14 @@ CharAngles charAnimate(const CharPose& pose) {
   // (the knee folds most just after the foot leaves the ground behind, a little before the leg passes under the body)
   float cK = std::cos(ph + 0.45f);
   if (pose.backward) cL = -cL, cK = -std::cos(ph - 0.45f);   // backing off: each knee bends as its foot reaches back
-  // ---- standing, walking and running: Soulrend's Epic Fight loops (render/loco_poses.cpp) ----
+  // ---- standing, walking and running: the locomotion loops (render/loco_poses.cpp) ----
   (void)sL; (void)cL; (void)amp; (void)cK; (void)swimBreath;
   locoPose(A, pose);
   if (pose.held && !pose.carry) A.armR.x = A.armR.x * 0.5f + 0.31f;
   if (pose.off && !pose.carry) A.armL.x = A.armL.x * 0.5f + 0.31f;
   // off the ground: knees up; falling hard: arms up
   if (pose.air && !pose.swim && !pose.crawl && !pose.sit) {
-    // Story Mode weight: pushing off (legs straight under you, arms swung up), tucked at the top, then reaching down for
+    // a sense of weight: pushing off (legs straight under you, arms swung up), tucked at the top, then reaching down for
     // the ground as you fall (and arms going up with a long fall)
     const float fall = clampf(-pose.vy / 12, 0, 1), rise = clampf(pose.vy / 6, 0, 1), apex = 1 - clampf(std::fabs(pose.vy) / 4, 0, 1);
     const float reach = clampf((-pose.vy - 2) / 6, 0, 1);
@@ -278,8 +278,8 @@ CharAngles charAnimate(const CharPose& pose) {
     A.lift -= 0.1f * k; A.legR.x += 0.5f * k; A.legL.x += 0.5f * k; A.shinR.x -= k; A.shinL.x -= k; A.body.x -= 0.25f * k;
     if (!pose.held) A.armR.x += 0.35f * k; if (!pose.off) A.armL.x += 0.35f * k;   // the arms come forward to balance
   }
-  // swinging a tool: Minecraft's attack swing, a quick chop that eases out, the body twisting with it; a weapon cuts its
-  // combo instead (weaponSwing: Epic Fight's sword chain, measured, our own keys; render/char_layer.cpp runs its 0.5 s clock)
+  // swinging a tool: the classic attack swing, a quick chop that eases out, the body twisting with it; a weapon cuts its
+  // combo instead (weaponSwing: the sword chain, our own keys; render/char_layer.cpp runs its 0.5 s clock)
   float at = pose.swing;
   if (pose.atkMove) attackPose(A, pose);   // an attack move (sim/attack_moves.h) drawn from its fitted keys, in step with its hits
   else if (at > 0 && pose.swingKind > 0) weaponSwing(A, pose);
@@ -323,7 +323,7 @@ CharAngles charAnimate(const CharPose& pose) {
   }
   if (pose.carry) { A.armR = vec3(1.25f, 0, 0.05f); A.armL = vec3(1.25f, 0, -0.05f); A.foreR = A.foreL = vec3(0.3f, 0, 0); }
   if (pose.castWind > 0) { float k = std::sin(pose.castWind * PI / 2); A.armR = vec3(0.6f + 2.3f * k, -0.15f, 0.12f); A.foreR = vec3(0.35f * k, 0, 0); A.body.y -= 0.2f * k; }
-  if (const float sn = pose.sneakAmt >= 0 ? pose.sneakAmt : pose.sneak ? 1.f : 0.f; sn > 0) {   // (low and leant well in, the knees deep, the arms forward a little: Epic Fight's sneak goes further still)
+  if (const float sn = pose.sneakAmt >= 0 ? pose.sneakAmt : pose.sneak ? 1.f : 0.f; sn > 0) {   // (low and leant well in, the knees deep, the arms forward a little)
     A.body.x += (-0.6f - A.body.x) * sn; A.legR.x += 0.3f * sn; A.legL.x += 0.3f * sn; A.shinR.x -= 0.58f * sn; A.shinL.x -= 0.58f * sn; A.lift -= 0.15f * sn;
     A.armR.x += 0.15f * sn; A.armL.x += 0.15f * sn; A.foreR.x += 0.25f * sn; A.foreL.x += 0.25f * sn;
   }
@@ -400,7 +400,7 @@ CharAngles charAnimate(const CharPose& pose) {
     bool busyR = pose.held || pose.swing > 0 || pose.eat > 0 || pose.castWind > 0 || pose.scope || pose.gui || pose.doze;
     if (!pose.air) {
       // a looser walk: hips swing, shoulders counter-twist, arms swing wider and elbows bend, the head nods
-      A.body.y += sL * 0.08f * a;   // (the shoulders counter the hips: Epic Fight's walk turns them about 0.2-0.3 each way)
+      A.body.y += sL * 0.08f * a;   // (the shoulders counter the hips, about 0.2-0.3 each way)
       A.body.z += sL * 0.035f * a;
       if (!busyR) A.armR.x *= 1.25f;
       if (!pose.off) A.armL.x *= 1.25f;
@@ -420,7 +420,7 @@ CharAngles charAnimate(const CharPose& pose) {
   A.head.x -= A.body.x - b0; A.head.y -= A.body.y - b1;
   if (!special && !pose.air) { A.head.x += std::fabs(std::cos(ph)) * 0.04f * a + std::sin(t * 0.53f) * 0.02f * idle; A.head.y += std::sin(t * 0.37f) * 0.04f * idle; }
   if (pose.turned && pose.headTurn) A.head.y += clampf(pose.headTurn, -1.25f, 1.25f);
-  // ---- a fighter's stance (after Epic Fight's idle): weapon or shield in hand and standing, the left shoulder leads by
+  // ---- a fighter's stance : weapon or shield in hand and standing, the left shoulder leads by
   // a third of a right angle, the head still ahead, the right foot turned out behind, the knees soft ----
   if (pose.armed && !pose.fp && !special && !pose.air && !pose.sneak && pose.block <= 0 && pose.deathT <= 0) {
     const float k = clampf(1 - a * 2.5f, 0, 1);
@@ -430,7 +430,7 @@ CharAngles charAnimate(const CharPose& pose) {
       A.shinR.x -= 0.14f * k; A.shinL.x -= 0.16f * k; A.lift -= 0.012f * k;
     }
   }
-  // ---- Story Mode-style life ----
+  // ---- lifelike idles ----
   if (!special && !pose.air && !pose.fp && pose.deathT <= 0) {
     // feet planted on uneven ground: the hips drop to the lower foot and the other knee bends up to its step
     // (walking: still, where a foot is on a step — stairs climbed a leg at a time)
@@ -501,7 +501,7 @@ CharAngles charAnimate(const CharPose& pose) {
   if (pose.hoe > 0) { float k = std::sin(pose.hoe * PI); A.armR = vec3(0.6f + k * 1.2f, 0, 0); A.armL = vec3(0.6f + k * 1.1f, 0, 0); A.body.x -= k * 0.25f; }
   if (pose.work && pose.walkAmt < 0.05f) charWorkAngles(A, pose, t);
   if (pose.bowArm && pose.bow <= 0 && pose.swing <= 0) { A.armR = vec3(std::min(bowR.x, 0.1f), 0, bowR.z); A.foreR = vec3(std::min(bowF.x, 0.06f), 0, 0); }   // the arm hangs nearly straight: the bow it carries lies level at the side
-  // Skyrim's hands: the arm up before them, bent a little, the palm out holding the spell; a cast drives it out straight
+  // spell hands: the arm up before them, bent a little, the palm out holding the spell; a cast drives it out straight
   auto spellArm = [&](vec3& arm, vec3& fore, float k, float th, float side) {
     if (k <= 0) return;
     const float e = k * k * (3 - 2 * k);

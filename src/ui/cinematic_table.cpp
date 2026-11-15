@@ -849,7 +849,7 @@ void cinematicSetAimPoint(bool on, vec3 p) { g_aimPtOn = on; g_aimPt = p; }
 bool cinematicAimPoint(vec3& p) { if (!g_aimPtOn || scene().phase != 2) return false; p = g_aimPt; return true; }
 
 namespace {
-// a chest worked by hand (after Immersive Craft's chest): the lid swings up in the world, what's in it lies inside in its
+// a chest worked by hand (the hands-on chest): the lid swings up in the world, what's in it lies inside in its
 // rows of nine (a large chest's two halves side by side), and you put in what's in your hand, or take it back out
 class CinematicChestScreen : public Screen {
 public:

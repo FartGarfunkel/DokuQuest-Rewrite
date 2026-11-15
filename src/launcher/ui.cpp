@@ -1,5 +1,5 @@
 // launcher/ui.cpp — the launcher's look, from launcher.html's CSS: dirt background drawn from the same
-// seeded noise, grey/green Minecraft-style buttons (.mcbtn), dark panels (.news/.side), Pixelify Sans.
+// seeded noise, grey/green blocky buttons (.mcbtn), dark panels (.news/.side), Pixelify Sans.
 #include "launcher/launcher.h"
 #include "assets/tileset.h"
 #include <glad/gl.h>

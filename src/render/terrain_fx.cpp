@@ -58,7 +58,7 @@ public:
     FrameCtx& f = s.frame;
     // the original env: a light floor lifted by the brightness option (more in the Depths and the End), wind
     f.minLight = 0.025f + a.settings.brightness * 0.07f;
-    if (f.dim == DIM_NETHER) {   // version 5's open lands stay brighter; the cave Nether sits nearer BTA's 0.15 floor
+    if (f.dim == DIM_NETHER) {   // version 5's open lands stay brighter; the cave Nether sits nearer the classic 0.15 floor
       const int gv = s.level->info.genVersion;
       f.minLight = std::max(f.minLight, gv >= 6 ? 0.16f : gv >= 5 ? 0.27f : 0.07f);
     }
@@ -73,7 +73,7 @@ public:
     const Registry& R = reg();
     f.eyeFluid = R.tLiquid[eb] == 1 || isWaterlogged(eb, w.getMeta(ex, ey, ez)) ? 1 : R.tLiquid[eb] == 2 ? 2 : 0;
     if (f.eyeFluid) { f.fogColor = f.eyeFluid == 1 ? vec3(0.09f, 0.23f, 0.48f) : vec3(1.f, 0.35f, 0.04f); f.fogStart = 0; f.fogEnd = 22; }
-    // under water the eyes adjust (Minecraft's water vision): over a few seconds the floor of light rises, more by day
+    // under water the eyes adjust (water vision): over a few seconds the floor of light rises, more by day
     // than by night, so a well or a sea a few blocks deep is murky blue but readable, not a navy wall (water takes two
     // levels of sky light a block, so five down the light is nearly gone). The fog lifts a little with it.
     if (f.eyeFluid == 1) {

@@ -1,4 +1,4 @@
-// sim/forge.h — TerraFirmaCraft's forge: charcoal in a pit walled in by stone (four sides and below), lit with a
+// sim/forge.h — the forge: charcoal in a pit walled in by stone (four sides and below), lit with a
 // firestarter. Charcoal burns it to about 1350 °C; each bellows beside it adds 350 °C (two at most: the fantasy metals
 // need them). Up to 8 charcoal; five places to heat things (ingots to working heat, a vessel or a crucible to melt what's
 // in it, sim/metalwork.h). Rain on an open forge puts it out. Block forge, entity {type: "forge", fuel, burn, temp, lit,

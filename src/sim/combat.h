@@ -48,7 +48,7 @@ float attackEntity(Level& lv, Player& p, Entity& target, float dmgMul, float kno
 void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allowStart, bool offStart = false);
 // a weapon in a hand: a tool or a blade (what swings in the attack moves)
 bool isHandWeapon(const ItemStack& s);
-// the off hand swings (Skyrim's way): its weapon, with the main hand empty or not a weapon, on the attack button; both
+// the off hand swings: its weapon, with the main hand empty or not a weapon, on the attack button; both
 // hands armed, on use. true: the off hand swings for that press (the controller: not a use then)
 bool offHandSwings(const Player& p, bool attackPressed, bool usePressed);
 void playerDie(Level& lv, Player& p, const DamageSource& src);

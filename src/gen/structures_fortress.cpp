@@ -1,4 +1,4 @@
-// gen/structures_fortress.cpp — Nether fortresses laid out like Minecraft's: a web of nether-brick bridges on arched
+// gen/structures_fortress.cpp — Nether fortresses: a web of nether-brick bridges on arched
 // pillars reaching down to the lava sea, crossings, bridge stairs, a castle side of roofed corridors with fence
 // windows, blaze (cinder wisp) cages on raised platforms, nether wart growing in a walled soul-sand court, and loot
 // chests. The layout is a small grid graph decided once per plan (deterministic) and written chunk by chunk.
@@ -84,7 +84,7 @@ void fortressBuildMC(ChunkWriter& w, const StructurePlan& S) {
   const BlockId NB = bid(PLK("nether_bricks", "blackstone")), FENCE = bid(PLK("nether_brick_fence", "nether_bricks")),
                 STAIR = bid(PLK("nether_brick_stairs", "nether_bricks")), SOUL = bid(PLK("soul_sand", "soul_soil")), WART = bid("nether_wart");
   auto touches = [&](int ax, int az, int bx2, int bz2) { return !(bx2 < P.bx || ax > P.bx + 15 || bz2 < P.bz || az > P.bz + 15); };
-  // a support from just under the deck down to the ground (through lava) — Minecraft's fortress pillars
+  // a support from just under the deck down to the ground (through lava) — the fortress pillars
   auto pillar = [&](int x, int z, int top) {
     if (!P.in(x, z)) return;
     for (int yy = top; yy > 5; yy--) {

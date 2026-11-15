@@ -1,5 +1,4 @@
-// ui/paged.cpp — BTA 8.0's paged menu screen (see paged.h). Geometry follows ScreenPaged, OptionsCategory and
-// ButtonComponent: top band 24 units, bottom band 28, the page list a quarter of the width with 20-unit rows centred
+// ui/paged.cpp — the paged menu screen (see paged.h). Geometry: top band 24 units, bottom band 28, the page list a quarter of the width with 20-unit rows centred
 // when they fit, an 8-unit strip, the page from leftWidth + 16 units, categories 24 units with their rows 16 in,
 // rows 24 units with a 100 x 20 control at the right and a 20 x 20 reset button beside it.
 #include "ui/book_ui.h"
@@ -22,7 +21,7 @@ namespace ui {
 namespace {
 constexpr ImU32 C_WHITE = IM_COL32(255, 255, 255, 255), C_HOT = IM_COL32(255, 255, 160, 255), C_GREY = IM_COL32(127, 127, 127, 255),
   C_LABEL = IM_COL32(160, 160, 160, 255), C_LINE = IM_COL32(127, 127, 127, 95);
-ImU32 shadowOf(ImU32 c) {   // Minecraft's text shadow: the colour at a quarter
+ImU32 shadowOf(ImU32 c) {   // the classic text shadow: the colour at a quarter
   return IM_COL32(((c >> IM_COL32_R_SHIFT) & 255) / 4, ((c >> IM_COL32_G_SHIFT) & 255) / 4, ((c >> IM_COL32_B_SHIFT) & 255) / 4, (c >> IM_COL32_A_SHIFT) & 255);
 }
 void shadowText(ImDrawList* dl, FontId f, ImVec2 p, ImU32 c, const char* t) {
@@ -32,7 +31,7 @@ void shadowText(ImDrawList* dl, FontId f, ImVec2 p, ImU32 c, const char* t) {
 }
 bool hotItem() { return ImGui::IsItemHovered() || (ImGui::IsItemFocused() && navVisible()); }
 std::string lower(std::string s) { for (auto& c : s) c = (char)std::tolower((unsigned char)c); return s; }
-// a small grey button with a circular arrow (BTA's icon_reset)
+// a small grey button with a circular arrow (the reset icon)
 bool resetButton(ImVec2 p, float s) {
   ImGui::SetCursorScreenPos(p);
   ImGui::PushItemFlag(ImGuiItemFlags_NoNav, true);
@@ -56,7 +55,7 @@ bool resetButton(ImVec2 p, float s) {
   if (hot) ImGui::SetTooltip("Reset to default");
   return hit;
 }
-// Minecraft's text field: black, a grey frame (white while typing)
+// the classic text field: black, a grey frame (white while typing)
 bool greyTextField(const char* id, std::string* s, const char* hint, ImVec2 size, int flags, size_t maxLen) {
   float fh = textSize(F_BODY, "Ag").y;
   ImGui::PushFont(font(F_BODY));
@@ -174,13 +173,13 @@ void pageIcon(ImDrawList* dl, const std::string& icon, ImVec2 p, float s) {
 
 float menuUnit(App& a) {
   float u = 2.f * Z();
-  u = std::min(u, std::min(a.width / 400.f, a.height / 240.f));   // BTA's screens never get smaller than 400 x 240 units here
+  u = std::min(u, std::min(a.width / 400.f, a.height / 240.f));   // the screens never get smaller than 400 x 240 units here
   return std::max(1.f, u);
 }
 
 void menuDirt(ImDrawList* dl, ImVec2 a, ImVec2 b, float tile, ImU32 tint, float scrollY) {
   if (tile < 2 || b.x <= a.x || b.y <= a.y) return;
-  // the launcher's brown dirt: the darker the tint asked for, the darker the dirt (BTA's 0x202020 page, 0x404040 bands)
+  // the launcher's brown dirt: the darker the tint asked for, the darker the dirt (a 0x202020 page, 0x404040 bands)
   const int lum = (int)((tint >> IM_COL32_R_SHIFT) & 255);
   if (true) { classicDirt(dl, a, b, tile, lum <= 40 ? 0.62f : 0.3f); return; }
   GuiSprite s = guiTexture("gui/options_background.png");
@@ -667,7 +666,7 @@ bool Paged::listRow(const char* id, float hU, bool selected, bool* dbl, float wU
   ImGui::PopID();
   if (dbl) *dbl = hov && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
   ImDrawList* dl = ImGui::GetWindowDrawList();
-  // Minecraft's selected slot: a grey frame round a black box; under the mouse a faint lift
+  // the classic selected slot: a grey frame round a black box; under the mouse a faint lift
   if (selected) { dl->AddRectFilled(p - ImVec2(2, 2) * U, p + sz + ImVec2(2, 2) * U, IM_COL32(128, 128, 128, 255)); dl->AddRectFilled(p - ImVec2(1, 1) * U, p + sz + ImVec2(1, 1) * U, IM_COL32(0, 0, 0, 255)); }
   else if (hov || foc) dl->AddRectFilled(p, p + sz, IM_COL32(255, 255, 255, 20));
   if (foc && !selected) dl->AddRect(p - ImVec2(1, 1) * U, p + sz + ImVec2(1, 1) * U, IM_COL32(160, 160, 160, 255), 0, 0, std::max(1.f, U * 0.5f));

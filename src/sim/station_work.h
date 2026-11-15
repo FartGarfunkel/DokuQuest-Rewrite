@@ -46,7 +46,7 @@ std::vector<std::pair<std::string, int>> cutWorkOptions(World& w, ivec3 at);    
 // one block cut into option k (all: every block on the table); the pieces into the bag. Returns how many blocks went
 int cutWorkDo(Level& lv, Player& p, World& w, ivec3 at, int k, bool all);
 
-// the Tool Forge (pairs as "forgework": slot 0 a tool to set a gem in, slot 1 the gem; or slot 0 a material it forges heads
+// the forge station (pairs as "forgework": slot 0 a tool to set a gem in, slot 1 the gem; or slot 0 a material it forges heads
 // of, tools/port/forging.py): the heads the material lying there makes {head, its cost}, and one forged (into the bag)
 std::vector<std::pair<std::string, int>> forgeWorkHeads(World& w, ivec3 at);
 bool forgeWorkHead(Level& lv, Player& p, World& w, ivec3 at, int k, ItemStack* made = nullptr);

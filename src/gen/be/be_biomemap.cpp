@@ -1,5 +1,5 @@
-// gen/be/be_biomemap.cpp — see be_biomemap.h. Everything below the biome table is a reconstruction of BCLib 2.x
-// (HexBiomeMap, HexBiomeChunk, BiomePicker/WeighTree, WeightedList), which the BE jar does not contain.
+// gen/be/be_biomemap.cpp — see be_biomemap.h. Everything below the biome table is a reconstruction of the hex
+// biome map (HexBiomeMap, HexBiomeChunk, BiomePicker, weighted lists), which the End data does not contain.
 #include "gen/be/be_biomemap.h"
 
 #include <algorithm>
@@ -8,10 +8,9 @@
 
 namespace dq::be {
 
-// Better End's values: data/betterend/worldgen/betterx/biome/<id>.json ("genChance", "terrainHeight", "parent",
-// "edgeSize" — 0 everywhere). The vanilla rows are BCLib's wrappers (BiomeAPI.wrapNativeBiome): genChance 0.5 and
-// END_HIGHLANDS edged by END_MIDLANDS 8 wide are recalled from BCLib's source [BCLib*]; terrainHeight 0.1 is
-// BCLBiomeSettings' default.
+// The End lands' values: data/betterend/worldgen/betterx/biome/<id>.json ("genChance", "terrainHeight", "parent",
+// "edgeSize" — 0 everywhere). The base End rows are wrapped with recalled values: genChance 0.5 and
+// END_HIGHLANDS edged by END_MIDLANDS 8 wide [recalled*]; terrainHeight 0.1 is the default.
 const BiomeInfo kBiomes[B_COUNT] = {
     {"betterend:chorus_forest", 1.0f, 0.1f, -1, -1, 0, K_LAND},
     {"betterend:blossoming_spires", 1.0f, 0.1f, -1, -1, 0, K_LAND},

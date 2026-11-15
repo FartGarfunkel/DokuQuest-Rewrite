@@ -1,4 +1,4 @@
-// render/painting_layer.cpp — paintings (BTA's painting, our own pictures): a framed canvas on the wall whose picture is
+// render/painting_layer.cpp — paintings (our own pictures): a framed canvas on the wall whose picture is
 // painted here from its number (block entity "painting", n): landscapes, seascapes, peaks, still lifes and colour
 // fields, each in one of six palettes, in 32 x 32 pixel art. Use one to turn to the next picture (sim/build.cpp).
 #include "render/tile_box.h"
@@ -127,7 +127,7 @@ public:
       const mat4 m0 = m;
       m = glm::scale(m, vec3(0.8125f, 0.8125f, 1));
       cd.picture(paintingTex(e.value("n", 0)), m, vec4(0, 0, 1, 1), vec4(1), vec2((l >> 4) / 15.f, (l & 15) / 15.f));
-      // a gold or an iron trim round the canvas (BTA): four thin bars of the metal block just proud of the frame
+      // a gold or an iron trim round the canvas: four thin bars of the metal block just proud of the frame
       const std::string trim = e.value("trim", std::string());
       if (!trim.empty()) {
         const BlockId mb = reg().blockId(trim == "gold" ? "gold_block" : "iron_block");

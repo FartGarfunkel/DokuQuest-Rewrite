@@ -15,6 +15,6 @@ void registerWorldTypes() {
   registerDefaultWorldGen();   // "default", "pocket", "realm" (gen/realms.cpp)
   registerSkyblockWorldGen();   // "skyblock" (gen/skyblock.cpp)
   registerFlatWorldGen();       // "flat" (gen/world_types.cpp); amplified, islands, winter, hell, floating: OverworldGen
-  registerDriftWorldGen();      // "drift": BTA's Drift, the side realm REALM_DRIFT (gen/drift.cpp)
+  registerDriftWorldGen();      // "drift": the Drift, the side realm REALM_DRIFT (gen/drift.cpp)
 }
 } // namespace dq

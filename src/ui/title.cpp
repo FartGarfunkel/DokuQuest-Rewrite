@@ -17,9 +17,9 @@ namespace dq {
 static const char* const SPLASHES[] = {
   "Removed Herobrine!", "Now called DokuQuest!", "Now with weather!", "Listen to the caves...", "Wear a cape!", "Pet the wolf!", "Mind the puddles!", "Now with redstone!", "Minecarts!", "Swim like a fish!", "Lanterns sway in the wind!",
   "Hearts, not hunger!", "Graves keep your stuff!", "Pistons push!", "Saplings plant themselves!", "Grass creeps!",
-  "Also try Mineclonia!", "Also try VoxeLibre!", "Also try Vintage Story!", "Also try Veloren!", "Also try Cube World!",
+  "Mind the creepers!", "Build a windmill!", "Tame a moa!", "Brew a potion!", "Mine deeper!",
   "Made with WebGL!", "100% voxels!", "Alpha!", "The Ember Depths await!", "//wand!", "Now as an AppImage!",
-  "Dragons are coming!", "Better than adventure?", "Punch a tree!", "Notch-style grass!", "Water flows by itself!",
+  "Dragons are coming!", "Better than ever?", "Punch a tree!", "Blocky grass!", "Water flows by itself!",
   "Works offline!", "Couch co-op!", "Sail the seas!", "Windmills!", "Mind the Cinder Golem!", "Splash!",
 };
 

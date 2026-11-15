@@ -1,4 +1,4 @@
-// ui/cape_screen.cpp — the cape editor: paint a 64x32 cape in the Minecraft layout (assets/cape_tex.h) on a flat
+// ui/cape_screen.cpp — the cape editor: paint a 64x32 cape in the cape layout (assets/cape_tex.h) on a flat
 // canvas, with a turning 3D preview on your character, save it as the cape you wear (Settings::extra["cape"], drawn
 // by the character layer), export / import it as a PNG (system file chooser or a file dropped on the window).
 // The painting follows the skin editor (pencil, eraser, fill, eyedropper, brush sizes, mirror, undo / redo, palette,

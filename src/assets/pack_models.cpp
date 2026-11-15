@@ -87,7 +87,7 @@ PackModel parseBlockModel(const json& j, const std::function<int(const std::stri
       b.face[f].tile = it != tiles.end() ? it->second : (tiles[ref] = tileOf(ref));
       if (f < 4 && (ref.find("flame") != std::string::npos || ref.find("fire") != std::string::npos)) b.flame = true;   // (its flame's crossed planes)
       if (fj.contains("uv")) b.face[f].uv = vec4(fj["uv"][0].get<float>(), fj["uv"][1].get<float>(), fj["uv"][2].get<float>(), fj["uv"][3].get<float>());
-      else {   // (Minecraft's default: the element's own place on that face)
+      else {   // (the format's default: the element's own place on that face)
         const vec3 lo = b.from, hi = b.to;
         if (f < 2) b.face[f].uv = vec4(lo.x, 16 - hi.y, hi.x, 16 - lo.y); else if (f < 4) b.face[f].uv = vec4(lo.z, 16 - hi.y, hi.z, 16 - lo.y); else b.face[f].uv = vec4(lo.x, lo.z, hi.x, hi.z);
       }
@@ -197,7 +197,7 @@ void loadDoubleChests(TileSet& ts, const PackFS& P) {
 // ---- painted chests and the party chest: the chest's own pictures (whatever the pack drew), recoloured ----
 namespace {
 struct ChestPaint { const char* key; u8 r, g, b; bool party; };
-// Minecraft's dye colours; the party chest keeps its wood and turns its metal gold
+// the sixteen dye colours; the party chest keeps its wood and turns its metal gold
 const ChestPaint PAINTS[] = {
   {"white_painted_chest", 0xF9, 0xFF, 0xFE, false}, {"orange_painted_chest", 0xF9, 0x80, 0x1D, false}, {"magenta_painted_chest", 0xC7, 0x4E, 0xBD, false},
   {"light_blue_painted_chest", 0x3A, 0xB3, 0xDA, false}, {"yellow_painted_chest", 0xFE, 0xD8, 0x3D, false}, {"lime_painted_chest", 0x80, 0xC7, 0x1F, false},

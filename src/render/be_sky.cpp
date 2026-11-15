@@ -1,10 +1,9 @@
-// render/be_sky.cpp — the End's sky as Better End 3.2.5 draws it (BetterEndSkyRenderer; github.com/quiqueck/BetterEnd,
-// MIT; docs/CREDITS.md). Over the fog-coloured background, in this order: the horizon band (nebula_1, a cylinder
+// render/be_sky.cpp — the End's sky (docs/THIRD_PARTY_NOTICES.md). Over the fog-coloured background, in this order: the horizon band (nebula_1, a cylinder
 // turning with time), two sets of nebula clouds (nebula_2, nebula_3, at twice the stars' distance), two sets of
 // textured stars (stars.png, four sizes), the fog band (fog.png, as thick as the land's fog density is over 1), and
 // two sets of point stars. Each set turns about its own axis, once in 360000 ticks (x1, x2 or x3). Star places
-// come from java.util.Random with Better End's seeds, so the sky is the same one. Geometry is camera-centred at
-// 1/20 of Better End's distances (the angles are the same).
+// come from java.util.Random with fixed seeds, so the sky is always the same one. Geometry is camera-centred at
+// 1/20 of the full-size distances (the angles are the same).
 #include "render/be_sky.h"
 #include "assets/tileset.h"
 #include "common/fs.h"
@@ -26,7 +25,7 @@ struct JRand {
     return val;
   }
 };
-constexpr float SCALE = 0.05f;   // Better End draws at 100 / 200 blocks; we draw at 5 / 10
+constexpr float SCALE = 0.05f;   // full size is 100 / 200 blocks; we draw at 5 / 10
 
 // makeStars / makeUVStars / makeFarFog (spec §1.3)
 void makeQuads(std::vector<BeSky::V>& out, int count, i64 seed, double minS, double maxS, int kind) {
@@ -73,7 +72,7 @@ void makeCylinder(std::vector<BeSky::V>& out, float r) {
 }
 GLuint loadSkyTex(const char* name, bool smooth) {
   auto b = readBinary(assetsDir() / "sky" / "betterend" / name);
-  if (!b) { DQ_WARN("Better End sky: no %s", name); return 0; }
+  if (!b) { DQ_WARN("End sky: no %s", name); return 0; }
   int w, h; std::vector<u8> px;
   if (!loadPngMem(b->data(), b->size(), w, h, px)) return 0;
   return makeTexture2D(w, h, px.data(), !smooth, false, false);

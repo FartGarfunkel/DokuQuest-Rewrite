@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""tools/port/skyland_mobs.py — The Aether's dungeon keepers and its missing creatures (idempotent; data_patches.py runs it):
+"""tools/port/skyland_mobs.py — the Skylands' dungeon keepers and its missing creatures (idempotent; data_patches.py runs it):
   python3 tools/port/skyland_mobs.py <data-dir>
 
 Built like tools/port/end_mobs.py: each on the rig of the nearest creature the game has, its model a copy of that one

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # tools/port/horse_gear.py — horse armour, in the wolf armour's six materials (sim/mount_gear.cpp: a tamed horse wears it
 # and takes less harm; render/creature_layer.cpp draws the barding). The pictures are painted here (a horse's barding seen
-# from the side: the face plate, the neck plate and the body's cloth with its rivets); a resource pack with Minecraft's
+# from the side: the face plate, the neck plate and the body's cloth with its rivets); a resource pack with its own
 # iron / golden / diamond horse armour pictures shows those instead (packmap.json; DokuQuest Base has them; its leather
 # one is a grey base for dye, so leather keeps ours). Nothing is written into a resource pack. Hooked into data_patches.py.
 #   python3 tools/port/horse_gear.py data

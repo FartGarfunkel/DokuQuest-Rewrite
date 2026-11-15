@@ -1,7 +1,7 @@
-// render/nether_grade_layer.cpp — Better than Adventure 8.0's Nether colour correction (its post.fsh grade for hot
+// render/nether_grade_layer.cpp — the classic Nether's colour correction (a grade for hot
 // worlds): the finished picture of the Nether is read back and drawn again a little darker and warmer, red x1.6 and
-// green x1.15 at the default strength. Options → Video → Post-Processing → Nether Color Correction (0..100 %, BTA's
-// default 50 %). The Old World, cooler, gets less of it and a little less colour, as in BTA.
+// green x1.15 at the default strength. Options → Video → Post-Processing → Nether Color Correction (0..100 %,
+// default 50 %). The Old World, cooler, gets less of it and a little less colour.
 #include "client/session.h"
 #include "client/app.h"
 #include "render/gl.h"
@@ -15,7 +15,7 @@ class NetherGradeLayer : public RenderLayer {
 public:
   const char* name() const override { return "nether-grade"; }
   int order() const override { return 4900; }   // before the colour-blind filter
-  // BTA's heat haze wants the world's depth; the held item clears it before the overlays, so it is kept here first
+  // the heat haze wants the world's depth; the held item clears it before the overlays, so it is kept here first
   void drawTranslucent(GameSession& s, const FrameCtx& f) override {
     haveDepth = false;
     if (f.dim != DIM_NETHER || f.cam.realm != REALM_MAIN || !s.level || f.underwater || depthBroken) return;
@@ -45,21 +45,21 @@ public:
     const float slider = std::clamp(s.app.settings.extra.value("colorCorrectionNether", 0.5f), 0.f, 1.f) * presence * presence * (3 - 2 * presence);
     const float haze = haveDepth ? std::clamp(s.app.settings.extra.value("heatHaze", 0.5f), 0.f, 1.f) : 0.f;
     if (slider <= 0.001f && haze <= 0.001f) return;
-    // BTA scales the grade by the temperature where you stand (scale 2t below t = 0.5)
-    // the temperature where you stand, blended across a land's edge (BTA reads the block temperature, which is smooth)
+    // the grade scales by the temperature where you stand (scale 2t below t = 0.5)
+    // the temperature where you stand, blended across a land's edge (the block temperature, which is smooth)
     if (in) {
       u8 a = NB_CRAG, b = NB_CRAG; float m = 1;
       netherLandAt(s.level->info.seed, s.level->info.genVersion, (int)std::floor(f.cam.pos.x), (int)std::floor(f.cam.pos.y), (int)std::floor(f.cam.pos.z), a, b, m);
       auto tOf = [](u8 l) { return l == NB_OLDWORLD || l == NB_OLD_DESERT ? 0.26f : 1.f; };
-      const float want = s.level->info.genVersion >= 7   // BTA's own temperature (exact), else the land's
+      const float want = s.level->info.genVersion >= 7   // the classic Nether's own temperature (exact), else the land's
         ? (float)netherExactTemperature(s.level->info.seed, (int)std::floor(f.cam.pos.x), (int)std::floor(f.cam.pos.z))
         : tOf(a) * m + tOf(b) * (1 - m);
-      tempE = tempE < 0 ? want : tempE + (want - tempE) * std::min(1.f, dt * 3.f);   // BTA: 5 % a tick
+      tempE = tempE < 0 ? want : tempE + (want - tempE) * std::min(1.f, dt * 3.f);   // 5 % a tick
     }
     const float temp = tempE < 0 ? 1.f : tempE;
     const float scale = temp < 0.5f ? 2 * temp : 1.f;
     const float target = scale;
-    eased += (target - eased) * std::min(1.f, dt);   // BTA eases its grade 5 % a tick (about 63 % a second)
+    eased += (target - eased) * std::min(1.f, dt);   // the grade eases 5 % a tick (about 63 % a second)
     if (!tried) { tried = true; sh = std::make_unique<Shader>(); if (!sh->load("nether_grade.glsl", "nether_grade.glsl")) sh.reset(); glGenVertexArrays(1, &vao); }
     if (!sh) return;
     GLint vp[4]; glGetIntegerv(GL_VIEWPORT, vp);
@@ -82,7 +82,7 @@ public:
     sh->set("uBrightness", -0.05f * slider); sh->set("uContrast", -0.05f * slider); sh->set("uExposure", -0.125f * slider);
     sh->set("uSaturation", sat);
     sh->set("uRgbMod", vec3(1 + 1.2f * k, 1 + 0.3f * k, 1));
-    // the heat haze: BTA's amount = scale * slider * 3, ramping in with distance (13 to 52 blocks at 12 chunks)
+    // the heat haze: amount = scale * slider * 3, ramping in with distance (13 to 52 blocks at 12 chunks)
     sh->set("uHaze", haze > 0.001f ? scale * haze * 3.f : 0.f); sh->set("uTime", (float)std::fmod(f.time, 1000.0));
     sh->set("uDepth", 1); sh->set("uNearFar", vec2(f.cam.nearZ, f.cam.farZ));
     sh->set("uFar", std::max(48.f, s.app.settings.renderDist * 16.f));

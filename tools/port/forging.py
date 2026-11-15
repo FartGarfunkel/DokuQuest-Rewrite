@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Forged tools: mix-and-match heads and hafts (idempotent; data_patches.py runs it). Our own code and art (the idea of
-building tools from parts is Cubyz's; nothing is taken from it):
+"""Forged tools: mix-and-match heads and hafts (idempotent; data_patches.py runs it). Our own code and art:
   python3 tools/port/forging.py <data-dir>
 - the Tool Forge (a block): put in a material and pick a head (sim/stations.cpp forgeOptions; a pickaxe or axe head
   takes three, a sword or hoe head two, a shovel head one)
@@ -27,7 +26,7 @@ MATS = {
     'mithril': ('mithril_ingot', 'Mithril', (168, 222, 244), None),
     'obsidian': ('obsidian', 'Obsidian', (52, 36, 80), (4, 5, 6, 3000, None)),
     'emberglass': ('emberglass_cluster', 'Emberglass', (240, 96, 40), (3, 9.5, 5, 320, 'fire')),
-    # the Aether's and Better End's (tools/port/new_materials.py made their tool sets)
+    # the Skylands' and the End's (tools/port/new_materials.py made their tool sets)
     'zanite': ('zanite_gemstone', 'Zanite', (170, 118, 236), None),
     'gravitite': ('gravitite_plate', 'Gravitite', (232, 120, 214), None),
     'thallasium': ('thallasium_ingot', 'Thallasium', (92, 204, 194), None),

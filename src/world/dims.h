@@ -1,6 +1,6 @@
 // world/dims.h — the stacked world. One continuous column, no loading screens (layout 1, 1024 blocks tall):
 //
-//   y 768..1023  Aether (the Skylands)      dim 3
+//   y 768..1023  the Skylands               dim 3
 //   y 512..767   Overworld                  dim 2
 //   y 256..511   Nether (the Ember Depths)  dim 1
 //   y   0..255   The End                    dim 0
@@ -18,7 +18,7 @@ namespace dq {
 //   layout 2 (the deep world): End, Nether, the Underworld (1..4 bands, deepest first), Overworld, two bands of open
 //            sky, Skylands — y 0 .. 256 * bands
 // Each dimension is still one 256-tall band: dimBase(d) is its band's floor, dimOfY(y) the dimension there. Global y
-// is never negative (the display shows a layout-2 world's y the Minecraft way: hud.cpp displayY).
+// is never negative (the display shows a layout-2 world's y the classic way: hud.cpp displayY).
 enum Dim : int { DIM_END = 0, DIM_NETHER = 1, DIM_OVERWORLD = 2, DIM_SKYLANDS = 3,
                  DIM_UNDER1 = 4, DIM_UNDER2 = 5, DIM_UNDER3 = 6, DIM_UNDER4 = 7,   // the Underworld: 1 just under the Overworld
                  DIM_SKY1 = 8, DIM_SKY2 = 9,                                       // open air over the Overworld (1 the lower)
@@ -61,7 +61,7 @@ inline bool landFloorAt(int y) { if ((y & 255) != 0) return false; const int d =
 inline int landBottomY(int y) { int d = dimOfY(y); for (int b = dimBelow(d); b >= 0 && landOf(b) == landOf(d); b = dimBelow(b)) d = b; return dimBase(d); }
 inline int landTopY(int y) { int d = dimOfY(y); for (int a = dimAbove(d); a >= 0 && landOf(a) == landOf(d); a = dimAbove(a)) d = a; return dimBase(d) + DIM_H - 1; }
 // the y a player sees (F3, coordinates, commands' read-outs): the band's own y as ever; in the deep world the
-// Overworld's land the Minecraft way (sea level 63, the Underworld below 0, the open sky over 255)
+// Overworld's land the classic way (sea level 63, the Underworld below 0, the open sky over 255)
 inline int displayY(int y) { const int d = dimOfY(y); return worldLayout().id >= 2 && landOf(d) == DIM_OVERWORLD ? y - dimBase(DIM_OVERWORLD) - 1 : y - dimBase(d); }
 inline int fromDisplayY(int dy, int d) { return worldLayout().id >= 2 && landOf(d) == DIM_OVERWORLD ? dy + dimBase(DIM_OVERWORLD) + 1 : dy + dimBase(d); }
 inline bool landRoofAt(int y) { if ((y & 255) != 255) return false; const int d = dimOfY(y), a = dimAbove(d); return a < 0 || landOf(a) != landOf(d); }
@@ -76,6 +76,6 @@ inline const char* dimName(int d) {
 }
 
 // Realms: 0 = the stacked main world; others are side worlds with one band each (stored as dim 2 band).
-enum Realm : int { REALM_MAIN = 0, REALM_POCKET = 1, REALM_HIS = 2, REALM_DRIFT = 3 };   // REALM_DRIFT: BTA's Drift (gen/drift.cpp, sim/drift.cpp)
+enum Realm : int { REALM_MAIN = 0, REALM_POCKET = 1, REALM_HIS = 2, REALM_DRIFT = 3 };   // REALM_DRIFT: the Drift (gen/drift.cpp, sim/drift.cpp)
 
 } // namespace dq

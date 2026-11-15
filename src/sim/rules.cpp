@@ -36,7 +36,7 @@ const std::vector<std::array<std::string, 3>>& ruleToggles() {
     {"grassSpread", "Grass spreads", "Grass slowly grows onto nearby bare dirt"},
     {"saplingsPlant", "Saplings plant themselves", "A sapling left lying on soil takes root"},
     {"showCoords", "Show coordinates", "Your position, shown in the corner"},
-    {"commands", "Allow commands", "Chat commands and WorldEdit (press T or /)"},
+    {"commands", "Allow commands", "Chat commands and world editing (press T or /)"},
     {"downed", "Downed, not dead (co-op)", "With someone else playing, you go down instead of dying, and they can help you back up"},
   };
   return t;

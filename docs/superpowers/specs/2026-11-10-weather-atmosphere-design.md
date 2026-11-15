@@ -1,12 +1,11 @@
 # Weather and atmosphere overhaul — design
 
 Date: 2026-11-10. Status: design approved in conversation; this is the written spec.
-Reference: Particle Rain 4.0.3 by pigcart (MIT, https://github.com/PigCart/particle-rain). Its ideas, numbers and
-some algorithms are adapted here; its MIT notice goes in `docs/CREDITS.md`.
+Attribution for the adapted particle-weather algorithms is in `docs/THIRD_PARTY_NOTICES.md`.
 
 ## Goal
 
-Rain, snow, storms, sandstorms and fog that look and sound like Particle Rain (and better than the current
+Rain, snow, storms, sandstorms and fog that look and sound convincing (much better than the current
 CPU-disc rain), on all three renderers, tunable for weak PCs, and the same for every player in multiplayer.
 
 Success: (1) a forced storm, snowfall, blizzard, sandstorm and post-rain fog each look clearly better in side-by-side
@@ -31,13 +30,13 @@ New units (one feature per file, < ~1500 lines each):
 
 | Unit | Responsibility | Depends on |
 |---|---|---|
-| `sim/wind_field.h/.cpp` | `windAt(x,y,z,t)`: Particle Rain's gust field (sine products of position and time, height ramp 50→90 band-local) scaled and rotated by `WeatherSystem` wind direction/strength. Pure function of world time: same on every machine. | weather |
+| `sim/wind_field.h/.cpp` | `windAt(x,y,z,t)`: the gust field (sine products of position and time, height ramp 50→90 band-local) scaled and rotated by `WeatherSystem` wind direction/strength. Pure function of world time: same on every machine. | weather |
 | `render/weather_fx.h/.cpp` | Weather particle pool (SoA), spawning, simulation, collision, budget. Emits `WeatherKind` particles: rain, heavy rain, snow, heavy snow, dust, skittering dust, shrub, dust haze, fog (horizontal/vertical), ripple, splash, streak, steam. | wind_field, world, weather |
 | `render/weather_draw.cpp` + `assets/shaders/weather.glsl` | One instanced draw per blend group: per-instance pos, velocity, size, rotation, sprite, tint, alpha. Rotation modes (velocity-stretched relative to camera, camera-facing, upright, flat, camera-copy) expanded in the vertex shader. Soft (blended, no depth write) for rain/snow/fog/haze; depth-tested against the scene. | weather_fx |
 | `render/weather_sprites.cpp` | Sprite sheet: rain/snow from the resource pack (`environment/rain.png`, `snow.png`: 16 slices, 4 merged heavy) with built-in procedural fallbacks; ripple rings (procedural, 8 frames); streak; fog sheets (horizontal/vertical, soft noise); dust; dead bush from the tile set. | assets |
 | `assets/shaders/common.glsl` (height fog) | `applyFog` gains analytic exponential height fog integrated along the view ray: density `d0·exp(-(y−base)/H)`. Uniforms `uHeightFog` (density, base y, falloff, on). | frame ctx |
 | `sim/weather.cpp` (net) | `netState()/applyNet()`: compact state sent by the host each second; guest sets `hostRules=false`, stops its own cycle, follows the host. | net |
-| `audio/ambience.cpp` (+ sound profiles) | Snow / blizzard / sandstorm loops from Particle Rain's recordings (analysed into profiles), "above" variants, muffled indoor rain, gust from the wind field. | audio |
+| `audio/ambience.cpp` (+ sound profiles) | Snow / blizzard / sandstorm loops from recorded weather sounds (analysed into profiles), "above" variants, muffled indoor rain, gust from the wind field. | audio |
 
 The existing `WeatherFxLayer` rain/snow/dust code in `env_layers.cpp` is replaced by a `WeatherLayer` that owns
 `weather_fx` (update in `update`, draw in `drawTranslucent`). Lightning, gust pickup and Nether ash stay.
@@ -45,7 +44,7 @@ The existing `WeatherFxLayer` rain/snow/dust code in `env_layers.cpp` is replace
 ## 1. Precipitation
 
 - **Spawn**: points on a sphere of radius `weatherDist` (default 16) round the camera: centre-weighted, top half
-  when slow (Particle Rain's `|r1²−r2²|` height distribution), whole sphere when moving fast (falling/flying);
+  when slow (an `|r1²−r2²|` height distribution), whole sphere when moving fast (falling/flying);
   rejected below the column top (roof) and outside loaded chunks. Rate per frame from the budget, `rain`/`thunder`
   intensity, `dens` and camera speed (more when moving so density stays visual). Kind per point from `precipAt`
   (cached), heavy variants only when thunder > 0 (heavy snow when `bliz` > 0).
@@ -85,7 +84,7 @@ The existing `WeatherFxLayer` rain/snow/dust code in `env_layers.cpp` is replace
 ## 4. Wind and sound
 
 - `windAt` drives all weather particles, cloud drift stays as is, and `AudioScene.gust` = local gust magnitude.
-- Sound profiles: Particle Rain's `snow-01..06`, `sandstorm-01..06`, `sandstormabove-01..06` analysed with
+- Sound profiles: the recorded `snow-01..06`, `sandstorm-01..06`, `sandstormabove-01..06` analysed with
   `tools/port/sound_analyze.py merge` (needs ffmpeg) under a `particlerain/` prefix; events `weather.snow`,
   `weather.snow.above`, `weather.sandstorm`, `weather.sandstorm.above`. Played like PR: near the rain position at
   the snow/wind volume, pitch 0.5 and quieter when the camera is above the weather.
@@ -131,4 +130,4 @@ The existing Particles option still scales non-weather particles; Particles = Mi
 ## Out of scope
 
 Puddles/flooding, wet-surface shading, ray-marched fog volumes and light shafts (possible later on top of height
-fog), Particle Rain's in-game particle editor, data-driven particle JSON.
+fog), an in-game particle editor, data-driven particle JSON.

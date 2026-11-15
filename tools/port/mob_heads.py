@@ -3,12 +3,12 @@
   python3 tools/port/mob_heads.py <data-dir>
 - one block mob_head: an 8x8x8 px box you bump into and can pick, drawn by render/head_layer.cpp from the creature's
   own head (the block entity says whose: {"type": "head", "mob": ..., "rot": 0..15, "item": the head item})
-- one item per creature that has a head in Minecraft (ours stand in: ghoul = zombie, fuseling = creeper, zombie pigman
+- one item per creature in the classic set of heads (ours stand in: ghoul = zombie, fuseling = creeper, zombie pigman
   = piglin): <mob>_head (<mob>_skull for the skeletons), worn in the helmet slot, placed by sim/usables.cpp; its
   picture is the head's own face tile"""
 import json, sys, pathlib
 
-MC = {'skeleton', 'wither_skeleton', 'ghoul', 'fuseling', 'zombie_pigman', 'ender_dragon'}   # Minecraft's heads, for now
+MC = {'skeleton', 'wither_skeleton', 'ghoul', 'fuseling', 'zombie_pigman', 'ender_dragon'}   # the classic heads, for now
 SKULLS = {'skeleton', 'wither_skeleton'}
 
 

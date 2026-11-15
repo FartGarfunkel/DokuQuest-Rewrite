@@ -15,7 +15,7 @@ struct CanvasPic { unsigned tex = 0; int w = 0, h = 0; };
 CanvasPic canvasPaint(const std::string& key, u64 ver, int w, int h, const std::function<void(ImDrawList*, ImVec2 size)>& paint);
 void canvasForget(const std::string& keyPrefix);   // drop pictures no longer wanted
 
-// the enchanting table's glyphs (Minecraft's: the Standard Galactic Alphabet, drawn in strokes): one letter, or a run
+// the enchanting table's glyphs (the Standard Galactic Alphabet, drawn in strokes): one letter, or a run
 // of them from a seed (n of them, wrapped in w)
 void drawGlyph(ImDrawList* dl, int letter, ImVec2 at, float size, ImU32 col, float thick = 0);
 void drawGlyphRun(ImDrawList* dl, u32 seed, int n, ImVec2 at, float size, float w, ImU32 col);

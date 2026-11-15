@@ -348,7 +348,7 @@ public:
   void burst(Level& lv) { removed = true; sfx::burst(lv, pos, "mana_arcane", 30, 2.4f, json{{"life", 0.5f}, {"size", 0.1f}}); lv.fx->sound("spell_hit", pos); }
 };
 
-// ---- the end of his realm: half beaten, he falls back and raises the Wither Storm the way Story Mode's was made (a T of
+// ---- the end of his realm: half beaten, he falls back and raises the Wither Storm (a T of
 // soul sand, a command block at its heart, three wither skeleton skulls, the last one set on the command block). While it
 // lives he only watches, warded and out of reach; once it's broken he fights on, and beaten he tears his way out.
 static void heroRaiseStorm(Level& lv, EndStory& S, Creature& m) {

@@ -292,7 +292,7 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
     if (auto* m = dynamic_cast<Creature*>(&e)) {
       if (m->T->npc) continue;   // villagers are voxel people (render/villager_layer)
       // a mob whose mobs.json says "skin": "<file>.png" is drawn as a voxel character from that player skin,
-      // exactly like the players (and villagers): so herobrine.png — or any regular Minecraft skin dropped in
+      // exactly like the players (and villagers): so herobrine.png — or any regular 64x64 skin dropped in
       // userDir()/skins — dresses it. Its render rig is always the biped, whatever the skin's arms are.
       if (m->T->explicitSkin || (!m->T->skin.empty() && !reg().models.contains(m->modelKey()))) { drawSkinMob(*m, ip, w, f, skinBegun); continue; }
       if (!f.cam.frustum.sphere(rel + vec3(0, m->h * 0.5f, 0), std::max(m->h, m->w * 2) + 1)) continue;
@@ -378,7 +378,7 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
         }
       }
       // armour (an armoured zombie or skeleton, sim Creature::rollArmour): the players' armour meshes, each made for a
-      // Minecraft-sized part, stretched from that part's box onto the rig part's (a skeleton's thin bones get slim plates)
+      // standard-sized skin part, stretched from that part's box onto the rig part's (a skeleton's thin bones get slim plates)
       if (m->data.contains("armor")) {
         struct AP { const char* charPart; const char* rigPart; vec3 lo, hi; };
         static const AP MAP[] = {

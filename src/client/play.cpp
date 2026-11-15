@@ -25,7 +25,7 @@ struct LocalState {
   float ey = 0, camY = 0, fov = 70, tpDist = 4;
   glm::dvec3 shoulder{0};
   int shoulderSide = 1;
-  bool zoomKey = false;   // the Zoom key held (a quarter of the view, like OptiFine's)
+  bool zoomKey = false;   // the Zoom key held (a quarter of the view)
   u64 menuFrame = 0;   // the last frame a menu was open (a key that just closed / switched one must not act in the world)
   // leaning in (cameraLeanTo): where to, how far short, the last frame it was asked for, how far in it is now (0..1)
   glm::dvec3 leanTgt{0};
@@ -157,7 +157,7 @@ void clientPlayerCamera(GameSession& s, Camera& cam, double dtd) {
   float rx = std::cos(p.yaw), rz = -std::sin(p.yaw);
   float fov = set.fov + (p.sprinting ? 6.f : 0.f);
   if (c.bowPull > 0) fov -= std::min(1.f, c.bowPull) * 10;
-  if (p.scoping) fov = set.fov * 0.1f;                       // through a spyglass: a tenth (Minecraft's)
+  if (p.scoping) fov = set.fov * 0.1f;                       // through a spyglass: a tenth
   else if (st.zoomKey && !s.app.topScreen()) fov = set.fov * 0.25f;
   if (!st.hasFov) { st.fov = fov; st.hasFov = true; }
   st.fov += (fov - st.fov) * std::min(1.f, dt * 8);

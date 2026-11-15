@@ -37,7 +37,7 @@ static float hurtPlayer(Level& lv, Player& p, float amount, Entity* attacker, co
       if (fx.slow > 0) setPlayerEffect(p, "slow", std::max(playerEffect(p, "slow"), fx.slow));
       if (fx.chill > 0) setPlayerEffect(p, "chill", std::max(playerEffect(p, "chill"), fx.chill));
       if (fx.fire > 0) setPlayerEffect(p, "burn", std::max(playerEffect(p, "burn"), fx.fire));
-      if (fx.wither > 0) setPlayerEffect(p, "wither", std::max(playerEffect(p, "wither"), fx.wither));   // (BetterNether's naga)
+      if (fx.wither > 0) setPlayerEffect(p, "wither", std::max(playerEffect(p, "wither"), fx.wither));   // (the classic Nether's naga)
     }
     if (c->alive() && !p.dead) petsDefend(lv, p, *c);
   }

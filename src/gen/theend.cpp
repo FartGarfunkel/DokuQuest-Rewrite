@@ -14,7 +14,7 @@ EndGen::EndGen(const WorldGenOptions& o)
   : structures(*this), seed_(o.seed), nA(o.seed ^ 0xE4D01), nB(o.seed ^ 0xE4D02), nC(o.seed ^ 0xE4D03) {
   B.resolve();
   mixed_ = o.genVersion >= 21;
-  if (o.genVersion >= 7) {   // Better End's islands past the gulf; the dragon's own island stays as it is
+  if (o.genVersion >= 7) {   // the End's islands past the gulf; the dragon's own island stays as it is
     be::BETerrainOptions bo; bo.voidRing = OUTER; bo.centralIsland = false;
     be_ = std::make_shared<be::BETerrain>((int64_t)o.seed, bo);
   }
@@ -71,7 +71,7 @@ bool EndGen::island(int x, int z, Isle& o) const {
     case 7: lift = -3; break;                                              // shadow woods
     case 15: lift = -2; break;                                             // dry shrubland
     case 10: lift = -1; break;                                             // megalake, dented further below
-    case 16: lift = 2 + jsFloor((nB.noise2(x / 38.0 + 5.0, z / 52.0 - 3.0) + 1.0) * 5); break;   // dust wastelands' dunes (BE terrainHeight 1.5)
+    case 16: lift = 2 + jsFloor((nB.noise2(x / 38.0 + 5.0, z / 52.0 - 3.0) + 1.0) * 5); break;   // dust wastelands' dunes (terrain height 1.5)
     case 18: lift = 0; break;                                              // megalake grove
     default: break;
   }
@@ -87,7 +87,7 @@ bool EndGen::island(int x, int z, Isle& o) const {
   return true;
 }
 
-// ---- the outer End: sixteen lands, Better End's biomes (gen/theend_be.cpp dresses them) ----
+// ---- the outer End: sixteen lands, the End's biomes (gen/theend_be.cpp dresses them) ----
 //  0 chorus forest     1 blossoming spires 2 foggy mushroomland 3 glowing grasslands
 //  4 crystal mountains 5 sulphur springs   6 umbrella jungle    7 shadow forest
 //  8 ice starfield     9 amber land       10 megalake          11 lantern woods
@@ -114,7 +114,7 @@ static int endBiomeOf(const SimplexNoise& nA, const SimplexNoise& nB, const Simp
   if (v < -0.38) return w > 0.15 ? 11 : w < -0.32 ? 17 : 15;   // lantern woods, umbra valley, dry shrubland
   return w > 0.42 ? 6 : 0;
 }
-// Better End's land (be::BETerrain::land) as ours: its vanilla End lands (highlands, midlands, small islands) and the
+// the End's land (T.land) as ours: its plain End lands (highlands, midlands, small islands) and the
 // centre take chorus forest's dressing, the nearest of ours
 static int beLand(const be::BETerrain& T, int x, int z) { const int l = T.land(x, z); return l < 0 || l > 18 ? 0 : l; }
 int EndGen::endBiome(int x, int z) const {
@@ -130,7 +130,7 @@ int endLandAt(i32 seed, int x, int z) {
 }
 int endLandAt(i32 seed, int genVersion, int x, int z) {
   if (genVersion < 7) return endLandAt(seed, x, z);
-  // one Better End terrain per seed for the sky, the spawns and the particles (cheap queries; it caches its biome map)
+  // one outer End terrain per seed for the sky, the spawns and the particles (cheap queries; it caches its biome map)
   static std::mutex mx; static i32 lastSeed = 0; static std::shared_ptr<const be::BETerrain> T;
   std::shared_ptr<const be::BETerrain> t;
   { std::lock_guard<std::mutex> lk(mx);
@@ -139,7 +139,7 @@ int endLandAt(i32 seed, int genVersion, int x, int z) {
   return beLand(*t, x, z);
 }
 
-// a chunk's columns of Better End land: the top and the lowest bottom of what stands there, and its land
+// a chunk's columns of outer End land: the top and the lowest bottom of what stands there, and its land
 std::shared_ptr<const EndGen::BECols> EndGen::beCols(int cx, int cz, const float* density) const {
   const u64 key = ((u64)(u32)cx << 32) | (u32)cz;
   { std::lock_guard<std::mutex> lk(beMx_); auto it = beCache_.find(key); if (it != beCache_.end()) return it->second; }
@@ -160,7 +160,7 @@ std::shared_ptr<const EndGen::BECols> EndGen::beCols(int cx, int cz, const float
   return it->second;
 }
 double EndGen::craterDepth(int x, int z) const {
-  if (be_) return 0;   // Better End has no craters
+  if (be_) return 0;   // the outer End has no craters
   if (std::hypot((double)x, (double)z) < OUTER + 40 || nC.noise2(x / 320.0 + 51.3, z / 320.0 - 17.9) < 0.2) return 0;   // only in and round the barrens
   const int C = 48;
   int cx = jsFloor(x / (double)C), cz = jsFloor(z / (double)C);
@@ -254,7 +254,7 @@ void EndGen::outerFeatures(int bx, int bz, ChunkWriter& P) const {
     else if (eb == 14 && B.bone_block) cap = B.bone_block;
     for (int y = bot; y <= top; y++) P.put(x, y, z, y == top ? cap : B.end_stone);
   }
-  beDress(bx, bz, P);   // Better End's trees and growths (gen/theend_be.cpp)
+  beDress(bx, bz, P);   // the End's trees and growths (gen/theend_be.cpp)
 }
 
 // Trees, springs, stars and ribs on the outer lands. Each one is its own cell so a chunk only
@@ -515,7 +515,7 @@ void EndGen::generate(Chunk& ch) {
   GenBuf& b = GenBuf::local();
   std::fill(ch.climate.begin(), ch.climate.end(), (u8)128);
   const int bx = ch.cx * 16, bz = ch.cz * 16;
-  // Better End's islands are solid wherever its density is above 0 (several islands may stand over each other)
+  // the End's islands are solid wherever its density is above 0 (several islands may stand over each other)
   const bool beChunk = be_ && std::hypot(bx + 8.0, bz + 8.0) > OUTER - 30;
   thread_local std::vector<float> dens;
   if (beChunk) { dens.resize(be::BETerrain::kChunkVol); be_->chunkDensity(ch.cx, ch.cz, dens.data()); beCols(ch.cx, ch.cz, dens.data()); }
@@ -532,7 +532,7 @@ void EndGen::generate(Chunk& ch) {
   ChunkWriter P(b, ch, S0, *this);
   if (std::abs(bx) < 64 && std::abs(bz) < 64) {
     for (const Pillar& pl : pillars_) {
-      const int reach = betterEnd() ? 6 : pl.rad;   // (Better End's bases and tops are up to 11 across)
+      const int reach = betterEnd() ? 6 : pl.rad;   // (the End's bases and tops are up to 11 across)
       if (pl.x + reach < bx || pl.x - reach > bx + 15 || pl.z + reach < bz || pl.z - reach > bz + 15) continue;
       if (bePillar(pl, &P, nullptr)) continue;
       Isle c; int base = (island(pl.x, pl.z, c) ? c.top : 60 + END_DY) - 8;
@@ -581,7 +581,7 @@ void EndGen::generate(Chunk& ch) {
       }
       beSurface(eb, x, z, c, P);
     }
-    if (beChunk) beStructures(bx, bz, P);   // Better End's ruins, houses, stumps and fallen trees in their lands
+    if (beChunk) beStructures(bx, bz, P);   // the End's ruins, houses, stumps and fallen trees in their lands
     outerFeatures(bx, bz, P);
     // each land's plants, last, on the ground the trees left free
     for (int lz = 0; lz < 16; lz++) for (int lx = 0; lx < 16; lx++) {

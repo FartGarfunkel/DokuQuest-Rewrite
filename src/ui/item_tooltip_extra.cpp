@@ -48,7 +48,7 @@ void tooltipGearLines(const ItemStack& s, std::vector<std::pair<std::string, u32
   if (isScroll(s)) { const int r = s.tag.value("rank", 1); out.push_back({std::string(spellRarityName(r)) + " scroll \xC2\xB7 one cast, no staff or mana", spellRarityColor(r)}); }
   if (bookSlots(s.id)) { for (auto& [k, r] : bookSpells(s)) out.push_back({spellLabel(k, r), spellRarityColor(r)}); out.push_back({std::to_string(bookSpells(s).size()) + " of " + std::to_string(bookSlots(s.id)) + " slots written", TD}); }
   const ItemDef* d = s.def();
-  if (const float h = itemHeat(s); h > 25) {   // sim/heat.h: TFC's names for the heat
+  if (const float h = itemHeat(s); h > 25) {   // sim/heat.h: the names for the heat
     const std::string n = heatName(h);
     out.push_back({(n.empty() ? std::string("Warm") : n) + " (" + std::to_string((int)h) + "\xC2\xB0" "C)", heatGlow(h) ? 0xFF000000u | ((heatGlow(h) & 0xFF) << 16) | (heatGlow(h) & 0xFF00) | (heatGlow(h) >> 16) : TS});
   }

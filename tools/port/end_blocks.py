@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""tools/port/end_blocks.py — Better End's blocks for the End band (idempotent; data_patches.py runs it when the
-Better End jar is unpacked next to the project):
+"""tools/port/end_blocks.py — the End lands' blocks for the End band (idempotent; data_patches.py runs it when the
+End blocks' source is unpacked next to the project):
 
-  python3 tools/port/end_blocks.py <data-dir> [<Better End folder>]
+  python3 tools/port/end_blocks.py <data-dir> [<source folder>]
 
-Better End 3.2.5 (github.com/quiqueck/BetterEnd, MIT; see docs/CREDITS.md) has its own terrain, turf, trees, mushrooms
-and plants. Each block here takes Better End's own picture (16 px) and is made to sit in the DokuQuest Base pack:
+The End blocks' source (MIT; see docs/THIRD_PARTY_NOTICES.md) has its own terrain, turf, trees, mushrooms
+and plants. Each block here takes the source's own picture (16 px) and is made to sit in the DokuQuest Base pack:
 doubled to the pack's 32 px, then given the fine grain of the pack's nearest picture (end stone for stones, moss for
-turf tops, the oak log for logs, the oak leaves for leaves). Better End's shapes and colours stay; the grain is the
+turf tops, the oak log for logs, the oak leaves for leaves). The source's shapes and colours stay; the grain is the
 pack's. Plants keep their own pixels (their outline is the picture).
 
-Blocks Better End and DokuQuest both have (end_moss, amber_block) take Better End's pictures. Tile names are be_<file>.
+Blocks the source and DokuQuest both have (end_moss, amber_block) take the source's pictures. Tile names are be_<file>.
 The list of what is added is written to tools/port/end_manifest.json.
 """
 import json, pathlib, sys
@@ -22,7 +22,7 @@ N = 32
 
 # ---- the blocks ------------------------------------------------------------------------------------------------
 # kind: cube | turf (top, side) | col (log: top, side) | leaf | trans | cross | hang (a hanging plant) | glass
-# props are merged into the block (light, hardness...). Textures are Better End file names (no .png).
+# props are merged into the block (light, hardness...). Textures are the source's file names (no .png).
 STONE = {'hardness': 2.5, 'tool': 'pickaxe', 'sound': 'stone'}
 TURF = {'hardness': 3, 'tool': 'pickaxe', 'sound': 'grass', 'drop': 'end_stone'}
 LOG = {'hardness': 2, 'tool': 'axe', 'sound': 'log', 'isLog': True, 'axisBlock': True, 'fuel': 1.5}
@@ -178,8 +178,8 @@ def box_blur(a, r=2):
 
 
 def restyle(im, donor, k=0.5):
-    """Better End's picture at 32 px with the pack picture's fine grain (its light and shade at the scale of a few
-    pixels, around its own local mean) laid over Better End's colours."""
+    """the source picture at 32 px with the pack picture's fine grain (its light and shade at the scale of a few
+    pixels, around its own local mean) laid over the source's colours."""
     if im.size[0] != N: im = im.resize((N, N), Image.NEAREST if im.size[0] < N else Image.BOX)
     a = np.asarray(im).astype(np.float32)
     if donor is None: return Image.fromarray(a.astype(np.uint8), 'RGBA')
@@ -201,7 +201,7 @@ def tint(im, rgb):
 def main(d, be):
     d = pathlib.Path(d); be = pathlib.Path(be)
     if not (be / 'assets/betterend/textures/block').exists():
-        print('end_blocks: no Better End textures at', be, '- skipped'); return
+        print('end_blocks: no End block textures at', be, '- skipped'); return
     bj = json.loads((d / 'blocks.json').read_text())
     items = json.loads((d / 'items.json').read_text()); tj = json.loads((d / 'tiles.json').read_text())
     tiles, files = tj['names'], tj['files']
@@ -217,7 +217,7 @@ def main(d, be):
         return tiles[name]
 
     # the art pass (tools/port/restyle.py via local_mod_art.fit): solid blocks become the pack's picture of the same kind
-    # of thing in Better End's colours; turf sides keep the pack's grass-side lip; see-through things keep their shape
+    # of thing in the source's colours; turf sides keep the pack's grass-side lip; see-through things keep their shape
     import importlib.util as _ilu
     _lm = _ilu.spec_from_file_location('local_mod_art', pathlib.Path(__file__).with_name('local_mod_art.py')); LM = _ilu.module_from_spec(_lm); _lm.loader.exec_module(LM)
     RAMP = {'stone', 'turf_top', 'log_top', 'log_side', 'leaf', 'cap', 'ice', 'snow', 'sand'}
@@ -271,7 +271,7 @@ def main(d, be):
         b = {'render': 1, 'solid': True, 'opaque': True, 'replaceable': False, 'hardness': 1.5, 'tool': None, 'tier': 0, 'drop': key,
              'light': 0, 'lightAtt': 0, 'sound': 'stone', 'key': key, 'name': name}
         b.update(base); b.update(props); b['tex'] = texj; b['betterEnd'] = True
-        if key in at:   # a block both games have: Better End's look, our id and behaviour otherwise
+        if key in at:   # a block we already had: the source's look, our id and behaviour otherwise
             old = blocks[at[key]]
             for k2 in ('tex', 'name', 'render', 'solid', 'opaque', 'translucent', 'selfCull', 'light', 'betterEnd'):
                 if k2 in b: old[k2] = b[k2]

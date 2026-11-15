@@ -1,6 +1,6 @@
-// assets/pottery3d.cpp — the immersive pottery and early tools as real 3D voxel models (after Vintage Story's and
-// TerraFirmaCraft's: round thrown pots with rims and lips, a jug with its handle, molds as clay blocks with the tool's
-// cavity cut in their top (the cavity is the TFC knapping pattern itself, sim/knapping.h), a filled mold shows its metal),
+// assets/pottery3d.cpp — the immersive pottery and early tools as real 3D voxel models (round
+// thrown pots with rims and lips, a jug with its handle, molds as clay blocks with the tool's
+// cavity cut in their top (the cavity is the knapping pattern itself, sim/knapping.h), a filled mold shows its metal),
 // and the firestarter (a drill stick on its hearth board).
 // Grids are 32 voxels to the block, the model standing on its foot at y = -0.5 like the bucket (assets/item_parts.cpp).
 #include "assets/pottery3d.h"
@@ -134,7 +134,7 @@ bool buildPotteryGrid(const std::string& keyIn, VoxelGrid& g, VoxelFrame& fr, fl
     }
     return false;
   }
-  if (shape == "vessel") {   // TFC's small vessel: a round-bellied pot, a short neck and a rolled lip
+  if (shape == "vessel") {   // the small vessel: a round-bellied pot, a short neck and a rolled lip
     thrown(g, col, {4, 6, 7.5f, 8.5f, 9, 9.5f, 9.5f, 9.5f, 9, 8.5f, 7.5f, 6.5f, 5.5f, 5, 5, 5.5f, 6}, 2, 1.6f);
     depth = 0.3f; return true;
   }

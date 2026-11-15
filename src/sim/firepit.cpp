@@ -17,7 +17,7 @@ FuelInfo fuelOf(const std::string& id) {
   if (id == "coal") return {1400, 110};
   if (id == "stick") return {450, 20};
   if (R.itemMatches(id, "#planks")) return {550, 40};
-  if (R.itemMatches(id, "#log")) return {650, 75};   // TFC's woods burn at 603-762 °C
+  if (R.itemMatches(id, "#log")) return {650, 75};   // woods burn at 603-762 °C
   return {};
 }
 

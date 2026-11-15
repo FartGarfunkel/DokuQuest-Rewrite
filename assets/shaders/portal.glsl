@@ -28,7 +28,7 @@ void main() {
 
 #ifdef FRAGMENT
 uniform int uMode;
-uniform int uKind;       // 0 ember, 1 sky, 2 end, 3 rift, 4 drift (BTA: silver)
+uniform int uKind;       // 0 ember, 1 sky, 2 end, 3 rift, 4 drift (silver)
 uniform vec3 uRim;
 uniform int uDyed;        // a tuned (dyed) portal: its swirl in uRim's colour
 uniform float uFade;

@@ -1,4 +1,4 @@
-// gen/density.cpp — see density.h. Minecraft's algorithms (ImprovedNoise, PerlinNoise, NormalNoise, BlendedNoise,
+// gen/density.cpp — see density.h. The data's algorithms (ImprovedNoise, PerlinNoise, NormalNoise, BlendedNoise,
 // CubicSpline, the density function types the Overworld uses) written for this engine from how they behave.
 #include "gen/density.h"
 #include <atomic>
@@ -33,7 +33,7 @@ const int GRAD[16][3] = {{1, 1, 0}, {-1, 1, 0}, {1, -1, 0}, {-1, -1, 0}, {1, 0, 
                          {0, 1, 1}, {0, -1, 1}, {0, 1, -1}, {0, -1, -1}, {1, 1, 0}, {0, -1, 1}, {-1, 1, 0}, {0, -1, -1}};
 inline double gdot(int h, double x, double y, double z) { const int* g = GRAD[h & 15]; return g[0] * x + g[1] * y + g[2] * z; }
 
-// Minecraft's ImprovedNoise: Perlin noise on a shuffled lattice, offset by a random amount
+// ImprovedNoise: Perlin noise on a shuffled lattice, offset by a random amount
 struct Improved {
   u8 p[256]; double xo, yo, zo;
   explicit Improved(Rng& r) {
@@ -94,7 +94,7 @@ struct DensityGraph::Normal {
   }
 };
 
-// Minecraft's old_blended_noise: two limit noises lerped by a main noise, each octave's y quantised (the "smear")
+// old_blended_noise: two limit noises lerped by a main noise, each octave's y quantised (the "smear")
 struct DensityGraph::Blended {
   std::vector<std::unique_ptr<Improved>> minL, maxL, main;
   double xzMul, yMul, xzFac, yFac, smear;
@@ -153,8 +153,8 @@ bool DensityGraph::load(const fs::path& dir, u64 seed, const std::string& prefix
   for (auto& [k, v] : ns["noise_router"].items()) router[k] = v;
   // the router's entries, parsed on demand by find()
   nodes.reserve(4096);
-  // terrain version 14 only: more land than Minecraft's, its continents raised a little (half our world was sea, in islands;
-  // DQ_CONT_BIAS to try others). Soulrend's world (data/worldgen) is as its mods make it
+  // terrain version 14 only: more land than the base data gives, its continents raised a little (half our world was sea,
+  // in islands; DQ_CONT_BIAS to try others). The land biomes' world (data/worldgen) is as its data makes it
   {
     const char* eb = std::getenv("DQ_CONT_BIAS");
     const double bias = eb ? std::atof(eb) : dir.filename() == "worldgen_base" ? 0.1 : 0.0;

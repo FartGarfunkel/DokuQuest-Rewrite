@@ -11,7 +11,7 @@ namespace dq {
 StationResult stationResult(const std::string& kind, const ItemStack& a, const ItemStack& b);
 // The stonecutter: one block of stone into its stairs, slabs (two), walls and bricks: {item, count}.
 std::vector<std::pair<std::string, int>> stonecutterOptions(const std::string& id);
-// The Tool Forge (a stonecutter-like list): the heads a material makes, and what one costs (tools/port/forging.py).
+// The forge station (a stonecutter-like list): the heads a material makes, and what one costs (tools/port/forging.py).
 std::vector<std::pair<std::string, int>> forgeOptions(const std::string& id);
 int forgeCost(const std::string& head);
 inline std::vector<std::pair<std::string, int>> cutterOptions(const std::string& kind, const std::string& id) { return kind == "forge" ? forgeOptions(id) : stonecutterOptions(id); }

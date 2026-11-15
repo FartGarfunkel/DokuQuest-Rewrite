@@ -17,7 +17,7 @@ struct CharPose {
   bool sneak = false, sit = false, sleep = false, swim = false, hang = false, air = false, sprint = false;
   bool bowArm = false;   // a bow carried in the right hand: that arm hangs at the side, still (no gestures turn the bow over)
   bool scope = false;    // a spyglass up to the eye: the arm raised, the elbow out, the glass level before the eye
-  bool gui = false;      // in a menu (What Are They Up To): both forearms up before them, the right hand tapping at a floating screen
+  bool gui = false;      // in a menu (render/activity_layer.cpp): both forearms up before them, the right hand tapping at a floating screen
   bool doze = false;     // idle a long while: dozing on their feet, the head dropped, breathing slow
   bool held = false, off = false, carry = false, paddle = false, fp = false, fpLeftArm = false;
   // anim.js: the body turned its own way, leans
@@ -42,11 +42,11 @@ struct CharPose {
   bool reach = false; vec3 reachR{0}, reachL{0};
   // game/elytra.js: gliding on elytra (arms swept back, legs together; the wings open by wingOpen 0..1)
   bool glide = false; float wingOpen = 0;
-  // Story Mode-style life (render/char_anim.cpp): how long it has stood idle (varied idles: looking round, a stretch, a
+  // lifelike idles (render/char_anim.cpp): how long it has stood idle (varied idles: looking round, a stretch, a
   // scratch of the head, a look at its hands, a tap of the foot), who it is (picks its idles), and the ground under each
   // foot relative to where it stands (blocks, + higher): the feet plant on steps and slabs, the hips drop, a knee bends
   float idleT = 0; u32 seed = 0; float footL = 0, footR = 0;
-  // render/char_poses.cpp (after AnimatedPlayer, Not Enough Animations and Hold My Items): drinking rather than eating (a
+  // render/char_poses.cpp: drinking rather than eating (a
   // bottle tipped up, the head back), seconds since a hit (the flinch; 0: none), the jump's lead leg, walking backwards
   bool drink = false, airLeft = false, backward = false; float hurt = 0;
   // poses ready for the shield, crossbow, trident and spear (0..1 how far in): a shield raised across the body in the
@@ -61,7 +61,7 @@ struct CharPose {
   bool armed = false;
   float runAmt = -1, sneakAmt = -1;   // eased amounts (-1: from sprint / sneak as they are)
   vec2 hurtDir{0, 1};             // the blow came from: x their right, y their front
-  u8 swingKind = 0;               // 0 the Minecraft swing; 1-3 a weapon combo's cuts (render/char_anim.cpp weaponSwing)       // a weapon or a shield in hand: standing, they keep a fighter's stance (render/char_anim.cpp)
+  u8 swingKind = 0;               // 0 the classic swing; 1-3 a weapon combo's cuts (render/char_anim.cpp weaponSwing)       // a weapon or a shield in hand: standing, they keep a fighter's stance (render/char_anim.cpp)
   float guardHit = 0;       // a blow taken on the shield: 1 when it lands, down to 0 (render/char_poses.cpp knocks the guard back)
   bool sitGround = false;
   float bed = -1, bedRecline = 0;   // getting into bed (render/char_layer.cpp bedFrame: 0 beside it .. 1 lying in it; -1 no), how far laid back   // sat on the ground (by a campfire: ui/cinematic_work.cpp), knees up, the seat down on it
@@ -75,7 +75,7 @@ struct CharAngles { vec3 body{0}, head{0}, armR{0}, foreR{0}, armL{0}, foreL{0},
 // an attack move's pose over the stance (render/attack_poses.cpp): the move's keys at its time, blended in from the stance
 // and back out to it
 void attackPose(CharAngles& A, const CharPose& pose);
-// standing, walking and running from Epic Fight's loops (render/loco_poses.cpp): the base the other poses go over
+// standing, walking and running from the locomotion loops (render/loco_poses.cpp): the base the other poses go over
 void locoPose(CharAngles& A, const CharPose& pose);
 // how much of an attack move shows now (0..1: in over its blend, out after its recovery)
 float attackWeight(const CharPose& pose);

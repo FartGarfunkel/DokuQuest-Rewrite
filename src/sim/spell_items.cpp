@@ -138,7 +138,7 @@ std::string gemSocketsLine(const ItemStack& s) {
   const auto g = gearGems(s);
   std::string out = "Sockets:";
   int used = 0;
-  // the gem the Tool Forge set in it (core/tool_parts.h setToolGem: tag "gem") fills a socket of its own
+  // the gem the forge station set in it (core/tool_parts.h setToolGem: tag "gem") fills a socket of its own
   if (s.tag.is_object() && s.tag.contains("gem") && s.tag["gem"].is_string()) {
     const std::string gk = s.tag["gem"]; const ItemDef* id = reg().item(gk); const char* fx = gemEffect(gk);
     out += std::string(" ") + (id ? id->name : gk) + " (" + (fx ? fx : "set") + ")";

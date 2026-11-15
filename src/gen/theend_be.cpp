@@ -1,13 +1,13 @@
-// gen/theend_be.cpp — the outer End as Better End 3.2.5 has it (github.com/quiqueck/BetterEnd, MIT; docs/CREDITS.md):
-// each of the sixteen lands takes its Better End biome's ground (BE's surface rules: the turf, the moss/mycelium
+// gen/theend_be.cpp — the outer End's lands (MIT; docs/THIRD_PARTY_NOTICES.md):
+// each of the sixteen lands takes its biome's ground (its surface rules: the turf, the moss/mycelium
 // dither, the sulphuric bands, the painted mountains' strata, flavolite and violecite layers in the cliffs), its
 // trees and big growths (mossy glowshrooms, pythadendrons, dragon trees, lucernias, umbrella trees, jellyshrooms,
 // tenaneas, helix trees, lacugroves, amaranitas, aurora crystals, neon cacti, ice stars, sulphur springs, dragon bones)
-// and its plants. Shapes are rebuilt from BE's feature recipes in voxels; the blocks are BE's (tools/port/end_blocks.py).
+// and its plants. Shapes are rebuilt from the feature recipes in voxels; the blocks are the End's (tools/port/end_blocks.py).
 //   0 chorus forest   1 blossoming spires   2 foggy mushroomland   3 glowing grasslands   4 crystal mountains
 //   5 sulphur springs 6 umbrella jungle     7 shadow forest        8 ice starfield        9 amber land
 //  10 megalake       11 lantern woods      12 painted mountains   13 neon oasis          14 dragon graveyards
-//  15 dry shrubland  16 dust wastelands  17 umbra valley  18 megalake grove; and BE's cave biomes in the thick islands
+//  15 dry shrubland  16 dust wastelands  17 umbra valley  18 megalake grove; and the End's cave biomes in the thick islands
 #include "gen/dimgens.h"
 #include "gen/structures.h"
 #include "core/registry.h"
@@ -19,7 +19,7 @@ namespace {
 inline BlockId pickB(BlockId a, BlockId b) { return a ? a : b; }
 }
 
-// BE's split / threshold condition: OpenSimplex(seed 4141) at 0.1 plus a jitter of ±0.4
+// the split / threshold condition: OpenSimplex(seed 4141) at 0.1 plus a jitter of ±0.4
 bool EndGen::beSplit(int x, int z) const {
   return nB.noise2(x * 0.1 + 413.1, z * 0.1 - 41.4) + (hashFloat(x, z, seed_, 4141) - 0.5) * 0.8 > 0;
 }
@@ -28,7 +28,7 @@ void EndGen::beSurface(int land, int x, int z, const Isle& c, ChunkWriter& P) co
   const int top = c.top;
   auto put = [&](int y, BlockId id) { if (id && y > c.bot && y < DIM_H) P.put(x, y, z, id); };
   const float rf = (float)hashFloat(x, top, z, 41);
-  // flavolite and violecite lie in thin bands through the stone (BE's flavolite_layer / violecite_layer), seen in cliffs
+  // flavolite and violecite lie in thin bands through the stone (flavolite_layer / violecite_layer), seen in cliffs
   const BlockId layer = (land == 0 || land == 7) ? pickB(B.violecite, B.end_stone) : pickB(B.flavolite, B.end_stone);
   const double band = nC.noise2(x / 48.0 - 9.1, z / 48.0 + 3.3);
   if (band > 0.1) for (int y = top - 3; y > c.bot; y--) {
@@ -52,7 +52,7 @@ void EndGen::beSurface(int land, int x, int z, const Isle& c, ChunkWriter& P) co
     case 8: put(top, rf < 0.18f ? pickB(B.emerald_ice, B.packed_ice) : pickB(B.dense_snow, B.snow_block)); break;
     case 9: {
       put(top, pickB(B.amber_moss, B.end_stone));
-      // amber ore lies thick under the moss (BE: 60 tries a chunk)
+      // amber ore lies thick under the moss (60 tries a chunk)
       for (int y = top - 1; y > top - 6; y--) if (hz(x, y, z, 0xA3B) < 0.09) put(y, pickB(B.amber_ore, B.end_stone));
       break;
     }
@@ -130,7 +130,7 @@ void EndGen::beDress(int bx, int bz, ChunkWriter& P) const {
   };
   auto ground = [&](int x, int z, int want, Isle& c) { return island(x, z, c) && !c.main && endBiome(x, z) == want; };
   auto col = [&](int x, int z, int y0, int h, BlockId id) { for (int i = 0; i < h; i++) set(x, y0 + i, z, id); };
-  // a trunk that leans as it climbs (BE's spline trunks): returns the top
+  // a trunk that leans as it climbs (spline trunks): returns the top
   auto bentTrunk = [&](int x, int z, int y0, int h, BlockId id, u32 hh, int thick) {
     double ax = ((hh >> 3) & 7) / 7.0 - 0.5, az = ((hh >> 6) & 7) / 7.0 - 0.5;
     int lx = x, lz = z;
@@ -352,7 +352,7 @@ void EndGen::beDress(int bx, int bz, ChunkWriter& P) const {
       }
     }
   });
-  // ---- BE's cave biomes in the thick islands: lush aurora, smaragdant, jade, and plain end caves ----
+  // ---- the End's cave biomes in the thick islands: lush aurora, smaragdant, jade, and plain end caves ----
   cells(bx, bz, 24, 12, 0xCA7E, seed_, [&](u32 h, int sx, int sz) {
     Isle c; if ((h & 1) || !island(sx, sz, c) || c.main || c.top - c.bot < 16) return;
     const int kind = (int)((h >> 4) % 4);   // 0 lush aurora, 1 smaragdant, 2 jade, 3 empty end cave
@@ -407,7 +407,7 @@ void EndGen::beDress(int bx, int bz, ChunkWriter& P) const {
   });
 }
 
-// each land's plants (BE's L0-N scatters): on top of its turf, where the air is free
+// each land's plants (the L0-N scatters): on top of its turf, where the air is free
 void EndGen::bePlants(int land, int x, int z, const Isle& c, ChunkWriter& P) const {
   const int y = c.top + 1;
   if (y >= DIM_H - 2 || P.get(x, y, z) != AIR) return;

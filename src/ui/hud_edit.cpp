@@ -1,4 +1,4 @@
-// ui/hud_edit.cpp — moving the HUD's pieces (BTA's rearrangeable HUD): Options -> Interface -> Move HUD pieces.
+// ui/hud_edit.cpp — moving the HUD's pieces (the rearrangeable HUD): Options -> Interface -> Move HUD pieces.
 // The world and the HUD stay drawn; each piece (hotbar, hearts and bars, boss bar, chat, toasts) has a frame.
 // Mouse: drag a piece. Keyboard: Tab picks, arrows nudge, R puts it back, Esc done.
 // Controller: LB/RB pick, left stick or d-pad move, X puts it back, Y puts every piece back, A or B done.

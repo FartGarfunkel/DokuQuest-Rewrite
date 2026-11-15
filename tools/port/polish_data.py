@@ -160,7 +160,7 @@ def main(d):
     station_packmap(d)
 
 
-# ---- ore blocks give their ore (Minecraft's raw ore), not the block: iron ore -> Iron Ore (the immersive ore piece, the
+# ---- ore blocks give their ore (the raw ore), not the block: iron ore -> Iron Ore (the immersive ore piece, the
 # same item); it smelts into its ingot in a furnace or a blast furnace. The rarer metals get their own ore items, the
 # iron one's picture in their colour. Immersive worlds are as they were (their pieces go to the bloomery; smeltResult
 # refuses ore pieces there); silk touch still gives the block (sim/enchanting.cpp).

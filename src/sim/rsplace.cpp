@@ -235,7 +235,7 @@ static int placeRedstone(Level& lv, Player& p, World& w, ivec3 hit, int face, Bl
     case DAYLIGHT: meta = 0; break;
     default: return -1;   // torches, lamps, note blocks, TNT, doors...: the usual rules
   }
-  // (LocalPlayer.placeBlock) the cell must be free, and not inside someone
+  // the cell must be free, and not inside someone
   BlockId cur = w.getBlock(x, y, z);
   if (cur != AIR && !R.tReplaceable[cur]) return 0;
   if (R.tSolid[bid]) {

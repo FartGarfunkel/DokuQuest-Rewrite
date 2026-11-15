@@ -35,7 +35,7 @@ Bigger packs copy a file (say `clouds.glsl` or `chunk.glsl`) into the pack folde
 same `in`/`out`/uniform names, since the game sets those by name. (alpha.12 changed `distant.glsl`'s inputs: the tint
 and shade now come packed as `aRgb` (5-6-5) and `aPk`; a pack with its own copy needs the new one's top.)
 
-## Iris / OptiFine packs
+## Full shader packs (the common pack format)
 Drop the pack's `.zip` (or its unpacked folder, the one holding `shaders/`) into `shaderpacks/` and pick it
 the same way. The game runs the pack's **post passes** — `shaders/composite.fsh`, `composite1..15.fsh` and
 `final.fsh` (with their `.vsh`, and `world0/` versions first) — over its own picture, so a pack's colour

@@ -269,7 +269,7 @@ vec3 PortalSystem::buildAt(World& w, PortalSystem* ps, PortalKind kind, int dim,
       for (int dy = 0; dy < fh + 1; dy++) w.setBlock(q.x, by + dy, q.z, AIR, 0);
     } else if (!R.tSolid[w.getBlock(q.x, q.y, q.z)] && !R.tSolid[w.getBlock(q.x, q.y + 1, q.z)]) w.setBlock(q.x, q.y, q.z, floor, 0);
   }
-  // the frame (4 x 5 for Minecraft's 2 x 3 opening), its foot set into the floor (walk straight in)
+  // the frame (4 x 5 for a 2 x 3 opening), its foot set into the floor (walk straight in)
   for (int da = 0; da < fw; da++) for (int dy = 0; dy < fh; dy++) {
     bool edge = da == 0 || da == fw - 1 || dy == 0 || dy == fh - 1;
     ivec3 q = at(da, by - 1 + dy, 0);
@@ -518,7 +518,7 @@ void PortalSystem::removeVirtual(const std::string& id) {
   epoch_++;
 }
 
-// ---- tuning (BTA's dyed portals): a dye used on a portal colours it, and it links only to a portal of the same colour
+// ---- tuning (dyed portals): a dye used on a portal colours it, and it links only to a portal of the same colour
 vec3 dyeColour(const std::string& c) {
   static const std::unordered_map<std::string, vec3> C = {
     {"white", {0.95f, 0.95f, 0.95f}}, {"orange", {1.0f, 0.55f, 0.1f}}, {"magenta", {0.85f, 0.3f, 0.85f}}, {"light_blue", {0.45f, 0.75f, 1.0f}},
@@ -825,7 +825,7 @@ void PortalSystem::tick(Level& l, double dt) {
       double sc = (double)scaleOf(l, src) / scaleOf(l, p.dim);
       p.x = w.c.x * sc; p.z = w.c.z * sc;
       if (w.kind == PortalKind::Drift) {
-        // BTA's Drift: out of the main world eight times as far out, onto the nearest land hanging there; back, an eighth
+        // the Drift: out of the main world eight times as far out, onto the nearest land hanging there; back, an eighth
         p.dim = DIM_OVERWORLD;
         if (w.realm == REALM_DRIFT) { p.realm = REALM_MAIN; p.x = w.c.x / 8; p.z = w.c.z / 8; }
         else if (w.realm == REALM_MAIN) {
@@ -872,7 +872,7 @@ bool PortalSystem::onItemUse(const json& a) {
   bool creative = pl && pl->creative();
   ItemStack* held = pl && pl->held().id == key ? &pl->held() : nullptr;
   vec3 at = vec3(hit) + vec3(0.5f);
-  // a dye on a portal tunes it (BTA): it takes the colour, comes loose from where it led, and from now on links only to a
+  // a dye on a portal tunes it: it takes the colour, comes loose from where it led, and from now on links only to a
   // portal of the same colour (one is built there if none is near)
   if (key.size() > 4 && key.compare(key.size() - 4, 4, "_dye") == 0 && face >= 0) {
     const BlockId b = W.getBlock(hit.x, hit.y, hit.z);

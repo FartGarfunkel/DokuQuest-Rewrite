@@ -16,7 +16,7 @@ Tests: `tools/test_materials.cpp` (dqcore).
 - R1: Brine, pickling and vinegar are left out: there is no food decay (the user declined it), so they'd do nothing.
 - R2: One `raw_hide` item (no small/medium/large); in an immersive world animals that dropped leather drop raw hide.
 - R3: Prepared hide → leather at the crafting table (2 leather), not on a knapping grid.
-- R4: The TFC barrel is a new block `sealed_barrel` ("Barrel (sealable)"); our storage barrel stays as it is.
+- R4: The sealable barrel is a new block `sealed_barrel` ("Barrel (sealable)"); our storage barrel stays as it is.
 - R5: Panning: the pan (clay knapped, fired) used on gravel or sand with water beside it; 2 s of holding use; a find
   30% (an ore sample of the metals that cast or iron, weighted), 3% a small gem (a nugget of the local gems: emerald,
   ruby, sapphire, diamond rarer), else nothing; one in four tries uses up the block.

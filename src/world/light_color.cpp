@@ -33,7 +33,7 @@ vec3 blockLightColour(BlockId id) {
 void blockLightRgb(BlockId id, u8 level, u8 out[3]) {
   if (!level) { out[0] = out[1] = out[2] = 0; return; }
   const vec3 c = blockLightColour(id);
-  const float s = level * 17.f;   // 15 -> 255, the top of Cubyz's byte light
+  const float s = level * 17.f;   // 15 -> 255, the top of the byte light
   auto q = [&](float x) { return (u8)clampv((int)std::lround(x * s), 0, 255); };
   out[0] = q(c.x); out[1] = q(c.y); out[2] = q(c.z);
 }

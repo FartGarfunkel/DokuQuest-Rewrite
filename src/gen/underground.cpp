@@ -1,7 +1,7 @@
-// gen/underground.cpp — the Overworld below the surface, Minecraft Beta style (heights counted from the band floor,
-// which is Minecraft's y 0: bedrock 0-4, sea 64): beta carver caves and ravines (gen/carvers.cpp), rock blobs and
-// ore veins (WorldGenMinable) at Minecraft's heights and rates plus the original's ores (game/metals.js) at
-// matching depths, lava lakes in the deep (WorldGenLakes) and water/lava springs (WorldGenLiquids).
+// gen/underground.cpp — the Overworld below the surface, classic style (heights counted from the band floor,
+// which is the classic y 0: bedrock 0-4, sea 64): beta carver caves and ravines (gen/carvers.cpp), rock blobs and
+// ore veins at the classic heights and rates plus the original's ores (game/metals.js) at
+// matching depths, lava lakes in the deep and water/lava springs.
 // Veins are seeded per source chunk and written from the 3x3 neighbourhood, so they run across chunk borders.
 #include "gen/overworld.h"
 #include "gen/carvers.h"
@@ -44,7 +44,7 @@ void OverworldGen::carve(GenBuf& b, const OwColumn* cols, int cx, int cz) const 
 // ---- rock blobs and ore veins -----------------------------------------------------------------------------------
 void OverworldGen::placeOres(GenBuf& b, int cx, int cz, Mulberry32&) const {
   const int bx = cx * 16, bz = cz * 16;
-  // tries per chunk, vein size, band heights [lo, hi) (Minecraft Beta 1.7 / 1.8 values; the original's ores at
+  // tries per chunk, vein size, band heights [lo, hi) (the classic values; the original's ores at
   // the depths metals.js gave them, scaled to the band)
   struct Ore { BlockId id; double tries; int size, lo, hi; bool ore; };
   const Ore ORES[] = {
@@ -69,11 +69,11 @@ void OverworldGen::placeOres(GenBuf& b, int cx, int cz, Mulberry32&) const {
         oreVein(b, cx, cz, rnd, x, y, z, o.size, o.id, host ? host : o.ore ? oreRep_.data() : rockRep_.data());
       }
     }
-    // lapis: Minecraft's triangle round 16
+    // lapis: a triangle round 16
     const int x = ncx * 16 + rnd.nextInt(16), y = rnd.nextInt(16) + rnd.nextInt(16) + 1, z = ncz * 16 + rnd.nextInt(16);
     oreVein(b, cx, cz, rnd, x, y, z, 7, B.lapis_ore, oreRep_.data());
   }
-  // emeralds: single blocks inside the mountains (Minecraft's extreme hills)
+  // emeralds: single blocks inside the mountains (the extreme hills)
   if (column(bx + 8, bz + 8).biome == BIOME_MOUNTAINS) {
     JRandom rnd(chunkSeed(seed_, cx, cz, 0xE3E));
     const int n = 3 + rnd.nextInt(6);
@@ -90,7 +90,7 @@ void OverworldGen::placeOres(GenBuf& b, int cx, int cz, Mulberry32&) const {
 void OverworldGen::placeLakes(GenBuf& b, const OwColumn* cols, int cx, int cz) const {
   JRandom rnd(chunkSeed(seed_, cx, cz, 0x1A4E));
   if (rnd.nextInt(6) != 0) return;
-  int y = 4 + rnd.nextInt(rnd.nextInt(44) + 8);   // mostly low down: Minecraft's lava level is ~10
+  int y = 4 + rnd.nextInt(rnd.nextInt(44) + 8);   // mostly low down: the lava level is ~10
   int minH = DIM_H; for (int i = 0; i < 256; i++) minH = std::min(minH, cols[i].H);
   if (y + 8 > minH - 6) return;
   while (y > 5 && b.blocks[colIdx(8, y, 8)] == AIR) y--;

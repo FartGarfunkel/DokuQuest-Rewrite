@@ -10,7 +10,7 @@ namespace dq {
 class Chunk;
 
 struct CarveForm { BlockId base = 0; u8 carve = 0; u8 meta = 0; };
-// a stairs block's corner (Minecraft's "shape"), above its facing (0-3) and upside-down (4) bits: inner (the high half
+// a stairs block's corner (the block-state "shape"), above its facing (0-3) and upside-down (4) bits: inner (the high half
 // round the corner as well) or outer (only the corner's quarter high), to the facing's left (counter-clockwise) or right
 constexpr u8 STAIR_CORNER = 0x08, STAIR_OUTER = 0x10, STAIR_RIGHT = 0x20;
 

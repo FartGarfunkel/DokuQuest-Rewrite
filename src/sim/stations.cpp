@@ -33,7 +33,7 @@ static StationResult baseResult(const std::string& kind, const ItemStack& a, con
   StationResult r;
   const ItemDef* da = a.empty() ? nullptr : reg().item(a.id);
   const ItemDef* db = b.empty() ? nullptr : reg().item(b.id);
-  if (kind == "forge") {   // the Tool Forge: a gem set in a tool (core/tool_parts.h)
+  if (kind == "forge") {   // the forge station: a gem set in a tool (core/tool_parts.h)
     if (a.empty() || b.empty()) return r;
     ItemStack t = a; t.n = 1;
     if (!setToolGem(t, b.id)) return r;

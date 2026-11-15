@@ -1,4 +1,4 @@
-// sim/leads.h — the lead (Minecraft's): a creature on a lead follows whoever holds it, or stays tied to a fence post.
+// sim/leads.h — the lead: a creature on a lead follows whoever holds it, or stays tied to a fence post.
 // The creature's data["leash"] is the holder's name, or [x, y, z] of the post.
 #pragma once
 #include "common/common.h"

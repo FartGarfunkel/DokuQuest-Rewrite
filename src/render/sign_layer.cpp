@@ -1,6 +1,6 @@
 // render/sign_layer.cpp — signs (render NONE blocks, like item piles): a planks board on a post, or flat on a wall, and
 // the four lines written on it (ui/sign_screen.cpp) painted with the game's pixel font. Glow ink (sim/build.cpp) lights
-// the writing up, unlit and ringed like Minecraft's glowing text; a dye colours it.
+// the writing up, unlit and ringed like glowing text; a dye colours it.
 // Standing sign meta = rotation 0..15 (the placer's yaw); wall sign meta = 16 | direction into the wall (0 N 1 E 2 S 3 W).
 #include "render/item_layers.h"
 #include "render/be_scan.h"
@@ -34,7 +34,7 @@ std::vector<u8> paintSign(const std::array<std::string, 4>& L, u32 rgb, bool glo
   unsigned char* atlas = nullptr; int aw = 0, ah = 0;
   io.Fonts->GetTexDataAsRGBA32(&atlas, &aw, &ah);
   if (!f || !atlas) return px;
-  float k = (LH + 3) / f->FontSize;   // the pixel font fills its line like Minecraft sign text
+  float k = (LH + 3) / f->FontSize;   // the pixel font fills its line like sign text
   std::vector<float> cov((size_t)W * H, 0);
   for (int li = 0; li < 4; li++) {
     const std::string& s = L[li];
@@ -104,7 +104,7 @@ public:
       std::string wood = bd.key.substr(0, bd.key.size() - 5);
       BlockId pl = reg().blockId(wood == "oak" ? "planks" : wood + "_planks");
       if (!pl) pl = reg().blockId("planks");
-      if (e.contains("paint") && e["paint"].is_string()) if (BlockId pp = reg().blockId(e["paint"].get<std::string>() + "_painted_planks")) pl = pp;   // painted with the brush (BTA)
+      if (e.contains("paint") && e["paint"].is_string()) if (BlockId pp = reg().blockId(e["paint"].get<std::string>() + "_painted_planks")) pl = pp;   // painted with the brush
       GLuint side = tileTexture(a, reg().block(pl).faces[0]), top = tileTexture(a, reg().block(pl).faces[2]);
       if (!side) return;
       if (!begun) { if (!cd.begin(f, f.cam.viewProj)) return; begun = true; }

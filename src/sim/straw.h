@@ -1,4 +1,4 @@
-// sim/straw.h — straw (after TerraFirmaCraft): grass plants cut with a knife or a scythe give straw (pit kiln fuel, thatch,
+// sim/straw.h — straw: grass plants cut with a knife or a scythe give straw (pit kiln fuel, thatch,
 // a better chance with the firestarter). A scythe cuts the grass plants and the crops in the 3x3 round what it hits.
 // sim/controller.cpp breakBlock calls strawOnBreak.
 #pragma once

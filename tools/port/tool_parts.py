@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tools of mixed materials (the idea is Cubyz's; our own design and code, nothing taken from it). Idempotent; data_patches.py
+"""Tools of mixed materials (our own design and code). Idempotent; data_patches.py
 runs it after forging.py:
   python3 tools/port/tool_parts.py <data-dir>
 - data/tool_materials.json: every material a tool head can be made of: the items that count as it, its name, its colour

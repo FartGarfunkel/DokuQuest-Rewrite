@@ -13,7 +13,7 @@ Workstream: resource packs, 3D voxel items, item icons, held and dropped items (
 | render/sculpt.js | assets/item_models.cpp (`sculpt`), item_parts.cpp (`buildModelM3d`) | local-thickness sculpt with SCULPT_PROFILE, ITEM_SIZE, the fill picture (modelFill), potion/bucket/bowl/book/armour/arrow models |
 | render/models.js itemMesh, renderBlockIcons, extrudeTile | assets/item_models.*, assets/icons.cpp | the itemMesh chain (models3d → sculpt → items3d → models) |
 | render/gear3d.js (shapes) | assets/gear3d.* | gearRead/gearWrite (look in the skin's spare pixels), gearShapes, gearArmorShapes, gearPivots, stature, a per-voxel gearPaint |
-| game/local.js hand(), mcSwing, swing/equip/eat timers; player.js bob | render/item_layers.cpp `HeldItemLayer` | first person only |
+| game/local.js hand(), armSwing, swing/equip/eat timers; player.js bob | render/item_layers.cpp `HeldItemLayer` | first person only |
 | game/entities.js ItemEntity.draws | render/item_layers.cpp `DroppedItemLayer` | hover, bob, spin, 2–5 copies by stack size |
 | (data) world/mesher.js SHAPES, shapeItemBoxes, BLOCK_FACES | data/itemshapes.json (tools/port/itemshapes_expr.js) | per block item: cube faces / boxes with per-face tiles / torch / picture |
 
@@ -84,7 +84,7 @@ game/anim.js is all third-person bodies (left for the characters/creatures works
 
 - Skin-coloured first-person arm (`firstPersonArm()` is the plain sleeve + hand; the characters workstream
   should swap in the skin's voxel arm and worn chestplate sleeve).
-- Hand poses for bow drawing (game/bows.js fpBow), fishing cast wind-up, Carry On, ledge hanging, the map in
+- Hand poses for bow drawing (game/bows.js fpBow), fishing cast wind-up, carrying a block, ledge hanging, the map in
   hand (maps.js) — hooks belong to those gameplay modules.
 - Torch flame/smoke particles at the held torch's tip (noteTip) — particles workstream.
 - Animating the compass needle / clock face on held/dropped dials (static picture now).

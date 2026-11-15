@@ -150,7 +150,7 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
   float fx = -s, fz = -co, rx = co, rz = -s;
   float tx = (rx * inp.mx - fx * inp.mz) * speed, tz = (rz * inp.mx - fz * inp.mz) * speed;
   bool slippery = onGround && bhas(under, BF::Slippery);
-  // BTA's ice skates: on ice you glide fast and still steer
+  // ice skates: on ice you glide fast and still steer
   const bool skating = slippery && armor.size() > 3 && !armor[3].empty() && armor[3].id == "ice_skates";
   if (skating) { tx *= 1.75f; tz *= 1.75f; }
   float accel = flying ? 8.f : onGround ? (slippery ? (skating ? 5.f : 2.f) : 14.f) : (inWater || inLava ? 6.f : 3.f);
@@ -172,7 +172,7 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
     float up = !c.eyeWater && L.y > 0 && !inp.jump ? std::min(L.y, 0.05f) : L.y;   // skim along the surface
     vel.y += (up * SWIM * want + (inp.jump ? 2.f : 0.f) - vel.y) * kk;
   } else if (inWater && inp.jump && !c.eyeWater && !hitWallLast && !sneaking) {
-    // treading water: with your head out, jump keeps you afloat at the waterline, bobbing gently (Minecraft-like),
+    // treading water: with your head out, jump keeps you afloat at the waterline, bobbing gently,
     // instead of popping out and splashing back
     const int bx = ifloor(pos.x), bz = ifloor(pos.z);
     int sy = ifloor(pos.y);

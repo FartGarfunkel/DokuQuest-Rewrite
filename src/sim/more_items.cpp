@@ -1,4 +1,4 @@
-// sim/more_items.cpp — the rest of BTA's blocks and items (our own designs; data from tools/port/more_items.py):
+// sim/more_items.cpp — the rest of the classic blocks and items (our own designs; data from tools/port/more_items.py):
 // - the Emberglass conduit: a run carries a level that drops by one each block. Dust feeds it one below its own level.
 //   A redstone block, a redstone pumpkin, or a matcher that is on feeds 15. A powered solid block feeds 15 too.
 // - the matcher: on while the two blocks on its axis are the same kind. It powers the four sides that are not on that axis.

@@ -489,7 +489,7 @@ void InvSession::creativePick(const std::string& key, bool all) {
 }
 void InvSession::trashCursor() { if (!p.cursor.empty()) { p.cursor.clear(); sound("click"); } }
 
-// Sorting (BTA, middle click): the stacks of a container, the worn backpack or the bag (not the hotbar) put in order:
+// Sorting (middle click): the stacks of a container, the worn backpack or the bag (not the hotbar) put in order:
 // blocks, then tools and weapons, armour, food, then everything else, alphabetically within each; like stacks joined.
 bool InvSession::sortGroup(Grp g) {
   if (g != Grp::Main && g != Grp::Cont && g != Grp::Bp) return false;

@@ -1,14 +1,14 @@
-// gen/drift.cpp — Better than Adventure 8.0.1's Drift (world type "drift", the side realm REALM_DRIFT): BTA's own
-// DensityGeneratorDrift (three fractal Perlin noises — 16 octaves for the low and high limits, 8 for the blend — the
-// old Sky Dimension's way: land hangs in the air in great drifting masses, faded out at the top and the bottom) on
-// its TerrainGeneratorLerp (a 5 x 33 x 5 density grid per chunk, filled in 4 x 8 x 4), bit-exact through the Nether
-// port's BTA noise (gen/nethergen/nethergen_noise.h). The terrain is in the Overworld band of its own World. On top: grass and
-// three of dirt over stone (SurfaceGeneratorOverworld), then oak trees, long grass and flowers, coal and iron.
+// gen/drift.cpp — the Drift (world type "drift", the side realm REALM_DRIFT): its own drift density (three fractal
+// Perlin noises — 16 octaves for the low and high limits, 8 for the blend — the old sky-island way: land hangs in
+// the air in great drifting masses, faded out at the top and the bottom) on a lerped terrain grid (a 5 x 33 x 5
+// density grid per chunk, filled in 4 x 8 x 4), bit-exact through the classic Nether's noise
+// (gen/nethergen/nethergen_noise.h). The terrain is in the Overworld band of its own World. On top: grass and
+// three of dirt over stone (the Overworld surface), then oak trees, long grass and flowers, coal and iron.
 // The portal, the golden sky and its chickens: sim/drift.cpp, render/sky.cpp.
 #if defined(__clang__)
 #pragma clang fp contract(off)
 #elif defined(__GNUC__)
-#pragma GCC optimize("fp-contract=off")   // (the density as BTA's doubles: no fused multiply-adds)
+#pragma GCC optimize("fp-contract=off")   // (the density in exact doubles: no fused multiply-adds)
 #endif
 #include "gen/dimgens.h"
 #include "gen/nethergen/nethergen_noise.h"
@@ -19,7 +19,7 @@
 namespace dq {
 
 namespace {
-constexpr int YS = 33;   // densities up the 256-tall band (BTA: terrainHeight / 8 + 1)
+constexpr int YS = 33;   // densities up the 256-tall band (terrainHeight / 8 + 1)
 
 class DriftGen : public DimGenerator {
 public:

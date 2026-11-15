@@ -1,4 +1,4 @@
-// sim/prospect.h — TerraFirmaCraft's prospector's pick: tapped on rock it tells you the most plentiful ore within 12 blocks
+// sim/prospect.h — the prospector's pick: tapped on rock it tells you the most plentiful ore within 12 blocks
 // and roughly how much ("traces of", "a small amount of", "a large amount of", "a very large amount of"), or nothing.
 #pragma once
 #include "world/world.h"

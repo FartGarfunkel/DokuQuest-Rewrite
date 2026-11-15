@@ -1,4 +1,4 @@
-// sim/barrel.h — TerraFirmaCraft's barrel (our "sealed_barrel"; the storage barrel stays as it was): up to ten buckets of a
+// sim/barrel.h — the sealed barrel (our "sealed_barrel"; the storage barrel stays as it was): up to ten buckets of a
 // liquid and four stacks of things; some mixes happen at once (lime in water: limewater), the rest only sealed, over
 // in-game hours (data/barrel.json: hides soaked in limewater, logs steeped into tannin, scraped hides tanned). The leather
 // chain: raw hide (animals drop it in an immersive world) -> soaked -> scraped with a knife -> prepared -> leather.

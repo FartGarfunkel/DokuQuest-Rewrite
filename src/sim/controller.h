@@ -46,13 +46,13 @@ public:
   GrindSession grind;           // a piece held to a grindstone's wheel (sim/hands.h)
   bool grindPose = false;       // your body holding it there (stationKind 6, workAt the wheel), let go a moment after   // when use was first pressed on a hands-on station (held a second: the whole stack goes in)   // true: a blow on a station's work (no digging)
   bool chestLids = false;   // Options → Leave Chests Open (set each frame by the client): use lifts a chest's lid and leaves it up
-  float castWaitR = -1, castWaitL = -1; bool castHoldR = false, castHoldL = false;   // Skyrim's hands (interact)
+  float castWaitR = -1, castWaitL = -1; bool castHoldR = false, castHoldL = false;   // the spell hands (interact)
   double t = 0;                  // this controller's clock (the original's g.time)
   double lastJump = -10, interactAt = -10, carryHint = -10;
   bool ledgeTip = false, chewTip = false;
   float fallDistSeen = 0;
   float breathAcc = 0;           // a breath of fog in the cold, every few seconds        // the fall we last wrote to Entity::fallDist
-  json we = json::object();      // WorldEdit: pos1, pos2, clip, undo, redo
+  json we = json::object();      // world editing: pos1, pos2, clip, undo, redo
   std::vector<std::string> chatHist;
 
   // ---- rules (local.js) ----

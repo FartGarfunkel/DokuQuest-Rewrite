@@ -1,6 +1,6 @@
-// sim/pit_kiln.h — TerraFirmaCraft's pit kiln: unfired pottery set down in a pit (up to four pieces, one to a quarter), eight
+// sim/pit_kiln.h — the pit kiln: unfired pottery set down in a pit (up to four pieces, one to a quarter), eight
 // straw over it, then eight logs, lit with a firestarter; walled in on all four sides and solid below it burns for three
-// in-game hours (TFC's eight, shortened) and the pottery comes out fired (and hot). A side opened while it burns puts it out
+// in-game hours (eight, shortened) and the pottery comes out fired (and hot). A side opened while it burns puts it out
 // and the fuel is lost. Block pit_kiln (drawn by render/pile_layer.cpp), entity {type: "kiln", items[4], straw, logs, lit, t}.
 #pragma once
 #include "sim/level.h"

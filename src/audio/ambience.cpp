@@ -111,7 +111,7 @@ void Ambience::at(const AudioScene& s, const char* name, float dist) {
   e.start(r, c, 1);
 }
 
-// snow and sand storms (Particle Rain's weather.snow / weather.sandstorm, resynthesised from its recordings: merged as
+// snow and sand storms (the weather.snow / weather.sandstorm recordings, resynthesised: merged as
 // pack events fx.ws_weather_*): somewhere round you, softer and lower when you're high above the weather
 void Ambience::weatherAt(const AudioScene& s, const char* name, float dist, float vol, float pitch) {
   float a = e.rnd() * TAU, d = dist * (0.3f + e.rnd() * 0.7f);
@@ -204,7 +204,7 @@ void Ambience::update(double dtIn, const AudioScene& s) {
   else if ((l >> 4) > 8 || (l & 15) > 6) mood = std::max(0.0, mood - 1.0 / 400);
   if (mood >= 1) {
     mood = 0;
-    // the pack's own cave sounds when it has them (Minecraft's cave ambience), else the original's six
+    // the pack's own cave sounds when it has them (the pack's cave ambience), else the original's six
     static const char* CAVE[6] = {"cave_a", "cave_b", "cave_c", "cave_d", "cave_e", "cave_f"};
     const char* pick = e.lib.packs().event("fx.cave") && e.lib.usePack ? "cave" : CAVE[(int)(e.rnd() * 6) % 6];
     SoundRef r = e.lib.resolve(pick);

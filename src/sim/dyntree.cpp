@@ -1,5 +1,5 @@
-// sim/dyntree.cpp — see dyntree.h (Dynamic Trees: BasicBranchBlock.growSignal, GrowthLogicKit, DynamicLeavesBlock.branchOut,
-// Species.grow, NetVolumeNode)
+// sim/dyntree.cpp — see dyntree.h (the growth signal, its growth logic, leaves branching out, the
+// species' growth, the branch volume)
 #include "sim/dyntree.h"
 #include "sim/blockinfo.h"
 #include "sim/rules.h"
@@ -11,7 +11,7 @@
 namespace dq {
 
 namespace {
-const ivec3 DIRS[6] = {{0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}, {-1, 0, 0}, {1, 0, 0}};   // Minecraft's Direction order
+const ivec3 DIRS[6] = {{0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}, {-1, 0, 0}, {1, 0, 0}};   // down, up, north, south, west, east
 constexpr int UP = 1, DOWN = 0;
 constexpr float TAPER = 0.3f;
 constexpr int MAX_R = 8, ENERGY = 16, LOWEST_BRANCH = 3, SECONDARY = 2;
@@ -35,7 +35,7 @@ struct Signal {
     for (int d = 0; d < 6; d++) if (d != (fromDir ^ 1) && ours(p + DIRS[d])) { success = false; return; }
     w.setBlock(p.x, p.y, p.z, branch, branchMeta(1));
     for (int d = 0; d < 6; d++) needLeaves(p + DIRS[d]);
-    // (Dynamic Trees fills its canopy by its leaves' hydration cells; a small round cluster here does it at once)
+    // (a full model would fill the canopy by its leaves' hydration cells; a small round cluster here does it at once)
     for (int dy = -1; dy <= 2; dy++) for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++) {
       const int r2 = dx * dx + dz * dz + (dy > 0 ? dy * dy * 2 : dy * dy * 3);
       if (r2 > 5 || (r2 >= 4 && rnd() < 0.4f)) continue;

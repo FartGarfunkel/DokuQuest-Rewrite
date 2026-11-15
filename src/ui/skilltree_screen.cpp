@@ -60,7 +60,7 @@ public:
     ui::bookPagesBegin(a, "##skilltree");
     if (trees.empty()) {
       ui::bookPageTitle(a, "Skill Trees");
-      ImGui::TextWrapped("No skill trees here: they come from Soulrend's (tools/port/soulrend_tree.py).");
+      ImGui::TextWrapped("No skill trees here: none have been brought in.");
       ui::bookPagesEnd(); return;
     }
     cur = std::clamp(cur, 0, (int)trees.size() - 1);

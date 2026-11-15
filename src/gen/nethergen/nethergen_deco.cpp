@@ -1,4 +1,4 @@
-// ChunkDecoratorNether (+ ChunkFeatureDecorator / ChunkDecorationBuilder / PositionSelectors / PlacementMethod)
+// The Nether decorator (+ its feature decorator, decoration builder, position selectors and placement methods)
 // run on a composite of undecorated chunks. See README.md for the neighbour model.
 #if defined(__clang__)
 #pragma clang fp contract(off)
@@ -81,7 +81,7 @@ const Deco kDecos[K_COUNT] = {
     {K_BOULDER_MAG_SPARSE, (uint16_t)(CF | CP), S_HRUFO, P_TRIES, 4},
     {K_BOULDER_SULF, SU, S_HRUFO, P_TRIES, 24},
     {K_SOUL_CATCHER, 0, S_HRUFO, P_TRIES, 8},
-    {K_PEBBLES, 0, S_MINY, P_NONE, 0},  // WorldFeaturePebbles: can never spawn on Nether blocks -> no effect
+    {K_PEBBLES, 0, S_MINY, P_NONE, 0},  // pebbles: can never spawn on Nether blocks -> no effect
 };
 #undef B
 
@@ -105,7 +105,7 @@ struct Runner {
   uint64_t onlyMask;  // decorations to run (far-margin chunks run only the long-reach ones)
 
   void select(Sel s, JavaRandom& r, int& x, int& y, int& z) {
-    if (s == S_PILLAR) {  // ChunkDecoratorNether.selectPillarPosition
+    if (s == S_PILLAR) {  // the decorator's pillar position pick
       int px = cx * 16 + r.nextInt(16);
       int pz = cz * 16 + r.nextInt(16);
       double ccx, ccy;
@@ -180,7 +180,7 @@ struct Runner {
   void decoration(int i, JavaRandom& r) {
     const Deco& d = kDecos[i];
     if (d.place == P_NONE) return;
-    if (d.mask) {  // ChunkDecorationBuilder.placeDecoration biome mask (chunk corner, y = 127)
+    if (d.mask) {  // the decoration builder's biome mask (chunk corner, y = 127)
       int b = w.biome(cx * 16, 127, cz * 16);
       if (b >= BI_COUNT || !(d.mask & (1u << b))) return;
     }
@@ -233,7 +233,7 @@ struct Runner {
   }
 
   void run() {
-    w.immediate = true;  // ChunkFeatureDecorator.decorate
+    w.immediate = true;  // as the feature decorator decorates
     w.immSet.clear();
     w.wrand.setSeed(ladd(lmul(cx, 341873128712LL), lmul(cz, 132897987541LL)) ^ 0x5DEECE66DLL);
     JavaRandom rand;
@@ -339,7 +339,7 @@ std::shared_ptr<const DecoRegion> NetherGen::Impl::region(int rx, int rz, DecoSt
 }
 
 namespace {
-// Out.meta carries BTA data only for blocks where it means something (see README); 0 elsewhere.
+// Out.meta carries the generator's data only for blocks where it means something (see README); 0 elsewhere.
 void normalizeMeta(const uint8_t* kind, uint8_t* meta) {
   for (int i = 0; i < 65536; ++i) {
     switch (kind[i]) {

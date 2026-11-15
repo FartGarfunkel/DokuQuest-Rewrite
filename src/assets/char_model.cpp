@@ -504,7 +504,7 @@ const CharMesh* capeMesh(const std::string& capeKey, int seg, const TileSet& ts)
   Cache& c = C();
   auto it = c.misc.find(key);
   if (it != c.misc.end()) return it->second && it->second->ready() ? it->second.get() : nullptr;
-  // a cape you painted: the Minecraft layout in a 64x32 picture (cape_tex.h); else the game's cape tiles (+ "_in" for the inside)
+  // a cape you painted: the cape layout in a 64x32 picture (cape_tex.h); else the game's cape tiles (+ "_in" for the inside)
   CapePixels paint; bool custom = isCustomCape(capeKey) && loadCustomCape(capeKey, paint);
   int tOut = custom ? -1 : tileOf(ts, capeKey), tIn = custom ? -1 : tileOf(ts, capeKey + "_in");
   if (!custom && tOut < 0) { c.misc[key] = nullptr; return nullptr; }
@@ -543,7 +543,7 @@ const CharMesh* elytraWingMesh(int side, const TileSet& ts) {
   Cache& c = C();
   auto it = c.misc.find(key);
   if (it != c.misc.end()) return it->second && it->second->ready() ? it->second.get() : nullptr;
-  // a resource pack's elytra picture (textures/entity/elytra.png, the vanilla 10 x 20 x 2 wing at u 22): cut up like a skin box.
+  // a resource pack's elytra picture (textures/entity/elytra.png, the standard 10 x 20 x 2 wing at u 22): cut up like a skin box.
   // The local overlay pack (Mod Art (local), tools/port/elytra_art.py: the classic membrane-and-bone wing in the pack's
   // style) comes first, then the chosen pack's own.
   std::optional<std::vector<u8>> pic = readBinary(userDir() / "resourcepacks" / "Mod Art (local)" / "assets" / "minecraft" / "textures" / "entity" / "elytra.png");

@@ -1,6 +1,6 @@
 // ui/multiplayer.cpp — net/netui.js: the Multiplayer screen, the Joining… screen (the original's loading bar)
 // and Open to LAN for the world being played. The network itself is client/netplay + net/.
-// Select Server is laid out like BTA 8.0's server browser (ui/paged.h). There is no Internet page and no server ping.
+// Select Server is laid out as a paged server browser (ui/paged.h). There is no Internet page and no server ping.
 #include "ui/book_ui.h"
 #include "ui/ui.h"
 #include "ui/theme.h"
@@ -133,10 +133,10 @@ static void saveServerLists(const ServerLists& o) {
   writeJson(serversFile(), {{"servers", fav}, {"history", hist}, {"last", o.last}});
 }
 
-// ---- Select Server (BTA 8.0's ScreenSelectServer) --------------------------------------------------------------
+// ---- Select Server -----------------------------------------------------------------------------------------------
 // Pages Favorites, History, Local Network and Direct Connect; a quarter of the width kept on the right for Join
 // Server / Edit / Delete (and the password and the network help above them); Cancel / Refresh / Add Server at the
-// bottom; Add Server, Edit Server and Delete Server are screens of their own like BTA's. No Internet page, no ping.
+// bottom; Add Server, Edit Server and Delete Server are screens of their own. No Internet page, no ping.
 class MultiplayerScreen : public Screen {
 public:
   const char* id() const override { return "lanjoin"; }
@@ -265,7 +265,7 @@ public:
       }
       if (!still) lanPick.clear();
     } else {
-      // Direct Connect (BTA's SeverDirectConnectComponent): the address and Connect
+      // Direct Connect: the address and Connect
       kit.category("Direct Connect");
       kit.textField("IP Address", &addr, "192.168.1.23:25580", "The address the host's screen shows. Over the internet: the host's internet address, like 203.0.113.7:25580.", 180, 0, 80);
       kit.textField("Password", &password, nullptr, "Only if the host set one.", 180, ImGuiInputTextFlags_Password, 64);
@@ -328,7 +328,7 @@ public:
     if (cancel) a.popScreen();
   }
 
-  // BTA's Add Server / Edit Server
+  // Add Server / Edit Server
   void drawEdit(App& a) {
     form.beginPlain(a, "##addserver", editing >= 0 ? "Edit Server" : "Add Server");
     const float U = form.u(), cx = a.width * 0.5f;
@@ -345,7 +345,7 @@ public:
     else if (cancel) view = LIST;
   }
 
-  // BTA's Delete Server
+  // Delete Server
   void drawDelete(App& a) {
     auto* r = rows();
     if (!r || selected < 0 || selected >= (int)r->size()) { view = LIST; return; }

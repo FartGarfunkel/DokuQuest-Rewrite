@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """tools/port/armor_art.py — worn armour in the style of the user's pack, for every material the game has.
 
-The active pack (DokuQuest Base) has no armour layers; the GeruDoku pack beside it in resourcepacks/ does (iron, gold,
+The active pack (DokuQuest Base) has no armour layers; the user's resource pack beside it in resourcepacks/ does (iron, gold,
 diamond, netherite, chainmail, leather). Those are written into the local overlay pack "Mod Art (local)" as they are, and
-every one of the game's own materials (copper, bronze, silver, steel, mithril, adamantite, emerald, and the Aether's and
-Better End's zanite, gravitite, thallasium) gets the iron layers (the diamond's for gems) with their metal recoloured to
+every one of the game's own materials (copper, bronze, silver, steel, mithril, adamantite, emerald, and the Skylands' and
+the End's zanite, gravitite, thallasium) gets the iron layers (the diamond's for gems) with their metal recoloured to
 the material's own colour, read off its ingot or gem picture, so the shading and the edges are the pack's.
 The overlay is the user's own and is never committed. assets/pack_armor.cpp reads it after the chosen pack.
 

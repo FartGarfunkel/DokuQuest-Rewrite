@@ -1,5 +1,5 @@
 // dreamlight.glsl — soft, dreamlike light over the finished picture (render/dreamlight_layer.cpp; Options → Graphics →
-// Lighting). After Horizon's Golden Hour shader pack (MIT, github.com/horizon-rust/horizon; credited in docs/CREDITS.md):
+// Lighting). After Horizon's Golden Hour shader pack (MIT, github.com/horizon-rust/horizon; credited in docs/THIRD_PARTY_NOTICES.md):
 // golden light when the sun is low, a soft shoulder for the brightest colours, a little more colour and a light vignette,
 // and a halo round the brightest things (the sun, lava, torches at night). On top, ours: a soft-focus glow (the picture
 // blurred and laid over itself, lightly, the "Orton" look of dreamy photographs) and shadows lifted a touch toward the

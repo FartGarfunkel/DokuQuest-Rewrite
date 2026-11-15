@@ -71,7 +71,7 @@ static json part(const char* name, const char* parent, vec3 at, vec3 lo, vec3 hi
 // immediately rules out. Part names, parents, roles and pivots stay exactly as before, so animPod + the "fuse"
 // post animate it identically. This replaces the stock fuseling model outright — same key "fuseling", so /summon
 // fuseling, saves, dismemberment and the resource pack's entity/creeper reskin all keep working.
-// Proportions follow the community-cited Minecraft creeper: Java height 1.7 blocks (0.6 wide; head 8x8 px,
+// Proportions: height 1.7 blocks (0.6 wide; head 8x8 px,
 // body 4x8x12 px, legs 4x8x4 px). Our voxels are 16 units/block so ×16: h≈27, w≈10 with four 3.2-wide corner
 // legs reaching the ground (feet at y=0 — they detached last pass when I shortened leg boxes but kept their
 // old pivots; keep leg box bottom = -pivot.y exactly).

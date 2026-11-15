@@ -1,4 +1,4 @@
-// render/weapon_trail_layer.cpp — a weapon's trail (Epic Fight's swing trails): while a blow is live, and a moment
+// render/weapon_trail_layer.cpp — a weapon's trail (swing trails): while a blow is live, and a moment
 // after, a pale ribbon follows the outer part of the blade over the last tenth of a second, the newest part brightest,
 // fading as it ages. Its path is the blade's own (sim/attack_moves.h bladeAt: sampled from the drawn poses), turned to
 // the swing's facing (atkYaw) and the look, from the player's feet: so it marks exactly when and where a swing can land.

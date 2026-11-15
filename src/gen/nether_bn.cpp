@@ -19,7 +19,7 @@ const char* bnLandName(int l) {
   static const char* N[BN_COUNT] = {"", "Nether Jungle", "Gravel Desert", "Nether Swampland", "Magma Land", "Soul Plain", "Old Warped Woods"};
   return l > 0 && l < BN_COUNT ? N[l] : "";
 }
-u32 bnFogColour(int l) {   // BetterNether's biome fog colours
+u32 bnFogColour(int l) {   // the painted lands' fog colours
   static const u32 F[BN_COUNT] = {0, 0x3EA93D, 0xAA3000, 0x89134E, 0xF89E44, 0xC471EF, 0x1A051A};
   return l > 0 && l < BN_COUNT ? F[l] : 0;
 }
@@ -35,21 +35,21 @@ const SimplexNoise& maskNoise(i32 seed) {
 }
 
 u8 bnLandFor(i32 seed, int x, int z, u8 host, double temp, bool v19) {
-  // the slow mask: BetterNether's lands in patches about 400 blocks across, BTA's between them
+  // the slow mask: the painted lands in patches about 400 blocks across, the classic lands between them
   const double m = maskNoise(seed).fbm2(x / 384.0, z / 384.0, 2);
   const double edge = ((hash32(seed, x, z, 0xB7E8) & 255) / 255.0) * 0.06;   // a ragged border, not a line
   if (m < 0.12 + edge) return BN_NONE;
   switch (host) {
-    // the crags by their warmth, as BetterNether's climate points: jungle (0.5, 0.8), swamp (0.1, 0.8), warped woods (0.0, 0.55)
+    // the crags by their warmth, as the lands' climate points: jungle (0.5, 0.8), swamp (0.1, 0.8), warped woods (0.0, 0.55)
     case NB_CRAG:
-      // (terrain 19: by the crags' own warmth, which runs 0.76..0.96 — at BetterNether's 0.62 / 0.45 they were all jungle)
+      // (terrain 19: by the crags' own warmth, which runs 0.76..0.96 — at the old 0.62 / 0.45 they were all jungle)
       if (v19) return temp > 0.9 ? BN_JUNGLE : temp > 0.84 ? BN_SWAMP : BN_OLD_WARPED;
       return temp > 0.62 ? BN_JUNGLE : temp > 0.45 ? BN_SWAMP : BN_OLD_WARPED;
     case NB_OLDWORLD: return BN_GRAVEL_DESERT;
     case NB_SULFUR: return BN_SWAMP;
     case NB_VOLCANIC: return BN_MAGMA;
     case NB_SHELF: case NB_OLD_DESERT: return BN_SOUL_PLAIN;   // the cold dry shelf: BN's soul plain (0.01, -0.5)
-    default: return BN_NONE;   // the crystal lands stay BTA's
+    default: return BN_NONE;   // the crystal lands stay classic
   }
 }
 
@@ -96,7 +96,7 @@ struct Painter {
   void hang(int x, int r, int z, BlockId id, int n) { for (int k = 1; k <= n && open(at(x, r - k, z)); k++) set(x, r - k, z, id); }
   bool clearUp(int x, int f, int z, int h) { for (int k = 1; k <= h; k++) if (!open(at(x, f + k, z))) return false; return true; }
 
-  // BetterNether's rubeus: a straight trunk under a round crown
+  // the rubeus: a straight trunk under a round crown
   void rubeus(int x, int f, int z, int h) {
     for (int k = 1; k <= h; k++) set(x, f + k, z, I.rlog);
     const int top = f + h;
@@ -170,7 +170,7 @@ struct Painter {
       case BN_MAGMA:
         if (solidTop) {
           if (r2 < 0.32f) set(x, f, z, I.magma);
-          if (r < 0.008f) stack(x, f, z, I.obsidian, 1 + (int)(r3 * 3));   // BetterNether's obsidian crystals, small
+          if (r < 0.008f) stack(x, f, z, I.obsidian, 1 + (int)(r3 * 3));   // obsidian crystals, small
           else if (r < 0.025f) stack(x, f, z, I.bbush, 1);
         }
         if (roof && r3 < 0.025f) hang(x, roofUnder, z, I.vines[1], 1 + (int)(r2 * 3));
@@ -201,11 +201,11 @@ struct Painter {
 
 void bnPaint(i32 seed, const nethergen::NetherGen& g, GenBuf& b, int cx, int cz, bool trees, bool strongHash) {
   Painter P{b, ids(), reg(), seed, cx * 16, cz * 16, strongHash};
-  if (!P.I.jgrass) return;   // (the data without BetterNether's blocks)
+  if (!P.I.jgrass) return;   // (the data without the painted lands' blocks)
   for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
     const int wx = cx * 16 + x, wz = cz * 16 + z;
     const double m = maskNoise(seed).fbm2(wx / 384.0, wz / 384.0, 2);
-    if (m < 0.12) continue;   // (cheap first: most columns are BTA's)
+    if (m < 0.12) continue;   // (cheap first: most columns are classic)
     double temp = 0;
     const u8 host = [&] {
       const int bio = g.biomeAt(wx, 128, wz);

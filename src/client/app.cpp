@@ -164,16 +164,16 @@ void App::reloadTiles() {
   holidayTiles(tiles);     // December's wrapped chests
   loadLocalTiles(tiles);   // imported magic's particles (local only: the spell effects import)
   buildWeatherSprites(tiles);   // render/weather_sprites.h: rain and snow from the pack, or drawn
-  // ice you can see through like Minecraft's (about 60 % cover), whichever pack painted it
+  // ice you can see through (about 60 % cover), whichever pack painted it
   for (const char* k : {"ice", "frosted_ice"}) {
     auto it = tiles.index.find(k);
     if (it == tiles.index.end() || it->second < 0 || it->second >= tiles.count) continue;
     u8* px = tiles.rgba.data() + (size_t)it->second * tiles.size * tiles.size * 4;
     for (int i = 0; i < tiles.size * tiles.size; i++) if (px[i * 4 + 3] > 8 && px[i * 4 + 3] != 253) px[i * 4 + 3] = (u8)std::min(155, px[i * 4 + 3] * 3 / 4);
   }
-  // Better than Adventure's rubyglass, whichever pack painted it: the crystal is see-through (BTA's is 80 % cover, a
+  // the rubyglass, whichever pack painted it: the crystal is see-through (80 % cover, a
   // little more open here so it reads as glass in the Nether's glow), and the whole family shines from within the way
-  // BTA's emissive layers make it: the brightest half of each picture glows fully, the rest a little
+  // its emissive layers make it: the brightest half of each picture glows fully, the rest a little
   for (const char* k : {"rubyglass_crystal", "rubyglass_column", "rubyglass_node", "rubyglass_growth", "rubyglass_block", "rubyglass_bricks", "red_crystal", "red_crystal_cluster"}) {
     auto it = tiles.index.find(k);
     if (it == tiles.index.end() || it->second < 0 || it->second >= tiles.count) continue;
@@ -190,7 +190,7 @@ void App::reloadTiles() {
     for (int i = 0; i < S * S; i++) {
       if (px[i * 4 + 3] <= 8) { e[i] = 0; continue; }
       // the crystal: clear red glass (about 45 % cover, its edges a little more) with only a soft glow, so what's behind
-      // it shows; the opaque rubyglass (column, node, bricks) glows the way BTA's emissive layers do
+      // it shows; the opaque rubyglass (column, node, bricks) glows the way the emissive layers do
       if (glass && px[i * 4 + 3] != 253) px[i * 4 + 3] = (u8)std::min<int>(px[i * 4 + 3], 115);
       if (giant && px[i * 4 + 3] != 253) px[i * 4 + 3] = (u8)std::min<int>(px[i * 4 + 3], 150);
       const bool bright = px[i * 4] * 3 + px[i * 4 + 1] * 6 + px[i * 4 + 2] >= mid;
@@ -425,7 +425,7 @@ void App::frameLoop() {
       if (Screen* s = topScreen()) { if (!s->onBack(*this) && s->id() != std::string("title")) popScreen(); }
       else if (session && input.pressed(Act::Pause)) pushScreen(makePauseScreen());
     }
-    // BTA 8.0: pause and mute when the window is not in front, written for this engine.
+    // pause and mute when the window is not in front, written for this engine.
     // After the Escape handler, so the menu this opens is not closed on the same press.
     // A shared world still runs (GameSession only pauses a world that is not on the network).
     bool focused = window && (SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS) != 0;

@@ -59,7 +59,7 @@ struct PM { int u, v, w, h, d; };
 struct PMo { bool upper = false, lower = false, whole = false, mirror = false, lying = false, wool = false, under = false, slimeFace = false; int legStrip = -1; bool hasOver = false; PM over{}; };
 struct PMPart { std::string name; PM box; PMo o; };
 struct PMSpec { std::vector<std::string> tex; int texW = 64; std::string overlay, eyes; std::vector<std::string> wool, under; std::vector<std::string> hide; std::vector<std::string> hidePrefix; std::vector<PMPart> parts;
-  std::unordered_map<std::string, std::array<float, 6>> box;   // with the pack's skin, a part takes Minecraft's box: {lo x,y,z, size x,y,z} in px, model space (feet at 0)
+  std::unordered_map<std::string, std::array<float, 6>> box;   // with the pack's skin, a part takes the skin layout's box: {lo x,y,z, size x,y,z} in px, model space (feet at 0)
 };
 
 static std::vector<PMPart> pmBiped(PM head, std::optional<PM> hat, PM body, PM arm, std::optional<PM> armL, PM leg, std::optional<PM> legL) {
@@ -105,7 +105,7 @@ static const std::unordered_map<std::string, PMSpec>& packMobs() {
   { PMSpec s; s.tex = {"entity/skeleton/skeleton"}; s.hide = {"spine"}; s.parts = pmBiped(zh, std::nullopt, zb, sa, std::nullopt, sl, std::nullopt); M["skeleton"] = s; }
   { PMSpec s; s.tex = {"entity/skeleton/wither_skeleton", "entity/wither_skeleton"}; s.hide = {"spine"}; s.parts = pmBiped(zh, std::nullopt, zb, sa, std::nullopt, sl, std::nullopt); M["wither_skeleton"] = s; }
   // the zombie pigman: the pack's classic zombie_pigman picture (the zombie's layout; its left arm and leg are left blank in
-  // the picture and mirror the right ones, as in Minecraft before 1.8) before the newer piglin-shaped one
+  // the picture and mirror the right ones, as in the old 64x32 layout) before the newer piglin-shaped one
   { PMSpec s; s.tex = {"entity/zombie_pigman", "entity/piglin/zombie_pigman"}; s.parts = pmBiped(zh, zhat, zb, za, std::nullopt, zl, std::nullopt); M["zombie_pigman"] = s; }
   { PMSpec s; s.tex = {"entity/skeleton/stray"}; s.overlay = "entity/skeleton/stray_overlay"; s.hide = {"spine", "cloak"}; s.parts = pmBiped(zh, std::nullopt, zb, sa, std::nullopt, sl, std::nullopt); M["stray"] = s; }
   auto illager = [&](PM head, PM body, PM arm, PM leg, std::vector<PMPart> extra) {
@@ -118,11 +118,11 @@ static const std::unordered_map<std::string, PMSpec>& packMobs() {
   { PMSpec s; s.tex = {"entity/witch"}; s.hide = {"hood", "herbs"}; s.parts = illager({0, 0, 8, 10, 8}, {16, 20, 8, 12, 6}, {44, 22, 4, 8, 4}, {0, 22, 4, 12, 4}, {P("skirt", {0, 38, 8, 18, 6})}); M["witch"] = s; }
   { PMSpec s; s.tex = {"entity/creeper/creeper"}; s.hide = {"cracks", "slits", "jaw", "crown"}; s.hidePrefix = {"frond", "thorn"};
     s.parts = {P("head", {0, 0, 8, 8, 8}), P("body", {16, 16, 8, 12, 4})}; for (const char* n : {"FR", "FL", "BR", "BL"}) s.parts.push_back(P(std::string("leg") + n, {0, 16, 4, 6, 4}));
-    // Minecraft's creeper proportions (legs 4x6x4, body 8x12x4, head 8x8x8: 26 px tall) on the fuseling's pivots, so the skin isn't stretched
+    // the classic creeper proportions (legs 4x6x4, body 8x12x4, head 8x8x8: 26 px tall) on the fuseling's pivots, so the skin isn't stretched
     s.box = {{"legFL", {-4, 0, -6, 4, 6, 4}}, {"legFR", {0, 0, -6, 4, 6, 4}}, {"legBL", {-4, 0, 2, 4, 6, 4}}, {"legBR", {0, 0, 2, 4, 6, 4}},
              {"body", {-4, 6, -2, 8, 12, 4}}, {"head", {-4, 18, -4, 8, 8, 8}}};
     M["fuseling"] = s; }
-  { PMSpec s; s.tex = {"entity/enderman/enderman", "entity/enderman"};   // Minecraft's 64x32 enderman; the jaw is its headwear box
+  { PMSpec s; s.tex = {"entity/enderman/enderman", "entity/enderman"};   // the classic 64x32 enderman; the jaw is its headwear box
     s.eyes = "entity/enderman/enderman_eyes";   // its glow, drawn for the pack's own face (the glow plane takes it)
     s.parts = {P("head", {0, 0, 8, 8, 8}), P("jaw", {0, 16, 8, 8, 8}), P("body", {32, 16, 8, 12, 4}),
                P("armR", {56, 0, 2, 30, 2}, up), P("foreR", {56, 0, 2, 30, 2}, lo), P("armL", {56, 0, 2, 30, 2}, upM), P("foreL", {56, 0, 2, 30, 2}, loM),
@@ -136,7 +136,7 @@ static const std::unordered_map<std::string, PMSpec>& packMobs() {
   { PMSpec s; s.tex = {"entity/spider/cave_spider"}; s.eyes = "entity/spider_eyes"; s.parts = pmSpider(); M["cave_spider"] = s; }
   { PMSpec s; s.tex = {"entity/slime/slime"}; PMo sf; sf.slimeFace = true; s.parts = {P("cube", {0, 0, 8, 8, 8}), P("core", {0, 16, 6, 6, 6}, sf)}; M["slime"] = s; }
   { PMSpec s; s.tex = {"entity/blaze"}; s.parts = {P("core", {0, 0, 8, 8, 8})}; for (int i = 0; i < 12; i++) s.parts.push_back(P("rod" + std::to_string(i), {0, 16, 2, 8, 2})); M["cinder_wisp"] = s; }
-  { // the bee (the pack's entity/bee: Minecraft's 64x64 layout), plain, angry and carrying nectar
+  { // the bee (the pack's entity/bee: a 64x64 layout), plain, angry and carrying nectar
     PMSpec s; s.tex = {"entity/bee/bee", "entity/bee"};
     PMo wl; wl.mirror = true;
     s.parts = {P("body", {0, 0, 7, 7, 10}), P("sting", {26, 7, 1, 1, 2}), P("antL", {2, 0, 1, 2, 3}), P("antR", {2, 3, 1, 2, 3}),
@@ -157,8 +157,8 @@ static const std::unordered_map<std::string, PMSpec>& packMobs() {
     s.tex = {"entity/pig/cold_pig", "entity/pig_cold", "entity/pig/temperate_pig", "entity/pig_temperate", "entity/pig/pig", "entity/pig"}; M["pig#cold"] = s;
     s.tex = {"entity/pig/warm_pig", "entity/pig_warm", "entity/pig/temperate_pig", "entity/pig_temperate", "entity/pig/pig", "entity/pig"}; M["pig#warm"] = s; }
   { PMSpec s; s.tex = {"entity/sheep/sheep", "entity/sheep"};
-    s.wool = {"entity/sheep/sheep_fur", "entity/sheep/sheep_wool", "entity/sheep_wool"};   // Minecraft's old name, 1.21.5's, a pack's own place
-    s.under = {"entity/sheep/sheep_wool_undercoat", "entity/sheep_wool_undercoat"};          // 1.21.5's undercoat: what a sheared sheep keeps
+    s.wool = {"entity/sheep/sheep_fur", "entity/sheep/sheep_wool", "entity/sheep_wool"};   // the old name, the newer one, a pack's own place
+    s.under = {"entity/sheep/sheep_wool_undercoat", "entity/sheep_wool_undercoat"};          // the newer layout's undercoat: what a sheared sheep keeps
     s.parts = pmQuad({0, 0, 6, 6, 8}, {28, 8, 8, 16, 6}, {0, 16, 4, 12, 4});
     PMo w = ly; w.wool = true; PMo w2; w2.wool = true;
     PMo u = ly; u.under = true; PMo u2; u2.under = true;
@@ -378,7 +378,7 @@ static void voxelPart(VoxelGrid& g, ivec3 n, const std::array<Pic, 6>& F, bool g
   }
 }
 
-// The enderman's jaw (Minecraft's headwear box): when it lifts its head in anger, the jaw's rim shows a crown of jagged
+// The enderman's jaw (the skin's headwear box): when it lifts its head in anger, the jaw's rim shows a crown of jagged
 // teeth around a dark open mouth. The top voxels of the box are carved into points all round its edge, in the jaw's own colours.
 static void toothCrown(VoxelGrid& g, ivec3 n) {
   int th = std::max(2, n.y * 2 / 5);   // the teeth: the top two fifths of the jaw
@@ -423,13 +423,13 @@ static void partGrid(const TileSet& ts, const RigModel& M, const std::string& ke
     return;
   }
   // a bird's leg above feet of its own (tools/port/bird_feet.py) keeps its own stick: the pack skin's leg box is mostly
-  // clear texels (Minecraft draws the toes in it), and on the 1 px stick it carved the whole leg away
+  // clear texels (the skin draws the toes in it), and on the 1 px stick it carved the whole leg away
   const bool ownFeet = p.role == "bleg" && M.find(p.name == "legL" ? "footL" : "footR") >= 0;
   bool packed = !ownFeet && pack && std::any_of(faces[i].begin(), faces[i].end(), [](const Pic& x) { return !x.empty(); });
   std::array<Pic, 6> F = packed ? faces[i] : tilesOf(ts, p.tex);
   lo = p.min; size = glm::max(p.max - p.min, vec3(1e-3f));
   // birds' feet: the rig's legs are 1 px sticks, which loses the toes. With a pack skin the leg takes
-  // Minecraft's 3x5x3 box (its picture has the toes; the clear texels carve the rest away); with the
+  // the skin's 3x5x3 box (its picture has the toes; the clear texels carve the rest away); with the
   // original's tiles a foot of three toes forward and one back is added under the stick.
   // (a model with feet of its own, tools/port/bird_feet.py's: none of that, the leg stays a leg)
   bool bird = p.role == "bleg" && size.x <= 1.6f / 16 && M.find(p.name == "legL" ? "footL" : "footR") < 0;
@@ -493,7 +493,7 @@ const CreatureModelGL* creatureModel(const std::string& key) {
   std::vector<std::array<Pic, 6>> faces(M->parts.size());
   std::vector<u8> hidden(M->parts.size(), 0);
   bool pack = packSkin(*M, key, faces, hidden, out->packSkin);
-  if (!M->uvTex.empty()) {   // the model's own picture: its parts' faces cut out of it Minecraft-fashion (box uv)
+  if (!M->uvTex.empty()) {   // the model's own picture: its parts' faces cut out of it by box uv
     Img img; int w = 0, h = 0;
     if (loadPng(dataDir() / M->uvTex, w, h, img.px) && w > 0) { img.w = w; img.h = h; }
     if (img.ok()) for (size_t i = 0; i < M->parts.size(); i++) {

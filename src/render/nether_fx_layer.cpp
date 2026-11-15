@@ -1,4 +1,4 @@
-// render/nether_fx_layer.cpp — the life of BTA 8.0's Nether lands (gen/nether_lands.h), on this device:
+// render/nether_fx_layer.cpp — the life of the classic Nether lands (gen/nether_lands.h), on this device:
 //  * the Volcanic Islands' volcanoes erupt now and then, each on its own clock taken from the world's time (so everyone
 //    in a shared world sees the same eruption): a grumble a few seconds before, then the blast (heard far off, the
 //    ground shakes near it), a fountain of lava, glowing bombs flung down the slopes and a column of smoke that

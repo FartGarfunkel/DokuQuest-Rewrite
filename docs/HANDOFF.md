@@ -3,9 +3,8 @@
 **Newest: `docs/HANDOFF_2026-11-12.md`** (combat moves, animation, immersive first person; where it stands and what's left).
 
 Start here in a new session. Read this file, `CLAUDE.md` (the code map), and only the files a task needs.
-The full feature list is `docs/MASTER_PLAN.md` (the user's master doc, V2); the BTA detail is `docs/BTA_GAP.md`; the
-Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`. Third-party credits: `docs/CREDITS.md` (Horizon MIT; Cubyz and
-BTA ideas only). Released: alpha.9, alpha.10 (On the Road) and alpha.11 (Every Creature Its Own) on 2026-11-01 evening;
+The full feature list is `docs/MASTER_PLAN.md` (the user's master doc, V2); the classic-features detail is `docs/WISHLIST.md`; the
+Herobrine lore and ideas are `docs/HEROBRINE_LORE.md`. Third-party credits: `docs/THIRD_PARTY_NOTICES.md`. Released: alpha.9, alpha.10 (On the Road) and alpha.11 (Every Creature Its Own) on 2026-11-01 evening;
 alpha.12 (Coloured Light) on 2026-11-02 night.
 
 ## 2026-11-11 (Claude): the physical journal, immersive stations, books, living villages — handoff for Claude + Grok in tandem
@@ -119,87 +118,87 @@ floating or resizing, stations worked in the world, other players see what you d
 - GL-owning statics must be heap-allocated and never freed (`*new …`), or exit crashes after the context dies.
 - The test script's `be` op takes `data`, not `e`.
 
-## 2026-11-07 (Claude): BTA menus, Better End's End, BTA's Nether, the Aether (uncommitted, with Grok's work under it)
-- **Menus like BTA 8.0:** `ui/paged.h/.cpp` is BTA's ScreenPaged kit (page list with item icons, folding categories,
+## 2026-11-07 (Claude): paged menus, the End's lands, the classic Nether, the Skylands' islands (uncommitted, with Grok's work under it)
+- **Paged menus:** `ui/paged.h/.cpp` is a paged-screen kit (page list with item icons, folding categories,
   24-unit rows: name, leader line, 100-unit control, reset button, hover tooltips, Search page, LB/RB pages). Used by
   Options (`ui/options.cpp`: General, Player, Audio, Video, Controls with the keys inline, Accessibility, Asset Packs,
-  Language Packs, Search), Select World / Create New World / Rename / Delete / World Settings (`ui/worlds.cpp`, BTA's
-  exact button rows) and Select Server (`ui/multiplayer.cpp`: Favorites/History/Local Network/Direct Connect, Join/Edit/
+  Language Packs, Search), Select World / Create New World / Rename / Delete / World Settings (`ui/worlds.cpp`, the classic
+  button rows) and Select Server (`ui/multiplayer.cpp`: Favorites/History/Local Network/Direct Connect, Join/Edit/
   Delete column, Add/Edit/Delete Server screens). The launcher's Options tab (`launcher/options.cpp`) has its own copy
   of the same layout (the launcher has its own ImGui context and fonts).
-- **The End = Better End 3.2.5 (MIT, docs/CREDITS.md):** `render/be_sky.cpp` (+ `assets/shaders/be_sky.glsl`,
+- **The End's lands (docs/THIRD_PARTY_NOTICES.md):** `render/be_sky.cpp` (+ `assets/shaders/be_sky.glsl`,
   `assets/sky/betterend/`), the per-land fog colour/density in `render/sky.cpp`, `gen/theend_be.cpp` (surfaces, trees,
-  plants per land; land 2 is now Foggy Mushroomland), 103 BE blocks from `tools/port/betterend_blocks.py`.
-- **Terrain version 7** (new worlds; old ones keep 6 until World Settings → Upgrade): BTA's Nether climate/density
-  fixes, surfaces and features (`gen/nether_bta.cpp` v7 branches, `gen/nether_bta7.cpp`), BTA fog + grade
-  (`render/nether_grade_layer.cpp`, option colorCorrectionNether) for every cave Nether; the Aether's islands
-  (`gen/aether_noise.*`, `gen/skylands_aether.cpp`, AETHER_DY 100).
-- **Art rules:** BTA/Aether art is not shippable: `tools/port/bta_nether_blocks.py` and `aether_blocks.py` recolour the
-  base pack; `tools/port/local_mod_art.py` builds a this-computer-only pack from the user's own mod copies.
+  plants per land; land 2 is now Foggy Mushroomland), 103 End blocks from `tools/port/end_blocks.py`.
+- **Terrain version 7** (new worlds; old ones keep 6 until World Settings → Upgrade): the classic Nether's climate/density
+  fixes, surfaces and features (`gen/nether_lands.cpp` v7 branches, `gen/nether_lands7.cpp`), classic Nether fog + grade
+  (`render/nether_grade_layer.cpp`, option colorCorrectionNether) for every cave Nether; the Skylands' islands
+  (`gen/isles_noise.*`, `gen/skylands_isles.cpp`, ISLES_DY 100).
+- **Art rules:** third-party reference art is not shippable: `tools/port/nether_blocks.py` and `skyland_blocks.py` recolour the
+  base pack; `tools/port/local_mod_art.py` builds a this-computer-only pack from the user's own reference copies.
 - **Build here:** the toolchain is /tmp/toolchain (PATH + LD_LIBRARY_PATH to its usr/bin, usr/lib64). The old sysroot
   /tmp/dq-sysroot is gone: SDL and imgui's SDL backend can't recompile, so after any `cmake build` touch their objects
   newer than the headers. The objects record system headers as /usr/include/... (sysroot paths); drop entries for
   files that don't exist from build/**/compiler_depend.* and *.o.d before `make`, or everything rebuilds.
-- Research notes with the remaining gaps: `docs/research/{better_end,bta_nether,aether}.md`.
+- Research notes with the remaining gaps: `docs/research/{better_end,nethergen,aether}.md`.
 - **Later the same day:** the game's menus use the launcher's look (`ui/paged.cpp` classicDirt / classicButton /
-  pageIcon). Better End's 6 creatures (`tools/port/end_mobs.py`, spawned per land in `sim/creature_spawn.cpp`). The
-  Aether's dungeons are structures now (`gen/structures_aether.cpp`, terrain 7 only, registered after the roads):
+  pageIcon). The End lands' 6 creatures (`tools/port/end_mobs.py`, spawned per land in `sim/creature_spawn.cpp`). The
+  Skylands' dungeons are structures now (`gen/structures_skylands.cpp`, terrain 7 only, registered after the roads):
   bronze (Slider), silver (angelic temple on a cloud bed, Valkyrie Queen) and gold (floating island, hellfire hall, Sun
   Spirit + 2 fire minions woken in `sim/keepers.cpp`). New blocks: angelic/hellfire stone (+ lit), pillar, pillar top,
   holystone bricks, crystal fruit leaves; new creatures: slider, sentry (on carved stone), sun_spirit, fire_minion,
-  evil_whirlwind (`tools/port/aether_mobs.py`). BTA Nether: heat haze (option heatHaze, depth copied in
+  evil_whirlwind (`tools/port/skyland_mobs.py`). Classic Nether: heat haze (option heatHaze, depth copied in
   NetherGradeLayer::drawTranslucent because the held item clears depth), red water / opaque lava fog, sulfuric fire
-  (yellow, on brimstone in the Sulfur Fields). Not done: Better End's NBT structures, the Aether's holiday tree, title and
+  (yellow, on brimstone in the Sulfur Fields). Not done: the End lands' NBT structures, the Skylands' holiday tree, title and
   pause screens still use the pack's buttons.
-- **Evening (second round, after the user's "Nether isn't BTA / audio broken / menus not like the launcher"):**
+- **Evening (second round, after the user's "Nether isn't right / audio broken / menus not like the launcher"):**
   - The user had been running the downloaded alpha.18, not this build: build/CMakeCache.txt said DQ_VERSION alpha.16, so
     the launcher's updater preferred the release. Fixed both: the cache is alpha.18 now, and launcher/updater.cpp runs
     the game next to a launcher that sits in a CMake build folder, whatever the versions say.
   - Audio: PipeWire had "media.name:miniaudi0" (miniaudio's shared default stream name) saved as muted. audio.cpp names
     its stream "DokuQuest" now (pulse app + stream name) and logs the device. Effects were checked by recording the game's
     own stream (parec --monitor-stream): footsteps, mining, level-up all audible.
-  - Every menu uses the launcher look: theme.cpp mcButton/button -> classicButton, Panel frame, ImGui colours, slider ->
-    mcSlider, col:: palette greys; pause screen BTA gradient.
+  - Every menu uses the launcher look: theme.cpp greyButton/button -> classicButton, Panel frame, ImGui colours, slider ->
+    greySlider, col:: palette greys; pause screen classic gradient.
   - Smoothing: sky.cpp crossfades fog/sky 0.7 s on a dimension change; the Old World fog eases; the Nether grade fades
-    in/out and reads BTA's exact temperature.
-  - **Terrain 7 Nether = gen/bta/** (exact port of BTA 8.0.1's generator by a subagent, validated block-for-block against
-    BTA's own classes run in Java: terrain, surface, large features, biomes, all 47 decorations; Region decoration mode).
+    in/out and reads the generator's exact temperature.
+  - **Terrain 7 Nether = gen/nethergen/** (the classic Nether generator, written by a subagent, validated block-for-block against
+    its reference: terrain, surface, large features, biomes, all 47 decorations; Region decoration mode).
     gen/nether_exact.cpp maps its blocks to ours and serves generate/solidAt/terrainColumn/netherLandAt/temperature.
-    The old v7 approximation (nether_bta7.cpp, the v7 branches in generateCave) is now unused for v7.
-  - **Terrain 7 End = gen/be/** (Better End's TerrainGenerator/IslandLayer/OpenSimplex ported bit-exact; BCLib's SDF and
+    The old v7 approximation (nether_lands7.cpp, the v7 branches in generateCave) is now unused for v7.
+  - **Terrain 7 End = gen/be/** (the End's terrain generator/island layer/OpenSimplex, bit-exact; the SDF and
     hex biome map reconstructed — see gen/be/README.md). theend.cpp: island()/endBiome() read a per-chunk column cache,
     generate() fills from the 3D density (stacked islands each get their land's ground); voidRing = OUTER, the dragon's
     island stays ours. endLandAt(seed, genVersion, x, z) for the sky/spawns/particles.
-  - Better End's 63 land structures: tools/port/be_building.py makes the 116 building blocks they need (cloned from our
-    block kinds, BE pictures through the art pass) and data/be_structures.json; gen/end_be_structures.cpp places them
-    (1 in 10 chunks, BE's lists per land, rotated). Pillars: see the night section above. Not ported: the eternal portal.
-  - Textures: local_mod_art.py and betterend_blocks.py use restyle.py's colour ramp now (the pack's picture of the same
-    kind in the mod's colours); packs.cpp lays "Mod Art (local)" over the chosen pack automatically.
+  - The End lands' 63 structures: tools/port/end_building.py makes the 116 building blocks they need (cloned from our
+    block kinds, reference pictures through the art pass) and data/be_structures.json; gen/end_be_structures.cpp places them
+    (1 in 10 chunks, the lists per land, rotated). Pillars: see the night section above. Not done: the eternal portal.
+  - Textures: local_mod_art.py and end_blocks.py use restyle.py's colour ramp now (the pack's picture of the same
+    kind in the reference's colours); packs.cpp lays "Mod Art (local)" over the chosen pack automatically.
   - Tile budget: GPUs with 2048 array layers hold 4096 tiles (2 pages). Pack animations are capped at 32 frames
     (packs.cpp) to stay under it (4024 now). Adding many more pictures needs a third page or atlas packing.
 
-## Small hours 2026-11-08 (Claude): the open BTA Nether (terrain 8), pack looks, ores into tools (uncommitted)
-  - Terrain 8 (new worlds' default; World Settings > Upgrade moves a world to it): BTA's exact Nether on version 5's open
-    land (the GitHub build's walkable heightfield). bta::NetherGenOptions::shape (gen/bta, unset = BTA exactly) takes the
-    column shapes; gen/nether_exact.cpp OpenShape picks version 5's land shapes (NetherShape::columnWeighted) from BTA's
-    biome map every 4 blocks, blended over 14, lifted 46 so v5's lava sea (50) is BTA's (96). BTA's bedrock, surface,
+## Small hours 2026-11-08 (Claude): the open classic Nether (terrain 8), pack looks, ores into tools (uncommitted)
+  - Terrain 8 (new worlds' default; World Settings > Upgrade moves a world to it): the classic Nether on version 5's open
+    land (the walkable heightfield). nethergen::NetherGenOptions::shape (gen/nethergen, unset = the generator exactly) takes the
+    column shapes; gen/nether_exact.cpp OpenShape picks version 5's land shapes (NetherShape::columnWeighted) from the classic
+    biome map every 4 blocks, blended over 14, lifted 46 so v5's lava sea (50) is the classic one's (96). Its bedrock, surface,
     caves, floes, shelves and 47 decorations run on it. DepthsGen::spawnHeight reads the real terrain (7 and 8: down from
     the roof, never into lava): /tp nether dropped you from y ~194 before (it asked the v6 cave shape).
-  - Nether spawns: the game's own Nether crowd back on terrain 6+ by BTA land (sulfur slimes, crystal wisps, magma
+  - Nether spawns: the game's own Nether crowd back on terrain 6+ by classic land (sulfur slimes, crystal wisps, magma
     slimes and ember fuselings on the volcanic islands, scorched skeletons in the Old World, charred ghouls on crags and
-    shelves, cinder wisps with the fortress's wither skeletons), besides BTA's pigmen and ghasts.
+    shelves, cinder wisps with the fortress's wither skeletons), besides the classic pigmen and ghasts.
   - Pack skins: zombie_pigman (the pack's zombie_pigman.png, zombie 64x64 layout) and wither_skeleton specs; cow/pig paths
     fixed for the pack's flat names (entity/pig_temperate...); climate looks pig/cow/chicken #cold/#warm (data "climate"
     set at spawn from the chunk's temperature, creature_layer modelFor). Still no pack spec: armadillo, bat, camel, cat,
     cod, dolphin, donkey, end_crystal, fox, frog, glow_squid, goat, horse, ocelot, panda, parrot, pufferfish, rabbit,
-    salmon, shulker, squid, turtle, warden, wither (each needs its Minecraft UV boxes mapped to our rig's parts).
+    salmon, shulker, squid, turtle, warden, wither (each needs its pack-layout UV boxes mapped to our rig's parts).
   - Enderman eyes: the glow plane takes the pack's enderman_eyes cut exactly as the head's face (pmFaces), not the
     built-in eye tile. Villagers: no freckles or cheek scar (stray dots on the voxel face); draws kept so the rest stays.
   - Menus: classicButton draws the pack's widget/button sprites (3-slice) when the pack has them (the brown boxes).
   - Clouds: no voxel wisps over the volumetric layer (the strips), mist greys far clouds instead of cutting them at 70
     blocks, the land's cover eases over 8 s, a fixed dither (no flicker), more steps toward the horizon.
   - Rubyglass: after the pack loads the crystal is ~65 % cover and the family glows from within (bright half 225, the
-    rest 70 in the emissive channel), as BTA's emissive layers do (app.cpp reloadTiles).
+    rest 70 in the emissive channel), as emissive layers do (app.cpp reloadTiles).
   - Ores: zanite (gem), gravitite (plate) and thallasium (ingot) are full materials (tools/port/new_materials.py: items,
     tool and armour sets, recipes, smelting, drops, icons recoloured from the iron ones, built-in and pack-styled into
     the overlay) and forge/mixed-tool materials (forging.py, tool_parts.py: 22 now). ender_ore, amber_ore and
@@ -214,28 +213,28 @@ floating or resizing, stations worked in the world, other players see what you d
 ## Small hours 2026-11-08, second round (Claude): elytra, terrain 8's lands, rubyglass, Nether landings
   - Elytra: thin (the model's pixel of growth only along the panel; z scale 0.55), and the picture redrawn after the
     user's reference: a frame of bone down both long edges and the top, two ribs, a stepped trailing edge (elytra_art.py).
-  - Terrain 8's shapes: NetherShape(seed, open8) gives all seven of BTA's lands their own walkable ground (floorOf;
+  - Terrain 8's shapes: NetherShape(seed, open8) gives all seven classic lands their own walkable ground (floorOf;
     version 5's own shapes are floorOfV5, unchanged): gentler crags, volcanic islands half out of the lava with channels,
     crystal plains, shelf terraces (steps of 5); the forest, the Old World and the sulfur pools as version 5 makes them.
-    dq-gentool nether8 <seed> prints BTA's biome map (30 % volcanic, 23 % crag, 18 % crystal forest, 15 % Old World...);
+    dq-gentool nether8 <seed> prints the classic biome map (30 % volcanic, 23 % crag, 18 % crystal forest, 15 % Old World...);
     dq-gentool ncol <seed> x z the landing and the real column.
-  - Structures were built in BTA's caves under the open land (terrainExact found the ground from the bedrock up):
+  - Structures were built in the classic caves under the open land (terrainExact found the ground from the bedrock up):
     terrain 8 finds it from the roof down now; locate shows them at the surface.
   - Landing: DepthsGen::spawnHeight checks the cheap terrain, then that no structure is within 8 blocks, then the
     decorated chunk; /tp with a place asked searches 96 blocks round it for ground instead of dropping you from y 160.
   - Spawns: the Nether's ground search runs from above you down 96 blocks (you could fly over everything before); ash
     layers count as ground. DQ_SPAWN_DEBUG logs why a pigman pack failed.
-  - Rubyglass column and node are clear red glass too (the user wants the giant crystals see-through; BTA has them
+  - Rubyglass column and node are clear red glass too (the user wants the giant crystals see-through; the classic ones are
     opaque): render 2, translucent, cullWith "rubyglass" (BlockTraits::cullGroup: one body with the crystal, no faces
     between them); after the pack loads they're ~60 % cover and their bright veins glow.
 
-## Late night 2026-11-07 (Claude): clouds, elytra, dragons, Nether spawns, Aether falls from below (uncommitted)
-  - Nether spawns: BTA 8.0.1 gives all four Nether biomes ghast 10 / zombie pigman 10; MobZombiePig.canSpawnHere needs
-    air, a BlockTags.NETHER_MOBS_SPAWN block under it, block light <= 7. Our ground list missed most of the exact
+## Late night 2026-11-07 (Claude): clouds, elytra, dragons, Nether spawns, Skylands falls from below (uncommitted)
+  - Nether spawns: the classic Nether gives all four Nether biomes ghast 10 / zombie pigman 10; a pigman needs
+    air, a Nether-spawn block under it, block light <= 7. Our ground list missed most of the exact
     Nether's ground (brimstone, brimsand, gloomstone, ember, rubyglass, cobbled netherrack): pigmen almost never spawned
     on terrain 7. netherMobsSpawnOn() (nether_exact.cpp) is that tag on our blocks; the cave Nether tries six places a
     roll over and under you. Checked: 16 pigmen (the cap) and 1-2 ghasts within 25 s of arriving.
-  - Aether falls seen from the Overworld: water/glass/ice (pass 2) and waterfall spray are drawn only in the camera's own
+  - Skylands falls seen from the Overworld: water/glass/ice (pass 2) and waterfall spray are drawn only in the camera's own
     land (world_renderer emitSections / waterfallBases); the land next door's solid edge still shows.
   - Volumetric clouds (render/clouds_volume.cpp, clouds_vol.glsl + clouds_comp.glsl, Options > Volumetric Clouds,
     extra "volumetricClouds", on): marched at a quarter of the screen across (legacy; half on modern), 18 steps + 2 light
@@ -247,14 +246,14 @@ floating or resizing, stations worked in the world, other players see what you d
   - Elytra: hung like the classic model (char_layer.cpp): 10 x 20 x 2 panels grown a pixel, hinged 5 px out at the
     top of the back 2 px behind, folded 15/15 deg (a V), gliding 90 deg out with 20 deg sweep (a steep dive folds them
     by 1 - (-dir.y)^1.5), sneaking 40/45 deg dropped 3 px. Art: tools/port/elytra_art.py draws a membrane-and-bone wing
-    (no Minecraft picture) with the DokuQuest Base pack's black wool / bone block grain into the local overlay pack
+    (no third-party picture) with the DokuQuest Base pack's black wool / bone block grain into the local overlay pack
     (entity/elytra.png 128 x 64 and the item icon); char_model.cpp reads the overlay's elytra first.
   - Dragons: tools/port/dragon_shape.py (run by data_patches.py, idempotent) gives all 24 dragon-rig models a chest,
     haunches and belly round a slimmer middle, thighs, feet with three claws, a fourth tail bone, jaw frills, nostrils
     and upper fangs (children of the rig's parts, sized from each model's boxes), and repaints dscale/dbelly/dwing for
     the eight kinds from their own colours (the ender wing's magenta grid is now a dark membrane with magenta veins).
 
-## Night 2026-11-07 (Claude): performance on the user's HD 520 laptops, Aether waterfalls, Better End's pillars (uncommitted)
+## Night 2026-11-07 (Claude): performance on the user's HD 520 laptops, Skylands waterfalls, the End's pillars (uncommitted)
 The user: "even on legacy opengl ... my Dell D10U 7040 and Dell 5414 rugged ... once 60fps, now lucky to stay at 10fps".
 The dev machine IS the Latitude 5414 (i5-6300U, HD 520): `SDL_VIDEODRIVER=offscreen ./build/dokuquest ...` runs on the
 real GPU with no window (llvmpipe under Xvfb says nothing useful about it). Profilers: `DQ_PROFILE=1` (CPU per scope,
@@ -285,16 +284,16 @@ misleading on Intel: the GPU idles and clocks down), `DQ_PROFILE_FRAMES=n`, `DQ_
     44 -> ~60 fps; flying through new land no more freezes (Overworld 48-69, Nether 40-84, End 100+). Left: the GPU is
     the limit now (leaves pass 5 ms, opaque 3.6, water 3.6, far land 2.5, sky 1.5). /tp nether pauses 1.6 s (the
     command probes the exact Nether for a landing spot; portals don't).
-  - Aether: liquids never leave their land through its floor (worldsys.cpp: band-local y 0 doesn't flow or spread; the
+  - Skylands: liquids never leave their land through its floor (worldsys.cpp: band-local y 0 doesn't flow or spread; the
     top of a land isn't fed from the land above, so old floods drain); the falls end in the cloud bank with spray
     (mesher waterfall fx at the floor). No aercloud blocks in either Skylands generator any more (v7 chains/ribbons,
     v6 banks); the Silver dungeon keeps its cloud bed. Chunks already saved keep their clouds. lod_far.bin's tag has a
     generator revision ("/2") so the far land is made again.
-  - Better End's pillars: be_building.py exports data/betterend/structures/pillars/*.nbt into be_structures.json
-    ("pillars"); EndGen::bePillar builds them like its SpikeFeatureMixin (base 3 into the ground, top at ground +
+  - The End's pillars: end_building.py exports data/betterend/structures/pillars/*.nbt into be_structures.json
+    ("pillars"); EndGen::bePillar builds them (base 3 into the ground, top at ground +
     height - 64, obsidian column one narrower with crying obsidian on the rim 1 in 24). end_fight.cpp puts each crystal
     on the highest bedrock of its pillar's centre column (so old saved pillars still work). New block: flavolite_slab.
-    Still not ported: Better End's eternal portal.
+    Still not done: the eternal portal.
 
 ## Evening 2026-11-02 (alpha.15/16: the fiancée can't join over the internet)
 - What the user found: the router, the host's firewall and the address are fine. Linux to Linux over mobile data by the
@@ -311,7 +310,7 @@ misleading on Intel: the GPU idles and clocks down), `DQ_PROFILE_FRAMES=n`, `DQ_
 - Test for the port-changing router: scratchpad udp_proxy.py (client :25600 -> server :25590, answers from :25601).
 
 ## Afternoon 2026-11-02 (alpha.14 "Tractor Beam": the user's look at alpha.13)
-- **Wither Storm like Story Mode:** tools/port/wither_storm.py (the model: obsidian mass, three heads with eyes, maws,
+- **The Wither Storm as a behemoth:** tools/port/wither_storm.py (the model: obsidian mass, three heads with eyes, maws,
   mandibles, fangs, the command-block heart, six tentacles of four segments; rig "wither_storm"); sim/wither.cpp
   stormScale (0.35 -> 1 while it gathers, then 1 + grown/250 up to 2.6; creature_rig.cpp creatureBase scales by
   data.growS, the brain scales w/h), stormMaw, the tractor beam (magic_fx "beam" particles, now with size/width/life),
@@ -341,14 +340,14 @@ Scripted playthroughs (menus, title → worlds, village/trade, night, rain, Neth
 under water) found and fixed: every HUD notice shown twice (ClientFx + HudFx both toasted; ui/hud.cpp hudTakesMessages);
 /weather never reached WeatherSystem (gamecommands.cpp now calls set()); the death screen's cause never set
 (combat.cpp playerDie -> p.data.deathCause); /kill always killed the player (now creatures by name / @e[type=] / @e);
-/summon takes Minecraft names (zombie = ghoul, creeper = fuseling) and says "did you mean"; /locate gave band-local y;
+/summon takes the common names (zombie = ghoul, creeper = fuseling) and says "did you mean"; /locate gave band-local y;
 /tp <land> over the void finds the nearest ground; Nether arrival portals search ±8 for a floor and get a wider
 landing; a portal crossing clears the fall start; water vision (render/terrain_fx.cpp: the light floor rises under
 water); death messages for acid/poison/etc.; deaths and hits of 5+ are logged ("X took N (type)"); five silent sound
 names; tools/check_sounds.py (in CI). The playthrough scripts live only in the session scratchpad; the useful ones to
 keep are tools/playtests/*.json.
 
-## Night 2026-11-01/02 (the user's list "Let's get these done": gameplay, BTA leftovers, art and tools, rendering, MP)
+## Night 2026-11-01/02 (the user's list "Let's get these done": gameplay, classic-feature leftovers, art and tools, rendering, MP)
 Released as alpha.12. docs/STATUS.md has the done / partly / not-yet split. Where the new pieces are:
 - **Coloured light:** render/light_colour_layer.cpp (a 64x48x64 RGB volume flooded on a worker, unit 12, common.glsl
   lightingAt). **Dyed portals:** sim/portals.cpp (dyeOf/setDye, lv.info.data["portalDye"]). **Bigger biomes:** worldType
@@ -362,7 +361,7 @@ Released as alpha.12. docs/STATUS.md has the done / partly / not-yet split. Wher
 - **Texture Studio Creatures tab:** launcher/texture_studio.cpp (openSkin/saveSkin; pack folder under userDir, else
   userDir/textures/entity overlay, which render/creature_models.cpp loadPackPic reads first). DQ_TS_OPEN=<rel> opens one.
 - **Skin check:** creature_models.cpp (no head/body parts -> warn once, fall back).
-- **Shaders:** render/post_layer.cpp (levels: settings.extra.shaderLevel 0..4, assets/shaders/post.glsl; Iris/OptiFine
+- **Shaders:** render/post_layer.cpp (levels: settings.extra.shaderLevel 0..4, assets/shaders/post.glsl; shader-pack
   composite*/final passes translated from GLSL 120; zipped packs listed). docs/shader-packs.md.
 - **Distant terrain:** distant.glsl per-block UVs (uTileWorld) + average colour past a pixel; water as chunk water
   (climateWater, fresnel). Test with DQ_ENV_TEST="x y z yaw pitch time clear" (yaw/pitch in RADIANS; it turns the
@@ -404,14 +403,14 @@ Released as alpha.12. docs/STATUS.md has the done / partly / not-yet split. Wher
   and where), portal far-side creatures not visually confirmed. Ideas for more looks: per-land fuseling looks beyond
   "elder", villager looks, sheared-sheep skin looks from the user's sheet.
 
-## Day 2026-11-01 (the user's bug reports while testing alpha.8, then the BTA 8.0 Nether, Cubyz tools, Horizon light)
-- **Terrain version 5** (LevelInfo/WorldGenOptions genVersion default 5; old saves keep theirs): `gen/nether_bta.*` is
-  BTA 8.0's Nether (NetherShape: floor/roof heightfields, five lands as jittered 230-block cells blended 56 blocks:
+## Day 2026-11-01 (the user's bug reports while testing alpha.8, then the classic Nether, mixed tools, dream light)
+- **Terrain version 5** (LevelInfo/WorldGenOptions genVersion default 5; old saves keep theirs): `gen/nether_lands.*` is
+  the classic Nether (NetherShape: floor/roof heightfields, five lands as jittered 230-block cells blended 56 blocks:
   Crag, Volcanic Islands (cones with breached lava craters), Sulfur Pools (acid pools with rims), Crystal Forest (spires
   on a 7-block grid, hanging ones), Old World (ash dunes, pits, ruins of scorched brick)); DepthsGen routes generate/
-  solidAt/terrainColumn/sample to it when `bta_` is set. `dq-gentool nether <seed>` maps the lands and finds a crater
+  solidAt/terrainColumn/sample to it when `lands_` is set. `dq-gentool nether <seed>` maps the lands and finds a crater
   and a pool. Overworld v5: ice floes by glaciers (`floes`). Per-land haze + minLight 0.27 (render/sky.cpp
-  btaNetherEnv, render/terrain_fx.cpp). Blocks from tools/port/nether_bta.py (acid = liquid kind 3: registry tLiquid 3,
+  emberNetherEnv, render/terrain_fx.cpp). Blocks from tools/port/nether_lands.py (acid = liquid kind 3: registry tLiquid 3,
   physics Contacts::acid also sets water; controller/creature damage; worldsys flows it; buckets refuse it).
 - **Mixed tools/armour** (`core/tool_parts.*`, data/tool_materials.json + mixed_* items from tools/port/tool_parts.py):
   crafting.cpp matchPartTool (patterns, mending with own materials), tag "pt"/"pa"; toolOf()/toolMaxDurability()/
@@ -431,19 +430,18 @@ Released as alpha.12. docs/STATUS.md has the done / partly / not-yet split. Wher
     geometry threshold and drew flat; assets/tileset.cpp deriveMicroVoxelHeights now stretches plain surfaces to their
     own contrast (3211 of 3753 tiles have whole-voxel relief, was 2687).
   - Nether lands: creatures per land in sim/creature_spawn.cpp (landAt via netherBiomeMix; new mobs sulfur_slime,
-    crystal_wisp, scorched_skeleton from tools/port/nether_bta.py; brains in creature_monsters.cpp), sounds per land
+    crystal_wisp, scorched_skeleton from tools/port/nether_lands.py; brains in creature_monsters.cpp), sounds per land
     (audio/nether_sfx.cpp live-synth sounds; AudioScene::netherLand set in client_fx.cpp; ambience.cpp per-land wind and
     timers), volcano eruptions (gen netherVolcanoes() + render/nether_fx_layer.cpp: clock from world time so shared
     worlds agree; DQ_ERUPT=1 makes every volcano erupt every 20 s for testing), embers/fumes/glints per land.
-  - Distant terrain rebuilt after Cubyz's LOD (the user asked for Cubyz's code to be studied; read in a scratch clone,
-    ideas only): render/distant_build.cpp — ChunkSummary = a chunk brought down to 2x2-block voxels (runs of block ids
-    per cell; Cubyz's pick: solid if any, the most-exposed block wins; hollows without daylight under 6 tall filled),
+  - Distant terrain rebuilt as a voxel LOD (our own code): render/distant_build.cpp — ChunkSummary = a chunk brought down to 2x2-block voxels (runs of block ids
+    per cell; the pick: solid if any, the most-exposed block wins; hollows without daylight under 6 tall filled),
     coarser levels merge the four quarter points (TileInput::sums has 4 per cell past L0), the generator's ColumnSample
     (+ roof, trees) fills unvisited land; meshing = run tops/bottoms merged greedily + walls = runs minus the neighbour's
     solid spans (skirt at tile edges). LodVertex is 16 bytes with the face's tile layer; distant.glsl textures each voxel
     face (uCell blocks a texture), grass/leaf/water tints as chunk.glsl, leaves drawn in their average colour (flag 8).
     DistantTerrain::draw binds TileTextures at units 5..10.
-  - Then (the user: "as good as Cubyz") the far land is generated for real: DistantTerrain::genFar generates chunks nobody
+  - Then (the user: "as good as it can be") the far land is generated for real: DistantTerrain::genFar generates chunks nobody
     has loaded with DimGenerator::generate on a worker (priority 1000, 4 a job, 1-2 jobs), nearest first in square rings
     out to min(range, 1024), summarizes them (summarizeChunk: sky flood instead of light for unlit chunks; buried rock
     collapsed to the band's deep block). Summaries capped by trimSummaries (16000, farthest go, may be made again).
@@ -452,7 +450,7 @@ Released as alpha.12. docs/STATUS.md has the done / partly / not-yet split. Wher
   - Skylands trees looked at from outside the cloud bank (land on an island at -40,60 seed hello): cloud leaves render
     like every other leaf block (white, from the pack's oak leaves; trunks are the pack's dark birch). Nothing visibly
     broken; asked the user what they saw.
-- **Still open:** BTA sounds list (biome moods, discs, jukebox playback); alpha.9 release on Nov 2 after full checks.
+- **Still open:** classic sounds list (biome moods, discs, jukebox playback); alpha.9 release on Nov 2 after full checks.
 
 ## Overnight 2026-11-01 (the user: "work overnight, game-wide playtest, optimizing pass, check all the notes")
 - **Playtests:** `tools/playtests/run_all.sh out.txt [names]` runs every playtest in a fresh world on a copy of the
@@ -469,7 +467,7 @@ Released as alpha.12. docs/STATUS.md has the done / partly / not-yet split. Wher
   called (combat.cpp, controller.cpp arrows, player.cpp speed). Silver (`holy`) did nothing (combat.cpp,
   `creatureIsCursed` in mob_combat.cpp). Armour stands had an item but no block (`armor_stand` block, render NONE,
   block entity "stand" items[5] + pose; sim/build.cpp; render/stand_layer.cpp maps the players' armour meshes onto a
-  Minecraft-sized wooden figure). HANDOFF said the Siphon and the Wicker Basket were done: they weren't; both added
+  player-sized wooden figure). HANDOFF said the Siphon and the Wicker Basket were done: they weren't; both added
   (sim/basket.cpp: basket hooks useEntity first, releases via useItem + useBlock; siphon = Redstone ticker kind 6).
 - **New:** armoured/armed undead (Creature::rollArmour, data["armor"], armourPoints soak, 8.5% drops, helmet = no sun
   burn; drawn in creature_layer by stretching the char armour meshes onto rig parts; DQ_ARMOUR=1 dresses all), the
@@ -485,7 +483,7 @@ Released as alpha.12. docs/STATUS.md has the done / partly / not-yet split. Wher
 - **Later the same night:** lingering potions (data_patches: lingering_* from every splash_*, splash + ectoplasm;
   PotionFlask::smash spawns a PotionCloud in sim/magic_bolt.cpp; splashPotionAt takes radius and scale), potions stack
   to 16 (brewing stand takes one bottle a slot, cauldron fill keeps the stack), permafrost family + mossy oak log +
-  mossy emberstone (bta_blocks.py), Highland Spruce (BV_HIGHLANDS) and the tundra step (BV_TUNDRA) in
+  mossy emberstone (classic_blocks.py), Highland Spruce (BV_HIGHLANDS) and the tundra step (BV_TUNDRA) in
   gen/overworld.h/.cpp + trees.cpp, ember/moss/sky fuselings (fuseBurst in creature_monsters.cpp; spawns: Depths
   floor, forest nights, Skylands grass), zombie pigmen only on natural Depths ground, December carols (audio/music.cpp
   carol(): four public-domain melodies), New Year fireworks over villages (sim/usables.cpp), a brighter village tree,
@@ -517,7 +515,7 @@ Released as alpha.12. docs/STATUS.md has the done / partly / not-yet split. Wher
   doors/trapdoors/signs/chests, the Seasonal Forest, igneous emberstone, chimney smoke check on town buildings (campfires
   in the hearths already smoke through campFlue), the Nether's own ambience and steam vents,
   dye-tuned portals (probably skip), coloured block light, a scripted start-to-finish playthrough test, crows on
-  scarecrows, church banners, more biome fuselings (6 now), articulated biome golems, Story Mode follow-through on
+  scarecrows, church banners, more biome fuselings (6 now), articulated biome golems, story-style follow-through on
   capes/hair and talking faces, render distance above 16. Docs MASTER_PLAN/BTA_GAP still list many done things as
   open (see the audit's DOC STALE list).
 
@@ -534,10 +532,9 @@ Released as alpha.12. docs/STATUS.md has the done / partly / not-yet split. Wher
   - pack and folder names plain (`[A-Za-z0-9_ .-]`); Windows `copy_directory` broke on `[brackets]`
 - **Decisions (2026-10-31):**
   - Stay on C++.
-  - Cubyz (Zig, GPL-3) is ideas only: write our own code, never translate it. The user may later choose GPL; ask
-    before copying anything.
-  - Horizon (Rust, MIT) can be used with a credit line in `docs/CREDITS.md`.
-  - No C418 tracks or profiles in the game.
+  - Outside code is ideas only: write our own code, never translate it; ask before copying anything. MIT code can be
+    used with a credit line in `docs/THIRD_PARTY_NOTICES.md`.
+  - No outside music tracks or profiles in the game.
   - WizardGenie is not used.
   - Structure refactor and the engine GUI (with the user's Strata AI) come AFTER all features and fixes are in.
 
@@ -583,15 +580,14 @@ Released as alpha.12. docs/STATUS.md has the done / partly / not-yet split. Wher
     fails on that pattern. A release re-run uploads onto the existing release with --clobber.
   - `pkill -f` on a pattern that appears in your own command kills your shell: use `[x]` tricks, or run it alone.
 - **Reference sources** (re-extract if /tmp was wiped):
-  - Horizon: `/mnt/user-data/attachments/cf5aa8f7-9a50-50d5-8270-c5644c73a5ee/88ea2ea7-rust-main.zip`
-    → `/tmp/ug/ref/rust/rust-main`
-  - Cubyz: `.../1e13bad2-Zig_src.zip` → `/tmp/ug/ref/zig/src`
+  - Reference engines: `/mnt/user-data/attachments/cf5aa8f7-9a50-50d5-8270-c5644c73a5ee/88ea2ea7-rust-main.zip`
+    → `/tmp/ug/ref/rust/rust-main`; `.../1e13bad2-Zig_src.zip` → `/tmp/ug/ref/zig/src`
   - Original JS: `/home/claude/src_in/DokuQuest-0.9.0.90/src/js`
   - GeruDoku pack: `/home/claude/pack_in`
 - **Music references:** the user's three examples in the same attachments folder (`*Dawn_in_the_Voxel_Valley.mp3`,
   `*The_View_From_High_Ground.mp3`, `*Warm_Blocks_FULL_SONG_musicgpt.mp3`). Measured: ~3 min each, warm and
   bass-heavy (over half the energy below 120 Hz, little above 2 kHz), gentle dynamics, slow-to-mid tempo, keys
-  F♯ major / F major / C minor. Direction: Yáhno-style dulcimer melodic EDM plus a C418-like sparse feel,
+  F♯ major / F major / C minor. Direction: dulcimer melodic EDM plus a sparse, wistful feel,
   Overworld like the examples, every realm its own feel.
 
 ## Sounds: where the user's sound work lives (all committed in the repo, main and chisel)
@@ -609,7 +605,7 @@ Released as alpha.12. docs/STATUS.md has the done / partly / not-yet split. Wher
   - `src/audio/music.cpp` procedural music, including the user's new instruments on the `chisel` branch
 - **The user's raw sound work and import tools:** `/mnt/user-data/uploads/DokuQuest_C___Rewrite_Sounds.zip`
   (their tree, with `tools/_import_*.py`). Checked 2026-10-31 against their `Chisel_wip` zip: its sounds.json/.bin
-  are EXACTLY the repo's set plus 5 C418 profiles appended to the end of the blob (06, 07, 08, 13, 18 = events
+  are EXACTLY the repo's set plus 5 outside music profiles appended to the end of the blob (06, 07, 08, 13, 18 = events
   `music.mc_*`, never played by code). The repo's set is that file with them cut off: nothing else to take.
   Only other differences: their file maps wolf howl -> death sound, duck death -> splash, horses -> ghost/undead
   variants; alpha.5.9 changed those on purpose (asked the user whether to restore; no answer yet).
@@ -635,14 +631,14 @@ Fixes from the user's play:
   notifies the light engine). Torches/lanterns/carpets sink onto slab tops; torches and frames fix to a vertical
   slab's inner face (`carveFaceDepth` in world/carve_faces.h; `slabGap`/`sinkOffset` carve-aware). Clicks on chiseled
   blocks hit the aimed face (physics.cpp raycast rounding).
-- Flags reach their fence poles (mesh_shapes.cpp cloth reach). End rods drawn from MC-layout picture (ShapeBox
+- Flags reach their fence poles (mesh_shapes.cpp cloth reach). End rods drawn from the pack-layout picture (ShapeBox
   `tu`/`uvT`). Grey vines/ferns/leaves: their pictures lost the alpha-253 tint marker (data_patches.py restores it).
 - Sitting: `ridingOf` (sim/vehicles.cpp) cleared `p.riding` for anything not a vehicle (seats, mounts). Sitting on
   chiseled slabs/stairs too (seatAt).
 - Town jack-o'-lanterns face the street; FacingFront meta is 0 S, 1 E, 2 N, 3 W, so `(d(f)+2)&3` was wrong for
   E/W: towns use `frontMeta(f) = (2 - d(f)) & 3`; SP::chest fixed likewise.
 - Portals built on the far side match the entry portal's opening size and axis (arrivePortal ow/oh/axis).
-Features (BTA list done except seasons; #11 End and Skylands done):
+Features (classic list done except seasons; #11 End and Skylands done):
 - Nether: Cinder Isles, Emberglass Groves, Ashen Wastes, Sulphur Springs (sulphur + charcoal -> gunpowder).
 - Overworld: Thornscrub (thorn trees, thorn leaves prick like cactus).
 - Lead (sim/leads.cpp, rope drawn in render/content_layers.cpp), glass jars + fireflies (sim/jars.cpp), iron mesh
@@ -653,12 +649,12 @@ Features (BTA list done except seasons; #11 End and Skylands done):
   head + elytra frame), drifting violet motes.
 - Skylands: tapered undersides, glimmersand rims, high islets, cloud banks (cloud_puff soft, bounce_cloud launches,
   sun_cloud slow-fall), sunwood trees, sky blooms, breeze motes.
-- New blocks/items are generated by `tools/port/bta_blocks.py` / `data_patches.py` (idempotent; run
+- New blocks/items are generated by `tools/port/classic_blocks.py` / `data_patches.py` (idempotent; run
   `python3 tools/port/data_patches.py data`).
 - Mobs: shulkers (End cities, sim/end_shulkers.cpp spawns them once per city; homing "shulker" bolt + levitation
   effect), the Wither (sim/wither.cpp: summon on the third wither skeleton skull; "wither_skull" projectile, "wither"
   effect), biome fuselings (frost/dune/bog: fuseBurst variants), biome village golems (npcSpawn by village style).
-- Feel: Minecraft elytra glide (sim/elytra.cpp, 20 Hz steps), pearls into End gateways, Vintage Story ingot piles
+- Feel: classic elytra glide (sim/elytra.cpp, 20 Hz steps), pearls into End gateways, crossed-layer ingot piles
   (render/pile_layer.cpp "solo"), held torch flame + smoke (render/content_layers.cpp heldFlames).
 - alpha.8 notes are drafted in docs/CHANGELOG.md and assets/news/news.dqn ("Far Lands"); bump DQ_VERSION to
   1.0.0-alpha.8 on release day, merge chisel -> main, wait for CI, release.
@@ -689,7 +685,7 @@ Later the same night (all in the alpha.8 notes except the rift work, which the n
   walk in); the final boss fights at range (teleports away under 6 blocks, circles, more bolts, no melee).
   Not done from Phase 11: the player-triggered Wither Storm climax.
 Then (user asked mid-session, all on `chisel`, in the alpha.8 notes):
-- Branching trees (user's request, Cubyz idea only, our own code): gen/trees.cpp `branch()` (sideways logs with axis
+- Branching trees (user's request, our own code): gen/trees.cpp `branch()` (sideways logs with axis
   meta 1/2, climbing, forks, leaf clumps; writeTreeParts keeps a part's meta for axis blocks). Big oaks (h > 0.78),
   dark oak, jungle, cherry, sometimes oak/birch; bare trees keep branches. Giant rainforest trees (jungle h > 0.93,
   2x2). Saplings now grow the generator's shapes (sim/worldsys.cpp growTree used treeParts; hooks().growTree was
@@ -716,7 +712,7 @@ Then (2026-10-31 night, the user asked for a faster pace, all on `chisel`, alpha
   (fitTile), "Use in the game" = userDir()/textures/<tile>.png, laid over any pack by assets/packs.cpp
   applyUserTiles (keeps the 253 biome-tint marker where the base tile had it). Controller paint mode like the music
   studio. DQ_TEX_OPEN=<tile> opens one (tests). applyResourcePack now holds a mutex (two loader threads).
-- Grass grows back (sim/worldsys.cpp grassTick: Minecraft's 4 tries in 3x5x3, every column ~once a minute, looks
+- Grass grows back (sim/worldsys.cpp grassTick: 4 tries in 3x5x3, every column ~once a minute, looks
   through leaves/logs). Game rule `randomTickSpeed` (number, default 1) scales all random ticks. Playtest grass.json.
 - Doors/gates/trapdoors swing (render/swing_layer.cpp): World::changeOldMeta tells the open bit flipped; the block
   is left out of the mesh (render/mesher.h meshHiddenBlocks, applied in gatherMeshInput) for 0.22 s and drawn as
@@ -731,7 +727,7 @@ Then (2026-10-31 night, the user asked for a faster pace, all on `chisel`, alpha
   zombie/skeleton/spider spawns 2-5 blocks off and wakes everyone (sim/blockfx.cpp tickSleep). The user: the toggle
   must NEVER affect the story's dreams: riftDream (sim/rift.cpp) runs on every morning skip regardless (rift open,
   not sealed; chance grows as stability falls). Dreams stay out of the patch notes.
-- Hotbar rows (BTA): Tab (Act::HotbarRow; PlayerList lost its unused Tab default) turns the bag rows into the hotbar.
+- Hotbar rows: Tab (Act::HotbarRow; PlayerList lost its unused Tab default) turns the bag rows into the hotbar.
 - December (started, then the user said: finish the core list first, holidays later): common/holiday.h christmas()
   and newYear() (DQ_EVENT=christmas|newyear); villagers' winter caps and scarves (render/halloween_costumes.cpp
   HW_WINTER_CAP/HW_SCARF, render/villager_layer.cpp); wrapped chests (assets/holiday_tiles.cpp); lights under the
@@ -740,9 +736,9 @@ Then (2026-10-31 night, the user asked for a faster pace, all on `chisel`, alpha
 - Answered the user: items are already true voxel models; "detail blocks" (any block a 16^3 grid of 6.25 cm voxels:
   storage, mesher, collision, picking, water, chisel) is the recommended path if they want 6 cm building; a full 6 cm
   world is not. Waiting for their answer (16 or 32 per block).
-- BTA batch: hotbar rows on Tab; fishing-rod leads (fishing.h Bobber::Hooked + mob; reel = tug, > 14 snaps;
+- Classic batch: hotbar rows on Tab; fishing-rod leads (fishing.h Bobber::Hooked + mob; reel = tug, > 14 snaps;
   playtest rodlead.json); sponges soak water on placing (usables.cpp blockPlace hook -> next tick, 6 steps / 65 blocks)
-  -> wet_sponge (bta_blocks.py; smelts back); a wet sponge used on dyed wool/glass/terracotta/painted planks washes
+  -> wet_sponge (classic_blocks.py; smelts back); a wet sponge used on dyed wool/glass/terracotta/painted planks washes
   it; furnace carts take any fuel (fuelValue x 22.5 s); coloured twinkling stars (sky.glsl); achievements
   (sim/achievements.cpp list + checks once a second from data["found"]/place/state + mobDeath/fishCaught/morning;
   ui/achievements_screen.cpp, menu tab "achievements" last); colour-blind filters (render/colour_filter_layer.cpp,
@@ -757,7 +753,7 @@ Then (2026-10-31 night, the user asked for a faster pace, all on `chisel`, alpha
 ## Agreed order after the chisel (features first, then structure and GUI)
 1. **Quick wins.** Done in alpha.7: spawn eggs (`tools/port/spawn_eggs.py`, creative "Spawn Eggs" tab, never one for
    the story's figure), pack skins for enderman/ghast/fuseling (render/creature_models.cpp packMobs; `PMSpec::box` =
-   Minecraft boxes in model space), ghast `#shooting` model while charging, angry enderman lifts its head off a jagged
+   pack-layout boxes in model space), ghast `#shooting` model while charging, angry enderman lifts its head off a jagged
    dark jaw (models.json `jaw` part via data_patches.py; the user REJECTED white teeth), enderman legs ±2 px, the
    placing loop (item_layers.cpp), lava boat. NOTE: the fuseling's runtime rig is `creeperModel()` in
    sim/hallowmobs.cpp, not data/models.json. Left:
@@ -766,22 +762,22 @@ Then (2026-10-31 night, the user asked for a faster pace, all on `chisel`, alpha
    - capes and cloth moving in the wind
 2. **Crowds and AI:** no standing inside each other, gentle pushing, slipping through doorways; NPCs avoid wells;
    Skylands mobs don't walk off edges (check aitoolkit's licence); swimming overhaul.
-3. **Villages:** gates swing properly, villagers use furniture, church banners; Animal Crossing-style house upgrades
-   (bigger, basement, second floor) plus Skyrim-style furnishing; gold coins instead of emeralds.
-4. **BTA world** (`docs/BTA_GAP.md`: biomes, blocks, items, structures, Nether), plus the End overhaul (proper End
-   cities and ships, Nullscape-style terrain), the Skylands/Aether overhaul, and Horizon's caves and shaders.
-5. **BTA mobs:** player-summoned Wither boss, biome fuselings, articulated biome golems.
-6. **Feel:** bows (grip/draw/scale), elytra (Minecraft physics, back position, wind), End gateways via ender pearl,
-   the particle overhaul, Vintage Story-style item placement (ingots stack 4 across, the next layer turned 90°).
+3. **Villages:** gates swing properly, villagers use furniture, church banners; house upgrades
+   (bigger, basement, second floor) plus lived-in furnishing; gold coins instead of emeralds.
+4. **Classic world** (`docs/WISHLIST.md`: biomes, blocks, items, structures, Nether), plus the End overhaul (proper End
+   cities and ships, towering void terrain), the Skylands overhaul, and new caves and shaders.
+5. **Classic mobs:** player-summoned Wither boss, biome fuselings, articulated biome golems.
+6. **Feel:** bows (grip/draw/scale), elytra (classic physics, back position, wind), End gateways via ender pearl,
+   the particle overhaul, item placement in piles (ingots stack 4 across, the next layer turned 90°).
 7. **Music:**
    - a studio: import a song, read its tempo, key and chords, generate original tracks, MIDI-style piano roll, MIDI
      import/export
    - realm music sets from the examples
    - the sound overhaul
-8. **Gear and magic:** RPG levelling, then procedural mix-and-match tool/weapon/armour crafting (Cubyz idea, our own
+8. **Gear and magic:** RPG levelling, then procedural mix-and-match tool/weapon/armour crafting (our own
    code), then the magic overhaul.
 9. **Rift story** (10 fragments, corruption, alpha fog, the watcher, `docs/HEROBRINE_LORE.md`), art unification,
-   performance (cave culling, memory diet), Story Mode animation.
+   performance (cave culling, memory diet), story-style animation.
 10. **Then:** the structure refactor (per-mob files, mob skin variant folders, release archive, game-only updates)
     and the engine GUI with Strata.
 
@@ -794,11 +790,11 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
 - **Lost clicks**: Input only kept "is the button down" at the end of a frame, so a click that went down and up inside
   one frame (common at low fps) never registered. `input.cpp` now latches presses (`mouseHit` / `keyHit`, cleared in
   beginFrame), so such a click counts as down for that frame. Creative also breaks the block on the press itself
-  (Minecraft's startDestroyBlock), held = one per 0.25 s (`controller.cpp interact`). Test: `"hold":0` on a mouse step
+  (on the press, like a creative break should be), held = one per 0.25 s (`controller.cpp interact`). Test: `"hold":0` on a mouse step
   is now allowed (down and up in the same frame).
-- **ui/book.h/.cpp**: BTA's guidebook in the DokuQuest Base pack's look (gui/book.png page + mirror, tab_right_*
+- **ui/book.h/.cpp**: a guidebook in the DokuQuest Base pack's look (gui/book.png page + mirror, tab_right_*
   bookmarks, the book's arrows). Sections run on page to page; ←/→ d-pad/wheel turn, X/Tab next bookmark.
-  Used by Help (`ui/help_book.cpp`, new BTA-era content), Journal / Skills / Spellbook (`magic_screens.cpp`) and the
+  Used by Help (`ui/help_book.cpp`, new content), Journal / Skills / Spellbook (`magic_screens.cpp`) and the
   Stable (`content_screens.cpp`). Pixelify lacks ★ ✓ ▸: `drawStar` / `drawTick` draw them.
 - **Achievements** (`achievements_screen.cpp`): an advancement-style tree per world (Overworld / Nether / The End) with
   the pack's window.png (9-sliced), tab_above_*, task/goal/challenge frames and stone/nether/end backgrounds.
@@ -806,9 +802,9 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
   Open issue: "Into Fire" asks for a blaze_rod, which no longer exists in the game, so it can't be earned.
 
 ### 2026-11-08: trommel, creative catalogue, dark pages, book inventory
-- **Trommel** (BTA 8.0.1 TileEntityTrommel, decompiled): `tools/port/trommel.py` adds trommel / lit_trommel (a furnace
-  kind, `"furnace": "trommel"`), its recipe (#stone_tool round iron_mesh over #log), pebble + olivine items with BTA's
-  recipes, pictures from the pack, and `data/trommel.json` (BTA's weighted table, BTA items mapped to ours).
+- **Trommel**: `tools/port/trommel.py` adds trommel / lit_trommel (a furnace
+  kind, `"furnace": "trommel"`), its recipe (#stone_tool round iron_mesh over #log), pebble + olivine items with their
+  recipes, pictures from the pack, and `data/trommel.json` (a weighted table of our items).
   `sim/trommel.cpp`: 4 inputs + fuel, one sift per 2.5 s round-robin, fuel x2 a furnace's, output out of the block's
   left side into a chest there or flung, 1/4000 small slime. tickFurnaces hands trommels over; inv_ops knows the 5
   slots (no output slot). Screen: `drawTrommel` in inventory.cpp (diamond of inputs round a turning drum, yields list).
@@ -829,7 +825,7 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
   compass rose, coordinates under it); left page = every map you carry (thumbnail, world, scale, explored, where it is;
   click or up/down / d-pad to switch), Zoom in/out, Find me, Whole map, pin + control notes. The other maps of the same
   world and scale are still laid out around the chosen one (MapStore::sameScale). Pad: stick pans, X/Y zoom, A find me.
-- **Bookmarks as ribbons** (`drawBookTab` in book.cpp, all books + the creative bookmarks): BTA guidebook-style cloth
+- **Bookmarks as ribbons** (`drawBookTab` in book.cpp, all books + the creative bookmarks): guidebook-style cloth
   ribbons with a swallowtail cut, drawn procedurally (12 cloth colours by index, weave lines, stitches — gold on the
   open one, the page's shadow where it comes out), all drawn before the pages so they come out from between them;
   the open one sits 3 units further out. The pack's advancement tab sprites are no longer used for bookmarks.
@@ -843,39 +839,39 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
   recipe book under its 3x3), your backpack / bag / hotbar on the right (`bookPageBag`). `paper` switches those
   screens' words (status lines, "+", the trommel's finds) to the book's ink; the cutter's list is a dark card.
 
-### 2026-11-08: the rest of BTA 8.0.1 (stage 1)
-- `tools/port/bta_extras.py` (data_patches runs it after trommel.py): polished stone (+bricks, mossy, slab, stairs),
+### 2026-11-08: the rest of the classic features (stage 1)
+- `tools/port/classic_extras.py` (data_patches runs it after trommel.py): polished stone (+bricks, mossy, slab, stairs),
   polished limestone/gloomstone/netherrack, carved slabs of 8 stones, cobbled + mossy cobbled basalt/granite/limestone
   (from pebbles; smelt back), rubyglass block + bricks, ember coal block, sugar cane block (+baked), baked mud, steel
   glass, chainlink fence, gold/iron/steel/lapis brick slabs+stairs; chainmail (+ scrap to chainlinks), wolf armour (6),
   steel shears, steel fire striker, crude steel, golden/flaming/purple arrows, explosive charge, steel bucket, ice
   cream, rotary calendar, label, dough, cherries, cloth, ice skates; eucalyptus = gum (renamed, sapling), thorn log +
   sapling, shrub leaves + sapling, flowering cherry leaves (fruit: cherries); every *_branch -> 2 sticks.
-- Behaviour: `sim/bta_items.cpp` (steel bucket charges on its tag, wolf armour use/remove/points/wear, label naming via
+- Behaviour: `sim/extra_items.cpp` (steel bucket charges on its tag, wolf armour use/remove/points/wear, label naming via
   `makeLabelScreen`), bow ammo kinds + arrow props (controller.cpp: grav, fire lights TNT/braziers, breaks, item back),
   explosive charge in guns.cpp (power 2.4), ice skates in player.cpp, calendar readout in hud.cpp, chainmail in the
   armoured-monster roll, wolf armour drawn in creature_layer.cpp (helmet + chestplate meshes on head/body), TREE_SHRUB
   in gen/trees.cpp (thornscrub, redlands, savanna, plains), seasonal cherries flower. stackName shows tag "name".
-- Already present (no change): armoured zombies/skeletons (rollArmour), BTA's snowman = snow_sentry.
+- Already present (no change): armoured zombies/skeletons (rollArmour), the snowman = snow_sentry.
 - Stage 2 (same day):
   - World types (`gen/world_types.cpp`, `OverworldGen::wtype`, ui/worlds.cpp cycle): amplified, islands, floating
     (islands over the void; session.cpp finds an island start), winter, hell, flat. Retro / Extended not done.
-  - The Drift (REALM_DRIFT = 3, world type "drift"): `gen/drift.cpp` is BTA's DensityGeneratorDrift bit-exact;
-    `sim/drift.cpp` the portal (glowstone frame + bedrock set on its bottom, as BTA; creative-only in survival terms),
+  - The Drift (REALM_DRIFT = 3, world type "drift"): `gen/drift.cpp` is the Drift's density generator;
+    `sim/drift.cpp` the portal (glowstone frame + bedrock set on its bottom; creative-only in survival terms),
     x8 travel, return portal built on arrival, chickens only; golden sky in render/sky.cpp.
-  - Statues (shapes.json statue_<stone>_lower/_upper, two-block pair hook in bta_items.cpp), pebbles layer + throwing,
+  - Statues (shapes.json statue_<stone>_lower/_upper, two-block pair hook in extra_items.cpp), pebbles layer + throwing,
     autumn leaf piles (LeafFall system), soul wax candle.
   - Photo mode (`ui/photo_mode.cpp`, state in `client/photo_mode.h`): pause menu "Photo Mode..." or Act::PhotoMode
     (F6). Free camera (48-block leash) set in clientPlayerCamera; time-of-day swap around sky->computeFrame and
     season/fog in photoFrame (session.cpp); show player in char_layer.cpp; 9 filters in colour_filter.glsl (uPhoto,
     uAmt). Keyboard nav is off while open (Space flies). Pad: X toggles fly mode, A shoots, bumpers tilt.
   - The Giant (mobs/models "giant": ghoul model x2.7, 5.2 tall, boss): a crypt boss via the new mobs.json
-    "dungeonBoss" key (structures_dungeons.cpp appends to the theme's boss list); `GiantStomp` in bta_items.cpp
+    "dungeonBoss" key (structures_dungeons.cpp appends to the theme's boss list); `GiantStomp` in extra_items.cpp
     (0.75 s wind-up, 7 damage + throw within 4.8).
   - Tile budget: the set had reached 4097 (the HD 520 holds 4096). `dropUnusedFrames` (assets/packs.cpp) now drops
     built-in animation frames a pack's picture replaced or stilled, and a pack animation's frame 0 reuses the tile
     itself: 3898 tiles with DokuQuest Base (199 freed).
-  - Bedrock had no item (so no creative entry, and the Drift portal couldn't be lit by hand): bta_extras.py adds one;
+  - Bedrock had no item (so no creative entry, and the Drift portal couldn't be lit by hand): classic_extras.py adds one;
     mined with a tier-4 pickaxe it drops itself. `/tp drift` (driftTravel in sim/drift.cpp) goes in the portal's way;
     from the Drift `/tp <dimension>` comes back. Glowstone is named "Glow Lantern" in DokuQuest.
   - The Drift portal is a real portal now (PortalKind::Drift = 4, drift_portal "portal": 3, render 4): a live window
@@ -895,15 +891,15 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
     height when they aren't loaded (it fell through and out of the world).
   - Pebbles: the pebble item places the game's own Loose Stones (renamed "Pebbles", drop pebble; its item hidden from
     creative); the flat 'pebbles' carpet block is now a twin of it (kept so placed ones still load). Thrown in the air.
-  - Rods: their pictures are Minecraft's sheets. The lightning rod now has its own Draw shape in world/shapes.cpp (tip
+  - Rods: their pictures are the pack's sheets. The lightning rod now has its own Draw shape in world/shapes.cpp (tip
     4x4 + 2 px rod via tu/tv, like the end rod; it was invisible). Item models of Rod-shaped blocks come from
     shapedBlockBoxes (not itemshapes.json's plain boxes), and PxBox carries per-face fu/fv/swapUV (parts with `only`
     merged onto one box). Icon cache version dq-item-icons-8.
   - Mixed tools/armour (core/tool_parts): every ore now. tool_parts.py EXTRA adds tin, lapis, amber, quartz, amethyst,
-    olivine, aether crystal, ender, mese (and chainmail, armour only) with "stats" (pickaxe tier/speed/damage/durability;
+    olivine, Skylands crystal, ender, mese (and chainmail, armour only) with "stats" (pickaxe tier/speed/damage/durability;
     armour as a share of iron's), colour from the item's own picture. A material with no set of its own: makePartTool
     takes its stats in proportion to iron's for the kind, makePartArmor iron's piece scaled; the crafting table makes a
-    tool/piece all of it (Tin Pickaxe). data_patches runs tool_parts.py again after bta_extras (chainlink, olivine).
+    tool/piece all of it (Tin Pickaxe). data_patches runs tool_parts.py again after classic_extras (chainlink, olivine).
   - Worn mixed armour: partArmorWornLook returns the "pa:" key; armorMeshes draws iron's armour recoloured per crafting
     cell over the body (recolourWorn: grid's left column on the wearer's right; chest side columns = sleeves). The doll,
     armour stands and the first-person arm use it. Sleeve cuffs end at the wrist (body y 14): the hand is bare, no ring or plate.
@@ -911,7 +907,7 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
     steel, frost (frost element), red crystal, rubyglass (fire), charged crystal, aurora, smaragdant (+shard), echo, rift,
     ambrosium, crocodile scale, dragonscale (fire; its own armour) and chainmail tools; OTHER_HALF gives wood, stone,
     flint, ruby, sapphire, obsidian, emberglass armour stats and leather tool stats. Dark item colours floored at 150.
-    bta_extras.py: #planks takes every plank block (palm, gum, Better End's), #stone_tool every cobbled stone.
+    classic_extras.py: #planks takes every plank block (palm, gum, the End lands'), #stone_tool every cobbled stone.
   - Test script: {"do":"craft","grid":[9 keys],"wear":bool} runs matchGrid and logs the stats; DQ_PHOTO front/up/pitch.
 - Not done: retro grass/leaves/sapling, Retro/Extended world types.
 
@@ -926,7 +922,7 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
   gives Magic 6 + 3*mob xp (creature.cpp death, src.type "magic"); 10 starter tomes craft from book + lapis + a reagent;
   Apprentice Staff from amethyst or lapis too. Help and Spellbook text rewritten. tools/test_magic.cpp: 60 pass.
 - Data purpose: venom sac brews strong poison; dough = 2 flour + water bucket (it was bread's recipe); goat horn is a war
-  horn (bta_items.cpp: speed+strength 10 s to players within 16, 30 s cooldown). An audit (items with no recipe, smelt,
+  horn (extra_items.cpp: speed+strength 10 s to players within 16, 30 s cooldown). An audit (items with no recipe, smelt,
   prop, trade, material or code use) finds none left.
 - Villages (sim/villager_chores.cpp, tools/port/village_rework.py):
   - The windmill is a machine (townbld.cpp bWindmill: windmill block at lz -2, axles, millstone on a loft at ly 9) with a
@@ -946,20 +942,19 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
   - Test script ops: village (report: buildings, folk, stock, sails power, millstone), tpbld, vstock. DQ_CHORE_DEBUG=1
     logs the gatherers and builder.
 
-### 2026-11-08: the villages rebuilt from Better Village, axle icon, hub gap
-- What Better Village is: its Java (Config, StructureSetMixin) only changes the village spacing/separation/salt; all of
-  its look is the structure pieces, put together by Minecraft's jigsaw. So ours now does the same with its pieces.
-- The pieces are game data: tools/port/village_import.py (in data_patches.py's last loop) copies its
-  data/minecraft/structures/village/<style>/<houses|streets|town_centers|terminators>/*.nbt from ../bettervillage into
-  data/villages/ and writes data/villages/index.json. Better Village is "All rights reserved" (jtorleon studios): don't
-  commit or release data/villages without the author's leave. No mods folder is involved.
+### 2026-11-08: the villages rebuilt from structure pieces, axle icon, hub gap
+- A village's look is its structure pieces, put together by a jigsaw. So ours now does the same with imported pieces.
+- The pieces are game data: tools/port/village_import.py (in data_patches.py's last loop) copies the
+  data/minecraft/structures/village/<style>/<houses|streets|town_centers|terminators>/*.nbt from the local village-pieces folder into
+  data/villages/ and writes data/villages/index.json. Those pieces are third-party, "All rights reserved": don't
+  commit or release data/villages without the author's leave.
 - gen/village_pieces.{h,cpp}: villagePieces() reads them once (index + readBinary, so data.dqa works): gzip + NBT
-  (blocks list streamed), every Minecraft block state mapped to our block and its meta per quarter turn (stairs, slabs,
+  (blocks list streamed), every imported block state mapped to our block and its meta per quarter turn (stairs, slabs,
   doors, trapdoors, ladders, gates, beds, torches, lanterns, signs, banners, facing models, front-faced blocks, axes,
   crops, double plants, layers, pickles, cake, vines, waterlogging). Jigsaw blocks keep name/target/pool/final_state. Ice
   becomes packed ice (ours melts by lamplight); water and waterlogging a piece can't hold are dropped at load (the snowy
   butcher's water feature flooded the hill). The log's "village pieces: N in M pools" names any state left out (none).
-- Assembly (gen/structures_jigsaw_village.cpp), Minecraft's jigsaw: a town centre at the old site, BFS over horizontal
+- Assembly (gen/structures_jigsaw_village.cpp), the jigsaw: a town centre at the old site, BFS over horizontal
   joints, candidates from the joint's pool (weighted shuffle, ~12% empty for houses, terminators as the streets' fallback
   and past the depth), quarter turns, joint faces opposite, no box overlap, depth 6/7/8 and reach 80/96/112 for village/
   town/city. Streets follow the final ground (bridged in planks over water; rejected when 3+ of 9 samples are wet);
@@ -1009,14 +1004,14 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
   had no bow case at all (sword grip): now the player's upright bow grip.
 - Cape (char_layer.cpp): 8 strips (char_model capeMesh seg 10..17, 2 rows each) hung one from the other: half the lift
   at the shoulders, the rest curving down, a ripple running to the hem (more with wind/pace); never into the legs.
-- Mana (ui/hud.cpp drawBottom): ten crystals right of the hearts (Minecraft's food row), draining from the left; the
+- Mana (ui/hud.cpp drawBottom): ten crystals right of the hearts (where a food row would be), draining from the left; the
   spell name over them 2.6 s after a change or a cast (and while a ward holds); armour moved over the hearts. The old
   bar (magic_fx drawHud, foreground list: it covered the villager talk) is gone.
 - Smoke: env_layers' EM_CAMPFIRE no longer puffs smoke at the fire (content_layers campfireFx does it, up the chimney
   via campFlue for hearths): the houses' hearth smoke rose inside and through the roofs.
 - Test ops: folk (every villager's job@pos within 200); village report has roads and wall/gates.
 
-### 2026-11-08 (evening): Better Village's windmill works, furniture, stairs not slabs, smoke, bows, doors
+### 2026-11-08 (evening): the village windmill works, furniture, stairs not slabs, smoke, bows, doors
 - Smoke: content_layers campfireFx now starts an open fire's smoke at y + 0.98 (it began inside the campfire's block,
   which the rising particles took for a ceiling: every puff pooled at the fire, none rose). Hearths still go up the flue
   (campFlue). The env_layers puff at the fire stays gone.
@@ -1032,7 +1027,7 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
   the lower street cell (no ridges); the half slabs are gone (on a steady slope every cell got one: still a jump).
   dirt_path_stairs: tools/port/village_rework.py (4 from 6 dirt path).
 - Workplaces: by the trade's own station (PREF in structures_jigsaw_village.cpp: the weaponsmith's anvil before the
-  yard's grindstone...), indoors first. Anvils count as job blocks. (Better Village's weaponsmith yard has a decorative
+  yard's grindstone...), indoors first. Anvils count as job blocks. (The imported weaponsmith yard has a decorative
   sharpening wheel: grindstone on a ceiling, anvil on it, observer, hoppers on cobble walls.)
 - Bows: a carried "bow" (players' char_layer and villagers' villager_layer) is upright at the side, stave out, string to
   the body (bowCarryMatrix, l = +1); drawing ("bow_pulling_*") keeps the aiming grip; both at scale 1.0 (was 0.8). The
@@ -1050,7 +1045,7 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
   ease beside streets (3) and the old pads/blends. Gate paths ramp from their street a block a step. Before: the street
   lay on the raw land and the houses' levelled pads cut across it (a test village had 76 steps of 2+; now 3 in 2395,
   where a house's own floor path meets a sloping street). Test op pathcheck counts them.
-- Unlit campfires side by side or over nothing (Better Village's stable and snowy pen roofs) become oak slabs.
+- Unlit campfires side by side or over nothing (the imported stable and snowy pen roofs) become oak slabs.
 - The baker, the merchant and (with no windmill) the miller take a plain house with an oven / a counter (barrel, chest) /
   a bench (indoors first, nearest the centre), not the hall porch; only when none is free a post by the hall.
 - Bows: the drawing grip for every bow again (bowHeldMatrix, scale 1.0); CharPose.bowArm (a carried bow, players and
@@ -1071,7 +1066,7 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
 
 ### 2026-11-09: the furniture pass rewritten (village_pieces.cpp), cupboards, slab staircases, house doors
 - Order: (1) cupboards: unlit campfires with a door beside them (or under/over one that has) become <wood>_cabinet
-  facing out through the doors (wood from the door); the doors, the trapdoors round them and the lid go (Better Village's
+  facing out through the doors (wood from the door); the doors, the trapdoors round them and the lid go (the imported
   2x2 pantries; villagers had taken their doors for the house's). (2) the other unlit campfires side by side / over
   nothing: oak slabs (roofs). (3) a bottom slab whose neighbour one block up is a bottom slab or a stair: a stair facing
   it (the toolsmith's slab staircase, every step a jump). (4) tables: a fence/wall/scaffold under a carpet, a plate or
@@ -1104,14 +1099,14 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
 - Test ops: list (blocks by key in a box), lanterns (what hanging lanterns hang from); folk marks (IN WATER).
 
 ### 2026-11-09 (night): water kept as built, a water-sim bug, every style's furniture checked
-- village_pieces.cpp keeps Minecraft's water with its levels (meta = level: 0 still, 1-7 running, 8 falling; ours are
+- village_pieces.cpp keeps the pieces' water with its levels (meta = level: 0 still, 1-7 running, 8 falling; ours are
   the same). The old "can it hold its water" pass is gone for buildings (it removed the taiga farms' stepped irrigation
   once the running water was dropped); streets still lose their puddles.
 - sim/worldsys.cpp (all worlds, players' builds too): only still water in its own block fills a carved block's empty
   octants. Running water and waterlogged blocks did too, and each block it filled became a spring of its own: a slab
   floor beside a waterfall flooded without end (snowy butcher, taiga temple, the meeting points).
 - Checked: all 44 pieces with water stamped into a flat world at ground level and run: every one holds exactly its
-  water, except taiga_small_farm_1 (47 -> 95: a terrace channel Minecraft also leaves open spills outside its back
+  water, except taiga_small_farm_1 (47 -> 95: a terrace channel left open spills outside its back
   fence). (A test stamped in the air floods everything: the flat world's top is y 576 for seed flat2.)
 - Furniture: rows facing a plain block or top slab at seat height (open above, on a floor; not a container, a station,
   a bookshelf, furniture, ground, snow, bales) take it as a table; sofas = 2-4 wooden seats indoors closed in at both
@@ -1127,8 +1122,8 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
   liquids inside a rigid piece's box are cleared and the ground under it filled (grass/sand at y0, dirt below).
 - village_pieces.cpp: a building's water whose side is open at its own level gets that side closed with the block under
   it, but only where our sim does run water sideways (FluidSystem::update): not level 7, not over an open cell, not
-  running water resting on water (fountain tiers). Also through a slab/stair rim beside still water: Minecraft's slab
-  stays dry and holds the pond, ours is a chiseled block that takes the water into its empty half and runs it out of
+  running water resting on water (fountain tiers). Also through a slab/stair rim beside still water: the piece expects its slab
+  to stay dry and hold the pond, ours is a chiseled block that takes the water into its empty half and runs it out of
   its far side (taiga_small_farm_1: 47 -> 95). Only that farm gets plugs now (2 blocks); DQ_PLUG_DEBUG=1 logs them.
 - Checked: all 44 water pieces hold exactly their template water; the user's seed (-1052856227) regenerated, the taiga
   farm by the lake at 529,586,-88 is on dry ground with only its channels wet.
@@ -1145,7 +1140,7 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
   plan (walls 2-3 blocks apart at chunk borders). A fresh world of the seed has one straight wall a side; nothing in
   the plan varies with chunk order. Changing generation mid-world does this; a new world is needed to see a fix.
 
-### 2026-11-09 (late): the Wither as Minecraft has it; the Wither Storm mod's sounds
+### 2026-11-09 (late): the Wither's full fight; the Wither Storm's sounds
 - sim/wither.cpp witherBrain (WitherBoss): 11 s charge (untouchable, still, swelling 0.75 -> 1 via data growS, health
   filling from a third), then a power-7 burst (mobGriefing) and fx.wither_spawn heard everywhere. Mends 1 HP/s. Three
   heads: the middle one at its mark (the player within 40, else the nearest living non-undead within 20; a skull every
@@ -1160,13 +1155,13 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
   Drawn as the wither_skeleton_skull item model, face first (creature_layer.cpp).
 - Its voice: tools/port/wither_sounds.py (data_patches.py after wither_storm.py): vx.wither/_hurt/_death,
   fx.wither_spawn/_shoot/_break synth recipes; mobs.json wither voice "wither". (The pack has no wither sounds.)
-- The Wither Storm mod's own recordings (Cracker's Wither Storm Mod 3.5.0.1, ~/Documents/Projects/witherstorm,
-  All rights reserved: don't release without leave): tools/port/sound_analyze.py `merge <mod assets/witherstormmod> ws
+- Third-party reference recordings for the Storm (~/Documents/Projects/witherstorm,
+  All rights reserved: don't release without leave): tools/port/sound_analyze.py `merge <ref assets/witherstormmod> ws
   data/sounds.json data/sounds.bin` analysed its 151 non-music sounds into profiles "ws/..." and 61 events fx.<event>
   (fx.wither_storm_roar, _tractor_beam, _bite, _shoot, _thump, _evolves, _death, fx.command_block_*, fx.formidibomb_*,
   fx.withered_symbiont_*, fx.ws_tremble ...). Run it again after any `analyze` of the pack. No ffmpeg here: decode()
   falls back to soundfile (pip) + numpy FFT resampling. Its music (themes) isn't imported (ours is composed scores).
-- Storm spec from the mod: docs/wither_storm_mod_spec.md (phases, eating, beams, defeat, look, symbiont, bowels).
+- Storm spec: docs/wither_storm_spec.md (phases, eating, beams, defeat, look, symbiont, bowels).
 
 ### 2026-11-09 (late): the story's end: the Storm in his realm, his escape, the signs after (story; never in the notes)
 - sim/rift.cpp: in his last hall, below half health Herobrine raises the Wither Storm himself (heroRaiseStorm, rift
@@ -1186,10 +1181,10 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
   "I can wait"): one by your home (bed, else world spawn) when you come back to it from 96+ away (50%, at most every
   20-40 min of play, first one 10-20 min after the seal), one out in the world every 40-80 min. "haunting" rule off:
   none. flags.afterSigns counts them.
-- The Storm's sounds are the mod's now (roar/ambient, bite, shoot, tractor beam, death; the global wither_spawn cry
+- The Storm's sounds come from those profiles now (roar/ambient, bite, shoot, tractor beam, death; the global wither_spawn cry
   when it bursts out). In his realm it tears at the roof and walls, never the floor (three blocks over the void).
 
-### 2026-11-09 (late): the Story Mode Wither Storm (sim/wither_storm.cpp; spec docs/wither_storm_mod_spec.md)
+### 2026-11-09 (late): the full Wither Storm (sim/wither_storm.cpp; spec docs/wither_storm_spec.md)
 - The Storm left sim/wither.cpp for its own file; it's a CreatureHooks brain + beforeHurt now ("wither_storm"), and
   creature.cpp moves it without collisions (it flies through what it eats). Phases 0-5 by what it has eaten (data
   eaten; GROW 60/240/700/2000/6000; in his realm every eaten thing counts thrice): each phase its own model through
@@ -1216,35 +1211,35 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
 - Render: falling blocks are drawn now (they weren't drawn at all) and clusters (creature_layer.cpp); the Storm is seen
   from 480 away; its boss bar shows within 200 (hud.cpp); a grown one (phase 4+) tints the sky (20,0,19)/fog
   (133,69,62) within 200 fading by 400, 60% / 85% (sky.cpp).
-- Not done from the mod: phases 6-7 (splitting, the Bowels), the Withered Symbiont, sickened mobs, the beacons, the
+- Not done from the spec: phases 6-7 (splitting, the Bowels), the Withered Symbiont, sickened mobs, the beacons, the
   Command Block Book (Super TNT uses a rift crystal instead), flaming skulls, distractions, chase/distracted travel.
 
-### 2026-11-09 (later still): the mod's own looks; beaten with worthy blows (user: "doesn't look like the one in my files")
-- tools/port/wither_storm_models.py runs the mod's model builders (a little interpreter for its decompiled Java:
+### 2026-11-09 (later still): the reference looks; beaten with worthy blows (user: "doesn't look like the one in my files")
+- tools/port/wither_storm_models.py runs the reference model builders (a little interpreter for their source:
   CFR into the scratchpad, `java -jar /tmp/cfr.jar --outputdir <dir> <the jar's .class files>`) and writes
   wither_storm_p0..p3, wither_storm (the destroyer) and wither_storm_p5 into data/models.json (model scale 2, the
-  mod's renderer's; each piece's own scale baked in: mass x10, heads x0.7/x3, tentacles x0.5/x2/x3), and copies its
+  reference renderer's; each piece's own scale baked in: mass x10, heads x0.7/x3, tentacles x0.5/x2/x3), and copies its
   texture to data/textures/entity/wither_storm.png with the emissive eyes painted in (third-party art, local only).
-  Minecraft model space -> ours: x and y flip, rotations re-solved for our Y-X-Z order; head roots rest turned pi (the
-  mod's HeadModel). Names by path: center_head/right_head/left_head (the Wither's), head0..2 (storm heads; the
+  Reference model space -> ours: x and y flip, rotations re-solved for our Y-X-Z order; head roots rest turned pi (the
+  reference head model). Names by path: center_head/right_head/left_head (the Wither's), head0..2 (storm heads; the
   destroyer's middle one is head1), "headN/lowerJaw", "tentacleN/base/segment1/...". wither_storm.py and
   data_patches.py leave these models alone once they exist (uvTex).
-- Engine: a model may name its own picture (uvTex, uvTexW) and its parts take faces from it Minecraft-fashion (part uv
+- Engine: a model may name its own picture (uvTex, uvTexW) and its parts take faces from it box-UV fashion (part uv
   [u,v,w,h,d], mirror) through the pack-skin face cutter; a part may be a voxel list (vox {n, c: [[x,y,z,w,h,d,rgb]]};
   [] = pivot only) and choose its voxels per block (res). creature_models.cpp / creature_rig.*.
 - sim/wither_storm.cpp: LOOK by phase (box, HP 400/400/500/600/1024/1500, hover), MOUTH table from the models; the
-  animation is the mod's (tentacle sway formula, heads aim, storm heads' pitch inverted, jaws gape on a roar).
+  animation follows the reference (tentacle sway formula, heads aim, storm heads' pitch inverted, jaws gape on a roar).
   Hurting it: stormWorth: magic (spells, splash healing on the undead) and arrows full; a player's enchanted hand
   weapon 0.6 + 0.15/level + 0.25/Smite level (max x3); plain blows, fire and explosions nothing (a "glance off" hint
   every 20 s). It mends 1 HP/s young, 2 grown. Its last blow: it falls ("final"), lands, DYING 6 s, dies. The
   Formidibomb is optional now: knocked down it lies 30 s, everything (but explosions) x2, then rises. The podium and its
   command block creature (storm_core) are gone: it couldn't be hit (the Storm's box took every blow) and could end up
   in the ground under it.
-- Fixed after the user saw it: the tentacles stood up into the sky. The converter read the mod's tentacle angles only
+- Fixed after the user saw it: the tentacles stood up into the sky. The converter read the reference tentacle angles only
   when written as plain numbers; several are (float)Math.toRadians(90.0), which it dropped as 0 (now evaluated), and the
-  sideways curl goes on segments 2-6, not only 2. Checked: a tentacle tip computed through the mod's own transforms and
+  sideways curl goes on segments 2-6, not only 2. Checked: a tentacle tip computed through the reference transforms and
   through our converted model (the engine's Y-X-Z order) lands on the same point. The evolved destroyer's tentacles hang
-  under it like legs; the destroyer keeps one arching over its back (the mod's own pose).
+  under it like legs; the destroyer keeps one arching over its back (the reference pose).
 - Arrows: only an enchanted bow's hurt it (user). controller.cpp stores the bow's enchantment levels on the arrow (data
   ench) -> DamageSource/DamageSrc ench -> stormWorth 0.6 + 0.15/level (max x3); plain arrows bounce off. Test op hurt
   takes "ench".
@@ -1316,17 +1311,17 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
   grassy-side-shows-dirt rule (mesher.cpp) counts them as paths too.
 
 ### 2026-11-09 (night): our own Wither Storm picture; the Wither in its likeness (user)
-- tools/port/wither_storm_texture.py paints data/textures/entity/wither_storm.png from nothing (no mod pixels): it
+- tools/port/wither_storm_texture.py paints data/textures/entity/wither_storm.png from nothing (no third-party pixels): it
   reads only the box layouts (uv) of the Storm models in data/models.json and gives each face its stuff — obsidian-black
   mass and tentacles with a few purple veins, dark bone, skulls with deep sockets and purple-lit eyes, the insides of the
   mouths glowing purple, pale teeth, an amber command block with a steel plate. The voxel masses get the body colour.
-  Run by data_patches.py (after wither_storm.py) and by wither_storm_models.py (which no longer saves the mod's picture).
+  Run by data_patches.py (after wither_storm.py) and by wither_storm_models.py (which no longer saves the reference picture).
 - The Wither (wither_like_storm in the same tool): models['wither'] = the Storm's first form (wither_storm_p0) without
   its cage of ribs and its command block, the same picture, scale 2, heads renamed head/headL/headR for animWither.
   No growing (that's the Storm's rig). witherHead() moved to the new heads (3.0 up; 2.62 up and 1.12 aside); mobs.json
   wither h 3.5.
-- Still from Cracker's Wither Storm Mod (All rights reserved): the converted model shapes and the "ws/..." sound
-  profiles in data/sounds.json/.bin; Better Village's pieces in data/villages. See the push notes.
+- Still third-party (All rights reserved): the converted model shapes and the "ws/..." sound
+  profiles in data/sounds.json/.bin; the imported village pieces in data/villages. See the push notes.
 - The command block in the Storm's cage is our real block: a rig part may carry "item" (RigPart::item, creature_rig.cpp);
   render/creature_layer.cpp draws itemModel(item) filling the part's box (min..max) at the part's matrix, after the
   parts. wither_storm_texture.py turns each Storm model's "block" part into vox [] + item "command_block" (it was 4x4
@@ -1334,11 +1329,10 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
 - Faces (face_of): two eyes on every head, set in from the sides with a gap between them (the 6-wide side heads had both
   1-px eyes side by side: one wide eye, a cyclops), the hot centre in each, a toothed mouth under them.
 
-### 2026-11-09/10: our own village buildings in 18 styles (replacing Better Village's; user)
-- Better Village (All Rights Reserved, its own repo's license.txt) is gone from the game: tools/port/village_import.py is
+### 2026-11-09/10: our own village buildings in 18 styles (replacing the imported ones; user)
+- The imported pieces (All Rights Reserved) are gone from the game: tools/port/village_import.py is
   out of data_patches.py; tools/port/village_builder.py builds every piece (data_patches.py runs it last). Its rules came
-  from studying Better Village's pieces and ChoiceTheorem's Overhauled Village (CC BY-NC-ND; studied only, nothing
-  copied): sizes, materials per style, building types, street joints. Every piece is generated from a seed (its name).
+  from studying village pieces (studied only, nothing copied): sizes, materials per style, building types, street joints. Every piece is generated from a seed (its name).
 - Styles (STYLES; data/villages/<style>/, listed in data/villages/styles.json for the game): plains, savanna, taiga,
   snowy, desert (the five), beach (stilts, thatch), jungle (stilts, leafy thatch, vines), jungle_tree (houses on decks up
   jungle trees, a spiral stair round a post to each), swamp (stilts, mud brick, moss on the roofs), mountain (tiered
@@ -1363,7 +1357,7 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
 - gen/structures_jigsaw_village.cpp: pieceRole knows market_stall_<job> (type "stall"), sawmill, builders_yard,
   barracks/watchtower (guards), windmill (by its millstone); PREF work blocks for baker, jeweller, lumberjack, builder,
   merchant's barrel; a village takes trades it hasn't got before more of one (J->trades). village_pieces.cpp: the
-  hard-coded Better Village mill fix-up is gone (it hung sails over our plains farm); axles and sails take "axis" (and
+  hard-coded imported-mill fix-up is gone (it hung sails over our plains farm); axles and sails take "axis" (and
   "big") from a piece; crafting_table counts as a work block.
 - Test ops: tpvillage {off} (to the nearest village, anchors there); dump prints carve masks.
 - Towns in quarters (structures_jigsaw_village.cpp quarterOf/zone): within 0.28 of the town's reach the market and
@@ -1423,7 +1417,7 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
   a segfault in jigsawTownBuild; touch the users of a changed header if a build was running when it changed.)
 - Anvils turned east/west had holes in their tops: anvil_top is painted down its middle 10 columns only (clear margins)
   and render/mesh_shapes.cpp addShapeBox didn't turn top/bottom pictures with a facingModel's rotation. Now they turn
-  with the model (Minecraft's y-rotation), unless the box has its own grain rule.
+  with the model (its y-rotation), unless the box has its own grain rule.
 - Pale tall grass: the base pack's short_grass.png was twice as bright as grass.png/fern.png (grey 210 vs ~100), so the
   biome tint came out mint. Remapped into the same range (original kept nowhere: it's our art, regenerate if needed).
 - Sunken streets (a ridge across one, the street in a trench): the jigsaw planner's wet() was jsY <= JS_SEA, too coarse
@@ -1491,7 +1485,7 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
   chain (13-tap down, tent up, additive) and eyes that adjust (log brightness at 64x64, mips to 1x1, a 1x1 exposure
   ping-pong eased each frame on the GPU: no readback); High 5 levels, sun rays, a lens flare (ghosts along the
   sun-centre line, visible as bright as the bloom is at the sun); a little noise against banding at every level.
-- World passes (render/world_fx.cpp, High/Ultra; off in split screen, portals, with an Iris pack, on Vulkan): a sun
+- World passes (render/world_fx.cpp, High/Ultra; off in split screen, portals, with a shader pack, on Vulkan): a sun
   shadow map (High 1536 / 28 blocks; Ultra 2048 / 48; leaves and plants cast at both: trunk-only shadows looked wrong) kept between redraws (redrawn when you
   leave a grid cell of a quarter of its size, every 1.5 s, or the sun moves; its VP is in the camera-block space it was
   drawn in and shifted when bound). It's drawn by WorldRenderer::drawShadowMap with the terrain shader itself

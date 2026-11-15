@@ -162,7 +162,7 @@ public:
           if (thrown) knockback(*p, glm::normalize(vec3(vel.x, 0, vel.z) + vec3(1e-4f)) * 2.f);
           splat(lv, kind); return;
         }
-        if (thrown) if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.1f, nullptr)) { DamageSrc d; d.knock = 2; aimRay(d, pos - vel * (dt / 3), pos); damageEntity(lv, *c, c->type == "cinder_golem" ? 1 : kind == "snow" && c->T && c->T->fireImmune ? 3 : 0.001f, owner, "projectile", d); splat(lv, kind); return; }   // snow burns the creatures of fire (Minecraft's blazes)
+        if (thrown) if (Creature* c = creatureHit(lv, realm, pos, owner ? owner->id : 0, 0.1f, nullptr)) { DamageSrc d; d.knock = 2; aimRay(d, pos - vel * (dt / 3), pos); damageEntity(lv, *c, c->type == "cinder_golem" ? 1 : kind == "snow" && c->T && c->T->fireImmune ? 3 : 0.001f, owner, "projectile", d); splat(lv, kind); return; }   // snow burns the creatures of fire (blazes)
         if (solidAt(wd, pos)) { splat(lv, kind); return; }
       }
       if (kind == "spit" && frand() < dt * 20) mobBurst(lv, pos, "white", 1, 0.1f);
@@ -189,7 +189,7 @@ public:
       if (frand() < dt * (rocket ? 40 : 14)) lv.fx->particles("smoke", pos - vel * 0.03f, 1);
       return;
     }
-    if (kind == "wither_skull") {   // the Wither's skull (Minecraft's): flies straight, bursts on what it hits (power 1) and
+    if (kind == "wither_skull") {   // the Wither's skull: flies straight, bursts on what it hits (power 1) and
       // withers whatever living thing it strikes (8, Wither II for 10 s); every kill heals the Wither 5. A blue one (from a
       // side head with nothing to aim at) is slower, and its burst takes obsidian too
       const bool blue = data.value("blue", false), back = data.value("deflected", false);   // back: punched back, it flies for whoever hit it
@@ -313,7 +313,7 @@ public:
   void splat(Level& lv, const std::string& kind) {
     removed = true;
     if (kind == "snow") mobBurst(lv, pos, "snow", 8, 2);
-    else if (kind == "egg") {   // Minecraft: an egg breaks, and one in eight hatches a chick (one in 32 of those, four)
+    else if (kind == "egg") {   // an egg breaks, and one in eight hatches a chick (one in 32 of those, four)
       mobBurst(lv, pos, "white", 8, 1.2f); lv.fx->sound("pop", pos, 16);
       if (frand() < 0.125f) for (int i = 0, n = frand() < 1.f / 32 ? 4 : 1; i < n; i++)
         if (Creature* c = spawnCreature(lv, realm, "chicken", pos - vec3(vel.x, 0, vel.z) * 0.02f + vec3(0, 0.1f, 0))) { c->baby = true; c->growT = 0; }

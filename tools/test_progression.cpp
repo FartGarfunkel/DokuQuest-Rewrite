@@ -1,5 +1,5 @@
 // tools/test_progression.cpp — two legitimate playthroughs from an empty inventory (headless): CLASSIC (punch a log ... diamond
-// pickaxe, alloys, steel, redstone) and IMMERSIVE (TerraFirmaCraft's way: loose rocks, knapping, the pit kiln, charcoal, casting,
+// pickaxe, alloys, steel, redstone) and IMMERSIVE (loose rocks, knapping, the pit kiln, charcoal, casting,
 // the anvils, the bloomery, steel, a chisel). Every item comes from a game action: breaking blocks set in the arena (the world's
 // own raw blocks) with the tool in hand, knapping, crafting through matchGrid/consumeCraft, the station functions and the
 // controller's use, with time passed by ticking the level. A step that can't be done legitimately is a FAIL that says why; a

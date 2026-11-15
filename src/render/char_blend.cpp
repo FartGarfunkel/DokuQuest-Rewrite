@@ -35,7 +35,7 @@ u32 charStateKey(const CharPose& p) {
 }
 
 bool charBlendArmsOnly(u32 from, u32 to) {
-  // what only the arms (and the body above the hips) do: the legs keep walking through the blend (Epic Fight's joint masks)
+  // what only the arms (and the body above the hips) do: the legs keep walking through the blend (joint masks)
   constexpr u32 ARMS = K_EAT | K_DRINK | K_BLOCK | K_HELD | K_MAP | K_SCOPE | K_CAST | K_XBOW | K_THROW | K_SPEAR | K_CARRY;
   const u32 ch = from ^ to;
   return ch && (ch & ~ARMS) == 0;

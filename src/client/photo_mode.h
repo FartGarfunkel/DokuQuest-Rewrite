@@ -1,4 +1,4 @@
-// client/photo_mode.h — Better than Adventure's Photo Mode (the screen: ui/photo_mode.cpp). While it is open the camera
+// client/photo_mode.h — Photo Mode (the screen: ui/photo_mode.cpp). While it is open the camera
 // leaves the player and flies on its own; the world stands still (in a world of your own), the HUD is hidden, and the
 // panel's choices change only the picture: the time of day and the season shown, the fog, the tilt, a filter.
 // Read by client/play.cpp (the camera), client/session.cpp (time, season, fog), render/char_layer.cpp (show the

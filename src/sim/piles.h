@@ -1,4 +1,4 @@
-// sim/piles.h — ingot piles and log piles (after TerraFirmaCraft's BlockIngotPile / TELogPile), in every world: sneak + use
+// sim/piles.h — ingot piles and log piles, in every world: sneak + use
 // with an ingot or a log on the ground sets one down, the pile grows one at a time, use takes one back. An ingot pile holds
 // 64 (8 to a layer as two rows of four, each layer across the one under it, like brickwork), a log pile 16 (a crib of four
 // courses). One metal (one makeup) or one wood to a pile; a full pile takes a new one on top, and adding to a pile tops up

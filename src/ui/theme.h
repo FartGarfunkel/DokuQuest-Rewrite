@@ -15,7 +15,7 @@ namespace ui {
 // ---- palette (:root and .inv variables) ----
 namespace col {
 constexpr ImU32 rgb(u32 hex, u8 a = 255) { return IM_COL32((hex >> 16) & 255, (hex >> 8) & 255, hex & 255, a); }
-// menus in BTA's greys (the launcher's Options tab): white-grey text, grey labels, black lines, its yellow highlight
+// menus in the classic greys (the launcher's Options tab): white-grey text, grey labels, black lines, its yellow highlight
 constexpr ImU32 ink = rgb(0x0f0f0f), panel2 = rgb(0x2a2a2a), slot = rgb(0x221c17), slotHi = rgb(0x3a3027), line = rgb(0x3f3f3f),
   lineHi = rgb(0x8a8a8a), text = rgb(0xe0e0e0), muted = rgb(0xa0a0a0), ember = rgb(0xffffa0), emberDeep = rgb(0xa0a040), heart = rgb(0xe5484d),
   xp = rgb(0x9bd34a), frost = rgb(0x8fe3ff), gold = rgb(0xe2b84f), epic = rgb(0xc88cff), bad = rgb(0xff6b5e),

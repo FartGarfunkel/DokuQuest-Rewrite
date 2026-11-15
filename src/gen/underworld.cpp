@@ -1,11 +1,11 @@
 // gen/underworld.cpp — the Underworld (docs/WORLD_DEPTH.md): the bands under the Overworld in a deep world (layout 2).
-// Underworld 1, just under the Overworld, carries Minecraft's land on down to its floor (y -64, in slate: our
+// Underworld 1, just under the Overworld, carries the imported land on down to its floor (y -64, in slate: our
 // deepslate), its caves and their lava below y -55; under that, and through the bands below it, the deep caverns:
 // great hollows and winding tunnels in rock that changes with depth (slate, then tuff, gabbro and basalt), each region
 // one kind of cavern (amethyst grottos, lush hollows, fungal halls, dripstone, frozen, magma deeps, the sculk deep),
 // the rare ores deeper down, old tombs (monster rooms), and at the very bottom a lava sea over the bedrock floor and
 // the Ember Crust above the Nether.
-// Band-local y -> Minecraft's y: my = ly - 1 - 256 * depth (Underworld 1's top row is Minecraft's -2; the Overworld's
+// Band-local y -> the imported data's y: my = ly - 1 - 256 * depth (Underworld 1's top row is its -2; the Overworld's
 // row 0 is -1).
 #include "gen/overworld.h"
 #include "gen/density.h"
@@ -66,7 +66,7 @@ void OverworldGen::generateDeep(Chunk& ch, int depth) const {
     const double d = -my + w;
     return d < 330 ? K.slate : d < 520 ? (nDeepC.noise3(wx / 24.0, my / 18.0, wz / 24.0) > 0.15 ? K.tuff : K.slate) : d < 760 ? K.gabbro : K.basalt;
   };
-  // 1. Minecraft's land down to its floor (Underworld 1, y -64..-2): its density, its caves, lava below y -55
+  // 1. the imported land down to its floor (Underworld 1, y -64..-2): its density, its caves, lava below y -55
   const int vanTop = depth == 1 ? DIM_H - 1 : -1, vanBot = depth == 1 ? std::max(0, -64 + 1 + DIM_H * depth) : DIM_H;   // band rows of y -64..-2
   if (depth == 1 && v14 && vg_) {
     const DensityGraph& g = *vg_;
@@ -101,7 +101,7 @@ void OverworldGen::generateDeep(Chunk& ch, int depth) const {
       const double hollow = nCave1.noise3(wx / 56.0, my / 30.0, wz / 56.0) * 0.75 + nCave2.noise3(wx / 19.0, my / 13.0, wz / 19.0) * 0.25;
       const double t1 = nCave3.noise3(wx / 44.0, my / 30.0, wz / 44.0), t2 = nFloor.noise3(wx / 44.0 + 300, my / 30.0, wz / 44.0 - 300);
       const double tunnel = 0.11 - std::sqrt(t1 * t1 + t2 * t2);
-      // fewer and smaller hollows just under Minecraft's floor (it closes over gently), bigger lower down
+      // fewer and smaller hollows just under the imported land's floor (it closes over gently), bigger lower down
       const double grow = std::clamp((-72.0 - my) / 60.0, 0.0, 1.0);
       F[(k * NX + i) * NYC + j] = (float)std::max((hollow - 0.32) * grow, tunnel * grow);
     }
@@ -120,8 +120,8 @@ void OverworldGen::generateDeep(Chunk& ch, int depth) const {
       }
     }
   }
-  // the rock of Minecraft's part too, by depth (its slate) — left as slate: it is its deepslate
-  // 3. the floor of the world: bedrock, jagged as Minecraft's, and the Ember Crust over the Nether
+  // the rock of the imported part too, by depth (its slate) — left as slate: it is its deepslate
+  // 3. the floor of the world: bedrock, jagged, and the Ember Crust over the Nether
   if (depth == deepest) for (int z = 0; z < CS; z++) for (int x = 0; x < CS; x++) {
     for (int y = 0; y < 5; y++) if (y == 0 || posHashF(seed_, bx + x, y - DIM_H * depth, bz + z) < (5 - y) / 5.0) b.blocks[colIdx(x, y, z)] = K.bedrock;
     b.blocks[colIdx(x, 0, z)] = K.crust;
@@ -203,7 +203,7 @@ void OverworldGen::generateDeep(Chunk& ch, int depth) const {
       }
     }
   }
-  // 5. ores in the rock: Minecraft's deep ones (diamond, redstone, gold, lapis, iron), ours deeper (ruby, sapphire,
+  // 5. ores in the rock: the usual deep ones (diamond, redstone, gold, lapis, iron), ours deeper (ruby, sapphire,
   // mithril, mese, adamantite), more the deeper
   {
     Mulberry32 rnd(hash32(seed_, ch.cx, ch.cz, 0xDEE0 + depth));
@@ -228,13 +228,13 @@ void OverworldGen::generateDeep(Chunk& ch, int depth) const {
       }
     }
   }
-  // 5b. (terrain 21) the Deep Dark and the underground places at Soulrend's depths: the Overworld's own plans, built here
+  // 5b. (terrain 21) the Deep Dark and the underground places at their imported depths: the Overworld's own plans, built here
   // a band lower where they run under its floor (mineshafts, dungeons, ancient cities, the Deep Halls, the Twin Vault)
   if (depth == 1 && deepStructs()) {
     carveDeep(b, ch.cx, ch.cz, DEEP_DARK_DY, DIM_H);
     structures.build(b, ch, DIM_H, 0, true);
   }
-  // 6. old tombs: the Alpha/Beta monster rooms, where a cavern passes (gen/dungeons_classic.cpp)
+  // 6. old tombs: the classic monster rooms, where a cavern passes (gen/dungeons_classic.cpp)
   {
     static thread_local OwColumn cols[256];
     for (auto& c : cols) { c.H = DIM_H - 6; c.biome = 0; }

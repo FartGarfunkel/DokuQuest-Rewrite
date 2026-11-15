@@ -58,7 +58,7 @@ Settings Settings::load() {
 void Settings::save() const { writeJson(userDir() / "settings.json", toJson()); }
 
 // The colour styles (Options → Video → Colour Style). Vibrant is the picture as drawn; Classic mutes it toward the
-// flatter, duller look of Minecraft Alpha/Beta (less colour, softer contrast, so blacks are not as deep on an OLED).
+// flatter, duller look of the early blocky games (less colour, softer contrast, so blacks are not as deep on an OLED).
 void Settings::applyColourStyle(const std::string& style) {
   colourStyle = style;
   if (style == "vibrant") { saturation = 1.0f; contrast = 1.0f; }

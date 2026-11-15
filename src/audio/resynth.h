@@ -24,7 +24,7 @@ public:
   bool load(const std::filesystem::path& jsonPath, const std::filesystem::path& binPath);
   bool ok() const { return !profiles.empty(); }
   const Profile* profile(const std::string& file) const { auto it = profiles.find(file); return it == profiles.end() ? nullptr : &it->second; }
-  // the files (with Minecraft's per-entry pitch and volume) standing in for one of our sounds: "stone.step", "fx.chest", "mob.moo_hurt"...
+  // the files (with the pack's per-entry pitch and volume) standing in for one of our sounds: "stone.step", "fx.chest", "mob.moo_hurt"...
   const std::vector<Variant>* event(const std::string& key) const { auto it = events.find(key); return it == events.end() ? nullptr : &it->second; }
   std::vector<float> render(const Profile& p, u32 seed) const;
   size_t count() const { return profiles.size(); }

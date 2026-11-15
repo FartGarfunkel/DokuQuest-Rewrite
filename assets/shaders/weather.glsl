@@ -1,6 +1,6 @@
 // weather.glsl — weather particles (render/weather_draw.cpp), one instance each: rain stretched along its motion
 // relative to the camera, snow and dust facing the camera, fog sheets lying flat or standing up, ripples flat on the
-// water. After Particle Rain's CustomParticle render modes (pigcart, MIT). Lit like the blocks round them, fogged.
+// water. Lit like the blocks round them, fogged.
 #include "common.glsl"
 #ifdef VERTEX
 layout(location = 0) in vec4 iPosSize;   // camera-origin-relative position, half size

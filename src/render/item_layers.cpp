@@ -73,7 +73,7 @@ void registerItemLayers() {
   registerStandLayer();         // render/stand_layer.cpp         // render/swing_layer.cpp
   registerHeldLightFx();       // render/held_light_fx.cpp
   registerWinterVillageLayer();   // render/winter_village_layer.cpp (December)
-  registerPostLayer();           // the built-in shader levels and Iris/OptiFine post passes
+  registerPostLayer();           // the built-in shader levels and full shader packs' post passes
   registerColourFilterLayer();   // render/colour_filter_layer.cpp
   registerNetherGradeLayer();    // render/nether_grade_layer.cpp
   registerDreamlightLayer();     // render/dreamlight_layer.cpp
@@ -132,7 +132,7 @@ const VoxelModel& firstPersonArm() {
 namespace {
 const vec3 FP_HAND(0.56f, -0.5f, -0.72f);   // where the first-person arms sit (x right, y up, -z ahead)
 inline float wrapA(float a) { return std::fmod(std::fmod(a + PI * 3, TAU) + TAU, TAU) - PI; }
-// Minecraft's first-person swing, turned about the fist: the item chops forward and down and eases back
+// the classic first-person swing, turned about the fist: the item chops forward and down and eases back
 // (an empty hand punches instead)
 mat4 armSwing(const mat4& am, float side, float sp, bool empty, bool mining = false) {
   float r = std::sqrt(sp), f = std::sin(sp * sp * PI), f1 = std::sin(r * PI), D = PI / 180;
@@ -143,7 +143,7 @@ mat4 armSwing(const mat4& am, float side, float sp, bool empty, bool mining = fa
   else {
     S = glm::translate(S, vec3(side * -0.4f * f1, 0.2f * std::sin(r * TAU), -0.2f * std::sin(sp * PI)));
     S = glm::translate(S, pv);
-    const float sideK = mining ? 0.45f : 1.f;   // mining (Punchy's mining_v2): a straighter chop down into the block
+    const float sideK = mining ? 0.45f : 1.f;   // mining: a straighter chop down into the block
     S = glm::rotate(S, side * f * -20 * D * sideK, vec3(0, 1, 0));
     S = glm::rotate(S, side * f1 * -20 * D * sideK, vec3(0, 0, 1));
     S = glm::rotate(S, f1 * (mining ? -68.f : -58.f) * D, vec3(1, 0, 0));
@@ -215,7 +215,7 @@ void HeldItemLayer::update(GameSession& s, double dt) {
   // what's in hand: a new thing comes up from below
   std::string key = p->carrying.is_object() ? std::string("carry") : p->held().empty() ? std::string() : p->held().id;   // picking something up: the arms rise
   if (key != lastHeld) {
-    if (lastHeld != "\x01" && key != "carry" && lastHeld != "carry") {   // Hold My Items: the old thing goes down, then the new one comes up
+    if (lastHeld != "\x01" && key != "carry" && lastHeld != "carry") {   // the swap: the old thing goes down, then the new one comes up
       if (swapT >= 1) { swapOld = lastStack; swapT = 0; }
       else if (swapT >= 0.4f) { swapOld = lastStack; swapT = 0.4f * std::sqrt(std::max(0.f, fpSwapLower(swapT))); }   // swapped again as it came up: down from where it is
       // (still going down: the old one keeps going; the newest comes up after it)
@@ -254,7 +254,7 @@ void HeldItemLayer::update(GameSession& s, double dt) {
     if (in.pressed(Act::Use) && s.target.hit) swingArm();
     else if (in.pressed(Act::Use) && p->held().id == "fishing_rod") swingArm();   // cast / reel in
     if (s.breaking) { swinging = true; if (swing == 0) swing = 0.0001f; }
-    // holding Use places again and again: each placement restarts the player's swing, so the arm keeps looping (Minecraft)
+    // holding Use places again and again: each placement restarts the player's swing, so the arm keeps looping
     if (p->swing > 0 && (simSwing == 0 || p->swing < simSwing)) swingArm();
   }
   simSwing = p->swing;
@@ -438,7 +438,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       m = glm::translate(m, vec3(side * T[0], T[1], T[2]));
       m = glm::rotate(m, side * (-1.5f + 0.35f + T[4] + (tool || bowItem ? 0.22f : 0.f)), vec3(0, 1, 0));   // tools turn a little more face-on
       m = glm::rotate(m, side * (0.42f + T[5]), vec3(0, 0, 1));
-      m = glm::scale(m, vec3(bowItem ? 1.1f + T[3] : 0.68f + T[3] + (tool ? 0.26f : 0.f)));   // (a bow as big as it's drawn: render/fp_bow.cpp)   // swords and tools are drawn big, like Minecraft's first person
+      m = glm::scale(m, vec3(bowItem ? 1.1f + T[3] : 0.68f + T[3] + (tool ? 0.26f : 0.f)));   // (a bow as big as it's drawn: render/fp_bow.cpp)   // swords and tools are drawn big in first person
       if (rod) {   // a rod points out ahead with its tip (and the float hanging from it) in view, not up out of the picture
         static float RT[4] = {0.35f, -0.6f, 0.f, -0.08f}; static bool rl = false;
         if (!rl) { rl = true; if (const char* v = std::getenv("DQ_DEV_ROD")) std::sscanf(v, "%f,%f,%f,%f", &RT[0], &RT[1], &RT[2], &RT[3]); }
@@ -505,7 +505,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   }
   const bool old = swapT < 0.4f;
   const ItemStack& held = old ? swapOld : p->held();
-  // Eating Animation: the food you are eating is in your hand, bitten down as the bite goes on (even the last one)
+  // eating: the food you are eating is in your hand, bitten down as the bite goes on (even the last one)
   const bool biting = eatAnim > 0 && !p->eatId.empty() && !isDrinkItem(p->eatId) && reg().item(p->eatId);
   {   // a book you read (or write in): held open in both hands before you, its pages turning (ui/held_book.h)
     JournalPic hc, hp; float hleaf = -1; int hdir = 1;

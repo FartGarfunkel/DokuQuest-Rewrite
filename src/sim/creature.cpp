@@ -263,7 +263,7 @@ std::string Creature::label() const {
   return T->label;
 }
 
-// a spider jockey (Minecraft's): a skeleton riding the spider (Creature::tick carries it along: jockeyOf / jockeyRider)
+// a spider jockey: a skeleton riding the spider (Creature::tick carries it along: jockeyOf / jockeyRider)
 Creature* mountJockey(Level& lv, Creature& spider) {
   Creature* r = spawnCreature(lv, spider.realm, "skeleton", spider.pos + vec3(0, spider.h * 0.8f, 0));
   if (!r) return nullptr;
@@ -322,7 +322,7 @@ Creature::Creature(const std::string& type) {
     float q = frand() * tot;
     for (auto& v : T->vdefs) if (v.open() && (q -= v.w) <= 0) { variant = v.model == T->model ? "" : v.model; break; }
   } else if (!T->variants.empty()) variant = T->variants[(size_t)(frand() * T->variants.size()) % T->variants.size()];
-  // Soulrend's Improved Mobs: the undead walkers come armed more often (a quarter of them), and a skeleton now and then
+  // tougher mobs: the undead walkers come armed more often (a quarter of them), and a skeleton now and then
   // carries a sword instead of its bow (it comes at you then: creature_monsters.cpp)
   if ((type == "ghoul" || type == "charred_ghoul" || type == "husk" || type == "drowned") && heldItem.empty() && frand() < 0.25f) {
     const char* W[] = {"iron_sword", "iron_shovel", "stone_axe", "gold_sword", "copper_sword", "stone_sword", "iron_axe", "wooden_sword"};
@@ -341,7 +341,7 @@ float Creature::weaponBonus() const {
   const ItemDef* d = id.empty() ? nullptr : reg().item(id);
   return d && d->hasTool ? std::max(0.f, std::round((d->tool.damage - 1) * 0.6f)) : 0.f;
 }
-// BTA's armoured zombies (and Minecraft's): one undead walker in nine comes dressed, the helmet first and each next piece
+// armoured zombies: one undead walker in nine comes dressed, the helmet first and each next piece
 // on a coin toss, mostly leather and copper, now and then iron or gold, rarely diamond. Worn in data["armor"] (4 keys)
 void Creature::rollArmour() {
   static const char* WEARS[] = {"ghoul", "charred_ghoul", "husk", "drowned", "skeleton", "stray"};
@@ -349,7 +349,7 @@ void Creature::rollArmour() {
   static const bool all = std::getenv("DQ_ARMOUR") != nullptr;   // tests: every one dressed
   if (!wears || frand() >= (all ? 2.f : 0.11f)) return;
   float r = frand();
-  const char* mat = r < 0.28f ? "leather" : r < 0.50f ? "chainmail" : r < 0.66f ? "copper" : r < 0.80f ? "gold" : r < 0.97f ? "iron" : "diamond";   // (BTA's: chainmail is only found on them)
+  const char* mat = r < 0.28f ? "leather" : r < 0.50f ? "chainmail" : r < 0.66f ? "copper" : r < 0.80f ? "gold" : r < 0.97f ? "iron" : "diamond";   // (chainmail is only found on them)
   static const char* PIECE[] = {"helmet", "chestplate", "leggings", "boots"};
   json a = json::array({"", "", "", ""});
   for (int i = 0; i < 4; i++) {
@@ -391,7 +391,7 @@ vec2 Creature::light(Level& lv, float dy) const {
   return vec2(l >> 4, l & 15);
 }
 // Wandering about (not chasing or fleeing), a walker keeps off drops of more than three blocks and out of water and
-// lava: Skylands creatures stay on their islands, herds don't walk into wells or off cliffs (Minecraft's mobs avoid them).
+// lava: Skylands creatures stay on their islands, herds don't walk into wells or off cliffs.
 static bool safeAhead(Level& lv, const Creature& c, float dir) {
   if (c.noGravity || c.ghost || c.inWater || c.T->water || c.T->fly > 0) return true;
   const Registry& R = reg();
@@ -495,7 +495,7 @@ float Creature::hurtBase(Level& lv, float amount, const DamageSrc& srcIn) {
   if (src.type == "lava" && T->fireImmune) dmg = 0;
   if (dmg <= 0) { if (a && a->isPlayer()) floatText(lv, a->id, pos + vec3(0, h + 0.3f, 0), "Immune", "#ffb070"); return 0; }
   if (!src.bypassArmor) if (float ap = armourPoints(); ap > 0) { dmg *= 1 - std::min(20.f, ap) * 0.04f; wolfArmourWear(*this, lv); horseArmourWear(*this, lv); }   // as a player's armour: 4% a point (wolf and horse armour wear down)
-  // Minecraft's ender dragon: the head takes the blow, every other part takes a quarter plus at most 1
+  // the ender dragon: the head takes the blow, every other part takes a quarter plus at most 1
   if (type == "ender_dragon" && src.hasRay && dmg > 0) {
     const RigModel* RM = rigModel(modelKey());
     if (RM && !RM->parts.empty()) {
@@ -571,7 +571,7 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   if (riddenBy) if (auto* r = dynamic_cast<Player*>(ent(lv, riddenBy))) dismount(lv, *this, *r);
   deathTime = 0.0001f;
   if (globalCreatureHooks().died) globalCreatureHooks().died(lv, *this, src);
-  // BetterNether's hydrogen jellyfish: it bursts when it dies (blocks only where mobs may grief)
+  // the hydrogen jellyfish: it bursts when it dies (blocks only where mobs may grief)
   if (const float blast = T->j.value("deathBlast", 0.f); blast > 0 && !lv.isRemote()) explode(lv, realm, pos + vec3(0, h * 0.5f, 0), blast, !rule(lv, "mobGriefing"));
   auto roll = [](int a, int b) { return a + (int)std::floor(frand() * (b - a + 1)); };
   vec3 at = pos + vec3(0, 0.5f, 0);
@@ -580,7 +580,7 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   if (!baby && !noDrops) for (auto& d : T->drops) if (frand() < d.chance) { int n = roll(d.lo, d.hi); if (n > 0) dropItem(lv, realm, proceduralOf(hideFor(d.id, imm), n), at, true); }   // (metal gear procedural; immersive: raw hide for leather, sim/barrel.h)
   if (!baby && !noDrops && !variant.empty()) if (const auto* vd = T->vdef(variant))   // what its story left on it
     for (auto& d : vd->drops) if (frand() < d.chance) { int n = roll(d.lo, d.hi); if (n > 0) dropItem(lv, realm, proceduralOf(d.id, n), at, true); }
-  // mob heads, only to a player's blow: a wither skeleton's skull 2.5 % of the time (Minecraft), any other head 1 %
+  // mob heads, only to a player's blow: a wither skeleton's skull 2.5 % of the time, any other head 1 %
   if (!baby && !noDrops && src.attacker && dynamic_cast<Player*>(ent(lv, src.attacker))) {
     std::string hk = type + "_skull"; if (!reg().item(hk)) hk = type + "_head";
     if (reg().item(hk) && frand() < (type == "wither_skeleton" ? 0.025f : 0.01f)) dropItem(lv, realm, ItemStack(hk, 1), at, true);
@@ -891,7 +891,7 @@ void Creature::update(Level& lv, float dt) {
     if (!onGround || want < 0.1f) { tx *= onGround ? 0 : 1; tz *= onGround ? 0 : 1; }
     if (onGround && want > 0.1f && hopT <= 0) { vel.y = 5.2f; hopT = 0.25f; }
   }
-  // don't walk off a drop you'd not survive (Minecraft's path finder keeps mobs off ledges deeper than 3; in the
+  // don't walk off a drop you'd not survive (the path finder keeps mobs off ledges deeper than 3; in the
   // Skylands that is the edge of an island): a calm walker stops at the edge instead of stepping into the air
   if (onGround && !noGravity && want > 0.05f && !T->swims && !T->flyer && !T->floaty && !(angryT > 0 && foe)) {
     World& wd = lv.world(realm);
@@ -908,7 +908,7 @@ void Creature::update(Level& lv, float dt) {
   if (noGravity && hasFlyVy) vel.y += (flyVy - vel.y) * std::min(1.f, dt * 4);
   else if (c.water && T->swims) vel.y += (swimVy - vel.y) * std::min(1.f, dt * 3);
   else if (c.water) {
-    // Minecraft: a land animal floats at the surface and paddles on, steadily — a spring toward the height where
+    // a land animal floats at the surface and paddles on, steadily — a spring toward the height where
     // a bit over half its body is under (no kick up and fall back), and a hop out when it swims into a bank
     float surf = -1e9f;
     int bx = ifloor(pos.x), bz = ifloor(pos.z);
@@ -930,7 +930,7 @@ void Creature::update(Level& lv, float dt) {
   {
     vec3 before = pos;
     // a creature hiding inside a block (the October pumpkin creature) stays put: no move, no push out of the block
-    MoveResult r = data.value("inBlock", false) ? MoveResult{} : type == "wither_storm" ? (pos += vel * dt, MoveResult{}) : T->phase ? phaseMove(wd, pos, w, h, vel * dt) : moveBox(wd, pos, w, h, vel * dt, onGround || wasGround ? (riddenBy ? 1.05f : 0.6f) : 0.f);   // (ridden: up stairs and slabs at a run, as BTA's pigs keep their momentum)
+    MoveResult r = data.value("inBlock", false) ? MoveResult{} : type == "wither_storm" ? (pos += vel * dt, MoveResult{}) : T->phase ? phaseMove(wd, pos, w, h, vel * dt) : moveBox(wd, pos, w, h, vel * dt, onGround || wasGround ? (riddenBy ? 1.05f : 0.6f) : 0.f);   // (ridden: up stairs and slabs at a run, as ridden pigs keep their momentum)
     hitWall = r.hitX || r.hitZ; hitCeiling = r.hitY && vel.y > 0;
     if (r.hitX) vel.x = 0;
     if (r.hitZ) vel.z = 0;
@@ -944,7 +944,7 @@ void Creature::update(Level& lv, float dt) {
   // move, a tick of gravity came off it first and it topped out at 0.96, never onto the block)
   if (hitWall && onGround && want > 0 && !(T->swims && !T->walks && c.water) && stepAhead(lv)) wantJump = true;
   if (!wasGround && onGround && type == "cinder_golem" && fallV < -8) lv.fx->shake(0, 0.3f);
-  if (!wasGround && onGround && fallV < -2.5f) { landT = 0.18f; life.landK = std::clamp(std::sqrt(-fallV) / 3.f, 0.5f, 1.6f); }   // (the squash as hard as the drop: Fresh Animations)
+  if (!wasGround && onGround && fallV < -2.5f) { landT = 0.18f; life.landK = std::clamp(std::sqrt(-fallV) / 3.f, 0.5f, 1.6f); }   // (the squash as hard as the drop)
   if (landT > 0) landT -= dt;
   inWater = c.water;
   if (inWater && !T->swims) {   // where the surface is (rigs2.js floats land animals low in it)
