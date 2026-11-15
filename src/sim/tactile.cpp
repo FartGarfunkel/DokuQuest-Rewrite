@@ -53,7 +53,7 @@ bool tactileFurnaceUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemSt
   json* e = containerEntity(w, at.x, at.y, at.z);
   if (!e) return false;
   if (!e->contains("items") || !(*e)["items"].is_array()) (*e)["items"] = json::array({nullptr, nullptr, nullptr});
-  while ((*e)["items"].size() < 3) (*e)["items"].push_back(nullptr);
+  while ((*e)["items"].size() < 9) (*e)["items"].push_back(nullptr);   // (Tactile's four spots: sim/worldsys.cpp tickFurnace)
   const int f = tactileFacing(w, at);
   const vec3 n = tactileNorthLocal(f, hit.point - vec3(at));
   const vec3 c = vec3(at) + vec3(0.5f);
@@ -72,7 +72,10 @@ bool tactileFurnaceUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemSt
   auto slot = [&](int k) { return ItemStack::fromJson(items[k]); };
   auto take = [&](int k) {
     ItemStack s = slot(k); if (s.empty()) return false;
-    items[k] = nullptr; if (k == 0) (*e)["cook"] = 0.0;
+    items[k] = nullptr;
+    static const int SPOT[9] = {0, -1, -1, 1, 2, 3, -1, -1, -1};   // (an input spot's cooking starts over)
+    if (k == 0) (*e)["cook"] = 0.0;
+    if (SPOT[k] >= 0 && e->contains("cooks") && (*e)["cooks"].is_array() && (int)(*e)["cooks"].size() > SPOT[k]) (*e)["cooks"][SPOT[k]] = 0.0;
     if (int left = giveItem(lv, p, s); left > 0) { s.n = left; dropItem(lv, p.realm, s, p.pos + vec3(0, 1, 0), true, 0.f); }
     changed(); sfxAt(lv, "pop", c);
     return true;
@@ -89,9 +92,28 @@ bool tactileFurnaceUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemSt
     changed(); sfxAt(lv, "pop", c);
     return true;
   };
+  static const int IN[4] = {0, 3, 4, 5}, OUT[4] = {2, 6, 7, 8};
+  // (FourBlockEntity.placeOneIngredient: one at a time, onto the first spot that's free or holds the same, 16 a spot)
+  auto putCook = [&] {
+    int placed = 0;
+    for (int n = 0; n < (all ? 64 : 1) && !held.empty(); n++) {
+      bool ok = false;
+      for (int k : IN) {
+        ItemStack sl = slot(k);
+        if (sl.empty()) { sl = held; sl.n = 1; items[k] = sl.toJson(); ok = true; break; }
+        if (sl.id == held.id && sl.canMerge(held) && sl.n < 16) { sl.n++; items[k] = sl.toJson(); ok = true; break; }
+      }
+      if (!ok) break;
+      if (--held.n <= 0) held = ItemStack();
+      placed++;
+    }
+    if (placed) { changed(); sfxAt(lv, "pop", c); }
+    return placed > 0;
+  };
+  auto takeFirst = [&](const int (&ks)[4]) { for (int k : ks) if (take(k)) return true; return false; };
   const bool doorOpen = kind == "furnace" || e->value("door", false);
   // the blast furnace's mould: its ingots taken from it
-  if (kind == "blast" && inBox(n, BLAST_MOLD)) return held.empty() ? take(2) : false;
+  if (kind == "blast" && inBox(n, BLAST_MOLD)) return held.empty() ? takeFirst(OUT) : false;
   const bool upper = n.y >= (kind == "blast" ? 0.6f : 0.45f);
   if (!held.empty()) {
     if (upper) {
@@ -100,14 +122,14 @@ bool tactileFurnaceUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemSt
         return false;
       }
       if (!doorOpen) { toast(lv, p, kind == "blast" ? "Open its hatch first (use it)" : "Open its door first (use it)"); return true; }
-      return put(0);
+      return putCook();
     }
     if (fuelValue(held.id) <= 0) return false;
     return put(1);
   }
   if (upper) {
     if (!doorOpen) return false;
-    return take(2) || take(0);
+    return takeFirst(OUT) || takeFirst(IN);
   }
   return take(1);
 }

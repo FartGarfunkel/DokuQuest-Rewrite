@@ -605,34 +605,63 @@ bool tickFurnace(json& e, double dt, const std::string& kind) {
   if (!e.contains("items") || !e["items"].is_array()) e["items"] = json::array({nullptr, nullptr, nullptr});
   json& items = e["items"];
   while (items.size() < 3) items.push_back(nullptr);
-  ItemStack inp = ItemStack::fromJson(items[0]), fuel = ItemStack::fromJson(items[1]), out = ItemStack::fromJson(items[2]);
-  std::string result = inp.empty() ? "" : smeltResult(inp.id, kind);
+  // a Tactile furnace (sim/tactile.h) has four spots to cook on and four for what's done: slots 0, 3, 4, 5 and 2, 6, 7, 8
+  // (the classic three — input, fuel, output — are the first of each, so the screen and hoppers see what they always did)
+  const bool multi = items.size() >= 9;
+  static const int IN[4] = {0, 3, 4, 5}, OUT[4] = {2, 6, 7, 8};
+  const int spots = multi ? 4 : 1;
+  ItemStack fuel = ItemStack::fromJson(items[1]);
   if (kind == "smoker" || kind == "blast") dt *= 2;
-  bool canOut = !result.empty() && (out.empty() || (out.id == result && out.n < maxStackOf(result)));
+  // what each spot makes, and whether there's room for it among what's done
+  std::string result[4]; bool can[4] = {false, false, false, false}; int active = 0;
+  auto room = [&](const std::string& r) {
+    for (int k = 0; k < spots; k++) { const ItemStack o = ItemStack::fromJson(items[OUT[k]]); if (o.empty() || (o.id == r && o.n < maxStackOf(r))) return true; }
+    return false;
+  };
+  for (int k = 0; k < spots; k++) {
+    const ItemStack in = ItemStack::fromJson(items[IN[k]]);
+    result[k] = in.empty() ? "" : smeltResult(in.id, kind);
+    can[k] = !result[k].empty() && room(result[k]);
+    active += can[k];
+  }
   bool changed = false;
-  double burn = e.value("burn", 0.0), cook = e.value("cook", 0.0);
-  if (burn <= 0 && canOut && !fuel.empty() && fuelValue(fuel.id) > 0) {
+  double burn = e.value("burn", 0.0);
+  json cooks = e.contains("cooks") && e["cooks"].is_array() ? e["cooks"] : json::array({0.0, 0.0, 0.0, 0.0});
+  while (cooks.size() < 4) cooks.push_back(0.0);
+  cooks[0] = e.value("cook", 0.0);
+  if (burn <= 0 && active > 0 && !fuel.empty() && fuelValue(fuel.id) > 0) {
     burn = fuelValue(fuel.id) * SMELT_TIME; e["burnMax"] = burn; e["burnId"] = fuel.id;   // (what burns: drawn in the fire, burning down: render/furnace_layer.cpp)
     if (fuel.id == "lava_bucket") items[1] = ItemStack("bucket", 1).toJson();
     else { fuel.n--; items[1] = fuel.n <= 0 ? json() : fuel.toJson(); }
     changed = true;
   }
   if (burn > 0) {
-    burn = std::max(0.0, burn - dt);
-    if (canOut) {
+    burn = std::max(0.0, burn - dt * std::max(1, active));   // (Tactile: the more cooking, the faster the fire goes)
+    for (int k = 0; k < spots; k++) {
+      double cook = cooks[k].get<double>();
+      if (!can[k]) { cooks[k] = 0.0; continue; }
       const double was = cook;
       cook += dt;
       // the stages the furnace's front shows (render/furnace_layer.cpp: ore glowing, food turned cooked) reach players too
-      for (double at : {SMELT_TIME * 0.3, SMELT_TIME * 0.55}) if (was < at && cook >= at) changed = true;
-      if (cook >= SMELT_TIME) {
-        cook = 0; inp.n--; items[0] = inp.n <= 0 ? json() : inp.toJson();
-        if (!out.empty()) { out.n++; items[2] = out.toJson(); } else items[2] = ItemStack(result, 1).toJson();
+      if (k == 0) for (double at : {SMELT_TIME * 0.3, SMELT_TIME * 0.55}) if (was < at && cook >= at) changed = true;
+      if (cook >= SMELT_TIME && room(result[k])) {
+        cook = 0;
+        ItemStack in = ItemStack::fromJson(items[IN[k]]); in.n--; items[IN[k]] = in.n <= 0 ? json() : in.toJson();
+        for (int o = 0; o < spots; o++) {   // (Tactile's placeOneOutput: onto the same, else the first free)
+          ItemStack out = ItemStack::fromJson(items[OUT[o]]);
+          if (!out.empty() && !(out.id == result[k] && out.n < maxStackOf(result[k]))) continue;
+          if (out.empty()) { bool same = false; for (int q = o + 1; q < spots; q++) { const ItemStack x = ItemStack::fromJson(items[OUT[q]]); if (x.id == result[k] && x.n < maxStackOf(result[k])) { same = true; break; } } if (same) continue; }
+          if (out.empty()) items[OUT[o]] = ItemStack(result[k], 1).toJson(); else { out.n++; items[OUT[o]] = out.toJson(); }
+          break;
+        }
         changed = true;
       }
-    } else cook = 0;
+      cooks[k] = cook;
+    }
     if (burn <= 0) changed = true;
-  } else if (cook > 0) cook = std::max(0.0, cook - dt * 2);
-  e["burn"] = burn; e["cook"] = cook;
+  } else for (int k = 0; k < spots; k++) { const double c = cooks[k].get<double>(); if (c > 0) cooks[k] = std::max(0.0, c - dt * 2); }
+  e["burn"] = burn; e["cook"] = cooks[0];
+  if (multi) e["cooks"] = cooks;
   return changed;
 }
 void tickFurnaces(Level& lv, double dt) {

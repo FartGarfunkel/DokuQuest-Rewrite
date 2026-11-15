@@ -233,6 +233,20 @@ int main(int argc, char** argv) {
     check(smeltResult("beef", "smoker") == "cooked_beef", "beef smokes into cooked beef (what the smoker shows it turning into)");
   }
 
+  printf("[a Tactile furnace cooks on four spots at once]\n");
+  {
+    json e = {{"type", "furnace"}, {"items", json::array({ItemStack("beef", 2).toJson(), ItemStack("coal", 4).toJson(), nullptr,
+                                                          ItemStack("porkchop", 1).toJson(), nullptr, nullptr, nullptr, nullptr, nullptr})}};
+    double t = 0; while (t < SMELT_TIME * 1.05) { tickFurnace(e, 0.25, "furnace"); t += 0.25; }
+    std::vector<ItemStack> out; for (int k : {2, 6, 7, 8}) out.push_back(ItemStack::fromJson(e["items"][k]));
+    bool beef = false, pork = false; for (auto& o : out) { beef |= o.id == "cooked_beef"; pork |= o.id == "cooked_porkchop"; }
+    check(beef && pork, "beef and pork cooked side by side in one smelting time");
+    check(ItemStack::fromJson(e["items"][0]).n == 1 && ItemStack::fromJson(e["items"][3]).empty(), "one of each taken from its spot");
+    json c = {{"type", "furnace"}, {"items", json::array({ItemStack("beef", 1).toJson(), ItemStack("coal", 4).toJson(), nullptr})}};
+    t = 0; while (t < SMELT_TIME * 1.05) { tickFurnace(c, 0.25, "furnace"); t += 0.25; }
+    check(c["items"].size() == 3 && ItemStack::fromJson(c["items"][2]).id == "cooked_beef", "a classic furnace keeps its three slots and cooks as ever");
+  }
+
   printf("\n%d passed, %d failed\n", passes, fails);
   im.lv->close();
   return fails;

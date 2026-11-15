@@ -20,7 +20,7 @@ namespace dq {
 namespace {
 float rnd01(u32 h) { return (h & 0xFFFF) / 65535.f; }
 
-struct Furn { ivec3 at; int facing; std::string kind; bool lit, door; ItemStack in, fuel, out; std::string burn; VoxelLight L; };
+struct Furn { ivec3 at; int facing; std::string kind; bool lit, door; ItemStack in[4], fuel, out[4]; std::string burn; VoxelLight L; };
 
 class TactileFurnaces : public RenderLayer {
 public:
@@ -55,7 +55,9 @@ public:
       fu.lit = reg().block(id).light > 0; fu.door = e.value("door", false);
       const json& it = e.contains("items") && e["items"].is_array() ? e["items"] : json::array();
       auto at = [&](size_t k) { return k < it.size() ? ItemStack::fromJson(it[k]) : ItemStack(); };
-      fu.in = at(0); fu.fuel = at(1); fu.out = at(2);
+      static const int IN[4] = {0, 3, 4, 5}, OUT[4] = {2, 6, 7, 8};   // (Tactile's four spots: sim/worldsys.cpp tickFurnace)
+      for (int k = 0; k < 4; k++) { fu.in[k] = at(IN[k]); fu.out[k] = at(OUT[k]); }
+      fu.fuel = at(1);
       fu.burn = fu.lit ? e.value("burnId", std::string()) : std::string();
       fu.L = tactileLight(w, fu.at);
       list.push_back(fu);
@@ -79,22 +81,20 @@ public:
     }
     cd.end();
   }
-  // a stack shown as Tactile's slots would hold it: a slot takes up to 16 of a kind, four slots a tier
-  static int pieces(const ItemStack& s, int perSlot = 16) { return s.empty() ? 0 : std::min(4, (s.n + perSlot - 1) / perSlot); }
   void drawItems(const FrameCtx& f, const Furn& fu) {
     const TPose base = tactileBlockPose(f, fu.at, fu.facing);
     const VoxelLight glow{fu.L.sky, 1.f};
     if (fu.kind == "blast") {   // (HautFourneauBlockEntityRenderer: the raw on the crucible, the mould's top, the fuel)
       static const float RAW[4][2] = {{6.5f, 8.5f}, {9.5f, 8.5f}, {6.5f, 11.5f}, {9.5f, 11.5f}};
-      for (int i = 0; i < pieces(fu.in); i++) { TPose p = base; p.t(RAW[i][0] / 16, 0.88125f, RAW[i][1] / 16).rx(90).s(0.3f, 0.3f, 0.75f); tactileItem(fu.in, p.m, fu.lit ? glow : fu.L); }
-      if (!fu.out.empty()) { TPose p = base; p.t(0.5f, 0.75625f, -0.0625f).rx(90).s(0.3f, 0.3f, 0.75f); tactileItem(fu.out, p.m, fu.L); }
+      for (int i = 0; i < 4; i++) { TPose p = base; p.t(RAW[i][0] / 16, 0.88125f, RAW[i][1] / 16).rx(90).s(0.3f, 0.3f, 0.75f); tactileItem(fu.in[i], p.m, fu.lit ? glow : fu.L); }
+      for (int i = 0; i < 4; i++) if (!fu.out[i].empty()) { TPose p = base; p.t(0.5f, 0.75625f, -0.0625f).rx(90).s(0.3f, 0.3f, 0.75f); tactileItem(fu.out[i], p.m, fu.L); break; }   // (the mould shows its top)
     } else {   // (Four/FumoirBlockEntityRenderer: four spots a tier, what cooks on the shelf, what's done above)
       const bool smoker = fu.kind == "smoker";
       static const float FOUR[4][2] = {{5.5f, 5.f}, {10.5f, 5.f}, {5.5f, 9.5f}, {10.5f, 9.5f}}, FUMOIR[4][2] = {{5.5f, 3.f}, {10.5f, 3.f}, {5.5f, 7.f}, {10.5f, 7.f}};
       const float (*POS)[2] = smoker ? FUMOIR : FOUR;
       const float inY = 9.f, outY = smoker ? 9.5f : 10.f;
-      for (int i = 0; i < pieces(fu.in); i++) { TPose p = base; p.t(POS[i][0] / 16, (inY + 0.1f) / 16, POS[i][1] / 16).rx(90).s(0.3f, 0.3f, 0.75f); tactileItem(fu.in, p.m, fu.L); }
-      for (int i = 0; i < pieces(fu.out); i++) { TPose p = base; p.t(POS[i][0] / 16, (outY + 0.1f) / 16, POS[i][1] / 16).rx(90).s(0.3f, 0.3f, 0.75f); tactileItem(fu.out, p.m, fu.L); }
+      for (int i = 0; i < 4; i++) { TPose p = base; p.t(POS[i][0] / 16, (inY + 0.1f) / 16, POS[i][1] / 16).rx(90).s(0.3f, 0.3f, 0.75f); tactileItem(fu.in[i], p.m, fu.L); }
+      for (int i = 0; i < 4; i++) { TPose p = base; p.t(POS[i][0] / 16, (outY + 0.1f) / 16, POS[i][1] / 16).rx(90).s(0.3f, 0.3f, 0.75f); tactileItem(fu.out[i], p.m, fu.L); }
     }
     // the fuel tossed on the floor, up to eight, each where the block's own seed throws it (what burns, glowing, first)
     std::vector<ItemStack> fuel;
