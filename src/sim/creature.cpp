@@ -940,8 +940,9 @@ void Creature::update(Level& lv, float dt) {
     if (!onGround && vel.y < 0) fallDist += before.y - pos.y;
     if (onGround) fallDist = 0;
   }
-  // walked into something: hop up only if it's a step it can get onto
-  if (hitWall && onGround && want > 0 && !(T->swims && !T->walks && c.water) && stepAhead(lv)) vel.y = T->hopper ? 6 : 7.8f;
+  // walked into something: hop up only if it's a step it can get onto. (Next tick, as a wanted jump: set here, after the
+  // move, a tick of gravity came off it first and it topped out at 0.96, never onto the block)
+  if (hitWall && onGround && want > 0 && !(T->swims && !T->walks && c.water) && stepAhead(lv)) wantJump = true;
   if (!wasGround && onGround && type == "cinder_golem" && fallV < -8) lv.fx->shake(0, 0.3f);
   if (!wasGround && onGround && fallV < -2.5f) { landT = 0.18f; life.landK = std::clamp(std::sqrt(-fallV) / 3.f, 0.5f, 1.6f); }   // (the squash as hard as the drop: Fresh Animations)
   if (landT > 0) landT -= dt;

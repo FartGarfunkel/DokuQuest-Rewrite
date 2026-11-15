@@ -143,6 +143,20 @@ int main(int argc, char** argv) {
     CHECK(pg.empty() || pg.back() != ivec3(20, Y, 5), "a ghoul-sized one doesn't fit under them");
     for (int z = -5; z < 39; z++) for (int y = Y; y < Y + 3; y++) w.setBlock(15, y, z, AIR);
   }
+  // an animal wandering into a one-block step hops up onto it (the hop it makes against a wall clears a whole block)
+  printf("wandering up a step\n");
+  for (const char* kind : {"cow", "pig", "sheep"}) {
+    for (int z = 26; z < 36; z++) w.setBlock(12, Y, z, stone);
+    Creature* an = spawnCreature(*lv, 0, kind, vec3(9.5f, Y, 30.5f));
+    float top = 0;
+    for (int i = 0; an && i < (int)(4 / TICK_DT); i++) {
+      an->wanderOn = true; an->wanderT = 100; an->wanderDir = -PI / 2;   // (walking +x, into the step)
+      lv->tick(TICK_DT); top = std::max(top, an->pos.y - Y);
+    }
+    CHECK(an && an->pos.y >= Y + 0.99f && an->pos.x > 12, "a %s wandering into a step climbs it (highest %.2f, at x %.2f)", kind, top, an ? an->pos.x : 0.f);
+    clearCreatures(*lv);
+    for (int z = 26; z < 36; z++) w.setBlock(12, Y, z, AIR);
+  }
 
   printf("melee\n");
   Creature* g = spawnCreature(*lv, 0, "ghoul", vec3(4.5f, Y, 14.5f));
