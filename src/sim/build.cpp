@@ -11,6 +11,7 @@
 #include "world/carve_forms.h"
 #include "sim/worldsys.h"
 #include "sim/station_work.h"
+#include "sim/tactile.h"
 #include <random>
 
 namespace dq {
@@ -713,8 +714,12 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
       const std::vector<ItemStack> v = pairWorkItems(w, hit.block);
       int slot = 0;   // the spot pointed at: the nearer of the two places things lie
       if (glm::distance(pairLiePos(w, hit.block, 1), hit.point) < glm::distance(pairLiePos(w, hit.block, 0), hit.point)) slot = 1;
+      if (b.str("station") == "smithing") {   // (TableDeForgeBlockEntity.slotForHit: across its front, the material left, the template right)
+        const float x = tactileNorthLocal(tactileFacing(w, hit.block), hit.point - vec3(hit.block)).x;
+        slot = x < 0.3f ? 1 : x > 0.7f ? 2 : 0;
+      }
       if (held && !held->empty()) { if (pairWorkPut(lv, p, w, hit.block, slot, *held)) swingArm(); return true; }
-      if (v[slot].empty()) slot = 1 - slot;
+      if (v[slot].empty()) for (int k = 0; k < (int)v.size(); k++) if (!v[k].empty()) { slot = k; break; }
       if (!v[slot].empty()) { if (pairWorkTake(lv, p, w, hit.block, slot)) swingArm(); return true; }
       toastMsg(std::string("Lay what you'd work on the ") + (b.str("station") == "grindstone" ? "stone" : "table") + " (use it with it in hand), then strike it", "info");
       return true;

@@ -9,6 +9,7 @@
 #include "assets/tileset.h"
 #include "assets/pack_fs.h"
 #include "assets/pack_models.h"
+#include "core/registry.h"
 #include "assets/pack_armor.h"
 #include "assets/gui_textures.h"
 #include <unordered_set>
@@ -353,6 +354,24 @@ std::string applyResourcePack(TileSet& ts, const std::string& choice) {
   }
   int armor = loadPackArmor(*P);
   dropUnusedFrames(ts, frameBase);
+  // items the game doesn't paint a picture for (the smithing templates): the pack's own picture of that name, when it has one
+  {
+    int extra = 0;
+    for (const ItemDef& it : reg().items) {
+      const std::string& icon = it.icon;
+      if (icon.empty() || icon.find(':') != std::string::npos || ts.index.count(icon)) continue;
+      auto hit = find(itemDirs, icon);
+      auto img = hit ? load(hit->path) : nullptr;
+      if (!img || img->w < 8 || img->h < img->w) continue;
+      const int res = clampv(img->w >= T ? T : img->w, 8, T);
+      const std::vector<u8> px = fitTile(packFrame(*img, 0, res), res, res, T);
+      const int idx = appendTile(ts, px.data());
+      ts.res.back() = (u8)res;
+      ts.index[icon] = idx; reg().tileIndex[icon] = idx;
+      extra++;
+    }
+    if (extra) DQ_LOG("resource pack: %d item pictures the game doesn't paint", extra);
+  }
   // the pack's own block models for the blocks drawn from them (assets/pack_models.h) — after the frames are moved down,
   // so the tiles their textures add keep their places
   loadPackModels(ts, *P, {"torch", "wall_torch", "soul_torch", "soul_wall_torch", "redstone_torch", "redstone_wall_torch",

@@ -1,4 +1,5 @@
 // gen/structures_common.cpp — shared structure helpers (see structures_common.h).
+#include <unordered_map>
 #include "sim/spell_items.h"
 #include "core/tool_parts.h"
 #include "gen/structures_common.h"
@@ -73,6 +74,32 @@ static void maybeScroll(json& items, Mulberry32& rnd, double chance, int maxRank
   if (items[slot].is_null()) items[slot] = makeScroll(k, r).toJson();
 }
 
+// now and then a smithing template (Minecraft's places for them, in ours): its own roll, seeded from what the chest already
+// holds, so the place's other rolls (and every world made before) come out the same
+static void maybeTemplate(json& items, const std::string& kind) {
+  static const std::unordered_map<std::string, std::vector<std::pair<const char*, double>>> T = {
+    {"ember_bastion", {{"cinderite_upgrade_smithing_template", 0.45}, {"snout_armor_trim_smithing_template", 0.12}}},
+    {"ember_spire", {{"cinderite_upgrade_smithing_template", 0.3}}}, {"forge", {{"cinderite_upgrade_smithing_template", 0.2}}},
+    {"nether_fortress", {{"rib_armor_trim_smithing_template", 0.15}}}, {"temple", {{"dune_armor_trim_smithing_template", 0.14}, {"wild_armor_trim_smithing_template", 0.1}}},
+    {"wreck_treasure", {{"coast_armor_trim_smithing_template", 0.2}}}, {"ocean", {{"tide_armor_trim_smithing_template", 0.2}}},
+    {"stronghold", {{"eye_armor_trim_smithing_template", 0.1}}}, {"stronghold_library", {{"eye_armor_trim_smithing_template", 0.1}}},
+    {"ancient_city", {{"ward_armor_trim_smithing_template", 0.12}, {"silence_armor_trim_smithing_template", 0.04}}},
+    {"end_city", {{"spire_armor_trim_smithing_template", 0.12}}}, {"maze", {{"vex_armor_trim_smithing_template", 0.06}}}, {"maze_heart", {{"vex_armor_trim_smithing_template", 0.3}}},
+    {"tower", {{"sentry_armor_trim_smithing_template", 0.12}}},
+    {"ruin", {{"wayfinder_armor_trim_smithing_template", 0.06}, {"raiser_armor_trim_smithing_template", 0.05}, {"shaper_armor_trim_smithing_template", 0.05}, {"host_armor_trim_smithing_template", 0.05}}},
+    {"deep", {{"flow_armor_trim_smithing_template", 0.06}, {"bolt_armor_trim_smithing_template", 0.06}}},
+    {"deep_secret", {{"flow_armor_trim_smithing_template", 0.25}, {"bolt_armor_trim_smithing_template", 0.25}}}};
+  auto it = T.find(kind);
+  if (it == T.end()) return;
+  u32 h = 2166136261u; for (char c : items.dump()) h = (h ^ (u8)c) * 16777619u;
+  Mulberry32 r(h);
+  for (auto& [key, chance] : it->second) {
+    if (!hasItem(key) || r() >= chance) continue;
+    int slot = jsFloor(r() * 27); for (int t = 0; t < 27 && !items[slot].is_null(); t++) slot = (slot + 1) % 27;
+    if (items[slot].is_null()) items[slot] = json{{"id", key}, {"n", 1}};
+  }
+}
+
 json structLoot(const std::string& kind, Mulberry32& rnd) {
   json items = emptySlots();
   const json& L = SD()["STRUCT_LOOT"];
@@ -93,6 +120,7 @@ json structLoot(const std::string& kind, Mulberry32& rnd) {
     items[s] = json{{"id", "lore_" + k}, {"n", 1}};
   }
   maybeScroll(items, rnd, kind == "tower" ? 0.5 : kind == "archmage" || kind == "maze_heart" ? 0.8 : kind == "temple" || kind == "stronghold_library" ? 0.3 : 0.12, kind == "archmage" ? 8 : kind == "tower" ? 5 : 4);
+  maybeTemplate(items, kind);
   return items;
 }
 

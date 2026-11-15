@@ -11,6 +11,8 @@
 #include "sim/magic.h"
 #include "core/tool_parts.h"
 
+#include <unordered_map>
+
 namespace dq {
 
 namespace {
@@ -47,7 +49,12 @@ std::string pairStationAt(World& w, ivec3 at) {
 }
 int pairSlotFor(const std::string& st, const ItemStack& s) {
   if (s.empty()) return -1;
-  if (st == "smithing") return s.id == "cinderite_shard" || s.id == "tin_ingot" ? 1 : 0;
+  if (st == "smithing") {   // (Tactile's three: the gear, a template, the material)
+    const ItemDef* d = reg().item(s.id);
+    if (d && d->props.contains("template")) return 2;
+    if (d && s.maxStack() <= 1 && (d->hasTool || d->props.contains("armor"))) return 0;
+    return 1;
+  }
   if (st == "loom") { const ItemDef* d = reg().item(s.id); return d && d->has("dye") ? 1 : 0; }
   if (st == "fletching") return s.id == "feather" ? 1 : 0;
   if (st == "cartography") return s.id == "filled_map" ? 0 : 1;
@@ -55,7 +62,7 @@ int pairSlotFor(const std::string& st, const ItemStack& s) {
 }
 std::vector<ItemStack> pairWorkItems(World& w, ivec3 at) {
   const std::string st = pairStationAt(w, at);
-  return st.empty() ? std::vector<ItemStack>(2) : items(w, at, pairWorkType(st), 2);
+  return st.empty() ? std::vector<ItemStack>(2) : items(w, at, pairWorkType(st), st == "smithing" ? 3 : 2);   // (the smithing table's template third)
 }
 
 namespace {
@@ -70,7 +77,7 @@ int pairFacing(World& w, ivec3 at) {
 
 bool pairWorkPut(Level& lv, Player& p, World& w, ivec3 at, int slot, ItemStack& held) {
   const std::string st = pairStationAt(w, at);
-  if (st.empty() || held.empty() || slot > 1) return false;
+  if (st.empty() || held.empty() || slot > (st == "smithing" ? 2 : 1)) return false;
   std::vector<ItemStack> v = pairWorkItems(w, at);
   if (st == "forge") {   // the Tool Forge: a tool in the middle (a gem set in it beside), or a material to forge heads of
     const ItemDef* d = reg().item(held.id);
@@ -87,7 +94,7 @@ bool pairWorkPut(Level& lv, Player& p, World& w, ivec3 at, int slot, ItemStack& 
   if (slot < 0) { toast(lv, p, "Both sides are taken"); return false; }
   if (!v[slot].empty() && !v[slot].canMerge(held)) { toast(lv, p, "Something's lying there already"); return false; }
   // one piece of gear (and one a side on the grindstone); the rest as many as stack
-  const bool one = st == "grindstone" || (st == "smithing" && slot == 0) || (st == "forge" && slot == 1) || held.maxStack() <= 1;   // (the Tool Forge: one gem a tool; a tool is one of itself)
+  const bool one = st == "grindstone" || (st == "smithing" && slot != 1) || (st == "forge" && slot == 1) || held.maxStack() <= 1;   // (the Tool Forge: one gem a tool; a tool is one of itself)
   const int room = one ? (v[slot].empty() ? 1 : 0) : (v[slot].empty() ? held.maxStack() : v[slot].maxStack() - v[slot].n);
   const int put = std::min(room, held.n);
   if (put <= 0) return false;
@@ -109,7 +116,7 @@ bool pairWorkPut(Level& lv, Player& p, World& w, ivec3 at, int slot, ItemStack& 
 
 bool pairWorkTake(Level& lv, Player& p, World& w, ivec3 at, int slot) {
   const std::string st = pairStationAt(w, at);
-  if (st.empty() || slot < 0 || slot > 1) return false;
+  if (st.empty() || slot < 0 || slot > (st == "smithing" ? 2 : 1)) return false;
   std::vector<ItemStack> v = pairWorkItems(w, at);
   if (v[slot].empty()) return false;
   ItemStack s = v[slot]; v[slot] = ItemStack();
@@ -121,10 +128,37 @@ bool pairWorkTake(Level& lv, Player& p, World& w, ivec3 at, int slot) {
 StationResult pairResult(Level& lv, const std::string& st, const ItemStack& a, const ItemStack& b) {
   return st == "cartography" ? mapPairResult(lv, a, b, false) : stationResult(st, a, b);
 }
+// the smithing table with its template (Tactile's three slots): a trim template sets its pattern in armour in the
+// material's colour; the cinderite upgrade takes its template (diamond -> cinderite); copper -> bronze needs none
+StationResult smithResult(const ItemStack& a, const ItemStack& b, const ItemStack& t) {
+  StationResult r;
+  if (a.empty() || b.empty()) return r;
+  const ItemDef* td = t.empty() ? nullptr : reg().item(t.id);
+  const std::string kind = td ? td->props.value("template", std::string()) : std::string();
+  if (kind == "trim") {
+    const ItemDef* ad = reg().item(a.id);
+    const std::string mat = trimMaterialOf(b.id);
+    if (!ad || !ad->props.contains("armor") || mat.empty()) return r;
+    r.out = a; r.out.n = 1;
+    if (!r.out.tag.is_object()) r.out.tag = json::object();
+    r.out.tag["trim"] = {{"p", td->props.value("trim", std::string())}, {"m", mat}};
+    r.useA = 1; r.useB = 1; r.ok = true; r.note = "Trimmed";
+    return r;
+  }
+  if (b.id == "cinderite_shard" && kind != "upgrade") { r.note = "The cinderite upgrade needs its template"; return r; }
+  return stationResult("smithing", a, b);
+}
+std::string trimMaterialOf(const std::string& item) {
+  static const std::unordered_map<std::string, std::string> M = {{"iron_ingot", "iron"}, {"gold_ingot", "gold"}, {"copper_ingot", "copper"}, {"diamond", "diamond"},
+    {"emerald", "emerald"}, {"lapis_lazuli", "lapis"}, {"quartz", "quartz"}, {"amethyst_shard", "amethyst"}, {"redstone", "redstone"}, {"cinderite_shard", "netherite"}};
+  auto it = M.find(item);
+  return it == M.end() ? std::string() : it->second;
+}
 StationResult pairWorkResult(Level& lv, World& w, ivec3 at) {
   const std::string st = pairStationAt(w, at);
   const std::vector<ItemStack> v = pairWorkItems(w, at);
   if (st.empty() || (v[0].empty() && v[1].empty())) return StationResult{};
+  if (st == "smithing") return smithResult(v[0], v[1], v[2]);
   return pairResult(lv, st, v[0], v[1]);
 }
 
@@ -133,11 +167,27 @@ bool isStrikingHammer(const ItemStack& s) {
   const ItemDef* d = reg().item(s.id);
   return d && (d->hasTool || d->has("hammer"));
 }
+bool smithWorkForge(Level& lv, Player& p, World& w, ivec3 at) {
+  std::vector<ItemStack> v = pairWorkItems(w, at);
+  if (v.size() < 3) return false;
+  const StationResult r = smithResult(v[0], v[1], v[2]);
+  if (!r.ok) { toast(lv, p, !r.note.empty() ? r.note : "Nothing comes of those"); return false; }
+  if (!p.creative() && p.level < 1) { toast(lv, p, "It takes a level of experience to smith"); return false; }   // (Tactile: a level a piece)
+  if (!p.creative()) spendLevels(p, 1);
+  v[0] = r.out;                                         // (the result lies where the gear was: taken off by hand)
+  if (!v[1].empty() && (v[1].n -= std::max(1, r.useB)) <= 0) v[1] = ItemStack();
+  savePair(w, at, "smithing", v, std::max(0, pairFacing(w, at)));
+  sfxAt(lv, "anvil", vec3(at) + vec3(0.5f, 1.f, 0.5f));
+  onCrafted(lv, p, r.out.id, 1, true, false);
+  return true;
+}
+
 bool pairWorkDo(Level& lv, Player& p, World& w, ivec3 at, ItemStack* made) {
   const std::string st = pairStationAt(w, at);
   if (st.empty()) return false;
   std::vector<ItemStack> v = pairWorkItems(w, at);
-  StationResult r = (v[0].empty() && v[1].empty()) ? StationResult{} : st == "cartography" ? mapPairResult(lv, v[0], v[1], true) : pairResult(lv, st, v[0], v[1]);
+  StationResult r = (v[0].empty() && v[1].empty()) ? StationResult{} : st == "cartography" ? mapPairResult(lv, v[0], v[1], true)
+                  : st == "smithing" ? smithResult(v[0], v[1], v[2]) : pairResult(lv, st, v[0], v[1]);
   if (!r.ok) {
     toast(lv, p, st == "grindstone" ? "Nothing to grind off that" : st == "smithing" ? "That won't take that upgrade" : st == "loom" ? "That dye won't take on that"
                : st == "fletching" ? "Fletching takes a flint and a feather" : st == "forge" ? "That gem won't set in that"

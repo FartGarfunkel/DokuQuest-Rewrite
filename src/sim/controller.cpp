@@ -428,6 +428,22 @@ bool PlayerController::tactileStrike(const RayHit& hit) {
   if (st.empty() || st == "cartography") return false;   // (the desk is worked at its quill and compass: sim/tactile.h)
   const std::vector<ItemStack> v = pairWorkItems(w, at);
   if (v[0].empty() && v[1].empty()) return false;
+  // the smithing table (Tactile's table_de_forge): struck with a hammer only, a blow at most every half second, three to
+  // forge it; the result stays on the table
+  if (st == "smithing") {
+    if (!isStrikingHammer(p.held())) { toastMsg("Strike it with a hammer", "info"); return true; }
+    swingArm();
+    if (t - strikeT < 0.5 && strikeAt == at) return true;
+    const StationResult r = pairWorkResult(lv, w, at);
+    const vec3 c = vec3(at) + vec3(0.5f, 0.8125f, 0.5f);
+    if (!r.ok) { sfxAt(lv, "anvil_land", c); toastMsg(!r.note.empty() ? r.note : "Nothing comes of those", "info"); strikes = 0; return true; }
+    if (strikeAt != at || t - strikeT > 2.5) strikes = 0;
+    strikeAt = at; strikeT = t;
+    sfxAt(lv, "anvil", c); burst(lv, c, "iron_block", 5, 0.4f);
+    if (++strikes >= 3) { strikes = 0; if (smithWorkForge(lv, p, w, at)) burst(lv, c, "iron_block", 18, 0.6f); }
+    wearHeld(lv, p, 1);
+    return true;
+  }
   swingArm();
   const StationResult r = pairWorkResult(lv, w, at);
   if (!r.ok) { pairWorkDo(lv, p, w, at); return true; }   // (it says why not)

@@ -270,6 +270,30 @@ public:
         record(e["disc"].get<std::string>(), vec3(x, y, z) + vec3(0.5f, 1.06f, 0.5f), 0, -t * 1.6f, 0.5f, VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f});
         return;
       }
+      // Tactile's smithing table (TableDeForgeBlockEntityRenderer): the gear tilted on the anvil plate, the material on the
+      // left block, the template on the right, what it'll make standing at the back over the tongs
+      if (type == "smithwork" && stationModel(w.getBlock(x, y, z)) && s.app.settings.tactileStations && !(pairOn && pv.at == ivec3(x, y, z))) {
+        const ivec3 at(x, y, z);
+        const VoxelLight L = tactileLight(w, at);
+        const TPose base = tactileBlockPose(f, at, tactileFacing(w, at));
+        const std::vector<ItemStack> v = pairWorkItems(w, at);
+        begin();
+        auto item = [&](const ItemStack& st, float px, float py, float pz, float pitch, float yaw, float sc) {
+          if (st.empty()) return;
+          TPose p = base; p.t(px / 16, (py + 0.25f) / 16, pz / 16);
+          if (yaw != 0) p.ry(yaw);
+          if (pitch != 0) p.rx(pitch);
+          p.s(sc);
+          ItemStack one = st; one.n = 1;
+          tactileItem(one, p.m, L);
+        };
+        item(v[0], 8, 13, 5, 67.5f, 0, 0.7f);
+        if (v.size() > 2) item(v[2], 14, 15.3f, 3, 67.5f, 0, 0.3f);
+        item(v[1], 2, 15.3f, 3, 67.5f, 0, 0.3f);
+        const StationResult r = pairWorkResult(*s.level, w, at);
+        if (r.ok && !r.out.empty()) item(r.out, 8, 22, 14.2f, -15.f, 180.f, 0.65f);
+        return;
+      }
       // Tactile's cartography desk (CartographeBlockEntityRenderer): the maps on its board and the pile on its right, the
       // ink in its pot, the quill in its holder; turned by the facing's clockwise (its model faces west)
       if (type == "mapwork" && stationModel(w.getBlock(x, y, z)) && s.app.settings.tactileStations && !(pairOn && pv.at == ivec3(x, y, z))) {

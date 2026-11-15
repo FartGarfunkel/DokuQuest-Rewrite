@@ -29,6 +29,11 @@ StationResult pairResult(Level& lv, const std::string& station, const ItemStack&
 // new map made only when take); a map and empty maps make that many copies, the map itself back with them
 StationResult mapPairResult(Level& lv, const ItemStack& map, const ItemStack& with, bool take);
 StationResult pairWorkResult(Level& lv, World& w, ivec3 at);
+StationResult smithResult(const ItemStack& gear, const ItemStack& material, const ItemStack& tmpl);   // (the template: trims, the cinderite upgrade)
+std::string trimMaterialOf(const std::string& item);   // a trim material's colour ("iron", "gold"...), "" not one
+// Tactile's forge blows on the smithing table: the work done (the result left on the table where the gear was, the material
+// used, the template kept, a level spent). false and why (toasted) if not
+bool smithWorkForge(Level& lv, Player& p, World& w, ivec3 at);
 // does the work: the result into the bag, the pieces used, any experience given back. false (and why, toasted) if not
 bool pairWorkDo(Level& lv, Player& p, World& w, ivec3 at, ItemStack* made = nullptr);   // made: what was handed over
 // a hammer to strike a station's work with (the smith's, the stone and flint ones...: a tool, not a head or a mould)
