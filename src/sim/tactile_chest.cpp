@@ -42,8 +42,8 @@ json& itemsOf(json& e) {
 }
 int pageOf(const json& e) { return e.value("page", 0) & 1; }
 // the page packed (CoffreBlockEntity.compact): its stacks merged and moved to the front
-void compact(json& items, int page) {
-  const int a = page * PAGE, b = std::min(SLOTS, a + PAGE);
+void compact(json& items, int page, int PG = PAGE) {
+  const int a = page * PG, b = std::min(SLOTS, a + PG);
   std::vector<ItemStack> v;
   for (int i = a; i < b; i++) {
     ItemStack s = ItemStack::fromJson(items[i]);
@@ -57,8 +57,8 @@ void compact(json& items, int page) {
   }
   for (int i = a; i < b; i++) items[i] = i - a < (int)v.size() ? v[i - a].toJson() : json();
 }
-bool placeOne(json& items, int page, ItemStack& held) {   // (CoffreBlockEntity.placeOne: onto the same, else the first free)
-  const int a = page * PAGE, b = std::min(SLOTS, a + PAGE);
+bool placeOne(json& items, int page, ItemStack& held, int PG = PAGE) {   // (CoffreBlockEntity.placeOne: onto the same, else the first free)
+  const int a = page * PG, b = std::min(SLOTS, a + PG);
   for (int i = a; i < b; i++) {
     ItemStack s = ItemStack::fromJson(items[i]);
     if (s.empty() || s.id != held.id || !s.canMerge(held) || s.n >= s.maxStack()) continue;
@@ -70,6 +70,14 @@ bool placeOne(json& items, int page, ItemStack& held) {   // (CoffreBlockEntity.
   }
   return false;
 }
+}  // namespace
+
+namespace {
+const float B_COL[3] = {4.5f, 8.f, 11.5f}, B_ROW[3] = {11.5f, 8.f, 4.5f};
+const float B_TRAY[6] = {2, 12, 2, 14, 14.5f, 14}, B_WELL[6] = {1.5f, 1, 1.5f, 14.5f, 16, 14.5f};
+const float B_SORT[6] = {2, 15.6f, 0.2f, 5, 17.6f, 2.2f}, B_SWAP[6] = {11, 15.6f, 0.2f, 14, 17.6f, 2.2f};
+const int B_PAGE = 9;
+int barrelFacing(World& w, ivec3 at) { const json* e = w.blockEntity(at.x, at.y, at.z); return e && e->is_object() ? e->value("f", 2) & 3 : 2; }
 }  // namespace
 
 bool tactileChest(World& w, ivec3 at) {
@@ -128,6 +136,13 @@ bool tactileChestOutline(World& w, ivec3 at, std::vector<std::pair<vec3, vec3>>&
 float tactileExtraRay(World& w, ivec3 at, vec3 eye, vec3 dir) {
   const float t = tactileChestLidRay(w, at, eye, dir);
   if (t >= 0) return t;
+  if (tactileBarrel(w, at) && chestLidOpen(w, at)) {   // (an open barrel's rim buttons stand up over it)
+    const int f = barrelFacing(w, at);
+    const vec3 o = tactileNorthLocal(f, eye - vec3(at)), d = tactileNorthLocal(f, eye + dir - vec3(at)) - o;
+    float best = -1;
+    for (const float* b : {B_SORT, B_SWAP}) { const float t = rayBox(o, d, b); if (t >= 0 && (best < 0 || t < best)) best = t; }
+    if (best >= 0) return best;
+  }
   if (reg().block(w.getBlock(at.x, at.y, at.z)).key == "brewing_stand") {   // (the still's recipe book, lying in front)
     const int f = tactileFacing(w, at);
     const vec3 o = tactileNorthLocal(f, eye - vec3(at)), d = tactileNorthLocal(f, eye + dir - vec3(at)) - o;
@@ -174,7 +189,14 @@ bool tactileChestUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 di
       if (any) { compact(items, page); changed(); sfxAt(lv, "pop", c); }
       return true;
     }
-    if (held.empty()) return true;   // (taken by striking: tactileChestTake)
+    if (held.empty()) {   // (an empty hand: what lies there, the whole of it, back into your bag)
+      const int k = page * PAGE + a.slot;
+      ItemStack s2 = k < SLOTS ? ItemStack::fromJson(items[k]) : ItemStack();
+      if (s2.empty()) return true;
+      items[k] = nullptr; compact(items, page); changed();
+      tactileGive(lv, p, s2); sfxAt(lv, "pop", c);
+      return true;
+    }
     int placed = 0;
     for (int n = 0; n < (all ? 64 : 1) && !held.empty() && placeOne(items, page, held); n++) placed++;
     if (placed) { compact(items, page); changed(); sfxAt(lv, "pop", c); }
@@ -202,6 +224,102 @@ bool tactileChestTake(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 d
   ItemStack taken = s; taken.n = whole ? s.n : 1;
   s.n -= taken.n; items[k] = s.n <= 0 ? json() : s.toJson();
   compact(items, page);
+  w.blockEntityChanged(at.x, at.y, at.z);
+  tactileGive(lv, p, taken);
+  sfxAt(lv, "pop", vec3(at) + vec3(0.5f));
+  return true;
+}
+
+// ---- a barrel, worked the same way: a tray of nine under its rim (three layers of the 27), its two buttons on the rim ----
+
+bool tactileBarrel(World& w, ivec3 at) {
+  const BlockDef& b = reg().block(w.getBlock(at.x, at.y, at.z));
+  return b.has("container") && b.key.size() >= 6 && b.key.compare(b.key.size() - 6, 6, "barrel") == 0 && !b.has("sealed");
+}
+int tactileBarrelFacing(World& w, ivec3 at) { return barrelFacing(w, at); }
+
+TactileChestAim tactileBarrelAim(World& w, ivec3 at, vec3 eye, vec3 dir) {
+  TactileChestAim r;
+  if (!tactileBarrel(w, at)) return r;
+  if (!chestLidOpen(w, at)) { r.what = TactileChestAim::Shut; return r; }
+  const int f = barrelFacing(w, at);
+  const vec3 o = tactileNorthLocal(f, eye - vec3(at)), d = tactileNorthLocal(f, eye + dir - vec3(at)) - o;
+  float best = 1e9f;
+  auto test = [&](const float b[6], int what) { const float t = rayBox(o, d, b); if (t >= 0 && t < best) { best = t; r.what = what; } };
+  test(B_SORT, TactileChestAim::Sort); test(B_SWAP, TactileChestAim::Swap);
+  test(B_TRAY, TactileChestAim::Tray);
+  if (r.what == TactileChestAim::None) test(B_WELL, TactileChestAim::Tray);
+  if (r.what == TactileChestAim::Tray) {   // (the spot under where the look meets the tray)
+    const float ty = (B_TRAY[1] + B_TRAY[4]) * 0.5f / 16.f;
+    const float t = std::fabs(d.y) > 1e-5f ? (ty - o.y) / d.y : best;
+    const vec3 p = o + d * (t > 0 ? t : best);
+    const int col = std::clamp((int)std::lround((p.x * 16 - B_COL[0]) / 3.5f), 0, 2), row = std::clamp((int)std::lround((B_ROW[0] - p.z * 16) / 3.5f), 0, 2);
+    r.slot = row * 3 + col;
+  }
+  if (r.what == TactileChestAim::None) r.what = TactileChestAim::Lid;   // (the rim: shuts it)
+  return r;
+}
+
+bool tactileBarrelUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, ItemStack& held, bool all, bool sneak) {
+  if (!tactileBarrel(w, at)) return false;
+  json* e = containerEntity(w, at.x, at.y, at.z);
+  if (!e) return false;
+  const vec3 c = vec3(at) + vec3(0.5f, 1.f, 0.5f);
+  auto changed = [&] { w.blockEntityChanged(at.x, at.y, at.z); };
+  if (!chestLidOpen(w, at)) {   // (opened: its front to whoever opened it)
+    vec3 toMe = eye - (vec3(at) + vec3(0.5f)); toMe.y = 0;
+    int bf = 2; float bd = -1e9f;
+    for (int f = 0; f < 4; f++) { const vec3 fr = tactileFromNorth(f, vec3(0.5f, 0, 0)) - vec3(0.5f, 0, 0.5f); const float dd = glm::dot(fr, toMe); if (dd > bd) { bd = dd; bf = f; } }
+    (*e)["f"] = bf; changed();
+    setChestLidOpen(w, at, true); sfxAt(lv, "chest", c);
+    return true;
+  }
+  const TactileChestAim a = tactileBarrelAim(w, at, eye, dir);
+  json& items = itemsOf(*e);
+  const int pages = (SLOTS + B_PAGE - 1) / B_PAGE, page = std::clamp(e->value("page", 0), 0, pages - 1);
+  if (a.what == TactileChestAim::Sort) {
+    std::vector<ItemStack> v; for (int i = 0; i < SLOTS; i++) { ItemStack s = ItemStack::fromJson(items[i]); if (!s.empty()) v.push_back(s); }
+    std::stable_sort(v.begin(), v.end(), [](const ItemStack& x, const ItemStack& y) { return x.id < y.id; });
+    for (int i = 0; i < SLOTS; i++) items[i] = i < (int)v.size() ? v[i].toJson() : json();
+    for (int pg = 0; pg < pages; pg++) compact(items, pg, B_PAGE);
+    (*e)["press0"] = e->value("press0", 0) + 1; changed(); sfxAt(lv, "click", c);
+    return true;
+  }
+  if (a.what == TactileChestAim::Swap) { (*e)["page"] = (page + 1) % pages; (*e)["press1"] = e->value("press1", 0) + 1; changed(); sfxAt(lv, "click", c); return true; }
+  if (a.what == TactileChestAim::Tray) {
+    const int k = page * B_PAGE + a.slot;
+    if (held.empty()) {   // (an empty hand: what lies there, back into your bag)
+      if (k >= SLOTS) return true;
+      ItemStack s = ItemStack::fromJson(items[k]);
+      if (s.empty()) return true;
+      items[k] = nullptr; compact(items, page, B_PAGE); changed();
+      tactileGive(lv, p, s); sfxAt(lv, "pop", c);
+      return true;
+    }
+    if (sneak) return true;
+    int placed = 0;
+    for (int n = 0; n < (all ? 64 : 1) && !held.empty() && placeOne(items, page, held, B_PAGE); n++) placed++;
+    if (placed) { compact(items, page, B_PAGE); changed(); sfxAt(lv, "pop", c); }
+    else toast(lv, p, "This layer is full (the button on the rim turns to the next)");
+    return true;
+  }
+  setChestLidOpen(w, at, false); sfxAt(lv, "chest", c);
+  return true;
+}
+
+bool tactileBarrelTake(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, bool whole) {
+  const TactileChestAim a = tactileBarrelAim(w, at, eye, dir);
+  if (a.what != TactileChestAim::Tray || a.slot < 0) return false;
+  json* e = w.blockEntity(at.x, at.y, at.z);
+  if (!e) return false;
+  json& items = itemsOf(*e);
+  const int page = e->value("page", 0), k = page * B_PAGE + a.slot;
+  if (k >= SLOTS) return false;
+  ItemStack s = ItemStack::fromJson(items[k]);
+  if (s.empty()) return false;
+  ItemStack taken = s; taken.n = whole ? s.n : 1;
+  s.n -= taken.n; items[k] = s.n <= 0 ? json() : s.toJson();
+  compact(items, page, B_PAGE);
   w.blockEntityChanged(at.x, at.y, at.z);
   tactileGive(lv, p, taken);
   sfxAt(lv, "pop", vec3(at) + vec3(0.5f));

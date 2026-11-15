@@ -374,7 +374,7 @@ public:
       VR.draw(cm.lid.gl, lm * cm.lid.matrix(), L);
       // what's inside, lying in its rows (seen once the lid is up)
       if (o.settling || o.t < 0.2f) continue;
-      drawInside(s, w, VR, o, pos, m, L, (float)f.time);
+      if (!(s.app.settings.tactileStations && tactileBarrel(w, pos))) drawInside(s, w, VR, o, pos, m, L, (float)f.time);   // (a barrel's tray: render/tactile_chests.cpp)
     }
     if (begun) VR.end();
   }

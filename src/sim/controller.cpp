@@ -510,8 +510,13 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
   // a held swing that hit a creature never digs into the ground behind it; in creative a sword never breaks blocks (Minecraft)
   const ToolInfo* ti = heldTool(p);
   bool noDig = fightHold || (p.creative() && ti && ti->type == "sword") || p.mode == "adventure";   // adventure: the world stays as it is
-  // Tactile Stations: an open barrel, large chest or cabinet is reached into too (a strike takes one; sneaking, the stack)
-  if (tactileStations && target.hit && !te && bhas(target.id, BF::Container) && !tactileChest(world(), target.block) && chestLidOpen(world(), target.block)) {
+  // Tactile Stations: an open barrel's tray (a strike takes one; sneaking, the stack)
+  if (tactileStations && target.hit && !te && tactileBarrel(world(), target.block) && chestLidOpen(world(), target.block)) {
+    noDig = true;
+    if (in.attackPressed && !p.atkMove && tactileBarrelTake(lv, p, world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch), p.sneaking)) swingArm();
+  }
+  // Tactile Stations: an open large chest or cabinet is reached into too (a strike takes one; sneaking, the stack)
+  else if (tactileStations && target.hit && !te && bhas(target.id, BF::Container) && !tactileChest(world(), target.block) && chestLidOpen(world(), target.block)) {
     noDig = true;
     const int slot = chestSlotAtRay(world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch));
     if (in.attackPressed && !p.atkMove && slot >= 0 && chestTake(lv, p, world(), target.block, slot, !p.sneaking, true)) swingArm();
@@ -799,6 +804,14 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
       if (tactileChestUse(lv, p, w, hit->block, eye, lookVector(p.yaw, p.pitch), held, repeat && t - tactileHoldAt > 0.5, p.sneaking) && !repeat) swingArm();
     return;
   }
+  // Tactile Stations: a barrel worked as the chest is (sim/tactile.h: its tray of nine, its layers and rim buttons)
+  if (!fromOff && hit && !te && tactileStations && tactileBarrel(w, hit->block) && !(p.sneaking && !chestLidOpen(w, hit->block))) {
+    if (!repeat) tactileHoldAt = t;
+    const vec3 eye(p.pos.x, p.pos.y + p.eye, p.pos.z);
+    if (!repeat || (tactileBarrelAim(w, hit->block, eye, lookVector(p.yaw, p.pitch)).what == TactileChestAim::Tray && !held.empty()))
+      if (tactileBarrelUse(lv, p, w, hit->block, eye, lookVector(p.yaw, p.pitch), held, repeat && t - tactileHoldAt > 0.5, p.sneaking) && !repeat) swingArm();
+    return;
+  }
   // Tactile Stations: every other store worked the same way by hand (barrels, large chests, cabinets): use opens it (the top
   // off, the doors out); open, use at a spot inside puts one of what's held there (held, the stack), strike takes; use off
   // the spots shuts it; sneak + use its screen
@@ -814,6 +827,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
       if (!repeat) { setChestLidOpen(w, hit->block, false); swingArm(); sfxAt(lv, isCabinet(w, hit->block) ? "door_close" : "chest", c); }
       return;
     }
+    if (held.empty()) { if (!repeat && chestTake(lv, p, w, hit->block, slot, false, true)) swingArm(); return; }   // (an empty hand takes what lies there)
     if (!held.empty() && (!repeat || t - tactileHoldAt > 0.5)) {
       bool put = chestPut(lv, p, w, hit->block, slot, !repeat);
       // (the spot holds something else, or is full: the same kind's spot, else the first free one)

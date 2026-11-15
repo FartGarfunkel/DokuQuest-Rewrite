@@ -65,6 +65,15 @@ bool tactileBrewUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack
 bool tactileJukeboxUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held);
 bool tactileJukeboxPlaying(World& w, ivec3 at);
 
+// a barrel worked the same way (open by use, its front toward whoever opened it): a tray of nine under its rim showing one
+// layer of its 27 (the others below), an empty hand takes what lies at a spot, the rim's two buttons sort it and turn to
+// the next layer, use on the rim shuts it
+bool tactileBarrel(World& w, ivec3 at);
+int tactileBarrelFacing(World& w, ivec3 at);
+TactileChestAim tactileBarrelAim(World& w, ivec3 at, vec3 eye, vec3 dir);
+bool tactileBarrelUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, ItemStack& held, bool all, bool sneak);
+bool tactileBarrelTake(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, bool whole);
+
 // the cartography desk (Tactile's cartographe; our "mapwork" record {items: [the map worked, a blank to copy onto, blank
 // sheets to enlarge with], ink, feather}): an ink sac fills its pot (three uses), a feather goes in its holder (three);
 // a map goes on the board (front: the one worked, back: a blank to copy onto), blanks and paper pile on the right; an empty
