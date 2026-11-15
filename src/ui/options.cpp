@@ -160,7 +160,7 @@ private:
           if (kit.cycle("Difficulty", &cur, {"Peaceful", "Easy", "Normal", "Hard"}, 2, "This world's difficulty. Peaceful: no monsters appear on their own.")) d = DIFFS[cur];
         }
         if (kit.toggle("View Bobbing", &s.viewBob, D.viewBob, "The view sways as you walk.")) applyNow = true;
-        if (kit.toggle("Leave Chests Open", &s.chestLids, D.chestLids, "Using a chest or barrel lifts its lid, and it stays up with what's inside in view. Use it again to work in it; use its lid (the back) to shut it.")) applyNow = true;
+        if (kit.toggle("Leave Chests Open", &s.leaveChestsOpen, D.leaveChestsOpen, "Using a chest or barrel lifts its lid, and it stays up with what's inside in view. Use it again to work in it; use its lid (the back) to shut it.")) applyNow = true;
         if (kit.toggle("Pause on Lost Focus", &s.pauseOnLostFocus, D.pauseOnLostFocus, "Opens the pause menu a moment after this window is no longer the one in front. A world shared with others keeps going.")) applyNow = true;
         { static const char* v[] = {"auto", "vertical", "horizontal"}; int cur = indexOfStr(v, 3, s.split);
           if (kit.cycle("Two-Player Split", &cur, {"Automatic", "Side by Side", "Top and Bottom"}, 0, "How the screen splits when a second player joins with a controller.", 120)) { s.split = v[cur]; applyNow = true; } }
@@ -295,7 +295,6 @@ private:
       if (kit.category("Accessibility")) {
         if (kit.toggle("Subtitles", &s.captions, D.captions, "Words at the side of the screen for the sounds around you, with the way they come from.")) applyNow = true;
         if (kit.toggle("View Bobbing", &s.viewBob, D.viewBob, "The view sways as you walk.")) applyNow = true;
-        if (kit.toggle("Leave Chests Open", &s.chestLids, D.chestLids, "Using a chest or barrel lifts its lid, and it stays up with what's inside in view. Use it again to work in it; use its lid (the back) to shut it.")) applyNow = true;
         if (kit.toggle("Screen Motion Effects", &s.screenShake, D.screenShake, "Explosions and boss slams shake the view.")) applyNow = true;
         if (kit.toggle("Damage Tilt", &s.hurtTilt, D.hurtTilt, "The view tilts a little when you are hurt.")) applyNow = true;
         { int cur = clampv(s.colorFilter, 0, 3); if (kit.cycle("Colorblind Assist", &cur, {"None", "Protanopia", "Deuteranopia", "Tritanopia"}, 0, "Shifts the colours you may not tell apart into ones you can: red-blind, green-blind or blue-blind.")) { s.colorFilter = cur; applyNow = true; } }

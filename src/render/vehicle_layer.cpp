@@ -189,6 +189,7 @@ public:
   }
   ~VehicleLayer() override { if (appRef && hScreen) appRef->events.off(hScreen); }
   const char* name() const override { return "vehicles"; }
+  int order() const override { return 200; }   // (after the characters: a boat's water mask mustn't hide its rider's legs)
 
   // riding: the controller may call vehicleInput itself; otherwise the app's input drives the vehicle
   void afterPlayerMove(GameSession& s, double dt) override {
@@ -424,6 +425,15 @@ private:
     mat4 S = glm::scale(T(rel), vec3(sc));
     mat4 base = RX(RZ(RY(S, b.yaw), b.heel + (b.shakeT > 0 ? std::sin(b.age * 60) * 0.06f : 0)), std::sin(b.bob * 1.3f) * 0.025f + clampv(b.speed * 0.006f, -0.03f, 0.05f));
     draw(hull, base, L);
+    {   // no water inside the boat (Minecraft's water mask): its well filled, depth only, before the water is drawn
+      Model& mask = model("boat_water_mask", 1.f / 32, [] {
+        return std::vector<Part>{box({-0.6f, 0.14f, -0.55f}, {0.6f, 0.57f, 1.08f}, "boat_planks"), box({-0.4f, 0.14f, -0.95f}, {0.4f, 0.57f, -0.55f}, "boat_planks"),
+                                 box({-0.18f, 0.14f, -1.25f}, {0.18f, 0.57f, -0.95f}, "boat_planks")};
+      }, ts);
+      glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+      draw(mask, base, L);
+      glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    }
     if (b.kind == "sailboat") {
       Model& mast = model("boat_mast", 1.f / 32, [] { return std::vector<Part>{box({-0.06f, 0.15f, -0.06f}, {0.06f, 3.2f, 0.06f}, "axle"), box({-0.1f, 0.15f, -0.1f}, {0.1f, 0.4f, 0.1f}, "axle_end")}; }, ts);
       Model& boom = model("boat_boom", 1.f / 32, [] { return std::vector<Part>{box({-0.04f, 0.85f, 0}, {0.04f, 0.93f, 1.5f}, "axle")}; }, ts);
