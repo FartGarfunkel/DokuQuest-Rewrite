@@ -794,7 +794,9 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   // forearms from there filled the view; the hand view's arms stay there until those rests sit out on the work)
   const bool fpStation = fp && &p == s.player && cinematicActive() && !cinematicLeaning() && cinematicKind() == 13 && cinematicHandsWorld(fpHands);
   const bool settled = !fpStation || cinematicCrouch() > 0.5f;   // (first person: sat or crouched once the view has come down)
-  if ((!fp || fpStation) && p.stationKind >= 0 && !p.dead && !p.riding) {
+  // holding a piece to a grindstone's wheel (sim/tactile.h): your own body's forearms there, seen from your eyes too
+  const bool fpGrind = fp && &p == s.player && p.stationKind == 6 && !cinematicActive();
+  if ((!fp || fpStation || fpGrind) && p.stationKind >= 0 && !p.dead && !p.riding) {
     if (p.workTap != st.workTapSeen) { st.workTapSeen = p.workTap; st.workTapAt = f.time; }
     const float tap = f.time - st.workTapAt < 0.22 ? std::sin((float)((f.time - st.workTapAt) / 0.22) * 3.14159f) : 0.f;
     const float yaw = p.yaw; const vec3 right(std::cos(yaw), 0, -std::sin(yaw));
@@ -804,6 +806,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
     ps.reachR = f.cam.rel(glm::dvec3(hand));
     ps.reachL = f.cam.rel(glm::dvec3(hand - right * 0.42f + vec3(0, -0.04f, 0)));   // (the other hand on the station beside it)
     if (fpStation) { ps.reachR = f.cam.rel(glm::dvec3(fpHands[0])); ps.reachL = f.cam.rel(glm::dvec3(fpHands[1])); }   // (both your hands where the scene puts them)
+    if (p.stationKind == 6 && !cinematicActive()) ps.reachL = f.cam.rel(glm::dvec3(hand - right * 0.13f + vec3(0, 0.02f, 0)));   // (the piece in both hands, to the wheel)
     if ((p.stationKind == 3 || p.stationKind == 4) && settled) ps.sneak = true;   // (down to the brewing stand, the furnace)
     if (p.stationKind == 13 && settled) ps.sitGround = true;   // (sat down by a campfire)
     if (p.stationKind == 1 && f.time - st.workTapAt < 1.4) { wear.held = "smith_hammer"; wear.heldModel.clear(); ps.held = true; }   // (the hammer while the blows land)

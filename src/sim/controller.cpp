@@ -486,6 +486,7 @@ bool PlayerController::tactileStrike(const RayHit& hit) {
 }
 
 void PlayerController::interact(float dt, const PlayerInput& in0) {
+  if (grindPose && t - grind.last > 0.4) { grindPose = false; if (p.stationKind == 6) p.stationKind = -1; }   // (let go of the wheel)
   PlayerInput inM = in0; const PlayerInput& in = inM;   // (a hand's cast takes its button: see below)
   if (breakCd > 0) breakCd -= dt;
   if (p.attackCd > 0) p.attackCd -= dt;
@@ -843,7 +844,12 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   }
   // Tactile Stations: the grindstone (sim/tactile.h): what's held is held to the wheel while use is held
   if (!fromOff && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).str("station") == "grindstone") {
-    if (tactileGrind(lv, p, w, hit->block, held, t, grind) && !repeat) swingArm();
+    if (tactileGrind(lv, p, w, hit->block, held, t, grind)) {
+      // your arms hold the piece to the wheel (render/char_layer.cpp: the station reach, seen from your eyes too)
+      const vec3 eye(p.pos.x, p.pos.y + p.eye, p.pos.z), top = vec3(hit->block) + vec3(0.5f, 0.86f, 0.5f);
+      vec3 toMe = eye - top; toMe.y = 0; toMe = glm::length(toMe) > 1e-3f ? glm::normalize(toMe) : vec3(0, 0, 1);
+      p.stationKind = 6; p.workAt = top + toMe * 0.22f; grindPose = true;
+    }
     return;
   }
   // Tactile Stations: the anvil worked where it stands (sim/tactile.h): what's held laid on it, a hammer strikes it (an empty
