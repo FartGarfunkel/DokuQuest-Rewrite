@@ -55,7 +55,7 @@ StationResult anvilWorkResult(World& w, ivec3 at) {
   return stationResult("anvil", v[0], v[1]);
 }
 
-bool anvilWorkForge(Level& lv, Player& p, World& w, ivec3 at) {
+bool anvilWorkForge(Level& lv, Player& p, World& w, ivec3 at, bool leaveOnAnvil) {
   if (!isAnvil(w, at)) return false;
   std::vector<ItemStack> v = anvilWorkItems(w, at);
   StationResult r = v[0].empty() ? StationResult{} : stationResult("anvil", v[0], v[1]);
@@ -64,9 +64,10 @@ bool anvilWorkForge(Level& lv, Player& p, World& w, ivec3 at) {
   if (r.lv && !p.creative()) spendLevels(p, r.lv);
   auto use = [&](int k, int n) { if (v[k].empty() || n <= 0) return; if ((v[k].n -= n) <= 0) v[k] = ItemStack(); };
   use(0, r.useA); use(1, r.useB);
+  if (leaveOnAnvil && v[0].empty()) v[0] = r.out;
   save(w, at, v);
   ItemStack out = r.out;
-  if (int left = giveItem(lv, p, out); left > 0) { out.n = left; dropItem(lv, p.realm, out, p.pos + vec3(0, 1, 0), true, 0.f); }
+  if (!leaveOnAnvil || v[0].id != r.out.id) if (int left = giveItem(lv, p, out); left > 0) { out.n = left; dropItem(lv, p.realm, out, p.pos + vec3(0, 1, 0), true, 0.f); }
   sfxAt(lv, "anvil", vec3(at) + vec3(0.5f, 1.f, 0.5f));
   // anvils wear out (the anvil screen's way): anvil -> chipped -> damaged -> gone
   if (std::rand() / (double)RAND_MAX < 0.12) {

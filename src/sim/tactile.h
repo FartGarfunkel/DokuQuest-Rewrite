@@ -24,6 +24,13 @@ vec3 tactileFromNorth(int facing, vec3 north);
 bool tactileFurnaceUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held, bool all);
 bool tactileDoorOpen(World& w, ivec3 at);
 
+// the anvil (Tactile's enclume over our "anvilwork" record {items: [work, material], hits, req}): what's held goes on it (the
+// work first, then the material beside it), an empty hand takes back (the material first); struck with a hammer (half a
+// second apart) it forges once the blows are in — five to join two alike, two for each piece of material used — the
+// result left on the anvil, the levels spent
+bool tactileAnvilUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held);
+bool tactileAnvilStrike(Level& lv, Player& p, World& w, ivec3 at, double now);   // false: nothing on it to strike
+
 // the cartography desk (Tactile's cartographe; our "mapwork" record {items: [the map worked, a blank to copy onto, blank
 // sheets to enlarge with], ink, feather}): an ink sac fills its pot (three uses), a feather goes in its holder (three);
 // a map goes on the board (front: the one worked, back: a blank to copy onto), blanks and paper pile on the right; an empty

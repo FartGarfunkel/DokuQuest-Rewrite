@@ -24,7 +24,7 @@ STATIONS = {
     'grindstone': ('meule', {}),
     'chest': ('coffre', {}),
     'ender_chest': ('coffre_ender', {}),
-    'anvil': ('enclume', {}),
+    'anvil': ('enclume', {}), 'chipped_anvil': ('enclume', {}), 'damaged_anvil': ('enclume', {}),
     'enchanting_table': ('table_enchantement', {}),
     'jukebox': ('jukebox', {}),
     'bookshelf': ('bibliotheque', {}),

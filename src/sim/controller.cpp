@@ -6,6 +6,7 @@
 #include "sim/controller.h"
 #include "sim/station_work.h"
 #include "sim/tactile.h"
+#include "sim/anvil_work.h"
 #include "sim/magic.h"
 #include "sim/chest_work.h"
 #include "sim/combat_rpg.h"
@@ -486,6 +487,14 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
   // a held swing that hit a creature never digs into the ground behind it; in creative a sword never breaks blocks (Minecraft)
   const ToolInfo* ti = heldTool(p);
   bool noDig = fightHold || (p.creative() && ti && ti->type == "sword") || p.mode == "adventure";   // adventure: the world stays as it is
+  // Tactile Stations: an anvil with work on it is struck with a hammer, not dug
+  if (tactileStations && target.hit && !te && reg().block(target.id).str("station") == "anvil" && !anvilWorkItems(world(), target.block)[0].empty()) {
+    noDig = true;
+    if (in.attackPressed && !p.atkMove) {
+      if (isStrikingHammer(p.held())) { swingArm(); tactileAnvilStrike(lv, p, world(), target.block, t); }
+      else toastMsg("Strike it with a hammer", "info");
+    }
+  }
   // Tactile Stations: a station with work on it is struck, not dug (take what's on it off first to break it)
   if (tactileStations && target.hit && !te && !pairStationAt(world(), target.block).empty()) {
     const std::vector<ItemStack> v = pairWorkItems(world(), target.block);
@@ -754,6 +763,12 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     if (!repeat) tactileHoldAt = t;
     if (tactileFurnaceUse(lv, p, w, *hit, held, repeat && t - tactileHoldAt > 1.0) && !repeat) swingArm();
     return;
+  }
+  // Tactile Stations: the anvil worked where it stands (sim/tactile.h): what's held laid on it, a hammer strikes it (an empty
+  // anvil and a hammer: the immersive smithing's own anvil work, below)
+  if (!fromOff && !repeat && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).str("station") == "anvil") {
+    if (isStrikingHammer(held)) { if (tactileAnvilStrike(lv, p, w, hit->block, t)) { swingArm(); return; } }
+    else { if (tactileAnvilUse(lv, p, w, *hit, held)) swingArm(); return; }
   }
   // Tactile Stations: the station takes the use before what's held does (armour laid on the smithing table, not worn)
   if (!fromOff && !repeat && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).has("station") && pairWorkType(R.block(hit->id).str("station"))) {

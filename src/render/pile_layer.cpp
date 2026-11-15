@@ -16,6 +16,10 @@
 #include "assets/voxel_paint.h"
 #include "world/shapes.h"
 #include "core/item_glint.h"
+#include "render/tactile_kit.h"
+#include "assets/local_models.h"
+#include "sim/tactile.h"
+#include "client/app.h"
 #include <regex>
 #include <map>
 
@@ -187,6 +191,26 @@ public:
           m = glm::rotate(m, 0.6f + e, vec3(0, 1, 0)); m = glm::rotate(m, -PI / 2, vec3(1, 0, 0)); m = glm::scale(m, vec3(0.22f));
           VR.draw(lm.gl, m * lm.matrix(), L);
         }
+        return;
+      }
+      if (type == "anvilwork" && stationModel(w.getBlock(x, y, z)) && s.app.settings.tactileStations) {
+        // Tactile's anvil (EnclumeBlockEntityRenderer): the work flat on its face, the material over it sinking in blow by blow
+        begin();
+        const ivec3 at(x, y, z);
+        const std::vector<ItemStack> v = anvilWorkItems(w, at);
+        const TPose base = tactileBlockPose(f, at, tactileFacing(w, at));
+        const VoxelLight TL = tactileLight(w, at);
+        const int req = std::max(1, e.value("req", 2)), hits = e.value("hits", 0);
+        const float sink = std::min(1.f, (float)hits / req);
+        const bool fusion = !v[0].empty() && !v[1].empty() && v[0].id == v[1].id;
+        auto flat = [&](const ItemStack& st, float py, float sc) {
+          if (st.empty()) return;
+          ItemStack one = st; one.n = 1;
+          TPose p = base; p.t(0.5f, py / 16, 0.5f).rx(90).s(sc);
+          tactileItem(one, p.m, TL);
+        };
+        flat(v[0], 16.1f, 0.84f);
+        flat(v[1], 17.f + (16.1f - 17.f) * sink + 0.1f, fusion ? 0.84f : 0.42f);
         return;
       }
       if (type == "anvilwork") {   // sim/anvil_work.h: the work lying on the anvil's face, what goes into it beside it, askew

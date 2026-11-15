@@ -46,7 +46,7 @@ int localTile(TileSet& ts, const fs::path& dir, const std::string& ref) {
 }  // namespace
 
 bool tactilePorted(const std::string& key) {
-  static const std::unordered_set<std::string> DONE = {"smithing_table", "cartography_table", "furnace", "lit_furnace", "smoker", "lit_smoker", "blast_furnace", "lit_blast_furnace"};
+  static const std::unordered_set<std::string> DONE = {"smithing_table", "cartography_table", "furnace", "lit_furnace", "smoker", "lit_smoker", "blast_furnace", "lit_blast_furnace", "anvil", "chipped_anvil", "damaged_anvil"};
   return DONE.count(key) > 0;
 }
 const PackModel* tactilePart(const std::string& name) {   // a part drawn on its own (a door, a lid, the wheel), loaded once

@@ -7,6 +7,7 @@
 #include "sim/controller.h"
 #include "core/registry.h"
 #include "world/world.h"
+#include "sim/anvil_work.h"
 
 namespace dq {
 
@@ -132,6 +133,40 @@ bool tactileFurnaceUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemSt
     return takeFirst(OUT) || takeFirst(IN);
   }
   return take(1);
+}
+
+bool tactileAnvilUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held) {
+  const ivec3 at = hit.block;
+  if (reg().block(w.getBlock(at.x, at.y, at.z)).str("station") != "anvil") return false;
+  const std::vector<ItemStack> v = anvilWorkItems(w, at);
+  const vec3 c = vec3(at) + vec3(0.5f, 1.f, 0.5f);
+  if (!held.empty()) {
+    if (anvilWorkPut(lv, p, w, at, v[0].empty() ? 0 : 1, held)) { if (json* e = w.blockEntity(at.x, at.y, at.z)) { (*e)["hits"] = 0; w.blockEntityChanged(at.x, at.y, at.z); } sfxAt(lv, "pop", c); }
+    return true;
+  }
+  const int k = !v[1].empty() ? 1 : !v[0].empty() ? 0 : -1;
+  if (k >= 0 && anvilWorkTake(lv, p, w, at, k)) { if (json* e = w.blockEntity(at.x, at.y, at.z)) { (*e)["hits"] = 0; w.blockEntityChanged(at.x, at.y, at.z); } sfxAt(lv, "pop", c); }
+  return true;
+}
+bool tactileAnvilStrike(Level& lv, Player& p, World& w, ivec3 at, double now) {
+  const std::vector<ItemStack> v = anvilWorkItems(w, at);
+  if (v[0].empty()) return false;
+  json* e = w.blockEntity(at.x, at.y, at.z);
+  if (!e) return false;
+  const vec3 c = vec3(at) + vec3(0.5f, 1.f, 0.5f);
+  if (now - e->value("lastHit", -10.0) < 0.5) return true;   // (a blow at most every half second)
+  const StationResult r = anvilWorkResult(w, at);
+  if (!r.ok) { sfxAt(lv, "anvil_land", c); toast(lv, p, v[1].empty() ? "Lay what goes into it beside it" : "That won't forge into anything"); return true; }
+  const int req = !v[1].empty() && v[0].id == v[1].id ? 5 : std::max(2, 2 * std::max(1, r.useB));
+  const int hits = e->value("hits", 0) + 1;
+  (*e)["lastHit"] = now; (*e)["req"] = req; (*e)["hits"] = hits;
+  w.blockEntityChanged(at.x, at.y, at.z);
+  sfxAt(lv, "anvil", c); burst(lv, c, "iron_block", 5, 0.4f);
+  if (hits >= req) {
+    if (anvilWorkForge(lv, p, w, at, true)) { burst(lv, c, "iron_block", 18, 0.6f); if (json* e2 = w.blockEntity(at.x, at.y, at.z)) { (*e2)["hits"] = 0; w.blockEntityChanged(at.x, at.y, at.z); } }
+    else (*e)["hits"] = req;
+  }
+  return true;
 }
 
 void tactileGive(Level& lv, Player& p, ItemStack s) {
