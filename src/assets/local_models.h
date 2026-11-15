@@ -14,6 +14,7 @@ struct StationModel {
   std::shared_ptr<PackModel> models[4];         // per meta & 3 (south, east, north, west)
   int turn[4] = {0, 0, 0, 0};                   // quarters (clockwise from above) for meta & 3
   const PackModel& of(int facing) const { return models[facing & 3] ? *models[facing & 3] : model; }
+  std::shared_ptr<PackModel> closed;            // a chest shut (its lid in the model: "coffre_full"); open, the lid is drawn on its hinge
   int facingKind = 0;                           // the block's own facing: 0 none, 1 a front (meta & 3: S E N W), 2 a turned model (N E S W)
   int idx(u8 meta) const { static const int FM[4] = {2, 1, 0, 3}; return facingKind == 1 ? meta & 3 : facingKind == 2 ? FM[meta & 3] : 2; }   // -> south, east, north, west
 };

@@ -487,6 +487,11 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
   // a held swing that hit a creature never digs into the ground behind it; in creative a sword never breaks blocks (Minecraft)
   const ToolInfo* ti = heldTool(p);
   bool noDig = fightHold || (p.creative() && ti && ti->type == "sword") || p.mode == "adventure";   // adventure: the world stays as it is
+  // Tactile Stations: an open chest's tray is reached into, not dug (a strike takes one; sneaking, the stack)
+  if (tactileStations && target.hit && !te && tactileChest(world(), target.block) && chestLidOpen(world(), target.block)) {
+    noDig = true;
+    if (in.attackPressed && !p.atkMove && tactileChestTake(lv, p, world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch), p.sneaking)) swingArm();
+  }
   // Tactile Stations: an anvil with work on it is struck with a hammer, not dug
   if (tactileStations && target.hit && !te && reg().block(target.id).str("station") == "anvil" && !anvilWorkItems(world(), target.block)[0].empty()) {
     noDig = true;
@@ -756,6 +761,14 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     json a = json::array({p.name, held.empty() ? std::string() : held.id, hit ? hit->block.x : 0, hit ? hit->block.y : 0, hit ? hit->block.z : 0, face});
     if (!lv.events->emit("itemUse", a)) { swingArm(); return; }
     def = held.empty() ? nullptr : R.item(held.id);   // a handler may have changed the stack
+  }
+  // Tactile Stations: a chest worked as Tactile's coffre (sim/tactile.h); sneak + use on a shut one opens its screen
+  if (!fromOff && hit && !te && tactileStations && tactileChest(w, hit->block) && !(p.sneaking && !chestLidOpen(w, hit->block))) {
+    if (!repeat) tactileHoldAt = t;
+    const vec3 eye(p.pos.x, p.pos.y + p.eye, p.pos.z);
+    if (!repeat || tactileChestAim(w, hit->block, eye, lookVector(p.yaw, p.pitch)).what == TactileChestAim::Tray)
+      if (tactileChestUse(lv, p, w, hit->block, eye, lookVector(p.yaw, p.pitch), held, repeat && t - tactileHoldAt > 0.5, p.sneaking) && !repeat) swingArm();
+    return;
   }
   // Tactile Stations: a furnace, smoker or blast furnace worked where you look (sim/tactile.h): fuel low, what cooks high,
   // an empty hand takes back; held, one more each moment, and after a second the whole stack. Never its screen (sneak)

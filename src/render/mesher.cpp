@@ -357,7 +357,8 @@ bool emitStationModelIn(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, i
   { u8 em[3]; blockLightRgb(id, c.R.metaLight(id, meta), em); for (int i = 0; i < 3; i++) if (em[i] > L.b[i]) L.b[i] = em[i]; }
   const float sk = (float)(max3u(L.s[0], L.s[1], L.s[2]) >> 4), bl = (float)(max3u(L.b[0], L.b[1], L.b[2]) >> 4);
   const int fd = SM->idx(meta);
-  emitPackModel(c, dst, SM->of(fd), vec3((float)x, (float)y, (float)z), SM->turn[fd], sk, bl, markCubyz(packCubyzLight(L)), Mat::Cutout | Mat::NoRelief);
+  const bool shut = SM->closed && SM->closed->boxes.size() && !(meta & 0x20);   // (sim/chest_work.h LID_OPEN)
+  emitPackModel(c, dst, shut ? *SM->closed : SM->of(fd), vec3((float)x, (float)y, (float)z), SM->turn[fd], sk, bl, markCubyz(packCubyzLight(L)), Mat::Cutout | Mat::NoRelief);
   return true;
 }
 void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& dst, BlockId id, int x, int y, int z, u8 meta) {

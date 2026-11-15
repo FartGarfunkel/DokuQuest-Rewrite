@@ -24,7 +24,9 @@ keeps our own blocks.
 - [ ] the grindstone's first-person pose (MeuleFirstPersonAnimator: the piece held to the wheel)
 - [x] enclume -> anvil (work + material on its face, hammer blows, the result left on it)
 - [ ] armour trims shown on worn armour (every armour, the procedural ones too)
-- [ ] coffre / coffre_ender -> chests: the lid (kept off the wall behind), a note of paper on the lid naming it, the
+- [x] coffre -> chest (lid on its inner hinge, tray of 15 + heap, buttons sort/swap, the item looked at written inside the lid; a large chest stays ours)
+- [ ] coffre_ender -> ender chest
+- [ ] (was) coffre / coffre_ender -> chests: the lid (kept off the wall behind), a note of paper on the lid naming it, the
       contents in Tactile's layers (large items, stacks)
 - [x] cartographe -> cartography table (ink, quill, board, pile, compass; draw, copy, enlarge with 8 blanks or paper)
 - [ ] alambic -> brewing stand, enclume -> anvil, table_enchantement -> enchanting

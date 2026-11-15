@@ -39,6 +39,16 @@ struct GrindSession { ivec3 at{0, -9999, 0}; double last = -10, repair = 0, xp =
 bool tactileGrind(Level& lv, Player& p, World& w, ivec3 at, ItemStack& held, double now, GrindSession& gs);
 bool tactileGrindTarget(const ItemStack& s);   // worn (past its ground-in wear) or enchanted
 
+// a chest worked as Tactile's coffre (a plain chest standing alone; a large chest stays ours): use opens it, and shuts it
+// (on its lid or rim); open, a tray of fifteen shows one page (the other fifteen heaped loose below): what's held goes in
+// where you look at the tray (held a moment: the stack), a strike takes one (sneaking: the stack), sneak + use on the tray
+// puts in all you carry that's already there; its buttons sort the page (sneaking: both) and turn to the other page
+struct TactileChestAim { enum { None, Shut, Lid, Tray, Sort, Swap }; int what = None, slot = -1; };
+bool tactileChest(World& w, ivec3 at);
+TactileChestAim tactileChestAim(World& w, ivec3 at, vec3 eye, vec3 dir);
+bool tactileChestUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, ItemStack& held, bool all, bool sneak);
+bool tactileChestTake(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, bool whole);
+
 // the cartography desk (Tactile's cartographe; our "mapwork" record {items: [the map worked, a blank to copy onto, blank
 // sheets to enlarge with], ink, feather}): an ink sac fills its pot (three uses), a feather goes in its holder (three);
 // a map goes on the board (front: the one worked, back: a blank to copy onto), blanks and paper pile on the right; an empty

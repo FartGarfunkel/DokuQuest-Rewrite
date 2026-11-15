@@ -17,6 +17,8 @@
 #include "sim/player.h"
 #include "ui/cinematic.h"
 #include <cstring>
+#include "assets/local_models.h"
+#include "sim/tactile.h"
 #include <map>
 #include <set>
 
@@ -202,8 +204,10 @@ public:
     const float fdt = (float)std::min(dt, 0.1);
     // what's open: yours (and each one's other half), the others' at work at a chest
     std::set<std::tuple<int, int, int>> want;
+    const bool tactile = s.app.settings.tactileStations;
     auto add = [&](ivec3 p) {
       if (!isChest(w.getBlock(p.x, p.y, p.z))) return;
+      if (tactile && stationModel(w.getBlock(p.x, p.y, p.z)) && tactileChest(w, p)) return;   // (drawn as Tactile's: render/tactile_chests.cpp)
       ivec3 hs[2]; const int n = chestHalves(w, p, hs);
       if (!n) { want.insert({p.x, p.y, p.z}); return; }
       for (int i = 0; i < n; i++) want.insert({hs[i].x, hs[i].y, hs[i].z});

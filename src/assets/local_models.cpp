@@ -46,7 +46,7 @@ int localTile(TileSet& ts, const fs::path& dir, const std::string& ref) {
 }  // namespace
 
 bool tactilePorted(const std::string& key) {
-  static const std::unordered_set<std::string> DONE = {"smithing_table", "cartography_table", "furnace", "lit_furnace", "smoker", "lit_smoker", "blast_furnace", "lit_blast_furnace", "anvil", "chipped_anvil", "damaged_anvil", "grindstone"};
+  static const std::unordered_set<std::string> DONE = {"smithing_table", "cartography_table", "furnace", "lit_furnace", "smoker", "lit_smoker", "blast_furnace", "lit_blast_furnace", "anvil", "chipped_anvil", "damaged_anvil", "grindstone", "chest"};
   return DONE.count(key) > 0;
 }
 const PackModel* tactilePart(const std::string& name) {   // a part drawn on its own (a door, a lid, the wheel), loaded once
@@ -75,6 +75,8 @@ void loadStationModels(TileSet& ts) {
       else if (v.contains("model") && v["model"].is_string()) for (int k = 0; k < 4; k++) sm.models[k] = model(v["model"].get<std::string>());
       if (!sm.models[0] || sm.models[0]->boxes.empty()) continue;
       sm.model = *sm.models[0];
+      if (key == "chest") sm.closed = model("coffre_full");   // (shut: the whole chest; open: render/tactile_chests.cpp swings its lid)
+      if (key == "ender_chest") sm.closed = model("coffre_ender_full");
       { const BlockDef& bd = reg().block(id);
         sm.facingKind = bd.props.contains("tex") && bd.props["tex"].is_object() && bd.props["tex"].contains("front") ? 1 : bd.has("facingModel") ? 2 : 0; }
       if (v.contains("y") && v["y"].is_array()) for (int k = 0; k < 4 && k < (int)v["y"].size(); k++) sm.turn[k] = ((v["y"][k].get<int>() / 90) % 4 + 4) % 4;

@@ -57,6 +57,7 @@ void registerNetherFxLayer();   // render/nether_fx_layer.cpp
 void registerWeaponTrailLayer();   // render/weapon_trail_layer.cpp
 void registerFurnaceLayer();   // render/furnace_layer.cpp
 void registerTactileFurnaces();   // render/tactile_furnaces.cpp
+void registerTactileChests();     // render/tactile_chests.cpp
 
 void registerItemLayers() {
   static bool done = false;
@@ -89,6 +90,7 @@ void registerItemLayers() {
   registerActivityLayer();  // what the others are up to: typing, in a menu, dozing (render/activity_layer.cpp)
   registerTroughLayer();    // the food lying in a feeding trough (render/trough_layer.cpp)
   registerTactileFurnaces();   // Tactile Blocks' furnace, smoker and blast furnace (render/tactile_furnaces.cpp)
+  registerTactileChests();     // Tactile Blocks' chest: its lid, buttons, tray and heap (render/tactile_chests.cpp)
   registerWaystoneLayer();  // the waystones' runes lit for the ones you know, motes, their names (render/waystone_layer.cpp)
   registerHeadLayer();      // placed mob heads (render/head_layer.cpp)
   registerNetherFxLayer();  // the Nether lands' eruptions, embers, fumes and glints (render/nether_fx_layer.cpp)
