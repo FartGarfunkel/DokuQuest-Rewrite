@@ -74,7 +74,7 @@ bool placeOne(json& items, int page, ItemStack& held) {   // (CoffreBlockEntity.
 
 bool tactileChest(World& w, ivec3 at) {
   const std::string& k = reg().block(w.getBlock(at.x, at.y, at.z)).key;
-  if (k != "chest" && !(k.size() > 13 && k.compare(k.size() - 13, 13, "painted_chest") == 0)) return false;   // (the plain and the painted)
+  if (k != "chest" && k != "ender_chest" && k != "party_chest" && !(k.size() > 13 && k.compare(k.size() - 13, 13, "painted_chest") == 0)) return false;   // (the plain, the painted, the ender and the party chest)
   ivec3 hs[2];
   return chestHalves(w, at, hs) <= 1;   // (a large chest stays ours: Tactile's is one block)
 }
@@ -114,10 +114,15 @@ bool tactileChestUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 di
   if (!tactileChest(w, at)) return false;
   const TactileChestAim a = tactileChestAim(w, at, eye, dir);
   const vec3 c = vec3(at) + vec3(0.5f);
-  if (a.what == TactileChestAim::Shut) { containerEntity(w, at.x, at.y, at.z); setChestLidOpen(w, at, true); sfxAt(lv, "chest", c); return true; }
-  json* e = containerEntity(w, at.x, at.y, at.z);
+  json* e = w.blockEntity(at.x, at.y, at.z, true);   // (its page and buttons; what's in it: chestItems, an ender chest's your own)
   if (!e) return false;
-  json& items = itemsOf(*e);
+  if (!e->is_object()) *e = json::object();
+  if (a.what == TactileChestAim::Shut) { containerEntity(w, at.x, at.y, at.z); setChestLidOpen(w, at, true); sfxAt(lv, "chest", c); return true; }
+  json itemsArr = json::array(); for (const ItemStack& q : chestItems(lv, p, w, at)) itemsArr.push_back(q.empty() ? json() : q.toJson());
+  while (itemsArr.size() < (size_t)SLOTS) itemsArr.push_back(nullptr);
+  json& items = itemsArr;
+  struct WriteBack { Level& lv; Player& p; World& w; ivec3 at; json& items; ~WriteBack() {
+    std::vector<ItemStack> v; for (auto& j : items) v.push_back(ItemStack::fromJson(j)); chestSetItems(lv, p, w, at, v); } } wb{lv, p, w, at, items};
   const int page = pageOf(*e);
   auto changed = [&] { w.blockEntityChanged(at.x, at.y, at.z); };
   if (a.what == TactileChestAim::Sort) {   // (doSort; sneaking: every stack of both pages merged)
@@ -156,9 +161,13 @@ bool tactileChestUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 di
 bool tactileChestTake(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, bool whole) {
   const TactileChestAim a = tactileChestAim(w, at, eye, dir);
   if (a.what != TactileChestAim::Tray || a.slot < 0) return false;
-  json* e = w.blockEntity(at.x, at.y, at.z);
+  json* e = w.blockEntity(at.x, at.y, at.z, true);
   if (!e) return false;
-  json& items = itemsOf(*e);
+  if (!e->is_object()) *e = json::object();
+  json items = json::array(); for (const ItemStack& q : chestItems(lv, p, w, at)) items.push_back(q.empty() ? json() : q.toJson());
+  while (items.size() < (size_t)SLOTS) items.push_back(nullptr);
+  struct WriteBack { Level& lv; Player& p; World& w; ivec3 at; json& items; ~WriteBack() {
+    std::vector<ItemStack> v; for (auto& j : items) v.push_back(ItemStack::fromJson(j)); chestSetItems(lv, p, w, at, v); } } wb{lv, p, w, at, items};
   const int page = pageOf(*e), k = page * PAGE + a.slot;
   if (k >= SLOTS) return false;
   ItemStack s = ItemStack::fromJson(items[k]);

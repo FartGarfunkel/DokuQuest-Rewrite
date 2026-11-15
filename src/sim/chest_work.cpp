@@ -228,7 +228,17 @@ int chestStoreAll(Level& lv, Player& p, World& w, ivec3 at) {
 }
 
 // ---- lids left open ------------------------------------------------------------------------------------------------------
-bool chestHasLid(World& w, ivec3 at) { return kindAt(w, at) == K_BLOCK; }   // (a cabinet's doors count: left open the same way)
+bool chestHasLid(World& w, ivec3 at) { return kindAt(w, at) != K_NONE; }   // (the ender and party chests too)
+void chestSetItems(Level& lv, Player& p, World& w, ivec3 at, const std::vector<ItemStack>& v) {
+  for (int s = 0; s < (int)v.size(); s++) {
+    ivec3 half; int i;
+    if (!locate(w, at, s, half, i)) continue;
+    const ItemStack was = slotGet(lv, &p, w, half, i);
+    if (was.empty() && v[s].empty()) continue;
+    if (!was.empty() && !v[s].empty() && was.toJson() == v[s].toJson()) continue;   // (only what changed: each a sync)
+    slotSet(lv, p, w, half, i, v[s]);
+  }
+}   // (a cabinet's doors count: left open the same way)
 bool chestLidOpen(World& w, ivec3 at) { return chestHasLid(w, at) && (w.getMeta(at.x, at.y, at.z) & LID_OPEN); }
 void setChestLidOpen(World& w, ivec3 at, bool open) {
   ivec3 hs[2]; const int n = chestHalves(w, at, hs);

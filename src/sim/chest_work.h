@@ -15,6 +15,7 @@ class Player;
 int chestHalves(World& w, ivec3 at, ivec3 out[2]);
 int chestSlotsPerHalf(World& w, ivec3 at);
 std::vector<ItemStack> chestItems(Level& lv, Player& p, World& w, ivec3 at);   // every slot, both halves
+void chestSetItems(Level& lv, Player& p, World& w, ivec3 at, const std::vector<ItemStack>& v);   // every slot written back
 // one half's slots (the renderer: what's seen inside; viewer: whose ender chest it is — null shows none in it)
 std::vector<ItemStack> chestHalfItems(Level& lv, const Player* viewer, World& w, ivec3 half);
 // where slot i lies in the world (the middle of its square on the chest's floor), its half's front direction

@@ -54,8 +54,8 @@ public:
       const ivec3 at(x, y, z);
       if (!stationModel(w.getBlock(x, y, z)) || !tactileChest(w, at)) return;
       Chest c; c.at = at; c.facing = tactileFacing(w, at); c.open = chestLidOpen(w, at); c.page = e.value("page", 0) & 1;
-      const json& it = e.contains("items") && e["items"].is_array() ? e["items"] : json::array();
-      for (int k = 0; k < 27 && k < (int)it.size(); k++) c.items[k] = ItemStack::fromJson(it[k]);
+      { const std::vector<ItemStack> it = chestHalfItems(*s.level, s.player, w, at);   // (an ender chest: your own)
+        for (int k = 0; k < 27 && k < (int)it.size(); k++) c.items[k] = it[k]; }
       c.press[0] = e.value("press0", 0); c.press[1] = e.value("press1", 0);
       c.L = tactileLight(w, at);
       if (c.open && s.target.hit && s.target.block == at) { const TactileChestAim a = tactileChestAim(w, at, eye, dir); if (a.what == TactileChestAim::Tray && c.page * 15 + a.slot < 27) c.hover = a.slot; }
