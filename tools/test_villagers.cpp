@@ -46,6 +46,19 @@ int main(int argc, char** argv) {
   CoreOptions co; co.server = true; co.userDirOverride = ud;
   if (!initCore(co)) { printf("FAIL initCore\n"); return 1; }
 
+  {   // every flower pot in the village pieces holds one of our own plants (the piece's name for it translated: a poppy, an oak sapling)
+    const VillagePieces* VP = villagePieces();
+    int pots = 0, planted = 0, bad = 0; std::string badName;
+    if (VP) for (const auto& [pool, list] : VP->pools) for (const VPPiece& P : list) for (const VPState& st : P.states) {
+      if (st.kind != VPK_POT) continue;
+      pots++;
+      if (st.plant.empty()) continue;
+      planted++;
+      if (!reg().blockId(st.plant)) { bad++; badName = st.plant; }
+    }
+    check(pots > 20 && planted > pots / 2, "the village pieces' flower pots have plants in them (" + std::to_string(planted) + " of " + std::to_string(pots) + ")");
+    check(bad == 0, "and each plant is a block of ours (" + std::to_string(bad) + " not: " + badName + ")");
+  }
   {   // a healer's brewing stand stands on a table, not on the floor (gen/village_pieces.cpp makePiece)
     const VillagePieces* VP = villagePieces();
     int stands = 0, onFloor = 0, onTable = 0; std::string where;

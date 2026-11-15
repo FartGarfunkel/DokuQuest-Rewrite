@@ -228,7 +228,11 @@ VPState mapState(const json& e) {
   bool wallSign = false, wallBanner = false;
   if (auto s = wallFree(n, "_wall_sign", "_sign"); !s.empty()) { key = s; wallSign = true; }
   else if (auto b = wallFree(n, "_wall_banner", "_banner"); !b.empty()) { key = b; wallBanner = true; }
-  if (key.rfind("potted_", 0) == 0) { S.plant = key.substr(7); key = "flower_pot"; S.kind = VPK_POT; }
+  if (key.rfind("potted_", 0) == 0) {   // the plant by our own block's name (a poppy, an oak sapling: ours are called otherwise)
+    S.plant = key.substr(7); key = "flower_pot"; S.kind = VPK_POT;
+    std::string k2; BlockId pb = findBlock(S.plant); if (pb == NONE) pb = nearestBlock(S.plant, k2);
+    S.plant = pb != NONE && pb != AIR ? reg().block(pb).key : std::string();
+  }
   // a piston left pushed out in the template: ours pushed out too, its head in front (it had come in drawn back, a gap where
   // its head was, and the hidden door it closes fired as the chunk woke)
   if (key == "redstone_torch" && prop(P, "lit") == "false" && findBlock("redstone_torch_off") != NONE) key = "redstone_torch_off";   // (one a circuit keeps off)

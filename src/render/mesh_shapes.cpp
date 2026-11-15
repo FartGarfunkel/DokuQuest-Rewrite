@@ -543,7 +543,12 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   }
   if (T.pot) {
     int idx = MeshInput::idx(x, y, z);
-    for (auto& [i, plant] : c.in.potPlants) if (i == idx) emitPlanes(c, d, R.block(plant).faces[0], o.x, y + (lift + 4) / 16, o.z, 0.25f, 0.75f, sk, bl, true);
+    for (auto& [i, plant] : c.in.potPlants) if (i == idx) {
+      const BlockTraits& PT = traits(plant);   // (a fern, a grass: the climate's green, as it has growing)
+      if (PT.tint) { c.tint = c.cornerTint((float)x + 1, (float)z + 1, PT.tint == 2 ? 1 : 0); c.tintKind = (u8)(1 + (PT.tint == 2 ? 1 : 0)); }
+      emitPlanes(c, d, R.block(plant).faces[0], o.x, y + (lift + 4) / 16, o.z, 0.25f, 0.75f, sk, bl, true);
+      c.tint = 0xFFFFFF; c.tintKind = 0;
+    }
   }
 }
 
