@@ -4,6 +4,8 @@
 #include "render/particles.h"
 #include "core/registry.h"
 #include "world/world.h"
+#include "world/shapes.h"
+#include "render/mesher.h"
 
 namespace dq {
 
@@ -62,6 +64,22 @@ void ParticleSystem::add(const Particle& p) {
 void ParticleSystem::burst(vec3 pos, const std::string& name, int n, float speed, float grav) {
   int t = blockTile(name, 0); if (t < 0) t = tile(name);
   u8 l = lightAt(pos);
+  // grass and leaves: their pictures are grey, marked to take the climate's colour (the blocks get it in chunk.glsl), so
+  // their crumbs take the same colour from the column they're in (a middling climate with no world)
+  u8 tint[3] = {255, 255, 255}; bool marked = false;
+  {
+    BlockId id = 0;
+    auto it = reg().blockIds.find(name);
+    if (it != reg().blockIds.end()) id = it->second;
+    else if (auto a = reg().blockAliases.find(name); a != reg().blockAliases.end()) { auto j = reg().blockIds.find(a->second); if (j != reg().blockIds.end()) id = j->second; }
+    if (const int tk = id ? traits(id).tint : 0; tk == 1 || tk == 2) {
+      u8 te = 128, hu = 128;
+      const int x = ifloor(pos.x), y = ifloor(pos.y), z = ifloor(pos.z);
+      if (world) if (const Chunk* c = world->chunkAtBlock(x, y, z)) { te = c->climate[((z & 15) * 16 + (x & 15)) * 2]; hu = c->climate[((z & 15) * 16 + (x & 15)) * 2 + 1]; }
+      const u32 c = climateTint(tk == 2 ? "foliage" : "grass", te, hu);
+      tint[0] = (u8)(c & 255); tint[1] = (u8)((c >> 8) & 255); tint[2] = (u8)((c >> 16) & 255); marked = true;
+    }
+  }
   for (int i = 0; i < n; i++) {
     Particle q;
     q.tile = (u16)t;
@@ -71,6 +89,7 @@ void ParticleSystem::burst(vec3 pos, const std::string& name, int n, float speed
     q.p = pos + vec3(rs(), rs(), rs()) * 0.4f;
     q.v = vec3(rs() * 4 * speed, rnd() * 4 * speed, rs() * 4 * speed);
     q.size = 0.06f + rnd() * 0.05f; q.light = l; q.grav = grav;
+    q.tint[0] = tint[0]; q.tint[1] = tint[1]; q.tint[2] = tint[2]; q.tintMarked = marked;
     add(q);
   }
 }
@@ -383,7 +402,7 @@ void ParticleSystem::draw(const FrameCtx& f, const TileTextures& tex) {
     else if (p.vert > 0) B = vec3(0, p.vert / s, 0);
     A *= s; B *= s;
     Vtx v{}; v.layer = p.tile; v.light = p.light; v.r = p.tint[0]; v.g = p.tint[1]; v.b = p.tint[2];
-    v.flags = (u8)((p.light == 0xFF || p.glow ? 1 : 0) | (p.soft ? 2 : 0)); v.a = alpha;
+    v.flags = (u8)((p.light == 0xFF || p.glow ? 1 : 0) | (p.soft ? 2 : 0) | (p.tintMarked ? 4 : 0)); v.a = alpha;
     auto put = [&](vec3 q, u8 u, u8 vv) { v.x = q.x; v.y = q.y; v.z = q.z; v.u = u; v.v = vv; verts.push_back(v); };
     put(c - A - B, p.uv[0], p.uv[3]); put(c + A - B, p.uv[2], p.uv[3]); put(c + A + B, p.uv[2], p.uv[1]); put(c - A + B, p.uv[0], p.uv[1]);
   };

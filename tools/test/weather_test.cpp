@@ -8,6 +8,7 @@
 #include "render/weather_sprites.h"
 #include "render/weather_sim.h"
 #include "render/height_fog.h"
+#include "render/particles.h"
 #include "sim/weather.h"
 #include "sim/wind_field.h"
 #include "world/world.h"
@@ -253,6 +254,19 @@ int main(int argc, char** argv) {
     CHECK(dust == 0 && shrubs == 0, "no dust when it's calm (%d)", dust);
   }
 
+  printf("[block crumbs]\n");
+  {   // breaking grass or leaves: the crumbs take the climate's green, as the block does (its picture is grey, marked to be tinted)
+    ParticleSystem ps;
+    for (const char* k : {"grass", "leaves"}) {
+      ps.list.clear(); ps.burst(vec3(0.5f), k, 8, 1, 1);
+      bool ok = !ps.list.empty();
+      for (auto& q : ps.list) ok = ok && q.tintMarked && q.tint[1] > q.tint[2] && !(q.tint[0] == 255 && q.tint[1] == 255 && q.tint[2] == 255);
+      CHECK(ok, "%s crumbs are tinted green (%d %d %d)", k, ps.list.empty() ? 0 : ps.list[0].tint[0], ps.list.empty() ? 0 : ps.list[0].tint[1], ps.list.empty() ? 0 : ps.list[0].tint[2]);
+    }
+    ps.list.clear(); ps.burst(vec3(0.5f), "stone", 8, 1, 1);
+    bool plain = !ps.list.empty(); for (auto& q : ps.list) plain = plain && !q.tintMarked && q.tint[0] == 255;
+    CHECK(plain, "stone crumbs stay their own colour");
+  }
   printf("%d passed, %d failed\n", passes, fails);
   return fails;
 }

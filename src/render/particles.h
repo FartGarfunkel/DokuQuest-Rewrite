@@ -27,6 +27,7 @@ struct Particle {
   u8 uv[4] = {0, 0, 128, 128};  // sub-rectangle of the tile, 1/128 units
   u8 light = 0xF0;              // sky << 4 | block (0xFF = full bright)
   u8 tint[3] = {255, 255, 255};
+  bool tintMarked = false;      // a block crumb of grass or leaves: tint only the picture's tint-marked pixels (alpha 253), as the blocks do
   u8 drip = 0;                  // 1 water, 2 lava, 3 rain off leaves, 4 honey
   u8 drop = 0;                  // weather: 1 rain, 2 snow
   bool shrink = false, rise = false, pooled = false, flat = false, fell = false, glow = false;

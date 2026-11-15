@@ -51,7 +51,13 @@ void main() {
     if (a < 0.01) discard;
   } else if (t.a < 0.5) discard;
   vec3 lc = (vFlags & 1u) != 0u ? vec3(1.0) : lighting(vLight.x, vLight.y, false);
-  vec3 c = t.rgb * vTint * lc * 0.9;
+  vec3 tint = vTint;
+  if ((vFlags & 4u) != 0u) {   // a grass or leaf crumb: the climate's colour on the picture's tint-marked pixels only, as chunk.glsl
+    vec3 k = vTint * 1.3;
+    if (uSeason.a > 0.0) k = mix(k, uSeason.rgb * (dot(k, vec3(0.299, 0.587, 0.114)) * 1.6), uSeason.a);
+    tint = mix(vec3(1.0), k, clamp((1.0 - t.a) * 127.5, 0.0, 1.0));
+  }
+  vec3 c = t.rgb * tint * lc * 0.9;
   fragColor = vec4(DQ_GRADE(applyFog(c, vDist, vec3(0.0))), a);
 }
 #endif
