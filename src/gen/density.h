@@ -24,7 +24,7 @@ public:
   // "ridges", "depth", "temperature", "vegetation"); -1 if unknown
   int find(const std::string& name) const;
   double eval(int node, double x, double y, double z) const;
-  // a named noise ("minecraft:surface", "<namespace>:<name>": noise/<name>.json, a namespace's under noise/<namespace>/),
+  // a named noise ("main:surface", "<namespace>:<name>": noise/<name>.json, a namespace's under noise/<namespace>/),
   // made the first time it's asked for (on the main thread, as find()); its value (NormalNoise.getValue)
   int noise(const std::string& id) { return noiseRef(id); }
   double noiseValue(int n, double x, double y, double z) const;

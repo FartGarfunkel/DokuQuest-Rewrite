@@ -46,7 +46,7 @@ EXTRA = {
     'quartz': (['quartz'], 'Quartz', 'quartz', '', {'tier': 3, 'speed': 7, 'damage': 4, 'durability': 200, 'armor': 0.8, 'armorDur': 0.8}),
     'amethyst': (['amethyst_shard'], 'Amethyst', 'amethyst', '', {'tier': 3, 'speed': 9, 'damage': 4, 'durability': 170, 'armor': 0.75, 'armorDur': 0.7}),
     'olivine': (['olivine'], 'Olivine', 'olivine', '', {'tier': 3, 'speed': 6.5, 'damage': 4, 'durability': 320, 'armor': 0.9, 'armorDur': 0.95}),
-    'skyland_crystal': (['skyland_crystal'], 'Aether Crystal', 'skyland_crystal', '', {'tier': 3, 'speed': 8, 'damage': 4, 'durability': 450, 'armor': 0.9, 'armorDur': 1.0}),
+    'skyland_crystal': (['skyland_crystal'], 'Sky Crystal', 'skyland_crystal', '', {'tier': 3, 'speed': 8, 'damage': 4, 'durability': 450, 'armor': 0.9, 'armorDur': 1.0}),
     'ender': (['ender_shard'], 'Ender', 'ender', '', {'tier': 4, 'speed': 8.5, 'damage': 5, 'durability': 900, 'armor': 1.05, 'armorDur': 1.2}),
     'mese': (['mese_crystal'], 'Mese', 'mese', '', {'tier': 4, 'speed': 9, 'damage': 5.5, 'durability': 1100, 'armor': 1.15, 'armorDur': 1.4}),
     'crude_steel': (['crude_steel'], 'Crude Steel', 'crude_steel', '', {'tier': 3, 'speed': 6.5, 'damage': 4, 'durability': 600, 'armor': 1.08, 'armorDur': 1.4}),

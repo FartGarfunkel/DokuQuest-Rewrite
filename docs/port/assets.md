@@ -40,7 +40,7 @@ game/anim.js is all third-person bodies (left for the characters/creatures works
   `VERSION` in icons.cpp when a builder changes). First render ≈ 2–5 s on 2 busy cores, cached ≈ 0.4 s.
 - Colormaps (`colormap/grass.png`, `foliage.png`) drive biome tints when the pack has them (engine addition;
   hooked in `render/mesher.cpp climateTint`).
-- Resource pack choice is `settings.resourcePack`: `"auto"` = a pack whose name contains "gerudoku", `"none"`,
+- Resource pack choice is `settings.resourcePack`: `"auto"` = a pack whose name contains "the user's pack", `"none"`,
   or a folder/zip name in `userDir()/resourcepacks/`.
 
 ## APIs for other areas

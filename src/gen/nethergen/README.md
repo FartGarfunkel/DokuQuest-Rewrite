@@ -1,7 +1,7 @@
 # The classic Nether generator port (`src/gen/nethergen/`)
 
 An exact C++20 port of the classic Nether world generation
-(`minecraft:nether.default`): same seed, same blocks. It is standalone: no engine types, no globals with
+(`nether.default`): same seed, same blocks. It is standalone: no engine types, no globals with
 static constructors, no external libraries. `namespace nethergen`.
 
 | File | What |
@@ -31,7 +31,7 @@ auto* out = new nethergen::NetherGen::Out;            // 128 KB, keep it off the
 gen.generateChunk(cx, cz, *out);                // final (decorated) chunk, thread-safe
 uint8_t k = out->kind[(y << 8) | (z << 4) | x]; // nethergen::NB, y = generator y 0..255
 uint8_t m = out->meta[(y << 8) | (z << 4) | x];
-const char* name = nethergen::nbName((nethergen::NB)k);     // "minecraft:block/cobble_netherrack"
+const char* name = nethergen::nbName((nethergen::NB)k);     // "block/cobble_netherrack"
 ```
 
 Exact signatures:
@@ -112,47 +112,47 @@ region cache 2 MB/region (default 16 = 32 MB), plus ~26 MB transient per region 
 
 | NB | namespace id | numeric id | `meta` |
 |---|---|---|---|
-| `NB_AIR` | minecraft:block/air | 0 | 0 |
-| `NB_BEDROCK` | minecraft:block/bedrock | 260 | 0 |
-| `NB_NETHERRACK` | minecraft:block/netherrack | 803 | 0 |
-| `NB_COBBLE_NETHERRACK` | minecraft:block/cobble_netherrack | 800 | 0 (the Nether's filler block) |
-| `NB_COBBLE_NETHERRACK_CRYSTALLINE` | minecraft:block/cobble_netherrack_mossy (cobble.netherrack.crystalline) | 802 | 0 |
-| `NB_LAVA_STILL` / `NB_LAVA_FLOWING` | minecraft:block/fluid_lava_still / _flowing | 273 / 272 | fluid level* |
-| `NB_WATER_STILL` / `NB_WATER_FLOWING` | minecraft:block/fluid_water_still / _flowing | 271 / 270 | fluid level* |
-| `NB_ACID_STILL` / `NB_ACID_FLOWING` | minecraft:block/fluid_acid_still / _flowing | 1063 / 1062 | fluid level* |
-| `NB_OBSIDIAN` | minecraft:block/obsidian | 180 | 0 |
-| `NB_SOULSAND` | minecraft:block/soulsand | 810 | 0 |
-| `NB_SULFUR` | minecraft:block/sulfur | 1098 | 0 |
-| `NB_BRIMSAND` | minecraft:block/brimsand | 1085 | 0 |
-| `NB_BRIMSTONE` | minecraft:block/brimstone | 1086 | 0 |
-| `NB_BRIMTHAW` | minecraft:block/brimthaw | 1092 | 0 |
-| `NB_GLOOMSTONE` | minecraft:block/gloomstone | 1032 | 0 |
-| `NB_COBBLE_GLOOMSTONE` | minecraft:block/cobble_gloomstone | 1033 | 0 |
-| `NB_GLOWSTONE` | minecraft:block/glowstone | 820 | 0 |
-| `NB_BLOCK_ASH` | minecraft:block/block_ash | 741 | 0 |
-| `NB_LAYER_ASH` | minecraft:block/layer_ash | 723 | layer height - 1 (`& 7`; generation places 0 = thinnest) |
-| `NB_SLATE` | minecraft:block/slate | 6 | 0 |
-| `NB_BASALT` | minecraft:block/basalt | 2 | 0 (thermal vent rims) |
-| `NB_COBBLE_BASALT` | minecraft:block/cobble_basalt | 12 | 0 (never generated; ore map key) |
-| `NB_PUMICE_WET` / `NB_PUMICE_DRY` | minecraft:block/pumice_wet / _dry | 233 / 232 | 0 (wet: lava floes) |
-| `NB_MAGMA` | minecraft:block/magma | 801 | 0 |
-| `NB_RUBYGLASS_CRYSTAL` | minecraft:block/rubyglass_crystal | 823 | 0 (crystal-sea surface) |
-| `NB_RUBYGLASS_COLUMN` | minecraft:block/rubyglass_column | 821 | 0 |
-| `NB_RUBYGLASS_NODE` | minecraft:block/rubyglass_node | 826 | 0 |
-| `NB_RUBYGLASS_GROWTH` | minecraft:block/rubyglass_growth | 825 | bits 0-2 growth direction**, bits 3-4 shape: 0 bud, 0x08 tall bottom, 0x10 tall top |
-| `NB_ORE_NETHERCOAL_NETHERRACK` | minecraft:block/ore_nethercoal_netherrack | 420 | 0 |
-| `NB_ORE_NETHERCOAL_BASALT` | minecraft:block/ore_nethercoal_basalt | 421 | 0 |
-| `NB_ORE_NETHERCOAL_GLOOMSTONE` | minecraft:block/ore_nethercoal_gloomstone | 422 | 0 |
-| `NB_BLOCK_NETHER_COAL` | minecraft:block/block_nethercoal | 436 | 0 |
-| `NB_THERMAL_VENT` | minecraft:block/thermal_vent | 1025 | vent state 0 (dormant) .. 4 (venting)*** |
-| `NB_FIRE` | minecraft:block/fire | 630 | fire age 0..15*** |
-| `NB_FIRE_SULFURIC` | minecraft:block/fire_sulfuric | 634 | fire age 0..15*** |
-| `NB_EMBER` | minecraft:block/ember | 1065 | 0 |
-| `NB_BONE_PILE` | minecraft:block/bone_pile | 1030 | 0 |
-| `NB_BOULDER_MAGMATIC` | minecraft:block/boulder_magmatic | 1060 | 0 |
-| `NB_BOULDER_SULFURIC` | minecraft:block/boulder_sulfuric | 1061 | 0 |
-| `NB_SOUL_CATCHER` | minecraft:block/soul_catcher | 1031 | 0 |
-| `NB_OVERLAY_PEBBLES` | minecraft:block/overlay_pebbles | 880 | pebble count (`& 3`); never generated in the Nether |
+| `NB_AIR` | block/air | 0 | 0 |
+| `NB_BEDROCK` | block/bedrock | 260 | 0 |
+| `NB_NETHERRACK` | block/netherrack | 803 | 0 |
+| `NB_COBBLE_NETHERRACK` | block/cobble_netherrack | 800 | 0 (the Nether's filler block) |
+| `NB_COBBLE_NETHERRACK_CRYSTALLINE` | block/cobble_netherrack_mossy (cobble.netherrack.crystalline) | 802 | 0 |
+| `NB_LAVA_STILL` / `NB_LAVA_FLOWING` | block/fluid_lava_still / _flowing | 273 / 272 | fluid level* |
+| `NB_WATER_STILL` / `NB_WATER_FLOWING` | block/fluid_water_still / _flowing | 271 / 270 | fluid level* |
+| `NB_ACID_STILL` / `NB_ACID_FLOWING` | block/fluid_acid_still / _flowing | 1063 / 1062 | fluid level* |
+| `NB_OBSIDIAN` | block/obsidian | 180 | 0 |
+| `NB_SOULSAND` | block/soulsand | 810 | 0 |
+| `NB_SULFUR` | block/sulfur | 1098 | 0 |
+| `NB_BRIMSAND` | block/brimsand | 1085 | 0 |
+| `NB_BRIMSTONE` | block/brimstone | 1086 | 0 |
+| `NB_BRIMTHAW` | block/brimthaw | 1092 | 0 |
+| `NB_GLOOMSTONE` | block/gloomstone | 1032 | 0 |
+| `NB_COBBLE_GLOOMSTONE` | block/cobble_gloomstone | 1033 | 0 |
+| `NB_GLOWSTONE` | block/glowstone | 820 | 0 |
+| `NB_BLOCK_ASH` | block/block_ash | 741 | 0 |
+| `NB_LAYER_ASH` | block/layer_ash | 723 | layer height - 1 (`& 7`; generation places 0 = thinnest) |
+| `NB_SLATE` | block/slate | 6 | 0 |
+| `NB_BASALT` | block/basalt | 2 | 0 (thermal vent rims) |
+| `NB_COBBLE_BASALT` | block/cobble_basalt | 12 | 0 (never generated; ore map key) |
+| `NB_PUMICE_WET` / `NB_PUMICE_DRY` | block/pumice_wet / _dry | 233 / 232 | 0 (wet: lava floes) |
+| `NB_MAGMA` | block/magma | 801 | 0 |
+| `NB_RUBYGLASS_CRYSTAL` | block/rubyglass_crystal | 823 | 0 (crystal-sea surface) |
+| `NB_RUBYGLASS_COLUMN` | block/rubyglass_column | 821 | 0 |
+| `NB_RUBYGLASS_NODE` | block/rubyglass_node | 826 | 0 |
+| `NB_RUBYGLASS_GROWTH` | block/rubyglass_growth | 825 | bits 0-2 growth direction**, bits 3-4 shape: 0 bud, 0x08 tall bottom, 0x10 tall top |
+| `NB_ORE_NETHERCOAL_NETHERRACK` | block/ore_nethercoal_netherrack | 420 | 0 |
+| `NB_ORE_NETHERCOAL_BASALT` | block/ore_nethercoal_basalt | 421 | 0 |
+| `NB_ORE_NETHERCOAL_GLOOMSTONE` | block/ore_nethercoal_gloomstone | 422 | 0 |
+| `NB_BLOCK_NETHER_COAL` | block/block_nethercoal | 436 | 0 |
+| `NB_THERMAL_VENT` | block/thermal_vent | 1025 | vent state 0 (dormant) .. 4 (venting)*** |
+| `NB_FIRE` | block/fire | 630 | fire age 0..15*** |
+| `NB_FIRE_SULFURIC` | block/fire_sulfuric | 634 | fire age 0..15*** |
+| `NB_EMBER` | block/ember | 1065 | 0 |
+| `NB_BONE_PILE` | block/bone_pile | 1030 | 0 |
+| `NB_BOULDER_MAGMATIC` | block/boulder_magmatic | 1060 | 0 |
+| `NB_BOULDER_SULFURIC` | block/boulder_sulfuric | 1061 | 0 |
+| `NB_SOUL_CATCHER` | block/soul_catcher | 1031 | 0 |
+| `NB_OVERLAY_PEBBLES` | block/overlay_pebbles | 880 | pebble count (`& 3`); never generated in the Nether |
 | `NB_OTHER` | (anything else; never produced) | - | - |
 
 \* classic fluid data: 0 = source, 1..7 = flow level (distance from the source, 7 = thinnest),

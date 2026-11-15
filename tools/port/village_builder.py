@@ -11,9 +11,9 @@ anyone's builds: the look of each style (what its walls, roofs and gardens are m
 streets join) was worked out by studying villages in general, and every building is drawn by these rules from a seed.
 
 The conventions the village generator expects (gen/structures_jigsaw_village.cpp, gen/village_pieces.cpp):
-  - a house faces west: its entrance joint (a jigsaw "minecraft:building_entrance", pool <style>/streets) stands at x 0,
+  - a house faces west: its entrance joint (a jigsaw "main:building_entrance", pool <style>/streets) stands at x 0,
     one above the floor, and the street it joins is at y 0 like the house's floor;
-  - a street is 3 wide; joints "minecraft:street" (pool <style>/streets) at its ends and "minecraft:building_entrance"
+  - a street is 3 wide; joints "main:street" (pool <style>/streets) at its ends and "main:building_entrance"
     (pool <style>/houses) along both sides, one above the path;
   - a building's type and job come from its name (farm, animal_pen, stable, temple, armorer, weaponsmith, tool_smith,
     butcher, fletcher, shepherd, mason, cartographer, library, fisher, tannery, bakery, tavern) and its workstation;
@@ -62,7 +62,7 @@ class Piece:
             for y in range(min(y0, y1), max(y0, y1) + 1):
                 for z in range(min(z0, z1), max(z0, z1) + 1): self.set(x, y, z, name, **p)
 
-    def joint(self, x, y, z, orient, name, target, pool, final='minecraft:structure_void'):
+    def joint(self, x, y, z, orient, name, target, pool, final='main:structure_void'):
         self.jig.append((x, y, z, orient, name, target, pool, final))
 
     def template(self):
@@ -79,7 +79,7 @@ class Piece:
         def state(name, props):
             k = (name, props)
             if k not in idx:
-                e = {'Name': name if ':' in name else 'minecraft:' + name}
+                e = {'Name': name if ':' in name else 'main:' + name}
                 if props: e['Properties'] = dict(props)
                 idx[k] = len(pal); pal.append(e)
             return idx[k]
@@ -88,7 +88,7 @@ class Piece:
         for (x, y, z, o, nm, tg, pool, fin) in self.jig:
             self.b.pop((x, y, z), None)
             blocks.append({'pos': [x, y, z], 'state': state('jigsaw', (('orientation', o),)),
-                           'nbt': {'id': 'minecraft:jigsaw', 'name': nm, 'target': tg, 'pool': pool, 'final_state': fin, 'joint': 'rollable'}})
+                           'nbt': {'id': 'main:jigsaw', 'name': nm, 'target': tg, 'pool': pool, 'final_state': fin, 'joint': 'rollable'}})
         return {'DataVersion': 3465, 'size': [sx, H, sz], 'palette': pal, 'blocks': blocks, 'entities': []}
 
 
@@ -375,7 +375,7 @@ def entrance(p, P, B, yard_x0=0, porch=False, rnd=None):
     if B.y0 > 0: stilts(p, P, B); porch = False
     for x in range(yard_x0, B.x0 - (1 + B.y0 if B.y0 else 0)):
         p.set(x, 0, B.zd, P.pathb())
-    p.joint(yard_x0, 1, B.zd, 'west_up', 'minecraft:building_entrance', 'minecraft:building_entrance', 'minecraft:village/%s/streets' % P.style)
+    p.joint(yard_x0, 1, B.zd, 'west_up', 'main:building_entrance', 'main:building_entrance', 'main:village/%s/streets' % P.style)
     # a lantern by the door
     lx = B.x0 - 1
     if rnd and rnd.random() < 0.8 and B.zd + 1 <= B.z1 and not porch:
@@ -898,7 +898,7 @@ def round_shell(style, name, rnd, w, d, P):
             p.set(cx, H + 1, cz, 'shroomlight')   # the light in the cap's underside
             top = H + 4
     R0 = Room(p, P, B, 0, rnd, mask=lambda x, z: dist(x, z) < R - 1.2)
-    p.joint(0, 1, cz, 'west_up', 'minecraft:building_entrance', 'minecraft:building_entrance', 'minecraft:village/%s/streets' % style)
+    p.joint(0, 1, cz, 'west_up', 'main:building_entrance', 'main:building_entrance', 'main:village/%s/streets' % style)
     yard(p, P, Body(cx - R, cz - R, 2 * R + 1, 2 * R + 1), rnd, flowers=0.3)
     B.round_room = R0
     return p, P, B, None
@@ -946,7 +946,7 @@ def tree_shell(style, name, rnd, w, d, P):
     for x in range(min(lx + 1, sx), B.x0 - 1): p.set(x, py, lz, P.floor)
     for x in range(0, sx - 1): p.set(x, 0, sz, P.pathb())
     p.set(sx - 1, 0, sz, P.pathb()); p.set(sx - 1, 0, sz + 1, P.pathb())
-    p.joint(0, 1, sz, 'west_up', 'minecraft:building_entrance', 'minecraft:building_entrance', 'minecraft:village/%s/streets' % style)
+    p.joint(0, 1, sz, 'west_up', 'main:building_entrance', 'main:building_entrance', 'main:village/%s/streets' % style)
     for (x, z) in ((B.x0 - 1, B.z0 - 1), (B.x1 + 1, B.z1 + 1), (B.x0 - 1, B.z1 + 1), (B.x1 + 1, B.z0 - 1)):   # vines down from the deck
         for yy in range(py - 1, py - 5, -1): p.set(x, yy, z, 'vine', north=True)
     B.trunk = trunk
@@ -1210,7 +1210,7 @@ def sheep_fold(p, P, x0, z0, w, d):
             if edge: p.set(x, 1, z, P.fence)
     p.set(x0 + w // 2, 1, z0, P.gate, facing='north')
     for (x, z) in ((x0 + 2, z0 + 1), (x0 + w - 3, z0 + d - 2)):
-        p.joint(x, 1, z, 'up_north', 'minecraft:bottom', 'minecraft:bottom', 'minecraft:village/common/sheep', 'minecraft:air')
+        p.joint(x, 1, z, 'up_north', 'main:bottom', 'main:bottom', 'main:village/common/sheep', 'main:air')
 
 
 def library(style, name, seed):
@@ -1341,7 +1341,7 @@ def farm(style, name, seed, big=False):
     zc = z0 + d // 2
     if (zc - z0) % 4 == 0: zc += 1
     p.set(x0, 0, zc, P.pathb()); p.clear(x0, 1, zc)   # the way in
-    p.joint(0, 1, zc, 'west_up', 'minecraft:building_entrance', 'minecraft:building_entrance', 'minecraft:village/%s/streets' % style)
+    p.joint(0, 1, zc, 'west_up', 'main:building_entrance', 'main:building_entrance', 'main:village/%s/streets' % style)
     p.set(0, 0, zc, P.pathb())
     p.set(x0, 1, zc - 1, 'composter', level=rnd.randint(0, 6))
     # a scarecrow
@@ -1365,7 +1365,7 @@ def animal_pen(style, name, seed, sheep=False):
             if x in (x0, x0 + w - 1) or z in (z0, z0 + d - 1): p.set(x, 1, z, P.fence)
     p.set(x0, 1, zc, P.gate, facing='east')
     p.set(0, 0, zc, P.pathb())
-    p.joint(0, 1, zc, 'west_up', 'minecraft:building_entrance', 'minecraft:building_entrance', 'minecraft:village/%s/streets' % style)
+    p.joint(0, 1, zc, 'west_up', 'main:building_entrance', 'main:building_entrance', 'main:village/%s/streets' % style)
     # a shelter in the back corner, hay, a trough
     sx0, sz0 = x0 + w - 4, z0 + 1
     for (x, z) in ((sx0, sz0), (x0 + w - 2, sz0), (sx0, sz0 + 2), (x0 + w - 2, sz0 + 2)):
@@ -1377,9 +1377,9 @@ def animal_pen(style, name, seed, sheep=False):
     # feeding troughs along the fence by the gate (sim/trough.h): wheat for the cows, sheep and goats; carrots for the pigs
     p.set(x0 + 1, 1, z0 + 1, 'feeding_trough', items='wheat*%d' % rnd.randint(14, 30))
     if not sheep: p.set(x0 + 1, 1, z0 + 2, 'feeding_trough', items='%s*%d' % (rnd.choice(['carrot', 'carrot', 'potato', 'beetroot']), rnd.randint(10, 24)))
-    pool = 'minecraft:village/common/sheep' if sheep else 'minecraft:village/common/animals'
+    pool = 'main:village/common/sheep' if sheep else 'main:village/common/animals'
     for (x, z) in ((x0 + 2, z0 + 2), (x0 + 3, z0 + d - 3), (x0 + w // 2, zc)):
-        p.joint(x, 1, z, 'up_north', 'minecraft:bottom', 'minecraft:bottom', pool, 'minecraft:air')
+        p.joint(x, 1, z, 'up_north', 'main:bottom', 'main:bottom', pool, 'main:air')
     return p
 
 
@@ -1404,7 +1404,7 @@ def stable(style, name, seed):
     if P.roof_kind == 'aframe': P.roof_kind = 'gable'
     roof_for(p, P, B, rnd) if P.roof_kind != 'flat' else roof_flat(p, P, B, rnd)
     for x in range(0, B.x0): p.set(x, 0, B.zd, P.pathb())
-    p.joint(0, 1, B.zd, 'west_up', 'minecraft:building_entrance', 'minecraft:building_entrance', 'minecraft:village/%s/streets' % style)
+    p.joint(0, 1, B.zd, 'west_up', 'main:building_entrance', 'main:building_entrance', 'main:village/%s/streets' % style)
     return p
 
 
@@ -1624,16 +1624,16 @@ def market_stall(style, name, seed, wares):
     stall_frame(p, P, 0, 0, wares, rnd, station=STALLS[wares])
     import village_builds
     village_builds.stall_dress(p, P, 0, 0, rnd, produce=PRODUCE.get(wares))
-    p.joint(0, 1, 2, 'west_up', 'minecraft:building_entrance', 'minecraft:building_entrance', 'minecraft:village/%s/streets' % style)
+    p.joint(0, 1, 2, 'west_up', 'main:building_entrance', 'main:building_entrance', 'main:village/%s/streets' % style)
     return p
 
 # ---------------------------------------------------------------------------------------------------- streets
 def street_joint(p, x, z, facing, style):
-    p.joint(x, 1, z, facing + '_up', 'minecraft:street', 'minecraft:street', 'minecraft:village/%s/streets' % style)
+    p.joint(x, 1, z, facing + '_up', 'main:street', 'main:street', 'main:village/%s/streets' % style)
 
 
 def house_joint(p, x, z, facing, style):
-    p.joint(x, 1, z, facing + '_up', 'minecraft:building_entrance', 'minecraft:building_entrance', 'minecraft:village/%s/houses' % style)
+    p.joint(x, 1, z, facing + '_up', 'main:building_entrance', 'main:building_entrance', 'main:village/%s/houses' % style)
 
 
 def straight(style, name, seed, L):
@@ -1765,7 +1765,7 @@ def terminator(style, name, seed):
     p = Piece(name, 'terminators', style)
     for x in range(3):
         for z in range(3): p.set(x, 0, z, P.pathb())
-    p.joint(0, 1, 1, 'west_up', 'minecraft:street', 'minecraft:street', 'minecraft:empty')
+    p.joint(0, 1, 1, 'west_up', 'main:street', 'main:street', 'main:empty')
     if rnd.random() < 0.5: lamp(p, P, 2, 1)
     else: p.set(2, 1, 1, 'barrel', facing='up'); p.set(2, 1, 0, 'hay_block', axis='y')
     return p
@@ -1935,7 +1935,7 @@ def main(d):
             (out / rel).parent.mkdir(parents=True, exist_ok=True)
             nbt_io.write(out / rel, pc.template())
             files.append(rel)
-    # (the pieces other importers listed — the extra styles, tools/port/tnt_village_import.py — are kept: this
+    # (the pieces other importers listed — the extra styles, tools/local/town_import.py — are kept: this
     #  run rewrote only its own styles' folders)
     idx_path = out / 'index.json'
     old = json.loads(idx_path.read_text()) if idx_path.exists() else {}

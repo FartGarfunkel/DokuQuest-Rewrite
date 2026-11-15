@@ -65,14 +65,14 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
         vTemp = g->find("temperature"); vVeg = g->find("vegetation"); vDepth = g->find("depth"); vRidges = g->find("ridges");
         vInit = g->find("initial_density_without_jaggedness");
         {   // (the extras' noises, registered here on this thread)
-          const char* NX[12] = {"minecraft:badlands_surface", "minecraft:badlands_pillar", "minecraft:badlands_pillar_roof", "minecraft:iceberg_surface",
-                                "minecraft:iceberg_pillar", "minecraft:iceberg_pillar_roof", "natures_spirit:sugi_surface", "natures_spirit:sugi_pillar",
-                                "natures_spirit:sugi_pillar_roof", "natures_spirit:stratified_desert_surface", "natures_spirit:stratified_desert_pillar",
-                                "natures_spirit:stratified_desert_pillar_roof"};
+          const char* NX[12] = {"main:badlands_surface", "main:badlands_pillar", "main:badlands_pillar_roof", "main:iceberg_surface",
+                                "main:iceberg_pillar", "main:iceberg_pillar_roof", "nature:sugi_surface", "nature:sugi_pillar",
+                                "nature:sugi_pillar_roof", "nature:stratified_desert_surface", "nature:stratified_desert_pillar",
+                                "nature:stratified_desert_pillar_roof"};
           for (int k = 0; k < 12; k++) nX_[k] = w.g->noise(NX[k]);
-          bEroded_ = lb_->find("minecraft:eroded_badlands"); bFrozen_ = lb_->find("minecraft:frozen_ocean"); bDeepFrozen_ = lb_->find("minecraft:deep_frozen_ocean");
-          bSugi_ = lb_->find("natures_spirit:sugi_forest"); bSugi2_ = lb_->find("natures_spirit:blooming_sugi_forest"); bStrat_ = lb_->find("natures_spirit:stratified_desert");
-          bLively_ = lb_->find("natures_spirit:lively_dunes"); bBlooming_ = lb_->find("natures_spirit:blooming_dunes");
+          bEroded_ = lb_->find("main:eroded_badlands"); bFrozen_ = lb_->find("main:frozen_ocean"); bDeepFrozen_ = lb_->find("main:deep_frozen_ocean");
+          bSugi_ = lb_->find("nature:sugi_forest"); bSugi2_ = lb_->find("nature:blooming_sugi_forest"); bStrat_ = lb_->find("nature:stratified_desert");
+          bLively_ = lb_->find("nature:lively_dunes"); bBlooming_ = lb_->find("nature:blooming_dunes");
         }
         // each biome as ours: its kind (for our trees, villages, mobs...) and climate numbers (tints, ice)
         for (int i = 0; i < lb_->count(); i++) {
@@ -231,7 +231,7 @@ OverworldGen::BaseCol OverworldGen::baseColumn(int x, int z) const {
     if (v15) {   // the land biome at the ground here (the imported data's y: ours less one)
       const int b = landBiomeAt(x, std::max(c.H, SEA_LEVEL) - 1, z);
       c.landBiome = (u16)b; c.biome = lbCat_[b]; c.temp = lbTemp_[b]; c.humid = lbHumid_[b];
-      c.special = lb_->info(b).name == "minecraft:mushroom_fields" ? 1 : 0;
+      c.special = lb_->info(b).name == "main:mushroom_fields" ? 1 : 0;
       return c;
     }
     c.temp = nTemp.fbm2(x / (800.0 * climateScale), z / (800.0 * climateScale), 2) - (c.h > 90 ? (c.h - 90) / 40.0 : 0);

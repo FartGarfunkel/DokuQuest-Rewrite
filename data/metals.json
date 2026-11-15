@@ -1,5 +1,5 @@
 {
- "_comment": "Metals, alloys and ore units (core/metals.h; after TerraFirmaCraft). stats are a pickaxe's: tier, speed, damage, durability; anvil: the anvil tier needed to work it; cast: can be poured into tool molds; ranges: a named alloy's makeup (fractions).",
+ "_comment": "Metals, alloys and ore units (core/metals.h). stats are a pickaxe's: tier, speed, damage, durability; anvil: the anvil tier needed to work it; cast: can be poured into tool molds; ranges: a named alloy's makeup (fractions).",
  "metals": {
   "copper": {
    "name": "Copper",

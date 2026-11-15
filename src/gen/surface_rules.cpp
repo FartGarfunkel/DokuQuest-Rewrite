@@ -19,7 +19,7 @@ u64 mix(u64 z) { z += 0x9E3779B97F4A7C15ull; z = (z ^ (z >> 30)) * 0xBF58476D1CE
 u64 hashStr(const std::string& s) { u64 h = 1469598103934665603ull; for (char ch : s) h = (h ^ (u8)ch) * 1099511628211ull; return h; }
 double unit(u64 h) { return (double)(mix(h) >> 11) / (double)(1ull << 53); }   // [0, 1)
 double posRand(u64 salt, int x, int y, int z) { return unit(salt ^ ((u64)(u32)x * 0x9E3779B1ull) ^ ((u64)(u32)y << 21) ^ ((u64)(u32)z * 0x85EBCA77ull << 7)); }
-std::string strip(std::string s) { return s.rfind("minecraft:", 0) == 0 ? s.substr(10) : s; }
+std::string strip(std::string s) { return s.rfind("main:", 0) == 0 ? s.substr(5) : s; }
 } // namespace
 
 int LandSurface::anchor(const json& j) const {
@@ -39,7 +39,7 @@ int LandSurface::parseCond(const json& j) {
     c.t = C_NOISE; c.noise = const_cast<DensityGraph*>(g_)->noise(j.value("noise", std::string()));
     c.lo = j.value("min_threshold", -1e308); c.hi = j.value("max_threshold", 1e308);
   } else if (t == "vertical_gradient") {
-    c.t = C_VGRAD; c.a = anchor(j["true_at_and_below"]); c.b = anchor(j["false_at_and_above"]); c.salt = seed_ ^ hashStr(j.value("random_name", std::string()));
+    c.t = C_VGRAD; c.a = anchor(j["true_at_and_below"]); c.b = anchor(j["false_at_and_above"]); c.salt = seed_ ^ (j.contains("random_salt") ? std::stoull(j["random_salt"].get<std::string>()) : hashStr(j.value("random_name", std::string())));   // (an imported gradient keeps the salt its name gave it)
   } else if (t == "y_above") {
     c.t = C_YABOVE; c.a = anchor(j["anchor"]); c.mul = j.value("surface_depth_multiplier", 0); c.add = j.value("add_stone_depth", false);
   } else if (t == "water") {
@@ -64,7 +64,7 @@ int LandSurface::parseRule(const json& j) {
     r.t = R_BLOCK;
     const std::string nm = j["result_state"].value("Name", std::string());
     const std::string bare = nm.substr(nm.find(':') + 1);
-    if (nm.rfind("minecraft:", 0) != 0 && reg().blockIds.count(bare)) r.block = reg().blockId(bare);   // (an imported ground we have as a block of ours: tools/port/worldgen/ns_blocks.py)
+    if (nm.rfind("main:", 0) != 0 && reg().blockIds.count(bare)) r.block = reg().blockId(bare);   // (an imported ground we have as a block of ours: tools/port/worldgen/ns_blocks.py)
     else if (auto it = subs_.find(nm); it != subs_.end()) r.block = blockFromState(json{{"Name", it->second}});   // (else ours that looks like it)
     else r.block = blockFromState(j["result_state"]);
     if (r.block == NONE) DQ_LOG("surface rules: no block for %s", j["result_state"].value("Name", std::string("?")).c_str());
@@ -81,7 +81,7 @@ bool LandSurface::load(const fs::path& dir, DensityGraph& g, const LandBiomes& b
   if (!j || !j->contains("base") || !biomes.ok()) return false;
   g_ = &g; bio_ = &biomes; seed_ = seed;
   if (auto sj = readJson(dir / "block_substitutes.json"); sj && sj->is_object()) for (auto& [k, v] : sj->items()) if (v.is_string()) subs_[k] = v.get<std::string>();
-  nSurface = g.noise("minecraft:surface"); nSecondary = g.noise("minecraft:surface_secondary"); nClayOffset = g.noise("minecraft:clay_bands_offset");
+  nSurface = g.noise("main:surface"); nSecondary = g.noise("main:surface_secondary"); nClayOffset = g.noise("main:clay_bands_offset");
   base_ = parseRule((*j)["base"]);
   std::unordered_map<std::string, int> ns;
   for (auto& [k, v] : (*j)["namespaces"].items()) ns[k] = parseRule(v);

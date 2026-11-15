@@ -1,4 +1,4 @@
-// Exact port of the classic Nether generator ("minecraft:nether.default").
+// Exact port of the classic Nether generator ("nether.default").
 // Same seed -> same blocks as the reference chunk generator (terrain, surface, large features) and
 // decorator (decoration, in a fixed neighbour order, see README.md).
 #pragma once
@@ -59,20 +59,20 @@ enum NB : uint8_t {
   NB_OTHER,  // any other block (should never appear)
   NB_COUNT
 };
-const char* nbName(NB k);         // e.g. "minecraft:block/cobble_netherrack"
+const char* nbName(NB k);         // e.g. "block/cobble_netherrack"
 uint16_t nbToLegacyId(NB k);         // the generator's numeric block id (0 for NB_OTHER)
 NB nbFromLegacyId(uint16_t legacyId);
 
 // the Nether biome provider's biomes
 enum NetherBiome : uint8_t {
-  NBIO_OLD_WORLD = 0,        // minecraft:nether.old_world
-  NBIO_CRYSTAL_PLAINS,       // minecraft:nether.crystal_plains
-  NBIO_CRYSTAL_FOREST,       // minecraft:nether.crystal_forest
-  NBIO_SHELF,                // minecraft:nether.shelf
-  NBIO_CRAG,                 // minecraft:nether.crag
-  NBIO_SULFUR_POOLS,         // minecraft:nether.sulfur_pools
-  NBIO_VOLCANIC_ISLANDS,     // minecraft:nether.volcanic_islands
-  NBIO_OLD_WORLD_DESERT,     // minecraft:nether.old_world.desert (every column below y = 64)
+  NBIO_OLD_WORLD = 0,        // nether.old_world
+  NBIO_CRYSTAL_PLAINS,       // nether.crystal_plains
+  NBIO_CRYSTAL_FOREST,       // nether.crystal_forest
+  NBIO_SHELF,                // nether.shelf
+  NBIO_CRAG,                 // nether.crag
+  NBIO_SULFUR_POOLS,         // nether.sulfur_pools
+  NBIO_VOLCANIC_ISLANDS,     // nether.volcanic_islands
+  NBIO_OLD_WORLD_DESERT,     // nether.old_world.desert (every column below y = 64)
   NBIO_COUNT
 };
 const char* netherBiomeName(int biome);

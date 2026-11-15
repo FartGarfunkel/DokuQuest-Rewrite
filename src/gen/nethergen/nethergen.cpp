@@ -17,52 +17,52 @@ namespace nethergen {
 namespace {
 struct NBInfo { NB nb; uint16_t id; const char* name; };
 const NBInfo kNB[] = {
-    {NB_AIR, bid::AIR, "minecraft:block/air"},
-    {NB_BEDROCK, bid::BEDROCK, "minecraft:block/bedrock"},
-    {NB_NETHERRACK, bid::NETHERRACK, "minecraft:block/netherrack"},
-    {NB_COBBLE_NETHERRACK, bid::COBBLE_NETHERRACK, "minecraft:block/cobble_netherrack"},
-    {NB_COBBLE_NETHERRACK_CRYSTALLINE, bid::COBBLE_NETHERRACK_CRYSTALLINE, "minecraft:block/cobble_netherrack_mossy"},
-    {NB_LAVA_STILL, bid::LAVA_STILL, "minecraft:block/fluid_lava_still"},
-    {NB_LAVA_FLOWING, bid::LAVA_FLOWING, "minecraft:block/fluid_lava_flowing"},
-    {NB_WATER_STILL, bid::WATER_STILL, "minecraft:block/fluid_water_still"},
-    {NB_WATER_FLOWING, bid::WATER_FLOWING, "minecraft:block/fluid_water_flowing"},
-    {NB_ACID_STILL, bid::ACID_STILL, "minecraft:block/fluid_acid_still"},
-    {NB_ACID_FLOWING, bid::ACID_FLOWING, "minecraft:block/fluid_acid_flowing"},
-    {NB_OBSIDIAN, bid::OBSIDIAN, "minecraft:block/obsidian"},
-    {NB_SOULSAND, bid::SOULSAND, "minecraft:block/soulsand"},
-    {NB_SULFUR, bid::SULFUR, "minecraft:block/sulfur"},
-    {NB_BRIMSAND, bid::BRIMSAND, "minecraft:block/brimsand"},
-    {NB_BRIMSTONE, bid::BRIMSTONE, "minecraft:block/brimstone"},
-    {NB_BRIMTHAW, bid::BRIMTHAW, "minecraft:block/brimthaw"},
-    {NB_GLOOMSTONE, bid::GLOOMSTONE, "minecraft:block/gloomstone"},
-    {NB_COBBLE_GLOOMSTONE, bid::COBBLE_GLOOMSTONE, "minecraft:block/cobble_gloomstone"},
-    {NB_GLOWSTONE, bid::GLOWSTONE, "minecraft:block/glowstone"},
-    {NB_BLOCK_ASH, bid::BLOCK_ASH, "minecraft:block/block_ash"},
-    {NB_LAYER_ASH, bid::LAYER_ASH, "minecraft:block/layer_ash"},
-    {NB_SLATE, bid::SLATE, "minecraft:block/slate"},
-    {NB_BASALT, bid::BASALT, "minecraft:block/basalt"},
-    {NB_COBBLE_BASALT, bid::COBBLE_BASALT, "minecraft:block/cobble_basalt"},
-    {NB_PUMICE_WET, bid::PUMICE_WET, "minecraft:block/pumice_wet"},
-    {NB_PUMICE_DRY, bid::PUMICE_DRY, "minecraft:block/pumice_dry"},
-    {NB_MAGMA, bid::MAGMA, "minecraft:block/magma"},
-    {NB_RUBYGLASS_CRYSTAL, bid::RUBYGLASS_CRYSTAL, "minecraft:block/rubyglass_crystal"},
-    {NB_RUBYGLASS_COLUMN, bid::RUBYGLASS_COLUMN, "minecraft:block/rubyglass_column"},
-    {NB_RUBYGLASS_NODE, bid::RUBYGLASS_NODE, "minecraft:block/rubyglass_node"},
-    {NB_RUBYGLASS_GROWTH, bid::RUBYGLASS_GROWTH, "minecraft:block/rubyglass_growth"},
-    {NB_ORE_NETHERCOAL_NETHERRACK, bid::ORE_NETHERCOAL_NETHERRACK, "minecraft:block/ore_nethercoal_netherrack"},
-    {NB_ORE_NETHERCOAL_BASALT, bid::ORE_NETHERCOAL_BASALT, "minecraft:block/ore_nethercoal_basalt"},
-    {NB_ORE_NETHERCOAL_GLOOMSTONE, bid::ORE_NETHERCOAL_GLOOMSTONE, "minecraft:block/ore_nethercoal_gloomstone"},
-    {NB_BLOCK_NETHER_COAL, bid::BLOCK_NETHER_COAL, "minecraft:block/block_nethercoal"},
-    {NB_THERMAL_VENT, bid::THERMAL_VENT, "minecraft:block/thermal_vent"},
-    {NB_FIRE, bid::FIRE, "minecraft:block/fire"},
-    {NB_FIRE_SULFURIC, bid::FIRE_SULFURIC, "minecraft:block/fire_sulfuric"},
-    {NB_EMBER, bid::EMBER, "minecraft:block/ember"},
-    {NB_BONE_PILE, bid::BONE_PILE, "minecraft:block/bone_pile"},
-    {NB_BOULDER_MAGMATIC, bid::BOULDER_MAGMATIC, "minecraft:block/boulder_magmatic"},
-    {NB_BOULDER_SULFURIC, bid::BOULDER_SULFURIC, "minecraft:block/boulder_sulfuric"},
-    {NB_SOUL_CATCHER, bid::SOUL_CATCHER, "minecraft:block/soul_catcher"},
-    {NB_OVERLAY_PEBBLES, bid::OVERLAY_PEBBLES, "minecraft:block/overlay_pebbles"},
-    {NB_OTHER, 0, "minecraft:block/unknown"},
+    {NB_AIR, bid::AIR, "block/air"},
+    {NB_BEDROCK, bid::BEDROCK, "block/bedrock"},
+    {NB_NETHERRACK, bid::NETHERRACK, "block/netherrack"},
+    {NB_COBBLE_NETHERRACK, bid::COBBLE_NETHERRACK, "block/cobble_netherrack"},
+    {NB_COBBLE_NETHERRACK_CRYSTALLINE, bid::COBBLE_NETHERRACK_CRYSTALLINE, "block/cobble_netherrack_mossy"},
+    {NB_LAVA_STILL, bid::LAVA_STILL, "block/fluid_lava_still"},
+    {NB_LAVA_FLOWING, bid::LAVA_FLOWING, "block/fluid_lava_flowing"},
+    {NB_WATER_STILL, bid::WATER_STILL, "block/fluid_water_still"},
+    {NB_WATER_FLOWING, bid::WATER_FLOWING, "block/fluid_water_flowing"},
+    {NB_ACID_STILL, bid::ACID_STILL, "block/fluid_acid_still"},
+    {NB_ACID_FLOWING, bid::ACID_FLOWING, "block/fluid_acid_flowing"},
+    {NB_OBSIDIAN, bid::OBSIDIAN, "block/obsidian"},
+    {NB_SOULSAND, bid::SOULSAND, "block/soulsand"},
+    {NB_SULFUR, bid::SULFUR, "block/sulfur"},
+    {NB_BRIMSAND, bid::BRIMSAND, "block/brimsand"},
+    {NB_BRIMSTONE, bid::BRIMSTONE, "block/brimstone"},
+    {NB_BRIMTHAW, bid::BRIMTHAW, "block/brimthaw"},
+    {NB_GLOOMSTONE, bid::GLOOMSTONE, "block/gloomstone"},
+    {NB_COBBLE_GLOOMSTONE, bid::COBBLE_GLOOMSTONE, "block/cobble_gloomstone"},
+    {NB_GLOWSTONE, bid::GLOWSTONE, "block/glowstone"},
+    {NB_BLOCK_ASH, bid::BLOCK_ASH, "block/block_ash"},
+    {NB_LAYER_ASH, bid::LAYER_ASH, "block/layer_ash"},
+    {NB_SLATE, bid::SLATE, "block/slate"},
+    {NB_BASALT, bid::BASALT, "block/basalt"},
+    {NB_COBBLE_BASALT, bid::COBBLE_BASALT, "block/cobble_basalt"},
+    {NB_PUMICE_WET, bid::PUMICE_WET, "block/pumice_wet"},
+    {NB_PUMICE_DRY, bid::PUMICE_DRY, "block/pumice_dry"},
+    {NB_MAGMA, bid::MAGMA, "block/magma"},
+    {NB_RUBYGLASS_CRYSTAL, bid::RUBYGLASS_CRYSTAL, "block/rubyglass_crystal"},
+    {NB_RUBYGLASS_COLUMN, bid::RUBYGLASS_COLUMN, "block/rubyglass_column"},
+    {NB_RUBYGLASS_NODE, bid::RUBYGLASS_NODE, "block/rubyglass_node"},
+    {NB_RUBYGLASS_GROWTH, bid::RUBYGLASS_GROWTH, "block/rubyglass_growth"},
+    {NB_ORE_NETHERCOAL_NETHERRACK, bid::ORE_NETHERCOAL_NETHERRACK, "block/ore_nethercoal_netherrack"},
+    {NB_ORE_NETHERCOAL_BASALT, bid::ORE_NETHERCOAL_BASALT, "block/ore_nethercoal_basalt"},
+    {NB_ORE_NETHERCOAL_GLOOMSTONE, bid::ORE_NETHERCOAL_GLOOMSTONE, "block/ore_nethercoal_gloomstone"},
+    {NB_BLOCK_NETHER_COAL, bid::BLOCK_NETHER_COAL, "block/block_nethercoal"},
+    {NB_THERMAL_VENT, bid::THERMAL_VENT, "block/thermal_vent"},
+    {NB_FIRE, bid::FIRE, "block/fire"},
+    {NB_FIRE_SULFURIC, bid::FIRE_SULFURIC, "block/fire_sulfuric"},
+    {NB_EMBER, bid::EMBER, "block/ember"},
+    {NB_BONE_PILE, bid::BONE_PILE, "block/bone_pile"},
+    {NB_BOULDER_MAGMATIC, bid::BOULDER_MAGMATIC, "block/boulder_magmatic"},
+    {NB_BOULDER_SULFURIC, bid::BOULDER_SULFURIC, "block/boulder_sulfuric"},
+    {NB_SOUL_CATCHER, bid::SOUL_CATCHER, "block/soul_catcher"},
+    {NB_OVERLAY_PEBBLES, bid::OVERLAY_PEBBLES, "block/overlay_pebbles"},
+    {NB_OTHER, 0, "block/unknown"},
 };
 static_assert(sizeof(kNB) / sizeof(kNB[0]) == NB_COUNT, "NB table");
 
@@ -137,10 +137,10 @@ uint16_t nbToLegacyId(NB k) { return k < NB_COUNT ? kNB[k].id : 0; }
 NB nbFromLegacyId(uint16_t id) { return id < bid::MAX_ID ? (NB)ptable().p[id].nb : NB_OTHER; }
 
 const char* netherBiomeName(int b) {
-  static const char* n[] = {"minecraft:nether.old_world", "minecraft:nether.crystal_plains",
-                            "minecraft:nether.crystal_forest", "minecraft:nether.shelf", "minecraft:nether.crag",
-                            "minecraft:nether.sulfur_pools", "minecraft:nether.volcanic_islands",
-                            "minecraft:nether.old_world.desert"};
+  static const char* n[] = {"nether.old_world", "nether.crystal_plains",
+                            "nether.crystal_forest", "nether.shelf", "nether.crag",
+                            "nether.sulfur_pools", "nether.volcanic_islands",
+                            "nether.old_world.desert"};
   return b >= 0 && b < BI_COUNT ? n[b] : "?";
 }
 
@@ -223,9 +223,10 @@ NetherGen::Impl::Impl(int64_t s, const NetherGenOptions& o)
     decoA = r.nextLong() / 2 * 2 + 1;
     decoB = r.nextLong() / 2 * 2 + 1;
   }
-  for (const char* n : kDecoNames) {
-    std::string id = std::string("minecraft:decoration/nether/default/") + n;
-    decoSeeds.push_back(javaStringHash(id.c_str()));
+  for (const char* n : kDecoNames) {   // each decoration's seed: the string hash of its full id (the id's common prefix already hashed in)
+    uint32_t h = 0x0244d073u;
+    for (const char* c = n; *c; ++c) h = 31u * h + (uint32_t)(unsigned char)*c;
+    decoSeeds.push_back((int32_t)h);
   }
 }
 

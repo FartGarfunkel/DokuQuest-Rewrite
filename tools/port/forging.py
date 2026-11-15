@@ -120,9 +120,9 @@ def main(d):
             items[hk] = {'key': hk, 'name': '%s %s Head' % (mname, t.title()), 'maxStack': 16, 'icon': hn, 'forged': True,
                          'forgeHead': {'mat': ing, 'cost': cost, 'tool': t}}
             for hf, (hitem, adj, hrgb, sx, dx, hel) in HAFTS.items():
-                vanilla = hf == 'stick' and (m + '_' + t) in items and not items[m + '_' + t].get('forged')
+                plainTool = hf == 'stick' and (m + '_' + t) in items and not items[m + '_' + t].get('forged')
                 key = (m + '_' + t) if hf == 'stick' else '%s_hafted_%s_%s' % (hf, m, t)
-                if not vanilla:
+                if not plainTool:
                     tn = 'forged_' + key
                     if True:
                         im = Image.new('RGBA', (32, 32), (0, 0, 0, 0)); o = im.load()

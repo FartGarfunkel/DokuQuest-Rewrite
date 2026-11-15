@@ -30,7 +30,7 @@ Part A is the plan. Part B is the full classic-era content update detail. Part C
 - **Cave culling:** chunks hidden behind solid rock are skipped even when they're in view, so
   underground only the cave you're in is drawn. Portal windows keep working.
 - **Terrain memory diet:** Ultra used 4–9 GB of graphics memory in the Nether (~260 KB per chunk section vs ~80 KB in
-  tests without the pack). Find what bloats the meshes (GeruDoku relief, 3D plant detail everywhere on Ultra, merging,
+  tests without the pack). Find what bloats the meshes (the user's pack relief, 3D plant detail everywhere on Ultra, merging,
   fragmentation), cut it down, consider a compact vertex format and a memory budget that drops the farthest chunks first.
 
 ## 4. Feel and polish

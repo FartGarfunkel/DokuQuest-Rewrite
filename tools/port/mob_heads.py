@@ -8,7 +8,7 @@
   picture is the head's own face tile"""
 import json, sys, pathlib
 
-MC = {'skeleton', 'wither_skeleton', 'ghoul', 'fuseling', 'zombie_pigman', 'ender_dragon'}   # the classic heads, for now
+CLASSIC_HEADS = {'skeleton', 'wither_skeleton', 'ghoul', 'fuseling', 'zombie_pigman', 'ender_dragon'}   # the classic heads, for now
 SKULLS = {'skeleton', 'wither_skeleton'}
 
 
@@ -35,10 +35,10 @@ def main(d):
     if 'mob_head' not in sj['shapes']:   # collides and picks, draws nothing (the head layer draws the head)
         sj['shapes']['mob_head'] = [{'b': [4, 0, 4, 12, 8, 12], 'side': 'stone', 'only': 0}]
         (d / 'shapes.json').write_text(json.dumps(sj, separators=(',', ':'), ensure_ascii=False))
-    for k in [k for k, v in items.items() if isinstance(v, dict) and v.get('mobHead') and v['mobHead'] not in MC]: del items[k]   # an earlier, wider set
+    for k in [k for k, v in items.items() if isinstance(v, dict) and v.get('mobHead') and v['mobHead'] not in CLASSIC_HEADS]: del items[k]   # an earlier, wider set
     made = 0
     for key, m in mobs.items():
-        if key not in MC: continue
+        if key not in CLASSIC_HEADS: continue
         md = models.get(m.get('model', key))
         if not md: continue
         hp = [p for p in md['parts'] if p['name'] == 'head' or p.get('limb') == 'head' or p.get('role') in ('head', 'phead')]

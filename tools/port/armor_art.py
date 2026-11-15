@@ -16,7 +16,7 @@ from PIL import Image
 
 HOME = pathlib.Path.home() / '.local/share/DokuQuest/resourcepacks'
 OUT = HOME / 'Mod Art (local)/assets/minecraft/textures/models/armor'
-VANILLA = ['iron', 'gold', 'diamond', 'netherite', 'chainmail', 'leather']
+BASE_METALS = ['iron', 'gold', 'diamond', 'netherite', 'chainmail', 'leather']
 CUSTOM = {   # material: (picture to take its colour from, gem?, colour if there's no picture)
     'copper': ('copper_ingot', False, (214, 124, 82)), 'bronze': ('bronze_ingot', False, (196, 140, 70)),
     'silver': ('silver_ingot', False, (226, 230, 238)), 'steel': ('steel_ingot', False, (150, 160, 178)),
@@ -82,7 +82,7 @@ def main(d):
     if not files: print('armor_art: no pack in resourcepacks/ has armour layers - skipped'); return
     OUT.mkdir(parents=True, exist_ok=True)
     n = 0
-    for name in VANILLA:
+    for name in BASE_METALS:
         for layer in (1, 2):
             for suf in ('', '_overlay'):
                 fn = '%s_layer_%d%s.png' % (name, layer, suf)

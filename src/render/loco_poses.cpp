@@ -1,5 +1,5 @@
 // render/loco_poses.cpp — standing, walking and running as the locomotion loops have them (idle, walk and run
-// loops, sampled into our rig's angles by tools/port/gen_loco_poses.py): idle on its own clock, walk and run on the walk
+// loops, sampled into our rig's angles by tools/local/loco_import.py): idle on its own clock, walk and run on the walk
 // phase (one loop = one stride of both legs, the right leg forward at a quarter), mixed by how fast you go.
 #include "render/char_anim.h"
 #include <cmath>

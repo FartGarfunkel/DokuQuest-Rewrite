@@ -20,7 +20,7 @@ struct Settings {
   int colorFilter = 0;           // colour-blind filter: 0 off, 1 protanopia, 2 deuteranopia, 3 tritanopia (render/colour_filter_layer.cpp)
   int musicFreq = 1;             // how often music plays: 0 rarely, 1 now and then, 2 often, 3 nearly always
   bool invertY = false, showFps = false, fpBody = true, viewBob = true;
-  float brightness = 0.35f;      // the classic brightness curve: 0 moody (dark stays dark) .. 1 bright (common.glsl mcBrightness)
+  float brightness = 0.35f;      // the classic brightness curve: 0 moody (dark stays dark) .. 1 bright (common.glsl curveBrightness)
   // the picture's colour (render/colour_filter_layer.cpp): a style, or "custom" once a slider is moved
   std::string colourStyle = "natural";   // vibrant | natural | classic | custom
   float saturation = 0.85f;      // 0 grey .. 1 as drawn .. 1.5

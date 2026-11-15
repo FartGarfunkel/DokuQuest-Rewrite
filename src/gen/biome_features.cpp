@@ -28,8 +28,8 @@ enum : u8 { HM_WORLD, HM_OCEAN, HM_MOTION, HM_NOLEAVES };
 constexpr BlockId OUT = 0xFFFF;
 constexpr int DATA_MIN_Y = -64, DATA_TOP_Y = 319;   // (the imported data's Overworld: height anchors count from these)
 
-std::string strip(const std::string& s) { return s.rfind("minecraft:", 0) == 0 ? s.substr(10) : s; }
-std::string full(const std::string& s) { return s.find(':') == std::string::npos ? "minecraft:" + s : s; }
+std::string strip(const std::string& s) { return s.rfind("main:", 0) == 0 ? s.substr(5) : s; }
+std::string full(const std::string& s) { return s.find(':') == std::string::npos ? "main:" + s : s; }
 u64 mix(u64 z) { z += 0x9E3779B97F4A7C15ull; z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull; z = (z ^ (z >> 27)) * 0x94D049BB133111EBull; return z ^ (z >> 31); }
 int anchorY(const json& j) {   // the imported data's y
   if (j.is_object()) {
@@ -370,7 +370,7 @@ int BiomeFeatures::parseConf(const json& j) {
   const std::string t = j.value("type", std::string());
   const json& g = j.contains("config") ? j["config"] : json::object();
   const std::string tt = strip(t);
-  if (tt == "random_patch" || tt == "flower" || tt == "no_bonemeal_flower" || t == "natures_spirit:leveled_random_patch_feature") {
+  if (tt == "random_patch" || tt == "flower" || tt == "no_bonemeal_flower" || t == "nature:leveled_random_patch_feature") {
     C.t = F_PATCH; C.a = g.value("tries", 128); C.b = g.value("xz_spread", 7); C.c = g.value("y_spread", 3); C.d = parsePlaced(g["feature"]);
   }
   else if (tt == "simple_block") { C.t = F_SIMPLE; C.prov = parseProv(g["to_place"]); }
@@ -401,9 +401,9 @@ int BiomeFeatures::parseConf(const json& j) {
   else if (tt == "iceberg") { C.t = F_ICEBERG; C.st = state(g["state"]); }
   else if (tt == "blue_ice") C.t = F_BLUEICE;
   else if (tt == "freeze_top_layer") C.t = F_FREEZE;
-  else if (t == "natures_spirit:large_pumpkin_feature") { C.t = F_BIGBLOCK; C.prov = parseProv(g["state_provider"]); }
-  else if (t == "natures_spirit:water_delta_feature") { C.t = F_POND; C.st = state(g["contents"]); C.st2 = state(g["rim"]); C.ia = parseInt(g["size"]); C.ib = parseInt(g["rim_size"]); }
-  else if (t == "natures_spirit:turnip_root_feature" && g.contains("feature")) { C.t = F_SIMPLESELECT; C.kids.push_back(parsePlaced(g["feature"])); }   // (its turnip, without the roots)
+  else if (t == "nature:large_pumpkin_feature") { C.t = F_BIGBLOCK; C.prov = parseProv(g["state_provider"]); }
+  else if (t == "nature:water_delta_feature") { C.t = F_POND; C.st = state(g["contents"]); C.st2 = state(g["rim"]); C.ia = parseInt(g["size"]); C.ib = parseInt(g["rim_size"]); }
+  else if (t == "nature:turnip_root_feature" && g.contains("feature")) { C.t = F_SIMPLESELECT; C.kids.push_back(parsePlaced(g["feature"])); }   // (its turnip, without the roots)
   else C.t = F_NONE;   // (trees are ours; ores, lakes, springs, fossils, geodes, dungeons, the caves' and the Nether's are left out)
   confs_.push_back(std::move(C));
   return (int)confs_.size() - 1;
@@ -463,7 +463,7 @@ bool BiomeFeatures::load(const fs::path& dir, const LandBiomes& biomes, u64 seed
   bamboo_ = R.blockId("bamboo"); cactus_ = R.blockId("cactus"); cane_ = R.blockId("sugar_cane"); vine_ = R.blockId("vine");
   const size_t n = R.blocks.size() + 1;
   dirt_.assign(n, 0); sand_.assign(n, 0); terracotta_.assign(n, 0); plantable_.assign(n, 0);
-  tagInto("minecraft:dirt", dirt_); tagInto("minecraft:sand", sand_); tagInto("minecraft:terracotta", terracotta_);
+  tagInto("main:dirt", dirt_); tagInto("main:sand", sand_); tagInto("main:terracotta", terracotta_);
   dirt_.resize(n); sand_.resize(n); terracotta_.resize(n);
   for (const char* k : {"snowy_grass", "farmland", "dirt_with_dry_grass", "dirt_with_coniferous_litter", "dirt_with_rainforest_litter", "scorched_dirt", "peat"}) if (BlockId id = R.blockId(k)) dirt_[id] = 1;
   for (const char* k : {"silver_sand", "desert_sand", "red_sand"}) if (BlockId id = R.blockId(k)) sand_[id] = 1;

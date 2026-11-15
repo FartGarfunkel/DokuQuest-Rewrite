@@ -17,15 +17,15 @@ namespace dq {
 class LandBiomes {
 public:
   struct Info {
-    std::string name;                       // "natures_spirit:aspen_forest"
+    std::string name;                       // "nature:aspen_forest"
     float temperature = 0.8f, downfall = 0.4f;
     bool precipitation = true, frozen = false;   // (frozen: the "frozen" temperature modifier)
     int grass = -1, foliage = -1, water = 0x3F76E4, sky = 0x78A7FF;   // -1: from the colour maps
     std::string grassModifier;              // "", "dark_forest", "swamp"
   };
   // dir: data/worldgen. False when the data isn't there.
-  // withQuark (terrain version 17): the extra region too (its Glimmering Weald; and the regions' weights with it)
-  bool load(const fs::path& dir, i64 worldSeed, bool withQuark = true, bool strongHash = true);   // strongHash (18): unstriped snow lines
+  // withExtras (terrain version 17): the extra region too (its Glimmering Weald; and the regions' weights with it)
+  bool load(const fs::path& dir, i64 worldSeed, bool withExtras = true, bool strongHash = true);   // strongHash (18): unstriped snow lines
   bool ok() const { return !regions_.empty(); }
   int count() const { return (int)info_.size(); }
   const Info& info(int b) const { return info_[b]; }

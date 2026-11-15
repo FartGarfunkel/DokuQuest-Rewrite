@@ -1,5 +1,5 @@
 // gen/endlands/endlands_biomemap.h — the End's lands and their hex biome map. The biome table (genChance, terrainHeight,
-// parent) is read from the End data (data/betterend/worldgen/betterx/biome/*.json); the map itself is not in that
+// parent) is read from the End data (the imported End biome data); the map itself is not in that
 // data, so HexBiomeMap / HexBiomeChunk / BiomePicker here are RECONSTRUCTED from memory (see README.md):
 // 32 x 32 hex cells per map chunk, 16 jittered seeds per chunk each painting a 7-cell hexagon, random-neighbour growth
 // until full, then a 1-in-4 per cell chance to paint a 7-cell hexagon of a sub-biome (weighted by genChance); cells are
@@ -28,9 +28,9 @@ enum BiomeId : int {
 enum BiomeKind : uint8_t { K_LAND, K_VOID, K_CENTER, K_BARRENS };
 
 struct BiomeInfo {
-  const char* id;       // resource id
+  const char* id;       // its name
   float genChance;      // pick weight in its pool / sub-biome weight in its parent
-  float terrainHeight;  // BCLBiomeSettings.terrainHeight (feeds the island top noise, 3.5 in the spec)
+  float terrainHeight;  // the biome's terrain height (feeds the island top noise, 3.5 in the spec)
   int8_t parent;        // parent biome for sub-biomes, else -1
   int8_t edge;          // edge biome, else -1
   uint8_t edgeSize;     // edge width in blocks

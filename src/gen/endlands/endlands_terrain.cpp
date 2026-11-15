@@ -265,9 +265,9 @@ EndTerrain::EndTerrain(int64_t worldSeed, const EndTerrainOptions& opt) : opt_(o
                                    B_END_MIDLANDS, B_FOGGY_MUSHROOMLAND, B_GLOWING_GRASSLANDS, B_LANTERN_WOODS,
                                    B_MEGALAKE, B_SHADOW_FOREST, B_SULPHUR_SPRINGS, B_UMBRA_VALLEY, B_UMBRELLA_JUNGLE};
   for (int id : kLandOrder)
-    if (opt_.vanillaBiomes || id < B_LAND_COUNT) landPicker_.add(id);
+    if (opt_.baseBiomes || id < B_LAND_COUNT) landPicker_.add(id);
   voidPicker_.add(B_ICE_STARFIELD);
-  if (opt_.vanillaBiomes) voidPicker_.add(B_SMALL_END_ISLANDS);
+  if (opt_.baseBiomes) voidPicker_.add(B_SMALL_END_ISLANDS);
   landPicker_.finish();
   voidPicker_.finish();
   landMap_ = std::make_unique<HexBiomeMap>(worldSeed, opt_.landBiomeSize, &landPicker_, opt_.hex);
@@ -453,16 +453,16 @@ int EndTerrain::biomeQuart(int qx, int qz) const {
 
 int EndTerrain::biome(int x, int z) const { return biomeQuart(x >> 2, z >> 2); }
 
-int EndTerrain::land(int x, int z, int* vanillaKind) const {
+int EndTerrain::land(int x, int z, int* baseKind) const {
   const int b = biome(x, z);
   int vk = V_NONE, r = b;
   if (b == B_THE_END) { vk = V_THE_END; r = -2; }
   else if (b >= B_LAND_COUNT) { vk = b - B_END_HIGHLANDS; r = -1; }
-  if (vanillaKind) *vanillaKind = vk;
+  if (baseKind) *baseKind = vk;
   return r;
 }
 
-void EndTerrain::chunkLand(int cx, int cz, int8_t out[256], int8_t* vanillaKind) const {
+void EndTerrain::chunkLand(int cx, int cz, int8_t out[256], int8_t* baseKind) const {
   for (int qz = 0; qz < 4; ++qz)
     for (int qx = 0; qx < 4; ++qx) {
       int vk = V_NONE;
@@ -470,7 +470,7 @@ void EndTerrain::chunkLand(int cx, int cz, int8_t out[256], int8_t* vanillaKind)
       for (int z = qz * 4; z < qz * 4 + 4; ++z)
         for (int x = qx * 4; x < qx * 4 + 4; ++x) {
           out[(z << 4) | x] = int8_t(l);
-          if (vanillaKind) vanillaKind[(z << 4) | x] = int8_t(vk);
+          if (baseKind) baseKind[(z << 4) | x] = int8_t(vk);
         }
     }
 }

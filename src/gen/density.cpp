@@ -158,11 +158,11 @@ bool DensityGraph::load(const fs::path& dir, u64 seed, const std::string& prefix
   {
     const char* eb = std::getenv("DQ_CONT_BIAS");
     const double bias = eb ? std::atof(eb) : dir.filename() == "worldgen_base" ? 0.1 : 0.0;
-    const int c = find("minecraft:overworld/continents");
+    const int c = find("main:overworld/continents");
     if (c >= 0 && bias != 0) {
       Node k; k.op = O_CONST; k.c = bias; nodes.push_back(k);
       Node add; add.op = O_ADD; add.a = c; add.b = (int)nodes.size() - 1; nodes.push_back(add);
-      named["minecraft:overworld/continents"] = named["overworld/continents"] = (int)nodes.size() - 1;
+      named["main:overworld/continents"] = named["overworld/continents"] = (int)nodes.size() - 1;
     }
   }
   if (find("final_density") < 0) { nodes.clear(); return false; }
@@ -177,7 +177,7 @@ int DensityGraph::find(const std::string& name) const {
   else {
     // a named function: "overworld/x" (this world's own variant first, e.g. overworld_amplified/offset), or a plain one
     std::string rel = name;
-    if (rel.rfind("minecraft:", 0) == 0) rel = rel.substr(10);
+    if (rel.rfind("main:", 0) == 0) rel = rel.substr(5);
     json j;
     bool got = false;
     if (rel.rfind("overworld/", 0) == 0 && prefix_ != "overworld") got = readJsonFile(dir_ / "density_function" / (prefix_ + rel.substr(9) + ".json"), j);
@@ -193,12 +193,12 @@ int DensityGraph::find(const std::string& name) const {
 double DensityGraph::noiseValue(int n, double x, double y, double z) const { return n < 0 ? 0 : noises[n]->value(x, y, z); }
 
 int DensityGraph::noiseRef(const std::string& id) {
-  std::string rel = id.rfind("minecraft:", 0) == 0 ? id.substr(10) : id;
+  std::string rel = id.rfind("main:", 0) == 0 ? id.substr(5) : id;
   if (auto it = noiseIdx.find(rel); it != noiseIdx.end()) return it->second;
   json j; int first = -7; std::vector<double> amps{1.0};
   std::string file = rel; if (const size_t c = file.find(':'); c != std::string::npos) file[c] = '/';
   if (readJsonFile(dir_ / "noise" / (file + ".json"), j)) { first = j.value("firstOctave", -7); amps = j["amplitudes"].get<std::vector<double>>(); }
-  noises.push_back(std::make_unique<Normal>(hashName(seed_, rel), first, amps));
+  noises.push_back(std::make_unique<Normal>(hashName(seed_, j.is_object() ? j.value("seedName", rel) : rel), first, amps));   // (an imported noise keeps the name its seed was made from)
   return noiseIdx[rel] = (int)noises.size() - 1;
 }
 
@@ -220,7 +220,7 @@ int DensityGraph::parse(const json& j) {
   if (j.is_number()) { n.op = O_CONST; n.c = j.get<double>(); nodes.push_back(n); return (int)nodes.size() - 1; }
   if (j.is_string()) { const int r = find(j.get<std::string>()); if (r >= 0) return r; n.op = O_CONST; nodes.push_back(n); return (int)nodes.size() - 1; }
   std::string t = j.value("type", std::string());
-  if (t.rfind("minecraft:", 0) == 0) t = t.substr(10);
+  if (t.rfind("main:", 0) == 0) t = t.substr(5);
   auto arg = [&](const char* k) { return parse(j[k]); };
   if (t == "add" || t == "mul" || t == "min" || t == "max") {
     n.op = t == "add" ? O_ADD : t == "mul" ? O_MUL : t == "min" ? O_MIN : O_MAX; n.a = arg("argument1"); n.b = arg("argument2");

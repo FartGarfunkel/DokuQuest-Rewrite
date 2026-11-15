@@ -250,7 +250,7 @@ mobs['wither'] = {'model': 'wither', 'label': 'the Wither', 'hp': 300, 'w': 0.9,
                   'drops': [['nether_star', 1, 1, 1]]}
 mg['effects']['wither'] = {'name': 'Wither', 'col': '#3a3030', 'bad': True}
 # the Wither Storm: a Wither grown out of a rift core (sim/wither.cpp stormBrain): the same bones, huge and dark
-if 'uvTex' not in models.get('wither_storm', {}): models['wither_storm'] = dict(models['wither']); models['wither_storm']['scale'] = 5.0   # (the imported model's looks once tools/port/wither_storm_models.py has run)
+if 'uvTex' not in models.get('wither_storm', {}): models['wither_storm'] = dict(models['wither']); models['wither_storm']['scale'] = 5.0   # (the imported model's looks once tools/local/wither_storm_import.py has run)
 mobs['wither_storm'] = {'model': 'wither_storm', 'label': 'the Wither Storm', 'hp': 900, 'w': 2.8, 'h': 9.5, 'speed': 1.1, 'fly': 5, 'xp': 500, 'hostile': True,
                         'boss': True, 'special': True, 'flyer': True, 'undead': True, 'fireImmune': True, 'knockResist': 1, 'damage': 0,
                         'tint': [0.22, 0.06, 0.32, 0.45], 'drops': [['nether_star', 3, 3, 1], ['rift_crystal', 6, 10, 1]]}
@@ -475,10 +475,12 @@ def _match_family_tools(d):
     print('family tools: %d stairs/slabs/walls matched to their block' % n)
 _match_family_tools(d)
 
-# ---- the End lands' blocks for the End band, their pictures fitted to the base pack (tools/port/end_blocks.py; MIT,
-# docs/THIRD_PARTY_NOTICES.md; only when the End blocks' source is unpacked next to the project) ----
-_s14 = _u.spec_from_file_location('end_blocks', pathlib.Path(__file__).with_name('end_blocks.py')); _m14 = _u.module_from_spec(_s14); _s14.loader.exec_module(_m14)
-_m14.main(d, pathlib.Path(__file__).resolve().parents[3] / 'Better END')
+# ---- the End lands' blocks and their pictures (tools/local/end_blocks.py, on this machine only: it reads the source files;
+# docs/THIRD_PARTY_NOTICES.md). Without it, the blocks already in data/ stay as they are ----
+_LOCAL = pathlib.Path(__file__).resolve().parents[1] / 'local'
+if (_LOCAL / 'end_blocks.py').exists():
+    _s14 = _u.spec_from_file_location('end_blocks', _LOCAL / 'end_blocks.py'); _m14 = _u.module_from_spec(_s14); _s14.loader.exec_module(_m14)
+    _m14.main(d)
 
 # ---- the classic Nether's blocks we lacked, drawn from the base pack in their own colours (tools/port/nether_blocks.py) ----
 _s15 = _u.spec_from_file_location('nether_blocks', pathlib.Path(__file__).with_name('nether_blocks.py')); _m15 = _u.module_from_spec(_s15); _s15.loader.exec_module(_m15); _m15.main(d)
@@ -492,9 +494,10 @@ _s17 = _u.spec_from_file_location('end_mobs', pathlib.Path(__file__).with_name('
 # ---- the Skylands' dungeon keepers (Slider, Sun Spirit) and creatures it lacked, recoloured (tools/port/skyland_mobs.py) ----
 _s18 = _u.spec_from_file_location('skyland_mobs', pathlib.Path(__file__).with_name('skyland_mobs.py')); _m18 = _u.module_from_spec(_s18); _s18.loader.exec_module(_m18); _m18.main(d)
 
-# ---- the End lands' building blocks and their structures (tools/port/end_building.py; after end_blocks.py) ----
-_s19 = _u.spec_from_file_location('end_building', pathlib.Path(__file__).with_name('end_building.py')); _m19 = _u.module_from_spec(_s19); _s19.loader.exec_module(_m19)
-_m19.main(d, pathlib.Path(__file__).resolve().parents[3] / 'Better END')
+# ---- the End lands' building blocks and their structures (tools/local/end_building.py, on this machine only; after end_blocks.py) ----
+if (_LOCAL / 'end_building.py').exists():
+    _s19 = _u.spec_from_file_location('end_building', _LOCAL / 'end_building.py'); _m19 = _u.module_from_spec(_s19); _s19.loader.exec_module(_m19)
+    _m19.main(d)
 
 # ---- the dragons' shape and scales (tools/port/dragon_shape.py: chest, haunches, thighs, clawed feet, frills, finer tail; membranes) ----
 _s20 = _u.spec_from_file_location('dragon_shape', pathlib.Path(__file__).with_name('dragon_shape.py')); _m20 = _u.module_from_spec(_s20); _s20.loader.exec_module(_m20); _m20.main(d)

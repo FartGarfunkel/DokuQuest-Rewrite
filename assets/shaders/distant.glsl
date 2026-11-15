@@ -95,7 +95,7 @@ void main() {
     c = t.rgb;
   }
   c *= vCol.a;
-  if ((vFlags & 2u) == 0u) c *= max(mcBrightness(vec3(uDay)).x, uMinLight);   // the same brightness curve as the near land
+  if ((vFlags & 2u) == 0u) c *= max(curveBrightness(vec3(uDay)).x, uMinLight);   // the same brightness curve as the near land
   float dist = length(vRel);
   if ((vFlags & 1u) != 0u && ((vFlags >> 8u) & 7u) == 2u) {
     // open water, as chunk.glsl draws it: the sea floor darkening it through the water, the sky in it at a low angle

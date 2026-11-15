@@ -128,18 +128,18 @@ floating or resizing, stations worked in the world, other players see what you d
   of the same layout (the launcher has its own ImGui context and fonts).
 - **The End's lands (docs/THIRD_PARTY_NOTICES.md):** `render/end_sky.cpp` (+ `assets/shaders/end_sky.glsl`,
   `assets/sky/end/`), the per-land fog colour/density in `render/sky.cpp`, `gen/theend_lands.cpp` (surfaces, trees,
-  plants per land; land 2 is now Foggy Mushroomland), 103 End blocks from `tools/port/end_blocks.py`.
+  plants per land; land 2 is now Foggy Mushroomland), 103 End blocks from `tools/local/end_blocks.py`.
 - **Terrain version 7** (new worlds; old ones keep 6 until World Settings → Upgrade): the classic Nether's climate/density
   fixes, surfaces and features (`gen/nether_lands.cpp` v7 branches, `gen/nether_lands7.cpp`), classic Nether fog + grade
   (`render/nether_grade_layer.cpp`, option colorCorrectionNether) for every cave Nether; the Skylands' islands
   (`gen/isles_noise.*`, `gen/skylands_isles.cpp`, ISLES_DY 100).
 - **Art rules:** third-party reference art is not shippable: `tools/port/nether_blocks.py` and `skyland_blocks.py` recolour the
-  base pack; `tools/port/local_mod_art.py` builds a this-computer-only pack from the user's own reference copies.
+  base pack; `tools/local/local_art.py` builds a this-computer-only pack from the user's own reference copies.
 - **Build here:** the toolchain is /tmp/toolchain (PATH + LD_LIBRARY_PATH to its usr/bin, usr/lib64). The old sysroot
   /tmp/dq-sysroot is gone: SDL and imgui's SDL backend can't recompile, so after any `cmake build` touch their objects
   newer than the headers. The objects record system headers as /usr/include/... (sysroot paths); drop entries for
   files that don't exist from build/**/compiler_depend.* and *.o.d before `make`, or everything rebuilds.
-- Research notes with the remaining gaps: `docs/research/{better_end,nethergen,aether}.md`.
+- Research notes with the remaining gaps: `docs/research/{end_lands,classic_nether,skylands}.md`.
 - **Later the same day:** the game's menus use the launcher's look (`ui/paged.cpp` classicDirt / classicButton /
   pageIcon). The End lands' 6 creatures (`tools/port/end_mobs.py`, spawned per land in `sim/creature_spawn.cpp`). The
   Skylands' dungeons are structures now (`gen/structures_skylands.cpp`, terrain 7 only, registered after the roads):
@@ -169,7 +169,7 @@ floating or resizing, stations worked in the world, other players see what you d
     hex biome map reconstructed — see gen/endlands/README.md). theend.cpp: island()/endBiome() read a per-chunk column cache,
     generate() fills from the 3D density (stacked islands each get their land's ground); voidRing = OUTER, the dragon's
     island stays ours. endLandAt(seed, genVersion, x, z) for the sky/spawns/particles.
-  - The End lands' 63 structures: tools/port/end_building.py makes the 116 building blocks they need (cloned from our
+  - The End lands' 63 structures: tools/local/end_building.py makes the 116 building blocks they need (cloned from our
     block kinds, reference pictures through the art pass) and data/end_structures.json; gen/endlands_buildings.cpp places them
     (1 in 10 chunks, the lists per land, rotated). Pillars: see the night section above. Not done: the eternal portal.
   - Textures: local_mod_art.py and end_blocks.py use restyle.py's colour ramp now (the pack's picture of the same
@@ -204,7 +204,7 @@ floating or resizing, stations worked in the world, other players see what you d
     the overlay) and forge/mixed-tool materials (forging.py, tool_parts.py: 22 now). ender_ore, amber_ore and
     ambrosium_ore drop an ender shard, an amber gem, an ambrosium shard (heals). Pack animations capped at 24 frames
     (was 32) to keep the tile count under 4096 with the new tools.
-  - Armour: tools/port/armor_art.py writes worn layers into the overlay for every material (GeruDoku's iron/gold/diamond/
+  - Armour: tools/port/armor_art.py writes worn layers into the overlay for every material (the user's pack's iron/gold/diamond/
     netherite/chainmail/leather as they are; copper, bronze, silver, steel, mithril, adamantite, emerald, zanite,
     gravitite, thallasium recoloured from them); pack_armor.cpp reads the overlay after the chosen pack (the active
     DokuQuest Base pack has no armour layers of its own). data_patches.py runs new_materials, forging, tool_parts,
@@ -289,7 +289,7 @@ misleading on Intel: the GPU idles and clocks down), `DQ_PROFILE_FRAMES=n`, `DQ_
     (mesher waterfall fx at the floor). No aercloud blocks in either Skylands generator any more (v7 chains/ribbons,
     v6 banks); the Silver dungeon keeps its cloud bed. Chunks already saved keep their clouds. lod_far.bin's tag has a
     generator revision ("/2") so the far land is made again.
-  - The End's pillars: end_building.py exports data/betterend/structures/pillars/*.nbt into end_structures.json
+  - The End's pillars: end_building.py exports the imported End data into end_structures.json
     ("pillars"); EndGen::bePillar builds them (base 3 into the ground, top at ground +
     height - 64, obsidian column one narrower with crying obsidian on the rim 1 in 24). end_fight.cpp puts each crystal
     on the highest bedrock of its pillar's centre column (so old saved pillars still work). New block: flavolite_slab.
@@ -583,7 +583,7 @@ Released as alpha.12. docs/STATUS.md has the done / partly / not-yet split. Wher
   - Reference engines: `/mnt/user-data/attachments/cf5aa8f7-9a50-50d5-8270-c5644c73a5ee/88ea2ea7-rust-main.zip`
     → `/tmp/ug/ref/rust/rust-main`; `.../1e13bad2-Zig_src.zip` → `/tmp/ug/ref/zig/src`
   - Original JS: `/home/claude/src_in/DokuQuest-0.9.0.90/src/js`
-  - GeruDoku pack: `/home/claude/pack_in`
+  - the user's pack pack: `/home/claude/pack_in`
 - **Music references:** the user's three examples in the same attachments folder (`*Dawn_in_the_Voxel_Valley.mp3`,
   `*The_View_From_High_Ground.mp3`, `*Warm_Blocks_FULL_SONG_musicgpt.mp3`). Measured: ~3 min each, warm and
   bass-heavy (over half the energy below 120 Hz, little above 2 kHz), gentle dynamics, slow-to-mid tempo, keys
@@ -592,7 +592,7 @@ Released as alpha.12. docs/STATUS.md has the done / partly / not-yet split. Wher
 
 ## Sounds: where the user's sound work lives (all committed in the repo, main and chisel)
 - **`data/sounds.json` + `data/sounds.bin`:** the user's sound set as resynthesis profiles (1,125 sounds, 284 events:
-  GeruDoku plus their imported creature and block sounds, merged in alpha.5.9 with the mob fixes: wolf howl, duck
+  the user's pack plus their imported creature and block sounds, merged in alpha.5.9 with the mob fixes: wolf howl, duck
   death, horse). Format: `sounds` = profile index into the `raw` blob in `sounds.bin`; `events` = "mob.<name>" /
   "<material>.<kind>" / "fx.<name>" -> [[file, pitch, vol]...]. Loaded by `src/audio/resynth.cpp` (PackSounds).
 - **`data/sfx.json`:** the original HTML game's synthesised sounds (recipes per sound name + material), the fallback
@@ -945,7 +945,7 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
 ### 2026-11-08: the villages rebuilt from structure pieces, axle icon, hub gap
 - A village's look is its structure pieces, put together by a jigsaw. So ours now does the same with imported pieces.
 - The pieces are game data: tools/port/village_import.py (in data_patches.py's last loop) copies the
-  data/minecraft/structures/village/<style>/<houses|streets|town_centers|terminators>/*.nbt from the local village-pieces folder into
+  the imported village pieces/<style>/<houses|streets|town_centers|terminators>/*.nbt from the local village-pieces folder into
   data/villages/ and writes data/villages/index.json. Those pieces are third-party, "All rights reserved": don't
   commit or release data/villages without the author's leave.
 - gen/village_pieces.{h,cpp}: villagePieces() reads them once (index + readBinary, so data.dqa works): gzip + NBT
@@ -1215,7 +1215,7 @@ them (like the zombie). The drowned skin does have its own left limbs, so it kee
   Command Block Book (Super TNT uses a rift crystal instead), flaming skulls, distractions, chase/distracted travel.
 
 ### 2026-11-09 (later still): the reference looks; beaten with worthy blows (user: "doesn't look like the one in my files")
-- tools/port/wither_storm_models.py runs the reference model builders (a little interpreter for their source:
+- tools/local/wither_storm_import.py runs the reference model builders (a little interpreter for their source:
   CFR into the scratchpad, `java -jar /tmp/cfr.jar --outputdir <dir> <the jar's .class files>`) and writes
   wither_storm_p0..p3, wither_storm (the destroyer) and wither_storm_p5 into data/models.json (model scale 2, the
   reference renderer's; each piece's own scale baked in: mass x10, heads x0.7/x3, tentacles x0.5/x2/x3), and copies its

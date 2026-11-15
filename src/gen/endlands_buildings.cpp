@@ -1,6 +1,6 @@
 // gen/endlands_buildings.cpp — the End lands' structures (their building lists: ruins, houses, a library, a
 // tree house, a small mansion, cabins, stumps and fallen trees) in their six lands, read from data/end_structures.json
-// (tools/port/end_building.py converts the .nbt templates). In one chunk of ten (the rarity
+// (tools/local/end_building.py converts the .nbt templates). In one chunk of ten (the rarity
 // filter) a spot in the chunk, if its land has a list, gets one structure from it, centred there, turned a random
 // quarter; SURFACE ones sit with their floor in the ground, OBJECT ones on top of it. Its air clears only what stands
 // above the ground.

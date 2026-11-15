@@ -263,7 +263,7 @@ int main(int argc, char** argv) {
   std::string r = runCommand(*lv, cs, "/learn all");
   check(knownSpells(p).size() == 29, "/learn all (" + r + ")");
 
-  // ---- the passive skill trees (sim/skilltree.h; only once the trees are imported: tools/port/soulrend_tree.py) ----
+  // ---- the passive skill trees (sim/skilltree.h; only once the trees are imported: tools/local/skilltree_import.py) ----
   if (!skillTrees().empty()) {
     const SkillTree* W = nullptr; for (auto& t : skillTrees()) if (t.key == "warrior") W = &t;
     check(W && W->nodes.size() > 100, "the warrior tree is there");

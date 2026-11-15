@@ -55,7 +55,7 @@ static long long colKey(int x, int z) { return (long long)(u32)x | ((long long)(
 static VPPiece ourPiece(const std::string& type) {
   VPPiece p; int W = 7, D = 7, H = 10; townTemplateSize(type, W, D, H);
   p.name = "dq_" + type; p.kind = "houses"; p.sx = W; p.sz = D + 1; p.sy = H; p.top = H;
-  VPJoint j; j.x = (W - 1) / 2; j.y = 1; j.z = 0; j.front = 0; j.name = "minecraft:building_entrance"; j.target = "minecraft:building_entrance"; j.pool = "minecraft:empty";
+  VPJoint j; j.x = (W - 1) / 2; j.y = 1; j.z = 0; j.front = 0; j.name = "main:building_entrance"; j.target = "main:building_entrance"; j.pool = "main:empty";
   p.joints.push_back(j); p.animals = type;   // (animals carries the building type for our own pieces)
   return p;
 }
@@ -193,7 +193,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
     for (int i = (int)js.size() - 1; i > 0; i--) std::swap(js[i], js[jsFloor(rnd() * (i + 1))]);
     for (int ji : js) {
       const VPJoint& A = Q.p->joints[ji];
-      if (A.front > 3 || A.pool.empty() || A.pool == "minecraft:empty") continue;
+      if (A.front > 3 || A.pool.empty() || A.pool == "main:empty") continue;
       auto [tx, tz] = vpTurn(*Q.p, Q.r, A.x, A.z);
       const int ax = Q.x0 + tx, az = Q.z0 + tz, af = (A.front + Q.r) & 3;
       const int ay = Q.p->terrain ? top(ax, az) + A.y : Q.y0 + A.y;
@@ -713,7 +713,7 @@ void jigsawTownBoxes(const JigsawTown& J, const std::array<int, 4>& n, std::vect
   if (J.board) add(J.bx - 2, J.bz - 2, J.bx + 2, J.bz + 2);
 }
 
-// the town styles (tools/port/tnt_village_import.py): their streets are plots with the houses' lots in them, and
+// the town styles (tools/local/town_import.py): their streets are plots with the houses' lots in them, and
 // their villages have no wall
 bool isTntStyle(const std::string& st) {
   static const std::set<std::string> TNT = {"meadow_swiss", "birch_forest_romanian", "flower_forest_japanese", "forest_ruins", "mushroom_fields_fantasy",

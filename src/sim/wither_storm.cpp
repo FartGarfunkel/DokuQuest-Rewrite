@@ -32,7 +32,7 @@ constexpr float CHARGE = 12.f;   // gathering itself out of the T
 constexpr int MAXP = 5;
 // what it must have eaten to grow past each phase (in his realm everything counts thrice: the finale can't wait hours)
 const float GROW[MAXP] = {60, 240, 700, 2000, 6000};
-// each phase's look (its own model, converted: tools/port/wither_storm_models.py), its box (enough to
+// each phase's look (its own model, converted: tools/local/wither_storm_import.py), its box (enough to
 // strike: the models' own are smaller than what you see), its strength, and how high it hangs over the ground
 struct Look { const char* model; float s, w, h, hp, hover; };
 const Look LOOK[MAXP + 1] = {
@@ -540,7 +540,7 @@ void primeFormidi(Level& lv, World& w, int x, int y, int z, const std::string& k
   if (formidi) lv.fx->message(0, "The Formidibomb is lit. Let the Storm take it.", "warn");
 }
 
-// ---- how it moves (rig "wither_storm": its models, tools/port/wither_storm_models.py) ----
+// ---- how it moves (rig "wither_storm": its models, tools/local/wither_storm_import.py) ----
 // The tentacles sway and curl as its tentacle model has them (each out of step with the next); each head turns to
 // its own mark and droops, shaking, while it's hurt; the storm heads' jaws chew, and gape when it roars; knocked down it
 // tips over onto its back.

@@ -2,7 +2,7 @@
 
 The goal: every hands-on station with its own model, the items set where they belong on it, its interactions and
 its animations, worked in our own immersive first person (no scene, no screen). The station models and textures are
-imported locally and git-ignored (tools/port/tactile_import.py -> data/local_models/hands). Our own simulation
+imported locally and git-ignored (tools/local/station_import.py -> data/local_models/hands). Our own simulation
 (smelting, brewing, enchanting...) stays; the hands-on layout, zones and handling go over it. Sneak + use keeps our
 scene; Options -> Hands-on Stations off keeps our own blocks.
 

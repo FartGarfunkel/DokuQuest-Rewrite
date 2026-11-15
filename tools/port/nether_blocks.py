@@ -5,7 +5,7 @@ data_patches.py runs it):  python3 tools/port/nether_blocks.py <data-dir>
 No outside art is shipped, so each picture here is the DokuQuest Base pack's nearest picture,
 its light and shade kept and its colours moved to the block's own average colour (see the research
 notes). To see the reference pictures on your computer, make the local pack with
-tools/port/local_mod_art.py (never shipped).
+tools/local/local_art.py (never shipped).
 
   brimsand (black volcanic sand; it does not fall), nether_brimstone (near-black brimstone; the End has
   its own yellow brimstone), brimthaw (glowing olive, light 10), cobbled_netherrack (the classic Nether's world filler),
@@ -89,7 +89,7 @@ def main(d):
         tid = {k: tiles[v] for k, v in tex.items()} if isinstance(tex, dict) else tiles[tex]
         b = {'render': 1, 'solid': True, 'opaque': True, 'replaceable': False, 'hardness': 1.5, 'tool': 'pickaxe', 'tier': 0, 'drop': key,
              'light': 0, 'lightAtt': 0, 'sound': 'stone', 'key': key, 'name': name}
-        b.update(props); b['tex'] = tex; b['bta'] = True
+        b.update(props); b['tex'] = tex; b['netherSet'] = True
         if key in at: blocks[at[key]].update(b); bj['faces'][at[key]] = faces_of(tid)
         else:
             b['id'] = len(blocks); blocks.append(b); bj['faces'].append(faces_of(tid)); at[key] = b['id']

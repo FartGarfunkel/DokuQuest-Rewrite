@@ -1,4 +1,4 @@
-// sim/boss_kit.cpp — an imported boss fights by its own attack table (tools/port/geo_boss_import.py -> data/local_models
+// sim/boss_kit.cpp — an imported boss fights by its own attack table (tools/local/boss_import.py -> data/local_models
 // "kits": each move's clip and length, the phases and ranges it's used in, its weight, its hit windows (start, end, damage,
 // radius, radial), and whether it teleports, leaps, or calls lightning). The brain: close in at a walk or a run; at the
 // right range pick a move by weight and play it; while it plays, turn to the target early on, and in each hit window strike

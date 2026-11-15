@@ -85,7 +85,7 @@ The existing `WeatherFxLayer` rain/snow/dust code in `env_layers.cpp` is replace
 
 - `windAt` drives all weather particles, cloud drift stays as is, and `AudioScene.gust` = local gust magnitude.
 - Sound profiles: the recorded `snow-01..06`, `sandstorm-01..06`, `sandstormabove-01..06` analysed with
-  `tools/port/sound_analyze.py merge` (needs ffmpeg) under a `particlerain/` prefix; events `weather.snow`,
+  `tools/port/sound_analyze.py merge` (needs ffmpeg) under a `weather_rec/` prefix; events `weather.snow`,
   `weather.snow.above`, `weather.sandstorm`, `weather.sandstorm.above`. Played like PR: near the rain position at
   the snow/wind volume, pitch 0.5 and quieter when the camera is above the weather.
 - Indoor rain: when sky light at the head is low but rain falls nearby, the rain loop is low-passed (roof patter)

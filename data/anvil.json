@@ -1,5 +1,5 @@
 {
- "_comment": "Anvil work (sim/anvil.h; after TerraFirmaCraft's AnvilManager plans): in = what the piece must be (ingot | double_ingot | sheet | double_sheet | bloom | pig_iron), n = how many of it, out = what it makes (metal_* items carry the makeup), plan = the last three steps' rules (hit/draw/punch/bend/upset/shrink : last | second | third | notlast | any), weld = needs welding heat and flux.",
+ "_comment": "Anvil work (sim/anvil.h; each plan's last three steps): in = what the piece must be (ingot | double_ingot | sheet | double_sheet | bloom | pig_iron), n = how many of it, out = what it makes (metal_* items carry the makeup), plan = the last three steps' rules (hit/draw/punch/bend/upset/shrink : last | second | third | notlast | any), weld = needs welding heat and flux.",
  "recipes": [
   {
    "key": "pickaxe",

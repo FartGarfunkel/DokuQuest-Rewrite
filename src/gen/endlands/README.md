@@ -19,8 +19,8 @@ explicit EndTerrain(int64_t worldSeed, const EndTerrainOptions& opt = {});
 void  chunkDensity(int cx, int cz, float* out) const;          // 16*256*16, out[(y<<8)|(z<<4)|x], OUR y; > 0 solid
 void  cornerColumn(int cellX, int cellZ, float out[33]) const; // the density fill of one 8-block corner column (island y = 4*i)
 bool  isLand(int x, int z) const;                              // isLand for the 8x8 column (block coords)
-int   land(int x, int z, int* vanillaKind = nullptr) const;    // 0..18 our land index, -1 base End biome, -2 the_end
-void  chunkLand(int cx, int cz, int8_t out[256], int8_t* vanillaKind = nullptr) const;  // land() for a chunk
+int   land(int x, int z, int* baseKind = nullptr) const;    // 0..18 our land index, -1 base End biome, -2 the_end
+void  chunkLand(int cx, int cz, int8_t out[256], int8_t* baseKind = nullptr) const;  // land() for a chunk
 int   biome(int x, int z) const;                               // BiomeId 0..23 (0..18 = land index)
 int   biomeQuart(int qx, int qz) const;                        // the hex biome source's biome at quart (qx, 0, qz)
 static double terrainHeight(int land);                         // -1/-2 -> 0.1 (the default)
@@ -31,7 +31,7 @@ float density(double px, double py, double pz, float h) const;          // + 3D 
 int   ourY(int beY) const; int beY(int ourY) const;
 // tools/tests: islandsNear(), islandOwnDensity(), layerStats(), layerDistance()
 ```
-`vanillaKind`: `V_HIGHLANDS 0, V_MIDLANDS 1, V_SMALL_ISLANDS 2, V_BARRENS 3, V_THE_END 4` (`V_NONE -1` for the End's own lands).
+`baseKind`: `V_HIGHLANDS 0, V_MIDLANDS 1, V_SMALL_ISLANDS 2, V_BARRENS 3, V_THE_END 4` (`V_NONE -1` for the End's own lands).
 
 Biomes are per 4×4 quart. Each quart is sampled at its min corner and there is no fuzzy zoom.
 `h` (the island-top noise strength) is `avgTerrainHeight(cellX*2, cellZ*2) * 0.5`.
@@ -57,7 +57,7 @@ Layers (`LayerOptions`; derived exactly as the reference does: `minY/maxY = avg 
 | medium | 150 | 100 | 0.546875 | 0.15625 | 50–90 | 0.5 → −0.0001 | yes, (0,64,0), s = 1.3 |
 | small | 60 | 50 | 0.546875 | 0.234375 | 40–100 | 0.5 → −0.0001 | no |
 
-Biomes (`kBiomes`; the values come from `data/betterend/worldgen/betterx/biome/*.json`; every `edgeSize` is 0):
+Biomes (`kBiomes`; the values come from `the imported End biome data`; every `edgeSize` is 0):
 
 | idx | id | pool | genChance | terrainHeight | parent |
 |---|---|---|---|---|---|
@@ -80,11 +80,11 @@ Biomes (`kBiomes`; the values come from `data/betterend/worldgen/betterx/biome/*
 | 16 | dust_wastelands | land | 1.0 | **1.5** | |
 | 17 | umbra_valley | land | 1.0 | 0.1 | |
 | 18 | megalake_grove | sub | 1.0 | **0.0** | megalake |
-| 19 | minecraft:the_end | centre | 0.5* | 0.1* | |
-| 20 | minecraft:end_highlands | land | 0.5* | 0.1* | edge end_midlands 8* |
-| 21 | minecraft:end_midlands | land | 0.5* | 0.1* | |
-| 22 | minecraft:small_end_islands | void | 0.5* | 0.1* | |
-| 23 | minecraft:end_barrens | barrens | 0.5* | 0.1* | |
+| 19 | the_end | centre | 0.5* | 0.1* | |
+| 20 | end_highlands | land | 0.5* | 0.1* | edge end_midlands 8* |
+| 21 | end_midlands | land | 0.5* | 0.1* | |
+| 22 | small_end_islands | void | 0.5* | 0.1* | |
+| 23 | end_barrens | barrens | 0.5* | 0.1* | |
 
 `*` marks wrapper values recalled from memory, not read from the data. The terrainHeight effect:
 - megalake, megalake_grove and sulphur_springs give 0, so their tops are flat (no radial noise).
@@ -160,7 +160,7 @@ Data points that confirm the reconstruction behaves as it should:
 | `centralIsland` | true | `generateCentralIsland` |
 | `yOffset` | 56 | ourY = beY + yOffset |
 | `landBiomeSize` / `voidBiomeSize` | 256 / 256 | hex map sizes |
-| `vanillaBiomes` | true | keep end_highlands / end_midlands / small_end_islands in the pools |
+| `baseBiomes` | true | keep end_highlands / end_midlands / small_end_islands in the pools |
 | `isLandHeight` | 0.05 | radial-noise strength in isLand (see 5 above) |
 | `hex.warp`, `hex.seamWarp`, `hex.subOneIn` | 0.5, 1.5, 4 | hex map warp, seam bending, sub-biome rate |
 | `pruneIslands` | true | skip islands whose bounding-cylinder lower bound cannot lower the min SDF. The output is identical (checked bitwise on 1,858 chunks); false runs the plain loop |

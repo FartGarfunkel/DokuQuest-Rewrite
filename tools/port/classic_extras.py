@@ -76,7 +76,7 @@ def main(d):
 
     def block(key, name, props, tex, item=True, faces=None):
         b = {'render': 1, 'solid': True, 'opaque': True, 'replaceable': False, 'hardness': 1.5, 'tool': 'pickaxe', 'tier': 0, 'drop': key,
-             'light': 0, 'lightAtt': 0, 'sound': 'stone', 'key': key, 'name': name, 'tex': tex, 'bta': True}
+             'light': 0, 'lightAtt': 0, 'sound': 'stone', 'key': key, 'name': name, 'tex': tex, 'netherSet': True}
         b.update(props)
         if key in at: b['id'] = at[key]; blocks[at[key]].update(b)
         else: b['id'] = len(blocks); blocks.append(b); bj['faces'].append([0] * 6); at[key] = b['id']

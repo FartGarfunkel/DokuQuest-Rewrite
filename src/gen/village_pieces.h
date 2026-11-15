@@ -12,7 +12,7 @@
 
 namespace dq {
 
-// our block for an imported block state ({"Name": "minecraft:grass_block", "Properties": {...}}): the structures' mapping
+// our block for an imported block state ({"Name": "main:grass_block", "Properties": {...}}): the structures' mapping
 // (block_substitutes.json first, then by name); 0xFFFF when there's none
 BlockId blockFromState(const json& state);
 struct VPState { BlockId id = 0; std::array<u8, 4> meta{}; u8 kind = 0, banner = 0; BlockId rug = 0; std::string plant, items, etype; };   // rug: the carpet laid on it as a rug (world/rug.h)   // items: what it shows or keeps, "a,b*3,,c"; etype: pile, shelf, bookcase, frame, rack, cabinet   // meta per quarter turn; banner 1 on a wall, 2 standing
@@ -36,13 +36,13 @@ struct VPPiece {
 };
 struct VillagePieces {
   std::map<std::string, std::vector<VPPiece>> pools;   // "plains/houses" -> its pieces
-  const std::vector<VPPiece>* pool(const std::string& name) const;   // "minecraft:village/plains/houses" or "plains/houses"
+  const std::vector<VPPiece>* pool(const std::string& name) const;   // "main:village/plains/houses" or "plains/houses"
 };
 
 const VillagePieces* villagePieces();
 // one structure template (.nbt bytes) as a piece: its blocks in our states, its joints (the village pieces' way: furniture, rugs...)
 std::string piecesMissing();   // the block names no block of ours stands for (most first)
-bool makePiece(const std::string& style, const std::string& kind, const std::string& name, const std::vector<u8>& bytes, VPPiece& P, const json* rules = nullptr);   // rules: the builder's block swaps (tools/port/processors.py)   // nullptr: data/villages is missing (the classic villages are built)
+bool makePiece(const std::string& style, const std::string& kind, const std::string& name, const std::vector<u8>& bytes, VPPiece& P, const json* rules = nullptr);   // rules: the builder's block swaps (tools/local/processors.py)   // nullptr: data/villages is missing (the classic villages are built)
 // a piece's block at a quarter turn r (clockwise seen from above): its offset in the turned box
 inline std::array<int, 2> vpTurn(const VPPiece& p, int r, int x, int z) {
   switch (r & 3) { case 1: return {p.sz - 1 - z, x}; case 2: return {p.sx - 1 - x, p.sz - 1 - z}; case 3: return {z, p.sx - 1 - x}; default: return {x, z}; }

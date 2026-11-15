@@ -89,7 +89,7 @@ def main(d):
     tile('trommel_front', drum(cob, grav, bars, False)); tile('trommel_front_lit', drum(cob, grav, bars, True))
     faces = lambda front: [tiles['trommel_side'], tiles['trommel_side'], tiles['trommel_top'], tiles['trommel_bottom'], tiles[front], tiles['trommel_side']]
     base = {'render': 1, 'solid': True, 'opaque': True, 'replaceable': False, 'hardness': 3.5, 'tool': 'pickaxe', 'tier': 0, 'drop': 'trommel',
-            'light': 0, 'lightAtt': 0, 'sound': 'stone', 'furnace': 'trommel', 'carry': True, 'bta': True}
+            'light': 0, 'lightAtt': 0, 'sound': 'stone', 'furnace': 'trommel', 'carry': True, 'netherSet': True}
     for key, front in (('trommel', 'trommel_front'), ('lit_trommel', 'trommel_front_lit')):
         b = dict(base, key=key, name='Trommel', tex={'top': 'trommel_top', 'bottom': 'trommel_bottom', 'side': 'trommel_side', 'front': front})
         if key == 'lit_trommel': b['unlit'] = 'trommel'

@@ -267,7 +267,7 @@ static int slice(const std::string& seedText, int dim, int x0, int z, int w, int
 
 
 // dq-gentool poi <seed> <out.bin> [regions]: with DQ_POI_ONLY=<key> set, the nearest such land place generated with the land
-// round it (8 blocks), dumped for tools/port/poi_check.py: a JSON header line {x0,y0,z0,sx,sy,sz,palette,name,y,...} then sx*sy*sz u16
+// round it (8 blocks), dumped for tools/local/structure_check.py: a JSON header line {x0,y0,z0,sx,sy,sz,palette,name,y,...} then sx*sy*sz u16
 // block indices (x fastest, then z, then y)
 namespace dq { void poiExpected(const StructurePlan& S, const std::function<void(int, int, int, BlockId)>& fn); }
 static int poiDump(const std::string& seedText, const char* outPath, int regions) {

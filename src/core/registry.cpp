@@ -75,7 +75,7 @@ bool Registry::loadBase(const fs::path& dir) {
   for (auto& [k, v] : (*rj)["tags"].items()) for (auto& s : v) tags[k].push_back(s.get<std::string>());
   if (auto m = readJson(dir / "mobs.json")) mobs = *m;
   if (auto m = readJson(dir / "models.json")) models = *m;
-  // imported models (tools/port/geo_boss_import.py: git-ignored, the mods' art): their rigs, clips and attack tables
+  // imported models (tools/local/boss_import.py: git-ignored, the mods' art): their rigs, clips and attack tables
   clips = json::object(); kits = json::object();
   { std::error_code ec;
     for (auto& e : fs::directory_iterator(dir / "local_models", ec)) {

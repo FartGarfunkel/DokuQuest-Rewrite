@@ -131,7 +131,7 @@ static int villageStyle10(const TerrainColumn& c, u32 h, int wet, bool v19 = fal
   const double u = (h & 0xFFFFF) / (double)0x100000;
   auto S = [](const char* k, int fallback) { const int i = vstyleIndex(k); return i >= 0 ? i : fallback; };
   if (const char* f = std::getenv("DQ_VILLAGE_STYLE")) { const int i = vstyleIndex(f); if (i >= 0) return i; }   // (test aid: every village this style)
-  // the town styles (tools/port/tnt_village_import.py), about half the villages, by the land: each style its own
+  // the town styles (tools/local/town_import.py), about half the villages, by the land: each style its own
   {
     const double v = ((h >> 20) & 0xFFF) / 4096.0;
     auto pick = [&](std::initializer_list<const char*> L) -> int {

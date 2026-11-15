@@ -1,5 +1,5 @@
 {
- "_comment": "The quern (sim/quern.h; after TerraFirmaCraft): what grinding one of a thing gives.",
+ "_comment": "The quern (sim/quern.h): what grinding one of a thing gives.",
  "grind": {
   "wheat": [
    "flour",

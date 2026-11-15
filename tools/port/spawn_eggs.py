@@ -11,7 +11,7 @@ from PIL import Image
 
 SKIP = {'herobrine', 'end_crystal', 'wither_storm'}   # the story's figure, and its climax (summoned, never hatched)
 # our creature -> the name its pack egg picture uses, where ours stands in for theirs
-MC = {'ghoul': 'zombie', 'fuseling': 'creeper', 'stone_mite': 'silverfish', 'zombie_pigman': 'zombified_piglin',
+CLASSIC_EGGS = {'ghoul': 'zombie', 'fuseling': 'creeper', 'stone_mite': 'silverfish', 'zombie_pigman': 'zombified_piglin',
       'magma_slime': 'magma_cube', 'snow_fox': 'fox_snow'}
 # fallback colours (primary, secondary) for creatures with no pictures of their own
 KNOWN = {'verdant': ((74, 140, 62), (196, 214, 92)), 'sand': ((214, 186, 120), (140, 98, 52)),
@@ -96,7 +96,7 @@ def main(d):
         if tname not in tiles:
             tiles[tname] = tj['count']; files.append(rel); tj['res'].append(32); tj['count'] += 1
         if tname not in inPm:
-            pm.append([tname, [], [MC.get(key, key) + '_spawn_egg']]); inPm.add(tname)
+            pm.append([tname, [], [CLASSIC_EGGS.get(key, key) + '_spawn_egg']]); inPm.add(tname)
         if tname not in itemTiles: sh['itemTiles'].append(tname); itemTiles.add(tname)
         items[key + '_spawn_egg'] = {'key': key + '_spawn_egg', 'name': title(key) + ' Spawn Egg', 'maxStack': 64,
                                      'icon': tname, 'spawnEgg': key}

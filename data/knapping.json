@@ -1,5 +1,5 @@
 {
- "_comment": "Knapping patterns (sim/knapping.h), after TerraFirmaCraft's Recipes.registerKnapping: '#' is a cell kept, ' ' one chipped away. A pattern matches anywhere on the 5x5 grid, mirrored too; every cell outside it must be chipped. stone: pebbles (2 or more in hand, the first chip spends one); flint: the same; clay: 5 clay balls, spent when a shape is made.",
+ "_comment": "Knapping patterns (sim/knapping.h): '#' is a cell kept, ' ' one chipped away. A pattern matches anywhere on the 5x5 grid, mirrored too; every cell outside it must be chipped. stone: pebbles (2 or more in hand, the first chip spends one); flint: the same; clay: 5 clay balls, spent when a shape is made.",
  "stone": [
   {
    "out": "stone_axe_head",

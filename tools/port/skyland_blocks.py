@@ -7,7 +7,7 @@ nearest picture, its light and shade kept, in the block's own colour (the averag
 notes): holystone from stone, skyland dirt from dirt (slate blue-grey), skyland grass from the
 pack's grass (mint on top, a mint fringe over skyland dirt on the sides, never tinted by biome), skyroot from oak, ores
 from the pack's coal ore with their own spots, aerclouds from wool. To see the reference pictures on your computer,
-make the local pack with tools/port/local_mod_art.py (never shipped).
+make the local pack with tools/local/local_art.py (never shipped).
 
 Also puts the Skylands' behaviour in the data: only the blue aercloud throws you (cold and golden ones catch you
 softly), gravitite ore gives no light, quicksoil is slippery.
@@ -76,7 +76,7 @@ def main(d):
         tid = {k: tiles[v] for k, v in tex.items()} if isinstance(tex, dict) else tiles[tex]
         b = {'render': 1, 'solid': True, 'opaque': True, 'replaceable': False, 'hardness': 1.0, 'tool': 'pickaxe', 'tier': 0, 'drop': key,
              'light': 0, 'lightAtt': 0, 'sound': 'stone', 'key': key, 'name': name}
-        b.update(props); b['tex'] = tex; b['aether'] = True
+        b.update(props); b['tex'] = tex; b['skylands'] = True
         if key in at: blocks[at[key]].update(b); bj['faces'][at[key]] = faces_of(tid)
         else:
             b['id'] = len(blocks); blocks.append(b); bj['faces'].append(faces_of(tid)); at[key] = b['id']
@@ -137,8 +137,8 @@ def main(d):
     CROSS = {'render': 3, 'solid': False, 'opaque': False, 'replaceable': True, 'hardness': 0, 'tool': None, 'needsSupport': True, 'sound': 'grass'}
     block('holystone', 'Holystone', {'hardness': 0.5}, 'holystone')
     block('mossy_holystone', 'Mossy Holystone', {'hardness': 0.5}, 'mossy_holystone')
-    block('skyland_dirt', 'Aether Dirt', {'hardness': 0.5, 'tool': 'shovel', 'sound': 'dirt'}, 'skyland_dirt')
-    block('skyland_grass_block', 'Aether Grass Block', {'hardness': 0.6, 'tool': 'shovel', 'sound': 'grass', 'drop': 'skyland_dirt'},
+    block('skyland_dirt', 'Skyland Dirt', {'hardness': 0.5, 'tool': 'shovel', 'sound': 'dirt'}, 'skyland_dirt')
+    block('skyland_grass_block', 'Skyland Grass Block', {'hardness': 0.6, 'tool': 'shovel', 'sound': 'grass', 'drop': 'skyland_dirt'},
           {'top': 'skyland_grass_top', 'side': 'skyland_grass_side', 'bottom': 'skyland_dirt'})
     block('quicksoil', 'Quicksoil', {'hardness': 0.5, 'tool': 'shovel', 'sound': 'sand', 'slippery': True}, 'quicksoil')
     block('icestone', 'Icestone', {'hardness': 0.5, 'sound': 'glass'}, 'icestone')

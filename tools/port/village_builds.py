@@ -27,7 +27,7 @@ def bush(p, P, x, z, rnd, h=1, flowering=False):
 
 def entrance(p, style, z, path):
     p.set(0, 0, z, path)
-    p.joint(0, 1, z, 'west_up', 'minecraft:building_entrance', 'minecraft:building_entrance', 'minecraft:village/%s/streets' % style)
+    p.joint(0, 1, z, 'west_up', 'main:building_entrance', 'main:building_entrance', 'main:village/%s/streets' % style)
 
 
 # -------------------------------------------------------------------------------------------- the smith's open forge
@@ -152,7 +152,7 @@ def barn(style, name, seed):
             p.set(x, 0, z, 'farmland', moisture=7); p.set(x, 1, z, P.S['crops'][0] if P.S['crops'] else 'wheat', age=rnd.randint(4, 7))
     for (x, z) in ((X0, yz0), (X1 + 2, yz1)): p.set(x, 2, z, 'lantern')
     for (x, z) in ((X1 - 2, yz0 + 2), (X1, yz1 - 2)):
-        p.joint(x, 1, z, 'up_north', 'minecraft:bottom', 'minecraft:bottom', 'minecraft:village/common/animals', 'minecraft:air')
+        p.joint(x, 1, z, 'up_north', 'main:bottom', 'main:bottom', 'main:village/common/animals', 'main:air')
     p.set(X1 + 1, 1, yz0 + 1, 'feeding_trough', items='wheat*%d' % rnd.randint(14, 30))
     entrance(p, style, zc, P.pathb())
     for z in range(zc - 1, zc + 2): p.set(1, 0, z, P.pathb())
@@ -252,7 +252,7 @@ class Turned:
 def street_end(p, z, path):
     """where the street comes in from the west (a terminator's joint)"""
     p.set(0, 0, z, path)
-    p.joint(0, 1, z, 'west_up', 'minecraft:street', 'minecraft:street', 'minecraft:empty')
+    p.joint(0, 1, z, 'west_up', 'main:street', 'main:street', 'main:empty')
 
 def pergola_bench(style, name, seed, autumn=False):
     """a bench under a pergola: two log posts and beams over, leaves (flowering, or autumn's orange and gold) climbing it;

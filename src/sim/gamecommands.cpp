@@ -34,7 +34,7 @@ using GameCmd = std::function<std::string(CommandCtx&, std::vector<std::string>&
 static std::string creatureKey(std::string t) {
   t = toLower(t);
   if (t.rfind("@e[type=", 0) == 0) { t = t.substr(8); if (!t.empty() && t.back() == ']') t.pop_back(); }
-  if (t.rfind("minecraft:", 0) == 0) t = t.substr(10);
+  if (const size_t c = t.find(':'); c != std::string::npos) t = t.substr(c + 1);   // (a name typed with a namespace in front)
   static const std::map<std::string, std::string> mc = {{"zombie", "ghoul"}, {"creeper", "fuseling"}, {"spider_jockey", "spider"},
     {"husk", "ghoul"}, {"drowned", "ghoul"}, {"zombie_villager", "ghoul"}, {"stray", "skeleton"}};
   const json& M = reg().mobs;
@@ -73,7 +73,7 @@ static std::string thousands(long long n) {
 }
 static std::string cleanName(std::string n) {
   n = toLower(n);
-  static const std::regex pre("^minecraft:|^mcl_[a-z]+:|^default:");
+  static const std::regex pre("^[a-z0-9_]+:");
   n = std::regex_replace(n, pre, "");
   size_t a = n.find_first_not_of(" \t"), b = n.find_last_not_of(" \t");
   n = a == std::string::npos ? "" : n.substr(a, b - a + 1);
@@ -458,7 +458,7 @@ static void registerBuiltinCommands() {
 constexpr long long WE_MAX = 1500000;
 struct WeEdit { std::string label; std::vector<std::array<int, 5>> data; };   // x,y,z,id,meta (what was there)
 struct WeState { WeSelection sel; std::vector<std::array<int, 5>> clip; bool hasClip = false; std::vector<WeEdit> undo, redo; };
-static WeState& weState(Level& lv, const Player& p) { return levelSlot<std::map<std::string, WeState>>(lv, "worldedit")[p.name]; }
+static WeState& weState(Level& lv, const Player& p) { return levelSlot<std::map<std::string, WeState>>(lv, "buildtools")[p.name]; }
 WeSelection weSelection(Level& lv, const Player& p) { return weState(lv, p).sel; }
 void weSetCorner(Level& lv, const Player& p, int which, ivec3 at) { WeState& s = weState(lv, p); if (which == 1) { s.sel.pos1 = at; s.sel.has1 = true; } else { s.sel.pos2 = at; s.sel.has2 = true; } }
 
@@ -536,7 +536,7 @@ static WeEdit weReplay(Level& lv, Player& p, const WeEdit& e) {
 static Pattern patOf(const std::string& t) { Pattern p; if (!parsePattern(t, p)) throw CommandUsage{}; if (!p.error.empty()) throw std::runtime_error(p.error); return p; }
 static std::string joined(const std::vector<std::string>& a) { std::string s; for (auto& x : a) s += x; return s; }
 
-static void registerWorldEditCommands() {
+static void registerBuildCommands() {
   // //set stone (the registry strips the slashes, so /set works as well)
   auto W = [](const std::string& n, const std::string& usage, const std::string& desc, GameCmd f) { addCommand(n, usage, "World edit: " + desc, true, std::move(f)); };
   auto pick = [](const Pattern& pat) { return [pat](int, int, int, PatternPart& o) { o = pat.pick(); return true; }; };
@@ -707,7 +707,7 @@ static void registerWorldEditCommands() {
 
 void registerGameCommands() {
   registerBuiltinCommands();
-  registerWorldEditCommands();
+  registerBuildCommands();
 }
 
 } // namespace dq

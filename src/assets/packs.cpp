@@ -223,7 +223,7 @@ std::string applyResourcePack(TileSet& ts, const std::string& choice) {
   const std::string R = P->texRoot;
   std::vector<std::string> blockDirs = P->legacy ? std::vector<std::string>{"blocks/"} : std::vector<std::string>{"block/", "blocks/"};
   std::vector<std::string> itemDirs = P->legacy ? std::vector<std::string>{"items/"} : std::vector<std::string>{"item/", "items/"};
-  // "Mod Art (local)" (tools/port/local_mod_art.py: the mods' own pictures restyled to the base pack, made on this
+  // "Mod Art (local)" (tools/local/local_art.py: the mods' own pictures restyled to the base pack, made on this
   // computer from the player's own copies of the mods and never shipped) lies over whichever pack is chosen, for the
   // blocks only it draws. Its paths carry a "@ov/" prefix so the two packs never mix them up.
   static const std::string OVERLAY = "Mod Art (local)", OVP = "@ov/";

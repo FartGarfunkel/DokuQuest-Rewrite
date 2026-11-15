@@ -216,7 +216,7 @@ std::map<std::string, std::array<int, 2>> furnBy;   // (by style)
 VPState mapState(const json& e) {
   VPState S; S.id = NONE;
   std::string n = e.value("Name", std::string());
-  if (n.rfind("minecraft:", 0) == 0) n = n.substr(10);
+  if (n.rfind("main:", 0) == 0) n = n.substr(5);
   const json P = e.contains("Properties") ? e["Properties"] : json::object();
   if (n == "air" || n == "cave_air" || n == "void_air") { S.id = AIR; S.kind = VPK_AIR; return S; }
   if (n == "structure_void" || n == "jigsaw" || dropped(n)) return S;
@@ -238,10 +238,10 @@ VPState mapState(const json& e) {
   if (auto it = NAMES().find(key); it != NAMES().end()) key = it->second;
   if (key == "grass" && prop(P, "snowy") == "true" && findBlock("snowy_grass") != NONE) key = "snowy_grass";
   if (key == "cave_vines" && prop(P, "berries") == "true" && findBlock("cave_vines_lit") != NONE) key = "cave_vines_lit";   // (glow berries on it)
-  // a block we don't have (from another namespace, or one we lack): ours from the table (tools/port/block_match.py, matched by
+  // a block we don't have (from another namespace, or one we lack): ours from the table (tools/local/block_match.py, matched by
   // its texture and shape), "air" leaving it empty. Before any guess by name: a dead coral block the builder used as weathered
   // stone had become brain coral by its name
-  static const json SUBS = [] { auto j = readJson(dataDir() / "block_substitutes.json"); return j && j->is_object() ? *j : json::object(); }();
+  static const json SUBS = [] { auto j = readJson(dataDir() / "pois" / "block_substitutes.json"); return j && j->is_object() ? *j : json::object(); }();
   if (auto it = SUBS.find(n); it != SUBS.end() && it->is_string() && findBlock(n) == NONE) {
     key = it->get<std::string>();
     if (key == "air") { S.id = AIR; S.kind = VPK_AIR; return S; }
@@ -462,7 +462,7 @@ static void furnishEmpty(VPPiece& P) {
     P.states.push_back(st); P.blocks.push_back({(u8)x, (u8)y, (u8)z, (u16)(P.states.size() - 1)});
     g[((size_t)y * SZ + z) * SX + x] = (int)P.blocks.size() - 1; used.insert(ck(x, z)); return true;
   };
-  auto mc = [](const std::string& n, json props = json::object()) { json e = {{"Name", "minecraft:" + n}}; if (!props.empty()) e["Properties"] = props; return e; };
+  auto mc = [](const std::string& n, json props = json::object()) { json e = {{"Name", "main:" + n}}; if (!props.empty()) e["Properties"] = props; return e; };
   u32 h = (u32)std::hash<std::string>()(P.name);
   auto rnd = [&]() { h = h * 1103515245u + 12345u; return (h >> 8) & 0xFFFF; };
   // 1. the bed: its head to a wall, its foot into the room
@@ -521,7 +521,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
   {
     Template T;
     if (!readTemplate(bytes, T)) return false;
-    // the builder's processors (tools/port/processors.py: [[input, probability, output, properties]...], tried in order):
+    // the builder's processors (tools/local/processors.py: [[input, probability, output, properties]...], tried in order):
     // placeholder colours become paths, stone mossy... each block decided by its place (the same every time)
     if (rules && rules->is_array() && !rules->empty()) {
       std::vector<int> outIdx;
@@ -559,7 +559,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
     std::vector<int> pal; bool jig = false; int jigIdx = -1;
     for (int i = 0; i < (int)T.palette.size(); i++) {
       const std::string nm = T.palette[i].value("Name", std::string());
-      if (nm == "minecraft:jigsaw") { jig = true; jigIdx = i; }
+      if (nm == "main:jigsaw") { jig = true; jigIdx = i; }
       pal.push_back(addState(mapState(T.palette[i])));
       if (static const char* dm = std::getenv("DQ_PIECE_MAP"); dm && name.find(dm) != std::string::npos && pal.back() >= 0)   // (what each of a piece's blocks became)
         DQ_LOG("piece map %s: %s -> %s", name.c_str(), nm.c_str(), reg().block(P.states[pal.back()].id).key.c_str());
@@ -570,7 +570,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
     for (const RawBlock& rb : T.blocks) {
       if (rb.s >= T.palette.size()) continue;
       const json& pe = T.palette[rb.s];
-      if (pe.value("Name", std::string()) == "minecraft:jigsaw") {
+      if (pe.value("Name", std::string()) == "main:jigsaw") {
         VPJoint J; J.x = rb.x; J.y = rb.y; J.z = rb.z;
         const std::string o = pe.contains("Properties") ? prop(pe["Properties"], "orientation") : std::string();
         J.front = dirOf(o.substr(0, o.find('_')));
@@ -582,8 +582,8 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
           // without one, a side joint is aligned and an up/down one rollable
           const std::string jt = nb.value("joint", std::string());
           J.aligned = jt.empty() ? J.front < 4 : jt == "aligned";
-          std::string fs = nb.value("final_state", std::string("minecraft:air"));
-          // "minecraft:oak_planks[axis=y]" -> a palette entry
+          std::string fs = nb.value("final_state", std::string("main:air"));
+          // "main:oak_planks[axis=y]" -> a palette entry
           json fe{{"Name", fs.substr(0, fs.find('['))}};
           if (const size_t q = fs.find('['); q != std::string::npos) {
             json pr = json::object(); std::string body = fs.substr(q + 1, fs.size() - q - 2);
@@ -602,7 +602,7 @@ bool makePiece(const std::string& style, const std::string& kind, const std::str
       }
       int s = pal[rb.s];
       // a monster cage: what its builder put in it (SpawnData), as our nearest mob (an empty cage spawns nothing)
-      if (s >= 0 && pe.value("Name", std::string()) == "minecraft:spawner") {
+      if (s >= 0 && pe.value("Name", std::string()) == "main:spawner") {
         std::string mc;
         if (rb.nbt >= 0 && T.nbts[rb.nbt].contains("SpawnData") && T.nbts[rb.nbt]["SpawnData"].is_object()) {
           const json& sd = T.nbts[rb.nbt]["SpawnData"];

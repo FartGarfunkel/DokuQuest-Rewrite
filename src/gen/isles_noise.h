@@ -1,5 +1,5 @@
 // gen/isles_noise.h — the density of the Skylands' islands (the noise settings and base 3D density function under
-// data/aether/worldgen): the old blended terrain noise (two 16-octave limit noises
+// the imported Skylands data): the old blended terrain noise (two 16-octave limit noises
 // chosen between by an 8-octave selector, with the y "smear" that makes the terraces) at xz/y scale 0.25, factors
 // 80 / 160, smear 8, shaped by two height gradients:
 //     -0.15 + G1 * (G2 * (N + 0.07) - 0.1)     G1: 0 at y <= 8 -> 1 at y >= 40   G2: 1 at y <= 56 -> 0 at y >= 128

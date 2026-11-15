@@ -36,7 +36,7 @@ def stall_base(name, style, seed):
 
 
 def stall_joint(p, style, z=2):
-    p.joint(0, 1, z, 'west_up', 'minecraft:building_entrance', 'minecraft:building_entrance', 'minecraft:village/%s/streets' % style)
+    p.joint(0, 1, z, 'west_up', 'main:building_entrance', 'main:building_entrance', 'main:village/%s/streets' % style)
 
 
 # ------------------------------------------------------------------------------------------------ the bakers' stalls

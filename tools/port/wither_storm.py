@@ -170,7 +170,7 @@ def main(d):
     d = pathlib.Path(d)
     models = json.loads((d / 'models.json').read_text())
     mobs = json.loads((d / 'mobs.json').read_text())
-    # its looks are the imported model's now (tools/port/wither_storm_models.py writes wither_storm_p0..p5); these hand-made
+    # its looks are the imported model's now (tools/local/wither_storm_import.py writes wither_storm_p0..p5); these hand-made
     # ones stand in only until that has been run
     if 'uvTex' not in models.get('wither_storm', {}):
         models['wither_storm'] = model()

@@ -28,7 +28,7 @@ struct RigModel {
   std::string key, rig, post;
   float scale = 1, hipY = 0, rollY = 0, bodyDepth = 4, height = 16, bodyY = 0, bodyLen = 12, legH = 6, pitch0 = 0, seatY = 0;
   bool hasRollY = false, gallop = false, armsReach = false, heavy = false, flukes = false, hasNeck = false;
-  bool zyx = false;   // "rotOrder": "zyx": turns applied z, then y, then x (imported keyframe models: tools/port/geo_boss_import.py)
+  bool zyx = false;   // "rotOrder": "zyx": turns applied z, then y, then x (imported keyframe models: tools/local/boss_import.py)
   std::vector<RigPart> parts;     // parents before children
   // a variant's model (tools/port/mob_variants.py): with a resource pack it wears its base's pack skin (packBase), the
   // pack's own picture for it when there is one (packTex), else the base's tinted (packTint {hue, sat, val, colVal, mix})

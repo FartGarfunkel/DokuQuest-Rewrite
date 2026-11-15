@@ -74,7 +74,7 @@ def main(d):
         models[key] = model
         m = copy.deepcopy(mobs[base])
         for k in ('variantDefs', 'mini', 'held'): m.pop(k, None)
-        m['model'] = key; m['label'] = label; m['aether'] = True
+        m['model'] = key; m['label'] = label; m['skylands'] = True
         for k, v in over.items():
             if v is None: m.pop(k, None)
             else: m[k] = v

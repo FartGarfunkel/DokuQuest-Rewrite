@@ -45,13 +45,13 @@ struct EndTerrainOptions {
   int yOffset = 56;              // ourY = beY + yOffset
   int landBiomeSize = 256;       // hex map land biome size
   int voidBiomeSize = 256;       // hex map void biome size
-  bool vanillaBiomes = true;     // keep end_highlands / end_midlands / small_end_islands in the biome pools
+  bool baseBiomes = true;     // keep end_highlands / end_midlands / small_end_islands in the biome pools
   float isLandHeight = 0.05f;    // radial-noise strength isLand sees (the reference reuses whatever the last fill set) [guess]
   HexMapOptions hex{};           // reconstructed hex-map knobs
   bool pruneIslands = true;      // skip islands that cannot change the min SDF (identical output; false = the plain loop)
 };
 
-enum VanillaKind : int { V_NONE = -1, V_HIGHLANDS = 0, V_MIDLANDS = 1, V_SMALL_ISLANDS = 2, V_BARRENS = 3, V_THE_END = 4 };
+enum BaseKind : int { V_NONE = -1, V_HIGHLANDS = 0, V_MIDLANDS = 1, V_SMALL_ISLANDS = 2, V_BARRENS = 3, V_THE_END = 4 };
 
 class EndTerrain {
 public:
@@ -75,13 +75,13 @@ public:
   bool isLand(int x, int z) const;
 
   // End biome at block (x, z) as OUR land index 0..18 (B_* < B_LAND_COUNT); -1 for a base End biome
-  // (*vanillaKind = V_HIGHLANDS / V_MIDLANDS / V_SMALL_ISLANDS / V_BARRENS), -2 for the centre (the_end, V_THE_END).
+  // (*baseKind = V_HIGHLANDS / V_MIDLANDS / V_SMALL_ISLANDS / V_BARRENS), -2 for the centre (the_end, V_THE_END).
   // Biomes are per 4 x 4 quart (sampled at the quart's min corner, no fuzzy zoom).
-  int land(int x, int z, int* vanillaKind = nullptr) const;
+  int land(int x, int z, int* baseKind = nullptr) const;
   int biome(int x, int z) const;             // the BiomeId (0..23) at block (x, z)
   // land() for the 16 x 16 columns of chunk (cx, cz) in one go (16 biome lookups): out[(z << 4) | x],
-  // optional vanillaKind[(z << 4) | x]
-  void chunkLand(int cx, int cz, int8_t out[256], int8_t* vanillaKind = nullptr) const;
+  // optional baseKind[(z << 4) | x]
+  void chunkLand(int cx, int cz, int8_t out[256], int8_t* baseKind = nullptr) const;
   int biomeQuart(int qx, int qz) const;      // the hex biome source's biome at quart (qx, 0, qz)
 
   // terrainHeight of our land index (-1 / -2 -> the default 0.1); kBiomes[id].terrainHeight for any BiomeId.

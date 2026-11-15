@@ -1,4 +1,4 @@
-// sim/geo_anim.cpp — the "geo" rig: imported keyframe models (tools/port/geo_boss_import.py) play their own clips, keyframe
+// sim/geo_anim.cpp — the "geo" rig: imported keyframe models (tools/local/boss_import.py) play their own clips, keyframe
 // for keyframe (linear or Catmull-Rom). Which clip: the creature's data "clip" (set by its brain, with
 // "clipT0" its age when it began), else idle / walking / running by how it moves. Turns go on each bone's rest turn, moves
 // on its pivot, in our axes (x mirrored).

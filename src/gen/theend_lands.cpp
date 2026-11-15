@@ -3,7 +3,7 @@
 // dither, the sulphuric bands, the painted mountains' strata, flavolite and violecite layers in the cliffs), its
 // trees and big growths (mossy glowshrooms, pythadendrons, dragon trees, lucernias, umbrella trees, jellyshrooms,
 // tenaneas, helix trees, lacugroves, amaranitas, aurora crystals, neon cacti, ice stars, sulphur springs, dragon bones)
-// and its plants. Shapes are rebuilt from the feature recipes in voxels; the blocks are the End's (tools/port/end_blocks.py).
+// and its plants. Shapes are rebuilt from the feature recipes in voxels; the blocks are the End's (tools/local/end_blocks.py).
 //   0 chorus forest   1 blossoming spires   2 foggy mushroomland   3 glowing grasslands   4 crystal mountains
 //   5 sulphur springs 6 umbrella jungle     7 shadow forest        8 ice starfield        9 amber land
 //  10 megalake       11 lantern woods      12 painted mountains   13 neon oasis          14 dragon graveyards
