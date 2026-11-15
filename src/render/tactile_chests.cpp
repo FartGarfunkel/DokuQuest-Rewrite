@@ -26,7 +26,8 @@ std::vector<std::string> itemTooltipLines(const ItemStack& s);   // the item's n
 namespace {
 const float COL_X[5] = {2.4f, 5.2f, 8.0f, 10.8f, 13.6f}, ROW_Z[3] = {9.5f, 6.5f, 3.5f};
 
-struct Chest { ivec3 at; int facing; bool open; int page; ItemStack items[27]; int press[2]; VoxelLight L; int hover = -1;
+struct Chest { ivec3 at; int facing; bool open; int page; std::vector<ItemStack> items; int press[2]; VoxelLight L; int hover = -1;
+               ChestLayout lay;   // (a large chest: one chest over both halves, sim/tactile.h)
                bool barrel = false; float trayY = 9.5f, floorY = 2.f, lr = 10.f; };   // (a barrel: the chest's workings under its own top)
 
 class TactileChests : public RenderLayer {
@@ -53,6 +54,34 @@ public:
     else p.t(0.5f, 0.625f, 0.75f).rx(lidDeg).t(-0.5f, -0.625f, -0.75f);
     return p;
   }
+  // what a chest's half shows: the whole chest's slots (a large one's 54, both halves'), its page and buttons (a large
+  // chest's kept by its left half), the slot looked at on its tray
+  static void fill(GameSession& s, World& w, Chest& c, const json* e, vec3 eye, vec3 dir) {
+    if (!c.barrel) c.lay = tactileChestLayout(w, c.at); else c.lay.key = c.at;   // (a barrel: its own record, the chest's page size)
+    ivec3 hs[2]; const int nh = c.barrel ? 1 : chestHalves(w, c.at, hs);
+    if (nh == 2) for (int h = 0; h < 2; h++) { const auto it = chestHalfItems(*s.level, s.player, w, hs[h]); c.items.insert(c.items.end(), it.begin(), it.end()); }
+    else c.items = chestHalfItems(*s.level, s.player, w, c.at);   // (an ender chest: your own)
+    c.items.resize(std::max<size_t>(c.items.size(), 27));
+    const json* ke = c.lay.key == c.at ? e : w.blockEntity(c.lay.key.x, c.lay.key.y, c.lay.key.z);
+    c.page = ke ? ke->value("page", 0) & 1 : 0;
+    c.press[0] = ke ? ke->value("press0", 0) : 0; c.press[1] = ke ? ke->value("press1", 0) : 0;
+    c.L = tactileLight(w, c.at);
+    if (c.open && s.target.hit && s.target.block == c.at) {
+      const TactileChestAim a = c.barrel ? tactileBarrelAim(w, c.at, eye, dir) : tactileChestAim(w, c.at, eye, dir);
+      if (a.what == TactileChestAim::Tray && c.page * c.lay.pg + c.lay.off + a.slot < c.lay.slots) c.hover = a.slot;
+    }
+  }
+  // the lid without its sheet (its one flat part): a large chest's lid that hasn't the sheet
+  std::map<const PackModel*, PackModel> bare;
+  const PackModel* bareLid(const PackModel* m) {
+    if (!m) return m;
+    auto it = bare.find(m);
+    if (it == bare.end()) {
+      PackModel b; for (const PackModelBox& x : m->boxes) if (x.from.y != x.to.y) b.boxes.push_back(x);
+      it = bare.emplace(m, std::move(b)).first;
+    }
+    return &it->second;
+  }
   void drawOpaque(GameSession& s, const FrameCtx& f) override {
     if (!s.player || !s.app.settings.tactileStations) return;
     World& w = s.world();
@@ -64,12 +93,8 @@ public:
       const bool barrel = tactileBarrel(w, at);
       if (!barrel && (!stationModel(w.getBlock(x, y, z)) || !tactileChest(w, at))) return;
       Chest c; c.at = at; c.facing = barrel ? tactileBarrelFacing(w, at) : tactileFacing(w, at); c.barrel = barrel;
-      if (barrel) { c.lr = chestLidRow(w, at) / 2.f; c.trayY = c.lr - 1.f; c.floorY = chestFloorY(w, at) * 16 + 1.f; } c.open = chestLidOpen(w, at); c.page = e.value("page", 0) & 1;
-      { const std::vector<ItemStack> it = chestHalfItems(*s.level, s.player, w, at);   // (an ender chest: your own)
-        for (int k = 0; k < 27 && k < (int)it.size(); k++) c.items[k] = it[k]; }
-      c.press[0] = e.value("press0", 0); c.press[1] = e.value("press1", 0);
-      c.L = tactileLight(w, at);
-      if (c.open && s.target.hit && s.target.block == at) { const TactileChestAim a = barrel ? tactileBarrelAim(w, at, eye, dir) : tactileChestAim(w, at, eye, dir); if (a.what == TactileChestAim::Tray && c.page * 15 + a.slot < 27) c.hover = a.slot; }
+      if (barrel) { c.lr = chestLidRow(w, at) / 2.f; c.trayY = c.lr - 1.f; c.floorY = chestFloorY(w, at) * 16 + 1.f; } c.open = chestLidOpen(w, at);
+      fill(s, w, c, &e, eye, dir);
       list.push_back(c);
     });
     // a large chest's half with no record of its own yet (never opened by itself): drawn as its partner is, empty
@@ -78,7 +103,8 @@ public:
       ivec3 hs[2]; if (chestHalves(w, list[i].at, hs) != 2) continue;
       const ivec3 o = hs[0] == list[i].at ? hs[1] : hs[0];
       if (w.blockEntity(o.x, o.y, o.z)) continue;
-      Chest c; c.at = o; c.facing = tactileFacing(w, o); c.open = chestLidOpen(w, o); c.page = 0; c.press[0] = c.press[1] = 0; c.L = tactileLight(w, o);
+      Chest c; c.at = o; c.facing = tactileFacing(w, o); c.open = chestLidOpen(w, o);
+      fill(s, w, c, nullptr, eye, dir);
       list.push_back(c);
     }
     // chests with no record yet: their lid still drawn (shut)
@@ -90,8 +116,8 @@ public:
       if (lid <= 0.001f) continue;
       const TPose base = tactileBlockPose(f, c.at, c.facing);
       for (int i = 0; i < 15; i++) {   // (renderGrid: the page on the tray)
-        const int k = c.page * 15 + i;
-        if (k >= 27 || c.items[k].empty()) continue;
+        const int k = c.page * c.lay.pg + c.lay.off + i;
+        if (k >= c.lay.slots || k >= (int)c.items.size() || c.items[k].empty()) continue;
         const bool hot = i == c.hover;
         TPose p = base; p.t(COL_X[i % 5] / 16, (c.trayY + (hot ? 2.f : 0.f)) / 16, ROW_Z[i / 5] / 16).rx(90).s(0.2f * (hot ? 1.3f : 1.f));
         ItemStack one = c.items[k]; one.n = 1;
@@ -102,8 +128,8 @@ public:
       auto rnd = [&] { h = h * 1664525u + 1013904223u; return (h >> 8 & 0xFFFF) / 65535.f; };
       for (int i = 0; i < 15; i++) {
         const float jx = (rnd() - 0.5f) * 10, jz = (rnd() - 0.5f) * 7, dy = rnd() * 2.5f, spin = rnd() * 360, tx = (rnd() - 0.5f) * 60, tz = (rnd() - 0.5f) * 60;
-        const int k = (1 - c.page) * 15 + i;
-        if (k >= 27 || c.items[k].empty()) continue;
+        const int k = (1 - c.page) * c.lay.pg + c.lay.off + i;
+        if (k >= c.lay.slots || k >= (int)c.items.size() || c.items[k].empty()) continue;
         TPose p = base; p.t((8 + jx) / 16, (c.floorY + dy) / 16, (6.5f + jz) / 16).ry(spin).rx(90 + tx).rz(tz).s(0.28f);
         ItemStack one = c.items[k]; one.n = 1;
         tactileItem(one, p.m, c.L);
@@ -127,16 +153,18 @@ public:
         if (press != 0) p.t(0, press * 1.2f / 16, 0);
         tactilePartDraw(s.app, cd, *m, p.m, light);
       };
-      if (!c.barrel) part(lidM, 0);   // (a barrel's own top is render/chest_layer.cpp's)
-      if (lid > 0.1f) {   // (the sheet inside the lid in our own paper: the maps' parchment, both faces, over Tactile's)
+      if (!c.barrel) part(c.lay.sheet ? lidM : bareLid(lidM), 0);   // (a barrel's own top is render/chest_layer.cpp's; a large chest's right lid has no sheet)
+      if (lid > 0.1f && c.lay.sheet) {   // (the sheet inside the lid in our own paper: the maps' parchment, both faces, over Tactile's)
         TPose p = lidPose(f, c, lid);
         p.t(6.f / 16, 10.75f / 16, 7.f / 16).rx(90).s(6.f / 16, 8.f / 16, 1);
         cd.picture(mapPaperTexture(), p.m, vec4(0, 0, 1, 1), vec4(1), light, true);
       }
-      if (lid > 0.1f) { part(sortM, pressOf(c.at, 0, c.press[0], f.time)); part(swapM, pressOf(c.at, 1, c.press[1], f.time)); }
-      if (lid > 0.1f && c.hover >= 0 && c.page * 15 + c.hover < 27) {   // (our chests hold 27: the second page has 12 spots)   // (renderAffiche: the item's name and lines written inside the lid)
-        const ItemStack& it = c.items[c.page * 15 + c.hover];
-        if (!it.empty()) affiche(cd, f, c, lid, it);
+      if (lid > 0.1f && c.lay.buttons) { part(sortM, pressOf(c.at, 0, c.press[0], f.time)); part(swapM, pressOf(c.at, 1, c.press[1], f.time)); }
+      if (lid > 0.1f && c.hover >= 0) {   // (renderAffiche: the item's name and lines written on the sheet: a large chest's on its left lid)
+        const int k = c.page * c.lay.pg + c.lay.off + c.hover;
+        const Chest* sheet = &c;
+        if (!c.lay.sheet) { sheet = nullptr; for (const Chest& o : list) if (o.at == c.lay.key) sheet = &o; }
+        if (sheet && k < c.lay.slots && k < (int)c.items.size() && !c.items[k].empty()) affiche(cd, f, *sheet, tactileEase(sheet->at, 2, sheet->open, 0) * 90.f, c.items[k]);
       }
     }
     cd.end();

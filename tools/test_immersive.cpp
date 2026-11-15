@@ -308,29 +308,37 @@ int main(int argc, char** argv) {
     for (u8 m = 0; m < 4 && n != 2; m++) { w.setBlock(A.x, A.y, A.z, reg().blockId("chest"), m); w.setBlock(B.x, B.y, B.z, reg().blockId("chest"), m); n = chestHalves(w, A, hs); }
     check(n == 2, "two chests side by side make a large one");
     check(tactileChest(w, A) && tactileChest(w, B), "both halves are worked as Tactile's chest");
-    const ivec3 second = hs[1];
-    const int f = tactileFacing(w, second);
+    const int f = tactileFacing(w, A);
+    const ChestLayout LA = tactileChestLayout(w, A), LB = tactileChestLayout(w, B);
+    const ivec3 left = LA.sheet ? A : B, right = LA.sheet ? B : A;
+    check(LA.slots == 54 && LA.key == LB.key && LA.sheet != LB.sheet && LA.buttons != LB.buttons && LA.off != LB.off, "one chest of 54: one sheet (left lid), one pair of buttons (right lid), a page across both trays");
     auto aimAt = [&](ivec3 at, vec3 north) {
       const vec3 eye = vec3(at) + tactileFromNorth(f, vec3(0.5f, 1.62f, -0.5f)), tgt = vec3(at) + tactileFromNorth(f, north);
       return std::make_pair(eye, glm::normalize(tgt - eye));
     };
     ItemStack none;
-    auto [e0, d0] = aimAt(second, vec3(0.5f, 0.5f, 0.3f));
-    tactileChestUse(*im.lv, *im.P, w, second, e0, d0, none, false, false);
+    auto [e0, d0] = aimAt(left, vec3(0.5f, 0.5f, 0.3f));
+    tactileChestUse(*im.lv, *im.P, w, left, e0, d0, none, false, false);
     check(chestLidOpen(w, A) && chestLidOpen(w, B), "opening one half opens both lids");
     check(w.blockEntity(A.x, A.y, A.z) && w.blockEntity(B.x, B.y, B.z), "both halves have their record (both lids are drawn)");
-    ItemStack held("apple", 3);
-    auto [e1, d1] = aimAt(second, vec3(2.4f / 16, 9.5f / 16, 9.5f / 16));
-    check(tactileChestAim(w, second, e1, d1).what == TactileChestAim::Tray, "aimed into the second half's tray");
-    tactileChestUse(*im.lv, *im.P, w, second, e1, d1, held, false, false);
+    const vec3 btn(12.5f / 16, 17.5f / 16, 12.f / 16);
+    { auto [eb, db] = aimAt(left, btn); check(tactileChestAim(w, left, eb, db).what != TactileChestAim::Swap, "no buttons on the left lid"); }
+    auto [eb, db] = aimAt(right, btn);
+    check(tactileChestAim(w, right, eb, db).what == TactileChestAim::Swap, "the right lid has the page button");
+    // sixteen different things put in: the first fifteen fill the left tray, the sixteenth lies first on the right one
+    static const char* K[16] = {"apple", "bread", "stick", "dirt", "cobblestone", "torch", "coal", "iron_ingot", "gold_ingot", "diamond", "feather", "string", "bone", "arrow", "flint", "wheat"};
+    auto [e1, d1] = aimAt(right, vec3(2.4f / 16, 9.5f / 16, 9.5f / 16));
+    check(tactileChestAim(w, right, e1, d1).what == TactileChestAim::Tray, "aimed into the right half's tray");
+    for (const char* k : K) { ItemStack h(k, 1); tactileChestUse(*im.lv, *im.P, w, right, e1, d1, h, false, false); }
     const std::vector<ItemStack> all = chestItems(*im.lv, *im.P, w, A);
-    int inFirst = 0, inSecond = 0;
-    for (int i = 0; i < (int)all.size(); i++) if (all[i].id == "apple") (i < (int)all.size() / 2 ? inFirst : inSecond) += all[i].n;
-    check(all.size() == 54 && inSecond == 1 && inFirst == 0 && held.n == 2, "put into the second half, it lies in that half's 27 (" + std::to_string(inFirst) + " / " + std::to_string(inSecond) + ")");
-    check(chestHalfItems(*im.lv, im.P, w, second)[0].id == "apple", "and is drawn in that half's tray");
-    check(tactileChestTake(*im.lv, *im.P, w, second, e1, d1, true), "taken back out of the second half");
-    int left = 0; for (auto& s : chestItems(*im.lv, *im.P, w, A)) if (s.id == "apple") left += s.n;
-    check(left == 0, "and the large chest is empty again");
+    int n16 = 0; for (auto& q : all) if (!q.empty()) n16++;
+    check(all.size() == 54 && n16 == 16, "sixteen things in the large chest (" + std::to_string(n16) + ")");
+    auto wheat = [&] { int n = 0; for (auto& q : im.P->inv) if (q.id == "wheat") n += q.n; return n; };
+    const int w0 = wheat();
+    check(tactileChestTake(*im.lv, *im.P, w, right, e1, d1, true) && wheat() == w0 + 1, "the right tray's first spot holds the sixteenth");
+    const int page0 = w.blockEntity(left.x, left.y, left.z)->value("page", 0);
+    tactileChestUse(*im.lv, *im.P, w, right, eb, db, none, false, false);
+    check(w.blockEntity(left.x, left.y, left.z)->value("page", 0) == 1 - page0, "the right lid's button turns the whole chest's page (kept by the left half)");
   }
 
   printf("[Tactile's still: its recipe book's pages]\n");

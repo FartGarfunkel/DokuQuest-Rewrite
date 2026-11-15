@@ -42,8 +42,8 @@ json& itemsOf(json& e) {
 }
 int pageOf(const json& e) { return e.value("page", 0) & 1; }
 // the page packed (CoffreBlockEntity.compact): its stacks merged and moved to the front
-void compact(json& items, int page, int PG = PAGE) {
-  const int a = page * PG, b = std::min(SLOTS, a + PG);
+void compact(json& items, int page, int PG = PAGE, int NS = SLOTS) {
+  const int a = page * PG, b = std::min(NS, a + PG);
   std::vector<ItemStack> v;
   for (int i = a; i < b; i++) {
     ItemStack s = ItemStack::fromJson(items[i]);
@@ -57,8 +57,8 @@ void compact(json& items, int page, int PG = PAGE) {
   }
   for (int i = a; i < b; i++) items[i] = i - a < (int)v.size() ? v[i - a].toJson() : json();
 }
-bool placeOne(json& items, int page, ItemStack& held, int PG = PAGE) {   // (CoffreBlockEntity.placeOne: onto the same, else the first free)
-  const int a = page * PG, b = std::min(SLOTS, a + PG);
+bool placeOne(json& items, int page, ItemStack& held, int PG = PAGE, int NS = SLOTS) {   // (CoffreBlockEntity.placeOne: onto the same, else the first free)
+  const int a = page * PG, b = std::min(NS, a + PG);
   for (int i = a; i < b; i++) {
     ItemStack s = ItemStack::fromJson(items[i]);
     if (s.empty() || s.id != held.id || !s.canMerge(held) || s.n >= s.maxStack()) continue;
@@ -151,18 +151,26 @@ bool tactileChest(World& w, ivec3 at) {
   // (a large chest: each half worked as a coffre of its own, its own 27 of the 54, its own tray, page, buttons and sheet; the
   // two lids go up and down together: sim/chest_work.h setChestLidOpen)
 }
+ChestLayout tactileChestLayout(World& w, ivec3 at) {
+  ChestLayout L; L.key = at;
+  ivec3 hs[2];
+  if (chestHalves(w, at, hs) != 2) return L;
+  const ivec3 other = hs[0] == at ? hs[1] : hs[0];
+  const int f = tactileFacing(w, at);
+  const vec3 xdir = tactileFromNorth(f, vec3(1, 0, 0)) - tactileFromNorth(f, vec3(0));   // (the chest's own left to right)
+  const bool left = glm::dot(vec3(other - at), xdir) > 0;
+  L.slots = 54; L.pg = 30; L.off = left ? 0 : 15; L.key = left ? at : other; L.buttons = !left; L.sheet = left;
+  return L;
+}
 namespace {
-// the 27 of the half at `at` (a large chest's other half keeps its own), and the whole written back
-struct HalfItems {
-  Level& lv; Player& p; World& w; ivec3 at; std::vector<ItemStack> all; int off = 0; json items = json::array();
-  HalfItems(Level& lv, Player& p, World& w, ivec3 at) : lv(lv), p(p), w(w), at(at), all(chestItems(lv, p, w, at)) {
-    ivec3 hs[2]; if (chestHalves(w, at, hs) == 2 && hs[1] == at) off = (int)all.size() / 2;
-    for (int i = 0; i < SLOTS; i++) items.push_back(off + i < (int)all.size() && !all[off + i].empty() ? all[off + i].toJson() : json());
+// every slot of the chest (both halves of a large one) as json, written back when done
+struct AllItems {
+  Level& lv; Player& p; World& w; ivec3 at; json items = json::array();
+  AllItems(Level& lv, Player& p, World& w, ivec3 at, int n) : lv(lv), p(p), w(w), at(at) {
+    for (const ItemStack& q : chestItems(lv, p, w, at)) items.push_back(q.empty() ? json() : q.toJson());
+    while ((int)items.size() < n) items.push_back(nullptr);
   }
-  ~HalfItems() {
-    for (int i = 0; i < SLOTS && off + i < (int)all.size(); i++) all[off + i] = ItemStack::fromJson(items[i]);
-    chestSetItems(lv, p, w, at, all);
-  }
+  ~AllItems() { std::vector<ItemStack> v; for (auto& j : items) v.push_back(ItemStack::fromJson(j)); chestSetItems(lv, p, w, at, v); }
 };
 }  // namespace
 
@@ -176,7 +184,8 @@ TactileChestAim tactileChestAim(World& w, ivec3 at, vec3 eye, vec3 dir) {
   if (!chestLidOpen(w, at)) { r.what = TactileChestAim::Shut; return r; }
   float best = 1e9f;
   auto test = [&](const float b[6], int what) { const float t = rayBox(o, d, b); if (t >= 0 && t < best) { best = t; r.what = what; } };
-  test(BTN_SORT, TactileChestAim::Sort); test(BTN_SWAP, TactileChestAim::Swap);   // (first: their faces are flush with the lid's, a tie goes to them)
+  const ChestLayout L = tactileChestLayout(w, at);
+  if (L.buttons) { test(BTN_SORT, TactileChestAim::Sort); test(BTN_SWAP, TactileChestAim::Swap); }   // (first: their faces are flush with the lid's, a tie goes to them)
   test(LID_BOX, TactileChestAim::Lid); test(LID_POKE, TactileChestAim::Lid);
   test(GRID_SLAB, TactileChestAim::Tray);
   if (r.what == TactileChestAim::Tray) {
@@ -193,7 +202,8 @@ float tactileChestLidRay(World& w, ivec3 at, vec3 eye, vec3 dir) {
   const int f = tactileFacing(w, at);
   const vec3 o = tactileNorthLocal(f, eye - vec3(at)), d = tactileNorthLocal(f, eye + dir - vec3(at)) - o;
   float best = -1;
-  for (const float* b : {LID_BOX, LID_POKE, BTN_SORT, BTN_SWAP}) { const float t = rayBox(o, d, b); if (t >= 0 && (best < 0 || t < best)) best = t; }
+  const bool btn = tactileChestLayout(w, at).buttons;
+  for (const float* b : {LID_BOX, LID_POKE, BTN_SORT, BTN_SWAP}) { if (!btn && (b == BTN_SORT || b == BTN_SWAP)) continue; const float t = rayBox(o, d, b); if (t >= 0 && (best < 0 || t < best)) best = t; }
   return best;
 }
 
@@ -246,43 +256,48 @@ bool tactileChestUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 di
     for (int i = 0; i < n; i++) containerEntity(w, hs[i].x, hs[i].y, hs[i].z);
     containerEntity(w, at.x, at.y, at.z); setChestLidOpen(w, at, true); sfxAt(lv, "chest", c); return true;
   }
-  HalfItems half(lv, p, w, at);
-  json& items = half.items;
-  const int page = pageOf(*e);
-  auto changed = [&] { w.blockEntityChanged(at.x, at.y, at.z); };
+  const ChestLayout L = tactileChestLayout(w, at);
+  const int NS = L.slots, PG = L.pg;
+  json* ke = L.key == at ? e : w.blockEntity(L.key.x, L.key.y, L.key.z, true);   // (a large chest's page and buttons: its left half's)
+  if (!ke) return false;
+  if (!ke->is_object()) *ke = json::object();
+  AllItems slotsAll(lv, p, w, at, NS);
+  json& items = slotsAll.items;
+  const int page = pageOf(*ke);
+  auto changed = [&] { w.blockEntityChanged(at.x, at.y, at.z); if (L.key != at) w.blockEntityChanged(L.key.x, L.key.y, L.key.z); };
   if (a.what == TactileChestAim::Sort) {   // (doSort; sneaking: every stack of both pages merged)
     std::vector<ItemStack> v;
-    const int a0 = sneak ? 0 : page * PAGE, b0 = sneak ? SLOTS : std::min(SLOTS, page * PAGE + PAGE);
+    const int a0 = sneak ? 0 : page * PG, b0 = sneak ? NS : std::min(NS, page * PG + PG);
     for (int i = a0; i < b0; i++) { ItemStack s = ItemStack::fromJson(items[i]); if (!s.empty()) v.push_back(s); }
     std::stable_sort(v.begin(), v.end(), [](const ItemStack& x, const ItemStack& y) { return x.id < y.id; });
     for (int i = a0; i < b0; i++) items[i] = i - a0 < (int)v.size() ? v[i - a0].toJson() : json();
-    compact(items, page); if (sneak) compact(items, 1 - page);
-    (*e)["press0"] = e->value("press0", 0) + 1; changed(); sfxAt(lv, "click", c);
+    compact(items, page, PG, NS); if (sneak) compact(items, 1 - page, PG, NS);
+    (*ke)["press0"] = ke->value("press0", 0) + 1; changed(); sfxAt(lv, "click", c);
     return true;
   }
-  if (a.what == TactileChestAim::Swap) { (*e)["page"] = 1 - page; (*e)["press1"] = e->value("press1", 0) + 1; changed(); sfxAt(lv, "click", c); return true; }
+  if (a.what == TactileChestAim::Swap) { (*ke)["page"] = 1 - page; (*ke)["press1"] = ke->value("press1", 0) + 1; changed(); sfxAt(lv, "click", c); return true; }
   if (a.what == TactileChestAim::Tray) {
     if (sneak) {   // (quickStack: what you carry that's already in it goes in)
       bool any = false;
       for (ItemStack& s : p.inv) {
         if (s.empty()) continue;
-        bool has = false; for (int i = page * PAGE; i < std::min(SLOTS, page * PAGE + PAGE); i++) if (ItemStack::fromJson(items[i]).id == s.id) has = true;
-        while (has && !s.empty() && placeOne(items, page, s)) any = true;
+        bool has = false; for (int i = page * PG; i < std::min(NS, page * PG + PG); i++) if (ItemStack::fromJson(items[i]).id == s.id) has = true;
+        while (has && !s.empty() && placeOne(items, page, s, PG, NS)) any = true;
       }
-      if (any) { compact(items, page); changed(); sfxAt(lv, "pop", c); }
+      if (any) { compact(items, page, PG, NS); changed(); sfxAt(lv, "pop", c); }
       return true;
     }
     if (held.empty()) {   // (an empty hand: what lies there, the whole of it, back into your bag)
-      const int k = page * PAGE + a.slot;
-      ItemStack s2 = k < SLOTS ? ItemStack::fromJson(items[k]) : ItemStack();
+      const int k = page * PG + L.off + a.slot;
+      ItemStack s2 = k < NS ? ItemStack::fromJson(items[k]) : ItemStack();
       if (s2.empty()) return true;
-      items[k] = nullptr; compact(items, page); changed();
+      items[k] = nullptr; compact(items, page, PG, NS); changed();
       tactileGive(lv, p, s2); sfxAt(lv, "pop", c);
       return true;
     }
     int placed = 0;
-    for (int n = 0; n < (all ? 64 : 1) && !held.empty() && placeOne(items, page, held); n++) placed++;
-    if (placed) { compact(items, page); changed(); sfxAt(lv, "pop", c); }
+    for (int n = 0; n < (all ? 64 : 1) && !held.empty() && placeOne(items, page, held, PG, NS); n++) placed++;
+    if (placed) { compact(items, page, PG, NS); changed(); sfxAt(lv, "pop", c); }
     else toast(lv, p, "That page is full (the right-hand button turns to the other)");
     return true;
   }
@@ -296,15 +311,17 @@ bool tactileChestTake(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 d
   json* e = w.blockEntity(at.x, at.y, at.z, true);
   if (!e) return false;
   if (!e->is_object()) *e = json::object();
-  HalfItems half(lv, p, w, at);
-  json& items = half.items;
-  const int page = pageOf(*e), k = page * PAGE + a.slot;
-  if (k >= SLOTS) return false;
+  const ChestLayout L = tactileChestLayout(w, at);
+  const json* ke = L.key == at ? e : w.blockEntity(L.key.x, L.key.y, L.key.z);
+  AllItems slotsAll(lv, p, w, at, L.slots);
+  json& items = slotsAll.items;
+  const int page = ke ? pageOf(*ke) : 0, k = page * L.pg + L.off + a.slot;
+  if (k >= L.slots) return false;
   ItemStack s = ItemStack::fromJson(items[k]);
   if (s.empty()) return false;
   ItemStack taken = s; taken.n = whole ? s.n : 1;
   s.n -= taken.n; items[k] = s.n <= 0 ? json() : s.toJson();
-  compact(items, page);
+  compact(items, page, L.pg, L.slots);
   w.blockEntityChanged(at.x, at.y, at.z);
   tactileGive(lv, p, taken);
   sfxAt(lv, "pop", vec3(at) + vec3(0.5f));

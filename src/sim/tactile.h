@@ -45,6 +45,11 @@ bool tactileGrindTarget(const ItemStack& s);   // worn (past its ground-in wear)
 // puts in all you carry that's already there; its buttons sort the page (sneaking: both) and turn to the other page
 struct TactileChestAim { enum { None, Shut, Lid, Tray, Sort, Swap }; int what = None, slot = -1; };
 bool tactileChest(World& w, ivec3 at);
+// how a chest's slots lie on its tray: a single chest's 27 in pages of fifteen; a large chest one chest of 54 in pages of
+// thirty, fifteen on each half's tray (off: where this half's start in a page), its page kept by its left half (key), the
+// one sheet on the left lid and the one pair of buttons on the right lid
+struct ChestLayout { int slots = 27, pg = 15, off = 0; ivec3 key{0}; bool buttons = true, sheet = true; };
+ChestLayout tactileChestLayout(World& w, ivec3 at);
 TactileChestAim tactileChestAim(World& w, ivec3 at, vec3 eye, vec3 dir);
 bool tactileChestUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir, ItemStack& held, bool all, bool sneak);
 // how far along the ray an open chest's lid and buttons are (they stand up out of its block), -1 if it misses them
