@@ -178,13 +178,13 @@ struct WorldForm {
         int di = 2; for (int i = 0; i < 4; i++) if (difficulty == DIFFS[i]) di = i;
         if (k.cycle("Difficulty", &di, {"Peaceful", "Easy", "Normal", "Hard"}, 2, "Peaceful: no monsters appear on their own.")) difficulty = DIFFS[di];
         std::vector<std::string> opts; for (int m : MINS) opts.push_back(std::to_string(m) + " min");
-        auto sel = [&](const char* key, const char* lbl, const char* tip) {
-          int v = rules.value(key, 10), cur = 3;
-          for (int i = 0; i < 9; i++) if (MINS[i] == v) cur = i;
-          if (k.cycle(lbl, &cur, opts, 3, tip)) rules[key] = MINS[cur];
+        auto sel = [&](const char* key, const char* lbl, const char* tip, int dflt) {
+          int v = rules.value(key, dflt), cur = 3, di = 3;
+          for (int i = 0; i < 9; i++) { if (MINS[i] == v) cur = i; if (MINS[i] == dflt) di = i; }
+          if (k.cycle(lbl, &cur, opts, di, tip)) rules[key] = MINS[cur];
         };
-        sel("dayMinutes", "Daytime Length", "How long the day lasts.");
-        sel("nightMinutes", "Night Length", "How long the night lasts.");
+        sel("dayMinutes", "Daytime Length", "How long the day lasts.", 60);
+        sel("nightMinutes", "Night Length", "How long the night lasts.", 10);
         for (auto& t : ruleRows()) if (t.page == 1) ruleToggle(t);
       }
       if (k.category("Nether")) k.note("The Nether is part of this world, right under the Overworld. Ground nobody has visited yet uses the newest nether lands.");

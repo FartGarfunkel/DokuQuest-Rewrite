@@ -6,7 +6,7 @@ namespace dq {
 
 const json& ruleDefaults() {
   static const json d = {
-    {"dayMinutes", 10}, {"nightMinutes", 10},
+    {"dayMinutes", 60}, {"nightMinutes", 10},   // a long day to get things done, a short night
     {"daylightCycle", true}, {"keepInventory", false}, {"graves", true}, {"mobSpawning", true}, {"mobGriefing", true}, {"tntExplodes", true},
     {"fireSpread", true}, {"blockDrops", true}, {"fallDamage", true}, {"drowning", true}, {"fireDamage", true}, {"naturalRegen", true},
     {"grassSpread", true}, {"randomTickSpeed", 1}, {"hardcore", false}, {"nightmares", true}, {"seasons", false}, {"startInWild", true}, {"treeFelling", true}, {"dynamicTrees", true}, {"saplingsPlant", true}, {"showCoords", false}, {"commands", false}, {"downed", true}, {"haunting", true}, {"allowSprinting", true}, {"allowSleeping", true}, {"weatherCycle", true},

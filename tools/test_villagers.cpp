@@ -77,6 +77,7 @@ int main(int argc, char** argv) {
   auto lvp = Level::create(userSub("saves"), li, &pool, &bus);
   L = lvp.get(); L->fx = &fx;
   L->info.rules["mobSpawning"] = false;   // no night crowd on the test floor
+  L->info.rules["dayMinutes"] = 10; L->info.rules["nightMinutes"] = 10;   // (the schedule tests tick through the day at the old length)
   World& w = L->world();
   const int base = dimBase(DIM_OVERWORLD), Y = base + 200, ly = 200;   // a test floor high in the sky
   { auto p = std::make_unique<Player>(); p->name = "Tester"; p->pos = vec3(8.5f, Y + 1, 20.5f); P = static_cast<Player*>(L->spawn(std::move(p))); }
