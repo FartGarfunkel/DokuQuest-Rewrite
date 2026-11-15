@@ -1019,7 +1019,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   // Carry On: sneak + use with an empty hand picks up containers, stations and animals
   if (!fromOff && !repeat && p.sneaking && held.empty()) {
     if (te && isMob(*te) && te->hp > 0 && R.mobs[te->type].value("carry", false)) {
-      p.carrying = {{"kind", "mob"}, {"type", te->type}, {"hp", te->hp}, {"data", te->data}};
+      p.carrying = {{"kind", "mob"}, {"type", te->type}, {"hp", te->hp}, {"data", te->data}, {"save", te->save()}};   // (save: its whole self, coat and all)
       te->removed = true; sfxUi(lv, p, te->type == "boar" ? "boar" : "pop"); swingArm();
       toastMsg("Carrying a " + te->type + " \xE2\x80\x94 use to set it down", "good");
       return;
