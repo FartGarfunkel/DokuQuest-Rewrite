@@ -292,6 +292,13 @@ public:
       const json& s = a[3];
       DamageSource src; src.attacker = s.value("attacker", 0u); src.element = s.value("element", std::string());
       src.knock = s.value("knock", 5.0f); src.tool = s.value("tool", std::string()); src.weapon = s.value("weapon", std::string());
+      // the guest's aim (their eyes and look): the blow lands on the part they struck, a leg cut off where they swung at it
+      // (without it the host took it for a blow from nowhere and tore off any limb)
+      auto v3of = [](const json& j, vec3& out) { if (!j.is_array() || j.size() < 3 || !j[0].is_number() || !j[1].is_number() || !j[2].is_number()) return false; out = vec3(j[0].get<float>(), j[1].get<float>(), j[2].get<float>()); return std::isfinite(out.x) && std::isfinite(out.y) && std::isfinite(out.z); };
+      vec3 ro, rd;
+      if (s.contains("ro") && s.contains("rd") && v3of(s["ro"], ro) && v3of(s["rd"], rd) && glm::length(rd) > 0.5f && glm::distance(ro, e->pos) < 16) {
+        src.hasRay = true; src.rayO = ro; src.rayD = glm::normalize(rd);
+      }
       damageEntity(*lvp, *e, a[2].get<float>(), src);
       return false;
     });

@@ -16,6 +16,7 @@
 //            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text} lookAt{entity,job?,dist?: aim at (and stand dist south of) the nearest creature of a type} report{near?,ents?: a type, to list where each stands} shot{path} save leave open{world} quit
 // give takes "d" (wear) and "tag" (enchantments, gear xp). pad buttons: a b x y back guide start ls rs lb rb up down left right, lt / rt (triggers).
 // The log gets "TEST PASS/FAIL ..." lines and a final "TEST DONE passes=N fails=M".
+#include "sim/creature_rig.h"
 #include "sim/vehicles.h"
 #include "sim/minecart.h"
 #include "sim/atlas.h"
@@ -250,6 +251,26 @@ void runStep(App& a, const json& st) {
       DQ_LOG("probe: %s at %d %d %d meta %d carve %d | +x -x +z -z:%s", k.c_str(), x, y, z, w.getMeta(x, y, z), w.getCarve(x, y, z), nb.c_str());
       if (Mechanics* M = mechanicsOf(*s->level, p->realm)) for (auto& [mk, n] : M->nodes()) if (n.p == ivec3(x, y, z))
         DQ_LOG("probe:   machine %s axis %d power %.2f blocked %d speed %.2f", n.kind.c_str(), n.axis, n.power, (int)n.blocked, M->speedAt(x, y, z));
+    }
+  } else if (op == "rigprobe" && s && p) {   // rigprobe{r}: each rigged creature within r: its posed parts' reach against its box (feet gap, height, width)
+    const float r = st.value("r", 12.f);
+    for (auto& e : s->level->entities()) {
+      auto* c = dynamic_cast<Creature*>(e.get()); if (!c || c->removed || glm::distance(c->pos, p->pos) > r) continue;
+      const RigModel* M = rigModel(c->modelKey()); if (!M || M->parts.empty()) continue;
+      rigPose(*c, *M, creatureBase(*c, false));
+      vec3 lo(1e9f), hi(-1e9f); std::string lowPart;
+      for (size_t i = 0; i < M->parts.size() && i < c->mats.size(); i++) {
+        if (!rigPartPosed(*c, (int)i) || !rigPartShown(*c, M->parts[i])) continue;
+        const RigPart& q = M->parts[i];
+        for (int k = 0; k < 8; k++) {
+          const vec3 cl((k & 1) ? q.max.x : q.min.x, (k & 2) ? q.max.y : q.min.y, (k & 4) ? q.max.z : q.min.z);
+          const vec3 wpt = vec3(c->mats[i] * vec4(cl, 1));
+          if (wpt.y < lo.y) lowPart = q.name;
+          lo = glm::min(lo, wpt); hi = glm::max(hi, wpt);
+        }
+      }
+      DQ_LOG("rigprobe: %s (%s) onGround %d vel.y %.2f | lowest part %s %.3f above its feet, top %.2f (box h %.2f), reach x %.2f..%.2f z %.2f..%.2f (box w %.2f)",
+             c->type.c_str(), c->modelKey().c_str(), (int)c->onGround, c->vel.y, lowPart.c_str(), lo.y, hi.y, c->h, lo.x, hi.x, lo.z, hi.z, c->w);
     }
   } else if (op == "select" && p) {
     p->selected = std::clamp(st.value("slot", 0), 0, 8);

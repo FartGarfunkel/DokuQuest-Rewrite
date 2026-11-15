@@ -205,17 +205,51 @@ static void animQuad(Creature& m, const RigModel& d, Pose& P) {
 
 static void animSpider(Creature& m, const RigModel& d, Pose& P) {
   float a = m.walkAmt, ph = m.walk * 1.6f, t = age(m);
+  float sink = 0;   // how far the body is let down to put the feet on the ground (model units)
   for (size_t i = 0; i < d.parts.size(); i++) {
     const RigPart& p = d.parts[i];
     if (p.role != "sleg") continue;
     float off = ((p.idx % 2 == 0) == (p.side > 0)) ? 0 : PI;
     float s = std::sin(ph + off + p.idx * 0.35f), c = std::cos(ph + off + p.idx * 0.35f);
-    P.atI((int)i) = vec3(0, s * 0.38f * a * p.side, std::max(0.f, c) * 0.35f * a * p.side);
-    P.set("sshin" + p.name.substr(4), {0, 0, -std::max(0.f, c) * 0.2f * a * p.side});
+    const float side = p.side ? (float)p.side : 1.f;
+    const int si = d.find("sshin" + p.name.substr(4));
+    // the feet on the ground (they had stood a third of a block up, the Broodmother's half a block: the shins slanted out
+    // from knees raised too high to reach down): the knee kept at its rest height, the shin hanging down with a spider's
+    // splay, and the body let down the little that's left (sink, below) (this model's own lengths: every spider and its variants)
+    float legZ = p.rest.z, shinZ = si >= 0 ? d.parts[si].rest.z : 0.f;
+    if (si >= 0) {
+      const RigPart& sh = d.parts[si];
+      float hipY = p.pivot.y; for (int q = p.parent; q >= 0; q = d.parts[q].parent) hipY += d.parts[q].pivot.y;
+      const float thigh = std::fabs(sh.pivot.x), shin = -sh.min.y;
+      if (thigh > 1e-3f && shin > 1e-3f) {
+        const float SPLAY = 0.22f;
+        float alpha = std::fabs(p.rest.z);
+        const float reach = std::asin(clampv((shin * std::cos(SPLAY) - hipY) / thigh, -1.f, 1.f));   // the knee that just reaches
+        alpha = std::min(alpha, std::max(reach, 0.f) + 0.6f);
+        if (reach > alpha) alpha = reach;
+        legZ = side * alpha; shinZ = -legZ + side * SPLAY;
+        sink = std::max(sink, hipY + thigh * std::sin(alpha) - shin * std::cos(SPLAY));
+      }
+    }
+    const float lift = std::max(0.f, c) * a;
+    P.atI((int)i) = vec3(0, s * 0.38f * a * side, legZ - p.rest.z + lift * 0.35f * side);
+    if (si >= 0) P.atI(si) = vec3(0, 0, shinZ - d.parts[si].rest.z - lift * 0.2f * side);
   }
   P.set("abdomen", {std::sin(t * 2.2f) * 0.04f, std::sin(ph) * 0.05f * a, 0});
   P.set("head", {m.headPitch * 0.6f, m.headYawRel * 0.5f, 0});
-  P.lift = std::fabs(std::sin(ph * 2)) * 0.02f * a;
+  {   // (never so far that the body, a tail or claws, go into the ground: the lowest of the other parts at rest)
+    float clear = 1e9f;
+    for (size_t i = 0; i < d.parts.size(); i++) {
+      const RigPart& q = d.parts[i];
+      if (q.role == "sleg" || q.role == "sshin" || q.glow) continue;
+      bool leg = false; for (int u = q.parent; u >= 0; u = d.parts[u].parent) if (d.parts[u].role == "sleg" || d.parts[u].role == "sshin") { leg = true; break; }
+      if (leg) continue;
+      float y = q.pivot.y + q.min.y; for (int u = q.parent; u >= 0; u = d.parts[u].parent) y += d.parts[u].pivot.y;
+      clear = std::min(clear, y);
+    }
+    if (clear < 1e8f) sink = std::min(sink, std::max(0.f, clear - 0.01f));
+  }
+  P.lift = std::fabs(std::sin(ph * 2)) * 0.02f * a - sink * d.scale;
   if (!m.onGround && !m.climbing && !m.ghost) for (size_t i = 0; i < d.parts.size(); i++) if (d.parts[i].role == "sleg") P.atI((int)i) = vec3(0, 0, -0.25f * d.parts[i].side);
 }
 

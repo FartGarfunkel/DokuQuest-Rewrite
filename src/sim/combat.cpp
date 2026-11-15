@@ -213,7 +213,8 @@ float attackEntity(Level& lv, Player& p, Entity& e, float dmgMul, float knockMul
   src.hasRay = true; src.rayO = p.pos + vec3(0, p.eye, 0); src.rayD = lookVector(p.yaw, p.pitch);   // dismember.js: the ray from your eyes
   float dealt;
   if (e.ghost && lv.net && lv.net->isClient()) {   // a joined world: the server's creature; it takes the hit there
-    lv.net->hitEntity(p, e.id, dmg, {{"element", src.element}, {"knock", src.knock}, {"tool", src.tool}, {"weapon", src.weapon}, {"crit", crit}});
+    lv.net->hitEntity(p, e.id, dmg, {{"element", src.element}, {"knock", src.knock}, {"tool", src.tool}, {"weapon", src.weapon}, {"crit", crit},
+                                     {"ro", {src.rayO.x, src.rayO.y, src.rayO.z}}, {"rd", {src.rayD.x, src.rayD.y, src.rayD.z}}});   // (the part it struck: the host severs that limb)
     dealt = dmg;
   } else dealt = damageEntity(lv, e, dmg, src);
   if (setCd) p.attackCd = tool && tool->type == "sword" ? 0.45f : 0.6f;
