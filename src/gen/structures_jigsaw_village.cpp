@@ -35,6 +35,7 @@ struct JigsawTown {
   std::vector<std::array<int, 5>> flat;       // x0, z0, x1, z1, y: level ground under the rigid pieces
   std::array<int, 4> fb{};                    // the levelling's reach
   bool blend = false;                         // terrain version 17: the levels round the plots blended, not the nearest
+  bool millOut = false;                       // terrain version 22: a windmill's big sails a block further out (clear of its gable)
   std::vector<std::array<int, 3>> ends;       // street ends, for the roads between villages: x, z, direction
   bool board = false; int bx = 0, bz = 0, by = 0, bf = 0;   // the quest board (built here when the centre has none)
   std::vector<VPPiece> ours;                  // our hall and windmill as pieces (kept alive with the plan)
@@ -146,6 +147,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
   if (!centers) return false;
   auto J = std::make_shared<JigsawTown>();
   J->blend = t.genVersion() >= 17;
+  J->millOut = t.genVersion() >= 22;
   J->ours.reserve(3);
   J->ours.push_back(ourPiece("hall"));
   // (no windmill of ours here: each style's pieces have their own, a tower with sails, shaft and millstone)
@@ -202,7 +204,9 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
         if (houses) {
           // a trade's building once in a village (twice in a town or a city; farms and pens as the land allows), a stall
           // of each kind once, and the stalls only near the square (a market street, not stalls up every lane)
-          auto tradeOf = [](const VPPiece* p) { std::string t, j; pieceRole(*p, t, j); return t == "house" && j.empty() ? std::string() : t + "/" + j; };
+          auto tradeOf = [&](const VPPiece* p) {
+            if (t.genVersion() >= 22 && p->name.find("windmill") != std::string::npos) return std::string("mill/miller");   // (terrain 22: a trade, wanted once)
+            std::string tt, j; pieceRole(*p, tt, j); return tt == "house" && j.empty() ? std::string() : tt + "/" + j; };
           const int cap = v.tier == TIER_VILLAGE ? 1 : 2;
           cands.erase(std::remove_if(cands.begin(), cands.end(), [&](const VPPiece* p) {
             const std::string t = tradeOf(p);
@@ -296,7 +300,9 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
             q.parent = (int)qi; q.jx = ax; q.jz = az; q.dy = A.y - B.y;
             J->pcs.push_back(q);
             if (std::getenv("DQ_VILLAGE_LOG") && C->name.find("garden_bridge") != std::string::npos) DQ_LOG("garden bridge in %s at %d %d", v.name.c_str(), q.x0, q.z0);
-            { std::string t, j; pieceRole(*C, t, j); if (!(t == "house" && j.empty())) J->trades[t + "/" + j]++; }
+            { std::string tt, j; pieceRole(*C, tt, j);
+              if (t.genVersion() >= 22 && C->name.find("windmill") != std::string::npos) J->trades["mill/miller"]++;
+              else if (!(tt == "house" && j.empty())) J->trades[tt + "/" + j]++; }
             if (isOurs(*C)) oursLeft.erase(std::find(oursLeft.begin(), oursLeft.end(), C));
             placed = true; break;
           }
@@ -820,10 +826,62 @@ static void fixGeneratedStand(SP& P, int x, int y, int z) {
   if (ent.is_object() && ni >= 0) P.setEntity(ni, ent);
 }
 
+// a big windmill piece's sails, kept clear (terrain 22): its hub where it is or a block further out along its shaft,
+// whichever has less of the piece in the sails' circle (the pack's gables overhang the hub, and some hang trapdoors, snow
+// or a cap's edge there: the sails turned through them, or the mill counted itself walled in and stood still, sim/
+// machines.cpp's 4-block rule); then whatever of the piece is still in the sails' sweep left out (an eave's notch, not sails
+// through the roof)
+struct MillFix { bool on = false, shift = false; int hub[3] = {0, 0, 0}, out[3] = {0, 0, 0}; std::set<long> skip; };
+static MillFix millFix(const VPPiece& p, BlockId WINDMILL, BlockId AXLE) {
+  MillFix f;
+  if (WINDMILL == NOBLOCK || WINDMILL == AIR) return f;
+  const VPBlock* hub = nullptr;
+  for (const VPBlock& k : p.blocks) if (p.states[k.s].id == WINDMILL && (p.states[k.s].meta[0] & 4)) { hub = &k; break; }
+  if (!hub) return f;
+  const int ax = p.states[hub->s].meta[0] & 3;
+  if (ax != 1 && ax != 2) return f;
+  std::map<std::array<int, 3>, long> at;
+  for (const VPBlock& k : p.blocks) {
+    const VPState& s = p.states[k.s];
+    if (s.kind == VPK_AIR || s.id == AIR || s.id == NOBLOCK) continue;
+    at[{k.x, k.y, k.z}] = &k - p.blocks.data();
+  }
+  int d = 0;   // outward: away from the axle behind the hub
+  for (int sgn : {1, -1}) {
+    auto it = at.find({hub->x + (ax == 1 ? sgn : 0), hub->y, hub->z + (ax == 2 ? sgn : 0)});
+    if (it != at.end() && p.states[p.blocks[it->second].s].id == AXLE) { d = -sgn; break; }
+  }
+  if (!d) return f;
+  auto inPlane = [&](int off, int r2max, std::vector<long>* list) {   // the piece's blocks in the sails' circle (r2max), hub `off` out
+    const int px = hub->x + (ax == 1 ? d * off : 0), pz = hub->z + (ax == 2 ? d * off : 0);
+    int n = 0;
+    for (int a = -7; a <= 7; a++) for (int b = -7; b <= 7; b++) {
+      if ((!a && !b) || a * a + b * b > r2max) continue;
+      const int x = ax == 1 ? px : px + a, z = ax == 2 ? pz : pz + a, y = hub->y + b;
+      auto it = at.find({x, y, z});
+      if (it == at.end()) continue;
+      const BlockId id = p.states[p.blocks[it->second].s].id;
+      if (id == WINDMILL || id == AXLE) continue;
+      n++; if (list) list->push_back(it->second);
+    }
+    return n;
+  };
+  auto score = [&](int off) { return inPlane(off, 17, nullptr) * 1000 + inPlane(off, 56, nullptr); };   // (56: the big sails sweep 7.5 blocks out, render/vehicle_layer.cpp)
+  const int ox = hub->x + (ax == 1 ? d : 0), oz = hub->z + (ax == 2 ? d : 0);
+  const bool roomOut = ox >= 0 && ox < p.sx && oz >= 0 && oz < p.sz && !at.count({ox, hub->y, oz});
+  f.on = true; f.hub[0] = hub->x; f.hub[1] = hub->y; f.hub[2] = hub->z;
+  f.shift = roomOut && score(1) < score(0);
+  if (f.shift) { f.out[0] = ax == 1 ? d : 0; f.out[2] = ax == 2 ? d : 0; }
+  std::vector<long> in; inPlane(f.shift ? 1 : 0, 56, &in);
+  for (long i : in) f.skip.insert(i);
+  return f;
+}
+
 void jigsawTownBuild(SP& P, const Town& v, const JigsawTown& J) {
   const VStyle& st = vstyle(v.style);
   const int bx = P.bx, bz = P.bz;
   const BlockId DIRT = bid("dirt"), PLANKS = bid(st.planks == "smooth_sandstone" ? std::string("jungle_planks") : st.planks), PATH = bid("dirt_path");
+  const BlockId WINDMILL = bid("windmill"), AXLE = bid("axle");
   Mulberry32 lr(hash32((i32)v.seed, bx, bz, 77));
   // a street climbing a block from here: a half slab on this one makes two half steps of it (you and the villagers walk
   // up half a block, not a whole one)
@@ -872,9 +930,25 @@ void jigsawTownBuild(SP& P, const Town& v, const JigsawTown& J) {
         for (int y = q.y0 + 1; y <= std::min(DIM_H - 1, q.y0 + p.top + 2); y++) { const BlockId g = P.get(x, y, z); if (g != AIR && g != NOBLOCK && softBlock(g)) P.put(x, y, z, "air"); }
       }
     }
+    const MillFix mf = J.millOut && !p.terrain ? millFix(p, WINDMILL, AXLE) : MillFix{};
     for (const VPBlock& k : p.blocks) {
       auto [tx, tz] = vpTurn(p, q.r, k.x, k.z);
       const int x = q.x0 + tx, z = q.z0 + tz;
+      // (terrain 22) a big windmill's sails clear of the building (millFix): the hub a block further out along its shaft
+      // when that's clearer (an axle where it was), and nothing of the piece left in the sails' way
+      if (mf.on) {
+        if (k.x == mf.hub[0] && k.y == mf.hub[1] && k.z == mf.hub[2]) {
+          const int y = q.y0 + k.y;
+          auto [hx0, hz0] = vpTurn(p, q.r, k.x + mf.out[0], k.z + mf.out[2]);
+          const int hx = q.x0 + hx0, hz = q.z0 + hz0;
+          if (y >= 1 && y < DIM_H) {
+            if (mf.shift && P.in(x, z)) P.putId(x, y, z, AXLE, (u8)(p.states[k.s].meta[q.r] & 3));
+            if (P.in(hx, hz)) P.putId(hx, y, hz, WINDMILL, p.states[k.s].meta[q.r]);
+          }
+          continue;
+        }
+        if (mf.skip.count(&k - p.blocks.data())) continue;
+      }
       if (!P.in(x, z)) continue;
       const VPState& s = p.states[k.s];
       BlockId id = s.id; int y; int stairMeta = -1;

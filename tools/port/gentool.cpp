@@ -622,8 +622,41 @@ static int plans(const std::string& seedText, int x0, int z0, int w) {
         auto str = [&](const char* k) { return D.contains(k) && D[k].is_string() ? D[k].get<std::string>() : std::string("?"); };
         printf("  style %s tier %s r %d: %d buildings (%d kinds, %d with a trade), %d stalls", str("style").c_str(), str("tier").c_str(), D.contains("r") && D["r"].is_number() ? D["r"].get<int>() : 0,
                D.contains("blds") ? (int)D["blds"].size() : 0, (int)kinds.size(), jobs, D.contains("stalls") ? (int)D["stalls"].size() : 0);
+        printf("%s", kinds.count("windmill") ? " WINDMILL" : " no-mill");
       }
       printf("\n"); } }
+  return 0;
+}
+static int nearKey(const std::string& seedText, int cx, int cz, int r, const std::string& want) {   // blocks whose key holds `want` within r of (cx, cz)
+  LandSrc L(seedText);
+  for (int z = cz - r; z <= cz + r; z++) for (int x = cx - r; x <= cx + r; x++) for (int y = 1; y < 250; y++) {
+    const BlockId b = L.get(x, y, z); if (!b) continue; const std::string k = key(b);
+    if (k.find(want) != std::string::npos) printf("%s %d %d %d meta %d\n", k.c_str(), x, y, z, L.at(x, z)->getMeta(floormod(x, 16), y, floormod(z, 16)));
+  }
+  return 0;
+}
+static int planeZ(const std::string& seedText, int cx, int cy, int z, int r) {   // the x-y plane at z round (cx, cy): solid blocks (the sails' room)
+  LandSrc L(seedText);
+  for (int y = cy + r; y >= cy - r; y--) { for (int x = cx - r; x <= cx + r; x++) { const BlockId b = L.get(x, y, z);
+      printf("%c", x == cx && y == cy ? '@' : !b ? '.' : reg().tSolid[b] ? '#' : '+'); } printf("  %d\n", y); }
+  for (int y = cy + r; y >= cy - r; y--) for (int x = cx - r; x <= cx + r; x++) { const BlockId b = L.get(x, y, z); if (b && reg().tSolid[b] && (x - cx) * (x - cx) + (y - cy) * (y - cy) <= 17) printf("solid %s at %d %d\n", key(b).c_str(), x, y); }
+  return 0;
+}
+static int millCheck(const std::string& seedText, int cx, int cz, int r) {   // each windmill within r: blocked by the machines' rule? what's in its big sails' circle
+  LandSrc L(seedText); const BlockId W = reg().blockId("windmill");
+  for (int z = cz - r; z <= cz + r; z++) for (int x = cx - r; x <= cx + r; x++) for (int y = 1; y < 250; y++) {
+    if (L.get(x, y, z) != W) continue;
+    const int m = L.at(x, z)->getMeta(floormod(x, 16), y, floormod(z, 16)), ax = m & 3;
+    int rule = 0, big = 0;
+    for (int a = -7; a <= 7; a++) for (int b = -7; b <= 7; b++) {
+      if (!a && !b) continue;
+      const int px = ax == 1 ? x : x + a, pz = ax == 2 ? z : z + a, py = y + b;
+      const BlockId id = L.get(px, py, pz); if (!id || !reg().tSolid[id] || reg().block(id).has("mech")) continue;
+      if (a * a + b * b <= 17) { rule++; printf("  in the rule's circle: %s at %d %d %d\n", key(id).c_str(), px, py, pz); }
+      else if (a * a + b * b <= 49) big++;
+    }
+    printf("windmill %d %d %d meta %d: %s, %d solid in the big sails' reach\n", x, y, z, m, rule ? "BLOCKED" : "turns", big);
+  }
   return 0;
 }
 static int torches(const std::string& seedText, int x0, int z0, int w) {
@@ -712,6 +745,9 @@ int main(int argc, char** argv) {
   if (m == "topcheck" && argc >= 7) return topcheck(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]));
   if (m == "profile" && argc >= 5) return profile(argv[2], atoi(argv[3]), atoi(argv[4]));
   if (m == "plans" && argc >= 6) return plans(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
+  if (m == "near" && argc >= 7) return nearKey(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), argv[6]);
+  if (m == "planez" && argc >= 7) return planeZ(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]));
+  if (m == "millcheck" && argc >= 6) return millCheck(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "torches" && argc >= 6) return torches(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]));
   if (m == "relief" && argc >= 8) return relief(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), argv[7]);
   if (m == "xsect" && argc >= 10) return xsect(argv[2], atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]), atoi(argv[8]), argv[9]);

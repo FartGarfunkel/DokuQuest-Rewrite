@@ -248,6 +248,8 @@ void runStep(App& a, const json& st) {
       std::string nb; static const int D[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
       for (auto& d : D) nb += " " + reg().block(w.getBlock(x + d[0], y, z + d[1])).key + "(m" + std::to_string(w.getMeta(x + d[0], y, z + d[1])) + ")";
       DQ_LOG("probe: %s at %d %d %d meta %d carve %d | +x -x +z -z:%s", k.c_str(), x, y, z, w.getMeta(x, y, z), w.getCarve(x, y, z), nb.c_str());
+      if (Mechanics* M = mechanicsOf(*s->level, p->realm)) for (auto& [mk, n] : M->nodes()) if (n.p == ivec3(x, y, z))
+        DQ_LOG("probe:   machine %s axis %d power %.2f blocked %d speed %.2f", n.kind.c_str(), n.axis, n.power, (int)n.blocked, M->speedAt(x, y, z));
     }
   } else if (op == "select" && p) {
     p->selected = std::clamp(st.value("slot", 0), 0, 8);
