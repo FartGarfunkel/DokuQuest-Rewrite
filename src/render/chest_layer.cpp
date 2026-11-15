@@ -185,7 +185,7 @@ bool isChest(BlockId id) {
   return b.render == Render::Cube && (ends("chest") || (ends("barrel") && b.has("container")));
 }
 
-struct Open { BlockId id = 0; int facing = 0, lidRow = 20; float t = 0, linger = 0; bool settling = false, mine = false; };
+struct Open { BlockId id = 0; int facing = 0, lidRow = 20; float t = 0, linger = 0; bool settling = false, mine = false, listed = false; };   // listed: left out of the mesh (drawn here)
 
 class ChestLayer : public RenderLayer {
 public:
@@ -228,9 +228,9 @@ public:
         }
       }
       std::sort(found.begin(), found.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
-      for (auto& f : found) if ((int)lidOpen.size() < CHEST_HIDE_MAX - 2) lidOpen.push_back(f.second);   // (room kept for the ones in use)
+      for (auto& f : found) if ((int)lidOpen.size() < CHEST_HIDE_MAX - 8) lidOpen.push_back(f.second);   // (room kept for the ones in use)
     }
-    for (const ivec3& q : lidOpen) if (want.size() + 2 <= (size_t)CHEST_HIDE_MAX && chestLidOpen(w, q)) add(q);
+    for (const ivec3& q : lidOpen) if (want.size() + 8 <= (size_t)CHEST_HIDE_MAX && chestLidOpen(w, q)) add(q);
     if (s.level) for (auto& e : s.level->entities()) {
       if (!e || e->removed || e.get() == s.player || !e->isPlayer() || e->realm != s.player->realm) continue;
       const Player* o = static_cast<const Player*>(e.get());
@@ -265,7 +265,13 @@ public:
     }
     // the mesher's list: the ones drawn here (not those settling back into the mesh)
     int n = 0;
-    for (auto& [k, o] : open) if (!o.settling && n < CHEST_HIDE_MAX) { g_chestHidden[n][0] = std::get<0>(k); g_chestHidden[n][1] = std::get<1>(k); g_chestHidden[n][2] = std::get<2>(k); n++; }
+    // yours first (so the one you're using is never crowded out by the lids left open about you), then the rest; only the
+    // ones listed are drawn open here, so a store is never drawn both shut by the mesher and open by this layer
+    for (auto& [k, o] : open) o.listed = false;
+    for (int pass = 0; pass < 2; pass++)
+      for (auto& [k, o] : open) if (!o.settling && !o.listed && (pass == 1 || o.mine) && n < CHEST_HIDE_MAX) {
+        g_chestHidden[n][0] = std::get<0>(k); g_chestHidden[n][1] = std::get<1>(k); g_chestHidden[n][2] = std::get<2>(k); n++; o.listed = true;
+      }
     g_chestHiddenN = n;
   }
   // what's inside, lying in its rows (or on a cabinet's shelves: sim/chest_work.h chestSlotCenter)
@@ -320,6 +326,7 @@ public:
     bool begun = false;
     static const vec3 FRONT[4] = {vec3(0, 0, 1), vec3(1, 0, 0), vec3(0, 0, -1), vec3(-1, 0, 0)};
     for (auto& [k, o] : open) {
+      if (!o.listed && !o.settling) continue;   // (past the list: the mesher still draws it, shut)
       const ivec3 pos(std::get<0>(k), std::get<1>(k), std::get<2>(k));
       if (isCabinetBlock(o.id)) {   // its door swings out on its left edge (as you face it); the shelves inside
         ChestModels& cab = cabinetModels(o.id);

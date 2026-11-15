@@ -10,7 +10,7 @@
 
 namespace dq {
 
-constexpr int CHEST_HIDE_MAX = 8;
+constexpr int CHEST_HIDE_MAX = 32;   // (yours first, then the lids left open about you)
 extern std::atomic<int> g_chestHiddenN;
 extern std::atomic<int> g_chestHidden[CHEST_HIDE_MAX][3];
 inline bool chestHiddenAt(int x, int y, int z) {   // (any thread: the mesher)
