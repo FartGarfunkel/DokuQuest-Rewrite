@@ -938,7 +938,7 @@
      12,
      8.75
     ],
-    "side": "stonecutter_saw",
+    "side": "stonecutter_saw", "spin": true,
     "end": "iron_block",
     "x": "iron_block",
     "tv": 9,
@@ -953,7 +953,7 @@
      14,
      8.75
     ],
-    "side": "stonecutter_saw",
+    "side": "stonecutter_saw", "spin": true,
     "end": "iron_block",
     "x": "iron_block",
     "tv": 9,
@@ -968,7 +968,7 @@
      15,
      8.75
     ],
-    "side": "stonecutter_saw",
+    "side": "stonecutter_saw", "spin": true,
     "end": "iron_block",
     "x": "iron_block",
     "tv": 9,
@@ -983,7 +983,7 @@
      16,
      8.75
     ],
-    "side": "stonecutter_saw",
+    "side": "stonecutter_saw", "spin": true,
     "end": "iron_block",
     "x": "iron_block",
     "tv": 9,

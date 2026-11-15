@@ -483,6 +483,7 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       reach = ps == ShapeKind::Fence ? 7.f : ps == ShapeKind::Wall ? 5.f : 0.f;
     }
     for (auto& box0 : cb) {
+      if (box0.spin) continue;   // (turned by a render layer: the stonecutter's blade, render/station_work_layer.cpp)
       ShapeBox box = box0;
       if (reach > 0 && (box.kind == 1 || T.cloth == 2)) { box.b[2] += reach; box.b[5] += reach; }
       rotBox(box, rf);
@@ -514,7 +515,7 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   }
   static int chainTile = -2; if (chainTile == -2) chainTile = R.tile("chain");
   for (auto& b0 : *boxes) {
-    if (!b0.only) continue;   // a box that collides and picks but a render layer draws (a placed mob head: its stone box
+    if (!b0.only || b0.spin) continue;   // a box that collides and picks but a render layer draws (or turns: the stonecutter's blade) (a placed mob head: its stone box
                               // fought the head's own faces, the flicker round placed skulls)
     ShapeBox b = b0; if (rf) rotBox(b, rf);
     bool topLink = chainTile >= 0 && b.side == chainTile && b.b[4] >= 15.5f;

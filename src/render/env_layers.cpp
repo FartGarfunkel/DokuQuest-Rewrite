@@ -18,6 +18,9 @@
 #include <imgui.h>
 
 namespace dq {
+std::vector<glm::ivec4> g_saws;   // (sawsNear)
+const std::vector<glm::ivec4>& sawsNear() { return g_saws; }
+
 
 namespace {
 u32 g_r = 0x1234567u;
@@ -90,7 +93,7 @@ public:
 
 // ---- weather and ambient effects (spawn particles; the particle layer moves and draws them) ----------------
 struct Emitter { i16 x, y, z; u8 kind, meta; float h; };   // x,z chunk-local, y global
-enum EmKind : u8 { EM_TORCH = 1, EM_SOUL_TORCH, EM_FIRE, EM_LAVA, EM_FURNACE, EM_CANDLE, EM_END_ROD, EM_CRYING, EM_SPORE, EM_PORTAL, EM_RS_TORCH, EM_RS_WIRE, EM_RS_ORE, EM_CAMPFIRE, EM_FIREFLY_JAR, EM_BUTTERFLY_JAR, EM_BN_SMOKER, EM_BN_GLOW,
+enum EmKind : u8 { EM_TORCH = 1, EM_SOUL_TORCH, EM_FIRE, EM_LAVA, EM_FURNACE, EM_CANDLE, EM_END_ROD, EM_CRYING, EM_SPORE, EM_PORTAL, EM_RS_TORCH, EM_RS_WIRE, EM_RS_ORE, EM_CAMPFIRE, EM_FIREFLY_JAR, EM_BUTTERFLY_JAR, EM_BN_SMOKER, EM_BN_GLOW, EM_SAW,
                    EM_DRIP_WATER = 32, EM_DRIP_LAVA, EM_DRIP_LEAF, EM_DRIP_HONEY, EM_DRIP_TIP };   // TIP: a stalactite's point
 
 class WeatherFxLayer : public RenderLayer {
@@ -138,6 +141,7 @@ void WeatherFxLayer::buildKinds() {
     else if (rs == "wire") k = EM_RS_WIRE;
     else if (b.key == "redstone_ore_lit") k = EM_RS_ORE;
     else if (b.str("shape") == "campfire" || b.str("shape") == "soul_campfire") k = EM_CAMPFIRE;
+    else if (b.key == "stonecutter") k = EM_SAW;                    // its blade turned by render/station_work_layer.cpp
     else if (b.has("smokes")) k = EM_BN_SMOKER;                        // BetterNether's smoker: a thin column of smoke
     else if (b.has("betternether") && b.light >= 9 && !b.has("hangs")) k = EM_BN_GLOW;   // lucis, jellyfish mushroom: motes of their light
     kinds[b.id] = k;
@@ -436,6 +440,7 @@ void WeatherFxLayer::ambient(GameSession& s, WeatherSystem* W, double step) {
 // what blocks give off: torch flames (each frame), sparks and smoke, fire, lava pops, furnaces, candles,
 // end rods, portals, redstone, drips (game/particles2.js + game/blockfx.js)
 void WeatherFxLayer::emitters(GameSession& s, double dt, double step) {
+  g_saws.clear();
   ParticleSystem& P = particles();
   World& w = s.world(); vec3 pp = s.player->pos;
   WeatherSystem* W = weatherOf(*s.level);
@@ -458,6 +463,7 @@ void WeatherFxLayer::emitters(GameSession& s, double dt, double step) {
         float x = c->cx * 16.f + e.x, z = c->cz * 16.f + e.z, y = e.y;
         if (std::abs(x - pp.x) > 32 || std::abs(z - pp.z) > 32 || std::abs(y - pp.y) > 24) continue;
         u8 kind = e.kind, meta = e.meta;
+        if (kind == EM_SAW) { g_saws.push_back(glm::ivec4((int)x, (int)y, (int)z, meta)); continue; }
         if (kind == EM_TORCH || kind == EM_SOUL_TORCH) {
           // the flame on its tip, burning all the time: it flickers between two shapes and breathes in size
           float tx = x + 0.5f, tz = z + 0.5f, ty = y + 10 / 16.f;

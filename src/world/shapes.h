@@ -53,6 +53,7 @@ struct ShapeBox {
   int faces[6] = {-1, -1, -1, -1, -1, -1};   // per-face tiles (+x -x +y -y +z -z) when hasFaces
   bool hasFaces = false;
   bool nocol = false;                   // drawn but nothing to bump into
+  bool spin = false;                    // a part that turns (the stonecutter's blade): left out of the world's mesh, a render layer turns it (the item keeps it)
   u8 only = 63;                         // faces drawn (bit per face)
   float tu = 0;                         // shape boxes: shift the picture across (with tv: down); uvT swaps its axes
   bool uvT = false;

@@ -2,8 +2,13 @@
 // (rain, snow, lightning, sand, ash), ambient effects (torch flames, smoke, drips, leaves, fireflies,
 // wind) and the particle engine. registerEnvironmentLayers() is called once from App::run (client start).
 #pragma once
+#include <vector>
+#include <glm/glm.hpp>
 
 namespace dq {
 void registerEnvironmentLayers();
-void registerDynLights();   // dyn_light.cpp: carried torches, glowing drops, lit TNT, fireballs light the world (called by registerEnvironmentLayers)
+void registerDynLights();
+// the stonecutters about you (x, y, z, meta), found with the torches and fires each frame: their blades are turned by
+// render/station_work_layer.cpp (data/shapes.json "spin")
+const std::vector<glm::ivec4>& sawsNear();   // dyn_light.cpp: carried torches, glowing drops, lit TNT, fireballs light the world (called by registerEnvironmentLayers)
 } // namespace dq
