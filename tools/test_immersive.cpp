@@ -300,6 +300,39 @@ int main(int argc, char** argv) {
     check(tactileChestOutline(w, at, ol) && ol.size() == 2 && ol[1].second.y > at.y + 1.3f, "open, its outline takes in the lid standing up over it");
   }
 
+  printf("[a large chest: each half worked as Tactile's chest, its own 27]\n");
+  {
+    World& w = im.lv->world();
+    ivec3 A(4, im.Y + 1, 18), B(5, im.Y + 1, 18), hs[2];
+    int n = 0;
+    for (u8 m = 0; m < 4 && n != 2; m++) { w.setBlock(A.x, A.y, A.z, reg().blockId("chest"), m); w.setBlock(B.x, B.y, B.z, reg().blockId("chest"), m); n = chestHalves(w, A, hs); }
+    check(n == 2, "two chests side by side make a large one");
+    check(tactileChest(w, A) && tactileChest(w, B), "both halves are worked as Tactile's chest");
+    const ivec3 second = hs[1];
+    const int f = tactileFacing(w, second);
+    auto aimAt = [&](ivec3 at, vec3 north) {
+      const vec3 eye = vec3(at) + tactileFromNorth(f, vec3(0.5f, 1.62f, -0.5f)), tgt = vec3(at) + tactileFromNorth(f, north);
+      return std::make_pair(eye, glm::normalize(tgt - eye));
+    };
+    ItemStack none;
+    auto [e0, d0] = aimAt(second, vec3(0.5f, 0.5f, 0.3f));
+    tactileChestUse(*im.lv, *im.P, w, second, e0, d0, none, false, false);
+    check(chestLidOpen(w, A) && chestLidOpen(w, B), "opening one half opens both lids");
+    check(w.blockEntity(A.x, A.y, A.z) && w.blockEntity(B.x, B.y, B.z), "both halves have their record (both lids are drawn)");
+    ItemStack held("apple", 3);
+    auto [e1, d1] = aimAt(second, vec3(2.4f / 16, 9.5f / 16, 9.5f / 16));
+    check(tactileChestAim(w, second, e1, d1).what == TactileChestAim::Tray, "aimed into the second half's tray");
+    tactileChestUse(*im.lv, *im.P, w, second, e1, d1, held, false, false);
+    const std::vector<ItemStack> all = chestItems(*im.lv, *im.P, w, A);
+    int inFirst = 0, inSecond = 0;
+    for (int i = 0; i < (int)all.size(); i++) if (all[i].id == "apple") (i < (int)all.size() / 2 ? inFirst : inSecond) += all[i].n;
+    check(all.size() == 54 && inSecond == 1 && inFirst == 0 && held.n == 2, "put into the second half, it lies in that half's 27 (" + std::to_string(inFirst) + " / " + std::to_string(inSecond) + ")");
+    check(chestHalfItems(*im.lv, im.P, w, second)[0].id == "apple", "and is drawn in that half's tray");
+    check(tactileChestTake(*im.lv, *im.P, w, second, e1, d1, true), "taken back out of the second half");
+    int left = 0; for (auto& s : chestItems(*im.lv, *im.P, w, A)) if (s.id == "apple") left += s.n;
+    check(left == 0, "and the large chest is empty again");
+  }
+
   printf("[Tactile's still: its recipe book's pages]\n");
   {
     World& w = im.lv->world();

@@ -72,6 +72,15 @@ public:
       if (c.open && s.target.hit && s.target.block == at) { const TactileChestAim a = barrel ? tactileBarrelAim(w, at, eye, dir) : tactileChestAim(w, at, eye, dir); if (a.what == TactileChestAim::Tray && c.page * 15 + a.slot < 27) c.hover = a.slot; }
       list.push_back(c);
     });
+    // a large chest's half with no record of its own yet (never opened by itself): drawn as its partner is, empty
+    for (size_t i = 0, n = list.size(); i < n; i++) {
+      if (list[i].barrel) continue;
+      ivec3 hs[2]; if (chestHalves(w, list[i].at, hs) != 2) continue;
+      const ivec3 o = hs[0] == list[i].at ? hs[1] : hs[0];
+      if (w.blockEntity(o.x, o.y, o.z)) continue;
+      Chest c; c.at = o; c.facing = tactileFacing(w, o); c.open = chestLidOpen(w, o); c.page = 0; c.press[0] = c.press[1] = 0; c.L = tactileLight(w, o);
+      list.push_back(c);
+    }
     // chests with no record yet: their lid still drawn (shut)
     if (list.empty()) return;
     VoxelRenderer& VR = voxelRenderer();

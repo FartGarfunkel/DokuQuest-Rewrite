@@ -147,10 +147,24 @@ void tactileCabinetSort(Level& lv, Player& p, World& w, ivec3 at) {
 
 bool tactileChest(World& w, ivec3 at) {
   const std::string& k = reg().block(w.getBlock(at.x, at.y, at.z)).key;
-  if (k != "chest" && k != "ender_chest" && k != "party_chest" && !(k.size() > 13 && k.compare(k.size() - 13, 13, "painted_chest") == 0)) return false;   // (the plain, the painted, the ender and the party chest)
-  ivec3 hs[2];
-  return chestHalves(w, at, hs) <= 1;   // (a large chest stays ours: Tactile's is one block)
+  return k == "chest" || k == "ender_chest" || k == "party_chest" || (k.size() > 13 && k.compare(k.size() - 13, 13, "painted_chest") == 0);   // (the plain, the painted, the ender and the party chest)
+  // (a large chest: each half worked as a coffre of its own, its own 27 of the 54, its own tray, page, buttons and sheet; the
+  // two lids go up and down together: sim/chest_work.h setChestLidOpen)
 }
+namespace {
+// the 27 of the half at `at` (a large chest's other half keeps its own), and the whole written back
+struct HalfItems {
+  Level& lv; Player& p; World& w; ivec3 at; std::vector<ItemStack> all; int off = 0; json items = json::array();
+  HalfItems(Level& lv, Player& p, World& w, ivec3 at) : lv(lv), p(p), w(w), at(at), all(chestItems(lv, p, w, at)) {
+    ivec3 hs[2]; if (chestHalves(w, at, hs) == 2 && hs[1] == at) off = (int)all.size() / 2;
+    for (int i = 0; i < SLOTS; i++) items.push_back(off + i < (int)all.size() && !all[off + i].empty() ? all[off + i].toJson() : json());
+  }
+  ~HalfItems() {
+    for (int i = 0; i < SLOTS && off + i < (int)all.size(); i++) all[off + i] = ItemStack::fromJson(items[i]);
+    chestSetItems(lv, p, w, at, all);
+  }
+};
+}  // namespace
 
 TactileChestAim tactileChestAim(World& w, ivec3 at, vec3 eye, vec3 dir) {
   TactileChestAim r;
@@ -227,12 +241,13 @@ bool tactileChestUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 di
   json* e = w.blockEntity(at.x, at.y, at.z, true);   // (its page and buttons; what's in it: chestItems, an ender chest's your own)
   if (!e) return false;
   if (!e->is_object()) *e = json::object();
-  if (a.what == TactileChestAim::Shut) { containerEntity(w, at.x, at.y, at.z); setChestLidOpen(w, at, true); sfxAt(lv, "chest", c); return true; }
-  json itemsArr = json::array(); for (const ItemStack& q : chestItems(lv, p, w, at)) itemsArr.push_back(q.empty() ? json() : q.toJson());
-  while (itemsArr.size() < (size_t)SLOTS) itemsArr.push_back(nullptr);
-  json& items = itemsArr;
-  struct WriteBack { Level& lv; Player& p; World& w; ivec3 at; json& items; ~WriteBack() {
-    std::vector<ItemStack> v; for (auto& j : items) v.push_back(ItemStack::fromJson(j)); chestSetItems(lv, p, w, at, v); } } wb{lv, p, w, at, items};
+  if (a.what == TactileChestAim::Shut) {   // (a large chest: both halves' records, so both lids are drawn up)
+    ivec3 hs[2]; const int n = chestHalves(w, at, hs);
+    for (int i = 0; i < n; i++) containerEntity(w, hs[i].x, hs[i].y, hs[i].z);
+    containerEntity(w, at.x, at.y, at.z); setChestLidOpen(w, at, true); sfxAt(lv, "chest", c); return true;
+  }
+  HalfItems half(lv, p, w, at);
+  json& items = half.items;
   const int page = pageOf(*e);
   auto changed = [&] { w.blockEntityChanged(at.x, at.y, at.z); };
   if (a.what == TactileChestAim::Sort) {   // (doSort; sneaking: every stack of both pages merged)
@@ -281,10 +296,8 @@ bool tactileChestTake(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 d
   json* e = w.blockEntity(at.x, at.y, at.z, true);
   if (!e) return false;
   if (!e->is_object()) *e = json::object();
-  json items = json::array(); for (const ItemStack& q : chestItems(lv, p, w, at)) items.push_back(q.empty() ? json() : q.toJson());
-  while (items.size() < (size_t)SLOTS) items.push_back(nullptr);
-  struct WriteBack { Level& lv; Player& p; World& w; ivec3 at; json& items; ~WriteBack() {
-    std::vector<ItemStack> v; for (auto& j : items) v.push_back(ItemStack::fromJson(j)); chestSetItems(lv, p, w, at, v); } } wb{lv, p, w, at, items};
+  HalfItems half(lv, p, w, at);
+  json& items = half.items;
   const int page = pageOf(*e), k = page * PAGE + a.slot;
   if (k >= SLOTS) return false;
   ItemStack s = ItemStack::fromJson(items[k]);
