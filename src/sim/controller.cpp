@@ -930,8 +930,15 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   }
   // crouched, any item that isn't a block is set down on top of what you look at: the ground, a furnace, a table, a chest
   // (Vintage Story's way) -- before the item's own use or the block's. Items whose crouched use is aimed at the block keep it.
-  if (!fromOff && !repeat && p.sneaking && hit && hit->normal.y == 1 && def && def->block.empty() && !te && !R.block(hit->id).has("pile")
-      && !isCampfire(hit->id) && !R.block(hit->id).has("table") && !R.block(hit->id).has("trough")) {   // (food on a campfire cooks; a crafting table's top is its grid)
+  // (aimed at a side, it's set down on the floor in front of that side, when there's floor there)
+  RayHit downHit = hit ? *hit : RayHit();
+  if (hit && hit->normal.y == 0) {
+    const ivec3 c = hit->block + hit->normal, under = c - ivec3(0, 1, 0);
+    const BlockId cc = w.getBlock(c.x, c.y, c.z), ub = w.getBlock(under.x, under.y, under.z);
+    if ((cc == AIR || (R.tReplaceable[cc] && !R.tLiquid[cc])) && R.tSolid[ub]) { downHit.block = under; downHit.id = ub; downHit.normal = ivec3(0, 1, 0); }
+  }
+  if (!fromOff && !repeat && p.sneaking && hit && downHit.normal.y == 1 && def && def->block.empty() && !te && !R.block(downHit.id).has("pile")
+      && !isCampfire(downHit.id) && !R.block(downHit.id).has("table") && !R.block(downHit.id).has("trough")) {   // (food on a campfire cooks; a crafting table's top is its grid)
     // tools (tilling, stripping, carving...) and items whose crouched use is their own keep it; a tool with nothing to act on is
     // still set down further on, as ever
     bool aimed = false;
@@ -939,7 +946,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     if (def->has("hammer") && immersive(lv)) aimed = true;   // (a stone anvil, smithing)
     for (const char* k : {"bucket", "igniter", "plants", "bonemeal", "summon", "summonWand", "paintbrush", "cart", "boat", "disc", "backpack", "bottle", "quiver", "lead", "enderEye"}) if (def->has(k)) aimed = true;
     if (held.id == "glass_bottle" || held.id == "ender_eye" || held.id == "lead" || held.id == "quiver" || held.id == "golden_quiver") aimed = true;
-    if (!aimed && held.id != "firestarter" && putDown(*hit, held)) return;
+    if (!aimed && held.id != "firestarter" && putDown(downHit, held)) return;
   }
   if (!fromOff && !repeat && te) for (auto& h : hooks().useEntity) if (h(*this, *te, held.empty() ? nullptr : &held, def)) return;
   // Carry On: sneak + use with an empty hand picks up containers, stations and animals

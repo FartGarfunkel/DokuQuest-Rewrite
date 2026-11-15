@@ -279,7 +279,7 @@ bool magicItemUse(Level& lv, Player& p, const std::string& key, ivec3 at, int fa
     if (b.has("shelf") || b.has("bookcase") || b.has("pile") || b.has("rack") || b.has("trough") || b.str("furniture") == "table" || b.key == "brewing_stand") return true;
   }
   // crouched on the top of a block: set it down there (sim/controller.cpp putDown), the ground, a table, a counter
-  if (face == 2 && p.sneaking && (potionInfo(key) || d->has("xpBottle"))) return true;
+  if (face >= 0 && p.sneaking && (potionInfo(key) || d->has("xpBottle"))) return true;   // (aimed at any face: set down, never drunk)
   if (d->has("tome")) { learnTome(lv, p, h); return false; }
   if (key == "spell_scroll") { if (!readScroll(lv, p, h)) lv.fx->message(p.id, "The scroll's writing has faded", "warn"); return false; }
   if (!p.sneaking && castWithWeapon(lv, p)) return false;   // a sword or axe: the left hand casts
