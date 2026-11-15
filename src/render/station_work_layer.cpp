@@ -2,7 +2,10 @@
 // (ui/cinematic.h): the two pieces lifted to the wheel and stroked on it, the stone slid into the saw and the pieces out
 // the other side, the shapes it cuts into on a dial over the blade (Cinematic Interactions' GrindstoneStation /
 // StonecutterStation)
+#include "assets/local_models.h"
 #include "render/item_layers.h"
+#include "render/env_layers.h"
+#include "assets/tileset.h"
 #include "render/be_scan.h"
 #include "client/app.h"
 #include "client/session.h"
@@ -102,6 +105,44 @@ public:
     drawTileBox(cd, W, vec3(-6, -4, -6), vec3(6, 4, 6), round, disc, disc, light);
     cd.end();
   }
+  // the stonecutter's blade: a toothed disc of the saw's own steel (its picture's colours), a dark hub and three slots that
+  // show it turning; radius 5.5/16 on the axle 10.5/16 up, its lower half in the table
+  static constexpr int SAW_R = 11;
+  VoxelMeshGL sawGl; bool sawBuilt = false;
+  const VoxelMeshGL& sawBlade(GameSession& s) {
+    if (sawBuilt) return sawGl;
+    sawBuilt = true;
+    const TileSet& ts = s.app.tiles;
+    vec3 steel(150, 152, 158); int n = 0; vec3 sum(0);
+    if (auto it = ts.index.find("stonecutter_saw"); it != ts.index.end() && it->second >= 0 && it->second < ts.count) {
+      const u8* px = ts.tile(it->second);
+      for (int i = 0; i < ts.size * ts.size; i++) if (px[i * 4 + 3] > 128) { sum += vec3(px[i * 4], px[i * 4 + 1], px[i * 4 + 2]); n++; }
+      if (n) steel = sum / (float)n * 0.74f;   // (the picture is lit from above; the blade turns through shade)
+    }
+    const int D = SAW_R * 2 + 1;
+    VoxelGrid g(ivec3(D, D, 3));
+    for (int j = 0; j < D; j++) for (int i = 0; i < D; i++) {
+      const float dx = i - SAW_R, dy = j - SAW_R, d = std::sqrt(dx * dx + dy * dy), a = std::atan2(dy, dx);
+      if (d > SAW_R + 0.5f) continue;
+      float k = 1.f;
+      if (d > SAW_R - 1.5f) {   // the teeth: sixteen round the rim
+        const float ph = a / (2 * PI) * 16; if (ph - std::floor(ph) > 0.55f) continue;
+        k = 1.18f;
+      } else if (d < 2.2f) k = 0.45f;   // the hub
+      else {
+        bool slot = false;
+        for (int s3 = 0; s3 < 3; s3++) { float da = std::remainder(a - s3 * 2 * PI / 3, 2 * PI); if (d > 4.5f && d < 7.5f && std::fabs(da) < 0.2f) slot = true; }
+        if (slot) continue;
+        k = 0.92f + 0.08f * std::cos(d * 1.3f);
+      }
+      for (int z = 0; z < 3; z++) {
+        if (d < 2.2f || z == 1 || d < SAW_R - 1.5f) g.set(i, j, z, voxRGBA((int)(steel.r * k), (int)(steel.g * k), (int)(steel.b * k)));
+      }
+    }
+    VoxelMeshData md; buildVoxelMesh(g, md);
+    sawGl.upload(md);
+    return sawGl;
+  }
   void drawOpaque(GameSession& s, const FrameCtx& f) override {
     if (!s.player) return;
     { PairView gv; const bool on = cinematicPairView(gv); grindstone(s, f, on ? &gv : nullptr); }
@@ -113,6 +154,23 @@ public:
     FireView fv;
     InscribeView insV; const bool inscribeOn = cinematicInscribeView(insV);
     const bool pairOn = cinematicPairView(pv), cutOn = cinematicCutView(cv), jukeOn = cinematicJukeView(jv), fireOn = cinematicFireView(fv);
+    // the stonecutters' blades, turning on their axles (left out of the world's mesh: data/shapes.json "spin")
+    if (!sawsNear().empty()) {
+      const VoxelMeshGL& blade = sawBlade(s);
+      if (blade.ready()) for (const glm::ivec4& q : sawsNear()) {
+        const vec3 c = vec3(q.x, q.y, q.z) + vec3(0.5f, 10.5f / 16, 0.5f);
+        const vec3 rel = f.cam.rel(glm::dvec3(c));
+        if (!f.cam.frustum.sphere(rel, 0.5f)) continue;
+        begin();
+        const u8 l = w.getLight(q.x, q.y, q.z);
+        mat4 m = glm::translate(mat4(1), rel);
+        m = glm::rotate(m, -(float)(q.w & 3) * PI / 2, vec3(0, 1, 0));   // (its facing, as the shape turns: rotBox)
+        m = glm::rotate(m, -(float)f.time * 9.f, vec3(0, 0, 1));
+        m = glm::scale(m, vec3(1.f / 32));
+        m = glm::translate(m, -vec3(SAW_R + 0.5f, SAW_R + 0.5f, 1.5f));
+        VR.draw(blade, m, VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f});
+      }
+    }
     // a record standing up (in a jukebox's slot, on the dial): centred at c, facing along yaw, turned spin about its face
     auto record = [&](const std::string& id, vec3 c, float yaw, float spin, float size, VoxelLight L) {
       const VoxelModel& im = itemModel(id);
@@ -220,7 +278,18 @@ public:
       if (cutwork) { begin(); drawCutHeap(VR, f, cutWorkItem(w, at), cutLiePos(w, at), right, out, yaw, L); return; }
       const std::string st = pairStationAt(w, at);
       const std::vector<ItemStack> v = pairWorkItems(w, at);
-      for (int k = 0; k < 2; k++) heap(v[k], pairLiePos(w, at, k), yaw + (k ? -0.35f : 0.35f) * (st == "cartography" && k == 0 ? 0.f : 1.f), pairLieSize(st, k), L, right);
+      for (int k = 0; k < 2; k++) heap(v[k], pairLieOnModel(w, at, k), yaw + (k ? -0.35f : 0.35f) * (st == "cartography" && k == 0 ? 0.f : 1.f), pairLieSize(st, k), L, right);
+      // Tactile Stations: what it'll make, turning over the work, faint (Tactile Blocks' preview) — strike it to make it
+      if (s.app.settings.tactileStations && s.level && (!v[0].empty() || !v[1].empty()) && glm::distance(vec3(at) + vec3(0.5f), s.player->pos) < 8.f) {
+        const StationResult r = pairWorkResult(*s.level, w, at);
+        if (r.ok && !r.out.empty()) if (const VoxelModel& im = itemModel(stackModelKey(r.out)); im.ready()) {
+          begin();
+          mat4 m = glm::translate(mat4(1), f.cam.rel(glm::dvec3(vec3(at) + vec3(0.5f, 1.38f + 0.03f * std::sin(t * 2.f), 0.5f))));
+          m = glm::rotate(m, t * 0.9f, vec3(0, 1, 0));
+          m = glm::scale(m, vec3(im.kind == VoxelModel::Block ? 0.22f : 0.36f));
+          VR.draw(im.gl, m * im.matrix(), VoxelLight{L.sky, std::max(L.block, 0.6f)}, vec4(0.75f, 0.9f, 1.f, 0.35f), itemGlints(r.out) ? 1.f : 0.f);
+        }
+      }
     });
     if (pairOn && !pairStationAt(w, pv.at).empty()) { begin(); drawPairScene(w, f, pv, t, lay, heap); }
     if (jukeOn && reg().block(w.getBlock(jv.at.x, jv.at.y, jv.at.z)).has("jukebox")) {   // the jukebox's scene: the dial of records, the one moving
@@ -311,7 +380,7 @@ public:
     const VoxelLight L{(l >> 4) / 15.f, (l & 15) / 15.f};
     vec3 out, right; stationWorkFrame(w, at, out, right);
     const float yaw = std::atan2(out.x, out.z);
-    const vec3 lying[2] = {pairLiePos(w, at, 0), pairLiePos(w, at, 1)};
+    const vec3 lying[2] = {pairLieOnModel(w, at, 0), pairLieOnModel(w, at, 1)};
     const float sz[2] = {pairLieSize(st, 0), pairLieSize(st, 1)};
     const float tilt[2] = {st == "cartography" ? 0.f : 0.35f, -0.35f};
     if (v.t < 0) {   // at rest: the one under the mouse rises a little

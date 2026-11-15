@@ -9,6 +9,7 @@
 #include "render/chest_layer.h"
 #include "assets/tileset.h"
 #include "assets/pack_models.h"
+#include "assets/local_models.h"
 #include "common/noise.h"
 #include <cstring>
 #include <mutex>
@@ -375,6 +376,16 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
     emitPackModel(c, dst, FM->back, at, Q[fd], sk, burning ? 15.f : bl, markCubyz(packCubyzLight(G)), Mat::NoRelief);
     return;
   }
+  // a station drawn from an imported model (assets/local_models.h: Tactile Blocks' smithing table, cartography desk), turned
+  // with the way it faces; lit by the brightest air round it (its own cell counts as solid)
+  if (const StationModel* SM = stationModel(id)) {
+    static const int DX[5] = {0, 1, 0, -1, 0}, DZ[5] = {1, 0, -1, 0, 0}, DY[5] = {0, 0, 0, 0, 1};
+    LightRgb L = rgbAt(c, x, y + 1, z);
+    for (int k = 0; k < 4; k++) { const LightRgb Ls = rgbAt(c, x + DX[k], y + DY[k], z + DZ[k]); for (int i = 0; i < 3; i++) { L.s[i] = std::max(L.s[i], Ls.s[i]); L.b[i] = std::max(L.b[i], Ls.b[i]); } }
+    const float sk = (float)(max3u(L.s[0], L.s[1], L.s[2]) >> 4), bl = (float)(max3u(L.b[0], L.b[1], L.b[2]) >> 4);
+    emitPackModel(c, dst, SM->model, vec3((float)x, (float)y, (float)z), SM->turn[T.hasFront ? meta & 3 : 0], sk, bl, markCubyz(packCubyzLight(L)), Mat::Cutout | Mat::NoRelief);
+    return;
+  }
   // a large chest: two of the same, side by side, facing the same way — each drawn as its half of one (assets/pack_models.h)
   const DoubleChestTiles* DC = T.hasFront ? doubleChestFor(faces[4]) : nullptr;
   int dcHalf = -1;
@@ -386,7 +397,7 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
     const FaceDef& F = FACES[f];
     BlockId nb = c.at(x + F.n[0], y + F.n[1], z + F.n[2]);
     u8 nmeta = c.metaAt(x + F.n[0], y + F.n[1], z + F.n[2]);
-    if (R.tOpaque[nb] && !c.carveAt(x + F.n[0], y + F.n[1], z + F.n[2])) continue;   // carved neighbour: face exposed, draw it
+    if (R.tOpaque[nb] && !c.carveAt(x + F.n[0], y + F.n[1], z + F.n[2]) && !stationModelOpen(nb)) continue;   // carved neighbour (or a station drawn from a model): face exposed, draw it
     // a top under a shaped block standing on all of it (a stair, a bottom slab, a path, a carpet): out of sight, and its
     // relief poked out round the shape's foot (teal grass bumps along the bottom of every path stair)
     // (not under a shape that's never meshed: piles and pit kilns draw their own contents, so the ground must show)
@@ -676,7 +687,9 @@ static void emitPackModel(MeshCtx& c, std::vector<ChunkVertex>& dst, const PackM
       if (fc.tile < 0) continue;
       const float u0 = fc.uv.x / 16, v0 = fc.uv.y / 16, u1 = fc.uv.z / 16, v1 = fc.uv.w / 16;
       const float sh = b.shade ? SHADE[f] : 1.f;
-      MV v[4] = {{F[f][0], {u0, v1}, sk, bl, sh, 0, lit}, {F[f][1], {u1, v1}, sk, bl, sh, 0, lit}, {F[f][2], {u1, v0}, sk, bl, sh, 0, lit}, {F[f][3], {u0, v0}, sk, bl, sh, 0, lit}};
+      const vec2 uv[4] = {{u0, v1}, {u1, v1}, {u1, v0}, {u0, v0}};
+      const int r = ((fc.rot / 90) % 4 + 4) % 4;   // (the picture turned on the face: each corner takes the next one's)
+      MV v[4] = {{F[f][0], uv[(0 + r) & 3], sk, bl, sh, 0, lit}, {F[f][1], uv[(1 + r) & 3], sk, bl, sh, 0, lit}, {F[f][2], uv[(2 + r) & 3], sk, bl, sh, 0, lit}, {F[f][3], uv[(3 + r) & 3], sk, bl, sh, 0, lit}};
       c.quad(dst, v, fc.tile, NORMAL_NONE, mat);
     }
   }

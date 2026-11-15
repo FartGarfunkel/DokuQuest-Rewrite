@@ -1,4 +1,5 @@
 #include "assets/pack_models.h"
+#include "assets/local_models.h"
 #include "client/app.h"
 #include "render/ore_overlay.h"
 #include "ui/book_ui.h"
@@ -159,6 +160,7 @@ void App::reloadTiles() {
   applyUserTiles(tiles);   // the Texture Studio's pictures, over any pack
   paintChestTiles(tiles);  // painted chests and the party chest from the chest's own pictures (assets/pack_models.h)
   buildFurnaceModels(tiles);   // furnaces, smokers, blast furnaces with their openings hollowed (assets/pack_models.h)
+  loadStationModels(tiles);    // stations drawn from imported models, local only (assets/local_models.h)
   holidayTiles(tiles);     // December's wrapped chests
   loadLocalTiles(tiles);   // imported magic's particles (local only: tools/port/irons_fx_import.py)
   buildWeatherSprites(tiles);   // render/weather_sprites.h: rain and snow from the pack, or drawn

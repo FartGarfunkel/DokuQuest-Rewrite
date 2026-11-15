@@ -6,13 +6,14 @@
 #pragma once
 #include <functional>
 #include "common/common.h"
+#include "common/fs.h"
 #include <memory>
 #include <unordered_map>
 
 namespace dq {
 class TileSet; class PackFS;
 
-struct PackModelFace { int tile = -1; vec4 uv{0, 0, 16, 16}; };   // uv in the pack's 0..16 units
+struct PackModelFace { int tile = -1; vec4 uv{0, 0, 16, 16}; int rot = 0; };   // uv in the pack's 0..16 units; rot: the picture turned (degrees, clockwise)
 struct PackModelBox {
   vec3 from{0}, to{16};
   int rotAxis = -1; float rotAngle = 0; vec3 rotOrigin{8};   // axis 0 x, 1 y, 2 z (-1 none); degrees
@@ -25,6 +26,9 @@ struct PackModel { std::vector<PackModelBox> boxes; };
 // the pack's models for these blocks (by model name, e.g. "torch", "wall_torch"); their textures added to the tiles
 void loadPackModels(TileSet& ts, const PackFS& P, const std::vector<std::string>& names);
 const PackModel* packModel(const std::string& name);   // null: none (draw the block the game's own way)
+// a Blockbench block model's boxes (its "elements"), each texture it names a tile by tileOf (the model's own "textures"
+// resolved, "#name" references followed)
+PackModel parseBlockModel(const json& j, const std::function<int(const std::string&)>& tileOf);
 
 // random looks of a block's picture (the pack's assets/dokuquest/variants.json: picture -> [[picture, weight]...], the
 // picture itself among them): the mesher picks one per block by where it is. baseTiles: the pack picture -> our tile.

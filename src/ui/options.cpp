@@ -160,6 +160,7 @@ private:
           if (kit.cycle("Difficulty", &cur, {"Peaceful", "Easy", "Normal", "Hard"}, 2, "This world's difficulty. Peaceful: no monsters appear on their own.")) d = DIFFS[cur];
         }
         if (kit.toggle("View Bobbing", &s.viewBob, D.viewBob, "The view sways as you walk.")) applyNow = true;
+        if (kit.toggle("Tactile Stations", &s.tactileStations, D.tactileStations, "The grindstone and the smithing, loom, fletching and cartography tables are worked right in the world: use lays what's in your hand on the spot you point at (an empty hand takes it back), what it'll make shows over it, and striking it does the work (a hammer on the smithing table). Sneak + use opens the station's scene.")) applyNow = true;
         if (kit.toggle("Leave Chests Open", &s.leaveChestsOpen, D.leaveChestsOpen, "Using a chest or barrel lifts its lid, and it stays up with what's inside in view. Use it again to work in it; use its lid (the back) to shut it.")) applyNow = true;
         if (kit.toggle("Pause on Lost Focus", &s.pauseOnLostFocus, D.pauseOnLostFocus, "Opens the pause menu a moment after this window is no longer the one in front. A world shared with others keeps going.")) applyNow = true;
         { static const char* v[] = {"auto", "vertical", "horizontal"}; int cur = indexOfStr(v, 3, s.split);

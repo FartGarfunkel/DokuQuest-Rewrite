@@ -4,6 +4,7 @@
 // working hand goes over the square you aim at (0.075 above the top with something in it, 0.045 without, held back
 // 0.075 along the reach), dips 0.06 as it sets a piece down (a 0.22 s tap), and the left hand takes the squares well to
 // the left. They follow on springs (17 working, 12 at rest). What you're working with is in the working hand.
+#include "assets/local_models.h"
 #include "client/session.h"
 #include "client/app.h"
 #include "render/item_layers.h"
@@ -106,7 +107,7 @@ public:
       PairView pv;
       if (cinematicPairView(pv) && pv.t >= 0 && pv.t < pairBeats(pv.kind).length) {
         const PairBeats B = pairBeats(pv.kind);
-        const vec3 lying[2] = {pairLiePos(s.world(), pv.at, 0), pairLiePos(s.world(), pv.at, 1)};
+        const vec3 lying[2] = {pairLieOnModel(s.world(), pv.at, 0), pairLieOnModel(s.world(), pv.at, 1)};
         auto hold = [&](int k) { return pairHeldPos(pv, k, lying) + side * 0.07f + right * (k ? -0.05f : 0.05f) + vec3(0, HAND_Y + 0.03f, 0); };
         const float back = (float)std::clamp((pv.t - B.letGo) / std::max(0.05, B.length - B.letGo), 0.0, 1.0);
         if (pv.kind == 6 || (pv.kind == 10 && pv.t < B.contact + 0.1)) for (int k = 0; k < 2; k++) { const vec3 h = hold(k); target[k] = h + (rest[k] - h) * back; }   // (both)

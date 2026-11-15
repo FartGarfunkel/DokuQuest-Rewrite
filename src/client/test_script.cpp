@@ -239,6 +239,16 @@ void runStep(App& a, const json& st) {
     if (st.value("kind", "boat") == "cart") v = placeCart(*s->level, p->realm, "minecart", b.x, b.y, b.z, 0);
     else v = static_cast<Vehicle*>(spawnBoat(*s->level, p->realm, st.value("boat", "rowboat"), vec3(b) + vec3(0.5f, 0.6f, 0.5f), p->yaw));
     if (v) v->mount(*s->level, *p);
+  } else if (op == "probe" && s && p) {   // probe{r, key}: blocks whose key holds "key" within r of you, each with what's round it (meta, neighbours)
+    const int r = st.value("r", 8); const std::string want = st.value("key", "torch");
+    World& w = s->world(); const ivec3 me(glm::floor(p->pos));
+    for (int x = me.x - r; x <= me.x + r; x++) for (int y = me.y - r; y <= me.y + r; y++) for (int z = me.z - r; z <= me.z + r; z++) {
+      const BlockId id = w.getBlock(x, y, z); if (!id) continue;
+      const std::string& k = reg().block(id).key; if (k.find(want) == std::string::npos) continue;
+      std::string nb; static const int D[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+      for (auto& d : D) nb += " " + reg().block(w.getBlock(x + d[0], y, z + d[1])).key + "(m" + std::to_string(w.getMeta(x + d[0], y, z + d[1])) + ")";
+      DQ_LOG("probe: %s at %d %d %d meta %d carve %d | +x -x +z -z:%s", k.c_str(), x, y, z, w.getMeta(x, y, z), w.getCarve(x, y, z), nb.c_str());
+    }
   } else if (op == "select" && p) {
     p->selected = std::clamp(st.value("slot", 0), 0, 8);
   } else if (op == "furnace" && s) {   // furnace{x,y,z,in,fuel,out,n,cook,burn}: a furnace's record, filled (render/furnace_layer.cpp screenshots)

@@ -128,6 +128,11 @@ StationResult pairWorkResult(Level& lv, World& w, ivec3 at) {
   return pairResult(lv, st, v[0], v[1]);
 }
 
+bool isStrikingHammer(const ItemStack& s) {
+  if (s.empty() || s.id.find("hammer") == std::string::npos) return false;
+  const ItemDef* d = reg().item(s.id);
+  return d && (d->hasTool || d->has("hammer"));
+}
 bool pairWorkDo(Level& lv, Player& p, World& w, ivec3 at, ItemStack* made) {
   const std::string st = pairStationAt(w, at);
   if (st.empty()) return false;

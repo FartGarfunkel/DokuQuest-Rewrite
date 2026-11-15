@@ -31,6 +31,8 @@ StationResult mapPairResult(Level& lv, const ItemStack& map, const ItemStack& wi
 StationResult pairWorkResult(Level& lv, World& w, ivec3 at);
 // does the work: the result into the bag, the pieces used, any experience given back. false (and why, toasted) if not
 bool pairWorkDo(Level& lv, Player& p, World& w, ivec3 at, ItemStack* made = nullptr);   // made: what was handed over
+// a hammer to strike a station's work with (the smith's, the stone and flint ones...: a tool, not a head or a mould)
+bool isStrikingHammer(const ItemStack& s);
 
 ItemStack cutWorkItem(World& w, ivec3 at);                                                   // the stone on the table
 bool cutWorkPut(Level& lv, Player& p, World& w, ivec3 at, ItemStack& held);                 // all of what's held, if it cuts

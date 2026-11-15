@@ -4,6 +4,7 @@
 #include "sim/dyntree.h"
 #include "sim/weather.h"
 #include "sim/controller.h"
+#include "sim/station_work.h"
 #include "sim/magic.h"
 #include "sim/chest_work.h"
 #include "sim/combat_rpg.h"
@@ -417,6 +418,34 @@ bool PlayerController::blockedByBody(int x, int y, int z) {
 bool deflectFireball(Level& lv, Entity& by, vec3 eye, vec3 look, float reach);   // sim/creature_entities.cpp
 
 // ---- mining / attacking / using --------------------------------------------------------------
+// a blow on a station's work (Tactile Blocks' forge hammer, your own arm's swing): three with a hammer (five without) on the
+// smithing table and the Tool Forge, three strokes on the grindstone, one on the loom, fletching and cartography tables
+bool PlayerController::tactileStrike(const RayHit& hit) {
+  World& w = world();
+  const ivec3 at = hit.block;
+  const std::string st = pairStationAt(w, at);
+  if (st.empty()) return false;
+  const std::vector<ItemStack> v = pairWorkItems(w, at);
+  if (v[0].empty() && v[1].empty()) return false;
+  swingArm();
+  const StationResult r = pairWorkResult(lv, w, at);
+  if (!r.ok) { pairWorkDo(lv, p, w, at); return true; }   // (it says why not)
+  const bool hammer = isStrikingHammer(p.held());
+  const int need = st == "smithing" || st == "forge" ? (hammer ? 3 : 5) : st == "grindstone" ? 3 : 1;
+  if (strikeAt != at || t - strikeT > 2.5) strikes = 0;
+  strikeAt = at; strikeT = t;
+  const vec3 c = vec3(at) + vec3(0.5f, 1.f, 0.5f);
+  if (++strikes < need) {   // a blow: its ring, its sparks
+    if (st == "smithing" || st == "forge") { sfxAt(lv, "anvil", c); burst(lv, c, "iron_block", 3, 0.5f); }
+    else if (st == "grindstone") { sfxAt(lv, "grind", c); burst(lv, c, "stone", 3, 0.5f); }
+    else sfxMaterial(lv, "wood", "hit", c);
+    return true;
+  }
+  strikes = 0;
+  pairWorkDo(lv, p, w, at);
+  return true;
+}
+
 void PlayerController::interact(float dt, const PlayerInput& in0) {
   PlayerInput inM = in0; const PlayerInput& in = inM;   // (a hand's cast takes its button: see below)
   if (breakCd > 0) breakCd -= dt;
@@ -440,6 +469,14 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
   // a held swing that hit a creature never digs into the ground behind it; in creative a sword never breaks blocks (Minecraft)
   const ToolInfo* ti = heldTool(p);
   bool noDig = fightHold || (p.creative() && ti && ti->type == "sword") || p.mode == "adventure";   // adventure: the world stays as it is
+  // Tactile Stations: a station with work on it is struck, not dug (take what's on it off first to break it)
+  if (tactileStations && target.hit && !te && !pairStationAt(world(), target.block).empty()) {
+    const std::vector<ItemStack> v = pairWorkItems(world(), target.block);
+    if (!v[0].empty() || !v[1].empty()) {
+      noDig = true;
+      if (in.attackPressed && !p.atkMove) tactileStrike(target);
+    }
+  }
   // creative: every fresh click breaks the block it's on at once, however short the click and however soon after the
   // last one (Minecraft's startDestroyBlock); holding repeats every quarter second
   if (p.creative() && in.attackPressed && target.hit && !te && !noDig) {

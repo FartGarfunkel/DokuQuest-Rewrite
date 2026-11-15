@@ -10,6 +10,7 @@
 #include "world/carve_faces.h"
 #include "world/carve_forms.h"
 #include "sim/worldsys.h"
+#include "sim/station_work.h"
 #include <random>
 
 namespace dq {
@@ -705,6 +706,19 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   if (b.has("partyChest")) { swingArm(); sfxUi(lv, p, "chest"); openScreen(lv, p, "container", {{"party", true}, {"pos", {x, y, z}}}); return true; }   // (pos: its lid lifts, the chest scene)
   if (b.has("enderChest")) { swingArm(); sfxUi(lv, p, "chest"); openScreen(lv, p, "container", {{"ender", true}, {"pos", {x, y, z}}}); return true; }
   if (b.has("station")) {
+    // Tactile Stations (Tactile Blocks' way, in your own first person): laid on it and taken off it where you point, the
+    // work done by striking it (tactileStrike); sneak + use for its scene
+    if (tactileStations && !p.sneaking && pairWorkType(b.str("station"))) {
+      if (held && isStrikingHammer(*held)) { tactileStrike(hit); return true; }   // (a hammer strikes, it isn't laid down)
+      const std::vector<ItemStack> v = pairWorkItems(w, hit.block);
+      int slot = 0;   // the spot pointed at: the nearer of the two places things lie
+      if (glm::distance(pairLiePos(w, hit.block, 1), hit.point) < glm::distance(pairLiePos(w, hit.block, 0), hit.point)) slot = 1;
+      if (held && !held->empty()) { if (pairWorkPut(lv, p, w, hit.block, slot, *held)) swingArm(); return true; }
+      if (v[slot].empty()) slot = 1 - slot;
+      if (!v[slot].empty()) { if (pairWorkTake(lv, p, w, hit.block, slot)) swingArm(); return true; }
+      toastMsg(std::string("Lay what you'd work on the ") + (b.str("station") == "grindstone" ? "stone" : "table") + " (use it with it in hand), then strike it", "info");
+      return true;
+    }
     swingArm();
     if (b.str("station") == "cartography") { openScreen(lv, p, "table", {{"pos", {x, y, z}}, {"cartography", true}}); return true; }   // (pos: its scene, ui/cinematic.h; the classic grid: a map ringed with 8 paper zooms out, with empty maps copies)
     openScreen(lv, p, "station", {{"kind", b.str("station")}, {"pos", {x, y, z}}});

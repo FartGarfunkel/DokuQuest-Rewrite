@@ -58,39 +58,52 @@ std::optional<json> readModel(const PackFS& P, const std::string& name) {
 }
 }  // namespace
 
+PackModel parseBlockModel(const json& j, const std::function<int(const std::string&)>& tileOf) {
+  std::map<std::string, std::string> tex;
+  if (j.contains("textures") && j["textures"].is_object()) for (auto& [k, v] : j["textures"].items()) if (v.is_string()) tex[k] = v.get<std::string>();
+  auto resolve = [&](std::string r) { for (int i = 0; i < 4 && !r.empty() && r[0] == '#'; i++) { auto it = tex.find(r.substr(1)); if (it == tex.end()) return std::string(); r = it->second; } return r; };
+  PackModel pm;
+  if (!j.contains("elements") || !j["elements"].is_array()) return pm;
+  static const char* FACES[6] = {"north", "south", "west", "east", "up", "down"};
+  std::map<std::string, int> tiles;
+  for (auto& e : j["elements"]) {
+    if (!e.contains("from") || !e.contains("to")) continue;
+    PackModelBox b;
+    b.from = vec3(e["from"][0].get<float>(), e["from"][1].get<float>(), e["from"][2].get<float>());
+    b.to = vec3(e["to"][0].get<float>(), e["to"][1].get<float>(), e["to"][2].get<float>());
+    b.shade = e.value("shade", true);
+    if (e.contains("rotation") && e["rotation"].is_object()) {
+      const json& r = e["rotation"];
+      const std::string ax = r.value("axis", std::string("y"));
+      b.rotAxis = ax == "x" ? 0 : ax == "y" ? 1 : 2; b.rotAngle = r.value("angle", 0.f);
+      if (r.contains("origin")) b.rotOrigin = vec3(r["origin"][0].get<float>(), r["origin"][1].get<float>(), r["origin"][2].get<float>());
+    }
+    if (e.contains("faces")) for (int f = 0; f < 6; f++) {
+      if (!e["faces"].contains(FACES[f])) continue;
+      const json& fj = e["faces"][FACES[f]];
+      const std::string ref = resolve(fj.value("texture", std::string()));
+      if (ref.empty()) continue;
+      auto it = tiles.find(ref);
+      b.face[f].tile = it != tiles.end() ? it->second : (tiles[ref] = tileOf(ref));
+      if (f < 4 && (ref.find("flame") != std::string::npos || ref.find("fire") != std::string::npos)) b.flame = true;   // (its flame's crossed planes)
+      if (fj.contains("uv")) b.face[f].uv = vec4(fj["uv"][0].get<float>(), fj["uv"][1].get<float>(), fj["uv"][2].get<float>(), fj["uv"][3].get<float>());
+      else {   // (Minecraft's default: the element's own place on that face)
+        const vec3 lo = b.from, hi = b.to;
+        if (f < 2) b.face[f].uv = vec4(lo.x, 16 - hi.y, hi.x, 16 - lo.y); else if (f < 4) b.face[f].uv = vec4(lo.z, 16 - hi.y, hi.z, 16 - lo.y); else b.face[f].uv = vec4(lo.x, lo.z, hi.x, hi.z);
+      }
+      b.face[f].rot = fj.value("rotation", 0);
+    }
+    pm.boxes.push_back(b);
+  }
+  return pm;
+}
+
 void loadPackModels(TileSet& ts, const PackFS& P, const std::vector<std::string>& names) {
   auto M = std::make_shared<std::map<std::string, PackModel>>();
   for (const std::string& name : names) {
     auto j = readModel(P, name);
-    if (!j || !j->contains("elements") || !(*j)["elements"].is_array()) continue;
-    std::map<std::string, std::string> tex;
-    if (j->contains("textures") && (*j)["textures"].is_object()) for (auto& [k, v] : (*j)["textures"].items()) if (v.is_string()) tex[k] = v.get<std::string>();
-    auto resolve = [&](std::string r) { for (int i = 0; i < 4 && !r.empty() && r[0] == '#'; i++) { auto it = tex.find(r.substr(1)); if (it == tex.end()) return std::string(); r = it->second; } return r; };
-    PackModel pm;
-    static const char* FACES[6] = {"north", "south", "west", "east", "up", "down"};
-    for (auto& e : (*j)["elements"]) {
-      if (!e.contains("from") || !e.contains("to")) continue;
-      PackModelBox b;
-      b.from = vec3(e["from"][0].get<float>(), e["from"][1].get<float>(), e["from"][2].get<float>());
-      b.to = vec3(e["to"][0].get<float>(), e["to"][1].get<float>(), e["to"][2].get<float>());
-      b.shade = e.value("shade", true);
-      if (e.contains("rotation") && e["rotation"].is_object()) {
-        const json& r = e["rotation"];
-        const std::string ax = r.value("axis", std::string("y"));
-        b.rotAxis = ax == "x" ? 0 : ax == "y" ? 1 : 2; b.rotAngle = r.value("angle", 0.f);
-        if (r.contains("origin")) b.rotOrigin = vec3(r["origin"][0].get<float>(), r["origin"][1].get<float>(), r["origin"][2].get<float>());
-      }
-      if (e.contains("faces")) for (int f = 0; f < 6; f++) {
-        if (!e["faces"].contains(FACES[f])) continue;
-        const json& fj = e["faces"][FACES[f]];
-        const std::string ref = resolve(fj.value("texture", std::string()));
-        if (ref.empty()) continue;
-        b.face[f].tile = tileFor(ts, P, ref);
-        if (f < 4 && (ref.find("flame") != std::string::npos || ref.find("fire") != std::string::npos)) b.flame = true;   // (its flame's crossed planes)
-        if (fj.contains("uv")) b.face[f].uv = vec4(fj["uv"][0].get<float>(), fj["uv"][1].get<float>(), fj["uv"][2].get<float>(), fj["uv"][3].get<float>());
-      }
-      pm.boxes.push_back(b);
-    }
+    if (!j) continue;
+    PackModel pm = parseBlockModel(*j, [&](const std::string& ref) { return tileFor(ts, P, ref); });
     if (!pm.boxes.empty()) (*M)[name] = std::move(pm);
   }
   std::atomic_store(&g_models, std::shared_ptr<const std::map<std::string, PackModel>>(M));
