@@ -570,8 +570,9 @@ public:
           dl->PopClipRect();
         }
       }
-      std::string k = activeSpell(p);
+      std::string k = rightSpellReady(p) || heldStaff(p) ? activeSpell(p) : std::string();
       const std::string L = offSpell(p);
+      if (k.empty()) k = L;
       if (k != h.spellSeen || (h.manaSeen >= 0 && mana < h.manaSeen - 0.5f)) h.spellAt = now();
       h.spellSeen = k; h.manaSeen = mana;
       const double age = now() - h.spellAt;

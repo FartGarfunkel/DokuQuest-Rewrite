@@ -40,7 +40,11 @@ const json* heldStaff(const Player& p);                       // the held item's
 // ---- spells ----
 std::string activeSpell(Player& p);                           // "" = none known
 void cycleSpell(Level& lv, Player& p);                        // G / sneak + use
-bool pickSpell(Level& lv, Player& p, const std::string& k);   // the spellbook
+bool pickSpell(Level& lv, Player& p, const std::string& k);   // the spellbook: k readied in the right hand
+// the right hand's spell readied (chosen in the spellbook; empty hands until you do): an empty right hand casts it. Not
+// readied, the hand is a fist (it still knows its spell: a staff casts it)
+bool rightSpellReady(const Player& p);
+void toggleRightSpell(Level& lv, Player& p, const std::string& k);   // the spellbook: k readied, or (already) the hand emptied
 bool learnTome(Level& lv, Player& p, ItemStack& tome);
 bool castSpell(Level& lv, Player& p);                         // with the held staff; false = not a staff in hand
 // ---- the hands (sim/magic_hands.cpp): a spell readied in each hand. With the left hand free (empty or a staff in

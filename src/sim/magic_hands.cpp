@@ -256,7 +256,7 @@ bool handCasts(const Player& p, int hand) {
     const std::string k = rightSpellOf(p);
     if (k.empty()) return false;
     const ItemStack& h = p.inv[p.selected];
-    return staffIn(h) || (h.empty() && !spellNeedsStaff(k));
+    return staffIn(h) || (h.empty() && rightSpellReady(p) && !spellNeedsStaff(k));
   }
   const std::string k = offSpell(p);
   return !k.empty() && leftFree(p) && (staffIn(p.offhand[0]) || !spellNeedsStaff(k));

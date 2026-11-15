@@ -159,7 +159,7 @@ public:
     auto known = knownSpells(*p);
     auto knows = [&](const std::string& k) { return std::find(known.begin(), known.end(), k) != known.end(); };
     const int lvl = skillLv(*p, "magic");
-    const std::string active = activeSpell(*p), left = offSpell(*p), quick = quickSpell(*p);
+    const std::string activeAny = activeSpell(*p), active = rightSpellReady(*p) ? activeAny : std::string(), left = offSpell(*p), quick = quickSpell(*p);
     // a bookmark per school (its first tome on the ribbon)
     std::vector<ui::BookTab> tabs; std::vector<std::vector<std::string>> lists; std::vector<const std::array<std::string, 3>*> sch;
     flat.clear();
@@ -178,11 +178,11 @@ public:
     const int n = (int)flat.size();
     if (n) {
       Input& in = a.input;
-      if (cur < 0) { cur = 0; for (int i = 0; i < n; i++) if (flat[i] == active) cur = i; book.showSel(cur); }
+      if (cur < 0) { cur = 0; for (int i = 0; i < n; i++) if (flat[i] == activeAny) cur = i; book.showSel(cur); }
       if (in.pressed(Act::MenuDown)) { cur = (cur + 1) % n; book.showSel(cur); }
       if (in.pressed(Act::MenuUp)) { cur = (cur + n - 1) % n; book.showSel(cur); }
       cur = std::clamp(cur, 0, n - 1);
-      if (in.pressed(Act::MenuOk) && knows(flat[cur])) pickSpell(*lv, *p, flat[cur]);
+      if (in.pressed(Act::MenuOk) && knows(flat[cur])) toggleRightSpell(*lv, *p, flat[cur]);
       if (in.pressed(Act::MenuX) && knows(flat[cur])) setOffSpell(*lv, *p, flat[cur]);
       if (in.pressed(Act::MenuY) && knows(flat[cur])) setQuickSpell(*lv, *p, flat[cur]);
     }
@@ -257,7 +257,7 @@ public:
             ImGui::PushID(("tree" + k).c_str());
             const bool hit = ImGui::InvisibleButton("##n", ImVec2(2 * nr, 2 * nr), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s \xC2\xB7 Magic %d \xC2\xB7 %d mana%s%s", S.name.c_str(), S.lvl, S.mana, S.cast != "instant" ? (" \xC2\xB7 " + S.cast + " cast").c_str() : "", k1 ? (" \xC2\xB7 " + std::string(spellRarityName(effectiveSpellRank(*p, k)))).c_str() : " \xC2\xB7 not learnt");
-            if (hit && k1) { if (ImGui::IsMouseReleased(ImGuiMouseButton_Right)) setOffSpell(*lv, *p, k); else pickSpell(*lv, *p, k); }
+            if (hit && k1) { if (ImGui::IsMouseReleased(ImGuiMouseButton_Right)) setOffSpell(*lv, *p, k); else toggleRightSpell(*lv, *p, k); }
             ImGui::PopID();
             prev = pt; prevLit = k1;
           }
@@ -284,7 +284,7 @@ public:
           bool hot = false;
           const int c = rowHit(q, w, lh + lines.size() * sh + 4 * z, &hot);
           if (c == 1) cur = me;
-          if (kn && c == 1) pickSpell(*lv, *p, k);
+          if (kn && c == 1) toggleRightSpell(*lv, *p, k);
           if (kn && c == 2) { cur = me; setOffSpell(*lv, *p, k); }
           if (kn && c == 3) { cur = me; setQuickSpell(*lv, *p, k); }
           if (me == cur || hot) dl->AddRectFilled(ImVec2(q.x - 4 * z, q.y - 1 * z), ImVec2(q.x + w + 2 * z, q.y + lh + lines.size() * sh + 3 * z), me == cur ? ui::ink::hilite : ui::col::rgb(0xc8a050, 45), 3 * z);
@@ -310,7 +310,7 @@ public:
     book.draw(secs);
     // turning the pages with the arrows: the choice moves onto the open pages
     if (book.turned && !book.shownSel.empty() && std::find(book.shownSel.begin(), book.shownSel.end(), cur) == book.shownSel.end()) cur = book.shownSel.front();
-    book.hint(a.input.usingPad() ? "\xE2\x86\x91 \xE2\x86\x93 choose \xC2\xB7 A: right hand (RT) \xC2\xB7 X: left hand (LT) \xC2\xB7 Y: quick spell (hold B, press RB) \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 pages \xC2\xB7 B: close"
+    book.hint(a.input.usingPad() ? "\xE2\x86\x91 \xE2\x86\x93 choose \xC2\xB7 A: ready / empty the right hand (RT) \xC2\xB7 X: the left (LT) \xC2\xB7 Y: quick spell (hold B, press RB) \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 pages \xC2\xB7 B: close"
                                  : "Click: right hand (left click casts) \xC2\xB7 right-click: left hand (right click casts) \xC2\xB7 middle-click: quick spell (Z) \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 or the wheel: pages \xC2\xB7 Esc: close");
     book.end();
   }

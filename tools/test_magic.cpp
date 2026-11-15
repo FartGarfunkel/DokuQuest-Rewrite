@@ -125,7 +125,8 @@ int main(int argc, char** argv) {
   check(fx.heard("You need Magic 28 to learn Fireball") && skillXp(p, "magic") == 420, "...and only the first time");
   ItemStack t1("tome_frost", 1);
   learnTome(*lv, p, t1);
-  check(fx.heard("You have learned Frost Shard! It is in your right hand") && t1.empty() && knownSpells(p).size() == 3 && skillXp(p, "magic") == 460, "learning Frost Shard (+40 Magic xp)");
+  check(fx.heard("You have learned Frost Shard! Ready it in a hand") && t1.empty() && knownSpells(p).size() == 3 && skillXp(p, "magic") == 460, "learning Frost Shard (+40 Magic xp)");
+  check(!rightSpellReady(p), "learning a spell doesn't ready it: your hands stay empty till you choose");
   p.stats["spell"] = 0;   // Firebolt in the right hand again
 
   // casting a firebolt at a skeleton
@@ -380,6 +381,10 @@ int main(int argc, char** argv) {
     p.inv[0].clear(); p.offhand[0].clear(); p.selected = 0;
     pickSpell(*lv, p, "firebolt"); p.stats["spellOff"] = "frost";
     check(handCasts(p, 0) && handCasts(p, 1), "both hands empty, a spell readied in each: both cast");
+    toggleRightSpell(*lv, p, "firebolt");
+    check(!handCasts(p, 0) && !rightSpellReady(p), "the spellbook on the readied spell again: the right hand emptied (a fist again)");
+    toggleRightSpell(*lv, p, "firebolt");
+    check(handCasts(p, 0), "...and readied again");
     p.inv[0] = ItemStack("iron_sword", 1);
     check(!handCasts(p, 0) && handCasts(p, 1), "a sword in the right hand: the right swings, the left still casts");
     p.inv[0].clear(); p.offhand[0] = ItemStack("shield", 1);

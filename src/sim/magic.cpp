@@ -124,8 +124,8 @@ void cycleSpell(Level& lv, Player& p) {
   auto ks = knownSpells(p);
   if (ks.empty()) { lv.fx->message(p.id, "You know no spells yet \xE2\x80\x94 read a spell tome", ""); return; }
   int i = (p.stats.value("spell", 0) + 1) % (int)ks.size();
-  p.stats["spell"] = i;
-  if (const SpellDef* S = magicData().spell(ks[i])) lv.fx->message(p.id, S->name, "");
+  p.stats["spell"] = i; p.stats["spellR"] = true;
+  if (const SpellDef* S = magicData().spell(ks[i])) lv.fx->message(p.id, S->name + " is in your right hand", "");
   lv.fx->soundUi(p.id, "click");
 }
 bool pickSpell(Level& lv, Player& p, const std::string& k) {
@@ -133,9 +133,15 @@ bool pickSpell(Level& lv, Player& p, const std::string& k) {
   auto it = std::find(ks.begin(), ks.end(), k);
   if (it == ks.end()) return false;
   p.stats["spell"] = (int)(it - ks.begin());
-  if (const SpellDef* S = magicData().spell(k)) lv.fx->message(p.id, S->name + " is your spell", "good");
+  p.stats["spellR"] = true;
+  if (const SpellDef* S = magicData().spell(k)) lv.fx->message(p.id, S->name + " is in your right hand", "good");
   lv.fx->soundUi(p.id, "click");
   return true;
+}
+bool rightSpellReady(const Player& p) { auto it = p.stats.find("spellR"); return it != p.stats.end() && it->is_boolean() && it->get<bool>(); }
+void toggleRightSpell(Level& lv, Player& p, const std::string& k) {
+  if (rightSpellReady(p) && activeSpell(p) == k) { p.stats["spellR"] = false; lv.fx->message(p.id, "Your right hand is empty", ""); lv.fx->soundUi(p.id, "click"); return; }
+  pickSpell(lv, p, k);
 }
 bool learnTome(Level& lv, Player& p, ItemStack& tome) {
   const ItemDef* d = tome.def();
@@ -163,7 +169,7 @@ bool learnTome(Level& lv, Player& p, ItemStack& tome) {
   sp.push_back(k);
   p.stats["spell"] = (int)sp.size() - 1;
   if (!p.creative() && --tome.n <= 0) tome.clear();
-  lv.fx->message(p.id, "You have learned " + S->name + "! It is in your right hand: attack with that hand empty to cast it (a staff makes it stronger)", "epic");
+  lv.fx->message(p.id, "You have learned " + S->name + "! Ready it in a hand in your spellbook (B), then that hand's button casts it (a staff makes it stronger)", "epic");
   lv.fx->soundUi(p.id, "levelup");
   skillGain(lv, p, "magic", 40.0 * S->lvl);
   sfx::spiral(lv, p.pos, S->fx, 70, json{{"r", 0.9}, {"h", 2.6}, {"turns", 4}, {"life", 1.3}});
@@ -399,7 +405,7 @@ void MagicSystem::tickPlayer(Player& p, double dt) {
     bool any = !sp.empty();
     for (const char* k : {"firebolt", "homeport"})
       if (magicData().spell(k) && std::find(sp.begin(), sp.end(), json(k)) == sp.end()) sp.push_back(k);
-    if (!any) { p.stats["spell"] = 0; lv.fx->message(p.id, "You know Firebolt: with your right hand empty, attack (left click, RT) casts it. B opens your Spellbook to ready spells in each hand", "epic"); }
+    if (!any) { p.stats["spell"] = 0; lv.fx->message(p.id, "You know Firebolt: ready it in a hand in your Spellbook (B), then that hand's button casts it", "epic"); }
   }
   if (m.castCd > 0) m.castCd -= (float)dt;
   if (m.castCdL > 0) m.castCdL -= (float)dt;

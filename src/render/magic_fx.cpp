@@ -437,7 +437,7 @@ void MagicLayer::ambient(double dt) {
       float rdy[2], thr[2]; spellHandPose(p.id, rdy, thr);
       const ItemStack& off = p.offhand[0];
       const bool offFree = off.empty() || (off.def() && off.def()->props.contains("staff"));
-      const bool mainFree = p.held().empty() || heldStaff(p);
+      const bool mainFree = heldStaff(p) || (p.held().empty() && rightSpellReady(p));   // (a fist: no spell readied)
       for (int h = 0; h < 2; h++) {
         const std::string k = h == 0 ? activeSpell(p) : offSpell(p);
         if (k.empty() || !(h == 0 ? mainFree : offFree)) continue;
