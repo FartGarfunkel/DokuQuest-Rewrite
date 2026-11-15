@@ -16,6 +16,8 @@
 //            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text} lookAt{entity,job?,dist?: aim at (and stand dist south of) the nearest creature of a type} report{near?,ents?: a type, to list where each stands} shot{path} save leave open{world} quit
 // give takes "d" (wear) and "tag" (enchantments, gear xp). pad buttons: a b x y back guide start ls rs lb rb up down left right, lt / rt (triggers).
 // The log gets "TEST PASS/FAIL ..." lines and a final "TEST DONE passes=N fails=M".
+#include "sim/vehicles.h"
+#include "sim/minecart.h"
 #include "sim/atlas.h"
 #include "sim/blockfx.h"
 #include "world/rug.h"
@@ -231,6 +233,12 @@ void runStep(App& a, const json& st) {
   } else if (op == "be" && s) {   // set a block entity (a monster cage: {"type":"spawner","mob":"zombie"})
     ivec3 b = at(st);
     if (json* e = s->world().blockEntity(b.x, b.y, b.z, true)) *e = st.value("data", json::object());
+  } else if (op == "ride" && s && p) {   // ride{kind:"boat"|"cart", x,y,z (rel: a water cell / a rail)}: one put there and you in it
+    const ivec3 b = at(st);
+    Vehicle* v = nullptr;
+    if (st.value("kind", "boat") == "cart") v = placeCart(*s->level, p->realm, "minecart", b.x, b.y, b.z, 0);
+    else v = static_cast<Vehicle*>(spawnBoat(*s->level, p->realm, st.value("boat", "rowboat"), vec3(b) + vec3(0.5f, 0.6f, 0.5f), p->yaw));
+    if (v) v->mount(*s->level, *p);
   } else if (op == "select" && p) {
     p->selected = std::clamp(st.value("slot", 0), 0, 8);
   } else if (op == "furnace" && s) {   // furnace{x,y,z,in,fuel,out,n,cook,burn}: a furnace's record, filled (render/furnace_layer.cpp screenshots)

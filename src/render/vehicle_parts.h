@@ -22,4 +22,9 @@ bool partsGrid(const std::vector<ModelPart>& parts, float vox, const TileSet& ts
 // rowboats, the sailboat, the sailing ship, the waterwheel, the windmill. Empty if the item isn't one of them.
 std::vector<ModelPart> vehicleItemParts(const std::string& item);
 
+// a rowboat's oar handles where the rower holds them, as render/vehicle_layer.cpp draws the oars (rel: the boat's place
+// in render space): [0] the right oar's, [1] the left's. false: not a rowboat
+class Boat;
+bool boatOarGrips(const Boat& b, vec3 rel, vec3 out[2]);
+
 } // namespace dq

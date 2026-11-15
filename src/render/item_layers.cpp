@@ -336,7 +336,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
   // seamless first person (settings.fpBody): your hands are your body's own, as the others see them (render/char_layer.cpp),
   // not a hand view; this view keeps only what you hold up to read (a book, your journal, a map, your bag at a station),
   // what you carry in both arms, and a station's own scene
-  const bool bodyHands = s.app.settings.fpBody && !p->swimming && !p->crawling && !p->sleeping;
+  const bool bodyHands = s.app.settings.fpBody && !p->crawling && !p->sleeping;   // (swimming too: the body's own arms at the stroke)
   int drew = taken & 3;
   struct ArmsOut { int& d; ~ArmsOut() { HeldItemLayer::armsDrawn = d; } } armsOut{drew};
   std::vector<std::pair<ItemStack, mat4>> over;

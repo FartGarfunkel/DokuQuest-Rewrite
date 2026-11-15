@@ -55,6 +55,10 @@ void WeatherDraw::draw(const FrameCtx& f, const WeatherSim& sim, vec3 camVel) {
     float a = p.alpha;
     if (p.kind <= WKind::HeavySnow || p.kind == WKind::Dust) a *= std::clamp((d - 0.6f) / 1.6f, 0.f, 1.f);
     if (p.kind == WKind::Haze) a *= std::clamp((d - 2.f) / 4.f, 0.f, 1.f);   // (a haze blob at your face would fill the view)
+    {   // nothing of the weather right at your eyes (a drop or a speck swimming past the face was a pale square filling a corner)
+      const float nk = std::clamp((d - size - 0.25f) / 0.6f, 0.f, 1.f);
+      a *= nk; if (nk <= 0) q.posSize.w = 0;
+    }
     if (p.kind == WKind::FogFlat || p.kind == WKind::FogUpright) {
       // CustomParticle.tickFading: a sheet lying flat fades as you see it edge on (below 0.4 rad), one standing up as
       // you look down on it (over 45 degrees), so neither is ever a hard edge

@@ -13,6 +13,8 @@
 #include <stb_image.h>
 #include "core/tool_parts.h"
 #include "sim/weather.h"
+#include "sim/vehicles.h"
+#include "render/vehicle_parts.h"
 #include "render/char_layer.h"
 #include "render/spell_hands.h"
 #include "assets/shield3d.h"
@@ -698,6 +700,9 @@ CharWear charWearOf(const Player& p, const CharacterSpec& spec, bool withCarried
   return w;
 }
 
+// where a rider's hands rest: in a cart (ahead, up from the feet), on an animal (the reins: ahead, up). Tuning aid: DQ_DEV_RIDE
+static float RIDE_HANDS[4] = {0.3f, 0.45f, 0.45f, 0.95f};
+static const bool rideTuned = [] { if (const char* v = std::getenv("DQ_DEV_RIDE")) std::sscanf(v, "%f,%f,%f,%f", &RIDE_HANDS[0], &RIDE_HANDS[1], &RIDE_HANDS[2], &RIDE_HANDS[3]); return true; }();
 void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, Anim& st, bool fp) {
   auto spec = resolveCharacter(p.skin);
   World& w = s.level->world(p.realm);
@@ -802,6 +807,21 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
     if ((p.stationKind == 3 || p.stationKind == 4) && settled) ps.sneak = true;   // (down to the brewing stand, the furnace)
     if (p.stationKind == 13 && settled) ps.sitGround = true;   // (sat down by a campfire)
     if (p.stationKind == 1 && f.time - st.workTapAt < 1.4) { wear.held = "smith_hammer"; wear.heldModel.clear(); ps.held = true; }   // (the hammer while the blows land)
+  }
+  // riding (sim/vehicles.h): a rowboat's rower has the oars in hand, rowing as they're drawn (render/vehicle_layer.cpp);
+  // in a minecart or as a passenger the hands rest on the knees; on an animal they hold the reins out in front
+  if (p.riding && !p.dead && !ps.reach) {
+    Entity* v = s.level->entity(p.riding);
+    const vec3 fwd(-std::sin(p.yaw), 0, -std::cos(p.yaw)), right(std::cos(p.yaw), 0, -std::sin(p.yaw));
+    vec3 g[2];
+    if (auto* b = dynamic_cast<Boat*>(v); b && !b->riders.empty() && b->riders[0] == p.id && boatOarGrips(*b, f.cam.rel(glm::dvec3(b->pos)), g)) {
+      ps.reach = true; ps.reachR = g[0]; ps.reachL = g[1];
+    } else if (v) {
+      const bool beast = !dynamic_cast<Vehicle*>(v);
+      const vec3 c = p.pos + (beast ? fwd * RIDE_HANDS[2] + vec3(0, RIDE_HANDS[3], 0) : fwd * RIDE_HANDS[0] + vec3(0, RIDE_HANDS[1], 0));
+      const float apart = beast ? 0.1f : 0.2f;
+      ps.reach = true; ps.reachR = f.cam.rel(glm::dvec3(c + right * apart)); ps.reachL = f.cam.rel(glm::dvec3(c - right * apart));
+    }
   }
   // at the smithing table or the Tool Forge (yours): the hammer in your own hand the whole time you're at it (your own
   // hammer if you carry one, else the smith's), and your own arm raises it and brings it down on each blow (the village
@@ -988,16 +1008,18 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   // seamless first person: your own arms, as the others see them, except a hand the hand view drew (a book or map held up
   // to read, what you carry: render/item_layers.h armsDrawn)
   const int hv = fp ? HeldItemLayer::armsDrawn : 0;
-  const bool fpArmL = fp && R.fpTorso && ps.fpLeftArm && !ps.paddle && !(hv & 2);
-  const bool fpArmR = fp && R.fpTorso && !ps.paddle && !(hv & 1) && !ps.carry;
-  if (fp && (ps.reach || ps.sitGround || ps.bed >= 0)) for (int i : {CP_ARMR_U, CP_ARMR_D, CP_ARML_U, CP_ARML_D}) hid[i] = true;   // (no sleeve layer over them so close to the eye)
+  // swimming (the stroke lying flat) or treading water: your own arms at it, in front of you, as the others see them
+  const bool fpSwimArms = fp && ((ps.swim && !ps.glide) || ps.paddle);
+  const bool fpArmL = fp && (R.fpTorso || fpSwimArms) && ps.fpLeftArm && !(hv & 2);
+  const bool fpArmR = fp && (R.fpTorso || fpSwimArms) && !(hv & 1) && !ps.carry;
+  if (fp && (ps.reach || ps.sitGround || ps.bed >= 0)) for (int i : {CP_ARMR_U, CP_ARMR_D, CP_ARML_U, CP_ARML_D}) hid[i] = true;
   // which parts show: in first person only what you see looking down (the head and the right arm are the view's own)
   auto shows = [&](int i) {
     if (o.headOnly) return i == CP_HEAD;
     if (!fp) return true;
     if (i == CP_HEAD) return false;
     // reaching to the work at a station: your forearms only (the upper arms, right by the eye, filled the view: an arm in an arm)
-    if (ps.reach && (i == CP_ARMR_U || i == CP_ARML_U)) return false;
+    if ((ps.reach || fpSwimArms) && (i == CP_ARMR_U || i == CP_ARML_U)) return false;   // (swimming too: the forearms at the stroke)
     if (ps.reach && (i == CP_ARMR_D || i == CP_ARML_D)) return true;
     // sat on the ground: your forearms over your knees, as the others see them (the upper arms are by the eye)
     if ((ps.sitGround || ps.bed >= 0) && (i == CP_ARMR_U || i == CP_ARML_U)) return false;
@@ -1049,7 +1071,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     for (auto& [part, mesh] : G) {
       if (o.headOnly && part != "head" && part != "neck") continue;
       if (fp && (part == "head" || part == "neck" || part == "cape" || part == "capeLo" || part == "tail")) continue;
-      if (fp && !R.fpTorso && part != "legR" && part != "legL" && part != "shinR" && part != "shinL") continue;
+      if (fp && !R.fpTorso && part != "legR" && part != "legL" && part != "shinR" && part != "shinL" && !(fpSwimArms && (part == "foreR" || part == "foreL"))) continue;
       if (fp && !fpArmL && (part == "armL" || part == "foreL")) continue;
       if (fp && !fpArmR && (part == "armR" || part == "foreR")) continue;
       auto fm = R.gear.find(part);

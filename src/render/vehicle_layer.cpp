@@ -126,6 +126,13 @@ mat4 T(vec3 v) { return glm::translate(mat4(1), v); }
 mat4 RX(mat4 m, float a) { return glm::rotate(m, a, vec3(1, 0, 0)); }
 mat4 RY(mat4 m, float a) { return glm::rotate(m, a, vec3(0, 1, 0)); }
 mat4 RZ(mat4 m, float a) { return glm::rotate(m, a, vec3(0, 0, 1)); }
+// a rowboat's oar in its oarlock (sd: +1 the right, -1 the left), dipping while rowed: drawn here, and the rower's hands
+// hold its handle (boatOarGrips: render/char_layer.cpp)
+mat4 oarFrame(const Boat& b, vec3 rel, int sd) {
+  const float row = !b.riders.empty() && b.riders[0] && std::fabs(b.speed) > 0.3f ? b.age * 6 : 0;
+  mat4 m = RZ(RY(T(rel), b.yaw), b.heel) * T(vec3(sd * 0.68f, 0.66f, -0.05f));
+  return RX(RY(m, sd * (1.2f + std::sin(row) * 0.45f) + PI), -(0.37f + std::cos(row) * 0.18f));
+}
 } // namespace
 
 class VehicleLayer : public RenderLayer {
@@ -436,12 +443,7 @@ private:
       Model& oar = model("boat_oar", 1.f / 32, [] {
         return std::vector<Part>{bb(0, 0, -0.25f, 0.028f, 0.028f, 0.65f, 0, "axle"), bb(0, 0, 0.42f, 0.035f, 0.035f, 0.07f, 0, "boat_rail"), bb(0, 0, -1.1f, 0.012f, 0.11f, 0.22f, 0, "boat_planks")};
       }, ts);
-      float row = b.riders[0] && std::fabs(b.speed) > 0.3f ? b.age * 6 : 0;
-      for (int sd : {-1, 1}) {
-        mat4 m = RZ(RY(T(rel), b.yaw), b.heel) * T(vec3(sd * 0.68f, 0.66f, -0.05f));
-        m = RX(RY(m, sd * (1.2f + std::sin(row) * 0.45f) + PI), -(0.37f + std::cos(row) * 0.18f));
-        draw(oar, m, L);
-      }
+      for (int sd : {-1, 1}) draw(oar, oarFrame(b, rel, sd), L);
     }
     if (!b.cargo.is_null() || b.items.is_array()) {
       vec3 sp = b.seatPos(1) - b.pos;
@@ -574,6 +576,12 @@ void registerVehicleLayers() {
   if (done) return;
   done = true;
   registerRenderLayer([](GameSession& s) { return std::make_shared<VehicleLayer>(s); });
+}
+
+bool boatOarGrips(const Boat& b, vec3 rel, vec3 out[2]) {
+  if (b.ship() || b.kind == "sailboat") return false;
+  for (int k = 0; k < 2; k++) out[k] = vec3(oarFrame(b, rel, k == 0 ? 1 : -1) * vec4(0, 0, 0.47f, 1));
+  return true;
 }
 
 } // namespace dq

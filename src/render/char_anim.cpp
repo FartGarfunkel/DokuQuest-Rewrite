@@ -536,6 +536,9 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
     if (!rl) { rl = true; if (const char* v = std::getenv("DQ_DEV_ROLL")) std::sscanf(v, "%f,%f", &RP[0], &RP[1]); }
     base = glm::translate(base, vec3(0, RP[0] - RP[1] * std::sin(u * PI), 0)); base = glm::rotate(base, a, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -RP[0], 0));
   }
+  // swimming in first person: the body a little below and ahead of the eye, so the stroke's forearms and hands sweep out
+  // ahead from the bottom of the view (the upper arms, right by the eye, aren't drawn: render/char_layer.cpp)
+  if (pose.swim && pose.fp && !pose.glide) base = glm::translate(base, vec3(0, -0.3f, -0.4f));
   if (pose.swim) { base = glm::translate(base, vec3(0, 0.32f, 0.55f)); base = glm::rotate(base, -PI / 2 + pose.swimPitch * 0.8f, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0)); }
   else if (pose.crawl && !pose.fp) {   // flat on the ground, the chest on it (its plane 2 px in front of the middle)
     base = glm::translate(base, vec3(0, 2.3f * CHAR_PX, 0.5f)); base = glm::rotate(base, -PI / 2, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0));
