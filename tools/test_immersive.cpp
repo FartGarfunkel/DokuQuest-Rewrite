@@ -13,6 +13,8 @@
 #include "sim/knapping.h"
 #include "sim/crafting.h"
 #include "sim/worldsys.h"
+#include "sim/tactile.h"
+#include "sim/stations.h"
 #include "common/fs.h"
 #include "common/threadpool.h"
 #include "world/world.h"
@@ -245,6 +247,28 @@ int main(int argc, char** argv) {
     json c = {{"type", "furnace"}, {"items", json::array({ItemStack("beef", 1).toJson(), ItemStack("coal", 4).toJson(), nullptr})}};
     t = 0; while (t < SMELT_TIME * 1.05) { tickFurnace(c, 0.25, "furnace"); t += 0.25; }
     check(c["items"].size() == 3 && ItemStack::fromJson(c["items"][2]).id == "cooked_beef", "a classic furnace keeps its three slots and cooks as ever");
+  }
+
+  printf("[Tactile's grindstone: a worn piece held to the wheel]\n");
+  {
+    World& w = im.lv->world();
+    const ivec3 at(6, im.Y + 1, 10);
+    im.P->pos = vec3(8.5f, im.Y + 1, 8.5f);   // (back on the rig's floor, its chunks loaded again)
+    for (double t0 = nowSeconds(); nowSeconds() - t0 < 60 && !w.chunk(dimOfY(at.y), at.x >> 4, at.z >> 4);) { w.stream({{im.P->pos, 2, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
+    w.setBlock(at.x, at.y, at.z, reg().blockId("grindstone"));
+    im.P->level = 5; im.P->xp = 0; im.P->mode = "survival";
+    ItemStack sword("iron_sword", 1); sword.d = 200;
+    GrindSession gs; double t = 100;
+    for (int i = 0; i < 15; i++) { tactileGrind(*im.lv, *im.P, w, at, sword, t, gs); t += 0.22; }
+    check(sword.d < 200 && sword.d > 0, "ground back a little in three seconds (" + std::to_string(sword.d) + " left of 200)");
+    check(im.P->level < 5, "paid for in experience");
+    check(sword.tag.is_object() && sword.tag.value("gw", 0.f) > 0, "a little wear ground in for good");
+    const json* e = w.blockEntity(at.x, at.y, at.z);
+    check(e && e->value("grind", 0) >= 15, "the wheel's turning shows to everyone");
+    ItemStack book("enchanted_book", 1); book.tag = {{"en", {{"sharp", 2}}}};
+    gs = GrindSession(); t += 5;
+    for (int i = 0; i < 50; i++) { tactileGrind(*im.lv, *im.P, w, at, book, t, gs); t += 0.22; }
+    check(book.id == "book", "an enchanted book held there ten seconds comes away plain");
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);

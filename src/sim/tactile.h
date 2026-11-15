@@ -31,6 +31,14 @@ bool tactileDoorOpen(World& w, ivec3 at);
 bool tactileAnvilUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held);
 bool tactileAnvilStrike(Level& lv, Player& p, World& w, ivec3 at, double now);   // false: nothing on it to strike
 
+// the grindstone (Tactile's meule): a worn tool or armour held to the turning wheel (use held) is ground back to good, a
+// third of a hundredth of its wear a second, paid in experience (one point for twelve), each grinding leaving a little wear
+// for good; an enchanted piece held there ten seconds loses its enchantments for their experience. The wheel turns while
+// anyone grinds ("grind" counts up in the block's record, so everyone sees it)
+struct GrindSession { ivec3 at{0, -9999, 0}; double last = -10, repair = 0, xp = 0, dis = 0; };
+bool tactileGrind(Level& lv, Player& p, World& w, ivec3 at, ItemStack& held, double now, GrindSession& gs);
+bool tactileGrindTarget(const ItemStack& s);   // worn (past its ground-in wear) or enchanted
+
 // the cartography desk (Tactile's cartographe; our "mapwork" record {items: [the map worked, a blank to copy onto, blank
 // sheets to enlarge with], ink, feather}): an ink sac fills its pot (three uses), a feather goes in its holder (three);
 // a map goes on the board (front: the one worked, back: a blank to copy onto), blanks and paper pile on the right; an empty

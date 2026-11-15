@@ -8,6 +8,9 @@
 #include "core/registry.h"
 #include "world/world.h"
 #include "sim/anvil_work.h"
+#include "sim/magic_combat.h"
+#include "sim/enchanting.h"
+#include "sim/stations.h"
 
 namespace dq {
 
@@ -165,6 +168,65 @@ bool tactileAnvilStrike(Level& lv, Player& p, World& w, ivec3 at, double now) {
   if (hits >= req) {
     if (anvilWorkForge(lv, p, w, at, true)) { burst(lv, c, "iron_block", 18, 0.6f); if (json* e2 = w.blockEntity(at.x, at.y, at.z)) { (*e2)["hits"] = 0; w.blockEntityChanged(at.x, at.y, at.z); } }
     else (*e)["hits"] = req;
+  }
+  return true;
+}
+
+namespace {
+float grindWear(const ItemStack& s) { return s.tag.is_object() ? s.tag.value("gw", 0.f) : 0.f; }   // (MeuleBlockEntity's wear: damage that won't grind out)
+}
+bool tactileGrindTarget(const ItemStack& s) {
+  if (s.empty()) return false;
+  const ItemDef* d = reg().item(s.id);
+  if (d && maxDurabilityOf(d) > 0 && s.d > (int)std::lround(grindWear(s))) return true;
+  const json en = s.tag.is_object() && s.tag.contains("en") ? s.tag["en"] : json();
+  return en.is_object() && !en.empty();
+}
+bool tactileGrind(Level& lv, Player& p, World& w, ivec3 at, ItemStack& held, double now, GrindSession& gs) {
+  if (reg().block(w.getBlock(at.x, at.y, at.z)).str("station") != "grindstone") return false;
+  if (!tactileGrindTarget(held)) { toast(lv, p, "Hold a worn or enchanted piece to the wheel"); return true; }
+  const bool broke = gs.at != at || now - gs.last > 0.35;   // (a fresh session: MeuleBlockEntity's six ticks)
+  const double el = broke ? 0.2 : std::clamp(now - gs.last, 0.05, 0.4);
+  if (broke) { gs = GrindSession(); gs.at = at; }
+  gs.last = now;
+  // the wheel turns (everyone sees it): the record's grind count goes up
+  json* e = w.blockEntity(at.x, at.y, at.z, true);
+  if (e) {
+    if (!e->is_object() || !e->contains("type")) *e = json{{"type", "grindwork"}, {"items", json::array({nullptr, nullptr})}};
+    (*e)["grind"] = e->value("grind", 0) + 1;
+    w.blockEntityChanged(at.x, at.y, at.z);
+  }
+  const vec3 c = vec3(at) + vec3(0.5f, 0.875f, 0.5f);
+  const ItemDef* d = reg().item(held.id);
+  const int maxD = d ? maxDurabilityOf(d) : 0;
+  const int floor = (int)std::lround(grindWear(held));
+  if (maxD > 0 && held.d > floor) {
+    if (!p.creative() && p.level <= 0 && p.xp <= 0) { toast(lv, p, "It takes experience to grind it back"); return true; }
+    gs.repair += maxD * 0.0333 * el;
+    const int heal = std::min((int)gs.repair, held.d - floor);
+    if (heal > 0) {
+      gs.repair -= heal; held.d -= heal;
+      if (!p.creative()) {
+        gs.xp += heal / 12.0;
+        for (int pay = (int)gs.xp; pay > 0; pay--) {   // (experience points, down through the levels)
+          if (p.xp <= 0) { if (p.level <= 0) break; p.level--; p.xp = xpForLevel(p.level); }
+          p.xp--; gs.xp -= 1;
+        }
+      }
+    }
+    if (!held.tag.is_object()) held.tag = json::object();
+    held.tag["gw"] = std::min<float>((float)maxD, grindWear(held) + (float)(maxD * 0.0005 * el));
+    burst(lv, c, "iron_block", 2, 0.5f);
+    if (broke || std::fmod(now, 0.6) < el) sfxAt(lv, "grind", c);
+    return true;
+  }
+  gs.dis += el;   // (an enchanted piece: ten seconds at the wheel)
+  burst(lv, c, "enchant", 2, 0.4f);
+  if (broke || std::fmod(now, 0.6) < el) sfxAt(lv, "grind", c);
+  if (gs.dis >= 10.0) {
+    StationResult r = grindstoneDisenchant(&held, nullptr);
+    if (r.ok) { held = r.out; if (r.xp > 0) addXP(p, r.xp); sfxAt(lv, "anvil_land", c); }
+    gs.dis = 0;
   }
   return true;
 }

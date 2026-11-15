@@ -67,7 +67,11 @@ class StationWorkLayer : public RenderLayer {
   struct Sheet { const PaperMap* map; mat4 M; float S; vec2 light; };
   std::vector<Sheet> sheets;
   struct Ink { mat4 M; vec2 light; };
-  std::vector<Ink> inks;       // the cartography desk's ink in its pot (Tactile's encrier_fill, filled to the ink left)   // maps lying on the cartography table: drawn after the voxels, with the content shader
+  std::vector<Ink> inks;
+  struct Wheel { int seen = -1; double lastT = -10; float speed = 0, angle = 0; };
+  std::map<std::tuple<int, int, int>, Wheel> wheels;   // Tactile's grindstone wheels, turning
+  double lastDt = 0.016;
+  void update(GameSession&, double dt) override { lastDt = dt; }
 public:
   const char* name() const override { return "station-work"; }
   int order() const override { return 111; }
@@ -420,6 +424,30 @@ public:
       ContentDraw& cd = contentDraw();
       if (cd.begin(f, f.cam.viewProj)) { for (auto& sh : sheets) drawMapSheet(cd, *s.level, sh.map, s.player, sh.M, sh.S, sh.light); cd.end(); }
       sheets.clear();
+    }
+    // Tactile's grindstone wheel (MeuleBlockEntityRenderer: about its axle 9/16 up, turning while it's ground on — the record's
+    // "grind" count changing — up to 22 degrees a tick, easing up and down by 3)
+    if (!grindsNear().empty()) if (const PackModel* wheel = tactilePart("meule_wheel")) {
+      ContentDraw& cd = contentDraw();
+      if (cd.begin(f, f.cam.viewProj)) {
+        for (const glm::ivec4& q : grindsNear()) {
+          const ivec3 at(q.x, q.y, q.z);
+          if (!stationModel(w.getBlock(at.x, at.y, at.z))) continue;
+          const json* e = w.blockEntity(at.x, at.y, at.z);
+          const int n = e && e->is_object() ? e->value("grind", 0) : 0;
+          Wheel& wh = wheels[{at.x, at.y, at.z}];
+          if (n != wh.seen) { wh.seen = n; wh.lastT = f.time; }
+          const bool active = f.time - wh.lastT < 0.35;
+          const float goal = active ? 440.f : 0.f, step = 1200.f * (float)lastDt;   // (22 deg a tick = 440 a second; 3 a tick a tick = 1200 a second a second)
+          wh.speed = wh.speed < goal ? std::min(goal, wh.speed + step) : std::max(goal, wh.speed - step);
+          wh.angle = std::fmod(wh.angle + wh.speed * (float)lastDt, 360.f);
+          const VoxelLight L = tactileLight(w, at);
+          TPose p = tactileBlockPose(f, at, tactileFacing(w, at));
+          p.t(0.5f, 0.5625f, 0.5f).rx(wh.angle).t(-0.5f, -0.5625f, -0.5f);
+          tactilePartDraw(s.app, cd, *wheel, p.m, vec2(L.sky, L.block));
+        }
+        cd.end();
+      }
     }
     if (!inks.empty()) {
       ContentDraw& cd = contentDraw();

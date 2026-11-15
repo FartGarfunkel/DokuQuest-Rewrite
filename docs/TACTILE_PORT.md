@@ -15,12 +15,15 @@ keeps our own blocks.
 - [x] interaction kit (sim/tactile.h): the hit point in the block's north frame (worldToNorthLocal), zones -> slots, put/take
 
 ## Blocks (Tactile -> ours)
-- [ ] table_de_forge -> smithing table: base/template/material zones (x<0.3 material, >0.7 template), Tactile spots and
+- [x] table_de_forge -> smithing table: base/template/material zones (x<0.3 material, >0.7 template), Tactile spots and
       tilts, forge hammer 3 blows (0.5 s apart, a level), result left on the table, preview at the back (armour worn)
 - [ ] smithing templates: the cinderite upgrade (diamond -> cinderite), the 18 armour trims; trims drawn on worn armour
 - [x] haut_fourneau -> blast furnace: the door, four raw spots on the crucible, the mould and its ingot, loose fuel
 - [x] four -> furnace, fumoir -> smoker (ours light themselves: no flint and steel needed; one stack a slot, shown as Tactile's 16-a-spot): their chambers, food on the grill spots, fuel
-- [ ] meule -> grindstone: the round wheel turning, Tactile's first-person grinding
+- [x] meule -> grindstone: the round wheel turning, grinding held to it (repair for experience, wear; ten seconds to disenchant)
+- [ ] the grindstone's first-person pose (MeuleFirstPersonAnimator: the piece held to the wheel)
+- [x] enclume -> anvil (work + material on its face, hammer blows, the result left on it)
+- [ ] armour trims shown on worn armour (every armour, the procedural ones too)
 - [ ] coffre / coffre_ender -> chests: the lid (kept off the wall behind), a note of paper on the lid naming it, the
       contents in Tactile's layers (large items, stacks)
 - [x] cartographe -> cartography table (ink, quill, board, pile, compass; draw, copy, enlarge with 8 blanks or paper)

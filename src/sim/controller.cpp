@@ -764,6 +764,11 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     if (tactileFurnaceUse(lv, p, w, *hit, held, repeat && t - tactileHoldAt > 1.0) && !repeat) swingArm();
     return;
   }
+  // Tactile Stations: the grindstone (sim/tactile.h): what's held is held to the wheel while use is held
+  if (!fromOff && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).str("station") == "grindstone") {
+    if (tactileGrind(lv, p, w, hit->block, held, t, grind) && !repeat) swingArm();
+    return;
+  }
   // Tactile Stations: the anvil worked where it stands (sim/tactile.h): what's held laid on it, a hammer strikes it (an empty
   // anvil and a hammer: the immersive smithing's own anvil work, below)
   if (!fromOff && !repeat && hit && !te && tactileStations && !p.sneaking && R.block(hit->id).str("station") == "anvil") {
