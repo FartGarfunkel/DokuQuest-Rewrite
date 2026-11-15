@@ -796,8 +796,10 @@ int rigHitPart(const Creature& m, const RigModel& M, vec3 o, vec3 d, float* outT
     mat4 inv = glm::inverse(m.mats[i]);
     vec3 lo = vec3(inv * vec4(o - m.pos, 1)), ld = vec3(inv * vec4(d, 0));
     const RigPart& p = M.parts[i];
-    // 0.12 local units: a wing membrane is only ~0.08 thick in world space, and 0.03 missed it
-    float t = rayAABB(lo, ld, p.min - vec3(0.12f), p.max + vec3(0.12f));
+    // each part where it is: a sliver of slack, and only a thin part (a wing membrane ~0.08 thick, which a ray glancing
+    // along it missed) made up to 0.16 through (an even 0.12 all round had made a spider's leg three times its width)
+    const vec3 ext = p.max - p.min, pad = glm::max(vec3(0.02f), (vec3(0.16f) - ext) * 0.5f);
+    float t = rayAABB(lo, ld, p.min - pad, p.max + pad);
     if (t >= 0 && t < bt) { bt = t; best = (int)i; }
   }
   if (outT && best >= 0) *outT = bt;

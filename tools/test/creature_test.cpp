@@ -67,6 +67,41 @@ int main(int argc, char** argv) {
     }
   }
 
+  {   // spiders stand on their feet (sim/creature_rig.cpp animSpider: they had hovered, the Broodmother half a block up)
+    for (const char* k : {"spider", "cave_spider", "broodmother", "scorpion", "rift_spider"}) {
+      auto e = createEntity(k); auto* c = dynamic_cast<Creature*>(e.get());
+      const RigModel* M = c ? rigModel(c->modelKey()) : nullptr;
+      if (!M) { CHECK(false, "%s has a rig", k); continue; }
+      c->onGround = true; c->age = 2; rigPose(*c, *M, creatureBase(*c, false));
+      float foot = 1e9f, body = 1e9f;
+      for (size_t i = 0; i < M->parts.size(); i++) {
+        const RigPart& q = M->parts[i];
+        for (int n = 0; n < 8; n++) {
+          const vec3 cl((n & 1) ? q.max.x : q.min.x, (n & 2) ? q.max.y : q.min.y, (n & 4) ? q.max.z : q.min.z);
+          const float y = vec3(c->mats[i] * vec4(cl, 1)).y;
+          if (q.role == "sshin") foot = std::min(foot, y); else if (q.role != "sleg" && !q.glow) body = std::min(body, y);
+        }
+      }
+      CHECK(foot > -0.04f && foot < 0.03f, "a %s stands on its feet (lowest foot %.3f above the ground)", k, foot);
+      CHECK(body > foot - 0.06f, "and its body is above them (%.3f)", body);
+    }
+    // a blow lands on the part it strikes, not the air round it (sim/creature_rig.cpp rigHitPart: a thin pad only)
+    auto e = createEntity("broodmother"); auto* c = dynamic_cast<Creature*>(e.get());
+    const RigModel* M = c ? rigModel(c->modelKey()) : nullptr;
+    if (M) {
+      c->onGround = true; c->age = 2; rigPose(*c, *M, creatureBase(*c, false));
+      const int shin = M->find("sshinR1");
+      const vec3 tip = vec3(c->mats[shin] * vec4(0, M->parts[shin].min.y * 0.5f, 0, 1));
+      const int down = rigHitPart(*c, *M, tip + vec3(0, 3, 0), vec3(0, -1, 0));
+      CHECK(down >= 0 && rigLimbPart(*M, down) >= 0 && M->parts[rigLimbPart(*M, down)].limb == "slegR1", "a blow through a leg strikes that leg (%s)", down >= 0 ? M->parts[down].name.c_str() : "nothing");
+      // beside it, across the way it leans (the old even pad, 0.12 a side, reached 0.36 out on the Broodmother's legs)
+      const vec3 sideways = glm::normalize(vec3(c->mats[shin][2]));   // the shin's own z: across its lean (it leans about z)
+      const float half = 0.0625f * M->scale;
+      const int miss = rigHitPart(*c, *M, tip + sideways * (half + 0.12f) + vec3(0, 3, 0), vec3(0, -1, 0));
+      CHECK(miss != shin, "a swing a hand's breadth outside the leg misses it (%s)", miss >= 0 ? M->parts[miss].name.c_str() : "nothing");
+    }
+  }
+
   ThreadPool pool(1);
   EventBus events;
   LevelInfo info; info.name = "CreatureTest"; info.seedText = "hello"; info.time = DAY_LEN * 0.75;   // night
